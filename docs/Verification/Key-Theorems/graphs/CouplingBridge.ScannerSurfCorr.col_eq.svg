@@ -10,7 +10,7 @@
 <title>CouplingBridge.ScannerSurfCorr.col_eq</title>
 <polygon fill="white" stroke="transparent" points="-4,4 -4,-360 574.5,-360 574.5,4 -4,4"/>
 <text text-anchor="middle" x="285.25" y="-341.6" font-family="Helvetica Bold" font-size="13.00">CouplingBridge.ScannerSurfCorr.col_eq</text>
-<text text-anchor="middle" x="285.25" y="-327.6" font-family="Helvetica Bold" font-size="13.00">(heuristic: used by 98 proofs)</text>
+<text text-anchor="middle" x="285.25" y="-327.6" font-family="Helvetica Bold" font-size="13.00">(heuristic: used by 100 proofs)</text>
 <text text-anchor="middle" x="285.25" y="-313.6" font-family="Helvetica Bold" font-size="13.00">(L4YAML.Proofs.CouplingBridge)</text>
 <g id="clust1" class="cluster">
 <title>cluster_functions</title>
@@ -25,44 +25,62 @@
 <!-- L4YAML.Scanner.ScannerState -->
 <g id="node1" class="node">
 <title>L4YAML.Scanner.ScannerState</title>
+<g id="a_node1"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState" xlink:title="ScannerState\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="513,-268 437,-268 437,-232 513,-232 513,-268"/>
 <text text-anchor="middle" x="475" y="-253" font-family="Helvetica" font-size="10.00">ScannerState</text>
 <text text-anchor="middle" x="475" y="-242" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.CouplingBridge.ScannerSurfCorr -->
 <g id="node2" class="node">
 <title>L4YAML.Proofs.CouplingBridge.ScannerSurfCorr</title>
+<g id="a_node2"><a xlink:href="../../../api/L4YAML/Proofs/CouplingBridge.html#L4YAML.Proofs.CouplingBridge.ScannerSurfCorr" xlink:title="CouplingBridge.ScannerSurfCorr\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="554.5,-214 395.5,-214 395.5,-178 554.5,-178 554.5,-214"/>
 <text text-anchor="middle" x="475" y="-199" font-family="Helvetica" font-size="10.00">CouplingBridge.ScannerSurfCorr</text>
 <text text-anchor="middle" x="475" y="-188" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.col -->
 <g id="node3" class="node">
 <title>L4YAML.Scanner.ScannerState.col</title>
+<g id="a_node3"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.col" xlink:title="ScannerState.col\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="521,-160 429,-160 429,-124 521,-124 521,-160"/>
 <text text-anchor="middle" x="475" y="-145" font-family="Helvetica" font-size="10.00">ScannerState.col</text>
 <text text-anchor="middle" x="475" y="-134" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Surface.SurfPos -->
 <g id="node4" class="node">
 <title>L4YAML.Surface.SurfPos</title>
+<g id="a_node4"><a xlink:href="../../../api/L4YAML/Surface/Combinators.html#L4YAML.Surface.SurfPos" xlink:title="Surface.SurfPos\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="520,-106 430,-106 430,-70 520,-70 520,-106"/>
 <text text-anchor="middle" x="475" y="-91" font-family="Helvetica" font-size="10.00">Surface.SurfPos</text>
 <text text-anchor="middle" x="475" y="-80" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Surface.SurfPos.col -->
 <g id="node5" class="node">
 <title>L4YAML.Surface.SurfPos.col</title>
+<g id="a_node5"><a xlink:href="../../../api/L4YAML/Surface/Combinators.html#L4YAML.Surface.SurfPos.col" xlink:title="Surface.SurfPos.col\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="528,-52 422,-52 422,-16 528,-16 528,-52"/>
 <text text-anchor="middle" x="475" y="-37" font-family="Helvetica" font-size="10.00">Surface.SurfPos.col</text>
 <text text-anchor="middle" x="475" y="-26" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.CouplingBridge.ScannerSurfCorr.col_eq -->
 <g id="node6" class="node">
 <title>L4YAML.Proofs.CouplingBridge.ScannerSurfCorr.col_eq</title>
+<g id="a_node6"><a xlink:href="../../../api/L4YAML/Proofs/CouplingBridge.html#L4YAML.Proofs.CouplingBridge.ScannerSurfCorr.col_eq" xlink:title="CouplingBridge.ScannerSurfCorr.col_eq" target="_blank">
 <polygon fill="#fff3cd" stroke="#d4a017" points="330.74,-134.54 330.74,-149.46 239.66,-160 110.84,-160 19.76,-149.46 19.76,-134.54 110.84,-124 239.66,-124 330.74,-134.54"/>
 <polygon fill="none" stroke="#d4a017" points="334.75,-130.98 334.75,-153.02 239.89,-164 110.61,-164 15.75,-153.02 15.75,-130.98 110.61,-120 239.89,-120 334.75,-130.98"/>
 <text text-anchor="middle" x="175.25" y="-138.9" font-family="Helvetica" font-size="12.00">CouplingBridge.ScannerSurfCorr.col_eq</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.CouplingBridge.ScannerSurfCorr.col_eq&#45;&gt;L4YAML.Scanner.ScannerState -->
 <g id="edge4" class="edge">

@@ -35,93 +35,132 @@
 <!-- L4YAML.Scanner.parseBlockHeaderLoop.match_1 -->
 <g id="node1" class="node">
 <title>L4YAML.Scanner.parseBlockHeaderLoop.match_1</title>
+<g id="a_node1"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.parseBlockHeaderLoop.match_1" xlink:title="parseBlockHeaderLoop.match_1\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="977.02,-142 818.02,-142 818.02,-106 977.02,-106 977.02,-142"/>
 <text text-anchor="middle" x="897.52" y="-127" font-family="Helvetica" font-size="10.00">parseBlockHeaderLoop.match_1</text>
 <text text-anchor="middle" x="897.52" y="-116" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.ChompStyle -->
 <g id="node2" class="node">
 <title>L4YAML.ChompStyle</title>
+<g id="a_node2"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.ChompStyle" xlink:title="ChompStyle\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1344.7,-196 1273.7,-196 1273.7,-160 1344.7,-160 1344.7,-196"/>
 <text text-anchor="middle" x="1309.2" y="-181" font-family="Helvetica" font-size="10.00">ChompStyle</text>
 <text text-anchor="middle" x="1309.2" y="-170" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Positioned -->
 <g id="node3" class="node">
 <title>L4YAML.Positioned</title>
+<g id="a_node3"><a xlink:href="../../../api/L4YAML/Token.html#L4YAML.Positioned" xlink:title="Positioned\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1340.2,-250 1278.2,-250 1278.2,-214 1340.2,-214 1340.2,-250"/>
 <text text-anchor="middle" x="1309.2" y="-235" font-family="Helvetica" font-size="10.00">Positioned</text>
 <text text-anchor="middle" x="1309.2" y="-224" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.advance -->
 <g id="node4" class="node">
 <title>L4YAML.Scanner.ScannerState.advance</title>
+<g id="a_node4"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.advance" xlink:title="ScannerState.advance\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="955.02,-412 840.02,-412 840.02,-376 955.02,-376 955.02,-412"/>
 <text text-anchor="middle" x="897.52" y="-397" font-family="Helvetica" font-size="10.00">ScannerState.advance</text>
 <text text-anchor="middle" x="897.52" y="-386" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.peek? -->
 <g id="node5" class="node">
 <title>L4YAML.Scanner.ScannerState.peek?</title>
+<g id="a_node5"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.peek?" xlink:title="ScannerState.peek?\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="949.52,-358 845.52,-358 845.52,-322 949.52,-322 949.52,-358"/>
 <text text-anchor="middle" x="897.52" y="-343" font-family="Helvetica" font-size="10.00">ScannerState.peek?</text>
 <text text-anchor="middle" x="897.52" y="-332" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.parseBlockHeaderLoop -->
 <g id="node6" class="node">
 <title>L4YAML.Scanner.parseBlockHeaderLoop</title>
+<g id="a_node6"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.parseBlockHeaderLoop" xlink:title="parseBlockHeaderLoop\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1368.7,-142 1249.7,-142 1249.7,-106 1368.7,-106 1368.7,-142"/>
 <text text-anchor="middle" x="1309.2" y="-127" font-family="Helvetica" font-size="10.00">parseBlockHeaderLoop</text>
 <text text-anchor="middle" x="1309.2" y="-116" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState -->
 <g id="node7" class="node">
 <title>L4YAML.Scanner.ScannerState</title>
+<g id="a_node7"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState" xlink:title="ScannerState\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1347.2,-358 1271.2,-358 1271.2,-322 1347.2,-322 1347.2,-358"/>
 <text text-anchor="middle" x="1309.2" y="-343" font-family="Helvetica" font-size="10.00">ScannerState</text>
 <text text-anchor="middle" x="1309.2" y="-332" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.YamlToken -->
 <g id="node8" class="node">
 <title>L4YAML.YamlToken</title>
+<g id="a_node8"><a xlink:href="../../../api/L4YAML/Token.html#L4YAML.YamlToken" xlink:title="YamlToken\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1341.2,-412 1277.2,-412 1277.2,-376 1341.2,-376 1341.2,-412"/>
 <text text-anchor="middle" x="1309.2" y="-397" font-family="Helvetica" font-size="10.00">YamlToken</text>
 <text text-anchor="middle" x="1309.2" y="-386" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.ChompStyle.keep -->
 <g id="node9" class="node">
 <title>L4YAML.ChompStyle.keep</title>
+<g id="a_node9"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.ChompStyle.keep" xlink:title="ChompStyle.keep\n(ctor)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="944.52,-304 850.52,-304 850.52,-268 944.52,-268 944.52,-304"/>
 <text text-anchor="middle" x="897.52" y="-289" font-family="Helvetica" font-size="10.00">ChompStyle.keep</text>
 <text text-anchor="middle" x="897.52" y="-278" font-family="Helvetica" font-size="10.00">(ctor)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.peekAt?Loop.match_1 -->
 <g id="node10" class="node">
 <title>L4YAML.Scanner.ScannerState.peekAt?Loop.match_1</title>
+<g id="a_node10"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.peekAt?Loop.match_1" xlink:title="ScannerState.peekAt?Loop.match_1\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="985.52,-250 809.52,-250 809.52,-214 985.52,-214 985.52,-250"/>
 <text text-anchor="middle" x="897.52" y="-235" font-family="Helvetica" font-size="10.00">ScannerState.peekAt?Loop.match_1</text>
 <text text-anchor="middle" x="897.52" y="-224" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.tokens -->
 <g id="node11" class="node">
 <title>L4YAML.Scanner.ScannerState.tokens</title>
+<g id="a_node11"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.tokens" xlink:title="ScannerState.tokens\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1362.7,-304 1255.7,-304 1255.7,-268 1362.7,-268 1362.7,-304"/>
 <text text-anchor="middle" x="1309.2" y="-289" font-family="Helvetica" font-size="10.00">ScannerState.tokens</text>
 <text text-anchor="middle" x="1309.2" y="-278" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.ChompStyle.strip -->
 <g id="node12" class="node">
 <title>L4YAML.ChompStyle.strip</title>
+<g id="a_node12"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.ChompStyle.strip" xlink:title="ChompStyle.strip\n(ctor)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="943.52,-196 851.52,-196 851.52,-160 943.52,-160 943.52,-196"/>
 <text text-anchor="middle" x="897.52" y="-181" font-family="Helvetica" font-size="10.00">ChompStyle.strip</text>
 <text text-anchor="middle" x="897.52" y="-170" font-family="Helvetica" font-size="10.00">(ctor)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerCorrectness.ScanHelpers.parseBlockHeaderLoop_preserves_tokens -->
 <g id="node13" class="node">
 <title>L4YAML.Proofs.ScannerCorrectness.ScanHelpers.parseBlockHeaderLoop_preserves_tokens</title>
+<g id="a_node13"><a xlink:href="../../../api/L4YAML/Proofs/ScannerCorrectness.html#L4YAML.Proofs.ScannerCorrectness.ScanHelpers.parseBlockHeaderLoop_preserves_tokens" xlink:title="ScannerCorrectness.ScanHelpers.parseBlockHeaderLoop_preserves_tokens" target="_blank">
 <polygon fill="#fff3cd" stroke="#d4a017" points="1184.88,-30.54 1184.88,-45.46 1016.55,-56 778.5,-56 610.17,-45.46 610.17,-30.54 778.5,-20 1016.55,-20 1184.88,-30.54"/>
 <polygon fill="none" stroke="#d4a017" points="1188.88,-26.79 1188.88,-49.21 1016.67,-60 778.37,-60 606.16,-49.21 606.16,-26.79 778.37,-16 1016.67,-16 1188.88,-26.79"/>
 <text text-anchor="middle" x="897.52" y="-34.9" font-family="Helvetica" font-size="12.00">ScannerCorrectness.ScanHelpers.parseBlockHeaderLoop_preserves_tokens</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerCorrectness.ScanHelpers.parseBlockHeaderLoop_preserves_tokens&#45;&gt;L4YAML.ChompStyle -->
 <g id="edge3" class="edge">
@@ -168,9 +207,12 @@
 <!-- L4YAML.Scanner.parseBlockHeaderLoop.eq_def -->
 <g id="node14" class="node">
 <title>L4YAML.Scanner.parseBlockHeaderLoop.eq_def</title>
+<g id="a_node14"><a xlink:href="../../../api/L4YAML/Proofs/ScalarCoupling.html#L4YAML.Scanner.parseBlockHeaderLoop.eq_def" xlink:title="parseBlockHeaderLoop.eq_def\n(ScalarCoupling)" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="292.67" cy="-410" rx="106.55" ry="21.43"/>
 <text text-anchor="middle" x="292.67" y="-413" font-family="Helvetica" font-size="10.00">parseBlockHeaderLoop.eq_def</text>
 <text text-anchor="middle" x="292.67" y="-402" font-family="Helvetica" font-size="10.00">(ScalarCoupling)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.parseBlockHeaderLoop.eq_def&#45;&gt;L4YAML.Scanner.parseBlockHeaderLoop.match_1 -->
 <g id="edge19" class="edge">
@@ -235,9 +277,12 @@
 <!-- L4YAML.Proofs.ScannerCorrectness.advance_preserves_tokens -->
 <g id="node15" class="node">
 <title>L4YAML.Proofs.ScannerCorrectness.advance_preserves_tokens</title>
+<g id="a_node15"><a xlink:href="../../../api/L4YAML/Proofs/ScannerCorrectness.html#L4YAML.Proofs.ScannerCorrectness.advance_preserves_tokens" xlink:title="ScannerCorrectness.advance_preserves_tokens\n(ScannerCorrectness)" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="292.67" cy="-470" rx="160.53" ry="21.43"/>
 <text text-anchor="middle" x="292.67" y="-473" font-family="Helvetica" font-size="10.00">ScannerCorrectness.advance_preserves_tokens</text>
 <text text-anchor="middle" x="292.67" y="-462" font-family="Helvetica" font-size="10.00">(ScannerCorrectness)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerCorrectness.advance_preserves_tokens&#45;&gt;L4YAML.Positioned -->
 <g id="edge25" class="edge">
@@ -278,8 +323,11 @@
 <!-- _private.L4YAML.Proofs.ScannerCorrectness.0.L4YAML.Scanner.parseBlockHeaderLoop.match_1.eq_2 -->
 <g id="node16" class="node">
 <title>_private.L4YAML.Proofs.ScannerCorrectness.0.L4YAML.Scanner.parseBlockHeaderLoop.match_1.eq_2</title>
+<g id="a_node16"><a xlink:href="../../../api/L4YAML/Proofs/ScannerCorrectness.html#_private.L4YAML.Proofs.ScannerCorrectness.0.L4YAML.Scanner.parseBlockHeaderLoop.match_1.eq_2" xlink:title="_private.L4YAML.Proofs.ScannerCorrectness.0.L4YAML.Scanner.parseBlockHeaderLoop.match_1.eq_2" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="292.67" cy="-40" rx="276.84" ry="18"/>
 <text text-anchor="middle" x="292.67" y="-37.5" font-family="Helvetica" font-size="10.00">_private.L4YAML.Proofs.ScannerCorrectness.0.L4YAML.Scanner.parseBlockHeaderLoop.match_1.eq_2</text>
+</a>
+</g>
 </g>
 <!-- _private.L4YAML.Proofs.ScannerCorrectness.0.L4YAML.Scanner.parseBlockHeaderLoop.match_1.eq_2&#45;&gt;L4YAML.Scanner.parseBlockHeaderLoop.match_1 -->
 <g id="edge12" class="edge">
@@ -296,8 +344,11 @@
 <!-- _private.L4YAML.Proofs.ScannerCorrectness.0.L4YAML.Scanner.parseBlockHeaderLoop.match_1.eq_3 -->
 <g id="node17" class="node">
 <title>_private.L4YAML.Proofs.ScannerCorrectness.0.L4YAML.Scanner.parseBlockHeaderLoop.match_1.eq_3</title>
+<g id="a_node17"><a xlink:href="../../../api/L4YAML/Proofs/ScannerCorrectness.html#_private.L4YAML.Proofs.ScannerCorrectness.0.L4YAML.Scanner.parseBlockHeaderLoop.match_1.eq_3" xlink:title="_private.L4YAML.Proofs.ScannerCorrectness.0.L4YAML.Scanner.parseBlockHeaderLoop.match_1.eq_3" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="292.67" cy="-94" rx="276.84" ry="18"/>
 <text text-anchor="middle" x="292.67" y="-91.5" font-family="Helvetica" font-size="10.00">_private.L4YAML.Proofs.ScannerCorrectness.0.L4YAML.Scanner.parseBlockHeaderLoop.match_1.eq_3</text>
+</a>
+</g>
 </g>
 <!-- _private.L4YAML.Proofs.ScannerCorrectness.0.L4YAML.Scanner.parseBlockHeaderLoop.match_1.eq_3&#45;&gt;L4YAML.Scanner.parseBlockHeaderLoop.match_1 -->
 <g id="edge22" class="edge">
@@ -314,8 +365,11 @@
 <!-- _private.L4YAML.Proofs.ScannerCorrectness.0.L4YAML.Scanner.parseBlockHeaderLoop.match_1.eq_1 -->
 <g id="node18" class="node">
 <title>_private.L4YAML.Proofs.ScannerCorrectness.0.L4YAML.Scanner.parseBlockHeaderLoop.match_1.eq_1</title>
+<g id="a_node18"><a xlink:href="../../../api/L4YAML/Proofs/ScannerCorrectness.html#_private.L4YAML.Proofs.ScannerCorrectness.0.L4YAML.Scanner.parseBlockHeaderLoop.match_1.eq_1" xlink:title="_private.L4YAML.Proofs.ScannerCorrectness.0.L4YAML.Scanner.parseBlockHeaderLoop.match_1.eq_1" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="292.67" cy="-148" rx="276.84" ry="18"/>
 <text text-anchor="middle" x="292.67" y="-145.5" font-family="Helvetica" font-size="10.00">_private.L4YAML.Proofs.ScannerCorrectness.0.L4YAML.Scanner.parseBlockHeaderLoop.match_1.eq_1</text>
+</a>
+</g>
 </g>
 <!-- _private.L4YAML.Proofs.ScannerCorrectness.0.L4YAML.Scanner.parseBlockHeaderLoop.match_1.eq_1&#45;&gt;L4YAML.Scanner.parseBlockHeaderLoop.match_1 -->
 <g id="edge28" class="edge">

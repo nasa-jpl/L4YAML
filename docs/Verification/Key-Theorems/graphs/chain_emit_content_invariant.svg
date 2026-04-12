@@ -24,14 +24,20 @@
 <!-- L4YAML.YamlValue -->
 <g id="node1" class="node">
 <title>L4YAML.YamlValue</title>
+<g id="a_node1"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.YamlValue" xlink:title="YamlValue" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="366,-52 304,-52 304,-16 366,-16 366,-52"/>
 <text text-anchor="middle" x="335" y="-31.5" font-family="Helvetica" font-size="10.00">YamlValue</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Emit.emit -->
 <g id="node2" class="node">
 <title>L4YAML.Emit.emit</title>
+<g id="a_node2"><a xlink:href="../../../api/L4YAML/Emitter.html#L4YAML.Emit.emit" xlink:title="Emit.emit" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="362,-133 304,-133 304,-97 362,-97 362,-133"/>
 <text text-anchor="middle" x="333" y="-112.5" font-family="Helvetica" font-size="10.00">Emit.emit</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Emit.emit&#45;&gt;L4YAML.YamlValue -->
 <g id="edge2" class="edge">
@@ -43,8 +49,11 @@
 <!-- L4YAML.Emit.contentEq -->
 <g id="node3" class="node">
 <title>L4YAML.Emit.contentEq</title>
+<g id="a_node3"><a xlink:href="../../../api/L4YAML/Emitter.html#L4YAML.Emit.contentEq" xlink:title="Emit.contentEq" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="463.5,-133 380.5,-133 380.5,-97 463.5,-97 463.5,-133"/>
 <text text-anchor="middle" x="422" y="-112.5" font-family="Helvetica" font-size="10.00">Emit.contentEq</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Emit.contentEq&#45;&gt;L4YAML.YamlValue -->
 <g id="edge6" class="edge">
@@ -56,9 +65,12 @@
 <!-- L4YAML.Proofs.ScannerEmitBridge.emit_content_invariant -->
 <g id="node4" class="node">
 <title>L4YAML.Proofs.ScannerEmitBridge.emit_content_invariant</title>
+<g id="a_node4"><a xlink:href="../../../api/L4YAML/Proofs/ScannerEmitBridge.html#L4YAML.Proofs.ScannerEmitBridge.emit_content_invariant" xlink:title="ScannerEmitBridge.emit_content_invariant" target="_blank">
 <polygon fill="#fff3cd" stroke="#d4a017" points="276.14,-212.54 276.14,-227.46 201.08,-238 94.92,-238 19.86,-227.46 19.86,-212.54 94.92,-202 201.08,-202 276.14,-212.54"/>
 <polygon fill="none" stroke="#d4a017" points="280.14,-209.07 280.14,-230.93 201.36,-242 94.64,-242 15.86,-230.93 15.86,-209.07 94.64,-198 201.36,-198 280.14,-209.07"/>
 <text text-anchor="middle" x="148" y="-217.5" font-family="Helvetica" font-size="10.00">ScannerEmitBridge.emit_content_invariant</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerEmitBridge.emit_content_invariant&#45;&gt;L4YAML.Emit.emit -->
 <g id="edge1" class="edge">
@@ -77,8 +89,11 @@
 <!-- L4YAML.Proofs.ScannerEmitBridge.contentEq_implies_emit_eq -->
 <g id="node5" class="node">
 <title>L4YAML.Proofs.ScannerEmitBridge.contentEq_implies_emit_eq</title>
+<g id="a_node5"><a xlink:href="../../../api/L4YAML/Proofs/ScannerEmitBridge.html#L4YAML.Proofs.ScannerEmitBridge.contentEq_implies_emit_eq" xlink:title="ScannerEmitBridge.contentEq_implies_emit_eq" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="148" cy="-115" rx="131.72" ry="18"/>
 <text text-anchor="middle" x="148" y="-112.5" font-family="Helvetica" font-size="10.00">ScannerEmitBridge.contentEq_implies_emit_eq</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerEmitBridge.emit_content_invariant&#45;&gt;L4YAML.Proofs.ScannerEmitBridge.contentEq_implies_emit_eq -->
 <g id="edge3" class="edge">

@@ -30,625 +30,892 @@
 <!-- L4YAML.PathSegment.index -->
 <g id="node1" class="node">
 <title>L4YAML.PathSegment.index</title>
+<g id="a_node1"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.PathSegment.index" xlink:title="PathSegment.index\n(ctor)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="581.7,-4766.13 480.7,-4766.13 480.7,-4730.13 581.7,-4730.13 581.7,-4766.13"/>
 <text text-anchor="middle" x="531.2" y="-4751.13" font-family="Helvetica" font-size="10.00">PathSegment.index</text>
 <text text-anchor="middle" x="531.2" y="-4740.13" font-family="Helvetica" font-size="10.00">(ctor)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Positioned.val -->
 <g id="node2" class="node">
 <title>L4YAML.Positioned.val</title>
+<g id="a_node2"><a xlink:href="../../../api/L4YAML/Token.html#L4YAML.Positioned.val" xlink:title="Positioned.val\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="569.7,-4712.13 492.7,-4712.13 492.7,-4676.13 569.7,-4676.13 569.7,-4712.13"/>
 <text text-anchor="middle" x="531.2" y="-4697.13" font-family="Helvetica" font-size="10.00">Positioned.val</text>
 <text text-anchor="middle" x="531.2" y="-4686.13" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.TokenParser.parseBlockSequenceLoop.match_1 -->
 <g id="node3" class="node">
 <title>L4YAML.TokenParser.parseBlockSequenceLoop.match_1</title>
+<g id="a_node3"><a xlink:href="../../../api/L4YAML/TokenParser.html#L4YAML.TokenParser.parseBlockSequenceLoop.match_1" xlink:title="TokenParser.parseBlockSequenceLoop.match_1\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="645.7,-4658.13 416.7,-4658.13 416.7,-4622.13 645.7,-4622.13 645.7,-4658.13"/>
 <text text-anchor="middle" x="531.2" y="-4643.13" font-family="Helvetica" font-size="10.00">TokenParser.parseBlockSequenceLoop.match_1</text>
 <text text-anchor="middle" x="531.2" y="-4632.13" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.TokenParser.parseExplicitKey.match_1 -->
 <g id="node4" class="node">
 <title>L4YAML.TokenParser.parseExplicitKey.match_1</title>
+<g id="a_node4"><a xlink:href="../../../api/L4YAML/TokenParser.html#L4YAML.TokenParser.parseExplicitKey.match_1" xlink:title="TokenParser.parseExplicitKey.match_1\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="625.2,-4604.13 437.2,-4604.13 437.2,-4568.13 625.2,-4568.13 625.2,-4604.13"/>
 <text text-anchor="middle" x="531.2" y="-4589.13" font-family="Helvetica" font-size="10.00">TokenParser.parseExplicitKey.match_1</text>
 <text text-anchor="middle" x="531.2" y="-4578.13" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.BlockScalarMeta -->
 <g id="node5" class="node">
 <title>L4YAML.BlockScalarMeta</title>
+<g id="a_node5"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.BlockScalarMeta" xlink:title="BlockScalarMeta\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="576.7,-4550.13 485.7,-4550.13 485.7,-4514.13 576.7,-4514.13 576.7,-4550.13"/>
 <text text-anchor="middle" x="531.2" y="-4535.13" font-family="Helvetica" font-size="10.00">BlockScalarMeta</text>
 <text text-anchor="middle" x="531.2" y="-4524.13" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.YamlValue.scalar -->
 <g id="node6" class="node">
 <title>L4YAML.YamlValue.scalar</title>
+<g id="a_node6"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.YamlValue.scalar" xlink:title="YamlValue.scalar\n(ctor)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="577.2,-4496.13 485.2,-4496.13 485.2,-4460.13 577.2,-4460.13 577.2,-4496.13"/>
 <text text-anchor="middle" x="531.2" y="-4481.13" font-family="Helvetica" font-size="10.00">YamlValue.scalar</text>
 <text text-anchor="middle" x="531.2" y="-4470.13" font-family="Helvetica" font-size="10.00">(ctor)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.TokenParser.ParseState.currentLine -->
 <g id="node7" class="node">
 <title>L4YAML.TokenParser.ParseState.currentLine</title>
+<g id="a_node7"><a xlink:href="../../../api/L4YAML/TokenParser.html#L4YAML.TokenParser.ParseState.currentLine" xlink:title="TokenParser.ParseState.currentLine\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="942.28,-1472.13 767.28,-1472.13 767.28,-1436.13 942.28,-1436.13 942.28,-1472.13"/>
 <text text-anchor="middle" x="854.78" y="-1457.13" font-family="Helvetica" font-size="10.00">TokenParser.ParseState.currentLine</text>
 <text text-anchor="middle" x="854.78" y="-1446.13" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.TokenParser.parseBlockMappingEntryValue.match_3 -->
 <g id="node8" class="node">
 <title>L4YAML.TokenParser.parseBlockMappingEntryValue.match_3</title>
+<g id="a_node8"><a xlink:href="../../../api/L4YAML/TokenParser.html#L4YAML.TokenParser.parseBlockMappingEntryValue.match_3" xlink:title="TokenParser.parseBlockMappingEntryValue.match_3\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="655.7,-4442.13 406.7,-4442.13 406.7,-4406.13 655.7,-4406.13 655.7,-4442.13"/>
 <text text-anchor="middle" x="531.2" y="-4427.13" font-family="Helvetica" font-size="10.00">TokenParser.parseBlockMappingEntryValue.match_3</text>
 <text text-anchor="middle" x="531.2" y="-4416.13" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.YamlToken.key -->
 <g id="node9" class="node">
 <title>L4YAML.YamlToken.key</title>
+<g id="a_node9"><a xlink:href="../../../api/L4YAML/Token.html#L4YAML.YamlToken.key" xlink:title="YamlToken.key\n(ctor)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="572.2,-4388.13 490.2,-4388.13 490.2,-4352.13 572.2,-4352.13 572.2,-4388.13"/>
 <text text-anchor="middle" x="531.2" y="-4373.13" font-family="Helvetica" font-size="10.00">YamlToken.key</text>
 <text text-anchor="middle" x="531.2" y="-4362.13" font-family="Helvetica" font-size="10.00">(ctor)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.TokenParser.ParseState.advance -->
 <g id="node10" class="node">
 <title>L4YAML.TokenParser.ParseState.advance</title>
+<g id="a_node10"><a xlink:href="../../../api/L4YAML/TokenParser.html#L4YAML.TokenParser.ParseState.advance" xlink:title="TokenParser.ParseState.advance\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="936.28,-1634.13 773.28,-1634.13 773.28,-1598.13 936.28,-1598.13 936.28,-1634.13"/>
 <text text-anchor="middle" x="854.78" y="-1619.13" font-family="Helvetica" font-size="10.00">TokenParser.ParseState.advance</text>
 <text text-anchor="middle" x="854.78" y="-1608.13" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.TokenParser.parseFlowMappingLoop.match_1 -->
 <g id="node11" class="node">
 <title>L4YAML.TokenParser.parseFlowMappingLoop.match_1</title>
+<g id="a_node11"><a xlink:href="../../../api/L4YAML/TokenParser.html#L4YAML.TokenParser.parseFlowMappingLoop.match_1" xlink:title="TokenParser.parseFlowMappingLoop.match_1\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="640.2,-4334.13 422.2,-4334.13 422.2,-4298.13 640.2,-4298.13 640.2,-4334.13"/>
 <text text-anchor="middle" x="531.2" y="-4319.13" font-family="Helvetica" font-size="10.00">TokenParser.parseFlowMappingLoop.match_1</text>
 <text text-anchor="middle" x="531.2" y="-4308.13" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.TokenParser.parseFlowSequence.match_1 -->
 <g id="node12" class="node">
 <title>L4YAML.TokenParser.parseFlowSequence.match_1</title>
+<g id="a_node12"><a xlink:href="../../../api/L4YAML/TokenParser.html#L4YAML.TokenParser.parseFlowSequence.match_1" xlink:title="TokenParser.parseFlowSequence.match_1\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="633.2,-4280.13 429.2,-4280.13 429.2,-4244.13 633.2,-4244.13 633.2,-4280.13"/>
 <text text-anchor="middle" x="531.2" y="-4265.13" font-family="Helvetica" font-size="10.00">TokenParser.parseFlowSequence.match_1</text>
 <text text-anchor="middle" x="531.2" y="-4254.13" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.ScalarStyle -->
 <g id="node13" class="node">
 <title>L4YAML.ScalarStyle</title>
+<g id="a_node13"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.ScalarStyle" xlink:title="ScalarStyle\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="564.7,-4226.13 497.7,-4226.13 497.7,-4190.13 564.7,-4190.13 564.7,-4226.13"/>
 <text text-anchor="middle" x="531.2" y="-4211.13" font-family="Helvetica" font-size="10.00">ScalarStyle</text>
 <text text-anchor="middle" x="531.2" y="-4200.13" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.TokenParser.parseNode.match_10 -->
 <g id="node14" class="node">
 <title>L4YAML.TokenParser.parseNode.match_10</title>
+<g id="a_node14"><a xlink:href="../../../api/L4YAML/TokenParser.html#L4YAML.TokenParser.parseNode.match_10" xlink:title="TokenParser.parseNode.match_10\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="938.78,-1310.13 770.78,-1310.13 770.78,-1274.13 938.78,-1274.13 938.78,-1310.13"/>
 <text text-anchor="middle" x="854.78" y="-1295.13" font-family="Helvetica" font-size="10.00">TokenParser.parseNode.match_10</text>
 <text text-anchor="middle" x="854.78" y="-1284.13" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.TokenParser.handleBlockMappingKeyEntry.match_1 -->
 <g id="node15" class="node">
 <title>L4YAML.TokenParser.handleBlockMappingKeyEntry.match_1</title>
+<g id="a_node15"><a xlink:href="../../../api/L4YAML/TokenParser.html#L4YAML.TokenParser.handleBlockMappingKeyEntry.match_1" xlink:title="TokenParser.handleBlockMappingKeyEntry.match_1\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="653.7,-4172.13 408.7,-4172.13 408.7,-4136.13 653.7,-4136.13 653.7,-4172.13"/>
 <text text-anchor="middle" x="531.2" y="-4157.13" font-family="Helvetica" font-size="10.00">TokenParser.handleBlockMappingKeyEntry.match_1</text>
 <text text-anchor="middle" x="531.2" y="-4146.13" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.TokenParser.parseBlockMappingEntryValue.match_1 -->
 <g id="node16" class="node">
 <title>L4YAML.TokenParser.parseBlockMappingEntryValue.match_1</title>
+<g id="a_node16"><a xlink:href="../../../api/L4YAML/TokenParser.html#L4YAML.TokenParser.parseBlockMappingEntryValue.match_1" xlink:title="TokenParser.parseBlockMappingEntryValue.match_1\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="655.7,-4118.13 406.7,-4118.13 406.7,-4082.13 655.7,-4082.13 655.7,-4118.13"/>
 <text text-anchor="middle" x="531.2" y="-4103.13" font-family="Helvetica" font-size="10.00">TokenParser.parseBlockMappingEntryValue.match_1</text>
 <text text-anchor="middle" x="531.2" y="-4092.13" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Positioned.pos -->
 <g id="node17" class="node">
 <title>L4YAML.Positioned.pos</title>
+<g id="a_node17"><a xlink:href="../../../api/L4YAML/Token.html#L4YAML.Positioned.pos" xlink:title="Positioned.pos\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="571.7,-4064.13 490.7,-4064.13 490.7,-4028.13 571.7,-4028.13 571.7,-4064.13"/>
 <text text-anchor="middle" x="531.2" y="-4049.13" font-family="Helvetica" font-size="10.00">Positioned.pos</text>
 <text text-anchor="middle" x="531.2" y="-4038.13" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.TokenParser.parseNodeProperties -->
 <g id="node18" class="node">
 <title>L4YAML.TokenParser.parseNodeProperties</title>
+<g id="a_node18"><a xlink:href="../../../api/L4YAML/TokenParser.html#L4YAML.TokenParser.parseNodeProperties" xlink:title="TokenParser.parseNodeProperties\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="614.7,-4010.13 447.7,-4010.13 447.7,-3974.13 614.7,-3974.13 614.7,-4010.13"/>
 <text text-anchor="middle" x="531.2" y="-3995.13" font-family="Helvetica" font-size="10.00">TokenParser.parseNodeProperties</text>
 <text text-anchor="middle" x="531.2" y="-3984.13" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.YamlToken.value -->
 <g id="node19" class="node">
 <title>L4YAML.YamlToken.value</title>
+<g id="a_node19"><a xlink:href="../../../api/L4YAML/Token.html#L4YAML.YamlToken.value" xlink:title="YamlToken.value\n(ctor)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="575.7,-3956.13 486.7,-3956.13 486.7,-3920.13 575.7,-3920.13 575.7,-3956.13"/>
 <text text-anchor="middle" x="531.2" y="-3941.13" font-family="Helvetica" font-size="10.00">YamlToken.value</text>
 <text text-anchor="middle" x="531.2" y="-3930.13" font-family="Helvetica" font-size="10.00">(ctor)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.TokenParser.NodeProperties.tag -->
 <g id="node20" class="node">
 <title>L4YAML.TokenParser.NodeProperties.tag</title>
+<g id="a_node20"><a xlink:href="../../../api/L4YAML/TokenParser.html#L4YAML.TokenParser.NodeProperties.tag" xlink:title="TokenParser.NodeProperties.tag\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="610.7,-3902.13 451.7,-3902.13 451.7,-3866.13 610.7,-3866.13 610.7,-3902.13"/>
 <text text-anchor="middle" x="531.2" y="-3887.13" font-family="Helvetica" font-size="10.00">TokenParser.NodeProperties.tag</text>
 <text text-anchor="middle" x="531.2" y="-3876.13" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.PathSegment -->
 <g id="node21" class="node">
 <title>L4YAML.PathSegment</title>
+<g id="a_node21"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.PathSegment" xlink:title="PathSegment\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="569.2,-3848.13 493.2,-3848.13 493.2,-3812.13 569.2,-3812.13 569.2,-3848.13"/>
 <text text-anchor="middle" x="531.2" y="-3833.13" font-family="Helvetica" font-size="10.00">PathSegment</text>
 <text text-anchor="middle" x="531.2" y="-3822.13" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.TokenParser.ParseState.mk -->
 <g id="node22" class="node">
 <title>L4YAML.TokenParser.ParseState.mk</title>
+<g id="a_node22"><a xlink:href="../../../api/L4YAML/TokenParser.html#L4YAML.TokenParser.ParseState.mk" xlink:title="TokenParser.ParseState.mk\n(ctor)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="601.2,-3794.13 461.2,-3794.13 461.2,-3758.13 601.2,-3758.13 601.2,-3794.13"/>
 <text text-anchor="middle" x="531.2" y="-3779.13" font-family="Helvetica" font-size="10.00">TokenParser.ParseState.mk</text>
 <text text-anchor="middle" x="531.2" y="-3768.13" font-family="Helvetica" font-size="10.00">(ctor)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.TokenParser.parseBlockSequenceLoop.match_4 -->
 <g id="node23" class="node">
 <title>L4YAML.TokenParser.parseBlockSequenceLoop.match_4</title>
+<g id="a_node23"><a xlink:href="../../../api/L4YAML/TokenParser.html#L4YAML.TokenParser.parseBlockSequenceLoop.match_4" xlink:title="TokenParser.parseBlockSequenceLoop.match_4\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="645.7,-3740.13 416.7,-3740.13 416.7,-3704.13 645.7,-3704.13 645.7,-3740.13"/>
 <text text-anchor="middle" x="531.2" y="-3725.13" font-family="Helvetica" font-size="10.00">TokenParser.parseBlockSequenceLoop.match_4</text>
 <text text-anchor="middle" x="531.2" y="-3714.13" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.TokenParser.NodeProperties.anchor -->
 <g id="node24" class="node">
 <title>L4YAML.TokenParser.NodeProperties.anchor</title>
+<g id="a_node24"><a xlink:href="../../../api/L4YAML/TokenParser.html#L4YAML.TokenParser.NodeProperties.anchor" xlink:title="TokenParser.NodeProperties.anchor\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="618.7,-3686.13 443.7,-3686.13 443.7,-3650.13 618.7,-3650.13 618.7,-3686.13"/>
 <text text-anchor="middle" x="531.2" y="-3671.13" font-family="Helvetica" font-size="10.00">TokenParser.NodeProperties.anchor</text>
 <text text-anchor="middle" x="531.2" y="-3660.13" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.YamlPos.col -->
 <g id="node25" class="node">
 <title>L4YAML.YamlPos.col</title>
+<g id="a_node25"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.YamlPos.col" xlink:title="YamlPos.col\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="566.7,-3632.13 495.7,-3632.13 495.7,-3596.13 566.7,-3596.13 566.7,-3632.13"/>
 <text text-anchor="middle" x="531.2" y="-3617.13" font-family="Helvetica" font-size="10.00">YamlPos.col</text>
 <text text-anchor="middle" x="531.2" y="-3606.13" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.TokenParser.parseSinglePairMapping.match_4 -->
 <g id="node26" class="node">
 <title>L4YAML.TokenParser.parseSinglePairMapping.match_4</title>
+<g id="a_node26"><a xlink:href="../../../api/L4YAML/TokenParser.html#L4YAML.TokenParser.parseSinglePairMapping.match_4" xlink:title="TokenParser.parseSinglePairMapping.match_4\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="641.7,-3578.13 420.7,-3578.13 420.7,-3542.13 641.7,-3542.13 641.7,-3578.13"/>
 <text text-anchor="middle" x="531.2" y="-3563.13" font-family="Helvetica" font-size="10.00">TokenParser.parseSinglePairMapping.match_4</text>
 <text text-anchor="middle" x="531.2" y="-3552.13" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.TokenParser.parseBlockMapping -->
 <g id="node27" class="node">
 <title>L4YAML.TokenParser.parseBlockMapping</title>
+<g id="a_node27"><a xlink:href="../../../api/L4YAML/TokenParser.html#L4YAML.TokenParser.parseBlockMapping" xlink:title="TokenParser.parseBlockMapping\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="935.28,-932.13 774.28,-932.13 774.28,-896.13 935.28,-896.13 935.28,-932.13"/>
 <text text-anchor="middle" x="854.78" y="-917.13" font-family="Helvetica" font-size="10.00">TokenParser.parseBlockMapping</text>
 <text text-anchor="middle" x="854.78" y="-906.13" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Positioned -->
 <g id="node28" class="node">
 <title>L4YAML.Positioned</title>
+<g id="a_node28"><a xlink:href="../../../api/L4YAML/Token.html#L4YAML.Positioned" xlink:title="Positioned\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="562.2,-3524.13 500.2,-3524.13 500.2,-3488.13 562.2,-3488.13 562.2,-3524.13"/>
 <text text-anchor="middle" x="531.2" y="-3509.13" font-family="Helvetica" font-size="10.00">Positioned</text>
 <text text-anchor="middle" x="531.2" y="-3498.13" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scalar.mk -->
 <g id="node29" class="node">
 <title>L4YAML.Scalar.mk</title>
+<g id="a_node29"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.Scalar.mk" xlink:title="Scalar.mk\n(ctor)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="561.7,-3470.13 500.7,-3470.13 500.7,-3434.13 561.7,-3434.13 561.7,-3470.13"/>
 <text text-anchor="middle" x="531.2" y="-3455.13" font-family="Helvetica" font-size="10.00">Scalar.mk</text>
 <text text-anchor="middle" x="531.2" y="-3444.13" font-family="Helvetica" font-size="10.00">(ctor)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.TokenParser.parseNodeContent.match_1 -->
 <g id="node30" class="node">
 <title>L4YAML.TokenParser.parseNodeContent.match_1</title>
+<g id="a_node30"><a xlink:href="../../../api/L4YAML/TokenParser.html#L4YAML.TokenParser.parseNodeContent.match_1" xlink:title="TokenParser.parseNodeContent.match_1\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="629.7,-3416.13 432.7,-3416.13 432.7,-3380.13 629.7,-3380.13 629.7,-3416.13"/>
 <text text-anchor="middle" x="531.2" y="-3401.13" font-family="Helvetica" font-size="10.00">TokenParser.parseNodeContent.match_1</text>
 <text text-anchor="middle" x="531.2" y="-3390.13" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.TokenParser.parseFlowMappingValue.match_1 -->
 <g id="node31" class="node">
 <title>L4YAML.TokenParser.parseFlowMappingValue.match_1</title>
+<g id="a_node31"><a xlink:href="../../../api/L4YAML/TokenParser.html#L4YAML.TokenParser.parseFlowMappingValue.match_1" xlink:title="TokenParser.parseFlowMappingValue.match_1\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="641.7,-3362.13 420.7,-3362.13 420.7,-3326.13 641.7,-3326.13 641.7,-3362.13"/>
 <text text-anchor="middle" x="531.2" y="-3347.13" font-family="Helvetica" font-size="10.00">TokenParser.parseFlowMappingValue.match_1</text>
 <text text-anchor="middle" x="531.2" y="-3336.13" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.YamlToken -->
 <g id="node32" class="node">
 <title>L4YAML.YamlToken</title>
+<g id="a_node32"><a xlink:href="../../../api/L4YAML/Token.html#L4YAML.YamlToken" xlink:title="YamlToken\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="886.78,-1148.13 822.78,-1148.13 822.78,-1112.13 886.78,-1112.13 886.78,-1148.13"/>
 <text text-anchor="middle" x="854.78" y="-1133.13" font-family="Helvetica" font-size="10.00">YamlToken</text>
 <text text-anchor="middle" x="854.78" y="-1122.13" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.TokenParser.ParseState.tryConsume -->
 <g id="node33" class="node">
 <title>L4YAML.TokenParser.ParseState.tryConsume</title>
+<g id="a_node33"><a xlink:href="../../../api/L4YAML/TokenParser.html#L4YAML.TokenParser.ParseState.tryConsume" xlink:title="TokenParser.ParseState.tryConsume\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="621.7,-3308.13 440.7,-3308.13 440.7,-3272.13 621.7,-3272.13 621.7,-3308.13"/>
 <text text-anchor="middle" x="531.2" y="-3293.13" font-family="Helvetica" font-size="10.00">TokenParser.ParseState.tryConsume</text>
 <text text-anchor="middle" x="531.2" y="-3282.13" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.TokenParser.parseBlockMappingEntryValue.match_6 -->
 <g id="node34" class="node">
 <title>L4YAML.TokenParser.parseBlockMappingEntryValue.match_6</title>
+<g id="a_node34"><a xlink:href="../../../api/L4YAML/TokenParser.html#L4YAML.TokenParser.parseBlockMappingEntryValue.match_6" xlink:title="TokenParser.parseBlockMappingEntryValue.match_6\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="655.7,-3254.13 406.7,-3254.13 406.7,-3218.13 655.7,-3218.13 655.7,-3254.13"/>
 <text text-anchor="middle" x="531.2" y="-3239.13" font-family="Helvetica" font-size="10.00">TokenParser.parseBlockMappingEntryValue.match_6</text>
 <text text-anchor="middle" x="531.2" y="-3228.13" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.TokenParser.parseBlockMappingLoop.match_1 -->
 <g id="node35" class="node">
 <title>L4YAML.TokenParser.parseBlockMappingLoop.match_1</title>
+<g id="a_node35"><a xlink:href="../../../api/L4YAML/TokenParser.html#L4YAML.TokenParser.parseBlockMappingLoop.match_1" xlink:title="TokenParser.parseBlockMappingLoop.match_1\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="642.2,-3200.13 420.2,-3200.13 420.2,-3164.13 642.2,-3164.13 642.2,-3200.13"/>
 <text text-anchor="middle" x="531.2" y="-3185.13" font-family="Helvetica" font-size="10.00">TokenParser.parseBlockMappingLoop.match_1</text>
 <text text-anchor="middle" x="531.2" y="-3174.13" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.instInhabitedPositioned -->
 <g id="node36" class="node">
 <title>L4YAML.instInhabitedPositioned</title>
+<g id="a_node36"><a xlink:href="../../../api/L4YAML/Token.html#L4YAML.instInhabitedPositioned" xlink:title="instInhabitedPositioned\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="590.2,-3146.13 472.2,-3146.13 472.2,-3110.13 590.2,-3110.13 590.2,-3146.13"/>
 <text text-anchor="middle" x="531.2" y="-3131.13" font-family="Helvetica" font-size="10.00">instInhabitedPositioned</text>
 <text text-anchor="middle" x="531.2" y="-3120.13" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.TokenParser.parseNodeContent._mutual -->
 <g id="node37" class="node">
 <title>L4YAML.TokenParser.parseNodeContent._mutual</title>
+<g id="a_node37"><a xlink:href="../../../api/L4YAML/TokenParser.html#L4YAML.TokenParser.parseNodeContent._mutual" xlink:title="TokenParser.parseNodeContent._mutual\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="628.2,-3092.13 434.2,-3092.13 434.2,-3056.13 628.2,-3056.13 628.2,-3092.13"/>
 <text text-anchor="middle" x="531.2" y="-3077.13" font-family="Helvetica" font-size="10.00">TokenParser.parseNodeContent._mutual</text>
 <text text-anchor="middle" x="531.2" y="-3066.13" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.ScanError -->
 <g id="node38" class="node">
 <title>L4YAML.ScanError</title>
+<g id="a_node38"><a xlink:href="../../../api/L4YAML/Token.html#L4YAML.ScanError" xlink:title="ScanError\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="885.78,-1094.13 823.78,-1094.13 823.78,-1058.13 885.78,-1058.13 885.78,-1094.13"/>
 <text text-anchor="middle" x="854.78" y="-1079.13" font-family="Helvetica" font-size="10.00">ScanError</text>
 <text text-anchor="middle" x="854.78" y="-1068.13" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.ScanError.nestingDepthExceeded -->
 <g id="node39" class="node">
 <title>L4YAML.ScanError.nestingDepthExceeded</title>
+<g id="a_node39"><a xlink:href="../../../api/L4YAML/Token.html#L4YAML.ScanError.nestingDepthExceeded" xlink:title="ScanError.nestingDepthExceeded\n(ctor)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="936.78,-1202.13 772.78,-1202.13 772.78,-1166.13 936.78,-1166.13 936.78,-1202.13"/>
 <text text-anchor="middle" x="854.78" y="-1187.13" font-family="Helvetica" font-size="10.00">ScanError.nestingDepthExceeded</text>
 <text text-anchor="middle" x="854.78" y="-1176.13" font-family="Helvetica" font-size="10.00">(ctor)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.TokenParser.ParseState.nodePositions -->
 <g id="node40" class="node">
 <title>L4YAML.TokenParser.ParseState.nodePositions</title>
+<g id="a_node40"><a xlink:href="../../../api/L4YAML/TokenParser.html#L4YAML.TokenParser.ParseState.nodePositions" xlink:title="TokenParser.ParseState.nodePositions\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="625.2,-3038.13 437.2,-3038.13 437.2,-3002.13 625.2,-3002.13 625.2,-3038.13"/>
 <text text-anchor="middle" x="531.2" y="-3023.13" font-family="Helvetica" font-size="10.00">TokenParser.ParseState.nodePositions</text>
 <text text-anchor="middle" x="531.2" y="-3012.13" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.TokenParser.parseBlockMappingLoop -->
 <g id="node41" class="node">
 <title>L4YAML.TokenParser.parseBlockMappingLoop</title>
+<g id="a_node41"><a xlink:href="../../../api/L4YAML/TokenParser.html#L4YAML.TokenParser.parseBlockMappingLoop" xlink:title="TokenParser.parseBlockMappingLoop\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="945.78,-878.13 763.78,-878.13 763.78,-842.13 945.78,-842.13 945.78,-878.13"/>
 <text text-anchor="middle" x="854.78" y="-863.13" font-family="Helvetica" font-size="10.00">TokenParser.parseBlockMappingLoop</text>
 <text text-anchor="middle" x="854.78" y="-852.13" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.TokenParser.ParseState.lastPos? -->
 <g id="node42" class="node">
 <title>L4YAML.TokenParser.ParseState.lastPos?</title>
+<g id="a_node42"><a xlink:href="../../../api/L4YAML/TokenParser.html#L4YAML.TokenParser.ParseState.lastPos?" xlink:title="TokenParser.ParseState.lastPos?\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="613.2,-2984.13 449.2,-2984.13 449.2,-2948.13 613.2,-2948.13 613.2,-2984.13"/>
 <text text-anchor="middle" x="531.2" y="-2969.13" font-family="Helvetica" font-size="10.00">TokenParser.ParseState.lastPos?</text>
 <text text-anchor="middle" x="531.2" y="-2958.13" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.TokenParser.ParseState.currentPath -->
 <g id="node43" class="node">
 <title>L4YAML.TokenParser.ParseState.currentPath</title>
+<g id="a_node43"><a xlink:href="../../../api/L4YAML/TokenParser.html#L4YAML.TokenParser.ParseState.currentPath" xlink:title="TokenParser.ParseState.currentPath\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="619.7,-2930.13 442.7,-2930.13 442.7,-2894.13 619.7,-2894.13 619.7,-2930.13"/>
 <text text-anchor="middle" x="531.2" y="-2915.13" font-family="Helvetica" font-size="10.00">TokenParser.ParseState.currentPath</text>
 <text text-anchor="middle" x="531.2" y="-2904.13" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.TokenParser.parseFlowMapping.match_1 -->
 <g id="node44" class="node">
 <title>L4YAML.TokenParser.parseFlowMapping.match_1</title>
+<g id="a_node44"><a xlink:href="../../../api/L4YAML/TokenParser.html#L4YAML.TokenParser.parseFlowMapping.match_1" xlink:title="TokenParser.parseFlowMapping.match_1\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="629.7,-2876.13 432.7,-2876.13 432.7,-2840.13 629.7,-2840.13 629.7,-2876.13"/>
 <text text-anchor="middle" x="531.2" y="-2861.13" font-family="Helvetica" font-size="10.00">TokenParser.parseFlowMapping.match_1</text>
 <text text-anchor="middle" x="531.2" y="-2850.13" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.YamlPos.line -->
 <g id="node45" class="node">
 <title>L4YAML.YamlPos.line</title>
+<g id="a_node45"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.YamlPos.line" xlink:title="YamlPos.line\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="568.2,-2822.13 494.2,-2822.13 494.2,-2786.13 568.2,-2786.13 568.2,-2822.13"/>
 <text text-anchor="middle" x="531.2" y="-2807.13" font-family="Helvetica" font-size="10.00">YamlPos.line</text>
 <text text-anchor="middle" x="531.2" y="-2796.13" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.PathSegment.key -->
 <g id="node46" class="node">
 <title>L4YAML.PathSegment.key</title>
+<g id="a_node46"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.PathSegment.key" xlink:title="PathSegment.key\n(ctor)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="577.7,-2768.13 484.7,-2768.13 484.7,-2732.13 577.7,-2732.13 577.7,-2768.13"/>
 <text text-anchor="middle" x="531.2" y="-2753.13" font-family="Helvetica" font-size="10.00">PathSegment.key</text>
 <text text-anchor="middle" x="531.2" y="-2742.13" font-family="Helvetica" font-size="10.00">(ctor)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.TokenParser.ParseState.peek? -->
 <g id="node47" class="node">
 <title>L4YAML.TokenParser.ParseState.peek?</title>
+<g id="a_node47"><a xlink:href="../../../api/L4YAML/TokenParser.html#L4YAML.TokenParser.ParseState.peek?" xlink:title="TokenParser.ParseState.peek?\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="930.78,-1580.13 778.78,-1580.13 778.78,-1544.13 930.78,-1544.13 930.78,-1580.13"/>
 <text text-anchor="middle" x="854.78" y="-1565.13" font-family="Helvetica" font-size="10.00">TokenParser.ParseState.peek?</text>
 <text text-anchor="middle" x="854.78" y="-1554.13" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scalar.content -->
 <g id="node48" class="node">
 <title>L4YAML.Scalar.content</title>
+<g id="a_node48"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.Scalar.content" xlink:title="Scalar.content\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="571.2,-2714.13 491.2,-2714.13 491.2,-2678.13 571.2,-2678.13 571.2,-2714.13"/>
 <text text-anchor="middle" x="531.2" y="-2699.13" font-family="Helvetica" font-size="10.00">Scalar.content</text>
 <text text-anchor="middle" x="531.2" y="-2688.13" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.TokenParser.parseFlowSequenceLoop.match_4 -->
 <g id="node49" class="node">
 <title>L4YAML.TokenParser.parseFlowSequenceLoop.match_4</title>
+<g id="a_node49"><a xlink:href="../../../api/L4YAML/TokenParser.html#L4YAML.TokenParser.parseFlowSequenceLoop.match_4" xlink:title="TokenParser.parseFlowSequenceLoop.match_4\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="643.7,-2660.13 418.7,-2660.13 418.7,-2624.13 643.7,-2624.13 643.7,-2660.13"/>
 <text text-anchor="middle" x="531.2" y="-2645.13" font-family="Helvetica" font-size="10.00">TokenParser.parseFlowSequenceLoop.match_4</text>
 <text text-anchor="middle" x="531.2" y="-2634.13" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.CollectionStyle.block -->
 <g id="node50" class="node">
 <title>L4YAML.CollectionStyle.block</title>
+<g id="a_node50"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.CollectionStyle.block" xlink:title="CollectionStyle.block\n(ctor)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="909.28,-1418.13 800.28,-1418.13 800.28,-1382.13 909.28,-1382.13 909.28,-1418.13"/>
 <text text-anchor="middle" x="854.78" y="-1403.13" font-family="Helvetica" font-size="10.00">CollectionStyle.block</text>
 <text text-anchor="middle" x="854.78" y="-1392.13" font-family="Helvetica" font-size="10.00">(ctor)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.TokenParser.parseNode.match_6 -->
 <g id="node51" class="node">
 <title>L4YAML.TokenParser.parseNode.match_6</title>
+<g id="a_node51"><a xlink:href="../../../api/L4YAML/TokenParser.html#L4YAML.TokenParser.parseNode.match_6" xlink:title="TokenParser.parseNode.match_6\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="612.7,-2606.13 449.7,-2606.13 449.7,-2570.13 612.7,-2570.13 612.7,-2606.13"/>
 <text text-anchor="middle" x="531.2" y="-2591.13" font-family="Helvetica" font-size="10.00">TokenParser.parseNode.match_6</text>
 <text text-anchor="middle" x="531.2" y="-2580.13" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scalar -->
 <g id="node52" class="node">
 <title>L4YAML.Scalar</title>
+<g id="a_node52"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.Scalar" xlink:title="Scalar\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="562.2,-2552.13 500.2,-2552.13 500.2,-2516.13 562.2,-2516.13 562.2,-2552.13"/>
 <text text-anchor="middle" x="531.2" y="-2537.13" font-family="Helvetica" font-size="10.00">Scalar</text>
 <text text-anchor="middle" x="531.2" y="-2526.13" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.ScanError.trailingContent -->
 <g id="node53" class="node">
 <title>L4YAML.ScanError.trailingContent</title>
+<g id="a_node53"><a xlink:href="../../../api/L4YAML/Token.html#L4YAML.ScanError.trailingContent" xlink:title="ScanError.trailingContent\n(ctor)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="594.2,-2498.13 468.2,-2498.13 468.2,-2462.13 594.2,-2462.13 594.2,-2498.13"/>
 <text text-anchor="middle" x="531.2" y="-2483.13" font-family="Helvetica" font-size="10.00">ScanError.trailingContent</text>
 <text text-anchor="middle" x="531.2" y="-2472.13" font-family="Helvetica" font-size="10.00">(ctor)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.TokenParser.handleBlockMappingKeyEntry.match_4 -->
 <g id="node54" class="node">
 <title>L4YAML.TokenParser.handleBlockMappingKeyEntry.match_4</title>
+<g id="a_node54"><a xlink:href="../../../api/L4YAML/TokenParser.html#L4YAML.TokenParser.handleBlockMappingKeyEntry.match_4" xlink:title="TokenParser.handleBlockMappingKeyEntry.match_4\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="653.7,-2444.13 408.7,-2444.13 408.7,-2408.13 653.7,-2408.13 653.7,-2444.13"/>
 <text text-anchor="middle" x="531.2" y="-2429.13" font-family="Helvetica" font-size="10.00">TokenParser.handleBlockMappingKeyEntry.match_4</text>
 <text text-anchor="middle" x="531.2" y="-2418.13" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.TokenParser.parseBlockSequence.match_1 -->
 <g id="node55" class="node">
 <title>L4YAML.TokenParser.parseBlockSequence.match_1</title>
+<g id="a_node55"><a xlink:href="../../../api/L4YAML/TokenParser.html#L4YAML.TokenParser.parseBlockSequence.match_1" xlink:title="TokenParser.parseBlockSequence.match_1\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="958.78,-1526.13 750.78,-1526.13 750.78,-1490.13 958.78,-1490.13 958.78,-1526.13"/>
 <text text-anchor="middle" x="854.78" y="-1511.13" font-family="Helvetica" font-size="10.00">TokenParser.parseBlockSequence.match_1</text>
 <text text-anchor="middle" x="854.78" y="-1500.13" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.YamlValue.mapping -->
 <g id="node56" class="node">
 <title>L4YAML.YamlValue.mapping</title>
+<g id="a_node56"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.YamlValue.mapping" xlink:title="YamlValue.mapping\n(ctor)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="905.78,-1364.13 803.78,-1364.13 803.78,-1328.13 905.78,-1328.13 905.78,-1364.13"/>
 <text text-anchor="middle" x="854.78" y="-1349.13" font-family="Helvetica" font-size="10.00">YamlValue.mapping</text>
 <text text-anchor="middle" x="854.78" y="-1338.13" font-family="Helvetica" font-size="10.00">(ctor)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.TokenParser.parseImplicitBlockSequenceLoop.match_1 -->
 <g id="node57" class="node">
 <title>L4YAML.TokenParser.parseImplicitBlockSequenceLoop.match_1</title>
+<g id="a_node57"><a xlink:href="../../../api/L4YAML/TokenParser.html#L4YAML.TokenParser.parseImplicitBlockSequenceLoop.match_1" xlink:title="TokenParser.parseImplicitBlockSequenceLoop.match_1\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="661.2,-2390.13 401.2,-2390.13 401.2,-2354.13 661.2,-2354.13 661.2,-2390.13"/>
 <text text-anchor="middle" x="531.2" y="-2375.13" font-family="Helvetica" font-size="10.00">TokenParser.parseImplicitBlockSequenceLoop.match_1</text>
 <text text-anchor="middle" x="531.2" y="-2364.13" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.YamlValue -->
 <g id="node58" class="node">
 <title>L4YAML.YamlValue</title>
+<g id="a_node58"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.YamlValue" xlink:title="YamlValue\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="885.78,-1256.13 823.78,-1256.13 823.78,-1220.13 885.78,-1220.13 885.78,-1256.13"/>
 <text text-anchor="middle" x="854.78" y="-1241.13" font-family="Helvetica" font-size="10.00">YamlValue</text>
 <text text-anchor="middle" x="854.78" y="-1230.13" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.TokenParser.applyNodeFinalization -->
 <g id="node59" class="node">
 <title>L4YAML.TokenParser.applyNodeFinalization</title>
+<g id="a_node59"><a xlink:href="../../../api/L4YAML/TokenParser.html#L4YAML.TokenParser.applyNodeFinalization" xlink:title="TokenParser.applyNodeFinalization\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="616.2,-2336.13 446.2,-2336.13 446.2,-2300.13 616.2,-2300.13 616.2,-2336.13"/>
 <text text-anchor="middle" x="531.2" y="-2321.13" font-family="Helvetica" font-size="10.00">TokenParser.applyNodeFinalization</text>
 <text text-anchor="middle" x="531.2" y="-2310.13" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.YamlPath -->
 <g id="node60" class="node">
 <title>L4YAML.YamlPath</title>
+<g id="a_node60"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.YamlPath" xlink:title="YamlPath\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="560.7,-2282.13 501.7,-2282.13 501.7,-2246.13 560.7,-2246.13 560.7,-2282.13"/>
 <text text-anchor="middle" x="531.2" y="-2267.13" font-family="Helvetica" font-size="10.00">YamlPath</text>
 <text text-anchor="middle" x="531.2" y="-2256.13" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.YamlPos -->
 <g id="node61" class="node">
 <title>L4YAML.YamlPos</title>
+<g id="a_node61"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.YamlPos" xlink:title="YamlPos\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="562.2,-2228.13 500.2,-2228.13 500.2,-2192.13 562.2,-2192.13 562.2,-2228.13"/>
 <text text-anchor="middle" x="531.2" y="-2213.13" font-family="Helvetica" font-size="10.00">YamlPos</text>
 <text text-anchor="middle" x="531.2" y="-2202.13" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.YamlValue.alias -->
 <g id="node62" class="node">
 <title>L4YAML.YamlValue.alias</title>
+<g id="a_node62"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.YamlValue.alias" xlink:title="YamlValue.alias\n(ctor)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="574.2,-2174.13 488.2,-2174.13 488.2,-2138.13 574.2,-2138.13 574.2,-2174.13"/>
 <text text-anchor="middle" x="531.2" y="-2159.13" font-family="Helvetica" font-size="10.00">YamlValue.alias</text>
 <text text-anchor="middle" x="531.2" y="-2148.13" font-family="Helvetica" font-size="10.00">(ctor)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.TokenParser.parseFlowSequenceLoop.match_1 -->
 <g id="node63" class="node">
 <title>L4YAML.TokenParser.parseFlowSequenceLoop.match_1</title>
+<g id="a_node63"><a xlink:href="../../../api/L4YAML/TokenParser.html#L4YAML.TokenParser.parseFlowSequenceLoop.match_1" xlink:title="TokenParser.parseFlowSequenceLoop.match_1\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="643.7,-2120.13 418.7,-2120.13 418.7,-2084.13 643.7,-2084.13 643.7,-2120.13"/>
 <text text-anchor="middle" x="531.2" y="-2105.13" font-family="Helvetica" font-size="10.00">TokenParser.parseFlowSequenceLoop.match_1</text>
 <text text-anchor="middle" x="531.2" y="-2094.13" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.TokenParser.ParseState.tokens -->
 <g id="node64" class="node">
 <title>L4YAML.TokenParser.ParseState.tokens</title>
+<g id="a_node64"><a xlink:href="../../../api/L4YAML/TokenParser.html#L4YAML.TokenParser.ParseState.tokens" xlink:title="TokenParser.ParseState.tokens\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="608.7,-2066.13 453.7,-2066.13 453.7,-2030.13 608.7,-2030.13 608.7,-2066.13"/>
 <text text-anchor="middle" x="531.2" y="-2051.13" font-family="Helvetica" font-size="10.00">TokenParser.ParseState.tokens</text>
 <text text-anchor="middle" x="531.2" y="-2040.13" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.YamlPos.mk -->
 <g id="node65" class="node">
 <title>L4YAML.YamlPos.mk</title>
+<g id="a_node65"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.YamlPos.mk" xlink:title="YamlPos.mk\n(ctor)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="567.2,-2012.13 495.2,-2012.13 495.2,-1976.13 567.2,-1976.13 567.2,-2012.13"/>
 <text text-anchor="middle" x="531.2" y="-1997.13" font-family="Helvetica" font-size="10.00">YamlPos.mk</text>
 <text text-anchor="middle" x="531.2" y="-1986.13" font-family="Helvetica" font-size="10.00">(ctor)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.ScanError.expectedToken -->
 <g id="node66" class="node">
 <title>L4YAML.ScanError.expectedToken</title>
+<g id="a_node66"><a xlink:href="../../../api/L4YAML/Token.html#L4YAML.ScanError.expectedToken" xlink:title="ScanError.expectedToken\n(ctor)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="595.2,-1958.13 467.2,-1958.13 467.2,-1922.13 595.2,-1922.13 595.2,-1958.13"/>
 <text text-anchor="middle" x="531.2" y="-1943.13" font-family="Helvetica" font-size="10.00">ScanError.expectedToken</text>
 <text text-anchor="middle" x="531.2" y="-1932.13" font-family="Helvetica" font-size="10.00">(ctor)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.TokenParser.ParseState -->
 <g id="node67" class="node">
 <title>L4YAML.TokenParser.ParseState</title>
+<g id="a_node67"><a xlink:href="../../../api/L4YAML/TokenParser.html#L4YAML.TokenParser.ParseState" xlink:title="TokenParser.ParseState\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="916.78,-986.13 792.78,-986.13 792.78,-950.13 916.78,-950.13 916.78,-986.13"/>
 <text text-anchor="middle" x="854.78" y="-971.13" font-family="Helvetica" font-size="10.00">TokenParser.ParseState</text>
 <text text-anchor="middle" x="854.78" y="-960.13" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.instInhabitedYamlToken -->
 <g id="node68" class="node">
 <title>L4YAML.instInhabitedYamlToken</title>
+<g id="a_node68"><a xlink:href="../../../api/L4YAML/Token.html#L4YAML.instInhabitedYamlToken" xlink:title="instInhabitedYamlToken\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="590.7,-1904.13 471.7,-1904.13 471.7,-1868.13 590.7,-1868.13 590.7,-1904.13"/>
 <text text-anchor="middle" x="531.2" y="-1889.13" font-family="Helvetica" font-size="10.00">instInhabitedYamlToken</text>
 <text text-anchor="middle" x="531.2" y="-1878.13" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.TokenParser.handleBlockMappingValueEntry.match_1 -->
 <g id="node69" class="node">
 <title>L4YAML.TokenParser.handleBlockMappingValueEntry.match_1</title>
+<g id="a_node69"><a xlink:href="../../../api/L4YAML/TokenParser.html#L4YAML.TokenParser.handleBlockMappingValueEntry.match_1" xlink:title="TokenParser.handleBlockMappingValueEntry.match_1\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="657.2,-1850.13 405.2,-1850.13 405.2,-1814.13 657.2,-1814.13 657.2,-1850.13"/>
 <text text-anchor="middle" x="531.2" y="-1835.13" font-family="Helvetica" font-size="10.00">TokenParser.handleBlockMappingValueEntry.match_1</text>
 <text text-anchor="middle" x="531.2" y="-1824.13" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.TokenParser.ParseState.trackPositions -->
 <g id="node70" class="node">
 <title>L4YAML.TokenParser.ParseState.trackPositions</title>
+<g id="a_node70"><a xlink:href="../../../api/L4YAML/TokenParser.html#L4YAML.TokenParser.ParseState.trackPositions" xlink:title="TokenParser.ParseState.trackPositions\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="625.7,-1796.13 436.7,-1796.13 436.7,-1760.13 625.7,-1760.13 625.7,-1796.13"/>
 <text text-anchor="middle" x="531.2" y="-1781.13" font-family="Helvetica" font-size="10.00">TokenParser.ParseState.trackPositions</text>
 <text text-anchor="middle" x="531.2" y="-1770.13" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.TokenParser.parseNode.match_8 -->
 <g id="node71" class="node">
 <title>L4YAML.TokenParser.parseNode.match_8</title>
+<g id="a_node71"><a xlink:href="../../../api/L4YAML/TokenParser.html#L4YAML.TokenParser.parseNode.match_8" xlink:title="TokenParser.parseNode.match_8\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="612.7,-1742.13 449.7,-1742.13 449.7,-1706.13 612.7,-1706.13 612.7,-1742.13"/>
 <text text-anchor="middle" x="531.2" y="-1727.13" font-family="Helvetica" font-size="10.00">TokenParser.parseNode.match_8</text>
 <text text-anchor="middle" x="531.2" y="-1716.13" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.TokenParser.parseSinglePairMapping.match_1 -->
 <g id="node72" class="node">
 <title>L4YAML.TokenParser.parseSinglePairMapping.match_1</title>
+<g id="a_node72"><a xlink:href="../../../api/L4YAML/TokenParser.html#L4YAML.TokenParser.parseSinglePairMapping.match_1" xlink:title="TokenParser.parseSinglePairMapping.match_1\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="641.7,-1688.13 420.7,-1688.13 420.7,-1652.13 641.7,-1652.13 641.7,-1688.13"/>
 <text text-anchor="middle" x="531.2" y="-1673.13" font-family="Helvetica" font-size="10.00">TokenParser.parseSinglePairMapping.match_1</text>
 <text text-anchor="middle" x="531.2" y="-1662.13" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.TokenParser.ParseState.anchors -->
 <g id="node73" class="node">
 <title>L4YAML.TokenParser.ParseState.anchors</title>
+<g id="a_node73"><a xlink:href="../../../api/L4YAML/TokenParser.html#L4YAML.TokenParser.ParseState.anchors" xlink:title="TokenParser.ParseState.anchors\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="612.2,-1634.13 450.2,-1634.13 450.2,-1598.13 612.2,-1598.13 612.2,-1634.13"/>
 <text text-anchor="middle" x="531.2" y="-1619.13" font-family="Helvetica" font-size="10.00">TokenParser.ParseState.anchors</text>
 <text text-anchor="middle" x="531.2" y="-1608.13" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.TokenParser.ParseState.tagHandles -->
 <g id="node74" class="node">
 <title>L4YAML.TokenParser.ParseState.tagHandles</title>
+<g id="a_node74"><a xlink:href="../../../api/L4YAML/TokenParser.html#L4YAML.TokenParser.ParseState.tagHandles" xlink:title="TokenParser.ParseState.tagHandles\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="619.2,-1580.13 443.2,-1580.13 443.2,-1544.13 619.2,-1544.13 619.2,-1580.13"/>
 <text text-anchor="middle" x="531.2" y="-1565.13" font-family="Helvetica" font-size="10.00">TokenParser.ParseState.tagHandles</text>
 <text text-anchor="middle" x="531.2" y="-1554.13" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.TokenParser.validateNodeProps -->
 <g id="node75" class="node">
 <title>L4YAML.TokenParser.validateNodeProps</title>
+<g id="a_node75"><a xlink:href="../../../api/L4YAML/TokenParser.html#L4YAML.TokenParser.validateNodeProps" xlink:title="TokenParser.validateNodeProps\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="609.2,-1526.13 453.2,-1526.13 453.2,-1490.13 609.2,-1490.13 609.2,-1526.13"/>
 <text text-anchor="middle" x="531.2" y="-1511.13" font-family="Helvetica" font-size="10.00">TokenParser.validateNodeProps</text>
 <text text-anchor="middle" x="531.2" y="-1500.13" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.TokenParser.parseBlockMappingLoop.match_3 -->
 <g id="node76" class="node">
 <title>L4YAML.TokenParser.parseBlockMappingLoop.match_3</title>
+<g id="a_node76"><a xlink:href="../../../api/L4YAML/TokenParser.html#L4YAML.TokenParser.parseBlockMappingLoop.match_3" xlink:title="TokenParser.parseBlockMappingLoop.match_3\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="642.2,-1472.13 420.2,-1472.13 420.2,-1436.13 642.2,-1436.13 642.2,-1472.13"/>
 <text text-anchor="middle" x="531.2" y="-1457.13" font-family="Helvetica" font-size="10.00">TokenParser.parseBlockMappingLoop.match_3</text>
 <text text-anchor="middle" x="531.2" y="-1446.13" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.TokenParser.emptyNode -->
 <g id="node77" class="node">
 <title>L4YAML.TokenParser.emptyNode</title>
+<g id="a_node77"><a xlink:href="../../../api/L4YAML/TokenParser.html#L4YAML.TokenParser.emptyNode" xlink:title="TokenParser.emptyNode\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="593.7,-1418.13 468.7,-1418.13 468.7,-1382.13 593.7,-1382.13 593.7,-1418.13"/>
 <text text-anchor="middle" x="531.2" y="-1403.13" font-family="Helvetica" font-size="10.00">TokenParser.emptyNode</text>
 <text text-anchor="middle" x="531.2" y="-1392.13" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.TokenParser.NodeProperties -->
 <g id="node78" class="node">
 <title>L4YAML.TokenParser.NodeProperties</title>
+<g id="a_node78"><a xlink:href="../../../api/L4YAML/TokenParser.html#L4YAML.TokenParser.NodeProperties" xlink:title="TokenParser.NodeProperties\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="602.7,-1364.13 459.7,-1364.13 459.7,-1328.13 602.7,-1328.13 602.7,-1364.13"/>
 <text text-anchor="middle" x="531.2" y="-1349.13" font-family="Helvetica" font-size="10.00">TokenParser.NodeProperties</text>
 <text text-anchor="middle" x="531.2" y="-1338.13" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.ScanError.undefinedAlias -->
 <g id="node79" class="node">
 <title>L4YAML.ScanError.undefinedAlias</title>
+<g id="a_node79"><a xlink:href="../../../api/L4YAML/Token.html#L4YAML.ScanError.undefinedAlias" xlink:title="ScanError.undefinedAlias\n(ctor)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="594.7,-1310.13 467.7,-1310.13 467.7,-1274.13 594.7,-1274.13 594.7,-1310.13"/>
 <text text-anchor="middle" x="531.2" y="-1295.13" font-family="Helvetica" font-size="10.00">ScanError.undefinedAlias</text>
 <text text-anchor="middle" x="531.2" y="-1284.13" font-family="Helvetica" font-size="10.00">(ctor)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.YamlValue.sequence -->
 <g id="node80" class="node">
 <title>L4YAML.YamlValue.sequence</title>
+<g id="a_node80"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.YamlValue.sequence" xlink:title="YamlValue.sequence\n(ctor)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="584.7,-1256.13 477.7,-1256.13 477.7,-1220.13 584.7,-1220.13 584.7,-1256.13"/>
 <text text-anchor="middle" x="531.2" y="-1241.13" font-family="Helvetica" font-size="10.00">YamlValue.sequence</text>
 <text text-anchor="middle" x="531.2" y="-1230.13" font-family="Helvetica" font-size="10.00">(ctor)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.TokenParser.parseBlockSequence.match_4 -->
 <g id="node81" class="node">
 <title>L4YAML.TokenParser.parseBlockSequence.match_4</title>
+<g id="a_node81"><a xlink:href="../../../api/L4YAML/TokenParser.html#L4YAML.TokenParser.parseBlockSequence.match_4" xlink:title="TokenParser.parseBlockSequence.match_4\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="635.2,-1202.13 427.2,-1202.13 427.2,-1166.13 635.2,-1166.13 635.2,-1202.13"/>
 <text text-anchor="middle" x="531.2" y="-1187.13" font-family="Helvetica" font-size="10.00">TokenParser.parseBlockSequence.match_4</text>
 <text text-anchor="middle" x="531.2" y="-1176.13" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.TokenParser.ParseState.pos -->
 <g id="node82" class="node">
 <title>L4YAML.TokenParser.ParseState.pos</title>
+<g id="a_node82"><a xlink:href="../../../api/L4YAML/TokenParser.html#L4YAML.TokenParser.ParseState.pos" xlink:title="TokenParser.ParseState.pos\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="602.7,-1148.13 459.7,-1148.13 459.7,-1112.13 602.7,-1112.13 602.7,-1148.13"/>
 <text text-anchor="middle" x="531.2" y="-1133.13" font-family="Helvetica" font-size="10.00">TokenParser.ParseState.pos</text>
 <text text-anchor="middle" x="531.2" y="-1122.13" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.ScalarStyle.plain -->
 <g id="node83" class="node">
 <title>L4YAML.ScalarStyle.plain</title>
+<g id="a_node83"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.ScalarStyle.plain" xlink:title="ScalarStyle.plain\n(ctor)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="576.2,-1094.13 486.2,-1094.13 486.2,-1058.13 576.2,-1058.13 576.2,-1094.13"/>
 <text text-anchor="middle" x="531.2" y="-1079.13" font-family="Helvetica" font-size="10.00">ScalarStyle.plain</text>
 <text text-anchor="middle" x="531.2" y="-1068.13" font-family="Helvetica" font-size="10.00">(ctor)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.CollectionStyle.flow -->
 <g id="node84" class="node">
 <title>L4YAML.CollectionStyle.flow</title>
+<g id="a_node84"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.CollectionStyle.flow" xlink:title="CollectionStyle.flow\n(ctor)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="583.2,-1040.13 479.2,-1040.13 479.2,-1004.13 583.2,-1004.13 583.2,-1040.13"/>
 <text text-anchor="middle" x="531.2" y="-1025.13" font-family="Helvetica" font-size="10.00">CollectionStyle.flow</text>
 <text text-anchor="middle" x="531.2" y="-1014.13" font-family="Helvetica" font-size="10.00">(ctor)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.TokenParser.parseNode.match_3 -->
 <g id="node85" class="node">
 <title>L4YAML.TokenParser.parseNode.match_3</title>
+<g id="a_node85"><a xlink:href="../../../api/L4YAML/TokenParser.html#L4YAML.TokenParser.parseNode.match_3" xlink:title="TokenParser.parseNode.match_3\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="612.7,-986.13 449.7,-986.13 449.7,-950.13 612.7,-950.13 612.7,-986.13"/>
 <text text-anchor="middle" x="531.2" y="-971.13" font-family="Helvetica" font-size="10.00">TokenParser.parseNode.match_3</text>
 <text text-anchor="middle" x="531.2" y="-960.13" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.TokenParser.ParseState.peekPos? -->
 <g id="node86" class="node">
 <title>L4YAML.TokenParser.ParseState.peekPos?</title>
+<g id="a_node86"><a xlink:href="../../../api/L4YAML/TokenParser.html#L4YAML.TokenParser.ParseState.peekPos?" xlink:title="TokenParser.ParseState.peekPos?\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="616.2,-932.13 446.2,-932.13 446.2,-896.13 616.2,-896.13 616.2,-932.13"/>
 <text text-anchor="middle" x="531.2" y="-917.13" font-family="Helvetica" font-size="10.00">TokenParser.ParseState.peekPos?</text>
 <text text-anchor="middle" x="531.2" y="-906.13" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.TokenParser.parseNode.match_1 -->
 <g id="node87" class="node">
 <title>L4YAML.TokenParser.parseNode.match_1</title>
+<g id="a_node87"><a xlink:href="../../../api/L4YAML/TokenParser.html#L4YAML.TokenParser.parseNode.match_1" xlink:title="TokenParser.parseNode.match_1\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="612.7,-878.13 449.7,-878.13 449.7,-842.13 612.7,-842.13 612.7,-878.13"/>
 <text text-anchor="middle" x="531.2" y="-863.13" font-family="Helvetica" font-size="10.00">TokenParser.parseNode.match_1</text>
 <text text-anchor="middle" x="531.2" y="-852.13" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.TokenParser.parseBlockMapping.match_1 -->
 <g id="node88" class="node">
 <title>L4YAML.TokenParser.parseBlockMapping.match_1</title>
+<g id="a_node88"><a xlink:href="../../../api/L4YAML/TokenParser.html#L4YAML.TokenParser.parseBlockMapping.match_1" xlink:title="TokenParser.parseBlockMapping.match_1\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="955.28,-1040.13 754.28,-1040.13 754.28,-1004.13 955.28,-1004.13 955.28,-1040.13"/>
 <text text-anchor="middle" x="854.78" y="-1025.13" font-family="Helvetica" font-size="10.00">TokenParser.parseBlockMapping.match_1</text>
 <text text-anchor="middle" x="854.78" y="-1014.13" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.TokenParser.parseBlockMapping.eq_def -->
 <g id="node89" class="node">
 <title>L4YAML.TokenParser.parseBlockMapping.eq_def</title>
+<g id="a_node89"><a xlink:href="../../../api/L4YAML/TokenParser.html#L4YAML.TokenParser.parseBlockMapping.eq_def" xlink:title="TokenParser.parseBlockMapping.eq_def" target="_blank">
 <polygon fill="#fff3cd" stroke="#d4a017" points="685.86,-247.68 685.86,-262.59 595.26,-273.13 467.13,-273.13 376.53,-262.59 376.53,-247.68 467.13,-237.13 595.26,-237.13 685.86,-247.68"/>
 <polygon fill="none" stroke="#d4a017" points="689.86,-244.12 689.86,-266.15 595.49,-277.13 466.9,-277.13 372.53,-266.15 372.53,-244.12 466.9,-233.13 595.49,-233.13 689.86,-244.12"/>
 <text text-anchor="middle" x="531.2" y="-252.03" font-family="Helvetica" font-size="12.00">TokenParser.parseBlockMapping.eq_def</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.TokenParser.parseBlockMapping.eq_def&#45;&gt;L4YAML.TokenParser.ParseState.currentLine -->
 <g id="edge13" class="edge">
@@ -758,9 +1025,12 @@
 <!-- L4YAML.TokenParser.parseNodeContent._mutual.eq_def -->
 <g id="node90" class="node">
 <title>L4YAML.TokenParser.parseNodeContent._mutual.eq_def</title>
+<g id="a_node90"><a xlink:href="../../../api/L4YAML/TokenParser.html#L4YAML.TokenParser.parseNodeContent._mutual.eq_def" xlink:title="TokenParser.parseNodeContent._mutual.eq_def\n(TokenParser)" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="175.81" cy="-2426.13" rx="159.61" ry="21.43"/>
 <text text-anchor="middle" x="175.81" y="-2429.13" font-family="Helvetica" font-size="10.00">TokenParser.parseNodeContent._mutual.eq_def</text>
 <text text-anchor="middle" x="175.81" y="-2418.13" font-family="Helvetica" font-size="10.00">(TokenParser)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.TokenParser.parseNodeContent._mutual.eq_def&#45;&gt;L4YAML.PathSegment.index -->
 <g id="edge18" class="edge">

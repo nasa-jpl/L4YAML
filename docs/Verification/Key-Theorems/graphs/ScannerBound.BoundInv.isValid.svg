@@ -25,37 +25,52 @@
 <!-- L4YAML.Scanner.ScannerState.input -->
 <g id="node1" class="node">
 <title>L4YAML.Scanner.ScannerState.input</title>
+<g id="a_node1"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.input" xlink:title="ScannerState.input\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="449.36,-214 349.36,-214 349.36,-178 449.36,-178 449.36,-214"/>
 <text text-anchor="middle" x="399.36" y="-199" font-family="Helvetica" font-size="10.00">ScannerState.input</text>
 <text text-anchor="middle" x="399.36" y="-188" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState -->
 <g id="node2" class="node">
 <title>L4YAML.Scanner.ScannerState</title>
+<g id="a_node2"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState" xlink:title="ScannerState\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="437.36,-160 361.36,-160 361.36,-124 437.36,-124 437.36,-160"/>
 <text text-anchor="middle" x="399.36" y="-145" font-family="Helvetica" font-size="10.00">ScannerState</text>
 <text text-anchor="middle" x="399.36" y="-134" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerBound.BoundInv -->
 <g id="node3" class="node">
 <title>L4YAML.Proofs.ScannerBound.BoundInv</title>
+<g id="a_node3"><a xlink:href="../../../api/L4YAML/Proofs/ScannerBound.html#L4YAML.Proofs.ScannerBound.BoundInv" xlink:title="ScannerBound.BoundInv\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="461.86,-106 336.86,-106 336.86,-70 461.86,-70 461.86,-106"/>
 <text text-anchor="middle" x="399.36" y="-91" font-family="Helvetica" font-size="10.00">ScannerBound.BoundInv</text>
 <text text-anchor="middle" x="399.36" y="-80" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.offset -->
 <g id="node4" class="node">
 <title>L4YAML.Scanner.ScannerState.offset</title>
+<g id="a_node4"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.offset" xlink:title="ScannerState.offset\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="450.86,-52 347.86,-52 347.86,-16 450.86,-16 450.86,-52"/>
 <text text-anchor="middle" x="399.36" y="-37" font-family="Helvetica" font-size="10.00">ScannerState.offset</text>
 <text text-anchor="middle" x="399.36" y="-26" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerBound.BoundInv.isValid -->
 <g id="node5" class="node">
 <title>L4YAML.Proofs.ScannerBound.BoundInv.isValid</title>
+<g id="a_node5"><a xlink:href="../../../api/L4YAML/Proofs/ScannerBound.html#L4YAML.Proofs.ScannerBound.BoundInv.isValid" xlink:title="ScannerBound.BoundInv.isValid" target="_blank">
 <polygon fill="#fff3cd" stroke="#d4a017" points="271.8,-106.54 271.8,-121.46 198.07,-132 93.8,-132 20.07,-121.46 20.07,-106.54 93.8,-96 198.07,-96 271.8,-106.54"/>
 <polygon fill="none" stroke="#d4a017" points="275.8,-103.08 275.8,-124.92 198.35,-136 93.51,-136 16.07,-124.92 16.07,-103.08 93.51,-92 198.35,-92 275.8,-103.08"/>
 <text text-anchor="middle" x="145.93" y="-110.9" font-family="Helvetica" font-size="12.00">ScannerBound.BoundInv.isValid</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerBound.BoundInv.isValid&#45;&gt;L4YAML.Scanner.ScannerState.input -->
 <g id="edge4" class="edge">

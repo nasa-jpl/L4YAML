@@ -35,72 +35,102 @@
 <!-- L4YAML.Scanner.scanNextToken_dispatchStructural -->
 <g id="node1" class="node">
 <title>L4YAML.Scanner.scanNextToken_dispatchStructural</title>
+<g id="a_node1"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.scanNextToken_dispatchStructural" xlink:title="scanNextToken_dispatchStructural\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1304.34,-1546 1136.34,-1546 1136.34,-1510 1304.34,-1510 1304.34,-1546"/>
 <text text-anchor="middle" x="1220.34" y="-1531" font-family="Helvetica" font-size="10.00">scanNextToken_dispatchStructural</text>
 <text text-anchor="middle" x="1220.34" y="-1520" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Positioned -->
 <g id="node2" class="node">
 <title>L4YAML.Positioned</title>
+<g id="a_node2"><a xlink:href="../../../api/L4YAML/Token.html#L4YAML.Positioned" xlink:title="Positioned\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1251.34,-1654 1189.34,-1654 1189.34,-1618 1251.34,-1618 1251.34,-1654"/>
 <text text-anchor="middle" x="1220.34" y="-1639" font-family="Helvetica" font-size="10.00">Positioned</text>
 <text text-anchor="middle" x="1220.34" y="-1628" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.scanDocumentStart -->
 <g id="node3" class="node">
 <title>L4YAML.Scanner.scanDocumentStart</title>
+<g id="a_node3"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.scanDocumentStart" xlink:title="scanDocumentStart\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="872.14,-1816 768.14,-1816 768.14,-1780 872.14,-1780 872.14,-1816"/>
 <text text-anchor="middle" x="820.14" y="-1801" font-family="Helvetica" font-size="10.00">scanDocumentStart</text>
 <text text-anchor="middle" x="820.14" y="-1790" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState -->
 <g id="node4" class="node">
 <title>L4YAML.Scanner.ScannerState</title>
+<g id="a_node4"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState" xlink:title="ScannerState\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1258.34,-1816 1182.34,-1816 1182.34,-1780 1258.34,-1780 1258.34,-1816"/>
 <text text-anchor="middle" x="1220.34" y="-1801" font-family="Helvetica" font-size="10.00">ScannerState</text>
 <text text-anchor="middle" x="1220.34" y="-1790" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.YamlToken -->
 <g id="node5" class="node">
 <title>L4YAML.YamlToken</title>
+<g id="a_node5"><a xlink:href="../../../api/L4YAML/Token.html#L4YAML.YamlToken" xlink:title="YamlToken\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1252.34,-1762 1188.34,-1762 1188.34,-1726 1252.34,-1726 1252.34,-1762"/>
 <text text-anchor="middle" x="1220.34" y="-1747" font-family="Helvetica" font-size="10.00">YamlToken</text>
 <text text-anchor="middle" x="1220.34" y="-1736" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.scanDocumentEnd -->
 <g id="node6" class="node">
 <title>L4YAML.Scanner.scanDocumentEnd</title>
+<g id="a_node6"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.scanDocumentEnd" xlink:title="scanDocumentEnd\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="870.14,-1762 770.14,-1762 770.14,-1726 870.14,-1726 870.14,-1762"/>
 <text text-anchor="middle" x="820.14" y="-1747" font-family="Helvetica" font-size="10.00">scanDocumentEnd</text>
 <text text-anchor="middle" x="820.14" y="-1736" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.scanDirective -->
 <g id="node7" class="node">
 <title>L4YAML.Scanner.scanDirective</title>
+<g id="a_node7"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.scanDirective" xlink:title="scanDirective\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="858.14,-1708 782.14,-1708 782.14,-1672 858.14,-1672 858.14,-1708"/>
 <text text-anchor="middle" x="820.14" y="-1693" font-family="Helvetica" font-size="10.00">scanDirective</text>
 <text text-anchor="middle" x="820.14" y="-1682" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.ScanError -->
 <g id="node8" class="node">
 <title>L4YAML.ScanError</title>
+<g id="a_node8"><a xlink:href="../../../api/L4YAML/Token.html#L4YAML.ScanError" xlink:title="ScanError\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1251.34,-1600 1189.34,-1600 1189.34,-1564 1251.34,-1564 1251.34,-1600"/>
 <text text-anchor="middle" x="1220.34" y="-1585" font-family="Helvetica" font-size="10.00">ScanError</text>
 <text text-anchor="middle" x="1220.34" y="-1574" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.tokens -->
 <g id="node9" class="node">
 <title>L4YAML.Scanner.ScannerState.tokens</title>
+<g id="a_node9"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.tokens" xlink:title="ScannerState.tokens\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1273.84,-1708 1166.84,-1708 1166.84,-1672 1273.84,-1672 1273.84,-1708"/>
 <text text-anchor="middle" x="1220.34" y="-1693" font-family="Helvetica" font-size="10.00">ScannerState.tokens</text>
 <text text-anchor="middle" x="1220.34" y="-1682" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerCorrectness.ScanHelpers.dispatchStructural_tokens_mono -->
 <g id="node10" class="node">
 <title>L4YAML.Proofs.ScannerCorrectness.ScanHelpers.dispatchStructural_tokens_mono</title>
+<g id="a_node10"><a xlink:href="../../../api/L4YAML/Proofs/ScannerCorrectness.html#L4YAML.Proofs.ScannerCorrectness.ScanHelpers.dispatchStructural_tokens_mono" xlink:title="ScannerCorrectness.ScanHelpers.dispatchStructural_tokens_mono" target="_blank">
 <polygon fill="#fff3cd" stroke="#d4a017" points="1071.54,-803.54 1071.54,-818.46 924.27,-829 716.01,-829 568.75,-818.46 568.75,-803.54 716.01,-793 924.27,-793 1071.54,-803.54"/>
 <polygon fill="none" stroke="#d4a017" points="1075.54,-799.82 1075.54,-822.18 924.42,-833 715.87,-833 564.75,-822.18 564.75,-799.82 715.87,-789 924.42,-789 1075.54,-799.82"/>
 <text text-anchor="middle" x="820.14" y="-807.9" font-family="Helvetica" font-size="12.00">ScannerCorrectness.ScanHelpers.dispatchStructural_tokens_mono</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerCorrectness.ScanHelpers.dispatchStructural_tokens_mono&#45;&gt;L4YAML.Scanner.scanNextToken_dispatchStructural -->
 <g id="edge6" class="edge">
@@ -147,9 +177,12 @@
 <!-- L4YAML.Proofs.ScannerCorrectness.ScanHelpers.dispatchStructural_tokens_mono._proof_1_2 -->
 <g id="node11" class="node">
 <title>L4YAML.Proofs.ScannerCorrectness.ScanHelpers.dispatchStructural_tokens_mono._proof_1_2</title>
+<g id="a_node11"><a xlink:href="../../../api/L4YAML/Proofs/ScannerCorrectness.html#L4YAML.Proofs.ScannerCorrectness.ScanHelpers.dispatchStructural_tokens_mono._proof_1_2" xlink:title="ScannerCorrectness.ScanHelpers.dispatchStructural_tokens_mono._proof_1_2\n(ScannerCorrectness)" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="271.97" cy="-1427" rx="255.95" ry="21.43"/>
 <text text-anchor="middle" x="271.97" y="-1430" font-family="Helvetica" font-size="10.00">ScannerCorrectness.ScanHelpers.dispatchStructural_tokens_mono._proof_1_2</text>
 <text text-anchor="middle" x="271.97" y="-1419" font-family="Helvetica" font-size="10.00">(ScannerCorrectness)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerCorrectness.ScanHelpers.dispatchStructural_tokens_mono._proof_1_2&#45;&gt;L4YAML.Positioned -->
 <g id="edge35" class="edge">
@@ -184,9 +217,12 @@
 <!-- L4YAML.Proofs.ScannerCorrectness.ScanHelpers.scanDocumentEnd_adds_tokens -->
 <g id="node12" class="node">
 <title>L4YAML.Proofs.ScannerCorrectness.ScanHelpers.scanDocumentEnd_adds_tokens</title>
+<g id="a_node12"><a xlink:href="../../../api/L4YAML/Proofs/ScannerCorrectness.html#L4YAML.Proofs.ScannerCorrectness.ScanHelpers.scanDocumentEnd_adds_tokens" xlink:title="ScannerCorrectness.ScanHelpers.scanDocumentEnd_adds_tokens\n(ScannerCorrectness)" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="271.97" cy="-1367" rx="220.73" ry="21.43"/>
 <text text-anchor="middle" x="271.97" y="-1370" font-family="Helvetica" font-size="10.00">ScannerCorrectness.ScanHelpers.scanDocumentEnd_adds_tokens</text>
 <text text-anchor="middle" x="271.97" y="-1359" font-family="Helvetica" font-size="10.00">(ScannerCorrectness)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerCorrectness.ScanHelpers.scanDocumentEnd_adds_tokens&#45;&gt;L4YAML.Positioned -->
 <g id="edge40" class="edge">
@@ -233,9 +269,12 @@
 <!-- L4YAML.Proofs.ScannerCorrectness.ScanHelpers.scanDirective_monotonic -->
 <g id="node13" class="node">
 <title>L4YAML.Proofs.ScannerCorrectness.ScanHelpers.scanDirective_monotonic</title>
+<g id="a_node13"><a xlink:href="../../../api/L4YAML/Proofs/ScannerCorrectness.html#L4YAML.Proofs.ScannerCorrectness.ScanHelpers.scanDirective_monotonic" xlink:title="ScannerCorrectness.ScanHelpers.scanDirective_monotonic\n(ScannerCorrectness)" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="271.97" cy="-1307" rx="196.65" ry="21.43"/>
 <text text-anchor="middle" x="271.97" y="-1310" font-family="Helvetica" font-size="10.00">ScannerCorrectness.ScanHelpers.scanDirective_monotonic</text>
 <text text-anchor="middle" x="271.97" y="-1299" font-family="Helvetica" font-size="10.00">(ScannerCorrectness)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerCorrectness.ScanHelpers.scanDirective_monotonic&#45;&gt;L4YAML.Positioned -->
 <g id="edge45" class="edge">
@@ -282,9 +321,12 @@
 <!-- L4YAML.Proofs.ScannerCorrectness.ScanHelpers.scanDocumentStart_adds_tokens -->
 <g id="node14" class="node">
 <title>L4YAML.Proofs.ScannerCorrectness.ScanHelpers.scanDocumentStart_adds_tokens</title>
+<g id="a_node14"><a xlink:href="../../../api/L4YAML/Proofs/ScannerCorrectness.html#L4YAML.Proofs.ScannerCorrectness.ScanHelpers.scanDocumentStart_adds_tokens" xlink:title="ScannerCorrectness.ScanHelpers.scanDocumentStart_adds_tokens\n(ScannerCorrectness)" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="271.97" cy="-1487" rx="224.31" ry="21.43"/>
 <text text-anchor="middle" x="271.97" y="-1490" font-family="Helvetica" font-size="10.00">ScannerCorrectness.ScanHelpers.scanDocumentStart_adds_tokens</text>
 <text text-anchor="middle" x="271.97" y="-1479" font-family="Helvetica" font-size="10.00">(ScannerCorrectness)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerCorrectness.ScanHelpers.scanDocumentStart_adds_tokens&#45;&gt;L4YAML.Positioned -->
 <g id="edge51" class="edge">
@@ -325,8 +367,11 @@
 <!-- Decidable.decide.congr_simp -->
 <g id="node15" class="node">
 <title>Decidable.decide.congr_simp</title>
+<g id="a_node15"><a xlink:href="../../../api/Init/SimpLemmas.html#Decidable.decide.congr_simp" xlink:title="Decidable.decide.congr_simp" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="271.97" cy="-304" rx="85.21" ry="18"/>
 <text text-anchor="middle" x="271.97" y="-301.5" font-family="Helvetica" font-size="10.00">Decidable.decide.congr_simp</text>
+</a>
+</g>
 </g>
 <!-- Decidable.decide.congr_simp&#45;&gt;L4YAML.Proofs.ScannerCorrectness.ScanHelpers.dispatchStructural_tokens_mono -->
 <g id="edge11" class="edge">
@@ -337,8 +382,11 @@
 <!-- false_and -->
 <g id="node16" class="node">
 <title>false_and</title>
+<g id="a_node16"><a xlink:href="../../../api/Init/SimpLemmas.html#false_and" xlink:title="false_and" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="271.97" cy="-250" rx="34.96" ry="18"/>
 <text text-anchor="middle" x="271.97" y="-247.5" font-family="Helvetica" font-size="10.00">false_and</text>
+</a>
+</g>
 </g>
 <!-- false_and&#45;&gt;L4YAML.Proofs.ScannerCorrectness.ScanHelpers.dispatchStructural_tokens_mono -->
 <g id="edge12" class="edge">
@@ -349,8 +397,11 @@
 <!-- Bool.and_true -->
 <g id="node17" class="node">
 <title>Bool.and_true</title>
+<g id="a_node17"><a xlink:href="../../../api/Init/SimpLemmas.html#Bool.and_true" xlink:title="Bool.and_true" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="271.97" cy="-196" rx="45.15" ry="18"/>
 <text text-anchor="middle" x="271.97" y="-193.5" font-family="Helvetica" font-size="10.00">Bool.and_true</text>
+</a>
+</g>
 </g>
 <!-- Bool.and_true&#45;&gt;L4YAML.Proofs.ScannerCorrectness.ScanHelpers.dispatchStructural_tokens_mono -->
 <g id="edge13" class="edge">
@@ -361,8 +412,11 @@
 <!-- Option.some.injEq -->
 <g id="node18" class="node">
 <title>Option.some.injEq</title>
+<g id="a_node18"><a xlink:href="../../../api/Init/Core.html#Option.some.injEq" xlink:title="Option.some.injEq" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="271.97" cy="-142" rx="57.2" ry="18"/>
 <text text-anchor="middle" x="271.97" y="-139.5" font-family="Helvetica" font-size="10.00">Option.some.injEq</text>
+</a>
+</g>
 </g>
 <!-- Option.some.injEq&#45;&gt;L4YAML.Proofs.ScannerCorrectness.ScanHelpers.dispatchStructural_tokens_mono -->
 <g id="edge14" class="edge">
@@ -373,8 +427,11 @@
 <!-- Except.ok.injEq -->
 <g id="node19" class="node">
 <title>Except.ok.injEq</title>
+<g id="a_node19"><a xlink:href="../../../api/Init/Core.html#Except.ok.injEq" xlink:title="Except.ok.injEq" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="271.97" cy="-88" rx="49.4" ry="18"/>
 <text text-anchor="middle" x="271.97" y="-85.5" font-family="Helvetica" font-size="10.00">Except.ok.injEq</text>
+</a>
+</g>
 </g>
 <!-- Except.ok.injEq&#45;&gt;L4YAML.Proofs.ScannerCorrectness.ScanHelpers.dispatchStructural_tokens_mono -->
 <g id="edge15" class="edge">
@@ -385,8 +442,11 @@
 <!-- not_true_eq_false -->
 <g id="node20" class="node">
 <title>not_true_eq_false</title>
+<g id="a_node20"><a xlink:href="../../../api/Init/SimpLemmas.html#not_true_eq_false" xlink:title="not_true_eq_false" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="271.97" cy="-34" rx="55.17" ry="18"/>
 <text text-anchor="middle" x="271.97" y="-31.5" font-family="Helvetica" font-size="10.00">not_true_eq_false</text>
+</a>
+</g>
 </g>
 <!-- not_true_eq_false&#45;&gt;L4YAML.Proofs.ScannerCorrectness.ScanHelpers.dispatchStructural_tokens_mono -->
 <g id="edge16" class="edge">
@@ -397,8 +457,11 @@
 <!-- Bool.true_eq_false -->
 <g id="node21" class="node">
 <title>Bool.true_eq_false</title>
+<g id="a_node21"><a xlink:href="../../../api/Init/Data/Bool.html#Bool.true_eq_false" xlink:title="Bool.true_eq_false" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="271.97" cy="-1222" rx="57.88" ry="18"/>
 <text text-anchor="middle" x="271.97" y="-1219.5" font-family="Helvetica" font-size="10.00">Bool.true_eq_false</text>
+</a>
+</g>
 </g>
 <!-- Bool.true_eq_false&#45;&gt;L4YAML.Proofs.ScannerCorrectness.ScanHelpers.dispatchStructural_tokens_mono -->
 <g id="edge17" class="edge">
@@ -409,8 +472,11 @@
 <!-- Bool.or_eq_true -->
 <g id="node22" class="node">
 <title>Bool.or_eq_true</title>
+<g id="a_node22"><a xlink:href="../../../api/Init/SimpLemmas.html#Bool.or_eq_true" xlink:title="Bool.or_eq_true" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="271.97" cy="-1168" rx="50.07" ry="18"/>
 <text text-anchor="middle" x="271.97" y="-1165.5" font-family="Helvetica" font-size="10.00">Bool.or_eq_true</text>
+</a>
+</g>
 </g>
 <!-- Bool.or_eq_true&#45;&gt;L4YAML.Proofs.ScannerCorrectness.ScanHelpers.dispatchStructural_tokens_mono -->
 <g id="edge18" class="edge">
@@ -421,8 +487,11 @@
 <!-- not_or._simp_1 -->
 <g id="node23" class="node">
 <title>not_or._simp_1</title>
+<g id="a_node23"><a xlink:href="../../../api/Init/PropLemmas.html#not_or._simp_1" xlink:title="not_or._simp_1" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="271.97" cy="-1114" rx="48.72" ry="18"/>
 <text text-anchor="middle" x="271.97" y="-1111.5" font-family="Helvetica" font-size="10.00">not_or._simp_1</text>
+</a>
+</g>
 </g>
 <!-- not_or._simp_1&#45;&gt;L4YAML.Proofs.ScannerCorrectness.ScanHelpers.dispatchStructural_tokens_mono -->
 <g id="edge19" class="edge">
@@ -433,8 +502,11 @@
 <!-- ge_iff_le._simp_1 -->
 <g id="node24" class="node">
 <title>ge_iff_le._simp_1</title>
+<g id="a_node24"><a xlink:href="../../../api/Init/Core.html#ge_iff_le._simp_1" xlink:title="ge_iff_le._simp_1" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="271.97" cy="-1060" rx="54.31" ry="18"/>
 <text text-anchor="middle" x="271.97" y="-1057.5" font-family="Helvetica" font-size="10.00">ge_iff_le._simp_1</text>
+</a>
+</g>
 </g>
 <!-- ge_iff_le._simp_1&#45;&gt;L4YAML.Proofs.ScannerCorrectness.ScanHelpers.dispatchStructural_tokens_mono -->
 <g id="edge20" class="edge">
@@ -445,8 +517,11 @@
 <!-- Bool.and_eq_true -->
 <g id="node25" class="node">
 <title>Bool.and_eq_true</title>
+<g id="a_node25"><a xlink:href="../../../api/Init/SimpLemmas.html#Bool.and_eq_true" xlink:title="Bool.and_eq_true" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="271.97" cy="-1006" rx="54.31" ry="18"/>
 <text text-anchor="middle" x="271.97" y="-1003.5" font-family="Helvetica" font-size="10.00">Bool.and_eq_true</text>
+</a>
+</g>
 </g>
 <!-- Bool.and_eq_true&#45;&gt;L4YAML.Proofs.ScannerCorrectness.ScanHelpers.dispatchStructural_tokens_mono -->
 <g id="edge21" class="edge">
@@ -457,8 +532,11 @@
 <!-- Bool.not_eq_true -->
 <g id="node26" class="node">
 <title>Bool.not_eq_true</title>
+<g id="a_node26"><a xlink:href="../../../api/Init/SimpLemmas.html#Bool.not_eq_true" xlink:title="Bool.not_eq_true" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="271.97" cy="-952" rx="52.96" ry="18"/>
 <text text-anchor="middle" x="271.97" y="-949.5" font-family="Helvetica" font-size="10.00">Bool.not_eq_true</text>
+</a>
+</g>
 </g>
 <!-- Bool.not_eq_true&#45;&gt;L4YAML.Proofs.ScannerCorrectness.ScanHelpers.dispatchStructural_tokens_mono -->
 <g id="edge22" class="edge">
@@ -469,8 +547,11 @@
 <!-- eq_self -->
 <g id="node27" class="node">
 <title>eq_self</title>
+<g id="a_node27"><a xlink:href="../../../api/Init/SimpLemmas.html#eq_self" xlink:title="eq_self" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="271.97" cy="-898" rx="28.01" ry="18"/>
 <text text-anchor="middle" x="271.97" y="-895.5" font-family="Helvetica" font-size="10.00">eq_self</text>
+</a>
+</g>
 </g>
 <!-- eq_self&#45;&gt;L4YAML.Proofs.ScannerCorrectness.ScanHelpers.dispatchStructural_tokens_mono -->
 <g id="edge23" class="edge">
@@ -481,8 +562,11 @@
 <!-- Decidable.byContradiction -->
 <g id="node28" class="node">
 <title>Decidable.byContradiction</title>
+<g id="a_node28"><a xlink:href="../../../api/Init/Core.html#Decidable.byContradiction" xlink:title="Decidable.byContradiction" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="271.97" cy="-844" rx="77.23" ry="18"/>
 <text text-anchor="middle" x="271.97" y="-841.5" font-family="Helvetica" font-size="10.00">Decidable.byContradiction</text>
+</a>
+</g>
 </g>
 <!-- Decidable.byContradiction&#45;&gt;L4YAML.Proofs.ScannerCorrectness.ScanHelpers.dispatchStructural_tokens_mono -->
 <g id="edge24" class="edge">
@@ -493,8 +577,11 @@
 <!-- of_eq_true -->
 <g id="node29" class="node">
 <title>of_eq_true</title>
+<g id="a_node29"><a xlink:href="../../../api/Init/SimpLemmas.html#of_eq_true" xlink:title="of_eq_true" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="271.97" cy="-790" rx="36.49" ry="18"/>
 <text text-anchor="middle" x="271.97" y="-787.5" font-family="Helvetica" font-size="10.00">of_eq_true</text>
+</a>
+</g>
 </g>
 <!-- of_eq_true&#45;&gt;L4YAML.Proofs.ScannerCorrectness.ScanHelpers.dispatchStructural_tokens_mono -->
 <g id="edge25" class="edge">
@@ -505,8 +592,11 @@
 <!-- beq_iff_eq._simp_1 -->
 <g id="node30" class="node">
 <title>beq_iff_eq._simp_1</title>
+<g id="a_node30"><a xlink:href="../../../api/Init/Core.html#beq_iff_eq._simp_1" xlink:title="beq_iff_eq._simp_1" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="271.97" cy="-736" rx="59.41" ry="18"/>
 <text text-anchor="middle" x="271.97" y="-733.5" font-family="Helvetica" font-size="10.00">beq_iff_eq._simp_1</text>
+</a>
+</g>
 </g>
 <!-- beq_iff_eq._simp_1&#45;&gt;L4YAML.Proofs.ScannerCorrectness.ScanHelpers.dispatchStructural_tokens_mono -->
 <g id="edge26" class="edge">
@@ -517,8 +607,11 @@
 <!-- decide_eq_true_eq -->
 <g id="node31" class="node">
 <title>decide_eq_true_eq</title>
+<g id="a_node31"><a xlink:href="../../../api/Init/SimpLemmas.html#decide_eq_true_eq" xlink:title="decide_eq_true_eq" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="271.97" cy="-682" rx="57.88" ry="18"/>
 <text text-anchor="middle" x="271.97" y="-679.5" font-family="Helvetica" font-size="10.00">decide_eq_true_eq</text>
+</a>
+</g>
 </g>
 <!-- decide_eq_true_eq&#45;&gt;L4YAML.Proofs.ScannerCorrectness.ScanHelpers.dispatchStructural_tokens_mono -->
 <g id="edge27" class="edge">
@@ -529,8 +622,11 @@
 <!-- and_false -->
 <g id="node32" class="node">
 <title>and_false</title>
+<g id="a_node32"><a xlink:href="../../../api/Init/SimpLemmas.html#and_false" xlink:title="and_false" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="271.97" cy="-628" rx="34.96" ry="18"/>
 <text text-anchor="middle" x="271.97" y="-625.5" font-family="Helvetica" font-size="10.00">and_false</text>
+</a>
+</g>
 </g>
 <!-- and_false&#45;&gt;L4YAML.Proofs.ScannerCorrectness.ScanHelpers.dispatchStructural_tokens_mono -->
 <g id="edge28" class="edge">
@@ -541,8 +637,11 @@
 <!-- Nat.instLawfulBEq -->
 <g id="node33" class="node">
 <title>Nat.instLawfulBEq</title>
+<g id="a_node33"><a xlink:href="../../../api/Init/Data/Nat/Basic.html#Nat.instLawfulBEq" xlink:title="Nat.instLawfulBEq" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="271.97" cy="-574" rx="57.88" ry="18"/>
 <text text-anchor="middle" x="271.97" y="-571.5" font-family="Helvetica" font-size="10.00">Nat.instLawfulBEq</text>
+</a>
+</g>
 </g>
 <!-- Nat.instLawfulBEq&#45;&gt;L4YAML.Proofs.ScannerCorrectness.ScanHelpers.dispatchStructural_tokens_mono -->
 <g id="edge29" class="edge">
@@ -553,8 +652,11 @@
 <!-- eq_false&#39; -->
 <g id="node34" class="node">
 <title>eq_false&#39;</title>
+<g id="a_node34"><a xlink:href="../../../api/Init/SimpLemmas.html#eq_false&#39;" xlink:title="eq_false&#39;" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="271.97" cy="-520" rx="32.93" ry="18"/>
 <text text-anchor="middle" x="271.97" y="-517.5" font-family="Helvetica" font-size="10.00">eq_false&#39;</text>
+</a>
+</g>
 </g>
 <!-- eq_false&#39;&#45;&gt;L4YAML.Proofs.ScannerCorrectness.ScanHelpers.dispatchStructural_tokens_mono -->
 <g id="edge30" class="edge">
@@ -565,8 +667,11 @@
 <!-- implies_congr_ctx -->
 <g id="node35" class="node">
 <title>implies_congr_ctx</title>
+<g id="a_node35"><a xlink:href="../../../api/Init/SimpLemmas.html#implies_congr_ctx" xlink:title="implies_congr_ctx" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="271.97" cy="-466" rx="55.85" ry="18"/>
 <text text-anchor="middle" x="271.97" y="-463.5" font-family="Helvetica" font-size="10.00">implies_congr_ctx</text>
+</a>
+</g>
 </g>
 <!-- implies_congr_ctx&#45;&gt;L4YAML.Proofs.ScannerCorrectness.ScanHelpers.dispatchStructural_tokens_mono -->
 <g id="edge31" class="edge">
@@ -577,8 +682,11 @@
 <!-- not_and._simp_1 -->
 <g id="node36" class="node">
 <title>not_and._simp_1</title>
+<g id="a_node36"><a xlink:href="../../../api/Init/SimpLemmas.html#not_and._simp_1" xlink:title="not_and._simp_1" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="271.97" cy="-412" rx="53.64" ry="18"/>
 <text text-anchor="middle" x="271.97" y="-409.5" font-family="Helvetica" font-size="10.00">not_and._simp_1</text>
+</a>
+</g>
 </g>
 <!-- not_and._simp_1&#45;&gt;L4YAML.Proofs.ScannerCorrectness.ScanHelpers.dispatchStructural_tokens_mono -->
 <g id="edge32" class="edge">
@@ -589,8 +697,11 @@
 <!-- imp_false._simp_1 -->
 <g id="node37" class="node">
 <title>imp_false._simp_1</title>
+<g id="a_node37"><a xlink:href="../../../api/Init/Core.html#imp_false._simp_1" xlink:title="imp_false._simp_1" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="271.97" cy="-358" rx="57.88" ry="18"/>
 <text text-anchor="middle" x="271.97" y="-355.5" font-family="Helvetica" font-size="10.00">imp_false._simp_1</text>
+</a>
+</g>
 </g>
 <!-- imp_false._simp_1&#45;&gt;L4YAML.Proofs.ScannerCorrectness.ScanHelpers.dispatchStructural_tokens_mono -->
 <g id="edge33" class="edge">

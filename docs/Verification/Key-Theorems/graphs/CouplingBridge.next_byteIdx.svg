@@ -20,9 +20,12 @@
 <!-- L4YAML.Proofs.CouplingBridge.next_byteIdx -->
 <g id="node1" class="node">
 <title>L4YAML.Proofs.CouplingBridge.next_byteIdx</title>
+<g id="a_node1"><a xlink:href="../../../api/L4YAML/Proofs/CouplingBridge.html#L4YAML.Proofs.CouplingBridge.next_byteIdx" xlink:title="CouplingBridge.next_byteIdx" target="_blank">
 <polygon fill="#fff3cd" stroke="#d4a017" points="246.32,-30.54 246.32,-45.46 180.1,-56 86.44,-56 20.22,-45.46 20.22,-30.54 86.44,-20 180.1,-20 246.32,-30.54"/>
 <polygon fill="none" stroke="#d4a017" points="250.32,-27.13 250.32,-48.87 180.42,-60 86.13,-60 16.23,-48.87 16.23,-27.13 86.13,-16 180.42,-16 250.32,-27.13"/>
 <text text-anchor="middle" x="133.27" y="-34.9" font-family="Helvetica" font-size="12.00">CouplingBridge.next_byteIdx</text>
+</a>
+</g>
 </g>
 </g>
 </svg>

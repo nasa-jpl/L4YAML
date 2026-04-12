@@ -25,30 +25,42 @@
 <!-- L4YAML.Scanner.ScannerState -->
 <g id="node1" class="node">
 <title>L4YAML.Scanner.ScannerState</title>
+<g id="a_node1"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState" xlink:title="ScannerState\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="480.01,-160 404.01,-160 404.01,-124 480.01,-124 480.01,-160"/>
 <text text-anchor="middle" x="442.01" y="-145" font-family="Helvetica" font-size="10.00">ScannerState</text>
 <text text-anchor="middle" x="442.01" y="-134" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerBound.BoundInv -->
 <g id="node2" class="node">
 <title>L4YAML.Proofs.ScannerBound.BoundInv</title>
+<g id="a_node2"><a xlink:href="../../../api/L4YAML/Proofs/ScannerBound.html#L4YAML.Proofs.ScannerBound.BoundInv" xlink:title="ScannerBound.BoundInv\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="504.51,-106 379.51,-106 379.51,-70 504.51,-70 504.51,-106"/>
 <text text-anchor="middle" x="442.01" y="-91" font-family="Helvetica" font-size="10.00">ScannerBound.BoundInv</text>
 <text text-anchor="middle" x="442.01" y="-80" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.inputEnd -->
 <g id="node3" class="node">
 <title>L4YAML.Scanner.ScannerState.inputEnd</title>
+<g id="a_node3"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.inputEnd" xlink:title="ScannerState.inputEnd\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="500.51,-52 383.51,-52 383.51,-16 500.51,-16 500.51,-52"/>
 <text text-anchor="middle" x="442.01" y="-37" font-family="Helvetica" font-size="10.00">ScannerState.inputEnd</text>
 <text text-anchor="middle" x="442.01" y="-26" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerBound.BoundInv.inputEnd_eq -->
 <g id="node4" class="node">
 <title>L4YAML.Proofs.ScannerBound.BoundInv.inputEnd_eq</title>
+<g id="a_node4"><a xlink:href="../../../api/L4YAML/Proofs/ScannerBound.html#L4YAML.Proofs.ScannerBound.BoundInv.inputEnd_eq" xlink:title="ScannerBound.BoundInv.inputEnd_eq" target="_blank">
 <polygon fill="#fff3cd" stroke="#d4a017" points="314.27,-80.54 314.27,-95.46 228.15,-106 106.36,-106 20.24,-95.46 20.24,-80.54 106.36,-70 228.15,-70 314.27,-80.54"/>
 <polygon fill="none" stroke="#d4a017" points="318.26,-77 318.26,-99 228.39,-110 106.12,-110 16.25,-99 16.25,-77 106.12,-66 228.39,-66 318.26,-77"/>
 <text text-anchor="middle" x="167.25" y="-84.9" font-family="Helvetica" font-size="12.00">ScannerBound.BoundInv.inputEnd_eq</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerBound.BoundInv.inputEnd_eq&#45;&gt;L4YAML.Scanner.ScannerState -->
 <g id="edge3" class="edge">

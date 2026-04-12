@@ -30,16 +30,22 @@
 <!-- L4YAML.Proofs.EmitterScannability.nat_beq_zero_false -->
 <g id="node1" class="node">
 <title>L4YAML.Proofs.EmitterScannability.nat_beq_zero_false</title>
+<g id="a_node1"><a xlink:href="../../../api/L4YAML/Proofs/EmitterScannability.html#L4YAML.Proofs.EmitterScannability.nat_beq_zero_false" xlink:title="EmitterScannability.nat_beq_zero_false" target="_blank">
 <polygon fill="#fff3cd" stroke="#d4a017" points="700.26,-69.54 700.26,-84.46 610.63,-95 483.87,-95 394.24,-84.46 394.24,-69.54 483.87,-59 610.63,-59 700.26,-69.54"/>
 <polygon fill="none" stroke="#d4a017" points="704.25,-65.99 704.25,-88.01 610.86,-99 483.64,-99 390.25,-88.01 390.25,-65.99 483.64,-55 610.86,-55 704.25,-65.99"/>
 <text text-anchor="middle" x="547.25" y="-73.9" font-family="Helvetica" font-size="12.00">EmitterScannability.nat_beq_zero_false</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.EmitterScannability.nat_beq_zero_false._proof_1_1 -->
 <g id="node2" class="node">
 <title>L4YAML.Proofs.EmitterScannability.nat_beq_zero_false._proof_1_1</title>
+<g id="a_node2"><a xlink:href="../../../api/L4YAML/Proofs/EmitterScannability.html#L4YAML.Proofs.EmitterScannability.nat_beq_zero_false._proof_1_1" xlink:title="EmitterScannability.nat_beq_zero_false._proof_1_1\n(EmitterScannability)" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="185" cy="-119" rx="169" ry="21.43"/>
 <text text-anchor="middle" x="185" y="-122" font-family="Helvetica" font-size="10.00">EmitterScannability.nat_beq_zero_false._proof_1_1</text>
 <text text-anchor="middle" x="185" y="-111" font-family="Helvetica" font-size="10.00">(EmitterScannability)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.EmitterScannability.nat_beq_zero_false._proof_1_1&#45;&gt;L4YAML.Proofs.EmitterScannability.nat_beq_zero_false -->
 <g id="edge1" class="edge">
@@ -50,8 +56,11 @@
 <!-- Decidable.byContradiction -->
 <g id="node3" class="node">
 <title>Decidable.byContradiction</title>
+<g id="a_node3"><a xlink:href="../../../api/Init/Core.html#Decidable.byContradiction" xlink:title="Decidable.byContradiction" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="185" cy="-34" rx="77.23" ry="18"/>
 <text text-anchor="middle" x="185" y="-31.5" font-family="Helvetica" font-size="10.00">Decidable.byContradiction</text>
+</a>
+</g>
 </g>
 <!-- Decidable.byContradiction&#45;&gt;L4YAML.Proofs.EmitterScannability.nat_beq_zero_false -->
 <g id="edge2" class="edge">

@@ -30,37 +30,52 @@
 <!-- L4YAML.Scanner.ScannerState.advance -->
 <g id="node1" class="node">
 <title>L4YAML.Scanner.ScannerState.advance</title>
+<g id="a_node1"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.advance" xlink:title="ScannerState.advance\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="650.42,-214 535.42,-214 535.42,-178 650.42,-178 650.42,-214"/>
 <text text-anchor="middle" x="592.92" y="-199" font-family="Helvetica" font-size="10.00">ScannerState.advance</text>
 <text text-anchor="middle" x="592.92" y="-188" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState -->
 <g id="node2" class="node">
 <title>L4YAML.Scanner.ScannerState</title>
+<g id="a_node2"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState" xlink:title="ScannerState\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="630.92,-160 554.92,-160 554.92,-124 630.92,-124 630.92,-160"/>
 <text text-anchor="middle" x="592.92" y="-145" font-family="Helvetica" font-size="10.00">ScannerState</text>
 <text text-anchor="middle" x="592.92" y="-134" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.offset -->
 <g id="node3" class="node">
 <title>L4YAML.Scanner.ScannerState.offset</title>
+<g id="a_node3"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.offset" xlink:title="ScannerState.offset\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="644.42,-106 541.42,-106 541.42,-70 644.42,-70 644.42,-106"/>
 <text text-anchor="middle" x="592.92" y="-91" font-family="Helvetica" font-size="10.00">ScannerState.offset</text>
 <text text-anchor="middle" x="592.92" y="-80" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.inputEnd -->
 <g id="node4" class="node">
 <title>L4YAML.Scanner.ScannerState.inputEnd</title>
+<g id="a_node4"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.inputEnd" xlink:title="ScannerState.inputEnd\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="651.42,-52 534.42,-52 534.42,-16 651.42,-16 651.42,-52"/>
 <text text-anchor="middle" x="592.92" y="-37" font-family="Helvetica" font-size="10.00">ScannerState.inputEnd</text>
 <text text-anchor="middle" x="592.92" y="-26" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerProgress.advance_offset_lt -->
 <g id="node5" class="node">
 <title>L4YAML.Proofs.ScannerProgress.advance_offset_lt</title>
+<g id="a_node5"><a xlink:href="../../../api/L4YAML/Proofs/ScannerProgress.html#L4YAML.Proofs.ScannerProgress.advance_offset_lt" xlink:title="ScannerProgress.advance_offset_lt" target="_blank">
 <polygon fill="#fff3cd" stroke="#d4a017" points="469.35,-106.54 469.35,-121.46 388.6,-132 274.39,-132 193.64,-121.46 193.64,-106.54 274.39,-96 388.6,-96 469.35,-106.54"/>
 <polygon fill="none" stroke="#d4a017" points="473.35,-103.03 473.35,-124.97 388.86,-136 274.13,-136 189.64,-124.97 189.64,-103.03 274.13,-92 388.86,-92 473.35,-103.03"/>
 <text text-anchor="middle" x="331.5" y="-110.9" font-family="Helvetica" font-size="12.00">ScannerProgress.advance_offset_lt</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerProgress.advance_offset_lt&#45;&gt;L4YAML.Scanner.ScannerState.advance -->
 <g id="edge1" class="edge">
@@ -93,8 +108,11 @@
 <!-- String.Pos.Raw.lt_next -->
 <g id="node6" class="node">
 <title>String.Pos.Raw.lt_next</title>
+<g id="a_node6"><a xlink:href="../../../api/Init/Data/String/Basic.html#String.Pos.Raw.lt_next" xlink:title="String.Pos.Raw.lt_next" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="84.28" cy="-114" rx="68.07" ry="18"/>
 <text text-anchor="middle" x="84.28" y="-111.5" font-family="Helvetica" font-size="10.00">String.Pos.Raw.lt_next</text>
+</a>
+</g>
 </g>
 <!-- String.Pos.Raw.lt_next&#45;&gt;L4YAML.Proofs.ScannerProgress.advance_offset_lt -->
 <g id="edge5" class="edge">

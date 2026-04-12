@@ -30,37 +30,52 @@
 <!-- L4YAML.CharPredicates.isLineBreakBool -->
 <g id="node1" class="node">
 <title>L4YAML.CharPredicates.isLineBreakBool</title>
+<g id="a_node1"><a xlink:href="../../../api/L4YAML/CharPredicates.html#L4YAML.CharPredicates.isLineBreakBool" xlink:title="CharPredicates.isLineBreakBool\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="942.8,-160 784.8,-160 784.8,-124 942.8,-124 942.8,-160"/>
 <text text-anchor="middle" x="863.8" y="-145" font-family="Helvetica" font-size="10.00">CharPredicates.isLineBreakBool</text>
 <text text-anchor="middle" x="863.8" y="-134" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Surface.SurfPos.mk -->
 <g id="node2" class="node">
 <title>L4YAML.Surface.SurfPos.mk</title>
+<g id="a_node2"><a xlink:href="../../../api/L4YAML/Surface/Combinators.html#L4YAML.Surface.SurfPos.mk" xlink:title="Surface.SurfPos.mk\n(ctor)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="917.3,-52 810.3,-52 810.3,-16 917.3,-16 917.3,-52"/>
 <text text-anchor="middle" x="863.8" y="-37" font-family="Helvetica" font-size="10.00">Surface.SurfPos.mk</text>
 <text text-anchor="middle" x="863.8" y="-26" font-family="Helvetica" font-size="10.00">(ctor)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Surface.isNbChar -->
 <g id="node3" class="node">
 <title>L4YAML.Surface.isNbChar</title>
+<g id="a_node3"><a xlink:href="../../../api/L4YAML/Surface/Basic.html#L4YAML.Surface.isNbChar" xlink:title="Surface.isNbChar\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="911.3,-214 816.3,-214 816.3,-178 911.3,-178 911.3,-214"/>
 <text text-anchor="middle" x="863.8" y="-199" font-family="Helvetica" font-size="10.00">Surface.isNbChar</text>
 <text text-anchor="middle" x="863.8" y="-188" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Surface.GChar -->
 <g id="node4" class="node">
 <title>L4YAML.Surface.GChar</title>
+<g id="a_node4"><a xlink:href="../../../api/L4YAML/Surface/Combinators.html#L4YAML.Surface.GChar" xlink:title="Surface.GChar\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="905.3,-106 822.3,-106 822.3,-70 905.3,-70 905.3,-106"/>
 <text text-anchor="middle" x="863.8" y="-91" font-family="Helvetica" font-size="10.00">Surface.GChar</text>
 <text text-anchor="middle" x="863.8" y="-80" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.CouplingBridge.not_isLineBreak_gives_SNbChar -->
 <g id="node5" class="node">
 <title>L4YAML.Proofs.CouplingBridge.not_isLineBreak_gives_SNbChar</title>
+<g id="a_node5"><a xlink:href="../../../api/L4YAML/Proofs/CouplingBridge.html#L4YAML.Proofs.CouplingBridge.not_isLineBreak_gives_SNbChar" xlink:title="CouplingBridge.not_isLineBreak_gives_SNbChar" target="_blank">
 <polygon fill="#fff3cd" stroke="#d4a017" points="719.86,-89.54 719.86,-104.46 609.37,-115 453.1,-115 342.61,-104.46 342.61,-89.54 453.1,-79 609.37,-79 719.86,-89.54"/>
 <polygon fill="none" stroke="#d4a017" points="723.87,-85.91 723.87,-108.09 609.56,-119 452.91,-119 338.61,-108.09 338.61,-85.91 452.91,-75 609.56,-75 723.87,-85.91"/>
 <text text-anchor="middle" x="531.24" y="-93.9" font-family="Helvetica" font-size="12.00">CouplingBridge.not_isLineBreak_gives_SNbChar</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.CouplingBridge.not_isLineBreak_gives_SNbChar&#45;&gt;L4YAML.CharPredicates.isLineBreakBool -->
 <g id="edge3" class="edge">
@@ -93,9 +108,12 @@
 <!-- L4YAML.Proofs.CouplingBridge.not_isLineBreak_isNbChar -->
 <g id="node6" class="node">
 <title>L4YAML.Proofs.CouplingBridge.not_isLineBreak_isNbChar</title>
+<g id="a_node6"><a xlink:href="../../../api/L4YAML/Proofs/CouplingBridge.html#L4YAML.Proofs.CouplingBridge.not_isLineBreak_isNbChar" xlink:title="CouplingBridge.not_isLineBreak_isNbChar\n(CouplingBridge)" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="158.84" cy="-167" rx="142.67" ry="21.43"/>
 <text text-anchor="middle" x="158.84" y="-170" font-family="Helvetica" font-size="10.00">CouplingBridge.not_isLineBreak_isNbChar</text>
 <text text-anchor="middle" x="158.84" y="-159" font-family="Helvetica" font-size="10.00">(CouplingBridge)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.CouplingBridge.not_isLineBreak_isNbChar&#45;&gt;L4YAML.CharPredicates.isLineBreakBool -->
 <g id="edge7" class="edge">

@@ -24,14 +24,20 @@
 <!-- L4YAML.Scanner.skipWhitespaceLoop -->
 <g id="node1" class="node">
 <title>L4YAML.Scanner.skipWhitespaceLoop</title>
+<g id="a_node1"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.skipWhitespaceLoop" xlink:title="skipWhitespaceLoop" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1937.5,-133 1830.5,-133 1830.5,-97 1937.5,-97 1937.5,-133"/>
 <text text-anchor="middle" x="1884" y="-112.5" font-family="Helvetica" font-size="10.00">skipWhitespaceLoop</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState -->
 <g id="node2" class="node">
 <title>L4YAML.Scanner.ScannerState</title>
+<g id="a_node2"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState" xlink:title="ScannerState" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1650,-52 1574,-52 1574,-16 1650,-16 1650,-52"/>
 <text text-anchor="middle" x="1612" y="-31.5" font-family="Helvetica" font-size="10.00">ScannerState</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.skipWhitespaceLoop&#45;&gt;L4YAML.Scanner.ScannerState -->
 <g id="edge5" class="edge">
@@ -43,8 +49,11 @@
 <!-- L4YAML.Scanner.skipWhitespace -->
 <g id="node3" class="node">
 <title>L4YAML.Scanner.skipWhitespace</title>
+<g id="a_node3"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.skipWhitespace" xlink:title="skipWhitespace" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1711,-214 1625,-214 1625,-178 1711,-178 1711,-214"/>
 <text text-anchor="middle" x="1668" y="-193.5" font-family="Helvetica" font-size="10.00">skipWhitespace</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.skipWhitespace&#45;&gt;L4YAML.Scanner.skipWhitespaceLoop -->
 <g id="edge2" class="edge">
@@ -56,8 +65,11 @@
 <!-- L4YAML.Scanner.ScannerState.offset -->
 <g id="node4" class="node">
 <title>L4YAML.Scanner.ScannerState.offset</title>
+<g id="a_node4"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.offset" xlink:title="ScannerState.offset" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1677.5,-133 1574.5,-133 1574.5,-97 1677.5,-97 1677.5,-133"/>
 <text text-anchor="middle" x="1626" y="-112.5" font-family="Helvetica" font-size="10.00">ScannerState.offset</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.skipWhitespace&#45;&gt;L4YAML.Scanner.ScannerState.offset -->
 <g id="edge8" class="edge">
@@ -69,8 +81,11 @@
 <!-- L4YAML.Scanner.ScannerState.inputEnd -->
 <g id="node5" class="node">
 <title>L4YAML.Scanner.ScannerState.inputEnd</title>
+<g id="a_node5"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.inputEnd" xlink:title="ScannerState.inputEnd" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1812.5,-133 1695.5,-133 1695.5,-97 1812.5,-97 1812.5,-133"/>
 <text text-anchor="middle" x="1754" y="-112.5" font-family="Helvetica" font-size="10.00">ScannerState.inputEnd</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.skipWhitespace&#45;&gt;L4YAML.Scanner.ScannerState.inputEnd -->
 <g id="edge13" class="edge">
@@ -96,8 +111,11 @@
 <!-- L4YAML.Proofs.ScannerCoupling.advance_fuel_budget -->
 <g id="node6" class="node">
 <title>L4YAML.Proofs.ScannerCoupling.advance_fuel_budget</title>
+<g id="a_node6"><a xlink:href="../../../api/L4YAML/Proofs/ScannerCoupling.html#L4YAML.Proofs.ScannerCoupling.advance_fuel_budget" xlink:title="ScannerCoupling.advance_fuel_budget" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="829" cy="-115" rx="108.81" ry="18"/>
 <text text-anchor="middle" x="829" y="-112.5" font-family="Helvetica" font-size="10.00">ScannerCoupling.advance_fuel_budget</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerCoupling.advance_fuel_budget&#45;&gt;L4YAML.Scanner.ScannerState -->
 <g id="edge12" class="edge">
@@ -109,8 +127,11 @@
 <!-- L4YAML.Scanner.skipWhitespaceLoop.eq_def -->
 <g id="node7" class="node">
 <title>L4YAML.Scanner.skipWhitespaceLoop.eq_def</title>
+<g id="a_node7"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.skipWhitespaceLoop.eq_def" xlink:title="skipWhitespaceLoop.eq_def" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="1038" cy="-115" rx="82.33" ry="18"/>
 <text text-anchor="middle" x="1038" y="-112.5" font-family="Helvetica" font-size="10.00">skipWhitespaceLoop.eq_def</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.skipWhitespaceLoop.eq_def&#45;&gt;L4YAML.Scanner.ScannerState -->
 <g id="edge21" class="edge">
@@ -122,8 +143,11 @@
 <!-- L4YAML.Proofs.CouplingBridge.advance_non_newline_corr -->
 <g id="node8" class="node">
 <title>L4YAML.Proofs.CouplingBridge.advance_non_newline_corr</title>
+<g id="a_node8"><a xlink:href="../../../api/L4YAML/Proofs/CouplingBridge.html#L4YAML.Proofs.CouplingBridge.advance_non_newline_corr" xlink:title="CouplingBridge.advance_non_newline_corr" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="1258" cy="-115" rx="119.5" ry="18"/>
 <text text-anchor="middle" x="1258" y="-112.5" font-family="Helvetica" font-size="10.00">CouplingBridge.advance_non_newline_corr</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.CouplingBridge.advance_non_newline_corr&#45;&gt;L4YAML.Scanner.ScannerState -->
 <g id="edge19" class="edge">
@@ -135,8 +159,11 @@
 <!-- L4YAML.Proofs.ScannerCoupling.skipWhitespaceLoop_corr -->
 <g id="node9" class="node">
 <title>L4YAML.Proofs.ScannerCoupling.skipWhitespaceLoop_corr</title>
+<g id="a_node9"><a xlink:href="../../../api/L4YAML/Proofs/ScannerCoupling.html#L4YAML.Proofs.ScannerCoupling.skipWhitespaceLoop_corr" xlink:title="ScannerCoupling.skipWhitespaceLoop_corr" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="1258" cy="-196" rx="121.03" ry="18"/>
 <text text-anchor="middle" x="1258" y="-193.5" font-family="Helvetica" font-size="10.00">ScannerCoupling.skipWhitespaceLoop_corr</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerCoupling.skipWhitespaceLoop_corr&#45;&gt;L4YAML.Scanner.skipWhitespaceLoop -->
 <g id="edge4" class="edge">
@@ -183,8 +210,11 @@
 <!-- L4YAML.Scanner.skipWhitespaceLoop.eq_1 -->
 <g id="node10" class="node">
 <title>L4YAML.Scanner.skipWhitespaceLoop.eq_1</title>
+<g id="a_node10"><a xlink:href="../../../api/L4YAML/Proofs/CouplingBridge.html#L4YAML.Scanner.skipWhitespaceLoop.eq_1" xlink:title="skipWhitespaceLoop.eq_1" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="1473" cy="-115" rx="77.23" ry="18"/>
 <text text-anchor="middle" x="1473" y="-112.5" font-family="Helvetica" font-size="10.00">skipWhitespaceLoop.eq_1</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerCoupling.skipWhitespaceLoop_corr&#45;&gt;L4YAML.Scanner.skipWhitespaceLoop.eq_1 -->
 <g id="edge24" class="edge">
@@ -196,8 +226,11 @@
 <!-- L4YAML.Proofs.ScannerCoupling.peek_some_chars -->
 <g id="node11" class="node">
 <title>L4YAML.Proofs.ScannerCoupling.peek_some_chars</title>
+<g id="a_node11"><a xlink:href="../../../api/L4YAML/Proofs/ScannerCoupling.html#L4YAML.Proofs.ScannerCoupling.peek_some_chars" xlink:title="ScannerCoupling.peek_some_chars" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="118" cy="-115" rx="102.35" ry="18"/>
 <text text-anchor="middle" x="118" y="-112.5" font-family="Helvetica" font-size="10.00">ScannerCoupling.peek_some_chars</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerCoupling.skipWhitespaceLoop_corr&#45;&gt;L4YAML.Proofs.ScannerCoupling.peek_some_chars -->
 <g id="edge6" class="edge">
@@ -209,8 +242,11 @@
 <!-- L4YAML.Proofs.ScannerCoupling.peek_some_hasMore -->
 <g id="node12" class="node">
 <title>L4YAML.Proofs.ScannerCoupling.peek_some_hasMore</title>
+<g id="a_node12"><a xlink:href="../../../api/L4YAML/Proofs/ScannerCoupling.html#L4YAML.Proofs.ScannerCoupling.peek_some_hasMore" xlink:title="ScannerCoupling.peek_some_hasMore" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="349" cy="-115" rx="110.16" ry="18"/>
 <text text-anchor="middle" x="349" y="-112.5" font-family="Helvetica" font-size="10.00">ScannerCoupling.peek_some_hasMore</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerCoupling.skipWhitespaceLoop_corr&#45;&gt;L4YAML.Proofs.ScannerCoupling.peek_some_hasMore -->
 <g id="edge22" class="edge">
@@ -222,8 +258,11 @@
 <!-- L4YAML.Proofs.CouplingBridge.ScannerSurfCorr.col_eq -->
 <g id="node14" class="node">
 <title>L4YAML.Proofs.CouplingBridge.ScannerSurfCorr.col_eq</title>
+<g id="a_node14"><a xlink:href="../../../api/L4YAML/Proofs/CouplingBridge.html#L4YAML.Proofs.CouplingBridge.ScannerSurfCorr.col_eq" xlink:title="CouplingBridge.ScannerSurfCorr.col_eq" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="590" cy="-115" rx="112.37" ry="18"/>
 <text text-anchor="middle" x="590" y="-112.5" font-family="Helvetica" font-size="10.00">CouplingBridge.ScannerSurfCorr.col_eq</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerCoupling.skipWhitespaceLoop_corr&#45;&gt;L4YAML.Proofs.CouplingBridge.ScannerSurfCorr.col_eq -->
 <g id="edge16" class="edge">
@@ -256,9 +295,12 @@
 <!-- L4YAML.Proofs.ScannerCoupling.skipWhitespace_corr -->
 <g id="node13" class="node">
 <title>L4YAML.Proofs.ScannerCoupling.skipWhitespace_corr</title>
+<g id="a_node13"><a xlink:href="../../../api/L4YAML/Proofs/ScannerCoupling.html#L4YAML.Proofs.ScannerCoupling.skipWhitespace_corr" xlink:title="ScannerCoupling.skipWhitespace_corr" target="_blank">
 <polygon fill="#fff3cd" stroke="#d4a017" points="1460.75,-293.54 1460.75,-308.46 1391.78,-319 1294.22,-319 1225.25,-308.46 1225.25,-293.54 1294.22,-283 1391.78,-283 1460.75,-293.54"/>
 <polygon fill="none" stroke="#d4a017" points="1464.75,-290.11 1464.75,-311.89 1392.08,-323 1293.92,-323 1221.25,-311.89 1221.25,-290.11 1293.92,-279 1392.08,-279 1464.75,-290.11"/>
 <text text-anchor="middle" x="1343" y="-298.5" font-family="Helvetica" font-size="10.00">ScannerCoupling.skipWhitespace_corr</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerCoupling.skipWhitespace_corr&#45;&gt;L4YAML.Scanner.skipWhitespace -->
 <g id="edge1" class="edge">

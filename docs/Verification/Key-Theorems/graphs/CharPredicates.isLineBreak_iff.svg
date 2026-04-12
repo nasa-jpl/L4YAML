@@ -30,23 +30,32 @@
 <!-- L4YAML.CharPredicates.isLineBreakBool -->
 <g id="node1" class="node">
 <title>L4YAML.CharPredicates.isLineBreakBool</title>
+<g id="a_node1"><a xlink:href="../../../api/L4YAML/CharPredicates.html#L4YAML.CharPredicates.isLineBreakBool" xlink:title="CharPredicates.isLineBreakBool\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="623.94,-130 465.94,-130 465.94,-94 623.94,-94 623.94,-130"/>
 <text text-anchor="middle" x="544.94" y="-115" font-family="Helvetica" font-size="10.00">CharPredicates.isLineBreakBool</text>
 <text text-anchor="middle" x="544.94" y="-104" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.CharPredicates.isLineBreakProp -->
 <g id="node2" class="node">
 <title>L4YAML.CharPredicates.isLineBreakProp</title>
+<g id="a_node2"><a xlink:href="../../../api/L4YAML/CharPredicates.html#L4YAML.CharPredicates.isLineBreakProp" xlink:title="CharPredicates.isLineBreakProp\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="623.94,-76 465.94,-76 465.94,-40 623.94,-40 623.94,-76"/>
 <text text-anchor="middle" x="544.94" y="-61" font-family="Helvetica" font-size="10.00">CharPredicates.isLineBreakProp</text>
 <text text-anchor="middle" x="544.94" y="-50" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.CharPredicates.isLineBreak_iff -->
 <g id="node3" class="node">
 <title>L4YAML.CharPredicates.isLineBreak_iff</title>
+<g id="a_node3"><a xlink:href="../../../api/L4YAML/CharPredicates.html#L4YAML.CharPredicates.isLineBreak_iff" xlink:title="CharPredicates.isLineBreak_iff" target="_blank">
 <polygon fill="#fff3cd" stroke="#d4a017" points="400.88,-80.54 400.88,-95.46 329.49,-106 228.53,-106 157.14,-95.46 157.14,-80.54 228.53,-70 329.49,-70 400.88,-80.54"/>
 <polygon fill="none" stroke="#d4a017" points="404.88,-77.09 404.88,-98.91 329.78,-110 228.23,-110 153.14,-98.91 153.14,-77.09 228.23,-66 329.78,-66 404.88,-77.09"/>
 <text text-anchor="middle" x="279.01" y="-84.9" font-family="Helvetica" font-size="12.00">CharPredicates.isLineBreak_iff</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.CharPredicates.isLineBreak_iff&#45;&gt;L4YAML.CharPredicates.isLineBreakBool -->
 <g id="edge2" class="edge">
@@ -65,8 +74,11 @@
 <!-- iff_self -->
 <g id="node4" class="node">
 <title>iff_self</title>
+<g id="a_node4"><a xlink:href="../../../api/Init/SimpLemmas.html#iff_self" xlink:title="iff_self" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="66.04" cy="-142" rx="27" ry="18"/>
 <text text-anchor="middle" x="66.04" y="-139.5" font-family="Helvetica" font-size="10.00">iff_self</text>
+</a>
+</g>
 </g>
 <!-- iff_self&#45;&gt;L4YAML.CharPredicates.isLineBreak_iff -->
 <g id="edge3" class="edge">
@@ -77,8 +89,11 @@
 <!-- Bool.or_eq_true -->
 <g id="node5" class="node">
 <title>Bool.or_eq_true</title>
+<g id="a_node5"><a xlink:href="../../../api/Init/SimpLemmas.html#Bool.or_eq_true" xlink:title="Bool.or_eq_true" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="66.04" cy="-88" rx="50.07" ry="18"/>
 <text text-anchor="middle" x="66.04" y="-85.5" font-family="Helvetica" font-size="10.00">Bool.or_eq_true</text>
+</a>
+</g>
 </g>
 <!-- Bool.or_eq_true&#45;&gt;L4YAML.CharPredicates.isLineBreak_iff -->
 <g id="edge4" class="edge">
@@ -89,8 +104,11 @@
 <!-- of_eq_true -->
 <g id="node6" class="node">
 <title>of_eq_true</title>
+<g id="a_node6"><a xlink:href="../../../api/Init/SimpLemmas.html#of_eq_true" xlink:title="of_eq_true" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="66.04" cy="-34" rx="36.49" ry="18"/>
 <text text-anchor="middle" x="66.04" y="-31.5" font-family="Helvetica" font-size="10.00">of_eq_true</text>
+</a>
+</g>
 </g>
 <!-- of_eq_true&#45;&gt;L4YAML.CharPredicates.isLineBreak_iff -->
 <g id="edge5" class="edge">

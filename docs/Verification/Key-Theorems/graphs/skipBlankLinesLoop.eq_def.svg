@@ -30,65 +30,92 @@
 <!-- L4YAML.CharPredicates.isLineBreakBool -->
 <g id="node1" class="node">
 <title>L4YAML.CharPredicates.isLineBreakBool</title>
+<g id="a_node1"><a xlink:href="../../../api/L4YAML/CharPredicates.html#L4YAML.CharPredicates.isLineBreakBool" xlink:title="CharPredicates.isLineBreakBool\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="603.07,-430 445.07,-430 445.07,-394 603.07,-394 603.07,-430"/>
 <text text-anchor="middle" x="524.07" y="-415" font-family="Helvetica" font-size="10.00">CharPredicates.isLineBreakBool</text>
 <text text-anchor="middle" x="524.07" y="-404" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.consumeNewline -->
 <g id="node2" class="node">
 <title>L4YAML.Scanner.consumeNewline</title>
+<g id="a_node2"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.consumeNewline" xlink:title="consumeNewline\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="570.07,-376 478.07,-376 478.07,-340 570.07,-340 570.07,-376"/>
 <text text-anchor="middle" x="524.07" y="-361" font-family="Helvetica" font-size="10.00">consumeNewline</text>
 <text text-anchor="middle" x="524.07" y="-350" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.peek? -->
 <g id="node3" class="node">
 <title>L4YAML.Scanner.ScannerState.peek?</title>
+<g id="a_node3"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.peek?" xlink:title="ScannerState.peek?\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="576.07,-322 472.07,-322 472.07,-286 576.07,-286 576.07,-322"/>
 <text text-anchor="middle" x="524.07" y="-307" font-family="Helvetica" font-size="10.00">ScannerState.peek?</text>
 <text text-anchor="middle" x="524.07" y="-296" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.skipSpaces -->
 <g id="node4" class="node">
 <title>L4YAML.Scanner.skipSpaces</title>
+<g id="a_node4"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.skipSpaces" xlink:title="skipSpaces\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="558.07,-268 490.07,-268 490.07,-232 558.07,-232 558.07,-268"/>
 <text text-anchor="middle" x="524.07" y="-253" font-family="Helvetica" font-size="10.00">skipSpaces</text>
 <text text-anchor="middle" x="524.07" y="-242" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.skipWhitespaceLoop.match_1 -->
 <g id="node5" class="node">
 <title>L4YAML.Scanner.skipWhitespaceLoop.match_1</title>
+<g id="a_node5"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.skipWhitespaceLoop.match_1" xlink:title="skipWhitespaceLoop.match_1\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="598.07,-214 450.07,-214 450.07,-178 598.07,-178 598.07,-214"/>
 <text text-anchor="middle" x="524.07" y="-199" font-family="Helvetica" font-size="10.00">skipWhitespaceLoop.match_1</text>
 <text text-anchor="middle" x="524.07" y="-188" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState -->
 <g id="node6" class="node">
 <title>L4YAML.Scanner.ScannerState</title>
+<g id="a_node6"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState" xlink:title="ScannerState\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="562.07,-160 486.07,-160 486.07,-124 562.07,-124 562.07,-160"/>
 <text text-anchor="middle" x="524.07" y="-145" font-family="Helvetica" font-size="10.00">ScannerState</text>
 <text text-anchor="middle" x="524.07" y="-134" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.peekAt?Loop.match_1 -->
 <g id="node7" class="node">
 <title>L4YAML.Scanner.ScannerState.peekAt?Loop.match_1</title>
+<g id="a_node7"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.peekAt?Loop.match_1" xlink:title="ScannerState.peekAt?Loop.match_1\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="612.07,-106 436.07,-106 436.07,-70 612.07,-70 612.07,-106"/>
 <text text-anchor="middle" x="524.07" y="-91" font-family="Helvetica" font-size="10.00">ScannerState.peekAt?Loop.match_1</text>
 <text text-anchor="middle" x="524.07" y="-80" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.skipBlankLinesLoop -->
 <g id="node8" class="node">
 <title>L4YAML.Scanner.skipBlankLinesLoop</title>
+<g id="a_node8"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.skipBlankLinesLoop" xlink:title="skipBlankLinesLoop\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="576.07,-52 472.07,-52 472.07,-16 576.07,-16 576.07,-52"/>
 <text text-anchor="middle" x="524.07" y="-37" font-family="Helvetica" font-size="10.00">skipBlankLinesLoop</text>
 <text text-anchor="middle" x="524.07" y="-26" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.skipBlankLinesLoop.eq_def -->
 <g id="node9" class="node">
 <title>L4YAML.Scanner.skipBlankLinesLoop.eq_def</title>
+<g id="a_node9"><a xlink:href="../../../api/L4YAML/Proofs/ScalarCoupling.html#L4YAML.Scanner.skipBlankLinesLoop.eq_def" xlink:title="skipBlankLinesLoop.eq_def" target="_blank">
 <polygon fill="#fff3cd" stroke="#d4a017" points="371.01,-214.54 371.01,-229.46 306.64,-240 215.61,-240 151.24,-229.46 151.24,-214.54 215.61,-204 306.64,-204 371.01,-214.54"/>
 <polygon fill="none" stroke="#d4a017" points="375.01,-211.15 375.01,-232.85 306.97,-244 215.29,-244 147.25,-232.85 147.25,-211.15 215.29,-200 306.97,-200 375.01,-211.15"/>
 <text text-anchor="middle" x="261.13" y="-218.9" font-family="Helvetica" font-size="12.00">skipBlankLinesLoop.eq_def</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.skipBlankLinesLoop.eq_def&#45;&gt;L4YAML.CharPredicates.isLineBreakBool -->
 <g id="edge3" class="edge">
@@ -149,8 +176,11 @@
 <!-- Nat.brecOn.eq -->
 <g id="node10" class="node">
 <title>Nat.brecOn.eq</title>
+<g id="a_node10"><a xlink:href="../../../api/Init/Prelude.html#Nat.brecOn.eq" xlink:title="Nat.brecOn.eq" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="63.09" cy="-222" rx="47.19" ry="18"/>
 <text text-anchor="middle" x="63.09" y="-219.5" font-family="Helvetica" font-size="10.00">Nat.brecOn.eq</text>
+</a>
+</g>
 </g>
 <!-- Nat.brecOn.eq&#45;&gt;L4YAML.Scanner.skipBlankLinesLoop.eq_def -->
 <g id="edge9" class="edge">

@@ -24,14 +24,20 @@
 <!-- L4YAML.Positioned -->
 <g id="node1" class="node">
 <title>L4YAML.Positioned</title>
+<g id="a_node1"><a xlink:href="../../../api/L4YAML/Token.html#L4YAML.Positioned" xlink:title="Positioned" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="508,-52 446,-52 446,-16 508,-16 508,-52"/>
 <text text-anchor="middle" x="477" y="-31.5" font-family="Helvetica" font-size="10.00">Positioned</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Positioned.val -->
 <g id="node2" class="node">
 <title>L4YAML.Positioned.val</title>
+<g id="a_node2"><a xlink:href="../../../api/L4YAML/Token.html#L4YAML.Positioned.val" xlink:title="Positioned.val" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="637.5,-133 560.5,-133 560.5,-97 637.5,-97 637.5,-133"/>
 <text text-anchor="middle" x="599" y="-112.5" font-family="Helvetica" font-size="10.00">Positioned.val</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Positioned.val&#45;&gt;L4YAML.Positioned -->
 <g id="edge6" class="edge">
@@ -43,8 +49,11 @@
 <!-- L4YAML.Proofs.ScannerPlainScalarValid.flowNesting -->
 <g id="node3" class="node">
 <title>L4YAML.Proofs.ScannerPlainScalarValid.flowNesting</title>
+<g id="a_node3"><a xlink:href="../../../api/L4YAML/Proofs/ScannerPlainScalarValid.html#L4YAML.Proofs.ScannerPlainScalarValid.flowNesting" xlink:title="ScannerPlainScalarValid.flowNesting" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="542,-133 364,-133 364,-97 542,-97 542,-133"/>
 <text text-anchor="middle" x="453" y="-112.5" font-family="Helvetica" font-size="10.00">ScannerPlainScalarValid.flowNesting</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerPlainScalarValid.flowNesting&#45;&gt;L4YAML.Positioned -->
 <g id="edge2" class="edge">
@@ -56,8 +65,11 @@
 <!-- L4YAML.YamlToken -->
 <g id="node4" class="node">
 <title>L4YAML.YamlToken</title>
+<g id="a_node4"><a xlink:href="../../../api/L4YAML/Token.html#L4YAML.YamlToken" xlink:title="YamlToken" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="428,-52 364,-52 364,-16 428,-16 428,-52"/>
 <text text-anchor="middle" x="396" y="-31.5" font-family="Helvetica" font-size="10.00">YamlToken</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerPlainScalarValid.flowNesting&#45;&gt;L4YAML.YamlToken -->
 <g id="edge7" class="edge">
@@ -69,8 +81,11 @@
 <!-- L4YAML.Proofs.ScannerPlainScalarValid.flowNesting_push -->
 <g id="node5" class="node">
 <title>L4YAML.Proofs.ScannerPlainScalarValid.flowNesting_push</title>
+<g id="a_node5"><a xlink:href="../../../api/L4YAML/Proofs/ScannerPlainScalarValid.html#L4YAML.Proofs.ScannerPlainScalarValid.flowNesting_push" xlink:title="ScannerPlainScalarValid.flowNesting_push" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="220" cy="-115" rx="120.17" ry="18"/>
 <text text-anchor="middle" x="220" y="-112.5" font-family="Helvetica" font-size="10.00">ScannerPlainScalarValid.flowNesting_push</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerPlainScalarValid.flowNesting_push&#45;&gt;L4YAML.Positioned -->
 <g id="edge4" class="edge">
@@ -89,9 +104,12 @@
 <!-- L4YAML.Proofs.ScannerPlainScalarValid.flowNesting_push_non_flow -->
 <g id="node6" class="node">
 <title>L4YAML.Proofs.ScannerPlainScalarValid.flowNesting_push_non_flow</title>
+<g id="a_node6"><a xlink:href="../../../api/L4YAML/Proofs/ScannerPlainScalarValid.html#L4YAML.Proofs.ScannerPlainScalarValid.flowNesting_push_non_flow" xlink:title="ScannerPlainScalarValid.flowNesting_push_non_flow" target="_blank">
 <polygon fill="#fff3cd" stroke="#d4a017" points="336.03,-212.54 336.03,-227.46 243.46,-238 112.54,-238 19.97,-227.46 19.97,-212.54 112.54,-202 243.46,-202 336.03,-212.54"/>
 <polygon fill="none" stroke="#d4a017" points="340.03,-208.97 340.03,-231.03 243.69,-242 112.31,-242 15.97,-231.03 15.97,-208.97 112.31,-198 243.69,-198 340.03,-208.97"/>
 <text text-anchor="middle" x="178" y="-217.5" font-family="Helvetica" font-size="10.00">ScannerPlainScalarValid.flowNesting_push_non_flow</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerPlainScalarValid.flowNesting_push_non_flow&#45;&gt;L4YAML.Positioned.val -->
 <g id="edge5" class="edge">

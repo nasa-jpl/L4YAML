@@ -10,7 +10,7 @@
 <title>chain_EmitterScannability.scanNextToken_via_flow_dispatch</title>
 <polygon fill="white" stroke="transparent" points="-4,4 -4,-93.92 489,-93.92 489,4 -4,4"/>
 <text text-anchor="middle" x="242.5" y="-75.52" font-family="Helvetica Bold" font-size="13.00">Functorial Chains: EmitterScannability.scanNextToken_via_flow_dispatch</text>
-<text text-anchor="middle" x="242.5" y="-61.52" font-family="Helvetica Bold" font-size="13.00">(heuristic: used by 9 proofs)</text>
+<text text-anchor="middle" x="242.5" y="-61.52" font-family="Helvetica Bold" font-size="13.00">(heuristic: used by 11 proofs)</text>
 <!-- L4YAML.Proofs.EmitterScannability.scanNextToken_via_flow_dispatch -->
 <g id="node1" class="node">
 <title>L4YAML.Proofs.EmitterScannability.scanNextToken_via_flow_dispatch</title>

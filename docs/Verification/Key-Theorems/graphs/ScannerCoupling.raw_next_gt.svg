@@ -25,15 +25,21 @@
 <!-- L4YAML.Proofs.ScannerCoupling.raw_next_gt -->
 <g id="node1" class="node">
 <title>L4YAML.Proofs.ScannerCoupling.raw_next_gt</title>
+<g id="a_node1"><a xlink:href="../../../api/L4YAML/Proofs/ScannerCoupling.html#L4YAML.Proofs.ScannerCoupling.raw_next_gt" xlink:title="ScannerCoupling.raw_next_gt" target="_blank">
 <polygon fill="#fff3cd" stroke="#d4a017" points="518.17,-30.54 518.17,-45.46 448.64,-56 350.3,-56 280.77,-45.46 280.77,-30.54 350.3,-20 448.64,-20 518.17,-30.54"/>
 <polygon fill="none" stroke="#d4a017" points="522.18,-27.11 522.18,-48.89 448.94,-60 350,-60 276.77,-48.89 276.77,-27.11 350,-16 448.94,-16 522.18,-27.11"/>
 <text text-anchor="middle" x="399.47" y="-34.9" font-family="Helvetica" font-size="12.00">ScannerCoupling.raw_next_gt</text>
+</a>
+</g>
 </g>
 <!-- String.Pos.Raw.byteIdx_lt_byteIdx_next -->
 <g id="node2" class="node">
 <title>String.Pos.Raw.byteIdx_lt_byteIdx_next</title>
+<g id="a_node2"><a xlink:href="../../../api/Init/Data/String/Basic.html#String.Pos.Raw.byteIdx_lt_byteIdx_next" xlink:title="String.Pos.Raw.byteIdx_lt_byteIdx_next" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="128.43" cy="-38" rx="112.37" ry="18"/>
 <text text-anchor="middle" x="128.43" y="-35.5" font-family="Helvetica" font-size="10.00">String.Pos.Raw.byteIdx_lt_byteIdx_next</text>
+</a>
+</g>
 </g>
 <!-- String.Pos.Raw.byteIdx_lt_byteIdx_next&#45;&gt;L4YAML.Proofs.ScannerCoupling.raw_next_gt -->
 <g id="edge1" class="edge">

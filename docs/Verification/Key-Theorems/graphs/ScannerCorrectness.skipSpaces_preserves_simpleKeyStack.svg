@@ -30,44 +30,62 @@
 <!-- L4YAML.Scanner.skipSpaces -->
 <g id="node1" class="node">
 <title>L4YAML.Scanner.skipSpaces</title>
+<g id="a_node1"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.skipSpaces" xlink:title="skipSpaces\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1120.25,-142 1052.25,-142 1052.25,-106 1120.25,-106 1120.25,-142"/>
 <text text-anchor="middle" x="1086.25" y="-127" font-family="Helvetica" font-size="10.00">skipSpaces</text>
 <text text-anchor="middle" x="1086.25" y="-116" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState -->
 <g id="node2" class="node">
 <title>L4YAML.Scanner.ScannerState</title>
+<g id="a_node2"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState" xlink:title="ScannerState\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1124.25,-304 1048.25,-304 1048.25,-268 1124.25,-268 1124.25,-304"/>
 <text text-anchor="middle" x="1086.25" y="-289" font-family="Helvetica" font-size="10.00">ScannerState</text>
 <text text-anchor="middle" x="1086.25" y="-278" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.simpleKeyStack -->
 <g id="node3" class="node">
 <title>L4YAML.Scanner.ScannerState.simpleKeyStack</title>
+<g id="a_node3"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.simpleKeyStack" xlink:title="ScannerState.simpleKeyStack\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1160.75,-250 1011.75,-250 1011.75,-214 1160.75,-214 1160.75,-250"/>
 <text text-anchor="middle" x="1086.25" y="-235" font-family="Helvetica" font-size="10.00">ScannerState.simpleKeyStack</text>
 <text text-anchor="middle" x="1086.25" y="-224" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.skipSpacesLoop -->
 <g id="node4" class="node">
 <title>L4YAML.Scanner.skipSpacesLoop</title>
+<g id="a_node4"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.skipSpacesLoop" xlink:title="skipSpacesLoop\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="762.04,-304 673.04,-304 673.04,-268 762.04,-268 762.04,-304"/>
 <text text-anchor="middle" x="717.54" y="-289" font-family="Helvetica" font-size="10.00">skipSpacesLoop</text>
 <text text-anchor="middle" x="717.54" y="-278" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.SimpleKeyState -->
 <g id="node5" class="node">
 <title>L4YAML.Scanner.SimpleKeyState</title>
+<g id="a_node5"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.SimpleKeyState" xlink:title="SimpleKeyState\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1129.25,-196 1043.25,-196 1043.25,-160 1129.25,-160 1129.25,-196"/>
 <text text-anchor="middle" x="1086.25" y="-181" font-family="Helvetica" font-size="10.00">SimpleKeyState</text>
 <text text-anchor="middle" x="1086.25" y="-170" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerCorrectness.skipSpaces_preserves_simpleKeyStack -->
 <g id="node6" class="node">
 <title>L4YAML.Proofs.ScannerCorrectness.skipSpaces_preserves_simpleKeyStack</title>
+<g id="a_node6"><a xlink:href="../../../api/L4YAML/Proofs/ScannerCorrectness.html#L4YAML.Proofs.ScannerCorrectness.skipSpaces_preserves_simpleKeyStack" xlink:title="ScannerCorrectness.skipSpaces_preserves_simpleKeyStack" target="_blank">
 <polygon fill="#fff3cd" stroke="#d4a017" points="946.96,-30.54 946.96,-45.46 812.57,-56 622.52,-56 488.13,-45.46 488.13,-30.54 622.52,-20 812.57,-20 946.96,-30.54"/>
 <polygon fill="none" stroke="#d4a017" points="950.96,-26.85 950.96,-49.15 812.73,-60 622.36,-60 484.13,-49.15 484.13,-26.85 622.36,-16 812.73,-16 950.96,-26.85"/>
 <text text-anchor="middle" x="717.54" y="-34.9" font-family="Helvetica" font-size="12.00">ScannerCorrectness.skipSpaces_preserves_simpleKeyStack</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerCorrectness.skipSpaces_preserves_simpleKeyStack&#45;&gt;L4YAML.Scanner.skipSpaces -->
 <g id="edge2" class="edge">
@@ -100,9 +118,12 @@
 <!-- L4YAML.Proofs.ScannerCorrectness.skipSpacesLoop_preserves_simpleKeyStack -->
 <g id="node7" class="node">
 <title>L4YAML.Proofs.ScannerCorrectness.skipSpacesLoop_preserves_simpleKeyStack</title>
+<g id="a_node7"><a xlink:href="../../../api/L4YAML/Proofs/ScannerCorrectness.html#L4YAML.Proofs.ScannerCorrectness.skipSpacesLoop_preserves_simpleKeyStack" xlink:title="ScannerCorrectness.skipSpacesLoop_preserves_simpleKeyStack\n(ScannerCorrectness)" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="231.67" cy="-202" rx="215.84" ry="21.43"/>
 <text text-anchor="middle" x="231.67" y="-205" font-family="Helvetica" font-size="10.00">ScannerCorrectness.skipSpacesLoop_preserves_simpleKeyStack</text>
 <text text-anchor="middle" x="231.67" y="-194" font-family="Helvetica" font-size="10.00">(ScannerCorrectness)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerCorrectness.skipSpacesLoop_preserves_simpleKeyStack&#45;&gt;L4YAML.Scanner.ScannerState -->
 <g id="edge8" class="edge">

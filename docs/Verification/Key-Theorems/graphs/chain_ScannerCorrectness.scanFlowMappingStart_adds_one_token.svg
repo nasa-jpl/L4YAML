@@ -24,14 +24,20 @@
 <!-- L4YAML.Scanner.ScannerState.advance -->
 <g id="node1" class="node">
 <title>L4YAML.Scanner.ScannerState.advance</title>
+<g id="a_node1"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.advance" xlink:title="ScannerState.advance" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="527.5,-133 412.5,-133 412.5,-97 527.5,-97 527.5,-133"/>
 <text text-anchor="middle" x="470" y="-112.5" font-family="Helvetica" font-size="10.00">ScannerState.advance</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.scanFlowMappingStart -->
 <g id="node2" class="node">
 <title>L4YAML.Scanner.scanFlowMappingStart</title>
+<g id="a_node2"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.scanFlowMappingStart" xlink:title="scanFlowMappingStart" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="581.5,-214 464.5,-214 464.5,-178 581.5,-178 581.5,-214"/>
 <text text-anchor="middle" x="523" y="-193.5" font-family="Helvetica" font-size="10.00">scanFlowMappingStart</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.scanFlowMappingStart&#45;&gt;L4YAML.Scanner.ScannerState.advance -->
 <g id="edge9" class="edge">
@@ -43,8 +49,11 @@
 <!-- L4YAML.Scanner.ScannerState -->
 <g id="node3" class="node">
 <title>L4YAML.Scanner.ScannerState</title>
+<g id="a_node3"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState" xlink:title="ScannerState" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="602,-52 526,-52 526,-16 602,-16 602,-52"/>
 <text text-anchor="middle" x="564" y="-31.5" font-family="Helvetica" font-size="10.00">ScannerState</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.scanFlowMappingStart&#45;&gt;L4YAML.Scanner.ScannerState -->
 <g id="edge8" class="edge">
@@ -56,8 +65,11 @@
 <!-- L4YAML.Scanner.ScannerState.tokens -->
 <g id="node4" class="node">
 <title>L4YAML.Scanner.ScannerState.tokens</title>
+<g id="a_node4"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.tokens" xlink:title="ScannerState.tokens" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="708.5,-133 601.5,-133 601.5,-97 708.5,-97 708.5,-133"/>
 <text text-anchor="middle" x="655" y="-112.5" font-family="Helvetica" font-size="10.00">ScannerState.tokens</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.scanFlowMappingStart&#45;&gt;L4YAML.Scanner.ScannerState.tokens -->
 <g id="edge2" class="edge">
@@ -76,9 +88,12 @@
 <!-- L4YAML.Proofs.ScannerCorrectness.scanFlowMappingStart_adds_one_token -->
 <g id="node5" class="node">
 <title>L4YAML.Proofs.ScannerCorrectness.scanFlowMappingStart_adds_one_token</title>
+<g id="a_node5"><a xlink:href="../../../api/L4YAML/Proofs/ScannerCorrectness.html#L4YAML.Proofs.ScannerCorrectness.scanFlowMappingStart_adds_one_token" xlink:title="ScannerCorrectness.scanFlowMappingStart_adds_one_token" target="_blank">
 <polygon fill="#fff3cd" stroke="#d4a017" points="383.68,-293.54 383.68,-308.46 277.26,-319 126.74,-319 20.32,-308.46 20.32,-293.54 126.74,-283 277.26,-283 383.68,-293.54"/>
 <polygon fill="none" stroke="#d4a017" points="387.68,-289.92 387.68,-312.08 277.45,-323 126.55,-323 16.32,-312.08 16.32,-289.92 126.55,-279 277.45,-279 387.68,-289.92"/>
 <text text-anchor="middle" x="202" y="-298.5" font-family="Helvetica" font-size="10.00">ScannerCorrectness.scanFlowMappingStart_adds_one_token</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerCorrectness.scanFlowMappingStart_adds_one_token&#45;&gt;L4YAML.Scanner.scanFlowMappingStart -->
 <g id="edge1" class="edge">
@@ -97,8 +112,11 @@
 <!-- L4YAML.Proofs.ScannerCorrectness.advance_preserves_tokens -->
 <g id="node6" class="node">
 <title>L4YAML.Proofs.ScannerCorrectness.advance_preserves_tokens</title>
+<g id="a_node6"><a xlink:href="../../../api/L4YAML/Proofs/ScannerCorrectness.html#L4YAML.Proofs.ScannerCorrectness.advance_preserves_tokens" xlink:title="ScannerCorrectness.advance_preserves_tokens" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="254" cy="-196" rx="133.75" ry="18"/>
 <text text-anchor="middle" x="254" y="-193.5" font-family="Helvetica" font-size="10.00">ScannerCorrectness.advance_preserves_tokens</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerCorrectness.scanFlowMappingStart_adds_one_token&#45;&gt;L4YAML.Proofs.ScannerCorrectness.advance_preserves_tokens -->
 <g id="edge3" class="edge">

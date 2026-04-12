@@ -25,44 +25,62 @@
 <!-- L4YAML.Surface.SSWhite -->
 <g id="node1" class="node">
 <title>L4YAML.Surface.SSWhite</title>
+<g id="a_node1"><a xlink:href="../../../api/L4YAML/Surface/Basic.html#L4YAML.Surface.SSWhite" xlink:title="Surface.SSWhite\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="538.31,-268 445.31,-268 445.31,-232 538.31,-232 538.31,-268"/>
 <text text-anchor="middle" x="491.81" y="-253" font-family="Helvetica" font-size="10.00">Surface.SSWhite</text>
 <text text-anchor="middle" x="491.81" y="-242" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Surface.SSeparateInLine -->
 <g id="node2" class="node">
 <title>L4YAML.Surface.SSeparateInLine</title>
+<g id="a_node2"><a xlink:href="../../../api/L4YAML/Surface/Basic.html#L4YAML.Surface.SSeparateInLine" xlink:title="Surface.SSeparateInLine\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="554.81,-214 428.81,-214 428.81,-178 554.81,-178 554.81,-214"/>
 <text text-anchor="middle" x="491.81" y="-199" font-family="Helvetica" font-size="10.00">Surface.SSeparateInLine</text>
 <text text-anchor="middle" x="491.81" y="-188" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Surface.SurfPos -->
 <g id="node3" class="node">
 <title>L4YAML.Surface.SurfPos</title>
+<g id="a_node3"><a xlink:href="../../../api/L4YAML/Surface/Combinators.html#L4YAML.Surface.SurfPos" xlink:title="Surface.SurfPos\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="536.81,-160 446.81,-160 446.81,-124 536.81,-124 536.81,-160"/>
 <text text-anchor="middle" x="491.81" y="-145" font-family="Helvetica" font-size="10.00">Surface.SurfPos</text>
 <text text-anchor="middle" x="491.81" y="-134" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Surface.GOpt -->
 <g id="node4" class="node">
 <title>L4YAML.Surface.GOpt</title>
+<g id="a_node4"><a xlink:href="../../../api/L4YAML/Surface/Combinators.html#L4YAML.Surface.GOpt" xlink:title="Surface.GOpt\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="530.31,-106 453.31,-106 453.31,-70 530.31,-70 530.31,-106"/>
 <text text-anchor="middle" x="491.81" y="-91" font-family="Helvetica" font-size="10.00">Surface.GOpt</text>
 <text text-anchor="middle" x="491.81" y="-80" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Surface.GStar -->
 <g id="node5" class="node">
 <title>L4YAML.Surface.GStar</title>
+<g id="a_node5"><a xlink:href="../../../api/L4YAML/Surface/Combinators.html#L4YAML.Surface.GStar" xlink:title="Surface.GStar\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="531.81,-52 451.81,-52 451.81,-16 531.81,-16 531.81,-52"/>
 <text text-anchor="middle" x="491.81" y="-37" font-family="Helvetica" font-size="10.00">Surface.GStar</text>
 <text text-anchor="middle" x="491.81" y="-26" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScalarProduction.gstar_sswhite_to_gopt_sep -->
 <g id="node6" class="node">
 <title>L4YAML.Proofs.ScalarProduction.gstar_sswhite_to_gopt_sep</title>
+<g id="a_node6"><a xlink:href="../../../api/L4YAML/Proofs/ScalarProduction.html#L4YAML.Proofs.ScalarProduction.gstar_sswhite_to_gopt_sep" xlink:title="ScalarProduction.gstar_sswhite_to_gopt_sep" target="_blank">
 <polygon fill="#fff3cd" stroke="#d4a017" points="363.72,-134.54 363.72,-149.46 263.08,-160 120.74,-160 20.09,-149.46 20.09,-134.54 120.74,-124 263.08,-124 363.72,-134.54"/>
 <polygon fill="none" stroke="#d4a017" points="367.72,-130.94 367.72,-153.06 263.28,-164 120.53,-164 16.09,-153.06 16.09,-130.94 120.53,-120 263.28,-120 367.72,-130.94"/>
 <text text-anchor="middle" x="191.91" y="-138.9" font-family="Helvetica" font-size="12.00">ScalarProduction.gstar_sswhite_to_gopt_sep</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScalarProduction.gstar_sswhite_to_gopt_sep&#45;&gt;L4YAML.Surface.SSWhite -->
 <g id="edge1" class="edge">

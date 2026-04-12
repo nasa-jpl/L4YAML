@@ -24,20 +24,29 @@
 <!-- L4YAML.CharPredicates.isLineBreakBool -->
 <g id="node1" class="node">
 <title>L4YAML.CharPredicates.isLineBreakBool</title>
+<g id="a_node1"><a xlink:href="../../../api/L4YAML/CharPredicates.html#L4YAML.CharPredicates.isLineBreakBool" xlink:title="CharPredicates.isLineBreakBool" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1710,-52 1552,-52 1552,-16 1710,-16 1710,-52"/>
 <text text-anchor="middle" x="1631" y="-31.5" font-family="Helvetica" font-size="10.00">CharPredicates.isLineBreakBool</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.CharPredicates.isLineBreakProp -->
 <g id="node2" class="node">
 <title>L4YAML.CharPredicates.isLineBreakProp</title>
+<g id="a_node2"><a xlink:href="../../../api/L4YAML/CharPredicates.html#L4YAML.CharPredicates.isLineBreakProp" xlink:title="CharPredicates.isLineBreakProp" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1886,-52 1728,-52 1728,-16 1886,-16 1886,-52"/>
 <text text-anchor="middle" x="1807" y="-31.5" font-family="Helvetica" font-size="10.00">CharPredicates.isLineBreakProp</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.CharPredicates.canStartPlainScalarBool -->
 <g id="node3" class="node">
 <title>L4YAML.CharPredicates.canStartPlainScalarBool</title>
+<g id="a_node3"><a xlink:href="../../../api/L4YAML/CharPredicates.html#L4YAML.CharPredicates.canStartPlainScalarBool" xlink:title="CharPredicates.canStartPlainScalarBool" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1182,-133 988,-133 988,-97 1182,-97 1182,-133"/>
 <text text-anchor="middle" x="1085" y="-112.5" font-family="Helvetica" font-size="10.00">CharPredicates.canStartPlainScalarBool</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.CharPredicates.canStartPlainScalarBool&#45;&gt;L4YAML.CharPredicates.isLineBreakBool -->
 <g id="edge6" class="edge">
@@ -49,8 +58,11 @@
 <!-- L4YAML.CharPredicates.isIndicatorBool -->
 <g id="node8" class="node">
 <title>L4YAML.CharPredicates.isIndicatorBool</title>
+<g id="a_node8"><a xlink:href="../../../api/L4YAML/CharPredicates.html#L4YAML.CharPredicates.isIndicatorBool" xlink:title="CharPredicates.isIndicatorBool" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="980,-52 828,-52 828,-16 980,-16 980,-52"/>
 <text text-anchor="middle" x="904" y="-31.5" font-family="Helvetica" font-size="10.00">CharPredicates.isIndicatorBool</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.CharPredicates.canStartPlainScalarBool&#45;&gt;L4YAML.CharPredicates.isIndicatorBool -->
 <g id="edge15" class="edge">
@@ -62,8 +74,11 @@
 <!-- L4YAML.CharPredicates.isFlowIndicatorBool -->
 <g id="node9" class="node">
 <title>L4YAML.CharPredicates.isFlowIndicatorBool</title>
+<g id="a_node9"><a xlink:href="../../../api/L4YAML/CharPredicates.html#L4YAML.CharPredicates.isFlowIndicatorBool" xlink:title="CharPredicates.isFlowIndicatorBool" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1171.5,-52 998.5,-52 998.5,-16 1171.5,-16 1171.5,-52"/>
 <text text-anchor="middle" x="1085" y="-31.5" font-family="Helvetica" font-size="10.00">CharPredicates.isFlowIndicatorBool</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.CharPredicates.canStartPlainScalarBool&#45;&gt;L4YAML.CharPredicates.isFlowIndicatorBool -->
 <g id="edge9" class="edge">
@@ -75,8 +90,11 @@
 <!-- L4YAML.CharPredicates.isWhiteSpaceBool -->
 <g id="node10" class="node">
 <title>L4YAML.CharPredicates.isWhiteSpaceBool</title>
+<g id="a_node10"><a xlink:href="../../../api/L4YAML/CharPredicates.html#L4YAML.CharPredicates.isWhiteSpaceBool" xlink:title="CharPredicates.isWhiteSpaceBool" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="2071.5,-52 1904.5,-52 1904.5,-16 2071.5,-16 2071.5,-52"/>
 <text text-anchor="middle" x="1988" y="-31.5" font-family="Helvetica" font-size="10.00">CharPredicates.isWhiteSpaceBool</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.CharPredicates.canStartPlainScalarBool&#45;&gt;L4YAML.CharPredicates.isWhiteSpaceBool -->
 <g id="edge12" class="edge">
@@ -88,14 +106,20 @@
 <!-- L4YAML.CharPredicates.isWhiteSpaceProp -->
 <g id="node4" class="node">
 <title>L4YAML.CharPredicates.isWhiteSpaceProp</title>
+<g id="a_node4"><a xlink:href="../../../api/L4YAML/CharPredicates.html#L4YAML.CharPredicates.isWhiteSpaceProp" xlink:title="CharPredicates.isWhiteSpaceProp" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="2258,-52 2090,-52 2090,-16 2258,-16 2258,-52"/>
 <text text-anchor="middle" x="2174" y="-31.5" font-family="Helvetica" font-size="10.00">CharPredicates.isWhiteSpaceProp</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.CharPredicates.canStartPlainScalarProp -->
 <g id="node5" class="node">
 <title>L4YAML.CharPredicates.canStartPlainScalarProp</title>
+<g id="a_node5"><a xlink:href="../../../api/L4YAML/CharPredicates.html#L4YAML.CharPredicates.canStartPlainScalarProp" xlink:title="CharPredicates.canStartPlainScalarProp" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1544,-133 1350,-133 1350,-97 1544,-97 1544,-133"/>
 <text text-anchor="middle" x="1447" y="-112.5" font-family="Helvetica" font-size="10.00">CharPredicates.canStartPlainScalarProp</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.CharPredicates.canStartPlainScalarProp&#45;&gt;L4YAML.CharPredicates.isLineBreakProp -->
 <g id="edge17" class="edge">
@@ -114,8 +138,11 @@
 <!-- L4YAML.CharPredicates.isFlowIndicatorProp -->
 <g id="node6" class="node">
 <title>L4YAML.CharPredicates.isFlowIndicatorProp</title>
+<g id="a_node6"><a xlink:href="../../../api/L4YAML/CharPredicates.html#L4YAML.CharPredicates.isFlowIndicatorProp" xlink:title="CharPredicates.isFlowIndicatorProp" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1533.5,-52 1360.5,-52 1360.5,-16 1533.5,-16 1533.5,-52"/>
 <text text-anchor="middle" x="1447" y="-31.5" font-family="Helvetica" font-size="10.00">CharPredicates.isFlowIndicatorProp</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.CharPredicates.canStartPlainScalarProp&#45;&gt;L4YAML.CharPredicates.isFlowIndicatorProp -->
 <g id="edge19" class="edge">
@@ -127,8 +154,11 @@
 <!-- L4YAML.CharPredicates.isIndicatorProp -->
 <g id="node7" class="node">
 <title>L4YAML.CharPredicates.isIndicatorProp</title>
+<g id="a_node7"><a xlink:href="../../../api/L4YAML/CharPredicates.html#L4YAML.CharPredicates.isIndicatorProp" xlink:title="CharPredicates.isIndicatorProp" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1342,-52 1190,-52 1190,-16 1342,-16 1342,-52"/>
 <text text-anchor="middle" x="1266" y="-31.5" font-family="Helvetica" font-size="10.00">CharPredicates.isIndicatorProp</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.CharPredicates.canStartPlainScalarProp&#45;&gt;L4YAML.CharPredicates.isIndicatorProp -->
 <g id="edge2" class="edge">
@@ -140,8 +170,11 @@
 <!-- L4YAML.CharPredicates.isLineBreak_iff -->
 <g id="node11" class="node">
 <title>L4YAML.CharPredicates.isLineBreak_iff</title>
+<g id="a_node11"><a xlink:href="../../../api/L4YAML/CharPredicates.html#L4YAML.CharPredicates.isLineBreak_iff" xlink:title="CharPredicates.isLineBreak_iff" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="507" cy="-115" rx="88.78" ry="18"/>
 <text text-anchor="middle" x="507" y="-112.5" font-family="Helvetica" font-size="10.00">CharPredicates.isLineBreak_iff</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.CharPredicates.isLineBreak_iff&#45;&gt;L4YAML.CharPredicates.isLineBreakBool -->
 <g id="edge8" class="edge">
@@ -160,8 +193,11 @@
 <!-- L4YAML.CharPredicates.isWhiteSpace_iff -->
 <g id="node12" class="node">
 <title>L4YAML.CharPredicates.isWhiteSpace_iff</title>
+<g id="a_node12"><a xlink:href="../../../api/L4YAML/CharPredicates.html#L4YAML.CharPredicates.isWhiteSpace_iff" xlink:title="CharPredicates.isWhiteSpace_iff" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="709" cy="-115" rx="94.55" ry="18"/>
 <text text-anchor="middle" x="709" y="-112.5" font-family="Helvetica" font-size="10.00">CharPredicates.isWhiteSpace_iff</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.CharPredicates.isWhiteSpace_iff&#45;&gt;L4YAML.CharPredicates.isWhiteSpaceProp -->
 <g id="edge22" class="edge">
@@ -180,9 +216,12 @@
 <!-- L4YAML.CharPredicates.canStartPlainScalar_iff -->
 <g id="node13" class="node">
 <title>L4YAML.CharPredicates.canStartPlainScalar_iff</title>
+<g id="a_node13"><a xlink:href="../../../api/L4YAML/CharPredicates.html#L4YAML.CharPredicates.canStartPlainScalar_iff" xlink:title="CharPredicates.canStartPlainScalar_iff" target="_blank">
 <polygon fill="#fff3cd" stroke="#d4a017" points="687.29,-212.54 687.29,-227.46 617.41,-238 518.59,-238 448.71,-227.46 448.71,-212.54 518.59,-202 617.41,-202 687.29,-212.54"/>
 <polygon fill="none" stroke="#d4a017" points="691.3,-209.1 691.3,-230.9 617.71,-242 518.29,-242 444.7,-230.9 444.7,-209.1 518.29,-198 617.71,-198 691.3,-209.1"/>
 <text text-anchor="middle" x="568" y="-217.5" font-family="Helvetica" font-size="10.00">CharPredicates.canStartPlainScalar_iff</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.CharPredicates.canStartPlainScalar_iff&#45;&gt;L4YAML.CharPredicates.canStartPlainScalarBool -->
 <g id="edge5" class="edge">
@@ -215,8 +254,11 @@
 <!-- L4YAML.CharPredicates.isIndicator_iff -->
 <g id="node14" class="node">
 <title>L4YAML.CharPredicates.isIndicator_iff</title>
+<g id="a_node14"><a xlink:href="../../../api/L4YAML/CharPredicates.html#L4YAML.CharPredicates.isIndicator_iff" xlink:title="CharPredicates.isIndicator_iff" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="101" cy="-115" rx="85.21" ry="18"/>
 <text text-anchor="middle" x="101" y="-112.5" font-family="Helvetica" font-size="10.00">CharPredicates.isIndicator_iff</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.CharPredicates.canStartPlainScalar_iff&#45;&gt;L4YAML.CharPredicates.isIndicator_iff -->
 <g id="edge3" class="edge">
@@ -228,8 +270,11 @@
 <!-- L4YAML.CharPredicates.isFlowIndicator_iff -->
 <g id="node15" class="node">
 <title>L4YAML.CharPredicates.isFlowIndicator_iff</title>
+<g id="a_node15"><a xlink:href="../../../api/L4YAML/CharPredicates.html#L4YAML.CharPredicates.isFlowIndicator_iff" xlink:title="CharPredicates.isFlowIndicator_iff" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="302" cy="-115" rx="97.94" ry="18"/>
 <text text-anchor="middle" x="302" y="-112.5" font-family="Helvetica" font-size="10.00">CharPredicates.isFlowIndicator_iff</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.CharPredicates.canStartPlainScalar_iff&#45;&gt;L4YAML.CharPredicates.isFlowIndicator_iff -->
 <g id="edge10" class="edge">

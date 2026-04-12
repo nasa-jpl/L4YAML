@@ -25,30 +25,42 @@
 <!-- L4YAML.YamlValue -->
 <g id="node1" class="node">
 <title>L4YAML.YamlValue</title>
+<g id="a_node1"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.YamlValue" xlink:title="YamlValue\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="414.87,-160 352.87,-160 352.87,-124 414.87,-124 414.87,-160"/>
 <text text-anchor="middle" x="383.87" y="-145" font-family="Helvetica" font-size="10.00">YamlValue</text>
 <text text-anchor="middle" x="383.87" y="-134" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Grammar.ValidNode -->
 <g id="node2" class="node">
 <title>L4YAML.Grammar.ValidNode</title>
+<g id="a_node2"><a xlink:href="../../../api/L4YAML/Grammar.html#L4YAML.Grammar.ValidNode" xlink:title="Grammar.ValidNode\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="435.87,-106 331.87,-106 331.87,-70 435.87,-70 435.87,-106"/>
 <text text-anchor="middle" x="383.87" y="-91" font-family="Helvetica" font-size="10.00">Grammar.ValidNode</text>
 <text text-anchor="middle" x="383.87" y="-80" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Grammar.NodeToValue -->
 <g id="node3" class="node">
 <title>L4YAML.Grammar.NodeToValue</title>
+<g id="a_node3"><a xlink:href="../../../api/L4YAML/Grammar.html#L4YAML.Grammar.NodeToValue" xlink:title="Grammar.NodeToValue\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="442.87,-52 324.87,-52 324.87,-16 442.87,-16 442.87,-52"/>
 <text text-anchor="middle" x="383.87" y="-37" font-family="Helvetica" font-size="10.00">Grammar.NodeToValue</text>
 <text text-anchor="middle" x="383.87" y="-26" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.Soundness.nodeToValue_total -->
 <g id="node4" class="node">
 <title>L4YAML.Proofs.Soundness.nodeToValue_total</title>
+<g id="a_node4"><a xlink:href="../../../api/L4YAML/Proofs/Soundness.html#L4YAML.Proofs.Soundness.nodeToValue_total" xlink:title="Soundness.nodeToValue_total" target="_blank">
 <polygon fill="#fff3cd" stroke="#d4a017" points="259.81,-80.54 259.81,-95.46 189.59,-106 90.28,-106 20.06,-95.46 20.06,-80.54 90.28,-70 189.59,-70 259.81,-80.54"/>
 <polygon fill="none" stroke="#d4a017" points="263.81,-77.1 263.81,-98.9 189.89,-110 89.98,-110 16.06,-98.9 16.06,-77.1 89.98,-66 189.89,-66 263.81,-77.1"/>
 <text text-anchor="middle" x="139.94" y="-84.9" font-family="Helvetica" font-size="12.00">Soundness.nodeToValue_total</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.Soundness.nodeToValue_total&#45;&gt;L4YAML.YamlValue -->
 <g id="edge3" class="edge">

@@ -25,51 +25,72 @@
 <!-- L4YAML.Scanner.ScannerState -->
 <g id="node1" class="node">
 <title>L4YAML.Scanner.ScannerState</title>
+<g id="a_node1"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState" xlink:title="ScannerState\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="615.94,-322 539.94,-322 539.94,-286 615.94,-286 615.94,-322"/>
 <text text-anchor="middle" x="577.94" y="-307" font-family="Helvetica" font-size="10.00">ScannerState</text>
 <text text-anchor="middle" x="577.94" y="-296" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.YamlToken -->
 <g id="node2" class="node">
 <title>L4YAML.YamlToken</title>
+<g id="a_node2"><a xlink:href="../../../api/L4YAML/Token.html#L4YAML.YamlToken" xlink:title="YamlToken\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="609.94,-268 545.94,-268 545.94,-232 609.94,-232 609.94,-268"/>
 <text text-anchor="middle" x="577.94" y="-253" font-family="Helvetica" font-size="10.00">YamlToken</text>
 <text text-anchor="middle" x="577.94" y="-242" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.YamlPos -->
 <g id="node3" class="node">
 <title>L4YAML.YamlPos</title>
+<g id="a_node3"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.YamlPos" xlink:title="YamlPos\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="608.94,-214 546.94,-214 546.94,-178 608.94,-178 608.94,-214"/>
 <text text-anchor="middle" x="577.94" y="-199" font-family="Helvetica" font-size="10.00">YamlPos</text>
 <text text-anchor="middle" x="577.94" y="-188" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.simpleKeyStack -->
 <g id="node4" class="node">
 <title>L4YAML.Scanner.ScannerState.simpleKeyStack</title>
+<g id="a_node4"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.simpleKeyStack" xlink:title="ScannerState.simpleKeyStack\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="652.44,-160 503.44,-160 503.44,-124 652.44,-124 652.44,-160"/>
 <text text-anchor="middle" x="577.94" y="-145" font-family="Helvetica" font-size="10.00">ScannerState.simpleKeyStack</text>
 <text text-anchor="middle" x="577.94" y="-134" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.emitAt -->
 <g id="node5" class="node">
 <title>L4YAML.Scanner.ScannerState.emitAt</title>
+<g id="a_node5"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.emitAt" xlink:title="ScannerState.emitAt\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="631.44,-106 524.44,-106 524.44,-70 631.44,-70 631.44,-106"/>
 <text text-anchor="middle" x="577.94" y="-91" font-family="Helvetica" font-size="10.00">ScannerState.emitAt</text>
 <text text-anchor="middle" x="577.94" y="-80" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.SimpleKeyState -->
 <g id="node6" class="node">
 <title>L4YAML.Scanner.SimpleKeyState</title>
+<g id="a_node6"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.SimpleKeyState" xlink:title="SimpleKeyState\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="620.94,-52 534.94,-52 534.94,-16 620.94,-16 620.94,-52"/>
 <text text-anchor="middle" x="577.94" y="-37" font-family="Helvetica" font-size="10.00">SimpleKeyState</text>
 <text text-anchor="middle" x="577.94" y="-26" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerCorrectness.emitAt_preserves_simpleKeyStack -->
 <g id="node7" class="node">
 <title>L4YAML.Proofs.ScannerCorrectness.emitAt_preserves_simpleKeyStack</title>
+<g id="a_node7"><a xlink:href="../../../api/L4YAML/Proofs/ScannerCorrectness.html#L4YAML.Proofs.ScannerCorrectness.emitAt_preserves_simpleKeyStack" xlink:title="ScannerCorrectness.emitAt_preserves_simpleKeyStack" target="_blank">
 <polygon fill="#fff3cd" stroke="#d4a017" points="438.66,-160.54 438.66,-175.46 315.97,-186 142.47,-186 19.78,-175.46 19.78,-160.54 142.47,-150 315.97,-150 438.66,-160.54"/>
 <polygon fill="none" stroke="#d4a017" points="442.66,-156.87 442.66,-179.13 316.14,-190 142.3,-190 15.78,-179.13 15.78,-156.87 142.3,-146 316.14,-146 442.66,-156.87"/>
 <text text-anchor="middle" x="229.22" y="-164.9" font-family="Helvetica" font-size="12.00">ScannerCorrectness.emitAt_preserves_simpleKeyStack</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerCorrectness.emitAt_preserves_simpleKeyStack&#45;&gt;L4YAML.Scanner.ScannerState -->
 <g id="edge4" class="edge">

@@ -35,93 +35,132 @@
 <!-- L4YAML.Proofs.ScannerPlainScalarValid.AllKeysPlaceholderInv -->
 <g id="node1" class="node">
 <title>L4YAML.Proofs.ScannerPlainScalarValid.AllKeysPlaceholderInv</title>
+<g id="a_node1"><a xlink:href="../../../api/L4YAML/Proofs/ScannerPlainScalarValid.html#L4YAML.Proofs.ScannerPlainScalarValid.AllKeysPlaceholderInv" xlink:title="ScannerPlainScalarValid.AllKeysPlaceholderInv\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1642.22,-548.5 1419.22,-548.5 1419.22,-512.5 1642.22,-512.5 1642.22,-548.5"/>
 <text text-anchor="middle" x="1530.72" y="-533.5" font-family="Helvetica" font-size="10.00">ScannerPlainScalarValid.AllKeysPlaceholderInv</text>
 <text text-anchor="middle" x="1530.72" y="-522.5" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.simpleKey -->
 <g id="node2" class="node">
 <title>L4YAML.Scanner.ScannerState.simpleKey</title>
+<g id="a_node2"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.simpleKey" xlink:title="ScannerState.simpleKey\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1592.72,-494.5 1468.72,-494.5 1468.72,-458.5 1592.72,-458.5 1592.72,-494.5"/>
 <text text-anchor="middle" x="1530.72" y="-479.5" font-family="Helvetica" font-size="10.00">ScannerState.simpleKey</text>
 <text text-anchor="middle" x="1530.72" y="-468.5" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Positioned -->
 <g id="node3" class="node">
 <title>L4YAML.Positioned</title>
+<g id="a_node3"><a xlink:href="../../../api/L4YAML/Token.html#L4YAML.Positioned" xlink:title="Positioned\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1561.72,-440.5 1499.72,-440.5 1499.72,-404.5 1561.72,-404.5 1561.72,-440.5"/>
 <text text-anchor="middle" x="1530.72" y="-425.5" font-family="Helvetica" font-size="10.00">Positioned</text>
 <text text-anchor="middle" x="1530.72" y="-414.5" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerPlainScalarValid.SimpleKeyStackPlaceholderInv -->
 <g id="node4" class="node">
 <title>L4YAML.Proofs.ScannerPlainScalarValid.SimpleKeyStackPlaceholderInv</title>
+<g id="a_node4"><a xlink:href="../../../api/L4YAML/Proofs/ScannerPlainScalarValid.html#L4YAML.Proofs.ScannerPlainScalarValid.SimpleKeyStackPlaceholderInv" xlink:title="ScannerPlainScalarValid.SimpleKeyStackPlaceholderInv\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1279.17,-746.5 1016.17,-746.5 1016.17,-710.5 1279.17,-710.5 1279.17,-746.5"/>
 <text text-anchor="middle" x="1147.67" y="-731.5" font-family="Helvetica" font-size="10.00">ScannerPlainScalarValid.SimpleKeyStackPlaceholderInv</text>
 <text text-anchor="middle" x="1147.67" y="-720.5" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState -->
 <g id="node5" class="node">
 <title>L4YAML.Scanner.ScannerState</title>
+<g id="a_node5"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState" xlink:title="ScannerState\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1568.72,-602.5 1492.72,-602.5 1492.72,-566.5 1568.72,-566.5 1568.72,-602.5"/>
 <text text-anchor="middle" x="1530.72" y="-587.5" font-family="Helvetica" font-size="10.00">ScannerState</text>
 <text text-anchor="middle" x="1530.72" y="-576.5" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.YamlToken -->
 <g id="node6" class="node">
 <title>L4YAML.YamlToken</title>
+<g id="a_node6"><a xlink:href="../../../api/L4YAML/Token.html#L4YAML.YamlToken" xlink:title="YamlToken\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1562.72,-710.5 1498.72,-710.5 1498.72,-674.5 1562.72,-674.5 1562.72,-710.5"/>
 <text text-anchor="middle" x="1530.72" y="-695.5" font-family="Helvetica" font-size="10.00">YamlToken</text>
 <text text-anchor="middle" x="1530.72" y="-684.5" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerPlainScalarValid.SimpleKeyPlaceholderInv -->
 <g id="node7" class="node">
 <title>L4YAML.Proofs.ScannerPlainScalarValid.SimpleKeyPlaceholderInv</title>
+<g id="a_node7"><a xlink:href="../../../api/L4YAML/Proofs/ScannerPlainScalarValid.html#L4YAML.Proofs.ScannerPlainScalarValid.SimpleKeyPlaceholderInv" xlink:title="ScannerPlainScalarValid.SimpleKeyPlaceholderInv\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1266.17,-584.5 1029.17,-584.5 1029.17,-548.5 1266.17,-548.5 1266.17,-584.5"/>
 <text text-anchor="middle" x="1147.67" y="-569.5" font-family="Helvetica" font-size="10.00">ScannerPlainScalarValid.SimpleKeyPlaceholderInv</text>
 <text text-anchor="middle" x="1147.67" y="-558.5" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerPlainScalarValid.SimpleKeyTokenDisjoint -->
 <g id="node8" class="node">
 <title>L4YAML.Proofs.ScannerPlainScalarValid.SimpleKeyTokenDisjoint</title>
+<g id="a_node8"><a xlink:href="../../../api/L4YAML/Proofs/ScannerPlainScalarValid.html#L4YAML.Proofs.ScannerPlainScalarValid.SimpleKeyTokenDisjoint" xlink:title="ScannerPlainScalarValid.SimpleKeyTokenDisjoint\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1263.17,-638.5 1032.17,-638.5 1032.17,-602.5 1263.17,-602.5 1263.17,-638.5"/>
 <text text-anchor="middle" x="1147.67" y="-623.5" font-family="Helvetica" font-size="10.00">ScannerPlainScalarValid.SimpleKeyTokenDisjoint</text>
 <text text-anchor="middle" x="1147.67" y="-612.5" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.simpleKeyStack -->
 <g id="node9" class="node">
 <title>L4YAML.Scanner.ScannerState.simpleKeyStack</title>
+<g id="a_node9"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.simpleKeyStack" xlink:title="ScannerState.simpleKeyStack\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1605.22,-764.5 1456.22,-764.5 1456.22,-728.5 1605.22,-728.5 1605.22,-764.5"/>
 <text text-anchor="middle" x="1530.72" y="-749.5" font-family="Helvetica" font-size="10.00">ScannerState.simpleKeyStack</text>
 <text text-anchor="middle" x="1530.72" y="-738.5" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerPlainScalarValid.SimpleKeyStackOrdering -->
 <g id="node10" class="node">
 <title>L4YAML.Proofs.ScannerPlainScalarValid.SimpleKeyStackOrdering</title>
+<g id="a_node10"><a xlink:href="../../../api/L4YAML/Proofs/ScannerPlainScalarValid.html#L4YAML.Proofs.ScannerPlainScalarValid.SimpleKeyStackOrdering" xlink:title="ScannerPlainScalarValid.SimpleKeyStackOrdering\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1265.17,-692.5 1030.17,-692.5 1030.17,-656.5 1265.17,-656.5 1265.17,-692.5"/>
 <text text-anchor="middle" x="1147.67" y="-677.5" font-family="Helvetica" font-size="10.00">ScannerPlainScalarValid.SimpleKeyStackOrdering</text>
 <text text-anchor="middle" x="1147.67" y="-666.5" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.tokens -->
 <g id="node11" class="node">
 <title>L4YAML.Scanner.ScannerState.tokens</title>
+<g id="a_node11"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.tokens" xlink:title="ScannerState.tokens\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1584.22,-656.5 1477.22,-656.5 1477.22,-620.5 1584.22,-620.5 1584.22,-656.5"/>
 <text text-anchor="middle" x="1530.72" y="-641.5" font-family="Helvetica" font-size="10.00">ScannerState.tokens</text>
 <text text-anchor="middle" x="1530.72" y="-630.5" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.SimpleKeyState -->
 <g id="node12" class="node">
 <title>L4YAML.Scanner.SimpleKeyState</title>
+<g id="a_node12"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.SimpleKeyState" xlink:title="SimpleKeyState\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1573.72,-818.5 1487.72,-818.5 1487.72,-782.5 1573.72,-782.5 1573.72,-818.5"/>
 <text text-anchor="middle" x="1530.72" y="-803.5" font-family="Helvetica" font-size="10.00">SimpleKeyState</text>
 <text text-anchor="middle" x="1530.72" y="-792.5" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerPlainScalarValid.AllKeysPlaceholderInv_mono -->
 <g id="node13" class="node">
 <title>L4YAML.Proofs.ScannerPlainScalarValid.AllKeysPlaceholderInv_mono</title>
+<g id="a_node13"><a xlink:href="../../../api/L4YAML/Proofs/ScannerPlainScalarValid.html#L4YAML.Proofs.ScannerPlainScalarValid.AllKeysPlaceholderInv_mono" xlink:title="ScannerPlainScalarValid.AllKeysPlaceholderInv_mono" target="_blank">
 <polygon fill="#fff3cd" stroke="#d4a017" points="1354.28,-329.04 1354.28,-343.95 1233.25,-354.5 1062.09,-354.5 941.06,-343.95 941.06,-329.04 1062.09,-318.5 1233.25,-318.5 1354.28,-329.04"/>
 <polygon fill="none" stroke="#d4a017" points="1358.28,-325.37 1358.28,-347.62 1233.42,-358.5 1061.91,-358.5 937.06,-347.62 937.06,-325.37 1061.91,-314.5 1233.42,-314.5 1358.28,-325.37"/>
 <text text-anchor="middle" x="1147.67" y="-333.4" font-family="Helvetica" font-size="12.00">ScannerPlainScalarValid.AllKeysPlaceholderInv_mono</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerPlainScalarValid.AllKeysPlaceholderInv_mono&#45;&gt;L4YAML.Proofs.ScannerPlainScalarValid.AllKeysPlaceholderInv -->
 <g id="edge6" class="edge">
@@ -182,9 +221,12 @@
 <!-- L4YAML.Proofs.ScannerPlainScalarValid.SimpleKeyTokenDisjoint_mono -->
 <g id="node14" class="node">
 <title>L4YAML.Proofs.ScannerPlainScalarValid.SimpleKeyTokenDisjoint_mono</title>
+<g id="a_node14"><a xlink:href="../../../api/L4YAML/Proofs/ScannerPlainScalarValid.html#L4YAML.Proofs.ScannerPlainScalarValid.SimpleKeyTokenDisjoint_mono" xlink:title="ScannerPlainScalarValid.SimpleKeyTokenDisjoint_mono\n(ScannerPlainScalarValid)" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="693.64" cy="-518.5" rx="183.7" ry="21.43"/>
 <text text-anchor="middle" x="693.64" y="-521.5" font-family="Helvetica" font-size="10.00">ScannerPlainScalarValid.SimpleKeyTokenDisjoint_mono</text>
 <text text-anchor="middle" x="693.64" y="-510.5" font-family="Helvetica" font-size="10.00">(ScannerPlainScalarValid)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerPlainScalarValid.SimpleKeyTokenDisjoint_mono&#45;&gt;L4YAML.Scanner.ScannerState.simpleKey -->
 <g id="edge18" class="edge">
@@ -225,9 +267,12 @@
 <!-- L4YAML.Proofs.ScannerPlainScalarValid.SimpleKeyPlaceholderInv_mono._proof_1 -->
 <g id="node15" class="node">
 <title>L4YAML.Proofs.ScannerPlainScalarValid.SimpleKeyPlaceholderInv_mono._proof_1</title>
+<g id="a_node15"><a xlink:href="../../../api/L4YAML/Proofs/ScannerPlainScalarValid.html#L4YAML.Proofs.ScannerPlainScalarValid.SimpleKeyPlaceholderInv_mono._proof_1" xlink:title="ScannerPlainScalarValid.SimpleKeyPlaceholderInv_mono._proof_1\n(ScannerPlainScalarValid)" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="233.08" cy="-458.5" rx="217.16" ry="21.43"/>
 <text text-anchor="middle" x="233.08" y="-461.5" font-family="Helvetica" font-size="10.00">ScannerPlainScalarValid.SimpleKeyPlaceholderInv_mono._proof_1</text>
 <text text-anchor="middle" x="233.08" y="-450.5" font-family="Helvetica" font-size="10.00">(ScannerPlainScalarValid)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerPlainScalarValid.SimpleKeyPlaceholderInv_mono._proof_1&#45;&gt;L4YAML.Positioned -->
 <g id="edge21" class="edge">
@@ -262,9 +307,12 @@
 <!-- L4YAML.Proofs.ScannerPlainScalarValid.SimpleKeyPlaceholderInv_mono -->
 <g id="node16" class="node">
 <title>L4YAML.Proofs.ScannerPlainScalarValid.SimpleKeyPlaceholderInv_mono</title>
+<g id="a_node16"><a xlink:href="../../../api/L4YAML/Proofs/ScannerPlainScalarValid.html#L4YAML.Proofs.ScannerPlainScalarValid.SimpleKeyPlaceholderInv_mono" xlink:title="ScannerPlainScalarValid.SimpleKeyPlaceholderInv_mono\n(ScannerPlainScalarValid)" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="693.64" cy="-458.5" rx="188.18" ry="21.43"/>
 <text text-anchor="middle" x="693.64" y="-461.5" font-family="Helvetica" font-size="10.00">ScannerPlainScalarValid.SimpleKeyPlaceholderInv_mono</text>
 <text text-anchor="middle" x="693.64" y="-450.5" font-family="Helvetica" font-size="10.00">(ScannerPlainScalarValid)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerPlainScalarValid.SimpleKeyPlaceholderInv_mono._proof_1&#45;&gt;L4YAML.Proofs.ScannerPlainScalarValid.SimpleKeyPlaceholderInv_mono -->
 <g id="edge42" class="edge">
@@ -275,9 +323,12 @@
 <!-- L4YAML.Proofs.ScannerPlainScalarValid.SimpleKeyStackPlaceholderInv_mono -->
 <g id="node18" class="node">
 <title>L4YAML.Proofs.ScannerPlainScalarValid.SimpleKeyStackPlaceholderInv_mono</title>
+<g id="a_node18"><a xlink:href="../../../api/L4YAML/Proofs/ScannerPlainScalarValid.html#L4YAML.Proofs.ScannerPlainScalarValid.SimpleKeyStackPlaceholderInv_mono" xlink:title="ScannerPlainScalarValid.SimpleKeyStackPlaceholderInv_mono\n(ScannerPlainScalarValid)" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="693.64" cy="-638.5" rx="206.45" ry="21.43"/>
 <text text-anchor="middle" x="693.64" y="-641.5" font-family="Helvetica" font-size="10.00">ScannerPlainScalarValid.SimpleKeyStackPlaceholderInv_mono</text>
 <text text-anchor="middle" x="693.64" y="-630.5" font-family="Helvetica" font-size="10.00">(ScannerPlainScalarValid)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerPlainScalarValid.SimpleKeyPlaceholderInv_mono._proof_1&#45;&gt;L4YAML.Proofs.ScannerPlainScalarValid.SimpleKeyStackPlaceholderInv_mono -->
 <g id="edge43" class="edge">
@@ -336,9 +387,12 @@
 <!-- L4YAML.Proofs.ScannerPlainScalarValid.SimpleKeyStackOrdering_mono -->
 <g id="node17" class="node">
 <title>L4YAML.Proofs.ScannerPlainScalarValid.SimpleKeyStackOrdering_mono</title>
+<g id="a_node17"><a xlink:href="../../../api/L4YAML/Proofs/ScannerPlainScalarValid.html#L4YAML.Proofs.ScannerPlainScalarValid.SimpleKeyStackOrdering_mono" xlink:title="ScannerPlainScalarValid.SimpleKeyStackOrdering_mono\n(ScannerPlainScalarValid)" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="693.64" cy="-578.5" rx="186.85" ry="21.43"/>
 <text text-anchor="middle" x="693.64" y="-581.5" font-family="Helvetica" font-size="10.00">ScannerPlainScalarValid.SimpleKeyStackOrdering_mono</text>
 <text text-anchor="middle" x="693.64" y="-570.5" font-family="Helvetica" font-size="10.00">(ScannerPlainScalarValid)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerPlainScalarValid.SimpleKeyStackOrdering_mono&#45;&gt;L4YAML.Scanner.ScannerState -->
 <g id="edge33" class="edge">
@@ -421,8 +475,11 @@
 <!-- Decidable.byContradiction -->
 <g id="node19" class="node">
 <title>Decidable.byContradiction</title>
+<g id="a_node19"><a xlink:href="../../../api/Init/Core.html#Decidable.byContradiction" xlink:title="Decidable.byContradiction" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="693.64" cy="-218.5" rx="77.23" ry="18"/>
 <text text-anchor="middle" x="693.64" y="-216" font-family="Helvetica" font-size="10.00">Decidable.byContradiction</text>
+</a>
+</g>
 </g>
 <!-- Decidable.byContradiction&#45;&gt;L4YAML.Proofs.ScannerPlainScalarValid.AllKeysPlaceholderInv_mono -->
 <g id="edge14" class="edge">

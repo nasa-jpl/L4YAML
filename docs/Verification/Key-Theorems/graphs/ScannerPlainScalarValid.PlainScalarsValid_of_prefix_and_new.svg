@@ -35,72 +35,102 @@
 <!-- L4YAML.Positioned -->
 <g id="node1" class="node">
 <title>L4YAML.Positioned</title>
+<g id="a_node1"><a xlink:href="../../../api/L4YAML/Token.html#L4YAML.Positioned" xlink:title="Positioned\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1229.74,-106 1167.74,-106 1167.74,-70 1229.74,-70 1229.74,-106"/>
 <text text-anchor="middle" x="1198.74" y="-91" font-family="Helvetica" font-size="10.00">Positioned</text>
 <text text-anchor="middle" x="1198.74" y="-80" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Positioned.val -->
 <g id="node2" class="node">
 <title>L4YAML.Positioned.val</title>
+<g id="a_node2"><a xlink:href="../../../api/L4YAML/Token.html#L4YAML.Positioned.val" xlink:title="Positioned.val\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1237.24,-430 1160.24,-430 1160.24,-394 1237.24,-394 1237.24,-430"/>
 <text text-anchor="middle" x="1198.74" y="-415" font-family="Helvetica" font-size="10.00">Positioned.val</text>
 <text text-anchor="middle" x="1198.74" y="-404" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scalar.mk -->
 <g id="node3" class="node">
 <title>L4YAML.Scalar.mk</title>
+<g id="a_node3"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.Scalar.mk" xlink:title="Scalar.mk\n(ctor)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1229.24,-376 1168.24,-376 1168.24,-340 1229.24,-340 1229.24,-376"/>
 <text text-anchor="middle" x="1198.74" y="-361" font-family="Helvetica" font-size="10.00">Scalar.mk</text>
 <text text-anchor="middle" x="1198.74" y="-350" font-family="Helvetica" font-size="10.00">(ctor)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.YamlToken -->
 <g id="node4" class="node">
 <title>L4YAML.YamlToken</title>
+<g id="a_node4"><a xlink:href="../../../api/L4YAML/Token.html#L4YAML.YamlToken" xlink:title="YamlToken\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1230.74,-52 1166.74,-52 1166.74,-16 1230.74,-16 1230.74,-52"/>
 <text text-anchor="middle" x="1198.74" y="-37" font-family="Helvetica" font-size="10.00">YamlToken</text>
 <text text-anchor="middle" x="1198.74" y="-26" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerPlainScalarValid.PlainScalarsValid -->
 <g id="node5" class="node">
 <title>L4YAML.Proofs.ScannerPlainScalarValid.PlainScalarsValid</title>
+<g id="a_node5"><a xlink:href="../../../api/L4YAML/Proofs/ScannerPlainScalarValid.html#L4YAML.Proofs.ScannerPlainScalarValid.PlainScalarsValid" xlink:title="ScannerPlainScalarValid.PlainScalarsValid\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1300.24,-322 1097.24,-322 1097.24,-286 1300.24,-286 1300.24,-322"/>
 <text text-anchor="middle" x="1198.74" y="-307" font-family="Helvetica" font-size="10.00">ScannerPlainScalarValid.PlainScalarsValid</text>
 <text text-anchor="middle" x="1198.74" y="-296" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.BlockScalarMeta -->
 <g id="node6" class="node">
 <title>L4YAML.BlockScalarMeta</title>
+<g id="a_node6"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.BlockScalarMeta" xlink:title="BlockScalarMeta\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1244.24,-268 1153.24,-268 1153.24,-232 1244.24,-232 1244.24,-268"/>
 <text text-anchor="middle" x="1198.74" y="-253" font-family="Helvetica" font-size="10.00">BlockScalarMeta</text>
 <text text-anchor="middle" x="1198.74" y="-242" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.ScalarStyle.plain -->
 <g id="node7" class="node">
 <title>L4YAML.ScalarStyle.plain</title>
+<g id="a_node7"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.ScalarStyle.plain" xlink:title="ScalarStyle.plain\n(ctor)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1243.74,-214 1153.74,-214 1153.74,-178 1243.74,-178 1243.74,-214"/>
 <text text-anchor="middle" x="1198.74" y="-199" font-family="Helvetica" font-size="10.00">ScalarStyle.plain</text>
 <text text-anchor="middle" x="1198.74" y="-188" font-family="Helvetica" font-size="10.00">(ctor)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Grammar.ScalarScannable -->
 <g id="node8" class="node">
 <title>L4YAML.Grammar.ScalarScannable</title>
+<g id="a_node8"><a xlink:href="../../../api/L4YAML/Grammar.html#L4YAML.Grammar.ScalarScannable" xlink:title="Grammar.ScalarScannable\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1265.74,-160 1131.74,-160 1131.74,-124 1265.74,-124 1265.74,-160"/>
 <text text-anchor="middle" x="1198.74" y="-145" font-family="Helvetica" font-size="10.00">Grammar.ScalarScannable</text>
 <text text-anchor="middle" x="1198.74" y="-134" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerPlainScalarValid.PlainScalarsValid.match_1 -->
 <g id="node9" class="node">
 <title>L4YAML.Proofs.ScannerPlainScalarValid.PlainScalarsValid.match_1</title>
+<g id="a_node9"><a xlink:href="../../../api/L4YAML/Proofs/ScannerPlainScalarValid.html#L4YAML.Proofs.ScannerPlainScalarValid.PlainScalarsValid.match_1" xlink:title="ScannerPlainScalarValid.PlainScalarsValid.match_1\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1320.24,-484 1077.24,-484 1077.24,-448 1320.24,-448 1320.24,-484"/>
 <text text-anchor="middle" x="1198.74" y="-469" font-family="Helvetica" font-size="10.00">ScannerPlainScalarValid.PlainScalarsValid.match_1</text>
 <text text-anchor="middle" x="1198.74" y="-458" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerPlainScalarValid.PlainScalarsValid_of_prefix_and_new -->
 <g id="node10" class="node">
 <title>L4YAML.Proofs.ScannerPlainScalarValid.PlainScalarsValid_of_prefix_and_new</title>
+<g id="a_node10"><a xlink:href="../../../api/L4YAML/Proofs/ScannerPlainScalarValid.html#L4YAML.Proofs.ScannerPlainScalarValid.PlainScalarsValid_of_prefix_and_new" xlink:title="ScannerPlainScalarValid.PlainScalarsValid_of_prefix_and_new" target="_blank">
 <polygon fill="#fff3cd" stroke="#d4a017" points="1012.44,-210.54 1012.44,-225.46 873.37,-236 676.7,-236 537.63,-225.46 537.63,-210.54 676.7,-200 873.37,-200 1012.44,-210.54"/>
 <polygon fill="none" stroke="#d4a017" points="1016.45,-206.84 1016.45,-229.16 873.53,-240 676.55,-240 533.63,-229.16 533.63,-206.84 676.55,-196 873.53,-196 1016.45,-206.84"/>
 <text text-anchor="middle" x="775.04" y="-214.9" font-family="Helvetica" font-size="12.00">ScannerPlainScalarValid.PlainScalarsValid_of_prefix_and_new</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerPlainScalarValid.PlainScalarsValid_of_prefix_and_new&#45;&gt;L4YAML.Positioned -->
 <g id="edge3" class="edge">
@@ -168,9 +198,12 @@
 <!-- L4YAML.Proofs.ScannerPlainScalarValid.PlainScalarsValid_of_prefix_and_new._proof_1_1 -->
 <g id="node11" class="node">
 <title>L4YAML.Proofs.ScannerPlainScalarValid.PlainScalarsValid_of_prefix_and_new._proof_1_1</title>
+<g id="a_node11"><a xlink:href="../../../api/L4YAML/Proofs/ScannerPlainScalarValid.html#L4YAML.Proofs.ScannerPlainScalarValid.PlainScalarsValid_of_prefix_and_new._proof_1_1" xlink:title="ScannerPlainScalarValid.PlainScalarsValid_of_prefix_and_new._proof_1_1\n(ScannerPlainScalarValid)" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="256.42" cy="-53" rx="240.33" ry="21.43"/>
 <text text-anchor="middle" x="256.42" y="-56" font-family="Helvetica" font-size="10.00">ScannerPlainScalarValid.PlainScalarsValid_of_prefix_and_new._proof_1_1</text>
 <text text-anchor="middle" x="256.42" y="-45" font-family="Helvetica" font-size="10.00">(ScannerPlainScalarValid)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerPlainScalarValid.PlainScalarsValid_of_prefix_and_new._proof_1_1&#45;&gt;L4YAML.Positioned -->
 <g id="edge13" class="edge">
@@ -193,9 +226,12 @@
 <!-- L4YAML.Proofs.ScannerPlainScalarValid.PlainScalarsValid_of_prefix_and_new._proof_1 -->
 <g id="node12" class="node">
 <title>L4YAML.Proofs.ScannerPlainScalarValid.PlainScalarsValid_of_prefix_and_new._proof_1</title>
+<g id="a_node12"><a xlink:href="../../../api/L4YAML/Proofs/ScannerPlainScalarValid.html#L4YAML.Proofs.ScannerPlainScalarValid.PlainScalarsValid_of_prefix_and_new._proof_1" xlink:title="ScannerPlainScalarValid.PlainScalarsValid_of_prefix_and_new._proof_1\n(ScannerPlainScalarValid)" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="256.42" cy="-113" rx="232.78" ry="21.43"/>
 <text text-anchor="middle" x="256.42" y="-116" font-family="Helvetica" font-size="10.00">ScannerPlainScalarValid.PlainScalarsValid_of_prefix_and_new._proof_1</text>
 <text text-anchor="middle" x="256.42" y="-105" font-family="Helvetica" font-size="10.00">(ScannerPlainScalarValid)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerPlainScalarValid.PlainScalarsValid_of_prefix_and_new._proof_1&#45;&gt;L4YAML.Positioned -->
 <g id="edge15" class="edge">
@@ -218,8 +254,11 @@
 <!-- Decidable.byContradiction -->
 <g id="node13" class="node">
 <title>Decidable.byContradiction</title>
+<g id="a_node13"><a xlink:href="../../../api/Init/Core.html#Decidable.byContradiction" xlink:title="Decidable.byContradiction" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="256.42" cy="-218" rx="77.23" ry="18"/>
 <text text-anchor="middle" x="256.42" y="-215.5" font-family="Helvetica" font-size="10.00">Decidable.byContradiction</text>
+</a>
+</g>
 </g>
 <!-- Decidable.byContradiction&#45;&gt;L4YAML.Proofs.ScannerPlainScalarValid.PlainScalarsValid_of_prefix_and_new -->
 <g id="edge12" class="edge">

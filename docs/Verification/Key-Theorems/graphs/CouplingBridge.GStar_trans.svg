@@ -25,23 +25,32 @@
 <!-- L4YAML.Surface.SurfPos -->
 <g id="node1" class="node">
 <title>L4YAML.Surface.SurfPos</title>
+<g id="a_node1"><a xlink:href="../../../api/L4YAML/Surface/Combinators.html#L4YAML.Surface.SurfPos" xlink:title="Surface.SurfPos\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="397.55,-106 307.55,-106 307.55,-70 397.55,-70 397.55,-106"/>
 <text text-anchor="middle" x="352.55" y="-91" font-family="Helvetica" font-size="10.00">Surface.SurfPos</text>
 <text text-anchor="middle" x="352.55" y="-80" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Surface.GStar -->
 <g id="node2" class="node">
 <title>L4YAML.Surface.GStar</title>
+<g id="a_node2"><a xlink:href="../../../api/L4YAML/Surface/Combinators.html#L4YAML.Surface.GStar" xlink:title="Surface.GStar\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="392.55,-52 312.55,-52 312.55,-16 392.55,-16 392.55,-52"/>
 <text text-anchor="middle" x="352.55" y="-37" font-family="Helvetica" font-size="10.00">Surface.GStar</text>
 <text text-anchor="middle" x="352.55" y="-26" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.CouplingBridge.GStar_trans -->
 <g id="node3" class="node">
 <title>L4YAML.Proofs.CouplingBridge.GStar_trans</title>
+<g id="a_node3"><a xlink:href="../../../api/L4YAML/Proofs/CouplingBridge.html#L4YAML.Proofs.CouplingBridge.GStar_trans" xlink:title="CouplingBridge.GStar_trans" target="_blank">
 <polygon fill="#fff3cd" stroke="#d4a017" points="242.33,-53.54 242.33,-68.46 177.27,-79 85.27,-79 20.22,-68.46 20.22,-53.54 85.27,-43 177.27,-43 242.33,-53.54"/>
 <polygon fill="none" stroke="#d4a017" points="246.32,-50.14 246.32,-71.86 177.59,-83 84.95,-83 16.23,-71.86 16.23,-50.14 84.95,-39 177.59,-39 246.32,-50.14"/>
 <text text-anchor="middle" x="131.27" y="-57.9" font-family="Helvetica" font-size="12.00">CouplingBridge.GStar_trans</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.CouplingBridge.GStar_trans&#45;&gt;L4YAML.Surface.SurfPos -->
 <g id="edge1" class="edge">

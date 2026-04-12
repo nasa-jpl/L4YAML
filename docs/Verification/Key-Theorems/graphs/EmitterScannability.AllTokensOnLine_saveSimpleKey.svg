@@ -30,37 +30,52 @@
 <!-- L4YAML.Scanner.ScannerState.line -->
 <g id="node1" class="node">
 <title>L4YAML.Scanner.ScannerState.line</title>
+<g id="a_node1"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.line" xlink:title="ScannerState.line\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="785.89,-296 691.89,-296 691.89,-260 785.89,-260 785.89,-296"/>
 <text text-anchor="middle" x="738.89" y="-281" font-family="Helvetica" font-size="10.00">ScannerState.line</text>
 <text text-anchor="middle" x="738.89" y="-270" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState -->
 <g id="node2" class="node">
 <title>L4YAML.Scanner.ScannerState</title>
+<g id="a_node2"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState" xlink:title="ScannerState\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="776.89,-242 700.89,-242 700.89,-206 776.89,-206 776.89,-242"/>
 <text text-anchor="middle" x="738.89" y="-227" font-family="Helvetica" font-size="10.00">ScannerState</text>
 <text text-anchor="middle" x="738.89" y="-216" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.EmitterScannability.AllTokensOnLine -->
 <g id="node3" class="node">
 <title>L4YAML.Proofs.EmitterScannability.AllTokensOnLine</title>
+<g id="a_node3"><a xlink:href="../../../api/L4YAML/Proofs/EmitterScannability.html#L4YAML.Proofs.EmitterScannability.AllTokensOnLine" xlink:title="EmitterScannability.AllTokensOnLine\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="826.89,-188 650.89,-188 650.89,-152 826.89,-152 826.89,-188"/>
 <text text-anchor="middle" x="738.89" y="-173" font-family="Helvetica" font-size="10.00">EmitterScannability.AllTokensOnLine</text>
 <text text-anchor="middle" x="738.89" y="-162" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.saveSimpleKey -->
 <g id="node4" class="node">
 <title>L4YAML.Scanner.saveSimpleKey</title>
+<g id="a_node4"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.saveSimpleKey" xlink:title="saveSimpleKey\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="780.39,-134 697.39,-134 697.39,-98 780.39,-98 780.39,-134"/>
 <text text-anchor="middle" x="738.89" y="-119" font-family="Helvetica" font-size="10.00">saveSimpleKey</text>
 <text text-anchor="middle" x="738.89" y="-108" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.EmitterScannability.AllTokensOnLine_saveSimpleKey -->
 <g id="node5" class="node">
 <title>L4YAML.Proofs.EmitterScannability.AllTokensOnLine_saveSimpleKey</title>
+<g id="a_node5"><a xlink:href="../../../api/L4YAML/Proofs/EmitterScannability.html#L4YAML.Proofs.EmitterScannability.AllTokensOnLine_saveSimpleKey" xlink:title="EmitterScannability.AllTokensOnLine_saveSimpleKey" target="_blank">
 <polygon fill="#fff3cd" stroke="#d4a017" points="586.11,-188.54 586.11,-203.46 466.93,-214 298.4,-214 179.22,-203.46 179.22,-188.54 298.4,-178 466.93,-178 586.11,-188.54"/>
 <polygon fill="none" stroke="#d4a017" points="590.11,-184.88 590.11,-207.12 467.11,-218 298.22,-218 175.22,-207.12 175.22,-184.88 298.22,-174 467.11,-174 590.11,-184.88"/>
 <text text-anchor="middle" x="382.67" y="-192.9" font-family="Helvetica" font-size="12.00">EmitterScannability.AllTokensOnLine_saveSimpleKey</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.EmitterScannability.AllTokensOnLine_saveSimpleKey&#45;&gt;L4YAML.Scanner.ScannerState.line -->
 <g id="edge3" class="edge">
@@ -93,8 +108,11 @@
 <!-- dite_congr -->
 <g id="node6" class="node">
 <title>dite_congr</title>
+<g id="a_node6"><a xlink:href="../../../api/Init/SimpLemmas.html#dite_congr" xlink:title="dite_congr" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="77.22" cy="-358" rx="36.49" ry="18"/>
 <text text-anchor="middle" x="77.22" y="-355.5" font-family="Helvetica" font-size="10.00">dite_congr</text>
+</a>
+</g>
 </g>
 <!-- dite_congr&#45;&gt;L4YAML.Proofs.EmitterScannability.AllTokensOnLine_saveSimpleKey -->
 <g id="edge5" class="edge">
@@ -105,8 +123,11 @@
 <!-- dif_pos -->
 <g id="node7" class="node">
 <title>dif_pos</title>
+<g id="a_node7"><a xlink:href="../../../api/Init/Core.html#dif_pos" xlink:title="dif_pos" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="77.22" cy="-304" rx="28.01" ry="18"/>
 <text text-anchor="middle" x="77.22" y="-301.5" font-family="Helvetica" font-size="10.00">dif_pos</text>
+</a>
+</g>
 </g>
 <!-- dif_pos&#45;&gt;L4YAML.Proofs.EmitterScannability.AllTokensOnLine_saveSimpleKey -->
 <g id="edge6" class="edge">
@@ -117,8 +138,11 @@
 <!-- dif_neg -->
 <g id="node8" class="node">
 <title>dif_neg</title>
+<g id="a_node8"><a xlink:href="../../../api/Init/Core.html#dif_neg" xlink:title="dif_neg" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="77.22" cy="-250" rx="28.01" ry="18"/>
 <text text-anchor="middle" x="77.22" y="-247.5" font-family="Helvetica" font-size="10.00">dif_neg</text>
+</a>
+</g>
 </g>
 <!-- dif_neg&#45;&gt;L4YAML.Proofs.EmitterScannability.AllTokensOnLine_saveSimpleKey -->
 <g id="edge7" class="edge">
@@ -129,8 +153,11 @@
 <!-- eq_self -->
 <g id="node9" class="node">
 <title>eq_self</title>
+<g id="a_node9"><a xlink:href="../../../api/Init/SimpLemmas.html#eq_self" xlink:title="eq_self" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="77.22" cy="-196" rx="28.01" ry="18"/>
 <text text-anchor="middle" x="77.22" y="-193.5" font-family="Helvetica" font-size="10.00">eq_self</text>
+</a>
+</g>
 </g>
 <!-- eq_self&#45;&gt;L4YAML.Proofs.EmitterScannability.AllTokensOnLine_saveSimpleKey -->
 <g id="edge8" class="edge">
@@ -141,8 +168,11 @@
 <!-- of_eq_true -->
 <g id="node10" class="node">
 <title>of_eq_true</title>
+<g id="a_node10"><a xlink:href="../../../api/Init/SimpLemmas.html#of_eq_true" xlink:title="of_eq_true" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="77.22" cy="-142" rx="36.49" ry="18"/>
 <text text-anchor="middle" x="77.22" y="-139.5" font-family="Helvetica" font-size="10.00">of_eq_true</text>
+</a>
+</g>
 </g>
 <!-- of_eq_true&#45;&gt;L4YAML.Proofs.EmitterScannability.AllTokensOnLine_saveSimpleKey -->
 <g id="edge9" class="edge">
@@ -153,8 +183,11 @@
 <!-- Array.getElem_push -->
 <g id="node11" class="node">
 <title>Array.getElem_push</title>
+<g id="a_node11"><a xlink:href="../../../api/Init/Data/Array/Lemmas.html#Array.getElem_push" xlink:title="Array.getElem_push" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="77.22" cy="-88" rx="61.44" ry="18"/>
 <text text-anchor="middle" x="77.22" y="-85.5" font-family="Helvetica" font-size="10.00">Array.getElem_push</text>
+</a>
+</g>
 </g>
 <!-- Array.getElem_push&#45;&gt;L4YAML.Proofs.EmitterScannability.AllTokensOnLine_saveSimpleKey -->
 <g id="edge10" class="edge">
@@ -165,8 +198,11 @@
 <!-- Eq.mpr_prop -->
 <g id="node12" class="node">
 <title>Eq.mpr_prop</title>
+<g id="a_node12"><a xlink:href="../../../api/Init/SimpLemmas.html#Eq.mpr_prop" xlink:title="Eq.mpr_prop" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="77.22" cy="-34" rx="42.27" ry="18"/>
 <text text-anchor="middle" x="77.22" y="-31.5" font-family="Helvetica" font-size="10.00">Eq.mpr_prop</text>
+</a>
+</g>
 </g>
 <!-- Eq.mpr_prop&#45;&gt;L4YAML.Proofs.EmitterScannability.AllTokensOnLine_saveSimpleKey -->
 <g id="edge11" class="edge">

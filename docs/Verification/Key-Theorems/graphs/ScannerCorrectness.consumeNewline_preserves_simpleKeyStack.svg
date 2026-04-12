@@ -35,58 +35,82 @@
 <!-- L4YAML.Scanner.ScannerState.advance -->
 <g id="node1" class="node">
 <title>L4YAML.Scanner.ScannerState.advance</title>
+<g id="a_node1"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.advance" xlink:title="ScannerState.advance\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="885.25,-147.24 770.25,-147.24 770.25,-111.24 885.25,-111.24 885.25,-147.24"/>
 <text text-anchor="middle" x="827.75" y="-132.24" font-family="Helvetica" font-size="10.00">ScannerState.advance</text>
 <text text-anchor="middle" x="827.75" y="-121.24" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.consumeNewline -->
 <g id="node2" class="node">
 <title>L4YAML.Scanner.consumeNewline</title>
+<g id="a_node2"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.consumeNewline" xlink:title="consumeNewline\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1262.45,-255.24 1170.45,-255.24 1170.45,-219.24 1262.45,-219.24 1262.45,-255.24"/>
 <text text-anchor="middle" x="1216.45" y="-240.24" font-family="Helvetica" font-size="10.00">consumeNewline</text>
 <text text-anchor="middle" x="1216.45" y="-229.24" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState -->
 <g id="node3" class="node">
 <title>L4YAML.Scanner.ScannerState</title>
+<g id="a_node3"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState" xlink:title="ScannerState\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1254.45,-201.24 1178.45,-201.24 1178.45,-165.24 1254.45,-165.24 1254.45,-201.24"/>
 <text text-anchor="middle" x="1216.45" y="-186.24" font-family="Helvetica" font-size="10.00">ScannerState</text>
 <text text-anchor="middle" x="1216.45" y="-175.24" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.simpleKeyStack -->
 <g id="node4" class="node">
 <title>L4YAML.Scanner.ScannerState.simpleKeyStack</title>
+<g id="a_node4"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.simpleKeyStack" xlink:title="ScannerState.simpleKeyStack\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1290.95,-147.24 1141.95,-147.24 1141.95,-111.24 1290.95,-111.24 1290.95,-147.24"/>
 <text text-anchor="middle" x="1216.45" y="-132.24" font-family="Helvetica" font-size="10.00">ScannerState.simpleKeyStack</text>
 <text text-anchor="middle" x="1216.45" y="-121.24" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.consumeNewline.match_1 -->
 <g id="node5" class="node">
 <title>L4YAML.Scanner.consumeNewline.match_1</title>
+<g id="a_node5"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.consumeNewline.match_1" xlink:title="consumeNewline.match_1\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="893.75,-255.24 761.75,-255.24 761.75,-219.24 893.75,-219.24 893.75,-255.24"/>
 <text text-anchor="middle" x="827.75" y="-240.24" font-family="Helvetica" font-size="10.00">consumeNewline.match_1</text>
 <text text-anchor="middle" x="827.75" y="-229.24" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.consumeNewline.match_3 -->
 <g id="node6" class="node">
 <title>L4YAML.Scanner.consumeNewline.match_3</title>
+<g id="a_node6"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.consumeNewline.match_3" xlink:title="consumeNewline.match_3\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="893.75,-201.24 761.75,-201.24 761.75,-165.24 893.75,-165.24 893.75,-201.24"/>
 <text text-anchor="middle" x="827.75" y="-186.24" font-family="Helvetica" font-size="10.00">consumeNewline.match_3</text>
 <text text-anchor="middle" x="827.75" y="-175.24" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.SimpleKeyState -->
 <g id="node7" class="node">
 <title>L4YAML.Scanner.SimpleKeyState</title>
+<g id="a_node7"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.SimpleKeyState" xlink:title="SimpleKeyState\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1259.45,-93.24 1173.45,-93.24 1173.45,-57.24 1259.45,-57.24 1259.45,-93.24"/>
 <text text-anchor="middle" x="1216.45" y="-78.24" font-family="Helvetica" font-size="10.00">SimpleKeyState</text>
 <text text-anchor="middle" x="1216.45" y="-67.24" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerCorrectness.consumeNewline_preserves_simpleKeyStack -->
 <g id="node8" class="node">
 <title>L4YAML.Proofs.ScannerCorrectness.consumeNewline_preserves_simpleKeyStack</title>
+<g id="a_node8"><a xlink:href="../../../api/L4YAML/Proofs/ScannerCorrectness.html#L4YAML.Proofs.ScannerCorrectness.consumeNewline_preserves_simpleKeyStack" xlink:title="ScannerCorrectness.consumeNewline_preserves_simpleKeyStack" target="_blank">
 <polygon fill="#fff3cd" stroke="#d4a017" points="1077.15,-315.78 1077.15,-330.69 931.06,-341.24 724.45,-341.24 578.36,-330.69 578.36,-315.78 724.45,-305.24 931.06,-305.24 1077.15,-315.78"/>
 <polygon fill="none" stroke="#d4a017" points="1081.15,-312.06 1081.15,-334.41 931.2,-345.24 724.31,-345.24 574.36,-334.41 574.36,-312.06 724.31,-301.24 931.2,-301.24 1081.15,-312.06"/>
 <text text-anchor="middle" x="827.75" y="-320.14" font-family="Helvetica" font-size="12.00">ScannerCorrectness.consumeNewline_preserves_simpleKeyStack</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerCorrectness.consumeNewline_preserves_simpleKeyStack&#45;&gt;L4YAML.Scanner.consumeNewline -->
 <g id="edge3" class="edge">
@@ -119,9 +143,12 @@
 <!-- L4YAML.Proofs.ScannerCorrectness.advance_preserves_simpleKeyStack -->
 <g id="node9" class="node">
 <title>L4YAML.Proofs.ScannerCorrectness.advance_preserves_simpleKeyStack</title>
+<g id="a_node9"><a xlink:href="../../../api/L4YAML/Proofs/ScannerCorrectness.html#L4YAML.Proofs.ScannerCorrectness.advance_preserves_simpleKeyStack" xlink:title="ScannerCorrectness.advance_preserves_simpleKeyStack\n(ScannerCorrectness)" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="276.78" cy="-83.24" rx="190.42" ry="21.43"/>
 <text text-anchor="middle" x="276.78" y="-86.24" font-family="Helvetica" font-size="10.00">ScannerCorrectness.advance_preserves_simpleKeyStack</text>
 <text text-anchor="middle" x="276.78" y="-75.24" font-family="Helvetica" font-size="10.00">(ScannerCorrectness)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerCorrectness.advance_preserves_simpleKeyStack&#45;&gt;L4YAML.Scanner.ScannerState.advance -->
 <g id="edge15" class="edge">
@@ -156,8 +183,11 @@
 <!-- _private.L4YAML.Proofs.ScannerCorrectness.0.L4YAML.Scanner.consumeNewline.match_1.eq_1 -->
 <g id="node10" class="node">
 <title>_private.L4YAML.Proofs.ScannerCorrectness.0.L4YAML.Scanner.consumeNewline.match_1.eq_1</title>
+<g id="a_node10"><a xlink:href="../../../api/L4YAML/Proofs/ScannerCorrectness.html#_private.L4YAML.Proofs.ScannerCorrectness.0.L4YAML.Scanner.consumeNewline.match_1.eq_1" xlink:title="_private.L4YAML.Proofs.ScannerCorrectness.0.L4YAML.Scanner.consumeNewline.match_1.eq_1" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="276.78" cy="-337.24" rx="260.56" ry="18"/>
 <text text-anchor="middle" x="276.78" y="-334.74" font-family="Helvetica" font-size="10.00">_private.L4YAML.Proofs.ScannerCorrectness.0.L4YAML.Scanner.consumeNewline.match_1.eq_1</text>
+</a>
+</g>
 </g>
 <!-- _private.L4YAML.Proofs.ScannerCorrectness.0.L4YAML.Scanner.consumeNewline.match_1.eq_1&#45;&gt;L4YAML.Scanner.consumeNewline.match_1 -->
 <g id="edge12" class="edge">
@@ -174,8 +204,11 @@
 <!-- _private.L4YAML.Proofs.ScannerCorrectness.0.L4YAML.Scanner.consumeNewline.match_3.eq_3 -->
 <g id="node11" class="node">
 <title>_private.L4YAML.Proofs.ScannerCorrectness.0.L4YAML.Scanner.consumeNewline.match_3.eq_3</title>
+<g id="a_node11"><a xlink:href="../../../api/L4YAML/Proofs/ScannerCorrectness.html#_private.L4YAML.Proofs.ScannerCorrectness.0.L4YAML.Scanner.consumeNewline.match_3.eq_3" xlink:title="_private.L4YAML.Proofs.ScannerCorrectness.0.L4YAML.Scanner.consumeNewline.match_3.eq_3" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="276.78" cy="-175.24" rx="260.56" ry="18"/>
 <text text-anchor="middle" x="276.78" y="-172.74" font-family="Helvetica" font-size="10.00">_private.L4YAML.Proofs.ScannerCorrectness.0.L4YAML.Scanner.consumeNewline.match_3.eq_3</text>
+</a>
+</g>
 </g>
 <!-- _private.L4YAML.Proofs.ScannerCorrectness.0.L4YAML.Scanner.consumeNewline.match_3.eq_3&#45;&gt;L4YAML.Scanner.consumeNewline.match_3 -->
 <g id="edge11" class="edge">
@@ -192,8 +225,11 @@
 <!-- _private.L4YAML.Proofs.ScannerCorrectness.0.L4YAML.Scanner.consumeNewline.match_3.eq_2 -->
 <g id="node12" class="node">
 <title>_private.L4YAML.Proofs.ScannerCorrectness.0.L4YAML.Scanner.consumeNewline.match_3.eq_2</title>
+<g id="a_node12"><a xlink:href="../../../api/L4YAML/Proofs/ScannerCorrectness.html#_private.L4YAML.Proofs.ScannerCorrectness.0.L4YAML.Scanner.consumeNewline.match_3.eq_2" xlink:title="_private.L4YAML.Proofs.ScannerCorrectness.0.L4YAML.Scanner.consumeNewline.match_3.eq_2" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="276.78" cy="-283.24" rx="260.56" ry="18"/>
 <text text-anchor="middle" x="276.78" y="-280.74" font-family="Helvetica" font-size="10.00">_private.L4YAML.Proofs.ScannerCorrectness.0.L4YAML.Scanner.consumeNewline.match_3.eq_2</text>
+</a>
+</g>
 </g>
 <!-- _private.L4YAML.Proofs.ScannerCorrectness.0.L4YAML.Scanner.consumeNewline.match_3.eq_2&#45;&gt;L4YAML.Scanner.consumeNewline.match_3 -->
 <g id="edge13" class="edge">
@@ -210,8 +246,11 @@
 <!-- _private.L4YAML.Proofs.ScannerCorrectness.0.L4YAML.Scanner.consumeNewline.match_1.eq_2 -->
 <g id="node13" class="node">
 <title>_private.L4YAML.Proofs.ScannerCorrectness.0.L4YAML.Scanner.consumeNewline.match_1.eq_2</title>
+<g id="a_node13"><a xlink:href="../../../api/L4YAML/Proofs/ScannerCorrectness.html#_private.L4YAML.Proofs.ScannerCorrectness.0.L4YAML.Scanner.consumeNewline.match_1.eq_2" xlink:title="_private.L4YAML.Proofs.ScannerCorrectness.0.L4YAML.Scanner.consumeNewline.match_1.eq_2" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="276.78" cy="-391.24" rx="260.56" ry="18"/>
 <text text-anchor="middle" x="276.78" y="-388.74" font-family="Helvetica" font-size="10.00">_private.L4YAML.Proofs.ScannerCorrectness.0.L4YAML.Scanner.consumeNewline.match_1.eq_2</text>
+</a>
+</g>
 </g>
 <!-- _private.L4YAML.Proofs.ScannerCorrectness.0.L4YAML.Scanner.consumeNewline.match_1.eq_2&#45;&gt;L4YAML.Scanner.consumeNewline.match_1 -->
 <g id="edge14" class="edge">
@@ -228,8 +267,11 @@
 <!-- _private.L4YAML.Proofs.ScannerCorrectness.0.L4YAML.Scanner.consumeNewline.match_3.eq_1 -->
 <g id="node14" class="node">
 <title>_private.L4YAML.Proofs.ScannerCorrectness.0.L4YAML.Scanner.consumeNewline.match_3.eq_1</title>
+<g id="a_node14"><a xlink:href="../../../api/L4YAML/Proofs/ScannerCorrectness.html#_private.L4YAML.Proofs.ScannerCorrectness.0.L4YAML.Scanner.consumeNewline.match_3.eq_1" xlink:title="_private.L4YAML.Proofs.ScannerCorrectness.0.L4YAML.Scanner.consumeNewline.match_3.eq_1" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="276.78" cy="-229.24" rx="260.56" ry="18"/>
 <text text-anchor="middle" x="276.78" y="-226.74" font-family="Helvetica" font-size="10.00">_private.L4YAML.Proofs.ScannerCorrectness.0.L4YAML.Scanner.consumeNewline.match_3.eq_1</text>
+</a>
+</g>
 </g>
 <!-- _private.L4YAML.Proofs.ScannerCorrectness.0.L4YAML.Scanner.consumeNewline.match_3.eq_1&#45;&gt;L4YAML.Scanner.consumeNewline.match_3 -->
 <g id="edge19" class="edge">

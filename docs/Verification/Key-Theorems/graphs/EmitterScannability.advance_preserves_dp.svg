@@ -25,30 +25,42 @@
 <!-- L4YAML.Scanner.ScannerState.advance -->
 <g id="node1" class="node">
 <title>L4YAML.Scanner.ScannerState.advance</title>
+<g id="a_node1"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.advance" xlink:title="ScannerState.advance\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="552.65,-160 437.65,-160 437.65,-124 552.65,-124 552.65,-160"/>
 <text text-anchor="middle" x="495.15" y="-145" font-family="Helvetica" font-size="10.00">ScannerState.advance</text>
 <text text-anchor="middle" x="495.15" y="-134" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState -->
 <g id="node2" class="node">
 <title>L4YAML.Scanner.ScannerState</title>
+<g id="a_node2"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState" xlink:title="ScannerState\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="533.15,-106 457.15,-106 457.15,-70 533.15,-70 533.15,-106"/>
 <text text-anchor="middle" x="495.15" y="-91" font-family="Helvetica" font-size="10.00">ScannerState</text>
 <text text-anchor="middle" x="495.15" y="-80" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.directivesPresent -->
 <g id="node3" class="node">
 <title>L4YAML.Scanner.ScannerState.directivesPresent</title>
+<g id="a_node3"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.directivesPresent" xlink:title="ScannerState.directivesPresent\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="572.15,-52 418.15,-52 418.15,-16 572.15,-16 572.15,-52"/>
 <text text-anchor="middle" x="495.15" y="-37" font-family="Helvetica" font-size="10.00">ScannerState.directivesPresent</text>
 <text text-anchor="middle" x="495.15" y="-26" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.EmitterScannability.advance_preserves_dp -->
 <g id="node4" class="node">
 <title>L4YAML.Proofs.EmitterScannability.advance_preserves_dp</title>
+<g id="a_node4"><a xlink:href="../../../api/L4YAML/Proofs/EmitterScannability.html#L4YAML.Proofs.EmitterScannability.advance_preserves_dp" xlink:title="EmitterScannability.advance_preserves_dp" target="_blank">
 <polygon fill="#fff3cd" stroke="#d4a017" points="353.23,-80.54 353.23,-95.46 255.61,-106 117.55,-106 19.93,-95.46 19.93,-80.54 117.55,-70 255.61,-70 353.23,-80.54"/>
 <polygon fill="none" stroke="#d4a017" points="357.23,-76.95 357.23,-99.05 255.82,-110 117.33,-110 15.92,-99.05 15.92,-76.95 117.33,-66 255.82,-66 357.23,-76.95"/>
 <text text-anchor="middle" x="186.58" y="-84.9" font-family="Helvetica" font-size="12.00">EmitterScannability.advance_preserves_dp</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.EmitterScannability.advance_preserves_dp&#45;&gt;L4YAML.Scanner.ScannerState.advance -->
 <g id="edge1" class="edge">

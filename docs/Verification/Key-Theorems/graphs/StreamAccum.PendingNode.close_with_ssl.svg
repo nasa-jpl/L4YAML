@@ -30,37 +30,52 @@
 <!-- L4YAML.Proofs.StreamAccum.PendingNode -->
 <g id="node1" class="node">
 <title>L4YAML.Proofs.StreamAccum.PendingNode</title>
+<g id="a_node1"><a xlink:href="../../../api/L4YAML/Proofs/StreamAccum.html#L4YAML.Proofs.StreamAccum.PendingNode" xlink:title="StreamAccum.PendingNode\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="899.21,-52 759.21,-52 759.21,-16 899.21,-16 899.21,-52"/>
 <text text-anchor="middle" x="829.21" y="-37" font-family="Helvetica" font-size="10.00">StreamAccum.PendingNode</text>
 <text text-anchor="middle" x="829.21" y="-26" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Surface.SurfPos -->
 <g id="node2" class="node">
 <title>L4YAML.Surface.SurfPos</title>
+<g id="a_node2"><a xlink:href="../../../api/L4YAML/Surface/Combinators.html#L4YAML.Surface.SurfPos" xlink:title="Surface.SurfPos\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="874.21,-160 784.21,-160 784.21,-124 874.21,-124 874.21,-160"/>
 <text text-anchor="middle" x="829.21" y="-145" font-family="Helvetica" font-size="10.00">Surface.SurfPos</text>
 <text text-anchor="middle" x="829.21" y="-134" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Surface.SLYamlStream -->
 <g id="node3" class="node">
 <title>L4YAML.Surface.SLYamlStream</title>
+<g id="a_node3"><a xlink:href="../../../api/L4YAML/Surface/Document.html#L4YAML.Surface.SLYamlStream" xlink:title="Surface.SLYamlStream\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="888.71,-214 769.71,-214 769.71,-178 888.71,-178 888.71,-214"/>
 <text text-anchor="middle" x="829.21" y="-199" font-family="Helvetica" font-size="10.00">Surface.SLYamlStream</text>
 <text text-anchor="middle" x="829.21" y="-188" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Surface.SSLComments -->
 <g id="node4" class="node">
 <title>L4YAML.Surface.SSLComments</title>
+<g id="a_node4"><a xlink:href="../../../api/L4YAML/Surface/Basic.html#L4YAML.Surface.SSLComments" xlink:title="Surface.SSLComments\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="889.71,-106 768.71,-106 768.71,-70 889.71,-70 889.71,-106"/>
 <text text-anchor="middle" x="829.21" y="-91" font-family="Helvetica" font-size="10.00">Surface.SSLComments</text>
 <text text-anchor="middle" x="829.21" y="-80" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.StreamAccum.PendingNode.close_with_ssl -->
 <g id="node5" class="node">
 <title>L4YAML.Proofs.StreamAccum.PendingNode.close_with_ssl</title>
+<g id="a_node5"><a xlink:href="../../../api/L4YAML/Proofs/StreamAccum.html#L4YAML.Proofs.StreamAccum.PendingNode.close_with_ssl" xlink:title="StreamAccum.PendingNode.close_with_ssl" target="_blank">
 <polygon fill="#fff3cd" stroke="#d4a017" points="694.28,-51.54 694.28,-66.46 596.66,-77 458.6,-77 360.98,-66.46 360.98,-51.54 458.6,-41 596.66,-41 694.28,-51.54"/>
 <polygon fill="none" stroke="#d4a017" points="698.29,-47.95 698.29,-70.05 596.88,-81 458.39,-81 356.98,-70.05 356.98,-47.95 458.39,-37 596.88,-37 698.29,-47.95"/>
 <text text-anchor="middle" x="527.63" y="-55.9" font-family="Helvetica" font-size="12.00">StreamAccum.PendingNode.close_with_ssl</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.StreamAccum.PendingNode.close_with_ssl&#45;&gt;L4YAML.Proofs.StreamAccum.PendingNode -->
 <g id="edge1" class="edge">
@@ -93,9 +108,12 @@
 <!-- L4YAML.Proofs.StreamAccum.ssl_comments_extend_stream -->
 <g id="node6" class="node">
 <title>L4YAML.Proofs.StreamAccum.ssl_comments_extend_stream</title>
+<g id="a_node6"><a xlink:href="../../../api/L4YAML/Proofs/StreamAccum.html#L4YAML.Proofs.StreamAccum.ssl_comments_extend_stream" xlink:title="StreamAccum.ssl_comments_extend_stream\n(StreamAccum)" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="168.03" cy="-157" rx="152.06" ry="21.43"/>
 <text text-anchor="middle" x="168.03" y="-160" font-family="Helvetica" font-size="10.00">StreamAccum.ssl_comments_extend_stream</text>
 <text text-anchor="middle" x="168.03" y="-149" font-family="Helvetica" font-size="10.00">(StreamAccum)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.StreamAccum.ssl_comments_extend_stream&#45;&gt;L4YAML.Surface.SurfPos -->
 <g id="edge7" class="edge">

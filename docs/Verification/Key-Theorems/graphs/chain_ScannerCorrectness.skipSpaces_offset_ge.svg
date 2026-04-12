@@ -24,14 +24,20 @@
 <!-- L4YAML.Scanner.skipSpaces -->
 <g id="node1" class="node">
 <title>L4YAML.Scanner.skipSpaces</title>
+<g id="a_node1"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.skipSpaces" xlink:title="skipSpaces" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="576.41,-214 508.41,-214 508.41,-178 576.41,-178 576.41,-214"/>
 <text text-anchor="middle" x="542.41" y="-193.5" font-family="Helvetica" font-size="10.00">skipSpaces</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState -->
 <g id="node2" class="node">
 <title>L4YAML.Scanner.ScannerState</title>
+<g id="a_node2"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState" xlink:title="ScannerState" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="518.41,-52 442.41,-52 442.41,-16 518.41,-16 518.41,-52"/>
 <text text-anchor="middle" x="480.41" y="-31.5" font-family="Helvetica" font-size="10.00">ScannerState</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.skipSpaces&#45;&gt;L4YAML.Scanner.ScannerState -->
 <g id="edge15" class="edge">
@@ -43,8 +49,11 @@
 <!-- L4YAML.Scanner.ScannerState.offset -->
 <g id="node3" class="node">
 <title>L4YAML.Scanner.ScannerState.offset</title>
+<g id="a_node3"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.offset" xlink:title="ScannerState.offset" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="705.91,-133 602.91,-133 602.91,-97 705.91,-97 705.91,-133"/>
 <text text-anchor="middle" x="654.41" y="-112.5" font-family="Helvetica" font-size="10.00">ScannerState.offset</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.skipSpaces&#45;&gt;L4YAML.Scanner.ScannerState.offset -->
 <g id="edge2" class="edge">
@@ -56,8 +65,11 @@
 <!-- L4YAML.Scanner.skipSpacesLoop -->
 <g id="node4" class="node">
 <title>L4YAML.Scanner.skipSpacesLoop</title>
+<g id="a_node4"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.skipSpacesLoop" xlink:title="skipSpacesLoop" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="528.91,-133 439.91,-133 439.91,-97 528.91,-97 528.91,-133"/>
 <text text-anchor="middle" x="484.41" y="-112.5" font-family="Helvetica" font-size="10.00">skipSpacesLoop</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.skipSpaces&#45;&gt;L4YAML.Scanner.skipSpacesLoop -->
 <g id="edge8" class="edge">
@@ -83,8 +95,11 @@
 <!-- L4YAML.Proofs.ScannerCorrectness.skipSpacesLoop_offset_ge -->
 <g id="node5" class="node">
 <title>L4YAML.Proofs.ScannerCorrectness.skipSpacesLoop_offset_ge</title>
+<g id="a_node5"><a xlink:href="../../../api/L4YAML/Proofs/ScannerCorrectness.html#L4YAML.Proofs.ScannerCorrectness.skipSpacesLoop_offset_ge" xlink:title="ScannerCorrectness.skipSpacesLoop_offset_ge" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="281.41" cy="-196" rx="133.08" ry="18"/>
 <text text-anchor="middle" x="281.41" y="-193.5" font-family="Helvetica" font-size="10.00">ScannerCorrectness.skipSpacesLoop_offset_ge</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerCorrectness.skipSpacesLoop_offset_ge&#45;&gt;L4YAML.Scanner.ScannerState -->
 <g id="edge14" class="edge">
@@ -110,8 +125,11 @@
 <!-- L4YAML.Proofs.ScannerProgress.advance_offset_ge -->
 <g id="node6" class="node">
 <title>L4YAML.Proofs.ScannerProgress.advance_offset_ge</title>
+<g id="a_node6"><a xlink:href="../../../api/L4YAML/Proofs/ScannerProgress.html#L4YAML.Proofs.ScannerProgress.advance_offset_ge" xlink:title="ScannerProgress.advance_offset_ge" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="151.41" cy="-115" rx="103.71" ry="18"/>
 <text text-anchor="middle" x="151.41" y="-112.5" font-family="Helvetica" font-size="10.00">ScannerProgress.advance_offset_ge</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerCorrectness.skipSpacesLoop_offset_ge&#45;&gt;L4YAML.Proofs.ScannerProgress.advance_offset_ge -->
 <g id="edge6" class="edge">
@@ -123,8 +141,11 @@
 <!-- L4YAML.Scanner.skipSpacesLoop.eq_def -->
 <g id="node8" class="node">
 <title>L4YAML.Scanner.skipSpacesLoop.eq_def</title>
+<g id="a_node8"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.skipSpacesLoop.eq_def" xlink:title="skipSpacesLoop.eq_def" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="344.41" cy="-115" rx="71.46" ry="18"/>
 <text text-anchor="middle" x="344.41" y="-112.5" font-family="Helvetica" font-size="10.00">skipSpacesLoop.eq_def</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerCorrectness.skipSpacesLoop_offset_ge&#45;&gt;L4YAML.Scanner.skipSpacesLoop.eq_def -->
 <g id="edge11" class="edge">
@@ -143,9 +164,12 @@
 <!-- L4YAML.Proofs.ScannerCorrectness.skipSpaces_offset_ge -->
 <g id="node7" class="node">
 <title>L4YAML.Proofs.ScannerCorrectness.skipSpaces_offset_ge</title>
+<g id="a_node7"><a xlink:href="../../../api/L4YAML/Proofs/ScannerCorrectness.html#L4YAML.Proofs.ScannerCorrectness.skipSpaces_offset_ge" xlink:title="ScannerCorrectness.skipSpaces_offset_ge" target="_blank">
 <polygon fill="#fff3cd" stroke="#d4a017" points="411.14,-293.54 411.14,-308.46 334.56,-319 226.26,-319 149.68,-308.46 149.68,-293.54 226.26,-283 334.56,-283 411.14,-293.54"/>
 <polygon fill="none" stroke="#d4a017" points="415.15,-290.06 415.15,-311.94 334.84,-323 225.98,-323 145.67,-311.94 145.67,-290.06 225.98,-279 334.84,-279 415.15,-290.06"/>
 <text text-anchor="middle" x="280.41" y="-298.5" font-family="Helvetica" font-size="10.00">ScannerCorrectness.skipSpaces_offset_ge</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerCorrectness.skipSpaces_offset_ge&#45;&gt;L4YAML.Scanner.skipSpaces -->
 <g id="edge1" class="edge">

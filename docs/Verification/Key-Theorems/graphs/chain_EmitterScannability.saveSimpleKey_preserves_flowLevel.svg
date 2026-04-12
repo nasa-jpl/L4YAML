@@ -10,7 +10,7 @@
 <title>chain_EmitterScannability.saveSimpleKey_preserves_flowLevel</title>
 <polygon fill="white" stroke="transparent" points="-4,4 -4,-93.92 502,-93.92 502,4 -4,4"/>
 <text text-anchor="middle" x="249" y="-75.52" font-family="Helvetica Bold" font-size="13.00">Functorial Chains: EmitterScannability.saveSimpleKey_preserves_flowLevel</text>
-<text text-anchor="middle" x="249" y="-61.52" font-family="Helvetica Bold" font-size="13.00">(heuristic: used by 8 proofs)</text>
+<text text-anchor="middle" x="249" y="-61.52" font-family="Helvetica Bold" font-size="13.00">(heuristic: used by 10 proofs)</text>
 <!-- L4YAML.Proofs.EmitterScannability.saveSimpleKey_preserves_flowLevel -->
 <g id="node1" class="node">
 <title>L4YAML.Proofs.EmitterScannability.saveSimpleKey_preserves_flowLevel</title>

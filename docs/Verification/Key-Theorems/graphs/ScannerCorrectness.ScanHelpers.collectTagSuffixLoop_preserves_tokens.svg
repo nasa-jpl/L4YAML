@@ -35,79 +35,112 @@
 <!-- L4YAML.Positioned -->
 <g id="node1" class="node">
 <title>L4YAML.Positioned</title>
+<g id="a_node1"><a xlink:href="../../../api/L4YAML/Token.html#L4YAML.Positioned" xlink:title="Positioned\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1080.56,-341 1018.56,-341 1018.56,-305 1080.56,-305 1080.56,-341"/>
 <text text-anchor="middle" x="1049.56" y="-326" font-family="Helvetica" font-size="10.00">Positioned</text>
 <text text-anchor="middle" x="1049.56" y="-315" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.advance -->
 <g id="node2" class="node">
 <title>L4YAML.Scanner.ScannerState.advance</title>
+<g id="a_node2"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.advance" xlink:title="ScannerState.advance\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="712.04,-503 597.04,-503 597.04,-467 712.04,-467 712.04,-503"/>
 <text text-anchor="middle" x="654.54" y="-488" font-family="Helvetica" font-size="10.00">ScannerState.advance</text>
 <text text-anchor="middle" x="654.54" y="-477" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.peek? -->
 <g id="node3" class="node">
 <title>L4YAML.Scanner.ScannerState.peek?</title>
+<g id="a_node3"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.peek?" xlink:title="ScannerState.peek?\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="706.54,-449 602.54,-449 602.54,-413 706.54,-413 706.54,-449"/>
 <text text-anchor="middle" x="654.54" y="-434" font-family="Helvetica" font-size="10.00">ScannerState.peek?</text>
 <text text-anchor="middle" x="654.54" y="-423" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.skipWhitespaceLoop.match_1 -->
 <g id="node4" class="node">
 <title>L4YAML.Scanner.skipWhitespaceLoop.match_1</title>
+<g id="a_node4"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.skipWhitespaceLoop.match_1" xlink:title="skipWhitespaceLoop.match_1\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="728.54,-395 580.54,-395 580.54,-359 728.54,-359 728.54,-395"/>
 <text text-anchor="middle" x="654.54" y="-380" font-family="Helvetica" font-size="10.00">skipWhitespaceLoop.match_1</text>
 <text text-anchor="middle" x="654.54" y="-369" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState -->
 <g id="node5" class="node">
 <title>L4YAML.Scanner.ScannerState</title>
+<g id="a_node5"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState" xlink:title="ScannerState\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1087.56,-395 1011.56,-395 1011.56,-359 1087.56,-359 1087.56,-395"/>
 <text text-anchor="middle" x="1049.56" y="-380" font-family="Helvetica" font-size="10.00">ScannerState</text>
 <text text-anchor="middle" x="1049.56" y="-369" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.YamlToken -->
 <g id="node6" class="node">
 <title>L4YAML.YamlToken</title>
+<g id="a_node6"><a xlink:href="../../../api/L4YAML/Token.html#L4YAML.YamlToken" xlink:title="YamlToken\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1081.56,-449 1017.56,-449 1017.56,-413 1081.56,-413 1081.56,-449"/>
 <text text-anchor="middle" x="1049.56" y="-434" font-family="Helvetica" font-size="10.00">YamlToken</text>
 <text text-anchor="middle" x="1049.56" y="-423" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.peekAt?Loop.match_1 -->
 <g id="node7" class="node">
 <title>L4YAML.Scanner.ScannerState.peekAt?Loop.match_1</title>
+<g id="a_node7"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.peekAt?Loop.match_1" xlink:title="ScannerState.peekAt?Loop.match_1\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="742.54,-341 566.54,-341 566.54,-305 742.54,-305 742.54,-341"/>
 <text text-anchor="middle" x="654.54" y="-326" font-family="Helvetica" font-size="10.00">ScannerState.peekAt?Loop.match_1</text>
 <text text-anchor="middle" x="654.54" y="-315" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.CharPredicates.isTagCharBool -->
 <g id="node8" class="node">
 <title>L4YAML.CharPredicates.isTagCharBool</title>
+<g id="a_node8"><a xlink:href="../../../api/L4YAML/CharPredicates.html#L4YAML.CharPredicates.isTagCharBool" xlink:title="CharPredicates.isTagCharBool\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="730.04,-287 579.04,-287 579.04,-251 730.04,-251 730.04,-287"/>
 <text text-anchor="middle" x="654.54" y="-272" font-family="Helvetica" font-size="10.00">CharPredicates.isTagCharBool</text>
 <text text-anchor="middle" x="654.54" y="-261" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.collectTagSuffixLoop -->
 <g id="node9" class="node">
 <title>L4YAML.Scanner.collectTagSuffixLoop</title>
+<g id="a_node9"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.collectTagSuffixLoop" xlink:title="collectTagSuffixLoop\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1103.06,-287 996.06,-287 996.06,-251 1103.06,-251 1103.06,-287"/>
 <text text-anchor="middle" x="1049.56" y="-272" font-family="Helvetica" font-size="10.00">collectTagSuffixLoop</text>
 <text text-anchor="middle" x="1049.56" y="-261" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.tokens -->
 <g id="node10" class="node">
 <title>L4YAML.Scanner.ScannerState.tokens</title>
+<g id="a_node10"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.tokens" xlink:title="ScannerState.tokens\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1103.06,-503 996.06,-503 996.06,-467 1103.06,-467 1103.06,-503"/>
 <text text-anchor="middle" x="1049.56" y="-488" font-family="Helvetica" font-size="10.00">ScannerState.tokens</text>
 <text text-anchor="middle" x="1049.56" y="-477" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerCorrectness.ScanHelpers.collectTagSuffixLoop_preserves_tokens -->
 <g id="node11" class="node">
 <title>L4YAML.Proofs.ScannerCorrectness.ScanHelpers.collectTagSuffixLoop_preserves_tokens</title>
+<g id="a_node11"><a xlink:href="../../../api/L4YAML/Proofs/ScannerCorrectness.html#L4YAML.Proofs.ScannerCorrectness.ScanHelpers.collectTagSuffixLoop_preserves_tokens" xlink:title="ScannerCorrectness.ScanHelpers.collectTagSuffixLoop_preserves_tokens" target="_blank">
 <polygon fill="#fff3cd" stroke="#d4a017" points="931.08,-67.54 931.08,-82.46 769.09,-93 540,-93 378.01,-82.46 378.01,-67.54 540,-57 769.09,-57 931.08,-67.54"/>
 <polygon fill="none" stroke="#d4a017" points="935.08,-63.8 935.08,-86.2 769.22,-97 539.87,-97 374.01,-86.2 374.01,-63.8 539.87,-53 769.22,-53 935.08,-63.8"/>
 <text text-anchor="middle" x="654.54" y="-71.9" font-family="Helvetica" font-size="12.00">ScannerCorrectness.ScanHelpers.collectTagSuffixLoop_preserves_tokens</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerCorrectness.ScanHelpers.collectTagSuffixLoop_preserves_tokens&#45;&gt;L4YAML.Positioned -->
 <g id="edge3" class="edge">
@@ -147,9 +180,12 @@
 <!-- L4YAML.Scanner.collectTagSuffixLoop.eq_def -->
 <g id="node12" class="node">
 <title>L4YAML.Scanner.collectTagSuffixLoop.eq_def</title>
+<g id="a_node12"><a xlink:href="../../../api/L4YAML/Proofs/StructureCoupling.html#L4YAML.Scanner.collectTagSuffixLoop.eq_def" xlink:title="collectTagSuffixLoop.eq_def\n(StructureCoupling)" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="176.51" cy="-326" rx="98.08" ry="21.43"/>
 <text text-anchor="middle" x="176.51" y="-329" font-family="Helvetica" font-size="10.00">collectTagSuffixLoop.eq_def</text>
 <text text-anchor="middle" x="176.51" y="-318" font-family="Helvetica" font-size="10.00">(StructureCoupling)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.collectTagSuffixLoop.eq_def&#45;&gt;L4YAML.Scanner.ScannerState.advance -->
 <g id="edge10" class="edge">
@@ -202,9 +238,12 @@
 <!-- L4YAML.Proofs.ScannerCorrectness.advance_preserves_tokens -->
 <g id="node13" class="node">
 <title>L4YAML.Proofs.ScannerCorrectness.advance_preserves_tokens</title>
+<g id="a_node13"><a xlink:href="../../../api/L4YAML/Proofs/ScannerCorrectness.html#L4YAML.Proofs.ScannerCorrectness.advance_preserves_tokens" xlink:title="ScannerCorrectness.advance_preserves_tokens\n(ScannerCorrectness)" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="176.51" cy="-386" rx="160.53" ry="21.43"/>
 <text text-anchor="middle" x="176.51" y="-389" font-family="Helvetica" font-size="10.00">ScannerCorrectness.advance_preserves_tokens</text>
 <text text-anchor="middle" x="176.51" y="-378" font-family="Helvetica" font-size="10.00">(ScannerCorrectness)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerCorrectness.advance_preserves_tokens&#45;&gt;L4YAML.Positioned -->
 <g id="edge19" class="edge">
@@ -245,8 +284,11 @@
 <!-- eq_self -->
 <g id="node14" class="node">
 <title>eq_self</title>
+<g id="a_node14"><a xlink:href="../../../api/Init/SimpLemmas.html#eq_self" xlink:title="eq_self" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="176.51" cy="-88" rx="28.01" ry="18"/>
 <text text-anchor="middle" x="176.51" y="-85.5" font-family="Helvetica" font-size="10.00">eq_self</text>
+</a>
+</g>
 </g>
 <!-- eq_self&#45;&gt;L4YAML.Proofs.ScannerCorrectness.ScanHelpers.collectTagSuffixLoop_preserves_tokens -->
 <g id="edge8" class="edge">
@@ -257,8 +299,11 @@
 <!-- of_eq_true -->
 <g id="node15" class="node">
 <title>of_eq_true</title>
+<g id="a_node15"><a xlink:href="../../../api/Init/SimpLemmas.html#of_eq_true" xlink:title="of_eq_true" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="176.51" cy="-34" rx="36.49" ry="18"/>
 <text text-anchor="middle" x="176.51" y="-31.5" font-family="Helvetica" font-size="10.00">of_eq_true</text>
+</a>
+</g>
 </g>
 <!-- of_eq_true&#45;&gt;L4YAML.Proofs.ScannerCorrectness.ScanHelpers.collectTagSuffixLoop_preserves_tokens -->
 <g id="edge9" class="edge">

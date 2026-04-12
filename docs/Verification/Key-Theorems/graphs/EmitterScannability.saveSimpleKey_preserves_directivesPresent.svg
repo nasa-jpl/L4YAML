@@ -10,7 +10,7 @@
 <title>EmitterScannability.saveSimpleKey_preserves_directivesPresent</title>
 <polygon fill="white" stroke="transparent" points="-4,4 -4,-252 746.74,-252 746.74,4 -4,4"/>
 <text text-anchor="middle" x="371.37" y="-233.6" font-family="Helvetica Bold" font-size="13.00">EmitterScannability.saveSimpleKey_preserves_directivesPresent</text>
-<text text-anchor="middle" x="371.37" y="-219.6" font-family="Helvetica Bold" font-size="13.00">(heuristic: used by 9 proofs)</text>
+<text text-anchor="middle" x="371.37" y="-219.6" font-family="Helvetica Bold" font-size="13.00">(heuristic: used by 11 proofs)</text>
 <text text-anchor="middle" x="371.37" y="-205.6" font-family="Helvetica Bold" font-size="13.00">(L4YAML.Proofs.EmitterScannability)</text>
 <g id="clust1" class="cluster">
 <title>cluster_functions</title>
@@ -25,30 +25,42 @@
 <!-- L4YAML.Scanner.ScannerState -->
 <g id="node1" class="node">
 <title>L4YAML.Scanner.ScannerState</title>
+<g id="a_node1"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState" xlink:title="ScannerState\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="687.74,-160 611.74,-160 611.74,-124 687.74,-124 687.74,-160"/>
 <text text-anchor="middle" x="649.74" y="-145" font-family="Helvetica" font-size="10.00">ScannerState</text>
 <text text-anchor="middle" x="649.74" y="-134" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.saveSimpleKey -->
 <g id="node2" class="node">
 <title>L4YAML.Scanner.saveSimpleKey</title>
+<g id="a_node2"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.saveSimpleKey" xlink:title="saveSimpleKey\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="691.24,-106 608.24,-106 608.24,-70 691.24,-70 691.24,-106"/>
 <text text-anchor="middle" x="649.74" y="-91" font-family="Helvetica" font-size="10.00">saveSimpleKey</text>
 <text text-anchor="middle" x="649.74" y="-80" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.directivesPresent -->
 <g id="node3" class="node">
 <title>L4YAML.Scanner.ScannerState.directivesPresent</title>
+<g id="a_node3"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.directivesPresent" xlink:title="ScannerState.directivesPresent\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="726.74,-52 572.74,-52 572.74,-16 726.74,-16 726.74,-52"/>
 <text text-anchor="middle" x="649.74" y="-37" font-family="Helvetica" font-size="10.00">ScannerState.directivesPresent</text>
 <text text-anchor="middle" x="649.74" y="-26" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.EmitterScannability.saveSimpleKey_preserves_directivesPresent -->
 <g id="node4" class="node">
 <title>L4YAML.Proofs.EmitterScannability.saveSimpleKey_preserves_directivesPresent</title>
+<g id="a_node4"><a xlink:href="../../../api/L4YAML/Proofs/EmitterScannability.html#L4YAML.Proofs.EmitterScannability.saveSimpleKey_preserves_directivesPresent" xlink:title="EmitterScannability.saveSimpleKey_preserves_directivesPresent" target="_blank">
 <polygon fill="#fff3cd" stroke="#d4a017" points="507.61,-80.54 507.61,-95.46 364.83,-106 162.91,-106 20.13,-95.46 20.13,-80.54 162.91,-70 364.83,-70 507.61,-80.54"/>
 <polygon fill="none" stroke="#d4a017" points="511.6,-76.83 511.6,-99.17 364.98,-110 162.76,-110 16.13,-99.17 16.13,-76.83 162.76,-66 364.98,-66 511.6,-76.83"/>
 <text text-anchor="middle" x="263.87" y="-84.9" font-family="Helvetica" font-size="12.00">EmitterScannability.saveSimpleKey_preserves_directivesPresent</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.EmitterScannability.saveSimpleKey_preserves_directivesPresent&#45;&gt;L4YAML.Scanner.ScannerState -->
 <g id="edge3" class="edge">

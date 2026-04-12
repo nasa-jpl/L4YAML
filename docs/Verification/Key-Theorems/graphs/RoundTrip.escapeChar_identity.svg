@@ -35,37 +35,52 @@
 <!-- L4YAML.Proofs.RoundTrip.isEscapedChar -->
 <g id="node1" class="node">
 <title>L4YAML.Proofs.RoundTrip.isEscapedChar</title>
+<g id="a_node1"><a xlink:href="../../../api/L4YAML/Proofs/RoundTrip.html#L4YAML.Proofs.RoundTrip.isEscapedChar" xlink:title="RoundTrip.isEscapedChar\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1011.67,-1065 880.67,-1065 880.67,-1029 1011.67,-1029 1011.67,-1065"/>
 <text text-anchor="middle" x="946.17" y="-1050" font-family="Helvetica" font-size="10.00">RoundTrip.isEscapedChar</text>
 <text text-anchor="middle" x="946.17" y="-1039" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Emit.escapeChar.match_1 -->
 <g id="node2" class="node">
 <title>L4YAML.Emit.escapeChar.match_1</title>
+<g id="a_node2"><a xlink:href="../../../api/L4YAML/Emitter.html#L4YAML.Emit.escapeChar.match_1" xlink:title="Emit.escapeChar.match_1\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="758.4,-1119 626.4,-1119 626.4,-1083 758.4,-1083 758.4,-1119"/>
 <text text-anchor="middle" x="692.4" y="-1104" font-family="Helvetica" font-size="10.00">Emit.escapeChar.match_1</text>
 <text text-anchor="middle" x="692.4" y="-1093" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Emit.escapeChar -->
 <g id="node3" class="node">
 <title>L4YAML.Emit.escapeChar</title>
+<g id="a_node3"><a xlink:href="../../../api/L4YAML/Emitter.html#L4YAML.Emit.escapeChar" xlink:title="Emit.escapeChar\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="992.17,-1119 900.17,-1119 900.17,-1083 992.17,-1083 992.17,-1119"/>
 <text text-anchor="middle" x="946.17" y="-1104" font-family="Helvetica" font-size="10.00">Emit.escapeChar</text>
 <text text-anchor="middle" x="946.17" y="-1093" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.RoundTrip.isEscapedChar.match_1 -->
 <g id="node4" class="node">
 <title>L4YAML.Proofs.RoundTrip.isEscapedChar.match_1</title>
+<g id="a_node4"><a xlink:href="../../../api/L4YAML/Proofs/RoundTrip.html#L4YAML.Proofs.RoundTrip.isEscapedChar.match_1" xlink:title="RoundTrip.isEscapedChar.match_1\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="777.9,-1065 606.9,-1065 606.9,-1029 777.9,-1029 777.9,-1065"/>
 <text text-anchor="middle" x="692.4" y="-1050" font-family="Helvetica" font-size="10.00">RoundTrip.isEscapedChar.match_1</text>
 <text text-anchor="middle" x="692.4" y="-1039" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.RoundTrip.escapeChar_identity -->
 <g id="node5" class="node">
 <title>L4YAML.Proofs.RoundTrip.escapeChar_identity</title>
+<g id="a_node5"><a xlink:href="../../../api/L4YAML/Proofs/RoundTrip.html#L4YAML.Proofs.RoundTrip.escapeChar_identity" xlink:title="RoundTrip.escapeChar_identity" target="_blank">
 <polygon fill="#fff3cd" stroke="#d4a017" points="815.44,-628.54 815.44,-643.46 743.37,-654 641.44,-654 569.36,-643.46 569.36,-628.54 641.44,-618 743.37,-618 815.44,-628.54"/>
 <polygon fill="none" stroke="#d4a017" points="819.44,-625.09 819.44,-646.91 743.66,-658 641.15,-658 565.37,-646.91 565.37,-625.09 641.15,-614 743.66,-614 819.44,-625.09"/>
 <text text-anchor="middle" x="692.4" y="-632.9" font-family="Helvetica" font-size="12.00">RoundTrip.escapeChar_identity</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.RoundTrip.escapeChar_identity&#45;&gt;L4YAML.Proofs.RoundTrip.isEscapedChar -->
 <g id="edge1" class="edge">
@@ -84,9 +99,12 @@
 <!-- L4YAML.Proofs.RoundTrip.escapeChar_identity._proof_1_3 -->
 <g id="node6" class="node">
 <title>L4YAML.Proofs.RoundTrip.escapeChar_identity._proof_1_3</title>
+<g id="a_node6"><a xlink:href="../../../api/L4YAML/Proofs/RoundTrip.html#L4YAML.Proofs.RoundTrip.escapeChar_identity._proof_1_3" xlink:title="RoundTrip.escapeChar_identity._proof_1_3\n(RoundTrip)" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="272.07" cy="-37" rx="143.59" ry="21.43"/>
 <text text-anchor="middle" x="272.07" y="-40" font-family="Helvetica" font-size="10.00">RoundTrip.escapeChar_identity._proof_1_3</text>
 <text text-anchor="middle" x="272.07" y="-29" font-family="Helvetica" font-size="10.00">(RoundTrip)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.RoundTrip.escapeChar_identity._proof_1_3&#45;&gt;L4YAML.Proofs.RoundTrip.escapeChar_identity -->
 <g id="edge3" class="edge">
@@ -97,8 +115,11 @@
 <!-- ite_eq_right_iff._simp_1 -->
 <g id="node7" class="node">
 <title>ite_eq_right_iff._simp_1</title>
+<g id="a_node7"><a xlink:href="../../../api/Init/PropLemmas.html#ite_eq_right_iff._simp_1" xlink:title="ite_eq_right_iff._simp_1" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="272.07" cy="-230" rx="70.1" ry="18"/>
 <text text-anchor="middle" x="272.07" y="-227.5" font-family="Helvetica" font-size="10.00">ite_eq_right_iff._simp_1</text>
+</a>
+</g>
 </g>
 <!-- ite_eq_right_iff._simp_1&#45;&gt;L4YAML.Proofs.RoundTrip.escapeChar_identity -->
 <g id="edge4" class="edge">
@@ -109,8 +130,11 @@
 <!-- _private.L4YAML.Proofs.RoundTrip.0.L4YAML.Emit.escapeChar.match_1.eq_10 -->
 <g id="node8" class="node">
 <title>_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Emit.escapeChar.match_1.eq_10</title>
+<g id="a_node8"><a xlink:href="../../../api/L4YAML/Proofs/RoundTrip.html#_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Emit.escapeChar.match_1.eq_10" xlink:title="_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Emit.escapeChar.match_1.eq_10" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="272.07" cy="-1580" rx="214.72" ry="18"/>
 <text text-anchor="middle" x="272.07" y="-1577.5" font-family="Helvetica" font-size="10.00">_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Emit.escapeChar.match_1.eq_10</text>
+</a>
+</g>
 </g>
 <!-- _private.L4YAML.Proofs.RoundTrip.0.L4YAML.Emit.escapeChar.match_1.eq_10&#45;&gt;L4YAML.Emit.escapeChar.match_1 -->
 <g id="edge35" class="edge">
@@ -127,8 +151,11 @@
 <!-- _private.L4YAML.Proofs.RoundTrip.0.L4YAML.Emit.escapeChar.match_1.eq_6 -->
 <g id="node9" class="node">
 <title>_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Emit.escapeChar.match_1.eq_6</title>
+<g id="a_node9"><a xlink:href="../../../api/L4YAML/Proofs/RoundTrip.html#_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Emit.escapeChar.match_1.eq_6" xlink:title="_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Emit.escapeChar.match_1.eq_6" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="272.07" cy="-1202" rx="211.16" ry="18"/>
 <text text-anchor="middle" x="272.07" y="-1199.5" font-family="Helvetica" font-size="10.00">_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Emit.escapeChar.match_1.eq_6</text>
+</a>
+</g>
 </g>
 <!-- _private.L4YAML.Proofs.RoundTrip.0.L4YAML.Emit.escapeChar.match_1.eq_6&#45;&gt;L4YAML.Emit.escapeChar.match_1 -->
 <g id="edge45" class="edge">
@@ -145,8 +172,11 @@
 <!-- _private.L4YAML.Proofs.RoundTrip.0.L4YAML.Proofs.RoundTrip.isEscapedChar.match_1.eq_2 -->
 <g id="node10" class="node">
 <title>_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Proofs.RoundTrip.isEscapedChar.match_1.eq_2</title>
+<g id="a_node10"><a xlink:href="../../../api/L4YAML/Proofs/RoundTrip.html#_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Proofs.RoundTrip.isEscapedChar.match_1.eq_2" xlink:title="_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Proofs.RoundTrip.isEscapedChar.match_1.eq_2" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="272.07" cy="-878" rx="253.25" ry="18"/>
 <text text-anchor="middle" x="272.07" y="-875.5" font-family="Helvetica" font-size="10.00">_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Proofs.RoundTrip.isEscapedChar.match_1.eq_2</text>
+</a>
+</g>
 </g>
 <!-- _private.L4YAML.Proofs.RoundTrip.0.L4YAML.Proofs.RoundTrip.isEscapedChar.match_1.eq_2&#45;&gt;L4YAML.Proofs.RoundTrip.isEscapedChar.match_1 -->
 <g id="edge51" class="edge">
@@ -163,8 +193,11 @@
 <!-- _private.L4YAML.Proofs.RoundTrip.0.L4YAML.Proofs.RoundTrip.isEscapedChar.match_1.eq_5 -->
 <g id="node11" class="node">
 <title>_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Proofs.RoundTrip.isEscapedChar.match_1.eq_5</title>
+<g id="a_node11"><a xlink:href="../../../api/L4YAML/Proofs/RoundTrip.html#_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Proofs.RoundTrip.isEscapedChar.match_1.eq_5" xlink:title="_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Proofs.RoundTrip.isEscapedChar.match_1.eq_5" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="272.07" cy="-824" rx="253.25" ry="18"/>
 <text text-anchor="middle" x="272.07" y="-821.5" font-family="Helvetica" font-size="10.00">_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Proofs.RoundTrip.isEscapedChar.match_1.eq_5</text>
+</a>
+</g>
 </g>
 <!-- _private.L4YAML.Proofs.RoundTrip.0.L4YAML.Proofs.RoundTrip.isEscapedChar.match_1.eq_5&#45;&gt;L4YAML.Proofs.RoundTrip.isEscapedChar.match_1 -->
 <g id="edge55" class="edge">
@@ -181,8 +214,11 @@
 <!-- _private.L4YAML.Proofs.RoundTrip.0.L4YAML.Proofs.RoundTrip.isEscapedChar.match_1.eq_12 -->
 <g id="node12" class="node">
 <title>_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Proofs.RoundTrip.isEscapedChar.match_1.eq_12</title>
+<g id="a_node12"><a xlink:href="../../../api/L4YAML/Proofs/RoundTrip.html#_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Proofs.RoundTrip.isEscapedChar.match_1.eq_12" xlink:title="_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Proofs.RoundTrip.isEscapedChar.match_1.eq_12" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="272.07" cy="-932" rx="256.14" ry="18"/>
 <text text-anchor="middle" x="272.07" y="-929.5" font-family="Helvetica" font-size="10.00">_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Proofs.RoundTrip.isEscapedChar.match_1.eq_12</text>
+</a>
+</g>
 </g>
 <!-- _private.L4YAML.Proofs.RoundTrip.0.L4YAML.Proofs.RoundTrip.isEscapedChar.match_1.eq_12&#45;&gt;L4YAML.Proofs.RoundTrip.isEscapedChar.match_1 -->
 <g id="edge33" class="edge">
@@ -199,8 +235,11 @@
 <!-- _private.L4YAML.Proofs.RoundTrip.0.L4YAML.Proofs.RoundTrip.isEscapedChar.match_1.eq_10 -->
 <g id="node13" class="node">
 <title>_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Proofs.RoundTrip.isEscapedChar.match_1.eq_10</title>
+<g id="a_node13"><a xlink:href="../../../api/L4YAML/Proofs/RoundTrip.html#_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Proofs.RoundTrip.isEscapedChar.match_1.eq_10" xlink:title="_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Proofs.RoundTrip.isEscapedChar.match_1.eq_10" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="272.07" cy="-716" rx="256.14" ry="18"/>
 <text text-anchor="middle" x="272.07" y="-713.5" font-family="Helvetica" font-size="10.00">_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Proofs.RoundTrip.isEscapedChar.match_1.eq_10</text>
+</a>
+</g>
 </g>
 <!-- _private.L4YAML.Proofs.RoundTrip.0.L4YAML.Proofs.RoundTrip.isEscapedChar.match_1.eq_10&#45;&gt;L4YAML.Proofs.RoundTrip.isEscapedChar.match_1 -->
 <g id="edge49" class="edge">
@@ -217,8 +256,11 @@
 <!-- _private.L4YAML.Proofs.RoundTrip.0.L4YAML.Emit.escapeChar.match_1.eq_12 -->
 <g id="node14" class="node">
 <title>_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Emit.escapeChar.match_1.eq_12</title>
+<g id="a_node14"><a xlink:href="../../../api/L4YAML/Proofs/RoundTrip.html#_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Emit.escapeChar.match_1.eq_12" xlink:title="_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Emit.escapeChar.match_1.eq_12" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="272.07" cy="-1364" rx="214.72" ry="18"/>
 <text text-anchor="middle" x="272.07" y="-1361.5" font-family="Helvetica" font-size="10.00">_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Emit.escapeChar.match_1.eq_12</text>
+</a>
+</g>
 </g>
 <!-- _private.L4YAML.Proofs.RoundTrip.0.L4YAML.Emit.escapeChar.match_1.eq_12&#45;&gt;L4YAML.Emit.escapeChar.match_1 -->
 <g id="edge36" class="edge">
@@ -235,8 +277,11 @@
 <!-- _private.L4YAML.Proofs.RoundTrip.0.L4YAML.Proofs.RoundTrip.isEscapedChar.match_1.eq_9 -->
 <g id="node15" class="node">
 <title>_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Proofs.RoundTrip.isEscapedChar.match_1.eq_9</title>
+<g id="a_node15"><a xlink:href="../../../api/L4YAML/Proofs/RoundTrip.html#_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Proofs.RoundTrip.isEscapedChar.match_1.eq_9" xlink:title="_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Proofs.RoundTrip.isEscapedChar.match_1.eq_9" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="272.07" cy="-770" rx="253.25" ry="18"/>
 <text text-anchor="middle" x="272.07" y="-767.5" font-family="Helvetica" font-size="10.00">_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Proofs.RoundTrip.isEscapedChar.match_1.eq_9</text>
+</a>
+</g>
 </g>
 <!-- _private.L4YAML.Proofs.RoundTrip.0.L4YAML.Proofs.RoundTrip.isEscapedChar.match_1.eq_9&#45;&gt;L4YAML.Proofs.RoundTrip.isEscapedChar.match_1 -->
 <g id="edge34" class="edge">
@@ -253,8 +298,11 @@
 <!-- Bool.true_eq_false -->
 <g id="node16" class="node">
 <title>Bool.true_eq_false</title>
+<g id="a_node16"><a xlink:href="../../../api/Init/Data/Bool.html#Bool.true_eq_false" xlink:title="Bool.true_eq_false" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="272.07" cy="-284" rx="57.88" ry="18"/>
 <text text-anchor="middle" x="272.07" y="-281.5" font-family="Helvetica" font-size="10.00">Bool.true_eq_false</text>
+</a>
+</g>
 </g>
 <!-- Bool.true_eq_false&#45;&gt;L4YAML.Proofs.RoundTrip.escapeChar_identity -->
 <g id="edge13" class="edge">
@@ -265,8 +313,11 @@
 <!-- _private.L4YAML.Proofs.RoundTrip.0.L4YAML.Emit.escapeChar.match_1.eq_4 -->
 <g id="node17" class="node">
 <title>_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Emit.escapeChar.match_1.eq_4</title>
+<g id="a_node17"><a xlink:href="../../../api/L4YAML/Proofs/RoundTrip.html#_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Emit.escapeChar.match_1.eq_4" xlink:title="_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Emit.escapeChar.match_1.eq_4" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="272.07" cy="-1148" rx="211.16" ry="18"/>
 <text text-anchor="middle" x="272.07" y="-1145.5" font-family="Helvetica" font-size="10.00">_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Emit.escapeChar.match_1.eq_4</text>
+</a>
+</g>
 </g>
 <!-- _private.L4YAML.Proofs.RoundTrip.0.L4YAML.Emit.escapeChar.match_1.eq_4&#45;&gt;L4YAML.Emit.escapeChar.match_1 -->
 <g id="edge53" class="edge">
@@ -283,8 +334,11 @@
 <!-- _private.L4YAML.Proofs.RoundTrip.0.L4YAML.Emit.escapeChar.match_1.eq_11 -->
 <g id="node18" class="node">
 <title>_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Emit.escapeChar.match_1.eq_11</title>
+<g id="a_node18"><a xlink:href="../../../api/L4YAML/Proofs/RoundTrip.html#_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Emit.escapeChar.match_1.eq_11" xlink:title="_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Emit.escapeChar.match_1.eq_11" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="272.07" cy="-1094" rx="214.72" ry="18"/>
 <text text-anchor="middle" x="272.07" y="-1091.5" font-family="Helvetica" font-size="10.00">_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Emit.escapeChar.match_1.eq_11</text>
+</a>
+</g>
 </g>
 <!-- _private.L4YAML.Proofs.RoundTrip.0.L4YAML.Emit.escapeChar.match_1.eq_11&#45;&gt;L4YAML.Emit.escapeChar.match_1 -->
 <g id="edge41" class="edge">
@@ -301,8 +355,11 @@
 <!-- _private.L4YAML.Proofs.RoundTrip.0.L4YAML.Emit.escapeChar.match_1.eq_9 -->
 <g id="node19" class="node">
 <title>_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Emit.escapeChar.match_1.eq_9</title>
+<g id="a_node19"><a xlink:href="../../../api/L4YAML/Proofs/RoundTrip.html#_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Emit.escapeChar.match_1.eq_9" xlink:title="_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Emit.escapeChar.match_1.eq_9" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="272.07" cy="-1040" rx="211.16" ry="18"/>
 <text text-anchor="middle" x="272.07" y="-1037.5" font-family="Helvetica" font-size="10.00">_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Emit.escapeChar.match_1.eq_9</text>
+</a>
+</g>
 </g>
 <!-- _private.L4YAML.Proofs.RoundTrip.0.L4YAML.Emit.escapeChar.match_1.eq_9&#45;&gt;L4YAML.Emit.escapeChar.match_1 -->
 <g id="edge40" class="edge">
@@ -319,8 +376,11 @@
 <!-- _private.L4YAML.Proofs.RoundTrip.0.L4YAML.Proofs.RoundTrip.isEscapedChar.match_1.eq_4 -->
 <g id="node20" class="node">
 <title>_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Proofs.RoundTrip.isEscapedChar.match_1.eq_4</title>
+<g id="a_node20"><a xlink:href="../../../api/L4YAML/Proofs/RoundTrip.html#_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Proofs.RoundTrip.isEscapedChar.match_1.eq_4" xlink:title="_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Proofs.RoundTrip.isEscapedChar.match_1.eq_4" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="272.07" cy="-554" rx="253.25" ry="18"/>
 <text text-anchor="middle" x="272.07" y="-551.5" font-family="Helvetica" font-size="10.00">_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Proofs.RoundTrip.isEscapedChar.match_1.eq_4</text>
+</a>
+</g>
 </g>
 <!-- _private.L4YAML.Proofs.RoundTrip.0.L4YAML.Proofs.RoundTrip.isEscapedChar.match_1.eq_4&#45;&gt;L4YAML.Proofs.RoundTrip.isEscapedChar.match_1 -->
 <g id="edge46" class="edge">
@@ -337,8 +397,11 @@
 <!-- _private.L4YAML.Proofs.RoundTrip.0.L4YAML.Emit.escapeChar.match_1.eq_3 -->
 <g id="node21" class="node">
 <title>_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Emit.escapeChar.match_1.eq_3</title>
+<g id="a_node21"><a xlink:href="../../../api/L4YAML/Proofs/RoundTrip.html#_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Emit.escapeChar.match_1.eq_3" xlink:title="_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Emit.escapeChar.match_1.eq_3" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="272.07" cy="-1472" rx="211.16" ry="18"/>
 <text text-anchor="middle" x="272.07" y="-1469.5" font-family="Helvetica" font-size="10.00">_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Emit.escapeChar.match_1.eq_3</text>
+</a>
+</g>
 </g>
 <!-- _private.L4YAML.Proofs.RoundTrip.0.L4YAML.Emit.escapeChar.match_1.eq_3&#45;&gt;L4YAML.Emit.escapeChar.match_1 -->
 <g id="edge48" class="edge">
@@ -355,8 +418,11 @@
 <!-- _private.L4YAML.Proofs.RoundTrip.0.L4YAML.Proofs.RoundTrip.isEscapedChar.match_1.eq_3 -->
 <g id="node22" class="node">
 <title>_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Proofs.RoundTrip.isEscapedChar.match_1.eq_3</title>
+<g id="a_node22"><a xlink:href="../../../api/L4YAML/Proofs/RoundTrip.html#_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Proofs.RoundTrip.isEscapedChar.match_1.eq_3" xlink:title="_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Proofs.RoundTrip.isEscapedChar.match_1.eq_3" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="272.07" cy="-392" rx="253.25" ry="18"/>
 <text text-anchor="middle" x="272.07" y="-389.5" font-family="Helvetica" font-size="10.00">_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Proofs.RoundTrip.isEscapedChar.match_1.eq_3</text>
+</a>
+</g>
 </g>
 <!-- _private.L4YAML.Proofs.RoundTrip.0.L4YAML.Proofs.RoundTrip.isEscapedChar.match_1.eq_3&#45;&gt;L4YAML.Proofs.RoundTrip.isEscapedChar.match_1 -->
 <g id="edge47" class="edge">
@@ -373,8 +439,11 @@
 <!-- Nat.not_lt._simp_1 -->
 <g id="node23" class="node">
 <title>Nat.not_lt._simp_1</title>
+<g id="a_node23"><a xlink:href="../../../api/Init/Data/Nat/Basic.html#Nat.not_lt._simp_1" xlink:title="Nat.not_lt._simp_1" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="272.07" cy="-176" rx="57.88" ry="18"/>
 <text text-anchor="middle" x="272.07" y="-173.5" font-family="Helvetica" font-size="10.00">Nat.not_lt._simp_1</text>
+</a>
+</g>
 </g>
 <!-- Nat.not_lt._simp_1&#45;&gt;L4YAML.Proofs.RoundTrip.escapeChar_identity -->
 <g id="edge20" class="edge">
@@ -385,8 +454,11 @@
 <!-- _private.L4YAML.Proofs.RoundTrip.0.L4YAML.Proofs.RoundTrip.isEscapedChar.match_1.eq_11 -->
 <g id="node24" class="node">
 <title>_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Proofs.RoundTrip.isEscapedChar.match_1.eq_11</title>
+<g id="a_node24"><a xlink:href="../../../api/L4YAML/Proofs/RoundTrip.html#_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Proofs.RoundTrip.isEscapedChar.match_1.eq_11" xlink:title="_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Proofs.RoundTrip.isEscapedChar.match_1.eq_11" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="272.07" cy="-500" rx="256.14" ry="18"/>
 <text text-anchor="middle" x="272.07" y="-497.5" font-family="Helvetica" font-size="10.00">_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Proofs.RoundTrip.isEscapedChar.match_1.eq_11</text>
+</a>
+</g>
 </g>
 <!-- _private.L4YAML.Proofs.RoundTrip.0.L4YAML.Proofs.RoundTrip.isEscapedChar.match_1.eq_11&#45;&gt;L4YAML.Proofs.RoundTrip.isEscapedChar.match_1 -->
 <g id="edge38" class="edge">
@@ -403,8 +475,11 @@
 <!-- _private.L4YAML.Proofs.RoundTrip.0.L4YAML.Emit.escapeChar.match_1.eq_2 -->
 <g id="node25" class="node">
 <title>_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Emit.escapeChar.match_1.eq_2</title>
+<g id="a_node25"><a xlink:href="../../../api/L4YAML/Proofs/RoundTrip.html#_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Emit.escapeChar.match_1.eq_2" xlink:title="_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Emit.escapeChar.match_1.eq_2" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="272.07" cy="-1634" rx="211.16" ry="18"/>
 <text text-anchor="middle" x="272.07" y="-1631.5" font-family="Helvetica" font-size="10.00">_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Emit.escapeChar.match_1.eq_2</text>
+</a>
+</g>
 </g>
 <!-- _private.L4YAML.Proofs.RoundTrip.0.L4YAML.Emit.escapeChar.match_1.eq_2&#45;&gt;L4YAML.Emit.escapeChar.match_1 -->
 <g id="edge54" class="edge">
@@ -421,8 +496,11 @@
 <!-- _private.L4YAML.Proofs.RoundTrip.0.L4YAML.Emit.escapeChar.match_1.eq_8 -->
 <g id="node26" class="node">
 <title>_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Emit.escapeChar.match_1.eq_8</title>
+<g id="a_node26"><a xlink:href="../../../api/L4YAML/Proofs/RoundTrip.html#_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Emit.escapeChar.match_1.eq_8" xlink:title="_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Emit.escapeChar.match_1.eq_8" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="272.07" cy="-1526" rx="211.16" ry="18"/>
 <text text-anchor="middle" x="272.07" y="-1523.5" font-family="Helvetica" font-size="10.00">_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Emit.escapeChar.match_1.eq_8</text>
+</a>
+</g>
 </g>
 <!-- _private.L4YAML.Proofs.RoundTrip.0.L4YAML.Emit.escapeChar.match_1.eq_8&#45;&gt;L4YAML.Emit.escapeChar.match_1 -->
 <g id="edge37" class="edge">
@@ -439,8 +517,11 @@
 <!-- _private.L4YAML.Proofs.RoundTrip.0.L4YAML.Proofs.RoundTrip.isEscapedChar.match_1.eq_6 -->
 <g id="node27" class="node">
 <title>_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Proofs.RoundTrip.isEscapedChar.match_1.eq_6</title>
+<g id="a_node27"><a xlink:href="../../../api/L4YAML/Proofs/RoundTrip.html#_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Proofs.RoundTrip.isEscapedChar.match_1.eq_6" xlink:title="_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Proofs.RoundTrip.isEscapedChar.match_1.eq_6" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="272.07" cy="-446" rx="253.25" ry="18"/>
 <text text-anchor="middle" x="272.07" y="-443.5" font-family="Helvetica" font-size="10.00">_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Proofs.RoundTrip.isEscapedChar.match_1.eq_6</text>
+</a>
+</g>
 </g>
 <!-- _private.L4YAML.Proofs.RoundTrip.0.L4YAML.Proofs.RoundTrip.isEscapedChar.match_1.eq_6&#45;&gt;L4YAML.Proofs.RoundTrip.isEscapedChar.match_1 -->
 <g id="edge44" class="edge">
@@ -457,8 +538,11 @@
 <!-- decide_eq_false_iff_not._simp_1 -->
 <g id="node28" class="node">
 <title>decide_eq_false_iff_not._simp_1</title>
+<g id="a_node28"><a xlink:href="../../../api/Init/SimpLemmas.html#decide_eq_false_iff_not._simp_1" xlink:title="decide_eq_false_iff_not._simp_1" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="272.07" cy="-122" rx="93.02" ry="18"/>
 <text text-anchor="middle" x="272.07" y="-119.5" font-family="Helvetica" font-size="10.00">decide_eq_false_iff_not._simp_1</text>
+</a>
+</g>
 </g>
 <!-- decide_eq_false_iff_not._simp_1&#45;&gt;L4YAML.Proofs.RoundTrip.escapeChar_identity -->
 <g id="edge25" class="edge">
@@ -469,8 +553,11 @@
 <!-- _private.L4YAML.Proofs.RoundTrip.0.L4YAML.Emit.escapeChar.match_1.eq_5 -->
 <g id="node29" class="node">
 <title>_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Emit.escapeChar.match_1.eq_5</title>
+<g id="a_node29"><a xlink:href="../../../api/L4YAML/Proofs/RoundTrip.html#_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Emit.escapeChar.match_1.eq_5" xlink:title="_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Emit.escapeChar.match_1.eq_5" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="272.07" cy="-1256" rx="211.16" ry="18"/>
 <text text-anchor="middle" x="272.07" y="-1253.5" font-family="Helvetica" font-size="10.00">_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Emit.escapeChar.match_1.eq_5</text>
+</a>
+</g>
 </g>
 <!-- _private.L4YAML.Proofs.RoundTrip.0.L4YAML.Emit.escapeChar.match_1.eq_5&#45;&gt;L4YAML.Emit.escapeChar.match_1 -->
 <g id="edge42" class="edge">
@@ -487,8 +574,11 @@
 <!-- _private.L4YAML.Proofs.RoundTrip.0.L4YAML.Emit.escapeChar.match_1.eq_7 -->
 <g id="node30" class="node">
 <title>_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Emit.escapeChar.match_1.eq_7</title>
+<g id="a_node30"><a xlink:href="../../../api/L4YAML/Proofs/RoundTrip.html#_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Emit.escapeChar.match_1.eq_7" xlink:title="_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Emit.escapeChar.match_1.eq_7" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="272.07" cy="-1310" rx="211.16" ry="18"/>
 <text text-anchor="middle" x="272.07" y="-1307.5" font-family="Helvetica" font-size="10.00">_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Emit.escapeChar.match_1.eq_7</text>
+</a>
+</g>
 </g>
 <!-- _private.L4YAML.Proofs.RoundTrip.0.L4YAML.Emit.escapeChar.match_1.eq_7&#45;&gt;L4YAML.Emit.escapeChar.match_1 -->
 <g id="edge43" class="edge">
@@ -505,8 +595,11 @@
 <!-- _private.L4YAML.Proofs.RoundTrip.0.L4YAML.Proofs.RoundTrip.isEscapedChar.match_1.eq_8 -->
 <g id="node31" class="node">
 <title>_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Proofs.RoundTrip.isEscapedChar.match_1.eq_8</title>
+<g id="a_node31"><a xlink:href="../../../api/L4YAML/Proofs/RoundTrip.html#_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Proofs.RoundTrip.isEscapedChar.match_1.eq_8" xlink:title="_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Proofs.RoundTrip.isEscapedChar.match_1.eq_8" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="272.07" cy="-662" rx="253.25" ry="18"/>
 <text text-anchor="middle" x="272.07" y="-659.5" font-family="Helvetica" font-size="10.00">_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Proofs.RoundTrip.isEscapedChar.match_1.eq_8</text>
+</a>
+</g>
 </g>
 <!-- _private.L4YAML.Proofs.RoundTrip.0.L4YAML.Proofs.RoundTrip.isEscapedChar.match_1.eq_8&#45;&gt;L4YAML.Proofs.RoundTrip.isEscapedChar.match_1 -->
 <g id="edge56" class="edge">
@@ -523,8 +616,11 @@
 <!-- _private.L4YAML.Proofs.RoundTrip.0.L4YAML.Proofs.RoundTrip.isEscapedChar.match_1.eq_1 -->
 <g id="node32" class="node">
 <title>_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Proofs.RoundTrip.isEscapedChar.match_1.eq_1</title>
+<g id="a_node32"><a xlink:href="../../../api/L4YAML/Proofs/RoundTrip.html#_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Proofs.RoundTrip.isEscapedChar.match_1.eq_1" xlink:title="_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Proofs.RoundTrip.isEscapedChar.match_1.eq_1" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="272.07" cy="-986" rx="253.25" ry="18"/>
 <text text-anchor="middle" x="272.07" y="-983.5" font-family="Helvetica" font-size="10.00">_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Proofs.RoundTrip.isEscapedChar.match_1.eq_1</text>
+</a>
+</g>
 </g>
 <!-- _private.L4YAML.Proofs.RoundTrip.0.L4YAML.Proofs.RoundTrip.isEscapedChar.match_1.eq_1&#45;&gt;L4YAML.Proofs.RoundTrip.isEscapedChar.match_1 -->
 <g id="edge39" class="edge">
@@ -541,8 +637,11 @@
 <!-- Decidable.byContradiction -->
 <g id="node33" class="node">
 <title>Decidable.byContradiction</title>
+<g id="a_node33"><a xlink:href="../../../api/Init/Core.html#Decidable.byContradiction" xlink:title="Decidable.byContradiction" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="272.07" cy="-338" rx="77.23" ry="18"/>
 <text text-anchor="middle" x="272.07" y="-335.5" font-family="Helvetica" font-size="10.00">Decidable.byContradiction</text>
+</a>
+</g>
 </g>
 <!-- Decidable.byContradiction&#45;&gt;L4YAML.Proofs.RoundTrip.escapeChar_identity -->
 <g id="edge30" class="edge">
@@ -553,8 +652,11 @@
 <!-- _private.L4YAML.Proofs.RoundTrip.0.L4YAML.Emit.escapeChar.match_1.eq_1 -->
 <g id="node34" class="node">
 <title>_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Emit.escapeChar.match_1.eq_1</title>
+<g id="a_node34"><a xlink:href="../../../api/L4YAML/Proofs/RoundTrip.html#_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Emit.escapeChar.match_1.eq_1" xlink:title="_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Emit.escapeChar.match_1.eq_1" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="272.07" cy="-1418" rx="211.16" ry="18"/>
 <text text-anchor="middle" x="272.07" y="-1415.5" font-family="Helvetica" font-size="10.00">_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Emit.escapeChar.match_1.eq_1</text>
+</a>
+</g>
 </g>
 <!-- _private.L4YAML.Proofs.RoundTrip.0.L4YAML.Emit.escapeChar.match_1.eq_1&#45;&gt;L4YAML.Emit.escapeChar.match_1 -->
 <g id="edge52" class="edge">
@@ -571,8 +673,11 @@
 <!-- _private.L4YAML.Proofs.RoundTrip.0.L4YAML.Proofs.RoundTrip.isEscapedChar.match_1.eq_7 -->
 <g id="node35" class="node">
 <title>_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Proofs.RoundTrip.isEscapedChar.match_1.eq_7</title>
+<g id="a_node35"><a xlink:href="../../../api/L4YAML/Proofs/RoundTrip.html#_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Proofs.RoundTrip.isEscapedChar.match_1.eq_7" xlink:title="_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Proofs.RoundTrip.isEscapedChar.match_1.eq_7" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="272.07" cy="-608" rx="253.25" ry="18"/>
 <text text-anchor="middle" x="272.07" y="-605.5" font-family="Helvetica" font-size="10.00">_private.L4YAML.Proofs.RoundTrip.0.L4YAML.Proofs.RoundTrip.isEscapedChar.match_1.eq_7</text>
+</a>
+</g>
 </g>
 <!-- _private.L4YAML.Proofs.RoundTrip.0.L4YAML.Proofs.RoundTrip.isEscapedChar.match_1.eq_7&#45;&gt;L4YAML.Proofs.RoundTrip.isEscapedChar.match_1 -->
 <g id="edge50" class="edge">

@@ -25,30 +25,42 @@
 <!-- L4YAML.Scanner.ScannerState.advance -->
 <g id="node1" class="node">
 <title>L4YAML.Scanner.ScannerState.advance</title>
+<g id="a_node1"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.advance" xlink:title="ScannerState.advance\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="529,-160 414,-160 414,-124 529,-124 529,-160"/>
 <text text-anchor="middle" x="471.5" y="-145" font-family="Helvetica" font-size="10.00">ScannerState.advance</text>
 <text text-anchor="middle" x="471.5" y="-134" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.explicitKeyLine -->
 <g id="node2" class="node">
 <title>L4YAML.Scanner.ScannerState.explicitKeyLine</title>
+<g id="a_node2"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.explicitKeyLine" xlink:title="ScannerState.explicitKeyLine\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="543.5,-106 399.5,-106 399.5,-70 543.5,-70 543.5,-106"/>
 <text text-anchor="middle" x="471.5" y="-91" font-family="Helvetica" font-size="10.00">ScannerState.explicitKeyLine</text>
 <text text-anchor="middle" x="471.5" y="-80" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState -->
 <g id="node3" class="node">
 <title>L4YAML.Scanner.ScannerState</title>
+<g id="a_node3"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState" xlink:title="ScannerState\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="509.5,-52 433.5,-52 433.5,-16 509.5,-16 509.5,-52"/>
 <text text-anchor="middle" x="471.5" y="-37" font-family="Helvetica" font-size="10.00">ScannerState</text>
 <text text-anchor="middle" x="471.5" y="-26" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.CouplingBridge.advance_explicitKeyLine -->
 <g id="node4" class="node">
 <title>L4YAML.Proofs.CouplingBridge.advance_explicitKeyLine</title>
+<g id="a_node4"><a xlink:href="../../../api/L4YAML/Proofs/CouplingBridge.html#L4YAML.Proofs.CouplingBridge.advance_explicitKeyLine" xlink:title="CouplingBridge.advance_explicitKeyLine" target="_blank">
 <polygon fill="#fff3cd" stroke="#d4a017" points="334.74,-80.54 334.74,-95.46 242.48,-106 112.01,-106 19.76,-95.46 19.76,-80.54 112.01,-70 242.48,-70 334.74,-80.54"/>
 <polygon fill="none" stroke="#d4a017" points="338.75,-76.98 338.75,-99.02 242.71,-110 111.78,-110 15.75,-99.02 15.75,-76.98 111.78,-66 242.71,-66 338.75,-76.98"/>
 <text text-anchor="middle" x="177.25" y="-84.9" font-family="Helvetica" font-size="12.00">CouplingBridge.advance_explicitKeyLine</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.CouplingBridge.advance_explicitKeyLine&#45;&gt;L4YAML.Scanner.ScannerState.advance -->
 <g id="edge1" class="edge">

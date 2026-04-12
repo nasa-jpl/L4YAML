@@ -30,58 +30,82 @@
 <!-- L4YAML.Scanner.ScannerState.advance -->
 <g id="node1" class="node">
 <title>L4YAML.Scanner.ScannerState.advance</title>
+<g id="a_node1"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.advance" xlink:title="ScannerState.advance\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="596.23,-376 481.23,-376 481.23,-340 596.23,-340 596.23,-376"/>
 <text text-anchor="middle" x="538.73" y="-361" font-family="Helvetica" font-size="10.00">ScannerState.advance</text>
 <text text-anchor="middle" x="538.73" y="-350" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.peek? -->
 <g id="node2" class="node">
 <title>L4YAML.Scanner.ScannerState.peek?</title>
+<g id="a_node2"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.peek?" xlink:title="ScannerState.peek?\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="590.73,-322 486.73,-322 486.73,-286 590.73,-286 590.73,-322"/>
 <text text-anchor="middle" x="538.73" y="-307" font-family="Helvetica" font-size="10.00">ScannerState.peek?</text>
 <text text-anchor="middle" x="538.73" y="-296" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.collectTagHandleLoop -->
 <g id="node3" class="node">
 <title>L4YAML.Scanner.collectTagHandleLoop</title>
+<g id="a_node3"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.collectTagHandleLoop" xlink:title="collectTagHandleLoop\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="595.23,-268 482.23,-268 482.23,-232 595.23,-232 595.23,-268"/>
 <text text-anchor="middle" x="538.73" y="-253" font-family="Helvetica" font-size="10.00">collectTagHandleLoop</text>
 <text text-anchor="middle" x="538.73" y="-242" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState -->
 <g id="node4" class="node">
 <title>L4YAML.Scanner.ScannerState</title>
+<g id="a_node4"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState" xlink:title="ScannerState\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="576.73,-214 500.73,-214 500.73,-178 576.73,-178 576.73,-214"/>
 <text text-anchor="middle" x="538.73" y="-199" font-family="Helvetica" font-size="10.00">ScannerState</text>
 <text text-anchor="middle" x="538.73" y="-188" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.peekAt?Loop.match_1 -->
 <g id="node5" class="node">
 <title>L4YAML.Scanner.ScannerState.peekAt?Loop.match_1</title>
+<g id="a_node5"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.peekAt?Loop.match_1" xlink:title="ScannerState.peekAt?Loop.match_1\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="626.73,-160 450.73,-160 450.73,-124 626.73,-124 626.73,-160"/>
 <text text-anchor="middle" x="538.73" y="-145" font-family="Helvetica" font-size="10.00">ScannerState.peekAt?Loop.match_1</text>
 <text text-anchor="middle" x="538.73" y="-134" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.CharPredicates.isWordCharBool -->
 <g id="node6" class="node">
 <title>L4YAML.CharPredicates.isWordCharBool</title>
+<g id="a_node6"><a xlink:href="../../../api/L4YAML/CharPredicates.html#L4YAML.CharPredicates.isWordCharBool" xlink:title="CharPredicates.isWordCharBool\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="617.73,-106 459.73,-106 459.73,-70 617.73,-70 617.73,-106"/>
 <text text-anchor="middle" x="538.73" y="-91" font-family="Helvetica" font-size="10.00">CharPredicates.isWordCharBool</text>
 <text text-anchor="middle" x="538.73" y="-80" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.collectTagHandleLoop.match_1 -->
 <g id="node7" class="node">
 <title>L4YAML.Scanner.collectTagHandleLoop.match_1</title>
+<g id="a_node7"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.collectTagHandleLoop.match_1" xlink:title="collectTagHandleLoop.match_1\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="615.23,-52 462.23,-52 462.23,-16 615.23,-16 615.23,-52"/>
 <text text-anchor="middle" x="538.73" y="-37" font-family="Helvetica" font-size="10.00">collectTagHandleLoop.match_1</text>
 <text text-anchor="middle" x="538.73" y="-26" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.collectTagHandleLoop.eq_def -->
 <g id="node8" class="node">
 <title>L4YAML.Scanner.collectTagHandleLoop.eq_def</title>
+<g id="a_node8"><a xlink:href="../../../api/L4YAML/Proofs/StructureCoupling.html#L4YAML.Scanner.collectTagHandleLoop.eq_def" xlink:title="collectTagHandleLoop.eq_def" target="_blank">
 <polygon fill="#fff3cd" stroke="#d4a017" points="385.5,-188.54 385.5,-203.46 316.94,-214 219.97,-214 151.41,-203.46 151.41,-188.54 219.97,-178 316.94,-178 385.5,-188.54"/>
 <polygon fill="none" stroke="#d4a017" points="389.5,-185.11 389.5,-206.89 317.24,-218 219.67,-218 147.42,-206.89 147.42,-185.11 219.67,-174 317.24,-174 389.5,-185.11"/>
 <text text-anchor="middle" x="268.46" y="-192.9" font-family="Helvetica" font-size="12.00">collectTagHandleLoop.eq_def</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.collectTagHandleLoop.eq_def&#45;&gt;L4YAML.Scanner.ScannerState.advance -->
 <g id="edge1" class="edge">
@@ -135,8 +159,11 @@
 <!-- Nat.brecOn.eq -->
 <g id="node9" class="node">
 <title>Nat.brecOn.eq</title>
+<g id="a_node9"><a xlink:href="../../../api/Init/Prelude.html#Nat.brecOn.eq" xlink:title="Nat.brecOn.eq" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="63.09" cy="-196" rx="47.19" ry="18"/>
 <text text-anchor="middle" x="63.09" y="-193.5" font-family="Helvetica" font-size="10.00">Nat.brecOn.eq</text>
+</a>
+</g>
 </g>
 <!-- Nat.brecOn.eq&#45;&gt;L4YAML.Scanner.collectTagHandleLoop.eq_def -->
 <g id="edge8" class="edge">

@@ -30,44 +30,62 @@
 <!-- L4YAML.Positioned -->
 <g id="node1" class="node">
 <title>L4YAML.Positioned</title>
+<g id="a_node1"><a xlink:href="../../../api/L4YAML/Token.html#L4YAML.Positioned" xlink:title="Positioned\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="639.91,-268 577.91,-268 577.91,-232 639.91,-232 639.91,-268"/>
 <text text-anchor="middle" x="608.91" y="-253" font-family="Helvetica" font-size="10.00">Positioned</text>
 <text text-anchor="middle" x="608.91" y="-242" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.advance -->
 <g id="node2" class="node">
 <title>L4YAML.Scanner.ScannerState.advance</title>
+<g id="a_node2"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.advance" xlink:title="ScannerState.advance\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="666.41,-214 551.41,-214 551.41,-178 666.41,-178 666.41,-214"/>
 <text text-anchor="middle" x="608.91" y="-199" font-family="Helvetica" font-size="10.00">ScannerState.advance</text>
 <text text-anchor="middle" x="608.91" y="-188" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState -->
 <g id="node3" class="node">
 <title>L4YAML.Scanner.ScannerState</title>
+<g id="a_node3"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState" xlink:title="ScannerState\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="646.91,-160 570.91,-160 570.91,-124 646.91,-124 646.91,-160"/>
 <text text-anchor="middle" x="608.91" y="-145" font-family="Helvetica" font-size="10.00">ScannerState</text>
 <text text-anchor="middle" x="608.91" y="-134" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.YamlToken -->
 <g id="node4" class="node">
 <title>L4YAML.YamlToken</title>
+<g id="a_node4"><a xlink:href="../../../api/L4YAML/Token.html#L4YAML.YamlToken" xlink:title="YamlToken\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="640.91,-106 576.91,-106 576.91,-70 640.91,-70 640.91,-106"/>
 <text text-anchor="middle" x="608.91" y="-91" font-family="Helvetica" font-size="10.00">YamlToken</text>
 <text text-anchor="middle" x="608.91" y="-80" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.tokens -->
 <g id="node5" class="node">
 <title>L4YAML.Scanner.ScannerState.tokens</title>
+<g id="a_node5"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.tokens" xlink:title="ScannerState.tokens\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="662.41,-52 555.41,-52 555.41,-16 662.41,-16 662.41,-52"/>
 <text text-anchor="middle" x="608.91" y="-37" font-family="Helvetica" font-size="10.00">ScannerState.tokens</text>
 <text text-anchor="middle" x="608.91" y="-26" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerFlowCollection.advance_tokens -->
 <g id="node6" class="node">
 <title>L4YAML.Proofs.ScannerFlowCollection.advance_tokens</title>
+<g id="a_node6"><a xlink:href="../../../api/L4YAML/Proofs/ScannerFlowCollection.html#L4YAML.Proofs.ScannerFlowCollection.advance_tokens" xlink:title="ScannerFlowCollection.advance_tokens" target="_blank">
 <polygon fill="#fff3cd" stroke="#d4a017" points="486.65,-134.54 486.65,-149.46 395.57,-160 266.75,-160 175.67,-149.46 175.67,-134.54 266.75,-124 395.57,-124 486.65,-134.54"/>
 <polygon fill="none" stroke="#d4a017" points="490.66,-130.98 490.66,-153.02 395.8,-164 266.52,-164 171.66,-153.02 171.66,-130.98 266.52,-120 395.8,-120 490.66,-130.98"/>
 <text text-anchor="middle" x="331.16" y="-138.9" font-family="Helvetica" font-size="12.00">ScannerFlowCollection.advance_tokens</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerFlowCollection.advance_tokens&#45;&gt;L4YAML.Positioned -->
 <g id="edge3" class="edge">
@@ -107,8 +125,11 @@
 <!-- instLawfulBEqChar -->
 <g id="node7" class="node">
 <title>instLawfulBEqChar</title>
+<g id="a_node7"><a xlink:href="../../../api/Init/Core.html#instLawfulBEqChar" xlink:title="instLawfulBEqChar" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="75.45" cy="-224" rx="59.41" ry="18"/>
 <text text-anchor="middle" x="75.45" y="-221.5" font-family="Helvetica" font-size="10.00">instLawfulBEqChar</text>
+</a>
+</g>
 </g>
 <!-- instLawfulBEqChar&#45;&gt;L4YAML.Proofs.ScannerFlowCollection.advance_tokens -->
 <g id="edge6" class="edge">
@@ -119,8 +140,11 @@
 <!-- eq_self -->
 <g id="node8" class="node">
 <title>eq_self</title>
+<g id="a_node8"><a xlink:href="../../../api/Init/SimpLemmas.html#eq_self" xlink:title="eq_self" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="75.45" cy="-170" rx="28.01" ry="18"/>
 <text text-anchor="middle" x="75.45" y="-167.5" font-family="Helvetica" font-size="10.00">eq_self</text>
+</a>
+</g>
 </g>
 <!-- eq_self&#45;&gt;L4YAML.Proofs.ScannerFlowCollection.advance_tokens -->
 <g id="edge7" class="edge">
@@ -131,8 +155,11 @@
 <!-- of_eq_true -->
 <g id="node9" class="node">
 <title>of_eq_true</title>
+<g id="a_node9"><a xlink:href="../../../api/Init/SimpLemmas.html#of_eq_true" xlink:title="of_eq_true" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="75.45" cy="-116" rx="36.49" ry="18"/>
 <text text-anchor="middle" x="75.45" y="-113.5" font-family="Helvetica" font-size="10.00">of_eq_true</text>
+</a>
+</g>
 </g>
 <!-- of_eq_true&#45;&gt;L4YAML.Proofs.ScannerFlowCollection.advance_tokens -->
 <g id="edge8" class="edge">
@@ -143,8 +170,11 @@
 <!-- beq_iff_eq._simp_1 -->
 <g id="node10" class="node">
 <title>beq_iff_eq._simp_1</title>
+<g id="a_node10"><a xlink:href="../../../api/Init/Core.html#beq_iff_eq._simp_1" xlink:title="beq_iff_eq._simp_1" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="75.45" cy="-62" rx="59.41" ry="18"/>
 <text text-anchor="middle" x="75.45" y="-59.5" font-family="Helvetica" font-size="10.00">beq_iff_eq._simp_1</text>
+</a>
+</g>
 </g>
 <!-- beq_iff_eq._simp_1&#45;&gt;L4YAML.Proofs.ScannerFlowCollection.advance_tokens -->
 <g id="edge9" class="edge">

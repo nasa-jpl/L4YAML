@@ -35,44 +35,62 @@
 <!-- L4YAML.Scanner.ScannerState.input -->
 <g id="node1" class="node">
 <title>L4YAML.Scanner.ScannerState.input</title>
+<g id="a_node1"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.input" xlink:title="ScannerState.input\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="593.34,-574.32 493.34,-574.32 493.34,-538.32 593.34,-538.32 593.34,-574.32"/>
 <text text-anchor="middle" x="543.34" y="-559.32" font-family="Helvetica" font-size="10.00">ScannerState.input</text>
 <text text-anchor="middle" x="543.34" y="-548.32" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.advance -->
 <g id="node2" class="node">
 <title>L4YAML.Scanner.ScannerState.advance</title>
+<g id="a_node2"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.advance" xlink:title="ScannerState.advance\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="876.92,-682.32 761.92,-682.32 761.92,-646.32 876.92,-646.32 876.92,-682.32"/>
 <text text-anchor="middle" x="819.42" y="-667.32" font-family="Helvetica" font-size="10.00">ScannerState.advance</text>
 <text text-anchor="middle" x="819.42" y="-656.32" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState -->
 <g id="node3" class="node">
 <title>L4YAML.Scanner.ScannerState</title>
+<g id="a_node3"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState" xlink:title="ScannerState\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="857.42,-628.32 781.42,-628.32 781.42,-592.32 857.42,-592.32 857.42,-628.32"/>
 <text text-anchor="middle" x="819.42" y="-613.32" font-family="Helvetica" font-size="10.00">ScannerState</text>
 <text text-anchor="middle" x="819.42" y="-602.32" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.offset -->
 <g id="node4" class="node">
 <title>L4YAML.Scanner.ScannerState.offset</title>
+<g id="a_node4"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.offset" xlink:title="ScannerState.offset\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="870.92,-574.32 767.92,-574.32 767.92,-538.32 870.92,-538.32 870.92,-574.32"/>
 <text text-anchor="middle" x="819.42" y="-559.32" font-family="Helvetica" font-size="10.00">ScannerState.offset</text>
 <text text-anchor="middle" x="819.42" y="-548.32" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.inputEnd -->
 <g id="node5" class="node">
 <title>L4YAML.Scanner.ScannerState.inputEnd</title>
+<g id="a_node5"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.inputEnd" xlink:title="ScannerState.inputEnd\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="877.92,-736.32 760.92,-736.32 760.92,-700.32 877.92,-700.32 877.92,-736.32"/>
 <text text-anchor="middle" x="819.42" y="-721.32" font-family="Helvetica" font-size="10.00">ScannerState.inputEnd</text>
 <text text-anchor="middle" x="819.42" y="-710.32" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerCoupling.advance_fuel_budget -->
 <g id="node6" class="node">
 <title>L4YAML.Proofs.ScannerCoupling.advance_fuel_budget</title>
+<g id="a_node6"><a xlink:href="../../../api/L4YAML/Proofs/ScannerCoupling.html#L4YAML.Proofs.ScannerCoupling.advance_fuel_budget" xlink:title="ScannerCoupling.advance_fuel_budget" target="_blank">
 <polygon fill="#fff3cd" stroke="#d4a017" points="696,-462.86 696,-477.77 606.58,-488.32 480.1,-488.32 390.67,-477.77 390.67,-462.86 480.1,-452.32 606.58,-452.32 696,-462.86"/>
 <polygon fill="none" stroke="#d4a017" points="700.01,-459.31 700.01,-481.33 606.81,-492.32 479.87,-492.32 386.67,-481.33 386.67,-459.31 479.87,-448.32 606.81,-448.32 700.01,-459.31"/>
 <text text-anchor="middle" x="543.34" y="-467.22" font-family="Helvetica" font-size="12.00">ScannerCoupling.advance_fuel_budget</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerCoupling.advance_fuel_budget&#45;&gt;L4YAML.Scanner.ScannerState.advance -->
 <g id="edge1" class="edge">
@@ -105,9 +123,12 @@
 <!-- L4YAML.Proofs.CouplingBridge.advance_offset_eq -->
 <g id="node7" class="node">
 <title>L4YAML.Proofs.CouplingBridge.advance_offset_eq</title>
+<g id="a_node7"><a xlink:href="../../../api/L4YAML/Proofs/CouplingBridge.html#L4YAML.Proofs.CouplingBridge.advance_offset_eq" xlink:title="CouplingBridge.advance_offset_eq\n(CouplingBridge)" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="182.88" cy="-282.32" rx="118.17" ry="21.43"/>
 <text text-anchor="middle" x="182.88" y="-285.32" font-family="Helvetica" font-size="10.00">CouplingBridge.advance_offset_eq</text>
 <text text-anchor="middle" x="182.88" y="-274.32" font-family="Helvetica" font-size="10.00">(CouplingBridge)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.CouplingBridge.advance_offset_eq&#45;&gt;L4YAML.Scanner.ScannerState.input -->
 <g id="edge14" class="edge">
@@ -148,9 +169,12 @@
 <!-- L4YAML.Proofs.CouplingBridge.advance_inputEnd -->
 <g id="node8" class="node">
 <title>L4YAML.Proofs.CouplingBridge.advance_inputEnd</title>
+<g id="a_node8"><a xlink:href="../../../api/L4YAML/Proofs/CouplingBridge.html#L4YAML.Proofs.CouplingBridge.advance_inputEnd" xlink:title="CouplingBridge.advance_inputEnd\n(CouplingBridge)" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="182.88" cy="-342.32" rx="116.85" ry="21.43"/>
 <text text-anchor="middle" x="182.88" y="-345.32" font-family="Helvetica" font-size="10.00">CouplingBridge.advance_inputEnd</text>
 <text text-anchor="middle" x="182.88" y="-334.32" font-family="Helvetica" font-size="10.00">(CouplingBridge)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.CouplingBridge.advance_inputEnd&#45;&gt;L4YAML.Scanner.ScannerState.advance -->
 <g id="edge15" class="edge">
@@ -179,9 +203,12 @@
 <!-- L4YAML.Proofs.ScannerCoupling.raw_next_gt -->
 <g id="node9" class="node">
 <title>L4YAML.Proofs.ScannerCoupling.raw_next_gt</title>
+<g id="a_node9"><a xlink:href="../../../api/L4YAML/Proofs/ScannerCoupling.html#L4YAML.Proofs.ScannerCoupling.raw_next_gt" xlink:title="ScannerCoupling.raw_next_gt\n(ScannerCoupling)" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="182.88" cy="-402.32" rx="103.89" ry="21.43"/>
 <text text-anchor="middle" x="182.88" y="-405.32" font-family="Helvetica" font-size="10.00">ScannerCoupling.raw_next_gt</text>
 <text text-anchor="middle" x="182.88" y="-394.32" font-family="Helvetica" font-size="10.00">(ScannerCoupling)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerCoupling.raw_next_gt&#45;&gt;L4YAML.Proofs.ScannerCoupling.advance_fuel_budget -->
 <g id="edge7" class="edge">
@@ -192,9 +219,12 @@
 <!-- L4YAML.Proofs.ScannerCoupling.advance_fuel_budget._proof_1_1 -->
 <g id="node10" class="node">
 <title>L4YAML.Proofs.ScannerCoupling.advance_fuel_budget._proof_1_1</title>
+<g id="a_node10"><a xlink:href="../../../api/L4YAML/Proofs/ScannerCoupling.html#L4YAML.Proofs.ScannerCoupling.advance_fuel_budget._proof_1_1" xlink:title="ScannerCoupling.advance_fuel_budget._proof_1_1\n(ScannerCoupling)" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="182.88" cy="-222.32" rx="166.75" ry="21.43"/>
 <text text-anchor="middle" x="182.88" y="-225.32" font-family="Helvetica" font-size="10.00">ScannerCoupling.advance_fuel_budget._proof_1_1</text>
 <text text-anchor="middle" x="182.88" y="-214.32" font-family="Helvetica" font-size="10.00">(ScannerCoupling)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerCoupling.advance_fuel_budget._proof_1_1&#45;&gt;L4YAML.Scanner.ScannerState.input -->
 <g id="edge22" class="edge">
@@ -235,8 +265,11 @@
 <!-- Decidable.byContradiction -->
 <g id="node11" class="node">
 <title>Decidable.byContradiction</title>
+<g id="a_node11"><a xlink:href="../../../api/Init/Core.html#Decidable.byContradiction" xlink:title="Decidable.byContradiction" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="182.88" cy="-495.32" rx="77.23" ry="18"/>
 <text text-anchor="middle" x="182.88" y="-492.82" font-family="Helvetica" font-size="10.00">Decidable.byContradiction</text>
+</a>
+</g>
 </g>
 <!-- Decidable.byContradiction&#45;&gt;L4YAML.Proofs.ScannerCoupling.advance_fuel_budget -->
 <g id="edge9" class="edge">

@@ -24,14 +24,20 @@
 <!-- L4YAML.Scanner.ScannerState -->
 <g id="node1" class="node">
 <title>L4YAML.Scanner.ScannerState</title>
+<g id="a_node1"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState" xlink:title="ScannerState" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="492,-52 416,-52 416,-16 492,-16 492,-52"/>
 <text text-anchor="middle" x="454" y="-31.5" font-family="Helvetica" font-size="10.00">ScannerState</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.simpleKeyStack -->
 <g id="node2" class="node">
 <title>L4YAML.Scanner.ScannerState.simpleKeyStack</title>
+<g id="a_node2"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.simpleKeyStack" xlink:title="ScannerState.simpleKeyStack" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="547.5,-133 398.5,-133 398.5,-97 547.5,-97 547.5,-133"/>
 <text text-anchor="middle" x="473" y="-112.5" font-family="Helvetica" font-size="10.00">ScannerState.simpleKeyStack</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.simpleKeyStack&#45;&gt;L4YAML.Scanner.ScannerState -->
 <g id="edge2" class="edge">
@@ -43,9 +49,12 @@
 <!-- L4YAML.Proofs.ScannerPlainScalarValid.SimpleKeyStackOrdering._proof_2 -->
 <g id="node3" class="node">
 <title>L4YAML.Proofs.ScannerPlainScalarValid.SimpleKeyStackOrdering._proof_2</title>
+<g id="a_node3"><a xlink:href="../../../api/L4YAML/Proofs/ScannerPlainScalarValid.html#L4YAML.Proofs.ScannerPlainScalarValid.SimpleKeyStackOrdering._proof_2" xlink:title="ScannerPlainScalarValid.SimpleKeyStackOrdering._proof_2" target="_blank">
 <polygon fill="#fff3cd" stroke="#d4a017" points="370.44,-212.54 370.44,-227.46 267.67,-238 122.33,-238 19.56,-227.46 19.56,-212.54 122.33,-202 267.67,-202 370.44,-212.54"/>
 <polygon fill="none" stroke="#d4a017" points="374.44,-208.93 374.44,-231.07 267.87,-242 122.13,-242 15.56,-231.07 15.56,-208.93 122.13,-198 267.87,-198 374.44,-208.93"/>
 <text text-anchor="middle" x="195" y="-217.5" font-family="Helvetica" font-size="10.00">ScannerPlainScalarValid.SimpleKeyStackOrdering._proof_2</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerPlainScalarValid.SimpleKeyStackOrdering._proof_2&#45;&gt;L4YAML.Scanner.ScannerState.simpleKeyStack -->
 <g id="edge1" class="edge">
@@ -57,8 +66,11 @@
 <!-- L4YAML.Proofs.ScannerPlainScalarValid.SimpleKeyStackOrdering._proof_1 -->
 <g id="node4" class="node">
 <title>L4YAML.Proofs.ScannerPlainScalarValid.SimpleKeyStackOrdering._proof_1</title>
+<g id="a_node4"><a xlink:href="../../../api/L4YAML/Proofs/ScannerPlainScalarValid.html#L4YAML.Proofs.ScannerPlainScalarValid.SimpleKeyStackOrdering._proof_1" xlink:title="ScannerPlainScalarValid.SimpleKeyStackOrdering._proof_1" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="207" cy="-115" rx="161.76" ry="18"/>
 <text text-anchor="middle" x="207" y="-112.5" font-family="Helvetica" font-size="10.00">ScannerPlainScalarValid.SimpleKeyStackOrdering._proof_1</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerPlainScalarValid.SimpleKeyStackOrdering._proof_2&#45;&gt;L4YAML.Proofs.ScannerPlainScalarValid.SimpleKeyStackOrdering._proof_1 -->
 <g id="edge3" class="edge">

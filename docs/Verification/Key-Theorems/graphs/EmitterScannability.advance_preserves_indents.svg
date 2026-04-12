@@ -25,37 +25,52 @@
 <!-- L4YAML.Scanner.ScannerState.advance -->
 <g id="node1" class="node">
 <title>L4YAML.Scanner.ScannerState.advance</title>
+<g id="a_node1"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.advance" xlink:title="ScannerState.advance\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="566.47,-214 451.47,-214 451.47,-178 566.47,-178 566.47,-214"/>
 <text text-anchor="middle" x="508.97" y="-199" font-family="Helvetica" font-size="10.00">ScannerState.advance</text>
 <text text-anchor="middle" x="508.97" y="-188" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState -->
 <g id="node2" class="node">
 <title>L4YAML.Scanner.ScannerState</title>
+<g id="a_node2"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState" xlink:title="ScannerState\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="546.97,-160 470.97,-160 470.97,-124 546.97,-124 546.97,-160"/>
 <text text-anchor="middle" x="508.97" y="-145" font-family="Helvetica" font-size="10.00">ScannerState</text>
 <text text-anchor="middle" x="508.97" y="-134" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.indents -->
 <g id="node3" class="node">
 <title>L4YAML.Scanner.ScannerState.indents</title>
+<g id="a_node3"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.indents" xlink:title="ScannerState.indents\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="563.97,-106 453.97,-106 453.97,-70 563.97,-70 563.97,-106"/>
 <text text-anchor="middle" x="508.97" y="-91" font-family="Helvetica" font-size="10.00">ScannerState.indents</text>
 <text text-anchor="middle" x="508.97" y="-80" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.IndentEntry -->
 <g id="node4" class="node">
 <title>L4YAML.Scanner.IndentEntry</title>
+<g id="a_node4"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.IndentEntry" xlink:title="IndentEntry\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="542.97,-52 474.97,-52 474.97,-16 542.97,-16 542.97,-52"/>
 <text text-anchor="middle" x="508.97" y="-37" font-family="Helvetica" font-size="10.00">IndentEntry</text>
 <text text-anchor="middle" x="508.97" y="-26" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.EmitterScannability.advance_preserves_indents -->
 <g id="node5" class="node">
 <title>L4YAML.Proofs.EmitterScannability.advance_preserves_indents</title>
+<g id="a_node5"><a xlink:href="../../../api/L4YAML/Proofs/EmitterScannability.html#L4YAML.Proofs.EmitterScannability.advance_preserves_indents" xlink:title="EmitterScannability.advance_preserves_indents" target="_blank">
 <polygon fill="#fff3cd" stroke="#d4a017" points="386.7,-106.54 386.7,-121.46 279.23,-132 127.24,-132 19.77,-121.46 19.77,-106.54 127.24,-96 279.23,-96 386.7,-106.54"/>
 <polygon fill="none" stroke="#d4a017" points="390.7,-102.92 390.7,-125.08 279.42,-136 127.04,-136 15.77,-125.08 15.77,-102.92 127.04,-92 279.42,-92 390.7,-102.92"/>
 <text text-anchor="middle" x="203.23" y="-110.9" font-family="Helvetica" font-size="12.00">EmitterScannability.advance_preserves_indents</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.EmitterScannability.advance_preserves_indents&#45;&gt;L4YAML.Scanner.ScannerState.advance -->
 <g id="edge2" class="edge">

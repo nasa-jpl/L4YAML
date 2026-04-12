@@ -24,14 +24,20 @@
 <!-- L4YAML.Scanner.ScannerState.peek? -->
 <g id="node1" class="node">
 <title>L4YAML.Scanner.ScannerState.peek?</title>
+<g id="a_node1"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.peek?" xlink:title="ScannerState.peek?" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="199,-214 95,-214 95,-178 199,-178 199,-214"/>
 <text text-anchor="middle" x="147" y="-193.5" font-family="Helvetica" font-size="10.00">ScannerState.peek?</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState -->
 <g id="node2" class="node">
 <title>L4YAML.Scanner.ScannerState</title>
+<g id="a_node2"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState" xlink:title="ScannerState" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="310,-52 234,-52 234,-16 310,-16 310,-52"/>
 <text text-anchor="middle" x="272" y="-31.5" font-family="Helvetica" font-size="10.00">ScannerState</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.peek?&#45;&gt;L4YAML.Scanner.ScannerState -->
 <g id="edge15" class="edge">
@@ -43,8 +49,11 @@
 <!-- L4YAML.Scanner.ScannerState.offset -->
 <g id="node3" class="node">
 <title>L4YAML.Scanner.ScannerState.offset</title>
+<g id="a_node3"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.offset" xlink:title="ScannerState.offset" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="309.5,-133 206.5,-133 206.5,-97 309.5,-97 309.5,-133"/>
 <text text-anchor="middle" x="258" y="-112.5" font-family="Helvetica" font-size="10.00">ScannerState.offset</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.peek?&#45;&gt;L4YAML.Scanner.ScannerState.offset -->
 <g id="edge2" class="edge">
@@ -56,8 +65,11 @@
 <!-- L4YAML.Scanner.ScannerState.inputEnd -->
 <g id="node4" class="node">
 <title>L4YAML.Scanner.ScannerState.inputEnd</title>
+<g id="a_node4"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.inputEnd" xlink:title="ScannerState.inputEnd" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="188.5,-133 71.5,-133 71.5,-97 188.5,-97 188.5,-133"/>
 <text text-anchor="middle" x="130" y="-112.5" font-family="Helvetica" font-size="10.00">ScannerState.inputEnd</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.peek?&#45;&gt;L4YAML.Scanner.ScannerState.inputEnd -->
 <g id="edge8" class="edge">
@@ -83,8 +95,11 @@
 <!-- L4YAML.Proofs.CouplingBridge.ScannerSurfCorr.chars_from -->
 <g id="node5" class="node">
 <title>L4YAML.Proofs.CouplingBridge.ScannerSurfCorr.chars_from</title>
+<g id="a_node5"><a xlink:href="../../../api/L4YAML/Proofs/CouplingBridge.html#L4YAML.Proofs.CouplingBridge.ScannerSurfCorr.chars_from" xlink:title="CouplingBridge.ScannerSurfCorr.chars_from" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="575" cy="-115" rx="124.59" ry="18"/>
 <text text-anchor="middle" x="575" y="-112.5" font-family="Helvetica" font-size="10.00">CouplingBridge.ScannerSurfCorr.chars_from</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.CouplingBridge.ScannerSurfCorr.chars_from&#45;&gt;L4YAML.Scanner.ScannerState -->
 <g id="edge12" class="edge">
@@ -96,9 +111,12 @@
 <!-- L4YAML.Proofs.ScannerCoupling.peek_some_chars -->
 <g id="node6" class="node">
 <title>L4YAML.Proofs.ScannerCoupling.peek_some_chars</title>
+<g id="a_node6"><a xlink:href="../../../api/L4YAML/Proofs/ScannerCoupling.html#L4YAML.Proofs.ScannerCoupling.peek_some_chars" xlink:title="ScannerCoupling.peek_some_chars" target="_blank">
 <polygon fill="#fff3cd" stroke="#d4a017" points="675.74,-293.54 675.74,-308.46 610.87,-319 519.13,-319 454.26,-308.46 454.26,-293.54 519.13,-283 610.87,-283 675.74,-293.54"/>
 <polygon fill="none" stroke="#d4a017" points="679.73,-290.14 679.73,-311.86 611.19,-323 518.81,-323 450.27,-311.86 450.27,-290.14 518.81,-279 611.19,-279 679.73,-290.14"/>
 <text text-anchor="middle" x="565" y="-298.5" font-family="Helvetica" font-size="10.00">ScannerCoupling.peek_some_chars</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerCoupling.peek_some_chars&#45;&gt;L4YAML.Scanner.ScannerState.peek? -->
 <g id="edge1" class="edge">
@@ -110,8 +128,11 @@
 <!-- L4YAML.Proofs.ScannerCoupling.peek_some_hasMore -->
 <g id="node7" class="node">
 <title>L4YAML.Proofs.ScannerCoupling.peek_some_hasMore</title>
+<g id="a_node7"><a xlink:href="../../../api/L4YAML/Proofs/ScannerCoupling.html#L4YAML.Proofs.ScannerCoupling.peek_some_hasMore" xlink:title="ScannerCoupling.peek_some_hasMore" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="560" cy="-196" rx="110.16" ry="18"/>
 <text text-anchor="middle" x="560" y="-193.5" font-family="Helvetica" font-size="10.00">ScannerCoupling.peek_some_hasMore</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerCoupling.peek_some_chars&#45;&gt;L4YAML.Proofs.ScannerCoupling.peek_some_hasMore -->
 <g id="edge16" class="edge">
@@ -123,8 +144,11 @@
 <!-- L4YAML.Proofs.CouplingBridge.peek_corr -->
 <g id="node9" class="node">
 <title>L4YAML.Proofs.CouplingBridge.peek_corr</title>
+<g id="a_node9"><a xlink:href="../../../api/L4YAML/Proofs/CouplingBridge.html#L4YAML.Proofs.CouplingBridge.peek_corr" xlink:title="CouplingBridge.peek_corr" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="763" cy="-196" rx="75.2" ry="18"/>
 <text text-anchor="middle" x="763" y="-193.5" font-family="Helvetica" font-size="10.00">CouplingBridge.peek_corr</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerCoupling.peek_some_chars&#45;&gt;L4YAML.Proofs.CouplingBridge.peek_corr -->
 <g id="edge3" class="edge">
@@ -157,8 +181,11 @@
 <!-- L4YAML.Proofs.CouplingBridge.ScannerSurfCorr.end_eq -->
 <g id="node8" class="node">
 <title>L4YAML.Proofs.CouplingBridge.ScannerSurfCorr.end_eq</title>
+<g id="a_node8"><a xlink:href="../../../api/L4YAML/Proofs/CouplingBridge.html#L4YAML.Proofs.CouplingBridge.ScannerSurfCorr.end_eq" xlink:title="CouplingBridge.ScannerSurfCorr.end_eq" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="832" cy="-115" rx="114.4" ry="18"/>
 <text text-anchor="middle" x="832" y="-112.5" font-family="Helvetica" font-size="10.00">CouplingBridge.ScannerSurfCorr.end_eq</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.CouplingBridge.ScannerSurfCorr.end_eq&#45;&gt;L4YAML.Scanner.ScannerState -->
 <g id="edge14" class="edge">
@@ -205,8 +232,11 @@
 <!-- L4YAML.Proofs.CouplingBridge.peek_corr._proof_1_3 -->
 <g id="node10" class="node">
 <title>L4YAML.Proofs.CouplingBridge.peek_corr._proof_1_3</title>
+<g id="a_node10"><a xlink:href="../../../api/L4YAML/Proofs/CouplingBridge.html#L4YAML.Proofs.CouplingBridge.peek_corr._proof_1_3" xlink:title="CouplingBridge.peek_corr._proof_1_3" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="1070" cy="-115" rx="105.24" ry="18"/>
 <text text-anchor="middle" x="1070" y="-112.5" font-family="Helvetica" font-size="10.00">CouplingBridge.peek_corr._proof_1_3</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.CouplingBridge.peek_corr&#45;&gt;L4YAML.Proofs.CouplingBridge.peek_corr._proof_1_3 -->
 <g id="edge6" class="edge">

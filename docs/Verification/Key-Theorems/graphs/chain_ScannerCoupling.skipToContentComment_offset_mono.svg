@@ -24,14 +24,20 @@
 <!-- L4YAML.Scanner.ScannerState -->
 <g id="node1" class="node">
 <title>L4YAML.Scanner.ScannerState</title>
+<g id="a_node1"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState" xlink:title="ScannerState" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1554,-52 1478,-52 1478,-16 1554,-16 1554,-52"/>
 <text text-anchor="middle" x="1516" y="-31.5" font-family="Helvetica" font-size="10.00">ScannerState</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.offset -->
 <g id="node2" class="node">
 <title>L4YAML.Scanner.ScannerState.offset</title>
+<g id="a_node2"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.offset" xlink:title="ScannerState.offset" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1581.5,-133 1478.5,-133 1478.5,-97 1581.5,-97 1581.5,-133"/>
 <text text-anchor="middle" x="1530" y="-112.5" font-family="Helvetica" font-size="10.00">ScannerState.offset</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.offset&#45;&gt;L4YAML.Scanner.ScannerState -->
 <g id="edge10" class="edge">
@@ -43,8 +49,11 @@
 <!-- L4YAML.Scanner.ScannerState.inputEnd -->
 <g id="node3" class="node">
 <title>L4YAML.Scanner.ScannerState.inputEnd</title>
+<g id="a_node3"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.inputEnd" xlink:title="ScannerState.inputEnd" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1716.5,-133 1599.5,-133 1599.5,-97 1716.5,-97 1716.5,-133"/>
 <text text-anchor="middle" x="1658" y="-112.5" font-family="Helvetica" font-size="10.00">ScannerState.inputEnd</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.inputEnd&#45;&gt;L4YAML.Scanner.ScannerState -->
 <g id="edge5" class="edge">
@@ -56,8 +65,11 @@
 <!-- L4YAML.Scanner.skipToContentComment -->
 <g id="node4" class="node">
 <title>L4YAML.Scanner.skipToContentComment</title>
+<g id="a_node4"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.skipToContentComment" xlink:title="skipToContentComment" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1655,-214 1533,-214 1533,-178 1655,-178 1655,-214"/>
 <text text-anchor="middle" x="1594" y="-193.5" font-family="Helvetica" font-size="10.00">skipToContentComment</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.skipToContentComment&#45;&gt;L4YAML.Scanner.ScannerState.offset -->
 <g id="edge8" class="edge">
@@ -76,8 +88,11 @@
 <!-- L4YAML.Scanner.collectCommentTextLoop -->
 <g id="node5" class="node">
 <title>L4YAML.Scanner.collectCommentTextLoop</title>
+<g id="a_node5"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.collectCommentTextLoop" xlink:title="collectCommentTextLoop" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1863,-133 1735,-133 1735,-97 1863,-97 1863,-133"/>
 <text text-anchor="middle" x="1799" y="-112.5" font-family="Helvetica" font-size="10.00">collectCommentTextLoop</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.skipToContentComment&#45;&gt;L4YAML.Scanner.collectCommentTextLoop -->
 <g id="edge13" class="edge">
@@ -96,9 +111,12 @@
 <!-- L4YAML.Proofs.ScannerCoupling.skipToContentComment_offset_mono -->
 <g id="node6" class="node">
 <title>L4YAML.Proofs.ScannerCoupling.skipToContentComment_offset_mono</title>
+<g id="a_node6"><a xlink:href="../../../api/L4YAML/Proofs/ScannerCoupling.html#L4YAML.Proofs.ScannerCoupling.skipToContentComment_offset_mono" xlink:title="ScannerCoupling.skipToContentComment_offset_mono" target="_blank">
 <polygon fill="#fff3cd" stroke="#d4a017" points="1365.28,-293.54 1365.28,-308.46 1269.05,-319 1132.95,-319 1036.72,-308.46 1036.72,-293.54 1132.95,-283 1269.05,-283 1365.28,-293.54"/>
 <polygon fill="none" stroke="#d4a017" points="1369.28,-289.96 1369.28,-312.04 1269.26,-323 1132.74,-323 1032.72,-312.04 1032.72,-289.96 1132.74,-279 1269.26,-279 1369.28,-289.96"/>
 <text text-anchor="middle" x="1201" y="-298.5" font-family="Helvetica" font-size="10.00">ScannerCoupling.skipToContentComment_offset_mono</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerCoupling.skipToContentComment_offset_mono&#45;&gt;L4YAML.Scanner.skipToContentComment -->
 <g id="edge1" class="edge">
@@ -110,8 +128,11 @@
 <!-- L4YAML.Proofs.ScannerCoupling.collectCommentTextLoop_offset_mono -->
 <g id="node11" class="node">
 <title>L4YAML.Proofs.ScannerCoupling.collectCommentTextLoop_offset_mono</title>
+<g id="a_node11"><a xlink:href="../../../api/L4YAML/Proofs/ScannerCoupling.html#L4YAML.Proofs.ScannerCoupling.collectCommentTextLoop_offset_mono" xlink:title="ScannerCoupling.collectCommentTextLoop_offset_mono" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="1089" cy="-196" rx="154.64" ry="18"/>
 <text text-anchor="middle" x="1089" y="-193.5" font-family="Helvetica" font-size="10.00">ScannerCoupling.collectCommentTextLoop_offset_mono</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerCoupling.skipToContentComment_offset_mono&#45;&gt;L4YAML.Proofs.ScannerCoupling.collectCommentTextLoop_offset_mono -->
 <g id="edge3" class="edge">
@@ -123,8 +144,11 @@
 <!-- L4YAML.Proofs.CouplingBridge.advance_offset_eq -->
 <g id="node7" class="node">
 <title>L4YAML.Proofs.CouplingBridge.advance_offset_eq</title>
+<g id="a_node7"><a xlink:href="../../../api/L4YAML/Proofs/CouplingBridge.html#L4YAML.Proofs.CouplingBridge.advance_offset_eq" xlink:title="CouplingBridge.advance_offset_eq" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="114" cy="-115" rx="98.11" ry="18"/>
 <text text-anchor="middle" x="114" y="-112.5" font-family="Helvetica" font-size="10.00">CouplingBridge.advance_offset_eq</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.CouplingBridge.advance_offset_eq&#45;&gt;L4YAML.Scanner.ScannerState -->
 <g id="edge19" class="edge">
@@ -136,8 +160,11 @@
 <!-- L4YAML.Proofs.CouplingBridge.advance_inputEnd -->
 <g id="node8" class="node">
 <title>L4YAML.Proofs.CouplingBridge.advance_inputEnd</title>
+<g id="a_node8"><a xlink:href="../../../api/L4YAML/Proofs/CouplingBridge.html#L4YAML.Proofs.CouplingBridge.advance_inputEnd" xlink:title="CouplingBridge.advance_inputEnd" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="327" cy="-115" rx="97.26" ry="18"/>
 <text text-anchor="middle" x="327" y="-112.5" font-family="Helvetica" font-size="10.00">CouplingBridge.advance_inputEnd</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.CouplingBridge.advance_inputEnd&#45;&gt;L4YAML.Scanner.ScannerState -->
 <g id="edge7" class="edge">
@@ -149,8 +176,11 @@
 <!-- L4YAML.Scanner.collectCommentTextLoop.eq_1 -->
 <g id="node9" class="node">
 <title>L4YAML.Scanner.collectCommentTextLoop.eq_1</title>
+<g id="a_node9"><a xlink:href="../../../api/L4YAML/Proofs/ScannerCoupling.html#L4YAML.Scanner.collectCommentTextLoop.eq_1" xlink:title="collectCommentTextLoop.eq_1" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="532" cy="-115" rx="89.45" ry="18"/>
 <text text-anchor="middle" x="532" y="-112.5" font-family="Helvetica" font-size="10.00">collectCommentTextLoop.eq_1</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.collectCommentTextLoop.eq_1&#45;&gt;L4YAML.Scanner.ScannerState -->
 <g id="edge21" class="edge">
@@ -162,8 +192,11 @@
 <!-- L4YAML.Proofs.ScannerCoupling.peek_some_hasMore -->
 <g id="node10" class="node">
 <title>L4YAML.Proofs.ScannerCoupling.peek_some_hasMore</title>
+<g id="a_node10"><a xlink:href="../../../api/L4YAML/Proofs/ScannerCoupling.html#L4YAML.Proofs.ScannerCoupling.peek_some_hasMore" xlink:title="ScannerCoupling.peek_some_hasMore" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="750" cy="-115" rx="110.16" ry="18"/>
 <text text-anchor="middle" x="750" y="-112.5" font-family="Helvetica" font-size="10.00">ScannerCoupling.peek_some_hasMore</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerCoupling.peek_some_hasMore&#45;&gt;L4YAML.Scanner.ScannerState -->
 <g id="edge17" class="edge">
@@ -224,8 +257,11 @@
 <!-- L4YAML.Proofs.ScannerCoupling.collectCommentTextLoop_offset_mono._proof_1_7 -->
 <g id="node12" class="node">
 <title>L4YAML.Proofs.ScannerCoupling.collectCommentTextLoop_offset_mono._proof_1_7</title>
+<g id="a_node12"><a xlink:href="../../../api/L4YAML/Proofs/ScannerCoupling.html#L4YAML.Proofs.ScannerCoupling.collectCommentTextLoop_offset_mono._proof_1_7" xlink:title="ScannerCoupling.collectCommentTextLoop_offset_mono._proof_1_7" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="1063" cy="-115" rx="184.68" ry="18"/>
 <text text-anchor="middle" x="1063" y="-112.5" font-family="Helvetica" font-size="10.00">ScannerCoupling.collectCommentTextLoop_offset_mono._proof_1_7</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerCoupling.collectCommentTextLoop_offset_mono&#45;&gt;L4YAML.Proofs.ScannerCoupling.collectCommentTextLoop_offset_mono._proof_1_7 -->
 <g id="edge11" class="edge">
@@ -237,8 +273,11 @@
 <!-- L4YAML.Scanner.collectCommentTextLoop.eq_def -->
 <g id="node13" class="node">
 <title>L4YAML.Scanner.collectCommentTextLoop.eq_def</title>
+<g id="a_node13"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.collectCommentTextLoop.eq_def" xlink:title="collectCommentTextLoop.eq_def" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="1360" cy="-115" rx="94.37" ry="18"/>
 <text text-anchor="middle" x="1360" y="-112.5" font-family="Helvetica" font-size="10.00">collectCommentTextLoop.eq_def</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerCoupling.collectCommentTextLoop_offset_mono&#45;&gt;L4YAML.Scanner.collectCommentTextLoop.eq_def -->
 <g id="edge22" class="edge">

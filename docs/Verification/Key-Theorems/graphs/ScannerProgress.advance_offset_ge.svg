@@ -35,37 +35,52 @@
 <!-- L4YAML.Scanner.ScannerState.advance -->
 <g id="node1" class="node">
 <title>L4YAML.Scanner.ScannerState.advance</title>
+<g id="a_node1"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.advance" xlink:title="ScannerState.advance\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="844.54,-266 729.54,-266 729.54,-230 844.54,-230 844.54,-266"/>
 <text text-anchor="middle" x="787.04" y="-251" font-family="Helvetica" font-size="10.00">ScannerState.advance</text>
 <text text-anchor="middle" x="787.04" y="-240" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState -->
 <g id="node2" class="node">
 <title>L4YAML.Scanner.ScannerState</title>
+<g id="a_node2"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState" xlink:title="ScannerState\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="825.04,-212 749.04,-212 749.04,-176 825.04,-176 825.04,-212"/>
 <text text-anchor="middle" x="787.04" y="-197" font-family="Helvetica" font-size="10.00">ScannerState</text>
 <text text-anchor="middle" x="787.04" y="-186" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.offset -->
 <g id="node3" class="node">
 <title>L4YAML.Scanner.ScannerState.offset</title>
+<g id="a_node3"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.offset" xlink:title="ScannerState.offset\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="838.54,-320 735.54,-320 735.54,-284 838.54,-284 838.54,-320"/>
 <text text-anchor="middle" x="787.04" y="-305" font-family="Helvetica" font-size="10.00">ScannerState.offset</text>
 <text text-anchor="middle" x="787.04" y="-294" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.inputEnd -->
 <g id="node4" class="node">
 <title>L4YAML.Scanner.ScannerState.inputEnd</title>
+<g id="a_node4"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.inputEnd" xlink:title="ScannerState.inputEnd\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="579.78,-291 462.78,-291 462.78,-255 579.78,-255 579.78,-291"/>
 <text text-anchor="middle" x="521.28" y="-276" font-family="Helvetica" font-size="10.00">ScannerState.inputEnd</text>
 <text text-anchor="middle" x="521.28" y="-265" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerProgress.advance_offset_ge -->
 <g id="node5" class="node">
 <title>L4YAML.Proofs.ScannerProgress.advance_offset_ge</title>
+<g id="a_node5"><a xlink:href="../../../api/L4YAML/Proofs/ScannerProgress.html#L4YAML.Proofs.ScannerProgress.advance_offset_ge" xlink:title="ScannerProgress.advance_offset_ge" target="_blank">
 <polygon fill="#fff3cd" stroke="#d4a017" points="664.3,-100.54 664.3,-115.46 580.52,-126 462.04,-126 378.26,-115.46 378.26,-100.54 462.04,-90 580.52,-90 664.3,-100.54"/>
 <polygon fill="none" stroke="#d4a017" points="668.29,-97.02 668.29,-118.98 580.77,-130 461.79,-130 374.27,-118.98 374.27,-97.02 461.79,-86 580.77,-86 668.29,-97.02"/>
 <text text-anchor="middle" x="521.28" y="-104.9" font-family="Helvetica" font-size="12.00">ScannerProgress.advance_offset_ge</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerProgress.advance_offset_ge&#45;&gt;L4YAML.Scanner.ScannerState.advance -->
 <g id="edge1" class="edge">
@@ -91,9 +106,12 @@
 <!-- L4YAML.Proofs.ScannerProgress.advance_offset_ge._proof_1_1 -->
 <g id="node6" class="node">
 <title>L4YAML.Proofs.ScannerProgress.advance_offset_ge._proof_1_1</title>
+<g id="a_node6"><a xlink:href="../../../api/L4YAML/Proofs/ScannerProgress.html#L4YAML.Proofs.ScannerProgress.advance_offset_ge._proof_1_1" xlink:title="ScannerProgress.advance_offset_ge._proof_1_1\n(ScannerProgress)" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="176.51" cy="-227" rx="160.53" ry="21.43"/>
 <text text-anchor="middle" x="176.51" y="-230" font-family="Helvetica" font-size="10.00">ScannerProgress.advance_offset_ge._proof_1_1</text>
 <text text-anchor="middle" x="176.51" y="-219" font-family="Helvetica" font-size="10.00">(ScannerProgress)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerProgress.advance_offset_ge._proof_1_1&#45;&gt;L4YAML.Scanner.ScannerState -->
 <g id="edge10" class="edge">
@@ -116,9 +134,12 @@
 <!-- L4YAML.Proofs.ScannerProgress.advance_offset_lt -->
 <g id="node7" class="node">
 <title>L4YAML.Proofs.ScannerProgress.advance_offset_lt</title>
+<g id="a_node7"><a xlink:href="../../../api/L4YAML/Proofs/ScannerProgress.html#L4YAML.Proofs.ScannerProgress.advance_offset_lt" xlink:title="ScannerProgress.advance_offset_lt\n(ScannerProgress)" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="176.51" cy="-287" rx="120.42" ry="21.43"/>
 <text text-anchor="middle" x="176.51" y="-290" font-family="Helvetica" font-size="10.00">ScannerProgress.advance_offset_lt</text>
 <text text-anchor="middle" x="176.51" y="-279" font-family="Helvetica" font-size="10.00">(ScannerProgress)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerProgress.advance_offset_lt&#45;&gt;L4YAML.Scanner.ScannerState.advance -->
 <g id="edge11" class="edge">
@@ -153,8 +174,11 @@
 <!-- Nat.le_of_lt -->
 <g id="node8" class="node">
 <title>Nat.le_of_lt</title>
+<g id="a_node8"><a xlink:href="../../../api/Init/Data/Nat/Basic.html#Nat.le_of_lt" xlink:title="Nat.le_of_lt" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="176.51" cy="-142" rx="38.7" ry="18"/>
 <text text-anchor="middle" x="176.51" y="-139.5" font-family="Helvetica" font-size="10.00">Nat.le_of_lt</text>
+</a>
+</g>
 </g>
 <!-- Nat.le_of_lt&#45;&gt;L4YAML.Proofs.ScannerProgress.advance_offset_ge -->
 <g id="edge6" class="edge">
@@ -165,8 +189,11 @@
 <!-- Decidable.byContradiction -->
 <g id="node9" class="node">
 <title>Decidable.byContradiction</title>
+<g id="a_node9"><a xlink:href="../../../api/Init/Core.html#Decidable.byContradiction" xlink:title="Decidable.byContradiction" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="176.51" cy="-88" rx="77.23" ry="18"/>
 <text text-anchor="middle" x="176.51" y="-85.5" font-family="Helvetica" font-size="10.00">Decidable.byContradiction</text>
+</a>
+</g>
 </g>
 <!-- Decidable.byContradiction&#45;&gt;L4YAML.Proofs.ScannerProgress.advance_offset_ge -->
 <g id="edge7" class="edge">
@@ -177,8 +204,11 @@
 <!-- ite_cond_eq_false -->
 <g id="node10" class="node">
 <title>ite_cond_eq_false</title>
+<g id="a_node10"><a xlink:href="../../../api/Init/SimpLemmas.html#ite_cond_eq_false" xlink:title="ite_cond_eq_false" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="176.51" cy="-34" rx="55.85" ry="18"/>
 <text text-anchor="middle" x="176.51" y="-31.5" font-family="Helvetica" font-size="10.00">ite_cond_eq_false</text>
+</a>
+</g>
 </g>
 <!-- ite_cond_eq_false&#45;&gt;L4YAML.Proofs.ScannerProgress.advance_offset_ge -->
 <g id="edge8" class="edge">

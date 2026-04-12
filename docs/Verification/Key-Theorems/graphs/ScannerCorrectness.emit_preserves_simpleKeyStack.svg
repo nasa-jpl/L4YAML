@@ -25,44 +25,62 @@
 <!-- L4YAML.Scanner.ScannerState.emit -->
 <g id="node1" class="node">
 <title>L4YAML.Scanner.ScannerState.emit</title>
+<g id="a_node1"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.emit" xlink:title="ScannerState.emit\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="613.61,-268 515.61,-268 515.61,-232 613.61,-232 613.61,-268"/>
 <text text-anchor="middle" x="564.61" y="-253" font-family="Helvetica" font-size="10.00">ScannerState.emit</text>
 <text text-anchor="middle" x="564.61" y="-242" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState -->
 <g id="node2" class="node">
 <title>L4YAML.Scanner.ScannerState</title>
+<g id="a_node2"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState" xlink:title="ScannerState\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="602.61,-214 526.61,-214 526.61,-178 602.61,-178 602.61,-214"/>
 <text text-anchor="middle" x="564.61" y="-199" font-family="Helvetica" font-size="10.00">ScannerState</text>
 <text text-anchor="middle" x="564.61" y="-188" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.YamlToken -->
 <g id="node3" class="node">
 <title>L4YAML.YamlToken</title>
+<g id="a_node3"><a xlink:href="../../../api/L4YAML/Token.html#L4YAML.YamlToken" xlink:title="YamlToken\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="596.61,-160 532.61,-160 532.61,-124 596.61,-124 596.61,-160"/>
 <text text-anchor="middle" x="564.61" y="-145" font-family="Helvetica" font-size="10.00">YamlToken</text>
 <text text-anchor="middle" x="564.61" y="-134" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.simpleKeyStack -->
 <g id="node4" class="node">
 <title>L4YAML.Scanner.ScannerState.simpleKeyStack</title>
+<g id="a_node4"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.simpleKeyStack" xlink:title="ScannerState.simpleKeyStack\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="639.11,-106 490.11,-106 490.11,-70 639.11,-70 639.11,-106"/>
 <text text-anchor="middle" x="564.61" y="-91" font-family="Helvetica" font-size="10.00">ScannerState.simpleKeyStack</text>
 <text text-anchor="middle" x="564.61" y="-80" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.SimpleKeyState -->
 <g id="node5" class="node">
 <title>L4YAML.Scanner.SimpleKeyState</title>
+<g id="a_node5"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.SimpleKeyState" xlink:title="SimpleKeyState\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="607.61,-52 521.61,-52 521.61,-16 607.61,-16 607.61,-52"/>
 <text text-anchor="middle" x="564.61" y="-37" font-family="Helvetica" font-size="10.00">SimpleKeyState</text>
 <text text-anchor="middle" x="564.61" y="-26" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerCorrectness.emit_preserves_simpleKeyStack -->
 <g id="node6" class="node">
 <title>L4YAML.Proofs.ScannerCorrectness.emit_preserves_simpleKeyStack</title>
+<g id="a_node6"><a xlink:href="../../../api/L4YAML/Proofs/ScannerCorrectness.html#L4YAML.Proofs.ScannerCorrectness.emit_preserves_simpleKeyStack" xlink:title="ScannerCorrectness.emit_preserves_simpleKeyStack" target="_blank">
 <polygon fill="#fff3cd" stroke="#d4a017" points="425.17,-134.54 425.17,-149.46 306.48,-160 138.63,-160 19.94,-149.46 19.94,-134.54 138.63,-124 306.48,-124 425.17,-134.54"/>
 <polygon fill="none" stroke="#d4a017" points="429.17,-130.88 429.17,-153.12 306.66,-164 138.45,-164 15.94,-153.12 15.94,-130.88 138.45,-120 306.66,-120 429.17,-130.88"/>
 <text text-anchor="middle" x="222.56" y="-138.9" font-family="Helvetica" font-size="12.00">ScannerCorrectness.emit_preserves_simpleKeyStack</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerCorrectness.emit_preserves_simpleKeyStack&#45;&gt;L4YAML.Scanner.ScannerState.emit -->
 <g id="edge2" class="edge">

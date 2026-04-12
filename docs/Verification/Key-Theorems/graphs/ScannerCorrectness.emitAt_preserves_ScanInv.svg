@@ -35,79 +35,112 @@
 <!-- L4YAML.Proofs.ScannerCorrectness.ScanInv -->
 <g id="node1" class="node">
 <title>L4YAML.Proofs.ScannerCorrectness.ScanInv</title>
+<g id="a_node1"><a xlink:href="../../../api/L4YAML/Proofs/ScannerCorrectness.html#L4YAML.Proofs.ScannerCorrectness.ScanInv" xlink:title="ScannerCorrectness.ScanInv\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1021.21,-379 876.21,-379 876.21,-343 1021.21,-343 1021.21,-379"/>
 <text text-anchor="middle" x="948.71" y="-364" font-family="Helvetica" font-size="10.00">ScannerCorrectness.ScanInv</text>
 <text text-anchor="middle" x="948.71" y="-353" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Positioned -->
 <g id="node2" class="node">
 <title>L4YAML.Positioned</title>
+<g id="a_node2"><a xlink:href="../../../api/L4YAML/Token.html#L4YAML.Positioned" xlink:title="Positioned\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="979.71,-703 917.71,-703 917.71,-667 979.71,-667 979.71,-703"/>
 <text text-anchor="middle" x="948.71" y="-688" font-family="Helvetica" font-size="10.00">Positioned</text>
 <text text-anchor="middle" x="948.71" y="-677" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.YamlPos.offset -->
 <g id="node3" class="node">
 <title>L4YAML.YamlPos.offset</title>
+<g id="a_node3"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.YamlPos.offset" xlink:title="YamlPos.offset\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="990.21,-541 907.21,-541 907.21,-505 990.21,-505 990.21,-541"/>
 <text text-anchor="middle" x="948.71" y="-526" font-family="Helvetica" font-size="10.00">YamlPos.offset</text>
 <text text-anchor="middle" x="948.71" y="-515" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState -->
 <g id="node4" class="node">
 <title>L4YAML.Scanner.ScannerState</title>
+<g id="a_node4"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState" xlink:title="ScannerState\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="986.71,-811 910.71,-811 910.71,-775 986.71,-775 986.71,-811"/>
 <text text-anchor="middle" x="948.71" y="-796" font-family="Helvetica" font-size="10.00">ScannerState</text>
 <text text-anchor="middle" x="948.71" y="-785" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.YamlToken -->
 <g id="node5" class="node">
 <title>L4YAML.YamlToken</title>
+<g id="a_node5"><a xlink:href="../../../api/L4YAML/Token.html#L4YAML.YamlToken" xlink:title="YamlToken\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="980.71,-649 916.71,-649 916.71,-613 980.71,-613 980.71,-649"/>
 <text text-anchor="middle" x="948.71" y="-634" font-family="Helvetica" font-size="10.00">YamlToken</text>
 <text text-anchor="middle" x="948.71" y="-623" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.YamlPos -->
 <g id="node6" class="node">
 <title>L4YAML.YamlPos</title>
+<g id="a_node6"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.YamlPos" xlink:title="YamlPos\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="979.71,-757 917.71,-757 917.71,-721 979.71,-721 979.71,-757"/>
 <text text-anchor="middle" x="948.71" y="-742" font-family="Helvetica" font-size="10.00">YamlPos</text>
 <text text-anchor="middle" x="948.71" y="-731" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.offset -->
 <g id="node7" class="node">
 <title>L4YAML.Scanner.ScannerState.offset</title>
+<g id="a_node7"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.offset" xlink:title="ScannerState.offset\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1000.21,-487 897.21,-487 897.21,-451 1000.21,-451 1000.21,-487"/>
 <text text-anchor="middle" x="948.71" y="-472" font-family="Helvetica" font-size="10.00">ScannerState.offset</text>
 <text text-anchor="middle" x="948.71" y="-461" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.emitAt -->
 <g id="node8" class="node">
 <title>L4YAML.Scanner.ScannerState.emitAt</title>
+<g id="a_node8"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.emitAt" xlink:title="ScannerState.emitAt\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1002.21,-595 895.21,-595 895.21,-559 1002.21,-559 1002.21,-595"/>
 <text text-anchor="middle" x="948.71" y="-580" font-family="Helvetica" font-size="10.00">ScannerState.emitAt</text>
 <text text-anchor="middle" x="948.71" y="-569" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Positioned.pos -->
 <g id="node9" class="node">
 <title>L4YAML.Positioned.pos</title>
+<g id="a_node9"><a xlink:href="../../../api/L4YAML/Token.html#L4YAML.Positioned.pos" xlink:title="Positioned.pos\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="989.21,-433 908.21,-433 908.21,-397 989.21,-397 989.21,-433"/>
 <text text-anchor="middle" x="948.71" y="-418" font-family="Helvetica" font-size="10.00">Positioned.pos</text>
 <text text-anchor="middle" x="948.71" y="-407" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.tokens -->
 <g id="node10" class="node">
 <title>L4YAML.Scanner.ScannerState.tokens</title>
+<g id="a_node10"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.tokens" xlink:title="ScannerState.tokens\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1002.21,-865 895.21,-865 895.21,-829 1002.21,-829 1002.21,-865"/>
 <text text-anchor="middle" x="948.71" y="-850" font-family="Helvetica" font-size="10.00">ScannerState.tokens</text>
 <text text-anchor="middle" x="948.71" y="-839" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerCorrectness.emitAt_preserves_ScanInv -->
 <g id="node11" class="node">
 <title>L4YAML.Proofs.ScannerCorrectness.emitAt_preserves_ScanInv</title>
+<g id="a_node11"><a xlink:href="../../../api/L4YAML/Proofs/ScannerCorrectness.html#L4YAML.Proofs.ScannerCorrectness.emitAt_preserves_ScanInv" xlink:title="ScannerCorrectness.emitAt_preserves_ScanInv" target="_blank">
 <polygon fill="#fff3cd" stroke="#d4a017" points="811.44,-238.54 811.44,-253.46 705.14,-264 554.81,-264 448.51,-253.46 448.51,-238.54 554.81,-228 705.14,-228 811.44,-238.54"/>
 <polygon fill="none" stroke="#d4a017" points="815.44,-234.92 815.44,-257.08 705.34,-268 554.61,-268 444.5,-257.08 444.5,-234.92 554.61,-224 705.34,-224 815.44,-234.92"/>
 <text text-anchor="middle" x="629.97" y="-242.9" font-family="Helvetica" font-size="12.00">ScannerCorrectness.emitAt_preserves_ScanInv</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerCorrectness.emitAt_preserves_ScanInv&#45;&gt;L4YAML.Proofs.ScannerCorrectness.ScanInv -->
 <g id="edge2" class="edge">
@@ -182,9 +215,12 @@
 <!-- L4YAML.Proofs.ScannerCorrectness.emitAt_preserves_ScanInv._proof_1_7 -->
 <g id="node12" class="node">
 <title>L4YAML.Proofs.ScannerCorrectness.emitAt_preserves_ScanInv._proof_1_7</title>
+<g id="a_node12"><a xlink:href="../../../api/L4YAML/Proofs/ScannerCorrectness.html#L4YAML.Proofs.ScannerCorrectness.emitAt_preserves_ScanInv._proof_1_7" xlink:title="ScannerCorrectness.emitAt_preserves_ScanInv._proof_1_7\n(ScannerCorrectness)" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="211.87" cy="-973" rx="195.74" ry="21.43"/>
 <text text-anchor="middle" x="211.87" y="-976" font-family="Helvetica" font-size="10.00">ScannerCorrectness.emitAt_preserves_ScanInv._proof_1_7</text>
 <text text-anchor="middle" x="211.87" y="-965" font-family="Helvetica" font-size="10.00">(ScannerCorrectness)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerCorrectness.emitAt_preserves_ScanInv._proof_1_7&#45;&gt;L4YAML.Positioned -->
 <g id="edge25" class="edge">
@@ -225,9 +261,12 @@
 <!-- L4YAML.Proofs.ScannerCorrectness.emitAt_preserves_ScanInv._proof_1 -->
 <g id="node13" class="node">
 <title>L4YAML.Proofs.ScannerCorrectness.emitAt_preserves_ScanInv._proof_1</title>
+<g id="a_node13"><a xlink:href="../../../api/L4YAML/Proofs/ScannerCorrectness.html#L4YAML.Proofs.ScannerCorrectness.emitAt_preserves_ScanInv._proof_1" xlink:title="ScannerCorrectness.emitAt_preserves_ScanInv._proof_1\n(ScannerCorrectness)" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="211.87" cy="-913" rx="188.18" ry="21.43"/>
 <text text-anchor="middle" x="211.87" y="-916" font-family="Helvetica" font-size="10.00">ScannerCorrectness.emitAt_preserves_ScanInv._proof_1</text>
 <text text-anchor="middle" x="211.87" y="-905" font-family="Helvetica" font-size="10.00">(ScannerCorrectness)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerCorrectness.emitAt_preserves_ScanInv._proof_1&#45;&gt;L4YAML.Positioned -->
 <g id="edge30" class="edge">
@@ -268,9 +307,12 @@
 <!-- L4YAML.Proofs.ScannerCorrectness.emitAt_preserves_ScanInv._proof_1_6 -->
 <g id="node14" class="node">
 <title>L4YAML.Proofs.ScannerCorrectness.emitAt_preserves_ScanInv._proof_1_6</title>
+<g id="a_node14"><a xlink:href="../../../api/L4YAML/Proofs/ScannerCorrectness.html#L4YAML.Proofs.ScannerCorrectness.emitAt_preserves_ScanInv._proof_1_6" xlink:title="ScannerCorrectness.emitAt_preserves_ScanInv._proof_1_6\n(ScannerCorrectness)" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="211.87" cy="-853" rx="195.74" ry="21.43"/>
 <text text-anchor="middle" x="211.87" y="-856" font-family="Helvetica" font-size="10.00">ScannerCorrectness.emitAt_preserves_ScanInv._proof_1_6</text>
 <text text-anchor="middle" x="211.87" y="-845" font-family="Helvetica" font-size="10.00">(ScannerCorrectness)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerCorrectness.emitAt_preserves_ScanInv._proof_1_6&#45;&gt;L4YAML.Positioned -->
 <g id="edge35" class="edge">
@@ -311,9 +353,12 @@
 <!-- L4YAML.Proofs.ScannerCorrectness.ScanInv&#39;._proof_2 -->
 <g id="node15" class="node">
 <title>L4YAML.Proofs.ScannerCorrectness.ScanInv&#39;._proof_2</title>
+<g id="a_node15"><a xlink:href="../../../api/L4YAML/Proofs/ScannerCorrectness.html#L4YAML.Proofs.ScannerCorrectness.ScanInv&#39;._proof_2" xlink:title="ScannerCorrectness.ScanInv&#39;._proof_2\n(ScannerCorrectness)" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="211.87" cy="-673" rx="132.87" ry="21.43"/>
 <text text-anchor="middle" x="211.87" y="-676" font-family="Helvetica" font-size="10.00">ScannerCorrectness.ScanInv&#39;._proof_2</text>
 <text text-anchor="middle" x="211.87" y="-665" font-family="Helvetica" font-size="10.00">(ScannerCorrectness)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerCorrectness.ScanInv&#39;._proof_2&#45;&gt;L4YAML.Positioned -->
 <g id="edge39" class="edge">
@@ -336,9 +381,12 @@
 <!-- L4YAML.Proofs.ScannerCorrectness.emitAt_preserves_ScanInv._proof_1_4 -->
 <g id="node16" class="node">
 <title>L4YAML.Proofs.ScannerCorrectness.emitAt_preserves_ScanInv._proof_1_4</title>
+<g id="a_node16"><a xlink:href="../../../api/L4YAML/Proofs/ScannerCorrectness.html#L4YAML.Proofs.ScannerCorrectness.emitAt_preserves_ScanInv._proof_1_4" xlink:title="ScannerCorrectness.emitAt_preserves_ScanInv._proof_1_4\n(ScannerCorrectness)" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="211.87" cy="-733" rx="195.74" ry="21.43"/>
 <text text-anchor="middle" x="211.87" y="-736" font-family="Helvetica" font-size="10.00">ScannerCorrectness.emitAt_preserves_ScanInv._proof_1_4</text>
 <text text-anchor="middle" x="211.87" y="-725" font-family="Helvetica" font-size="10.00">(ScannerCorrectness)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerCorrectness.emitAt_preserves_ScanInv._proof_1_4&#45;&gt;L4YAML.Positioned -->
 <g id="edge42" class="edge">
@@ -385,9 +433,12 @@
 <!-- L4YAML.Proofs.ScannerCorrectness.emitAt_preserves_ScanInv._proof_1_5 -->
 <g id="node17" class="node">
 <title>L4YAML.Proofs.ScannerCorrectness.emitAt_preserves_ScanInv._proof_1_5</title>
+<g id="a_node17"><a xlink:href="../../../api/L4YAML/Proofs/ScannerCorrectness.html#L4YAML.Proofs.ScannerCorrectness.emitAt_preserves_ScanInv._proof_1_5" xlink:title="ScannerCorrectness.emitAt_preserves_ScanInv._proof_1_5\n(ScannerCorrectness)" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="211.87" cy="-793" rx="195.74" ry="21.43"/>
 <text text-anchor="middle" x="211.87" y="-796" font-family="Helvetica" font-size="10.00">ScannerCorrectness.emitAt_preserves_ScanInv._proof_1_5</text>
 <text text-anchor="middle" x="211.87" y="-785" font-family="Helvetica" font-size="10.00">(ScannerCorrectness)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerCorrectness.emitAt_preserves_ScanInv._proof_1_5&#45;&gt;L4YAML.Positioned -->
 <g id="edge48" class="edge">
@@ -434,8 +485,11 @@
 <!-- dite_congr -->
 <g id="node18" class="node">
 <title>dite_congr</title>
+<g id="a_node18"><a xlink:href="../../../api/Init/SimpLemmas.html#dite_congr" xlink:title="dite_congr" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="211.87" cy="-358" rx="36.49" ry="18"/>
 <text text-anchor="middle" x="211.87" y="-355.5" font-family="Helvetica" font-size="10.00">dite_congr</text>
+</a>
+</g>
 </g>
 <!-- dite_congr&#45;&gt;L4YAML.Proofs.ScannerCorrectness.emitAt_preserves_ScanInv -->
 <g id="edge17" class="edge">
@@ -446,8 +500,11 @@
 <!-- dif_pos -->
 <g id="node19" class="node">
 <title>dif_pos</title>
+<g id="a_node19"><a xlink:href="../../../api/Init/Core.html#dif_pos" xlink:title="dif_pos" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="211.87" cy="-304" rx="28.01" ry="18"/>
 <text text-anchor="middle" x="211.87" y="-301.5" font-family="Helvetica" font-size="10.00">dif_pos</text>
+</a>
+</g>
 </g>
 <!-- dif_pos&#45;&gt;L4YAML.Proofs.ScannerCorrectness.emitAt_preserves_ScanInv -->
 <g id="edge18" class="edge">
@@ -458,8 +515,11 @@
 <!-- dif_neg -->
 <g id="node20" class="node">
 <title>dif_neg</title>
+<g id="a_node20"><a xlink:href="../../../api/Init/Core.html#dif_neg" xlink:title="dif_neg" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="211.87" cy="-250" rx="28.01" ry="18"/>
 <text text-anchor="middle" x="211.87" y="-247.5" font-family="Helvetica" font-size="10.00">dif_neg</text>
+</a>
+</g>
 </g>
 <!-- dif_neg&#45;&gt;L4YAML.Proofs.ScannerCorrectness.emitAt_preserves_ScanInv -->
 <g id="edge19" class="edge">
@@ -470,8 +530,11 @@
 <!-- Decidable.byContradiction -->
 <g id="node21" class="node">
 <title>Decidable.byContradiction</title>
+<g id="a_node21"><a xlink:href="../../../api/Init/Core.html#Decidable.byContradiction" xlink:title="Decidable.byContradiction" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="211.87" cy="-196" rx="77.23" ry="18"/>
 <text text-anchor="middle" x="211.87" y="-193.5" font-family="Helvetica" font-size="10.00">Decidable.byContradiction</text>
+</a>
+</g>
 </g>
 <!-- Decidable.byContradiction&#45;&gt;L4YAML.Proofs.ScannerCorrectness.emitAt_preserves_ScanInv -->
 <g id="edge20" class="edge">
@@ -482,8 +545,11 @@
 <!-- Array.size_push -->
 <g id="node22" class="node">
 <title>Array.size_push</title>
+<g id="a_node22"><a xlink:href="../../../api/Init/Data/Array/Basic.html#Array.size_push" xlink:title="Array.size_push" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="211.87" cy="-142" rx="50.75" ry="18"/>
 <text text-anchor="middle" x="211.87" y="-139.5" font-family="Helvetica" font-size="10.00">Array.size_push</text>
+</a>
+</g>
 </g>
 <!-- Array.size_push&#45;&gt;L4YAML.Proofs.ScannerCorrectness.emitAt_preserves_ScanInv -->
 <g id="edge21" class="edge">
@@ -494,8 +560,11 @@
 <!-- Array.getElem_push -->
 <g id="node23" class="node">
 <title>Array.getElem_push</title>
+<g id="a_node23"><a xlink:href="../../../api/Init/Data/Array/Lemmas.html#Array.getElem_push" xlink:title="Array.getElem_push" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="211.87" cy="-88" rx="61.44" ry="18"/>
 <text text-anchor="middle" x="211.87" y="-85.5" font-family="Helvetica" font-size="10.00">Array.getElem_push</text>
+</a>
+</g>
 </g>
 <!-- Array.getElem_push&#45;&gt;L4YAML.Proofs.ScannerCorrectness.emitAt_preserves_ScanInv -->
 <g id="edge22" class="edge">
@@ -506,8 +575,11 @@
 <!-- Eq.mpr_prop -->
 <g id="node24" class="node">
 <title>Eq.mpr_prop</title>
+<g id="a_node24"><a xlink:href="../../../api/Init/SimpLemmas.html#Eq.mpr_prop" xlink:title="Eq.mpr_prop" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="211.87" cy="-34" rx="42.27" ry="18"/>
 <text text-anchor="middle" x="211.87" y="-31.5" font-family="Helvetica" font-size="10.00">Eq.mpr_prop</text>
+</a>
+</g>
 </g>
 <!-- Eq.mpr_prop&#45;&gt;L4YAML.Proofs.ScannerCorrectness.emitAt_preserves_ScanInv -->
 <g id="edge23" class="edge">

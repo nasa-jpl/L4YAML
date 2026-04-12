@@ -30,37 +30,52 @@
 <!-- L4YAML.Scanner.ScannerState.advance -->
 <g id="node1" class="node">
 <title>L4YAML.Scanner.ScannerState.advance</title>
+<g id="a_node1"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.advance" xlink:title="ScannerState.advance\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="646.87,-214 531.87,-214 531.87,-178 646.87,-178 646.87,-214"/>
 <text text-anchor="middle" x="589.37" y="-199" font-family="Helvetica" font-size="10.00">ScannerState.advance</text>
 <text text-anchor="middle" x="589.37" y="-188" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState -->
 <g id="node2" class="node">
 <title>L4YAML.Scanner.ScannerState</title>
+<g id="a_node2"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState" xlink:title="ScannerState\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="627.37,-160 551.37,-160 551.37,-124 627.37,-124 627.37,-160"/>
 <text text-anchor="middle" x="589.37" y="-145" font-family="Helvetica" font-size="10.00">ScannerState</text>
 <text text-anchor="middle" x="589.37" y="-134" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.peekAt?Loop.match_1 -->
 <g id="node3" class="node">
 <title>L4YAML.Scanner.ScannerState.peekAt?Loop.match_1</title>
+<g id="a_node3"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.peekAt?Loop.match_1" xlink:title="ScannerState.peekAt?Loop.match_1\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="677.37,-106 501.37,-106 501.37,-70 677.37,-70 677.37,-106"/>
 <text text-anchor="middle" x="589.37" y="-91" font-family="Helvetica" font-size="10.00">ScannerState.peekAt?Loop.match_1</text>
 <text text-anchor="middle" x="589.37" y="-80" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.advanceNLoop -->
 <g id="node4" class="node">
 <title>L4YAML.Scanner.ScannerState.advanceNLoop</title>
+<g id="a_node4"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.advanceNLoop" xlink:title="ScannerState.advanceNLoop\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="660.87,-52 517.87,-52 517.87,-16 660.87,-16 660.87,-52"/>
 <text text-anchor="middle" x="589.37" y="-37" font-family="Helvetica" font-size="10.00">ScannerState.advanceNLoop</text>
 <text text-anchor="middle" x="589.37" y="-26" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.advanceNLoop.eq_def -->
 <g id="node5" class="node">
 <title>L4YAML.Scanner.ScannerState.advanceNLoop.eq_def</title>
+<g id="a_node5"><a xlink:href="../../../api/L4YAML/Proofs/StructureCoupling.html#L4YAML.Scanner.ScannerState.advanceNLoop.eq_def" xlink:title="ScannerState.advanceNLoop.eq_def" target="_blank">
 <polygon fill="#fff3cd" stroke="#d4a017" points="436.45,-106.54 436.45,-121.46 352.87,-132 234.68,-132 151.1,-121.46 151.1,-106.54 234.68,-96 352.87,-96 436.45,-106.54"/>
 <polygon fill="none" stroke="#d4a017" points="440.45,-103.02 440.45,-124.98 353.13,-136 234.43,-136 147.1,-124.98 147.1,-103.02 234.43,-92 353.13,-92 440.45,-103.02"/>
 <text text-anchor="middle" x="293.78" y="-110.9" font-family="Helvetica" font-size="12.00">ScannerState.advanceNLoop.eq_def</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.advanceNLoop.eq_def&#45;&gt;L4YAML.Scanner.ScannerState.advance -->
 <g id="edge1" class="edge">
@@ -93,8 +108,11 @@
 <!-- Nat.brecOn.eq -->
 <g id="node6" class="node">
 <title>Nat.brecOn.eq</title>
+<g id="a_node6"><a xlink:href="../../../api/Init/Prelude.html#Nat.brecOn.eq" xlink:title="Nat.brecOn.eq" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="63.09" cy="-114" rx="47.19" ry="18"/>
 <text text-anchor="middle" x="63.09" y="-111.5" font-family="Helvetica" font-size="10.00">Nat.brecOn.eq</text>
+</a>
+</g>
 </g>
 <!-- Nat.brecOn.eq&#45;&gt;L4YAML.Scanner.ScannerState.advanceNLoop.eq_def -->
 <g id="edge5" class="edge">

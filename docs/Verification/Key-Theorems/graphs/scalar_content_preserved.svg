@@ -30,142 +30,202 @@
 <!-- L4YAML.CharPredicates.validPlainFirstProp -->
 <g id="node1" class="node">
 <title>L4YAML.CharPredicates.validPlainFirstProp</title>
+<g id="a_node1"><a xlink:href="../../../api/L4YAML/CharPredicates.html#L4YAML.CharPredicates.validPlainFirstProp" xlink:title="CharPredicates.validPlainFirstProp\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="899.06,-358 730.06,-358 730.06,-322 899.06,-322 899.06,-358"/>
 <text text-anchor="middle" x="814.56" y="-343" font-family="Helvetica" font-size="10.00">CharPredicates.validPlainFirstProp</text>
 <text text-anchor="middle" x="814.56" y="-332" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.CharPredicates.noFlowIndicatorsProp -->
 <g id="node2" class="node">
 <title>L4YAML.CharPredicates.noFlowIndicatorsProp</title>
+<g id="a_node2"><a xlink:href="../../../api/L4YAML/CharPredicates.html#L4YAML.CharPredicates.noFlowIndicatorsProp" xlink:title="CharPredicates.noFlowIndicatorsProp\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="905.56,-304 723.56,-304 723.56,-268 905.56,-268 905.56,-304"/>
 <text text-anchor="middle" x="814.56" y="-289" font-family="Helvetica" font-size="10.00">CharPredicates.noFlowIndicatorsProp</text>
 <text text-anchor="middle" x="814.56" y="-278" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scalar.content -->
 <g id="node3" class="node">
 <title>L4YAML.Scalar.content</title>
+<g id="a_node3"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.Scalar.content" xlink:title="Scalar.content\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="854.56,-250 774.56,-250 774.56,-214 854.56,-214 854.56,-250"/>
 <text text-anchor="middle" x="814.56" y="-235" font-family="Helvetica" font-size="10.00">Scalar.content</text>
 <text text-anchor="middle" x="814.56" y="-224" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Grammar.ValidNode.doubleQuoted -->
 <g id="node4" class="node">
 <title>L4YAML.Grammar.ValidNode.doubleQuoted</title>
+<g id="a_node4"><a xlink:href="../../../api/L4YAML/Grammar.html#L4YAML.Grammar.ValidNode.doubleQuoted" xlink:title="Grammar.ValidNode.doubleQuoted\n(ctor)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="898.06,-196 731.06,-196 731.06,-160 898.06,-160 898.06,-196"/>
 <text text-anchor="middle" x="814.56" y="-181" font-family="Helvetica" font-size="10.00">Grammar.ValidNode.doubleQuoted</text>
 <text text-anchor="middle" x="814.56" y="-170" font-family="Helvetica" font-size="10.00">(ctor)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Grammar.ValidNode -->
 <g id="node5" class="node">
 <title>L4YAML.Grammar.ValidNode</title>
+<g id="a_node5"><a xlink:href="../../../api/L4YAML/Grammar.html#L4YAML.Grammar.ValidNode" xlink:title="Grammar.ValidNode\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="866.56,-952 762.56,-952 762.56,-916 866.56,-916 866.56,-952"/>
 <text text-anchor="middle" x="814.56" y="-937" font-family="Helvetica" font-size="10.00">Grammar.ValidNode</text>
 <text text-anchor="middle" x="814.56" y="-926" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Grammar.ValidNode.emptyNode -->
 <g id="node6" class="node">
 <title>L4YAML.Grammar.ValidNode.emptyNode</title>
+<g id="a_node6"><a xlink:href="../../../api/L4YAML/Grammar.html#L4YAML.Grammar.ValidNode.emptyNode" xlink:title="Grammar.ValidNode.emptyNode\n(ctor)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="893.56,-142 735.56,-142 735.56,-106 893.56,-106 893.56,-142"/>
 <text text-anchor="middle" x="814.56" y="-127" font-family="Helvetica" font-size="10.00">Grammar.ValidNode.emptyNode</text>
 <text text-anchor="middle" x="814.56" y="-116" font-family="Helvetica" font-size="10.00">(ctor)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Grammar.ValidNode.singleQuoted -->
 <g id="node7" class="node">
 <title>L4YAML.Grammar.ValidNode.singleQuoted</title>
+<g id="a_node7"><a xlink:href="../../../api/L4YAML/Grammar.html#L4YAML.Grammar.ValidNode.singleQuoted" xlink:title="Grammar.ValidNode.singleQuoted\n(ctor)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="896.56,-898 732.56,-898 732.56,-862 896.56,-862 896.56,-898"/>
 <text text-anchor="middle" x="814.56" y="-883" font-family="Helvetica" font-size="10.00">Grammar.ValidNode.singleQuoted</text>
 <text text-anchor="middle" x="814.56" y="-872" font-family="Helvetica" font-size="10.00">(ctor)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Grammar.ValidNode.foldedScalar -->
 <g id="node8" class="node">
 <title>L4YAML.Grammar.ValidNode.foldedScalar</title>
+<g id="a_node8"><a xlink:href="../../../api/L4YAML/Grammar.html#L4YAML.Grammar.ValidNode.foldedScalar" xlink:title="Grammar.ValidNode.foldedScalar\n(ctor)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="895.06,-844 734.06,-844 734.06,-808 895.06,-808 895.06,-844"/>
 <text text-anchor="middle" x="814.56" y="-829" font-family="Helvetica" font-size="10.00">Grammar.ValidNode.foldedScalar</text>
 <text text-anchor="middle" x="814.56" y="-818" font-family="Helvetica" font-size="10.00">(ctor)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Grammar.ValidNode.plainScalarFlow -->
 <g id="node9" class="node">
 <title>L4YAML.Grammar.ValidNode.plainScalarFlow</title>
+<g id="a_node9"><a xlink:href="../../../api/L4YAML/Grammar.html#L4YAML.Grammar.ValidNode.plainScalarFlow" xlink:title="Grammar.ValidNode.plainScalarFlow\n(ctor)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="902.56,-790 726.56,-790 726.56,-754 902.56,-754 902.56,-790"/>
 <text text-anchor="middle" x="814.56" y="-775" font-family="Helvetica" font-size="10.00">Grammar.ValidNode.plainScalarFlow</text>
 <text text-anchor="middle" x="814.56" y="-764" font-family="Helvetica" font-size="10.00">(ctor)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scalar -->
 <g id="node10" class="node">
 <title>L4YAML.Scalar</title>
+<g id="a_node10"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.Scalar" xlink:title="Scalar\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="845.56,-736 783.56,-736 783.56,-700 845.56,-700 845.56,-736"/>
 <text text-anchor="middle" x="814.56" y="-721" font-family="Helvetica" font-size="10.00">Scalar</text>
 <text text-anchor="middle" x="814.56" y="-710" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.YamlValue.scalar -->
 <g id="node11" class="node">
 <title>L4YAML.YamlValue.scalar</title>
+<g id="a_node11"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.YamlValue.scalar" xlink:title="YamlValue.scalar\n(ctor)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="860.56,-682 768.56,-682 768.56,-646 860.56,-646 860.56,-682"/>
 <text text-anchor="middle" x="814.56" y="-667" font-family="Helvetica" font-size="10.00">YamlValue.scalar</text>
 <text text-anchor="middle" x="814.56" y="-656" font-family="Helvetica" font-size="10.00">(ctor)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.CharPredicates.noSpaceHashProp -->
 <g id="node12" class="node">
 <title>L4YAML.CharPredicates.noSpaceHashProp</title>
+<g id="a_node12"><a xlink:href="../../../api/L4YAML/CharPredicates.html#L4YAML.CharPredicates.noSpaceHashProp" xlink:title="CharPredicates.noSpaceHashProp\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="899.06,-628 730.06,-628 730.06,-592 899.06,-592 899.06,-628"/>
 <text text-anchor="middle" x="814.56" y="-613" font-family="Helvetica" font-size="10.00">CharPredicates.noSpaceHashProp</text>
 <text text-anchor="middle" x="814.56" y="-602" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Grammar.ValidNode.literalScalar -->
 <g id="node13" class="node">
 <title>L4YAML.Grammar.ValidNode.literalScalar</title>
+<g id="a_node13"><a xlink:href="../../../api/L4YAML/Grammar.html#L4YAML.Grammar.ValidNode.literalScalar" xlink:title="Grammar.ValidNode.literalScalar\n(ctor)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="893.56,-574 735.56,-574 735.56,-538 893.56,-538 893.56,-574"/>
 <text text-anchor="middle" x="814.56" y="-559" font-family="Helvetica" font-size="10.00">Grammar.ValidNode.literalScalar</text>
 <text text-anchor="middle" x="814.56" y="-548" font-family="Helvetica" font-size="10.00">(ctor)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.ChompStyle -->
 <g id="node14" class="node">
 <title>L4YAML.ChompStyle</title>
+<g id="a_node14"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.ChompStyle" xlink:title="ChompStyle\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="850.06,-520 779.06,-520 779.06,-484 850.06,-484 850.06,-520"/>
 <text text-anchor="middle" x="814.56" y="-505" font-family="Helvetica" font-size="10.00">ChompStyle</text>
 <text text-anchor="middle" x="814.56" y="-494" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Grammar.ValidNode.plainScalarBlock -->
 <g id="node15" class="node">
 <title>L4YAML.Grammar.ValidNode.plainScalarBlock</title>
+<g id="a_node15"><a xlink:href="../../../api/L4YAML/Grammar.html#L4YAML.Grammar.ValidNode.plainScalarBlock" xlink:title="Grammar.ValidNode.plainScalarBlock\n(ctor)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="904.56,-466 724.56,-466 724.56,-430 904.56,-430 904.56,-466"/>
 <text text-anchor="middle" x="814.56" y="-451" font-family="Helvetica" font-size="10.00">Grammar.ValidNode.plainScalarBlock</text>
 <text text-anchor="middle" x="814.56" y="-440" font-family="Helvetica" font-size="10.00">(ctor)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.YamlValue -->
 <g id="node16" class="node">
 <title>L4YAML.YamlValue</title>
+<g id="a_node16"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.YamlValue" xlink:title="YamlValue\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="845.56,-1060 783.56,-1060 783.56,-1024 845.56,-1024 845.56,-1060"/>
 <text text-anchor="middle" x="814.56" y="-1045" font-family="Helvetica" font-size="10.00">YamlValue</text>
 <text text-anchor="middle" x="814.56" y="-1034" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Grammar.NodeToValue -->
 <g id="node17" class="node">
 <title>L4YAML.Grammar.NodeToValue</title>
+<g id="a_node17"><a xlink:href="../../../api/L4YAML/Grammar.html#L4YAML.Grammar.NodeToValue" xlink:title="Grammar.NodeToValue\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="873.56,-1006 755.56,-1006 755.56,-970 873.56,-970 873.56,-1006"/>
 <text text-anchor="middle" x="814.56" y="-991" font-family="Helvetica" font-size="10.00">Grammar.NodeToValue</text>
 <text text-anchor="middle" x="814.56" y="-980" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Grammar.toYamlValue -->
 <g id="node18" class="node">
 <title>L4YAML.Grammar.toYamlValue</title>
+<g id="a_node18"><a xlink:href="../../../api/L4YAML/Grammar.html#L4YAML.Grammar.toYamlValue" xlink:title="Grammar.toYamlValue\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="569.63,-1060 455.63,-1060 455.63,-1024 569.63,-1024 569.63,-1060"/>
 <text text-anchor="middle" x="512.63" y="-1045" font-family="Helvetica" font-size="10.00">Grammar.toYamlValue</text>
 <text text-anchor="middle" x="512.63" y="-1034" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.CharPredicates.noColonSpaceProp -->
 <g id="node19" class="node">
 <title>L4YAML.CharPredicates.noColonSpaceProp</title>
+<g id="a_node19"><a xlink:href="../../../api/L4YAML/CharPredicates.html#L4YAML.CharPredicates.noColonSpaceProp" xlink:title="CharPredicates.noColonSpaceProp\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="900.06,-412 729.06,-412 729.06,-376 900.06,-376 900.06,-412"/>
 <text text-anchor="middle" x="814.56" y="-397" font-family="Helvetica" font-size="10.00">CharPredicates.noColonSpaceProp</text>
 <text text-anchor="middle" x="814.56" y="-386" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.Soundness.scalar_content_preserved -->
 <g id="node20" class="node">
 <title>L4YAML.Proofs.Soundness.scalar_content_preserved</title>
+<g id="a_node20"><a xlink:href="../../../api/L4YAML/Proofs/Soundness.html#L4YAML.Proofs.Soundness.scalar_content_preserved" xlink:title="Soundness.scalar_content_preserved" target="_blank">
 <polygon fill="#fff3cd" stroke="#d4a017" points="658.48,-30.54 658.48,-45.46 573.04,-56 452.22,-56 366.79,-45.46 366.79,-30.54 452.22,-20 573.04,-20 658.48,-30.54"/>
 <polygon fill="none" stroke="#d4a017" points="662.48,-27.01 662.48,-48.99 573.29,-60 451.98,-60 362.79,-48.99 362.79,-27.01 451.98,-16 573.29,-16 662.48,-27.01"/>
 <text text-anchor="middle" x="512.63" y="-34.9" font-family="Helvetica" font-size="12.00">Soundness.scalar_content_preserved</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.Soundness.scalar_content_preserved&#45;&gt;L4YAML.CharPredicates.validPlainFirstProp -->
 <g id="edge4" class="edge">
@@ -296,9 +356,12 @@
 <!-- L4YAML.Proofs.Soundness.nodeToValue_implies_toYamlValue -->
 <g id="node21" class="node">
 <title>L4YAML.Proofs.Soundness.nodeToValue_implies_toYamlValue</title>
+<g id="a_node21"><a xlink:href="../../../api/L4YAML/Proofs/Soundness.html#L4YAML.Proofs.Soundness.nodeToValue_implies_toYamlValue" xlink:title="Soundness.nodeToValue_implies_toYamlValue\n(Soundness)" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="170.86" cy="-958" rx="154.71" ry="21.43"/>
 <text text-anchor="middle" x="170.86" y="-961" font-family="Helvetica" font-size="10.00">Soundness.nodeToValue_implies_toYamlValue</text>
 <text text-anchor="middle" x="170.86" y="-950" font-family="Helvetica" font-size="10.00">(Soundness)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.Soundness.nodeToValue_implies_toYamlValue&#45;&gt;L4YAML.Grammar.ValidNode -->
 <g id="edge20" class="edge">

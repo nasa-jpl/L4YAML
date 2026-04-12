@@ -10,7 +10,7 @@
 <title>ScannerCorrectness.advance_preserves_tokens</title>
 <polygon fill="white" stroke="transparent" points="-4,4 -4,-360 589.13,-360 589.13,4 -4,4"/>
 <text text-anchor="middle" x="292.57" y="-341.6" font-family="Helvetica Bold" font-size="13.00">ScannerCorrectness.advance_preserves_tokens</text>
-<text text-anchor="middle" x="292.57" y="-327.6" font-family="Helvetica Bold" font-size="13.00">(heuristic: used by 111 proofs)</text>
+<text text-anchor="middle" x="292.57" y="-327.6" font-family="Helvetica Bold" font-size="13.00">(heuristic: used by 113 proofs)</text>
 <text text-anchor="middle" x="292.57" y="-313.6" font-family="Helvetica Bold" font-size="13.00">(L4YAML.Proofs.ScannerCorrectness)</text>
 <g id="clust1" class="cluster">
 <title>cluster_functions</title>
@@ -25,44 +25,62 @@
 <!-- L4YAML.Positioned -->
 <g id="node1" class="node">
 <title>L4YAML.Positioned</title>
+<g id="a_node1"><a xlink:href="../../../api/L4YAML/Token.html#L4YAML.Positioned" xlink:title="Positioned\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="542.63,-268 480.63,-268 480.63,-232 542.63,-232 542.63,-268"/>
 <text text-anchor="middle" x="511.63" y="-253" font-family="Helvetica" font-size="10.00">Positioned</text>
 <text text-anchor="middle" x="511.63" y="-242" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.advance -->
 <g id="node2" class="node">
 <title>L4YAML.Scanner.ScannerState.advance</title>
+<g id="a_node2"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.advance" xlink:title="ScannerState.advance\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="569.13,-214 454.13,-214 454.13,-178 569.13,-178 569.13,-214"/>
 <text text-anchor="middle" x="511.63" y="-199" font-family="Helvetica" font-size="10.00">ScannerState.advance</text>
 <text text-anchor="middle" x="511.63" y="-188" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState -->
 <g id="node3" class="node">
 <title>L4YAML.Scanner.ScannerState</title>
+<g id="a_node3"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState" xlink:title="ScannerState\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="549.63,-160 473.63,-160 473.63,-124 549.63,-124 549.63,-160"/>
 <text text-anchor="middle" x="511.63" y="-145" font-family="Helvetica" font-size="10.00">ScannerState</text>
 <text text-anchor="middle" x="511.63" y="-134" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.YamlToken -->
 <g id="node4" class="node">
 <title>L4YAML.YamlToken</title>
+<g id="a_node4"><a xlink:href="../../../api/L4YAML/Token.html#L4YAML.YamlToken" xlink:title="YamlToken\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="543.63,-106 479.63,-106 479.63,-70 543.63,-70 543.63,-106"/>
 <text text-anchor="middle" x="511.63" y="-91" font-family="Helvetica" font-size="10.00">YamlToken</text>
 <text text-anchor="middle" x="511.63" y="-80" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.tokens -->
 <g id="node5" class="node">
 <title>L4YAML.Scanner.ScannerState.tokens</title>
+<g id="a_node5"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.tokens" xlink:title="ScannerState.tokens\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="565.13,-52 458.13,-52 458.13,-16 565.13,-16 565.13,-52"/>
 <text text-anchor="middle" x="511.63" y="-37" font-family="Helvetica" font-size="10.00">ScannerState.tokens</text>
 <text text-anchor="middle" x="511.63" y="-26" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerCorrectness.advance_preserves_tokens -->
 <g id="node6" class="node">
 <title>L4YAML.Proofs.ScannerCorrectness.advance_preserves_tokens</title>
+<g id="a_node6"><a xlink:href="../../../api/L4YAML/Proofs/ScannerCorrectness.html#L4YAML.Proofs.ScannerCorrectness.advance_preserves_tokens" xlink:title="ScannerCorrectness.advance_preserves_tokens" target="_blank">
 <polygon fill="#fff3cd" stroke="#d4a017" points="389.2,-134.54 389.2,-149.46 281.04,-160 128.09,-160 19.93,-149.46 19.93,-134.54 128.09,-124 281.04,-124 389.2,-134.54"/>
 <polygon fill="none" stroke="#d4a017" points="393.2,-130.92 393.2,-153.08 281.24,-164 127.89,-164 15.93,-153.08 15.93,-130.92 127.89,-120 281.24,-120 393.2,-130.92"/>
 <text text-anchor="middle" x="204.57" y="-138.9" font-family="Helvetica" font-size="12.00">ScannerCorrectness.advance_preserves_tokens</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerCorrectness.advance_preserves_tokens&#45;&gt;L4YAML.Positioned -->
 <g id="edge3" class="edge">

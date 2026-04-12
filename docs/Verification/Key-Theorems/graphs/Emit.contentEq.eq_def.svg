@@ -35,149 +35,212 @@
 <!-- L4YAML.Emit.contentEq.match_1 -->
 <g id="node1" class="node">
 <title>L4YAML.Emit.contentEq.match_1</title>
+<g id="a_node1"><a xlink:href="../../../api/L4YAML/Emitter.html#L4YAML.Emit.contentEq.match_1" xlink:title="Emit.contentEq.match_1\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="908.9,-384.04 784.9,-384.04 784.9,-348.04 908.9,-348.04 908.9,-384.04"/>
 <text text-anchor="middle" x="846.9" y="-369.04" font-family="Helvetica" font-size="10.00">Emit.contentEq.match_1</text>
 <text text-anchor="middle" x="846.9" y="-358.04" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.YamlValue.below_1 -->
 <g id="node2" class="node">
 <title>L4YAML.YamlValue.below_1</title>
+<g id="a_node2"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.YamlValue.below_1" xlink:title="YamlValue.below_1\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="659.12,-708.04 558.12,-708.04 558.12,-672.04 659.12,-672.04 659.12,-708.04"/>
 <text text-anchor="middle" x="608.62" y="-693.04" font-family="Helvetica" font-size="10.00">YamlValue.below_1</text>
 <text text-anchor="middle" x="608.62" y="-682.04" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.CollectionStyle -->
 <g id="node3" class="node">
 <title>L4YAML.CollectionStyle</title>
+<g id="a_node3"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.CollectionStyle" xlink:title="CollectionStyle\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="888.4,-438.04 805.4,-438.04 805.4,-402.04 888.4,-402.04 888.4,-438.04"/>
 <text text-anchor="middle" x="846.9" y="-423.04" font-family="Helvetica" font-size="10.00">CollectionStyle</text>
 <text text-anchor="middle" x="846.9" y="-412.04" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scalar.content -->
 <g id="node4" class="node">
 <title>L4YAML.Scalar.content</title>
+<g id="a_node4"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.Scalar.content" xlink:title="Scalar.content\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="886.9,-546.04 806.9,-546.04 806.9,-510.04 886.9,-510.04 886.9,-546.04"/>
 <text text-anchor="middle" x="846.9" y="-531.04" font-family="Helvetica" font-size="10.00">Scalar.content</text>
 <text text-anchor="middle" x="846.9" y="-520.04" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.YamlValue.scalar -->
 <g id="node5" class="node">
 <title>L4YAML.YamlValue.scalar</title>
+<g id="a_node5"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.YamlValue.scalar" xlink:title="YamlValue.scalar\n(ctor)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="654.62,-330.04 562.62,-330.04 562.62,-294.04 654.62,-294.04 654.62,-330.04"/>
 <text text-anchor="middle" x="608.62" y="-315.04" font-family="Helvetica" font-size="10.00">YamlValue.scalar</text>
 <text text-anchor="middle" x="608.62" y="-304.04" font-family="Helvetica" font-size="10.00">(ctor)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scalar -->
 <g id="node6" class="node">
 <title>L4YAML.Scalar</title>
+<g id="a_node6"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.Scalar" xlink:title="Scalar\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="877.9,-330.04 815.9,-330.04 815.9,-294.04 877.9,-294.04 877.9,-330.04"/>
 <text text-anchor="middle" x="846.9" y="-315.04" font-family="Helvetica" font-size="10.00">Scalar</text>
 <text text-anchor="middle" x="846.9" y="-304.04" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.YamlValue.below_3 -->
 <g id="node7" class="node">
 <title>L4YAML.YamlValue.below_3</title>
+<g id="a_node7"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.YamlValue.below_3" xlink:title="YamlValue.below_3\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="659.12,-654.04 558.12,-654.04 558.12,-618.04 659.12,-618.04 659.12,-654.04"/>
 <text text-anchor="middle" x="608.62" y="-639.04" font-family="Helvetica" font-size="10.00">YamlValue.below_3</text>
 <text text-anchor="middle" x="608.62" y="-628.04" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.YamlValue.brecOn.go -->
 <g id="node8" class="node">
 <title>L4YAML.YamlValue.brecOn.go</title>
+<g id="a_node8"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.YamlValue.brecOn.go" xlink:title="YamlValue.brecOn.go\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="663.62,-600.04 553.62,-600.04 553.62,-564.04 663.62,-564.04 663.62,-600.04"/>
 <text text-anchor="middle" x="608.62" y="-585.04" font-family="Helvetica" font-size="10.00">YamlValue.brecOn.go</text>
 <text text-anchor="middle" x="608.62" y="-574.04" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.YamlValue.below_4 -->
 <g id="node9" class="node">
 <title>L4YAML.YamlValue.below_4</title>
+<g id="a_node9"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.YamlValue.below_4" xlink:title="YamlValue.below_4\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="659.12,-546.04 558.12,-546.04 558.12,-510.04 659.12,-510.04 659.12,-546.04"/>
 <text text-anchor="middle" x="608.62" y="-531.04" font-family="Helvetica" font-size="10.00">YamlValue.below_4</text>
 <text text-anchor="middle" x="608.62" y="-520.04" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.YamlValue.below -->
 <g id="node10" class="node">
 <title>L4YAML.YamlValue.below</title>
+<g id="a_node10"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.YamlValue.below" xlink:title="YamlValue.below\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="654.12,-924.04 563.12,-924.04 563.12,-888.04 654.12,-888.04 654.12,-924.04"/>
 <text text-anchor="middle" x="608.62" y="-909.04" font-family="Helvetica" font-size="10.00">YamlValue.below</text>
 <text text-anchor="middle" x="608.62" y="-898.04" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.YamlValue.below_2 -->
 <g id="node11" class="node">
 <title>L4YAML.YamlValue.below_2</title>
+<g id="a_node11"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.YamlValue.below_2" xlink:title="YamlValue.below_2\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="659.12,-870.04 558.12,-870.04 558.12,-834.04 659.12,-834.04 659.12,-870.04"/>
 <text text-anchor="middle" x="608.62" y="-855.04" font-family="Helvetica" font-size="10.00">YamlValue.below_2</text>
 <text text-anchor="middle" x="608.62" y="-844.04" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.YamlValue.mapping -->
 <g id="node12" class="node">
 <title>L4YAML.YamlValue.mapping</title>
+<g id="a_node12"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.YamlValue.mapping" xlink:title="YamlValue.mapping\n(ctor)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="659.62,-492.04 557.62,-492.04 557.62,-456.04 659.62,-456.04 659.62,-492.04"/>
 <text text-anchor="middle" x="608.62" y="-477.04" font-family="Helvetica" font-size="10.00">YamlValue.mapping</text>
 <text text-anchor="middle" x="608.62" y="-466.04" font-family="Helvetica" font-size="10.00">(ctor)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.YamlValue -->
 <g id="node13" class="node">
 <title>L4YAML.YamlValue</title>
+<g id="a_node13"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.YamlValue" xlink:title="YamlValue\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="877.9,-492.04 815.9,-492.04 815.9,-456.04 877.9,-456.04 877.9,-492.04"/>
 <text text-anchor="middle" x="846.9" y="-477.04" font-family="Helvetica" font-size="10.00">YamlValue</text>
 <text text-anchor="middle" x="846.9" y="-466.04" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.YamlValue.sequence -->
 <g id="node14" class="node">
 <title>L4YAML.YamlValue.sequence</title>
+<g id="a_node14"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.YamlValue.sequence" xlink:title="YamlValue.sequence\n(ctor)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="662.12,-438.04 555.12,-438.04 555.12,-402.04 662.12,-402.04 662.12,-438.04"/>
 <text text-anchor="middle" x="608.62" y="-423.04" font-family="Helvetica" font-size="10.00">YamlValue.sequence</text>
 <text text-anchor="middle" x="608.62" y="-412.04" font-family="Helvetica" font-size="10.00">(ctor)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.YamlValue.below_5 -->
 <g id="node15" class="node">
 <title>L4YAML.YamlValue.below_5</title>
+<g id="a_node15"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.YamlValue.below_5" xlink:title="YamlValue.below_5\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="659.12,-816.04 558.12,-816.04 558.12,-780.04 659.12,-780.04 659.12,-816.04"/>
 <text text-anchor="middle" x="608.62" y="-801.04" font-family="Helvetica" font-size="10.00">YamlValue.below_5</text>
 <text text-anchor="middle" x="608.62" y="-790.04" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.YamlValue.brecOn -->
 <g id="node16" class="node">
 <title>L4YAML.YamlValue.brecOn</title>
+<g id="a_node16"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.YamlValue.brecOn" xlink:title="YamlValue.brecOn\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="657.12,-762.04 560.12,-762.04 560.12,-726.04 657.12,-726.04 657.12,-762.04"/>
 <text text-anchor="middle" x="608.62" y="-747.04" font-family="Helvetica" font-size="10.00">YamlValue.brecOn</text>
 <text text-anchor="middle" x="608.62" y="-736.04" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.YamlValue.alias -->
 <g id="node17" class="node">
 <title>L4YAML.YamlValue.alias</title>
+<g id="a_node17"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.YamlValue.alias" xlink:title="YamlValue.alias\n(ctor)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="651.62,-384.04 565.62,-384.04 565.62,-348.04 651.62,-348.04 651.62,-384.04"/>
 <text text-anchor="middle" x="608.62" y="-369.04" font-family="Helvetica" font-size="10.00">YamlValue.alias</text>
 <text text-anchor="middle" x="608.62" y="-358.04" font-family="Helvetica" font-size="10.00">(ctor)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Emit.contentEq -->
 <g id="node18" class="node">
 <title>L4YAML.Emit.contentEq</title>
+<g id="a_node18"><a xlink:href="../../../api/L4YAML/Emitter.html#L4YAML.Emit.contentEq" xlink:title="Emit.contentEq\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="888.4,-708.04 805.4,-708.04 805.4,-672.04 888.4,-672.04 888.4,-708.04"/>
 <text text-anchor="middle" x="846.9" y="-693.04" font-family="Helvetica" font-size="10.00">Emit.contentEq</text>
 <text text-anchor="middle" x="846.9" y="-682.04" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Emit.contentEq.contentEqList -->
 <g id="node19" class="node">
 <title>L4YAML.Emit.contentEq.contentEqList</title>
+<g id="a_node19"><a xlink:href="../../../api/L4YAML/Emitter.html#L4YAML.Emit.contentEq.contentEqList" xlink:title="Emit.contentEq.contentEqList\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="919.9,-654.04 773.9,-654.04 773.9,-618.04 919.9,-618.04 919.9,-654.04"/>
 <text text-anchor="middle" x="846.9" y="-639.04" font-family="Helvetica" font-size="10.00">Emit.contentEq.contentEqList</text>
 <text text-anchor="middle" x="846.9" y="-628.04" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Emit.contentEq.contentEqPairList -->
 <g id="node20" class="node">
 <title>L4YAML.Emit.contentEq.contentEqPairList</title>
+<g id="a_node20"><a xlink:href="../../../api/L4YAML/Emitter.html#L4YAML.Emit.contentEq.contentEqPairList" xlink:title="Emit.contentEq.contentEqPairList\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="928.9,-600.04 764.9,-600.04 764.9,-564.04 928.9,-564.04 928.9,-600.04"/>
 <text text-anchor="middle" x="846.9" y="-585.04" font-family="Helvetica" font-size="10.00">Emit.contentEq.contentEqPairList</text>
 <text text-anchor="middle" x="846.9" y="-574.04" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Emit.contentEq.eq_def -->
 <g id="node21" class="node">
 <title>L4YAML.Emit.contentEq.eq_def</title>
+<g id="a_node21"><a xlink:href="../../../api/L4YAML/Proofs/EmitterScannability.html#L4YAML.Emit.contentEq.eq_def" xlink:title="Emit.contentEq.eq_def" target="_blank">
 <polygon fill="#fff3cd" stroke="#d4a017" points="699.7,-188.59 699.7,-203.5 646.34,-214.04 570.89,-214.04 517.54,-203.5 517.54,-188.59 570.89,-178.04 646.34,-178.04 699.7,-188.59"/>
 <polygon fill="none" stroke="#d4a017" points="703.69,-185.3 703.69,-206.79 646.73,-218.04 570.5,-218.04 513.55,-206.79 513.55,-185.3 570.5,-174.04 646.73,-174.04 703.69,-185.3"/>
 <text text-anchor="middle" x="608.62" y="-192.94" font-family="Helvetica" font-size="12.00">Emit.contentEq.eq_def</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Emit.contentEq.eq_def&#45;&gt;L4YAML.Emit.contentEq.match_1 -->
 <g id="edge5" class="edge">
@@ -238,9 +301,12 @@
 <!-- L4YAML.YamlValue.brecOn.eq -->
 <g id="node22" class="node">
 <title>L4YAML.YamlValue.brecOn.eq</title>
+<g id="a_node22"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.YamlValue.brecOn.eq" xlink:title="YamlValue.brecOn.eq\n(Types)" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="246.17" cy="-662.04" rx="77.56" ry="21.43"/>
 <text text-anchor="middle" x="246.17" y="-665.04" font-family="Helvetica" font-size="10.00">YamlValue.brecOn.eq</text>
 <text text-anchor="middle" x="246.17" y="-654.04" font-family="Helvetica" font-size="10.00">(Types)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.YamlValue.brecOn.eq&#45;&gt;L4YAML.YamlValue.below_1 -->
 <g id="edge17" class="edge">
@@ -305,8 +371,11 @@
 <!-- _private.L4YAML.Proofs.EmitterScannability.0.L4YAML.Emit.contentEq.match_1.eq_5 -->
 <g id="node23" class="node">
 <title>_private.L4YAML.Proofs.EmitterScannability.0.L4YAML.Emit.contentEq.match_1.eq_5</title>
+<g id="a_node23"><a xlink:href="../../../api/L4YAML/Proofs/EmitterScannability.html#_private.L4YAML.Proofs.EmitterScannability.0.L4YAML.Emit.contentEq.match_1.eq_5" xlink:title="_private.L4YAML.Proofs.EmitterScannability.0.L4YAML.Emit.contentEq.match_1.eq_5" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="246.17" cy="-171.04" rx="230.33" ry="18"/>
 <text text-anchor="middle" x="246.17" y="-168.54" font-family="Helvetica" font-size="10.00">_private.L4YAML.Proofs.EmitterScannability.0.L4YAML.Emit.contentEq.match_1.eq_5</text>
+</a>
+</g>
 </g>
 <!-- _private.L4YAML.Proofs.EmitterScannability.0.L4YAML.Emit.contentEq.match_1.eq_5&#45;&gt;L4YAML.Emit.contentEq.match_1 -->
 <g id="edge25" class="edge">

@@ -35,86 +35,122 @@
 <!-- L4YAML.Positioned -->
 <g id="node1" class="node">
 <title>L4YAML.Positioned</title>
+<g id="a_node1"><a xlink:href="../../../api/L4YAML/Token.html#L4YAML.Positioned" xlink:title="Positioned\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="835.28,-538 773.28,-538 773.28,-502 835.28,-502 835.28,-538"/>
 <text text-anchor="middle" x="804.28" y="-523" font-family="Helvetica" font-size="10.00">Positioned</text>
 <text text-anchor="middle" x="804.28" y="-512" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.YamlToken -->
 <g id="node2" class="node">
 <title>L4YAML.YamlToken</title>
+<g id="a_node2"><a xlink:href="../../../api/L4YAML/Token.html#L4YAML.YamlToken" xlink:title="YamlToken\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="836.28,-484 772.28,-484 772.28,-448 836.28,-448 836.28,-484"/>
 <text text-anchor="middle" x="804.28" y="-469" font-family="Helvetica" font-size="10.00">YamlToken</text>
 <text text-anchor="middle" x="804.28" y="-458" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.YamlValue -->
 <g id="node3" class="node">
 <title>L4YAML.YamlValue</title>
+<g id="a_node3"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.YamlValue" xlink:title="YamlValue\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="835.28,-430 773.28,-430 773.28,-394 835.28,-394 835.28,-430"/>
 <text text-anchor="middle" x="804.28" y="-415" font-family="Helvetica" font-size="10.00">YamlValue</text>
 <text text-anchor="middle" x="804.28" y="-404" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Grammar.ValidNode -->
 <g id="node4" class="node">
 <title>L4YAML.Grammar.ValidNode</title>
+<g id="a_node4"><a xlink:href="../../../api/L4YAML/Grammar.html#L4YAML.Grammar.ValidNode" xlink:title="Grammar.ValidNode\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="856.28,-376 752.28,-376 752.28,-340 856.28,-340 856.28,-376"/>
 <text text-anchor="middle" x="804.28" y="-361" font-family="Helvetica" font-size="10.00">Grammar.ValidNode</text>
 <text text-anchor="middle" x="804.28" y="-350" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.ScanError -->
 <g id="node5" class="node">
 <title>L4YAML.ScanError</title>
+<g id="a_node5"><a xlink:href="../../../api/L4YAML/Token.html#L4YAML.ScanError" xlink:title="ScanError\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="835.28,-322 773.28,-322 773.28,-286 835.28,-286 835.28,-322"/>
 <text text-anchor="middle" x="804.28" y="-307" font-family="Helvetica" font-size="10.00">ScanError</text>
 <text text-anchor="middle" x="804.28" y="-296" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.TokenParser.parseStream -->
 <g id="node6" class="node">
 <title>L4YAML.TokenParser.parseStream</title>
+<g id="a_node6"><a xlink:href="../../../api/L4YAML/TokenParser.html#L4YAML.TokenParser.parseStream" xlink:title="TokenParser.parseStream\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="869.78,-268 738.78,-268 738.78,-232 869.78,-232 869.78,-268"/>
 <text text-anchor="middle" x="804.28" y="-253" font-family="Helvetica" font-size="10.00">TokenParser.parseStream</text>
 <text text-anchor="middle" x="804.28" y="-242" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.YamlDocument.value -->
 <g id="node7" class="node">
 <title>L4YAML.YamlDocument.value</title>
+<g id="a_node7"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.YamlDocument.value" xlink:title="YamlDocument.value\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="858.28,-214 750.28,-214 750.28,-178 858.28,-178 858.28,-214"/>
 <text text-anchor="middle" x="804.28" y="-199" font-family="Helvetica" font-size="10.00">YamlDocument.value</text>
 <text text-anchor="middle" x="804.28" y="-188" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Grammar.Grammable -->
 <g id="node8" class="node">
 <title>L4YAML.Grammar.Grammable</title>
+<g id="a_node8"><a xlink:href="../../../api/L4YAML/Grammar.html#L4YAML.Grammar.Grammable" xlink:title="Grammar.Grammable\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="859.28,-160 749.28,-160 749.28,-124 859.28,-124 859.28,-160"/>
 <text text-anchor="middle" x="804.28" y="-145" font-family="Helvetica" font-size="10.00">Grammar.Grammable</text>
 <text text-anchor="middle" x="804.28" y="-134" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Grammar.toYamlValue -->
 <g id="node9" class="node">
 <title>L4YAML.Grammar.toYamlValue</title>
+<g id="a_node9"><a xlink:href="../../../api/L4YAML/Grammar.html#L4YAML.Grammar.toYamlValue" xlink:title="Grammar.toYamlValue\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="861.28,-106 747.28,-106 747.28,-70 861.28,-70 861.28,-106"/>
 <text text-anchor="middle" x="804.28" y="-91" font-family="Helvetica" font-size="10.00">Grammar.toYamlValue</text>
 <text text-anchor="middle" x="804.28" y="-80" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Grammar.stripAnnotations -->
 <g id="node10" class="node">
 <title>L4YAML.Grammar.stripAnnotations</title>
+<g id="a_node10"><a xlink:href="../../../api/L4YAML/Grammar.html#L4YAML.Grammar.stripAnnotations" xlink:title="Grammar.stripAnnotations\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="869.78,-52 738.78,-52 738.78,-16 869.78,-16 869.78,-52"/>
 <text text-anchor="middle" x="804.28" y="-37" font-family="Helvetica" font-size="10.00">Grammar.stripAnnotations</text>
 <text text-anchor="middle" x="804.28" y="-26" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.YamlDocument -->
 <g id="node11" class="node">
 <title>L4YAML.YamlDocument</title>
+<g id="a_node11"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.YamlDocument" xlink:title="YamlDocument\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="845.78,-592 762.78,-592 762.78,-556 845.78,-556 845.78,-592"/>
 <text text-anchor="middle" x="804.28" y="-577" font-family="Helvetica" font-size="10.00">YamlDocument</text>
 <text text-anchor="middle" x="804.28" y="-566" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ParserSoundness.parseStream_sound -->
 <g id="node12" class="node">
 <title>L4YAML.Proofs.ParserSoundness.parseStream_sound</title>
+<g id="a_node12"><a xlink:href="../../../api/L4YAML/Proofs/ParserSoundness.html#L4YAML.Proofs.ParserSoundness.parseStream_sound" xlink:title="ParserSoundness.parseStream_sound" target="_blank">
 <polygon fill="#fff3cd" stroke="#d4a017" points="673.87,-321.54 673.87,-336.46 586.78,-347 463.62,-347 376.53,-336.46 376.53,-321.54 463.62,-311 586.78,-311 673.87,-321.54"/>
 <polygon fill="none" stroke="#d4a017" points="677.87,-318 677.87,-340 587.02,-351 463.38,-351 372.53,-340 372.53,-318 463.38,-307 587.02,-307 677.87,-318"/>
 <text text-anchor="middle" x="525.2" y="-325.9" font-family="Helvetica" font-size="12.00">ParserSoundness.parseStream_sound</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ParserSoundness.parseStream_sound&#45;&gt;L4YAML.Positioned -->
 <g id="edge2" class="edge">
@@ -196,9 +232,12 @@
 <!-- L4YAML.Proofs.ParserSoundness.parseStream_sound._proof_1 -->
 <g id="node13" class="node">
 <title>L4YAML.Proofs.ParserSoundness.parseStream_sound._proof_1</title>
+<g id="a_node13"><a xlink:href="../../../api/L4YAML/Proofs/ParserSoundness.html#L4YAML.Proofs.ParserSoundness.parseStream_sound._proof_1" xlink:title="ParserSoundness.parseStream_sound._proof_1\n(ParserSoundness)" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="175.81" cy="-485" rx="159.61" ry="21.43"/>
 <text text-anchor="middle" x="175.81" y="-488" font-family="Helvetica" font-size="10.00">ParserSoundness.parseStream_sound._proof_1</text>
 <text text-anchor="middle" x="175.81" y="-477" font-family="Helvetica" font-size="10.00">(ParserSoundness)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ParserSoundness.parseStream_sound._proof_1&#45;&gt;L4YAML.YamlDocument -->
 <g id="edge14" class="edge">
@@ -215,8 +254,11 @@
 <!-- Decidable.byContradiction -->
 <g id="node14" class="node">
 <title>Decidable.byContradiction</title>
+<g id="a_node14"><a xlink:href="../../../api/Init/Core.html#Decidable.byContradiction" xlink:title="Decidable.byContradiction" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="175.81" cy="-329" rx="77.23" ry="18"/>
 <text text-anchor="middle" x="175.81" y="-326.5" font-family="Helvetica" font-size="10.00">Decidable.byContradiction</text>
+</a>
+</g>
 </g>
 <!-- Decidable.byContradiction&#45;&gt;L4YAML.Proofs.ParserSoundness.parseStream_sound -->
 <g id="edge13" class="edge">

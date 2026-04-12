@@ -10,7 +10,7 @@
 <title>EmitterScannability.scanNextToken_via_flow_dispatch</title>
 <polygon fill="white" stroke="transparent" points="-4,4 -4,-1548 830.44,-1548 830.44,4 -4,4"/>
 <text text-anchor="middle" x="413.22" y="-1529.6" font-family="Helvetica Bold" font-size="13.00">EmitterScannability.scanNextToken_via_flow_dispatch</text>
-<text text-anchor="middle" x="413.22" y="-1515.6" font-family="Helvetica Bold" font-size="13.00">(heuristic: used by 9 proofs)</text>
+<text text-anchor="middle" x="413.22" y="-1515.6" font-family="Helvetica Bold" font-size="13.00">(heuristic: used by 11 proofs)</text>
 <text text-anchor="middle" x="413.22" y="-1501.6" font-family="Helvetica Bold" font-size="13.00">(L4YAML.Proofs.EmitterScannability)</text>
 <g id="clust1" class="cluster">
 <title>cluster_functions</title>
@@ -30,198 +30,282 @@
 <!-- L4YAML.Scanner.scanNextToken_dispatchFlowIndicators -->
 <g id="node1" class="node">
 <title>L4YAML.Scanner.scanNextToken_dispatchFlowIndicators</title>
+<g id="a_node1"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.scanNextToken_dispatchFlowIndicators" xlink:title="scanNextToken_dispatchFlowIndicators\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="810.44,-1456 619.44,-1456 619.44,-1420 810.44,-1420 810.44,-1456"/>
 <text text-anchor="middle" x="714.94" y="-1441" font-family="Helvetica" font-size="10.00">scanNextToken_dispatchFlowIndicators</text>
 <text text-anchor="middle" x="714.94" y="-1430" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.flowLevel -->
 <g id="node2" class="node">
 <title>L4YAML.Scanner.ScannerState.flowLevel</title>
+<g id="a_node2"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.flowLevel" xlink:title="ScannerState.flowLevel\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="774.44,-1402 655.44,-1402 655.44,-1366 774.44,-1366 774.44,-1402"/>
 <text text-anchor="middle" x="714.94" y="-1387" font-family="Helvetica" font-size="10.00">ScannerState.flowLevel</text>
 <text text-anchor="middle" x="714.94" y="-1376" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.line -->
 <g id="node3" class="node">
 <title>L4YAML.Scanner.ScannerState.line</title>
+<g id="a_node3"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.line" xlink:title="ScannerState.line\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="761.94,-1348 667.94,-1348 667.94,-1312 761.94,-1312 761.94,-1348"/>
 <text text-anchor="middle" x="714.94" y="-1333" font-family="Helvetica" font-size="10.00">ScannerState.line</text>
 <text text-anchor="middle" x="714.94" y="-1322" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.scanNextToken_checkBlockFlowIndent -->
 <g id="node4" class="node">
 <title>L4YAML.Scanner.scanNextToken_checkBlockFlowIndent</title>
+<g id="a_node4"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.scanNextToken_checkBlockFlowIndent" xlink:title="scanNextToken_checkBlockFlowIndent\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="808.94,-1294 620.94,-1294 620.94,-1258 808.94,-1258 808.94,-1294"/>
 <text text-anchor="middle" x="714.94" y="-1279" font-family="Helvetica" font-size="10.00">scanNextToken_checkBlockFlowIndent</text>
 <text text-anchor="middle" x="714.94" y="-1268" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.simpleKeyAllowed -->
 <g id="node5" class="node">
 <title>L4YAML.Scanner.ScannerState.simpleKeyAllowed</title>
+<g id="a_node5"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.simpleKeyAllowed" xlink:title="ScannerState.simpleKeyAllowed\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="793.94,-1240 635.94,-1240 635.94,-1204 793.94,-1204 793.94,-1240"/>
 <text text-anchor="middle" x="714.94" y="-1225" font-family="Helvetica" font-size="10.00">ScannerState.simpleKeyAllowed</text>
 <text text-anchor="middle" x="714.94" y="-1214" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.tokens -->
 <g id="node6" class="node">
 <title>L4YAML.Scanner.ScannerState.tokens</title>
+<g id="a_node6"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.tokens" xlink:title="ScannerState.tokens\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="768.44,-1186 661.44,-1186 661.44,-1150 768.44,-1150 768.44,-1186"/>
 <text text-anchor="middle" x="714.94" y="-1171" font-family="Helvetica" font-size="10.00">ScannerState.tokens</text>
 <text text-anchor="middle" x="714.94" y="-1160" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.comments -->
 <g id="node7" class="node">
 <title>L4YAML.Scanner.ScannerState.comments</title>
+<g id="a_node7"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.comments" xlink:title="ScannerState.comments\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="777.44,-1132 652.44,-1132 652.44,-1096 777.44,-1096 777.44,-1132"/>
 <text text-anchor="middle" x="714.94" y="-1117" font-family="Helvetica" font-size="10.00">ScannerState.comments</text>
 <text text-anchor="middle" x="714.94" y="-1106" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.scanNextToken_preprocess -->
 <g id="node8" class="node">
 <title>L4YAML.Scanner.scanNextToken_preprocess</title>
+<g id="a_node8"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.scanNextToken_preprocess" xlink:title="scanNextToken_preprocess\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="783.44,-1078 646.44,-1078 646.44,-1042 783.44,-1042 783.44,-1078"/>
 <text text-anchor="middle" x="714.94" y="-1063" font-family="Helvetica" font-size="10.00">scanNextToken_preprocess</text>
 <text text-anchor="middle" x="714.94" y="-1052" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.allowDirectives -->
 <g id="node9" class="node">
 <title>L4YAML.Scanner.ScannerState.allowDirectives</title>
+<g id="a_node9"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.allowDirectives" xlink:title="ScannerState.allowDirectives\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="787.44,-1024 642.44,-1024 642.44,-988 787.44,-988 787.44,-1024"/>
 <text text-anchor="middle" x="714.94" y="-1009" font-family="Helvetica" font-size="10.00">ScannerState.allowDirectives</text>
 <text text-anchor="middle" x="714.94" y="-998" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.flowStack -->
 <g id="node10" class="node">
 <title>L4YAML.Scanner.ScannerState.flowStack</title>
+<g id="a_node10"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.flowStack" xlink:title="ScannerState.flowStack\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="775.94,-970 653.94,-970 653.94,-934 775.94,-934 775.94,-970"/>
 <text text-anchor="middle" x="714.94" y="-955" font-family="Helvetica" font-size="10.00">ScannerState.flowStack</text>
 <text text-anchor="middle" x="714.94" y="-944" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.inputEnd -->
 <g id="node11" class="node">
 <title>L4YAML.Scanner.ScannerState.inputEnd</title>
+<g id="a_node11"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.inputEnd" xlink:title="ScannerState.inputEnd\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="773.44,-916 656.44,-916 656.44,-880 773.44,-880 773.44,-916"/>
 <text text-anchor="middle" x="714.94" y="-901" font-family="Helvetica" font-size="10.00">ScannerState.inputEnd</text>
 <text text-anchor="middle" x="714.94" y="-890" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.simpleKey -->
 <g id="node12" class="node">
 <title>L4YAML.Scanner.ScannerState.simpleKey</title>
+<g id="a_node12"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.simpleKey" xlink:title="ScannerState.simpleKey\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="776.94,-862 652.94,-862 652.94,-826 776.94,-826 776.94,-862"/>
 <text text-anchor="middle" x="714.94" y="-847" font-family="Helvetica" font-size="10.00">ScannerState.simpleKey</text>
 <text text-anchor="middle" x="714.94" y="-836" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.input -->
 <g id="node13" class="node">
 <title>L4YAML.Scanner.ScannerState.input</title>
+<g id="a_node13"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.input" xlink:title="ScannerState.input\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="764.94,-808 664.94,-808 664.94,-772 764.94,-772 764.94,-808"/>
 <text text-anchor="middle" x="714.94" y="-793" font-family="Helvetica" font-size="10.00">ScannerState.input</text>
 <text text-anchor="middle" x="714.94" y="-782" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.scanNextToken -->
 <g id="node14" class="node">
 <title>L4YAML.Scanner.scanNextToken</title>
+<g id="a_node14"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.scanNextToken" xlink:title="scanNextToken\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="756.94,-754 672.94,-754 672.94,-718 756.94,-718 756.94,-754"/>
 <text text-anchor="middle" x="714.94" y="-739" font-family="Helvetica" font-size="10.00">scanNextToken</text>
 <text text-anchor="middle" x="714.94" y="-728" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.explicitKeyLine -->
 <g id="node15" class="node">
 <title>L4YAML.Scanner.ScannerState.explicitKeyLine</title>
+<g id="a_node15"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.explicitKeyLine" xlink:title="ScannerState.explicitKeyLine\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="786.94,-700 642.94,-700 642.94,-664 786.94,-664 786.94,-700"/>
 <text text-anchor="middle" x="714.94" y="-685" font-family="Helvetica" font-size="10.00">ScannerState.explicitKeyLine</text>
 <text text-anchor="middle" x="714.94" y="-674" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.mk -->
 <g id="node16" class="node">
 <title>L4YAML.Scanner.ScannerState.mk</title>
+<g id="a_node16"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.mk" xlink:title="ScannerState.mk\n(ctor)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="760.94,-646 668.94,-646 668.94,-610 760.94,-610 760.94,-646"/>
 <text text-anchor="middle" x="714.94" y="-631" font-family="Helvetica" font-size="10.00">ScannerState.mk</text>
 <text text-anchor="middle" x="714.94" y="-620" font-family="Helvetica" font-size="10.00">(ctor)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState -->
 <g id="node17" class="node">
 <title>L4YAML.Scanner.ScannerState</title>
+<g id="a_node17"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState" xlink:title="ScannerState\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="752.94,-592 676.94,-592 676.94,-556 752.94,-556 752.94,-592"/>
 <text text-anchor="middle" x="714.94" y="-577" font-family="Helvetica" font-size="10.00">ScannerState</text>
 <text text-anchor="middle" x="714.94" y="-566" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.seenYamlDirective -->
 <g id="node18" class="node">
 <title>L4YAML.Scanner.ScannerState.seenYamlDirective</title>
+<g id="a_node18"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.seenYamlDirective" xlink:title="ScannerState.seenYamlDirective\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="794.94,-538 634.94,-538 634.94,-502 794.94,-502 794.94,-538"/>
 <text text-anchor="middle" x="714.94" y="-523" font-family="Helvetica" font-size="10.00">ScannerState.seenYamlDirective</text>
 <text text-anchor="middle" x="714.94" y="-512" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.indents -->
 <g id="node19" class="node">
 <title>L4YAML.Scanner.ScannerState.indents</title>
+<g id="a_node19"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.indents" xlink:title="ScannerState.indents\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="769.94,-484 659.94,-484 659.94,-448 769.94,-448 769.94,-484"/>
 <text text-anchor="middle" x="714.94" y="-469" font-family="Helvetica" font-size="10.00">ScannerState.indents</text>
 <text text-anchor="middle" x="714.94" y="-458" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.needIndentCheck -->
 <g id="node20" class="node">
 <title>L4YAML.Scanner.ScannerState.needIndentCheck</title>
+<g id="a_node20"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.needIndentCheck" xlink:title="ScannerState.needIndentCheck\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="792.44,-430 637.44,-430 637.44,-394 792.44,-394 792.44,-430"/>
 <text text-anchor="middle" x="714.94" y="-415" font-family="Helvetica" font-size="10.00">ScannerState.needIndentCheck</text>
 <text text-anchor="middle" x="714.94" y="-404" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.scanNextToken_dispatchStructural -->
 <g id="node21" class="node">
 <title>L4YAML.Scanner.scanNextToken_dispatchStructural</title>
+<g id="a_node21"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.scanNextToken_dispatchStructural" xlink:title="scanNextToken_dispatchStructural\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="798.94,-376 630.94,-376 630.94,-340 798.94,-340 798.94,-376"/>
 <text text-anchor="middle" x="714.94" y="-361" font-family="Helvetica" font-size="10.00">scanNextToken_dispatchStructural</text>
 <text text-anchor="middle" x="714.94" y="-350" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.definedAnchors -->
 <g id="node22" class="node">
 <title>L4YAML.Scanner.ScannerState.definedAnchors</title>
+<g id="a_node22"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.definedAnchors" xlink:title="ScannerState.definedAnchors\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="788.44,-322 641.44,-322 641.44,-286 788.44,-286 788.44,-322"/>
 <text text-anchor="middle" x="714.94" y="-307" font-family="Helvetica" font-size="10.00">ScannerState.definedAnchors</text>
 <text text-anchor="middle" x="714.94" y="-296" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.offset -->
 <g id="node23" class="node">
 <title>L4YAML.Scanner.ScannerState.offset</title>
+<g id="a_node23"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.offset" xlink:title="ScannerState.offset\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="766.44,-268 663.44,-268 663.44,-232 766.44,-232 766.44,-268"/>
 <text text-anchor="middle" x="714.94" y="-253" font-family="Helvetica" font-size="10.00">ScannerState.offset</text>
 <text text-anchor="middle" x="714.94" y="-242" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.simpleKeyStack -->
 <g id="node24" class="node">
 <title>L4YAML.Scanner.ScannerState.simpleKeyStack</title>
+<g id="a_node24"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.simpleKeyStack" xlink:title="ScannerState.simpleKeyStack\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="789.44,-214 640.44,-214 640.44,-178 789.44,-178 789.44,-214"/>
 <text text-anchor="middle" x="714.94" y="-199" font-family="Helvetica" font-size="10.00">ScannerState.simpleKeyStack</text>
 <text text-anchor="middle" x="714.94" y="-188" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.col -->
 <g id="node25" class="node">
 <title>L4YAML.Scanner.ScannerState.col</title>
+<g id="a_node25"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.col" xlink:title="ScannerState.col\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="760.94,-160 668.94,-160 668.94,-124 760.94,-124 760.94,-160"/>
 <text text-anchor="middle" x="714.94" y="-145" font-family="Helvetica" font-size="10.00">ScannerState.col</text>
 <text text-anchor="middle" x="714.94" y="-134" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.ScanError -->
 <g id="node26" class="node">
 <title>L4YAML.ScanError</title>
+<g id="a_node26"><a xlink:href="../../../api/L4YAML/Token.html#L4YAML.ScanError" xlink:title="ScanError\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="745.94,-106 683.94,-106 683.94,-70 745.94,-70 745.94,-106"/>
 <text text-anchor="middle" x="714.94" y="-91" font-family="Helvetica" font-size="10.00">ScanError</text>
 <text text-anchor="middle" x="714.94" y="-80" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.directivesPresent -->
 <g id="node27" class="node">
 <title>L4YAML.Scanner.ScannerState.directivesPresent</title>
+<g id="a_node27"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.directivesPresent" xlink:title="ScannerState.directivesPresent\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="791.94,-52 637.94,-52 637.94,-16 791.94,-16 791.94,-52"/>
 <text text-anchor="middle" x="714.94" y="-37" font-family="Helvetica" font-size="10.00">ScannerState.directivesPresent</text>
 <text text-anchor="middle" x="714.94" y="-26" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.EmitterScannability.scanNextToken_via_flow_dispatch -->
 <g id="node28" class="node">
 <title>L4YAML.Proofs.EmitterScannability.scanNextToken_via_flow_dispatch</title>
+<g id="a_node28"><a xlink:href="../../../api/L4YAML/Proofs/EmitterScannability.html#L4YAML.Proofs.EmitterScannability.scanNextToken_via_flow_dispatch" xlink:title="EmitterScannability.scanNextToken_via_flow_dispatch" target="_blank">
 <polygon fill="#fff3cd" stroke="#d4a017" points="554.66,-728.54 554.66,-743.46 434.31,-754 264.12,-754 143.78,-743.46 143.78,-728.54 264.12,-718 434.31,-718 554.66,-728.54"/>
 <polygon fill="none" stroke="#d4a017" points="558.66,-724.88 558.66,-747.12 434.49,-758 263.94,-758 139.77,-747.12 139.77,-724.88 263.94,-714 434.49,-714 558.66,-724.88"/>
 <text text-anchor="middle" x="349.22" y="-732.9" font-family="Helvetica" font-size="12.00">EmitterScannability.scanNextToken_via_flow_dispatch</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.EmitterScannability.scanNextToken_via_flow_dispatch&#45;&gt;L4YAML.Scanner.scanNextToken_dispatchFlowIndicators -->
 <g id="edge27" class="edge">
@@ -415,8 +499,11 @@
 <!-- eq_self -->
 <g id="node29" class="node">
 <title>eq_self</title>
+<g id="a_node29"><a xlink:href="../../../api/Init/SimpLemmas.html#eq_self" xlink:title="eq_self" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="55.5" cy="-756" rx="28.01" ry="18"/>
 <text text-anchor="middle" x="55.5" y="-753.5" font-family="Helvetica" font-size="10.00">eq_self</text>
+</a>
+</g>
 </g>
 <!-- eq_self&#45;&gt;L4YAML.Proofs.EmitterScannability.scanNextToken_via_flow_dispatch -->
 <g id="edge28" class="edge">
@@ -427,8 +514,11 @@
 <!-- of_eq_true -->
 <g id="node30" class="node">
 <title>of_eq_true</title>
+<g id="a_node30"><a xlink:href="../../../api/Init/SimpLemmas.html#of_eq_true" xlink:title="of_eq_true" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="55.5" cy="-702" rx="36.49" ry="18"/>
 <text text-anchor="middle" x="55.5" y="-699.5" font-family="Helvetica" font-size="10.00">of_eq_true</text>
+</a>
+</g>
 </g>
 <!-- of_eq_true&#45;&gt;L4YAML.Proofs.EmitterScannability.scanNextToken_via_flow_dispatch -->
 <g id="edge29" class="edge">

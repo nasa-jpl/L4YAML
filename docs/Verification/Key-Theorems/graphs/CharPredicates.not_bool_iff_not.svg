@@ -25,15 +25,21 @@
 <!-- L4YAML.CharPredicates.not_bool_iff_not -->
 <g id="node1" class="node">
 <title>L4YAML.CharPredicates.not_bool_iff_not</title>
+<g id="a_node1"><a xlink:href="../../../api/L4YAML/CharPredicates.html#L4YAML.CharPredicates.not_bool_iff_not" xlink:title="CharPredicates.not_bool_iff_not" target="_blank">
 <polygon fill="#fff3cd" stroke="#d4a017" points="423.18,-269.54 423.18,-284.46 349.45,-295 245.17,-295 171.44,-284.46 171.44,-269.54 245.17,-259 349.45,-259 423.18,-269.54"/>
 <polygon fill="none" stroke="#d4a017" points="427.17,-266.08 427.17,-287.92 349.73,-299 244.89,-299 167.45,-287.92 167.45,-266.08 244.89,-255 349.73,-255 427.17,-266.08"/>
 <text text-anchor="middle" x="297.31" y="-273.9" font-family="Helvetica" font-size="12.00">CharPredicates.not_bool_iff_not</text>
+</a>
+</g>
 </g>
 <!-- Bool.not_false -->
 <g id="node2" class="node">
 <title>Bool.not_false</title>
+<g id="a_node2"><a xlink:href="../../../api/Init/SimpLemmas.html#Bool.not_false" xlink:title="Bool.not_false" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="73.69" cy="-520" rx="46.51" ry="18"/>
 <text text-anchor="middle" x="73.69" y="-517.5" font-family="Helvetica" font-size="10.00">Bool.not_false</text>
+</a>
+</g>
 </g>
 <!-- Bool.not_false&#45;&gt;L4YAML.CharPredicates.not_bool_iff_not -->
 <g id="edge1" class="edge">
@@ -44,8 +50,11 @@
 <!-- true_iff -->
 <g id="node3" class="node">
 <title>true_iff</title>
+<g id="a_node3"><a xlink:href="../../../api/Init/SimpLemmas.html#true_iff" xlink:title="true_iff" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="73.69" cy="-466" rx="27.16" ry="18"/>
 <text text-anchor="middle" x="73.69" y="-463.5" font-family="Helvetica" font-size="10.00">true_iff</text>
+</a>
+</g>
 </g>
 <!-- true_iff&#45;&gt;L4YAML.CharPredicates.not_bool_iff_not -->
 <g id="edge2" class="edge">
@@ -56,8 +65,11 @@
 <!-- Bool.false_eq_true -->
 <g id="node4" class="node">
 <title>Bool.false_eq_true</title>
+<g id="a_node4"><a xlink:href="../../../api/Init/Data/Bool.html#Bool.false_eq_true" xlink:title="Bool.false_eq_true" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="73.69" cy="-412" rx="57.88" ry="18"/>
 <text text-anchor="middle" x="73.69" y="-409.5" font-family="Helvetica" font-size="10.00">Bool.false_eq_true</text>
+</a>
+</g>
 </g>
 <!-- Bool.false_eq_true&#45;&gt;L4YAML.CharPredicates.not_bool_iff_not -->
 <g id="edge3" class="edge">
@@ -68,8 +80,11 @@
 <!-- not_true_eq_false -->
 <g id="node5" class="node">
 <title>not_true_eq_false</title>
+<g id="a_node5"><a xlink:href="../../../api/Init/SimpLemmas.html#not_true_eq_false" xlink:title="not_true_eq_false" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="73.69" cy="-358" rx="55.17" ry="18"/>
 <text text-anchor="middle" x="73.69" y="-355.5" font-family="Helvetica" font-size="10.00">not_true_eq_false</text>
+</a>
+</g>
 </g>
 <!-- not_true_eq_false&#45;&gt;L4YAML.CharPredicates.not_bool_iff_not -->
 <g id="edge4" class="edge">
@@ -80,8 +95,11 @@
 <!-- false_iff -->
 <g id="node6" class="node">
 <title>false_iff</title>
+<g id="a_node6"><a xlink:href="../../../api/Init/SimpLemmas.html#false_iff" xlink:title="false_iff" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="73.69" cy="-304" rx="29.37" ry="18"/>
 <text text-anchor="middle" x="73.69" y="-301.5" font-family="Helvetica" font-size="10.00">false_iff</text>
+</a>
+</g>
 </g>
 <!-- false_iff&#45;&gt;L4YAML.CharPredicates.not_bool_iff_not -->
 <g id="edge5" class="edge">
@@ -92,8 +110,11 @@
 <!-- iff_self -->
 <g id="node7" class="node">
 <title>iff_self</title>
+<g id="a_node7"><a xlink:href="../../../api/Init/SimpLemmas.html#iff_self" xlink:title="iff_self" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="73.69" cy="-250" rx="27" ry="18"/>
 <text text-anchor="middle" x="73.69" y="-247.5" font-family="Helvetica" font-size="10.00">iff_self</text>
+</a>
+</g>
 </g>
 <!-- iff_self&#45;&gt;L4YAML.CharPredicates.not_bool_iff_not -->
 <g id="edge6" class="edge">
@@ -104,8 +125,11 @@
 <!-- eq_self -->
 <g id="node8" class="node">
 <title>eq_self</title>
+<g id="a_node8"><a xlink:href="../../../api/Init/SimpLemmas.html#eq_self" xlink:title="eq_self" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="73.69" cy="-196" rx="28.01" ry="18"/>
 <text text-anchor="middle" x="73.69" y="-193.5" font-family="Helvetica" font-size="10.00">eq_self</text>
+</a>
+</g>
 </g>
 <!-- eq_self&#45;&gt;L4YAML.CharPredicates.not_bool_iff_not -->
 <g id="edge7" class="edge">
@@ -116,8 +140,11 @@
 <!-- of_eq_true -->
 <g id="node9" class="node">
 <title>of_eq_true</title>
+<g id="a_node9"><a xlink:href="../../../api/Init/SimpLemmas.html#of_eq_true" xlink:title="of_eq_true" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="73.69" cy="-142" rx="36.49" ry="18"/>
 <text text-anchor="middle" x="73.69" y="-139.5" font-family="Helvetica" font-size="10.00">of_eq_true</text>
+</a>
+</g>
 </g>
 <!-- of_eq_true&#45;&gt;L4YAML.CharPredicates.not_bool_iff_not -->
 <g id="edge8" class="edge">
@@ -128,8 +155,11 @@
 <!-- not_false_eq_true -->
 <g id="node10" class="node">
 <title>not_false_eq_true</title>
+<g id="a_node10"><a xlink:href="../../../api/Init/SimpLemmas.html#not_false_eq_true" xlink:title="not_false_eq_true" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="73.69" cy="-88" rx="55.17" ry="18"/>
 <text text-anchor="middle" x="73.69" y="-85.5" font-family="Helvetica" font-size="10.00">not_false_eq_true</text>
+</a>
+</g>
 </g>
 <!-- not_false_eq_true&#45;&gt;L4YAML.CharPredicates.not_bool_iff_not -->
 <g id="edge9" class="edge">
@@ -140,8 +170,11 @@
 <!-- Bool.not_true -->
 <g id="node11" class="node">
 <title>Bool.not_true</title>
+<g id="a_node11"><a xlink:href="../../../api/Init/SimpLemmas.html#Bool.not_true" xlink:title="Bool.not_true" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="73.69" cy="-34" rx="43.62" ry="18"/>
 <text text-anchor="middle" x="73.69" y="-31.5" font-family="Helvetica" font-size="10.00">Bool.not_true</text>
+</a>
+</g>
 </g>
 <!-- Bool.not_true&#45;&gt;L4YAML.CharPredicates.not_bool_iff_not -->
 <g id="edge10" class="edge">

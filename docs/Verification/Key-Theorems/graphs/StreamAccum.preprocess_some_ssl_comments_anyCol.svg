@@ -35,191 +35,272 @@
 <!-- L4YAML.Surface.SurfPos.col -->
 <g id="node1" class="node">
 <title>L4YAML.Surface.SurfPos.col</title>
+<g id="a_node1"><a xlink:href="../../../api/L4YAML/Surface/Combinators.html#L4YAML.Surface.SurfPos.col" xlink:title="Surface.SurfPos.col\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1403.99,-1918.29 1297.99,-1918.29 1297.99,-1882.29 1403.99,-1882.29 1403.99,-1918.29"/>
 <text text-anchor="middle" x="1350.99" y="-1903.29" font-family="Helvetica" font-size="10.00">Surface.SurfPos.col</text>
 <text text-anchor="middle" x="1350.99" y="-1892.29" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.unwindIndentsLoop -->
 <g id="node2" class="node">
 <title>L4YAML.Scanner.unwindIndentsLoop</title>
+<g id="a_node2"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.unwindIndentsLoop" xlink:title="unwindIndentsLoop\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="623.22,-2026.29 522.22,-2026.29 522.22,-1990.29 623.22,-1990.29 623.22,-2026.29"/>
 <text text-anchor="middle" x="572.72" y="-2011.29" font-family="Helvetica" font-size="10.00">unwindIndentsLoop</text>
 <text text-anchor="middle" x="572.72" y="-2000.29" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Surface.GOpt -->
 <g id="node3" class="node">
 <title>L4YAML.Surface.GOpt</title>
+<g id="a_node3"><a xlink:href="../../../api/L4YAML/Surface/Combinators.html#L4YAML.Surface.GOpt" xlink:title="Surface.GOpt\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1389.49,-2188.29 1312.49,-2188.29 1312.49,-2152.29 1389.49,-2152.29 1389.49,-2188.29"/>
 <text text-anchor="middle" x="1350.99" y="-2173.29" font-family="Helvetica" font-size="10.00">Surface.GOpt</text>
 <text text-anchor="middle" x="1350.99" y="-2162.29" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.scanNextToken_preprocess -->
 <g id="node4" class="node">
 <title>L4YAML.Scanner.scanNextToken_preprocess</title>
+<g id="a_node4"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.scanNextToken_preprocess" xlink:title="scanNextToken_preprocess\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1419.49,-2350.29 1282.49,-2350.29 1282.49,-2314.29 1419.49,-2314.29 1419.49,-2350.29"/>
 <text text-anchor="middle" x="1350.99" y="-2335.29" font-family="Helvetica" font-size="10.00">scanNextToken_preprocess</text>
 <text text-anchor="middle" x="1350.99" y="-2324.29" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.skipToContent -->
 <g id="node5" class="node">
 <title>L4YAML.Scanner.skipToContent</title>
+<g id="a_node5"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.skipToContent" xlink:title="skipToContent\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1034.61,-1810.29 954.61,-1810.29 954.61,-1774.29 1034.61,-1774.29 1034.61,-1810.29"/>
 <text text-anchor="middle" x="994.61" y="-1795.29" font-family="Helvetica" font-size="10.00">skipToContent</text>
 <text text-anchor="middle" x="994.61" y="-1784.29" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Surface.SurfPos -->
 <g id="node6" class="node">
 <title>L4YAML.Surface.SurfPos</title>
+<g id="a_node6"><a xlink:href="../../../api/L4YAML/Surface/Combinators.html#L4YAML.Surface.SurfPos" xlink:title="Surface.SurfPos\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1395.99,-1810.29 1305.99,-1810.29 1305.99,-1774.29 1395.99,-1774.29 1395.99,-1810.29"/>
 <text text-anchor="middle" x="1350.99" y="-1795.29" font-family="Helvetica" font-size="10.00">Surface.SurfPos</text>
 <text text-anchor="middle" x="1350.99" y="-1784.29" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.inputEnd -->
 <g id="node7" class="node">
 <title>L4YAML.Scanner.ScannerState.inputEnd</title>
+<g id="a_node7"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.inputEnd" xlink:title="ScannerState.inputEnd\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="631.22,-1864.29 514.22,-1864.29 514.22,-1828.29 631.22,-1828.29 631.22,-1864.29"/>
 <text text-anchor="middle" x="572.72" y="-1849.29" font-family="Helvetica" font-size="10.00">ScannerState.inputEnd</text>
 <text text-anchor="middle" x="572.72" y="-1838.29" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.CouplingBridge.listByteSize -->
 <g id="node8" class="node">
 <title>L4YAML.Proofs.CouplingBridge.listByteSize</title>
+<g id="a_node8"><a xlink:href="../../../api/L4YAML/Proofs/CouplingBridge.html#L4YAML.Proofs.CouplingBridge.listByteSize" xlink:title="CouplingBridge.listByteSize\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="641.22,-2134.29 504.22,-2134.29 504.22,-2098.29 641.22,-2098.29 641.22,-2134.29"/>
 <text text-anchor="middle" x="572.72" y="-2119.29" font-family="Helvetica" font-size="10.00">CouplingBridge.listByteSize</text>
 <text text-anchor="middle" x="572.72" y="-2108.29" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.input -->
 <g id="node9" class="node">
 <title>L4YAML.Scanner.ScannerState.input</title>
+<g id="a_node9"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.input" xlink:title="ScannerState.input\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="622.72,-2080.29 522.72,-2080.29 522.72,-2044.29 622.72,-2044.29 622.72,-2080.29"/>
 <text text-anchor="middle" x="572.72" y="-2065.29" font-family="Helvetica" font-size="10.00">ScannerState.input</text>
 <text text-anchor="middle" x="572.72" y="-2054.29" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.peek? -->
 <g id="node10" class="node">
 <title>L4YAML.Scanner.ScannerState.peek?</title>
+<g id="a_node10"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.peek?" xlink:title="ScannerState.peek?\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1402.99,-2134.29 1298.99,-2134.29 1298.99,-2098.29 1402.99,-2098.29 1402.99,-2134.29"/>
 <text text-anchor="middle" x="1350.99" y="-2119.29" font-family="Helvetica" font-size="10.00">ScannerState.peek?</text>
 <text text-anchor="middle" x="1350.99" y="-2108.29" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState -->
 <g id="node11" class="node">
 <title>L4YAML.Scanner.ScannerState</title>
+<g id="a_node11"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState" xlink:title="ScannerState\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1388.99,-1756.29 1312.99,-1756.29 1312.99,-1720.29 1388.99,-1720.29 1388.99,-1756.29"/>
 <text text-anchor="middle" x="1350.99" y="-1741.29" font-family="Helvetica" font-size="10.00">ScannerState</text>
 <text text-anchor="middle" x="1350.99" y="-1730.29" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.CouplingBridge.ScannerSurfCorr -->
 <g id="node12" class="node">
 <title>L4YAML.Proofs.CouplingBridge.ScannerSurfCorr</title>
+<g id="a_node12"><a xlink:href="../../../api/L4YAML/Proofs/CouplingBridge.html#L4YAML.Proofs.CouplingBridge.ScannerSurfCorr" xlink:title="CouplingBridge.ScannerSurfCorr\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1430.49,-1864.29 1271.49,-1864.29 1271.49,-1828.29 1430.49,-1828.29 1430.49,-1864.29"/>
 <text text-anchor="middle" x="1350.99" y="-1849.29" font-family="Helvetica" font-size="10.00">CouplingBridge.ScannerSurfCorr</text>
 <text text-anchor="middle" x="1350.99" y="-1838.29" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Surface.SSWhite -->
 <g id="node13" class="node">
 <title>L4YAML.Surface.SSWhite</title>
+<g id="a_node13"><a xlink:href="../../../api/L4YAML/Surface/Basic.html#L4YAML.Surface.SSWhite" xlink:title="Surface.SSWhite\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1397.49,-2242.29 1304.49,-2242.29 1304.49,-2206.29 1397.49,-2206.29 1397.49,-2242.29"/>
 <text text-anchor="middle" x="1350.99" y="-2227.29" font-family="Helvetica" font-size="10.00">Surface.SSWhite</text>
 <text text-anchor="middle" x="1350.99" y="-2216.29" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.IndentEntry -->
 <g id="node14" class="node">
 <title>L4YAML.Scanner.IndentEntry</title>
+<g id="a_node14"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.IndentEntry" xlink:title="IndentEntry\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="606.72,-1918.29 538.72,-1918.29 538.72,-1882.29 606.72,-1882.29 606.72,-1918.29"/>
 <text text-anchor="middle" x="572.72" y="-1903.29" font-family="Helvetica" font-size="10.00">IndentEntry</text>
 <text text-anchor="middle" x="572.72" y="-1892.29" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.indents -->
 <g id="node15" class="node">
 <title>L4YAML.Scanner.ScannerState.indents</title>
+<g id="a_node15"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.indents" xlink:title="ScannerState.indents\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="627.72,-1810.29 517.72,-1810.29 517.72,-1774.29 627.72,-1774.29 627.72,-1810.29"/>
 <text text-anchor="middle" x="572.72" y="-1795.29" font-family="Helvetica" font-size="10.00">ScannerState.indents</text>
 <text text-anchor="middle" x="572.72" y="-1784.29" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Surface.SurfPos.chars -->
 <g id="node16" class="node">
 <title>L4YAML.Surface.SurfPos.chars</title>
+<g id="a_node16"><a xlink:href="../../../api/L4YAML/Surface/Combinators.html#L4YAML.Surface.SurfPos.chars" xlink:title="Surface.SurfPos.chars\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="631.72,-2242.29 513.72,-2242.29 513.72,-2206.29 631.72,-2206.29 631.72,-2242.29"/>
 <text text-anchor="middle" x="572.72" y="-2227.29" font-family="Helvetica" font-size="10.00">Surface.SurfPos.chars</text>
 <text text-anchor="middle" x="572.72" y="-2216.29" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Surface.SSLComments -->
 <g id="node17" class="node">
 <title>L4YAML.Surface.SSLComments</title>
+<g id="a_node17"><a xlink:href="../../../api/L4YAML/Surface/Basic.html#L4YAML.Surface.SSLComments" xlink:title="Surface.SSLComments\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1411.49,-2026.29 1290.49,-2026.29 1290.49,-1990.29 1411.49,-1990.29 1411.49,-2026.29"/>
 <text text-anchor="middle" x="1350.99" y="-2011.29" font-family="Helvetica" font-size="10.00">Surface.SSLComments</text>
 <text text-anchor="middle" x="1350.99" y="-2000.29" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.IndentEntry.column -->
 <g id="node18" class="node">
 <title>L4YAML.Scanner.IndentEntry.column</title>
+<g id="a_node18"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.IndentEntry.column" xlink:title="IndentEntry.column\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="623.22,-1972.29 522.22,-1972.29 522.22,-1936.29 623.22,-1936.29 623.22,-1972.29"/>
 <text text-anchor="middle" x="572.72" y="-1957.29" font-family="Helvetica" font-size="10.00">IndentEntry.column</text>
 <text text-anchor="middle" x="572.72" y="-1946.29" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.unwindIndents -->
 <g id="node19" class="node">
 <title>L4YAML.Scanner.unwindIndents</title>
+<g id="a_node19"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.unwindIndents" xlink:title="unwindIndents\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1034.61,-1756.29 954.61,-1756.29 954.61,-1720.29 1034.61,-1720.29 1034.61,-1756.29"/>
 <text text-anchor="middle" x="994.61" y="-1741.29" font-family="Helvetica" font-size="10.00">unwindIndents</text>
 <text text-anchor="middle" x="994.61" y="-1730.29" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.offset -->
 <g id="node20" class="node">
 <title>L4YAML.Scanner.ScannerState.offset</title>
+<g id="a_node20"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.offset" xlink:title="ScannerState.offset\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="624.22,-2188.29 521.22,-2188.29 521.22,-2152.29 624.22,-2152.29 624.22,-2188.29"/>
 <text text-anchor="middle" x="572.72" y="-2173.29" font-family="Helvetica" font-size="10.00">ScannerState.offset</text>
 <text text-anchor="middle" x="572.72" y="-2162.29" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.col -->
 <g id="node21" class="node">
 <title>L4YAML.Scanner.ScannerState.col</title>
+<g id="a_node21"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.col" xlink:title="ScannerState.col\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="618.72,-1756.29 526.72,-1756.29 526.72,-1720.29 618.72,-1720.29 618.72,-1756.29"/>
 <text text-anchor="middle" x="572.72" y="-1741.29" font-family="Helvetica" font-size="10.00">ScannerState.col</text>
 <text text-anchor="middle" x="572.72" y="-1730.29" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.ScanError -->
 <g id="node22" class="node">
 <title>L4YAML.ScanError</title>
+<g id="a_node22"><a xlink:href="../../../api/L4YAML/Token.html#L4YAML.ScanError" xlink:title="ScanError\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1381.99,-2080.29 1319.99,-2080.29 1319.99,-2044.29 1381.99,-2044.29 1381.99,-2080.29"/>
 <text text-anchor="middle" x="1350.99" y="-2065.29" font-family="Helvetica" font-size="10.00">ScanError</text>
 <text text-anchor="middle" x="1350.99" y="-2054.29" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.CouplingBridge.CharsFromOffset -->
 <g id="node23" class="node">
 <title>L4YAML.Proofs.CouplingBridge.CharsFromOffset</title>
+<g id="a_node23"><a xlink:href="../../../api/L4YAML/Proofs/CouplingBridge.html#L4YAML.Proofs.CouplingBridge.CharsFromOffset" xlink:title="CouplingBridge.CharsFromOffset\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="653.22,-2296.29 492.22,-2296.29 492.22,-2260.29 653.22,-2260.29 653.22,-2296.29"/>
 <text text-anchor="middle" x="572.72" y="-2281.29" font-family="Helvetica" font-size="10.00">CouplingBridge.CharsFromOffset</text>
 <text text-anchor="middle" x="572.72" y="-2270.29" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.saveSimpleKey -->
 <g id="node24" class="node">
 <title>L4YAML.Scanner.saveSimpleKey</title>
+<g id="a_node24"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.saveSimpleKey" xlink:title="saveSimpleKey\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1036.11,-1864.29 953.11,-1864.29 953.11,-1828.29 1036.11,-1828.29 1036.11,-1864.29"/>
 <text text-anchor="middle" x="994.61" y="-1849.29" font-family="Helvetica" font-size="10.00">saveSimpleKey</text>
 <text text-anchor="middle" x="994.61" y="-1838.29" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Surface.GStar -->
 <g id="node25" class="node">
 <title>L4YAML.Surface.GStar</title>
+<g id="a_node25"><a xlink:href="../../../api/L4YAML/Surface/Combinators.html#L4YAML.Surface.GStar" xlink:title="Surface.GStar\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1390.99,-1972.29 1310.99,-1972.29 1310.99,-1936.29 1390.99,-1936.29 1390.99,-1972.29"/>
 <text text-anchor="middle" x="1350.99" y="-1957.29" font-family="Helvetica" font-size="10.00">Surface.GStar</text>
 <text text-anchor="middle" x="1350.99" y="-1946.29" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Surface.SCNbCommentText -->
 <g id="node26" class="node">
 <title>L4YAML.Surface.SCNbCommentText</title>
+<g id="a_node26"><a xlink:href="../../../api/L4YAML/Surface/Basic.html#L4YAML.Surface.SCNbCommentText" xlink:title="Surface.SCNbCommentText\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1422.49,-2296.29 1279.49,-2296.29 1279.49,-2260.29 1422.49,-2260.29 1422.49,-2296.29"/>
 <text text-anchor="middle" x="1350.99" y="-2281.29" font-family="Helvetica" font-size="10.00">Surface.SCNbCommentText</text>
 <text text-anchor="middle" x="1350.99" y="-2270.29" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.StreamAccum.preprocess_some_ssl_comments_anyCol -->
 <g id="node27" class="node">
 <title>L4YAML.Proofs.StreamAccum.preprocess_some_ssl_comments_anyCol</title>
+<g id="a_node27"><a xlink:href="../../../api/L4YAML/Proofs/StreamAccum.html#L4YAML.Proofs.StreamAccum.preprocess_some_ssl_comments_anyCol" xlink:title="StreamAccum.preprocess_some_ssl_comments_anyCol" target="_blank">
 <polygon fill="#fff3cd" stroke="#d4a017" points="1206.38,-1540.84 1206.38,-1555.75 1082.33,-1566.29 906.89,-1566.29 782.83,-1555.75 782.83,-1540.84 906.89,-1530.29 1082.33,-1530.29 1206.38,-1540.84"/>
 <polygon fill="none" stroke="#d4a017" points="1210.38,-1537.16 1210.38,-1559.42 1082.5,-1570.29 906.72,-1570.29 778.84,-1559.42 778.84,-1537.16 906.72,-1526.29 1082.5,-1526.29 1210.38,-1537.16"/>
 <text text-anchor="middle" x="994.61" y="-1545.19" font-family="Helvetica" font-size="12.00">StreamAccum.preprocess_some_ssl_comments_anyCol</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.StreamAccum.preprocess_some_ssl_comments_anyCol&#45;&gt;L4YAML.Surface.SurfPos.col -->
 <g id="edge2" class="edge">
@@ -308,9 +389,12 @@
 <!-- L4YAML.Proofs.CouplingBridge.ScannerSurfCorr.chars_from -->
 <g id="node28" class="node">
 <title>L4YAML.Proofs.CouplingBridge.ScannerSurfCorr.chars_from</title>
+<g id="a_node28"><a xlink:href="../../../api/L4YAML/Proofs/CouplingBridge.html#L4YAML.Proofs.CouplingBridge.ScannerSurfCorr.chars_from" xlink:title="CouplingBridge.ScannerSurfCorr.chars_from\n(CouplingBridge)" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="191.36" cy="-1653.29" rx="149.81" ry="21.43"/>
 <text text-anchor="middle" x="191.36" y="-1656.29" font-family="Helvetica" font-size="10.00">CouplingBridge.ScannerSurfCorr.chars_from</text>
 <text text-anchor="middle" x="191.36" y="-1645.29" font-family="Helvetica" font-size="10.00">(CouplingBridge)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.CouplingBridge.ScannerSurfCorr.chars_from&#45;&gt;L4YAML.Surface.SurfPos -->
 <g id="edge35" class="edge">
@@ -363,9 +447,12 @@
 <!-- L4YAML.Proofs.StructureCoupling.saveSimpleKey_corr -->
 <g id="node29" class="node">
 <title>L4YAML.Proofs.StructureCoupling.saveSimpleKey_corr</title>
+<g id="a_node29"><a xlink:href="../../../api/L4YAML/Proofs/StructureCoupling.html#L4YAML.Proofs.StructureCoupling.saveSimpleKey_corr" xlink:title="StructureCoupling.saveSimpleKey_corr\n(StructureCoupling)" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="572.72" cy="-1533.29" rx="131.54" ry="21.43"/>
 <text text-anchor="middle" x="572.72" y="-1536.29" font-family="Helvetica" font-size="10.00">StructureCoupling.saveSimpleKey_corr</text>
 <text text-anchor="middle" x="572.72" y="-1525.29" font-family="Helvetica" font-size="10.00">(StructureCoupling)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.CouplingBridge.ScannerSurfCorr.chars_from&#45;&gt;L4YAML.Proofs.StructureCoupling.saveSimpleKey_corr -->
 <g id="edge96" class="edge">
@@ -406,9 +493,12 @@
 <!-- L4YAML.Proofs.ScanStrictCoupling.unwindIndentsLoop_offset -->
 <g id="node30" class="node">
 <title>L4YAML.Proofs.ScanStrictCoupling.unwindIndentsLoop_offset</title>
+<g id="a_node30"><a xlink:href="../../../api/L4YAML/Proofs/ScanStrictCoupling.html#L4YAML.Proofs.ScanStrictCoupling.unwindIndentsLoop_offset" xlink:title="ScanStrictCoupling.unwindIndentsLoop_offset\n(ScanStrictCoupling)" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="191.36" cy="-1533.29" rx="153.38" ry="21.43"/>
 <text text-anchor="middle" x="191.36" y="-1536.29" font-family="Helvetica" font-size="10.00">ScanStrictCoupling.unwindIndentsLoop_offset</text>
 <text text-anchor="middle" x="191.36" y="-1525.29" font-family="Helvetica" font-size="10.00">(ScanStrictCoupling)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScanStrictCoupling.unwindIndentsLoop_offset&#45;&gt;L4YAML.Scanner.unwindIndentsLoop -->
 <g id="edge42" class="edge">
@@ -437,9 +527,12 @@
 <!-- L4YAML.Proofs.CouplingBridge.ScannerSurfCorr.input_prefix -->
 <g id="node31" class="node">
 <title>L4YAML.Proofs.CouplingBridge.ScannerSurfCorr.input_prefix</title>
+<g id="a_node31"><a xlink:href="../../../api/L4YAML/Proofs/CouplingBridge.html#L4YAML.Proofs.CouplingBridge.ScannerSurfCorr.input_prefix" xlink:title="CouplingBridge.ScannerSurfCorr.input_prefix\n(CouplingBridge)" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="191.36" cy="-1593.29" rx="149.81" ry="21.43"/>
 <text text-anchor="middle" x="191.36" y="-1596.29" font-family="Helvetica" font-size="10.00">CouplingBridge.ScannerSurfCorr.input_prefix</text>
 <text text-anchor="middle" x="191.36" y="-1585.29" font-family="Helvetica" font-size="10.00">(CouplingBridge)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.CouplingBridge.ScannerSurfCorr.input_prefix&#45;&gt;L4YAML.Surface.SurfPos -->
 <g id="edge49" class="edge">
@@ -498,9 +591,12 @@
 <!-- L4YAML.Proofs.ScanStrictCoupling.saveSimpleKey_peek -->
 <g id="node32" class="node">
 <title>L4YAML.Proofs.ScanStrictCoupling.saveSimpleKey_peek</title>
+<g id="a_node32"><a xlink:href="../../../api/L4YAML/Proofs/ScanStrictCoupling.html#L4YAML.Proofs.ScanStrictCoupling.saveSimpleKey_peek" xlink:title="ScanStrictCoupling.saveSimpleKey_peek\n(ScanStrictCoupling)" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="572.72" cy="-1653.29" rx="139.1" ry="21.43"/>
 <text text-anchor="middle" x="572.72" y="-1656.29" font-family="Helvetica" font-size="10.00">ScanStrictCoupling.saveSimpleKey_peek</text>
 <text text-anchor="middle" x="572.72" y="-1645.29" font-family="Helvetica" font-size="10.00">(ScanStrictCoupling)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScanStrictCoupling.saveSimpleKey_peek&#45;&gt;L4YAML.Scanner.ScannerState.peek? -->
 <g id="edge54" class="edge">
@@ -529,9 +625,12 @@
 <!-- L4YAML.Proofs.ScanStrictCoupling.unwindIndentsLoop_inputEnd -->
 <g id="node33" class="node">
 <title>L4YAML.Proofs.ScanStrictCoupling.unwindIndentsLoop_inputEnd</title>
+<g id="a_node33"><a xlink:href="../../../api/L4YAML/Proofs/ScanStrictCoupling.html#L4YAML.Proofs.ScanStrictCoupling.unwindIndentsLoop_inputEnd" xlink:title="ScanStrictCoupling.unwindIndentsLoop_inputEnd\n(ScanStrictCoupling)" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="191.36" cy="-1413.29" rx="163.18" ry="21.43"/>
 <text text-anchor="middle" x="191.36" y="-1416.29" font-family="Helvetica" font-size="10.00">ScanStrictCoupling.unwindIndentsLoop_inputEnd</text>
 <text text-anchor="middle" x="191.36" y="-1405.29" font-family="Helvetica" font-size="10.00">(ScanStrictCoupling)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScanStrictCoupling.unwindIndentsLoop_inputEnd&#45;&gt;L4YAML.Scanner.unwindIndentsLoop -->
 <g id="edge55" class="edge">
@@ -560,9 +659,12 @@
 <!-- L4YAML.Proofs.ScanStrictCoupling.unwindIndentsLoop_input -->
 <g id="node34" class="node">
 <title>L4YAML.Proofs.ScanStrictCoupling.unwindIndentsLoop_input</title>
+<g id="a_node34"><a xlink:href="../../../api/L4YAML/Proofs/ScanStrictCoupling.html#L4YAML.Proofs.ScanStrictCoupling.unwindIndentsLoop_input" xlink:title="ScanStrictCoupling.unwindIndentsLoop_input\n(ScanStrictCoupling)" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="191.36" cy="-1473.29" rx="151.14" ry="21.43"/>
 <text text-anchor="middle" x="191.36" y="-1476.29" font-family="Helvetica" font-size="10.00">ScanStrictCoupling.unwindIndentsLoop_input</text>
 <text text-anchor="middle" x="191.36" y="-1465.29" font-family="Helvetica" font-size="10.00">(ScanStrictCoupling)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScanStrictCoupling.unwindIndentsLoop_input&#45;&gt;L4YAML.Scanner.unwindIndentsLoop -->
 <g id="edge58" class="edge">
@@ -591,9 +693,12 @@
 <!-- L4YAML.Proofs.CouplingBridge.ScannerSurfCorr.col_eq -->
 <g id="node35" class="node">
 <title>L4YAML.Proofs.CouplingBridge.ScannerSurfCorr.col_eq</title>
+<g id="a_node35"><a xlink:href="../../../api/L4YAML/Proofs/CouplingBridge.html#L4YAML.Proofs.CouplingBridge.ScannerSurfCorr.col_eq" xlink:title="CouplingBridge.ScannerSurfCorr.col_eq\n(CouplingBridge)" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="191.36" cy="-1233.29" rx="135.11" ry="21.43"/>
 <text text-anchor="middle" x="191.36" y="-1236.29" font-family="Helvetica" font-size="10.00">CouplingBridge.ScannerSurfCorr.col_eq</text>
 <text text-anchor="middle" x="191.36" y="-1225.29" font-family="Helvetica" font-size="10.00">(CouplingBridge)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.CouplingBridge.ScannerSurfCorr.col_eq&#45;&gt;L4YAML.Surface.SurfPos.col -->
 <g id="edge63" class="edge">
@@ -640,9 +745,12 @@
 <!-- L4YAML.Proofs.PreprocessProduction.skipToContent_anyCol_prod -->
 <g id="node36" class="node">
 <title>L4YAML.Proofs.PreprocessProduction.skipToContent_anyCol_prod</title>
+<g id="a_node36"><a xlink:href="../../../api/L4YAML/Proofs/PreprocessProduction.html#L4YAML.Proofs.PreprocessProduction.skipToContent_anyCol_prod" xlink:title="PreprocessProduction.skipToContent_anyCol_prod\n(PreprocessProduction)" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="572.72" cy="-1593.29" rx="169" ry="21.43"/>
 <text text-anchor="middle" x="572.72" y="-1596.29" font-family="Helvetica" font-size="10.00">PreprocessProduction.skipToContent_anyCol_prod</text>
 <text text-anchor="middle" x="572.72" y="-1585.29" font-family="Helvetica" font-size="10.00">(PreprocessProduction)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.PreprocessProduction.skipToContent_anyCol_prod&#45;&gt;L4YAML.Surface.SurfPos.col -->
 <g id="edge67" class="edge">
@@ -725,9 +833,12 @@
 <!-- L4YAML.Proofs.CouplingBridge.ScannerSurfCorr.indent_cols_nonneg -->
 <g id="node37" class="node">
 <title>L4YAML.Proofs.CouplingBridge.ScannerSurfCorr.indent_cols_nonneg</title>
+<g id="a_node37"><a xlink:href="../../../api/L4YAML/Proofs/CouplingBridge.html#L4YAML.Proofs.CouplingBridge.ScannerSurfCorr.indent_cols_nonneg" xlink:title="CouplingBridge.ScannerSurfCorr.indent_cols_nonneg\n(CouplingBridge)" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="191.36" cy="-1353.29" rx="175.23" ry="21.43"/>
 <text text-anchor="middle" x="191.36" y="-1356.29" font-family="Helvetica" font-size="10.00">CouplingBridge.ScannerSurfCorr.indent_cols_nonneg</text>
 <text text-anchor="middle" x="191.36" y="-1345.29" font-family="Helvetica" font-size="10.00">(CouplingBridge)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.CouplingBridge.ScannerSurfCorr.indent_cols_nonneg&#45;&gt;L4YAML.Surface.SurfPos -->
 <g id="edge82" class="edge">
@@ -780,9 +891,12 @@
 <!-- L4YAML.Proofs.StructureProduction.unwindIndents_corr_exact -->
 <g id="node38" class="node">
 <title>L4YAML.Proofs.StructureProduction.unwindIndents_corr_exact</title>
+<g id="a_node38"><a xlink:href="../../../api/L4YAML/Proofs/StructureProduction.html#L4YAML.Proofs.StructureProduction.unwindIndents_corr_exact" xlink:title="StructureProduction.unwindIndents_corr_exact\n(StructureProduction)" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="572.72" cy="-1473.29" rx="154.71" ry="21.43"/>
 <text text-anchor="middle" x="572.72" y="-1476.29" font-family="Helvetica" font-size="10.00">StructureProduction.unwindIndents_corr_exact</text>
 <text text-anchor="middle" x="572.72" y="-1465.29" font-family="Helvetica" font-size="10.00">(StructureProduction)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.StructureProduction.unwindIndents_corr_exact&#45;&gt;L4YAML.Surface.SurfPos -->
 <g id="edge86" class="edge">
@@ -817,9 +931,12 @@
 <!-- L4YAML.Proofs.CouplingBridge.ScannerSurfCorr.end_eq -->
 <g id="node39" class="node">
 <title>L4YAML.Proofs.CouplingBridge.ScannerSurfCorr.end_eq</title>
+<g id="a_node39"><a xlink:href="../../../api/L4YAML/Proofs/CouplingBridge.html#L4YAML.Proofs.CouplingBridge.ScannerSurfCorr.end_eq" xlink:title="CouplingBridge.ScannerSurfCorr.end_eq\n(CouplingBridge)" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="191.36" cy="-1293.29" rx="137.36" ry="21.43"/>
 <text text-anchor="middle" x="191.36" y="-1296.29" font-family="Helvetica" font-size="10.00">CouplingBridge.ScannerSurfCorr.end_eq</text>
 <text text-anchor="middle" x="191.36" y="-1285.29" font-family="Helvetica" font-size="10.00">(CouplingBridge)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.CouplingBridge.ScannerSurfCorr.end_eq&#45;&gt;L4YAML.Surface.SurfPos -->
 <g id="edge91" class="edge">
@@ -866,8 +983,11 @@
 <!-- Prod.mk.inj -->
 <g id="node40" class="node">
 <title>Prod.mk.inj</title>
+<g id="a_node40"><a xlink:href="../../../api/Init/Core.html#Prod.mk.inj" xlink:title="Prod.mk.inj" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="572.72" cy="-1092.29" rx="38.7" ry="18"/>
 <text text-anchor="middle" x="572.72" y="-1089.79" font-family="Helvetica" font-size="10.00">Prod.mk.inj</text>
+</a>
+</g>
 </g>
 <!-- Prod.mk.inj&#45;&gt;L4YAML.Proofs.StreamAccum.preprocess_some_ssl_comments_anyCol -->
 <g id="edge25" class="edge">
@@ -878,8 +998,11 @@
 <!-- Decidable.decide.congr_simp -->
 <g id="node41" class="node">
 <title>Decidable.decide.congr_simp</title>
+<g id="a_node41"><a xlink:href="../../../api/Init/SimpLemmas.html#Decidable.decide.congr_simp" xlink:title="Decidable.decide.congr_simp" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="572.72" cy="-1038.29" rx="85.21" ry="18"/>
 <text text-anchor="middle" x="572.72" y="-1035.79" font-family="Helvetica" font-size="10.00">Decidable.decide.congr_simp</text>
+</a>
+</g>
 </g>
 <!-- Decidable.decide.congr_simp&#45;&gt;L4YAML.Proofs.StreamAccum.preprocess_some_ssl_comments_anyCol -->
 <g id="edge26" class="edge">
@@ -890,8 +1013,11 @@
 <!-- Except.ok.injEq -->
 <g id="node42" class="node">
 <title>Except.ok.injEq</title>
+<g id="a_node42"><a xlink:href="../../../api/Init/Core.html#Except.ok.injEq" xlink:title="Except.ok.injEq" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="572.72" cy="-984.29" rx="49.4" ry="18"/>
 <text text-anchor="middle" x="572.72" y="-981.79" font-family="Helvetica" font-size="10.00">Except.ok.injEq</text>
+</a>
+</g>
 </g>
 <!-- Except.ok.injEq&#45;&gt;L4YAML.Proofs.StreamAccum.preprocess_some_ssl_comments_anyCol -->
 <g id="edge27" class="edge">
@@ -902,8 +1028,11 @@
 <!-- eq_false&#39; -->
 <g id="node43" class="node">
 <title>eq_false&#39;</title>
+<g id="a_node43"><a xlink:href="../../../api/Init/SimpLemmas.html#eq_false&#39;" xlink:title="eq_false&#39;" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="572.72" cy="-930.29" rx="32.93" ry="18"/>
 <text text-anchor="middle" x="572.72" y="-927.79" font-family="Helvetica" font-size="10.00">eq_false&#39;</text>
+</a>
+</g>
 </g>
 <!-- eq_false&#39;&#45;&gt;L4YAML.Proofs.StreamAccum.preprocess_some_ssl_comments_anyCol -->
 <g id="edge28" class="edge">
@@ -914,8 +1043,11 @@
 <!-- Except.ok.inj -->
 <g id="node44" class="node">
 <title>Except.ok.inj</title>
+<g id="a_node44"><a xlink:href="../../../api/Init/Core.html#Except.ok.inj" xlink:title="Except.ok.inj" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="572.72" cy="-876.29" rx="42.27" ry="18"/>
 <text text-anchor="middle" x="572.72" y="-873.79" font-family="Helvetica" font-size="10.00">Except.ok.inj</text>
+</a>
+</g>
 </g>
 <!-- Except.ok.inj&#45;&gt;L4YAML.Proofs.StreamAccum.preprocess_some_ssl_comments_anyCol -->
 <g id="edge29" class="edge">
@@ -926,8 +1058,11 @@
 <!-- Or.imp_right -->
 <g id="node45" class="node">
 <title>Or.imp_right</title>
+<g id="a_node45"><a xlink:href="../../../api/Init/SimpLemmas.html#Or.imp_right" xlink:title="Or.imp_right" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="572.72" cy="-822.29" rx="41.41" ry="18"/>
 <text text-anchor="middle" x="572.72" y="-819.79" font-family="Helvetica" font-size="10.00">Or.imp_right</text>
+</a>
+</g>
 </g>
 <!-- Or.imp_right&#45;&gt;L4YAML.Proofs.StreamAccum.preprocess_some_ssl_comments_anyCol -->
 <g id="edge30" class="edge">

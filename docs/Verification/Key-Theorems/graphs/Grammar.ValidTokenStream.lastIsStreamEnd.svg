@@ -25,51 +25,72 @@
 <!-- L4YAML.Positioned -->
 <g id="node1" class="node">
 <title>L4YAML.Positioned</title>
+<g id="a_node1"><a xlink:href="../../../api/L4YAML/Token.html#L4YAML.Positioned" xlink:title="Positioned\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="543.48,-322 481.48,-322 481.48,-286 543.48,-286 543.48,-322"/>
 <text text-anchor="middle" x="512.48" y="-307" font-family="Helvetica" font-size="10.00">Positioned</text>
 <text text-anchor="middle" x="512.48" y="-296" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Positioned.val -->
 <g id="node2" class="node">
 <title>L4YAML.Positioned.val</title>
+<g id="a_node2"><a xlink:href="../../../api/L4YAML/Token.html#L4YAML.Positioned.val" xlink:title="Positioned.val\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="550.98,-268 473.98,-268 473.98,-232 550.98,-232 550.98,-268"/>
 <text text-anchor="middle" x="512.48" y="-253" font-family="Helvetica" font-size="10.00">Positioned.val</text>
 <text text-anchor="middle" x="512.48" y="-242" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.YamlToken -->
 <g id="node3" class="node">
 <title>L4YAML.YamlToken</title>
+<g id="a_node3"><a xlink:href="../../../api/L4YAML/Token.html#L4YAML.YamlToken" xlink:title="YamlToken\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="544.48,-214 480.48,-214 480.48,-178 544.48,-178 544.48,-214"/>
 <text text-anchor="middle" x="512.48" y="-199" font-family="Helvetica" font-size="10.00">YamlToken</text>
 <text text-anchor="middle" x="512.48" y="-188" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Grammar.ValidTokenStream -->
 <g id="node4" class="node">
 <title>L4YAML.Grammar.ValidTokenStream</title>
+<g id="a_node4"><a xlink:href="../../../api/L4YAML/Grammar.html#L4YAML.Grammar.ValidTokenStream" xlink:title="Grammar.ValidTokenStream\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="581.48,-160 443.48,-160 443.48,-124 581.48,-124 581.48,-160"/>
 <text text-anchor="middle" x="512.48" y="-145" font-family="Helvetica" font-size="10.00">Grammar.ValidTokenStream</text>
 <text text-anchor="middle" x="512.48" y="-134" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Grammar.ValidTokenStream.tokens -->
 <g id="node5" class="node">
 <title>L4YAML.Grammar.ValidTokenStream.tokens</title>
+<g id="a_node5"><a xlink:href="../../../api/L4YAML/Grammar.html#L4YAML.Grammar.ValidTokenStream.tokens" xlink:title="Grammar.ValidTokenStream.tokens\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="597.48,-106 427.48,-106 427.48,-70 597.48,-70 597.48,-106"/>
 <text text-anchor="middle" x="512.48" y="-91" font-family="Helvetica" font-size="10.00">Grammar.ValidTokenStream.tokens</text>
 <text text-anchor="middle" x="512.48" y="-80" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.YamlToken.streamEnd -->
 <g id="node6" class="node">
 <title>L4YAML.YamlToken.streamEnd</title>
+<g id="a_node6"><a xlink:href="../../../api/L4YAML/Token.html#L4YAML.YamlToken.streamEnd" xlink:title="YamlToken.streamEnd\n(ctor)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="569.48,-52 455.48,-52 455.48,-16 569.48,-16 569.48,-52"/>
 <text text-anchor="middle" x="512.48" y="-37" font-family="Helvetica" font-size="10.00">YamlToken.streamEnd</text>
 <text text-anchor="middle" x="512.48" y="-26" font-family="Helvetica" font-size="10.00">(ctor)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Grammar.ValidTokenStream.lastIsStreamEnd -->
 <g id="node7" class="node">
 <title>L4YAML.Grammar.ValidTokenStream.lastIsStreamEnd</title>
+<g id="a_node7"><a xlink:href="../../../api/L4YAML/Grammar.html#L4YAML.Grammar.ValidTokenStream.lastIsStreamEnd" xlink:title="Grammar.ValidTokenStream.lastIsStreamEnd" target="_blank">
 <polygon fill="#fff3cd" stroke="#d4a017" points="362.72,-160.54 362.72,-175.46 262.27,-186 120.21,-186 19.76,-175.46 19.76,-160.54 120.21,-150 262.27,-150 362.72,-160.54"/>
 <polygon fill="none" stroke="#d4a017" points="366.72,-156.94 366.72,-179.06 262.48,-190 120,-190 15.76,-179.06 15.76,-156.94 120,-146 262.48,-146 366.72,-156.94"/>
 <text text-anchor="middle" x="191.24" y="-164.9" font-family="Helvetica" font-size="12.00">Grammar.ValidTokenStream.lastIsStreamEnd</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Grammar.ValidTokenStream.lastIsStreamEnd&#45;&gt;L4YAML.Positioned -->
 <g id="edge2" class="edge">

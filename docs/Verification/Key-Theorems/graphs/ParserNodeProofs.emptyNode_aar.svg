@@ -25,30 +25,42 @@
 <!-- L4YAML.TokenParser.emptyNode -->
 <g id="node1" class="node">
 <title>L4YAML.TokenParser.emptyNode</title>
+<g id="a_node1"><a xlink:href="../../../api/L4YAML/TokenParser.html#L4YAML.TokenParser.emptyNode" xlink:title="TokenParser.emptyNode\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="507.85,-160 382.85,-160 382.85,-124 507.85,-124 507.85,-160"/>
 <text text-anchor="middle" x="445.35" y="-145" font-family="Helvetica" font-size="10.00">TokenParser.emptyNode</text>
 <text text-anchor="middle" x="445.35" y="-134" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.YamlValue -->
 <g id="node2" class="node">
 <title>L4YAML.YamlValue</title>
+<g id="a_node2"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.YamlValue" xlink:title="YamlValue\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="476.35,-106 414.35,-106 414.35,-70 476.35,-70 476.35,-106"/>
 <text text-anchor="middle" x="445.35" y="-91" font-family="Helvetica" font-size="10.00">YamlValue</text>
 <text text-anchor="middle" x="445.35" y="-80" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ParserGrammable.AllAliasesResolve -->
 <g id="node3" class="node">
 <title>L4YAML.Proofs.ParserGrammable.AllAliasesResolve</title>
+<g id="a_node3"><a xlink:href="../../../api/L4YAML/Proofs/ParserGrammableBase.html#L4YAML.Proofs.ParserGrammable.AllAliasesResolve" xlink:title="ParserGrammable.AllAliasesResolve\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="533.85,-52 356.85,-52 356.85,-16 533.85,-16 533.85,-52"/>
 <text text-anchor="middle" x="445.35" y="-37" font-family="Helvetica" font-size="10.00">ParserGrammable.AllAliasesResolve</text>
 <text text-anchor="middle" x="445.35" y="-26" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- ParserNodeProofs.emptyNode_aar -->
 <g id="node4" class="node">
 <title>ParserNodeProofs.emptyNode_aar</title>
+<g id="a_node4"><a xlink:href="../../../api/L4YAML/Proofs/ParserNodeProofs.html#ParserNodeProofs.emptyNode_aar" xlink:title="ParserNodeProofs.emptyNode_aar" target="_blank">
 <polygon fill="#fff3cd" stroke="#d4a017" points="291.78,-80.54 291.78,-95.46 212.2,-106 99.65,-106 20.07,-95.46 20.07,-80.54 99.65,-70 212.2,-70 291.78,-80.54"/>
 <polygon fill="none" stroke="#d4a017" points="295.78,-77.04 295.78,-98.96 212.46,-110 99.39,-110 16.07,-98.96 16.07,-77.04 99.39,-66 212.46,-66 295.78,-77.04"/>
 <text text-anchor="middle" x="155.93" y="-84.9" font-family="Helvetica" font-size="12.00">ParserNodeProofs.emptyNode_aar</text>
+</a>
+</g>
 </g>
 <!-- ParserNodeProofs.emptyNode_aar&#45;&gt;L4YAML.TokenParser.emptyNode -->
 <g id="edge1" class="edge">

@@ -10,7 +10,7 @@
 <title>chain_CouplingBridge.chars_from_zero_toList</title>
 <polygon fill="white" stroke="transparent" points="-4,4 -4,-93.92 399,-93.92 399,4 -4,4"/>
 <text text-anchor="middle" x="197.5" y="-75.52" font-family="Helvetica Bold" font-size="13.00">Functorial Chains: CouplingBridge.chars_from_zero_toList</text>
-<text text-anchor="middle" x="197.5" y="-61.52" font-family="Helvetica Bold" font-size="13.00">(heuristic: used by 11 proofs)</text>
+<text text-anchor="middle" x="197.5" y="-61.52" font-family="Helvetica Bold" font-size="13.00">(heuristic: used by 13 proofs)</text>
 <!-- L4YAML.Proofs.CouplingBridge.chars_from_zero_toList -->
 <g id="node1" class="node">
 <title>L4YAML.Proofs.CouplingBridge.chars_from_zero_toList</title>

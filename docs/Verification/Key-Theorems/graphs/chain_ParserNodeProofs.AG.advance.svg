@@ -24,14 +24,20 @@
 <!-- L4YAML.TokenParser.ParseState.advance -->
 <g id="node1" class="node">
 <title>L4YAML.TokenParser.ParseState.advance</title>
+<g id="a_node1"><a xlink:href="../../../api/L4YAML/TokenParser.html#L4YAML.TokenParser.ParseState.advance" xlink:title="TokenParser.ParseState.advance" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="355.5,-214 192.5,-214 192.5,-178 355.5,-178 355.5,-214"/>
 <text text-anchor="middle" x="274" y="-193.5" font-family="Helvetica" font-size="10.00">TokenParser.ParseState.advance</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.TokenParser.ParseState -->
 <g id="node3" class="node">
 <title>L4YAML.TokenParser.ParseState</title>
+<g id="a_node3"><a xlink:href="../../../api/L4YAML/TokenParser.html#L4YAML.TokenParser.ParseState" xlink:title="TokenParser.ParseState" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="349,-52 225,-52 225,-16 349,-16 349,-52"/>
 <text text-anchor="middle" x="287" y="-31.5" font-family="Helvetica" font-size="10.00">TokenParser.ParseState</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.TokenParser.ParseState.advance&#45;&gt;L4YAML.TokenParser.ParseState -->
 <g id="edge10" class="edge">
@@ -43,8 +49,11 @@
 <!-- L4YAML.TokenParser.ParseState.anchors -->
 <g id="node5" class="node">
 <title>L4YAML.TokenParser.ParseState.anchors</title>
+<g id="a_node5"><a xlink:href="../../../api/L4YAML/TokenParser.html#L4YAML.TokenParser.ParseState.anchors" xlink:title="TokenParser.ParseState.anchors" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="368,-133 206,-133 206,-97 368,-97 368,-133"/>
 <text text-anchor="middle" x="287" y="-112.5" font-family="Helvetica" font-size="10.00">TokenParser.ParseState.anchors</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.TokenParser.ParseState.advance&#45;&gt;L4YAML.TokenParser.ParseState.anchors -->
 <g id="edge2" class="edge">
@@ -56,14 +65,20 @@
 <!-- L4YAML.YamlValue -->
 <g id="node2" class="node">
 <title>L4YAML.YamlValue</title>
+<g id="a_node2"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.YamlValue" xlink:title="YamlValue" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="188,-133 126,-133 126,-97 188,-97 188,-133"/>
 <text text-anchor="middle" x="157" y="-112.5" font-family="Helvetica" font-size="10.00">YamlValue</text>
+</a>
+</g>
 </g>
 <!-- ParserNodeProofs.AG -->
 <g id="node4" class="node">
 <title>ParserNodeProofs.AG</title>
+<g id="a_node4"><a xlink:href="../../../api/L4YAML/Proofs/ParserNodeProofs.html#ParserNodeProofs.AG" xlink:title="ParserNodeProofs.AG" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="144,-214 30,-214 30,-178 144,-178 144,-214"/>
 <text text-anchor="middle" x="87" y="-193.5" font-family="Helvetica" font-size="10.00">ParserNodeProofs.AG</text>
+</a>
+</g>
 </g>
 <!-- ParserNodeProofs.AG&#45;&gt;L4YAML.YamlValue -->
 <g id="edge13" class="edge">
@@ -96,8 +111,11 @@
 <!-- ParserNodeProofs.AG._proof_2 -->
 <g id="node6" class="node">
 <title>ParserNodeProofs.AG._proof_2</title>
+<g id="a_node6"><a xlink:href="../../../api/L4YAML/Proofs/ParserNodeProofs.html#ParserNodeProofs.AG._proof_2" xlink:title="ParserNodeProofs.AG._proof_2" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="538" cy="-115" rx="91.49" ry="18"/>
 <text text-anchor="middle" x="538" y="-112.5" font-family="Helvetica" font-size="10.00">ParserNodeProofs.AG._proof_2</text>
+</a>
+</g>
 </g>
 <!-- ParserNodeProofs.AG._proof_2&#45;&gt;L4YAML.TokenParser.ParseState -->
 <g id="edge7" class="edge">
@@ -109,9 +127,12 @@
 <!-- ParserNodeProofs.AG.advance -->
 <g id="node7" class="node">
 <title>ParserNodeProofs.AG.advance</title>
+<g id="a_node7"><a xlink:href="../../../api/L4YAML/Proofs/ParserNodeProofs.html#ParserNodeProofs.AG.advance" xlink:title="ParserNodeProofs.AG.advance" target="_blank">
 <polygon fill="#fff3cd" stroke="#d4a017" points="625.47,-293.54 625.47,-308.46 568.37,-319 487.63,-319 430.53,-308.46 430.53,-293.54 487.63,-283 568.37,-283 625.47,-293.54"/>
 <polygon fill="none" stroke="#d4a017" points="629.47,-290.22 629.47,-311.78 568.74,-323 487.26,-323 426.53,-311.78 426.53,-290.22 487.26,-279 568.74,-279 629.47,-290.22"/>
 <text text-anchor="middle" x="528" y="-298.5" font-family="Helvetica" font-size="10.00">ParserNodeProofs.AG.advance</text>
+</a>
+</g>
 </g>
 <!-- ParserNodeProofs.AG.advance&#45;&gt;L4YAML.TokenParser.ParseState.advance -->
 <g id="edge1" class="edge">
@@ -130,8 +151,11 @@
 <!-- ParserNodeProofs.AG.of_eq -->
 <g id="node8" class="node">
 <title>ParserNodeProofs.AG.of_eq</title>
+<g id="a_node8"><a xlink:href="../../../api/L4YAML/Proofs/ParserNodeProofs.html#ParserNodeProofs.AG.of_eq" xlink:title="ParserNodeProofs.AG.of_eq" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="510" cy="-196" rx="83" ry="18"/>
 <text text-anchor="middle" x="510" y="-193.5" font-family="Helvetica" font-size="10.00">ParserNodeProofs.AG.of_eq</text>
+</a>
+</g>
 </g>
 <!-- ParserNodeProofs.AG.advance&#45;&gt;ParserNodeProofs.AG.of_eq -->
 <g id="edge3" class="edge">

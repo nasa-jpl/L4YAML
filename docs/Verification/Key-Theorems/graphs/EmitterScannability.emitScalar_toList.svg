@@ -30,23 +30,32 @@
 <!-- L4YAML.Emit.escapeString -->
 <g id="node1" class="node">
 <title>L4YAML.Emit.escapeString</title>
+<g id="a_node1"><a xlink:href="../../../api/L4YAML/Emitter.html#L4YAML.Emit.escapeString" xlink:title="Emit.escapeString\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="630.64,-156 534.64,-156 534.64,-120 630.64,-120 630.64,-156"/>
 <text text-anchor="middle" x="582.64" y="-141" font-family="Helvetica" font-size="10.00">Emit.escapeString</text>
 <text text-anchor="middle" x="582.64" y="-130" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Emit.emitScalar -->
 <g id="node2" class="node">
 <title>L4YAML.Emit.emitScalar</title>
+<g id="a_node2"><a xlink:href="../../../api/L4YAML/Emitter.html#L4YAML.Emit.emitScalar" xlink:title="Emit.emitScalar\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="625.64,-102 539.64,-102 539.64,-66 625.64,-66 625.64,-102"/>
 <text text-anchor="middle" x="582.64" y="-87" font-family="Helvetica" font-size="10.00">Emit.emitScalar</text>
 <text text-anchor="middle" x="582.64" y="-76" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.EmitterScannability.emitScalar_toList -->
 <g id="node3" class="node">
 <title>L4YAML.Proofs.EmitterScannability.emitScalar_toList</title>
+<g id="a_node3"><a xlink:href="../../../api/L4YAML/Proofs/EmitterScannability.html#L4YAML.Proofs.EmitterScannability.emitScalar_toList" xlink:title="EmitterScannability.emitScalar_toList" target="_blank">
 <polygon fill="#fff3cd" stroke="#d4a017" points="469.57,-106.54 469.57,-121.46 385.3,-132 266.14,-132 181.87,-121.46 181.87,-106.54 266.14,-96 385.3,-96 469.57,-106.54"/>
 <polygon fill="none" stroke="#d4a017" points="473.56,-103.01 473.56,-124.99 385.55,-136 265.89,-136 177.87,-124.99 177.87,-103.01 265.89,-92 385.55,-92 473.56,-103.01"/>
 <text text-anchor="middle" x="325.72" y="-110.9" font-family="Helvetica" font-size="12.00">EmitterScannability.emitScalar_toList</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.EmitterScannability.emitScalar_toList&#45;&gt;L4YAML.Emit.escapeString -->
 <g id="edge2" class="edge">
@@ -65,8 +74,11 @@
 <!-- of_decide_eq_true -->
 <g id="node4" class="node">
 <title>of_decide_eq_true</title>
+<g id="a_node4"><a xlink:href="../../../api/Init/Prelude.html#of_decide_eq_true" xlink:title="of_decide_eq_true" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="78.4" cy="-196" rx="56.52" ry="18"/>
 <text text-anchor="middle" x="78.4" y="-193.5" font-family="Helvetica" font-size="10.00">of_decide_eq_true</text>
+</a>
+</g>
 </g>
 <!-- of_decide_eq_true&#45;&gt;L4YAML.Proofs.EmitterScannability.emitScalar_toList -->
 <g id="edge3" class="edge">
@@ -77,8 +89,11 @@
 <!-- eq_self -->
 <g id="node5" class="node">
 <title>eq_self</title>
+<g id="a_node5"><a xlink:href="../../../api/Init/SimpLemmas.html#eq_self" xlink:title="eq_self" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="78.4" cy="-142" rx="28.01" ry="18"/>
 <text text-anchor="middle" x="78.4" y="-139.5" font-family="Helvetica" font-size="10.00">eq_self</text>
+</a>
+</g>
 </g>
 <!-- eq_self&#45;&gt;L4YAML.Proofs.EmitterScannability.emitScalar_toList -->
 <g id="edge4" class="edge">
@@ -89,8 +104,11 @@
 <!-- of_eq_true -->
 <g id="node6" class="node">
 <title>of_eq_true</title>
+<g id="a_node6"><a xlink:href="../../../api/Init/SimpLemmas.html#of_eq_true" xlink:title="of_eq_true" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="78.4" cy="-88" rx="36.49" ry="18"/>
 <text text-anchor="middle" x="78.4" y="-85.5" font-family="Helvetica" font-size="10.00">of_eq_true</text>
+</a>
+</g>
 </g>
 <!-- of_eq_true&#45;&gt;L4YAML.Proofs.EmitterScannability.emitScalar_toList -->
 <g id="edge5" class="edge">
@@ -101,8 +119,11 @@
 <!-- String.toList_append -->
 <g id="node7" class="node">
 <title>String.toList_append</title>
+<g id="a_node7"><a xlink:href="../../../api/Init/Data/String/Basic.html#String.toList_append" xlink:title="String.toList_append" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="78.4" cy="-34" rx="62.3" ry="18"/>
 <text text-anchor="middle" x="78.4" y="-31.5" font-family="Helvetica" font-size="10.00">String.toList_append</text>
+</a>
+</g>
 </g>
 <!-- String.toList_append&#45;&gt;L4YAML.Proofs.EmitterScannability.emitScalar_toList -->
 <g id="edge6" class="edge">

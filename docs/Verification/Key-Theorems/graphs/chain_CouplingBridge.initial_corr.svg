@@ -10,7 +10,7 @@
 <title>chain_CouplingBridge.initial_corr</title>
 <polygon fill="white" stroke="transparent" points="-4,4 -4,-93.92 316,-93.92 316,4 -4,4"/>
 <text text-anchor="middle" x="156" y="-75.52" font-family="Helvetica Bold" font-size="13.00">Functorial Chains: CouplingBridge.initial_corr</text>
-<text text-anchor="middle" x="156" y="-61.52" font-family="Helvetica Bold" font-size="13.00">(heuristic: used by 10 proofs)</text>
+<text text-anchor="middle" x="156" y="-61.52" font-family="Helvetica Bold" font-size="13.00">(heuristic: used by 12 proofs)</text>
 <!-- L4YAML.Proofs.CouplingBridge.initial_corr -->
 <g id="node1" class="node">
 <title>L4YAML.Proofs.CouplingBridge.initial_corr</title>

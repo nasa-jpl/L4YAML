@@ -25,30 +25,42 @@
 <!-- L4YAML.Scanner.ScannerState.input -->
 <g id="node1" class="node">
 <title>L4YAML.Scanner.ScannerState.input</title>
+<g id="a_node1"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.input" xlink:title="ScannerState.input\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="435.04,-160 335.04,-160 335.04,-124 435.04,-124 435.04,-160"/>
 <text text-anchor="middle" x="385.04" y="-145" font-family="Helvetica" font-size="10.00">ScannerState.input</text>
 <text text-anchor="middle" x="385.04" y="-134" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.advance -->
 <g id="node2" class="node">
 <title>L4YAML.Scanner.ScannerState.advance</title>
+<g id="a_node2"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.advance" xlink:title="ScannerState.advance\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="442.54,-106 327.54,-106 327.54,-70 442.54,-70 442.54,-106"/>
 <text text-anchor="middle" x="385.04" y="-91" font-family="Helvetica" font-size="10.00">ScannerState.advance</text>
 <text text-anchor="middle" x="385.04" y="-80" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState -->
 <g id="node3" class="node">
 <title>L4YAML.Scanner.ScannerState</title>
+<g id="a_node3"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState" xlink:title="ScannerState\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="423.04,-52 347.04,-52 347.04,-16 423.04,-16 423.04,-52"/>
 <text text-anchor="middle" x="385.04" y="-37" font-family="Helvetica" font-size="10.00">ScannerState</text>
 <text text-anchor="middle" x="385.04" y="-26" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.CouplingBridge.advance_input -->
 <g id="node4" class="node">
 <title>L4YAML.Proofs.CouplingBridge.advance_input</title>
+<g id="a_node4"><a xlink:href="../../../api/L4YAML/Proofs/CouplingBridge.html#L4YAML.Proofs.CouplingBridge.advance_input" xlink:title="CouplingBridge.advance_input" target="_blank">
 <polygon fill="#fff3cd" stroke="#d4a017" points="262.31,-80.54 262.31,-95.46 191.41,-106 91.13,-106 20.22,-95.46 20.22,-80.54 91.13,-70 191.41,-70 262.31,-80.54"/>
 <polygon fill="none" stroke="#d4a017" points="266.3,-77.09 266.3,-98.91 191.7,-110 90.84,-110 16.23,-98.91 16.23,-77.09 90.84,-66 191.7,-66 266.3,-77.09"/>
 <text text-anchor="middle" x="141.27" y="-84.9" font-family="Helvetica" font-size="12.00">CouplingBridge.advance_input</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.CouplingBridge.advance_input&#45;&gt;L4YAML.Scanner.ScannerState.input -->
 <g id="edge3" class="edge">

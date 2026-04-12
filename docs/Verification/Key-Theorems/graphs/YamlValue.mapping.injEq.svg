@@ -35,30 +35,42 @@
 <!-- L4YAML.YamlValue.mapping -->
 <g id="node1" class="node">
 <title>L4YAML.YamlValue.mapping</title>
+<g id="a_node1"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.YamlValue.mapping" xlink:title="YamlValue.mapping\n(ctor)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="590.52,-142 488.52,-142 488.52,-106 590.52,-106 590.52,-142"/>
 <text text-anchor="middle" x="539.52" y="-127" font-family="Helvetica" font-size="10.00">YamlValue.mapping</text>
 <text text-anchor="middle" x="539.52" y="-116" font-family="Helvetica" font-size="10.00">(ctor)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.CollectionStyle -->
 <g id="node2" class="node">
 <title>L4YAML.CollectionStyle</title>
+<g id="a_node2"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.CollectionStyle" xlink:title="CollectionStyle\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="581.02,-196 498.02,-196 498.02,-160 581.02,-160 581.02,-196"/>
 <text text-anchor="middle" x="539.52" y="-181" font-family="Helvetica" font-size="10.00">CollectionStyle</text>
 <text text-anchor="middle" x="539.52" y="-170" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.YamlValue -->
 <g id="node3" class="node">
 <title>L4YAML.YamlValue</title>
+<g id="a_node3"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.YamlValue" xlink:title="YamlValue\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="570.52,-88 508.52,-88 508.52,-52 570.52,-52 570.52,-88"/>
 <text text-anchor="middle" x="539.52" y="-73" font-family="Helvetica" font-size="10.00">YamlValue</text>
 <text text-anchor="middle" x="539.52" y="-62" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.YamlValue.mapping.injEq -->
 <g id="node4" class="node">
 <title>L4YAML.YamlValue.mapping.injEq</title>
+<g id="a_node4"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.YamlValue.mapping.injEq" xlink:title="YamlValue.mapping.injEq" target="_blank">
 <polygon fill="#fff3cd" stroke="#d4a017" points="423.47,-58.54 423.47,-73.46 363.78,-84 279.37,-84 219.69,-73.46 219.69,-58.54 279.37,-48 363.78,-48 423.47,-58.54"/>
 <polygon fill="none" stroke="#d4a017" points="427.47,-55.19 427.47,-76.81 364.13,-88 279.02,-88 215.69,-76.81 215.69,-55.19 279.02,-44 364.13,-44 427.47,-55.19"/>
 <text text-anchor="middle" x="321.58" y="-62.9" font-family="Helvetica" font-size="12.00">YamlValue.mapping.injEq</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.YamlValue.mapping.injEq&#45;&gt;L4YAML.YamlValue.mapping -->
 <g id="edge1" class="edge">
@@ -84,9 +96,12 @@
 <!-- L4YAML.YamlValue.mapping.inj -->
 <g id="node5" class="node">
 <title>L4YAML.YamlValue.mapping.inj</title>
+<g id="a_node5"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.YamlValue.mapping.inj" xlink:title="YamlValue.mapping.inj\n(Types)" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="97.32" cy="-177" rx="81.13" ry="21.43"/>
 <text text-anchor="middle" x="97.32" y="-180" font-family="Helvetica" font-size="10.00">YamlValue.mapping.inj</text>
 <text text-anchor="middle" x="97.32" y="-169" font-family="Helvetica" font-size="10.00">(Types)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.YamlValue.mapping.inj&#45;&gt;L4YAML.YamlValue.mapping -->
 <g id="edge7" class="edge">
@@ -115,8 +130,11 @@
 <!-- Eq.propIntro -->
 <g id="node6" class="node">
 <title>Eq.propIntro</title>
+<g id="a_node6"><a xlink:href="../../../api/Init/Core.html#Eq.propIntro" xlink:title="Eq.propIntro" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="97.32" cy="-88" rx="41.41" ry="18"/>
 <text text-anchor="middle" x="97.32" y="-85.5" font-family="Helvetica" font-size="10.00">Eq.propIntro</text>
+</a>
+</g>
 </g>
 <!-- Eq.propIntro&#45;&gt;L4YAML.YamlValue.mapping.injEq -->
 <g id="edge5" class="edge">
@@ -127,8 +145,11 @@
 <!-- Lean.injEq_helper -->
 <g id="node7" class="node">
 <title>Lean.injEq_helper</title>
+<g id="a_node7"><a xlink:href="../../../api/Init/Core.html#Lean.injEq_helper" xlink:title="Lean.injEq_helper" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="97.32" cy="-34" rx="55.17" ry="18"/>
 <text text-anchor="middle" x="97.32" y="-31.5" font-family="Helvetica" font-size="10.00">Lean.injEq_helper</text>
+</a>
+</g>
 </g>
 <!-- Lean.injEq_helper&#45;&gt;L4YAML.YamlValue.mapping.injEq -->
 <g id="edge6" class="edge">

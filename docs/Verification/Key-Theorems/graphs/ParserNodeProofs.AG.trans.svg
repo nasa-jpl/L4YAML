@@ -30,37 +30,52 @@
 <!-- L4YAML.YamlValue -->
 <g id="node1" class="node">
 <title>L4YAML.YamlValue</title>
+<g id="a_node1"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.YamlValue" xlink:title="YamlValue\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="416.48,-226 354.48,-226 354.48,-190 416.48,-190 416.48,-226"/>
 <text text-anchor="middle" x="385.48" y="-211" font-family="Helvetica" font-size="10.00">YamlValue</text>
 <text text-anchor="middle" x="385.48" y="-200" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.TokenParser.ParseState -->
 <g id="node2" class="node">
 <title>L4YAML.TokenParser.ParseState</title>
+<g id="a_node2"><a xlink:href="../../../api/L4YAML/TokenParser.html#L4YAML.TokenParser.ParseState" xlink:title="TokenParser.ParseState\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="683.75,-226 559.75,-226 559.75,-190 683.75,-190 683.75,-226"/>
 <text text-anchor="middle" x="621.75" y="-211" font-family="Helvetica" font-size="10.00">TokenParser.ParseState</text>
 <text text-anchor="middle" x="621.75" y="-200" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- ParserNodeProofs.AG -->
 <g id="node3" class="node">
 <title>ParserNodeProofs.AG</title>
+<g id="a_node3"><a xlink:href="../../../api/L4YAML/Proofs/ParserNodeProofs.html#ParserNodeProofs.AG" xlink:title="ParserNodeProofs.AG\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="678.75,-172 564.75,-172 564.75,-136 678.75,-136 678.75,-172"/>
 <text text-anchor="middle" x="621.75" y="-157" font-family="Helvetica" font-size="10.00">ParserNodeProofs.AG</text>
 <text text-anchor="middle" x="621.75" y="-146" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.TokenParser.ParseState.anchors -->
 <g id="node4" class="node">
 <title>L4YAML.TokenParser.ParseState.anchors</title>
+<g id="a_node4"><a xlink:href="../../../api/L4YAML/TokenParser.html#L4YAML.TokenParser.ParseState.anchors" xlink:title="TokenParser.ParseState.anchors\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="466.48,-172 304.48,-172 304.48,-136 466.48,-136 466.48,-172"/>
 <text text-anchor="middle" x="385.48" y="-157" font-family="Helvetica" font-size="10.00">TokenParser.ParseState.anchors</text>
 <text text-anchor="middle" x="385.48" y="-146" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- ParserNodeProofs.AG.trans -->
 <g id="node5" class="node">
 <title>ParserNodeProofs.AG.trans</title>
+<g id="a_node5"><a xlink:href="../../../api/L4YAML/Proofs/ParserNodeProofs.html#ParserNodeProofs.AG.trans" xlink:title="ParserNodeProofs.AG.trans" target="_blank">
 <polygon fill="#fff3cd" stroke="#d4a017" points="494.53,-30.54 494.53,-45.46 430.65,-56 340.3,-56 276.42,-45.46 276.42,-30.54 340.3,-20 430.65,-20 494.53,-30.54"/>
 <polygon fill="none" stroke="#d4a017" points="498.53,-27.15 498.53,-48.85 430.98,-60 339.98,-60 272.43,-48.85 272.43,-27.15 339.98,-16 430.98,-16 498.53,-27.15"/>
 <text text-anchor="middle" x="385.48" y="-34.9" font-family="Helvetica" font-size="12.00">ParserNodeProofs.AG.trans</text>
+</a>
+</g>
 </g>
 <!-- ParserNodeProofs.AG.trans&#45;&gt;L4YAML.TokenParser.ParseState -->
 <g id="edge2" class="edge">
@@ -79,9 +94,12 @@
 <!-- ParserNodeProofs.AG._proof_2 -->
 <g id="node6" class="node">
 <title>ParserNodeProofs.AG._proof_2</title>
+<g id="a_node6"><a xlink:href="../../../api/L4YAML/Proofs/ParserNodeProofs.html#ParserNodeProofs.AG._proof_2" xlink:title="ParserNodeProofs.AG._proof_2\n(ParserNodeProofs)" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="125.6" cy="-125" rx="109.7" ry="21.43"/>
 <text text-anchor="middle" x="125.6" y="-128" font-family="Helvetica" font-size="10.00">ParserNodeProofs.AG._proof_2</text>
 <text text-anchor="middle" x="125.6" y="-117" font-family="Helvetica" font-size="10.00">(ParserNodeProofs)</text>
+</a>
+</g>
 </g>
 <!-- ParserNodeProofs.AG._proof_2&#45;&gt;L4YAML.YamlValue -->
 <g id="edge5" class="edge">

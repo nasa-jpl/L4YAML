@@ -35,79 +35,112 @@
 <!-- L4YAML.Positioned -->
 <g id="node1" class="node">
 <title>L4YAML.Positioned</title>
+<g id="a_node1"><a xlink:href="../../../api/L4YAML/Token.html#L4YAML.Positioned" xlink:title="Positioned\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1723.86,-538 1661.86,-538 1661.86,-502 1723.86,-502 1723.86,-538"/>
 <text text-anchor="middle" x="1692.86" y="-523" font-family="Helvetica" font-size="10.00">Positioned</text>
 <text text-anchor="middle" x="1692.86" y="-512" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerPlainScalarValid.flowNesting -->
 <g id="node2" class="node">
 <title>L4YAML.Proofs.ScannerPlainScalarValid.flowNesting</title>
+<g id="a_node2"><a xlink:href="../../../api/L4YAML/Proofs/ScannerPlainScalarValid.html#L4YAML.Proofs.ScannerPlainScalarValid.flowNesting" xlink:title="ScannerPlainScalarValid.flowNesting\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1781.86,-430 1603.86,-430 1603.86,-394 1781.86,-394 1781.86,-430"/>
 <text text-anchor="middle" x="1692.86" y="-415" font-family="Helvetica" font-size="10.00">ScannerPlainScalarValid.flowNesting</text>
 <text text-anchor="middle" x="1692.86" y="-404" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Positioned.val -->
 <g id="node3" class="node">
 <title>L4YAML.Positioned.val</title>
+<g id="a_node3"><a xlink:href="../../../api/L4YAML/Token.html#L4YAML.Positioned.val" xlink:title="Positioned.val\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1731.36,-376 1654.36,-376 1654.36,-340 1731.36,-340 1731.36,-376"/>
 <text text-anchor="middle" x="1692.86" y="-361" font-family="Helvetica" font-size="10.00">Positioned.val</text>
 <text text-anchor="middle" x="1692.86" y="-350" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scalar.mk -->
 <g id="node4" class="node">
 <title>L4YAML.Scalar.mk</title>
+<g id="a_node4"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.Scalar.mk" xlink:title="Scalar.mk\n(ctor)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1723.36,-160 1662.36,-160 1662.36,-124 1723.36,-124 1723.36,-160"/>
 <text text-anchor="middle" x="1692.86" y="-145" font-family="Helvetica" font-size="10.00">Scalar.mk</text>
 <text text-anchor="middle" x="1692.86" y="-134" font-family="Helvetica" font-size="10.00">(ctor)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerPlainScalarValid.FlowContextPSV -->
 <g id="node5" class="node">
 <title>L4YAML.Proofs.ScannerPlainScalarValid.FlowContextPSV</title>
+<g id="a_node5"><a xlink:href="../../../api/L4YAML/Proofs/ScannerPlainScalarValid.html#L4YAML.Proofs.ScannerPlainScalarValid.FlowContextPSV" xlink:title="ScannerPlainScalarValid.FlowContextPSV\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1793.36,-106 1592.36,-106 1592.36,-70 1793.36,-70 1793.36,-106"/>
 <text text-anchor="middle" x="1692.86" y="-91" font-family="Helvetica" font-size="10.00">ScannerPlainScalarValid.FlowContextPSV</text>
 <text text-anchor="middle" x="1692.86" y="-80" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.YamlToken -->
 <g id="node6" class="node">
 <title>L4YAML.YamlToken</title>
+<g id="a_node6"><a xlink:href="../../../api/L4YAML/Token.html#L4YAML.YamlToken" xlink:title="YamlToken\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1724.86,-484 1660.86,-484 1660.86,-448 1724.86,-448 1724.86,-484"/>
 <text text-anchor="middle" x="1692.86" y="-469" font-family="Helvetica" font-size="10.00">YamlToken</text>
 <text text-anchor="middle" x="1692.86" y="-458" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.BlockScalarMeta -->
 <g id="node7" class="node">
 <title>L4YAML.BlockScalarMeta</title>
+<g id="a_node7"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.BlockScalarMeta" xlink:title="BlockScalarMeta\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1738.36,-52 1647.36,-52 1647.36,-16 1738.36,-16 1738.36,-52"/>
 <text text-anchor="middle" x="1692.86" y="-37" font-family="Helvetica" font-size="10.00">BlockScalarMeta</text>
 <text text-anchor="middle" x="1692.86" y="-26" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.ScalarStyle.plain -->
 <g id="node8" class="node">
 <title>L4YAML.ScalarStyle.plain</title>
+<g id="a_node8"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.ScalarStyle.plain" xlink:title="ScalarStyle.plain\n(ctor)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1737.86,-322 1647.86,-322 1647.86,-286 1737.86,-286 1737.86,-322"/>
 <text text-anchor="middle" x="1692.86" y="-307" font-family="Helvetica" font-size="10.00">ScalarStyle.plain</text>
 <text text-anchor="middle" x="1692.86" y="-296" font-family="Helvetica" font-size="10.00">(ctor)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Grammar.ScalarScannable -->
 <g id="node9" class="node">
 <title>L4YAML.Grammar.ScalarScannable</title>
+<g id="a_node9"><a xlink:href="../../../api/L4YAML/Grammar.html#L4YAML.Grammar.ScalarScannable" xlink:title="Grammar.ScalarScannable\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1759.86,-268 1625.86,-268 1625.86,-232 1759.86,-232 1759.86,-268"/>
 <text text-anchor="middle" x="1692.86" y="-253" font-family="Helvetica" font-size="10.00">Grammar.ScalarScannable</text>
 <text text-anchor="middle" x="1692.86" y="-242" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerPlainScalarValid.PlainScalarsValid.match_1 -->
 <g id="node10" class="node">
 <title>L4YAML.Proofs.ScannerPlainScalarValid.PlainScalarsValid.match_1</title>
+<g id="a_node10"><a xlink:href="../../../api/L4YAML/Proofs/ScannerPlainScalarValid.html#L4YAML.Proofs.ScannerPlainScalarValid.PlainScalarsValid.match_1" xlink:title="ScannerPlainScalarValid.PlainScalarsValid.match_1\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1814.36,-214 1571.36,-214 1571.36,-178 1814.36,-178 1814.36,-214"/>
 <text text-anchor="middle" x="1692.86" y="-199" font-family="Helvetica" font-size="10.00">ScannerPlainScalarValid.PlainScalarsValid.match_1</text>
 <text text-anchor="middle" x="1692.86" y="-188" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerPlainScalarValid.FlowContextPSV_of_prefix_and_new -->
 <g id="node11" class="node">
 <title>L4YAML.Proofs.ScannerPlainScalarValid.FlowContextPSV_of_prefix_and_new</title>
+<g id="a_node11"><a xlink:href="../../../api/L4YAML/Proofs/ScannerPlainScalarValid.html#L4YAML.Proofs.ScannerPlainScalarValid.FlowContextPSV_of_prefix_and_new" xlink:title="ScannerPlainScalarValid.FlowContextPSV_of_prefix_and_new" target="_blank">
 <polygon fill="#fff3cd" stroke="#d4a017" points="1506.4,-298.54 1506.4,-313.46 1368.99,-324 1174.65,-324 1037.24,-313.46 1037.24,-298.54 1174.65,-288 1368.99,-288 1506.4,-298.54"/>
 <polygon fill="none" stroke="#d4a017" points="1510.4,-294.84 1510.4,-317.16 1369.14,-328 1174.5,-328 1033.24,-317.16 1033.24,-294.84 1174.5,-284 1369.14,-284 1510.4,-294.84"/>
 <text text-anchor="middle" x="1271.82" y="-302.9" font-family="Helvetica" font-size="12.00">ScannerPlainScalarValid.FlowContextPSV_of_prefix_and_new</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerPlainScalarValid.FlowContextPSV_of_prefix_and_new&#45;&gt;L4YAML.Positioned -->
 <g id="edge3" class="edge">
@@ -182,9 +215,12 @@
 <!-- L4YAML.Proofs.ScannerPlainScalarValid.flowNesting_prefix_stable -->
 <g id="node12" class="node">
 <title>L4YAML.Proofs.ScannerPlainScalarValid.flowNesting_prefix_stable</title>
+<g id="a_node12"><a xlink:href="../../../api/L4YAML/Proofs/ScannerPlainScalarValid.html#L4YAML.Proofs.ScannerPlainScalarValid.flowNesting_prefix_stable" xlink:title="ScannerPlainScalarValid.flowNesting_prefix_stable\n(ScannerPlainScalarValid)" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="757.28" cy="-477" rx="169" ry="21.43"/>
 <text text-anchor="middle" x="757.28" y="-480" font-family="Helvetica" font-size="10.00">ScannerPlainScalarValid.flowNesting_prefix_stable</text>
 <text text-anchor="middle" x="757.28" y="-469" font-family="Helvetica" font-size="10.00">(ScannerPlainScalarValid)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerPlainScalarValid.flowNesting_prefix_stable&#45;&gt;L4YAML.Positioned -->
 <g id="edge17" class="edge">
@@ -219,9 +255,12 @@
 <!-- L4YAML.Proofs.ScannerPlainScalarValid.PlainScalarsValid_of_prefix_and_new._proof_1 -->
 <g id="node13" class="node">
 <title>L4YAML.Proofs.ScannerPlainScalarValid.PlainScalarsValid_of_prefix_and_new._proof_1</title>
+<g id="a_node13"><a xlink:href="../../../api/L4YAML/Proofs/ScannerPlainScalarValid.html#L4YAML.Proofs.ScannerPlainScalarValid.PlainScalarsValid_of_prefix_and_new._proof_1" xlink:title="ScannerPlainScalarValid.PlainScalarsValid_of_prefix_and_new._proof_1\n(ScannerPlainScalarValid)" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="248.64" cy="-417" rx="232.78" ry="21.43"/>
 <text text-anchor="middle" x="248.64" y="-420" font-family="Helvetica" font-size="10.00">ScannerPlainScalarValid.PlainScalarsValid_of_prefix_and_new._proof_1</text>
 <text text-anchor="middle" x="248.64" y="-409" font-family="Helvetica" font-size="10.00">(ScannerPlainScalarValid)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerPlainScalarValid.PlainScalarsValid_of_prefix_and_new._proof_1&#45;&gt;L4YAML.Positioned -->
 <g id="edge21" class="edge">
@@ -250,9 +289,12 @@
 <!-- L4YAML.Proofs.ScannerPlainScalarValid.FlowContextPSV_of_prefix_and_new._proof_1_2 -->
 <g id="node14" class="node">
 <title>L4YAML.Proofs.ScannerPlainScalarValid.FlowContextPSV_of_prefix_and_new._proof_1_2</title>
+<g id="a_node14"><a xlink:href="../../../api/L4YAML/Proofs/ScannerPlainScalarValid.html#L4YAML.Proofs.ScannerPlainScalarValid.FlowContextPSV_of_prefix_and_new._proof_1_2" xlink:title="ScannerPlainScalarValid.FlowContextPSV_of_prefix_and_new._proof_1_2\n(ScannerPlainScalarValid)" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="757.28" cy="-597" rx="239" ry="21.43"/>
 <text text-anchor="middle" x="757.28" y="-600" font-family="Helvetica" font-size="10.00">ScannerPlainScalarValid.FlowContextPSV_of_prefix_and_new._proof_1_2</text>
 <text text-anchor="middle" x="757.28" y="-589" font-family="Helvetica" font-size="10.00">(ScannerPlainScalarValid)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerPlainScalarValid.FlowContextPSV_of_prefix_and_new._proof_1_2&#45;&gt;L4YAML.Positioned -->
 <g id="edge23" class="edge">
@@ -275,9 +317,12 @@
 <!-- L4YAML.Proofs.ScannerPlainScalarValid.FlowContextPSV_of_prefix_and_new._proof_1_3 -->
 <g id="node15" class="node">
 <title>L4YAML.Proofs.ScannerPlainScalarValid.FlowContextPSV_of_prefix_and_new._proof_1_3</title>
+<g id="a_node15"><a xlink:href="../../../api/L4YAML/Proofs/ScannerPlainScalarValid.html#L4YAML.Proofs.ScannerPlainScalarValid.FlowContextPSV_of_prefix_and_new._proof_1_3" xlink:title="ScannerPlainScalarValid.FlowContextPSV_of_prefix_and_new._proof_1_3\n(ScannerPlainScalarValid)" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="757.28" cy="-417" rx="239" ry="21.43"/>
 <text text-anchor="middle" x="757.28" y="-420" font-family="Helvetica" font-size="10.00">ScannerPlainScalarValid.FlowContextPSV_of_prefix_and_new._proof_1_3</text>
 <text text-anchor="middle" x="757.28" y="-409" font-family="Helvetica" font-size="10.00">(ScannerPlainScalarValid)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerPlainScalarValid.FlowContextPSV_of_prefix_and_new._proof_1_3&#45;&gt;L4YAML.Positioned -->
 <g id="edge25" class="edge">
@@ -300,9 +345,12 @@
 <!-- L4YAML.Proofs.ScannerPlainScalarValid.FlowContextPSV_of_prefix_and_new._proof_1_1 -->
 <g id="node16" class="node">
 <title>L4YAML.Proofs.ScannerPlainScalarValid.FlowContextPSV_of_prefix_and_new._proof_1_1</title>
+<g id="a_node16"><a xlink:href="../../../api/L4YAML/Proofs/ScannerPlainScalarValid.html#L4YAML.Proofs.ScannerPlainScalarValid.FlowContextPSV_of_prefix_and_new._proof_1_1" xlink:title="ScannerPlainScalarValid.FlowContextPSV_of_prefix_and_new._proof_1_1\n(ScannerPlainScalarValid)" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="757.28" cy="-537" rx="239" ry="21.43"/>
 <text text-anchor="middle" x="757.28" y="-540" font-family="Helvetica" font-size="10.00">ScannerPlainScalarValid.FlowContextPSV_of_prefix_and_new._proof_1_1</text>
 <text text-anchor="middle" x="757.28" y="-529" font-family="Helvetica" font-size="10.00">(ScannerPlainScalarValid)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerPlainScalarValid.FlowContextPSV_of_prefix_and_new._proof_1_1&#45;&gt;L4YAML.Positioned -->
 <g id="edge27" class="edge">
@@ -325,8 +373,11 @@
 <!-- Decidable.byContradiction -->
 <g id="node17" class="node">
 <title>Decidable.byContradiction</title>
+<g id="a_node17"><a xlink:href="../../../api/Init/Core.html#Decidable.byContradiction" xlink:title="Decidable.byContradiction" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="757.28" cy="-302" rx="77.23" ry="18"/>
 <text text-anchor="middle" x="757.28" y="-299.5" font-family="Helvetica" font-size="10.00">Decidable.byContradiction</text>
+</a>
+</g>
 </g>
 <!-- Decidable.byContradiction&#45;&gt;L4YAML.Proofs.ScannerPlainScalarValid.FlowContextPSV_of_prefix_and_new -->
 <g id="edge16" class="edge">

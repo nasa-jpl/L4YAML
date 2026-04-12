@@ -35,58 +35,82 @@
 <!-- L4YAML.Scanner.ScannerState.input -->
 <g id="node1" class="node">
 <title>L4YAML.Scanner.ScannerState.input</title>
+<g id="a_node1"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.input" xlink:title="ScannerState.input\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="554.5,-516 454.5,-516 454.5,-480 554.5,-480 554.5,-516"/>
 <text text-anchor="middle" x="504.5" y="-501" font-family="Helvetica" font-size="10.00">ScannerState.input</text>
 <text text-anchor="middle" x="504.5" y="-490" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.advance -->
 <g id="node2" class="node">
 <title>L4YAML.Scanner.ScannerState.advance</title>
+<g id="a_node2"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.advance" xlink:title="ScannerState.advance\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="848.75,-300 733.75,-300 733.75,-264 848.75,-264 848.75,-300"/>
 <text text-anchor="middle" x="791.25" y="-285" font-family="Helvetica" font-size="10.00">ScannerState.advance</text>
 <text text-anchor="middle" x="791.25" y="-274" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.line -->
 <g id="node3" class="node">
 <title>L4YAML.Scanner.ScannerState.line</title>
+<g id="a_node3"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.line" xlink:title="ScannerState.line\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="838.25,-462 744.25,-462 744.25,-426 838.25,-426 838.25,-462"/>
 <text text-anchor="middle" x="791.25" y="-447" font-family="Helvetica" font-size="10.00">ScannerState.line</text>
 <text text-anchor="middle" x="791.25" y="-436" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.peek? -->
 <g id="node4" class="node">
 <title>L4YAML.Scanner.ScannerState.peek?</title>
+<g id="a_node4"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.peek?" xlink:title="ScannerState.peek?\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="843.25,-246 739.25,-246 739.25,-210 843.25,-210 843.25,-246"/>
 <text text-anchor="middle" x="791.25" y="-231" font-family="Helvetica" font-size="10.00">ScannerState.peek?</text>
 <text text-anchor="middle" x="791.25" y="-220" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState -->
 <g id="node5" class="node">
 <title>L4YAML.Scanner.ScannerState</title>
+<g id="a_node5"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState" xlink:title="ScannerState\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="829.25,-516 753.25,-516 753.25,-480 829.25,-480 829.25,-516"/>
 <text text-anchor="middle" x="791.25" y="-501" font-family="Helvetica" font-size="10.00">ScannerState</text>
 <text text-anchor="middle" x="791.25" y="-490" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.offset -->
 <g id="node6" class="node">
 <title>L4YAML.Scanner.ScannerState.offset</title>
+<g id="a_node6"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.offset" xlink:title="ScannerState.offset\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="842.75,-354 739.75,-354 739.75,-318 842.75,-318 842.75,-354"/>
 <text text-anchor="middle" x="791.25" y="-339" font-family="Helvetica" font-size="10.00">ScannerState.offset</text>
 <text text-anchor="middle" x="791.25" y="-328" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.inputEnd -->
 <g id="node7" class="node">
 <title>L4YAML.Scanner.ScannerState.inputEnd</title>
+<g id="a_node7"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.inputEnd" xlink:title="ScannerState.inputEnd\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="849.75,-408 732.75,-408 732.75,-372 849.75,-372 849.75,-408"/>
 <text text-anchor="middle" x="791.25" y="-393" font-family="Helvetica" font-size="10.00">ScannerState.inputEnd</text>
 <text text-anchor="middle" x="791.25" y="-382" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.EmitterScannability.advance_line_of_peek -->
 <g id="node8" class="node">
 <title>L4YAML.Proofs.EmitterScannability.advance_line_of_peek</title>
+<g id="a_node8"><a xlink:href="../../../api/L4YAML/Proofs/EmitterScannability.html#L4YAML.Proofs.EmitterScannability.advance_line_of_peek" xlink:title="EmitterScannability.advance_line_of_peek" target="_blank">
 <polygon fill="#fff3cd" stroke="#d4a017" points="667.99,-134.54 667.99,-149.46 572.22,-160 436.78,-160 341.02,-149.46 341.02,-134.54 436.78,-124 572.22,-124 667.99,-134.54"/>
 <polygon fill="none" stroke="#d4a017" points="671.99,-130.96 671.99,-153.04 572.44,-164 436.56,-164 337.01,-153.04 337.01,-130.96 436.56,-120 572.44,-120 671.99,-130.96"/>
 <text text-anchor="middle" x="504.5" y="-138.9" font-family="Helvetica" font-size="12.00">EmitterScannability.advance_line_of_peek</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.EmitterScannability.advance_line_of_peek&#45;&gt;L4YAML.Scanner.ScannerState.advance -->
 <g id="edge1" class="edge">
@@ -133,9 +157,12 @@
 <!-- L4YAML.Proofs.CouplingBridge.advance_line_non_newline -->
 <g id="node9" class="node">
 <title>L4YAML.Proofs.CouplingBridge.advance_line_non_newline</title>
+<g id="a_node9"><a xlink:href="../../../api/L4YAML/Proofs/CouplingBridge.html#L4YAML.Proofs.CouplingBridge.advance_line_non_newline" xlink:title="CouplingBridge.advance_line_non_newline\n(CouplingBridge)" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="158.13" cy="-357" rx="142.26" ry="21.43"/>
 <text text-anchor="middle" x="158.13" y="-360" font-family="Helvetica" font-size="10.00">CouplingBridge.advance_line_non_newline</text>
 <text text-anchor="middle" x="158.13" y="-349" font-family="Helvetica" font-size="10.00">(CouplingBridge)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.CouplingBridge.advance_line_non_newline&#45;&gt;L4YAML.Scanner.ScannerState.input -->
 <g id="edge17" class="edge">
@@ -182,8 +209,11 @@
 <!-- instLawfulBEqChar -->
 <g id="node10" class="node">
 <title>instLawfulBEqChar</title>
+<g id="a_node10"><a xlink:href="../../../api/Init/Core.html#instLawfulBEqChar" xlink:title="instLawfulBEqChar" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="158.13" cy="-250" rx="59.41" ry="18"/>
 <text text-anchor="middle" x="158.13" y="-247.5" font-family="Helvetica" font-size="10.00">instLawfulBEqChar</text>
+</a>
+</g>
 </g>
 <!-- instLawfulBEqChar&#45;&gt;L4YAML.Proofs.EmitterScannability.advance_line_of_peek -->
 <g id="edge8" class="edge">
@@ -194,8 +224,11 @@
 <!-- Option.some.inj -->
 <g id="node11" class="node">
 <title>Option.some.inj</title>
+<g id="a_node11"><a xlink:href="../../../api/Init/Core.html#Option.some.inj" xlink:title="Option.some.inj" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="158.13" cy="-196" rx="50.07" ry="18"/>
 <text text-anchor="middle" x="158.13" y="-193.5" font-family="Helvetica" font-size="10.00">Option.some.inj</text>
+</a>
+</g>
 </g>
 <!-- Option.some.inj&#45;&gt;L4YAML.Proofs.EmitterScannability.advance_line_of_peek -->
 <g id="edge9" class="edge">
@@ -206,8 +239,11 @@
 <!-- of_eq_true -->
 <g id="node12" class="node">
 <title>of_eq_true</title>
+<g id="a_node12"><a xlink:href="../../../api/Init/SimpLemmas.html#of_eq_true" xlink:title="of_eq_true" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="158.13" cy="-142" rx="36.49" ry="18"/>
 <text text-anchor="middle" x="158.13" y="-139.5" font-family="Helvetica" font-size="10.00">of_eq_true</text>
+</a>
+</g>
 </g>
 <!-- of_eq_true&#45;&gt;L4YAML.Proofs.EmitterScannability.advance_line_of_peek -->
 <g id="edge10" class="edge">
@@ -218,8 +254,11 @@
 <!-- beq_iff_eq._simp_1 -->
 <g id="node13" class="node">
 <title>beq_iff_eq._simp_1</title>
+<g id="a_node13"><a xlink:href="../../../api/Init/Core.html#beq_iff_eq._simp_1" xlink:title="beq_iff_eq._simp_1" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="158.13" cy="-88" rx="59.41" ry="18"/>
 <text text-anchor="middle" x="158.13" y="-85.5" font-family="Helvetica" font-size="10.00">beq_iff_eq._simp_1</text>
+</a>
+</g>
 </g>
 <!-- beq_iff_eq._simp_1&#45;&gt;L4YAML.Proofs.EmitterScannability.advance_line_of_peek -->
 <g id="edge11" class="edge">
@@ -230,8 +269,11 @@
 <!-- not_false_eq_true -->
 <g id="node14" class="node">
 <title>not_false_eq_true</title>
+<g id="a_node14"><a xlink:href="../../../api/Init/SimpLemmas.html#not_false_eq_true" xlink:title="not_false_eq_true" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="158.13" cy="-34" rx="55.17" ry="18"/>
 <text text-anchor="middle" x="158.13" y="-31.5" font-family="Helvetica" font-size="10.00">not_false_eq_true</text>
+</a>
+</g>
 </g>
 <!-- not_false_eq_true&#45;&gt;L4YAML.Proofs.EmitterScannability.advance_line_of_peek -->
 <g id="edge12" class="edge">

@@ -24,14 +24,20 @@
 <!-- L4YAML.Scanner.ScannerState.input -->
 <g id="node1" class="node">
 <title>L4YAML.Scanner.ScannerState.input</title>
+<g id="a_node1"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.input" xlink:title="ScannerState.input" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="420,-133 320,-133 320,-97 420,-97 420,-133"/>
 <text text-anchor="middle" x="370" y="-112.5" font-family="Helvetica" font-size="10.00">ScannerState.input</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState -->
 <g id="node2" class="node">
 <title>L4YAML.Scanner.ScannerState</title>
+<g id="a_node2"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState" xlink:title="ScannerState" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="408,-52 332,-52 332,-16 408,-16 408,-52"/>
 <text text-anchor="middle" x="370" y="-31.5" font-family="Helvetica" font-size="10.00">ScannerState</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.input&#45;&gt;L4YAML.Scanner.ScannerState -->
 <g id="edge2" class="edge">
@@ -43,8 +49,11 @@
 <!-- L4YAML.Scanner.unwindIndentsLoop -->
 <g id="node3" class="node">
 <title>L4YAML.Scanner.unwindIndentsLoop</title>
+<g id="a_node3"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.unwindIndentsLoop" xlink:title="unwindIndentsLoop" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="539.5,-133 438.5,-133 438.5,-97 539.5,-97 539.5,-133"/>
 <text text-anchor="middle" x="489" y="-112.5" font-family="Helvetica" font-size="10.00">unwindIndentsLoop</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.unwindIndentsLoop&#45;&gt;L4YAML.Scanner.ScannerState -->
 <g id="edge6" class="edge">
@@ -56,8 +65,11 @@
 <!-- L4YAML.Scanner.unwindIndentsLoop.eq_def -->
 <g id="node4" class="node">
 <title>L4YAML.Scanner.unwindIndentsLoop.eq_def</title>
+<g id="a_node4"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.unwindIndentsLoop.eq_def" xlink:title="unwindIndentsLoop.eq_def" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="202" cy="-115" rx="78.08" ry="18"/>
 <text text-anchor="middle" x="202" y="-112.5" font-family="Helvetica" font-size="10.00">unwindIndentsLoop.eq_def</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.unwindIndentsLoop.eq_def&#45;&gt;L4YAML.Scanner.ScannerState -->
 <g id="edge4" class="edge">
@@ -69,9 +81,12 @@
 <!-- L4YAML.Proofs.ScanStrictCoupling.unwindIndentsLoop_input -->
 <g id="node5" class="node">
 <title>L4YAML.Proofs.ScanStrictCoupling.unwindIndentsLoop_input</title>
+<g id="a_node5"><a xlink:href="../../../api/L4YAML/Proofs/ScanStrictCoupling.html#L4YAML.Proofs.ScanStrictCoupling.unwindIndentsLoop_input" xlink:title="ScanStrictCoupling.unwindIndentsLoop_input" target="_blank">
 <polygon fill="#fff3cd" stroke="#d4a017" points="292.21,-212.54 292.21,-227.46 212.42,-238 99.58,-238 19.79,-227.46 19.79,-212.54 99.58,-202 212.42,-202 292.21,-212.54"/>
 <polygon fill="none" stroke="#d4a017" points="296.21,-209.04 296.21,-230.96 212.68,-242 99.32,-242 15.79,-230.96 15.79,-209.04 99.32,-198 212.68,-198 296.21,-209.04"/>
 <text text-anchor="middle" x="156" y="-217.5" font-family="Helvetica" font-size="10.00">ScanStrictCoupling.unwindIndentsLoop_input</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScanStrictCoupling.unwindIndentsLoop_input&#45;&gt;L4YAML.Scanner.ScannerState.input -->
 <g id="edge1" class="edge">

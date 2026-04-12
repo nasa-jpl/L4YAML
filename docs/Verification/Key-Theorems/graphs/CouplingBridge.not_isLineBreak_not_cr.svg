@@ -30,16 +30,22 @@
 <!-- L4YAML.CharPredicates.isLineBreakBool -->
 <g id="node1" class="node">
 <title>L4YAML.CharPredicates.isLineBreakBool</title>
+<g id="a_node1"><a xlink:href="../../../api/L4YAML/CharPredicates.html#L4YAML.CharPredicates.isLineBreakBool" xlink:title="CharPredicates.isLineBreakBool\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="878.48,-294 720.48,-294 720.48,-258 878.48,-258 878.48,-294"/>
 <text text-anchor="middle" x="799.48" y="-279" font-family="Helvetica" font-size="10.00">CharPredicates.isLineBreakBool</text>
 <text text-anchor="middle" x="799.48" y="-268" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.CouplingBridge.not_isLineBreak_not_cr -->
 <g id="node2" class="node">
 <title>L4YAML.Proofs.CouplingBridge.not_isLineBreak_not_cr</title>
+<g id="a_node2"><a xlink:href="../../../api/L4YAML/Proofs/CouplingBridge.html#L4YAML.Proofs.CouplingBridge.not_isLineBreak_not_cr" xlink:title="CouplingBridge.not_isLineBreak_not_cr" target="_blank">
 <polygon fill="#fff3cd" stroke="#d4a017" points="655.24,-268.54 655.24,-283.46 565.61,-294 438.85,-294 349.22,-283.46 349.22,-268.54 438.85,-258 565.61,-258 655.24,-268.54"/>
 <polygon fill="none" stroke="#d4a017" points="659.23,-264.99 659.23,-287.01 565.84,-298 438.62,-298 345.23,-287.01 345.23,-264.99 438.62,-254 565.84,-254 659.23,-264.99"/>
 <text text-anchor="middle" x="502.23" y="-272.9" font-family="Helvetica" font-size="12.00">CouplingBridge.not_isLineBreak_not_cr</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.CouplingBridge.not_isLineBreak_not_cr&#45;&gt;L4YAML.CharPredicates.isLineBreakBool -->
 <g id="edge1" class="edge">
@@ -51,8 +57,11 @@
 <!-- Bool.or_true -->
 <g id="node3" class="node">
 <title>Bool.or_true</title>
+<g id="a_node3"><a xlink:href="../../../api/Init/SimpLemmas.html#Bool.or_true" xlink:title="Bool.or_true" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="161.99" cy="-520" rx="40.74" ry="18"/>
 <text text-anchor="middle" x="161.99" y="-517.5" font-family="Helvetica" font-size="10.00">Bool.or_true</text>
+</a>
+</g>
 </g>
 <!-- Bool.or_true&#45;&gt;L4YAML.Proofs.CouplingBridge.not_isLineBreak_not_cr -->
 <g id="edge2" class="edge">
@@ -63,8 +72,11 @@
 <!-- BEq.rfl -->
 <g id="node4" class="node">
 <title>BEq.rfl</title>
+<g id="a_node4"><a xlink:href="../../../api/Init/Core.html#BEq.rfl" xlink:title="BEq.rfl" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="161.99" cy="-466" rx="27.84" ry="18"/>
 <text text-anchor="middle" x="161.99" y="-463.5" font-family="Helvetica" font-size="10.00">BEq.rfl</text>
+</a>
+</g>
 </g>
 <!-- BEq.rfl&#45;&gt;L4YAML.Proofs.CouplingBridge.not_isLineBreak_not_cr -->
 <g id="edge3" class="edge">
@@ -75,8 +87,11 @@
 <!-- Char.instTransOrd -->
 <g id="node5" class="node">
 <title>Char.instTransOrd</title>
+<g id="a_node5"><a xlink:href="../../../api/Init/Data/Ord/String.html#Char.instTransOrd" xlink:title="Char.instTransOrd" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="161.99" cy="-412" rx="56.52" ry="18"/>
 <text text-anchor="middle" x="161.99" y="-409.5" font-family="Helvetica" font-size="10.00">Char.instTransOrd</text>
+</a>
+</g>
 </g>
 <!-- Char.instTransOrd&#45;&gt;L4YAML.Proofs.CouplingBridge.not_isLineBreak_not_cr -->
 <g id="edge4" class="edge">
@@ -87,8 +102,11 @@
 <!-- instLawfulBEqChar -->
 <g id="node6" class="node">
 <title>instLawfulBEqChar</title>
+<g id="a_node6"><a xlink:href="../../../api/Init/Core.html#instLawfulBEqChar" xlink:title="instLawfulBEqChar" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="161.99" cy="-358" rx="59.41" ry="18"/>
 <text text-anchor="middle" x="161.99" y="-355.5" font-family="Helvetica" font-size="10.00">instLawfulBEqChar</text>
+</a>
+</g>
 </g>
 <!-- instLawfulBEqChar&#45;&gt;L4YAML.Proofs.CouplingBridge.not_isLineBreak_not_cr -->
 <g id="edge5" class="edge">
@@ -99,8 +117,11 @@
 <!-- not_true_eq_false -->
 <g id="node7" class="node">
 <title>not_true_eq_false</title>
+<g id="a_node7"><a xlink:href="../../../api/Init/SimpLemmas.html#not_true_eq_false" xlink:title="not_true_eq_false" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="161.99" cy="-304" rx="55.17" ry="18"/>
 <text text-anchor="middle" x="161.99" y="-301.5" font-family="Helvetica" font-size="10.00">not_true_eq_false</text>
+</a>
+</g>
 </g>
 <!-- not_true_eq_false&#45;&gt;L4YAML.Proofs.CouplingBridge.not_isLineBreak_not_cr -->
 <g id="edge6" class="edge">
@@ -111,8 +132,11 @@
 <!-- Std.LawfulBEqOrd.equivBEq -->
 <g id="node8" class="node">
 <title>Std.LawfulBEqOrd.equivBEq</title>
+<g id="a_node8"><a xlink:href="../../../api/Init/Data/Order/Ord.html#Std.LawfulBEqOrd.equivBEq" xlink:title="Std.LawfulBEqOrd.equivBEq" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="161.99" cy="-250" rx="84.36" ry="18"/>
 <text text-anchor="middle" x="161.99" y="-247.5" font-family="Helvetica" font-size="10.00">Std.LawfulBEqOrd.equivBEq</text>
+</a>
+</g>
 </g>
 <!-- Std.LawfulBEqOrd.equivBEq&#45;&gt;L4YAML.Proofs.CouplingBridge.not_isLineBreak_not_cr -->
 <g id="edge7" class="edge">
@@ -123,8 +147,11 @@
 <!-- EquivBEq.toReflBEq -->
 <g id="node9" class="node">
 <title>EquivBEq.toReflBEq</title>
+<g id="a_node9"><a xlink:href="../../../api/Init/Data/BEq.html#EquivBEq.toReflBEq" xlink:title="EquivBEq.toReflBEq" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="161.99" cy="-196" rx="62.97" ry="18"/>
 <text text-anchor="middle" x="161.99" y="-193.5" font-family="Helvetica" font-size="10.00">EquivBEq.toReflBEq</text>
+</a>
+</g>
 </g>
 <!-- EquivBEq.toReflBEq&#45;&gt;L4YAML.Proofs.CouplingBridge.not_isLineBreak_not_cr -->
 <g id="edge8" class="edge">
@@ -135,8 +162,11 @@
 <!-- eq_self -->
 <g id="node10" class="node">
 <title>eq_self</title>
+<g id="a_node10"><a xlink:href="../../../api/Init/SimpLemmas.html#eq_self" xlink:title="eq_self" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="161.99" cy="-142" rx="28.01" ry="18"/>
 <text text-anchor="middle" x="161.99" y="-139.5" font-family="Helvetica" font-size="10.00">eq_self</text>
+</a>
+</g>
 </g>
 <!-- eq_self&#45;&gt;L4YAML.Proofs.CouplingBridge.not_isLineBreak_not_cr -->
 <g id="edge9" class="edge">
@@ -147,8 +177,11 @@
 <!-- Char.instLawfulEqOrd -->
 <g id="node11" class="node">
 <title>Char.instLawfulEqOrd</title>
+<g id="a_node11"><a xlink:href="../../../api/Init/Data/Ord/String.html#Char.instLawfulEqOrd" xlink:title="Char.instLawfulEqOrd" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="161.99" cy="-88" rx="66.54" ry="18"/>
 <text text-anchor="middle" x="161.99" y="-85.5" font-family="Helvetica" font-size="10.00">Char.instLawfulEqOrd</text>
+</a>
+</g>
 </g>
 <!-- Char.instLawfulEqOrd&#45;&gt;L4YAML.Proofs.CouplingBridge.not_isLineBreak_not_cr -->
 <g id="edge10" class="edge">
@@ -159,8 +192,11 @@
 <!-- Std.instLawfulBEqCmpOfLawfulEqCmpOfLawfulBEq -->
 <g id="node12" class="node">
 <title>Std.instLawfulBEqCmpOfLawfulEqCmpOfLawfulBEq</title>
+<g id="a_node12"><a xlink:href="../../../api/Init/Data/Order/Ord.html#Std.instLawfulBEqCmpOfLawfulEqCmpOfLawfulBEq" xlink:title="Std.instLawfulBEqCmpOfLawfulEqCmpOfLawfulBEq" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="161.99" cy="-34" rx="145.98" ry="18"/>
 <text text-anchor="middle" x="161.99" y="-31.5" font-family="Helvetica" font-size="10.00">Std.instLawfulBEqCmpOfLawfulEqCmpOfLawfulBEq</text>
+</a>
+</g>
 </g>
 <!-- Std.instLawfulBEqCmpOfLawfulEqCmpOfLawfulBEq&#45;&gt;L4YAML.Proofs.CouplingBridge.not_isLineBreak_not_cr -->
 <g id="edge11" class="edge">

@@ -24,14 +24,20 @@
 <!-- L4YAML.YamlValue._sizeOf_inst -->
 <g id="node1" class="node">
 <title>L4YAML.YamlValue._sizeOf_inst</title>
+<g id="a_node1"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.YamlValue._sizeOf_inst" xlink:title="YamlValue._sizeOf_inst" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="369.5,-133 250.5,-133 250.5,-97 369.5,-97 369.5,-133"/>
 <text text-anchor="middle" x="310" y="-112.5" font-family="Helvetica" font-size="10.00">YamlValue._sizeOf_inst</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.YamlValue -->
 <g id="node2" class="node">
 <title>L4YAML.YamlValue</title>
+<g id="a_node2"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.YamlValue" xlink:title="YamlValue" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="326,-52 264,-52 264,-16 326,-16 326,-52"/>
 <text text-anchor="middle" x="295" y="-31.5" font-family="Helvetica" font-size="10.00">YamlValue</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.YamlValue._sizeOf_inst&#45;&gt;L4YAML.YamlValue -->
 <g id="edge2" class="edge">
@@ -43,9 +49,12 @@
 <!-- L4YAML.YamlValue.mapping.sizeOf_spec -->
 <g id="node3" class="node">
 <title>L4YAML.YamlValue.mapping.sizeOf_spec</title>
+<g id="a_node3"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.YamlValue.mapping.sizeOf_spec" xlink:title="YamlValue.mapping.sizeOf_spec" target="_blank">
 <polygon fill="#fff3cd" stroke="#d4a017" points="222.13,-212.54 222.13,-227.46 162.89,-238 79.11,-238 19.87,-227.46 19.87,-212.54 79.11,-202 162.89,-202 222.13,-212.54"/>
 <polygon fill="none" stroke="#d4a017" points="226.12,-209.19 226.12,-230.81 163.24,-242 78.76,-242 15.88,-230.81 15.88,-209.19 78.76,-198 163.24,-198 226.12,-209.19"/>
 <text text-anchor="middle" x="121" y="-217.5" font-family="Helvetica" font-size="10.00">YamlValue.mapping.sizeOf_spec</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.YamlValue.mapping.sizeOf_spec&#45;&gt;L4YAML.YamlValue._sizeOf_inst -->
 <g id="edge1" class="edge">
@@ -57,8 +66,11 @@
 <!-- L4YAML.YamlValue._sizeOf_3_eq -->
 <g id="node4" class="node">
 <title>L4YAML.YamlValue._sizeOf_3_eq</title>
+<g id="a_node4"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.YamlValue._sizeOf_3_eq" xlink:title="YamlValue._sizeOf_3_eq" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="144" cy="-115" rx="73.67" ry="18"/>
 <text text-anchor="middle" x="144" y="-112.5" font-family="Helvetica" font-size="10.00">YamlValue._sizeOf_3_eq</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.YamlValue.mapping.sizeOf_spec&#45;&gt;L4YAML.YamlValue._sizeOf_3_eq -->
 <g id="edge3" class="edge">

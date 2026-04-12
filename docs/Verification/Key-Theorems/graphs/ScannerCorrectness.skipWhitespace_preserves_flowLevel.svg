@@ -30,72 +30,102 @@
 <!-- L4YAML.Scanner.skipWhitespaceLoop -->
 <g id="node1" class="node">
 <title>L4YAML.Scanner.skipWhitespaceLoop</title>
+<g id="a_node1"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.skipWhitespaceLoop" xlink:title="skipWhitespaceLoop\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="669.71,-432.96 562.71,-432.96 562.71,-396.96 669.71,-396.96 669.71,-432.96"/>
 <text text-anchor="middle" x="616.21" y="-417.96" font-family="Helvetica" font-size="10.00">skipWhitespaceLoop</text>
 <text text-anchor="middle" x="616.21" y="-406.96" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.advance -->
 <g id="node2" class="node">
 <title>L4YAML.Scanner.ScannerState.advance</title>
+<g id="a_node2"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.advance" xlink:title="ScannerState.advance\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="673.71,-270.96 558.71,-270.96 558.71,-234.96 673.71,-234.96 673.71,-270.96"/>
 <text text-anchor="middle" x="616.21" y="-255.96" font-family="Helvetica" font-size="10.00">ScannerState.advance</text>
 <text text-anchor="middle" x="616.21" y="-244.96" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.peek? -->
 <g id="node3" class="node">
 <title>L4YAML.Scanner.ScannerState.peek?</title>
+<g id="a_node3"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.peek?" xlink:title="ScannerState.peek?\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="668.21,-378.96 564.21,-378.96 564.21,-342.96 668.21,-342.96 668.21,-378.96"/>
 <text text-anchor="middle" x="616.21" y="-363.96" font-family="Helvetica" font-size="10.00">ScannerState.peek?</text>
 <text text-anchor="middle" x="616.21" y="-352.96" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.flowLevel -->
 <g id="node4" class="node">
 <title>L4YAML.Scanner.ScannerState.flowLevel</title>
+<g id="a_node4"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.flowLevel" xlink:title="ScannerState.flowLevel\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1021.42,-270.96 902.42,-270.96 902.42,-234.96 1021.42,-234.96 1021.42,-270.96"/>
 <text text-anchor="middle" x="961.92" y="-255.96" font-family="Helvetica" font-size="10.00">ScannerState.flowLevel</text>
 <text text-anchor="middle" x="961.92" y="-244.96" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.skipWhitespaceLoop.match_1 -->
 <g id="node5" class="node">
 <title>L4YAML.Scanner.skipWhitespaceLoop.match_1</title>
+<g id="a_node5"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.skipWhitespaceLoop.match_1" xlink:title="skipWhitespaceLoop.match_1\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="690.21,-324.96 542.21,-324.96 542.21,-288.96 690.21,-288.96 690.21,-324.96"/>
 <text text-anchor="middle" x="616.21" y="-309.96" font-family="Helvetica" font-size="10.00">skipWhitespaceLoop.match_1</text>
 <text text-anchor="middle" x="616.21" y="-298.96" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState -->
 <g id="node6" class="node">
 <title>L4YAML.Scanner.ScannerState</title>
+<g id="a_node6"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState" xlink:title="ScannerState\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="999.92,-324.96 923.92,-324.96 923.92,-288.96 999.92,-288.96 999.92,-324.96"/>
 <text text-anchor="middle" x="961.92" y="-309.96" font-family="Helvetica" font-size="10.00">ScannerState</text>
 <text text-anchor="middle" x="961.92" y="-298.96" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.peekAt?Loop.match_1 -->
 <g id="node7" class="node">
 <title>L4YAML.Scanner.ScannerState.peekAt?Loop.match_1</title>
+<g id="a_node7"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.peekAt?Loop.match_1" xlink:title="ScannerState.peekAt?Loop.match_1\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="704.21,-540.96 528.21,-540.96 528.21,-504.96 704.21,-504.96 704.21,-540.96"/>
 <text text-anchor="middle" x="616.21" y="-525.96" font-family="Helvetica" font-size="10.00">ScannerState.peekAt?Loop.match_1</text>
 <text text-anchor="middle" x="616.21" y="-514.96" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.skipWhitespace -->
 <g id="node8" class="node">
 <title>L4YAML.Scanner.skipWhitespace</title>
+<g id="a_node8"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.skipWhitespace" xlink:title="skipWhitespace\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="1004.92,-378.96 918.92,-378.96 918.92,-342.96 1004.92,-342.96 1004.92,-378.96"/>
 <text text-anchor="middle" x="961.92" y="-363.96" font-family="Helvetica" font-size="10.00">skipWhitespace</text>
 <text text-anchor="middle" x="961.92" y="-352.96" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.CharPredicates.isWhiteSpaceBool -->
 <g id="node9" class="node">
 <title>L4YAML.CharPredicates.isWhiteSpaceBool</title>
+<g id="a_node9"><a xlink:href="../../../api/L4YAML/CharPredicates.html#L4YAML.CharPredicates.isWhiteSpaceBool" xlink:title="CharPredicates.isWhiteSpaceBool\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="699.71,-486.96 532.71,-486.96 532.71,-450.96 699.71,-450.96 699.71,-486.96"/>
 <text text-anchor="middle" x="616.21" y="-471.96" font-family="Helvetica" font-size="10.00">CharPredicates.isWhiteSpaceBool</text>
 <text text-anchor="middle" x="616.21" y="-460.96" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerCorrectness.skipWhitespace_preserves_flowLevel -->
 <g id="node10" class="node">
 <title>L4YAML.Proofs.ScannerCorrectness.skipWhitespace_preserves_flowLevel</title>
+<g id="a_node10"><a xlink:href="../../../api/L4YAML/Proofs/ScannerCorrectness.html#L4YAML.Proofs.ScannerCorrectness.skipWhitespace_preserves_flowLevel" xlink:title="ScannerCorrectness.skipWhitespace_preserves_flowLevel" target="_blank">
 <polygon fill="#fff3cd" stroke="#d4a017" points="837.63,-129.51 837.63,-144.42 707.93,-154.96 524.49,-154.96 394.79,-144.42 394.79,-129.51 524.49,-118.96 707.93,-118.96 837.63,-129.51"/>
 <polygon fill="none" stroke="#d4a017" points="841.64,-125.82 841.64,-148.11 708.09,-158.96 524.33,-158.96 390.78,-148.11 390.78,-125.82 524.33,-114.96 708.09,-114.96 841.64,-125.82"/>
 <text text-anchor="middle" x="616.21" y="-133.86" font-family="Helvetica" font-size="12.00">ScannerCorrectness.skipWhitespace_preserves_flowLevel</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerCorrectness.skipWhitespace_preserves_flowLevel&#45;&gt;L4YAML.Scanner.ScannerState.flowLevel -->
 <g id="edge3" class="edge">
@@ -121,9 +151,12 @@
 <!-- L4YAML.Scanner.skipWhitespaceLoop.eq_def -->
 <g id="node11" class="node">
 <title>L4YAML.Scanner.skipWhitespaceLoop.eq_def</title>
+<g id="a_node11"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.skipWhitespaceLoop.eq_def" xlink:title="skipWhitespaceLoop.eq_def\n(Scanner)" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="185" cy="-247.96" rx="98.99" ry="21.43"/>
 <text text-anchor="middle" x="185" y="-250.96" font-family="Helvetica" font-size="10.00">skipWhitespaceLoop.eq_def</text>
 <text text-anchor="middle" x="185" y="-239.96" font-family="Helvetica" font-size="10.00">(Scanner)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.skipWhitespaceLoop.eq_def&#45;&gt;L4YAML.Scanner.skipWhitespaceLoop -->
 <g id="edge8" class="edge">
@@ -176,9 +209,12 @@
 <!-- L4YAML.Proofs.ScannerCorrectness.advance_preserves_flowLevel -->
 <g id="node12" class="node">
 <title>L4YAML.Proofs.ScannerCorrectness.advance_preserves_flowLevel</title>
+<g id="a_node12"><a xlink:href="../../../api/L4YAML/Proofs/ScannerCorrectness.html#L4YAML.Proofs.ScannerCorrectness.advance_preserves_flowLevel" xlink:title="ScannerCorrectness.advance_preserves_flowLevel\n(ScannerCorrectness)" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="185" cy="-187.96" rx="169" ry="21.43"/>
 <text text-anchor="middle" x="185" y="-190.96" font-family="Helvetica" font-size="10.00">ScannerCorrectness.advance_preserves_flowLevel</text>
 <text text-anchor="middle" x="185" y="-179.96" font-family="Helvetica" font-size="10.00">(ScannerCorrectness)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerCorrectness.advance_preserves_flowLevel&#45;&gt;L4YAML.Scanner.ScannerState.advance -->
 <g id="edge13" class="edge">

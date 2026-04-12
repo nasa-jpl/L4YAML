@@ -30,30 +30,42 @@
 <!-- L4YAML.Scanner.ScannerState -->
 <g id="node1" class="node">
 <title>L4YAML.Scanner.ScannerState</title>
+<g id="a_node1"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState" xlink:title="ScannerState\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="772.09,-160 696.09,-160 696.09,-124 772.09,-124 772.09,-160"/>
 <text text-anchor="middle" x="734.09" y="-145" font-family="Helvetica" font-size="10.00">ScannerState</text>
 <text text-anchor="middle" x="734.09" y="-134" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.EmitterScannability.EndLineOnLine -->
 <g id="node2" class="node">
 <title>L4YAML.Proofs.EmitterScannability.EndLineOnLine</title>
+<g id="a_node2"><a xlink:href="../../../api/L4YAML/Proofs/EmitterScannability.html#L4YAML.Proofs.EmitterScannability.EndLineOnLine" xlink:title="EmitterScannability.EndLineOnLine\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="819.09,-106 649.09,-106 649.09,-70 819.09,-70 819.09,-106"/>
 <text text-anchor="middle" x="734.09" y="-91" font-family="Helvetica" font-size="10.00">EmitterScannability.EndLineOnLine</text>
 <text text-anchor="middle" x="734.09" y="-80" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.saveSimpleKey -->
 <g id="node3" class="node">
 <title>L4YAML.Scanner.saveSimpleKey</title>
+<g id="a_node3"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.saveSimpleKey" xlink:title="saveSimpleKey\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="775.59,-52 692.59,-52 692.59,-16 775.59,-16 775.59,-52"/>
 <text text-anchor="middle" x="734.09" y="-37" font-family="Helvetica" font-size="10.00">saveSimpleKey</text>
 <text text-anchor="middle" x="734.09" y="-26" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.EmitterScannability.EndLineOnLine_saveSimpleKey_flow -->
 <g id="node4" class="node">
 <title>L4YAML.Proofs.EmitterScannability.EndLineOnLine_saveSimpleKey_flow</title>
+<g id="a_node4"><a xlink:href="../../../api/L4YAML/Proofs/EmitterScannability.html#L4YAML.Proofs.EmitterScannability.EndLineOnLine_saveSimpleKey_flow" xlink:title="EmitterScannability.EndLineOnLine_saveSimpleKey_flow" target="_blank">
 <polygon fill="#fff3cd" stroke="#d4a017" points="584.3,-80.54 584.3,-95.46 456.93,-106 276.81,-106 149.44,-95.46 149.44,-80.54 276.81,-70 456.93,-70 584.3,-80.54"/>
 <polygon fill="none" stroke="#d4a017" points="588.3,-76.86 588.3,-99.14 457.1,-110 276.64,-110 145.44,-99.14 145.44,-76.86 276.64,-66 457.1,-66 588.3,-76.86"/>
 <text text-anchor="middle" x="366.87" y="-84.9" font-family="Helvetica" font-size="12.00">EmitterScannability.EndLineOnLine_saveSimpleKey_flow</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.EmitterScannability.EndLineOnLine_saveSimpleKey_flow&#45;&gt;L4YAML.Scanner.ScannerState -->
 <g id="edge2" class="edge">
@@ -79,8 +91,11 @@
 <!-- implies_congr -->
 <g id="node5" class="node">
 <title>implies_congr</title>
+<g id="a_node5"><a xlink:href="../../../api/Init/SimpLemmas.html#implies_congr" xlink:title="implies_congr" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="61.33" cy="-88" rx="45.15" ry="18"/>
 <text text-anchor="middle" x="61.33" y="-85.5" font-family="Helvetica" font-size="10.00">implies_congr</text>
+</a>
+</g>
 </g>
 <!-- implies_congr&#45;&gt;L4YAML.Proofs.EmitterScannability.EndLineOnLine_saveSimpleKey_flow -->
 <g id="edge4" class="edge">

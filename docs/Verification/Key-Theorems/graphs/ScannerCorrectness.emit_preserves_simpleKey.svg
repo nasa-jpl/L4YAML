@@ -25,44 +25,62 @@
 <!-- L4YAML.Scanner.ScannerState.simpleKey -->
 <g id="node1" class="node">
 <title>L4YAML.Scanner.ScannerState.simpleKey</title>
+<g id="a_node1"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.simpleKey" xlink:title="ScannerState.simpleKey\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="574.14,-268 450.14,-268 450.14,-232 574.14,-232 574.14,-268"/>
 <text text-anchor="middle" x="512.14" y="-253" font-family="Helvetica" font-size="10.00">ScannerState.simpleKey</text>
 <text text-anchor="middle" x="512.14" y="-242" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState.emit -->
 <g id="node2" class="node">
 <title>L4YAML.Scanner.ScannerState.emit</title>
+<g id="a_node2"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState.emit" xlink:title="ScannerState.emit\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="561.14,-214 463.14,-214 463.14,-178 561.14,-178 561.14,-214"/>
 <text text-anchor="middle" x="512.14" y="-199" font-family="Helvetica" font-size="10.00">ScannerState.emit</text>
 <text text-anchor="middle" x="512.14" y="-188" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.ScannerState -->
 <g id="node3" class="node">
 <title>L4YAML.Scanner.ScannerState</title>
+<g id="a_node3"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.ScannerState" xlink:title="ScannerState\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="550.14,-160 474.14,-160 474.14,-124 550.14,-124 550.14,-160"/>
 <text text-anchor="middle" x="512.14" y="-145" font-family="Helvetica" font-size="10.00">ScannerState</text>
 <text text-anchor="middle" x="512.14" y="-134" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.YamlToken -->
 <g id="node4" class="node">
 <title>L4YAML.YamlToken</title>
+<g id="a_node4"><a xlink:href="../../../api/L4YAML/Token.html#L4YAML.YamlToken" xlink:title="YamlToken\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="544.14,-106 480.14,-106 480.14,-70 544.14,-70 544.14,-106"/>
 <text text-anchor="middle" x="512.14" y="-91" font-family="Helvetica" font-size="10.00">YamlToken</text>
 <text text-anchor="middle" x="512.14" y="-80" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Scanner.SimpleKeyState -->
 <g id="node5" class="node">
 <title>L4YAML.Scanner.SimpleKeyState</title>
+<g id="a_node5"><a xlink:href="../../../api/L4YAML/Scanner.html#L4YAML.Scanner.SimpleKeyState" xlink:title="SimpleKeyState\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="555.14,-52 469.14,-52 469.14,-16 555.14,-16 555.14,-52"/>
 <text text-anchor="middle" x="512.14" y="-37" font-family="Helvetica" font-size="10.00">SimpleKeyState</text>
 <text text-anchor="middle" x="512.14" y="-26" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerCorrectness.emit_preserves_simpleKey -->
 <g id="node6" class="node">
 <title>L4YAML.Proofs.ScannerCorrectness.emit_preserves_simpleKey</title>
+<g id="a_node6"><a xlink:href="../../../api/L4YAML/Proofs/ScannerCorrectness.html#L4YAML.Proofs.ScannerCorrectness.emit_preserves_simpleKey" xlink:title="ScannerCorrectness.emit_preserves_simpleKey" target="_blank">
 <polygon fill="#fff3cd" stroke="#d4a017" points="385.2,-134.54 385.2,-149.46 278.22,-160 126.92,-160 19.93,-149.46 19.93,-134.54 126.92,-124 278.22,-124 385.2,-134.54"/>
 <polygon fill="none" stroke="#d4a017" points="389.2,-130.92 389.2,-153.08 278.41,-164 126.72,-164 15.93,-153.08 15.93,-130.92 126.72,-120 278.41,-120 389.2,-130.92"/>
 <text text-anchor="middle" x="202.57" y="-138.9" font-family="Helvetica" font-size="12.00">ScannerCorrectness.emit_preserves_simpleKey</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ScannerCorrectness.emit_preserves_simpleKey&#45;&gt;L4YAML.Scanner.ScannerState.simpleKey -->
 <g id="edge5" class="edge">

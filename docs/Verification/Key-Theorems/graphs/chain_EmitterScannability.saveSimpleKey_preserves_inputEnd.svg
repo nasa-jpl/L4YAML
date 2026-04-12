@@ -10,7 +10,7 @@
 <title>chain_EmitterScannability.saveSimpleKey_preserves_inputEnd</title>
 <polygon fill="white" stroke="transparent" points="-4,4 -4,-93.92 502,-93.92 502,4 -4,4"/>
 <text text-anchor="middle" x="249" y="-75.52" font-family="Helvetica Bold" font-size="13.00">Functorial Chains: EmitterScannability.saveSimpleKey_preserves_inputEnd</text>
-<text text-anchor="middle" x="249" y="-61.52" font-family="Helvetica Bold" font-size="13.00">(heuristic: used by 9 proofs)</text>
+<text text-anchor="middle" x="249" y="-61.52" font-family="Helvetica Bold" font-size="13.00">(heuristic: used by 11 proofs)</text>
 <!-- L4YAML.Proofs.EmitterScannability.saveSimpleKey_preserves_inputEnd -->
 <g id="node1" class="node">
 <title>L4YAML.Proofs.EmitterScannability.saveSimpleKey_preserves_inputEnd</title>

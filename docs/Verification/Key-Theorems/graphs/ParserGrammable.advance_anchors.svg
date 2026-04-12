@@ -30,37 +30,52 @@
 <!-- L4YAML.TokenParser.ParseState.advance -->
 <g id="node1" class="node">
 <title>L4YAML.TokenParser.ParseState.advance</title>
+<g id="a_node1"><a xlink:href="../../../api/L4YAML/TokenParser.html#L4YAML.TokenParser.ParseState.advance" xlink:title="TokenParser.ParseState.advance\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="654.51,-214 491.51,-214 491.51,-178 654.51,-178 654.51,-214"/>
 <text text-anchor="middle" x="573.01" y="-199" font-family="Helvetica" font-size="10.00">TokenParser.ParseState.advance</text>
 <text text-anchor="middle" x="573.01" y="-188" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.TokenParser.ParseState -->
 <g id="node2" class="node">
 <title>L4YAML.TokenParser.ParseState</title>
+<g id="a_node2"><a xlink:href="../../../api/L4YAML/TokenParser.html#L4YAML.TokenParser.ParseState" xlink:title="TokenParser.ParseState\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="635.01,-160 511.01,-160 511.01,-124 635.01,-124 635.01,-160"/>
 <text text-anchor="middle" x="573.01" y="-145" font-family="Helvetica" font-size="10.00">TokenParser.ParseState</text>
 <text text-anchor="middle" x="573.01" y="-134" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.YamlValue -->
 <g id="node3" class="node">
 <title>L4YAML.YamlValue</title>
+<g id="a_node3"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.YamlValue" xlink:title="YamlValue\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="604.01,-106 542.01,-106 542.01,-70 604.01,-70 604.01,-106"/>
 <text text-anchor="middle" x="573.01" y="-91" font-family="Helvetica" font-size="10.00">YamlValue</text>
 <text text-anchor="middle" x="573.01" y="-80" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.TokenParser.ParseState.anchors -->
 <g id="node4" class="node">
 <title>L4YAML.TokenParser.ParseState.anchors</title>
+<g id="a_node4"><a xlink:href="../../../api/L4YAML/TokenParser.html#L4YAML.TokenParser.ParseState.anchors" xlink:title="TokenParser.ParseState.anchors\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="654.01,-52 492.01,-52 492.01,-16 654.01,-16 654.01,-52"/>
 <text text-anchor="middle" x="573.01" y="-37" font-family="Helvetica" font-size="10.00">TokenParser.ParseState.anchors</text>
 <text text-anchor="middle" x="573.01" y="-26" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ParserGrammable.advance_anchors -->
 <g id="node5" class="node">
 <title>L4YAML.Proofs.ParserGrammable.advance_anchors</title>
+<g id="a_node5"><a xlink:href="../../../api/L4YAML/Proofs/ParserWfaProofs.html#L4YAML.Proofs.ParserGrammable.advance_anchors" xlink:title="ParserGrammable.advance_anchors" target="_blank">
 <polygon fill="#fff3cd" stroke="#d4a017" points="426.27,-106.54 426.27,-121.46 343.66,-132 226.84,-132 144.23,-121.46 144.23,-106.54 226.84,-96 343.66,-96 426.27,-106.54"/>
 <polygon fill="none" stroke="#d4a017" points="430.27,-103.02 430.27,-124.98 343.92,-136 226.58,-136 140.24,-124.98 140.24,-103.02 226.58,-92 343.92,-92 430.27,-103.02"/>
 <text text-anchor="middle" x="285.25" y="-110.9" font-family="Helvetica" font-size="12.00">ParserGrammable.advance_anchors</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.ParserGrammable.advance_anchors&#45;&gt;L4YAML.TokenParser.ParseState.advance -->
 <g id="edge2" class="edge">
@@ -93,8 +108,11 @@
 <!-- eq_self -->
 <g id="node6" class="node">
 <title>eq_self</title>
+<g id="a_node6"><a xlink:href="../../../api/Init/SimpLemmas.html#eq_self" xlink:title="eq_self" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="55.5" cy="-134" rx="28.01" ry="18"/>
 <text text-anchor="middle" x="55.5" y="-131.5" font-family="Helvetica" font-size="10.00">eq_self</text>
+</a>
+</g>
 </g>
 <!-- eq_self&#45;&gt;L4YAML.Proofs.ParserGrammable.advance_anchors -->
 <g id="edge5" class="edge">
@@ -105,8 +123,11 @@
 <!-- of_eq_true -->
 <g id="node7" class="node">
 <title>of_eq_true</title>
+<g id="a_node7"><a xlink:href="../../../api/Init/SimpLemmas.html#of_eq_true" xlink:title="of_eq_true" target="_blank">
 <ellipse fill="#fdebd0" stroke="#e67e22" cx="55.5" cy="-80" rx="36.49" ry="18"/>
 <text text-anchor="middle" x="55.5" y="-77.5" font-family="Helvetica" font-size="10.00">of_eq_true</text>
+</a>
+</g>
 </g>
 <!-- of_eq_true&#45;&gt;L4YAML.Proofs.ParserGrammable.advance_anchors -->
 <g id="edge6" class="edge">

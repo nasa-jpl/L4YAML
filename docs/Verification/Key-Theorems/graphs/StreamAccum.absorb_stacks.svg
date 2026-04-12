@@ -25,37 +25,52 @@
 <!-- L4YAML.Proofs.StreamAccum.BlockStack -->
 <g id="node1" class="node">
 <title>L4YAML.Proofs.StreamAccum.BlockStack</title>
+<g id="a_node1"><a xlink:href="../../../api/L4YAML/Proofs/StreamAccum.html#L4YAML.Proofs.StreamAccum.BlockStack" xlink:title="StreamAccum.BlockStack\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="446.21,-214 314.21,-214 314.21,-178 446.21,-178 446.21,-214"/>
 <text text-anchor="middle" x="380.21" y="-199" font-family="Helvetica" font-size="10.00">StreamAccum.BlockStack</text>
 <text text-anchor="middle" x="380.21" y="-188" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.StreamAccum.FlowStack -->
 <g id="node2" class="node">
 <title>L4YAML.Proofs.StreamAccum.FlowStack</title>
+<g id="a_node2"><a xlink:href="../../../api/L4YAML/Proofs/StreamAccum.html#L4YAML.Proofs.StreamAccum.FlowStack" xlink:title="StreamAccum.FlowStack\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="444.21,-160 316.21,-160 316.21,-124 444.21,-124 444.21,-160"/>
 <text text-anchor="middle" x="380.21" y="-145" font-family="Helvetica" font-size="10.00">StreamAccum.FlowStack</text>
 <text text-anchor="middle" x="380.21" y="-134" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Surface.SurfPos -->
 <g id="node3" class="node">
 <title>L4YAML.Surface.SurfPos</title>
+<g id="a_node3"><a xlink:href="../../../api/L4YAML/Surface/Combinators.html#L4YAML.Surface.SurfPos" xlink:title="Surface.SurfPos\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="425.21,-106 335.21,-106 335.21,-70 425.21,-70 425.21,-106"/>
 <text text-anchor="middle" x="380.21" y="-91" font-family="Helvetica" font-size="10.00">Surface.SurfPos</text>
 <text text-anchor="middle" x="380.21" y="-80" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Surface.SLYamlStream -->
 <g id="node4" class="node">
 <title>L4YAML.Surface.SLYamlStream</title>
+<g id="a_node4"><a xlink:href="../../../api/L4YAML/Surface/Document.html#L4YAML.Surface.SLYamlStream" xlink:title="Surface.SLYamlStream\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="439.71,-52 320.71,-52 320.71,-16 439.71,-16 439.71,-52"/>
 <text text-anchor="middle" x="380.21" y="-37" font-family="Helvetica" font-size="10.00">Surface.SLYamlStream</text>
 <text text-anchor="middle" x="380.21" y="-26" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.StreamAccum.absorb_stacks -->
 <g id="node5" class="node">
 <title>L4YAML.Proofs.StreamAccum.absorb_stacks</title>
+<g id="a_node5"><a xlink:href="../../../api/L4YAML/Proofs/StreamAccum.html#L4YAML.Proofs.StreamAccum.absorb_stacks" xlink:title="StreamAccum.absorb_stacks" target="_blank">
 <polygon fill="#fff3cd" stroke="#d4a017" points="249.31,-106.54 249.31,-121.46 182.12,-132 87.09,-132 19.9,-121.46 19.9,-106.54 87.09,-96 182.12,-96 249.31,-106.54"/>
 <polygon fill="none" stroke="#d4a017" points="253.31,-103.12 253.31,-124.88 182.43,-136 86.78,-136 15.9,-124.88 15.9,-103.12 86.78,-92 182.43,-92 253.31,-103.12"/>
 <text text-anchor="middle" x="134.6" y="-110.9" font-family="Helvetica" font-size="12.00">StreamAccum.absorb_stacks</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.StreamAccum.absorb_stacks&#45;&gt;L4YAML.Proofs.StreamAccum.BlockStack -->
 <g id="edge1" class="edge">

@@ -30,44 +30,62 @@
 <!-- L4YAML.Surface.SSWhite -->
 <g id="node1" class="node">
 <title>L4YAML.Surface.SSWhite</title>
+<g id="a_node1"><a xlink:href="../../../api/L4YAML/Surface/Basic.html#L4YAML.Surface.SSWhite" xlink:title="Surface.SSWhite\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="898.62,-142 805.62,-142 805.62,-106 898.62,-106 898.62,-142"/>
 <text text-anchor="middle" x="852.12" y="-127" font-family="Helvetica" font-size="10.00">Surface.SSWhite</text>
 <text text-anchor="middle" x="852.12" y="-116" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Surface.SSeparateInLine -->
 <g id="node2" class="node">
 <title>L4YAML.Surface.SSeparateInLine</title>
+<g id="a_node2"><a xlink:href="../../../api/L4YAML/Surface/Basic.html#L4YAML.Surface.SSeparateInLine" xlink:title="Surface.SSeparateInLine\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="915.12,-196 789.12,-196 789.12,-160 915.12,-160 915.12,-196"/>
 <text text-anchor="middle" x="852.12" y="-181" font-family="Helvetica" font-size="10.00">Surface.SSeparateInLine</text>
 <text text-anchor="middle" x="852.12" y="-170" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Surface.SurfPos -->
 <g id="node3" class="node">
 <title>L4YAML.Surface.SurfPos</title>
+<g id="a_node3"><a xlink:href="../../../api/L4YAML/Surface/Combinators.html#L4YAML.Surface.SurfPos" xlink:title="Surface.SurfPos\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="897.12,-304 807.12,-304 807.12,-268 897.12,-268 897.12,-304"/>
 <text text-anchor="middle" x="852.12" y="-289" font-family="Helvetica" font-size="10.00">Surface.SurfPos</text>
 <text text-anchor="middle" x="852.12" y="-278" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Surface.GPlus -->
 <g id="node4" class="node">
 <title>L4YAML.Surface.GPlus</title>
+<g id="a_node4"><a xlink:href="../../../api/L4YAML/Surface/Combinators.html#L4YAML.Surface.GPlus" xlink:title="Surface.GPlus\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="542.08,-304 461.08,-304 461.08,-268 542.08,-268 542.08,-304"/>
 <text text-anchor="middle" x="501.58" y="-289" font-family="Helvetica" font-size="10.00">Surface.GPlus</text>
 <text text-anchor="middle" x="501.58" y="-278" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Surface.GStar -->
 <g id="node5" class="node">
 <title>L4YAML.Surface.GStar</title>
+<g id="a_node5"><a xlink:href="../../../api/L4YAML/Surface/Combinators.html#L4YAML.Surface.GStar" xlink:title="Surface.GStar\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="892.12,-250 812.12,-250 812.12,-214 892.12,-214 892.12,-250"/>
 <text text-anchor="middle" x="852.12" y="-235" font-family="Helvetica" font-size="10.00">Surface.GStar</text>
 <text text-anchor="middle" x="852.12" y="-224" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.PreprocessProduction.GStar_SSWhite_to_SSeparateInLine -->
 <g id="node6" class="node">
 <title>L4YAML.Proofs.PreprocessProduction.GStar_SSWhite_to_SSeparateInLine</title>
+<g id="a_node6"><a xlink:href="../../../api/L4YAML/Proofs/PreprocessProduction.html#L4YAML.Proofs.PreprocessProduction.GStar_SSWhite_to_SSeparateInLine" xlink:title="PreprocessProduction.GStar_SSWhite_to_SSeparateInLine" target="_blank">
 <polygon fill="#fff3cd" stroke="#d4a017" points="724.17,-30.54 724.17,-45.46 593.78,-56 409.38,-56 278.99,-45.46 278.99,-30.54 409.38,-20 593.78,-20 724.17,-30.54"/>
 <polygon fill="none" stroke="#d4a017" points="728.17,-26.85 728.17,-49.15 593.94,-60 409.22,-60 274.99,-49.15 274.99,-26.85 409.22,-16 593.94,-16 728.17,-26.85"/>
 <text text-anchor="middle" x="501.58" y="-34.9" font-family="Helvetica" font-size="12.00">PreprocessProduction.GStar_SSWhite_to_SSeparateInLine</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.PreprocessProduction.GStar_SSWhite_to_SSeparateInLine&#45;&gt;L4YAML.Surface.SSWhite -->
 <g id="edge1" class="edge">
@@ -100,9 +118,12 @@
 <!-- L4YAML.Proofs.CouplingBridge.GStar_to_GPlus -->
 <g id="node7" class="node">
 <title>L4YAML.Proofs.CouplingBridge.GStar_to_GPlus</title>
+<g id="a_node7"><a xlink:href="../../../api/L4YAML/Proofs/CouplingBridge.html#L4YAML.Proofs.CouplingBridge.GStar_to_GPlus" xlink:title="CouplingBridge.GStar_to_GPlus\n(CouplingBridge)" target="_blank">
 <ellipse fill="#d4edda" stroke="#28a745" cx="127.02" cy="-211" rx="111.03" ry="21.43"/>
 <text text-anchor="middle" x="127.02" y="-214" font-family="Helvetica" font-size="10.00">CouplingBridge.GStar_to_GPlus</text>
 <text text-anchor="middle" x="127.02" y="-203" font-family="Helvetica" font-size="10.00">(CouplingBridge)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.CouplingBridge.GStar_to_GPlus&#45;&gt;L4YAML.Surface.SurfPos -->
 <g id="edge6" class="edge">

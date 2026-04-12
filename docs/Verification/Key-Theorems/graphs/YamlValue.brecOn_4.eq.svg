@@ -25,72 +25,102 @@
 <!-- L4YAML.YamlValue.below_1 -->
 <g id="node1" class="node">
 <title>L4YAML.YamlValue.below_1</title>
+<g id="a_node1"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.YamlValue.below_1" xlink:title="YamlValue.below_1\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="390.56,-484 289.56,-484 289.56,-448 390.56,-448 390.56,-484"/>
 <text text-anchor="middle" x="340.06" y="-469" font-family="Helvetica" font-size="10.00">YamlValue.below_1</text>
 <text text-anchor="middle" x="340.06" y="-458" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.YamlValue -->
 <g id="node2" class="node">
 <title>L4YAML.YamlValue</title>
+<g id="a_node2"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.YamlValue" xlink:title="YamlValue\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="371.06,-430 309.06,-430 309.06,-394 371.06,-394 371.06,-430"/>
 <text text-anchor="middle" x="340.06" y="-415" font-family="Helvetica" font-size="10.00">YamlValue</text>
 <text text-anchor="middle" x="340.06" y="-404" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.YamlValue.below_5 -->
 <g id="node3" class="node">
 <title>L4YAML.YamlValue.below_5</title>
+<g id="a_node3"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.YamlValue.below_5" xlink:title="YamlValue.below_5\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="390.56,-376 289.56,-376 289.56,-340 390.56,-340 390.56,-376"/>
 <text text-anchor="middle" x="340.06" y="-361" font-family="Helvetica" font-size="10.00">YamlValue.below_5</text>
 <text text-anchor="middle" x="340.06" y="-350" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.YamlValue.brecOn_4 -->
 <g id="node4" class="node">
 <title>L4YAML.YamlValue.brecOn_4</title>
+<g id="a_node4"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.YamlValue.brecOn_4" xlink:title="YamlValue.brecOn_4\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="393.56,-322 286.56,-322 286.56,-286 393.56,-286 393.56,-322"/>
 <text text-anchor="middle" x="340.06" y="-307" font-family="Helvetica" font-size="10.00">YamlValue.brecOn_4</text>
 <text text-anchor="middle" x="340.06" y="-296" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.YamlValue.below_3 -->
 <g id="node5" class="node">
 <title>L4YAML.YamlValue.below_3</title>
+<g id="a_node5"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.YamlValue.below_3" xlink:title="YamlValue.below_3\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="390.56,-268 289.56,-268 289.56,-232 390.56,-232 390.56,-268"/>
 <text text-anchor="middle" x="340.06" y="-253" font-family="Helvetica" font-size="10.00">YamlValue.below_3</text>
 <text text-anchor="middle" x="340.06" y="-242" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.YamlValue.brecOn_4.go -->
 <g id="node6" class="node">
 <title>L4YAML.YamlValue.brecOn_4.go</title>
+<g id="a_node6"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.YamlValue.brecOn_4.go" xlink:title="YamlValue.brecOn_4.go\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="400.56,-214 279.56,-214 279.56,-178 400.56,-178 400.56,-214"/>
 <text text-anchor="middle" x="340.06" y="-199" font-family="Helvetica" font-size="10.00">YamlValue.brecOn_4.go</text>
 <text text-anchor="middle" x="340.06" y="-188" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.YamlValue.below -->
 <g id="node7" class="node">
 <title>L4YAML.YamlValue.below</title>
+<g id="a_node7"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.YamlValue.below" xlink:title="YamlValue.below\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="385.56,-160 294.56,-160 294.56,-124 385.56,-124 385.56,-160"/>
 <text text-anchor="middle" x="340.06" y="-145" font-family="Helvetica" font-size="10.00">YamlValue.below</text>
 <text text-anchor="middle" x="340.06" y="-134" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.YamlValue.below_4 -->
 <g id="node8" class="node">
 <title>L4YAML.YamlValue.below_4</title>
+<g id="a_node8"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.YamlValue.below_4" xlink:title="YamlValue.below_4\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="390.56,-106 289.56,-106 289.56,-70 390.56,-70 390.56,-106"/>
 <text text-anchor="middle" x="340.06" y="-91" font-family="Helvetica" font-size="10.00">YamlValue.below_4</text>
 <text text-anchor="middle" x="340.06" y="-80" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.YamlValue.below_2 -->
 <g id="node9" class="node">
 <title>L4YAML.YamlValue.below_2</title>
+<g id="a_node9"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.YamlValue.below_2" xlink:title="YamlValue.below_2\n(def)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="390.56,-52 289.56,-52 289.56,-16 390.56,-16 390.56,-52"/>
 <text text-anchor="middle" x="340.06" y="-37" font-family="Helvetica" font-size="10.00">YamlValue.below_2</text>
 <text text-anchor="middle" x="340.06" y="-26" font-family="Helvetica" font-size="10.00">(def)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.YamlValue.brecOn_4.eq -->
 <g id="node10" class="node">
 <title>L4YAML.YamlValue.brecOn_4.eq</title>
+<g id="a_node10"><a xlink:href="../../../api/L4YAML/Types.html#L4YAML.YamlValue.brecOn_4.eq" xlink:title="YamlValue.brecOn_4.eq" target="_blank">
 <polygon fill="#fff3cd" stroke="#d4a017" points="214.35,-242.54 214.35,-257.46 157.49,-268 77.07,-268 20.21,-257.46 20.21,-242.54 77.07,-232 157.49,-232 214.35,-242.54"/>
 <polygon fill="none" stroke="#d4a017" points="218.34,-239.22 218.34,-260.78 157.85,-272 76.71,-272 16.22,-260.78 16.22,-239.22 76.71,-228 157.85,-228 218.34,-239.22"/>
 <text text-anchor="middle" x="117.28" y="-246.9" font-family="Helvetica" font-size="12.00">YamlValue.brecOn_4.eq</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.YamlValue.brecOn_4.eq&#45;&gt;L4YAML.YamlValue.below_1 -->
 <g id="edge7" class="edge">

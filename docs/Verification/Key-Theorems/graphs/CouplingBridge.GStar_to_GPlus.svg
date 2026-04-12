@@ -25,30 +25,42 @@
 <!-- L4YAML.Surface.SurfPos -->
 <g id="node1" class="node">
 <title>L4YAML.Surface.SurfPos</title>
+<g id="a_node1"><a xlink:href="../../../api/L4YAML/Surface/Combinators.html#L4YAML.Surface.SurfPos" xlink:title="Surface.SurfPos\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="428.2,-160 338.2,-160 338.2,-124 428.2,-124 428.2,-160"/>
 <text text-anchor="middle" x="383.2" y="-145" font-family="Helvetica" font-size="10.00">Surface.SurfPos</text>
 <text text-anchor="middle" x="383.2" y="-134" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Surface.GPlus -->
 <g id="node2" class="node">
 <title>L4YAML.Surface.GPlus</title>
+<g id="a_node2"><a xlink:href="../../../api/L4YAML/Surface/Combinators.html#L4YAML.Surface.GPlus" xlink:title="Surface.GPlus\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="423.7,-106 342.7,-106 342.7,-70 423.7,-70 423.7,-106"/>
 <text text-anchor="middle" x="383.2" y="-91" font-family="Helvetica" font-size="10.00">Surface.GPlus</text>
 <text text-anchor="middle" x="383.2" y="-80" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Surface.GStar -->
 <g id="node3" class="node">
 <title>L4YAML.Surface.GStar</title>
+<g id="a_node3"><a xlink:href="../../../api/L4YAML/Surface/Combinators.html#L4YAML.Surface.GStar" xlink:title="Surface.GStar\n(inductive)" target="_blank">
 <polygon fill="#dce9f7" stroke="#4a90d9" points="423.2,-52 343.2,-52 343.2,-16 423.2,-16 423.2,-52"/>
 <text text-anchor="middle" x="383.2" y="-37" font-family="Helvetica" font-size="10.00">Surface.GStar</text>
 <text text-anchor="middle" x="383.2" y="-26" font-family="Helvetica" font-size="10.00">(inductive)</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.CouplingBridge.GStar_to_GPlus -->
 <g id="node4" class="node">
 <title>L4YAML.Proofs.CouplingBridge.GStar_to_GPlus</title>
+<g id="a_node4"><a xlink:href="../../../api/L4YAML/Proofs/CouplingBridge.html#L4YAML.Proofs.CouplingBridge.GStar_to_GPlus" xlink:title="CouplingBridge.GStar_to_GPlus" target="_blank">
 <polygon fill="#fff3cd" stroke="#d4a017" points="273.29,-80.54 273.29,-95.46 199.08,-106 94.12,-106 19.9,-95.46 19.9,-80.54 94.12,-70 199.08,-70 273.29,-80.54"/>
 <polygon fill="none" stroke="#d4a017" points="277.29,-77.07 277.29,-98.93 199.36,-110 93.84,-110 15.9,-98.93 15.9,-77.07 93.84,-66 199.36,-66 277.29,-77.07"/>
 <text text-anchor="middle" x="146.6" y="-84.9" font-family="Helvetica" font-size="12.00">CouplingBridge.GStar_to_GPlus</text>
+</a>
+</g>
 </g>
 <!-- L4YAML.Proofs.CouplingBridge.GStar_to_GPlus&#45;&gt;L4YAML.Surface.SurfPos -->
 <g id="edge1" class="edge">
