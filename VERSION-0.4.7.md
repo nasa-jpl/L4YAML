@@ -3261,27 +3261,131 @@ but NOT the round-trip theorem's logical soundness.
 
 ### Recommended attack order
 
-**Phase A: Layer 0 — Scanner infrastructure (FIRST)**
-*Estimated: ~250-450 LOC · Risk: LOW*
+**Phase A: Layer 0 — Signature restructuring (DONE)**
+*Actual: ~30 LOC changes · Risk: LOW*
 
-Prove `scanNextToken_prefix_and_sk_inv` and `scanNextToken_filtered_grows`. These are the
-leaf sorrys — ALL other EmitterScannability sorrys depend on them (transitively through
-`ScanChain_preserves_raw_prefix` and `ScanChain_filtered_grows`).
+Restructured the hypotheses for `scanNextToken_prefix_and_sk_inv` and downstream consumers.
+The original signature required `h_sk : s.simpleKey.tokenIndex ≥ n`, but this is unprovable:
+flow close tokens (`]`/`}`) restore `simpleKey` from `flowStack` entries that may have
+`tokenIndex < n₀`. The fix uses a disjunctive condition that captures the actual invariant.
 
-- `scanNextToken_prefix_and_sk_inv`: Per-dispatch-branch case analysis. Each branch either
-  pushes tokens at the end (prefix preserved) or uses `setIfInBounds` at `simpleKey.tokenIndex`
-  (≥ n from precondition, so positions < n untouched). ~13 dispatch branches.
-- `scanNextToken_filtered_grows`: Each dispatch branch pushes ≥ 1 non-placeholder token
-  (via `s.emit tok`). `saveSimpleKey` only pushes placeholders (filtered out). ~13 branches.
-
-Why first: These are independent of ALL other sorrys. They unblock Layers 1-3. They are
-the most mechanical (per-branch dispatch analysis) and lowest risk.
+Why first: Correct signatures are prerequisite to all proof work. Without this fix,
+attempting to prove the Layer 0 sorrys would fail at the hypothesis level.
 
 ***Phase A: Accomplishments***
 
+1. **Discovered fundamental unprovability bug.** `scanNextToken_prefix_and_sk_inv` with
+   `h_sk : s.simpleKey.tokenIndex ≥ n` alone is FALSE for dispatch branches that pop
+   `flowStack` (e.g., `scanFlowSequenceEnd`, `scanFlowMappingEnd`). These restore
+   `simpleKey` from stack entries pushed at earlier `scanNextToken` calls, whose
+   `tokenIndex` may be less than the current prefix bound `n`.
+
+2. **Implemented disjunctive condition fix.** Changed signature from:
+   ```
+   h_sk : s.simpleKey.tokenIndex ≥ n
+   ```
+   to:
+   ```
+   h_cond : (s.simpleKey.tokenIndex ≥ n) ∨ (s.explicitKeyLine = none)
+   ```
+   The `explicitKeyLine = none` disjunct covers flow-close branches: when
+   `explicitKeyLine = none`, `scanValuePrepare` (which uses `setIfInBounds` at
+   `simpleKey.tokenIndex`) skips the overwrite entirely, so prefix is trivially preserved.
+
+3. **Updated all downstream signatures.** 4 theorems + 2 call sites:
+   - `ScanChain_preserves_raw_prefix`: conclusion changed to disjunctive condition
+   - `ScanChain_filtered_prefix`: conclusion changed to disjunctive condition
+   - Call site L7226: changed from `(by simp [h_sk₁])` to `(.inr h_ek₁)`
+   - Call site L7425: changed from `(by simp [h_sk₁])` to `(.inr h_ek₁)`
+
+4. **Added `saveSimpleKey_preserves_ek`** — New `@[simp]` lemma proving
+   `(saveSimpleKey s).explicitKeyLine = s.explicitKeyLine`. Enables the `explicitKeyLine`
+   disjunct to propagate through `saveSimpleKey` calls in the dispatch pipeline.
+
+5. **Build verified:** 426/426 jobs, 0 errors, 8 EmitterScannability + 5 ScannerBound
+   sorry warnings (count unchanged — this phase restructured signatures, not proofs).
+
 ***Phase A: Reflections***
 
-**Phase B: Layer 1 — Body token characterization**
+1. **Signature bugs must be caught before proof investment.** Attempting to prove
+   `scanNextToken_prefix_and_sk_inv` with the original `h_sk`-only hypothesis would have
+   wasted significant effort on an impossible goal. The per-dispatch analysis in the
+   `scanFlowSequenceEnd` branch is what exposed the bug — the `flowStack.back?.simpleKey`
+   restoration makes `s'.simpleKey.tokenIndex` completely uncontrolled.
+
+2. **Disjunctive conditions are a common pattern for scanner invariants.** The scanner's
+   `simpleKey` state interacts with `explicitKeyLine` through `scanValuePrepare`. When
+   `explicitKeyLine = none`, the `setIfInBounds` path in `scanValuePrepare` is unreachable,
+   making prefix preservation trivial regardless of `simpleKey.tokenIndex`. This pattern
+   — "either the index is safe OR the dangerous path is unreachable" — may recur in
+   other scanner invariants.
+
+3. **The disjunctive approach is compositional.** At call sites, the `explicitKeyLine`
+   tracking from Step 8 Layer 1.1 (Change A) provides `h_ek₁ : s.explicitKeyLine = none`,
+   so `.inr h_ek₁` trivially satisfies the disjunction. This means the proof burden
+   shifts from tracking `simpleKey.tokenIndex` bounds (hard) to tracking
+   `explicitKeyLine` preservation (already done in Layer 1.1).
+
+**Phase B: Layer 0 — Per-dispatch infrastructure for prefix/filtered proofs**
+*Estimated: ~200-350 LOC · Risk: LOW-MEDIUM*
+
+Build the helper lemmas needed to prove `scanNextToken_prefix_and_sk_inv` and
+`scanNextToken_filtered_grows` by per-dispatch branch analysis. Each of the ~13 dispatch
+branches in `scanNextToken` needs individual prefix/filtered lemmas.
+
+Infrastructure needed:
+
+- **Prefix preservation per branch:** For each scanner function called by `scanNextToken`
+  dispatch (`scanDoubleQuoted`, `scanFlowSequenceStart/End`, `scanFlowMappingStart/End`,
+  `scanFlowEntry`, `scanValue`, `scanKey`, `scanBlockSequenceStart`, `scanAnchorOrAlias`,
+  `scanTag`, `scanDocumentStart/End`, `scanYamlDirective`, `scanTagDirective`):
+  - `f_preserves_prefix`: Tokens at positions `< n` are unchanged
+  - For `setIfInBounds` branches: Prove `simpleKey.tokenIndex ≥ n` OR
+    `explicitKeyLine = none` makes the overwrite unreachable
+
+- **Filtered growth per branch:** For each dispatch branch:
+  - `f_filtered_grows`: `(s'.tokens.filter notPlaceholder).size ≥
+    (s.tokens.filter notPlaceholder).size + 1`
+  - Key sub-lemma: `emit_pushes_non_placeholder` — `s.emit tok` pushes a non-placeholder
+  - Key sub-lemma: `saveSimpleKey_pushes_only_placeholders` — filtered array unchanged
+
+- **Pipeline composition lemmas:**
+  - `preprocess_preserves_prefix`: `skipToContent`/`unwindIndents`/`saveSimpleKey` preserve prefix
+  - `preprocess_preserves_filtered`: preprocessing doesn't add non-placeholder tokens
+  - `allowDirectives_preserves_prefix/filtered`: the `allowDirectives` check preserves both
+
+Why second: These are self-contained per-function lemmas that don't require understanding
+the full `scanNextToken` pipeline. Each is a straightforward unfold + field-access proof.
+The risk is in the volume (~13 branches × 2 properties = ~26 lemmas) rather than difficulty.
+
+***Phase B: Accomplishments***
+
+***Phase B: Reflections***
+
+**Phase C: Layer 0 — Prove prefix invariant and filtered growth (NEXT)**
+*Estimated: ~100-200 LOC · Risk: LOW*
+
+Using Phase B infrastructure, prove `scanNextToken_prefix_and_sk_inv` and
+`scanNextToken_filtered_grows`. These are the leaf sorrys — ALL other EmitterScannability
+sorrys depend on them (transitively through `ScanChain_preserves_raw_prefix` and
+`ScanChain_filtered_grows`).
+
+- `scanNextToken_prefix_and_sk_inv`: Unfold `scanNextToken`, case-split on dispatch branch,
+  apply the per-branch prefix lemma from Phase B. For `setIfInBounds` branches, use the
+  disjunctive condition from Phase A to close via `explicitKeyLine = none` when
+  `simpleKey.tokenIndex` is uncontrolled.
+- `scanNextToken_filtered_grows`: Unfold `scanNextToken`, case-split on dispatch branch,
+  apply the per-branch filtered growth lemma from Phase B.
+
+Why third: Depends on Phase B (per-branch lemmas). With the infrastructure in place,
+the top-level composition is mechanical — unfold, dispatch, apply helper. Low risk
+because Phase B handles all the per-branch complexity.
+
+***Phase C: Accomplishments***
+
+***Phase C: Reflections***
+
+**Phase D: Layer 1 — Body token characterization**
 *Estimated: ~200-400 LOC · Risk: MEDIUM*
 
 Prove `emitList_body_filtered_characterization` and `emitPairList_body_filtered_characterization`.
@@ -3295,15 +3399,15 @@ These characterize what tokens the scanner produces for emitter output.
   `scanValuePrepare` which retroactively converts placeholder to `.key`. After `, `, same
   pattern repeats.
 
-Why second: Depends on Phase A being done (uses `ScanChain_preserves_raw_prefix` and
+Why fourth: Depends on Phase C being done (uses `ScanChain_preserves_raw_prefix` and
 `ScanChain_filtered_grows`). Medium risk due to needing per-step scanner dispatch analysis
 within the `EmitScansInFlow` chain.
 
-***Phase B: Accomplishments***
+***Phase D: Accomplishments***
 
-***Phase B: Reflections***
+***Phase D: Reflections***
 
-**Phase C: Layer 2 — h_pnok (ParseNodeFlowSeqOk / ParseEntryFlowMapOk)**
+**Phase E: Layer 2 — h_pnok (ParseNodeFlowSeqOk / ParseEntryFlowMapOk)**
 *Estimated: ~400-800 LOC · Risk: HIGH*
 
 This is the hardest phase. Prove that `parseNode` succeeds at each content-start position
@@ -3326,15 +3430,15 @@ in the token array. Two sub-problems:
    at the structure theorem level, using the fact that inner brackets have strictly lower
    nesting depth.
 
-Why third: Depends on Phase B (body token characterization provides the content-start
+Why fifth: Depends on Phase D (body token characterization provides the content-start
 classification). This is the highest-risk phase due to recursive nesting and the potential
 need for architectural refactoring.
 
-***Phase C: Accomplishments***
+***Phase E: Accomplishments***
 
-***Phase C: Reflections***
+***Phase E: Reflections***
 
-**Phase D: Layer 3 — Content fidelity**
+**Phase F: Layer 3 — Content fidelity**
 *Estimated: ~300-600 LOC · Risk: MEDIUM-HIGH*
 
 Prove `emit_roundtrip_sequence_content_eq` and `emit_roundtrip_mapping_content_eq` for
@@ -3346,13 +3450,13 @@ produce (not just that they succeed).
 - Show each parsed item matches the original via `contentEq`
 - Apply `Grammable` IH for each element
 
-Why last: Depends on Phase C (need parser success before examining parsed values). This
-phase may benefit from concurrent development with Phase C since both deal with parser
+Why last: Depends on Phase E (need parser success before examining parsed values). This
+phase may benefit from concurrent development with Phase E since both deal with parser
 behavior on emitter output.
 
-***Phase D: Accomplishments***
+***Phase F: Accomplishments***
 
-***Phase D: Reflections***
+***Phase F: Reflections***
 
 **Phase S (parallel): ScannerBound.lean — 5 sorrys**
 *Estimated: ~300-500 LOC · Risk: LOW-MEDIUM*
@@ -3373,22 +3477,24 @@ These don't block `universal_roundtrip` but are needed for full-project 0-sorry.
 
 ### Summary
 
-| Phase | Sorrys targeted | Est. LOC | Risk | Blocked by |
-|-------|----------------|----------|------|------------|
-| A | 2 (scanner infra) | 250-450 | LOW | — |
-| B | 2 (body characterization) | 200-400 | MEDIUM | Phase A |
-| C | 2 (h_pnok) | 400-800 | HIGH | Phase B |
-| D | 2 (content fidelity) | 300-600 | MEDIUM-HIGH | Phase C |
-| S | 5 (ScannerBound) | 300-500 | LOW-MEDIUM | — (parallel) |
-| **Total** | **13** | **~1,450-2,750** | | |
+| Phase | Sorrys targeted | Est. LOC | Risk | Blocked by | Status |
+|-------|----------------|----------|------|------------|--------|
+| A | 0 (signature restructuring) | ~30 | LOW | — | **DONE** |
+| B | 0 (per-dispatch infrastructure) | 200-350 | LOW-MEDIUM | Phase A | |
+| C | 2 (prefix inv + filtered growth) | 100-200 | LOW | Phase B | |
+| D | 2 (body characterization) | 200-400 | MEDIUM | Phase C | |
+| E | 2 (h_pnok) | 400-800 | HIGH | Phase D | |
+| F | 2 (content fidelity) | 300-600 | MEDIUM-HIGH | Phase E | |
+| S | 5 (ScannerBound) | 300-500 | LOW-MEDIUM | — (parallel) | |
+| **Total** | **13** | **~1,530-2,880** | | | |
 
-**Critical path:** A → B → C → D (8 EmitterScannability sorrys)
+**Critical path:** A (DONE) → B → C → D → E → F (8 EmitterScannability sorrys)
 **Parallel track:** S (5 ScannerBound sorrys)
 **Expected outcome:** 13 → 0 sorry warnings across the full build.
 
-### Risk mitigation for Phase C
+### Risk mitigation for Phase E
 
-Phase C (h_pnok) is the highest-risk item. If the proof is blocked at the structure
+Phase E (h_pnok) is the highest-risk item. If the proof is blocked at the structure
 theorem level (due to lack of Grammable IH for recursive nesting), the fallback plan is:
 
 1. **Move h_pnok obligation to call site.** Refactor `scanFiltered_emitSeq_nonempty_structure`

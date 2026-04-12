@@ -330,10 +330,10 @@ theorem parseStream_sound
     (tokens : Array (Positioned YamlToken))
     (docs : Array YamlDocument)
     (_hparse : TokenParser.parseStream tokens = Except.ok docs)
-    (hgrammable : ∀ i : Fin docs.size, Grammable docs[i].value false) :
-    ∀ i : Fin docs.size,
-      ∃ n : ValidNode,
-        stripAnnotations (toYamlValue n) = stripAnnotations docs[i].value :=
-  fun i => yamlValue_has_witness docs[i].value false (hgrammable i)
+    (hgrammable : ∀ i : Fin docs.size, Grammable docs[i].value false)
+    (i : Fin docs.size) :
+    ∃ n : ValidNode,
+      stripAnnotations (toYamlValue n) = stripAnnotations docs[i].value :=
+  yamlValue_has_witness docs[i].value false (hgrammable i)
 
 end L4YAML.Proofs.ParserSoundness

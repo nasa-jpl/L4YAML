@@ -318,9 +318,10 @@ A valid YAML stream — one or more documents.
 
 **YAML 1.2.2**: [205] l-yaml-stream (§9, https://yaml.org/spec/1.2.2/#chapter-9-document-stream-productions)
 
-**Phase F decision (kept)**: Top-level specification type. Not yet referenced
-by proofs — `checkValidStream` in ScannerCorrectness.lean is a Bool utility
-that shares the name but not the type. Full stream proofs are future work.
+Used by `parse_produces_valid_stream` in `EndToEndCorrectness.lean`,
+which constructs a list of `ValidDocument` witnesses from `parseYaml`
+output. Its propositional twin `ValidStreamProp` is verified by
+`parseYaml_implies_valid_stream`.
 -/
 @[yaml_spec "9" 211 "l-yaml-stream"]
 structure ValidStream where
