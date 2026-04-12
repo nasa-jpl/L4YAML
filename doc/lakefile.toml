@@ -5,8 +5,8 @@ name = "L4YamlDoc"
 
 [[require]]
 name = "verso"
-git = "https://github.com/leanprover/verso.git"
-rev = "v4.29.0"
+git = "https://github.com/NicolasRouquette/verso.git"
+rev = "fix/relative-img-urls"
 
 [[lean_lib]]
 name = "Doc.L4YAML"
