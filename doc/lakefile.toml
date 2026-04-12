@@ -6,7 +6,7 @@ name = "L4YamlDoc"
 [[require]]
 name = "verso"
 git = "https://github.com/NicolasRouquette/verso.git"
-rev = "fix/relative-img-urls"
+rev = "fix/combined-img-svg"
 
 [[lean_lib]]
 name = "Doc.L4YAML"
