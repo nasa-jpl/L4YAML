@@ -98,7 +98,7 @@ theorem escapeChar_passthrough_is_valid (c : Char)
     exfalso
     have h_bounded : ∀ n : Fin 32,
         escapeHex2 (Char.ofNat n.val) ≠ (Char.ofNat n.val).toString := by native_decide
-    have h_ne := h_bounded ⟨c.toNat, by simp [Char.toNat]; omega⟩
+    have h_ne := h_bounded ⟨c.toNat, by unfold Char.toNat; omega⟩
     rw [Char.ofNat_toNat] at h_ne
     exact h_ne h_not_escaped
   · -- passthrough: c.val.toNat ≥ 0x20
@@ -122,7 +122,7 @@ theorem escapeChar_output_nbJson (c : Char) :
   · -- ASCII range: native_decide over Fin 128 covers all cases
     have h_bounded : ∀ n : Fin 128, ∀ ch ∈ (escapeChar (Char.ofNat n.val)).toList,
         isNbJsonBool ch = true := by native_decide
-    have h_spec := h_bounded ⟨c.toNat, by simp [Char.toNat]; omega⟩
+    have h_spec := h_bounded ⟨c.toNat, by unfold Char.toNat; omega⟩
     rw [Char.ofNat_toNat] at h_spec
     exact h_spec
   · -- Non-ASCII (c.val.toNat ≥ 128): escapeChar c = c.toString (passthrough)
@@ -206,7 +206,7 @@ theorem escapeChar_head_not_quote (c : Char) :
   by_cases h_val : c.val.toNat < 128
   · have : ∀ n : Fin 128,
         (escapeChar (Char.ofNat n.val)).toList.head? ≠ some '"' := by native_decide
-    have := this ⟨c.toNat, by simp [Char.toNat]; omega⟩
+    have := this ⟨c.toNat, by unfold Char.toNat; omega⟩
     rwa [Char.ofNat_toNat] at this
   · simp only [Nat.not_lt] at h_val
     have h_not_esc : isEscapedChar c = false := by
@@ -224,7 +224,7 @@ theorem escapeChar_head_not_linebreak (c : Char) :
   · have : ∀ n : Fin 128, ∀ ch,
         (escapeChar (Char.ofNat n.val)).toList.head? = some ch →
         isLineBreakBool ch = false := by native_decide
-    have := this ⟨c.toNat, by simp [Char.toNat]; omega⟩
+    have := this ⟨c.toNat, by unfold Char.toNat; omega⟩
     rwa [Char.ofNat_toNat] at this
   · simp only [Nat.not_lt] at h_val
     have h_not_esc : isEscapedChar c = false := by
@@ -245,7 +245,7 @@ theorem escapeChar_output_no_linebreak (c : Char) :
   by_cases h_val : c.val.toNat < 128
   · have h_bounded : ∀ n : Fin 128, ∀ ch ∈ (escapeChar (Char.ofNat n.val)).toList,
         isLineBreakBool ch = false := by native_decide
-    have h_spec := h_bounded ⟨c.toNat, by simp [Char.toNat]; omega⟩
+    have h_spec := h_bounded ⟨c.toNat, by unfold Char.toNat; omega⟩
     rw [Char.ofNat_toNat] at h_spec
     exact h_spec
   · simp only [Nat.not_lt] at h_val
@@ -265,7 +265,7 @@ theorem escapeChar_output_no_linebreak (c : Char) :
 theorem escapeChar_nonempty (c : Char) : (escapeChar c).toList ≠ [] := by
   by_cases h_val : c.val.toNat < 128
   · have : ∀ n : Fin 128, (escapeChar (Char.ofNat n.val)).toList ≠ [] := by native_decide
-    have := this ⟨c.toNat, by simp [Char.toNat]; omega⟩
+    have := this ⟨c.toNat, by unfold Char.toNat; omega⟩
     rwa [Char.ofNat_toNat] at this
   · simp only [Nat.not_lt] at h_val
     have h_not_esc : isEscapedChar c = false := by
@@ -439,17 +439,17 @@ theorem escapeChar_hex_structure (c : Char)
         ['\\', 'x', hexNibble (n.val / 16), hexNibble (n.val % 16)] := by native_decide
   have h_hex_nn : ∀ n : Fin 16, hexNibble n.val ≠ '\n' := by native_decide
   have h_hex_cr : ∀ n : Fin 16, hexNibble n.val ≠ '\r' := by native_decide
-  have h_spec := h_struct ⟨c.toNat, by simp [Char.toNat]; omega⟩ (by rwa [Char.ofNat_toNat])
+  have h_spec := h_struct ⟨c.toNat, by unfold Char.toNat; omega⟩ (by rwa [Char.ofNat_toNat])
   rw [Char.ofNat_toNat] at h_spec
   exact ⟨_, _, h_spec,
-    h_hex_nn ⟨c.toNat / 16, by simp [Char.toNat]; omega⟩,
-    h_hex_cr ⟨c.toNat / 16, by simp [Char.toNat]; omega⟩,
-    h_hex_nn ⟨c.toNat % 16, by simp [Char.toNat]; omega⟩,
-    h_hex_cr ⟨c.toNat % 16, by simp [Char.toNat]; omega⟩,
-    hexNibble_is_hex ⟨c.toNat / 16, by simp [Char.toNat]; omega⟩,
-    hexNibble_is_hex ⟨c.toNat % 16, by simp [Char.toNat]; omega⟩,
-    hexNibble_lt128 ⟨c.toNat / 16, by simp [Char.toNat]; omega⟩,
-    hexNibble_lt128 ⟨c.toNat % 16, by simp [Char.toNat]; omega⟩⟩
+    h_hex_nn ⟨c.toNat / 16, by unfold Char.toNat; omega⟩,
+    h_hex_cr ⟨c.toNat / 16, by unfold Char.toNat; omega⟩,
+    h_hex_nn ⟨c.toNat % 16, by unfold Char.toNat; omega⟩,
+    h_hex_cr ⟨c.toNat % 16, by unfold Char.toNat; omega⟩,
+    hexNibble_is_hex ⟨c.toNat / 16, by unfold Char.toNat; omega⟩,
+    hexNibble_is_hex ⟨c.toNat % 16, by unfold Char.toNat; omega⟩,
+    hexNibble_lt128 ⟨c.toNat / 16, by unfold Char.toNat; omega⟩,
+    hexNibble_lt128 ⟨c.toNat % 16, by unfold Char.toNat; omega⟩⟩
 
 -- ═══ line preservation helper ═══
 -- When we know peek? = some c and c is not a newline/CR, advance preserves line.
@@ -677,7 +677,7 @@ theorem collectDoubleQuotedLoop_escapeString_succeeds
               isEscapedChar (Char.ofNat n.val) = true →
               escapeTag (Char.ofNat n.val) = none →
               n.val < 0x20 := by native_decide
-          exact this ⟨c.toNat, by simp [Char.toNat]; omega⟩
+          exact this ⟨c.toNat, by unfold Char.toNat; omega⟩
             (by rwa [Char.ofNat_toNat]) (by rwa [Char.ofNat_toNat])
         obtain ⟨d1, d2, h_ec_list, h_d1_nn, h_d1_cr, h_d2_nn, h_d2_cr, h_d1_hex, h_d2_hex,
             h_d1_lt128, h_d2_lt128⟩ :=
@@ -705,7 +705,7 @@ theorem collectDoubleQuotedLoop_escapeString_succeeds
             have h_struct : ∀ n : Fin 32, escapeTag (Char.ofNat n.val) = none →
                 (escapeChar (Char.ofNat n.val)).toList =
                   ['\\', 'x', hexNibble (n.val / 16), hexNibble (n.val % 16)] := by native_decide
-            have h_spec := h_struct ⟨c.toNat, by simp [Char.toNat]; omega⟩
+            have h_spec := h_struct ⟨c.toNat, by unfold Char.toNat; omega⟩
               (by rwa [Char.ofNat_toNat])
             rw [Char.ofNat_toNat] at h_spec
             have h_comb := h_ec_list.symm.trans h_spec
@@ -808,7 +808,7 @@ theorem collectDoubleQuotedLoop_escapeString_succeeds
             have h_ascii : ∀ n : Fin 128, isEscapedChar (Char.ofNat n.val) = false →
                 isNbJsonBool (Char.ofNat n.val) = true := by native_decide
             by_cases h128 : c.toNat < 128
-            · have := h_ascii ⟨c.toNat, by simp [Char.toNat] at h128 ⊢; omega⟩
+            · have := h_ascii ⟨c.toNat, by unfold Char.toNat at h128 ⊢; omega⟩
                 (by rwa [Char.ofNat_toNat])
               rwa [Char.ofNat_toNat] at this
             · -- c.toNat ≥ 128: always nb-json valid
@@ -7011,6 +7011,92 @@ theorem scanFiltered_boundary_tokens (input : String)
 -- These characterize the filtered token array produced by scanning emitter output,
 -- providing the properties needed by the parser flow loop fuel sufficiency theorems.
 
+-- ═══ Body token characterization lemmas (sorry'd — TRUE) ═══
+
+-- The proofs require tracing per-step scanner dispatch: each `emit v` produces first
+-- character `"`, `[`, or `{`, which dispatch to scanDoubleQuoted / scanFlowSequenceStart /
+-- scanFlowMappingStart respectively. The comma separator `, ` dispatches to scanFlowEntry
+-- followed by whitespace skip and then the next item's dispatch. None of these paths
+-- produce `.flowEntry` or `.key` as a first token in sequence context. In mapping context,
+-- `saveSimpleKey` + `scanValuePrepare` retroactively inserts `.key` before each key scalar.
+
+/-- Body token characterization for `emitList` in flow context:
+    (1) The first new filtered token (at position `old_sz`) is not `.flowEntry` or `.key`.
+    (2) After every `.flowEntry` in the body, the next filtered token is not `.flowEntry` or `.key`.
+
+    These follow from `emitList`'s structure: items separated by `", "` (comma + space).
+    Each item starts with `emit v`, whose first character (`"`, `[`, or `{`) dispatches to
+    `scanDoubleQuoted`, `scanFlowSequenceStart`, or `scanFlowMappingStart` — none of which
+    emit `.flowEntry` or `.key` as their first filtered token. -/
+theorem emitList_body_filtered_characterization
+    (items : List YamlValue) (h_ne : items ≠ [])
+    (h_all : ∀ v ∈ items, EmitScansInFlow v)
+    (s s' : ScannerState) (n : Nat) (rest : List Char)
+    (h_chain : ScanChain s n s')
+    (h_corr : ScannerSurfCorr s ⟨(emit.emitList items).toList ++ rest, s.col⟩)
+    (h_corr' : ScannerSurfCorr s' ⟨rest, s'.col⟩)
+    (h_flow : s.inFlow = true) (h_fl : s.flowLevel > 0)
+    (h_indent : s.currentIndent < 0) (h_col : s.col > 0)
+    (h_ek : s.explicitKeyLine = none)
+    (h_atol : AllTokensOnLine s s.line)
+    (h_endline : EndLineOnLine s)
+    (h_sk : s.simpleKey.possible = false) :
+    let p := fun (t : Positioned YamlToken) => t.val != .placeholder
+    let old_sz := (s.tokens.filter p).size
+    -- (1) First new filtered token is not flowEntry/key/flowSequenceEnd
+    (old_sz < (s'.tokens.filter p).size ∧
+     (∀ (h : old_sz < (s'.tokens.filter p).size),
+       ((s'.tokens.filter p)[old_sz]'h).val ≠ .flowEntry ∧
+       ((s'.tokens.filter p)[old_sz]'h).val ≠ .key ∧
+       ((s'.tokens.filter p)[old_sz]'h).val ≠ .flowSequenceEnd)) ∧
+    -- (2) After every flowEntry, next is not flowEntry/key/flowSequenceEnd
+    (∀ (k : Nat), old_sz ≤ k → (h_hi : k < (s'.tokens.filter p).size) →
+      ((s'.tokens.filter p)[k]'h_hi).val = .flowEntry →
+      k + 1 < (s'.tokens.filter p).size ∧
+      (∀ (h' : k + 1 < (s'.tokens.filter p).size),
+        ((s'.tokens.filter p)[k + 1]'h').val ≠ .flowEntry ∧
+        ((s'.tokens.filter p)[k + 1]'h').val ≠ .key ∧
+        ((s'.tokens.filter p)[k + 1]'h').val ≠ .flowSequenceEnd)) := sorry
+
+/-- Body token characterization for `emitPairList` in flow context:
+    (1) The chain has ≥ 3 steps (key handling + value indicator + value content).
+    (2) The first new filtered token is `.key` (from `saveSimpleKey` + `scanValuePrepare`
+        retroactively converting a placeholder when `: ` is scanned).
+    (3) After every `.flowEntry` in the body, the next filtered token is `.key`.
+
+    These follow from `emitPairList`'s structure: each pair produces `emit k ++ ": " ++ emit v`,
+    with pairs separated by `", "`. The `: ` triggers `scanValuePrepare` which converts the
+    placeholder (saved by `saveSimpleKey` before scanning `emit k`) to `.key`. After each
+    comma separator, the next pair starts with `emit k` again, preceded by `saveSimpleKey`. -/
+theorem emitPairList_body_filtered_characterization
+    (pairs : List (YamlValue × YamlValue)) (h_ne : pairs ≠ [])
+    (h_all_k : ∀ p ∈ pairs, EmitScansInFlow p.1)
+    (h_all_v : ∀ p ∈ pairs, EmitScansInFlow p.2)
+    (s s' : ScannerState) (n : Nat) (rest : List Char)
+    (h_chain : ScanChain s n s')
+    (h_corr : ScannerSurfCorr s ⟨(emit.emitPairList pairs).toList ++ rest, s.col⟩)
+    (h_corr' : ScannerSurfCorr s' ⟨rest, s'.col⟩)
+    (h_flow : s.inFlow = true) (h_fl : s.flowLevel > 0)
+    (h_indent : s.currentIndent < 0) (h_col : s.col > 0)
+    (h_ek : s.explicitKeyLine = none)
+    (h_atol : AllTokensOnLine s s.line)
+    (h_endline : EndLineOnLine s)
+    (h_sk : s.simpleKey.possible = false) :
+    let p := fun (t : Positioned YamlToken) => t.val != .placeholder
+    let old_sz := (s.tokens.filter p).size
+    -- (1) At least 3 chain steps (key + value indicator + value)
+    n ≥ 3 ∧
+    -- (2) First new filtered token is .key
+    (old_sz < (s'.tokens.filter p).size ∧
+     (∀ (h : old_sz < (s'.tokens.filter p).size),
+       ((s'.tokens.filter p)[old_sz]'h).val = .key)) ∧
+    -- (3) After every flowEntry, next is .key
+    (∀ (k : Nat), old_sz ≤ k → (h_hi : k < (s'.tokens.filter p).size) →
+      ((s'.tokens.filter p)[k]'h_hi).val = .flowEntry →
+      k + 1 < (s'.tokens.filter p).size ∧
+      (∀ (h' : k + 1 < (s'.tokens.filter p).size),
+        ((s'.tokens.filter p)[k + 1]'h').val = .key)) := sorry
+
 /-- Token structure of `scanFiltered ("[" ++ emitList items ++ "]")` for non-empty items.
     Establishes boundary tokens, body token patterns, and `parseNode` success within
     the flow sequence body.
@@ -7028,15 +7114,12 @@ theorem scanFiltered_emitSeq_nonempty_structure
     tokens[tokens.size - 2]!.val = .flowSequenceEnd ∧
     tokens[2]!.val ≠ .flowEntry ∧
     tokens[2]!.val ≠ .key ∧
+    tokens[2]!.val ≠ .flowSequenceEnd ∧
     (∀ k, 2 ≤ k → k < tokens.size - 2 →
         tokens[k]!.val = .flowEntry →
         k + 1 ≤ tokens.size - 2 ∧ tokens[k + 1]!.val ≠ .flowEntry ∧
-        tokens[k + 1]!.val ≠ .key) ∧
-    -- Uniqueness: no flowSequenceEnd in body range [0, tokens.size-2).
-    -- Positions 0, 1 are streamStart, flowSequenceStart. Body positions [2, tokens.size-3]
-    -- contain item tokens, flowEntry separators, and nested bracket groups whose inner
-    -- flowSequenceEnd tokens are at known positions consumed by parseNode.
-    (∀ k, k < tokens.size - 2 → tokens[k]!.val ≠ .flowSequenceEnd) ∧
+        tokens[k + 1]!.val ≠ .key ∧
+        tokens[k + 1]!.val ≠ .flowSequenceEnd) ∧
     L4YAML.Proofs.ParserGrammable.ParseNodeFlowSeqOk tokens (tokens.size - 2) (4 * tokens.size + 4) := by
   -- Step 1: Boundary tokens from scanFiltered_boundary_tokens
   obtain ⟨h_sz2, h_t0, h_tlast⟩ := scanFiltered_boundary_tokens _ _ h_scan
@@ -7145,8 +7228,10 @@ theorem scanFiltered_emitSeq_nonempty_structure
   -- n₂ ≥ 1 (body is non-empty: s₁ sees body chars, s₂ sees [']'])
   have h_n₂_pos : n₂ ≥ 1 := by
     match n₂, h_chain₂ with
-    | 0, .zero =>
+    | 0, h_zero =>
       exfalso
+      have h_s1_eq_s2 : s₁ = s₂ := by cases h_zero; rfl
+      rw [h_s1_eq_s2] at h_corr₁
       have h_chars_eq := CharsFromOffset_unique h_corr₁.chars_from h_corr₂.chars_from
       have h_len := congrArg List.length h_chars_eq
       simp only [List.length_append] at h_len
@@ -7183,27 +7268,45 @@ theorem scanFiltered_emitSeq_nonempty_structure
   -- h_sz5: tokens.size = (s₂.filter p).size + 2 ≥ 3 + 2 = 5
   have h_sz5 : tokens.size ≥ 5 := by
     rw [h_tokens_decomp]; simp [Array.size_push]; omega
-  -- Body token properties: the first body token (position 2) comes from emit items[0],
-  -- which starts with a value token (scalar, flowSequenceStart, flowMappingStart) — never
-  -- flowEntry or key. Needs first-body-token characterization from scanner dispatch.
-  have h_no_fe0 : tokens[2]!.val ≠ .flowEntry := sorry
-  have h_no_key0 : tokens[2]!.val ≠ .key := sorry
-  -- Flow entry pattern: emitList separates items with ", ", producing flowEntry tokens.
-  -- After each flowEntry, the next token is the first token of the next item (a value
-  -- token, not flowEntry or key). Needs comma-value alternation from emitList structure.
+  -- ═══ Body token characterization from infrastructure lemma ═══
+  obtain ⟨⟨h_body_sz, h_body_nfke⟩, h_body_fe_next⟩ :=
+    emitList_body_filtered_characterization items.toList h_ne
+      (fun w hw => h_all_scan w hw) s₁ s₂ n₂ [']']
+      h_chain₂ h_corr₁ h_corr₂
+      h_inflow₁ (by rw [h_fl₁]; omega) h_indent₁ (by rw [h_col₁]; omega)
+      h_ek₁ (h_line₁ ▸ h_atol₁) h_endline₁ h_sk₁
+  rw [h_filt₁_sz] at h_body_sz h_body_nfke h_body_fe_next
+  -- Helper: tokens[k]! for k < tokens.size - 2 equals (s₂.filter p)[k]
+  have h_tokens_sz_eq : tokens.size - 2 = (s₂.tokens.filter p).size := by
+    rw [h_tokens_decomp]; simp [Array.size_push]
+  have h_tok_body (k : Nat) (h_lt : k < (s₂.tokens.filter p).size) :
+      tokens[k]! = ((s₂.tokens.filter p)[k]'h_lt) := by
+    rw [h_tokens_decomp, getElem!_pos _ k (by simp [Array.size_push]; omega)]
+    rw [Array.getElem_push_lt (show k < ((s₂.tokens.filter p).push tok_fse).size
+        from by simp [Array.size_push]; omega)]
+    rw [Array.getElem_push_lt h_lt]
+  have h_no_fe0 : tokens[2]!.val ≠ .flowEntry := by
+    rw [h_tok_body 2 (by omega)]; exact (h_body_nfke (by omega)).1
+  have h_no_key0 : tokens[2]!.val ≠ .key := by
+    rw [h_tok_body 2 (by omega)]; exact (h_body_nfke (by omega)).2.1
+  have h_no_fse0 : tokens[2]!.val ≠ .flowSequenceEnd := by
+    rw [h_tok_body 2 (by omega)]; exact (h_body_nfke (by omega)).2.2
   have h_fe_pattern : ∀ k, 2 ≤ k → k < tokens.size - 2 →
       tokens[k]!.val = .flowEntry →
       k + 1 ≤ tokens.size - 2 ∧ tokens[k + 1]!.val ≠ .flowEntry ∧
-      tokens[k + 1]!.val ≠ .key := sorry
-  -- ParseNodeFlowSeqOk: requires parser/scanner bridge — proving parseNode succeeds at
-  -- each body position needs the inductive hypothesis from the roundtrip theorem.
-  -- Uniqueness: no flowSequenceEnd before position tokens.size - 2.
-  -- Body tokens are scalars/flowSeqStart/flowMapStart/flowEntry (position 2 through body).
-  -- Positions 0 = streamStart, 1 = flowSequenceStart — neither is flowSequenceEnd.
-  have h_unique : ∀ k, k < tokens.size - 2 → tokens[k]!.val ≠ .flowSequenceEnd := sorry
+      tokens[k + 1]!.val ≠ .key ∧
+      tokens[k + 1]!.val ≠ .flowSequenceEnd := by
+    intro k h_lo h_hi h_fe
+    have h_k_lt : k < (s₂.tokens.filter p).size := by omega
+    rw [h_tok_body k h_k_lt] at h_fe
+    obtain ⟨h_next_lt, h_next_nfke⟩ := h_body_fe_next k (by omega) h_k_lt h_fe
+    exact ⟨by omega,
+           by rw [h_tok_body (k+1) (by omega)]; exact (h_next_nfke (by omega)).1,
+           by rw [h_tok_body (k+1) (by omega)]; exact (h_next_nfke (by omega)).2.1,
+           by rw [h_tok_body (k+1) (by omega)]; exact (h_next_nfke (by omega)).2.2⟩
   have h_pnok : L4YAML.Proofs.ParserGrammable.ParseNodeFlowSeqOk
       tokens (tokens.size - 2) (4 * tokens.size + 4) := sorry
-  exact ⟨h_sz5, h_t0, h_tlast, h_t1, h_tpe, h_no_fe0, h_no_key0, h_fe_pattern, h_unique, h_pnok⟩
+  exact ⟨h_sz5, h_t0, h_tlast, h_t1, h_tpe, h_no_fe0, h_no_key0, h_no_fse0, h_fe_pattern, h_pnok⟩
 
 /-- Token structure of `scanFiltered ("{" ++ emitPairList pairs ++ "}")` for non-empty pairs.
     Establishes boundary tokens, body token patterns, and `parseExplicitKey`/`parseFlowMappingValue`
@@ -7219,12 +7322,10 @@ theorem scanFiltered_emitMap_nonempty_structure
     tokens[tokens.size - 1]!.val = .streamEnd ∧
     tokens[1]!.val = .flowMappingStart ∧
     tokens[tokens.size - 2]!.val = .flowMappingEnd ∧
-    (tokens[2]!.val = .key ∨ tokens[2]!.val = .flowMappingEnd) ∧
+    tokens[2]!.val = .key ∧
     (∀ k, 2 ≤ k → k < tokens.size - 2 →
         tokens[k]!.val = .flowEntry →
         k + 1 ≤ tokens.size - 2 ∧ tokens[k + 1]!.val = .key) ∧
-    -- Uniqueness: no flowMappingEnd in range [0, tokens.size-2).
-    (∀ k, k < tokens.size - 2 → tokens[k]!.val ≠ .flowMappingEnd) ∧
     L4YAML.Proofs.ParserGrammable.ParseEntryFlowMapOk tokens (tokens.size - 2) (4 * tokens.size + 4) := by
   -- Step 1: Boundary tokens from scanFiltered_boundary_tokens
   obtain ⟨h_sz2, h_t0, h_tlast⟩ := scanFiltered_boundary_tokens _ _ h_scan
@@ -7327,8 +7428,10 @@ theorem scanFiltered_emitMap_nonempty_structure
   -- n₂ ≥ 1 (body is non-empty)
   have h_n₂_pos : n₂ ≥ 1 := by
     match n₂, h_chain₂ with
-    | 0, .zero =>
+    | 0, h_zero =>
       exfalso
+      have h_s1_eq_s2 : s₁ = s₂ := by cases h_zero; rfl
+      rw [h_s1_eq_s2] at h_corr₁
       have h_chars_eq := CharsFromOffset_unique h_corr₁.chars_from h_corr₂.chars_from
       have h_len := congrArg List.length h_chars_eq
       simp only [List.length_append] at h_len
@@ -7363,21 +7466,41 @@ theorem scanFiltered_emitMap_nonempty_structure
   -- Non-empty pair list has ≥ 1 pair. Each pair scanning produces ≥ 3 scanNextToken
   -- steps (key, value indicator, value scalar). Combined with n₂ ≥ 1, this gives
   -- filtered size ≥ 2 + n₂. For n₂ ≥ 5 we need the pair structure decomposition.
+  -- ═══ Body token characterization from infrastructure lemma ═══
+  obtain ⟨h_n₂_ge3, ⟨h_body_sz, h_body_key⟩, h_body_fe_next⟩ :=
+    emitPairList_body_filtered_characterization pairs.toList h_ne
+      (fun p hp => h_all_scan_k p hp) (fun p hp => h_all_scan_v p hp) s₁ s₂ n₂ ['}']
+      h_chain₂ h_corr₁ h_corr₂
+      h_inflow₁ (by rw [h_fl₁]; omega) h_indent₁ (by rw [h_col₁]; omega)
+      h_ek₁ (h_line₁ ▸ h_atol₁) h_endline₁ h_sk₁
+  rw [h_filt₁_sz] at h_body_sz h_body_key h_body_fe_next
+  -- tokens.size - 2 = (s₂.filter p).size
+  have h_tokens_sz_eq : tokens.size - 2 = (s₂.tokens.filter p).size := by
+    rw [h_tokens_decomp]; simp [Array.size_push]
+  -- Helper: tokens[k]! for k < tokens.size - 2 equals (s₂.filter p)[k]
+  have h_tok_body (k : Nat) (h_lt : k < (s₂.tokens.filter p).size) :
+      tokens[k]! = ((s₂.tokens.filter p)[k]'h_lt) := by
+    rw [h_tokens_decomp, getElem!_pos _ k (by simp [Array.size_push]; omega)]
+    rw [Array.getElem_push_lt (show k < ((s₂.tokens.filter p).push tok_fme).size
+        from by simp [Array.size_push]; omega)]
+    rw [Array.getElem_push_lt h_lt]
   have h_sz7 : tokens.size ≥ 7 := by
     rw [h_tokens_decomp]; simp [Array.size_push]
-    -- Need: (s₂.tokens.filter p).size ≥ 5
-    -- From filtered growth: (s₂.filter).size ≥ 2 + n₂ (from ScanChain_filtered_grows)
-    -- Sufficient if n₂ ≥ 3, which follows from pair body structure (key + ':' + value)
-    sorry
-  -- Tier 2 and Tier 3 (sorry'd)
-  have h_key_or_end : tokens[2]!.val = .key ∨ tokens[2]!.val = .flowMappingEnd := sorry
+    -- (s₂.filter).size ≥ (s₁.filter).size + n₂ = 2 + n₂ ≥ 2 + 3 = 5
+    rw [h_filt₁_sz] at h_filt_grows; omega
+  have h_t2_key : tokens[2]!.val = .key := by
+    rw [h_tok_body 2 (by omega)]; exact h_body_key (by omega)
   have h_fe_pattern : ∀ k, 2 ≤ k → k < tokens.size - 2 →
       tokens[k]!.val = .flowEntry →
-      k + 1 ≤ tokens.size - 2 ∧ tokens[k + 1]!.val = .key := sorry
-  have h_unique : ∀ k, k < tokens.size - 2 → tokens[k]!.val ≠ .flowMappingEnd := sorry
+      k + 1 ≤ tokens.size - 2 ∧ tokens[k + 1]!.val = .key := by
+    intro k h_lo h_hi h_fe
+    have h_k_lt : k < (s₂.tokens.filter p).size := by omega
+    rw [h_tok_body k h_k_lt] at h_fe
+    obtain ⟨h_next_lt, h_next_key⟩ := h_body_fe_next k (by omega) h_k_lt h_fe
+    exact ⟨by omega, by rw [h_tok_body (k+1) (by omega)]; exact h_next_key (by omega)⟩
   have h_pnok : L4YAML.Proofs.ParserGrammable.ParseEntryFlowMapOk
       tokens (tokens.size - 2) (4 * tokens.size + 4) := sorry
-  exact ⟨h_sz7, h_t0, h_tlast, h_t1, h_tpe, h_key_or_end, h_fe_pattern, h_unique, h_pnok⟩
+  exact ⟨h_sz7, h_t0, h_tlast, h_t1, h_tpe, h_t2_key, h_fe_pattern, h_pnok⟩
 
 /-- Combined scanner characterization and parser acceptance for flow sequences.
     Given that scanning the emitted sequence succeeds, the parser pipeline
@@ -7424,8 +7547,8 @@ theorem parseStream_emitSequence (style : CollectionStyle) (items : Array YamlVa
       have ⟨i, hi, h_eq⟩ := List.getElem_of_mem hw
       have h_sz : i < items.size := by rwa [Array.length_toList] at hi
       exact h_eq ▸ emit_scans_in_flow _ (h_items ⟨i, h_sz⟩)
-    obtain ⟨h_sz5, h_t0, h_tlast, h_t1, h_tpe, h_no_fe0, h_no_key0, h_fe_pattern,
-            h_unique, h_pnok⟩ :=
+    obtain ⟨h_sz5, h_t0, h_tlast, h_t1, h_tpe, h_no_fe0, h_no_key0, h_no_fse0, h_fe_pattern,
+            h_pnok⟩ :=
       scanFiltered_emitSeq_nonempty_structure items tokens h_scan (by simp [h_list]) h_all_scan
     -- Step 1: Unfold parseStream, dispatch expect .streamStart
     unfold parseStream
@@ -7503,12 +7626,19 @@ theorem parseStream_emitSequence (style : CollectionStyle) (items : Array YamlVa
     have h_after_fe_adj : ∀ k, ps_mid.pos ≤ k → k < tokens.size - 2 →
         ps_mid.tokens[k]!.val = .flowEntry →
         k + 1 ≤ tokens.size - 2 ∧ ps_mid.tokens[k + 1]!.val ≠ .flowEntry ∧
-        ps_mid.tokens[k + 1]!.val ≠ .key := by
+        ps_mid.tokens[k + 1]!.val ≠ .key ∧
+        ps_mid.tokens[k + 1]!.val ≠ .flowSequenceEnd := by
       rw [h_ps_mid_tok, h_ps_mid_pos]; exact h_fe_pattern
-    obtain ⟨items_res, ps_loop, h_loop_ok, h_loop_peek, h_loop_tok, h_loop_tp⟩ :=
+    have h_at_end_adj : ps_mid.peek? = some .flowSequenceEnd → ps_mid.pos = tokens.size - 2 := by
+      intro h_peek; exfalso
+      have ⟨_, h_val⟩ := L4YAML.Proofs.ParserGrammable.peek_some_val h_peek
+      simp only [h_ps_mid_tok, h_ps_mid_pos] at h_val
+      exact h_no_fse0 h_val
+    obtain ⟨items_res, ps_loop, h_loop_ok, h_loop_peek, h_loop_pos_eq, h_loop_tok, h_loop_tp⟩ :=
       L4YAML.Proofs.ParserGrammable.parseFlowSequenceLoop_emitter_ok
         (4 * tokens.size + 2) ps_mid #[] (tokens.size - 2)
         h_pnok_adj h_loop_fuel h_loop_pos h_endPos h_end_tok_adj
+        h_at_end_adj
         h_entry_vacuous h_no_fe_start_adj h_start_not_key_adj h_after_fe_adj
     -- parseFlowSequence(4*N+3): destructs, passes 4*N+2 to loop
     have h_parseFlowSeq : parseFlowSequence ps1 (4 * tokens.size + 3) =
@@ -7555,24 +7685,7 @@ theorem parseStream_emitSequence (style : CollectionStyle) (items : Array YamlVa
     -- ps_loop.advance.peek? = some .streamEnd
     have h_peek_end : ps_loop.advance.peek? = some .streamEnd := by
       have h_loop_tok_eq : ps_loop.tokens = tokens := h_loop_tok.trans h_ps_mid_tok
-      have h_loop_pos_eq : ps_loop.pos = tokens.size - 2 := by
-        -- Position pinning via uniqueness: the only position with flowSequenceEnd
-        -- in the token array is tokens.size - 2.
-        have ⟨h_pos_lt, h_val_at_pos⟩ :=
-          L4YAML.Proofs.ParserGrammable.peek_some_val h_loop_peek
-        rw [h_loop_tok_eq] at h_pos_lt h_val_at_pos
-        -- ps_loop.pos < tokens.size, tokens[ps_loop.pos]!.val = flowSequenceEnd
-        rcases Nat.lt_or_ge ps_loop.pos (tokens.size - 2) with h_lt | h_ge
-        · -- pos < tokens.size - 2: violates uniqueness (no flowSequenceEnd in [0..N-3])
-          exact absurd h_val_at_pos (h_unique ps_loop.pos h_lt)
-        · -- pos ≥ tokens.size - 2
-          rcases Nat.eq_or_lt_of_le h_ge with h_eq | h_gt
-          · exact h_eq.symm  -- pos = tokens.size - 2 ✓
-          · -- pos > tokens.size - 2, combined with pos < tokens.size → pos = tokens.size - 1
-            have h_eq : ps_loop.pos = tokens.size - 1 := by omega
-            -- tokens[tokens.size-1] = streamEnd ≠ flowSequenceEnd
-            rw [h_eq] at h_val_at_pos
-            exact absurd (h_tlast.symm.trans h_val_at_pos) (by decide)
+      -- Position is directly from h_loop_pos_eq (no uniqueness-based trichotomy needed)
       simp only [ParseState.peek?, ParseState.advance, h_loop_tok_eq]
       simp only [h_loop_pos_eq, show tokens.size - 2 + 1 = tokens.size - 1 from by omega,
                  show tokens.size - 1 < tokens.size from by omega, ↓reduceIte, h_tlast]
@@ -7633,8 +7746,8 @@ theorem parseStream_emitMapping (style : CollectionStyle) (pairs : Array (YamlVa
       have ⟨i, hi, h_eq⟩ := List.getElem_of_mem hp
       have h_sz : i < pairs.size := by rwa [Array.length_toList] at hi
       exact h_eq ▸ by exact emit_scans_in_flow _ (hv ⟨i, h_sz⟩)
-    obtain ⟨h_sz7, h_t0, h_tlast, h_t1, h_tpe, h_t2_start, h_fe_key_pattern,
-            h_unique, h_entry_ok⟩ :=
+    obtain ⟨h_sz7, h_t0, h_tlast, h_t1, h_tpe, h_t2_key, h_fe_key_pattern,
+            h_entry_ok⟩ :=
       scanFiltered_emitMap_nonempty_structure pairs tokens h_scan (by simp [h_list])
         h_all_scan_k h_all_scan_v
     -- Step 1: Unfold parseStream, dispatch expect .streamStart
@@ -7698,18 +7811,26 @@ theorem parseStream_emitMapping (style : CollectionStyle) (pairs : Array (YamlVa
     have h_start_adj : (#[] : Array (YamlValue × YamlValue)).size = 0 →
         ps_mid.peek? = some .key ∨ ps_mid.peek? = some .flowMappingEnd := by
       intro _
+      left
       simp only [ps_mid, ps1, ParseState.peek?, ParseState.advance]
       simp only [show (0 : Nat) + 1 + 1 = 2 from rfl, show 2 < tokens.size from by omega,
                  ↓reduceIte, Option.some.injEq]
-      exact h_t2_start
+      exact h_t2_key
     have h_after_fe_adj : ∀ k, ps_mid.pos ≤ k → k < tokens.size - 2 →
         ps_mid.tokens[k]!.val = .flowEntry →
         k + 1 ≤ tokens.size - 2 ∧ ps_mid.tokens[k + 1]!.val = .key := by
       rw [h_ps_mid_tok, h_ps_mid_pos]; exact h_fe_key_pattern
-    obtain ⟨pairs_res, ps_loop, h_loop_ok, h_loop_peek, h_loop_tok, h_loop_tp⟩ :=
+    have h_at_end_adj : ps_mid.peek? = some .flowMappingEnd → ps_mid.pos = tokens.size - 2 := by
+      intro h_peek; exfalso
+      have ⟨_, h_val⟩ := L4YAML.Proofs.ParserGrammable.peek_some_val h_peek
+      simp only [h_ps_mid_tok, h_ps_mid_pos] at h_val
+      -- tokens[2] = .key ≠ .flowMappingEnd
+      exact absurd (h_t2_key.symm.trans h_val) (by decide)
+    obtain ⟨pairs_res, ps_loop, h_loop_ok, h_loop_peek, h_loop_pos_eq, h_loop_tok, h_loop_tp⟩ :=
       L4YAML.Proofs.ParserGrammable.parseFlowMappingLoop_emitter_ok
         (4 * tokens.size + 2) ps_mid #[] (tokens.size - 2)
         h_entry_adj h_loop_fuel h_loop_pos h_endPos h_end_tok_adj
+        h_at_end_adj
         h_sep_adj h_start_adj h_after_fe_adj
     -- parseFlowMapping(4*N+3): destructs, passes 4*N+2 to loop
     have h_parseFlowMap : parseFlowMapping ps1 (4 * tokens.size + 3) =
@@ -7754,18 +7875,7 @@ theorem parseStream_emitMapping (style : CollectionStyle) (pairs : Array (YamlVa
     -- ps_loop.advance.peek? = some .streamEnd
     have h_peek_end : ps_loop.advance.peek? = some .streamEnd := by
       have h_loop_tok_eq : ps_loop.tokens = tokens := h_loop_tok.trans h_ps_mid_tok
-      have h_loop_pos_eq : ps_loop.pos = tokens.size - 2 := by
-        -- Position pinning via uniqueness (same technique as sequence case)
-        have ⟨h_pos_lt, h_val_at_pos⟩ :=
-          L4YAML.Proofs.ParserGrammable.peek_some_val h_loop_peek
-        rw [h_loop_tok_eq] at h_pos_lt h_val_at_pos
-        rcases Nat.lt_or_ge ps_loop.pos (tokens.size - 2) with h_lt | h_ge
-        · exact absurd h_val_at_pos (h_unique ps_loop.pos h_lt)
-        · rcases Nat.eq_or_lt_of_le h_ge with h_eq | h_gt
-          · exact h_eq.symm
-          · have h_eq : ps_loop.pos = tokens.size - 1 := by omega
-            rw [h_eq] at h_val_at_pos
-            exact absurd (h_tlast.symm.trans h_val_at_pos) (by decide)
+      -- Position is directly from h_loop_pos_eq (no uniqueness-based trichotomy needed)
       simp only [ParseState.peek?, ParseState.advance, h_loop_tok_eq]
       simp only [h_loop_pos_eq, show tokens.size - 2 + 1 = tokens.size - 1 from by omega,
                  show tokens.size - 1 < tokens.size from by omega, ↓reduceIte, h_tlast]

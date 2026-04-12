@@ -174,6 +174,8 @@ theorem resolve_toYaml_int (n : Int)
     (h3 : isInt (toString n) = some n) :
     resolve (toYaml n) = .int n := by
   show resolveImplicit (toString n) = .int n
+  have : toString n = n.repr := rfl
+  rw [this] at h1 h2 h3 ⊢
   unfold resolveImplicit
   simp [h1, h2, h3]
 
