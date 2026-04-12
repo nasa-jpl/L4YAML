@@ -20,9 +20,9 @@
     <link rel="stylesheet" href="-verso-search/search-box.css">
     <link rel="stylesheet" href="-verso-search/search-highlight.css">
     <link rel="stylesheet" href="-verso-search/domain-display.css">
-    <script src="-verso-data/katex/katex.js"></script>
-    <script src="-verso-data/katex/math.js"></script>
-    <link rel="stylesheet" href="-verso-data/katex/katex.css">
+    <script src="../../-verso-data/katex/katex.js"></script>
+    <script src="../../-verso-data/katex/math.js"></script>
+    <link rel="stylesheet" href="../../-verso-data/katex/katex.css">
     <style>
 table.tabular {
   margin: auto;
@@ -153,7 +153,7 @@ table.tabular td > p:last-child, table.tabular th > p:first-child {
     <header>
       <div class="header-logo-wrapper"></div>
       <div class="header-title-wrapper">
-        <a href="" class="header-title"><h1>
+        <a href="../../" class="header-title"><h1>
             L4YAML</h1>
           </a></div>
       </header>
@@ -161,20 +161,20 @@ table.tabular td > p:last-child, table.tabular th > p:first-child {
       <div class="toc-backdrop" onclick="document.getElementById('toggle-toc-click')?.click()"></div>
       <nav id="toc">
         <input type="checkbox" id="toggle-toc"><div class="first">
-          <a href="" class="toc-title"><h1>
+          <a href="../../" class="toc-title"><h1>
               L4YAML</h1>
             </a><div class="split-tocs">
             <div class="split-toc book">
               <div class="title">
                 <label for="--verso-manual-toc-----bookRoot" class="toggle-split-toc"><input type="checkbox" class="toggle-split-toc" id="--verso-manual-toc-----bookRoot"></label><span class="">Table of Contents</span></div>
-              <table><tr class="numbered"><td class="num">1.</td><td><a href="Overview/#overview">Overview</a></td></tr><tr class="numbered"><td class="num">2.</td><td><a href="Architecture/#architecture">Architecture</a></td></tr><tr class="numbered"><td class="num">3.</td><td><a href="Verification/#verification">Verification</a></td></tr><tr class="numbered"><td class="num">4.</td><td><a href="Security/#security">Security</a></td></tr><tr class="current numbered"><td class="num">5.</td><td><a href="FFI-Bindings/#ffi">FFI Bindings</a></td></tr><tr class="numbered"><td class="num">6.</td><td><a href="Testing/#testing">Testing</a></td></tr><tr class="numbered"><td class="num">7.</td><td><a href="Test-Results/#test-results">Test Results</a></td></tr><tr class="unnumbered"><td class="num"><td><a href="Index/#index">Index</a></td></tr></table></div>
+              <table><tr class="numbered"><td class="num">1.</td><td><a href="../../Overview/#overview">Overview</a></td></tr><tr class="numbered"><td class="num">2.</td><td><a href="../../Architecture/#architecture">Architecture</a></td></tr><tr class="numbered"><td class="num">3.</td><td><a href="../../Verification/#verification">Verification</a></td></tr><tr class="numbered"><td class="num">4.</td><td><a href="../../Security/#security">Security</a></td></tr><tr class="current numbered"><td class="num">5.</td><td><a href="../#ffi">FFI Bindings</a></td></tr><tr class="numbered"><td class="num">6.</td><td><a href="../../Testing/#testing">Testing</a></td></tr><tr class="numbered"><td class="num">7.</td><td><a href="../../Test-Results/#test-results">Test Results</a></td></tr><tr class="unnumbered"><td class="num"><td><a href="../../Index/#index">Index</a></td></tr></table></div>
             <div class="split-toc">
               <div class="title">
-                <label for="--verso-manual-toc-ffi" class="toggle-split-toc"><input type="checkbox" class="toggle-split-toc" id="--verso-manual-toc-ffi" checked="checked"></label><span class="number">5.</span> <span class=""><a href="FFI-Bindings/#ffi">FFI Bindings</a></span></div>
-              <table><tr class="numbered"><td class="num">5.1.</td><td><a href="FFI-Bindings/Dependency-Graph/#ffi-graph">Dependency Graph</a></td></tr><tr class="current numbered"><td class="num">5.2.</td><td><a href="FFI-Bindings/C-API/#c-api">C API</a></td></tr><tr class="numbered"><td class="num">5.3.</td><td><a href="FFI-Bindings/Python-API/#python-api">Python API</a></td></tr><tr class="numbered"><td class="num">5.4.</td><td><a href="FFI-Bindings/Rust-API/#rust-api">Rust API</a></td></tr><tr class="numbered"><td class="num">5.5.</td><td><a href="FFI-Bindings/Adding-FFI-Bindings/#adding-ffi">Adding FFI Bindings</a></td></tr></table></div>
+                <label for="--verso-manual-toc-ffi" class="toggle-split-toc"><input type="checkbox" class="toggle-split-toc" id="--verso-manual-toc-ffi" checked="checked"></label><span class="number">5.</span> <span class=""><a href="../#ffi">FFI Bindings</a></span></div>
+              <table><tr class="numbered"><td class="num">5.1.</td><td><a href="../Dependency-Graph/#ffi-graph">Dependency Graph</a></td></tr><tr class="current numbered"><td class="num">5.2.</td><td><a href="#c-api">C API</a></td></tr><tr class="numbered"><td class="num">5.3.</td><td><a href="../Python-API/#python-api">Python API</a></td></tr><tr class="numbered"><td class="num">5.4.</td><td><a href="../Rust-API/#rust-api">Rust API</a></td></tr><tr class="numbered"><td class="num">5.5.</td><td><a href="../Adding-FFI-Bindings/#adding-ffi">Adding FFI Bindings</a></td></tr></table></div>
             <div class="split-toc">
               <div class="title">
-                <span class="no-toggle"></span><span class="number">5.2.</span> <span class="current"><a href="FFI-Bindings/C-API/#c-api">C API</a></span></div>
+                <span class="no-toggle"></span><span class="number">5.2.</span> <span class="current"><a href="#c-api">C API</a></span></div>
               </div>
             </div>
           </div>
@@ -182,10 +182,10 @@ table.tabular td > p:last-child, table.tabular th > p:first-child {
         </nav>
       <main><div class="content-wrapper">
           <nav class="prev-next-buttons">
-            <a class="local-button active" href="FFI-Bindings/Dependency-Graph/#ffi-graph" rel="prev" title="5.1. Dependency Graph"><span class="arrow">←</span><span class="where">5.1. Dependency Graph</span></a><a class="local-button active" href="FFI-Bindings/Python-API/#python-api" rel="next" title="5.3. Python API"><span class="where">5.3. Python API</span><span class="arrow">→</span></a></nav>
+            <a class="local-button active" href="../Dependency-Graph/#ffi-graph" rel="prev" title="5.1. Dependency Graph"><span class="arrow">←</span><span class="where">5.1. Dependency Graph</span></a><a class="local-button active" href="../Python-API/#python-api" rel="next" title="5.3. Python API"><span class="where">5.3. Python API</span><span class="arrow">→</span></a></nav>
           <section>
             <h1>
-              5.2. C API<span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=c-api" title="Permalink">🔗</a></span></h1>
+              5.2. C API<span class="permalink-widget inline"><a href="../../find/?domain=Verso.Genre.Manual.section&amp;name=c-api" title="Permalink">🔗</a></span></h1>
             <p>
               <span id="--index--next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next"></span>
 The C API is defined in <code>ffi/l4yaml.h</code> with a bridge layer in
@@ -221,7 +221,7 @@ The shim layer handles the Lean runtime initialization and
 provides stable C-callable entry points.</p>
             </section>
           <nav class="prev-next-buttons">
-            <a class="local-button active" href="FFI-Bindings/Dependency-Graph/#ffi-graph" rel="prev" title="5.1. Dependency Graph"><span class="arrow">←</span><span class="where">5.1. Dependency Graph</span></a><a class="local-button active" href="FFI-Bindings/Python-API/#python-api" rel="next" title="5.3. Python API"><span class="where">5.3. Python API</span><span class="arrow">→</span></a></nav>
+            <a class="local-button active" href="../Dependency-Graph/#ffi-graph" rel="prev" title="5.1. Dependency Graph"><span class="arrow">←</span><span class="where">5.1. Dependency Graph</span></a><a class="local-button active" href="../Python-API/#python-api" rel="next" title="5.3. Python API"><span class="where">5.3. Python API</span><span class="arrow">→</span></a></nav>
           </div>
         </main></div>
     </body>

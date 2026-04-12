@@ -20,9 +20,9 @@
     <link rel="stylesheet" href="-verso-search/search-box.css">
     <link rel="stylesheet" href="-verso-search/search-highlight.css">
     <link rel="stylesheet" href="-verso-search/domain-display.css">
-    <script src="-verso-data/katex/katex.js"></script>
-    <script src="-verso-data/katex/math.js"></script>
-    <link rel="stylesheet" href="-verso-data/katex/katex.css">
+    <script src="../-verso-data/katex/katex.js"></script>
+    <script src="../-verso-data/katex/math.js"></script>
+    <link rel="stylesheet" href="../-verso-data/katex/katex.css">
     <style>
 table.tabular {
   margin: auto;
@@ -153,7 +153,7 @@ table.tabular td > p:last-child, table.tabular th > p:first-child {
     <header>
       <div class="header-logo-wrapper"></div>
       <div class="header-title-wrapper">
-        <a href="" class="header-title"><h1>
+        <a href="../" class="header-title"><h1>
             L4YAML</h1>
           </a></div>
       </header>
@@ -161,49 +161,49 @@ table.tabular td > p:last-child, table.tabular th > p:first-child {
       <div class="toc-backdrop" onclick="document.getElementById('toggle-toc-click')?.click()"></div>
       <nav id="toc">
         <input type="checkbox" id="toggle-toc"><div class="first">
-          <a href="" class="toc-title"><h1>
+          <a href="../" class="toc-title"><h1>
               L4YAML</h1>
             </a><div class="split-tocs">
             <div class="split-toc book">
               <div class="title">
                 <label for="--verso-manual-toc-----bookRoot" class="toggle-split-toc"><input type="checkbox" class="toggle-split-toc" id="--verso-manual-toc-----bookRoot" checked="checked"></label><span class="">Table of Contents</span></div>
-              <table><tr class="numbered"><td class="num">1.</td><td><a href="Overview/#overview">Overview</a></td></tr><tr class="current numbered"><td class="num">2.</td><td><a href="Architecture/#architecture">Architecture</a></td></tr><tr class="numbered"><td class="num">3.</td><td><a href="Verification/#verification">Verification</a></td></tr><tr class="numbered"><td class="num">4.</td><td><a href="Security/#security">Security</a></td></tr><tr class="numbered"><td class="num">5.</td><td><a href="FFI-Bindings/#ffi">FFI Bindings</a></td></tr><tr class="numbered"><td class="num">6.</td><td><a href="Testing/#testing">Testing</a></td></tr><tr class="numbered"><td class="num">7.</td><td><a href="Test-Results/#test-results">Test Results</a></td></tr><tr class="unnumbered"><td class="num"><td><a href="Index/#index">Index</a></td></tr></table></div>
+              <table><tr class="numbered"><td class="num">1.</td><td><a href="../Overview/#overview">Overview</a></td></tr><tr class="current numbered"><td class="num">2.</td><td><a href="#architecture">Architecture</a></td></tr><tr class="numbered"><td class="num">3.</td><td><a href="../Verification/#verification">Verification</a></td></tr><tr class="numbered"><td class="num">4.</td><td><a href="../Security/#security">Security</a></td></tr><tr class="numbered"><td class="num">5.</td><td><a href="../FFI-Bindings/#ffi">FFI Bindings</a></td></tr><tr class="numbered"><td class="num">6.</td><td><a href="../Testing/#testing">Testing</a></td></tr><tr class="numbered"><td class="num">7.</td><td><a href="../Test-Results/#test-results">Test Results</a></td></tr><tr class="unnumbered"><td class="num"><td><a href="../Index/#index">Index</a></td></tr></table></div>
             <div class="split-toc">
               <div class="title">
-                <label for="--verso-manual-toc-architecture" class="toggle-split-toc"><input type="checkbox" class="toggle-split-toc" id="--verso-manual-toc-architecture" checked="checked"></label><span class="number">2.</span> <span class="current"><a href="Architecture/#architecture">Architecture</a></span></div>
-              <table><tr class="numbered"><td class="num">2.1.</td><td><a href="Architecture/Scanner-_LPAR_Lexical-Layer_RPAR_/#scanner">Scanner (Lexical Layer)</a></td></tr><tr class="numbered"><td class="num">2.2.</td><td><a href="Architecture/Token-Parser-_LPAR_Syntactic-Layer_RPAR_/#token-parser">Token Parser (Syntactic Layer)</a></td></tr><tr class="numbered"><td class="num">2.3.</td><td><a href="Architecture/Type-System/#type-system">Type System</a></td></tr><tr class="numbered"><td class="num">2.4.</td><td><a href="Architecture/Module-Organization/#module-organization">Module Organization</a></td></tr><tr class="numbered"><td class="num">2.5.</td><td><a href="Architecture/Import-Graph/#import-graph">Import Graph</a></td></tr></table></div>
+                <label for="--verso-manual-toc-architecture" class="toggle-split-toc"><input type="checkbox" class="toggle-split-toc" id="--verso-manual-toc-architecture" checked="checked"></label><span class="number">2.</span> <span class="current"><a href="#architecture">Architecture</a></span></div>
+              <table><tr class="numbered"><td class="num">2.1.</td><td><a href="Scanner-_LPAR_Lexical-Layer_RPAR_/#scanner">Scanner (Lexical Layer)</a></td></tr><tr class="numbered"><td class="num">2.2.</td><td><a href="Token-Parser-_LPAR_Syntactic-Layer_RPAR_/#token-parser">Token Parser (Syntactic Layer)</a></td></tr><tr class="numbered"><td class="num">2.3.</td><td><a href="Type-System/#type-system">Type System</a></td></tr><tr class="numbered"><td class="num">2.4.</td><td><a href="Module-Organization/#module-organization">Module Organization</a></td></tr><tr class="numbered"><td class="num">2.5.</td><td><a href="Import-Graph/#import-graph">Import Graph</a></td></tr></table></div>
             </div>
           </div>
         <div class="last"></div>
         </nav>
       <main><div class="content-wrapper">
           <nav class="prev-next-buttons">
-            <a class="local-button active" href="Overview/Key-Design-Decisions/#design-decisions" rel="prev" title="1.2. Key Design Decisions"><span class="arrow">←</span><span class="where">1.2. Key Design Decisions</span></a><a class="local-button active" href="Architecture/Scanner-_LPAR_Lexical-Layer_RPAR_/#scanner" rel="next" title="2.1. Scanner (Lexical Layer)"><span class="where">2.1. Scanner (Lexical Layer)</span><span class="arrow">→</span></a></nav>
+            <a class="local-button active" href="../Overview/Key-Design-Decisions/#design-decisions" rel="prev" title="1.2. Key Design Decisions"><span class="arrow">←</span><span class="where">1.2. Key Design Decisions</span></a><a class="local-button active" href="Scanner-_LPAR_Lexical-Layer_RPAR_/#scanner" rel="next" title="2.1. Scanner (Lexical Layer)"><span class="where">2.1. Scanner (Lexical Layer)</span><span class="arrow">→</span></a></nav>
           <section>
             <h1>
-              2. Architecture<span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=architecture" title="Permalink">🔗</a></span></h1>
+              2. Architecture<span class="permalink-widget inline"><a href="../find/?domain=Verso.Genre.Manual.section&amp;name=architecture" title="Permalink">🔗</a></span></h1>
             <p>
               <span id="--index--next-next"></span>
 L4YAML implements a two-pass pipeline that mirrors the layered
 structure of the YAML 1.2.2 specification itself.
-Input bytes flow through a character-level <a href="Architecture/Scanner-_LPAR_Lexical-Layer_RPAR_/#scanner">scanner</a>,
-producing a typed token stream, which a <a href="Architecture/Token-Parser-_LPAR_Syntactic-Layer_RPAR_/#token-parser">recursive-descent parser</a>
+Input bytes flow through a character-level <a href="Scanner-_LPAR_Lexical-Layer_RPAR_/#scanner">scanner</a>,
+producing a typed token stream, which a <a href="Token-Parser-_LPAR_Syntactic-Layer_RPAR_/#token-parser">recursive-descent parser</a>
 converts into a structured AST.</p>
             <ol class="section-toc">
               <li>
-                <a href="Architecture/Scanner-_LPAR_Lexical-Layer_RPAR_/#scanner"><span class="number">2.1.</span> Scanner (Lexical Layer)</a></li>
+                <a href="Scanner-_LPAR_Lexical-Layer_RPAR_/#scanner"><span class="number">2.1.</span> Scanner (Lexical Layer)</a></li>
               <li>
-                <a href="Architecture/Token-Parser-_LPAR_Syntactic-Layer_RPAR_/#token-parser"><span class="number">2.2.</span> Token Parser (Syntactic Layer)</a></li>
+                <a href="Token-Parser-_LPAR_Syntactic-Layer_RPAR_/#token-parser"><span class="number">2.2.</span> Token Parser (Syntactic Layer)</a></li>
               <li>
-                <a href="Architecture/Type-System/#type-system"><span class="number">2.3.</span> Type System</a></li>
+                <a href="Type-System/#type-system"><span class="number">2.3.</span> Type System</a></li>
               <li>
-                <a href="Architecture/Module-Organization/#module-organization"><span class="number">2.4.</span> Module Organization</a></li>
+                <a href="Module-Organization/#module-organization"><span class="number">2.4.</span> Module Organization</a></li>
               <li>
-                <a href="Architecture/Import-Graph/#import-graph"><span class="number">2.5.</span> Import Graph</a></li>
+                <a href="Import-Graph/#import-graph"><span class="number">2.5.</span> Import Graph</a></li>
               </ol>
             </section>
           <nav class="prev-next-buttons">
-            <a class="local-button active" href="Overview/Key-Design-Decisions/#design-decisions" rel="prev" title="1.2. Key Design Decisions"><span class="arrow">←</span><span class="where">1.2. Key Design Decisions</span></a><a class="local-button active" href="Architecture/Scanner-_LPAR_Lexical-Layer_RPAR_/#scanner" rel="next" title="2.1. Scanner (Lexical Layer)"><span class="where">2.1. Scanner (Lexical Layer)</span><span class="arrow">→</span></a></nav>
+            <a class="local-button active" href="../Overview/Key-Design-Decisions/#design-decisions" rel="prev" title="1.2. Key Design Decisions"><span class="arrow">←</span><span class="where">1.2. Key Design Decisions</span></a><a class="local-button active" href="Scanner-_LPAR_Lexical-Layer_RPAR_/#scanner" rel="next" title="2.1. Scanner (Lexical Layer)"><span class="where">2.1. Scanner (Lexical Layer)</span><span class="arrow">→</span></a></nav>
           </div>
         </main></div>
     </body>

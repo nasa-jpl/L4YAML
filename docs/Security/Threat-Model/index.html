@@ -20,9 +20,9 @@
     <link rel="stylesheet" href="-verso-search/search-box.css">
     <link rel="stylesheet" href="-verso-search/search-highlight.css">
     <link rel="stylesheet" href="-verso-search/domain-display.css">
-    <script src="-verso-data/katex/katex.js"></script>
-    <script src="-verso-data/katex/math.js"></script>
-    <link rel="stylesheet" href="-verso-data/katex/katex.css">
+    <script src="../../-verso-data/katex/katex.js"></script>
+    <script src="../../-verso-data/katex/math.js"></script>
+    <link rel="stylesheet" href="../../-verso-data/katex/katex.css">
     <style>
 table.tabular {
   margin: auto;
@@ -153,7 +153,7 @@ table.tabular td > p:last-child, table.tabular th > p:first-child {
     <header>
       <div class="header-logo-wrapper"></div>
       <div class="header-title-wrapper">
-        <a href="" class="header-title"><h1>
+        <a href="../../" class="header-title"><h1>
             L4YAML</h1>
           </a></div>
       </header>
@@ -161,20 +161,20 @@ table.tabular td > p:last-child, table.tabular th > p:first-child {
       <div class="toc-backdrop" onclick="document.getElementById('toggle-toc-click')?.click()"></div>
       <nav id="toc">
         <input type="checkbox" id="toggle-toc"><div class="first">
-          <a href="" class="toc-title"><h1>
+          <a href="../../" class="toc-title"><h1>
               L4YAML</h1>
             </a><div class="split-tocs">
             <div class="split-toc book">
               <div class="title">
                 <label for="--verso-manual-toc-----bookRoot" class="toggle-split-toc"><input type="checkbox" class="toggle-split-toc" id="--verso-manual-toc-----bookRoot"></label><span class="">Table of Contents</span></div>
-              <table><tr class="numbered"><td class="num">1.</td><td><a href="Overview/#overview">Overview</a></td></tr><tr class="numbered"><td class="num">2.</td><td><a href="Architecture/#architecture">Architecture</a></td></tr><tr class="numbered"><td class="num">3.</td><td><a href="Verification/#verification">Verification</a></td></tr><tr class="current numbered"><td class="num">4.</td><td><a href="Security/#security">Security</a></td></tr><tr class="numbered"><td class="num">5.</td><td><a href="FFI-Bindings/#ffi">FFI Bindings</a></td></tr><tr class="numbered"><td class="num">6.</td><td><a href="Testing/#testing">Testing</a></td></tr><tr class="numbered"><td class="num">7.</td><td><a href="Test-Results/#test-results">Test Results</a></td></tr><tr class="unnumbered"><td class="num"><td><a href="Index/#index">Index</a></td></tr></table></div>
+              <table><tr class="numbered"><td class="num">1.</td><td><a href="../../Overview/#overview">Overview</a></td></tr><tr class="numbered"><td class="num">2.</td><td><a href="../../Architecture/#architecture">Architecture</a></td></tr><tr class="numbered"><td class="num">3.</td><td><a href="../../Verification/#verification">Verification</a></td></tr><tr class="current numbered"><td class="num">4.</td><td><a href="../#security">Security</a></td></tr><tr class="numbered"><td class="num">5.</td><td><a href="../../FFI-Bindings/#ffi">FFI Bindings</a></td></tr><tr class="numbered"><td class="num">6.</td><td><a href="../../Testing/#testing">Testing</a></td></tr><tr class="numbered"><td class="num">7.</td><td><a href="../../Test-Results/#test-results">Test Results</a></td></tr><tr class="unnumbered"><td class="num"><td><a href="../../Index/#index">Index</a></td></tr></table></div>
             <div class="split-toc">
               <div class="title">
-                <label for="--verso-manual-toc-security" class="toggle-split-toc"><input type="checkbox" class="toggle-split-toc" id="--verso-manual-toc-security" checked="checked"></label><span class="number">4.</span> <span class=""><a href="Security/#security">Security</a></span></div>
-              <table><tr class="current numbered"><td class="num">4.1.</td><td><a href="Security/Threat-Model/#threat-model">Threat Model</a></td></tr><tr class="numbered"><td class="num">4.2.</td><td><a href="Security/ParserLimits/#parser-limits">ParserLimits</a></td></tr><tr class="numbered"><td class="num">4.3.</td><td><a href="Security/Preset-Configurations/#presets">Preset Configurations</a></td></tr><tr class="numbered"><td class="num">4.4.</td><td><a href="Security/Verification-of-Security-Properties/#security-verification">Verification of Security Properties</a></td></tr></table></div>
+                <label for="--verso-manual-toc-security" class="toggle-split-toc"><input type="checkbox" class="toggle-split-toc" id="--verso-manual-toc-security" checked="checked"></label><span class="number">4.</span> <span class=""><a href="../#security">Security</a></span></div>
+              <table><tr class="current numbered"><td class="num">4.1.</td><td><a href="#threat-model">Threat Model</a></td></tr><tr class="numbered"><td class="num">4.2.</td><td><a href="../ParserLimits/#parser-limits">ParserLimits</a></td></tr><tr class="numbered"><td class="num">4.3.</td><td><a href="../Preset-Configurations/#presets">Preset Configurations</a></td></tr><tr class="numbered"><td class="num">4.4.</td><td><a href="../Verification-of-Security-Properties/#security-verification">Verification of Security Properties</a></td></tr></table></div>
             <div class="split-toc">
               <div class="title">
-                <span class="no-toggle"></span><span class="number">4.1.</span> <span class="current"><a href="Security/Threat-Model/#threat-model">Threat Model</a></span></div>
+                <span class="no-toggle"></span><span class="number">4.1.</span> <span class="current"><a href="#threat-model">Threat Model</a></span></div>
               </div>
             </div>
           </div>
@@ -182,10 +182,10 @@ table.tabular td > p:last-child, table.tabular th > p:first-child {
         </nav>
       <main><div class="content-wrapper">
           <nav class="prev-next-buttons">
-            <a class="local-button active" href="Security/#security" rel="prev" title="4. Security"><span class="arrow">←</span><span class="where">4. Security</span></a><a class="local-button active" href="Security/ParserLimits/#parser-limits" rel="next" title="4.2. ParserLimits"><span class="where">4.2. ParserLimits</span><span class="arrow">→</span></a></nav>
+            <a class="local-button active" href="../#security" rel="prev" title="4. Security"><span class="arrow">←</span><span class="where">4. Security</span></a><a class="local-button active" href="../ParserLimits/#parser-limits" rel="next" title="4.2. ParserLimits"><span class="where">4.2. ParserLimits</span><span class="arrow">→</span></a></nav>
           <section>
             <h1>
-              4.1. Threat Model<span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=threat-model" title="Permalink">🔗</a></span></h1>
+              4.1. Threat Model<span class="permalink-widget inline"><a href="../../find/?domain=Verso.Genre.Manual.section&amp;name=threat-model" title="Permalink">🔗</a></span></h1>
             <p>
               YAML parsers face several categories of attack:</p>
             <ul>
@@ -215,7 +215,7 @@ table.tabular td > p:last-child, table.tabular th > p:first-child {
               L4YAML mitigates all of these through its <code>ParserLimits</code> configuration.</p>
             </section>
           <nav class="prev-next-buttons">
-            <a class="local-button active" href="Security/#security" rel="prev" title="4. Security"><span class="arrow">←</span><span class="where">4. Security</span></a><a class="local-button active" href="Security/ParserLimits/#parser-limits" rel="next" title="4.2. ParserLimits"><span class="where">4.2. ParserLimits</span><span class="arrow">→</span></a></nav>
+            <a class="local-button active" href="../#security" rel="prev" title="4. Security"><span class="arrow">←</span><span class="where">4. Security</span></a><a class="local-button active" href="../ParserLimits/#parser-limits" rel="next" title="4.2. ParserLimits"><span class="where">4.2. ParserLimits</span><span class="arrow">→</span></a></nav>
           </div>
         </main></div>
     </body>
