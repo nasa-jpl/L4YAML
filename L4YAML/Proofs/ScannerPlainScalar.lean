@@ -281,8 +281,7 @@ theorem collectPlainScalarLoop_validFirst_and_head
         simp at h
         split at h
         · rename_i hbad; rw [h_ps] at hbad; contradiction
-        · have : "".push c0 = String.singleton c0 := by rfl
-          rw [this] at h
+        · change collectPlainScalarLoop s.advance (String.singleton c0) "" fuel' inFlow contentIndent inputEnd = Except.ok result at h
           have hpfx := collectPlainScalarLoop_content_isPrefix
             s.advance (String.singleton c0) "" fuel' inFlow contentIndent inputEnd result h
           obtain ⟨sfx, hsfx⟩ := hpfx

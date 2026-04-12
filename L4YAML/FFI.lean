@@ -18,6 +18,7 @@ import L4YAML.Dump
 import L4YAML.Config
 
 set_option autoImplicit false
+set_option compiler.ignoreBorrowAnnotation true
 
 namespace L4YAML.FFI
 

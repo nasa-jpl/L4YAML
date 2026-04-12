@@ -211,17 +211,17 @@ theorem escapeHex2_head_bounded :
 
 theorem escapeHex2_no_newline (c : Char) (h : c.val.toNat < 32) :
     ¬('\n' ∈ (escapeHex2 c).toList) := by
-  have := escapeHex2_no_newline_bounded ⟨c.toNat, by simp [Char.toNat]; omega⟩
+  have := escapeHex2_no_newline_bounded ⟨c.toNat, by unfold Char.toNat; omega⟩
   rwa [Char.ofNat_toNat] at this
 
 theorem escapeHex2_no_cr (c : Char) (h : c.val.toNat < 32) :
     ¬('\r' ∈ (escapeHex2 c).toList) := by
-  have := escapeHex2_no_cr_bounded ⟨c.toNat, by simp [Char.toNat]; omega⟩
+  have := escapeHex2_no_cr_bounded ⟨c.toNat, by unfold Char.toNat; omega⟩
   rwa [Char.ofNat_toNat] at this
 
 theorem escapeHex2_head (c : Char) (h : c.val.toNat < 32) :
     (escapeHex2 c).toList.head? = some '\\' := by
-  have := escapeHex2_head_bounded ⟨c.toNat, by simp [Char.toNat]; omega⟩
+  have := escapeHex2_head_bounded ⟨c.toNat, by unfold Char.toNat; omega⟩
   rwa [Char.ofNat_toNat] at this
 
 /-- `escapeChar c` never contains a bare newline (`\n`). -/
@@ -252,7 +252,8 @@ theorem escapeChar_no_cr (c : Char) : ¬('\r' ∈ (escapeChar c).toList) := by
 theorem escapeChar_escaped_starts_backslash (c : Char) (h : isEscapedChar c = true) :
     (escapeChar c).toList.head? = some '\\' := by
   unfold isEscapedChar escapeChar at *
-  split at h <;> simp_all <;> (first | decide | exact escapeHex2_head _ (by omega))
+  split at h <;> simp_all
+  all_goals (first | decide | (exact escapeHex2_head _ (by change c.toNat < 32; omega)))
 
 /-- `emitScalar content` wraps `escapeString content` in double quotes. -/
 theorem emitScalar_eq (content : String) :
