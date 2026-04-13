@@ -6650,35 +6650,6 @@ theorem ScanChain_preserves_raw_prefix {s s' : ScannerState} {k : Nat}
       n₀ h_n₀ h_cond
     exact (ih (by omega) h_cond').trans (h_pres i hi)
 
--- Every `scanNextToken` step adds at least one non-placeholder token to the
--- filtered token array.
---
--- Argument: Each dispatch branch (structural, flow indicators, content) pushes
--- at least one real (non-placeholder) token. `saveSimpleKey` only adds placeholders
--- (filtered out). `setIfInBounds` in `scanValuePrepare` converts placeholders to
--- real tokens at positions above `s.tokens.size`, which are in the suffix.
-set_option maxHeartbeats 800000 in
-theorem scanNextToken_filtered_grows (s s' : ScannerState)
-    (h : scanNextToken s = .ok (some s')) :
-    (s'.tokens.filter (fun t => t.val != .placeholder)).size ≥
-    (s.tokens.filter (fun t => t.val != .placeholder)).size + 1 := by
-  -- Each dispatch pushes at least one non-placeholder token.
-  -- saveSimpleKey only adds placeholders → filtered count unchanged.
-  -- skipToContent/unwindIndents/advance preserve or increase filtered count.
-  -- The overall filtered count grows by ≥1 through each scanNextToken step.
-  sorry
-
-/-- Through a ScanChain of `n` steps, the filtered token array grows by at least `n`. -/
-theorem ScanChain_filtered_grows {s s' : ScannerState} {n : Nat}
-    (h_chain : ScanChain s n s') :
-    (s'.tokens.filter (fun t => t.val != .placeholder)).size ≥
-    (s.tokens.filter (fun t => t.val != .placeholder)).size + n := by
-  induction h_chain with
-  | zero => omega
-  | step h_snt _h_rest ih =>
-    have h_step := scanNextToken_filtered_grows _ _ h_snt
-    omega
-
 /-- If `b` extends `a` (same elements at all positions `i < a.size`), then
     `b.filter p` has `a.filter p` as a prefix. -/
 theorem Array_filter_prefix_of_raw_prefix {α : Type}
@@ -6697,6 +6668,149 @@ theorem Array_filter_prefix_of_raw_prefix {α : Type}
     rw [← h_take, List.take_append_drop]
   rw [Array.toList_filter, Array.toList_filter, h_split, List.filter_append]
   exact ⟨(b.toList.drop a.size).filter p, rfl⟩
+
+/-! ### Filtered token array growth infrastructure
+
+   Every `scanNextToken` step adds at least one non-placeholder token.
+   The proof decomposes into:
+   1. Preprocessing (skipToContent, unwindIndents, saveSimpleKey) preserves
+      or grows filtered count — from existing `preprocess_preserves_prefix`.
+   2. Each dispatch branch emits at least one non-placeholder token.
+   3. `setIfInBounds` with non-placeholder replacement doesn't decrease
+      filtered count (only used in `scanValuePrepare`).
+-/
+
+-- List helper: replacing an element that passes a filter doesn't decrease filter count.
+theorem List_filter_set_length_mono {α : Type} (l : List α) (i : Nat) (v : α)
+    (p : α → Bool) (hv : p v = true) :
+    ((l.set i v).filter p).length ≥ (l.filter p).length := by
+  induction l generalizing i with
+  | nil => simp
+  | cons a as ih =>
+    cases i with
+    | zero =>
+      simp only [List.set_cons_zero, List.filter_cons, hv, ite_true]
+      split <;> simp <;> omega
+    | succ j =>
+      simp only [List.set_cons_succ, List.filter_cons]
+      have := ih j
+      split <;> simp <;> omega
+
+-- Array.setIfInBounds with a filter-passing replacement preserves or grows
+-- the filtered array size.
+theorem Array_setIfInBounds_filter_mono {α : Type} (a : Array α) (i : Nat) (v : α)
+    (p : α → Bool) (hv : p v = true) :
+    ((a.setIfInBounds i v).filter p).size ≥ (a.filter p).size := by
+  unfold Array.setIfInBounds
+  split
+  · -- i < a.size: use List_filter_set_length_mono
+    next h_bound =>
+    have : ((a.set i v h_bound).filter p).toList.length ≥ (a.filter p).toList.length := by
+      rw [Array.toList_filter, Array.toList_filter, Array.toList_set]
+      exact List_filter_set_length_mono a.toList i v p hv
+    exact this
+  · -- i ≥ a.size: identity
+    omega
+
+-- Preprocessing monotonicity: the filtered token count doesn't decrease
+-- through `scanNextToken_preprocess`.
+theorem preprocess_filtered_mono (s : ScannerState) (s₁ : ScannerState) (c : Char)
+    (h : scanNextToken_preprocess s = .ok (some (s₁, c))) :
+    (s₁.tokens.filter (fun t => t.val != .placeholder)).size ≥
+    (s.tokens.filter (fun t => t.val != .placeholder)).size := by
+  have h_mono := ScannerCorrectness.ScanHelpers.preprocess_tokens_mono s s₁ c h
+  have h_pres := ScannerCorrectness.ScanHelpers.preprocess_preserves_prefix s s₁ c h
+  obtain ⟨suffix, h_eq⟩ := Array_filter_prefix_of_raw_prefix s.tokens s₁.tokens
+    (fun t => t.val != .placeholder) h_mono h_pres
+  show (s₁.tokens.filter (fun t => t.val != .placeholder)).toList.length ≥
+       (s.tokens.filter (fun t => t.val != .placeholder)).toList.length
+  rw [h_eq, List.length_append]; omega
+
+-- `allowDirectives` if-then-else preserves filtered token count (tokens unchanged).
+theorem allowDir_ite_filter (s : ScannerState) :
+    let p := fun (t : Positioned YamlToken) => t.val != .placeholder
+    ((if s.allowDirectives = true then
+        { s with allowDirectives := false, documentEverStarted := true }
+      else s).tokens.filter p).size = (s.tokens.filter p).size := by
+  split <;> rfl
+
+/-! #### Per-dispatch-layer filtered growth lemmas -/
+
+-- Each structural dispatch branch emits ≥1 non-placeholder token.
+-- Structural dispatch: scanDocumentStart, scanDocumentEnd, scanDirective.
+-- Each uses unwindIndents (filtered mono) + emit non-placeholder.
+theorem dispatchStructural_filtered_grows (s s' : ScannerState) (c : Char)
+    (h : scanNextToken_dispatchStructural s c = .ok (some s')) :
+    (s'.tokens.filter (fun t => t.val != .placeholder)).size ≥
+    (s.tokens.filter (fun t => t.val != .placeholder)).size + 1 := by
+  sorry  -- Phase C: requires unwindIndents_filtered_mono + per-function emit analysis
+-- Flow indicator dispatch: each function emits exactly 1 non-placeholder token.
+-- scanFlowSequenceStart/End, scanFlowMappingStart/End push one token each;
+-- scanFlowEntry pushes .flowEntry. validateFlowClose is error-only (no state change).
+theorem dispatchFlowIndicators_filtered_grows (s s' : ScannerState) (c : Char)
+    (h : scanNextToken_dispatchFlowIndicators s c = .ok (some s')) :
+    (s'.tokens.filter (fun t => t.val != .placeholder)).size ≥
+    (s.tokens.filter (fun t => t.val != .placeholder)).size + 1 := by
+  sorry  -- Phase C: unfold each flow function → emit non-placeholder → filter_push
+
+-- Block indicator dispatch: scanBlockEntry, scanKey, scanValue.
+-- scanValue uses setIfInBounds → needs scanValuePrepare_filtered_mono.
+theorem dispatchBlockIndicators_filtered_grows (s s' : ScannerState) (c : Char)
+    (h : scanNextToken_dispatchBlockIndicators s c = .ok (some s')) :
+    (s'.tokens.filter (fun t => t.val != .placeholder)).size ≥
+    (s.tokens.filter (fun t => t.val != .placeholder)).size + 1 := by
+  sorry  -- Phase C: requires per-function analysis for blockEntry/key/value
+
+-- Content dispatch: scanDoubleQuoted, scanSingleQuoted, scanPlainScalar, etc.
+theorem dispatchContent_filtered_grows (s s' : ScannerState) (c : Char)
+    (h : scanNextToken_dispatchContent s c = .ok s') :
+    (s'.tokens.filter (fun t => t.val != .placeholder)).size ≥
+    (s.tokens.filter (fun t => t.val != .placeholder)).size + 1 := by
+  sorry  -- Phase C: requires per-function analysis for content functions
+
+/-! #### Main theorem: filtered growth through scanNextToken -/
+
+-- Every `scanNextToken` step adds at least one non-placeholder token to the
+-- filtered token array.
+set_option maxHeartbeats 3200000 in
+theorem scanNextToken_filtered_grows (s s' : ScannerState)
+    (h : scanNextToken s = .ok (some s')) :
+    (s'.tokens.filter (fun t => t.val != .placeholder)).size ≥
+    (s.tokens.filter (fun t => t.val != .placeholder)).size + 1 := by
+  unfold scanNextToken at h
+  simp only [bind, pure, Pure.pure, Except.pure] at h
+  simp only [Except.bind] at h
+  split at h
+  · contradiction
+  · split at h
+    · simp at h
+    · have h_pp_mono := preprocess_filtered_mono s _ _ (by assumption)
+      repeat (any_goals (split at h))
+      any_goals contradiction
+      any_goals (simp at h)
+      all_goals first
+        | contradiction
+        | (simp at h)
+        | (have := dispatchStructural_filtered_grows _ _ _ (by assumption);
+           simp_all <;> omega)
+        | (have h_d := dispatchFlowIndicators_filtered_grows _ _ _ (by assumption);
+           rw [allowDir_ite_filter] at h_d; simp_all <;> omega)
+        | (have h_d := dispatchBlockIndicators_filtered_grows _ _ _ (by assumption);
+           rw [allowDir_ite_filter] at h_d; simp_all <;> omega)
+        | (have h_d := dispatchContent_filtered_grows _ _ _ (by assumption);
+           rw [allowDir_ite_filter] at h_d; simp_all <;> omega)
+        | (simp_all <;> omega)
+
+/-- Through a ScanChain of `n` steps, the filtered token array grows by at least `n`. -/
+theorem ScanChain_filtered_grows {s s' : ScannerState} {n : Nat}
+    (h_chain : ScanChain s n s') :
+    (s'.tokens.filter (fun t => t.val != .placeholder)).size ≥
+    (s.tokens.filter (fun t => t.val != .placeholder)).size + n := by
+  induction h_chain with
+  | zero => omega
+  | step h_snt _h_rest ih =>
+    have h_step := scanNextToken_filtered_grows _ _ h_snt
+    omega
 
 /-- Through a ScanChain, the filtered token array of the final state has the
     filtered array of the initial state as a prefix. Requires the initial disjunctive
