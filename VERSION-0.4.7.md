@@ -3326,8 +3326,8 @@ attempting to prove the Layer 0 sorrys would fail at the hypothesis level.
    shifts from tracking `simpleKey.tokenIndex` bounds (hard) to tracking
    `explicitKeyLine` preservation (already done in Layer 1.1).
 
-**Phase B: Layer 0 — Per-dispatch infrastructure for prefix/filtered proofs**
-*Estimated: ~200-350 LOC · Risk: LOW-MEDIUM*
+**Phase B: Layer 0 — Per-dispatch infrastructure for prefix/filtered proofs (DONE)**
+*Actual: ~80 LOC proven infrastructure + 4 sorry stubs · Risk: LOW-MEDIUM*
 
 Build the helper lemmas needed to prove `scanNextToken_prefix_and_sk_inv` and
 `scanNextToken_filtered_grows` by per-dispatch branch analysis. Each of the ~13 dispatch
@@ -3360,7 +3360,92 @@ The risk is in the volume (~13 branches × 2 properties = ~26 lemmas) rather tha
 
 ***Phase B: Accomplishments***
 
+1. **5 proven infrastructure lemmas for filtered growth** (~60 LOC). These form the foundation
+   for Phase C's per-dispatch proofs:
+   - `List_filter_set_length_mono`: Replacing an element that passes a filter doesn't decrease
+     the filtered list length. Proved by induction on the list with `cases i` decomposition.
+   - `Array_setIfInBounds_filter_mono`: Array version — `setIfInBounds` with a filter-passing
+     value preserves or grows filtered size. Proof bridges Array↔List via
+     `Array.toList_filter` and `Array.toList_set`, applying the List helper.
+   - `preprocess_filtered_mono`: The `scanNextToken_preprocess` step doesn't decrease the
+     filtered token count. Uses `ScannerCorrectness.ScanHelpers.preprocess_tokens_mono` and
+     `preprocess_preserves_prefix` with `Array_filter_prefix_of_raw_prefix` to show the
+     filtered array has the original as a prefix (hence `≥` by append length).
+   - `allowDir_ite_filter`: The `allowDirectives` if-then-else preserves filtered token count
+     (tokens unchanged in both branches). Trivially `split <;> rfl`.
+   - `Array_filter_prefix_of_raw_prefix` (relocated): Moved from later in the file to before
+     the infrastructure section to resolve a forward reference. Proves that if `b` extends `a`
+     (same elements at positions `< a.size`), then `b.filter p` has `a.filter p` as a prefix.
+
+2. **4 sorry-stubbed per-dispatch filtered growth theorems.** Each dispatch branch of
+   `scanNextToken` gets its own theorem stating filtered tokens grow by ≥1:
+   - `dispatchStructural_filtered_grows` (scanDocumentStart/End/Directive)
+   - `dispatchFlowIndicators_filtered_grows` (scanFlowSequenceStart/End, scanFlowMappingStart/End, scanFlowEntry)
+   - `dispatchBlockIndicators_filtered_grows` (scanBlockEntry, scanKey, scanValue)
+   - `dispatchContent_filtered_grows` (scanDoubleQuoted, scanSingleQuoted, scanPlainScalar, etc.)
+   Phase C will prove these using per-function emit analysis and the `Array.filter_push` +
+   `native_decide` pattern for showing emitted tokens are non-placeholder.
+
+3. **`scanNextToken_filtered_grows` proven as composition** (~20 LOC, `maxHeartbeats 3200000`).
+   The main theorem dispatches `scanNextToken`'s full pipeline: unfold, case-split on
+   `preprocess`, `dispatchStructural`, `dispatchFlowIndicators`, `dispatchBlockIndicators`,
+   `dispatchContent`, and for each arm applies the corresponding dispatch lemma + `preprocess_filtered_mono`
+   + `allowDir_ite_filter`. Uses `simp_all <;> omega` to chain the `≥ size + 1` inequalities
+   through preprocessing's `≥ size` bound. Structurally complete — removing the 4 dispatch
+   sorrys makes the entire filtered-growth chain sorry-free.
+
+4. **`ScanChain_filtered_grows` composition confirmed.** The existing chain theorem (induction
+   on `ScanChain`) immediately uses `scanNextToken_filtered_grows` at each step. Build verified:
+   0 errors, 4 new sorry warnings from dispatch stubs (expected for Phase B scope).
+
+5. **`Array_setIfInBounds_filter_mono` proof required Array↔List bridging pattern.** Direct
+   `simp only` with `Array.toList_filter` + `Array.toList_set` + `← Array.length_toList`
+   mangled the `Array.filter` stop parameter (rewriting `.size` to `.toList.length` inside
+   `Array.filter`'s bounds, preventing `Array.toList_filter` from firing). Fixed by using
+   `have` with `.toList.length` inequality + `rw [Array.toList_filter, Array.toList_filter,
+   Array.toList_set]`, then `exact this` to bridge `.toList.length ≥` to `.size ≥` via
+   definitional equality.
+
+6. **Build clean: 0 errors, sorry count reflects Phase B scope.** New sorry warnings:
+   `dispatchStructural/FlowIndicators/BlockIndicators/Content_filtered_grows` (Phase C targets)
+   plus the pre-existing `scanNextToken_prefix_and_sk_inv` (Phase C target). Pre-existing
+   ScannerBound sorrys (5) and Layer 2/3 sorrys unchanged.
+
 ***Phase B: Reflections***
+
+1. **Preprocessing monotonicity (`preprocess_filtered_mono`) was the trickiest infrastructure
+   lemma.** The `preprocess_preserves_prefix` from ScannerCorrectness returns a function
+   `(i : Nat) → (h_bound : i < s.tokens.size) → s₁.tokens[i]'(proof) = s.tokens[i]`, which
+   has the right TYPE for `Array_filter_prefix_of_raw_prefix`'s `h_eq` parameter but requires
+   care with Lean 4's proof irrelevance for the bound proof in the array index. The `.toList.length`
+   bridging pattern (use `show` to convert `.size` to `.toList.length`, then `rw` with
+   `List.length_append`, then `omega`) avoids the `simp [Array.length_toList]` mangling issue
+   that plagues direct `.size` goals.
+
+2. **4-dispatch decomposition is the right architecture.** `scanNextToken` has a 4-layer
+   dispatch pipeline (structural → flow → block → content), and each layer's "none" branch
+   falls through to the next. Proving filtered growth per-layer lets the main theorem be a
+   straightforward `all_goals first | ...` tactic that applies whichever dispatch lemma
+   matches. This avoids the 50+ branch case split that a monolithic proof would require.
+
+3. **`allowDir_ite_filter` is needed as a separate lemma.** The `allowDirectives` guard sits
+   between preprocessing and flow dispatch. It modifies `allowDirectives` and
+   `documentEverStarted` but NOT `tokens`, so filtered count is preserved. Without this
+   lemma, the main theorem can't chain `preprocess_filtered_mono` (on `s → s₁`) with
+   `dispatchFlowIndicators_filtered_grows` (on `s_ad → s'`) because `s_ad` includes the
+   `allowDirectives` update.
+
+4. **The `setIfInBounds` pattern generalizes beyond `scanValuePrepare`.** The
+   `Array_setIfInBounds_filter_mono` lemma works for ANY `setIfInBounds` call that replaces
+   with a filter-passing value (`.blockMappingStart`, `.key`, etc. — all non-placeholder).
+   This will be directly applicable in Phase C for `dispatchBlockIndicators_filtered_grows`
+   where `scanValue` → `scanValuePrepare` uses `setIfInBounds`.
+
+5. **Phase C is now well-scoped.** Each dispatch sorry needs: (a) unfold the dispatch function,
+   (b) case-split on which scanner function was called, (c) for each function, show it emits
+   at least one non-placeholder token using `Array.filter_push` + `native_decide`. The
+   per-function helper lemmas (`unwindIndents_filtered_mono`, `pushMappingIndent_filtered_mono`,
+   etc.) can be proven inline within each dispatch theorem or factored out as needed.
 
 **Phase C: Layer 0 — Prove prefix invariant and filtered growth (NEXT)**
 *Estimated: ~100-200 LOC · Risk: LOW*
@@ -3480,8 +3565,8 @@ These don't block `universal_roundtrip` but are needed for full-project 0-sorry.
 | Phase | Sorrys targeted | Est. LOC | Risk | Blocked by | Status |
 |-------|----------------|----------|------|------------|--------|
 | A | 0 (signature restructuring) | ~30 | LOW | — | **DONE** |
-| B | 0 (per-dispatch infrastructure) | 200-350 | LOW-MEDIUM | Phase A | |
-| C | 2 (prefix inv + filtered growth) | 100-200 | LOW | Phase B | |
+| B | 0 (per-dispatch infrastructure) | 200-350 | LOW-MEDIUM | Phase A | **DONE** |
+| C | 2 (prefix inv + filtered growth) | 100-200 | LOW | Phase B | NEXT |
 | D | 2 (body characterization) | 200-400 | MEDIUM | Phase C | |
 | E | 2 (h_pnok) | 400-800 | HIGH | Phase D | |
 | F | 2 (content fidelity) | 300-600 | MEDIUM-HIGH | Phase E | |
