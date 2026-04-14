@@ -10,7 +10,7 @@
 <title>chain_YamlValue.sequence.sizeOf_spec</title>
 <polygon fill="white" stroke="transparent" points="-4,4 -4,-320 419,-320 419,4 -4,4"/>
 <text text-anchor="middle" x="207.5" y="-301.6" font-family="Helvetica Bold" font-size="13.00">Functorial Chains: YamlValue.sequence.sizeOf_spec</text>
-<text text-anchor="middle" x="207.5" y="-287.6" font-family="Helvetica Bold" font-size="13.00">(heuristic: used by 11 proofs)</text>
+<text text-anchor="middle" x="207.5" y="-287.6" font-family="Helvetica Bold" font-size="13.00">(heuristic: used by 9 proofs)</text>
 <g id="clust1" class="cluster">
 <title>cluster_fns</title>
 <polygon fill="none" stroke="#4a90d9" stroke-dasharray="5,2" points="248,-8 248,-163 407,-163 407,-8 248,-8"/>

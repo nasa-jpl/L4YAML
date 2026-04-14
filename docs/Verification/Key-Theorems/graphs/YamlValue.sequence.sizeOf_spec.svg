@@ -10,7 +10,7 @@
 <title>YamlValue.sequence.sizeOf_spec</title>
 <polygon fill="white" stroke="transparent" points="-4,4 -4,-450 721.3,-450 721.3,4 -4,4"/>
 <text text-anchor="middle" x="358.65" y="-431.6" font-family="Helvetica Bold" font-size="13.00">YamlValue.sequence.sizeOf_spec</text>
-<text text-anchor="middle" x="358.65" y="-417.6" font-family="Helvetica Bold" font-size="13.00">(heuristic: used by 11 proofs)</text>
+<text text-anchor="middle" x="358.65" y="-417.6" font-family="Helvetica Bold" font-size="13.00">(heuristic: used by 9 proofs)</text>
 <text text-anchor="middle" x="358.65" y="-403.6" font-family="Helvetica Bold" font-size="13.00">(L4YAML.Types)</text>
 <g id="clust1" class="cluster">
 <title>cluster_functions</title>

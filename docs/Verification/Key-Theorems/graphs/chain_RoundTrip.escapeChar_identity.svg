@@ -10,7 +10,7 @@
 <title>chain_RoundTrip.escapeChar_identity</title>
 <polygon fill="white" stroke="transparent" points="-4,4 -4,-93.92 344,-93.92 344,4 -4,4"/>
 <text text-anchor="middle" x="170" y="-75.52" font-family="Helvetica Bold" font-size="13.00">Functorial Chains: RoundTrip.escapeChar_identity</text>
-<text text-anchor="middle" x="170" y="-61.52" font-family="Helvetica Bold" font-size="13.00">(heuristic: used by 7 proofs)</text>
+<text text-anchor="middle" x="170" y="-61.52" font-family="Helvetica Bold" font-size="13.00">(heuristic: used by 6 proofs)</text>
 <!-- L4YAML.Proofs.RoundTrip.escapeChar_identity -->
 <g id="node1" class="node">
 <title>L4YAML.Proofs.RoundTrip.escapeChar_identity</title>

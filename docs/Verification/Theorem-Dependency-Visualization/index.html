@@ -207,8 +207,11 @@ with:</p>
               <h2 id="L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Theorem-Dependency-Visualization--Generating-Graphs">
                 3.4.1. Generating Graphs<span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Theorem-Dependency-Visualization--Generating-Graphs" title="Permalink">🔗</a></span></h2>
               <p>
-                Generate DOT files for all key theorems:</p>
-              <pre>lake build theoremgraph
+                The <code>theoremgraph</code> tool lives in the
+<a href="https://github.jpl.nasa.gov/pass/L4YAML.FGM">L4YAML.FGM</a> bridge project.
+Generate DOT files for all key theorems:</p>
+              <pre>cd ../L4YAML.FGM
+lake build theoremgraph
 lake exe theoremgraph tmp/graphs
 </pre><p>
                 Render to SVG with Graphviz:</p>

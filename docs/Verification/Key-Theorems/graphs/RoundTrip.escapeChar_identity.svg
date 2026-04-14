@@ -10,7 +10,7 @@
 <title>RoundTrip.escapeChar_identity</title>
 <polygon fill="white" stroke="transparent" points="-4,4 -4,-1744 1031.67,-1744 1031.67,4 -4,4"/>
 <text text-anchor="middle" x="513.84" y="-1725.6" font-family="Helvetica Bold" font-size="13.00">RoundTrip.escapeChar_identity</text>
-<text text-anchor="middle" x="513.84" y="-1711.6" font-family="Helvetica Bold" font-size="13.00">(heuristic: used by 7 proofs)</text>
+<text text-anchor="middle" x="513.84" y="-1711.6" font-family="Helvetica Bold" font-size="13.00">(heuristic: used by 6 proofs)</text>
 <text text-anchor="middle" x="513.84" y="-1697.6" font-family="Helvetica Bold" font-size="13.00">(L4YAML.Proofs.RoundTrip)</text>
 <g id="clust1" class="cluster">
 <title>cluster_functions</title>
