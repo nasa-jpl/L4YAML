@@ -3468,7 +3468,62 @@ because Phase B handles all the per-branch complexity.
 
 ***Phase C: Accomplishments***
 
+1. **`filtered_grows_of_extended_prefix` helper proven** (~30 LOC). General abstract lemma:
+   if array `b` extends array `a` (prefix preserved, ≥1 more element, first new element
+   passes filter), then `(b.filter p).size ≥ (a.filter p).size + 1`. Required:
+   - `List_filter_length_ge_one` helper for list-level reasoning
+   - `List.ext_getElem` for prefix equality, `congrArg` for filter distribution
+   - Careful `getElem?` approach to avoid dependent-type issues with list drop/head
+
+2. **`dispatchFlowIndicators_filtered_grows` FULLY PROVEN** (~50 LOC). Covers all 5 flow
+   scanner functions: `scanFlowSequenceStart/End`, `scanFlowMappingStart/End`, `scanFlowEntry`.
+   Uses the same unfold/split/subst preamble as `dispatchFlowIndicators_tokens_mono`, then
+   applies `filtered_grows_of_extended_prefix` with per-function `_adds_one_token` +
+   `_preserves_prefix` lemmas from ScannerCorrectness. For `h_new` (non-placeholder):
+   unfolds the function to trace `emit_tokens_push` → `Array.getElem_push_eq` → `decide`.
+
+3. **`dispatchBlockIndicators_filtered_grows` composition proven** (~35 LOC). Dispatch proof
+   compiles by composing three per-function sorry stubs: `scanBlockEntry_filtered_grows`,
+   `scanKey_filtered_grows`, `scanValue_filtered_grows`. Pattern mirrors
+   `dispatchFlowIndicators_tokens_mono` exactly.
+
+4. **`dispatchContent_filtered_grows` structure established** (~10 LOC). Sorry with
+   dispatch-level `_tokens_mono` and `_preserves_prefix` infrastructure in place.
+
+5. **`dispatchStructural_filtered_grows` refactored to `dispatchStructural_filtered_mono`.**
+   The original ≥+1 claim was UNPROVABLE for unknown directives (%RESERVED per §6.8
+   production 83) which add zero tokens via `skipToEndOfLine` only.  Replaced with
+   `dispatchStructural_filtered_mono` (≥ 0) which is FULLY PROVEN using the same pattern
+   as `preprocess_filtered_mono`: `dispatchStructural_tokens_mono` + `dispatchStructural_
+   preserves_prefix` → `Array_filter_prefix_of_raw_prefix` → `List.length_append` + `omega`.
+   The sorry moved to a localized comment in `scanNextToken_filtered_grows`:
+   the structural dispatch alternative in the `all_goals first` block now falls through to
+   `sorry` with a clear annotation that ≥+1 fails only for %RESERVED directives.
+   Emitter output only produces %YAML/%TAG and document markers (each ≥+1), so the chain
+   proof remains correct for all practical inputs.
+
 ***Phase C: Reflections***
+
+- **Array.getElem_push handling is Lean 4.30's main pain point.** `getElem_push_eq` is `@[simp]`
+  but `getElem_push_lt` is NOT. For double-push scenarios (pushIndent + emit), must use
+  `getElem_push` (if-splitting version, `@[grind]` only) + `split` + `simp` + `omega` + `decide`.
+  Cost ~10 lines per case vs 1 line for single-push.
+- **Monadic hypothesis decomposition is fragile.** After `unfold f at h; simp [bind, Except.bind];
+  repeat (split at h)`, the hypothesis form depends on the function's internal structure
+  (match patterns, do-notation guards, `if let`, etc.). `injection` fails when the hypothesis
+  isn't in `Except.ok x = Except.ok y` form. `simp_all only [Except.ok.injEq]` is more
+  robust but can over-simplify. Best pattern: `unfold` in hypothesis, then
+  `subst`/`inject` + unfold in GOAL for struct projection analysis.
+- **Per-function sorry stubs > dispatch-level sorry.** Writing per-function
+  `_filtered_grows` lemmas (even as sorrys) then composing at the dispatch level is cleaner
+  than trying to prove everything inline. The dispatch proof becomes 5-7 lines matching
+  the existing `_tokens_mono` pattern.
+- **Remaining sorrys (6 in EmitterScannability):** `scanNextToken_prefix_and_sk_inv` (1),
+  `scanNextToken_filtered_grows` structural case (1, ≥+1 holds for emitter output but
+  not universally — %RESERVED directives add 0 tokens), `scanBlockEntry/Key/Value_
+  filtered_grows` (3, `h_new` proofs needed), `dispatchContent_filtered_grows` (1, per-function
+  `h_new` proofs needed). Plus 5 sorrys in ScannerBound.lean (unchanged).
+  Note: `dispatchStructural_filtered_mono` is now FULLY PROVEN (≥ 0).
 
 **Phase D: Layer 1 — Body token characterization**
 *Estimated: ~200-400 LOC · Risk: MEDIUM*

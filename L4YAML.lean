@@ -2,7 +2,6 @@ import LeanPrism
 
 import L4YAML.Config
 import L4YAML.Dump
-import L4YAML.KeyTheorem
 import L4YAML.Emitter
 import L4YAML.FFI
 import L4YAML.Grammar

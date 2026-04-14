@@ -414,9 +414,12 @@ with:
 
 ## Generating Graphs
 
+The `theoremgraph` tool lives in the
+[L4YAML.FGM](https://github.jpl.nasa.gov/pass/L4YAML.FGM) bridge project.
 Generate DOT files for all key theorems:
 
 ```
+cd ../L4YAML.FGM
 lake build theoremgraph
 lake exe theoremgraph tmp/graphs
 ```
