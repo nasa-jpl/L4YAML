@@ -6880,8 +6880,7 @@ theorem scanDocumentEnd_filtered_grows (s s' : ScannerState)
     · contradiction
     · split at h <;> (split at h <;> first | contradiction | skip) <;>
         (injection h with h_eq; subst h_eq; dsimp only []
-         simp only [ScannerCorrectness.ScanHelpers.skipDocEndWhitespace_preserves_tokens,
-                     ScannerCorrectness.advanceN_preserves_tokens, emit_tokens_push]
+         simp only [ScannerCorrectness.advanceN_preserves_tokens, emit_tokens_push]
          simp only [Array.size_push, Nat.add_sub_cancel, Array.getElem_push_eq]
          decide)
 
