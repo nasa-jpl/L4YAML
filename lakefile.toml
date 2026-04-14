@@ -185,20 +185,7 @@ name = "extractSpecExamples"
 root = "ExtractSpecExamples"
 srcDir = "tools"
 
-[[lean_exe]]
-name = "depgraph"
-root = "ExtractDepGraph"
-srcDir = "tools"
 
-[[lean_exe]]
-name = "analyzethms"
-root = "AnalyzeThms"
-srcDir = "tools"
-
-[[lean_exe]]
-name = "theoremgraph"
-root = "TheoremGraph"
-srcDir = "tools"
 
 [[lean_lib]]
 name = "Tests.SchemaDump"
@@ -227,4 +214,5 @@ name = "Tests.ProductionCoverage"
 [[lean_exe]]
 name = "productioncoverage"
 root = "Tests.ProductionCoverage.Runner"
+
 

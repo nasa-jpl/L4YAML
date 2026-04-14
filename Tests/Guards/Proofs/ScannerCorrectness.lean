@@ -9,6 +9,14 @@ open L4YAML.Proofs.ScannerProgress
 open L4YAML.Proofs.ScannerProofs
 open L4YAML.Proofs.ScannerCorrectness
 
+def checkValidStream (input : String) : Bool :=
+  match scanFiltered input with
+  | .ok tokens =>
+      tokens.size ≥ 2 &&
+      (if _h : tokens.size > 0 then tokens[0]!.val == .streamStart else false) &&
+      (if _h : tokens.size > 0 then tokens[tokens.size - 1]!.val == .streamEnd else false)
+  | .error _ => false
+
 -- Envelope property holds on diverse inputs
 #guard checkValidStream ""
 #guard checkValidStream "hello"

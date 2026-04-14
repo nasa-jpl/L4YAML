@@ -89,17 +89,41 @@ jobs:
       # -------------------------------------------------------
       # Phase 2: Generate Verso HTML documentation
       # -------------------------------------------------------
-      - name: Generate theorem dependency graphs
+      - name: Download theorem dependency graphs from L4YAML.FGM
         run: |
-          lake build theoremgraph
-          lake exe theoremgraph --doc-base ../../../api/ doc/Doc/L4YAML/graphs
-          for f in doc/Doc/L4YAML/graphs/*.dot; do
-            dot -Tsvg "$f" -o "${f%.dot}.svg"
-          done
-          # Remove DOT source files — only SVGs are needed for the doc
-          find doc/Doc/L4YAML/graphs -name '*.dot' -delete
-          rm -f doc/Doc/L4YAML/graphs/index.html
-          echo "Generated $(ls doc/Doc/L4YAML/graphs/*.svg 2>/dev/null | wc -l) SVG graphs"
+          mkdir -p doc/Doc/L4YAML/graphs
+          REPO="pass/L4YAML.FGM"
+          TAG="graphs-latest"
+          ASSET="theorem-graphs.tar.gz"
+          API_URL="${GITHUB_SERVER_URL}/api/v3/repos/${REPO}/releases/tags/${TAG}"
+
+          # Fetch the release metadata to find the asset download URL
+          ASSET_URL=$(curl -sSf \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "${API_URL}" \
+            | python3 -c "
+          import sys, json
+          release = json.load(sys.stdin)
+          for asset in release.get('assets', []):
+              if asset['name'] == '${ASSET}':
+                  print(asset['url'])
+                  sys.exit(0)
+          print('ERROR: asset not found', file=sys.stderr)
+          sys.exit(1)
+          ")
+
+          # Download the asset
+          curl -sSfL \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/octet-stream" \
+            "${ASSET_URL}" \
+            -o "doc/Doc/L4YAML/graphs/${ASSET}"
+
+          # Extract SVGs
+          tar xzf "doc/Doc/L4YAML/graphs/${ASSET}" -C doc/Doc/L4YAML/graphs/
+          rm -f "doc/Doc/L4YAML/graphs/${ASSET}"
+          echo "Downloaded $(ls doc/Doc/L4YAML/graphs/*.svg 2>/dev/null | wc -l) SVG graphs from L4YAML.FGM release"
 
       - name: Generate Verso documentation
         run: |
