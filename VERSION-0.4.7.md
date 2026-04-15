@@ -3731,14 +3731,47 @@ dependencies on other sorry'd theorems.
   claim (#4) can fail when pre-chain stack entries are popped. Both are correct for
   emitter-produced inputs (the intended use case) but would need restricted preconditions
   to be generally provable.
-- **Revised dependency impact:** Phases G–I depend on sorrys #3–#4. The remaining 8
+- **Revised dependency impact:** Phases H–J depend on sorrys #3–#4. The remaining 8
   EmitterScannability sorrys cannot all be eliminated without first addressing the
   `scanNextToken_filtered_grows` and `ScanChain_filtered_prefix` formulations.
 
-**Phase G: Layer 1 — Body token characterization (2 sorrys)**
+**Phase G: Layer 0.5 — Flow-balanced chain restriction (1 sorry)**
+*Estimated: ~330-540 LOC · Risk: MEDIUM*
+
+Architecture refactoring to formalize the "flow-balanced chain restriction" that enables
+proving `ScanChain_filtered_prefix`. The key insight: emitter-produced flow bodies generate
+balanced bracket sequences, so `flowLevel ≥ initial` at every intermediate state. This
+prevents flow-close operations from popping simpleKeyStack entries below the chain's start
+depth, which is why `SimpleKeyAbove s s.tokens.size` fails (stacked keys from before the
+chain have low `tokenIndex`).
+
+**Sorry targeted:**
+
+4. **`ScanChain_filtered_prefix`** (sorry #4, EmitterScannability.lean)
+   Precondition changed from `(sk.possible → tokenIndex ≥ tokens.size) ∨ ek = none`
+   to `s.simpleKey.possible = false` (Phase F). Still sorry'd because proving it requires
+   the flow-balanced chain property.
+
+**Plan:** Detailed 6-step plan in `FLOW_BALANCED_CHAIN_RESTRICTION.md`:
+1. ✅ Define `FlowMonoChain` inductive + basic operations (DONE — 7 theorems, ~60 LOC)
+2. Thread `FlowMonoChain` through `EmitScansInFlow` interface (~80-120 LOC)
+3. Define `SimpleKeyAboveFloor` + per-step preservation (~50-80 LOC)
+4. Prove `FlowMonoChain_preserves_raw_prefix` (~100-200 LOC)
+5. Prove `ScanChain_filtered_prefix` (sorry elimination, ~30-50 LOC)
+6. Build verification + documentation (~10 LOC)
+
+Why here: Phase F identified the problem (precondition too weak) and the precondition fix
+(`sk.possible = false`). This phase provides the missing proof infrastructure. Must be done
+before Phase H (body characterization proofs depend on `ScanChain_filtered_prefix`).
+
+***Phase G: Accomplishments***
+
+***Phase G: Reflections***
+
+**Phase H: Layer 1 — Body token characterization (2 sorrys)**
 *Estimated: ~200-400 LOC · Risk: MEDIUM*
 
-Prove the body token characterization theorems. These depend on Phase F (Layer 0).
+Prove the body token characterization theorems. These depend on Phase G (Layer 0.5).
 
 **Sorrys targeted:**
 
@@ -3754,15 +3787,15 @@ Prove the body token characterization theorems. These depend on Phase F (Layer 0
    after each outer-level `.flowEntry`, next is `.key`. Analogous to #5 but mapping pairs
    produce `.key` via `saveSimpleKey` + `scanValuePrepare`. ~100-200 LOC.
 
-Why second: Depends on Phase F (ScanChain prefix/filtered invariants). Medium risk
+Why second: Depends on Phase G (flow-balanced chain restriction). Medium risk
 due to needing per-step scanner dispatch analysis within the `EmitScansInFlow` chain.
 Phase E confirmed statements are correct after the `flowBracketBalance` fix.
 
-***Phase G: Accomplishments***
+***Phase H: Accomplishments***
 
-***Phase G: Reflections***
+***Phase H: Reflections***
 
-**Phase H: Layer 2 — Parser acceptance (2 sorrys)**
+**Phase I: Layer 2 — Parser acceptance (2 sorrys)**
 *Estimated: ~400-800 LOC · Risk: HIGH*
 
 This is the hardest phase. Prove that `parseNode` succeeds at each content-start position
@@ -3793,14 +3826,14 @@ in the token array. Two sub-problems:
   Fallback: Prove h_pnok by strong induction on `flowNesting` (bracket nesting depth)
   at the structure theorem level.
 
-Why third: Depends on Phase G (body characterization provides content-start classification).
+Why third: Depends on Phase H (body characterization provides content-start classification).
 Highest-risk phase due to recursive nesting and potential architectural refactoring.
 
-***Phase H: Accomplishments***
+***Phase I: Accomplishments***
 
-***Phase H: Reflections***
+***Phase I: Reflections***
 
-**Phase I: Layer 3 — Content fidelity (2 sorrys)**
+**Phase J: Layer 3 — Content fidelity (2 sorrys)**
 *Estimated: ~300-600 LOC · Risk: MEDIUM-HIGH*
 
 Prove round-trip content equivalence for non-empty collections.
@@ -3821,13 +3854,13 @@ Prove round-trip content equivalence for non-empty collections.
 - Show each parsed item matches the original via `contentEq`
 - Apply `Grammable` IH for each element
 
-Why last on critical path: Depends on Phase H (need parser success before examining
-parsed values). May benefit from concurrent development with Phase H since both deal
+Why last on critical path: Depends on Phase I (need parser success before examining
+parsed values). May benefit from concurrent development with Phase I since both deal
 with parser behavior on emitter output.
 
-***Phase I: Accomplishments***
+***Phase J: Accomplishments***
 
-***Phase I: Reflections***
+***Phase J: Reflections***
 
 **Phase S (parallel): ScannerBound.lean — 3 sorrys**
 *Estimated: ~200-350 LOC · Risk: LOW-MEDIUM*
@@ -3865,19 +3898,20 @@ These don't block `universal_roundtrip` but are needed for full-project 0-sorry.
 | D | 2 (body characterization) | 200-400 | MEDIUM | Phase C | **DONE** (statements fixed) |
 | E | 0 (adversarial audit) | ~3 hrs | LOW | Phase D | **DONE** (993/993, 1 false thm repaired) |
 | F | 4 targeted → 2 proven, 2 blocked | ~15 | LOW-MEDIUM | Phase E | **DONE** (2/4 proven; #3 false for %RESERVED, #4 needs stack precond) |
-| G | 2 (body characterization proofs) | 200-400 | MEDIUM | Phase F | |
-| H | 2 (parser acceptance / h_pnok) | 400-800 | HIGH | Phase G | |
-| I | 2 (content fidelity) | 300-600 | MEDIUM-HIGH | Phase H | |
+| G | 1 (flow-balanced chain restriction) | 330-540 | MEDIUM | Phase F | Step 1 done |
+| H | 2 (body characterization proofs) | 200-400 | MEDIUM | Phase G | |
+| I | 2 (parser acceptance / h_pnok) | 400-800 | HIGH | Phase H | |
+| J | 2 (content fidelity) | 300-600 | MEDIUM-HIGH | Phase I | |
 | S | 3 (ScannerBound) | 200-350 | LOW-MEDIUM | — (parallel) | |
-| **Total** | **13** | **~1,300-2,550** | | | |
+| **Total** | **13** | **~1,630-3,090** | | | |
 
-**Critical path:** A–E (DONE) → F → G → H → I (10 EmitterScannability sorrys)
+**Critical path:** A–F (DONE) → G → H → I → J (10 EmitterScannability sorrys)
 **Parallel track:** S (3 ScannerBound sorrys)
 **Expected outcome:** 13 → 0 sorry warnings across the full build.
 
-### Risk mitigation for Phase H
+### Risk mitigation for Phase I
 
-Phase H (h_pnok) is the highest-risk item. If the proof is blocked at the structure
+Phase I (h_pnok) is the highest-risk item. If the proof is blocked at the structure
 theorem level (due to lack of Grammable IH for recursive nesting), the fallback plan is:
 
 1. **Move h_pnok obligation to call site.** Refactor `scanFiltered_emitSeq_nonempty_structure`
