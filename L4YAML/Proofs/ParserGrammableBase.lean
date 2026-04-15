@@ -519,7 +519,7 @@ def flowBracketBalance (tokens : Array (Positioned YamlToken)) (lo hi : Nat) : I
     slice.foldl (fun acc t => acc + flowBracketDelta t.val) 0
 
 -- Helper: foldl of additive function shifts the init out
-private theorem foldl_add_shift {α : Type _} (l : List α) (f : α → Int) (init : Int) :
+theorem foldl_add_shift {α : Type _} (l : List α) (f : α → Int) (init : Int) :
     l.foldl (fun acc t => acc + f t) init = init + l.foldl (fun acc t => acc + f t) 0 := by
   induction l generalizing init with
   | nil => simp [List.foldl]

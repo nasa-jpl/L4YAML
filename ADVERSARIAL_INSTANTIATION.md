@@ -224,7 +224,54 @@ These are directly checkable via `emit → scanFiltered → parseYamlRaw → con
 
 ### Priority 2: Accomplishments
 
+**Test suite:** `Tests/AdversarialInstantiation.lean` — 141 new checks (329 total), all passing.
+
+**Test coverage (scalars — base case for both 9c and 9d):**
+- Plain text, empty string, escape sequences (`\"`, `\n`, `\t`, `\\`)
+- Null byte (`\u0000`), colon-space (`key: value`), hash (`not # a comment`)
+- Brackets/braces in scalar content (`[not, a, sequence]`, `{not: a, mapping}`)
+
+**Test coverage (9c — `emit_roundtrip_sequence_content_eq`):**
+- Empty sequence, 1/2/3-item flat, nested 1–4 levels deep
+- Sequences containing mappings (single-pair & multi-pair)
+- Mixed nesting: `[plain, [a, b], {x: y}]`, `[{a: [{b: c}]}]`
+- Edge cases: empty scalars, special chars, 8-item list
+- Previously-failing pattern: `[{k1: v1, k2: v2}, after]`
+
+**Test coverage (9d — `emit_roundtrip_mapping_content_eq`):**
+- Empty mapping, 1/2/3-pair flat, nested 1–3 levels deep
+- Mappings with sequence values (flat & nested)
+- Mixed nesting: `{items: [x, y], count: 2}`, `{data: [{id: 1}, {id: 2}], meta: {ver: 1.0}}`
+- Deep nesting: 5-level sequences, 5-level mappings
+- Sequence keys, mapping keys (complex key structures)
+- Edge cases: empty key, empty value, special chars, 6-pair mapping
+- Cross-nested: `[{key: [{inner: [a, b]}]}]`
+
+**Key verification points:**
+1. `parseYamlRaw (emit v)` succeeds for every test input
+2. Exactly 1 document is produced in all cases
+3. `contentEq v (composed[0]!.value) = true` — original value is content-equivalent
+   to the round-tripped result for all 47 distinct `YamlValue` inputs
+
 ### Priority 2: Reflections
+
+**Confidence level:** HIGH. The round-trip property holds across all tested inputs,
+including adversarial scalar content (escape sequences, YAML metacharacters embedded
+in strings), deeply nested structures (5 levels), and complex key types (sequence
+and mapping keys).
+
+**What was verified:**
+- The emitter produces valid YAML that parses back correctly for all tested structures
+- `contentEq` correctly ignores style differences (emitter always uses double-quoted/flow,
+  parser may assign different styles)
+- Nested structures round-trip faithfully: the recursive `contentEq` check passes
+  through all nesting levels
+- Complex keys (sequences and mappings as mapping keys) are handled correctly
+
+**Residual risk:** LOW. The theorem requires an inductive hypothesis (`ih`/`ihk`/`ihv`)
+for recursive sub-values; our tests cover the recursive structure up to 5 levels deep.
+The base case (empty collections) is already proven in the theorem. The remaining sorry
+is in the `_ :: _` branch — the non-empty inductive case.
 
 ### Priority 3: Theorems 9a, 9b (parser fuel sufficiency)
 
@@ -275,7 +322,7 @@ For each priority:
 3. Any check failure → investigate and fix the theorem statement before proving
 4. All checks pass → proceed to proof with increased confidence
 
-**Status:** Priority 1 complete (188/188). Priorities 2–5 to be added incrementally.
+**Status:** Priority 1 complete (188/188). Priority 2 complete (141/141, 329 total). Priorities 3–5 to be added incrementally.
 
 ### Priority 5: Accomplishments
 

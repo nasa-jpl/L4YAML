@@ -1,5 +1,6 @@
 import L4YAML.Scanner
 import L4YAML.Emitter
+import L4YAML.TokenParser
 import L4YAML.Proofs.ParserGrammableBase
 import Tests.VerifiedResult
 
@@ -23,7 +24,7 @@ After the `flowBracketBalance` fix, we re-verify with deeply nested,
 mixed-nesting, and previously-failing inputs.
 -/
 
-open L4YAML L4YAML.Scanner L4YAML.Emit L4YAML.Proofs.ParserGrammable
+open L4YAML L4YAML.Scanner L4YAML.Emit L4YAML.TokenParser L4YAML.Proofs.ParserGrammable
 open Tests
 
 namespace Tests.AdversarialInstantiation
@@ -270,10 +271,164 @@ private def test9h (state : IO.Ref TestCollector) : IO Unit := do
 
 /-! ## Collection entry point -/
 
+/-! ### Priority 2 — Theorems 9c, 9d (emit round-trip content equivalence)
+
+These theorems claim that for any `YamlValue v`:
+- 9c (sequences): `parseYamlRaw (emit (.sequence style items ..)) = .ok raw_docs` with
+  `raw_docs.size = 1` implies `contentEq (.sequence ..) (composed[0]!.value) = true`
+- 9d (mappings): Same for `.mapping`
+
+We test the full pipeline: `emit v → parseYaml → compose → contentEq v result`.
+This covers both the sequence and mapping cases, plus scalars as base cases.
+-/
+
+/-- Check that `emit v` round-trips through the parser with content preserved.
+    Tests: (1) parsing succeeds, (2) exactly 1 document, (3) contentEq holds. -/
+private def checkRoundTrip (state : IO.Ref TestCollector)
+    (label : String) (v : YamlValue) : IO Unit := do
+  let emitted := emit v
+  match parseYamlRaw emitted with
+  | .error e =>
+    checkM state s!"{label}: parse succeeds" false s!"parse error: {repr e}"
+  | .ok raw_docs =>
+    check state s!"{label}: parse succeeds" true
+    checkM state s!"{label}: exactly 1 doc" (raw_docs.size == 1)
+      s!"got {raw_docs.size} docs"
+    if raw_docs.size == 1 then
+      let composed := raw_docs.map YamlDocument.compose
+      let result := composed[0]!.value
+      let eq := contentEq v result
+      if !eq then
+        -- Show what we got for debugging
+        let emittedResult := emit result
+        checkM state s!"{label}: contentEq" false
+          s!"emitted='{emitted}' parsed_back='{emittedResult}'"
+      else
+        check state s!"{label}: contentEq" true
+
+/-! ## Priority 2 Test Suites -/
+
+private def test9cd (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "9c/9d: emit round-trip content equivalence"
+
+  -- Scalars (base case for both 9c and 9d)
+  checkRoundTrip state "scalar-plain" (sv "hello")
+  checkRoundTrip state "scalar-empty" (sv "")
+  checkRoundTrip state "scalar-escape" (sv "with \"escape\"")
+  checkRoundTrip state "scalar-newline" (sv "line1\nline2")
+  checkRoundTrip state "scalar-tab" (sv "col1\tcol2")
+  checkRoundTrip state "scalar-backslash" (sv "path\\to\\file")
+  checkRoundTrip state "scalar-unicode" (sv "hello \u0000world")
+  checkRoundTrip state "scalar-colon-space" (sv "key: value")
+  checkRoundTrip state "scalar-hash" (sv "not # a comment")
+  checkRoundTrip state "scalar-brackets" (sv "[not, a, sequence]")
+  checkRoundTrip state "scalar-braces" (sv "{not: a, mapping: true}")
+
+  -- 9c: Sequences
+  setCategory state "9c: emit_roundtrip_sequence_content_eq"
+
+  -- Empty
+  checkRoundTrip state "seq-empty" (seqv [])
+
+  -- Flat
+  checkRoundTrip state "seq-1" (seqv [sv "a"])
+  checkRoundTrip state "seq-2" (seqv [sv "a", sv "b"])
+  checkRoundTrip state "seq-3" (seqv [sv "a", sv "b", sv "c"])
+
+  -- Nested sequences
+  checkRoundTrip state "seq-nested-1" (seqv [seqv [sv "a", sv "b"], sv "c"])
+  checkRoundTrip state "seq-nested-2" (seqv [seqv [seqv [sv "deep"]]])
+  checkRoundTrip state "seq-nested-3" (seqv [seqv [seqv [seqv [sv "deeper"]]]])
+
+  -- Sequences with mappings
+  checkRoundTrip state "seq-with-map" (seqv [mapv [(sv "k", sv "v")], sv "c"])
+  checkRoundTrip state "seq-with-multi-map"
+    (seqv [mapv [(sv "k1", sv "v1"), (sv "k2", sv "v2")]])
+
+  -- Mixed nesting
+  checkRoundTrip state "seq-mixed"
+    (seqv [sv "plain", seqv [sv "a", sv "b"], mapv [(sv "x", sv "y")]])
+  checkRoundTrip state "seq-deep-mixed"
+    (seqv [mapv [(sv "a", seqv [mapv [(sv "b", sv "c")]])]])
+
+  -- Edge cases
+  checkRoundTrip state "seq-empty-scalars" (seqv [sv "", sv "", sv ""])
+  checkRoundTrip state "seq-special-chars"
+    (seqv [sv "hello \"world\"", sv "line1\nline2", sv "tab\there"])
+  checkRoundTrip state "seq-many"
+    (seqv [sv "a", sv "b", sv "c", sv "d", sv "e", sv "f", sv "g", sv "h"])
+
+  -- Previously-failing patterns (from Priority 1: inner commas)
+  checkRoundTrip state "seq-prev-fail"
+    (seqv [mapv [(sv "k1", sv "v1"), (sv "k2", sv "v2")], sv "after"])
+
+  -- 9d: Mappings
+  setCategory state "9d: emit_roundtrip_mapping_content_eq"
+
+  -- Empty
+  checkRoundTrip state "map-empty" (mapv [])
+
+  -- Flat
+  checkRoundTrip state "map-1" (mapv [(sv "k", sv "v")])
+  checkRoundTrip state "map-2" (mapv [(sv "k1", sv "v1"), (sv "k2", sv "v2")])
+  checkRoundTrip state "map-3"
+    (mapv [(sv "a", sv "1"), (sv "b", sv "2"), (sv "c", sv "3")])
+
+  -- Nested mappings
+  checkRoundTrip state "map-nested-1" (mapv [(sv "outer", mapv [(sv "inner", sv "val")])])
+  checkRoundTrip state "map-nested-2"
+    (mapv [(sv "a", mapv [(sv "b", mapv [(sv "c", sv "deep")])])])
+
+  -- Mappings with sequences
+  checkRoundTrip state "map-with-seq" (mapv [(sv "items", seqv [sv "x", sv "y"])])
+  checkRoundTrip state "map-with-nested-seq"
+    (mapv [(sv "data", seqv [seqv [sv "a", sv "b"], seqv [sv "c"]])])
+
+  -- Mixed nesting
+  checkRoundTrip state "map-mixed"
+    (mapv [(sv "items", seqv [sv "x", sv "y"]), (sv "count", sv "2")])
+  checkRoundTrip state "map-complex"
+    (mapv [(sv "data", seqv [mapv [(sv "id", sv "1")], mapv [(sv "id", sv "2")]]),
+           (sv "meta", mapv [(sv "ver", sv "1.0")])])
+
+  -- Deep nesting
+  checkRoundTrip state "map-deep-val"
+    (mapv [(sv "k", seqv [seqv [seqv [sv "deep"]]])])
+  checkRoundTrip state "map-multi-deep"
+    (mapv [(sv "a", seqv [seqv [sv "1"]]),
+           (sv "b", mapv [(sv "c", mapv [(sv "d", sv "e")])])])
+
+  -- Edge cases
+  checkRoundTrip state "map-empty-key" (mapv [(sv "", sv "v")])
+  checkRoundTrip state "map-empty-val" (mapv [(sv "k", sv "")])
+  checkRoundTrip state "map-special-chars"
+    (mapv [(sv "hello \"world\"", sv "line1\nline2")])
+  checkRoundTrip state "map-many"
+    (mapv [(sv "a", sv "1"), (sv "b", sv "2"), (sv "c", sv "3"),
+           (sv "d", sv "4"), (sv "e", sv "5"), (sv "f", sv "6")])
+
+  -- Sequence keys in mappings (stress test for key complexity)
+  checkRoundTrip state "map-seq-key" (mapv [(seqv [sv "a", sv "b"], sv "v")])
+  checkRoundTrip state "map-map-key"
+    (mapv [(mapv [(sv "inner", sv "key")], sv "v")])
+
+  -- 5-level deep nesting
+  checkRoundTrip state "deep-5"
+    (seqv [seqv [seqv [seqv [seqv [sv "bottom"]]]]])
+  checkRoundTrip state "map-deep-5"
+    (mapv [(sv "1", mapv [(sv "2", mapv [(sv "3",
+      mapv [(sv "4", mapv [(sv "5", sv "bottom")])])])])])
+
+  -- Cross: deeply nested mixed structures
+  checkRoundTrip state "cross-nested"
+    (seqv [mapv [(sv "key", seqv [mapv [(sv "inner", seqv [sv "a", sv "b"])]])]])
+
+
 def collectTests : IO VerifiedSuiteResult := do
   let state ← IO.mkRef ({} : TestCollector)
   test9g state
   test9h state
+  test9cd state
   let results ← finish state
   return { name := "adversarialinstantiation",
            label := "Adversarial Instantiation Tests (sorry audit)",
