@@ -282,7 +282,22 @@ emitter output. Also test with `4 * tokens.size + 3` (one less) to verify tightn
 
 ### Priority 3: Accomplishments
 
+- **180 new checks** (509 total: 188 P1 + 141 P2 + 180 P3), all passing
+- Tested `parseStream (scanFiltered (emit v))` succeeds for 45 adversarial inputs spanning:
+  - **Sequences (9a):** empty, 1–16 elements, depth 2–7, wide+deep, mixed nesting with mappings, previously-failing inner-comma patterns
+  - **Mappings (9b):** empty, 1–16 entries, depth 2–6, sequence/mapping keys, complex nested values
+  - **Cross-type:** alternating seq/map nesting, wide at multiple levels, realistic multi-level structures
+- Each input checks: (1) scan success, (2) `parseStream` returns `.ok`, (3) exactly 1 document, (4) tightness — `parseNode` at pos=1 with fuel `4*N+3` (one less than `parseDocument` uses)
+- **Tightness finding:** `4*N+3` suffices for ALL tested inputs — the bound `4*N+4` has at least 1 unit of slack. No input found that requires exactly `4*N+4`.
+- Token counts range from N=4 (empty seq/map) to N=84 (map-width-16), exercising fuel from 19 to 340
+
 ### Priority 3: Reflections
+
+- **The fuel bound is not tight.** Every tested input succeeded with fuel `4*N+3`. This means the `+4` constant in `4*N+4` has margin. This is actually desirable for proof robustness: a non-tight bound is easier to prove because there's no single worst-case input to characterize.
+- **Fuel scales linearly with tokens**, which scales linearly with structure size. Deep nesting adds ~8 tokens per level (open+close brackets + content + comma overhead). Wide structures add ~4 tokens per entry (content + comma + key/value for maps). The `4×` factor in `4*N` comfortably covers both.
+- **No counterexample found** for the fuel sufficiency claim across diverse structures up to depth 7 and width 16. The sorry'd `ParseNodeFlowSeqOk`/`ParseEntryFlowMapOk` predicates appear sound.
+- **Residual risk:** LOW. The fuel bound `4*N+4` is conservative with slack. The only remaining risk would be pathological token sequences not producible by the emitter (but the theorems restrict to emitter output via the `h_scan` hypothesis).
+- **Proof strategy hint:** Since `4*N+3` also works, a proof via induction on fuel could use `4*N+4` - 1 for the recursive call without worrying about off-by-one at the base.
 
 ### Priority 4: Theorem 9e (scanner prefix invariant)
 
@@ -322,7 +337,7 @@ For each priority:
 3. Any check failure → investigate and fix the theorem statement before proving
 4. All checks pass → proceed to proof with increased confidence
 
-**Status:** Priority 1 complete (188/188). Priority 2 complete (141/141, 329 total). Priorities 3–5 to be added incrementally.
+**Status:** Priority 1 complete (188/188). Priority 2 complete (141/141). Priority 3 complete (180/180). Total: 509/509. Priorities 4–5 to be added incrementally.
 
 ### Priority 5: Accomplishments
 

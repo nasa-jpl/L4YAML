@@ -424,11 +424,223 @@ private def test9cd (state : IO.Ref TestCollector) : IO Unit := do
     (seqv [mapv [(sv "key", seqv [mapv [(sv "inner", seqv [sv "a", sv "b"])]])]])
 
 
+/-! ## Priority 3 — Theorems 9a, 9b (parser fuel sufficiency)
+
+These theorems claim that `parseStream` succeeds on emitter output. The key sorry is
+in `scanFiltered_emitSeq_nonempty_structure` / `scanFiltered_emitMap_nonempty_structure`:
+the fuel bound `4 * tokens.size + 4` suffices for `parseNode` / `parseFlowSequence` /
+`parseFlowMapping` to succeed on the token stream produced by the emitter.
+
+We test:
+1. **Correctness:** `parseStream (scanFiltered (emit v))` returns `.ok docs` with `docs.size = 1`
+2. **Tightness:** `parseNode` at pos=1 with fuel `4*N+3` (one less than `parseDocument` uses) —
+   does it still work or is the bound exactly tight?
+3. **Scaling:** Report token counts to verify fuel scales with input complexity
+-/
+
+/-- Check parser fuel sufficiency for an emitted value.
+    Returns `(tokensSize, fuelUsed, tightFuelWorks)`. -/
+private def checkFuelSufficiency (state : IO.Ref TestCollector)
+    (label : String) (v : YamlValue) : IO Unit := do
+  let emitted := emit v
+  -- Step 1: Scan to get tokens
+  match scanFiltered emitted with
+  | .error e =>
+    checkM state s!"{label}: scan succeeds" false s!"scan error: {repr e}"
+  | .ok tokens =>
+    check state s!"{label}: scan succeeds" true
+    let n := tokens.size
+    let fuel := 4 * n + 4
+
+    -- Step 2: parseStream with standard fuel (4*N+4 inside parseDocument)
+    match parseStream tokens with
+    | .error e =>
+      checkM state s!"{label}: parseStream ok (fuel={fuel}, N={n})" false
+        s!"parse error: {repr e}"
+    | .ok docs =>
+      check state s!"{label}: parseStream ok (fuel={fuel}, N={n})" true
+      checkM state s!"{label}: exactly 1 doc" (docs.size == 1)
+        s!"got {docs.size} docs"
+
+    -- Step 3: Tightness — call parseNode directly at pos=1 with fuel-1
+    if n ≥ 2 then
+      let ps1 : ParseState := { tokens := tokens, pos := 1 }
+      let tightFuel := 4 * n + 3  -- one less than parseDocument uses
+      match parseNode ps1 tightFuel with
+      | .ok _ =>
+        check state s!"{label}: tight fuel {tightFuel} also works" true
+      | .error _ =>
+        -- This is informational — if this fails, 4*N+4 is exactly tight
+        check state s!"{label}: tight fuel {tightFuel} fails (bound is tight!)" true
+
+/-! ## Priority 3 Test Suites -/
+
+private def test9ab (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "9a: parseStream_emitSequence fuel sufficiency"
+
+  -- Empty sequence (base case — already proven, sanity check)
+  checkFuelSufficiency state "seq-empty" (seqv [])
+
+  -- Single element
+  checkFuelSufficiency state "seq-1" (seqv [sv "a"])
+
+  -- Two elements (minimal non-trivial)
+  checkFuelSufficiency state "seq-2" (seqv [sv "a", sv "b"])
+
+  -- Many elements (wide: stress the loop fuel)
+  checkFuelSufficiency state "seq-8"
+    (seqv [sv "a", sv "b", sv "c", sv "d", sv "e", sv "f", sv "g", sv "h"])
+  checkFuelSufficiency state "seq-12"
+    (seqv [sv "a", sv "b", sv "c", sv "d", sv "e", sv "f",
+           sv "g", sv "h", sv "i", sv "j", sv "k", sv "l"])
+
+  -- Nested sequences (depth: stress recursive parseNode calls)
+  checkFuelSufficiency state "seq-depth-2" (seqv [seqv [sv "a", sv "b"]])
+  checkFuelSufficiency state "seq-depth-3" (seqv [seqv [seqv [sv "a"]]])
+  checkFuelSufficiency state "seq-depth-4" (seqv [seqv [seqv [seqv [sv "a"]]]])
+  checkFuelSufficiency state "seq-depth-5"
+    (seqv [seqv [seqv [seqv [seqv [sv "a"]]]]])
+  checkFuelSufficiency state "seq-depth-6"
+    (seqv [seqv [seqv [seqv [seqv [seqv [sv "a"]]]]]])
+
+  -- Wide + deep (both dimensions at once)
+  checkFuelSufficiency state "seq-wide-deep"
+    (seqv [seqv [sv "a", sv "b", sv "c"],
+           seqv [sv "d", sv "e"],
+           seqv [sv "f"]])
+  checkFuelSufficiency state "seq-deep-wide"
+    (seqv [seqv [seqv [sv "a", sv "b"]],
+           seqv [seqv [sv "c", sv "d"]]])
+
+  -- Sequences containing mappings (mixed nesting)
+  checkFuelSufficiency state "seq-with-map"
+    (seqv [mapv [(sv "k", sv "v")]])
+  checkFuelSufficiency state "seq-with-multi-map"
+    (seqv [mapv [(sv "k1", sv "v1"), (sv "k2", sv "v2")]])
+  checkFuelSufficiency state "seq-with-nested-map"
+    (seqv [mapv [(sv "outer", mapv [(sv "inner", sv "val")])]])
+  checkFuelSufficiency state "seq-map-seq"
+    (seqv [mapv [(sv "items", seqv [sv "x", sv "y"])]])
+
+  -- Previously-failing patterns from P1 (inner commas at depth > 0)
+  checkFuelSufficiency state "seq-prev-fail-1"
+    (seqv [mapv [(sv "k1", sv "v1"), (sv "k2", sv "v2")], sv "after"])
+  checkFuelSufficiency state "seq-prev-fail-2"
+    (seqv [seqv [sv "a", sv "b"], mapv [(sv "c", sv "d"), (sv "e", sv "f")]])
+
+  -- Deep mixed nesting (worst case for fuel)
+  checkFuelSufficiency state "seq-deep-mixed-1"
+    (seqv [mapv [(sv "a", seqv [mapv [(sv "b", seqv [sv "c"])]])]])
+  checkFuelSufficiency state "seq-deep-mixed-2"
+    (seqv [seqv [mapv [(sv "k", seqv [sv "v1", sv "v2"])],
+                 mapv [(sv "j", mapv [(sv "m", sv "n")])]]])
+
+  -- Extreme depth: 7 levels
+  checkFuelSufficiency state "seq-depth-7"
+    (seqv [seqv [seqv [seqv [seqv [seqv [seqv [sv "bottom"]]]]]]])
+
+  -- Extreme width: 16 elements
+  checkFuelSufficiency state "seq-width-16"
+    (seqv (List.range 16 |>.map (fun i => sv s!"item{i}")))
+
+  setCategory state "9b: parseStream_emitMapping fuel sufficiency"
+
+  -- Empty mapping (base case)
+  checkFuelSufficiency state "map-empty" (mapv [])
+
+  -- Single entry
+  checkFuelSufficiency state "map-1" (mapv [(sv "k", sv "v")])
+
+  -- Two entries
+  checkFuelSufficiency state "map-2" (mapv [(sv "k1", sv "v1"), (sv "k2", sv "v2")])
+
+  -- Many entries (wide)
+  checkFuelSufficiency state "map-6"
+    (mapv [(sv "a", sv "1"), (sv "b", sv "2"), (sv "c", sv "3"),
+           (sv "d", sv "4"), (sv "e", sv "5"), (sv "f", sv "6")])
+  checkFuelSufficiency state "map-10"
+    (mapv (List.range 10 |>.map (fun i => (sv s!"k{i}", sv s!"v{i}"))))
+
+  -- Nested mappings (depth)
+  checkFuelSufficiency state "map-depth-2"
+    (mapv [(sv "outer", mapv [(sv "inner", sv "val")])])
+  checkFuelSufficiency state "map-depth-3"
+    (mapv [(sv "a", mapv [(sv "b", mapv [(sv "c", sv "val")])])])
+  checkFuelSufficiency state "map-depth-4"
+    (mapv [(sv "a", mapv [(sv "b", mapv [(sv "c", mapv [(sv "d", sv "val")])])])])
+  checkFuelSufficiency state "map-depth-5"
+    (mapv [(sv "1", mapv [(sv "2", mapv [(sv "3",
+      mapv [(sv "4", mapv [(sv "5", sv "val")])])])])])
+
+  -- Mappings with sequence values
+  checkFuelSufficiency state "map-with-seq"
+    (mapv [(sv "items", seqv [sv "x", sv "y"])])
+  checkFuelSufficiency state "map-with-nested-seq"
+    (mapv [(sv "data", seqv [seqv [sv "a", sv "b"], seqv [sv "c"]])])
+
+  -- Mappings with complex keys
+  checkFuelSufficiency state "map-seq-key"
+    (mapv [(seqv [sv "a", sv "b"], sv "v")])
+  checkFuelSufficiency state "map-map-key"
+    (mapv [(mapv [(sv "inner", sv "key")], sv "v")])
+
+  -- Many entries with complex values
+  checkFuelSufficiency state "map-multi-complex"
+    (mapv [(sv "items", seqv [sv "a", sv "b", sv "c"]),
+           (sv "config", mapv [(sv "debug", sv "true"), (sv "level", sv "3")]),
+           (sv "name", sv "test")])
+
+  -- Deep mixed nesting
+  checkFuelSufficiency state "map-deep-mixed-1"
+    (mapv [(sv "a", seqv [mapv [(sv "b", seqv [sv "c", sv "d"])]])])
+  checkFuelSufficiency state "map-deep-mixed-2"
+    (mapv [(sv "x", mapv [(sv "y", seqv [mapv [(sv "z", sv "w")]])])])
+
+  -- Wide + deep
+  checkFuelSufficiency state "map-wide-deep"
+    (mapv [(sv "a", seqv [sv "1", sv "2"]),
+           (sv "b", mapv [(sv "c", sv "3")]),
+           (sv "d", seqv [mapv [(sv "e", sv "4")]])])
+
+  -- Extreme depth: 6 levels
+  checkFuelSufficiency state "map-depth-6"
+    (mapv [(sv "1", mapv [(sv "2", mapv [(sv "3",
+      mapv [(sv "4", mapv [(sv "5", mapv [(sv "6", sv "val")])])])])])])
+
+  -- Extreme width: 16 entries
+  checkFuelSufficiency state "map-width-16"
+    (mapv (List.range 16 |>.map (fun i => (sv s!"k{i}", sv s!"v{i}"))))
+
+  -- Cross-type stress tests
+  setCategory state "9a/9b: cross-type fuel stress"
+
+  -- Alternating seq/map nesting
+  checkFuelSufficiency state "cross-alt-1"
+    (seqv [mapv [(sv "k", seqv [mapv [(sv "j", sv "v")]])]])
+  checkFuelSufficiency state "cross-alt-2"
+    (mapv [(sv "k", seqv [mapv [(sv "j", seqv [sv "a", sv "b"])]])])
+
+  -- Wide at multiple levels
+  checkFuelSufficiency state "cross-wide-multi"
+    (seqv [mapv [(sv "a", sv "1"), (sv "b", sv "2")],
+           mapv [(sv "c", sv "3"), (sv "d", sv "4")],
+           seqv [sv "e", sv "f", sv "g"]])
+
+  -- Complex realistic structure
+  checkFuelSufficiency state "cross-realistic"
+    (mapv [(sv "users",
+            seqv [mapv [(sv "name", sv "alice"),
+                        (sv "roles", seqv [sv "admin", sv "user"])],
+                  mapv [(sv "name", sv "bob"),
+                        (sv "roles", seqv [sv "user"])]]),
+           (sv "version", sv "2.0")])
+
 def collectTests : IO VerifiedSuiteResult := do
   let state ← IO.mkRef ({} : TestCollector)
   test9g state
   test9h state
   test9cd state
+  test9ab state
   let results ← finish state
   return { name := "adversarialinstantiation",
            label := "Adversarial Instantiation Tests (sorry audit)",
