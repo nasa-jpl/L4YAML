@@ -61,13 +61,13 @@
 <body>
 <div class="container">
   <a href="index.html" class="nav-link">← Back to Coverage Index</a>
-  <h1>✅ Verified Tests</h1>
+  <h1>❌ Verified Tests</h1>
   <p class="subtitle">Unit tests, parser tests, verification tests, and string lemma tests — all must pass.</p>
 
   <div class="stats">
-    <div class="stat-box stat-total"><h3>Total</h3><div class="number">2225</div></div>
-    <div class="stat-box stat-pass"><h3>Passed</h3><div class="number">2225</div></div>
-    <div class="stat-box stat-fail"><h3>Failed</h3><div class="number">0</div></div>
+    <div class="stat-box stat-total"><h3>Total</h3><div class="number">2323</div></div>
+    <div class="stat-box stat-pass"><h3>Passed</h3><div class="number">2305</div></div>
+    <div class="stat-box stat-fail"><h3>Failed</h3><div class="number">18</div></div>
     <div class="stat-box stat-suites"><h3>Suites</h3><div class="number">17</div></div>
   </div>
   <h3>Suites</h3>
@@ -138,10 +138,10 @@
       <div class="stage-bar"><div class="stage-bar-fill" style="width: 100.0%"></div></div>
       <div class="stage-card-source"><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean" target="_blank" class="source-link">📄 Tests/AdversarialGrammarTests.lean</a></div>
     </div>
-    <div class="stage-card" style="border-left-color:var(--color-pass)">
+    <div class="stage-card" style="border-left-color:var(--color-fail)">
       <div class="stage-card-name">Adversarial Instantiation Tests (sorry audit)</div>
-      <div class="stage-card-stats">993/993 passed (100.0%)</div>
-      <div class="stage-bar"><div class="stage-bar-fill" style="width: 100.0%"></div></div>
+      <div class="stage-card-stats">1073/1091 passed (98.4%)</div>
+      <div class="stage-bar"><div class="stage-bar-fill" style="width: 98.4%"></div></div>
       <div class="stage-card-source"><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean" target="_blank" class="source-link">📄 Tests/AdversarialInstantiation.lean</a></div>
     </div>
     <div class="stage-card" style="border-left-color:var(--color-pass)">
@@ -210,7 +210,7 @@
       <label>Search:</label>
       <input type="text" class="search-input" placeholder="Category, test name..." oninput="searchTests(this.value)">
     </div>
-    <div class="filter-group"><span>Showing <strong id="visibleCount">2225</strong> of 2225</span></div>
+    <div class="filter-group"><span>Showing <strong id="visibleCount">2323</strong> of 2323</span></div>
   </div>
 
   <table id="testTable">
@@ -14137,6 +14137,692 @@
         <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1021" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
         <td>5: BoundInv preservation (preprocess/structural/content)</td>
         <td>bom: offset at char boundary (1 steps)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix diag-simple-key-val: diagnostic complete">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1377" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>diag-simple-key-val: diagnostic complete</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix diag-emit-map-1: diagnostic complete">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1377" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>diag-emit-map-1: diagnostic complete</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix emit-seq-1: filtered prefix (ek=none, 6 pairs)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1314" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>emit-seq-1: filtered prefix (ek=none, 6 pairs)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix emit-seq-1: filtered prefix (sk≥tokens.size, 5 pairs)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1316" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>emit-seq-1: filtered prefix (sk≥tokens.size, 5 pairs)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix emit-seq-1: ek=none at flow opens (1/1)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1334" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>emit-seq-1: ek=none at flow opens (1/1)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix emit-seq-3: filtered prefix (ek=none, 28 pairs)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1314" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>emit-seq-3: filtered prefix (ek=none, 28 pairs)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix emit-seq-3: filtered prefix (sk≥tokens.size, 13 pairs)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1316" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>emit-seq-3: filtered prefix (sk≥tokens.size, 13 pairs)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix emit-seq-3: ek=none at flow opens (1/1)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1334" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>emit-seq-3: ek=none at flow opens (1/1)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="fail" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix emit-map-1: filtered prefix (ek=none, 15 pairs)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1314" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>emit-map-1: filtered prefix (ek=none, 15 pairs)</td>
+        <td><span class="badge badge-fail">Fail</span></td>
+        <td><span class="error-msg" title="3 failures. Last: filtered prefix FAIL (ek=none): step 2→5, filt_i.size=3, filt_j.size=7, si.tokens.size=7, sj.tokens.size=12, si.sk.possible=true, si.sk.tokenIndex=4">3 failures. Last: filtered prefix FAIL (ek=none): step 2→5, filt_i.size=3, filt_j.size=7, si.tokens.size=7, sj.tokens.size=12, si.sk.possible=true, si.sk.tokenIndex=4</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix emit-map-1: filtered prefix (sk≥tokens.size, 11 pairs)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1316" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>emit-map-1: filtered prefix (sk≥tokens.size, 11 pairs)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix emit-map-1: ek=none at flow opens (1/1)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1334" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>emit-map-1: ek=none at flow opens (1/1)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="fail" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix emit-map-2: filtered prefix (ek=none, 45 pairs)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1314" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>emit-map-2: filtered prefix (ek=none, 45 pairs)</td>
+        <td><span class="badge badge-fail">Fail</span></td>
+        <td><span class="error-msg" title="10 failures. Last: filtered prefix FAIL (ek=none): step 6→9, filt_i.size=8, filt_j.size=12, si.tokens.size=15, sj.tokens.size=20, si.sk.possible=true, si.sk.tokenIndex=12">10 failures. Last: filtered prefix FAIL (ek=none): step 6→9, filt_i.size=8, filt_j.size=12, si.tokens.size=15, sj.tokens.size=20, si.sk.possible=true, si.sk.tokenIndex=12</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix emit-map-2: filtered prefix (sk≥tokens.size, 25 pairs)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1316" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>emit-map-2: filtered prefix (sk≥tokens.size, 25 pairs)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix emit-map-2: ek=none at flow opens (1/1)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1334" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>emit-map-2: ek=none at flow opens (1/1)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix emit-nested-seq: filtered prefix (ek=none, 45 pairs)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1314" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>emit-nested-seq: filtered prefix (ek=none, 45 pairs)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix emit-nested-seq: filtered prefix (sk≥tokens.size, 24 pairs)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1316" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>emit-nested-seq: filtered prefix (sk≥tokens.size, 24 pairs)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix emit-nested-seq: ek=none at flow opens (2/2)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1334" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>emit-nested-seq: ek=none at flow opens (2/2)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="fail" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix emit-nested-map: filtered prefix (ek=none, 45 pairs)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1314" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>emit-nested-map: filtered prefix (ek=none, 45 pairs)</td>
+        <td><span class="badge badge-fail">Fail</span></td>
+        <td><span class="error-msg" title="6 failures. Last: filtered prefix FAIL (ek=none): step 3→9, filt_i.size=4, filt_j.size=11, si.tokens.size=10, sj.tokens.size=20, si.sk.possible=true, si.sk.tokenIndex=7">6 failures. Last: filtered prefix FAIL (ek=none): step 3→9, filt_i.size=4, filt_j.size=11, si.tokens.size=10, sj.tokens.size=20, si.sk.possible=true, si.sk.tokenIndex=7</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix emit-nested-map: filtered prefix (sk≥tokens.size, 29 pairs)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1316" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>emit-nested-map: filtered prefix (sk≥tokens.size, 29 pairs)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix emit-nested-map: ek=none at flow opens (2/2)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1334" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>emit-nested-map: ek=none at flow opens (2/2)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix emit-deep: filtered prefix (ek=none, 28 pairs)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1314" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>emit-deep: filtered prefix (ek=none, 28 pairs)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix emit-deep: filtered prefix (sk≥tokens.size, 22 pairs)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1316" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>emit-deep: filtered prefix (sk≥tokens.size, 22 pairs)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix emit-deep: ek=none at flow opens (3/3)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1334" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>emit-deep: ek=none at flow opens (3/3)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="fail" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix emit-mixed: filtered prefix (ek=none, 153 pairs)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1314" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>emit-mixed: filtered prefix (ek=none, 153 pairs)</td>
+        <td><span class="badge badge-fail">Fail</span></td>
+        <td><span class="error-msg" title="26 failures. Last: filtered prefix FAIL (ek=none): step 13→17, filt_i.size=16, filt_j.size=21, si.tokens.size=30, sj.tokens.size=36, si.sk.possible=true, si.sk.tokenIndex=27">26 failures. Last: filtered prefix FAIL (ek=none): step 13→17, filt_i.size=16, filt_j.size=21, si.tokens.size=30, sj.tokens.size=36, si.sk.possible=true, si.sk.tokenIndex=27</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix emit-mixed: filtered prefix (sk≥tokens.size, 74 pairs)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1316" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>emit-mixed: filtered prefix (sk≥tokens.size, 74 pairs)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix emit-mixed: ek=none at flow opens (3/3)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1334" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>emit-mixed: ek=none at flow opens (3/3)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="fail" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix emit-complex: filtered prefix (ek=none, 630 pairs)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1314" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>emit-complex: filtered prefix (ek=none, 630 pairs)</td>
+        <td><span class="badge badge-fail">Fail</span></td>
+        <td><span class="error-msg" title="116 failures. Last: filtered prefix FAIL (ek=none): step 32→35, filt_i.size=38, filt_j.size=42, si.tokens.size=67, sj.tokens.size=72, si.sk.possible=true, si.sk.tokenIndex=64">116 failures. Last: filtered prefix FAIL (ek=none): step 32→35, filt_i.size=38, filt_j.size=42, si.tokens.size=67, sj.tokens.size=72, si.sk.possible=true, si.sk.tokenIndex=64</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix emit-complex: filtered prefix (sk≥tokens.size, 288 pairs)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1316" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>emit-complex: filtered prefix (sk≥tokens.size, 288 pairs)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix emit-complex: ek=none at flow opens (6/6)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1334" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>emit-complex: ek=none at flow opens (6/6)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="fail" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix simple-key-val: filtered prefix (ek=none, 6 pairs)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1314" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>simple-key-val: filtered prefix (ek=none, 6 pairs)</td>
+        <td><span class="badge badge-fail">Fail</span></td>
+        <td><span class="error-msg" title="2 failures. Last: filtered prefix FAIL (ek=none): step 1→3, filt_i.size=2, filt_j.size=6, si.tokens.size=4, sj.tokens.size=8, si.sk.possible=true, si.sk.tokenIndex=1">2 failures. Last: filtered prefix FAIL (ek=none): step 1→3, filt_i.size=2, filt_j.size=6, si.tokens.size=4, sj.tokens.size=8, si.sk.possible=true, si.sk.tokenIndex=1</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix simple-key-val: filtered prefix (sk≥tokens.size, 4 pairs)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1316" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>simple-key-val: filtered prefix (sk≥tokens.size, 4 pairs)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix simple-key-val: ek=none at flow opens (0/0)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1334" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>simple-key-val: ek=none at flow opens (0/0)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="fail" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix simple-key-nested: filtered prefix (ek=none, 21 pairs)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1314" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>simple-key-nested: filtered prefix (ek=none, 21 pairs)</td>
+        <td><span class="badge badge-fail">Fail</span></td>
+        <td><span class="error-msg" title="7 failures. Last: filtered prefix FAIL (ek=none): step 4→6, filt_i.size=7, filt_j.size=10, si.tokens.size=11, sj.tokens.size=15, si.sk.possible=true, si.sk.tokenIndex=8">7 failures. Last: filtered prefix FAIL (ek=none): step 4→6, filt_i.size=7, filt_j.size=10, si.tokens.size=11, sj.tokens.size=15, si.sk.possible=true, si.sk.tokenIndex=8</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix simple-key-nested: filtered prefix (sk≥tokens.size, 11 pairs)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1316" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>simple-key-nested: filtered prefix (sk≥tokens.size, 11 pairs)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix simple-key-nested: ek=none at flow opens (0/0)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1334" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>simple-key-nested: ek=none at flow opens (0/0)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix explicit-key: filtered prefix (ek=none, 5 pairs)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1314" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>explicit-key: filtered prefix (ek=none, 5 pairs)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix explicit-key: filtered prefix (sk≥tokens.size, 8 pairs)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1316" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>explicit-key: filtered prefix (sk≥tokens.size, 8 pairs)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix explicit-key: ek=none at flow opens (0/0)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1334" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>explicit-key: ek=none at flow opens (0/0)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix flow-seq: filtered prefix (ek=none, 28 pairs)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1314" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>flow-seq: filtered prefix (ek=none, 28 pairs)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix flow-seq: filtered prefix (sk≥tokens.size, 13 pairs)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1316" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>flow-seq: filtered prefix (sk≥tokens.size, 13 pairs)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix flow-seq: ek=none at flow opens (1/1)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1334" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>flow-seq: ek=none at flow opens (1/1)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="fail" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix flow-map: filtered prefix (ek=none, 45 pairs)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1314" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>flow-map: filtered prefix (ek=none, 45 pairs)</td>
+        <td><span class="badge badge-fail">Fail</span></td>
+        <td><span class="error-msg" title="10 failures. Last: filtered prefix FAIL (ek=none): step 6→9, filt_i.size=8, filt_j.size=12, si.tokens.size=15, sj.tokens.size=20, si.sk.possible=true, si.sk.tokenIndex=12">10 failures. Last: filtered prefix FAIL (ek=none): step 6→9, filt_i.size=8, filt_j.size=12, si.tokens.size=15, sj.tokens.size=20, si.sk.possible=true, si.sk.tokenIndex=12</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix flow-map: filtered prefix (sk≥tokens.size, 25 pairs)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1316" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>flow-map: filtered prefix (sk≥tokens.size, 25 pairs)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix flow-map: ek=none at flow opens (1/1)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1334" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>flow-map: ek=none at flow opens (1/1)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix flow-nested: filtered prefix (ek=none, 91 pairs)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1314" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>flow-nested: filtered prefix (ek=none, 91 pairs)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix flow-nested: filtered prefix (sk≥tokens.size, 41 pairs)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1316" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>flow-nested: filtered prefix (sk≥tokens.size, 41 pairs)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix flow-nested: ek=none at flow opens (3/3)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1334" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>flow-nested: ek=none at flow opens (3/3)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="fail" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix flow-deep: filtered prefix (ek=none, 153 pairs)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1314" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>flow-deep: filtered prefix (ek=none, 153 pairs)</td>
+        <td><span class="badge badge-fail">Fail</span></td>
+        <td><span class="error-msg" title="22 failures. Last: filtered prefix FAIL (ek=none): step 9→17, filt_i.size=11, filt_j.size=20, si.tokens.size=24, sj.tokens.size=36, si.sk.possible=true, si.sk.tokenIndex=21">22 failures. Last: filtered prefix FAIL (ek=none): step 9→17, filt_i.size=11, filt_j.size=20, si.tokens.size=24, sj.tokens.size=36, si.sk.possible=true, si.sk.tokenIndex=21</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix flow-deep: filtered prefix (sk≥tokens.size, 89 pairs)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1316" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>flow-deep: filtered prefix (sk≥tokens.size, 89 pairs)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix flow-deep: ek=none at flow opens (4/4)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1334" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>flow-deep: ek=none at flow opens (4/4)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix block-seq: filtered prefix (ek=none, 21 pairs)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1314" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>block-seq: filtered prefix (ek=none, 21 pairs)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix block-seq: filtered prefix (sk≥tokens.size, 6 pairs)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1316" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>block-seq: filtered prefix (sk≥tokens.size, 6 pairs)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix block-seq: ek=none at flow opens (0/0)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1334" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>block-seq: ek=none at flow opens (0/0)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="fail" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix block-map: filtered prefix (ek=none, 45 pairs)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1314" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>block-map: filtered prefix (ek=none, 45 pairs)</td>
+        <td><span class="badge badge-fail">Fail</span></td>
+        <td><span class="error-msg" title="15 failures. Last: filtered prefix FAIL (ek=none): step 7→9, filt_i.size=11, filt_j.size=14, si.tokens.size=18, sj.tokens.size=22, si.sk.possible=true, si.sk.tokenIndex=15">15 failures. Last: filtered prefix FAIL (ek=none): step 7→9, filt_i.size=11, filt_j.size=14, si.tokens.size=18, sj.tokens.size=22, si.sk.possible=true, si.sk.tokenIndex=15</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix block-map: filtered prefix (sk≥tokens.size, 21 pairs)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1316" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>block-map: filtered prefix (sk≥tokens.size, 21 pairs)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix block-map: ek=none at flow opens (0/0)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1334" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>block-map: ek=none at flow opens (0/0)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="fail" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix block-mixed: filtered prefix (ek=none, 21 pairs)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1314" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>block-mixed: filtered prefix (ek=none, 21 pairs)</td>
+        <td><span class="badge badge-fail">Fail</span></td>
+        <td><span class="error-msg" title="5 failures. Last: filtered prefix FAIL (ek=none): step 1→6, filt_i.size=2, filt_j.size=10, si.tokens.size=4, sj.tokens.size=18, si.sk.possible=true, si.sk.tokenIndex=1">5 failures. Last: filtered prefix FAIL (ek=none): step 1→6, filt_i.size=2, filt_j.size=10, si.tokens.size=4, sj.tokens.size=18, si.sk.possible=true, si.sk.tokenIndex=1</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix block-mixed: filtered prefix (sk≥tokens.size, 10 pairs)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1316" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>block-mixed: filtered prefix (sk≥tokens.size, 10 pairs)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix block-mixed: ek=none at flow opens (0/0)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1334" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>block-mixed: ek=none at flow opens (0/0)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="fail" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix block-nested: filtered prefix (ek=none, 28 pairs)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1314" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>block-nested: filtered prefix (ek=none, 28 pairs)</td>
+        <td><span class="badge badge-fail">Fail</span></td>
+        <td><span class="error-msg" title="12 failures. Last: filtered prefix FAIL (ek=none): step 5→7, filt_i.size=10, filt_j.size=14, si.tokens.size=12, sj.tokens.size=16, si.sk.possible=true, si.sk.tokenIndex=9">12 failures. Last: filtered prefix FAIL (ek=none): step 5→7, filt_i.size=10, filt_j.size=14, si.tokens.size=12, sj.tokens.size=16, si.sk.possible=true, si.sk.tokenIndex=9</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix block-nested: filtered prefix (sk≥tokens.size, 16 pairs)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1316" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>block-nested: filtered prefix (sk≥tokens.size, 16 pairs)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix block-nested: ek=none at flow opens (0/0)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1334" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>block-nested: ek=none at flow opens (0/0)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix dquoted: filtered prefix (ek=none, 1 pairs)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1314" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>dquoted: filtered prefix (ek=none, 1 pairs)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix dquoted: filtered prefix (sk≥tokens.size, 1 pairs)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1316" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>dquoted: filtered prefix (sk≥tokens.size, 1 pairs)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix dquoted: ek=none at flow opens (0/0)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1334" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>dquoted: ek=none at flow opens (0/0)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix squoted: filtered prefix (ek=none, 1 pairs)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1314" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>squoted: filtered prefix (ek=none, 1 pairs)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix squoted: filtered prefix (sk≥tokens.size, 1 pairs)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1316" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>squoted: filtered prefix (sk≥tokens.size, 1 pairs)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix squoted: ek=none at flow opens (0/0)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1334" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>squoted: ek=none at flow opens (0/0)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix flow-dquoted: filtered prefix (ek=none, 15 pairs)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1314" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>flow-dquoted: filtered prefix (ek=none, 15 pairs)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix flow-dquoted: filtered prefix (sk≥tokens.size, 9 pairs)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1316" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>flow-dquoted: filtered prefix (sk≥tokens.size, 9 pairs)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix flow-dquoted: ek=none at flow opens (1/1)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1334" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>flow-dquoted: ek=none at flow opens (1/1)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="fail" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix doc-start: filtered prefix (ek=none, 10 pairs)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1314" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>doc-start: filtered prefix (ek=none, 10 pairs)</td>
+        <td><span class="badge badge-fail">Fail</span></td>
+        <td><span class="error-msg" title="2 failures. Last: filtered prefix FAIL (ek=none): step 2→4, filt_i.size=3, filt_j.size=7, si.tokens.size=7, sj.tokens.size=11, si.sk.possible=true, si.sk.tokenIndex=4">2 failures. Last: filtered prefix FAIL (ek=none): step 2→4, filt_i.size=3, filt_j.size=7, si.tokens.size=7, sj.tokens.size=11, si.sk.possible=true, si.sk.tokenIndex=4</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix doc-start: filtered prefix (sk≥tokens.size, 8 pairs)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1316" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>doc-start: filtered prefix (sk≥tokens.size, 8 pairs)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix doc-start: ek=none at flow opens (0/0)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1334" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>doc-start: ek=none at flow opens (0/0)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="fail" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix doc-end: filtered prefix (ek=none, 10 pairs)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1314" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>doc-end: filtered prefix (ek=none, 10 pairs)</td>
+        <td><span class="badge badge-fail">Fail</span></td>
+        <td><span class="error-msg" title="3 failures. Last: filtered prefix FAIL (ek=none): step 1→4, filt_i.size=2, filt_j.size=8, si.tokens.size=4, sj.tokens.size=12, si.sk.possible=true, si.sk.tokenIndex=1">3 failures. Last: filtered prefix FAIL (ek=none): step 1→4, filt_i.size=2, filt_j.size=8, si.tokens.size=4, sj.tokens.size=12, si.sk.possible=true, si.sk.tokenIndex=1</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix doc-end: filtered prefix (sk≥tokens.size, 6 pairs)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1316" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>doc-end: filtered prefix (sk≥tokens.size, 6 pairs)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix doc-end: ek=none at flow opens (0/0)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1334" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>doc-end: ek=none at flow opens (0/0)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="fail" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix multi-doc: filtered prefix (ek=none, 45 pairs)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1314" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>multi-doc: filtered prefix (ek=none, 45 pairs)</td>
+        <td><span class="badge badge-fail">Fail</span></td>
+        <td><span class="error-msg" title="9 failures. Last: filtered prefix FAIL (ek=none): step 7→9, filt_i.size=11, filt_j.size=15, si.tokens.size=21, sj.tokens.size=25, si.sk.possible=true, si.sk.tokenIndex=18">9 failures. Last: filtered prefix FAIL (ek=none): step 7→9, filt_i.size=11, filt_j.size=15, si.tokens.size=21, sj.tokens.size=25, si.sk.possible=true, si.sk.tokenIndex=18</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix multi-doc: filtered prefix (sk≥tokens.size, 31 pairs)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1316" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>multi-doc: filtered prefix (sk≥tokens.size, 31 pairs)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix multi-doc: ek=none at flow opens (0/0)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1334" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>multi-doc: ek=none at flow opens (0/0)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="fail" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix yaml-directive: filtered prefix (ek=none, 15 pairs)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1314" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>yaml-directive: filtered prefix (ek=none, 15 pairs)</td>
+        <td><span class="badge badge-fail">Fail</span></td>
+        <td><span class="error-msg" title="2 failures. Last: filtered prefix FAIL (ek=none): step 3→5, filt_i.size=4, filt_j.size=8, si.tokens.size=10, sj.tokens.size=14, si.sk.possible=true, si.sk.tokenIndex=7">2 failures. Last: filtered prefix FAIL (ek=none): step 3→5, filt_i.size=4, filt_j.size=8, si.tokens.size=10, sj.tokens.size=14, si.sk.possible=true, si.sk.tokenIndex=7</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix yaml-directive: filtered prefix (sk≥tokens.size, 9 pairs)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1316" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>yaml-directive: filtered prefix (sk≥tokens.size, 9 pairs)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix yaml-directive: ek=none at flow opens (0/0)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1334" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>yaml-directive: ek=none at flow opens (0/0)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="fail" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix tag-directive: filtered prefix (ek=none, 15 pairs)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1314" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>tag-directive: filtered prefix (ek=none, 15 pairs)</td>
+        <td><span class="badge badge-fail">Fail</span></td>
+        <td><span class="error-msg" title="2 failures. Last: filtered prefix FAIL (ek=none): step 3→5, filt_i.size=4, filt_j.size=8, si.tokens.size=10, sj.tokens.size=14, si.sk.possible=true, si.sk.tokenIndex=7">2 failures. Last: filtered prefix FAIL (ek=none): step 3→5, filt_i.size=4, filt_j.size=8, si.tokens.size=10, sj.tokens.size=14, si.sk.possible=true, si.sk.tokenIndex=7</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix tag-directive: filtered prefix (sk≥tokens.size, 9 pairs)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1316" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>tag-directive: filtered prefix (sk≥tokens.size, 9 pairs)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix tag-directive: ek=none at flow opens (0/0)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1334" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>tag-directive: ek=none at flow opens (0/0)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix empty: filtered prefix (ek=none, 0 pairs)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1314" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>empty: filtered prefix (ek=none, 0 pairs)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix empty: filtered prefix (sk≥tokens.size, 0 pairs)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1316" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>empty: filtered prefix (sk≥tokens.size, 0 pairs)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix empty: ek=none at flow opens (0/0)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1334" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>empty: ek=none at flow opens (0/0)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix ws-only: filtered prefix (ek=none, 0 pairs)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1314" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>ws-only: filtered prefix (ek=none, 0 pairs)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix ws-only: filtered prefix (sk≥tokens.size, 0 pairs)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1316" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>ws-only: filtered prefix (sk≥tokens.size, 0 pairs)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix ws-only: ek=none at flow opens (0/0)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1334" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>ws-only: ek=none at flow opens (0/0)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix plain-scalar: filtered prefix (ek=none, 1 pairs)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1314" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>plain-scalar: filtered prefix (ek=none, 1 pairs)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix plain-scalar: filtered prefix (sk≥tokens.size, 1 pairs)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1316" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>plain-scalar: filtered prefix (sk≥tokens.size, 1 pairs)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix plain-scalar: ek=none at flow opens (0/0)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1334" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>plain-scalar: ek=none at flow opens (0/0)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="fail" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix deep-flow-in-block: filtered prefix (ek=none, 325 pairs)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1314" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>deep-flow-in-block: filtered prefix (ek=none, 325 pairs)</td>
+        <td><span class="badge badge-fail">Fail</span></td>
+        <td><span class="error-msg" title="92 failures. Last: filtered prefix FAIL (ek=none): step 15→25, filt_i.size=23, filt_j.size=34, si.tokens.size=36, sj.tokens.size=52, si.sk.possible=true, si.sk.tokenIndex=33">92 failures. Last: filtered prefix FAIL (ek=none): step 15→25, filt_i.size=23, filt_j.size=34, si.tokens.size=36, sj.tokens.size=52, si.sk.possible=true, si.sk.tokenIndex=33</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix deep-flow-in-block: filtered prefix (sk≥tokens.size, 180 pairs)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1316" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>deep-flow-in-block: filtered prefix (sk≥tokens.size, 180 pairs)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialinstantiation" data-search="adversarialinstantiation scanchain_filtered_prefix deep-flow-in-block: ek=none at flow opens (5/5)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialInstantiation.lean#L1334" target="_blank" class="source-link">Adversarial Instantiation Tests (sorry audit)</a></td>
+        <td>ScanChain_filtered_prefix</td>
+        <td>deep-flow-in-block: ek=none at flow opens (5/5)</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
