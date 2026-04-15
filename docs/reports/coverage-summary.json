@@ -1,5 +1,5 @@
 {
-  "date": "2026-04-14T17:45:57-0700",
+  "date": "2026-04-14T19:36:48-0700",
   "overall": {
     "applicable": 358,
     "correct": 358,
@@ -7591,6 +7591,954 @@
       },
       {
         "allPass": true,
+        "label": "Adversarial Instantiation Tests (sorry audit)",
+        "passed": 188,
+        "tests": [
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "flat-1: streamStart",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "flat-1: flowSeqStart",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "flat-1: flowSeqEnd",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "flat-1: streamEnd",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "flat-1: first body is content-start",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "flat-2: streamStart",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "flat-2: flowSeqStart",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "flat-2: flowSeqEnd",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "flat-2: streamEnd",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "flat-2: first body is content-start",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "flat-2: outer flowEntry@3 → content-start",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "flat-3: streamStart",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "flat-3: flowSeqStart",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "flat-3: flowSeqEnd",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "flat-3: streamEnd",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "flat-3: first body is content-start",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "flat-3: outer flowEntry@3 → content-start",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "flat-3: outer flowEntry@5 → content-start",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "nest1-seq: streamStart",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "nest1-seq: flowSeqStart",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "nest1-seq: flowSeqEnd",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "nest1-seq: streamEnd",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "nest1-seq: first body is content-start",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "nest1-seq: outer flowEntry@7 → content-start",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "nest1-map: streamStart",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "nest1-map: flowSeqStart",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "nest1-map: flowSeqEnd",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "nest1-map: streamEnd",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "nest1-map: first body is content-start",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "nest1-map: outer flowEntry@8 → content-start",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "nest2: streamStart",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "nest2: flowSeqStart",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "nest2: flowSeqEnd",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "nest2: streamEnd",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "nest2: first body is content-start",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "nest2-multi: streamStart",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "nest2-multi: flowSeqStart",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "nest2-multi: flowSeqEnd",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "nest2-multi: streamEnd",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "nest2-multi: first body is content-start",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "nest2-multi: outer flowEntry@7 → content-start",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "mixed-1: streamStart",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "mixed-1: flowSeqStart",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "mixed-1: flowSeqEnd",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "mixed-1: streamEnd",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "mixed-1: first body is content-start",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "mixed-1: outer flowEntry@8 → content-start",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "mixed-2: streamStart",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "mixed-2: flowSeqStart",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "mixed-2: flowSeqEnd",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "mixed-2: streamEnd",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "mixed-2: first body is content-start",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "mixed-2: outer flowEntry@3 → content-start",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "mixed-2: outer flowEntry@9 → content-start",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "prev-fail-1: streamStart",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "prev-fail-1: flowSeqStart",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "prev-fail-1: flowSeqEnd",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "prev-fail-1: streamEnd",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "prev-fail-1: first body is content-start",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "prev-fail-2: streamStart",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "prev-fail-2: flowSeqStart",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "prev-fail-2: flowSeqEnd",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "prev-fail-2: streamEnd",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "prev-fail-2: first body is content-start",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "prev-fail-2: outer flowEntry@13 → content-start",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "deep-3: streamStart",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "deep-3: flowSeqStart",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "deep-3: flowSeqEnd",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "deep-3: streamEnd",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "deep-3: first body is content-start",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "deep-mixed: streamStart",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "deep-mixed: flowSeqStart",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "deep-mixed: flowSeqEnd",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "deep-mixed: streamEnd",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "deep-mixed: first body is content-start",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "empty-scalar: streamStart",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "empty-scalar: flowSeqStart",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "empty-scalar: flowSeqEnd",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "empty-scalar: streamEnd",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "empty-scalar: first body is content-start",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "special-chars: streamStart",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "special-chars: flowSeqStart",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "special-chars: flowSeqEnd",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "special-chars: streamEnd",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "special-chars: first body is content-start",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "special-chars: outer flowEntry@3 → content-start",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "many-items: streamStart",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "many-items: flowSeqStart",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "many-items: flowSeqEnd",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "many-items: streamEnd",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "many-items: first body is content-start",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "many-items: outer flowEntry@3 → content-start",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "many-items: outer flowEntry@5 → content-start",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "many-items: outer flowEntry@7 → content-start",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "many-items: outer flowEntry@9 → content-start",
+            "outcome": "pass"
+          },
+          {
+            "category": "9g: emitList_body_filtered_characterization",
+            "name": "many-items: outer flowEntry@11 → content-start",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "pair-1: streamStart",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "pair-1: flowMapStart",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "pair-1: flowMapEnd",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "pair-1: streamEnd",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "pair-1: first body is .key",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "pairs-2: streamStart",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "pairs-2: flowMapStart",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "pairs-2: flowMapEnd",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "pairs-2: streamEnd",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "pairs-2: first body is .key",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "pairs-2: outer flowEntry@6 → .key",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "pairs-3: streamStart",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "pairs-3: flowMapStart",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "pairs-3: flowMapEnd",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "pairs-3: streamEnd",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "pairs-3: first body is .key",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "pairs-3: outer flowEntry@6 → .key",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "pairs-3: outer flowEntry@11 → .key",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "prev-fail-map: streamStart",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "prev-fail-map: flowMapStart",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "prev-fail-map: flowMapEnd",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "prev-fail-map: streamEnd",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "prev-fail-map: first body is .key",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "prev-fail-map: outer flowEntry@6 → .key",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "nested-seq-val: streamStart",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "nested-seq-val: flowMapStart",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "nested-seq-val: flowMapEnd",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "nested-seq-val: streamEnd",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "nested-seq-val: first body is .key",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "nested-map-val: streamStart",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "nested-map-val: flowMapStart",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "nested-map-val: flowMapEnd",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "nested-map-val: streamEnd",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "nested-map-val: first body is .key",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "nested-seq-key: streamStart",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "nested-seq-key: flowMapStart",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "nested-seq-key: flowMapEnd",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "nested-seq-key: streamEnd",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "nested-seq-key: first body is .key",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "map-in-map: streamStart",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "map-in-map: flowMapStart",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "map-in-map: flowMapEnd",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "map-in-map: streamEnd",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "map-in-map: first body is .key",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "seq-in-map: streamStart",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "seq-in-map: flowMapStart",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "seq-in-map: flowMapEnd",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "seq-in-map: streamEnd",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "seq-in-map: first body is .key",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "seq-in-map: outer flowEntry@10 → .key",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "complex: streamStart",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "complex: flowMapStart",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "complex: flowMapEnd",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "complex: streamEnd",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "complex: first body is .key",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "complex: outer flowEntry@20 → .key",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "deep-val: streamStart",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "deep-val: flowMapStart",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "deep-val: flowMapEnd",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "deep-val: streamEnd",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "deep-val: first body is .key",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "multi-deep: streamStart",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "multi-deep: flowMapStart",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "multi-deep: flowMapEnd",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "multi-deep: streamEnd",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "multi-deep: first body is .key",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "multi-deep: outer flowEntry@10 → .key",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "empty-key: streamStart",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "empty-key: flowMapStart",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "empty-key: flowMapEnd",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "empty-key: streamEnd",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "empty-key: first body is .key",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "empty-val: streamStart",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "empty-val: flowMapStart",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "empty-val: flowMapEnd",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "empty-val: streamEnd",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "empty-val: first body is .key",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "special-chars-kv: streamStart",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "special-chars-kv: flowMapStart",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "special-chars-kv: flowMapEnd",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "special-chars-kv: streamEnd",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "special-chars-kv: first body is .key",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "many-pairs: streamStart",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "many-pairs: flowMapStart",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "many-pairs: flowMapEnd",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "many-pairs: streamEnd",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "many-pairs: first body is .key",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "many-pairs: outer flowEntry@6 → .key",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "many-pairs: outer flowEntry@11 → .key",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "many-pairs: outer flowEntry@16 → .key",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "many-pairs: outer flowEntry@21 → .key",
+            "outcome": "pass"
+          },
+          {
+            "category": "9h: emitPairList_body_filtered_characterization",
+            "name": "many-pairs: outer flowEntry@26 → .key",
+            "outcome": "pass"
+          }
+        ],
+        "total": 188
+      },
+      {
+        "allPass": true,
         "label": "Mutation Testing on yaml-test-suite (v0.2.13.2)",
         "passed": 45,
         "tests": [
@@ -8815,7 +9763,7 @@
         "total": 7
       }
     ],
-    "totalPassed": 1232,
-    "totalTests": 1232
+    "totalPassed": 1420,
+    "totalTests": 1420
   }
 }
