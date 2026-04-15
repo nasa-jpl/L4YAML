@@ -1,5 +1,5 @@
 {
-  "date": "2026-04-14T20:01:50-0700",
+  "date": "2026-04-14T23:14:05-0700",
   "overall": {
     "applicable": 358,
     "correct": 358,
@@ -7592,7 +7592,7 @@
       {
         "allPass": true,
         "label": "Adversarial Instantiation Tests (sorry audit)",
-        "passed": 329,
+        "passed": 697,
         "tests": [
           {
             "category": "9g: emitList_body_filtered_characterization",
@@ -9238,9 +9238,1849 @@
             "category": "9d: emit_roundtrip_mapping_content_eq",
             "name": "cross-nested: contentEq",
             "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-empty: scan succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-empty: parseStream ok (fuel=20, N=4)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-empty: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-empty: tight fuel 19 also works",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-1: scan succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-1: parseStream ok (fuel=24, N=5)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-1: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-1: tight fuel 23 also works",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-2: scan succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-2: parseStream ok (fuel=32, N=7)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-2: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-2: tight fuel 31 also works",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-8: scan succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-8: parseStream ok (fuel=80, N=19)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-8: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-8: tight fuel 79 also works",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-12: scan succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-12: parseStream ok (fuel=112, N=27)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-12: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-12: tight fuel 111 also works",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-depth-2: scan succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-depth-2: parseStream ok (fuel=40, N=9)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-depth-2: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-depth-2: tight fuel 39 also works",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-depth-3: scan succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-depth-3: parseStream ok (fuel=40, N=9)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-depth-3: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-depth-3: tight fuel 39 also works",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-depth-4: scan succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-depth-4: parseStream ok (fuel=48, N=11)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-depth-4: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-depth-4: tight fuel 47 also works",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-depth-5: scan succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-depth-5: parseStream ok (fuel=56, N=13)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-depth-5: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-depth-5: tight fuel 55 also works",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-depth-6: scan succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-depth-6: parseStream ok (fuel=64, N=15)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-depth-6: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-depth-6: tight fuel 63 also works",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-wide-deep: scan succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-wide-deep: parseStream ok (fuel=88, N=21)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-wide-deep: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-wide-deep: tight fuel 87 also works",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-deep-wide: scan succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-deep-wide: parseStream ok (fuel=80, N=19)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-deep-wide: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-deep-wide: tight fuel 79 also works",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-with-map: scan succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-with-map: parseStream ok (fuel=44, N=10)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-with-map: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-with-map: tight fuel 43 also works",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-with-multi-map: scan succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-with-multi-map: parseStream ok (fuel=64, N=15)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-with-multi-map: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-with-multi-map: tight fuel 63 also works",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-with-nested-map: scan succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-with-nested-map: parseStream ok (fuel=64, N=15)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-with-nested-map: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-with-nested-map: tight fuel 63 also works",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-map-seq: scan succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-map-seq: parseStream ok (fuel=60, N=14)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-map-seq: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-map-seq: tight fuel 59 also works",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-prev-fail-1: scan succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-prev-fail-1: parseStream ok (fuel=72, N=17)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-prev-fail-1: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-prev-fail-1: tight fuel 71 also works",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-prev-fail-2: scan succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-prev-fail-2: parseStream ok (fuel=88, N=21)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-prev-fail-2: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-prev-fail-2: tight fuel 87 also works",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-deep-mixed-1: scan succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-deep-mixed-1: parseStream ok (fuel=80, N=19)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-deep-mixed-1: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-deep-mixed-1: tight fuel 79 also works",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-deep-mixed-2: scan succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-deep-mixed-2: parseStream ok (fuel=116, N=28)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-deep-mixed-2: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-deep-mixed-2: tight fuel 115 also works",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-depth-7: scan succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-depth-7: parseStream ok (fuel=72, N=17)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-depth-7: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-depth-7: tight fuel 71 also works",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-width-16: scan succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-width-16: parseStream ok (fuel=144, N=35)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-width-16: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a: parseStream_emitSequence fuel sufficiency",
+            "name": "seq-width-16: tight fuel 143 also works",
+            "outcome": "pass"
+          },
+          {
+            "category": "9b: parseStream_emitMapping fuel sufficiency",
+            "name": "map-empty: scan succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9b: parseStream_emitMapping fuel sufficiency",
+            "name": "map-empty: parseStream ok (fuel=20, N=4)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9b: parseStream_emitMapping fuel sufficiency",
+            "name": "map-empty: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9b: parseStream_emitMapping fuel sufficiency",
+            "name": "map-empty: tight fuel 19 also works",
+            "outcome": "pass"
+          },
+          {
+            "category": "9b: parseStream_emitMapping fuel sufficiency",
+            "name": "map-1: scan succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9b: parseStream_emitMapping fuel sufficiency",
+            "name": "map-1: parseStream ok (fuel=36, N=8)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9b: parseStream_emitMapping fuel sufficiency",
+            "name": "map-1: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9b: parseStream_emitMapping fuel sufficiency",
+            "name": "map-1: tight fuel 35 also works",
+            "outcome": "pass"
+          },
+          {
+            "category": "9b: parseStream_emitMapping fuel sufficiency",
+            "name": "map-2: scan succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9b: parseStream_emitMapping fuel sufficiency",
+            "name": "map-2: parseStream ok (fuel=56, N=13)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9b: parseStream_emitMapping fuel sufficiency",
+            "name": "map-2: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9b: parseStream_emitMapping fuel sufficiency",
+            "name": "map-2: tight fuel 55 also works",
+            "outcome": "pass"
+          },
+          {
+            "category": "9b: parseStream_emitMapping fuel sufficiency",
+            "name": "map-6: scan succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9b: parseStream_emitMapping fuel sufficiency",
+            "name": "map-6: parseStream ok (fuel=136, N=33)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9b: parseStream_emitMapping fuel sufficiency",
+            "name": "map-6: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9b: parseStream_emitMapping fuel sufficiency",
+            "name": "map-6: tight fuel 135 also works",
+            "outcome": "pass"
+          },
+          {
+            "category": "9b: parseStream_emitMapping fuel sufficiency",
+            "name": "map-10: scan succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9b: parseStream_emitMapping fuel sufficiency",
+            "name": "map-10: parseStream ok (fuel=216, N=53)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9b: parseStream_emitMapping fuel sufficiency",
+            "name": "map-10: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9b: parseStream_emitMapping fuel sufficiency",
+            "name": "map-10: tight fuel 215 also works",
+            "outcome": "pass"
+          },
+          {
+            "category": "9b: parseStream_emitMapping fuel sufficiency",
+            "name": "map-depth-2: scan succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9b: parseStream_emitMapping fuel sufficiency",
+            "name": "map-depth-2: parseStream ok (fuel=56, N=13)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9b: parseStream_emitMapping fuel sufficiency",
+            "name": "map-depth-2: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9b: parseStream_emitMapping fuel sufficiency",
+            "name": "map-depth-2: tight fuel 55 also works",
+            "outcome": "pass"
+          },
+          {
+            "category": "9b: parseStream_emitMapping fuel sufficiency",
+            "name": "map-depth-3: scan succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9b: parseStream_emitMapping fuel sufficiency",
+            "name": "map-depth-3: parseStream ok (fuel=76, N=18)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9b: parseStream_emitMapping fuel sufficiency",
+            "name": "map-depth-3: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9b: parseStream_emitMapping fuel sufficiency",
+            "name": "map-depth-3: tight fuel 75 also works",
+            "outcome": "pass"
+          },
+          {
+            "category": "9b: parseStream_emitMapping fuel sufficiency",
+            "name": "map-depth-4: scan succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9b: parseStream_emitMapping fuel sufficiency",
+            "name": "map-depth-4: parseStream ok (fuel=96, N=23)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9b: parseStream_emitMapping fuel sufficiency",
+            "name": "map-depth-4: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9b: parseStream_emitMapping fuel sufficiency",
+            "name": "map-depth-4: tight fuel 95 also works",
+            "outcome": "pass"
+          },
+          {
+            "category": "9b: parseStream_emitMapping fuel sufficiency",
+            "name": "map-depth-5: scan succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9b: parseStream_emitMapping fuel sufficiency",
+            "name": "map-depth-5: parseStream ok (fuel=116, N=28)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9b: parseStream_emitMapping fuel sufficiency",
+            "name": "map-depth-5: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9b: parseStream_emitMapping fuel sufficiency",
+            "name": "map-depth-5: tight fuel 115 also works",
+            "outcome": "pass"
+          },
+          {
+            "category": "9b: parseStream_emitMapping fuel sufficiency",
+            "name": "map-with-seq: scan succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9b: parseStream_emitMapping fuel sufficiency",
+            "name": "map-with-seq: parseStream ok (fuel=52, N=12)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9b: parseStream_emitMapping fuel sufficiency",
+            "name": "map-with-seq: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9b: parseStream_emitMapping fuel sufficiency",
+            "name": "map-with-seq: tight fuel 51 also works",
+            "outcome": "pass"
+          },
+          {
+            "category": "9b: parseStream_emitMapping fuel sufficiency",
+            "name": "map-with-nested-seq: scan succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9b: parseStream_emitMapping fuel sufficiency",
+            "name": "map-with-nested-seq: parseStream ok (fuel=76, N=18)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9b: parseStream_emitMapping fuel sufficiency",
+            "name": "map-with-nested-seq: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9b: parseStream_emitMapping fuel sufficiency",
+            "name": "map-with-nested-seq: tight fuel 75 also works",
+            "outcome": "pass"
+          },
+          {
+            "category": "9b: parseStream_emitMapping fuel sufficiency",
+            "name": "map-seq-key: scan succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9b: parseStream_emitMapping fuel sufficiency",
+            "name": "map-seq-key: parseStream ok (fuel=52, N=12)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9b: parseStream_emitMapping fuel sufficiency",
+            "name": "map-seq-key: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9b: parseStream_emitMapping fuel sufficiency",
+            "name": "map-seq-key: tight fuel 51 also works",
+            "outcome": "pass"
+          },
+          {
+            "category": "9b: parseStream_emitMapping fuel sufficiency",
+            "name": "map-map-key: scan succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9b: parseStream_emitMapping fuel sufficiency",
+            "name": "map-map-key: parseStream ok (fuel=56, N=13)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9b: parseStream_emitMapping fuel sufficiency",
+            "name": "map-map-key: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9b: parseStream_emitMapping fuel sufficiency",
+            "name": "map-map-key: tight fuel 55 also works",
+            "outcome": "pass"
+          },
+          {
+            "category": "9b: parseStream_emitMapping fuel sufficiency",
+            "name": "map-multi-complex: scan succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9b: parseStream_emitMapping fuel sufficiency",
+            "name": "map-multi-complex: parseStream ok (fuel=140, N=34)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9b: parseStream_emitMapping fuel sufficiency",
+            "name": "map-multi-complex: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9b: parseStream_emitMapping fuel sufficiency",
+            "name": "map-multi-complex: tight fuel 139 also works",
+            "outcome": "pass"
+          },
+          {
+            "category": "9b: parseStream_emitMapping fuel sufficiency",
+            "name": "map-deep-mixed-1: scan succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9b: parseStream_emitMapping fuel sufficiency",
+            "name": "map-deep-mixed-1: parseStream ok (fuel=80, N=19)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9b: parseStream_emitMapping fuel sufficiency",
+            "name": "map-deep-mixed-1: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9b: parseStream_emitMapping fuel sufficiency",
+            "name": "map-deep-mixed-1: tight fuel 79 also works",
+            "outcome": "pass"
+          },
+          {
+            "category": "9b: parseStream_emitMapping fuel sufficiency",
+            "name": "map-deep-mixed-2: scan succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9b: parseStream_emitMapping fuel sufficiency",
+            "name": "map-deep-mixed-2: parseStream ok (fuel=84, N=20)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9b: parseStream_emitMapping fuel sufficiency",
+            "name": "map-deep-mixed-2: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9b: parseStream_emitMapping fuel sufficiency",
+            "name": "map-deep-mixed-2: tight fuel 83 also works",
+            "outcome": "pass"
+          },
+          {
+            "category": "9b: parseStream_emitMapping fuel sufficiency",
+            "name": "map-wide-deep: scan succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9b: parseStream_emitMapping fuel sufficiency",
+            "name": "map-wide-deep: parseStream ok (fuel=140, N=34)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9b: parseStream_emitMapping fuel sufficiency",
+            "name": "map-wide-deep: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9b: parseStream_emitMapping fuel sufficiency",
+            "name": "map-wide-deep: tight fuel 139 also works",
+            "outcome": "pass"
+          },
+          {
+            "category": "9b: parseStream_emitMapping fuel sufficiency",
+            "name": "map-depth-6: scan succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9b: parseStream_emitMapping fuel sufficiency",
+            "name": "map-depth-6: parseStream ok (fuel=136, N=33)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9b: parseStream_emitMapping fuel sufficiency",
+            "name": "map-depth-6: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9b: parseStream_emitMapping fuel sufficiency",
+            "name": "map-depth-6: tight fuel 135 also works",
+            "outcome": "pass"
+          },
+          {
+            "category": "9b: parseStream_emitMapping fuel sufficiency",
+            "name": "map-width-16: scan succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9b: parseStream_emitMapping fuel sufficiency",
+            "name": "map-width-16: parseStream ok (fuel=336, N=83)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9b: parseStream_emitMapping fuel sufficiency",
+            "name": "map-width-16: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9b: parseStream_emitMapping fuel sufficiency",
+            "name": "map-width-16: tight fuel 335 also works",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a/9b: cross-type fuel stress",
+            "name": "cross-alt-1: scan succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a/9b: cross-type fuel stress",
+            "name": "cross-alt-1: parseStream ok (fuel=72, N=17)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a/9b: cross-type fuel stress",
+            "name": "cross-alt-1: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a/9b: cross-type fuel stress",
+            "name": "cross-alt-1: tight fuel 71 also works",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a/9b: cross-type fuel stress",
+            "name": "cross-alt-2: scan succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a/9b: cross-type fuel stress",
+            "name": "cross-alt-2: parseStream ok (fuel=80, N=19)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a/9b: cross-type fuel stress",
+            "name": "cross-alt-2: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a/9b: cross-type fuel stress",
+            "name": "cross-alt-2: tight fuel 79 also works",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a/9b: cross-type fuel stress",
+            "name": "cross-wide-multi: scan succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a/9b: cross-type fuel stress",
+            "name": "cross-wide-multi: parseStream ok (fuel=144, N=35)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a/9b: cross-type fuel stress",
+            "name": "cross-wide-multi: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a/9b: cross-type fuel stress",
+            "name": "cross-wide-multi: tight fuel 143 also works",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a/9b: cross-type fuel stress",
+            "name": "cross-realistic: scan succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a/9b: cross-type fuel stress",
+            "name": "cross-realistic: parseStream ok (fuel=176, N=43)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a/9b: cross-type fuel stress",
+            "name": "cross-realistic: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9a/9b: cross-type fuel stress",
+            "name": "cross-realistic: tight fuel 175 also works",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "flow-seq-empty: prefix preserved (2 steps, n∈[1,4])",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "flow-seq-empty: sk/ek output invariant (2 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "flow-seq-1: prefix preserved (3 steps, n∈[1,4])",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "flow-seq-1: sk/ek output invariant (3 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "flow-seq-1: original h_cond disjunct issues (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "flow-seq-2: prefix preserved (5 steps, n∈[1,8])",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "flow-seq-2: sk/ek output invariant (5 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "flow-seq-2: original h_cond disjunct issues (3 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "flow-seq-3: prefix preserved (7 steps, n∈[1,12])",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "flow-seq-3: sk/ek output invariant (7 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "flow-seq-3: original h_cond disjunct issues (5 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "flow-map-empty: prefix preserved (2 steps, n∈[1,4])",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "flow-map-empty: sk/ek output invariant (2 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "flow-map-1: prefix preserved (5 steps, n∈[1,8])",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "flow-map-1: sk/ek output invariant (5 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "flow-map-1: original h_cond disjunct issues (2 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "flow-map-2: prefix preserved (9 steps, n∈[1,16])",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "flow-map-2: sk/ek output invariant (9 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "flow-map-2: original h_cond disjunct issues (5 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "flow-nested-1: prefix preserved (9 steps, n∈[1,16])",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "flow-nested-1: sk/ek output invariant (9 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "flow-nested-1: original h_cond disjunct issues (6 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "flow-nested-2: prefix preserved (9 steps, n∈[1,16])",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "flow-nested-2: sk/ek output invariant (9 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "flow-nested-2: original h_cond disjunct issues (5 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "flow-nested-3: prefix preserved (9 steps, n∈[1,15])",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "flow-nested-3: sk/ek output invariant (9 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "flow-nested-3: original h_cond disjunct issues (5 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "flow-nested-deep: prefix preserved (7 steps, n∈[1,10])",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "flow-nested-deep: sk/ek output invariant (7 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "flow-nested-deep: original h_cond disjunct issues (3 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "flow-nested-mixed: prefix preserved (17 steps, n∈[1,32])",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "flow-nested-mixed: sk/ek output invariant (17 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "flow-nested-mixed: original h_cond disjunct issues (10 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "dquoted: prefix preserved (1 steps, n∈[1,1])",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "dquoted: sk/ek output invariant (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "squoted: prefix preserved (1 steps, n∈[1,1])",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "squoted: sk/ek output invariant (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "dquoted-escape: prefix preserved (1 steps, n∈[1,1])",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "dquoted-escape: sk/ek output invariant (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "dquoted-unicode: prefix preserved (1 steps, n∈[1,1])",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "dquoted-unicode: sk/ek output invariant (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "flow-dquoted: prefix preserved (5 steps, n∈[1,8])",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "flow-dquoted: sk/ek output invariant (5 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "flow-dquoted: original h_cond disjunct issues (3 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "flow-squoted: prefix preserved (5 steps, n∈[1,8])",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "flow-squoted: sk/ek output invariant (5 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "flow-squoted: original h_cond disjunct issues (3 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "block-literal: prefix preserved (1 steps, n∈[1,1])",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "block-literal: sk/ek output invariant (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "block-folded: prefix preserved (1 steps, n∈[1,1])",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "block-folded: sk/ek output invariant (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "block-seq-1: prefix preserved (2 steps, n∈[1,1])",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "block-seq-1: sk/ek output invariant (2 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "block-seq-1: original h_cond disjunct issues (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "block-seq-2: prefix preserved (4 steps, n∈[1,8])",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "block-seq-2: sk/ek output invariant (4 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "block-seq-2: original h_cond disjunct issues (3 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "block-seq-3: prefix preserved (6 steps, n∈[1,14])",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "block-seq-3: sk/ek output invariant (6 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "block-seq-3: original h_cond disjunct issues (5 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "block-seq-nested: prefix preserved (5 steps, n∈[1,12])",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "block-seq-nested: sk/ek output invariant (5 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "block-seq-nested: original h_cond disjunct issues (4 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "block-map-1: prefix preserved (3 steps, n∈[1,5])",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "block-map-1: sk/ek output invariant (3 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "block-map-1: original h_cond disjunct issues (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "block-map-2: prefix preserved (6 steps, n∈[1,12])",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "block-map-2: sk/ek output invariant (6 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "block-map-2: original h_cond disjunct issues (3 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "block-map-nested: prefix preserved (5 steps, n∈[1,9])",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "block-map-nested: sk/ek output invariant (5 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "block-map-nested: original h_cond disjunct issues (2 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "block-map-deep: prefix preserved (7 steps, n∈[1,13])",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "block-map-deep: sk/ek output invariant (7 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "block-map-deep: original h_cond disjunct issues (3 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "explicit-key: prefix preserved (4 steps, n∈[1,11])",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "explicit-key: sk/ek output invariant (4 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "explicit-key-flow: prefix preserved (6 steps, n∈[1,9])",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "explicit-key-flow: sk/ek output invariant (6 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "explicit-key-flow: original h_cond disjunct issues (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "doc-start: prefix preserved (4 steps, n∈[1,8])",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "doc-start: sk/ek output invariant (4 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "doc-start: original h_cond disjunct issues (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "doc-end: prefix preserved (4 steps, n∈[1,5])",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "doc-end: sk/ek output invariant (4 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "doc-end: original h_cond disjunct issues (2 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "multi-doc: prefix preserved (9 steps, n∈[1,22])",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "multi-doc: sk/ek output invariant (9 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "multi-doc: original h_cond disjunct issues (3 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "yaml-directive: prefix preserved (5 steps, n∈[1,11])",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "yaml-directive: sk/ek output invariant (5 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "yaml-directive: original h_cond disjunct issues (2 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "tag-directive: prefix preserved (5 steps, n∈[1,11])",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "tag-directive: sk/ek output invariant (5 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "tag-directive: original h_cond disjunct issues (2 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "block-with-flow-val: prefix preserved (9 steps, n∈[1,16])",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "block-with-flow-val: sk/ek output invariant (9 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "block-with-flow-val: original h_cond disjunct issues (6 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "block-with-flow-map: prefix preserved (7 steps, n∈[1,12])",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "block-with-flow-map: sk/ek output invariant (7 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "block-with-flow-map: original h_cond disjunct issues (3 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "block-seq-flow-vals: prefix preserved (12 steps, n∈[1,26])",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "block-seq-flow-vals: sk/ek output invariant (12 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "block-seq-flow-vals: original h_cond disjunct issues (8 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "comment-line: prefix preserved (3 steps, n∈[1,5])",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "comment-line: sk/ek output invariant (3 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "comment-line: original h_cond disjunct issues (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "comment-inline: prefix preserved (3 steps, n∈[1,5])",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "comment-inline: sk/ek output invariant (3 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "comment-inline: original h_cond disjunct issues (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "comment-only: prefix preserved (0 steps, n∈[999999,0])",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "comment-only: sk/ek output invariant (0 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "anchor: prefix preserved (2 steps, n∈[1,1])",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "anchor: sk/ek output invariant (2 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "anchor: original h_cond disjunct issues (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "anchor-alias: prefix preserved (2 steps, n∈[1,1])",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "anchor-alias: sk/ek output invariant (2 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "anchor-alias: original h_cond disjunct issues (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "anchor-flow: prefix preserved (6 steps, n∈[1,9])",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "anchor-flow: sk/ek output invariant (6 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "anchor-flow: original h_cond disjunct issues (4 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "tag-named: prefix preserved (2 steps, n∈[1,1])",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "tag-named: sk/ek output invariant (2 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "tag-named: original h_cond disjunct issues (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "tag-verbatim: prefix preserved (2 steps, n∈[1,1])",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "tag-verbatim: sk/ek output invariant (2 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "tag-verbatim: original h_cond disjunct issues (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "empty: prefix preserved (0 steps, n∈[999999,0])",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "empty: sk/ek output invariant (0 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "whitespace-only: prefix preserved (0 steps, n∈[999999,0])",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "whitespace-only: sk/ek output invariant (0 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "newline-only: prefix preserved (0 steps, n∈[999999,0])",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "newline-only: sk/ek output invariant (0 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "just-scalar: prefix preserved (1 steps, n∈[1,1])",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "just-scalar: sk/ek output invariant (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "plain-colon-space: prefix preserved (3 steps, n∈[1,5])",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "plain-colon-space: sk/ek output invariant (3 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "plain-colon-space: original h_cond disjunct issues (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "plain-multiword: prefix preserved (1 steps, n∈[1,1])",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "plain-multiword: sk/ek output invariant (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "emit-seq: prefix preserved (5 steps, n∈[1,8])",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "emit-seq: sk/ek output invariant (5 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "emit-seq: original h_cond disjunct issues (3 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "emit-map: prefix preserved (5 steps, n∈[1,8])",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "emit-map: sk/ek output invariant (5 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "emit-map: original h_cond disjunct issues (2 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "emit-nested: prefix preserved (11 steps, n∈[1,18])",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "emit-nested: sk/ek output invariant (11 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "emit-nested: original h_cond disjunct issues (6 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "emit-deep: prefix preserved (9 steps, n∈[1,13])",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "emit-deep: sk/ek output invariant (9 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "emit-deep: original h_cond disjunct issues (4 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "emit-wide: prefix preserved (25 steps, n∈[1,48])",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "emit-wide: sk/ek output invariant (25 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "emit-wide: original h_cond disjunct issues (17 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "emit-complex: prefix preserved (35 steps, n∈[1,68])",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "emit-complex: sk/ek output invariant (35 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "emit-complex: original h_cond disjunct issues (22 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "deep-block: prefix preserved (13 steps, n∈[1,25])",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "deep-block: sk/ek output invariant (13 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "deep-block: original h_cond disjunct issues (6 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "wide-block-seq: prefix preserved (20 steps, n∈[1,56])",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "wide-block-seq: sk/ek output invariant (20 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "wide-block-seq: original h_cond disjunct issues (19 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "kitchen-sink: prefix preserved (30 steps, n∈[1,79])",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "kitchen-sink: sk/ek output invariant (30 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "kitchen-sink: original h_cond disjunct issues (16 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "flow-seq-2 chain: prefix preserved (n₀=1, 5 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "flow-seq-2 chain: strong sk invariant (n₀=1, 5 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "flow-map-1 chain: prefix preserved (n₀=1, 5 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "flow-map-1 chain: strong sk invariant (n₀=1, 5 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "flow-nested-mixed chain: prefix preserved (n₀=1, 17 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "flow-nested-mixed chain: strong sk invariant (n₀=1, 17 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "block-map-1 chain: prefix preserved (n₀=1, 3 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "block-map-1 chain: strong sk invariant (n₀=1, 3 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "block-map-2 chain: prefix preserved (n₀=1, 6 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "block-map-2 chain: strong sk invariant (n₀=1, 6 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "block-seq-2 chain: prefix preserved (n₀=1, 4 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "block-seq-2 chain: strong sk invariant (n₀=1, 4 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "explicit-key chain: prefix preserved (n₀=1, 4 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "explicit-key chain: strong sk invariant (n₀=1, 4 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "multi-doc chain: prefix preserved (n₀=1, 9 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "multi-doc chain: strong sk invariant (n₀=1, 9 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "emit-nested chain: prefix preserved (n₀=1, 11 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "emit-nested chain: strong sk invariant (n₀=1, 11 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "kitchen-sink chain: prefix preserved (n₀=1, 30 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "9e: scanNextToken_prefix_and_sk_inv",
+            "name": "kitchen-sink chain: strong sk invariant (n₀=1, 30 steps)",
+            "outcome": "pass"
           }
         ],
-        "total": 329
+        "total": 697
       },
       {
         "allPass": true,
@@ -10468,7 +12308,7 @@
         "total": 7
       }
     ],
-    "totalPassed": 1561,
-    "totalTests": 1561
+    "totalPassed": 1929,
+    "totalTests": 1929
   }
 }
