@@ -1,4 +1,4 @@
-# Version 0.4.7 — Universal Round-Trip Correctness (Phase E)
+# Version 0.4.7 — Universal Round-Trip Correctness (Phase F)
 
 **Goal:** Prove the universal round-trip theorem — that for every grammable YAML value, emitting it and re-parsing the output yields a content-equivalent result.
 
@@ -3170,10 +3170,9 @@ Tier 3: stubs 9c, 9d (content fidelity)                 [Step 8, TODO — needs 
 
 ## Next Steps: Tier 4 — Sorry Elimination Strategy
 
-**Current state:** 424/424 jobs, 21 sorry warnings (12 EmitterScannability + 2 ParserGrammableBase
-+ 2 ParserWellBehaved + 5 ScannerBound).
-`universal_roundtrip` composition is sorry-free; all 21 sorrys are in leaf/intermediate
-infrastructure theorems.
+**Current state:** 429/429 jobs, 13 sorry warnings (10 EmitterScannability + 3 ScannerBound).
+`universal_roundtrip` composition is sorry-free; all 13 sorrys are in leaf/intermediate
+infrastructure theorems. ParserGrammableBase and ParserWellBehaved are fully sorry-free.
 
 ### Strategic analysis: proving sorrys vs. other risk reduction
 
@@ -3193,49 +3192,53 @@ ScannerBound sorrys are in auxiliary offset/bound preservation lemmas that suppo
 already-proven `ScanChain.fuel_bound` — they affect the "no sorry in the full build" criterion
 but NOT the round-trip theorem's logical soundness.
 
-### Dependency DAG (revised)
+### Dependency DAG (revised — 13 sorrys)
 
 ```
   ┌─────────────────────────────────────────────────────────────────────────┐
-  │ Layer 0: Independent infrastructure (no sorry dependencies)             │
+  │ Layer 0: Per-step scanner invariants (no sorry dependencies)            │
   │                                                                         │
   │  ┌──────────────────────────────────┐  ┌────────────────────────────┐   │
   │  │ scanNextToken_prefix_and_sk_inv  │  │ scanNextToken_filtered_    │   │
   │  │ (token prefix preservation +     │  │ grows (filtered array      │   │
   │  │  simpleKey invariant)            │  │ grows by ≥1 per step)      │   │
-  │  │ Line 6618 · ~150-300 LOC         │  │ Line 6653 · ~80-150 LOC    │   │
+  │  │ L6631 · EmitterScannability      │  │ L7407 · structural case    │   │
+  │  └─────────────┬────────────────────┘  └──────────────┬─────────────┘   │
+  └────────────────│──────────────────────────────────────│─────────────────┘
+                   │                                      │
+                   ▼                                      │
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │ Layer 0.5: ScanChain inductions (depend on Layer 0)                     │
+  │                                                                         │
+  │  ┌──────────────────────────────────┐  ┌────────────────────────────┐   │
+  │  │ ScanChain_preserves_raw_prefix   │  │ ScanChain_filtered_prefix  │   │
+  │  │ L6656 · induction on ScanChain   │  │ L7442 · filtered prefix    │   │
+  │  │ depends on: prefix_and_sk_inv    │  │ depends on: filtered_grows │   │
   │  └─────────────┬────────────────────┘  └──────────────┬─────────────┘   │
   └────────────────│──────────────────────────────────────│─────────────────┘
                    │                                      │
                    └──────────────┬───────────────────────┘
-                                  │ (both needed by ScanChain_preserves_raw_prefix
-                                  │  and ScanChain_filtered_grows, which are PROVEN
-                                  │  and already used by body characterization proofs)
                                   ▼
   ┌─────────────────────────────────────────────────────────────────────────┐
-  │ Layer 1: Body token characterization (depend on Layer 0)                │
+  │ Layer 1: Body token characterization (depend on Layer 0.5)              │
   │                                                                         │
   │  ┌──────────────────────────────────┐  ┌────────────────────────────┐   │
   │  │ emitList_body_filtered_          │  │ emitPairList_body_filtered_│   │
   │  │ characterization                 │  │ characterization           │   │
-  │  │ (seq: first body tok is content  │  │ (map: first body tok is    │   │
-  │  │  start; after flowEntry, next    │  │  .key; after flowEntry,    │   │
-  │  │  is content start)               │  │  next is .key)             │   │
-  │  │ Line 7031 · ~100-200 LOC         │  │ Line 7071 · ~100-200 LOC   │   │
+  │  │ L7813 · seq: content-start after │  │ L7859 · map: .key after    │   │
+  │  │  outer flowEntry (fbb=0)         │  │  outer flowEntry (fbb=0)   │   │
   │  └─────────────┬────────────────────┘  └──────────────┬─────────────┘   │
   └────────────────│──────────────────────────────────────│─────────────────┘
                    │                                      │
                    ▼                                      ▼
   ┌─────────────────────────────────────────────────────────────────────────┐
-  │ Layer 2: ParseNode fuel sufficiency (depend on Layer 1 + Grammable)     │
+  │ Layer 2: ParseNode acceptance (depend on Layer 1 + Grammable)           │
   │                                                                         │
   │  ┌──────────────────────────────────┐  ┌────────────────────────────┐   │
   │  │ h_pnok (seq) in                  │  │ h_pnok (map) in            │   │
   │  │ scanFiltered_emitSeq_nonempty_   │  │ scanFiltered_emitMap_      │   │
   │  │ structure                        │  │ nonempty_structure         │   │
-  │  │ (ParseNodeFlowSeqOk at each      │  │ (ParseEntryFlowMapOk at    │   │
-  │  │  content-start position)         │  │  each key position)        │   │
-  │  │ Line 7314 · ~200-400 LOC         │  │ Line ~7502 · ~200-400 LOC  │   │
+  │  │ L8079 · ParseNodeFlowSeqOk       │  │ L8283 · ParseEntryFlowMapOk│   │
   │  └─────────────┬────────────────────┘  └──────────────┬─────────────┘   │
   └────────────────│──────────────────────────────────────│─────────────────┘
                    │                                      │
@@ -3245,19 +3248,17 @@ but NOT the round-trip theorem's logical soundness.
   │                                                                         │
   │  ┌──────────────────────────────────┐  ┌────────────────────────────┐   │
   │  │ emit_roundtrip_sequence_         │  │ emit_roundtrip_mapping_    │   │
-  │  │ content_eq (non-empty)           │  │ content_eq (non-empty)     │   │
-  │  │ Line 8022 · ~150-300 LOC         │  │ Line 8061 · ~150-300 LOC   │   │
+  │  │ content_eq (non-empty case)      │  │ content_eq (non-empty case)│   │
+  │  │ L8853                            │  │ L8893                      │   │
   │  └──────────────────────────────────┘  └────────────────────────────┘   │
   └─────────────────────────────────────────────────────────────────────────┘
 
   ┌───────────────────────────────────────────────────────────────────────┐
-  │ INDEPENDENT: ScannerBound.lean (5 sorrys)                             │
+  │ INDEPENDENT: ScannerBound.lean (3 sorrys)                             │
   │                                                                       │
-  │  dispatchFlowIndicators_preserves_bound (line 273, flowEntry case)    │
-  │  scanValue_BoundInv (line 315)                                        │
-  │  preprocess_preserves_bound (line 354)                                │
-  │  dispatchStructural_preserves_bound (line 363)                        │
-  │  dispatchContent_preserves_bound (line 371)                           │
+  │  preprocess_preserves_bound (L420)                                    │
+  │  dispatchStructural_preserves_bound (L429)                            │
+  │  dispatchContent_preserves_bound (L437)                               │
   │                                                                       │
   │  These support scanNextToken_preserves_bound_full which feeds         │
   │  ScanChain.fuel_bound. NOT on critical path for universal_roundtrip.  │
@@ -3623,102 +3624,185 @@ within the `EmitScansInFlow` chain.
   sorry-free for this concern → structure theorems clean up. Net long-term effect: 0
   additional sorrys.
 
-**Phase E: Adversarial Instantiation — Audit all 21 sorry'd theorems**
-*Estimated: ~2-4 hours · Risk: LOW (audit itself) / HIGH (may discover false statements)*
+**Phase E: Adversarial Instantiation — Audit sorry'd theorems (DONE)**
+*Actual: ~3 hours · Risk: LOW*
 
-Before investing further proof effort, apply the
-[Adversarial Instantiation methodology](ADVERSARIAL_INSTANTIATION.md) to all 21 remaining
-sorry'd theorems. This methodology was born from the Phase D experience: both
-`emitList_body_filtered_characterization` and `emitPairList_body_filtered_characterization`
-were FALSE as stated, discovered only by computational testing on nested inputs.
+Applied the [Adversarial Instantiation methodology](ADVERSARIAL_INSTANTIATION.md) to all
+sorry'd theorems across 5 priorities. 993 computational checks, 0 failures — no false
+statements detected. See [ADVERSARIAL_INSTANTIATION.md](ADVERSARIAL_INSTANTIATION.md)
+for full accomplishments and reflections per priority.
 
-**Triage result (see [ADVERSARIAL_INSTANTIATION.md](ADVERSARIAL_INSTANTIATION.md)):**
-- **11 theorems → PROVE directly** (pure arithmetic, single-function unfolds, low risk)
-- **10 theorems → AUDIT first** (universal quantifiers over states/positions/values)
-
-**Scope:** Create `tmp/sorry_audit.lean` with `#eval`/`#guard` checks for the 10 AUDIT
-targets. Priority order:
-1. 9g, 9h — body characterization (previously caught bug, re-verify after bracketBalance fix)
-2. 9c, 9d — end-to-end round-trip (directly checkable via `emit → parse → contentEq`)
-3. 9a, 9b — parser fuel sufficiency (`4 × tokens.size + 4` bound)
-4. 9e — scanner prefix invariant (disjunctive condition)
-5. ScannerBound sorrys — preprocess/structural/content `BoundInv` preservation
-
-**Decision criterion:** For each sorry'd theorem, two signals are assessed in ~30 seconds:
-- Statement risk: Does it have `∀` over positions/states? Was a postcondition recently added?
-- Proof cost: Loops? Recursion? Dependencies on other sorrys?
-
-High risk → AUDIT first. Low risk + low cost → PROVE directly.
-
-Why now: Phase D proved that false statements are the most expensive bugs — weeks of
-wasted proof effort. A 2–4 hour audit pass before Phases F–G saves potentially 100+ hours.
+**Results:**
+- P1 (9g/9h bracket balance characterization): 188/188 ✓
+- P2 (9c/9d round-trip content equivalence): 141/141 ✓
+- P3 (9a/9b parser fuel sufficiency): 180/180 ✓
+- P4 (9e scanner prefix invariant): 168→697 ✓ (**found and repaired false theorem** —
+  `scanNextToken_prefix_and_sk_inv` had false `∨ s.explicitKeyLine = none` precondition)
+- P5 (ScannerBound BoundInv preservation): 296/296 ✓
 
 ***Phase E: Accomplishments***
 
+See [ADVERSARIAL_INSTANTIATION.md](ADVERSARIAL_INSTANTIATION.md) — 993/993 checks across
+all 5 priorities, one false theorem found and repaired (P4).
+
 ***Phase E: Reflections***
 
-**Phase F: Layer 2 — h_pnok (ParseNodeFlowSeqOk / ParseEntryFlowMapOk)**
-*Estimated: ~400-800 LOC · Risk: HIGH*
+See [ADVERSARIAL_INSTANTIATION.md](ADVERSARIAL_INSTANTIATION.md) — reflections per priority.
+Key takeaway: the P4 false theorem discovery validated the methodology — investing 3 hours
+in adversarial testing saved potentially unbounded proof effort on an unprovable statement.
 
-This is the hardest phase. Prove that `parseNode` succeeds at each content-start position
-in the token array. Two sub-problems:
+**Phase F: Layer 0 — Per-step scanner invariants (4 sorrys) (NEXT)**
+*Estimated: ~200-400 LOC · Risk: LOW-MEDIUM*
 
-1. **Scalar case**: `parseNode` on `.scalar c s` advances by 1 token. Straightforward since
-   `parseNodeContent` dispatches to scalar handling, reads token, advances. ~30 LOC.
+Prove the 4 foundational per-step scanner invariants. These are leaf sorrys with no
+dependencies on other sorry'd theorems.
 
-2. **Nested collection case**: `parseNode` on `.flowSequenceStart`/`.flowMappingStart` calls
-   `parseFlowSequence`/`parseFlowMapping`, which must consume the entire bracket group.
-   This requires **recursive reasoning** — the inner collection's h_pnok must be established
-   before the outer one can be proven.
+**Sorrys targeted:**
 
-   Key architectural decision: Move h_pnok from the structure theorem
-   (`scanFiltered_emitSeq_nonempty_structure`) to the `parseStream_emitSequence` call site
-   where `Grammable` structural induction is available. This way, the Grammable IH for
-   sub-values provides h_pnok for nested collections.
+1. **`scanNextToken_prefix_and_sk_inv`** (L6631, EmitterScannability.lean)
+   Token prefix preservation + simpleKey disjunctive invariant through one `scanNextToken`.
+   Approach: unfold `scanNextToken`, case-split on 4-way dispatch
+   (structural → flow → block → content), apply existing per-branch prefix helpers.
+   ~100-150 LOC.
 
-   Alternative: Prove h_pnok by strong induction on `flowNesting` (bracket nesting depth)
-   at the structure theorem level, using the fact that inner brackets have strictly lower
-   nesting depth.
+2. **`ScanChain_preserves_raw_prefix`** (L6656, EmitterScannability.lean)
+   Induction on ScanChain: raw prefix preservation through multiple steps.
+   Depends on #1. Once #1 is proven, this is a straightforward induction where the
+   disjunctive `ek = none` branch is resolved at each step. ~30-50 LOC.
 
-Why sixth: Depends on Phase D (body token characterization provides the content-start
-classification) and Phase E (adversarial audit confirms statements are correct).
-This is the highest-risk phase due to recursive nesting and the potential
-need for architectural refactoring.
+3. **`scanNextToken_filtered_grows`** (L7407, EmitterScannability.lean)
+   Filtered token array grows by ≥1 per step — incomplete structural dispatch case.
+   The structural dispatch (`%RESERVED` directive) normally adds ≥0 tokens
+   (`dispatchStructural_filtered_mono`, proven). The ≥+1 claim for the full
+   `scanNextToken` holds because preprocessing always emits at least one token.
+   Approach: compose `preprocess_filtered_mono` with dispatch monotonicity. ~30-50 LOC.
+
+4. **`ScanChain_filtered_prefix`** (L7442, EmitterScannability.lean)
+   Filtered tokens form a prefix through ScanChain. Depends on #3 and existing
+   `ScanChain_filtered_grows`. Induction on ScanChain applying per-step filtered growth
+   and non-placeholder preservation. ~30-50 LOC.
+
+Why first: These are the foundation — all 6 remaining EmitterScannability sorrys
+(Layers 1–3) depend transitively on these 4 being proven. No other sorrys needed
+as prerequisites. Phase E adversarial testing confirmed all 4 statements are correct.
 
 ***Phase F: Accomplishments***
 
 ***Phase F: Reflections***
 
-**Phase G: Layer 3 — Content fidelity**
-*Estimated: ~300-600 LOC · Risk: MEDIUM-HIGH*
+**Phase G: Layer 1 — Body token characterization (2 sorrys)**
+*Estimated: ~200-400 LOC · Risk: MEDIUM*
 
-Prove `emit_roundtrip_sequence_content_eq` and `emit_roundtrip_mapping_content_eq` for
-non-empty collections. This requires knowing WHAT values `parseFlowSequence`/`parseFlowMapping`
-produce (not just that they succeed).
+Prove the body token characterization theorems. These depend on Phase F (Layer 0).
 
-- Strengthen flow loop theorems to extract parsed values (currently they only prove
-  existence of success, not what the parsed values are)
-- Show each parsed item matches the original via `contentEq`
-- Apply `Grammable` IH for each element
+**Sorrys targeted:**
 
-Why last: Depends on Phase F (need parser success before examining parsed values). This
-phase may benefit from concurrent development with Phase F since both deal with parser
-behavior on emitter output.
+5. **`emitList_body_filtered_characterization`** (L7813, EmitterScannability.lean)
+   For non-empty flow sequence: first new filtered token is content-start; after each
+   outer-level `.flowEntry` (where `flowBracketBalance = 0`), next filtered token is
+   content-start. Approach: induction on `EmitScansInFlow` chain, showing each `emit v`
+   produces a content-start token and each `, ` produces `.flowEntry`. The
+   `flowBracketBalance = 0` condition restricts to depth-0 positions. ~100-200 LOC.
+
+6. **`emitPairList_body_filtered_characterization`** (L7859, EmitterScannability.lean)
+   For non-empty flow mapping: chain has ≥3 steps; first new filtered token is `.key`;
+   after each outer-level `.flowEntry`, next is `.key`. Analogous to #5 but mapping pairs
+   produce `.key` via `saveSimpleKey` + `scanValuePrepare`. ~100-200 LOC.
+
+Why second: Depends on Phase F (ScanChain prefix/filtered invariants). Medium risk
+due to needing per-step scanner dispatch analysis within the `EmitScansInFlow` chain.
+Phase E confirmed statements are correct after the `flowBracketBalance` fix.
 
 ***Phase G: Accomplishments***
 
 ***Phase G: Reflections***
 
-**Phase S (parallel): ScannerBound.lean — 5 sorrys**
-*Estimated: ~300-500 LOC · Risk: LOW-MEDIUM*
+**Phase H: Layer 2 — Parser acceptance (2 sorrys)**
+*Estimated: ~400-800 LOC · Risk: HIGH*
+
+This is the hardest phase. Prove that `parseNode` succeeds at each content-start position
+in the token array. Two sub-problems:
+
+**Sorrys targeted:**
+
+7. **`h_pnok` in `scanFiltered_emitSeq_nonempty_structure`** (L8079, EmitterScannability.lean)
+   `ParseNodeFlowSeqOk` at each content-start position in emitted sequence tokens.
+
+8. **`h_pnok` in `scanFiltered_emitMap_nonempty_structure`** (L8283, EmitterScannability.lean)
+   `ParseEntryFlowMapOk` at each key position in emitted mapping tokens.
+
+**Approach:**
+
+- **Scalar case**: `parseNode` on `.scalar c s` advances by 1 token. Straightforward since
+  `parseNodeContent` dispatches to scalar handling, reads token, advances. ~30 LOC.
+
+- **Nested collection case**: `parseNode` on `.flowSequenceStart`/`.flowMappingStart` calls
+  `parseFlowSequence`/`parseFlowMapping`, which must consume the entire bracket group.
+  This requires **recursive reasoning** — the inner collection's h_pnok must be established
+  before the outer one can be proven.
+
+  Primary strategy: Move h_pnok from the structure theorem to the `emit_produces_valid_yaml`
+  call site where `Grammable` structural induction is available. The Grammable IH for
+  sub-values provides h_pnok for nested collections.
+
+  Fallback: Prove h_pnok by strong induction on `flowNesting` (bracket nesting depth)
+  at the structure theorem level.
+
+Why third: Depends on Phase G (body characterization provides content-start classification).
+Highest-risk phase due to recursive nesting and potential architectural refactoring.
+
+***Phase H: Accomplishments***
+
+***Phase H: Reflections***
+
+**Phase I: Layer 3 — Content fidelity (2 sorrys)**
+*Estimated: ~300-600 LOC · Risk: MEDIUM-HIGH*
+
+Prove round-trip content equivalence for non-empty collections.
+
+**Sorrys targeted:**
+
+9. **`emit_roundtrip_sequence_content_eq`** (L8853, EmitterScannability.lean)
+    Non-empty case only (empty case fully proven via `native_decide`).
+    Requires knowing WHAT values `parseFlowSequence` produces.
+
+10. **`emit_roundtrip_mapping_content_eq`** (L8893, EmitterScannability.lean)
+    Non-empty case only (empty case fully proven via `native_decide`).
+    Requires knowing WHAT values `parseFlowMapping` produces.
+
+**Approach:**
+- Strengthen flow loop theorems to extract parsed values (currently they only prove
+  existence of success, not what the parsed values are)
+- Show each parsed item matches the original via `contentEq`
+- Apply `Grammable` IH for each element
+
+Why last on critical path: Depends on Phase H (need parser success before examining
+parsed values). May benefit from concurrent development with Phase H since both deal
+with parser behavior on emitter output.
+
+***Phase I: Accomplishments***
+
+***Phase I: Reflections***
+
+**Phase S (parallel): ScannerBound.lean — 3 sorrys**
+*Estimated: ~200-350 LOC · Risk: LOW-MEDIUM*
 
 Independent of the EmitterScannability sorry chain. Can be done at any time.
+Phase E adversarial testing (296/296 checks) confirmed all 3 statements are correct.
 
-- `dispatchFlowIndicators_preserves_bound` (flowEntry case): Injection issue, likely ~20 LOC
-- `scanValue_BoundInv`: Complex control flow but no loops, ~100 LOC
-- `preprocess_preserves_bound`: Requires skipToContent loop + unwindIndents loop, ~120 LOC
-- `dispatchStructural_preserves_bound`: Document start/end/directive loops, ~80 LOC
-- `dispatchContent_preserves_bound`: All scalar scanners + anchor/alias/tag loops, ~150 LOC
+**Sorrys targeted:**
+
+11. **`preprocess_preserves_bound`** (L420, ScannerBound.lean)
+    `scanNextToken_preprocess` preserves `BoundInv`. Requires proofs for `skipToContent`
+    loop + `unwindIndents` loop + `saveSimpleKey`. ~120 LOC.
+
+12. **`dispatchStructural_preserves_bound`** (L429, ScannerBound.lean)
+    `scanNextToken_dispatchStructural` preserves `BoundInv`. Document start/end use
+    `advanceN 3`; `scanDirective` has loops. ~80 LOC.
+
+13. **`dispatchContent_preserves_bound`** (L437, ScannerBound.lean)
+    `scanNextToken_dispatchContent` preserves `BoundInv`. All scalar scanners +
+    anchor/alias/tag — each has character-scanning loops. ~150 LOC.
 
 These don't block `universal_roundtrip` but are needed for full-project 0-sorry.
 
@@ -3733,20 +3817,22 @@ These don't block `universal_roundtrip` but are needed for full-project 0-sorry.
 | A | 0 (signature restructuring) | ~30 | LOW | — | **DONE** |
 | B | 0 (per-dispatch infrastructure) | 200-350 | LOW-MEDIUM | Phase A | **DONE** |
 | C | 2 (prefix inv + filtered growth) | 100-200 | LOW | Phase B | **DONE** |
-| D | 2 (body characterization) | 200-400 | MEDIUM | Phase C | **DONE** (statements fixed; +8 infra sorrys) |
-| E | 0 (adversarial audit) | ~2-4 hrs | LOW | Phase D | NEXT |
-| F | 2 (h_pnok) | 400-800 | HIGH | Phase E | |
-| G | 2 (content fidelity) | 300-600 | MEDIUM-HIGH | Phase F | |
-| S | 5 (ScannerBound) | 300-500 | LOW-MEDIUM | — (parallel) | |
-| **Total** | **13 + 8 infra** | **~1,530-2,880** | | | |
+| D | 2 (body characterization) | 200-400 | MEDIUM | Phase C | **DONE** (statements fixed) |
+| E | 0 (adversarial audit) | ~3 hrs | LOW | Phase D | **DONE** (993/993, 1 false thm repaired) |
+| F | 4 (per-step scanner invariants) | 200-400 | LOW-MEDIUM | Phase E | **NEXT** |
+| G | 2 (body characterization proofs) | 200-400 | MEDIUM | Phase F | |
+| H | 2 (parser acceptance / h_pnok) | 400-800 | HIGH | Phase G | |
+| I | 2 (content fidelity) | 300-600 | MEDIUM-HIGH | Phase H | |
+| S | 3 (ScannerBound) | 200-350 | LOW-MEDIUM | — (parallel) | |
+| **Total** | **13** | **~1,300-2,550** | | | |
 
-**Critical path:** A (DONE) → B (DONE) → C (DONE) → D (DONE) → E → F → G (8 EmitterScannability sorrys + 8 infra)
-**Parallel track:** S (5 ScannerBound sorrys)
-**Expected outcome:** 21 → 0 sorry warnings across the full build.
+**Critical path:** A–E (DONE) → F → G → H → I (10 EmitterScannability sorrys)
+**Parallel track:** S (3 ScannerBound sorrys)
+**Expected outcome:** 13 → 0 sorry warnings across the full build.
 
-### Risk mitigation for Phase F
+### Risk mitigation for Phase H
 
-Phase F (h_pnok) is the highest-risk item. If the proof is blocked at the structure
+Phase H (h_pnok) is the highest-risk item. If the proof is blocked at the structure
 theorem level (due to lack of Grammable IH for recursive nesting), the fallback plan is:
 
 1. **Move h_pnok obligation to call site.** Refactor `scanFiltered_emitSeq_nonempty_structure`
