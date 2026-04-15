@@ -495,5 +495,101 @@ theorem compose_grammable (doc : YamlDocument)
   simp only [YamlDocument.compose]
   exact compose_value_grammable doc.value doc.anchors false h_scan h_resolve h_anchors
 
+/-! ## Flow bracket nesting utilities
+
+Used by emitter scannability theorems and parser loop fuel sufficiency proofs
+to distinguish outer-level flowEntries (bracket balance = 0) from inner ones
+(balance > 0) inside nested bracket groups. -/
+
+/-- Flow bracket delta for a YamlToken: +1 for flow open brackets,
+    -1 for flow close brackets, 0 for everything else. -/
+def flowBracketDelta : YamlToken → Int
+  | .flowSequenceStart | .flowMappingStart => 1
+  | .flowSequenceEnd | .flowMappingEnd => -1
+  | _ => 0
+
+/-- Flow bracket balance of the token array from position `lo` to `hi`
+    (exclusive at `hi`). Returns the cumulative opening − closing bracket count.
+    Used to distinguish outer-level flowEntries (balance = 0) from inner ones
+    (balance > 0) when characterizing emitter-produced token patterns. -/
+def flowBracketBalance (tokens : Array (Positioned YamlToken)) (lo hi : Nat) : Int :=
+  if lo ≥ hi then 0
+  else
+    let slice := tokens.toList.drop lo |>.take (hi - lo)
+    slice.foldl (fun acc t => acc + flowBracketDelta t.val) 0
+
+-- Helper: foldl of additive function shifts the init out
+private theorem foldl_add_shift {α : Type _} (l : List α) (f : α → Int) (init : Int) :
+    l.foldl (fun acc t => acc + f t) init = init + l.foldl (fun acc t => acc + f t) 0 := by
+  induction l generalizing init with
+  | nil => simp [List.foldl]
+  | cons hd tl ih =>
+    simp only [List.foldl]
+    rw [ih, ih (0 + f hd)]
+    omega
+
+/-- Bracket balance composition: splitting a range at a midpoint yields additive
+    balance values. -/
+theorem flowBracketBalance_compose (tokens : Array (Positioned YamlToken))
+    (lo mid hi : Nat) (h_lm : lo ≤ mid) (h_mh : mid ≤ hi) :
+    flowBracketBalance tokens lo hi = flowBracketBalance tokens lo mid + flowBracketBalance tokens mid hi := by
+  by_cases h1 : lo = mid
+  · subst h1; simp [flowBracketBalance]
+  · by_cases h2 : mid = hi
+    · subst h2; simp [flowBracketBalance]
+    · -- lo < mid < hi — all three ranges are non-trivial
+      have h_lo_lt_hi : ¬(lo ≥ hi) := by omega
+      have h_lo_lt_mid : ¬(lo ≥ mid) := by omega
+      have h_mid_lt_hi : ¬(mid ≥ hi) := by omega
+      simp only [flowBracketBalance, h_lo_lt_hi, h_lo_lt_mid, h_mid_lt_hi, ↓reduceIte]
+      -- Decompose: take (hi-lo) (drop lo l) = take (mid-lo) (drop lo l) ++ take (hi-mid) (drop mid l)
+      -- via List.take_add + List.drop_drop
+      have h_eq : hi - lo = (mid - lo) + (hi - mid) := by omega
+      rw [h_eq]
+      rw [List.take_add]
+      rw [List.foldl_append]
+      rw [foldl_add_shift]
+      congr 1
+      rw [List.drop_drop, show lo + (mid - lo) = mid from by omega]
+
+/-- Appending a token to the array does not affect bracket balance for ranges
+    within the original array bounds. -/
+theorem flowBracketBalance_push (tokens : Array (Positioned YamlToken))
+    (tok : Positioned YamlToken) (lo hi : Nat) (h : hi ≤ tokens.size) :
+    flowBracketBalance (tokens.push tok) lo hi = flowBracketBalance tokens lo hi := by
+  simp only [flowBracketBalance]
+  split
+  · rfl
+  · congr 1
+    have h_sz : tokens.toList.length = tokens.size := rfl
+    simp only [Array.toList_push, List.drop_append,
+               show lo - tokens.toList.length = 0 from by omega,
+               List.take_append, List.length_drop,
+               show (hi - lo) - (tokens.toList.length - lo) = 0 from by omega,
+               List.take_zero, List.drop_zero, List.append_nil]
+
+/-- The bracket balance of a single token equals its bracket delta. -/
+theorem flowBracketBalance_single (tokens : Array (Positioned YamlToken))
+    (i : Nat) (h : i < tokens.toList.length) :
+    flowBracketBalance tokens i (i + 1) = flowBracketDelta tokens.toList[i].val := by
+  simp only [flowBracketBalance, show ¬(i ≥ i + 1) from by omega, ↓reduceIte,
+             show i + 1 - i = 1 from by omega]
+  rw [List.drop_eq_getElem_cons h]
+  simp [List.foldl]
+
+/-- Composing a zero-balance prefix, a single non-bracket token, and a zero-balance suffix
+    yields zero total balance. Used for flowEntry + parseNode compositions. -/
+theorem flowBracketBalance_compose_zero (tokens : Array (Positioned YamlToken))
+    (body_start pos pos_after : Nat)
+    (h_bs_pos : body_start ≤ pos)
+    (h_pos_bound : pos < tokens.toList.length)
+    (h_pos_after : pos + 1 ≤ pos_after)
+    (h_bal : flowBracketBalance tokens body_start pos = 0)
+    (h_delta : flowBracketDelta tokens.toList[pos].val = 0)
+    (h_tail : flowBracketBalance tokens (pos + 1) pos_after = 0) :
+    flowBracketBalance tokens body_start pos_after = 0 := by
+  rw [flowBracketBalance_compose tokens body_start (pos + 1) pos_after (by omega) h_pos_after,
+      flowBracketBalance_compose tokens body_start pos (pos + 1) h_bs_pos (by omega),
+      h_bal, h_tail, flowBracketBalance_single _ _ h_pos_bound, h_delta]; omega
 
 end L4YAML.Proofs.ParserGrammable

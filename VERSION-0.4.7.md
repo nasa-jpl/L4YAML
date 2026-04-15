@@ -3034,8 +3034,12 @@ to carry token-level information.
 | 9d | `emit_roundtrip_mapping_content_eq` | 8 | 3 | sorry (content fidelity for mappings) | 150–300 |
 | 9e | `scanNextToken_prefix_and_sk_inv` | 8 | infra | sorry (scanner prefix + simpleKey invariant) | 50–100 |
 | 9f | `scanNextToken_filtered_grows` | 8 | infra | sorry (filtered token array grows by 1) | 50–100 |
-| 9g | `emitList_body_filtered_characterization` | 8 | infra | sorry (body tokens from emitList scanning) | 40–80 |
-| 9h | `emitPairList_body_filtered_characterization` | 8 | infra | sorry (body tokens from emitPairList scanning) | 40–80 |
+| 9g | `emitList_body_filtered_characterization` | 8 | infra | sorry (statement fixed with bracketBalance condition) | 40–80 |
+| 9h | `emitPairList_body_filtered_characterization` | 8 | infra | sorry (statement fixed with bracketBalance condition) | 40–80 |
+| 9i | `flowBracketBalance_compose` | 8 | infra | sorry (additive decomposition of fbb over ranges) | 15–25 |
+| 9j | `flowBracketBalance_push` | 8 | infra | sorry (push invariance for fbb within original bounds) | 15–25 |
+| 9k | `parseFlowSequenceLoop_emitter_ok` h_bal | 8 | infra | sorry (IH h_bal via compose; 2 instances) | 10–20 |
+| 9l | `parseFlowMappingLoop_emitter_ok` h_bal | 8 | infra | sorry (IH h_bal via compose; 2 instances) | 10–20 |
 | — | `universal_roundtrip` | 3 | — | **proven** (depends on 1–9) | 5 |
 | — | `emit_parse_succeeds` | 2 | — | **proven** (depends on 5, 6) | 3 |
 | — | `emit_parseYaml_succeeds` | 2 | — | **proven** (depends on above) | 2 |
@@ -3061,7 +3065,7 @@ Tier 3: stubs 9c, 9d (content fidelity)                 [Step 8, TODO — needs 
   → stub 9 discharged (delegates to 9c/9d for seq/map)
 ```
 
-**Total estimated remaining proof: ~1,000–2,000 LOC** (8 sorry-using declarations in EmitterScannability)
+**Total estimated remaining proof: ~1,000–2,000 LOC** (12 EmitterScannability + 2 ParserGrammableBase + 2 ParserWellBehaved + 5 ScannerBound = 21 sorry-using declarations)
 
 #### Accomplishments (Tier 3 — ParseNodeFlowSeqOk Predicate Redesign)
 
@@ -3166,8 +3170,9 @@ Tier 3: stubs 9c, 9d (content fidelity)                 [Step 8, TODO — needs 
 
 ## Next Steps: Tier 4 — Sorry Elimination Strategy
 
-**Current state:** 426/426 jobs, 13 sorry warnings (8 EmitterScannability + 5 ScannerBound).
-`universal_roundtrip` composition is sorry-free; all 13 sorrys are in leaf/intermediate
+**Current state:** 424/424 jobs, 21 sorry warnings (12 EmitterScannability + 2 ParserGrammableBase
++ 2 ParserWellBehaved + 5 ScannerBound).
+`universal_roundtrip` composition is sorry-free; all 21 sorrys are in leaf/intermediate
 infrastructure theorems.
 
 ### Strategic analysis: proving sorrys vs. other risk reduction
@@ -3545,9 +3550,114 @@ within the `EmitScansInFlow` chain.
 
 ***Phase D: Accomplishments***
 
+1. **Discovered both `emitList_body_filtered_characterization` and
+   `emitPairList_body_filtered_characterization` are FALSE as stated.** Computational
+   verification in `tmp/test_phase_d.lean` showed that for `[{"k1": "v1", "k2": "v2"}]`,
+   the token at position 7 is `flowEntry` and the next token at position 8 is `key` — not
+   a content-start token. The universal quantifier over ALL positions includes inner-depth
+   flowEntries where `.key` follows `.flowEntry` inside nested mappings. For flat
+   sequences/mappings the theorems ARE true; only nesting creates inner-depth flowEntries
+   where the token-after-flowEntry classification fails.
+
+2. **Implemented `flowBracketBalance` infrastructure** in `ParserGrammableBase.lean` (~30 LOC).
+   Defined `flowBracketDelta : YamlToken → Int` (+1 for flowSeqStart/flowMapStart, −1 for
+   flowSeqEnd/flowMapEnd, 0 otherwise) and `flowBracketBalance` (foldl of deltas over a
+   token range `tokens[lo..hi]`). Added composition lemma `flowBracketBalance_compose`
+   (`fbb(lo,hi) = fbb(lo,mid) + fbb(mid,hi)`, sorry'd) and push-invariance lemma
+   `flowBracketBalance_push` (appending a token doesn't affect balance for ranges within
+   original bounds, sorry'd).
+
+3. **Fixed both characterization theorem statements.** Added
+   `flowBracketBalance (s'.tokens.filter p) old_sz k = 0 →` condition to both theorems,
+   restricting flowEntry characterization to depth-0 positions only (where bracket balance
+   from body start is zero). This correctly excludes inner-depth flowEntries in nested
+   collections — `parseNode` consumes entire bracket groups, so the loop only visits
+   depth-0 positions.
+
+4. **Strengthened `ParseNodeFlowSeqOk` and `ParseEntryFlowMapOk` postconditions.** Added
+   `flowBracketBalance tokens ps.pos ps'.pos = 0` to both predicates, establishing that
+   `parseNode` and `parseFlowMappingValue` consume balanced bracket groups. Updated `.mono`
+   lemmas to forward the new `hbal` binding.
+
+5. **Updated parser loop theorems.** Added `body_start : Nat` parameter and
+   `h_bal : flowBracketBalance ps.tokens body_start ps.pos = 0` hypothesis to both
+   `parseFlowSequenceLoop_emitter_ok` and `parseFlowMappingLoop_emitter_ok`. Updated
+   `h_after_fe` to include bracketBalance condition. Key implementation detail:
+   `body_start` is NOT generalized by `induction fuel generalizing ps items_acc`, so it
+   is fixed in the IH and must NOT be passed as an explicit argument to IH calls. IH
+   `h_bal` proofs sorry'd (need `flowBracketBalance_compose`).
+
+6. **Updated both structure theorems.** `scanFiltered_emitSeq_nonempty_structure` and
+   `scanFiltered_emitMap_nonempty_structure` now include bracketBalance condition in
+   `h_fe_pattern` conclusion. Both convert bracketBalance between filtered/unfiltered token
+   arrays using `flowBracketBalance_push`. Added `h_bal_init` proofs and `body_start=2`
+   parameters to loop theorem calls.
+
+7. **Build: 424/424 jobs, 0 errors, 21 sorry warnings** (up from 13). 8 new sorry-using
+   declarations from bracketBalance infrastructure: 2 in ParserGrammableBase (compose + push
+   lemmas), 2 in ParserWellBehaved (h_bal in loop IH), 4 additional in EmitterScannability
+   (from structural changes to theorems that now depend on sorry'd bracketBalance lemmas).
+
 ***Phase D: Reflections***
 
-**Phase E: Layer 2 — h_pnok (ParseNodeFlowSeqOk / ParseEntryFlowMapOk)**
+- **False theorem statements are the hardest bugs to find.** Both characterization theorems
+  had plausible-looking universal quantifiers that were computationally falsified only when
+  tested on inputs with nested collections (2+ levels deep). The failure mode is subtle —
+  for flat sequences/mappings the theorems ARE true (all flowEntries are at depth 0). Only
+  nesting creates inner-depth flowEntries where the classification fails.
+- **`flowBracketBalance` is the right abstraction.** The distinction between "outer flowEntry"
+  (separator between top-level items) and "inner flowEntry" (separator within a nested
+  mapping/sequence) is precisely captured by bracket balance. At depth 0 (balanced brackets
+  from body start), flowEntry is a top-level separator; at depth > 0, it's internal to a
+  nested collection. This matches the parser's behavior — `parseNode` consumes entire
+  bracket groups, so the loop only visits depth-0 positions.
+- **The fix is architecturally broad but mechanically simple.** Changes touched 3 files
+  (ParserGrammableBase, ParserWellBehaved, EmitterScannability) and ~15 theorems/definitions.
+  Each change follows the same pattern: (a) add bracketBalance postcondition, (b) capture
+  the new binding in obtain patterns, (c) forward through IH or composition calls. No
+  creative proof work was needed — just type-system bookkeeping.
+- **Sorry count increase is temporary.** The 8 new sorrys are infrastructure sorrys
+  (bracketBalance lemmas + propagation) that scaffold the corrected characterization. Once
+  `flowBracketBalance_compose` and `flowBracketBalance_push` are proven (~20 LOC each, list
+  fold arithmetic), the cascade clears: compose proves h_bal in loops → loops become
+  sorry-free for this concern → structure theorems clean up. Net long-term effect: 0
+  additional sorrys.
+
+**Phase E: Adversarial Instantiation — Audit all 21 sorry'd theorems**
+*Estimated: ~2-4 hours · Risk: LOW (audit itself) / HIGH (may discover false statements)*
+
+Before investing further proof effort, apply the
+[Adversarial Instantiation methodology](ADVERSARIAL_INSTANTIATION.md) to all 21 remaining
+sorry'd theorems. This methodology was born from the Phase D experience: both
+`emitList_body_filtered_characterization` and `emitPairList_body_filtered_characterization`
+were FALSE as stated, discovered only by computational testing on nested inputs.
+
+**Triage result (see [ADVERSARIAL_INSTANTIATION.md](ADVERSARIAL_INSTANTIATION.md)):**
+- **11 theorems → PROVE directly** (pure arithmetic, single-function unfolds, low risk)
+- **10 theorems → AUDIT first** (universal quantifiers over states/positions/values)
+
+**Scope:** Create `tmp/sorry_audit.lean` with `#eval`/`#guard` checks for the 10 AUDIT
+targets. Priority order:
+1. 9g, 9h — body characterization (previously caught bug, re-verify after bracketBalance fix)
+2. 9c, 9d — end-to-end round-trip (directly checkable via `emit → parse → contentEq`)
+3. 9a, 9b — parser fuel sufficiency (`4 × tokens.size + 4` bound)
+4. 9e — scanner prefix invariant (disjunctive condition)
+5. ScannerBound sorrys — preprocess/structural/content `BoundInv` preservation
+
+**Decision criterion:** For each sorry'd theorem, two signals are assessed in ~30 seconds:
+- Statement risk: Does it have `∀` over positions/states? Was a postcondition recently added?
+- Proof cost: Loops? Recursion? Dependencies on other sorrys?
+
+High risk → AUDIT first. Low risk + low cost → PROVE directly.
+
+Why now: Phase D proved that false statements are the most expensive bugs — weeks of
+wasted proof effort. A 2–4 hour audit pass before Phases F–G saves potentially 100+ hours.
+
+***Phase E: Accomplishments***
+
+***Phase E: Reflections***
+
+**Phase F: Layer 2 — h_pnok (ParseNodeFlowSeqOk / ParseEntryFlowMapOk)**
 *Estimated: ~400-800 LOC · Risk: HIGH*
 
 This is the hardest phase. Prove that `parseNode` succeeds at each content-start position
@@ -3570,15 +3680,16 @@ in the token array. Two sub-problems:
    at the structure theorem level, using the fact that inner brackets have strictly lower
    nesting depth.
 
-Why fifth: Depends on Phase D (body token characterization provides the content-start
-classification). This is the highest-risk phase due to recursive nesting and the potential
+Why sixth: Depends on Phase D (body token characterization provides the content-start
+classification) and Phase E (adversarial audit confirms statements are correct).
+This is the highest-risk phase due to recursive nesting and the potential
 need for architectural refactoring.
 
-***Phase E: Accomplishments***
+***Phase F: Accomplishments***
 
-***Phase E: Reflections***
+***Phase F: Reflections***
 
-**Phase F: Layer 3 — Content fidelity**
+**Phase G: Layer 3 — Content fidelity**
 *Estimated: ~300-600 LOC · Risk: MEDIUM-HIGH*
 
 Prove `emit_roundtrip_sequence_content_eq` and `emit_roundtrip_mapping_content_eq` for
@@ -3590,13 +3701,13 @@ produce (not just that they succeed).
 - Show each parsed item matches the original via `contentEq`
 - Apply `Grammable` IH for each element
 
-Why last: Depends on Phase E (need parser success before examining parsed values). This
-phase may benefit from concurrent development with Phase E since both deal with parser
+Why last: Depends on Phase F (need parser success before examining parsed values). This
+phase may benefit from concurrent development with Phase F since both deal with parser
 behavior on emitter output.
 
-***Phase F: Accomplishments***
+***Phase G: Accomplishments***
 
-***Phase F: Reflections***
+***Phase G: Reflections***
 
 **Phase S (parallel): ScannerBound.lean — 5 sorrys**
 *Estimated: ~300-500 LOC · Risk: LOW-MEDIUM*
@@ -3621,20 +3732,21 @@ These don't block `universal_roundtrip` but are needed for full-project 0-sorry.
 |-------|----------------|----------|------|------------|--------|
 | A | 0 (signature restructuring) | ~30 | LOW | — | **DONE** |
 | B | 0 (per-dispatch infrastructure) | 200-350 | LOW-MEDIUM | Phase A | **DONE** |
-| C | 2 (prefix inv + filtered growth) | 100-200 | LOW | Phase B | NEXT |
-| D | 2 (body characterization) | 200-400 | MEDIUM | Phase C | |
-| E | 2 (h_pnok) | 400-800 | HIGH | Phase D | |
-| F | 2 (content fidelity) | 300-600 | MEDIUM-HIGH | Phase E | |
+| C | 2 (prefix inv + filtered growth) | 100-200 | LOW | Phase B | **DONE** |
+| D | 2 (body characterization) | 200-400 | MEDIUM | Phase C | **DONE** (statements fixed; +8 infra sorrys) |
+| E | 0 (adversarial audit) | ~2-4 hrs | LOW | Phase D | NEXT |
+| F | 2 (h_pnok) | 400-800 | HIGH | Phase E | |
+| G | 2 (content fidelity) | 300-600 | MEDIUM-HIGH | Phase F | |
 | S | 5 (ScannerBound) | 300-500 | LOW-MEDIUM | — (parallel) | |
-| **Total** | **13** | **~1,530-2,880** | | | |
+| **Total** | **13 + 8 infra** | **~1,530-2,880** | | | |
 
-**Critical path:** A (DONE) → B → C → D → E → F (8 EmitterScannability sorrys)
+**Critical path:** A (DONE) → B (DONE) → C (DONE) → D (DONE) → E → F → G (8 EmitterScannability sorrys + 8 infra)
 **Parallel track:** S (5 ScannerBound sorrys)
-**Expected outcome:** 13 → 0 sorry warnings across the full build.
+**Expected outcome:** 21 → 0 sorry warnings across the full build.
 
-### Risk mitigation for Phase E
+### Risk mitigation for Phase F
 
-Phase E (h_pnok) is the highest-risk item. If the proof is blocked at the structure
+Phase F (h_pnok) is the highest-risk item. If the proof is blocked at the structure
 theorem level (due to lack of Grammable IH for recursive nesting), the fallback plan is:
 
 1. **Move h_pnok obligation to call site.** Refactor `scanFiltered_emitSeq_nonempty_structure`

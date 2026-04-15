@@ -4121,13 +4121,17 @@ def ParseNodeFlowSeqOk (tokens : Array (Positioned YamlToken))
               ps'.tokens = tokens ∧
               ps'.trackPositions = ps.trackPositions ∧
               (ps'.peek? = some .flowEntry ∨
-               (ps'.peek? = some .flowSequenceEnd ∧ ps'.pos = endPos))
+               (ps'.peek? = some .flowSequenceEnd ∧ ps'.pos = endPos)) ∧
+              flowBracketBalance tokens ps.pos ps'.pos = 0
 
 -- Fuel monotonicity: ParseNodeFlowSeqOk at fuel implies it at fuel' ≤ fuel
 -- (the fuel parameter only restricts m ≤ fuel, so larger fuel is weaker).
 theorem ParseNodeFlowSeqOk.mono {tokens endPos fuel fuel'} (h : ParseNodeFlowSeqOk tokens endPos fuel)
     (h_le : fuel' ≤ fuel) : ParseNodeFlowSeqOk tokens endPos fuel' :=
-  fun ps m h_tok h_m h_pos h_cs => h ps m h_tok (Nat.le_trans h_m h_le) h_pos h_cs
+  fun ps m h_tok h_m h_pos h_cs =>
+    let ⟨v, ps', hok, hadv, hbound, htok, htp, hpeek, hbal⟩ :=
+      h ps m h_tok (Nat.le_trans h_m h_le) h_pos h_cs
+    ⟨v, ps', hok, hadv, hbound, htok, htp, hpeek, hbal⟩
 
 -- Helper: if ps.peek? = some tok and ps.pos < ps.tokens.size,
 -- then (ps.tokens[ps.pos]).val = tok
@@ -4151,6 +4155,7 @@ theorem peek_of_pos_val {ps : ParseState} {k : Nat} {tok : YamlToken}
 set_option maxHeartbeats 1600000 in
 theorem parseFlowSequenceLoop_emitter_ok (fuel : Nat)
     (ps : ParseState) (items_acc : Array YamlValue) (endPos : Nat)
+    (body_start : Nat)
     (h_pn : ParseNodeFlowSeqOk ps.tokens endPos fuel)
     (h_fuel : fuel ≥ endPos - ps.pos)
     (h_pos : ps.pos ≤ endPos)
@@ -4165,10 +4170,13 @@ theorem parseFlowSequenceLoop_emitter_ok (fuel : Nat)
         ps.peek? = some .flowMappingStart)
     (h_after_fe : ∀ k : Nat, ps.pos ≤ k → k < endPos →
                   ps.tokens[k]!.val = .flowEntry →
+                  flowBracketBalance ps.tokens body_start k = 0 →
                   k + 1 ≤ endPos ∧
                   ((∃ c s, ps.tokens[k + 1]!.val = .scalar c s) ∨
                    ps.tokens[k + 1]!.val = .flowSequenceStart ∨
                    ps.tokens[k + 1]!.val = .flowMappingStart))
+    (h_bal : flowBracketBalance ps.tokens body_start ps.pos = 0)
+    (h_bs : body_start ≤ ps.pos)
     : ∃ items ps', parseFlowSequenceLoop ps fuel items_acc = .ok (items, ps') ∧
                    ps'.peek? = some .flowSequenceEnd ∧
                    ps'.pos = endPos ∧
@@ -4209,7 +4217,7 @@ theorem parseFlowSequenceLoop_emitter_ok (fuel : Nat)
             have h_fe_val : ps.tokens[ps.pos]!.val = .flowEntry := by
               have h_peek_fe : ps.peek? = some .flowEntry := by assumption
               exact (peek_some_val h_peek_fe).2
-            have h_afe := h_after_fe ps.pos (Nat.le_refl _) (by omega) h_fe_val
+            have h_afe := h_after_fe ps.pos (Nat.le_refl _) (by omega) h_fe_val h_bal
             rcases h_afe.2 with ⟨c, s, hcs⟩ | hcs | hcs <;> rw [h_val] at hcs <;> cases hcs
           · -- flowSequenceEnd after separator → contradiction (h_after_fe content start)
             rename_i h_adv_end
@@ -4217,7 +4225,7 @@ theorem parseFlowSequenceLoop_emitter_ok (fuel : Nat)
             have h_fe_val : ps.tokens[ps.pos]!.val = .flowEntry := by
               have h_peek_fe : ps.peek? = some .flowEntry := by assumption
               exact (peek_some_val h_peek_fe).2
-            have h_afe := h_after_fe ps.pos (Nat.le_refl _) (by omega) h_fe_val
+            have h_afe := h_after_fe ps.pos (Nat.le_refl _) (by omega) h_fe_val h_bal
             have ⟨_, h_val⟩ := peek_some_val h_adv_end
             simp [ParseState.advance] at h_val
             rcases h_afe.2 with ⟨c, s, hcs⟩ | hcs | hcs <;> rw [h_val] at hcs <;> cases hcs
@@ -4227,7 +4235,7 @@ theorem parseFlowSequenceLoop_emitter_ok (fuel : Nat)
             have h_fe_val : ps.tokens[ps.pos]!.val = .flowEntry := by
               have h_peek_fe : ps.peek? = some .flowEntry := by assumption
               exact (peek_some_val h_peek_fe).2
-            have h_afe := h_after_fe ps.pos (Nat.le_refl _) (by omega) h_fe_val
+            have h_afe := h_after_fe ps.pos (Nat.le_refl _) (by omega) h_fe_val h_bal
             have h_adv_pos_lt : ps.pos + 1 < endPos := by
               rcases Nat.eq_or_lt_of_le h_afe.1 with heq | hlt
               · exfalso; apply h_adv_not_end
@@ -4260,7 +4268,7 @@ theorem parseFlowSequenceLoop_emitter_ok (fuel : Nat)
               · exact .inr (.inl (by rw [h_adv_peek, hcs]))
               · exact .inr (.inr (by rw [h_adv_peek, hcs]))
             -- Get parseNode success from h_pn
-            obtain ⟨val, ps_after, h_ok, h_pos_adv, h_pos_bound, h_tok_eq, h_tp_eq, h_peek_after⟩ :=
+            obtain ⟨val, ps_after, h_ok, h_pos_adv, h_pos_bound, h_tok_eq, h_tp_eq, h_peek_after, h_pn_bal⟩ :=
               h_pn psX n h_psX_tok (by omega)
                 (by rw [h_psX_pos]; exact h_adv_pos_lt)
                 h_cs
@@ -4285,8 +4293,21 @@ theorem parseFlowSequenceLoop_emitter_ok (fuel : Nat)
                     · exact h_pos_eq)
                 (by intro _; exact h_peek_after.imp id And.left)
                 (by intro h_sz; simp [Array.size_push] at h_sz)
-                (by intro k hk1 hk2 hval; dsimp only [] at hk1; rw [h_rec_tok] at hval ⊢;
-                    exact h_after_fe k (by omega) hk2 hval)
+                (by intro k hk1 hk2 hval h_depth; dsimp only [] at hk1 h_depth;
+                    rw [h_tok_eq] at h_depth; rw [h_rec_tok] at hval ⊢;
+                    exact h_after_fe k (by omega) hk2 hval h_depth)
+                (by -- h_bal: fbb(body_start, ps_after.pos) = 0
+                    rw [h_rec_tok]
+                    have h_pn_bal' : flowBracketBalance ps.tokens psX.pos ps_after.pos = 0 :=
+                      h_psX_tok ▸ h_pn_bal
+                    rw [h_psX_pos] at h_pn_bal'
+                    have h_tl : ps.tokens.toList.length = ps.tokens.size := rfl
+                    exact flowBracketBalance_compose_zero ps.tokens body_start ps.pos ps_after.pos
+                      h_bs (by omega) (by omega) h_bal
+                      (by show flowBracketDelta (ps.tokens[ps.pos]'(by omega)).val = 0
+                          rw [(getElem!_pos ps.tokens ps.pos (by omega)).symm, h_fe_val]; decide)
+                      h_pn_bal')
+                (by have : ps.tokens.toList.length = ps.tokens.size := rfl; dsimp only []; omega)
             exact ⟨items_res, ps_res, h_loop, h_peek_res, h_pos_res, h_tok_res.trans h_tok_eq, h_tp_res.trans (h_tp_eq.trans h_psX_tp)⟩
         · -- no separator → early return .ok (items_acc, ps)
           -- h_entry: peek = flowEntry ∨ flowSeqEnd. Separator split says peek ≠ flowEntry.
@@ -4315,7 +4336,7 @@ theorem parseFlowSequenceLoop_emitter_ok (fuel : Nat)
           -- Generalize the parseNode struct to match goal and h_ok
           generalize hPsX : ({ ps with
             currentPath := ps.currentPath.push (.index items_acc.size) } : ParseState) = psX
-          obtain ⟨val, ps_after, h_ok, h_pos_adv, h_pos_bound, h_tok_eq, h_tp_eq, h_peek_after⟩ :=
+          obtain ⟨val, ps_after, h_ok, h_pos_adv, h_pos_bound, h_tok_eq, h_tp_eq, h_peek_after, h_pn_bal⟩ :=
             h_pn psX n
               (by subst hPsX; rfl)
               (by omega)
@@ -4342,8 +4363,16 @@ theorem parseFlowSequenceLoop_emitter_ok (fuel : Nat)
                   · exact h_pos_eq)
               (by intro _; exact h_peek_after.imp id And.left)
               (by intro h_sz; simp [Array.size_push] at h_sz)
-              (by intro k hk1 hk2 hval; dsimp only [] at hk1; rw [h_rec_tok] at hval ⊢;
-                  exact h_after_fe k (by omega) hk2 hval)
+              (by intro k hk1 hk2 hval h_depth; dsimp only [] at hk1 h_depth;
+                  rw [h_tok_eq] at h_depth; rw [h_rec_tok] at hval ⊢;
+                  exact h_after_fe k (by omega) hk2 hval h_depth)
+              (by -- h_bal: fbb(body_start, ps_after.pos) = 0
+                  rw [h_rec_tok]
+                  have h_pn_bal' : flowBracketBalance ps.tokens ps.pos ps_after.pos = 0 := by
+                    rw [show ps.pos = psX.pos from h_psX_pos.symm]; exact h_pn_bal
+                  rw [flowBracketBalance_compose ps.tokens body_start ps.pos ps_after.pos h_bs (by omega),
+                      h_bal, h_pn_bal']; simp)
+              (by dsimp only []; omega)
           exact ⟨items_res, ps_res, h_loop, h_peek_res, h_pos_res, h_tok_res.trans h_tok_eq, h_tp_res.trans (h_tp_eq.trans h_psX_tp)⟩
 
 /-! #### Flow mapping loop fuel sufficiency
@@ -4387,17 +4416,21 @@ def ParseEntryFlowMapOk (tokens : Array (Positioned YamlToken))
           val_ps.tokens = tokens ∧
           val_ps.trackPositions = ps.trackPositions ∧
           (val_ps.peek? = some .flowEntry ∨
-           (val_ps.peek? = some .flowMappingEnd ∧ val_ps.pos = endPos))
+           (val_ps.peek? = some .flowMappingEnd ∧ val_ps.pos = endPos)) ∧
+          flowBracketBalance tokens ps.pos val_ps.pos = 0
 
 theorem ParseEntryFlowMapOk.mono {tokens endPos fuel fuel'}
     (h : ParseEntryFlowMapOk tokens endPos fuel)
     (h_le : fuel' ≤ fuel) : ParseEntryFlowMapOk tokens endPos fuel' :=
   fun ps m h_tok h_m h_pos h_key =>
-    h ps m h_tok (Nat.le_trans h_m h_le) h_pos h_key
+    let ⟨kv, kps, hek, hadv, hbound, htok, htp, hfmv⟩ :=
+      h ps m h_tok (Nat.le_trans h_m h_le) h_pos h_key
+    ⟨kv, kps, hek, hadv, hbound, htok, htp, hfmv⟩
 
 set_option maxHeartbeats 3200000 in
 theorem parseFlowMappingLoop_emitter_ok (fuel : Nat)
     (ps : ParseState) (pairs_acc : Array (YamlValue × YamlValue)) (endPos : Nat)
+    (body_start : Nat)
     (h_entry : ParseEntryFlowMapOk ps.tokens endPos fuel)
     (h_fuel : fuel ≥ endPos - ps.pos)
     (h_pos : ps.pos ≤ endPos)
@@ -4410,7 +4443,10 @@ theorem parseFlowMappingLoop_emitter_ok (fuel : Nat)
                ps.peek? = some .key ∨ ps.peek? = some .flowMappingEnd)
     (h_after_fe : ∀ k : Nat, ps.pos ≤ k → k < endPos →
                   ps.tokens[k]!.val = .flowEntry →
+                  flowBracketBalance ps.tokens body_start k = 0 →
                   k + 1 ≤ endPos ∧ ps.tokens[k + 1]!.val = .key)
+    (h_bal : flowBracketBalance ps.tokens body_start ps.pos = 0)
+    (h_bs : body_start ≤ ps.pos)
     : ∃ pairs ps', parseFlowMappingLoop ps fuel pairs_acc = .ok (pairs, ps') ∧
                    ps'.peek? = some .flowMappingEnd ∧
                    ps'.pos = endPos ∧
@@ -4447,7 +4483,7 @@ theorem parseFlowMappingLoop_emitter_ok (fuel : Nat)
             have h_fe_val : ps.tokens[ps.pos]!.val = .flowEntry := by
               have h_peek_fe : ps.peek? = some .flowEntry := by assumption
               exact (peek_some_val h_peek_fe).2
-            have h_afe := h_after_fe ps.pos (Nat.le_refl _) h_lt h_fe_val
+            have h_afe := h_after_fe ps.pos (Nat.le_refl _) h_lt h_fe_val h_bal
             have ⟨_, h_val⟩ := peek_some_val h_adv_end
             simp [ParseState.advance] at h_val
             exact absurd (h_afe.2.symm.trans h_val) (by decide)
@@ -4456,7 +4492,7 @@ theorem parseFlowMappingLoop_emitter_ok (fuel : Nat)
             have h_fe_val : ps.tokens[ps.pos]!.val = .flowEntry := by
               have h_peek_fe : ps.peek? = some .flowEntry := by assumption
               exact (peek_some_val h_peek_fe).2
-            have h_afe := h_after_fe ps.pos (Nat.le_refl _) h_lt h_fe_val
+            have h_afe := h_after_fe ps.pos (Nat.le_refl _) h_lt h_fe_val h_bal
             have h_adv_pos : ps.advance.pos = ps.pos + 1 := by
               simp [ParseState.advance]
             have h_adv_pos_lt : ps.pos + 1 < endPos := by
@@ -4486,7 +4522,7 @@ theorem parseFlowMappingLoop_emitter_ok (fuel : Nat)
               exact absurd (heq_err.symm.trans h_ok) (by simp)
             · -- ok case: equate with h_fmv_univ result via determinism
               rename_i fmv_res heq_fmv
-              obtain ⟨val_val, val_ps, h_fmv_ok, h_fmv_adv, h_fmv_bound, h_fmv_tok, h_fmv_tp, h_fmv_peek⟩ :=
+              obtain ⟨val_val, val_ps, h_fmv_ok, h_fmv_adv, h_fmv_bound, h_fmv_tok, h_fmv_tp, h_fmv_peek, h_entry_bal⟩ :=
                 h_fmv_univ _ _
               have h_eq := Except.ok.inj (heq_fmv.symm.trans h_fmv_ok)
               obtain ⟨fmv_v, fmv_ps⟩ := fmv_res
@@ -4506,8 +4542,18 @@ theorem parseFlowMappingLoop_emitter_ok (fuel : Nat)
                       · exact h_pos_eq)
                   (by intro _; exact h_fmv_peek.imp id And.left)
                   (by intro h; simp [Array.size_push] at h)
-                  (by intro k hk1 hk2 hval; rw [h_fmv_tok] at hval ⊢;
-                      exact h_after_fe k (by omega) hk2 hval)
+                  (by intro k hk1 hk2 hval h_depth; rw [h_fmv_tok] at hval h_depth ⊢;
+                      exact h_after_fe k (by omega) hk2 hval h_depth)
+                  (by -- h_bal: fbb(body_start, val_ps.pos) = 0
+                      rw [h_fmv_tok]
+                      rw [show ps.advance.pos = ps.pos + 1 from h_adv_pos] at h_entry_bal
+                      have h_tl : ps.tokens.toList.length = ps.tokens.size := rfl
+                      exact flowBracketBalance_compose_zero ps.tokens body_start ps.pos val_ps.pos
+                        h_bs (by omega) (by omega) h_bal
+                        (by show flowBracketDelta (ps.tokens[ps.pos]'(by omega)).val = 0
+                            rw [(getElem!_pos ps.tokens ps.pos (by omega)).symm, h_fe_val]; decide)
+                        h_entry_bal)
+                  (by omega)
               exact ⟨pairs_res, ps_res, h_loop, h_peek_res, h_pos_res, h_tok_res.trans h_fmv_tok, h_tp_res.trans h_fmv_tp⟩
           · -- wildcard after separator (not flowMappingEnd, not key) → contradiction
             rename_i h_adv_not_end h_adv_not_key
@@ -4515,7 +4561,7 @@ theorem parseFlowMappingLoop_emitter_ok (fuel : Nat)
             have h_fe_val : ps.tokens[ps.pos]!.val = .flowEntry := by
               have h_peek_fe : ps.peek? = some .flowEntry := by assumption
               exact (peek_some_val h_peek_fe).2
-            have h_afe := h_after_fe ps.pos (Nat.le_refl _) h_lt h_fe_val
+            have h_afe := h_after_fe ps.pos (Nat.le_refl _) h_lt h_fe_val h_bal
             exact h_adv_not_key (peek_of_pos_val (ps := ps.advance) rfl
               (show ps.advance.pos < ps.advance.tokens.size by
                 simp [ParseState.advance]; omega)
@@ -4545,7 +4591,7 @@ theorem parseFlowMappingLoop_emitter_ok (fuel : Nat)
             exact absurd (heq_err.symm.trans h_ok) (by simp)
           · -- ok case
             rename_i fmv_res heq_fmv
-            obtain ⟨val_val, val_ps, h_fmv_ok, h_fmv_adv, h_fmv_bound, h_fmv_tok, h_fmv_tp, h_fmv_peek⟩ :=
+            obtain ⟨val_val, val_ps, h_fmv_ok, h_fmv_adv, h_fmv_bound, h_fmv_tok, h_fmv_tp, h_fmv_peek, h_entry_bal⟩ :=
               h_fmv_univ _ _
             have h_eq := Except.ok.inj (heq_fmv.symm.trans h_fmv_ok)
             obtain ⟨fmv_v, fmv_ps⟩ := fmv_res
@@ -4565,8 +4611,13 @@ theorem parseFlowMappingLoop_emitter_ok (fuel : Nat)
                     · exact h_pos_eq)
                 (by intro _; exact h_fmv_peek.imp id And.left)
                 (by intro h; simp [Array.size_push] at h)
-                (by intro k hk1 hk2 hval; rw [h_fmv_tok] at hval ⊢;
-                    exact h_after_fe k (by omega) hk2 hval)
+                (by intro k hk1 hk2 hval h_depth; rw [h_fmv_tok] at hval h_depth ⊢;
+                    exact h_after_fe k (by omega) hk2 hval h_depth)
+                (by -- h_bal: fbb(body_start, val_ps.pos) = 0
+                    rw [h_fmv_tok,
+                        flowBracketBalance_compose ps.tokens body_start ps.pos val_ps.pos h_bs (by omega),
+                        h_bal, h_entry_bal]; simp)
+                (by omega)
             exact ⟨pairs_res, ps_res, h_loop, h_peek_res, h_pos_res, h_tok_res.trans h_fmv_tok, h_tp_res.trans h_fmv_tp⟩
         · -- wildcard (not flowMappingEnd, not key) → contradiction
           rename_i h_not_end h_not_key
