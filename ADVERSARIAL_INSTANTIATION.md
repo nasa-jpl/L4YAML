@@ -415,8 +415,29 @@ For each priority:
 3. Any check failure → investigate and fix the theorem statement before proving
 4. All checks pass → proceed to proof with increased confidence
 
-**Status:** Priority 1 complete (188/188). Priority 2 complete (141/141). Priority 3 complete (180/180). Priority 4 complete (168→697 checks after repair, **false theorem found and repaired**). Total: 697/697. Priority 5 to be added.
+**Status:** Priority 1 complete (188/188). Priority 2 complete (141/141). Priority 3 complete (180/180). Priority 4 complete (168→697 checks after repair, **false theorem found and repaired**). Priority 5 complete (296 checks). Total: 993/993.
 
 ### Priority 5: Accomplishments
 
+- Tested all 3 sorry'd theorems in `ScannerBound.lean`: `preprocess_preserves_bound`, `dispatchStructural_preserves_bound`, `dispatchContent_preserves_bound`
+- Checked all 4 `BoundInv` fields computationally at every `scanNextToken` step: `offset ≤ inputEnd`, `inputEnd` preserved, `input` preserved, offset at valid UTF-8 char boundary
+- Implemented `isAtCharBoundary` helper to computationally verify `String.Pos.Raw.IsValid` (private constructor, cannot be checked directly)
+- 296 new checks across ~74 test inputs covering:
+  - Deep indent stacks (2-8 levels) stressing `unwindIndents` loop
+  - Whitespace/comment skipping stressing `skipToContent` loop
+  - Document markers and directives (structural dispatch with `advanceN 3`)
+  - All scalar types: double-quoted (escapes, unicode, multiline, empty), single-quoted, block literal/folded (with modifiers), plain
+  - Anchors, aliases, tags
+  - UTF-8 multi-byte characters: 2-byte (résumé), 3-byte (日本語), 4-byte (𝕊𝕖𝕥), emoji (😀), mixed
+  - Combined stress test exercising every dispatch type in one document
+  - Emitter output (scanner round-trip on emitted YAML)
+  - Edge cases: empty, whitespace-only, newlines-only, BOM
+- All 296 checks pass — no false claims detected in BoundInv theorems
+
 ### Priority 5: Reflections
+
+- `BoundInv` is a clean 4-field invariant that is straightforward to check computationally
+- The `String.Pos.Raw.IsValid` field required a custom `isAtCharBoundary` function since the type has a private constructor — iterating valid string positions from offset 0 is the only way to check
+- In Lean 4.30, `String.Pos` is parameterized by a `String` (dependent type), so raw byte iteration uses `String.Pos.Raw.next` instead of `String.next`
+- UTF-8 multi-byte inputs are critical adversarial cases for byte offset arithmetic — confirmed all 4-byte, 3-byte, 2-byte, and mixed character inputs maintain valid char boundaries
+- All 3 sorry'd theorems appear sound: the scanner never violates `BoundInv` across any of the tested inputs
