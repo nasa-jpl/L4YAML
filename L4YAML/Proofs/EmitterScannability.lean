@@ -1298,6 +1298,90 @@ theorem ScanChain.fuel_bound (input : String)
   -- n ≤ utf8ByteSize, so n + 1 ≤ utf8ByteSize + 1 ≤ (utf8ByteSize + 1) * 4
   omega
 
+-- ═══ FlowMonoChain: ScanChain with flow-level lower bound ═══
+
+/-- `FlowMonoChain fl₀ s n s'` is a `ScanChain` where every intermediate state
+    has `flowLevel ≥ fl₀`. This captures the "flow-balanced" property: the chain
+    never closes brackets below the initial flow depth, ensuring stacked simple keys
+    from before the chain are never restored.
+
+    **Motivation**: `ScanChain_filtered_prefix` needs to show that `setIfInBounds`
+    (from `scanValuePrepare`) never writes at token positions below the initial range.
+    This holds when the simpleKeyStack is never popped below its initial height, which
+    follows from `flowLevel ≥ fl₀` at every step (since `simpleKeyStack.size` tracks
+    `flowLevel` via `scanFlowStart`/`scanFlowEnd` push/pop synchronization).
+
+    For emitter-produced chains, `fl₀ = s.flowLevel` is always satisfied because the
+    emitter produces balanced bracket sequences: every `]`/`}` matches an inner `[`/`{`. -/
+inductive FlowMonoChain (fl₀ : Nat) : ScannerState → Nat → ScannerState → Prop where
+  | zero {s : ScannerState} (h_fl : s.flowLevel ≥ fl₀) :
+      FlowMonoChain fl₀ s 0 s
+  | step {s s_mid s' : ScannerState} {n : Nat}
+      (h_fl : s.flowLevel ≥ fl₀)
+      (h_snt : scanNextToken s = .ok (some s_mid))
+      (h_rest : FlowMonoChain fl₀ s_mid n s') :
+      FlowMonoChain fl₀ s (n + 1) s'
+
+/-- Degrade a `FlowMonoChain` to a plain `ScanChain` by forgetting flow-level bounds. -/
+theorem FlowMonoChain.toScanChain {fl₀ : Nat} {s s' : ScannerState} {n : Nat}
+    (h : FlowMonoChain fl₀ s n s') : ScanChain s n s' := by
+  induction h with
+  | zero => exact .zero
+  | step _ h_snt _h_rest ih => exact .step h_snt ih
+
+/-- The start state of a `FlowMonoChain` has `flowLevel ≥ fl₀`. -/
+theorem FlowMonoChain.flowLevel_ge_start {fl₀ : Nat} {s s' : ScannerState} {n : Nat}
+    (h : FlowMonoChain fl₀ s n s') : s.flowLevel ≥ fl₀ := by
+  cases h with
+  | zero h_fl => exact h_fl
+  | step h_fl _ _ => exact h_fl
+
+/-- The end state of a `FlowMonoChain` has `flowLevel ≥ fl₀`. -/
+theorem FlowMonoChain.flowLevel_ge_end {fl₀ : Nat} {s s' : ScannerState} {n : Nat}
+    (h : FlowMonoChain fl₀ s n s') : s'.flowLevel ≥ fl₀ := by
+  induction h with
+  | zero h_fl => exact h_fl
+  | step _ _ _ ih => exact ih
+
+/-- A single `scanNextToken` step as a `FlowMonoChain`. -/
+theorem FlowMonoChain.single {fl₀ : Nat} {s s' : ScannerState}
+    (h_snt : scanNextToken s = .ok (some s'))
+    (h_fl : s.flowLevel ≥ fl₀)
+    (h_fl' : s'.flowLevel ≥ fl₀) :
+    FlowMonoChain fl₀ s 1 s' :=
+  .step h_fl h_snt (.zero h_fl')
+
+/-- Transitivity: concatenate two `FlowMonoChain`s with the same floor. -/
+theorem FlowMonoChain.trans {fl₀ : Nat} {s₁ s₂ s₃ : ScannerState} {n₁ n₂ : Nat}
+    (h1 : FlowMonoChain fl₀ s₁ n₁ s₂)
+    (h2 : FlowMonoChain fl₀ s₂ n₂ s₃) :
+    FlowMonoChain fl₀ s₁ (n₁ + n₂) s₃ := by
+  induction h1 with
+  | zero => simpa using h2
+  | @step s s_mid s₂ k h_fl h_snt h_rest ih =>
+    have h_ih := ih h2
+    have : k + 1 + n₂ = (k + n₂) + 1 := by omega
+    rw [this]
+    exact .step h_fl h_snt h_ih
+
+/-- Weaken the flow-level floor: if `fl₀ ≤ fl₁`, a `FlowMonoChain fl₁` is also
+    a `FlowMonoChain fl₀`. -/
+theorem FlowMonoChain.weaken {fl₀ fl₁ : Nat} {s s' : ScannerState} {n : Nat}
+    (h : FlowMonoChain fl₁ s n s') (h_le : fl₀ ≤ fl₁) :
+    FlowMonoChain fl₀ s n s' := by
+  induction h with
+  | zero h_fl => exact .zero (by omega)
+  | step h_fl h_snt _h_rest ih => exact .step (by omega) h_snt ih
+
+/-- Token monotonicity for `FlowMonoChain`:
+    tokens only grow through the chain (delegates to `ScanChain` version). -/
+theorem FlowMonoChain.tokens_mono {fl₀ : Nat} {s s' : ScannerState} {n : Nat}
+    (h : FlowMonoChain fl₀ s n s') : s'.tokens.size ≥ s.tokens.size := by
+  induction h with
+  | zero => omega
+  | step _ h_snt _ ih =>
+    have := ScannerCorrectness.scanNextToken_adds_tokens _ _ h_snt; omega
+
 /-- Connect a ScanChain to scanFiltered: if N steps succeed
     reaching a state where scanNextToken returns none (EOF),
     then scanFiltered on the input succeeds.
