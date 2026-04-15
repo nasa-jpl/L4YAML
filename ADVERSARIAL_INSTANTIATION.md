@@ -310,7 +310,85 @@ emitter output. Also test with `4 * tokens.size + 3` (one less) to verify tightn
 
 ### Priority 4: Accomplishments
 
+- **168 new checks** (677 total: 188 P1 + 141 P2 + 180 P3 + 168 P4), all passing
+- Tested `scanNextToken` step-by-step on **55 diverse YAML inputs** spanning:
+  - **Flow indicators:** empty/flat/nested sequences and mappings, 1–5 levels deep
+  - **Quoted scalars:** double-quoted, single-quoted, escape sequences, unicode
+  - **Block scalars:** literal (`|`), folded (`>`)
+  - **Block sequences:** flat, nested, 1–10 items
+  - **Block mappings:** flat, nested 1–6 levels deep
+  - **Explicit keys:** `?`/`:` syntax in block and flow
+  - **Document markers:** `---`, `...`, multi-document
+  - **Directives:** `%YAML 1.2`, `%TAG`
+  - **Mixed flow/block:** block with flow values/keys
+  - **Comments:** line, inline, comment-only
+  - **Anchors/aliases:** `&anc`, `*anc` in block and flow
+  - **Tags:** `!!str`, verbatim `!<...>`
+  - **Emitter output:** same adversarial inputs from P1–P3
+  - **Stress tests:** deep block nesting, wide sequences, kitchen-sink multi-doc
+- Each input checks at every `scanNextToken` step (3–35 steps per input):
+  1. No scan errors
+  2. **Prefix preservation** for corrected `n` (using first disjunct only)
+  3. **SK/EK invariant maintenance** (output disjunction)
+  4. **Original disjunct diagnostic** — counts steps where `∨ ek=none` would allow unsafe `n`
+
+**CRITICAL FINDING: Theorem statement has a false disjunction.**
+
+The original `h_cond` precondition:
+```
+(s.simpleKey.possible → s.simpleKey.tokenIndex ≥ n) ∨ s.explicitKeyLine = none
+```
+The second disjunct (`explicitKeyLine = none`) is **insufficient** for prefix preservation.
+Counterexample: `"a: b"` at step 1 — state has `sk.possible=true, sk.tokenIndex=1,
+ek=none`. The scanner encounters `:` and overwrites `tokens[1]` (placeholder → `.key`),
+violating prefix preservation for `n=4` (= `s.tokens.size`) even though `ek=none`.
+
+**46 of 55 inputs** exhibit steps where the original disjunction allows unsafe `n`.
+Prefix preservation holds correctly when `n` is restricted to
+`min(s.simpleKey.tokenIndex, s.tokens.size)` when `sk.possible=true`.
+
+**Corrected precondition should be:**
+```
+s.simpleKey.possible = true → s.simpleKey.tokenIndex ≥ n
+```
+(no `∨ explicitKeyLine = none` escape clause for prefix preservation).
+The `∨ explicitKeyLine = none` is still needed in the **conclusion** (output invariant)
+to maintain the inductive chain.
+
 ### Priority 4: Reflections
+
+- **Adversarial instantiation caught a false theorem statement.** This is the second time (after the `flowBracketBalance` fix in P1) that testing found a provably false claim. The `∨ explicitKeyLine = none` disjunct in the precondition allows prefix preservation to be claimed for indices above `simpleKey.tokenIndex`, where the scanner actively overwrites placeholder tokens.
+- **The corrected invariant works.** All 55 inputs pass with prefix preservation restricted to `n ≤ simpleKey.tokenIndex` (when `sk.possible`). The SK/EK output invariant is also maintained at every step.
+- **The issue is subtle.** `explicitKeyLine` and `simpleKey` are independent scanner mechanisms. `explicitKeyLine = none` means no explicit `?` key is active; it says nothing about whether the implicit simple-key mechanism will overwrite a placeholder. The disjunction conflates two unrelated conditions.
+- **Impact on proof effort:** The theorem statement must be corrected before the proof can succeed. The fix is straightforward — remove the `∨ explicitKeyLine = none` from the precondition and keep it only in the conclusion. The `ScanChain_preserves_raw_prefix` usage site may need adjustment to track the first conjunct through the chain.
+- **Residual risk:** LOW for the corrected statement. Prefix preservation below `simpleKey.tokenIndex` and SK/EK invariant maintenance are both empirically verified across all 55 inputs with no failures.
+
+### Priority 4: Theorem Repair
+
+**Theorems repaired (3):**
+
+| Theorem | Location | Fix |
+|---------|----------|-----|
+| `scanNextToken_prefix_and_sk_inv` | EmitterScannability.lean:6623 | Removed `∨ s.explicitKeyLine = none` from **precondition**. Conclusion's disjunction kept (needed for flow close). |
+| `ScanChain_preserves_raw_prefix` | EmitterScannability.lean:6644 | Removed `∨ s.explicitKeyLine = none` from **precondition**. Proof changed to `sorry` (was a structural proof relying on the false per-step theorem). |
+| `ScanChain_filtered_prefix` | EmitterScannability.lean:7436 | **Statement unchanged** (it IS correct). Proof changed to `sorry` — old proof went through `ScanChain_preserves_raw_prefix` with `n₀ = tokens.size`, which requires the now-removed disjunction. Needs restructuring via non-placeholder preservation argument. |
+
+**Design decisions:**
+
+1. **Why keep the disjunction in the conclusion?** Computational testing showed that `sk'.possible → tokenIndex ≥ n` (without `∨ ek'=none`) FAILS for 26/55 inputs at the per-step level. Flow close (`]`/`}`) restores a simpleKey from the stack with `tokenIndex` potentially < `n`, but `ek` is `none` in those cases. The disjunction in the OUTPUT is genuine.
+
+2. **Why the chain theorem needs a different proof strategy:** The per-step conclusion gives `(sk'.possible → tokenIndex ≥ n₀) ∨ ek' = none`, but the next step's precondition needs the strong `sk'.possible → tokenIndex ≥ n₀` (no disjunction). When the disjunction gives `ek' = none`, a separate argument is needed. For typical `n₀` values (= initial `min(sk.tokenIndex, tokens.size)`, usually 1), the strong invariant holds trivially. The proof requires showing that stack-restored tokenIndices are ≥ n₀.
+
+3. **Why `ScanChain_filtered_prefix`'s statement is correct despite the disjunction:** The filtered prefix (excluding `.placeholder` tokens) IS preserved even when `tokens[sk.tokenIndex]` is overwritten, because `tokens[sk.tokenIndex]` is always a `.placeholder` (filtered OUT in both states). The proof needs to use this insight rather than going through raw prefix preservation.
+
+**Sorry count impact:** 11 → 13 warnings. The 2 new sorrys (`ScanChain_preserves_raw_prefix`, `ScanChain_filtered_prefix`) were previously "proven" but relied on a false sorry'd theorem — their proofs compiled but were unsound. Making them explicit sorrys is the honest fix.
+
+**New adversarial tests added (20 chain-level checks):**
+- 10 representative inputs tested with a **fixed `n₀`** across all scanning steps
+- Each input checks both chain-level prefix preservation AND the strong SK invariant
+- All 20/20 pass, confirming the corrected chain theorem's claim for `n₀ = min(sk₀.tokenIndex, tokens₀.size)`
+
+**Final test total:** 697/697 (was 677 before repair; +20 chain-level tests).
 
 ### Priority 5: ScannerBound theorems (preprocess, structural, content)
 
@@ -337,7 +415,7 @@ For each priority:
 3. Any check failure → investigate and fix the theorem statement before proving
 4. All checks pass → proceed to proof with increased confidence
 
-**Status:** Priority 1 complete (188/188). Priority 2 complete (141/141). Priority 3 complete (180/180). Total: 509/509. Priorities 4–5 to be added incrementally.
+**Status:** Priority 1 complete (188/188). Priority 2 complete (141/141). Priority 3 complete (180/180). Priority 4 complete (168→697 checks after repair, **false theorem found and repaired**). Total: 697/697. Priority 5 to be added.
 
 ### Priority 5: Accomplishments
 
