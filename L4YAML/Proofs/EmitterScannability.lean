@@ -6606,24 +6606,24 @@ theorem ScanChain_tokens_mono {s s' : ScannerState} {n : Nat}
 
 /-- Combined per-step prefix preservation and simpleKey invariant maintenance.
 
-    Uses a **disjunctive** hypothesis to handle both the initial chain entry
-    (where `simpleKey.possible = false` → left branch vacuously true) and
-    propagation through the chain (where `explicitKeyLine = none` → right branch).
+    **Precondition**: `n ≤ s.tokens.size` and the simpleKey condition
+    `s.simpleKey.possible → s.simpleKey.tokenIndex ≥ n`, which says that
+    the prefix index doesn't overlap the simpleKey placeholder position.
+    Without this, `scanNextToken` may overwrite `tokens[tokenIndex]`
+    (replacing `.placeholder` with `.key`), violating prefix preservation.
 
-    The disjunction is self-maintaining:
-    - `scanKey` (`?`): sets ek to some but clears sk.possible → left (vacuous).
-    - `scanValue` (`:`): sets ek to none → right.
-    - All other dispatches: preserve ek → right.
-    - Flow close (`]`/`}`): preserves ek → right.
-
-    For prefix, `dispatchBlockIndicators_preserves_prefix` needs only the CURRENT
-    simpleKey condition (not `SimpleKeyAbove`). The preprocessed simpleKey condition
-    follows from either branch of the disjunction via `preprocess_simpleKey_inv`. -/
+    **Note on the disjunctive conclusion**: The output invariant uses
+    `(sk'.possible → tokenIndex ≥ n) ∨ ek' = none` because some scanner
+    dispatches (flow close `]`/`}`) restore a simpleKey from the stack whose
+    `tokenIndex` may be below `n`, but in those cases `ek` is `none`.
+    The disjunction cannot appear in the *precondition*: adversarial testing
+    showed that `ek = none` alone does NOT prevent prefix-violating overwrites
+    (e.g., `"a: b"` step 1: sk.possible=true, tokenIndex=1, ek=none, scanner
+    overwrites tokens[1]). -/
 theorem scanNextToken_prefix_and_sk_inv (s s' : ScannerState)
     (h_next : scanNextToken s = .ok (some s'))
     (n : Nat) (h_n : n ≤ s.tokens.size)
-    (h_cond : (s.simpleKey.possible = true → s.simpleKey.tokenIndex ≥ n) ∨
-              s.explicitKeyLine = none) :
+    (h_cond : s.simpleKey.possible = true → s.simpleKey.tokenIndex ≥ n) :
     (∀ (i : Nat) (hi : i < n),
       s'.tokens[i]'(by have := ScannerCorrectness.scanNextToken_adds_tokens s s' h_next; omega) =
       s.tokens[i]'(by omega)) ∧
@@ -6631,24 +6631,29 @@ theorem scanNextToken_prefix_and_sk_inv (s s' : ScannerState)
      s'.explicitKeyLine = none) := sorry
 
 /-- Through a ScanChain, all raw token positions below `n₀` are preserved,
-    provided `n₀ ≤ s.tokens.size` and the initial disjunctive condition holds.
-    The disjunctive condition (simpleKey valid ∨ explicitKeyLine = none)
-    is automatically maintained through the chain by `scanNextToken_prefix_and_sk_inv`. -/
+    provided `n₀ ≤ s.tokens.size` and the simpleKey doesn't overlap the prefix
+    (`s.simpleKey.possible → tokenIndex ≥ n₀`).
+
+    Note: the per-step theorem's conclusion uses a disjunctive `∨ ek = none`
+    invariant, but the inductive step requires resolving the `ek = none` branch
+    back to the strong `sk.possible → tokenIndex ≥ n₀` form. This holds when
+    `n₀` is chosen as `min(sk₀.tokenIndex, tokens₀.size)` at the chain start,
+    since restored simpleKey tokenIndices from the stack are ≥ 1 ≥ n₀ for
+    typical n₀ values. The proof requires case analysis on the disjunction at
+    each inductive step. -/
 theorem ScanChain_preserves_raw_prefix {s s' : ScannerState} {k : Nat}
     (h_chain : ScanChain s k s')
     (n₀ : Nat) (h_n₀ : n₀ ≤ s.tokens.size)
-    (h_cond : (s.simpleKey.possible = true → s.simpleKey.tokenIndex ≥ n₀) ∨
-              s.explicitKeyLine = none)
+    (h_cond : s.simpleKey.possible = true → s.simpleKey.tokenIndex ≥ n₀)
     (i : Nat) (hi : i < n₀) :
     s'.tokens[i]'(by have := ScanChain_tokens_mono h_chain; omega) =
     s.tokens[i]'(by omega) := by
-  induction h_chain with
-  | zero => rfl
-  | step h_snt _h_rest ih =>
-    have h_mono := ScannerCorrectness.scanNextToken_adds_tokens _ _ h_snt
-    have ⟨h_pres, h_cond'⟩ := scanNextToken_prefix_and_sk_inv _ _ h_snt
-      n₀ h_n₀ h_cond
-    exact (ih (by omega) h_cond').trans (h_pres i hi)
+  -- Proof sketch: induction on h_chain, using scanNextToken_prefix_and_sk_inv
+  -- at each step. The disjunctive conclusion needs resolution: when the step
+  -- yields the ek=none branch, a separate argument shows sk'.tokenIndex ≥ n₀
+  -- (scanner only sets tokenIndex to current tokens.size ≥ n₀, and stack pops
+  -- restore tokenIndex ≥ initial simpleKey position ≥ n₀).
+  sorry
 
 /-- If `b` extends `a` (same elements at all positions `i < a.size`), then
     `b.filter p` has `a.filter p` as a prefix. -/
@@ -7415,16 +7420,26 @@ theorem ScanChain_filtered_grows {s s' : ScannerState} {n : Nat}
 /-- Through a ScanChain, the filtered token array of the final state has the
     filtered array of the initial state as a prefix. Requires the initial disjunctive
     condition (trivially satisfied via `.inr h_ek` when `s.explicitKeyLine = none`,
-    e.g. after `scanFlowSequenceStart`). -/
+    e.g. after `scanFlowSequenceStart`).
+
+    Note: This theorem's *statement* is correct — the `∨ ek = none` disjunction
+    in the precondition is fine here because filtered tokens exclude placeholders,
+    and the only position the scanner overwrites (`simpleKey.tokenIndex`) IS a
+    placeholder. The proof needs restructuring however: it cannot go through
+    `ScanChain_preserves_raw_prefix` with `n₀ = s.tokens.size` since that would
+    require the stronger precondition `sk.possible → tokenIndex ≥ tokens.size`.
+    Instead, it should either:
+    (a) use a per-step lemma about non-placeholder preservation, or
+    (b) use `ScanChain_preserves_raw_prefix` with the smaller
+        `n₀ = min(sk.tokenIndex, tokens.size)` and handle the placeholder position
+        separately. -/
 theorem ScanChain_filtered_prefix {s s' : ScannerState} {n : Nat}
     (h_chain : ScanChain s n s')
     (h_cond : (s.simpleKey.possible = true → s.simpleKey.tokenIndex ≥ s.tokens.size) ∨
               s.explicitKeyLine = none) :
     let p := fun (t : Positioned YamlToken) => t.val != .placeholder
     ∃ suffix, (s'.tokens.filter p).toList = (s.tokens.filter p).toList ++ suffix := by
-  exact Array_filter_prefix_of_raw_prefix s.tokens s'.tokens _
-    (ScanChain_tokens_mono h_chain)
-    (fun i hi => ScanChain_preserves_raw_prefix h_chain s.tokens.size (by omega) h_cond i hi)
+  sorry
 
 /-- `emitPairList` for non-empty pairs produces a non-empty string. -/
 theorem emitPairList_toList_ne_nil (p : YamlValue × YamlValue)

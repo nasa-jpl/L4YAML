@@ -635,12 +635,308 @@ private def test9ab (state : IO.Ref TestCollector) : IO Unit := do
                         (sv "roles", seqv [sv "user"])]]),
            (sv "version", sv "2.0")])
 
+/-! ## Priority 4 — Theorem 9e (scanner prefix invariant)
+
+Theorem `scanNextToken_prefix_and_sk_inv` claims that for each `scanNextToken` step
+from `s` to `s'`, given any prefix index `n ≤ s.tokens.size`:
+
+1. **Prefix preservation:** `∀ i < n, s'.tokens[i] = s.tokens[i]`
+2. **Disjunctive SK/EK output invariant:** Either `s'.simpleKey.possible → s'.simpleKey.tokenIndex ≥ n`,
+   or `s'.explicitKeyLine = none`.
+
+**Corrected precondition**: The precondition uses `s.simpleKey.possible → tokenIndex ≥ n`
+(NO disjunction). The original theorem had `∨ s.explicitKeyLine = none` in the precondition,
+which was FALSE: adversarial testing found that when `ek = none` but `sk.possible = true`
+and `sk.tokenIndex < n`, the scanner overwrites `tokens[sk.tokenIndex]` (placeholder → key),
+violating prefix preservation. Counterexample: `"a: b"` at step 1.
+
+The disjunction is correct in the OUTPUT (conclusion) because flow close operations restore
+simpleKeys from the stack with tokenIndex potentially < n, but in those cases ek is none.
+
+**Chain-level tests** verify that with `n₀` fixed at the initial state, both prefix
+preservation and the strong SK invariant hold across the full scanning chain.
+-/
+
+/-- Check the prefix-and-sk invariant for one scanNextToken step.
+    Uses the maximum valid n for which the precondition
+    `sk.possible → sk.tokenIndex ≥ n` holds (the CORRECTED precondition
+    after removing the false `∨ ek = none` disjunction).
+    Returns `(n, prefixOk, skInvOk, origPrecondFails)`.
+    `skInvOk` checks the disjunctive OUTPUT: `(sk'.possible → tokenIndex ≥ n) ∨ ek'=none`.
+    `origPrecondFails` = true when the original (broken) theorem's disjunction
+    would give a larger n that causes prefix violation. -/
+private def checkPrefixSkStep (s s' : ScannerState) :
+    Nat × Bool × Bool × Bool :=
+  -- Max n where precondition (sk.possible → sk.tokenIndex ≥ n) holds:
+  let n :=
+    if s.simpleKey.possible then
+      min s.simpleKey.tokenIndex s.tokens.size
+    else
+      s.tokens.size
+
+  -- The n the original (broken) theorem would use (including second disjunct):
+  let nOrig :=
+    if s.explicitKeyLine.isNone then
+      s.tokens.size  -- second disjunct allows max n
+    else
+      n  -- same as corrected
+
+  -- 1. Prefix preservation for corrected n
+  let prefixOk := (List.range n).all fun i =>
+    if h : i < s.tokens.size then
+      if h' : i < s'.tokens.size then
+        s'.tokens[i] == s.tokens[i]
+      else false
+    else true
+
+  -- 2. Disjunctive output invariant: (sk'.possible → tokenIndex ≥ n) ∨ ek'=none
+  let skInvOk :=
+    (if s'.simpleKey.possible then s'.simpleKey.tokenIndex ≥ n else true) ||
+    s'.explicitKeyLine.isNone
+
+  -- 3. Does the original (broken) precondition give a DIFFERENT (larger) n?
+  let origPrecondFails := nOrig > n
+
+  (n, prefixOk, skInvOk, origPrecondFails)
+
+/-- Drive scanning step-by-step through an input string, checking the invariant at each step.
+    Returns the number of steps taken and whether any check failed. -/
+private def checkScanInvariant (state : IO.Ref TestCollector)
+    (label : String) (input : String) : IO Unit := do
+  let s0 := ScannerState.mk' input
+  let s0 := s0.emit .streamStart
+  -- Handle BOM
+  let s0 := match s0.peek? with
+    | some '\uFEFF' => s0.advance
+    | _ => s0
+  let fuel := (input.utf8ByteSize + 1) * 4
+  let mut s := s0
+  let mut step := 0
+  let mut allPrefixOk := true
+  let mut allSkInvOk := true
+  let mut lastFailInfo := ""
+  let mut minN := 999999  -- track minimum n across steps (diagnostic)
+  let mut maxN := 0       -- track maximum n across steps (diagnostic)
+  let mut origDisjunctIssues := 0  -- count steps where ∨ek=none gives bad n
+  for _ in [:fuel] do
+    match scanNextToken s with
+    | .error e =>
+      checkM state s!"{label}: no scan error" false s!"step {step}: {repr e}"
+      return
+    | .ok none =>
+      -- End of input
+      break
+    | .ok (some s') =>
+      let (n, prefixOk, skInvOk, origPrecondFails) := checkPrefixSkStep s s'
+      if n < minN then minN := n
+      if n > maxN then maxN := n
+      if !prefixOk then
+        allPrefixOk := false
+        lastFailInfo := s!"prefix fail at step {step}, n={n}, s.tokens={s.tokens.size}→s'.tokens={s'.tokens.size}, sk.possible={s.simpleKey.possible}, sk.tokenIndex={s.simpleKey.tokenIndex}, ek={repr s.explicitKeyLine}"
+      if !skInvOk then
+        allSkInvOk := false
+        lastFailInfo := s!"sk_inv fail at step {step}: sk.possible={s'.simpleKey.possible}, sk.tokenIndex={s'.simpleKey.tokenIndex}, n={n}, explicitKeyLine={repr s'.explicitKeyLine}"
+      if origPrecondFails then
+        origDisjunctIssues := origDisjunctIssues + 1
+      s := s'
+      step := step + 1
+  checkM state s!"{label}: prefix preserved ({step} steps, n∈[{minN},{maxN}])" allPrefixOk lastFailInfo
+  checkM state s!"{label}: sk/ek output invariant ({step} steps)" allSkInvOk lastFailInfo
+  -- Report steps where the original theorem's ∨ek=none disjunct would allow
+  -- a larger n that causes prefix violation (counterexample to original statement)
+  if origDisjunctIssues > 0 then
+    check state s!"{label}: original h_cond disjunct issues ({origDisjunctIssues} steps)" true
+
+/-- Check the chain-level invariant: fix `n₀` at the initial state and verify that
+    1. prefix preservation (`∀ i < n₀, s_k.tokens[i] = s₀.tokens[i]`) holds at EVERY step
+    2. strong SK invariant (`sk_k.possible → tokenIndex_k ≥ n₀`) holds at EVERY step
+    This tests whether `ScanChain_preserves_raw_prefix` can work without the
+    `∨ explicitKeyLine = none` disjunction. -/
+private def checkChainInvariant (state : IO.Ref TestCollector)
+    (label : String) (input : String) : IO Unit := do
+  let s0 := ScannerState.mk' input
+  let s0 := s0.emit .streamStart
+  let s0 := match s0.peek? with
+    | some '\uFEFF' => s0.advance
+    | _ => s0
+  -- Fix n₀ at start: max n where sk.possible → tokenIndex ≥ n₀
+  let n₀ :=
+    if s0.simpleKey.possible then
+      min s0.simpleKey.tokenIndex s0.tokens.size
+    else
+      s0.tokens.size
+  let fuel := (input.utf8ByteSize + 1) * 4
+  let mut s := s0
+  let mut step := 0
+  let mut allPrefixOk := true
+  let mut allStrongSkOk := true
+  let mut lastFailInfo := ""
+  for _ in [:fuel] do
+    match scanNextToken s with
+    | .error e =>
+      checkM state s!"{label} chain: no scan error" false s!"step {step}: {repr e}"
+      return
+    | .ok none => break
+    | .ok (some s') =>
+      -- Chain prefix: s'.tokens[i] = s₀.tokens[i] for i < n₀
+      let chainPrefixOk := (List.range n₀).all fun i =>
+        if h : i < s0.tokens.size then
+          if h' : i < s'.tokens.size then
+            s'.tokens[i] == s0.tokens[i]
+          else false
+        else true
+      -- Strong SK at every intermediate state
+      let strongSkOk :=
+        if s'.simpleKey.possible then s'.simpleKey.tokenIndex ≥ n₀ else true
+      if !chainPrefixOk then
+        allPrefixOk := false
+        lastFailInfo := s!"chain prefix fail at step {step}, n₀={n₀}, s'.tokens.size={s'.tokens.size}"
+      if !strongSkOk then
+        allStrongSkOk := false
+        lastFailInfo := s!"chain sk fail at step {step}: sk'.possible={s'.simpleKey.possible}, sk'.tokenIndex={s'.simpleKey.tokenIndex}, n₀={n₀}"
+      s := s'
+      step := step + 1
+  checkM state s!"{label} chain: prefix preserved (n₀={n₀}, {step} steps)" allPrefixOk lastFailInfo
+  checkM state s!"{label} chain: strong sk invariant (n₀={n₀}, {step} steps)" allStrongSkOk lastFailInfo
+
+/-! ## Priority 4 Test Suites -/
+
+private def test9e (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "9e: scanNextToken_prefix_and_sk_inv"
+
+  -- Flow indicators (exercises dispatchFlowIndicators)
+  checkScanInvariant state "flow-seq-empty" "[]"
+  checkScanInvariant state "flow-seq-1" "[a]"
+  checkScanInvariant state "flow-seq-2" "[a, b]"
+  checkScanInvariant state "flow-seq-3" "[a, b, c]"
+  checkScanInvariant state "flow-map-empty" "{}"
+  checkScanInvariant state "flow-map-1" "{a: b}"
+  checkScanInvariant state "flow-map-2" "{a: b, c: d}"
+
+  -- Nested flow (exercises simpleKeyStack save/restore)
+  checkScanInvariant state "flow-nested-1" "[[a, b], c]"
+  checkScanInvariant state "flow-nested-2" "[{a: b}, c]"
+  checkScanInvariant state "flow-nested-3" "{a: [b, c]}"
+  checkScanInvariant state "flow-nested-deep" "[[[a]]]"
+  checkScanInvariant state "flow-nested-mixed" "[{a: [b, {c: d}]}, e]"
+
+  -- Quoted scalars (exercises scanFlowScalar / scanDoubleQuotedScalar)
+  checkScanInvariant state "dquoted" "\"hello world\""
+  checkScanInvariant state "squoted" "'hello world'"
+  checkScanInvariant state "dquoted-escape" "\"line1\\nline2\""
+  checkScanInvariant state "dquoted-unicode" "\"\\u0041\""
+  checkScanInvariant state "flow-dquoted" "[\"a\", \"b\"]"
+  checkScanInvariant state "flow-squoted" "['a', 'b']"
+
+  -- Block scalars (exercises scanBlockScalar)
+  checkScanInvariant state "block-literal" "|\n  line1\n  line2"
+  checkScanInvariant state "block-folded" ">\n  line1\n  line2"
+
+  -- Block sequences (exercises scanBlockEntry)
+  checkScanInvariant state "block-seq-1" "- a"
+  checkScanInvariant state "block-seq-2" "- a\n- b"
+  checkScanInvariant state "block-seq-3" "- a\n- b\n- c"
+  checkScanInvariant state "block-seq-nested" "- - a\n  - b"
+
+  -- Block mappings (exercises scanKey / scanValue)
+  checkScanInvariant state "block-map-1" "a: b"
+  checkScanInvariant state "block-map-2" "a: b\nc: d"
+  checkScanInvariant state "block-map-nested" "a:\n  b: c"
+  checkScanInvariant state "block-map-deep" "a:\n  b:\n    c: d"
+
+  -- Explicit keys (exercises explicit key path — sets explicitKeyLine)
+  checkScanInvariant state "explicit-key" "? a\n: b"
+  checkScanInvariant state "explicit-key-flow" "{? a: b}"
+
+  -- Document markers (exercises scanDocumentStart / scanDocumentEnd)
+  checkScanInvariant state "doc-start" "---\na: b"
+  checkScanInvariant state "doc-end" "a: b\n..."
+  checkScanInvariant state "multi-doc" "---\na: b\n...\n---\nc: d"
+
+  -- Directives (exercises scanDirective)
+  checkScanInvariant state "yaml-directive" "%YAML 1.2\n---\na: b"
+  checkScanInvariant state "tag-directive" "%TAG !t! tag:example.com,2000:\n---\na: b"
+
+  -- Mixed flow/block
+  checkScanInvariant state "block-with-flow-val" "items: [a, b, c]"
+  checkScanInvariant state "block-with-flow-map" "config: {debug: true}"
+  checkScanInvariant state "block-seq-flow-vals" "- [a, b]\n- {c: d}"
+
+  -- Comments (exercises comment scanning)
+  checkScanInvariant state "comment-line" "# comment\na: b"
+  checkScanInvariant state "comment-inline" "a: b # comment"
+  checkScanInvariant state "comment-only" "# just a comment"
+
+  -- Anchors and aliases (exercises anchor/alias scanning)
+  checkScanInvariant state "anchor" "&anc a"
+  checkScanInvariant state "anchor-alias" "&anc a\n*anc"
+  checkScanInvariant state "anchor-flow" "[&anc a, *anc]"
+
+  -- Tags (exercises tag scanning)
+  checkScanInvariant state "tag-named" "!!str hello"
+  checkScanInvariant state "tag-verbatim" "!<tag:yaml.org,2002:str> hello"
+
+  -- Empty/minimal inputs
+  checkScanInvariant state "empty" ""
+  checkScanInvariant state "whitespace-only" "   "
+  checkScanInvariant state "newline-only" "\n"
+  checkScanInvariant state "just-scalar" "hello"
+
+  -- Plain scalars with tricky chars
+  checkScanInvariant state "plain-colon-space" "a : b"
+  checkScanInvariant state "plain-multiword" "hello world"
+
+  -- Emitter output (exercises exact token patterns from theorems 9a/9b)
+  checkScanInvariant state "emit-seq" (emit (seqv [sv "a", sv "b"]))
+  checkScanInvariant state "emit-map" (emit (mapv [(sv "k", sv "v")]))
+  checkScanInvariant state "emit-nested"
+    (emit (seqv [mapv [(sv "k", seqv [sv "a", sv "b"])]]))
+  checkScanInvariant state "emit-deep"
+    (emit (seqv [seqv [seqv [seqv [sv "a"]]]]))
+  checkScanInvariant state "emit-wide"
+    (emit (mapv [(sv "a", sv "1"), (sv "b", sv "2"), (sv "c", sv "3"),
+                 (sv "d", sv "4"), (sv "e", sv "5"), (sv "f", sv "6")]))
+  checkScanInvariant state "emit-complex"
+    (emit (mapv [(sv "users",
+                  seqv [mapv [(sv "name", sv "alice"),
+                              (sv "roles", seqv [sv "admin", sv "user"])],
+                        mapv [(sv "name", sv "bob"),
+                              (sv "roles", seqv [sv "user"])]]),
+                 (sv "version", sv "2.0")]))
+
+  -- Stress: many steps (deep block nesting)
+  checkScanInvariant state "deep-block"
+    "a:\n  b:\n    c:\n      d:\n        e:\n          f: val"
+
+  -- Stress: wide block sequence
+  checkScanInvariant state "wide-block-seq"
+    "- a\n- b\n- c\n- d\n- e\n- f\n- g\n- h\n- i\n- j"
+
+  -- Stress: mixed everything
+  checkScanInvariant state "kitchen-sink"
+    "%YAML 1.2\n---\nitems:\n  - name: \"alice\"\n    roles: [admin, user]\n  - name: 'bob'\n    tags:\n      ? key1\n      : val1\n...\n---\nsecond: doc"
+
+  -- Chain-level invariant tests (fixed n₀ across all steps)
+  checkChainInvariant state "flow-seq-2" "[a, b]"
+  checkChainInvariant state "flow-map-1" "{a: b}"
+  checkChainInvariant state "flow-nested-mixed" "[{a: [b, {c: d}]}, e]"
+  checkChainInvariant state "block-map-1" "a: b"
+  checkChainInvariant state "block-map-2" "a: b\nc: d"
+  checkChainInvariant state "block-seq-2" "- a\n- b"
+  checkChainInvariant state "explicit-key" "? a\n: b"
+  checkChainInvariant state "multi-doc" "---\na: b\n...\n---\nc: d"
+  checkChainInvariant state "emit-nested"
+    (emit (seqv [mapv [(sv "k", seqv [sv "a", sv "b"])]]))
+  checkChainInvariant state "kitchen-sink"
+    "%YAML 1.2\n---\nitems:\n  - name: \"alice\"\n    roles: [admin, user]\n  - name: 'bob'\n    tags:\n      ? key1\n      : val1\n...\n---\nsecond: doc"
+
 def collectTests : IO VerifiedSuiteResult := do
   let state ← IO.mkRef ({} : TestCollector)
   test9g state
   test9h state
   test9cd state
   test9ab state
+  test9e state
   let results ← finish state
   return { name := "adversarialinstantiation",
            label := "Adversarial Instantiation Tests (sorry audit)",
