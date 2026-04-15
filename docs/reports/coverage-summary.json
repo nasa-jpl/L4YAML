@@ -1,5 +1,5 @@
 {
-  "date": "2026-04-14T23:14:05-0700",
+  "date": "2026-04-15T07:58:29-0700",
   "overall": {
     "applicable": 358,
     "correct": 358,
@@ -7592,7 +7592,7 @@
       {
         "allPass": true,
         "label": "Adversarial Instantiation Tests (sorry audit)",
-        "passed": 697,
+        "passed": 993,
         "tests": [
           {
             "category": "9g: emitList_body_filtered_characterization",
@@ -11078,9 +11078,1489 @@
             "category": "9e: scanNextToken_prefix_and_sk_inv",
             "name": "kitchen-sink chain: strong sk invariant (n₀=1, 30 steps)",
             "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "indent-2: offset ≤ inputEnd (5 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "indent-2: inputEnd preserved (5 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "indent-2: input preserved (5 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "indent-2: offset at char boundary (5 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "indent-3: offset ≤ inputEnd (7 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "indent-3: inputEnd preserved (7 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "indent-3: input preserved (7 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "indent-3: offset at char boundary (7 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "indent-4: offset ≤ inputEnd (9 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "indent-4: inputEnd preserved (9 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "indent-4: input preserved (9 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "indent-4: offset at char boundary (9 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "indent-6: offset ≤ inputEnd (13 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "indent-6: inputEnd preserved (13 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "indent-6: input preserved (13 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "indent-6: offset at char boundary (13 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "indent-8: offset ≤ inputEnd (17 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "indent-8: inputEnd preserved (17 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "indent-8: input preserved (17 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "indent-8: offset at char boundary (17 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "indent-unwind: offset ≤ inputEnd (10 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "indent-unwind: inputEnd preserved (10 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "indent-unwind: input preserved (10 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "indent-unwind: offset at char boundary (10 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "indent-unwind-deep: offset ≤ inputEnd (15 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "indent-unwind-deep: inputEnd preserved (15 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "indent-unwind-deep: input preserved (15 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "indent-unwind-deep: offset at char boundary (15 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "seq-indent-cycle: offset ≤ inputEnd (11 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "seq-indent-cycle: inputEnd preserved (11 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "seq-indent-cycle: input preserved (11 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "seq-indent-cycle: offset at char boundary (11 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "skip-spaces: offset ≤ inputEnd (3 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "skip-spaces: inputEnd preserved (3 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "skip-spaces: input preserved (3 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "skip-spaces: offset at char boundary (3 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "skip-tabs: offset ≤ inputEnd (0 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "skip-tabs: inputEnd preserved (0 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "skip-tabs: input preserved (0 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "skip-tabs: offset at char boundary (0 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "skip-comment: offset ≤ inputEnd (3 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "skip-comment: inputEnd preserved (3 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "skip-comment: input preserved (3 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "skip-comment: offset at char boundary (3 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "skip-multi-comment: offset ≤ inputEnd (3 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "skip-multi-comment: inputEnd preserved (3 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "skip-multi-comment: input preserved (3 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "skip-multi-comment: offset at char boundary (3 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "skip-blank-lines: offset ≤ inputEnd (3 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "skip-blank-lines: inputEnd preserved (3 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "skip-blank-lines: input preserved (3 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "skip-blank-lines: offset at char boundary (3 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "skip-mixed: offset ≤ inputEnd (3 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "skip-mixed: inputEnd preserved (3 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "skip-mixed: input preserved (3 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "skip-mixed: offset at char boundary (3 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "doc-start: offset ≤ inputEnd (4 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "doc-start: inputEnd preserved (4 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "doc-start: input preserved (4 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "doc-start: offset at char boundary (4 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "doc-end: offset ≤ inputEnd (4 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "doc-end: inputEnd preserved (4 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "doc-end: input preserved (4 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "doc-end: offset at char boundary (4 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "multi-doc: offset ≤ inputEnd (10 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "multi-doc: inputEnd preserved (10 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "multi-doc: input preserved (10 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "multi-doc: offset at char boundary (10 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "yaml-directive: offset ≤ inputEnd (5 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "yaml-directive: inputEnd preserved (5 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "yaml-directive: input preserved (5 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "yaml-directive: offset at char boundary (5 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "tag-directive: offset ≤ inputEnd (5 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "tag-directive: inputEnd preserved (5 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "tag-directive: input preserved (5 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "tag-directive: offset at char boundary (5 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "multi-directive: offset ≤ inputEnd (7 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "multi-directive: inputEnd preserved (7 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "multi-directive: input preserved (7 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "multi-directive: offset at char boundary (7 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "dquoted-simple: offset ≤ inputEnd (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "dquoted-simple: inputEnd preserved (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "dquoted-simple: input preserved (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "dquoted-simple: offset at char boundary (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "dquoted-escape: offset ≤ inputEnd (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "dquoted-escape: inputEnd preserved (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "dquoted-escape: input preserved (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "dquoted-escape: offset at char boundary (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "dquoted-unicode-escape: offset ≤ inputEnd (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "dquoted-unicode-escape: inputEnd preserved (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "dquoted-unicode-escape: input preserved (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "dquoted-unicode-escape: offset at char boundary (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "dquoted-long: offset ≤ inputEnd (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "dquoted-long: inputEnd preserved (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "dquoted-long: input preserved (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "dquoted-long: offset at char boundary (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "dquoted-multiline: offset ≤ inputEnd (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "dquoted-multiline: inputEnd preserved (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "dquoted-multiline: input preserved (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "dquoted-multiline: offset at char boundary (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "dquoted-empty: offset ≤ inputEnd (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "dquoted-empty: inputEnd preserved (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "dquoted-empty: input preserved (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "dquoted-empty: offset at char boundary (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "squoted-simple: offset ≤ inputEnd (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "squoted-simple: inputEnd preserved (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "squoted-simple: input preserved (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "squoted-simple: offset at char boundary (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "squoted-escape: offset ≤ inputEnd (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "squoted-escape: inputEnd preserved (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "squoted-escape: input preserved (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "squoted-escape: offset at char boundary (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "squoted-long: offset ≤ inputEnd (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "squoted-long: inputEnd preserved (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "squoted-long: input preserved (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "squoted-long: offset at char boundary (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "squoted-multiline: offset ≤ inputEnd (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "squoted-multiline: inputEnd preserved (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "squoted-multiline: input preserved (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "squoted-multiline: offset at char boundary (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "block-literal: offset ≤ inputEnd (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "block-literal: inputEnd preserved (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "block-literal: input preserved (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "block-literal: offset at char boundary (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "block-folded: offset ≤ inputEnd (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "block-folded: inputEnd preserved (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "block-folded: input preserved (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "block-folded: offset at char boundary (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "block-literal-long: offset ≤ inputEnd (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "block-literal-long: inputEnd preserved (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "block-literal-long: input preserved (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "block-literal-long: offset at char boundary (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "block-keep: offset ≤ inputEnd (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "block-keep: inputEnd preserved (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "block-keep: input preserved (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "block-keep: offset at char boundary (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "block-strip: offset ≤ inputEnd (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "block-strip: inputEnd preserved (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "block-strip: input preserved (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "block-strip: offset at char boundary (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "block-indent: offset ≤ inputEnd (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "block-indent: inputEnd preserved (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "block-indent: input preserved (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "block-indent: offset at char boundary (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "plain-simple: offset ≤ inputEnd (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "plain-simple: inputEnd preserved (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "plain-simple: input preserved (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "plain-simple: offset at char boundary (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "plain-multiword: offset ≤ inputEnd (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "plain-multiword: inputEnd preserved (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "plain-multiword: input preserved (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "plain-multiword: offset at char boundary (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "plain-long: offset ≤ inputEnd (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "plain-long: inputEnd preserved (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "plain-long: input preserved (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "plain-long: offset at char boundary (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "plain-multiline: offset ≤ inputEnd (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "plain-multiline: inputEnd preserved (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "plain-multiline: input preserved (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "plain-multiline: offset at char boundary (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "anchor-short: offset ≤ inputEnd (2 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "anchor-short: inputEnd preserved (2 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "anchor-short: input preserved (2 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "anchor-short: offset at char boundary (2 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "anchor-long: offset ≤ inputEnd (2 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "anchor-long: inputEnd preserved (2 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "anchor-long: input preserved (2 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "anchor-long: offset at char boundary (2 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "alias-short: offset ≤ inputEnd (2 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "alias-short: inputEnd preserved (2 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "alias-short: input preserved (2 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "alias-short: offset at char boundary (2 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "alias-long: offset ≤ inputEnd (2 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "alias-long: inputEnd preserved (2 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "alias-long: input preserved (2 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "alias-long: offset at char boundary (2 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "tag-named: offset ≤ inputEnd (2 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "tag-named: inputEnd preserved (2 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "tag-named: input preserved (2 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "tag-named: offset at char boundary (2 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "tag-verbatim: offset ≤ inputEnd (2 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "tag-verbatim: inputEnd preserved (2 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "tag-verbatim: input preserved (2 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "tag-verbatim: offset at char boundary (2 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "tag-custom: offset ≤ inputEnd (2 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "tag-custom: inputEnd preserved (2 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "tag-custom: input preserved (2 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "tag-custom: offset at char boundary (2 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "utf8-2byte: offset ≤ inputEnd (3 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "utf8-2byte: inputEnd preserved (3 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "utf8-2byte: input preserved (3 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "utf8-2byte: offset at char boundary (3 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "utf8-3byte: offset ≤ inputEnd (3 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "utf8-3byte: inputEnd preserved (3 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "utf8-3byte: input preserved (3 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "utf8-3byte: offset at char boundary (3 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "utf8-4byte: offset ≤ inputEnd (3 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "utf8-4byte: inputEnd preserved (3 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "utf8-4byte: input preserved (3 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "utf8-4byte: offset at char boundary (3 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "utf8-mixed: offset ≤ inputEnd (6 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "utf8-mixed: inputEnd preserved (6 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "utf8-mixed: input preserved (6 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "utf8-mixed: offset at char boundary (6 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "utf8-dquoted: offset ≤ inputEnd (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "utf8-dquoted: inputEnd preserved (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "utf8-dquoted: input preserved (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "utf8-dquoted: offset at char boundary (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "utf8-squoted: offset ≤ inputEnd (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "utf8-squoted: inputEnd preserved (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "utf8-squoted: input preserved (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "utf8-squoted: offset at char boundary (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "utf8-plain: offset ≤ inputEnd (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "utf8-plain: inputEnd preserved (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "utf8-plain: input preserved (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "utf8-plain: offset at char boundary (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "utf8-anchor: offset ≤ inputEnd (2 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "utf8-anchor: inputEnd preserved (2 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "utf8-anchor: input preserved (2 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "utf8-anchor: offset at char boundary (2 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "utf8-tag: offset ≤ inputEnd (2 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "utf8-tag: inputEnd preserved (2 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "utf8-tag: input preserved (2 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "utf8-tag: offset at char boundary (2 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "utf8-block-literal: offset ≤ inputEnd (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "utf8-block-literal: inputEnd preserved (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "utf8-block-literal: input preserved (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "utf8-block-literal: offset at char boundary (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "utf8-deep: offset ≤ inputEnd (13 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "utf8-deep: inputEnd preserved (13 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "utf8-deep: input preserved (13 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "utf8-deep: offset at char boundary (13 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "utf8-emoji: offset ≤ inputEnd (3 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "utf8-emoji: inputEnd preserved (3 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "utf8-emoji: input preserved (3 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "utf8-emoji: offset at char boundary (3 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "utf8-flow: offset ≤ inputEnd (7 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "utf8-flow: inputEnd preserved (7 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "utf8-flow: input preserved (7 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "utf8-flow: offset at char boundary (7 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "utf8-flow-map: offset ≤ inputEnd (9 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "utf8-flow-map: inputEnd preserved (9 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "utf8-flow-map: input preserved (9 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "utf8-flow-map: offset at char boundary (9 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "all-phases: offset ≤ inputEnd (23 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "all-phases: inputEnd preserved (23 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "all-phases: input preserved (23 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "all-phases: offset at char boundary (23 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "deep-flow-nested: offset ≤ inputEnd (25 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "deep-flow-nested: inputEnd preserved (25 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "deep-flow-nested: input preserved (25 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "deep-flow-nested: offset at char boundary (25 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "wide-mixed-content: offset ≤ inputEnd (18 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "wide-mixed-content: inputEnd preserved (18 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "wide-mixed-content: input preserved (18 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "wide-mixed-content: offset at char boundary (18 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "emit-seq: offset ≤ inputEnd (7 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "emit-seq: inputEnd preserved (7 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "emit-seq: input preserved (7 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "emit-seq: offset at char boundary (7 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "emit-map: offset ≤ inputEnd (9 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "emit-map: inputEnd preserved (9 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "emit-map: input preserved (9 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "emit-map: offset at char boundary (9 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "emit-nested: offset ≤ inputEnd (11 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "emit-nested: inputEnd preserved (11 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "emit-nested: input preserved (11 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "emit-nested: offset at char boundary (11 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "emit-deep: offset ≤ inputEnd (9 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "emit-deep: inputEnd preserved (9 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "emit-deep: input preserved (9 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "emit-deep: offset at char boundary (9 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "emit-complex: offset ≤ inputEnd (35 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "emit-complex: inputEnd preserved (35 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "emit-complex: input preserved (35 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "emit-complex: offset at char boundary (35 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "emit-utf8: offset ≤ inputEnd (9 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "emit-utf8: inputEnd preserved (9 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "emit-utf8: input preserved (9 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "emit-utf8: offset at char boundary (9 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "empty: offset ≤ inputEnd (0 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "empty: inputEnd preserved (0 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "empty: input preserved (0 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "empty: offset at char boundary (0 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "whitespace-only: offset ≤ inputEnd (0 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "whitespace-only: inputEnd preserved (0 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "whitespace-only: input preserved (0 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "whitespace-only: offset at char boundary (0 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "newlines-only: offset ≤ inputEnd (0 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "newlines-only: inputEnd preserved (0 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "newlines-only: input preserved (0 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "newlines-only: offset at char boundary (0 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "bom: offset ≤ inputEnd (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "bom: inputEnd preserved (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "bom: input preserved (1 steps)",
+            "outcome": "pass"
+          },
+          {
+            "category": "5: BoundInv preservation (preprocess/structural/content)",
+            "name": "bom: offset at char boundary (1 steps)",
+            "outcome": "pass"
           }
         ],
-        "total": 697
+        "total": 993
       },
       {
         "allPass": true,
@@ -12308,7 +13788,7 @@
         "total": 7
       }
     ],
-    "totalPassed": 1929,
-    "totalTests": 1929
+    "totalPassed": 2225,
+    "totalTests": 2225
   }
 }
