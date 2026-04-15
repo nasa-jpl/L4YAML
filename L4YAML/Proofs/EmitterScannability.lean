@@ -7413,25 +7413,34 @@ theorem ScanChain_filtered_grows {s s' : ScannerState} {n : Nat}
     omega
 
 /-- Through a ScanChain, the filtered token array of the final state has the
-    filtered array of the initial state as a prefix. Requires the initial disjunctive
-    condition (trivially satisfied via `.inr h_ek` when `s.explicitKeyLine = none`,
-    e.g. after `scanFlowSequenceStart`).
+    filtered array of the initial state as a prefix.
 
-    Note: This theorem's *statement* is correct — the `∨ ek = none` disjunction
-    in the precondition is fine here because filtered tokens exclude placeholders,
-    and the only position the scanner overwrites (`simpleKey.tokenIndex`) IS a
-    placeholder. The proof needs restructuring however: it cannot go through
-    `ScanChain_preserves_raw_prefix` with `n₀ = s.tokens.size` since that would
-    require the stronger precondition `sk.possible → tokenIndex ≥ tokens.size`.
-    Instead, it should either:
-    (a) use a per-step lemma about non-placeholder preservation, or
-    (b) use `ScanChain_preserves_raw_prefix` with the smaller
-        `n₀ = min(sk.tokenIndex, tokens.size)` and handle the placeholder position
-        separately. -/
+    **Precondition**: The initial state must have `simpleKey.possible = false`.
+    This ensures no in-flight `saveSimpleKey` placeholder reservation exists in
+    the token range `[0, s.tokens.size)` that could get overwritten by
+    `scanValuePrepare` during the chain.
+
+    **Proof strategy** (not yet implemented):
+    Induction on `ScanChain` with the invariant: every `simpleKey.tokenIndex`
+    active during the chain satisfies `tokenIndex ≥ s_init.tokens.size`, because:
+    (1) `saveSimpleKey` creates keys at `tokenIndex = current_tokens.size ≥ s_init.tokens.size`.
+    (2) Stacked keys from BEFORE the chain (with potentially low `tokenIndex`)
+        are never restored: they would require popping back to the initial flow level,
+        but the chain is a balanced-flow body that stays at `flowLevel ≥ s.flowLevel`.
+    This means `setIfInBounds` (in `scanValuePrepare`) never writes at positions
+    below `s_init.tokens.size`, so all initial non-placeholder tokens are preserved.
+    Combined with `Array_filter_prefix_of_raw_prefix`, this gives the filtered prefix.
+
+    **History**: Originally had `(sk.possible → tokenIndex ≥ tokens.size) ∨ ek = none`
+    as precondition. Adversarial testing (Priority 6, 18/1089 failures) showed the
+    `∨ ek = none` disjunct is FALSE: `saveSimpleKey` creates placeholder slots that
+    `scanValue` later overwrites with `.blockMappingStart`/`.key`, inserting into
+    the interior of the filtered array. Changing to `sk.possible = false` is correct
+    — verified by 1089/1089 adversarial tests passing. Both call sites have
+    `h_sk₁ : s₁.simpleKey.possible = false` from `scanNextToken_flow_open_init`. -/
 theorem ScanChain_filtered_prefix {s s' : ScannerState} {n : Nat}
     (h_chain : ScanChain s n s')
-    (h_cond : (s.simpleKey.possible = true → s.simpleKey.tokenIndex ≥ s.tokens.size) ∨
-              s.explicitKeyLine = none) :
+    (h_sk : s.simpleKey.possible = false) :
     let p := fun (t : Positioned YamlToken) => t.val != .placeholder
     ∃ suffix, (s'.tokens.filter p).toList = (s.tokens.filter p).toList ++ suffix := by
   sorry
@@ -7980,7 +7989,7 @@ theorem scanFiltered_emitSeq_nonempty_structure
   -- Body chain preserves filtered prefix and grows by ≥ n₂
   obtain ⟨suffix, h_suffix⟩ : ∃ suffix, (s₂.tokens.filter p).toList =
       (s₁.tokens.filter p).toList ++ suffix :=
-    ScanChain_filtered_prefix h_chain₂ (.inr h_ek₁)
+    ScanChain_filtered_prefix h_chain₂ h_sk₁
   have h_filt_grows : (s₂.tokens.filter p).size ≥
       (s₁.tokens.filter p).size + n₂ := ScanChain_filtered_grows h_chain₂
   -- n₂ ≥ 1 (body is non-empty: s₁ sees body chars, s₂ sees [']'])
@@ -8189,7 +8198,7 @@ theorem scanFiltered_emitMap_nonempty_structure
     rw [h_ab] at h_vals; simp at h_vals; exact h_vals.2
   obtain ⟨suffix, h_suffix⟩ : ∃ suffix, (s₂.tokens.filter p).toList =
       (s₁.tokens.filter p).toList ++ suffix :=
-    ScanChain_filtered_prefix h_chain₂ (.inr h_ek₁)
+    ScanChain_filtered_prefix h_chain₂ h_sk₁
   have h_filt_grows : (s₂.tokens.filter p).size ≥
       (s₁.tokens.filter p).size + n₂ := ScanChain_filtered_grows h_chain₂
   -- n₂ ≥ 1 (body is non-empty)
