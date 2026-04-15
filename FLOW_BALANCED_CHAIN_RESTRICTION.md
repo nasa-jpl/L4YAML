@@ -119,7 +119,49 @@ and `weaken`. The consumer updates are mechanical.
 
 ***Step 2: Accomplishments***
 
+1. **Added `FlowMonoChain_of_scanNextToken_eq` utility** (~10 LOC). Analogous to
+   `ScanChain_of_scanNextToken_eq` — lifts a FlowMonoChain through preprocessing when
+   `scanNextToken s₁ = scanNextToken s₂` and `s₁.flowLevel ≥ fl₀`. Used in every non-trivial
+   producer proof to bridge preprocessing steps (flow whitespace skip).
+
+2. **Updated 3 interface definitions** to add `∧ FlowMonoChain s.flowLevel s n s'` as the
+   final postcondition:
+   - `EmitScansInFlow`: 15→16 postconditions
+   - `EmitListScansInFlow`: 13→14 postconditions
+   - `EmitPairListScansInFlow`: 13→14 postconditions
+
+3. **Updated 5 producer proofs** to construct and return `FlowMonoChain`:
+   - `emitList_scans_empty`: `.zero (Nat.le_refl _)` (trivial 0-step chain)
+   - `emitPairList_scans_empty`: identical
+   - `emitList_scans_nonempty`: singleton passthrough; multi-item composes emit+comma+recursive
+     via `FlowMonoChain_of_scanNextToken_eq` + `.single` + `.trans`
+   - `emitPairList_scans_nonempty`: singleton composes key+colon+value; multi-pair adds
+     comma+recursive. Both use preprocessing lift.
+   - `emit_scans_in_flow`: scalar uses `.single`; sequence/mapping use `.weaken` on body
+     chain (floor fl+1→fl), then `.single`+`.trans` for open/close brackets.
+
+4. **Updated 6 consumer destructuring sites** (mechanical `_` addition):
+   - `emit_produces_valid_yaml` sequence/mapping cases
+   - `parseStream_emitSequence` / `parseStream_emitMapping`
+
 ***Step 2: Reflections***
+
+1. **`▸` direction matters in term mode.** `(h : a = b) ▸ e` finds `a` (LHS) in the expected
+   type. When rewriting `FlowMonoChain s₃.flowLevel ...` to `FlowMonoChain s.flowLevel ...`,
+   need `(show s.flowLevel = s₃.flowLevel from ...) ▸ h_fmc₃` (finds `s.flowLevel` in
+   expected type), NOT `(show s₃.flowLevel = s.flowLevel ...) ▸ h_fmc₃`.
+
+2. **`by rw [h₁, h₂]` does NOT close `≥` goals.** After chained rewrites, `rw` closes
+   `a = a` via `rfl` but not `a ≥ a`. Use `by omega` instead for all `≥`/`≤` bounds.
+
+3. **`weaken` already handles floor lowering.** For sequence/mapping cases, the original
+   approach used `(show s₁.flowLevel = ... from h_fl₁) ▸ h_fmc₂.weaken (by omega)`, but
+   the `▸` is unnecessary — `weaken (by omega)` infers the target floor from context.
+
+4. **`by omega` is robust for all chain hypotheses.** Every `≥` proof in FlowMonoChain
+   construction (single's 2nd/3rd args, FlowMonoChain_of_scanNextToken_eq's 2nd arg) can
+   use `by omega`, which automatically finds the equality chain in context. No need for
+   explicit `rw [h_fl₃, h_fl₂, h_fl₁]` for `≥` goals.
 
 ## Step 3: Define `SimpleKeyAboveFloor` and per-step preservation
 
