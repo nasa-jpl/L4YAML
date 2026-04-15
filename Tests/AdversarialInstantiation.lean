@@ -1228,6 +1228,233 @@ private def test5_bound (state : IO.Ref TestCollector) : IO Unit := do
   checkBoundInvariant state "bom"
     "\uFEFF---\na: b"
 
+/-! ## Priority 6 — ScanChain_filtered_prefix
+
+`ScanChain_filtered_prefix` claims: given `ScanChain s n s'` and
+`(s.simpleKey.possible → s.simpleKey.tokenIndex ≥ s.tokens.size) ∨ s.explicitKeyLine = none`,
+then `∃ suffix, (s'.tokens.filter notPlaceholder) = (s.tokens.filter notPlaceholder) ++ suffix`.
+
+The two actual call sites both pass `.inr h_ek₁` where `h_ek₁ : s₁.explicitKeyLine = none`.
+This test checks ALL intermediate states during scanning: at every step where
+`explicitKeyLine = none`, the filtered prefix from that point forward is preserved.
+
+Additionally, we test the GENERAL claim: for ANY pair of states s_i, s_j in the scan chain
+where the precondition holds at s_i, the filtered tokens of s_j extend those of s_i.
+-/
+
+/-- Check filtered prefix preservation: at every intermediate state where ek=none,
+    subsequent states preserve the filtered prefix. Also checks the stronger
+    sk.possible → tokenIndex ≥ tokens.size variant. -/
+private def checkFilteredPrefix (state : IO.Ref TestCollector)
+    (label : String) (input : String) : IO Unit := do
+  let s0 := ScannerState.mk' input
+  let s0 := s0.emit .streamStart
+  let s0 := match s0.peek? with
+    | some '\uFEFF' => s0.advance
+    | _ => s0
+  let fuel := (input.utf8ByteSize + 1) * 4
+  -- Collect all intermediate states
+  let mut states : Array ScannerState := #[s0]
+  let mut s := s0
+  for _ in [:fuel] do
+    match scanNextToken s with
+    | .error _ => break
+    | .ok none => break
+    | .ok (some s') =>
+      states := states.push s'
+      s := s'
+  let p : Positioned YamlToken → Bool := fun t => t.val != .placeholder
+  -- For every pair (i, j) where i < j and the precondition holds at state i,
+  -- check that filtered(state_j) has filtered(state_i) as a prefix.
+  let mut allEkOk := true
+  let mut allSkOk := true
+  let mut ekFails := 0
+  let mut skFails := 0
+  let mut ekPairs := 0
+  let mut skPairs := 0
+  let mut lastFailInfo := ""
+  for i in [:states.size] do
+    let si := states[i]!
+    let filt_i := si.tokens.filter p
+    -- Check if ek=none precondition holds
+    let ekNone := si.explicitKeyLine.isNone
+    -- Check if strong sk precondition holds
+    let skHigh := if si.simpleKey.possible then
+        si.simpleKey.tokenIndex ≥ si.tokens.size
+      else true
+    for j in [i+1:states.size] do
+      let sj := states[j]!
+      let filt_j := sj.tokens.filter p
+      -- Prefix check: filt_i is a prefix of filt_j
+      let prefixOk :=
+        if filt_i.size > filt_j.size then false
+        else (List.range filt_i.size).all fun k =>
+          if h₁ : k < filt_i.size then
+            if h₂ : k < filt_j.size then
+              filt_j[k] == filt_i[k]
+            else false
+          else true
+      if ekNone then
+        ekPairs := ekPairs + 1
+        if !prefixOk then
+          allEkOk := false
+          ekFails := ekFails + 1
+          lastFailInfo := s!"filtered prefix FAIL (ek=none): step {i}→{j}, " ++
+            s!"filt_i.size={filt_i.size}, filt_j.size={filt_j.size}, " ++
+            s!"si.tokens.size={si.tokens.size}, sj.tokens.size={sj.tokens.size}, " ++
+            s!"si.sk.possible={si.simpleKey.possible}, si.sk.tokenIndex={si.simpleKey.tokenIndex}"
+      if skHigh then
+        skPairs := skPairs + 1
+        if !prefixOk then
+          allSkOk := false
+          skFails := skFails + 1
+          if allEkOk then  -- only record if not already recorded from ek branch
+            lastFailInfo := s!"filtered prefix FAIL (sk≥tokens.size): step {i}→{j}, " ++
+              s!"filt_i.size={filt_i.size}, filt_j.size={filt_j.size}"
+  checkM state s!"{label}: filtered prefix (ek=none, {ekPairs} pairs)" allEkOk
+    (if ekFails > 0 then s!"{ekFails} failures. Last: {lastFailInfo}" else "")
+  checkM state s!"{label}: filtered prefix (sk≥tokens.size, {skPairs} pairs)" allSkOk
+    (if skFails > 0 then s!"{skFails} failures. Last: {lastFailInfo}" else "")
+
+  -- Also check: at call sites, does ek=none actually hold after flow open?
+  -- Track when ek becomes none and whether it stays none during flow body
+  let mut flowOpens := 0
+  let mut ekNoneAtFlowOpen := 0
+  for i in [:states.size] do
+    let si := states[i]!
+    -- Detect flow open: token just added is flowSequenceStart or flowMappingStart
+    if i > 0 then
+      let prev := states[i-1]!
+      if si.tokens.size > prev.tokens.size then
+        let lastAdded := si.tokens[si.tokens.size - 1]!.val
+        if lastAdded == .flowSequenceStart || lastAdded == .flowMappingStart then
+          flowOpens := flowOpens + 1
+          if si.explicitKeyLine.isNone then
+            ekNoneAtFlowOpen := ekNoneAtFlowOpen + 1
+  check state s!"{label}: ek=none at flow opens ({ekNoneAtFlowOpen}/{flowOpens})"
+    (flowOpens == 0 || ekNoneAtFlowOpen == flowOpens)
+
+/-- Detailed diagnostic for a single input: dump all intermediate states'
+    filtered tokens, ek, sk state, and identify exact token changes. -/
+private def diagFilteredPrefix (state : IO.Ref TestCollector)
+    (label : String) (input : String) : IO Unit := do
+  let s0 := ScannerState.mk' input
+  let s0 := s0.emit .streamStart
+  let s0 := match s0.peek? with
+    | some '\uFEFF' => s0.advance
+    | _ => s0
+  let fuel := (input.utf8ByteSize + 1) * 4
+  let mut states : Array ScannerState := #[s0]
+  let mut s := s0
+  for _ in [:fuel] do
+    match scanNextToken s with
+    | .error _ => break
+    | .ok none => break
+    | .ok (some s') =>
+      states := states.push s'
+      s := s'
+  let p : Positioned YamlToken → Bool := fun t => t.val != .placeholder
+  -- Dump each step's filtered tokens, raw tokens, sk, ek
+  for i in [:states.size] do
+    let si := states[i]!
+    let filt := si.tokens.filter p
+    let filtVals := filt.toList.map (fun t => tokStr t.val)
+    let rawVals := si.tokens.toList.map (fun t => tokStr t.val)
+    IO.println s!"  step {i}: ek={si.explicitKeyLine.isSome} sk.pos={si.simpleKey.possible} sk.idx={si.simpleKey.tokenIndex} raw={rawVals} filt={filtVals}"
+  -- Check for prefix violations with ek=none
+  for i in [:states.size] do
+    let si := states[i]!
+    if !si.explicitKeyLine.isNone then continue
+    let filt_i := si.tokens.filter p
+    for j in [i+1:states.size] do
+      let sj := states[j]!
+      let filt_j := sj.tokens.filter p
+      for k in [:filt_i.size] do
+        if h₁ : k < filt_i.size then
+          if h₂ : k < filt_j.size then
+            if !(filt_j[k] == filt_i[k]) then
+              IO.println s!"  MISMATCH step {i}→{j} pos {k}: was {tokStr filt_i[k].val} now {tokStr filt_j[k].val}"
+  check state s!"{label}: diagnostic complete" true
+
+private def test_filtered_prefix (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "ScanChain_filtered_prefix"
+
+  -- Diagnostic on smallest failing case
+  IO.println "=== Diagnostic: simple-key-val ==="
+  diagFilteredPrefix state "diag-simple-key-val" "a: b"
+  IO.println "=== Diagnostic: emit-map-1 ==="
+  diagFilteredPrefix state "diag-emit-map-1" (emit (mapv [(sv "k", sv "v")]))
+
+  -- === Emitter-produced inputs (the actual use case) ===
+  checkFilteredPrefix state "emit-seq-1"
+    (emit (seqv [sv "a"]))
+  checkFilteredPrefix state "emit-seq-3"
+    (emit (seqv [sv "a", sv "b", sv "c"]))
+  checkFilteredPrefix state "emit-map-1"
+    (emit (mapv [(sv "k", sv "v")]))
+  checkFilteredPrefix state "emit-map-2"
+    (emit (mapv [(sv "k", sv "v"), (sv "k2", sv "v2")]))
+  checkFilteredPrefix state "emit-nested-seq"
+    (emit (seqv [seqv [sv "a", sv "b"], sv "c"]))
+  checkFilteredPrefix state "emit-nested-map"
+    (emit (seqv [mapv [(sv "k", sv "v")], sv "c"]))
+  checkFilteredPrefix state "emit-deep"
+    (emit (seqv [seqv [seqv [sv "a"]]]))
+  checkFilteredPrefix state "emit-mixed"
+    (emit (mapv [(sv "k", seqv [sv "a", sv "b"]),
+                 (sv "k2", mapv [(sv "a", sv "b")])]))
+  checkFilteredPrefix state "emit-complex"
+    (emit (mapv [(sv "users",
+                  seqv [mapv [(sv "name", sv "alice"),
+                              (sv "roles", seqv [sv "admin", sv "user"])],
+                        mapv [(sv "name", sv "bob"),
+                              (sv "roles", seqv [sv "user"])]]),
+                 (sv "version", sv "2.0")]))
+
+  -- === Adversarial non-emitter inputs ===
+  -- These exercise scanner states that emitter output never produces,
+  -- probing for filtered prefix violations.
+
+  -- Simple key with value (scanValuePrepare overwrites placeholder → .key)
+  checkFilteredPrefix state "simple-key-val" "a: b"
+  checkFilteredPrefix state "simple-key-nested" "a: b\nc: d"
+  checkFilteredPrefix state "explicit-key" "? a\n: b"
+
+  -- Flow collections (exercises flow stack save/restore)
+  checkFilteredPrefix state "flow-seq" "[a, b, c]"
+  checkFilteredPrefix state "flow-map" "{a: b, c: d}"
+  checkFilteredPrefix state "flow-nested" "[[a, b], [c, d]]"
+  checkFilteredPrefix state "flow-deep" "[{a: [b, {c: d}]}, e]"
+
+  -- Block indicators (keys + values + entries)
+  checkFilteredPrefix state "block-seq" "- a\n- b\n- c"
+  checkFilteredPrefix state "block-map" "a: b\nc: d\ne: f"
+  checkFilteredPrefix state "block-mixed" "items:\n  - a\n  - b"
+  checkFilteredPrefix state "block-nested" "a:\n  b:\n    c: d"
+
+  -- Quoted scalars
+  checkFilteredPrefix state "dquoted" "\"hello world\""
+  checkFilteredPrefix state "squoted" "'hello world'"
+  checkFilteredPrefix state "flow-dquoted" "[\"a\", \"b\"]"
+
+  -- Document markers
+  checkFilteredPrefix state "doc-start" "---\na: b"
+  checkFilteredPrefix state "doc-end" "a: b\n..."
+  checkFilteredPrefix state "multi-doc" "---\na: b\n...\n---\nc: d"
+
+  -- Directives (only YAML/TAG — no %RESERVED since scanner errors differ)
+  checkFilteredPrefix state "yaml-directive" "%YAML 1.2\n---\na: b"
+  checkFilteredPrefix state "tag-directive" "%TAG !t! tag:\n---\na: b"
+
+  -- Edge cases: empty, whitespace
+  checkFilteredPrefix state "empty" ""
+  checkFilteredPrefix state "ws-only" "   "
+  checkFilteredPrefix state "plain-scalar" "hello"
+
+  -- Stress: deeply nested flow within block
+  checkFilteredPrefix state "deep-flow-in-block"
+    "a:\n  b:\n    c: [{d: [e, {f: [g]}]}, h]"
+
 def collectTests : IO VerifiedSuiteResult := do
   let state ← IO.mkRef ({} : TestCollector)
   test9g state
@@ -1236,6 +1463,7 @@ def collectTests : IO VerifiedSuiteResult := do
   test9ab state
   test9e state
   test5_bound state
+  test_filtered_prefix state
   let results ← finish state
   return { name := "adversarialinstantiation",
            label := "Adversarial Instantiation Tests (sorry audit)",
