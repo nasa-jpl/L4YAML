@@ -7135,7 +7135,7 @@ theorem dispatchBlockIndicators_filtered_grows (s s' : ScannerState) (c : Char)
 -- The proof mirrors dispatchContent_preserves_prefix but tracks the NEW token value
 -- instead of preserving existing tokens.
 set_option maxHeartbeats 3200000 in
-private theorem dispatchContent_new_not_placeholder (s s' : ScannerState) (c : Char)
+theorem dispatchContent_new_not_placeholder (s s' : ScannerState) (c : Char)
     (h : scanNextToken_dispatchContent s c = .ok s')
     (h_strict : s'.tokens.size ≥ s.tokens.size + 1) :
     (s'.tokens[s.tokens.size]'(by omega)).val ≠ YamlToken.placeholder := by
