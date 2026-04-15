@@ -930,6 +930,304 @@ private def test9e (state : IO.Ref TestCollector) : IO Unit := do
   checkChainInvariant state "kitchen-sink"
     "%YAML 1.2\n---\nitems:\n  - name: \"alice\"\n    roles: [admin, user]\n  - name: 'bob'\n    tags:\n      ? key1\n      : val1\n...\n---\nsecond: doc"
 
+/-! ## Priority 5 — ScannerBound theorems (BoundInv preservation)
+
+Three sorry'd theorems in `ScannerBound.lean` claim that `BoundInv` is preserved
+through scanner dispatch phases:
+
+- `preprocess_preserves_bound`: `scanNextToken_preprocess` preserves BoundInv
+  (involves `skipToContent` loop, `unwindIndents` loop, `saveSimpleKey`)
+- `dispatchStructural_preserves_bound`: `scanNextToken_dispatchStructural` preserves BoundInv
+  (involves `scanDocumentStart`/`scanDocumentEnd` with `advanceN 3`, `scanDirective` with loops)
+- `dispatchContent_preserves_bound`: `scanNextToken_dispatchContent` preserves BoundInv
+  (involves ALL scalar scanners, anchor/alias/tag scanners — all loop-based)
+
+`BoundInv s₀ s` bundles four properties:
+1. `s.offset ≤ s.inputEnd` (offset in bounds)
+2. `s.inputEnd = s₀.inputEnd` (input end preserved)
+3. `s.input = s₀.input` (input string preserved)
+4. `String.Pos.Raw.IsValid s.input ⟨s.offset⟩` (offset at valid UTF-8 boundary)
+
+We test by stepping through `scanNextToken` on diverse inputs, checking all four
+properties at every step. Special emphasis on:
+- Deep indent stacks (stresses `unwindIndents` loop)
+- Multi-line scalars (stresses scalar scanner loops)
+- UTF-8 multi-byte characters (stresses byte offset arithmetic)
+-/
+
+/-- Check whether a byte offset is at a valid UTF-8 character boundary in a string.
+    Iterates through valid positions from the start. -/
+private def isAtCharBoundary (s : String) (offset : Nat) : Bool :=
+  if offset == s.utf8ByteSize then true  -- one-past-end is valid
+  else
+    let rec go (byteIdx : Nat) (fuel : Nat) : Bool :=
+      if fuel = 0 then false
+      else if byteIdx == offset then true
+      else if byteIdx ≥ s.utf8ByteSize then false
+      else go (String.Pos.Raw.next s ⟨byteIdx⟩).byteIdx (fuel - 1)
+    go 0 (s.utf8ByteSize + 1)
+
+/-- Check BoundInv properties for one scanNextToken step.
+    Returns `(offsetOk, inputEndOk, inputOk, isValidOk)`. -/
+private def checkBoundInv (s₀ s' : ScannerState) :
+    Bool × Bool × Bool × Bool :=
+  let offsetOk := s'.offset ≤ s'.inputEnd
+  let inputEndOk := s'.inputEnd == s₀.inputEnd
+  let inputOk := s'.input == s₀.input
+  let isValidOk := isAtCharBoundary s'.input s'.offset
+  (offsetOk, inputEndOk, inputOk, isValidOk)
+
+/-- Drive scanning step-by-step, checking BoundInv at every step. -/
+private def checkBoundInvariant (state : IO.Ref TestCollector)
+    (label : String) (input : String) : IO Unit := do
+  let s0 := ScannerState.mk' input
+  let s0 := s0.emit .streamStart
+  let s0 := match s0.peek? with
+    | some '\uFEFF' => s0.advance
+    | _ => s0
+  let fuel := (input.utf8ByteSize + 1) * 4
+  let mut s := s0
+  let mut step := 0
+  let mut allOffsetOk := true
+  let mut allInputEndOk := true
+  let mut allInputOk := true
+  let mut allIsValidOk := true
+  let mut lastFailInfo := ""
+  for _ in [:fuel] do
+    match scanNextToken s with
+    | .error _e =>
+      -- Scan errors are fine for malformed inputs; just stop
+      break
+    | .ok none => break
+    | .ok (some s') =>
+      let (offsetOk, inputEndOk, inputOk, isValidOk) := checkBoundInv s0 s'
+      if !offsetOk then
+        allOffsetOk := false
+        lastFailInfo := s!"offset fail at step {step}: offset={s'.offset}, inputEnd={s'.inputEnd}"
+      if !inputEndOk then
+        allInputEndOk := false
+        lastFailInfo := s!"inputEnd fail at step {step}: s'.inputEnd={s'.inputEnd}, s₀.inputEnd={s0.inputEnd}"
+      if !inputOk then
+        allInputOk := false
+        lastFailInfo := s!"input fail at step {step}: s'.input ≠ s₀.input"
+      if !isValidOk then
+        allIsValidOk := false
+        lastFailInfo := s!"isValid fail at step {step}: offset={s'.offset} not at char boundary"
+      s := s'
+      step := step + 1
+  checkM state s!"{label}: offset ≤ inputEnd ({step} steps)" allOffsetOk lastFailInfo
+  checkM state s!"{label}: inputEnd preserved ({step} steps)" allInputEndOk lastFailInfo
+  checkM state s!"{label}: input preserved ({step} steps)" allInputOk lastFailInfo
+  checkM state s!"{label}: offset at char boundary ({step} steps)" allIsValidOk lastFailInfo
+
+/-! ## Priority 5 Test Suites -/
+
+private def test5_bound (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "5: BoundInv preservation (preprocess/structural/content)"
+
+  -- === preprocess_preserves_bound: skipToContent + unwindIndents ===
+
+  -- Deep indent stacks (stress unwindIndents loop)
+  checkBoundInvariant state "indent-2"
+    "a:\n  b: c"
+  checkBoundInvariant state "indent-3"
+    "a:\n  b:\n    c: d"
+  checkBoundInvariant state "indent-4"
+    "a:\n  b:\n    c:\n      d: e"
+  checkBoundInvariant state "indent-6"
+    "a:\n  b:\n    c:\n      d:\n        e:\n          f: g"
+  checkBoundInvariant state "indent-8"
+    "a:\n  b:\n    c:\n      d:\n        e:\n          f:\n            g:\n              h: i"
+  -- Deep then unwind (deep nesting followed by deindent triggers unwindIndents)
+  checkBoundInvariant state "indent-unwind"
+    "a:\n  b:\n    c: d\ne: f"
+  checkBoundInvariant state "indent-unwind-deep"
+    "a:\n  b:\n    c:\n      d: e\n  f: g\nh: i"
+  -- Multiple sequence entries (repeated indent/unwind cycles)
+  checkBoundInvariant state "seq-indent-cycle"
+    "items:\n  - a\n  - b\n  - c\nother: x"
+
+  -- Whitespace/comment skipping (skipToContent loop)
+  checkBoundInvariant state "skip-spaces"
+    "   a: b"
+  checkBoundInvariant state "skip-tabs"
+    "\t\ta: b"
+  checkBoundInvariant state "skip-comment"
+    "# comment\na: b"
+  checkBoundInvariant state "skip-multi-comment"
+    "# line1\n# line2\n# line3\na: b"
+  checkBoundInvariant state "skip-blank-lines"
+    "\n\n\na: b"
+  checkBoundInvariant state "skip-mixed"
+    "  # comment\n\n  # another\na: b"
+
+  -- === dispatchStructural_preserves_bound: doc markers + directives ===
+
+  -- Document start (advanceN 3)
+  checkBoundInvariant state "doc-start"
+    "---\na: b"
+  -- Document end (advanceN 3)
+  checkBoundInvariant state "doc-end"
+    "a: b\n..."
+  -- Multi-document (repeated doc start/end)
+  checkBoundInvariant state "multi-doc"
+    "---\na: b\n...\n---\nc: d\n..."
+  -- YAML directive (loop-based)
+  checkBoundInvariant state "yaml-directive"
+    "%YAML 1.2\n---\na: b"
+  -- TAG directive (loop-based)
+  checkBoundInvariant state "tag-directive"
+    "%TAG !t! tag:example.com,2000:\n---\na: b"
+  -- Multiple directives
+  checkBoundInvariant state "multi-directive"
+    "%YAML 1.2\n%TAG !t! tag:example.com,2000:\n%TAG !u! tag:example.org,2026:\n---\na: b"
+
+  -- === dispatchContent_preserves_bound: scalar/anchor/tag scanners ===
+
+  -- Double-quoted scalars (loop-based)
+  checkBoundInvariant state "dquoted-simple"
+    "\"hello\""
+  checkBoundInvariant state "dquoted-escape"
+    "\"line1\\nline2\\ttab\""
+  checkBoundInvariant state "dquoted-unicode-escape"
+    "\"\\u0041\\u00E9\\U0001F600\""
+  checkBoundInvariant state "dquoted-long"
+    "\"abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ\""
+  checkBoundInvariant state "dquoted-multiline"
+    "\"line1\n  line2\n  line3\""
+  checkBoundInvariant state "dquoted-empty"
+    "\"\""
+
+  -- Single-quoted scalars (loop-based)
+  checkBoundInvariant state "squoted-simple"
+    "'hello'"
+  checkBoundInvariant state "squoted-escape"
+    "'it''s escaped'"
+  checkBoundInvariant state "squoted-long"
+    "'abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'"
+  checkBoundInvariant state "squoted-multiline"
+    "'line1\n  line2\n  line3'"
+
+  -- Block scalars (loop-based)
+  checkBoundInvariant state "block-literal"
+    "|\n  line1\n  line2\n  line3"
+  checkBoundInvariant state "block-folded"
+    ">\n  line1\n  line2\n  line3"
+  checkBoundInvariant state "block-literal-long"
+    "|\n  abcdefghijklmnopqrstuvwxyz\n  0123456789ABCDEF\n  final"
+  checkBoundInvariant state "block-keep"
+    "|+\n  line1\n  line2\n"
+  checkBoundInvariant state "block-strip"
+    "|-\n  line1\n  line2"
+  checkBoundInvariant state "block-indent"
+    "|2\n  line1\n  line2"
+
+  -- Plain scalars (loop-based, implicit)
+  checkBoundInvariant state "plain-simple"
+    "hello"
+  checkBoundInvariant state "plain-multiword"
+    "hello world"
+  checkBoundInvariant state "plain-long"
+    "abcdefghijklmnopqrstuvwxyz0123456789"
+  checkBoundInvariant state "plain-multiline"
+    "line1\n  line2\n  line3"
+
+  -- Anchor scanner (loop-based)
+  checkBoundInvariant state "anchor-short"
+    "&a value"
+  checkBoundInvariant state "anchor-long"
+    "&longanchorname value"
+  checkBoundInvariant state "alias-short"
+    "&a value\n*a"
+  checkBoundInvariant state "alias-long"
+    "&longanchorname value\n*longanchorname"
+
+  -- Tag scanner (loop-based)
+  checkBoundInvariant state "tag-named"
+    "!!str hello"
+  checkBoundInvariant state "tag-verbatim"
+    "!<tag:yaml.org,2002:str> hello"
+  checkBoundInvariant state "tag-custom"
+    "!custom hello"
+
+  -- === UTF-8 multi-byte characters (byte offset arithmetic) ===
+
+  checkBoundInvariant state "utf8-2byte"
+    "key: résumé"
+  checkBoundInvariant state "utf8-3byte"
+    "key: 日本語"
+  checkBoundInvariant state "utf8-4byte"
+    "key: 𝕊𝕖𝕥"
+  checkBoundInvariant state "utf8-mixed"
+    "名前: résumé\n値: 𝕊𝕖𝕥"
+  checkBoundInvariant state "utf8-dquoted"
+    "\"résumé café naïve\""
+  checkBoundInvariant state "utf8-squoted"
+    "'日本語テスト'"
+  checkBoundInvariant state "utf8-plain"
+    "日本語テスト"
+  checkBoundInvariant state "utf8-anchor"
+    "&名前 日本語"
+  checkBoundInvariant state "utf8-tag"
+    "!!str 日本語"
+  checkBoundInvariant state "utf8-block-literal"
+    "|\n  日本語\n  中文\n  한국어"
+  checkBoundInvariant state "utf8-deep"
+    "名前:\n  性: 田中\n  名:\n    漢字: 太郎\n    読み: たろう"
+  -- Emoji (4-byte UTF-8)
+  checkBoundInvariant state "utf8-emoji"
+    "mood: \"😀😎🎉\""
+  -- Mixed ASCII and multi-byte in flow
+  checkBoundInvariant state "utf8-flow"
+    "[résumé, 日本語, 𝕊𝕖𝕥]"
+  checkBoundInvariant state "utf8-flow-map"
+    "{名前: 太郎, 年齢: \"25\"}"
+
+  -- === Combined / stress tests ===
+
+  -- All dispatch phases in one input
+  checkBoundInvariant state "all-phases"
+    "%YAML 1.2\n---\nitems:\n  - \"quoted\"\n  - 'single'\n  - &anc plain\n  - *anc\n  - !!str tagged\n  - |\n    block\n...\n---\nsecond: doc"
+
+  -- Deep nesting with flow (unwind + flow dispatch)
+  checkBoundInvariant state "deep-flow-nested"
+    "a:\n  b:\n    c: [{d: [e, f]}, {g: [h]}]"
+
+  -- Wide block sequence with mixed content
+  checkBoundInvariant state "wide-mixed-content"
+    "- \"q1\"\n- 'q2'\n- plain\n- &a val\n- *a\n- !!int 42\n- |\n  block\n- >\n  folded"
+
+  -- Emitter output (exercises the exact patterns theorems care about)
+  checkBoundInvariant state "emit-seq"
+    (emit (seqv [sv "a", sv "b", sv "c"]))
+  checkBoundInvariant state "emit-map"
+    (emit (mapv [(sv "k", sv "v"), (sv "k2", sv "v2")]))
+  checkBoundInvariant state "emit-nested"
+    (emit (seqv [mapv [(sv "k", seqv [sv "a", sv "b"])]]))
+  checkBoundInvariant state "emit-deep"
+    (emit (seqv [seqv [seqv [seqv [sv "a"]]]]))
+  checkBoundInvariant state "emit-complex"
+    (emit (mapv [(sv "users",
+                  seqv [mapv [(sv "name", sv "alice"),
+                              (sv "roles", seqv [sv "admin", sv "user"])],
+                        mapv [(sv "name", sv "bob"),
+                              (sv "roles", seqv [sv "user"])]]),
+                 (sv "version", sv "2.0")]))
+
+  -- UTF-8 emitter output
+  checkBoundInvariant state "emit-utf8"
+    (emit (mapv [(sv "名前", sv "太郎"), (sv "値", sv "résumé")]))
+
+  -- Edge cases
+  checkBoundInvariant state "empty"
+    ""
+  checkBoundInvariant state "whitespace-only"
+    "   "
+  checkBoundInvariant state "newlines-only"
+    "\n\n\n"
+  checkBoundInvariant state "bom"
+    "\uFEFF---\na: b"
+
 def collectTests : IO VerifiedSuiteResult := do
   let state ← IO.mkRef ({} : TestCollector)
   test9g state
@@ -937,6 +1235,7 @@ def collectTests : IO VerifiedSuiteResult := do
   test9cd state
   test9ab state
   test9e state
+  test5_bound state
   let results ← finish state
   return { name := "adversarialinstantiation",
            label := "Adversarial Instantiation Tests (sorry audit)",
