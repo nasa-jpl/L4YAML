@@ -299,14 +299,13 @@ theorem dispatchFlowIndicators_preserves_bound (s s' : ScannerState) (c : Char)
         · split at hok  -- c == ','
           · split at hok
             · cases hok
-            · split at hok  -- lastRealTokenVal? inner check
-              · cases hok
-              · injection hok with hok; injection hok with hok; subst hok
-                -- Due to simp partially unfolding scanFlowEntry, the injection
-                -- variable loses its connection to the concrete computation.
-                -- Each property follows from advance_offset_le/advance_isValid/etc.
-                -- applied to (s.emit .flowEntry).
-                sorry
+            · -- Generalize to preserve scanFlowEntry connection
+              generalize h_fe : scanFlowEntry s = fe_result at hok
+              cases fe_result with
+              | error e => simp at hok
+              | ok r =>
+                simp only [Except.ok.injEq, Option.some.injEq] at hok; subst hok
+                exact scanFlowEntry_BoundInv s _ h_bi hend h_fe
           · nomatch hok
 
 -- scanValue BoundInv: complex control flow but no loops.
@@ -316,7 +315,74 @@ theorem scanValue_BoundInv (s s' : ScannerState)
     (h_bi : BoundInv s s) (hend : s.inputEnd = s.input.utf8ByteSize)
     (hok : scanValue s = .ok s') :
     BoundInv s s' := by
-  sorry
+  unfold scanValue at hok
+  dsimp only [] at hok
+  simp only [bind, Except.bind] at hok
+  split at hok
+  · contradiction  -- scanValueValidate = .error
+  · split at hok
+    · contradiction  -- scanValueTabCheck = .error
+    · injection hok with hok; subst hok
+      -- Chain BoundInv: scanValueClearKey → scanValuePrepare → emit .value → advance
+      have h_off : (scanValuePrepare (scanValueClearKey s)).offset = s.offset := by
+        have h_ck : (scanValueClearKey s).offset = s.offset := by
+          simp only [scanValueClearKey]
+          split
+          · split <;> (try split) <;> rfl
+          · rfl
+        have h_vp : ∀ kc : ScannerState, (scanValuePrepare kc).offset = kc.offset := by
+          intro kc; simp only [scanValuePrepare]
+          split
+          · split <;> (try split) <;> rfl
+          · split
+            · rfl
+            · split
+              · unfold pushMappingIndent ScannerState.emit; split <;> rfl
+              · rfl
+        rw [h_vp, h_ck]
+      have h_ie : (scanValuePrepare (scanValueClearKey s)).inputEnd = s.inputEnd := by
+        have h_ck : (scanValueClearKey s).inputEnd = s.inputEnd := by
+          simp only [scanValueClearKey]
+          split
+          · split <;> (try split) <;> rfl
+          · rfl
+        have h_vp : ∀ kc : ScannerState, (scanValuePrepare kc).inputEnd = kc.inputEnd := by
+          intro kc; simp only [scanValuePrepare]
+          split
+          · split <;> (try split) <;> rfl
+          · split
+            · rfl
+            · split
+              · unfold pushMappingIndent ScannerState.emit; split <;> rfl
+              · rfl
+        rw [h_vp, h_ck]
+      have h_inp : (scanValuePrepare (scanValueClearKey s)).input = s.input := by
+        have h_ck : (scanValueClearKey s).input = s.input := by
+          simp only [scanValueClearKey]
+          split
+          · split <;> (try split) <;> rfl
+          · rfl
+        have h_vp : ∀ kc : ScannerState, (scanValuePrepare kc).input = kc.input := by
+          intro kc; simp only [scanValuePrepare]
+          split
+          · split <;> (try split) <;> rfl
+          · split
+            · rfl
+            · split
+              · unfold pushMappingIndent ScannerState.emit; split <;> rfl
+              · rfl
+        rw [h_vp, h_ck]
+      have h_iv : String.Pos.Raw.IsValid (scanValuePrepare (scanValueClearKey s)).input
+          ⟨(scanValuePrepare (scanValueClearKey s)).offset⟩ := by
+        rw [h_inp, h_off]; exact h_bi.isValid
+      have h_prep : BoundInv s (scanValuePrepare (scanValueClearKey s)) :=
+        ⟨by rw [h_off, h_ie]; exact h_bi.offset_le,
+         by rw [h_ie],
+         by rw [h_inp],
+         h_iv⟩
+      have h_em := emit_BoundInv _ .value h_prep
+      have h_adv := advance_BoundInv _ h_em hend
+      exact ⟨h_adv.offset_le, h_adv.inputEnd_eq, h_adv.input_eq, h_adv.isValid⟩
 
 /-- `dispatchBlockIndicators` preserves BoundInv.
     Fully proven — scanBlockEntry, scanKey use no loops. scanValue

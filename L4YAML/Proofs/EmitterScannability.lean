@@ -6968,22 +6968,147 @@ theorem scanBlockEntry_filtered_grows (s s' : ScannerState)
     (h : scanBlockEntry s = .ok s') :
     (s'.tokens.filter (fun t => t.val != .placeholder)).size ≥
     (s.tokens.filter (fun t => t.val != .placeholder)).size + 1 := by
-  sorry  -- Phase D: unfold pushSequenceIndent → case split → emit .blockEntry non-placeholder
+  apply filtered_grows_of_any_new s.tokens s'.tokens _
+    (ScannerCorrectness.ScanHelpers.scanBlockEntry_adds_tokens s s' h)
+    (fun i hi => ScannerCorrectness.ScanHelpers.scanBlockEntry_preserves_prefix s s' h i hi)
+    (s'.tokens.size - 1)
+    (by have := ScannerCorrectness.ScanHelpers.scanBlockEntry_adds_tokens s s' h; omega)
+    (by have := ScannerCorrectness.ScanHelpers.scanBlockEntry_adds_tokens s s' h; omega)
+  -- h_new: the last token is .blockEntry (non-placeholder)
+  unfold scanBlockEntry at h; dsimp only [] at h
+  simp only [bind, Except.bind] at h
+  repeat (split at h)
+  all_goals (first | contradiction | skip)
+  all_goals (injection h with h_eq; subst h_eq; dsimp only [])
+  all_goals simp only [ScannerCorrectness.advance_preserves_tokens, emit_tokens_push,
+                        Array.size_push, Nat.add_sub_cancel, Array.getElem_push_eq]
+  all_goals decide
 
 -- scanKey: pushMappingIndent (monotonic) + emit .key (+1).
 theorem scanKey_filtered_grows (s s' : ScannerState)
     (h : scanKey s = .ok s') :
     (s'.tokens.filter (fun t => t.val != .placeholder)).size ≥
     (s.tokens.filter (fun t => t.val != .placeholder)).size + 1 := by
-  sorry  -- Phase D: unfold pushMappingIndent → case split → emit .key non-placeholder
+  apply filtered_grows_of_any_new s.tokens s'.tokens _
+    (by have := ScannerCorrectness.scanKey_adds_one_token s s' h; omega)
+    (fun i hi => ScannerCorrectness.ScanHelpers.scanKey_preserves_prefix s s' h i hi)
+    (s'.tokens.size - 1)
+    (by have := ScannerCorrectness.scanKey_adds_one_token s s' h; omega)
+    (by have := ScannerCorrectness.scanKey_adds_one_token s s' h; omega)
+  -- h_new: the last token is .key (non-placeholder)
+  unfold scanKey at h
+  simp only [] at h
+  split at h
+  · -- !inFlow: pushMappingIndent called
+    split at h
+    · split at h
+      · contradiction
+      · injection h with h_eq; subst h_eq; dsimp only []
+        simp only [ScannerCorrectness.advance_preserves_tokens, emit_tokens_push,
+                    Array.size_push, Nat.add_sub_cancel, Array.getElem_push_eq]
+        decide
+    · injection h with h_eq; subst h_eq; dsimp only []
+      simp only [ScannerCorrectness.advance_preserves_tokens, emit_tokens_push,
+                  Array.size_push, Nat.add_sub_cancel, Array.getElem_push_eq]
+      decide
+  · -- inFlow: no pushMappingIndent
+    split at h
+    · split at h
+      · contradiction
+      · injection h with h_eq; subst h_eq; dsimp only []
+        simp only [ScannerCorrectness.advance_preserves_tokens, emit_tokens_push,
+                    Array.size_push, Nat.add_sub_cancel, Array.getElem_push_eq]
+        decide
+    · injection h with h_eq; subst h_eq; dsimp only []
+      simp only [ScannerCorrectness.advance_preserves_tokens, emit_tokens_push,
+                  Array.size_push, Nat.add_sub_cancel, Array.getElem_push_eq]
+      decide
 
 -- scanValue: setIfInBounds replaces placeholder → non-placeholder (monotonic),
--- then emit .value (+1). Requires Array_setIfInBounds_filter_mono.
+-- then emit .value (+1). Uses Array_setIfInBounds_filter_mono for monotonicity
+-- through scanValuePrepare, then filtered_grows_of_extended_prefix for the emit step.
+set_option maxHeartbeats 400000 in
 theorem scanValue_filtered_grows (s s' : ScannerState)
     (h : scanValue s = .ok s') :
     (s'.tokens.filter (fun t => t.val != .placeholder)).size ≥
     (s.tokens.filter (fun t => t.val != .placeholder)).size + 1 := by
-  sorry  -- Requires custom setIfInBounds reasoning; deferred to Phase D
+  unfold scanValue at h; dsimp only [] at h
+  simp only [bind, Except.bind] at h
+  split at h
+  · contradiction
+  · split at h
+    · contradiction
+    · injection h with h_eq; subst h_eq; dsimp only []
+      simp only [ScannerCorrectness.advance_preserves_tokens]
+      -- Goal: ((scanValuePrepare (scanValueClearKey s)).emit(.value).tokens.filter p).size
+      --       ≥ (s.tokens.filter p).size + 1
+      -- Step 1: emit .value adds 1 non-placeholder via filtered_grows_of_extended_prefix
+      have h_emit_grows :=
+        filtered_grows_of_extended_prefix
+          (scanValuePrepare (scanValueClearKey s)).tokens
+          ((scanValuePrepare (scanValueClearKey s)).emit .value).tokens
+          (fun t => t.val != .placeholder)
+          (by unfold ScannerState.emit; simp [Array.size_push])
+          (fun i hi => ScannerCorrectness.emit_preserves_tokens_at _ .value i hi)
+          (by simp only [emit_tokens_push, Array.getElem_push_eq]; decide)
+      -- Step 2: scanValuePrepare is filter-monotonic
+      have h_ck : (scanValueClearKey s).tokens = s.tokens :=
+        ScannerCorrectness.scanValueClearKey_preserves_tokens s
+      suffices h_prep_mono :
+          ((scanValuePrepare (scanValueClearKey s)).tokens.filter
+            (fun t => t.val != .placeholder)).size ≥
+          (s.tokens.filter (fun t => t.val != .placeholder)).size by omega
+      rw [← h_ck]
+      unfold scanValuePrepare
+      split
+      · -- simpleKey.possible = true
+        rename_i h_sk
+        split
+        · split
+          · -- Two setIfInBounds
+            dsimp only []
+            have h1 := Array_setIfInBounds_filter_mono (scanValueClearKey s).tokens
+              (scanValueClearKey s).simpleKey.tokenIndex
+              ⟨(scanValueClearKey s).simpleKey.pos, .blockMappingStart, (scanValueClearKey s).simpleKey.pos⟩
+              (fun t : Positioned YamlToken => t.val != .placeholder) rfl
+            have h2 := Array_setIfInBounds_filter_mono
+              ((scanValueClearKey s).tokens.setIfInBounds (scanValueClearKey s).simpleKey.tokenIndex
+                ⟨(scanValueClearKey s).simpleKey.pos, .blockMappingStart, (scanValueClearKey s).simpleKey.pos⟩)
+              ((scanValueClearKey s).simpleKey.tokenIndex + 1)
+              ⟨(scanValueClearKey s).simpleKey.pos, .key, (scanValueClearKey s).simpleKey.pos⟩
+              (fun t : Positioned YamlToken => t.val != .placeholder) rfl
+            omega
+          · -- One setIfInBounds
+            dsimp only []
+            have := Array_setIfInBounds_filter_mono (scanValueClearKey s).tokens
+              ((scanValueClearKey s).simpleKey.tokenIndex + 1)
+              ⟨(scanValueClearKey s).simpleKey.pos, .key, (scanValueClearKey s).simpleKey.pos⟩
+              (fun t : Positioned YamlToken => t.val != .placeholder) rfl
+            omega
+        · -- inFlow: one setIfInBounds
+          dsimp only []
+          have := Array_setIfInBounds_filter_mono (scanValueClearKey s).tokens
+            ((scanValueClearKey s).simpleKey.tokenIndex + 1)
+            ⟨(scanValueClearKey s).simpleKey.pos, .key, (scanValueClearKey s).simpleKey.pos⟩
+            (fun t : Positioned YamlToken => t.val != .placeholder) rfl
+          omega
+      · split
+        · dsimp only []; omega
+        · split
+          · -- pushMappingIndent
+            unfold pushMappingIndent
+            split
+            · -- emit .blockMappingStart
+              dsimp only []
+              have := filtered_grows_of_extended_prefix (scanValueClearKey s).tokens
+                ((scanValueClearKey s).emit .blockMappingStart).tokens
+                (fun t : Positioned YamlToken => t.val != .placeholder)
+                (by unfold ScannerState.emit; simp [Array.size_push])
+                (fun i hi => ScannerCorrectness.emit_preserves_tokens_at _ .blockMappingStart i hi)
+                (by simp only [emit_tokens_push, Array.getElem_push_eq]; decide)
+              omega
+            · omega
+          · omega
 
 -- Block indicator dispatch: scanBlockEntry, scanKey, scanValue.
 theorem dispatchBlockIndicators_filtered_grows (s s' : ScannerState) (c : Char)
@@ -7005,21 +7130,230 @@ theorem dispatchBlockIndicators_filtered_grows (s s' : ScannerState) (c : Char)
     | (simp_all; done)
 
 -- Content dispatch: each content function emits exactly 1 non-placeholder token.
+-- Helper: the newly-added token at index s.tokens.size is non-placeholder.
+-- Each content scanner emits .anchor/.alias/.tag/.scalar — never .placeholder.
+-- The proof mirrors dispatchContent_preserves_prefix but tracks the NEW token value
+-- instead of preserving existing tokens.
+set_option maxHeartbeats 3200000 in
+private theorem dispatchContent_new_not_placeholder (s s' : ScannerState) (c : Char)
+    (h : scanNextToken_dispatchContent s c = .ok s')
+    (h_strict : s'.tokens.size ≥ s.tokens.size + 1) :
+    (s'.tokens[s.tokens.size]'(by omega)).val ≠ YamlToken.placeholder := by
+  unfold scanNextToken_dispatchContent at h
+  simp only [bind, ScannerCorrectness.ScanHelpers.bind_ok_simp, pure, Pure.pure, Except.pure] at h
+  simp only [Except.bind] at h
+  -- '&' anchor
+  split at h
+  · generalize h_sc : scanAnchorOrAlias s true = result at h
+    cases result with
+    | error => simp at h
+    | ok s_a =>
+      simp only [Except.ok.injEq] at h; subst h; dsimp only []
+      unfold scanAnchorOrAlias at h_sc; dsimp only [] at h_sc
+      split at h_sc
+      · exact absurd h_sc (by simp)
+      · have h_eq := Except.ok.inj h_sc; subst h_eq; dsimp only []
+        unfold ScannerState.emitAt; dsimp only []
+        simp only [ScannerCorrectness.ScanHelpers.collectAnchorNameLoop_preserves_tokens,
+                    ScannerCorrectness.advance_preserves_tokens, Array.getElem_push_eq]
+        split <;> intro h <;> cases h
+  · split at h
+    · -- '*' alias
+      split at h
+      · simp at h
+      · generalize h_sc : scanAnchorOrAlias s false = result at h
+        cases result with
+        | error => simp at h
+        | ok s_a =>
+          simp only [Except.ok.injEq] at h; subst h
+          unfold scanAnchorOrAlias at h_sc; dsimp only [] at h_sc
+          split at h_sc
+          · exact absurd h_sc (by simp)
+          · have h_eq := Except.ok.inj h_sc; subst h_eq; dsimp only []
+            unfold ScannerState.emitAt; dsimp only []
+            simp only [ScannerCorrectness.ScanHelpers.collectAnchorNameLoop_preserves_tokens,
+                        ScannerCorrectness.advance_preserves_tokens, Array.getElem_push_eq]
+            intro h; cases h
+    · split at h
+      · -- '!' tag
+        generalize h_sc : scanTag s = result at h
+        cases result with
+        | error => simp at h
+        | ok s_t =>
+          simp only [Except.ok.injEq] at h; subst h
+          unfold scanTag at h_sc; dsimp only [] at h_sc
+          split at h_sc
+          · -- '<' → scanVerbatimTag (Except-returning)
+            simp only [bind, Except.bind] at h_sc
+            generalize hv : scanVerbatimTag s.advance s.currentPos = vresult at h_sc
+            cases vresult with
+            | error => simp at h_sc
+            | ok s_verb =>
+              dsimp only [] at h_sc
+              have h_eq := Except.ok.inj h_sc; subst h_eq; dsimp only []
+              unfold scanVerbatimTag at hv; dsimp only [] at hv
+              split at hv
+              · exact absurd hv (by simp)
+              · split at hv
+                · exact absurd hv (by simp)
+                · have h_eq := Except.ok.inj hv; subst h_eq
+                  unfold ScannerState.emitAt; dsimp only []
+                  simp only [ScannerCorrectness.ScanHelpers.collectVerbatimTagLoop_preserves_tokens,
+                              ScannerCorrectness.advance_preserves_tokens, Array.getElem_push_eq]
+                  intro h; cases h
+          · -- '!' → scanSecondaryTag (pure)
+            have h_eq := Except.ok.inj h_sc; subst h_eq; dsimp only []
+            unfold scanSecondaryTag; dsimp only []
+            unfold ScannerState.emitAt; dsimp only []
+            simp only [ScannerCorrectness.ScanHelpers.collectTagSuffixLoop_preserves_tokens,
+                        ScannerCorrectness.advance_preserves_tokens, Array.getElem_push_eq]
+            intro h; cases h
+          · -- other → scanNamedTag (pure)
+            have h_eq := Except.ok.inj h_sc; subst h_eq; dsimp only []
+            unfold scanNamedTag; dsimp only []; split
+            · -- foundBang = true
+              unfold ScannerState.emitAt; dsimp only []
+              simp only [ScannerCorrectness.ScanHelpers.collectTagSuffixLoop_preserves_tokens,
+                          ScannerCorrectness.ScanHelpers.collectTagHandleLoop_preserves_tokens,
+                          ScannerCorrectness.advance_preserves_tokens, Array.getElem_push_eq]
+              intro h; cases h
+            · -- foundBang = false
+              unfold ScannerState.emitAt; dsimp only []
+              simp only [ScannerCorrectness.ScanHelpers.collectTagHandleLoop_preserves_tokens,
+                          ScannerCorrectness.advance_preserves_tokens, Array.getElem_push_eq]
+              intro h; cases h
+      · -- remaining: block scalar, double/single quoted, plain
+        -- Further case-split per character
+        split at h
+        · -- '|' or '>' → scanBlockScalar
+          generalize h_sc : scanBlockScalar s = result at h
+          cases result with
+          | error => simp at h
+          | ok s_bs =>
+            simp only [Except.ok.injEq] at h; subst h
+            unfold scanBlockScalar at h_sc; simp only [] at h_sc
+            split at h_sc
+            · contradiction
+            · unfold scanBlockScalarBody at h_sc; simp only [] at h_sc
+              repeat (any_goals (split at h_sc))
+              all_goals (try contradiction)
+              all_goals (simp only [Except.ok.injEq] at h_sc; subst h_sc; dsimp only [])
+              all_goals (unfold ScannerState.emitAt; dsimp only [])
+              all_goals simp only [ScannerCorrectness.ScanHelpers.collectBlockScalarLoop_preserves_tokens,
+                                   ScannerCorrectness.ScanHelpers.scanBlockScalarConsumeNewline_preserves_tokens _ _ (by assumption),
+                                   ScannerCorrectness.ScanHelpers.scanBlockScalarSkipComment_preserves_tokens,
+                                   ScannerCorrectness.skipWhitespace_preserves_tokens,
+                                   ScannerCorrectness.ScanHelpers.parseBlockHeaderLoop_preserves_tokens,
+                                   ScannerCorrectness.advance_preserves_tokens, Array.getElem_push_eq]
+              all_goals (intro h; cases h)
+        · split at h
+          · -- '"' → scanDoubleQuoted
+            generalize h_sc : scanDoubleQuoted s = result at h
+            cases result with
+            | error => simp at h
+            | ok s_dq =>
+              simp only [Except.ok.injEq] at h
+              -- s' may have simpleKey update: split at the conditional
+              split at h <;> (subst h; try dsimp only [])
+              all_goals (
+                unfold scanDoubleQuoted at h_sc
+                simp only [bind, Except.bind] at h_sc
+                split at h_sc <;> try contradiction
+                rename_i heq_dq
+                have h_collect := ScannerCorrectness.ScanHelpers.collectDoubleQuotedLoop_preserves_tokens
+                  s.advance "" _ _ _ _ _ _ heq_dq
+                have h_adv := ScannerCorrectness.advance_preserves_tokens s
+                split at h_sc
+                · split at h_sc <;> try contradiction
+                  injection h_sc with h_eq; subst h_eq; dsimp only []
+                  unfold ScannerState.emitAt; dsimp only []
+                  simp only [h_collect, h_adv, Array.getElem_push_eq]
+                  intro h; cases h
+                · injection h_sc with h_eq; subst h_eq; dsimp only []
+                  unfold ScannerState.emitAt; dsimp only []
+                  simp only [h_collect, h_adv, Array.getElem_push_eq]
+                  intro h; cases h)
+          · split at h
+            · -- '\'' → scanSingleQuoted
+              generalize h_sc : scanSingleQuoted s = result at h
+              cases result with
+              | error => simp at h
+              | ok s_sq =>
+                simp only [Except.ok.injEq] at h
+                split at h <;> (subst h; try dsimp only [])
+                all_goals (
+                  unfold scanSingleQuoted at h_sc
+                  simp only [bind, Except.bind] at h_sc
+                  split at h_sc <;> try contradiction
+                  rename_i heq_sq
+                  have h_collect := ScannerCorrectness.ScanHelpers.collectSingleQuotedLoop_preserves_tokens
+                    s.advance "" _ _ _ _ _ _ heq_sq
+                  have h_adv := ScannerCorrectness.advance_preserves_tokens s
+                  split at h_sc
+                  · split at h_sc <;> try contradiction
+                    injection h_sc with h_eq; subst h_eq; dsimp only []
+                    unfold ScannerState.emitAt; dsimp only []
+                    simp only [h_collect, h_adv, Array.getElem_push_eq]
+                    intro h; cases h
+                  · injection h_sc with h_eq; subst h_eq; dsimp only []
+                    unfold ScannerState.emitAt; dsimp only []
+                    simp only [h_collect, h_adv, Array.getElem_push_eq]
+                    intro h; cases h)
+            · split at h
+              · -- canStartPlainScalar → scanPlainScalar
+                generalize h_sc : scanPlainScalar s = result at h
+                cases result with
+                | error => simp at h
+                | ok s_ps =>
+                  simp only [Except.ok.injEq] at h; subst h
+                  unfold scanPlainScalar at h_sc
+                  simp only [bind, Except.bind] at h_sc
+                  split at h_sc <;> try contradiction
+                  rename_i heq_ps
+                  injection h_sc with h_eq; subst h_eq; dsimp only []
+                  unfold ScannerState.emitAt; dsimp only []
+                  have h_collect := ScannerCorrectness.ScanHelpers.collectPlainScalarLoop_preserves_tokens
+                    s "" "" _ _ _ _ _ heq_ps
+                  simp only [h_collect, Array.getElem_push_eq]
+                  intro h; cases h
+              · -- error case: unexpectedChar
+                simp at h
+
 -- All content tokens (anchor, alias, tag, scalar) are non-placeholder.
-set_option maxHeartbeats 800000 in
+set_option maxHeartbeats 3200000 in
 theorem dispatchContent_filtered_grows (s s' : ScannerState) (c : Char)
     (h : scanNextToken_dispatchContent s c = .ok s') :
     (s'.tokens.filter (fun t => t.val != .placeholder)).size ≥
     (s.tokens.filter (fun t => t.val != .placeholder)).size + 1 := by
-  -- Use dispatch-level lemmas; dispatch returns ScannerState (no Option)
-  have h_mono := ScannerCorrectness.ScanHelpers.dispatchContent_tokens_mono s c s' h
   have h_pres i (hi : i < s.tokens.size) :=
     ScannerCorrectness.ScanHelpers.dispatchContent_preserves_prefix s c s' h i hi
-  -- Need: s'.tokens.size ≥ s.tokens.size + 1 (not just ≥)
-  -- and: the new token at s.tokens.size is non-placeholder
-  -- The first follows from per-function _adds_one_token; the second from the emit analysis
-  -- For now, use dispatch-level preservation + sorry for the bound strengthening
-  sorry  -- Phase D: prove h_sz ≥ +1 and h_new per content function
+  have h_strict : s'.tokens.size ≥ s.tokens.size + 1 := by
+    have h_mono := ScannerCorrectness.ScanHelpers.dispatchContent_tokens_mono s c s' h
+    -- Each scanner adds exactly 1 token (≥ + 1):
+    unfold scanNextToken_dispatchContent at h
+    simp only [bind, ScannerCorrectness.ScanHelpers.bind_ok_simp, pure, Pure.pure, Except.pure] at h
+    simp only [Except.bind] at h
+    repeat (any_goals (split at h))
+    any_goals contradiction
+    all_goals first
+      | (have := ScannerCorrectness.ScanHelpers.scanBlockScalar_adds_one_token s _ (by assumption); simp_all <;> omega)
+      | (have := ScannerCorrectness.ScanHelpers.scanDoubleQuoted_adds_one_token s _ (by assumption);
+         simp only [Except.ok.injEq] at h; subst h; dsimp only []; omega)
+      | (have := ScannerCorrectness.ScanHelpers.scanSingleQuoted_adds_one_token s _ (by assumption);
+         simp only [Except.ok.injEq] at h; subst h; dsimp only []; omega)
+      | (have := ScannerCorrectness.ScanHelpers.scanDoubleQuoted_adds_one_token s _ (by assumption); simp_all <;> omega)
+      | (have := ScannerCorrectness.ScanHelpers.scanSingleQuoted_adds_one_token s _ (by assumption); simp_all <;> omega)
+      | (have := ScannerCorrectness.ScanHelpers.scanPlainScalar_adds_one_token s _ (by assumption); simp_all <;> omega)
+      | (simp only [Except.ok.injEq] at h; subst h; dsimp only [];
+         have := ScannerCorrectness.ScanHelpers.scanAnchorOrAlias_adds_one_token s true _ (by assumption); omega)
+      | (have := ScannerCorrectness.ScanHelpers.scanAnchorOrAlias_adds_one_token s false _ (by assumption); simp_all <;> omega)
+      | (have := ScannerCorrectness.ScanHelpers.scanTag_adds_one_token s _ (by assumption); simp_all <;> omega)
+      | (simp_all <;> omega)
+  exact filtered_grows_of_any_new s.tokens s'.tokens _
+    h_strict (fun i hi => h_pres i hi) s.tokens.size
+    (by omega) (by omega)
+    (by have := dispatchContent_new_not_placeholder s s' c h h_strict
+        simp only [bne_iff_ne]; exact this)
 
 /-! #### Main theorem: filtered growth through scanNextToken -/
 
@@ -7405,18 +7739,28 @@ theorem scanFiltered_boundary_tokens (input : String)
 -- These characterize the filtered token array produced by scanning emitter output,
 -- providing the properties needed by the parser flow loop fuel sufficiency theorems.
 
--- ═══ Body token characterization lemmas (sorry'd — TRUE) ═══
+-- Flow bracket nesting utilities (flowBracketDelta, flowBracketBalance) are defined
+-- in ParserGrammableBase.lean and available via the ParserGrammable import.
+open L4YAML.Proofs.ParserGrammable (flowBracketDelta flowBracketBalance
+  flowBracketBalance_compose flowBracketBalance_push)
+
+-- ═══ Body token characterization lemmas ═══
 
 -- The proofs require tracing per-step scanner dispatch: each `emit v` produces first
 -- character `"`, `[`, or `{`, which dispatch to scanDoubleQuoted / scanFlowSequenceStart /
 -- scanFlowMappingStart respectively. The comma separator `, ` dispatches to scanFlowEntry
--- followed by whitespace skip and then the next item's dispatch. None of these paths
--- produce `.flowEntry` or `.key` as a first token in sequence context. In mapping context,
--- `saveSimpleKey` + `scanValuePrepare` retroactively inserts `.key` before each key scalar.
+-- followed by whitespace skip and then the next item's dispatch.
+--
+-- IMPORTANT: The flowEntry pattern (part 2) is restricted to OUTER-LEVEL flowEntries
+-- (where flowBracketBalance from old_sz to k equals 0). Inner flowEntries inside nested
+-- bracket groups (e.g., inside a nested mapping `{k1: v1, k2: v2}`) have `.key` after
+-- them, not a content start. The parser loop only visits outer-level flowEntries because
+-- `parseNode` consumes entire bracket groups, so this restriction is sufficient.
 
 /-- Body token characterization for `emitList` in flow context:
-    (1) The first new filtered token (at position `old_sz`) is not `.flowEntry` or `.key`.
-    (2) After every `.flowEntry` in the body, the next filtered token is not `.flowEntry` or `.key`.
+    (1) The first new filtered token (at position `old_sz`) is a content start.
+    (2) After every OUTER-LEVEL `.flowEntry` (where bracket balance from `old_sz` to `k` is 0),
+        the next filtered token is a content start.
 
     These follow from `emitList`'s structure: items separated by `", "` (comma + space).
     Each item starts with `emit v`, whose first character (`"`, `[`, or `{`) dispatches to
@@ -7443,9 +7787,10 @@ theorem emitList_body_filtered_characterization
        ((∃ c sc, ((s'.tokens.filter p)[old_sz]'h).val = .scalar c sc) ∨
         ((s'.tokens.filter p)[old_sz]'h).val = .flowSequenceStart ∨
         ((s'.tokens.filter p)[old_sz]'h).val = .flowMappingStart))) ∧
-    -- (2) After every flowEntry, next is a content start
+    -- (2) After every OUTER-LEVEL flowEntry, next is a content start
     (∀ (k : Nat), old_sz ≤ k → (h_hi : k < (s'.tokens.filter p).size) →
       ((s'.tokens.filter p)[k]'h_hi).val = .flowEntry →
+      flowBracketBalance (s'.tokens.filter p) old_sz k = 0 →
       k + 1 < (s'.tokens.filter p).size ∧
       (∀ (h' : k + 1 < (s'.tokens.filter p).size),
         ((∃ c sc, ((s'.tokens.filter p)[k + 1]'h').val = .scalar c sc) ∨
@@ -7456,12 +7801,18 @@ theorem emitList_body_filtered_characterization
     (1) The chain has ≥ 3 steps (key handling + value indicator + value content).
     (2) The first new filtered token is `.key` (from `saveSimpleKey` + `scanValuePrepare`
         retroactively converting a placeholder when `: ` is scanned).
-    (3) After every `.flowEntry` in the body, the next filtered token is `.key`.
+    (3) After every OUTER-LEVEL `.flowEntry` (where bracket balance from `old_sz` to `k` is 0),
+        the next filtered token is `.key`.
 
     These follow from `emitPairList`'s structure: each pair produces `emit k ++ ": " ++ emit v`,
     with pairs separated by `", "`. The `: ` triggers `scanValuePrepare` which converts the
     placeholder (saved by `saveSimpleKey` before scanning `emit k`) to `.key`. After each
-    comma separator, the next pair starts with `emit k` again, preceded by `saveSimpleKey`. -/
+    comma separator, the next pair starts with `emit k` again, preceded by `saveSimpleKey`.
+
+    IMPORTANT: The flowEntry pattern (part 3) is restricted to outer-level flowEntries
+    (bracketBalance = 0). Inner flowEntries from nested sequences/mappings may be followed
+    by content-start tokens rather than `.key`. The parser loop only visits outer-level
+    flowEntries because `parseNode` consumes entire nested bracket groups. -/
 theorem emitPairList_body_filtered_characterization
     (pairs : List (YamlValue × YamlValue)) (h_ne : pairs ≠ [])
     (h_all_k : ∀ p ∈ pairs, EmitScansInFlow p.1)
@@ -7484,9 +7835,10 @@ theorem emitPairList_body_filtered_characterization
     (old_sz < (s'.tokens.filter p).size ∧
      (∀ (h : old_sz < (s'.tokens.filter p).size),
        ((s'.tokens.filter p)[old_sz]'h).val = .key)) ∧
-    -- (3) After every flowEntry, next is .key
+    -- (3) After every OUTER-LEVEL flowEntry, next is .key
     (∀ (k : Nat), old_sz ≤ k → (h_hi : k < (s'.tokens.filter p).size) →
       ((s'.tokens.filter p)[k]'h_hi).val = .flowEntry →
+      flowBracketBalance (s'.tokens.filter p) old_sz k = 0 →
       k + 1 < (s'.tokens.filter p).size ∧
       (∀ (h' : k + 1 < (s'.tokens.filter p).size),
         ((s'.tokens.filter p)[k + 1]'h').val = .key)) := sorry
@@ -7511,6 +7863,7 @@ theorem scanFiltered_emitSeq_nonempty_structure
      tokens[2]!.val = .flowMappingStart) ∧
     (∀ k, 2 ≤ k → k < tokens.size - 2 →
         tokens[k]!.val = .flowEntry →
+        flowBracketBalance tokens 2 k = 0 →
         k + 1 ≤ tokens.size - 2 ∧
         ((∃ c s, tokens[k + 1]!.val = .scalar c s) ∨
          tokens[k + 1]!.val = .flowSequenceStart ∨
@@ -7688,14 +8041,23 @@ theorem scanFiltered_emitSeq_nonempty_structure
     exact h_body
   have h_fe_pattern : ∀ k, 2 ≤ k → k < tokens.size - 2 →
       tokens[k]!.val = .flowEntry →
+      flowBracketBalance tokens 2 k = 0 →
       k + 1 ≤ tokens.size - 2 ∧
       ((∃ c s, tokens[k + 1]!.val = .scalar c s) ∨
        tokens[k + 1]!.val = .flowSequenceStart ∨
        tokens[k + 1]!.val = .flowMappingStart) := by
-    intro k h_lo h_hi h_fe
+    intro k h_lo h_hi h_fe h_depth
     have h_k_lt : k < (s₂.tokens.filter p).size := by omega
     rw [h_tok_body k h_k_lt] at h_fe
-    obtain ⟨h_next_lt, h_next_cs⟩ := h_body_fe_next k (by omega) h_k_lt h_fe
+    -- Convert flowBracketBalance from tokens to s₂.tokens.filter p
+    have h_depth' : flowBracketBalance (s₂.tokens.filter p) 2 k = 0 := by
+      rw [← h_tokens_sz_eq] at h_k_lt
+      have : flowBracketBalance tokens 2 k = flowBracketBalance (s₂.tokens.filter p) 2 k := by
+        rw [h_tokens_decomp]
+        rw [flowBracketBalance_push _ _ 2 k (by simp [Array.size_push]; omega)]
+        rw [flowBracketBalance_push _ _ 2 k (by omega)]
+      rw [this] at h_depth; exact h_depth
+    obtain ⟨h_next_lt, h_next_cs⟩ := h_body_fe_next k (by omega) h_k_lt h_fe h_depth'
     exact ⟨by omega,
            by rw [h_tok_body (k+1) (by omega)]; exact h_next_cs (by omega)⟩
   have h_pnok : L4YAML.Proofs.ParserGrammable.ParseNodeFlowSeqOk
@@ -7719,6 +8081,7 @@ theorem scanFiltered_emitMap_nonempty_structure
     tokens[2]!.val = .key ∧
     (∀ k, 2 ≤ k → k < tokens.size - 2 →
         tokens[k]!.val = .flowEntry →
+        flowBracketBalance tokens 2 k = 0 →
         k + 1 ≤ tokens.size - 2 ∧ tokens[k + 1]!.val = .key) ∧
     L4YAML.Proofs.ParserGrammable.ParseEntryFlowMapOk tokens (tokens.size - 2) (4 * tokens.size + 4) := by
   -- Step 1: Boundary tokens from scanFiltered_boundary_tokens
@@ -7886,11 +8249,20 @@ theorem scanFiltered_emitMap_nonempty_structure
     rw [h_tok_body 2 (by omega)]; exact h_body_key (by omega)
   have h_fe_pattern : ∀ k, 2 ≤ k → k < tokens.size - 2 →
       tokens[k]!.val = .flowEntry →
+      flowBracketBalance tokens 2 k = 0 →
       k + 1 ≤ tokens.size - 2 ∧ tokens[k + 1]!.val = .key := by
-    intro k h_lo h_hi h_fe
+    intro k h_lo h_hi h_fe h_depth
     have h_k_lt : k < (s₂.tokens.filter p).size := by omega
     rw [h_tok_body k h_k_lt] at h_fe
-    obtain ⟨h_next_lt, h_next_key⟩ := h_body_fe_next k (by omega) h_k_lt h_fe
+    -- Convert flowBracketBalance from tokens to s₂.tokens.filter p
+    have h_depth' : flowBracketBalance (s₂.tokens.filter p) 2 k = 0 := by
+      rw [← h_tokens_sz_eq] at h_k_lt
+      have : flowBracketBalance tokens 2 k = flowBracketBalance (s₂.tokens.filter p) 2 k := by
+        rw [h_tokens_decomp]
+        rw [flowBracketBalance_push _ _ 2 k (by simp [Array.size_push]; omega)]
+        rw [flowBracketBalance_push _ _ 2 k (by omega)]
+      rw [this] at h_depth; exact h_depth
+    obtain ⟨h_next_lt, h_next_key⟩ := h_body_fe_next k (by omega) h_k_lt h_fe h_depth'
     exact ⟨by omega, by rw [h_tok_body (k+1) (by omega)]; exact h_next_key (by omega)⟩
   have h_pnok : L4YAML.Proofs.ParserGrammable.ParseEntryFlowMapOk
       tokens (tokens.size - 2) (4 * tokens.size + 4) := sorry
@@ -8018,11 +8390,14 @@ theorem parseStream_emitSequence (style : CollectionStyle) (items : Array YamlVa
       · exact .inr (.inr (by rw [h_mid_peek_val, hcs]))
     have h_after_fe_adj : ∀ k, ps_mid.pos ≤ k → k < tokens.size - 2 →
         ps_mid.tokens[k]!.val = .flowEntry →
+        L4YAML.Proofs.ParserGrammable.flowBracketBalance ps_mid.tokens 2 k = 0 →
         k + 1 ≤ tokens.size - 2 ∧
         ((∃ c s, ps_mid.tokens[k + 1]!.val = .scalar c s) ∨
          ps_mid.tokens[k + 1]!.val = .flowSequenceStart ∨
          ps_mid.tokens[k + 1]!.val = .flowMappingStart) := by
-      rw [h_ps_mid_tok, h_ps_mid_pos]; exact h_fe_pattern
+      intro k hk1 hk2 hk3 hk4
+      rw [h_ps_mid_tok] at hk3 hk4 ⊢; rw [h_ps_mid_pos] at hk1
+      exact h_fe_pattern k hk1 hk2 hk3 hk4
     have h_at_end_adj : ps_mid.peek? = some .flowSequenceEnd → ps_mid.pos = tokens.size - 2 := by
       intro h_peek; exfalso
       have ⟨_, h_val⟩ := L4YAML.Proofs.ParserGrammable.peek_some_val h_peek
@@ -8030,12 +8405,16 @@ theorem parseStream_emitSequence (style : CollectionStyle) (items : Array YamlVa
       -- h_content0 says tokens[2]!.val is scalar/flowSeqStart/flowMapStart
       -- h_val says tokens[2]!.val = .flowSequenceEnd → contradiction
       rcases h_content0 with ⟨c, s, hcs⟩ | hcs | hcs <;> rw [h_val] at hcs <;> cases hcs
+    have h_bal_init : L4YAML.Proofs.ParserGrammable.flowBracketBalance ps_mid.tokens 2 ps_mid.pos = 0 := by
+      rw [h_ps_mid_pos]; unfold L4YAML.Proofs.ParserGrammable.flowBracketBalance; simp
     obtain ⟨items_res, ps_loop, h_loop_ok, h_loop_peek, h_loop_pos_eq, h_loop_tok, h_loop_tp⟩ :=
       L4YAML.Proofs.ParserGrammable.parseFlowSequenceLoop_emitter_ok
         (4 * tokens.size + 2) ps_mid #[] (tokens.size - 2)
+        2
         h_pnok_adj h_loop_fuel h_loop_pos h_endPos h_end_tok_adj
         h_at_end_adj
-        h_entry_vacuous h_content_start_adj h_after_fe_adj
+        h_entry_vacuous h_content_start_adj h_after_fe_adj h_bal_init
+        (by rw [h_ps_mid_pos]; omega)
     -- parseFlowSequence(4*N+3): destructs, passes 4*N+2 to loop
     have h_parseFlowSeq : parseFlowSequence ps1 (4 * tokens.size + 3) =
         Except.ok (.sequence .flow items_res, ps_loop.advance) := by
@@ -8214,20 +8593,27 @@ theorem parseStream_emitMapping (style : CollectionStyle) (pairs : Array (YamlVa
       exact h_t2_key
     have h_after_fe_adj : ∀ k, ps_mid.pos ≤ k → k < tokens.size - 2 →
         ps_mid.tokens[k]!.val = .flowEntry →
+        L4YAML.Proofs.ParserGrammable.flowBracketBalance ps_mid.tokens 2 k = 0 →
         k + 1 ≤ tokens.size - 2 ∧ ps_mid.tokens[k + 1]!.val = .key := by
-      rw [h_ps_mid_tok, h_ps_mid_pos]; exact h_fe_key_pattern
+      intro k hk1 hk2 hk3 hk4
+      rw [h_ps_mid_tok] at hk3 hk4 ⊢; rw [h_ps_mid_pos] at hk1
+      exact h_fe_key_pattern k hk1 hk2 hk3 hk4
     have h_at_end_adj : ps_mid.peek? = some .flowMappingEnd → ps_mid.pos = tokens.size - 2 := by
       intro h_peek; exfalso
       have ⟨_, h_val⟩ := L4YAML.Proofs.ParserGrammable.peek_some_val h_peek
       simp only [h_ps_mid_tok, h_ps_mid_pos] at h_val
       -- tokens[2] = .key ≠ .flowMappingEnd
       exact absurd (h_t2_key.symm.trans h_val) (by decide)
+    have h_bal_init : L4YAML.Proofs.ParserGrammable.flowBracketBalance ps_mid.tokens 2 ps_mid.pos = 0 := by
+      rw [h_ps_mid_pos]; unfold L4YAML.Proofs.ParserGrammable.flowBracketBalance; simp
     obtain ⟨pairs_res, ps_loop, h_loop_ok, h_loop_peek, h_loop_pos_eq, h_loop_tok, h_loop_tp⟩ :=
       L4YAML.Proofs.ParserGrammable.parseFlowMappingLoop_emitter_ok
         (4 * tokens.size + 2) ps_mid #[] (tokens.size - 2)
+        2
         h_entry_adj h_loop_fuel h_loop_pos h_endPos h_end_tok_adj
         h_at_end_adj
-        h_sep_adj h_start_adj h_after_fe_adj
+        h_sep_adj h_start_adj h_after_fe_adj h_bal_init
+        (by rw [h_ps_mid_pos]; omega)
     -- parseFlowMapping(4*N+3): destructs, passes 4*N+2 to loop
     have h_parseFlowMap : parseFlowMapping ps1 (4 * tokens.size + 3) =
         Except.ok (.mapping .flow pairs_res, ps_loop.advance) := by
