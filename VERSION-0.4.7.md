@@ -3651,7 +3651,7 @@ See [ADVERSARIAL_INSTANTIATION.md](ADVERSARIAL_INSTANTIATION.md) — reflections
 Key takeaway: the P4 false theorem discovery validated the methodology — investing 3 hours
 in adversarial testing saved potentially unbounded proof effort on an unprovable statement.
 
-**Phase F: Layer 0 — Per-step scanner invariants (4 sorrys) (NEXT)**
+**Phase F: Layer 0 — Per-step scanner invariants (4 sorrys → 2 proven, 2 blocked)**
 *Estimated: ~200-400 LOC · Risk: LOW-MEDIUM*
 
 Prove the 4 foundational per-step scanner invariants. These are leaf sorrys with no
@@ -3659,36 +3659,81 @@ dependencies on other sorry'd theorems.
 
 **Sorrys targeted:**
 
-1. **`scanNextToken_prefix_and_sk_inv`** (L6631, EmitterScannability.lean)
-   Token prefix preservation + simpleKey disjunctive invariant through one `scanNextToken`.
-   Approach: unfold `scanNextToken`, case-split on 4-way dispatch
-   (structural → flow → block → content), apply existing per-branch prefix helpers.
-   ~100-150 LOC.
+1. ✅ **`scanNextToken_prefix_and_sk_inv`** (L6623, EmitterScannability.lean) — **PROVEN**
+   Precondition strengthened from `s.simpleKey.possible → tokenIndex ≥ n` to
+   `SimpleKeyAbove s n` (tracks both current simpleKey and all stacked simpleKeys).
+   Conclusion strengthened from disjunctive `(sk' → tokenIndex ≥ n) ∨ ek' = none` to
+   `SimpleKeyAbove s' n`. Proof delegates to existing infrastructure:
+   `ScannerCorrectness.scanNextToken_preserves_prefix` (prefix part) and
+   `ScannerCorrectness.scanNextToken_maintains_simpleKeyAbove` (SK part).
+   No code consumers existed for the old interface; change is safe. ~5 LOC.
 
-2. **`ScanChain_preserves_raw_prefix`** (L6656, EmitterScannability.lean)
-   Induction on ScanChain: raw prefix preservation through multiple steps.
-   Depends on #1. Once #1 is proven, this is a straightforward induction where the
-   disjunctive `ek = none` branch is resolved at each step. ~30-50 LOC.
+2. ✅ **`ScanChain_preserves_raw_prefix`** (L6644, EmitterScannability.lean) — **PROVEN**
+   Precondition strengthened to `SimpleKeyAbove s n₀` (matching #1). Proof is
+   straightforward induction on ScanChain: apply #1 at each step, get `SimpleKeyAbove`
+   for the next step. The disjunctive resolution that plagued the old formulation is
+   eliminated entirely — `SimpleKeyAbove` tracks stack bounds, so flow close
+   operations are handled transparently. No code consumers; safe change. ~8 LOC.
 
-3. **`scanNextToken_filtered_grows`** (L7407, EmitterScannability.lean)
-   Filtered token array grows by ≥1 per step — incomplete structural dispatch case.
-   The structural dispatch (`%RESERVED` directive) normally adds ≥0 tokens
-   (`dispatchStructural_filtered_mono`, proven). The ≥+1 claim for the full
-   `scanNextToken` holds because preprocessing always emits at least one token.
-   Approach: compose `preprocess_filtered_mono` with dispatch monotonicity. ~30-50 LOC.
+3. ❌ **`scanNextToken_filtered_grows`** (L7366, EmitterScannability.lean) — **BLOCKED**
+   The `%RESERVED` (unknown) directive case in structural dispatch adds 0 non-placeholder
+   tokens. Since preprocessing adds only `.placeholder` tokens (filtered out), the total
+   non-placeholder growth is 0, violating the ≥+1 claim. The theorem statement is **false
+   for inputs containing unknown directives**. For emitter-produced inputs (which only use
+   `%YAML`/`%TAG` directives), the claim holds. Fixing requires either:
+   (a) Adding `h_ad : s.allowDirectives = false` precondition (excludes all directives — the
+   directive path errors when `allowDirectives = false`), or (b) adding
+   `h_no_reserved : ¬isReservedDirective input` restricting to known directives.
+   Either change requires propagating the precondition through `ScanChain_filtered_grows`.
 
-4. **`ScanChain_filtered_prefix`** (L7442, EmitterScannability.lean)
-   Filtered tokens form a prefix through ScanChain. Depends on #3 and existing
-   `ScanChain_filtered_grows`. Induction on ScanChain applying per-step filtered growth
-   and non-placeholder preservation. ~30-50 LOC.
-
-Why first: These are the foundation — all 6 remaining EmitterScannability sorrys
-(Layers 1–3) depend transitively on these 4 being proven. No other sorrys needed
-as prerequisites. Phase E adversarial testing confirmed all 4 statements are correct.
+4. ❌ **`ScanChain_filtered_prefix`** (L7431, EmitterScannability.lean) — **BLOCKED**
+   The proof requires showing that all `setIfInBounds` overwrites during the chain target
+   positions ≥ the initial `tokens.size`. This is true when all stack entries have
+   `tokenIndex ≥ initial_tokens.size` (entries pushed within the chain satisfy this by
+   construction). However, pre-chain stack entries may have `tokenIndex < initial_tokens.size`.
+   The precondition `(sk.possible → tokenIndex ≥ tokens.size) ∨ ek = none` does NOT provide
+   stack bounds, and `SimpleKeyAbove s (s.tokens.size)` cannot be constructed (stack entry
+   at `tokenIndex = 0` from initial `saveSimpleKey` before flow open). The theorem IS
+   correct for its actual usage (flow body chains where pre-chain entries are not popped),
+   but a general proof requires either:
+   (a) Per-step non-placeholder preservation lemmas (approach (a) from docstring), or
+   (b) Restricting to flow-balanced chains (new precondition about flow level/stack depth).
 
 ***Phase F: Accomplishments***
 
+- Eliminated 2 of 4 targeted sorrys (`scanNextToken_prefix_and_sk_inv`,
+  `ScanChain_preserves_raw_prefix`), reducing total sorry count from 13 to 11.
+- Key insight: the existing `ScannerCorrectness` infrastructure
+  (`scanNextToken_preserves_prefix`, `scanNextToken_maintains_simpleKeyAbove`,
+  `preprocess_maintains_simpleKeyAbove`, `dispatch*_maintains_simpleKeyAbove`) already
+  provides everything needed — the sorry'd theorems were redundant formulations with
+  weaker preconditions that turned out to be insufficient.
+- Strengthened preconditions from simple `sk.possible → tokenIndex ≥ n` to
+  `SimpleKeyAbove s n`, which tracks both the current simpleKey AND all stacked
+  simpleKeys. This avoids the disjunctive conclusion (`∨ ek = none`) that complicated
+  the old formulation's induction.
+- Build: 429/429 jobs, 11 sorry warnings (was 13).
+
 ***Phase F: Reflections***
+
+- **The weaker formulations were a dead end.** The original Phase F plan assumed the
+  simple `sk.possible → tokenIndex ≥ n` precondition (without stack bounds) was
+  sufficient. Deep analysis revealed that flow close (`]`/`}`) restores simpleKeys from
+  the stack, and without stack bounds, the induction invariant breaks. The adversarial
+  testing (Phase E) didn't catch this because it only tested emitter-produced inputs where
+  `ek = none` throughout (no explicit `?` keys).
+- **`SimpleKeyAbove` was the right abstraction all along.** The proven infrastructure in
+  `ScannerCorrectness.lean` (used by `scanLoop_preserves_tokens`) already solved this
+  problem. The EmitterScannability layer was attempting to reprove the same property with
+  weaker assumptions — which turned out to be provably insufficient for the flow close case.
+- **Sorrys #3 and #4 have genuine correctness issues for general inputs.** The ≥+1
+  filtered growth claim (#3) is false for `%RESERVED` directives. The filtered prefix
+  claim (#4) can fail when pre-chain stack entries are popped. Both are correct for
+  emitter-produced inputs (the intended use case) but would need restricted preconditions
+  to be generally provable.
+- **Revised dependency impact:** Phases G–I depend on sorrys #3–#4. The remaining 8
+  EmitterScannability sorrys cannot all be eliminated without first addressing the
+  `scanNextToken_filtered_grows` and `ScanChain_filtered_prefix` formulations.
 
 **Phase G: Layer 1 — Body token characterization (2 sorrys)**
 *Estimated: ~200-400 LOC · Risk: MEDIUM*
@@ -3819,7 +3864,7 @@ These don't block `universal_roundtrip` but are needed for full-project 0-sorry.
 | C | 2 (prefix inv + filtered growth) | 100-200 | LOW | Phase B | **DONE** |
 | D | 2 (body characterization) | 200-400 | MEDIUM | Phase C | **DONE** (statements fixed) |
 | E | 0 (adversarial audit) | ~3 hrs | LOW | Phase D | **DONE** (993/993, 1 false thm repaired) |
-| F | 4 (per-step scanner invariants) | 200-400 | LOW-MEDIUM | Phase E | **NEXT** |
+| F | 4 targeted → 2 proven, 2 blocked | ~15 | LOW-MEDIUM | Phase E | **DONE** (2/4 proven; #3 false for %RESERVED, #4 needs stack precond) |
 | G | 2 (body characterization proofs) | 200-400 | MEDIUM | Phase F | |
 | H | 2 (parser acceptance / h_pnok) | 400-800 | HIGH | Phase G | |
 | I | 2 (content fidelity) | 300-600 | MEDIUM-HIGH | Phase H | |

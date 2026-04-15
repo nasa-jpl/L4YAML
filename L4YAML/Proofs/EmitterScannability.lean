@@ -6612,48 +6612,43 @@ theorem ScanChain_tokens_mono {s s' : ScannerState} {n : Nat}
     Without this, `scanNextToken` may overwrite `tokens[tokenIndex]`
     (replacing `.placeholder` with `.key`), violating prefix preservation.
 
-    **Note on the disjunctive conclusion**: The output invariant uses
-    `(sk'.possible → tokenIndex ≥ n) ∨ ek' = none` because some scanner
-    dispatches (flow close `]`/`}`) restore a simpleKey from the stack whose
-    `tokenIndex` may be below `n`, but in those cases `ek` is `none`.
-    The disjunction cannot appear in the *precondition*: adversarial testing
-    showed that `ek = none` alone does NOT prevent prefix-violating overwrites
-    (e.g., `"a: b"` step 1: sk.possible=true, tokenIndex=1, ek=none, scanner
-    overwrites tokens[1]). -/
+    **Precondition**: Uses `SimpleKeyAbove` to track both the current simpleKey
+    and all stacked simpleKeys. This is necessary because flow close operations
+    (`]`/`}`) restore a simpleKey from the stack, and without stack bounds,
+    the restored `tokenIndex` could fall below `n`.
+
+    **Conclusion**: Returns both prefix preservation and `SimpleKeyAbove s' n`,
+    enabling straightforward induction in `ScanChain_preserves_raw_prefix`. -/
 theorem scanNextToken_prefix_and_sk_inv (s s' : ScannerState)
     (h_next : scanNextToken s = .ok (some s'))
     (n : Nat) (h_n : n ≤ s.tokens.size)
-    (h_cond : s.simpleKey.possible = true → s.simpleKey.tokenIndex ≥ n) :
+    (h_inv : ScannerCorrectness.SimpleKeyAbove s n) :
     (∀ (i : Nat) (hi : i < n),
       s'.tokens[i]'(by have := ScannerCorrectness.scanNextToken_adds_tokens s s' h_next; omega) =
       s.tokens[i]'(by omega)) ∧
-    ((s'.simpleKey.possible = true → s'.simpleKey.tokenIndex ≥ n) ∨
-     s'.explicitKeyLine = none) := sorry
+    ScannerCorrectness.SimpleKeyAbove s' n :=
+  ⟨fun i hi => ScannerCorrectness.scanNextToken_preserves_prefix s s' h_next n h_n h_inv i hi,
+   ScannerCorrectness.scanNextToken_maintains_simpleKeyAbove s s' h_next n h_n h_inv⟩
 
 /-- Through a ScanChain, all raw token positions below `n₀` are preserved,
-    provided `n₀ ≤ s.tokens.size` and the simpleKey doesn't overlap the prefix
-    (`s.simpleKey.possible → tokenIndex ≥ n₀`).
+    provided `n₀ ≤ s.tokens.size` and `SimpleKeyAbove s n₀` holds (tracking
+    both the current simpleKey and all stacked simpleKeys).
 
-    Note: the per-step theorem's conclusion uses a disjunctive `∨ ek = none`
-    invariant, but the inductive step requires resolving the `ek = none` branch
-    back to the strong `sk.possible → tokenIndex ≥ n₀` form. This holds when
-    `n₀` is chosen as `min(sk₀.tokenIndex, tokens₀.size)` at the chain start,
-    since restored simpleKey tokenIndices from the stack are ≥ 1 ≥ n₀ for
-    typical n₀ values. The proof requires case analysis on the disjunction at
-    each inductive step. -/
+    The `SimpleKeyAbove` invariant is maintained through each step by
+    `scanNextToken_prefix_and_sk_inv`, making the induction straightforward. -/
 theorem ScanChain_preserves_raw_prefix {s s' : ScannerState} {k : Nat}
     (h_chain : ScanChain s k s')
     (n₀ : Nat) (h_n₀ : n₀ ≤ s.tokens.size)
-    (h_cond : s.simpleKey.possible = true → s.simpleKey.tokenIndex ≥ n₀)
+    (h_inv : ScannerCorrectness.SimpleKeyAbove s n₀)
     (i : Nat) (hi : i < n₀) :
     s'.tokens[i]'(by have := ScanChain_tokens_mono h_chain; omega) =
     s.tokens[i]'(by omega) := by
-  -- Proof sketch: induction on h_chain, using scanNextToken_prefix_and_sk_inv
-  -- at each step. The disjunctive conclusion needs resolution: when the step
-  -- yields the ek=none branch, a separate argument shows sk'.tokenIndex ≥ n₀
-  -- (scanner only sets tokenIndex to current tokens.size ≥ n₀, and stack pops
-  -- restore tokenIndex ≥ initial simpleKey position ≥ n₀).
-  sorry
+  induction h_chain with
+  | zero => rfl
+  | step h_snt h_rest ih =>
+    have h_adds := ScannerCorrectness.scanNextToken_adds_tokens _ _ h_snt
+    have ⟨h_pres, h_inv'⟩ := scanNextToken_prefix_and_sk_inv _ _ h_snt n₀ h_n₀ h_inv
+    exact (ih (Nat.le_trans h_n₀ h_adds) h_inv').trans (h_pres i hi)
 
 /-- If `b` extends `a` (same elements at all positions `i < a.size`), then
     `b.filter p` has `a.filter p` as a prefix. -/
