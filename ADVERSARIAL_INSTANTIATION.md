@@ -155,6 +155,58 @@ Re-verify after the `flowBracketBalance` fix:
 **Check:** For each `flowEntry` at `flowBracketBalance = 0`, verify the next filtered token
 is a content-start (scalar/flowSeqStart/flowMapStart) for sequences, or `.key` for mappings.
 
+### Priority 1: Accomplishments
+
+**Test suite:** `Tests/AdversarialInstantiation.lean` — 188 checks, all passing.
+Integrated into CI via `lakefile.toml` (`adversarialinstantiation` target) and
+the suite runner's verified test suites.
+
+**Test coverage (9g — `emitList_body_filtered_characterization`):**
+- Flat sequences: 1, 2, 3 items
+- 1-level nesting: `[["a","b"],"c"]`, `[{"k":"v"},"c"]`
+- 2-level nesting: `[[["a"]]]`, `[[["a"]],"b"]`
+- Mixed: `[{"k":"v"},["a"]]`, `["plain",["a","b"],{"x":"y"}]`
+- Previously-failing: `[{"k1":"v1","k2":"v2"}]`, `[{"k1":"v1","k2":"v2"},"after"]`
+- Deep: `[[[[deep]]]]`, `[{"a":[{"b":"c"}]}]`
+- Edge cases: empty scalar, special chars with escapes, 6-item list
+
+**Test coverage (9h — `emitPairList_body_filtered_characterization`):**
+- Single/multi pair: 1, 2, 3 pairs
+- Nested values: sequences in values, mappings in values, sequences as keys
+- Mixed: `{"items":["x","y"],"count":"2"}`, `{"data":[{"id":"1"},{"id":"2"}],"meta":{"ver":"1.0"}}`
+- Deep: `{"k":[[["deep"]]]}`, `{"a":[["1"]],"b":{"c":{"d":"e"}}}`
+- Edge cases: empty key, empty value, special chars, 6-pair mapping
+
+**Key verification points:**
+1. First body token is content-start (9g) or `.key` (9h) — verified for all inputs
+2. Outer-level `flowEntry` (bracketBalance = 0) is always followed by content-start (9g) or `.key` (9h)
+3. Inner `flowEntry` tokens (bracketBalance > 0, inside nested brackets) are correctly excluded
+4. The `flowBracketBalance` computation correctly distinguishes nesting levels
+
+**Tokens observed (representative):**
+- `[{"k1":"v1","k2":"v2"},"after"]` → `streamStart [ { key scalar(k1) : scalar(v1) , key scalar(k2) : scalar(v2) } , scalar(after) ] streamEnd`
+  - Inner `,` at position 8 has bal=1 (inside `{}`), correctly skipped
+  - Outer `,` at position 12 has bal=0, next is `scalar(after)` ✓
+
+### Priority 1: Reflections
+
+**Confidence level:** HIGH. The test suite covers the exact input patterns that previously
+triggered a false statement (nested mappings inside sequences where inner `flowEntry` tokens
+at non-zero bracket balance were incorrectly required to be followed by content-start). The
+`flowBracketBalance` fix (theorems 9i–9l, now proven) correctly distinguishes inner vs outer
+commas.
+
+**What was verified:**
+- The `flowBracketBalance` predicate accurately identifies outer-level commas
+- All 7 content scanner types (scalar variants, nested `[`, nested `{`) produce the expected
+  first filtered token
+- The `, ` separator between items produces exactly one `.flowEntry` token at the right
+  nesting level
+
+**Residual risk:** LOW. The adversarial inputs include the previously-failing case and several
+more complex nesting patterns. No new failures discovered. The theorem statements align with
+observed scanner behavior.
+
 ### Priority 2: Theorems 9c, 9d (end-to-end round-trip)
 
 These are directly checkable via `emit → scanFiltered → parseYamlRaw → contentEq`:
@@ -170,12 +222,20 @@ These are directly checkable via `emit → scanFiltered → parseYamlRaw → con
 
 **Check:** `contentEq (parseYamlRaw (emit v)).get! v = true`
 
+### Priority 2: Accomplishments
+
+### Priority 2: Reflections
+
 ### Priority 3: Theorems 9a, 9b (parser fuel sufficiency)
 
 The claim `4 * tokens.size + 4` as fuel bound is testable:
 
 **Check:** `parseFlowSequence tokens 0 (4 * tokens.size + 4)` returns `.ok` for scanned
 emitter output. Also test with `4 * tokens.size + 3` (one less) to verify tightness.
+
+### Priority 3: Accomplishments
+
+### Priority 3: Reflections
 
 ### Priority 4: Theorem 9e (scanner prefix invariant)
 
@@ -185,6 +245,10 @@ emitter output. Also test with `4 * tokens.size + 3` (one less) to verify tightn
 - Both conditions false (normal flow)
 
 **Check:** After `scanNextToken`, verify prefix preserved AND disjunctive condition maintained.
+
+### Priority 4: Accomplishments
+
+### Priority 4: Reflections
 
 ### Priority 5: ScannerBound theorems (preprocess, structural, content)
 
@@ -197,12 +261,22 @@ emitter output. Also test with `4 * tokens.size + 3` (one less) to verify tightn
 
 ## Implementation Plan
 
-1. Create `tmp/sorry_audit.lean` importing `L4YAML.Proofs.EmitterScannability` and
-   `L4YAML.Proofs.ScannerBound`
-2. Define helper: `auditResult (name : String) (check : Bool) : IO Unit`
-3. Implement Priority 1–5 checks as `#eval` blocks
-4. Any `#guard` failure → investigate and fix the theorem statement before proving
-5. All checks pass → proceed to proof with increased confidence
+All adversarial instantiation tests live in `Tests/AdversarialInstantiation.lean` and are
+integrated into CI:
 
-**Time estimate:** ~2–4 hours for the full audit suite. Compared to ~100+ hours of
-potential proof work on false statements, this is a high-ROI investment.
+- **Build target:** `adversarialinstantiation` (in `lakefile.toml` `defaultTargets`)
+- **Standalone runner:** `Tests/AdversarialInstantiation/Runner.lean` → `.lake/build/bin/adversarialinstantiation`
+- **Suite runner:** Included via `Tests.AdversarialInstantiation.collectTests` in `Tests/SuiteRunner/Main.lean`
+- **Report:** Appears in HTML/JSON reports as "Adversarial Instantiation Tests (sorry audit)"
+
+For each priority:
+1. Add test functions (`test9g`, `test9h`, ...) and register in `collectTests`
+2. Use `TestCollector` + `check`/`checkM` macros for VerifiedSuiteResult integration
+3. Any check failure → investigate and fix the theorem statement before proving
+4. All checks pass → proceed to proof with increased confidence
+
+**Status:** Priority 1 complete (188/188). Priorities 2–5 to be added incrementally.
+
+### Priority 5: Accomplishments
+
+### Priority 5: Reflections

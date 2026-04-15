@@ -24,6 +24,7 @@ defaultTargets = [
   "mutationtests",
   "propertytests",
   "productioncoverage",
+  "adversarialinstantiation",
 ]
 
 [leanOptions]
@@ -111,6 +112,13 @@ name = "Tests.MutationSuiteTests"
 [[lean_exe]]
 name = "mutationtests"
 root = "Tests.MutationSuiteTests.Runner"
+
+[[lean_lib]]
+name = "Tests.AdversarialInstantiation"
+
+[[lean_exe]]
+name = "adversarialinstantiation"
+root = "Tests.AdversarialInstantiation.Runner"
 
 [[lean_lib]]
 name = "Tests.AdversarialGrammarTests"
