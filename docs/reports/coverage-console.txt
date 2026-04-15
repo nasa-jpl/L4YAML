@@ -436,14 +436,14 @@ Running verified test suites...
   Scanner & TokenParser Tests (Phase 9): ✓ 32/32
   YAML 1.2.2 Spec Examples (Scanner/Parser Pipeline): ✓ 132/132
   Adversarial Grammar-Directed Tests (v0.2.13.1): ✓ 154/154
-  Adversarial Instantiation Tests (sorry audit): ✓ 188/188
+  Adversarial Instantiation Tests (sorry audit): ✓ 329/329
   Mutation Testing on yaml-test-suite (v0.2.13.2): ✓ 45/45
   Property-Based Round-Trip Tests (v0.2.13.3): ✓ 124/124
   Production Coverage Analysis: ✓ 18/18
   Parser Security Limit Tests: ✓ 43/43
   Demo: ✓ 7/7
 
-Verified: 1420/1420
+Verified: 1561/1561
 
 Generating HTML reports...
   wrote docs/reports/index.html

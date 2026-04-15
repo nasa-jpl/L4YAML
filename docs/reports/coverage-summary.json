@@ -1,5 +1,5 @@
 {
-  "date": "2026-04-14T19:36:48-0700",
+  "date": "2026-04-14T20:01:50-0700",
   "overall": {
     "applicable": 358,
     "correct": 358,
@@ -7592,7 +7592,7 @@
       {
         "allPass": true,
         "label": "Adversarial Instantiation Tests (sorry audit)",
-        "passed": 188,
+        "passed": 329,
         "tests": [
           {
             "category": "9g: emitList_body_filtered_characterization",
@@ -8533,9 +8533,714 @@
             "category": "9h: emitPairList_body_filtered_characterization",
             "name": "many-pairs: outer flowEntry@26 → .key",
             "outcome": "pass"
+          },
+          {
+            "category": "9c/9d: emit round-trip content equivalence",
+            "name": "scalar-plain: parse succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9c/9d: emit round-trip content equivalence",
+            "name": "scalar-plain: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9c/9d: emit round-trip content equivalence",
+            "name": "scalar-plain: contentEq",
+            "outcome": "pass"
+          },
+          {
+            "category": "9c/9d: emit round-trip content equivalence",
+            "name": "scalar-empty: parse succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9c/9d: emit round-trip content equivalence",
+            "name": "scalar-empty: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9c/9d: emit round-trip content equivalence",
+            "name": "scalar-empty: contentEq",
+            "outcome": "pass"
+          },
+          {
+            "category": "9c/9d: emit round-trip content equivalence",
+            "name": "scalar-escape: parse succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9c/9d: emit round-trip content equivalence",
+            "name": "scalar-escape: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9c/9d: emit round-trip content equivalence",
+            "name": "scalar-escape: contentEq",
+            "outcome": "pass"
+          },
+          {
+            "category": "9c/9d: emit round-trip content equivalence",
+            "name": "scalar-newline: parse succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9c/9d: emit round-trip content equivalence",
+            "name": "scalar-newline: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9c/9d: emit round-trip content equivalence",
+            "name": "scalar-newline: contentEq",
+            "outcome": "pass"
+          },
+          {
+            "category": "9c/9d: emit round-trip content equivalence",
+            "name": "scalar-tab: parse succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9c/9d: emit round-trip content equivalence",
+            "name": "scalar-tab: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9c/9d: emit round-trip content equivalence",
+            "name": "scalar-tab: contentEq",
+            "outcome": "pass"
+          },
+          {
+            "category": "9c/9d: emit round-trip content equivalence",
+            "name": "scalar-backslash: parse succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9c/9d: emit round-trip content equivalence",
+            "name": "scalar-backslash: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9c/9d: emit round-trip content equivalence",
+            "name": "scalar-backslash: contentEq",
+            "outcome": "pass"
+          },
+          {
+            "category": "9c/9d: emit round-trip content equivalence",
+            "name": "scalar-unicode: parse succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9c/9d: emit round-trip content equivalence",
+            "name": "scalar-unicode: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9c/9d: emit round-trip content equivalence",
+            "name": "scalar-unicode: contentEq",
+            "outcome": "pass"
+          },
+          {
+            "category": "9c/9d: emit round-trip content equivalence",
+            "name": "scalar-colon-space: parse succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9c/9d: emit round-trip content equivalence",
+            "name": "scalar-colon-space: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9c/9d: emit round-trip content equivalence",
+            "name": "scalar-colon-space: contentEq",
+            "outcome": "pass"
+          },
+          {
+            "category": "9c/9d: emit round-trip content equivalence",
+            "name": "scalar-hash: parse succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9c/9d: emit round-trip content equivalence",
+            "name": "scalar-hash: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9c/9d: emit round-trip content equivalence",
+            "name": "scalar-hash: contentEq",
+            "outcome": "pass"
+          },
+          {
+            "category": "9c/9d: emit round-trip content equivalence",
+            "name": "scalar-brackets: parse succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9c/9d: emit round-trip content equivalence",
+            "name": "scalar-brackets: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9c/9d: emit round-trip content equivalence",
+            "name": "scalar-brackets: contentEq",
+            "outcome": "pass"
+          },
+          {
+            "category": "9c/9d: emit round-trip content equivalence",
+            "name": "scalar-braces: parse succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9c/9d: emit round-trip content equivalence",
+            "name": "scalar-braces: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9c/9d: emit round-trip content equivalence",
+            "name": "scalar-braces: contentEq",
+            "outcome": "pass"
+          },
+          {
+            "category": "9c: emit_roundtrip_sequence_content_eq",
+            "name": "seq-empty: parse succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9c: emit_roundtrip_sequence_content_eq",
+            "name": "seq-empty: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9c: emit_roundtrip_sequence_content_eq",
+            "name": "seq-empty: contentEq",
+            "outcome": "pass"
+          },
+          {
+            "category": "9c: emit_roundtrip_sequence_content_eq",
+            "name": "seq-1: parse succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9c: emit_roundtrip_sequence_content_eq",
+            "name": "seq-1: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9c: emit_roundtrip_sequence_content_eq",
+            "name": "seq-1: contentEq",
+            "outcome": "pass"
+          },
+          {
+            "category": "9c: emit_roundtrip_sequence_content_eq",
+            "name": "seq-2: parse succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9c: emit_roundtrip_sequence_content_eq",
+            "name": "seq-2: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9c: emit_roundtrip_sequence_content_eq",
+            "name": "seq-2: contentEq",
+            "outcome": "pass"
+          },
+          {
+            "category": "9c: emit_roundtrip_sequence_content_eq",
+            "name": "seq-3: parse succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9c: emit_roundtrip_sequence_content_eq",
+            "name": "seq-3: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9c: emit_roundtrip_sequence_content_eq",
+            "name": "seq-3: contentEq",
+            "outcome": "pass"
+          },
+          {
+            "category": "9c: emit_roundtrip_sequence_content_eq",
+            "name": "seq-nested-1: parse succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9c: emit_roundtrip_sequence_content_eq",
+            "name": "seq-nested-1: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9c: emit_roundtrip_sequence_content_eq",
+            "name": "seq-nested-1: contentEq",
+            "outcome": "pass"
+          },
+          {
+            "category": "9c: emit_roundtrip_sequence_content_eq",
+            "name": "seq-nested-2: parse succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9c: emit_roundtrip_sequence_content_eq",
+            "name": "seq-nested-2: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9c: emit_roundtrip_sequence_content_eq",
+            "name": "seq-nested-2: contentEq",
+            "outcome": "pass"
+          },
+          {
+            "category": "9c: emit_roundtrip_sequence_content_eq",
+            "name": "seq-nested-3: parse succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9c: emit_roundtrip_sequence_content_eq",
+            "name": "seq-nested-3: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9c: emit_roundtrip_sequence_content_eq",
+            "name": "seq-nested-3: contentEq",
+            "outcome": "pass"
+          },
+          {
+            "category": "9c: emit_roundtrip_sequence_content_eq",
+            "name": "seq-with-map: parse succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9c: emit_roundtrip_sequence_content_eq",
+            "name": "seq-with-map: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9c: emit_roundtrip_sequence_content_eq",
+            "name": "seq-with-map: contentEq",
+            "outcome": "pass"
+          },
+          {
+            "category": "9c: emit_roundtrip_sequence_content_eq",
+            "name": "seq-with-multi-map: parse succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9c: emit_roundtrip_sequence_content_eq",
+            "name": "seq-with-multi-map: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9c: emit_roundtrip_sequence_content_eq",
+            "name": "seq-with-multi-map: contentEq",
+            "outcome": "pass"
+          },
+          {
+            "category": "9c: emit_roundtrip_sequence_content_eq",
+            "name": "seq-mixed: parse succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9c: emit_roundtrip_sequence_content_eq",
+            "name": "seq-mixed: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9c: emit_roundtrip_sequence_content_eq",
+            "name": "seq-mixed: contentEq",
+            "outcome": "pass"
+          },
+          {
+            "category": "9c: emit_roundtrip_sequence_content_eq",
+            "name": "seq-deep-mixed: parse succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9c: emit_roundtrip_sequence_content_eq",
+            "name": "seq-deep-mixed: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9c: emit_roundtrip_sequence_content_eq",
+            "name": "seq-deep-mixed: contentEq",
+            "outcome": "pass"
+          },
+          {
+            "category": "9c: emit_roundtrip_sequence_content_eq",
+            "name": "seq-empty-scalars: parse succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9c: emit_roundtrip_sequence_content_eq",
+            "name": "seq-empty-scalars: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9c: emit_roundtrip_sequence_content_eq",
+            "name": "seq-empty-scalars: contentEq",
+            "outcome": "pass"
+          },
+          {
+            "category": "9c: emit_roundtrip_sequence_content_eq",
+            "name": "seq-special-chars: parse succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9c: emit_roundtrip_sequence_content_eq",
+            "name": "seq-special-chars: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9c: emit_roundtrip_sequence_content_eq",
+            "name": "seq-special-chars: contentEq",
+            "outcome": "pass"
+          },
+          {
+            "category": "9c: emit_roundtrip_sequence_content_eq",
+            "name": "seq-many: parse succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9c: emit_roundtrip_sequence_content_eq",
+            "name": "seq-many: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9c: emit_roundtrip_sequence_content_eq",
+            "name": "seq-many: contentEq",
+            "outcome": "pass"
+          },
+          {
+            "category": "9c: emit_roundtrip_sequence_content_eq",
+            "name": "seq-prev-fail: parse succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9c: emit_roundtrip_sequence_content_eq",
+            "name": "seq-prev-fail: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9c: emit_roundtrip_sequence_content_eq",
+            "name": "seq-prev-fail: contentEq",
+            "outcome": "pass"
+          },
+          {
+            "category": "9d: emit_roundtrip_mapping_content_eq",
+            "name": "map-empty: parse succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9d: emit_roundtrip_mapping_content_eq",
+            "name": "map-empty: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9d: emit_roundtrip_mapping_content_eq",
+            "name": "map-empty: contentEq",
+            "outcome": "pass"
+          },
+          {
+            "category": "9d: emit_roundtrip_mapping_content_eq",
+            "name": "map-1: parse succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9d: emit_roundtrip_mapping_content_eq",
+            "name": "map-1: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9d: emit_roundtrip_mapping_content_eq",
+            "name": "map-1: contentEq",
+            "outcome": "pass"
+          },
+          {
+            "category": "9d: emit_roundtrip_mapping_content_eq",
+            "name": "map-2: parse succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9d: emit_roundtrip_mapping_content_eq",
+            "name": "map-2: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9d: emit_roundtrip_mapping_content_eq",
+            "name": "map-2: contentEq",
+            "outcome": "pass"
+          },
+          {
+            "category": "9d: emit_roundtrip_mapping_content_eq",
+            "name": "map-3: parse succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9d: emit_roundtrip_mapping_content_eq",
+            "name": "map-3: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9d: emit_roundtrip_mapping_content_eq",
+            "name": "map-3: contentEq",
+            "outcome": "pass"
+          },
+          {
+            "category": "9d: emit_roundtrip_mapping_content_eq",
+            "name": "map-nested-1: parse succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9d: emit_roundtrip_mapping_content_eq",
+            "name": "map-nested-1: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9d: emit_roundtrip_mapping_content_eq",
+            "name": "map-nested-1: contentEq",
+            "outcome": "pass"
+          },
+          {
+            "category": "9d: emit_roundtrip_mapping_content_eq",
+            "name": "map-nested-2: parse succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9d: emit_roundtrip_mapping_content_eq",
+            "name": "map-nested-2: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9d: emit_roundtrip_mapping_content_eq",
+            "name": "map-nested-2: contentEq",
+            "outcome": "pass"
+          },
+          {
+            "category": "9d: emit_roundtrip_mapping_content_eq",
+            "name": "map-with-seq: parse succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9d: emit_roundtrip_mapping_content_eq",
+            "name": "map-with-seq: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9d: emit_roundtrip_mapping_content_eq",
+            "name": "map-with-seq: contentEq",
+            "outcome": "pass"
+          },
+          {
+            "category": "9d: emit_roundtrip_mapping_content_eq",
+            "name": "map-with-nested-seq: parse succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9d: emit_roundtrip_mapping_content_eq",
+            "name": "map-with-nested-seq: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9d: emit_roundtrip_mapping_content_eq",
+            "name": "map-with-nested-seq: contentEq",
+            "outcome": "pass"
+          },
+          {
+            "category": "9d: emit_roundtrip_mapping_content_eq",
+            "name": "map-mixed: parse succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9d: emit_roundtrip_mapping_content_eq",
+            "name": "map-mixed: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9d: emit_roundtrip_mapping_content_eq",
+            "name": "map-mixed: contentEq",
+            "outcome": "pass"
+          },
+          {
+            "category": "9d: emit_roundtrip_mapping_content_eq",
+            "name": "map-complex: parse succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9d: emit_roundtrip_mapping_content_eq",
+            "name": "map-complex: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9d: emit_roundtrip_mapping_content_eq",
+            "name": "map-complex: contentEq",
+            "outcome": "pass"
+          },
+          {
+            "category": "9d: emit_roundtrip_mapping_content_eq",
+            "name": "map-deep-val: parse succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9d: emit_roundtrip_mapping_content_eq",
+            "name": "map-deep-val: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9d: emit_roundtrip_mapping_content_eq",
+            "name": "map-deep-val: contentEq",
+            "outcome": "pass"
+          },
+          {
+            "category": "9d: emit_roundtrip_mapping_content_eq",
+            "name": "map-multi-deep: parse succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9d: emit_roundtrip_mapping_content_eq",
+            "name": "map-multi-deep: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9d: emit_roundtrip_mapping_content_eq",
+            "name": "map-multi-deep: contentEq",
+            "outcome": "pass"
+          },
+          {
+            "category": "9d: emit_roundtrip_mapping_content_eq",
+            "name": "map-empty-key: parse succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9d: emit_roundtrip_mapping_content_eq",
+            "name": "map-empty-key: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9d: emit_roundtrip_mapping_content_eq",
+            "name": "map-empty-key: contentEq",
+            "outcome": "pass"
+          },
+          {
+            "category": "9d: emit_roundtrip_mapping_content_eq",
+            "name": "map-empty-val: parse succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9d: emit_roundtrip_mapping_content_eq",
+            "name": "map-empty-val: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9d: emit_roundtrip_mapping_content_eq",
+            "name": "map-empty-val: contentEq",
+            "outcome": "pass"
+          },
+          {
+            "category": "9d: emit_roundtrip_mapping_content_eq",
+            "name": "map-special-chars: parse succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9d: emit_roundtrip_mapping_content_eq",
+            "name": "map-special-chars: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9d: emit_roundtrip_mapping_content_eq",
+            "name": "map-special-chars: contentEq",
+            "outcome": "pass"
+          },
+          {
+            "category": "9d: emit_roundtrip_mapping_content_eq",
+            "name": "map-many: parse succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9d: emit_roundtrip_mapping_content_eq",
+            "name": "map-many: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9d: emit_roundtrip_mapping_content_eq",
+            "name": "map-many: contentEq",
+            "outcome": "pass"
+          },
+          {
+            "category": "9d: emit_roundtrip_mapping_content_eq",
+            "name": "map-seq-key: parse succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9d: emit_roundtrip_mapping_content_eq",
+            "name": "map-seq-key: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9d: emit_roundtrip_mapping_content_eq",
+            "name": "map-seq-key: contentEq",
+            "outcome": "pass"
+          },
+          {
+            "category": "9d: emit_roundtrip_mapping_content_eq",
+            "name": "map-map-key: parse succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9d: emit_roundtrip_mapping_content_eq",
+            "name": "map-map-key: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9d: emit_roundtrip_mapping_content_eq",
+            "name": "map-map-key: contentEq",
+            "outcome": "pass"
+          },
+          {
+            "category": "9d: emit_roundtrip_mapping_content_eq",
+            "name": "deep-5: parse succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9d: emit_roundtrip_mapping_content_eq",
+            "name": "deep-5: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9d: emit_roundtrip_mapping_content_eq",
+            "name": "deep-5: contentEq",
+            "outcome": "pass"
+          },
+          {
+            "category": "9d: emit_roundtrip_mapping_content_eq",
+            "name": "map-deep-5: parse succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9d: emit_roundtrip_mapping_content_eq",
+            "name": "map-deep-5: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9d: emit_roundtrip_mapping_content_eq",
+            "name": "map-deep-5: contentEq",
+            "outcome": "pass"
+          },
+          {
+            "category": "9d: emit_roundtrip_mapping_content_eq",
+            "name": "cross-nested: parse succeeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "9d: emit_roundtrip_mapping_content_eq",
+            "name": "cross-nested: exactly 1 doc",
+            "outcome": "pass"
+          },
+          {
+            "category": "9d: emit_roundtrip_mapping_content_eq",
+            "name": "cross-nested: contentEq",
+            "outcome": "pass"
           }
         ],
-        "total": 188
+        "total": 329
       },
       {
         "allPass": true,
@@ -9763,7 +10468,7 @@
         "total": 7
       }
     ],
-    "totalPassed": 1420,
-    "totalTests": 1420
+    "totalPassed": 1561,
+    "totalTests": 1561
   }
 }
