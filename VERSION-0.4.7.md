@@ -3754,7 +3754,7 @@ chain have low `tokenIndex`).
 
 **Plan:** Detailed 6-step plan in `FLOW_BALANCED_CHAIN_RESTRICTION.md`:
 1. ✅ Define `FlowMonoChain` inductive + basic operations (DONE — 7 theorems, ~60 LOC)
-2. Thread `FlowMonoChain` through `EmitScansInFlow` interface (~80-120 LOC)
+2. ✅ Thread `FlowMonoChain` through `EmitScansInFlow` interface (DONE — 3 defs, 5 proofs, 6 consumers)
 3. Define `SimpleKeyAboveFloor` + per-step preservation (~50-80 LOC)
 4. Prove `FlowMonoChain_preserves_raw_prefix` (~100-200 LOC)
 5. Prove `ScanChain_filtered_prefix` (sorry elimination, ~30-50 LOC)
@@ -3898,7 +3898,7 @@ These don't block `universal_roundtrip` but are needed for full-project 0-sorry.
 | D | 2 (body characterization) | 200-400 | MEDIUM | Phase C | **DONE** (statements fixed) |
 | E | 0 (adversarial audit) | ~3 hrs | LOW | Phase D | **DONE** (993/993, 1 false thm repaired) |
 | F | 4 targeted → 2 proven, 2 blocked | ~15 | LOW-MEDIUM | Phase E | **DONE** (2/4 proven; #3 false for %RESERVED, #4 needs stack precond) |
-| G | 1 (flow-balanced chain restriction) | 330-540 | MEDIUM | Phase F | Step 1 done |
+| G | 1 (flow-balanced chain restriction) | 330-540 | MEDIUM | Phase F | Steps 1-2 done |
 | H | 2 (body characterization proofs) | 200-400 | MEDIUM | Phase G | |
 | I | 2 (parser acceptance / h_pnok) | 400-800 | HIGH | Phase H | |
 | J | 2 (content fidelity) | 300-600 | MEDIUM-HIGH | Phase I | |
