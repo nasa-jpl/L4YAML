@@ -3898,7 +3898,7 @@ These don't block `universal_roundtrip` but are needed for full-project 0-sorry.
 | D | 2 (body characterization) | 200-400 | MEDIUM | Phase C | **DONE** (statements fixed) |
 | E | 0 (adversarial audit) | ~3 hrs | LOW | Phase D | **DONE** (993/993, 1 false thm repaired) |
 | F | 4 targeted → 2 proven, 2 blocked | ~15 | LOW-MEDIUM | Phase E | **DONE** (2/4 proven; #3 false for %RESERVED, #4 needs stack precond) |
-| G | 1 (flow-balanced chain restriction) | 330-540 | MEDIUM | Phase F | Steps 1-2 done |
+| G | 1 (flow-balanced chain restriction) | 330-540 | MEDIUM | Phase F | Steps 1-3 done |
 | H | 2 (body characterization proofs) | 200-400 | MEDIUM | Phase G | |
 | I | 2 (parser acceptance / h_pnok) | 400-800 | HIGH | Phase H | |
 | J | 2 (content fidelity) | 300-600 | MEDIUM-HIGH | Phase I | |

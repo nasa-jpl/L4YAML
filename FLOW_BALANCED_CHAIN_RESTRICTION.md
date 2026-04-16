@@ -203,7 +203,58 @@ Can reuse `ScannerCorrectness.scanNextToken_preserves_prefix` infrastructure pat
 
 ***Step 3: Accomplishments***
 
+Completed all Step 3 deliverables. Build passes (429/429 jobs, 11 sorrys unchanged).
+
+**Definition:**
+- `SimpleKeyAboveFloor s n₀ fl₀` — 3-conjunct predicate:
+  1. `s.simpleKey.possible → s.simpleKey.tokenIndex ≥ n₀`
+  2. `∀ j ≥ fl₀, j < s.simpleKeyStack.size → stack[j].possible → stack[j].tokenIndex ≥ n₀`
+  3. `s.simpleKeyStack.size ≥ fl₀`
+
+**Constructor theorems (5):**
+- `SimpleKeyAboveFloor_of_cleared_preserved` — clears simpleKey, preserves stack
+- `SimpleKeyAboveFloor_of_preserved` — preserves both simpleKey and stack
+- `SimpleKeyAboveFloor_of_endLine_update` — endLine field update only
+- `SimpleKeyAboveFloor_of_flow_open` — pushes simpleKey to stack, clears simpleKey
+- `SimpleKeyAboveFloor_of_flow_close` — restores simpleKey from stack.back?, pops stack
+  (takes `h_size : s.simpleKeyStack.size > fl₀ ∨ fl₀ = 0` disjunction)
+
+**Helper theorem:**
+- `preprocess_preserves_flowLevel` — flowLevel unchanged through preprocessing pipeline
+
+**Per-dispatch maintenance theorems (5):**
+- `preprocess_maintains_SimpleKeyAboveFloor`
+- `dispatchStructural_maintains_SimpleKeyAboveFloor`
+- `dispatchFlowIndicators_maintains_SimpleKeyAboveFloor` (requires `h_sync`, `h_fl_post`)
+- `dispatchBlockIndicators_maintains_SimpleKeyAboveFloor`
+- `dispatchContent_maintains_SimpleKeyAboveFloor`
+
+**Top-level theorem:**
+- `scanNextToken_maintains_SimpleKeyAboveFloor` (400K heartbeats)
+  Requires `h_sync : s.simpleKeyStack.size ≥ s.flowLevel` and `h_fl_post : s'.flowLevel ≥ fl₀`
+
+**Total:** ~310 LOC added (definition + constructors + helper + 5 dispatch + top-level).
+
 ***Step 3: Reflections***
+
+1. **Indentation sensitivity in `any_goals (exact ...)`**: Lean 4's whitespace-sensitive
+   parser treats continuation lines inside `any_goals (expr ...)` as outside the expression
+   if they're indented LESS than the `(` column. Fix: use `all_goals first | ... | ...`
+   pattern (like `dispatchStructural` does) instead of `any_goals (exact ...)` with
+   multi-line arguments.
+
+2. **Forward references**: Can't use `scanFlowSequenceEnd_flowLevel` (defined later in file)
+   from the Step 3 insertion point. Fix: inline the proof with
+   `unfold scanFlowSequenceEnd; dsimp only []; simp only [advance_preserves_flowLevel, ...]`.
+
+3. **Flow close edge case (fl₀ = 0)**: When `s.flowLevel = 0` (degenerate/unreachable for
+   well-formed scanner), `h_fl_post` only gives `fl₀ = 0`, and we can't prove
+   `s.simpleKeyStack.size > 0` from `h_sync`. Fix: weaken `SimpleKeyAboveFloor_of_flow_close`
+   to accept `h_size : size > fl₀ ∨ fl₀ = 0`. The `fl₀ = 0` case is trivially provable
+   (stack.size ≥ 0 for Nat; empty stack back? gives `{possible := false}`).
+
+4. **Fully qualified lemma names**: `ScanHelpers.bind_error_simp` must be written as
+   `ScannerCorrectness.ScanHelpers.bind_error_simp` — the namespace nesting matters.
 
 ## Step 4: Prove `FlowMonoChain_preserves_raw_prefix`
 
