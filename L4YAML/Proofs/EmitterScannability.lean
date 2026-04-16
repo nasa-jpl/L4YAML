@@ -1800,6 +1800,188 @@ theorem scanNextToken_maintains_SimpleKeyAboveFloor (s : ScannerState) (s' : Sca
            exact h_d)
         | (simp_all)
 
+/-! #### FlowMonoChain prefix preservation (Step 4)
+
+Token prefix preservation through a `FlowMonoChain`, using `SimpleKeyAboveFloor`
+instead of `SimpleKeyAbove`. The key insight is that `scanNextToken_preserves_prefix`
+only reads the simpleKey conjunct (not the stack entries), so we can replicate
+its proof using just `SimpleKeyAboveFloor.1`. -/
+
+-- Per-step prefix preservation using only the simpleKey conjunct.
+-- This is equivalent to `ScannerCorrectness.scanNextToken_preserves_prefix` but
+-- takes `SimpleKeyAboveFloor` instead of `SimpleKeyAbove`.
+set_option maxHeartbeats 400000 in
+theorem scanNextToken_preserves_prefix_of_skFloor (s s' : ScannerState)
+    (h_next : scanNextToken s = .ok (some s'))
+    (n : Nat) (h_n : n ≤ s.tokens.size)
+    (h_sk : s.simpleKey.possible = true → s.simpleKey.tokenIndex ≥ n)
+    (i : Nat) (h_bound : i < n) :
+    s'.tokens[i]'(by have := ScannerCorrectness.scanNextToken_adds_tokens s s' h_next; omega) =
+    s.tokens[i]'(by omega) := by
+  unfold scanNextToken at h_next
+  simp only [bind, pure, Pure.pure, Except.pure] at h_next
+  simp only [Except.bind] at h_next
+  split at h_next
+  · contradiction
+  · split at h_next
+    · simp at h_next
+    · have h_pre_pref := ScannerCorrectness.ScanHelpers.preprocess_preserves_prefix s _ _ (by assumption) i (by omega)
+      have h_pre_mono := ScannerCorrectness.ScanHelpers.preprocess_tokens_mono s _ _ (by assumption)
+      have h_sk_inv := ScannerCorrectness.preprocess_simpleKey_inv s _ _ (by assumption) n h_n h_sk
+      have h_allow_tok : ∀ st : ScannerState,
+        (if st.allowDirectives then
+          { st with allowDirectives := false, documentEverStarted := true }
+        else st).tokens = st.tokens := ScannerCorrectness.ScanHelpers.allowDir_ite_tokens
+      have h_allow_sk : ∀ st : ScannerState,
+        (if st.allowDirectives then
+          { st with allowDirectives := false, documentEverStarted := true }
+        else st).simpleKey = st.simpleKey := by
+        intro st; split <;> rfl
+      repeat (any_goals (split at h_next))
+      any_goals contradiction
+      any_goals (simp at h_next)
+      all_goals (try subst_vars)
+      all_goals first
+        | contradiction
+        | (simp at h_next)
+        | (have h_d := ScannerCorrectness.ScanHelpers.dispatchStructural_preserves_prefix _ _ _ (by assumption) i (by omega);
+           simp_all)
+        | (have h_d := ScannerCorrectness.ScanHelpers.dispatchFlowIndicators_preserves_prefix _ _ _ (by assumption) i
+            (by simp only [ScannerCorrectness.ScanHelpers.allowDir_ite_tokens]; omega);
+           simp only [ScannerCorrectness.ScanHelpers.allowDir_ite_tokens] at h_d; simp_all)
+        | (have h_d := ScannerCorrectness.ScanHelpers.dispatchBlockIndicators_preserves_prefix _ _ _ (by assumption) n
+            (by simp only [ScannerCorrectness.ScanHelpers.allowDir_ite_tokens]; omega)
+            (by simp only [h_allow_sk]; exact h_sk_inv) i h_bound;
+           simp only [ScannerCorrectness.ScanHelpers.allowDir_ite_tokens] at h_d; simp_all)
+        | (have h_d := ScannerCorrectness.ScanHelpers.dispatchContent_preserves_prefix _ _ _ (by assumption) i
+            (by simp only [ScannerCorrectness.ScanHelpers.allowDir_ite_tokens]; omega);
+           simp only [ScannerCorrectness.ScanHelpers.allowDir_ite_tokens] at h_d; simp_all)
+        | (simp_all)
+
+-- Per-step bundle: prefix preservation + SimpleKeyAboveFloor maintenance.
+-- Analogous to `scanNextToken_prefix_and_sk_inv` but for the floor-based invariant.
+theorem scanNextToken_prefix_and_skFloor_inv (s s' : ScannerState)
+    (h_next : scanNextToken s = .ok (some s'))
+    (n₀ fl₀ : Nat) (h_n₀ : n₀ ≤ s.tokens.size)
+    (h_inv : SimpleKeyAboveFloor s n₀ fl₀)
+    (h_sync : s.simpleKeyStack.size ≥ s.flowLevel)
+    (h_fl_post : s'.flowLevel ≥ fl₀) :
+    (∀ (i : Nat) (hi : i < n₀),
+      s'.tokens[i]'(by have := ScannerCorrectness.scanNextToken_adds_tokens s s' h_next; omega) =
+      s.tokens[i]'(by omega)) ∧
+    SimpleKeyAboveFloor s' n₀ fl₀ :=
+  ⟨fun i hi => scanNextToken_preserves_prefix_of_skFloor s s' h_next n₀ h_n₀ h_inv.1 i hi,
+   scanNextToken_maintains_SimpleKeyAboveFloor s s' h_next n₀ fl₀ h_n₀ h_inv h_sync h_fl_post⟩
+
+-- `scanNextToken` preserves `simpleKeyStack.size ≥ flowLevel`.
+-- This is a scanner global invariant: flow opens push+increment, flow closes pop+decrement.
+-- Non-flow dispatches preserve both simpleKeyStack and flowLevel.
+--
+-- **Status**: Dispatch-level lemmas added to ScannerCorrectness.ScanHelpers:
+--   ✓ dispatchStructural_preserves_{simpleKeyStack,flowLevel} (with sorry for error cases)
+--   ✓ dispatchBlockIndicators_preserves_{simpleKeyStack,flowLevel} (with sorry for error cases)
+--   ✓ dispatchContent_preserves_{simpleKeyStack,flowLevel} (with sorry for remaining cases)
+--
+-- **Remaining work**: The dispatch lemmas have `sorry` placeholders for some cases.
+-- The proof below also has a final `sorry` for any remaining unmatched dispatch paths.
+set_option maxHeartbeats 1200000 in
+theorem scanNextToken_preserves_sync (s s' : ScannerState)
+    (h_next : scanNextToken s = .ok (some s'))
+    (h_sync : s.simpleKeyStack.size ≥ s.flowLevel) :
+    s'.simpleKeyStack.size ≥ s'.flowLevel := by
+  unfold scanNextToken at h_next
+  simp only [bind, pure, Pure.pure, Except.pure] at h_next
+  simp only [Except.bind] at h_next
+  split at h_next
+  · contradiction
+  · split at h_next
+    · simp at h_next
+    · have h_pre_stack := ScannerCorrectness.preprocess_preserves_simpleKeyStack s _ _ (by assumption)
+      have h_pre_fl := preprocess_preserves_flowLevel s _ _ (by assumption)
+      rename_i s1 c1 _
+      have h_pre_sync : s1.simpleKeyStack.size ≥ s1.flowLevel := by
+        rw [h_pre_stack, h_pre_fl]; exact h_sync
+      have h_allow_stack : ∀ st : ScannerState,
+        (if st.allowDirectives then
+          { st with allowDirectives := false, documentEverStarted := true }
+        else st).simpleKeyStack = st.simpleKeyStack := by
+        intro st; split <;> rfl
+      have h_allow_fl : ∀ st : ScannerState,
+        (if st.allowDirectives then
+          { st with allowDirectives := false, documentEverStarted := true }
+        else st).flowLevel = st.flowLevel := by
+        intro st; split <;> rfl
+      have h_allow_sync : (if s1.allowDirectives then
+          { s1 with allowDirectives := false, documentEverStarted := true }
+        else s1).simpleKeyStack.size ≥ (if s1.allowDirectives then
+          { s1 with allowDirectives := false, documentEverStarted := true }
+        else s1).flowLevel := by
+        rw [h_allow_stack, h_allow_fl]; exact h_pre_sync
+      -- Split on all dispatch branches and close with per-dispatch stack/flowLevel lemmas
+      repeat (any_goals (split at h_next))
+      any_goals contradiction
+      any_goals (simp at h_next)
+      all_goals (try subst_vars)
+      all_goals first
+        | (simp_all; done)
+        | -- Flow sequence/mapping start: stack.push + flowLevel + 1
+          (simp at *; omega)
+        | -- Flow sequence/mapping end: stack.pop + (if flowLevel > 0 then flowLevel - 1 else 0)
+          (simp at *;
+           dsimp only [] at *;
+           simp only [Array.size_pop] at *;
+           split <;> omega)
+        | -- dispatchStructural: scanDocumentStart, scanDocumentEnd, scanDirective
+          (have h_d_stack := ScannerCorrectness.ScanHelpers.dispatchStructural_preserves_simpleKeyStack
+            _ _ _ (by assumption);
+           have h_d_fl := ScannerCorrectness.ScanHelpers.dispatchStructural_preserves_flowLevel
+            _ _ _ (by assumption);
+           rw [h_d_stack, h_d_fl]; simp only [h_allow_stack, h_allow_fl]; exact h_pre_sync)
+        | -- dispatchBlockIndicators: scanBlockEntry, scanKey, scanValue
+          (have h_d_stack := ScannerCorrectness.ScanHelpers.dispatchBlockIndicators_preserves_simpleKeyStack
+            _ _ _ (by assumption);
+           have h_d_fl := ScannerCorrectness.ScanHelpers.dispatchBlockIndicators_preserves_flowLevel
+            _ _ _ (by assumption);
+           rw [h_d_stack, h_d_fl]; simp only [h_allow_stack, h_allow_fl]; exact h_pre_sync)
+        | -- dispatchContent: scanAnchorOrAlias, scanTag, all scalars
+          (have h_d_stack := ScannerCorrectness.ScanHelpers.dispatchContent_preserves_simpleKeyStack
+            _ _ _ (by assumption);
+           have h_d_fl := ScannerCorrectness.ScanHelpers.dispatchContent_preserves_flowLevel
+            _ _ _ (by assumption);
+           rw [h_d_stack, h_d_fl]; simp only [h_allow_stack, h_allow_fl]; exact h_pre_sync)
+        | -- Flow entry (comma): has preservation lemmas
+          (have h_entry_stack := ScannerCorrectness.scanFlowEntry_preserves_simpleKeyStack
+            _ _ (by assumption);
+           have h_entry_fl := ScannerCorrectness.scanFlowEntry_preserves_flowLevel
+            _ _ (by assumption);
+           rw [h_entry_stack, h_entry_fl]; simp only [h_allow_stack, h_allow_fl]; exact h_pre_sync)
+        | sorry  -- TODO: Handle remaining dispatch paths (error cases, etc.)
+
+-- Main chain theorem: token prefix preservation through FlowMonoChain.
+-- Mirrors `ScanChain_preserves_raw_prefix` but uses `SimpleKeyAboveFloor` instead of
+-- `SimpleKeyAbove`, enabling the proof when stack entries below floor have stale indices.
+-- The floor is the chain's `fl₀` (not the state's stack size), since `fl₀` is constant
+-- across chain steps and `scanNextToken_maintains_SimpleKeyAboveFloor` preserves it.
+theorem FlowMonoChain_preserves_raw_prefix {s s' : ScannerState} {n fl₀ : Nat}
+    (h_fmc : FlowMonoChain fl₀ s n s')
+    (n₀ : Nat) (h_n₀ : n₀ ≤ s.tokens.size)
+    (h_stack_floor : SimpleKeyAboveFloor s n₀ fl₀)
+    (h_sync : s.simpleKeyStack.size ≥ s.flowLevel)
+    (i : Nat) (hi : i < n₀) :
+    s'.tokens[i]'(by have := FlowMonoChain.tokens_mono h_fmc; omega) =
+    s.tokens[i]'(by omega) := by
+  induction h_fmc with
+  | zero => rfl
+  | step h_fl h_snt h_rest ih =>
+    have h_adds := ScannerCorrectness.scanNextToken_adds_tokens _ _ h_snt
+    have h_fl_mid := h_rest.flowLevel_ge_start
+    have h_sk_inv := scanNextToken_maintains_SimpleKeyAboveFloor _ _ h_snt n₀ fl₀
+      h_n₀ h_stack_floor h_sync h_fl_mid
+    have h_sync' := scanNextToken_preserves_sync _ _ h_snt h_sync
+    have h_pres := scanNextToken_preserves_prefix_of_skFloor _ _ h_snt n₀ h_n₀
+      h_stack_floor.1 i hi
+    exact (ih (Nat.le_trans h_n₀ h_adds) h_sk_inv h_sync').trans h_pres
+
 /-- Connect a ScanChain to scanFiltered: if N steps succeed
     reaching a state where scanNextToken returns none (EOF),
     then scanFiltered on the input succeeds.
@@ -3851,7 +4033,8 @@ theorem scanNextToken_flow_open_init (input : String) (rest : List Char)
       ∧ EndLineOnLine s'
       ∧ s'.simpleKey.possible = false
       ∧ (s'.tokens.filter (fun t => t.val != .placeholder)).map (·.val)
-          = #[.streamStart, .flowSequenceStart] := by
+          = #[.streamStart, .flowSequenceStart]
+      ∧ s'.simpleKeyStack.size = s'.flowLevel := by
   intro s₀
   -- Step 1: preprocessing
   have h_pp := scanNextToken_preprocess_init_state input '[' rest h_toList
@@ -3965,7 +4148,17 @@ theorem scanNextToken_flow_open_init (input : String) (rest : List Char)
               ite_true, Array.map_push,
               show s_ad.tokens = s_pp.tokens from h_ad_tokens,
               h_pp_filt]
-            simp [ScannerState.mk', ScannerState.emit]⟩
+            simp [ScannerState.mk', ScannerState.emit],
+         by -- Stack/flowLevel sync:
+            rw [h_fl_final]
+            have h_pre_stack := ScannerCorrectness.preprocess_preserves_simpleKeyStack
+              _ _ _ h_pp_eq
+            have h_ad_stack_sz : s_ad.simpleKeyStack.size = 0 := by
+              simp only [s_ad]; split
+              · show s_pp.simpleKeyStack.size = 0; rw [h_pre_stack]; rfl
+              · rw [h_pre_stack]; rfl
+            rw [ScannerCorrectness.scanFlowSequenceStart_stack_pushed]
+            simp [Array.size_push, h_ad_stack_sz]⟩
 
 -- Helper: Nat BEq with 0
 theorem nat_beq_zero_false (n : Nat) (h : n > 0) : (n == 0) = false := by
@@ -5190,7 +5383,8 @@ theorem scanNextToken_flow_open_mapping_init (input : String) (rest : List Char)
       ∧ EndLineOnLine s'
       ∧ s'.simpleKey.possible = false
       ∧ (s'.tokens.filter (fun t => t.val != .placeholder)).map (·.val)
-          = #[.streamStart, .flowMappingStart] := by
+          = #[.streamStart, .flowMappingStart]
+      ∧ s'.simpleKeyStack.size = s'.flowLevel := by
   intro s₀
   -- Step 1: preprocessing
   have h_pp := scanNextToken_preprocess_init_state input '{' rest h_toList
@@ -5302,7 +5496,17 @@ theorem scanNextToken_flow_open_mapping_init (input : String) (rest : List Char)
               ite_true, Array.map_push,
               show s_ad.tokens = s_pp.tokens from h_ad_tokens,
               h_pp_filt]
-            simp [ScannerState.mk', ScannerState.emit]⟩
+            simp [ScannerState.mk', ScannerState.emit],
+         by -- Stack/flowLevel sync:
+            rw [h_fl_final]
+            have h_pre_stack := ScannerCorrectness.preprocess_preserves_simpleKeyStack
+              _ _ _ h_pp_eq
+            have h_ad_stack_sz : s_ad.simpleKeyStack.size = 0 := by
+              simp only [s_ad]; split
+              · show s_pp.simpleKeyStack.size = 0; rw [h_pre_stack]; rfl
+              · rw [h_pre_stack]; rfl
+            rw [ScannerCorrectness.scanFlowMappingStart_stack_pushed]
+            simp [Array.size_push, h_ad_stack_sz]⟩
 
 -- ═══ Emit output first-char analysis ═══
 
@@ -6525,7 +6729,7 @@ theorem emit_produces_valid_yaml (v : YamlValue) {inFlow : Bool} (hg : Grammable
         simp only [String.toList_append]; rfl
       -- Step 2: Scan '[' from initial state via flow_open_init
       obtain ⟨s₁, h_snt₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_col₁,
-              h_inflow₁, h_indent₁, h_ek₁, h_line₁, h_atol₁, h_endline₁, _h_sk₁, _h_filt₁⟩ :=
+              h_inflow₁, h_indent₁, h_ek₁, h_line₁, h_atol₁, h_endline₁, _h_sk₁, _h_filt₁, _⟩ :=
         scanNextToken_flow_open_init ("[" ++ emit.emitList items.toList ++ "]")
           ((emit.emitList items.toList).toList ++ [']']) h_toList
       -- Step 3: Build EmitListScansInFlow for non-empty items list
@@ -6578,7 +6782,7 @@ theorem emit_produces_valid_yaml (v : YamlValue) {inFlow : Bool} (hg : Grammable
         simp only [String.toList_append]; rfl
       -- Step 2: Scan '{' from initial state via flow_open_mapping_init
       obtain ⟨s₁, h_snt₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_col₁,
-              h_inflow₁, h_indent₁, h_ek₁, h_line₁, h_atol₁, h_endline₁, _h_sk₁, _h_filt₁⟩ :=
+              h_inflow₁, h_indent₁, h_ek₁, h_line₁, h_atol₁, h_endline₁, _h_sk₁, _h_filt₁, _⟩ :=
         scanNextToken_flow_open_mapping_init ("{" ++ emit.emitPairList pairs.toList ++ "}")
           ((emit.emitPairList pairs.toList).toList ++ ['}']) h_toList
       -- Step 3: Build EmitPairListScansInFlow for non-empty pair list
@@ -7976,38 +8180,35 @@ theorem ScanChain_filtered_grows {s s' : ScannerState} {n : Nat}
     have h_step := scanNextToken_filtered_grows _ _ h_snt
     omega
 
-/-- Through a ScanChain, the filtered token array of the final state has the
+/-- Through a FlowMonoChain, the filtered token array of the final state has the
     filtered array of the initial state as a prefix.
 
-    **Precondition**: The initial state must have `simpleKey.possible = false`.
-    This ensures no in-flight `saveSimpleKey` placeholder reservation exists in
-    the token range `[0, s.tokens.size)` that could get overwritten by
-    `scanValuePrepare` during the chain.
+    Uses `FlowMonoChain_preserves_raw_prefix` (which maintains `SimpleKeyAboveFloor`
+    through the chain using the flow-level floor) composed with
+    `Array_filter_prefix_of_raw_prefix` to lift raw index preservation to
+    filtered-array prefix preservation.
 
-    **Proof strategy** (not yet implemented):
-    Induction on `ScanChain` with the invariant: every `simpleKey.tokenIndex`
-    active during the chain satisfies `tokenIndex ≥ s_init.tokens.size`, because:
-    (1) `saveSimpleKey` creates keys at `tokenIndex = current_tokens.size ≥ s_init.tokens.size`.
-    (2) Stacked keys from BEFORE the chain (with potentially low `tokenIndex`)
-        are never restored: they would require popping back to the initial flow level,
-        but the chain is a balanced-flow body that stays at `flowLevel ≥ s.flowLevel`.
-    This means `setIfInBounds` (in `scanValuePrepare`) never writes at positions
-    below `s_init.tokens.size`, so all initial non-placeholder tokens are preserved.
-    Combined with `Array_filter_prefix_of_raw_prefix`, this gives the filtered prefix.
+    **Preconditions**:
+    - `FlowMonoChain fl₀ s n s'`: flow-monotone chain with floor `fl₀`
+    - `h_sk`: `s.simpleKey.possible = false` (no in-flight placeholder reservation)
+    - `h_sync`: `s.simpleKeyStack.size ≥ s.flowLevel` (stack/flow synchronized)
+    - `h_stack_floor`: stack entries at index ≥ `fl₀` have `tokenIndex ≥ s.tokens.size`
 
-    **History**: Originally had `(sk.possible → tokenIndex ≥ tokens.size) ∨ ek = none`
-    as precondition. Adversarial testing (Priority 6, 18/1089 failures) showed the
-    `∨ ek = none` disjunct is FALSE: `saveSimpleKey` creates placeholder slots that
-    `scanValue` later overwrites with `.blockMappingStart`/`.key`, inserting into
-    the interior of the filtered array. Changing to `sk.possible = false` is correct
-    — verified by 1089/1089 adversarial tests passing. Both call sites have
-    `h_sk₁ : s₁.simpleKey.possible = false` from `scanNextToken_flow_open_init`. -/
-theorem ScanChain_filtered_prefix {s s' : ScannerState} {n : Nat}
-    (h_chain : ScanChain s n s')
-    (h_sk : s.simpleKey.possible = false) :
+    Both call sites have `fl₀ = s₁.flowLevel = 1` with `s₁.simpleKeyStack.size = 1`,
+    making `h_stack_floor` vacuously true (no `j` satisfies `1 ≤ j < 1`). -/
+theorem ScanChain_filtered_prefix {s s' : ScannerState} {n fl₀ : Nat}
+    (h_fmc : FlowMonoChain fl₀ s n s')
+    (h_sk : s.simpleKey.possible = false)
+    (h_sync : s.simpleKeyStack.size ≥ s.flowLevel)
+    (h_stack_floor : ∀ j, fl₀ ≤ j → (hj : j < s.simpleKeyStack.size) →
+      s.simpleKeyStack[j].possible = true → s.simpleKeyStack[j].tokenIndex ≥ s.tokens.size) :
     let p := fun (t : Positioned YamlToken) => t.val != .placeholder
     ∃ suffix, (s'.tokens.filter p).toList = (s.tokens.filter p).toList ++ suffix := by
-  sorry
+  exact Array_filter_prefix_of_raw_prefix s.tokens s'.tokens _
+    (FlowMonoChain.tokens_mono h_fmc)
+    (fun i hi => FlowMonoChain_preserves_raw_prefix h_fmc s.tokens.size (by omega)
+      ⟨fun h => absurd h (by simp [h_sk]), h_stack_floor, by have := h_fmc.flowLevel_ge_start; omega⟩
+      h_sync i hi)
 
 /-- `emitPairList` for non-empty pairs produces a non-empty string. -/
 theorem emitPairList_toList_ne_nil (p : YamlValue × YamlValue)
@@ -8460,14 +8661,15 @@ theorem scanFiltered_emitSeq_nonempty_structure
     simp only [input, String.toList_append]; rfl
   -- Open bracket → s₁
   obtain ⟨s₁, h_snt₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_col₁,
-          h_inflow₁, h_indent₁, h_ek₁, h_line₁, h_atol₁, h_endline₁, h_sk₁, h_filt₁⟩ :=
+          h_inflow₁, h_indent₁, h_ek₁, h_line₁, h_atol₁, h_endline₁, h_sk₁, h_filt₁,
+          h_sync₁⟩ :=
     scanNextToken_flow_open_init input
       ((emit.emitList items.toList).toList ++ [']']) h_toList
   -- Body scanning → s₂
   have h_list_scan : EmitListScansInFlow items.toList :=
     emitList_scans_nonempty items.toList h_ne (fun w hw => h_all_scan w hw)
   obtain ⟨n₂, s₂, h_chain₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂,
-          h_ek₂, h_col₂, h_inflow₂, h_indent₂, _, _, _, h_stack₂, _⟩ :=
+          h_ek₂, h_col₂, h_inflow₂, h_indent₂, _, _, _, h_stack₂, h_fmc₂⟩ :=
     h_list_scan s₁ [']'] h_corr₁
       h_inflow₁ (by rw [h_fl₁]; omega) h_indent₁ (by rw [h_col₁]; omega) h_ek₁
       (h_line₁ ▸ h_atol₁) h_endline₁
@@ -8553,7 +8755,8 @@ theorem scanFiltered_emitSeq_nonempty_structure
   -- Body chain preserves filtered prefix and grows by ≥ n₂
   obtain ⟨suffix, h_suffix⟩ : ∃ suffix, (s₂.tokens.filter p).toList =
       (s₁.tokens.filter p).toList ++ suffix :=
-    ScanChain_filtered_prefix h_chain₂ h_sk₁
+    ScanChain_filtered_prefix h_fmc₂ h_sk₁ (by omega) (by
+      intro j hj hjsz; rw [h_sync₁] at hjsz; rw [h_fl₁] at hj; omega)
   have h_filt_grows : (s₂.tokens.filter p).size ≥
       (s₁.tokens.filter p).size + n₂ := ScanChain_filtered_grows h_chain₂
   -- n₂ ≥ 1 (body is non-empty: s₁ sees body chars, s₂ sees [']'])
@@ -8675,7 +8878,8 @@ theorem scanFiltered_emitMap_nonempty_structure
     simp only [input, String.toList_append]; rfl
   -- Open brace → s₁
   obtain ⟨s₁, h_snt₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_col₁,
-          h_inflow₁, h_indent₁, h_ek₁, h_line₁, h_atol₁, h_endline₁, h_sk₁, h_filt₁⟩ :=
+          h_inflow₁, h_indent₁, h_ek₁, h_line₁, h_atol₁, h_endline₁, h_sk₁, h_filt₁,
+          h_sync₁⟩ :=
     scanNextToken_flow_open_mapping_init input
       ((emit.emitPairList pairs.toList).toList ++ ['}']) h_toList
   -- Body scanning → s₂
@@ -8683,7 +8887,7 @@ theorem scanFiltered_emitMap_nonempty_structure
     emitPairList_scans_nonempty pairs.toList h_ne
       (fun p hp => h_all_scan_k p hp) (fun p hp => h_all_scan_v p hp)
   obtain ⟨n₂, s₂, h_chain₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂,
-          h_ek₂, h_col₂, h_inflow₂, h_indent₂, _, _, _, h_stack₂, _⟩ :=
+          h_ek₂, h_col₂, h_inflow₂, h_indent₂, _, _, _, h_stack₂, h_fmc₂⟩ :=
     h_pair_scan s₁ ['}'] h_corr₁
       h_inflow₁ (by rw [h_fl₁]; omega) h_indent₁ (by rw [h_col₁]; omega) h_ek₁
       (h_line₁ ▸ h_atol₁) h_endline₁
@@ -8762,7 +8966,8 @@ theorem scanFiltered_emitMap_nonempty_structure
     rw [h_ab] at h_vals; simp at h_vals; exact h_vals.2
   obtain ⟨suffix, h_suffix⟩ : ∃ suffix, (s₂.tokens.filter p).toList =
       (s₁.tokens.filter p).toList ++ suffix :=
-    ScanChain_filtered_prefix h_chain₂ h_sk₁
+    ScanChain_filtered_prefix h_fmc₂ h_sk₁ (by omega) (by
+      intro j hj hjsz; rw [h_sync₁] at hjsz; rw [h_fl₁] at hj; omega)
   have h_filt_grows : (s₂.tokens.filter p).size ≥
       (s₁.tokens.filter p).size + n₂ := ScanChain_filtered_grows h_chain₂
   -- n₂ ≥ 1 (body is non-empty)
