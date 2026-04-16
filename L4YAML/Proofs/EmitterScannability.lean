@@ -1382,6 +1382,424 @@ theorem FlowMonoChain.tokens_mono {fl₀ : Nat} {s s' : ScannerState} {n : Nat}
   | step _ h_snt _ ih =>
     have := ScannerCorrectness.scanNextToken_adds_tokens _ _ h_snt; omega
 
+/-! ### SimpleKeyAboveFloor: flow-level-aware simple key invariant
+
+The `SimpleKeyAboveFloor` predicate is like `SimpleKeyAbove` but only constrains
+stack entries at index ≥ `stackFloor`, with a size guarantee. It is designed for
+use with `FlowMonoChain` where the stack floor equals the initial flow level. -/
+
+-- Like `SimpleKeyAbove` but only constraining stack entries at index ≥ `stackFloor`.
+-- Entries below the floor may have stale `tokenIndex` values from before the chain.
+def SimpleKeyAboveFloor (s : ScannerState) (n : Nat) (stackFloor : Nat) : Prop :=
+  (s.simpleKey.possible = true → s.simpleKey.tokenIndex ≥ n) ∧
+  (∀ j, stackFloor ≤ j → (h : j < s.simpleKeyStack.size) →
+    s.simpleKeyStack[j].possible = true → s.simpleKeyStack[j].tokenIndex ≥ n) ∧
+  (s.simpleKeyStack.size ≥ stackFloor)
+
+/-! #### SimpleKeyAboveFloor constructors -/
+
+theorem SimpleKeyAboveFloor_of_cleared_preserved (s_out s_in : ScannerState) (n fl₀ : Nat)
+    (h_sk : s_out.simpleKey.possible = false)
+    (h_stack : s_out.simpleKeyStack = s_in.simpleKeyStack)
+    (h_inv : SimpleKeyAboveFloor s_in n fl₀) : SimpleKeyAboveFloor s_out n fl₀ :=
+  ⟨fun hp => absurd hp (by rw [h_sk]; decide),
+   fun j hfl hj hp => by simp only [h_stack] at hj hp ⊢; exact h_inv.2.1 j hfl hj hp,
+   by rw [h_stack]; exact h_inv.2.2⟩
+
+theorem SimpleKeyAboveFloor_of_preserved (s_out s_in : ScannerState) (n fl₀ : Nat)
+    (h_sk : s_out.simpleKey = s_in.simpleKey)
+    (h_stack : s_out.simpleKeyStack = s_in.simpleKeyStack)
+    (h_inv : SimpleKeyAboveFloor s_in n fl₀) : SimpleKeyAboveFloor s_out n fl₀ :=
+  ⟨fun hp => by rw [h_sk] at hp ⊢; exact h_inv.1 hp,
+   fun j hfl hj hp => by simp only [h_stack] at hj hp ⊢; exact h_inv.2.1 j hfl hj hp,
+   by rw [h_stack]; exact h_inv.2.2⟩
+
+theorem SimpleKeyAboveFloor_of_endLine_update (s_out s_in : ScannerState) (n fl₀ : Nat)
+    (h_poss : s_out.simpleKey.possible = s_in.simpleKey.possible)
+    (h_idx : s_out.simpleKey.tokenIndex = s_in.simpleKey.tokenIndex)
+    (h_stack : s_out.simpleKeyStack = s_in.simpleKeyStack)
+    (h_inv : SimpleKeyAboveFloor s_in n fl₀) : SimpleKeyAboveFloor s_out n fl₀ :=
+  ⟨fun hp => by
+    have hp' : s_in.simpleKey.possible = true := by rw [← h_poss]; exact hp
+    have := h_inv.1 hp'; omega,
+   fun j hfl hj hp => by simp only [h_stack] at hj hp ⊢; exact h_inv.2.1 j hfl hj hp,
+   by rw [h_stack]; exact h_inv.2.2⟩
+
+theorem SimpleKeyAboveFloor_of_flow_open (s_out s_in : ScannerState) (n fl₀ : Nat)
+    (h_sk : s_out.simpleKey.possible = false)
+    (h_stack : s_out.simpleKeyStack = s_in.simpleKeyStack.push s_in.simpleKey)
+    (h_inv : SimpleKeyAboveFloor s_in n fl₀) : SimpleKeyAboveFloor s_out n fl₀ := by
+  refine ⟨fun hp => absurd hp (by rw [h_sk]; decide), fun j hfl hj hp => ?_, ?_⟩
+  · simp only [h_stack, Array.size_push] at hj
+    by_cases hlt : j < s_in.simpleKeyStack.size
+    · have hp' : s_in.simpleKeyStack[j].possible = true := by
+        simp only [h_stack, Array.getElem_push, dif_pos hlt] at hp; exact hp
+      have h_ge := h_inv.2.1 j hfl hlt hp'
+      show s_out.simpleKeyStack[j].tokenIndex ≥ n
+      simp only [h_stack, Array.getElem_push, dif_pos hlt]; exact h_ge
+    · have hj_eq : j = s_in.simpleKeyStack.size := by omega
+      subst hj_eq
+      have hp' : s_in.simpleKey.possible = true := by
+        simp only [h_stack, Array.getElem_push, dif_neg hlt] at hp; exact hp
+      have h_ge := h_inv.1 hp'
+      show s_out.simpleKeyStack[s_in.simpleKeyStack.size].tokenIndex ≥ n
+      simp only [h_stack, Array.getElem_push, dif_neg hlt]; exact h_ge
+  · simp only [h_stack, Array.size_push]; have := h_inv.2.2; omega
+
+theorem SimpleKeyAboveFloor_of_flow_close (s_out s_in : ScannerState) (n fl₀ : Nat)
+    (h_sk : s_out.simpleKey = s_in.simpleKeyStack.back?.getD {})
+    (h_stack : s_out.simpleKeyStack = s_in.simpleKeyStack.pop)
+    (h_inv : SimpleKeyAboveFloor s_in n fl₀)
+    (h_size : s_in.simpleKeyStack.size > fl₀ ∨ fl₀ = 0) : SimpleKeyAboveFloor s_out n fl₀ := by
+  rcases h_size with h_gt | h_zero
+  · -- h_gt : s_in.simpleKeyStack.size > fl₀
+    refine ⟨fun hp => ?_, fun j hfl hj hp => ?_, ?_⟩
+    · have h_lt : s_in.simpleKeyStack.size - 1 < s_in.simpleKeyStack.size := by omega
+      have h_back : s_in.simpleKeyStack.back?.getD {} =
+          s_in.simpleKeyStack[s_in.simpleKeyStack.size - 1]'h_lt := by
+        simp [Array.back?, h_lt]
+      rw [h_sk, h_back] at hp ⊢
+      exact h_inv.2.1 _ (by omega) h_lt hp
+    · simp only [h_stack, Array.size_pop] at hj
+      simp only [h_stack, Array.getElem_pop] at hp ⊢
+      exact h_inv.2.1 j hfl (by omega) hp
+    · simp only [h_stack, Array.size_pop]; omega
+  · -- h_zero : fl₀ = 0 — all conjuncts trivially use ≥ 0
+    subst h_zero
+    refine ⟨fun hp => ?_, fun j hfl hj hp => ?_, by omega⟩
+    · by_cases h_nonempty : s_in.simpleKeyStack.size > 0
+      · have h_lt : s_in.simpleKeyStack.size - 1 < s_in.simpleKeyStack.size := by omega
+        have h_back : s_in.simpleKeyStack.back?.getD {} =
+            s_in.simpleKeyStack[s_in.simpleKeyStack.size - 1]'h_lt := by
+          simp [Array.back?, h_lt]
+        rw [h_sk, h_back] at hp ⊢
+        exact h_inv.2.1 _ (by omega) h_lt hp
+      · -- Stack is empty: back? = none, so simpleKey = {} with possible = false
+        have h_empty : s_in.simpleKeyStack.size = 0 := by omega
+        have h_none : s_in.simpleKeyStack.back? = none := by
+          simp [Array.back?, h_empty]
+        rw [h_sk, h_none] at hp
+        simp at hp
+    · simp only [h_stack, Array.size_pop] at hj
+      simp only [h_stack, Array.getElem_pop] at hp ⊢
+      exact h_inv.2.1 j (by omega) (by omega) hp
+
+/-! #### SimpleKeyAboveFloor preprocess and dispatch maintenance -/
+
+theorem preprocess_preserves_flowLevel (s s1 : ScannerState) (c : Char)
+    (h : scanNextToken_preprocess s = .ok (some (s1, c))) :
+    s1.flowLevel = s.flowLevel := by
+  unfold scanNextToken_preprocess at h
+  simp only [bind, ScannerCorrectness.ScanHelpers.bind_error_simp,
+    ScannerCorrectness.ScanHelpers.bind_ok_simp, pure, Pure.pure, Except.pure] at h
+  simp only [Except.bind] at h
+  split at h
+  · contradiction
+  · rename_i s_skip h_skip
+    have h_fl_skip := ScannerCorrectness.skipToContent_preserves_flowLevel s s_skip h_skip
+    split at h
+    · simp at h
+    · split at h
+      · split at h
+        · contradiction
+        · split at h
+          · simp at h
+          · simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq] at h
+            obtain ⟨rfl, _⟩ := h
+            rw [ScannerCorrectness.saveSimpleKey_preserves_flowLevel]
+            show (unwindIndents s_skip s_skip.col).flowLevel = s.flowLevel
+            rw [ScannerCorrectness.unwindIndents_preserves_flowLevel]; exact h_fl_skip
+      · split at h
+        · contradiction
+        · split at h
+          · simp at h
+          · simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq] at h
+            obtain ⟨rfl, _⟩ := h
+            rw [ScannerCorrectness.saveSimpleKey_preserves_flowLevel]; exact h_fl_skip
+
+theorem preprocess_maintains_SimpleKeyAboveFloor (s s1 : ScannerState) (c : Char)
+    (h : scanNextToken_preprocess s = .ok (some (s1, c)))
+    (n₀ fl₀ : Nat) (h_n₀ : n₀ ≤ s.tokens.size) (h_inv : SimpleKeyAboveFloor s n₀ fl₀) :
+    SimpleKeyAboveFloor s1 n₀ fl₀ := by
+  refine ⟨?_, ?_, ?_⟩
+  · exact ScannerCorrectness.preprocess_simpleKey_inv s s1 c h n₀ h_n₀ h_inv.1
+  · intro j hfl hj hp
+    have h_stack := ScannerCorrectness.preprocess_preserves_simpleKeyStack s s1 c h
+    simp only [h_stack] at hj hp ⊢
+    exact h_inv.2.1 j hfl hj hp
+  · have h_stack := ScannerCorrectness.preprocess_preserves_simpleKeyStack s s1 c h
+    rw [h_stack]; exact h_inv.2.2
+
+theorem dispatchStructural_maintains_SimpleKeyAboveFloor (s : ScannerState) (c : Char)
+    (s' : ScannerState)
+    (h : scanNextToken_dispatchStructural s c = .ok (some s'))
+    (n₀ fl₀ : Nat) (_h_n₀ : n₀ ≤ s.tokens.size) (h_inv : SimpleKeyAboveFloor s n₀ fl₀) :
+    SimpleKeyAboveFloor s' n₀ fl₀ := by
+  unfold scanNextToken_dispatchStructural at h
+  simp only [bind, ScannerCorrectness.ScanHelpers.bind_error_simp,
+    ScannerCorrectness.ScanHelpers.bind_ok_simp, pure, Pure.pure, Except.pure] at h
+  simp only [Except.bind] at h
+  repeat (any_goals (split at h))
+  any_goals contradiction
+  all_goals (try simp only [Except.ok.injEq, Option.some.injEq] at *)
+  any_goals contradiction
+  all_goals (try subst_vars)
+  all_goals first
+    | exact SimpleKeyAboveFloor_of_cleared_preserved _ s n₀ fl₀
+        (ScannerCorrectness.scanDocumentStart_clears_simpleKey s)
+        (ScannerCorrectness.scanDocumentStart_preserves_simpleKeyStack s) h_inv
+    | (rename_i h_eq; exact SimpleKeyAboveFloor_of_cleared_preserved _ s n₀ fl₀
+        (ScannerCorrectness.scanDocumentEnd_clears_simpleKey s _ h_eq)
+        (ScannerCorrectness.scanDocumentEnd_preserves_simpleKeyStack s _ h_eq) h_inv)
+    | (rename_i h_eq; exact SimpleKeyAboveFloor_of_preserved _ s n₀ fl₀
+        (ScannerCorrectness.scanDirective_preserves_simpleKey s _ h_eq)
+        (ScannerCorrectness.scanDirective_preserves_simpleKeyStack s _ h_eq) h_inv)
+    | (simp_all; done)
+
+theorem dispatchFlowIndicators_maintains_SimpleKeyAboveFloor (s : ScannerState) (c : Char)
+    (s' : ScannerState)
+    (h : scanNextToken_dispatchFlowIndicators s c = .ok (some s'))
+    (n₀ fl₀ : Nat) (_h_n₀ : n₀ ≤ s.tokens.size) (h_inv : SimpleKeyAboveFloor s n₀ fl₀)
+    (h_sync : s.simpleKeyStack.size ≥ s.flowLevel)
+    (h_fl_post : s'.flowLevel ≥ fl₀) :
+    SimpleKeyAboveFloor s' n₀ fl₀ := by
+  unfold scanNextToken_dispatchFlowIndicators at h
+  simp only [bind, ScannerCorrectness.ScanHelpers.bind_error_simp,
+    ScannerCorrectness.ScanHelpers.bind_ok_simp, pure, Pure.pure, Except.pure] at h
+  simp only [Except.bind] at h
+  repeat (any_goals (split at h))
+  any_goals contradiction
+  all_goals (try simp only [Except.ok.injEq, Option.some.injEq] at *)
+  any_goals contradiction
+  all_goals (try subst_vars)
+  -- Handle flow open, flow entry, flow close, and none/error cases
+  all_goals first
+    | exact SimpleKeyAboveFloor_of_flow_open _ s n₀ fl₀
+        (ScannerCorrectness.scanFlowSequenceStart_simpleKey_cleared s)
+        (ScannerCorrectness.scanFlowSequenceStart_stack_pushed s) h_inv
+    | exact SimpleKeyAboveFloor_of_flow_open _ s n₀ fl₀
+        (ScannerCorrectness.scanFlowMappingStart_simpleKey_cleared s)
+        (ScannerCorrectness.scanFlowMappingStart_stack_pushed s) h_inv
+    | (rename_i h_eq; exact SimpleKeyAboveFloor_of_preserved _ s n₀ fl₀
+        (ScannerCorrectness.scanFlowEntry_preserves_simpleKey s _ h_eq)
+        (ScannerCorrectness.scanFlowEntry_preserves_simpleKeyStack s _ h_eq) h_inv)
+    | (simp_all; done)
+    | -- Flow close (seq end or mapping end)
+      -- Derive s.simpleKeyStack.size > fl₀ ∨ fl₀ = 0
+      (have h_gt : s.simpleKeyStack.size > fl₀ ∨ fl₀ = 0 := by
+        have h_fl := h_fl_post
+        first
+        | (unfold scanFlowSequenceEnd at h_fl; dsimp only [] at h_fl
+           simp only [ScannerCorrectness.advance_preserves_flowLevel,
+             ScannerCorrectness.emit_preserves_flowLevel] at h_fl
+           split at h_fl
+           · left; omega
+           · right; omega)
+        | (unfold scanFlowMappingEnd at h_fl; dsimp only [] at h_fl
+           simp only [ScannerCorrectness.advance_preserves_flowLevel,
+             ScannerCorrectness.emit_preserves_flowLevel] at h_fl
+           split at h_fl
+           · left; omega
+           · right; omega)
+       first
+       | exact SimpleKeyAboveFloor_of_flow_close _ s n₀ fl₀
+           (ScannerCorrectness.scanFlowSequenceEnd_simpleKey_restored s)
+           (ScannerCorrectness.scanFlowSequenceEnd_stack_popped s) h_inv h_gt
+       | exact SimpleKeyAboveFloor_of_flow_close _ s n₀ fl₀
+           (ScannerCorrectness.scanFlowMappingEnd_simpleKey_restored s)
+           (ScannerCorrectness.scanFlowMappingEnd_stack_popped s) h_inv h_gt)
+
+theorem dispatchBlockIndicators_maintains_SimpleKeyAboveFloor (s : ScannerState) (c : Char)
+    (s' : ScannerState)
+    (h : scanNextToken_dispatchBlockIndicators s c = .ok (some s'))
+    (n₀ fl₀ : Nat) (_h_n₀ : n₀ ≤ s.tokens.size) (h_inv : SimpleKeyAboveFloor s n₀ fl₀) :
+    SimpleKeyAboveFloor s' n₀ fl₀ := by
+  unfold scanNextToken_dispatchBlockIndicators at h
+  simp only [bind, ScannerCorrectness.ScanHelpers.bind_ok_simp, pure, Pure.pure,
+    Except.pure] at h
+  simp only [Except.bind] at h
+  repeat (any_goals (split at h))
+  any_goals contradiction
+  all_goals (try simp only [Except.ok.injEq, Option.some.injEq] at *)
+  any_goals contradiction
+  all_goals (try subst_vars)
+  all_goals first
+    | (rename_i h_eq; exact SimpleKeyAboveFloor_of_preserved _ s n₀ fl₀
+        (ScannerCorrectness.scanBlockEntry_preserves_simpleKey s _ h_eq)
+        (ScannerCorrectness.scanBlockEntry_preserves_simpleKeyStack s _ h_eq) h_inv)
+    | (rename_i h_eq; exact SimpleKeyAboveFloor_of_cleared_preserved _ s n₀ fl₀
+        (ScannerCorrectness.scanKey_clears_simpleKey s _ h_eq)
+        (ScannerCorrectness.scanKey_preserves_simpleKeyStack s _ h_eq) h_inv)
+    | (rename_i h_eq; exact SimpleKeyAboveFloor_of_cleared_preserved _ s n₀ fl₀
+        (ScannerCorrectness.scanValue_clears_simpleKey s _ h_eq)
+        (ScannerCorrectness.scanValue_preserves_simpleKeyStack s _ h_eq) h_inv)
+    | (simp_all; done)
+
+theorem dispatchContent_maintains_SimpleKeyAboveFloor (s : ScannerState) (c : Char)
+    (s' : ScannerState)
+    (h : scanNextToken_dispatchContent s c = .ok s')
+    (n₀ fl₀ : Nat) (_h_n₀ : n₀ ≤ s.tokens.size) (h_inv : SimpleKeyAboveFloor s n₀ fl₀) :
+    SimpleKeyAboveFloor s' n₀ fl₀ := by
+  unfold scanNextToken_dispatchContent at h
+  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h
+  split at h
+  · -- '&': scanAnchorOrAlias bind
+    generalize h_anch : scanAnchorOrAlias s true = result at h
+    cases result with
+    | error e => simp at h
+    | ok s_a =>
+      simp only [Except.ok.injEq] at h; subst h
+      exact SimpleKeyAboveFloor_of_preserved _ _ n₀ fl₀ rfl rfl
+        (SimpleKeyAboveFloor_of_preserved _ s n₀ fl₀
+          (ScannerCorrectness.scanAnchorOrAlias_preserves_simpleKey s true s_a h_anch)
+          (ScannerCorrectness.scanAnchorOrAlias_preserves_simpleKeyStack s true s_a h_anch) h_inv)
+  · split at h
+    · -- '*': alias
+      split at h
+      · contradiction
+      · generalize h_anch : scanAnchorOrAlias s false = result at h
+        cases result with
+        | error e => simp at h
+        | ok s_a =>
+          simp only [Except.ok.injEq] at h; subst h
+          exact SimpleKeyAboveFloor_of_preserved _ s n₀ fl₀
+            (ScannerCorrectness.scanAnchorOrAlias_preserves_simpleKey s false s_a h_anch)
+            (ScannerCorrectness.scanAnchorOrAlias_preserves_simpleKeyStack s false s_a h_anch)
+              h_inv
+    · split at h
+      · -- '!': tag
+        generalize h_tag : scanTag s = result at h
+        cases result with
+        | error e => simp at h
+        | ok s_t =>
+          simp only [Except.ok.injEq] at h; subst h
+          exact SimpleKeyAboveFloor_of_preserved _ s n₀ fl₀
+            (ScannerCorrectness.scanTag_preserves_simpleKey s s_t h_tag)
+            (ScannerCorrectness.scanTag_preserves_simpleKeyStack s s_t h_tag) h_inv
+      · -- remaining: block scalar, quoted, plain
+        repeat (any_goals (split at h))
+        all_goals (try contradiction)
+        all_goals (try (simp only [Except.ok.injEq] at h; subst h))
+        all_goals (
+          first
+    | (rename_i h_eq; exact SimpleKeyAboveFloor_of_cleared_preserved _ s n₀ fl₀
+        (ScannerCorrectness.scanBlockScalar_clears_simpleKey s _ h_eq)
+        (ScannerCorrectness.scanBlockScalar_preserves_simpleKeyStack s _ h_eq) h_inv)
+    | (rename_i h_eq; exact SimpleKeyAboveFloor_of_preserved _ s n₀ fl₀
+        (ScannerCorrectness.scanPlainScalar_preserves_simpleKey s _ h_eq)
+        (ScannerCorrectness.scanPlainScalar_preserves_simpleKeyStack s _ h_eq) h_inv)
+    | (rename_i h_eq_dq _;
+       first
+       | (have h_sk := ScannerCorrectness.scanDoubleQuoted_preserves_simpleKey s _ h_eq_dq
+          have h_st := ScannerCorrectness.scanDoubleQuoted_preserves_simpleKeyStack s _ h_eq_dq
+          exact SimpleKeyAboveFloor_of_endLine_update _ s n₀ fl₀
+            (by simp [h_sk]) (by simp [h_sk]) (by simp [h_st]) h_inv)
+       | (have h_sk := ScannerCorrectness.scanSingleQuoted_preserves_simpleKey s _ h_eq_dq
+          have h_st := ScannerCorrectness.scanSingleQuoted_preserves_simpleKeyStack s _ h_eq_dq
+          exact SimpleKeyAboveFloor_of_endLine_update _ s n₀ fl₀
+            (by simp [h_sk]) (by simp [h_sk]) (by simp [h_st]) h_inv))
+    | (rename_i h_eq_dq _;
+       first
+       | (have h_sk := ScannerCorrectness.scanDoubleQuoted_preserves_simpleKey s _ h_eq_dq
+          have h_st := ScannerCorrectness.scanDoubleQuoted_preserves_simpleKeyStack s _ h_eq_dq
+          exact SimpleKeyAboveFloor_of_preserved _ s n₀ fl₀ h_sk h_st h_inv)
+       | (have h_sk := ScannerCorrectness.scanSingleQuoted_preserves_simpleKey s _ h_eq_dq
+          have h_st := ScannerCorrectness.scanSingleQuoted_preserves_simpleKeyStack s _ h_eq_dq
+          exact SimpleKeyAboveFloor_of_preserved _ s n₀ fl₀ h_sk h_st h_inv))
+    | (simp_all; done))
+
+/-! #### scanNextToken-level SimpleKeyAboveFloor maintenance -/
+
+-- scanNextToken maintains the `SimpleKeyAboveFloor` invariant, given:
+-- (1) stack-flow sync: `simpleKeyStack.size ≥ flowLevel` (links flow level to stack size),
+-- (2) `s'.flowLevel ≥ fl₀` (from FlowMonoChain continuation — ensures close-bracket steps
+--     don't pop below the floor).
+set_option maxHeartbeats 400000 in
+theorem scanNextToken_maintains_SimpleKeyAboveFloor (s : ScannerState) (s' : ScannerState)
+    (h_next : scanNextToken s = .ok (some s'))
+    (n₀ fl₀ : Nat) (h_n₀ : n₀ ≤ s.tokens.size) (h_inv : SimpleKeyAboveFloor s n₀ fl₀)
+    (h_sync : s.simpleKeyStack.size ≥ s.flowLevel)
+    (h_fl_post : s'.flowLevel ≥ fl₀) :
+    SimpleKeyAboveFloor s' n₀ fl₀ := by
+  unfold scanNextToken at h_next
+  simp only [bind, pure, Pure.pure, Except.pure] at h_next
+  simp only [Except.bind] at h_next
+  split at h_next
+  · contradiction
+  · split at h_next
+    · simp at h_next
+    · -- preprocess succeeded with some (s1, c)
+      rename_i s1 c1 heq_pre
+      -- Invariant through preprocess
+      have h_pre_inv := preprocess_maintains_SimpleKeyAboveFloor s _ _ (by assumption)
+        n₀ fl₀ h_n₀ h_inv
+      have h_pre_mono := ScannerCorrectness.ScanHelpers.preprocess_tokens_mono s _ _
+        (by assumption)
+      have h_pre_stack := ScannerCorrectness.preprocess_preserves_simpleKeyStack s _ _
+        (by assumption)
+      have h_pre_fl := preprocess_preserves_flowLevel s _ _ (by assumption)
+      -- Stack-flow sync through preprocess
+      have h_pre_sync : s1.simpleKeyStack.size ≥ s1.flowLevel := by
+        rw [h_pre_stack, h_pre_fl]; exact h_sync
+      -- allowDirectives preserves simpleKey, stack, and flowLevel
+      have h_allow_sk : ∀ st : ScannerState,
+        (if st.allowDirectives then
+          { st with allowDirectives := false, documentEverStarted := true }
+        else st).simpleKey = st.simpleKey := by
+        intro st; split <;> rfl
+      have h_allow_stack : ∀ st : ScannerState,
+        (if st.allowDirectives then
+          { st with allowDirectives := false, documentEverStarted := true }
+        else st).simpleKeyStack = st.simpleKeyStack := by
+        intro st; split <;> rfl
+      have h_allow_tok : ∀ st : ScannerState,
+        (if st.allowDirectives then
+          { st with allowDirectives := false, documentEverStarted := true }
+        else st).tokens = st.tokens := ScannerCorrectness.ScanHelpers.allowDir_ite_tokens
+      have h_allow_fl : ∀ st : ScannerState,
+        (if st.allowDirectives then
+          { st with allowDirectives := false, documentEverStarted := true }
+        else st).flowLevel = st.flowLevel := by
+        intro st; split <;> rfl
+      -- SimpleKeyAboveFloor through allowDirectives
+      have h_allow_inv : SimpleKeyAboveFloor
+          (if s1.allowDirectives then
+            { s1 with allowDirectives := false, documentEverStarted := true }
+          else s1) n₀ fl₀ :=
+        SimpleKeyAboveFloor_of_preserved _ s1 n₀ fl₀ (h_allow_sk s1) (h_allow_stack s1)
+          h_pre_inv
+      -- Stack-flow sync through allowDirectives
+      have h_allow_sync : (if s1.allowDirectives then
+          { s1 with allowDirectives := false, documentEverStarted := true }
+        else s1).simpleKeyStack.size ≥ (if s1.allowDirectives then
+          { s1 with allowDirectives := false, documentEverStarted := true }
+        else s1).flowLevel := by
+        rw [h_allow_stack, h_allow_fl]; exact h_pre_sync
+      -- Now split on all dispatch cases
+      repeat (any_goals (split at h_next))
+      any_goals contradiction
+      any_goals (simp at h_next)
+      all_goals (try subst_vars)
+      all_goals first
+        | -- Structural dispatch
+          (have h_d := dispatchStructural_maintains_SimpleKeyAboveFloor _ _ _ (by assumption)
+            n₀ fl₀ (by omega) h_pre_inv;
+           exact h_d)
+        | -- Flow indicators dispatch (needs sync and fl_post)
+          (have h_d := dispatchFlowIndicators_maintains_SimpleKeyAboveFloor _ _ _ (by assumption)
+            n₀ fl₀ (by simp only [ScannerCorrectness.ScanHelpers.allowDir_ite_tokens]; omega)
+            h_allow_inv h_allow_sync (by assumption);
+           exact h_d)
+        | (have h_d := dispatchBlockIndicators_maintains_SimpleKeyAboveFloor _ _ _ (by assumption)
+            n₀ fl₀ (by simp only [ScannerCorrectness.ScanHelpers.allowDir_ite_tokens]; omega)
+            h_allow_inv;
+           exact h_d)
+        | (have h_d := dispatchContent_maintains_SimpleKeyAboveFloor _ _ _ (by assumption)
+            n₀ fl₀ (by simp only [ScannerCorrectness.ScanHelpers.allowDir_ite_tokens]; omega)
+            h_allow_inv;
+           exact h_d)
+        | (simp_all)
+
 /-- Connect a ScanChain to scanFiltered: if N steps succeed
     reaching a state where scanNextToken returns none (EOF),
     then scanFiltered on the input succeeds.
