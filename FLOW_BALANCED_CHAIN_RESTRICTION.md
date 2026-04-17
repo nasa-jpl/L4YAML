@@ -516,8 +516,37 @@ theorems from Step 7. The final `| sorry` catches remaining unmatched dispatch p
 branches explicitly.
 
 ***Step 8: Accomplishments***
+- Eliminated the `| sorry` fallback in `scanNextToken_preserves_sync` (23→22 total sorrys).
+- Root cause: The old proof used bulk `repeat (any_goals (split at h_next))` which couldn't
+  unfold `scanNextToken_dispatchFlowIndicators`, leaving flow indicator goals unmatched.
+  The dispatch lemma references also used the wrong namespace (`ScanHelpers.`→removed prefix).
+- Wrote `dispatchFlowIndicators_preserves_sync` helper theorem following the step-by-step
+  pattern from `dispatchFlowIndicators_preserves_ScanInv` (explicit `split at h` for each
+  flow indicator: `[`, `]`, `{`, `}`, `,`, else).
+- Flow start: `dsimp [scanFlowSequenceStart/MappingStart]` + preservation lemmas for
+  `emit`/`advance` + `Array.size_push` + `omega`.
+- Flow end: same pattern with `Array.size_pop` + `split <;> omega` for the `if flowLevel > 0`.
+- Flow entry: used `scanFlowEntry_preserves_simpleKeyStack/flowLevel` + `rw; exact h_sync`.
+- Restructured main proof to follow `scanNextToken_preserves_AllKeysValid` pattern:
+  explicit step-by-step `split at h_next` for each dispatch level (structural, flow, block,
+  content) instead of bulk `repeat` + `all_goals first`.
 
 ***Step 8: Reflections***
+- **`(by assumption)` inside `first | ...`**: The original proof used `have h := f _ _ _ (by assumption)`
+  inside `all_goals first | ... | sorry`. When the lemma references were wrong (stale `ScanHelpers.`
+  namespace), elaboration failed before `(by assumption)` ran, so no deferred goal leaking.
+  After fixing namespace references, `(by assumption)` in `first` alternatives caused deferred
+  synthetic goal leaking (metavar `?m.206` errors). Solution: avoid `(by assumption)` inside
+  `first` entirely — use direct `have` calls in focused goal branches.
+- **Flow dispatch needs its own helper**: Unlike structural/block/content dispatchers which
+  preserve both `simpleKeyStack` and `flowLevel` unconditionally, flow indicators MODIFY both
+  fields (start: push+incr, end: pop+decr). A blanket `simp only [preservation_lemma, *]`
+  approach fails because the conditional rewrite lemma pattern doesn't apply. Solution:
+  dedicated `dispatchFlowIndicators_preserves_sync` theorem that handles each indicator inline.
+- **`dsimp only [f]` vs `simp [f, emit, advance]`**: Using `simp [scanFlowSequenceStart, emit, advance]`
+  to unfold everything at once is slow and may not reduce fully (advance has `if` branches that
+  block struct projection reduction). Better: `dsimp only [scanFlowSequenceStart]` to inline lets,
+  then `simp only [advance_preserves_X, emit_preserves_X]` for targeted rewrites.
 
 ## Step 9: Eliminate ScannerBound preprocessing BoundInv sorrys (4 sorrys)
 
