@@ -667,15 +667,323 @@ theorem collectDirectiveNameLoop_BoundInv {s₀ : ScannerState} (s : ScannerStat
       · exact h
     · exact h
 
+-- Additional simple loop BoundInv lemmas
+
+theorem collectAnchorNameLoop_BoundInv {s₀ : ScannerState} (s : ScannerState)
+    (name : String) (fuel : Nat)
+    (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize) :
+    BoundInv s₀ (collectAnchorNameLoop s name fuel).2 := by
+  induction fuel generalizing s name with
+  | zero => exact h
+  | succ n ih =>
+    simp only [collectAnchorNameLoop]
+    split  -- peek?
+    · split  -- condition
+      · exact ih _ _ (advance_BoundInv s h hend)
+      · exact h
+    · exact h
+
+theorem collectVersionMajorLoop_BoundInv {s₀ : ScannerState} (s : ScannerState)
+    (major : String) (fuel : Nat)
+    (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize) :
+    BoundInv s₀ (collectVersionMajorLoop s major fuel).2 := by
+  induction fuel generalizing s major with
+  | zero => simp only [collectVersionMajorLoop]; exact h
+  | succ n ih =>
+    simp only [collectVersionMajorLoop]
+    split  -- some '.'
+    · exact advance_BoundInv s h hend
+    · split  -- c.isDigit
+      · exact ih _ _ (advance_BoundInv s h hend)
+      · exact h
+    · exact h
+
+theorem collectVersionMinorLoop_BoundInv {s₀ : ScannerState} (s : ScannerState)
+    (minor : String) (fuel : Nat)
+    (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize) :
+    BoundInv s₀ (collectVersionMinorLoop s minor fuel).2 := by
+  induction fuel generalizing s minor with
+  | zero => simp only [collectVersionMinorLoop]; exact h
+  | succ n ih =>
+    simp only [collectVersionMinorLoop]
+    split
+    · split
+      · exact ih _ _ (advance_BoundInv s h hend)
+      · exact h
+    · exact h
+
+theorem collectTagHandleDirectiveLoop_BoundInv {s₀ : ScannerState} (s : ScannerState)
+    (handle : String) (fuel : Nat)
+    (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize) :
+    BoundInv s₀ (collectTagHandleDirectiveLoop s handle fuel).2 := by
+  induction fuel generalizing s handle with
+  | zero => simp only [collectTagHandleDirectiveLoop]; exact h
+  | succ n ih =>
+    simp only [collectTagHandleDirectiveLoop]
+    split
+    · split
+      · exact ih _ _ (advance_BoundInv s h hend)
+      · exact h
+    · exact h
+
+theorem collectTagPrefixLoop_BoundInv {s₀ : ScannerState} (s : ScannerState)
+    (pfx : String) (fuel : Nat)
+    (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize) :
+    BoundInv s₀ (collectTagPrefixLoop s pfx fuel).2 := by
+  induction fuel generalizing s pfx with
+  | zero => simp only [collectTagPrefixLoop]; exact h
+  | succ n ih =>
+    simp only [collectTagPrefixLoop]
+    split
+    · split
+      · exact ih _ _ (advance_BoundInv s h hend)
+      · exact h
+    · exact h
+
+theorem collectVerbatimTagLoop_BoundInv {s₀ : ScannerState} (s : ScannerState)
+    (uri : String) (fuel : Nat)
+    (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize) :
+    BoundInv s₀ (collectVerbatimTagLoop s uri fuel).2.2 := by
+  induction fuel generalizing s uri with
+  | zero => simp only [collectVerbatimTagLoop]; exact h
+  | succ n ih =>
+    simp only [collectVerbatimTagLoop]
+    split  -- some '>'
+    · exact advance_BoundInv s h hend
+    · split  -- isUriCharBool
+      · exact ih _ _ (advance_BoundInv s h hend)
+      · exact h
+    · exact h
+
+theorem collectTagSuffixLoop_BoundInv {s₀ : ScannerState} (s : ScannerState)
+    (suffix : String) (fuel : Nat)
+    (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize) :
+    BoundInv s₀ (collectTagSuffixLoop s suffix fuel).2 := by
+  induction fuel generalizing s suffix with
+  | zero => simp only [collectTagSuffixLoop]; exact h
+  | succ n ih =>
+    simp only [collectTagSuffixLoop]
+    split
+    · split
+      · exact ih _ _ (advance_BoundInv s h hend)
+      · exact h
+    · exact h
+
+theorem collectTagHandleLoop_BoundInv {s₀ : ScannerState} (s : ScannerState)
+    (chars : String) (fuel : Nat)
+    (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize) :
+    BoundInv s₀ (collectTagHandleLoop s chars fuel).2.2 := by
+  induction fuel generalizing s chars with
+  | zero => simp only [collectTagHandleLoop]; exact h
+  | succ n ih =>
+    simp only [collectTagHandleLoop]
+    split  -- some '!'
+    · exact advance_BoundInv s h hend
+    · split
+      · exact ih _ _ (advance_BoundInv s h hend)
+      · exact h
+    · exact h
+
+theorem collectHexDigitsLoop_BoundInv {s₀ : ScannerState} (s : ScannerState)
+    (hex : String) (n : Nat)
+    (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize) :
+    BoundInv s₀ (collectHexDigitsLoop s hex n).2 := by
+  induction n generalizing s hex with
+  | zero => simp only [collectHexDigitsLoop]; exact h
+  | succ k ih =>
+    simp only [collectHexDigitsLoop]
+    split
+    · split
+      · exact ih _ _ (advance_BoundInv s h hend)
+      · exact h
+    · exact h
+
+theorem collectLineContentLoop_BoundInv {s₀ : ScannerState} (s : ScannerState)
+    (content : String) (fuel : Nat)
+    (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize) :
+    BoundInv s₀ (collectLineContentLoop s content fuel).2 := by
+  induction fuel generalizing s content with
+  | zero => simp only [collectLineContentLoop]; exact h
+  | succ n ih =>
+    simp only [collectLineContentLoop]
+    split
+    · split  -- isLineBreakBool
+      · exact h
+      · exact ih _ _ (advance_BoundInv s h hend)
+    · exact h
+
+theorem consumeExactSpaces_BoundInv {s₀ : ScannerState} (s : ScannerState)
+    (count : Nat)
+    (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize) :
+    BoundInv s₀ (consumeExactSpaces s count).2 := by
+  induction count generalizing s with
+  | zero => simp only [consumeExactSpaces]; exact h
+  | succ n ih =>
+    simp only [consumeExactSpaces]
+    split  -- peek? = some ' '
+    · exact ih _ (advance_BoundInv s h hend)
+    · exact h
+
+theorem parseBlockHeaderLoop_BoundInv {s₀ : ScannerState} (s : ScannerState)
+    (chomp : ChompStyle) (explicitOffset : Option Nat) (fuel : Nat)
+    (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize) :
+    BoundInv s₀ (parseBlockHeaderLoop s chomp explicitOffset fuel).2.2 := by
+  -- Use suffices to avoid .2.2 blocking split
+  suffices ∀ c' eo' s', parseBlockHeaderLoop s chomp explicitOffset fuel = (c', eo', s') →
+      BoundInv s₀ s' by
+    exact this _ _ _ rfl
+  induction fuel generalizing s chomp explicitOffset with
+  | zero =>
+    intro c' eo' s' h_eq; simp only [parseBlockHeaderLoop] at h_eq
+    simp only [Prod.mk.injEq] at h_eq; obtain ⟨_, _, rfl⟩ := h_eq; exact h
+  | succ n ih =>
+    intro c' eo' s' h_eq; simp only [parseBlockHeaderLoop] at h_eq
+    split at h_eq
+    · exact ih _ _ _ (advance_BoundInv s h hend) _ _ _ h_eq
+    · exact ih _ _ _ (advance_BoundInv s h hend) _ _ _ h_eq
+    · split at h_eq
+      · exact ih _ _ _ (advance_BoundInv s h hend) _ _ _ h_eq
+      · simp only [Prod.mk.injEq] at h_eq; obtain ⟨_, _, rfl⟩ := h_eq; exact h
+    · simp only [Prod.mk.injEq] at h_eq; obtain ⟨_, _, rfl⟩ := h_eq; exact h
+
+theorem skipBlankLinesLoop_BoundInv {s₀ : ScannerState} (s : ScannerState)
+    (cnt : Nat) (fuel : Nat) (inputEnd : Nat)
+    (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize) :
+    BoundInv s₀ (skipBlankLinesLoop s cnt fuel inputEnd).2 := by
+  induction fuel generalizing s cnt with
+  | zero => simp only [skipBlankLinesLoop]; exact h
+  | succ n ih =>
+    simp only [skipBlankLinesLoop]
+    split  -- (skipSpaces s).peek? = some c
+    · split  -- isLineBreakBool
+      · exact ih _ _ (consumeNewline_BoundInv _ (skipSpaces_BoundInv s h hend) hend)
+      · exact h
+    · exact h
+
+theorem skipTrailingSpaces_BoundInv {s₀ : ScannerState} (s : ScannerState)
+    (fuel : Nat)
+    (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize) :
+    BoundInv s₀ (skipTrailingSpaces s fuel) := by
+  induction fuel generalizing s with
+  | zero => simp only [skipTrailingSpaces]; exact h
+  | succ n ih =>
+    simp only [skipTrailingSpaces]
+    split
+    · split
+      · exact ih _ (advance_BoundInv s h hend)
+      · exact h
+    · exact h
+
+-- Sub-scanner helper BoundInv lemmas
+
+theorem scanBlockScalarSkipComment_BoundInv {s₀ : ScannerState} (s : ScannerState)
+    (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize) :
+    BoundInv s₀ (scanBlockScalarSkipComment s) := by
+  unfold scanBlockScalarSkipComment
+  simp only []
+  split  -- peek? = some '#'
+  · split  -- peekBack? match
+    <;> (split <;> first
+      | (exact fieldUpdate_BoundInv _ _
+          (collectCommentTextLoop_BoundInv s.advance "" _ (advance_BoundInv s h hend) hend)
+          rfl rfl rfl)
+      | exact h)
+  · exact h
+
+theorem scanBlockScalarConsumeNewline_BoundInv {s₀ : ScannerState} (s s' : ScannerState)
+    (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize)
+    (hok : scanBlockScalarConsumeNewline s = .ok s') :
+    BoundInv s₀ s' := by
+  unfold scanBlockScalarConsumeNewline at hok
+  split at hok
+  · split at hok
+    · injection hok with hok; subst hok
+      exact consumeNewline_BoundInv s h hend
+    · split at hok
+      · injection hok with hok; subst hok; exact h
+      · cases hok
+  · injection hok with hok; subst hok; exact h
+
+theorem parseHexEscape_BoundInv {s₀ : ScannerState} (s s' : ScannerState)
+    (n : Nat) (ch : Char)
+    (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize)
+    (hok : parseHexEscape s n = .ok (ch, s')) :
+    BoundInv s₀ s' := by
+  simp only [parseHexEscape, bind, Except.bind, pure, Except.pure, Bind.bind, Pure.pure] at hok
+  split at hok
+  · cases hok
+  · split at hok
+    · simp only [Except.ok.injEq, Prod.mk.injEq] at hok
+      obtain ⟨_, rfl⟩ := hok
+      exact collectHexDigitsLoop_BoundInv s "" n h hend
+    · cases hok
+
+set_option maxHeartbeats 6400000 in
+theorem processEscape_BoundInv {s₀ : ScannerState} (s s' : ScannerState) (ch : Char)
+    (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize)
+    (hok : processEscape s = .ok (ch, s')) :
+    BoundInv s₀ s' := by
+  simp only [processEscape] at hok
+  have h_adv := advance_BoundInv s h hend
+  split at hok
+  · cases hok
+  · try dsimp only [] at hok
+    repeat split at hok
+    all_goals first
+      | (simp only [Except.ok.injEq, Prod.mk.injEq] at hok
+         obtain ⟨_, rfl⟩ := hok; exact h_adv)
+      | exact parseHexEscape_BoundInv _ _ _ _ h_adv hend hok
+      | contradiction
+
+theorem foldQuotedNewlinesLoop_BoundInv {s₀ : ScannerState} (s : ScannerState)
+    (emptyCount : Nat) (fuel : Nat)
+    (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize) :
+    BoundInv s₀ (foldQuotedNewlinesLoop s emptyCount fuel).1 := by
+  induction fuel generalizing s emptyCount with
+  | zero => simp only [foldQuotedNewlinesLoop]; exact h
+  | succ n ih =>
+    simp only [foldQuotedNewlinesLoop]
+    split
+    · split  -- isLineBreakBool
+      · exact ih _ _ (consumeNewline_BoundInv _ (skipSpaces_BoundInv s h hend) hend)
+      · exact h
+    · exact h
+
+set_option maxHeartbeats 3200000 in
+theorem foldQuotedNewlines_BoundInv {s₀ : ScannerState} (s s' : ScannerState)
+    (content : String)
+    (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize)
+    (hok : foldQuotedNewlines s = .ok (content, s')) :
+    BoundInv s₀ s' := by
+  -- The final state is always skipWhitespace(skipSpaces(loop(consumeNewline s).1))
+  let s₁ := consumeNewline s
+  let p := foldQuotedNewlinesLoop s₁ 0 (s.inputEnd - s₁.offset + 1)
+  let s₂ := skipSpaces p.1
+  let s₃ := skipWhitespace s₂
+  have h₁ := consumeNewline_BoundInv s h hend
+  have h₂ := foldQuotedNewlinesLoop_BoundInv s₁ 0
+    (s.inputEnd - s₁.offset + 1) h₁ hend
+  have h₃ := skipSpaces_BoundInv _ h₂ hend
+  have h₄ : BoundInv s₀ s₃ := skipWhitespace_BoundInv _ h₃ hend
+  suffices s' = s₃ by rw [this]; exact h₄
+  unfold foldQuotedNewlines at hok
+  simp only [bind, Except.bind, pure, Except.pure, Bind.bind, Pure.pure] at hok
+  try dsimp only [] at hok
+  repeat split at hok
+  all_goals (try dsimp only [] at hok)
+  all_goals first
+    | contradiction
+    | (injection hok with hok; exact (Prod.mk.inj hok).2)
+    | (simp only [Except.ok.injEq, Prod.mk.injEq] at hok; exact hok.2)
+    | (split at hok <;>
+       (simp only [Except.ok.injEq, Prod.mk.injEq] at hok; obtain ⟨_, rfl⟩ := hok; rfl))
+
 -- Structural scanner BoundInv lemmas
 
 set_option maxHeartbeats 1600000 in
 theorem scanDocumentStart_BoundInv (s : ScannerState)
     (h : BoundInv s s) (hend : s.inputEnd = s.input.utf8ByteSize) :
     BoundInv s (scanDocumentStart s) := by
-  -- scanDocumentStart is pure: unwindIndents → {simpleKey} → emit → advanceN 3 → {with ...}
-  -- Chain BoundInv through each step with explicit type annotations
-  -- to ensure fieldUpdate_BoundInv infers the correct intermediate states.
   have h_unw := unwindIndents_BoundInv s (-1) h
   have h_kd : BoundInv s { unwindIndents s (-1) with simpleKey := { possible := false } } :=
     fieldUpdate_BoundInv _ _ h_unw rfl rfl rfl
@@ -683,31 +991,140 @@ theorem scanDocumentStart_BoundInv (s : ScannerState)
   have h_adv := advanceN_BoundInv _ 3 h_em hend
   exact fieldUpdate_BoundInv _ _ h_adv rfl rfl rfl
 
-set_option maxHeartbeats 1600000 in
+set_option maxHeartbeats 3200000 in
 theorem scanDocumentEnd_BoundInv (s s' : ScannerState)
     (h : BoundInv s s) (hend : s.inputEnd = s.input.utf8ByteSize)
     (hok : scanDocumentEnd s = .ok s') :
     BoundInv s s' := by
-  -- scanDocumentEnd returns `result` (same chain as scanDocumentStart).
-  -- The match/if validation only gates error/ok, not the returned state.
-  -- The do-notation creates join points that block split/simp only.
-  -- We use full simp to reduce them, then manual splitting.
-  simp only [scanDocumentEnd, bind, Except.bind, pure, Pure.pure, Except.pure,
-    Bind.bind] at hok
-  -- Use split to decompose the if/match structure
-  split at hok
-  · cases hok  -- throw → error
-  · -- The do-notation join points (letFun/have) may block further splitting.
-    -- Try using full simp to reduce everything, then omega for contradiction.
-    -- Since the ok paths all return 'result' with the same bound chain,
-    -- we extract s' = result by exhaustive case analysis.
-    sorry
+  -- scanDocumentEnd always returns `.ok result` where result is a fixed chain.
+  -- The trailing validation doesn't affect the returned state.
+  unfold scanDocumentEnd at hok
+  simp only [bind, Except.bind, pure, Except.pure, Bind.bind, Pure.pure] at hok
+  -- After resolving do-notation, hok has guard + validation splits
+  -- but the returned state is always the same
+  have h_unw := unwindIndents_BoundInv s (-1) h
+  have h_kd : BoundInv s { unwindIndents s (-1) with simpleKey := { possible := false } } :=
+    fieldUpdate_BoundInv _ _ h_unw rfl rfl rfl
+  have h_em := emit_BoundInv _ .documentEnd h_kd
+  have h_adv := advanceN_BoundInv _ 3 h_em hend
+  have h_res : BoundInv s { (unwindIndents s (-1) |> fun s => { s with simpleKey := { possible := false } }
+    |>.emit .documentEnd |>.advanceN 3) with
+    simpleKeyAllowed := true, allowDirectives := true,
+    directivesPresent := false, definedAnchors := #[] } :=
+    fieldUpdate_BoundInv _ _ h_adv rfl rfl rfl
+  repeat split at hok
+  all_goals (try dsimp only [] at hok)
+  all_goals first
+    | contradiction
+    | (injection hok with hok; subst hok; exact h_res)
+    | (simp only [Except.ok.injEq] at hok; subst hok; exact h_res)
+    | (split at hok <;> first
+       | contradiction
+       | (injection hok with hok; subst hok; exact h_res)
+       | (simp only [Except.ok.injEq] at hok; subst hok; exact h_res)
+       | (split at hok <;> first
+          | contradiction
+          | (injection hok with hok; subst hok; exact h_res)))
 
+set_option maxHeartbeats 3200000 in
+theorem scanYamlDirective_BoundInv {s₀ : ScannerState} (s s_ws s' : ScannerState)
+    (startPos : YamlPos)
+    (h : BoundInv s₀ s_ws) (hend : s₀.inputEnd = s₀.input.utf8ByteSize)
+    (hok : scanYamlDirective s s_ws startPos = .ok s') :
+    BoundInv s₀ s' := by
+  -- scanYamlDirective returns { emitAt (skipWhitespace (collectVersionMinorLoop ...)) ... with ... }
+  -- The validation (match peek?) doesn't affect the returned state.
+  unfold scanYamlDirective at hok
+  simp only [bind, Except.bind, pure, Except.pure, Bind.bind, Pure.pure] at hok
+  let s_maj := (collectVersionMajorLoop s_ws "" (s.inputEnd - s_ws.offset)).2
+  let s_min := (collectVersionMinorLoop s_maj "" (s.inputEnd - s_maj.offset)).2
+  let s_val := skipWhitespace s_min
+  have h_maj := collectVersionMajorLoop_BoundInv s_ws ""
+    (s.inputEnd - s_ws.offset) h hend
+  have h_min := collectVersionMinorLoop_BoundInv s_maj ""
+    (s.inputEnd - s_maj.offset) h_maj hend
+  have h_sw := skipWhitespace_BoundInv _ h_min hend
+  have h_res : BoundInv s₀ { s_val.emitAt startPos (.versionDirective (collectVersionMajorLoop s_ws "" (s.inputEnd - s_ws.offset)).1.toNat! (collectVersionMinorLoop s_maj "" (s.inputEnd - s_maj.offset)).1.toNat!) with
+    seenYamlDirective := true, directivesPresent := true } :=
+    ⟨h_sw.offset_le, h_sw.inputEnd_eq, h_sw.input_eq, h_sw.isValid⟩
+  repeat split at hok
+  all_goals (try dsimp only [] at hok)
+  all_goals first
+    | contradiction
+    | (injection hok with hok; subst hok; exact h_res)
+    | (simp only [Except.ok.injEq] at hok; subst hok; exact h_res)
+    | (split at hok <;> first
+       | contradiction
+       | (injection hok with hok; subst hok; exact h_res)
+       | (simp only [Except.ok.injEq] at hok; subst hok; exact h_res)
+       | (split at hok <;> first
+          | contradiction
+          | (injection hok with hok; subst hok; exact h_res)))
+
+set_option maxHeartbeats 3200000 in
+theorem scanTagDirective_BoundInv {s₀ : ScannerState} (s s_ws s' : ScannerState)
+    (startPos : YamlPos)
+    (h : BoundInv s₀ s_ws) (hend : s₀.inputEnd = s₀.input.utf8ByteSize)
+    (hok : scanTagDirective s s_ws startPos = .ok s') :
+    BoundInv s₀ s' := by
+  -- scanTagDirective returns { emitAt (skipWhitespace (collectTagPrefixLoop ...)) ... with ... }
+  unfold scanTagDirective at hok
+  simp only [bind, Except.bind, pure, Except.pure, Bind.bind, Pure.pure] at hok
+  let s_hnd := (collectTagHandleDirectiveLoop s_ws "" (s.inputEnd - s_ws.offset)).2
+  let s_ws2 := skipWhitespace s_hnd
+  let s_pfx := (collectTagPrefixLoop s_ws2 "" (s.inputEnd - s_ws2.offset)).2
+  let s_val := skipWhitespace s_pfx
+  have h_hnd := collectTagHandleDirectiveLoop_BoundInv s_ws ""
+    (s.inputEnd - s_ws.offset) h hend
+  have h_ws2 := skipWhitespace_BoundInv _ h_hnd hend
+  have h_pfx := collectTagPrefixLoop_BoundInv s_ws2 ""
+    (s.inputEnd - s_ws2.offset) h_ws2 hend
+  have h_sw := skipWhitespace_BoundInv _ h_pfx hend
+  have h_res : BoundInv s₀ { s_val.emitAt startPos (.tagDirective (collectTagHandleDirectiveLoop s_ws "" (s.inputEnd - s_ws.offset)).1 (collectTagPrefixLoop s_ws2 "" (s.inputEnd - s_ws2.offset)).1) with directivesPresent := true } :=
+    ⟨h_sw.offset_le, h_sw.inputEnd_eq, h_sw.input_eq, h_sw.isValid⟩
+  repeat split at hok
+  all_goals (try dsimp only [] at hok)
+  all_goals first
+    | contradiction
+    | (injection hok with hok; subst hok; exact h_res)
+    | (simp only [Except.ok.injEq] at hok; subst hok; exact h_res)
+    | (split at hok <;> first
+       | contradiction
+       | (injection hok with hok; subst hok; exact h_res)
+       | (simp only [Except.ok.injEq] at hok; subst hok; exact h_res)
+       | (split at hok <;> first
+          | contradiction
+          | (injection hok with hok; subst hok; exact h_res)))
+
+set_option maxHeartbeats 3200000 in
 theorem scanDirective_BoundInv (s s' : ScannerState)
     (h : BoundInv s s) (hend : s.inputEnd = s.input.utf8ByteSize)
     (hok : scanDirective s = .ok s') :
     BoundInv s s' := by
-  sorry
+  -- scanDirective: if YAML → scanYamlDirective → skipToEndOfLine, if TAG → scanTagDirective → skipToEndOfLine
+  unfold scanDirective at hok
+  split at hok  -- !allowDirectives
+  · cases hok
+  · dsimp only [] at hok
+    have h_adv := advance_BoundInv s h hend
+    have h_name := collectDirectiveNameLoop_BoundInv s.advance ""
+      (s.inputEnd - s.advance.offset) h_adv hend
+    have h_ws := skipWhitespace_BoundInv _ h_name hend
+    split at hok  -- name == "YAML"
+    · split at hok  -- match scanYamlDirective
+      · next s'' heq =>
+        have h_yaml := scanYamlDirective_BoundInv s _ _ _ h_ws hend heq
+        cases hok
+        exact skipToEndOfLine_BoundInv _ h_yaml hend
+      · cases hok
+    · split at hok  -- name == "TAG"
+      · split at hok  -- match scanTagDirective
+        · next s'' heq =>
+          have h_tag := scanTagDirective_BoundInv s _ _ _ h_ws hend heq
+          cases hok
+          exact skipToEndOfLine_BoundInv _ h_tag hend
+        · cases hok
+      · cases hok; exact skipToEndOfLine_BoundInv _ h_ws hend
 
 -- Content scanner BoundInv lemmas (all sorry'd — complex loops)
 
@@ -715,37 +1132,428 @@ theorem scanAnchorOrAlias_BoundInv (s s' : ScannerState) (isAnchor : Bool)
     (h : BoundInv s s) (hend : s.inputEnd = s.input.utf8ByteSize)
     (hok : scanAnchorOrAlias s isAnchor = .ok s') :
     BoundInv s s' := by
-  sorry
+  unfold scanAnchorOrAlias at hok
+  dsimp only [] at hok  -- inline let bindings
+  split at hok  -- name.isEmpty
+  · cases hok  -- error
+  · simp only [Except.ok.injEq] at hok; subst hok
+    have h_adv := advance_BoundInv s h hend
+    have h_name := collectAnchorNameLoop_BoundInv s.advance ""
+      (s.inputEnd - s.advance.offset) h_adv hend
+    exact ⟨h_name.offset_le, h_name.inputEnd_eq, h_name.input_eq, h_name.isValid⟩
+
+-- Tag sub-scanner helpers
+
+theorem scanVerbatimTag_BoundInv {s₀ : ScannerState} (s s' : ScannerState)
+    (startPos : YamlPos)
+    (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize)
+    (hok : scanVerbatimTag s startPos = .ok s') :
+    BoundInv s₀ s' := by
+  simp only [scanVerbatimTag] at hok
+  split at hok  -- !foundClose
+  · cases hok
+  · split at hok  -- uri.isEmpty
+    · cases hok
+    · simp only [Except.ok.injEq] at hok; subst hok
+      exact emitAt_BoundInv _ _ _
+        (collectVerbatimTagLoop_BoundInv _ "" _ (advance_BoundInv s h hend) hend)
+
+theorem scanSecondaryTag_BoundInv {s₀ : ScannerState} (s : ScannerState)
+    (startPos : YamlPos)
+    (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize) :
+    BoundInv s₀ (scanSecondaryTag s startPos) := by
+  unfold scanSecondaryTag
+  exact emitAt_BoundInv _ _ _
+    (collectTagSuffixLoop_BoundInv _ "" _ (advance_BoundInv s h hend) hend)
+
+theorem scanNamedTag_BoundInv {s₀ : ScannerState} (s : ScannerState)
+    (startPos : YamlPos) (inputEnd : Nat)
+    (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize) :
+    BoundInv s₀ (scanNamedTag s startPos inputEnd) := by
+  simp only [scanNamedTag]
+  split  -- if foundBang
+  · -- foundBang = true: collectTagHandleLoop → collectTagSuffixLoop → emitAt
+    exact emitAt_BoundInv _ _ _
+      (collectTagSuffixLoop_BoundInv _ "" _
+        (collectTagHandleLoop_BoundInv _ "" _ h hend) hend)
+  · -- foundBang = false: emitAt on collectTagHandleLoop state
+    exact emitAt_BoundInv _ _ _
+      (collectTagHandleLoop_BoundInv _ "" _ h hend)
 
 theorem scanTag_BoundInv (s s' : ScannerState)
     (h : BoundInv s s) (hend : s.inputEnd = s.input.utf8ByteSize)
     (hok : scanTag s = .ok s') :
     BoundInv s s' := by
-  sorry
+  unfold scanTag at hok
+  simp only [bind, Except.bind, pure, Pure.pure, Bind.bind, Except.pure] at hok
+  have h_adv := advance_BoundInv s h hend
+  split at hok  -- peek? match
+  · -- some '<' → scanVerbatimTag
+    split at hok  -- bind on scanVerbatimTag
+    · cases hok
+    · next v heq =>
+      simp only [Except.ok.injEq] at hok; subst hok
+      exact fieldUpdate_BoundInv _ _
+        (scanVerbatimTag_BoundInv s.advance v s.currentPos h_adv hend heq) rfl rfl rfl
+  · -- some '!' → scanSecondaryTag
+    simp only [Except.ok.injEq] at hok; subst hok
+    exact fieldUpdate_BoundInv _ _
+      (scanSecondaryTag_BoundInv s.advance s.currentPos h_adv hend) rfl rfl rfl
+  · -- _ → scanNamedTag
+    simp only [Except.ok.injEq] at hok; subst hok
+    exact fieldUpdate_BoundInv _ _
+      (scanNamedTag_BoundInv s.advance s.currentPos s.inputEnd h_adv hend) rfl rfl rfl
 
+-- Block scalar loop BoundInv
+
+set_option maxHeartbeats 6400000 in
+theorem collectBlockScalarLoop_BoundInv {s₀ : ScannerState} (s : ScannerState)
+    (rawContent : String) (fuel : Nat) (contentIndent : Nat) (inputEnd : Nat)
+    (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize) :
+    BoundInv s₀ (collectBlockScalarLoop s rawContent fuel contentIndent inputEnd).2 := by
+  induction fuel generalizing s rawContent with
+  | zero => simp only [collectBlockScalarLoop]; exact h
+  | succ n ih =>
+    simp only [collectBlockScalarLoop]
+    split  -- atDocumentBoundary
+    · exact h
+    · have h_ces := consumeExactSpaces_BoundInv s contentIndent h hend
+      split  -- peek? of s_after_spaces
+      · exact h_ces
+      · split  -- isLineBreakBool
+        · exact ih _ _ (consumeNewline_BoundInv _ h_ces hend)
+        · split  -- spacesConsumed < contentIndent
+          · exact h
+          · have h_lcl := collectLineContentLoop_BoundInv _ ""
+              (inputEnd - (consumeExactSpaces s contentIndent).2.offset + 1) h_ces hend
+            split  -- peek? of s_after_line
+            · split  -- isLineBreakBool
+              · exact ih _ _ (consumeNewline_BoundInv _ h_lcl hend)
+              · exact ih _ _ h_lcl
+            · exact h_lcl
+
+set_option maxHeartbeats 6400000 in
+theorem scanBlockScalarBody_BoundInv {s₀ : ScannerState} (s_orig s_after_newline s' : ScannerState)
+    (chomp : ChompStyle) (explicitOffset : Option Nat) (isLiteral : Bool) (startPos : YamlPos)
+    (h : BoundInv s₀ s_after_newline) (hend : s₀.inputEnd = s₀.input.utf8ByteSize)
+    (hok : scanBlockScalarBody s_orig s_after_newline chomp explicitOffset isLiteral startPos = .ok s') :
+    BoundInv s₀ s' := by
+  unfold scanBlockScalarBody at hok
+  cases explicitOffset with
+  | some m =>
+    dsimp only [] at hok
+    simp only [Except.ok.injEq] at hok; subst hok
+    exact ⟨(collectBlockScalarLoop_BoundInv s_after_newline "" _ _ _ h hend).offset_le,
+           (collectBlockScalarLoop_BoundInv s_after_newline "" _ _ _ h hend).inputEnd_eq,
+           (collectBlockScalarLoop_BoundInv s_after_newline "" _ _ _ h hend).input_eq,
+           (collectBlockScalarLoop_BoundInv s_after_newline "" _ _ _ h hend).isValid⟩
+  | none =>
+    dsimp only [] at hok
+    split at hok  -- match autoDetectErr?
+    · cases hok  -- error
+    · simp only [Except.ok.injEq] at hok; subst hok
+      exact ⟨(collectBlockScalarLoop_BoundInv s_after_newline "" _ _ _ h hend).offset_le,
+             (collectBlockScalarLoop_BoundInv s_after_newline "" _ _ _ h hend).inputEnd_eq,
+             (collectBlockScalarLoop_BoundInv s_after_newline "" _ _ _ h hend).input_eq,
+             (collectBlockScalarLoop_BoundInv s_after_newline "" _ _ _ h hend).isValid⟩
+
+set_option maxHeartbeats 3200000 in
 theorem scanBlockScalar_BoundInv (s s' : ScannerState)
     (h : BoundInv s s) (hend : s.inputEnd = s.input.utf8ByteSize)
     (hok : scanBlockScalar s = .ok s') :
     BoundInv s s' := by
-  sorry
+  unfold scanBlockScalar at hok
+  dsimp only [] at hok
+  split at hok  -- match scanBlockScalarConsumeNewline
+  · cases hok
+  · next s_an heq =>
+    have h_adv := advance_BoundInv s h hend
+    have h_hdr := parseBlockHeaderLoop_BoundInv s.advance .clip none 2 h_adv hend
+    have h_ws := skipWhitespace_BoundInv _ h_hdr hend
+    have h_sc := scanBlockScalarSkipComment_BoundInv _ h_ws hend
+    have h_cn := scanBlockScalarConsumeNewline_BoundInv _ s_an h_sc hend heq
+    exact scanBlockScalarBody_BoundInv s s_an _ _ _ _ _ h_cn hend hok
 
+-- Complex loop BoundInv lemmas
+
+set_option maxHeartbeats 6400000 in
+theorem collectDoubleQuotedLoop_BoundInv {s₀ : ScannerState} (s s' : ScannerState)
+    (content resultContent : String) (fuel : Nat) (startPos : YamlPos) (inFlow : Bool)
+    (currentIndent : Int) (inputEnd : Nat)
+    (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize)
+    (hok : collectDoubleQuotedLoop s content fuel startPos inFlow currentIndent inputEnd
+           = .ok (resultContent, s')) :
+    BoundInv s₀ s' := by
+  induction fuel generalizing s content with
+  | zero => simp only [collectDoubleQuotedLoop] at hok; cases hok
+  | succ n ih =>
+    simp only [collectDoubleQuotedLoop] at hok
+    split at hok  -- peek?
+    · cases hok  -- none
+    · -- some '"': closing quote
+      simp only [Except.ok.injEq, Prod.mk.injEq] at hok
+      obtain ⟨_, rfl⟩ := hok
+      exact advance_BoundInv s h hend
+    · -- some '\\': escape
+      try dsimp only [] at hok
+      split at hok  -- s.advance.peek?
+      · -- some c
+        split at hok  -- isLineBreakBool
+        · -- escaped line break: no bind, just let + recurse
+          try dsimp only [] at hok
+          exact ih _ _ (skipWhitespace_BoundInv _
+            (consumeNewline_BoundInv _ (advance_BoundInv s h hend) hend) hend) hok
+        · -- regular escape: do with processEscape ←
+          simp only [bind, Except.bind, pure, Pure.pure, Bind.bind, Except.pure] at hok
+          split at hok  -- processEscape result
+          · cases hok
+          · next p heq =>
+            try dsimp only [] at hok
+            exact ih _ _ (processEscape_BoundInv _ _ p.1
+              (advance_BoundInv s h hend) hend heq) hok
+      · cases hok  -- none: error
+    · -- some c (not '"', not '\\')
+      split at hok  -- isLineBreakBool
+      · -- line break: do with foldQuotedNewlines ←
+        simp only [bind, Except.bind, pure, Pure.pure, Bind.bind, Except.pure] at hok
+        split at hok  -- foldQuotedNewlines result
+        · cases hok
+        · next p heq =>
+          try dsimp only [] at hok
+          split at hok  -- atDocumentStart/End
+          · cases hok
+          · split at hok  -- underIndented
+            · cases hok
+            · try dsimp only [] at hok
+              exact ih _ _ (foldQuotedNewlines_BoundInv _ p.2 _ h hend heq) hok
+      · split at hok  -- !isNbJsonBool
+        · cases hok
+        · try dsimp only [] at hok
+          exact ih _ _ (advance_BoundInv s h hend) hok
+
+set_option maxHeartbeats 6400000 in
+theorem collectSingleQuotedLoop_BoundInv {s₀ : ScannerState} (s s' : ScannerState)
+    (content resultContent : String) (fuel : Nat) (startPos : YamlPos) (inFlow : Bool)
+    (currentIndent : Int) (inputEnd : Nat)
+    (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize)
+    (hok : collectSingleQuotedLoop s content fuel startPos inFlow currentIndent inputEnd
+           = .ok (resultContent, s')) :
+    BoundInv s₀ s' := by
+  induction fuel generalizing s content with
+  | zero => simp only [collectSingleQuotedLoop] at hok; cases hok
+  | succ n ih =>
+    simp only [collectSingleQuotedLoop] at hok
+    split at hok  -- peek?
+    · cases hok  -- none
+    · -- some '\''
+      try dsimp only [] at hok
+      split at hok  -- s.advance.peek?
+      · -- some '\'' (escaped quote)
+        try dsimp only [] at hok
+        exact ih _ _ (advance_BoundInv _ (advance_BoundInv s h hend) hend) hok
+      · -- closing quote
+        simp only [Except.ok.injEq, Prod.mk.injEq] at hok
+        obtain ⟨_, rfl⟩ := hok
+        exact advance_BoundInv s h hend
+    · -- some c (not '\'')
+      split at hok  -- isLineBreakBool
+      · -- line break: do with foldQuotedNewlines ←
+        simp only [bind, Except.bind, pure, Pure.pure, Bind.bind, Except.pure] at hok
+        split at hok  -- foldQuotedNewlines result
+        · cases hok
+        · next p heq =>
+          try dsimp only [] at hok
+          split at hok  -- atDocumentStart/End
+          · cases hok
+          · split at hok  -- underIndented
+            · cases hok
+            · try dsimp only [] at hok
+              exact ih _ _ (foldQuotedNewlines_BoundInv _ p.2 _ h hend heq) hok
+      · split at hok  -- !isNbJsonBool
+        · cases hok
+        · try dsimp only [] at hok
+          exact ih _ _ (advance_BoundInv s h hend) hok
+
+set_option maxHeartbeats 3200000 in
 theorem scanDoubleQuoted_BoundInv (s s' : ScannerState)
     (h : BoundInv s s) (hend : s.inputEnd = s.input.utf8ByteSize)
     (hok : scanDoubleQuoted s = .ok s') :
     BoundInv s s' := by
-  sorry
+  unfold scanDoubleQuoted at hok
+  simp only [bind, Except.bind, pure, Pure.pure, Bind.bind, Except.pure] at hok
+  have h_adv := advance_BoundInv s h hend
+  split at hok  -- bind on collectDoubleQuotedLoop
+  · cases hok
+  · rename_i p heq
+    have h_dq := collectDoubleQuotedLoop_BoundInv _ _ _ _ _ _ _ _ _ h_adv hend heq
+    split at hok  -- if s.inFlow = false
+    · -- validation needed
+      revert hok
+      generalize validateTrailingContent p.2 s.inputEnd = val
+      intro hok
+      cases val with
+      | error e => simp at hok
+      | ok u =>
+        simp only [Except.ok.injEq] at hok; subst hok
+        exact ⟨h_dq.offset_le, h_dq.inputEnd_eq, h_dq.input_eq, h_dq.isValid⟩
+    · -- no validation
+      simp only [Except.ok.injEq] at hok; subst hok
+      exact ⟨h_dq.offset_le, h_dq.inputEnd_eq, h_dq.input_eq, h_dq.isValid⟩
 
+set_option maxHeartbeats 3200000 in
 theorem scanSingleQuoted_BoundInv (s s' : ScannerState)
     (h : BoundInv s s) (hend : s.inputEnd = s.input.utf8ByteSize)
     (hok : scanSingleQuoted s = .ok s') :
     BoundInv s s' := by
-  sorry
+  unfold scanSingleQuoted at hok
+  simp only [bind, Except.bind, pure, Pure.pure, Bind.bind, Except.pure] at hok
+  have h_adv := advance_BoundInv s h hend
+  split at hok  -- bind on collectSingleQuotedLoop
+  · cases hok
+  · rename_i p heq
+    have h_sq := collectSingleQuotedLoop_BoundInv _ _ _ _ _ _ _ _ _ h_adv hend heq
+    split at hok
+    · revert hok
+      generalize validateTrailingContent p.2 s.inputEnd = val
+      intro hok
+      cases val with
+      | error e => simp at hok
+      | ok u =>
+        simp only [Except.ok.injEq] at hok; subst hok
+        exact ⟨h_sq.offset_le, h_sq.inputEnd_eq, h_sq.input_eq, h_sq.isValid⟩
+    · simp only [Except.ok.injEq] at hok; subst hok
+      exact ⟨h_sq.offset_le, h_sq.inputEnd_eq, h_sq.input_eq, h_sq.isValid⟩
 
+-- Plain scalar loop BoundInv
+
+theorem collectPlainScalar_handleBlockLineBreak_BoundInv {s₀ : ScannerState} (s s' : ScannerState)
+    (content content' : String) (contentIndent : Nat) (inputEnd : Nat)
+    (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize)
+    (hok : collectPlainScalar_handleBlockLineBreak s content contentIndent inputEnd = some (content', s')) :
+    BoundInv s₀ s' := by
+  unfold collectPlainScalar_handleBlockLineBreak at hok
+  try dsimp only [] at hok
+  have h_cn := consumeNewline_BoundInv s h hend
+  have h_bl := skipBlankLinesLoop_BoundInv (consumeNewline s) 0
+    (inputEnd - (consumeNewline s).offset + 1) inputEnd h_cn hend
+  have h_sp := skipSpaces_BoundInv _ h_bl hend
+  split at hok
+  · cases hok
+  · split at hok
+    · cases hok
+    · simp only [Option.some.injEq, Prod.mk.injEq] at hok
+      obtain ⟨_, rfl⟩ := hok
+      exact h_sp
+
+theorem terminates?_state_eq (c : Char) (s : ScannerState)
+    (content spaces : String) (inFlow : Bool) (result : PlainScalarResult)
+    (h : collectPlainScalar_terminates? c s content spaces inFlow = some result) :
+    result.state = s := by
+  unfold collectPlainScalar_terminates? at h
+  split at h
+  · injection h with h; cases h; rfl
+  · split at h
+    · simp only [] at h
+      split at h
+      · split at h
+        · injection h with h; cases h; rfl
+        · contradiction
+      · split at h
+        · injection h with h; cases h; rfl
+        · contradiction
+    · split at h
+      · injection h with h; cases h; rfl
+      · split at h
+        · injection h with h; cases h; rfl
+        · contradiction
+
+set_option maxHeartbeats 12800000 in
+theorem collectPlainScalarLoop_BoundInv {s₀ : ScannerState} (s : ScannerState)
+    (content spaces : String) (fuel : Nat) (inFlow : Bool) (contentIndent : Nat) (inputEnd : Nat)
+    (r : PlainScalarResult)
+    (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize)
+    (hok : collectPlainScalarLoop s content spaces fuel inFlow contentIndent inputEnd = .ok r) :
+    BoundInv s₀ r.state := by
+  induction fuel generalizing s content spaces r with
+  | zero =>
+    simp only [collectPlainScalarLoop] at hok
+    simp only [Except.ok.injEq] at hok; subst hok; exact h
+  | succ n ih =>
+    simp only [collectPlainScalarLoop] at hok
+    split at hok  -- peek?
+    · -- none
+      simp only [Except.ok.injEq] at hok; subst hok; exact h
+    · -- some c
+      split at hok  -- collectPlainScalar_terminates?
+      · -- some result: terminates
+        next result heq_term =>
+        simp only [Except.ok.injEq] at hok; subst hok
+        rw [terminates?_state_eq _ _ _ _ _ _ heq_term]; exact h
+      · -- none: continue scanning
+        split at hok  -- isLineBreakBool
+        · -- line break
+          split at hok  -- inFlow
+          · -- inFlow = true: do with foldQuotedNewlines ←
+            simp only [bind, Except.bind, pure, Pure.pure, Bind.bind, Except.pure] at hok
+            split at hok  -- foldQuotedNewlines result
+            · cases hok
+            · rename_i fld s_fld heq_fold
+              try dsimp only [] at hok
+              split at hok  -- peek? = some '#'
+              · simp only [Except.ok.injEq] at hok; subst hok; exact h
+              · try dsimp only [] at hok
+                split at hok  -- match recursive call
+                · next r' heq_rec =>
+                  try dsimp only [] at hok
+                  split at hok
+                  · simp only [Except.ok.injEq] at hok; subst hok; exact h
+                  · simp only [Except.ok.injEq] at hok; subst hok
+                    exact ih _ _ _ _ (foldQuotedNewlines_BoundInv _ s_fld.2 _ h hend heq_fold) heq_rec
+                · cases hok
+          · -- inFlow = false: handleBlockLineBreak
+            try dsimp only [] at hok
+            split at hok  -- handleBlockLineBreak
+            · -- none: terminate
+              simp only [Except.ok.injEq] at hok; subst hok; exact h
+            · -- some (content', s')
+              rename_i c_blk s_blk heq_blk
+              try dsimp only [] at hok
+              split at hok  -- peek? = some '#'
+              · simp only [Except.ok.injEq] at hok; subst hok; exact h
+              · try dsimp only [] at hok
+                split at hok  -- match recursive call
+                · next r' heq_rec =>
+                  try dsimp only [] at hok
+                  split at hok
+                  · simp only [Except.ok.injEq] at hok; subst hok; exact h
+                  · simp only [Except.ok.injEq] at hok; subst hok
+                    exact ih _ _ _ _
+                      (collectPlainScalar_handleBlockLineBreak_BoundInv _ _ _ _ _ _ h hend heq_blk)
+                      heq_rec
+                · cases hok
+        · split at hok  -- isWhiteSpaceBool
+          · exact ih _ _ _ _ (advance_BoundInv s h hend) hok
+          · split at hok  -- !isPlainSafeBool
+            · simp only [Except.ok.injEq] at hok; subst hok; exact h
+            · try dsimp only [] at hok
+              exact ih _ _ _ _ (advance_BoundInv s h hend) hok
+
+set_option maxHeartbeats 3200000 in
 theorem scanPlainScalar_BoundInv (s s' : ScannerState)
     (h : BoundInv s s) (hend : s.inputEnd = s.input.utf8ByteSize)
     (hok : scanPlainScalar s = .ok s') :
     BoundInv s s' := by
-  sorry
+  unfold scanPlainScalar at hok
+  simp only [bind, Except.bind, pure, Pure.pure, Bind.bind, Except.pure] at hok
+  split at hok  -- bind on collectPlainScalarLoop
+  · cases hok
+  · next r heq =>
+    try dsimp only [] at hok
+    simp only [Except.ok.injEq] at hok; subst hok
+    exact ⟨(collectPlainScalarLoop_BoundInv _ _ _ _ _ _ _ _ h hend heq).offset_le,
+           (collectPlainScalarLoop_BoundInv _ _ _ _ _ _ _ _ h hend heq).inputEnd_eq,
+           (collectPlainScalarLoop_BoundInv _ _ _ _ _ _ _ _ h hend heq).input_eq,
+           (collectPlainScalarLoop_BoundInv _ _ _ _ _ _ _ _ h hend heq).isValid⟩
 
 /-! ## §6  Dispatch-Level BoundInv Preservation -/
 

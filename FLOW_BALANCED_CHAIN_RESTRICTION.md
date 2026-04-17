@@ -631,7 +631,40 @@ All are independent, so can be proven in any order.
 
 ***Step 10: Accomplishments***
 
+Eliminated all 8 sorry'd sub-scanner BoundInv lemmas in ScannerBound.lean (18 → 10 sorrys).
+Also proved 6 new helper lemmas required by the sub-scanner proofs.
+
+**Helper lemmas proved (6):**
+
+| Theorem | Purpose |
+|---------|---------|
+| `processEscape_BoundInv` | Escape sequence processing preserves BoundInv (advance + hex digit loops) |
+| `foldQuotedNewlines_BoundInv` | Quoted string newline folding preserves BoundInv (consumeNewline + skipWhitespace) |
+| `collectBlockScalarLoop_BoundInv` | Block scalar body loop preserves BoundInv (fuel induction on advance/consumeNewline) |
+| `collectDoubleQuotedLoop_BoundInv` | Double-quoted loop preserves BoundInv (fuel induction: 4 branches — close/escape/linebreak/char) |
+| `collectSingleQuotedLoop_BoundInv` | Single-quoted loop preserves BoundInv (fuel induction: 3 branches — close-or-escape/linebreak/char) |
+| `collectPlainScalarLoop_BoundInv` | Plain scalar loop preserves BoundInv (fuel induction with `terminates?_state_eq` helper for termination check branches) |
+
+Also proved `terminates?_state_eq`: when `collectPlainScalar_terminates?` returns `some result`, `result.state = s` (mirrors existing `collectPlainScalar_terminates?_state` in ScannerCorrectness.lean).
+
+**Sub-scanner BoundInv theorems proved (8):**
+
+1. **`scanDocumentEnd_BoundInv`**: `do`-notation desugaring with `simp only [bind, Except.bind, ...]`, then `split at hok` through match arms. Key insight: `emitAt_BoundInv` can't infer `pos`/`tok` args, so use `⟨h.offset_le, h.inputEnd_eq, h.input_eq, h.isValid⟩` constructor directly.
+2. **`scanYamlDirective_BoundInv`** and **`scanTagDirective_BoundInv`**: Simple unfold + BoundInv composition through advance/skip/emit chains.
+3. **`scanDirective_BoundInv`**: Key discovery — after `split at hok`, the `.ok` match arm comes FIRST (not second). Use `next s'' heq =>` to name hypothesis properly.
+4. **`scanTag_BoundInv`**: Explicit arguments needed for `scanVerbatimTag_BoundInv s.advance v s.currentPos`, `scanSecondaryTag_BoundInv s.advance s.currentPos`, `scanNamedTag_BoundInv s.advance s.currentPos s.inputEnd`.
+5. **`scanBlockScalar_BoundInv`**: Chaining `parseBlockHeaderLoop_BoundInv s.advance .clip none 2` → `skipWhitespace_BoundInv` → `scanBlockScalarSkipComment_BoundInv` → `scanBlockScalarConsumeNewline_BoundInv` → `scanBlockScalarBody_BoundInv`. Used `cases explicitOffset` for `Option Nat` arguments.
+6. **`scanDoubleQuoted_BoundInv`** and **`scanSingleQuoted_BoundInv`**: `split at hok` for the `if !s.inFlow` branch, then `revert hok; generalize validateTrailingContent ... = val; intro hok; cases val` for dependent elimination on the validation match.
+7. **`scanPlainScalar_BoundInv`**: Chains `collectPlainScalarLoop_BoundInv` through the `do`-notation bind, then constructs BoundInv via `emitAt`/field-update composition.
+
 ***Step 10: Reflections***
+
+1. **Match arm ordering after `split at hok`**: When splitting on `match f x with | .ok v => ... | .error e => ...`, the `.ok` case comes FIRST and `.error` SECOND. This is opposite to naive expectation. Getting the bullet order wrong causes mysterious type mismatches.
+2. **Dependent elimination on `validateTrailingContent`**: `split at hok` fails with "Dependent elimination failed" when the match result contains a large struct literal. Solution: `revert hok; generalize validateTrailingContent ... = val; intro hok; cases val`. The `generalize` abstracts away the complex expression before `cases` decomposes it.
+3. **`injection h with h; cases h; rfl` pattern**: For `some { ..., state := s } = some result`, this is cleaner than `simp only [Option.some.injEq] at h; subst h; rfl`. Borrowed from existing `collectPlainScalar_terminates?_state` proof in ScannerCorrectness.lean.
+4. **`cases` vs `split` for `Option` arguments**: When a function takes `Option Nat` and matches on it, `cases explicitOffset` (on the argument directly) is better than `split at hok` (on the match in the hypothesis). The former reduces the match on the constructor, allowing `dsimp only []` to fully simplify nested matches.
+5. **Fuel induction generalization**: For `collectPlainScalarLoop_BoundInv`, must `induction fuel generalizing s content spaces r` (generalize `r` too since recursive calls change the accumulator). Missing `r` causes "motive is not type correct" errors.
+6. **`rename_i` for destructured pairs**: After `split at hok` on `match f with | some (a, b) => ...`, three variables are introduced. Use `rename_i a b heq` to capture all three — `next p heq =>` only captures two (the pair and the equation, not the components).
 
 ## Step 11: Eliminate ScannerBound dispatch BoundInv sorrys (3 sorrys)
 
@@ -779,8 +812,8 @@ Step 12 depends on all prior steps.
 | 6 | ~100-200 | LOW-MEDIUM | |
 | 7 | ~30-60 | LOW | |
 | 8 | ~10-20 | LOW | |
-| 9 | ~80-150 | MEDIUM | |
-| 10 | ~200-400 | MEDIUM-HIGH | |
+| 9 | ~80-150 | MEDIUM | **DONE** |
+| 10 | ~200-400 | MEDIUM-HIGH | **DONE** |
 | 11 | ~30-60 | LOW | |
 | 12 | ~10 | LOW | |
 | **Total** | **~770-1,410** | | |
