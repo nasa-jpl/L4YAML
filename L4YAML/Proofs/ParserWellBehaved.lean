@@ -4102,17 +4102,20 @@ streams. The key assumptions:
 These are used by sub-phase 4.4.D to close the Layer 2 parser acceptance
 sorrys in `EmitterScannability.lean`. -/
 
--- parseNode succeeds on content-start tokens within a flow sequence:
+-- parseNode succeeds on content-start tokens at bracket depth 0 within
+-- a flow sequence body [body_start, endPos):
 -- returns ok, advances position, stays ≤ endPos, preserves tokens,
 -- and the result peeks at flowEntry or flowSequenceEnd.
 -- Content-start tokens are: scalar, flowSequenceStart, flowMappingStart.
--- These are the ONLY token types at which parseNode advances position
--- (all other token types in flow context produce an empty node without advancing).
+-- The bracket depth 0 restriction (flowBracketBalance = 0) ensures we only
+-- claim success at positions the loop actually visits. Positions at depth > 0
+-- are consumed by recursive parseNode calls within bracket groups.
 def ParseNodeFlowSeqOk (tokens : Array (Positioned YamlToken))
-    (endPos : Nat) (fuel : Nat) : Prop :=
+    (endPos : Nat) (fuel : Nat) (body_start : Nat) : Prop :=
   ∀ (ps : ParseState) (m : Nat),
-    ps.tokens = tokens → m ≤ fuel →
+    ps.tokens = tokens → 0 < m → m ≤ fuel →
     ps.pos < endPos →
+    flowBracketBalance tokens body_start ps.pos = 0 →
     ((∃ c s, ps.peek? = some (.scalar c s)) ∨
      ps.peek? = some .flowSequenceStart ∨
      ps.peek? = some .flowMappingStart) →
@@ -4126,11 +4129,12 @@ def ParseNodeFlowSeqOk (tokens : Array (Positioned YamlToken))
 
 -- Fuel monotonicity: ParseNodeFlowSeqOk at fuel implies it at fuel' ≤ fuel
 -- (the fuel parameter only restricts m ≤ fuel, so larger fuel is weaker).
-theorem ParseNodeFlowSeqOk.mono {tokens endPos fuel fuel'} (h : ParseNodeFlowSeqOk tokens endPos fuel)
-    (h_le : fuel' ≤ fuel) : ParseNodeFlowSeqOk tokens endPos fuel' :=
-  fun ps m h_tok h_m h_pos h_cs =>
+theorem ParseNodeFlowSeqOk.mono {tokens endPos fuel fuel' body_start}
+    (h : ParseNodeFlowSeqOk tokens endPos fuel body_start)
+    (h_le : fuel' ≤ fuel) : ParseNodeFlowSeqOk tokens endPos fuel' body_start :=
+  fun ps m h_tok h_pos_m h_m h_pos h_depth h_cs =>
     let ⟨v, ps', hok, hadv, hbound, htok, htp, hpeek, hbal⟩ :=
-      h ps m h_tok (Nat.le_trans h_m h_le) h_pos h_cs
+      h ps m h_tok h_pos_m (Nat.le_trans h_m h_le) h_pos h_depth h_cs
     ⟨v, ps', hok, hadv, hbound, htok, htp, hpeek, hbal⟩
 
 -- Helper: if ps.peek? = some tok and ps.pos < ps.tokens.size,
@@ -4156,8 +4160,8 @@ set_option maxHeartbeats 1600000 in
 theorem parseFlowSequenceLoop_emitter_ok (fuel : Nat)
     (ps : ParseState) (items_acc : Array YamlValue) (endPos : Nat)
     (body_start : Nat)
-    (h_pn : ParseNodeFlowSeqOk ps.tokens endPos fuel)
-    (h_fuel : fuel ≥ endPos - ps.pos)
+    (h_pn : ParseNodeFlowSeqOk ps.tokens endPos fuel body_start)
+    (h_fuel : fuel > endPos - ps.pos)
     (h_pos : ps.pos ≤ endPos)
     (h_end_pos : endPos < ps.tokens.size)
     (h_end_tok : ps.tokens[endPos]!.val = .flowSequenceEnd)
@@ -4267,10 +4271,21 @@ theorem parseFlowSequenceLoop_emitter_ok (fuel : Nat)
               · exact .inl ⟨c, s, by rw [h_adv_peek, hcs]⟩
               · exact .inr (.inl (by rw [h_adv_peek, hcs]))
               · exact .inr (.inr (by rw [h_adv_peek, hcs]))
+            -- Bracket depth proof for h_pn call
+            have h_depth_at_adv : flowBracketBalance ps.tokens body_start (ps.pos + 1) = 0 := by
+              have h_pos_bound : ps.pos < ps.tokens.toList.length := by
+                show ps.pos < ps.tokens.size; omega
+              rw [flowBracketBalance_compose ps.tokens body_start ps.pos (ps.pos + 1) h_bs (by omega),
+                  h_bal, flowBracketBalance_single _ _ h_pos_bound]
+              have h_eq : (ps.tokens.toList[ps.pos]'h_pos_bound).val = YamlToken.flowEntry := by
+                show (ps.tokens[ps.pos]'(by omega)).val = YamlToken.flowEntry
+                rw [← getElem!_pos ps.tokens ps.pos (by omega)]; exact h_fe_val
+              rw [h_eq]; decide
             -- Get parseNode success from h_pn
             obtain ⟨val, ps_after, h_ok, h_pos_adv, h_pos_bound, h_tok_eq, h_tp_eq, h_peek_after, h_pn_bal⟩ :=
-              h_pn psX n h_psX_tok (by omega)
+              h_pn psX n h_psX_tok (by omega) (by omega)
                 (by rw [h_psX_pos]; exact h_adv_pos_lt)
+                (by rw [h_psX_pos]; exact h_depth_at_adv)
                 h_cs
             -- Rewrite parseNode result in goal
             rw [h_ok]; dsimp only []
@@ -4339,8 +4354,9 @@ theorem parseFlowSequenceLoop_emitter_ok (fuel : Nat)
           obtain ⟨val, ps_after, h_ok, h_pos_adv, h_pos_bound, h_tok_eq, h_tp_eq, h_peek_after, h_pn_bal⟩ :=
             h_pn psX n
               (by subst hPsX; rfl)
-              (by omega)
+              (by omega) (by omega)
               (by subst hPsX; exact h_lt)
+              (by subst hPsX; exact h_bal)
               (by subst hPsX; exact h_cs)
           -- Rewrite parseNode result in goal and reduce the match
           rw [h_ok]; dsimp only []
@@ -4398,11 +4414,14 @@ and the result peeks at `flowEntry` or `flowMappingEnd`. -/
 -- Per-entry predicate for flow mapping loop: the full key+value chain succeeds.
 -- parseExplicitKey doesn't depend on savedPath/keyContent; the ∀ quantifier on those
 -- lets us instantiate parseFlowMappingValue with the exact keyContent the loop uses.
+-- The bracket depth 0 restriction (flowBracketBalance = 0) ensures we only claim
+-- success at positions the loop actually visits.
 def ParseEntryFlowMapOk (tokens : Array (Positioned YamlToken))
-    (endPos : Nat) (fuel : Nat) : Prop :=
+    (endPos : Nat) (fuel : Nat) (body_start : Nat) : Prop :=
   ∀ (ps : ParseState) (m : Nat),
-    ps.tokens = tokens → m ≤ fuel →
+    ps.tokens = tokens → 0 < m → m ≤ fuel →
     ps.pos < endPos →
+    flowBracketBalance tokens body_start ps.pos = 0 →
     ps.peek? = some .key →
     ∃ key_val key_ps,
       parseExplicitKey ps.advance m = .ok (key_val, key_ps) ∧
@@ -4419,20 +4438,20 @@ def ParseEntryFlowMapOk (tokens : Array (Positioned YamlToken))
            (val_ps.peek? = some .flowMappingEnd ∧ val_ps.pos = endPos)) ∧
           flowBracketBalance tokens ps.pos val_ps.pos = 0
 
-theorem ParseEntryFlowMapOk.mono {tokens endPos fuel fuel'}
-    (h : ParseEntryFlowMapOk tokens endPos fuel)
-    (h_le : fuel' ≤ fuel) : ParseEntryFlowMapOk tokens endPos fuel' :=
-  fun ps m h_tok h_m h_pos h_key =>
+theorem ParseEntryFlowMapOk.mono {tokens endPos fuel fuel' body_start}
+    (h : ParseEntryFlowMapOk tokens endPos fuel body_start)
+    (h_le : fuel' ≤ fuel) : ParseEntryFlowMapOk tokens endPos fuel' body_start :=
+  fun ps m h_tok h_pos_m h_m h_pos h_depth h_key =>
     let ⟨kv, kps, hek, hadv, hbound, htok, htp, hfmv⟩ :=
-      h ps m h_tok (Nat.le_trans h_m h_le) h_pos h_key
+      h ps m h_tok h_pos_m (Nat.le_trans h_m h_le) h_pos h_depth h_key
     ⟨kv, kps, hek, hadv, hbound, htok, htp, hfmv⟩
 
 set_option maxHeartbeats 3200000 in
 theorem parseFlowMappingLoop_emitter_ok (fuel : Nat)
     (ps : ParseState) (pairs_acc : Array (YamlValue × YamlValue)) (endPos : Nat)
     (body_start : Nat)
-    (h_entry : ParseEntryFlowMapOk ps.tokens endPos fuel)
-    (h_fuel : fuel ≥ endPos - ps.pos)
+    (h_entry : ParseEntryFlowMapOk ps.tokens endPos fuel body_start)
+    (h_fuel : fuel > endPos - ps.pos)
     (h_pos : ps.pos ≤ endPos)
     (h_end_pos : endPos < ps.tokens.size)
     (h_end_tok : ps.tokens[endPos]!.val = .flowMappingEnd)
@@ -4506,11 +4525,22 @@ theorem parseFlowMappingLoop_emitter_ok (fuel : Nat)
                 rw [h_adv_key] at h_peek_end; cases h_peek_end
               · exact hlt
             -- Apply h_entry
+            have h_depth_at_adv : flowBracketBalance ps.tokens body_start (ps.pos + 1) = 0 := by
+              have h_pos_bound : ps.pos < ps.tokens.toList.length := by
+                show ps.pos < ps.tokens.size; omega
+              rw [flowBracketBalance_compose ps.tokens body_start ps.pos (ps.pos + 1) h_bs (by omega),
+                  h_bal, flowBracketBalance_single _ _ h_pos_bound]
+              have h_eq : (ps.tokens.toList[ps.pos]'h_pos_bound).val = YamlToken.flowEntry := by
+                show (ps.tokens[ps.pos]'(by omega)).val = YamlToken.flowEntry
+                rw [← getElem!_pos ps.tokens ps.pos (by omega)]; exact h_fe_val
+              rw [h_eq]; decide
             obtain ⟨key_val, key_ps, h_ek_ok, h_ek_adv, h_ek_bound, h_ek_tok, h_ek_tp, h_fmv_univ⟩ :=
               h_entry ps.advance n
                 (by simp [ParseState.advance])
-                (by omega)
+                (by omega) (by omega)
                 h_adv_pos_lt
+                (by show flowBracketBalance ps.tokens body_start (ps.pos + 1) = 0
+                    exact h_depth_at_adv)
                 h_adv_key
             rw [h_ek_ok]; dsimp only []
             -- Split on the parseFlowMappingValue result match
@@ -4581,7 +4611,7 @@ theorem parseFlowMappingLoop_emitter_ok (fuel : Nat)
         · -- key → full entry parse + recurse
           rename_i h_not_end h_peek_key
           obtain ⟨key_val, key_ps, h_ek_ok, h_ek_adv, h_ek_bound, h_ek_tok, h_ek_tp, h_fmv_univ⟩ :=
-            h_entry ps n rfl (by omega) h_lt h_peek_key
+            h_entry ps n rfl (by omega) (by omega) h_lt h_bal h_peek_key
           rw [h_ek_ok]; dsimp only []
           split
           · -- error case: contradicts h_fmv_univ

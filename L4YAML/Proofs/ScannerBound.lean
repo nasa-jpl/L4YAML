@@ -908,7 +908,7 @@ theorem parseHexEscape_BoundInv {s₀ : ScannerState} (s s' : ScannerState)
     (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize)
     (hok : parseHexEscape s n = .ok (ch, s')) :
     BoundInv s₀ s' := by
-  simp only [parseHexEscape, bind, Except.bind, pure, Except.pure, Bind.bind, Pure.pure] at hok
+  simp only [parseHexEscape] at hok
   split at hok
   · cases hok
   · split at hok
@@ -1303,7 +1303,7 @@ theorem collectDoubleQuotedLoop_BoundInv {s₀ : ScannerState} (s s' : ScannerSt
           exact ih _ _ (skipWhitespace_BoundInv _
             (consumeNewline_BoundInv _ (advance_BoundInv s h hend) hend) hend) hok
         · -- regular escape: do with processEscape ←
-          simp only [bind, Except.bind, pure, Pure.pure, Bind.bind, Except.pure] at hok
+          simp only [bind, Except.bind, Bind.bind] at hok
           split at hok  -- processEscape result
           · cases hok
           · next p heq =>
@@ -1493,7 +1493,7 @@ theorem collectPlainScalarLoop_BoundInv {s₀ : ScannerState} (s : ScannerState)
         · -- line break
           split at hok  -- inFlow
           · -- inFlow = true: do with foldQuotedNewlines ←
-            simp only [bind, Except.bind, pure, Pure.pure, Bind.bind, Except.pure] at hok
+            simp only [bind, Except.bind, Bind.bind] at hok
             split at hok  -- foldQuotedNewlines result
             · cases hok
             · rename_i fld s_fld heq_fold
@@ -1543,7 +1543,7 @@ theorem scanPlainScalar_BoundInv (s s' : ScannerState)
     (hok : scanPlainScalar s = .ok s') :
     BoundInv s s' := by
   unfold scanPlainScalar at hok
-  simp only [bind, Except.bind, pure, Pure.pure, Bind.bind, Except.pure] at hok
+  simp only [bind, Except.bind, Bind.bind] at hok
   split at hok  -- bind on collectPlainScalarLoop
   · cases hok
   · next r heq =>

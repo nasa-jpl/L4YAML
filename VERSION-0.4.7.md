@@ -3882,39 +3882,55 @@ The `match h_items : items` pattern in Lean 4 substitutes `items` in ALL hypothe
 including `h_ne : items ≠ []`, so in the `| [] =>` branch, `h_ne` becomes `[] ≠ []`.
 Use `exact absurd rfl h_ne` instead of `exact absurd h_items h_ne`.
 
-**Phase I: Layer 2 — Parser acceptance (2 sorrys)**
-*Estimated: ~400-800 LOC · Risk: HIGH*
+**Phase I: Layer 2a — Structural property infrastructure (0 new sorrys)**
+*Estimated: ~300-500 LOC · Risk: MEDIUM-HIGH*
 
-This is the hardest phase. Prove that `parseNode` succeeds at each content-start position
-in the token array. Two sub-problems:
+Build the missing token-structure properties that Phase J needs to prove parser acceptance.
+The Phase I analysis revealed that the current hypotheses (content-start at position 2,
+FE → content-start) are **insufficient**: the parser acceptance proof requires recursive
+structural properties about bracket matching and scalar successors.
+
+**Work items:**
+
+1. Add scalar successor, bracket matching (seq + map), and no-alias properties as sorry'd
+   conclusions to `emitList_body_filtered_characterization` / `emitPairList_body_filtered_characterization`
+   (0 new sorry warnings since those declarations already contain sorrys).
+
+2. Thread these properties through `scanFiltered_emitSeq_nonempty_structure` /
+   `scanFiltered_emitMap_nonempty_structure` to make them available at the proof site.
+
+3. Write `parseNodeFlowSeqOk_of_structure` and `parseEntryFlowMapOk_of_structure` helper
+   theorems that take the structural properties as explicit hypotheses and prove
+   ParseNodeFlowSeqOk / ParseEntryFlowMapOk by strong induction on span. These helpers
+   are designed to be **sorry-free**.
+
+Why before Phase J: Phase J cannot close the h_pnok sorrys without these properties.
+The depth bug fix (adding `body_start` + bracket balance) is already done.
+
+**Phase J: Layer 2b — Parser acceptance proofs (2 sorrys)**
+*Estimated: ~200-400 LOC · Risk: HIGH*
+
+Apply the infrastructure from Phase I to close the h_pnok sorrys.
 
 **Sorrys targeted:**
 
-7. **`h_pnok` in `scanFiltered_emitSeq_nonempty_structure`** (L8079, EmitterScannability.lean)
+7. **`h_pnok` in `scanFiltered_emitSeq_nonempty_structure`** (EmitterScannability.lean)
    `ParseNodeFlowSeqOk` at each content-start position in emitted sequence tokens.
 
-8. **`h_pnok` in `scanFiltered_emitMap_nonempty_structure`** (L8283, EmitterScannability.lean)
+8. **`h_pnok` in `scanFiltered_emitMap_nonempty_structure`** (EmitterScannability.lean)
    `ParseEntryFlowMapOk` at each key position in emitted mapping tokens.
 
-**Approach:**
+**Approach:** Instantiate `parseNodeFlowSeqOk_of_structure` / `parseEntryFlowMapOk_of_structure`
+with the structural properties threaded from Phase I. Net: 7 → 5 sorry warnings (−2).
 
-- **Scalar case**: `parseNode` on `.scalar c s` advances by 1 token. Straightforward since
-  `parseNodeContent` dispatches to scalar handling, reads token, advances. ~30 LOC.
+Why after Phase I: Needs structural properties + helper theorems from Phase I.
+Highest-risk phase due to recursive nesting and mutual seq/map dependency.
 
-- **Nested collection case**: `parseNode` on `.flowSequenceStart`/`.flowMappingStart` calls
-  `parseFlowSequence`/`parseFlowMapping`, which must consume the entire bracket group.
-  This requires **recursive reasoning** — the inner collection's h_pnok must be established
-  before the outer one can be proven.
+**Phase K: Layer 3 — Content fidelity (2 sorrys)**
+*Estimated: ~300-600 LOC · Risk: MEDIUM-HIGH*
 
-  Primary strategy: Move h_pnok from the structure theorem to the `emit_produces_valid_yaml`
-  call site where `Grammable` structural induction is available. The Grammable IH for
-  sub-values provides h_pnok for nested collections.
-
-  Fallback: Prove h_pnok by strong induction on `flowNesting` (bracket nesting depth)
-  at the structure theorem level.
-
-Why third: Depends on Phase H (body characterization provides content-start classification).
-Highest-risk phase due to recursive nesting and potential architectural refactoring.
+Prove that parsing emitted tokens recovers content-equivalent values for non-empty
+collections. Depends on Phase J for parser acceptance.
 
 ***Phase I: Accomplishments***
 
@@ -4004,30 +4020,187 @@ generalized accumulators for loop BoundInv proofs.
 | F | 4 targeted → 2 proven, 2 blocked | ~15 | LOW-MEDIUM | Phase E | **DONE** (2/4 proven; #3 false for %RESERVED, #4 needs stack precond) |
 | G | 1 target + 24 scaffolding → all eliminated | 770-1,410 | MEDIUM | Phase F | **DONE** (11→7 sorrys, −4 net) |
 | H | 2 (body characterization proofs) | 200-400 | MEDIUM | Phase G | |
-| I | 2 (parser acceptance / h_pnok) | 400-800 | HIGH | Phase H | |
-| J | 2 (content fidelity) | 300-600 | MEDIUM-HIGH | Phase I | |
+| I | 0 (structural property infrastructure) | 300-500 | MEDIUM-HIGH | Phase H | **IN PROGRESS** (depth bug fixed, analysis complete) |
+| J | 2 (parser acceptance / h_pnok) | 200-400 | HIGH | Phase I | |
+| K | 2 (content fidelity) | 300-600 | MEDIUM-HIGH | Phase J | |
 | S | 15 (ScannerBound — subsumed by G Steps 9–11) | 310-560 | LOW-MEDIUM | — | **DONE** (subsumed by Phase G Steps 9–11) |
-| **Total** | **13 original + 24 scaffolding** | **~2,270-4,340** | | | |
+| **Total** | **13 original + 24 scaffolding** | **~2,570-4,740** | | | |
 
-**Critical path:** A–G (DONE) → H → I → J (7 EmitterScannability sorrys remaining)
+**Critical path:** A–G (DONE) → H → I → J → K (7 EmitterScannability sorrys remaining)
 **Parallel track:** S completed (subsumed by Phase G Steps 9–11)
-**Current state:** 7 sorrys (all EmitterScannability.lean). Phase H complete (signature restructuring + call site updates). Next: fill characterization sorrys (5 across emitList/emitPairList), then Phase I.
+**Current state:** 7 sorrys (all EmitterScannability.lean). Phase I (infrastructure) in progress: depth bug fixed, thorough analysis complete, structural property pipeline designed. Next: add scalar successor + bracket matching properties to body characterization theorems, then prove `parseNodeFlowSeqOk_of_structure` / `parseEntryFlowMapOk_of_structure` helper theorems by strong induction in Phase J.
 
-### Risk mitigation for Phase I
+### Phase I: Structural property infrastructure
 
-Phase I (h_pnok) is the highest-risk item. If the proof is blocked at the structure
-theorem level (due to lack of Grammable IH for recursive nesting), the fallback plan is:
+Phase I builds the missing infrastructure that Phase J needs to prove `ParseNodeFlowSeqOk`
+and `ParseEntryFlowMapOk`. The analysis in the previous session revealed that the current
+hypotheses (content-start at position 2, FE → content-start) are **insufficient** for the
+parser acceptance proof. Three additional structural properties about the token array are
+needed, all derivable from the emitter's output structure:
 
-1. **Move h_pnok obligation to call site.** Refactor `scanFiltered_emitSeq_nonempty_structure`
-   to exclude h_pnok from its conclusions. Instead, pass h_pnok as a hypothesis to
-   `parseStream_emitSequence` from the `emit_produces_valid_yaml` call site where
-   `Grammable v false` is available.
+1. **Scalar successor at depth 0**: If `tokens[k]!` is a scalar and
+   `flowBracketBalance tokens body_start k = 0`, then `tokens[k+1]!` is `.flowEntry`
+   or the collection-end token at `endPos`. (The emitter always follows a value with
+   `, ` or the closing bracket.)
 
-2. **Prove h_pnok by Grammable structural induction.** At the `emit_produces_valid_yaml`
-   level, structural induction on `v : YamlValue` gives:
-   - Base case (scalar items[i]): h_pnok is trivial (parseNode on scalar advances by 1)
-   - Inductive case (nested collection items[i]): Grammable IH gives
-     `parseStream_emitSequence`/`parseStream_emitMapping` for the inner collection, from
-     which h_pnok's postconditions (success, position advancement, token preservation) follow
+2. **Bracket matching for flowSequenceStart**: If `tokens[k]!` is `.flowSequenceStart`
+   and `flowBracketBalance tokens body_start k = 0`, then there exists `j > k` with
+   `tokens[j]!` = `.flowSequenceEnd`, `flowBracketBalance tokens k+1 j = 0`,
+   `j + 1 ≤ endPos`, and the inner body `[k+1, j)` satisfies the content-start and
+   FE→content properties.
 
-This architectural fallback adds ~50 LOC of plumbing but makes the recursive case tractable.
+3. **Bracket matching for flowMappingStart**: Analogous to (2) but for mappings, with
+   inner body satisfying key + entry properties instead of content-start + FE→content.
+
+4. **No aliases/properties at content-start positions**: At depth 0, the emitter never
+   produces anchor/tag tokens before content. So `parseNodeProperties` is a no-op and
+   `parseNode` dispatches directly to `parseNodeContent`.
+
+These properties will be added as sorry'd conclusions to the existing body characterization
+theorems (`emitList_body_filtered_characterization` and `emitPairList_body_filtered_characterization`),
+then threaded through to the structure theorems. Since those declarations already contain
+sorrys, this adds **0 new sorry warnings**.
+
+Additionally, Phase I includes the `parseNodeFlowSeqOk_of_structure` and
+`parseEntryFlowMapOk_of_structure` helper theorems — standalone theorems that take the
+structural properties as explicit hypotheses and prove ParseNodeFlowSeqOk / ParseEntryFlowMapOk
+by strong induction on span. These helpers are designed to be **sorry-free**.
+
+***Phase I: Accomplishments***
+
+***Phase I: Critical Bug #2 — Depth Universality***
+
+Discovered and fixed a second critical bug in `ParseNodeFlowSeqOk` and `ParseEntryFlowMapOk`:
+the predicates were universally quantified over ALL positions < endPos with content-start tokens,
+but the postconditions (peek = flowEntry or flowSequenceEnd at endPos) are **provably false** at
+bracket depth > 0.
+
+Example: `[scalar1, [scalar_a, scalar_b], scalar2]`
+- `scalar_b` at depth 1 has successor `]` (inner flowSequenceEnd at position 8)
+- But postcondition requires position 8 = endPos (11), which is false
+
+**Fix**: Added `body_start` parameter and `flowBracketBalance tokens body_start ps.pos = 0`
+hypothesis to both predicates. Updated all call sites in ParserWellBehaved.lean (loop theorems,
+mono theorems) and EmitterScannability.lean (structure theorem conclusions, consumer sites).
+
+Key implementation details:
+- Bracket depth proofs at call sites use `flowBracketBalance_compose` + `flowBracketBalance_single`
+  to show FE (delta=0) preserves depth 0
+- Bridging `Array.toList[i]` and `Array.getElem!` via `getElem!_pos` + `show ... from ...`
+- `omega` can't bridge `ps.tokens.toList.length` and `ps.tokens.size`; use `show` to convert
+
+***Phase I: Deep Analysis of ParseNodeFlowSeqOk Proof***
+
+The proof of ParseNodeFlowSeqOk requires strong induction on the token span (endPos − ps.pos)
+with three cases for content-start tokens at depth 0:
+
+1. **Scalar case** (easy but needs infrastructure):
+   - parseNode trivially succeeds (reads scalar, advances by 1)
+   - Postconditions need "scalar successor" property: after scalar at depth 0,
+     next token is FE or flowSeqEnd at endPos
+   - This property is NOT among current hypotheses (h_fe_pattern gives FE→content, not content→FE)
+
+2. **flowSequenceStart case** (recursive):
+   - parseNode calls parseFlowSequence → parseFlowSequenceLoop
+   - Loop needs inner ParseNodeFlowSeqOk for [pos+1, matching_end)
+   - Inner ParseNodeFlowSeqOk from strong induction IH (smaller span)
+   - Needs bracket matching property: matching flowSeqEnd exists with inner body structure
+
+3. **flowMappingStart case** (mutual recursion):
+   - parseNode calls parseFlowMapping → parseFlowMappingLoop
+   - Loop needs inner ParseEntryFlowMapOk (DIFFERENT predicate)
+   - Creates mutual recursion: seq needs map, map needs seq
+
+**Missing structural properties** (needed as hypotheses, can be added to body characterization):
+- Scalar successor at depth 0
+- Bracket matching for flowSeqStart (matching end + inner content/FE structure)
+- Bracket matching for flowMapStart (matching end + inner key/value structure)
+- No aliases/properties at content-start positions at depth 0
+
+**Attempted approaches that failed**:
+- `WellFormedFlowBody` inductive: Lean kernel rejects nested inductives with `∃` referencing
+  local variables ("invalid nested inductive datatype 'Exists'")
+- Direct proof from current hypotheses: insufficient (only have content0 + FE→content)
+
+**Viable approach** (designed, to be implemented in Phases I+J):
+1. (Phase I) Add structural properties to `emitList_body_filtered_characterization` as sorry'd
+   conclusions (same declaration, no new sorry warnings)
+2. (Phase I) Thread through to `scanFiltered_emitSeq_nonempty_structure`
+3. (Phase I) Factor `parseNodeFlowSeqOk_of_structure` as a separate theorem with explicit hypotheses
+4. (Phase I) Prove by strong induction (sorry-free)
+5. (Phase J) Apply in structure theorem → removes sorry from that declaration
+6. Net: 7 → 6 sorry warnings (structure theorem becomes sorry-free)
+7. Similarly for mapping: 6 → 5 sorry warnings
+
+**Discovery: scanNextToken_filtered_grows is false for unknown directives**:
+- The sorry at L8224 handles the unknown directive (%RESERVED) case
+- Unknown directives call `skipToEndOfLine` which emits NO tokens
+- So `scanNextToken_filtered_grows` (which claims ≥+1) is unprovable for this case
+- The theorem statement needs weakening or scanner-level changes
+- In practice, the emitter never produces unknown directives, so it holds in actual usage
+
+***Phase I: Reflections***
+
+1. **Parser acceptance is fundamentally harder than token structure**: The existing
+   characterization (content starts, FE patterns) describes what tokens LOOK LIKE at depth 0.
+   ParseNodeFlowSeqOk requires knowing what HAPPENS when the parser processes them. This
+   bridge between scanner output and parser behavior is the core difficulty.
+
+2. **Recursive structure requires recursive properties**: Nested brackets create recursive
+   token structure. Proving parser acceptance for nested brackets requires proving it for
+   inner bodies first. This creates the need for either recursive predicates (blocked by
+   Lean kernel) or universal-quantification tricks (AllSubrangesFlowOk).
+
+3. **The proof architecture matters more than tactics**: The difficulty is not in individual
+   tactic steps but in choosing the right theorem statements and induction measures.
+   Strong induction on span + universally-quantified structural properties is the right
+   decomposition, but implementing it requires ~300-500 lines of new proof code.
+
+4. **sorry analysis reveals theorem soundness issues**: The `scanNextToken_filtered_grows`
+   sorry is not just "unproven" but "false as stated" for unknown directives. This kind of
+   discovery is valuable — it prevents wasting effort on impossible proofs.
+
+**Sorry status:** 7 sorry warnings (unchanged). Build compiles. Depth condition fix is clean.
+The remaining sorrys break down as:
+- 1 × scanNextToken_filtered_grows (needs statement weakening for %RESERVED)
+- 5 × body characterization (scanner-level, should be provable from ScanChain; Phase H)
+- 2 × ParseNodeFlowSeqOk/ParseEntryFlowMapOk (needs Phases I+J structural property pipeline)
+- 2 × content equivalence roundtrip (needs all prior sorrys; Phase K)
+
+Note: the 7 sorry WARNINGS correspond to 10 sorry OCCURRENCES across those 7 declarations.
+(emitList_body has 2 internal sorrys, emitPairList_body has 3.)
+
+### Phase J: Parser acceptance proofs (h_pnok)
+
+Phase J uses the infrastructure from Phase I to close the 2 sorry occurrences for
+`ParseNodeFlowSeqOk` and `ParseEntryFlowMapOk` in the structure theorems.
+
+With the helper theorems from Phase I in hand, the proof is:
+1. Instantiate `parseNodeFlowSeqOk_of_structure` with the structural properties
+   threaded from body characterization through the structure theorem.
+2. Replace `sorry` with the instantiated helper. Structure theorem becomes sorry-free.
+3. Repeat for `parseEntryFlowMapOk_of_structure` in the mapping structure theorem.
+4. Net effect: 7 → 5 sorry warnings (−2).
+
+**Risk mitigation for Phase J**:
+
+Phase J (h_pnok) is the highest-risk item. The original fallback plan (Grammable induction
+at call site) remains viable:
+
+**Fallback approach (Grammable induction at call site)**:
+1. Move h_pnok obligation from structure theorem to `parseStream_emitSequence`
+2. Prove h_pnok by structural induction on items list using `EmitScansInFlow`
+3. Base case (scalar): trivial. Inductive case: recursive application.
+4. Warning accounting: trades 1 structure theorem sorry for 1 parseStream sorry (net 0)
+   unless the induction proof is sorry-free (net −1)
+
+### Phase K: Content fidelity (roundtrip)
+
+Phase K proves the 2 content fidelity sorrys (`emit_roundtrip_sequence_content_eq`,
+`emit_roundtrip_mapping_content_eq`). These require exact parsed value reconstruction
+from the parser trace — matching each parsed item to its emitted source via the
+`parseStream_emitSequence` / `parseStream_emitMapping` pipeline. Depends on Phase J.
+
+Net effect: 5 → 3 sorry warnings (−2), leaving only:
+- 1 × `scanNextToken_filtered_grows` (false for %RESERVED, needs statement weakening)
+- 2+3 × body characterization sorrys (scanner-level, provable from ScanChain)
