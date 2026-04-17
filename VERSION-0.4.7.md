@@ -3735,8 +3735,8 @@ dependencies on other sorry'd theorems.
   EmitterScannability sorrys cannot all be eliminated without first addressing the
   `scanNextToken_filtered_grows` and `ScanChain_filtered_prefix` formulations.
 
-**Phase G: Layer 0.5 — Flow-balanced chain restriction (1 sorry)**
-*Estimated: ~330-540 LOC · Risk: MEDIUM*
+**Phase G: Layer 0.5 — Flow-balanced chain restriction (1 sorry → +24 scaffolding sorrys)**
+*Estimated: ~770-1,410 LOC · Risk: MEDIUM*
 
 Architecture refactoring to formalize the "flow-balanced chain restriction" that enables
 proving `ScanChain_filtered_prefix`. The key insight: emitter-produced flow bodies generate
@@ -3747,18 +3747,32 @@ chain have low `tokenIndex`).
 
 **Sorry targeted:**
 
-4. **`ScanChain_filtered_prefix`** (sorry #4, EmitterScannability.lean)
+4. **`ScanChain_filtered_prefix`** (sorry #4, EmitterScannability.lean) — **ELIMINATED** ✅
    Precondition changed from `(sk.possible → tokenIndex ≥ tokens.size) ∨ ek = none`
-   to `s.simpleKey.possible = false` (Phase F). Still sorry'd because proving it requires
-   the flow-balanced chain property.
+   to `s.simpleKey.possible = false` (Phase F). Now proven via `FlowMonoChain_preserves_raw_prefix`
+   + `Array_filter_prefix_of_raw_prefix`. Cascade eliminated 6 sorrys total (root + 5 downstream).
 
-**Plan:** Detailed 6-step plan in `FLOW_BALANCED_CHAIN_RESTRICTION.md`:
+**Scaffolding sorrys introduced:** Steps 1–5 introduced 24 new sorrys as scaffolding
+(dispatch preservation stubs in ScannerCorrectness, BoundInv sub-lemmas in ScannerBound,
+and `scanNextToken_preserves_sync` in EmitterScannability). Steps 6–12 eliminate these.
+
+**Plan:** Detailed 12-step plan in `FLOW_BALANCED_CHAIN_RESTRICTION.md`:
 1. ✅ Define `FlowMonoChain` inductive + basic operations (DONE — 7 theorems, ~60 LOC)
 2. ✅ Thread `FlowMonoChain` through `EmitScansInFlow` interface (DONE — 3 defs, 5 proofs, 6 consumers)
-3. Define `SimpleKeyAboveFloor` + per-step preservation (~50-80 LOC)
-4. Prove `FlowMonoChain_preserves_raw_prefix` (~100-200 LOC)
-5. Prove `ScanChain_filtered_prefix` (sorry elimination, ~30-50 LOC)
-6. Build verification + documentation (~10 LOC)
+3. ✅ Define `SimpleKeyAboveFloor` + per-step preservation (DONE — ~310 LOC)
+4. ✅ Prove `FlowMonoChain_preserves_raw_prefix` (DONE — ~120 LOC)
+5. ✅ Prove `ScanChain_filtered_prefix` (DONE — sorry eliminated, 6-sorry cascade)
+6. Eliminate sub-scanner `preserves_flowLevel` stubs (5 sorrys, ScannerCorrectness)
+7. Eliminate dispatch `preserves_{flowLevel,simpleKeyStack}` residuals (6 sorrys, ScannerCorrectness)
+8. Eliminate `scanNextToken_preserves_sync` residual (1 sorry, EmitterScannability)
+9. Eliminate preprocessing BoundInv sorrys (4 sorrys, ScannerBound)
+10. Eliminate sub-scanner BoundInv sorrys (8 sorrys, ScannerBound)
+11. Eliminate dispatch BoundInv sorrys (3 sorrys, ScannerBound)
+12. Build verification + documentation
+
+**Sorry accounting:** Started: 11. After Steps 1–5: 34 (+24 scaffolding, −1 target).
+After Steps 6–11: 7 (all 24 scaffolding + 3 pre-existing ScannerBound eliminated).
+Net Phase G outcome: 11 → 7 sorrys (−4).
 
 Why here: Phase F identified the problem (precondition too weak) and the precondition fix
 (`sk.possible = false`). This phase provides the missing proof infrastructure. Must be done
@@ -3766,7 +3780,26 @@ before Phase H (body characterization proofs depend on `ScanChain_filtered_prefi
 
 ***Phase G: Accomplishments***
 
+Steps 1–5 complete:
+- `FlowMonoChain` inductive + 7 operations (~60 LOC)
+- Threaded through `EmitScansInFlow`/`EmitListScansInFlow`/`EmitPairListScansInFlow` (3 defs, 5 proofs, 6 consumers)
+- `SimpleKeyAboveFloor` predicate + 5 constructors + 5 per-dispatch maintenance + top-level theorem (~310 LOC)
+- `FlowMonoChain_preserves_raw_prefix` proven (~120 LOC)
+- `ScanChain_filtered_prefix` sorry ELIMINATED — cascade eliminated 6 sorrys total
+- EmitterScannability sorry count: 9 → 3 (remaining: L1888, L8134, L8553 + downstream)
+
 ***Phase G: Reflections***
+
+- Steps 1–5 achieved the primary goal (eliminating `ScanChain_filtered_prefix` sorry) but
+  introduced 24 scaffolding sorrys — more than doubling the project sorry count from 11 to 34.
+  Steps 6–12 clean up this scaffolding debt before resuming the Phase H–J critical path.
+- The 6-sorry cascade elimination in Step 5 was a pleasant surprise — the root sorry's
+  elimination cascaded to 5 downstream sorrys automatically.
+- ScannerCorrectness sorrys (11) are all provable: 5 have reference proofs in
+  ScannerPlainScalarValid.lean, 6 are dispatch error-case residuals (contradiction).
+- ScannerBound sorrys (12 new + 3 pre-existing) follow the same BoundInv frame-property
+  pattern — proven infrastructure exists for `advance_BoundInv`, `fieldUpdate_BoundInv`.
+- Steps 6–8 and Steps 9–10 are independent tracks that can proceed in parallel.
 
 **Phase H: Layer 1 — Body token characterization (2 sorrys)**
 *Estimated: ~200-400 LOC · Risk: MEDIUM*
@@ -3862,25 +3895,36 @@ with parser behavior on emitter output.
 
 ***Phase J: Reflections***
 
-**Phase S (parallel): ScannerBound.lean — 3 sorrys**
-*Estimated: ~200-350 LOC · Risk: LOW-MEDIUM*
+**Phase S (parallel): ScannerBound.lean — 15 sorrys (3 pre-existing + 12 from Phase G)**
+*Estimated: ~310-560 LOC · Risk: LOW-MEDIUM*
+*Now subsumed by Phase G Steps 9–11.*
 
 Independent of the EmitterScannability sorry chain. Can be done at any time.
-Phase E adversarial testing (296/296 checks) confirmed all 3 statements are correct.
+Phase E adversarial testing (296/296 checks) confirmed the 3 original dispatch statements are correct.
+Phase G Steps 1–5 introduced 12 sub-lemma sorrys as scaffolding for the dispatch proofs.
 
-**Sorrys targeted:**
+**Sorrys targeted (15 total, all addressed by Phase G Steps 9–11):**
 
-11. **`preprocess_preserves_bound`** (L420, ScannerBound.lean)
-    `scanNextToken_preprocess` preserves `BoundInv`. Requires proofs for `skipToContent`
-    loop + `unwindIndents` loop + `saveSimpleKey`. ~120 LOC.
+Phase G Step 9 — preprocessing BoundInv (4 sorrys):
+- `skipToContentComment_BoundInv` (L490)
+- `consumeNewline_BoundInv` (L503)
+- `skipToContentWs_BoundInv` (L511)
+- `skipToContentLoop_BoundInv` (L520)
 
-12. **`dispatchStructural_preserves_bound`** (L429, ScannerBound.lean)
-    `scanNextToken_dispatchStructural` preserves `BoundInv`. Document start/end use
-    `advanceN 3`; `scanDirective` has loops. ~80 LOC.
+Phase G Step 10 — sub-scanner BoundInv (8 sorrys):
+- `scanDocumentEnd_BoundInv` (L626)
+- `scanDirective_BoundInv` (L645)
+- `scanAnchorOrAlias_BoundInv` (L653)
+- `scanTag_BoundInv` (L659)
+- `scanBlockScalar_BoundInv` (L665)
+- `scanDoubleQuoted_BoundInv` (L671)
+- `scanSingleQuoted_BoundInv` (L677)
+- `scanPlainScalar_BoundInv` (L683)
 
-13. **`dispatchContent_preserves_bound`** (L437, ScannerBound.lean)
-    `scanNextToken_dispatchContent` preserves `BoundInv`. All scalar scanners +
-    anchor/alias/tag — each has character-scanning loops. ~150 LOC.
+Phase G Step 11 — dispatch BoundInv (3 pre-existing sorrys):
+- `preprocess_preserves_bound` (L695) — was L420
+- `dispatchStructural_preserves_bound` (L713) — was L429
+- `dispatchContent_preserves_bound` (L755) — was L437
 
 These don't block `universal_roundtrip` but are needed for full-project 0-sorry.
 
@@ -3898,16 +3942,16 @@ These don't block `universal_roundtrip` but are needed for full-project 0-sorry.
 | D | 2 (body characterization) | 200-400 | MEDIUM | Phase C | **DONE** (statements fixed) |
 | E | 0 (adversarial audit) | ~3 hrs | LOW | Phase D | **DONE** (993/993, 1 false thm repaired) |
 | F | 4 targeted → 2 proven, 2 blocked | ~15 | LOW-MEDIUM | Phase E | **DONE** (2/4 proven; #3 false for %RESERVED, #4 needs stack precond) |
-| G | 1 (flow-balanced chain restriction) | 330-540 | MEDIUM | Phase F | Steps 1-3 done |
+| G | 1 target + 24 scaffolding | 770-1,410 | MEDIUM | Phase F | Steps 1-5 done (target eliminated), Steps 6-12 pending (scaffolding cleanup) |
 | H | 2 (body characterization proofs) | 200-400 | MEDIUM | Phase G | |
 | I | 2 (parser acceptance / h_pnok) | 400-800 | HIGH | Phase H | |
 | J | 2 (content fidelity) | 300-600 | MEDIUM-HIGH | Phase I | |
-| S | 3 (ScannerBound) | 200-350 | LOW-MEDIUM | — (parallel) | |
-| **Total** | **13** | **~1,630-3,090** | | | |
+| S | 15 (ScannerBound — subsumed by G Steps 9–11) | 310-560 | LOW-MEDIUM | — | Subsumed by Phase G |
+| **Total** | **13 original + 24 scaffolding** | **~2,270-4,340** | | | |
 
-**Critical path:** A–F (DONE) → G → H → I → J (10 EmitterScannability sorrys)
-**Parallel track:** S (3 ScannerBound sorrys)
-**Expected outcome:** 13 → 0 sorry warnings across the full build.
+**Critical path:** A–F (DONE) → G (Steps 6–12) → H → I → J (7 EmitterScannability sorrys after Phase G)
+**Parallel track:** S subsumed by Phase G Steps 9–11
+**Expected outcome:** 34 → 7 (Phase G) → 0 (Phases H–J) sorry warnings across the full build.
 
 ### Risk mitigation for Phase I
 
