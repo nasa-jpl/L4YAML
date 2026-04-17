@@ -1876,14 +1876,74 @@ theorem scanNextToken_prefix_and_skFloor_inv (s s' : ScannerState)
 -- `scanNextToken` preserves `simpleKeyStack.size ≥ flowLevel`.
 -- This is a scanner global invariant: flow opens push+increment, flow closes pop+decrement.
 -- Non-flow dispatches preserve both simpleKeyStack and flowLevel.
---
--- **Status**: Dispatch-level lemmas added to ScannerCorrectness.ScanHelpers:
---   ✓ dispatchStructural_preserves_{simpleKeyStack,flowLevel} (with sorry for error cases)
---   ✓ dispatchBlockIndicators_preserves_{simpleKeyStack,flowLevel} (with sorry for error cases)
---   ✓ dispatchContent_preserves_{simpleKeyStack,flowLevel} (with sorry for remaining cases)
---
--- **Remaining work**: The dispatch lemmas have `sorry` placeholders for some cases.
--- The proof below also has a final `sorry` for any remaining unmatched dispatch paths.
+
+-- Helper: flow indicator dispatch preserves the sync invariant.
+-- Flow opens push+increment, flow closes pop+decrement, flow entry preserves both.
+set_option maxHeartbeats 800000 in
+theorem dispatchFlowIndicators_preserves_sync (s s' : ScannerState) (c : Char)
+    (h : scanNextToken_dispatchFlowIndicators s c = .ok (some s'))
+    (h_sync : s.simpleKeyStack.size ≥ s.flowLevel) :
+    s'.simpleKeyStack.size ≥ s'.flowLevel := by
+  unfold scanNextToken_dispatchFlowIndicators at h
+  simp only [bind, Except.bind, pure, Except.pure] at h
+  -- c == '['
+  split at h
+  · simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+    dsimp only [scanFlowSequenceStart]
+    simp only [ScannerCorrectness.advance_preserves_simpleKeyStack,
+      ScannerCorrectness.advance_preserves_flowLevel,
+      ScannerCorrectness.emit_preserves_simpleKeyStack,
+      ScannerCorrectness.emit_preserves_flowLevel,
+      Array.size_push]; omega
+  -- c == ']'
+  · split at h
+    · split at h
+      · simp at h
+      · split at h
+        · simp at h
+        · simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+          dsimp only [scanFlowSequenceEnd]
+          simp only [ScannerCorrectness.advance_preserves_simpleKeyStack,
+            ScannerCorrectness.advance_preserves_flowLevel,
+            ScannerCorrectness.emit_preserves_simpleKeyStack,
+            ScannerCorrectness.emit_preserves_flowLevel,
+            Array.size_pop]; split <;> omega
+    -- c == '{'
+    · split at h
+      · simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+        dsimp only [scanFlowMappingStart]
+        simp only [ScannerCorrectness.advance_preserves_simpleKeyStack,
+          ScannerCorrectness.advance_preserves_flowLevel,
+          ScannerCorrectness.emit_preserves_simpleKeyStack,
+          ScannerCorrectness.emit_preserves_flowLevel,
+          Array.size_push]; omega
+      -- c == '}'
+      · split at h
+        · split at h
+          · simp at h
+          · split at h
+            · simp at h
+            · simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+              dsimp only [scanFlowMappingEnd]
+              simp only [ScannerCorrectness.advance_preserves_simpleKeyStack,
+                ScannerCorrectness.advance_preserves_flowLevel,
+                ScannerCorrectness.emit_preserves_simpleKeyStack,
+                ScannerCorrectness.emit_preserves_flowLevel,
+                Array.size_pop]; split <;> omega
+        -- c == ','
+        · split at h
+          · split at h
+            · simp at h
+            · split at h
+              · simp at h
+              · rename_i _ _ _ h_entry
+                simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+                have h_stack := ScannerCorrectness.scanFlowEntry_preserves_simpleKeyStack _ _ h_entry
+                have h_fl := ScannerCorrectness.scanFlowEntry_preserves_flowLevel _ _ h_entry
+                rw [h_stack, h_fl]; exact h_sync
+          -- fallthrough: none
+          · simp at h
+
 set_option maxHeartbeats 1200000 in
 theorem scanNextToken_preserves_sync (s s' : ScannerState)
     (h_next : scanNextToken s = .ok (some s'))
@@ -1892,70 +1952,64 @@ theorem scanNextToken_preserves_sync (s s' : ScannerState)
   unfold scanNextToken at h_next
   simp only [bind, pure, Pure.pure, Except.pure] at h_next
   simp only [Except.bind] at h_next
+  split at h_next <;> (try (simp at h_next; done)) -- preprocess Except
+  split at h_next <;> (try (simp at h_next; done)) -- preprocess Option
+  rename_i s1 c1 h_pre
+  have h_pre_stack := ScannerCorrectness.preprocess_preserves_simpleKeyStack s _ _ h_pre
+  have h_pre_fl := preprocess_preserves_flowLevel s _ _ h_pre
+  have h_pre_sync : s1.simpleKeyStack.size ≥ s1.flowLevel := by
+    rw [h_pre_stack, h_pre_fl]; exact h_sync
+  split at h_next <;> (try (simp at h_next; done)) -- structural Except
   split at h_next
-  · contradiction
-  · split at h_next
-    · simp at h_next
-    · have h_pre_stack := ScannerCorrectness.preprocess_preserves_simpleKeyStack s _ _ (by assumption)
-      have h_pre_fl := preprocess_preserves_flowLevel s _ _ (by assumption)
-      rename_i s1 c1 _
-      have h_pre_sync : s1.simpleKeyStack.size ≥ s1.flowLevel := by
-        rw [h_pre_stack, h_pre_fl]; exact h_sync
-      have h_allow_stack : ∀ st : ScannerState,
-        (if st.allowDirectives then
-          { st with allowDirectives := false, documentEverStarted := true }
-        else st).simpleKeyStack = st.simpleKeyStack := by
-        intro st; split <;> rfl
-      have h_allow_fl : ∀ st : ScannerState,
-        (if st.allowDirectives then
-          { st with allowDirectives := false, documentEverStarted := true }
-        else st).flowLevel = st.flowLevel := by
-        intro st; split <;> rfl
-      have h_allow_sync : (if s1.allowDirectives then
-          { s1 with allowDirectives := false, documentEverStarted := true }
-        else s1).simpleKeyStack.size ≥ (if s1.allowDirectives then
-          { s1 with allowDirectives := false, documentEverStarted := true }
-        else s1).flowLevel := by
-        rw [h_allow_stack, h_allow_fl]; exact h_pre_sync
-      -- Split on all dispatch branches and close with per-dispatch stack/flowLevel lemmas
-      repeat (any_goals (split at h_next))
-      any_goals contradiction
-      any_goals (simp at h_next)
-      all_goals (try subst_vars)
-      all_goals first
-        | (simp_all; done)
-        | -- Flow sequence/mapping start: stack.push + flowLevel + 1
-          (simp at *; omega)
-        | -- Flow sequence/mapping end: stack.pop + (if flowLevel > 0 then flowLevel - 1 else 0)
-          (simp at *;
-           dsimp only [] at *;
-           simp only [Array.size_pop] at *;
-           split <;> omega)
-        | -- dispatchStructural: scanDocumentStart, scanDocumentEnd, scanDirective
-          (have h_d_stack := ScannerCorrectness.ScanHelpers.dispatchStructural_preserves_simpleKeyStack
-            _ _ _ (by assumption);
-           have h_d_fl := ScannerCorrectness.ScanHelpers.dispatchStructural_preserves_flowLevel
-            _ _ _ (by assumption);
-           rw [h_d_stack, h_d_fl]; simp only [h_allow_stack, h_allow_fl]; exact h_pre_sync)
-        | -- dispatchBlockIndicators: scanBlockEntry, scanKey, scanValue
-          (have h_d_stack := ScannerCorrectness.ScanHelpers.dispatchBlockIndicators_preserves_simpleKeyStack
-            _ _ _ (by assumption);
-           have h_d_fl := ScannerCorrectness.ScanHelpers.dispatchBlockIndicators_preserves_flowLevel
-            _ _ _ (by assumption);
-           rw [h_d_stack, h_d_fl]; simp only [h_allow_stack, h_allow_fl]; exact h_pre_sync)
-        | -- dispatchContent: scanAnchorOrAlias, scanTag, all scalars
-          (have h_d_stack := ScannerCorrectness.ScanHelpers.dispatchContent_preserves_simpleKeyStack
-            _ _ _ (by assumption);
-           have h_d_fl := ScannerCorrectness.ScanHelpers.dispatchContent_preserves_flowLevel
-            _ _ _ (by assumption);
-           rw [h_d_stack, h_d_fl]; simp only [h_allow_stack, h_allow_fl]; exact h_pre_sync)
-        | -- Flow entry (comma): has preservation lemmas
-          (have h_entry_stack := ScannerCorrectness.scanFlowEntry_preserves_simpleKeyStack
-            _ _ (by assumption);
-           have h_entry_fl := ScannerCorrectness.scanFlowEntry_preserves_flowLevel
-            _ _ (by assumption);
-           rw [h_entry_stack, h_entry_fl]; simp only [h_allow_stack, h_allow_fl]; exact h_pre_sync)
-        | sorry  -- TODO: Handle remaining dispatch paths (error cases, etc.)
+  · -- structural some
+    simp only [Except.ok.injEq, Option.some.injEq] at h_next; subst h_next
+    have h_d_stack := ScannerCorrectness.dispatchStructural_preserves_simpleKeyStack
+      s1 c1 _ (by assumption)
+    have h_d_fl := ScannerCorrectness.dispatchStructural_preserves_flowLevel
+      s1 c1 _ (by assumption)
+    rw [h_d_stack, h_d_fl]; exact h_pre_sync
+  · -- structural none → allowDirectives → flow/block/content
+    have h_allow_stack : ∀ st : ScannerState,
+      (if st.allowDirectives then
+        { st with allowDirectives := false, documentEverStarted := true }
+      else st).simpleKeyStack = st.simpleKeyStack := by intro st; split <;> rfl
+    have h_allow_fl : ∀ st : ScannerState,
+      (if st.allowDirectives then
+        { st with allowDirectives := false, documentEverStarted := true }
+      else st).flowLevel = st.flowLevel := by intro st; split <;> rfl
+    have h_ad_sync : (if s1.allowDirectives then
+        { s1 with allowDirectives := false, documentEverStarted := true }
+      else s1).simpleKeyStack.size ≥ (if s1.allowDirectives then
+        { s1 with allowDirectives := false, documentEverStarted := true }
+      else s1).flowLevel := by
+      rw [h_allow_stack, h_allow_fl]; exact h_pre_sync
+    -- checkBlockFlowIndent
+    split at h_next <;> (try (simp at h_next; done))
+    -- Flow Except
+    split at h_next <;> (try (simp at h_next; done))
+    -- Flow Option
+    split at h_next
+    · -- flow some → use flow dispatch helper
+      simp only [Except.ok.injEq, Option.some.injEq] at h_next; subst h_next
+      exact dispatchFlowIndicators_preserves_sync _ _ _ (by assumption) h_ad_sync
+    · -- flow none → block
+      split at h_next <;> (try (simp at h_next; done)) -- block Except
+      split at h_next
+      · -- block some
+        simp only [Except.ok.injEq, Option.some.injEq] at h_next; subst h_next
+        have h_d_stack := ScannerCorrectness.dispatchBlockIndicators_preserves_simpleKeyStack
+          _ c1 _ (by assumption)
+        have h_d_fl := ScannerCorrectness.dispatchBlockIndicators_preserves_flowLevel
+          _ c1 _ (by assumption)
+        rw [h_d_stack, h_d_fl]; rw [h_allow_stack, h_allow_fl]; exact h_pre_sync
+      · -- block none → content
+        split at h_next <;> (try (simp at h_next; done)) -- content Except
+        simp only [Except.ok.injEq, Option.some.injEq] at h_next; subst h_next
+        have h_d_stack := ScannerCorrectness.dispatchContent_preserves_simpleKeyStack
+          _ c1 _ (by assumption)
+        have h_d_fl := ScannerCorrectness.dispatchContent_preserves_flowLevel
+          _ c1 _ (by assumption)
+        rw [h_d_stack, h_d_fl]; rw [h_allow_stack, h_allow_fl]; exact h_pre_sync
 
 -- Main chain theorem: token prefix preservation through FlowMonoChain.
 -- Mirrors `ScanChain_preserves_raw_prefix` but uses `SimpleKeyAboveFloor` instead of
