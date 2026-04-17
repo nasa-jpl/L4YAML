@@ -8582,6 +8582,83 @@ theorem scanFiltered_boundary_tokens (input : String)
 open L4YAML.Proofs.ParserGrammable (flowBracketDelta flowBracketBalance
   flowBracketBalance_compose flowBracketBalance_push)
 
+-- ═══ Filtered token lemmas for scanner handlers ═══
+
+/-- `scanFlowSequenceStart` filtered token equation: adds exactly one `.flowSequenceStart`. -/
+theorem scanFlowSequenceStart_filtered (s : ScannerState) :
+    let p := fun (t : Positioned YamlToken) => t.val != .placeholder
+    (scanFlowSequenceStart s).tokens.filter p =
+    (s.tokens.filter p).push { pos := s.currentPos, val := .flowSequenceStart } := by
+  unfold scanFlowSequenceStart
+  dsimp only []
+  rw [ScannerCorrectness.advance_preserves_tokens]
+  rw [emit_tokens_push]
+  rw [Array.filter_push]; rfl
+
+/-- `scanFlowMappingStart` filtered token equation: adds exactly one `.flowMappingStart`. -/
+theorem scanFlowMappingStart_filtered (s : ScannerState) :
+    let p := fun (t : Positioned YamlToken) => t.val != .placeholder
+    (scanFlowMappingStart s).tokens.filter p =
+    (s.tokens.filter p).push { pos := s.currentPos, val := .flowMappingStart } := by
+  unfold scanFlowMappingStart
+  dsimp only []
+  rw [ScannerCorrectness.advance_preserves_tokens]
+  rw [emit_tokens_push]
+  rw [Array.filter_push]; rfl
+
+/-- `scanFlowEntry` filtered token equation (when it succeeds):
+    adds exactly one `.flowEntry`. -/
+theorem scanFlowEntry_filtered (s s' : ScannerState)
+    (h : scanFlowEntry s = .ok s') :
+    let p := fun (t : Positioned YamlToken) => t.val != .placeholder
+    s'.tokens.filter p = (s.tokens.filter p).push { pos := s.currentPos, val := .flowEntry } := by
+  unfold scanFlowEntry at h
+  simp only [bind, Except.bind, pure, Except.pure] at h
+  -- Split on the validation check
+  split at h
+  · split at h
+    · cases h
+    · simp only [Except.ok.injEq] at h
+      rw [← h]
+      dsimp only []
+      rw [ScannerCorrectness.advance_preserves_tokens]
+      rw [emit_tokens_push]
+      rw [Array.filter_push]; rfl
+  · simp only [Except.ok.injEq] at h
+    rw [← h]
+    dsimp only []
+    rw [ScannerCorrectness.advance_preserves_tokens]
+    rw [emit_tokens_push]
+    rw [Array.filter_push]; rfl
+
+/-- `ScanChain_deterministic`: two chains with the same start state and step count
+    reach the same final state (since `scanNextToken` is a function). -/
+theorem ScanChain_deterministic {s s₁ s₂ : ScannerState} {n : Nat}
+    (h₁ : ScanChain s n s₁) (h₂ : ScanChain s n s₂) : s₁ = s₂ := by
+  induction h₁ generalizing s₂ with
+  | zero => cases h₂; rfl
+  | @step s s_mid₁ s₁ k h_snt₁ _ ih =>
+    match h₂ with
+    | .step h_snt₂ h_rest₂ =>
+      have : s_mid₁ = _ := Option.some.inj (Except.ok.inj (h_snt₁.symm.trans h_snt₂))
+      subst this
+      exact ih h_rest₂
+
+/-- `ScanChain.split`: decompose a chain into two consecutive sub-chains. -/
+theorem ScanChain.split {s s₁ s₂ : ScannerState} {n₁ n₂ : Nat}
+    (h₁ : ScanChain s n₁ s₁) (h_total : ScanChain s (n₁ + n₂) s₂) :
+    ScanChain s₁ n₂ s₂ := by
+  induction h₁ generalizing s₂ with
+  | zero => simpa using h_total
+  | @step s s_mid s₁ k h_snt₁ _ ih =>
+    have h_rw : k + 1 + n₂ = (k + n₂) + 1 := by omega
+    rw [h_rw] at h_total
+    match h_total with
+    | .step h_snt₂ h_rest₂ =>
+      have : s_mid = _ := Option.some.inj (Except.ok.inj (h_snt₁.symm.trans h_snt₂))
+      subst this
+      exact ih h_rest₂
+
 -- ═══ Body token characterization lemmas ═══
 
 -- The proofs require tracing per-step scanner dispatch: each `emit v` produces first
@@ -8607,10 +8684,8 @@ open L4YAML.Proofs.ParserGrammable (flowBracketDelta flowBracketBalance
 theorem emitList_body_filtered_characterization
     (items : List YamlValue) (h_ne : items ≠ [])
     (h_all : ∀ v ∈ items, EmitScansInFlow v)
-    (s s' : ScannerState) (n : Nat) (rest : List Char)
-    (h_chain : ScanChain s n s')
+    (s : ScannerState) (rest : List Char)
     (h_corr : ScannerSurfCorr s ⟨(emit.emitList items).toList ++ rest, s.col⟩)
-    (h_corr' : ScannerSurfCorr s' ⟨rest, s'.col⟩)
     (h_flow : s.inFlow = true) (h_fl : s.flowLevel > 0)
     (h_indent : s.currentIndent < 0) (h_col : s.col > 0)
     (h_ek : s.explicitKeyLine = none)
@@ -8619,21 +8694,68 @@ theorem emitList_body_filtered_characterization
     (h_sk : s.simpleKey.possible = false) :
     let p := fun (t : Positioned YamlToken) => t.val != .placeholder
     let old_sz := (s.tokens.filter p).size
+    ∃ n s', ScanChain s n s'
+    ∧ ScannerSurfCorr s' ⟨rest, s'.col⟩
+    ∧ s'.flowLevel = s.flowLevel
+    ∧ s'.directivesPresent = s.directivesPresent
+    ∧ s'.indents = s.indents
+    ∧ s'.explicitKeyLine = s.explicitKeyLine
+    ∧ s'.col > 0
+    ∧ s'.inFlow = true
+    ∧ s'.currentIndent < 0
+    ∧ s'.line = s.line
+    ∧ AllTokensOnLine s' s'.line
+    ∧ EndLineOnLine s'
+    ∧ s'.simpleKeyStack = s.simpleKeyStack
+    ∧ FlowMonoChain s.flowLevel s n s'
     -- (1) First new filtered token is a content start (scalar, flowSeqStart, or flowMapStart)
-    (old_sz < (s'.tokens.filter p).size ∧
+    ∧ (old_sz < (s'.tokens.filter p).size ∧
      (∀ (h : old_sz < (s'.tokens.filter p).size),
        ((∃ c sc, ((s'.tokens.filter p)[old_sz]'h).val = .scalar c sc) ∨
         ((s'.tokens.filter p)[old_sz]'h).val = .flowSequenceStart ∨
-        ((s'.tokens.filter p)[old_sz]'h).val = .flowMappingStart))) ∧
+        ((s'.tokens.filter p)[old_sz]'h).val = .flowMappingStart)))
     -- (2) After every OUTER-LEVEL flowEntry, next is a content start
-    (∀ (k : Nat), old_sz ≤ k → (h_hi : k < (s'.tokens.filter p).size) →
+    ∧ (∀ (k : Nat), old_sz ≤ k → (h_hi : k < (s'.tokens.filter p).size) →
       ((s'.tokens.filter p)[k]'h_hi).val = .flowEntry →
       flowBracketBalance (s'.tokens.filter p) old_sz k = 0 →
       k + 1 < (s'.tokens.filter p).size ∧
       (∀ (h' : k + 1 < (s'.tokens.filter p).size),
         ((∃ c sc, ((s'.tokens.filter p)[k + 1]'h').val = .scalar c sc) ∨
          ((s'.tokens.filter p)[k + 1]'h').val = .flowSequenceStart ∨
-         ((s'.tokens.filter p)[k + 1]'h').val = .flowMappingStart))) := sorry
+         ((s'.tokens.filter p)[k + 1]'h').val = .flowMappingStart))) := by
+  -- Construct the chain from EmitListScansInFlow
+  have h_scan := emitList_scans_nonempty items h_ne h_all
+  obtain ⟨n, s', h_chain, h_corr', h_fl', h_dp', h_ids', h_ek', h_col', h_inflow',
+          h_indent', h_line', h_atol', h_endline', h_stack', h_fmc⟩ :=
+    h_scan s rest h_corr h_flow h_fl h_indent h_col h_ek h_atol h_endline
+  refine ⟨n, s', h_chain, h_corr', h_fl', h_dp', h_ids', h_ek', h_col', h_inflow',
+          h_indent', h_line', h_atol', h_endline', h_stack', h_fmc, ?_, ?_⟩
+  · -- Part 1: First new filtered token is a content start
+    have h_grows := ScanChain_filtered_grows h_chain
+    have h_n_pos : n ≥ 1 := by
+      match n, h_chain with
+      | 0, h_zero =>
+        exfalso
+        have h_eq : s = s' := by cases h_zero; rfl
+        rw [h_eq] at h_corr
+        have h_chars_eq := CharsFromOffset_unique h_corr.chars_from h_corr'.chars_from
+        have h_len := congrArg List.length h_chars_eq
+        simp only [List.length_append] at h_len
+        have h_nil : (emit.emitList items).toList = [] := by
+          match h_list : (emit.emitList items).toList with
+          | [] => rfl
+          | _ :: _ => simp [h_list] at h_len
+        match h_items : items with
+        | [] => exact absurd rfl h_ne
+        | i :: is => exact absurd h_nil (emitList_toList_ne_nil i is)
+      | _ + 1, _ => omega
+    constructor
+    · -- old_sz < filtered size
+      omega
+    · -- The token at old_sz is a content start
+      sorry
+  · -- Part 2: After every outer-level flowEntry, next is a content start
+    sorry
 
 /-- Body token characterization for `emitPairList` in flow context:
     (1) The chain has ≥ 3 steps (key handling + value indicator + value content).
@@ -8655,10 +8777,8 @@ theorem emitPairList_body_filtered_characterization
     (pairs : List (YamlValue × YamlValue)) (h_ne : pairs ≠ [])
     (h_all_k : ∀ p ∈ pairs, EmitScansInFlow p.1)
     (h_all_v : ∀ p ∈ pairs, EmitScansInFlow p.2)
-    (s s' : ScannerState) (n : Nat) (rest : List Char)
-    (h_chain : ScanChain s n s')
+    (s : ScannerState) (rest : List Char)
     (h_corr : ScannerSurfCorr s ⟨(emit.emitPairList pairs).toList ++ rest, s.col⟩)
-    (h_corr' : ScannerSurfCorr s' ⟨rest, s'.col⟩)
     (h_flow : s.inFlow = true) (h_fl : s.flowLevel > 0)
     (h_indent : s.currentIndent < 0) (h_col : s.col > 0)
     (h_ek : s.explicitKeyLine = none)
@@ -8667,19 +8787,68 @@ theorem emitPairList_body_filtered_characterization
     (h_sk : s.simpleKey.possible = false) :
     let p := fun (t : Positioned YamlToken) => t.val != .placeholder
     let old_sz := (s.tokens.filter p).size
+    ∃ n s', ScanChain s n s'
+    ∧ ScannerSurfCorr s' ⟨rest, s'.col⟩
+    ∧ s'.flowLevel = s.flowLevel
+    ∧ s'.directivesPresent = s.directivesPresent
+    ∧ s'.indents = s.indents
+    ∧ s'.explicitKeyLine = s.explicitKeyLine
+    ∧ s'.col > 0
+    ∧ s'.inFlow = true
+    ∧ s'.currentIndent < 0
+    ∧ s'.line = s.line
+    ∧ AllTokensOnLine s' s'.line
+    ∧ EndLineOnLine s'
+    ∧ s'.simpleKeyStack = s.simpleKeyStack
+    ∧ FlowMonoChain s.flowLevel s n s'
     -- (1) At least 3 chain steps (key + value indicator + value)
-    n ≥ 3 ∧
+    ∧ n ≥ 3
     -- (2) First new filtered token is .key
-    (old_sz < (s'.tokens.filter p).size ∧
+    ∧ (old_sz < (s'.tokens.filter p).size ∧
      (∀ (h : old_sz < (s'.tokens.filter p).size),
-       ((s'.tokens.filter p)[old_sz]'h).val = .key)) ∧
+       ((s'.tokens.filter p)[old_sz]'h).val = .key))
     -- (3) After every OUTER-LEVEL flowEntry, next is .key
-    (∀ (k : Nat), old_sz ≤ k → (h_hi : k < (s'.tokens.filter p).size) →
+    ∧ (∀ (k : Nat), old_sz ≤ k → (h_hi : k < (s'.tokens.filter p).size) →
       ((s'.tokens.filter p)[k]'h_hi).val = .flowEntry →
       flowBracketBalance (s'.tokens.filter p) old_sz k = 0 →
       k + 1 < (s'.tokens.filter p).size ∧
       (∀ (h' : k + 1 < (s'.tokens.filter p).size),
-        ((s'.tokens.filter p)[k + 1]'h').val = .key)) := sorry
+        ((s'.tokens.filter p)[k + 1]'h').val = .key)) := by
+  -- Construct the chain from EmitPairListScansInFlow
+  have h_scan := emitPairList_scans_nonempty pairs h_ne h_all_k h_all_v
+  obtain ⟨n, s', h_chain, h_corr', h_fl', h_dp', h_ids', h_ek', h_col', h_inflow',
+          h_indent', h_line', h_atol', h_endline', h_stack', h_fmc⟩ :=
+    h_scan s rest h_corr h_flow h_fl h_indent h_col h_ek h_atol h_endline
+  have h_n_pos : n ≥ 1 := by
+    match n, h_chain with
+    | 0, h_zero =>
+      exfalso
+      have h_eq : s = s' := by cases h_zero; rfl
+      rw [h_eq] at h_corr
+      have h_chars_eq := CharsFromOffset_unique h_corr.chars_from h_corr'.chars_from
+      have h_len := congrArg List.length h_chars_eq
+      simp only [List.length_append] at h_len
+      have h_nil : (emit.emitPairList pairs).toList = [] := by
+        match h_list : (emit.emitPairList pairs).toList with
+        | [] => rfl
+        | _ :: _ => simp [h_list] at h_len
+      match h_pairs : pairs with
+      | [] => exact absurd rfl h_ne
+      | p :: ps => exact absurd h_nil (emitPairList_toList_ne_nil p ps)
+    | _ + 1, _ => omega
+  have h_grows := ScanChain_filtered_grows h_chain
+  refine ⟨n, s', h_chain, h_corr', h_fl', h_dp', h_ids', h_ek', h_col', h_inflow',
+          h_indent', h_line', h_atol', h_endline', h_stack', h_fmc, ?_, ?_, ?_⟩
+  · -- Part 1: n ≥ 3
+    sorry
+  · -- Part 2: First new filtered token is .key
+    constructor
+    · -- old_sz < filtered size
+      omega
+    · -- The token at old_sz is .key
+      sorry
+  · -- Part 3: After every outer-level flowEntry, next is .key
+    sorry
 
 /-- Token structure of `scanFiltered ("[" ++ emitList items ++ "]")` for non-empty items.
     Establishes boundary tokens, body token patterns, and `parseNode` success within
@@ -8719,14 +8888,14 @@ theorem scanFiltered_emitSeq_nonempty_structure
           h_sync₁⟩ :=
     scanNextToken_flow_open_init input
       ((emit.emitList items.toList).toList ++ [']']) h_toList
-  -- Body scanning → s₂
-  have h_list_scan : EmitListScansInFlow items.toList :=
-    emitList_scans_nonempty items.toList h_ne (fun w hw => h_all_scan w hw)
+  -- Body scanning → s₂ (with filtered token characterization)
   obtain ⟨n₂, s₂, h_chain₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂,
-          h_ek₂, h_col₂, h_inflow₂, h_indent₂, _, _, _, h_stack₂, h_fmc₂⟩ :=
-    h_list_scan s₁ [']'] h_corr₁
-      h_inflow₁ (by rw [h_fl₁]; omega) h_indent₁ (by rw [h_col₁]; omega) h_ek₁
-      (h_line₁ ▸ h_atol₁) h_endline₁
+          h_ek₂, h_col₂, h_inflow₂, h_indent₂, _, _, _, h_stack₂, h_fmc₂,
+          ⟨h_body_sz_raw, h_body_cs_raw⟩, h_body_fe_next_raw⟩ :=
+    emitList_body_filtered_characterization items.toList h_ne
+      (fun w hw => h_all_scan w hw) s₁ [']']
+      h_corr₁ h_inflow₁ (by rw [h_fl₁]; omega) h_indent₁ (by rw [h_col₁]; omega)
+      h_ek₁ (h_line₁ ▸ h_atol₁) h_endline₁ h_sk₁
   -- Close bracket → s₃ (using _ext to get filtered token info + indents)
   obtain ⟨s₃, h_snt₃, h_fl₃, h_dp₃, h_peek₃, h_ids₃, ⟨tok_fse, h_tok_fse_val, h_filt₃⟩⟩ :=
     scanNextToken_flow_close_seq_outermost_ext s₂ h_corr₂ h_inflow₂ h_indent₂ h_col₂
@@ -8856,13 +9025,10 @@ theorem scanFiltered_emitSeq_nonempty_structure
   -- h_sz5: tokens.size = (s₂.filter p).size + 2 ≥ 3 + 2 = 5
   have h_sz5 : tokens.size ≥ 5 := by
     rw [h_tokens_decomp]; simp [Array.size_push]; omega
-  -- ═══ Body token characterization from infrastructure lemma ═══
-  obtain ⟨⟨h_body_sz, h_body_cs⟩, h_body_fe_next⟩ :=
-    emitList_body_filtered_characterization items.toList h_ne
-      (fun w hw => h_all_scan w hw) s₁ s₂ n₂ [']']
-      h_chain₂ h_corr₁ h_corr₂
-      h_inflow₁ (by rw [h_fl₁]; omega) h_indent₁ (by rw [h_col₁]; omega)
-      h_ek₁ (h_line₁ ▸ h_atol₁) h_endline₁ h_sk₁
+  -- ═══ Body token characterization (now from combined theorem) ═══
+  -- Rename _raw variables to match expected names
+  have h_body_sz := h_body_sz_raw; have h_body_cs := h_body_cs_raw
+  have h_body_fe_next := h_body_fe_next_raw
   rw [h_filt₁_sz] at h_body_sz h_body_cs h_body_fe_next
   -- Helper: tokens[k]! for k < tokens.size - 2 equals (s₂.filter p)[k]
   have h_tokens_sz_eq : tokens.size - 2 = (s₂.tokens.filter p).size := by
@@ -8936,15 +9102,14 @@ theorem scanFiltered_emitMap_nonempty_structure
           h_sync₁⟩ :=
     scanNextToken_flow_open_mapping_init input
       ((emit.emitPairList pairs.toList).toList ++ ['}']) h_toList
-  -- Body scanning → s₂
-  have h_pair_scan : EmitPairListScansInFlow pairs.toList :=
-    emitPairList_scans_nonempty pairs.toList h_ne
-      (fun p hp => h_all_scan_k p hp) (fun p hp => h_all_scan_v p hp)
+  -- Body scanning → s₂ (with filtered token characterization)
   obtain ⟨n₂, s₂, h_chain₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂,
-          h_ek₂, h_col₂, h_inflow₂, h_indent₂, _, _, _, h_stack₂, h_fmc₂⟩ :=
-    h_pair_scan s₁ ['}'] h_corr₁
-      h_inflow₁ (by rw [h_fl₁]; omega) h_indent₁ (by rw [h_col₁]; omega) h_ek₁
-      (h_line₁ ▸ h_atol₁) h_endline₁
+          h_ek₂, h_col₂, h_inflow₂, h_indent₂, _, _, _, h_stack₂, h_fmc₂,
+          h_n₂_ge3, ⟨h_body_sz_raw, h_body_key_raw⟩, h_body_fe_next_raw⟩ :=
+    emitPairList_body_filtered_characterization pairs.toList h_ne
+      (fun p hp => h_all_scan_k p hp) (fun p hp => h_all_scan_v p hp) s₁ ['}']
+      h_corr₁ h_inflow₁ (by rw [h_fl₁]; omega) h_indent₁ (by rw [h_col₁]; omega)
+      h_ek₁ (h_line₁ ▸ h_atol₁) h_endline₁ h_sk₁
   -- Close brace → s₃ (using _ext to get filtered token info + indents)
   obtain ⟨s₃, h_snt₃, h_fl₃, h_dp₃, h_peek₃, h_ids₃, ⟨tok_fme, h_tok_fme_val, h_filt₃⟩⟩ :=
     scanNextToken_flow_close_mapping_outermost_ext s₂ h_corr₂ h_inflow₂ h_indent₂ h_col₂
@@ -9024,25 +9189,8 @@ theorem scanFiltered_emitMap_nonempty_structure
       intro j hj hjsz; rw [h_sync₁] at hjsz; rw [h_fl₁] at hj; omega)
   have h_filt_grows : (s₂.tokens.filter p).size ≥
       (s₁.tokens.filter p).size + n₂ := ScanChain_filtered_grows h_chain₂
-  -- n₂ ≥ 1 (body is non-empty)
-  have h_n₂_pos : n₂ ≥ 1 := by
-    match n₂, h_chain₂ with
-    | 0, h_zero =>
-      exfalso
-      have h_s1_eq_s2 : s₁ = s₂ := by cases h_zero; rfl
-      rw [h_s1_eq_s2] at h_corr₁
-      have h_chars_eq := CharsFromOffset_unique h_corr₁.chars_from h_corr₂.chars_from
-      have h_len := congrArg List.length h_chars_eq
-      simp only [List.length_append] at h_len
-      have h_nil : (emit.emitPairList pairs.toList).toList = [] := by
-        match h_list : (emit.emitPairList pairs.toList).toList with
-        | [] => rfl
-        | _ :: _ => simp [h_list] at h_len
-      match h_items : pairs.toList with
-      | [] => exact absurd h_items h_ne
-      | p :: ps =>
-          rw [h_items] at h_nil; exact absurd h_nil (emitPairList_toList_ne_nil p ps)
-    | _ + 1, _ => omega
+  -- n₂ ≥ 1 (from n₂ ≥ 3)
+  have h_n₂_pos : n₂ ≥ 1 := by omega
   have h_s2_filt_sz : (s₂.tokens.filter p).size ≥ 3 := by
     rw [h_filt₁_sz] at h_filt_grows; omega
   have h_t1 : tokens[1]!.val = .flowMappingStart := by
@@ -9065,13 +9213,10 @@ theorem scanFiltered_emitMap_nonempty_structure
   -- Non-empty pair list has ≥ 1 pair. Each pair scanning produces ≥ 3 scanNextToken
   -- steps (key, value indicator, value scalar). Combined with n₂ ≥ 1, this gives
   -- filtered size ≥ 2 + n₂. For n₂ ≥ 5 we need the pair structure decomposition.
-  -- ═══ Body token characterization from infrastructure lemma ═══
-  obtain ⟨h_n₂_ge3, ⟨h_body_sz, h_body_key⟩, h_body_fe_next⟩ :=
-    emitPairList_body_filtered_characterization pairs.toList h_ne
-      (fun p hp => h_all_scan_k p hp) (fun p hp => h_all_scan_v p hp) s₁ s₂ n₂ ['}']
-      h_chain₂ h_corr₁ h_corr₂
-      h_inflow₁ (by rw [h_fl₁]; omega) h_indent₁ (by rw [h_col₁]; omega)
-      h_ek₁ (h_line₁ ▸ h_atol₁) h_endline₁ h_sk₁
+  -- ═══ Body token characterization (now from combined theorem) ═══
+  -- Rename _raw variables to match expected names
+  have h_body_sz := h_body_sz_raw; have h_body_key := h_body_key_raw
+  have h_body_fe_next := h_body_fe_next_raw
   rw [h_filt₁_sz] at h_body_sz h_body_key h_body_fe_next
   -- tokens.size - 2 = (s₂.filter p).size
   have h_tokens_sz_eq : tokens.size - 2 = (s₂.tokens.filter p).size := by

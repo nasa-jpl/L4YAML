@@ -3840,7 +3840,47 @@ Phase E confirmed statements are correct after the `flowBracketBalance` fix.
 
 ***Phase H: Accomplishments***
 
+Phase H restructured both body characterization theorems to construct chains internally
+rather than accepting external chains. This eliminates the need to prove step-count
+uniqueness between independently constructed chains.
+
+**Signature changes:**
+- `emitList_body_filtered_characterization`: Removed params `s'`, `n`, `h_chain`, `h_corr'`.
+  Now returns `∃ n s', ScanChain ∧ ScannerSurfCorr ∧ ...invariants... ∧ FlowMonoChain ∧
+  content_start_characterization ∧ flowEntry_successor_characterization`.
+- `emitPairList_body_filtered_characterization`: Same pattern. Returns chain + invariants +
+  `n ≥ 3` + `.key` characterization + flowEntry successor pattern.
+- Both call `emitList_scans_nonempty` / `emitPairList_scans_nonempty` internally.
+
+**Infrastructure lemmas added** (all verified, no sorrys):
+- `scanFlowSequenceStart_filtered`: filtered tokens after `scanFlowSequenceStart`
+- `scanFlowMappingStart_filtered`: filtered tokens after `scanFlowMappingStart`  
+- `scanFlowEntry_filtered`: filtered tokens after `scanFlowEntry` (handles Except)
+- `ScanChain_deterministic`: same start + same steps → same end state
+- `ScanChain.split`: decompose chain at known sub-chain boundary
+
+**Call site updates:**
+- `scanFiltered_emitSeq_nonempty_structure`: Merged separate `EmitListScansInFlow` call
+  and old characterization call into single combined call. Simplified `h_n₂_pos` proof.
+- `scanFiltered_emitMap_nonempty_structure`: Same merge. `h_n₂_pos` now derives from
+  `h_n₂_ge3` via omega.
+
+**Sorry status:** 7 sorry warnings (same as before Phase H). The characterization sorrys
+are now properly scoped within the proof skeletons, ready for filling with scanner
+dispatch analysis. Net: 9 sorry occurrences across 7 declarations.
+
 ***Phase H: Reflections***
+
+The key insight was that passing an externally-constructed chain to the characterization
+theorem created an intractable obligation: proving the given chain has exactly the same
+step count as the one `EmitListScansInFlow` would construct. By making the theorem
+construct its own chain via `emitList_scans_nonempty`, the chain structure is controlled
+end-to-end. The remaining sorrys are about characterizing what specific tokens appear
+in the filtered array — scanner dispatch analysis rather than chain-matching.
+
+The `match h_items : items` pattern in Lean 4 substitutes `items` in ALL hypotheses
+including `h_ne : items ≠ []`, so in the `| [] =>` branch, `h_ne` becomes `[] ≠ []`.
+Use `exact absurd rfl h_ne` instead of `exact absurd h_items h_ne`.
 
 **Phase I: Layer 2 — Parser acceptance (2 sorrys)**
 *Estimated: ~400-800 LOC · Risk: HIGH*
@@ -3971,7 +4011,7 @@ generalized accumulators for loop BoundInv proofs.
 
 **Critical path:** A–G (DONE) → H → I → J (7 EmitterScannability sorrys remaining)
 **Parallel track:** S completed (subsumed by Phase G Steps 9–11)
-**Current state:** 7 sorrys (all EmitterScannability.lean). Next: Phase H (body characterization, 2 sorrys).
+**Current state:** 7 sorrys (all EmitterScannability.lean). Phase H complete (signature restructuring + call site updates). Next: fill characterization sorrys (5 across emitList/emitPairList), then Phase I.
 
 ### Risk mitigation for Phase I
 
