@@ -491,11 +491,15 @@ theorem skipToContentComment_BoundInv {s₀ : ScannerState} (s : ScannerState)
     (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize) :
     BoundInv s₀ (skipToContentComment s) := by
   unfold skipToContentComment
+  simp only []
   split  -- peek? = some '#'
   · -- some '#': comment path
-    -- All paths return either s or { collectResult with comments := ... }
-    -- Both preserve BoundInv (advance/collect only move forward, field update preserves bound fields)
-    sorry
+    split  -- peekBack? or next inner match
+    <;> (split <;> first
+      | (exact fieldUpdate_BoundInv _ _
+          (collectCommentTextLoop_BoundInv s.advance "" _ (advance_BoundInv s h hend) hend)
+          rfl rfl rfl)
+      | exact h)
   · exact h
 
 /-- `consumeNewline` preserves BoundInv.
@@ -503,28 +507,85 @@ theorem skipToContentComment_BoundInv {s₀ : ScannerState} (s : ScannerState)
 theorem consumeNewline_BoundInv {s₀ : ScannerState} (s : ScannerState)
     (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize) :
     BoundInv s₀ (consumeNewline s) := by
-  -- consumeNewline does at most 2 advance steps (CR+LF) and field updates (line/col/needIndentCheck).
-  -- None of these modify input/inputEnd. advance_BoundInv handles each step.
-  sorry
+  unfold consumeNewline
+  split
+  · -- '\n': { s.advance with needIndentCheck := true }
+    exact fieldUpdate_BoundInv _ _ (advance_BoundInv s h hend) rfl rfl rfl
+  · -- '\r'
+    simp only []
+    split
+    · -- CRLF
+      have h_adv := advance_BoundInv s h hend
+      have h_ie : s.advance.inputEnd = s.advance.input.utf8ByteSize := by
+        rw [h_adv.inputEnd_eq, h_adv.input_eq]; exact hend
+      -- peek? returned some '\n', so offset < inputEnd
+      have h_lt : s.advance.offset < s.advance.inputEnd := by
+        rename_i h_peek
+        simp only [ScannerState.peek?] at h_peek
+        split at h_peek
+        · assumption
+        · cases h_peek
+      refine ⟨?_, h_adv.inputEnd_eq, h_adv.input_eq, ?_⟩
+      · -- offset_le
+        rw [h_ie]
+        exact raw_next_le_utf8ByteSize s.advance.input ⟨s.advance.offset⟩
+          h_adv.isValid (show s.advance.offset < s.advance.input.utf8ByteSize by omega)
+      · -- isValid
+        exact next_isValid s.advance.input ⟨s.advance.offset⟩ h_adv.isValid
+          (show s.advance.offset < s.advance.input.utf8ByteSize by omega)
+    · -- CR only: { s.advance with needIndentCheck := true }
+      exact fieldUpdate_BoundInv _ _ (advance_BoundInv s h hend) rfl rfl rfl
+  · -- other: s
+    exact h
 
 /-- `skipToContentWs` preserves BoundInv. -/
 theorem skipToContentWs_BoundInv {s₀ : ScannerState} (s s' : ScannerState)
     (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize)
     (hok : skipToContentWs s = .ok s') :
     BoundInv s₀ s' := by
-  -- All ok-result paths return skipSpaces s, skipWhitespace (skipSpaces s), or skipWhitespace s
-  -- Each preserves BoundInv by composition of skipSpaces_BoundInv and skipWhitespace_BoundInv
-  sorry
+  -- All .ok paths return skipSpaces s, skipWhitespace (skipSpaces s), or skipWhitespace s.
+  unfold skipToContentWs at hok
+  have h_ss := skipSpaces_BoundInv s h hend
+  have h_wsss := skipWhitespace_BoundInv _ h_ss hend
+  have h_ws := skipWhitespace_BoundInv s h hend
+  simp only [] at hok
+  -- Exhaust all branches. Every .ok path produces h_ss, h_wsss, or h_ws.
+  repeat (first | cases hok; (first | exact h_wsss | exact h_ss | exact h_ws) | split at hok | cases hok)
 
 /-- `skipToContentLoop` preserves BoundInv. -/
 theorem skipToContentLoop_BoundInv {s₀ : ScannerState} (s s' : ScannerState) (fuel : Nat)
     (h : BoundInv s₀ s) (hend : s₀.inputEnd = s₀.input.utf8ByteSize)
     (hok : skipToContentLoop s fuel = .ok s') :
     BoundInv s₀ s' := by
-  -- Induction on fuel; each step chains skipToContentWs, skipToContentComment,
-  -- consumeNewline, and (possibly) simpleKeyAllowed field update.
-  -- All sub-steps preserve BoundInv.
-  sorry
+  induction fuel generalizing s with
+  | zero => simp only [skipToContentLoop] at hok; cases hok; exact h
+  | succ n ih =>
+    simp only [skipToContentLoop] at hok
+    -- hok : (match skipToContentWs s with .error => .error | .ok s1 => ...) = .ok s'
+    split at hok
+    · cases hok  -- skipToContentWs error → contradiction
+    · -- skipToContentWs returned .ok s1
+      -- Extract the BoundInv for s1 from the split hypothesis
+      rename_i s1 h_ws
+      have h_s1 := skipToContentWs_BoundInv s s1 h hend h_ws
+      -- s2 = skipToContentComment s1
+      have h_cmt := skipToContentComment_BoundInv s1 h_s1 hend
+      -- Split on (skipToContentComment s1).peek?
+      split at hok
+      · -- peek? = some c
+        split at hok
+        · -- isLineBreakBool c → consumeNewline → recurse
+          have h_nl := consumeNewline_BoundInv _ h_cmt hend
+          split at hok
+          · -- !isInFlowSequence → { s3 with simpleKeyAllowed := true }
+            refine ih _ ?_ hok
+            exact fieldUpdate_BoundInv _ _ h_nl rfl rfl rfl
+          · -- isInFlowSequence → s3
+            exact ih _ h_nl hok
+        · -- ¬ isLineBreakBool c → .ok s2
+          cases hok; exact h_cmt
+      · -- peek? = none → .ok s2
+        cases hok; exact h_cmt
 
 /-- `skipToContent` preserves BoundInv. -/
 theorem skipToContent_BoundInv {s₀ : ScannerState} (s s' : ScannerState)
