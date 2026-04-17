@@ -5133,6 +5133,73 @@ theorem scanTag_preserves_simpleKeyStack (s : ScannerState)
   · have h := Except.ok.inj hok; subst h; dsimp only []
     simp [scanNamedTag_preserves_simpleKeyStack, advance_preserves_simpleKeyStack]
 
+/-! ### flowLevel preservation for tag/scalar sub-helpers -/
+
+theorem collectVerbatimTagLoop_preserves_flowLevel (s : ScannerState) (uri : String) (fuel : Nat) :
+    (collectVerbatimTagLoop s uri fuel).snd.snd.flowLevel = s.flowLevel := by
+  induction fuel generalizing s uri with
+  | zero => unfold collectVerbatimTagLoop; rfl
+  | succ fuel' ih =>
+    unfold collectVerbatimTagLoop
+    split
+    · simp only []; exact advance_preserves_flowLevel s
+    · split
+      · rw [ih]; exact advance_preserves_flowLevel s
+      · rfl
+    · simp only []
+
+theorem collectTagSuffixLoop_preserves_flowLevel (s : ScannerState) (suffix : String) (fuel : Nat) :
+    (collectTagSuffixLoop s suffix fuel).snd.flowLevel = s.flowLevel := by
+  induction fuel generalizing s suffix with
+  | zero => unfold collectTagSuffixLoop; rfl
+  | succ fuel' ih =>
+    unfold collectTagSuffixLoop
+    split
+    · split
+      · rw [ih]; exact advance_preserves_flowLevel s
+      · simp only []
+    · simp only []
+
+theorem collectTagHandleLoop_preserves_flowLevel (s : ScannerState) (chars : String) (fuel : Nat) :
+    (collectTagHandleLoop s chars fuel).snd.snd.flowLevel = s.flowLevel := by
+  induction fuel generalizing s chars with
+  | zero => unfold collectTagHandleLoop; rfl
+  | succ fuel' ih =>
+    unfold collectTagHandleLoop
+    split
+    · simp only []; exact advance_preserves_flowLevel s
+    · split
+      · rw [ih]; exact advance_preserves_flowLevel s
+      · simp only []
+    · simp only []
+
+theorem scanVerbatimTag_preserves_flowLevel (s : ScannerState) (startPos : YamlPos)
+    (s' : ScannerState) (hok : scanVerbatimTag s startPos = .ok s') :
+    s'.flowLevel = s.flowLevel := by
+  unfold scanVerbatimTag at hok; dsimp only [] at hok
+  split at hok
+  · exact absurd hok (by simp)
+  · split at hok
+    · exact absurd hok (by simp)
+    · have h := Except.ok.inj hok; subst h
+      simp [emitAt_preserves_flowLevel, collectVerbatimTagLoop_preserves_flowLevel,
+            advance_preserves_flowLevel]
+
+theorem scanSecondaryTag_preserves_flowLevel (s : ScannerState) (startPos : YamlPos) :
+    (scanSecondaryTag s startPos).flowLevel = s.flowLevel := by
+  unfold scanSecondaryTag
+  simp [emitAt_preserves_flowLevel, collectTagSuffixLoop_preserves_flowLevel,
+        advance_preserves_flowLevel]
+
+theorem scanNamedTag_preserves_flowLevel (s : ScannerState) (startPos : YamlPos) (inputEnd : Nat) :
+    (scanNamedTag s startPos inputEnd).flowLevel = s.flowLevel := by
+  unfold scanNamedTag
+  simp only []
+  split
+  · simp [emitAt_preserves_flowLevel, collectTagSuffixLoop_preserves_flowLevel,
+          collectTagHandleLoop_preserves_flowLevel]
+  · simp [emitAt_preserves_flowLevel, collectTagHandleLoop_preserves_flowLevel]
+
 theorem scanTag_preserves_flowLevel (s : ScannerState)
     (s' : ScannerState) (hok : scanTag s = .ok s') :
     s'.flowLevel = s.flowLevel := by
@@ -5144,11 +5211,12 @@ theorem scanTag_preserves_flowLevel (s : ScannerState)
     | error e => simp at hok
     | ok s_verb =>
       dsimp only [] at hok; have h := Except.ok.inj hok; subst h; dsimp only []
-      sorry  -- scanVerbatimTag_preserves_flowLevel
+      simp [scanVerbatimTag_preserves_flowLevel s.advance s.currentPos s_verb hv,
+            advance_preserves_flowLevel]
   · have h := Except.ok.inj hok; subst h; dsimp only []
-    sorry  -- scanSecondaryTag_preserves_flowLevel
+    simp [scanSecondaryTag_preserves_flowLevel, advance_preserves_flowLevel]
   · have h := Except.ok.inj hok; subst h; dsimp only []
-    sorry  -- scanNamedTag_preserves_flowLevel
+    simp [scanNamedTag_preserves_flowLevel, advance_preserves_flowLevel]
 
 theorem scanPlainScalar_preserves_simpleKey (s : ScannerState) (s' : ScannerState)
     (h : scanPlainScalar s = .ok s') : s'.simpleKey = s.simpleKey := by
@@ -5170,6 +5238,388 @@ theorem scanPlainScalar_preserves_simpleKeyStack (s : ScannerState) (s' : Scanne
   simp [emitAt_preserves_simpleKeyStack]
   exact collectPlainScalarLoop_preserves_simpleKeyStack s "" "" _ _ _ _ result heq
 
+/-! ### flowLevel preservation for scalar collector loops -/
+
+theorem skipBlankLinesLoop_preserves_flowLevel (s : ScannerState) (cnt fuel inputEnd : Nat) :
+    (skipBlankLinesLoop s cnt fuel inputEnd).snd.flowLevel = s.flowLevel := by
+  induction fuel generalizing s cnt with
+  | zero => unfold skipBlankLinesLoop; rfl
+  | succ fuel' ih =>
+    unfold skipBlankLinesLoop
+    cases h_peek : (skipSpaces s).peek? with
+    | none => simp [h_peek]
+    | some c =>
+      simp [h_peek]
+      cases h_lb : isLineBreakBool c with
+      | false => simp []
+      | true =>
+        simp []
+        have h_sp := skipSpaces_preserves_flowLevel s
+        have h_cn := consumeNewline_preserves_flowLevel (skipSpaces s)
+        rw [ih, h_cn, h_sp]
+
+theorem foldQuotedNewlinesLoop_preserves_flowLevel (s : ScannerState) (emptyCount fuel : Nat) :
+    (foldQuotedNewlinesLoop s emptyCount fuel).fst.flowLevel = s.flowLevel := by
+  induction fuel generalizing s emptyCount with
+  | zero => unfold foldQuotedNewlinesLoop; rfl
+  | succ fuel' ih =>
+    unfold foldQuotedNewlinesLoop
+    cases h_peek : (skipSpaces s).peek? with
+    | none => simp [h_peek]
+    | some c =>
+      simp [h_peek]
+      cases h_lb : isLineBreakBool c with
+      | false => simp []
+      | true =>
+        simp []
+        have h_sp := skipSpaces_preserves_flowLevel s
+        have h_cn := consumeNewline_preserves_flowLevel (skipSpaces s)
+        rw [ih, h_cn, h_sp]
+
+theorem foldQuotedNewlines_preserves_flowLevel (s : ScannerState) (s' : ScannerState) (content : String)
+    (h : foldQuotedNewlines s = .ok (content, s')) :
+    s'.flowLevel = s.flowLevel := by
+  unfold foldQuotedNewlines at h
+  simp only [bind, Except.bind, pure] at h
+  have h_cn := consumeNewline_preserves_flowLevel s
+  let fuel := s.inputEnd - (consumeNewline s).offset + 1
+  have h_fold := foldQuotedNewlinesLoop_preserves_flowLevel (consumeNewline s) 0 fuel
+  have h_sp := skipSpaces_preserves_flowLevel (foldQuotedNewlinesLoop (consumeNewline s) 0 fuel).fst
+  have h_sw := skipWhitespace_preserves_flowLevel (skipSpaces (foldQuotedNewlinesLoop (consumeNewline s) 0 fuel).fst)
+  split at h <;> try contradiction
+  · -- inFlow check branch
+    split at h <;> try contradiction
+    split at h <;> try contradiction
+    split at h
+    · injection h with heq; cases heq; rw [h_sw, h_sp, h_fold, h_cn]
+    · injection h with heq; cases heq; rw [h_sw, h_sp, h_fold, h_cn]
+  · -- no inFlow check
+    split at h <;> try contradiction
+    split at h
+    · injection h with heq; cases heq; rw [h_sw, h_sp, h_fold, h_cn]
+    · injection h with heq; cases heq; rw [h_sw, h_sp, h_fold, h_cn]
+
+theorem collectHexDigitsLoop_preserves_flowLevel (s : ScannerState) (hex : String) (n : Nat) :
+    (collectHexDigitsLoop s hex n).snd.flowLevel = s.flowLevel := by
+  induction n generalizing s hex with
+  | zero => unfold collectHexDigitsLoop; rfl
+  | succ n' ih =>
+    unfold collectHexDigitsLoop
+    cases h_peek : s.peek? with
+    | none => simp []
+    | some c =>
+      simp []
+      split
+      · have h_adv := advance_preserves_flowLevel s
+        rw [ih, h_adv]
+      · rfl
+
+theorem parseHexEscape_preserves_flowLevel (s : ScannerState) (n : Nat) (ch : Char) (s' : ScannerState)
+    (h : parseHexEscape s n = .ok (ch, s')) :
+    s'.flowLevel = s.flowLevel := by
+  unfold parseHexEscape at h
+  simp only [] at h
+  have h_collect := collectHexDigitsLoop_preserves_flowLevel s "" n
+  split at h <;> try contradiction
+  split at h <;> try contradiction
+  injection h with h_eq; cases h_eq
+  rw [h_collect]
+
+theorem processEscape_preserves_flowLevel (s : ScannerState) (ch : Char) (s' : ScannerState)
+    (h : processEscape s = .ok (ch, s')) :
+    s'.flowLevel = s.flowLevel := by
+  unfold processEscape at h
+  simp only [] at h
+  split at h <;> try contradiction
+  repeat (split at h)
+  all_goals (
+    first
+    | (injection h with h_eq; cases h_eq; exact advance_preserves_flowLevel s)
+    | (have h_adv := advance_preserves_flowLevel s
+       have h_hex := parseHexEscape_preserves_flowLevel s.advance _ ch s' h
+       rw [h_hex, h_adv])
+    | contradiction
+  )
+
+theorem collectPlainScalarLoop_preserves_flowLevel (s : ScannerState) (content lastLine : String)
+    (fuel : Nat) (inFlow : Bool) (contentIndent inputEnd : Nat) :
+    ∀ result, collectPlainScalarLoop s content lastLine fuel inFlow contentIndent inputEnd = .ok result →
+    result.state.flowLevel = s.flowLevel := by
+  intro result h
+  induction fuel generalizing s content lastLine with
+  | zero =>
+    unfold collectPlainScalarLoop at h
+    injection h with h_eq; cases h_eq; rfl
+  | succ fuel' ih =>
+    unfold collectPlainScalarLoop at h
+    split at h
+    · -- peek = none
+      injection h with h_eq; cases h_eq; rfl
+    · -- peek = some c
+      rename_i c
+      split at h
+      · -- collectPlainScalar_terminates? = some → state = s
+        rename_i hterm
+        injection h with h_eq; cases h_eq
+        rw [ScanHelpers.collectPlainScalar_terminates?_state _ _ _ _ _ _ hterm]
+      · -- collectPlainScalar_terminates? = none → continue
+        split at h
+        · -- isLineBreak c
+          split at h
+          · -- inFlow
+            simp only [bind, Except.bind] at h
+            split at h <;> try contradiction
+            rename_i fold_result heq
+            cases fold_result with
+            | mk content_fold s_fold =>
+              have h_fold := foldQuotedNewlines_preserves_flowLevel s s_fold content_fold heq
+              split at h
+              · injection h with h_eq; cases h_eq; rfl  -- '#' → state = s
+              · -- recurse with content-length check
+                dsimp only [] at h
+                generalize h_loop : collectPlainScalarLoop s_fold (content ++ content_fold) "" fuel' inFlow contentIndent inputEnd = cont_result at h
+                cases cont_result with
+                | ok inner_result =>
+                  dsimp only [] at h
+                  split at h
+                  · injection h with h_eq; cases h_eq; rfl
+                  · have h_eq := Except.ok.inj h; subst h_eq
+                    rw [ih s_fold (content ++ content_fold) "" h_loop, h_fold]
+                | error e => simp at h
+          · -- !inFlow: block line break
+            split at h
+            · -- _handleBlockLineBreak = none → terminate
+              injection h with h_eq; cases h_eq; rfl
+            · -- _handleBlockLineBreak = some → recurse
+              rename_i content' s' hblk
+              have hprop : s'.flowLevel = s.flowLevel := by
+                unfold collectPlainScalar_handleBlockLineBreak at hblk
+                simp only [] at hblk
+                split at hblk <;> try contradiction
+                split at hblk <;> try contradiction
+                have := Prod.mk.inj (Option.some.inj hblk)
+                rw [← this.2, skipSpaces_preserves_flowLevel,
+                    skipBlankLinesLoop_preserves_flowLevel, consumeNewline_preserves_flowLevel]
+              split at h
+              · injection h with h_eq; cases h_eq; rfl  -- '#' → state = s
+              · dsimp only [] at h
+                generalize h_loop : collectPlainScalarLoop s' content' "" fuel' inFlow contentIndent inputEnd = cont_result at h
+                cases cont_result with
+                | ok inner_result =>
+                  dsimp only [] at h
+                  split at h
+                  · injection h with h_eq; cases h_eq; rfl
+                  · have h_eq := Except.ok.inj h; subst h_eq
+                    rw [ih _ _ _ h_loop, hprop]
+                | error e => simp at h
+        · split at h
+          · -- isWhiteSpace c
+            have h_adv := advance_preserves_flowLevel s
+            rw [ih s.advance content (lastLine.push _) h, h_adv]
+          · -- regular content
+            split at h
+            · -- !isPlainSafe → terminate
+              injection h with h_eq; cases h_eq; rfl
+            · -- plainSafe → recurse
+              simp only [] at h
+              have h_adv := advance_preserves_flowLevel s
+              rw [ih s.advance _ "" h, h_adv]
+
+theorem collectDoubleQuotedLoop_preserves_flowLevel (s : ScannerState) (content : String)
+    (fuel : Nat) (startPos : YamlPos) (inFlow : Bool) (currentIndent : Int) (inputEnd : Nat) :
+    ∀ result, collectDoubleQuotedLoop s content fuel startPos inFlow currentIndent inputEnd = .ok result →
+    result.snd.flowLevel = s.flowLevel := by
+  intro result h
+  induction fuel generalizing s content with
+  | zero =>
+    unfold collectDoubleQuotedLoop at h
+    contradiction
+  | succ fuel' ih =>
+    unfold collectDoubleQuotedLoop at h
+    split at h
+    · -- none case
+      contradiction
+    · -- some '"' case (closing quote)
+      injection h with h_eq; cases h_eq
+      exact advance_preserves_flowLevel s
+    · -- some '\\' case (escape sequence)
+      simp only [] at h
+      split at h <;> try contradiction
+      -- some c after backslash
+      split at h
+      · -- isLineBreak c (escaped line break)
+        have h_cn := consumeNewline_preserves_flowLevel s.advance
+        have h_sw := skipWhitespace_preserves_flowLevel (consumeNewline s.advance)
+        have h_adv := advance_preserves_flowLevel s
+        rw [ih _ _ h, h_sw, h_cn, h_adv]
+      · -- regular escape sequence
+        simp only [bind, Except.bind] at h
+        split at h <;> try contradiction
+        rename_i escape_result heq
+        cases escape_result with
+        | mk ch s_after_escape =>
+          have h_proc := processEscape_preserves_flowLevel s.advance ch s_after_escape heq
+          have h_adv := advance_preserves_flowLevel s
+          rw [ih _ _ h, h_proc, h_adv]
+    · -- some c case (regular character)
+      split at h
+      · -- isLineBreak c
+        simp only [bind, Except.bind] at h
+        split at h <;> try contradiction
+        rename_i fold_result heq
+        cases fold_result with
+        | mk folded s_fold =>
+          have h_fold := foldQuotedNewlines_preserves_flowLevel s s_fold folded heq
+          split at h <;> try contradiction
+          split at h <;> try contradiction
+          split at h <;> try contradiction
+          rw [ih s_fold (trimTrailingWS content ++ folded) h, h_fold]
+      · -- regular character
+        split at h <;> try contradiction  -- isNbJsonBool check
+        have h_adv := advance_preserves_flowLevel s
+        rw [ih _ _ h, h_adv]
+
+theorem collectSingleQuotedLoop_preserves_flowLevel (s : ScannerState) (content : String)
+    (fuel : Nat) (startPos : YamlPos) (inFlow : Bool) (currentIndent : Int) (inputEnd : Nat) :
+    ∀ result, collectSingleQuotedLoop s content fuel startPos inFlow currentIndent inputEnd = .ok result →
+    result.snd.flowLevel = s.flowLevel := by
+  intro result h
+  induction fuel generalizing s content with
+  | zero =>
+    unfold collectSingleQuotedLoop at h
+    contradiction
+  | succ fuel' ih =>
+    unfold collectSingleQuotedLoop at h
+    split at h
+    · -- none case
+      contradiction
+    · -- some '\'' case
+      simp only [] at h
+      split at h
+      · -- escaped quote: '\''\''
+        have h_adv1 := advance_preserves_flowLevel s
+        have h_adv2 := advance_preserves_flowLevel s.advance
+        rw [ih _ _ h, h_adv2, h_adv1]
+      · -- closing quote
+        injection h with h_eq; cases h_eq
+        exact advance_preserves_flowLevel s
+    · -- some c case (not quote)
+      split at h
+      · -- isLineBreak c = true
+        simp only [bind, Except.bind] at h
+        split at h <;> try contradiction
+        rename_i fold_result heq
+        cases fold_result with
+        | mk folded s_fold =>
+          have h_fold := foldQuotedNewlines_preserves_flowLevel s s_fold folded heq
+          split at h <;> try contradiction  -- atDocumentStart check
+          split at h <;> try contradiction  -- atDocumentEnd check
+          split at h <;> try contradiction  -- col ≤ currentIndent check
+          rw [ih s_fold _ h, h_fold]
+      · -- isLineBreak c = false, regular character
+        split at h <;> try contradiction  -- isNbJsonBool check
+        have h_adv := advance_preserves_flowLevel s
+        rw [ih s.advance _ h, h_adv]
+
+/-! ### flowLevel preservation for block scalar sub-helpers -/
+
+theorem consumeExactSpaces_preserves_flowLevel (s : ScannerState) (count : Nat) :
+    (consumeExactSpaces s count).snd.flowLevel = s.flowLevel := by
+  induction count generalizing s with
+  | zero => unfold consumeExactSpaces; rfl
+  | succ count' ih =>
+    unfold consumeExactSpaces; split
+    · simp only []; rw [ih]; exact advance_preserves_flowLevel s
+    · rfl
+
+theorem parseBlockHeaderLoop_preserves_flowLevel (s : ScannerState) (chomp : ChompStyle)
+    (offset : Option Nat) (fuel : Nat) :
+    (parseBlockHeaderLoop s chomp offset fuel).snd.snd.flowLevel = s.flowLevel := by
+  induction fuel generalizing s chomp offset with
+  | zero => unfold parseBlockHeaderLoop; rfl
+  | succ fuel' ih =>
+    unfold parseBlockHeaderLoop; split
+    · rw [ih]; exact advance_preserves_flowLevel s
+    · rw [ih]; exact advance_preserves_flowLevel s
+    · split
+      · rw [ih]; exact advance_preserves_flowLevel s
+      · rfl
+    · rfl
+
+theorem collectLineContentLoop_preserves_flowLevel (s : ScannerState) (content : String) (fuel : Nat) :
+    (collectLineContentLoop s content fuel).snd.flowLevel = s.flowLevel := by
+  induction fuel generalizing s content with
+  | zero => unfold collectLineContentLoop; rfl
+  | succ fuel' ih =>
+    unfold collectLineContentLoop
+    split
+    · split
+      · rfl
+      · rw [ih]; exact advance_preserves_flowLevel s
+    · rfl
+
+theorem collectBlockScalarLoop_preserves_flowLevel (s : ScannerState) (rawContent : String)
+    (fuel : Nat) (contentIndent : Nat) (inputEnd : Nat) :
+    (collectBlockScalarLoop s rawContent fuel contentIndent inputEnd).snd.flowLevel = s.flowLevel := by
+  induction fuel generalizing s rawContent with
+  | zero => unfold collectBlockScalarLoop; rfl
+  | succ fuel' ih =>
+    unfold collectBlockScalarLoop
+    split
+    · rfl
+    · simp only []
+      split
+      · exact consumeExactSpaces_preserves_flowLevel s contentIndent
+      · split
+        · rw [ih, consumeNewline_preserves_flowLevel, consumeExactSpaces_preserves_flowLevel]
+        · split
+          · rfl
+          · split
+            · split
+              · rw [ih, consumeNewline_preserves_flowLevel,
+                    collectLineContentLoop_preserves_flowLevel, consumeExactSpaces_preserves_flowLevel]
+              · rw [ih, collectLineContentLoop_preserves_flowLevel, consumeExactSpaces_preserves_flowLevel]
+            · rw [collectLineContentLoop_preserves_flowLevel, consumeExactSpaces_preserves_flowLevel]
+
+theorem scanBlockScalarSkipComment_preserves_flowLevel (s : ScannerState) :
+    (scanBlockScalarSkipComment s).flowLevel = s.flowLevel := by
+  unfold scanBlockScalarSkipComment
+  split
+  · -- some '#'
+    split
+    · -- peekBack? = some c
+      dsimp only []
+      split
+      · simp only []
+        rw [collectCommentTextLoop_preserves_flowLevel, advance_preserves_flowLevel]
+      · rfl
+    · -- peekBack? = none
+      rfl
+  · rfl
+
+theorem scanBlockScalarConsumeNewline_preserves_flowLevel (s s' : ScannerState)
+    (h : scanBlockScalarConsumeNewline s = .ok s') : s'.flowLevel = s.flowLevel := by
+  unfold scanBlockScalarConsumeNewline at h
+  split at h
+  · split at h
+    · injection h with h_eq; subst h_eq; exact consumeNewline_preserves_flowLevel s
+    · split at h
+      · injection h with h_eq; subst h_eq; rfl
+      · contradiction
+  · injection h with h_eq; subst h_eq; rfl
+
+theorem scanBlockScalarBody_preserves_flowLevel (s_orig s_nl : ScannerState)
+    (chomp : ChompStyle) (expl : Option Nat) (isLit : Bool) (startPos : YamlPos) (s' : ScannerState)
+    (h_fl : s_nl.flowLevel = s_orig.flowLevel)
+    (h : scanBlockScalarBody s_orig s_nl chomp expl isLit startPos = .ok s') :
+    s'.flowLevel = s_orig.flowLevel := by
+  unfold scanBlockScalarBody at h
+  simp only [] at h
+  repeat (any_goals (split at h))
+  all_goals (try contradiction)
+  all_goals (simp only [Except.ok.injEq] at h; subst h; dsimp only [])
+  all_goals rw [emitAt_preserves_flowLevel, collectBlockScalarLoop_preserves_flowLevel, h_fl]
+
 theorem scanPlainScalar_preserves_flowLevel (s : ScannerState) (s' : ScannerState)
     (h : scanPlainScalar s = .ok s') : s'.flowLevel = s.flowLevel := by
   unfold scanPlainScalar at h
@@ -5178,7 +5628,7 @@ theorem scanPlainScalar_preserves_flowLevel (s : ScannerState) (s' : ScannerStat
   rename_i result heq
   simp only [Except.ok.injEq] at h; subst h
   simp [emitAt_preserves_flowLevel]
-  sorry  -- collectPlainScalarLoop_preserves_flowLevel
+  exact collectPlainScalarLoop_preserves_flowLevel s "" "" _ _ _ _ result heq
 
 theorem scanDoubleQuoted_preserves_simpleKey (s : ScannerState) (s' : ScannerState)
     (h : scanDoubleQuoted s = .ok s') : s'.simpleKey = s.simpleKey := by
@@ -5224,10 +5674,12 @@ theorem scanDoubleQuoted_preserves_flowLevel (s : ScannerState) (s' : ScannerSta
   · split at h <;> try contradiction
     simp only [Except.ok.injEq] at h; subst h
     simp [emitAt_preserves_flowLevel]
-    sorry  -- collectDoubleQuotedLoop_preserves_flowLevel
+    have := collectDoubleQuotedLoop_preserves_flowLevel s.advance "" _ _ _ _ _ result heq
+    rw [this, advance_preserves_flowLevel]
   · simp only [Except.ok.injEq] at h; subst h
     simp [emitAt_preserves_flowLevel]
-    sorry  -- collectDoubleQuotedLoop_preserves_flowLevel
+    have := collectDoubleQuotedLoop_preserves_flowLevel s.advance "" _ _ _ _ _ result heq
+    rw [this, advance_preserves_flowLevel]
 
 theorem scanSingleQuoted_preserves_simpleKey (s : ScannerState) (s' : ScannerState)
     (h : scanSingleQuoted s = .ok s') : s'.simpleKey = s.simpleKey := by
@@ -5273,14 +5725,25 @@ theorem scanSingleQuoted_preserves_flowLevel (s : ScannerState) (s' : ScannerSta
   · split at h <;> try contradiction
     simp only [Except.ok.injEq] at h; subst h
     simp [emitAt_preserves_flowLevel]
-    sorry  -- collectSingleQuotedLoop_preserves_flowLevel
+    have := collectSingleQuotedLoop_preserves_flowLevel s.advance "" _ _ _ _ _ result heq
+    rw [this, advance_preserves_flowLevel]
   · simp only [Except.ok.injEq] at h; subst h
     simp [emitAt_preserves_flowLevel]
-    sorry  -- collectSingleQuotedLoop_preserves_flowLevel
+    have := collectSingleQuotedLoop_preserves_flowLevel s.advance "" _ _ _ _ _ result heq
+    rw [this, advance_preserves_flowLevel]
 
 theorem scanBlockScalar_preserves_flowLevel (s : ScannerState) (s' : ScannerState)
     (h : scanBlockScalar s = .ok s') : s'.flowLevel = s.flowLevel := by
-  sorry  -- Complex proof involving multiple helpers
+  unfold scanBlockScalar at h
+  simp only [] at h
+  split at h
+  · contradiction
+  · exact scanBlockScalarBody_preserves_flowLevel s _ _ _ _ _ s'
+      (by rw [scanBlockScalarConsumeNewline_preserves_flowLevel _ _ (by assumption),
+              scanBlockScalarSkipComment_preserves_flowLevel,
+              skipWhitespace_preserves_flowLevel,
+              parseBlockHeaderLoop_preserves_flowLevel,
+              advance_preserves_flowLevel]) h
 
 -- Category 3: Flow open — simpleKey cleared, pushed onto stack
 
