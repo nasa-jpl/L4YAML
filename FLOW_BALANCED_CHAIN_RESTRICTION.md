@@ -580,7 +580,21 @@ induction requires careful do-notation desugaring.
 
 ***Step 9: Accomplishments***
 
+Eliminated all 4 sorry'd `BoundInv` preprocessing lemmas in ScannerBound.lean (22 → 18 sorrys):
+
+1. **`skipToContentComment_BoundInv`**: Unfold + `split` through `peek?`/`peekBack?`/`if commentOk` tree. The `if`/`||`/`match` nesting required `simp only []; split <;> split <;> first | exact ... | exact h` to handle both `commentOk` branches uniformly. Used `fieldUpdate_BoundInv` for the `{... with comments := ...}` struct update on the `collectCommentTextLoop` result.
+
+2. **`consumeNewline_BoundInv`**: Three-way split (`'\n'`, `'\r'`, other). The `'\n'` and CR-only cases use `fieldUpdate_BoundInv _ _ (advance_BoundInv s h hend) rfl rfl rfl`. The CRLF case (`'\r'` + `'\n'`) was the hardest — the offset is set to `(String.Pos.Raw.next s.advance.input ⟨s.advance.offset⟩).byteIdx` directly (not via `advance`), so needed to extract `offset < inputEnd` from the inner `peek?` match via `simp only [ScannerState.peek?] at h_peek; split at h_peek`, then apply `raw_next_le_utf8ByteSize` and `next_isValid` directly with `show` coercions.
+
+3. **`skipToContentWs_BoundInv`**: Pre-computed all three possible BoundInv results (`h_ss`, `h_wsss`, `h_ws`), then used a compact `repeat (first | cases hok; (first | exact h_wsss | exact h_ss | exact h_ws) | split at hok | cases hok)` to exhaustively split the 9+ branches of the `if`/`match` tree and close each with the appropriate pre-computed result.
+
+4. **`skipToContentLoop_BoundInv`**: Fuel induction chaining `skipToContentWs_BoundInv`, `skipToContentComment_BoundInv`, and `consumeNewline_BoundInv`. The `!isInFlowSequence` branch needed `refine ih _ ?_ hok; exact fieldUpdate_BoundInv ...` instead of inline application to avoid unification mismatch between the struct-update and the original state.
+
 ***Step 9: Reflections***
+
+- **`repeat (first | cases hok; ... | split at hok | cases hok)` is powerful for Except-returning functions with many branches**: When every `.ok` path returns one of a small set of known results, pre-computing BoundInv for each and using this pattern eliminates complex nested `split`/`cases` trees. This approach auto-exhausts all branches without manually naming each one.
+- **CRLF case needs special treatment**: Unlike other cases that use `advance_BoundInv`, the CRLF path sets `offset` directly via `String.Pos.Raw.next`, bypassing `advance`. This requires manual application of `raw_next_le_utf8ByteSize` and `next_isValid` with explicit proof that `offset < inputEnd` (extracted from the `peek?` split hypothesis).
+- **`refine ih _ ?_ hok` vs `exact ih _ (...) hok`**: When `fieldUpdate_BoundInv _ _ h rfl rfl rfl` unifies the two state arguments as identical (since `rfl` forces them equal), the resulting state in `hok` doesn't match (struct-update vs original). Using `refine` with `?_` defers the BoundInv argument, letting Lean unify `hok` first.
 
 ## Step 10: Eliminate ScannerBound sub-scanner BoundInv sorrys (8 sorrys)
 
