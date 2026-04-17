@@ -8875,7 +8875,7 @@ theorem scanFiltered_emitSeq_nonempty_structure
         ((∃ c s, tokens[k + 1]!.val = .scalar c s) ∨
          tokens[k + 1]!.val = .flowSequenceStart ∨
          tokens[k + 1]!.val = .flowMappingStart)) ∧
-    L4YAML.Proofs.ParserGrammable.ParseNodeFlowSeqOk tokens (tokens.size - 2) (4 * tokens.size + 4) := by
+    L4YAML.Proofs.ParserGrammable.ParseNodeFlowSeqOk tokens (tokens.size - 2) (4 * tokens.size + 4) 2 := by
   -- Step 1: Boundary tokens from scanFiltered_boundary_tokens
   obtain ⟨h_sz2, h_t0, h_tlast⟩ := scanFiltered_boundary_tokens _ _ h_scan
   -- ═══ Chain replay: reconstruct s₁ (after '['), s₂ (after body), s₃ (after ']') ═══
@@ -9067,7 +9067,7 @@ theorem scanFiltered_emitSeq_nonempty_structure
     exact ⟨by omega,
            by rw [h_tok_body (k+1) (by omega)]; exact h_next_cs (by omega)⟩
   have h_pnok : L4YAML.Proofs.ParserGrammable.ParseNodeFlowSeqOk
-      tokens (tokens.size - 2) (4 * tokens.size + 4) := sorry
+      tokens (tokens.size - 2) (4 * tokens.size + 4) 2 := sorry
   exact ⟨h_sz5, h_t0, h_tlast, h_t1, h_tpe, h_content0, h_fe_pattern, h_pnok⟩
 
 /-- Token structure of `scanFiltered ("{" ++ emitPairList pairs ++ "}")` for non-empty pairs.
@@ -9089,7 +9089,7 @@ theorem scanFiltered_emitMap_nonempty_structure
         tokens[k]!.val = .flowEntry →
         flowBracketBalance tokens 2 k = 0 →
         k + 1 ≤ tokens.size - 2 ∧ tokens[k + 1]!.val = .key) ∧
-    L4YAML.Proofs.ParserGrammable.ParseEntryFlowMapOk tokens (tokens.size - 2) (4 * tokens.size + 4) := by
+    L4YAML.Proofs.ParserGrammable.ParseEntryFlowMapOk tokens (tokens.size - 2) (4 * tokens.size + 4) 2 := by
   -- Step 1: Boundary tokens from scanFiltered_boundary_tokens
   obtain ⟨h_sz2, h_t0, h_tlast⟩ := scanFiltered_boundary_tokens _ _ h_scan
   -- ═══ Chain replay: reconstruct s₁ (after '{'), s₂ (after body), s₃ (after '}') ═══
@@ -9252,7 +9252,7 @@ theorem scanFiltered_emitMap_nonempty_structure
     obtain ⟨h_next_lt, h_next_key⟩ := h_body_fe_next k (by omega) h_k_lt h_fe h_depth'
     exact ⟨by omega, by rw [h_tok_body (k+1) (by omega)]; exact h_next_key (by omega)⟩
   have h_pnok : L4YAML.Proofs.ParserGrammable.ParseEntryFlowMapOk
-      tokens (tokens.size - 2) (4 * tokens.size + 4) := sorry
+      tokens (tokens.size - 2) (4 * tokens.size + 4) 2 := sorry
   exact ⟨h_sz7, h_t0, h_tlast, h_t1, h_tpe, h_t2_key, h_fe_pattern, h_pnok⟩
 
 /-- Combined scanner characterization and parser acceptance for flow sequences.
@@ -9350,12 +9350,12 @@ theorem parseStream_emitSequence (style : CollectionStyle) (items : Array YamlVa
     have h_ps_mid_pos : ps_mid.pos = 2 := by simp [ps_mid, ps1, ParseState.advance]
     -- Apply parseFlowSequenceLoop_emitter_ok with loop fuel = 4*N+2
     have h_endPos : tokens.size - 2 < tokens.size := by omega
-    have h_loop_fuel : 4 * tokens.size + 2 ≥ (tokens.size - 2) - ps_mid.pos := by
+    have h_loop_fuel : 4 * tokens.size + 2 > (tokens.size - 2) - ps_mid.pos := by
       simp only [h_ps_mid_pos]; omega
     have h_loop_pos : ps_mid.pos ≤ tokens.size - 2 := by
       simp only [h_ps_mid_pos]; omega
     have h_pnok_adj : L4YAML.Proofs.ParserGrammable.ParseNodeFlowSeqOk
-        ps_mid.tokens (tokens.size - 2) (4 * tokens.size + 2) := by
+        ps_mid.tokens (tokens.size - 2) (4 * tokens.size + 2) 2 := by
       rw [h_ps_mid_tok]; exact h_pnok.mono (by omega)
     have h_end_tok_adj : ps_mid.tokens[tokens.size - 2]!.val = .flowSequenceEnd := by
       rw [h_ps_mid_tok]; exact h_tpe
@@ -9558,12 +9558,12 @@ theorem parseStream_emitMapping (style : CollectionStyle) (pairs : Array (YamlVa
     have h_ps_mid_pos : ps_mid.pos = 2 := by simp [ps_mid, ps1, ParseState.advance]
     -- Apply parseFlowMappingLoop_emitter_ok with loop fuel = 4*N+2
     have h_endPos : tokens.size - 2 < tokens.size := by omega
-    have h_loop_fuel : 4 * tokens.size + 2 ≥ (tokens.size - 2) - ps_mid.pos := by
+    have h_loop_fuel : 4 * tokens.size + 2 > (tokens.size - 2) - ps_mid.pos := by
       simp only [h_ps_mid_pos]; omega
     have h_loop_pos : ps_mid.pos ≤ tokens.size - 2 := by
       simp only [h_ps_mid_pos]; omega
     have h_entry_adj : L4YAML.Proofs.ParserGrammable.ParseEntryFlowMapOk
-        ps_mid.tokens (tokens.size - 2) (4 * tokens.size + 2) := by
+        ps_mid.tokens (tokens.size - 2) (4 * tokens.size + 2) 2 := by
       rw [h_ps_mid_tok]; exact h_entry_ok.mono (by omega)
     have h_end_tok_adj : ps_mid.tokens[tokens.size - 2]!.val = .flowMappingEnd := by
       rw [h_ps_mid_tok]; exact h_tpe
