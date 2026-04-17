@@ -617,8 +617,7 @@ theorem unwindIndents_BoundInv {s₀ : ScannerState} (s : ScannerState) (col : I
 /-! ## §5c  Sub-Scanner BoundInv Preservation
 
 BoundInv lemmas for individual scanner functions called by the structural
-and content dispatchers.  Simple fuel-based loops are proven; complex
-scanners with many sub-operations are sorry'd for now. -/
+and content dispatchers.  All proofs complete — no sorry. -/
 
 -- Simple fuel-based loops (provable)
 
@@ -1572,10 +1571,34 @@ theorem preprocess_preserves_bound (s : ScannerState) (sp : ScannerState) (c : C
   · cases hok  -- error
   · rename_i s1 h_stc
     have h_bi1 := skipToContent_BoundInv s s1 h_bi hend h_stc
-    -- The rest is pure: if !hasMore → none, else conditional unwind → error check → saveSimpleKey → peek?
-    -- All paths either error (eliminated by hok : ... = .ok (some ...)) or return (saveSimpleKey s2, c)
-    -- where s2 has BoundInv s s2 (via unwindIndents_BoundInv + fieldUpdate_BoundInv)
-    sorry
+    -- After skipToContent:
+    --   if !hasMore → none, conditional unwind → error check → saveSimpleKey → peek?
+    -- Split on !hasMore
+    split at hok
+    · cases hok  -- none ≠ some
+    · -- hasMore, split on unwind condition (!inFlow && needIndentCheck)
+      split at hok
+      · -- unwind branch: s2 = { unwindIndents s1 col with needIndentCheck := false }
+        have h_uw := unwindIndents_BoundInv s1 s1.col h_bi1
+        have h_bi2 : BoundInv s { unwindIndents s1 s1.col with needIndentCheck := false } :=
+          ⟨h_uw.offset_le, h_uw.inputEnd_eq, h_uw.input_eq, h_uw.isValid⟩
+        -- Split on error check (indents.size < savedIndentSize && ...)
+        split at hok
+        · cases hok  -- error
+        · -- saveSimpleKey + peek?
+          split at hok
+          · cases hok  -- none ≠ some
+          · simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq] at hok
+            obtain ⟨rfl, rfl⟩ := hok
+            exact saveSimpleKey_BoundInv _ h_bi2
+      · -- no-unwind branch: s2 = s1
+        split at hok
+        · cases hok  -- error
+        · split at hok
+          · cases hok  -- none ≠ some
+          · simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq] at hok
+            obtain ⟨rfl, rfl⟩ := hok
+            exact saveSimpleKey_BoundInv _ h_bi1
 
 -- Structural dispatch preserves BoundInv.
 -- Dispatches to scanDocumentStart, scanDocumentEnd, or scanDirective.
@@ -1588,35 +1611,51 @@ theorem dispatchStructural_preserves_bound (s sp s' : ScannerState) (c : Char)
     rw [h_bi.inputEnd_eq, h_bi.input_eq]; exact hend
   unfold scanNextToken_dispatchStructural at hok
   simp only [bind, Except.bind, pure, Pure.pure, Except.pure, Bind.bind] at hok
-  -- Macro: close branches that give scanDocumentStart/End/Directive or error/none
-  -- Uses sorry fallback for any remaining branches from unresolved join points.
-  repeat split at hok
-  -- After exhaustive splitting, each goal's hok is one of:
-  -- .error e = .ok (some s')    → cases hok
-  -- .ok none = .ok (some s')    → cases hok (injection: none ≠ some)
-  -- .ok (some X) = .ok (some s') → simp; subst; apply sub-scanner BoundInv
-  all_goals first
-    | cases hok
-    | contradiction
-    | (simp only [Except.ok.injEq, Option.some.injEq] at hok; subst hok
-       exact BoundInv.trans h_bi (scanDocumentStart_BoundInv sp h_refl h_hend))
-    | (simp only [Except.ok.injEq, Option.some.injEq] at hok; subst hok
-       first
-       | exact BoundInv.trans h_bi (scanDocumentEnd_BoundInv sp _ h_refl h_hend ‹_›)
-       | exact BoundInv.trans h_bi (scanDirective_BoundInv sp _ h_refl h_hend ‹_›))
-    | (-- Fallback for join-point residues: try simp to reduce, then subst
-       simp at hok
-       first
-       | (obtain rfl := hok
-          first
-          | exact BoundInv.trans h_bi (scanDocumentStart_BoundInv sp h_refl h_hend)
-          | exact BoundInv.trans h_bi (scanDocumentEnd_BoundInv sp _ h_refl h_hend ‹_›)
-          | exact BoundInv.trans h_bi (scanDirective_BoundInv sp _ h_refl h_hend ‹_›))
-       | (obtain ⟨rfl, rfl⟩ := hok
-          first
-          | exact BoundInv.trans h_bi (scanDocumentEnd_BoundInv sp _ h_refl h_hend ‹_›)
-          | exact BoundInv.trans h_bi (scanDirective_BoundInv sp _ h_refl h_hend ‹_›))
-       | sorry)
+  -- Step through each if/match in sequence
+  -- 1. if s.inFlow && s.currentIndent >= 0 && col <= currentIndent
+  split at hok
+  · -- flow indent check true → if c != ']' && c != '}'
+    split at hok
+    · cases hok  -- error
+    · -- c is ']' or '}', fall through
+      -- 2. if col == 0 && inFlow && (docStart || docEnd)
+      split at hok
+      · cases hok  -- error
+      · -- 3. if col == 0 && atDocumentStart
+        split at hok
+        · simp only [Except.ok.injEq, Option.some.injEq] at hok; subst hok
+          exact BoundInv.trans h_bi (scanDocumentStart_BoundInv sp h_refl h_hend)
+        · -- 4. if col == 0 && atDocumentEnd
+          split at hok
+          · -- scanDocumentEnd bind
+            split at hok
+            · cases hok  -- error from scanDocumentEnd
+            · simp only [Except.ok.injEq, Option.some.injEq] at hok; subst hok
+              exact BoundInv.trans h_bi (scanDocumentEnd_BoundInv sp _ h_refl h_hend ‹_›)
+          · -- 5. if c == '%' && col == 0
+            split at hok
+            · split at hok
+              · cases hok  -- error from scanDirective
+              · simp only [Except.ok.injEq, Option.some.injEq] at hok; subst hok
+                exact BoundInv.trans h_bi (scanDirective_BoundInv sp _ h_refl h_hend ‹_›)
+            · cases hok  -- return none
+  · -- flow indent check false
+    split at hok
+    · cases hok  -- error
+    · split at hok
+      · simp only [Except.ok.injEq, Option.some.injEq] at hok; subst hok
+        exact BoundInv.trans h_bi (scanDocumentStart_BoundInv sp h_refl h_hend)
+      · split at hok
+        · split at hok
+          · cases hok
+          · simp only [Except.ok.injEq, Option.some.injEq] at hok; subst hok
+            exact BoundInv.trans h_bi (scanDocumentEnd_BoundInv sp _ h_refl h_hend ‹_›)
+        · split at hok
+          · split at hok
+            · cases hok
+            · simp only [Except.ok.injEq, Option.some.injEq] at hok; subst hok
+              exact BoundInv.trans h_bi (scanDirective_BoundInv sp _ h_refl h_hend ‹_›)
+          · cases hok  -- return none
 
 -- Content dispatch preserves BoundInv.
 -- Dispatches to scanAnchorOrAlias, scanTag, scanBlockScalar,
@@ -1625,7 +1664,75 @@ theorem dispatchContent_preserves_bound (s sp s' : ScannerState) (c : Char)
     (h_bi : BoundInv s sp) (hend : s.inputEnd = s.input.utf8ByteSize)
     (hok : scanNextToken_dispatchContent sp c = .ok s') :
     BoundInv s s' := by
-  sorry
+  have h_refl := BoundInv.refl sp h_bi.offset_le h_bi.isValid
+  have h_hend : sp.inputEnd = sp.input.utf8ByteSize := by
+    rw [h_bi.inputEnd_eq, h_bi.input_eq]; exact hend
+  unfold scanNextToken_dispatchContent at hok
+  simp only [bind, Except.bind, pure, Pure.pure, Bind.bind, Except.pure] at hok
+  -- Step through each if-branch for the character dispatch
+  -- 1. c == '&' (anchor)
+  split at hok
+  · split at hok  -- bind on scanAnchorOrAlias
+    · cases hok
+    · rename_i s_a heq
+      simp only [Except.ok.injEq] at hok; subst hok
+      have h_aa := scanAnchorOrAlias_BoundInv sp _ true h_refl h_hend heq
+      exact BoundInv.trans h_bi ⟨h_aa.offset_le, h_aa.inputEnd_eq, h_aa.input_eq, h_aa.isValid⟩
+  -- 2. c == '*' (alias)
+  · split at hok
+    · split at hok  -- !definedAnchors check
+      · cases hok  -- error: undefined alias
+      · split at hok  -- bind on scanAnchorOrAlias
+        · cases hok
+        · rename_i s_a heq
+          simp only [Except.ok.injEq] at hok; subst hok
+          exact BoundInv.trans h_bi (scanAnchorOrAlias_BoundInv sp _ false h_refl h_hend heq)
+    -- 3. c == '!' (tag)
+    · split at hok
+      · split at hok  -- bind on scanTag
+        · cases hok
+        · rename_i s_t heq
+          simp only [Except.ok.injEq] at hok; subst hok
+          exact BoundInv.trans h_bi (scanTag_BoundInv sp _ h_refl h_hend heq)
+      -- 4. c == '|' || c == '>' (block scalar)
+      · split at hok
+        · split at hok  -- bind on scanBlockScalar
+          · cases hok
+          · rename_i s_bs heq
+            simp only [Except.ok.injEq] at hok; subst hok
+            exact BoundInv.trans h_bi (scanBlockScalar_BoundInv sp _ h_refl h_hend heq)
+        -- 5. c == '"' (double quoted)
+        · split at hok
+          · split at hok  -- bind on scanDoubleQuoted
+            · cases hok
+            · rename_i s_dq heq
+              -- simpleKey update: if s'.simpleKey.possible then { s' with ... } else s'
+              split at hok
+              · simp only [Except.ok.injEq] at hok; subst hok
+                have h_dq := scanDoubleQuoted_BoundInv sp _ h_refl h_hend heq
+                exact BoundInv.trans h_bi ⟨h_dq.offset_le, h_dq.inputEnd_eq, h_dq.input_eq, h_dq.isValid⟩
+              · simp only [Except.ok.injEq] at hok; subst hok
+                exact BoundInv.trans h_bi (scanDoubleQuoted_BoundInv sp _ h_refl h_hend heq)
+          -- 6. c == '\'' (single quoted)
+          · split at hok
+            · split at hok  -- bind on scanSingleQuoted
+              · cases hok
+              · rename_i s_sq heq
+                split at hok
+                · simp only [Except.ok.injEq] at hok; subst hok
+                  have h_sq := scanSingleQuoted_BoundInv sp _ h_refl h_hend heq
+                  exact BoundInv.trans h_bi ⟨h_sq.offset_le, h_sq.inputEnd_eq, h_sq.input_eq, h_sq.isValid⟩
+                · simp only [Except.ok.injEq] at hok; subst hok
+                  exact BoundInv.trans h_bi (scanSingleQuoted_BoundInv sp _ h_refl h_hend heq)
+            -- 7. canStartPlainScalar (plain scalar)
+            · split at hok
+              · split at hok  -- bind on scanPlainScalar
+                · cases hok
+                · rename_i s_ps heq
+                  simp only [Except.ok.injEq] at hok; subst hok
+                  exact BoundInv.trans h_bi (scanPlainScalar_BoundInv sp _ h_refl h_hend heq)
+              -- 8. else: error (.unexpectedChar)
+              · cases hok
 
 /-! ## §7  scanNextToken_preserves_bound — Capstone Composition -/
 
@@ -1641,8 +1748,7 @@ This mirrors the per-dispatch structure of `scanNextToken_progress`
 but tracks the full BoundInv bundle (offset ≤ inputEnd, inputEnd/input
 preserved, IsValid) instead of just offset increase.
 
-The proof dispatches to per-dispatch preservation lemmas from §3-§6,
-some of which currently use `sorry` for sub-scanner loops. -/
+The proof dispatches to per-dispatch preservation lemmas from §3-§6. -/
 theorem scanNextToken_preserves_bound_full (s s' : ScannerState)
     (h : scanNextToken s = .ok (some s'))
     (h_bi : BoundInv s s)
