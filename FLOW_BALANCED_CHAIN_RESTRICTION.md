@@ -691,7 +691,23 @@ Also proved `terminates?_state_eq`: when `collectPlainScalar_terminates?` return
 
 ***Step 11: Accomplishments***
 
+Eliminated all 3 dispatch-level BoundInv sorrys. **ScannerBound.lean is now 100% sorry-free** (0 sorrys, down from 15 at the start of Steps 9–11). Total project sorrys: 10 → 7.
+
+**Theorems proved (3):**
+
+1. **`preprocess_preserves_bound`**: Step-by-step `split at hok` through the `do` chain: `skipToContent` → `hasMore` check → conditional `unwindIndents` → error check → `saveSimpleKey` → `peek?`. The unwind branch required explicit BoundInv constructor `⟨h_uw.offset_le, ...⟩` because `fieldUpdate_BoundInv _ _ (unwindIndents_BoundInv ...) rfl rfl rfl` couldn't infer the struct-update target.
+
+2. **`dispatchStructural_preserves_bound`**: Manual step-by-step `split at hok` for each `if` in `scanNextToken_dispatchStructural` (flow indent check → document marker in flow → document start → document end → directive → none). Replaced the previous `repeat split at hok` + `all_goals first | ... | sorry` approach which left join-point residue goals unsolved. Used `BoundInv.trans h_bi (sub_scanner_BoundInv ...)` for each positive branch, `‹_›` to find the monadic bind equation.
+
+3. **`dispatchContent_preserves_bound`**: Manual step-by-step `split at hok` for the 8-way character dispatch (`&`, `*`, `!`, `|`/`>`, `"`, `'`, plain scalar, error). The `"` and `'` branches needed an extra `split at hok` for the `if s'.simpleKey.possible` struct update, using `⟨h.offset_le, h.inputEnd_eq, h.input_eq, h.isValid⟩` constructor for the struct-update case.
+
 ***Step 11: Reflections***
+
+1. **Manual step-by-step `split` beats `repeat split` + `all_goals first`**: The `repeat split at hok` approach over-splits, creating join-point residue goals that none of the `first` alternatives can handle. Writing out each `split at hok` explicitly (matching the source function's `if`/`match` structure) is more verbose but always succeeds. The `repeat split` approach is only safe when every resulting goal can be closed uniformly.
+
+2. **BoundInv constructor vs `fieldUpdate_BoundInv`**: When the target state is `{ x with f := v }` where `x` is a complex expression (like `unwindIndents s1 s1.col`), `fieldUpdate_BoundInv _ _ h rfl rfl rfl` can't infer the implicit arguments. Using the BoundInv constructor `⟨h.offset_le, h.inputEnd_eq, h.input_eq, h.isValid⟩` directly always works because it doesn't need to unify the source and target states.
+
+3. **Struct-update branches for quoted scalars**: The `if s'.simpleKey.possible then { s' with simpleKey := ... } else s'` pattern creates two goals after `split at hok`. The `true` branch needs `⟨h.offset_le, ...⟩` (struct update doesn't change offset/inputEnd/input), while the `false` branch can use `exact` directly. This is simpler than the `dsimp only []` approach used in ScannerCorrectness dispatch proofs.
 
 ## Step 12: Build verification and VERSION-0.4.7.md update
 
@@ -809,11 +825,11 @@ Step 12 depends on all prior steps.
 | 3 | ~130-250 | MEDIUM-HIGH | **DONE** |
 | 4 | ~30-60 | LOW-MEDIUM | **DONE** |
 | 5 | ~10-20 | LOW | **DONE** |
-| 6 | ~100-200 | LOW-MEDIUM | |
-| 7 | ~30-60 | LOW | |
-| 8 | ~10-20 | LOW | |
+| 6 | ~100-200 | LOW-MEDIUM | **DONE** |
+| 7 | ~30-60 | LOW | **DONE** |
+| 8 | ~10-20 | LOW | **DONE** |
 | 9 | ~80-150 | MEDIUM | **DONE** |
 | 10 | ~200-400 | MEDIUM-HIGH | **DONE** |
-| 11 | ~30-60 | LOW | |
+| 11 | ~30-60 | LOW | **DONE** |
 | 12 | ~10 | LOW | |
 | **Total** | **~770-1,410** | | |
