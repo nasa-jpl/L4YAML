@@ -398,7 +398,55 @@ effort is writing the loop invariant lemmas in ScannerCorrectness's namespace.
 
 ***Step 6: Accomplishments***
 
+1. **All 5 sub-scanner `preserves_flowLevel` sorrys eliminated.** Build passes (429/429 jobs,
+   29 sorry warnings, down from 34). ScannerCorrectness: 11 → 6 sorrys (dispatch residuals only).
+
+2. **26 new helper lemmas proven** (~513 LOC total), organized into 3 sections:
+
+   **Tag sub-helpers (7 lemmas, ~84 LOC):**
+   - `collectVerbatimTagLoop_preserves_flowLevel`, `collectTagSuffixLoop_preserves_flowLevel`,
+     `collectTagHandleLoop_preserves_flowLevel` (fuel induction, advance pattern)
+   - `scanVerbatimTag_preserves_flowLevel` (Except, unfold+split+absurd)
+   - `scanSecondaryTag_preserves_flowLevel`, `scanNamedTag_preserves_flowLevel` (pure, simp)
+   - `scanTag_preserves_flowLevel` — 3 branches: verbatim/secondary/named tag ✓
+
+   **Scalar collector loops (9 lemmas, ~282 LOC):**
+   - `skipBlankLinesLoop_preserves_flowLevel`, `foldQuotedNewlinesLoop_preserves_flowLevel`,
+     `foldQuotedNewlines_preserves_flowLevel` (do-notation desugaring)
+   - `collectHexDigitsLoop_preserves_flowLevel`, `parseHexEscape_preserves_flowLevel`,
+     `processEscape_preserves_flowLevel` (double-quoted escape handling)
+   - `collectPlainScalarLoop_preserves_flowLevel` (~83 LOC, fuel induction, 6 match branches)
+   - `collectDoubleQuotedLoop_preserves_flowLevel` (~53 LOC, fuel induction, 4 match branches)
+   - `collectSingleQuotedLoop_preserves_flowLevel` (~41 LOC, fuel induction, 3 match branches)
+
+   **Block scalar sub-helpers (10 lemmas, ~147 LOC):**
+   - `consumeExactSpaces_preserves_flowLevel`, `parseBlockHeaderLoop_preserves_flowLevel`,
+     `collectLineContentLoop_preserves_flowLevel`, `collectBlockScalarLoop_preserves_flowLevel`
+   - `scanBlockScalarSkipComment_preserves_flowLevel`, `scanBlockScalarConsumeNewline_preserves_flowLevel`,
+     `scanBlockScalarBody_preserves_flowLevel` (composition pattern matching `_preserves_simpleKeyStack`)
+   - `scanPlainScalar_preserves_flowLevel`, `scanDoubleQuoted_preserves_flowLevel`,
+     `scanSingleQuoted_preserves_flowLevel`, `scanBlockScalar_preserves_flowLevel` ✓
+
 ***Step 6: Reflections***
+
+1. **Mechanical substitution worked perfectly.** Every `preserves_flowLevel` proof is a direct
+   copy of the corresponding `preserves_simpleKey` or `preserves_simpleKeyStack` proof with
+   `simpleKey`/`simpleKeyStack` → `flowLevel` in conclusion and helper references. No structural
+   differences — `flowLevel` is a pure frame property like simpleKey/simpleKeyStack.
+
+2. **Block scalar composition pattern.** `scanBlockScalar_preserves_flowLevel` follows the exact
+   same `rw [consumeNewline, skipComment, skipWhitespace, parseBlockHeaderLoop, advance]` chain
+   as `scanBlockScalar_preserves_simpleKeyStack`, confirming the scanner pipeline is uniform
+   across all three preserved fields.
+
+3. **`collectPlainScalarLoop` is the largest single proof** (~83 LOC) due to its 6-way case
+   split (peek=none, terminates?, lineBreak+inFlow, lineBreak+!inFlow, whitespace, plainSafe).
+   The `handleBlockLineBreak` sub-case requires separate `Prod.mk.inj (Option.some.inj hblk)`
+   + rewriting through `skipSpaces`/`skipBlankLinesLoop`/`consumeNewline`.
+
+4. **Volume vs complexity.** 513 LOC of boilerplate for what are conceptually trivial facts
+   ("these scanner operations don't touch flowLevel"). A tactic macro like `frame_field_tac`
+   could eliminate most of this duplication in the future.
 
 ## Step 7: Eliminate dispatch `preserves_flowLevel`/`preserves_simpleKeyStack` residual sorrys (6 sorrys)
 
