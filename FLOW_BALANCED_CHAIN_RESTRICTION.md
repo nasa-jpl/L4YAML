@@ -366,47 +366,317 @@ from destructured postconditions).
 - Stack sync postcondition (`simpleKeyStack.size = flowLevel`) was needed at call sites to satisfy `h_sync` and `h_stack_floor` preconditions
 - `h_stack_floor` is vacuously true at call sites since `fl₀ = 1` and stack size = 1 after flow open
 
-## Step 6: Build verification and VERSION-0.4.7.md update
+## Step 6: Eliminate sub-scanner `preserves_flowLevel` sorry stubs (5 sorrys)
 
-**Where:** VERSION-0.4.7.md
+**Where:** ScannerCorrectness.lean (L5136–L5281)
 
 **What:**
-- Verify 429/429 build with sorry count reduced by 1 (11 → 10)
-- Update Phase G section with accomplishments/reflections
+Steps 1–5 introduced sorry'd stubs in ScannerCorrectness for sub-scanner `preserves_flowLevel`
+theorems that are actually already proven in ScannerPlainScalarValid.lean (different namespace).
+Since ScannerCorrectness cannot import ScannerPlainScalarValid (reverse dependency), these
+stubs must be proven independently using the same technique (unfold + loop invariant).
+
+**Sorrys targeted (5):**
+
+| Line | Theorem | Status |
+|------|---------|--------|
+| L5136 | `scanTag_preserves_flowLevel` | sorry (3 branches: verbatim/secondary/named tag) |
+| L5173 | `scanPlainScalar_preserves_flowLevel` | sorry (needs `collectPlainScalarLoop_preserves_flowLevel`) |
+| L5217 | `scanDoubleQuoted_preserves_flowLevel` | sorry (needs `collectDoubleQuotedLoop_preserves_flowLevel`) |
+| L5266 | `scanSingleQuoted_preserves_flowLevel` | sorry (needs `collectSingleQuotedLoop_preserves_flowLevel`) |
+| L5281 | `scanBlockScalar_preserves_flowLevel` | sorry (complex multi-helper proof) |
+
+**Approach:**
+- Port the proof patterns from ScannerPlainScalarValid.lean into ScannerCorrectness.lean.
+- Each sub-scanner's main loop modifies only scalar-content state, never `flowLevel`.
+- Proof pattern: unfold scanner → split on branches → show each advance/emit/field-update
+  preserves flowLevel. Loop cases need auxiliary `*Loop_preserves_flowLevel` lemmas
+  (fuel induction, same pattern as existing `*_preserves_simpleKeyStack` in ScannerCorrectness).
+
+**Risk:** LOW-MEDIUM. Proofs exist in ScannerPlainScalarValid as a reference. The main
+effort is writing the loop invariant lemmas in ScannerCorrectness's namespace.
+
+***Step 6: Accomplishments***
+
+***Step 6: Reflections***
+
+## Step 7: Eliminate dispatch `preserves_flowLevel`/`preserves_simpleKeyStack` residual sorrys (6 sorrys)
+
+**Where:** ScannerCorrectness.lean (L2869–L2937)
+
+**What:**
+Each of the 6 dispatch-level preservation theorems has `all_goals sorry` after `try` tactics
+that handle the known sub-scanner cases. The residual goals are match arms where the result
+is `.error e` but the hypothesis asserts `.ok (some s')` — these are impossible branches.
+
+**Sorrys targeted (6):**
+
+| Line | Theorem | Depends on |
+|------|---------|------------|
+| L2869 | `dispatchStructural_preserves_flowLevel` | Step 6 (sub-scanner flowLevel) |
+| L2882 | `dispatchStructural_preserves_simpleKeyStack` | — (sub-scanner simpleKeyStack already proven) |
+| L2895 | `dispatchBlockIndicators_preserves_flowLevel` | — (sub-lemmas already proven) |
+| L2908 | `dispatchBlockIndicators_preserves_simpleKeyStack` | — (sub-lemmas already proven) |
+| L2921 | `dispatchContent_preserves_flowLevel` | Step 6 (sub-scanner flowLevel) |
+| L2937 | `dispatchContent_preserves_simpleKeyStack` | — (sub-scanner simpleKeyStack already proven) |
+
+**Approach:**
+- Replace `all_goals sorry` with `all_goals (simp_all; done)` or `all_goals contradiction`.
+- The residual goals after `try (exact ...)` are error-result match arms where `h : .error e = .ok (some s')`,
+  closable by `simp at h` or `contradiction`.
+- For `dispatchContent_preserves_flowLevel` (L2921): depends on Step 6 completing the sub-scanner
+  flowLevel proofs. Once those are proven, the `try (exact scanTag_preserves_flowLevel ...)` etc.
+  will succeed, leaving only error-case residuals.
+
+**Risk:** LOW. Pure contradiction/simp on impossible match arms.
+
+***Step 7: Accomplishments***
+
+***Step 7: Reflections***
+
+## Step 8: Eliminate `scanNextToken_preserves_sync` residual sorry (1 sorry)
+
+**Where:** EmitterScannability.lean (L1888)
+
+**What:**
+`scanNextToken_preserves_sync` proves `s'.simpleKeyStack.size ≥ s'.flowLevel` is preserved
+by `scanNextToken`. Its proof dispatches to the 6 `dispatch*_preserves_{flowLevel,simpleKeyStack}`
+theorems from Step 7. The final `| sorry` catches remaining unmatched dispatch paths.
+
+**Approach:**
+- After Step 7 proves all dispatch preservation theorems, the `first | ... | sorry` arms
+  should close all remaining branches.
+- Replace `| sorry  -- TODO: Handle remaining dispatch paths` with
+  `| (simp_all; done)` or `| contradiction`.
+- If any residual goals remain, they are error-path match arms (`.error e = .ok (some s')`)
+  closable by `simp at *` or `contradiction`.
+
+**Risk:** LOW. Depends on Step 7. The proof structure already handles all scanner dispatch
+branches explicitly.
+
+***Step 8: Accomplishments***
+
+***Step 8: Reflections***
+
+## Step 9: Eliminate ScannerBound preprocessing BoundInv sorrys (4 sorrys)
+
+**Where:** ScannerBound.lean (L490–L520)
+
+**What:**
+The `skipToContent` pipeline has 4 sorry'd sub-lemmas introduced as scaffolding during
+Step 3. These form a sequential dependency chain: the loop lemma (L520) depends on the
+3 per-iteration sub-lemmas.
+
+**Sorrys targeted (4, sequential):**
+
+| Line | Theorem | Depends on |
+|------|---------|------------|
+| L490 | `skipToContentComment_BoundInv` | — (advance + collectCommentTextLoop) |
+| L503 | `consumeNewline_BoundInv` | — (1–2 advances + field updates) |
+| L511 | `skipToContentWs_BoundInv` | — (skipSpaces/skipWhitespace, both have proven BoundInv) |
+| L520 | `skipToContentLoop_BoundInv` | L490, L503, L511 (fuel induction) |
+
+**Approach:**
+- `skipToContentComment_BoundInv`: Unfold `skipToContentComment`, show `advance` preserves
+  BoundInv (existing `advance_BoundInv` or `fieldUpdate_BoundInv`), then
+  `collectCommentTextLoop` preserves BoundInv (fuel induction on advance steps).
+- `consumeNewline_BoundInv`: Case split on `\n` vs `\r` + optional `\n`. Each case uses
+  1–2 `advance_BoundInv` applications plus field updates.
+- `skipToContentWs_BoundInv`: Compose existing `skipSpaces_BoundInv` / `skipWhitespace_BoundInv`.
+- `skipToContentLoop_BoundInv`: Fuel induction, each iteration chains the 3 sub-lemmas.
+
+**Risk:** MEDIUM. Sequential dependency means all 4 must be proven in order. The loop
+induction requires careful do-notation desugaring.
+
+***Step 9: Accomplishments***
+
+***Step 9: Reflections***
+
+## Step 10: Eliminate ScannerBound sub-scanner BoundInv sorrys (8 sorrys)
+
+**Where:** ScannerBound.lean (L626–L683)
+
+**What:**
+8 sorry'd sub-scanner BoundInv lemmas, all independent of each other. Each follows the
+same pattern: unfold the scanner, track BoundInv through advance/emit/field-update steps.
+
+**Sorrys targeted (8, all independent):**
+
+| Line | Theorem | Complexity |
+|------|---------|------------|
+| L626 | `scanDocumentEnd_BoundInv` | Medium (do-notation join points) |
+| L645 | `scanDirective_BoundInv` | Medium (collectDirectiveName + skipToEndOfLine) |
+| L653 | `scanAnchorOrAlias_BoundInv` | Medium (collectAnchorNameLoop) |
+| L659 | `scanTag_BoundInv` | Medium (verbatim/secondary/named tag paths) |
+| L665 | `scanBlockScalar_BoundInv` | Hard (multi-loop: header + body + chomping) |
+| L671 | `scanDoubleQuoted_BoundInv` | Medium (collectDoubleQuotedLoop with escapes) |
+| L677 | `scanSingleQuoted_BoundInv` | Medium (collectSingleQuotedLoop) |
+| L683 | `scanPlainScalar_BoundInv` | Medium (collectPlainScalarLoop) |
+
+**Approach:**
+- Group into two sub-batches:
+  - **10a — Structural sub-scanners** (L626, L645, L653): Simpler loops, existing helper
+    lemmas for advance/emit BoundInv preservation.
+  - **10b — Content sub-scanners** (L659–L683): Each has a character-scanning loop that
+    calls `advance` per character. Prove loop invariant: `BoundInv s₀ sᵢ` at each iteration.
+    `scanBlockScalar_BoundInv` is hardest due to multiple nested loops (header parsing +
+    block body lines + chomping).
+
+**Risk:** MEDIUM-HIGH. Volume (8 theorems) and `scanBlockScalar_BoundInv` complexity.
+All are independent, so can be proven in any order.
+
+***Step 10: Accomplishments***
+
+***Step 10: Reflections***
+
+## Step 11: Eliminate ScannerBound dispatch BoundInv sorrys (3 sorrys)
+
+**Where:** ScannerBound.lean (L695, L713, L755)
+
+**What:**
+3 pre-existing dispatch-level BoundInv sorrys. These compose the sub-lemmas from Steps 9–10.
+
+**Sorrys targeted (3):**
+
+| Line | Theorem | Depends on |
+|------|---------|------------|
+| L695 | `preprocess_preserves_bound` | Step 9 (skipToContentLoop_BoundInv) |
+| L713 | `dispatchStructural_preserves_bound` | Step 10a (scanDocumentEnd, scanDirective) |
+| L755 | `dispatchContent_preserves_bound` | Step 10b (all content sub-scanners) |
+
+**Approach:**
+- Each theorem unfolds the dispatch function, splits on match arms, and delegates to
+  the sub-scanner BoundInv lemma for each arm. Error arms are closed by contradiction.
+- `preprocess_preserves_bound` chains: `skipToContent` → `unwindIndents` (proven) →
+  `saveSimpleKey` (proven) → `peek?` (trivial). The key dependency is `skipToContentLoop_BoundInv`.
+
+**Risk:** LOW (composition only). Depends on Steps 9 and 10 completing first.
+
+***Step 11: Accomplishments***
+
+***Step 11: Reflections***
+
+## Step 12: Build verification and VERSION-0.4.7.md update
+
+**Where:** VERSION-0.4.7.md, FLOW_BALANCED_CHAIN_RESTRICTION.md
+
+**What:**
+- Verify build with sorry count returned to ≤ 10 (original 11 minus the
+  `ScanChain_filtered_prefix` elimination, minus any cascade eliminations)
+- Expected: 34 → 10 sorrys (24 Phase-G-introduced sorrys eliminated)
+  - ScannerCorrectness: 11 → 0
+  - ScannerBound: 15 → 3 (3 pre-existing composed by Step 11, but Step 11 targets those too → 0)
+  - EmitterScannability: 8 → 7 (only `scanNextToken_preserves_sync` was new; eliminated in Step 8)
+  - Net: 34 − 24 = 10 remaining (all pre-existing from before Phase G, minus the 1 eliminated
+    in Step 5 = 10)
+- Update Phase G section in VERSION-0.4.7.md with accomplishments/reflections
 - Run adversarial tests to confirm regression-free
 
-***Step 6: Accomplishments***\n- Build verified: all 45 jobs pass\n- EmitterScannability sorry count: 9 → 3 (lines 1888, 8134, 8553)\n- "Phase 4.2.A" reference fixed to "Phase S"\n\n***Step 6: Reflections***\n- Steps 4-6 complete. Remaining 3 sorrys are independent of the flow-balanced chain restriction.
+***Step 12: Accomplishments***
+
+***Step 12: Reflections***
 
 ---
 
-## Dependency graph
+## Sorry inventory (post-Step 5, pre-Step 6)
+
+**34 total sorrys = 10 pre-existing + 24 introduced during Phase G Steps 1–5.**
+
+### Pre-existing (10 sorrys — not targeted by Phase G)
+
+| File | Line | Theorem | Phase |
+|------|------|---------|-------|
+| EmitterScannability | L8134 | `scanNextToken_filtered_grows` | H |
+| EmitterScannability | L8553 | `emitList_body_filtered_characterization` | H |
+| EmitterScannability | L8600 | `emitPairList_body_filtered_characterization` | H |
+| EmitterScannability | L8635 | `scanFiltered_emitSeq_nonempty_structure` | I |
+| EmitterScannability | L8856 | `scanFiltered_emitMap_nonempty_structure` | I |
+| EmitterScannability | L9590 | `emit_roundtrip_sequence_content_eq` | J |
+| EmitterScannability | L9629 | `emit_roundtrip_mapping_content_eq` | J |
+| ~~ScannerBound~~ | ~~L695~~ | ~~`preprocess_preserves_bound`~~ | S (targeted by Step 11) |
+| ~~ScannerBound~~ | ~~L713~~ | ~~`dispatchStructural_preserves_bound`~~ | S (targeted by Step 11) |
+| ~~ScannerBound~~ | ~~L755~~ | ~~`dispatchContent_preserves_bound`~~ | S (targeted by Step 11) |
+
+Note: 3 pre-existing ScannerBound sorrys are also targeted by Step 11 (they depend on
+the new sub-lemma sorrys introduced in Steps 9–10). After Step 11, only 7 pre-existing
+EmitterScannability sorrys remain (Phases H/I/J).
+
+### New (24 sorrys — targeted by Steps 6–11)
+
+| File | Line | Theorem | Step |
+|------|------|---------|------|
+| ScannerCorrectness | L5136 | `scanTag_preserves_flowLevel` | 6 |
+| ScannerCorrectness | L5173 | `scanPlainScalar_preserves_flowLevel` | 6 |
+| ScannerCorrectness | L5217 | `scanDoubleQuoted_preserves_flowLevel` | 6 |
+| ScannerCorrectness | L5266 | `scanSingleQuoted_preserves_flowLevel` | 6 |
+| ScannerCorrectness | L5281 | `scanBlockScalar_preserves_flowLevel` | 6 |
+| ScannerCorrectness | L2869 | `dispatchStructural_preserves_flowLevel` | 7 |
+| ScannerCorrectness | L2882 | `dispatchStructural_preserves_simpleKeyStack` | 7 |
+| ScannerCorrectness | L2895 | `dispatchBlockIndicators_preserves_flowLevel` | 7 |
+| ScannerCorrectness | L2908 | `dispatchBlockIndicators_preserves_simpleKeyStack` | 7 |
+| ScannerCorrectness | L2921 | `dispatchContent_preserves_flowLevel` | 7 |
+| ScannerCorrectness | L2937 | `dispatchContent_preserves_simpleKeyStack` | 7 |
+| EmitterScannability | L1888 | `scanNextToken_preserves_sync` | 8 |
+| ScannerBound | L490 | `skipToContentComment_BoundInv` | 9 |
+| ScannerBound | L503 | `consumeNewline_BoundInv` | 9 |
+| ScannerBound | L511 | `skipToContentWs_BoundInv` | 9 |
+| ScannerBound | L520 | `skipToContentLoop_BoundInv` | 9 |
+| ScannerBound | L626 | `scanDocumentEnd_BoundInv` | 10 |
+| ScannerBound | L645 | `scanDirective_BoundInv` | 10 |
+| ScannerBound | L653 | `scanAnchorOrAlias_BoundInv` | 10 |
+| ScannerBound | L659 | `scanTag_BoundInv` | 10 |
+| ScannerBound | L665 | `scanBlockScalar_BoundInv` | 10 |
+| ScannerBound | L671 | `scanDoubleQuoted_BoundInv` | 10 |
+| ScannerBound | L677 | `scanSingleQuoted_BoundInv` | 10 |
+| ScannerBound | L683 | `scanPlainScalar_BoundInv` | 10 |
+
+## Dependency graph (revised, Steps 1–12)
 
 ```
-Step 1: FlowMonoChain definition (additive, no impact)
+Step 1: FlowMonoChain definition (additive, no impact)               ── DONE
   ↓
-Step 2: Thread through EmitScansInFlow (interface change)
+Step 2: Thread through EmitScansInFlow (interface change)             ── DONE
   ↓
-Step 3: SimpleKeyAboveFloor + per-step preservation (new infrastructure)
+Step 3: SimpleKeyAboveFloor + per-step preservation                   ── DONE
   ↓
-Step 4: FlowMonoChain_preserves_raw_prefix (key theorem)
+Step 4: FlowMonoChain_preserves_raw_prefix (key theorem)              ── DONE
   ↓
-Step 5: ScanChain_filtered_prefix sorry elimination
+Step 5: ScanChain_filtered_prefix sorry elimination                   ── DONE
   ↓
-Step 6: Verification + documentation
+Step 6: Sub-scanner preserves_flowLevel (5 sorrys)                    ── ScannerCorrectness
+  ↓
+Step 7: Dispatch preserves_{flowLevel,simpleKeyStack} (6 sorrys)      ── ScannerCorrectness
+  ↓
+Step 8: scanNextToken_preserves_sync (1 sorry)                        ── EmitterScannability
+  ↓
+Step 9: Preprocessing BoundInv (4 sorrys)                ┐
+                                                          ├─ ScannerBound (parallel track)
+Step 10: Sub-scanner BoundInv (8 sorrys)                  │
+  ↓                                                       │
+Step 11: Dispatch BoundInv (3 sorrys)                    ┘
+  ↓
+Step 12: Build verification + VERSION-0.4.7.md update
 ```
 
-Steps 1 and 3 are independent and can be developed in parallel.
-Step 2 depends on Step 1.
-Steps 4-5 depend on Steps 2 and 3.
+Steps 6–8 (ScannerCorrectness + EmitterScannability sync) are sequential.
+Steps 9–10 (ScannerBound sub-lemmas) are independent of Steps 6–8.
+Step 11 depends on Steps 9 and 10.
+Step 12 depends on all prior steps.
 
-## Estimated effort
+## Estimated effort (revised)
 
-| Step | LOC | Risk |
-|------|-----|------|
-| 1 | ~40 | LOW |
-| 2 | ~100-150 (mostly mechanical) | MEDIUM |
-| 3 | ~130-250 | MEDIUM-HIGH |
-| 4 | ~30-60 | LOW-MEDIUM |
-| 5 | ~10-20 | LOW |
-| 6 | ~20 | LOW |
-| **Total** | **~330-540** | |
+| Step | LOC | Risk | Status |
+|------|-----|------|--------|
+| 1 | ~40 | LOW | **DONE** |
+| 2 | ~100-150 | MEDIUM | **DONE** |
+| 3 | ~130-250 | MEDIUM-HIGH | **DONE** |
+| 4 | ~30-60 | LOW-MEDIUM | **DONE** |
+| 5 | ~10-20 | LOW | **DONE** |
+| 6 | ~100-200 | LOW-MEDIUM | |
+| 7 | ~30-60 | LOW | |
+| 8 | ~10-20 | LOW | |
+| 9 | ~80-150 | MEDIUM | |
+| 10 | ~200-400 | MEDIUM-HIGH | |
+| 11 | ~30-60 | LOW | |
+| 12 | ~10 | LOW | |
+| **Total** | **~770-1,410** | | |
