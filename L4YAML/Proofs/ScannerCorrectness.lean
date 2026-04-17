@@ -2864,92 +2864,6 @@ theorem dispatchContent_preserves_prefix (s : ScannerState) (c : Char) (s' : Sca
           | exact scanPlainScalar_preserves_prefix s _ (by assumption) i h_i
           | (simp_all; done)
 
-/-! ### Dispatch flowLevel/simpleKeyStack preservation -/
-
-theorem dispatchStructural_preserves_flowLevel (s : ScannerState) (c : Char) (s' : ScannerState)
-    (h : scanNextToken_dispatchStructural s c = .ok (some s')) :
-    s'.flowLevel = s.flowLevel := by
-  unfold scanNextToken_dispatchStructural at h
-  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h
-  repeat (any_goals (split at h))
-  all_goals (try contradiction)
-  all_goals (try (simp only [Except.ok.injEq, Option.some.injEq] at h; subst h))
-  all_goals (try (exact scanDocumentStart_preserves_flowLevel s))
-  all_goals (try (exact scanDocumentEnd_preserves_flowLevel _ _ (by assumption)))
-  all_goals (try (exact scanDirective_preserves_flowLevel _ _ (by assumption)))
-  all_goals sorry  -- TODO: Handle remaining error cases in dispatchStructural
-
-theorem dispatchStructural_preserves_simpleKeyStack (s : ScannerState) (c : Char) (s' : ScannerState)
-    (h : scanNextToken_dispatchStructural s c = .ok (some s')) :
-    s'.simpleKeyStack = s.simpleKeyStack := by
-  unfold scanNextToken_dispatchStructural at h
-  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h
-  repeat (any_goals (split at h))
-  all_goals (try contradiction)
-  all_goals (try (simp only [Except.ok.injEq, Option.some.injEq] at h; subst h))
-  all_goals (try (exact scanDocumentStart_preserves_simpleKeyStack s))
-  all_goals (try (exact scanDocumentEnd_preserves_simpleKeyStack _ _ (by assumption)))
-  all_goals (try (exact scanDirective_preserves_simpleKeyStack _ _ (by assumption)))
-  all_goals sorry  -- TODO: Handle remaining error cases in dispatchStructural
-
-theorem dispatchBlockIndicators_preserves_flowLevel (s : ScannerState) (c : Char) (s' : ScannerState)
-    (h : scanNextToken_dispatchBlockIndicators s c = .ok (some s')) :
-    s'.flowLevel = s.flowLevel := by
-  unfold scanNextToken_dispatchBlockIndicators at h
-  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h
-  repeat (any_goals (split at h))
-  all_goals (try contradiction)
-  all_goals (try (simp only [Except.ok.injEq, Option.some.injEq] at h; subst h))
-  all_goals (try (exact scanBlockEntry_preserves_flowLevel _ _ (by assumption)))
-  all_goals (try (exact scanKey_preserves_flowLevel _ _ (by assumption)))
-  all_goals (try (exact scanValue_preserves_flowLevel _ _ (by assumption)))
-  all_goals sorry  -- TODO: Handle remaining error cases in dispatchBlockIndicators
-
-theorem dispatchBlockIndicators_preserves_simpleKeyStack (s : ScannerState) (c : Char) (s' : ScannerState)
-    (h : scanNextToken_dispatchBlockIndicators s c = .ok (some s')) :
-    s'.simpleKeyStack = s.simpleKeyStack := by
-  unfold scanNextToken_dispatchBlockIndicators at h
-  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h
-  repeat (any_goals (split at h))
-  all_goals (try contradiction)
-  all_goals (try (simp only [Except.ok.injEq, Option.some.injEq] at h; subst h))
-  all_goals (try (exact scanBlockEntry_preserves_simpleKeyStack _ _ (by assumption)))
-  all_goals (try (exact scanKey_preserves_simpleKeyStack _ _ (by assumption)))
-  all_goals (try (exact scanValue_preserves_simpleKeyStack _ _ (by assumption)))
-  all_goals sorry  -- TODO: Handle remaining error cases in dispatchBlockIndicators
-
-theorem dispatchContent_preserves_flowLevel (s : ScannerState) (c : Char) (s' : ScannerState)
-    (h : scanNextToken_dispatchContent s c = .ok s') :
-    s'.flowLevel = s.flowLevel := by
-  unfold scanNextToken_dispatchContent at h
-  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h
-  repeat (any_goals (split at h))
-  all_goals (try contradiction)
-  all_goals (try (simp only [Except.ok.injEq] at h; subst h; rfl))
-  all_goals (try (exact scanAnchorOrAlias_preserves_flowLevel _ _ _ (by assumption)))
-  all_goals (try (exact scanTag_preserves_flowLevel _ _ (by assumption)))
-  all_goals (try (exact scanBlockScalar_preserves_flowLevel _ _ (by assumption)))
-  all_goals (try (exact scanDoubleQuoted_preserves_flowLevel _ _ (by assumption)))
-  all_goals (try (exact scanSingleQuoted_preserves_flowLevel _ _ (by assumption)))
-  all_goals (try (exact scanPlainScalar_preserves_flowLevel _ _ (by assumption)))
-  all_goals sorry  -- TODO: Handle remaining error cases in dispatchContent
-
-theorem dispatchContent_preserves_simpleKeyStack (s : ScannerState) (c : Char) (s' : ScannerState)
-    (h : scanNextToken_dispatchContent s c = .ok s') :
-    s'.simpleKeyStack = s.simpleKeyStack := by
-  unfold scanNextToken_dispatchContent at h
-  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h
-  repeat (any_goals (split at h))
-  all_goals (try contradiction)
-  all_goals (try (simp only [Except.ok.injEq] at h; subst h; rfl))
-  all_goals (try (exact scanAnchorOrAlias_preserves_simpleKeyStack _ _ _ (by assumption)))
-  all_goals (try (exact scanTag_preserves_simpleKeyStack _ _ (by assumption)))
-  all_goals (try (exact scanBlockScalar_preserves_simpleKeyStack _ _ (by assumption)))
-  all_goals (try (exact scanDoubleQuoted_preserves_simpleKeyStack _ _ (by assumption)))
-  all_goals (try (exact scanSingleQuoted_preserves_simpleKeyStack _ _ (by assumption)))
-  all_goals (try (exact scanPlainScalar_preserves_simpleKeyStack _ _ (by assumption)))
-  all_goals sorry  -- TODO: Handle remaining error cases in dispatchContent
-
 end ScanHelpers
 
 /-! ## Main Theorems -/
@@ -5744,6 +5658,172 @@ theorem scanBlockScalar_preserves_flowLevel (s : ScannerState) (s' : ScannerStat
               skipWhitespace_preserves_flowLevel,
               parseBlockHeaderLoop_preserves_flowLevel,
               advance_preserves_flowLevel]) h
+
+/-! ### Dispatch flowLevel/simpleKeyStack preservation -/
+
+theorem dispatchStructural_preserves_flowLevel (s : ScannerState) (c : Char) (s' : ScannerState)
+    (h : scanNextToken_dispatchStructural s c = .ok (some s')) :
+    s'.flowLevel = s.flowLevel := by
+  unfold scanNextToken_dispatchStructural at h
+  simp only [bind, ScanHelpers.bind_ok_simp, pure, Pure.pure, Except.pure] at h
+  simp only [Except.bind] at h
+  repeat (any_goals (split at h))
+  any_goals contradiction
+  all_goals (try simp only [Except.ok.injEq, Option.some.injEq] at *)
+  any_goals contradiction
+  all_goals (try subst_vars)
+  all_goals first
+    | exact scanDocumentStart_preserves_flowLevel s
+    | exact scanDocumentEnd_preserves_flowLevel _ _ (by assumption)
+    | exact scanDirective_preserves_flowLevel _ _ (by assumption)
+    | (simp_all [scanDocumentStart_preserves_flowLevel,
+        scanDocumentEnd_preserves_flowLevel, scanDirective_preserves_flowLevel]; done)
+
+theorem dispatchStructural_preserves_simpleKeyStack (s : ScannerState) (c : Char) (s' : ScannerState)
+    (h : scanNextToken_dispatchStructural s c = .ok (some s')) :
+    s'.simpleKeyStack = s.simpleKeyStack := by
+  unfold scanNextToken_dispatchStructural at h
+  simp only [bind, ScanHelpers.bind_ok_simp, pure, Pure.pure, Except.pure] at h
+  simp only [Except.bind] at h
+  repeat (any_goals (split at h))
+  any_goals contradiction
+  all_goals (try simp only [Except.ok.injEq, Option.some.injEq] at *)
+  any_goals contradiction
+  all_goals (try subst_vars)
+  all_goals first
+    | exact scanDocumentStart_preserves_simpleKeyStack s
+    | exact scanDocumentEnd_preserves_simpleKeyStack _ _ (by assumption)
+    | exact scanDirective_preserves_simpleKeyStack _ _ (by assumption)
+    | (simp_all [scanDocumentStart_preserves_simpleKeyStack,
+        scanDocumentEnd_preserves_simpleKeyStack, scanDirective_preserves_simpleKeyStack]; done)
+
+theorem dispatchBlockIndicators_preserves_flowLevel (s : ScannerState) (c : Char) (s' : ScannerState)
+    (h : scanNextToken_dispatchBlockIndicators s c = .ok (some s')) :
+    s'.flowLevel = s.flowLevel := by
+  unfold scanNextToken_dispatchBlockIndicators at h
+  simp only [bind, ScanHelpers.bind_ok_simp, pure, Pure.pure, Except.pure] at h
+  simp only [Except.bind] at h
+  repeat (any_goals (split at h))
+  any_goals contradiction
+  all_goals (try simp only [Except.ok.injEq, Option.some.injEq] at *)
+  any_goals contradiction
+  all_goals (try subst_vars)
+  all_goals first
+    | exact scanBlockEntry_preserves_flowLevel _ _ (by assumption)
+    | exact scanKey_preserves_flowLevel _ _ (by assumption)
+    | exact scanValue_preserves_flowLevel _ _ (by assumption)
+    | (simp_all [scanBlockEntry_preserves_flowLevel,
+        scanKey_preserves_flowLevel, scanValue_preserves_flowLevel]; done)
+
+theorem dispatchBlockIndicators_preserves_simpleKeyStack (s : ScannerState) (c : Char) (s' : ScannerState)
+    (h : scanNextToken_dispatchBlockIndicators s c = .ok (some s')) :
+    s'.simpleKeyStack = s.simpleKeyStack := by
+  unfold scanNextToken_dispatchBlockIndicators at h
+  simp only [bind, ScanHelpers.bind_ok_simp, pure, Pure.pure, Except.pure] at h
+  simp only [Except.bind] at h
+  repeat (any_goals (split at h))
+  any_goals contradiction
+  all_goals (try simp only [Except.ok.injEq, Option.some.injEq] at *)
+  any_goals contradiction
+  all_goals (try subst_vars)
+  all_goals first
+    | exact scanBlockEntry_preserves_simpleKeyStack _ _ (by assumption)
+    | exact scanKey_preserves_simpleKeyStack _ _ (by assumption)
+    | exact scanValue_preserves_simpleKeyStack _ _ (by assumption)
+    | (simp_all [scanBlockEntry_preserves_simpleKeyStack,
+        scanKey_preserves_simpleKeyStack, scanValue_preserves_simpleKeyStack]; done)
+
+theorem dispatchContent_preserves_flowLevel (s : ScannerState) (c : Char) (s' : ScannerState)
+    (h : scanNextToken_dispatchContent s c = .ok s') :
+    s'.flowLevel = s.flowLevel := by
+  unfold scanNextToken_dispatchContent at h
+  simp only [bind, ScanHelpers.bind_ok_simp, pure, Pure.pure, Except.pure] at h
+  simp only [Except.bind] at h
+  split at h
+  · -- '&': scanAnchorOrAlias bind
+    generalize h_fn : scanAnchorOrAlias s true = result at h
+    cases result with
+    | error e => simp at h
+    | ok s_a =>
+      simp only [Except.ok.injEq] at h; subst h; dsimp only []
+      exact scanAnchorOrAlias_preserves_flowLevel s true s_a h_fn
+  · split at h
+    · -- '*': alias
+      split at h
+      · simp at h
+      · generalize h_fn : scanAnchorOrAlias s false = result at h
+        cases result with
+        | error e => simp at h
+        | ok s_a =>
+          simp only [Except.ok.injEq] at h; subst h
+          exact scanAnchorOrAlias_preserves_flowLevel s false s_a h_fn
+    · split at h
+      · -- '!': tag
+        generalize h_fn : scanTag s = result at h
+        cases result with
+        | error e => simp at h
+        | ok s_t =>
+          simp only [Except.ok.injEq] at h; subst h
+          exact scanTag_preserves_flowLevel s s_t h_fn
+      · -- remaining: block scalar, quoted, plain
+        repeat (any_goals (split at h))
+        any_goals contradiction
+        all_goals (try simp only [Except.ok.injEq] at *)
+        all_goals (try contradiction)
+        all_goals (try subst_vars)
+        all_goals (try dsimp only [])
+        all_goals first
+          | exact scanBlockScalar_preserves_flowLevel _ _ (by assumption)
+          | exact scanDoubleQuoted_preserves_flowLevel _ _ (by assumption)
+          | exact scanSingleQuoted_preserves_flowLevel _ _ (by assumption)
+          | exact scanPlainScalar_preserves_flowLevel _ _ (by assumption)
+          | (simp_all; done)
+
+theorem dispatchContent_preserves_simpleKeyStack (s : ScannerState) (c : Char) (s' : ScannerState)
+    (h : scanNextToken_dispatchContent s c = .ok s') :
+    s'.simpleKeyStack = s.simpleKeyStack := by
+  unfold scanNextToken_dispatchContent at h
+  simp only [bind, ScanHelpers.bind_ok_simp, pure, Pure.pure, Except.pure] at h
+  simp only [Except.bind] at h
+  split at h
+  · -- '&': scanAnchorOrAlias bind
+    generalize h_fn : scanAnchorOrAlias s true = result at h
+    cases result with
+    | error e => simp at h
+    | ok s_a =>
+      simp only [Except.ok.injEq] at h; subst h; dsimp only []
+      exact scanAnchorOrAlias_preserves_simpleKeyStack s true s_a h_fn
+  · split at h
+    · -- '*': alias
+      split at h
+      · simp at h
+      · generalize h_fn : scanAnchorOrAlias s false = result at h
+        cases result with
+        | error e => simp at h
+        | ok s_a =>
+          simp only [Except.ok.injEq] at h; subst h
+          exact scanAnchorOrAlias_preserves_simpleKeyStack s false s_a h_fn
+    · split at h
+      · -- '!': tag
+        generalize h_fn : scanTag s = result at h
+        cases result with
+        | error e => simp at h
+        | ok s_t =>
+          simp only [Except.ok.injEq] at h; subst h
+          exact scanTag_preserves_simpleKeyStack s s_t h_fn
+      · -- remaining: block scalar, quoted, plain
+        repeat (any_goals (split at h))
+        any_goals contradiction
+        all_goals (try simp only [Except.ok.injEq] at *)
+        all_goals (try contradiction)
+        all_goals (try subst_vars)
+        all_goals (try dsimp only [])
+        all_goals first
+          | exact scanBlockScalar_preserves_simpleKeyStack _ _ (by assumption)
+          | exact scanDoubleQuoted_preserves_simpleKeyStack _ _ (by assumption)
+          | exact scanSingleQuoted_preserves_simpleKeyStack _ _ (by assumption)
+          | exact scanPlainScalar_preserves_simpleKeyStack _ _ (by assumption)
+          | (simp_all; done)
 
 -- Category 3: Flow open — simpleKey cleared, pushed onto stack
 
