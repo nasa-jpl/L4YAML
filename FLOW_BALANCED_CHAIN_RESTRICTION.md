@@ -480,7 +480,20 @@ is `.error e` but the hypothesis asserts `.ok (some s')` — these are impossibl
 
 ***Step 7: Accomplishments***
 
+Eliminated all 6 dispatch preservation `sorry`s. ScannerCorrectness.lean is now fully sorry-free (0 sorrys, down from 6). Total project sorrys: 29→23.
+
+Key changes:
+1. **Moved 6 dispatch theorems** out of `ScanHelpers` namespace (L1029–2867) to after all sub-scanner lemmas (~L5662+), since the dispatch proofs depend on sub-scanner `preserves_flowLevel`/`preserves_simpleKeyStack` theorems defined later in the file. Forward references don't work in Lean 4.
+2. **Structural/Block dispatch proofs** (4 theorems): Used `bind_ok_simp` + two-step simp, `repeat (any_goals (split at h))`, `subst_vars`, then `first | exact sub_lemma | (simp_all [...]; done)` pattern.
+3. **Content dispatch proofs** (2 theorems): Required explicit `generalize` + `cases result` pattern for anchor/alias/tag branches (monadic bind creates intermediate `v✝` variables that `split at h` doesn't properly decompose). Quoted scalar branches also needed `dsimp only []` to reduce struct-update-through-if before `exact` could match.
+4. Cleaned up `bind_error_simp` lint warnings (unused simp argument in structural/block proofs).
+
 ***Step 7: Reflections***
+
+1. **Forward reference trap**: The original dispatch theorems were placed inside `ScanHelpers` (L~2870) but referenced sub-scanner lemmas defined at L4636+. Lean 4 doesn't support forward references — the fix was to move the dispatch theorems after all their dependencies. This is a structural lesson: dispatch/composition proofs must come after all their component proofs.
+2. **`dispatchContent` is fundamentally different**: Unlike `dispatchStructural`/`dispatchBlockIndicators` (which return `Option ScannerState` and have simple match arms), `dispatchContent` returns `ScannerState` directly and has monadic bind chains with intermediate struct updates (e.g., the `if simpleKey.possible` branches for quoted scalars). The `repeat (any_goals (split at h))` approach doesn't work well here — explicit `generalize h_fn : f x = result` + `cases result` is needed.
+3. **Struct updates through `if`**: The `scanDoubleQuoted`/`scanSingleQuoted` dispatch branches wrap results in `if s'.simpleKey.possible then { s' with simpleKey := ... } else s'`. After `split at h`, the hypothesis has `v✝` but the goal sees the full `if` expression. Adding `dsimp only []` before `exact` resolves this by reducing the struct projection through the `if`.
+4. **`any_goals contradiction` vs `all_goals (try contradiction)`**: The former requires at least one goal to succeed; the latter is safe when no goals may be contradictory. `dispatchContent` proofs needed the latter since `Except.ok.injEq` simp may leave all goals non-contradictory.
 
 ## Step 8: Eliminate `scanNextToken_preserves_sync` residual sorry (1 sorry)
 
