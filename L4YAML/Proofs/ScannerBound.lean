@@ -1125,7 +1125,7 @@ theorem scanDirective_BoundInv (s s' : ScannerState)
         · cases hok
       · cases hok; exact skipToEndOfLine_BoundInv _ h_ws hend
 
--- Content scanner BoundInv lemmas (all sorry'd — complex loops)
+-- Content scanner BoundInv lemmas (all proven — complex loops)
 
 theorem scanAnchorOrAlias_BoundInv (s s' : ScannerState) (isAnchor : Bool)
     (h : BoundInv s s) (hend : s.inputEnd = s.input.utf8ByteSize)

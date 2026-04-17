@@ -3762,13 +3762,13 @@ and `scanNextToken_preserves_sync` in EmitterScannability). Steps 6–12 elimina
 3. ✅ Define `SimpleKeyAboveFloor` + per-step preservation (DONE — ~310 LOC)
 4. ✅ Prove `FlowMonoChain_preserves_raw_prefix` (DONE — ~120 LOC)
 5. ✅ Prove `ScanChain_filtered_prefix` (DONE — sorry eliminated, 6-sorry cascade)
-6. Eliminate sub-scanner `preserves_flowLevel` stubs (5 sorrys, ScannerCorrectness)
-7. Eliminate dispatch `preserves_{flowLevel,simpleKeyStack}` residuals (6 sorrys, ScannerCorrectness)
-8. Eliminate `scanNextToken_preserves_sync` residual (1 sorry, EmitterScannability)
-9. Eliminate preprocessing BoundInv sorrys (4 sorrys, ScannerBound)
-10. Eliminate sub-scanner BoundInv sorrys (8 sorrys, ScannerBound)
-11. Eliminate dispatch BoundInv sorrys (3 sorrys, ScannerBound)
-12. Build verification + documentation
+6. ✅ Eliminate sub-scanner `preserves_flowLevel` stubs (DONE — 5 sorrys, ScannerCorrectness)
+7. ✅ Eliminate dispatch `preserves_{flowLevel,simpleKeyStack}` residuals (DONE — 6 sorrys, ScannerCorrectness → 0 sorry)
+8. ✅ Eliminate `scanNextToken_preserves_sync` residual (DONE — 1 sorry, EmitterScannability)
+9. ✅ Eliminate preprocessing BoundInv sorrys (DONE — 4 sorrys, ScannerBound)
+10. ✅ Eliminate sub-scanner BoundInv sorrys (DONE — 8 sorrys, ScannerBound)
+11. ✅ Eliminate dispatch BoundInv sorrys (DONE — 3 sorrys, ScannerBound → 0 sorry)
+12. ✅ Build verification + documentation (DONE)
 
 **Sorry accounting:** Started: 11. After Steps 1–5: 34 (+24 scaffolding, −1 target).
 After Steps 6–11: 7 (all 24 scaffolding + 3 pre-existing ScannerBound eliminated).
@@ -3780,26 +3780,40 @@ before Phase H (body characterization proofs depend on `ScanChain_filtered_prefi
 
 ***Phase G: Accomplishments***
 
-Steps 1–5 complete:
+All 12 steps complete. Total sorry reduction: 11 → 7 (net −4).
+
+Steps 1–5 — Architecture + target sorry elimination:
 - `FlowMonoChain` inductive + 7 operations (~60 LOC)
 - Threaded through `EmitScansInFlow`/`EmitListScansInFlow`/`EmitPairListScansInFlow` (3 defs, 5 proofs, 6 consumers)
 - `SimpleKeyAboveFloor` predicate + 5 constructors + 5 per-dispatch maintenance + top-level theorem (~310 LOC)
 - `FlowMonoChain_preserves_raw_prefix` proven (~120 LOC)
 - `ScanChain_filtered_prefix` sorry ELIMINATED — cascade eliminated 6 sorrys total
-- EmitterScannability sorry count: 9 → 3 (remaining: L1888, L8134, L8553 + downstream)
+
+Steps 6–8 — ScannerCorrectness + EmitterScannability scaffolding (12 sorrys eliminated):
+- Step 6: 5 sub-scanner `preserves_flowLevel` proofs (fuel induction, do-notation desugaring)
+- Step 7: 6 dispatch `preserves_{flowLevel,simpleKeyStack}` proofs — required moving theorems after sub-scanner lemmas (forward reference fix). ScannerCorrectness.lean now 0 sorry.
+- Step 8: `scanNextToken_preserves_sync` — wrote `dispatchFlowIndicators_preserves_sync` helper for flow start/end/entry. Restructured from bulk `repeat` to explicit step-by-step dispatch.
+
+Steps 9–11 — ScannerBound BoundInv scaffolding (15 sorrys eliminated):
+- Step 9: 4 preprocessing BoundInv lemmas (`skipToContentComment`, `consumeNewline`, `skipToContentWs`, `skipToContentLoop`). CRLF case needed manual `raw_next_le_utf8ByteSize` + `next_isValid`.
+- Step 10: 8 sub-scanner BoundInv lemmas + 6 new helpers (`processEscape`, `foldQuotedNewlines`, `collectBlockScalarLoop`, `collectDoubleQuotedLoop`, `collectSingleQuotedLoop`, `collectPlainScalarLoop`). Also proved `terminates?_state_eq`.
+- Step 11: 3 dispatch BoundInv proofs (`preprocess`, `dispatchStructural`, `dispatchContent`). ScannerBound.lean now 0 sorry.
+
+Step 12 — Verification:
+- Full build: 429 jobs, 0 errors
+- Sorry count: 7 (all EmitterScannability.lean, Phases H/I/J)
+- All tests pass: 869/869 suite, 84/84 validation, 29/29 raw parse
+- ScannerCorrectness.lean: 0 sorry, 0 axiom
+- ScannerBound.lean: 0 sorry, 0 axiom
 
 ***Phase G: Reflections***
 
-- Steps 1–5 achieved the primary goal (eliminating `ScanChain_filtered_prefix` sorry) but
-  introduced 24 scaffolding sorrys — more than doubling the project sorry count from 11 to 34.
-  Steps 6–12 clean up this scaffolding debt before resuming the Phase H–J critical path.
-- The 6-sorry cascade elimination in Step 5 was a pleasant surprise — the root sorry's
-  elimination cascaded to 5 downstream sorrys automatically.
-- ScannerCorrectness sorrys (11) are all provable: 5 have reference proofs in
-  ScannerPlainScalarValid.lean, 6 are dispatch error-case residuals (contradiction).
-- ScannerBound sorrys (12 new + 3 pre-existing) follow the same BoundInv frame-property
-  pattern — proven infrastructure exists for `advance_BoundInv`, `fieldUpdate_BoundInv`.
-- Steps 6–8 and Steps 9–10 are independent tracks that can proceed in parallel.
+- **Scaffolding debt was manageable.** Steps 1–5 introduced 24 scaffolding sorrys (11→34), but Steps 6–11 eliminated all 24 plus 3 pre-existing ScannerBound sorrys (34→7). The temporary spike was architecturally necessary — dispatch proofs can't be written without sub-lemma signatures.
+- **The 6-sorry cascade in Step 5 was a pleasant surprise.** Eliminating the root `ScanChain_filtered_prefix` sorry cascaded to 5 downstream sorrys automatically.
+- **Forward references are a persistent trap.** Step 7 required moving 6 dispatch theorems out of their original namespace and after all sub-scanner lemmas. Lean 4 doesn't support forward references — this is a structural lesson for future proof organization.
+- **Manual step-by-step `split` consistently outperforms bulk `repeat split`.** Across Steps 7, 8, 10, and 11, every successful dispatch proof used explicit `split at hok` matching the source function structure. The `repeat split` + `all_goals first | ... | sorry` pattern leaves join-point residue goals that can't be closed uniformly.
+- **BoundInv constructor beats `fieldUpdate_BoundInv` for complex targets.** When the target state is a struct update over a non-variable expression (e.g., `{ unwindIndents s1 s1.col with ... }`), explicit `⟨h.offset_le, h.inputEnd_eq, h.input_eq, h.isValid⟩` always works while `fieldUpdate_BoundInv _ _ h rfl rfl rfl` fails on implicit arg inference.
+- **Dependent elimination workaround is essential for content sub-scanners.** The `revert hok; generalize EXPR = val; intro hok; cases val` pattern was used in 4+ proofs (Steps 10–11) where `split at hok` fails with "Dependent elimination failed" on large struct literals.
 
 **Phase H: Layer 1 — Body token characterization (2 sorrys)**
 *Estimated: ~200-400 LOC · Risk: MEDIUM*
@@ -3895,9 +3909,9 @@ with parser behavior on emitter output.
 
 ***Phase J: Reflections***
 
-**Phase S (parallel): ScannerBound.lean — 15 sorrys (3 pre-existing + 12 from Phase G)**
+**Phase S (parallel): ScannerBound.lean — 15 sorrys (3 pre-existing + 12 from Phase G) — DONE**
 *Estimated: ~310-560 LOC · Risk: LOW-MEDIUM*
-*Now subsumed by Phase G Steps 9–11.*
+*Completed by Phase G Steps 9–11. ScannerBound.lean: 0 sorry, 0 axiom.*
 
 Independent of the EmitterScannability sorry chain. Can be done at any time.
 Phase E adversarial testing (296/296 checks) confirmed the 3 original dispatch statements are correct.
@@ -3930,7 +3944,13 @@ These don't block `universal_roundtrip` but are needed for full-project 0-sorry.
 
 ***Phase S: Accomplishments***
 
+Completed via Phase G Steps 9–11. All 15 sorrys eliminated. ScannerBound.lean: 0 sorry.
+
 ***Phase S: Reflections***
+
+See Phase G reflections. Key patterns: BoundInv constructor for complex struct updates,
+dependent elimination workaround (`revert/generalize/cases`), fuel induction with
+generalized accumulators for loop BoundInv proofs.
 
 ### Summary
 
@@ -3942,16 +3962,16 @@ These don't block `universal_roundtrip` but are needed for full-project 0-sorry.
 | D | 2 (body characterization) | 200-400 | MEDIUM | Phase C | **DONE** (statements fixed) |
 | E | 0 (adversarial audit) | ~3 hrs | LOW | Phase D | **DONE** (993/993, 1 false thm repaired) |
 | F | 4 targeted → 2 proven, 2 blocked | ~15 | LOW-MEDIUM | Phase E | **DONE** (2/4 proven; #3 false for %RESERVED, #4 needs stack precond) |
-| G | 1 target + 24 scaffolding | 770-1,410 | MEDIUM | Phase F | Steps 1-5 done (target eliminated), Steps 6-12 pending (scaffolding cleanup) |
+| G | 1 target + 24 scaffolding → all eliminated | 770-1,410 | MEDIUM | Phase F | **DONE** (11→7 sorrys, −4 net) |
 | H | 2 (body characterization proofs) | 200-400 | MEDIUM | Phase G | |
 | I | 2 (parser acceptance / h_pnok) | 400-800 | HIGH | Phase H | |
 | J | 2 (content fidelity) | 300-600 | MEDIUM-HIGH | Phase I | |
-| S | 15 (ScannerBound — subsumed by G Steps 9–11) | 310-560 | LOW-MEDIUM | — | Subsumed by Phase G |
+| S | 15 (ScannerBound — subsumed by G Steps 9–11) | 310-560 | LOW-MEDIUM | — | **DONE** (subsumed by Phase G Steps 9–11) |
 | **Total** | **13 original + 24 scaffolding** | **~2,270-4,340** | | | |
 
-**Critical path:** A–F (DONE) → G (Steps 6–12) → H → I → J (7 EmitterScannability sorrys after Phase G)
-**Parallel track:** S subsumed by Phase G Steps 9–11
-**Expected outcome:** 34 → 7 (Phase G) → 0 (Phases H–J) sorry warnings across the full build.
+**Critical path:** A–G (DONE) → H → I → J (7 EmitterScannability sorrys remaining)
+**Parallel track:** S completed (subsumed by Phase G Steps 9–11)
+**Current state:** 7 sorrys (all EmitterScannability.lean). Next: Phase H (body characterization, 2 sorrys).
 
 ### Risk mitigation for Phase I
 

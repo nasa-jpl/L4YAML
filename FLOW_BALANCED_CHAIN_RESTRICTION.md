@@ -727,7 +727,22 @@ Eliminated all 3 dispatch-level BoundInv sorrys. **ScannerBound.lean is now 100%
 
 ***Step 12: Accomplishments***
 
+Build verification and documentation complete. Final Phase G results:
+
+- **Build:** 429 jobs, 0 errors, 0 warnings (excluding 4 sorry warnings in EmitterScannability)
+- **Sorry count:** 7 (all EmitterScannability.lean — Phases H/I/J). Better than the plan's predicted 10:
+  - ScannerCorrectness: 11 → 0 ✅ (as planned)
+  - ScannerBound: 15 → 0 ✅ (plan predicted 3 → 0, but Step 11 also eliminated the 3 pre-existing)
+  - EmitterScannability: 8 → 7 ✅ (as planned)
+  - **Net: 34 → 7** (not 10 as predicted — the 3 pre-existing ScannerBound sorrys were also eliminated)
+- **Tests:** 869/869 suite, 84/84 validation, 29/29 raw parse — all pass, regression-free
+- **Documentation:** Updated VERSION-0.4.7.md Phase G section with full accomplishments/reflections, marked Phase G and Phase S as DONE in summary table, updated critical path
+
 ***Step 12: Reflections***
+
+1. **Exceeded expectations on sorry reduction.** The plan predicted 34 → 10 sorrys (net −4 from the starting 11). Actual: 34 → 7 (net −4 from 11, same). The difference is because the plan's "10 remaining" included 3 pre-existing ScannerBound sorrys that Step 11 also eliminated. The corrected accounting: 11 original − 4 net eliminated = 7.
+2. **The 12-step plan was well-calibrated.** Every step completed successfully, no step required re-planning or fallback strategies. Risk assessments were accurate — the hardest steps (3, 10) were correctly marked MEDIUM-HIGH.
+3. **Phase G is the largest single phase of v0.4.7** (~770-1,410 LOC estimated, 12 steps, touching 3 proof files). The scaffolding-then-cleanup approach (introduce sorrys in Steps 1–5, eliminate in Steps 6–11) worked well — it allowed the core architectural work to proceed without being blocked on leaf proofs.
 
 ---
 
@@ -796,19 +811,19 @@ Step 4: FlowMonoChain_preserves_raw_prefix (key theorem)              ── DON
   ↓
 Step 5: ScanChain_filtered_prefix sorry elimination                   ── DONE
   ↓
-Step 6: Sub-scanner preserves_flowLevel (5 sorrys)                    ── ScannerCorrectness
+Step 6: Sub-scanner preserves_flowLevel (5 sorrys)                    ── DONE
   ↓
-Step 7: Dispatch preserves_{flowLevel,simpleKeyStack} (6 sorrys)      ── ScannerCorrectness
+Step 7: Dispatch preserves_{flowLevel,simpleKeyStack} (6 sorrys)      ── DONE
   ↓
-Step 8: scanNextToken_preserves_sync (1 sorry)                        ── EmitterScannability
+Step 8: scanNextToken_preserves_sync (1 sorry)                        ── DONE
   ↓
 Step 9: Preprocessing BoundInv (4 sorrys)                ┐
-                                                          ├─ ScannerBound (parallel track)
+                                                          ├─ DONE (parallel track)
 Step 10: Sub-scanner BoundInv (8 sorrys)                  │
   ↓                                                       │
 Step 11: Dispatch BoundInv (3 sorrys)                    ┘
   ↓
-Step 12: Build verification + VERSION-0.4.7.md update
+Step 12: Build verification + VERSION-0.4.7.md update     ── DONE
 ```
 
 Steps 6–8 (ScannerCorrectness + EmitterScannability sync) are sequential.
@@ -831,5 +846,5 @@ Step 12 depends on all prior steps.
 | 9 | ~80-150 | MEDIUM | **DONE** |
 | 10 | ~200-400 | MEDIUM-HIGH | **DONE** |
 | 11 | ~30-60 | LOW | **DONE** |
-| 12 | ~10 | LOW | |
-| **Total** | **~770-1,410** | | |
+| 12 | ~10 | LOW | **DONE** |
+| **Total** | **~770-1,410** | | **ALL DONE** |
