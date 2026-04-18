@@ -4219,6 +4219,275 @@ Note: the 7 sorry WARNINGS correspond to 10 sorry OCCURRENCES across those 7 dec
 The 3 unproven nested bracket helper lemmas are ready for proof implementation. The proof
 strategy is documented, and adversarial instantiation confirms the theorem statements are sound.
 
+### Phase I.5: Nested bracket lemma refactoring and completion
+
+**Context:** The initial attempt to prove `parseNode_flowSeqStart_in_seq` revealed the proof is getting very long (~200 lines). Since all three nested bracket lemmas (`parseNode_flowSeqStart_in_seq`, `parseNode_flowMapStart_in_seq`, `parseEntry_in_flowMap`) follow the same structure, we apply the same refactoring strategy that successfully managed complexity in `flow_parser_ok_of_structure`.
+
+**Problem:** Each nested bracket lemma proof has ~200 lines with this structure:
+- 20 lines: Bracket matching & IH invocation
+- 105 lines: Mechanical loop precondition setup (11 preconditions for `parseFlowSequenceLoop_emitter_ok`)
+- 50 lines: Loop invocation & result construction
+- 25 lines: Existential witness construction
+
+The 105-line middle section is highly repetitive across all three lemmas and follows mechanical patterns from `SeqBodyProps`/`MapBodyProps`.
+
+**Solution:** Factor out the precondition setup into reusable helper structures and lemmas.
+
+**Phase I.5 Implementation Plan:**
+
+**Step 1:** Define precondition bundle structures (ParserWellBehaved.lean, ~30 lines)
+```lean
+structure LoopSeqPreconditions (tokens ps_advance j body_start fuel) where
+  h_pn : ParseNodeFlowSeqOk tokens j fuel body_start
+  h_fuel : fuel > j - ps_advance.pos
+  h_pos : ps_advance.pos ≤ j
+  h_end_pos : j < ps_advance.tokens.size
+  h_end_tok : ps_advance.tokens[j]!.val = .flowSequenceEnd
+  h_at_end : ps_advance.peek? = some .flowSequenceEnd → ps_advance.pos = j
+  h_entry : ... (vacuous for empty array)
+  h_content_start : ... (from SeqBodyProps.content_start)
+  h_after_fe : ... (from SeqBodyProps.after_fe)
+  h_bal : flowBracketBalance ... = 0
+  h_bs : body_start ≤ ps_advance.pos
+
+structure LoopMapPreconditions (tokens ps_advance j body_start fuel) where
+  -- Similar structure for ParseEntryFlowMapOk and parseFlowMappingLoop_emitter_ok
+  ...
+```
+
+**Step 2:** Prove helper lemmas to construct preconditions (~210 lines total)
+```lean
+theorem mk_loop_seq_preconditions
+    (tokens ps j body_start fuel)
+    (h_inner_sbp : SeqBodyProps tokens (ps.pos + 1) j)
+    (h_inner_pnok : ParseNodeFlowSeqOk tokens j fuel (ps.pos + 1))
+    ... : LoopSeqPreconditions tokens ps.advance j (ps.pos + 1) fuel := by
+  -- Construct all 11 preconditions mechanically from SeqBodyProps
+  -- This is where the current 105-line setup goes
+  constructor <;> sorry  -- 11 preconditions
+
+theorem mk_loop_map_preconditions
+    ... : LoopMapPreconditions ... := by
+  -- Similar for mapping case
+  ...
+```
+
+**Step 3:** Refactor `parseNode_flowSeqStart_in_seq` to use helper (~70 lines, down from ~200)
+```lean
+theorem parseNode_flowSeqStart_in_seq ... := by
+  -- Phase 1: Bracket matching (20 lines)
+  obtain ⟨j, ...⟩ := h_sbp.bracket_seq ps.pos ...
+  have h_inner_sbp := h_sub.seq (ps.pos + 1) j ...
+  have h_inner_pnok := ih_seq j (ps.pos + 1) ...
+  
+  -- Phase 2: Construct preconditions (1 line!)
+  have h_preconds := mk_loop_seq_preconditions tokens ps j (ps.pos + 1) fuel ...
+  
+  -- Phase 3: Invoke loop theorem (3 lines)
+  obtain ⟨items, ps_loop, ...⟩ := parseFlowSequenceLoop_emitter_ok fuel ps.advance #[] j
+    h_preconds.h_pn h_preconds.h_fuel ... -- unpack structure fields
+  
+  -- Phase 4: Build parseNode result (30 lines: bind chain reasoning)
+  -- Phase 5: Construct existential witness (15 lines: 6 postconditions)
+  ...
+```
+
+**Step 4:** Apply same pattern to `parseNode_flowMapStart_in_seq` and `parseEntry_in_flowMap`
+
+Each lemma follows the same structure, just substituting:
+- `bracket_seq` → `bracket_map` (for flowMapStart case)
+- `SeqBodyProps` → `MapBodyProps`
+- `ParseNodeFlowSeqOk` → `ParseEntryFlowMapOk`
+- `parseFlowSequenceLoop_emitter_ok` → `parseFlowMappingLoop_emitter_ok`
+
+**Net result:**
+- Before: 3 × ~200 lines = ~600 lines
+- After: 2 helper lemmas (~105 lines each) + 3 main lemmas (~70 lines each) = 210 + 210 = **~420 lines**
+- **Reduction: 30% fewer lines, much clearer structure**
+
+**Benefits:**
+1. DRY principle: mechanical setup exists once, not three times
+2. Clear pattern: all three lemmas visibly follow the same structure
+3. Easier maintenance: fix precondition bugs once
+4. Better documentation: structure makes requirements explicit
+5. Enables completion: shorter proofs are easier to finish
+
+**Phase I.5 Status:** ✅ Complete (2026-04-17)
+
+**Implementation Summary:**
+- ✅ Step 1: Defined `LoopSeqPreconditions` and `LoopMapPreconditions` structures
+- ✅ Step 2: Proved `mk_loop_seq_preconditions` helper (no sorries)
+- ✅ Step 3: Proved `mk_loop_map_preconditions` helper (no sorries)
+- ✅ Step 4: Refactored all 3 nested bracket lemmas to use helpers
+- **Result:** Helper lemmas are 100% proven. Main lemmas have setup complete (~27 lines each), with ~50 lines of bind chain reasoning remaining per lemma.
+- **Precondition restructuring:** Modified `h_content_start` and `h_key_start` to include guard `ps.pos < j`, eliminating empty-body edge case sorries. Updated loop theorem signatures accordingly.
+
+### Phase I.6: Complete parseNode nested bracket lemmas
+
+**Goal:** Finish proving `parseNode_flowSeqStart_in_seq` and `parseNode_flowMapStart_in_seq`.
+
+**Current State (after Phase I.5):**
+Both lemmas have infrastructure complete (~27 lines each):
+- ✅ Bracket matching via `bracket_seq`/`bracket_map`
+- ✅ IH invocation on inner body
+- ✅ Inner body properties via `FlowSubrangesOk`
+- ✅ Fuel decomposition
+- ✅ `parseNodeProperties` result
+- ✅ Loop preconditions via `mk_loop_seq_preconditions`/`mk_loop_map_preconditions`
+
+**Remaining Work (~50 lines each):**
+
+**Step 1:** Invoke loop theorem with preconditions (~5 lines)
+```lean
+-- For parseNode_flowSeqStart_in_seq:
+obtain ⟨items, ps_loop, h_loop_ok, h_loop_peek, h_loop_pos, h_loop_tok, h_loop_tp⟩ :=
+  parseFlowSequenceLoop_emitter_ok (4 * tokens.size + 4) ps.advance #[] j (ps.pos + 1)
+    h_loop_preconds.h_pn h_loop_preconds.h_fuel h_loop_preconds.h_pos
+    h_loop_preconds.h_end_pos h_loop_preconds.h_end_tok h_loop_preconds.h_at_end
+    h_loop_preconds.h_entry h_loop_preconds.h_content_start h_loop_preconds.h_after_fe
+    h_loop_preconds.h_bal h_loop_preconds.h_bs
+
+-- Similar for parseNode_flowMapStart_in_seq with parseFlowMappingLoop_emitter_ok
+```
+
+**Step 2:** Complete bind chain through parseNode (~30 lines)
+
+The bind chain follows this structure:
+```lean
+parseNode ps m
+  → parseNodeProperties ps         -- returns ({}, ps) for flowSequenceStart/flowMappingStart
+  → validateNodeProps ...           -- passes, returns unit
+  → parseNodeContent ps m' {}       -- dispatches to parseFlowSequence/parseFlowMapping
+  → parseFlowSequence ps.advance m' -- (or parseFlowMapping)
+      → parseFlowSequenceLoop ...   -- we have result from Step 1
+      → advance past ]              -- we have position j
+      → return .sequence items
+  → applyNodeFinalization ...       -- wraps with properties
+```
+
+Key challenges:
+- Fuel coordination: IH provides fuel `4*N+4`, but `parseNode` consumes `m'`. Need either:
+  - `ParseNodeFlowSeqOk.mono` lemma to convert fuel requirements, or
+  - Show loop is deterministic for sufficient fuel, or
+  - Restructure to thread fuel bound as hypothesis
+- Bind reasoning: unfold `parseNode`, split on each bind, use determinism to equate results
+- Token preservation through all steps
+
+**Step 3:** Build existential witness (~15 lines)
+
+Prove 6 postconditions from loop result and bracket properties:
+```lean
+∃ val ps', parseNode ps m = .ok (val, ps') ∧
+  ps'.pos > ps.pos             -- from h_loop_pos: ps_loop.pos = j > ps.pos
+  ∧ ps'.pos ≤ endPos            -- from h_j_succ_le: j + 1 ≤ endPos
+  ∧ ps'.tokens = tokens         -- from h_loop_tok and advance preservation
+  ∧ ps'.trackPositions = ps.trackPositions  -- from h_loop_tp and finalization
+  ∧ (ps'.peek? = some .flowEntry ∨         -- from h_j_succ property
+     (ps'.peek? = some .flowSequenceEnd ∧ ps'.pos = endPos))
+  ∧ flowBracketBalance tokens ps.pos ps'.pos = 0  -- from h_j_bal arithmetic
+```
+
+**Proof Strategy:**
+1. Both lemmas follow identical structure (only differing in seq vs map substitutions)
+2. Can prove one fully, then adapt proof for the other
+3. The bind chain reasoning is mechanical but tedious
+4. Adversarial instantiation validates theorem statements are sound
+
+**Phase I.6 Dependencies:**
+- Requires: Phase I.5 (helper lemmas with preconditions)
+- Blocks: Phase J (parser acceptance proofs need these lemmas)
+
+**Phase I.6 Status:** Not started
+
+### Phase I.7: Complete parseEntry_in_flowMap lemma
+
+**Goal:** Finish proving `parseEntry_in_flowMap`.
+
+**Current State (after Phase I.5):**
+Lemma structure documented but fundamentally different from the parseNode lemmas:
+- Does NOT use loop precondition helpers (no loop theorem invocation)
+- Sequential structure: parseExplicitKey → advance → parseFlowMappingValue
+- Nested existential postconditions (key result + value result)
+
+**Remaining Work (~80-100 lines):**
+
+**Step 1:** Parse key content (~30 lines)
+```lean
+-- ps starts at .key token
+-- Advance past .key
+let ps_after_key := ps.advance
+
+-- Key content must be scalar, [, or { (from MapBodyProps.key_content)
+-- Case split on ps_after_key.peek?:
+match ps_after_key.peek? with
+| some (.scalar c s) => 
+    -- parseNode returns scalar immediately
+    -- Use parseNode_scalar theorem
+| some .flowSequenceStart =>
+    -- Use IH: ih_seq on inner bracket body
+    -- Requires finding matching ] via MapBodyProps.bracket_seq
+| some .flowMappingStart =>
+    -- Use IH: ih_map on inner bracket body
+    -- Requires finding matching } via MapBodyProps.bracket_map
+
+-- Result: key_val, key_ps with postconditions
+```
+
+**Step 2:** Parse value content (~30 lines)
+```lean
+-- key_ps should be at .value token (from MapBodyProps.key_scalar_value or .key_bracket_value)
+-- Advance past .value
+let ps_after_value := key_ps.advance
+
+-- Value content must be scalar, [, or { (from MapBodyProps.value_content)
+-- Similar case split as Step 1, using IH for nested brackets
+
+-- Result: val_val, val_ps with postconditions
+```
+
+**Step 3:** Construct nested existential witness (~20 lines)
+```lean
+-- First existential: key result
+∃ key_val key_ps,
+  parseExplicitKey ps.advance m = .ok (key_val, key_ps) ∧
+  key_ps.pos > ps.pos ∧
+  key_ps.pos ≤ endPos ∧
+  key_ps.tokens = tokens ∧
+  key_ps.trackPositions = ps.trackPositions ∧
+  
+  -- Second existential: value result (for any savedPath, keyContent)
+  ∀ (savedPath : YamlPath) (keyContent : String),
+    ∃ val_val val_ps,
+      parseFlowMappingValue key_ps m savedPath keyContent = .ok (val_val, val_ps) ∧
+      val_ps.pos > ps.pos ∧
+      val_ps.pos ≤ endPos ∧
+      val_ps.tokens = tokens ∧
+      val_ps.trackPositions = ps.trackPositions ∧
+      (val_ps.peek? = some .flowEntry ∨
+       (val_ps.peek? = some .flowMappingEnd ∧ val_ps.pos = endPos)) ∧
+      flowBracketBalance tokens ps.pos val_ps.pos = 0
+```
+
+**Key Differences from Phase I.6:**
+- Sequential rather than loop-based
+- Nested existentials (key then value) rather than single result
+- Uses MapBodyProps directly (no precondition helper)
+- More case analysis (3 cases each for key and value content)
+- Simpler fuel management (no loop coordination)
+
+**Proof Strategy:**
+1. MapBodyProps provides all necessary structural properties
+2. IH covers nested bracket cases
+3. Scalar cases are straightforward
+4. Token/position threading is mechanical
+
+**Phase I.7 Dependencies:**
+- Requires: Phase I.5 (refactored structure, though doesn't use precondition helpers)
+- Blocks: Phase J (parser acceptance proofs need this lemma)
+- Independent from: Phase I.6 (can be worked in parallel)
+
+**Phase I.7 Status:** Not started
+
 ### Phase J: Parser acceptance proofs (h_pnok)
 
 Phase J uses the infrastructure from Phase I to close the 2 sorry occurrences for
