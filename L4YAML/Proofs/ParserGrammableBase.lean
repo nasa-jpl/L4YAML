@@ -592,4 +592,158 @@ theorem flowBracketBalance_compose_zero (tokens : Array (Positioned YamlToken))
       flowBracketBalance_compose tokens body_start pos (pos + 1) h_bs_pos (by omega),
       h_bal, h_tail, flowBracketBalance_single _ _ h_pos_bound, h_delta]; omega
 
+/-! ### §6  Structural predicates for flow body subranges
+
+These predicates capture the token-level structural properties that
+`parseNodeFlowSeqOk_of_structure` and `parseEntryFlowMapOk_of_structure`
+need to prove `ParseNodeFlowSeqOk` / `ParseEntryFlowMapOk` by strong
+induction on span.
+
+The universal quantification over all (lo, hi) subranges handles
+nesting automatically: inner bracket bodies satisfy the same predicates,
+so the inductive hypothesis applies.
+
+**Phase I infrastructure**: These predicates are sorry'd conclusions of
+the body characterization theorems; the proofs that emitter output
+satisfies them is deferred to Phase J. -/
+
+/-- A content-start token is one that `parseNodeContent` dispatches
+    to `parseNode` (scalar) or to `parseFlowSequence`/`parseFlowMapping`. -/
+def isFlowContentStart (tok : YamlToken) : Prop :=
+  (∃ c s, tok = .scalar c s) ∨ tok = .flowSequenceStart ∨ tok = .flowMappingStart
+
+/-- Structural properties of a well-formed flow SEQUENCE body `[lo, hi)`.
+
+    Assumed: `tokens[hi]!.val = .flowSequenceEnd` and
+    `flowBracketBalance tokens lo hi = 0`.
+
+    Properties:
+    - S1: content-start at `lo` (when non-empty)
+    - S2: scalar at depth 0 → FE or seqEnd successor
+    - S3: FE at depth 0 → content-start at next position
+    - S4: flowSeqStart at depth 0 → matching seqEnd with balanced inner body + successor
+    - S5: flowMapStart at depth 0 → matching mapEnd with balanced inner body + successor -/
+structure SeqBodyProps (tokens : Array (Positioned YamlToken)) (lo hi : Nat) : Prop where
+  content_start : lo < hi → isFlowContentStart tokens[lo]!.val
+  scalar_succ : ∀ k, lo ≤ k → k < hi →
+    flowBracketBalance tokens lo k = 0 →
+    (∃ c s, tokens[k]!.val = .scalar c s) →
+    k + 1 ≤ hi ∧
+    (tokens[k+1]!.val = .flowEntry ∨
+     (tokens[k+1]!.val = .flowSequenceEnd ∧ k + 1 = hi))
+  after_fe : ∀ k, lo ≤ k → k < hi →
+    flowBracketBalance tokens lo k = 0 →
+    tokens[k]!.val = .flowEntry →
+    k + 1 < hi ∧ isFlowContentStart tokens[k+1]!.val
+  bracket_seq : ∀ k, lo ≤ k → k < hi →
+    flowBracketBalance tokens lo k = 0 →
+    tokens[k]!.val = .flowSequenceStart →
+    ∃ j, k < j ∧ j < hi ∧
+      tokens[j]!.val = .flowSequenceEnd ∧
+      flowBracketBalance tokens (k+1) j = 0 ∧
+      j + 1 ≤ hi ∧
+      (tokens[j+1]!.val = .flowEntry ∨
+       (tokens[j+1]!.val = .flowSequenceEnd ∧ j + 1 = hi))
+  bracket_map : ∀ k, lo ≤ k → k < hi →
+    flowBracketBalance tokens lo k = 0 →
+    tokens[k]!.val = .flowMappingStart →
+    ∃ j, k < j ∧ j < hi ∧
+      tokens[j]!.val = .flowMappingEnd ∧
+      flowBracketBalance tokens (k+1) j = 0 ∧
+      j + 1 ≤ hi ∧
+      (tokens[j+1]!.val = .flowEntry ∨
+       (tokens[j+1]!.val = .flowSequenceEnd ∧ j + 1 = hi))
+
+/-- Structural properties of a well-formed flow MAPPING body `[lo, hi)`.
+
+    Assumed: `tokens[hi]!.val = .flowMappingEnd` and
+    `flowBracketBalance tokens lo hi = 0`.
+
+    The mapping body token pattern at depth 0 is:
+    `.key, key_content, .value, val_content, (.flowEntry | .flowMappingEnd), ...`
+
+    Properties M1–M10 capture what `parseExplicitKey` and `parseFlowMappingValue`
+    need for acceptance. -/
+structure MapBodyProps (tokens : Array (Positioned YamlToken)) (lo hi : Nat) : Prop where
+  /-- M1: `.key` at start (when non-empty). -/
+  key_start : lo < hi → tokens[lo]!.val = .key
+  /-- M2: FE at depth 0 → `.key` follows. -/
+  after_fe : ∀ k, lo ≤ k → k < hi →
+    flowBracketBalance tokens lo k = 0 →
+    tokens[k]!.val = .flowEntry →
+    k + 1 ≤ hi ∧ tokens[k+1]!.val = .key
+  /-- M3: After `.key` at depth 0, content-start follows. -/
+  key_content : ∀ k, lo ≤ k → k < hi →
+    flowBracketBalance tokens lo k = 0 →
+    tokens[k]!.val = .key →
+    k + 1 < hi ∧ isFlowContentStart tokens[k+1]!.val
+  /-- M4: After `.key` + scalar, `.value` follows. -/
+  key_scalar_value : ∀ k, lo ≤ k → k < hi →
+    flowBracketBalance tokens lo k = 0 →
+    tokens[k]!.val = .key →
+    (∃ c s, tokens[k+1]!.val = .scalar c s) →
+    k + 2 < hi ∧ tokens[k+2]!.val = .value
+  /-- M5: After `.key` + bracket start, matching end exists and `.value` after it. -/
+  key_bracket_value : ∀ k, lo ≤ k → k < hi →
+    flowBracketBalance tokens lo k = 0 →
+    tokens[k]!.val = .key →
+    (tokens[k+1]!.val = .flowSequenceStart ∨ tokens[k+1]!.val = .flowMappingStart) →
+    ∃ j, k + 1 < j ∧ j < hi ∧
+      ((tokens[k+1]!.val = .flowSequenceStart ∧ tokens[j]!.val = .flowSequenceEnd) ∨
+       (tokens[k+1]!.val = .flowMappingStart ∧ tokens[j]!.val = .flowMappingEnd)) ∧
+      flowBracketBalance tokens (k+2) j = 0 ∧
+      j + 1 < hi ∧ tokens[j+1]!.val = .value
+  /-- M6: After `.value` at depth 0, content-start follows. -/
+  value_content : ∀ k, lo ≤ k → k < hi →
+    flowBracketBalance tokens lo k = 0 →
+    tokens[k]!.val = .value →
+    k + 1 < hi ∧ isFlowContentStart tokens[k+1]!.val
+  /-- M7: After `.value` + scalar, FE or mapEnd follows. -/
+  value_scalar_succ : ∀ k, lo ≤ k → k < hi →
+    flowBracketBalance tokens lo k = 0 →
+    tokens[k]!.val = .value →
+    (∃ c s, tokens[k+1]!.val = .scalar c s) →
+    k + 2 ≤ hi ∧
+    (tokens[k+2]!.val = .flowEntry ∨
+     (tokens[k+2]!.val = .flowMappingEnd ∧ k + 2 = hi))
+  /-- M8: After `.value` + bracket start, matching end and FE/mapEnd after. -/
+  value_bracket_succ : ∀ k, lo ≤ k → k < hi →
+    flowBracketBalance tokens lo k = 0 →
+    tokens[k]!.val = .value →
+    (tokens[k+1]!.val = .flowSequenceStart ∨ tokens[k+1]!.val = .flowMappingStart) →
+    ∃ j, k + 1 < j ∧ j < hi ∧
+      ((tokens[k+1]!.val = .flowSequenceStart ∧ tokens[j]!.val = .flowSequenceEnd) ∨
+       (tokens[k+1]!.val = .flowMappingStart ∧ tokens[j]!.val = .flowMappingEnd)) ∧
+      flowBracketBalance tokens (k+2) j = 0 ∧
+      j + 1 ≤ hi ∧
+      (tokens[j+1]!.val = .flowEntry ∨
+       (tokens[j+1]!.val = .flowMappingEnd ∧ j + 1 = hi))
+  /-- M9: Bracket matching for flowSeqStart at depth 0 (needed for inner body IH). -/
+  bracket_seq : ∀ k, lo ≤ k → k < hi →
+    flowBracketBalance tokens lo k = 0 →
+    tokens[k]!.val = .flowSequenceStart →
+    ∃ j, k < j ∧ j < hi ∧
+      tokens[j]!.val = .flowSequenceEnd ∧
+      flowBracketBalance tokens (k+1) j = 0
+  /-- M10: Bracket matching for flowMapStart at depth 0. -/
+  bracket_map : ∀ k, lo ≤ k → k < hi →
+    flowBracketBalance tokens lo k = 0 →
+    tokens[k]!.val = .flowMappingStart →
+    ∃ j, k < j ∧ j < hi ∧
+      tokens[j]!.val = .flowMappingEnd ∧
+      flowBracketBalance tokens (k+1) j = 0
+
+/-- Universal structural properties: all valid flow body subranges
+    in the token array satisfy `SeqBodyProps` (for seq bodies) or
+    `MapBodyProps` (for map bodies). -/
+structure FlowSubrangesOk (tokens : Array (Positioned YamlToken)) : Prop where
+  seq : ∀ lo hi, lo ≤ hi → hi < tokens.size →
+    tokens[hi]!.val = .flowSequenceEnd →
+    flowBracketBalance tokens lo hi = 0 →
+    SeqBodyProps tokens lo hi
+  map : ∀ lo hi, lo ≤ hi → hi < tokens.size →
+    tokens[hi]!.val = .flowMappingEnd →
+    flowBracketBalance tokens lo hi = 0 →
+    MapBodyProps tokens lo hi
+
 end L4YAML.Proofs.ParserGrammable

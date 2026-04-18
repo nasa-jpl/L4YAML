@@ -69,6 +69,7 @@ open L4YAML.Grammar
 open L4YAML.TokenParser
 open L4YAML.CharPredicates
 open L4YAML.Proofs.CouplingBridge
+open L4YAML.Proofs.ParserGrammable
 open L4YAML.Proofs.ScalarCoupling
 
 /-! ## §1  Escape Character Properties
@@ -7181,26 +7182,6 @@ theorem parseDirectives_skip (ps : ParseState)
       · exfalso; revert h; simp_all
       · exfalso; revert h; simp_all
       · cases h_yield
-
--- When `parseNodeProperties` sees a non-anchor/tag token, it returns
--- immediately with empty properties and unchanged state.
--- The `for _ in [:2] do` loop breaks on the first iteration because
--- `peek?` matches `| _ => break`.
-set_option maxHeartbeats 3200000 in
-theorem parseNodeProperties_skip (ps : ParseState)
-    (h : match ps.peek? with
-        | some (.anchor _) | some (.tag _ _) => False
-        | _ => True) :
-    parseNodeProperties ps = .ok ({}, ps) := by
-  unfold parseNodeProperties
-  dsimp only []
-  simp only [Std.Legacy.Range.forIn_eq_forIn_range',
-             Std.Legacy.Range.size, Nat.sub_zero, Nat.add_sub_cancel, Nat.div_one,
-             show List.range' 0 2 1 = 0 :: List.range' 1 1 1 from by decide,
-             List.forIn_cons, bind, Except.bind, pure, Except.pure]
-  cases hpk : ps.peek?
-  case none => simp_all
-  case some tok => cases tok <;> simp_all
 
 -- **Parser trace on three-token scalar stream**: Given a token array with
 -- values `[streamStart, scalar content .doubleQuoted, streamEnd]`,
