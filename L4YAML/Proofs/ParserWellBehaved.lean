@@ -5031,6 +5031,491 @@ The nested bracket lemmas (flowSeqStart, flowMapStart, entry in map) require coo
 
 -/
 
+/-- **Helper Lemma 1**: parseExplicitKey on scalar succeeds, advances by 1 position.
+
+    Given ps at a scalar token, parseExplicitKey calls parseNode which consumes the scalar
+    and advances by 1. Factors out scalar key parsing pattern used in all map entry proofs. -/
+theorem parseExplicitKey_scalar
+    (tokens : Array (Positioned YamlToken))
+    (ps : ParseState) (m : Nat)
+    (h_tok : ps.tokens = tokens)
+    (h_m_pos : 0 < m)
+    (h_pos_bound : ps.pos < tokens.size)
+    (c : String) (s : ScalarStyle)
+    (h_scalar : tokens[ps.pos]!.val = .scalar c s) :
+    ∃ key_val key_ps,
+      parseExplicitKey ps m = .ok (key_val, key_ps) ∧
+      key_ps.pos = ps.pos + 1 ∧
+      key_ps.tokens = tokens ∧
+      key_ps.trackPositions = ps.trackPositions := by
+  -- parseExplicitKey on scalar dispatches to parseNode
+  have h_peek : ps.peek? = some (.scalar c s) := by
+    unfold ParseState.peek?
+    have h_bound : ps.pos < ps.tokens.size := by rw [h_tok]; exact h_pos_bound
+    rw [if_pos h_bound]
+    rw [h_tok, h_scalar]
+
+  -- parseExplicitKey is not emptyNode case (scalar ≠ .value/.flowEntry/.flowMappingEnd)
+  have h_explicit_eq : parseExplicitKey ps m = parseNode ps m := by
+    unfold parseExplicitKey
+    rw [h_peek]
+
+  -- Fuel decomposition: m = m' + 1
+  obtain ⟨m', h_m'⟩ : ∃ k, m = k + 1 := ⟨m - 1, by omega⟩
+
+  -- parseNodeProperties skip on scalar
+  have h_pnp : parseNodeProperties ps = .ok ({}, ps) := by
+    exact parseNodeProperties_skip ps (by rw [h_peek]; trivial)
+
+  -- parseNode result
+  have h_node_eq : parseNode ps (m' + 1) =
+      .ok (applyNodeFinalization
+        (.scalar { content := c, style := s, tag := none, anchor := none })
+        ps.advance {} (ps.peekPos?.getD { offset := 0, line := 0, col := 0 })) := by
+    unfold parseNode
+    simp only [bind, Except.bind, pure, Except.pure]
+    split
+    · rename_i h_alias; rw [h_peek] at h_alias; cases h_alias
+    · rw [h_pnp]; simp
+      unfold validateNodeProps
+      rw [h_peek]; simp only [pure, Except.pure, bind, Except.bind]
+      unfold parseNodeContent
+      rw [h_peek]; simp
+
+  -- Build witness
+  refine ⟨(applyNodeFinalization
+    (.scalar { content := c, style := s, tag := none, anchor := none })
+    ps.advance {} (ps.peekPos?.getD { offset := 0, line := 0, col := 0 })).1,
+   (applyNodeFinalization
+    (.scalar { content := c, style := s, tag := none, anchor := none })
+    ps.advance {} (ps.peekPos?.getD { offset := 0, line := 0, col := 0 })).2,
+   ?_, ?_, ?_, ?_⟩
+
+  · -- parseExplicitKey result
+    rw [h_explicit_eq, h_m', h_node_eq]
+
+  · -- key_ps.pos = ps.pos + 1
+    rw [applyNodeFinalization_pos]
+    simp [ParseState.advance]
+
+  · -- key_ps.tokens = tokens
+    rw [applyNodeFinalization_tokens, ParseState.advance_tokens, h_tok]
+
+  · -- key_ps.trackPositions = ps.trackPositions
+    rw [applyNodeFinalization_trackPositions]
+    simp [ParseState.advance]
+
+/-- **Helper Lemma 2**: parseExplicitKey on [ succeeds, advances to after ].
+    Factors out bracket key parsing pattern. Requires IH for inner bracket body. -/
+theorem parseExplicitKey_flowSeq
+    (tokens : Array (Positioned YamlToken))
+    (ps : ParseState) (m : Nat)
+    (j : Nat)  -- Position of matching ]
+    (h_tok : ps.tokens = tokens)
+    (h_m_pos : 0 < m)
+    (h_m_fuel : 4 * tokens.size + 6 ≤ m)
+    (h_pos_bound : ps.pos < tokens.size)
+    (h_fss : tokens[ps.pos]!.val = .flowSequenceStart)
+    (h_j_bound : j < tokens.size)
+    (h_j_tok : tokens[j]!.val = .flowSequenceEnd)
+    (h_j_bal : flowBracketBalance tokens (ps.pos + 1) j = 0)
+    -- IH provides ParseNodeFlowSeqOk for inner body
+    (h_inner : ParseNodeFlowSeqOk tokens j (4 * tokens.size + 4) (ps.pos + 1)) :
+    ∃ key_val key_ps,
+      parseExplicitKey ps m = .ok (key_val, key_ps) ∧
+      key_ps.pos = j + 1 ∧
+      key_ps.tokens = tokens ∧
+      key_ps.trackPositions = ps.trackPositions := by
+  -- STRATEGIC SORRY: This requires detailed reasoning about parseNode on [
+  --
+  -- Proof sketch:
+  -- 1. parseExplicitKey dispatches to parseNode ([ is not emptyNode case)
+  -- 2. parseNode calls parseFlowSequence which calls parseFlowSequenceLoop
+  -- 3. Use h_inner (ParseNodeFlowSeqOk) to show loop succeeds
+  -- 4. Loop returns at position j with items array
+  -- 5. parseFlowSequence verifies flowSequenceEnd token and advances
+  -- 6. applyNodeFinalization is called, returning final position j + 1
+  --
+  -- Implementation requires:
+  -- - Fuel monotonicity: h_inner has fuel 4*N+4, but we have m ≥ 4*N+6
+  -- - Need parseNode_flowSeqStart_in_seq-like reasoning
+  -- - Or extract from completed parseNode_flowSeqStart_in_seq proof
+  --
+  -- ~40 lines implementation
+  sorry
+
+/-- **Helper Lemma 3**: parseExplicitKey on { succeeds, advances to after }.
+    Factors out bracket key parsing pattern. Requires IH for inner bracket body. -/
+theorem parseExplicitKey_flowMap
+    (tokens : Array (Positioned YamlToken))
+    (ps : ParseState) (m : Nat)
+    (j : Nat)  -- Position of matching }
+    (h_tok : ps.tokens = tokens)
+    (h_m_pos : 0 < m)
+    (h_m_fuel : 4 * tokens.size + 6 ≤ m)
+    (h_pos_bound : ps.pos < tokens.size)
+    (h_fms : tokens[ps.pos]!.val = .flowMappingStart)
+    (h_j_bound : j < tokens.size)
+    (h_j_tok : tokens[j]!.val = .flowMappingEnd)
+    (h_j_bal : flowBracketBalance tokens (ps.pos + 1) j = 0)
+    -- IH provides ParseEntryFlowMapOk for inner body
+    (h_inner : ParseEntryFlowMapOk tokens j (4 * tokens.size + 4) (ps.pos + 1)) :
+    ∃ key_val key_ps,
+      parseExplicitKey ps m = .ok (key_val, key_ps) ∧
+      key_ps.pos = j + 1 ∧
+      key_ps.tokens = tokens ∧
+      key_ps.trackPositions = ps.trackPositions := by
+  -- STRATEGIC SORRY: Symmetric with parseExplicitKey_flowSeq
+  --
+  -- Proof sketch:
+  -- 1. parseExplicitKey dispatches to parseNode ({ is not emptyNode case)
+  -- 2. parseNode calls parseFlowMapping which calls parseFlowMappingLoop
+  -- 3. Use h_inner (ParseEntryFlowMapOk) to show loop succeeds
+  -- 4. Loop returns at position j with pairs array
+  -- 5. parseFlowMapping verifies flowMappingEnd token and advances
+  -- 6. applyNodeFinalization is called, returning final position j + 1
+  --
+  -- Implementation identical structure to parseExplicitKey_flowSeq
+  -- ~40 lines implementation
+  sorry
+
+/-- **Helper Lemma 4**: parseFlowMappingValue succeeds when positioned at .value token.
+
+    This is the common second half of all 3 key cases. After parseExplicitKey succeeds
+    and positions at .value, this lemma handles parsing the value content.
+
+    Key insight: parseFlowMappingValue internally handles all value content types
+    (scalar/[/{) through its call to parseNode, so we don't need separate value helpers.
+
+    Takes original_pos explicitly since key_ps.pos - 2 doesn't work for bracket cases. -/
+theorem parseFlowMappingValue_ok
+    (tokens : Array (Positioned YamlToken))
+    (endPos body_start : Nat)
+    (span_bound : Nat)
+    (original_pos : Nat)  -- Position of original .key token
+    (key_ps : ParseState) (m : Nat)
+    (h_tok : key_ps.tokens = tokens)
+    (h_m_pos : 0 < m)
+    (h_m_fuel : 4 * tokens.size + 6 ≤ m)
+    (h_endPos_bound : endPos < tokens.size)
+    (h_span_bound : endPos - body_start ≤ span_bound + 1)
+    (h_pos : key_ps.pos < endPos)
+    (h_bs : body_start ≤ original_pos)
+    (h_orig_lt : original_pos < key_ps.pos)
+    (h_depth_orig : flowBracketBalance tokens body_start original_pos = 0)
+    (h_depth : flowBracketBalance tokens body_start key_ps.pos = 0)
+    (h_value_tok : tokens[key_ps.pos]!.val = .value)
+    (h_value_peek : key_ps.peek? = some .value)
+    -- Content follows .value (from MapBodyProps.value_content)
+    (h_content_bound : key_ps.pos + 1 < endPos)
+    (h_content : isFlowContentStart tokens[key_ps.pos + 1]!.val)
+    -- Need MapBodyProps and IH for nested brackets in value
+    (h_mbp : MapBodyProps tokens body_start endPos)
+    (h_sub : FlowSubrangesOk tokens)
+    -- IH for nested brackets (sequences and maps)
+    (ih_seq : ∀ j lo fuel, j < tokens.size → lo ≤ j → j - lo ≤ span_bound →
+              tokens[j]!.val = .flowSequenceEnd →
+              flowBracketBalance tokens lo j = 0 →
+              4 * tokens.size + 4 ≤ fuel →
+              ParseNodeFlowSeqOk tokens j fuel lo)
+    (ih_map : ∀ j lo fuel, j < tokens.size → lo ≤ j → j - lo ≤ span_bound →
+              tokens[j]!.val = .flowMappingEnd →
+              flowBracketBalance tokens lo j = 0 →
+              4 * tokens.size + 4 ≤ fuel →
+              ParseEntryFlowMapOk tokens j fuel lo) :
+    ∀ (savedPath : YamlPath) (keyContent : String),
+      ∃ val_val val_ps,
+        parseFlowMappingValue key_ps m savedPath keyContent = .ok (val_val, val_ps) ∧
+        val_ps.pos > original_pos ∧  -- Advances past original .key position
+        val_ps.pos ≤ endPos ∧
+        val_ps.tokens = tokens ∧
+        val_ps.trackPositions = key_ps.trackPositions ∧
+        (val_ps.peek? = some .flowEntry ∨
+         (val_ps.peek? = some .flowMappingEnd ∧ val_ps.pos = endPos)) ∧
+        flowBracketBalance tokens original_pos val_ps.pos = 0 := by
+  intro savedPath keyContent
+  -- Strategy: parseFlowMappingValue updates path, tryConsumes .key (fails),
+  -- tryConsumes .value (succeeds, advances), then calls parseNode on content.
+  -- We case-split on content type (scalar/[/{) and use appropriate parseNode lemma.
+
+  -- Step 1: Establish bounds and properties
+  have h_key_bound : key_ps.pos < tokens.size := by
+    calc key_ps.pos < endPos := h_pos
+    _ < tokens.size := h_endPos_bound
+
+  -- After consuming .value, position is key_ps.pos + 1
+  have h_after_value_bound : key_ps.pos + 1 < tokens.size := by
+    calc key_ps.pos + 1 < endPos + 1 := by omega
+    _ ≤ tokens.size := by omega
+
+  -- Step 2: Show tryConsume .key fails (no retroactive key marker)
+  -- This is immediate since key_ps.peek? = some .value ≠ some .key
+  have h_no_key : key_ps.tryConsume .key = (false, key_ps) := by
+    unfold ParseState.tryConsume
+    rw [h_value_peek]
+    simp
+
+  -- Step 3: Show tryConsume .value succeeds
+  have h_consume_value : key_ps.tryConsume .value = (true, key_ps.advance) := by
+    unfold ParseState.tryConsume
+    rw [h_value_peek]
+    simp
+
+  let ps_after_value := key_ps.advance
+  have h_after_tok : ps_after_value.tokens = tokens := by
+    simp [ps_after_value, ParseState.advance_tokens, h_tok]
+  have h_after_pos : ps_after_value.pos = key_ps.pos + 1 := by
+    simp [ps_after_value, ParseState.advance]
+
+  -- Step 4: Content token is flow content start
+  have h_content_tok : tokens[ps_after_value.pos]!.val = tokens[key_ps.pos + 1]!.val := by
+    rw [h_after_pos]
+
+  -- Step 5: Case split on content type (scalar, [, or {)
+  have h_content_peek : ps_after_value.peek? = some tokens[key_ps.pos + 1]!.val := by
+    unfold ParseState.peek?
+    rw [h_after_tok, h_after_pos]
+    simp only [h_after_value_bound, ↓reduceIte]
+
+  -- Step 6: Case split on content type using isFlowContentStart
+  rcases h_content with ⟨c, s, h_scalar⟩ | h_fss | h_fms
+
+  · -- Scalar value: parseNode → scalar → advances to key_ps.pos + 2
+    -- Use MapBodyProps.value_scalar_succ to get FE/mapEnd at key_ps.pos + 2
+    have h_scalar' : ∃ c s, tokens[key_ps.pos + 1]!.val = .scalar c s := ⟨c, s, h_scalar⟩
+    have h_bs_ps : body_start ≤ key_ps.pos := by omega
+    have ⟨h_succ_bound, h_succ_peek⟩ :=
+      h_mbp.value_scalar_succ key_ps.pos h_bs_ps h_pos h_depth h_value_tok h_scalar'
+
+    -- Unfold parseFlowMappingValue structure:
+    -- let ps := { key_ps with currentPath := savedPath.push (.key keyContent) }
+    -- let (_, ps) := ps.tryConsume .key  -- fails
+    -- let (consumed, ps) := ps.tryConsume .value  -- succeeds → ps_after_value
+    -- let (val, ps) ← parseNode ps m
+    -- return (val, { ps with currentPath := savedPath })
+
+    -- Step 1: After path update and tryConsumes, we're at ps_after_value
+    let ps_with_path := { key_ps with currentPath := savedPath.push (.key keyContent) }
+
+    -- Step 2: ps_after_value.peek? = scalar, so parseNode will succeed
+    have h_scalar_peek : ps_after_value.peek? = some (.scalar c s) := by
+      rw [h_content_peek, h_scalar]
+
+    -- Step 3: parseNode on scalar advances by 1
+    -- parseNode: no alias → empty props → parseNodeContent (scalar) → advance → finalize
+    -- Result: ps_after_value.advance
+    let ps_final := ps_after_value.advance
+    have h_final_pos : ps_final.pos = key_ps.pos + 2 := by
+      calc ps_final.pos = ps_after_value.advance.pos := rfl
+        _ = ps_after_value.pos + 1 := rfl
+        _ = (key_ps.pos + 1) + 1 := by rw [h_after_pos]
+        _ = key_ps.pos + 2 := by omega
+
+    -- Step 4: Final position properties
+    have h_final_gt : ps_final.pos > original_pos := by
+      rw [h_final_pos]; omega
+
+    have h_final_le : ps_final.pos ≤ endPos := by
+      rw [h_final_pos]; omega
+
+    have h_final_tok : ps_final.tokens = tokens := by
+      simp only [ps_final, ParseState.advance, ps_after_value]
+      exact h_after_tok
+
+    have h_final_tp : ps_final.trackPositions = key_ps.trackPositions := by
+      simp only [ps_final, ParseState.advance, ps_after_value]
+
+    -- Step 5: Final peek is FE or mapEnd
+    have h_final_peek : ps_final.peek? = some .flowEntry ∨
+                        (ps_final.peek? = some .flowMappingEnd ∧ ps_final.pos = endPos) := by
+      unfold ParseState.peek?
+      rw [h_final_tok, h_final_pos]
+      simp only [if_pos (by omega : key_ps.pos + 2 < tokens.size)]
+      rcases h_succ_peek with h_fe | ⟨h_me, h_eq⟩
+      · left; simp [h_fe]
+      · right
+        constructor
+        · simp [h_me]
+        · calc ps_final.pos = key_ps.pos + 2 := h_final_pos
+            _ = endPos := h_eq
+
+    -- Step 6: Balance from original_pos to final position is 0
+    have h_final_bal : flowBracketBalance tokens original_pos ps_final.pos = 0 := by
+      rw [h_final_pos]
+
+      -- Decompose: balance[original_pos, key_ps.pos+2]
+      --           = balance[original_pos, key_ps.pos] + balance[key_ps.pos, key_ps.pos+1] + balance[key_ps.pos+1, key_ps.pos+2]
+      --
+      -- From h_depth_orig and h_depth via composition:
+      --   balance[body_start, key_ps.pos] = balance[body_start, original_pos] + balance[original_pos, key_ps.pos]
+      --   0 = 0 + balance[original_pos, key_ps.pos]
+      --   So: balance[original_pos, key_ps.pos] = 0
+      have h_bal_to_value : flowBracketBalance tokens original_pos key_ps.pos = 0 := by
+        have h_compose := flowBracketBalance_compose tokens body_start original_pos key_ps.pos
+          (by omega) (by omega)
+        rw [h_depth_orig, h_depth] at h_compose
+        omega
+
+      -- Token at key_ps.pos is .value (delta = 0)
+      have h_value_single : flowBracketBalance tokens key_ps.pos (key_ps.pos + 1) = 0 := by
+        rw [flowBracketBalance_single tokens key_ps.pos (by simp; omega)]
+        show flowBracketDelta tokens.toList[key_ps.pos].val = 0
+        simp only [flowBracketDelta]
+        -- tokens.toList[i].val is definitionally tokens[i].val (both use getElem)
+        have h_bound : key_ps.pos < tokens.size := by omega
+        have : tokens.toList[key_ps.pos].val = (tokens[key_ps.pos]'h_bound).val := rfl
+        rw [this]
+        have : (tokens[key_ps.pos]'h_bound).val = tokens[key_ps.pos]!.val := by
+          rw [getElem!_pos]
+        rw [this, h_value_tok]
+
+      -- Token at key_ps.pos+1 is .scalar (delta = 0)
+      have h_scalar_single : flowBracketBalance tokens (key_ps.pos + 1) (key_ps.pos + 2) = 0 := by
+        rw [flowBracketBalance_single tokens (key_ps.pos + 1) (by simp; omega)]
+        show flowBracketDelta tokens.toList[key_ps.pos + 1].val = 0
+        simp only [flowBracketDelta]
+        have h_bound : key_ps.pos + 1 < tokens.size := by omega
+        have : tokens.toList[key_ps.pos + 1].val = (tokens[key_ps.pos + 1]'h_bound).val := rfl
+        rw [this]
+        have : (tokens[key_ps.pos + 1]'h_bound).val = tokens[key_ps.pos + 1]!.val := by
+          rw [getElem!_pos]
+        rw [this, h_scalar]
+
+      -- Compose all three regions
+      rw [flowBracketBalance_compose tokens original_pos key_ps.pos (key_ps.pos + 2) (by omega) (by omega),
+          flowBracketBalance_compose tokens key_ps.pos (key_ps.pos + 1) (key_ps.pos + 2) (by omega) (by omega)]
+      simp [h_bal_to_value, h_value_single, h_scalar_single]
+
+    -- Construct witness
+    -- parseFlowMappingValue structure:
+    -- 1. Update path: ps_with_path := { key_ps with currentPath := savedPath.push (.key keyContent) }
+    -- 2. tryConsume .key: (false, ps_with_path)
+    -- 3. tryConsume .value: (true, ps_with_path.advance) = ps_after_value
+    -- 4. parseNode ps_after_value m: returns (val, ps') where ps' = ps_after_value.advance
+    -- 5. Restore path: { ps' with currentPath := savedPath }
+
+    -- We need to show parseNode succeeds on ps_after_value with fuel m
+    -- ps_after_value.peek? = some (.scalar c s), so parseNode will:
+    -- - Skip alias check
+    -- - parseNodeProperties returns empty props (no anchor/tag at scalar)
+    -- - parseNodeContent matches scalar, advances, returns (.scalar c s, ps_after_value.advance)
+    -- - applyNodeFinalization wraps the result
+
+    -- For simplicity, use the fact that parseNode on a scalar with no properties
+    -- just returns the scalar value and advances by 1
+    let val_val := YamlValue.scalar { content := c, style := s }
+    let val_ps := { ps_final with currentPath := savedPath }
+
+    refine ⟨val_val, val_ps, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+
+    -- (1) parseFlowMappingValue key_ps m savedPath keyContent = .ok (val_val, val_ps)
+    · -- Strategy: Unfold parseFlowMappingValue, show tryConsume steps, parseNode on scalar, path restoration
+      -- Detailed proof requires ~30 lines showing definitional equalities between:
+      --   ps_path = { key_ps with currentPath := ... }
+      --   ps_path.advance = key_ps.advance (modulo currentPath)
+      --   parseNode succeeds on scalar (using parseNode_scalar_in_seq structure)
+      --   Final state with path restored matches val_ps
+      -- This is straightforward but tedious - the key insight is that parseNode on a scalar
+      -- with no anchor/tag properties just advances once and returns the scalar value.
+      sorry  -- ~30 lines: unfold parseFlowMappingValue, handle tryConsumes, parseNode on scalar
+
+    -- (2) original_pos < val_ps.pos
+    · simp [val_ps]; exact h_final_gt
+
+    -- (3) val_ps.pos ≤ endPos
+    · simp [val_ps]; exact h_final_le
+
+    -- (4) val_ps.tokens = tokens
+    · simp [val_ps]; exact h_final_tok
+
+    -- (5) val_ps.trackPositions = key_ps.trackPositions
+    · simp [val_ps]; exact h_final_tp
+
+    -- (6) val_ps.peek? = some .flowEntry ∨ val_ps.peek? = some .flowMappingEnd ∧ val_ps.pos = endPos
+    · simp only [val_ps]
+      have : ({ ps_final with currentPath := savedPath } : ParseState).peek? = ps_final.peek? := by
+        unfold ParseState.peek?
+        simp
+      rw [this]
+      have : ({ ps_final with currentPath := savedPath } : ParseState).pos = ps_final.pos := rfl
+      rw [this]
+      exact h_final_peek
+
+    -- (7) flowBracketBalance tokens original_pos val_ps.pos = 0
+    · simp [val_ps]; exact h_final_bal
+
+  · -- flowSequenceStart value: parseNode → [ → loop → ] → advances past ]
+    -- Use MapBodyProps.value_bracket_succ to find matching ] and FE/mapEnd after
+    have h_bracket : tokens[key_ps.pos + 1]!.val = .flowSequenceStart ∨
+                     tokens[key_ps.pos + 1]!.val = .flowMappingStart := Or.inl h_fss
+    have h_bs_ps : body_start ≤ key_ps.pos := by omega
+    have ⟨j, h_j_gt, h_j_lt, h_j_match, h_j_bal, h_j_succ_bound, h_j_succ_tok⟩ :=
+      h_mbp.value_bracket_succ key_ps.pos h_bs_ps h_pos h_depth h_value_tok h_bracket
+
+    -- Extract bracket info
+    have ⟨h_fss_match, h_j_end⟩ : tokens[key_ps.pos + 1]!.val = .flowSequenceStart ∧
+                                    tokens[j]!.val = .flowSequenceEnd := by
+      rcases h_j_match with ⟨h1, h2⟩ | ⟨h1, h2⟩
+      · exact ⟨h1, h2⟩
+      · rw [h_fss] at h1; cases h1
+
+    -- Use FlowSubrangesOk and IH to show parseNode succeeds on nested [...]
+    -- Strategy: Similar to parseNode_flowSeqStart_in_seq (lines 5566-5860)
+    --   1. Establish span bound: j - (key_ps.pos + 2) ≤ span_bound
+    --   2. Apply ih_seq to get ParseNodeFlowSeqOk for inner body
+    --   3. Unfold parseFlowMappingValue:
+    --      - Update path, tryConsume .key (fails), tryConsume .value (succeeds)
+    --      - Call parseNode ps_after_value m
+    --   4. Unfold parseNode:
+    --      - Skip alias, parseNodeProperties returns ({}, ps_after_value)
+    --      - parseNodeContent matches flowSequenceStart
+    --      - parseFlowSequence → parseFlowSequenceLoop (use loop theorem with ih_seq)
+    --      - applyNodeFinalization wraps result
+    --   5. Path restoration gives final witness
+    --   6. Balance: compose [original_pos, key_ps.pos], [key_ps.pos, key_ps.pos+1] (.value),
+    --               [key_ps.pos+1, j+1] (bracket pair), all = 0
+    have h_j_bound : j < tokens.size := by omega
+    have h_span : j - (key_ps.pos + 2) ≤ span_bound := by
+      -- j < endPos, key_ps.pos ≥ body_start
+      -- So j - (key_ps.pos + 2) < endPos - body_start ≤ span_bound + 1
+      -- Therefore j - (key_ps.pos + 2) ≤ span_bound (since for Nat, x < n+1 ↔ x ≤ n)
+      omega
+    have h_inner_seq : ParseNodeFlowSeqOk tokens j (4 * tokens.size + 4) (key_ps.pos + 2) :=
+      ih_seq j (key_ps.pos + 2) (4 * tokens.size + 4)
+        h_j_bound (by omega) h_span h_j_end h_j_bal (by omega)
+    sorry  -- ~100 lines: detailed unfolding parallel to parseNode_flowSeqStart_in_seq
+
+  · -- flowMappingStart value: symmetric with above
+    have h_bracket : tokens[key_ps.pos + 1]!.val = .flowSequenceStart ∨
+                     tokens[key_ps.pos + 1]!.val = .flowMappingStart := Or.inr h_fms
+    have ⟨j, h_j_gt, h_j_lt, h_j_match, h_j_bal, h_j_succ_bound, h_j_succ_tok⟩ :=
+      h_mbp.value_bracket_succ key_ps.pos (by omega) h_pos h_depth h_value_tok h_bracket
+
+    have ⟨h_fms_match, h_j_end⟩ : tokens[key_ps.pos + 1]!.val = .flowMappingStart ∧
+                                    tokens[j]!.val = .flowMappingEnd := by
+      rcases h_j_match with ⟨h1, h2⟩ | ⟨h1, h2⟩
+      · rw [h_fms] at h1; cases h1
+      · exact ⟨h1, h2⟩
+
+    -- Use FlowSubrangesOk and IH to show parseNode succeeds on nested {...}
+    -- Strategy: Parallel to flowSequenceStart case above
+    --   1. Establish span bound: j - (key_ps.pos + 2) ≤ span_bound
+    --   2. Apply ih_map to get ParseEntryFlowMapOk for inner body
+    --   3. Unfold parseFlowMappingValue → parseNode → parseNodeContent
+    --   4. parseFlowMapping → parseFlowMappingLoop (use loop theorem with ih_map)
+    --   5. applyNodeFinalization + path restoration
+    --   6. Balance composition as above
+    have h_j_bound : j < tokens.size := by omega
+    have h_span : j - (key_ps.pos + 2) ≤ span_bound := by
+      -- j < endPos, key_ps.pos ≥ body_start
+      -- So j - (key_ps.pos + 2) < endPos - body_start ≤ span_bound + 1
+      -- Therefore j - (key_ps.pos + 2) ≤ span_bound (since for Nat, x < n+1 ↔ x ≤ n)
+      omega
+    have h_inner_map : ParseEntryFlowMapOk tokens j (4 * tokens.size + 4) (key_ps.pos + 2) :=
+      ih_map j (key_ps.pos + 2) (4 * tokens.size + 4)
+        h_j_bound (by omega) h_span h_j_end h_j_bal (by omega)
+    sorry  -- ~100 lines: detailed unfolding parallel to parseNode_flowMapStart_in_seq
+
 /-- Scalar case: parseNode succeeds on a scalar token in a flow sequence body. -/
 theorem parseNode_scalar_in_seq
     (tokens : Array (Positioned YamlToken))
@@ -5144,6 +5629,7 @@ theorem parseNode_flowSeqStart_in_seq
     (endPos body_start : Nat)
     (span_bound : Nat)
     (h_endPos_bound : endPos < tokens.size)
+    (h_span_bound : endPos - body_start ≤ span_bound + 1)
     (h_sub : FlowSubrangesOk tokens)
     (h_sbp : SeqBodyProps tokens body_start endPos)
     -- IH matching flow_parser_ok_of_structure signature
@@ -5194,12 +5680,10 @@ theorem parseNode_flowSeqStart_in_seq
 
   -- Step 3: Compute span for IH
   have h_span : j - (ps.pos + 1) ≤ span_bound := by
-    -- j < endPos, ps.pos ≥ body_start, so j - (ps.pos+1) < endPos - body_start
-    -- Caller ensures span_bound ≥ endPos - body_start in strong induction
-    have : j - (ps.pos + 1) ≤ j - body_start := by omega
-    have : j - body_start ≤ endPos - body_start := by omega
-    -- Need: endPos - body_start ≤ span_bound (from caller's induction setup)
-    sorry  -- Requires explicit precondition from caller
+    -- j < endPos and ps.pos ≥ body_start
+    -- So: j - (ps.pos + 1) < j - body_start < endPos - body_start ≤ span_bound + 1
+    -- Therefore: j - (ps.pos + 1) ≤ span_bound (since for Nat, x < n+1 ↔ x ≤ n)
+    omega
 
   -- Step 4: Apply ih_seq to inner body [ps.pos+1, j)
   have h_inner_pn : ParseNodeFlowSeqOk tokens j (4 * tokens.size + 4) (ps.pos + 1) :=
@@ -5237,30 +5721,46 @@ theorem parseNode_flowSeqStart_in_seq
   generalize h_pnp : parseNodeProperties ps = pnp_result
   cases pnp_result with
   | error e =>
-    -- parseNodeProperties is a for-loop that always returns .ok (never throws)
-    -- It checks for anchor/tag, breaks on flowSequenceStart
-    sorry  -- ~3 lines: contradiction, parseNodeProperties can't fail here
+    -- parseNodeProperties is a for-loop that breaks on non-anchor/non-tag tokens
+    -- The only error path is undeclared tag handle (line 221 in TokenParser.lean)
+    -- Since peek? = flowSequenceStart (not .tag), we never enter the tag branch
+    -- Therefore parseNodeProperties returns .ok, not .error
+    -- This requires a dedicated lemma about forIn behavior on flowSequenceStart
+    exfalso
+    sorry  -- Need: parseNodeProperties with peek? = flowSequenceStart returns .ok (~5 lines)
   | ok res =>
     obtain ⟨props, ps_after_props⟩ := res
     simp
 
     -- Show ps_after_props = ps (parseNodeProperties doesn't advance for flowSequenceStart)
     have h_ps_props_eq : ps_after_props = ps := by
-      -- parseNodeProperties breaks on flowSequenceStart without advancing
-      sorry  -- ~2 lines: unfold parseNodeProperties, show loop doesn't advance
+      -- parseNodeProperties loops checking for anchor/tag
+      -- Since peek? = flowSequenceStart (neither anchor nor tag), loop breaks with done
+      -- done returns (props, ps) without advancing
+      sorry  -- Need forIn lemma: breaks on flowSequenceStart → ps unchanged
 
     have h_props_empty : props = {} := by
-      -- parseNodeProperties returns empty props when no anchor/tag consumed
-      sorry  -- ~2 lines: unfold parseNodeProperties, show props = {}
+      -- parseNodeProperties starts with props = {}, advances only on anchor/tag
+      -- Since we break immediately on flowSequenceStart, props stays {}
+      sorry  -- Need forIn lemma: breaks immediately → props = initial value = {}
 
     -- Step 8: validateNodeProps with prePropPos = ps.pos
     generalize h_saved_pos : ps.pos = prePropPos
     generalize h_vnp : validateNodeProps ps_after_props prePropPos props = vnp_result
     cases vnp_result with
     | error e =>
-      -- validateNodeProps checks block alignment & duplicate anchors
-      -- flowSequenceStart is flow collection (no alignment check), empty props (no duplicates)
-      sorry  -- ~3 lines: contradiction, validation can't fail
+      -- validateNodeProps checks: (1) block alignment (only for blockSequenceStart/blockMappingStart)
+      -- (2) duplicate anchors (only if props.hadDuplicateAnchor = true)
+      -- We have: peek? = flowSequenceStart (flow, not block), props = {} (no duplicate)
+      -- Therefore validateNodeProps cannot fail
+      exfalso
+      subst h_ps_props_eq h_props_empty h_saved_pos
+      unfold validateNodeProps at h_vnp
+      -- After unfolding, peek? = flowSequenceStart means first check passes (not block)
+      simp only [h_fss] at h_vnp
+      -- h_vnp now says: pure PUnit.unit = Except.error e, which is absurd
+      -- pure PUnit.unit = Except.ok PUnit.unit ≠ Except.error e
+      cases h_vnp
     | ok _ =>
       simp
 
@@ -5300,28 +5800,120 @@ theorem parseNode_flowSeqStart_in_seq
         simp [ParseState.advance]
 
       -- Construct loop preconditions and invoke loop theorem
-      -- This is the complex part - needs ~20 lines to set up properly
-      -- For now, use sorry to mark where loop theorem gets invoked
 
-      have h_loop_result : ∃ items ps_at_j,
-          parseFlowSequenceLoop ps_after_props.advance m'' #[] = .ok (items, ps_at_j) ∧
-          ps_at_j.pos = j ∧
-          ps_at_j.tokens = tokens ∧
-          ps_at_j.peek? = some .flowSequenceEnd := by
-        sorry  -- Construct LoopSeqPreconditions and invoke parseFlowSequenceLoop_emitter_ok
+      -- First, get SeqBodyProps for inner body [ps.pos+1, j)
+      have h_inner_sbp : SeqBodyProps tokens (ps.pos + 1) j := by
+        have := h_sub.seq (ps.pos + 1) j (by omega) h_j_bound h_j_tok h_j_bal
+        exact this
 
-      obtain ⟨items, ps_at_j, h_loop_ok, h_at_j_pos, h_at_j_tok, h_peek_j⟩ := h_loop_result
+      -- Use h_ps_props_eq to simplify
+      have h_ps_props_tok_eq : ps_after_props.tokens = tokens := by
+        rw [h_ps_props_eq]; exact h_tok
+      have h_ps_props_bound : ps_after_props.pos < tokens.size := by
+        rw [h_ps_props_eq]; exact h_ps_bound
+      have h_ps_props_j_gt : ps_after_props.pos < j := by
+        rw [h_ps_props_eq]; exact h_j_gt
+      have h_inner_sbp' : SeqBodyProps tokens (ps_after_props.pos + 1) j := by
+        rw [h_ps_props_eq]; exact h_inner_sbp
 
-      -- Thread through parseFlowSequence and parseNodeContent
-      -- The complete proof would unfold definitions and show:
-      -- 1. parseNodeContent = parseFlowSequence (by h_pnc_pfs)
-      -- 2. parseFlowSequence advances, calls loop (h_loop_ok), checks ], advances
-      -- 3. Result is (.sequence .flow items, ps_at_j.advance)
-      -- 4. applyNodeFinalization wraps this with position tracking
-      -- 5. Final existential witness has all 6 postconditions
+      -- Convert h_inner_pn to use ps_after_props.pos (keep same fuel value literally)
+      have h_inner_pn' : ParseNodeFlowSeqOk tokens j (4 * tokens.size + 4) (ps_after_props.pos + 1) := by
+        rw [h_ps_props_eq]; exact h_inner_pn
 
-      sorry  -- Complete witness construction (~30 lines)
-      -- Would build: ⟨val_final, ps_final, h_parse_eq, h_pos_gt, h_pos_le, h_tok_eq, h_tp_eq, h_peek_post, h_bal⟩
+      -- Construct loop preconditions with literal fuel value
+      have h_loop_precond := mk_loop_seq_preconditions
+        tokens ps_after_props j (4 * tokens.size + 4)
+        h_ps_props_tok_eq h_ps_props_bound h_ps_props_j_gt
+        h_j_bound h_j_tok h_inner_sbp' h_inner_pn'
+        (by omega)
+
+      -- Invoke parseFlowSequenceLoop_emitter_ok with 4*N+4 fuel
+      have ⟨items, ps_at_j, h_loop_ok, h_peek_j, h_at_j_pos, h_tok_j_eq, h_tp_j⟩ :=
+        parseFlowSequenceLoop_emitter_ok (4 * tokens.size + 4)
+          ps_after_props.advance #[] j (ps_after_props.pos + 1)
+          (by rw [ParseState.advance_tokens, h_ps_props_tok_eq]; exact h_loop_precond.h_pn)
+          h_loop_precond.h_fuel h_loop_precond.h_pos
+          h_loop_precond.h_end_pos h_loop_precond.h_end_tok h_loop_precond.h_at_end
+          h_loop_precond.h_entry h_loop_precond.h_content_start h_loop_precond.h_after_fe
+          h_loop_precond.h_bal h_loop_precond.h_bs
+
+      -- Extract key properties from loop result
+      have h_at_j_tok : ps_at_j.tokens = tokens := by
+        rw [h_tok_j_eq, ParseState.advance_tokens, h_ps_props_tok_eq]
+
+      -- Step 12: Build witness
+      -- Use fuel monotonicity to convert h_loop_ok from 4*N+4 fuel to m'' fuel
+      have h_loop_ok_m'' : parseFlowSequenceLoop ps_after_props.advance m'' #[] =
+                           .ok (items, ps_at_j) :=
+        parseFlowSequenceLoop_fuel_mono
+          ps_after_props.advance #[]
+          (4 * tokens.size + 4) m''
+          h_m''_fuel
+          items ps_at_j
+          h_loop_ok
+
+      -- parseNodeContent succeeds (use h_pnc_pfs which already expanded parseFlowSequence)
+      have h_pnc_ok : parseNodeContent ps_after_props (m'' + 1) props =
+                      .ok (.sequence .flow items, ps_at_j.advance) := by
+        rw [h_pnc_pfs]
+        -- The goal is: (have ps := ps_after_props.advance; do ...)
+        -- The have binding shadows ps with ps_after_props.advance
+        -- Then the do-block calls parseFlowSequenceLoop ps m'' #[]
+        -- We have h_loop_ok_m'': parseFlowSequenceLoop ps_after_props.advance m'' #[] = .ok (items, ps_at_j)
+        show (have ps := ps_after_props.advance;
+              do let ⟨items, ps⟩ ← parseFlowSequenceLoop ps m'' #[]
+                 match ps.peek? with
+                 | some .flowSequenceEnd => .ok (YamlValue.sequence .flow items, ps.advance)
+                 | _ => .error (.expectedToken "']'" ps.currentLine none)) =
+             .ok (YamlValue.sequence .flow items, ps_at_j.advance)
+        -- Now unfold the have and substitute
+        show (do let ⟨items', ps'⟩ ← parseFlowSequenceLoop ps_after_props.advance m'' #[]
+                 match ps'.peek? with
+                 | some .flowSequenceEnd => .ok (YamlValue.sequence .flow items', ps'.advance)
+                 | _ => .error (.expectedToken "']'" ps'.currentLine none)) =
+             .ok (YamlValue.sequence .flow items, ps_at_j.advance)
+        rw [h_loop_ok_m'']
+        -- Now we have: do let ⟨items', ps'⟩ ← .ok (items, ps_at_j); ...
+        -- Simplify the bind
+        simp only [Bind.bind, Except.bind]
+        -- Now the match reduces: items' = items, ps' = ps_at_j
+        rw [h_peek_j]
+
+      -- Final witness construction
+      -- Build existential witness using applyNodeFinalization result directly
+      let nodeStartPos := ps.peekPos?.getD default
+      refine ⟨(applyNodeFinalization (.sequence .flow items) ps_at_j.advance props nodeStartPos).1,
+              (applyNodeFinalization (.sequence .flow items) ps_at_j.advance props nodeStartPos).2,
+              ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+
+      -- (1) parseNode ps (m''+1+1) = .ok (val_final, ps_final)
+      · -- The goal is the do-block body after alias split and bind simplification
+        -- Step 1: Simplify pure () = .ok () and reduce the match
+        simp only [pure, Except.pure]
+        -- Step 2: Rewrite parseNodeContent using h_pnc_ok
+        rw [h_pnc_ok]
+        -- Step 3: Reduce the match on .ok (val, ps')
+        simp only []
+        -- Now they're definitionally equal
+        rfl
+
+      -- (2) prePropPos < ps_final.pos (i.e., ps.pos < ps_final.pos)
+      · sorry  -- ps_final.pos = j + 1 > ps.pos
+
+      -- (3) ps_final.pos ≤ endPos
+      · sorry  -- ps_final.pos = j + 1 ≤ endPos
+
+      -- (4) ps_final.tokens = tokens
+      · sorry  -- applyNodeFinalization preserves tokens
+
+      -- (5) ps_final.trackPositions = ps.trackPositions
+      · sorry  -- applyNodeFinalization preserves trackPositions
+
+      -- (6) peek? postcondition
+      · sorry  -- Use h_j_after: tokens[j+1] determines peek? at position j+1
+
+      -- (7) bracket balance = 0
+      · sorry  -- Combine: [ps.pos, ps.pos+1) = +1, [ps.pos+1, j) = 0, [j, j+1) = -1
 
 /-- Nested flowMappingStart case: uses IH for the inner body. -/
 theorem parseNode_flowMapStart_in_seq
@@ -5329,6 +5921,7 @@ theorem parseNode_flowMapStart_in_seq
     (endPos body_start : Nat)
     (span_bound : Nat)
     (h_endPos_bound : endPos < tokens.size)
+    (h_span_bound : endPos - body_start ≤ span_bound + 1)
     (h_sub : FlowSubrangesOk tokens)
     (h_sbp : SeqBodyProps tokens body_start endPos)
     -- IH matching flow_parser_ok_of_structure signature
@@ -5357,9 +5950,39 @@ theorem parseNode_flowMapStart_in_seq
               (ps'.peek? = some .flowEntry ∨
                (ps'.peek? = some .flowSequenceEnd ∧ ps'.pos = endPos)) ∧
               flowBracketBalance tokens ps.pos ps'.pos = 0 := by
-  -- Restructured to match flow_parser_ok_of_structure interface:
-  -- Takes m directly with bound 4*N+6 ≤ m (sufficient for full decomposition)
-  -- IH parameters match the strong induction structure
+  -- Strategy: Similar to parseNode_flowSeqStart_in_seq but for flow mappings
+  -- parseNode → parseNodeProperties → validateNodeProps → parseNodeContent
+  -- → parseFlowMapping → parseFlowMappingLoop (using IH) → applyNodeFinalization
+
+  -- Step 1: Establish ps.pos bound and token value
+  have h_ps_bound : ps.pos < tokens.size := by
+    subst h_tok; omega
+  have h_fms_val : tokens[ps.pos]!.val = .flowMappingStart := by
+    subst h_tok
+    unfold ParseState.peek? at h_fms
+    simp only [h_ps_bound, ↓reduceIte] at h_fms
+    injection h_fms
+
+  -- Step 2: Find matching } using SeqBodyProps.bracket_map
+  have ⟨j, h_j_gt, h_j_lt, h_j_tok, h_j_bal, h_j_succ, h_j_after⟩ :=
+    h_sbp.bracket_map ps.pos (by omega) h_pos h_depth h_fms_val
+
+  have h_j_bound : j < tokens.size := by omega
+
+  -- Step 3: Compute span for IH
+  have h_span : j - (ps.pos + 1) ≤ span_bound := by
+    calc j - (ps.pos + 1)
+        ≤ j - body_start      := by omega
+      _ ≤ endPos - body_start := by omega
+      _ ≤ span_bound          := by sorry  -- Need precondition: endPos - body_start ≤ span_bound
+
+  -- Step 4: Apply ih_map to inner body [ps.pos+1, j)
+  have h_inner_entry : ParseEntryFlowMapOk tokens j (4 * tokens.size + 4) (ps.pos + 1) :=
+    ih_map j (ps.pos + 1) (4 * tokens.size + 4)
+      h_j_bound (by omega) h_span h_j_tok h_j_bal (by omega)
+
+  -- Remaining steps: parseNode chain, loop theorem, witness construction
+  -- Structure parallel to parseNode_flowSeqStart_in_seq
   sorry
 
 /-- Map body case: parseExplicitKey + parseFlowMappingValue in a flow mapping body.
@@ -5369,6 +5992,7 @@ theorem parseEntry_in_flowMap
     (endPos body_start : Nat)
     (span_bound : Nat)
     (h_endPos_bound : endPos < tokens.size)
+    (h_span_bound : endPos - body_start ≤ span_bound + 1)
     (h_sub : FlowSubrangesOk tokens)
     (h_mbp : MapBodyProps tokens body_start endPos)
     -- IH matching flow_parser_ok_of_structure signature
@@ -5404,11 +6028,295 @@ theorem parseEntry_in_flowMap
           (val_ps.peek? = some .flowEntry ∨
            (val_ps.peek? = some .flowMappingEnd ∧ val_ps.pos = endPos)) ∧
           flowBracketBalance tokens ps.pos val_ps.pos = 0 := by
-  -- Restructured to match flow_parser_ok_of_structure interface:
-  -- Takes m directly with bound 4*N+6 ≤ m (sufficient for full decomposition)
-  -- IH parameters match the strong induction structure
-  -- Sequential structure: key parsing → value parsing (no loop theorem needed)
-  sorry
+  -- Strategy: Sequential key → value parsing (unlike loop-based parseNode lemmas)
+  -- 1. Advance past .key token
+  -- 2. Parse key content (scalar/[/{) using IH for nested brackets
+  -- 3. Result at .value token
+  -- 4. Parse value content using IH for nested brackets
+  -- 5. Construct nested existential witness
+
+  -- Step 1: Establish ps.pos bound and token value
+  have h_ps_bound : ps.pos < tokens.size := by
+    subst h_tok; omega
+  have h_key_val : tokens[ps.pos]!.val = .key := by
+    subst h_tok
+    unfold ParseState.peek? at h_key
+    simp only [h_ps_bound, ↓reduceIte] at h_key
+    injection h_key
+
+  -- Step 2: After .key, content-start follows (from MapBodyProps.key_content)
+  have ⟨h_key_content_bound, h_key_content⟩ :=
+    h_mbp.key_content ps.pos (by omega) h_pos h_depth h_key_val
+
+  -- ps.advance is at ps.pos + 1 (the key content)
+  have h_after_key_pos : ps.advance.pos = ps.pos + 1 := by
+    simp [ParseState.advance]
+
+  have h_after_key_bound : ps.advance.pos < tokens.size := by
+    rw [h_after_key_pos]; omega
+
+  -- Step 4: Fuel decomposition m ≥ 4*N+6, sufficient for key and value parsing
+  obtain ⟨m', h_m'⟩ : ∃ m', m = m' + 1 := ⟨m - 1, by omega⟩
+
+  -- After key, we'll be at .value token from MapBodyProps
+  -- Key content is at ps.advance (ps.pos + 1)
+
+  -- Step 5: Case split on key content type
+  -- parseExplicitKey dispatches: emptyNode if separator, else parseNode
+  -- From MapBodyProps.key_content: isFlowContentStart at ps.pos + 1
+
+  have h_after_key_tok : ps.advance.tokens = tokens := by
+    simp [ParseState.advance]; exact h_tok
+
+  -- Case split based on what isFlowContentStart allows: scalar, [, or {
+  rcases h_key_content with ⟨c, s, h_scalar⟩ | h_fss | h_fms
+
+  · -- Scalar key case: .key → scalar → .value → value_content → result
+    -- Use MapBodyProps.key_scalar_value to show .value at ps.pos + 2
+    have ⟨h_value_bound, h_value_tok⟩ :=
+      h_mbp.key_scalar_value ps.pos (by omega) h_pos h_depth h_key_val ⟨c, s, h_scalar⟩
+
+    -- Apply helper: parseExplicitKey on scalar
+    have ⟨key_val, key_ps, h_key_ok, h_key_pos, h_key_tok, h_key_tp⟩ :=
+      parseExplicitKey_scalar tokens ps.advance m h_after_key_tok (by omega) h_after_key_bound c s h_scalar
+
+    -- Build witness
+    refine ⟨key_val, key_ps, ?_, ?_, ?_, ?_, ?_, ?_⟩
+
+    · -- parseExplicitKey result
+      exact h_key_ok
+
+    · -- key_ps.pos > ps.pos
+      rw [h_key_pos]; omega
+
+    · -- key_ps.pos ≤ endPos
+      rw [h_key_pos]; omega
+
+    · -- key_ps.tokens = tokens
+      exact h_key_tok
+
+    · -- key_ps.trackPositions = ps.trackPositions
+      rw [h_key_tp]; subst h_tok; rfl
+
+    · -- ∀ savedPath keyContent, parseFlowMappingValue succeeds
+      intro savedPath keyContent
+
+      -- Verify key_ps is at .value token
+      have h_key_ps_pos_eq : key_ps.pos = ps.pos + 2 := by
+        rw [h_key_pos, h_after_key_pos]
+
+      have h_key_ps_value_tok : tokens[key_ps.pos]!.val = .value := by
+        rw [h_key_ps_pos_eq]; exact h_value_tok
+
+      have h_key_ps_value_peek : key_ps.peek? = some .value := by
+        unfold ParseState.peek?
+        rw [h_key_tok, if_pos (by rw [h_key_ps_pos_eq]; omega)]
+        rw [h_key_ps_value_tok]
+
+      -- Get value content info from MapBodyProps
+      have h_depth_at_value : flowBracketBalance tokens body_start (ps.pos + 2) = 0 := by
+        sorry  -- Balance preserved through .key and .scalar (non-bracket tokens)
+
+      have ⟨h_val_content_bound, h_val_content⟩ :=
+        h_mbp.value_content (ps.pos + 2) (by omega) (by omega) h_depth_at_value h_value_tok
+
+      have h_val_content_bound' : key_ps.pos + 1 < endPos := by
+        rw [h_key_ps_pos_eq]; exact h_val_content_bound
+
+      have h_val_content' : isFlowContentStart tokens[key_ps.pos + 1]!.val := by
+        rw [h_key_ps_pos_eq]; exact h_val_content
+
+      -- Apply helper: parseFlowMappingValue at .value (pass ps.pos as original_pos)
+      have h_depth_at_key_ps : flowBracketBalance tokens body_start key_ps.pos = 0 := by
+        rw [h_key_ps_pos_eq]; exact h_depth_at_value
+
+      have ⟨val_val, val_ps, h_val_ok, h_val_pos_gt, h_val_pos_le, h_val_tok_eq, h_val_tp, h_val_peek, h_val_bal⟩ :=
+        (parseFlowMappingValue_ok tokens endPos body_start span_bound ps.pos key_ps m
+          h_key_tok (by omega) h_m_fuel h_endPos_bound h_span_bound
+          (by rw [h_key_ps_pos_eq]; omega)
+          h_bs
+          (by rw [h_key_ps_pos_eq]; omega)
+          h_depth
+          h_depth_at_key_ps h_key_ps_value_tok h_key_ps_value_peek
+          h_val_content_bound' h_val_content'
+          h_mbp h_sub ih_seq ih_map) savedPath keyContent
+
+      refine ⟨val_val, val_ps, h_val_ok, h_val_pos_gt, h_val_pos_le, h_val_tok_eq, ?_, h_val_peek, h_val_bal⟩
+      rw [h_val_tp, h_key_tp]; subst h_tok; rfl
+
+  · -- Key is flowSequenceStart: .key → [ → ... → ] → .value → value_content → result
+    -- Use MapBodyProps.key_bracket_value to find matching ] and .value after it
+    have ⟨j, h_j_gt, h_j_lt, h_j_match, h_j_bal, h_j_value_bound, h_j_value_tok⟩ :=
+      h_mbp.key_bracket_value ps.pos (by omega) h_pos h_depth h_key_val (Or.inl h_fss)
+
+    -- Extract bracket info
+    have ⟨h_fss_match, h_j_end⟩ : tokens[ps.pos + 1]!.val = .flowSequenceStart ∧
+                                    tokens[j]!.val = .flowSequenceEnd := by
+      rcases h_j_match with ⟨h1, h2⟩ | ⟨h1, h2⟩
+      · exact ⟨h1, h2⟩
+      · rw [h_fss] at h1; cases h1
+
+    have h_j_bound : j < tokens.size := by omega
+
+    -- Show span for IH
+    have h_span : j - (ps.pos + 2) ≤ span_bound := by
+      sorry  -- j < endPos, endPos - body_start ≤ span_bound + 1
+
+    -- Apply ih_seq for inner bracket body
+    have h_inner_seq : ParseNodeFlowSeqOk tokens j (4 * tokens.size + 4) (ps.pos + 2) :=
+      ih_seq j (ps.pos + 2) (4 * tokens.size + 4)
+        h_j_bound (by omega) h_span h_j_end h_j_bal (by omega)
+
+    -- Apply helper: parseExplicitKey on [
+    have ⟨key_val, key_ps, h_key_ok, h_key_pos, h_key_tok, h_key_tp⟩ :=
+      parseExplicitKey_flowSeq tokens ps.advance m j
+        h_after_key_tok (by omega) h_m_fuel h_after_key_bound
+        h_fss h_j_bound h_j_end h_j_bal h_inner_seq
+
+    -- Build witness (similar to scalar case)
+    refine ⟨key_val, key_ps, ?_, ?_, ?_, ?_, ?_, ?_⟩
+
+    · exact h_key_ok
+    · rw [h_key_pos]; omega  -- j + 1 > ps.pos since j > ps.pos + 1
+    · rw [h_key_pos]; omega
+    · exact h_key_tok
+    · rw [h_key_tp]; subst h_tok; rfl
+
+    · -- ∀ savedPath keyContent, parseFlowMappingValue succeeds
+      intro savedPath keyContent
+
+      have h_key_ps_pos_eq : key_ps.pos = j + 1 := h_key_pos
+
+      have h_key_ps_value_tok : tokens[key_ps.pos]!.val = .value := by
+        rw [h_key_ps_pos_eq]; exact h_j_value_tok
+
+      have h_key_ps_value_peek : key_ps.peek? = some .value := by
+        unfold ParseState.peek?
+        rw [h_key_tok, if_pos (by rw [h_key_ps_pos_eq]; omega)]
+        rw [h_key_ps_value_tok]
+
+      have h_depth_at_value : flowBracketBalance tokens body_start (j + 1) = 0 := by
+        sorry  -- Balance preserved
+
+      have ⟨h_val_content_bound, h_val_content⟩ :=
+        h_mbp.value_content (j + 1) (by omega) (by omega) h_depth_at_value h_j_value_tok
+
+      have h_val_content_bound' : key_ps.pos + 1 < endPos := by
+        rw [h_key_ps_pos_eq]; exact h_val_content_bound
+
+      have h_val_content' : isFlowContentStart tokens[key_ps.pos + 1]!.val := by
+        rw [h_key_ps_pos_eq]; exact h_val_content
+
+      have h_depth_at_key_ps : flowBracketBalance tokens body_start key_ps.pos = 0 := by
+        rw [h_key_ps_pos_eq]; exact h_depth_at_value
+
+      -- Apply helper: parseFlowMappingValue (pass ps.pos as original_pos)
+      have ⟨val_val, val_ps, h_val_ok, h_val_pos_gt, h_val_pos_le, h_val_tok_eq, h_val_tp, h_val_peek, h_val_bal⟩ :=
+        (parseFlowMappingValue_ok tokens endPos body_start span_bound ps.pos key_ps m
+          h_key_tok (by omega) h_m_fuel h_endPos_bound h_span_bound
+          (by rw [h_key_ps_pos_eq]; omega)
+          h_bs
+          (by rw [h_key_ps_pos_eq]; omega)
+          h_depth
+          h_depth_at_key_ps h_key_ps_value_tok h_key_ps_value_peek
+          h_val_content_bound' h_val_content'
+          h_mbp h_sub ih_seq ih_map) savedPath keyContent
+
+      refine ⟨val_val, val_ps, h_val_ok, ?_, ?_, ?_, ?_, ?_, ?_⟩
+
+      · exact h_val_pos_gt
+      · exact h_val_pos_le
+      · exact h_val_tok_eq
+      · rw [h_val_tp, h_key_tp]; subst h_tok; rfl
+      · exact h_val_peek
+      · exact h_val_bal
+
+  · -- Key is flowMappingStart: .key → { → ... → } → .value → value_content → result
+    -- Use MapBodyProps.key_bracket_value to find matching } and .value after it
+    have ⟨j, h_j_gt, h_j_lt, h_j_match, h_j_bal, h_j_value_bound, h_j_value_tok⟩ :=
+      h_mbp.key_bracket_value ps.pos (by omega) h_pos h_depth h_key_val (Or.inr h_fms)
+
+    -- Extract bracket info
+    have ⟨h_fms_match, h_j_end⟩ : tokens[ps.pos + 1]!.val = .flowMappingStart ∧
+                                    tokens[j]!.val = .flowMappingEnd := by
+      rcases h_j_match with ⟨h1, h2⟩ | ⟨h1, h2⟩
+      · rw [h_fms] at h1; cases h1
+      · exact ⟨h1, h2⟩
+
+    have h_j_bound : j < tokens.size := by omega
+
+    -- Show span for IH
+    have h_span : j - (ps.pos + 2) ≤ span_bound := by
+      sorry  -- j < endPos, endPos - body_start ≤ span_bound + 1
+
+    -- Apply ih_map for inner bracket body
+    have h_inner_map : ParseEntryFlowMapOk tokens j (4 * tokens.size + 4) (ps.pos + 2) :=
+      ih_map j (ps.pos + 2) (4 * tokens.size + 4)
+        h_j_bound (by omega) h_span h_j_end h_j_bal (by omega)
+
+    -- Apply helper: parseExplicitKey on {
+    have ⟨key_val, key_ps, h_key_ok, h_key_pos, h_key_tok, h_key_tp⟩ :=
+      parseExplicitKey_flowMap tokens ps.advance m j
+        h_after_key_tok (by omega) h_m_fuel h_after_key_bound
+        h_fms h_j_bound h_j_end h_j_bal h_inner_map
+
+    -- Build witness (symmetric with [ case)
+    refine ⟨key_val, key_ps, ?_, ?_, ?_, ?_, ?_, ?_⟩
+
+    · exact h_key_ok
+    · rw [h_key_pos]; omega  -- j + 1 > ps.pos since j > ps.pos + 1
+    · rw [h_key_pos]; omega
+    · exact h_key_tok
+    · rw [h_key_tp]; subst h_tok; rfl
+
+    · -- ∀ savedPath keyContent, parseFlowMappingValue succeeds (same pattern as [ case)
+      intro savedPath keyContent
+
+      have h_key_ps_pos_eq : key_ps.pos = j + 1 := h_key_pos
+
+      have h_key_ps_value_tok : tokens[key_ps.pos]!.val = .value := by
+        rw [h_key_ps_pos_eq]; exact h_j_value_tok
+
+      have h_key_ps_value_peek : key_ps.peek? = some .value := by
+        unfold ParseState.peek?
+        rw [h_key_tok, if_pos (by rw [h_key_ps_pos_eq]; omega)]
+        rw [h_key_ps_value_tok]
+
+      have h_depth_at_value : flowBracketBalance tokens body_start (j + 1) = 0 := by
+        sorry  -- Balance preserved
+
+      have ⟨h_val_content_bound, h_val_content⟩ :=
+        h_mbp.value_content (j + 1) (by omega) (by omega) h_depth_at_value h_j_value_tok
+
+      have h_val_content_bound' : key_ps.pos + 1 < endPos := by
+        rw [h_key_ps_pos_eq]; exact h_val_content_bound
+
+      have h_val_content' : isFlowContentStart tokens[key_ps.pos + 1]!.val := by
+        rw [h_key_ps_pos_eq]; exact h_val_content
+
+      have h_depth_at_key_ps : flowBracketBalance tokens body_start key_ps.pos = 0 := by
+        rw [h_key_ps_pos_eq]; exact h_depth_at_value
+
+      -- Apply helper: parseFlowMappingValue (pass ps.pos as original_pos)
+      have ⟨val_val, val_ps, h_val_ok, h_val_pos_gt, h_val_pos_le, h_val_tok_eq, h_val_tp, h_val_peek, h_val_bal⟩ :=
+        (parseFlowMappingValue_ok tokens endPos body_start span_bound ps.pos key_ps m
+          h_key_tok (by omega) h_m_fuel h_endPos_bound h_span_bound
+          (by rw [h_key_ps_pos_eq]; omega)
+          h_bs
+          (by rw [h_key_ps_pos_eq]; omega)
+          h_depth
+          h_depth_at_key_ps h_key_ps_value_tok h_key_ps_value_peek
+          h_val_content_bound' h_val_content'
+          h_mbp h_sub ih_seq ih_map) savedPath keyContent
+
+      refine ⟨val_val, val_ps, h_val_ok, ?_, ?_, ?_, ?_, ?_, ?_⟩
+
+      · exact h_val_pos_gt
+      · exact h_val_pos_le
+      · exact h_val_tok_eq
+      · rw [h_val_tp, h_key_tp]; subst h_tok; rfl
+      · exact h_val_peek
+      · exact h_val_bal
 
 /-- Combined theorem: `FlowSubrangesOk tokens` implies both `ParseNodeFlowSeqOk`
     and `ParseEntryFlowMapOk` for any valid body range.
@@ -5485,8 +6393,8 @@ theorem flow_parser_ok_of_structure
       · -- Nested flowSequenceStart: check fuel sufficiency
         by_cases h_m_suff : 4 * tokens.size + 6 ≤ m
         · -- Sufficient fuel: use helper
-          exact parseNode_flowSeqStart_in_seq tokens endPos body_start n h_hi h_sub h_sbp
-            ih_seq ih_map ps m h_tok h_m_pos h_m_suff h_pos h_bs h_depth h_fss
+          exact parseNode_flowSeqStart_in_seq tokens endPos body_start n h_hi h_span
+            h_sub h_sbp ih_seq ih_map ps m h_tok h_m_pos h_m_suff h_pos h_bs h_depth h_fss
         · -- Insufficient fuel: show this leads to error or handle inline
           -- When 4*N+4 ≤ fuel < 4*N+6 and m ≤ fuel, we have m < 4*N+6
           -- For well-formed structures, parseNode might fail with nestingDepthExceeded
@@ -5495,8 +6403,8 @@ theorem flow_parser_ok_of_structure
       · -- Nested flowMappingStart: check fuel sufficiency
         by_cases h_m_suff : 4 * tokens.size + 6 ≤ m
         · -- Sufficient fuel: use helper
-          exact parseNode_flowMapStart_in_seq tokens endPos body_start n h_hi h_sub h_sbp
-            ih_seq ih_map ps m h_tok h_m_pos h_m_suff h_pos h_bs h_depth h_fms
+          exact parseNode_flowMapStart_in_seq tokens endPos body_start n h_hi h_span
+            h_sub h_sbp ih_seq ih_map ps m h_tok h_m_pos h_m_suff h_pos h_bs h_depth h_fms
         · -- Insufficient fuel: show this leads to error or handle inline
           sorry
     · -- Mapping case
@@ -5507,8 +6415,8 @@ theorem flow_parser_ok_of_structure
       -- Use parseEntry_in_flowMap helper: check fuel sufficiency
       by_cases h_m_suff : 4 * tokens.size + 6 ≤ m
       · -- Sufficient fuel: use helper
-        exact parseEntry_in_flowMap tokens endPos body_start n h_hi h_sub h_mbp
-          ih_seq ih_map ps m h_tok h_m_pos h_m_suff h_pos h_bs h_depth h_key
+        exact parseEntry_in_flowMap tokens endPos body_start n h_hi h_span
+          h_sub h_mbp ih_seq ih_map ps m h_tok h_m_pos h_m_suff h_pos h_bs h_depth h_key
       · -- Insufficient fuel: show this leads to error or handle inline
         sorry
 
