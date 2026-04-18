@@ -9343,11 +9343,11 @@ theorem parseStream_emitSequence (style : CollectionStyle) (items : Array YamlVa
     have h_entry_vacuous : (#[] : Array YamlValue).size > 0 →
         ps_mid.peek? = some .flowEntry ∨ ps_mid.peek? = some .flowSequenceEnd := by
       intro h; simp [Array.size] at h
-    have h_content_start_adj : (#[] : Array YamlValue).size = 0 →
+    have h_content_start_adj : ps_mid.pos < tokens.size - 2 → (#[] : Array YamlValue).size = 0 →
         (∃ c s, ps_mid.peek? = some (.scalar c s)) ∨
         ps_mid.peek? = some .flowSequenceStart ∨
         ps_mid.peek? = some .flowMappingStart := by
-      intro _
+      intro _ _
       have h_mid_peek_val : ps_mid.peek? = some tokens[2]!.val := by
         simp only [ps_mid, ps1, ParseState.peek?, ParseState.advance]
         simp only [show (0 : Nat) + 1 + 1 = 2 from rfl, show 2 < tokens.size from by omega,
@@ -9381,7 +9381,9 @@ theorem parseStream_emitSequence (style : CollectionStyle) (items : Array YamlVa
         2
         h_pnok_adj h_loop_fuel h_loop_pos h_endPos h_end_tok_adj
         h_at_end_adj
-        h_entry_vacuous h_content_start_adj h_after_fe_adj h_bal_init
+        h_entry_vacuous
+        (fun h_pos_lt h_size_zero => h_content_start_adj h_pos_lt h_size_zero)
+        h_after_fe_adj h_bal_init
         (by rw [h_ps_mid_pos]; omega)
     -- parseFlowSequence(4*N+3): destructs, passes 4*N+2 to loop
     have h_parseFlowSeq : parseFlowSequence ps1 (4 * tokens.size + 3) =
@@ -9551,10 +9553,9 @@ theorem parseStream_emitMapping (style : CollectionStyle) (pairs : Array (YamlVa
     have h_sep_adj : (#[] : Array (YamlValue × YamlValue)).size > 0 →
         ps_mid.peek? = some .flowEntry ∨ ps_mid.peek? = some .flowMappingEnd := by
       intro h; simp [Array.size] at h
-    have h_start_adj : (#[] : Array (YamlValue × YamlValue)).size = 0 →
-        ps_mid.peek? = some .key ∨ ps_mid.peek? = some .flowMappingEnd := by
-      intro _
-      left
+    have h_start_adj : ps_mid.pos < tokens.size - 2 → (#[] : Array (YamlValue × YamlValue)).size = 0 →
+        ps_mid.peek? = some .key := by
+      intro _ _
       simp only [ps_mid, ps1, ParseState.peek?, ParseState.advance]
       simp only [show (0 : Nat) + 1 + 1 = 2 from rfl, show 2 < tokens.size from by omega,
                  ↓reduceIte, Option.some.injEq]
@@ -9580,7 +9581,9 @@ theorem parseStream_emitMapping (style : CollectionStyle) (pairs : Array (YamlVa
         2
         h_entry_adj h_loop_fuel h_loop_pos h_endPos h_end_tok_adj
         h_at_end_adj
-        h_sep_adj h_start_adj h_after_fe_adj h_bal_init
+        h_sep_adj
+        (fun h_pos_lt h_size_zero => h_start_adj h_pos_lt h_size_zero)
+        h_after_fe_adj h_bal_init
         (by rw [h_ps_mid_pos]; omega)
     -- parseFlowMapping(4*N+3): destructs, passes 4*N+2 to loop
     have h_parseFlowMap : parseFlowMapping ps1 (4 * tokens.size + 3) =
