@@ -4710,6 +4710,7 @@ We break the long proof into smaller lemmas for each case. -/
 theorem parseNode_scalar_in_seq
     (tokens : Array (Positioned YamlToken))
     (endPos body_start : Nat)
+    (h_endPos_bound : endPos < tokens.size)
     (h_sbp : SeqBodyProps tokens body_start endPos)
     (ps : ParseState) (m : Nat)
     (h_tok : ps.tokens = tokens)
@@ -4726,7 +4727,91 @@ theorem parseNode_scalar_in_seq
               (ps'.peek? = some .flowEntry ∨
                (ps'.peek? = some .flowSequenceEnd ∧ ps'.pos = endPos)) ∧
               flowBracketBalance tokens ps.pos ps'.pos = 0 := by
-  sorry -- Will be filled with the scalar case proof
+  -- Extract position-level info from peek
+  have ⟨h_pos_bound, h_peek_val⟩ := peek_some_val h_scalar
+  have h_scalar_tok : ∃ c₁ s₁, tokens[ps.pos]!.val = .scalar c₁ s₁ := by
+    rw [h_tok] at h_peek_val; exact ⟨c, sc, h_peek_val⟩
+  -- Scalar successor from SeqBodyProps
+  obtain ⟨h_succ_le, h_succ_tok⟩ := h_sbp.scalar_succ ps.pos h_bs h_pos h_depth h_scalar_tok
+  -- Fuel > 0
+  obtain ⟨m', rfl⟩ : ∃ k, m = k + 1 := ⟨m - 1, by omega⟩
+  -- parseNodeProperties is noop on scalar peek
+  have h_np : parseNodeProperties ps = .ok ({}, ps) := by
+    exact parseNodeProperties_skip ps (by rw [h_scalar]; trivial)
+  -- Compute parseNode result
+  have h_node_eq : parseNode ps (m' + 1) =
+      .ok (applyNodeFinalization
+        (.scalar { content := c, style := sc, tag := none, anchor := none })
+        ps.advance {} (ps.peekPos?.getD { offset := 0, line := 0, col := 0 })) := by
+    unfold parseNode
+    simp only [bind, Except.bind, pure, Except.pure]
+    split
+    · rename_i h_alias; rw [h_scalar] at h_alias; cases h_alias
+    · rw [h_np]; simp
+      unfold validateNodeProps
+      rw [h_scalar]; simp only [pure, Except.pure, bind, Except.bind]
+      unfold parseNodeContent
+      rw [h_scalar]; simp
+  -- Build the existential witness
+  refine ⟨(.scalar { content := c, style := sc, tag := none, anchor := none }),
+          (applyNodeFinalization
+            (.scalar { content := c, style := sc, tag := none, anchor := none })
+            ps.advance {} (ps.peekPos?.getD { offset := 0, line := 0, col := 0 })).2,
+          h_node_eq, ?_, ?_, ?_, ?_, ?_, ?_⟩
+  · -- ps'.pos > ps.pos
+    show (applyNodeFinalization
+      (.scalar { content := c, style := sc, tag := none, anchor := none })
+      ps.advance {} (ps.peekPos?.getD { offset := 0, line := 0, col := 0 })).2.pos > ps.pos
+    rw [applyNodeFinalization_pos]; simp [ParseState.advance]
+  · -- ps'.pos ≤ endPos
+    show (applyNodeFinalization
+      (.scalar { content := c, style := sc, tag := none, anchor := none })
+      ps.advance {} (ps.peekPos?.getD { offset := 0, line := 0, col := 0 })).2.pos ≤ endPos
+    rw [applyNodeFinalization_pos]; simp [ParseState.advance]; exact h_succ_le
+  · -- tokens preserved
+    show (applyNodeFinalization
+      (.scalar { content := c, style := sc, tag := none, anchor := none })
+      ps.advance {} (ps.peekPos?.getD { offset := 0, line := 0, col := 0 })).2.tokens = tokens
+    rw [applyNodeFinalization_tokens, ParseState.advance_tokens, h_tok]
+  · -- trackPositions preserved
+    show (applyNodeFinalization
+      (.scalar { content := c, style := sc, tag := none, anchor := none })
+      ps.advance {} (ps.peekPos?.getD { offset := 0, line := 0, col := 0 })).2.trackPositions = ps.trackPositions
+    rw [applyNodeFinalization_trackPositions]; simp [ParseState.advance]
+  · -- peek' = FE or seqEnd at endPos
+    have h_ps'_pos : (applyNodeFinalization
+      (.scalar { content := c, style := sc, tag := none, anchor := none })
+      ps.advance {} (ps.peekPos?.getD { offset := 0, line := 0, col := 0 })).2.pos = ps.pos + 1 := by
+      rw [applyNodeFinalization_pos]; simp [ParseState.advance]
+    have h_ps'_tok : (applyNodeFinalization
+      (.scalar { content := c, style := sc, tag := none, anchor := none })
+      ps.advance {} (ps.peekPos?.getD { offset := 0, line := 0, col := 0 })).2.tokens = tokens := by
+      rw [applyNodeFinalization_tokens, ParseState.advance_tokens, h_tok]
+    rcases h_succ_tok with h_fe | ⟨h_se, h_eq⟩
+    · left
+      apply peek_of_pos_val h_ps'_pos (by rw [h_ps'_tok]; omega)
+      rw [h_ps'_tok]; exact h_fe
+    · right
+      constructor
+      · apply peek_of_pos_val h_ps'_pos (by rw [h_ps'_tok]; omega)
+        rw [h_ps'_tok]; exact h_se
+      · rw [h_ps'_pos]; exact h_eq
+  · -- bracket balance 0
+    have h_ps'_pos : (applyNodeFinalization
+      (.scalar { content := c, style := sc, tag := none, anchor := none })
+      ps.advance {} (ps.peekPos?.getD { offset := 0, line := 0, col := 0 })).2.pos = ps.pos + 1 := by
+      rw [applyNodeFinalization_pos]; simp [ParseState.advance]
+    rw [h_ps'_pos]
+    have h_ps_bound : ps.pos < tokens.size := by rw [←h_tok]; exact h_pos_bound
+    have h_list_bound : ps.pos < tokens.toList.length := by show ps.pos < tokens.size; exact h_ps_bound
+    rw [flowBracketBalance_single tokens ps.pos h_list_bound]
+    obtain ⟨c₁, s₁, hcs⟩ := h_scalar_tok
+    -- Show flowBracketDelta for scalar is 0
+    have h_eq : (tokens.toList[ps.pos]'h_list_bound).val = .scalar c₁ s₁ := by
+      show (tokens[ps.pos]'h_ps_bound).val = .scalar c₁ s₁
+      rw [← getElem!_pos tokens ps.pos h_ps_bound]; exact hcs
+    rw [h_eq]
+    rfl
 
 /-- Nested flowSequenceStart case: uses IH for the inner body. -/
 theorem parseNode_flowSeqStart_in_seq
@@ -4758,7 +4843,7 @@ theorem parseNode_flowSeqStart_in_seq
               (ps'.peek? = some .flowEntry ∨
                (ps'.peek? = some .flowSequenceEnd ∧ ps'.pos = endPos)) ∧
               flowBracketBalance tokens ps.pos ps'.pos = 0 := by
-  sorry -- Will use IH on inner body
+  sorry -- TODO: Use IH on inner body via parseFlowSequenceLoop_emitter_ok
 
 /-- Nested flowMappingStart case: uses IH for the inner body. -/
 theorem parseNode_flowMapStart_in_seq
@@ -4903,7 +4988,7 @@ theorem flow_parser_ok_of_structure
       -- Case split on content type
       rcases h_cs with ⟨c, sc, h_scalar⟩ | h_fss | h_fms
       · -- Scalar case: use helper lemma
-        exact parseNode_scalar_in_seq tokens endPos body_start h_sbp ps m
+        exact parseNode_scalar_in_seq tokens endPos body_start h_hi h_sbp ps m
           h_tok h_m_pos h_pos h_bs h_depth c sc h_scalar
       · -- Nested flowSequenceStart: use helper lemma with IH
         refine parseNode_flowSeqStart_in_seq tokens endPos body_start h_hi h_sub h_sbp ?_ ?_
