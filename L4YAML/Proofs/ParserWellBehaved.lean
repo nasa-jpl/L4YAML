@@ -4704,7 +4704,43 @@ theorem parseNodeProperties_skip (ps : ParseState)
 
 /-! ### Helper lemmas for flow_parser_ok_of_structure
 
-We break the long proof into smaller lemmas for each case. -/
+We break the long proof into smaller lemmas for each case.
+
+## Proof notes for nested bracket lemmas
+
+The nested bracket lemmas (flowSeqStart, flowMapStart, entry in map) require coordinating:
+
+**1. parseNode call chain:**
+   - parseNode (m+1 fuel case, not alias)
+   - parseNodeProperties → returns ({}, ps) for flowSequenceStart (no props before [)
+   - validateNodeProps → passes (flowSequenceStart is valid content)
+   - parseNodeContent → dispatches to parseFlowSequence
+   - parseFlowSequence → advances past [, calls parseFlowSequenceLoop, checks ]
+   - applyNodeFinalization → constructs result, preserves tokens
+
+**2. Key hypotheses from strong induction setup:**
+   - `h_sbp.bracket_seq`: finds matching ] at j with inner balance
+   - `h_sub.seq`: constructs SeqBodyProps for inner body (ps.pos+1, j)
+   - `ih_seq`: ParseNodeFlowSeqOk for inner body (smaller span)
+
+**3. Loop theorem (parseFlowSequenceLoop_emitter_ok) preconditions (11 total):**
+   - h_pn: ParseNodeFlowSeqOk tokens j fuel (ps.pos+1)  ← from ih_seq
+   - h_fuel: fuel > j - ps.advance.pos  ← arithmetic: 4*N+3 > j-ps.pos-1 < endPos
+   - h_pos: ps.advance.pos ≤ j  ← ps.advance.pos = ps.pos+1 ≤ j
+   - h_end_pos: j < tokens.size  ← from bracket_seq + endPos bound
+   - h_end_tok: tokens[j]!.val = .flowSequenceEnd  ← from bracket_seq
+   - h_at_end: peek = flowSeqEnd → pos = j  ← from SeqBodyProps.content_start
+   - h_entry: items > 0 → peek = flowEntry ∨ flowSeqEnd  ← vacuous (items = #[])
+   - h_content_start: items = 0 → isFlowContentStart  ← from SeqBodyProps.content_start
+   - h_after_fe: ∀k, after flowEntry is content  ← from SeqBodyProps.after_fe
+   - h_bal: flowBracketBalance tokens (ps.pos+1) ps.advance.pos = 0  ← [ at ps.pos has delta +1, but balance from ps.pos+1 to ps.pos+1 is 0
+   - h_bs: ps.pos+1 ≤ ps.advance.pos  ← ps.advance.pos = ps.pos+1
+
+**4. Existential witness:** val = YamlValue.sequence .flow items, ps' at j+1
+
+**5. Pattern for flowMapStart:** Use bracket_map, MapBodyProps, ih_map, parseFlowMappingLoop_emitter_ok
+
+-/
 
 /-- Scalar case: parseNode succeeds on a scalar token in a flow sequence body. -/
 theorem parseNode_scalar_in_seq
@@ -4855,10 +4891,29 @@ theorem parseNode_flowSeqStart_in_seq
     ih_seq j (ps.pos + 1) h_j_lt (by omega) h_j_val h_j_bal h_span_decrease
       (4 * tokens.size + 4) (by omega)
 
-  -- Step 3: We need to show parseNode succeeds. Strategy:
-  -- parseNode calls parseNodeProperties, then parseNodeContent (which dispatches
-  -- to parseFlowSequence), then applyNodeFinalization.
-  -- For now, defer the complex coordination to sorry.
+  -- Step 3: Get inner body properties via FlowSubrangesOk
+  have h_j_bound : j < tokens.size := by omega
+  have h_inner_sbp : SeqBodyProps tokens (ps.pos + 1) j :=
+    h_sub.seq (ps.pos + 1) j (by omega) h_j_bound h_j_val h_j_bal
+
+  -- Step 4: Unfold parseNode to see the structure
+  -- We have m > 0, so parseNode uses fuel+1 case
+  obtain ⟨m_pred, h_m_eq⟩ := Nat.exists_eq_succ_of_ne_zero (Nat.ne_of_gt h_m_pos)
+  subst h_m_eq
+  simp only [parseNode]
+
+  -- Step 5: We need to prove parseNode succeeds.
+  -- The full proof requires:
+  -- (a) parseNodeProperties succeeds with empty props (flowSequenceStart has no properties)
+  -- (b) validateNodeProps passes (flowSequenceStart is flow content, not block)
+  -- (c) parseNodeContent dispatches to parseFlowSequence
+  -- (d) parseFlowSequence advances past [, calls parseFlowSequenceLoop, checks ]
+  -- (e) parseFlowSequenceLoop coordinates with h_inner_pnok via the loop theorem
+  -- (f) applyNodeFinalization preserves tokens and updates positions
+  --
+  -- This requires detailed coordination with parseFlowSequenceLoop_emitter_ok (8+ preconditions).
+  -- The proof strategy is documented in ADVERSARIAL_INSTANTIATION.md:500-512.
+  -- For now, we defer this complex proof.
   sorry
 
 /-- Nested flowMappingStart case: uses IH for the inner body. -/
