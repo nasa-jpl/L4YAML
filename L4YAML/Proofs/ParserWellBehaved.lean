@@ -5176,18 +5176,19 @@ theorem parseNode_flowSeqStart_in_seq
       h_tok h_pos_bound h_j_gt h_j_bound h_j_val h_inner_sbp h_inner_pnok
       (by omega : 4 * tokens.size + 4 > j - (ps.pos + 1))
 
-  -- REFACTORING SUCCESS: Reduced from ~184 lines to ~77 lines (58% reduction)
+  -- Step 7: Invoke parseFlowSequenceLoop_emitter_ok with preconditions from helper
+  have h_adv_tok : ps.advance.tokens = tokens := by simp [ParseState.advance_tokens, h_tok]
+  obtain ⟨items, ps_loop, h_loop_ok, h_loop_peek, h_loop_pos_eq, h_loop_tok, h_loop_tp⟩ :=
+    parseFlowSequenceLoop_emitter_ok (4 * tokens.size + 4) ps.advance #[] j (ps.pos + 1)
+      (by rw [h_adv_tok]; exact h_loop_preconds.h_pn)
+      h_loop_preconds.h_fuel h_loop_preconds.h_pos
+      h_loop_preconds.h_end_pos h_loop_preconds.h_end_tok h_loop_preconds.h_at_end
+      h_loop_preconds.h_entry h_loop_preconds.h_content_start h_loop_preconds.h_after_fe
+      h_loop_preconds.h_bal h_loop_preconds.h_bs
+
+  -- REFACTORING SUCCESS: Steps 1-7 complete (~32 lines total, was ~184)
   --
-  -- COMPLETED (Steps 1-6, ~27 lines):
-  -- ✅ Step 1-2: Found matching ] using bracket_seq, invoked IH for inner body (~17 lines)
-  -- ✅ Step 3-4: Get inner body properties, fuel decomposition (~5 lines)
-  -- ✅ Step 5-6: parseNodeProperties + construct preconditions via helper (~5 lines, was ~112!)
-  --
-  -- REMAINING WORK (Steps 7-9, ~50 lines):
-  -- Step 7: Invoke parseFlowSequenceLoop_emitter_ok with h_loop_preconds (~5 lines)
-  --   - Unpack structure: h_loop_preconds.h_pn, .h_fuel, .h_pos, etc.
-  --   - Need to handle fuel coordination (4*N+4 from IH vs m' from fuel decomposition)
-  --
+  -- REMAINING WORK (Steps 8-9, ~45 lines):
   -- Step 8: Complete bind chain reasoning through parseNode (~30 lines):
   --   parseNode → parseNodeProperties (h_np: returns {}, ps)
   --           → validateNodeProps (passes, returns unit)
@@ -5196,12 +5197,12 @@ theorem parseNode_flowSeqStart_in_seq
   --           → applyNodeFinalization (wraps result)
   --
   -- Step 9: Build existential witness with all 6 postconditions (~15 lines):
-  --   - ps'.pos > ps.pos
-  --   - ps'.pos ≤ endPos
-  --   - ps'.tokens = tokens
-  --   - ps'.trackPositions = ps.trackPositions
-  --   - ps'.peek? = flowEntry ∨ (flowSeqEnd ∧ pos = endPos)
-  --   - flowBracketBalance tokens ps.pos ps'.pos = 0
+  --   - ps'.pos > ps.pos (from h_loop_pos_eq: ps_loop.pos = j > ps.pos)
+  --   - ps'.pos ≤ endPos (from h_j_succ_le: j + 1 ≤ endPos)
+  --   - ps'.tokens = tokens (from h_loop_tok and advance preservation)
+  --   - ps'.trackPositions = ps.trackPositions (from h_loop_tp and finalization)
+  --   - ps'.peek? = flowEntry ∨ (flowSeqEnd ∧ pos = endPos) (from h_j_succ)
+  --   - flowBracketBalance tokens ps.pos ps'.pos = 0 (from h_j_bal arithmetic)
   sorry
 
 /-- Nested flowMappingStart case: uses IH for the inner body. -/
@@ -5264,15 +5265,22 @@ theorem parseNode_flowMapStart_in_seq
       h_tok h_pos_bound h_j_gt h_j_bound h_j_val h_inner_mbp h_inner_peok
       (by omega : 4 * tokens.size + 4 > j - (ps.pos + 1))
 
-  -- REFACTORING SUCCESS: Reduced from ~184 lines to ~77 lines (58% reduction)
+  -- Step 7: Invoke parseFlowMappingLoop_emitter_ok with preconditions from helper
+  have h_adv_tok : ps.advance.tokens = tokens := by simp [ParseState.advance_tokens, h_tok]
+  obtain ⟨pairs, ps_loop, h_loop_ok, h_loop_peek, h_loop_pos_eq, h_loop_tok, h_loop_tp⟩ :=
+    parseFlowMappingLoop_emitter_ok (4 * tokens.size + 4) ps.advance #[] j (ps.pos + 1)
+      (by rw [h_adv_tok]; exact h_loop_preconds.h_pn)
+      h_loop_preconds.h_fuel h_loop_preconds.h_pos
+      h_loop_preconds.h_end_pos h_loop_preconds.h_end_tok h_loop_preconds.h_at_end
+      h_loop_preconds.h_entry h_loop_preconds.h_key_start
+      (fun k hk1 hk2 hk3 hk4 =>
+        let ⟨h_lt, h_key⟩ := h_loop_preconds.h_after_fe k hk1 hk2 hk3 hk4
+        ⟨Nat.le_of_lt h_lt, h_key⟩)
+      h_loop_preconds.h_bal h_loop_preconds.h_bs
+
+  -- REFACTORING SUCCESS: Steps 1-7 complete (~32 lines total, was ~184)
   --
-  -- COMPLETED (Steps 1-6, ~27 lines):
-  -- ✅ Step 1-2: Found matching } using bracket_map, invoked IH for inner body (~17 lines)
-  -- ✅ Step 3-4: Get inner body properties, fuel decomposition (~5 lines)
-  -- ✅ Step 5-6: parseNodeProperties + construct preconditions via helper (~5 lines, was ~112!)
-  --
-  -- REMAINING WORK (Steps 7-9, ~50 lines):
-  -- Step 7: Invoke parseFlowMappingLoop_emitter_ok with h_loop_preconds (~5 lines)
+  -- REMAINING WORK (Steps 8-9, ~45 lines):
   -- Step 8: Complete bind chain reasoning through parseNode (~30 lines)
   -- Step 9: Build existential witness with all 6 postconditions (~15 lines)
   sorry
