@@ -453,14 +453,14 @@ Running verified test suites...
   MISMATCH step 2→3 pos 2: was scalar(k) now key
   MISMATCH step 2→4 pos 2: was scalar(k) now key
   MISMATCH step 2→5 pos 2: was scalar(k) now key
-  Adversarial Instantiation Tests (sorry audit): ✗ 1073/1091
+  Adversarial Instantiation Tests (sorry audit): ✗ 1181/1199
   Mutation Testing on yaml-test-suite (v0.2.13.2): ✓ 45/45
   Property-Based Round-Trip Tests (v0.2.13.3): ✓ 124/124
   Production Coverage Analysis: ✓ 18/18
   Parser Security Limit Tests: ✓ 43/43
   Demo: ✓ 7/7
 
-Verified: 2305/2323
+Verified: 2413/2431
 
 Generating HTML reports...
   wrote docs/reports/index.html

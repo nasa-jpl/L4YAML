@@ -1,5 +1,5 @@
 {
-  "date": "2026-04-17T17:07:26-0700",
+  "date": "2026-04-17T22:27:14-0700",
   "overall": {
     "applicable": 358,
     "correct": 358,
@@ -7592,7 +7592,7 @@
       {
         "allPass": false,
         "label": "Adversarial Instantiation Tests (sorry audit)",
-        "passed": 1073,
+        "passed": 1181,
         "tests": [
           {
             "category": "9g: emitList_body_filtered_characterization",
@@ -13066,9 +13066,549 @@
             "category": "ScanChain_filtered_prefix",
             "name": "deep-flow-in-block: ek=none at flow opens (5/5)",
             "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "nested-seq-1: scan ok",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "nested-seq-1: outer [",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "nested-seq-1: parseNode@2 ok",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "nested-seq-1: parseNode@2 advances",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "nested-seq-1: parseNode@2 tokens preserved",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "nested-seq-1: found nested [",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "nested-seq-2: scan ok",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "nested-seq-2: outer [",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "nested-seq-2: parseNode@2 ok",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "nested-seq-2: parseNode@2 advances",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "nested-seq-2: parseNode@2 tokens preserved",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "nested-seq-2: found nested [",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "nested-seq-deep: scan ok",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "nested-seq-deep: outer [",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "nested-seq-deep: parseNode@2 ok",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "nested-seq-deep: parseNode@2 advances",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "nested-seq-deep: parseNode@2 tokens preserved",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "nested-seq-deep: found nested [",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "nested-seq-after-scalar: scan ok",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "nested-seq-after-scalar: outer [",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "nested-seq-after-scalar: parseNode@4 ok",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "nested-seq-after-scalar: parseNode@4 advances",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "nested-seq-after-scalar: parseNode@4 tokens preserved",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "nested-seq-after-scalar: found nested [",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "nested-seq-multi: scan ok",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "nested-seq-multi: outer [",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "nested-seq-multi: parseNode@2 ok",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "nested-seq-multi: parseNode@2 advances",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "nested-seq-multi: parseNode@2 tokens preserved",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "nested-seq-multi: found nested [",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "nested-map-1: scan ok",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "nested-map-1: outer [",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "nested-map-1: parseNode@2 ok",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "nested-map-1: parseNode@2 advances",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "nested-map-1: parseNode@2 tokens preserved",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "nested-map-1: found nested {",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "nested-map-2: scan ok",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "nested-map-2: outer [",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "nested-map-2: parseNode@2 ok",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "nested-map-2: parseNode@2 advances",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "nested-map-2: parseNode@2 tokens preserved",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "nested-map-2: found nested {",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "nested-map-deep: scan ok",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "nested-map-deep: outer [",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "nested-map-deep: parseNode@2 ok",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "nested-map-deep: parseNode@2 advances",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "nested-map-deep: parseNode@2 tokens preserved",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "nested-map-deep: found nested {",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "nested-map-after-scalar: scan ok",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "nested-map-after-scalar: outer [",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "nested-map-after-scalar: parseNode@4 ok",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "nested-map-after-scalar: parseNode@4 advances",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "nested-map-after-scalar: parseNode@4 tokens preserved",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "nested-map-after-scalar: found nested {",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "nested-map-mixed: scan ok",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "nested-map-mixed: outer [",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "nested-map-mixed: parseNode@2 ok",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "nested-map-mixed: parseNode@2 advances",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "nested-map-mixed: parseNode@2 tokens preserved",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "nested-map-mixed: found nested {",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "map-entry-1: scan ok",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "map-entry-1: outer {",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "map-entry-1: found .key@2",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "map-entry-1: parseExplicitKey ok",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "map-entry-1: parseExplicitKey advances",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "map-entry-1: parseFlowMappingValue ok",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "map-entry-1: parseFlowMappingValue advances",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "map-entry-1: tokens preserved",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "map-entry-2: scan ok",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "map-entry-2: outer {",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "map-entry-2: found .key@2",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "map-entry-2: parseExplicitKey ok",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "map-entry-2: parseExplicitKey advances",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "map-entry-2: parseFlowMappingValue ok",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "map-entry-2: parseFlowMappingValue advances",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "map-entry-2: tokens preserved",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "map-entry-nested-val-seq: scan ok",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "map-entry-nested-val-seq: outer {",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "map-entry-nested-val-seq: found .key@2",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "map-entry-nested-val-seq: parseExplicitKey ok",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "map-entry-nested-val-seq: parseExplicitKey advances",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "map-entry-nested-val-seq: parseFlowMappingValue ok",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "map-entry-nested-val-seq: parseFlowMappingValue advances",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "map-entry-nested-val-seq: tokens preserved",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "map-entry-nested-val-map: scan ok",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "map-entry-nested-val-map: outer {",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "map-entry-nested-val-map: found .key@2",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "map-entry-nested-val-map: parseExplicitKey ok",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "map-entry-nested-val-map: parseExplicitKey advances",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "map-entry-nested-val-map: parseFlowMappingValue ok",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "map-entry-nested-val-map: parseFlowMappingValue advances",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "map-entry-nested-val-map: tokens preserved",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "map-entry-complex: scan ok",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "map-entry-complex: outer {",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "map-entry-complex: found .key@2",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "map-entry-complex: parseExplicitKey ok",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "map-entry-complex: parseExplicitKey advances",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "map-entry-complex: parseFlowMappingValue ok",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "map-entry-complex: parseFlowMappingValue advances",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "map-entry-complex: tokens preserved",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "map-entry-deep: scan ok",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "map-entry-deep: outer {",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "map-entry-deep: found .key@2",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "map-entry-deep: parseExplicitKey ok",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "map-entry-deep: parseExplicitKey advances",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "map-entry-deep: parseFlowMappingValue ok",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "map-entry-deep: parseFlowMappingValue advances",
+            "outcome": "pass"
+          },
+          {
+            "category": "Priority 6: Flow parser helper lemmas",
+            "name": "map-entry-deep: tokens preserved",
+            "outcome": "pass"
           }
         ],
-        "total": 1091
+        "total": 1199
       },
       {
         "allPass": true,
@@ -14296,7 +14836,7 @@
         "total": 7
       }
     ],
-    "totalPassed": 2305,
-    "totalTests": 2323
+    "totalPassed": 2413,
+    "totalTests": 2431
   }
 }
