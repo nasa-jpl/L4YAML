@@ -5235,7 +5235,7 @@ theorem parseNode_flowSeqStart_in_seq
     sorry  -- parseNodeProperties doesn't fail for simple token stream
   | ok res =>
     obtain ⟨props, ps_after_props⟩ := res
-    simp only [Bind.bind, Except.bind]
+    simp
 
     -- Step 8: validateNodeProps with prePropPos = ps.pos (no props consumed)
     -- For flowSequenceStart, this always succeeds
@@ -5245,24 +5245,71 @@ theorem parseNode_flowSeqStart_in_seq
     | error e =>
       sorry  -- validateNodeProps succeeds for flowSequenceStart
     | ok _ =>
-      simp only [Bind.bind, Except.bind]
+      simp
 
       -- Step 9: parseNodeContent dispatches on ps_after_props.peek?
       -- Should still be flowSequenceStart
       have h_props_peek : ps_after_props.peek? = some .flowSequenceStart := by
         sorry  -- parseNodeProperties doesn't advance for flowSequenceStart
 
-      -- Step 10: parseNodeContent calls parseFlowSequence
-      generalize h_pnc : parseNodeContent ps_after_props (m'' + 1) props = pnc_result
-      cases pnc_result with
-      | error e =>
-        sorry  -- will show parseFlowSequence succeeds
-      | ok res =>
-        obtain ⟨val_content, ps_after_content⟩ := res
+      -- Step 10: Show parseNodeContent = parseFlowSequence for our case
+      have h_pnc_eq : parseNodeContent ps_after_props (m'' + 1) props =
+                      parseFlowSequence ps_after_props (m'' + 1) := by
+        unfold parseNodeContent
+        simp only [h_props_peek]
 
-        -- Step 11: applyNodeFinalization
-        -- Returns (val_final, ps_final)
-        sorry
+      -- Step 11: Show parseFlowSequence succeeds
+      -- Strategy: unfold, show ps_after_props = ps, invoke loop theorem, check closing ]
+
+      -- First show ps_after_props = ps (parseNodeProperties doesn't advance for [)
+      have h_ps_props_eq : ps_after_props = ps := by
+        sorry  -- parseNodeProperties with no anchor/tag returns input unchanged
+
+      have h_ps_props_tok : ps_after_props.tokens = tokens := by
+        subst h_ps_props_eq; exact h_tok
+
+      -- Now show parseNodeContent = parseFlowSequence and it succeeds
+      have h_pnc_pfs : parseNodeContent ps_after_props (m'' + 1) props =
+                       parseFlowSequence ps_after_props (m'' + 1) := by
+        unfold parseNodeContent
+        subst h_ps_props_eq
+        simp only [h_fss]
+
+      -- Show parseFlowSequence succeeds and build witness
+      -- Unfold parseFlowSequence: checks fuel, advances past [, calls loop, checks ]
+      unfold parseFlowSequence at h_pnc_pfs
+
+      -- After advance, we're at ps.pos + 1 (inner body start)
+      have h_adv_tok : ps_after_props.advance.tokens = tokens := by
+        subst h_ps_props_eq; exact h_tok
+
+      have h_adv_pos : ps_after_props.advance.pos = ps.pos + 1 := by
+        subst h_ps_props_eq h_tok
+        simp [ParseState.advance]
+
+      -- Construct loop preconditions and invoke loop theorem
+      -- This is the complex part - needs ~20 lines to set up properly
+      -- For now, use sorry to mark where loop theorem gets invoked
+
+      have h_loop_result : ∃ items ps_at_j,
+          parseFlowSequenceLoop ps_after_props.advance m'' #[] = .ok (items, ps_at_j) ∧
+          ps_at_j.pos = j ∧
+          ps_at_j.tokens = tokens ∧
+          ps_at_j.peek? = some .flowSequenceEnd := by
+        sorry  -- Construct LoopSeqPreconditions and invoke parseFlowSequenceLoop_emitter_ok
+
+      obtain ⟨items, ps_at_j, h_loop_ok, h_at_j_pos, h_at_j_tok, h_peek_j⟩ := h_loop_result
+
+      -- Thread through parseFlowSequence and parseNodeContent
+      -- The complete proof would unfold definitions and show:
+      -- 1. parseNodeContent = parseFlowSequence (by h_pnc_pfs)
+      -- 2. parseFlowSequence advances, calls loop (h_loop_ok), checks ], advances
+      -- 3. Result is (.sequence .flow items, ps_at_j.advance)
+      -- 4. applyNodeFinalization wraps this with position tracking
+      -- 5. Final existential witness has all 6 postconditions
+
+      sorry  -- Complete witness construction (~30 lines)
+      -- Would build: ⟨val_final, ps_final, h_parse_eq, h_pos_gt, h_pos_le, h_tok_eq, h_tp_eq, h_peek_post, h_bal⟩
 
 /-- Nested flowMappingStart case: uses IH for the inner body. -/
 theorem parseNode_flowMapStart_in_seq
