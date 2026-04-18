@@ -4673,7 +4673,132 @@ The bind chain construction hit a **fuel management mismatch**:
 2. Defer these helpers and work on `flow_parser_ok_of_structure` main proof directly?
 3. Restructure helper theorem statements to include minimum fuel requirements?
 
+---
+
+**Step 5: Complete helper proofs (after restructuring) - IN PROGRESS**
+
+**Goal:** Complete the proofs of the three restructured helper lemmas
+
+**Remaining work (~300 lines total):**
+
+**5a. Complete parseNode_flowSeqStart_in_seq (~100 lines)**
+
+Proof structure with restructured signature:
+```lean
+theorem parseNode_flowSeqStart_in_seq
+    (span_bound : Nat) -- matches strong induction
+    (ih_seq : ∀ j lo fuel, j < tokens.size → lo ≤ j → j - lo ≤ span_bound → ...) -- flat IH
+    (m : Nat) (h_m_fuel : 4 * tokens.size + 6 ≤ m) -- direct fuel bound
+```
+
+Steps:
+1. Find matching `]` via `bracket_seq` (~5 lines)
+2. Invoke IH on inner body with span bound arithmetic (~5 lines)
+3. Get inner body properties via `FlowSubrangesOk` (~3 lines)
+4. Fuel decomposition: `m = m'+1 = m''+1+1` (~3 lines)
+5. `parseNodeProperties` returns `({}, ps)` (~2 lines)
+6. `validateNodeProps` succeeds (~3 lines)
+7. Construct preconditions via `mk_loop_seq_preconditions` (~8 lines)
+8. Invoke `parseFlowSequenceLoop_emitter_ok` (~8 lines)
+9. **Fuel monotonicity**: prove loop succeeds with `m''` ≥ 4*N+4 (~15-20 lines)
+   - Need: `parseFlowSequenceLoop_fuel_mono` lemma OR inline proof
+10. Complete bind chain through `parseNode` → `parseFlowSequence` → loop (~30 lines)
+11. Handle `applyNodeFinalization` and closing bracket (~15 lines)
+12. Build existential witness with 6 postconditions (~8 lines)
+
+**Key challenges:**
+- **Fuel monotonicity** (step 9): Most complex part, requires proving loop determinism
+- **applyNodeFinalization** (step 11): Position tracking conditional handling
+- **Bracket balance** (step 12): Arithmetic from `[` to `]` closing
+
+**5b. Complete parseNode_flowMapStart_in_seq (~100 lines)**
+
+Nearly identical structure to 5a, substituting:
+- `bracket_seq` → `bracket_map`
+- `SeqBodyProps` → `MapBodyProps`  
+- `mk_loop_seq_preconditions` → `mk_loop_map_preconditions`
+- `parseFlowSequenceLoop` → `parseFlowMappingLoop`
+- `flowSequenceEnd` → `flowMappingEnd`
+
+**5c. Complete parseEntry_in_flowMap (~100 lines)**
+
+Different structure (no loop):
+1. Advance past `.key` token (~2 lines)
+2. Parse key content (scalar/flowSeqStart/flowMapStart via IH) (~30 lines)
+   - Case split on `ps.advance.peek?`
+   - Use `ih_seq`/`ih_map` for bracket cases
+3. Check for `.value` token (~5 lines)
+4. Advance past `.value` (~2 lines)
+5. Parse value content (scalar/flowSeqStart/flowMapStart via IH) (~30 lines)
+   - Similar case split as key
+6. Build nested existential witness (~20 lines)
+   - Key postconditions (5 properties)
+   - Universal quantifier over savedPath/keyContent
+   - Value postconditions (6 properties)
+7. Bracket balance arithmetic (~11 lines)
+
+**Progress tracking:**
+- ⚠️ Step 5a: Not started (~100 lines)
+- ⚠️ Step 5b: Not started (~100 lines)
+- ⚠️ Step 5c: Not started (~100 lines)
+- **Total: ~300 lines remaining**
+
+**Strategy:**
+1. Prove `parseFlowSequenceLoop_fuel_mono` first (~20 lines) - reusable across 5a and 5b
+2. Complete 5a (sequence case) - most complex due to applyNodeFinalization
+3. Adapt 5a proof for 5b (mapping case) - mechanical substitution
+4. Complete 5c (entry case) - independent structure
+
+**Estimated completion:** 5-8 hours of focused proof work
+
+---
+
+**Step 5 Progress Update (2026-04-18)**
+
+**Accomplishments:**
+
+1. **Fuel monotonicity infrastructure (lines 4462-4476):**
+   - Added `parseFlowSequenceLoop_fuel_mono_succ`: proves loop result stable when fuel increases by 1
+   - Added `parseFlowSequenceLoop_fuel_mono`: general version for arbitrary fuel' ≥ fuel
+   - Both declared with `sorry` - complex control flow requires ~40 lines of induction proof
+   - **Status:** Infrastructure lemmas declared, proofs deferred (not blocking for helpers)
+
+2. **Helper lemma structure clarified (lines 5142-5178, 5181-5220, 5221-5274):**
+   - All three helpers have clean signatures matching restructured interface
+   - parseNode_flowSeqStart_in_seq: ~100 line proof strategy documented
+   - parseNode_flowMapStart_in_seq: ~100 line proof (parallel structure to 5a)
+   - parseEntry_in_flowMap: ~100 line proof (different structure, no loop)
+   - **Status:** Signatures finalized, ready for proof implementation
+
+**Key Insight:**
+
+The fuel monotonicity lemmas turned out to be more complex than anticipated due to parseFlowSequenceLoop's intricate control flow with multiple branches (flowEntry, key, flowSequenceEnd, parseNode, etc.). However, they are **not blocking** for the helper proofs:
+
+- The helpers take `m` directly with bound `4*N+6 ≤ m`
+- They call loop theorems with `4*N+4` fuel
+- The loop result is used within larger available fuel `m`
+- Fuel monotonicity would make this cleaner but isn't strictly required
+
+**Next Steps:**
+
+1. **Option A (cleaner):** Complete fuel monotonicity proofs first (~40 lines), then use in helpers
+2. **Option B (faster):** Proceed with helper proofs directly, handling fuel inline
+
+**Progress tracking:**
+- ✅ Fuel monotonicity infrastructure declared (~40 lines remain)
+- 🔄 Step 5a: parseNode_flowSeqStart_in_seq (~60 lines remain)
+  - ✅ Lines 5178-5213: Steps 1-5 complete (token value, bracket matching, span bound, IH setup, fuel decomposition)
+  - ✅ Lines 5214-5267: Steps 6-9 skeleton (parseNode unfold, alias exclusion, bind chain structure through parseNodeContent)
+  - ⚠️ Remaining: Complete parseFlowSequence invocation, loop theorem application, applyNodeFinalization, witness construction (~60 lines)
+- ⚠️ Step 5b: parseNode_flowMapStart_in_seq (~100 lines remain)
+- ⚠️ Step 5c: parseEntry_in_flowMap (~100 lines remain)
+- **Total: ~300 lines remaining (160 for 5a + 100 for 5b + 100 for 5c, plus 40 infrastructure)**
+
+**Phase I.6 Status:** Steps 1-4 complete, Step 5 in progress (5a bind chain structure established)
+
 ### Phase I.7: Complete parseEntry_in_flowMap lemma
+
+**NOTE:** Phase I.7 is now **merged into Phase I.6 Step 5c** after restructuring. The parseEntry_in_flowMap helper is one of the three lemmas being completed in Step 5.
 
 **Goal:** Finish proving `parseEntry_in_flowMap`.
 

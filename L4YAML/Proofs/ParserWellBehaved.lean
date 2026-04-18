@@ -4459,6 +4459,28 @@ theorem ParseEntryFlowMapOk.mono {tokens endPos fuel fuel' body_start}
       h ps m h_tok h_pos_m (Nat.le_trans h_m h_le) h_pos h_bs h_depth h_key
     ⟨kv, kps, hek, hadv, hbound, htok, htp, hfmv⟩
 
+/-- **Fuel monotonicity for parseFlowSequenceLoop**: If the loop succeeds with fuel N
+    producing result (items, ps'), then it also succeeds with any fuel N+1 producing
+    the same result. The loop is deterministic: once enough fuel exists to reach
+    the termination condition, extra fuel doesn't change the outcome. -/
+theorem parseFlowSequenceLoop_fuel_mono_succ
+    (ps : ParseState) (items_acc : Array YamlValue) (fuel : Nat)
+    (items : Array YamlValue) (ps' : ParseState)
+    (h_ok : parseFlowSequenceLoop ps fuel items_acc = .ok (items, ps')) :
+    parseFlowSequenceLoop ps (fuel + 1) items_acc = .ok (items, ps') := by
+  sorry
+
+/-- **Fuel monotonicity (general)**: Extends fuel_mono_succ to arbitrary fuel' ≥ fuel.
+    Uses repeated application of the successor case. -/
+theorem parseFlowSequenceLoop_fuel_mono
+    (ps : ParseState) (items_acc : Array YamlValue)
+    (fuel fuel' : Nat)
+    (h_le : fuel ≤ fuel')
+    (items : Array YamlValue) (ps' : ParseState)
+    (h_ok : parseFlowSequenceLoop ps fuel items_acc = .ok (items, ps')) :
+    parseFlowSequenceLoop ps fuel' items_acc = .ok (items, ps') := by
+  sorry
+
 set_option maxHeartbeats 3200000 in
 theorem parseFlowMappingLoop_emitter_ok (fuel : Nat)
     (ps : ParseState) (pairs_acc : Array (YamlValue × YamlValue)) (endPos : Nat)
@@ -5150,10 +5172,97 @@ theorem parseNode_flowSeqStart_in_seq
               (ps'.peek? = some .flowEntry ∨
                (ps'.peek? = some .flowSequenceEnd ∧ ps'.pos = endPos)) ∧
               flowBracketBalance tokens ps.pos ps'.pos = 0 := by
-  -- Restructured to match flow_parser_ok_of_structure interface:
-  -- Takes m directly with bound 4*N+6 ≤ m (sufficient for full decomposition)
-  -- IH parameters match the strong induction structure
-  sorry
+  -- Strategy: parseNode → parseNodeProperties → validateNodeProps → parseNodeContent
+  -- → parseFlowSequence → parseFlowSequenceLoop (using IH) → applyNodeFinalization
+
+  -- Step 1: Establish ps.pos bound and token value
+  have h_ps_bound : ps.pos < tokens.size := by
+    subst h_tok; omega
+  have h_fss_val : tokens[ps.pos]!.val = .flowSequenceStart := by
+    subst h_tok
+    unfold ParseState.peek? at h_fss
+    simp only [h_ps_bound, ↓reduceIte] at h_fss
+    injection h_fss
+
+  -- Step 2: Find matching ] using SeqBodyProps.bracket_seq
+  have ⟨j, h_j_gt, h_j_lt, h_j_tok, h_j_bal, h_j_succ, h_j_after⟩ :=
+    h_sbp.bracket_seq ps.pos (by omega) h_pos h_depth h_fss_val
+
+  -- j is the matching ] position, with balance (ps.pos+1) j = 0
+  -- Now j < endPos and tokens[j] = flowSequenceEnd
+  have h_j_bound : j < tokens.size := by omega
+
+  -- Step 3: Compute span for IH
+  have h_span : j - (ps.pos + 1) ≤ span_bound := by
+    sorry  -- arithmetic: j < endPos ≤ body_start + span_bound
+
+  -- Step 4: Apply ih_seq to inner body [ps.pos+1, j)
+  have h_inner_pn : ParseNodeFlowSeqOk tokens j (4 * tokens.size + 4) (ps.pos + 1) :=
+    ih_seq j (ps.pos + 1) (4 * tokens.size + 4)
+      h_j_bound (by omega) h_span h_j_tok h_j_bal (by omega)
+
+  -- Step 5: Fuel decomposition m = m'+1 = m''+1+1
+  obtain ⟨m', h_m'⟩ : ∃ m', m = m' + 1 := ⟨m - 1, by omega⟩
+  obtain ⟨m'', h_m''⟩ : ∃ m'', m' = m'' + 1 := ⟨m' - 1, by omega⟩
+
+  -- m'' ≥ 4*N+4 for loop theorem
+  have h_m''_fuel : 4 * tokens.size + 4 ≤ m'' := by omega
+
+  -- Step 6: Unfold parseNode (m = m''+1+1)
+  subst h_m' h_m''
+  unfold parseNode
+
+  -- Show not alias case: h_fss says peek? = some .flowSequenceStart
+  have h_not_alias : ∀ name, ps.peek? ≠ some (.alias name) := by
+    intro name h_contra
+    rw [h_fss] at h_contra
+    cases h_contra
+
+  -- Split on alias case (will be false)
+  split
+  · rename_i h_alias_case
+    exfalso
+    exact h_not_alias _ h_alias_case
+
+  -- Now in the non-alias branch: do-block with parseNodeProperties
+  simp only [Bind.bind, Except.bind]
+
+  -- Step 7: parseNodeProperties result
+  -- For flowSequenceStart with no anchor/tag, returns ({}, ps)
+  generalize h_pnp : parseNodeProperties ps = pnp_result
+  cases pnp_result with
+  | error e =>
+    sorry  -- parseNodeProperties doesn't fail for simple token stream
+  | ok res =>
+    obtain ⟨props, ps_after_props⟩ := res
+    simp only [Bind.bind, Except.bind]
+
+    -- Step 8: validateNodeProps with prePropPos = ps.pos (no props consumed)
+    -- For flowSequenceStart, this always succeeds
+    generalize h_saved_pos : ps.pos = prePropPos
+    generalize h_vnp : validateNodeProps ps_after_props prePropPos props = vnp_result
+    cases vnp_result with
+    | error e =>
+      sorry  -- validateNodeProps succeeds for flowSequenceStart
+    | ok _ =>
+      simp only [Bind.bind, Except.bind]
+
+      -- Step 9: parseNodeContent dispatches on ps_after_props.peek?
+      -- Should still be flowSequenceStart
+      have h_props_peek : ps_after_props.peek? = some .flowSequenceStart := by
+        sorry  -- parseNodeProperties doesn't advance for flowSequenceStart
+
+      -- Step 10: parseNodeContent calls parseFlowSequence
+      generalize h_pnc : parseNodeContent ps_after_props (m'' + 1) props = pnc_result
+      cases pnc_result with
+      | error e =>
+        sorry  -- will show parseFlowSequence succeeds
+      | ok res =>
+        obtain ⟨val_content, ps_after_content⟩ := res
+
+        -- Step 11: applyNodeFinalization
+        -- Returns (val_final, ps_final)
+        sorry
 
 /-- Nested flowMappingStart case: uses IH for the inner body. -/
 theorem parseNode_flowMapStart_in_seq
