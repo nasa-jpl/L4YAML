@@ -4066,6 +4066,10 @@ Additionally, Phase I includes the `parseNodeFlowSeqOk_of_structure` and
 structural properties as explicit hypotheses and prove ParseNodeFlowSeqOk / ParseEntryFlowMapOk
 by strong induction on span. These helpers are designed to be **sorry-free**.
 
+**Implementation note:** The two helper theorems were combined into a single theorem
+`flow_parser_ok_of_structure` that proves both ParseNodeFlowSeqOk and ParseEntryFlowMapOk
+using mutual strong induction, since sequences can contain mappings and vice versa.
+
 ***Phase I: Accomplishments***
 
 ***Phase I: Critical Bug #2 — Depth Universality***

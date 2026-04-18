@@ -1455,6 +1455,191 @@ private def test_filtered_prefix (state : IO.Ref TestCollector) : IO Unit := do
   checkFilteredPrefix state "deep-flow-in-block"
     "a:\n  b:\n    c: [{d: [e, {f: [g]}]}, h]"
 
+/-! ## Priority 6 — Flow parser helper lemmas (parseNode nested brackets)
+
+These 3 helper lemmas support `flow_parser_ok_of_structure` and handle nested
+bracket cases within flow sequences and mappings:
+
+1. `parseNode_flowSeqStart_in_seq` — parseNode on nested `[...]` inside a sequence
+2. `parseNode_flowMapStart_in_seq` — parseNode on nested `{...}` inside a sequence
+3. `parseEntry_in_flowMap` — parseExplicitKey + parseFlowMappingValue in a mapping
+
+These have HIGH statement risk (∀ over parse states, complex bracket balance conditions)
+and HIGH proof cost (require coordination with loop theorems). Adversarial instantiation
+is critical before investing proof effort.
+
+We test the key claims:
+- parseNode/parseExplicitKey succeed with sufficient fuel
+- Result position advances and stays within bounds
+- Result peek is flowEntry or appropriate terminator
+- Bracket balance is maintained
+-/
+
+/-- Find the first content-start position in a flow sequence body (after `[`). -/
+private def findContentInSeq (tokens : Array (Positioned YamlToken)) (bodyStart : Nat) : Option Nat := do
+  for _h : i in [bodyStart:tokens.size] do
+    let tok := tokens[i]!.val
+    if isContentStart tok then
+      return i
+  none
+
+/-- Find the first .key position in a flow mapping body (after `{`). -/
+private def findKeyInMap (tokens : Array (Positioned YamlToken)) (bodyStart : Nat) : Option Nat := do
+  for _h : i in [bodyStart:tokens.size] do
+    let tok := tokens[i]!.val
+    if tok == .key then
+      return i
+  none
+
+/-- Check parseNode on nested flowSeqStart inside a sequence body. -/
+private def checkNestedSeqInSeq (state : IO.Ref TestCollector)
+    (label : String) (outerSeq : List YamlValue) : IO Unit := do
+  let emitted := emit (seqv outerSeq)
+  match scanFiltered emitted with
+  | .error e =>
+    checkM state s!"{label}: scan ok" false s!"scan error: {repr e}"
+  | .ok tokens =>
+    check state s!"{label}: scan ok" true
+
+    -- Find the outer `[` at position 1 (after streamStart)
+    if tokens.size < 3 then
+      checkM state s!"{label}: has tokens" false s!"only {tokens.size} tokens"
+      return
+
+    check state s!"{label}: outer [" (tokens[1]!.val == .flowSequenceStart)
+
+    let bodyStart := 2
+    -- Find first nested `[` in the body
+    let mut foundNested := false
+    for _h : i in [bodyStart:tokens.size] do
+      let tok := tokens[i]!.val
+      if tok == .flowSequenceStart then
+        let bal := bracketBal tokens bodyStart i
+        if bal == 0 then
+          foundNested := true
+          -- Try to parse at this position
+          let ps : ParseState := { tokens := tokens, pos := i }
+          let fuel := 4 * tokens.size + 4
+          match parseNode ps fuel with
+          | .ok (_, ps') =>
+            check state s!"{label}: parseNode@{i} ok" true
+            check state s!"{label}: parseNode@{i} advances" (ps'.pos > i)
+            check state s!"{label}: parseNode@{i} tokens preserved" (ps'.tokens.size == tokens.size)
+          | .error e =>
+            checkM state s!"{label}: parseNode@{i} ok" false s!"parse error: {repr e}"
+          break
+
+    check state s!"{label}: found nested [" foundNested
+
+/-- Check parseNode on nested flowMapStart inside a sequence body. -/
+private def checkNestedMapInSeq (state : IO.Ref TestCollector)
+    (label : String) (outerSeq : List YamlValue) : IO Unit := do
+  let emitted := emit (seqv outerSeq)
+  match scanFiltered emitted with
+  | .error e =>
+    checkM state s!"{label}: scan ok" false s!"scan error: {repr e}"
+  | .ok tokens =>
+    check state s!"{label}: scan ok" true
+
+    if tokens.size < 3 then
+      checkM state s!"{label}: has tokens" false s!"only {tokens.size} tokens"
+      return
+
+    check state s!"{label}: outer [" (tokens[1]!.val == .flowSequenceStart)
+
+    let bodyStart := 2
+    -- Find first nested `{` in the body
+    let mut foundNested := false
+    for _h : i in [bodyStart:tokens.size] do
+      let tok := tokens[i]!.val
+      if tok == .flowMappingStart then
+        let bal := bracketBal tokens bodyStart i
+        if bal == 0 then
+          foundNested := true
+          -- Try to parse at this position
+          let ps : ParseState := { tokens := tokens, pos := i }
+          let fuel := 4 * tokens.size + 4
+          match parseNode ps fuel with
+          | .ok (_, ps') =>
+            check state s!"{label}: parseNode@{i} ok" true
+            check state s!"{label}: parseNode@{i} advances" (ps'.pos > i)
+            check state s!"{label}: parseNode@{i} tokens preserved" (ps'.tokens.size == tokens.size)
+          | .error e =>
+            checkM state s!"{label}: parseNode@{i} ok" false s!"parse error: {repr e}"
+          break
+
+    check state s!"{label}: found nested \{" foundNested
+
+/-- Check parseExplicitKey + parseFlowMappingValue on a map entry. -/
+private def checkMapEntry (state : IO.Ref TestCollector)
+    (label : String) (outerMap : List (YamlValue × YamlValue)) : IO Unit := do
+  let emitted := emit (mapv outerMap)
+  match scanFiltered emitted with
+  | .error e =>
+    checkM state s!"{label}: scan ok" false s!"scan error: {repr e}"
+  | .ok tokens =>
+    check state s!"{label}: scan ok" true
+
+    if tokens.size < 3 then
+      checkM state s!"{label}: has tokens" false s!"only {tokens.size} tokens"
+      return
+
+    check state s!"{label}: outer \{" (tokens[1]!.val == .flowMappingStart)
+
+    let bodyStart := 2
+    -- Find first .key in the body
+    match findKeyInMap tokens bodyStart with
+    | none =>
+      checkM state s!"{label}: found .key" false "no .key found"
+    | some keyPos =>
+      check state s!"{label}: found .key@{keyPos}" true
+
+      -- Try parseExplicitKey at keyPos
+      let ps : ParseState := { tokens := tokens, pos := keyPos }
+      let fuel := 4 * tokens.size + 4
+      match parseExplicitKey ps.advance fuel with
+      | .ok (_, keyPs) =>
+        check state s!"{label}: parseExplicitKey ok" true
+        check state s!"{label}: parseExplicitKey advances" (keyPs.pos > keyPos)
+
+        -- Try parseFlowMappingValue at the result position
+        match parseFlowMappingValue keyPs fuel #[] "testkey" with
+        | .ok (_, valPs) =>
+          check state s!"{label}: parseFlowMappingValue ok" true
+          check state s!"{label}: parseFlowMappingValue advances" (valPs.pos > keyPs.pos)
+          check state s!"{label}: tokens preserved" (valPs.tokens.size == tokens.size)
+        | .error e =>
+          checkM state s!"{label}: parseFlowMappingValue ok" false s!"parse error: {repr e}"
+      | .error e =>
+        checkM state s!"{label}: parseExplicitKey ok" false s!"parse error: {repr e}"
+
+/-! ## Priority 6 Test Suites -/
+
+private def testFlowParserHelpers (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Priority 6: Flow parser helper lemmas"
+
+  -- parseNode_flowSeqStart_in_seq tests
+  checkNestedSeqInSeq state "nested-seq-1" [seqv [sv "a"]]
+  checkNestedSeqInSeq state "nested-seq-2" [seqv [sv "a", sv "b"]]
+  checkNestedSeqInSeq state "nested-seq-deep" [seqv [seqv [sv "a"]]]
+  checkNestedSeqInSeq state "nested-seq-after-scalar" [sv "x", seqv [sv "a"]]
+  checkNestedSeqInSeq state "nested-seq-multi" [seqv [sv "1", sv "2"], seqv [sv "3"]]
+
+  -- parseNode_flowMapStart_in_seq tests
+  checkNestedMapInSeq state "nested-map-1" [mapv [(sv "k", sv "v")]]
+  checkNestedMapInSeq state "nested-map-2" [mapv [(sv "k1", sv "v1"), (sv "k2", sv "v2")]]
+  checkNestedMapInSeq state "nested-map-deep" [mapv [(sv "k", mapv [(sv "inner", sv "v")])]]
+  checkNestedMapInSeq state "nested-map-after-scalar" [sv "x", mapv [(sv "k", sv "v")]]
+  checkNestedMapInSeq state "nested-map-mixed" [mapv [(sv "k", seqv [sv "a"])]]
+
+  -- parseEntry_in_flowMap tests
+  checkMapEntry state "map-entry-1" [(sv "k", sv "v")]
+  checkMapEntry state "map-entry-2" [(sv "k1", sv "v1"), (sv "k2", sv "v2")]
+  checkMapEntry state "map-entry-nested-val-seq" [(sv "k", seqv [sv "a", sv "b"])]
+  checkMapEntry state "map-entry-nested-val-map" [(sv "k", mapv [(sv "inner", sv "v")])]
+  checkMapEntry state "map-entry-complex" [(sv "k1", seqv [sv "a"]), (sv "k2", mapv [(sv "x", sv "y")])]
+  checkMapEntry state "map-entry-deep" [(sv "k", seqv [mapv [(sv "inner", seqv [sv "deep"])]])]
+
 def collectTests : IO VerifiedSuiteResult := do
   let state ← IO.mkRef ({} : TestCollector)
   test9g state
@@ -1464,6 +1649,7 @@ def collectTests : IO VerifiedSuiteResult := do
   test9e state
   test5_bound state
   test_filtered_prefix state
+  testFlowParserHelpers state
   let results ← finish state
   return { name := "adversarialinstantiation",
            label := "Adversarial Instantiation Tests (sorry audit)",

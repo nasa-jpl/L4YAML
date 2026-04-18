@@ -4843,7 +4843,23 @@ theorem parseNode_flowSeqStart_in_seq
               (ps'.peek? = some .flowEntry ∨
                (ps'.peek? = some .flowSequenceEnd ∧ ps'.pos = endPos)) ∧
               flowBracketBalance tokens ps.pos ps'.pos = 0 := by
-  sorry -- TODO: Use IH on inner body via parseFlowSequenceLoop_emitter_ok
+  -- Step 1: use bracket_seq to find matching ]
+  have ⟨h_pos_bound, h_fss_val⟩ := peek_some_val h_fss
+  rw [h_tok] at h_pos_bound h_fss_val
+  obtain ⟨j, h_j_gt, h_j_lt, h_j_val, h_j_bal, h_j_succ_le, h_j_succ⟩ :=
+    h_sbp.bracket_seq ps.pos h_bs h_pos h_depth h_fss_val
+
+  -- Step 2: invoke IH on inner body (ps.pos+1 to j)
+  have h_span_decrease : j - (ps.pos + 1) < endPos - body_start := by omega
+  have h_inner_pnok : ParseNodeFlowSeqOk tokens j (4 * tokens.size + 4) (ps.pos + 1) :=
+    ih_seq j (ps.pos + 1) h_j_lt (by omega) h_j_val h_j_bal h_span_decrease
+      (4 * tokens.size + 4) (by omega)
+
+  -- Step 3: We need to show parseNode succeeds. Strategy:
+  -- parseNode calls parseNodeProperties, then parseNodeContent (which dispatches
+  -- to parseFlowSequence), then applyNodeFinalization.
+  -- For now, defer the complex coordination to sorry.
+  sorry
 
 /-- Nested flowMappingStart case: uses IH for the inner body. -/
 theorem parseNode_flowMapStart_in_seq
