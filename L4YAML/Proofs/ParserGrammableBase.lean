@@ -595,9 +595,8 @@ theorem flowBracketBalance_compose_zero (tokens : Array (Positioned YamlToken))
 /-! ### §6  Structural predicates for flow body subranges
 
 These predicates capture the token-level structural properties that
-`parseNodeFlowSeqOk_of_structure` and `parseEntryFlowMapOk_of_structure`
-need to prove `ParseNodeFlowSeqOk` / `ParseEntryFlowMapOk` by strong
-induction on span.
+`flow_parser_ok_of_structure` needs to prove `ParseNodeFlowSeqOk` and
+`ParseEntryFlowMapOk` by mutual strong induction on span.
 
 The universal quantification over all (lo, hi) subranges handles
 nesting automatically: inner bracket bodies satisfy the same predicates,
