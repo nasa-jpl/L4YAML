@@ -5120,24 +5120,25 @@ theorem parseNode_scalar_in_seq
 theorem parseNode_flowSeqStart_in_seq
     (tokens : Array (Positioned YamlToken))
     (endPos body_start : Nat)
+    (span_bound : Nat)
     (h_endPos_bound : endPos < tokens.size)
     (h_sub : FlowSubrangesOk tokens)
     (h_sbp : SeqBodyProps tokens body_start endPos)
-    -- IH for inner bodies with smaller span (j < endPos from bracket props)
-    (ih_seq : ∀ j lo, j < endPos → lo ≤ j → tokens[j]!.val = .flowSequenceEnd →
-              flowBracketBalance tokens lo j = 0 → j - lo < endPos - body_start →
-              ∀ fuel, 4 * tokens.size + 4 ≤ fuel →
+    -- IH matching flow_parser_ok_of_structure signature
+    (ih_seq : ∀ j lo fuel, j < tokens.size → lo ≤ j → j - lo ≤ span_bound →
+              tokens[j]!.val = .flowSequenceEnd →
+              flowBracketBalance tokens lo j = 0 →
+              4 * tokens.size + 4 ≤ fuel →
               ParseNodeFlowSeqOk tokens j fuel lo)
-    (ih_map : ∀ j lo, j < endPos → lo ≤ j → tokens[j]!.val = .flowMappingEnd →
-              flowBracketBalance tokens lo j = 0 → j - lo < endPos - body_start →
-              ∀ fuel, 4 * tokens.size + 4 ≤ fuel →
+    (ih_map : ∀ j lo fuel, j < tokens.size → lo ≤ j → j - lo ≤ span_bound →
+              tokens[j]!.val = .flowMappingEnd →
+              flowBracketBalance tokens lo j = 0 →
+              4 * tokens.size + 4 ≤ fuel →
               ParseEntryFlowMapOk tokens j fuel lo)
-    (fuel : Nat)
-    (h_fuel : 4 * tokens.size + 6 ≤ fuel)
     (ps : ParseState) (m : Nat)
     (h_tok : ps.tokens = tokens)
     (h_m_pos : 0 < m)
-    (h_m_le : m ≤ fuel)
+    (h_m_fuel : 4 * tokens.size + 6 ≤ m)
     (h_pos : ps.pos < endPos)
     (h_bs : body_start ≤ ps.pos)
     (h_depth : flowBracketBalance tokens body_start ps.pos = 0)
@@ -5149,35 +5150,34 @@ theorem parseNode_flowSeqStart_in_seq
               (ps'.peek? = some .flowEntry ∨
                (ps'.peek? = some .flowSequenceEnd ∧ ps'.pos = endPos)) ∧
               flowBracketBalance tokens ps.pos ps'.pos = 0 := by
-  -- This helper lemma requires fuel ≥ 4*N+6 to properly decompose through
-  -- parseNode (1 fuel) → parseFlowSequence (1 fuel) → loop (4*N+4 fuel).
-  -- The proof structure is complete (Steps 1-13 documented in git history) with 2 sorries:
-  --   1. parseFlowSequenceLoop_fuel_mono (~20 lines)
-  --   2. applyNodeFinalization postcondition checks (~30 lines)
-  -- However, flow_parser_ok_of_structure only provides 4*N+4 fuel, creating
-  -- a 2-unit mismatch that makes this helper incompatible with the main theorem.
-  -- The inline proof in flow_parser_ok_of_structure must handle this directly.
+  -- Restructured to match flow_parser_ok_of_structure interface:
+  -- Takes m directly with bound 4*N+6 ≤ m (sufficient for full decomposition)
+  -- IH parameters match the strong induction structure
   sorry
 
 /-- Nested flowMappingStart case: uses IH for the inner body. -/
 theorem parseNode_flowMapStart_in_seq
     (tokens : Array (Positioned YamlToken))
     (endPos body_start : Nat)
+    (span_bound : Nat)
     (h_endPos_bound : endPos < tokens.size)
     (h_sub : FlowSubrangesOk tokens)
     (h_sbp : SeqBodyProps tokens body_start endPos)
-    -- IH for inner bodies with smaller span (j < endPos from bracket props)
-    (ih_seq : ∀ j lo, j < endPos → lo ≤ j → tokens[j]!.val = .flowSequenceEnd →
-              flowBracketBalance tokens lo j = 0 → j - lo < endPos - body_start →
-              ∀ fuel, 4 * tokens.size + 4 ≤ fuel →
+    -- IH matching flow_parser_ok_of_structure signature
+    (ih_seq : ∀ j lo fuel, j < tokens.size → lo ≤ j → j - lo ≤ span_bound →
+              tokens[j]!.val = .flowSequenceEnd →
+              flowBracketBalance tokens lo j = 0 →
+              4 * tokens.size + 4 ≤ fuel →
               ParseNodeFlowSeqOk tokens j fuel lo)
-    (ih_map : ∀ j lo, j < endPos → lo ≤ j → tokens[j]!.val = .flowMappingEnd →
-              flowBracketBalance tokens lo j = 0 → j - lo < endPos - body_start →
-              ∀ fuel, 4 * tokens.size + 4 ≤ fuel →
+    (ih_map : ∀ j lo fuel, j < tokens.size → lo ≤ j → j - lo ≤ span_bound →
+              tokens[j]!.val = .flowMappingEnd →
+              flowBracketBalance tokens lo j = 0 →
+              4 * tokens.size + 4 ≤ fuel →
               ParseEntryFlowMapOk tokens j fuel lo)
     (ps : ParseState) (m : Nat)
     (h_tok : ps.tokens = tokens)
     (h_m_pos : 0 < m)
+    (h_m_fuel : 4 * tokens.size + 6 ≤ m)
     (h_pos : ps.pos < endPos)
     (h_bs : body_start ≤ ps.pos)
     (h_depth : flowBracketBalance tokens body_start ps.pos = 0)
@@ -5189,54 +5189,9 @@ theorem parseNode_flowMapStart_in_seq
               (ps'.peek? = some .flowEntry ∨
                (ps'.peek? = some .flowSequenceEnd ∧ ps'.pos = endPos)) ∧
               flowBracketBalance tokens ps.pos ps'.pos = 0 := by
-  -- Step 1: use bracket_map to find matching }
-  have ⟨h_pos_bound, h_fms_val⟩ := peek_some_val h_fms
-  rw [h_tok] at h_pos_bound h_fms_val
-  obtain ⟨j, h_j_gt, h_j_lt, h_j_val, h_j_bal, h_j_succ_le, h_j_succ⟩ :=
-    h_sbp.bracket_map ps.pos h_bs h_pos h_depth h_fms_val
-
-  -- Step 2: invoke IH on inner body (ps.pos+1 to j)
-  have h_span_decrease : j - (ps.pos + 1) < endPos - body_start := by omega
-  have h_inner_peok : ParseEntryFlowMapOk tokens j (4 * tokens.size + 4) (ps.pos + 1) :=
-    ih_map j (ps.pos + 1) h_j_lt (by omega) h_j_val h_j_bal h_span_decrease
-      (4 * tokens.size + 4) (by omega)
-
-  -- Step 3: Get inner body properties via FlowSubrangesOk
-  have h_j_bound : j < tokens.size := by omega
-  have h_inner_mbp : MapBodyProps tokens (ps.pos + 1) j :=
-    h_sub.map (ps.pos + 1) j (by omega) h_j_bound h_j_val h_j_bal
-
-  -- Step 4: Fuel decomposition (m > 0 means m = m' + 1)
-  obtain ⟨m', rfl⟩ : ∃ k, m = k + 1 := ⟨m - 1, by omega⟩
-
-  -- Step 5: parseNodeProperties returns ({}, ps) for flowMappingStart
-  have h_np : parseNodeProperties ps = .ok ({}, ps) := by
-    exact parseNodeProperties_skip ps (by rw [h_fms]; trivial)
-
-  -- Step 6: Construct all 10 preconditions for parseFlowMappingLoop_emitter_ok using helper
-  have h_loop_preconds : LoopMapPreconditions tokens ps.advance j (ps.pos + 1) (4 * tokens.size + 4) :=
-    mk_loop_map_preconditions tokens ps j (4 * tokens.size + 4)
-      h_tok h_pos_bound h_j_gt h_j_bound h_j_val h_inner_mbp h_inner_peok
-      (by omega : 4 * tokens.size + 4 > j - (ps.pos + 1))
-
-  -- Step 7: Invoke parseFlowMappingLoop_emitter_ok with preconditions from helper
-  have h_adv_tok : ps.advance.tokens = tokens := by simp [ParseState.advance_tokens, h_tok]
-  obtain ⟨pairs, ps_loop, h_loop_ok, h_loop_peek, h_loop_pos_eq, h_loop_tok, h_loop_tp⟩ :=
-    parseFlowMappingLoop_emitter_ok (4 * tokens.size + 4) ps.advance #[] j (ps.pos + 1)
-      (by rw [h_adv_tok]; exact h_loop_preconds.h_pn)
-      h_loop_preconds.h_fuel h_loop_preconds.h_pos
-      h_loop_preconds.h_end_pos h_loop_preconds.h_end_tok h_loop_preconds.h_at_end
-      h_loop_preconds.h_entry h_loop_preconds.h_key_start
-      (fun k hk1 hk2 hk3 hk4 =>
-        let ⟨h_lt, h_key⟩ := h_loop_preconds.h_after_fe k hk1 hk2 hk3 hk4
-        ⟨Nat.le_of_lt h_lt, h_key⟩)
-      h_loop_preconds.h_bal h_loop_preconds.h_bs
-
-  -- REFACTORING SUCCESS: Steps 1-7 complete (~32 lines total, was ~184)
-  --
-  -- REMAINING WORK (Steps 8-9, ~45 lines):
-  -- Step 8: Complete bind chain reasoning through parseNode (~30 lines)
-  -- Step 9: Build existential witness with all 6 postconditions (~15 lines)
+  -- Restructured to match flow_parser_ok_of_structure interface:
+  -- Takes m directly with bound 4*N+6 ≤ m (sufficient for full decomposition)
+  -- IH parameters match the strong induction structure
   sorry
 
 /-- Map body case: parseExplicitKey + parseFlowMappingValue in a flow mapping body.
@@ -5244,21 +5199,25 @@ theorem parseNode_flowMapStart_in_seq
 theorem parseEntry_in_flowMap
     (tokens : Array (Positioned YamlToken))
     (endPos body_start : Nat)
+    (span_bound : Nat)
     (h_endPos_bound : endPos < tokens.size)
     (h_sub : FlowSubrangesOk tokens)
     (h_mbp : MapBodyProps tokens body_start endPos)
-    -- IH for inner bodies with smaller span (j < endPos from bracket props)
-    (ih_seq : ∀ j lo, j < endPos → lo ≤ j → tokens[j]!.val = .flowSequenceEnd →
-              flowBracketBalance tokens lo j = 0 → j - lo < endPos - body_start →
-              ∀ fuel, 4 * tokens.size + 4 ≤ fuel →
+    -- IH matching flow_parser_ok_of_structure signature
+    (ih_seq : ∀ j lo fuel, j < tokens.size → lo ≤ j → j - lo ≤ span_bound →
+              tokens[j]!.val = .flowSequenceEnd →
+              flowBracketBalance tokens lo j = 0 →
+              4 * tokens.size + 4 ≤ fuel →
               ParseNodeFlowSeqOk tokens j fuel lo)
-    (ih_map : ∀ j lo, j < endPos → lo ≤ j → tokens[j]!.val = .flowMappingEnd →
-              flowBracketBalance tokens lo j = 0 → j - lo < endPos - body_start →
-              ∀ fuel, 4 * tokens.size + 4 ≤ fuel →
+    (ih_map : ∀ j lo fuel, j < tokens.size → lo ≤ j → j - lo ≤ span_bound →
+              tokens[j]!.val = .flowMappingEnd →
+              flowBracketBalance tokens lo j = 0 →
+              4 * tokens.size + 4 ≤ fuel →
               ParseEntryFlowMapOk tokens j fuel lo)
     (ps : ParseState) (m : Nat)
     (h_tok : ps.tokens = tokens)
     (h_m_pos : 0 < m)
+    (h_m_fuel : 4 * tokens.size + 6 ≤ m)
     (h_pos : ps.pos < endPos)
     (h_bs : body_start ≤ ps.pos)
     (h_depth : flowBracketBalance tokens body_start ps.pos = 0)
@@ -5277,20 +5236,10 @@ theorem parseEntry_in_flowMap
           (val_ps.peek? = some .flowEntry ∨
            (val_ps.peek? = some .flowMappingEnd ∧ val_ps.pos = endPos)) ∧
           flowBracketBalance tokens ps.pos val_ps.pos = 0 := by
-  -- NOTE: This lemma has a different structure from the other two nested bracket lemmas.
-  -- Unlike parseNode_flowSeqStart_in_seq and parseNode_flowMapStart_in_seq which invoke
-  -- loop theorems requiring many preconditions, this lemma handles a single entry parse:
-  --   1. Advance past .key token
-  --   2. Parse key content (scalar/flowSeqStart/flowMapStart, using IH for brackets)
-  --   3. Expect and advance past .value token
-  --   4. Parse value content (scalar/flowSeqStart/flowMapStart, using IH for brackets)
-  --   5. Verify final position and postconditions
-  --
-  -- The LoopSeqPreconditions/LoopMapPreconditions helpers don't apply here since we're
-  -- not calling a loop theorem. However, we still benefit from the overall refactoring
-  -- as the pattern for handling nested brackets is now clearer from the other two proofs.
-  --
-  -- Estimated length: ~80-100 lines (no comparable baseline since this was never expanded)
+  -- Restructured to match flow_parser_ok_of_structure interface:
+  -- Takes m directly with bound 4*N+6 ≤ m (sufficient for full decomposition)
+  -- IH parameters match the strong induction structure
+  -- Sequential structure: key parsing → value parsing (no loop theorem needed)
   sorry
 
 /-- Combined theorem: `FlowSubrangesOk tokens` implies both `ParseNodeFlowSeqOk`
@@ -5365,21 +5314,34 @@ theorem flow_parser_ok_of_structure
       · -- Scalar case: use helper lemma
         exact parseNode_scalar_in_seq tokens endPos body_start h_hi h_sbp ps m
           h_tok h_m_pos h_pos h_bs h_depth c sc h_scalar
-      · -- Nested flowSequenceStart: needs inline proof due to fuel mismatch
-        -- The helper lemma parseNode_flowSeqStart_in_seq requires 4*N+6 fuel,
-        -- but flow_parser_ok_of_structure only provides 4*N+4. The 2-unit gap
-        -- comes from parseNode and parseFlowSequence each consuming 1 fuel before
-        -- calling the loop. This mismatch means we need inline proof here.
-        sorry
-      · -- Nested flowMappingStart: needs inline proof due to fuel mismatch
-        -- Same issue as flowSequenceStart case above.
-        sorry
+      · -- Nested flowSequenceStart: check fuel sufficiency
+        by_cases h_m_suff : 4 * tokens.size + 6 ≤ m
+        · -- Sufficient fuel: use helper
+          exact parseNode_flowSeqStart_in_seq tokens endPos body_start n h_hi h_sub h_sbp
+            ih_seq ih_map ps m h_tok h_m_pos h_m_suff h_pos h_bs h_depth h_fss
+        · -- Insufficient fuel: show this leads to error or handle inline
+          -- When 4*N+4 ≤ fuel < 4*N+6 and m ≤ fuel, we have m < 4*N+6
+          -- For well-formed structures, parseNode might fail with nestingDepthExceeded
+          -- or we need inline proof for small m case
+          sorry
+      · -- Nested flowMappingStart: check fuel sufficiency
+        by_cases h_m_suff : 4 * tokens.size + 6 ≤ m
+        · -- Sufficient fuel: use helper
+          exact parseNode_flowMapStart_in_seq tokens endPos body_start n h_hi h_sub h_sbp
+            ih_seq ih_map ps m h_tok h_m_pos h_m_suff h_pos h_bs h_depth h_fms
+        · -- Insufficient fuel: show this leads to error or handle inline
+          sorry
     · -- Mapping case
       intro endPos body_start fuel h_hi h_bs_ep h_span h_end_tok h_bal h_fuel
       intro ps m h_tok h_m_pos h_m_le h_pos h_bs h_depth h_key
       have h_mbp : MapBodyProps tokens body_start endPos :=
         h_sub.map body_start endPos h_bs_ep h_hi h_end_tok h_bal
-      -- parseEntry_in_flowMap helper would go here, but has same fuel mismatch issue
-      sorry
+      -- Use parseEntry_in_flowMap helper: check fuel sufficiency
+      by_cases h_m_suff : 4 * tokens.size + 6 ≤ m
+      · -- Sufficient fuel: use helper
+        exact parseEntry_in_flowMap tokens endPos body_start n h_hi h_sub h_mbp
+          ih_seq ih_map ps m h_tok h_m_pos h_m_suff h_pos h_bs h_depth h_key
+      · -- Insufficient fuel: show this leads to error or handle inline
+        sorry
 
 end L4YAML.Proofs.ParserGrammable
