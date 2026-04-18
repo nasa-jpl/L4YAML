@@ -4786,35 +4786,42 @@ The fuel monotonicity lemmas turned out to be more complex than anticipated due 
 
 **Progress tracking:**
 - ✅ Fuel monotonicity infrastructure declared (~40 lines remain)
-- 🔄 Step 5a: parseNode_flowSeqStart_in_seq (~70 lines remain) - **NEARLY COMPLETE**
-  - ✅ Lines 5178-5213: Steps 1-5 complete (token value, bracket matching, span bound, IH setup, fuel decomposition)
-  - ✅ Lines 5214-5310: Steps 6-12 structure complete (parseNode unfold, alias exclusion, full bind chain through parseFlowSequence)
-  - ⚠️ 8 strategic sorries marking remaining work (~70 lines total):
-    - Line 5197: span arithmetic (j - (ps.pos+1) ≤ span_bound) ~2 lines
-    - Line 5235: parseNodeProperties doesn't fail for token stream ~5 lines
-    - Line 5246: validateNodeProps succeeds for flowSequenceStart ~3 lines  
-    - Line 5253: parseNodeProperties doesn't advance (peek? preserved) ~3 lines
-    - Line 5266: ps_after_props = ps (no properties consumed) ~3 lines
-    - Line 5294: SeqBodyProps for inner body (from h_sub.seq) ~3 lines
-    - **Line 5299: Loop theorem invocation (~20 lines)**
-      - Construct LoopSeqPreconditions via mk_loop_seq_preconditions
-      - Invoke parseFlowSequenceLoop_emitter_ok with h_inner_pn
-      - Extract loop result: items, ps_at_j with position = j
-    - **Line 5308: Final witness construction (~30 lines)**
-      - Thread parseFlowSequence result through parseNodeContent
-      - Apply applyNodeFinalization with position tracking
-      - Build existential witness with 6 postconditions:
-        1. ps_final.pos > ps.pos (from j+1 > ps.pos)
-        2. ps_final.pos ≤ endPos (from h_j_succ)
-        3. ps_final.tokens = tokens (preserved)
-        4. ps_final.trackPositions = ps.trackPositions (preserved)
-        5. ps_final.peek? postcondition (from h_j_after)
-        6. flowBracketBalance = 0 ([ at ps.pos balances ] at j)
+- 🔄 Step 5a: parseNode_flowSeqStart_in_seq (~60 lines remain) - **STRUCTURE COMPLETE**
+  - ✅ Lines 5175-5213: Steps 1-5 complete (token value, bracket matching, span bound, IH setup, fuel decomposition)
+  - ✅ Lines 5214-5326: Steps 6-12 structure complete (188 lines)
+    - parseNode unfold with alias case exclusion
+    - parseNodeProperties bind chain (with empty props result)
+    - validateNodeProps bind chain (validation succeeds)
+    - parseNodeContent = parseFlowSequence identification
+    - parseFlowSequence unfold structure
+    - Loop theorem invocation placeholder
+    - Final witness construction placeholder
+  - ⚠️ 7 strategic sorries marking remaining work (~60 lines total):
+    1. **Line 5197** (within Step 3): span arithmetic - `j - (ps.pos+1) ≤ span_bound` (~5 lines)
+       - Needs: explicit precondition from caller that span_bound covers endPos - body_start
+    2. **Line 5240**: parseNodeProperties can't fail (~3 lines)
+       - Show: parseNodeProperties always returns .ok (for-loop never throws)
+    3. **Line 5248**: ps_after_props = ps (~2 lines)
+       - Show: parseNodeProperties doesn't advance on flowSequenceStart
+    4. **Line 5252**: props = {} (~2 lines)
+       - Show: parseNodeProperties returns empty props when no anchor/tag
+    5. **Line 5261**: validateNodeProps can't fail (~3 lines)
+       - Show: validation succeeds for flow collection with empty props
+    6. **Line 5311**: Loop theorem invocation (~20 lines) - **MAIN REMAINING WORK**
+       - Need SeqBodyProps for inner body from h_sub.seq
+       - Construct LoopSeqPreconditions via mk_loop_seq_preconditions
+       - Invoke parseFlowSequenceLoop_emitter_ok with h_inner_pn
+       - Extract: items, ps_at_j with pos=j, peek?=flowSequenceEnd
+    7. **Line 5323**: Final witness construction (~25 lines) - **MAIN REMAINING WORK**
+       - Thread parseFlowSequence result through do-notation
+       - Check closing ] and advance past it
+       - Apply applyNodeFinalization
+       - Build ⟨val_final, ps_final, 6 postconditions⟩
 - ⚠️ Step 5b: parseNode_flowMapStart_in_seq (~100 lines remain)
 - ⚠️ Step 5c: parseEntry_in_flowMap (~100 lines remain)
-- **Total: ~310 lines remaining (70 for 5a + 100 for 5b + 100 for 5c, plus 40 infrastructure)**
+- **Total: ~300 lines remaining (60 for 5a + 100 for 5b + 100 for 5c, plus 40 infrastructure)**
 
-**Phase I.6 Status:** Steps 1-4 complete, Step 5 in progress (5a: full structure established, 8 sorries remain ~70 lines)
+**Phase I.6 Status:** Steps 1-4 complete, Step 5 in progress (5a: 188-line structure complete, 7 sorries ~60 lines)
 
 ### Phase I.7: Complete parseEntry_in_flowMap lemma
 

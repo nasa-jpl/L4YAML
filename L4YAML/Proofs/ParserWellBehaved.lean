@@ -5194,7 +5194,12 @@ theorem parseNode_flowSeqStart_in_seq
 
   -- Step 3: Compute span for IH
   have h_span : j - (ps.pos + 1) ≤ span_bound := by
-    sorry  -- arithmetic: j < endPos ≤ body_start + span_bound
+    -- j < endPos, ps.pos ≥ body_start, so j - (ps.pos+1) < endPos - body_start
+    -- Caller ensures span_bound ≥ endPos - body_start in strong induction
+    have : j - (ps.pos + 1) ≤ j - body_start := by omega
+    have : j - body_start ≤ endPos - body_start := by omega
+    -- Need: endPos - body_start ≤ span_bound (from caller's induction setup)
+    sorry  -- Requires explicit precondition from caller
 
   -- Step 4: Apply ih_seq to inner body [ps.pos+1, j)
   have h_inner_pn : ParseNodeFlowSeqOk tokens j (4 * tokens.size + 4) (ps.pos + 1) :=
@@ -5232,38 +5237,45 @@ theorem parseNode_flowSeqStart_in_seq
   generalize h_pnp : parseNodeProperties ps = pnp_result
   cases pnp_result with
   | error e =>
-    sorry  -- parseNodeProperties doesn't fail for simple token stream
+    -- parseNodeProperties is a for-loop that always returns .ok (never throws)
+    -- It checks for anchor/tag, breaks on flowSequenceStart
+    sorry  -- ~3 lines: contradiction, parseNodeProperties can't fail here
   | ok res =>
     obtain ⟨props, ps_after_props⟩ := res
     simp
 
-    -- Step 8: validateNodeProps with prePropPos = ps.pos (no props consumed)
-    -- For flowSequenceStart, this always succeeds
+    -- Show ps_after_props = ps (parseNodeProperties doesn't advance for flowSequenceStart)
+    have h_ps_props_eq : ps_after_props = ps := by
+      -- parseNodeProperties breaks on flowSequenceStart without advancing
+      sorry  -- ~2 lines: unfold parseNodeProperties, show loop doesn't advance
+
+    have h_props_empty : props = {} := by
+      -- parseNodeProperties returns empty props when no anchor/tag consumed
+      sorry  -- ~2 lines: unfold parseNodeProperties, show props = {}
+
+    -- Step 8: validateNodeProps with prePropPos = ps.pos
     generalize h_saved_pos : ps.pos = prePropPos
     generalize h_vnp : validateNodeProps ps_after_props prePropPos props = vnp_result
     cases vnp_result with
     | error e =>
-      sorry  -- validateNodeProps succeeds for flowSequenceStart
+      -- validateNodeProps checks block alignment & duplicate anchors
+      -- flowSequenceStart is flow collection (no alignment check), empty props (no duplicates)
+      sorry  -- ~3 lines: contradiction, validation can't fail
     | ok _ =>
       simp
 
-      -- Step 9: parseNodeContent dispatches on ps_after_props.peek?
-      -- Should still be flowSequenceStart
+      -- Step 9: parseNodeContent dispatches on peek?
       have h_props_peek : ps_after_props.peek? = some .flowSequenceStart := by
-        sorry  -- parseNodeProperties doesn't advance for flowSequenceStart
+        subst h_ps_props_eq; exact h_fss
 
-      -- Step 10: Show parseNodeContent = parseFlowSequence for our case
+      -- Step 10: Show parseNodeContent = parseFlowSequence
       have h_pnc_eq : parseNodeContent ps_after_props (m'' + 1) props =
                       parseFlowSequence ps_after_props (m'' + 1) := by
         unfold parseNodeContent
         simp only [h_props_peek]
 
       -- Step 11: Show parseFlowSequence succeeds
-      -- Strategy: unfold, show ps_after_props = ps, invoke loop theorem, check closing ]
-
-      -- First show ps_after_props = ps (parseNodeProperties doesn't advance for [)
-      have h_ps_props_eq : ps_after_props = ps := by
-        sorry  -- parseNodeProperties with no anchor/tag returns input unchanged
+      -- Strategy: unfold, invoke loop theorem, check closing ]
 
       have h_ps_props_tok : ps_after_props.tokens = tokens := by
         subst h_ps_props_eq; exact h_tok
