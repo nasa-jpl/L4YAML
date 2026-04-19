@@ -38,7 +38,7 @@ the internal calls (which occur at internal fuel `n+1 → n+2`). Location:
 | 4 | `parseBlockSequence`               | same template as Part 2; use `ih_bsl`       | ✅     |
 | 5 | `parseBlockMapping`                | same template as Part 2; use `ih_bml`       | ✅     |
 | 6 | `parseImplicitBlockSequence`       | same template as Part 2; use `ih_ibsl`      | ✅     |
-| 7 | `parseSinglePairMapping`           | two `parseNode` calls; use Part 1 IH        | ⏳     |
+| 7 | `parseSinglePairMapping`           | two `parseNode` calls; use Part 1 IH        | 🚧     |
 | 8 | `parseFlowSequenceLoop`            | full peek? split; use Parts 1 & 7 IH        | ⏳     |
 | 9 | `parseFlowMappingLoop`             | full peek? split; use Parts 1 & 7 IH        | ⏳     |
 | 10| `parseBlockSequenceLoop`           | full peek? split; use Part 1 IH             | ⏳     |
@@ -52,6 +52,19 @@ fuel=1 behavior.
 
 Line-size estimates (succ cases): Parts 3-6 ≈ 12 lines each (template),
 Part 7 ≈ 30 lines, Parts 8-12 ≈ 40-60 lines each.
+
+**Legend**: ✅ proved · ⏳ not started · 🚧 attempted, blocked.
+
+**Part 7 blocker**: the body has two parseNode calls inside nested matches
+(key-dispatch + value-dispatch) plus an `if consumed` around the value match.
+Split-based destructuring runs into fragile anonymous-name ordering and
+`rename_i` picks up hypotheses in an unexpected order. Helper lemmas
+`key_shift` and `value_shift` (both straightforward: rcases on ps.peek?,
+empty-branches use `exact h`, parseNode-branches apply `ih_pn`) are the
+right abstraction, but wiring them through the main proof needs either
+(a) explicit `case _ =>` labels instead of `rename_i`, or (b) `obtain`
+patterns directly on split output.  Likely tractable with interactive
+feedback on which hypotheses Lean introduces at each step.
 
 ### Step 2 — Loop-level fuel monotonicity lemmas
 
