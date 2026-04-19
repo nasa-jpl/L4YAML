@@ -5843,7 +5843,37 @@ theorem parseFlowMappingValue_ok
         rw [h1, h2, h_value_tok]
       simp [h_value_delta]
       -- Balance from key_ps.pos+1 to j+1 (bracket pair)
-      sorry  -- Bracket pair [key_ps.pos+1, j+1) balances to 0
+      -- Split [key_ps.pos+1, j+1) = [key_ps.pos+1, key_ps.pos+2) + [key_ps.pos+2, j+1)
+      rw [flowBracketBalance_compose tokens (key_ps.pos + 1) (key_ps.pos + 2) (j + 1)
+          (by omega) (by omega)]
+
+      -- Show [key_ps.pos+1, key_ps.pos+2) = 1 (flowSequenceStart)
+      have h_start : flowBracketBalance tokens (key_ps.pos + 1) (key_ps.pos + 2) = 1 := by
+        have h_list_bound : key_ps.pos + 1 < tokens.toList.length := by
+          show key_ps.pos + 1 < tokens.size; omega
+        rw [flowBracketBalance_single tokens (key_ps.pos + 1) h_list_bound]
+        have h_eq : (tokens.toList[key_ps.pos + 1]'h_list_bound).val = .flowSequenceStart := by
+          show (tokens[key_ps.pos + 1]'(by omega : key_ps.pos + 1 < tokens.size)).val = .flowSequenceStart
+          rw [← getElem!_pos tokens (key_ps.pos + 1) (by omega)]; exact h_fss_match
+        rw [h_eq]; rfl
+
+      -- Split [key_ps.pos+2, j+1) = [key_ps.pos+2, j) + [j, j+1)
+      rw [flowBracketBalance_compose tokens (key_ps.pos + 2) j (j + 1) (by omega) (by omega)]
+
+      -- Show [key_ps.pos+2, j) = 0 (from h_j_bal)
+      -- Show [j, j+1) = -1 (flowSequenceEnd)
+      have h_end : flowBracketBalance tokens j (j + 1) = -1 := by
+        have h_list_bound : j < tokens.toList.length := by
+          show j < tokens.size; omega
+        rw [flowBracketBalance_single tokens j h_list_bound]
+        have h_eq : (tokens.toList[j]'h_list_bound).val = .flowSequenceEnd := by
+          show (tokens[j]'(by omega : j < tokens.size)).val = .flowSequenceEnd
+          rw [← getElem!_pos tokens j (by omega)]; exact h_j_end
+        rw [h_eq]; rfl
+
+      -- Combine: 1 + (0 + -1) = 0
+      rw [h_start, h_j_bal, h_end]
+      omega
 
   · -- flowMappingStart value: symmetric with above
     have h_bracket : tokens[key_ps.pos + 1]!.val = .flowSequenceStart ∨
@@ -6388,10 +6418,9 @@ theorem parseNode_flowMapStart_in_seq
 
   -- Step 3: Compute span for IH
   have h_span : j - (ps.pos + 1) ≤ span_bound := by
-    calc j - (ps.pos + 1)
-        ≤ j - body_start      := by omega
-      _ ≤ endPos - body_start := by omega
-      _ ≤ span_bound          := by sorry  -- Need precondition: endPos - body_start ≤ span_bound
+    -- j < endPos, so j ≤ endPos - 1, thus j - body_start ≤ (endPos - body_start) - 1
+    -- Since endPos - body_start ≤ span_bound + 1, we get j - body_start ≤ span_bound
+    omega
 
   -- Step 4: Apply ih_map to inner body [ps.pos+1, j)
   have h_inner_entry : ParseEntryFlowMapOk tokens j (4 * tokens.size + 4) (ps.pos + 1) :=
@@ -6532,7 +6561,38 @@ theorem parseEntry_in_flowMap
 
       -- Get value content info from MapBodyProps
       have h_depth_at_value : flowBracketBalance tokens body_start (ps.pos + 2) = 0 := by
-        sorry  -- Balance preserved through .key and .scalar (non-bracket tokens)
+        -- Compose: [body_start, ps.pos+2) = [body_start, ps.pos) + [ps.pos, ps.pos+1) + [ps.pos+1, ps.pos+2)
+        rw [flowBracketBalance_compose tokens body_start ps.pos (ps.pos + 2) (by omega) (by omega)]
+        rw [h_depth]
+        simp
+        rw [flowBracketBalance_compose tokens ps.pos (ps.pos + 1) (ps.pos + 2) (by omega) (by omega)]
+
+        -- Show [ps.pos, ps.pos+1) = 0 (.key has delta 0)
+        have h_key_delta : flowBracketBalance tokens ps.pos (ps.pos + 1) = 0 := by
+          have h_list_bound : ps.pos < tokens.toList.length := by
+            show ps.pos < tokens.size; omega
+          rw [flowBracketBalance_single tokens ps.pos h_list_bound]
+          show flowBracketDelta tokens.toList[ps.pos].val = 0
+          have h_arr_bound : ps.pos < tokens.size := by subst h_tok; omega
+          have h_eq : (tokens.toList[ps.pos]'h_list_bound).val = .key := by
+            show (tokens[ps.pos]'h_arr_bound).val = .key
+            rw [← getElem!_pos]; exact h_key_val
+          rw [h_eq]; rfl
+
+        -- Show [ps.pos+1, ps.pos+2) = 0 (.scalar has delta 0)
+        have h_scalar_delta : flowBracketBalance tokens (ps.pos + 1) (ps.pos + 2) = 0 := by
+          have h_list_bound : ps.pos + 1 < tokens.toList.length := by
+            show ps.pos + 1 < tokens.size; omega
+          rw [flowBracketBalance_single tokens (ps.pos + 1) h_list_bound]
+          show flowBracketDelta tokens.toList[ps.pos + 1].val = 0
+          have h_arr_bound : ps.pos + 1 < tokens.size := by subst h_tok; omega
+          have h_eq : (tokens.toList[ps.pos + 1]'h_list_bound).val = .scalar c s := by
+            show (tokens[ps.pos + 1]'h_arr_bound).val = .scalar c s
+            rw [← getElem!_pos]; exact h_scalar
+          rw [h_eq]; rfl
+
+        rw [h_key_delta, h_scalar_delta]
+        omega
 
       have ⟨h_val_content_bound, h_val_content⟩ :=
         h_mbp.value_content (ps.pos + 2) (by omega) (by omega) h_depth_at_value h_value_tok
@@ -6547,12 +6607,18 @@ theorem parseEntry_in_flowMap
       have h_depth_at_key_ps : flowBracketBalance tokens body_start key_ps.pos = 0 := by
         rw [h_key_ps_pos_eq]; exact h_depth_at_value
 
+      have h_key_ps_pos_bound : key_ps.pos < endPos := by
+        rw [h_key_ps_pos_eq]; exact h_value_bound
+
+      have h_ps_lt_key_ps : ps.pos < key_ps.pos := by
+        rw [h_key_ps_pos_eq]; omega
+
       have ⟨val_val, val_ps, h_val_ok, h_val_pos_gt, h_val_pos_le, h_val_tok_eq, h_val_tp, h_val_peek, h_val_bal⟩ :=
         (parseFlowMappingValue_ok tokens endPos body_start span_bound ps.pos key_ps m
           h_key_tok (by omega) h_m_fuel h_endPos_bound h_span_bound
-          (by rw [h_key_ps_pos_eq]; omega)
+          h_key_ps_pos_bound
           h_bs
-          (by rw [h_key_ps_pos_eq]; omega)
+          h_ps_lt_key_ps
           h_depth
           h_depth_at_key_ps h_key_ps_value_tok h_key_ps_value_peek
           h_val_content_bound' h_val_content'
@@ -6577,7 +6643,8 @@ theorem parseEntry_in_flowMap
 
     -- Show span for IH
     have h_span : j - (ps.pos + 2) ≤ span_bound := by
-      sorry  -- j < endPos, endPos - body_start ≤ span_bound + 1
+      -- j < endPos, so j - body_start < endPos - body_start ≤ span_bound + 1
+      omega
 
     -- Apply ih_seq for inner bracket body
     have h_inner_seq : ParseNodeFlowSeqOk tokens j (4 * tokens.size + 4) (ps.pos + 2) :=
@@ -6613,7 +6680,54 @@ theorem parseEntry_in_flowMap
         rw [h_key_ps_value_tok]
 
       have h_depth_at_value : flowBracketBalance tokens body_start (j + 1) = 0 := by
-        sorry  -- Balance preserved
+        -- Compose: [body_start, j+1) = [body_start, ps.pos) + [ps.pos, ps.pos+1) + [ps.pos+1, j+1)
+        rw [flowBracketBalance_compose tokens body_start ps.pos (j + 1) (by omega) (by omega)]
+        rw [h_depth]
+        simp
+        rw [flowBracketBalance_compose tokens ps.pos (ps.pos + 1) (j + 1) (by omega) (by omega)]
+
+        -- Show [ps.pos, ps.pos+1) = 0 (.key has delta 0)
+        have h_key_delta : flowBracketBalance tokens ps.pos (ps.pos + 1) = 0 := by
+          have h_list_bound : ps.pos < tokens.toList.length := by
+            show ps.pos < tokens.size; omega
+          rw [flowBracketBalance_single tokens ps.pos h_list_bound]
+          show flowBracketDelta tokens.toList[ps.pos].val = 0
+          have h_arr_bound : ps.pos < tokens.size := by subst h_tok; omega
+          have h_eq : (tokens.toList[ps.pos]'h_list_bound).val = .key := by
+            show (tokens[ps.pos]'h_arr_bound).val = .key
+            rw [← getElem!_pos]; exact h_key_val
+          rw [h_eq]; rfl
+
+        -- Show [ps.pos+1, j+1) = 0 (bracket pair balances)
+        have h_bracket_bal : flowBracketBalance tokens (ps.pos + 1) (j + 1) = 0 := by
+          rw [flowBracketBalance_compose tokens (ps.pos + 1) (ps.pos + 2) (j + 1) (by omega) (by omega)]
+
+          -- [ps.pos+1, ps.pos+2) = 1 (flowSequenceStart)
+          have h_start : flowBracketBalance tokens (ps.pos + 1) (ps.pos + 2) = 1 := by
+            have h_list_bound : ps.pos + 1 < tokens.toList.length := by
+              show ps.pos + 1 < tokens.size; omega
+            rw [flowBracketBalance_single tokens (ps.pos + 1) h_list_bound]
+            have h_arr_bound : ps.pos + 1 < tokens.size := by subst h_tok; omega
+            have h_eq : (tokens.toList[ps.pos + 1]'h_list_bound).val = .flowSequenceStart := by
+              show (tokens[ps.pos + 1]'h_arr_bound).val = .flowSequenceStart
+              rw [← getElem!_pos]; exact h_fss_match
+            rw [h_eq]; rfl
+
+          -- [ps.pos+2, j+1) = [ps.pos+2, j) + [j, j+1)
+          rw [flowBracketBalance_compose tokens (ps.pos + 2) j (j + 1) (by omega) (by omega)]
+
+          -- [j, j+1) = -1 (flowSequenceEnd)
+          have h_end : flowBracketBalance tokens j (j + 1) = -1 := by
+            rw [flowBracketBalance_single tokens j (by omega : j < tokens.toList.length)]
+            have h_eq : (tokens.toList[j]'(by omega : j < tokens.toList.length)).val = .flowSequenceEnd := by
+              show (tokens[j]'(by omega : j < tokens.size)).val = .flowSequenceEnd
+              rw [← getElem!_pos]; exact h_j_end
+            rw [h_eq]; rfl
+
+          rw [h_start, h_j_bal, h_end]; omega
+
+        rw [h_key_delta, h_bracket_bal]
+        omega
 
       have ⟨h_val_content_bound, h_val_content⟩ :=
         h_mbp.value_content (j + 1) (by omega) (by omega) h_depth_at_value h_j_value_tok
@@ -6627,13 +6741,20 @@ theorem parseEntry_in_flowMap
       have h_depth_at_key_ps : flowBracketBalance tokens body_start key_ps.pos = 0 := by
         rw [h_key_ps_pos_eq]; exact h_depth_at_value
 
+      have h_key_ps_pos_bound' : key_ps.pos < endPos := by
+        rw [h_key_ps_pos_eq]
+        omega
+
+      have h_ps_lt_key_ps' : ps.pos < key_ps.pos := by
+        rw [h_key_ps_pos_eq]; omega
+
       -- Apply helper: parseFlowMappingValue (pass ps.pos as original_pos)
       have ⟨val_val, val_ps, h_val_ok, h_val_pos_gt, h_val_pos_le, h_val_tok_eq, h_val_tp, h_val_peek, h_val_bal⟩ :=
         (parseFlowMappingValue_ok tokens endPos body_start span_bound ps.pos key_ps m
           h_key_tok (by omega) h_m_fuel h_endPos_bound h_span_bound
-          (by rw [h_key_ps_pos_eq]; omega)
+          h_key_ps_pos_bound'
           h_bs
-          (by rw [h_key_ps_pos_eq]; omega)
+          h_ps_lt_key_ps'
           h_depth
           h_depth_at_key_ps h_key_ps_value_tok h_key_ps_value_peek
           h_val_content_bound' h_val_content'
@@ -6664,7 +6785,8 @@ theorem parseEntry_in_flowMap
 
     -- Show span for IH
     have h_span : j - (ps.pos + 2) ≤ span_bound := by
-      sorry  -- j < endPos, endPos - body_start ≤ span_bound + 1
+      -- j < endPos, so j - body_start < endPos - body_start ≤ span_bound + 1
+      omega
 
     -- Apply ih_map for inner bracket body
     have h_inner_map : ParseEntryFlowMapOk tokens j (4 * tokens.size + 4) (ps.pos + 2) :=
@@ -6700,7 +6822,56 @@ theorem parseEntry_in_flowMap
         rw [h_key_ps_value_tok]
 
       have h_depth_at_value : flowBracketBalance tokens body_start (j + 1) = 0 := by
-        sorry  -- Balance preserved
+        -- Compose: [body_start, j+1) = [body_start, ps.pos) + [ps.pos, ps.pos+1) + [ps.pos+1, j+1)
+        rw [flowBracketBalance_compose tokens body_start ps.pos (j + 1) (by omega) (by omega)]
+        rw [h_depth]
+        simp
+        rw [flowBracketBalance_compose tokens ps.pos (ps.pos + 1) (j + 1) (by omega) (by omega)]
+
+        -- Show [ps.pos, ps.pos+1) = 0 (.key has delta 0)
+        have h_key_delta : flowBracketBalance tokens ps.pos (ps.pos + 1) = 0 := by
+          have h_list_bound : ps.pos < tokens.toList.length := by
+            show ps.pos < tokens.size; omega
+          rw [flowBracketBalance_single tokens ps.pos h_list_bound]
+          show flowBracketDelta tokens.toList[ps.pos].val = 0
+          have h_arr_bound : ps.pos < tokens.size := by subst h_tok; omega
+          have h_eq : (tokens.toList[ps.pos]'h_list_bound).val = .key := by
+            show (tokens[ps.pos]'h_arr_bound).val = .key
+            rw [← getElem!_pos]; exact h_key_val
+          rw [h_eq]; rfl
+
+        -- Show [ps.pos+1, j+1) = 0 (bracket pair balances)
+        have h_bracket_bal : flowBracketBalance tokens (ps.pos + 1) (j + 1) = 0 := by
+          rw [flowBracketBalance_compose tokens (ps.pos + 1) (ps.pos + 2) (j + 1) (by omega) (by omega)]
+
+          -- [ps.pos+1, ps.pos+2) = 1 (flowMappingStart)
+          have h_start : flowBracketBalance tokens (ps.pos + 1) (ps.pos + 2) = 1 := by
+            have h_list_bound : ps.pos + 1 < tokens.toList.length := by
+              show ps.pos + 1 < tokens.size; omega
+            rw [flowBracketBalance_single tokens (ps.pos + 1) h_list_bound]
+            have h_arr_bound : ps.pos + 1 < tokens.size := by subst h_tok; omega
+            have h_eq : (tokens.toList[ps.pos + 1]'h_list_bound).val = .flowMappingStart := by
+              show (tokens[ps.pos + 1]'h_arr_bound).val = .flowMappingStart
+              rw [← getElem!_pos]; exact h_fms_match
+            rw [h_eq]; rfl
+
+          -- [ps.pos+2, j+1) = [ps.pos+2, j) + [j, j+1)
+          rw [flowBracketBalance_compose tokens (ps.pos + 2) j (j + 1) (by omega) (by omega)]
+
+          -- [j, j+1) = -1 (flowMappingEnd)
+          have h_end : flowBracketBalance tokens j (j + 1) = -1 := by
+            have h_list_bound : j < tokens.toList.length := by
+              show j < tokens.size; omega
+            rw [flowBracketBalance_single tokens j h_list_bound]
+            have h_eq : (tokens.toList[j]'h_list_bound).val = .flowMappingEnd := by
+              show (tokens[j]'(by omega : j < tokens.size)).val = .flowMappingEnd
+              rw [← getElem!_pos]; exact h_j_end
+            rw [h_eq]; rfl
+
+          rw [h_start, h_j_bal, h_end]; omega
+
+        rw [h_key_delta, h_bracket_bal]
+        omega
 
       have ⟨h_val_content_bound, h_val_content⟩ :=
         h_mbp.value_content (j + 1) (by omega) (by omega) h_depth_at_value h_j_value_tok
@@ -6714,13 +6885,20 @@ theorem parseEntry_in_flowMap
       have h_depth_at_key_ps : flowBracketBalance tokens body_start key_ps.pos = 0 := by
         rw [h_key_ps_pos_eq]; exact h_depth_at_value
 
+      have h_key_ps_pos_bound' : key_ps.pos < endPos := by
+        rw [h_key_ps_pos_eq]
+        omega
+
+      have h_ps_lt_key_ps' : ps.pos < key_ps.pos := by
+        rw [h_key_ps_pos_eq]; omega
+
       -- Apply helper: parseFlowMappingValue (pass ps.pos as original_pos)
       have ⟨val_val, val_ps, h_val_ok, h_val_pos_gt, h_val_pos_le, h_val_tok_eq, h_val_tp, h_val_peek, h_val_bal⟩ :=
         (parseFlowMappingValue_ok tokens endPos body_start span_bound ps.pos key_ps m
           h_key_tok (by omega) h_m_fuel h_endPos_bound h_span_bound
-          (by rw [h_key_ps_pos_eq]; omega)
+          h_key_ps_pos_bound'
           h_bs
-          (by rw [h_key_ps_pos_eq]; omega)
+          h_ps_lt_key_ps'
           h_depth
           h_depth_at_key_ps h_key_ps_value_tok h_key_ps_value_peek
           h_val_content_bound' h_val_content'
