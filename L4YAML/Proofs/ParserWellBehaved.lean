@@ -4673,7 +4673,20 @@ theorem parser_fuel_mono_succ : ∀ fuel : Nat,
         rw [h_loop_next]
         try dsimp only []
         exact h_ok
-    · sorry  -- Part 3 succ
+    · -- Part 3 succ: parseFlowMapping (n+2) → parseFlowMapping (n+3).
+      -- Same template as Part 2, substituting parseFlowMappingLoop + ih_fml.
+      intro ps val ps' h_ok
+      unfold parseFlowMapping at h_ok ⊢
+      simp only [bind, Except.bind] at h_ok ⊢
+      split at h_ok
+      · simp at h_ok
+      · rename_i loop_res heq_loop
+        obtain ⟨pairs, ps_loop⟩ := loop_res
+        try dsimp only [] at h_ok
+        have h_loop_next := ih_fml ps.advance #[] pairs ps_loop heq_loop
+        rw [h_loop_next]
+        try dsimp only []
+        exact h_ok
     · sorry  -- Part 4 succ
     · sorry  -- Part 5 succ
     · sorry  -- Part 6 succ
