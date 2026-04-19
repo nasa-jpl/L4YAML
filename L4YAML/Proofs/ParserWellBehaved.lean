@@ -4595,30 +4595,84 @@ theorem parser_fuel_mono_succ : ∀ fuel : Nat,
     refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
     · -- Part 1 succ: parseNode (n+2) → parseNode (n+3).
       --
-      -- Proof strategy (to complete in Phase 1b continuation):
+      -- Body of parseNode at outer fuel k+1 has two paths:
+      --   (i)  alias: `match ps.peek? with | some (.alias name) => ... return ...`
+      --        fuel-independent — result uses only `ps.advance`, `nodeStartPos`.
+      --   (ii) non-alias: chained binds
+      --        parseNodeProperties ps → validateNodeProps → parseNodeContent ps k props
+      --        → applyNodeFinalization. Only the `parseNodeContent ps k props`
+      --        call consumes fuel; rest is fuel-independent. Bridge with `content_mono`.
       --
-      -- The body of parseNode at fuel=k+1 uses parseNodeContent ps k props; all
-      -- other steps (alias check, parseNodeProperties, validateNodeProps,
-      -- applyNodeFinalization) are fuel-independent. Only parseNodeContent
-      -- differs between fuels (n+1) and (n+2), bridged by the `content_mono`
-      -- helper above.
-      --
-      -- The subtlety is the `do`-block desugaring of parseNode: the alias branch
-      -- uses Lean 4's `return` for early exit, which elaborates via an
-      -- ExceptCps-like transformer. The post-unfold/simp structure has nested
-      -- match expressions that `split` and `generalize` tactics navigate
-      -- differently than a plain nested `match` would suggest.
-      --
-      -- Two viable completion paths:
-      --   (a) Use `show` to manually rewrite parseNode to an explicit form that
-      --       exposes parseNodeContent, making content_mono directly applicable.
-      --   (b) Factor the alias/properties/validate steps into helper lemmas
-      --       that give explicit state-transition forms, then chain them.
-      --
-      -- See PARSER_WELLBEHAVED_PLAN.md Strategy A Phase 1b.
+      -- Strategy: destructure h_ok fully via splits, extract the intermediate
+      -- parser results, then separately unfold the goal and rebuild using the
+      -- same intermediate results + content_mono.
       intro ps val ps' h_ok
-      sorry
-    · sorry  -- Part 2 succ: parseFlowSequence (n+2) → (n+3)
+      unfold parseNode at h_ok
+      simp only [bind, Except.bind, pure, Except.pure] at h_ok
+      split at h_ok
+      · -- h_ok: alias. Extract h_peek and the ok branch of the anchor check.
+        rename_i name h_peek
+        split at h_ok
+        · contradiction  -- undefinedAlias .error
+        · rename_i h_check
+          -- h_ok now is: .ok (YamlValue.alias name, ...) = .ok (val, ps')
+          -- Rebuild goal: parseNode ps (n+3) = .ok (val, ps')
+          unfold parseNode
+          simp only [bind, Except.bind, pure, Except.pure, h_peek, h_check]
+          exact h_ok
+      · -- h_ok: non-alias. Chain the bind structure.
+        --
+        -- The non-alias peek? fact is given by `h_ne` (∀ name, ps.peek? ≠ some (.alias name)).
+        -- We rewrite the goal's `match ps.peek?` by case-analyzing every YamlToken form
+        -- other than `.alias`, dispatched through a dedicated `match` on ps.peek?.
+        rename_i h_ne
+        split at h_ok
+        · contradiction  -- parseNodeProperties .error
+        · rename_i v_props heq_props
+          split at h_ok
+          · contradiction  -- validateNodeProps .error
+          · rename_i heq_val
+            split at h_ok
+            · contradiction  -- parseNodeContent .error
+            · rename_i v_content heq_content
+              have heq_content' :=
+                content_mono v_props.2 v_props.1 v_content.1 v_content.2 heq_content
+              -- Case-split on ps.peek? so the goal's match reduces by pattern.
+              -- For the alias case, use h_ne for contradiction; for all other cases,
+              -- the non-alias body is identical and we chain the known results.
+              unfold parseNode
+              rcases h_peek_eq : ps.peek? with _ | t
+              · -- peek? = none → non-alias body
+                simp only [bind, Except.bind, pure, Except.pure,
+                  heq_props, heq_val, heq_content']
+                exact h_ok
+              · cases t with
+                | alias name => exact absurd h_peek_eq (h_ne name)
+                | _ =>
+                  all_goals (
+                    simp only [bind, Except.bind, pure, Except.pure,
+                      heq_props, heq_val, heq_content']
+                    exact h_ok)
+    · -- Part 2 succ: parseFlowSequence (n+2) → parseFlowSequence (n+3).
+      --
+      -- Body of parseFlowSequence at outer fuel k+1 calls parseFlowSequenceLoop
+      -- at inner fuel k with empty accumulator, then matches peek? for
+      -- flowSequenceEnd. Only the inner loop's fuel changes between (n+2) and
+      -- (n+3); everything else (advance, peek? match, final advance) is
+      -- fuel-independent. Apply `ih_fsl` to bridge the loop fuel shift.
+      intro ps val ps' h_ok
+      unfold parseFlowSequence at h_ok ⊢
+      simp only [bind, Except.bind] at h_ok ⊢
+      split at h_ok
+      · -- loop returned .error: contradicts h_ok
+        simp at h_ok
+      · rename_i loop_res heq_loop
+        obtain ⟨items, ps_loop⟩ := loop_res
+        try dsimp only [] at h_ok
+        have h_loop_next := ih_fsl ps.advance #[] items ps_loop heq_loop
+        rw [h_loop_next]
+        try dsimp only []
+        exact h_ok
     · sorry  -- Part 3 succ
     · sorry  -- Part 4 succ
     · sorry  -- Part 5 succ

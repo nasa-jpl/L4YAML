@@ -247,15 +247,29 @@ the internal calls (at internal fuel `n+1 → n+2`) require.
   (vacuous at 0, apply offset theorem at succ)
 - ⏳ **12 base cases** (fuel=0, i.e., `X 1 → X 2`): all stubbed with `sorry`.
   Non-vacuous since offset shifts them to the smallest meaningful fuel.
-- ⏳ **Part 1 (parseNode) succ case**: `sorry` with detailed proof-strategy
-  comment at [:4588](L4YAML/Proofs/ParserWellBehaved.lean:4588).
-  **Blocker discovered**: `unfold parseNode; simp only [bind, Except.bind, pure, Except.pure]`
-  exposes the Lean 4 `do`-block desugaring of the alias branch's early `return`,
-  which uses an ExceptCps-like wrapper. After `split at h_ok` and `split` on goal,
-  the hypotheses `v✝, heq✝` from the goal's match diverge from `pnp_pair, h_pnp`
-  from h_ok's match — `rw`/`generalize` don't resynchronize them.
-- ⏳ **Parts 2-12 succ cases**: `sorry`. Templates follow Part 1's pattern
-  (dispatched through each parser's body to its loop, apply loop IH).
+- ✅ **Part 1 (parseNode) succ case** proved (2026-04-19).
+  Strategy: destructure h_ok fully via nested `split at h_ok` (peek? → alias
+  check OR parseNodeProperties → validateNodeProps → parseNodeContent), then
+  rebuild the goal via `unfold parseNode` + `rcases ps.peek?` to force the
+  goal's peek? match to reduce pattern-by-pattern. Alias case uses `h_ne` for
+  contradiction with the `.alias` sub-case; all other YamlToken variants get
+  the same bind-chain reduction via `all_goals (simp only [heq_props, heq_val,
+  heq_content'])`. ~40 lines.
+  See [ParserWellBehaved.lean:4596](L4YAML/Proofs/ParserWellBehaved.lean:4596).
+  Previous blocker (`split` on goal grabbing wrong anonymous names) resolved
+  by avoiding `split` on the goal; `rcases` + `cases t with | alias => ... | _ => ...`
+  gives controlled pattern matching.
+- ✅ **Part 2 (parseFlowSequence) succ case** proved (2026-04-19).
+  Body unfolds to `parseFlowSequenceLoop _ fuel _ #[]` followed by a
+  fuel-independent peek? match. `simp only [bind, Except.bind]` exposes the
+  Except-bind match; `split` on loop result, apply `ih_fsl` to bridge the
+  inner fuel shift, then `rw` rewrites the goal's loop call to match h_ok's
+  continuation. ~12 lines.
+  See [ParserWellBehaved.lean:4621](L4YAML/Proofs/ParserWellBehaved.lean:4621).
+- ⏳ **Parts 3-12 succ cases**: `sorry`. Parts 3-6 follow Part 2's pattern
+  directly (each parser's body = advance + single loop call + fuel-independent
+  tail). Part 7 (parseSinglePairMapping) dispatches to parseNode twice. Parts
+  8-12 are the loop succ cases (larger, full split analysis on peek?).
 
 Completion order (each part builds on previous):
 1. Part 1 (parseNode) succ: ~40 lines - needs Parts 2-6 for parseNodeContent dispatch (content_mono ready)
