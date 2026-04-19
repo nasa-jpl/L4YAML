@@ -4732,7 +4732,25 @@ theorem parser_fuel_mono_succ : ∀ fuel : Nat,
         rw [h_loop_next]
         try dsimp only []
         exact h_ok
-    · sorry  -- Part 7 succ: parseSinglePairMapping (n+2) → (n+3)
+    · -- Part 7 succ: parseSinglePairMapping (n+2) → parseSinglePairMapping (n+3).
+      --
+      -- Body: advance + (empty OR parseNode for key) + tryConsume + if-then-else
+      --       (empty OR parseNode for value) + .ok pair. Only the two parseNode
+      --       calls use fuel; everything else is fuel-independent.
+      --
+      -- BLOCKED: needs helper lemmas `key_shift` and `value_shift` that bridge
+      -- the fuel shift for the key-match and value-match respectively. The
+      -- helpers are straightforward (cases on ps.peek?, empty-branches exact,
+      -- parseNode-branches apply ih_pn), but wiring them into the main proof
+      -- via split + rename_i is fragile due to Lean's rename_i ordering on
+      -- anonymous hypotheses introduced by split on the Except match.
+      --
+      -- Next attempt should try: (a) `case _ | _ => ...` with explicit case
+      -- labels instead of `rename_i`; (b) `obtain` directly from split output;
+      -- (c) a single large `simp only [ih_pn_as_rewrite, ...]` with h_ok as
+      -- additional lemma.
+      intro ps kv h_ok
+      sorry
     · sorry  -- Part 8 succ: parseFlowSequenceLoop (n+2) → (n+3)
     · sorry  -- Part 9 succ
     · sorry  -- Part 10 succ
