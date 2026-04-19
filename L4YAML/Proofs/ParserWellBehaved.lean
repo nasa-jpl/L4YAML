@@ -5685,16 +5685,165 @@ theorem parseFlowMappingValue_ok
     --    - bracket balance = 0: compose [original_pos, key_ps.pos] + [key_ps.pos, key_ps.pos+1] (.value)
     --                                  + [key_ps.pos+1, j+1] (bracket pair)
     --
-    -- The proof is ~150 lines of careful state threading through parseFlowMappingValue's
-    -- do-notation, followed by the parseNode unfolding (which itself has strategic sorries
-    -- for parseNodeProperties behavior in the template). All key logical steps are proven:
-    -- - IH application (done above)
-    -- - Span bounds (done above)
-    -- - Balance decomposition (straightforward arithmetic)
-    -- - Position bounds (omega from h_j_succ_bound)
-    --
-    -- The remaining work is mechanical unfolding and state equality proofs.
-    sorry
+    -- Setup ps_path for parseFlowMappingValue
+    let ps_path := { key_ps with currentPath := savedPath.push (.key keyContent) }
+
+    have h_ps_path_tok : ps_path.tokens = key_ps.tokens := rfl
+    have h_ps_path_pos : ps_path.pos = key_ps.pos := rfl
+
+    have h_ps_path_peek : ps_path.peek? = some .value := by
+      have : ps_path.peek? = key_ps.peek? := by unfold ParseState.peek?; simp [ps_path]
+      rw [this, h_value_peek]
+
+    have h_ps_path_adv_tok : ps_path.advance.tokens = key_ps.advance.tokens := by
+      simp [ParseState.advance, ps_path]
+    have h_ps_path_adv_pos : ps_path.advance.pos = key_ps.advance.pos := by
+      simp [ParseState.advance, ps_path]
+
+    have h_ps_path_adv_peek : ps_path.advance.peek? = some .flowSequenceStart := by
+      unfold ParseState.peek?
+      rw [h_ps_path_adv_tok, h_ps_path_adv_pos]
+      simp [ParseState.advance, h_tok]
+      constructor
+      · omega
+      · exact h_fss
+
+    -- Fuel decomposition: m = m'+1 = m''+1+1
+    obtain ⟨m', h_m'⟩ : ∃ m', m = m' + 1 := ⟨m - 1, by omega⟩
+    obtain ⟨m'', h_m''⟩ : ∃ m'', m' = m'' + 1 := ⟨m' - 1, by omega⟩
+    have h_m''_fuel : 4 * tokens.size + 4 ≤ m'' := by omega
+
+    -- Unfold parseFlowMappingValue and show tryConsume behavior
+    have h_trykey : ps_path.tryConsume .key = (false, ps_path) := by
+      unfold ParseState.tryConsume
+      rw [h_ps_path_peek]
+      simp [beq_iff_eq]
+
+    have h_tryval : ps_path.tryConsume .value = (true, ps_path.advance) := by
+      unfold ParseState.tryConsume
+      rw [h_ps_path_peek]
+      simp
+
+    -- Apply parseNode_flowSeqStart_in_seq to get parseNode result
+    -- Need to establish preconditions for ps_path.advance
+    have h_adv_tok : ps_path.advance.tokens = tokens := by
+      simp [ParseState.advance, ps_path, h_tok]
+
+    have h_adv_pos_bound : ps_path.advance.pos < endPos := by
+      simp [ParseState.advance, ps_path]
+      omega
+
+    have h_adv_bs : body_start ≤ ps_path.advance.pos := by
+      simp [ParseState.advance, ps_path]
+      omega
+
+    have h_adv_depth : flowBracketBalance tokens body_start ps_path.advance.pos = 0 := by
+      simp [ParseState.advance, ps_path]
+      -- Balance from body_start to key_ps.pos+1
+      -- = balance[body_start, key_ps.pos] + balance[key_ps.pos, key_ps.pos+1]
+      have h_compose := flowBracketBalance_compose tokens body_start key_ps.pos (key_ps.pos + 1)
+        (by omega) (by omega)
+      rw [h_depth] at h_compose
+      -- Balance for .value token is 0
+      have h_value_delta : flowBracketBalance tokens key_ps.pos (key_ps.pos + 1) = 0 := by
+        rw [flowBracketBalance_single tokens key_ps.pos (by omega)]
+        show flowBracketDelta tokens.toList[key_ps.pos].val = 0
+        simp only [flowBracketDelta]
+        have h_bound : key_ps.pos < tokens.size := by omega
+        have h1 : tokens.toList[key_ps.pos].val = (tokens[key_ps.pos]'h_bound).val := rfl
+        have h2 : (tokens[key_ps.pos]'h_bound).val = tokens[key_ps.pos]!.val := by rw [getElem!_pos]
+        rw [h1, h2, h_value_tok]
+      simp [h_value_delta] at h_compose
+      exact h_compose
+
+    -- We'll construct a witness based on what we know:
+    -- - parseNode ps_path.advance (m'+1) should return a sequence value
+    -- - The final position should be j+1
+    -- - After restoring path, we have the witness for parseFlowMappingValue
+
+    -- Construct witness directly
+    -- We know: j is the matching ], j+1 is the position after ]
+    -- The witness will be: (some_sequence_value, state_at_j_plus_1_with_savedPath)
+
+    -- For now, use an abstract witness since the proof requires unfolding
+    -- parseNodeProperties with forIn behavior (has sorries in template)
+
+    have h_witness : ∃ seq_val ps_result,
+        parseNode ps_path.advance (m' + 1) = .ok (seq_val, ps_result) ∧
+        ps_result.pos = j + 1 ∧
+        ps_result.tokens = tokens ∧
+        ps_result.trackPositions = ps_path.advance.trackPositions ∧
+        (ps_result.peek? = some .flowEntry ∨
+         ps_result.peek? = some .flowMappingEnd ∧ ps_result.pos = endPos) := by
+      -- This requires the full parseNode unfolding with parseNodeProperties sorries
+      sorry
+
+    obtain ⟨seq_val, ps_result, h_pn_eq, h_result_pos, h_result_tok, h_result_tp, h_result_peek⟩ := h_witness
+
+    -- Build final witness with path restoration
+    let final_ps := { ps_result with currentPath := savedPath }
+    refine ⟨seq_val, final_ps, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+
+    -- (1) parseFlowMappingValue key_ps m savedPath keyContent = .ok (seq_val, final_ps)
+    · unfold parseFlowMappingValue
+      simp only [Bind.bind, Except.bind]
+      rw [h_trykey]; simp
+      rw [h_tryval]; simp only [ite_true]
+      -- Now peek? = flowSequenceStart, which doesn't match flowEntry/flowMappingEnd/none
+      rw [h_ps_path_adv_peek]
+      simp
+      subst h_m'
+      rw [h_pn_eq]
+
+    -- (2) original_pos < final_ps.pos
+    · simp [final_ps, h_result_pos]
+      omega
+
+    -- (3) final_ps.pos ≤ endPos
+    · simp [final_ps, h_result_pos]
+      exact h_j_succ_bound
+
+    -- (4) final_ps.tokens = tokens
+    · simp [final_ps, h_result_tok]
+
+    -- (5) final_ps.trackPositions = key_ps.trackPositions
+    · simp [final_ps, h_result_tp]
+      simp [ParseState.advance, ps_path]
+
+    -- (6) peek? postcondition
+    · simp [final_ps]
+      -- ps_result.peek? already satisfies the postcondition from h_result_peek
+      -- We just need to verify it's preserved through the path change
+      exact h_result_peek
+
+    -- (7) bracket balance = 0
+    · simp [final_ps, h_result_pos]
+      -- Compose: [original_pos, key_ps.pos] + [key_ps.pos, key_ps.pos+1] + [key_ps.pos+1, j+1]
+      have h_compose1 := flowBracketBalance_compose tokens original_pos key_ps.pos (j + 1)
+        (by omega) (by omega)
+      rw [h_compose1]
+      have h_bal_to_value : flowBracketBalance tokens original_pos key_ps.pos = 0 := by
+        have := flowBracketBalance_compose tokens body_start original_pos key_ps.pos
+          (by omega) (by omega)
+        rw [h_depth_orig, h_depth] at this
+        omega
+      simp [h_bal_to_value]
+      -- Balance from key_ps.pos to j+1
+      have h_compose2 := flowBracketBalance_compose tokens key_ps.pos (key_ps.pos + 1) (j + 1)
+        (by omega) (by omega)
+      rw [h_compose2]
+      -- Balance for .value token is 0
+      have h_value_delta : flowBracketBalance tokens key_ps.pos (key_ps.pos + 1) = 0 := by
+        rw [flowBracketBalance_single tokens key_ps.pos (by omega)]
+        show flowBracketDelta tokens.toList[key_ps.pos].val = 0
+        simp only [flowBracketDelta]
+        have h_bound : key_ps.pos < tokens.size := by omega
+        have h1 : tokens.toList[key_ps.pos].val = (tokens[key_ps.pos]'h_bound).val := rfl
+        have h2 : (tokens[key_ps.pos]'h_bound).val = tokens[key_ps.pos]!.val := by rw [getElem!_pos]
+        rw [h1, h2, h_value_tok]
+      simp [h_value_delta]
+      -- Balance from key_ps.pos+1 to j+1 (bracket pair)
+      sorry  -- Bracket pair [key_ps.pos+1, j+1) balances to 0
 
   · -- flowMappingStart value: symmetric with above
     have h_bracket : tokens[key_ps.pos + 1]!.val = .flowSequenceStart ∨
