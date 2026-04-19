@@ -4460,203 +4460,198 @@ theorem ParseEntryFlowMapOk.mono {tokens endPos fuel fuel' body_start}
     ⟨kv, kps, hek, hadv, hbound, htok, htp, hfmv⟩
 
 /-- **Comprehensive fuel monotonicity theorem**: Proves that all parsers are fuel-monotonic.
-    If any parser succeeds with fuel N, it also succeeds with fuel N+1 producing the same result.
 
-    This is structured as a mutual induction because the parsers call each other:
-    - parseNode calls collection parsers via parseNodeContent
-    - Collection parsers call their loop functions
-    - Loop functions call parseNode for elements
-    - parseSinglePairMapping calls parseNode
+    ### Structure (Strategy A, Revision R1 — "offset-all" form)
 
-    We prove all parts simultaneously to break the circular dependency. -/
-theorem parser_fuel_mono_succ :
-    -- Part 1: parseNode fuel monotonicity
-    (∀ ps fuel val ps',
-      parseNode ps fuel = .ok (val, ps') →
-      parseNode ps (fuel + 1) = .ok (val, ps')) ∧
-    -- Part 2: parseFlowSequence fuel monotonicity
-    (∀ ps fuel val ps',
-      parseFlowSequence ps fuel = .ok (val, ps') →
-      parseFlowSequence ps (fuel + 1) = .ok (val, ps')) ∧
-    -- Part 3: parseFlowMapping fuel monotonicity
-    (∀ ps fuel val ps',
-      parseFlowMapping ps fuel = .ok (val, ps') →
-      parseFlowMapping ps (fuel + 1) = .ok (val, ps')) ∧
-    -- Part 4: parseBlockSequence fuel monotonicity
-    (∀ ps fuel val ps',
-      parseBlockSequence ps fuel = .ok (val, ps') →
-      parseBlockSequence ps (fuel + 1) = .ok (val, ps')) ∧
-    -- Part 5: parseBlockMapping fuel monotonicity
-    (∀ ps fuel val ps',
-      parseBlockMapping ps fuel = .ok (val, ps') →
-      parseBlockMapping ps (fuel + 1) = .ok (val, ps')) ∧
-    -- Part 6: parseImplicitBlockSequence fuel monotonicity
-    (∀ ps fuel val ps',
-      parseImplicitBlockSequence ps fuel = .ok (val, ps') →
-      parseImplicitBlockSequence ps (fuel + 1) = .ok (val, ps')) ∧
-    -- Part 7: parseSinglePairMapping fuel monotonicity
-    (∀ ps fuel kv,
-      parseSinglePairMapping ps fuel = .ok kv →
-      parseSinglePairMapping ps (fuel + 1) = .ok kv) ∧
-    -- Part 8: parseFlowSequenceLoop fuel monotonicity
-    (∀ ps fuel items_acc items ps',
-      parseFlowSequenceLoop ps fuel items_acc = .ok (items, ps') →
-      parseFlowSequenceLoop ps (fuel + 1) items_acc = .ok (items, ps')) ∧
-    -- Part 9: parseFlowMappingLoop fuel monotonicity
-    (∀ ps fuel pairs_acc pairs ps',
-      parseFlowMappingLoop ps fuel pairs_acc = .ok (pairs, ps') →
-      parseFlowMappingLoop ps (fuel + 1) pairs_acc = .ok (pairs, ps')) ∧
-    -- Part 10: parseBlockSequenceLoop fuel monotonicity
-    (∀ ps fuel items_acc items ps',
-      parseBlockSequenceLoop ps fuel items_acc = .ok (items, ps') →
-      parseBlockSequenceLoop ps (fuel + 1) items_acc = .ok (items, ps')) ∧
-    -- Part 11: parseBlockMappingLoop fuel monotonicity
-    (∀ ps fuel pairs_acc pairs ps',
-      parseBlockMappingLoop ps fuel pairs_acc = .ok (pairs, ps') →
-      parseBlockMappingLoop ps (fuel + 1) pairs_acc = .ok (pairs, ps')) ∧
-    -- Part 12: parseImplicitBlockSequenceLoop fuel monotonicity
-    (∀ ps fuel items_acc items ps',
-      parseImplicitBlockSequenceLoop ps fuel items_acc = .ok (items, ps') →
-      parseImplicitBlockSequenceLoop ps (fuel + 1) items_acc = .ok (items, ps')) := by
-  -- Mutual induction framework
-  -- Strategy: We prove all parts hold for all fuel values by showing:
-  --   1. Each parser with fuel=0 that succeeds would contradict (since fuel=0 → .error)
-  --   2. If all parts hold for fuel=n, they hold for fuel=n+1
-  --
-  -- The mutual structure is necessary because:
-  --   parseNode calls collection parsers
-  --   → collection parsers call loop functions
-  --   → loop functions call parseNode and parseSinglePairMapping
-  --   → parseSinglePairMapping calls parseNode
-  --
-  -- We construct a proof by showing all 12 parts together
-  constructor
-  · -- Part 1: parseNode fuel monotonicity
-    intro ps fuel val ps' h_ok
-    cases fuel with
-    | zero =>
-      -- Base: parseNode with fuel=0 returns .error, contradicts h_ok
-      unfold parseNode at h_ok
-      cases h_ok
-    | succ n =>
-      -- Inductive: parseNode (n+1) → parseNode (n+2)
-      -- parseNode structure:
-      --   1. Save nodeStartPos
-      --   2. Check for alias (may return early, no fuel usage)
-      --   3. parseNodeProperties (no fuel usage)
-      --   4. validateNodeProps (no fuel usage)
-      --   5. parseNodeContent ps n props (key step - uses fuel)
-      --   6. applyNodeFinalization (no fuel usage)
-      --
-      -- The alias case is deterministic (same result with any fuel)
-      -- The non-alias case requires showing parseNodeContent is fuel-monotonic
-      -- parseNodeContent dispatches to collection parsers based on peek?:
-      --   - .scalar: no fuel usage
-      --   - .flowSequenceStart: parseFlowSequence (Part 2 of mutual IH)
-      --   - .flowMappingStart: parseFlowMapping (Part 3 of mutual IH)
-      --   - .blockSequenceStart: parseBlockSequence (Part 4 of mutual IH)
-      --   - .blockMappingStart: parseBlockMapping (Part 5 of mutual IH)
-      --   - .blockEntry: parseImplicitBlockSequence (Part 6 of mutual IH)
-      --   - other: emptyNode (no fuel usage)
-      --
-      -- To complete this proof, we need to:
-      --   1. Unfold parseNode to expose the structure
-      --   2. Show alias case is the same
-      --   3. For non-alias case, unfold through parseNodeProperties/validateNodeProps
-      --   4. Split on parseNodeContent dispatch and apply corresponding mutual IH part
-      --
-      -- This is ~40 lines of careful case analysis
-      sorry  -- parseNode inductive case
-  constructor
-  · -- Part 2: parseFlowSequence fuel monotonicity
-    intro ps fuel val ps' h_ok
-    cases fuel with
-    | zero =>
-      unfold parseFlowSequence at h_ok
-      cases h_ok
-    | succ n =>
-      sorry  -- parseFlowSequence inductive case: ~20 lines
-  constructor
-  · -- Part 3: parseFlowMapping fuel monotonicity
-    intro ps fuel val ps' h_ok
-    cases fuel with
-    | zero =>
-      unfold parseFlowMapping at h_ok
-      cases h_ok
-    | succ n =>
-      sorry  -- parseFlowMapping inductive case: ~20 lines
-  constructor
-  · -- Part 4: parseBlockSequence fuel monotonicity
-    intro ps fuel val ps' h_ok
-    cases fuel with
-    | zero =>
-      unfold parseBlockSequence at h_ok
-      cases h_ok
-    | succ n =>
-      sorry  -- parseBlockSequence inductive case: ~20 lines
-  constructor
-  · -- Part 5: parseBlockMapping fuel monotonicity
-    intro ps fuel val ps' h_ok
-    cases fuel with
-    | zero =>
-      unfold parseBlockMapping at h_ok
-      cases h_ok
-    | succ n =>
-      sorry  -- parseBlockMapping inductive case: ~20 lines
-  constructor
-  · -- Part 6: parseImplicitBlockSequence fuel monotonicity
-    intro ps fuel val ps' h_ok
-    cases fuel with
-    | zero =>
-      unfold parseImplicitBlockSequence at h_ok
-      cases h_ok
-    | succ n =>
-      sorry  -- parseImplicitBlockSequence inductive case: ~20 lines
-  constructor
-  · -- Part 7: parseSinglePairMapping fuel monotonicity
-    intro ps fuel kv h_ok
-    cases fuel with
-    | zero =>
-      unfold parseSinglePairMapping at h_ok
-      cases h_ok
-    | succ n =>
-      sorry  -- parseSinglePairMapping inductive case: ~30 lines
-  constructor
-  · -- Part 8: parseFlowSequenceLoop fuel monotonicity
-    intro ps fuel items_acc items ps' h_ok
-    -- This is the most complex part - already partially developed above
-    sorry  -- parseFlowSequenceLoop (reuse work from earlier): ~60 lines
-  constructor
-  · -- Part 9: parseFlowMappingLoop fuel monotonicity
-    intro ps fuel pairs_acc pairs ps' h_ok
-    sorry  -- parseFlowMappingLoop: ~60 lines (parallel to parseFlowSequenceLoop)
-  constructor
-  · -- Part 10: parseBlockSequenceLoop fuel monotonicity
-    intro ps fuel items_acc items ps' h_ok
-    sorry  -- parseBlockSequenceLoop: ~40 lines
-  constructor
-  · -- Part 11: parseBlockMappingLoop fuel monotonicity
-    intro ps fuel pairs_acc pairs ps' h_ok
-    sorry  -- parseBlockMappingLoop: ~40 lines
-  · -- Part 12: parseImplicitBlockSequenceLoop fuel monotonicity
-    intro ps fuel items_acc items ps' h_ok
-    sorry  -- parseImplicitBlockSequenceLoop: ~40 lines
+    The mutual recursion graph is:
+      parseNode → parseNodeContent → {parseFlow/Block Sequence/Mapping, parseImplicitBlockSequence}
+      collection parsers → their loops; loops → parseNode, parseSinglePairMapping, self
+      parseSinglePairMapping → parseNode
 
-/-- **Auxiliary: parseNode fuel monotonicity (extracted from mutual theorem)** -/
+    **Each part's statement is offset by 1**: at outer fuel `fuel`, each part proves
+    `X ps (fuel+1) → X ps (fuel+2)`. This skips the vacuous fuel=0 cases for loops
+    (which always return `.ok (acc, ps)` trivially) and aligns the mutual IH: at
+    succ case `n`, IH at fuel `n` gives `X (n+1) → X (n+2)`, which is exactly the
+    shift needed by internal calls in the body of a parser at fuel `(n+2)` (whose
+    internal fuel is `n+1`).
+
+    ### Usage
+
+    Clients typically want `parseNode ps fuel → parseNode ps (fuel+1)` for arbitrary
+    `fuel`. The wrapper `parseNode_fuel_mono_succ` below derives that: at `fuel=0` the
+    hypothesis is vacuous (parseNode errors), and at `fuel = n+1` it's a direct
+    application of `(parser_fuel_mono_succ n).1`. Similar for
+    `parseSinglePairMapping_fuel_mono_succ`. -/
+theorem parser_fuel_mono_succ : ∀ fuel : Nat,
+    -- Part 1: parseNode (fuel+1) → (fuel+2)
+    (∀ ps val ps',
+      parseNode ps (fuel + 1) = .ok (val, ps') →
+      parseNode ps (fuel + 2) = .ok (val, ps')) ∧
+    -- Part 2: parseFlowSequence (fuel+1) → (fuel+2)
+    (∀ ps val ps',
+      parseFlowSequence ps (fuel + 1) = .ok (val, ps') →
+      parseFlowSequence ps (fuel + 2) = .ok (val, ps')) ∧
+    -- Part 3: parseFlowMapping (fuel+1) → (fuel+2)
+    (∀ ps val ps',
+      parseFlowMapping ps (fuel + 1) = .ok (val, ps') →
+      parseFlowMapping ps (fuel + 2) = .ok (val, ps')) ∧
+    -- Part 4: parseBlockSequence (fuel+1) → (fuel+2)
+    (∀ ps val ps',
+      parseBlockSequence ps (fuel + 1) = .ok (val, ps') →
+      parseBlockSequence ps (fuel + 2) = .ok (val, ps')) ∧
+    -- Part 5: parseBlockMapping (fuel+1) → (fuel+2)
+    (∀ ps val ps',
+      parseBlockMapping ps (fuel + 1) = .ok (val, ps') →
+      parseBlockMapping ps (fuel + 2) = .ok (val, ps')) ∧
+    -- Part 6: parseImplicitBlockSequence (fuel+1) → (fuel+2)
+    (∀ ps val ps',
+      parseImplicitBlockSequence ps (fuel + 1) = .ok (val, ps') →
+      parseImplicitBlockSequence ps (fuel + 2) = .ok (val, ps')) ∧
+    -- Part 7: parseSinglePairMapping (fuel+1) → (fuel+2)
+    (∀ ps kv,
+      parseSinglePairMapping ps (fuel + 1) = .ok kv →
+      parseSinglePairMapping ps (fuel + 2) = .ok kv) ∧
+    -- Part 8: parseFlowSequenceLoop (fuel+1) → (fuel+2)
+    (∀ ps items_acc items ps',
+      parseFlowSequenceLoop ps (fuel + 1) items_acc = .ok (items, ps') →
+      parseFlowSequenceLoop ps (fuel + 2) items_acc = .ok (items, ps')) ∧
+    -- Part 9: parseFlowMappingLoop (fuel+1) → (fuel+2)
+    (∀ ps pairs_acc pairs ps',
+      parseFlowMappingLoop ps (fuel + 1) pairs_acc = .ok (pairs, ps') →
+      parseFlowMappingLoop ps (fuel + 2) pairs_acc = .ok (pairs, ps')) ∧
+    -- Part 10: parseBlockSequenceLoop (fuel+1) → (fuel+2)
+    (∀ ps items_acc items ps',
+      parseBlockSequenceLoop ps (fuel + 1) items_acc = .ok (items, ps') →
+      parseBlockSequenceLoop ps (fuel + 2) items_acc = .ok (items, ps')) ∧
+    -- Part 11: parseBlockMappingLoop (fuel+1) → (fuel+2)
+    (∀ ps pairs_acc pairs ps',
+      parseBlockMappingLoop ps (fuel + 1) pairs_acc = .ok (pairs, ps') →
+      parseBlockMappingLoop ps (fuel + 2) pairs_acc = .ok (pairs, ps')) ∧
+    -- Part 12: parseImplicitBlockSequenceLoop (fuel+1) → (fuel+2)
+    (∀ ps items_acc items ps',
+      parseImplicitBlockSequenceLoop ps (fuel + 1) items_acc = .ok (items, ps') →
+      parseImplicitBlockSequenceLoop ps (fuel + 2) items_acc = .ok (items, ps')) := by
+  intro fuel
+  induction fuel with
+  | zero =>
+    -- Base case: outer fuel=0 ⇒ each part is "X 1 → X 2".
+    -- All 12 base cases are provable without mutual IH because at internal fuel=0,
+    -- collection parsers/loops-with-recursion bottom out with .error (for parsers)
+    -- or return the accumulator (for loops without recursion). The detailed proofs
+    -- mirror the succ case structure but use vacuity arguments in place of IH Parts.
+    -- TODO: complete base cases. See PARSER_WELLBEHAVED_PLAN.md Strategy A Phase 1b.
+    refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+    · intro ps val ps' h_ok; sorry  -- Part 1 base: parseNode 1 → 2
+    · intro ps val ps' h_ok; sorry  -- Part 2 base: parseFlowSequence 1 → 2
+    · intro ps val ps' h_ok; sorry  -- Part 3 base
+    · intro ps val ps' h_ok; sorry  -- Part 4 base
+    · intro ps val ps' h_ok; sorry  -- Part 5 base
+    · intro ps val ps' h_ok; sorry  -- Part 6 base
+    · intro ps kv h_ok; sorry  -- Part 7 base
+    · intro ps items_acc items ps' h_ok; sorry  -- Part 8 base
+    · intro ps pairs_acc pairs ps' h_ok; sorry  -- Part 9 base
+    · intro ps items_acc items ps' h_ok; sorry  -- Part 10 base
+    · intro ps pairs_acc pairs ps' h_ok; sorry  -- Part 11 base
+    · intro ps items_acc items ps' h_ok; sorry  -- Part 12 base
+  | succ n ih =>
+    -- Succ case: outer fuel = n+1. Each part proves "X (n+2) → X (n+3)".
+    -- IH at fuel=n provides "X (n+1) → X (n+2)" for all 12 parts — exactly what
+    -- internal calls in parsers/loops at internal fuel (n+1) → (n+2) need.
+    obtain ⟨ih_pn, ih_fs, ih_fm, ih_bs, ih_bm, ih_ibs, ih_sp,
+            ih_fsl, ih_fml, ih_bsl, ih_bml, ih_ibsl⟩ := ih
+    -- Auxiliary: parseNodeContent fuel (n+1) → (n+2), using IH Parts 2-6.
+    have content_mono : ∀ (ps_c : ParseState) (props : NodeProperties)
+        (v : YamlValue) (ps_r : ParseState),
+        parseNodeContent ps_c (n + 1) props = .ok (v, ps_r) →
+        parseNodeContent ps_c (n + 2) props = .ok (v, ps_r) := by
+      intro ps_c props v ps_r h
+      unfold parseNodeContent at h ⊢
+      generalize h_peek : ps_c.peek? = p at h ⊢
+      match p with
+      | some (YamlToken.scalar _ _) => exact h
+      | some YamlToken.blockSequenceStart => exact ih_bs _ _ _ h
+      | some YamlToken.blockMappingStart => exact ih_bm _ _ _ h
+      | some YamlToken.blockEntry => exact ih_ibs _ _ _ h
+      | some YamlToken.flowSequenceStart => exact ih_fs _ _ _ h
+      | some YamlToken.flowMappingStart => exact ih_fm _ _ _ h
+      | some (YamlToken.alias _) => exact h
+      | some (YamlToken.anchor _) => exact h
+      | some (YamlToken.tag _ _) => exact h
+      | some (YamlToken.comment _) => exact h
+      | some YamlToken.key => exact h
+      | some YamlToken.value => exact h
+      | some YamlToken.flowEntry => exact h
+      | some YamlToken.flowSequenceEnd => exact h
+      | some YamlToken.flowMappingEnd => exact h
+      | some YamlToken.blockEnd => exact h
+      | some YamlToken.documentStart => exact h
+      | some YamlToken.documentEnd => exact h
+      | some (YamlToken.tagDirective _ _) => exact h
+      | some (YamlToken.versionDirective _ _) => exact h
+      | some YamlToken.placeholder => exact h
+      | some YamlToken.streamStart => exact h
+      | some YamlToken.streamEnd => exact h
+      | none => exact h
+    refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+    · -- Part 1 succ: parseNode (n+2) → parseNode (n+3).
+      --
+      -- Proof strategy (to complete in Phase 1b continuation):
+      --
+      -- The body of parseNode at fuel=k+1 uses parseNodeContent ps k props; all
+      -- other steps (alias check, parseNodeProperties, validateNodeProps,
+      -- applyNodeFinalization) are fuel-independent. Only parseNodeContent
+      -- differs between fuels (n+1) and (n+2), bridged by the `content_mono`
+      -- helper above.
+      --
+      -- The subtlety is the `do`-block desugaring of parseNode: the alias branch
+      -- uses Lean 4's `return` for early exit, which elaborates via an
+      -- ExceptCps-like transformer. The post-unfold/simp structure has nested
+      -- match expressions that `split` and `generalize` tactics navigate
+      -- differently than a plain nested `match` would suggest.
+      --
+      -- Two viable completion paths:
+      --   (a) Use `show` to manually rewrite parseNode to an explicit form that
+      --       exposes parseNodeContent, making content_mono directly applicable.
+      --   (b) Factor the alias/properties/validate steps into helper lemmas
+      --       that give explicit state-transition forms, then chain them.
+      --
+      -- See PARSER_WELLBEHAVED_PLAN.md Strategy A Phase 1b.
+      intro ps val ps' h_ok
+      sorry
+    · sorry  -- Part 2 succ: parseFlowSequence (n+2) → (n+3)
+    · sorry  -- Part 3 succ
+    · sorry  -- Part 4 succ
+    · sorry  -- Part 5 succ
+    · sorry  -- Part 6 succ
+    · sorry  -- Part 7 succ: parseSinglePairMapping (n+2) → (n+3)
+    · sorry  -- Part 8 succ: parseFlowSequenceLoop (n+2) → (n+3)
+    · sorry  -- Part 9 succ
+    · sorry  -- Part 10 succ
+    · sorry  -- Part 11 succ
+    · sorry  -- Part 12 succ
+
+/-- **Auxiliary: parseNode fuel monotonicity (wrapper around offset-form theorem).**
+    Derives the unrestricted form `parseNode ps fuel = .ok → parseNode ps (fuel+1) = .ok`.
+    At `fuel=0` the hypothesis is vacuous (parseNode errors); at `fuel=n+1` this is a direct
+    application of `(parser_fuel_mono_succ n).1`. -/
 theorem parseNode_fuel_mono_succ
     (ps : ParseState) (fuel : Nat)
     (val : YamlValue) (ps' : ParseState)
     (h_ok : parseNode ps fuel = .ok (val, ps')) :
-    parseNode ps (fuel + 1) = .ok (val, ps') :=
-  parser_fuel_mono_succ.1 ps fuel val ps' h_ok
+    parseNode ps (fuel + 1) = .ok (val, ps') := by
+  cases fuel with
+  | zero => unfold parseNode at h_ok; cases h_ok
+  | succ n => exact (parser_fuel_mono_succ n).1 ps val ps' h_ok
 
-/-- **Auxiliary: parseSinglePairMapping fuel monotonicity (extracted from mutual theorem)** -/
+/-- **Auxiliary: parseSinglePairMapping fuel monotonicity (wrapper around offset-form).** -/
 theorem parseSinglePairMapping_fuel_mono_succ
     (ps : ParseState) (fuel : Nat)
     (kv : YamlValue × ParseState)
     (h_ok : parseSinglePairMapping ps fuel = .ok kv) :
-    parseSinglePairMapping ps (fuel + 1) = .ok kv :=
-  parser_fuel_mono_succ.2.2.2.2.2.2.1 ps fuel kv h_ok
+    parseSinglePairMapping ps (fuel + 1) = .ok kv := by
+  cases fuel with
+  | zero => unfold parseSinglePairMapping at h_ok; cases h_ok
+  | succ n => exact (parser_fuel_mono_succ n).2.2.2.2.2.2.1 ps kv h_ok
 
 /-- **Fuel monotonicity for parseFlowSequenceLoop**: If the loop succeeds with fuel N
     producing result (items, ps'), then it also succeeds with any fuel N+1 producing
