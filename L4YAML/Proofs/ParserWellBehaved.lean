@@ -6254,22 +6254,83 @@ theorem parseNode_flowSeqStart_in_seq
         rw [h_pnc_ok]
 
       -- (2) prePropPos < ps_final.pos (i.e., ps.pos < ps_final.pos)
-      · sorry  -- ps_final.pos = j + 1 > ps.pos
+      · simp only [applyNodeFinalization_pos]
+        rw [← h_saved_pos]
+        simp [ParseState.advance, h_at_j_pos]
+        omega
 
       -- (3) ps_final.pos ≤ endPos
-      · sorry  -- ps_final.pos = j + 1 ≤ endPos
+      · simp only [applyNodeFinalization_pos]
+        simp [ParseState.advance, h_at_j_pos]
+        exact h_j_succ
 
       -- (4) ps_final.tokens = tokens
-      · sorry  -- applyNodeFinalization preserves tokens
+      · rw [applyNodeFinalization_tokens]
+        simp [ParseState.advance, h_at_j_tok]
 
       -- (5) ps_final.trackPositions = ps.trackPositions
-      · sorry  -- applyNodeFinalization preserves trackPositions
+      · rw [applyNodeFinalization_trackPositions]
+        simp [ParseState.advance, h_tp_j]
+        rw [h_ps_props_eq]
 
       -- (6) peek? postcondition
-      · sorry  -- Use h_j_after: tokens[j+1] determines peek? at position j+1
+      · -- ps_final = (applyNodeFinalization ...).2, so ps_final.pos = ps_at_j.advance.pos = j+1
+        -- and ps_final.tokens = ps_at_j.advance.tokens = tokens
+        have h_pos : (applyNodeFinalization (.sequence .flow items) ps_at_j.advance props nodeStartPos).2.pos = j + 1 := by
+          rw [applyNodeFinalization_pos]
+          simp [ParseState.advance, h_at_j_pos]
+        have h_tok : (applyNodeFinalization (.sequence .flow items) ps_at_j.advance props nodeStartPos).2.tokens = tokens := by
+          rw [applyNodeFinalization_tokens]
+          simp [ParseState.advance, h_at_j_tok]
+        unfold ParseState.peek?
+        simp only [h_tok, h_pos]
+        rw [if_pos (by omega : j + 1 < tokens.size)]
+        rcases h_j_after with h_fe | ⟨h_se, h_eq⟩
+        · left; simp [h_fe]
+        · right; constructor
+          · simp [h_se]
+          · exact h_eq
 
       -- (7) bracket balance = 0
-      · sorry  -- Combine: [ps.pos, ps.pos+1) = +1, [ps.pos+1, j) = 0, [j, j+1) = -1
+      · -- Goal: flowBracketBalance tokens prePropPos ps_final.pos = 0
+        -- First relate prePropPos back to ps.pos
+        rw [← h_saved_pos]
+        -- ps_final.pos = j + 1 (from applyNodeFinalization_pos)
+        have h_final_pos : (applyNodeFinalization (.sequence .flow items) ps_at_j.advance props nodeStartPos).2.pos = j + 1 := by
+          rw [applyNodeFinalization_pos]
+          simp [ParseState.advance, h_at_j_pos]
+        rw [h_final_pos]
+
+        -- Split [ps.pos, j+1) = [ps.pos, ps.pos+1) + [ps.pos+1, j+1)
+        rw [flowBracketBalance_compose tokens ps.pos (ps.pos + 1) (j + 1) (by omega) (by omega)]
+
+        -- Show [ps.pos, ps.pos+1) = 1 (flowSequenceStart)
+        have h_start : flowBracketBalance tokens ps.pos (ps.pos + 1) = 1 := by
+          have h_list_bound : ps.pos < tokens.toList.length := by
+            show ps.pos < tokens.size; omega
+          rw [flowBracketBalance_single tokens ps.pos h_list_bound]
+          have h_eq : (tokens.toList[ps.pos]'h_list_bound).val = .flowSequenceStart := by
+            show (tokens[ps.pos]'h_ps_bound).val = .flowSequenceStart
+            rw [← getElem!_pos tokens ps.pos h_ps_bound]; exact h_fss_val
+          rw [h_eq]; rfl
+
+        -- Split [ps.pos+1, j+1) = [ps.pos+1, j) + [j, j+1)
+        rw [flowBracketBalance_compose tokens (ps.pos + 1) j (j + 1) (by omega) (by omega)]
+
+        -- Show [ps.pos+1, j) = 0 (from h_j_bal)
+        -- Show [j, j+1) = -1 (flowSequenceEnd)
+        have h_end : flowBracketBalance tokens j (j + 1) = -1 := by
+          have h_list_bound : j < tokens.toList.length := by
+            show j < tokens.size; omega
+          rw [flowBracketBalance_single tokens j h_list_bound]
+          have h_eq : (tokens.toList[j]'h_list_bound).val = .flowSequenceEnd := by
+            show (tokens[j]'h_j_bound).val = .flowSequenceEnd
+            rw [← getElem!_pos tokens j h_j_bound]; exact h_j_tok
+          rw [h_eq]; rfl
+
+        -- Combine: 1 + (0 + -1) = 0
+        rw [h_start, h_j_bal, h_end]
+        omega
 
 /-- Nested flowMappingStart case: uses IH for the inner body. -/
 theorem parseNode_flowMapStart_in_seq
