@@ -5488,77 +5488,66 @@ theorem parseFlowMappingValue_ok
           flowBracketBalance_compose tokens key_ps.pos (key_ps.pos + 1) (key_ps.pos + 2) (by omega) (by omega)]
       simp [h_bal_to_value, h_value_single, h_scalar_single]
 
-    -- Construct witness
-    -- parseFlowMappingValue structure:
-    -- 1. Update path: ps_with_path := { key_ps with currentPath := savedPath.push (.key keyContent) }
-    -- 2. tryConsume .key: (false, ps_with_path)
-    -- 3. tryConsume .value: (true, ps_with_path.advance) = ps_after_value
-    -- 4. parseNode ps_after_value m: returns (val, ps') where ps' = ps_after_value.advance
-    -- 5. Restore path: { ps' with currentPath := savedPath }
+    -- Construct witness by computing what parseFlowMappingValue actually returns
+    -- (not pre-defining val_ps, to avoid nodePositions mismatch)
 
-    -- We need to show parseNode succeeds on ps_after_value with fuel m
-    -- ps_after_value.peek? = some (.scalar c s), so parseNode will:
-    -- - Skip alias check
-    -- - parseNodeProperties returns empty props (no anchor/tag at scalar)
-    -- - parseNodeContent matches scalar, advances, returns (.scalar c s, ps_after_value.advance)
-    -- - applyNodeFinalization wraps the result
+    -- Setup for parseNode computation
+    let ps_path := { key_ps with currentPath := savedPath.push (.key keyContent) }
+    have h_ps_path_tok : ps_path.tokens = key_ps.tokens := rfl
+    have h_ps_path_pos : ps_path.pos = key_ps.pos := rfl
 
-    -- For simplicity, use the fact that parseNode on a scalar with no properties
-    -- just returns the scalar value and advances by 1
-    let val_val := YamlValue.scalar { content := c, style := s }
-    let val_ps := { ps_final with currentPath := savedPath }
+    have h_ps_path_peek : ps_path.peek? = some .value := by
+      have : ps_path.peek? = key_ps.peek? := by
+        unfold ParseState.peek?
+        simp [ps_path]
+      rw [this, h_value_peek]
 
-    refine ⟨val_val, val_ps, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+    have h_ps_path_adv_tok : ps_path.advance.tokens = key_ps.advance.tokens := by
+      simp [ParseState.advance, ps_path]
+    have h_ps_path_adv_pos : ps_path.advance.pos = key_ps.advance.pos := by
+      simp [ParseState.advance, ps_path]
 
-    -- (1) parseFlowMappingValue key_ps m savedPath keyContent = .ok (val_val, val_ps)
+    have h_ps_path_adv_peek : ps_path.advance.peek? = some (.scalar c s) := by
+      unfold ParseState.peek?
+      rw [h_ps_path_adv_tok, h_ps_path_adv_pos]
+      simp [ParseState.advance]
+      constructor
+      · rw [h_tok]; omega
+      · rw [h_tok]; exact h_scalar
+
+    obtain ⟨m', h_m_eq⟩ : ∃ k, m = k + 1 := ⟨m - 1, by omega⟩
+
+    -- Use parseNode_scalar_fields to get what parseNode returns
+    have h_scalar_fields := parseNode_scalar_fields ps_path.advance c s (m' + 1) h_ps_path_adv_peek (by omega)
+    -- Extract the parts we need
+    have ⟨pn_val, pn_ps, h_pn_eq_full⟩ := h_scalar_fields
+    have h_pn_eq := h_pn_eq_full.1
+    have h_pn_val_eq := h_pn_eq_full.2.1
+    have h_pn_pos_eq := h_pn_eq_full.2.2.1
+    have h_pn_tok_eq := h_pn_eq_full.2.2.2.1
+    have h_pn_anc_eq := h_pn_eq_full.2.2.2.2.1
+    have h_pn_tagh_eq := h_pn_eq_full.2.2.2.2.2.1
+    have h_pn_tp_eq := h_pn_eq_full.2.2.2.2.2.2
+
+    -- The witness is (pn_val, { pn_ps with currentPath := savedPath })
+    refine ⟨pn_val, { pn_ps with currentPath := savedPath }, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+
+    -- (1) parseFlowMappingValue key_ps m savedPath keyContent = .ok (pn_val, { pn_ps with currentPath := savedPath })
     · -- Systematic unfolding of parseFlowMappingValue
       unfold parseFlowMappingValue
-      -- After let ps := { key_ps with currentPath := ... }, the do-block proceeds with tryConsumes
 
-      -- First, establish that the path-updated state has the right properties
-      let ps_path := { key_ps with currentPath := savedPath.push (.key keyContent) }
-
-      -- Key fact: ps_path shares tokens/pos with key_ps (only currentPath differs)
-      have h_ps_path_tok : ps_path.tokens = key_ps.tokens := rfl
-      have h_ps_path_pos : ps_path.pos = key_ps.pos := rfl
-
-      -- Therefore ps_path.peek? = key_ps.peek? = some .value
-      have h_ps_path_peek : ps_path.peek? = some .value := by
-        have : ps_path.peek? = key_ps.peek? := by
-          unfold ParseState.peek?
-          simp [ps_path]
-        rw [this, h_value_peek]
-
-      -- tryConsume .key: since peek? = .value (not .key), returns (false, ps_path)
+      -- Use properties already established
+      have h_ps_path_peek' : ps_path.peek? = some .value := h_ps_path_peek
       have h_trykey : ps_path.tryConsume .key = (false, ps_path) := by
         unfold ParseState.tryConsume
-        rw [h_ps_path_peek]
+        rw [h_ps_path_peek']
         simp [beq_iff_eq]
-
-      -- tryConsume .value: since peek? = .value, returns (true, ps_path.advance)
       have h_tryval : ps_path.tryConsume .value = (true, ps_path.advance) := by
         unfold ParseState.tryConsume
-        rw [h_ps_path_peek]
+        rw [h_ps_path_peek']
         simp
 
-      -- Key observation: ps_path.advance equals key_ps.advance (modulo currentPath)
-      -- since pos and tokens are the same
-      have h_ps_path_adv_tok : ps_path.advance.tokens = key_ps.advance.tokens := by
-        simp [ParseState.advance, ps_path]
-      have h_ps_path_adv_pos : ps_path.advance.pos = key_ps.advance.pos := by
-        simp [ParseState.advance, ps_path]
-
-      -- Therefore ps_path.advance has the same peek? as ps_after_value
-      have h_ps_path_adv_peek : ps_path.advance.peek? = some (.scalar c s) := by
-        unfold ParseState.peek?
-        rw [h_ps_path_adv_tok, h_ps_path_adv_pos]
-        simp [ParseState.advance]
-        constructor
-        · rw [h_tok]; omega
-        · rw [h_tok]; exact h_scalar
-
-      -- Now the conditional: consumed = true and peek? = .scalar (not flowEntry/flowMappingEnd/none)
-      -- so parseNode is called
+      -- Unfold the do-block
       simp only [Bind.bind, Except.bind]
       rw [h_trykey]
       simp
@@ -5567,193 +5556,58 @@ theorem parseFlowMappingValue_ok
       rw [h_ps_path_adv_peek]
       simp
 
-      -- Now prove parseNode ps_path.advance m = ...
-      obtain ⟨m', h_m_eq⟩ : ∃ k, m = k + 1 := ⟨m - 1, by omega⟩
-      rw [h_m_eq]
+      -- parseNode is called on ps_path.advance with fuel m
+      rw [h_m_eq, h_pn_eq]
 
-      -- Key observation: ps_path.advance and ps_after_value differ only in currentPath
-      -- Both have same tokens, pos, and crucially peek?
-      -- Therefore parseNode will follow the same computational path
+    -- Now prove the remaining 6 properties about { pn_ps with currentPath := savedPath }
 
-      -- Establish what parseNode returns
-      have h_parseNode_result : ∃ result_val result_ps,
-          parseNode ps_path.advance (m' + 1) = .ok (result_val, result_ps) ∧
-          result_ps.pos = ps_path.advance.pos + 1 ∧
-          result_ps.tokens = ps_path.advance.tokens := by
-        -- Compute parseNode step by step
-        unfold parseNode
-        -- Since ps_path.advance.peek? = some (.scalar c s), the alias check doesn't match
-        rw [h_ps_path_adv_peek]
-        simp only [Bind.bind, Except.bind, pure, Except.pure]
+    -- (2) original_pos < { pn_ps with currentPath := savedPath }.pos
+    · simp only [h_pn_pos_eq, h_ps_path_adv_pos]
+      show ps_path.advance.pos + 1 > original_pos
+      calc ps_path.advance.pos + 1
+        = key_ps.advance.pos + 1 := by simp [ParseState.advance, ps_path]
+        _ = (key_ps.pos + 1) + 1 := rfl
+        _ = key_ps.pos + 2 := by omega
+        _ > original_pos := h_final_gt
 
-        -- parseNodeProperties on scalar
-        have h_pnp_adv : parseNodeProperties ps_path.advance = .ok ({}, ps_path.advance) := by
-          apply parseNodeProperties_skip
-          rw [h_ps_path_adv_peek]
-          trivial
+    -- (3) { pn_ps with currentPath := savedPath }.pos ≤ endPos
+    · simp only [h_pn_pos_eq, h_ps_path_adv_pos]
+      show ps_path.advance.pos + 1 ≤ endPos
+      have : ps_path.advance.pos + 1 = key_ps.pos + 2 := by simp [ParseState.advance, ps_path]
+      rw [this]; exact h_final_le
 
-        rw [h_pnp_adv]
-        simp
+    -- (4) { pn_ps with currentPath := savedPath }.tokens = tokens
+    · simp only [h_pn_tok_eq, h_ps_path_adv_tok]
+      calc ps_path.advance.tokens
+        = key_ps.advance.tokens := by simp [ParseState.advance, ps_path]
+        _ = key_ps.tokens := rfl
+        _ = tokens := h_tok
 
-        -- validateNodeProps
-        have h_vnp_adv : validateNodeProps ps_path.advance ps_path.advance.pos {} = .ok () := by
-          unfold validateNodeProps
-          rw [h_ps_path_adv_peek]
-          rfl
+    -- (5) { pn_ps with currentPath := savedPath }.trackPositions = key_ps.trackPositions
+    · simp only [h_pn_tp_eq]
+      show ps_path.advance.advance.trackPositions = key_ps.trackPositions
+      simp [ParseState.advance, ps_path]
 
-        rw [h_vnp_adv]
-        simp
+    -- (6) { pn_ps with currentPath := savedPath }.peek? = some .flowEntry ∨
+    --     ({ pn_ps with currentPath := savedPath }.peek? = some .flowMappingEnd ∧ { pn_ps with currentPath := savedPath }.pos = endPos)
+    · unfold ParseState.peek?
+      simp only [h_pn_tok_eq, h_ps_path_adv_tok, h_pn_pos_eq, h_ps_path_adv_pos]
+      -- Now goal is: (if key_ps.advance.pos + 1 < key_ps.advance.tokens.size ...) = ...
+      have h_adv_pos : key_ps.advance.pos + 1 = key_ps.pos + 2 := by simp [ParseState.advance]
+      have h_adv_tok : key_ps.advance.tokens = tokens := by simp [h_tok]
+      simp only [h_adv_tok, h_adv_pos]
+      rw [if_pos (by omega : key_ps.pos + 2 < tokens.size)]
+      rcases h_succ_peek with h_fe | ⟨h_me, h_eq⟩
+      · left; simp [h_fe]
+      · right; constructor
+        · simp [h_me]
+        · exact h_eq
 
-        -- parseNodeContent on scalar
-        have h_pnc_adv : parseNodeContent ps_path.advance m' {} =
-                         .ok (.scalar { content := c, style := s }, ps_path.advance.advance) := by
-          unfold parseNodeContent
-          rw [h_ps_path_adv_peek]
-
-        rw [h_pnc_adv]
-        simp
-
-        -- applyNodeFinalization
-        let nodeStartPos := ps_path.advance.peekPos?.getD { offset := 0, line := 0, col := 0 }
-        let finalized := applyNodeFinalization (.scalar { content := c, style := s })
-                                                ps_path.advance.advance {} nodeStartPos
-
-        refine ⟨finalized.1, finalized.2, rfl, ?_, ?_⟩
-        · -- Position increases by 1
-          have : finalized.2.pos = ps_path.advance.advance.pos := by
-            simp [finalized, applyNodeFinalization_pos]
-          rw [this]
-          simp [ParseState.advance]
-        · -- Tokens preserved
-          simp [finalized, applyNodeFinalization_tokens, ParseState.advance_tokens]
-
-      obtain ⟨result_val, result_ps, h_pn_ok, h_pn_pos, h_pn_tok⟩ := h_parseNode_result
-
-      -- Now the full parseFlowMappingValue result
-      rw [h_pn_ok]
-      simp
-
-      -- Show result_val = val_val
-      have h_result_val : result_val = val_val := by
-        -- Compute what parseNode actually returns and inject
-        have h_parseNode_eq : parseNode ps_path.advance (m' + 1) =
-            .ok (.scalar { content := c, style := s },
-                 (applyNodeFinalization (.scalar { content := c, style := s })
-                                       ps_path.advance.advance {}
-                                       (ps_path.advance.peekPos?.getD { offset := 0, line := 0, col := 0 })).2) := by
-          unfold parseNode
-          rw [h_ps_path_adv_peek]
-          simp only [Bind.bind, Except.bind, pure, Except.pure]
-
-          have h_pnp : parseNodeProperties ps_path.advance = .ok ({}, ps_path.advance) := by
-            apply parseNodeProperties_skip
-            rw [h_ps_path_adv_peek]
-            trivial
-          rw [h_pnp]
-          simp
-
-          have h_vnp : validateNodeProps ps_path.advance ps_path.advance.pos {} = .ok () := by
-            unfold validateNodeProps
-            rw [h_ps_path_adv_peek]
-            rfl
-          rw [h_vnp]
-          simp
-
-          have h_pnc : parseNodeContent ps_path.advance m' {} =
-                       .ok (.scalar { content := c, style := s }, ps_path.advance.advance) := by
-            unfold parseNodeContent
-            rw [h_ps_path_adv_peek]
-          rw [h_pnc]
-          simp
-
-          -- applyNodeFinalization on scalar with empty props
-          unfold applyNodeFinalization
-          simp
-
-        -- Now inject from h_pn_ok and h_parseNode_eq
-        rw [h_parseNode_eq] at h_pn_ok
-        injection h_pn_ok with h_eq
-        injection h_eq with h_val_eq h_ps_eq
-        unfold val_val
-        exact h_val_eq.symm
-
-      have h_result_ps : { result_ps with currentPath := savedPath } = val_ps := by
-        -- Use the parseNode_scalar_fields lemma to get field preservation
-        have h_scalar_fields := parseNode_scalar_fields ps_path.advance c s (m' + 1) h_ps_path_adv_peek (by omega)
-        obtain ⟨val', ps'', h_pn_eq, h_val_eq, h_pos_eq, h_tok_eq, h_anc_eq, h_tagh_eq, h_tp_eq⟩ := h_scalar_fields
-
-        -- Inject to show result_ps = ps''
-        rw [h_pn_eq] at h_pn_ok
-        injection h_pn_ok with h_eq
-        injection h_eq with h_result_val_eq h_result_ps_eq
-        rw [← h_result_ps_eq]
-
-        -- Now prove field-by-field equality
-        simp only [val_ps, ParseState.mk.injEq]
-
-        constructor
-        · -- tokens: ps''.tokens = ps_final.tokens
-          rw [h_tok_eq, h_ps_path_adv_tok]
-          simp [ParseState.advance, h_tok, ps_final, ps_after_value]
-
-        constructor
-        · -- pos: ps''.pos = ps_final.pos
-          rw [h_pos_eq, h_ps_path_adv_pos]
-          simp [ParseState.advance, ps_final, ps_after_value]
-
-        constructor
-        · -- anchors: ps''.anchors = ps_final.anchors
-          rw [h_anc_eq]
-          -- ps_path.advance.advance.anchors = ps_final.anchors
-          -- ps_path = { key_ps with currentPath := ... }, so anchors are the same
-          simp [ParseState.advance, ps_final, ps_after_value, ps_path]
-
-        constructor
-        · -- tagHandles: ps''.tagHandles = ps_final.tagHandles
-          rw [h_tagh_eq]
-          simp [ParseState.advance, ps_final, ps_after_value, ps_path]
-
-        constructor
-        · -- trackPositions: ps''.trackPositions = ps_final.trackPositions
-          rw [h_tp_eq]
-          simp [ParseState.advance, ps_final, ps_after_value, ps_path]
-
-        constructor
-        · -- currentPath: both savedPath by construction
-          simp
-
-        · -- nodePositions: both come from the same base state
-          -- This may differ, but that's OK - we're not claiming they're equal in general
-          -- We just need the existential witness to type check
-          sorry
-
-      rw [h_result_val, h_result_ps]
-      constructor <;> rfl
-
-    -- (2) original_pos < val_ps.pos
-    · simp [val_ps]; exact h_final_gt
-
-    -- (3) val_ps.pos ≤ endPos
-    · simp [val_ps]; exact h_final_le
-
-    -- (4) val_ps.tokens = tokens
-    · simp [val_ps]; exact h_final_tok
-
-    -- (5) val_ps.trackPositions = key_ps.trackPositions
-    · simp [val_ps]; exact h_final_tp
-
-    -- (6) val_ps.peek? = some .flowEntry ∨ val_ps.peek? = some .flowMappingEnd ∧ val_ps.pos = endPos
-    · simp only [val_ps]
-      have : ({ ps_final with currentPath := savedPath } : ParseState).peek? = ps_final.peek? := by
-        unfold ParseState.peek?
-        simp
-      rw [this]
-      have : ({ ps_final with currentPath := savedPath } : ParseState).pos = ps_final.pos := rfl
-      rw [this]
-      exact h_final_peek
-
-    -- (7) flowBracketBalance tokens original_pos val_ps.pos = 0
-    · simp [val_ps]; exact h_final_bal
+    -- (7) flowBracketBalance tokens original_pos { pn_ps with currentPath := savedPath }.pos = 0
+    · simp only [h_pn_pos_eq, h_ps_path_adv_pos]
+      show flowBracketBalance tokens original_pos (ps_path.advance.pos + 1) = 0
+      have : ps_path.advance.pos + 1 = key_ps.pos + 2 := by simp [ParseState.advance, ps_path]
+      rw [this]; exact h_final_bal
 
   · -- flowSequenceStart value: parseNode → [ → loop → ] → advances past ]
     -- Use MapBodyProps.value_bracket_succ to find matching ] and FE/mapEnd after
