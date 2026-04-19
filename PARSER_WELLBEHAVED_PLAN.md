@@ -37,7 +37,7 @@ the internal calls (which occur at internal fuel `n+1 → n+2`). Location:
 | 3 | `parseFlowMapping`                 | same template as Part 2; use `ih_fml`       | ✅     |
 | 4 | `parseBlockSequence`               | same template as Part 2; use `ih_bsl`       | ✅     |
 | 5 | `parseBlockMapping`                | same template as Part 2; use `ih_bml`       | ✅     |
-| 6 | `parseImplicitBlockSequence`       | same template as Part 2; use `ih_ibsl`      | ⏳     |
+| 6 | `parseImplicitBlockSequence`       | same template as Part 2; use `ih_ibsl`      | ✅     |
 | 7 | `parseSinglePairMapping`           | two `parseNode` calls; use Part 1 IH        | ⏳     |
 | 8 | `parseFlowSequenceLoop`            | full peek? split; use Parts 1 & 7 IH        | ⏳     |
 | 9 | `parseFlowMappingLoop`             | full peek? split; use Parts 1 & 7 IH        | ⏳     |
