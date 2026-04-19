@@ -4687,7 +4687,22 @@ theorem parser_fuel_mono_succ : ∀ fuel : Nat,
         rw [h_loop_next]
         try dsimp only []
         exact h_ok
-    · sorry  -- Part 4 succ
+    · -- Part 4 succ: parseBlockSequence (n+2) → parseBlockSequence (n+3).
+      -- Same template as Part 2; parseBlockSequence's tail (blockEnd check)
+      -- is fuel-independent, returns .ok unconditionally, so only the loop
+      -- differs in fuel. Use ih_bsl.
+      intro ps val ps' h_ok
+      unfold parseBlockSequence at h_ok ⊢
+      simp only [bind, Except.bind] at h_ok ⊢
+      split at h_ok
+      · simp at h_ok
+      · rename_i loop_res heq_loop
+        obtain ⟨items, ps_loop⟩ := loop_res
+        try dsimp only [] at h_ok
+        have h_loop_next := ih_bsl ps.advance #[] items ps_loop heq_loop
+        rw [h_loop_next]
+        try dsimp only []
+        exact h_ok
     · sorry  -- Part 5 succ
     · sorry  -- Part 6 succ
     · sorry  -- Part 7 succ: parseSinglePairMapping (n+2) → (n+3)
