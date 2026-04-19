@@ -28,35 +28,40 @@
 - Line 6676: Balance preserved through .key and flowSequenceStart bracket pair
 - Line 6824: Balance preserved through .key and flowMappingStart bracket pair  
 
+✅ **Strategy A Phase 1a+1b scaffolding (R1 restructure)** — see Phase 1b below for details:
+- Diagnosed two structural defects in original `parser_fuel_mono_succ`
+  (broken `constructor` splitting, loops false at fuel=0)
+- Restated all 12 parts in offset-by-1 form (`X (fuel+1) → X (fuel+2)`)
+- External induction on `fuel` with proper IH destructuring
+- `content_mono` helper (parseNodeContent monotonicity from IH Parts 2-6) proved inline
+- Extractors updated (`parseNode_fuel_mono_succ`, `parseSinglePairMapping_fuel_mono_succ`)
+- Sorry count unchanged (9); framework now sound and ready for part-by-part completion
+
 ### Remaining Sorries (8 declarations, grouped by difficulty)
 
 #### Tier 1: Fuel Monotonicity (2 declarations, ~150-200 lines total)
-**REVISED DIFFICULTY: Complex - requires auxiliary lemmas for nested functions**
+**REVISED DIFFICULTY: Complex — now subsumed by `parser_fuel_mono_succ` (R1)**
 
-**Status**: Partial framework in place with 4 sorries
+**Status (2026-04-18, post-R1)**: Superseded by unified mutual theorem.
+`parser_fuel_mono_succ` (at [:4485](L4YAML/Proofs/ParserWellBehaved.lean:4485))
+provides all fuel-monotonicity lemmas in one theorem under the R1 offset-all
+form. The sorries at the old locations (below) still exist but will be
+discharged from `parser_fuel_mono_succ`'s extractors once the 12 parts land.
 
-1. **Line 4466**: `parseFlowSequenceLoop_fuel_mono_succ`
-   - Successor case: fuel N → fuel N+1 preserves result
-   - Proof: Induction on loop structure with extensive case analysis
-   - **Actual complexity**: ~150 lines base + ~50-100 lines for auxiliary lemmas
-   - **Blockers**:
-     - Base case (fuel=0): needs detailed split analysis (~30 lines) - line 4497
-     - Inductive case with .flowEntry + recursion: needs parseNode/parseSinglePairMapping fuel monotonicity - line 4547
-     - Inductive case items.size=0: symmetric complexity - line 4558
-   - **Root cause**: parseFlowSequenceLoop calls parseSinglePairMapping and parseNode with fuel parameter
-     - Both functions need their own fuel monotonicity proofs first
-     - Or need to prove they don't actually consume extra fuel in these contexts
+1. **Line 4670**: `parseFlowSequenceLoop_fuel_mono_succ`
+   - Post-R1 plan: extract from `parser_fuel_mono_succ` Part 8 via a shim that
+     handles the fuel=0 vacuous case (loop always succeeds at fuel=0 only with
+     `(items_acc, ps)`; the "fuel 0 → fuel 1" shift can be shown by direct
+     case analysis since fuel=1 at items_acc size-0 and non-end peek always
+     errors → hypothesis constrains enough).
+   - Remaining proof work inside the lemma: apply
+     `(parser_fuel_mono_succ n).2.2.2.2.2.2.2.1` for the inductive step.
 
-2. **Line 4475**: `parseFlowSequenceLoop_fuel_mono`  
+2. **Line 4758**: `parseFlowSequenceLoop_fuel_mono`  
    - General case: fuel ≤ fuel' preserves result
    - Proof: Induction on fuel' - fuel applying _succ repeatedly
    - ~10 lines (straightforward once _succ is complete)
-   - **Depends on**: Line 4466 (fuel_mono_succ)
-
-**Recommendation**: Consider deferring fuel monotonicity or proving auxiliary lemmas:
-- `parseNode_fuel_mono`: parseNode with fuel N succeeds → parseNode with fuel N+1 succeeds
-- `parseSinglePairMapping_fuel_mono`: symmetric for parseSinglePairMapping
-- Alternative: prove these functions don't use fuel in the contexts where parseFlowSequenceLoop calls them
+   - **Depends on**: Line 4670 (fuel_mono_succ)
 
 #### Tier 2: parseNodeProperties forIn Lemmas (3 sorries in 1 declaration, ~20-30 lines total)
 **Medium difficulty - requires understanding forIn loop behavior**
@@ -203,26 +208,95 @@ parseFlowSequenceLoop_fuel_mono_succ
 4. **Alternative Path**: Skip fuel monotonicity entirely, prove main theorems work around it
 
 **Phase 1b: Complete Mutual Induction (parser_fuel_mono_succ)** (~350 lines)
-**Current Status**: Framework established, base cases complete, 11 inductive cases pending
+
+**Status Update (2026-04-18, R1 restructure)**
+
+The initial `parser_fuel_mono_succ` framework had two structural defects that
+were discovered during Phase 1b implementation and fixed via the **R1 revision**:
+
+1. **Broken `constructor` splitting**: the body used `constructor` eleven times,
+   splitting the 12-conjunct into twelve *independent* goals. No mutual IH was
+   actually available — each sub-goal was isolated. The skeleton was
+   unimplementable as written.
+
+2. **Loop parts false at fuel=0**: the original claim
+   `loop ps 0 acc = .ok ... → loop ps 1 acc = .ok ...` is *unprovable*. At fuel=0,
+   loops return `.ok (acc, ps)` unconditionally (fuel exhaustion), but at fuel=1
+   a loop with `items_acc.size = 0` and `peek? = .key` calls
+   `parseSinglePairMapping ps 0 = .error`. The hypothesis is vacuously true but
+   the conclusion fails.
+
+**R1 resolution — "offset-all" form**. All 12 parts restated as
+
+```
+∀ fuel, X ps (fuel + 1) = .ok Y → X ps (fuel + 2) = .ok Y
+```
+
+This skips the vacuous fuel=0 row and aligns the mutual IH: at succ case `n`,
+IH at fuel `n` gives `X (n+1) → X (n+2)` for every part — exactly the shift
+the internal calls (at internal fuel `n+1 → n+2`) require.
+
+**Current Status (post-R1)**
+
+- ✅ Theorem restated with offset-all form ([ParserWellBehaved.lean:4485](L4YAML/Proofs/ParserWellBehaved.lean:4485))
+- ✅ External `induction fuel` with `obtain ⟨ih_pn, ih_fs, …⟩ := ih` scaffolding
+- ✅ `content_mono` helper proved inline — uses IH Parts 2-6 to cover all
+  YamlToken variants dispatched by `parseNodeContent`
+- ✅ Extractors `parseNode_fuel_mono_succ` and
+  `parseSinglePairMapping_fuel_mono_succ` updated to case-split on fuel
+  (vacuous at 0, apply offset theorem at succ)
+- ⏳ **12 base cases** (fuel=0, i.e., `X 1 → X 2`): all stubbed with `sorry`.
+  Non-vacuous since offset shifts them to the smallest meaningful fuel.
+- ⏳ **Part 1 (parseNode) succ case**: `sorry` with detailed proof-strategy
+  comment at [:4588](L4YAML/Proofs/ParserWellBehaved.lean:4588).
+  **Blocker discovered**: `unfold parseNode; simp only [bind, Except.bind, pure, Except.pure]`
+  exposes the Lean 4 `do`-block desugaring of the alias branch's early `return`,
+  which uses an ExceptCps-like wrapper. After `split at h_ok` and `split` on goal,
+  the hypotheses `v✝, heq✝` from the goal's match diverge from `pnp_pair, h_pnp`
+  from h_ok's match — `rw`/`generalize` don't resynchronize them.
+- ⏳ **Parts 2-12 succ cases**: `sorry`. Templates follow Part 1's pattern
+  (dispatched through each parser's body to its loop, apply loop IH).
 
 Completion order (each part builds on previous):
-1. Part 1 (parseNode): ~40 lines - needs Parts 2-6 for parseNodeContent dispatch
-2. Part 2 (parseFlowSequence): ~20 lines - needs Part 8 (parseFlowSequenceLoop)
-3. Part 3 (parseFlowMapping): ~20 lines - needs Part 9 (parseFlowMappingLoop)
-4. Part 4 (parseBlockSequence): ~20 lines - needs Part 10 (parseBlockSequenceLoop)
-5. Part 5 (parseBlockMapping): ~20 lines - needs Part 11 (parseBlockMappingLoop)
-6. Part 6 (parseImplicitBlockSequence): ~20 lines - needs Part 12 (parseImplicitBlockSequenceLoop)
-7. Part 7 (parseSinglePairMapping): ~30 lines - needs Part 1 (parseNode)
-8. Part 8 (parseFlowSequenceLoop): ~60 lines - needs Parts 1 & 7
-9. Part 9 (parseFlowMappingLoop): ~60 lines - needs Parts 1 & 7
-10. Part 10 (parseBlockSequenceLoop): ~40 lines - needs Part 1
-11. Part 11 (parseBlockMappingLoop): ~40 lines - needs Part 1
-12. Part 12 (parseImplicitBlockSequenceLoop): ~40 lines - needs Part 1
+1. Part 1 (parseNode) succ: ~40 lines - needs Parts 2-6 for parseNodeContent dispatch (content_mono ready)
+2. Part 2 (parseFlowSequence) succ: ~20 lines - needs Part 8 (parseFlowSequenceLoop) via IH
+3. Part 3 (parseFlowMapping) succ: ~20 lines - needs Part 9 via IH
+4. Part 4 (parseBlockSequence) succ: ~20 lines - needs Part 10 via IH
+5. Part 5 (parseBlockMapping) succ: ~20 lines - needs Part 11 via IH
+6. Part 6 (parseImplicitBlockSequence) succ: ~20 lines - needs Part 12 via IH
+7. Part 7 (parseSinglePairMapping) succ: ~30 lines - needs Part 1 via IH
+8. Part 8 (parseFlowSequenceLoop) succ: ~60 lines - needs Parts 1 & 7 via IH
+9. Part 9 (parseFlowMappingLoop) succ: ~60 lines - needs Parts 1 & 7 via IH
+10. Part 10 (parseBlockSequenceLoop) succ: ~40 lines - needs Part 1 via IH
+11. Part 11 (parseBlockMappingLoop) succ: ~40 lines - needs Part 1 via IH
+12. Part 12 (parseImplicitBlockSequenceLoop) succ: ~40 lines - needs Part 1 via IH
 
-**Mutual Dependency Resolution**: Prove all 12 parts simultaneously in one theorem
-- Each inductive case can reference other parts via the mutual induction hypothesis
-- Example: Part 1 (parseNode) dispatches to Parts 2-6 via parseNodeContent
-- Example: Part 8 (parseFlowSequenceLoop) calls Parts 1 & 7 for nested parsing
+Plus 12 base cases (~5-30 lines each, varies by complexity; loops' base
+cases at `X 1 → X 2` require case analysis on peek? since at fuel=1 the
+loop can only succeed in non-recursive termination paths).
+
+**Mutual Dependency Resolution**: All 12 parts proven simultaneously via outer
+induction on `fuel`. IH at `n` gives all 12 shifts at fuel=n; each succ-case
+proof at fuel=n+1 references sibling parts via their IH component:
+- Part 1 (parseNode) dispatches via parseNodeContent to Parts 2-6 at IH fuel=n
+- Part 8 (parseFlowSequenceLoop) calls parseNode & parseSinglePairMapping,
+  pulling Parts 1 & 7 at IH fuel=n
+
+**Next-step attack plan for Part 1 succ case**
+
+The Lean 4 `do`-block early-`return` desugaring is the blocker. Two viable paths:
+
+- **(a) Explicit unfolded form via `show`.** Write out parseNode's post-`return`-
+  desugared body as a `show` target so the alias vs non-alias branches are
+  syntactically visible. Then split proceeds on a simple nested match.
+- **(b) Factored helpers.** Prove auxiliary lemmas that give explicit
+  state-transition forms for each step (alias check, parseNodeProperties,
+  validateNodeProps, parseNodeContent → applyNodeFinalization). Chain them.
+
+Once Part 1 succ lands, Parts 2-7 succ follow the same `content_mono`-style
+pattern (dispatch through the parser body to its loop via IH). Parts 8-12 succ
+are the larger items — they replicate the `parseFlowSequenceLoop_fuel_mono_succ`
+work but can now invoke IH Parts 1 & 7 directly instead of sorry'ing them.
 
 **Phase 1c: Complete parseFlowSequenceLoop_fuel_mono_succ** (~40 lines)
 - Once parser_fuel_mono_succ is complete, the 3 remaining sorries can be filled in
