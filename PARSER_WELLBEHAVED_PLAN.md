@@ -2,78 +2,106 @@
 
 ## Status
 
-**8 top-level declarations still use `sorry`.** We follow one plan: finish the
-infrastructure theorem bottom-up, derive the extractors, then discharge the
-higher-level witnesses that depend on them. Earlier versions of this document
-discussed alternative strategies (A/B/C) and tier-based groupings; both have
-been retired in favor of the single linear sequence below.
+**26 declaration-level `sorry`s remain** (12 zero cases + 6 step cases + 8
+higher-level witnesses). The mutual-induction theorem has been refactored from
+one large conjunction proof into 12 separate `_mono_step` theorems plus 12
+`_mono_zero` theorems, with `parser_fuel_mono_succ` composing them via
+induction — each remaining proof obligation is now a focused theorem that can
+be worked on independently.
 
 ## Progress
 
 - [x] Easy/medium balance-preservation sorries (5 eliminated, pre-2026-04-17).
-- [x] **Step 1 scaffolding**: `parser_fuel_mono_succ` restated in "offset-all"
-      form (`X (fuel+1) → X (fuel+2)`), outer induction on `fuel`,
-      `content_mono` helper, wrapper extractors. See
-      [ParserWellBehaved.lean:4485](L4YAML/Proofs/ParserWellBehaved.lean:4485).
+- [x] **Step 1 scaffolding**: offset-all form `X (fuel+1) → X (fuel+2)`,
+      outer induction on `fuel`, `content_mono` helper, wrapper extractors.
 - [x] **Step 1, Part 1 succ** (parseNode) — 2026-04-19.
 - [x] **Step 1, Part 2 succ** (parseFlowSequence) — 2026-04-19.
+- [x] **Refactor**: split `parser_fuel_mono_succ` into 12 `_mono_step` + 12
+      `_mono_zero` theorems + a composed main theorem — 2026-04-19.
 
 ## Plan
 
-### Step 1 — Finish `parser_fuel_mono_succ` (the main mutual-induction theorem)
+### Step 1 — Finish the 12 `_mono_step` + 12 `_mono_zero` theorems
 
-One theorem, 12 conjuncts ("parts"), one per parser/loop in the mutual graph.
-Each part claims `X ps (fuel+1) = .ok y → X ps (fuel+2) = .ok y`. The proof is
-by outer induction on `fuel`: each succ case uses the IH at `fuel` to discharge
-the internal calls (which occur at internal fuel `n+1 → n+2`). Location:
-[ParserWellBehaved.lean:4485](L4YAML/Proofs/ParserWellBehaved.lean:4485).
+Each parser/loop has two standalone theorems:
+- `xxx_mono_zero : Xxx_succ 0` — proves `X 1 → X 2`.
+- `xxx_mono_step (n) (ih_deps…) : Xxx_succ (n + 1)` — proves `(n+2) → (n+3)`
+  given the IHs at fuel `n` for parsers it calls.
 
-**Succ cases** (fuel = n+1, prove `(n+2) → (n+3)`):
+`parser_fuel_mono_succ` at
+[ParserWellBehaved.lean:4875](L4YAML/Proofs/ParserWellBehaved.lean:4875)
+composes these via `induction fuel with | zero => ⟨…zero lemmas…⟩ | succ n ih => ⟨…step lemmas…⟩`.
+The wrappers `parseNode_fuel_mono_succ` and `parseSinglePairMapping_fuel_mono_succ`
+below it project the relevant conjunct.
 
-| # | Parser/loop                        | Pattern                                     | Status |
-| - | ---------------------------------- | ------------------------------------------- | ------ |
-| 1 | `parseNode`                        | alias OR bind chain w/ `content_mono`       | ✅     |
-| 2 | `parseFlowSequence`                | advance + loop + peek? tail; use `ih_fsl`   | ✅     |
-| 3 | `parseFlowMapping`                 | same template as Part 2; use `ih_fml`       | ✅     |
-| 4 | `parseBlockSequence`               | same template as Part 2; use `ih_bsl`       | ✅     |
-| 5 | `parseBlockMapping`                | same template as Part 2; use `ih_bml`       | ✅     |
-| 6 | `parseImplicitBlockSequence`       | same template as Part 2; use `ih_ibsl`      | ✅     |
-| 7 | `parseSinglePairMapping`           | two `parseNode` calls; use Part 1 IH        | 🚧     |
-| 8 | `parseFlowSequenceLoop`            | full peek? split; use Parts 1 & 7 IH        | ⏳     |
-| 9 | `parseFlowMappingLoop`             | full peek? split; use Parts 1 & 7 IH        | ⏳     |
-| 10| `parseBlockSequenceLoop`           | full peek? split; use Part 1 IH             | ⏳     |
-| 11| `parseBlockMappingLoop`            | full peek? split; use Part 1 IH             | ⏳     |
-| 12| `parseImplicitBlockSequenceLoop`   | full peek? split; use Part 1 IH             | ⏳     |
+**Succ cases** (`xxx_mono_step`):
 
-**Base cases** (outer fuel = 0, prove `X 1 → X 2`): 12 stubs at lines
-[:4544-4555](L4YAML/Proofs/ParserWellBehaved.lean:4544). Non-vacuous but
-smaller than the succ cases; each ~5-30 lines depending on the parser's
-fuel=1 behavior.
+| # | Parser/loop                        | Deps                   | Location | Status |
+| - | ---------------------------------- | ---------------------- | -------- | ------ |
+| 1 | `parseNode`                        | ih_fs/fm/bs/bm/ibs     | :4626    | ✅     |
+| 2 | `parseFlowSequence`                | ih_fsl                 | :4703    | ✅     |
+| 3 | `parseFlowMapping`                 | ih_fml                 | :4719    | ✅     |
+| 4 | `parseBlockSequence`               | ih_bsl                 | :4735    | ✅     |
+| 5 | `parseBlockMapping`                | ih_bml                 | :4751    | ✅     |
+| 6 | `parseImplicitBlockSequence`       | ih_ibsl                | :4769    | ✅     |
+| 7 | `parseSinglePairMapping`           | ih_pn                  | :4797    | 🚧     |
+| 8 | `parseFlowSequenceLoop`            | ih_pn, ih_sp           | :4845    | ⏳     |
+| 9 | `parseFlowMappingLoop`             | ih_pn, ih_sp           | :4852    | ⏳     |
+| 10| `parseBlockSequenceLoop`           | ih_pn                  | :4858    | ⏳     |
+| 11| `parseBlockMappingLoop`            | ih_pn                  | :4863    | ⏳     |
+| 12| `parseImplicitBlockSequenceLoop`   | ih_pn                  | :4868    | ⏳     |
 
-Line-size estimates (succ cases): Parts 3-6 ≈ 12 lines each (template),
-Part 7 ≈ 30 lines, Parts 8-12 ≈ 40-60 lines each.
+**Zero cases** (`xxx_mono_zero`): 12 stubs at
+[:4568-4601](L4YAML/Proofs/ParserWellBehaved.lean:4568). Each ~5-30 lines,
+mirroring the succ case but with vacuity arguments at internal fuel=0.
+
+Line-size estimates (succ cases): Parts 3-6 ≈ 12 lines each (done),
+Part 7 ≈ 30 lines body (helpers done, wiring blocked),
+Parts 8-12 ≈ 40-60 lines each (templates based on `parseFlowSequenceLoop_fuel_mono_succ`
+below in the file).
 
 **Legend**: ✅ proved · ⏳ not started · 🚧 attempted, blocked.
 
-**Part 7 blocker**: the body has two parseNode calls inside nested matches
-(key-dispatch + value-dispatch) plus an `if consumed` around the value match.
-Split-based destructuring runs into fragile anonymous-name ordering and
-`rename_i` picks up hypotheses in an unexpected order. Helper lemmas
-`key_shift` and `value_shift` (both straightforward: rcases on ps.peek?,
-empty-branches use `exact h`, parseNode-branches apply `ih_pn`) are the
-right abstraction, but wiring them through the main proof needs either
-(a) explicit `case _ =>` labels instead of `rename_i`, or (b) `obtain`
-patterns directly on split output.  Likely tractable with interactive
-feedback on which hypotheses Lean introduces at each step.
+**Part 7 blocker** (updated 2026-04-19): `parseSinglePairMapping_mono_step` at
+[:4797](L4YAML/Proofs/ParserWellBehaved.lean:4797) has helper lemmas
+`key_step` and `val_step` **proven and checked in** (~40 lines as local `have`
+statements). Both use `rcases` on `ps.peek?`, `cases tok`, `exact h` for
+empty-token branches, `exact ih_pn _ _ _ h` for parseNode branches; `rw [h_peek]
+at h` is load-bearing since `rcases` substitutes in the goal but not in hyps.
+
+Remaining block is wiring the helpers into the do-block body. Two approaches
+tried and rejected:
+
+1. **`simp only [bind, Except.bind, emptyNode] + split at h_ok`**: simp merges
+   the KEY_MATCH's inner `match ps.peek? with …` with the outer `Except.bind`
+   via iota, producing a 4-arm top-level match. `split at h_ok` greedily also
+   splits the `if consumed` inside each arm, yielding compound case names like
+   `h_1.isTrue`. `first | alt_parseNode | alt_empty` enumeration mis-aligns.
+2. **`generalize h_km : KEY_MATCH = km_in at h_ok` + `cases km_in`**: the clean
+   alternative, but the literal KEY_MATCH term in h_ok has a shadowing
+   `let ps := ps.advance`, so the generalize target needs zeta-reduction first.
+   VAL_BIND has 8+ repetitions of `{ps_k with currentPath := …}.tryConsume`,
+   making the second generalize target fragile.
+
+**Concrete next steps** for a subsequent session with interactive Lean:
+- After `intro ps kv h_ok`, add `unfold parseSinglePairMapping at h_ok ⊢;
+  dsimp only at h_ok ⊢` to expose the body and zeta-reduce the `let ps :=
+  ps.advance` shadow.
+- Use `set ps_adv := ps.advance` and `set ps_tc := (…).tryConsume YamlToken.value`
+  to give intermediate states short names.
+- Then `generalize h_km : KEY_MATCH = km_in at h_ok` and `cases km_in`, handling
+  the `.error`/`.ok` branches with `key_step` and rewrites.
+- Repeat for VAL_BIND, with `by_cases` on `consumed = true` before the second
+  `generalize` so the `if` collapses.
 
 ### Step 2 — Loop-level fuel monotonicity lemmas
 
 - [ ] `parseFlowSequenceLoop_fuel_mono_succ`
-      ([:4700](L4YAML/Proofs/ParserWellBehaved.lean:4700)):
-      extract from `parser_fuel_mono_succ` Part 8. ~10 lines with a shim for
-      the `fuel=0` edge case.
+      ([:4936](L4YAML/Proofs/ParserWellBehaved.lean:4936)):
+      can now be written as a direct wrapper around `parseFlowSequenceLoop_mono_step`
+      (Part 8 above), with a shim for the `fuel=0` edge case. ~10 lines.
 - [ ] `parseFlowSequenceLoop_fuel_mono`
-      ([:4809](L4YAML/Proofs/ParserWellBehaved.lean:4809)): generalize to
+      ([:5024](L4YAML/Proofs/ParserWellBehaved.lean:5024)): generalize to
       any `fuel ≤ fuel'` by induction on `fuel' - fuel` applying `_succ`
       repeatedly. ~10 lines.
 
