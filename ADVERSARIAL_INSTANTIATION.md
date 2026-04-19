@@ -1,7 +1,126 @@
-# Adversarial Instantiation — Application to L4YAML
+# Adversarial Instantiation — Auditing Sorry'd Theorems
 
-Application of the [Adversarial Instantiation methodology](../../.claude/ADVERSARIAL_INSTANTIATION.md)
-to the lean4-yaml-verified.iterators project (v0.4.7).
+**Purpose:** Detect false theorem statements before investing proof effort, by
+systematically instantiating sorry'd theorems on adversarial inputs via `#eval` / `#guard`.
+
+Analogous to fuzz testing for code, but targeting the gap between "sorry'd claim" and
+"actually true statement" in formal proofs.
+
+## Motivation
+
+False theorem statements are the hardest bugs to find in a proof development. A sorry'd
+theorem with a plausible-looking universal quantifier may pass cursory review, yet be
+unprovable because the quantifier is too broad. The failure mode is insidious: simple
+inputs (flat collections, small sizes) satisfy the claim, while adversarial inputs (deep
+nesting, mixed types, boundary sizes) expose the falsity.
+
+## Method
+
+### 1. Identify audit targets
+
+Every sorry'd theorem is a candidate. Prioritize by:
+
+- **Universality risk:** Theorems with `∀` over positions, states, or indices are highest risk.
+- **Precondition adequacy:** Does the precondition grow with the conclusion? A postcondition
+  that was strengthened (e.g., adding `flowBracketBalance = 0`) without a matching
+  precondition update is a red flag.
+- **Proof distance:** Theorems far from their sorry introduction (many layers of sorry'd
+  dependencies) accumulate false-statement risk at each layer.
+
+### 2. Design adversarial inputs
+
+For each sorry'd theorem, construct inputs that stress the universality along these dimensions:
+
+| Dimension | Test values | Rationale |
+|-----------|-------------|-----------|
+| **Size** | 0, 1, 2 | Boundary cases; off-by-one in ≤/< |
+| **Nesting depth** | 0, 1, 2, 3 | Flat inputs pass when nested ones fail |
+| **Type mixing** | scalar-only, seq-in-seq, map-in-seq, seq-in-map | Cross-type interactions expose implicit assumptions |
+| **Position** | first, last, middle | Universal quantifiers over indices |
+| **State** | initial, mid-flow, post-bracket | Scanner/parser state-dependent claims |
+
+**Key heuristic:** If a theorem holds for flat/simple inputs but the proof feels hard,
+try a nested/mixed input computationally before diagnosing the proof difficulty.
+
+### 3. Instantiate and check
+
+```lean
+-- Pattern: ∀ x, P x → Q x   (sorry'd)
+-- Audit: pick concrete x₀ where P x₀ holds, check Q x₀
+
+-- Decidable properties: use #guard
+#guard (Q concreteInput1) == true
+#guard (Q concreteInput2) == true   -- adversarial
+
+-- Non-decidable or complex: use #eval with diagnostic output
+#eval do
+  let result := computeQ adversarialInput
+  if !result then
+    IO.println s!"COUNTEREXAMPLE: {adversarialInput}"
+  pure result
+```
+
+Place audit checks in a dedicated `Tests/SorryAudit/` directory
+for permanent harnesses. Do NOT place in proof files — audits are development-time tools.
+
+### 4. Red flag patterns
+
+Certain theorem shapes are empirically high-risk for false statements:
+
+| Pattern | Risk | Why |
+|---------|------|-----|
+| `∀ k, lo ≤ k → k < hi → P tokens[k]` | **HIGH** | Universal over positions ignores nesting depth |
+| `∀ ps, ps.peek? = some tok → Q ps` | **HIGH** | Universal over parser states ignores context (flowLevel, indent stack) |
+| Postcondition added without matching precondition | **HIGH** | Predicate strengthening without hypothesis strengthening |
+| `tokens.size ≥ n → P` (size-only precondition) | **MEDIUM** | Size necessary but insufficient; structure matters |
+| `∀ fuel, fuel ≥ n → f fuel = ok` | **MEDIUM** | Fuel bound may depend on input structure, not just size |
+| Pure arithmetic on folds/ranges | **LOW** | Usually true if types are correct (but check boundary cases) |
+
+### 5. Audit frequency
+
+- **Before starting any proof of a sorry'd theorem:** Run the audit on that theorem first.
+- **After strengthening a predicate:** Re-audit all theorems that use the predicate.
+- **After discovering a false theorem:** Audit all sibling theorems with similar quantifier
+  structure (they likely share the same implicit assumption).
+
+## Integration with Lean 4 tooling
+
+### `slim_check` / `plausible`
+
+Lean 4's built-in property-testing tactic works for types with `SampleableExt` instances:
+
+```lean
+example : ∀ (n m : Nat), n + m = m + n := by plausible  -- passes
+example : ∀ (n : Nat), n < 100 := by plausible           -- finds counterexample
+```
+
+Limitation: Custom types (`YamlToken`, `ParseState`) need `SampleableExt` instances.
+For domain-specific types, manual adversarial instantiation (Method §3) is more practical
+than building sampling infrastructure.
+
+### `#guard` vs `#eval`
+
+- `#guard expr` — compile-time assertion; fails the build if `expr` evaluates to `false`.
+  Use for decidable, fast-to-evaluate properties.
+- `#eval expr` — prints result; use for properties that need diagnostic output or are
+  too expensive for compile-time evaluation.
+- `native_decide` — for properties that are decidable but too large for the kernel
+  evaluator. Compiles to native code. Use sparingly (compilation overhead).
+
+## Relationship to other techniques
+
+| Technique | Scope | Catches |
+|-----------|-------|---------|
+| **Adversarial Instantiation** | Sorry'd theorem statements | False universal claims |
+| Type checking | All code | Type errors, missing arguments |
+| `slim_check` / `plausible` | Decidable Prop with SampleableExt | Random counterexamples |
+| Code review | Theorem signatures | Suspicious patterns (requires expertise) |
+| Proof attempt | Individual theorems | Unprovability (but expensive to discover) |
+
+Adversarial Instantiation fills the gap between "the theorem type-checks" and "the
+theorem is true" — the gap where sorry lives.
+
+# Adversarial Instantiation — Application to L4YAML
 
 ## Triage: When to Audit vs. When to Prove Directly
 
