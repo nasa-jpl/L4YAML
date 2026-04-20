@@ -5136,11 +5136,12 @@ theorem parseBlockSequenceLoop_mono_step (n : Nat)
 
     Lifted to top-level from `parseBlockMappingLoop_mono_step` because the
     nested `match peek? with ... let keyHasContent := ... if keyHasContent ...`
-    structure produces `split at h` cases where Lean doesn't iota-reduce the
-    `if` based on the peek case, requiring specialized tactics.
+    structure needs `generalize peek? + rcases + simp only` to coax Lean
+    into iota-reducing the inner match and the subsequent `if`. Landed
+    2026-04-20.
 
     Audited computationally in `Tests/AdversarialInstantiation.lean` under
-    `test_handleBlockMappingKeyEntry_mono_step` before proof attempt. -/
+    the Priority 7 suite. -/
 theorem handleBlockMappingKeyEntry_mono_step (n : Nat)
     (ih_pn : ParseNode_succ n)
     (h_bmv : ∀ (ps : ParseState) (khc : Bool) (kl kc : Nat)
@@ -5150,7 +5151,58 @@ theorem handleBlockMappingKeyEntry_mono_step (n : Nat)
     (ps : ParseState) (idx : Nat) (key val : YamlValue) (ps'' : ParseState)
     (h : handleBlockMappingKeyEntry ps (n + 1) idx = .ok (key, val, ps'')) :
     handleBlockMappingKeyEntry ps (n + 2) idx = .ok (key, val, ps'') := by
-  sorry
+  unfold handleBlockMappingKeyEntry at h ⊢
+  simp only [Bind.bind, Except.bind] at h ⊢
+  -- Generalize peek? so the keyHasContent `match` iota-reduces per case.
+  generalize h_peek : ps.advance.peek? = peek at h ⊢
+  -- Tactic skeleton: case on peek, then simp iota-reduces the match to
+  -- a literal bool, then reduces the `if`. For empty-key paths the h and
+  -- goal differ only in parseBMV's fuel → bridge via h_bmv. For parseNode
+  -- paths the cascade is parseNode + parseBMV → bridge via ih_pn, then
+  -- h_bmv.
+  rcases peek with _ | tok
+  · -- peek = none: keyHasContent = true (default arm)
+    simp only [if_true] at h ⊢
+    split at h
+    · cases h
+    · rename_i v h_pn
+      obtain ⟨key', ps_mid⟩ := v
+      have h_pn' := ih_pn _ _ _ h_pn
+      rw [h_pn']
+      split at h
+      · cases h
+      · rename_i w h_bmv_ok
+        obtain ⟨val', ps_last⟩ := w
+        have h_bmv' := h_bmv _ _ _ _ _ _ h_bmv_ok
+        rw [h_bmv']
+        exact h
+  · cases tok <;>
+      -- First simp: iota-reduce the `match some .X with ...` to its bool value.
+      simp only [Bool.false_eq_true, if_false, if_true] at h ⊢
+    all_goals
+      first
+        | -- .value / .blockEnd: keyHasContent = false, empty-key path.
+          (split at h
+           · cases h
+           · rename_i w h_bmv_ok
+             obtain ⟨val', ps_mid⟩ := w
+             have h_bmv' := h_bmv _ _ _ _ _ _ h_bmv_ok
+             rw [h_bmv']
+             exact h)
+        | -- Default: keyHasContent = true, parseNode + parseBMV.
+          (split at h
+           · cases h
+           · rename_i v h_pn
+             obtain ⟨key', ps_mid⟩ := v
+             have h_pn' := ih_pn _ _ _ h_pn
+             rw [h_pn']
+             split at h
+             · cases h
+             · rename_i w h_bmv_ok
+               obtain ⟨val', ps_last⟩ := w
+               have h_bmv' := h_bmv _ _ _ _ _ _ h_bmv_ok
+               rw [h_bmv']
+               exact h)
 
 /-- Part 11 step: parseBlockMappingLoop `(n+2) → (n+3)`.
 
