@@ -4786,59 +4786,113 @@ theorem parseImplicitBlockSequence_mono_step (n : Nat)
 
 Body: `ps.advance` + (empty OR parseNode for key) + `tryConsume .value` +
 if-then-else (empty OR parseNode for value) + `.ok pair`. Only the two parseNode
-calls use fuel. Local helpers `key_step` and `val_step` bridge each fuel shift
-via `ih_pn`.
+calls use fuel — both bridged directly via `ih_pn`.
 
-**Status: BLOCKED on wiring.** The helpers compile; the do-block body resists
-both `split at h_ok` (which splits through lets/ifs producing compound cases)
-and `generalize + cases` (fragile because the term contains a shadowing
-`let ps := ps.advance` and VAL_BIND has 8+ repeated record updates). See
-PARSER_WELLBEHAVED_PLAN.md for concrete next steps. -/
+**Proof skeleton.** After `unfold + dsimp only`, the shadow `let ps := ps.advance`
+zeta-reduces and the outer fuel match iota-reduces; both h_ok and goal end up as
+`match ps.advance.peek? with | … => <body using KEY_RES, fuel>`. We `generalize
+h_peek_k : ps.advance.peek? = p_k at h_ok ⊢` so `cases p_k` substitutes in both
+and aligns their arms. Peek arms split into two families:
+- **Empty KEY** (peek? ∈ {.value, .flowEntry, .flowSequenceEnd}): KEY_RES = `.ok
+  (emptyNode, ps.advance)`. With `simp only [bind, Except.bind, emptyNode]` the
+  `match key with …` inside `currentPath` reduces to `""`, so `split at h_ok`
+  picks the outer `if consumed`. The inner VAL peek arms either match h_ok and
+  goal directly (empty sub-arms) or require `ih_pn` on a VAL-side parseNode.
+- **Default KEY** (peek? = none or any of the 19 non-empty tokens): KEY_RES =
+  `parseNode ps.advance fuel`. Split destructures this bind: the `.error` arm
+  contradicts via `cases h_ok`; the `.ok v` arm bridges fuel via `rw [ih_pn …]`.
+  After that, `match v.fst with | .scalar s => s.content | _ => "0"` blocks the
+  outer-if split, so an extra `split at h_ok` is needed before the `if` split
+  (both resulting sub-cases share the rest of the tactic via `all_goals`). -/
 theorem parseSinglePairMapping_mono_step (n : Nat) (ih_pn : ParseNode_succ n) :
     ParseSinglePairMapping_succ (n + 1) := by
   intro ps kv h_ok
-  -- Helper 1: key-match fuel monotonicity.
-  have key_step : ∀ (ps_k : ParseState) (key : YamlValue) (ps_k' : ParseState),
-      (match ps_k.peek? with
-       | some YamlToken.value | some YamlToken.flowEntry
-       | some YamlToken.flowSequenceEnd =>
-         (Except.ok (emptyNode, ps_k) : Except ScanError (YamlValue × ParseState))
-       | _ => parseNode ps_k (n + 1))
-        = Except.ok (key, ps_k') →
-      (match ps_k.peek? with
-       | some YamlToken.value | some YamlToken.flowEntry
-       | some YamlToken.flowSequenceEnd =>
-         (Except.ok (emptyNode, ps_k) : Except ScanError (YamlValue × ParseState))
-       | _ => parseNode ps_k (n + 2)) = Except.ok (key, ps_k') := by
-    intro ps_k key ps_k' h
-    rcases h_peek : ps_k.peek? with _ | tok
-    · rw [h_peek] at h; exact ih_pn _ _ _ h
-    · cases tok with
-      | value => rw [h_peek] at h; exact h
-      | flowEntry => rw [h_peek] at h; exact h
-      | flowSequenceEnd => rw [h_peek] at h; exact h
-      | _ => all_goals (rw [h_peek] at h; exact ih_pn _ _ _ h)
-  -- Helper 2: value-match fuel monotonicity.
-  have val_step : ∀ (ps_v : ParseState) (val : YamlValue) (ps_v' : ParseState),
-      (match ps_v.peek? with
-       | some YamlToken.flowEntry | some YamlToken.flowSequenceEnd
-       | none =>
-         (Except.ok (emptyNode, ps_v) : Except ScanError (YamlValue × ParseState))
-       | _ => parseNode ps_v (n + 1))
-        = Except.ok (val, ps_v') →
-      (match ps_v.peek? with
-       | some YamlToken.flowEntry | some YamlToken.flowSequenceEnd
-       | none =>
-         (Except.ok (emptyNode, ps_v) : Except ScanError (YamlValue × ParseState))
-       | _ => parseNode ps_v (n + 2)) = Except.ok (val, ps_v') := by
-    intro ps_v val ps_v' h
-    rcases h_peek : ps_v.peek? with _ | tok
-    · rw [h_peek] at h; exact h
-    · cases tok with
-      | flowEntry => rw [h_peek] at h; exact h
-      | flowSequenceEnd => rw [h_peek] at h; exact h
-      | _ => all_goals (rw [h_peek] at h; exact ih_pn _ _ _ h)
-  sorry
+  -- Main body.
+  unfold parseSinglePairMapping at h_ok ⊢
+  dsimp only at h_ok ⊢
+  generalize h_peek_k : ps.advance.peek? = p_k at h_ok ⊢
+  cases p_k with
+  | none =>
+    -- default KEY arm: parseNode-based key
+    simp only [bind, Except.bind] at h_ok ⊢
+    split at h_ok
+    · cases h_ok  -- parseNode .error
+    · rename_i v h_pn
+      have h_pn' := ih_pn _ _ _ h_pn
+      rw [h_pn']
+      simp only []
+      -- Split on `match v.fst with ...` (2 cases: scalar, default).
+      split at h_ok
+      all_goals (
+        -- Now split the outer `if consumed then ...`.
+        split at h_ok
+        · rename_i h_cons
+          rw [if_pos h_cons]
+          split at h_ok
+          · exact h_ok  -- flowEntry
+          · exact h_ok  -- flowSequenceEnd
+          · exact h_ok  -- none
+          · split at h_ok
+            · cases h_ok  -- parseNode val .error
+            · rename_i v2 h_pn2
+              have h_pn2' := ih_pn _ _ _ h_pn2
+              rw [h_pn2']
+              exact h_ok
+        · rename_i h_cons
+          rw [if_neg h_cons]
+          exact h_ok)
+  | some tok_k =>
+    cases tok_k with
+    | value | flowEntry | flowSequenceEnd =>
+      all_goals (
+        -- Empty KEY arm: keyContent reduces via `simp only [emptyNode]`.
+        simp only [bind, Except.bind, emptyNode] at h_ok ⊢
+        split at h_ok
+        · -- consumed = true
+          rename_i h_cons
+          rw [if_pos h_cons]
+          split at h_ok
+          · exact h_ok  -- flowEntry
+          · exact h_ok  -- flowSequenceEnd
+          · exact h_ok  -- none
+          · -- default: match parseNode ... with | .error | .ok
+            split at h_ok
+            · cases h_ok
+            · rename_i v h_pn
+              have h_pn' := ih_pn _ _ _ h_pn
+              rw [h_pn']
+              exact h_ok
+        · -- consumed = false
+          rename_i h_cons
+          rw [if_neg h_cons]
+          exact h_ok)
+    | _ => all_goals (
+        -- default KEY arm: parseNode-based key
+        simp only [bind, Except.bind] at h_ok ⊢
+        split at h_ok
+        · cases h_ok
+        · rename_i v h_pn
+          have h_pn' := ih_pn _ _ _ h_pn
+          rw [h_pn']
+          simp only []
+          split at h_ok
+          all_goals (
+            split at h_ok
+            · rename_i h_cons
+              rw [if_pos h_cons]
+              split at h_ok
+              · exact h_ok
+              · exact h_ok
+              · exact h_ok
+              · split at h_ok
+                · cases h_ok
+                · rename_i v2 h_pn2
+                  have h_pn2' := ih_pn _ _ _ h_pn2
+                  rw [h_pn2']
+                  exact h_ok
+            · rename_i h_cons
+              rw [if_neg h_cons]
+              exact h_ok))
 
 /-- Part 8 step: parseFlowSequenceLoop `(n+2) → (n+3)`. Needs parseNode +
     parseSinglePairMapping IHs. -/
