@@ -2,7 +2,7 @@
 
 ## Status
 
-**24 declaration-level `sorry`s remain** (12 zero cases + 4 step cases + 8
+**23 declaration-level `sorry`s remain** (12 zero cases + 3 step cases + 8
 higher-level witnesses). The mutual-induction theorem has been refactored from
 one large conjunction proof into 12 separate `_mono_step` theorems plus 12
 `_mono_zero` theorems, with `parser_fuel_mono_succ` composing them via
@@ -20,6 +20,7 @@ be worked on independently.
       `_mono_zero` theorems + a composed main theorem — 2026-04-19.
 - [x] **Step 1, Part 7 succ** (parseSinglePairMapping) — 2026-04-19.
 - [x] **Step 1, Part 8 succ** (parseFlowSequenceLoop) — 2026-04-19.
+- [x] **Step 1, Part 9 succ** (parseFlowMappingLoop) — 2026-04-19.
 
 ## Plan
 
@@ -48,7 +49,7 @@ below it project the relevant conjunct.
 | 6 | `parseImplicitBlockSequence`       | ih_ibsl                | :4769    | ✅     |
 | 7 | `parseSinglePairMapping`           | ih_pn                  | :4797    | ✅     |
 | 8 | `parseFlowSequenceLoop`            | ih_pn, ih_sp, ih_fsl   | :4909    | ✅     |
-| 9 | `parseFlowMappingLoop`             | ih_pn, ih_sp, ih_fml   | :4970    | ⏳     |
+| 9 | `parseFlowMappingLoop`             | ih_pn, ih_fml          | :4970    | ✅     |
 | 10| `parseBlockSequenceLoop`           | ih_pn, ih_bsl          | :4976    | ⏳     |
 | 11| `parseBlockMappingLoop`            | ih_pn, ih_bml          | :4981    | ⏳     |
 | 12| `parseImplicitBlockSequenceLoop`   | ih_pn, ih_ibsl         | :4986    | ⏳     |
@@ -60,8 +61,9 @@ mirroring the succ case but with vacuity arguments at internal fuel=0.
 Line-size estimates (succ cases): Parts 3-6 ≈ 12 lines each (done),
 Part 7 ≈ 60 lines body (done),
 Part 8 ≈ 60 lines body (done),
-Parts 9-12 ≈ 40-60 lines each (Part 9 follows Part 8 closely; Parts 10-12 are
-simpler since their inner dispatch has fewer arms).
+Part 9 ≈ 100 lines body + 2 inline helpers (done),
+Parts 10-12 ≈ 40-60 lines each (simpler — their inner dispatch has fewer arms
+and the key parser is `parseNode` directly, so no helpers needed).
 
 **Dependency note**: Each loop's `_mono_step` also needs its own self-IH
 (e.g. Part 8 needs `ih_fsl`, Part 9 needs `ih_fml`, etc.) because the loop's
@@ -101,6 +103,25 @@ interactive `trace_state` + `sorry` checkpoints to see the exact form of
 
 The `key_step` / `val_step` helpers drafted in earlier attempts turned out to
 be unnecessary — `ih_pn` applied directly via `rw` handles every fuel shift.
+
+**Part 9 proof approach** (landed 2026-04-19): mirrors Part 8 but the inner
+key parser is `parseExplicitKey` (not `parseSinglePairMapping`) and the value
+parser is `parseFlowMappingValue`. Both are non-recursive helpers that call
+`parseNode`, so no new mutual IH is needed, but inline `have` lemmas are
+required to bridge fuel `(n+1) → (n+2)` for each:
+
+- `h_ek`: 4-arm split on `ps.peek?` (3 empty arms `exact h`, 1 default arm
+  `exact ih_pn _ _ _ h`). ~10 lines.
+- `h_fmv`: mirrors the if-consumed + inner-peek pattern from
+  `parseFlowMappingValue`'s body; 4 peek arms (3 empty + 1 `parseNode`) + the
+  `if consumed then/else` branch. ~20 lines.
+
+**Destructuring quirk**: after `split at h_ok` on the key-parser `match`,
+Lean leaves the introduced result variable as a pair `v : YamlValue ×
+ParseState` without auto-destructuring. Subsequent `rw [h_ek']` / `rw
+[h_fmv']` generates `(v.fst, v.snd)` terms that don't syntactically match
+the goal's destructured form. Fix: `obtain ⟨key, ps_mid⟩ := v` immediately
+after `rename_i`, which forces normalization.
 
 **Part 8 proof approach** (landed 2026-04-19): Key insight — `split at h_ok`
 on a `match` expression *auto-aligns the goal* when both h_ok and goal share
