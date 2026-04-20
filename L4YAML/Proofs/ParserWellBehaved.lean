@@ -5300,10 +5300,43 @@ theorem parseBlockMappingLoop_mono_step (n : Nat)
   · -- default
     exact h_ok
 
-/-- Part 12 step: parseImplicitBlockSequenceLoop `(n+2) → (n+3)`. Needs parseNode IH. -/
-theorem parseImplicitBlockSequenceLoop_mono_step (n : Nat) (ih_pn : ParseNode_succ n) :
+/-- Part 12 step: parseImplicitBlockSequenceLoop `(n+2) → (n+3)`.
+
+Body (non-base): dispatches on `ps.peek?`:
+- `some .blockEntry` → advance, then inner match on `ps.advance.peek?`:
+  - `.blockEntry | .blockEnd | .key | none` → push emptyNode and loop
+  - else → parseNode (with path manipulation) and loop
+
+Uses `ih_pn` (parseNode IH) and `ih_ibsl` (self-IH). Structurally
+identical to `parseBlockSequenceLoop_mono_step` except the inner empty
+alternative is `blockEntry | blockEnd | key | none` (4 cases) instead of
+`blockEntry | blockEnd | none` (3 cases). -/
+theorem parseImplicitBlockSequenceLoop_mono_step (n : Nat)
+    (ih_pn : ParseNode_succ n) (ih_ibsl : ParseImplicitBlockSequenceLoop_succ n) :
     ParseImplicitBlockSequenceLoop_succ (n + 1) := by
-  sorry
+  intro ps items_acc items ps' h_ok
+  unfold parseImplicitBlockSequenceLoop at h_ok ⊢
+  simp only [Bind.bind, Except.bind] at h_ok ⊢
+  split at h_ok
+  · -- outer .blockEntry
+    split at h_ok
+    · -- inner .blockEntry (empty)
+      exact ih_ibsl _ _ _ _ h_ok
+    · -- inner .blockEnd (empty)
+      exact ih_ibsl _ _ _ _ h_ok
+    · -- inner .key (empty)
+      exact ih_ibsl _ _ _ _ h_ok
+    · -- inner none (empty)
+      exact ih_ibsl _ _ _ _ h_ok
+    · -- inner default: parseNode + loop
+      split at h_ok
+      · cases h_ok
+      · rename_i v h_pn
+        have h_pn' := ih_pn _ _ _ h_pn
+        rw [h_pn']
+        exact ih_ibsl _ _ _ _ h_ok
+  · -- outer default
+    exact h_ok
 
 /-- **Comprehensive fuel monotonicity theorem**: proves all 12 step claims jointly
     by induction on fuel, composing the per-part `_mono_zero` and `_mono_step`
@@ -5340,7 +5373,7 @@ theorem parser_fuel_mono_succ : ∀ fuel : Nat,
            parseFlowMappingLoop_mono_step n ih_pn ih_fml,
            parseBlockSequenceLoop_mono_step n ih_pn ih_bsl,
            parseBlockMappingLoop_mono_step n ih_pn ih_bml,
-           parseImplicitBlockSequenceLoop_mono_step n ih_pn⟩
+           parseImplicitBlockSequenceLoop_mono_step n ih_pn ih_ibsl⟩
 
 /-- **Auxiliary: parseNode fuel monotonicity (wrapper around offset-form theorem).**
     Derives the unrestricted form `parseNode ps fuel = .ok → parseNode ps (fuel+1) = .ok`.
