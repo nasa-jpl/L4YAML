@@ -2,7 +2,7 @@
 
 ## Status
 
-**21 declaration-level `sorry`s remain** (12 zero cases + 1 step case +
+**20 declaration-level `sorry`s remain** (12 zero cases +
 8 higher-level witnesses). The mutual-induction theorem has been refactored
 from one large conjunction proof into 12 separate `_mono_step` theorems plus
 12 `_mono_zero` theorems, with `parser_fuel_mono_succ` composing them via
@@ -28,6 +28,11 @@ can be worked on independently.
       `generalize peek? + rcases + simp [if_true, Bool.false_eq_true,
       if_false]`. Audited via `Tests/AdversarialInstantiation.lean`
       Priority 7.
+- [x] **Step 1, Part 12 succ** (parseImplicitBlockSequenceLoop) —
+      2026-04-20. Structurally analogous to Part 10 with 4 empty-entry
+      cases (blockEntry/blockEnd/key/none) instead of 3. Signature updated
+      to take `ih_ibsl` in addition to `ih_pn`; call site in
+      `parser_fuel_mono_succ` updated.
 
 ## Plan
 
@@ -59,7 +64,7 @@ below it project the relevant conjunct.
 | 9 | `parseFlowMappingLoop`             | ih_pn, ih_fml          | :4970    | ✅     |
 | 10| `parseBlockSequenceLoop`           | ih_pn, ih_bsl          | :5107    | ✅     |
 | 11| `parseBlockMappingLoop`            | ih_pn, ih_bml          | :5218    | ✅     |
-| 12| `parseImplicitBlockSequenceLoop`   | ih_pn, ih_ibsl         | :5303    | ⏳     |
+| 12| `parseImplicitBlockSequenceLoop`   | ih_pn, ih_ibsl         | :5303    | ✅     |
 
 Part 11 main theorem proved inline (2026-04-19) with helpers `h_bmv` and
 `h_bmve`; the third helper `handleBlockMappingKeyEntry_mono_step` at :5144
