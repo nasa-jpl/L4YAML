@@ -5129,10 +5129,124 @@ theorem parseBlockSequenceLoop_mono_step (n : Nat)
   · -- outer default
     exact h_ok
 
-/-- Part 11 step: parseBlockMappingLoop `(n+2) → (n+3)`. Needs parseNode IH. -/
-theorem parseBlockMappingLoop_mono_step (n : Nat) (ih_pn : ParseNode_succ n) :
-    ParseBlockMappingLoop_succ (n + 1) := by
+/-- Fuel monotonicity for `handleBlockMappingKeyEntry`: if it succeeds at
+    `fuel = n+1`, it succeeds at `n+2` with the same result. Takes both
+    `ih_pn` (parseNode IH) and the monotonicity helper `h_bmv` for
+    `parseBlockMappingEntryValue` as hypotheses.
+
+    Lifted to top-level from `parseBlockMappingLoop_mono_step` because the
+    nested `match peek? with ... let keyHasContent := ... if keyHasContent ...`
+    structure produces `split at h` cases where Lean doesn't iota-reduce the
+    `if` based on the peek case, requiring specialized tactics.
+
+    Audited computationally in `Tests/AdversarialInstantiation.lean` under
+    `test_handleBlockMappingKeyEntry_mono_step` before proof attempt. -/
+theorem handleBlockMappingKeyEntry_mono_step (n : Nat)
+    (ih_pn : ParseNode_succ n)
+    (h_bmv : ∀ (ps : ParseState) (khc : Bool) (kl kc : Nat)
+        (v : YamlValue) (ps'' : ParseState),
+        parseBlockMappingEntryValue ps (n + 1) khc kl kc = .ok (v, ps'') →
+        parseBlockMappingEntryValue ps (n + 2) khc kl kc = .ok (v, ps''))
+    (ps : ParseState) (idx : Nat) (key val : YamlValue) (ps'' : ParseState)
+    (h : handleBlockMappingKeyEntry ps (n + 1) idx = .ok (key, val, ps'')) :
+    handleBlockMappingKeyEntry ps (n + 2) idx = .ok (key, val, ps'') := by
   sorry
+
+/-- Part 11 step: parseBlockMappingLoop `(n+2) → (n+3)`.
+
+Body (non-base): dispatches on `ps.peek?`:
+- `.key` → `handleBlockMappingKeyEntry` + loop recursion
+- `.value` → `handleBlockMappingValueEntry` + loop recursion
+- otherwise → return `.ok (pairs_acc, ps)`
+
+Uses `ih_pn` (via inline helpers `h_bmv`/`h_bmke`/`h_bmve`) for the
+`parseNode` calls inside the entry helpers and `ih_bml` (self-IH) for the
+tail-recursive loop call. `h_bmke` delegates to the top-level theorem
+`handleBlockMappingKeyEntry_mono_step`. -/
+theorem parseBlockMappingLoop_mono_step (n : Nat)
+    (ih_pn : ParseNode_succ n) (ih_bml : ParseBlockMappingLoop_succ n) :
+    ParseBlockMappingLoop_succ (n + 1) := by
+  -- Helpers: entry-helper monotonicity. All three involve `parseNode` calls,
+  -- so they reduce to `ih_pn` bridges. The proof uses destructive split at h
+  -- plus keep goal aligned via split on the goal.
+  have h_bmv : ∀ (ps : ParseState) (khc : Bool) (kl kc : Nat)
+      (v : YamlValue) (ps'' : ParseState),
+      parseBlockMappingEntryValue ps (n + 1) khc kl kc = .ok (v, ps'') →
+      parseBlockMappingEntryValue ps (n + 2) khc kl kc = .ok (v, ps'') := by
+    intro ps khc kl kc v ps'' h
+    unfold parseBlockMappingEntryValue at h ⊢
+    simp only [Bind.bind, Except.bind] at h ⊢
+    split at h
+    · -- consumed = true
+      rename_i h_c
+      rw [if_pos h_c]
+      -- split h on forIn's result bind
+      split at h
+      · cases h  -- forIn errored
+      · -- forIn succeeded; goal already past the forIn bind
+        split at h
+        · exact h  -- .key (empty)
+        · exact h  -- .blockEnd (empty)
+        · exact h  -- none (empty)
+        · -- .blockMappingStart: if trailingContent then throw else parseNode
+          split at h
+          · cases h  -- isTrue: throw = .ok is contradiction
+          · rename_i h_cond
+            rw [if_neg h_cond]
+            exact ih_pn _ _ _ h
+        · -- .blockSequenceStart
+          split at h
+          · cases h
+          · rename_i h_cond
+            rw [if_neg h_cond]
+            exact ih_pn _ _ _ h
+        · -- default: parseNode
+          exact ih_pn _ _ _ h
+    · -- consumed = false
+      rename_i h_c
+      rw [if_neg h_c]
+      exact h
+  have h_bmke := handleBlockMappingKeyEntry_mono_step n ih_pn h_bmv
+  have h_bmve : ∀ (ps : ParseState) (idx : Nat)
+      (val : YamlValue) (ps'' : ParseState),
+      handleBlockMappingValueEntry ps (n + 1) idx = .ok (val, ps'') →
+      handleBlockMappingValueEntry ps (n + 2) idx = .ok (val, ps'') := by
+    intro ps idx val ps'' h
+    unfold handleBlockMappingValueEntry at h ⊢
+    simp only [Bind.bind, Except.bind] at h ⊢
+    split at h
+    · exact h  -- peek = .key
+    · exact h  -- peek = .blockEnd
+    · exact h  -- peek = none
+    · -- default: parseNode
+      split at h
+      · cases h
+      · rename_i w h_pn
+        have h_pn' := ih_pn _ _ _ h_pn
+        rw [h_pn']
+        exact h
+  intro ps pairs_acc pairs ps' h_ok
+  unfold parseBlockMappingLoop at h_ok ⊢
+  simp only [Bind.bind, Except.bind] at h_ok ⊢
+  split at h_ok
+  · -- .key branch
+    split at h_ok
+    · cases h_ok
+    · rename_i v h_bmke_ok
+      obtain ⟨key, val, ps_mid⟩ := v
+      have h_bmke' := h_bmke _ _ _ _ _ h_bmke_ok
+      rw [h_bmke']
+      exact ih_bml _ _ _ _ h_ok
+  · -- .value branch
+    split at h_ok
+    · cases h_ok
+    · rename_i v h_bmve_ok
+      obtain ⟨val, ps_mid⟩ := v
+      have h_bmve' := h_bmve _ _ _ _ h_bmve_ok
+      rw [h_bmve']
+      exact ih_bml _ _ _ _ h_ok
+  · -- default
+    exact h_ok
 
 /-- Part 12 step: parseImplicitBlockSequenceLoop `(n+2) → (n+3)`. Needs parseNode IH. -/
 theorem parseImplicitBlockSequenceLoop_mono_step (n : Nat) (ih_pn : ParseNode_succ n) :
@@ -5173,7 +5287,7 @@ theorem parser_fuel_mono_succ : ∀ fuel : Nat,
            parseFlowSequenceLoop_mono_step n ih_pn ih_sp ih_fsl,
            parseFlowMappingLoop_mono_step n ih_pn ih_fml,
            parseBlockSequenceLoop_mono_step n ih_pn ih_bsl,
-           parseBlockMappingLoop_mono_step n ih_pn,
+           parseBlockMappingLoop_mono_step n ih_pn ih_bml,
            parseImplicitBlockSequenceLoop_mono_step n ih_pn⟩
 
 /-- **Auxiliary: parseNode fuel monotonicity (wrapper around offset-form theorem).**
