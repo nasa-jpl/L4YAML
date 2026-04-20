@@ -2,12 +2,12 @@
 
 ## Status
 
-**22 declaration-level `sorry`s remain** (12 zero cases + 2 step cases + 8
-higher-level witnesses). The mutual-induction theorem has been refactored from
-one large conjunction proof into 12 separate `_mono_step` theorems plus 12
-`_mono_zero` theorems, with `parser_fuel_mono_succ` composing them via
-induction — each remaining proof obligation is now a focused theorem that can
-be worked on independently.
+**22 declaration-level `sorry`s remain** (12 zero cases + 1 step case +
+1 lifted helper + 8 higher-level witnesses). The mutual-induction theorem has
+been refactored from one large conjunction proof into 12 separate `_mono_step`
+theorems plus 12 `_mono_zero` theorems, with `parser_fuel_mono_succ` composing
+them via induction — each remaining proof obligation is now a focused theorem
+that can be worked on independently.
 
 ## Progress
 
@@ -22,6 +22,10 @@ be worked on independently.
 - [x] **Step 1, Part 8 succ** (parseFlowSequenceLoop) — 2026-04-19.
 - [x] **Step 1, Part 9 succ** (parseFlowMappingLoop) — 2026-04-19.
 - [x] **Step 1, Part 10 succ** (parseBlockSequenceLoop) — 2026-04-19.
+- [x] **Step 1, Part 11 succ** (parseBlockMappingLoop) — 2026-04-19. Main
+      theorem fully proved; helper `handleBlockMappingKeyEntry_mono_step`
+      lifted to top-level as a sorry'd dependency (audited via
+      `Tests/AdversarialInstantiation.lean` Priority 7).
 
 ## Plan
 
@@ -51,9 +55,16 @@ below it project the relevant conjunct.
 | 7 | `parseSinglePairMapping`           | ih_pn                  | :4797    | ✅     |
 | 8 | `parseFlowSequenceLoop`            | ih_pn, ih_sp, ih_fsl   | :4909    | ✅     |
 | 9 | `parseFlowMappingLoop`             | ih_pn, ih_fml          | :4970    | ✅     |
-| 10| `parseBlockSequenceLoop`           | ih_pn, ih_bsl          | :5098    | ✅     |
-| 11| `parseBlockMappingLoop`            | ih_pn, ih_bml          | :4981    | ⏳     |
-| 12| `parseImplicitBlockSequenceLoop`   | ih_pn, ih_ibsl         | :4986    | ⏳     |
+| 10| `parseBlockSequenceLoop`           | ih_pn, ih_bsl          | :5107    | ✅     |
+| 11| `parseBlockMappingLoop`            | ih_pn, ih_bml          | :5167    | ✅*    |
+| 12| `parseImplicitBlockSequenceLoop`   | ih_pn, ih_ibsl         | :5252    | ⏳     |
+
+*Part 11 main theorem fully proved; helper
+`handleBlockMappingKeyEntry_mono_step` at :5131 is a lifted top-level
+theorem still `sorry`'d — difficulty is the nested
+`match peek? with ... if keyHasContent then parseNode else .ok emptyNode`
+structure that defeats `split at h` tactic strategies that worked for other
+parts. Theorem statement audited computationally — see Tests Priority 7.
 
 **Zero cases** (`xxx_mono_zero`): 12 stubs at
 [:4568-4601](L4YAML/Proofs/ParserWellBehaved.lean:4568). Each ~5-30 lines,
@@ -64,8 +75,11 @@ Part 7 ≈ 60 lines body (done),
 Part 8 ≈ 60 lines body (done),
 Part 9 ≈ 100 lines body + 2 inline helpers (done),
 Part 10 ≈ 25 lines body (done — confirmed simpler with no helpers needed),
-Parts 11-12 ≈ 30-60 lines each (similar structure — `parseNode` directly, no
-helpers).
+Part 11 ≈ 90 lines body + 3 inline helpers + 1 lifted top-level helper
+(done 2026-04-19 — inline `h_bmv`/`h_bmve` proved; `h_bmke` lifted to
+top-level `handleBlockMappingKeyEntry_mono_step` as sorry'd dependency
+because its nested peek-match-in-if structure defeats `split at h`),
+Part 12 ≈ 30-60 lines.
 
 **Dependency note**: Each loop's `_mono_step` also needs its own self-IH
 (e.g. Part 8 needs `ih_fsl`, Part 9 needs `ih_fml`, etc.) because the loop's

@@ -1640,6 +1640,173 @@ private def testFlowParserHelpers (state : IO.Ref TestCollector) : IO Unit := do
   checkMapEntry state "map-entry-complex" [(sv "k1", seqv [sv "a"]), (sv "k2", mapv [(sv "x", sv "y")])]
   checkMapEntry state "map-entry-deep" [(sv "k", seqv [mapv [(sv "inner", seqv [sv "deep"])]])]
 
+/-! ## Priority 7 — `handleBlockMappingKeyEntry_mono_step`
+
+Fuel monotonicity for `handleBlockMappingKeyEntry`: if the helper succeeds
+at fuel `n+1`, it succeeds at `n+2` with the **same result** (same key,
+value, and resulting parser state).
+
+**Risk:** MEDIUM. The theorem's universal quantification over `n : Nat`,
+`ps : ParseState`, and `idx : Nat` is standard fuel-monotonicity shape
+(typically true). The theorem does depend on a `parseNode` monotonicity
+hypothesis (`ih_pn`) and a `parseBlockMappingEntryValue` monotonicity
+helper (`h_bmv`), so if those were false, this would inherit that.
+
+**Audit approach:** Exercise `handleBlockMappingKeyEntry` over block-style
+YAML inputs (scalar keys, complex keys, nested values, empty values), at
+several fuel values spanning the success threshold, and check that the
+result is preserved across `(n+1) → (n+2)`.
+-/
+
+/-- Find the first `.key` token position in `tokens`. -/
+private def findKeyPos (tokens : Array (Positioned YamlToken)) : Option Nat := do
+  for _h : i in [0:tokens.size] do
+    if tokens[i]!.val == .key then
+      return i
+  none
+
+/-- Compare two `(YamlValue × YamlValue × ParseState)` results structurally
+    (key, val, pos, tokens.size). ParseState has no derived `BEq`, so we
+    compare observable fields. -/
+private def resultEq
+    (r1 r2 : YamlValue × YamlValue × ParseState) : Bool :=
+  r1.fst == r2.fst && r1.snd.fst == r2.snd.fst &&
+  r1.snd.snd.pos == r2.snd.snd.pos &&
+  r1.snd.snd.tokens.size == r2.snd.snd.tokens.size
+
+/-- Check parseNode monotonicity at fuel `n` for a given `ps`: equivalent
+    of the `ih_pn` hypothesis in the theorem. Returns `true` if the
+    monotonicity property holds for this specific `(ps, n)`. Used to
+    distinguish true theorem violations from cases where the `ih_pn`
+    hypothesis itself is false (vacuously satisfying the implication). -/
+private def parseNodeMonoHoldsAt (ps : ParseState) (n : Nat) : Bool :=
+  match parseNode ps (n + 1), parseNode ps (n + 2) with
+  | .ok v1, .ok v2 => v1.fst == v2.fst && v1.snd.pos == v2.snd.pos
+  | .ok _, .error _ => false  -- lost success = not monotonic
+  | .error _, _ => true       -- (n+1) failed → ih_pn vacuous
+
+/-- Check parseBlockMappingEntryValue monotonicity at fuel `n` for a given
+    `ps, khc, kl, kc`: equivalent of the `h_bmv` hypothesis.  -/
+private def parseBMVMonoHoldsAt (ps : ParseState) (khc : Bool) (kl kc : Nat)
+    (n : Nat) : Bool :=
+  match parseBlockMappingEntryValue ps (n + 1) khc kl kc,
+        parseBlockMappingEntryValue ps (n + 2) khc kl kc with
+  | .ok v1, .ok v2 => v1.fst == v2.fst && v1.snd.pos == v2.snd.pos
+  | .ok _, .error _ => false
+  | .error _, _ => true
+
+/-- For a given `input`, find the first `.key` position and for fuel values
+    spanning the success threshold, verify that success at `n+1` implies
+    success at `n+2` with the **same result**. Skip checks where `ih_pn`
+    at fuel `n` (evaluated on `ps.advance`) doesn't hold, as the theorem
+    is vacuous there. -/
+private def checkBMKEMono (state : IO.Ref TestCollector)
+    (label : String) (input : String) : IO Unit := do
+  match scanFiltered input with
+  | .error e =>
+    checkM state s!"{label}: scan ok" false s!"scan error: {repr e}"
+  | .ok tokens =>
+    check state s!"{label}: scan ok" true
+    match findKeyPos tokens with
+    | none =>
+      checkM state s!"{label}: has .key" false "no .key token in scan output"
+    | some keyPos =>
+      check state s!"{label}: found .key@{keyPos}" true
+      let ps : ParseState := { tokens := tokens, pos := keyPos }
+      let psAdv := ps.advance
+      -- Sweep fuel from 1 to 4*size+8 to exercise both the
+      -- insufficient-fuel and sufficient-fuel regimes.
+      let fuelMax := 4 * tokens.size + 8
+      let mut regressionSeen := false
+      let mut vacuousCount := 0
+      let mut firstSuccess : Option Nat := none
+      for _h : fuel in [1:fuelMax] do
+        -- Only check cases where BOTH hypotheses hold: ih_pn (parseNode
+        -- mono at fuel `fuel` on ps.advance) AND h_bmv (parseBMV mono at
+        -- fuel `fuel`). If either fails, the theorem's hypothesis is
+        -- false, making the implication vacuously true.
+        let ihPnOk := parseNodeMonoHoldsAt psAdv fuel
+        -- h_bmv is universally quantified in the theorem, so we need it
+        -- to hold for any (ps', khc, kl, kc) that might be passed in.
+        -- Pragmatic approximation: check h_bmv on the canonical ps after
+        -- parseNode would succeed, and a boolean khc derived from peek.
+        let psForBmv :=
+          match parseNode psAdv (fuel + 1) with
+          | .ok (_, psPost) => psPost
+          | .error _ => psAdv
+        let khc : Bool :=
+          match psAdv.peek? with
+          | some YamlToken.value | some YamlToken.blockEnd => false
+          | _ => true
+        let hBmvOk := parseBMVMonoHoldsAt psForBmv khc 0 0 fuel
+        if !ihPnOk || !hBmvOk then
+          vacuousCount := vacuousCount + 1
+        else
+          let r1 := handleBlockMappingKeyEntry ps (fuel + 1) 0
+          let r2 := handleBlockMappingKeyEntry ps (fuel + 2) 0
+          match r1, r2 with
+          | .ok v1, .ok v2 =>
+            if firstSuccess.isNone then firstSuccess := some (fuel + 1)
+            let eq := resultEq v1 v2
+            check state s!"{label}: mono@fuel{fuel+1}→{fuel+2} result preserved" eq
+            if !eq then regressionSeen := true
+          | .ok _, .error _ =>
+            -- CRITICAL: counterexample to the theorem (both hypotheses hold).
+            checkM state s!"{label}: mono@fuel{fuel+1}→{fuel+2} NO REGRESSION"
+              false "more fuel produced .error despite ih_pn + h_bmv (theorem violated)"
+            regressionSeen := true
+          | .error _, _ =>
+            -- (n+1) didn't succeed; nothing to verify.
+            pure ()
+      check state s!"{label}: some fuel succeeded" firstSuccess.isSome
+      check state s!"{label}: no regression where ih_pn+h_bmv hold" (!regressionSeen)
+      if let some f := firstSuccess then
+        check state s!"{label}: first success (ih_pn-guarded) fuel = {f}" true
+      if vacuousCount > 0 then
+        check state s!"{label}: vacuous-ih_pn fuel count = {vacuousCount}" true
+
+/-- Priority 7 test suite: `handleBlockMappingKeyEntry` mono step. -/
+private def testHandleBlockMappingKeyEntryMono (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Priority 7: handleBlockMappingKeyEntry_mono_step"
+
+  -- Simple implicit keys (scalar: scalar)
+  checkBMKEMono state "implicit-simple" "a: b"
+  checkBMKEMono state "implicit-two-pairs" "a: b\nc: d"
+  checkBMKEMono state "implicit-three-pairs" "a: 1\nb: 2\nc: 3"
+
+  -- Empty key (explicit `?` with no content)
+  checkBMKEMono state "explicit-empty-key" "?\n: v"
+  checkBMKEMono state "explicit-key-only" "? key"
+
+  -- Explicit key with content
+  checkBMKEMono state "explicit-full" "? k\n: v"
+  checkBMKEMono state "explicit-two" "? k1\n: v1\n? k2\n: v2"
+
+  -- Block nested value: sequence
+  checkBMKEMono state "block-value-seq" "k:\n  - a\n  - b"
+  checkBMKEMono state "block-value-seq-nested" "k:\n  - a\n  - - b\n    - c"
+
+  -- Block nested value: mapping
+  checkBMKEMono state "block-value-map" "k:\n  a: 1\n  b: 2"
+  checkBMKEMono state "block-value-map-deep" "k:\n  a:\n    b: c"
+
+  -- Flow value inside block mapping
+  checkBMKEMono state "flow-value-seq" "k: [a, b, c]"
+  checkBMKEMono state "flow-value-map" "k: {a: 1, b: 2}"
+  checkBMKEMono state "flow-value-complex" "k: [{a: 1}, [b, c]]"
+
+  -- Quoted scalars
+  checkBMKEMono state "quoted-value" "k: \"hello\""
+  checkBMKEMono state "quoted-key" "\"k\": v"
+
+  -- Null and boolean-ish
+  checkBMKEMono state "null-value" "k: ~"
+  checkBMKEMono state "empty-value" "k:"
+
+  -- Complex nested structures
+  checkBMKEMono state "complex-1" "a:\n  b:\n    - c\n    - d\ne: f"
+  checkBMKEMono state "complex-2" "root:\n  list:\n    - item1\n    - item2\n  map:\n    key: value"
+
 def collectTests : IO VerifiedSuiteResult := do
   let state ← IO.mkRef ({} : TestCollector)
   test9g state
@@ -1650,6 +1817,7 @@ def collectTests : IO VerifiedSuiteResult := do
   test5_bound state
   test_filtered_prefix state
   testFlowParserHelpers state
+  testHandleBlockMappingKeyEntryMono state
   let results ← finish state
   return { name := "adversarialinstantiation",
            label := "Adversarial Instantiation Tests (sorry audit)",
