@@ -2,7 +2,7 @@
 
 ## Status
 
-**25 declaration-level `sorry`s remain** (12 zero cases + 5 step cases + 8
+**24 declaration-level `sorry`s remain** (12 zero cases + 4 step cases + 8
 higher-level witnesses). The mutual-induction theorem has been refactored from
 one large conjunction proof into 12 separate `_mono_step` theorems plus 12
 `_mono_zero` theorems, with `parser_fuel_mono_succ` composing them via
@@ -19,6 +19,7 @@ be worked on independently.
 - [x] **Refactor**: split `parser_fuel_mono_succ` into 12 `_mono_step` + 12
       `_mono_zero` theorems + a composed main theorem — 2026-04-19.
 - [x] **Step 1, Part 7 succ** (parseSinglePairMapping) — 2026-04-19.
+- [x] **Step 1, Part 8 succ** (parseFlowSequenceLoop) — 2026-04-19.
 
 ## Plan
 
@@ -46,20 +47,26 @@ below it project the relevant conjunct.
 | 5 | `parseBlockMapping`                | ih_bml                 | :4751    | ✅     |
 | 6 | `parseImplicitBlockSequence`       | ih_ibsl                | :4769    | ✅     |
 | 7 | `parseSinglePairMapping`           | ih_pn                  | :4797    | ✅     |
-| 8 | `parseFlowSequenceLoop`            | ih_pn, ih_sp           | :4845    | ⏳     |
-| 9 | `parseFlowMappingLoop`             | ih_pn, ih_sp           | :4852    | ⏳     |
-| 10| `parseBlockSequenceLoop`           | ih_pn                  | :4858    | ⏳     |
-| 11| `parseBlockMappingLoop`            | ih_pn                  | :4863    | ⏳     |
-| 12| `parseImplicitBlockSequenceLoop`   | ih_pn                  | :4868    | ⏳     |
+| 8 | `parseFlowSequenceLoop`            | ih_pn, ih_sp, ih_fsl   | :4909    | ✅     |
+| 9 | `parseFlowMappingLoop`             | ih_pn, ih_sp, ih_fml   | :4970    | ⏳     |
+| 10| `parseBlockSequenceLoop`           | ih_pn, ih_bsl          | :4976    | ⏳     |
+| 11| `parseBlockMappingLoop`            | ih_pn, ih_bml          | :4981    | ⏳     |
+| 12| `parseImplicitBlockSequenceLoop`   | ih_pn, ih_ibsl         | :4986    | ⏳     |
 
 **Zero cases** (`xxx_mono_zero`): 12 stubs at
 [:4568-4601](L4YAML/Proofs/ParserWellBehaved.lean:4568). Each ~5-30 lines,
 mirroring the succ case but with vacuity arguments at internal fuel=0.
 
 Line-size estimates (succ cases): Parts 3-6 ≈ 12 lines each (done),
-Part 7 ≈ 30 lines body (helpers done, wiring blocked),
-Parts 8-12 ≈ 40-60 lines each (templates based on `parseFlowSequenceLoop_fuel_mono_succ`
-below in the file).
+Part 7 ≈ 60 lines body (done),
+Part 8 ≈ 60 lines body (done),
+Parts 9-12 ≈ 40-60 lines each (Part 9 follows Part 8 closely; Parts 10-12 are
+simpler since their inner dispatch has fewer arms).
+
+**Dependency note**: Each loop's `_mono_step` also needs its own self-IH
+(e.g. Part 8 needs `ih_fsl`, Part 9 needs `ih_fml`, etc.) because the loop's
+tail-recursive call at the inner fuel level needs monotonicity bridging. The
+plan table above was updated on 2026-04-19 to reflect this.
 
 **Legend**: ✅ proved · ⏳ not started · 🚧 attempted, blocked.
 
@@ -94,6 +101,17 @@ interactive `trace_state` + `sorry` checkpoints to see the exact form of
 
 The `key_step` / `val_step` helpers drafted in earlier attempts turned out to
 be unnecessary — `ih_pn` applied directly via `rw` handles every fuel shift.
+
+**Part 8 proof approach** (landed 2026-04-19): Key insight — `split at h_ok`
+on a `match` expression *auto-aligns the goal* when both h_ok and goal share
+the same scrutinee (like `ps.peek?`), because split generalizes the scrutinee
+to a common variable before case-splitting. But `split at h_ok` on an `if`
+does *not* auto-align the goal (propositions don't iota-reduce from a
+hypothesis alone), so the `if items_acc.size > 0` condition needs `split at
+h_ok <;> split` (4 cross-cases, 2 closed by `omega` for items-size mismatch).
+Inner peek matches use bare `split at h_ok`. For `parseSinglePairMapping` /
+`parseNode` sub-calls, the pattern is `split at h_ok; cases h_ok / rename_i v
+h_inner; have h' := ih_... _ _ h_inner; rw [h']; exact ih_fsl ...`.
 
 ### Step 2 — Loop-level fuel monotonicity lemmas
 
