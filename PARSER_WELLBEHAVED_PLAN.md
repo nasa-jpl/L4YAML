@@ -2,7 +2,7 @@
 
 ## Status
 
-**26 declaration-level `sorry`s remain** (12 zero cases + 6 step cases + 8
+**25 declaration-level `sorry`s remain** (12 zero cases + 5 step cases + 8
 higher-level witnesses). The mutual-induction theorem has been refactored from
 one large conjunction proof into 12 separate `_mono_step` theorems plus 12
 `_mono_zero` theorems, with `parser_fuel_mono_succ` composing them via
@@ -18,6 +18,7 @@ be worked on independently.
 - [x] **Step 1, Part 2 succ** (parseFlowSequence) — 2026-04-19.
 - [x] **Refactor**: split `parser_fuel_mono_succ` into 12 `_mono_step` + 12
       `_mono_zero` theorems + a composed main theorem — 2026-04-19.
+- [x] **Step 1, Part 7 succ** (parseSinglePairMapping) — 2026-04-19.
 
 ## Plan
 
@@ -44,7 +45,7 @@ below it project the relevant conjunct.
 | 4 | `parseBlockSequence`               | ih_bsl                 | :4735    | ✅     |
 | 5 | `parseBlockMapping`                | ih_bml                 | :4751    | ✅     |
 | 6 | `parseImplicitBlockSequence`       | ih_ibsl                | :4769    | ✅     |
-| 7 | `parseSinglePairMapping`           | ih_pn                  | :4797    | 🚧     |
+| 7 | `parseSinglePairMapping`           | ih_pn                  | :4797    | ✅     |
 | 8 | `parseFlowSequenceLoop`            | ih_pn, ih_sp           | :4845    | ⏳     |
 | 9 | `parseFlowMappingLoop`             | ih_pn, ih_sp           | :4852    | ⏳     |
 | 10| `parseBlockSequenceLoop`           | ih_pn                  | :4858    | ⏳     |
@@ -62,37 +63,37 @@ below in the file).
 
 **Legend**: ✅ proved · ⏳ not started · 🚧 attempted, blocked.
 
-**Part 7 blocker** (updated 2026-04-19): `parseSinglePairMapping_mono_step` at
-[:4797](L4YAML/Proofs/ParserWellBehaved.lean:4797) has helper lemmas
-`key_step` and `val_step` **proven and checked in** (~40 lines as local `have`
-statements). Both use `rcases` on `ps.peek?`, `cases tok`, `exact h` for
-empty-token branches, `exact ih_pn _ _ _ h` for parseNode branches; `rw [h_peek]
-at h` is load-bearing since `rcases` substitutes in the goal but not in hyps.
+**Part 7 proof approach** (landed 2026-04-19): the winning strategy used
+interactive `trace_state` + `sorry` checkpoints to see the exact form of
+`h_ok` / goal after `unfold + dsimp`:
 
-Remaining block is wiring the helpers into the do-block body. Two approaches
-tried and rejected:
+1. `unfold parseSinglePairMapping at h_ok ⊢; dsimp only at h_ok ⊢` reduces the
+   outer fuel match and zeta-reduces the `let ps := ps.advance` shadow, leaving
+   both h_ok and goal as a single `match ps.advance.peek? with ...` where the
+   four-arm body is a `do let y ← KEY_RES; <VAL body using y>`.
+2. `generalize h_peek_k : ps.advance.peek? = p_k at h_ok ⊢; cases p_k` splits
+   into 24 peek? arms (1 `none` + 23 `some tok_k`), aligning h_ok and goal per
+   arm.
+3. Each arm is either an *empty* KEY arm (peek? ∈ {.value, .flowEntry,
+   .flowSequenceEnd}) where KEY_RES = `.ok (emptyNode, ps.advance)`, or a
+   *default* KEY arm where KEY_RES = `parseNode ps.advance fuel`.
+4. For empty arms: `simp only [bind, Except.bind, emptyNode]` unfolds
+   `emptyNode` so the `match emptyNode with | .scalar s => s.content | _ => "0"`
+   in the `currentPath` reduces to `""`. Then `split at h_ok` peels the outer
+   `if consumed then ... else ...`.
+5. For default arms: `simp only [bind, Except.bind]` (no emptyNode), then
+   `split at h_ok` on the `match parseNode … with | .error | .ok`, using
+   `cases h_ok` in the error branch and `have h_pn' := ih_pn _ _ _ h_pn` +
+   `rw [h_pn']` in the .ok branch. An extra `split at h_ok` is needed before
+   the outer `if` because the `match v.fst with | .scalar s => s.content | _ =>
+   "0"` in the record update gets split first.
+6. In both cases, the inner VAL match (on `ps_tc.peek?`) follows the same
+   pattern: direct `exact h_ok` for flowEntry / flowSequenceEnd / none arms
+   (h_ok and goal are identical since no fuel is involved), and `split at h_ok
+   + cases h_ok for .error + ih_pn bridge for .ok` in the default arm.
 
-1. **`simp only [bind, Except.bind, emptyNode] + split at h_ok`**: simp merges
-   the KEY_MATCH's inner `match ps.peek? with …` with the outer `Except.bind`
-   via iota, producing a 4-arm top-level match. `split at h_ok` greedily also
-   splits the `if consumed` inside each arm, yielding compound case names like
-   `h_1.isTrue`. `first | alt_parseNode | alt_empty` enumeration mis-aligns.
-2. **`generalize h_km : KEY_MATCH = km_in at h_ok` + `cases km_in`**: the clean
-   alternative, but the literal KEY_MATCH term in h_ok has a shadowing
-   `let ps := ps.advance`, so the generalize target needs zeta-reduction first.
-   VAL_BIND has 8+ repetitions of `{ps_k with currentPath := …}.tryConsume`,
-   making the second generalize target fragile.
-
-**Concrete next steps** for a subsequent session with interactive Lean:
-- After `intro ps kv h_ok`, add `unfold parseSinglePairMapping at h_ok ⊢;
-  dsimp only at h_ok ⊢` to expose the body and zeta-reduce the `let ps :=
-  ps.advance` shadow.
-- Use `set ps_adv := ps.advance` and `set ps_tc := (…).tryConsume YamlToken.value`
-  to give intermediate states short names.
-- Then `generalize h_km : KEY_MATCH = km_in at h_ok` and `cases km_in`, handling
-  the `.error`/`.ok` branches with `key_step` and rewrites.
-- Repeat for VAL_BIND, with `by_cases` on `consumed = true` before the second
-  `generalize` so the `if` collapses.
+The `key_step` / `val_step` helpers drafted in earlier attempts turned out to
+be unnecessary — `ih_pn` applied directly via `rw` handles every fuel shift.
 
 ### Step 2 — Loop-level fuel monotonicity lemmas
 
