@@ -4894,12 +4894,76 @@ theorem parseSinglePairMapping_mono_step (n : Nat) (ih_pn : ParseNode_succ n) :
               rw [if_neg h_cons]
               exact h_ok))
 
-/-- Part 8 step: parseFlowSequenceLoop `(n+2) → (n+3)`. Needs parseNode +
-    parseSinglePairMapping IHs. -/
+/-- Part 8 step: parseFlowSequenceLoop `(n+2) → (n+3)`.
+
+Body (non-base): dispatches on `ps.peek?`:
+- `.flowSequenceEnd` → immediate `.ok`
+- otherwise → optional separator (if `items.size > 0`, require `.flowEntry`),
+  then dispatch again on `ps.peek?`:
+  - `.key` → `parseSinglePairMapping` + loop recursion
+  - `.flowSequenceEnd` → return
+  - otherwise → `parseNode` + loop recursion
+
+Uses `ih_pn` for the parseNode call, `ih_sp` for parseSinglePairMapping, and
+`ih_fsl` (self-IH) for the tail-recursive loop call. -/
 theorem parseFlowSequenceLoop_mono_step (n : Nat)
-    (ih_pn : ParseNode_succ n) (ih_sp : ParseSinglePairMapping_succ n) :
+    (ih_pn : ParseNode_succ n) (ih_sp : ParseSinglePairMapping_succ n)
+    (ih_fsl : ParseFlowSequenceLoop_succ n) :
     ParseFlowSequenceLoop_succ (n + 1) := by
-  sorry
+  intro ps items_acc items ps' h_ok
+  unfold parseFlowSequenceLoop at h_ok ⊢
+  simp only [Bind.bind, Except.bind] at h_ok ⊢
+  split at h_ok
+  · exact h_ok
+  · -- wildcard on outer peek: auto-aligned.
+    simp only [pure, Except.pure] at h_ok ⊢
+    -- `if` doesn't auto-align goal, use <;> split.
+    split at h_ok <;> split
+    · -- items > 0 in both
+      -- separator match: auto-aligned.
+      split at h_ok
+      · -- separator = flowEntry: proceed
+        -- inner peek match: auto-aligned.
+        split at h_ok
+        · -- inner peek = .key: parseSinglePairMapping + loop
+          split at h_ok
+          · cases h_ok
+          · rename_i v h_sp
+            have h_sp' := ih_sp _ _ h_sp
+            rw [h_sp']
+            exact ih_fsl _ _ _ _ h_ok
+        · -- inner peek = .flowSeqEnd: .ok (items_acc, ps)
+          exact h_ok
+        · -- inner peek default: parseNode + loop
+          split at h_ok
+          · cases h_ok
+          · rename_i v h_pn
+            have h_pn' := ih_pn _ _ _ h_pn
+            rw [h_pn']
+            exact ih_fsl _ _ _ _ h_ok
+      · -- separator ≠ flowEntry: early return
+        exact h_ok
+    · rename_i h1 h2; omega
+    · rename_i h1 h2; omega
+    · -- items = 0 in both
+      -- inner peek match: auto-aligned.
+      split at h_ok
+      · -- .key
+        split at h_ok
+        · cases h_ok
+        · rename_i v h_sp
+          have h_sp' := ih_sp _ _ h_sp
+          rw [h_sp']
+          exact ih_fsl _ _ _ _ h_ok
+      · -- .flowSeqEnd
+        exact h_ok
+      · -- default
+        split at h_ok
+        · cases h_ok
+        · rename_i v h_pn
+          have h_pn' := ih_pn _ _ _ h_pn
+          rw [h_pn']
+          exact ih_fsl _ _ _ _ h_ok
 
 /-- Part 9 step: parseFlowMappingLoop `(n+2) → (n+3)`. Needs parseNode +
     parseSinglePairMapping IHs. -/
@@ -4954,7 +5018,7 @@ theorem parser_fuel_mono_succ : ∀ fuel : Nat,
            parseBlockMapping_mono_step n ih_bml,
            parseImplicitBlockSequence_mono_step n ih_ibsl,
            parseSinglePairMapping_mono_step n ih_pn,
-           parseFlowSequenceLoop_mono_step n ih_pn ih_sp,
+           parseFlowSequenceLoop_mono_step n ih_pn ih_sp ih_fsl,
            parseFlowMappingLoop_mono_step n ih_pn ih_sp,
            parseBlockSequenceLoop_mono_step n ih_pn,
            parseBlockMappingLoop_mono_step n ih_pn,
