@@ -5094,10 +5094,40 @@ theorem parseFlowMappingLoop_mono_step (n : Nat)
             rw [h_fmv']
             exact ih_fml _ _ _ _ h_ok
 
-/-- Part 10 step: parseBlockSequenceLoop `(n+2) → (n+3)`. Needs parseNode IH. -/
-theorem parseBlockSequenceLoop_mono_step (n : Nat) (ih_pn : ParseNode_succ n) :
+/-- Part 10 step: parseBlockSequenceLoop `(n+2) → (n+3)`.
+
+Body (non-base): dispatches on `ps.peek?`:
+- `.blockEntry` → advance, then inner dispatch on `ps.peek?`:
+  - `.blockEntry | .blockEnd | none` → push emptyNode + loop recursion
+  - otherwise → `parseNode` + loop recursion
+- otherwise → return `.ok (items_acc, ps)`
+
+Uses `ih_pn` for the parseNode call and `ih_bsl` (self-IH) for the
+tail-recursive loop call. -/
+theorem parseBlockSequenceLoop_mono_step (n : Nat)
+    (ih_pn : ParseNode_succ n) (ih_bsl : ParseBlockSequenceLoop_succ n) :
     ParseBlockSequenceLoop_succ (n + 1) := by
-  sorry
+  intro ps items_acc items ps' h_ok
+  unfold parseBlockSequenceLoop at h_ok ⊢
+  simp only [Bind.bind, Except.bind] at h_ok ⊢
+  split at h_ok
+  · -- outer .blockEntry
+    split at h_ok
+    · -- inner .blockEntry (empty)
+      exact ih_bsl _ _ _ _ h_ok
+    · -- inner .blockEnd (empty)
+      exact ih_bsl _ _ _ _ h_ok
+    · -- inner none (empty)
+      exact ih_bsl _ _ _ _ h_ok
+    · -- inner default: parseNode + loop
+      split at h_ok
+      · cases h_ok
+      · rename_i v h_pn
+        have h_pn' := ih_pn _ _ _ h_pn
+        rw [h_pn']
+        exact ih_bsl _ _ _ _ h_ok
+  · -- outer default
+    exact h_ok
 
 /-- Part 11 step: parseBlockMappingLoop `(n+2) → (n+3)`. Needs parseNode IH. -/
 theorem parseBlockMappingLoop_mono_step (n : Nat) (ih_pn : ParseNode_succ n) :
@@ -5142,7 +5172,7 @@ theorem parser_fuel_mono_succ : ∀ fuel : Nat,
            parseSinglePairMapping_mono_step n ih_pn,
            parseFlowSequenceLoop_mono_step n ih_pn ih_sp ih_fsl,
            parseFlowMappingLoop_mono_step n ih_pn ih_fml,
-           parseBlockSequenceLoop_mono_step n ih_pn,
+           parseBlockSequenceLoop_mono_step n ih_pn ih_bsl,
            parseBlockMappingLoop_mono_step n ih_pn,
            parseImplicitBlockSequenceLoop_mono_step n ih_pn⟩
 

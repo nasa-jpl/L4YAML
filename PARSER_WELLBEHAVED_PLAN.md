@@ -2,7 +2,7 @@
 
 ## Status
 
-**23 declaration-level `sorry`s remain** (12 zero cases + 3 step cases + 8
+**22 declaration-level `sorry`s remain** (12 zero cases + 2 step cases + 8
 higher-level witnesses). The mutual-induction theorem has been refactored from
 one large conjunction proof into 12 separate `_mono_step` theorems plus 12
 `_mono_zero` theorems, with `parser_fuel_mono_succ` composing them via
@@ -21,6 +21,7 @@ be worked on independently.
 - [x] **Step 1, Part 7 succ** (parseSinglePairMapping) — 2026-04-19.
 - [x] **Step 1, Part 8 succ** (parseFlowSequenceLoop) — 2026-04-19.
 - [x] **Step 1, Part 9 succ** (parseFlowMappingLoop) — 2026-04-19.
+- [x] **Step 1, Part 10 succ** (parseBlockSequenceLoop) — 2026-04-19.
 
 ## Plan
 
@@ -50,7 +51,7 @@ below it project the relevant conjunct.
 | 7 | `parseSinglePairMapping`           | ih_pn                  | :4797    | ✅     |
 | 8 | `parseFlowSequenceLoop`            | ih_pn, ih_sp, ih_fsl   | :4909    | ✅     |
 | 9 | `parseFlowMappingLoop`             | ih_pn, ih_fml          | :4970    | ✅     |
-| 10| `parseBlockSequenceLoop`           | ih_pn, ih_bsl          | :4976    | ⏳     |
+| 10| `parseBlockSequenceLoop`           | ih_pn, ih_bsl          | :5098    | ✅     |
 | 11| `parseBlockMappingLoop`            | ih_pn, ih_bml          | :4981    | ⏳     |
 | 12| `parseImplicitBlockSequenceLoop`   | ih_pn, ih_ibsl         | :4986    | ⏳     |
 
@@ -62,8 +63,9 @@ Line-size estimates (succ cases): Parts 3-6 ≈ 12 lines each (done),
 Part 7 ≈ 60 lines body (done),
 Part 8 ≈ 60 lines body (done),
 Part 9 ≈ 100 lines body + 2 inline helpers (done),
-Parts 10-12 ≈ 40-60 lines each (simpler — their inner dispatch has fewer arms
-and the key parser is `parseNode` directly, so no helpers needed).
+Part 10 ≈ 25 lines body (done — confirmed simpler with no helpers needed),
+Parts 11-12 ≈ 30-60 lines each (similar structure — `parseNode` directly, no
+helpers).
 
 **Dependency note**: Each loop's `_mono_step` also needs its own self-IH
 (e.g. Part 8 needs `ih_fsl`, Part 9 needs `ih_fml`, etc.) because the loop's
