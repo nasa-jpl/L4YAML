@@ -4965,12 +4965,134 @@ theorem parseFlowSequenceLoop_mono_step (n : Nat)
           rw [h_pn']
           exact ih_fsl _ _ _ _ h_ok
 
-/-- Part 9 step: parseFlowMappingLoop `(n+2) → (n+3)`. Needs parseNode +
-    parseSinglePairMapping IHs. -/
+/-- Part 9 step: parseFlowMappingLoop `(n+2) → (n+3)`.
+
+Body (non-base): dispatches on `ps.peek?`:
+- `.flowMappingEnd` → immediate `.ok`
+- otherwise → optional separator (if `pairs.size > 0`, require `.flowEntry`),
+  then dispatch again on `ps.peek?`:
+  - `.flowMappingEnd` → return
+  - `.key` → `ps.advance` + `parseExplicitKey` + `parseFlowMappingValue` + loop
+  - otherwise → `parseNode` + `parseFlowMappingValue` + loop
+
+Uses `ih_pn` for parseNode calls (also inside parseExplicitKey and
+parseFlowMappingValue via inline helpers) and `ih_fml` (self-IH) for the
+tail-recursive loop call. -/
 theorem parseFlowMappingLoop_mono_step (n : Nat)
-    (ih_pn : ParseNode_succ n) (ih_sp : ParseSinglePairMapping_succ n) :
+    (ih_pn : ParseNode_succ n) (ih_fml : ParseFlowMappingLoop_succ n) :
     ParseFlowMappingLoop_succ (n + 1) := by
-  sorry
+  -- Helper: parseExplicitKey fuel (n+1) → (n+2).
+  have h_ek : ∀ (ps : ParseState) (v : YamlValue) (ps'' : ParseState),
+      parseExplicitKey ps (n + 1) = .ok (v, ps'') →
+      parseExplicitKey ps (n + 2) = .ok (v, ps'') := by
+    intro ps v ps'' h
+    unfold parseExplicitKey at h ⊢
+    split at h
+    · exact h
+    · exact h
+    · exact h
+    · exact ih_pn _ _ _ h
+  -- Helper: parseFlowMappingValue fuel (n+1) → (n+2).
+  have h_fmv : ∀ (ps : ParseState) (path : YamlPath) (k : String)
+      (v : YamlValue) (ps'' : ParseState),
+      parseFlowMappingValue ps (n + 1) path k = .ok (v, ps'') →
+      parseFlowMappingValue ps (n + 2) path k = .ok (v, ps'') := by
+    intro ps path k v ps'' h
+    unfold parseFlowMappingValue at h ⊢
+    simp only [Bind.bind, Except.bind] at h ⊢
+    split at h
+    · rename_i h_c
+      rw [if_pos h_c]
+      split at h
+      · exact h
+      · exact h
+      · exact h
+      · split at h
+        · cases h
+        · rename_i w h_pn
+          have h_pn' := ih_pn _ _ _ h_pn
+          rw [h_pn']
+          exact h
+    · rename_i h_c
+      rw [if_neg h_c]
+      exact h
+  -- Common tactic for the `.key`/default inner arm's continuation after the
+  -- key parser's `.ok` branch: destructure, `rw` using the respective fuel
+  -- helper, then split on parseFlowMappingValue and close via ih_fml.
+  intro ps pairs_acc pairs ps' h_ok
+  unfold parseFlowMappingLoop at h_ok ⊢
+  simp only [Bind.bind, Except.bind] at h_ok ⊢
+  split at h_ok
+  · exact h_ok  -- .flowMappingEnd
+  · simp only [pure, Except.pure] at h_ok ⊢
+    split at h_ok <;> split
+    · -- pairs > 0 in both
+      split at h_ok  -- separator match
+      · -- .flowEntry
+        split at h_ok  -- inner peek match
+        · exact h_ok  -- .flowMappingEnd
+        · -- .key: parseExplicitKey + parseFlowMappingValue + loop
+          split at h_ok
+          · cases h_ok
+          · rename_i v h_ek_ok
+            obtain ⟨key, ps_mid⟩ := v
+            have h_ek' := h_ek _ _ _ h_ek_ok
+            rw [h_ek']
+            split at h_ok
+            · cases h_ok
+            · rename_i w h_fmv_ok
+              obtain ⟨val, ps_last⟩ := w
+              have h_fmv' := h_fmv _ _ _ _ _ h_fmv_ok
+              rw [h_fmv']
+              exact ih_fml _ _ _ _ h_ok
+        · -- default: parseNode + parseFlowMappingValue + loop
+          split at h_ok
+          · cases h_ok
+          · rename_i v h_pn
+            obtain ⟨key, ps_mid⟩ := v
+            have h_pn' := ih_pn _ _ _ h_pn
+            rw [h_pn']
+            split at h_ok
+            · cases h_ok
+            · rename_i w h_fmv_ok
+              obtain ⟨val, ps_last⟩ := w
+              have h_fmv' := h_fmv _ _ _ _ _ h_fmv_ok
+              rw [h_fmv']
+              exact ih_fml _ _ _ _ h_ok
+      · exact h_ok  -- separator ≠ .flowEntry
+    · rename_i h1 h2; omega
+    · rename_i h1 h2; omega
+    · -- pairs = 0 in both
+      split at h_ok  -- inner peek match
+      · exact h_ok  -- .flowMappingEnd
+      · -- .key
+        split at h_ok
+        · cases h_ok
+        · rename_i v h_ek_ok
+          obtain ⟨key, ps_mid⟩ := v
+          have h_ek' := h_ek _ _ _ h_ek_ok
+          rw [h_ek']
+          split at h_ok
+          · cases h_ok
+          · rename_i w h_fmv_ok
+            obtain ⟨val, ps_last⟩ := w
+            have h_fmv' := h_fmv _ _ _ _ _ h_fmv_ok
+            rw [h_fmv']
+            exact ih_fml _ _ _ _ h_ok
+      · -- default
+        split at h_ok
+        · cases h_ok
+        · rename_i v h_pn
+          obtain ⟨key, ps_mid⟩ := v
+          have h_pn' := ih_pn _ _ _ h_pn
+          rw [h_pn']
+          split at h_ok
+          · cases h_ok
+          · rename_i w h_fmv_ok
+            obtain ⟨val, ps_last⟩ := w
+            have h_fmv' := h_fmv _ _ _ _ _ h_fmv_ok
+            rw [h_fmv']
+            exact ih_fml _ _ _ _ h_ok
 
 /-- Part 10 step: parseBlockSequenceLoop `(n+2) → (n+3)`. Needs parseNode IH. -/
 theorem parseBlockSequenceLoop_mono_step (n : Nat) (ih_pn : ParseNode_succ n) :
@@ -5019,7 +5141,7 @@ theorem parser_fuel_mono_succ : ∀ fuel : Nat,
            parseImplicitBlockSequence_mono_step n ih_ibsl,
            parseSinglePairMapping_mono_step n ih_pn,
            parseFlowSequenceLoop_mono_step n ih_pn ih_sp ih_fsl,
-           parseFlowMappingLoop_mono_step n ih_pn ih_sp,
+           parseFlowMappingLoop_mono_step n ih_pn ih_fml,
            parseBlockSequenceLoop_mono_step n ih_pn,
            parseBlockMappingLoop_mono_step n ih_pn,
            parseImplicitBlockSequenceLoop_mono_step n ih_pn⟩
