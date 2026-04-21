@@ -2,11 +2,11 @@
 
 ## Status
 
-**22 `sorry`s across 17 declarations remain** after deleting the
+**21 `sorry`s across 16 declarations remain** after deleting the
 unsound, unused `parseFlowSequenceLoop_fuel_mono_succ` (see 2026-04-20
 audit note below). Breakdown:
 
-- 10 `_mono_zero` stubs (step 1, parts 15–24).
+- 9 `_mono_zero` stubs (step 1, parts 16–24).
 - 1 `parseFlowSequenceLoop_fuel_mono` general-form sorry (step 2).
 - 3 sorries inside `parseNode_flowSeqStart_in_seq`: needs
   `parseNodeProperties_skip` application (step 3).
@@ -80,6 +80,11 @@ independently.
       to iota-reduce, split on peek, then establish `h_loop_one` (loop at
       fuel=1 returns same empty when peek=flowSequenceEnd) via
       `unfold; simp [h_peek]`, and bridge. ~12 lines.
+- [x] **Step 1, Part 15 zero** (parseFlowMapping_mono_zero) — 2026-04-21.
+      Structurally identical to Part 14 with `parseFlowMappingLoop` /
+      `.flowMappingEnd` / `YamlValue.mapping .flow pairs` substituted for
+      their sequence counterparts. Same ~12-line proof, same build-green
+      tactic sequence.
 
 ## Plan
 
@@ -132,16 +137,16 @@ mirroring the succ case but with vacuity arguments at internal fuel=0.
 | -- | ---------------------------------- | ----------- | -------- | ------ |
 | 13 | `parseNode_mono_zero`              | mixed       | :4568    | ✅     |
 | 14 | `parseFlowSequence_mono_zero`      | mixed       | :4644    | ✅     |
-| 15 | `parseFlowMapping_mono_zero`       | mixed       | :4658    | ⏳     |
-| 16 | `parseBlockSequence_mono_zero`     | mixed       | :4661    | ⏳     |
-| 17 | `parseBlockMapping_mono_zero`      | mixed       | :4664    | ⏳     |
-| 18 | `parseImplicitBlockSequence_mono_zero` | mixed   | :4667    | ⏳     |
-| 19 | `parseSinglePairMapping_mono_zero` | mixed       | :4670    | ⏳     |
-| 20 | `parseFlowSequenceLoop_mono_zero`  | mixed       | :4673    | ⏳     |
-| 21 | `parseFlowMappingLoop_mono_zero`   | mixed       | :4676    | ⏳     |
-| 22 | `parseBlockSequenceLoop_mono_zero` | mixed       | :4679    | ⏳     |
-| 23 | `parseBlockMappingLoop_mono_zero`  | mixed       | :4682    | ⏳     |
-| 24 | `parseImplicitBlockSequenceLoop_mono_zero` | mixed | :4685   | ⏳     |
+| 15 | `parseFlowMapping_mono_zero`       | mixed       | :4658    | ✅     |
+| 16 | `parseBlockSequence_mono_zero`     | mixed       | :4672    | ⏳     |
+| 17 | `parseBlockMapping_mono_zero`      | mixed       | :4675    | ⏳     |
+| 18 | `parseImplicitBlockSequence_mono_zero` | mixed   | :4678    | ⏳     |
+| 19 | `parseSinglePairMapping_mono_zero` | mixed       | :4681    | ⏳     |
+| 20 | `parseFlowSequenceLoop_mono_zero`  | mixed       | :4684    | ⏳     |
+| 21 | `parseFlowMappingLoop_mono_zero`   | mixed       | :4687    | ⏳     |
+| 22 | `parseBlockSequenceLoop_mono_zero` | mixed       | :4690    | ⏳     |
+| 23 | `parseBlockMappingLoop_mono_zero`  | mixed       | :4693    | ⏳     |
+| 24 | `parseImplicitBlockSequenceLoop_mono_zero` | mixed | :4696   | ⏳     |
 
 **Body style**:
 - *parsers* (parts 13–19, originally labelled "vacuous"): the outer fuel
