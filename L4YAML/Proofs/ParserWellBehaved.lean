@@ -4566,7 +4566,80 @@ recursion return the accumulator. All 12 currently `sorry`.
 -/
 
 theorem parseNode_mono_zero : ParseNode_succ 0 := by
-  intro ps val ps' h_ok; sorry
+  -- Auxiliary: parseNodeContent fuel 0 → 1. Mirrors `content_mono` from
+  -- `parseNode_mono_step` but each sub-parser arm is discharged by vacuity —
+  -- `parseBlockSequence _ 0`, `parseFlowSequence _ 0`, etc. all return
+  -- `.error (.nestingDepthExceeded …)`, contradicting the `.ok` hypothesis.
+  have content_zero : ∀ (ps_c : ParseState) (props : NodeProperties)
+      (v : YamlValue) (ps_r : ParseState),
+      parseNodeContent ps_c 0 props = .ok (v, ps_r) →
+      parseNodeContent ps_c 1 props = .ok (v, ps_r) := by
+    intro ps_c props v ps_r h
+    unfold parseNodeContent at h ⊢
+    generalize h_peek : ps_c.peek? = p at h ⊢
+    match p with
+    | some (YamlToken.scalar _ _) => exact h
+    | some YamlToken.blockSequenceStart => simp [parseBlockSequence] at h
+    | some YamlToken.blockMappingStart => simp [parseBlockMapping] at h
+    | some YamlToken.blockEntry => simp [parseImplicitBlockSequence] at h
+    | some YamlToken.flowSequenceStart => simp [parseFlowSequence] at h
+    | some YamlToken.flowMappingStart => simp [parseFlowMapping] at h
+    | some (YamlToken.alias _) => exact h
+    | some (YamlToken.anchor _) => exact h
+    | some (YamlToken.tag _ _) => exact h
+    | some (YamlToken.comment _) => exact h
+    | some YamlToken.key => exact h
+    | some YamlToken.value => exact h
+    | some YamlToken.flowEntry => exact h
+    | some YamlToken.flowSequenceEnd => exact h
+    | some YamlToken.flowMappingEnd => exact h
+    | some YamlToken.blockEnd => exact h
+    | some YamlToken.documentStart => exact h
+    | some YamlToken.documentEnd => exact h
+    | some (YamlToken.tagDirective _ _) => exact h
+    | some (YamlToken.versionDirective _ _) => exact h
+    | some YamlToken.placeholder => exact h
+    | some YamlToken.streamStart => exact h
+    | some YamlToken.streamEnd => exact h
+    | none => exact h
+  intro ps val ps' h_ok
+  unfold parseNode at h_ok
+  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  split at h_ok
+  · -- alias path: fuel-independent
+    rename_i name h_peek
+    split at h_ok
+    · contradiction
+    · rename_i h_check
+      unfold parseNode
+      simp only [bind, Except.bind, pure, Except.pure, h_peek, h_check]
+      exact h_ok
+  · -- non-alias path: chain through parseNodeProperties / validateNodeProps /
+    -- parseNodeContent, bridging the last via `content_zero`.
+    rename_i h_ne
+    split at h_ok
+    · contradiction
+    · rename_i v_props heq_props
+      split at h_ok
+      · contradiction
+      · rename_i heq_val
+        split at h_ok
+        · contradiction
+        · rename_i v_content heq_content
+          have heq_content' :=
+            content_zero v_props.2 v_props.1 v_content.1 v_content.2 heq_content
+          unfold parseNode
+          rcases h_peek_eq : ps.peek? with _ | t
+          · simp only [bind, Except.bind, pure, Except.pure,
+              heq_props, heq_val, heq_content']
+            exact h_ok
+          · cases t with
+            | alias name => exact absurd h_peek_eq (h_ne name)
+            | _ =>
+              all_goals (
+                simp only [bind, Except.bind, pure, Except.pure,
+                  heq_props, heq_val, heq_content']
+                exact h_ok)
 
 theorem parseFlowSequence_mono_zero : ParseFlowSequence_succ 0 := by
   intro ps val ps' h_ok; sorry

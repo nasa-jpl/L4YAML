@@ -2,11 +2,11 @@
 
 ## Status
 
-**24 `sorry`s across 19 declarations remain** after deleting the
+**23 `sorry`s across 18 declarations remain** after deleting the
 unsound, unused `parseFlowSequenceLoop_fuel_mono_succ` (see 2026-04-20
 audit note below). Breakdown:
 
-- 12 `_mono_zero` stubs (step 1, parts 13–24).
+- 11 `_mono_zero` stubs (step 1, parts 14–24).
 - 1 `parseFlowSequenceLoop_fuel_mono` general-form sorry (step 2).
 - 3 sorries inside `parseNode_flowSeqStart_in_seq`: needs
   `parseNodeProperties_skip` application (step 3).
@@ -62,6 +62,13 @@ independently.
       cases (blockEntry/blockEnd/key/none) instead of 3. Signature updated
       to take `ih_ibsl` in addition to `ih_pn`; call site in
       `parser_fuel_mono_succ` updated.
+- [x] **Step 1, Part 13 zero** (parseNode_mono_zero) — 2026-04-21. Not
+      purely vacuous: `parseNode ps 1 = .ok` succeeds on alias/scalar/empty
+      paths, so the proof mirrors `parseNode_mono_step` with an auxiliary
+      `content_zero : parseNodeContent ps_c 0 → parseNodeContent ps_c 1`.
+      Sub-parser arms (block/flow sequence/mapping, implicit block
+      sequence) are discharged by `simp [parseXxx] at h` using the fuel=0
+      `.error` return. ~70 lines.
 
 ## Plan
 
@@ -112,7 +119,7 @@ mirroring the succ case but with vacuity arguments at internal fuel=0.
 
 | #  | Parser/loop                        | Body style  | Location | Status |
 | -- | ---------------------------------- | ----------- | -------- | ------ |
-| 13 | `parseNode_mono_zero`              | vacuous     | :4568    | ⏳     |
+| 13 | `parseNode_mono_zero`              | mixed       | :4568    | ✅     |
 | 14 | `parseFlowSequence_mono_zero`      | vacuous     | :4571    | ⏳     |
 | 15 | `parseFlowMapping_mono_zero`       | vacuous     | :4574    | ⏳     |
 | 16 | `parseBlockSequence_mono_zero`     | vacuous     | :4577    | ⏳     |
@@ -126,12 +133,17 @@ mirroring the succ case but with vacuity arguments at internal fuel=0.
 | 24 | `parseImplicitBlockSequenceLoop_mono_zero` | mixed | :4601   | ⏳     |
 
 **Body style**:
-- *vacuous*: parsers (parts 13–19) error at internal fuel=0 by returning
-  `.error "insufficient fuel"` / `.error (.nestingDepthExceeded …)`. The
-  hypothesis `Xxx ps 1 = .ok (…)` is contradictory, discharged by
-  `unfold + cases h_ok` (see `parseNode_fuel_mono_succ` at :5382 for the
-  vacuity pattern). ~5-10 lines each.
-- *mixed*: loops (parts 20–24) have a non-vacuous `fuel=0` return of
+- *parsers* (parts 13–19, originally labelled "vacuous"): the outer fuel
+  match at `fuel=1` takes the `fuel+1` branch with internal `fuel=0`, so
+  sub-parser calls at fuel=0 error. But this is *not* always pure
+  vacuity: part 13 (`parseNode`) has alias/scalar/empty-catch-all paths
+  that succeed at fuel=0 (proved 2026-04-21, ~70 lines), and parts 14–17
+  (`parseFlowSequence`, etc.) succeed on empty-collection inputs where
+  the loop's structural base case (`.ok (#[], ps)`) composes with a
+  direct end-token peek. Reassess each part before attempting — pure
+  vacuity (`unfold + cases h_ok`) covers only the unreachable-at-fuel=0
+  paths, not the full theorem.
+- *loops* (parts 20–24, originally labelled "mixed"): `fuel=0` returns
   `.ok (items_acc, ps)` at the structural base case. At fuel=1 input, the
   body's internal calls use fuel=0 (which error for parsers). So the
   hypothesis only holds on the direct `.ok`-return paths: fuel=0 base,
