@@ -1,4 +1,4 @@
-import L4YAML.Emitter
+import L4YAML.Output.Emitter
 
 /-!
 # contentEq_refl full proof

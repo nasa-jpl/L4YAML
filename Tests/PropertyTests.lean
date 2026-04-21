@@ -1,7 +1,7 @@
-import L4YAML.Grammar
-import L4YAML.Dump
-import L4YAML.Emitter
-import L4YAML.TokenParser
+import L4YAML.Spec.Grammar
+import L4YAML.Output.Dump
+import L4YAML.Output.Emitter
+import L4YAML.Parser.TokenParser
 import Tests.VerifiedResult
 
 /-

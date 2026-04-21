@@ -1,4 +1,4 @@
-import L4YAML.Scanner
+import L4YAML.Scanner.Scanner
 
 /-
 Copyright (c) 2026. All rights reserved.

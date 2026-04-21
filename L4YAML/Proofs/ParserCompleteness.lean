@@ -2,9 +2,9 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Types
-import L4YAML.Grammar
-import L4YAML.TokenParser
+import L4YAML.Spec.Types
+import L4YAML.Spec.Grammar
+import L4YAML.Parser.TokenParser
 import L4YAML.Proofs.Soundness
 import L4YAML.Proofs.ParserSoundness
 

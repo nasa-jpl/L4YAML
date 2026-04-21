@@ -24,10 +24,10 @@
 
   See `LIMITS.md` for threat model and design rationale.
 -/
-import L4YAML.Types
-import L4YAML.Token
-import L4YAML.Scanner
-import L4YAML.TokenParser
+import L4YAML.Spec.Types
+import L4YAML.Token.Token
+import L4YAML.Scanner.Scanner
+import L4YAML.Parser.TokenParser
 
 namespace L4YAML
 

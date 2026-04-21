@@ -2,9 +2,9 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Token
-import L4YAML.Scanner
-import L4YAML.YamlSpec
+import L4YAML.Token.Token
+import L4YAML.Scanner.Scanner
+import L4YAML.Spec.YamlSpec
 
 /-!
 # YAML Grammar Parser (Token → AST)

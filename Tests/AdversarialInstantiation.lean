@@ -1,6 +1,6 @@
-import L4YAML.Scanner
-import L4YAML.Emitter
-import L4YAML.TokenParser
+import L4YAML.Scanner.Scanner
+import L4YAML.Output.Emitter
+import L4YAML.Parser.TokenParser
 import L4YAML.Proofs.ParserGrammableBase
 import Tests.VerifiedResult
 

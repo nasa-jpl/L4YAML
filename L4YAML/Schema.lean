@@ -1,5 +1,5 @@
-import L4YAML.Types
-import L4YAML.Token
+import L4YAML.Spec.Types
+import L4YAML.Token.Token
 
 /-
 Copyright (c) 2026. All rights reserved.

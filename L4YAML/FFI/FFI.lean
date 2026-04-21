@@ -12,10 +12,10 @@
 
   See `C_PYTHON_APIs.md` for the full design.
 -/
-import L4YAML.Types
-import L4YAML.Limits
-import L4YAML.Dump
-import L4YAML.Config
+import L4YAML.Spec.Types
+import L4YAML.Config.Limits
+import L4YAML.Output.Dump
+import L4YAML.Config.Config
 
 set_option autoImplicit false
 set_option compiler.ignoreBorrowAnnotation true

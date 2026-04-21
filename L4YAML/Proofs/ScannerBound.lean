@@ -1,4 +1,4 @@
-import L4YAML.Scanner
+import L4YAML.Scanner.Scanner
 import L4YAML.Proofs.ScannerLoopInvariant
 import L4YAML.Proofs.ScannerProgress
 

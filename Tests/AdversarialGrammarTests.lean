@@ -1,4 +1,4 @@
-import L4YAML.TokenParser
+import L4YAML.Parser.TokenParser
 import Tests.VerifiedResult
 
 /-

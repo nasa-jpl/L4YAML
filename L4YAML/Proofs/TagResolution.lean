@@ -1,4 +1,4 @@
-import L4YAML.TokenParser
+import L4YAML.Parser.TokenParser
 
 /-!
 # %TAG Directive Resolution Proofs (§6.8.2)

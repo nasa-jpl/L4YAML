@@ -1,7 +1,7 @@
-import L4YAML.Scanner
-import L4YAML.Emitter
-import L4YAML.CharPredicates
-import L4YAML.Grammar
+import L4YAML.Scanner.Scanner
+import L4YAML.Output.Emitter
+import L4YAML.Spec.CharPredicates
+import L4YAML.Spec.Grammar
 import L4YAML.Proofs.RoundTrip
 
 /-
