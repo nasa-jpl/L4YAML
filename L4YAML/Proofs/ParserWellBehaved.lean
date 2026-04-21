@@ -5470,28 +5470,12 @@ theorem parser_fuel_mono_succ : ∀ fuel : Nat,
            parseBlockMappingLoop_mono_step n ih_pn ih_bml,
            parseImplicitBlockSequenceLoop_mono_step n ih_pn ih_ibsl⟩
 
-/-- **Auxiliary: parseNode fuel monotonicity (wrapper around offset-form theorem).**
-    Derives the unrestricted form `parseNode ps fuel = .ok → parseNode ps (fuel+1) = .ok`.
-    At `fuel=0` the hypothesis is vacuous (parseNode errors); at `fuel=n+1` this is a direct
-    application of `(parser_fuel_mono_succ n).1`. -/
-theorem parseNode_fuel_mono_succ
-    (ps : ParseState) (fuel : Nat)
-    (val : YamlValue) (ps' : ParseState)
-    (h_ok : parseNode ps fuel = .ok (val, ps')) :
-    parseNode ps (fuel + 1) = .ok (val, ps') := by
-  cases fuel with
-  | zero => unfold parseNode at h_ok; cases h_ok
-  | succ n => exact (parser_fuel_mono_succ n).1 ps val ps' h_ok
-
-/-- **Auxiliary: parseSinglePairMapping fuel monotonicity (wrapper around offset-form).** -/
-theorem parseSinglePairMapping_fuel_mono_succ
-    (ps : ParseState) (fuel : Nat)
-    (kv : YamlValue × ParseState)
-    (h_ok : parseSinglePairMapping ps fuel = .ok kv) :
-    parseSinglePairMapping ps (fuel + 1) = .ok kv := by
-  cases fuel with
-  | zero => unfold parseSinglePairMapping at h_ok; cases h_ok
-  | succ n => exact (parser_fuel_mono_succ n).2.2.2.2.2.2.1 ps kv h_ok
+-- `parseNode_fuel_mono_succ` and `parseSinglePairMapping_fuel_mono_succ`
+-- deleted 2026-04-21 as part of the blueprint-driven `parser_fuel_mono_succ`
+-- retirement: both wrappers had zero external callers across the
+-- ~66,000-line project (grep-verified). See
+-- [`Blueprint/05-current-state.md`](../../Blueprint/05-current-state.md)
+-- Group A.
 
 /-- **Fuel monotonicity (general)**: Extends fuel monotonicity to arbitrary
     `fuel' ≥ fuel`. Bridges `parseFlowSequenceLoop_mono_step` (offset form,
