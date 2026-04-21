@@ -1,5 +1,5 @@
 import L4YAML
-import L4YAML.Grammar
+import L4YAML.Spec.Grammar
 import Tests.VerifiedResult
 
 /-

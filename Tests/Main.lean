@@ -1,4 +1,4 @@
-import L4YAML.Types
+import L4YAML.Spec.Types
 import Tests.VerifiedResult
 
 /-

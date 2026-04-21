@@ -1,6 +1,6 @@
 import L4YAML.Schema
 import L4YAML.Schema.FromToYaml
-import L4YAML.TokenParser
+import L4YAML.Parser.TokenParser
 
 /-
 Copyright (c) 2026. All rights reserved.

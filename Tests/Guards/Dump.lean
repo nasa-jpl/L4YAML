@@ -1,4 +1,4 @@
-import L4YAML.Dump
+import L4YAML.Output.Dump
 
 namespace L4YAML.Dump
 

@@ -1,8 +1,8 @@
 import L4YAML.Schema
 import L4YAML.Schema.FromToYaml
-import L4YAML.Dump
-import L4YAML.Emitter
-import L4YAML.TokenParser
+import L4YAML.Output.Dump
+import L4YAML.Output.Emitter
+import L4YAML.Parser.TokenParser
 
 /-
 Copyright (c) 2026. All rights reserved.

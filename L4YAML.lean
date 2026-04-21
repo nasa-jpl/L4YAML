@@ -1,11 +1,11 @@
 import LeanPrism
 
-import L4YAML.Config
-import L4YAML.Dump
-import L4YAML.Emitter
-import L4YAML.FFI
-import L4YAML.Grammar
-import L4YAML.Limits
+import L4YAML.Config.Config
+import L4YAML.Output.Dump
+import L4YAML.Output.Emitter
+import L4YAML.FFI.FFI
+import L4YAML.Spec.Grammar
+import L4YAML.Config.Limits
 import L4YAML.Proofs.BlockScalarContracts
 import L4YAML.Proofs.CharClass
 import L4YAML.Proofs.CommentProperties
@@ -68,7 +68,7 @@ import L4YAML.Proofs.StructureProduction
 import L4YAML.Proofs.SurfaceCoupling
 import L4YAML.Proofs.TagResolution
 import L4YAML.Proofs.ValueAlgebra
-import L4YAML.Scanner
+import L4YAML.Scanner.Scanner
 import L4YAML.Schema
 import L4YAML.Schema.Api
 import L4YAML.Schema.Deriving
@@ -76,10 +76,10 @@ import L4YAML.Schema.Dump
 import L4YAML.Schema.FromToYaml
 import L4YAML.Schema.Struct
 import L4YAML.Surface
-import L4YAML.Token
-import L4YAML.TokenParser
-import L4YAML.Types
-import L4YAML.YamlSpec
+import L4YAML.Token.Token
+import L4YAML.Parser.TokenParser
+import L4YAML.Spec.Types
+import L4YAML.Spec.YamlSpec
 
 /-
 Copyright (c) 2026. All rights reserved.

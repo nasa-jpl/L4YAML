@@ -2,8 +2,8 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Scanner
-import L4YAML.Grammar
+import L4YAML.Scanner.Scanner
+import L4YAML.Spec.Grammar
 import L4YAML.Proofs.ScannerProofs
 import L4YAML.Proofs.ScannerProgress
 

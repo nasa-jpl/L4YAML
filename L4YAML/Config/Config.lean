@@ -34,8 +34,8 @@
   - `{whitelist: ["tag:yaml.org,2002:str", ...]}` → `.whitelist`
   - `{blacklist: ["!!python/"]}` → `.blacklist`
 -/
-import L4YAML.Limits
-import L4YAML.Dump
+import L4YAML.Config.Limits
+import L4YAML.Output.Dump
 import L4YAML.Schema.FromToYaml
 import L4YAML.Schema.Struct
 

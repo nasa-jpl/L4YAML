@@ -1,5 +1,5 @@
-import L4YAML.Grammar
-import L4YAML.TokenParser
+import L4YAML.Spec.Grammar
+import L4YAML.Parser.TokenParser
 import L4YAML.Proofs.ParserGrammableBase
 
 /-

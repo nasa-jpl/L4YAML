@@ -1,4 +1,4 @@
-import L4YAML.Types
+import L4YAML.Spec.Types
 
 /-!
 # yaml-test-suite Metadata Parser

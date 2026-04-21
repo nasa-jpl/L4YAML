@@ -1,5 +1,5 @@
-import L4YAML.Scanner
-import L4YAML.CharPredicates
+import L4YAML.Scanner.Scanner
+import L4YAML.Spec.CharPredicates
 
 /-!
 # Scanner Proofs (Phase 9)

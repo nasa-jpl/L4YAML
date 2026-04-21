@@ -1,5 +1,5 @@
-import L4YAML.Grammar
-import L4YAML.Types
+import L4YAML.Spec.Grammar
+import L4YAML.Spec.Types
 
 /-
 Copyright (c) 2026. All rights reserved.

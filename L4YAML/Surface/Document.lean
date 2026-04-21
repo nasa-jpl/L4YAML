@@ -3,7 +3,7 @@ Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
 import L4YAML.Surface.Node
-import L4YAML.CharPredicates
+import L4YAML.Spec.CharPredicates
 
 /-!
 # Document & Stream Surface Syntax — Chapter 9
