@@ -4656,7 +4656,18 @@ theorem parseFlowSequence_mono_zero : ParseFlowSequence_succ 0 := by
   · contradiction
 
 theorem parseFlowMapping_mono_zero : ParseFlowMapping_succ 0 := by
-  intro ps val ps' h_ok; sorry
+  intro ps val ps' h_ok
+  have h_loop_zero : parseFlowMappingLoop ps.advance 0 #[] = .ok (#[], ps.advance) := by
+    unfold parseFlowMappingLoop; rfl
+  unfold parseFlowMapping at h_ok ⊢
+  simp only [bind, Except.bind, h_loop_zero] at h_ok
+  split at h_ok
+  · rename_i h_peek
+    have h_loop_one : parseFlowMappingLoop ps.advance 1 #[] = .ok (#[], ps.advance) := by
+      unfold parseFlowMappingLoop; simp [h_peek]
+    simp only [bind, Except.bind, h_loop_one, h_peek]
+    exact h_ok
+  · contradiction
 
 theorem parseBlockSequence_mono_zero : ParseBlockSequence_succ 0 := by
   intro ps val ps' h_ok; sorry
