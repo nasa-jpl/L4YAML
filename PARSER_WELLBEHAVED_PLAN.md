@@ -2,12 +2,41 @@
 
 ## Status
 
-**20 declaration-level `sorry`s remain** (12 zero cases +
-8 higher-level witnesses). The mutual-induction theorem has been refactored
-from one large conjunction proof into 12 separate `_mono_step` theorems plus
-12 `_mono_zero` theorems, with `parser_fuel_mono_succ` composing them via
-induction — each remaining proof obligation is now a focused theorem that
-can be worked on independently.
+**24 `sorry`s across 19 declarations remain** after deleting the
+unsound, unused `parseFlowSequenceLoop_fuel_mono_succ` (see 2026-04-20
+audit note below). Breakdown:
+
+- 12 `_mono_zero` stubs (step 1, parts 13–24).
+- 1 `parseFlowSequenceLoop_fuel_mono` general-form sorry (step 2).
+- 3 sorries inside `parseNode_flowSeqStart_in_seq`: needs
+  `parseNodeProperties_skip` application (step 3).
+- 2 `parseExplicitKey_flowSeq` / `parseExplicitKey_flowMap` sorries
+  (step 4).
+- 1 remaining `parseFlowMappingValue_ok` sorry, 1 sorry inside
+  `parseEntry_in_flowMap`, 1 sorry inside `parseNode_flowMapStart_in_seq`
+  (step 5).
+- 3 "insufficient fuel" sorries in `flow_parser_ok_of_structure`
+  (step 6).
+
+The mutual-induction theorem has been refactored from one large conjunction
+proof into 12 separate `_mono_step` theorems plus 12 `_mono_zero` theorems,
+with `parser_fuel_mono_succ` composing them via induction — each remaining
+proof obligation is now a focused theorem that can be worked on
+independently.
+
+## Audit notes
+
+- **2026-04-20** — deleted `parseFlowSequenceLoop_fuel_mono_succ` (was at
+  former line :5405). Its `fuel=0` case is *unprovable as stated*:
+  `parseFlowSequenceLoop ps 0 items_acc` unconditionally returns
+  `.ok (items_acc, ps)` (structural base case, not a real parse), but at
+  `fuel=1` with e.g. `items_acc = #[]` and `ps.peek? = some .key` the loop
+  errors via `parseSinglePairMapping ps 0`. Theorem was also unused
+  outside the plan and a stale VERSION-0.4.7 historical note.
+- **Outstanding audit**: every top-level theorem/lemma in
+  `ParserWellBehaved.lean` with no inbound references elsewhere in the
+  project should be reviewed before deletion. Track these in an "Unused /
+  candidate for review" section below as they are discovered.
 
 ## Progress
 
@@ -44,10 +73,13 @@ Each parser/loop has two standalone theorems:
   given the IHs at fuel `n` for parsers it calls.
 
 `parser_fuel_mono_succ` at
-[ParserWellBehaved.lean:4875](L4YAML/Proofs/ParserWellBehaved.lean:4875)
+[ParserWellBehaved.lean:5346](L4YAML/Proofs/ParserWellBehaved.lean:5346)
 composes these via `induction fuel with | zero => ⟨…zero lemmas…⟩ | succ n ih => ⟨…step lemmas…⟩`.
-The wrappers `parseNode_fuel_mono_succ` and `parseSinglePairMapping_fuel_mono_succ`
-below it project the relevant conjunct.
+The wrappers `parseNode_fuel_mono_succ`
+([:5382](L4YAML/Proofs/ParserWellBehaved.lean:5382)) and
+`parseSinglePairMapping_fuel_mono_succ`
+([:5392](L4YAML/Proofs/ParserWellBehaved.lean:5392)) below it project the
+relevant conjunct.
 
 **Succ cases** (`xxx_mono_step`):
 
@@ -74,9 +106,38 @@ The proof uses the peek-substituted match iota-reduce to a literal bool,
 then the `if` iota-reduces. Empty-key paths (false) bridge via `h_bmv`;
 parseNode paths (true) bridge via `ih_pn` then `h_bmv`.
 
-**Zero cases** (`xxx_mono_zero`): 12 stubs at
-[:4568-4601](L4YAML/Proofs/ParserWellBehaved.lean:4568). Each ~5-30 lines,
+**Zero cases** (`xxx_mono_zero`, parts 13–24): 12 stubs at
+[:4568-4602](L4YAML/Proofs/ParserWellBehaved.lean:4568). Each ~5-30 lines,
 mirroring the succ case but with vacuity arguments at internal fuel=0.
+
+| #  | Parser/loop                        | Body style  | Location | Status |
+| -- | ---------------------------------- | ----------- | -------- | ------ |
+| 13 | `parseNode_mono_zero`              | vacuous     | :4568    | ⏳     |
+| 14 | `parseFlowSequence_mono_zero`      | vacuous     | :4571    | ⏳     |
+| 15 | `parseFlowMapping_mono_zero`       | vacuous     | :4574    | ⏳     |
+| 16 | `parseBlockSequence_mono_zero`     | vacuous     | :4577    | ⏳     |
+| 17 | `parseBlockMapping_mono_zero`      | vacuous     | :4580    | ⏳     |
+| 18 | `parseImplicitBlockSequence_mono_zero` | vacuous | :4583    | ⏳     |
+| 19 | `parseSinglePairMapping_mono_zero` | vacuous     | :4586    | ⏳     |
+| 20 | `parseFlowSequenceLoop_mono_zero`  | mixed       | :4589    | ⏳     |
+| 21 | `parseFlowMappingLoop_mono_zero`   | mixed       | :4592    | ⏳     |
+| 22 | `parseBlockSequenceLoop_mono_zero` | mixed       | :4595    | ⏳     |
+| 23 | `parseBlockMappingLoop_mono_zero`  | mixed       | :4598    | ⏳     |
+| 24 | `parseImplicitBlockSequenceLoop_mono_zero` | mixed | :4601   | ⏳     |
+
+**Body style**:
+- *vacuous*: parsers (parts 13–19) error at internal fuel=0 by returning
+  `.error "insufficient fuel"` / `.error (.nestingDepthExceeded …)`. The
+  hypothesis `Xxx ps 1 = .ok (…)` is contradictory, discharged by
+  `unfold + cases h_ok` (see `parseNode_fuel_mono_succ` at :5382 for the
+  vacuity pattern). ~5-10 lines each.
+- *mixed*: loops (parts 20–24) have a non-vacuous `fuel=0` return of
+  `.ok (items_acc, ps)` at the structural base case. At fuel=1 input, the
+  body's internal calls use fuel=0 (which error for parsers). So the
+  hypothesis only holds on the direct `.ok`-return paths: fuel=0 base,
+  `.flowSequenceEnd` peek, or `items.size > 0` early-return. Each of
+  those paths returns the same `(items, ps)` at fuel=2 trivially. ~20-30
+  lines each.
 
 Line-size estimates (succ cases): Parts 3-6 ≈ 12 lines each (done),
 Part 7 ≈ 60 lines body (done),
@@ -156,60 +217,108 @@ Inner peek matches use bare `split at h_ok`. For `parseSinglePairMapping` /
 `parseNode` sub-calls, the pattern is `split at h_ok; cases h_ok / rename_i v
 h_inner; have h' := ih_... _ _ h_inner; rw [h']; exact ih_fsl ...`.
 
-### Step 2 — Loop-level fuel monotonicity lemmas
+### Step 2 — Loop-level fuel monotonicity lemma
 
-- [ ] `parseFlowSequenceLoop_fuel_mono_succ`
-      ([:4936](L4YAML/Proofs/ParserWellBehaved.lean:4936)):
-      can now be written as a direct wrapper around `parseFlowSequenceLoop_mono_step`
-      (Part 8 above), with a shim for the `fuel=0` edge case. ~10 lines.
+Only one theorem remains in this step: the `_fuel_mono_succ` variant was
+deleted on 2026-04-20 (unsound as stated at `fuel=0`, unused — see
+Audit notes above).
+
 - [ ] `parseFlowSequenceLoop_fuel_mono`
-      ([:5024](L4YAML/Proofs/ParserWellBehaved.lean:5024)): generalize to
-      any `fuel ≤ fuel'` by induction on `fuel' - fuel` applying `_succ`
-      repeatedly. ~10 lines.
+      ([:5404](L4YAML/Proofs/ParserWellBehaved.lean:5404)): generalize to
+      any `fuel ≤ fuel'`. Used at
+      [:7170](L4YAML/Proofs/ParserWellBehaved.lean:7170) with
+      `fuel = 4*N+4`, `fuel' = m''` where `m'' ≥ 4*N+4`.
+      Recommended strategy: induct on `fuel' - fuel`, each step applying
+      `parseFlowSequenceLoop_mono_step` (Part 8, already proved) via the
+      `parser_fuel_mono_succ` projection. Because real callers always have
+      `fuel ≥ 4*N+4 ≥ 4`, restrict the signature to `fuel ≥ 1` (or use
+      offset form `fuel+1 ≤ fuel'+1`) to sidestep the same fuel=0
+      pathology that killed `_fuel_mono_succ`. ~15 lines after
+      reformulation.
 
-### Step 3 — `parseNodeProperties` forIn helper
+### Step 3 — Apply `parseNodeProperties_skip` to close 3 sorries
 
-- [ ] Single lemma `parseNodeProperties_break_on_non_tag`: when
-      `ps.peek?` is not `.anchor _` or `.tag _ _`, the internal `for`-loop
-      breaks immediately, returning `({}, ps)` unchanged. Closes 3 sorries
-      in `parseNode_flowSeqStart_in_seq` at lines
-      [:6450, :6460, :6465](L4YAML/Proofs/ParserWellBehaved.lean:6450).
-      ~20-30 lines.
+The lemma exists and is already proved: `parseNodeProperties_skip` at
+[:5641](L4YAML/Proofs/ParserWellBehaved.lean:5641) — when `ps.peek?` is
+not `.anchor _` or `.tag _ _`, the internal `for`-loop breaks immediately,
+returning `({}, ps)` unchanged. (The plan previously referred to this as
+`parseNodeProperties_break_on_non_tag`, which does not exist — reference
+corrected 2026-04-20.)
+
+- [ ] Rewrite 3 sorries inside `parseNode_flowSeqStart_in_seq` at
+      [:7052](L4YAML/Proofs/ParserWellBehaved.lean:7052),
+      [:7062](L4YAML/Proofs/ParserWellBehaved.lean:7062),
+      [:7067](L4YAML/Proofs/ParserWellBehaved.lean:7067) to use
+      `parseNodeProperties_skip` directly. Precondition matches
+      (`peek? = some .flowSequenceStart`, which is neither
+      `.anchor _` nor `.tag _ _`). ~5-10 lines each.
 
 ### Step 4 — `parseExplicitKey` helpers
 
 - [ ] `parseExplicitKey_flowSeq`
-      ([:5472](L4YAML/Proofs/ParserWellBehaved.lean:5472)): `?[...]` succeeds
+      ([:6039](L4YAML/Proofs/ParserWellBehaved.lean:6039)): `?[...]` succeeds
       and advances past `]`. ~40-60 lines; follow template from
       `parseNode_flowSeqStart_in_seq`.
 - [ ] `parseExplicitKey_flowMap`
-      ([:5507](L4YAML/Proofs/ParserWellBehaved.lean:5507)): symmetric
+      ([:6078](L4YAML/Proofs/ParserWellBehaved.lean:6078)): symmetric
       `?{...}` variant.
 
 ### Step 5 — Main witness theorems
 
-- [ ] `parseFlowMappingValue_ok` remaining cases: flowSeqStart value,
-      flowMapStart value (2 sorries). Depends on Step 4.
-      ~60 lines each.
+- [ ] `parseFlowMappingValue_ok`
+      ([:6222](L4YAML/Proofs/ParserWellBehaved.lean:6222)): 1 remaining
+      sorry at
+      [:6708](L4YAML/Proofs/ParserWellBehaved.lean:6708). Depends on
+      Step 4. ~60 lines.
+- [ ] `parseEntry_in_flowMap`
+      ([:7368](L4YAML/Proofs/ParserWellBehaved.lean:7368)): sorry at
+      [:6836](L4YAML/Proofs/ParserWellBehaved.lean:6836) (nested
+      unfolding). Three key-shape subcases (scalar key, `[…]` key, `{…}`
+      key), each chains through Step 4 helpers +
+      `parseFlowMappingValue_ok`. ~60-80 lines.
 - [ ] `parseNode_flowMapStart_in_seq`
-      ([:6234](L4YAML/Proofs/ParserWellBehaved.lean:6234)): copy
+      ([:7298](L4YAML/Proofs/ParserWellBehaved.lean:7298)): sorry at
+      [:7364](L4YAML/Proofs/ParserWellBehaved.lean:7364). Copy
       `parseNode_flowSeqStart_in_seq` and adapt to Map-specific lemmas.
       ~80-100 lines.
-- [ ] `parseEntry_in_flowMap`
-      ([:6762](L4YAML/Proofs/ParserWellBehaved.lean:6762)): three key-shape
-      subcases (scalar key, `[…]` key, `{…}` key), each chains through
-      Step 4 helpers + `parseFlowMappingValue_ok`. ~60-80 lines.
+
+### Step 6 — `flow_parser_ok_of_structure` fuel-bound edge cases
+
+Three sorries in the main combined theorem
+`flow_parser_ok_of_structure` at
+[:7855](L4YAML/Proofs/ParserWellBehaved.lean:7855):
+
+- [ ] [:7929](L4YAML/Proofs/ParserWellBehaved.lean:7929) — nested
+      flowSequenceStart when `m < 4*N+6`.
+- [ ] [:7936](L4YAML/Proofs/ParserWellBehaved.lean:7936) — nested
+      flowMappingStart when `m < 4*N+6`.
+- [ ] [:7948](L4YAML/Proofs/ParserWellBehaved.lean:7948) — mapping case
+      `m < 4*N+6`.
+
+Each needs either an inline proof for the small-`m` range
+(`4*N+4 ≤ m < 4*N+6`) or a lemma showing `parseNode` / `parseEntry`
+fails with `nestingDepthExceeded` in that range.
 
 ## Reference
 
 - **Canonical bracket-case template**: `parseNode_flowSeqStart_in_seq`
-  ([:6050-:6365](L4YAML/Proofs/ParserWellBehaved.lean:6050)) — 315 lines
-  covering all 7 output properties. Use as the starting point for Step 5.
+  ([:6946](L4YAML/Proofs/ParserWellBehaved.lean:6946)) — covers all 7
+  output properties. Use as the starting point for Step 5.
 - **Fuel budget**: parser proofs typically require `fuel ≥ 4*N + 6` where
   `N = tokens.size`; inner loops use `4*N + 4`; `parser_fuel_mono_succ`
-  bridges the gap.
+  ([:5346](L4YAML/Proofs/ParserWellBehaved.lean:5346)) bridges the gap.
 - **Bracket balance identity**: `[pos, pos+1) = +1`, `[pos+1, j) = 0`
   (from IH), `[j, j+1) = -1`; sum is 0.
 - **State-field preservation obligations** in every main witness:
   `tokens` preserved, `trackPositions` preserved, `pos` advanced within
   bounds, `peek?` postcondition holds.
+
+## Unused / candidate for review
+
+Theorems declared in `ParserWellBehaved.lean` with no inbound references
+from other files (or from non-deleted callers in this file). Review each
+before deletion.
+
+- *(none currently flagged; audit pending — run
+  `grep -rn "theorem_name"` across the project and sweep this file as a
+  batch task.)*
