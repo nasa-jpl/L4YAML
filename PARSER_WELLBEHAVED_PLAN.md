@@ -1,30 +1,72 @@
 # ParserWellBehaved.lean — Remaining Work
 
-## Status
+> **2026-04-21 — Plan superseded by [`Blueprint/`](Blueprint/README.md).**
+> The bottom-up "prove all 24 parts of `parser_fuel_mono_succ`" strategy
+> drove this plan. A second-pass review (see 2026-04-21 audit note
+> below) found that 6 of the 9 remaining `_mono_zero` parts are
+> **unsound as stated** and the enclosing `parser_fuel_mono_succ`
+> infrastructure is over-engineered for its one consumer. Step 1 is
+> therefore closed; Steps 2–6 are paused pending blueprint-driven
+> reassessment. See [`Blueprint/05-current-state.md`](Blueprint/05-current-state.md)
+> for the replacement roadmap.
 
-**21 `sorry`s across 16 declarations remain** after deleting the
-unsound, unused `parseFlowSequenceLoop_fuel_mono_succ` (see 2026-04-20
-audit note below). Breakdown:
+## Status (frozen 2026-04-21)
 
-- 9 `_mono_zero` stubs (step 1, parts 16–24).
-- 1 `parseFlowSequenceLoop_fuel_mono` general-form sorry (step 2).
-- 3 sorries inside `parseNode_flowSeqStart_in_seq`: needs
-  `parseNodeProperties_skip` application (step 3).
-- 2 `parseExplicitKey_flowSeq` / `parseExplicitKey_flowMap` sorries
-  (step 4).
-- 1 remaining `parseFlowMappingValue_ok` sorry, 1 sorry inside
-  `parseEntry_in_flowMap`, 1 sorry inside `parseNode_flowMapStart_in_seq`
-  (step 5).
-- 3 "insufficient fuel" sorries in `flow_parser_ok_of_structure`
-  (step 6).
+**21 `sorry`s across 16 declarations** — of which:
 
-The mutual-induction theorem has been refactored from one large conjunction
-proof into 12 separate `_mono_step` theorems plus 12 `_mono_zero` theorems,
-with `parser_fuel_mono_succ` composing them via induction — each remaining
-proof obligation is now a focused theorem that can be worked on
-independently.
+- **9 `_mono_zero` stubs (Parts 16–24) are retired** (see 2026-04-21
+  audit note). 6 are unsound as stated; the remaining 3 are made
+  moot by the restructuring in [`Blueprint/05-current-state.md`](Blueprint/05-current-state.md)
+  Group C.
+- 1 `parseFlowSequenceLoop_fuel_mono` general-form sorry (Step 2) —
+  **reformulate** as a specialized lemma for the one real caller at
+  :7265, not via the generic 24-part machinery. See
+  [`Blueprint/04-capstones.md`](Blueprint/04-capstones.md) "Decomposition: what is *not* a capstone".
+- 3 sorries inside `parseNode_flowSeqStart_in_seq` (Step 3).
+- 2 `parseExplicitKey_flowSeq` / `parseExplicitKey_flowMap` sorries (Step 4).
+- 1 remaining `parseFlowMappingValue_ok` sorry, 1 in `parseEntry_in_flowMap`,
+  1 in `parseNode_flowMapStart_in_seq` (Step 5).
+- 3 "insufficient fuel" sorries in `flow_parser_ok_of_structure` (Step 6).
 
 ## Audit notes
+
+- **2026-04-21** — **Step 1 closed**. `parseBlockSequence_mono_zero`
+  (Part 16), `parseBlockMapping_mono_zero` (17),
+  `parseImplicitBlockSequence_mono_zero` (18),
+  `parseBlockSequenceLoop_mono_zero` (22),
+  `parseBlockMappingLoop_mono_zero` (23), and
+  `parseImplicitBlockSequenceLoop_mono_zero` (24) are **unsound as
+  stated** — same class of defect that killed
+  `parseFlowSequenceLoop_fuel_mono_succ` on 2026-04-20.
+  Counterexample for Part 16: with `ps.advance.peek? = some
+  .blockEntry`, `parseBlockSequence ps 1 = .ok (.sequence .block #[], _)`
+  unconditionally (outer body has `match peek? with | .blockEnd =>
+  ps.advance | _ => ps; .ok …` — no error gate), but
+  `parseBlockSequence ps 2` either returns `.ok (.sequence .block
+  #[emptyNode], _)` (different `val`) or `.error` (when the inner peek
+  triggers `parseNode ps 0 = .error`). Parts 17, 18, 22, 23, 24
+  share the pattern.
+
+  Additionally, no adversarial-instantiation tests exist for any of
+  the 24 `parser_fuel_mono_succ` parts. Priority 7 of
+  `Tests/AdversarialInstantiation.lean` covers a lifted helper
+  (`handleBlockMappingKeyEntry_mono_step`), not the main theorem — so
+  the pre-2026-04-20 "audit via Priority 7" claim was
+  mis-scoped. Evidence: `grep -rn 'parser_fuel_mono_succ\|_mono_zero\|_mono_step'`
+  in `Tests/` returns only the Priority 7 helper.
+
+  Further, `parseNode_fuel_mono_succ` and
+  `parseSinglePairMapping_fuel_mono_succ` (the two documented
+  consumers of `parser_fuel_mono_succ`) have **zero external
+  callers** in the entire 66,000-line project. Only
+  `parseFlowSequenceLoop_fuel_mono` has a real caller (one callsite,
+  :7265) — so the 500+ LoC `parser_fuel_mono_succ` machinery exists
+  to support one specialized lemma. Net deletion target: ~1,000 LoC
+  plus 28 `sorry`s from this file.
+
+  Step 1 Parts 13 (parseNode), 14 (parseFlowSequence), and 15
+  (parseFlowMapping), proved 2026-04-21, are collateral of the
+  restructuring and will be dropped alongside `parser_fuel_mono_succ`.
 
 - **2026-04-20** — deleted `parseFlowSequenceLoop_fuel_mono_succ` (was at
   former line :5405). Its `fuel=0` case is *unprovable as stated*:
@@ -33,6 +75,11 @@ independently.
   `fuel=1` with e.g. `items_acc = #[]` and `ps.peek? = some .key` the loop
   errors via `parseSinglePairMapping ps 0`. Theorem was also unused
   outside the plan and a stale VERSION-0.4.7 historical note.
+  *(With hindsight from the 2026-04-21 review: this deletion
+  identified the defect class but did not generalize the lesson —
+  six more theorems in the same pattern were added afterwards. The
+  blueprint's Rule 1 and Rule 2 in [`Blueprint/06-discipline.md`](Blueprint/06-discipline.md)
+  exist to prevent that mistake repeating.)*
 - **Outstanding audit**: every top-level theorem/lemma in
   `ParserWellBehaved.lean` with no inbound references elsewhere in the
   project should be reviewed before deletion. Track these in an "Unused /
@@ -135,18 +182,18 @@ mirroring the succ case but with vacuity arguments at internal fuel=0.
 
 | #  | Parser/loop                        | Body style  | Location | Status |
 | -- | ---------------------------------- | ----------- | -------- | ------ |
-| 13 | `parseNode_mono_zero`              | mixed       | :4568    | ✅     |
-| 14 | `parseFlowSequence_mono_zero`      | mixed       | :4644    | ✅     |
-| 15 | `parseFlowMapping_mono_zero`       | mixed       | :4658    | ✅     |
-| 16 | `parseBlockSequence_mono_zero`     | mixed       | :4672    | ⏳     |
-| 17 | `parseBlockMapping_mono_zero`      | mixed       | :4675    | ⏳     |
-| 18 | `parseImplicitBlockSequence_mono_zero` | mixed   | :4678    | ⏳     |
-| 19 | `parseSinglePairMapping_mono_zero` | mixed       | :4681    | ⏳     |
-| 20 | `parseFlowSequenceLoop_mono_zero`  | mixed       | :4684    | ⏳     |
-| 21 | `parseFlowMappingLoop_mono_zero`   | mixed       | :4687    | ⏳     |
-| 22 | `parseBlockSequenceLoop_mono_zero` | mixed       | :4690    | ⏳     |
-| 23 | `parseBlockMappingLoop_mono_zero`  | mixed       | :4693    | ⏳     |
-| 24 | `parseImplicitBlockSequenceLoop_mono_zero` | mixed | :4696   | ⏳     |
+| 13 | `parseNode_mono_zero`              | mixed       | :4568    | 🗑 (collateral) |
+| 14 | `parseFlowSequence_mono_zero`      | mixed       | :4644    | 🗑 (collateral) |
+| 15 | `parseFlowMapping_mono_zero`       | mixed       | :4658    | 🗑 (collateral) |
+| 16 | `parseBlockSequence_mono_zero`     | mixed       | :4672    | ❓ unsound — retire |
+| 17 | `parseBlockMapping_mono_zero`      | mixed       | :4675    | ❓ unsound — retire |
+| 18 | `parseImplicitBlockSequence_mono_zero` | mixed   | :4678    | ❓ unsound — retire |
+| 19 | `parseSinglePairMapping_mono_zero` | mixed       | :4681    | 🗑 (unused) |
+| 20 | `parseFlowSequenceLoop_mono_zero`  | mixed       | :4684    | 🗑 (unused) |
+| 21 | `parseFlowMappingLoop_mono_zero`   | mixed       | :4687    | 🗑 (unused) |
+| 22 | `parseBlockSequenceLoop_mono_zero` | mixed       | :4690    | ❓ unsound — retire |
+| 23 | `parseBlockMappingLoop_mono_zero`  | mixed       | :4693    | ❓ unsound — retire |
+| 24 | `parseImplicitBlockSequenceLoop_mono_zero` | mixed | :4696   | ❓ unsound — retire |
 
 **Body style**:
 - *parsers* (parts 13–19, originally labelled "vacuous"): the outer fuel
@@ -181,7 +228,17 @@ Part 12 ≈ 30-60 lines.
 tail-recursive call at the inner fuel level needs monotonicity bridging. The
 plan table above was updated on 2026-04-19 to reflect this.
 
-**Legend**: ✅ proved · ⏳ not started · 🚧 attempted, blocked.
+**Legend**: ✅ proved · ⏳ not started · 🚧 attempted, blocked · ❓ unsound
+— retire · 🗑 collateral / unused — retire alongside unsound peers.
+
+Per the 2026-04-21 audit note above, *all* of Parts 13–24 will be
+retired in Step 2 of the blueprint-driven cleanup (see
+[`Blueprint/05-current-state.md`](Blueprint/05-current-state.md)
+Groups A, B, C, D): the unsound parts block `parser_fuel_mono_succ`,
+the sound-but-unused parts have no purpose without it, and the
+single downstream consumer (`parseFlowSequenceLoop_fuel_mono`) will
+be reproved as a specialized lemma rather than via the generic
+24-part machinery.
 
 **Part 7 proof approach** (landed 2026-04-19): the winning strategy used
 interactive `trace_state` + `sorry` checkpoints to see the exact form of
