@@ -5,8 +5,8 @@ Released under Apache 2.0 license as described in the file LICENSE.
 import L4YAML.Spec.Grammar
 import L4YAML.Proofs.ScannerPlainContent
 import L4YAML.Proofs.ScannerCorrectness
-import L4YAML.Proofs.StringProperties
-import L4YAML.Proofs.CharClass
+import L4YAML.Proofs.Foundation.StringProperties
+import L4YAML.Proofs.Foundation.CharClass
 
 /-!
 # Plain Scalar Content Validity (B3.4)

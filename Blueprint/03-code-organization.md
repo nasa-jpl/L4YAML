@@ -53,7 +53,7 @@ L4YAML/
 ├── FFI/
 │   └── FFI.lean
 ├── YAML_PRODUCTIONS.md
-└── Proofs/                      (61 files — flat, ~47,000 LoC; Phase 4 clusters)
+└── Proofs/                      (57 flat + Foundation/ cluster; Phase 4 ongoing)
 ```
 
 Phase 1 (`ad12e204`) + Phase 1b (`573fa76e`) landed on 2026-04-21.
@@ -83,7 +83,10 @@ What's done, what remains:
   `L4YAML.Parser.TokenParser` → `L4YAML.Parser.Composition` (49 files,
   one-line sed); the `L4YAML.TokenParser.foo` API surface is preserved
   via transitive imports.
-- **Pending (Phase 4)**: `Proofs/` is a flat directory of 61 files.
+- **In progress (Phase 4)**: `Proofs/` reorganization is per-cluster.
+  **Foundation/** cluster landed 2026-04-21 (4 files: `CharClass.lean`,
+  `LawfulBEq.lean`, `StringProperties.lean`, `ValueAlgebra.lean`).
+  57 files still flat; remaining clusters per the target layout below.
 
 ## Proposed target layout
 
@@ -285,6 +288,11 @@ phase should leave the build green and the imports valid):
 4. **Phase 4 — Proofs reorganization** (large, per-folder):
    Move proof files into the subfolders above one cluster at a time.
    Each move is its own PR; build-green gate.
+   - **Cluster 1 — Foundation/** ✅ **done 2026-04-21**. Moved
+     `CharClass.lean`, `LawfulBEq.lean`, `StringProperties.lean`,
+     `ValueAlgebra.lean` into `L4YAML/Proofs/Foundation/`.  Scripted in
+     [`scripts/refactor-phase-4-foundation.sh`](../scripts/refactor-phase-4-foundation.sh);
+     `lake build` 449/449.
 
 ## Naming conventions
 

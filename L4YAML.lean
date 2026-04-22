@@ -7,7 +7,7 @@ import L4YAML.FFI.FFI
 import L4YAML.Spec.Grammar
 import L4YAML.Config.Limits
 import L4YAML.Proofs.BlockScalarContracts
-import L4YAML.Proofs.CharClass
+import L4YAML.Proofs.Foundation.CharClass
 import L4YAML.Proofs.CommentProperties
 import L4YAML.Proofs.CommentRoundTrip
 import L4YAML.Proofs.Completeness
@@ -21,7 +21,7 @@ import L4YAML.Proofs.EndToEndCorrectness
 import L4YAML.Proofs.ErrorProperties
 import L4YAML.Proofs.EscapeResolution
 import L4YAML.Proofs.FoldNewlines
-import L4YAML.Proofs.LawfulBEq
+import L4YAML.Proofs.Foundation.LawfulBEq
 import L4YAML.Proofs.NodeProduction
 import L4YAML.Proofs.ParserAnchorProofs
 import L4YAML.Proofs.ParserCompleteness
@@ -62,12 +62,12 @@ import L4YAML.Proofs.SchemaDump
 import L4YAML.Proofs.SchemaResolution
 import L4YAML.Proofs.Soundness
 import L4YAML.Proofs.StreamAccum
-import L4YAML.Proofs.StringProperties
+import L4YAML.Proofs.Foundation.StringProperties
 import L4YAML.Proofs.StructureCoupling
 import L4YAML.Proofs.StructureProduction
 import L4YAML.Proofs.SurfaceCoupling
 import L4YAML.Proofs.TagResolution
-import L4YAML.Proofs.ValueAlgebra
+import L4YAML.Proofs.Foundation.ValueAlgebra
 import L4YAML.Scanner.Scanner
 import L4YAML.Schema.Schema
 import L4YAML.Schema.Api

@@ -1,6 +1,6 @@
 import L4YAML.Proofs.ScalarProduction
 import L4YAML.Proofs.StructureCoupling
-import L4YAML.Proofs.CharClass
+import L4YAML.Proofs.Foundation.CharClass
 
 /-! # Structure Production Coupling (Phase C of v0.4.4)
 

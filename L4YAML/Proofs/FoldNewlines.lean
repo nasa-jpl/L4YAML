@@ -34,7 +34,7 @@ equational reasoning requires unwinding the parser monad. Instead, we:
 - Prove structural properties about these pure specifications
 - Use `#guard` checks to verify parser–spec agreement
 - The `.folded`/`.forbidden` disjointness is already proved in
-  `Proofs/StringProperties.lean` (Layer 1d)
+  `Proofs/Foundation/StringProperties.lean` (Layer 1d)
 -/
 
 namespace L4YAML.Proofs.FoldNewlines
