@@ -1,4 +1,4 @@
-import L4YAML.Proofs.ScalarCoupling
+import L4YAML.Proofs.Coupling.ScalarCoupling
 import L4YAML.Proofs.Scanner.ScannerCorrectness
 
 /-! # Scalar Production Coupling (Phase B of v0.4.4)

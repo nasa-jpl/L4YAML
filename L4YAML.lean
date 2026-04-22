@@ -12,7 +12,7 @@ import L4YAML.Proofs.CommentProperties
 import L4YAML.Proofs.CommentRoundTrip
 import L4YAML.Proofs.Completeness
 import L4YAML.Proofs.Composition
-import L4YAML.Proofs.CouplingBridge
+import L4YAML.Proofs.Coupling.CouplingBridge
 import L4YAML.Proofs.Contracts.DocumentContracts
 import L4YAML.Proofs.Production.DocumentProduction
 import L4YAML.Proofs.Output.DumpRoundTrip
@@ -35,11 +35,11 @@ import L4YAML.Proofs.Parser.ParserWfaProofs
 import L4YAML.Proofs.Production.PreprocessProduction
 import L4YAML.Proofs.RoundTrip
 import L4YAML.Proofs.RoundTripComposition
-import L4YAML.Proofs.ScalarCoupling
+import L4YAML.Proofs.Coupling.ScalarCoupling
 import L4YAML.Proofs.Production.ScalarProduction
 import L4YAML.Proofs.Scanner.ScannerContracts
 import L4YAML.Proofs.Scanner.ScannerCorrectness
-import L4YAML.Proofs.ScannerCoupling
+import L4YAML.Proofs.Coupling.ScannerCoupling
 import L4YAML.Proofs.Scanner.ScannerDispatch
 import L4YAML.Proofs.Scanner.ScannerDocument
 import L4YAML.Proofs.Scanner.ScannerDoubleQuoted
@@ -63,9 +63,9 @@ import L4YAML.Proofs.Schema.SchemaResolution
 import L4YAML.Proofs.Soundness
 import L4YAML.Proofs.Production.StreamAccum
 import L4YAML.Proofs.Foundation.StringProperties
-import L4YAML.Proofs.StructureCoupling
+import L4YAML.Proofs.Coupling.StructureCoupling
 import L4YAML.Proofs.Production.StructureProduction
-import L4YAML.Proofs.SurfaceCoupling
+import L4YAML.Proofs.Coupling.SurfaceCoupling
 import L4YAML.Proofs.Schema.TagResolution
 import L4YAML.Proofs.Foundation.ValueAlgebra
 import L4YAML.Scanner.Scanner

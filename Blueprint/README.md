@@ -272,7 +272,7 @@ PR; each leaves build green.
 | 6 | Scanner/ ✅ | 18 | ~9,700 | 2 (all scanner correctness), 6 partial, 7 partial | medium (size) |
 | 7 | Output/ ✅ | 3 | ~11,000 | 6 (EmitterScannability, ScannerEmitBridge, DumpRoundTrip) | medium (EmitterScannability is ~10k LoC) |
 | 8 | Parser/ ✅ | 9 | ~12,000 | 3 (all parser correctness) | medium (size + mutual-rec imports) |
-| 9 | Coupling/ | 6 | ~2,400 | 8 (all surface coupling), 7 boundary | low |
+| 9 | Coupling/ ✅ | 5 | ~2,400 | 8 (all surface coupling), 7 boundary | low |
 | 10 | RoundTrip/ | 4 | ~2,200 | 6 (RoundTrip, RoundTripComposition, CommentRoundTrip) | low |
 
 **Capstones that stay at `Proofs/` root** (not moved into subclusters
@@ -555,6 +555,44 @@ Moved nine parser-correctness proofs into
   seven internal mutual-recursion cross-imports + narrative
   references in `Blueprint/README.md` and
   `Blueprint/03-code-organization.md`.
+
+**Phase 4 · Coupling/ ✅ done 2026-04-22**
+
+Moved five scanner↔surface↔grammar coupling proofs into
+[`L4YAML/Proofs/Coupling/`](../L4YAML/Proofs/Coupling/):
+[`CouplingBridge.lean`](../L4YAML/Proofs/Coupling/CouplingBridge.lean),
+[`ScannerCoupling.lean`](../L4YAML/Proofs/Coupling/ScannerCoupling.lean),
+[`SurfaceCoupling.lean`](../L4YAML/Proofs/Coupling/SurfaceCoupling.lean),
+[`StructureCoupling.lean`](../L4YAML/Proofs/Coupling/StructureCoupling.lean),
+[`ScalarCoupling.lean`](../L4YAML/Proofs/Coupling/ScalarCoupling.lean).
+
+- **Tooling used**: same pattern as the Foundation/, Errors/,
+  Schema/, Contracts/, Production/, Scanner/, Output/, and Parser/
+  clusters — `git mv` + one anchored `sed` pass over
+  `^import L4YAML.Proofs.Foo$`.  Three internal cross-import lines
+  (`ScannerCoupling` → `CouplingBridge`, `ScalarCoupling` →
+  `ScannerCoupling`, `StructureCoupling` → `ScalarCoupling`) were
+  rewritten in-place by the same sed pass.  Namespaces left untouched.
+- **Script**:
+  [`scripts/refactor-phase-9-coupling.sh`](../scripts/refactor-phase-9-coupling.sh)
+  — reversible via commit revert.
+- **Acceptance met**: `lake build` 449/449 (same pre-existing
+  `sorry` warnings in `Output/EmitterScannability.lean` carried
+  over unchanged from the baseline — no new warnings or failures
+  introduced by this cluster).
+- **Note on count**: the roadmap row above was drafted as 6 files;
+  the target layout in this README and in `03-code-organization.md`
+  both enumerate 5.  The row is now ✅ at 5 — the sixth file in the
+  original draft never existed in the flat layout.
+- **Blast radius**: 5 renames + external importers rewritten
+  (`L4YAML.lean` five import lines;
+  `L4YAML/Proofs/Production/StructureProduction.lean` one line;
+  `L4YAML/Proofs/Production/PreprocessProduction.lean` one line;
+  `L4YAML/Proofs/Production/ScalarProduction.lean` one line;
+  `L4YAML/Proofs/Scanner/ScanStrictCoupling.lean` one line;
+  `L4YAML/Proofs/Output/EmitterScannability.lean` two lines) +
+  three internal cross-imports + narrative references in
+  `Blueprint/README.md` and `Blueprint/03-code-organization.md`.
 
 **Overall exit criterion for Initiative 1**: `Architecture.lean`
 can be regenerated from the actual folder layout instead of
