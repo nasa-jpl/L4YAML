@@ -105,7 +105,7 @@ and the full URI forms (`tag:yaml.org,2002:str`).
 </summary>
 
 - **In Lean**: `YamlToken.tag` variant carries `(handle : String)
-  (suffix : String)`. [`L4YAML/Proofs/TagResolution.lean`](../L4YAML/Proofs/TagResolution.lean)
+  (suffix : String)`. [`L4YAML/Proofs/Schema/TagResolution.lean`](../L4YAML/Proofs/Schema/TagResolution.lean)
   handles `%TAG` directive expansion and `escapeTag` URI escaping.
 - **Two separate operations**: *parsing* (resolving `!` + `handle` +
   `suffix` via `%TAG` directives in force) and *applying* (using

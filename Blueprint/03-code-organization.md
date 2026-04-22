@@ -53,7 +53,7 @@ L4YAML/
 ├── FFI/
 │   └── FFI.lean
 ├── YAML_PRODUCTIONS.md
-└── Proofs/                      (54 flat + Foundation/ + Errors/ clusters; Phase 4 ongoing)
+└── Proofs/                      (50 flat + Foundation/ + Errors/ + Schema/ clusters; Phase 4 ongoing)
 ```
 
 Phase 1 (`ad12e204`) + Phase 1b (`573fa76e`) landed on 2026-04-21.
@@ -88,7 +88,9 @@ What's done, what remains:
   `LawfulBEq.lean`, `StringProperties.lean`, `ValueAlgebra.lean`).
   **Errors/** cluster landed 2026-04-22 (3 files: `ErrorProperties.lean`,
   `EscapeResolution.lean`, `FoldNewlines.lean`).
-  54 files still flat; remaining clusters per the target layout below.
+  **Schema/** cluster landed 2026-04-22 (4 files: `SchemaComposition.lean`,
+  `SchemaDump.lean`, `SchemaResolution.lean`, `TagResolution.lean`).
+  50 files still flat; remaining clusters per the target layout below.
 
 ## Proposed target layout
 
@@ -299,6 +301,11 @@ phase should leave the build green and the imports valid):
      `ErrorProperties.lean`, `EscapeResolution.lean`, `FoldNewlines.lean`
      into `L4YAML/Proofs/Errors/`.  Scripted in
      [`scripts/refactor-phase-4-errors.sh`](../scripts/refactor-phase-4-errors.sh);
+     `lake build` 449/449.
+   - **Cluster 3 — Schema/** ✅ **done 2026-04-22**. Moved
+     `SchemaComposition.lean`, `SchemaDump.lean`, `SchemaResolution.lean`,
+     `TagResolution.lean` into `L4YAML/Proofs/Schema/`.  Scripted in
+     [`scripts/refactor-phase-4-schema.sh`](../scripts/refactor-phase-4-schema.sh);
      `lake build` 449/449.
 
 ## Naming conventions

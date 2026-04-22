@@ -1,4 +1,4 @@
-import L4YAML.Proofs.SchemaResolution
+import L4YAML.Proofs.Schema.SchemaResolution
 
 namespace L4YAML.Schema.Proofs
 

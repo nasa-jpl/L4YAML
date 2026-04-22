@@ -1,4 +1,4 @@
-import L4YAML.Proofs.SchemaDump
+import L4YAML.Proofs.Schema.SchemaDump
 
 namespace L4YAML.Proofs.SchemaDump
 

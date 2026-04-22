@@ -329,8 +329,8 @@ These represent the bulk of the verification effort (>80% of proof code) and **r
 
 Contrary to the pre-refactoring prediction of "⚠️ mechanical updates", these proofs required **no changes at all**:
 
-- **[Proofs/SchemaDump.lean](L4YAML/Proofs/SchemaDump.lean)** — All error-matching uses wildcard `| .error _ =>`, so the error type change from `String` to `ScanError`/`SchemaError` was invisible to the proof.
-- **[Proofs/SchemaResolution.lean](L4YAML/Proofs/SchemaResolution.lean)** — Only references the `Schema.resolve` function, which has no error-type dependency.
+- **[Proofs/Schema/SchemaDump.lean](L4YAML/Proofs/Schema/SchemaDump.lean)** — All error-matching uses wildcard `| .error _ =>`, so the error type change from `String` to `ScanError`/`SchemaError` was invisible to the proof.
+- **[Proofs/Schema/SchemaResolution.lean](L4YAML/Proofs/Schema/SchemaResolution.lean)** — Only references the `Schema.resolve` function, which has no error-type dependency.
 
 #### 3. Minimal Impact: Composition/End-to-End Proofs
 
@@ -508,7 +508,7 @@ The exception refactoring **preserved this property**:
 - [Token.lean:237-311](L4YAML/Token.lean#L237-L311) — Existing `ScanError` design
 - [Schema/FromToYaml.lean](L4YAML/Schema/FromToYaml.lean) — Schema typeclass layer
 - [Schema/Struct.lean](L4YAML/Schema/Struct.lean) — Struct helper functions
-- [Proofs/SchemaDump.lean](L4YAML/Proofs/SchemaDump.lean) — Round-trip proofs
+- [Proofs/Schema/SchemaDump.lean](L4YAML/Proofs/Schema/SchemaDump.lean) — Round-trip proofs
 - [Proofs/EndToEndCorrectness.lean](L4YAML/Proofs/EndToEndCorrectness.lean) — Integration proofs
 
 ## Conclusion

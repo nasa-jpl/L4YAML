@@ -266,7 +266,7 @@ PR; each leaves build green.
 | -- | ------- | ----: | -----------: | --------------- | ---- |
 | 1 | Foundation/ ✅ | 4 | ~1,100 | (infra only) | low |
 | 2 | Errors/ ✅ | 3 | ~900 | — | low |
-| 3 | Schema/ | 4 | ~850 | 5 (SchemaResolution), 6 (SchemaDump, SchemaComposition) | low |
+| 3 | Schema/ ✅ | 4 | ~850 | 5 (SchemaResolution), 6 (SchemaDump, SchemaComposition) | low |
 | 4 | Contracts/ | 2 | ~500 | — | low |
 | 5 | Production/ | 7 | ~7,500 | 7 (all production theorems) | medium |
 | 6 | Scanner/ | 17 | ~9,700 | 2 (all scanner correctness), 6 partial, 7 partial | medium (size) |
@@ -359,6 +359,30 @@ Moved three error-domain proofs into
   (`L4YAML.lean`, `Tests/Guards/Proofs/EscapeResolution.lean`,
   `Tests/Guards/Proofs/FoldNewlines.lean`) + one narrative
   reference in `EXCEPTIONS.md`.
+
+**Phase 4 · Schema/ ✅ done 2026-04-22**
+
+Moved four schema-domain proofs into
+[`L4YAML/Proofs/Schema/`](../L4YAML/Proofs/Schema/):
+[`SchemaComposition.lean`](../L4YAML/Proofs/Schema/SchemaComposition.lean),
+[`SchemaDump.lean`](../L4YAML/Proofs/Schema/SchemaDump.lean),
+[`SchemaResolution.lean`](../L4YAML/Proofs/Schema/SchemaResolution.lean),
+[`TagResolution.lean`](../L4YAML/Proofs/Schema/TagResolution.lean).
+
+- **Tooling used**: same pattern as the Foundation/ and Errors/
+  clusters — `git mv` + one anchored `sed` pass over
+  `^import L4YAML.Proofs.Foo$`. Namespaces left untouched.
+- **Script**:
+  [`scripts/refactor-phase-4-schema.sh`](../scripts/refactor-phase-4-schema.sh)
+  — reversible via commit revert.
+- **Acceptance met**: `lake build` 449/449 (same pre-existing
+  `sorry` warnings as the prior clusters).
+- **Blast radius**: 4 renames + 4 touched importers
+  (`L4YAML.lean`, `Tests/Guards/Proofs/SchemaComposition.lean`,
+  `Tests/Guards/Proofs/SchemaDump.lean`,
+  `Tests/Guards/Proofs/SchemaResolution.lean`) + narrative
+  references in `README.md`, `Blueprint/01-terminology.md`,
+  `Blueprint/04-capstones.md`, and `EXCEPTIONS.md`.
 
 **Overall exit criterion for Initiative 1**: `Architecture.lean`
 can be regenerated from the actual folder layout instead of
