@@ -1,6 +1,6 @@
-import L4YAML.Proofs.PreprocessProduction
+import L4YAML.Proofs.Production.PreprocessProduction
 import L4YAML.Proofs.ScanStrictCoupling
-import L4YAML.Proofs.StructureProduction
+import L4YAML.Proofs.Production.StructureProduction
 
 /-! # Stream Grammar Accumulator (Layer 4d + 4e: Lagging Grammar with Block Stack)
 

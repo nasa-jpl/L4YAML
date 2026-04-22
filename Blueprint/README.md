@@ -268,7 +268,7 @@ PR; each leaves build green.
 | 2 | Errors/ ✅ | 3 | ~900 | — | low |
 | 3 | Schema/ ✅ | 4 | ~850 | 5 (SchemaResolution), 6 (SchemaDump, SchemaComposition) | low |
 | 4 | Contracts/ ✅ | 2 | ~500 | — | low |
-| 5 | Production/ | 7 | ~7,500 | 7 (all production theorems) | medium |
+| 5 | Production/ ✅ | 7 | ~7,500 | 7 (all production theorems) | medium |
 | 6 | Scanner/ | 17 | ~9,700 | 2 (all scanner correctness), 6 partial, 7 partial | medium (size) |
 | 7 | Output/ | 3 | ~11,000 | 6 (EmitterScannability, ScannerEmitBridge, DumpRoundTrip) | medium (EmitterScannability is ~10k LoC) |
 | 8 | Parser/ | 9 | ~12,000 | 3 (all parser correctness) | medium (size + mutual-rec imports) |
@@ -404,6 +404,37 @@ Moved two contract proofs into
   `Blueprint/03-code-organization.md` and `Blueprint/README.md`.
   No test guards exist for these contract proofs, and no other
   in-repo narrative docs reference them by path.
+
+**Phase 4 · Production/ ✅ done 2026-04-22**
+
+Moved seven production-theorem proofs into
+[`L4YAML/Proofs/Production/`](../L4YAML/Proofs/Production/):
+[`StreamAccum.lean`](../L4YAML/Proofs/Production/StreamAccum.lean),
+[`StructureProduction.lean`](../L4YAML/Proofs/Production/StructureProduction.lean),
+[`ScalarProduction.lean`](../L4YAML/Proofs/Production/ScalarProduction.lean),
+[`DocumentProduction.lean`](../L4YAML/Proofs/Production/DocumentProduction.lean),
+[`NodeProduction.lean`](../L4YAML/Proofs/Production/NodeProduction.lean),
+[`PreprocessProduction.lean`](../L4YAML/Proofs/Production/PreprocessProduction.lean),
+[`ScannerPlainScalarValid.lean`](../L4YAML/Proofs/Production/ScannerPlainScalarValid.lean).
+
+- **Tooling used**: same pattern as the Foundation/, Errors/,
+  Schema/, and Contracts/ clusters — `git mv` + one anchored `sed`
+  pass over `^import L4YAML.Proofs.Foo$`. The seven-way internal
+  cross-imports among production files were rewritten in-place by
+  the same sed pass. Namespaces left untouched.
+- **Script**:
+  [`scripts/refactor-phase-5-production.sh`](../scripts/refactor-phase-5-production.sh)
+  — reversible via commit revert.
+- **Acceptance met**: `lake build` 449/449 (same pre-existing
+  `sorry` warnings as the prior clusters).
+- **Blast radius**: 7 renames + 6 external importers touched
+  (`L4YAML.lean` seven import lines; `L4YAML/Surface/Surface.lean`
+  one line; `ParserAnchorProofs.lean`, `ParserGrammableBase.lean`,
+  `ParserGrammable.lean`, `ParserWellBehaved.lean` one line each)
+  + internal cross-imports among the moved files + narrative
+  references in `Blueprint/README.md` and
+  `Blueprint/03-code-organization.md`. No test-guard files import
+  these production proofs directly.
 
 **Overall exit criterion for Initiative 1**: `Architecture.lean`
 can be regenerated from the actual folder layout instead of

@@ -53,7 +53,7 @@ L4YAML/
 ├── FFI/
 │   └── FFI.lean
 ├── YAML_PRODUCTIONS.md
-└── Proofs/                      (48 flat + Foundation/ + Errors/ + Schema/ + Contracts/ clusters; Phase 4 ongoing)
+└── Proofs/                      (41 flat + Foundation/ + Errors/ + Schema/ + Contracts/ + Production/ clusters; Phase 4 ongoing)
 ```
 
 Phase 1 (`ad12e204`) + Phase 1b (`573fa76e`) landed on 2026-04-21.
@@ -92,7 +92,10 @@ What's done, what remains:
   `SchemaDump.lean`, `SchemaResolution.lean`, `TagResolution.lean`).
   **Contracts/** cluster landed 2026-04-22 (2 files:
   `BlockScalarContracts.lean`, `DocumentContracts.lean`).
-  48 files still flat; remaining clusters per the target layout below.
+  **Production/** cluster landed 2026-04-22 (7 files: `StreamAccum.lean`,
+  `StructureProduction.lean`, `ScalarProduction.lean`, `DocumentProduction.lean`,
+  `NodeProduction.lean`, `PreprocessProduction.lean`, `ScannerPlainScalarValid.lean`).
+  41 files still flat; remaining clusters per the target layout below.
 
 ## Proposed target layout
 
@@ -313,6 +316,13 @@ phase should leave the build green and the imports valid):
      `BlockScalarContracts.lean`, `DocumentContracts.lean` into
      `L4YAML/Proofs/Contracts/`.  Scripted in
      [`scripts/refactor-phase-4-contracts.sh`](../scripts/refactor-phase-4-contracts.sh);
+     `lake build` 449/449.
+   - **Cluster 5 — Production/** ✅ **done 2026-04-22**. Moved
+     `StreamAccum.lean`, `StructureProduction.lean`, `ScalarProduction.lean`,
+     `DocumentProduction.lean`, `NodeProduction.lean`, `PreprocessProduction.lean`,
+     `ScannerPlainScalarValid.lean` into `L4YAML/Proofs/Production/`.
+     Scripted in
+     [`scripts/refactor-phase-5-production.sh`](../scripts/refactor-phase-5-production.sh);
      `lake build` 449/449.
 
 ## Naming conventions

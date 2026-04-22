@@ -1,5 +1,5 @@
 import L4YAML.Proofs.ScannerCoupling
-import L4YAML.Proofs.NodeProduction
+import L4YAML.Proofs.Production.NodeProduction
 
 /-! # Preprocessing Production Coupling (Layer 4b)
 
