@@ -1,8 +1,8 @@
 import L4YAML.Proofs.ScanStrictCoupling
-import L4YAML.Proofs.StructureProduction
-import L4YAML.Proofs.NodeProduction
+import L4YAML.Proofs.Production.StructureProduction
+import L4YAML.Proofs.Production.NodeProduction
 import L4YAML.Proofs.Composition
-import L4YAML.Proofs.StreamAccum
+import L4YAML.Proofs.Production.StreamAccum
 
 /-! # Document & Stream Production (Phase D of v0.4.4)
 

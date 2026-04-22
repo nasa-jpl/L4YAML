@@ -1,5 +1,5 @@
-import L4YAML.Proofs.ScalarProduction
-import L4YAML.Proofs.StructureProduction
+import L4YAML.Proofs.Production.ScalarProduction
+import L4YAML.Proofs.Production.StructureProduction
 
 /-! # Node Production Coupling (Layer 2 of v0.4.6)
 

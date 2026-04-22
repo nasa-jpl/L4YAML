@@ -14,7 +14,7 @@ import L4YAML.Proofs.Completeness
 import L4YAML.Proofs.Composition
 import L4YAML.Proofs.CouplingBridge
 import L4YAML.Proofs.Contracts.DocumentContracts
-import L4YAML.Proofs.DocumentProduction
+import L4YAML.Proofs.Production.DocumentProduction
 import L4YAML.Proofs.DumpRoundTrip
 import L4YAML.Proofs.EmitterScannability
 import L4YAML.Proofs.EndToEndCorrectness
@@ -22,7 +22,7 @@ import L4YAML.Proofs.Errors.ErrorProperties
 import L4YAML.Proofs.Errors.EscapeResolution
 import L4YAML.Proofs.Errors.FoldNewlines
 import L4YAML.Proofs.Foundation.LawfulBEq
-import L4YAML.Proofs.NodeProduction
+import L4YAML.Proofs.Production.NodeProduction
 import L4YAML.Proofs.ParserAnchorProofs
 import L4YAML.Proofs.ParserCompleteness
 import L4YAML.Proofs.ParserCorrectness
@@ -32,11 +32,11 @@ import L4YAML.Proofs.ParserNodeProofs
 import L4YAML.Proofs.ParserSoundness
 import L4YAML.Proofs.ParserWellBehaved
 import L4YAML.Proofs.ParserWfaProofs
-import L4YAML.Proofs.PreprocessProduction
+import L4YAML.Proofs.Production.PreprocessProduction
 import L4YAML.Proofs.RoundTrip
 import L4YAML.Proofs.RoundTripComposition
 import L4YAML.Proofs.ScalarCoupling
-import L4YAML.Proofs.ScalarProduction
+import L4YAML.Proofs.Production.ScalarProduction
 import L4YAML.Proofs.ScannerContracts
 import L4YAML.Proofs.ScannerCorrectness
 import L4YAML.Proofs.ScannerCoupling
@@ -50,7 +50,7 @@ import L4YAML.Proofs.ScannerIndentStack
 import L4YAML.Proofs.ScannerLoopInvariant
 import L4YAML.Proofs.ScannerPlainContent
 import L4YAML.Proofs.ScannerPlainScalar
-import L4YAML.Proofs.ScannerPlainScalarValid
+import L4YAML.Proofs.Production.ScannerPlainScalarValid
 import L4YAML.Proofs.ScannerProgress
 import L4YAML.Proofs.ScannerProofs
 import L4YAML.Proofs.ScannerScalar
@@ -61,10 +61,10 @@ import L4YAML.Proofs.Schema.SchemaComposition
 import L4YAML.Proofs.Schema.SchemaDump
 import L4YAML.Proofs.Schema.SchemaResolution
 import L4YAML.Proofs.Soundness
-import L4YAML.Proofs.StreamAccum
+import L4YAML.Proofs.Production.StreamAccum
 import L4YAML.Proofs.Foundation.StringProperties
 import L4YAML.Proofs.StructureCoupling
-import L4YAML.Proofs.StructureProduction
+import L4YAML.Proofs.Production.StructureProduction
 import L4YAML.Proofs.SurfaceCoupling
 import L4YAML.Proofs.Schema.TagResolution
 import L4YAML.Proofs.Foundation.ValueAlgebra

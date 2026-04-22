@@ -1,4 +1,4 @@
-import L4YAML.Proofs.ScalarProduction
+import L4YAML.Proofs.Production.ScalarProduction
 import L4YAML.Proofs.StructureCoupling
 import L4YAML.Proofs.Foundation.CharClass
 
