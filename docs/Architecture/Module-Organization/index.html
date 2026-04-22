@@ -213,9 +213,9 @@ The project is organized into several module groups:</p>
                   </td></tr><tr><td><p>
                     Parser</p>
                   </td><td><p>
-                    <code>TokenParser.lean</code>, <code>NodeParser.lean</code></p>
+                    <code>Parser/Composition.lean</code> (umbrella), <code>TokenParser.lean</code> (mutual block), <code>State.lean</code>, <code>Fuel.lean</code></p>
                   </td><td><p>
-                    Token-to-AST recursive descent
+                    Token-to-AST recursive descent. Split into four role-named files (Blueprint Phase 3, 2026-04-21); <code>Composition.lean</code> owns the user-facing pipeline (<code>parseYaml*</code>, <code>scanAndParse</code>, comment classification), <code>TokenParser.lean</code> keeps the 14-function mutually-recursive block plus <code>parseStream</code> / <code>parseDocument</code>, <code>State.lean</code> holds <code>ParseState</code> + <code>NodeProperties</code> helpers, and <code>Fuel.lean</code> factors out the <code>initialFuel := 4*N+4</code> formula.
 </p>
                   </td></tr><tr><td><p>
                     Validation</p>

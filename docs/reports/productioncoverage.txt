@@ -9,7 +9,7 @@
 --- Automated @[yaml_spec] discovery ---
   ✓ @[yaml_spec] entries discovered: 410
   ✓ unique production rules annotated: 211
-  ✓ source modules with annotations: 11
+  ✓ source modules with annotations: 12
 
 --- Coverage analysis ---
   ✓ annotated productions: 211/211
@@ -23,8 +23,9 @@
   ✓ L4YAML.Scanner.Scanner: 32 annotations
   ✓ L4YAML.Spec.CharPredicates: 94 annotations
   ✓ L4YAML.Scanner.Whitespace: 28 annotations
-  ✓ L4YAML.Parser.TokenParser: 56 annotations
+  ✓ L4YAML.Parser.TokenParser: 52 annotations
   ✓ L4YAML.Scanner.SimpleKey: 14 annotations
+  ✓ L4YAML.Parser.State: 4 annotations
   ✓ L4YAML.Scanner.NodeProperties: 20 annotations
   ✓ L4YAML.Scanner.Indent: 11 annotations
   ✓ L4YAML.Scanner.State: 1 annotations
@@ -36,5 +37,5 @@
   ✓ Ch 8 (Block Styles): 40/40
   ✓ Ch 9 (Documents): 10/10
 
-=== Results: 25/25 passed ===
+=== Results: 26/26 passed ===
   wrote docs/production-coverage.html

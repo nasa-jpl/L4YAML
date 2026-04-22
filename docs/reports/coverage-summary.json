@@ -1,5 +1,5 @@
 {
-  "date": "2026-04-21T20:01:27-0700",
+  "date": "2026-04-21T20:40:56-0700",
   "overall": {
     "applicable": 358,
     "correct": 358,
@@ -20844,7 +20844,7 @@
       {
         "allPass": true,
         "label": "Production Coverage Analysis",
-        "passed": 25,
+        "passed": 26,
         "tests": [
           {
             "category": "Catalog completeness",
@@ -20873,7 +20873,7 @@
           },
           {
             "category": "Automated @[yaml_spec] discovery",
-            "name": "source modules with annotations: 11",
+            "name": "source modules with annotations: 12",
             "outcome": "pass"
           },
           {
@@ -20923,12 +20923,17 @@
           },
           {
             "category": "Per-module annotation counts",
-            "name": "L4YAML.Parser.TokenParser: 56 annotations",
+            "name": "L4YAML.Parser.TokenParser: 52 annotations",
             "outcome": "pass"
           },
           {
             "category": "Per-module annotation counts",
             "name": "L4YAML.Scanner.SimpleKey: 14 annotations",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-module annotation counts",
+            "name": "L4YAML.Parser.State: 4 annotations",
             "outcome": "pass"
           },
           {
@@ -20972,7 +20977,7 @@
             "outcome": "pass"
           }
         ],
-        "total": 25
+        "total": 26
       },
       {
         "allPass": true,
@@ -21241,7 +21246,7 @@
         "total": 7
       }
     ],
-    "totalPassed": 3694,
-    "totalTests": 3712
+    "totalPassed": 3695,
+    "totalTests": 3713
   }
 }
