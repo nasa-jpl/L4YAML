@@ -11,8 +11,8 @@ independent of any implementation.
 ### Grammar
 The **YAML 1.2.2 specification grammar** — the 221 numbered BNF
 productions of [YAML 1.2.2](https://yaml.org/spec/1.2.2/).
-- **In Lean**: the `Grammar` namespace in [`L4YAML/Grammar.lean`](../L4YAML/Grammar.lean).
-  Production predicates live in [`L4YAML/YamlSpec.lean`](../L4YAML/YamlSpec.lean).
+- **In Lean**: the `Grammar` namespace in [`L4YAML/Spec/Grammar.lean`](../L4YAML/Spec/Grammar.lean).
+  Production predicates live in [`L4YAML/Spec/YamlSpec.lean`](../L4YAML/Spec/YamlSpec.lean).
 - **Key inductives**: `Grammar.ValidNode`, `Grammar.ValidYaml`,
   `Grammar.ValidDocument`, `Grammar.ValidStream`, `Grammar.ValidTokenStream`.
 - **Read "`Grammar.ValidX thing`" as**: *`thing` is a valid YAML `X`
@@ -46,8 +46,8 @@ A named BNF rule from the spec, e.g. `[183] l+block-sequence(n)`.
 The **type-resolution layer** defined in YAML 1.2.2 §10.3
 ("Core Schema"). Maps unquoted scalars to `null`, `bool`, `int`,
 `float`, or `str` based on lexical form.
-- **In Lean**: `Schema` namespace; [`L4YAML/Schema.lean`](../L4YAML/Schema.lean) +
-  [`L4YAML/Schema/`](../L4YAML/Schema/).
+- **In Lean**: `Schema` namespace; [`L4YAML/Schema/Schema.lean`](../L4YAML/Schema/Schema.lean)
+  (umbrella) + other files in [`L4YAML/Schema/`](../L4YAML/Schema/).
 - **Scope**: only applies to *untagged* scalars. Explicit tags
   (`!!int`, `!!str`, etc.) override schema resolution.
 - **Distinct from**: user-defined application schemas. L4YAML
@@ -96,7 +96,7 @@ code.
 ### Scanner
 The **lexical-layer** function `scan : String → Except ScanError
 (Array (Positioned YamlToken))`.
-- **Module**: [`L4YAML/Scanner.lean`](../L4YAML/Scanner.lean) (~920 LoC).
+- **Module**: [`L4YAML/Scanner/Scanner.lean`](../L4YAML/Scanner/Scanner.lean) (~920 LoC).
 - **State** (`ScannerState`): input offset, indentation stack, flow
   level, simple-key slot, anchor map, position cursor.
 - **Invariant**: `WellFormed` / `BoundInv` — offset ≤ inputEnd,
@@ -106,7 +106,7 @@ The **lexical-layer** function `scan : String → Except ScanError
 
 ### Token
 A **lexical element** of YAML. Defined as `YamlToken` inductive in
-[`L4YAML/Token.lean`](../L4YAML/Token.lean).
+[`L4YAML/Token/Token.lean`](../L4YAML/Token/Token.lean).
 - **Variants**: `streamStart`, `streamEnd`, `documentStart`,
   `documentEnd`, `blockSequenceStart`, `blockMappingStart`,
   `blockEnd`, `flowSequenceStart`, `flowSequenceEnd`,
@@ -120,7 +120,7 @@ A **lexical element** of YAML. Defined as `YamlToken` inductive in
 ### Parser
 The **syntactic-layer** function `parseStream : Array (Positioned
 YamlToken) → Except ScanError (Array YamlDocument)`.
-- **Module**: [`L4YAML/TokenParser.lean`](../L4YAML/TokenParser.lean) (~800 LoC).
+- **Module**: [`L4YAML/Parser/TokenParser.lean`](../L4YAML/Parser/TokenParser.lean) (~800 LoC).
 - **Strategy**: hand-written recursive descent; 14 mutually-recursive
   functions (`parseNode`, `parseFlowSequence`, `parseFlowMapping`,
   `parseBlockSequence`, `parseBlockMapping`,
@@ -135,7 +135,7 @@ YamlToken) → Except ScanError (Array YamlDocument)`.
 The **end-to-end** function `parseYaml : String → Except ScanError
 (Array YamlDocument)`, defined as `compose ∘ parseStream ∘
 scanFiltered`.
-- **Module**: [`L4YAML/TokenParser.lean`](../L4YAML/TokenParser.lean)
+- **Module**: [`L4YAML/Parser/TokenParser.lean`](../L4YAML/Parser/TokenParser.lean)
   (`parseYaml`, `parseYamlRaw`); decomposition theorems in
   [`L4YAML/Proofs/Composition.lean`](../L4YAML/Proofs/Composition.lean).
 - **`parseYamlRaw`**: without schema resolution (scalars remain as
@@ -144,7 +144,7 @@ scanFiltered`.
 
 ### Emitter
 The **canonical serializer**: `emit : YamlValue → String`.
-- **Module**: [`L4YAML/Emitter.lean`](../L4YAML/Emitter.lean) (~164 LoC).
+- **Module**: [`L4YAML/Output/Emitter.lean`](../L4YAML/Output/Emitter.lean) (~164 LoC).
 - **Canonical**: deterministic, style-insensitive. Always produces
   the same bytes for the same `YamlValue`.
 - **Distinct from Dumper** (below). The Emitter's role in proofs is
@@ -153,7 +153,7 @@ The **canonical serializer**: `emit : YamlValue → String`.
 ### Dumper (style-aware serializer)
 The **configurable serializer**: `dump : DumpConfig → YamlValue →
 String`.
-- **Module**: [`L4YAML/Dump.lean`](../L4YAML/Dump.lean).
+- **Module**: [`L4YAML/Output/Dump.lean`](../L4YAML/Output/Dump.lean).
 - **Difference from Emitter**: honors style hints (flow vs block,
   quoted vs plain scalar, literal vs folded), uses configurable
   indentation, inserts comments. Output is human-readable YAML but
@@ -165,7 +165,7 @@ String`.
 ### YamlValue
 The **runtime AST** — the user-facing data type produced by
 `parseYaml`. Simple inductive: `scalar`, `sequence`, `mapping`.
-- **Module**: [`L4YAML/Types.lean`](../L4YAML/Types.lean).
+- **Module**: [`L4YAML/Spec/Types.lean`](../L4YAML/Spec/Types.lean).
 - **Does not carry**: grammar-derivation annotations. For that,
   see `YamlNode`.
 
@@ -173,7 +173,7 @@ The **runtime AST** — the user-facing data type produced by
 The **annotated AST** used inside grammar witnesses: carries
 position, style, and derivation information beyond the bare
 `YamlValue`.
-- **Module**: [`L4YAML/Grammar.lean`](../L4YAML/Grammar.lean) (inside `Grammar`).
+- **Module**: [`L4YAML/Spec/Grammar.lean`](../L4YAML/Spec/Grammar.lean) (inside `Grammar`).
 - **`stripAnnotations : YamlNode → YamlValue`**: the forgetful map.
 - **Used when**: stating soundness (`∃ node : YamlNode,
   stripAnnotations (toYamlValue node) = v`).
@@ -225,8 +225,8 @@ and `BoundInv`; each scanner step is proved to preserve them.
 **Resource bounds** — nesting depth, string length, collection
 cardinality. Configurable via `ParserLimits`; 4 built-in presets
 (`strict`, `default`, `relaxed`, `unlimited`).
-- **Modules**: [`L4YAML/Config.lean`](../L4YAML/Config.lean),
-  [`L4YAML/Limits.lean`](../L4YAML/Limits.lean).
+- **Modules**: [`L4YAML/Config/Config.lean`](../L4YAML/Config/Config.lean),
+  [`L4YAML/Config/Limits.lean`](../L4YAML/Config/Limits.lean).
 
 ## Are these all the key terms?
 

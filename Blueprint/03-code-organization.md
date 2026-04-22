@@ -5,55 +5,62 @@ proofs — that's a separate follow-up). Guiding principle: *a
 newcomer should be able to find the implementation of any
 terminology entry in ≤ 2 clicks from the top of `L4YAML/`*.
 
-## Current state
+## Current state (post-Phase-1b, 2026-04-21)
 
 ```
 L4YAML/
-├── CharPredicates.lean
-├── Config.lean
-├── Dump.lean
-├── Emitter.lean
-├── FFI.lean
-├── Grammar.lean
-├── Limits.lean
-├── Scanner.lean                 (~920 LoC — flat file)
-├── Schema.lean
+├── Spec/
+│   ├── CharPredicates.lean
+│   ├── Grammar.lean
+│   ├── Types.lean
+│   └── YamlSpec.lean
+├── Token/
+│   └── Token.lean
+├── Scanner/
+│   └── Scanner.lean             (~920 LoC — still monolithic, Phase 2 splits)
+├── Parser/
+│   └── TokenParser.lean         (~800 LoC — Phase 3 splits)
+├── Output/
+│   ├── Dump.lean
+│   └── Emitter.lean
 ├── Schema/
 │   ├── Api.lean
 │   ├── Deriving.lean
-│   ├── Dump.lean                (! shadows top-level Dump.lean?)
+│   ├── Dump.lean
 │   ├── FromToYaml.lean
+│   ├── Schema.lean              -- umbrella, shared namespace `L4YAML.Schema`
 │   └── Struct.lean
-├── Surface.lean
 ├── Surface/
 │   ├── Basic.lean
 │   ├── Combinators.lean
 │   ├── Document.lean
 │   ├── Node.lean
-│   └── Scalars.lean
-├── Token.lean
-├── TokenParser.lean             (~800 LoC — flat file)
-├── Types.lean
+│   ├── Scalars.lean
+│   └── Surface.lean             -- umbrella, shared namespace `L4YAML.Surface`
+├── Config/
+│   ├── Config.lean
+│   └── Limits.lean
+├── FFI/
+│   └── FFI.lean
 ├── YAML_PRODUCTIONS.md
-├── YamlSpec.lean
-└── Proofs/                      (61 files — flat, ~47,000 LoC)
+└── Proofs/                      (61 files — flat, ~47,000 LoC; Phase 4 clusters)
 ```
 
-Observations:
+Phase 1 (`ad12e204`) + Phase 1b (`573fa76e`) landed on 2026-04-21.
+What's done, what remains:
 
-- **14 top-level files mixed with 3 subdirectories** (`Proofs/`,
-  `Schema/`, `Surface/`) — no discoverable grouping.
-- Scanner and TokenParser are monolithic — the Scanner
-  implementation subdirectory mentioned in
+- **Done**: 14 top-level files collapsed into 9 role-named folders.
+  Every top-level file sits inside its matching folder; no more
+  orphan siblings.
+- **Done**: `Schema/Dump.lean` vs. top-level `Dump.lean` shadow
+  resolved — now `Output/Dump.lean` vs. `Schema/Dump.lean`.
+- **Pending (Phase 2)**: `Scanner/Scanner.lean` is still monolithic.
+  The submodules referenced by
   [`doc/Doc/L4YAML/Architecture.lean:140`](../doc/Doc/L4YAML/Architecture.lean#L140)
-  (`Scanner/Whitespace.lean`, `Scanner/Scalar.lean`, …) **does not
-  exist** in the repo. The Verso manual is ahead of the code.
-- `Schema/Dump.lean` and top-level `Dump.lean` coexist without a
-  clear naming convention distinguishing them.
-- `Proofs/` is a flat directory of 61 files — navigation hard; no
-  visible grouping by capstone cluster.
-- `Limits.lean` and `Config.lean` are siblings of top-level
-  parser files — unclear which depends on which.
+  (`Scanner/Whitespace.lean`, `Scanner/Scalar.lean`, …) still
+  **do not exist**. The Verso manual remains ahead of the code.
+- **Pending (Phase 3)**: `Parser/TokenParser.lean` is still monolithic.
+- **Pending (Phase 4)**: `Proofs/` is a flat directory of 61 files.
 
 ## Proposed target layout
 
@@ -67,13 +74,13 @@ L4YAML/
 │   ├── YamlSpec.lean            -- named production predicates
 │   └── Types.lean               -- YamlValue, YamlDocument, YamlPos
 │
-├── Surface/                     -- character-level syntax (unchanged)
+├── Surface/                     -- character-level syntax
 │   ├── Basic.lean
 │   ├── Combinators.lean
 │   ├── Document.lean
 │   ├── Node.lean
 │   ├── Scalars.lean
-│   └── (Surface.lean becomes Surface/default.lean or is deleted)
+│   └── Surface.lean             -- umbrella, shared namespace `L4YAML.Surface`
 │
 ├── Token/                       -- token data type
 │   └── Token.lean
@@ -94,7 +101,7 @@ L4YAML/
 │   └── Composition.lean         -- parseYaml / parseYamlRaw / compose
 │
 ├── Schema/                      -- Core Schema
-│   ├── Schema.lean              -- resolution functions (§10.3)
+│   ├── Schema.lean              -- umbrella, resolution functions (§10.3)
 │   ├── Api.lean                 -- user-facing converters
 │   ├── Deriving.lean            -- macros/derives
 │   ├── FromToYaml.lean
@@ -211,19 +218,27 @@ L4YAML/Proofs/
 **Do not do all of this in one commit.** Suggested order (each
 phase should leave the build green and the imports valid):
 
-1. **Phase 1 — non-code moves** (cheap, low risk): Create the
-   `Spec/`, `Output/`, `Config/`, `FFI/`, `Token/`, `Parser/`
-   folders and move the files listed above. Update `import`
-   statements with a scripted rename. Keep `Scanner.lean` monolithic
-   for now. Single PR; build-green check.
-2. **Phase 2 — Scanner split** (medium): Break `Scanner.lean` into
-   the submodules referenced by
+1. **Phase 1 — non-code moves** ✅ **done 2026-04-21** (`ad12e204`).
+   Created `Spec/`, `Output/`, `Config/`, `FFI/`, `Token/`, `Parser/`
+   folders and moved the 12 top-level files listed above.
+   `Scanner.lean` moved to `Scanner/Scanner.lean` as an umbrella (no
+   split yet). Import rewrites scripted in
+   [`scripts/refactor-phase-1.sh`](../scripts/refactor-phase-1.sh).
+   Build green, 429/429.
+1b. **Phase 1b — Schema/Surface umbrellas** ✅ **done 2026-04-21**
+   (`573fa76e`). `L4YAML/Schema.lean` and `L4YAML/Surface.lean`
+   moved into their folders as `Schema/Schema.lean` and
+   `Surface/Surface.lean` for symmetry with `Scanner/Scanner.lean`.
+   Scripted in
+   [`scripts/refactor-phase-1b.sh`](../scripts/refactor-phase-1b.sh).
+2. **Phase 2 — Scanner split** (medium): Break
+   `Scanner/Scanner.lean` into the submodules referenced by
    [`Architecture.lean:140`](../doc/Doc/L4YAML/Architecture.lean#L140).
    This lines up the code with the published documentation.
 3. **Phase 3 — Parser split** (medium): Extract `Parser/State.lean`,
    `Parser/Fuel.lean`, `Parser/Composition.lean` from
-   `TokenParser.lean`. The mutually-recursive block stays together
-   in `TokenParser.lean`.
+   `Parser/TokenParser.lean`. The mutually-recursive block stays
+   together in `TokenParser.lean`.
 4. **Phase 4 — Proofs reorganization** (large, per-folder):
    Move proof files into the subfolders above one cluster at a time.
    Each move is its own PR; build-green gate.
@@ -234,10 +249,24 @@ After the refactor, propose enforcing:
 
 - **File name = namespace name = role**. `L4YAML/Scanner/SimpleKey.lean`
   opens namespace `L4YAML.Scanner.SimpleKey`.
-- **No shadow names across folders**. The current
-  `Dump.lean` / `Schema/Dump.lean` collision should resolve after
-  Phase 1 (→ `Output/Dump.lean` / `Schema/Dump.lean` — now clearly
-  distinguishable).
+- **Umbrella file convention: `Foo/Foo.lean`**. Every folder whose
+  top-level content was previously a flat `L4YAML/Foo.lean` now has
+  the file at `L4YAML/Foo/Foo.lean`, opening namespace `L4YAML.Foo`
+  (not `L4YAML.Foo.Foo`). This is the one accepted
+  file-name ≠ namespace exception: the umbrella collects content
+  that spans the whole cluster and belongs in the cluster's
+  top-level namespace. `L4YAML/Scanner/Scanner.lean`,
+  `L4YAML/Parser/TokenParser.lean`, `L4YAML/Schema/Schema.lean`,
+  `L4YAML/Surface/Surface.lean` are the live examples. Rejected
+  alternatives:
+    - `Foo/default.lean` — Lean 4 has no blessed default-module
+      convention, and the filename carries no role information.
+    - Keep `Foo.lean` at the top level as sibling of `Foo/` — legal
+      but produces asymmetric navigation and obscures that `Foo.lean`
+      belongs to the cluster.
+- **No shadow names across folders**. Phase 1 resolved the previous
+  `Dump.lean` / `Schema/Dump.lean` collision (→ `Output/Dump.lean` /
+  `Schema/Dump.lean`).
 - **Proof file names mirror their subject**. `Proofs/Scanner/X.lean`
   proves properties of `L4YAML/Scanner/X.lean`. Where a proof file
   covers multiple subjects (e.g., `StructureCoupling.lean` covers
