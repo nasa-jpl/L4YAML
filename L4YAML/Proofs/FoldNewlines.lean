@@ -1,5 +1,5 @@
 import L4YAML.Spec.Grammar
-import L4YAML.Parser.TokenParser
+import L4YAML.Parser.Composition
 
 /-!
 # Fold Newlines & c-forbidden Properties (Layer 2a)

@@ -27,7 +27,7 @@
 import L4YAML.Spec.Types
 import L4YAML.Token.Token
 import L4YAML.Scanner.Scanner
-import L4YAML.Parser.TokenParser
+import L4YAML.Parser.Composition
 
 namespace L4YAML
 

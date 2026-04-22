@@ -4,7 +4,7 @@ import L4YAML.Schema.FromToYaml
 import L4YAML.Schema.Dump
 import L4YAML.Output.Dump
 import L4YAML.Output.Emitter
-import L4YAML.Parser.TokenParser
+import L4YAML.Parser.Composition
 import Tests.VerifiedResult
 
 /-

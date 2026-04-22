@@ -3,31 +3,37 @@ Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
 import L4YAML.Token.Token
-import L4YAML.Scanner.Scanner
 import L4YAML.Spec.YamlSpec
+import L4YAML.Parser.State
+import L4YAML.Parser.Fuel
 
 /-!
-# YAML Grammar Parser (Token → AST)
+# YAML Grammar Parser (Token → AST) — Mutual Block
 
-Phase 9: Token stream → `YamlValue` / `YamlDocument` AST.
+The 14 mutually-recursive functions implementing recursive descent over
+the scanner's token stream, plus the document-level grammar
+(`parseDirectives`, `prepareDocumentState`, `parseDocument`,
+`parseStream`).
 
-The grammar parser implements the 54 syntactic-layer (S) productions from
-YAML 1.2.2, operating on token arrays produced by the scanner. It never
-touches raw characters — that eliminates the `detectMappingKeyImpl` false
-positive class of bugs where character-level lookahead misidentified
-mapping keys.
+Split from the monolithic `Parser/TokenParser.lean` during Blueprint
+Initiative 1 Phase 3 (Parser split).  See
+`Blueprint/03-code-organization.md`.
+
+The user-facing pipeline (`parseYaml`, `parseYamlRaw`,
+`parseYamlWithComments`) lives in [`L4YAML.Parser.Composition`].
 
 ## Architecture
 
 ```
-Array (Positioned YamlToken) ──→ TokenParser ──→ Array YamlDocument
+Array (Positioned YamlToken) ──→ parseStream ──→ Array YamlDocument
 ```
 
-The parser is a **pure function**:
-  `Array (Positioned YamlToken) → Except ScanError (Array YamlDocument)`
+`parseStream` is implemented via `parseStreamLoop`, which iterates
+documents and enforces the §9.2 [211] document-boundary rules via
+`StreamState`.
 
-Internally it uses `ParseState` (current index into the token array) and
-operates via recursive descent, matching token patterns.
+Each document is parsed by `parseDocument`, which calls into the
+mutually-recursive block at `parseNode`.
 
 ## Token Grammar (S-layer productions ~§9)
 
@@ -56,221 +62,6 @@ namespace L4YAML.TokenParser
 
 open L4YAML
 
-/-! ## Parse State -/
-
-/-- Parse state: current position in the token array plus per-document state.
-
-    The parse state is a lightweight cursor over the scanner's token array.
-    It also carries:
-    - **anchors**: accumulated `&name` → value bindings for alias resolution
-    - **tagHandles**: handles declared via `%TAG` in the current document (§6.8.2.2)
--/
-structure ParseState where
-  /-- Token array from the scanner -/
-  tokens : Array (Positioned YamlToken)
-  /-- Current index into the token array -/
-  pos : Nat := 0
-  /-- Accumulated anchor definitions -/
-  anchors : Array (String × YamlValue) := #[]
-  /-- Tag handle → prefix mapping declared via `%TAG` for the current document.
-      §6.8.2.2: tag handles are local to the document.
-      Each entry is `(handle, tagPrefix)` so `!handle!suffix` resolves to
-      `tagPrefix ++ suffix` during node property parsing (§6.8.2). -/
-  tagHandles : Array (String × String) := #[]
-  /-- Whether to record node positions (G5c). Disabled by default;
-      enabled by `parseYamlWithComments`. -/
-  trackPositions : Bool := false
-  /-- Current path from document root for node position tracking (G5c). -/
-  currentPath : YamlPath := #[]
-  /-- Accumulated node position map (G5c).
-      Each entry is `(path, startPos, endPos)` for a parsed node. -/
-  nodePositions : Array (YamlPath × YamlPos × YamlPos) := #[]
-  deriving Repr, Inhabited
-
-/-- Create a `ParseState` positioned at the start of the token array. -/
-def ParseState.mk' (tokens : Array (Positioned YamlToken)) : ParseState :=
-  { tokens := tokens }
-
-/-- Whether there are more tokens to consume. -/
-def ParseState.hasMore (ps : ParseState) : Bool :=
-  ps.pos < ps.tokens.size
-
-/-- Peek at the current token value without consuming. -/
-def ParseState.peek? (ps : ParseState) : Option YamlToken :=
-  if ps.pos < ps.tokens.size then
-    some ps.tokens[ps.pos]!.val
-  else
-    none
-
-/-- Peek at the current token's source position. -/
-def ParseState.peekPos? (ps : ParseState) : Option YamlPos :=
-  if ps.pos < ps.tokens.size then
-    some ps.tokens[ps.pos]!.pos
-  else
-    none
-
-/-- Advance past the current token. -/
-def ParseState.advance (ps : ParseState) : ParseState :=
-  { ps with pos := ps.pos + 1 }
-
-/-- Position of the last consumed token (for node span tracking, G5c). -/
-def ParseState.lastPos? (ps : ParseState) : Option YamlPos :=
-  if ps.pos > 0 && ps.pos ≤ ps.tokens.size then
-    some ps.tokens[ps.pos - 1]!.pos
-  else
-    none
-
-/-- Line number of the current token (for error reporting). -/
-def ParseState.currentLine (ps : ParseState) : Nat :=
-  match ps.peekPos? with
-  | some p => p.line
-  | none => 0
-
-/-- Consume a specific token, error if mismatch.
-    **Error**: `expectedToken` if the current token doesn't match `tok`. -/
-def ParseState.expect (ps : ParseState) (tok : YamlToken) (desc : String) : Except ScanError ParseState :=
-  match ps.peek? with
-  | some t =>
-    if BEq.beq t tok then .ok ps.advance
-    else .error (.expectedToken desc ps.currentLine (some (toString (repr t))))
-  | none => .error (.expectedToken desc ps.currentLine none)
-
-/-- Try to consume a specific token if present. Returns `(true, advanced)` or `(false, unchanged)`. -/
-def ParseState.tryConsume (ps : ParseState) (tok : YamlToken) : (Bool × ParseState) :=
-  match ps.peek? with
-  | some t => if BEq.beq t tok then (true, ps.advance) else (false, ps)
-  | none => (false, ps)
-
-/-- Register an anchor definition `&name` with its resolved value for alias lookup.
-
-    The value is resolved (aliases expanded from the current anchor map)
-    and stripped (anchor annotation removed) before storing.  This ensures:
-    - Transitive alias chains resolve correctly (`*b → [*a, world] → [hello, world]`)
-    - Anchor map values compare equal to plain values (no stale `anchor := some name`)
--/
-def ParseState.addAnchor (ps : ParseState) (name : String) (val : YamlValue) : ParseState :=
-  let cleaned := ((val.resolveAliases ps.anchors).stripAnchors).adaptForFlowContext
-  { ps with anchors := ps.anchors.push (name, cleaned) }
-
-/-! ## Node Properties -/
-
-/-- Parsed optional node properties (anchor and/or tag). -/
-structure NodeProperties where
-  anchor : Option String := none
-  tag : Option String := none
-  /-- Set when two anchors appeared before the same node.  The check is
-      deferred to `parseNode` so that collection-start tokens (which arise
-      from scanner retroactive insertion) can disambiguate the two anchors
-      into collection-anchor vs key-anchor (see 6BFJ). -/
-  hadDuplicateAnchor : Bool := false
-  deriving Repr, BEq, Inhabited
-
-/-- Resolve a tag shorthand using the `%TAG` handle→prefix mapping (§6.8.2).
-
-    - **Verbatim** (`handle = ""`): pass through the suffix as a raw URI.
-    - **Declared handle** (found in `tagHandles`): expand to `prefix ++ suffix`.
-    - **Default secondary** (`!!` without explicit `%TAG !!`): keep shorthand
-      `"!!" ++ suffix` to match the old parser's convention (see README §10d).
-    - **Default primary** (`!` without explicit `%TAG !`): keep `"!" ++ suffix`. -/
-@[yaml_spec "6.8.2" 99 "c-ns-shorthand-tag"]
-def resolveTag (tagHandles : Array (String × String))
-    (handle suffix : String) : String :=
-  if handle == "" && suffix != "" then suffix
-  else
-    match tagHandles.find? (·.1 == handle) with
-    | some (_, pfx) => pfx ++ suffix
-    | none =>
-      if handle == "!!" then "!!" ++ suffix
-      else handle ++ suffix
-
-/-- Parse node properties: optional anchor and tag in either order.
-
-    **Implements** (YAML 1.2.2 §6.9, §6.8.2):
-    - `[96] c-ns-properties(n,c)` = `(c-ns-tag-property ... | c-ns-anchor-property ...)`
-    - `[101] c-ns-anchor-property` = `"&" ns-anchor-name`
-    - `[96-99] c-ns-tag-property` = `c-verbatim-tag | c-ns-shorthand-tag | c-non-specific-tag`
-
-    Validates that non-builtin tag handles (`!`, `!!`) were declared
-    via `%TAG` in the current document (§6.8.2.2).
-    Flags duplicate anchors on the same node (§6.9.2) via `hadDuplicateAnchor`;
-    the actual rejection is deferred to `parseNode` so that collection-start
-    tokens from scanner retroactive insertion can disambiguate (see 6BFJ).
-
-    **Pre**: Parse state at potential anchor/tag tokens.
-    **Post**: Returns `(NodeProperties, advanced state)` — at most one anchor and one tag.
-    **Error**: `undeclaredTagHandle` (named handle not in `%TAG` declarations). -/
-@[yaml_spec "6.9" 96 "c-ns-properties(n,c)"]
-def parseNodeProperties (ps : ParseState) : Except ScanError (NodeProperties × ParseState) := do
-  let mut ps := ps
-  let mut props : NodeProperties := {}
-  for _ in [:2] do
-    match ps.peek? with
-    | some (.anchor name) =>
-      -- §6.9.2: At most one anchor per node.  Flag the duplicate here;
-      -- the actual rejection is deferred to `parseNode` (scalar branch)
-      -- so that collection-content cases like 6BFJ can tolerate the
-      -- scanner's consecutive-anchor quirk.
-      if props.anchor.isSome then
-        props := { props with hadDuplicateAnchor := true }
-      props := { props with anchor := some name }
-      ps := ps.advance
-    | some (.tag handle suffix) =>
-      -- §6.8.2.2: Named handles must be declared via %TAG.
-      -- Built-in handles: "" (verbatim), "!" (primary), "!!" (secondary).
-      if handle != "" && handle != "!" && handle != "!!" then
-        if !ps.tagHandles.any (·.1 == handle) then
-          let pos := ps.peekPos?.getD { offset := 0, line := 0, col := 0 }
-          throw (.undeclaredTagHandle handle pos.line pos.col)
-      -- §6.8.2: Resolve tag shorthand via %TAG handle→prefix mapping.
-      -- Declared handles expand to `prefix ++ suffix`; undeclared builtins
-      -- keep shorthand form (`!!suffix`, `!suffix`) for old-parser compat.
-      let fullTag := resolveTag ps.tagHandles handle suffix
-      props := { props with tag := some fullTag }
-      ps := ps.advance
-    | _ => break
-  return (props, ps)
-
-/-! ## Empty Node -/
-
-/-- YAML's implicit null for absent nodes. -/
-@[yaml_spec "7.2" 105 "e-scalar",
-  yaml_spec "7.2" 106 "e-node"]
-def emptyNode : YamlValue :=
-  YamlValue.scalar { content := "", style := .plain }
-
-/-! ## Node Finalization Helper
-
-After content dispatch, `parseNode` applies node properties to non-scalar
-values, registers anchors, and records G5c position tracking. These are
-all pure `let` bindings (no `Except.bind`), extracted here so proofs can
-reason about them independently of the recursive content dispatch. -/
-
-/-- Apply node properties, register anchors, and record G5c positions.
-
-    This is the pure tail of `parseNode` after content dispatch.
-    Extracted to simplify proofs: `applyNodeFinalization_scannable` shows
-    that if the raw content value is `Scannable`, the finalized value is too. -/
-def applyNodeFinalization
-    (val : YamlValue) (ps : ParseState) (props : NodeProperties)
-    (nodeStartPos : YamlPos) : (YamlValue × ParseState) :=
-  -- Apply node properties to non-scalar nodes if not already set
-  let val := match val with
-    | YamlValue.sequence style items none none =>
-      YamlValue.sequence style items props.tag props.anchor
-    | YamlValue.mapping style pairs none none =>
-      YamlValue.mapping style pairs props.tag props.anchor
-    | other => other
-  -- Register anchor
-  let ps := match props.anchor with
-    | some name => ps.addAnchor name val
-    | none => ps
-  -- G5c: record node position (only if tracking enabled)
-  let ps := if ps.trackPositions then
-      let nodeEndPos := ps.lastPos?.getD nodeStartPos
-      { ps with nodePositions := ps.nodePositions.push (ps.currentPath, nodeStartPos, nodeEndPos) }
-    else ps
-  (val, ps)
-
 /-! ## Recursive Descent Parser
 
 ### Fuel-based termination (P10.8a–b)
@@ -280,36 +71,12 @@ decreases by 1 at each function entry (via `match fuel with | fuel + 1 => ...`).
 Lean 4 infers termination automatically from the structural decrease on `fuel`,
 so no explicit `termination_by` annotations are needed.
 
-Initial fuel is set by `parseDocument` to `4 * tokens.size + 4`, which
-bounds the total number of mutual-function entries.  Each token generates
-at most ~4 function entries (dispatch + collection + loop + sub-node).
+Initial fuel is set by `parseDocument` to `initialFuel ps.tokens`
+(= `4 * tokens.size + 4`), which bounds the total number of
+mutual-function entries.  Each token generates at most ~4 function
+entries (dispatch + collection + loop + sub-node).  See
+[`L4YAML.Parser.Fuel`] for the formula.
 -/
-
-/-- Validate node properties after parsing (extracted from `parseNode`
-    for Pattern 4b mitigation).
-
-    - §8.2.2 [200]: Block collections must start on a new line after
-      node properties. Properties and block collection start on the
-      same line is an error.
-    - §6.9.2: Duplicate anchors are rejected on scalar/empty content
-      but tolerated on collection-start content (block/flow seq/map,
-      block entry). -/
-def validateNodeProps (ps : ParseState) (prePropPos : Nat)
-    (props : NodeProperties) : Except ScanError Unit := do
-  match ps.peek? with
-  | some .blockSequenceStart | some .blockMappingStart =>
-    if ps.pos > prePropPos then
-      let lastPropPos := ps.tokens[ps.pos - 1]!.pos
-      let blockPos := ps.peekPos?.getD { offset := 0, line := 0, col := 0 }
-      if lastPropPos.line == blockPos.line then
-        throw (.trailingContent blockPos.line blockPos.col)
-  | _ => pure ()
-  if props.hadDuplicateAnchor then
-    match ps.peek? with
-    | some .blockSequenceStart | some .blockMappingStart
-    | some .flowSequenceStart  | some .flowMappingStart
-    | some .blockEntry => pure ()
-    | _ => throw (.duplicateAnchor ps.currentLine)
 
 set_option maxHeartbeats 400000 in
 mutual
@@ -945,6 +712,10 @@ def prepareDocumentState (ps : ParseState) :
   yaml_spec "9.1.5" 209 "l-directive-document"]
 def parseDocument (ps : ParseState) : Except ScanError (YamlDocument × ParseState) := do
   let (dirs, ps) ← prepareDocumentState ps
+  -- Inline literal preserved (rather than `initialFuel ps.tokens`) so that
+  -- proofs in `EmitterScannability` which match on `parseNode ps1 (4 * tokens.size + 4)`
+  -- continue to unify without an extra unfolding step.  See `Parser/Fuel.lean`
+  -- for the named formula and its rationale.
   let fuel := 4 * ps.tokens.size + 4
   let (val, ps) ← match ps.peek? with
     | some .documentEnd | some .streamEnd | none =>
@@ -1015,177 +786,5 @@ def parseStream (tokens : Array (Positioned YamlToken))
   let ps : ParseState := { tokens := tokens, trackPositions := trackPositions }
   let ps ← ps.expect .streamStart "STREAM-START"
   parseStreamLoop ps #[] .initial tokens.size
-
-/-! ## Convenience: Full Pipeline
-
-YAML 1.2.2 §3.1 defines **Load** as the composition of two processes:
-- **Parse**: character stream → serialization event tree
-- **Compose**: serialization event tree → representation node graph
-
-The *Raw* variants return the serialization tree (anchors + aliases preserved).
-The standard variants apply Compose for backward compatibility.
--/
-
-/-- Internal: scan + parse pipeline returning structured `ScanError`.
-
-    **Implements**: Complete YAML Load pipeline (scan + parse).
-    Composes `Scanner.scan` and `parseStream` into a single function.
-
-    Callers who need machine-inspectable errors (e.g., for testing specific
-    error categories) should use this directly. The public `parseYaml*`
-    functions also return `Except ScanError` for machine-inspectable
-    error handling. -/
-def scanAndParse (input : String) : Except ScanError (Array YamlDocument) :=
-  match Scanner.scanFiltered input with
-  | .ok tokens => parseStream tokens
-  | .error e => .error e
-
-/--
-Parse a YAML string into an array of documents (**serialization tree**).
-
-**Implements** (YAML 1.2.2 §3.1):
-- **Parse** step only — character stream → serialization event tree.
-
-Returns documents with `.alias name` nodes and `anchor` fields preserved.
-Each `YamlDocument` includes an `anchors` map that can be used by
-`YamlDocument.compose` to resolve aliases. -/
-def parseYamlRaw (input : String) : Except ScanError (Array YamlDocument) :=
-  match Scanner.scanFiltered input with
-  | .ok tokens => parseStream tokens
-  | .error e => .error e
-
-/--
-Parse a YAML string into an array of documents (**representation graph**).
-
-**Implements** (YAML 1.2.2 §3.1):
-- Full **Load** = Parse (→ serialization tree) + Compose (→ representation graph).
-
-Aliases are resolved and anchor annotations are stripped.
-This is the main entry point for most use cases. -/
-def parseYaml (input : String) : Except ScanError (Array YamlDocument) :=
-  match parseYamlRaw input with
-  | .ok docs => .ok (docs.map YamlDocument.compose)
-  | .error e => .error e
-
-/--
-Parse a YAML string expecting exactly one document (**serialization tree**).
-
-Returns the raw document with `.alias` nodes and `anchor` fields preserved.
-**Error**: `multipleDocuments` if more than one document is found. -/
-def parseYamlSingleRaw (input : String) : Except ScanError YamlDocument :=
-  match parseYamlRaw input with
-  | .ok docs =>
-    if docs.size == 0 then .ok { value := YamlValue.null }
-    else if docs.size == 1 then .ok docs[0]!
-    else .error (.multipleDocuments docs.size)
-  | .error e => .error e
-
-/--
-Parse a YAML string expecting exactly one document (**representation graph**).
-
-Returns the value of the single document with aliases resolved and
-anchor annotations stripped.
-**Error**: `multipleDocuments` if more than one document is found. -/
-def parseYamlSingle (input : String) : Except ScanError YamlValue :=
-  match parseYaml input with
-  | .ok docs =>
-    if docs.size == 0 then .ok YamlValue.null
-    else if docs.size == 1 then .ok docs[0]!.value
-    else .error (.multipleDocuments docs.size)
-  | .error e => .error e
-
-/--
-Classify a comment's position relative to its nearest node.
-
-§6.6 / §6.9: Comments are a presentation detail. For round-trip fidelity
-we classify each comment as:
-- `.inline` — same line as a node's start position
-- `.before` — on a line preceding all content (or the next node)
-- `.after`  — on a line following all content
-
-The classification uses `nodePositions` from the parser's position-tracking
-pass (enabled by `trackPositions := true`).
--/
-def classifyCommentPosition (cPos : YamlPos)
-    (nodePositions : Array (YamlPath × YamlPos × YamlPos)) : CommentPosition :=
-  -- If comment shares a line with any node start → inline
-  if nodePositions.any fun (_, startPos, _) => startPos.line == cPos.line then
-    .inline
-  -- If some node starts after the comment line → before that node
-  else if nodePositions.any fun (_, startPos, _) => cPos.line < startPos.line then
-    .before
-  -- Otherwise: after all nodes
-  else
-    .after
-
-/--
-Classify all comments in a document using its node positions.
-
-Replaces the `.inline` default assigned during initial attachment
-with the correct `.before`/`.inline`/`.after` classification.
--/
-def classifyDocumentComments (doc : YamlDocument) : YamlDocument :=
-  { doc with comments := doc.comments.map fun (pos, c) =>
-      (pos, { c with position := classifyCommentPosition pos doc.nodePositions }) }
-
-/--
-Partition raw comments by document span.
-
-For multi-document streams, each comment is assigned to the document
-whose root node span contains the comment's byte offset. Comments
-outside all spans go to the nearest document (first or last).
-
-For single-document streams, all comments go to the single document.
--/
-def partitionCommentsByDocument (rawComments : Array (YamlPos × String))
-    (docs : Array YamlDocument) : Array (Array (YamlPos × String)) :=
-  if docs.size ≤ 1 then
-    #[rawComments]
-  else
-    -- Build byte-offset spans from each document's root nodePosition
-    let spans : Array (Nat × Nat) := docs.map fun doc =>
-      match doc.nodePositions.find? (fun (p, _, _) => p == #[]) with
-      | some (_, startPos, endPos) => (startPos.offset, endPos.offset)
-      | none => (0, 0)  -- no root position: will collect nothing
-    -- Assign each comment to the containing document
-    docs.mapIdx fun i _ =>
-      let (startOff, endOff) := spans[i]!
-      -- First doc captures everything before its end;
-      -- last doc captures everything after its start
-      rawComments.filter fun (cPos, _) =>
-        if i == 0 then cPos.offset ≤ endOff
-        else if i == docs.size - 1 then cPos.offset ≥ startOff
-        else startOff ≤ cPos.offset && cPos.offset ≤ endOff
-
-/--
-Parse a YAML string with comment preservation (**representation graph**).
-
-Like `parseYaml` but also collects comments discovered during scanning.
-Each composed document carries scanner-collected comments in its
-`comments` field (as `Array (YamlPos × Comment)`).
-
-**Comment lifecycle** (v0.2.7):
-1. Scanner collects comments as `(YamlPos × String)` side-channel
-2. Comments are partitioned by document span for multi-doc streams
-3. Each comment is classified as `.before`/`.inline`/`.after` based on
-   the document's `nodePositions` (from `trackPositions := true`)
-4. Classified comments are attached to the composed document
--/
-def parseYamlWithComments (input : String) : Except ScanError (Array YamlDocument) :=
-  match Scanner.scanWithComments input with
-  | .ok (tokens, rawComments) =>
-    match parseStream tokens (trackPositions := true) with
-    | .ok docs =>
-      let partitioned := partitionCommentsByDocument rawComments docs
-      .ok (docs.mapIdx fun i doc =>
-        let docComments := partitioned[i]!
-        let comments : Array (YamlPos × Comment) :=
-          docComments.map fun (pos, text) => (pos, ⟨text, .inline⟩)
-        let composed := { doc.compose with
-          comments := comments
-          nodePositions := doc.nodePositions }
-        classifyDocumentComments composed)
-    | .error e => .error e
-  | .error e => .error e
 
 end L4YAML.TokenParser

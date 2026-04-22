@@ -1,5 +1,5 @@
 import L4YAML.Output.Emitter
-import L4YAML.Parser.TokenParser
+import L4YAML.Parser.Composition
 import L4YAML.Output.Dump
 
 /-!

@@ -77,7 +77,7 @@ import L4YAML.Schema.FromToYaml
 import L4YAML.Schema.Struct
 import L4YAML.Surface.Surface
 import L4YAML.Token.Token
-import L4YAML.Parser.TokenParser
+import L4YAML.Parser.Composition
 import L4YAML.Spec.Types
 import L4YAML.Spec.YamlSpec
 
