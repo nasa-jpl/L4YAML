@@ -103,34 +103,36 @@ Goal: make every terminology entry in
 from the top of `L4YAML/`. Four phases; each phase is one PR,
 each PR ends on a green build.
 
-**Phase 1 — Non-code moves (risk: low)**
+**Phase 1 — Non-code moves (risk: low) ✅ done 2026-04-21**
 
-Create top-level folders per
-[`03-code-organization.md`](03-code-organization.md): `Spec/`,
-`Parser/`, `Output/`, `Config/`, `FFI/`, `Token/`. Move files
-into them. Update every `import L4YAML.X` statement across the
-repo via scripted rewrite.
+Landed as `ad12e204` (12 top-level files into
+`Spec/`, `Parser/`, `Output/`, `Config/`, `FFI/`, `Token/`,
+`Scanner/`) and `573fa76e` (Phase 1b — `Schema.lean` and
+`Surface.lean` moved into their folders as
+`Schema/Schema.lean` / `Surface/Surface.lean` for symmetry).
 
-- **Tooling**: `git mv` for each file; one `sed` pass for
-  imports; `lake build` gate.
-- **Script sketch**: A one-off `scripts/refactor-phase-1.sh` that
-  records each `git mv` + import rewrite pair, so the reverse is
-  trivial if the build breaks.
-- **Acceptance**: `lake build` passes; `lake test` passes; all
-  `#guard` statements still pass; `docs/api/` regenerates cleanly.
-- **Blast radius**: affects every file that imports L4YAML
-  (including `Tests/`, `L4YAML.lean`, `L4YAML.FGM`, the Doc/
-  Verso files). Coordinate with downstream.
+- **Tooling used**: `git mv` for each file; one `sed` pass over
+  `^import L4YAML.Foo$` for imports; `lake build` gate.
+- **Scripts**:
+  [`scripts/refactor-phase-1.sh`](../scripts/refactor-phase-1.sh),
+  [`scripts/refactor-phase-1b.sh`](../scripts/refactor-phase-1b.sh)
+  — reversible via commit revert.
+- **Acceptance**: `lake build` passes 429/429 with only the
+  expected baseline sorry warnings; smoke tests green.
+- **Blast radius (observed)**: ~110 files touched across `L4YAML/`,
+  `Tests/`, `L4YAML.lean`, `gen-suite-guards.py`. `L4YAML.FGM` and
+  the Doc/Verso files had no direct imports of the moved modules
+  and did not need updates.
 
 **Phase 2 — Scanner split (risk: medium)**
 
-Break monolithic [`L4YAML/Scanner.lean`](../L4YAML/Scanner.lean)
+Break monolithic [`L4YAML/Scanner/Scanner.lean`](../L4YAML/Scanner/Scanner.lean)
 (~920 LoC) into the submodules referenced in
 [`doc/Doc/L4YAML/Architecture.lean:140`](../doc/Doc/L4YAML/Architecture.lean#L140)
 — `Scanner/Whitespace.lean`, `Scanner/Scalar.lean`,
 `Scanner/Indent.lean`, `Scanner/SimpleKey.lean`,
 `Scanner/Document.lean`, `Scanner/State.lean`. Keep
-`Scanner.lean` as the dispatch/umbrella.
+`Scanner/Scanner.lean` as the dispatch/umbrella.
 
 - **Acceptance**: build green; the existing
   [`Tests/ScannerTests/`](../Tests/ScannerTests/) suite passes;
@@ -141,7 +143,7 @@ Break monolithic [`L4YAML/Scanner.lean`](../L4YAML/Scanner.lean)
 Extract `Parser/State.lean` (ParseState + helpers),
 `Parser/Fuel.lean` (fuel abstractions, `4*N+4` default),
 `Parser/Composition.lean` (`parseYaml`, `parseYamlRaw`, `compose`)
-from [`L4YAML/TokenParser.lean`](../L4YAML/TokenParser.lean).
+from [`L4YAML/Parser/TokenParser.lean`](../L4YAML/Parser/TokenParser.lean).
 The mutually-recursive block stays together in `TokenParser.lean`.
 
 - **Acceptance**: build green; `Tests/RawParseTests/`,
@@ -165,7 +167,9 @@ Foundation/). One cluster per PR; each leaves build green.
 **Overall exit criterion for Initiative 1**: `Architecture.lean`
 can be regenerated from the actual folder layout instead of
 hand-maintained; no top-level `.lean` file in `L4YAML/` besides
-the umbrella module.
+the `L4YAML.lean` umbrella (i.e. the repo-root library entry
+point that re-exports submodules) — every other file lives inside
+a role-named folder.
 
 ---
 

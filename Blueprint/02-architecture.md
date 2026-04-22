@@ -55,15 +55,16 @@ L4YAML's verification story has three concentric trust boundaries:
 1. **Lean kernel** — smallest, most trusted. Includes `propext`,
    `Quot.sound`, `Classical.choice` (used in `noncomputable def`
    witnesses in `ParserSoundness.lean`). Nothing else.
-2. **L4YAML spec layer** — definitions in `Grammar.lean`,
-   `YamlSpec.lean`, `Surface/*`, `Types.lean`, `Token.lean`. These
-   encode the YAML 1.2.2 specification as Lean inductives and
-   predicates. **They must be read and believed**: a bug here is a
-   bug in the reference against which the implementation is
-   verified.
-3. **L4YAML implementation** — `Scanner.lean`, `TokenParser.lean`,
-   `Schema.lean`, `Emitter.lean`, `Dump.lean`, `Config.lean`,
-   `Limits.lean`. Under verification against the layer above.
+2. **L4YAML spec layer** — definitions in `Spec/Grammar.lean`,
+   `Spec/YamlSpec.lean`, `Spec/Types.lean`, `Token/Token.lean`, and
+   `Surface/*`. These encode the YAML 1.2.2 specification as Lean
+   inductives and predicates. **They must be read and believed**: a
+   bug here is a bug in the reference against which the
+   implementation is verified.
+3. **L4YAML implementation** — `Scanner/Scanner.lean`,
+   `Parser/TokenParser.lean`, `Schema/Schema.lean`,
+   `Output/Emitter.lean`, `Output/Dump.lean`, `Config/Config.lean`,
+   `Config/Limits.lean`. Under verification against the layer above.
 
 Capstone theorems (see [`04-capstones.md`](04-capstones.md)) bridge
 layers 2 and 3.
