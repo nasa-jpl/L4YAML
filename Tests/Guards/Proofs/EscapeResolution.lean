@@ -1,4 +1,4 @@
-import L4YAML.Proofs.EscapeResolution
+import L4YAML.Proofs.Errors.EscapeResolution
 
 namespace L4YAML.Proofs.EscapeResolution
 

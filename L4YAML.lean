@@ -18,9 +18,9 @@ import L4YAML.Proofs.DocumentProduction
 import L4YAML.Proofs.DumpRoundTrip
 import L4YAML.Proofs.EmitterScannability
 import L4YAML.Proofs.EndToEndCorrectness
-import L4YAML.Proofs.ErrorProperties
-import L4YAML.Proofs.EscapeResolution
-import L4YAML.Proofs.FoldNewlines
+import L4YAML.Proofs.Errors.ErrorProperties
+import L4YAML.Proofs.Errors.EscapeResolution
+import L4YAML.Proofs.Errors.FoldNewlines
 import L4YAML.Proofs.Foundation.LawfulBEq
 import L4YAML.Proofs.NodeProduction
 import L4YAML.Proofs.ParserAnchorProofs
