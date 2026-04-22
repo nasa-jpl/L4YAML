@@ -11,9 +11,9 @@
 
 ```
           String                 Array (Positioned YamlToken)
-       ┌──────────┐    scan    ┌──────────────────────────────┐
+        ┌──────────┐    scan    ┌──────────────────────────────┐
 Input ─▶│ Source   │ ─────────▶│ Tokens                       │
-       └──────────┘            └──────────────────────────────┘
+        └──────────┘            └──────────────────────────────┘
                                            │
                                            │ parseStream
                                            ▼
@@ -29,7 +29,7 @@ Input ─▶│ Source   │ ─────────▶│ Tokens           
                                 │   (resolved — typed scalars) │
                                 └──────────────────────────────┘
                                            │
-   ┌────────── emit ◀─────────────────────┘ (round-trip)
+   ┌────────── emit ◀──────────────────────┘ (round-trip)
    ▼
  String (canonical)
 ```
@@ -180,11 +180,11 @@ form a DAG with `parse_sound` / `parse_complete` at the top:
                    ▼                ▼                ▼
        parseYaml_pipeline    parseStream_sound    parseYaml_ok_iff
                    │                │
-                   │        ┌───────┴───────┐
-                   ▼        ▼               ▼
+                   │        ┌───────┴───┐
+                   ▼        ▼           ▼
        parseStream_output_grammable   parseStream_output_anchors_wellformed
-                   │                │
-                   ▼                ▼
+                   │                    │
+                   ▼                    ▼
        yamlValue_has_witness    parseNode_anchors_grow / _aliases_resolve'
                                         │
                                         ▼
