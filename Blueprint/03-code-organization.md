@@ -53,7 +53,7 @@ L4YAML/
 ├── FFI/
 │   └── FFI.lean
 ├── YAML_PRODUCTIONS.md
-└── Proofs/                      (50 flat + Foundation/ + Errors/ + Schema/ clusters; Phase 4 ongoing)
+└── Proofs/                      (48 flat + Foundation/ + Errors/ + Schema/ + Contracts/ clusters; Phase 4 ongoing)
 ```
 
 Phase 1 (`ad12e204`) + Phase 1b (`573fa76e`) landed on 2026-04-21.
@@ -90,7 +90,9 @@ What's done, what remains:
   `EscapeResolution.lean`, `FoldNewlines.lean`).
   **Schema/** cluster landed 2026-04-22 (4 files: `SchemaComposition.lean`,
   `SchemaDump.lean`, `SchemaResolution.lean`, `TagResolution.lean`).
-  50 files still flat; remaining clusters per the target layout below.
+  **Contracts/** cluster landed 2026-04-22 (2 files:
+  `BlockScalarContracts.lean`, `DocumentContracts.lean`).
+  48 files still flat; remaining clusters per the target layout below.
 
 ## Proposed target layout
 
@@ -306,6 +308,11 @@ phase should leave the build green and the imports valid):
      `SchemaComposition.lean`, `SchemaDump.lean`, `SchemaResolution.lean`,
      `TagResolution.lean` into `L4YAML/Proofs/Schema/`.  Scripted in
      [`scripts/refactor-phase-4-schema.sh`](../scripts/refactor-phase-4-schema.sh);
+     `lake build` 449/449.
+   - **Cluster 4 — Contracts/** ✅ **done 2026-04-22**. Moved
+     `BlockScalarContracts.lean`, `DocumentContracts.lean` into
+     `L4YAML/Proofs/Contracts/`.  Scripted in
+     [`scripts/refactor-phase-4-contracts.sh`](../scripts/refactor-phase-4-contracts.sh);
      `lake build` 449/449.
 
 ## Naming conventions

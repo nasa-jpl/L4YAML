@@ -6,14 +6,14 @@ import L4YAML.Output.Emitter
 import L4YAML.FFI.FFI
 import L4YAML.Spec.Grammar
 import L4YAML.Config.Limits
-import L4YAML.Proofs.BlockScalarContracts
+import L4YAML.Proofs.Contracts.BlockScalarContracts
 import L4YAML.Proofs.Foundation.CharClass
 import L4YAML.Proofs.CommentProperties
 import L4YAML.Proofs.CommentRoundTrip
 import L4YAML.Proofs.Completeness
 import L4YAML.Proofs.Composition
 import L4YAML.Proofs.CouplingBridge
-import L4YAML.Proofs.DocumentContracts
+import L4YAML.Proofs.Contracts.DocumentContracts
 import L4YAML.Proofs.DocumentProduction
 import L4YAML.Proofs.DumpRoundTrip
 import L4YAML.Proofs.EmitterScannability

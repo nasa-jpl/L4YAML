@@ -267,7 +267,7 @@ PR; each leaves build green.
 | 1 | Foundation/ ✅ | 4 | ~1,100 | (infra only) | low |
 | 2 | Errors/ ✅ | 3 | ~900 | — | low |
 | 3 | Schema/ ✅ | 4 | ~850 | 5 (SchemaResolution), 6 (SchemaDump, SchemaComposition) | low |
-| 4 | Contracts/ | 2 | ~500 | — | low |
+| 4 | Contracts/ ✅ | 2 | ~500 | — | low |
 | 5 | Production/ | 7 | ~7,500 | 7 (all production theorems) | medium |
 | 6 | Scanner/ | 17 | ~9,700 | 2 (all scanner correctness), 6 partial, 7 partial | medium (size) |
 | 7 | Output/ | 3 | ~11,000 | 6 (EmitterScannability, ScannerEmitBridge, DumpRoundTrip) | medium (EmitterScannability is ~10k LoC) |
@@ -383,6 +383,27 @@ Moved four schema-domain proofs into
   `Tests/Guards/Proofs/SchemaResolution.lean`) + narrative
   references in `README.md`, `Blueprint/01-terminology.md`,
   `Blueprint/04-capstones.md`, and `EXCEPTIONS.md`.
+
+**Phase 4 · Contracts/ ✅ done 2026-04-22**
+
+Moved two contract proofs into
+[`L4YAML/Proofs/Contracts/`](../L4YAML/Proofs/Contracts/):
+[`BlockScalarContracts.lean`](../L4YAML/Proofs/Contracts/BlockScalarContracts.lean),
+[`DocumentContracts.lean`](../L4YAML/Proofs/Contracts/DocumentContracts.lean).
+
+- **Tooling used**: same pattern as the Foundation/, Errors/, and
+  Schema/ clusters — `git mv` + one anchored `sed` pass over
+  `^import L4YAML.Proofs.Foo$`. Namespaces left untouched.
+- **Script**:
+  [`scripts/refactor-phase-4-contracts.sh`](../scripts/refactor-phase-4-contracts.sh)
+  — reversible via commit revert.
+- **Acceptance met**: `lake build` 449/449 (same pre-existing
+  `sorry` warnings as the prior clusters).
+- **Blast radius**: 2 renames + 1 touched importer (`L4YAML.lean`,
+  two import lines) + narrative references in
+  `Blueprint/03-code-organization.md` and `Blueprint/README.md`.
+  No test guards exist for these contract proofs, and no other
+  in-repo narrative docs reference them by path.
 
 **Overall exit criterion for Initiative 1**: `Architecture.lean`
 can be regenerated from the actual folder layout instead of
