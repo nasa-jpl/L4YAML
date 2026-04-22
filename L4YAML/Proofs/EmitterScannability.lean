@@ -12,8 +12,8 @@ import L4YAML.Proofs.RoundTrip
 import L4YAML.Proofs.CouplingBridge
 import L4YAML.Proofs.ScalarCoupling
 import L4YAML.Proofs.ParserGrammable
-import L4YAML.Proofs.ScannerPlainContent
-import L4YAML.Proofs.ScannerBound
+import L4YAML.Proofs.Scanner.ScannerPlainContent
+import L4YAML.Proofs.Scanner.ScannerBound
 
 /-!
 # Emitter Scannability (Phase E, Steps 1–2)

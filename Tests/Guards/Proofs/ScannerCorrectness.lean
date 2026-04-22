@@ -1,4 +1,4 @@
-import L4YAML.Proofs.ScannerCorrectness
+import L4YAML.Proofs.Scanner.ScannerCorrectness
 
 namespace ScanHelpers
 

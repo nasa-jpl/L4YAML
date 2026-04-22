@@ -1,4 +1,4 @@
-import L4YAML.Proofs.ScannerDispatch
+import L4YAML.Proofs.Scanner.ScannerDispatch
 
 namespace L4YAML.Proofs.ScannerDispatch
 

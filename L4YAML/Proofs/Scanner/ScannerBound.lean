@@ -1,6 +1,6 @@
 import L4YAML.Scanner.Scanner
-import L4YAML.Proofs.ScannerLoopInvariant
-import L4YAML.Proofs.ScannerProgress
+import L4YAML.Proofs.Scanner.ScannerLoopInvariant
+import L4YAML.Proofs.Scanner.ScannerProgress
 
 /-!
 # Scanner Bound Preservation (Phase 4.2.A)

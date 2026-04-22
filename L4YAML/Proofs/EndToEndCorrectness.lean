@@ -5,7 +5,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 import L4YAML.Parser.Composition
 import L4YAML.Scanner.Scanner
 import L4YAML.Spec.Grammar
-import L4YAML.Proofs.ScannerCorrectness
+import L4YAML.Proofs.Scanner.ScannerCorrectness
 import L4YAML.Proofs.ParserCorrectness
 import L4YAML.Proofs.ParserGrammable
 import L4YAML.Proofs.ParserSoundness

@@ -4,8 +4,8 @@ Released under Apache 2.0 license as described in the file LICENSE.
 -/
 import L4YAML.Scanner.Scanner
 import L4YAML.Spec.Grammar
-import L4YAML.Proofs.ScannerProofs
-import L4YAML.Proofs.ScannerProgress
+import L4YAML.Proofs.Scanner.ScannerProofs
+import L4YAML.Proofs.Scanner.ScannerProgress
 
 /-!
 # Scanner Correctness (P10.11a)

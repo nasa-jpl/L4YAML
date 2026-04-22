@@ -53,7 +53,7 @@ L4YAML/
 ├── FFI/
 │   └── FFI.lean
 ├── YAML_PRODUCTIONS.md
-└── Proofs/                      (41 flat + Foundation/ + Errors/ + Schema/ + Contracts/ + Production/ clusters; Phase 4 ongoing)
+└── Proofs/                      (23 flat + Foundation/ + Errors/ + Schema/ + Contracts/ + Production/ + Scanner/ clusters; Phase 4 ongoing)
 ```
 
 Phase 1 (`ad12e204`) + Phase 1b (`573fa76e`) landed on 2026-04-21.
@@ -95,7 +95,14 @@ What's done, what remains:
   **Production/** cluster landed 2026-04-22 (7 files: `StreamAccum.lean`,
   `StructureProduction.lean`, `ScalarProduction.lean`, `DocumentProduction.lean`,
   `NodeProduction.lean`, `PreprocessProduction.lean`, `ScannerPlainScalarValid.lean`).
-  41 files still flat; remaining clusters per the target layout below.
+  **Scanner/** cluster landed 2026-04-22 (18 files: `ScannerCorrectness.lean`,
+  `ScannerProgress.lean`, `ScannerBound.lean`, `ScannerDispatch.lean`,
+  `ScannerDocument.lean`, `ScannerSimpleKey.lean`, `ScannerLoopInvariant.lean`,
+  `ScannerContracts.lean`, `ScannerWhitespace.lean`, `ScannerPlainScalar.lean`,
+  `ScannerPlainContent.lean`, `ScannerDoubleQuoted.lean`, `ScannerScalar.lean`,
+  `ScannerFlowCollection.lean`, `ScannerIndentStack.lean`, `ScannerIndent.lean`,
+  `ScannerProofs.lean`, `ScanStrictCoupling.lean`).
+  23 files still flat; remaining clusters per the target layout below.
 
 ## Proposed target layout
 
@@ -324,6 +331,22 @@ phase should leave the build green and the imports valid):
      Scripted in
      [`scripts/refactor-phase-5-production.sh`](../scripts/refactor-phase-5-production.sh);
      `lake build` 449/449.
+   - **Cluster 6 — Scanner/** ✅ **done 2026-04-22**. Moved the
+     eighteen scanner-correctness proofs (`ScannerCorrectness.lean`,
+     `ScannerProgress.lean`, `ScannerBound.lean`, `ScannerDispatch.lean`,
+     `ScannerDocument.lean`, `ScannerSimpleKey.lean`,
+     `ScannerLoopInvariant.lean`, `ScannerContracts.lean`,
+     `ScannerWhitespace.lean`, `ScannerPlainScalar.lean`,
+     `ScannerPlainContent.lean`, `ScannerDoubleQuoted.lean`,
+     `ScannerScalar.lean`, `ScannerFlowCollection.lean`,
+     `ScannerIndentStack.lean`, `ScannerIndent.lean`,
+     `ScannerProofs.lean`, `ScanStrictCoupling.lean`) into
+     `L4YAML/Proofs/Scanner/`.  Scripted in
+     [`scripts/refactor-phase-6-scanner.sh`](../scripts/refactor-phase-6-scanner.sh);
+     `lake build` 449/449.  Note: the roadmap row in
+     `Blueprint/README.md` was drafted with 17 files; the detailed
+     target layout enumerates 18 (including `ScannerPlainContent.lean`,
+     flagged in that same README at the "unlisted" bullet).
 
 ## Naming conventions
 

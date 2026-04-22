@@ -1,4 +1,4 @@
-import L4YAML.Proofs.ScanStrictCoupling
+import L4YAML.Proofs.Scanner.ScanStrictCoupling
 import L4YAML.Proofs.Production.StructureProduction
 import L4YAML.Proofs.Production.NodeProduction
 import L4YAML.Proofs.Composition

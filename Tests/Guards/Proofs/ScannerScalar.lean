@@ -1,4 +1,4 @@
-import L4YAML.Proofs.ScannerScalar
+import L4YAML.Proofs.Scanner.ScannerScalar
 
 namespace L4YAML.Proofs.ScannerScalar
 

@@ -269,7 +269,7 @@ PR; each leaves build green.
 | 3 | Schema/ ✅ | 4 | ~850 | 5 (SchemaResolution), 6 (SchemaDump, SchemaComposition) | low |
 | 4 | Contracts/ ✅ | 2 | ~500 | — | low |
 | 5 | Production/ ✅ | 7 | ~7,500 | 7 (all production theorems) | medium |
-| 6 | Scanner/ | 17 | ~9,700 | 2 (all scanner correctness), 6 partial, 7 partial | medium (size) |
+| 6 | Scanner/ ✅ | 18 | ~9,700 | 2 (all scanner correctness), 6 partial, 7 partial | medium (size) |
 | 7 | Output/ | 3 | ~11,000 | 6 (EmitterScannability, ScannerEmitBridge, DumpRoundTrip) | medium (EmitterScannability is ~10k LoC) |
 | 8 | Parser/ | 9 | ~12,000 | 3 (all parser correctness) | medium (size + mutual-rec imports) |
 | 9 | Coupling/ | 6 | ~2,400 | 8 (all surface coupling), 7 boundary | low |
@@ -435,6 +435,56 @@ Moved seven production-theorem proofs into
   references in `Blueprint/README.md` and
   `Blueprint/03-code-organization.md`. No test-guard files import
   these production proofs directly.
+
+**Phase 4 · Scanner/ ✅ done 2026-04-22**
+
+Moved eighteen scanner-correctness proofs into
+[`L4YAML/Proofs/Scanner/`](../L4YAML/Proofs/Scanner/):
+[`ScannerCorrectness.lean`](../L4YAML/Proofs/Scanner/ScannerCorrectness.lean),
+[`ScannerProgress.lean`](../L4YAML/Proofs/Scanner/ScannerProgress.lean),
+[`ScannerBound.lean`](../L4YAML/Proofs/Scanner/ScannerBound.lean),
+[`ScannerDispatch.lean`](../L4YAML/Proofs/Scanner/ScannerDispatch.lean),
+[`ScannerDocument.lean`](../L4YAML/Proofs/Scanner/ScannerDocument.lean),
+[`ScannerSimpleKey.lean`](../L4YAML/Proofs/Scanner/ScannerSimpleKey.lean),
+[`ScannerLoopInvariant.lean`](../L4YAML/Proofs/Scanner/ScannerLoopInvariant.lean),
+[`ScannerContracts.lean`](../L4YAML/Proofs/Scanner/ScannerContracts.lean),
+[`ScannerWhitespace.lean`](../L4YAML/Proofs/Scanner/ScannerWhitespace.lean),
+[`ScannerPlainScalar.lean`](../L4YAML/Proofs/Scanner/ScannerPlainScalar.lean),
+[`ScannerPlainContent.lean`](../L4YAML/Proofs/Scanner/ScannerPlainContent.lean),
+[`ScannerDoubleQuoted.lean`](../L4YAML/Proofs/Scanner/ScannerDoubleQuoted.lean),
+[`ScannerScalar.lean`](../L4YAML/Proofs/Scanner/ScannerScalar.lean),
+[`ScannerFlowCollection.lean`](../L4YAML/Proofs/Scanner/ScannerFlowCollection.lean),
+[`ScannerIndentStack.lean`](../L4YAML/Proofs/Scanner/ScannerIndentStack.lean),
+[`ScannerIndent.lean`](../L4YAML/Proofs/Scanner/ScannerIndent.lean),
+[`ScannerProofs.lean`](../L4YAML/Proofs/Scanner/ScannerProofs.lean),
+[`ScanStrictCoupling.lean`](../L4YAML/Proofs/Scanner/ScanStrictCoupling.lean).
+
+- **Tooling used**: same pattern as the Foundation/, Errors/,
+  Schema/, Contracts/, and Production/ clusters — `git mv` + one
+  anchored `sed` pass over `^import L4YAML.Proofs.Foo$`.  The dense
+  internal cross-imports among the eighteen scanner proofs were
+  rewritten in-place by the same sed pass.  Namespaces left untouched.
+- **Script**:
+  [`scripts/refactor-phase-6-scanner.sh`](../scripts/refactor-phase-6-scanner.sh)
+  — reversible via commit revert.
+- **Acceptance met**: `lake build` 449/449 (same pre-existing
+  `sorry` warnings as the prior clusters).
+- **Note on count**: the roadmap row above was drafted as 17 files;
+  the target layout in `03-code-organization.md` and the detailed
+  bullet list in this README both enumerate 18 (including
+  `ScannerPlainContent.lean`, which was added to the Scanner/ cluster
+  during the preliminary survey at line 258 of this README).  The
+  row is now ✅ at 18.
+- **Blast radius**: 18 renames + many external importers rewritten
+  (`L4YAML.lean` seventeen import lines; `EndToEndCorrectness.lean`
+  one line; `ParserCorrectness.lean` one line; `EmitterScannability.lean`
+  two lines; `Production/DocumentProduction.lean`,
+  `Production/StreamAccum.lean`, `Production/ScalarProduction.lean`,
+  `Production/ScannerPlainScalarValid.lean` — four files with one or
+  more lines each; fourteen `Tests/Guards/Proofs/Scanner*.lean`
+  guard files — one line each) + internal cross-imports among the
+  moved files + narrative references in `Blueprint/README.md` and
+  `Blueprint/03-code-organization.md`.
 
 **Overall exit criterion for Initiative 1**: `Architecture.lean`
 can be regenerated from the actual folder layout instead of

@@ -1,5 +1,5 @@
 import L4YAML.Scanner.Scanner
-import L4YAML.Proofs.ScannerLoopInvariant
+import L4YAML.Proofs.Scanner.ScannerLoopInvariant
 
 /-
 Copyright (c) 2026. All rights reserved.

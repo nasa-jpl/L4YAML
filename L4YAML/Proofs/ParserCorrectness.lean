@@ -6,7 +6,7 @@ import L4YAML.Parser.Composition
 import L4YAML.Spec.Grammar
 import L4YAML.Proofs.Soundness
 import L4YAML.Proofs.ParserSoundness
-import L4YAML.Proofs.ScannerCorrectness
+import L4YAML.Proofs.Scanner.ScannerCorrectness
 
 /-!
 # Parser Correctness (P10.11b)

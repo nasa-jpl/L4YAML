@@ -1,7 +1,7 @@
 import L4YAML.Scanner.Scanner
 import L4YAML.Output.Emitter
-import L4YAML.Proofs.ScannerLoopInvariant
-import L4YAML.Proofs.ScannerContracts
+import L4YAML.Proofs.Scanner.ScannerLoopInvariant
+import L4YAML.Proofs.Scanner.ScannerContracts
 
 /-
 Copyright (c) 2026. All rights reserved.

@@ -1,4 +1,4 @@
-import L4YAML.Proofs.ScannerIndentStack
+import L4YAML.Proofs.Scanner.ScannerIndentStack
 
 namespace L4YAML.Proofs.ScannerIndentStack
 

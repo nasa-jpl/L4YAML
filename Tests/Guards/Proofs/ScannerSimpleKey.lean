@@ -1,4 +1,4 @@
-import L4YAML.Proofs.ScannerSimpleKey
+import L4YAML.Proofs.Scanner.ScannerSimpleKey
 
 namespace L4YAML.Proofs.ScannerSimpleKey
 
