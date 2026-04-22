@@ -17,7 +17,14 @@ L4YAML/
 ├── Token/
 │   └── Token.lean
 ├── Scanner/
-│   └── Scanner.lean             (~920 LoC — still monolithic, Phase 2 splits)
+│   ├── Scanner.lean             -- umbrella, dispatch + main loop
+│   ├── State.lean               -- ScannerState + accessors
+│   ├── Whitespace.lean          -- s-white/s-space, s-l-comments
+│   ├── Indent.lean              -- virtual BLOCK-* generation
+│   ├── Document.lean            -- ---/... markers + %YAML/%TAG directives
+│   ├── NodeProperties.lean      -- anchors, aliases, tags (§6.9)
+│   ├── Scalar.lean              -- escapes + quoted/plain/block scalars
+│   └── SimpleKey.lean           -- simple-key resolution + scanBlockEntry/Key/Value
 ├── Parser/
 │   └── TokenParser.lean         (~800 LoC — Phase 3 splits)
 ├── Output/
@@ -54,11 +61,16 @@ What's done, what remains:
   orphan siblings.
 - **Done**: `Schema/Dump.lean` vs. top-level `Dump.lean` shadow
   resolved — now `Output/Dump.lean` vs. `Schema/Dump.lean`.
-- **Pending (Phase 2)**: `Scanner/Scanner.lean` is still monolithic.
-  The submodules referenced by
+- **Done (Phase 2, 2026-04-21)**: `Scanner/Scanner.lean` (~2761 LoC)
+  split into seven submodules: `State.lean`, `Whitespace.lean`,
+  `Indent.lean`, `Document.lean`, `NodeProperties.lean`, `Scalar.lean`,
+  `SimpleKey.lean`.  `Scanner/Scanner.lean` is now the dispatch
+  umbrella (~560 LoC).  The Verso manual at
   [`doc/Doc/L4YAML/Architecture.lean:140`](../doc/Doc/L4YAML/Architecture.lean#L140)
-  (`Scanner/Whitespace.lean`, `Scanner/Scalar.lean`, …) still
-  **do not exist**. The Verso manual remains ahead of the code.
+  was updated in lockstep.  Note: the blueprint originally listed six
+  submodules; `NodeProperties.lean` was added during Phase 2 to give
+  YAML §6.9 (anchors + aliases + tags) its own home, on the rationale
+  that other submodules already mirror named spec sections.
 - **Pending (Phase 3)**: `Parser/TokenParser.lean` is still monolithic.
 - **Pending (Phase 4)**: `Proofs/` is a flat directory of 61 files.
 
@@ -86,13 +98,14 @@ L4YAML/
 │   └── Token.lean
 │
 ├── Scanner/                     -- lexical layer
-│   ├── Scanner.lean             -- top-level scanNextToken dispatch
-│   ├── State.lean               -- ScannerState + WellFormed
-│   ├── Whitespace.lean          -- (future: extracted from Scanner.lean)
-│   ├── Scalar.lean              -- (future: extracted)
-│   ├── Indent.lean              -- (future: extracted)
-│   ├── SimpleKey.lean           -- (future: extracted)
-│   └── Document.lean            -- (future: extracted)
+│   ├── Scanner.lean             -- umbrella: flow indicators + scanNextToken dispatch + scan/scanFiltered
+│   ├── State.lean               -- ScannerState + WellFormed + accessors
+│   ├── Whitespace.lean          -- s-white/s-space/s-l-comments + tab detection (§6.1–§6.7)
+│   ├── Indent.lean              -- virtual BLOCK-* via unwindIndents/pushSequenceIndent/pushMappingIndent
+│   ├── Document.lean            -- ---/... markers + %YAML/%TAG directives (§6.8, §9.1.2)
+│   ├── NodeProperties.lean      -- anchors, aliases, tags (§6.9)
+│   ├── Scalar.lean              -- escapes + quoted/plain/block scalars (§5.7, §6.5, §7.3, §8.1)
+│   └── SimpleKey.lean           -- simple-key resolution + scanBlockEntry/Key/Value (§7.4, §8.2)
 │
 ├── Parser/                      -- syntactic layer
 │   ├── TokenParser.lean         -- the 14 mutually-recursive functions
@@ -231,10 +244,17 @@ phase should leave the build green and the imports valid):
    `Surface/Surface.lean` for symmetry with `Scanner/Scanner.lean`.
    Scripted in
    [`scripts/refactor-phase-1b.sh`](../scripts/refactor-phase-1b.sh).
-2. **Phase 2 — Scanner split** (medium): Break
-   `Scanner/Scanner.lean` into the submodules referenced by
-   [`Architecture.lean:140`](../doc/Doc/L4YAML/Architecture.lean#L140).
-   This lines up the code with the published documentation.
+2. **Phase 2 — Scanner split** ✅ **done 2026-04-21**.  Broke
+   `Scanner/Scanner.lean` (~2761 LoC) into seven submodules:
+   `State.lean`, `Whitespace.lean`, `Indent.lean`, `Document.lean`,
+   `NodeProperties.lean`, `Scalar.lean`, `SimpleKey.lean`, with
+   `Scanner.lean` (~560 LoC) as the dispatch umbrella.  The
+   blueprint originally listed six submodules; `NodeProperties.lean`
+   was added during execution to mirror YAML §6.9 as a named spec
+   section, on the rationale that other submodules already align
+   with sections (`Whitespace` ≈ §6.1–§6.7, `Document` ≈ §6.8 + §9.1.2,
+   `Scalar` ≈ §7.3 + §8.1).  `lake build` 443/443; scanner tests
+   32/32, spec examples 132/132, validation tests 84/84.
 3. **Phase 3 — Parser split** (medium): Extract `Parser/State.lean`,
    `Parser/Fuel.lean`, `Parser/Composition.lean` from
    `Parser/TokenParser.lean`. The mutually-recursive block stays
