@@ -1,8 +1,8 @@
 import L4YAML.Spec.Grammar
 import L4YAML.Parser.Composition
-import L4YAML.Proofs.ParserGrammableBase
-import L4YAML.Proofs.ParserNodeProofs
-import L4YAML.Proofs.ParserWellBehaved
+import L4YAML.Proofs.Parser.ParserGrammableBase
+import L4YAML.Proofs.Parser.ParserNodeProofs
+import L4YAML.Proofs.Parser.ParserWellBehaved
 import L4YAML.Proofs.Foundation.ValueAlgebra
 
 /-

@@ -6,7 +6,7 @@ import L4YAML.Spec.Types
 import L4YAML.Spec.Grammar
 import L4YAML.Parser.Composition
 import L4YAML.Proofs.Soundness
-import L4YAML.Proofs.ParserSoundness
+import L4YAML.Proofs.Parser.ParserSoundness
 
 /-!
 # Parser Completeness (P10.8e)

@@ -2,8 +2,8 @@ import L4YAML.Spec.Grammar
 import L4YAML.Parser.Composition
 import L4YAML.Proofs.Production.ScannerPlainScalarValid
 import L4YAML.Proofs.Composition
-import L4YAML.Proofs.ParserSoundness
-import L4YAML.Proofs.ParserGrammableBase
+import L4YAML.Proofs.Parser.ParserSoundness
+import L4YAML.Proofs.Parser.ParserGrammableBase
 
 /-
 Copyright (c) 2026. All rights reserved.

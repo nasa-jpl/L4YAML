@@ -1,4 +1,4 @@
-import L4YAML.Proofs.ParserGrammableBase
+import L4YAML.Proofs.Parser.ParserGrammableBase
 
 /-
 Copyright (c) 2026. All rights reserved.

@@ -1,4 +1,4 @@
-import L4YAML.Proofs.ParserCorrectness
+import L4YAML.Proofs.Parser.ParserCorrectness
 
 namespace L4YAML.Proofs.ParserCorrectness
 

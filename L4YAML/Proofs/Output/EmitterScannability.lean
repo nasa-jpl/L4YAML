@@ -11,7 +11,7 @@ import L4YAML.Proofs.Output.ScannerEmitBridge
 import L4YAML.Proofs.RoundTrip
 import L4YAML.Proofs.CouplingBridge
 import L4YAML.Proofs.ScalarCoupling
-import L4YAML.Proofs.ParserGrammable
+import L4YAML.Proofs.Parser.ParserGrammable
 import L4YAML.Proofs.Scanner.ScannerPlainContent
 import L4YAML.Proofs.Scanner.ScannerBound
 
