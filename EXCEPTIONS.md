@@ -357,7 +357,7 @@ The proof became *simpler*, not more complex.
 
 #### 4. New Opportunities: Error-Specific Proofs
 
-**Status:** ✅ Implemented in [Proofs/ErrorProperties.lean](L4YAML/Proofs/ErrorProperties.lean)
+**Status:** ✅ Implemented in [Proofs/Errors/ErrorProperties.lean](L4YAML/Proofs/Errors/ErrorProperties.lean)
 
 Structured errors enabled **new classes of proofs** previously impossible with `Except String`. These are now proven in the `ErrorProperties` module:
 

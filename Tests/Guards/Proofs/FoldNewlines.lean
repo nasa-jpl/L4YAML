@@ -1,4 +1,4 @@
-import L4YAML.Proofs.FoldNewlines
+import L4YAML.Proofs.Errors.FoldNewlines
 
 namespace L4YAML.Proofs.FoldNewlines
 

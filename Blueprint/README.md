@@ -265,7 +265,7 @@ PR; each leaves build green.
 | PR | Cluster | Files | LoC (approx) | Capstone groups | Risk |
 | -- | ------- | ----: | -----------: | --------------- | ---- |
 | 1 | Foundation/ ✅ | 4 | ~1,100 | (infra only) | low |
-| 2 | Errors/ | 3 | ~900 | — | low |
+| 2 | Errors/ ✅ | 3 | ~900 | — | low |
 | 3 | Schema/ | 4 | ~850 | 5 (SchemaResolution), 6 (SchemaDump, SchemaComposition) | low |
 | 4 | Contracts/ | 2 | ~500 | — | low |
 | 5 | Production/ | 7 | ~7,500 | 7 (all production theorems) | medium |
@@ -338,6 +338,27 @@ Moved four low-level utility proofs into
   `ScannerPlainScalar.lean`, `StructureProduction.lean`) +
   narrative references in `README.md`, `L4YAML/Proofs/README.md`,
   `FoldNewlines.lean`, `Completeness.lean`.
+
+**Phase 4 · Errors/ ✅ done 2026-04-22**
+
+Moved three error-domain proofs into
+[`L4YAML/Proofs/Errors/`](../L4YAML/Proofs/Errors/):
+[`ErrorProperties.lean`](../L4YAML/Proofs/Errors/ErrorProperties.lean),
+[`EscapeResolution.lean`](../L4YAML/Proofs/Errors/EscapeResolution.lean),
+[`FoldNewlines.lean`](../L4YAML/Proofs/Errors/FoldNewlines.lean).
+
+- **Tooling used**: same pattern as the Foundation/ cluster —
+  `git mv` + one anchored `sed` pass over `^import L4YAML.Proofs.Foo$`.
+  Namespaces left untouched.
+- **Script**:
+  [`scripts/refactor-phase-4-errors.sh`](../scripts/refactor-phase-4-errors.sh)
+  — reversible via commit revert.
+- **Acceptance met**: `lake build` 449/449 (same pre-existing
+  `sorry` warnings as the prior cluster).
+- **Blast radius**: 3 renames + 3 touched importers
+  (`L4YAML.lean`, `Tests/Guards/Proofs/EscapeResolution.lean`,
+  `Tests/Guards/Proofs/FoldNewlines.lean`) + one narrative
+  reference in `EXCEPTIONS.md`.
 
 **Overall exit criterion for Initiative 1**: `Architecture.lean`
 can be regenerated from the actual folder layout instead of
