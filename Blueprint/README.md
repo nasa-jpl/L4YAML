@@ -270,7 +270,7 @@ PR; each leaves build green.
 | 4 | Contracts/ ✅ | 2 | ~500 | — | low |
 | 5 | Production/ ✅ | 7 | ~7,500 | 7 (all production theorems) | medium |
 | 6 | Scanner/ ✅ | 18 | ~9,700 | 2 (all scanner correctness), 6 partial, 7 partial | medium (size) |
-| 7 | Output/ | 3 | ~11,000 | 6 (EmitterScannability, ScannerEmitBridge, DumpRoundTrip) | medium (EmitterScannability is ~10k LoC) |
+| 7 | Output/ ✅ | 3 | ~11,000 | 6 (EmitterScannability, ScannerEmitBridge, DumpRoundTrip) | medium (EmitterScannability is ~10k LoC) |
 | 8 | Parser/ | 9 | ~12,000 | 3 (all parser correctness) | medium (size + mutual-rec imports) |
 | 9 | Coupling/ | 6 | ~2,400 | 8 (all surface coupling), 7 boundary | low |
 | 10 | RoundTrip/ | 4 | ~2,200 | 6 (RoundTrip, RoundTripComposition, CommentRoundTrip) | low |
@@ -485,6 +485,34 @@ Moved eighteen scanner-correctness proofs into
   guard files — one line each) + internal cross-imports among the
   moved files + narrative references in `Blueprint/README.md` and
   `Blueprint/03-code-organization.md`.
+
+**Phase 4 · Output/ ✅ done 2026-04-22**
+
+Moved three emitter/dumper-correctness proofs into
+[`L4YAML/Proofs/Output/`](../L4YAML/Proofs/Output/):
+[`EmitterScannability.lean`](../L4YAML/Proofs/Output/EmitterScannability.lean),
+[`ScannerEmitBridge.lean`](../L4YAML/Proofs/Output/ScannerEmitBridge.lean),
+[`DumpRoundTrip.lean`](../L4YAML/Proofs/Output/DumpRoundTrip.lean).
+
+- **Tooling used**: same pattern as the Foundation/, Errors/,
+  Schema/, Contracts/, Production/, and Scanner/ clusters —
+  `git mv` + one anchored `sed` pass over
+  `^import L4YAML.Proofs.Foo$`.  The one internal cross-import
+  (`EmitterScannability` → `ScannerEmitBridge`) was rewritten
+  in-place by the same sed pass.  Namespaces left untouched.
+- **Script**:
+  [`scripts/refactor-phase-7-output.sh`](../scripts/refactor-phase-7-output.sh)
+  — reversible via commit revert.
+- **Acceptance met**: `lake build` 449/449 (same pre-existing
+  `sorry` warnings in `EmitterScannability.lean` — seven
+  declarations at lines 8169, 8665, 8757, 8839, 9057, 9773, 9812
+  of the moved file — carried over unchanged from the baseline).
+- **Blast radius**: 3 renames + external importers rewritten
+  (`L4YAML.lean` three import lines; `Tests/DumpRoundTrip.lean`
+  one line; `Tests/Guards/Proofs/DumpRoundTrip.lean` and
+  `Tests/Guards/Proofs/ScannerEmitBridge.lean` one line each) +
+  one internal cross-import + narrative references in
+  `Blueprint/README.md` and `Blueprint/03-code-organization.md`.
 
 **Overall exit criterion for Initiative 1**: `Architecture.lean`
 can be regenerated from the actual folder layout instead of

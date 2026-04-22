@@ -15,8 +15,8 @@ import L4YAML.Proofs.Composition
 import L4YAML.Proofs.CouplingBridge
 import L4YAML.Proofs.Contracts.DocumentContracts
 import L4YAML.Proofs.Production.DocumentProduction
-import L4YAML.Proofs.DumpRoundTrip
-import L4YAML.Proofs.EmitterScannability
+import L4YAML.Proofs.Output.DumpRoundTrip
+import L4YAML.Proofs.Output.EmitterScannability
 import L4YAML.Proofs.EndToEndCorrectness
 import L4YAML.Proofs.Errors.ErrorProperties
 import L4YAML.Proofs.Errors.EscapeResolution
@@ -43,7 +43,7 @@ import L4YAML.Proofs.ScannerCoupling
 import L4YAML.Proofs.Scanner.ScannerDispatch
 import L4YAML.Proofs.Scanner.ScannerDocument
 import L4YAML.Proofs.Scanner.ScannerDoubleQuoted
-import L4YAML.Proofs.ScannerEmitBridge
+import L4YAML.Proofs.Output.ScannerEmitBridge
 import L4YAML.Proofs.Scanner.ScannerFlowCollection
 import L4YAML.Proofs.Scanner.ScannerIndent
 import L4YAML.Proofs.Scanner.ScannerIndentStack

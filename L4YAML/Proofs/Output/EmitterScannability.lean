@@ -7,7 +7,7 @@ import L4YAML.Scanner.Scanner
 import L4YAML.Spec.Grammar
 import L4YAML.Parser.Composition
 import L4YAML.Spec.CharPredicates
-import L4YAML.Proofs.ScannerEmitBridge
+import L4YAML.Proofs.Output.ScannerEmitBridge
 import L4YAML.Proofs.RoundTrip
 import L4YAML.Proofs.CouplingBridge
 import L4YAML.Proofs.ScalarCoupling
