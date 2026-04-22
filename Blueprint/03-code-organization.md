@@ -53,7 +53,7 @@ L4YAML/
 ├── FFI/
 │   └── FFI.lean
 ├── YAML_PRODUCTIONS.md
-└── Proofs/                      (11 flat + Foundation/ + Errors/ + Schema/ + Contracts/ + Production/ + Scanner/ + Output/ + Parser/ clusters; Phase 4 ongoing)
+└── Proofs/                      (6 flat + Foundation/ + Errors/ + Schema/ + Contracts/ + Production/ + Scanner/ + Output/ + Parser/ + Coupling/ clusters; Phase 4 ongoing)
 ```
 
 Phase 1 (`ad12e204`) + Phase 1b (`573fa76e`) landed on 2026-04-21.
@@ -111,7 +111,10 @@ What's done, what remains:
   `ParserAnchorProofs.lean`, `ParserWfaProofs.lean`,
   `ParserWellBehaved.lean`, `ParserGrammable.lean`,
   `ParserGrammableBase.lean`).
-  11 files still flat; remaining clusters per the target layout below.
+  **Coupling/** cluster landed 2026-04-22 (5 files:
+  `CouplingBridge.lean`, `ScannerCoupling.lean`, `SurfaceCoupling.lean`,
+  `StructureCoupling.lean`, `ScalarCoupling.lean`).
+  6 files still flat; remaining clusters per the target layout below.
 
 ## Proposed target layout
 
@@ -373,6 +376,20 @@ phase should leave the build green and the imports valid):
      pass — no ordering hazard because sed runs after `git mv`.
      Scripted in
      [`scripts/refactor-phase-8-parser.sh`](../scripts/refactor-phase-8-parser.sh);
+     `lake build` 449/449 (pre-existing `sorry` warnings in
+     `Output/EmitterScannability.lean` carried over unchanged).
+   - **Cluster 9 — Coupling/** ✅ **done 2026-04-22**. Moved the five
+     scanner↔surface↔grammar coupling proofs (`CouplingBridge.lean`,
+     `ScannerCoupling.lean`, `SurfaceCoupling.lean`,
+     `StructureCoupling.lean`, `ScalarCoupling.lean`) into
+     `L4YAML/Proofs/Coupling/`.  Three internal cross-imports
+     (`ScannerCoupling` → `CouplingBridge`, `ScalarCoupling` →
+     `ScannerCoupling`, `StructureCoupling` → `ScalarCoupling`)
+     rewritten in-place by the same sed pass.  Note: the roadmap row
+     in `Blueprint/README.md` was drafted with 6 files; the target
+     layout enumerates 5 and that matches the flat layout — the row
+     is now ✅ at 5.  Scripted in
+     [`scripts/refactor-phase-9-coupling.sh`](../scripts/refactor-phase-9-coupling.sh);
      `lake build` 449/449 (pre-existing `sorry` warnings in
      `Output/EmitterScannability.lean` carried over unchanged).
 
