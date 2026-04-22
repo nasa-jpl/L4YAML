@@ -1,4 +1,4 @@
-import L4YAML.Proofs.ScannerEmitBridge
+import L4YAML.Proofs.Output.ScannerEmitBridge
 
 namespace L4YAML.Proofs.ScannerEmitBridge
 

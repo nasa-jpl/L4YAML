@@ -53,7 +53,7 @@ L4YAML/
 ├── FFI/
 │   └── FFI.lean
 ├── YAML_PRODUCTIONS.md
-└── Proofs/                      (23 flat + Foundation/ + Errors/ + Schema/ + Contracts/ + Production/ + Scanner/ clusters; Phase 4 ongoing)
+└── Proofs/                      (20 flat + Foundation/ + Errors/ + Schema/ + Contracts/ + Production/ + Scanner/ + Output/ clusters; Phase 4 ongoing)
 ```
 
 Phase 1 (`ad12e204`) + Phase 1b (`573fa76e`) landed on 2026-04-21.
@@ -102,7 +102,10 @@ What's done, what remains:
   `ScannerPlainContent.lean`, `ScannerDoubleQuoted.lean`, `ScannerScalar.lean`,
   `ScannerFlowCollection.lean`, `ScannerIndentStack.lean`, `ScannerIndent.lean`,
   `ScannerProofs.lean`, `ScanStrictCoupling.lean`).
-  23 files still flat; remaining clusters per the target layout below.
+  **Output/** cluster landed 2026-04-22 (3 files:
+  `EmitterScannability.lean`, `ScannerEmitBridge.lean`,
+  `DumpRoundTrip.lean`).
+  20 files still flat; remaining clusters per the target layout below.
 
 ## Proposed target layout
 
@@ -347,6 +350,12 @@ phase should leave the build green and the imports valid):
      `Blueprint/README.md` was drafted with 17 files; the detailed
      target layout enumerates 18 (including `ScannerPlainContent.lean`,
      flagged in that same README at the "unlisted" bullet).
+   - **Cluster 7 — Output/** ✅ **done 2026-04-22**. Moved
+     `EmitterScannability.lean`, `ScannerEmitBridge.lean`, and
+     `DumpRoundTrip.lean` into `L4YAML/Proofs/Output/`.  Scripted in
+     [`scripts/refactor-phase-7-output.sh`](../scripts/refactor-phase-7-output.sh);
+     `lake build` 449/449 (pre-existing `sorry` warnings in
+     `EmitterScannability.lean` carried over unchanged).
 
 ## Naming conventions
 
