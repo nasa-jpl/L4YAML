@@ -1,4 +1,4 @@
-import L4YAML.Parser.TokenParser
+import L4YAML.Parser.Composition
 import Tests.VerifiedResult
 -- Reuse cleanup helpers from SpecExamples
 import Tests.SpecExamples

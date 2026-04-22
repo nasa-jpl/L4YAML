@@ -26,7 +26,10 @@ L4YAML/
 │   ├── Scalar.lean              -- escapes + quoted/plain/block scalars
 │   └── SimpleKey.lean           -- simple-key resolution + scanBlockEntry/Key/Value
 ├── Parser/
-│   └── TokenParser.lean         (~800 LoC — Phase 3 splits)
+│   ├── TokenParser.lean         -- mutual block + parseStream/parseDocument
+│   ├── State.lean               -- ParseState + accessors + NodeProperties + helpers
+│   ├── Fuel.lean                -- initialFuel := 4*N+4
+│   └── Composition.lean         -- umbrella: parseYaml*, scanAndParse, comment classification
 ├── Output/
 │   ├── Dump.lean
 │   └── Emitter.lean
@@ -71,7 +74,15 @@ What's done, what remains:
   submodules; `NodeProperties.lean` was added during Phase 2 to give
   YAML §6.9 (anchors + aliases + tags) its own home, on the rationale
   that other submodules already mirror named spec sections.
-- **Pending (Phase 3)**: `Parser/TokenParser.lean` is still monolithic.
+- **Done (Phase 3, 2026-04-21)**: `Parser/TokenParser.lean` (~1191 LoC)
+  split into four files: `State.lean` (ParseState + helpers),
+  `Fuel.lean` (`initialFuel := 4*N+4`), `TokenParser.lean` (the 14
+  mutually-recursive functions + `parseStream`/`parseDocument`), and
+  `Composition.lean` (user-facing umbrella owning `parseYaml*`,
+  `scanAndParse`, comment classification).  Importers redirected from
+  `L4YAML.Parser.TokenParser` → `L4YAML.Parser.Composition` (49 files,
+  one-line sed); the `L4YAML.TokenParser.foo` API surface is preserved
+  via transitive imports.
 - **Pending (Phase 4)**: `Proofs/` is a flat directory of 61 files.
 
 ## Proposed target layout
@@ -255,10 +266,22 @@ phase should leave the build green and the imports valid):
    with sections (`Whitespace` ≈ §6.1–§6.7, `Document` ≈ §6.8 + §9.1.2,
    `Scalar` ≈ §7.3 + §8.1).  `lake build` 443/443; scanner tests
    32/32, spec examples 132/132, validation tests 84/84.
-3. **Phase 3 — Parser split** (medium): Extract `Parser/State.lean`,
-   `Parser/Fuel.lean`, `Parser/Composition.lean` from
-   `Parser/TokenParser.lean`. The mutually-recursive block stays
-   together in `TokenParser.lean`.
+3. **Phase 3 — Parser split** ✅ **done 2026-04-21**.  Broke
+   `Parser/TokenParser.lean` (~1191 LoC) into four files:
+   `State.lean` (~285 LoC) holds `ParseState` + accessors +
+   `NodeProperties` + `parseNodeProperties` + helpers; `Fuel.lean`
+   (~50 LoC) factors out the `initialFuel := 4*N+4` formula;
+   `TokenParser.lean` (~535 LoC) keeps the 14-function mutual block
+   + `StreamState`/`validNextToken` + `parseDirectives` +
+   `prepareDocumentState` + `parseDocument` + `parseStream`;
+   `Composition.lean` (~205 LoC) becomes the user-facing umbrella
+   for `scanAndParse`, `parseYaml{,Raw,Single,SingleRaw}`,
+   the comment classifiers, and `parseYamlWithComments`.
+   Importers redirected from `L4YAML.Parser.TokenParser` →
+   `L4YAML.Parser.Composition` via a one-line sed (49 files); the
+   `L4YAML.TokenParser.foo` API surface is preserved via transitive
+   imports. `lake build` 443/443; `flowtests`, `explicitkeytests`,
+   `rawparsetests`, `dumproundtrip` all green.
 4. **Phase 4 — Proofs reorganization** (large, per-folder):
    Move proof files into the subfolders above one cluster at a time.
    Each move is its own PR; build-green gate.

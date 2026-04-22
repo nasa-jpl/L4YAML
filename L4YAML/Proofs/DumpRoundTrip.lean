@@ -1,6 +1,6 @@
 import L4YAML.Output.Dump
 import L4YAML.Output.Emitter
-import L4YAML.Parser.TokenParser
+import L4YAML.Parser.Composition
 
 /-
 Copyright (c) 2026. All rights reserved.

@@ -169,16 +169,59 @@ matching the spec-section pattern used by the other submodules
   `scanWithComments`, plus the `Loop`-suffixed helpers for spec
   productions whose terminating wrapper was already tagged.
 
-**Phase 3 — Parser split (risk: medium)**
+**Phase 3 — Parser split (risk: medium) ✅ done 2026-04-21**
 
-Extract `Parser/State.lean` (ParseState + helpers),
-`Parser/Fuel.lean` (fuel abstractions, `4*N+4` default),
-`Parser/Composition.lean` (`parseYaml`, `parseYamlRaw`, `compose`)
-from [`L4YAML/Parser/TokenParser.lean`](../L4YAML/Parser/TokenParser.lean).
-The mutually-recursive block stays together in `TokenParser.lean`.
+Broke monolithic `L4YAML/Parser/TokenParser.lean` (~1191 LoC) into
+four files along its existing logical seams:
+[`State.lean`](../L4YAML/Parser/State.lean) (~285 LoC) holds
+`ParseState`, the navigation/consumption accessors,
+`NodeProperties`, `parseNodeProperties`, `resolveTag`, `emptyNode`,
+`applyNodeFinalization`, and `validateNodeProps` — everything the
+mutual block touches but that doesn't itself recurse.
+[`Fuel.lean`](../L4YAML/Parser/Fuel.lean) (~50 LoC) factors out the
+`initialFuel := 4 * tokens.size + 4` formula referenced by
+`parseDocument` and proof capstones.
+[`TokenParser.lean`](../L4YAML/Parser/TokenParser.lean) (~535 LoC)
+keeps the 14-function mutually-recursive block plus
+`StreamState` / `validNextToken`, `parseDirectives`,
+`prepareDocumentState`, `parseDocument`, and `parseStream` — i.e.
+everything that depends on the recursive descent and the document
+boundary table.
+[`Composition.lean`](../L4YAML/Parser/Composition.lean) (~205 LoC)
+is the new umbrella holding the user-facing pipeline: `scanAndParse`,
+`parseYaml{,Raw,Single,SingleRaw}`, the comment classifiers
+(`classifyCommentPosition`, `classifyDocumentComments`,
+`partitionCommentsByDocument`), and `parseYamlWithComments`.
 
-- **Acceptance**: build green; `Tests/RawParseTests/`,
-  `Tests/FlowTests/`, `Tests/ExplicitKeyTests/` pass.
+- **Tooling used**: `Write` for the four files; bulk `Python`
+  substitution to redirect 48 importers from
+  `import L4YAML.Parser.TokenParser` to
+  `import L4YAML.Parser.Composition` (transitive imports keep the
+  `L4YAML.TokenParser.foo` API surface intact); `Edit` for the
+  blueprint and Verso-doc cross-references; `lake build` gate.
+- **Acceptance met**: `lake build` 449/449 (warnings only on
+  pre-existing `sorry`s in `ParserWellBehaved.lean` and
+  `EmitterScannability.lean` baselines).  Test suites observed:
+  `rawparsetests` 29/29, `validationtests` 84/84, `flowtests` 88/88,
+  `explicitkeytests` 149/149, `scannertests` 32/32,
+  `scannerspecexamples` 132/132, `dumproundtrip` 117/117,
+  `specexamples` 132/132, `propertytests` 124/124,
+  `productioncoverage` 26/26, `adversarialinstantiation`
+  2455/2473 (the 18 failures are the same pre-existing semantic-gap
+  baseline, unchanged by the refactor).
+  `Architecture.lean` updated to list all four files.
+- **Blast radius**: 49 importing files updated by a one-line
+  substitution; no behavioural changes. The only file that still
+  imports `L4YAML.Parser.TokenParser` directly is
+  `L4YAML/Parser/Composition.lean` itself — by design, since
+  Composition wraps the mutual block.
+- **Why one umbrella, not the literal blueprint**: the original
+  blueprint text envisioned `TokenParser.lean` keeping its public
+  API; in practice `parseYaml*` had to move into Composition.lean to
+  avoid a circular import (Composition needs `parseStream` from the
+  mutual block).  Routing imports through Composition.lean keeps
+  the user-facing API name stable (`L4YAML.TokenParser.parseYaml`)
+  while honouring the file-layout intent.
 
 **Phase 4 — Proofs reorganization (risk: low per-cluster)**
 

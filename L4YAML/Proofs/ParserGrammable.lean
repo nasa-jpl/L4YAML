@@ -1,5 +1,5 @@
 import L4YAML.Spec.Grammar
-import L4YAML.Parser.TokenParser
+import L4YAML.Parser.Composition
 import L4YAML.Proofs.ScannerPlainScalarValid
 import L4YAML.Proofs.Composition
 import L4YAML.Proofs.ParserSoundness

@@ -141,8 +141,8 @@ The project is organized into several module groups:
   * Character-to-token conversion with full state management. Split into seven role-named submodules (Blueprint Phase 2, 2026-04-21); the umbrella owns flow-collection indicators and the `scanNextToken` dispatch / `scan` / `scanLoop` main loop.
 *
   * Parser
-  * `TokenParser.lean`, `NodeParser.lean`
-  * Token-to-AST recursive descent
+  * `Parser/Composition.lean` (umbrella), `TokenParser.lean` (mutual block), `State.lean`, `Fuel.lean`
+  * Token-to-AST recursive descent. Split into four role-named files (Blueprint Phase 3, 2026-04-21); `Composition.lean` owns the user-facing pipeline (`parseYaml*`, `scanAndParse`, comment classification), `TokenParser.lean` keeps the 14-function mutually-recursive block plus `parseStream` / `parseDocument`, `State.lean` holds `ParseState` + `NodeProperties` helpers, and `Fuel.lean` factors out the `initialFuel := 4*N+4` formula.
 *
   * Validation
   * `Limits.lean`, `Schema.lean`

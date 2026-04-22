@@ -2,7 +2,7 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Parser.TokenParser
+import L4YAML.Parser.Composition
 
 /-!
 # yaml-test-suite Compile-Time Guards — Error Stage
