@@ -1,4 +1,4 @@
-import L4YAML.Proofs.ScannerWhitespace
+import L4YAML.Proofs.Scanner.ScannerWhitespace
 
 namespace L4YAML.Proofs.ScannerWhitespace
 

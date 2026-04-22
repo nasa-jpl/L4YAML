@@ -1,4 +1,4 @@
-import L4YAML.Proofs.ScannerDoubleQuoted
+import L4YAML.Proofs.Scanner.ScannerDoubleQuoted
 
 namespace L4YAML.Proofs.ScannerDoubleQuoted
 

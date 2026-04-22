@@ -1,8 +1,8 @@
 import L4YAML.Scanner.Scanner
-import L4YAML.Proofs.ScannerLoopInvariant
-import L4YAML.Proofs.ScannerContracts
-import L4YAML.Proofs.ScannerIndentStack
-import L4YAML.Proofs.ScannerScalar
+import L4YAML.Proofs.Scanner.ScannerLoopInvariant
+import L4YAML.Proofs.Scanner.ScannerContracts
+import L4YAML.Proofs.Scanner.ScannerIndentStack
+import L4YAML.Proofs.Scanner.ScannerScalar
 
 /-
 Copyright (c) 2026. All rights reserved.

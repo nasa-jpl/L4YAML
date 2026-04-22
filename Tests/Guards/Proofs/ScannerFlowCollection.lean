@@ -1,4 +1,4 @@
-import L4YAML.Proofs.ScannerFlowCollection
+import L4YAML.Proofs.Scanner.ScannerFlowCollection
 
 namespace L4YAML.Proofs.ScannerFlowCollection
 

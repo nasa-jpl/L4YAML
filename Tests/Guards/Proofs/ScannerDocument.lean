@@ -1,4 +1,4 @@
-import L4YAML.Proofs.ScannerDocument
+import L4YAML.Proofs.Scanner.ScannerDocument
 
 namespace L4YAML.Proofs.ScannerDocument
 

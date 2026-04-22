@@ -1,4 +1,4 @@
-import L4YAML.Proofs.ScannerProgress
+import L4YAML.Proofs.Scanner.ScannerProgress
 
 namespace L4YAML.Proofs.ScannerProgress
 

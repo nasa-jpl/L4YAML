@@ -1,4 +1,4 @@
-import L4YAML.Proofs.ScannerIndent
+import L4YAML.Proofs.Scanner.ScannerIndent
 
 namespace L4YAML.Proofs.ScannerIndent
 

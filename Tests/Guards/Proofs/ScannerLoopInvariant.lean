@@ -1,4 +1,4 @@
-import L4YAML.Proofs.ScannerLoopInvariant
+import L4YAML.Proofs.Scanner.ScannerLoopInvariant
 
 namespace L4YAML.Proofs.ScannerLoopInvariant
 
