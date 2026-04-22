@@ -65,8 +65,8 @@
   <p class="subtitle">Unit tests, parser tests, verification tests, and string lemma tests — all must pass.</p>
 
   <div class="stats">
-    <div class="stat-box stat-total"><h3>Total</h3><div class="number">3705</div></div>
-    <div class="stat-box stat-pass"><h3>Passed</h3><div class="number">3687</div></div>
+    <div class="stat-box stat-total"><h3>Total</h3><div class="number">3712</div></div>
+    <div class="stat-box stat-pass"><h3>Passed</h3><div class="number">3694</div></div>
     <div class="stat-box stat-fail"><h3>Failed</h3><div class="number">18</div></div>
     <div class="stat-box stat-suites"><h3>Suites</h3><div class="number">17</div></div>
   </div>
@@ -158,7 +158,7 @@
     </div>
     <div class="stage-card" style="border-left-color:var(--color-pass)">
       <div class="stage-card-name">Production Coverage Analysis</div>
-      <div class="stage-card-stats">18/18 passed (100.0%)</div>
+      <div class="stage-card-stats">25/25 passed (100.0%)</div>
       <div class="stage-bar"><div class="stage-bar-fill" style="width: 100.0%"></div></div>
       <div class="stage-card-source"><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean" target="_blank" class="source-link">📄 Tests/ProductionCoverage.lean</a></div>
     </div>
@@ -210,7 +210,7 @@
       <label>Search:</label>
       <input type="text" class="search-input" placeholder="Category, test name..." oninput="searchTests(this.value)">
     </div>
-    <div class="filter-group"><span>Showing <strong id="visibleCount">3705</strong> of 3705</span></div>
+    <div class="filter-group"><span>Showing <strong id="visibleCount">3712</strong> of 3712</span></div>
   </div>
 
   <table id="testTable">
@@ -25704,10 +25704,10 @@
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage automated @[yaml_spec] discovery @[yaml_spec] entries discovered: 359">
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage automated @[yaml_spec] discovery @[yaml_spec] entries discovered: 410">
         <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L780" target="_blank" class="source-link">Production Coverage Analysis</a></td>
         <td>Automated @[yaml_spec] discovery</td>
-        <td>@[yaml_spec] entries discovered: 359</td>
+        <td>@[yaml_spec] entries discovered: 410</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
@@ -25718,10 +25718,10 @@
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage automated @[yaml_spec] discovery source modules with annotations: 4">
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage automated @[yaml_spec] discovery source modules with annotations: 11">
         <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L784" target="_blank" class="source-link">Production Coverage Analysis</a></td>
         <td>Automated @[yaml_spec] discovery</td>
-        <td>source modules with annotations: 4</td>
+        <td>source modules with annotations: 11</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
@@ -25746,6 +25746,13 @@
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage per-module annotation counts l4yaml.scanner.scalar: 107 annotations">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L798" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Per-module annotation counts</td>
+        <td>L4YAML.Scanner.Scalar: 107 annotations</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
       <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage per-module annotation counts l4yaml.token.token: 21 annotations">
         <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L798" target="_blank" class="source-link">Production Coverage Analysis</a></td>
         <td>Per-module annotation counts</td>
@@ -25753,10 +25760,17 @@
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage per-module annotation counts l4yaml.scanner.scanner: 188 annotations">
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage per-module annotation counts l4yaml.scanner.document: 26 annotations">
         <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L798" target="_blank" class="source-link">Production Coverage Analysis</a></td>
         <td>Per-module annotation counts</td>
-        <td>L4YAML.Scanner.Scanner: 188 annotations</td>
+        <td>L4YAML.Scanner.Document: 26 annotations</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage per-module annotation counts l4yaml.scanner.scanner: 32 annotations">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L798" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Per-module annotation counts</td>
+        <td>L4YAML.Scanner.Scanner: 32 annotations</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
@@ -25767,10 +25781,45 @@
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage per-module annotation counts l4yaml.scanner.whitespace: 28 annotations">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L798" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Per-module annotation counts</td>
+        <td>L4YAML.Scanner.Whitespace: 28 annotations</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
       <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage per-module annotation counts l4yaml.parser.tokenparser: 56 annotations">
         <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L798" target="_blank" class="source-link">Production Coverage Analysis</a></td>
         <td>Per-module annotation counts</td>
         <td>L4YAML.Parser.TokenParser: 56 annotations</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage per-module annotation counts l4yaml.scanner.simplekey: 14 annotations">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L798" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Per-module annotation counts</td>
+        <td>L4YAML.Scanner.SimpleKey: 14 annotations</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage per-module annotation counts l4yaml.scanner.nodeproperties: 20 annotations">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L798" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Per-module annotation counts</td>
+        <td>L4YAML.Scanner.NodeProperties: 20 annotations</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage per-module annotation counts l4yaml.scanner.indent: 11 annotations">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L798" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Per-module annotation counts</td>
+        <td>L4YAML.Scanner.Indent: 11 annotations</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage per-module annotation counts l4yaml.scanner.state: 1 annotations">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L798" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Per-module annotation counts</td>
+        <td>L4YAML.Scanner.State: 1 annotations</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>

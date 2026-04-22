@@ -206,9 +206,9 @@ The project is organized into several module groups:</p>
                   </td></tr><tr><td><p>
                     Scanner</p>
                   </td><td><p>
-                    <code>Scanner.lean</code>, <code>Scanner/Whitespace.lean</code>, <code>Scanner/Scalar.lean</code>, ...</p>
+                    <code>Scanner/Scanner.lean</code> (umbrella), <code>State.lean</code>, <code>Whitespace.lean</code>, <code>Indent.lean</code>, <code>Document.lean</code>, <code>NodeProperties.lean</code>, <code>Scalar.lean</code>, <code>SimpleKey.lean</code></p>
                   </td><td><p>
-                    Character-to-token conversion with full state management
+                    Character-to-token conversion with full state management. Split into seven role-named submodules (Blueprint Phase 2, 2026-04-21); the umbrella owns flow-collection indicators and the <code>scanNextToken</code> dispatch / <code>scan</code> / <code>scanLoop</code> main loop.
 </p>
                   </td></tr><tr><td><p>
                     Parser</p>

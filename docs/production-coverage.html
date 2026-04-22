@@ -148,7 +148,7 @@
   <div class="stats">
     <div class="stat-box stat-total"><h3>Total Productions</h3><div class="number">211</div></div>
     <div class="stat-box stat-covered"><h3>Annotated Rules</h3><div class="number">211</div><div class="pct">of 211 in-scope</div></div>
-    <div class="stat-box stat-annotation"><h3>@[yaml_spec] Entries</h3><div class="number">359</div><div class="pct">across 4 modules</div></div>
+    <div class="stat-box stat-annotation"><h3>@[yaml_spec] Entries</h3><div class="number">410</div><div class="pct">across 11 modules</div></div>
     <div class="stat-box stat-grammar"><h3>Grammar Only</h3><div class="number">4</div></div>
     <div class="stat-box stat-oos"><h3>Out of Scope</h3><div class="number">0</div></div>
   </div>
@@ -230,7 +230,7 @@
         <td><a href="https://yaml.org/spec/1.2.2/#rule-nb-json" target="_blank" class="spec-link">nb-json</a></td>
         <td>§5.1</td>
         <td><span class="badge badge-grammar">Grammar Only</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectSingleQuotedLoop</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Spec/CharPredicates.lean" target="_blank" class="impl-link">L4YAML.CharPredicates.isNbJsonProp</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectDoubleQuotedLoop</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Spec/CharPredicates.lean" target="_blank" class="impl-link">L4YAML.CharPredicates.isNbJsonBool</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectSingleQuotedLoop</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Spec/CharPredicates.lean" target="_blank" class="impl-link">L4YAML.CharPredicates.isNbJsonProp</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectDoubleQuotedLoop</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Spec/CharPredicates.lean" target="_blank" class="impl-link">L4YAML.CharPredicates.isNbJsonBool</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="5" data-search="3 c-byte-order-mark 5.2 covered">
         <td>3</td>
@@ -258,14 +258,14 @@
         <td><a href="https://yaml.org/spec/1.2.2/#rule-c-mapping-value" target="_blank" class="spec-link">c-mapping-value</a></td>
         <td>§5.3</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanValue</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Spec/CharPredicates.lean" target="_blank" class="impl-link">L4YAML.CharPredicates.isIndicatorProp</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Token/Token.lean" target="_blank" class="impl-link">L4YAML.YamlToken.value</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Spec/CharPredicates.lean" target="_blank" class="impl-link">L4YAML.CharPredicates.isIndicatorBool</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/SimpleKey.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanValue</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Spec/CharPredicates.lean" target="_blank" class="impl-link">L4YAML.CharPredicates.isIndicatorProp</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Token/Token.lean" target="_blank" class="impl-link">L4YAML.YamlToken.value</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Spec/CharPredicates.lean" target="_blank" class="impl-link">L4YAML.CharPredicates.isIndicatorBool</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanNextToken_dispatchBlockIndicators</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="5" data-search="7 c-collect-entry 5.3 covered">
         <td>7</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-c-collect-entry" target="_blank" class="spec-link">c-collect-entry</a></td>
         <td>§5.3</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Token/Token.lean" target="_blank" class="impl-link">L4YAML.YamlToken.flowEntry</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Spec/CharPredicates.lean" target="_blank" class="impl-link">L4YAML.CharPredicates.isIndicatorProp</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Spec/CharPredicates.lean" target="_blank" class="impl-link">L4YAML.CharPredicates.isFlowIndicatorProp</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Spec/CharPredicates.lean" target="_blank" class="impl-link">L4YAML.CharPredicates.isFlowIndicatorBool</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Spec/CharPredicates.lean" target="_blank" class="impl-link">L4YAML.CharPredicates.isIndicatorBool</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanFlowEntry</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Token/Token.lean" target="_blank" class="impl-link">L4YAML.YamlToken.flowEntry</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Spec/CharPredicates.lean" target="_blank" class="impl-link">L4YAML.CharPredicates.isIndicatorProp</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Spec/CharPredicates.lean" target="_blank" class="impl-link">L4YAML.CharPredicates.isFlowIndicatorProp</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Spec/CharPredicates.lean" target="_blank" class="impl-link">L4YAML.CharPredicates.isFlowIndicatorBool</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Spec/CharPredicates.lean" target="_blank" class="impl-link">L4YAML.CharPredicates.isIndicatorBool</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanFlowEntry</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanNextToken_dispatchFlowIndicators</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="5" data-search="8 c-sequence-start 5.3 covered">
         <td>8</td>
@@ -307,14 +307,14 @@
         <td><a href="https://yaml.org/spec/1.2.2/#rule-c-anchor" target="_blank" class="spec-link">c-anchor</a></td>
         <td>§5.3</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Spec/CharPredicates.lean" target="_blank" class="impl-link">L4YAML.CharPredicates.isIndicatorProp</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Spec/CharPredicates.lean" target="_blank" class="impl-link">L4YAML.CharPredicates.isIndicatorBool</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectAnchorNameLoop</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Spec/CharPredicates.lean" target="_blank" class="impl-link">L4YAML.CharPredicates.isIndicatorProp</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Spec/CharPredicates.lean" target="_blank" class="impl-link">L4YAML.CharPredicates.isIndicatorBool</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/NodeProperties.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectAnchorNameLoop</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="5" data-search="14 c-alias 5.3 covered">
         <td>14</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-c-alias" target="_blank" class="spec-link">c-alias</a></td>
         <td>§5.3</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Spec/CharPredicates.lean" target="_blank" class="impl-link">L4YAML.CharPredicates.isIndicatorProp</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Spec/CharPredicates.lean" target="_blank" class="impl-link">L4YAML.CharPredicates.isIndicatorBool</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectAnchorNameLoop</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Spec/CharPredicates.lean" target="_blank" class="impl-link">L4YAML.CharPredicates.isIndicatorProp</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Spec/CharPredicates.lean" target="_blank" class="impl-link">L4YAML.CharPredicates.isIndicatorBool</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/NodeProperties.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectAnchorNameLoop</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="5" data-search="15 c-tag 5.3 covered">
         <td>15</td>
@@ -342,21 +342,21 @@
         <td><a href="https://yaml.org/spec/1.2.2/#rule-c-single-quote" target="_blank" class="spec-link">c-single-quote</a></td>
         <td>§5.3</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Spec/CharPredicates.lean" target="_blank" class="impl-link">L4YAML.CharPredicates.isIndicatorProp</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanSingleQuoted</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Spec/CharPredicates.lean" target="_blank" class="impl-link">L4YAML.CharPredicates.isIndicatorBool</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Spec/CharPredicates.lean" target="_blank" class="impl-link">L4YAML.CharPredicates.isIndicatorProp</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanSingleQuoted</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Spec/CharPredicates.lean" target="_blank" class="impl-link">L4YAML.CharPredicates.isIndicatorBool</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="5" data-search="19 c-double-quote 5.3 covered">
         <td>19</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-c-double-quote" target="_blank" class="spec-link">c-double-quote</a></td>
         <td>§5.3</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Spec/CharPredicates.lean" target="_blank" class="impl-link">L4YAML.CharPredicates.isIndicatorProp</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Spec/CharPredicates.lean" target="_blank" class="impl-link">L4YAML.CharPredicates.isIndicatorBool</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanDoubleQuoted</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Spec/CharPredicates.lean" target="_blank" class="impl-link">L4YAML.CharPredicates.isIndicatorProp</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Spec/CharPredicates.lean" target="_blank" class="impl-link">L4YAML.CharPredicates.isIndicatorBool</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanDoubleQuoted</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="5" data-search="20 c-directive 5.3 covered">
         <td>20</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-c-directive" target="_blank" class="spec-link">c-directive</a></td>
         <td>§5.3</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Spec/CharPredicates.lean" target="_blank" class="impl-link">L4YAML.CharPredicates.isIndicatorProp</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanDirective</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Spec/CharPredicates.lean" target="_blank" class="impl-link">L4YAML.CharPredicates.isIndicatorBool</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Spec/CharPredicates.lean" target="_blank" class="impl-link">L4YAML.CharPredicates.isIndicatorProp</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Document.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanDirective</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Spec/CharPredicates.lean" target="_blank" class="impl-link">L4YAML.CharPredicates.isIndicatorBool</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="5" data-search="21 c-reserved 5.3 covered">
         <td>21</td>
@@ -405,28 +405,28 @@
         <td><a href="https://yaml.org/spec/1.2.2/#rule-nb-char" target="_blank" class="spec-link">nb-char</a></td>
         <td>§5.4</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanBlockScalarSkipComment</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.skipToContentComment</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Whitespace.lean" target="_blank" class="impl-link">L4YAML.Scanner.skipToEndOfLine</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanBlockScalarSkipComment</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Whitespace.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectCommentTextLoop</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Whitespace.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectCommentTextLoop._unary</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectLineContentLoop</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Whitespace.lean" target="_blank" class="impl-link">L4YAML.Scanner.skipToContentComment</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="5" data-search="28 b-break 5.4 covered">
         <td>28</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-b-break" target="_blank" class="spec-link">b-break</a></td>
         <td>§5.4</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.consumeNewline</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Whitespace.lean" target="_blank" class="impl-link">L4YAML.Scanner.consumeNewline</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="5" data-search="29 b-as-line-feed 5.4 covered">
         <td>29</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-b-as-line-feed" target="_blank" class="spec-link">b-as-line-feed</a></td>
         <td>§5.4</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.consumeNewline</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Whitespace.lean" target="_blank" class="impl-link">L4YAML.Scanner.consumeNewline</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="5" data-search="30 b-non-content 5.4 covered">
         <td>30</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-b-non-content" target="_blank" class="spec-link">b-non-content</a></td>
         <td>§5.4</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanBlockScalarConsumeNewline</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanBlockScalarConsumeNewline</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="5" data-search="31 s-space 5.5 covered">
         <td>31</td>
@@ -454,21 +454,21 @@
         <td><a href="https://yaml.org/spec/1.2.2/#rule-ns-char" target="_blank" class="spec-link">ns-char</a></td>
         <td>§5.5</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectDirectiveNameLoop</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Document.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectDirectiveNameLoop</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="5" data-search="35 ns-dec-digit 5.6 covered">
         <td>35</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-ns-dec-digit" target="_blank" class="spec-link">ns-dec-digit</a></td>
         <td>§5.6</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectVersionMajorLoop</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Spec/CharPredicates.lean" target="_blank" class="impl-link">L4YAML.CharPredicates.isWordCharProp</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectVersionMinorLoop</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Spec/CharPredicates.lean" target="_blank" class="impl-link">L4YAML.CharPredicates.isWordCharBool</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Document.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectVersionMajorLoop</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Spec/CharPredicates.lean" target="_blank" class="impl-link">L4YAML.CharPredicates.isWordCharProp</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Document.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectVersionMinorLoop</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Spec/CharPredicates.lean" target="_blank" class="impl-link">L4YAML.CharPredicates.isWordCharBool</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="5" data-search="36 ns-hex-digit 5.6 covered">
         <td>36</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-ns-hex-digit" target="_blank" class="spec-link">ns-hex-digit</a></td>
         <td>§5.6</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectHexDigitsLoop</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectHexDigitsLoop</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="5" data-search="37 ns-ascii-letter 5.6 covered">
         <td>37</td>
@@ -482,476 +482,476 @@
         <td><a href="https://yaml.org/spec/1.2.2/#rule-ns-word-char" target="_blank" class="spec-link">ns-word-char</a></td>
         <td>§5.6</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectTagHandleLoop</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Spec/CharPredicates.lean" target="_blank" class="impl-link">L4YAML.CharPredicates.isWordCharProp</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectTagHandleDirectiveLoop</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Spec/CharPredicates.lean" target="_blank" class="impl-link">L4YAML.CharPredicates.isWordCharBool</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/NodeProperties.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectTagHandleLoop</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Spec/CharPredicates.lean" target="_blank" class="impl-link">L4YAML.CharPredicates.isWordCharProp</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Document.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectTagHandleDirectiveLoop</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Spec/CharPredicates.lean" target="_blank" class="impl-link">L4YAML.CharPredicates.isWordCharBool</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="5" data-search="39 ns-uri-char 5.6 covered">
         <td>39</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-ns-uri-char" target="_blank" class="spec-link">ns-uri-char</a></td>
         <td>§5.6</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectTagSuffixLoop</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectVerbatimTagLoop</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Spec/CharPredicates.lean" target="_blank" class="impl-link">L4YAML.CharPredicates.isUriCharProp</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Spec/CharPredicates.lean" target="_blank" class="impl-link">L4YAML.CharPredicates.isUriCharBool</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/NodeProperties.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectTagSuffixLoop</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/NodeProperties.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectVerbatimTagLoop</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Spec/CharPredicates.lean" target="_blank" class="impl-link">L4YAML.CharPredicates.isUriCharProp</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Spec/CharPredicates.lean" target="_blank" class="impl-link">L4YAML.CharPredicates.isUriCharBool</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="5" data-search="40 ns-tag-char 5.6 covered">
         <td>40</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-ns-tag-char" target="_blank" class="spec-link">ns-tag-char</a></td>
         <td>§5.6</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectTagSuffixLoop</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Spec/CharPredicates.lean" target="_blank" class="impl-link">L4YAML.CharPredicates.isTagCharBool</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Spec/CharPredicates.lean" target="_blank" class="impl-link">L4YAML.CharPredicates.isTagCharProp</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/NodeProperties.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectTagSuffixLoop</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Spec/CharPredicates.lean" target="_blank" class="impl-link">L4YAML.CharPredicates.isTagCharBool</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Spec/CharPredicates.lean" target="_blank" class="impl-link">L4YAML.CharPredicates.isTagCharProp</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="5" data-search="41 c-escape 5.7 covered">
         <td>41</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-c-escape" target="_blank" class="spec-link">c-escape</a></td>
         <td>§5.7</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.processEscape</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.processEscape</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="5" data-search="42 ns-esc-null 5.7 covered">
         <td>42</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-ns-esc-null" target="_blank" class="spec-link">ns-esc-null</a></td>
         <td>§5.7</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.processEscape</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.processEscape</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="5" data-search="43 ns-esc-bell 5.7 covered">
         <td>43</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-ns-esc-bell" target="_blank" class="spec-link">ns-esc-bell</a></td>
         <td>§5.7</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.processEscape</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.processEscape</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="5" data-search="44 ns-esc-backspace 5.7 covered">
         <td>44</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-ns-esc-backspace" target="_blank" class="spec-link">ns-esc-backspace</a></td>
         <td>§5.7</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.processEscape</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.processEscape</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="5" data-search="45 ns-esc-horizontal-tab 5.7 covered">
         <td>45</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-ns-esc-horizontal-tab" target="_blank" class="spec-link">ns-esc-horizontal-tab</a></td>
         <td>§5.7</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.processEscape</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.processEscape</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="5" data-search="46 ns-esc-line-feed 5.7 covered">
         <td>46</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-ns-esc-line-feed" target="_blank" class="spec-link">ns-esc-line-feed</a></td>
         <td>§5.7</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.processEscape</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.processEscape</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="5" data-search="47 ns-esc-vertical-tab 5.7 covered">
         <td>47</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-ns-esc-vertical-tab" target="_blank" class="spec-link">ns-esc-vertical-tab</a></td>
         <td>§5.7</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.processEscape</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.processEscape</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="5" data-search="48 ns-esc-form-feed 5.7 covered">
         <td>48</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-ns-esc-form-feed" target="_blank" class="spec-link">ns-esc-form-feed</a></td>
         <td>§5.7</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.processEscape</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.processEscape</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="5" data-search="49 ns-esc-carriage-return 5.7 covered">
         <td>49</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-ns-esc-carriage-return" target="_blank" class="spec-link">ns-esc-carriage-return</a></td>
         <td>§5.7</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.processEscape</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.processEscape</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="5" data-search="50 ns-esc-escape 5.7 covered">
         <td>50</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-ns-esc-escape" target="_blank" class="spec-link">ns-esc-escape</a></td>
         <td>§5.7</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.processEscape</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.processEscape</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="5" data-search="51 ns-esc-space 5.7 covered">
         <td>51</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-ns-esc-space" target="_blank" class="spec-link">ns-esc-space</a></td>
         <td>§5.7</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.processEscape</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.processEscape</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="5" data-search="52 ns-esc-double-quote 5.7 covered">
         <td>52</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-ns-esc-double-quote" target="_blank" class="spec-link">ns-esc-double-quote</a></td>
         <td>§5.7</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.processEscape</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.processEscape</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="5" data-search="53 ns-esc-slash 5.7 covered">
         <td>53</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-ns-esc-slash" target="_blank" class="spec-link">ns-esc-slash</a></td>
         <td>§5.7</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.processEscape</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.processEscape</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="5" data-search="54 ns-esc-backslash 5.7 covered">
         <td>54</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-ns-esc-backslash" target="_blank" class="spec-link">ns-esc-backslash</a></td>
         <td>§5.7</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.processEscape</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.processEscape</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="5" data-search="55 ns-esc-next-line 5.7 covered">
         <td>55</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-ns-esc-next-line" target="_blank" class="spec-link">ns-esc-next-line</a></td>
         <td>§5.7</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.processEscape</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.processEscape</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="5" data-search="56 ns-esc-non-breaking-space 5.7 covered">
         <td>56</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-ns-esc-non-breaking-space" target="_blank" class="spec-link">ns-esc-non-breaking-space</a></td>
         <td>§5.7</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.processEscape</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.processEscape</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="5" data-search="57 ns-esc-line-separator 5.7 covered">
         <td>57</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-ns-esc-line-separator" target="_blank" class="spec-link">ns-esc-line-separator</a></td>
         <td>§5.7</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.processEscape</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.processEscape</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="5" data-search="58 ns-esc-paragraph-separator 5.7 covered">
         <td>58</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-ns-esc-paragraph-separator" target="_blank" class="spec-link">ns-esc-paragraph-separator</a></td>
         <td>§5.7</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.processEscape</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.processEscape</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="5" data-search="59 ns-esc-8-bit 5.7 covered">
         <td>59</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-ns-esc-8-bit" target="_blank" class="spec-link">ns-esc-8-bit</a></td>
         <td>§5.7</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.processEscape</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.parseHexEscape</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.processEscape</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.parseHexEscape</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="5" data-search="60 ns-esc-16-bit 5.7 covered">
         <td>60</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-ns-esc-16-bit" target="_blank" class="spec-link">ns-esc-16-bit</a></td>
         <td>§5.7</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.processEscape</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.parseHexEscape</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.processEscape</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.parseHexEscape</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="5" data-search="61 ns-esc-32-bit 5.7 covered">
         <td>61</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-ns-esc-32-bit" target="_blank" class="spec-link">ns-esc-32-bit</a></td>
         <td>§5.7</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.processEscape</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.parseHexEscape</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.processEscape</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.parseHexEscape</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="5" data-search="62 c-ns-esc-char 5.7 covered">
         <td>62</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-c-ns-esc-char" target="_blank" class="spec-link">c-ns-esc-char</a></td>
         <td>§5.7</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.processEscape</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.processEscape</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="6" data-search="63 s-indent(n) 6.1 covered">
         <td>63</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-s-indent" target="_blank" class="spec-link">s-indent(n)</a></td>
         <td>§6.1</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.skipSpaces</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanBlockScalar</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Whitespace.lean" target="_blank" class="impl-link">L4YAML.Scanner.skipSpaces</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Whitespace.lean" target="_blank" class="impl-link">L4YAML.Scanner.skipSpacesLoop</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.consumeExactSpaces</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanBlockScalar</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Whitespace.lean" target="_blank" class="impl-link">L4YAML.Scanner.skipSpacesLoop._unary</a></td>
       </tr>
       <tr class="prod-row" data-status="grammar" data-chapter="6" data-search="64 s-indent(&lt;n) 6.1 grammar">
         <td>64</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-s-indent" target="_blank" class="spec-link">s-indent(&lt;n)</a></td>
         <td>§6.1</td>
         <td><span class="badge badge-grammar">Grammar Only</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.unwindIndents</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Indent.lean" target="_blank" class="impl-link">L4YAML.Scanner.unwindIndentsLoop._unary</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Indent.lean" target="_blank" class="impl-link">L4YAML.Scanner.unwindIndentsLoop</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Indent.lean" target="_blank" class="impl-link">L4YAML.Scanner.unwindIndents</a></td>
       </tr>
       <tr class="prod-row" data-status="grammar" data-chapter="6" data-search="65 s-indent(≤n) 6.1 grammar">
         <td>65</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-s-indent" target="_blank" class="spec-link">s-indent(≤n)</a></td>
         <td>§6.1</td>
         <td><span class="badge badge-grammar">Grammar Only</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.unwindIndents</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Indent.lean" target="_blank" class="impl-link">L4YAML.Scanner.unwindIndentsLoop._unary</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Indent.lean" target="_blank" class="impl-link">L4YAML.Scanner.unwindIndentsLoop</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Indent.lean" target="_blank" class="impl-link">L4YAML.Scanner.unwindIndents</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="6" data-search="66 s-separate-in-line 6.2 covered">
         <td>66</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-s-separate-in-line" target="_blank" class="spec-link">s-separate-in-line</a></td>
         <td>§6.2</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.skipWhitespace</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Whitespace.lean" target="_blank" class="impl-link">L4YAML.Scanner.skipTrailingSpaces</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Whitespace.lean" target="_blank" class="impl-link">L4YAML.Scanner.skipWhitespaceLoop</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Document.lean" target="_blank" class="impl-link">L4YAML.Scanner.skipDocEndWhitespace</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Whitespace.lean" target="_blank" class="impl-link">L4YAML.Scanner.skipWhitespace</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Whitespace.lean" target="_blank" class="impl-link">L4YAML.Scanner.skipWhitespaceLoop._unary</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="6" data-search="67 s-line-prefix(n,c) 6.3 covered">
         <td>67</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-s-line-prefix" target="_blank" class="spec-link">s-line-prefix(n,c)</a></td>
         <td>§6.3</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.skipToContentWs</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Whitespace.lean" target="_blank" class="impl-link">L4YAML.Scanner.skipToContentWs</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="6" data-search="68 s-block-line-prefix(n) 6.3 covered">
         <td>68</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-s-block-line-prefix" target="_blank" class="spec-link">s-block-line-prefix(n)</a></td>
         <td>§6.3</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.skipToContentWs</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Whitespace.lean" target="_blank" class="impl-link">L4YAML.Scanner.skipToContentWs</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="6" data-search="69 s-flow-line-prefix(n) 6.3 covered">
         <td>69</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-s-flow-line-prefix" target="_blank" class="spec-link">s-flow-line-prefix(n)</a></td>
         <td>§6.3</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.foldQuotedNewlines</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.foldQuotedNewlines</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="6" data-search="70 l-empty(n,c) 6.4 covered">
         <td>70</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-l-empty" target="_blank" class="spec-link">l-empty(n,c)</a></td>
         <td>§6.4</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.foldQuotedNewlinesLoop</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.skipBlankLinesLoop</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.foldQuotedNewlinesLoop</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="6" data-search="71 b-l-trimmed(n,c) 6.5 covered">
         <td>71</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-b-l-trimmed" target="_blank" class="spec-link">b-l-trimmed(n,c)</a></td>
         <td>§6.5</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.foldQuotedNewlines</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.foldQuotedNewlines</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="6" data-search="72 b-as-space 6.5 covered">
         <td>72</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-b-as-space" target="_blank" class="spec-link">b-as-space</a></td>
         <td>§6.5</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.foldQuotedNewlines</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.foldQuotedNewlines</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="6" data-search="73 b-l-folded(n,c) 6.5 covered">
         <td>73</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-b-l-folded" target="_blank" class="spec-link">b-l-folded(n,c)</a></td>
         <td>§6.5</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.foldQuotedNewlines</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.foldQuotedNewlines</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="6" data-search="74 s-flow-folded(n) 6.5 covered">
         <td>74</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-s-flow-folded" target="_blank" class="spec-link">s-flow-folded(n)</a></td>
         <td>§6.5</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.foldQuotedNewlines</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.foldQuotedNewlines</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="6" data-search="75 c-nb-comment-text 6.6 covered">
         <td>75</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-c-nb-comment-text" target="_blank" class="spec-link">c-nb-comment-text</a></td>
         <td>§6.6</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanBlockScalarSkipComment</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Token/Token.lean" target="_blank" class="impl-link">L4YAML.YamlToken.comment</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.skipToContentComment</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanBlockScalarSkipComment</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Whitespace.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectCommentTextLoop</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Token/Token.lean" target="_blank" class="impl-link">L4YAML.YamlToken.comment</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanWithComments</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Whitespace.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectCommentTextLoop._unary</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Whitespace.lean" target="_blank" class="impl-link">L4YAML.Scanner.skipToContentComment</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="6" data-search="76 b-comment 6.6 covered">
         <td>76</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-b-comment" target="_blank" class="spec-link">b-comment</a></td>
         <td>§6.6</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanBlockScalarConsumeNewline</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanBlockScalarConsumeNewline</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="6" data-search="77 s-b-comment 6.6 covered">
         <td>77</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-s-b-comment" target="_blank" class="spec-link">s-b-comment</a></td>
         <td>§6.6</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanBlockScalarSkipComment</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.skipToContentComment</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanBlockScalarSkipComment</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Whitespace.lean" target="_blank" class="impl-link">L4YAML.Scanner.skipToContentComment</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="6" data-search="78 l-comment 6.7 covered">
         <td>78</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-l-comment" target="_blank" class="spec-link">l-comment</a></td>
         <td>§6.7</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.skipToContent</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Whitespace.lean" target="_blank" class="impl-link">L4YAML.Scanner.skipToContent</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="6" data-search="79 s-l-comments 6.7 covered">
         <td>79</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-s-l-comments" target="_blank" class="spec-link">s-l-comments</a></td>
         <td>§6.7</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.skipToContentLoop</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.skipToContentLoop._unary</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.skipToContent</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Whitespace.lean" target="_blank" class="impl-link">L4YAML.Scanner.skipToContentLoop</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Whitespace.lean" target="_blank" class="impl-link">L4YAML.Scanner.skipToContentLoop._unary</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Whitespace.lean" target="_blank" class="impl-link">L4YAML.Scanner.skipToContent</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="6" data-search="80 s-separate(n,c) 6.7 covered">
         <td>80</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-s-separate" target="_blank" class="spec-link">s-separate(n,c)</a></td>
         <td>§6.7</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.skipToContent</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Whitespace.lean" target="_blank" class="impl-link">L4YAML.Scanner.skipToContent</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="6" data-search="81 s-separate-lines(n) 6.7 covered">
         <td>81</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-s-separate-lines" target="_blank" class="spec-link">s-separate-lines(n)</a></td>
         <td>§6.7</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.skipToContent</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Whitespace.lean" target="_blank" class="impl-link">L4YAML.Scanner.skipToContent</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="6" data-search="82 l-directive 6.8 covered">
         <td>82</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-l-directive" target="_blank" class="spec-link">l-directive</a></td>
         <td>§6.8</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanDirective</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Parser/TokenParser.lean" target="_blank" class="impl-link">L4YAML.TokenParser.parseDirectives</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Document.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanDirective</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanNextToken_dispatchStructural</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Parser/TokenParser.lean" target="_blank" class="impl-link">L4YAML.TokenParser.parseDirectives</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="6" data-search="83 ns-reserved-directive 6.8 covered">
         <td>83</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-ns-reserved-directive" target="_blank" class="spec-link">ns-reserved-directive</a></td>
         <td>§6.8</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanDirective</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Document.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanDirective</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="6" data-search="84 ns-directive-name 6.8 covered">
         <td>84</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-ns-directive-name" target="_blank" class="spec-link">ns-directive-name</a></td>
         <td>§6.8</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectDirectiveNameLoop</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Document.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectDirectiveNameLoop</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="6" data-search="85 ns-directive-parameter 6.8 covered">
         <td>85</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-ns-directive-parameter" target="_blank" class="spec-link">ns-directive-parameter</a></td>
         <td>§6.8</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanDirective</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Document.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanDirective</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="6" data-search="86 ns-yaml-directive 6.8.1 covered">
         <td>86</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-ns-yaml-directive" target="_blank" class="spec-link">ns-yaml-directive</a></td>
         <td>§6.8.1</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanYamlDirective</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Token/Token.lean" target="_blank" class="impl-link">L4YAML.YamlToken.versionDirective</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Document.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanYamlDirective</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Token/Token.lean" target="_blank" class="impl-link">L4YAML.YamlToken.versionDirective</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="6" data-search="87 ns-yaml-version 6.8.1 covered">
         <td>87</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-ns-yaml-version" target="_blank" class="spec-link">ns-yaml-version</a></td>
         <td>§6.8.1</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanYamlDirective</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectVersionMajorLoop</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Document.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanYamlDirective</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Document.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectVersionMajorLoop</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="6" data-search="88 ns-tag-directive 6.8.2 covered">
         <td>88</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-ns-tag-directive" target="_blank" class="spec-link">ns-tag-directive</a></td>
         <td>§6.8.2</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanTagDirective</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Token/Token.lean" target="_blank" class="impl-link">L4YAML.YamlToken.tagDirective</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Document.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanTagDirective</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Token/Token.lean" target="_blank" class="impl-link">L4YAML.YamlToken.tagDirective</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="6" data-search="89 c-tag-handle 6.8.2 covered">
         <td>89</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-c-tag-handle" target="_blank" class="spec-link">c-tag-handle</a></td>
         <td>§6.8.2</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanTagDirective</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectTagHandleDirectiveLoop</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Document.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanTagDirective</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Document.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectTagHandleDirectiveLoop</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="6" data-search="90 c-primary-tag-handle 6.8.2 covered">
         <td>90</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-c-primary-tag-handle" target="_blank" class="spec-link">c-primary-tag-handle</a></td>
         <td>§6.8.2</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanNamedTag</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/NodeProperties.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanNamedTag</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="6" data-search="91 c-secondary-tag-handle 6.8.2 covered">
         <td>91</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-c-secondary-tag-handle" target="_blank" class="spec-link">c-secondary-tag-handle</a></td>
         <td>§6.8.2</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanSecondaryTag</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/NodeProperties.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanSecondaryTag</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="6" data-search="92 c-named-tag-handle 6.8.2 covered">
         <td>92</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-c-named-tag-handle" target="_blank" class="spec-link">c-named-tag-handle</a></td>
         <td>§6.8.2</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanNamedTag</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/NodeProperties.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanNamedTag</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="6" data-search="93 ns-tag-prefix 6.8.2 covered">
         <td>93</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-ns-tag-prefix" target="_blank" class="spec-link">ns-tag-prefix</a></td>
         <td>§6.8.2</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanTagDirective</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectTagPrefixLoop</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Document.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanTagDirective</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Document.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectTagPrefixLoop</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="6" data-search="94 c-ns-local-tag-prefix 6.8.2 covered">
         <td>94</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-c-ns-local-tag-prefix" target="_blank" class="spec-link">c-ns-local-tag-prefix</a></td>
         <td>§6.8.2</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectTagPrefixLoop</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Document.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectTagPrefixLoop</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="6" data-search="95 ns-global-tag-prefix 6.8.2 covered">
         <td>95</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-ns-global-tag-prefix" target="_blank" class="spec-link">ns-global-tag-prefix</a></td>
         <td>§6.8.2</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectTagPrefixLoop</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Document.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectTagPrefixLoop</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="6" data-search="96 c-ns-properties(n,c) 6.9 covered">
         <td>96</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-c-ns-properties" target="_blank" class="spec-link">c-ns-properties(n,c)</a></td>
         <td>§6.9</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Parser/TokenParser.lean" target="_blank" class="impl-link">L4YAML.TokenParser.parseNodeProperties</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanNextToken_dispatchContent</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Parser/TokenParser.lean" target="_blank" class="impl-link">L4YAML.TokenParser.parseNodeProperties</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="6" data-search="97 c-ns-tag-property 6.9 covered">
         <td>97</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-c-ns-tag-property" target="_blank" class="spec-link">c-ns-tag-property</a></td>
         <td>§6.9</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanTag</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Token/Token.lean" target="_blank" class="impl-link">L4YAML.YamlToken.tag</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/NodeProperties.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanTag</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Token/Token.lean" target="_blank" class="impl-link">L4YAML.YamlToken.tag</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="6" data-search="98 c-verbatim-tag 6.9 covered">
         <td>98</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-c-verbatim-tag" target="_blank" class="spec-link">c-verbatim-tag</a></td>
         <td>§6.9</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanVerbatimTag</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/NodeProperties.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanVerbatimTag</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="6" data-search="99 c-ns-shorthand-tag 6.9 covered">
         <td>99</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-c-ns-shorthand-tag" target="_blank" class="spec-link">c-ns-shorthand-tag</a></td>
         <td>§6.9</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanNamedTag</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Parser/TokenParser.lean" target="_blank" class="impl-link">L4YAML.TokenParser.resolveTag</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanSecondaryTag</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/NodeProperties.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanNamedTag</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Parser/TokenParser.lean" target="_blank" class="impl-link">L4YAML.TokenParser.resolveTag</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/NodeProperties.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanSecondaryTag</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="6" data-search="100 c-non-specific-tag 6.9 covered">
         <td>100</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-c-non-specific-tag" target="_blank" class="spec-link">c-non-specific-tag</a></td>
         <td>§6.9</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanNamedTag</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/NodeProperties.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanNamedTag</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="6" data-search="101 c-ns-anchor-property 6.9 covered">
         <td>101</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-c-ns-anchor-property" target="_blank" class="spec-link">c-ns-anchor-property</a></td>
         <td>§6.9</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectAnchorNameLoop</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Token/Token.lean" target="_blank" class="impl-link">L4YAML.YamlToken.anchor</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanAnchorOrAlias</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/NodeProperties.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectAnchorNameLoop</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Token/Token.lean" target="_blank" class="impl-link">L4YAML.YamlToken.anchor</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/NodeProperties.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanAnchorOrAlias</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="6" data-search="102 ns-anchor-char 6.9 covered">
         <td>102</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-ns-anchor-char" target="_blank" class="spec-link">ns-anchor-char</a></td>
         <td>§6.9</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectAnchorNameLoop</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/NodeProperties.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectAnchorNameLoop</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="6" data-search="103 ns-anchor-name 6.9 covered">
         <td>103</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-ns-anchor-name" target="_blank" class="spec-link">ns-anchor-name</a></td>
         <td>§6.9</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectAnchorNameLoop</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/NodeProperties.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectAnchorNameLoop</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="7" data-search="104 c-ns-alias-node 7.1 covered">
         <td>104</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-c-ns-alias-node" target="_blank" class="spec-link">c-ns-alias-node</a></td>
         <td>§7.1</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Token/Token.lean" target="_blank" class="impl-link">L4YAML.YamlToken.alias</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectAnchorNameLoop</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Token/Token.lean" target="_blank" class="impl-link">L4YAML.YamlToken.alias</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/NodeProperties.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectAnchorNameLoop</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/NodeProperties.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanAnchorOrAlias</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="7" data-search="105 e-scalar 7.2 covered">
         <td>105</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-e-scalar" target="_blank" class="spec-link">e-scalar</a></td>
         <td>§7.2</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Parser/TokenParser.lean" target="_blank" class="impl-link">L4YAML.TokenParser.emptyNode</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanNextToken_dispatchContent</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Parser/TokenParser.lean" target="_blank" class="impl-link">L4YAML.TokenParser.emptyNode</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="7" data-search="106 e-node 7.2 covered">
         <td>106</td>
@@ -965,140 +965,140 @@
         <td><a href="https://yaml.org/spec/1.2.2/#rule-nb-double-char" target="_blank" class="spec-link">nb-double-char</a></td>
         <td>§7.3.1</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectDoubleQuotedLoop</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectDoubleQuotedLoop</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="7" data-search="108 ns-double-char 7.3.1 covered">
         <td>108</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-ns-double-char" target="_blank" class="spec-link">ns-double-char</a></td>
         <td>§7.3.1</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectDoubleQuotedLoop</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectDoubleQuotedLoop</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="7" data-search="109 c-double-quoted(n,c) 7.3.1 covered">
         <td>109</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-c-double-quoted" target="_blank" class="spec-link">c-double-quoted(n,c)</a></td>
         <td>§7.3.1</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Token/Token.lean" target="_blank" class="impl-link">L4YAML.YamlToken.scalar</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanDoubleQuoted</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Token/Token.lean" target="_blank" class="impl-link">L4YAML.YamlToken.scalar</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanDoubleQuoted</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="7" data-search="110 nb-double-text(n,c) 7.3.1 covered">
         <td>110</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-nb-double-text" target="_blank" class="spec-link">nb-double-text(n,c)</a></td>
         <td>§7.3.1</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectDoubleQuotedLoop</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectDoubleQuotedLoop</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="7" data-search="111 nb-double-one-line 7.3.1 covered">
         <td>111</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-nb-double-one-line" target="_blank" class="spec-link">nb-double-one-line</a></td>
         <td>§7.3.1</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectDoubleQuotedLoop</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectDoubleQuotedLoop</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="7" data-search="112 s-double-escaped(n) 7.3.1 covered">
         <td>112</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-s-double-escaped" target="_blank" class="spec-link">s-double-escaped(n)</a></td>
         <td>§7.3.1</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectDoubleQuotedLoop</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectDoubleQuotedLoop</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="7" data-search="113 s-double-break(n) 7.3.1 covered">
         <td>113</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-s-double-break" target="_blank" class="spec-link">s-double-break(n)</a></td>
         <td>§7.3.1</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectDoubleQuotedLoop</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectDoubleQuotedLoop</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="7" data-search="114 nb-ns-double-in-line 7.3.1 covered">
         <td>114</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-nb-ns-double-in-line" target="_blank" class="spec-link">nb-ns-double-in-line</a></td>
         <td>§7.3.1</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectDoubleQuotedLoop</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectDoubleQuotedLoop</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="7" data-search="115 s-double-next-line(n) 7.3.1 covered">
         <td>115</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-s-double-next-line" target="_blank" class="spec-link">s-double-next-line(n)</a></td>
         <td>§7.3.1</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectDoubleQuotedLoop</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectDoubleQuotedLoop</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="7" data-search="116 nb-double-multi-line(n) 7.3.1 covered">
         <td>116</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-nb-double-multi-line" target="_blank" class="spec-link">nb-double-multi-line(n)</a></td>
         <td>§7.3.1</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectDoubleQuotedLoop</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectDoubleQuotedLoop</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="7" data-search="117 c-quoted-quote 7.3.2 covered">
         <td>117</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-c-quoted-quote" target="_blank" class="spec-link">c-quoted-quote</a></td>
         <td>§7.3.2</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectSingleQuotedLoop</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectSingleQuotedLoop</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="7" data-search="118 nb-single-char 7.3.2 covered">
         <td>118</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-nb-single-char" target="_blank" class="spec-link">nb-single-char</a></td>
         <td>§7.3.2</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectSingleQuotedLoop</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectSingleQuotedLoop</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="7" data-search="119 ns-single-char 7.3.2 covered">
         <td>119</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-ns-single-char" target="_blank" class="spec-link">ns-single-char</a></td>
         <td>§7.3.2</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectSingleQuotedLoop</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectSingleQuotedLoop</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="7" data-search="120 c-single-quoted(n,c) 7.3.2 covered">
         <td>120</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-c-single-quoted" target="_blank" class="spec-link">c-single-quoted(n,c)</a></td>
         <td>§7.3.2</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Token/Token.lean" target="_blank" class="impl-link">L4YAML.YamlToken.scalar</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanSingleQuoted</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Token/Token.lean" target="_blank" class="impl-link">L4YAML.YamlToken.scalar</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanSingleQuoted</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="7" data-search="121 nb-single-text(n,c) 7.3.2 covered">
         <td>121</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-nb-single-text" target="_blank" class="spec-link">nb-single-text(n,c)</a></td>
         <td>§7.3.2</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectSingleQuotedLoop</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectSingleQuotedLoop</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="7" data-search="122 nb-single-one-line 7.3.2 covered">
         <td>122</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-nb-single-one-line" target="_blank" class="spec-link">nb-single-one-line</a></td>
         <td>§7.3.2</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectSingleQuotedLoop</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectSingleQuotedLoop</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="7" data-search="123 nb-ns-single-in-line 7.3.2 covered">
         <td>123</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-nb-ns-single-in-line" target="_blank" class="spec-link">nb-ns-single-in-line</a></td>
         <td>§7.3.2</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectSingleQuotedLoop</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectSingleQuotedLoop</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="7" data-search="124 s-single-next-line(n) 7.3.2 covered">
         <td>124</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-s-single-next-line" target="_blank" class="spec-link">s-single-next-line(n)</a></td>
         <td>§7.3.2</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectSingleQuotedLoop</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectSingleQuotedLoop</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="7" data-search="125 nb-single-multi-line(n) 7.3.2 covered">
         <td>125</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-nb-single-multi-line" target="_blank" class="spec-link">nb-single-multi-line(n)</a></td>
         <td>§7.3.2</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectSingleQuotedLoop</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectSingleQuotedLoop</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="7" data-search="126 ns-plain-first(c) 7.3.3 covered">
         <td>126</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-ns-plain-first" target="_blank" class="spec-link">ns-plain-first(c)</a></td>
         <td>§7.3.3</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Spec/CharPredicates.lean" target="_blank" class="impl-link">L4YAML.CharPredicates.canStartPlainScalarBool</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Spec/CharPredicates.lean" target="_blank" class="impl-link">L4YAML.CharPredicates.canStartPlainScalarProp</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Spec/CharPredicates.lean" target="_blank" class="impl-link">L4YAML.CharPredicates.validPlainFirstProp</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Spec/CharPredicates.lean" target="_blank" class="impl-link">L4YAML.CharPredicates.validPlainFirstBool</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Spec/CharPredicates.lean" target="_blank" class="impl-link">L4YAML.CharPredicates.canStartPlainScalarBool</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectPlainScalar_terminates?</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Spec/CharPredicates.lean" target="_blank" class="impl-link">L4YAML.CharPredicates.canStartPlainScalarProp</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Spec/CharPredicates.lean" target="_blank" class="impl-link">L4YAML.CharPredicates.validPlainFirstProp</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Spec/CharPredicates.lean" target="_blank" class="impl-link">L4YAML.CharPredicates.validPlainFirstBool</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="7" data-search="127 ns-plain-safe(c) 7.3.3 covered">
         <td>127</td>
@@ -1119,7 +1119,7 @@
         <td><a href="https://yaml.org/spec/1.2.2/#rule-ns-plain-safe-in" target="_blank" class="spec-link">ns-plain-safe-in</a></td>
         <td>§7.3.3</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Spec/CharPredicates.lean" target="_blank" class="impl-link">L4YAML.CharPredicates.isPlainSafeBool</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Spec/CharPredicates.lean" target="_blank" class="impl-link">L4YAML.CharPredicates.isPlainSafeProp</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectPlainScalar_terminates?</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Spec/CharPredicates.lean" target="_blank" class="impl-link">L4YAML.CharPredicates.isPlainSafeBool</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Spec/CharPredicates.lean" target="_blank" class="impl-link">L4YAML.CharPredicates.isPlainSafeProp</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="7" data-search="130 ns-plain-char(c) 7.3.3 covered">
         <td>130</td>
@@ -1133,49 +1133,49 @@
         <td><a href="https://yaml.org/spec/1.2.2/#rule-ns-plain" target="_blank" class="spec-link">ns-plain(n,c)</a></td>
         <td>§7.3.3</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Token/Token.lean" target="_blank" class="impl-link">L4YAML.YamlToken.scalar</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanPlainScalar</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Token/Token.lean" target="_blank" class="impl-link">L4YAML.YamlToken.scalar</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectPlainScalar_terminates?</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanPlainScalar</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="7" data-search="132 nb-ns-plain-in-line(c) 7.3.3 covered">
         <td>132</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-nb-ns-plain-in-line" target="_blank" class="spec-link">nb-ns-plain-in-line(c)</a></td>
         <td>§7.3.3</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectPlainScalarLoop</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectPlainScalarLoop</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="7" data-search="133 ns-plain-one-line(c) 7.3.3 covered">
         <td>133</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-ns-plain-one-line" target="_blank" class="spec-link">ns-plain-one-line(c)</a></td>
         <td>§7.3.3</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectPlainScalarLoop</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectPlainScalarLoop</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="7" data-search="134 s-ns-plain-next-line(n,c) 7.3.3 covered">
         <td>134</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-s-ns-plain-next-line" target="_blank" class="spec-link">s-ns-plain-next-line(n,c)</a></td>
         <td>§7.3.3</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectPlainScalarLoop</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectPlainScalarLoop</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectPlainScalar_handleBlockLineBreak</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="7" data-search="135 ns-plain-multi-line(n,c) 7.3.3 covered">
         <td>135</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-ns-plain-multi-line" target="_blank" class="spec-link">ns-plain-multi-line(n,c)</a></td>
         <td>§7.3.3</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectPlainScalarLoop</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectPlainScalarLoop</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectPlainScalar_handleBlockLineBreak</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="7" data-search="136 in-flow(c) 7.4 covered">
         <td>136</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-in-flow" target="_blank" class="spec-link">in-flow(c)</a></td>
         <td>§7.4</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.ScannerState.inFlow</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/State.lean" target="_blank" class="impl-link">L4YAML.Scanner.ScannerState.inFlow</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="7" data-search="137 c-flow-sequence(n,c) 7.4.1 covered">
         <td>137</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-c-flow-sequence" target="_blank" class="spec-link">c-flow-sequence(n,c)</a></td>
         <td>§7.4.1</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Parser/TokenParser.lean" target="_blank" class="impl-link">L4YAML.TokenParser.parseFlowSequence</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanFlowSequenceStart</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Parser/TokenParser.lean" target="_blank" class="impl-link">L4YAML.TokenParser.parseFlowSequence</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanFlowSequenceStart</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanNextToken_dispatchFlowIndicators</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="7" data-search="138 ns-s-flow-seq-entries(n,c) 7.4.1 covered">
         <td>138</td>
@@ -1196,7 +1196,7 @@
         <td><a href="https://yaml.org/spec/1.2.2/#rule-c-flow-mapping" target="_blank" class="spec-link">c-flow-mapping(n,c)</a></td>
         <td>§7.4.2</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Parser/TokenParser.lean" target="_blank" class="impl-link">L4YAML.TokenParser.parseFlowMapping</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanFlowMappingStart</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Parser/TokenParser.lean" target="_blank" class="impl-link">L4YAML.TokenParser.parseFlowMapping</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanFlowMappingStart</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanNextToken_dispatchFlowIndicators</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="7" data-search="141 ns-s-flow-map-entries(n,c) 7.4.2 covered">
         <td>141</td>
@@ -1245,14 +1245,14 @@
         <td><a href="https://yaml.org/spec/1.2.2/#rule-c-ns-flow-map-separate-value" target="_blank" class="spec-link">c-ns-flow-map-separate-value(n,c)</a></td>
         <td>§7.4.2</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.isValueCandidate</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/SimpleKey.lean" target="_blank" class="impl-link">L4YAML.Scanner.isValueCandidate</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="7" data-search="148 c-ns-flow-map-json-key-entry(n,c) 7.4.2 covered">
         <td>148</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-c-ns-flow-map-json-key-entry" target="_blank" class="spec-link">c-ns-flow-map-json-key-entry(n,c)</a></td>
         <td>§7.4.2</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.isValueCandidate</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/SimpleKey.lean" target="_blank" class="impl-link">L4YAML.Scanner.isValueCandidate</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="7" data-search="149 c-ns-flow-map-adjacent-value(n,c) 7.4.2 covered">
         <td>149</td>
@@ -1294,7 +1294,7 @@
         <td><a href="https://yaml.org/spec/1.2.2/#rule-ns-s-implicit-yaml-key" target="_blank" class="spec-link">ns-s-implicit-yaml-key(c)</a></td>
         <td>§7.4.2</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.saveSimpleKey</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/SimpleKey.lean" target="_blank" class="impl-link">L4YAML.Scanner.saveSimpleKey</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="7" data-search="155 c-s-implicit-json-key(c) 7.4.2 covered">
         <td>155</td>
@@ -1336,175 +1336,175 @@
         <td><a href="https://yaml.org/spec/1.2.2/#rule-c-flow-json-node" target="_blank" class="spec-link">c-flow-json-node(n,c)</a></td>
         <td>§7.5</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.isJsonNodeToken</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/SimpleKey.lean" target="_blank" class="impl-link">L4YAML.Scanner.isJsonNodeToken</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="7" data-search="161 ns-flow-node(n,c) 7.5 covered">
         <td>161</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-ns-flow-node" target="_blank" class="spec-link">ns-flow-node(n,c)</a></td>
         <td>§7.5</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Parser/TokenParser.lean" target="_blank" class="impl-link">L4YAML.TokenParser.parseNode</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanNextToken_dispatchContent</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Parser/TokenParser.lean" target="_blank" class="impl-link">L4YAML.TokenParser.parseNode</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="8" data-search="162 c-b-block-header(t) 8.1.1 covered">
         <td>162</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-c-b-block-header" target="_blank" class="spec-link">c-b-block-header(t)</a></td>
         <td>§8.1.1</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanBlockScalar</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.parseBlockHeaderLoop</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanBlockScalar</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.parseBlockHeaderLoop</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="8" data-search="163 c-indentation-indicator 8.1.1 covered">
         <td>163</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-c-indentation-indicator" target="_blank" class="spec-link">c-indentation-indicator</a></td>
         <td>§8.1.1</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanBlockScalarBody</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanBlockScalar</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.autoDetectBlockScalarIndentLoop</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.autoDetectBlockScalarIndent</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanBlockScalarBody</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanBlockScalar</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="8" data-search="164 c-chomping-indicator(t) 8.1.1 covered">
         <td>164</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-c-chomping-indicator" target="_blank" class="spec-link">c-chomping-indicator(t)</a></td>
         <td>§8.1.1</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanBlockScalarBody</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanBlockScalar</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanBlockScalarBody</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanBlockScalar</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="8" data-search="165 b-chomped-last(t) 8.1.1 covered">
         <td>165</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-b-chomped-last" target="_blank" class="spec-link">b-chomped-last(t)</a></td>
         <td>§8.1.1</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanBlockScalarBody</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanBlockScalarBody</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="8" data-search="166 l-chomped-empty(n,t) 8.1.1 covered">
         <td>166</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-l-chomped-empty" target="_blank" class="spec-link">l-chomped-empty(n,t)</a></td>
         <td>§8.1.1</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanBlockScalarBody</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanBlockScalarBody</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="8" data-search="167 l-strip-empty(n) 8.1.1 covered">
         <td>167</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-l-strip-empty" target="_blank" class="spec-link">l-strip-empty(n)</a></td>
         <td>§8.1.1</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanBlockScalarBody</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanBlockScalarBody</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="8" data-search="168 l-keep-empty(n) 8.1.1 covered">
         <td>168</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-l-keep-empty" target="_blank" class="spec-link">l-keep-empty(n)</a></td>
         <td>§8.1.1</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanBlockScalarBody</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanBlockScalarBody</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="8" data-search="169 l-trail-comments(n) 8.1.1 covered">
         <td>169</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-l-trail-comments" target="_blank" class="spec-link">l-trail-comments(n)</a></td>
         <td>§8.1.1</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanBlockScalarBody</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanBlockScalarBody</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="8" data-search="170 c-l+literal(n) 8.1.2 covered">
         <td>170</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-c-l+literal" target="_blank" class="spec-link">c-l+literal(n)</a></td>
         <td>§8.1.2</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Token/Token.lean" target="_blank" class="impl-link">L4YAML.YamlToken.scalar</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanBlockScalar</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Token/Token.lean" target="_blank" class="impl-link">L4YAML.YamlToken.scalar</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanBlockScalar</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="8" data-search="171 l-nb-literal-text(n) 8.1.2 covered">
         <td>171</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-l-nb-literal-text" target="_blank" class="spec-link">l-nb-literal-text(n)</a></td>
         <td>§8.1.2</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanBlockScalarBody</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanBlockScalar</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanBlockScalarBody</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanBlockScalar</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectLineContentLoop</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="8" data-search="172 b-nb-literal-next(n) 8.1.2 covered">
         <td>172</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-b-nb-literal-next" target="_blank" class="spec-link">b-nb-literal-next(n)</a></td>
         <td>§8.1.2</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectBlockScalarLoop</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanBlockScalar</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectBlockScalarLoop</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanBlockScalar</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="8" data-search="173 l-literal-content(n,t) 8.1.2 covered">
         <td>173</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-l-literal-content" target="_blank" class="spec-link">l-literal-content(n,t)</a></td>
         <td>§8.1.2</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectBlockScalarLoop</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanBlockScalar</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.collectBlockScalarLoop</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanBlockScalar</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="8" data-search="174 c-l+folded(n) 8.1.3 covered">
         <td>174</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-c-l+folded" target="_blank" class="spec-link">c-l+folded(n)</a></td>
         <td>§8.1.3</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Token/Token.lean" target="_blank" class="impl-link">L4YAML.YamlToken.scalar</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanBlockScalar</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.foldBlockContent</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Token/Token.lean" target="_blank" class="impl-link">L4YAML.YamlToken.scalar</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanBlockScalar</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.foldBlockContent</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="8" data-search="175 s-nb-folded-text(n) 8.1.3 covered">
         <td>175</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-s-nb-folded-text" target="_blank" class="spec-link">s-nb-folded-text(n)</a></td>
         <td>§8.1.3</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.foldBlockContent</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.foldBlockContent</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="8" data-search="176 l-nb-folded-lines(n) 8.1.3 covered">
         <td>176</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-l-nb-folded-lines" target="_blank" class="spec-link">l-nb-folded-lines(n)</a></td>
         <td>§8.1.3</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.foldBlockContent</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.foldBlockContent</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="8" data-search="177 s-nb-spaced-text(n) 8.1.3 covered">
         <td>177</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-s-nb-spaced-text" target="_blank" class="spec-link">s-nb-spaced-text(n)</a></td>
         <td>§8.1.3</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.foldBlockContent</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.foldBlockContent</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="8" data-search="178 b-l-spaced(n) 8.1.3 covered">
         <td>178</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-b-l-spaced" target="_blank" class="spec-link">b-l-spaced(n)</a></td>
         <td>§8.1.3</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.foldBlockContent</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.foldBlockContent</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="8" data-search="179 l-nb-spaced-lines(n) 8.1.3 covered">
         <td>179</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-l-nb-spaced-lines" target="_blank" class="spec-link">l-nb-spaced-lines(n)</a></td>
         <td>§8.1.3</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.foldBlockContent</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.foldBlockContent</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="8" data-search="180 l-nb-same-lines(n) 8.1.3 covered">
         <td>180</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-l-nb-same-lines" target="_blank" class="spec-link">l-nb-same-lines(n)</a></td>
         <td>§8.1.3</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.foldBlockContent</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.foldBlockContent</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="8" data-search="181 l-nb-diff-lines(n) 8.1.3 covered">
         <td>181</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-l-nb-diff-lines" target="_blank" class="spec-link">l-nb-diff-lines(n)</a></td>
         <td>§8.1.3</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.foldBlockContent</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.foldBlockContent</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="8" data-search="182 l-folded-content(n,t) 8.1.3 covered">
         <td>182</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-l-folded-content" target="_blank" class="spec-link">l-folded-content(n,t)</a></td>
         <td>§8.1.3</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.foldBlockContent</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scalar.lean" target="_blank" class="impl-link">L4YAML.Scanner.foldBlockContent</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="8" data-search="183 l+block-sequence(n) 8.2.1 covered">
         <td>183</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-l+block-sequence" target="_blank" class="spec-link">l+block-sequence(n)</a></td>
         <td>§8.2.1</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.pushSequenceIndent</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Parser/TokenParser.lean" target="_blank" class="impl-link">L4YAML.TokenParser.parseBlockSequence</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Indent.lean" target="_blank" class="impl-link">L4YAML.Scanner.pushSequenceIndent</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Parser/TokenParser.lean" target="_blank" class="impl-link">L4YAML.TokenParser.parseBlockSequence</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="8" data-search="184 c-l-block-seq-entry(n) 8.2.1 covered">
         <td>184</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-c-l-block-seq-entry" target="_blank" class="spec-link">c-l-block-seq-entry(n)</a></td>
         <td>§8.2.1</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Parser/TokenParser.lean" target="_blank" class="impl-link">L4YAML.TokenParser.parseBlockSequenceLoop</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanBlockEntry</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Parser/TokenParser.lean" target="_blank" class="impl-link">L4YAML.TokenParser.parseBlockSequenceLoop</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/SimpleKey.lean" target="_blank" class="impl-link">L4YAML.Scanner.isBlockEntryCandidate</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/SimpleKey.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanBlockEntry</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanNextToken_dispatchBlockIndicators</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="8" data-search="185 s-l+block-indented(n,c) 8.2.1 covered">
         <td>185</td>
@@ -1525,7 +1525,7 @@
         <td><a href="https://yaml.org/spec/1.2.2/#rule-l+block-mapping" target="_blank" class="spec-link">l+block-mapping(n)</a></td>
         <td>§8.2.2</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Parser/TokenParser.lean" target="_blank" class="impl-link">L4YAML.TokenParser.parseBlockMapping</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.pushMappingIndent</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Parser/TokenParser.lean" target="_blank" class="impl-link">L4YAML.TokenParser.parseBlockMapping</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Indent.lean" target="_blank" class="impl-link">L4YAML.Scanner.pushMappingIndent</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="8" data-search="188 ns-l-block-map-entry(n) 8.2.2 covered">
         <td>188</td>
@@ -1546,14 +1546,14 @@
         <td><a href="https://yaml.org/spec/1.2.2/#rule-c-l-block-map-explicit-key" target="_blank" class="spec-link">c-l-block-map-explicit-key(n)</a></td>
         <td>§8.2.2</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanKey</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Parser/TokenParser.lean" target="_blank" class="impl-link">L4YAML.TokenParser.handleBlockMappingKeyEntry</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/SimpleKey.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanKey</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Parser/TokenParser.lean" target="_blank" class="impl-link">L4YAML.TokenParser.handleBlockMappingKeyEntry</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanNextToken_dispatchBlockIndicators</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="8" data-search="191 l-block-map-explicit-value(n) 8.2.2 covered">
         <td>191</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-l-block-map-explicit-value" target="_blank" class="spec-link">l-block-map-explicit-value(n)</a></td>
         <td>§8.2.2</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Parser/TokenParser.lean" target="_blank" class="impl-link">L4YAML.TokenParser.handleBlockMappingValueEntry</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Parser/TokenParser.lean" target="_blank" class="impl-link">L4YAML.TokenParser.handleBlockMappingValueEntry</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/SimpleKey.lean" target="_blank" class="impl-link">L4YAML.Scanner.isKeyCandidate</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="8" data-search="192 ns-l-block-map-implicit-entry(n) 8.2.2 covered">
         <td>192</td>
@@ -1637,28 +1637,28 @@
         <td><a href="https://yaml.org/spec/1.2.2/#rule-c-directives-end" target="_blank" class="spec-link">c-directives-end</a></td>
         <td>§9.1.2</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.atDocumentStart</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanDocumentStart</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Token/Token.lean" target="_blank" class="impl-link">L4YAML.YamlToken.documentStart</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Document.lean" target="_blank" class="impl-link">L4YAML.Scanner.atDocumentStart</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanNextToken_dispatchStructural</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Document.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanDocumentStart</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Token/Token.lean" target="_blank" class="impl-link">L4YAML.YamlToken.documentStart</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="9" data-search="204 c-document-end 9.1.2 covered">
         <td>204</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-c-document-end" target="_blank" class="spec-link">c-document-end</a></td>
         <td>§9.1.2</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanDocumentEnd</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.atDocumentEnd</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Token/Token.lean" target="_blank" class="impl-link">L4YAML.YamlToken.documentEnd</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Document.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanDocumentEnd</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Document.lean" target="_blank" class="impl-link">L4YAML.Scanner.atDocumentEnd</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Token/Token.lean" target="_blank" class="impl-link">L4YAML.YamlToken.documentEnd</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanNextToken_dispatchStructural</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="9" data-search="205 l-document-suffix 9.1.2 covered">
         <td>205</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-l-document-suffix" target="_blank" class="spec-link">l-document-suffix</a></td>
         <td>§9.1.2</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanDocumentEnd</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Document.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanDocumentEnd</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="9" data-search="206 c-forbidden 9.1.2 covered">
         <td>206</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-c-forbidden" target="_blank" class="spec-link">c-forbidden</a></td>
         <td>§9.1.2</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.atDocumentBoundary</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Document.lean" target="_blank" class="impl-link">L4YAML.Scanner.atDocumentBoundary</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="9" data-search="207 l-bare-document 9.1.3 covered">
         <td>207</td>
@@ -1693,7 +1693,7 @@
         <td><a href="https://yaml.org/spec/1.2.2/#rule-l-yaml-stream" target="_blank" class="spec-link">l-yaml-stream</a></td>
         <td>§9.2</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.scan</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Parser/TokenParser.lean" target="_blank" class="impl-link">L4YAML.TokenParser.parseStream</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Parser/TokenParser.lean" target="_blank" class="impl-link">L4YAML.TokenParser.StreamState.validNextToken</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.scan</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanFiltered</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanLoopFull</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Parser/TokenParser.lean" target="_blank" class="impl-link">L4YAML.TokenParser.parseStream</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanLoopFull._unary</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanWithComments</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Parser/TokenParser.lean" target="_blank" class="impl-link">L4YAML.TokenParser.StreamState.validNextToken</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/L4YAML/Scanner/Scanner.lean" target="_blank" class="impl-link">L4YAML.Scanner.scanNextToken_preprocess</a></td>
       </tr>
     </tbody>
   </table>
