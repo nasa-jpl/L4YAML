@@ -63,8 +63,8 @@ Every function in the core library is a total `def` — **no `partial def`, no
   design note in [docs.internal/README-historical.md](docs.internal/README-historical.md)).
 - **Schema resolution** — the Core Schema resolver respects the §10.3
   precedence (null → bool → int → float → str)
-  ([Proofs/SchemaResolution.lean](L4YAML/Proofs/SchemaResolution.lean),
-  [Proofs/SchemaDump.lean](L4YAML/Proofs/SchemaDump.lean)).
+  ([Proofs/Schema/SchemaResolution.lean](L4YAML/Proofs/Schema/SchemaResolution.lean),
+  [Proofs/Schema/SchemaDump.lean](L4YAML/Proofs/Schema/SchemaDump.lean)).
 - **Character-class correspondence** — every YAML character predicate in the
   scanner matches its `Grammar.lean` counterpart
   ([Proofs/Foundation/CharClass.lean](L4YAML/Proofs/Foundation/CharClass.lean)).

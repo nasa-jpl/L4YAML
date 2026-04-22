@@ -1,4 +1,4 @@
-import L4YAML.Proofs.SchemaComposition
+import L4YAML.Proofs.Schema.SchemaComposition
 
 namespace L4YAML.Proofs.SchemaComposition
 

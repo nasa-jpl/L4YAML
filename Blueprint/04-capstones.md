@@ -166,7 +166,7 @@ The AST-to-value conversion faithfully implements the Core Schema.
 | 5.3 | `nodeToValue_deterministic` | `Soundness` | ✅ |
 | 5.4 | `scalar_content_preserved` | `Soundness` | ✅ |
 | 5.5 | `validYaml_construct` | `Soundness` | ✅ |
-| 5.6 | `isNull_*`, `isBool_*`, `isInt_*`, `isFloat_*` correctness (§10.3) | [`SchemaResolution`](../L4YAML/Proofs/SchemaResolution.lean) | ✅ |
+| 5.6 | `isNull_*`, `isBool_*`, `isInt_*`, `isFloat_*` correctness (§10.3) | [`SchemaResolution`](../L4YAML/Proofs/Schema/SchemaResolution.lean) | ✅ |
 | 5.7 | `resolveImplicit_completeness` | `SchemaResolution` | ✅ |
 | 5.8 | `resolve_structural_preservation` | `SchemaResolution` | ✅ |
 
@@ -195,8 +195,8 @@ values.
 | 6.8 | `emit_roundtrip_content_eq` (canonical-emitter closure) | [`EmitterScannability`](../L4YAML/Proofs/EmitterScannability.lean) | 🚧 (15 `sorry`s) |
 | 6.9 | `universal_roundtrip` | `EmitterScannability` | 🚧 |
 | 6.10 | Phase-E universal round-trip: `∀ v, Grammable v false → ∃ docs, parseYaml (emit v) = .ok docs ∧ docs.size = 1 ∧ contentEq v docs[0]!.value = true` | (in docstring of `Completeness`, `RoundTrip`) | 📝 (aspirational, not declared) |
-| 6.11 | `dumpTyped_*`, `contentRoundTrips_*` | [`SchemaDump`](../L4YAML/Proofs/SchemaDump.lean), [`DumpRoundTrip`](../L4YAML/Proofs/DumpRoundTrip.lean) | ✅ for concrete instances |
-| 6.12 | `resolve_toYaml_*`, `fromYaml_toYaml_*` type round-trips | [`SchemaComposition`](../L4YAML/Proofs/SchemaComposition.lean) | ✅ for concrete instances |
+| 6.11 | `dumpTyped_*`, `contentRoundTrips_*` | [`SchemaDump`](../L4YAML/Proofs/Schema/SchemaDump.lean), [`DumpRoundTrip`](../L4YAML/Proofs/DumpRoundTrip.lean) | ✅ for concrete instances |
+| 6.12 | `resolve_toYaml_*`, `fromYaml_toYaml_*` type round-trips | [`SchemaComposition`](../L4YAML/Proofs/Schema/SchemaComposition.lean) | ✅ for concrete instances |
 
 **The gap**: capstone 6.10 is the *universal* (∀ v) round-trip and
 currently lives only in docstrings. Proving it discharges
