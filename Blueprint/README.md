@@ -124,19 +124,50 @@ Landed as `ad12e204` (12 top-level files into
   the Doc/Verso files had no direct imports of the moved modules
   and did not need updates.
 
-**Phase 2 — Scanner split (risk: medium)**
+**Phase 2 — Scanner split (risk: medium) ✅ done 2026-04-21**
 
-Break monolithic [`L4YAML/Scanner/Scanner.lean`](../L4YAML/Scanner/Scanner.lean)
-(~920 LoC) into the submodules referenced in
-[`doc/Doc/L4YAML/Architecture.lean:140`](../doc/Doc/L4YAML/Architecture.lean#L140)
-— `Scanner/Whitespace.lean`, `Scanner/Scalar.lean`,
-`Scanner/Indent.lean`, `Scanner/SimpleKey.lean`,
-`Scanner/Document.lean`, `Scanner/State.lean`. Keep
-`Scanner/Scanner.lean` as the dispatch/umbrella.
+Broke monolithic `L4YAML/Scanner/Scanner.lean` (~2761 LoC, not the
+~920 LoC originally estimated) into seven submodules:
+[`State.lean`](../L4YAML/Scanner/State.lean),
+[`Whitespace.lean`](../L4YAML/Scanner/Whitespace.lean),
+[`Indent.lean`](../L4YAML/Scanner/Indent.lean),
+[`Document.lean`](../L4YAML/Scanner/Document.lean),
+[`NodeProperties.lean`](../L4YAML/Scanner/NodeProperties.lean),
+[`Scalar.lean`](../L4YAML/Scanner/Scalar.lean),
+[`SimpleKey.lean`](../L4YAML/Scanner/SimpleKey.lean).
+[`Scanner/Scanner.lean`](../L4YAML/Scanner/Scanner.lean) (~560 LoC)
+became the dispatch umbrella owning flow-collection indicator
+scanners and the `scanNextToken` / `scan` / `scanLoop` main loop.
+The blueprint originally listed six submodules; `NodeProperties.lean`
+was added to give YAML §6.9 (anchors + aliases + tags) its own home,
+matching the spec-section pattern used by the other submodules
+(`Whitespace` ≈ §6.1–§6.7, `Document` ≈ §6.8 + §9.1.2,
+`Scalar` ≈ §7.3 + §8.1, `SimpleKey` ≈ §7.4 + §8.2).
 
-- **Acceptance**: build green; the existing
-  [`Tests/ScannerTests/`](../Tests/ScannerTests/) suite passes;
-  `Architecture.lean` no longer promises files that don't exist.
+- **Tooling used**: `Write` for the seven new files; `Edit` for the
+  blueprint and Verso-doc cross-references; `lake build` gate.
+- **Acceptance met**: `lake build` 443/443 (warnings only on
+  pre-existing `sorry`s in `ParserWellBehaved.lean` and
+  `EmitterScannability.lean` baselines); `scannertests` 32/32,
+  `scannerspecexamples` 132/132, `validationtests` 84/84,
+  `rawparsetests` 29/29; `Architecture.lean` updated to list all
+  seven submodules.
+- **Blast radius**: zero changes to consumers — every submodule
+  declares `namespace L4YAML.Scanner`, and `Scanner/Scanner.lean`
+  re-imports them, so `import L4YAML.Scanner.Scanner` continues to
+  see the same public API.  ~28 importing files unchanged.
+- **Annotations added**: while splitting, defs that implement a
+  named YAML 1.2.2 production but lacked `@[yaml_spec ...]` were
+  tagged: `collectCommentTextLoop`, `skipBlankLinesLoop`,
+  `collectPlainScalar_terminates?`, `collectPlainScalar_handleBlockLineBreak`,
+  `consumeExactSpaces`, `collectLineContentLoop`,
+  `autoDetectBlockScalarIndent*`, `validateTrailingContent`,
+  `skipDocEndWhitespace`, `skipTrailingSpaces`, `isBlockEntryCandidate`,
+  `isKeyCandidate`, `scanNextToken_dispatch{Structural,FlowIndicators,
+  BlockIndicators,Content}`, `scanNextToken_preprocess`,
+  `scanNextToken_checkBlockFlowIndent`, `scanFiltered`, `scanLoopFull`,
+  `scanWithComments`, plus the `Loop`-suffixed helpers for spec
+  productions whose terminating wrapper was already tagged.
 
 **Phase 3 — Parser split (risk: medium)**
 

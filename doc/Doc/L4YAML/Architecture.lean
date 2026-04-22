@@ -137,8 +137,8 @@ The project is organized into several module groups:
   * Type definitions, token types, grammar inductive, spec production predicates
 *
   * Scanner
-  * `Scanner.lean`, `Scanner/Whitespace.lean`, `Scanner/Scalar.lean`, ...
-  * Character-to-token conversion with full state management
+  * `Scanner/Scanner.lean` (umbrella), `State.lean`, `Whitespace.lean`, `Indent.lean`, `Document.lean`, `NodeProperties.lean`, `Scalar.lean`, `SimpleKey.lean`
+  * Character-to-token conversion with full state management. Split into seven role-named submodules (Blueprint Phase 2, 2026-04-21); the umbrella owns flow-collection indicators and the `scanNextToken` dispatch / `scan` / `scanLoop` main loop.
 *
   * Parser
   * `TokenParser.lean`, `NodeParser.lean`
