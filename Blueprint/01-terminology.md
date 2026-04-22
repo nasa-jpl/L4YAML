@@ -37,6 +37,8 @@ YAML text per the spec's `l-*` / `c-*` / `ns-*` / `s-*` productions.
 
 ### Production
 A named BNF rule from the spec, e.g. `[183] l+block-sequence(n)`.
+- **Category**: spec
+- **Why central**: Named BNF rule; everything else defers to these.
 - **In Lean**: production predicates are defined in `YamlSpec.lean`.
 - **Linked via**: `@[yaml_spec "8.2.1" 183 "l+block-sequence(n)"]`
   attributes on functions and theorems. The scanner and parser
@@ -67,6 +69,8 @@ and the full URI forms (`tag:yaml.org,2002:str`).
 YAML's **reference mechanism**. `&name` marks a node as the anchor
 for `name`; `*name` elsewhere in the same document is an alias
 referring to that anchored node.
+- **Category**: spec+impl
+- **Why central**: `*name` consumers (aliases) are distinct from `&name` producers (anchors); both flavors carry separate proof obligations.
 - **In Lean**: `YamlToken.anchor`, `YamlToken.alias`; `ParseState`
   carries an `anchors : Array (String × YamlValue)` map.
 - **Key predicates**:
@@ -135,6 +139,8 @@ YamlToken) → Except ScanError (Array YamlDocument)`.
 The **end-to-end** function `parseYaml : String → Except ScanError
 (Array YamlDocument)`, defined as `compose ∘ parseStream ∘
 scanFiltered`.
+- **Category**: impl
+- **Why central**: The object of the top-level theorems.
 - **Module**: [`L4YAML/Parser/TokenParser.lean`](../L4YAML/Parser/TokenParser.lean)
   (`parseYaml`, `parseYamlRaw`); decomposition theorems in
   [`L4YAML/Proofs/Composition.lean`](../L4YAML/Proofs/Composition.lean).
@@ -144,6 +150,8 @@ scanFiltered`.
 
 ### Emitter
 The **canonical serializer**: `emit : YamlValue → String`.
+- **Category**: impl
+- **Why central**: Distinct from Dumper; *canonical* serializer used in round-trip proofs.
 - **Module**: [`L4YAML/Output/Emitter.lean`](../L4YAML/Output/Emitter.lean) (~164 LoC).
 - **Canonical**: deterministic, style-insensitive. Always produces
   the same bytes for the same `YamlValue`.
@@ -165,6 +173,8 @@ String`.
 ### YamlValue
 The **runtime AST** — the user-facing data type produced by
 `parseYaml`. Simple inductive: `scalar`, `sequence`, `mapping`.
+- **Category**: impl
+- **Why central**: The runtime AST — what users see.
 - **Module**: [`L4YAML/Spec/Types.lean`](../L4YAML/Spec/Types.lean).
 - **Does not carry**: grammar-derivation annotations. For that,
   see `YamlNode`.
@@ -173,6 +183,8 @@ The **runtime AST** — the user-facing data type produced by
 The **annotated AST** used inside grammar witnesses: carries
 position, style, and derivation information beyond the bare
 `YamlValue`.
+- **Category**: spec
+- **Why central**: The annotated AST that grammar witnesses produce.
 - **Module**: [`L4YAML/Spec/Grammar.lean`](../L4YAML/Spec/Grammar.lean) (inside `Grammar`).
 - **`stripAnnotations : YamlNode → YamlValue`**: the forgetful map.
 - **Used when**: stating soundness (`∃ node : YamlNode,
@@ -181,6 +193,8 @@ position, style, and derivation information beyond the bare
 ### Fuel
 The **decreasing argument** threaded through the parser's mutually
 recursive functions.
+- **Category**: impl
+- **Why central**: Parser's decreasing argument; appears in every parser theorem.
 - Each recursive call passes `fuel` (unchanged, in a nested call) or
   `fuel - 1` (in a tail call). Reaching `fuel = 0` returns
   `Except.error .nestingDepthExceeded` at top-level parsers, or a
@@ -191,6 +205,8 @@ recursive functions.
 
 ### ParseState
 The **parser's cursor plus context**.
+- **Category**: impl
+- **Why central**: Parser's state vector; arguments of nearly every parser lemma.
 - `tokens : Array (Positioned YamlToken)` — input
 - `pos : Nat` — cursor
 - `anchors : Array (String × YamlValue)` — anchor map
@@ -201,6 +217,8 @@ The **parser's cursor plus context**.
 ### Grammable
 **Implementation-side predicate** on `YamlValue`: "this value could
 arise from a valid grammar derivation."
+- **Category**: bridge
+- **Why central**: The predicate linking runtime values to grammar.
 - **Bool flavor**: `Grammable v flow_context : Bool` in `Grammar.lean`.
 - **Prop flavor**: `GrammableProp`, relates to `∃ node, stripAnnotations
   (toYamlValue node) = v`.
@@ -210,6 +228,8 @@ arise from a valid grammar derivation."
 
 ### ContentEq
 **Value equivalence modulo annotations and presentation**.
+- **Category**: bridge
+- **Why central**: The equivalence used in round-trip statements.
 - Defined structurally: scalars equal by content (disregarding style),
   sequences equal pointwise, mappings equal as multisets of pairs
   (key order is *preserved* but `contentEq` may weaken that).
@@ -220,6 +240,8 @@ arise from a valid grammar derivation."
 ### WellFormed / BoundInv
 The **scanner's internal invariants**. Bundled in `ScannerState.WellFormed`
 and `BoundInv`; each scanner step is proved to preserve them.
+- **Category**: impl
+- **Why central**: The scanner invariant preserved through the pipeline.
 
 ### Config / Limits
 **Resource bounds** — nesting depth, string length, collection
@@ -228,33 +250,15 @@ cardinality. Configurable via `ParserLimits`; 4 built-in presets
 - **Modules**: [`L4YAML/Config/Config.lean`](../L4YAML/Config/Config.lean),
   [`L4YAML/Config/Limits.lean`](../L4YAML/Config/Limits.lean).
 
-## Are these all the key terms?
+## Other terms (defined in module documentation)
 
-The ten you listed — Scanner, Token, Parser, Dumper, Schema,
-Grammar, Surface, Document, Tags, Anchors — cover the
-**top-level vocabulary**. Add these to round out the set:
+These appear in proofs and code but are local enough that their
+canonical definition lives in the relevant module's documentation,
+not here.
 
-| Term | Category | Why include |
-| ---- | -------- | ----------- |
-| **Emitter** | impl | Distinct from Dumper; *canonical* serializer used in round-trip proofs. |
-| **Composition** (`parseYaml`) | impl | The object of the top-level theorems. |
-| **YamlValue** | impl | The runtime AST — what users see. |
-| **YamlNode** | spec | The annotated AST — what grammar witnesses produce. |
-| **Production** | spec | Named BNF rule; everything else defers to these. |
-| **Grammable** | bridge | The predicate linking runtime values to grammar. |
-| **ContentEq** | bridge | The equivalence used in round-trip statements. |
-| **Fuel** | impl | Parser's decreasing argument; appears in every parser theorem. |
-| **ParseState** | impl | Parser's state vector; arguments of nearly every parser lemma. |
-| **Alias** (separately from Anchor) | spec+impl | `*name` consumers; distinct from `&name` producers. |
-| **WellFormed / BoundInv** | impl | The scanner invariant preserved through the pipeline. |
-| **Simple key** | impl | Scanner concept — a plain scalar that *may become* a mapping key retroactively. Explains the placeholder/backpatch design. |
-| **Flow vs Block context** | spec+impl | YAML's two syntactic modes; orthogonal to everything else, but threaded through. |
-| **Schema resolution** (separately from Schema) | spec | The *act* of applying the Core Schema, vs the Schema itself. |
-| **Adversarial instantiation** | method | Our pre-proof validation technique — worth defining as a methodology term. |
-
-If you want to reduce this list, I'd argue **Emitter**,
-**Composition**, **YamlValue/YamlNode**, **Grammable**, **ContentEq**,
-and **Fuel** are non-negotiable because theorem statements reference
-them directly. The rest (**Simple key**, **Flow vs Block**,
-**WellFormed**) are internal enough that they can live in their own
-module documentation instead.
+| Term | Category | Where defined / why noted |
+| ---- | -------- | ------------------------- |
+| **Simple key** | impl | [`Scanner/SimpleKey.lean`](../L4YAML/Scanner/SimpleKey.lean) — a plain scalar that *may become* a mapping key retroactively. Explains the placeholder/backpatch design. |
+| **Flow vs Block context** | spec+impl | [`Scanner/Scanner.lean`](../L4YAML/Scanner/Scanner.lean) flow-level counter. YAML's two syntactic modes; orthogonal to everything else, but threaded through scanner and grammar. |
+| **Schema resolution** | spec | [`Schema/Schema.lean`](../L4YAML/Schema/Schema.lean) — the *act* of applying the Core Schema, vs the Schema itself (defined above). |
+| **Adversarial instantiation** | method | [`Tests/Guards/`](../Tests/Guards/) — pre-proof validation technique that exercises edge cases ahead of the formal soundness chain. |
