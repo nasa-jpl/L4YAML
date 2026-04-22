@@ -3,7 +3,7 @@ import L4YAML.Parser.Composition
 import L4YAML.Proofs.ParserGrammableBase
 import L4YAML.Proofs.ParserNodeProofs
 import L4YAML.Proofs.ParserWellBehaved
-import L4YAML.Proofs.ValueAlgebra
+import L4YAML.Proofs.Foundation.ValueAlgebra
 
 /-
 Copyright (c) 2026. All rights reserved.

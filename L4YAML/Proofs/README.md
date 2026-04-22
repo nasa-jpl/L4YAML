@@ -167,7 +167,7 @@ following the same pattern as `contentEq` in `Emitter.lean`.
 Array equality is bridged via `Array.toList` + `congrArg Array.mk`,
 since `Array.toList a = a.data` definitionally.
 
-**`LawfulBEq YamlValue`** is proved in `Proofs/LawfulBEq.lean` (v0.2.1).
+**`LawfulBEq YamlValue`** is proved in `Proofs/Foundation/LawfulBEq.lean` (v0.2.1).
 The proof required replacing both `Scalar` and `YamlValue`'s `deriving BEq`
 with explicit transparent definitions in `Types.lean`, then proving
 the full instance chain via structural recursion with `where`-clause
@@ -1266,7 +1266,7 @@ used by the YAML parser are now deductively transparent for `m = Id`.
 
 6. ~~**Prove `LawfulBEq YamlValue`**~~ ✅ **Done** (v0.2.1).
    `LawfulBEq` proved for the entire AST hierarchy (7 types) in
-   `Proofs/LawfulBEq.lean`.  Required replacing both `Scalar` and
+   `Proofs/Foundation/LawfulBEq.lean`.  Required replacing both `Scalar` and
    `YamlValue`'s `deriving BEq` with explicit transparent definitions
    in `Types.lean` to work around opaque derived BEq and `Decidable.rec`
    dependent elimination failures.  See the v0.2.1 section in the

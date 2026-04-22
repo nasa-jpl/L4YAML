@@ -225,18 +225,119 @@ is the new umbrella holding the user-facing pipeline: `scanAndParse`,
 
 **Phase 4 — Proofs reorganization (risk: low per-cluster)**
 
-Move [`L4YAML/Proofs/*.lean`](../L4YAML/Proofs/) into the
-subfolders outlined in
-[`03-code-organization.md`](03-code-organization.md) (Scanner/,
-Parser/, Schema/, Output/, RoundTrip/, Coupling/, Production/,
-Foundation/). One cluster per PR; each leaves build green.
+Move [`L4YAML/Proofs/*.lean`](../L4YAML/Proofs/) into role-named
+subfolders (Foundation/, Errors/, Schema/, Contracts/, Production/,
+Scanner/, Output/, Parser/, Coupling/, RoundTrip/). One cluster per
+PR; each leaves build green.
 
-- **Ordering**: do Foundation/ first (low-level utilities, few
-  inbound references), then the cluster-specific folders in
-  order of coupling (Scanner/ before Parser/ before Composition.lean).
-- **Acceptance**: every PR leaves `lake build` green; the
-  capstone-regeneration pipeline from Initiative 2 still
-  produces the same dependency graph before and after.
+- **Ordering principle**: Foundation/ first (low-level utilities,
+  few inbound references), then clusters in order of coupling
+  (Scanner/ before Parser/ before the Composition.lean capstone).
+  Within that constraint, smaller/less-coupled clusters come first
+  to keep risk monotonic.
+- **Mechanical pattern** (established by PR 1): `git mv` + anchored
+  `sed` over `^import L4YAML.Proofs.Foo$`. Namespaces stay at
+  `L4YAML.Proofs.Foo` (no rename into the subcluster path) so
+  consumer `open` statements work unchanged — same precedent as
+  Phase 1.
+- **Acceptance per PR**: `lake build` green; the
+  capstone-regeneration pipeline from Initiative 2 still produces
+  the same dependency graph before and after.
+- **Overlap resolutions** (where the draft target layout in
+  [`03-code-organization.md`](03-code-organization.md) listed a
+  file under two subfolders):
+    - `*Coupling.lean` files (SurfaceCoupling, ScalarCoupling,
+      StructureCoupling) → **Coupling/** (role-based home). The
+      `Surface/` subcluster is dropped — its only listed contents
+      were these coupling files, and `Surface.lean` itself is code,
+      not proofs.
+    - `DumpRoundTrip.lean` → **Output/** (proof about the Dump
+      function), not `Document/`.
+    - `CommentProperties.lean` (unlisted in the draft) →
+      **RoundTrip/**, paired with `CommentRoundTrip.lean`.
+    - `ScannerPlainContent.lean` (unlisted) → **Scanner/**.
+    - The draft's `Document/` subcluster is renamed to
+      **Contracts/** and holds just the two contract files
+      (`BlockScalarContracts`, `DocumentContracts`).
+
+**Cluster roadmap (10 PRs, Foundation + 9 remaining)**
+
+| PR | Cluster | Files | LoC (approx) | Capstone groups | Risk |
+| -- | ------- | ----: | -----------: | --------------- | ---- |
+| 1 | Foundation/ ✅ | 4 | ~1,100 | (infra only) | low |
+| 2 | Errors/ | 3 | ~900 | — | low |
+| 3 | Schema/ | 4 | ~850 | 5 (SchemaResolution), 6 (SchemaDump, SchemaComposition) | low |
+| 4 | Contracts/ | 2 | ~500 | — | low |
+| 5 | Production/ | 7 | ~7,500 | 7 (all production theorems) | medium |
+| 6 | Scanner/ | 17 | ~9,700 | 2 (all scanner correctness), 6 partial, 7 partial | medium (size) |
+| 7 | Output/ | 3 | ~11,000 | 6 (EmitterScannability, ScannerEmitBridge, DumpRoundTrip) | medium (EmitterScannability is ~10k LoC) |
+| 8 | Parser/ | 9 | ~12,000 | 3 (all parser correctness) | medium (size + mutual-rec imports) |
+| 9 | Coupling/ | 6 | ~2,400 | 8 (all surface coupling), 7 boundary | low |
+| 10 | RoundTrip/ | 4 | ~2,200 | 6 (RoundTrip, RoundTripComposition, CommentRoundTrip) | low |
+
+**Capstones that stay at `Proofs/` root** (not moved into subclusters
+— they are the top-down anchors of
+[`04-capstones.md`](04-capstones.md)):
+[`Composition.lean`](../L4YAML/Proofs/Composition.lean),
+[`Completeness.lean`](../L4YAML/Proofs/Completeness.lean),
+[`Soundness.lean`](../L4YAML/Proofs/Soundness.lean),
+[`EndToEndCorrectness.lean`](../L4YAML/Proofs/EndToEndCorrectness.lean).
+
+**Final target layout** (post-PR-10):
+```
+L4YAML/Proofs/
+├── Foundation/   CharClass, LawfulBEq, StringProperties, ValueAlgebra
+├── Errors/       ErrorProperties, EscapeResolution, FoldNewlines
+├── Schema/       SchemaResolution, SchemaComposition, SchemaDump, TagResolution
+├── Contracts/    BlockScalarContracts, DocumentContracts
+├── Production/   StreamAccum, StructureProduction, ScalarProduction,
+│                 DocumentProduction, NodeProduction, PreprocessProduction,
+│                 ScannerPlainScalarValid
+├── Scanner/      ScannerCorrectness, ScannerProgress, ScannerBound,
+│                 ScannerDispatch, ScannerDocument, ScannerSimpleKey,
+│                 ScannerLoopInvariant, ScannerContracts, ScannerWhitespace,
+│                 ScannerPlainScalar, ScannerPlainContent, ScannerDoubleQuoted,
+│                 ScannerScalar, ScannerFlowCollection, ScannerIndentStack,
+│                 ScannerIndent, ScannerProofs, ScanStrictCoupling
+├── Output/       EmitterScannability, ScannerEmitBridge, DumpRoundTrip
+├── Parser/       ParserSoundness, ParserCompleteness, ParserCorrectness,
+│                 ParserNodeProofs, ParserAnchorProofs, ParserWfaProofs,
+│                 ParserWellBehaved, ParserGrammable, ParserGrammableBase
+├── Coupling/     CouplingBridge, ScannerCoupling, SurfaceCoupling,
+│                 StructureCoupling, ScalarCoupling
+├── RoundTrip/    RoundTrip, RoundTripComposition, CommentRoundTrip,
+│                 CommentProperties
+│
+├── Composition.lean         -- capstone (Group 1 pipeline composition)
+├── Completeness.lean        -- capstone (Group 1 + Group 3.12–3.14)
+├── Soundness.lean           -- capstone (Group 5 value semantics)
+└── EndToEndCorrectness.lean -- capstone (Group 4 public guarantees)
+```
+
+**Phase 4 · Foundation/ ✅ done 2026-04-21**
+
+Moved four low-level utility proofs into
+[`L4YAML/Proofs/Foundation/`](../L4YAML/Proofs/Foundation/):
+[`CharClass.lean`](../L4YAML/Proofs/Foundation/CharClass.lean),
+[`LawfulBEq.lean`](../L4YAML/Proofs/Foundation/LawfulBEq.lean),
+[`StringProperties.lean`](../L4YAML/Proofs/Foundation/StringProperties.lean),
+[`ValueAlgebra.lean`](../L4YAML/Proofs/Foundation/ValueAlgebra.lean).
+
+- **Tooling used**: `git mv` for each file; one anchored `sed` pass
+  over `^import L4YAML.Proofs.Foo$` for imports. Namespaces left
+  untouched (same precedent as Phase 1 — files continue to declare
+  `namespace L4YAML.Proofs.CharClass` etc., so `open` lines in
+  consumers work unchanged).
+- **Script**:
+  [`scripts/refactor-phase-4-foundation.sh`](../scripts/refactor-phase-4-foundation.sh)
+  — reversible via commit revert.
+- **Acceptance met**: `lake build` 449/449 (warnings only on the
+  pre-existing `sorry`s in `EmitterScannability.lean` baseline).
+- **Blast radius**: 4 renames + 5 touched importers
+  (`L4YAML.lean`, `ParserAnchorProofs.lean`, `ParserWfaProofs.lean`,
+  `ScannerPlainScalar.lean`, `StructureProduction.lean`) +
+  narrative references in `README.md`, `L4YAML/Proofs/README.md`,
+  `FoldNewlines.lean`, `Completeness.lean`.
 
 **Overall exit criterion for Initiative 1**: `Architecture.lean`
 can be regenerated from the actual folder layout instead of

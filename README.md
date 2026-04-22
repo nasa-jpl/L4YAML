@@ -67,7 +67,7 @@ Every function in the core library is a total `def` — **no `partial def`, no
   [Proofs/SchemaDump.lean](L4YAML/Proofs/SchemaDump.lean)).
 - **Character-class correspondence** — every YAML character predicate in the
   scanner matches its `Grammar.lean` counterpart
-  ([Proofs/CharClass.lean](L4YAML/Proofs/CharClass.lean)).
+  ([Proofs/Foundation/CharClass.lean](L4YAML/Proofs/Foundation/CharClass.lean)).
 
 **Work in progress.** Two converse theorems round out the correctness picture:
 

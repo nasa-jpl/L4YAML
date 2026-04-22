@@ -17,6 +17,26 @@ Each capstone entry shows: **Module** · **Status** · **One-line
 meaning**. Where relevant, **Depends on** names the immediate
 predecessors in the dependency DAG.
 
+## Phase 4 target locations
+
+[Initiative 1 Phase 4](README.md) is moving `L4YAML/Proofs/*.lean`
+into role-named subclusters, one PR at a time. The markdown links
+in each group below track the *current* file path and are updated
+as each cluster's PR lands (so they remain clickable on `main`).
+The "**Target cluster**" annotation on each group shows where its
+modules will live once Phase 4 completes.
+
+Capstones that stay at `Proofs/` root (never moved into a subcluster,
+because they are the top-down anchors of the blueprint):
+
+- [`Composition.lean`](../L4YAML/Proofs/Composition.lean) — Group 1
+- [`Completeness.lean`](../L4YAML/Proofs/Completeness.lean) — Group 1 + 3.12–3.14
+- [`Soundness.lean`](../L4YAML/Proofs/Soundness.lean) — Group 5
+- [`EndToEndCorrectness.lean`](../L4YAML/Proofs/EndToEndCorrectness.lean) — Group 4
+
+All other proof modules migrate per
+[Blueprint/README.md](README.md) "Cluster roadmap".
+
 ---
 
 ## Group 1 — Pipeline composition
@@ -38,6 +58,9 @@ down how the layers fit together.
 with docs *D*, then `parseYaml` succeeds with `D.map compose`. No
 soundness or completeness claims here, just compositional decomposition.
 
+**Target cluster (Phase 4)**: *none* — `Composition.lean` and
+`Completeness.lean` remain at `Proofs/` root as capstones.
+
 ---
 
 ## Group 2 — Scanner correctness
@@ -58,6 +81,12 @@ are monotonic, termination is certified.
 | 2.9 | Document-marker WF: `scanDirective`, `scanDocumentStart`, `scanDocumentEnd` preserve `WellFormed` | [`ScannerDocument`](../L4YAML/Proofs/ScannerDocument.lean) | ✅ |
 
 **Depends on**: surface coupling (Group 8).
+
+**Target cluster (Phase 4)**: [`Proofs/Scanner/`](../L4YAML/Proofs/)
+(PR 6). All modules in this group — `ScannerCorrectness`,
+`ScannerProgress`, `ScannerBound`, `ScannerLoopInvariant`,
+`ScanStrictCoupling`, `ScannerSimpleKey`, `ScannerDispatch`,
+`ScannerDocument` — migrate together.
 
 ---
 
@@ -88,6 +117,12 @@ well-formed.
 (theorem 3.11) means the grammability hypothesis has been
 discharged via Group 3.8.
 
+**Target cluster (Phase 4)**: [`Proofs/Parser/`](../L4YAML/Proofs/)
+(PR 8). `ParserSoundness`, `ParserAnchorProofs`, `ParserNodeProofs`,
+`ParserWfaProofs`, `ParserGrammable`, `ParserCorrectness`,
+`ParserCompleteness` migrate together. `EndToEndCorrectness` (3.11)
+stays at `Proofs/` root as a Group 4 capstone.
+
 ---
 
 ## Group 4 — End-to-end correctness
@@ -115,6 +150,9 @@ one of these or is a candidate for deletion.
 
 **Depends on**: Groups 1–3.
 
+**Target cluster (Phase 4)**: *none* — `EndToEndCorrectness.lean`
+stays at `Proofs/` root as a capstone.
+
 ---
 
 ## Group 5 — Value semantics (soundness at the runtime-value level)
@@ -133,6 +171,10 @@ The AST-to-value conversion faithfully implements the Core Schema.
 | 5.8 | `resolve_structural_preservation` | `SchemaResolution` | ✅ |
 
 **Depends on**: Group 3 (parser correctness).
+
+**Target cluster (Phase 4)**: split.
+`Soundness.lean` stays at `Proofs/` root as a capstone.
+`SchemaResolution.lean` moves to [`Proofs/Schema/`](../L4YAML/Proofs/) (PR 3).
 
 ---
 
@@ -163,6 +205,14 @@ the round-trip story.
 
 **Depends on**: Group 4 (parse), Group 5 (values).
 
+**Target cluster (Phase 4)**: split across three clusters.
+`RoundTrip`, `RoundTripComposition` → [`Proofs/RoundTrip/`](../L4YAML/Proofs/) (PR 10).
+`ScannerEmitBridge`, `EmitterScannability`, `DumpRoundTrip` →
+[`Proofs/Output/`](../L4YAML/Proofs/) (PR 7).
+`SchemaDump`, `SchemaComposition` → [`Proofs/Schema/`](../L4YAML/Proofs/) (PR 3).
+Capstone 6.10 (aspirational, not yet declared) will eventually
+live wherever its proof is attempted.
+
 ---
 
 ## Group 7 — Grammar-production derivations
@@ -184,6 +234,12 @@ boundaries.
 
 **Depends on**: Group 2 (scanner), Group 8 (coupling).
 
+**Target cluster (Phase 4)**:
+[`Proofs/Production/`](../L4YAML/Proofs/) (PR 5) for
+`StreamAccum`, `StructureProduction`, `DocumentProduction`,
+`ScalarProduction`, `NodeProduction`. Capstone 7.4
+(`EndToEndCorrectness`) stays at `Proofs/` root.
+
 ---
 
 ## Group 8 — Surface coupling (character ↔ implementation)
@@ -201,6 +257,11 @@ surface-syntax predicate.
 
 **Role**: these are the "bridge from characters to tokens" theorems —
 the conscience of the scanner.
+
+**Target cluster (Phase 4)**: [`Proofs/Coupling/`](../L4YAML/Proofs/)
+(PR 9). `SurfaceCoupling`, `StructureCoupling`, `ScalarCoupling`,
+`ScannerCoupling`, plus `CouplingBridge` (not listed in a capstone
+row but belongs to the same cluster), migrate together.
 
 ---
 
