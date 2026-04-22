@@ -69,13 +69,13 @@ import L4YAML.Proofs.SurfaceCoupling
 import L4YAML.Proofs.TagResolution
 import L4YAML.Proofs.ValueAlgebra
 import L4YAML.Scanner.Scanner
-import L4YAML.Schema
+import L4YAML.Schema.Schema
 import L4YAML.Schema.Api
 import L4YAML.Schema.Deriving
 import L4YAML.Schema.Dump
 import L4YAML.Schema.FromToYaml
 import L4YAML.Schema.Struct
-import L4YAML.Surface
+import L4YAML.Surface.Surface
 import L4YAML.Token.Token
 import L4YAML.Parser.TokenParser
 import L4YAML.Spec.Types

@@ -2,7 +2,7 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Schema
+import L4YAML.Schema.Schema
 import L4YAML.Schema.FromToYaml
 import L4YAML.Schema.Struct
 

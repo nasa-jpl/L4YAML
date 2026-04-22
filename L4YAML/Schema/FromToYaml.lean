@@ -1,5 +1,5 @@
 import L4YAML.Spec.Types
-import L4YAML.Schema
+import L4YAML.Schema.Schema
 import Std.Data.HashMap
 
 /-
