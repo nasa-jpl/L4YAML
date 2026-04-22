@@ -271,7 +271,7 @@ PR; each leaves build green.
 | 5 | Production/ ✅ | 7 | ~7,500 | 7 (all production theorems) | medium |
 | 6 | Scanner/ ✅ | 18 | ~9,700 | 2 (all scanner correctness), 6 partial, 7 partial | medium (size) |
 | 7 | Output/ ✅ | 3 | ~11,000 | 6 (EmitterScannability, ScannerEmitBridge, DumpRoundTrip) | medium (EmitterScannability is ~10k LoC) |
-| 8 | Parser/ | 9 | ~12,000 | 3 (all parser correctness) | medium (size + mutual-rec imports) |
+| 8 | Parser/ ✅ | 9 | ~12,000 | 3 (all parser correctness) | medium (size + mutual-rec imports) |
 | 9 | Coupling/ | 6 | ~2,400 | 8 (all surface coupling), 7 boundary | low |
 | 10 | RoundTrip/ | 4 | ~2,200 | 6 (RoundTrip, RoundTripComposition, CommentRoundTrip) | low |
 
@@ -513,6 +513,48 @@ Moved three emitter/dumper-correctness proofs into
   `Tests/Guards/Proofs/ScannerEmitBridge.lean` one line each) +
   one internal cross-import + narrative references in
   `Blueprint/README.md` and `Blueprint/03-code-organization.md`.
+
+**Phase 4 · Parser/ ✅ done 2026-04-22**
+
+Moved nine parser-correctness proofs into
+[`L4YAML/Proofs/Parser/`](../L4YAML/Proofs/Parser/):
+[`ParserSoundness.lean`](../L4YAML/Proofs/Parser/ParserSoundness.lean),
+[`ParserCompleteness.lean`](../L4YAML/Proofs/Parser/ParserCompleteness.lean),
+[`ParserCorrectness.lean`](../L4YAML/Proofs/Parser/ParserCorrectness.lean),
+[`ParserNodeProofs.lean`](../L4YAML/Proofs/Parser/ParserNodeProofs.lean),
+[`ParserAnchorProofs.lean`](../L4YAML/Proofs/Parser/ParserAnchorProofs.lean),
+[`ParserWfaProofs.lean`](../L4YAML/Proofs/Parser/ParserWfaProofs.lean),
+[`ParserWellBehaved.lean`](../L4YAML/Proofs/Parser/ParserWellBehaved.lean),
+[`ParserGrammable.lean`](../L4YAML/Proofs/Parser/ParserGrammable.lean),
+[`ParserGrammableBase.lean`](../L4YAML/Proofs/Parser/ParserGrammableBase.lean).
+
+- **Tooling used**: same pattern as the Foundation/, Errors/,
+  Schema/, Contracts/, Production/, Scanner/, and Output/ clusters —
+  `git mv` + one anchored `sed` pass over
+  `^import L4YAML.Proofs.Foo$`.  The cluster's mutual-recursion
+  internal imports (seven cross-import lines across
+  `ParserWellBehaved`, `ParserAnchorProofs`, `ParserGrammable`,
+  `ParserWfaProofs`, `ParserNodeProofs`, `ParserCorrectness`, and
+  `ParserCompleteness`) were rewritten in-place by the same sed
+  pass.  Namespaces left untouched.
+- **Script**:
+  [`scripts/refactor-phase-8-parser.sh`](../scripts/refactor-phase-8-parser.sh)
+  — reversible via commit revert.
+- **Acceptance met**: `lake build` 449/449 (same pre-existing
+  `sorry` warnings in `Output/EmitterScannability.lean` carried
+  over unchanged from the baseline — no new warnings or failures
+  introduced by this cluster).
+- **Blast radius**: 9 renames + external importers rewritten
+  (`L4YAML.lean` nine import lines;
+  `L4YAML/Proofs/EndToEndCorrectness.lean` three lines;
+  `L4YAML/Proofs/Foundation/ValueAlgebra.lean` one line;
+  `L4YAML/Proofs/Output/ScannerEmitBridge.lean` two lines;
+  `L4YAML/Proofs/Output/EmitterScannability.lean` one line;
+  `Tests/AdversarialInstantiation.lean` one line;
+  `Tests/Guards/Proofs/ParserCorrectness.lean` one line) +
+  seven internal mutual-recursion cross-imports + narrative
+  references in `Blueprint/README.md` and
+  `Blueprint/03-code-organization.md`.
 
 **Overall exit criterion for Initiative 1**: `Architecture.lean`
 can be regenerated from the actual folder layout instead of

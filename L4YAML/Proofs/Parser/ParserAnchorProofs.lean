@@ -1,10 +1,10 @@
 import L4YAML.Spec.Grammar
 import L4YAML.Parser.Composition
 import L4YAML.Proofs.Production.ScannerPlainScalarValid
-import L4YAML.Proofs.ParserGrammableBase
-import L4YAML.Proofs.ParserNodeProofs
+import L4YAML.Proofs.Parser.ParserGrammableBase
+import L4YAML.Proofs.Parser.ParserNodeProofs
 import L4YAML.Proofs.Foundation.ValueAlgebra
-import L4YAML.Proofs.ParserWfaProofs
+import L4YAML.Proofs.Parser.ParserWfaProofs
 
 /-
 Copyright (c) 2026. All rights reserved.

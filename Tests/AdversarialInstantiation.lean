@@ -1,7 +1,7 @@
 import L4YAML.Scanner.Scanner
 import L4YAML.Output.Emitter
 import L4YAML.Parser.Composition
-import L4YAML.Proofs.ParserGrammableBase
+import L4YAML.Proofs.Parser.ParserGrammableBase
 import Tests.VerifiedResult
 
 /-!

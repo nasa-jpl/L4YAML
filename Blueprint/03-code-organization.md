@@ -53,7 +53,7 @@ L4YAML/
 ├── FFI/
 │   └── FFI.lean
 ├── YAML_PRODUCTIONS.md
-└── Proofs/                      (20 flat + Foundation/ + Errors/ + Schema/ + Contracts/ + Production/ + Scanner/ + Output/ clusters; Phase 4 ongoing)
+└── Proofs/                      (11 flat + Foundation/ + Errors/ + Schema/ + Contracts/ + Production/ + Scanner/ + Output/ + Parser/ clusters; Phase 4 ongoing)
 ```
 
 Phase 1 (`ad12e204`) + Phase 1b (`573fa76e`) landed on 2026-04-21.
@@ -105,7 +105,13 @@ What's done, what remains:
   **Output/** cluster landed 2026-04-22 (3 files:
   `EmitterScannability.lean`, `ScannerEmitBridge.lean`,
   `DumpRoundTrip.lean`).
-  20 files still flat; remaining clusters per the target layout below.
+  **Parser/** cluster landed 2026-04-22 (9 files:
+  `ParserSoundness.lean`, `ParserCompleteness.lean`,
+  `ParserCorrectness.lean`, `ParserNodeProofs.lean`,
+  `ParserAnchorProofs.lean`, `ParserWfaProofs.lean`,
+  `ParserWellBehaved.lean`, `ParserGrammable.lean`,
+  `ParserGrammableBase.lean`).
+  11 files still flat; remaining clusters per the target layout below.
 
 ## Proposed target layout
 
@@ -356,6 +362,19 @@ phase should leave the build green and the imports valid):
      [`scripts/refactor-phase-7-output.sh`](../scripts/refactor-phase-7-output.sh);
      `lake build` 449/449 (pre-existing `sorry` warnings in
      `EmitterScannability.lean` carried over unchanged).
+   - **Cluster 8 — Parser/** ✅ **done 2026-04-22**. Moved the nine
+     parser-correctness proofs (`ParserSoundness.lean`,
+     `ParserCompleteness.lean`, `ParserCorrectness.lean`,
+     `ParserNodeProofs.lean`, `ParserAnchorProofs.lean`,
+     `ParserWfaProofs.lean`, `ParserWellBehaved.lean`,
+     `ParserGrammable.lean`, `ParserGrammableBase.lean`) into
+     `L4YAML/Proofs/Parser/`.  The mutual-recursion cross-imports
+     within the cluster were rewritten in-place by the same sed
+     pass — no ordering hazard because sed runs after `git mv`.
+     Scripted in
+     [`scripts/refactor-phase-8-parser.sh`](../scripts/refactor-phase-8-parser.sh);
+     `lake build` 449/449 (pre-existing `sorry` warnings in
+     `Output/EmitterScannability.lean` carried over unchanged).
 
 ## Naming conventions
 

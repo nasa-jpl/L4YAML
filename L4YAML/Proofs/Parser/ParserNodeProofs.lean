@@ -1,6 +1,6 @@
 import L4YAML.Spec.Grammar
 import L4YAML.Parser.Composition
-import L4YAML.Proofs.ParserGrammableBase
+import L4YAML.Proofs.Parser.ParserGrammableBase
 
 /-
 Copyright (c) 2026. All rights reserved.
