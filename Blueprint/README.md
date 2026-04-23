@@ -887,6 +887,11 @@ supporting theorems.
   introduction.
 - `tmp/graphs/index.html` currently lists all ~400 bipartite
   + chain graphs in arbitrary order, making it practically unusable.
+- `theorem-graphs.tar.gz` (published by L4YAML.FGM CI and consumed
+  by L4YAML's doc build) contains ~840 SVGs when what the docs
+  actually need is a small headline subset — everything else is
+  reference material that should live behind a "show all" link, not
+  eagerly embedded.
 - There is no single pointer that answers "what are the public
   guarantees?" — the answer is spread across Group 4, Group 6,
   Group 7, and parts of Group 3.
@@ -933,7 +938,11 @@ open conditions or remaining sorry sites are clearly stated in the
 plain-English summary. Headlines that regress drop off the front
 page until they recover.
 
-**3. Hierarchical `tmp/graphs/index.html`**
+**3. Tier-filtered graph generation + hierarchical `index.html`**
+
+Extend `theoremgraph` with a `--tier <name>` filter that writes
+only graphs for entries matching the given tier (comma-separated
+names accepted). Current behavior (no filter) stays the full catalogue.
 
 Rewrite `generateIndexHtml` to render:
 
@@ -943,20 +952,41 @@ Rewrite `generateIndexHtml` to render:
    group-capstone and supports.
 3. **Full catalogue**: flat link to everything (today's behavior).
 
-`theoremgraph --tier headline` should emit just the headline
-chain SVGs — ~6 files instead of ~800 — suitable for embedding in
-documentation.
+Numbers-wise: `theoremgraph --tier headline` emits ~6 chain SVGs;
+`--tier headline,groupCapstone` emits ~25–50; the full run stays
+at ~840. The 10×–100× size reduction is the difference between
+"L4YAML doc page loads in seconds" and "doc page times out."
 
-**4. Narrative file**
+**4. L4YAML.FGM release artifact split**
+
+The L4YAML.FGM CI workflow currently publishes a single
+`theorem-graphs.tar.gz` containing every SVG. Update it to publish
+two artifacts per release:
+
+- `theorem-graphs-headlines.tar.gz` — `--tier headline,groupCapstone`
+  output. Small (~50 SVGs + the hierarchical index), always embedded
+  by L4YAML's doc build.
+- `theorem-graphs-all.tar.gz` — the full catalogue (today's tarball
+  content). Downloaded on demand from the release page; not embedded.
+
+L4YAML's doc build (in the L4YAML repo, not L4YAML.FGM) pulls only
+the headlines tarball by default. A visitor who wants the full
+catalogue follows a link on the narrative page to the GitHub
+release asset. This keeps the default doc build fast and keeps the
+exhaustive material one click away.
+
+**5. Narrative file**
 
 New `Blueprint/01-what-we-prove.md` (sits before `02-architecture.md`
 in the reading order). Walks the headlines top-down, links each
 to its row in `04-capstones.md` for the formal statement and to
-the corresponding chain graph for the proof structure. Written to
-be readable by a YAML user who is not a formal-methods expert, but
-precise enough for the expert to follow the links through.
+the corresponding chain graph (served from the
+`theorem-graphs-headlines.tar.gz` artifact L4YAML's doc build has
+already unpacked). Written to be readable by a YAML user who is not
+a formal-methods expert, but precise enough for the expert to follow
+the links through.
 
-**5. `check-capstones` extension**
+**6. `check-capstones` extension**
 
 Add `--require-headlines-proven` mode: fail CI if any headline
 entry has status 🚧 (partial) or 🗑 (deletion candidate). Stricter
@@ -966,8 +996,11 @@ than the default ✅/🚧-agnostic check.
 
 - Every headline has plain-English, formal, and practical
   descriptions in `01-what-we-prove.md`.
-- `index.html` front page loads in < 2 seconds and embeds only
-  headline graphs.
+- `theorem-graphs-headlines.tar.gz` is under a small size budget
+  (say 2 MB uncompressed, vs. today's ~30 MB) and contains only the
+  headline + group-capstone SVGs plus the hierarchical index.
+- L4YAML's doc build embeds the headlines tarball by default; the
+  full catalogue is a one-click download from the release page.
 - A reader new to the project can answer "what does L4YAML
   prove?" after 5 minutes of reading, without opening any `.lean`
   file.
