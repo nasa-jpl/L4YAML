@@ -53,7 +53,7 @@ L4YAML/
 ├── FFI/
 │   └── FFI.lean
 ├── YAML_PRODUCTIONS.md
-└── Proofs/                      (6 flat + Foundation/ + Errors/ + Schema/ + Contracts/ + Production/ + Scanner/ + Output/ + Parser/ + Coupling/ clusters; Phase 4 ongoing)
+└── Proofs/                      (2 flat + Foundation/ + Errors/ + Schema/ + Contracts/ + Production/ + Scanner/ + Output/ + Parser/ + Coupling/ + RoundTrip/ clusters; Phase 4 complete)
 ```
 
 Phase 1 (`ad12e204`) + Phase 1b (`573fa76e`) landed on 2026-04-21.
@@ -83,7 +83,7 @@ What's done, what remains:
   `L4YAML.Parser.TokenParser` → `L4YAML.Parser.Composition` (49 files,
   one-line sed); the `L4YAML.TokenParser.foo` API surface is preserved
   via transitive imports.
-- **In progress (Phase 4)**: `Proofs/` reorganization is per-cluster.
+- **Done (Phase 4)**: `Proofs/` reorganization is per-cluster.
   **Foundation/** cluster landed 2026-04-21 (4 files: `CharClass.lean`,
   `LawfulBEq.lean`, `StringProperties.lean`, `ValueAlgebra.lean`).
   **Errors/** cluster landed 2026-04-22 (3 files: `ErrorProperties.lean`,
@@ -114,7 +114,13 @@ What's done, what remains:
   **Coupling/** cluster landed 2026-04-22 (5 files:
   `CouplingBridge.lean`, `ScannerCoupling.lean`, `SurfaceCoupling.lean`,
   `StructureCoupling.lean`, `ScalarCoupling.lean`).
-  6 files still flat; remaining clusters per the target layout below.
+  **RoundTrip/** cluster landed 2026-04-22 (4 files:
+  `RoundTrip.lean`, `RoundTripComposition.lean`,
+  `CommentRoundTrip.lean`, `CommentProperties.lean`) — closes Phase 4.
+  The four remaining flat files at `Proofs/` root
+  (`Composition.lean`, `EndToEndCorrectness.lean`, `Completeness.lean`,
+  `Soundness.lean`) are the top-level capstone umbrellas and belong
+  at `Proofs/` root by design per the target layout below.
 
 ## Proposed target layout
 
@@ -392,6 +398,19 @@ phase should leave the build green and the imports valid):
      [`scripts/refactor-phase-9-coupling.sh`](../scripts/refactor-phase-9-coupling.sh);
      `lake build` 449/449 (pre-existing `sorry` warnings in
      `Output/EmitterScannability.lean` carried over unchanged).
+   - **Cluster 10 — RoundTrip/** ✅ **done 2026-04-22** (closes
+     Phase 4).  Moved the four round-trip and comment-channel proofs
+     (`RoundTrip.lean`, `RoundTripComposition.lean`,
+     `CommentRoundTrip.lean`, `CommentProperties.lean`) into
+     `L4YAML/Proofs/RoundTrip/`.  No intra-cluster imports existed
+     among the four files (pure renames, 100% similarity).  Scripted
+     in
+     [`scripts/refactor-phase-10-roundtrip.sh`](../scripts/refactor-phase-10-roundtrip.sh);
+     `lake build` 449/449 (pre-existing `sorry` warnings in
+     `Output/EmitterScannability.lean` carried over unchanged).
+     Initiative 1 Phase 4 complete: only the four capstone umbrellas
+     (`Composition.lean`, `EndToEndCorrectness.lean`, `Completeness.lean`,
+     `Soundness.lean`) remain at `Proofs/` root — by design.
 
 ## Naming conventions
 

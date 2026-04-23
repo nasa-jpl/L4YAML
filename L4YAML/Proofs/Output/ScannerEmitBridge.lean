@@ -8,7 +8,7 @@ import L4YAML.Parser.Composition
 import L4YAML.Scanner.Scanner
 import L4YAML.Proofs.Parser.ParserCompleteness
 import L4YAML.Proofs.Parser.ParserSoundness
-import L4YAML.Proofs.RoundTrip
+import L4YAML.Proofs.RoundTrip.RoundTrip
 import L4YAML.Proofs.Composition
 
 /-!

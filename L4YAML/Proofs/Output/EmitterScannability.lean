@@ -8,7 +8,7 @@ import L4YAML.Spec.Grammar
 import L4YAML.Parser.Composition
 import L4YAML.Spec.CharPredicates
 import L4YAML.Proofs.Output.ScannerEmitBridge
-import L4YAML.Proofs.RoundTrip
+import L4YAML.Proofs.RoundTrip.RoundTrip
 import L4YAML.Proofs.Coupling.CouplingBridge
 import L4YAML.Proofs.Coupling.ScalarCoupling
 import L4YAML.Proofs.Parser.ParserGrammable
