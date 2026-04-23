@@ -1230,21 +1230,25 @@ private def test5_bound (state : IO.Ref TestCollector) : IO Unit := do
 
 /-! ## Priority 6 — ScanChain_filtered_prefix
 
-`ScanChain_filtered_prefix` claims: given `ScanChain s n s'` and
-`(s.simpleKey.possible → s.simpleKey.tokenIndex ≥ s.tokens.size) ∨ s.explicitKeyLine = none`,
+`ScanChain_filtered_prefix` (EmitterScannability.lean) claims: given
+`FlowMonoChain fl₀ s n s'`, `s.simpleKey.possible = false`,
+`s.simpleKeyStack.size ≥ s.flowLevel`, and a stack-floor condition,
 then `∃ suffix, (s'.tokens.filter notPlaceholder) = (s.tokens.filter notPlaceholder) ++ suffix`.
 
-The two actual call sites both pass `.inr h_ek₁` where `h_ek₁ : s₁.explicitKeyLine = none`.
-This test checks ALL intermediate states during scanning: at every step where
-`explicitKeyLine = none`, the filtered prefix from that point forward is preserved.
+The precondition was strengthened on 2026-04-15 (commit 92c7903d) from a
+disjunction allowing `explicitKeyLine = none` to the current `simpleKey.possible = false`:
+the older disjunction was empirically unsound because `saveSimpleKey` reserves a
+placeholder that `scanValue` later overwrites, inserting into the interior of the
+filtered array. The probe below exercises the current precondition across all
+intermediate scan states.
 
-Additionally, we test the GENERAL claim: for ANY pair of states s_i, s_j in the scan chain
-where the precondition holds at s_i, the filtered tokens of s_j extend those of s_i.
+For every pair of states `s_i, s_j` (i < j) where `s_i.simpleKey.possible = false`,
+we verify that `(s_j.tokens.filter notPlaceholder)` begins with
+`(s_i.tokens.filter notPlaceholder)`.
 -/
 
-/-- Check filtered prefix preservation: at every intermediate state where ek=none,
-    subsequent states preserve the filtered prefix. Also checks the stronger
-    sk.possible → tokenIndex ≥ tokens.size variant. -/
+/-- Check filtered prefix preservation at every intermediate state where the
+    current theorem's `simpleKey.possible = false` precondition holds. -/
 private def checkFilteredPrefix (state : IO.Ref TestCollector)
     (label : String) (input : String) : IO Unit := do
   let s0 := ScannerState.mk' input
@@ -1264,28 +1268,19 @@ private def checkFilteredPrefix (state : IO.Ref TestCollector)
       states := states.push s'
       s := s'
   let p : Positioned YamlToken → Bool := fun t => t.val != .placeholder
-  -- For every pair (i, j) where i < j and the precondition holds at state i,
+  -- For every pair (i, j) where i < j and `sk.possible = false` at state i,
   -- check that filtered(state_j) has filtered(state_i) as a prefix.
-  let mut allEkOk := true
   let mut allSkOk := true
-  let mut ekFails := 0
   let mut skFails := 0
-  let mut ekPairs := 0
   let mut skPairs := 0
   let mut lastFailInfo := ""
   for i in [:states.size] do
     let si := states[i]!
+    if si.simpleKey.possible then continue
     let filt_i := si.tokens.filter p
-    -- Check if ek=none precondition holds
-    let ekNone := si.explicitKeyLine.isNone
-    -- Check if strong sk precondition holds
-    let skHigh := if si.simpleKey.possible then
-        si.simpleKey.tokenIndex ≥ si.tokens.size
-      else true
     for j in [i+1:states.size] do
       let sj := states[j]!
       let filt_j := sj.tokens.filter p
-      -- Prefix check: filt_i is a prefix of filt_j
       let prefixOk :=
         if filt_i.size > filt_j.size then false
         else (List.range filt_i.size).all fun k =>
@@ -1294,45 +1289,36 @@ private def checkFilteredPrefix (state : IO.Ref TestCollector)
               filt_j[k] == filt_i[k]
             else false
           else true
-      if ekNone then
-        ekPairs := ekPairs + 1
-        if !prefixOk then
-          allEkOk := false
-          ekFails := ekFails + 1
-          lastFailInfo := s!"filtered prefix FAIL (ek=none): step {i}→{j}, " ++
-            s!"filt_i.size={filt_i.size}, filt_j.size={filt_j.size}, " ++
-            s!"si.tokens.size={si.tokens.size}, sj.tokens.size={sj.tokens.size}, " ++
-            s!"si.sk.possible={si.simpleKey.possible}, si.sk.tokenIndex={si.simpleKey.tokenIndex}"
-      if skHigh then
-        skPairs := skPairs + 1
-        if !prefixOk then
-          allSkOk := false
-          skFails := skFails + 1
-          if allEkOk then  -- only record if not already recorded from ek branch
-            lastFailInfo := s!"filtered prefix FAIL (sk≥tokens.size): step {i}→{j}, " ++
-              s!"filt_i.size={filt_i.size}, filt_j.size={filt_j.size}"
-  checkM state s!"{label}: filtered prefix (ek=none, {ekPairs} pairs)" allEkOk
-    (if ekFails > 0 then s!"{ekFails} failures. Last: {lastFailInfo}" else "")
-  checkM state s!"{label}: filtered prefix (sk≥tokens.size, {skPairs} pairs)" allSkOk
+      skPairs := skPairs + 1
+      if !prefixOk then
+        allSkOk := false
+        skFails := skFails + 1
+        lastFailInfo := s!"filtered prefix FAIL (sk.possible=false): step {i}→{j}, " ++
+          s!"filt_i.size={filt_i.size}, filt_j.size={filt_j.size}, " ++
+          s!"si.tokens.size={si.tokens.size}, sj.tokens.size={sj.tokens.size}, " ++
+          s!"si.ek={si.explicitKeyLine.isSome}"
+  checkM state s!"{label}: filtered prefix (sk.possible=false, {skPairs} pairs)" allSkOk
     (if skFails > 0 then s!"{skFails} failures. Last: {lastFailInfo}" else "")
 
   -- Also check: at call sites, does ek=none actually hold after flow open?
   -- Track when ek becomes none and whether it stays none during flow body
+  -- Sanity check that the call-site precondition is actually reachable:
+  -- after every flow open, `sk.possible = false` should hold (this is the
+  -- property `scanNextToken_flow_open_init` establishes for the two call sites).
   let mut flowOpens := 0
-  let mut ekNoneAtFlowOpen := 0
+  let mut skFalseAtFlowOpen := 0
   for i in [:states.size] do
     let si := states[i]!
-    -- Detect flow open: token just added is flowSequenceStart or flowMappingStart
     if i > 0 then
       let prev := states[i-1]!
       if si.tokens.size > prev.tokens.size then
         let lastAdded := si.tokens[si.tokens.size - 1]!.val
         if lastAdded == .flowSequenceStart || lastAdded == .flowMappingStart then
           flowOpens := flowOpens + 1
-          if si.explicitKeyLine.isNone then
-            ekNoneAtFlowOpen := ekNoneAtFlowOpen + 1
-  check state s!"{label}: ek=none at flow opens ({ekNoneAtFlowOpen}/{flowOpens})"
-    (flowOpens == 0 || ekNoneAtFlowOpen == flowOpens)
+          if !si.simpleKey.possible then
+            skFalseAtFlowOpen := skFalseAtFlowOpen + 1
+  check state s!"{label}: sk.possible=false at flow opens ({skFalseAtFlowOpen}/{flowOpens})"
+    (flowOpens == 0 || skFalseAtFlowOpen == flowOpens)
 
 /-- Detailed diagnostic for a single input: dump all intermediate states'
     filtered tokens, ek, sk state, and identify exact token changes. -/
@@ -1361,10 +1347,10 @@ private def diagFilteredPrefix (state : IO.Ref TestCollector)
     let filtVals := filt.toList.map (fun t => tokStr t.val)
     let rawVals := si.tokens.toList.map (fun t => tokStr t.val)
     IO.println s!"  step {i}: ek={si.explicitKeyLine.isSome} sk.pos={si.simpleKey.possible} sk.idx={si.simpleKey.tokenIndex} raw={rawVals} filt={filtVals}"
-  -- Check for prefix violations with ek=none
+  -- Check for prefix violations under the current `sk.possible = false` precondition
   for i in [:states.size] do
     let si := states[i]!
-    if !si.explicitKeyLine.isNone then continue
+    if si.simpleKey.possible then continue
     let filt_i := si.tokens.filter p
     for j in [i+1:states.size] do
       let sj := states[j]!
