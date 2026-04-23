@@ -77,8 +77,8 @@ are monotonic, termination is certified.
 | 2.5 | `advance_preserves_wellFormed` | [`ScannerLoopInvariant`](../L4YAML/Proofs/ScannerLoopInvariant.lean) | ✅ |
 | 2.6 | `scan_full_consumption` | [`ScanStrictCoupling`](../L4YAML/Proofs/ScanStrictCoupling.lean) | ✅ |
 | 2.7 | Simple-key lifecycle: `saveSimpleKey_*`, `scanKey`, `scanValue` preserve `WellFormed` | [`ScannerSimpleKey`](../L4YAML/Proofs/ScannerSimpleKey.lean) | ✅ |
-| 2.8 | Dispatch preservation: `scanNextToken` branches preserve `WellFormed` | [`ScannerDispatch`](../L4YAML/Proofs/ScannerDispatch.lean) | ✅ |
-| 2.9 | Document-marker WF: `scanDirective`, `scanDocumentStart`, `scanDocumentEnd` preserve `WellFormed` | [`ScannerDocument`](../L4YAML/Proofs/ScannerDocument.lean) | ✅ |
+| 2.8 | Dispatch preservation: `scanNextToken` branches preserve `WellFormed` (repr `with_needIndentCheck_preserves_wellFormed`) | [`ScannerDispatch`](../L4YAML/Proofs/ScannerDispatch.lean) | ✅ |
+| 2.9 | Document-marker WF: `scanDirective`, `scanDocumentStart`, `scanDocumentEnd` preserve `WellFormed` (repr `with_docStart_flags_preserves_wellFormed`) | [`ScannerDocument`](../L4YAML/Proofs/ScannerDocument.lean) | ✅ |
 
 **Depends on**: surface coupling (Group 8).
 
@@ -101,7 +101,7 @@ well-formed.
 | 3.1 | `parseStream_sound` | [`ParserSoundness`](../L4YAML/Proofs/ParserSoundness.lean) | ✅ |
 | 3.2 | `yamlValue_has_witness` (mutual recursion with `Classical.choice`) | `ParserSoundness` | ✅ |
 | 3.3 | `parseNode_anchors_grow` | [`ParserAnchorProofs`](../L4YAML/Proofs/ParserAnchorProofs.lean) / [`ParserNodeProofs`](../L4YAML/Proofs/ParserNodeProofs.lean) | ✅ |
-| 3.4 | `parseNode_aliases_resolve'` | `ParserAnchorProofs` / `ParserNodeProofs` | ✅ |
+| 3.4 | `parseNode_aliases_resolve` (public wrapper over `ParserNodeProofs.parseNode_aliases_resolve'`) | [`ParserAnchorProofs`](../L4YAML/Proofs/Parser/ParserAnchorProofs.lean) | ✅ |
 | 3.5 | `parseDocument_aliases_resolve` | `ParserAnchorProofs` | ✅ |
 | 3.6 | `parseStream_output_aliases_resolve` | `ParserAnchorProofs` | ✅ |
 | 3.7 | `parseStream_output_anchors_wellformed` | [`ParserWfaProofs`](../L4YAML/Proofs/ParserWfaProofs.lean) | ✅ |
@@ -196,6 +196,8 @@ values.
 | 6.10 | Phase-E universal round-trip: `∀ v, Grammable v false → ∃ docs, parseYaml (emit v) = .ok docs ∧ docs.size = 1 ∧ contentEq v docs[0]!.value = true` | (in docstring of `Completeness`, `RoundTrip`) | 📝 (aspirational, not declared) |
 | 6.11 | `dumpTyped_*`, `contentRoundTrips_*` | [`SchemaDump`](../L4YAML/Proofs/Schema/SchemaDump.lean), [`DumpRoundTrip`](../L4YAML/Proofs/DumpRoundTrip.lean) | ✅ for concrete instances |
 | 6.12 | `resolve_toYaml_*`, `fromYaml_toYaml_*` type round-trips | [`SchemaComposition`](../L4YAML/Proofs/Schema/SchemaComposition.lean) | ✅ for concrete instances |
+| 6.13 | `emit_parse_succeeds` — emitter output parses via `parseYamlRaw` (existence half of 6.10) | `EmitterScannability` | 🚧 (sorry-reachable via 6.8) |
+| 6.14 | `emit_parseYaml_succeeds` — emitter output parses via `parseYaml` (existence half of 6.10, composed) | `EmitterScannability` | 🚧 (sorry-reachable via 6.8) |
 
 **The gap**: capstone 6.10 is the *universal* (∀ v) round-trip and
 currently lives only in docstrings. Proving it discharges
@@ -225,6 +227,8 @@ derivation tree — the structural form of Group 2.1.
 | 7.2 | `scanLoop_grammar_prod` | `StreamAccum` | 🚧 |
 | 7.3 | Per-function `*_prod` theorems (flow/block/document start/end, anchor/alias, tag, directive) | [`StructureProduction`](../L4YAML/Proofs/StructureProduction.lean) / [`DocumentProduction`](../L4YAML/Proofs/DocumentProduction.lean) / [`ScalarProduction`](../L4YAML/Proofs/ScalarProduction.lean) / [`NodeProduction`](../L4YAML/Proofs/NodeProduction.lean) | 🚧 (3, 3, 5, 0 `sorry`s resp.) |
 | 7.4 | `parseYaml_implies_valid_token_stream` (bridge to Group 4) | `EndToEndCorrectness` | ✅ |
+| 7.5 | `scan_strict_proof` — scanner acceptance implies `InYamlLanguage input` | [`DocumentProduction`](../L4YAML/Proofs/Production/DocumentProduction.lean) | 🚧 (sorry-reachable via 7.1) |
+| 7.6 | `parse_strict_proof` — parser acceptance implies `InYamlLanguage input` | `DocumentProduction` | 🚧 (sorry-reachable via 7.1, 7.5) |
 
 **Note**: Group 7 is the *strongest* form of scanner correctness —
 not "output is well-formed" but "output = a specific derivation tree
@@ -249,7 +253,7 @@ surface-syntax predicate.
 | # | Theorem | Module | Status |
 | - | ------- | ------ | ------ |
 | 8.1 | `SIndent_*`, `GChar_*` character-level predicates | [`SurfaceCoupling`](../L4YAML/Proofs/SurfaceCoupling.lean) | ✅ |
-| 8.2 | `scanFlowSequenceStart/End_corr`, `scanFlowMappingStart/End_corr` | [`StructureCoupling`](../L4YAML/Proofs/StructureCoupling.lean) | ✅ |
+| 8.2 | `scanFlowSequenceStart_corr`, `scanFlowSequenceEnd_corr`, `scanFlowMappingStart_corr`, `scanFlowMappingEnd_corr` | [`StructureCoupling`](../L4YAML/Proofs/StructureCoupling.lean) | ✅ |
 | 8.3 | `scanDirective_corr`, `scanAnchorOrAlias_corr`, `scanTag_corr` | `StructureCoupling` | ✅ |
 | 8.4 | `scanBlockScalar_corr`, `collectDoubleQuotedLoop_corr`, `collectPlainScalarLoop_corr` | [`ScalarCoupling`](../L4YAML/Proofs/ScalarCoupling.lean) | ✅ |
 | 8.5 | `skipSpacesLoop_corr`, `consumeNewline` coupling | [`ScannerCoupling`](../L4YAML/Proofs/ScannerCoupling.lean) | ✅ |
