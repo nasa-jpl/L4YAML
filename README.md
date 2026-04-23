@@ -263,6 +263,31 @@ lake exe schemadump              # Schema ↔ Dump integration
 
 The full list of executables is in [lakefile.toml](lakefile.toml).
 
+### Querying test results
+
+`suiterunner --html` also writes structured results to
+[docs/reports/coverage-summary.json](docs/reports/coverage-summary.json)
+(yaml-test-suite stage breakdown + every verified suite's per-test outcome,
+category, and error message). The `queryresults` CLI reads that file so the
+dashboard data is scriptable without parsing HTML:
+
+```sh
+# List every failing verified test with its error message
+lake exe queryresults ./docs/reports/coverage-summary.json verified-failures
+
+# Markdown summary (yaml-test-suite + verified suites)
+lake exe queryresults ./docs/reports/coverage-summary.json summary
+
+# Unexpected passes in the yaml-test-suite, grouped by stage
+lake exe queryresults ./docs/reports/coverage-summary.json ups --by-stage
+
+# Filter yaml-test-suite entries by id prefix
+lake exe queryresults ./docs/reports/coverage-summary.json filter --id Y79Y
+
+# Diff two runs (outcome changes, additions, removals)
+lake exe queryresults diff before.json after.json
+```
+
 ## Project layout
 
 ```
