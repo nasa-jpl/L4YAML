@@ -760,25 +760,42 @@ in [`04-capstones.md`](04-capstones.md). Groups 1–8.
 <details>
 <summary>
 
-Add a `scripts/check-capstones.py` (or `.sh`)
+`lake exe check-capstones` (in
+[`L4YAML.FGM/tools/CheckCapstones.lean`](../../L4YAML.FGM/tools/CheckCapstones.lean))
 
 </summary>
 
-1. Runs `lake exe theoremgraph --list` and parses the output into
-   a set of `{theorem_name, description}`.
-2. Parses [`04-capstones.md`](04-capstones.md) for rows of the
-   form `| # | `\`theorem_name\`` | module | status |`.
-3. Prints the **set difference** in both directions:
-   - **In blueprint, not in theoremgraph**: missing `@[key_theorem]`
-     attribute.
-   - **In theoremgraph, not in blueprint**: missing from blueprint
-     or added without a blueprint entry.
-4. Exit non-zero if either difference is non-empty.
+Written in Lean rather than Python so the catalogue is consumed
+as typed data (`KeyTheoremCatalogue.entries : Array (Name × KeyAnnotation)`)
+instead of by scraping the `theoremgraph --list` output.
 
-- **Integration**: run in CI; `make check-blueprint` target; link
-  from [`06-discipline.md`](06-discipline.md) Rule 4.
-- **Acceptance**: PR adding a theorem either updates the blueprint
-  and the annotation, or fails CI.
+1. Loads the authoritative `@[key_theorem]` set from
+   `KeyTheoremCatalogue.entries` — the single source of truth;
+   source-level elaboration also populates the env extension so
+   `#key_theorems` and all downstream widgets see the same set.
+2. Parses [`04-capstones.md`](04-capstones.md) for rows of the form
+   `| # | `\`theorem_name\`` | module | status |`. Supports
+   `foo_*` suffix wildcards inside backticks for bundle-representative
+   rows.
+3. Prints the **set difference** in both directions:
+   - **Missing**: ✅ blueprint rows whose backtick names have no
+     matching catalogue entry.
+   - **Extra**: catalogue entries not named by any blueprint row.
+4. Exits non-zero on drift (1) or CLI/file errors (2).
+
+Flags:
+- `--blueprint <path>` — override default path
+  (`../lean4-yaml-verified/Blueprint/04-capstones.md`).
+- `--include-partial` — also require annotations for 🚧 / 🧩 rows
+  (default: ✅ only).
+- `--show-ambiguous` — list rows with no parseable backtick
+  identifier (informational).
+
+**Integration**: run in CI (L4YAML.FGM `.github/workflows/`); link
+from [`06-discipline.md`](06-discipline.md) Rule 4.
+
+**Acceptance**: PR adding a theorem either updates the blueprint
+and `KeyTheoremCatalogue.entries`, or fails CI.
 
 </details>
 
@@ -845,6 +862,123 @@ the three checks broke.
 
 </details>
 
+#### **Phase E — Narrative & tiering (risk: low-medium)**
+
+<details>
+<summary>
+
+Turn the flat capstone list into a top-down story with 5–8
+headline results and a hierarchical index.
+
+</summary>
+
+Phase B's diff gate and Phase C's sorry audit enforce *internal*
+consistency of the capstone set. Phase E is about *external*
+comprehensibility: someone encountering L4YAML for the first time
+shouldn't have to read 50+ rows of `04-capstones.md` to learn what
+L4YAML actually proves. They should see a handful of headline
+results, each with a plain-English summary and a link to its
+supporting theorems.
+
+**The problem we're solving**:
+
+- `04-capstones.md` is organized by **topic** (scanner, parser,
+  end-to-end, ...) — useful as a reference, useless as an
+  introduction.
+- `tmp/graphs/index.html` currently lists all ~400 bipartite
+  + chain graphs in arbitrary order, making it practically unusable.
+- There is no single pointer that answers "what are the public
+  guarantees?" — the answer is spread across Group 4, Group 6,
+  Group 7, and parts of Group 3.
+
+**1. Tier enum in `FGM.KeyAnnotation`**
+
+Extend `FGM/FGM/KeyTheorem.lean`'s `KeyAnnotation` with an optional
+`tier : Option Tier` field:
+
+```lean
+inductive Tier
+  | headline       -- front-page narrative capstone (5-8 total)
+  | groupCapstone  -- leads its group's story
+  | support        -- in catalogue but not front page
+  | bundleRep      -- representative of a theorem family
+  deriving DecidableEq, Hashable
+```
+
+Exposed via the attribute syntax:
+`@[key_theorem "tier=headline" "..."]` or a dedicated attr arg.
+
+**2. Headline slate** (to be curated, subject to review)
+
+Proposed starting slate for a formal-methods audience:
+
+| Headline | Why experts expect it | Plain-English summary |
+|---|---|---|
+| 3.11 `parseStream_respects_grammar_unconditional` | spec conformance | "parser output matches the written YAML 1.2.2 grammar" |
+| 4.1 `parse_sound` | soundness | "if we accept, the result is well-formed" |
+| 4.3 `parse_complete` | completeness | "every well-formed YAML is accepted" |
+| 4.7 `parse_deterministic` | functionality | "the parser is a function, not a relation" |
+| 5.5 `validYaml_construct` | value-level soundness | "every successful parse yields a `ValidYaml`" |
+| 6.9 `universal_roundtrip` (or 6.10 aspirational) | round-trip | "emit then parse gives back the same content" |
+| 7.6 `parse_strict_proof` | strictness | "we never accept ill-formed input" |
+
+Each headline gets:
+- A 1-sentence plain-English summary (non-expert-readable).
+- The formal statement in full.
+- A 1-paragraph "what this means in practice" block.
+- A pointer to supporting theorems (for the expert reader).
+
+Headlines that are 🚧/🧩 are allowed on the front page *iff* the
+open conditions or remaining sorry sites are clearly stated in the
+plain-English summary. Headlines that regress drop off the front
+page until they recover.
+
+**3. Hierarchical `tmp/graphs/index.html`**
+
+Rewrite `generateIndexHtml` to render:
+
+1. **Front page**: each headline's chain graph inline, plus its
+   plain-English summary.
+2. **Group pages**: one sub-page per blueprint group, listing its
+   group-capstone and supports.
+3. **Full catalogue**: flat link to everything (today's behavior).
+
+`theoremgraph --tier headline` should emit just the headline
+chain SVGs — ~6 files instead of ~800 — suitable for embedding in
+documentation.
+
+**4. Narrative file**
+
+New `Blueprint/01-what-we-prove.md` (sits before `02-architecture.md`
+in the reading order). Walks the headlines top-down, links each
+to its row in `04-capstones.md` for the formal statement and to
+the corresponding chain graph for the proof structure. Written to
+be readable by a YAML user who is not a formal-methods expert, but
+precise enough for the expert to follow the links through.
+
+**5. `check-capstones` extension**
+
+Add `--require-headlines-proven` mode: fail CI if any headline
+entry has status 🚧 (partial) or 🗑 (deletion candidate). Stricter
+than the default ✅/🚧-agnostic check.
+
+**Acceptance**:
+
+- Every headline has plain-English, formal, and practical
+  descriptions in `01-what-we-prove.md`.
+- `index.html` front page loads in < 2 seconds and embeds only
+  headline graphs.
+- A reader new to the project can answer "what does L4YAML
+  prove?" after 5 minutes of reading, without opening any `.lean`
+  file.
+
+**Risk**: the curation is a judgment call that changes as proofs
+mature. Mitigation: headlines are declarative (tagged entries),
+not code; they can be re-tiered in a single PR when the proof
+state shifts.
+
+</details>
+
 </details>
 
 ---
@@ -863,14 +997,19 @@ names don't change during folder moves.
 Concrete 1-week target:
 
 1. Day 1–2: Initiative 2 Phase A (tag the remaining ~39
-   capstones).
-2. Day 2: Initiative 2 Phase B (diff script, wire into CI).
+   capstones). **Done 2026-04-22.**
+2. Day 2: Initiative 2 Phase B (`lake exe check-capstones`, wire
+   into CI). **Done 2026-04-23.**
 3. Day 3: Run Phase B against current state; reconcile any
-   mismatch between blueprint and attributes.
+   mismatch between blueprint and attributes. **Done 2026-04-23
+   (11 drift items resolved; catalogue pruned from 64 → 56
+   entries).**
 4. Day 4: Initiative 2 Phase C (sorry-reachability audit); update
    ✅/🚧 statuses in [`04-capstones.md`](04-capstones.md).
 5. Day 5: Start Initiative 1 Phase 1.
 6. Following weeks: Initiative 1 Phases 2, 3, 4 as separate PRs.
+7. Separately: Initiative 2 Phase E (narrative & tiering) — not
+   on the critical path; run after B and C are both green.
 
 Initiative 2 Phase D (DocVerificationBridge) is deferred — revisit
 once DVB supports 4.30.0 or after 1–3 land and the rest of the

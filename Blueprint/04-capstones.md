@@ -131,22 +131,18 @@ Top-level guarantees on `parseYaml`. These are the public promises.
 
 | # | Theorem | Module | Status |
 | - | ------- | ------ | ------ |
-| 4.1 | `parse_sound` | [`EndToEndCorrectness`](../L4YAML/Proofs/EndToEndCorrectness.lean) | ✅ |
-| 4.2 | `parse_sound_documents` | `EndToEndCorrectness` | ✅ |
-| 4.3 | `parse_complete` | `EndToEndCorrectness` | ✅ |
-| 4.4 | `parse_produces_valid_yaml` | `EndToEndCorrectness` | ✅ |
-| 4.5 | `parse_produces_valid_documents` | `EndToEndCorrectness` | ✅ |
-| 4.6 | `parse_produces_valid_stream` | `EndToEndCorrectness` | ✅ |
-| 4.7 | `parse_deterministic` | `EndToEndCorrectness` | ✅ |
-| 4.8 | `parse_respects_eq` | `EndToEndCorrectness` | ✅ |
-| 4.9 | `parseYaml_implies_validYaml` | `EndToEndCorrectness` | ✅ |
-| 4.10 | `parseYaml_implies_valid_token_stream` | `EndToEndCorrectness` | ✅ |
-| 4.11 | `parseYaml_implies_valid_document` | `EndToEndCorrectness` | ✅ |
-| 4.12 | `parseYaml_implies_valid_stream` | `EndToEndCorrectness` | ✅ |
+| 4.1 | `parse_sound` — soundness: `parse s = .ok docs → ValidYamlProp s docs` | [`EndToEndCorrectness`](../L4YAML/Proofs/EndToEndCorrectness.lean) | ✅ |
+| 4.3 | `parse_complete` — completeness: `ValidYamlProp s docs → parse s = .ok docs` | `EndToEndCorrectness` | ✅ |
+| 4.7 | `parse_deterministic` — `parse` is a function | `EndToEndCorrectness` | ✅ |
+| 4.10 | `parseYaml_implies_valid_token_stream` (bridge to Group 2) | `EndToEndCorrectness` | ✅ |
 
-**Claim**: after the blueprint pivot, these twelve are the **target
-set** of user-facing guarantees. Every other theorem either feeds
-one of these or is a candidate for deletion.
+**Pruning note (2026-04-23)**: rows 4.2, 4.4, 4.5, 4.6, 4.8, 4.9,
+4.11, 4.12 were removed as specializations or trivial corollaries
+of 4.1 / 4.3. They still exist as declarations in the proof file
+but are no longer capstones. 4.8 (`parse_respects_eq`) is
+`by rw [h]` and was never worth listing. The remaining four are
+the genuine public promises: **soundness**, **completeness**,
+**determinism**, and a bridge back to scanner-level validity.
 
 **Depends on**: Groups 1–3.
 
