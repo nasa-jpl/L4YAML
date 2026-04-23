@@ -167,8 +167,7 @@ The AST-to-value conversion faithfully implements the Core Schema.
 | 5.4 | `scalar_content_preserved` | `Soundness` | ✅ |
 | 5.5 | `validYaml_construct` | `Soundness` | ✅ |
 | 5.6 | `isNull_*`, `isBool_*`, `isInt_*`, `isFloat_*` correctness (§10.3) | [`SchemaResolution`](../L4YAML/Proofs/Schema/SchemaResolution.lean) | ✅ |
-| 5.7 | `resolveImplicit_completeness` | `SchemaResolution` | ✅ |
-| 5.8 | `resolve_structural_preservation` | `SchemaResolution` | ✅ |
+| 5.7 | `resolveImplicit_complete` | `SchemaResolution` | ✅ |
 
 **Depends on**: Group 3 (parser correctness).
 
