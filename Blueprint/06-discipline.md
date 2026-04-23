@@ -102,8 +102,15 @@ Examples:
 
 - Sorry count: primary = [`05-current-state.md`](05-current-state.md).
   Overview.lean should either link there or include the same number.
-- Capstone list: primary = [`04-capstones.md`](04-capstones.md).
-  `Verification.lean` should either link or mirror, not diverge.
+- Capstone list: primary = [`04-capstones.md`](04-capstones.md),
+  mirrored by
+  [`L4YAML.FGM/KeyTheoremCatalogue.lean`](../../L4YAML.FGM/KeyTheoremCatalogue.lean)
+  for consumption by compiled tooling. **Gate**: `lake exe check-capstones`
+  (run in L4YAML.FGM CI via
+  [`generate-graphs.yml`](../../L4YAML.FGM/.github/workflows/generate-graphs.yml))
+  fails the PR if the two drift. So a PR that adds, renames, or
+  retires a ✅ capstone must update both places — `Verification.lean`
+  should continue to either link or mirror, not diverge.
 - Architecture pipeline: primary =
   [`02-architecture.md`](02-architecture.md). `Architecture.lean`
   should mirror.
