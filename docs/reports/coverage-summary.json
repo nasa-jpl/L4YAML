@@ -1,5 +1,5 @@
 {
-  "date": "2026-04-22T17:45:13-0700",
+  "date": "2026-04-22T18:25:50-0700",
   "overall": {
     "applicable": 358,
     "correct": 358,
@@ -7590,9 +7590,9 @@
         "total": 154
       },
       {
-        "allPass": false,
+        "allPass": true,
         "label": "Adversarial Instantiation Tests (sorry audit)",
-        "passed": 2455,
+        "passed": 2441,
         "tests": [
           {
             "category": "9g: emitList_body_filtered_characterization",
@@ -12571,500 +12571,322 @@
           },
           {
             "category": "ScanChain_filtered_prefix",
-            "name": "emit-seq-1: filtered prefix (ek=none, 6 pairs)",
+            "name": "emit-seq-1: filtered prefix (sk.possible=false, 5 pairs)",
             "outcome": "pass"
           },
           {
             "category": "ScanChain_filtered_prefix",
-            "name": "emit-seq-1: filtered prefix (sk≥tokens.size, 5 pairs)",
+            "name": "emit-seq-1: sk.possible=false at flow opens (1/1)",
             "outcome": "pass"
           },
           {
             "category": "ScanChain_filtered_prefix",
-            "name": "emit-seq-1: ek=none at flow opens (1/1)",
+            "name": "emit-seq-3: filtered prefix (sk.possible=false, 13 pairs)",
             "outcome": "pass"
           },
           {
             "category": "ScanChain_filtered_prefix",
-            "name": "emit-seq-3: filtered prefix (ek=none, 28 pairs)",
+            "name": "emit-seq-3: sk.possible=false at flow opens (1/1)",
             "outcome": "pass"
           },
           {
             "category": "ScanChain_filtered_prefix",
-            "name": "emit-seq-3: filtered prefix (sk≥tokens.size, 13 pairs)",
+            "name": "emit-map-1: filtered prefix (sk.possible=false, 11 pairs)",
             "outcome": "pass"
           },
           {
             "category": "ScanChain_filtered_prefix",
-            "name": "emit-seq-3: ek=none at flow opens (1/1)",
+            "name": "emit-map-1: sk.possible=false at flow opens (1/1)",
             "outcome": "pass"
           },
           {
             "category": "ScanChain_filtered_prefix",
-            "error": "3 failures. Last: filtered prefix FAIL (ek=none): step 2→5, filt_i.size=3, filt_j.size=7, si.tokens.size=7, sj.tokens.size=12, si.sk.possible=true, si.sk.tokenIndex=4",
-            "name": "emit-map-1: filtered prefix (ek=none, 15 pairs)",
-            "outcome": "fail"
-          },
-          {
-            "category": "ScanChain_filtered_prefix",
-            "name": "emit-map-1: filtered prefix (sk≥tokens.size, 11 pairs)",
-            "outcome": "pass"
-          },
-          {
-            "category": "ScanChain_filtered_prefix",
-            "name": "emit-map-1: ek=none at flow opens (1/1)",
-            "outcome": "pass"
-          },
-          {
-            "category": "ScanChain_filtered_prefix",
-            "error": "10 failures. Last: filtered prefix FAIL (ek=none): step 6→9, filt_i.size=8, filt_j.size=12, si.tokens.size=15, sj.tokens.size=20, si.sk.possible=true, si.sk.tokenIndex=12",
-            "name": "emit-map-2: filtered prefix (ek=none, 45 pairs)",
-            "outcome": "fail"
-          },
-          {
-            "category": "ScanChain_filtered_prefix",
-            "name": "emit-map-2: filtered prefix (sk≥tokens.size, 25 pairs)",
-            "outcome": "pass"
-          },
-          {
-            "category": "ScanChain_filtered_prefix",
-            "name": "emit-map-2: ek=none at flow opens (1/1)",
-            "outcome": "pass"
-          },
-          {
-            "category": "ScanChain_filtered_prefix",
-            "name": "emit-nested-seq: filtered prefix (ek=none, 45 pairs)",
-            "outcome": "pass"
-          },
-          {
-            "category": "ScanChain_filtered_prefix",
-            "name": "emit-nested-seq: filtered prefix (sk≥tokens.size, 24 pairs)",
-            "outcome": "pass"
-          },
-          {
-            "category": "ScanChain_filtered_prefix",
-            "name": "emit-nested-seq: ek=none at flow opens (2/2)",
-            "outcome": "pass"
-          },
-          {
-            "category": "ScanChain_filtered_prefix",
-            "error": "6 failures. Last: filtered prefix FAIL (ek=none): step 3→9, filt_i.size=4, filt_j.size=11, si.tokens.size=10, sj.tokens.size=20, si.sk.possible=true, si.sk.tokenIndex=7",
-            "name": "emit-nested-map: filtered prefix (ek=none, 45 pairs)",
-            "outcome": "fail"
-          },
-          {
-            "category": "ScanChain_filtered_prefix",
-            "name": "emit-nested-map: filtered prefix (sk≥tokens.size, 29 pairs)",
-            "outcome": "pass"
-          },
-          {
-            "category": "ScanChain_filtered_prefix",
-            "name": "emit-nested-map: ek=none at flow opens (2/2)",
-            "outcome": "pass"
-          },
-          {
-            "category": "ScanChain_filtered_prefix",
-            "name": "emit-deep: filtered prefix (ek=none, 28 pairs)",
-            "outcome": "pass"
-          },
-          {
-            "category": "ScanChain_filtered_prefix",
-            "name": "emit-deep: filtered prefix (sk≥tokens.size, 22 pairs)",
-            "outcome": "pass"
-          },
-          {
-            "category": "ScanChain_filtered_prefix",
-            "name": "emit-deep: ek=none at flow opens (3/3)",
-            "outcome": "pass"
-          },
-          {
-            "category": "ScanChain_filtered_prefix",
-            "error": "26 failures. Last: filtered prefix FAIL (ek=none): step 13→17, filt_i.size=16, filt_j.size=21, si.tokens.size=30, sj.tokens.size=36, si.sk.possible=true, si.sk.tokenIndex=27",
-            "name": "emit-mixed: filtered prefix (ek=none, 153 pairs)",
-            "outcome": "fail"
-          },
-          {
-            "category": "ScanChain_filtered_prefix",
-            "name": "emit-mixed: filtered prefix (sk≥tokens.size, 74 pairs)",
-            "outcome": "pass"
-          },
-          {
-            "category": "ScanChain_filtered_prefix",
-            "name": "emit-mixed: ek=none at flow opens (3/3)",
-            "outcome": "pass"
-          },
-          {
-            "category": "ScanChain_filtered_prefix",
-            "error": "116 failures. Last: filtered prefix FAIL (ek=none): step 32→35, filt_i.size=38, filt_j.size=42, si.tokens.size=67, sj.tokens.size=72, si.sk.possible=true, si.sk.tokenIndex=64",
-            "name": "emit-complex: filtered prefix (ek=none, 630 pairs)",
-            "outcome": "fail"
-          },
-          {
-            "category": "ScanChain_filtered_prefix",
-            "name": "emit-complex: filtered prefix (sk≥tokens.size, 288 pairs)",
+            "name": "emit-map-2: filtered prefix (sk.possible=false, 25 pairs)",
             "outcome": "pass"
           },
           {
             "category": "ScanChain_filtered_prefix",
-            "name": "emit-complex: ek=none at flow opens (6/6)",
+            "name": "emit-map-2: sk.possible=false at flow opens (1/1)",
             "outcome": "pass"
           },
           {
             "category": "ScanChain_filtered_prefix",
-            "error": "2 failures. Last: filtered prefix FAIL (ek=none): step 1→3, filt_i.size=2, filt_j.size=6, si.tokens.size=4, sj.tokens.size=8, si.sk.possible=true, si.sk.tokenIndex=1",
-            "name": "simple-key-val: filtered prefix (ek=none, 6 pairs)",
-            "outcome": "fail"
-          },
-          {
-            "category": "ScanChain_filtered_prefix",
-            "name": "simple-key-val: filtered prefix (sk≥tokens.size, 4 pairs)",
+            "name": "emit-nested-seq: filtered prefix (sk.possible=false, 24 pairs)",
             "outcome": "pass"
           },
           {
             "category": "ScanChain_filtered_prefix",
-            "name": "simple-key-val: ek=none at flow opens (0/0)",
+            "name": "emit-nested-seq: sk.possible=false at flow opens (2/2)",
             "outcome": "pass"
-          },
-          {
-            "category": "ScanChain_filtered_prefix",
-            "error": "7 failures. Last: filtered prefix FAIL (ek=none): step 4→6, filt_i.size=7, filt_j.size=10, si.tokens.size=11, sj.tokens.size=15, si.sk.possible=true, si.sk.tokenIndex=8",
-            "name": "simple-key-nested: filtered prefix (ek=none, 21 pairs)",
-            "outcome": "fail"
           },
           {
             "category": "ScanChain_filtered_prefix",
-            "name": "simple-key-nested: filtered prefix (sk≥tokens.size, 11 pairs)",
+            "name": "emit-nested-map: filtered prefix (sk.possible=false, 29 pairs)",
             "outcome": "pass"
           },
           {
             "category": "ScanChain_filtered_prefix",
-            "name": "simple-key-nested: ek=none at flow opens (0/0)",
+            "name": "emit-nested-map: sk.possible=false at flow opens (2/2)",
             "outcome": "pass"
           },
           {
             "category": "ScanChain_filtered_prefix",
-            "name": "explicit-key: filtered prefix (ek=none, 5 pairs)",
+            "name": "emit-deep: filtered prefix (sk.possible=false, 22 pairs)",
             "outcome": "pass"
           },
           {
             "category": "ScanChain_filtered_prefix",
-            "name": "explicit-key: filtered prefix (sk≥tokens.size, 8 pairs)",
+            "name": "emit-deep: sk.possible=false at flow opens (3/3)",
             "outcome": "pass"
           },
           {
             "category": "ScanChain_filtered_prefix",
-            "name": "explicit-key: ek=none at flow opens (0/0)",
+            "name": "emit-mixed: filtered prefix (sk.possible=false, 74 pairs)",
             "outcome": "pass"
           },
           {
             "category": "ScanChain_filtered_prefix",
-            "name": "flow-seq: filtered prefix (ek=none, 28 pairs)",
+            "name": "emit-mixed: sk.possible=false at flow opens (3/3)",
             "outcome": "pass"
           },
           {
             "category": "ScanChain_filtered_prefix",
-            "name": "flow-seq: filtered prefix (sk≥tokens.size, 13 pairs)",
+            "name": "emit-complex: filtered prefix (sk.possible=false, 288 pairs)",
             "outcome": "pass"
           },
           {
             "category": "ScanChain_filtered_prefix",
-            "name": "flow-seq: ek=none at flow opens (1/1)",
+            "name": "emit-complex: sk.possible=false at flow opens (6/6)",
             "outcome": "pass"
-          },
-          {
-            "category": "ScanChain_filtered_prefix",
-            "error": "10 failures. Last: filtered prefix FAIL (ek=none): step 6→9, filt_i.size=8, filt_j.size=12, si.tokens.size=15, sj.tokens.size=20, si.sk.possible=true, si.sk.tokenIndex=12",
-            "name": "flow-map: filtered prefix (ek=none, 45 pairs)",
-            "outcome": "fail"
           },
           {
             "category": "ScanChain_filtered_prefix",
-            "name": "flow-map: filtered prefix (sk≥tokens.size, 25 pairs)",
+            "name": "simple-key-val: filtered prefix (sk.possible=false, 4 pairs)",
             "outcome": "pass"
           },
           {
             "category": "ScanChain_filtered_prefix",
-            "name": "flow-map: ek=none at flow opens (1/1)",
+            "name": "simple-key-val: sk.possible=false at flow opens (0/0)",
             "outcome": "pass"
           },
           {
             "category": "ScanChain_filtered_prefix",
-            "name": "flow-nested: filtered prefix (ek=none, 91 pairs)",
+            "name": "simple-key-nested: filtered prefix (sk.possible=false, 11 pairs)",
             "outcome": "pass"
           },
           {
             "category": "ScanChain_filtered_prefix",
-            "name": "flow-nested: filtered prefix (sk≥tokens.size, 41 pairs)",
+            "name": "simple-key-nested: sk.possible=false at flow opens (0/0)",
             "outcome": "pass"
           },
           {
             "category": "ScanChain_filtered_prefix",
-            "name": "flow-nested: ek=none at flow opens (3/3)",
+            "name": "explicit-key: filtered prefix (sk.possible=false, 8 pairs)",
             "outcome": "pass"
-          },
-          {
-            "category": "ScanChain_filtered_prefix",
-            "error": "22 failures. Last: filtered prefix FAIL (ek=none): step 9→17, filt_i.size=11, filt_j.size=20, si.tokens.size=24, sj.tokens.size=36, si.sk.possible=true, si.sk.tokenIndex=21",
-            "name": "flow-deep: filtered prefix (ek=none, 153 pairs)",
-            "outcome": "fail"
           },
           {
             "category": "ScanChain_filtered_prefix",
-            "name": "flow-deep: filtered prefix (sk≥tokens.size, 89 pairs)",
+            "name": "explicit-key: sk.possible=false at flow opens (0/0)",
             "outcome": "pass"
           },
           {
             "category": "ScanChain_filtered_prefix",
-            "name": "flow-deep: ek=none at flow opens (4/4)",
+            "name": "flow-seq: filtered prefix (sk.possible=false, 13 pairs)",
             "outcome": "pass"
           },
           {
             "category": "ScanChain_filtered_prefix",
-            "name": "block-seq: filtered prefix (ek=none, 21 pairs)",
+            "name": "flow-seq: sk.possible=false at flow opens (1/1)",
             "outcome": "pass"
           },
           {
             "category": "ScanChain_filtered_prefix",
-            "name": "block-seq: filtered prefix (sk≥tokens.size, 6 pairs)",
+            "name": "flow-map: filtered prefix (sk.possible=false, 25 pairs)",
             "outcome": "pass"
           },
           {
             "category": "ScanChain_filtered_prefix",
-            "name": "block-seq: ek=none at flow opens (0/0)",
+            "name": "flow-map: sk.possible=false at flow opens (1/1)",
             "outcome": "pass"
-          },
-          {
-            "category": "ScanChain_filtered_prefix",
-            "error": "15 failures. Last: filtered prefix FAIL (ek=none): step 7→9, filt_i.size=11, filt_j.size=14, si.tokens.size=18, sj.tokens.size=22, si.sk.possible=true, si.sk.tokenIndex=15",
-            "name": "block-map: filtered prefix (ek=none, 45 pairs)",
-            "outcome": "fail"
           },
           {
             "category": "ScanChain_filtered_prefix",
-            "name": "block-map: filtered prefix (sk≥tokens.size, 21 pairs)",
+            "name": "flow-nested: filtered prefix (sk.possible=false, 41 pairs)",
             "outcome": "pass"
           },
           {
             "category": "ScanChain_filtered_prefix",
-            "name": "block-map: ek=none at flow opens (0/0)",
+            "name": "flow-nested: sk.possible=false at flow opens (3/3)",
             "outcome": "pass"
-          },
-          {
-            "category": "ScanChain_filtered_prefix",
-            "error": "5 failures. Last: filtered prefix FAIL (ek=none): step 1→6, filt_i.size=2, filt_j.size=10, si.tokens.size=4, sj.tokens.size=18, si.sk.possible=true, si.sk.tokenIndex=1",
-            "name": "block-mixed: filtered prefix (ek=none, 21 pairs)",
-            "outcome": "fail"
           },
           {
             "category": "ScanChain_filtered_prefix",
-            "name": "block-mixed: filtered prefix (sk≥tokens.size, 10 pairs)",
+            "name": "flow-deep: filtered prefix (sk.possible=false, 89 pairs)",
             "outcome": "pass"
           },
           {
             "category": "ScanChain_filtered_prefix",
-            "name": "block-mixed: ek=none at flow opens (0/0)",
+            "name": "flow-deep: sk.possible=false at flow opens (4/4)",
             "outcome": "pass"
           },
           {
             "category": "ScanChain_filtered_prefix",
-            "error": "12 failures. Last: filtered prefix FAIL (ek=none): step 5→7, filt_i.size=10, filt_j.size=14, si.tokens.size=12, sj.tokens.size=16, si.sk.possible=true, si.sk.tokenIndex=9",
-            "name": "block-nested: filtered prefix (ek=none, 28 pairs)",
-            "outcome": "fail"
-          },
-          {
-            "category": "ScanChain_filtered_prefix",
-            "name": "block-nested: filtered prefix (sk≥tokens.size, 16 pairs)",
+            "name": "block-seq: filtered prefix (sk.possible=false, 6 pairs)",
             "outcome": "pass"
           },
           {
             "category": "ScanChain_filtered_prefix",
-            "name": "block-nested: ek=none at flow opens (0/0)",
+            "name": "block-seq: sk.possible=false at flow opens (0/0)",
             "outcome": "pass"
           },
           {
             "category": "ScanChain_filtered_prefix",
-            "name": "dquoted: filtered prefix (ek=none, 1 pairs)",
+            "name": "block-map: filtered prefix (sk.possible=false, 21 pairs)",
             "outcome": "pass"
           },
           {
             "category": "ScanChain_filtered_prefix",
-            "name": "dquoted: filtered prefix (sk≥tokens.size, 1 pairs)",
+            "name": "block-map: sk.possible=false at flow opens (0/0)",
             "outcome": "pass"
           },
           {
             "category": "ScanChain_filtered_prefix",
-            "name": "dquoted: ek=none at flow opens (0/0)",
+            "name": "block-mixed: filtered prefix (sk.possible=false, 10 pairs)",
             "outcome": "pass"
           },
           {
             "category": "ScanChain_filtered_prefix",
-            "name": "squoted: filtered prefix (ek=none, 1 pairs)",
+            "name": "block-mixed: sk.possible=false at flow opens (0/0)",
             "outcome": "pass"
           },
           {
             "category": "ScanChain_filtered_prefix",
-            "name": "squoted: filtered prefix (sk≥tokens.size, 1 pairs)",
+            "name": "block-nested: filtered prefix (sk.possible=false, 16 pairs)",
             "outcome": "pass"
           },
           {
             "category": "ScanChain_filtered_prefix",
-            "name": "squoted: ek=none at flow opens (0/0)",
+            "name": "block-nested: sk.possible=false at flow opens (0/0)",
             "outcome": "pass"
           },
           {
             "category": "ScanChain_filtered_prefix",
-            "name": "flow-dquoted: filtered prefix (ek=none, 15 pairs)",
+            "name": "dquoted: filtered prefix (sk.possible=false, 1 pairs)",
             "outcome": "pass"
           },
           {
             "category": "ScanChain_filtered_prefix",
-            "name": "flow-dquoted: filtered prefix (sk≥tokens.size, 9 pairs)",
+            "name": "dquoted: sk.possible=false at flow opens (0/0)",
             "outcome": "pass"
           },
           {
             "category": "ScanChain_filtered_prefix",
-            "name": "flow-dquoted: ek=none at flow opens (1/1)",
+            "name": "squoted: filtered prefix (sk.possible=false, 1 pairs)",
             "outcome": "pass"
           },
           {
             "category": "ScanChain_filtered_prefix",
-            "error": "2 failures. Last: filtered prefix FAIL (ek=none): step 2→4, filt_i.size=3, filt_j.size=7, si.tokens.size=7, sj.tokens.size=11, si.sk.possible=true, si.sk.tokenIndex=4",
-            "name": "doc-start: filtered prefix (ek=none, 10 pairs)",
-            "outcome": "fail"
-          },
-          {
-            "category": "ScanChain_filtered_prefix",
-            "name": "doc-start: filtered prefix (sk≥tokens.size, 8 pairs)",
+            "name": "squoted: sk.possible=false at flow opens (0/0)",
             "outcome": "pass"
           },
           {
             "category": "ScanChain_filtered_prefix",
-            "name": "doc-start: ek=none at flow opens (0/0)",
+            "name": "flow-dquoted: filtered prefix (sk.possible=false, 9 pairs)",
             "outcome": "pass"
-          },
-          {
-            "category": "ScanChain_filtered_prefix",
-            "error": "3 failures. Last: filtered prefix FAIL (ek=none): step 1→4, filt_i.size=2, filt_j.size=8, si.tokens.size=4, sj.tokens.size=12, si.sk.possible=true, si.sk.tokenIndex=1",
-            "name": "doc-end: filtered prefix (ek=none, 10 pairs)",
-            "outcome": "fail"
           },
           {
             "category": "ScanChain_filtered_prefix",
-            "name": "doc-end: filtered prefix (sk≥tokens.size, 6 pairs)",
+            "name": "flow-dquoted: sk.possible=false at flow opens (1/1)",
             "outcome": "pass"
           },
           {
             "category": "ScanChain_filtered_prefix",
-            "name": "doc-end: ek=none at flow opens (0/0)",
+            "name": "doc-start: filtered prefix (sk.possible=false, 8 pairs)",
             "outcome": "pass"
-          },
-          {
-            "category": "ScanChain_filtered_prefix",
-            "error": "9 failures. Last: filtered prefix FAIL (ek=none): step 7→9, filt_i.size=11, filt_j.size=15, si.tokens.size=21, sj.tokens.size=25, si.sk.possible=true, si.sk.tokenIndex=18",
-            "name": "multi-doc: filtered prefix (ek=none, 45 pairs)",
-            "outcome": "fail"
           },
           {
             "category": "ScanChain_filtered_prefix",
-            "name": "multi-doc: filtered prefix (sk≥tokens.size, 31 pairs)",
+            "name": "doc-start: sk.possible=false at flow opens (0/0)",
             "outcome": "pass"
           },
           {
             "category": "ScanChain_filtered_prefix",
-            "name": "multi-doc: ek=none at flow opens (0/0)",
+            "name": "doc-end: filtered prefix (sk.possible=false, 6 pairs)",
             "outcome": "pass"
-          },
-          {
-            "category": "ScanChain_filtered_prefix",
-            "error": "2 failures. Last: filtered prefix FAIL (ek=none): step 3→5, filt_i.size=4, filt_j.size=8, si.tokens.size=10, sj.tokens.size=14, si.sk.possible=true, si.sk.tokenIndex=7",
-            "name": "yaml-directive: filtered prefix (ek=none, 15 pairs)",
-            "outcome": "fail"
           },
           {
             "category": "ScanChain_filtered_prefix",
-            "name": "yaml-directive: filtered prefix (sk≥tokens.size, 9 pairs)",
+            "name": "doc-end: sk.possible=false at flow opens (0/0)",
             "outcome": "pass"
           },
           {
             "category": "ScanChain_filtered_prefix",
-            "name": "yaml-directive: ek=none at flow opens (0/0)",
+            "name": "multi-doc: filtered prefix (sk.possible=false, 31 pairs)",
             "outcome": "pass"
-          },
-          {
-            "category": "ScanChain_filtered_prefix",
-            "error": "2 failures. Last: filtered prefix FAIL (ek=none): step 3→5, filt_i.size=4, filt_j.size=8, si.tokens.size=10, sj.tokens.size=14, si.sk.possible=true, si.sk.tokenIndex=7",
-            "name": "tag-directive: filtered prefix (ek=none, 15 pairs)",
-            "outcome": "fail"
           },
           {
             "category": "ScanChain_filtered_prefix",
-            "name": "tag-directive: filtered prefix (sk≥tokens.size, 9 pairs)",
+            "name": "multi-doc: sk.possible=false at flow opens (0/0)",
             "outcome": "pass"
           },
           {
             "category": "ScanChain_filtered_prefix",
-            "name": "tag-directive: ek=none at flow opens (0/0)",
+            "name": "yaml-directive: filtered prefix (sk.possible=false, 9 pairs)",
             "outcome": "pass"
           },
           {
             "category": "ScanChain_filtered_prefix",
-            "name": "empty: filtered prefix (ek=none, 0 pairs)",
+            "name": "yaml-directive: sk.possible=false at flow opens (0/0)",
             "outcome": "pass"
           },
           {
             "category": "ScanChain_filtered_prefix",
-            "name": "empty: filtered prefix (sk≥tokens.size, 0 pairs)",
+            "name": "tag-directive: filtered prefix (sk.possible=false, 9 pairs)",
             "outcome": "pass"
           },
           {
             "category": "ScanChain_filtered_prefix",
-            "name": "empty: ek=none at flow opens (0/0)",
+            "name": "tag-directive: sk.possible=false at flow opens (0/0)",
             "outcome": "pass"
           },
           {
             "category": "ScanChain_filtered_prefix",
-            "name": "ws-only: filtered prefix (ek=none, 0 pairs)",
+            "name": "empty: filtered prefix (sk.possible=false, 0 pairs)",
             "outcome": "pass"
           },
           {
             "category": "ScanChain_filtered_prefix",
-            "name": "ws-only: filtered prefix (sk≥tokens.size, 0 pairs)",
+            "name": "empty: sk.possible=false at flow opens (0/0)",
             "outcome": "pass"
           },
           {
             "category": "ScanChain_filtered_prefix",
-            "name": "ws-only: ek=none at flow opens (0/0)",
+            "name": "ws-only: filtered prefix (sk.possible=false, 0 pairs)",
             "outcome": "pass"
           },
           {
             "category": "ScanChain_filtered_prefix",
-            "name": "plain-scalar: filtered prefix (ek=none, 1 pairs)",
+            "name": "ws-only: sk.possible=false at flow opens (0/0)",
             "outcome": "pass"
           },
           {
             "category": "ScanChain_filtered_prefix",
-            "name": "plain-scalar: filtered prefix (sk≥tokens.size, 1 pairs)",
+            "name": "plain-scalar: filtered prefix (sk.possible=false, 1 pairs)",
             "outcome": "pass"
           },
           {
             "category": "ScanChain_filtered_prefix",
-            "name": "plain-scalar: ek=none at flow opens (0/0)",
+            "name": "plain-scalar: sk.possible=false at flow opens (0/0)",
             "outcome": "pass"
-          },
-          {
-            "category": "ScanChain_filtered_prefix",
-            "error": "92 failures. Last: filtered prefix FAIL (ek=none): step 15→25, filt_i.size=23, filt_j.size=34, si.tokens.size=36, sj.tokens.size=52, si.sk.possible=true, si.sk.tokenIndex=33",
-            "name": "deep-flow-in-block: filtered prefix (ek=none, 325 pairs)",
-            "outcome": "fail"
           },
           {
             "category": "ScanChain_filtered_prefix",
-            "name": "deep-flow-in-block: filtered prefix (sk≥tokens.size, 180 pairs)",
+            "name": "deep-flow-in-block: filtered prefix (sk.possible=false, 180 pairs)",
             "outcome": "pass"
           },
           {
             "category": "ScanChain_filtered_prefix",
-            "name": "deep-flow-in-block: ek=none at flow opens (5/5)",
+            "name": "deep-flow-in-block: sk.possible=false at flow opens (5/5)",
             "outcome": "pass"
           },
           {
@@ -19978,7 +19800,7 @@
             "outcome": "pass"
           }
         ],
-        "total": 2473
+        "total": 2441
       },
       {
         "allPass": true,
@@ -21246,7 +21068,7 @@
         "total": 7
       }
     ],
-    "totalPassed": 3695,
-    "totalTests": 3713
+    "totalPassed": 3681,
+    "totalTests": 3681
   }
 }
