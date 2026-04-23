@@ -1,4 +1,4 @@
-import L4YAML.Proofs.RoundTripComposition
+import L4YAML.Proofs.RoundTrip.RoundTripComposition
 
 namespace L4YAML.Proofs.RoundTripComposition
 

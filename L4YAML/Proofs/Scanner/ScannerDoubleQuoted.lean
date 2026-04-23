@@ -2,7 +2,7 @@ import L4YAML.Scanner.Scanner
 import L4YAML.Output.Emitter
 import L4YAML.Spec.CharPredicates
 import L4YAML.Spec.Grammar
-import L4YAML.Proofs.RoundTrip
+import L4YAML.Proofs.RoundTrip.RoundTrip
 
 /-
 Copyright (c) 2026. All rights reserved.

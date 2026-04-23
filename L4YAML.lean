@@ -8,8 +8,8 @@ import L4YAML.Spec.Grammar
 import L4YAML.Config.Limits
 import L4YAML.Proofs.Contracts.BlockScalarContracts
 import L4YAML.Proofs.Foundation.CharClass
-import L4YAML.Proofs.CommentProperties
-import L4YAML.Proofs.CommentRoundTrip
+import L4YAML.Proofs.RoundTrip.CommentProperties
+import L4YAML.Proofs.RoundTrip.CommentRoundTrip
 import L4YAML.Proofs.Completeness
 import L4YAML.Proofs.Composition
 import L4YAML.Proofs.Coupling.CouplingBridge
@@ -33,8 +33,8 @@ import L4YAML.Proofs.Parser.ParserSoundness
 import L4YAML.Proofs.Parser.ParserWellBehaved
 import L4YAML.Proofs.Parser.ParserWfaProofs
 import L4YAML.Proofs.Production.PreprocessProduction
-import L4YAML.Proofs.RoundTrip
-import L4YAML.Proofs.RoundTripComposition
+import L4YAML.Proofs.RoundTrip.RoundTrip
+import L4YAML.Proofs.RoundTrip.RoundTripComposition
 import L4YAML.Proofs.Coupling.ScalarCoupling
 import L4YAML.Proofs.Production.ScalarProduction
 import L4YAML.Proofs.Scanner.ScannerContracts

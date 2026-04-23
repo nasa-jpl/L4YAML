@@ -273,7 +273,7 @@ PR; each leaves build green.
 | 7 | Output/ ✅ | 3 | ~11,000 | 6 (EmitterScannability, ScannerEmitBridge, DumpRoundTrip) | medium (EmitterScannability is ~10k LoC) |
 | 8 | Parser/ ✅ | 9 | ~12,000 | 3 (all parser correctness) | medium (size + mutual-rec imports) |
 | 9 | Coupling/ ✅ | 5 | ~2,400 | 8 (all surface coupling), 7 boundary | low |
-| 10 | RoundTrip/ | 4 | ~2,200 | 6 (RoundTrip, RoundTripComposition, CommentRoundTrip) | low |
+| 10 | RoundTrip/ ✅ | 4 | ~2,200 | 6 (RoundTrip, RoundTripComposition, CommentRoundTrip) | low |
 
 **Capstones that stay at `Proofs/` root** (not moved into subclusters
 — they are the top-down anchors of
@@ -593,6 +593,38 @@ Moved five scanner↔surface↔grammar coupling proofs into
   `L4YAML/Proofs/Output/EmitterScannability.lean` two lines) +
   three internal cross-imports + narrative references in
   `Blueprint/README.md` and `Blueprint/03-code-organization.md`.
+
+**Phase 4 · RoundTrip/ ✅ done 2026-04-22**
+
+Moved the four round-trip and comment-channel proofs into
+[`L4YAML/Proofs/RoundTrip/`](../L4YAML/Proofs/RoundTrip/):
+[`RoundTrip.lean`](../L4YAML/Proofs/RoundTrip/RoundTrip.lean),
+[`RoundTripComposition.lean`](../L4YAML/Proofs/RoundTrip/RoundTripComposition.lean),
+[`CommentRoundTrip.lean`](../L4YAML/Proofs/RoundTrip/CommentRoundTrip.lean),
+[`CommentProperties.lean`](../L4YAML/Proofs/RoundTrip/CommentProperties.lean).
+This closes **Initiative 1 Phase 4** — every non-umbrella proof file
+now lives inside a role-named subfolder.
+
+- **Tooling used**: same pattern as the nine preceding clusters —
+  `git mv` + one anchored `sed` pass over `^import L4YAML.Proofs.Foo$`.
+  No intra-cluster imports existed among the four files (pure renames,
+  100% similarity).  Namespaces left untouched.
+- **Script**:
+  [`scripts/refactor-phase-10-roundtrip.sh`](../scripts/refactor-phase-10-roundtrip.sh)
+  — reversible via commit revert.
+- **Acceptance met**: `lake build` 449/449 (same pre-existing
+  `sorry` warnings in `Output/EmitterScannability.lean` carried
+  over unchanged from the baseline — no new warnings or failures
+  introduced by this cluster).
+- **Blast radius**: 4 renames + external importers rewritten
+  (`L4YAML.lean` four import lines;
+  `L4YAML/Proofs/Scanner/ScannerDoubleQuoted.lean` one line;
+  `L4YAML/Proofs/Output/ScannerEmitBridge.lean` one line;
+  `L4YAML/Proofs/Output/EmitterScannability.lean` one line;
+  `Tests/Guards/Proofs/RoundTrip.lean` one line;
+  `Tests/Guards/Proofs/RoundTripComposition.lean` one line) +
+  narrative references in `Blueprint/README.md` and
+  `Blueprint/03-code-organization.md`.
 
 **Overall exit criterion for Initiative 1**: `Architecture.lean`
 can be regenerated from the actual folder layout instead of
