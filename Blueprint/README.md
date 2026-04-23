@@ -98,12 +98,19 @@ dependency graph.
 
 ### Initiative 1 — Code reorganization
 
+<details>
+<summary>
+
 Goal: make every terminology entry in
 [`01-terminology.md`](01-terminology.md) findable in ≤ 2 clicks
 from the top of `L4YAML/`. Four phases; each phase is one PR,
 each PR ends on a green build.
 
-**Phase 1 — Non-code moves (risk: low) ✅ done 2026-04-21**
+</summary>
+
+#### **Phase 1 — Non-code moves (risk: low) ✅ done 2026-04-21**
+
+<details>
 
 Landed as `ad12e204` (12 top-level files into
 `Spec/`, `Parser/`, `Output/`, `Config/`, `FFI/`, `Token/`,
@@ -124,7 +131,11 @@ Landed as `ad12e204` (12 top-level files into
   the Doc/Verso files had no direct imports of the moved modules
   and did not need updates.
 
-**Phase 2 — Scanner split (risk: medium) ✅ done 2026-04-21**
+</details>
+
+#### **Phase 2 — Scanner split (risk: medium) ✅ done 2026-04-21**
+
+<details>
 
 Broke monolithic `L4YAML/Scanner/Scanner.lean` (~2761 LoC, not the
 ~920 LoC originally estimated) into seven submodules:
@@ -169,7 +180,11 @@ matching the spec-section pattern used by the other submodules
   `scanWithComments`, plus the `Loop`-suffixed helpers for spec
   productions whose terminating wrapper was already tagged.
 
-**Phase 3 — Parser split (risk: medium) ✅ done 2026-04-21**
+</details>
+
+#### **Phase 3 — Parser split (risk: medium) ✅ done 2026-04-21**
+
+<details>
 
 Broke monolithic `L4YAML/Parser/TokenParser.lean` (~1191 LoC) into
 four files along its existing logical seams:
@@ -223,7 +238,11 @@ is the new umbrella holding the user-facing pipeline: `scanAndParse`,
   the user-facing API name stable (`L4YAML.TokenParser.parseYaml`)
   while honouring the file-layout intent.
 
-**Phase 4 — Proofs reorganization (risk: low per-cluster)**
+</details>
+
+#### **Phase 4 — Proofs reorganization (risk: low per-cluster)**
+
+<details>
 
 Move [`L4YAML/Proofs/*.lean`](../L4YAML/Proofs/) into role-named
 subfolders (Foundation/, Errors/, Schema/, Contracts/, Production/,
@@ -260,7 +279,11 @@ PR; each leaves build green.
       **Contracts/** and holds just the two contract files
       (`BlockScalarContracts`, `DocumentContracts`).
 
-**Cluster roadmap (10 PRs, Foundation + 9 remaining)**
+</details>
+
+#### **Cluster roadmap (10 PRs, Foundation + 9 remaining)**
+
+<details>
 
 | PR | Cluster | Files | LoC (approx) | Capstone groups | Risk |
 | -- | ------- | ----: | -----------: | --------------- | ---- |
@@ -314,7 +337,11 @@ L4YAML/Proofs/
 └── EndToEndCorrectness.lean -- capstone (Group 4 public guarantees)
 ```
 
-**Phase 4 · Foundation/ ✅ done 2026-04-21**
+</details>
+
+#### **Phase 4 · Foundation/ ✅ done 2026-04-21**
+
+<details>
 
 Moved four low-level utility proofs into
 [`L4YAML/Proofs/Foundation/`](../L4YAML/Proofs/Foundation/):
@@ -339,7 +366,11 @@ Moved four low-level utility proofs into
   narrative references in `README.md`, `L4YAML/Proofs/README.md`,
   `FoldNewlines.lean`, `Completeness.lean`.
 
-**Phase 4 · Errors/ ✅ done 2026-04-22**
+</details>
+
+#### **Phase 4 · Errors/ ✅ done 2026-04-22**
+
+<details>
 
 Moved three error-domain proofs into
 [`L4YAML/Proofs/Errors/`](../L4YAML/Proofs/Errors/):
@@ -360,7 +391,11 @@ Moved three error-domain proofs into
   `Tests/Guards/Proofs/FoldNewlines.lean`) + one narrative
   reference in `EXCEPTIONS.md`.
 
-**Phase 4 · Schema/ ✅ done 2026-04-22**
+</details>
+
+#### **Phase 4 · Schema/ ✅ done 2026-04-22**
+
+<details>
 
 Moved four schema-domain proofs into
 [`L4YAML/Proofs/Schema/`](../L4YAML/Proofs/Schema/):
@@ -383,8 +418,12 @@ Moved four schema-domain proofs into
   `Tests/Guards/Proofs/SchemaResolution.lean`) + narrative
   references in `README.md`, `Blueprint/01-terminology.md`,
   `Blueprint/04-capstones.md`, and `EXCEPTIONS.md`.
+  
+</details>
 
-**Phase 4 · Contracts/ ✅ done 2026-04-22**
+#### **Phase 4 · Contracts/ ✅ done 2026-04-22**
+
+<details>
 
 Moved two contract proofs into
 [`L4YAML/Proofs/Contracts/`](../L4YAML/Proofs/Contracts/):
@@ -405,7 +444,11 @@ Moved two contract proofs into
   No test guards exist for these contract proofs, and no other
   in-repo narrative docs reference them by path.
 
-**Phase 4 · Production/ ✅ done 2026-04-22**
+</details>
+
+#### **Phase 4 · Production/ ✅ done 2026-04-22**
+
+<details>
 
 Moved seven production-theorem proofs into
 [`L4YAML/Proofs/Production/`](../L4YAML/Proofs/Production/):
@@ -436,7 +479,11 @@ Moved seven production-theorem proofs into
   `Blueprint/03-code-organization.md`. No test-guard files import
   these production proofs directly.
 
-**Phase 4 · Scanner/ ✅ done 2026-04-22**
+</details>
+
+#### **Phase 4 · Scanner/ ✅ done 2026-04-22**
+
+<details>
 
 Moved eighteen scanner-correctness proofs into
 [`L4YAML/Proofs/Scanner/`](../L4YAML/Proofs/Scanner/):
@@ -486,7 +533,11 @@ Moved eighteen scanner-correctness proofs into
   moved files + narrative references in `Blueprint/README.md` and
   `Blueprint/03-code-organization.md`.
 
-**Phase 4 · Output/ ✅ done 2026-04-22**
+</details>
+
+#### **Phase 4 · Output/ ✅ done 2026-04-22**
+
+<details>
 
 Moved three emitter/dumper-correctness proofs into
 [`L4YAML/Proofs/Output/`](../L4YAML/Proofs/Output/):
@@ -514,7 +565,11 @@ Moved three emitter/dumper-correctness proofs into
   one internal cross-import + narrative references in
   `Blueprint/README.md` and `Blueprint/03-code-organization.md`.
 
-**Phase 4 · Parser/ ✅ done 2026-04-22**
+</details>
+
+#### **Phase 4 · Parser/ ✅ done 2026-04-22**
+
+<details>
 
 Moved nine parser-correctness proofs into
 [`L4YAML/Proofs/Parser/`](../L4YAML/Proofs/Parser/):
@@ -555,8 +610,12 @@ Moved nine parser-correctness proofs into
   seven internal mutual-recursion cross-imports + narrative
   references in `Blueprint/README.md` and
   `Blueprint/03-code-organization.md`.
+  
+</details>
 
-**Phase 4 · Coupling/ ✅ done 2026-04-22**
+#### **Phase 4 · Coupling/ ✅ done 2026-04-22**
+
+<details>
 
 Moved five scanner↔surface↔grammar coupling proofs into
 [`L4YAML/Proofs/Coupling/`](../L4YAML/Proofs/Coupling/):
@@ -594,7 +653,11 @@ Moved five scanner↔surface↔grammar coupling proofs into
   three internal cross-imports + narrative references in
   `Blueprint/README.md` and `Blueprint/03-code-organization.md`.
 
-**Phase 4 · RoundTrip/ ✅ done 2026-04-22**
+</details>
+
+#### **Phase 4 · RoundTrip/ ✅ done 2026-04-22**
+
+<details>
 
 Moved the four round-trip and comment-channel proofs into
 [`L4YAML/Proofs/RoundTrip/`](../L4YAML/Proofs/RoundTrip/):
@@ -633,12 +696,21 @@ the `L4YAML.lean` umbrella (i.e. the repo-root library entry
 point that re-exports submodules) — every other file lives inside
 a role-named folder.
 
+</details>
+
+</details>
+
 ---
 
 ### Initiative 2 — Mechanical capstone verification
 
+<details>
+<summary>
+
 Goal: compare the human-written [`04-capstones.md`](04-capstones.md)
 against Lean's actual dependency DAG. Catch three classes of drift:
+
+</summary>
 
 - **Proved capstones that depend on `sorry`** (status should be
   🚧, not ✅).
@@ -663,12 +735,17 @@ tags only **6 theorems** with `@[key_theorem]`. The blueprint
 lists ~45 capstones across 8 groups. The 39-theorem gap is the
 immediate tagging backlog.
 
-**Phase A — Tag all capstones (risk: low)**
+#### **Phase A — Tag all capstones (risk: low)**
+
+<details>
+<summary>
 
 Extend
 [`KeyTheoremAnnotations.lean`](../../L4YAML.FGM/KeyTheoremAnnotations.lean)
 with one `attribute [key_theorem "..."] ...` line per ✅ capstone
 in [`04-capstones.md`](04-capstones.md). Groups 1–8.
+
+</summary>
 
 - **Acceptance**: `lake build -p L4YAML.FGM` passes;
   `lake exe theoremgraph --list` outputs ≥ 45 theorem names
@@ -676,9 +753,16 @@ in [`04-capstones.md`](04-capstones.md). Groups 1–8.
 - **Status source-of-truth**: the attribute text is authoritative
   for the theorem's public description; the blueprint mirrors it.
 
-**Phase B — Diff tool (risk: low)**
+</details>
 
-Add a `scripts/check-capstones.py` (or `.sh`) that:
+#### **Phase B — Diff tool (risk: low)**
+
+<details>
+<summary>
+
+Add a `scripts/check-capstones.py` (or `.sh`)
+
+</summary>
 
 1. Runs `lake exe theoremgraph --list` and parses the output into
    a set of `{theorem_name, description}`.
@@ -696,13 +780,20 @@ Add a `scripts/check-capstones.py` (or `.sh`) that:
 - **Acceptance**: PR adding a theorem either updates the blueprint
   and the annotation, or fails CI.
 
-**Phase C — Sorry-reachability audit (risk: medium)**
+</details>
+
+#### **Phase C — Sorry-reachability audit (risk: medium)**
+
+<details>
+<summary>
 
 For each capstone in
 [`04-capstones.md`](04-capstones.md), use
 `lake exe theoremgraph --dot <name>` to extract the dependency
 DAG, then check whether any transitive dependency contains
 `sorry`. Downgrade status from ✅ to 🚧 for any capstone that does.
+
+</summary>
 
 - **Tooling choices**:
   - Simplest: run `theoremgraph --dot` per capstone, grep each
@@ -717,10 +808,17 @@ DAG, then check whether any transitive dependency contains
   a capstone's proof is green but a helper it depends on has
   regressed to `sorry`.
 
-**Phase D — DocVerificationBridge integration (risk: high, defer)**
+</details>
+
+#### **Phase D — DocVerificationBridge integration (risk: high, defer)**
+
+<details>
+<summary>
 
 Adopt DocVerificationBridge's Four-Category Ontology once the
 toolchain mismatch is resolved. Two routes:
+
+</summary>
 
 - Wait for DocVerificationBridge to support 4.30.0+ (watch
   [`Experiments/ExperimentsCore.lean:maxSupportedVersion`](../../doc-verification-bridge.ghe/Experiments/Experiments/ExperimentsCore.lean)).
@@ -745,7 +843,12 @@ proof with no `sorry` in its transitive dependency tree, and
 acknowledged infrastructure. A failing job points at which of
 the three checks broke.
 
+</details>
+
+</details>
+
 ---
+
 
 ### Sequencing
 
