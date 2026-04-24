@@ -137,7 +137,8 @@ Top-level guarantees on `parseYaml`. These are the public promises.
 
 | # | Theorem | Module | Status |
 | - | ------- | ------ | ------ |
-| 4.1 | `parse_sound` (headline) — soundness: `parse s = .ok docs → ValidYamlProp s docs` | [`EndToEndCorrectness`](../L4YAML/Proofs/EndToEndCorrectness.lean) | ✅ |
+| 4.1 | `parse_sound_shallow` (headline) — soundness: `parse s = .ok docs → ValidYamlProp s docs` | [`EndToEndCorrectness`](../L4YAML/Proofs/EndToEndCorrectness.lean) | ✅ |
+| 4.1d | `parse_sound_deep` (headline) — soundness with explicit pipeline fibration and `ValidNode` witness | `EndToEndCorrectness` | ✅ |
 | 4.2 | `parse_complete` (headline) — completeness: `ValidYamlProp s docs → parse s = .ok docs` | `EndToEndCorrectness` | ✅ |
 | 4.3 | `parse_deterministic` (headline) — `parse` is a function | `EndToEndCorrectness` | ✅ |
 | 4.4 | `parseYaml_implies_valid_token_stream` (bridge to Group 2) | `EndToEndCorrectness` | ✅ |
@@ -145,7 +146,7 @@ Top-level guarantees on `parseYaml`. These are the public promises.
 **Pruning and compaction note (2026-04-23)**: the original
 numbering had specializations and trivial corollaries at rows 4.2,
 4.4, 4.5, 4.6, 4.8, 4.9, 4.11, 4.12 — removed on 2026-04-23 as
-they add nothing over `parse_sound` / `parse_complete`. 4.8
+they add nothing over `parse_sound_shallow` / `parse_complete`. 4.8
 (`parse_respects_eq`) was `by rw [h]` and was never worth listing.
 In the same pass the four surviving rows were compacted from
 `4.1, 4.3, 4.7, 4.10` to `4.1, 4.2, 4.3, 4.4`. The underlying Lean

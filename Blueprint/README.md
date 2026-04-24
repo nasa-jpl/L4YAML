@@ -936,7 +936,8 @@ genuinely first-class public promises.
 | # | Headline | Category | Status | Why experts expect it | Plain-English summary |
 |---|----------|----------|--------|-----------------------|-----------------------|
 | 3.1 | `parseStream_respects_grammar_unconditional` | `parser` | ✅ | spec conformance | "parser output matches the written YAML 1.2.2 grammar" |
-| 4.1 | `parse_sound`                                | `end-to-end` | ✅ | soundness | "if we accept, the result is well-formed" |
+| 4.1 | `parse_sound_shallow`                        | `end-to-end` | ✅ | soundness (propBridge) | "if we accept, the result is well-formed" |
+| 4.1d | `parse_sound_deep`                          | `end-to-end` | ✅ | soundness (deep fibration canary) | "if we accept, every pipeline stage succeeded and produced a grammar-valid node" |
 | 4.2 | `parse_complete`                             | `end-to-end` | ✅ | completeness | "every well-formed YAML is accepted" |
 | 4.3 | `parse_deterministic`                        | `end-to-end` | ✅ | functionality | "the parser is a function, not a relation" |
 | 5.1 | `validYaml_construct`                        | `values` | ✅ | value-level soundness | "every successful parse yields a `ValidYaml`" |
@@ -1027,12 +1028,13 @@ for the handful of files that don't.
   Rendered as a single node with a diagnostic label; flags likely
   mis-categorisations.
 
-For the 7 headlines specifically this sorts as: 3 `deep`
-(`parseStream_respects_grammar_unconditional`, `universal_roundtrip`,
-`parse_strict_proof`), 2 `propBridge` (`parse_sound`, `parse_complete`
-— both wrapped in `ValidYamlProp`), 2 `weak` (`parse_deterministic`
-proves function-ness by `Except.ok.injEq`; `validYaml_construct` is
-an existence tuple). Full-catalogue distribution (411 entries):
+For the 8 headlines specifically this sorts as: 4 `deep`
+(`parseStream_respects_grammar_unconditional`, `parse_sound_deep`,
+`universal_roundtrip`, `parse_strict_proof`), 2 `propBridge`
+(`parse_sound_shallow`, `parse_complete` — both wrapped in
+`ValidYamlProp`), 2 `weak` (`parse_deterministic` proves function-
+ness by `Except.ok.injEq`; `validYaml_construct` is an existence
+tuple). Full-catalogue distribution (411 entries):
 232 deep / 12 propBridge / 103 weak / 11 noAbout. The `weak` and
 `noAbout` buckets are diagnostic signals worth periodic review.
 
