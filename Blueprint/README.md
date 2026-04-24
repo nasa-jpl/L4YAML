@@ -836,22 +836,83 @@ supporting theorems.
   guarantees?" — the answer is spread across Group 4, Group 6,
   Group 7, and parts of Group 3.
 
-**1. Tier enum in `FGM.KeyAnnotation`**
+**1. Tier types in `FGM.KeyAnnotation`** — ✅ *shipped*
 
-Extend `FGM/FGM/KeyTheorem.lean`'s `KeyAnnotation` with an optional
-`tier : Option Tier` field:
+`KeyAnnotation` gains an optional `tier : Option Tier` field.
+The design splits what the draft modelled as a flat enum into two
+orthogonal axes — a narrative `Role` and an optional bundle
+membership — because "which theorem represents a family" and
+"where the theorem sits in the narrative" are independent concerns
+and a flat enum would need a cross-product of constructors to
+cover both.
 
 ```lean
-inductive Tier
-  | headline       -- front-page narrative capstone (5-8 total)
-  | groupCapstone  -- leads its group's story
-  | support        -- in catalogue but not front page
-  | bundleRep      -- representative of a theorem family
+inductive Role
+  | headline
+  | categoryCapstone
+  | support
+  deriving DecidableEq, Hashable
+
+structure BundleRef where
+  name  : String      -- scoped within the annotation's `category`
+  isRep : Bool        -- exactly one rep per (category, name)
+  deriving DecidableEq, Hashable
+
+structure Tier where
+  role   : Role
+  bundle : Option BundleRef := none
   deriving DecidableEq, Hashable
 ```
 
-Exposed via the attribute syntax:
-`@[key_theorem "tier=headline" "..."]` or a dedicated attr arg.
+The existing `category : Option String` field doubles as the
+"group" scope — no separate group field was needed. Bundle names
+like `mono` can therefore be reused across categories without
+prefixing (`parser/mono` vs. `emitter/mono` are distinct by virtue
+of their enclosing category).
+
+**Promotional rule**: `headline` subsumes `categoryCapstone`. A
+headline is always its category's lead, so a category with a
+headline needs no separate `categoryCapstone` entry. This avoids
+forcing an artificial second-place pick when the headline already
+leads the category. The `KeyAnnotation.isCategoryCapstone`
+accessor encodes this — it returns `true` for both `headline` and
+`categoryCapstone` roles.
+
+**Invariants** (to be enforced by `check-capstones` in step 6):
+
+1. Every `category` in use has **exactly one** theorem with
+   `role ∈ {headline, categoryCapstone}`.
+2. Total theorems with `role = headline` across the catalogue: 5–8.
+3. For every `(category, bundle.name)` pair, exactly one entry has
+   `bundle.isRep = true`.
+4. `role ∈ {headline, categoryCapstone}` → `category` is `some _`.
+5. Siblings sharing `bundle.name` must share `category`.
+
+**Attribute syntax** (migrated from `(str)? (str)?` to `(str)*`):
+
+```lean
+-- Legacy forms still work:
+@[key_theorem "parser" "Scanner terminates on well-formed tokens"]
+@[key_theorem "Some description only"]
+
+-- New key=value form — auto-detected when the first string begins
+-- with `<ident>+=`:
+@[key_theorem "cat=parser" "desc=..." "role=categoryCapstone"]
+@[key_theorem "cat=parser" "desc=..." "role=support" "bundle=mono"]
+@[key_theorem "cat=parser" "desc=..." "role=support" "bundle=mono:rep"]
+@[key_theorem "cat=parser" "desc=..." "role=headline" "bundle=mono:rep"]
+```
+
+Recognised keys: `cat`/`category`, `desc`/`description`, `role`,
+`bundle`. Unknown keys, malformed values, and `bundle` without
+`role` are silently dropped (consistent with the legacy parser's
+tolerance for missing args). Role is required to form a `Tier`;
+bundle is optional.
+
+Also shipped: accessor helpers on `KeyAnnotation` — `role?`,
+`bundle?`, `bundleName?`, `isBundleRep`, `isHeadline`,
+`isCategoryCapstone`. `#key_theorems` now displays tier info when
+present.
 
 **2. Headline slate** (to be curated, subject to review)
 
@@ -889,11 +950,11 @@ Rewrite `generateIndexHtml` to render:
 1. **Front page**: each headline's chain graph inline, plus its
    plain-English summary.
 2. **Group pages**: one sub-page per blueprint group, listing its
-   group-capstone and supports.
+   category-capstone and supports.
 3. **Full catalogue**: flat link to everything (today's behavior).
 
 Numbers-wise: `theoremgraph --tier headline` emits ~6 chain SVGs;
-`--tier headline,groupCapstone` emits ~25–50; the full run stays
+`--tier headline,categoryCapstone` emits ~25–50; the full run stays
 at ~840. The 10×–100× size reduction is the difference between
 "L4YAML doc page loads in seconds" and "doc page times out."
 
@@ -903,7 +964,7 @@ The L4YAML.FGM CI workflow currently publishes a single
 `theorem-graphs.tar.gz` containing every SVG. Update it to publish
 two artifacts per release:
 
-- `theorem-graphs-headlines.tar.gz` — `--tier headline,groupCapstone`
+- `theorem-graphs-headlines.tar.gz` — `--tier headline,categoryCapstone`
   output. Small (~50 SVGs + the hierarchical index), always embedded
   by L4YAML's doc build.
 - `theorem-graphs-all.tar.gz` — the full catalogue (today's tarball
@@ -938,7 +999,7 @@ than the default ✅/🚧-agnostic check.
   descriptions in `01-what-we-prove.md`.
 - `theorem-graphs-headlines.tar.gz` is under a small size budget
   (say 2 MB uncompressed, vs. today's ~30 MB) and contains only the
-  headline + group-capstone SVGs plus the hierarchical index.
+  headline + category-capstone SVGs plus the hierarchical index.
 - L4YAML's doc build embeds the headlines tarball by default; the
   full catalogue is a one-click download from the release page.
 - A reader new to the project can answer "what does L4YAML
@@ -966,7 +1027,7 @@ DAG, then check whether any transitive dependency contains
 </summary>
 
 Runs after Phase C so the audit targets the tiered set (headlines
-and group capstones first, supports last) — not a flat list that
+and category capstones first, supports last) — not a flat list that
 Phase C would then reshuffle.
 
 - **Tooling choices**:
