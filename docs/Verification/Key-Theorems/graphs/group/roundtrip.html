@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html><head><title>Group 6 — Round-trip — L4YAML</title>
+<style>body{font-family:sans-serif;max-width:900px;margin:2em auto;color:#222}h1{color:#333}h2{color:#555;border-bottom:1px solid #ddd;padding-bottom:.3em}h3{margin-top:1.2em;color:#4a90d9}.thm{margin:1.5em 0;padding:1em;border:1px solid #ddd;border-radius:8px}.thm h3{margin-top:0}.role-tag{display:inline-block;padding:2px 8px;border-radius:4px;font-size:.85em;margin-left:.5em;color:#fff}.role-headline{background:#d4a017}.role-categoryCapstone{background:#28a745}.role-support{background:#6c757d}.role-none{background:#adb5bd}.cat-link{display:inline-block;margin:4px 8px 4px 0;padding:4px 10px;background:#f0f4fa;border:1px solid #dce9f7;border-radius:4px;text-decoration:none;color:#2a6091}.cat-link:hover{background:#dce9f7}object{max-width:100%;border:1px solid #eee;margin-top:.5em}.meta{color:#666;font-size:.9em;margin:.3em 0}.desc{margin:.5em 0}nav{background:#f8f9fa;padding:.5em 1em;border-radius:6px;margin-bottom:1.5em}nav a{margin-right:1em;color:#2a6091;text-decoration:none}nav a:hover{text-decoration:underline}</style>
+</head><body>
+<h1>Group 6 — Round-trip</h1>
+<nav><a href='../index.html'>Front page</a><a href='../all.html'>Full catalogue</a></nav>
+<p class='meta'>Category: <code>roundtrip</code> &middot; 12 entries</p>
+<h2>Headlines (1)</h2>
+<div class='thm'><h3><code>EmitterScannability.universal_roundtrip</code><span class='role-tag role-headline'>headline</span></h3>
+<p class='desc'>6.1 Universal YAML round-trip property (🚧 sorry-reachable via 6.9)</p>
+<p class='meta'><a href='../L4YAML/Proofs/EmitterScannability/universal_roundtrip.bipartite.svg'>bipartite SVG</a> · <a href='../L4YAML/Proofs/EmitterScannability/universal_roundtrip.chain.svg'>chain SVG</a></p>
+</div>
+<h2>Supports (11)</h2>
+<div class='thm'><h3><code>SchemaDump.dumpTyped_true</code><span class='role-tag role-support'>support</span></h3>
+<p class='desc'>6.11 Typed dump round-trips for concrete schema instances (bundle representative)</p>
+<p class='meta'><a href='../L4YAML/Proofs/SchemaDump/dumpTyped_true.bipartite.svg'>bipartite SVG</a> · <a href='../L4YAML/Proofs/SchemaDump/dumpTyped_true.chain.svg'>chain SVG</a> <span class='meta'>bundle: <code>typedDump</code> (rep)</span></p>
+</div>
+<div class='thm'><h3><code>SchemaComposition.resolve_toYaml_bool</code><span class='role-tag role-support'>support</span></h3>
+<p class='desc'>6.12 Schema composition round-trip for concrete instances (bundle representative)</p>
+<p class='meta'><a href='../L4YAML/Proofs/SchemaComposition/resolve_toYaml_bool.bipartite.svg'>bipartite SVG</a> · <a href='../L4YAML/Proofs/SchemaComposition/resolve_toYaml_bool.chain.svg'>chain SVG</a> <span class='meta'>bundle: <code>schemaComposition</code> (rep)</span></p>
+</div>
+<div class='thm'><h3><code>RoundTrip.contentEq_refl</code><span class='role-tag role-support'>support</span></h3>
+<p class='desc'>6.2 contentEq is reflexive</p>
+<p class='meta'><a href='../L4YAML/Proofs/RoundTrip/contentEq_refl.bipartite.svg'>bipartite SVG</a> · <a href='../L4YAML/Proofs/RoundTrip/contentEq_refl.chain.svg'>chain SVG</a></p>
+</div>
+<div class='thm'><h3><code>RoundTrip.contentEq_symm</code><span class='role-tag role-support'>support</span></h3>
+<p class='desc'>6.3 contentEq is symmetric</p>
+<p class='meta'><a href='../L4YAML/Proofs/RoundTrip/contentEq_symm.bipartite.svg'>bipartite SVG</a> · <a href='../L4YAML/Proofs/RoundTrip/contentEq_symm.chain.svg'>chain SVG</a></p>
+</div>
+<div class='thm'><h3><code>RoundTrip.contentEq_trans</code><span class='role-tag role-support'>support</span></h3>
+<p class='desc'>6.4 contentEq is transitive</p>
+<p class='meta'><a href='../L4YAML/Proofs/RoundTrip/contentEq_trans.bipartite.svg'>bipartite SVG</a> · <a href='../L4YAML/Proofs/RoundTrip/contentEq_trans.chain.svg'>chain SVG</a></p>
+</div>
+<div class='thm'><h3><code>ScannerEmitBridge.emit_content_invariant</code><span class='role-tag role-support'>support</span></h3>
+<p class='desc'>6.5 Emitter preserves content up to contentEq</p>
+<p class='meta'><a href='../L4YAML/Proofs/ScannerEmitBridge/emit_content_invariant.bipartite.svg'>bipartite SVG</a> · <a href='../L4YAML/Proofs/ScannerEmitBridge/emit_content_invariant.chain.svg'>chain SVG</a></p>
+</div>
+<div class='thm'><h3><code>RoundTrip.escapeTag_roundtrip</code><span class='role-tag role-support'>support</span></h3>
+<p class='desc'>6.6 Tag escaping round-trips</p>
+<p class='meta'><a href='../L4YAML/Proofs/RoundTrip/escapeTag_roundtrip.bipartite.svg'>bipartite SVG</a> · <a href='../L4YAML/Proofs/RoundTrip/escapeTag_roundtrip.chain.svg'>chain SVG</a></p>
+</div>
+<div class='thm'><h3><code>RoundTripComposition.resolve_eq_of_resolveEq</code><span class='role-tag role-support'>support</span></h3>
+<p class='desc'>6.7 resolveEq on resolved nodes implies structural equality</p>
+<p class='meta'><a href='../L4YAML/Proofs/RoundTripComposition/resolve_eq_of_resolveEq.bipartite.svg'>bipartite SVG</a> · <a href='../L4YAML/Proofs/RoundTripComposition/resolve_eq_of_resolveEq.chain.svg'>chain SVG</a></p>
+</div>
+<div class='thm'><h3><code>RoundTripComposition.resolve_eq_of_contentEq_noTags</code><span class='role-tag role-support'>support</span></h3>
+<p class='desc'>6.8 Tag-free contentEq implies resolve-level equality</p>
+<p class='meta'><a href='../L4YAML/Proofs/RoundTripComposition/resolve_eq_of_contentEq_noTags.bipartite.svg'>bipartite SVG</a> · <a href='../L4YAML/Proofs/RoundTripComposition/resolve_eq_of_contentEq_noTags.chain.svg'>chain SVG</a></p>
+</div>
+<div class='thm'><h3><code>EmitterScannability.emit_parse_succeeds</code><span class='role-tag role-support'>support</span></h3>
+<p class='desc'>6.13 Emitter output parses via parseYamlRaw (🚧 sorry-reachable via 6.9)</p>
+<p class='meta'><a href='../L4YAML/Proofs/EmitterScannability/emit_parse_succeeds.bipartite.svg'>bipartite SVG</a> · <a href='../L4YAML/Proofs/EmitterScannability/emit_parse_succeeds.chain.svg'>chain SVG</a></p>
+</div>
+<div class='thm'><h3><code>EmitterScannability.emit_parseYaml_succeeds</code><span class='role-tag role-support'>support</span></h3>
+<p class='desc'>6.14 Emitter output parses via parseYaml (🚧 sorry-reachable via 6.9)</p>
+<p class='meta'><a href='../L4YAML/Proofs/EmitterScannability/emit_parseYaml_succeeds.bipartite.svg'>bipartite SVG</a> · <a href='../L4YAML/Proofs/EmitterScannability/emit_parseYaml_succeeds.chain.svg'>chain SVG</a></p>
+</div>
+</body></html>
