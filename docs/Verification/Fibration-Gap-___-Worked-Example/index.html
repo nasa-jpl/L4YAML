@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script>
+      (function(){
+  const {protocol:proto, host:hostName, pathname:path, search:srch, hash:hsh} = window.location;
+  if (!(path.endsWith("/") || path.endsWith(".html"))) {
+    window.location.replace(`${proto}//${hostName}${path}/${srch}${hsh}`);
+  }
+})()</script>
+    <base href="./../../"><meta charset="utf-8">
+    <meta name="viewport" content="height=device-height, width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1">
+    <title>Fibration Gap — Worked Example</title><link rel="stylesheet" href="book.css">
+    <link rel="stylesheet" href="verso-vars.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js" integrity="sha384-zbcZAIxlvJtNE3Dp5nxLXdXtXyxwOdnILY1TDPVmKFhl4r4nSUG1r8bcFXGVa4Te" crossorigin="anonymous"></script>
+    <script src="-verso-search/elasticlunr.min.js"></script>
+    <script src="-verso-search/fuzzysort.min.js"></script>
+    <script src="-verso-search/searchIndex.js"></script>
+    <script type="module" src="-verso-search/search-init.js"></script>
+    <link rel="stylesheet" href="-verso-search/search-box.css">
+    <link rel="stylesheet" href="-verso-search/search-highlight.css">
+    <link rel="stylesheet" href="-verso-search/domain-display.css">
+    <script src="-verso-data/katex/katex.js"></script>
+    <script src="-verso-data/katex/math.js"></script>
+    <link rel="stylesheet" href="-verso-data/katex/katex.css">
+    <style>
+table.tabular {
+  margin: auto;
+  border-spacing: 1rem;
+}
+table.tabular.left-align {
+  margin-right: auto;
+  margin-left: 0;
+}
+table.tabular.center-align {
+  margin: auto;
+}
+table.tabular.right-align {
+  margin-left auto;
+  margin-right: 0;
+}
+table.tabular td, table.tabular th {
+  text-align: left;
+  vertical-align: top;
+}
+table.tabular td > p:first-child, table.tabular th > p:first-child {
+  margin-top: 0;
+}
+table.tabular td > p:last-child, table.tabular th > p:first-child {
+  margin-bottom: 0;
+}
+</style><style>
+    main .theIndex {
+      padding-left: 0;
+      font-family: var(--verso-text-font-family);
+    }
+
+    main .theIndex nav {
+      position: sticky;
+      top: var(--verso-header-height);
+      background: white;
+      font-family: var(--verso-structure-font-family);
+    }
+
+    main .theIndex [id] {
+      /* This needs the combined height of the index header and the page header. We
+         know the height of the page header, but the index header height varies, so
+         we use the maximum height it gets which also works well for readers with
+         wide screens */
+      scroll-margin-top: calc(var(--verso-header-height) + 7.5rem);
+    }
+
+    @media screen and (max-width: 700px) {
+      /* On mobile, the sticky index takes up half the screen. */
+      main .theIndex nav {
+        position: static;
+      }
+
+      main .theIndex [id] {
+        /* On mobile, the index header is not sticky, so we just need to
+        be below the page header. */
+        scroll-margin-top: var(--verso-header-height);
+      }
+    }
+
+    main .theIndex nav ol {
+      padding: 0;
+    }
+
+    main .theIndex nav ol li {
+      display: inline-block;
+    }
+
+    main .theIndex nav ol li a {
+      /* Padding instead of margin to have a bigger click target */
+      padding-left: 0.5rem;
+      padding-right: 0.5rem;
+    }
+    /* Increase the size of the touch target on phones */
+    @media screen and (max-width: 700px) {
+      main .theIndex nav ol li a {
+        padding-left: 0.75rem;
+        padding-right: 0.75rem;
+      }
+    }
+
+    main .theIndex nav ol li:first-child a {
+      padding-left: 0;
+    }
+
+    main .theIndex nav ol li + li:before {
+      content: "|";
+    }
+
+    main .theIndex h1,
+    main .theIndex h2,
+    main .theIndex h3,
+    main .theIndex h4,
+    main .theIndex h5,
+    main .theIndex h6 {
+      margin-top: 0;
+    }
+
+    main .theIndex ol {
+      list-style-type: none;
+    }
+
+    main .theIndex .division > ol {
+      padding-left: 0;
+      display: flex;
+      flex-direction: column;
+      gap: .5rem;
+      overflow-wrap: break-word;
+    }
+
+   main .theIndex .division > ol > li {
+      margin-bottom: 0.5rem;
+    }
+
+    main .theIndex .division ol ol {
+      padding-left: 1rem;
+    }
+
+    main .theIndex .division {
+      break-inside: avoid;
+      counter-reset: none;
+      max-width: none;
+      width: auto;
+    }
+    </style><script src="-verso-search/search-highlight.js" defer="defer"></script>
+    </head>
+  <body>
+    <header>
+      <div class="header-logo-wrapper"></div>
+      <div class="header-title-wrapper">
+        <a href="" class="header-title"><h1>
+            L4YAML</h1>
+          </a></div>
+      </header>
+    <label for="toggle-toc" id="toggle-toc-click"><span class="line line1"></span><span class="line line2"></span><span class="line line3"></span></label><div class="with-toc">
+      <div class="toc-backdrop" onclick="document.getElementById('toggle-toc-click')?.click()"></div>
+      <nav id="toc">
+        <input type="checkbox" id="toggle-toc"><div class="first">
+          <a href="" class="toc-title"><h1>
+              L4YAML</h1>
+            </a><div class="split-tocs">
+            <div class="split-toc book">
+              <div class="title">
+                <label for="--verso-manual-toc-----bookRoot" class="toggle-split-toc"><input type="checkbox" class="toggle-split-toc" id="--verso-manual-toc-----bookRoot"></label><span class="">Table of Contents</span></div>
+              <table><tr class="numbered"><td class="num">1.</td><td><a href="Overview/#overview">Overview</a></td></tr><tr class="numbered"><td class="num">2.</td><td><a href="Architecture/#architecture">Architecture</a></td></tr><tr class="current numbered"><td class="num">3.</td><td><a href="Verification/#verification">Verification</a></td></tr><tr class="numbered"><td class="num">4.</td><td><a href="Security/#security">Security</a></td></tr><tr class="numbered"><td class="num">5.</td><td><a href="FFI-Bindings/#ffi">FFI Bindings</a></td></tr><tr class="numbered"><td class="num">6.</td><td><a href="Testing/#testing">Testing</a></td></tr><tr class="numbered"><td class="num">7.</td><td><a href="Test-Results/#test-results">Test Results</a></td></tr><tr class="unnumbered"><td class="num"><td><a href="Index/#index">Index</a></td></tr></table></div>
+            <div class="split-toc">
+              <div class="title">
+                <label for="--verso-manual-toc-verification" class="toggle-split-toc"><input type="checkbox" class="toggle-split-toc" id="--verso-manual-toc-verification" checked="checked"></label><span class="number">3.</span> <span class=""><a href="Verification/#verification">Verification</a></span></div>
+              <table><tr class="numbered"><td class="num">3.1.</td><td><a href="Verification/Three-Layer-Strategy/#three-layer-strategy">Three-Layer Strategy</a></td></tr><tr class="numbered"><td class="num">3.2.</td><td><a href="Verification/Key-Theorems/#key-theorems">Key Theorems</a></td></tr><tr class="numbered"><td class="num">3.3.</td><td><a href="Verification/Key-Proof-Modules/#proof-modules">Key Proof Modules</a></td></tr><tr class="numbered"><td class="num">3.4.</td><td><a href="Verification/Theorem-Dependency-Visualization/#theorem-graphs">Theorem Dependency Visualization</a></td></tr><tr class="numbered"><td class="num">3.5.</td><td><a href="Verification/Mind-the-Fibration-Gap/#fibration-gap">Mind the Fibration Gap</a></td></tr><tr class="current numbered"><td class="num">3.6.</td><td><a href="Verification/Fibration-Gap-___-Worked-Example/#fibration-worked-example">Fibration Gap — Worked Example</a></td></tr><tr class="numbered"><td class="num">3.7.</td><td><a href="Verification/Proof-Engineering-Patterns/#proof-patterns">Proof Engineering Patterns</a></td></tr><tr class="numbered"><td class="num">3.8.</td><td><a href="Verification/Zero-Axiom-Policy/#zero-axiom">Zero-Axiom Policy</a></td></tr></table></div>
+            <div class="split-toc">
+              <div class="title">
+                <label for="--verso-manual-toc-fibration-worked-example" class="toggle-split-toc"><input type="checkbox" class="toggle-split-toc" id="--verso-manual-toc-fibration-worked-example" checked="checked"></label><span class="number">3.6.</span> <span class="current"><a href="Verification/Fibration-Gap-___-Worked-Example/#fibration-worked-example">Fibration Gap — Worked Example</a></span></div>
+              <table><tr class="numbered"><td class="num">3.6.1.</td><td><a href="Verification/Fibration-Gap-___-Worked-Example/#parse-sound-shallow"><code>parse_sound_shallow</code> — fibration-hidden</a></td></tr><tr class="numbered"><td class="num">3.6.2.</td><td><a href="Verification/Fibration-Gap-___-Worked-Example/#parse-sound-deep"><code>parse_sound_deep</code> — fibration-aligned</a></td></tr><tr class="numbered"><td class="num">3.6.3.</td><td><a href="Verification/Fibration-Gap-___-Worked-Example/#fibration-confirmation">Chain-Analysis Confirmation</a></td></tr></table></div>
+            </div>
+          </div>
+        <div class="last"></div>
+        </nav>
+      <main><div class="content-wrapper">
+          <nav class="prev-next-buttons">
+            <a class="local-button active" href="Verification/Mind-the-Fibration-Gap/#fibration-gap" rel="prev" title="3.5. Mind the Fibration Gap"><span class="arrow">←</span><span class="where">3.5. Mind the Fibration Gap</span></a><a class="local-button active" href="Verification/Proof-Engineering-Patterns/#proof-patterns" rel="next" title="3.7. Proof Engineering Patterns"><span class="where">3.7. Proof Engineering Patterns</span><span class="arrow">→</span></a></nav>
+          <section>
+            <h1>
+              3.6. Fibration Gap — Worked Example<span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=fibration-worked-example" title="Permalink">🔗</a></span></h1>
+            <p>
+              <code>EndToEndCorrectness</code> ships two soundness headlines that differ
+only in how much of the fibration they expose.  They are an
+exact demonstration of the alignment rule.</p>
+            <section>
+              <h2 id="parse-sound-shallow">
+                3.6.1. <code>parse_sound_shallow</code> — fibration-hidden<span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=parse-sound-shallow" title="Permalink">🔗</a></span></h2>
+              <pre>theorem parse_sound_shallow (input : String) (docs : Array YamlDocument)
+    (h : TokenParser.parseYaml input = .ok docs) :
+    ValidYamlProp input docs
+</pre><ul>
+                <li>
+                  <p>
+                    <em>Type</em> mentions <code>parseYaml</code>, <code>YamlDocument</code>, <code>ScanError</code>, and
+   <code>ValidYamlProp</code>.  The pipeline stages (<code>scanFiltered</code>,
+   <code>parseStream</code>, <code>YamlDocument.compose</code>) are hidden inside the
+   existential body of <code>ValidYamlProp</code>.</p>
+                  </li>
+                <li>
+                  <p>
+                    <em>Proof</em> is four tactics: <code>unfold; split; injection; …</code>.  No
+   project theorem is cited.</p>
+                  </li>
+                <li>
+                  <p>
+                    <em>Consequence</em>: condition 1 of the alignment rule fails at every
+   root function, so the chain walker returns zero functorial chains.
+   The <code>ChainDepth</code> classifier tags this theorem <code>propBridge</code> —
+   recognisable by its Prop-typed target — and renders a diagnostic
+   overlay labelled "NOT proof deps of the headline."</p>
+                  </li>
+                </ul>
+              </section>
+            <section>
+              <h2 id="parse-sound-deep">
+                3.6.2. <code>parse_sound_deep</code> — fibration-aligned<span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=parse-sound-deep" title="Permalink">🔗</a></span></h2>
+              <pre>theorem parse_sound_deep (input : String) (docs : Array YamlDocument)
+    (h : TokenParser.parseYaml input = .ok docs) :
+    ∃ (tokens : Array (Positioned YamlToken))
+      (raw_docs : Array YamlDocument),
+      Scanner.scanFiltered input = .ok tokens ∧
+      TokenParser.parseYamlRaw input = .ok raw_docs ∧
+      TokenParser.parseStream tokens = .ok raw_docs ∧
+      docs = raw_docs.map YamlDocument.compose ∧
+      (∀ doc ∈ docs.toList, ∃ node : ValidNode,
+         stripAnnotations (toYamlValue node) = stripAnnotations doc.value)
+</pre><ul>
+                <li>
+                  <p>
+                    <em>Type</em> mentions <code>parseYaml</code>, <code>parseYamlRaw</code>, <code>parseStream</code>,
+   <code>scanFiltered</code>, <code>YamlDocument.compose</code>, <code>toYamlValue</code>, and
+   <code>ValidNode</code> directly.  Every pipeline stage is a first-class
+   citizen of the about-fibration.</p>
+                  </li>
+                <li>
+                  <p>
+                    <em>Proof</em> cites <code>parseYamlRaw_ok_decompose</code> (about <code>parseYamlRaw</code>,
+   <code>scanFiltered</code>, <code>parseStream</code>) and <code>parseYaml_produces_valid_nodes</code>
+   (about <code>parseYaml</code>, <code>toYamlValue</code>), the second of which
+   transitively drags in <code>parseStream_output_grammable</code> (about
+   <code>parseStream</code>).</p>
+                  </li>
+                <li>
+                  <p>
+                    <em>Consequence</em>: conditions 1, 2, and 3 of the alignment rule
+   close simultaneously at multiple root functions.  The
+   <code>ChainDepth</code> classifier tags this theorem <code>deep</code>.</p>
+                  </li>
+                </ul>
+              </section>
+            <section>
+              <h2 id="fibration-confirmation">
+                3.6.3. Chain-Analysis Confirmation<span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=fibration-confirmation" title="Permalink">🔗</a></span></h2>
+              <p>
+                Running the FGM <code>theoremgraph</code> tool in <code>--chain</code> mode on both
+theorems produces the following metrics (tool output captured
+on 2026-04-24).</p>
+              <table class="tabular"><thead><tr><th><p>
+                        Metric</p>
+                      </th><th><p>
+                        <code>parse_sound_shallow</code></p>
+                      </th><th><p>
+                        <code>parse_sound_deep</code>
+</p>
+                      </th></tr></thead><tr><td><p>
+                      Project theorems on chain</p>
+                    </td><td><p>
+                      0</p>
+                    </td><td><p>
+                      4 (root + 3 proof deps)
+</p>
+                    </td></tr><tr><td><p>
+                      <code>uses</code> edges (theorem-fibration steps)</p>
+                    </td><td><p>
+                      0</p>
+                    </td><td><p>
+                      4
+</p>
+                    </td></tr><tr><td><p>
+                      <code>calls</code> edges (function-fibration steps)</p>
+                    </td><td><p>
+                      0</p>
+                    </td><td><p>
+                      9
+</p>
+                    </td></tr><tr><td><p>
+                      Aligned <code>about</code> edges</p>
+                    </td><td><p>
+                      0</p>
+                    </td><td><p>
+                      12
+</p>
+                    </td></tr><tr><td><p>
+                      <code>ChainDepth</code> classification</p>
+                    </td><td><p>
+                      <code>propBridge</code></p>
+                    </td><td><p>
+                      <code>deep</code></p>
+                    </td></tr></table><p>
+                The proof-dep theorems surfaced on <code>parse_sound_deep</code> are:</p>
+              <ul>
+                <li>
+                  <p>
+                    <code>parseYamlRaw_ok_decompose</code> (module <code>Composition</code>) — splits a
+   successful <code>parseYamlRaw</code> into a successful <code>scanFiltered</code> step
+   and a successful <code>parseStream</code> step</p>
+                  </li>
+                <li>
+                  <p>
+                    <code>parseYaml_produces_valid_nodes</code> (module <code>ParserGrammable</code>) —
+   bridges <code>parseYaml</code> success to per-document <code>ValidNode</code> witnesses</p>
+                  </li>
+                <li>
+                  <p>
+                    <code>parseStream_output_grammable</code> (module <code>ParserGrammable</code>) —
+   guarantees every <code>parseStream</code>-produced document is grammable</p>
+                  </li>
+                </ul>
+              <p>
+                Each of these is <em>about</em> a strict callee of <code>parseYaml</code>, so the
+alignment square closes at every step of the descent:</p>
+              <pre>parse_sound_deep --uses--&gt; parseYamlRaw_ok_decompose --uses--&gt; parseStream_output_grammable
+         |                          |                                  |
+       about                      about                              about
+         v                          v                                  v
+     parseYaml --calls--&gt; parseYamlRaw --calls--&gt; parseStream
+</pre><p>
+                <code>parse_sound_shallow</code>'s chain graph, by contrast, is a diagnostic overlay:
+it enumerates the catalogue entries that <em>would</em> be relevant if the
+alignment existed, and the legend explicitly labels those nodes
+"NOT proof deps of the headline."  The absence of any <code>uses</code> or
+<code>calls</code> edge is the fibration gap made visible.</p>
+              <p>
+                Takeaway: a theorem passing the kernel is a statement about
+correctness; a theorem passing the chain walker is additionally a
+statement about <em>traceability</em>.  The two are not the same.  The
+<code>deep</code> / <code>propBridge</code> / <code>weak</code> / <code>noAbout</code> classification in
+<code>FGM.TheoremGraph</code> is the knob that surfaces this distinction
+across the catalogue.</p>
+              </section>
+            </section>
+          <nav class="prev-next-buttons">
+            <a class="local-button active" href="Verification/Mind-the-Fibration-Gap/#fibration-gap" rel="prev" title="3.5. Mind the Fibration Gap"><span class="arrow">←</span><span class="where">3.5. Mind the Fibration Gap</span></a><a class="local-button active" href="Verification/Proof-Engineering-Patterns/#proof-patterns" rel="next" title="3.7. Proof Engineering Patterns"><span class="where">3.7. Proof Engineering Patterns</span><span class="arrow">→</span></a></nav>
+          </div>
+        </main></div>
+    </body>
+  </html>
+

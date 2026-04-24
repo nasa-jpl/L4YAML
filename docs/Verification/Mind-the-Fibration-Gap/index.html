@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script>
+      (function(){
+  const {protocol:proto, host:hostName, pathname:path, search:srch, hash:hsh} = window.location;
+  if (!(path.endsWith("/") || path.endsWith(".html"))) {
+    window.location.replace(`${proto}//${hostName}${path}/${srch}${hsh}`);
+  }
+})()</script>
+    <base href="./../../"><meta charset="utf-8">
+    <meta name="viewport" content="height=device-height, width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1">
+    <title>Mind the Fibration Gap</title><link rel="stylesheet" href="book.css">
+    <link rel="stylesheet" href="verso-vars.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js" integrity="sha384-zbcZAIxlvJtNE3Dp5nxLXdXtXyxwOdnILY1TDPVmKFhl4r4nSUG1r8bcFXGVa4Te" crossorigin="anonymous"></script>
+    <script src="-verso-search/elasticlunr.min.js"></script>
+    <script src="-verso-search/fuzzysort.min.js"></script>
+    <script src="-verso-search/searchIndex.js"></script>
+    <script type="module" src="-verso-search/search-init.js"></script>
+    <link rel="stylesheet" href="-verso-search/search-box.css">
+    <link rel="stylesheet" href="-verso-search/search-highlight.css">
+    <link rel="stylesheet" href="-verso-search/domain-display.css">
+    <script src="-verso-data/katex/katex.js"></script>
+    <script src="-verso-data/katex/math.js"></script>
+    <link rel="stylesheet" href="-verso-data/katex/katex.css">
+    <style>
+table.tabular {
+  margin: auto;
+  border-spacing: 1rem;
+}
+table.tabular.left-align {
+  margin-right: auto;
+  margin-left: 0;
+}
+table.tabular.center-align {
+  margin: auto;
+}
+table.tabular.right-align {
+  margin-left auto;
+  margin-right: 0;
+}
+table.tabular td, table.tabular th {
+  text-align: left;
+  vertical-align: top;
+}
+table.tabular td > p:first-child, table.tabular th > p:first-child {
+  margin-top: 0;
+}
+table.tabular td > p:last-child, table.tabular th > p:first-child {
+  margin-bottom: 0;
+}
+</style><style>
+    main .theIndex {
+      padding-left: 0;
+      font-family: var(--verso-text-font-family);
+    }
+
+    main .theIndex nav {
+      position: sticky;
+      top: var(--verso-header-height);
+      background: white;
+      font-family: var(--verso-structure-font-family);
+    }
+
+    main .theIndex [id] {
+      /* This needs the combined height of the index header and the page header. We
+         know the height of the page header, but the index header height varies, so
+         we use the maximum height it gets which also works well for readers with
+         wide screens */
+      scroll-margin-top: calc(var(--verso-header-height) + 7.5rem);
+    }
+
+    @media screen and (max-width: 700px) {
+      /* On mobile, the sticky index takes up half the screen. */
+      main .theIndex nav {
+        position: static;
+      }
+
+      main .theIndex [id] {
+        /* On mobile, the index header is not sticky, so we just need to
+        be below the page header. */
+        scroll-margin-top: var(--verso-header-height);
+      }
+    }
+
+    main .theIndex nav ol {
+      padding: 0;
+    }
+
+    main .theIndex nav ol li {
+      display: inline-block;
+    }
+
+    main .theIndex nav ol li a {
+      /* Padding instead of margin to have a bigger click target */
+      padding-left: 0.5rem;
+      padding-right: 0.5rem;
+    }
+    /* Increase the size of the touch target on phones */
+    @media screen and (max-width: 700px) {
+      main .theIndex nav ol li a {
+        padding-left: 0.75rem;
+        padding-right: 0.75rem;
+      }
+    }
+
+    main .theIndex nav ol li:first-child a {
+      padding-left: 0;
+    }
+
+    main .theIndex nav ol li + li:before {
+      content: "|";
+    }
+
+    main .theIndex h1,
+    main .theIndex h2,
+    main .theIndex h3,
+    main .theIndex h4,
+    main .theIndex h5,
+    main .theIndex h6 {
+      margin-top: 0;
+    }
+
+    main .theIndex ol {
+      list-style-type: none;
+    }
+
+    main .theIndex .division > ol {
+      padding-left: 0;
+      display: flex;
+      flex-direction: column;
+      gap: .5rem;
+      overflow-wrap: break-word;
+    }
+
+   main .theIndex .division > ol > li {
+      margin-bottom: 0.5rem;
+    }
+
+    main .theIndex .division ol ol {
+      padding-left: 1rem;
+    }
+
+    main .theIndex .division {
+      break-inside: avoid;
+      counter-reset: none;
+      max-width: none;
+      width: auto;
+    }
+    </style><script src="-verso-search/search-highlight.js" defer="defer"></script>
+    </head>
+  <body>
+    <header>
+      <div class="header-logo-wrapper"></div>
+      <div class="header-title-wrapper">
+        <a href="" class="header-title"><h1>
+            L4YAML</h1>
+          </a></div>
+      </header>
+    <label for="toggle-toc" id="toggle-toc-click"><span class="line line1"></span><span class="line line2"></span><span class="line line3"></span></label><div class="with-toc">
+      <div class="toc-backdrop" onclick="document.getElementById('toggle-toc-click')?.click()"></div>
+      <nav id="toc">
+        <input type="checkbox" id="toggle-toc"><div class="first">
+          <a href="" class="toc-title"><h1>
+              L4YAML</h1>
+            </a><div class="split-tocs">
+            <div class="split-toc book">
+              <div class="title">
+                <label for="--verso-manual-toc-----bookRoot" class="toggle-split-toc"><input type="checkbox" class="toggle-split-toc" id="--verso-manual-toc-----bookRoot"></label><span class="">Table of Contents</span></div>
+              <table><tr class="numbered"><td class="num">1.</td><td><a href="Overview/#overview">Overview</a></td></tr><tr class="numbered"><td class="num">2.</td><td><a href="Architecture/#architecture">Architecture</a></td></tr><tr class="current numbered"><td class="num">3.</td><td><a href="Verification/#verification">Verification</a></td></tr><tr class="numbered"><td class="num">4.</td><td><a href="Security/#security">Security</a></td></tr><tr class="numbered"><td class="num">5.</td><td><a href="FFI-Bindings/#ffi">FFI Bindings</a></td></tr><tr class="numbered"><td class="num">6.</td><td><a href="Testing/#testing">Testing</a></td></tr><tr class="numbered"><td class="num">7.</td><td><a href="Test-Results/#test-results">Test Results</a></td></tr><tr class="unnumbered"><td class="num"><td><a href="Index/#index">Index</a></td></tr></table></div>
+            <div class="split-toc">
+              <div class="title">
+                <label for="--verso-manual-toc-verification" class="toggle-split-toc"><input type="checkbox" class="toggle-split-toc" id="--verso-manual-toc-verification" checked="checked"></label><span class="number">3.</span> <span class=""><a href="Verification/#verification">Verification</a></span></div>
+              <table><tr class="numbered"><td class="num">3.1.</td><td><a href="Verification/Three-Layer-Strategy/#three-layer-strategy">Three-Layer Strategy</a></td></tr><tr class="numbered"><td class="num">3.2.</td><td><a href="Verification/Key-Theorems/#key-theorems">Key Theorems</a></td></tr><tr class="numbered"><td class="num">3.3.</td><td><a href="Verification/Key-Proof-Modules/#proof-modules">Key Proof Modules</a></td></tr><tr class="numbered"><td class="num">3.4.</td><td><a href="Verification/Theorem-Dependency-Visualization/#theorem-graphs">Theorem Dependency Visualization</a></td></tr><tr class="current numbered"><td class="num">3.5.</td><td><a href="Verification/Mind-the-Fibration-Gap/#fibration-gap">Mind the Fibration Gap</a></td></tr><tr class="numbered"><td class="num">3.6.</td><td><a href="Verification/Fibration-Gap-___-Worked-Example/#fibration-worked-example">Fibration Gap — Worked Example</a></td></tr><tr class="numbered"><td class="num">3.7.</td><td><a href="Verification/Proof-Engineering-Patterns/#proof-patterns">Proof Engineering Patterns</a></td></tr><tr class="numbered"><td class="num">3.8.</td><td><a href="Verification/Zero-Axiom-Policy/#zero-axiom">Zero-Axiom Policy</a></td></tr></table></div>
+            <div class="split-toc">
+              <div class="title">
+                <label for="--verso-manual-toc-fibration-gap" class="toggle-split-toc"><input type="checkbox" class="toggle-split-toc" id="--verso-manual-toc-fibration-gap" checked="checked"></label><span class="number">3.5.</span> <span class="current"><a href="Verification/Mind-the-Fibration-Gap/#fibration-gap">Mind the Fibration Gap</a></span></div>
+              <table><tr class="numbered"><td class="num">3.5.1.</td><td><a href="Verification/Mind-the-Fibration-Gap/#canary-theorem">Why Fibration Matters: The Canary Theorem</a></td></tr><tr class="numbered"><td class="num">3.5.2.</td><td><a href="Verification/Mind-the-Fibration-Gap/#alignment-rule">The Alignment Rule</a></td></tr><tr class="numbered"><td class="num">3.5.3.</td><td><a href="Verification/Mind-the-Fibration-Gap/#alignment-antipatterns">What Breaks Alignment</a></td></tr><tr class="numbered"><td class="num">3.5.4.</td><td><a href="Verification/Mind-the-Fibration-Gap/#engineering-rule">The Engineering Rule</a></td></tr></table></div>
+            </div>
+          </div>
+        <div class="last"></div>
+        </nav>
+      <main><div class="content-wrapper">
+          <nav class="prev-next-buttons">
+            <a class="local-button active" href="Verification/Theorem-Dependency-Visualization/#theorem-graphs" rel="prev" title="3.4. Theorem Dependency Visualization"><span class="arrow">←</span><span class="where">3.4. Theorem Dependency Visualization</span></a><a class="local-button active" href="Verification/Fibration-Gap-___-Worked-Example/#fibration-worked-example" rel="next" title="3.6. Fibration Gap — Worked Example"><span class="where">3.6. Fibration Gap — Worked Example</span><span class="arrow">→</span></a></nav>
+          <section>
+            <h1>
+              3.5. Mind the Fibration Gap<span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=fibration-gap" title="Permalink">🔗</a></span></h1>
+            <p>
+              <span id="--index--next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next"></span>
+<span id="--index--next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next"></span>
+<span id="--index--next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next"></span>
+When you read "this theorem is machine-checked," two follow-up
+questions are worth asking:</p>
+            <ol start="1">
+              <li>
+                <p>
+                  <em>How significant is this theorem?</em>  Is it a deep statement about
+    how the code behaves, or a shallow observation about the code's
+    shape?</p>
+                </li>
+              <li>
+                <p>
+                  <em>Would this theorem break if we changed the code?</em>  If a refactor
+    silently broke the parser, would the kernel catch it — or would
+    the theorem quietly survive the change?</p>
+                </li>
+              </ol>
+            <p>
+              These are not philosophical questions.  They have a mechanical,
+<em>kernel-objective</em> answer that is read directly off the proof term
+the kernel has already accepted.  The answer comes from stitching
+together two natural bipartite graphs —</p>
+            <ul>
+              <li>
+                <p>
+                  the <em>function call graph</em> (<code>f</code> calls <code>f'</code>), and</p>
+                </li>
+              <li>
+                <p>
+                  the <em>theorem dependency graph</em> (<code>T</code> cites <code>T'</code> in its proof) —</p>
+                </li>
+              </ul>
+            <p>
+              using the <em>about</em> relation (the theorem <code>T</code> mentions the function
+<code>f</code> in its type) as the bridge between them.  A theorem that threads
+all three relations tightly together is said to <em>fibrate</em> over the
+call graph; one that does not leaves a <em>fibration gap</em>.</p>
+            <p>
+              Two natural fibrations run through every proof module, corresponding
+to the three relations above:</p>
+            <ul>
+              <li>
+                <p>
+                  <em>The "about" fibration</em> — each theorem projects to the set of
+   project functions mentioned in its type.  This is what
+   <code>#about_functions</code> reports.</p>
+                </li>
+              <li>
+                <p>
+                  <em>The "uses" fibration</em> — each theorem projects to the set of
+   other project theorems cited in its proof term.  This is what
+   <code>#proof_deps</code> reports.</p>
+                </li>
+              </ul>
+            <p>
+              A theorem is <em>deep</em> when the two fibrations align: the lemmas cited
+in its proof are themselves about the callees of the functions the
+root theorem is about.  The <code>FGM.ExploreGraph.findFunctorialChains</code>
+analyzer walks this alignment one step at a time, and the
+<code>ChainDepth</code> classifier tags the result as <code>deep</code>, <code>propBridge</code>,
+<code>weak</code>, or <code>noAbout</code>.</p>
+            <section>
+              <h2 id="canary-theorem">
+                3.5.1. Why Fibration Matters: The Canary Theorem<span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=canary-theorem" title="Permalink">🔗</a></span></h2>
+              <p>
+                A deeply fibrated theorem acts as a <em>canary</em>.  Because its proof
+term cites specific lemmas about specific callees, any code change
+that invalidates the underlying behaviour invalidates those lemmas,
+which invalidates the theorem, which the kernel then refuses to
+re-accept.  The build breaks at the theorem that pinned the claim,
+pointing directly at the layer of the pipeline whose behaviour has
+shifted.  The deeper the fibration, the more callees are pinned, and
+the more sensitive the canary.</p>
+              <p>
+                A weak, unfibrated theorem gives no such signal.  Because its proof
+never descends into the callees, it can survive code changes that
+genuinely affect parser behaviour.  <code>parse_sound_shallow</code> is a working
+example: its statement asserts only that <em>some</em> token stream exists
+for which the pipeline decomposition equation holds — it says
+nothing about which tokens came out of the scanner, nor what the
+parsed documents actually contain.  A refactor that shuffles the
+parser's internal decision tree, or silently corrupts the emitted
+document content, can leave <code>parse_sound_shallow</code> intact and the kernel
+silent.  Strong behavioural guarantees must come from somewhere
+else — from the underlying parser-correctness lemmas, or from a
+canary like <code>parse_sound_deep</code> that explicitly cites them.</p>
+              <p>
+                This does not mean structurally weak theorems are worthless.  They
+may still carry value — as witnesses that two definitions are
+definitionally equal, as type-class coherence lemmas, as rewriting
+hints, or as quick sanity checks on API shape.  Those uses are
+legitimate, but they answer a different question than fibration
+does.  <em>For the specific question "does this theorem catch breaking
+code changes?", the fibration structure is the right instrument</em>,
+and it is the one this document measures.</p>
+              </section>
+            <section>
+              <h2 id="alignment-rule">
+                3.5.2. The Alignment Rule<span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=alignment-rule" title="Permalink">🔗</a></span></h2>
+              <p>
+                A chain link <code>(T, f)</code> — a root theorem <code>T</code> paired with a function
+<code>f</code> that <code>T</code> is about — extends to <code>(T', f')</code> iff <em>all three</em>
+conditions hold:</p>
+              <ol start="1">
+                <li>
+                  <p>
+                    <code>T' ∈ thmDeps(T)</code> — <code>T'</code> is a project theorem cited in the
+    proof term of <code>T</code></p>
+                  </li>
+                <li>
+                  <p>
+                    <code>f' ∈ about(T')</code> — the type of <code>T'</code> mentions <code>f'</code></p>
+                  </li>
+                <li>
+                  <p>
+                    <code>f' ∈ fnDeps(f)</code> — <code>f</code>'s body calls <code>f'</code></p>
+                  </li>
+                </ol>
+              <p>
+                Informally, the square</p>
+              <pre>     T  --uses--&gt;  T'
+     |              |
+   about          about
+     v              v
+     f  --calls--&gt; f'
+</pre><p>
+                must commute.  Each arrow corresponds to one edge colour in the
+bipartite graph — green for <code>uses</code>, blue for <code>calls</code>, purple for
+<code>about</code>.  Alignment requires <em>three</em> simultaneous edges at every
+step, which is exactly categorical base-change: the functorial
+chain is the lifting of the call-graph path <code>f → f'</code> along the
+about-fibration, guided by the proof-chain <code>T → T'</code>.</p>
+              </section>
+            <section>
+              <h2 id="alignment-antipatterns">
+                3.5.3. What Breaks Alignment<span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=alignment-antipatterns" title="Permalink">🔗</a></span></h2>
+              <ul>
+                <li>
+                  <p>
+                    <em>Prop-wrapping</em> — stating the theorem as <code>… → SomeProp args</code>
+   pushes the about-fibration into the definition body of <code>SomeProp</code>.
+   <code>collectAbout</code> only inspects the raw type, so the analyzer sees
+   <code>SomeProp</code> as a single opaque target.  The three-way alignment
+   collapses before step 1.</p>
+                  </li>
+                <li>
+                  <p>
+                    <em>Tactic-only proofs</em> — <code>unfold; split; injection</code>, <code>rfl</code>,
+   <code>grind</code>, <code>decide</code>, and friends produce proof terms with no
+   project-theorem citations.  Condition 1 fails trivially and no
+   chain extends.</p>
+                  </li>
+                <li>
+                  <p>
+                    <em>Co-location</em> — citing only lemmas that are about the <em>same</em>
+   top-level function the root is about.  The alignment square
+   collapses to the identity on the function side: condition 3 fails
+   because no new call edge is exposed.</p>
+                  </li>
+                </ul>
+              </section>
+            <section>
+              <h2 id="engineering-rule">
+                3.5.4. The Engineering Rule<span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=engineering-rule" title="Permalink">🔗</a></span></h2>
+              <p>
+                When engineering a headline theorem intended for dependency-analysis
+consumption:</p>
+              <ol start="1">
+                <li>
+                  <p>
+                    <em>Expose the fibration in the type</em>.  Name the pipeline functions
+    explicitly in the statement; avoid <code>Prop</code>-wrappers that hide them.</p>
+                  </li>
+                <li>
+                  <p>
+                    <em>Cite lemmas about callees</em>.  Every project lemma used in the
+    proof should itself be about a function that is a strict callee
+    of the function the root theorem is about.</p>
+                  </li>
+                <li>
+                  <p>
+                    <em>Prefer a step-wise proof over a tactic blob</em>.  Each
+    <code>have ⟨…⟩ := lemma …</code> contributes one functorial step;
+    each uncited <code>unfold</code>/<code>split</code>/<code>grind</code> discards one.</p>
+                  </li>
+                </ol>
+              </section>
+            </section>
+          <nav class="prev-next-buttons">
+            <a class="local-button active" href="Verification/Theorem-Dependency-Visualization/#theorem-graphs" rel="prev" title="3.4. Theorem Dependency Visualization"><span class="arrow">←</span><span class="where">3.4. Theorem Dependency Visualization</span></a><a class="local-button active" href="Verification/Fibration-Gap-___-Worked-Example/#fibration-worked-example" rel="next" title="3.6. Fibration Gap — Worked Example"><span class="where">3.6. Fibration Gap — Worked Example</span><span class="arrow">→</span></a></nav>
+          </div>
+        </main></div>
+    </body>
+  </html>
+

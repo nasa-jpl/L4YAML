@@ -7,13 +7,13 @@
      "data":
      {"title": "Zero-Axiom Policy",
       "shortTitle": null,
-      "sectionNum": "3.6.",
+      "sectionNum": "3.8.",
       "context":
       [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
         "shortTitle": "L4YAML",
         "number": null},
        {"title": "Verification", "shortTitle": null, "number": "3"},
-       {"title": "Zero-Axiom Policy", "shortTitle": null, "number": "6"}]},
+       {"title": "Zero-Axiom Policy", "shortTitle": null, "number": "8"}]},
      "address": "/Verification/Zero-Axiom-Policy/"}],
    "verification":
    [{"id": "verification",
@@ -359,7 +359,7 @@
      "data":
      {"title": "Proof Engineering Patterns",
       "shortTitle": null,
-      "sectionNum": "3.5.",
+      "sectionNum": "3.7.",
       "context":
       [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
         "shortTitle": "L4YAML",
@@ -367,7 +367,7 @@
        {"title": "Verification", "shortTitle": null, "number": "3"},
        {"title": "Proof Engineering Patterns",
         "shortTitle": null,
-        "number": "5"}]},
+        "number": "7"}]},
      "address": "/Verification/Proof-Engineering-Patterns/"}],
    "proof-modules":
    [{"id": "proof-modules",
@@ -408,6 +408,42 @@
        {"title": "Security", "shortTitle": null, "number": "4"},
        {"title": "ParserLimits", "shortTitle": null, "number": "2"}]},
      "address": "/Security/ParserLimits/"}],
+   "parse-sound-shallow":
+   [{"id": "parse-sound-shallow",
+     "data":
+     {"title": "parse_sound_shallow  — fibration-hidden",
+      "shortTitle": null,
+      "sectionNum": "3.6.1.",
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Verification", "shortTitle": null, "number": "3"},
+       {"title": "Fibration Gap — Worked Example",
+        "shortTitle": null,
+        "number": "6"},
+       {"title": "parse_sound_shallow  — fibration-hidden",
+        "shortTitle": null,
+        "number": "1"}]},
+     "address": "/Verification/Fibration-Gap-___-Worked-Example/"}],
+   "parse-sound-deep":
+   [{"id": "parse-sound-deep",
+     "data":
+     {"title": "parse_sound_deep  — fibration-aligned",
+      "shortTitle": null,
+      "sectionNum": "3.6.2.",
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Verification", "shortTitle": null, "number": "3"},
+       {"title": "Fibration Gap — Worked Example",
+        "shortTitle": null,
+        "number": "6"},
+       {"title": "parse_sound_deep  — fibration-aligned",
+        "shortTitle": null,
+        "number": "2"}]},
+     "address": "/Verification/Fibration-Gap-___-Worked-Example/"}],
    "overview":
    [{"id": "overview",
      "data":
@@ -500,6 +536,52 @@
         "shortTitle": null,
         "number": "1"}]},
      "address": "/Verification/Three-Layer-Strategy/"}],
+   "fibration-worked-example":
+   [{"id": "fibration-worked-example",
+     "data":
+     {"title": "Fibration Gap — Worked Example",
+      "shortTitle": null,
+      "sectionNum": "3.6.",
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Verification", "shortTitle": null, "number": "3"},
+       {"title": "Fibration Gap — Worked Example",
+        "shortTitle": null,
+        "number": "6"}]},
+     "address": "/Verification/Fibration-Gap-___-Worked-Example/"}],
+   "fibration-gap":
+   [{"id": "fibration-gap",
+     "data":
+     {"title": "Mind the Fibration Gap",
+      "shortTitle": null,
+      "sectionNum": "3.5.",
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Verification", "shortTitle": null, "number": "3"},
+       {"title": "Mind the Fibration Gap", "shortTitle": null, "number": "5"}]},
+     "address": "/Verification/Mind-the-Fibration-Gap/"}],
+   "fibration-confirmation":
+   [{"id": "fibration-confirmation",
+     "data":
+     {"title": "Chain-Analysis Confirmation",
+      "shortTitle": null,
+      "sectionNum": "3.6.3.",
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Verification", "shortTitle": null, "number": "3"},
+       {"title": "Fibration Gap — Worked Example",
+        "shortTitle": null,
+        "number": "6"},
+       {"title": "Chain-Analysis Confirmation",
+        "shortTitle": null,
+        "number": "3"}]},
+     "address": "/Verification/Fibration-Gap-___-Worked-Example/"}],
    "ffi-test-results":
    [{"id": "ffi-test-results",
      "data":
@@ -538,6 +620,20 @@
         "number": null},
        {"title": "FFI Bindings", "shortTitle": null, "number": "5"}]},
      "address": "/FFI-Bindings/"}],
+   "engineering-rule":
+   [{"id": "engineering-rule",
+     "data":
+     {"title": "The Engineering Rule",
+      "shortTitle": null,
+      "sectionNum": "3.5.4.",
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Verification", "shortTitle": null, "number": "3"},
+       {"title": "Mind the Fibration Gap", "shortTitle": null, "number": "5"},
+       {"title": "The Engineering Rule", "shortTitle": null, "number": "4"}]},
+     "address": "/Verification/Mind-the-Fibration-Gap/"}],
    "diagnostic-results":
    [{"id": "diagnostic-results",
      "data":
@@ -596,6 +692,22 @@
         "shortTitle": null,
         "number": "2"}]},
      "address": "/Verification/Three-Layer-Strategy/"}],
+   "canary-theorem":
+   [{"id": "canary-theorem",
+     "data":
+     {"title": "Why Fibration Matters: The Canary Theorem",
+      "shortTitle": null,
+      "sectionNum": "3.5.1.",
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Verification", "shortTitle": null, "number": "3"},
+       {"title": "Mind the Fibration Gap", "shortTitle": null, "number": "5"},
+       {"title": "Why Fibration Matters: The Canary Theorem",
+        "shortTitle": null,
+        "number": "1"}]},
+     "address": "/Verification/Mind-the-Fibration-Gap/"}],
    "c-api":
    [{"id": "c-api",
      "data":
@@ -648,6 +760,34 @@
        {"title": "Scanner (Lexical Layer)", "shortTitle": null, "number": "1"},
        {"title": "Append-Only Design", "shortTitle": null, "number": "2"}]},
      "address": "/Architecture/Scanner-_LPAR_Lexical-Layer_RPAR_/"}],
+   "alignment-rule":
+   [{"id": "alignment-rule",
+     "data":
+     {"title": "The Alignment Rule",
+      "shortTitle": null,
+      "sectionNum": "3.5.2.",
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Verification", "shortTitle": null, "number": "3"},
+       {"title": "Mind the Fibration Gap", "shortTitle": null, "number": "5"},
+       {"title": "The Alignment Rule", "shortTitle": null, "number": "2"}]},
+     "address": "/Verification/Mind-the-Fibration-Gap/"}],
+   "alignment-antipatterns":
+   [{"id": "alignment-antipatterns",
+     "data":
+     {"title": "What Breaks Alignment",
+      "shortTitle": null,
+      "sectionNum": "3.5.3.",
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Verification", "shortTitle": null, "number": "3"},
+       {"title": "Mind the Fibration Gap", "shortTitle": null, "number": "5"},
+       {"title": "What Breaks Alignment", "shortTitle": null, "number": "3"}]},
+     "address": "/Verification/Mind-the-Fibration-Gap/"}],
    "adding-ffi":
    [{"id": "adding-ffi",
      "data":
