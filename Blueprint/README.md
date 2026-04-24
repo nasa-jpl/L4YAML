@@ -1002,6 +1002,40 @@ for files that follow the `L4YAML.Proofs.<Leaf>` convention, but
 makes the output a faithful reflection of the source-file layout
 for the handful of files that don't.
 
+**Chain-depth classifier**: the chain renderer dispatches on four
+`ChainDepth` classes before drawing:
+
+- `deep` — the elaborated proof term cites ≥ 1 project theorem. The
+  classic functorial-chain ladder (functions on the left,
+  theorem-proof chain on the right) is rendered. This is ~56% of
+  the current catalogue.
+- `propBridge` — the proof term cites no project theorems, but the
+  type syntactically mentions a `Prop`-typed def (e.g. `ValidYamlProp`,
+  `ParseNodeFlowSeqOk`) whose body references additional functions.
+  Rendered as the headline + an "About (direct)" cluster + an
+  "About (via Prop-unfold)" cluster + a "Catalogue coverage" cluster
+  that lists annotated theorems about any of the (direct or
+  unfolded) about-functions. The coverage cluster is labelled
+  explicitly `(NOT proof deps of the headline)` — it's a navigation
+  aid, not a dependency claim.
+- `weak` — no project-theorem citations and no extra structure
+  revealed by `Prop`-unfolding. Structurally derivable: existence
+  by construction (`⟨_, rfl, rfl, rfl⟩`), function-ness by
+  injection, or similar. Rendered as one-node-with-about — makes
+  visible *why* the chain is empty.
+- `noAbout` — the type mentions no project functions at all.
+  Rendered as a single node with a diagnostic label; flags likely
+  mis-categorisations.
+
+For the 7 headlines specifically this sorts as: 3 `deep`
+(`parseStream_respects_grammar_unconditional`, `universal_roundtrip`,
+`parse_strict_proof`), 2 `propBridge` (`parse_sound`, `parse_complete`
+— both wrapped in `ValidYamlProp`), 2 `weak` (`parse_deterministic`
+proves function-ness by `Except.ok.injEq`; `validYaml_construct` is
+an existence tuple). Full-catalogue distribution (411 entries):
+232 deep / 12 propBridge / 103 weak / 11 noAbout. The `weak` and
+`noAbout` buckets are diagnostic signals worth periodic review.
+
 Numbers from the current tree: `theoremgraph --tier headline`
 emits 7 bipartite + 7 chain DOTs (one per headline, 14 files).
 `--tier headline,categoryCapstone` emits 20 DOTs (7 headlines + 3
