@@ -11,12 +11,12 @@ matches across 35 files**. Some of those are in comments (e.g.
 
 | File | `sorry` count | Role |
 | ---- | ------------- | ---- |
-| `StreamAccum.lean` | 28 | Grammar-derivation composition (Group 7.1) |
+| `StreamAccum.lean` | 28 | Grammar-derivation composition (Group 7.2) |
 | `ParserWellBehaved.lean` | 28 | Fuel monotonicity — see "Deletion candidates" below |
-| `EmitterScannability.lean` | 15 | Emitter round-trip closure (Group 6.8–6.9) |
-| `ScalarProduction.lean` | 5 | Scalar grammar derivation (Group 7.3) |
-| `ScannerCorrectness.lean` | 3 | Scanner validity (Group 2.1) |
-| `DocumentProduction.lean` | 3 | Document grammar derivation (Group 7.3) |
+| `EmitterScannability.lean` | 15 | Emitter round-trip closure (Group 6.1 headline + 6.9 dependency) |
+| `ScalarProduction.lean` | 5 | Scalar grammar derivation (Group 7.4) |
+| `ScannerCorrectness.lean` | 3 | Scanner validity (Group 2.2) |
+| `DocumentProduction.lean` | 3 | Document grammar derivation (Group 7.4) |
 | `ScannerPlainScalarValid.lean` | 2 | Plain-scalar validity |
 | `PreprocessProduction.lean` | 2 | Preprocessing grammar derivation |
 | *(~18 files × 1 each)* | 18 | various 1-offs |
@@ -120,11 +120,11 @@ theorem emit_roundtrip_universal :
               contentEq v docs[0]!.value = true := sorry
 ```
 
-**Blockers**: Completion of Capstone 6.8 (`emit_roundtrip_content_eq`
+**Blockers**: Completion of Capstone 6.9 (`emit_roundtrip_content_eq`
 in [`EmitterScannability.lean`](../L4YAML/Proofs/EmitterScannability.lean),
 15 sorries).
 
-### Priority 2 — Grammar-derivation composition (Capstone 7.1)
+### Priority 2 — Grammar-derivation composition (Capstone 7.2)
 
 [`StreamAccum.lean`](../L4YAML/Proofs/StreamAccum.lean) has 28
 sorries clustering at 5 architectural boundaries:
@@ -132,16 +132,16 @@ sorries clustering at 5 architectural boundaries:
 `h_closable` construction in `PendingNode`, BOM preprocessing at
 `col ≠ 0`, and plain-scalar `_prod`.
 
-### Priority 3 — Scanner correctness closure (Capstone 2.1)
+### Priority 3 — Scanner correctness closure (Capstone 2.2)
 
 3 sorries in `ScannerCorrectness.lean`. Low count, high value —
 closes the scanner side.
 
-### Priority 4 — Value semantics closure (Capstone 5.1)
+### Priority 4 — Value semantics closure (Capstone 5.2)
 
 1 sorry in `Soundness.lean` for `toYamlValue_correct`.
 
-### Priority 5 — Emitter round-trip (Capstones 6.8–6.9)
+### Priority 5 — Emitter round-trip (Capstones 6.9 + 6.1)
 
 15 sorries in `EmitterScannability.lean`. Blocks Priority 1.
 
