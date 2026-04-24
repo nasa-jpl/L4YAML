@@ -962,24 +962,41 @@ open conditions or remaining sorry sites are clearly stated in the
 plain-English summary. Headlines that regress drop off the front
 page until they recover.
 
-**3. Tier-filtered graph generation + hierarchical `index.html`**
+**3. Tier-filtered graph generation + hierarchical `index.html`** — ✅ *shipped*
 
-Extend `theoremgraph` with a `--tier <name>` filter that writes
-only graphs for entries matching the given tier (comma-separated
-names accepted). Current behavior (no filter) stays the full catalogue.
+[`L4YAML.FGM/tools/TheoremGraph.lean`](../../L4YAML.FGM/tools/TheoremGraph.lean)
+now accepts two filter flags:
 
-Rewrite `generateIndexHtml` to render:
+- `--tier <csv>` — emit only entries whose `tier.role` matches the
+  CSV list (e.g. `headline`, `headline,categoryCapstone`). Unknown
+  values exit non-zero with a diagnostic.
+- `--category <csv>` — emit only entries whose `cat=...` annotation
+  matches the CSV list (e.g. `parser,end-to-end`). Combines with
+  `--tier`.
 
-1. **Front page**: each headline's chain graph inline, plus its
-   plain-English summary.
-2. **Group pages**: one sub-page per blueprint group, listing its
-   category-capstone and supports.
-3. **Full catalogue**: flat link to everything (today's behavior).
+Emission now writes a three-layer hierarchy into the output tree:
 
-Numbers-wise: `theoremgraph --tier headline` emits ~6 chain SVGs;
-`--tier headline,categoryCapstone` emits ~25–50; the full run stays
-at ~840. The 10×–100× size reduction is the difference between
-"L4YAML doc page loads in seconds" and "doc page times out."
+1. `index.html` — **Front page.** Each headline's chain graph
+   embedded inline (via `<object data=…>`) plus its plain-English
+   summary and a link to its group page.
+2. `group/<category>.html` — **Group pages.** One per blueprint
+   category, listing headlines / category capstone / supports in
+   priority order with links to the bipartite and chain SVGs.
+3. `all.html` — **Full catalogue.** Flat list across every entry
+   in scope (preserves the pre-Step-3 emission shape for
+   diff-tooling and deep-dive readers).
+
+Numbers from the current tree: `theoremgraph --tier headline`
+emits 7 bipartite + 7 chain DOTs (one per headline, 14 files).
+`--tier headline,categoryCapstone` emits 20 DOTs (7 headlines + 3
+categoryCapstones in headline-less groups × 2 = 20). The full run
+stays at 411 bipartite + 411 chain = 822 files (the extra vs. 56
+annotated entries come from the in-degree ≥ 5 heuristic backfill).
+
+The 30×-60× size reduction (14/822 for headlines, 40/822 for
+headlines+capstones) is the wedge between "L4YAML doc page loads
+in seconds" and "doc page times out." Step 4 lands the CI artifact
+split that ships the trimmed tarball to the L4YAML doc build.
 
 **4. L4YAML.FGM release artifact split**
 
