@@ -1060,13 +1060,15 @@ sidecar site.
 currently publishes a single `theorem-graphs.tar.gz` with the full
 811-entry tree. Update it to publish two artifacts per release:
 
-- `theorem-graphs-headlines.tar.gz` — `lake exe theoremgraph
-  --tier headline,categoryCapstone`. Small (10 entries × 2 graphs
-  = 20 SVGs plus the 4-layer index). Always embedded by L4YAML's
-  doc build.
-- `theorem-graphs-all.tar.gz` — the full catalogue (today's
-  tarball content). Downloaded on demand from the release page;
-  not embedded.
+- `theorem-graphs-headlines.tar.gz` —
+  `lake exe theoremgraph --tier headline,categoryCapstone tmp/graphs-headlines`
+  (explicit output-dir required since the no-args-defaults-to-`tmp/graphs`
+  behavior was removed). Small (10 entries × 2 graphs = 20 SVGs plus
+  the 4-layer index). Always embedded by L4YAML's doc build.
+- `theorem-graphs-all.tar.gz` —
+  `lake exe theoremgraph --doc-base ../../../api/ tmp/graphs`
+  (the current workflow invocation). Downloaded on demand from the
+  release page; not embedded.
 
 *4b. Verso embedded consumption (L4YAML side).*
 [`test-coverage.yml`](../../.github/workflows/test-coverage.yml)
