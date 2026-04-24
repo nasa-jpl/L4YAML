@@ -90,11 +90,16 @@ jobs:
       # Phase 2: Generate Verso HTML documentation
       # -------------------------------------------------------
       - name: Download theorem dependency graphs from L4YAML.FGM
+        # We fetch only the headlines tarball — the ~20 SVGs for headline
+        # and categoryCapstone entries embedded directly into the Verso
+        # verification doc. The full-catalogue tarball
+        # (`theorem-graphs-all.tar.gz`, ~400 SVGs) stays on the GitHub
+        # release and is linked from the doc for on-demand download.
         run: |
           mkdir -p doc/Doc/L4YAML/graphs
           REPO="pass/L4YAML.FGM"
           TAG="graphs-latest"
-          ASSET="theorem-graphs.tar.gz"
+          ASSET="theorem-graphs-headlines.tar.gz"
           API_URL="${GITHUB_SERVER_URL}/api/v3/repos/${REPO}/releases/tags/${TAG}"
 
           # Fetch the release metadata to find the asset download URL

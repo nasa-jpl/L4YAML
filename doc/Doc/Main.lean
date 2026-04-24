@@ -15,6 +15,9 @@ def config : RenderConfig where
   emitHtmlSingle := .no
   emitHtmlMulti := .immediately
   htmlDepth := 2
-  extraFilesHtml := [("Doc/L4YAML/graphs", "Verification/Key-Theorems/graphs")]
+  extraFilesHtml := [
+    ("Doc/L4YAML/graphs", "Verification/Key-Theorems/graphs"),
+    ("Doc/L4YAML/graphs", "Verification/What-L4YAML-Proves/graphs")
+  ]
 
 def main (args : List String) := manualMain (%doc Doc.L4YAML) (options := args) (config := config)

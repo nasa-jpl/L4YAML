@@ -397,84 +397,219 @@ tag := "proof-modules"
   * Dispatch pipeline preserves all invariants
 :::
 
-# Theorem Dependency Visualization
+# What L4YAML Proves
 %%%
 tag := "theorem-graphs"
 %%%
 
+{index}[headline theorems]
 {index}[dependency graphs]
-L4YAML includes tooling for visualizing theorem dependencies as
-bipartite graphs.  Each graph shows a key theorem at the center,
-with:
+This page is the front-door answer to _what L4YAML proves_.  Each
+card below embeds one headline theorem's _functorial chain graph_
+— the proof-term dependency structure extracted by the FGM
+`theoremgraph` tool — together with its plain-English summary and
+a ChainDepth tag that classifies how tightly the theorem's proof
+is pinned to the pipeline functions it names.  The ChainDepth tags
+carry the honesty labelling from §Mind the Fibration Gap: _deep_
+theorems are canaries for silent behavioural drift, _propBridge_
+theorems delegate that role to a wrapped predicate, and _weak_
+theorems do not participate in the fibration at all.
 
- * _Functions_ (left, blue) — the implementation functions the
-   theorem proves a property about
- * _Proof dependencies_ (right, green) — the supporting theorems
-   used in the proof
+Only the headline + categoryCapstone entries (~11 theorems) are
+embedded here; the full catalogue is published as the
+`theorem-graphs-all.tar.gz` asset on the
+[`graphs-latest` release of L4YAML.FGM](https://github.jpl.nasa.gov/pass/L4YAML.FGM/releases/tag/graphs-latest)
+and is downloadable on demand.  Per-module hierarchical browsing
+of the full catalogue inside this site is a planned step.
 
-## Generating Graphs
+## Pipeline Composition
+%%%
+tag := "theorem-graphs-pipeline"
+%%%
+
+### `parseYaml_pipeline` — deep
+
+_1.1_ — `parseYaml` decomposes as `parseStream ∘ scanFiltered`.
+The pipeline's decomposition capstone: every downstream
+soundness/completeness headline routes through it.
+
+![parseYaml_pipeline chain graph](graphs/L4YAML/Proofs/Composition/parseYaml_pipeline.chain.svg)
+
+ * _ChainDepth_: `deep`
+ * _Module_: `L4YAML.Proofs.Composition`
+
+## Scanner
+%%%
+tag := "theorem-graphs-scanner"
+%%%
+
+### `scan_full_consumption` — deep
+
+_2.1_ — a successful scan consumes the entire input.  Rules out
+the common correctness trap where a scanner returns `.ok` after
+stopping early on an unexpected character.
+
+![scan_full_consumption chain graph](graphs/L4YAML/Proofs/Scanner/ScanStrictCoupling/scan_full_consumption.chain.svg)
+
+ * _ChainDepth_: `deep`
+ * _Module_: `L4YAML.Proofs.Scanner.ScanStrictCoupling`
+
+## Parser
+%%%
+tag := "theorem-graphs-parser"
+%%%
+
+### `parseStream_respects_grammar_unconditional` — deep
+
+_3.1_ — the parser respects the YAML 1.2.2 grammar with no
+well-formedness precondition.  The root anchor for the grammar-
+production chain.
+
+![parseStream_respects_grammar_unconditional chain graph](graphs/L4YAML/Proofs/EndToEndCorrectness/parseStream_respects_grammar_unconditional.chain.svg)
+
+ * _ChainDepth_: `deep`
+ * _Module_: `L4YAML.Proofs.EndToEndCorrectness`
+
+## End-to-End Correctness
+%%%
+tag := "theorem-graphs-end-to-end"
+%%%
+
+The two soundness variants (`parse_sound_shallow` and
+`parse_sound_deep`) are the fibration-gap worked example — see
+§Fibration Gap — Worked Example for the side-by-side walkthrough.
+
+### `parse_sound_shallow` — propBridge
+
+_4.1_ — `parse .ok → ValidYamlProp`.  The shallow variant hides
+the pipeline stages inside the `ValidYamlProp` predicate; the
+chain walker cannot descend.  Useful as a minimal soundness
+statement; not the canary.
+
+![parse_sound_shallow chain graph](graphs/L4YAML/Proofs/EndToEndCorrectness/parse_sound_shallow.chain.svg)
+
+ * _ChainDepth_: `propBridge`
+ * _Module_: `L4YAML.Proofs.EndToEndCorrectness`
+
+### `parse_sound_deep` — deep
+
+_4.1d_ — same soundness claim with every pipeline stage exposed
+in the type and each stage's lemma cited in the proof.  The
+canary for silent code changes along `parseYaml → parseYamlRaw →
+parseStream`.
+
+![parse_sound_deep chain graph](graphs/L4YAML/Proofs/EndToEndCorrectness/parse_sound_deep.chain.svg)
+
+ * _ChainDepth_: `deep`
+ * _Module_: `L4YAML.Proofs.EndToEndCorrectness`
+
+### `parse_complete` — propBridge
+
+_4.2_ — `ValidYamlProp → parse .ok`.  Completeness with the
+same `Prop`-wrapping shape as `parse_sound_shallow`; an
+engineering follow-up analogous to `parse_sound_deep` would
+expose the pipeline stages and cite the completeness lemmas
+directly.
+
+![parse_complete chain graph](graphs/L4YAML/Proofs/EndToEndCorrectness/parse_complete.chain.svg)
+
+ * _ChainDepth_: `propBridge`
+ * _Module_: `L4YAML.Proofs.EndToEndCorrectness`
+
+### `parse_deterministic` — weak
+
+_4.3_ — `parse` is a function (same input, same output).
+Structurally weak: the proof is tactic-only and cites no project
+lemmas, so no functorial chain exists.  Serves as a type-level
+sanity check on the API shape, not as a canary.
+
+![parse_deterministic chain graph](graphs/L4YAML/Proofs/EndToEndCorrectness/parse_deterministic.chain.svg)
+
+ * _ChainDepth_: `weak` (structural)
+ * _Module_: `L4YAML.Proofs.EndToEndCorrectness`
+
+## Values — Soundness
+%%%
+tag := "theorem-graphs-values"
+%%%
+
+### `validYaml_construct` — weak
+
+_5.1_ — constructing `ValidYaml` from a parse result is
+well-defined.  Establishes that the packaging step from `docs`
+to `ValidYaml` respects the underlying invariants; the proof is
+structural and carries no fibration signal.
+
+![validYaml_construct chain graph](graphs/L4YAML/Proofs/Soundness/validYaml_construct.chain.svg)
+
+ * _ChainDepth_: `weak` (structural)
+ * _Module_: `L4YAML.Proofs.Soundness`
+
+## Roundtrip
+%%%
+tag := "theorem-graphs-roundtrip"
+%%%
+
+### `universal_roundtrip` — deep (🚧 sorry-reachable via 6.9)
+
+_6.1_ — the universal YAML round-trip property: emit ∘ parse is
+content-preserving up to `contentEq`.  Fibration-aligned against
+the emitter/parser composition; carries a sorry marker via 6.9
+pending the final stage's proof.
+
+![universal_roundtrip chain graph](graphs/L4YAML/Proofs/Output/EmitterScannability/universal_roundtrip.chain.svg)
+
+ * _ChainDepth_: `deep`
+ * _Module_: `L4YAML.Proofs.Output.EmitterScannability`
+
+## Grammar Production
+%%%
+tag := "theorem-graphs-production"
+%%%
+
+### `parse_strict_proof` — deep (🚧 sorry-reachable via 7.2, 7.6)
+
+_7.1_ — parser acceptance implies `InYamlLanguage`.  Bridges the
+parser-level chain to the grammar-production relation used by the
+Blueprint.  Sorry-reachable via the scanner-side 7.2/7.6 lemmas.
+
+![parse_strict_proof chain graph](graphs/L4YAML/Proofs/Production/DocumentProduction/parse_strict_proof.chain.svg)
+
+ * _ChainDepth_: `deep`
+ * _Module_: `L4YAML.Proofs.Production.DocumentProduction`
+
+## Surface Coupling
+%%%
+tag := "theorem-graphs-surface-coupling"
+%%%
+
+### `SIndent_zero` — weak
+
+_8.1_ — bundle representative for character-level
+indent/character predicates.  Structural lemma connecting the
+scanner's character-class tests to the `SIndent` surface
+predicate; does not itself expose a call chain.
+
+![SIndent_zero chain graph](graphs/L4YAML/Proofs/Coupling/SurfaceCoupling/SIndent_zero.chain.svg)
+
+ * _ChainDepth_: `weak` (structural)
+ * _Module_: `L4YAML.Proofs.Coupling.SurfaceCoupling`
+
+## Generating graphs locally
 
 The `theoremgraph` tool lives in the
-[L4YAML.FGM](https://github.jpl.nasa.gov/pass/L4YAML.FGM) bridge project.
-Generate DOT files for all key theorems:
+[L4YAML.FGM](https://github.jpl.nasa.gov/pass/L4YAML.FGM) bridge
+project; see its `tools/README.md` for invocations.  Common
+starting points:
 
 ```
 cd ../L4YAML.FGM
 lake build theoremgraph
-lake exe theoremgraph tmp/graphs
+lake exe theoremgraph --list                       # catalogue
+lake exe theoremgraph --chain parse_sound_deep     # one chain DOT
+lake exe theoremgraph --tier headline tmp/out      # headline tarball contents
+lake exe theoremgraph tmp/graphs                   # full tree (≈400 DOTs)
 ```
-
-Render to SVG with Graphviz:
-
-```
-for f in tmp/graphs/*.dot; do
-  dot -Tsvg "$f" -o "${f%.dot}.svg"
-done
-```
-
-Then open `tmp/graphs/index.html` for an overview page.
-
-Generate a single theorem's graph:
-
-```
-lake exe theoremgraph --dot parseYaml_pipeline
-```
-
-List all available key theorems:
-
-```
-lake exe theoremgraph --list
-```
-
-## Dependency Extraction
-
-The lower-level `depgraph` tool extracts three complete dependency
-graphs from the L4YAML environment:
-
- 1. *Function call graph* — definition → definition calls
- 2. *Theorem dependency graph* — theorem → theorems used in proof
- 3. *Function–theorem map* — which functions each theorem is about
-
-```
-lake build depgraph
-lake exe depgraph --dot calls   > calls.dot
-lake exe depgraph --dot thmdeps > thmdeps.dot
-lake exe depgraph --dot about   > about.dot
-lake exe depgraph --stats
-```
-
-## Theorem Coverage Analysis
-
-The `analyzethms` tool identifies leaf theorems (proved but never
-cited in other proofs) and `native_decide` usage patterns:
-
-```
-lake build analyzethms
-lake exe analyzethms tmp/analysis
-```
-
-This writes `leaf_thms.json`, `native_decide_leaves.json`,
-`duplicates.json`, and `stats.txt`.
 
 # Mind the Fibration Gap
 %%%
