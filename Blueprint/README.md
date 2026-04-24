@@ -880,9 +880,18 @@ accessor encodes this — it returns `true` for both `headline` and
 
 **Invariants** (to be enforced by `check-capstones` in step 6):
 
-1. Every `category` in use has **exactly one** theorem with
-   `role ∈ {headline, categoryCapstone}`.
-2. Total theorems with `role = headline` across the catalogue: 5–8.
+1a. Every `category` in use has **at least one** theorem with
+    `role ∈ {headline, categoryCapstone}` (so every category has a
+    lead).
+1b. Every `category` has **at most one** theorem with
+    `role = categoryCapstone` (the "promoted" slot; headlines
+    subsume it, so a category with ≥1 headline is allowed to have
+    zero `categoryCapstone` entries). Headlines themselves are
+    **uncapped per category** — a category with multiple first-class
+    public promises (e.g. Group 4 with soundness + completeness +
+    determinism) can name all of them as headlines.
+2. Total theorems with `role = headline` across the catalogue: 5–8
+   (soft cap; the front page has a reader-attention budget).
 3. For every `(category, bundle.name)` pair, exactly one entry has
    `bundle.isRep = true`.
 4. `role ∈ {headline, categoryCapstone}` → `category` is `some _`.
@@ -914,21 +923,35 @@ Also shipped: accessor helpers on `KeyAnnotation` — `role?`,
 `isCategoryCapstone`. `#key_theorems` now displays tier info when
 present.
 
-**2. Headline slate** (to be curated, subject to review)
+**2. Headline slate** — ✅ *shipped*
 
-Proposed starting slate for a formal-methods audience:
+Seven headlines tagged in
+[`L4YAML.FGM/KeyTheoremCatalogue.lean`](../../L4YAML.FGM/KeyTheoremCatalogue.lean)
+with `tier := some { role := .headline }` and an explicit
+`category`. Group 4 carries three headlines (soundness,
+completeness, determinism) — admissible under Invariant 1b's
+"headlines are uncapped per category" clause, since all three are
+genuinely first-class public promises.
 
-| Headline | Why experts expect it | Plain-English summary |
-|---|---|---|
-| 3.11 `parseStream_respects_grammar_unconditional` | spec conformance | "parser output matches the written YAML 1.2.2 grammar" |
-| 4.1 `parse_sound` | soundness | "if we accept, the result is well-formed" |
-| 4.3 `parse_complete` | completeness | "every well-formed YAML is accepted" |
-| 4.7 `parse_deterministic` | functionality | "the parser is a function, not a relation" |
-| 5.5 `validYaml_construct` | value-level soundness | "every successful parse yields a `ValidYaml`" |
-| 6.9 `universal_roundtrip` (or 6.10 aspirational) | round-trip | "emit then parse gives back the same content" |
-| 7.6 `parse_strict_proof` | strictness | "we never accept ill-formed input" |
+| # | Headline | Category | Status | Why experts expect it | Plain-English summary |
+|---|----------|----------|--------|-----------------------|-----------------------|
+| 3.11 | `parseStream_respects_grammar_unconditional` | `parser` | ✅ | spec conformance | "parser output matches the written YAML 1.2.2 grammar" |
+| 4.1  | `parse_sound`                                | `end-to-end` | ✅ | soundness | "if we accept, the result is well-formed" |
+| 4.3  | `parse_complete`                             | `end-to-end` | ✅ | completeness | "every well-formed YAML is accepted" |
+| 4.7  | `parse_deterministic`                        | `end-to-end` | ✅ | functionality | "the parser is a function, not a relation" |
+| 5.5  | `validYaml_construct`                        | `values` | ✅ | value-level soundness | "every successful parse yields a `ValidYaml`" |
+| 6.9  | `universal_roundtrip`                        | `roundtrip` | 🚧 (sorry via 6.8) | round-trip | "emit then parse gives back the same content" |
+| 7.6  | `parse_strict_proof`                         | `grammar-production` | 🚧 (sorry via 7.1, 7.5) | strictness | "we never accept ill-formed input" |
 
-Each headline gets:
+5 of 7 are ✅. The two 🚧 entries are front-page-admissible per
+the rule below, with their open sorry sites named in the status
+column and the description string.
+
+**Categories without a headline** (Groups 1 pipeline, 2 scanner,
+8 surface-coupling) need a `role = categoryCapstone` pick in
+step 3 (backfill) to satisfy Invariant 1a.
+
+Each headline will eventually get:
 - A 1-sentence plain-English summary (non-expert-readable).
 - The formal statement in full.
 - A 1-paragraph "what this means in practice" block.
