@@ -725,7 +725,7 @@ against Lean's actual dependency DAG. Catch three classes of drift:
 | ---- | ---- | --------- | --- |
 | `theoremgraph` | [`L4YAML.FGM`](../../L4YAML.FGM) (sibling checkout) | Lean 4.30.0-rc1 — matches L4YAML (4.30.0-rc2) closely | **Best fit now.** Already works. Supports `--list`, `--dot`, `--chain`, `--coverage`. Consumes `@[key_theorem "desc"]` attribute (from FGM). |
 | `importGraph` | [`leanprover-community/import-graph`](https://github.com/leanprover-community/import-graph), pinned v4.29.0 in L4YAML's lakefile | Already imported | Module-level only; doesn't give theorem-level DAG directly but has the Lean APIs we'd need. |
-| `DocVerificationBridge` | `doc-verification-bridge.ghe/DocVerificationBridge` | Lean ≤ 4.29.0 | **Not directly usable yet** — toolchain mismatch (L4YAML is on 4.30.0-rc2). Worth adopting later for the Four-Category Ontology classification. See Phase D. |
+| `DocVerificationBridge` | `doc-verification-bridge.ghe/DocVerificationBridge` | Lean ≤ 4.29.0 | **Not directly usable yet** — toolchain mismatch (L4YAML is on 4.30.0-rc2). Worth adopting later for the Four-Category Ontology classification. See Phase E. |
 | `FGM.KeyTheorem` | [`FGM`](../../FGM) (sibling checkout) | Matches `L4YAML.FGM` | Source of the `@[key_theorem]` attribute. |
 | Ad-hoc Lean script using `ConstantInfo.getUsedConstants` | — | any | Fallback if the above fall over. |
 
@@ -799,81 +799,21 @@ and `KeyTheoremCatalogue.entries`, or fails CI.
 
 </details>
 
-#### **Phase C — Sorry-reachability audit (risk: medium)**
-
-<details>
-<summary>
-
-For each capstone in
-[`04-capstones.md`](04-capstones.md), use
-`lake exe theoremgraph --dot <name>` to extract the dependency
-DAG, then check whether any transitive dependency contains
-`sorry`. Downgrade status from ✅ to 🚧 for any capstone that does.
-
-</summary>
-
-- **Tooling choices**:
-  - Simplest: run `theoremgraph --dot` per capstone, grep each
-    output for dependency names that also show up in
-    [`05-current-state.md`](05-current-state.md)'s sorry table.
-  - Better: extend `theoremgraph` with a `--reaches-sorry` mode
-    that classifies capstones as "kernel-checked" vs
-    "transitively-conditional-on-sorry".
-- **Acceptance**: the ✅ rows in [`04-capstones.md`](04-capstones.md)
-  are the minimal set whose proofs are kernel-checked without
-  `sorry` in any dependency. This catches the silent drift where
-  a capstone's proof is green but a helper it depends on has
-  regressed to `sorry`.
-
-</details>
-
-#### **Phase D — DocVerificationBridge integration (risk: high, defer)**
-
-<details>
-<summary>
-
-Adopt DocVerificationBridge's Four-Category Ontology once the
-toolchain mismatch is resolved. Two routes:
-
-</summary>
-
-- Wait for DocVerificationBridge to support 4.30.0+ (watch
-  [`Experiments/ExperimentsCore.lean:maxSupportedVersion`](../../doc-verification-bridge.ghe/Experiments/Experiments/ExperimentsCore.lean)).
-- Or: temporarily branch L4YAML to 4.29.0 for one analysis run,
-  record the classification output as a baseline, then rebase
-  forward. Only worth doing if the ontology gives us something
-  `theoremgraph` doesn't.
-
-The Four-Category value proposition for L4YAML: cleanly separates
-**spec-side** (Grammar, Surface, Production — "mathematical
-abstractions") from **impl-side** (Scanner, Parser, Emitter —
-"computational operations") with **coupling theorems** as the
-ontological glue. That mirrors the trust-boundary structure in
-[`02-architecture.md`](02-architecture.md). So integration is
-valuable long-term, but not blocking.
-
-**Overall exit criterion for Initiative 2**: a CI job runs on
-every PR, asserts that every ✅ capstone in the blueprint has
-(a) a matching `@[key_theorem]` attribute, (b) a kernel-checked
-proof with no `sorry` in its transitive dependency tree, and
-(c) a dependency graph that's a subset of other capstones +
-acknowledged infrastructure. A failing job points at which of
-the three checks broke.
-
-</details>
-
-#### **Phase E — Narrative & tiering (risk: low-medium)**
+#### **Phase C — Narrative & tiering (risk: low-medium)**
 
 <details>
 <summary>
 
 Turn the flat capstone list into a top-down story with 5–8
-headline results and a hierarchical index.
+headline results and a hierarchical index. Runs **before** the
+sorry audit (Phase D) because tiering prunes and reorganises the
+capstone set — auditing first would waste effort on entries that
+later get demoted.
 
 </summary>
 
-Phase B's diff gate and Phase C's sorry audit enforce *internal*
-consistency of the capstone set. Phase E is about *external*
+Phase B's diff gate enforces *internal* consistency between the
+blueprint and the catalogue. Phase C is about *external*
 comprehensibility: someone encountering L4YAML for the first time
 shouldn't have to read 50+ rows of `04-capstones.md` to learn what
 L4YAML actually proves. They should see a handful of headline
@@ -1012,6 +952,73 @@ state shifts.
 
 </details>
 
+#### **Phase D — Sorry-reachability audit (risk: medium)**
+
+<details>
+<summary>
+
+For each capstone in
+[`04-capstones.md`](04-capstones.md), use
+`lake exe theoremgraph --dot <name>` to extract the dependency
+DAG, then check whether any transitive dependency contains
+`sorry`. Downgrade status from ✅ to 🚧 for any capstone that does.
+
+</summary>
+
+Runs after Phase C so the audit targets the tiered set (headlines
+and group capstones first, supports last) — not a flat list that
+Phase C would then reshuffle.
+
+- **Tooling choices**:
+  - Simplest: run `theoremgraph --dot` per capstone, grep each
+    output for dependency names that also show up in
+    [`05-current-state.md`](05-current-state.md)'s sorry table.
+  - Better: extend `theoremgraph` with a `--reaches-sorry` mode
+    that classifies capstones as "kernel-checked" vs
+    "transitively-conditional-on-sorry".
+- **Acceptance**: the ✅ rows in [`04-capstones.md`](04-capstones.md)
+  are the minimal set whose proofs are kernel-checked without
+  `sorry` in any dependency. This catches the silent drift where
+  a capstone's proof is green but a helper it depends on has
+  regressed to `sorry`.
+
+</details>
+
+#### **Phase E — DocVerificationBridge integration (risk: high, defer)**
+
+<details>
+<summary>
+
+Adopt DocVerificationBridge's Four-Category Ontology once the
+toolchain mismatch is resolved. Two routes:
+
+</summary>
+
+- Wait for DocVerificationBridge to support 4.30.0+ (watch
+  [`Experiments/ExperimentsCore.lean:maxSupportedVersion`](../../doc-verification-bridge.ghe/Experiments/Experiments/ExperimentsCore.lean)).
+- Or: temporarily branch L4YAML to 4.29.0 for one analysis run,
+  record the classification output as a baseline, then rebase
+  forward. Only worth doing if the ontology gives us something
+  `theoremgraph` doesn't.
+
+The Four-Category value proposition for L4YAML: cleanly separates
+**spec-side** (Grammar, Surface, Production — "mathematical
+abstractions") from **impl-side** (Scanner, Parser, Emitter —
+"computational operations") with **coupling theorems** as the
+ontological glue. That mirrors the trust-boundary structure in
+[`02-architecture.md`](02-architecture.md). So integration is
+valuable long-term, but not blocking.
+
+**Overall exit criterion for Initiative 2**: a CI job runs on
+every PR, asserts that every ✅ capstone in the blueprint has
+(a) a matching `@[key_theorem]` attribute, (b) a kernel-checked
+proof with no `sorry` in its transitive dependency tree, and
+(c) a dependency graph that's a subset of other capstones +
+acknowledged infrastructure. A failing job points at which of
+the three checks broke.
+
+</details>
+
 </details>
 
 ---
@@ -1037,13 +1044,17 @@ Concrete 1-week target:
    mismatch between blueprint and attributes. **Done 2026-04-23
    (11 drift items resolved; catalogue pruned from 64 → 56
    entries).**
-4. Day 4: Initiative 2 Phase C (sorry-reachability audit); update
-   ✅/🚧 statuses in [`04-capstones.md`](04-capstones.md).
-5. Day 5: Start Initiative 1 Phase 1.
-6. Following weeks: Initiative 1 Phases 2, 3, 4 as separate PRs.
-7. Separately: Initiative 2 Phase E (narrative & tiering) — not
-   on the critical path; run after B and C are both green.
+4. Day 4–5: Initiative 2 Phase C (narrative & tiering) — curate
+   the headline slate, add the `Tier` enum, emit split tarballs,
+   write `01-what-we-prove.md`. Ordered before Phase D because the
+   tiering pass re-scopes the capstone set a sorry audit would
+   otherwise waste effort on.
+5. Day 6: Initiative 2 Phase D (sorry-reachability audit); update
+   ✅/🚧 statuses in [`04-capstones.md`](04-capstones.md) against
+   the tiered set.
+6. Day 7: Start Initiative 1 Phase 1.
+7. Following weeks: Initiative 1 Phases 2, 3, 4 as separate PRs.
 
-Initiative 2 Phase D (DocVerificationBridge) is deferred — revisit
-once DVB supports 4.30.0 or after 1–3 land and the rest of the
+Initiative 2 Phase E (DocVerificationBridge) is deferred — revisit
+once DVB supports 4.30.0 or after A–D land and the rest of the
 blueprint is stable.
