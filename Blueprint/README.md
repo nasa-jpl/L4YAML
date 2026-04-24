@@ -974,17 +974,33 @@ now accepts two filter flags:
   matches the CSV list (e.g. `parser,end-to-end`). Combines with
   `--tier`.
 
-Emission now writes a three-layer hierarchy into the output tree:
+Emission now writes a **four-layer hierarchy** into the output tree:
 
 1. `index.html` — **Front page.** Each headline's chain graph
    embedded inline (via `<object data=…>`) plus its plain-English
-   summary and a link to its group page.
+   summary, a link to its blueprint group page, and a preview of
+   the first 12 module pages.
 2. `group/<category>.html` — **Group pages.** One per blueprint
    category, listing headlines / category capstone / supports in
    priority order with links to the bipartite and chain SVGs.
-3. `all.html` — **Full catalogue.** Flat list across every entry
-   in scope (preserves the pre-Step-3 emission shape for
-   diff-tooling and deep-dive readers).
+3. `module/<module.path>.html` — **Module pages.** One per Lean
+   file with at least one key theorem, organising its declarations
+   in priority order. `modules.html` is a flat index of every
+   module (alphabetical, with per-module entry counts). Useful
+   when a reader is navigating from the file system — e.g. "what
+   does `L4YAML/Proofs/Parser/ParserWellBehaved.lean` contribute?"
+4. `all.html` — **Full catalogue.** A lightweight table (no
+   embedded SVGs — the old SVG-per-row form crushed the browser
+   with 800+ concurrent requests) that lists every entry in scope
+   with its role, category, module, and direct SVG links.
+
+The SVG output tree is also **module-based** now (was
+namespace-based). A declaration in `L4YAML/Proofs/Parser/ParserWellBehaved.lean`
+lands at `L4YAML/Proofs/Parser/ParserWellBehaved/<decl>.bipartite.dot`
+regardless of its `namespace` declaration. This is a no-ops change
+for files that follow the `L4YAML.Proofs.<Leaf>` convention, but
+makes the output a faithful reflection of the source-file layout
+for the handful of files that don't.
 
 Numbers from the current tree: `theoremgraph --tier headline`
 emits 7 bipartite + 7 chain DOTs (one per headline, 14 files).
