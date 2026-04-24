@@ -14,7 +14,7 @@ completeness/correctness architecture for the YAML parser pipeline.
 ## Target Theorems (all achieved)
 
 ```
-parse_sound    : parseYaml input = .ok docs → ValidYamlProp input docs
+parse_sound_shallow    : parseYaml input = .ok docs → ValidYamlProp input docs
 parse_complete : ValidYamlProp input docs → parseYaml input = .ok docs
 ```
 
@@ -79,7 +79,7 @@ anchor resolution → unconditional `ValidNode` witnesses.
 
 **Phase D — End-to-End Composition** (EndToEndCorrectness.lean):
 ```
-parse_sound        : parseYaml input = .ok docs → ValidYamlProp input docs
+parse_sound_shallow        : parseYaml input = .ok docs → ValidYamlProp input docs
 parse_complete     : ValidYamlProp input docs → parseYaml input = .ok docs
 parse_deterministic : parseYaml input = .ok docs₁ → parseYaml input = .ok docs₂ → docs₁ = docs₂
 parseStream_respects_grammar_unconditional :
@@ -438,7 +438,7 @@ PlainScalarsValid       Grammable (unconditional)
                  │
                  │ EndToEndCorrectness (Phase D)
                  ▼
-    parse_sound ∧ parse_complete ∧ parse_deterministic
+    parse_sound_shallow ∧ parse_complete ∧ parse_deterministic
 ```
 
 ### Resolved Proof Obligations
@@ -448,7 +448,7 @@ PlainScalarsValid       Grammable (unconditional)
 | 1 | Scanner correctness | `scan_produces_valid_tokens` | ScannerCorrectness |
 | 2 | Parser termination | Fuel-based total `def` (14 mutual) | TokenParser |
 | 3 | Grammability discharge | `parseYaml_produces_valid_nodes` | ParserGrammable |
-| 4 | End-to-end composition | `parse_sound` + `parse_complete` | EndToEndCorrectness |
+| 4 | End-to-end composition | `parse_sound_shallow` + `parse_complete` | EndToEndCorrectness |
 
 ### Open Obligation
 

@@ -473,7 +473,7 @@ inductive NodeToValue : ValidNode → YamlValue → Prop where
 
 This is the proposition that the parser's soundness proof targets:
 ```
-theorem parse_sound : parse s = .ok v → ValidYaml s v
+theorem parse_sound_shallow : parse s = .ok v → ValidYaml s v
 ```
 
 And completeness (if desired):
