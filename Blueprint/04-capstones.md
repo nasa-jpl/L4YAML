@@ -17,6 +17,12 @@ Each capstone entry shows: **Module** · **Status** · **One-line
 meaning**. Where relevant, **Depends on** names the immediate
 predecessors in the dependency DAG.
 
+**Numbering convention**: each group's lead (headline or
+categoryCapstone) is row `N.1`; supports follow. Numbers were
+rebased on 2026-04-23 to make this the rule rather than an
+accident — see [`06-discipline.md`](06-discipline.md) if you're
+looking for an older commit's `3.11`.
+
 ## Phase 4 target locations
 
 [Initiative 1 Phase 4](README.md) is moving `L4YAML/Proofs/*.lean`
@@ -46,7 +52,7 @@ down how the layers fit together.
 
 | # | Theorem | Module | Status |
 | - | ------- | ------ | ------ |
-| 1.1 | `parseYaml_pipeline` | [`Composition`](../L4YAML/Proofs/Composition.lean) | ✅ |
+| 1.1 | `parseYaml_pipeline` (categoryCapstone) | [`Composition`](../L4YAML/Proofs/Composition.lean) | ✅ |
 | 1.2 | `parseYamlRaw_pipeline` | `Composition` | ✅ |
 | 1.3 | `parseYamlRaw_ok_decompose` | `Composition` | ✅ |
 | 1.4 | `parseYaml_of_parseYamlRaw_ok` | `Composition` | ✅ |
@@ -70,12 +76,12 @@ are monotonic, termination is certified.
 
 | # | Theorem | Module | Status |
 | - | ------- | ------ | ------ |
-| 2.1 | `scan_produces_valid_tokens` | [`ScannerCorrectness`](../L4YAML/Proofs/ScannerCorrectness.lean) | 🚧 (3 `sorry`s) |
-| 2.2 | `advance_offset_lt` | [`ScannerProgress`](../L4YAML/Proofs/ScannerProgress.lean) | ✅ |
-| 2.3 | `scanLoop_success_emits_streamEnd` | `ScannerCorrectness` | ✅ |
-| 2.4 | `scanNextToken_preserves_bound` | [`ScannerBound`](../L4YAML/Proofs/ScannerBound.lean) | ✅ |
-| 2.5 | `advance_preserves_wellFormed` | [`ScannerLoopInvariant`](../L4YAML/Proofs/ScannerLoopInvariant.lean) | ✅ |
-| 2.6 | `scan_full_consumption` | [`ScanStrictCoupling`](../L4YAML/Proofs/ScanStrictCoupling.lean) | ✅ |
+| 2.1 | `scan_full_consumption` (categoryCapstone) | [`ScanStrictCoupling`](../L4YAML/Proofs/ScanStrictCoupling.lean) | ✅ |
+| 2.2 | `scan_produces_valid_tokens` | [`ScannerCorrectness`](../L4YAML/Proofs/ScannerCorrectness.lean) | 🚧 (3 `sorry`s) |
+| 2.3 | `advance_offset_lt` | [`ScannerProgress`](../L4YAML/Proofs/ScannerProgress.lean) | ✅ |
+| 2.4 | `scanLoop_success_emits_streamEnd` | `ScannerCorrectness` | ✅ |
+| 2.5 | `scanNextToken_preserves_bound` | [`ScannerBound`](../L4YAML/Proofs/ScannerBound.lean) | ✅ |
+| 2.6 | `advance_preserves_wellFormed` | [`ScannerLoopInvariant`](../L4YAML/Proofs/ScannerLoopInvariant.lean) | ✅ |
 | 2.7 | Simple-key lifecycle: `saveSimpleKey_*`, `scanKey`, `scanValue` preserve `WellFormed` | [`ScannerSimpleKey`](../L4YAML/Proofs/ScannerSimpleKey.lean) | ✅ |
 | 2.8 | Dispatch preservation: `scanNextToken` branches preserve `WellFormed` (repr `with_needIndentCheck_preserves_wellFormed`) | [`ScannerDispatch`](../L4YAML/Proofs/ScannerDispatch.lean) | ✅ |
 | 2.9 | Document-marker WF: `scanDirective`, `scanDocumentStart`, `scanDocumentEnd` preserve `WellFormed` (repr `with_docStart_flags_preserves_wellFormed`) | [`ScannerDocument`](../L4YAML/Proofs/ScannerDocument.lean) | ✅ |
@@ -98,29 +104,29 @@ well-formed.
 
 | # | Theorem | Module | Status |
 | - | ------- | ------ | ------ |
-| 3.1 | `parseStream_sound` | [`ParserSoundness`](../L4YAML/Proofs/ParserSoundness.lean) | ✅ |
-| 3.2 | `yamlValue_has_witness` (mutual recursion with `Classical.choice`) | `ParserSoundness` | ✅ |
-| 3.3 | `parseNode_anchors_grow` | [`ParserAnchorProofs`](../L4YAML/Proofs/ParserAnchorProofs.lean) / [`ParserNodeProofs`](../L4YAML/Proofs/ParserNodeProofs.lean) | ✅ |
-| 3.4 | `parseNode_aliases_resolve` (public wrapper over `ParserNodeProofs.parseNode_aliases_resolve'`) | [`ParserAnchorProofs`](../L4YAML/Proofs/Parser/ParserAnchorProofs.lean) | ✅ |
-| 3.5 | `parseDocument_aliases_resolve` | `ParserAnchorProofs` | ✅ |
-| 3.6 | `parseStream_output_aliases_resolve` | `ParserAnchorProofs` | ✅ |
-| 3.7 | `parseStream_output_anchors_wellformed` | [`ParserWfaProofs`](../L4YAML/Proofs/ParserWfaProofs.lean) | ✅ |
-| 3.8 | `parseStream_output_grammable` | [`ParserGrammable`](../L4YAML/Proofs/ParserGrammable.lean) | ✅ |
-| 3.9 | `parseYaml_produces_valid_nodes` | `ParserGrammable` | ✅ |
-| 3.10 | `parseStream_respects_grammar` | [`ParserCorrectness`](../L4YAML/Proofs/ParserCorrectness.lean) | 🧩 (conditional) |
-| 3.11 | `parseStream_respects_grammar_unconditional` | [`EndToEndCorrectness`](../L4YAML/Proofs/EndToEndCorrectness.lean) | ✅ |
+| 3.1 | `parseStream_respects_grammar_unconditional` (headline) | [`EndToEndCorrectness`](../L4YAML/Proofs/EndToEndCorrectness.lean) | ✅ |
+| 3.2 | `parseStream_sound` | [`ParserSoundness`](../L4YAML/Proofs/ParserSoundness.lean) | ✅ |
+| 3.3 | `yamlValue_has_witness` (mutual recursion with `Classical.choice`) | `ParserSoundness` | ✅ |
+| 3.4 | `parseNode_anchors_grow` | [`ParserAnchorProofs`](../L4YAML/Proofs/ParserAnchorProofs.lean) / [`ParserNodeProofs`](../L4YAML/Proofs/ParserNodeProofs.lean) | ✅ |
+| 3.5 | `parseNode_aliases_resolve` (public wrapper over `ParserNodeProofs.parseNode_aliases_resolve'`) | [`ParserAnchorProofs`](../L4YAML/Proofs/Parser/ParserAnchorProofs.lean) | ✅ |
+| 3.6 | `parseDocument_aliases_resolve` | `ParserAnchorProofs` | ✅ |
+| 3.7 | `parseStream_output_aliases_resolve` | `ParserAnchorProofs` | ✅ |
+| 3.8 | `parseStream_output_anchors_wellformed` | [`ParserWfaProofs`](../L4YAML/Proofs/ParserWfaProofs.lean) | ✅ |
+| 3.9 | `parseStream_output_grammable` | [`ParserGrammable`](../L4YAML/Proofs/ParserGrammable.lean) | ✅ |
+| 3.10 | `parseYaml_produces_valid_nodes` | `ParserGrammable` | ✅ |
+| 3.11 | `parseStream_respects_grammar` | [`ParserCorrectness`](../L4YAML/Proofs/ParserCorrectness.lean) | 🧩 (conditional) |
 | 3.12 | `grammar_value_roundtrip` (completeness direction) | [`ParserCompleteness`](../L4YAML/Proofs/ParserCompleteness.lean) | ✅ (noncomputable) |
 | 3.13 | `parseStream_complete` | `ParserCompleteness` | ✅ (noncomputable, conditional on grammability) |
 | 3.14 | `soundness_completeness_compose` | `ParserCompleteness` | ✅ |
 
 **Depends on**: Group 2 (scanner). The "unconditional" suffix
-(theorem 3.11) means the grammability hypothesis has been
-discharged via Group 3.8.
+(theorem 3.1) means the grammability hypothesis has been
+discharged via Group 3.9.
 
 **Target cluster (Phase 4)**: [`Proofs/Parser/`](../L4YAML/Proofs/)
 (PR 8). `ParserSoundness`, `ParserAnchorProofs`, `ParserNodeProofs`,
 `ParserWfaProofs`, `ParserGrammable`, `ParserCorrectness`,
-`ParserCompleteness` migrate together. `EndToEndCorrectness` (3.11)
+`ParserCompleteness` migrate together. `EndToEndCorrectness` (3.1)
 stays at `Proofs/` root as a Group 4 capstone.
 
 ---
@@ -131,18 +137,19 @@ Top-level guarantees on `parseYaml`. These are the public promises.
 
 | # | Theorem | Module | Status |
 | - | ------- | ------ | ------ |
-| 4.1 | `parse_sound` — soundness: `parse s = .ok docs → ValidYamlProp s docs` | [`EndToEndCorrectness`](../L4YAML/Proofs/EndToEndCorrectness.lean) | ✅ |
-| 4.3 | `parse_complete` — completeness: `ValidYamlProp s docs → parse s = .ok docs` | `EndToEndCorrectness` | ✅ |
-| 4.7 | `parse_deterministic` — `parse` is a function | `EndToEndCorrectness` | ✅ |
-| 4.10 | `parseYaml_implies_valid_token_stream` (bridge to Group 2) | `EndToEndCorrectness` | ✅ |
+| 4.1 | `parse_sound` (headline) — soundness: `parse s = .ok docs → ValidYamlProp s docs` | [`EndToEndCorrectness`](../L4YAML/Proofs/EndToEndCorrectness.lean) | ✅ |
+| 4.2 | `parse_complete` (headline) — completeness: `ValidYamlProp s docs → parse s = .ok docs` | `EndToEndCorrectness` | ✅ |
+| 4.3 | `parse_deterministic` (headline) — `parse` is a function | `EndToEndCorrectness` | ✅ |
+| 4.4 | `parseYaml_implies_valid_token_stream` (bridge to Group 2) | `EndToEndCorrectness` | ✅ |
 
-**Pruning note (2026-04-23)**: rows 4.2, 4.4, 4.5, 4.6, 4.8, 4.9,
-4.11, 4.12 were removed as specializations or trivial corollaries
-of 4.1 / 4.3. They still exist as declarations in the proof file
-but are no longer capstones. 4.8 (`parse_respects_eq`) is
-`by rw [h]` and was never worth listing. The remaining four are
-the genuine public promises: **soundness**, **completeness**,
-**determinism**, and a bridge back to scanner-level validity.
+**Pruning and compaction note (2026-04-23)**: the original
+numbering had specializations and trivial corollaries at rows 4.2,
+4.4, 4.5, 4.6, 4.8, 4.9, 4.11, 4.12 — removed on 2026-04-23 as
+they add nothing over `parse_sound` / `parse_complete`. 4.8
+(`parse_respects_eq`) was `by rw [h]` and was never worth listing.
+In the same pass the four surviving rows were compacted from
+`4.1, 4.3, 4.7, 4.10` to `4.1, 4.2, 4.3, 4.4`. The underlying Lean
+names stay the same; only the blueprint indices changed.
 
 **Depends on**: Groups 1–3.
 
@@ -157,11 +164,11 @@ The AST-to-value conversion faithfully implements the Core Schema.
 
 | # | Theorem | Module | Status |
 | - | ------- | ------ | ------ |
-| 5.1 | `toYamlValue_correct` | [`Soundness`](../L4YAML/Proofs/Soundness.lean) | 🚧 (1 `sorry`) |
-| 5.2 | `nodeToValue_total` | `Soundness` | ✅ |
-| 5.3 | `nodeToValue_deterministic` | `Soundness` | ✅ |
-| 5.4 | `scalar_content_preserved` | `Soundness` | ✅ |
-| 5.5 | `validYaml_construct` | `Soundness` | ✅ |
+| 5.1 | `validYaml_construct` (headline) | [`Soundness`](../L4YAML/Proofs/Soundness.lean) | ✅ |
+| 5.2 | `toYamlValue_correct` | `Soundness` | 🚧 (1 `sorry`) |
+| 5.3 | `nodeToValue_total` | `Soundness` | ✅ |
+| 5.4 | `nodeToValue_deterministic` | `Soundness` | ✅ |
+| 5.5 | `scalar_content_preserved` | `Soundness` | ✅ |
 | 5.6 | `isNull_*`, `isBool_*`, `isInt_*`, `isFloat_*` correctness (§10.3) | [`SchemaResolution`](../L4YAML/Proofs/Schema/SchemaResolution.lean) | ✅ |
 | 5.7 | `resolveImplicit_complete` | `SchemaResolution` | ✅ |
 
@@ -180,20 +187,20 @@ values.
 
 | # | Theorem | Module | Status |
 | - | ------- | ------ | ------ |
-| 6.1 | `contentEq_refl` | [`RoundTrip`](../L4YAML/Proofs/RoundTrip.lean) | ✅ |
-| 6.2 | `contentEq_symm` | `RoundTrip` | ✅ |
-| 6.3 | `contentEq_trans` | `RoundTrip` | ✅ |
-| 6.4 | `emit_content_invariant` | [`ScannerEmitBridge`](../L4YAML/Proofs/ScannerEmitBridge.lean) | ✅ |
-| 6.5 | `escapeTag_roundtrip` | `RoundTrip` | ✅ |
-| 6.6 | `resolve_eq_of_resolveEq` (mutual) | [`RoundTripComposition`](../L4YAML/Proofs/RoundTripComposition.lean) | ✅ |
-| 6.7 | `resolve_eq_of_contentEq_noTags` | `RoundTripComposition` | ✅ |
-| 6.8 | `emit_roundtrip_content_eq` (canonical-emitter closure) | [`EmitterScannability`](../L4YAML/Proofs/EmitterScannability.lean) | 🚧 (15 `sorry`s) |
-| 6.9 | `universal_roundtrip` | `EmitterScannability` | 🚧 |
+| 6.1 | `universal_roundtrip` (headline) | [`EmitterScannability`](../L4YAML/Proofs/EmitterScannability.lean) | 🚧 |
+| 6.2 | `contentEq_refl` | [`RoundTrip`](../L4YAML/Proofs/RoundTrip.lean) | ✅ |
+| 6.3 | `contentEq_symm` | `RoundTrip` | ✅ |
+| 6.4 | `contentEq_trans` | `RoundTrip` | ✅ |
+| 6.5 | `emit_content_invariant` | [`ScannerEmitBridge`](../L4YAML/Proofs/ScannerEmitBridge.lean) | ✅ |
+| 6.6 | `escapeTag_roundtrip` | `RoundTrip` | ✅ |
+| 6.7 | `resolve_eq_of_resolveEq` (mutual) | [`RoundTripComposition`](../L4YAML/Proofs/RoundTripComposition.lean) | ✅ |
+| 6.8 | `resolve_eq_of_contentEq_noTags` | `RoundTripComposition` | ✅ |
+| 6.9 | `emit_roundtrip_content_eq` (canonical-emitter closure) | `EmitterScannability` | 🚧 (15 `sorry`s) |
 | 6.10 | Phase-E universal round-trip: `∀ v, Grammable v false → ∃ docs, parseYaml (emit v) = .ok docs ∧ docs.size = 1 ∧ contentEq v docs[0]!.value = true` | (in docstring of `Completeness`, `RoundTrip`) | 📝 (aspirational, not declared) |
 | 6.11 | `dumpTyped_*`, `contentRoundTrips_*` | [`SchemaDump`](../L4YAML/Proofs/Schema/SchemaDump.lean), [`DumpRoundTrip`](../L4YAML/Proofs/DumpRoundTrip.lean) | ✅ for concrete instances |
 | 6.12 | `resolve_toYaml_*`, `fromYaml_toYaml_*` type round-trips | [`SchemaComposition`](../L4YAML/Proofs/Schema/SchemaComposition.lean) | ✅ for concrete instances |
-| 6.13 | `emit_parse_succeeds` — emitter output parses via `parseYamlRaw` (existence half of 6.10) | `EmitterScannability` | 🚧 (sorry-reachable via 6.8) |
-| 6.14 | `emit_parseYaml_succeeds` — emitter output parses via `parseYaml` (existence half of 6.10, composed) | `EmitterScannability` | 🚧 (sorry-reachable via 6.8) |
+| 6.13 | `emit_parse_succeeds` — emitter output parses via `parseYamlRaw` (existence half of 6.10) | `EmitterScannability` | 🚧 (sorry-reachable via 6.9) |
+| 6.14 | `emit_parseYaml_succeeds` — emitter output parses via `parseYaml` (existence half of 6.10, composed) | `EmitterScannability` | 🚧 (sorry-reachable via 6.9) |
 
 **The gap**: capstone 6.10 is the *universal* (∀ v) round-trip and
 currently lives only in docstrings. Proving it discharges
@@ -215,16 +222,16 @@ live wherever its proof is attempted.
 ## Group 7 — Grammar-production derivations
 
 Decomposes every scanner output as a full YAML 1.2.2 grammar
-derivation tree — the structural form of Group 2.1.
+derivation tree — the structural form of Group 2.2.
 
 | # | Theorem | Module | Status |
 | - | ------- | ------ | ------ |
-| 7.1 | `scan_content_gives_stream_v2` (full SLYamlStream derivation) | [`StreamAccum`](../L4YAML/Proofs/StreamAccum.lean) | 🚧 (28 `sorry`s, 5 architectural) |
-| 7.2 | `scanLoop_grammar_prod` | `StreamAccum` | 🚧 |
-| 7.3 | Per-function `*_prod` theorems (flow/block/document start/end, anchor/alias, tag, directive) | [`StructureProduction`](../L4YAML/Proofs/StructureProduction.lean) / [`DocumentProduction`](../L4YAML/Proofs/DocumentProduction.lean) / [`ScalarProduction`](../L4YAML/Proofs/ScalarProduction.lean) / [`NodeProduction`](../L4YAML/Proofs/NodeProduction.lean) | 🚧 (3, 3, 5, 0 `sorry`s resp.) |
-| 7.4 | `parseYaml_implies_valid_token_stream` (bridge to Group 4) | `EndToEndCorrectness` | ✅ |
-| 7.5 | `scan_strict_proof` — scanner acceptance implies `InYamlLanguage input` | [`DocumentProduction`](../L4YAML/Proofs/Production/DocumentProduction.lean) | 🚧 (sorry-reachable via 7.1) |
-| 7.6 | `parse_strict_proof` — parser acceptance implies `InYamlLanguage input` | `DocumentProduction` | 🚧 (sorry-reachable via 7.1, 7.5) |
+| 7.1 | `parse_strict_proof` (headline) — parser acceptance implies `InYamlLanguage input` | [`DocumentProduction`](../L4YAML/Proofs/Production/DocumentProduction.lean) | 🚧 (sorry-reachable via 7.2, 7.6) |
+| 7.2 | `scan_content_gives_stream_v2` (full SLYamlStream derivation) | [`StreamAccum`](../L4YAML/Proofs/StreamAccum.lean) | 🚧 (28 `sorry`s, 5 architectural) |
+| 7.3 | `scanLoop_grammar_prod` | `StreamAccum` | 🚧 |
+| 7.4 | Per-function `*_prod` theorems (flow/block/document start/end, anchor/alias, tag, directive) | [`StructureProduction`](../L4YAML/Proofs/StructureProduction.lean) / [`DocumentProduction`](../L4YAML/Proofs/DocumentProduction.lean) / [`ScalarProduction`](../L4YAML/Proofs/ScalarProduction.lean) / [`NodeProduction`](../L4YAML/Proofs/NodeProduction.lean) | 🚧 (3, 3, 5, 0 `sorry`s resp.) |
+| 7.5 | `parseYaml_implies_valid_token_stream` (bridge to Group 4) | `EndToEndCorrectness` | ✅ |
+| 7.6 | `scan_strict_proof` — scanner acceptance implies `InYamlLanguage input` | `DocumentProduction` | 🚧 (sorry-reachable via 7.2) |
 
 **Note**: Group 7 is the *strongest* form of scanner correctness —
 not "output is well-formed" but "output = a specific derivation tree
@@ -236,7 +243,7 @@ boundaries.
 **Target cluster (Phase 4)**:
 [`Proofs/Production/`](../L4YAML/Proofs/) (PR 5) for
 `StreamAccum`, `StructureProduction`, `DocumentProduction`,
-`ScalarProduction`, `NodeProduction`. Capstone 7.4
+`ScalarProduction`, `NodeProduction`. Capstone 7.5
 (`EndToEndCorrectness`) stays at `Proofs/` root.
 
 ---
@@ -248,7 +255,7 @@ surface-syntax predicate.
 
 | # | Theorem | Module | Status |
 | - | ------- | ------ | ------ |
-| 8.1 | `SIndent_*`, `GChar_*` character-level predicates | [`SurfaceCoupling`](../L4YAML/Proofs/SurfaceCoupling.lean) | ✅ |
+| 8.1 | `SIndent_*`, `GChar_*` character-level predicates (categoryCapstone; repr `SIndent_zero`) | [`SurfaceCoupling`](../L4YAML/Proofs/SurfaceCoupling.lean) | ✅ |
 | 8.2 | `scanFlowSequenceStart_corr`, `scanFlowSequenceEnd_corr`, `scanFlowMappingStart_corr`, `scanFlowMappingEnd_corr` | [`StructureCoupling`](../L4YAML/Proofs/StructureCoupling.lean) | ✅ |
 | 8.3 | `scanDirective_corr`, `scanAnchorOrAlias_corr`, `scanTag_corr` | `StructureCoupling` | ✅ |
 | 8.4 | `scanBlockScalar_corr`, `collectDoubleQuotedLoop_corr`, `collectPlainScalarLoop_corr` | [`ScalarCoupling`](../L4YAML/Proofs/ScalarCoupling.lean) | ✅ |
@@ -284,7 +291,7 @@ support the theorems above and should be deletable if unused:
   Fate tied to that theorem.
 - All `_ag`, `_aar`, `_wfa` per-function lemmas in
   `ParserNodeProofs`, `ParserAnchorProofs`, `ParserWfaProofs` — these
-  are the mutual-induction scaffolding for capstones 3.3, 3.4, 3.7.
+  are the mutual-induction scaffolding for capstones 3.4, 3.5, 3.8.
   Keep; they genuinely contribute.
 
 ---
@@ -296,11 +303,11 @@ support the theorems above and should be deletable if unused:
 
 | Priority | Coverage | Capstones exercised |
 | -------- | -------- | ------------------- |
-| 1 | 9g, 9h filtered characterization | 6.8 partial |
-| 2 | 9c, 9d emit round-trip content-eq | 6.4, 6.8 |
+| 1 | 9g, 9h filtered characterization | 6.9 partial |
+| 2 | 9c, 9d emit round-trip content-eq | 6.5, 6.9 |
 | 3 | 9a, 9b parser fuel sufficiency | 4.1 (indirect) |
-| 4 | 9e scanner prefix invariant | 2.1, 8.* |
-| 5 | BoundInv preservation | 2.4 |
+| 4 | 9e scanner prefix invariant | 2.2, 8.* |
+| 5 | BoundInv preservation | 2.5 |
 | 6 | ScanChain_filtered_prefix, flow-parser helpers | 2.*, 3.* |
 | 7 | `handleBlockMappingKeyEntry_mono_step` | *no capstone* — helper only |
 

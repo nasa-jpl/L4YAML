@@ -935,13 +935,13 @@ genuinely first-class public promises.
 
 | # | Headline | Category | Status | Why experts expect it | Plain-English summary |
 |---|----------|----------|--------|-----------------------|-----------------------|
-| 3.11 | `parseStream_respects_grammar_unconditional` | `parser` | ✅ | spec conformance | "parser output matches the written YAML 1.2.2 grammar" |
-| 4.1  | `parse_sound`                                | `end-to-end` | ✅ | soundness | "if we accept, the result is well-formed" |
-| 4.3  | `parse_complete`                             | `end-to-end` | ✅ | completeness | "every well-formed YAML is accepted" |
-| 4.7  | `parse_deterministic`                        | `end-to-end` | ✅ | functionality | "the parser is a function, not a relation" |
-| 5.5  | `validYaml_construct`                        | `values` | ✅ | value-level soundness | "every successful parse yields a `ValidYaml`" |
-| 6.9  | `universal_roundtrip`                        | `roundtrip` | 🚧 (sorry via 6.8) | round-trip | "emit then parse gives back the same content" |
-| 7.6  | `parse_strict_proof`                         | `grammar-production` | 🚧 (sorry via 7.1, 7.5) | strictness | "we never accept ill-formed input" |
+| 3.1 | `parseStream_respects_grammar_unconditional` | `parser` | ✅ | spec conformance | "parser output matches the written YAML 1.2.2 grammar" |
+| 4.1 | `parse_sound`                                | `end-to-end` | ✅ | soundness | "if we accept, the result is well-formed" |
+| 4.2 | `parse_complete`                             | `end-to-end` | ✅ | completeness | "every well-formed YAML is accepted" |
+| 4.3 | `parse_deterministic`                        | `end-to-end` | ✅ | functionality | "the parser is a function, not a relation" |
+| 5.1 | `validYaml_construct`                        | `values` | ✅ | value-level soundness | "every successful parse yields a `ValidYaml`" |
+| 6.1 | `universal_roundtrip`                        | `roundtrip` | 🚧 (sorry via 6.9) | round-trip | "emit then parse gives back the same content" |
+| 7.1 | `parse_strict_proof`                         | `grammar-production` | 🚧 (sorry via 7.2, 7.6) | strictness | "we never accept ill-formed input" |
 
 5 of 7 are ✅. The two 🚧 entries are front-page-admissible per
 the rule below, with their open sorry sites named in the status
