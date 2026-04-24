@@ -9,9 +9,10 @@ valid Unicode characters.
 
 ## Key Results
 
-1. **Type-level validity**: Every `Char` in Lean 4 satisfies `isValidChar`
-   by construction, so any function returning `Char` produces valid Unicode.
-   We state this explicitly for documentation.
+1. **Type-level validity**: Every `Char` in Lean 4 satisfies Lean's
+   built-in UInt32.isValidChar predicate by construction, so any
+   function returning `Char` produces valid Unicode. We state this
+   explicitly as `char_isValidChar` for documentation.
 
 2. **Named escape table correctness**: The 16 named escapes in
    `Grammar.resolveNamedEscape` are exhaustively verified:
@@ -20,14 +21,18 @@ valid Unicode characters.
      except for 7 control characters (null, bell, backspace, vertical tab,
      form feed, escape, line feed)
 
-3. **Parser correspondence**: The parser's `processEscape` function
-   (in `Parser/Scalar.lean`) uses the same match table as
+3. **Scanner correspondence**: The scanner's `processEscape` function
+   (in `Scanner/Scalar.lean`) uses the same match table as
    `Grammar.resolveNamedEscape`. We verify this by `#guard` checks
    on each named escape.
 
-4. **Unicode escape safety**: The `unicodeEscape` code path in the parser
-   either produces a `Char` (which is valid by construction) or returns
-   the replacement character `U+FFFD`.
+4. **Unicode escape safety**: Hex escapes (`\xHH`, `\uHHHH`,
+   `\UHHHHHHHH`) are handled by `parseHexEscape` in
+   `Scanner/Scalar.lean`. Either the decoded code point is
+   < 0x110000, in which case `Char.ofNat` produces a valid Unicode
+   char by construction, or the scanner returns
+   `.unicodeOutOfRange` (a `ScanError` constructor). There is no
+   FFFD fallback — the scanner rejects out-of-range escapes.
 
 ## Strategy
 

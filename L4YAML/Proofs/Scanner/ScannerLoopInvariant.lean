@@ -14,10 +14,13 @@ valid UTF-8 character boundary.
 
 ## Key Result
 
-`advance_preserves_offset_bound`: When the scanner is at a valid UTF-8
-position with `offset < inputEnd`, advancing to the next character keeps
-`offset ≤ inputEnd`.  This is the critical loop-invariant lemma that
-underpins all scanner progress arguments.
+`advance_preserves_wellFormed` (line 360): when the scanner is at a
+valid UTF-8 position and `inputEnd = input.utf8ByteSize`, advancing
+to the next character preserves every conjunct of `WellFormed` —
+including the offset bound `offset ≤ inputEnd`, which is discharged
+by the supporting lemma `advance_offset_le` (line 339). This is the
+critical loop-invariant lemma that underpins all scanner progress
+arguments. Catalogued as capstone 2.6.
 
 ## Architecture
 

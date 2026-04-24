@@ -1036,18 +1036,25 @@ for a noisy one-off audit.
 
 Wired into
 [`L4YAML.FGM/.github/workflows/generate-graphs.yml`](../../L4YAML.FGM/.github/workflows/generate-graphs.yml)
-as a step after `check-capstones`. Landed as **warn-only**
-(`continue-on-error: true`) because four pre-existing stale
-references were flagged at landing time:
+as a fail-fast gate after `check-capstones`. Four pre-existing
+stale references were fixed in the same PR that introduced the
+gate:
 
-- `ScannerLoopInvariant.lean` → `advance_preserves_offset_bound`
-- `EscapeResolution.lean` → `isValidChar`, `unicodeEscape`
+- `ScannerLoopInvariant.lean` → `advance_preserves_offset_bound` was
+  renamed to `advance_preserves_wellFormed` (the actual theorem, now
+  catalogued as capstone 2.6; `advance_offset_le` discharges the
+  offset-bound sub-claim the old prose described).
+- `EscapeResolution.lean` → `isValidChar` rewritten to point to the
+  in-file wrapper `char_isValidChar` around Lean's core
+  `UInt32.isValidChar`; `unicodeEscape` replaced with the actual
+  scanner function `parseHexEscape`, and the FFFD-fallback prose
+  corrected (no such fallback; out-of-range inputs produce
+  `.unicodeOutOfRange`).
 - `ScannerDoubleQuoted.lean` → `escapeTag_isSome_iff_isEscapedChar`
-
-Flip to fail-fast (remove `continue-on-error` in the workflow file)
-once those four are fixed. The tool already exits non-zero on
-drift, so no code change is needed at that point — just the YAML
-line.
+  renamed to `escapeTag_isSome_implies_isEscapedChar` (only the
+  forward direction is proved, and the full iff is architecturally
+  impossible: `isEscapedChar` also covers unnamed C0 controls that
+  `escapeTag` doesn't witness).
 
 **Acceptance**:
 

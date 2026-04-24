@@ -32,8 +32,13 @@ the emitter's `escapeChar`, and structural properties showing that
 3. **`escapeChar_identity_implies_safe`**: Non-escaped characters are not
    special in double-quoted context: they are not `"`, `\\`, or line breaks.
 
-4. **`escapeTag_isSome_iff_isEscapedChar`**: The `escapeTag` function and
-   `isEscapedChar` predicate characterize exactly the same set.
+4. **`escapeTag_isSome_implies_isEscapedChar`**: Every character with a
+   named-escape witness (`escapeTag c = some _`) is recognized by the
+   `isEscapedChar` predicate. Only the forward direction is proved;
+   a full iff is architecturally impossible as stated, because
+   `isEscapedChar` also covers unnamed C0 controls (`val < 0x20`)
+   that `escapeTag` doesn't witness — those are emitted as `\xHH`
+   hex escapes instead of single-char tags.
 
 5. **`escapeChar_no_newline`**: The output of `escapeChar` never contains
    a bare `\n` character.
