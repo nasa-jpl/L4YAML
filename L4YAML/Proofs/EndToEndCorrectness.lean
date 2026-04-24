@@ -20,7 +20,7 @@ the `parse` function to the `ValidYamlProp` specification.
 ## Main Results
 
 ```lean
-theorem parse_sound : parse s = .ok docs → ValidYamlProp s docs
+theorem parse_sound_shallow : parse s = .ok docs → ValidYamlProp s docs
 theorem parse_complete : ValidYamlProp s docs → parse s = .ok docs
 ```
 
@@ -32,7 +32,7 @@ These make the aspirational theorems from Grammar.lean:533-538 into reality.
 - Defines `ValidYamlProp` in terms of tokenization, parsing, and composition
 
 ### §2  Soundness Theorem
-- `parse_sound` — Parse success implies `ValidYamlProp`
+- `parse_sound_shallow` — Parse success implies `ValidYamlProp`
 - Unfolds `parseYaml` to extract tokenization and parsing steps
 
 ### §3  Completeness Theorem
@@ -69,6 +69,7 @@ open L4YAML
 open L4YAML.Grammar
 open L4YAML.Proofs.ScannerCorrectness
 open L4YAML.Proofs.ParserCorrectness
+open L4YAML.Proofs.Composition
 open L4YAML.Proofs.ParserGrammable
 open L4YAML.Proofs.ParserSoundness
 open L4YAML.Proofs.Soundness
@@ -116,7 +117,7 @@ i.e., the input decomposes into tokenization, parsing, and composition.
 **Proof strategy**: Unfold `parse` (which is `scan ∘ parseStream`) to extract
 the intermediate tokens and raw documents.
 -/
-theorem parse_sound (input : String) (docs : Array YamlDocument)
+theorem parse_sound_shallow (input : String) (docs : Array YamlDocument)
     (h : TokenParser.parseYaml input = .ok docs) : ValidYamlProp input docs := by
   -- Unfold parse definitions to extract intermediate results
   unfold TokenParser.parseYaml at h
@@ -137,6 +138,48 @@ theorem parse_sound (input : String) (docs : Array YamlDocument)
   · contradiction
 
 /--
+**Parse soundness — deep form**. Companion to `parse_sound_shallow` that exposes the
+full pipeline fibration instead of hiding it behind `ValidYamlProp`.
+
+Where `parse_sound_shallow` returns `ValidYamlProp input docs` — a single `Prop`
+wrapper over the existential — `parse_sound_deep` returns a conjunction whose
+type mentions the pipeline stages individually (`scanFiltered`, `parseYamlRaw`,
+`parseStream`, `YamlDocument.compose`) _and_ carries the per-document
+`ValidNode` witness from `parseYaml_produces_valid_nodes`.
+
+Why this matters: the functorial-chain analyzer in `FGM.ExploreGraph`
+requires, at each step, a direct proof-dep theorem that is *about* a callee
+of the current function. `parse_sound_shallow`'s tactic proof (`unfold`, `split`,
+`injection`) cites zero project theorems, so its chain is empty — the
+fibration is invisible to the analyzer. `parse_sound_deep` cites
+`parseYamlRaw_ok_decompose` (about `parseYamlRaw` / `scanFiltered` /
+`parseStream`) and `parseYaml_produces_valid_nodes` (about `parseYaml` /
+`toYamlValue` / `ValidNode`), so the chain walker descends the call tree in
+lockstep with the proof tree.
+
+See the "Mind the Fibration Gap" section in the Verso verification doc.
+-/
+theorem parse_sound_deep (input : String) (docs : Array YamlDocument)
+    (h : TokenParser.parseYaml input = .ok docs) :
+    ∃ (tokens : Array (Positioned YamlToken))
+      (raw_docs : Array YamlDocument),
+      Scanner.scanFiltered input = .ok tokens ∧
+      TokenParser.parseYamlRaw input = .ok raw_docs ∧
+      TokenParser.parseStream tokens = .ok raw_docs ∧
+      docs = raw_docs.map YamlDocument.compose ∧
+      (∀ doc ∈ docs.toList, ∃ node : ValidNode,
+         stripAnnotations (toYamlValue node) = stripAnnotations doc.value) := by
+  have h_valid := parseYaml_produces_valid_nodes input docs h
+  unfold TokenParser.parseYaml at h
+  split at h
+  · rename_i raw_docs h_raw
+    injection h with h_eq
+    obtain ⟨tokens, h_scan, h_parse⟩ :=
+      parseYamlRaw_ok_decompose input raw_docs h_raw
+    exact ⟨tokens, raw_docs, h_scan, h_raw, h_parse, h_eq.symm, h_valid⟩
+  · contradiction
+
+/--
 Alternative formulation: Parse soundness in terms of individual documents.
 
 Successful parsing decomposes into raw documents that compose to the final output.
@@ -145,7 +188,7 @@ theorem parse_sound_documents (input : String) (docs : Array YamlDocument)
     (h : TokenParser.parseYaml input = .ok docs) :
     ∃ raw_docs : Array YamlDocument,
       docs = raw_docs.map YamlDocument.compose := by
-  have ⟨_, raw_docs, _, _, h_compose⟩ := parse_sound input docs h
+  have ⟨_, raw_docs, _, _, h_compose⟩ := parse_sound_shallow input docs h
 
   exact ⟨raw_docs, h_compose⟩
 
@@ -262,7 +305,7 @@ theorem parseYaml_implies_valid_token_stream (input : String)
     ∃ (tokens : Array (Positioned YamlToken)),
       Scanner.scan input = .ok tokens ∧
       Grammar.ValidTokenStreamProp tokens := by
-  have ⟨filtered_tokens, _, h_scanf, _, _⟩ := parse_sound input docs h
+  have ⟨filtered_tokens, _, h_scanf, _, _⟩ := parse_sound_shallow input docs h
   -- h_scanf : scanFiltered input = .ok filtered_tokens
   -- Unfold scanFiltered to extract the underlying scan result
   unfold Scanner.scanFiltered at h_scanf
