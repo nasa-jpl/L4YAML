@@ -1010,11 +1010,44 @@ already unpacked). Written to be readable by a YAML user who is not
 a formal-methods expert, but precise enough for the expert to follow
 the links through.
 
-**6. `check-capstones` extension**
+**6. CI gates: `check-capstones` extension + `check-file-headers`**
 
-Add `--require-headlines-proven` mode: fail CI if any headline
-entry has status 🚧 (partial) or 🗑 (deletion candidate). Stricter
-than the default ✅/🚧-agnostic check.
+Two companion CI gates.
+
+*6a. `check-capstones --require-headlines-proven`*: fail CI if any
+headline entry has status 🚧 (partial) or 🗑 (deletion candidate).
+Stricter than the default ✅/🚧-agnostic check.
+
+*6b. `check-file-headers`* — shipped as a new
+[`lake exe check-file-headers`](../../L4YAML.FGM/tools/CheckFileHeaders.lean).
+Scans `## Key Result` sections of every
+`L4YAML/**/*.lean` docstring, extracts backticked identifiers, and
+flags any that don't resolve to a declaration anywhere under the
+scan root. Catches the common drift pattern where a "Key Result:
+`foo_bar`" claim survives a rename/remove of `foo_bar` in the file
+itself.
+
+Scope is intentionally narrow (`## Key Result` only, not the full
+docstring) because scanning the whole header produced ~600 false
+positives from backticked Lean-core types (`Nat`, `Prop`) and
+tactic names (`simp`, `native_decide`). A prose-variable and
+keyword filter trims the remaining noise. Switch on `--scan-all-header`
+for a noisy one-off audit.
+
+Wired into
+[`L4YAML.FGM/.github/workflows/generate-graphs.yml`](../../L4YAML.FGM/.github/workflows/generate-graphs.yml)
+as a step after `check-capstones`. Landed as **warn-only**
+(`continue-on-error: true`) because four pre-existing stale
+references were flagged at landing time:
+
+- `ScannerLoopInvariant.lean` → `advance_preserves_offset_bound`
+- `EscapeResolution.lean` → `isValidChar`, `unicodeEscape`
+- `ScannerDoubleQuoted.lean` → `escapeTag_isSome_iff_isEscapedChar`
+
+Flip to fail-fast (remove `continue-on-error` in the workflow file)
+once those four are fixed. The tool already exits non-zero on
+drift, so no code change is needed at that point — just the YAML
+line.
 
 **Acceptance**:
 
