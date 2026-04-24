@@ -10,11 +10,12 @@ Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
 
-namespace L4YAML.Proofs.ParserGrammable
+namespace L4YAML.Proofs.ParserWellBehaved
 
 open L4YAML
 open L4YAML.Grammar
 open L4YAML.TokenParser
+open L4YAML.Proofs.ParserGrammable
 open L4YAML.Proofs.ScannerPlainScalarValid
 open L4YAML.Proofs.Composition
 
@@ -8026,4 +8027,4 @@ theorem flow_parser_ok_of_structure
       · -- Insufficient fuel: show this leads to error or handle inline
         sorry
 
-end L4YAML.Proofs.ParserGrammable
+end L4YAML.Proofs.ParserWellBehaved

@@ -11,9 +11,11 @@ Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
 
-namespace L4YAML.Proofs.ParserGrammable
+namespace L4YAML.Proofs.ParserAnchorProofs
 
 open L4YAML
+open L4YAML.Proofs.ParserGrammable
+open L4YAML.Proofs.ParserWfaProofs
 open L4YAML.Grammar
 open L4YAML.TokenParser
 open L4YAML.Proofs.ScannerPlainScalarValid
@@ -110,14 +112,14 @@ theorem parseNode_anchors_grow (ps : ParseState) (fuel : Nat)
     (h_ok : parseNode ps fuel = .ok (val, ps')) :
     ∀ i : Fin ps.anchors.size, ∃ j : Fin ps'.anchors.size,
         ps'.anchors[j] = ps.anchors[i] :=
-  ParserNodeProofs.parseNode_anchors_grow ps fuel val ps' h_ok
+  L4YAML.Proofs.ParserNodeProofs.parseNode_anchors_grow ps fuel val ps' h_ok
 
 -- Core lemma: parseNode produces AllAliasesResolve-satisfying output.
 theorem parseNode_aliases_resolve (ps : ParseState) (fuel : Nat)
     (val : YamlValue) (ps' : ParseState)
     (h_ok : parseNode ps fuel = .ok (val, ps')) :
     AllAliasesResolve val ps'.anchors :=
-  ParserNodeProofs.parseNode_aliases_resolve' ps fuel val ps' h_ok
+  L4YAML.Proofs.ParserNodeProofs.parseNode_aliases_resolve' ps fuel val ps' h_ok
 
 -- Lift to parseDocument level
 theorem parseDocument_aliases_resolve (ps : ParseState)
@@ -217,4 +219,4 @@ theorem parseStream_output_aliases_resolve
 -- parseStream_output_anchors_wellformed is now in ParserWfaProofs.lean
 -- (with updated signature: FlowAwarePSV + FlowBracketsMatched)
 
-end L4YAML.Proofs.ParserGrammable
+end L4YAML.Proofs.ParserAnchorProofs
