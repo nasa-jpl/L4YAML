@@ -171,10 +171,13 @@ structure. See `ParserNodeProofs.lean`, `ParserAnchorProofs.lean`,
 ## Proof dependency sketch (capstones)
 
 The capstone theorems (detailed in [`04-capstones.md`](04-capstones.md))
-form a DAG with `parse_sound` / `parse_complete` at the top:
+form a DAG with `parse_sound_deep` / `parse_complete` at the top
+(`parse_sound_shallow` sits alongside as the propBridge variant
+covering only the top-level implication; `parse_sound_deep` is the
+fibration canary that cites the pipeline lemmas directly):
 
 ```
-                  parse_sound / parse_complete / parse_produces_valid_yaml
+                  parse_sound_deep / parse_complete / parse_produces_valid_yaml
                                     │
                    ┌────────────────┼────────────────┐
                    ▼                ▼                ▼
