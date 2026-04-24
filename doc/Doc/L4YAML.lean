@@ -6,6 +6,7 @@
 -/
 import VersoManual
 
+import Doc.L4YAML.Stats
 import Doc.L4YAML.Overview
 import Doc.L4YAML.Architecture
 import Doc.L4YAML.Verification
@@ -15,6 +16,7 @@ import Doc.L4YAML.Testing
 import Doc.L4YAML.TestResults
 
 open Verso.Genre Manual
+open Doc.L4YAML.Stats
 
 set_option pp.rawOnError true
 
@@ -26,10 +28,11 @@ shortTitle := "L4YAML"
 %%%
 
 L4YAML is a fully verified YAML 1.2.2 parser written in pure Lean 4.
-It delivers 2,309 machine-checked theorems across 61 proof modules,
-zero axioms, zero `sorry`, and zero `partial def` — while passing
-100% of the YAML 1.2.2 specification examples and 100% of the
-applicable yaml-test-suite test IDs (225/225).
+It delivers {numTheorems}[] machine-checked theorems across
+{numProofModules}[] proof modules, zero axioms, zero `sorry`, and
+zero `partial def` — while passing 100% of the YAML 1.2.2
+specification examples and 100% of the applicable yaml-test-suite
+test IDs (225/225).
 
 This manual documents the project's architecture, verification
 strategy, security model, and FFI bindings for C, Python, and Rust.
