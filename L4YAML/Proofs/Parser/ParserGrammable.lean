@@ -34,6 +34,9 @@ namespace L4YAML.Proofs.ParserGrammable
 open L4YAML
 open L4YAML.Grammar
 open L4YAML.TokenParser
+open L4YAML.Proofs.ParserWellBehaved
+open L4YAML.Proofs.ParserAnchorProofs
+open L4YAML.Proofs.ParserWfaProofs
 open L4YAML.Proofs.ScannerPlainScalarValid
 open L4YAML.Proofs.Composition
 

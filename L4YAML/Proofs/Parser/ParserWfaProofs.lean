@@ -26,15 +26,17 @@ registered, the cleaned value is universally grammable by
 `adaptForFlowContext_grammable_forall ∘ compose_value_grammable`.
 -/
 
-namespace L4YAML.Proofs.ParserGrammable
+namespace L4YAML.Proofs.ParserWfaProofs
 
 open L4YAML
 open L4YAML.Grammar
 open L4YAML.TokenParser
+open L4YAML.Proofs.ParserGrammable
+open L4YAML.Proofs.ParserWellBehaved
 open L4YAML.Proofs.ScannerPlainScalarValid
 open L4YAML.Proofs.Composition
 open L4YAML.Proofs.ValueAlgebra
-open ParserNodeProofs
+open L4YAML.Proofs.ParserNodeProofs
 
 -- Custom tactic: unfold all `*.loop*` constants in a hypothesis.
 open Lean Lean.Meta Lean.Elab.Tactic in
@@ -1687,4 +1689,4 @@ theorem parseStream_output_anchors_wellformed
     · intro doc hd; simp at hd
     · exact h_parse
 
-end L4YAML.Proofs.ParserGrammable
+end L4YAML.Proofs.ParserWfaProofs

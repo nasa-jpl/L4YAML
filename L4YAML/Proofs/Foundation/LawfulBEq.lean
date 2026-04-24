@@ -34,7 +34,9 @@ theorems), we provide manual `@[simp]` lemmas for each constructor pair,
 all proved by `rfl`.
 -/
 
-namespace L4YAML
+namespace L4YAML.Proofs.LawfulBEq
+
+open L4YAML
 
 /-! ## §1  Enum LawfulBEq Instances -/
 
@@ -258,4 +260,4 @@ instance : LawfulBEq YamlValue where
   rfl := beqYamlValue_rfl _
   eq_of_beq h := beqYamlValue_eq _ _ h
 
-end L4YAML
+end L4YAML.Proofs.LawfulBEq

@@ -29,7 +29,7 @@ Explicit tags override implicit resolution.
 ### §5 — Compile-time `#guard` checks for concrete values
 -/
 
-namespace L4YAML.Schema.Proofs
+namespace L4YAML.Proofs.SchemaResolution
 
 open L4YAML.Schema
 open L4YAML
@@ -224,4 +224,4 @@ Moved to `Tests/Guards/Proofs/SchemaResolution.lean`.
 -/
 
 
-end L4YAML.Schema.Proofs
+end L4YAML.Proofs.SchemaResolution

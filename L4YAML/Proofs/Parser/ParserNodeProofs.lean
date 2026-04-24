@@ -29,7 +29,7 @@ theorem any_name_implies_findSome_isSome'
       obtain ⟨i, hi, hp⟩ := h
       exact ⟨xs[i], Array.getElem_mem hi, h_fg _ hp⟩
 
-namespace ParserNodeProofs
+namespace L4YAML.Proofs.ParserNodeProofs
 
 -- Local copy of unfold_loop_at (defined in ParserGrammable, not transitively imported)
 open Lean Lean.Meta Lean.Elab.Tactic in
@@ -1778,4 +1778,4 @@ theorem parseNode_aliases_resolve'
     AllAliasesResolve val ps'.anchors :=
   parseNode_aar_all fuel ps fuel val ps' Nat.le.refl h
 
-end ParserNodeProofs
+end L4YAML.Proofs.ParserNodeProofs
