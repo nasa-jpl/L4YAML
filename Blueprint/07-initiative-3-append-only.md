@@ -202,16 +202,17 @@ its body.  All existing call-site reasoning carries through.
 
 ## Phased migration plan
 
-### Phase J.0 — Design (1 week)
+### Phase J.0 — Design (completed 2026-04-26)
 
 **Deliverable**: `Blueprint/07-initiative-3-append-only.md` (this
 doc) updated with concrete answers to the open design questions, plus
 a worked example showing the new state through a non-trivial input
 (e.g., `{a: [1, 2], b: c}`).
 
-**Validation gate**: review with the principal verifier; confirm the
-new types support every scanner submodule's needs.  No code changes
-until this is signed off.
+**Validation gate** (✓ satisfied 2026-04-26): principal verifier
+reviewed and approved `ResolutionKind` / `PendingKeyEntry`, the
+`linearise` algorithm, and the `{a: [1, 2], b: c}` worked example.
+Code changes proceed on `feature/append-only`.
 
 ### Phase J.1 — Type definitions and stub (1 week)
 
