@@ -630,10 +630,10 @@ theorem scanDocumentStart_new_tok_not_plain (s : ScannerState) (j : Nat)
     | _ => True := by
   unfold scanDocumentStart at hj ⊢
   simp only [advanceN_preserves_tokens] at hj ⊢
-  have h_sk_tok : ({ unwindIndents s (-1) with simpleKey := { possible := false } } : ScannerState).tokens = (unwindIndents s (-1)).tokens := rfl
+  have h_sk_tok : ({ unwindIndents s (-1) with simpleKey := { possible := false }, pendingKeyActive := none } : ScannerState).tokens = (unwindIndents s (-1)).tokens := rfl
   by_cases h_lt : j < (unwindIndents s (-1)).tokens.size
   · simp only [emit_preserves_tokens_at
-        { unwindIndents s (-1) with simpleKey := { possible := false } }
+        { unwindIndents s (-1) with simpleKey := { possible := false }, pendingKeyActive := none }
         .documentStart j (by rw [h_sk_tok]; exact h_lt)]
     exact unwindIndents_new_tokens_not_plain s (-1) j h_lt hge
   · have h_j : j = (unwindIndents s (-1)).tokens.size := by rw [emit_tokens_size, h_sk_tok] at hj; omega
@@ -646,10 +646,10 @@ theorem scanDocumentStart_new_not_plain (s : ScannerState) (j : Nat)
     | _ => True := by
   unfold scanDocumentStart at hj ⊢
   simp only [advanceN_preserves_tokens] at hj ⊢
-  have h_sk_tok : ({ unwindIndents s (-1) with simpleKey := { possible := false } } : ScannerState).tokens = (unwindIndents s (-1)).tokens := rfl
+  have h_sk_tok : ({ unwindIndents s (-1) with simpleKey := { possible := false }, pendingKeyActive := none } : ScannerState).tokens = (unwindIndents s (-1)).tokens := rfl
   by_cases h_lt : j < (unwindIndents s (-1)).tokens.size
   · simp only [emit_preserves_tokens_at
-        { unwindIndents s (-1) with simpleKey := { possible := false } }
+        { unwindIndents s (-1) with simpleKey := { possible := false }, pendingKeyActive := none }
         .documentStart j (by rw [h_sk_tok]; exact h_lt)]
     exact psv_of_not_plain _ (unwindIndents_new_tokens_not_plain s (-1) j h_lt hge)
   · have h_j : j = (unwindIndents s (-1)).tokens.size := by rw [emit_tokens_size, h_sk_tok] at hj; omega
@@ -660,7 +660,7 @@ theorem scanDocumentStart_new_not_plain (s : ScannerState) (j : Nat)
 set_option maxHeartbeats 800000 in
 theorem scanDocumentEnd_tokens_eq (s : ScannerState) (s' : ScannerState)
     (h_de : scanDocumentEnd s = .ok s') :
-    s'.tokens = ({ unwindIndents s (-1) with simpleKey := { possible := false } }.emit .documentEnd).tokens := by
+    s'.tokens = ({ unwindIndents s (-1) with simpleKey := { possible := false }, pendingKeyActive := none }.emit .documentEnd).tokens := by
   unfold scanDocumentEnd at h_de
   dsimp only [] at h_de
   simp only [bind, Except.bind] at h_de
@@ -692,10 +692,10 @@ theorem scanDocumentEnd_new_not_plain (s : ScannerState) (s' : ScannerState)
     | _ => True := by
   have h_tok := scanDocumentEnd_tokens_eq s s' h_de
   simp only [h_tok] at hj ⊢
-  have h_sk_tok : ({ unwindIndents s (-1) with simpleKey := { possible := false } } : ScannerState).tokens = (unwindIndents s (-1)).tokens := rfl
+  have h_sk_tok : ({ unwindIndents s (-1) with simpleKey := { possible := false }, pendingKeyActive := none } : ScannerState).tokens = (unwindIndents s (-1)).tokens := rfl
   by_cases h_lt : j < (unwindIndents s (-1)).tokens.size
   · simp only [emit_preserves_tokens_at
-        { unwindIndents s (-1) with simpleKey := { possible := false } }
+        { unwindIndents s (-1) with simpleKey := { possible := false }, pendingKeyActive := none }
         .documentEnd j (by rw [h_sk_tok]; exact h_lt)]
     exact psv_of_not_plain _ (unwindIndents_new_tokens_not_plain s (-1) j h_lt hge)
   · have h_j : j = (unwindIndents s (-1)).tokens.size := by rw [emit_tokens_size, h_sk_tok] at hj; omega
@@ -709,10 +709,10 @@ theorem scanDocumentEnd_new_tok_not_plain (s : ScannerState) (s' : ScannerState)
     | _ => True := by
   have h_tok := scanDocumentEnd_tokens_eq s s' h_de
   simp only [h_tok] at hj ⊢
-  have h_sk_tok : ({ unwindIndents s (-1) with simpleKey := { possible := false } } : ScannerState).tokens = (unwindIndents s (-1)).tokens := rfl
+  have h_sk_tok : ({ unwindIndents s (-1) with simpleKey := { possible := false }, pendingKeyActive := none } : ScannerState).tokens = (unwindIndents s (-1)).tokens := rfl
   by_cases h_lt : j < (unwindIndents s (-1)).tokens.size
   · simp only [emit_preserves_tokens_at
-        { unwindIndents s (-1) with simpleKey := { possible := false } }
+        { unwindIndents s (-1) with simpleKey := { possible := false }, pendingKeyActive := none }
         .documentEnd j (by rw [h_sk_tok]; exact h_lt)]
     exact unwindIndents_new_tokens_not_plain s (-1) j h_lt hge
   · have h_j : j = (unwindIndents s (-1)).tokens.size := by rw [emit_tokens_size, h_sk_tok] at hj; omega
@@ -1935,7 +1935,7 @@ theorem scanDocumentStart_preserves_FlowNestingInv (s : ScannerState)
   unfold scanDocumentStart
   apply advanceN_preserves_FlowNestingInv
   exact FlowNestingInv_emit_non_flow
-    { unwindIndents s (-1) with simpleKey := { possible := false } }
+    { unwindIndents s (-1) with simpleKey := { possible := false }, pendingKeyActive := none }
     .documentStart
     (unwindIndents_preserves_FlowNestingInv s (-1) h)
     (by decide) (by decide) (by decide) (by decide)
@@ -1953,10 +1953,10 @@ theorem scanDocumentEnd_preserves_FlowNestingInv (s s' : ScannerState)
   · simp at h_ok
   · -- All ok paths produce the same `result` computed before validation
     have h_base : FlowNestingInv
-        (({ unwindIndents s (-1) with simpleKey := { possible := false } }.emit .documentEnd).advanceN 3) :=
+        (({ unwindIndents s (-1) with simpleKey := { possible := false }, pendingKeyActive := none }.emit .documentEnd).advanceN 3) :=
       advanceN_preserves_FlowNestingInv _ _
         (FlowNestingInv_emit_non_flow
-          { unwindIndents s (-1) with simpleKey := { possible := false } }
+          { unwindIndents s (-1) with simpleKey := { possible := false }, pendingKeyActive := none }
           .documentEnd
           (unwindIndents_preserves_FlowNestingInv s (-1) h_fni)
           (by decide) (by decide) (by decide) (by decide))

@@ -452,7 +452,7 @@ theorem scanDocumentStart_corr (sc : ScannerState) (sp : SurfPos)
   unfold scanDocumentStart
   obtain ⟨sp_uw, hcorr_uw⟩ := unwindIndents_corr sc sp hcorr (-1)
   obtain ⟨sp_adv, hcorr_adv⟩ := advanceN_corr
-    ({ (unwindIndents sc (-1)) with simpleKey := { possible := false } }.emit .documentStart)
+    ({ (unwindIndents sc (-1)) with simpleKey := { possible := false }, pendingKeyActive := none }.emit .documentStart)
     sp_uw ⟨hcorr_uw.chars_from, hcorr_uw.col_eq, hcorr_uw.end_eq, hcorr_uw.input_prefix, hcorr_uw.indent_cols_nonneg⟩ 3
   exact ⟨sp_adv, ⟨hcorr_adv.chars_from, hcorr_adv.col_eq, hcorr_adv.end_eq, hcorr_adv.input_prefix, hcorr_adv.indent_cols_nonneg⟩⟩
 
@@ -466,7 +466,7 @@ theorem scanDocumentEnd_corr (sc : ScannerState) (sp : SurfPos)
   · exact absurd hok (by simp) -- directiveWithoutDocument
   · obtain ⟨sp_uw, hcorr_uw⟩ := unwindIndents_corr sc sp hcorr (-1)
     obtain ⟨sp_adv, hcorr_adv⟩ := advanceN_corr
-      ({ (unwindIndents sc (-1)) with simpleKey := { possible := false } }.emit .documentEnd)
+      ({ (unwindIndents sc (-1)) with simpleKey := { possible := false }, pendingKeyActive := none }.emit .documentEnd)
       sp_uw ⟨hcorr_uw.chars_from, hcorr_uw.col_eq, hcorr_uw.end_eq, hcorr_uw.input_prefix, hcorr_uw.indent_cols_nonneg⟩ 3
     -- The match s''.peek? only validates; result is returned unchanged
     split at hok

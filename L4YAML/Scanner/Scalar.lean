@@ -898,7 +898,12 @@ def scanBlockScalarBody (s_orig : ScannerState) (s_after_newline : ScannerState)
     let content := if isLiteral then content else foldBlockContent content
     let style := if isLiteral then ScalarStyle.literal else ScalarStyle.folded
     let s_with_token := s_after_content.emitAt startPos (.scalar content style)
-    .ok { s_with_token with simpleKeyAllowed := true, simpleKey := { possible := false } }
+    -- J.2 dual-write: also clear `pendingKeyActive`.  Block scalars
+    -- emit on a fresh line so any active reservation belongs to a
+    -- previous (already-resolved or now-stale) candidate.
+    .ok { s_with_token with simpleKeyAllowed := true,
+                            simpleKey := { possible := false },
+                            pendingKeyActive := none }
 
 /-- Scan a block scalar (literal `|` or folded `>`).
 

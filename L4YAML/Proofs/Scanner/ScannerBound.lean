@@ -984,7 +984,8 @@ theorem scanDocumentStart_BoundInv (s : ScannerState)
     (h : BoundInv s s) (hend : s.inputEnd = s.input.utf8ByteSize) :
     BoundInv s (scanDocumentStart s) := by
   have h_unw := unwindIndents_BoundInv s (-1) h
-  have h_kd : BoundInv s { unwindIndents s (-1) with simpleKey := { possible := false } } :=
+  have h_kd : BoundInv s { unwindIndents s (-1) with simpleKey := { possible := false },
+                                                      pendingKeyActive := none } :=
     fieldUpdate_BoundInv _ _ h_unw rfl rfl rfl
   have h_em := emit_BoundInv _ .documentStart h_kd
   have h_adv := advanceN_BoundInv _ 3 h_em hend
@@ -1002,11 +1003,13 @@ theorem scanDocumentEnd_BoundInv (s s' : ScannerState)
   -- After resolving do-notation, hok has guard + validation splits
   -- but the returned state is always the same
   have h_unw := unwindIndents_BoundInv s (-1) h
-  have h_kd : BoundInv s { unwindIndents s (-1) with simpleKey := { possible := false } } :=
+  have h_kd : BoundInv s { unwindIndents s (-1) with simpleKey := { possible := false },
+                                                      pendingKeyActive := none } :=
     fieldUpdate_BoundInv _ _ h_unw rfl rfl rfl
   have h_em := emit_BoundInv _ .documentEnd h_kd
   have h_adv := advanceN_BoundInv _ 3 h_em hend
-  have h_res : BoundInv s { (unwindIndents s (-1) |> fun s => { s with simpleKey := { possible := false } }
+  have h_res : BoundInv s { (unwindIndents s (-1) |> fun s => { s with simpleKey := { possible := false },
+                                                                       pendingKeyActive := none }
     |>.emit .documentEnd |>.advanceN 3) with
     simpleKeyAllowed := true, allowDirectives := true,
     directivesPresent := false, definedAnchors := #[] } :=

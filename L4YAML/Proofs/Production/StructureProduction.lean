@@ -833,39 +833,39 @@ theorem scanDocumentStart_prod (sc : ScannerState) (sp : SurfPos)
   -- Thread through unwindIndents (preserves exact position)
   have hcorr_uw := unwindIndents_corr_exact sc ⟨'-' :: '-' :: '-' :: rest, 0⟩ hcorr (-1)
   have hcorr_key : ScannerSurfCorr
-      { (unwindIndents sc (-1)) with simpleKey := { possible := false } }
+      { (unwindIndents sc (-1)) with simpleKey := { possible := false }, pendingKeyActive := none }
       ⟨'-' :: '-' :: '-' :: rest, 0⟩ :=
     ⟨hcorr_uw.chars_from, hcorr_uw.col_eq, hcorr_uw.end_eq, hcorr_uw.input_prefix, hcorr_uw.indent_cols_nonneg⟩
   have hcorr_emit := corr_of_emit .documentStart hcorr_key
   -- Advance past first '-'
   have hcorr_at1 : ScannerSurfCorr
-      ({ (unwindIndents sc (-1)) with simpleKey := { possible := false } }.emit .documentStart)
+      ({ (unwindIndents sc (-1)) with simpleKey := { possible := false }, pendingKeyActive := none }.emit .documentStart)
       ⟨'-' :: '-' :: '-' :: rest,
-       ({ (unwindIndents sc (-1)) with simpleKey := { possible := false } }.emit .documentStart).col⟩ :=
+       ({ (unwindIndents sc (-1)) with simpleKey := { possible := false }, pendingKeyActive := none }.emit .documentStart).col⟩ :=
     ⟨hcorr_emit.chars_from, rfl, hcorr_emit.end_eq, hcorr_emit.input_prefix, hcorr_emit.indent_cols_nonneg⟩
   have hmore1 := corr_nonempty_has_more hcorr_at1
   have hcorr_adv1 := advance_non_newline_corr
-    ({ (unwindIndents sc (-1)) with simpleKey := { possible := false } }.emit .documentStart)
+    ({ (unwindIndents sc (-1)) with simpleKey := { possible := false }, pendingKeyActive := none }.emit .documentStart)
     '-' ('-' :: '-' :: rest) hcorr_at1 hmore1 (by decide) (by decide)
   -- Advance past second '-'
   have hcorr_at2 : ScannerSurfCorr
-      ({ (unwindIndents sc (-1)) with simpleKey := { possible := false } }.emit .documentStart).advance
+      ({ (unwindIndents sc (-1)) with simpleKey := { possible := false }, pendingKeyActive := none }.emit .documentStart).advance
       ⟨'-' :: '-' :: rest,
-       ({ (unwindIndents sc (-1)) with simpleKey := { possible := false } }.emit .documentStart).advance.col⟩ :=
+       ({ (unwindIndents sc (-1)) with simpleKey := { possible := false }, pendingKeyActive := none }.emit .documentStart).advance.col⟩ :=
     ⟨hcorr_adv1.chars_from, rfl, hcorr_adv1.end_eq, hcorr_adv1.input_prefix, hcorr_adv1.indent_cols_nonneg⟩
   have hmore2 := corr_nonempty_has_more hcorr_at2
   have hcorr_adv2 := advance_non_newline_corr
-    ({ (unwindIndents sc (-1)) with simpleKey := { possible := false } }.emit .documentStart).advance
+    ({ (unwindIndents sc (-1)) with simpleKey := { possible := false }, pendingKeyActive := none }.emit .documentStart).advance
     '-' ('-' :: rest) hcorr_at2 hmore2 (by decide) (by decide)
   -- Advance past third '-'
   have hcorr_at3 : ScannerSurfCorr
-      ({ (unwindIndents sc (-1)) with simpleKey := { possible := false } }.emit .documentStart).advance.advance
+      ({ (unwindIndents sc (-1)) with simpleKey := { possible := false }, pendingKeyActive := none }.emit .documentStart).advance.advance
       ⟨'-' :: rest,
-       ({ (unwindIndents sc (-1)) with simpleKey := { possible := false } }.emit .documentStart).advance.advance.col⟩ :=
+       ({ (unwindIndents sc (-1)) with simpleKey := { possible := false }, pendingKeyActive := none }.emit .documentStart).advance.advance.col⟩ :=
     ⟨hcorr_adv2.chars_from, rfl, hcorr_adv2.end_eq, hcorr_adv2.input_prefix, hcorr_adv2.indent_cols_nonneg⟩
   have hmore3 := corr_nonempty_has_more hcorr_at3
   have hcorr_adv3 := advance_non_newline_corr
-    ({ (unwindIndents sc (-1)) with simpleKey := { possible := false } }.emit .documentStart).advance.advance
+    ({ (unwindIndents sc (-1)) with simpleKey := { possible := false }, pendingKeyActive := none }.emit .documentStart).advance.advance
     '-' rest hcorr_at3 hmore3 (by decide) (by decide)
   -- Final: ScannerSurfCorr (scanDocumentStart sc) ⟨rest, 3⟩
   exact ⟨hcorr_adv3.chars_from,
@@ -896,44 +896,44 @@ theorem scanDocumentEnd_prod (sc : ScannerState) (sp : SurfPos)
     have hcorr_uw := unwindIndents_corr_exact sc
       ⟨'.' :: '.' :: '.' :: rest, 0⟩ hcorr (-1)
     have hcorr_key : ScannerSurfCorr
-        { (unwindIndents sc (-1)) with simpleKey := { possible := false } }
+        { (unwindIndents sc (-1)) with simpleKey := { possible := false }, pendingKeyActive := none }
         ⟨'.' :: '.' :: '.' :: rest, 0⟩ :=
       ⟨hcorr_uw.chars_from, hcorr_uw.col_eq, hcorr_uw.end_eq, hcorr_uw.input_prefix, hcorr_uw.indent_cols_nonneg⟩
     have hcorr_emit := corr_of_emit .documentEnd hcorr_key
     -- Advance past first '.'
     have hcorr_at1 : ScannerSurfCorr
-        ({ (unwindIndents sc (-1)) with simpleKey := { possible := false } }.emit .documentEnd)
+        ({ (unwindIndents sc (-1)) with simpleKey := { possible := false }, pendingKeyActive := none }.emit .documentEnd)
         ⟨'.' :: '.' :: '.' :: rest,
-         ({ (unwindIndents sc (-1)) with simpleKey := { possible := false } }.emit .documentEnd).col⟩ :=
+         ({ (unwindIndents sc (-1)) with simpleKey := { possible := false }, pendingKeyActive := none }.emit .documentEnd).col⟩ :=
       ⟨hcorr_emit.chars_from, rfl, hcorr_emit.end_eq, hcorr_emit.input_prefix, hcorr_emit.indent_cols_nonneg⟩
     have hmore1 := corr_nonempty_has_more hcorr_at1
     have hcorr_adv1 := advance_non_newline_corr
-      ({ (unwindIndents sc (-1)) with simpleKey := { possible := false } }.emit .documentEnd)
+      ({ (unwindIndents sc (-1)) with simpleKey := { possible := false }, pendingKeyActive := none }.emit .documentEnd)
       '.' ('.' :: '.' :: rest) hcorr_at1 hmore1 (by decide) (by decide)
     -- Advance past second '.'
     have hcorr_at2 : ScannerSurfCorr
-        ({ (unwindIndents sc (-1)) with simpleKey := { possible := false } }.emit .documentEnd).advance
+        ({ (unwindIndents sc (-1)) with simpleKey := { possible := false }, pendingKeyActive := none }.emit .documentEnd).advance
         ⟨'.' :: '.' :: rest,
-         ({ (unwindIndents sc (-1)) with simpleKey := { possible := false } }.emit .documentEnd).advance.col⟩ :=
+         ({ (unwindIndents sc (-1)) with simpleKey := { possible := false }, pendingKeyActive := none }.emit .documentEnd).advance.col⟩ :=
       ⟨hcorr_adv1.chars_from, rfl, hcorr_adv1.end_eq, hcorr_adv1.input_prefix, hcorr_adv1.indent_cols_nonneg⟩
     have hmore2 := corr_nonempty_has_more hcorr_at2
     have hcorr_adv2 := advance_non_newline_corr
-      ({ (unwindIndents sc (-1)) with simpleKey := { possible := false } }.emit .documentEnd).advance
+      ({ (unwindIndents sc (-1)) with simpleKey := { possible := false }, pendingKeyActive := none }.emit .documentEnd).advance
       '.' ('.' :: rest) hcorr_at2 hmore2 (by decide) (by decide)
     -- Advance past third '.'
     have hcorr_at3 : ScannerSurfCorr
-        ({ (unwindIndents sc (-1)) with simpleKey := { possible := false } }.emit .documentEnd).advance.advance
+        ({ (unwindIndents sc (-1)) with simpleKey := { possible := false }, pendingKeyActive := none }.emit .documentEnd).advance.advance
         ⟨'.' :: rest,
-         ({ (unwindIndents sc (-1)) with simpleKey := { possible := false } }.emit .documentEnd).advance.advance.col⟩ :=
+         ({ (unwindIndents sc (-1)) with simpleKey := { possible := false }, pendingKeyActive := none }.emit .documentEnd).advance.advance.col⟩ :=
       ⟨hcorr_adv2.chars_from, rfl, hcorr_adv2.end_eq, hcorr_adv2.input_prefix, hcorr_adv2.indent_cols_nonneg⟩
     have hmore3 := corr_nonempty_has_more hcorr_at3
     have hcorr_adv3 := advance_non_newline_corr
-      ({ (unwindIndents sc (-1)) with simpleKey := { possible := false } }.emit .documentEnd).advance.advance
+      ({ (unwindIndents sc (-1)) with simpleKey := { possible := false }, pendingKeyActive := none }.emit .documentEnd).advance.advance
       '.' rest hcorr_at3 hmore3 (by decide) (by decide)
     -- Handle the validation match (all OK paths yield s' = result)
     -- Each OK branch gives s' = result; derive correspondence
     have mk_corr : ScannerSurfCorr
-        { ({ (unwindIndents sc (-1)) with simpleKey := { possible := false } }.emit .documentEnd).advance.advance.advance with
+        { ({ (unwindIndents sc (-1)) with simpleKey := { possible := false }, pendingKeyActive := none }.emit .documentEnd).advance.advance.advance with
           simpleKeyAllowed := true, allowDirectives := true,
           directivesPresent := false, definedAnchors := #[] }
         ⟨rest, 3⟩ := by

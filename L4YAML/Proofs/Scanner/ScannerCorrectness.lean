@@ -2159,14 +2159,19 @@ theorem emitAt_chain_preserves_prefix (state : ScannerState) (pos : YamlPos) (to
   · rfl
   · omega
 
-/-- Emit after `unwindIndents` preserves prefix. -/
+/-- Emit after `unwindIndents` preserves prefix.  Generalised to take
+    both a `SimpleKeyState` override and a `pendingKeyActive` override —
+    matches the shape of `scanDocumentStart`/`scanDocumentEnd` after the
+    Initiative 3 / J.2 dual-write. -/
 theorem emit_unwind_preserves_prefix (s : ScannerState) (n : Int)
-    (sk : SimpleKeyState) (tok : YamlToken)
+    (sk : SimpleKeyState) (pka : Option Nat) (tok : YamlToken)
     (i : Nat) (h_i : i < s.tokens.size) :
-    ({ unwindIndents s n with simpleKey := sk }.emit tok).tokens[i]'(by
-      have h1 := emit_tokens_size ({ unwindIndents s n with simpleKey := sk }) tok
+    ({ unwindIndents s n with simpleKey := sk, pendingKeyActive := pka }.emit tok).tokens[i]'(by
+      have h1 := emit_tokens_size ({ unwindIndents s n with simpleKey := sk,
+                                                            pendingKeyActive := pka }) tok
       have h2 := unwindIndents_adds_tokens s n
-      have h3 : { unwindIndents s n with simpleKey := sk }.tokens.size
+      have h3 : { unwindIndents s n with simpleKey := sk,
+                                          pendingKeyActive := pka }.tokens.size
                 = (unwindIndents s n).tokens.size := rfl
       omega) = s.tokens[i] := by
   unfold ScannerState.emit
@@ -2184,7 +2189,7 @@ theorem scanDocumentStart_preserves_prefix (s : ScannerState)
       have := scanDocumentStart_adds_tokens s; omega) = s.tokens[i] := by
   unfold scanDocumentStart
   simp only [advanceN_preserves_tokens]
-  exact emit_unwind_preserves_prefix s (-1) _ .documentStart i h_i
+  exact emit_unwind_preserves_prefix s (-1) _ _ .documentStart i h_i
 
 /-- scanDocumentEnd preserves token prefix. -/
 theorem scanDocumentEnd_preserves_prefix (s s' : ScannerState)
@@ -2200,18 +2205,18 @@ theorem scanDocumentEnd_preserves_prefix (s s' : ScannerState)
         · contradiction
         · injection h with h_eq; subst h_eq; dsimp only []
           simp only [advanceN_preserves_tokens]
-          exact emit_unwind_preserves_prefix s (-1) _ .documentEnd i h_i
+          exact emit_unwind_preserves_prefix s (-1) _ _ .documentEnd i h_i
       · split at h
         · contradiction
         · injection h with h_eq; subst h_eq; dsimp only []
           simp only [advanceN_preserves_tokens]
-          exact emit_unwind_preserves_prefix s (-1) _ .documentEnd i h_i
+          exact emit_unwind_preserves_prefix s (-1) _ _ .documentEnd i h_i
       · split at h
         · split at h
           · contradiction
           · injection h with h_eq; subst h_eq; dsimp only []
             simp only [advanceN_preserves_tokens]
-            exact emit_unwind_preserves_prefix s (-1) _ .documentEnd i h_i
+            exact emit_unwind_preserves_prefix s (-1) _ _ .documentEnd i h_i
         · contradiction
 
 /-- scanYamlDirective preserves token prefix. -/
@@ -9975,7 +9980,7 @@ theorem scanDocumentStart_offset_lt (s : ScannerState) (hlt : s.offset < s.input
   have h_off : s_u.offset = s.offset := h_su ▸ unwindIndents_offset_eq s _
   have h_end : s_u.inputEnd = s.inputEnd := h_su ▸ unwindIndents_inputEnd_eq s _
   rw [← h_off]
-  let s_kd : ScannerState := { s_u with simpleKey := { possible := false } }
+  let s_kd : ScannerState := { s_u with simpleKey := { possible := false }, pendingKeyActive := none }
   show s_u.offset < ((s_kd.emit .documentStart).advanceN 3).offset
   refine ScannerProgress.advanceN_succ_offset_lt (s_kd.emit .documentStart) 2 ?_
   rw [ScannerProgress.emit_offset, ScannerProgress.emit_inputEnd]
@@ -9983,13 +9988,15 @@ theorem scanDocumentStart_offset_lt (s : ScannerState) (hlt : s.offset < s.input
 
 theorem docEnd_core (s : ScannerState) (hlt : s.offset < s.inputEnd) :
     ∀ s_u, unwindIndents s (-1) = s_u →
-    s.offset < (({ s_u with simpleKey := ({ possible := false } : SimpleKeyState) }.emit .documentEnd).advanceN 3).offset := by
+    s.offset < (({ s_u with simpleKey := ({ possible := false } : SimpleKeyState),
+                              pendingKeyActive := none }.emit .documentEnd).advanceN 3).offset := by
   intro s_u h_su
   have h_off := (h_su ▸ unwindIndents_offset_eq s _ : s_u.offset = s.offset)
   have h_end := (h_su ▸ unwindIndents_inputEnd_eq s _ : s_u.inputEnd = s.inputEnd)
   rw [← h_off]
   exact ScannerProgress.advanceN_succ_offset_lt
-    ({ s_u with simpleKey := ({ possible := false } : SimpleKeyState) }.emit .documentEnd) 2
+    ({ s_u with simpleKey := ({ possible := false } : SimpleKeyState),
+                pendingKeyActive := none }.emit .documentEnd) 2
     (by rw [ScannerProgress.emit_offset, ScannerProgress.emit_inputEnd]; show s_u.offset < s_u.inputEnd; rw [h_off, h_end]; exact hlt)
 
 set_option maxHeartbeats 6400000 in

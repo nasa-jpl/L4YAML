@@ -274,7 +274,11 @@ def scanDirective (s : ScannerState) : Except ScanError ScannerState :=
 @[yaml_spec "9.1.2" 203 "c-directives-end"]
 def scanDocumentStart (s : ScannerState) : ScannerState :=
   let s_unwound := unwindIndents s (-1)
-  let s_key_disabled := { s_unwound with simpleKey := { possible := false } }
+  -- J.2 dual-write: clear `pendingKeyActive` alongside the legacy
+  -- `simpleKey` clear.  Any reservation in flight stays in `pendingKeys`
+  -- with `kind := .unresolved` and is dropped at linearisation.
+  let s_key_disabled := { s_unwound with simpleKey := { possible := false },
+                                          pendingKeyActive := none }
   let s_with_token := s_key_disabled.emit .documentStart
   let s_advanced := s_with_token.advanceN 3
   { s_advanced with
@@ -318,7 +322,10 @@ def scanDocumentEnd (s : ScannerState) : Except ScanError ScannerState := do
   if s.directivesPresent && !s.documentEverStarted then
     throw (.directiveWithoutDocument s.line)
   let s_unwound := unwindIndents s (-1)
-  let s_key_disabled := { s_unwound with simpleKey := { possible := false } }
+  -- J.2 dual-write: clear `pendingKeyActive` alongside the legacy
+  -- `simpleKey` clear (parallel to scanDocumentStart).
+  let s_key_disabled := { s_unwound with simpleKey := { possible := false },
+                                          pendingKeyActive := none }
   let s_with_token := s_key_disabled.emit .documentEnd
   let s_advanced := s_with_token.advanceN 3
   let result := { s_advanced with
