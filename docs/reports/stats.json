@@ -31,10 +31,8 @@
   "suite_count": 15},
  "static":
  {"tests":
-  {"theorems_with_sorries": 0,
-   "theorems_plus_lemmas": 2,
+  {"theorems_plus_lemmas": 2,
    "theorems": 2,
-   "sorries_total": 5,
    "partial_defs": 1,
    "lines": 18928,
    "lemmas": 0,
@@ -42,10 +40,8 @@
    "guards": 2141,
    "axioms": 0},
   "proofs":
-  {"theorems_with_sorries": 15,
-   "theorems_plus_lemmas": 2770,
+  {"theorems_plus_lemmas": 2770,
    "theorems": 2770,
-   "sorries_total": 94,
    "partial_defs": 0,
    "lines": 63716,
    "lemmas": 0,
@@ -53,10 +49,8 @@
    "guards": 0,
    "axioms": 0},
   "library":
-  {"theorems_with_sorries": 15,
-   "theorems_plus_lemmas": 2828,
+  {"theorems_plus_lemmas": 2828,
    "theorems": 2828,
-   "sorries_total": 96,
    "partial_defs": 4,
    "lines": 76184,
    "lemmas": 0,
@@ -64,6 +58,13 @@
    "guards": 0,
    "axioms": 0}},
  "spec_examples": {"total": 132, "passed": 132},
- "schema_version": 1,
- "generated_at_ms": 4606243023,
+ "schema_version": 2,
+ "generated_at_ms": 4659919844,
+ "env":
+ {"theorems_with_transitive_sorry": 16,
+  "theorems_with_direct_sorry": 7,
+  "theorems_with_custom_axiom": 0,
+  "theorems": 3849,
+  "custom_axiom_names": [],
+  "axioms": 0},
  "build_jobs": null}
