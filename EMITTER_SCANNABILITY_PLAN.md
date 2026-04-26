@@ -3,7 +3,10 @@
 ## Status: 7 sorry-using declarations remaining
 
 (Build-authoritative: `lake build L4YAML.Proofs.Output.EmitterScannability`
-flags warnings at lines 8170, 8666, 8758, 8840, 9058, 9774, 9813.)
+flags warnings at lines 8343, 8902, 8994, 9076, 9294, 10010, 10049.
+Line numbers shifted from the original 8170/8666/8758/8840/9058/9774/9813
+after Tier 1 Turn 1 (+173 lines, directive helpers) and Turn 2 (+63 lines,
+`ScanChainGrew` strict track) landed.)
 
 ### Remaining Sorries (7 declarations, grouped by difficulty)
 
@@ -51,10 +54,10 @@ once the sorry is isolated. Every turn builds green and adds no new
 sorrys; the final turn removes the line-8206 sorry without any
 intermediate state of "more sorrys before fewer."
 
-**Turn 1 — Self-contained directive helpers** (~80 lines, no API change)
+**Turn 1 — Self-contained directive helpers** ✅ DONE (commit `876779ea`, +173 lines)
 
-Add three new lemmas in EmitterScannability.lean (placed near the
-dispatch helpers around line 7647):
+Three lemmas landed near the dispatch helpers (above
+`dispatchStructural_filtered_mono`, around new line ~7710):
 
 - `scanYamlDirective_new_token_eq` — for `scanYamlDirective s s_after_ws startPos = .ok s'` with `s_after_ws.tokens = s.tokens`, the token at index `s.tokens.size` of `s'.tokens` has `val = .versionDirective major minor` (non-placeholder). Proven by unfolding to the `emitAt`/`Array.push` and computing through `skipWhitespace_preserves_tokens`, `collectVersion*Loop_preserves_tokens`.
 - `scanTagDirective_new_token_eq` — analogous, with `.tagDirective handle prefix`.
@@ -67,26 +70,46 @@ dispatch. So at the level of `scanDirective`, the input state `s` is
 already post-preprocess and `s'.tokens.size > s.tokens.size`
 genuinely excludes RESERVED.
 
-**Turn 2 — Strict variants of scanNextToken/ScanChain** (~100 lines, no migration yet)
+Lessons logged for Turn 3 onward:
+- `apply Exists.intro` (×2) is more robust than `refine ⟨_, _, ?_⟩` for
+  nested existentials with deeply-nested term witnesses — the explicit
+  unfolding in Turn 1 needed the deferred-witness behavior of `apply`.
+- `simp only [h_eq, Array.getElem_push_eq]` handles dependent-type
+  rewrites where `rw [h_eq]` errors with "motive is not type correct"
+  (the goal carries a hidden `s.size < s'.size` proof tied to the
+  rewritten term).
+- `rfl` closes constructor-inequality goals with free variables
+  (`(.versionDirective M N != .placeholder) = true`) where `decide`
+  fails with "expected type contains free variables".
+- `collect*_preserves_tokens` and `scan*Directive_*` live in
+  `ScannerCorrectness.ScanHelpers` (lines 1029–2867 of
+  `ScannerCorrectness.lean`); only the primitives
+  (`skipWhitespace_preserves_tokens`, `advance_preserves_tokens`,
+  `skipToEndOfLine_preserves_tokens`) are at the top level.
 
-- Define `ScanChainGrew` inductive predicate mirroring `ScanChain` but
-  carrying a per-step **filtered**-growth witness:
-  ```lean
-  inductive ScanChainGrew (p : Positioned YamlToken → Bool) :
-      ScannerState → Nat → ScannerState → Prop where
-    | zero {s} : ScanChainGrew p s 0 s
-    | step {s s_mid s' n} :
-        scanNextToken s = .ok (some s_mid) →
-        (s_mid.tokens.filter p).size > (s.tokens.filter p).size →
-        ScanChainGrew p s_mid n s' →
-        ScanChainGrew p s (n+1) s'
-  ```
-- Add `ScanChainGrew.toScanChain` (forgetful: drop the per-step witness).
-- Add `ScanChainGrew_filtered_grows` — induction on the chain, each step
-  contributes ≥1 filtered token, total ≥n via `omega`.
-- Existing `scanNextToken_filtered_grows` (with the sorry) and
-  `ScanChain_filtered_grows` UNCHANGED — they remain in service for any
-  callers we haven't migrated yet.
+**Turn 2 — Strict variants of scanNextToken/ScanChain** ✅ DONE (+63 lines, build green)
+
+Landed immediately after `ScanChain_filtered_grows`:
+
+- `ScanChainGrew p` inductive predicate, mirroring `ScanChain` with a
+  per-step witness `(s_mid.tokens.filter p).size > (s.tokens.filter p).size`.
+- `ScanChainGrew.toScanChain` — forgetful map; drops the per-step
+  witness and yields a plain `ScanChain` (so any consumer that takes
+  `ScanChain` accepts a strict chain).
+- `ScanChainGrew.single` — single-step constructor.
+- `ScanChainGrew.trans` — concatenation, mirroring `ScanChain.trans`.
+- `ScanChainGrew_filtered_grows` — induction over the chain, each
+  `step` contributes ≥1 filtered token; closed by `omega` on the
+  per-step witness + IH.  Critically, this does **not** depend on
+  `scanNextToken_filtered_grows` (the loose-track theorem with the
+  line-8379 sorry).
+
+Existing `scanNextToken_filtered_grows` and `ScanChain_filtered_grows`
+unchanged — still in service for any callers we haven't migrated yet.
+
+The strict track is purely additive at this point; no caller has been
+migrated.  Sorry count unchanged at 7 (warnings shifted from
+8170/8666/8758/8840/9058/9774/9813 to 8343/8902/8994/9076/9294/10010/10049).
 
 **Turn 3 — Strengthen `EmitScansInFlow` and family** (~300-500 lines, the heaviest turn)
 
