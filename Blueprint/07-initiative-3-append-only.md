@@ -428,6 +428,162 @@ ported (or re-stubbed with sorries to be discharged in J.3).
 **Validation gate per submodule**: file builds; no new sorries
 beyond a documented manifest.
 
+#### Phase J.2 step 5 — `scanFiltered` cutover (substitution plan)
+
+Step 5 is the disruption point.  Steps 1–4 are additive: the
+`pendingKeys` side-channel is dual-written in lockstep with every
+legacy `simpleKey` / placeholder / `setIfInBounds` mutation.  Step 5
+drops the legacy half wholesale and routes `scanFiltered` through
+`linearise`.  The proof corpus is rebuilt against the new shape; some
+lemmas vanish, some simplify, a small core gets re-proved against
+`linearise`'s property lemmas.
+
+The break is intentionally concentrated in this single step so that
+J.2 steps 1–4 land against a green tree (the dual-write is
+information-preserving) and J.3 starts from a single, well-defined
+"all classical placeholder/setIfInBounds machinery is gone" baseline.
+
+##### 5.a Code edits (Scanner-side)
+
+1. **`saveSimpleKey`** — drop the two `tokens.push placeholder` calls.
+   The `pendingKeys.push { …, kind := .unresolved }` survives, and
+   `insertBeforeIdx := tokens.size` already points at the next
+   real-token slot in the no-placeholder world (the dual-write captured
+   the pre-placeholder size for exactly this reason).  The legacy
+   `simpleKey := { … }` field write is *kept* — its consumers
+   (`scanValueValidate`, `isValueCandidate`, scanner endLine sync) still
+   read `.possible` / `.tokenIndex` / `.pos` / `.endLine`.  Removing
+   them is J.4 work after every consumer is ported to `pendingKeys`.
+
+2. **`scanValuePrepare`** — drop the three `setIfInBounds` calls.  Only
+   `setPendingKeyKind` survives.  The legacy `simpleKey :=
+   { possible := false }` clear stays for the same reason as above.
+   The function reduces to "flip the active reservation's kind, push
+   block-mapping indent if applicable, advance simpleKey state" — pure
+   bookkeeping with no `tokens` mutation.
+
+3. **`lastTokenVal?`** — body simplifies to
+   `tokens.back?.map (·.val)`.  The two-deep placeholder skip is dead
+   code post-cutover.  The function name picked in step 4 was chosen
+   for this exact moment.
+
+4. **`scanFiltered`** — replace
+   `tokens.filter (· != .placeholder)` with
+   `linearise final.tokens final.pendingKeys`.  Same edit in
+   `scanWithComments`.  The `scan` function itself stays unchanged;
+   linearisation is `scanFiltered`'s responsibility, exactly mirroring
+   the legacy `.filter` step.
+
+5. **No edit needed**: `Scanner/State.lean` (the new types, helpers,
+   and accessors all already in place from J.1/J.2 steps 1–4); the
+   yaml-test-suite golden harness; FFI / Surface / Schema layers
+   (they consume `scanFiltered`'s public output and never observed
+   placeholders).
+
+##### 5.b Proof breakage cascade — three categories
+
+**Category A — vacuous post-cutover** (delete or replace with `nofun`)
+Hypothesis no longer holdable; the theorem statement is still true
+but the original purpose is gone.
+
+* `Proofs/Production/ScannerPlainScalarValid.lean::saveSimpleKey_new_tokens_not_plain`
+  — quantifies over indices `≥ s.tokens.size` newly added by
+  `saveSimpleKey`.  Post-cutover `saveSimpleKey` adds zero tokens, so
+  the hypothesis is unsatisfiable; replace with `False.elim` /
+  `nomatch` and update the two callers.
+* `Proofs/Output/EmitterScannability.lean::lastTokenVal_push_two_ph`
+  — disjunct `t = .placeholder` becomes vacuous; the lemma still types
+  but every caller can drop the disjunct.
+
+**Category B — mechanical updates** (one-line proof tweak)
+Statement intact; tactic body shrinks because branches collapse.
+
+* `lastTokenVal_push_non_ph` and friends — RHS proven by `rfl` after
+  the body simplification rather than multi-branch case split.
+* `Proofs/Output/EmitterScannability.lean::saveSimpleKey_filter_placeholder`
+  — RHS reduces from "all but the last 2 placeholders" to "all"; in
+  the post-cutover world the lemma's RHS is just `s.tokens`.
+* `scanFlowSequenceEnd_lastTokenVal` / `scanFlowMappingEnd_lastTokenVal`
+  — proof shrinks (no placeholder-skipping argument needed).
+
+**Category C — structurally new proofs** (sorry'd at cutover, J.3
+re-discharges)
+Old proof depended on `setIfInBounds`-non-plain or
+filter-preserves-shape; new proof depends on `linearise`'s property
+lemmas (currently `sorry` in `Scanner/Linearise.lean` from J.1).
+
+* `Proofs/Production/ScannerPlainScalarValid.lean`:
+  - `scanValuePrepare_preserves_PlainScalarsValid` — old: case-split on
+    `setIfInBounds` writes; new: `tokens` unchanged, lemma reduces to
+    `h_old`.
+  - `PlainScalarsValid_setIfInBounds_non_plain`,
+    `flowNesting_setIfInBounds_non_flow`,
+    `FlowContextPSV_setIfInBounds` — orphaned helper lemmas; delete
+    when no callers remain.
+* `Proofs/Output/EmitterScannability.lean`:
+  - `scanFiltered`-shape lemmas (those that pattern-match on
+    `tokens.filter (· != .placeholder)`) — re-derive against
+    `linearise`'s shape.
+  - The seven pre-existing Tier 2 sorries (the motivating gap) — these
+    *should* be discharged in J.3 as a demonstration that the new
+    invariants make Tier 2 tractable; that's the §"Tier 2 stance"
+    decision (still open in J.0).
+* `Scanner/Linearise.lean` (J.1 stubs, structurally enabling
+  Category C):
+  - `linearise_append_token` (the headline filter-monotonicity).
+  - `linearise_append_unresolved`.
+  - `linearise_resolved`.
+
+##### 5.c Sub-substep sequencing
+
+The cutover is staged into three sub-commits so each landing has a
+focused diff and a clear "is this gate satisfied" question.
+
+* **5.0 — Code cutover**: edits 5.a.1–5.a.4 in one commit.  Build is
+  red.  This is the *only* commit on `feature/append-only` where the
+  build is allowed to be red; all later commits restore green.
+* **5.1 — Discharge Category A + B**: ~30–40 sites across
+  `ScannerPlainScalarValid.lean` and `EmitterScannability.lean`,
+  mostly one-line proofs.  Restores green build with sorries only at
+  Category C sites.  Sorry budget at this point: ~10 new sorries on
+  top of the J.1+pre-existing baseline (3+7).
+* **5.2 — yaml-test-suite golden parity**: run the YAML 1.2 test
+  suite against the cutover scanner; output must be observationally
+  identical to pre-cutover.  This is the runtime correctness check;
+  the proof corpus is independently green from 5.1.
+
+##### 5.d Sorry-on-stub manifest at end of step 5
+
+Each `sorry` carried into J.3 gets a `-- J.3 manifest 5.d.N: <reason>`
+comment in the source pointing back to this section.  Approximate set:
+
+| Site | Note |
+|---|---|
+| `Linearise.lean::linearise_append_token` | J.1 stub; J.3 main proof. |
+| `Linearise.lean::linearise_append_unresolved` | J.1 stub; trivial after J.3. |
+| `Linearise.lean::linearise_resolved` | J.1 stub; J.3 size-accounting. |
+| `ScannerPlainScalarValid.lean::scanValuePrepare_preserves_PlainScalarsValid` | Reduces to identity post-cutover; trivial. |
+| `EmitterScannability.lean::saveSimpleKey_filter_placeholder` (and rebrand) | New shape: `(saveSimpleKey s).tokens = s.tokens`. |
+| `EmitterScannability.lean::scanFlowSequenceEnd_lastTokenVal` | Trivial via `tokens.back?` simplification. |
+| `EmitterScannability.lean::scanFlowMappingEnd_lastTokenVal` | Trivial via `tokens.back?` simplification. |
+| 7 × `EmitterScannability.lean` Tier 2 sorries | Pre-existing (8976/9473/9569/9652/9870/10586/10625); the motivating gap.  J.3 demonstrates the new model resolves them. |
+
+**Total sorry budget at end of step 5**: 7 (pre-existing Tier 2) +
+3 (Linearise J.1) + 4–7 (new Category C structural sorries) =
+14–17 sorries.  All cleared in J.3.
+
+##### 5.e Validation gate for step 5
+
+* `lake build L4YAML` green.
+* Net new sorries ≤ 7 on top of the J.1 baseline of 10.
+* Each new `sorry` carries a `-- J.3 manifest 5.d:` comment matching an
+  entry in §5.d.
+* yaml-test-suite golden parity: scanner output is byte-identical
+  pre/post cutover for every `tests/data/*.yaml` fixture.
+* `Blueprint/07` §J.2 step 5 manifest updated to reflect the actual
+  sorry set (drift between this manifest and the source is the failure
+  mode to avoid).
+
 ### Phase J.3 — Proof migration (4-6 weeks)
 
 Re-discharge the corpus.  Many existing lemmas simplify drastically:
