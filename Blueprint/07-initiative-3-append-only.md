@@ -1,6 +1,8 @@
 # Initiative 3 — Append-Only Token Stream
 
-**Status**: Draft for review (2026-04-26).
+**Status**: Phase J.0 approved (2026-04-26); execution proceeds on
+branch `feature/append-only`.  Main stays in a usable state until
+the feature branch merges back.
 **Driver**: Tier 2 emitter-scannability work hit a structural blocker
 that traces to a deliberate architectural choice (`02-architecture.md`
 §Append-only token stream).  This initiative revises that choice.
@@ -34,30 +36,42 @@ preserves both.
 
 `tokens` becomes strictly append-only — no `setIfInBounds`, no
 `Array.insertAt`.  Pending key reservations move to a parallel
-side-channel:
+side-channel.  The final type (refined by Q2 below) is:
 
 ```lean
+inductive ResolutionKind where
+  | unresolved   -- discarded if line ends without `:`
+  | keyOnly      -- flow context; or block with col ≤ currentIndent
+  | blockMappingStartAndKey  -- block context with col > currentIndent
+deriving Repr, BEq, Inhabited
+
 structure PendingKeyEntry where
-  insertAfterIdx : Nat   -- linearisation slot in `tokens`
+  insertBeforeIdx : Nat   -- linearisation slot: synthetic key(s) splice
+                          -- immediately before `tokens[insertBeforeIdx]`
   pos : YamlPos
   endLine : Nat
-  resolved : Bool        -- false = pending; true = confirmed by `:`
+  kind : ResolutionKind
 deriving Repr, BEq, Inhabited
 
 structure ScannerState where
   tokens : Array (Positioned YamlToken)        -- APPEND-ONLY
-  pendingKeys : Array PendingKeyEntry          -- APPEND-ONLY (resolved-flag flips in place)
+  pendingKeys : Array PendingKeyEntry          -- APPEND-ONLY (kind flips in place)
   -- removed: simpleKey, simpleKeyStack
   pendingKeyActive : Option Nat               -- index into pendingKeys for current candidate
   pendingKeyStack : Array (Option Nat)         -- saved actives across flow nesting
   ...
 ```
 
-`saveSimpleKey` appends a new `PendingKeyEntry` (no token-array
-write).  `scanValuePrepare` flips `resolved := true` on the active
-entry.  At `scanFiltered` linearisation time, resolved entries are
-spliced into the output stream at their `insertAfterIdx` positions
-(producing the parser's expected token order).
+`saveSimpleKey` appends a new `PendingKeyEntry` with
+`kind := .unresolved` and `insertBeforeIdx := tokens.size` (snapshot
+*before* the scalar emit, so the synthetic key splices immediately
+before the scalar's slot).  `scanValuePrepare` flips
+`pendingKeys[active].kind` to `.keyOnly` or
+`.blockMappingStartAndKey` based on the same column-vs-indent test
+the current code uses.  At `scanFiltered` linearisation time,
+non-`unresolved` entries are spliced into the output stream at their
+`insertBeforeIdx` positions, producing the parser's expected token
+order.
 
 ### Properties this delivers
 
@@ -118,25 +132,12 @@ Spec evidence:
   (tied positions allowed), so emitting two tokens at the same
   source offset is spec-compliant.
 
-Recommended type:
-```lean
-inductive ResolutionKind where
-  | unresolved   -- discarded if line ends without `:`
-  | keyOnly      -- flow context; or block with col ≤ currentIndent
-  | blockMappingStartAndKey  -- block context with col > currentIndent
-deriving Repr, BEq, Inhabited
-
-structure PendingKeyEntry where
-  insertBeforeIdx : Nat
-  pos : YamlPos
-  endLine : Nat
-  kind : ResolutionKind
-deriving Repr, BEq, Inhabited
-```
-
-Linearisation walks `tokens` in order and, before emitting `tokens[k]`,
-checks whether any pendingKey has `insertBeforeIdx = k` and a
-non-`unresolved` kind, splicing accordingly.
+Recommended type: see the `ResolutionKind` / `PendingKeyEntry` block
+in §Proposed architecture above (the resolution of this question is
+what justified that final form).  Linearisation walks `tokens` in
+order and, before emitting `tokens[k]`, checks whether any pendingKey
+has `insertBeforeIdx = k` and a non-`unresolved` kind, splicing
+accordingly.
 
 #### Q3 — `unwindIndents` interaction
 
@@ -200,14 +201,199 @@ its body.  All existing call-site reasoning carries through.
   orders tied-position tokens, as long as the parser's downstream
   expectations are met.
 
+## Linearisation algorithm
+
+`linearise : Array (Positioned YamlToken) → Array PendingKeyEntry →
+Array (Positioned YamlToken)` is invoked once by `scanFiltered`.
+Pseudo-Lean:
+
+```lean
+def expandKind (e : PendingKeyEntry) : Array (Positioned YamlToken) :=
+  match e.kind with
+  | .unresolved              => #[]
+  | .keyOnly                 =>
+      #[⟨e.pos, e.pos, .key⟩]
+  | .blockMappingStartAndKey =>
+      #[⟨e.pos, e.pos, .blockMappingStart⟩,
+        ⟨e.pos, e.pos, .key⟩]
+
+def linearise (tokens : Array (Positioned YamlToken))
+              (pendingKeys : Array PendingKeyEntry)
+              : Array (Positioned YamlToken) := Id.run do
+  let mut out : Array (Positioned YamlToken) := #[]
+  let mut p : Nat := 0
+  for k in [0 : tokens.size] do
+    while h : p < pendingKeys.size ∧ pendingKeys[p].insertBeforeIdx = k do
+      out := out ++ expandKind pendingKeys[p]
+      p := p + 1
+    out := out.push tokens[k]
+  -- Pending keys with insertBeforeIdx = tokens.size (rare: candidate at end of input
+  -- with no follow-up) are flushed after the loop.
+  while p < pendingKeys.size do
+    out := out ++ expandKind pendingKeys[p]
+    p := p + 1
+  return out
+```
+
+### Invariants enforced by construction
+
+1. **Strict-monotone insertion points.**  `pendingKeys.map
+   (·.insertBeforeIdx)` is strictly monotone, because every
+   `saveSimpleKey` snapshots `tokens.size` and is *immediately*
+   followed by a scalar emit that bumps `tokens.size`.  No two
+   pendingKeys share an `insertBeforeIdx`.  Consequence: the simple
+   linear walk above is unambiguous; no sort needed.
+2. **In-bounds.**  `e.insertBeforeIdx ≤ tokens.size` for every entry,
+   because the snapshot is taken at `tokens.size` and `tokens` only
+   grows.
+3. **No double-resolution.**  At most one transition per entry:
+   `.unresolved → .keyOnly` or `.unresolved → .blockMappingStartAndKey`.
+   The `pendingKeyActive` discipline (set at `saveSimpleKey`, cleared
+   at `scanValuePrepare` / line-end / flow-nesting boundary) ensures
+   only the active entry is mutable.
+4. **Spec-faithful position order.**  `expandKind` emits synthetic
+   tokens at `e.pos = e.endPos`, immediately before
+   `tokens[insertBeforeIdx]` (whose position is ≥ `e.pos`).  Combined
+   with `Spec/Grammar.lean`'s `≤` ordering on positions, the output
+   satisfies `ValidTokenStream.positionsOrdered`.
+
+These four invariants are the J.3 proof targets that make
+`ScanChain_filtered_prefix` and friends fall out trivially: filter is
+no longer a runtime predicate over a mutated array but a
+compile-time-correct splice.
+
+## Worked example: `{a: [1, 2], b: c}`
+
+Single-line input, offsets `0..16` inclusive.  All positions are
+`(line=0, col=offset, offset=offset)`; abbreviated `@n` below.
+
+### Scanner trace
+
+| # | Event                          | tokens delta            | pendingKeys delta                                   | active |
+|---|--------------------------------|-------------------------|------------------------------------------------------|--------|
+| 0 | start of input                 | push `streamStart@0`    | —                                                    | none   |
+| 1 | `{` at col 0                   | push `flowMappingStart@0` | —                                                  | none   |
+| 2 | `a` at col 1: `saveSimpleKey`  | (snapshot size = 2)     | append `{ibi=2, pos=1, kind=unresolved}` (idx 0)     | some 0 |
+| 2'| emit scalar                    | push `scalar("a")@1`    | —                                                    | some 0 |
+| 3 | `:` at col 2: `scanValuePrepare` | push `valueIndicator@2` | flip `pendingKeys[0].kind := keyOnly`             | none   |
+| 4 | `[` at col 4 (flow-seq start)  | push `flowSequenceStart@4` | — (push `none` to `pendingKeyStack`)              | none   |
+| 5 | `1` at col 5: `saveSimpleKey`  | (snapshot size = 5)     | append `{ibi=5, pos=5, kind=unresolved}` (idx 1)     | some 1 |
+| 5'| emit scalar                    | push `scalar("1")@5`    | —                                                    | some 1 |
+| 6 | `,` at col 6 (flow-entry)      | push `flowEntry@6`      | — (idx 1 stays unresolved; will be filtered)         | none   |
+| 7 | `2` at col 8: `saveSimpleKey`  | (snapshot size = 7)     | append `{ibi=7, pos=8, kind=unresolved}` (idx 2)     | some 2 |
+| 7'| emit scalar                    | push `scalar("2")@8`    | —                                                    | some 2 |
+| 8 | `]` at col 9 (flow-seq end)    | push `flowSequenceEnd@9` | — (pop `pendingKeyStack`; idx 2 stays unresolved)   | none   |
+| 9 | `,` at col 10                  | push `flowEntry@10`     | —                                                    | none   |
+|10 | `b` at col 12: `saveSimpleKey` | (snapshot size = 10)    | append `{ibi=10, pos=12, kind=unresolved}` (idx 3)   | some 3 |
+|10'| emit scalar                    | push `scalar("b")@12`   | —                                                    | some 3 |
+|11 | `:` at col 13: `scanValuePrepare` | push `valueIndicator@13` | flip `pendingKeys[3].kind := keyOnly`            | none   |
+|12 | `c` at col 15: `saveSimpleKey` | (snapshot size = 12)    | append `{ibi=12, pos=15, kind=unresolved}` (idx 4)   | some 4 |
+|12'| emit scalar                    | push `scalar("c")@15`   | —                                                    | some 4 |
+|13 | `}` at col 16 (flow-map end)   | push `flowMappingEnd@16` | — (pop; idx 4 stays unresolved)                     | none   |
+|14 | end of input                   | push `streamEnd@17`     | —                                                    | none   |
+
+### Final state
+
+```
+tokens = [
+   0: streamStart@0,
+   1: flowMappingStart@0,
+   2: scalar("a")@1,
+   3: valueIndicator@2,
+   4: flowSequenceStart@4,
+   5: scalar("1")@5,
+   6: flowEntry@6,
+   7: scalar("2")@8,
+   8: flowSequenceEnd@9,
+   9: flowEntry@10,
+  10: scalar("b")@12,
+  11: valueIndicator@13,
+  12: scalar("c")@15,
+  13: flowMappingEnd@16,
+  14: streamEnd@17
+]   -- size 15, append-only throughout
+
+pendingKeys = [
+  0: { ibi=2,  pos=1,  kind=keyOnly    },   -- "a" → key
+  1: { ibi=5,  pos=5,  kind=unresolved },   -- "1" → discarded
+  2: { ibi=7,  pos=8,  kind=unresolved },   -- "2" → discarded
+  3: { ibi=10, pos=12, kind=keyOnly    },   -- "b" → key
+  4: { ibi=12, pos=15, kind=unresolved }    -- "c" → discarded
+]
+```
+
+Note `pendingKeys.insertBeforeIdx` is `[2, 5, 7, 10, 12]` — strictly
+monotone (invariant 1).
+
+### Linearised output
+
+`linearise tokens pendingKeys` produces:
+
+```
+streamStart@0
+flowMappingStart@0
+key@1                 ← spliced from pendingKeys[0] before tokens[2]
+scalar("a")@1
+valueIndicator@2
+flowSequenceStart@4
+scalar("1")@5
+flowEntry@6
+scalar("2")@8
+flowSequenceEnd@9
+flowEntry@10
+key@12                ← spliced from pendingKeys[3] before tokens[10]
+scalar("b")@12
+valueIndicator@13
+scalar("c")@15
+flowMappingEnd@16
+streamEnd@17
+```
+
+This is byte-for-byte the same stream the parser sees today after
+`scanFiltered` filters out unresolved placeholders — except produced
+without a single in-place token mutation.
+
+### Comparison with the current model
+
+The current scanner, on the same input, would produce a `tokens`
+array with **10 placeholder slots** interleaved (2 reserved per
+`saveSimpleKey`, 5 saves total).  Two of those slots get promoted to
+`.key` via `setIfInBounds`; the remaining eight are filtered out by
+`scanFiltered`.  The two promotions are exactly the events that
+break filter-monotonicity in the proof corpus.
+
+In the new model: zero placeholder slots, zero in-place token writes,
+five appends to `pendingKeys` (a separate array), and two
+`kind`-field flips on a structure that doesn't participate in the
+output stream until the one-shot `linearise` call.
+
 ## Phased migration plan
+
+### Branching strategy
+
+All J.1+ work lands on `feature/append-only`, branched from `main`
+at the J.0-approval point.  `main` stays buildable and proof-clean
+throughout.  The feature branch carries the type migration, the
+proof corpus rewrite, and any temporary sorry inflation; it merges
+back only at J.4 once the validation gate is green (sorry count
+strictly less than pre-initiative).
+
+J.0 deliverables (this doc) commit on `feature/append-only` so the
+plan and the implementation share a single history.  Cherry-picking
+the doc back to `main` is acceptable if the design needs to be
+visible there before the merge.
 
 ### Phase J.0 — Design (completed 2026-04-26)
 
 **Deliverable**: `Blueprint/07-initiative-3-append-only.md` (this
-doc) updated with concrete answers to the open design questions, plus
-a worked example showing the new state through a non-trivial input
-(e.g., `{a: [1, 2], b: c}`).
+doc) updated with concrete answers to the open design questions
+(§Q1–Q4), the linearisation algorithm spec with its four invariants
+(§Linearisation algorithm), and a worked example through
+`{a: [1, 2], b: c}` showing the new `(tokens, pendingKeys)` pair at
+every scanner step plus the linearised output (§Worked example).
+
+**Status**: approved 2026-04-26.  Execution proceeds on
+`feature/append-only` starting at Phase J.1.
 
 **Validation gate** (✓ satisfied 2026-04-26): principal verifier
 reviewed and approved `ResolutionKind` / `PendingKeyEntry`, the
@@ -300,31 +486,33 @@ if multiple verifiers are available.
 ## Risks
 
 - **Linearisation correctness**: the splice operation must produce
-  the exact token order the parser expects.  Mitigation: Phase J.0
-  worked example + golden-file test against current scanner output
-  for a corpus of YAML inputs.
-- **`unwindIndents` refactor** (open question 3): may require
-  non-trivial restructuring of indent-unwinding.  Mitigation: scope
-  this in Phase J.0 before committing.
+  the exact token order the parser expects.  Mitigation: §Worked
+  example pins the expected output for one non-trivial input;
+  Phase J.2 adds a golden-file test against current scanner output
+  for a corpus of YAML inputs before flipping the production path.
 - **Proof regression**: re-discharging the existing proof corpus may
   surface unexpected dependencies.  Mitigation: Phase J.3 has explicit
   sorry-budget; if exceeded, pause and reassess.
 - **Scanner-progress proof** (`ScannerProgress.lean`): currently
   relies on `setIfInBounds`'s no-shift property.  In the new model,
-  monotonic-progress is provable from append-only-ness directly, but
-  the proof needs reworking.  Mitigation: tag this in Phase J.0 as a
-  required deliverable.
+  monotonic-progress is provable from append-only-ness directly
+  (`tokens.size` and `pendingKeys.size` both grow weakly per step,
+  strictly per scanner-event), but the proof needs reworking.
 
-## Decision points before proceeding
+## Open decisions during J.1+
 
-1. **Confirm Phase J.0 deliverable scope.**  Is a written design doc
-   + worked example sufficient gating, or do you want a prototype on
-   a throwaway branch first?
-2. **Resource allocation.**  10–14 weeks single-threaded is
-   significant.  Is this the right initiative to commit to *now*, or
-   should it be queued behind other work?
-3. **Tier 2 in the meantime.**  Two options:
+1. **Tier 2 in the meantime.**  Two options:
    - (a) Pause Tier 2; reach it as the J.3 demonstration.
    - (b) Discharge Tier 2 with `Path A` (PlaceholderStable invariant)
-     as throwaway scaffolding, then delete it during J.4.
-   Option (a) is cleaner if J fits the schedule; (b) is insurance.
+     on `main` as throwaway scaffolding, then delete it during J.4.
+   Option (a) is cleaner if J fits the schedule; (b) is insurance
+   if the feature branch slips and `main` needs the Tier 2 result
+   sooner.
+2. **Resource allocation.**  7–10 weeks single-threaded (revised
+   estimate after the Q3 finding) is the working budget.  If
+   Phase J.2's per-submodule sorry-budget is breached, pause and
+   reassess before committing further weeks.
+3. **Sync cadence with `main`.**  The feature branch should rebase
+   on `main` at least at every phase boundary (end of J.1, J.2, J.3)
+   to keep the eventual merge tractable.  If `main` lands a major
+   scanner-touching change during J, escalate to a mid-phase rebase.
