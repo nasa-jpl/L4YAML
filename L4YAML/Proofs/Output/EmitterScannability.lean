@@ -8389,6 +8389,69 @@ theorem ScanChain_filtered_grows {s s' : ScannerState} {n : Nat}
     have h_step := scanNextToken_filtered_grows _ _ h_snt
     omega
 
+/-! ### Strict-variant track: `ScanChainGrew`
+
+`ScanChainGrew p` is `ScanChain` augmented with a per-step witness that
+the filtered count under predicate `p` strictly increases at each step.
+Built constructively at the call site, it sidesteps the loose
+`scanNextToken_filtered_grows` (which contains a sorry on the RESERVED
+directive branch — see Turn 1's `scanDirective_filtered_grows` for the
+honest precondition).
+
+Existing `ScanChain` / `ScanChain_filtered_grows` are unchanged; this
+predicate runs alongside them.  Forgetful `toScanChain` lets a strict
+chain be passed wherever a `ScanChain` was expected. -/
+inductive ScanChainGrew (p : Positioned YamlToken → Bool) :
+    ScannerState → Nat → ScannerState → Prop where
+  | zero {s : ScannerState} : ScanChainGrew p s 0 s
+  | step {s s_mid s' : ScannerState} {n : Nat} :
+         scanNextToken s = .ok (some s_mid) →
+         (s_mid.tokens.filter p).size > (s.tokens.filter p).size →
+         ScanChainGrew p s_mid n s' →
+         ScanChainGrew p s (n + 1) s'
+
+/-- Forgetful map: a `ScanChainGrew` is, in particular, a `ScanChain`. -/
+theorem ScanChainGrew.toScanChain {p : Positioned YamlToken → Bool}
+    {s s' : ScannerState} {n : Nat}
+    (h : ScanChainGrew p s n s') : ScanChain s n s' := by
+  induction h with
+  | zero => exact .zero
+  | step h_snt _h_grew _h_rest ih => exact .step h_snt ih
+
+/-- Single-step constructor for `ScanChainGrew`. -/
+theorem ScanChainGrew.single {p : Positioned YamlToken → Bool}
+    {s s' : ScannerState}
+    (h : scanNextToken s = .ok (some s'))
+    (h_grew : (s'.tokens.filter p).size > (s.tokens.filter p).size) :
+    ScanChainGrew p s 1 s' :=
+  .step h h_grew .zero
+
+/-- Transitivity for `ScanChainGrew`: concatenate two strict chains. -/
+theorem ScanChainGrew.trans {p : Positioned YamlToken → Bool}
+    {s₁ s₂ s₃ : ScannerState} {n₁ n₂ : Nat}
+    (h1 : ScanChainGrew p s₁ n₁ s₂) (h2 : ScanChainGrew p s₂ n₂ s₃) :
+    ScanChainGrew p s₁ (n₁ + n₂) s₃ := by
+  induction h1 with
+  | zero => simpa using h2
+  | @step s s_mid s₂ k h_snt h_grew _h_rest ih =>
+    have h_ih := ih h2
+    have hk : k + 1 + n₂ = (k + n₂) + 1 := by omega
+    rw [hk]
+    exact .step h_snt h_grew h_ih
+
+/-- Strict-chain growth: through a `ScanChainGrew p` of `n` steps, the
+    filtered token array grows by at least `n`.  Same conclusion as
+    `ScanChain_filtered_grows`, but proven directly from the per-step
+    witness — does not depend on `scanNextToken_filtered_grows` (and so
+    does not depend on the line-8379 sorry). -/
+theorem ScanChainGrew_filtered_grows {p : Positioned YamlToken → Bool}
+    {s s' : ScannerState} {n : Nat}
+    (h_chain : ScanChainGrew p s n s') :
+    (s'.tokens.filter p).size ≥ (s.tokens.filter p).size + n := by
+  induction h_chain with
+  | zero => omega
+  | step _h_snt h_grew _h_rest ih => omega
+
 /-- Through a FlowMonoChain, the filtered token array of the final state has the
     filtered array of the initial state as a prefix.
 
