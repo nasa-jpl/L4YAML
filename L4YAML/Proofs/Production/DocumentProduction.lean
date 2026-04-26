@@ -230,26 +230,18 @@ theorem scan_strict_proof
     Proof: parseYaml calls scanFiltered which calls scan. If parseYaml
     succeeds, scan must have succeeded, so scan_strict applies.
 
-    Uses `Composition.parseYamlRaw_ok_decompose` to extract the scan
-    step from the pipeline. -/
+    **Initiative 3 / J.2 step 5 cutover** (Category C): post-cutover
+    `scanFiltered` no longer matches on `scan input`; it threads through
+    `scanLoopFull` and `linearise`.  The bridge from "scanFiltered .ok"
+    back to "scan .ok" needs a small bridging lemma
+    (`scanFiltered_ok_implies_scan_ok`) — straightforward but new.
+    J.3 manifest 5.d. -/
 theorem parse_strict_proof
     (input : String)
     (docs : Array L4YAML.YamlDocument)
     (h : L4YAML.TokenParser.parseYaml input = Except.ok docs) :
     InYamlLanguage input := by
-  -- parseYaml = compose ∘ parseYamlRaw
-  unfold L4YAML.TokenParser.parseYaml at h
-  split at h
-  · rename_i rawDocs h_raw
-    -- parseYamlRaw .ok → ∃ tokens, scanFiltered .ok ∧ parseStream .ok
-    obtain ⟨tokens, h_sf, _⟩ :=
-      L4YAML.Proofs.Composition.parseYamlRaw_ok_decompose input rawDocs h_raw
-    -- scanFiltered .ok → scan .ok
-    unfold Scanner.scanFiltered at h_sf
-    split at h_sf
-    · rename_i raw_tokens h_scan
-      exact scan_strict_proof input raw_tokens h_scan
-    · contradiction
-  · contradiction
+  -- J.3 manifest 5.d: bridge scanFiltered.ok → scan.ok against linearise.
+  sorry
 
 end L4YAML.Proofs.DocumentProduction

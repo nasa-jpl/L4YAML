@@ -2038,10 +2038,14 @@ theorem FlowMonoChain_preserves_raw_prefix {s s' : ScannerState} {n fl₀ : Nat}
       h_stack_floor.1 i hi
     exact (ih (Nat.le_trans h_n₀ h_adds) h_sk_inv h_sync').trans h_pres
 
-/-- Connect a ScanChain to scanFiltered: if N steps succeed
-    reaching a state where scanNextToken returns none (EOF),
-    then scanFiltered on the input succeeds.
-    Requires flowLevel = 0 and directivesPresent = false at the end. -/
+/-- Connect a ScanChain to scanFiltered.
+
+    **Initiative 3 / J.2 step 5 cutover** (Category C): post-cutover
+    `scanFiltered` routes through `scanLoopFull` (not `scan`); the
+    chain bridge needs a `scanLoopFull`-flavoured analogue.
+    Structurally similar — every `scanLoop` reference becomes
+    `scanLoopFull` and the BOM/fuel reasoning carries over unchanged.
+    J.3 manifest 5.d. -/
 theorem scanFiltered_of_chain (input : String)
     (s₀ s_final : ScannerState) (n : Nat)
     (h_s0 : s₀ = (ScannerState.mk' input).emit .streamStart)
@@ -2052,29 +2056,15 @@ theorem scanFiltered_of_chain (input : String)
     (h_dp : s_final.directivesPresent = false)
     (h_fuel : n + 1 ≤ (input.utf8ByteSize + 1) * 4) :
     ∃ tokens, scanFiltered input = .ok tokens := by
-  -- scanLoop s_final 1 succeeds
-  obtain ⟨toks, h_loop_final⟩ := scanLoop_eof h_eof h_fl h_dp
-  -- Chain gives scanLoop s₀ (1 + n) succeeds
-  have h_loop := h_chain.to_scanLoop h_loop_final
-  -- Fuel monotonicity
-  have h_loop_fuel := scanLoop_fuel_mono h_loop (by omega : 1 + n ≤ (input.utf8ByteSize + 1) * 4)
-  -- Connect to scan
-  have h_scan : scan input = scanLoop s₀ ((input.utf8ByteSize + 1) * 4) := by
-    unfold scan; subst h_s0; dsimp only []
-    -- BOM check: first char ≠ '\uFEFF'
-    have h_pk := show ((ScannerState.mk' input).emit .streamStart).peek?
-        = (ScannerState.mk' input).peek? from rfl
-    rw [h_pk]
-    split
-    · exact absurd ‹_› h_no_bom
-    · rfl
-  -- Connect to scanFiltered
-  simp only [scanFiltered, h_scan, h_loop_fuel]
-  exact ⟨_, rfl⟩
+  -- J.3 manifest 5.d: re-prove against scanLoopFull + linearise.
+  sorry
 
 /-- **Equality version**: gives the exact filtered token array from a ScanChain.
-    The output is the filtered version of the chain's final state tokens
-    plus `streamEnd`, after unwinding indents. -/
+
+    **Initiative 3 / J.2 step 5 cutover** (Category C): RHS now needs
+    to be `linearise final.tokens final.pendingKeys`, not
+    `tokens.filter (· != .placeholder)`.  Statement + proof both shift;
+    J.3 manifest 5.d. -/
 theorem scanFiltered_of_chain_eq (input : String)
     (s₀ s_final : ScannerState) (n : Nat)
     (h_s0 : s₀ = (ScannerState.mk' input).emit .streamStart)
@@ -2086,18 +2076,8 @@ theorem scanFiltered_of_chain_eq (input : String)
     (h_fuel : n + 1 ≤ (input.utf8ByteSize + 1) * 4) :
     scanFiltered input = .ok (((unwindIndents s_final (-1)).emit .streamEnd).tokens.filter
         (fun t => t.val != .placeholder)) := by
-  have h_loop := h_chain.to_scanLoop
-    (scanLoop_eof_eq (fuel := 1) (by omega) h_eof h_fl h_dp)
-  have h_loop_fuel := scanLoop_fuel_mono h_loop (by omega : 1 + n ≤ (input.utf8ByteSize + 1) * 4)
-  have h_scan : scan input = scanLoop s₀ ((input.utf8ByteSize + 1) * 4) := by
-    unfold scan; subst h_s0; dsimp only []
-    have h_pk := show ((ScannerState.mk' input).emit .streamStart).peek?
-        = (ScannerState.mk' input).peek? from rfl
-    rw [h_pk]
-    split
-    · exact absurd ‹_› h_no_bom
-    · rfl
-  simp only [scanFiltered, h_scan, h_loop_fuel]
+  -- J.3 manifest 5.d: re-state with linearise on the RHS.
+  sorry
 
 -- ═══ scanNextToken preprocessing equality ═══
 
@@ -2741,20 +2721,17 @@ theorem scanDoubleQuoted_preserves_ek (s s' : ScannerState)
   · injection h_ok with h_eq; subst h_eq
     simp [emitAt_preserves_ek, h_ek_collect, advance_explicitKeyLine]
 
--- Helper: lastTokenVal? on array.push tok when tok.val ≠ .placeholder returns tok.val.
--- Placed here (before scanDoubleQuoted_flow_ok) so it can be used in flow proofs.
+-- Helper: lastTokenVal? on array.push tok returns tok.val.
+--
+-- **Initiative 3 / J.2 step 5 cutover** (Category B): `lastTokenVal?`
+-- is now `tokens.back?.map (·.val)`, so the proof collapses and `h_nph`
+-- is no longer needed (kept in the signature for caller compatibility).
 theorem lastTokenVal_push_non_ph'
     (tokens : Array (Positioned YamlToken))
     (tok : Positioned YamlToken) (h_nph : tok.val ≠ .placeholder) :
     lastTokenVal? (tokens.push tok) = some tok.val := by
-  unfold lastTokenVal?; dsimp only []
-  simp only [Array.size_push, show tokens.size + 1 > 0 from by omega, ↓reduceIte,
-    show tokens.size + 1 - 1 = tokens.size from by omega]
-  rw [getElem!_pos _ _ (by simp [Array.size_push])]
-  simp only [Array.getElem_push_eq]
-  have : (tok.val == YamlToken.placeholder) = false :=
-    beq_eq_false_iff_ne.mpr h_nph
-  simp [this]
+  let _ := h_nph
+  simp [lastTokenVal?]
 
 -- `scanDoubleQuoted` succeeds in flow context (inFlow = true) with trailing input.
 -- Simpler than `scanDoubleQuoted_emitScalar_ok` because `validateTrailingContent` is skipped.
@@ -3045,17 +3022,20 @@ theorem scanValueValidate_ok_of_flow_allTokensOnLine (s : ScannerState)
     · simp only [show (decide (s.simpleKey.tokenIndex > 0)) = false from
                    decide_eq_false (by omega)]; rfl
 
--- saveSimpleKey only adds placeholder tokens, so filtering them out is invariant.
+-- saveSimpleKey leaves tokens unchanged, so filtering is invariant.
+--
+-- **Initiative 3 / J.2 step 5 cutover** (Category B): post-cutover the
+-- middle branch is also identity on tokens (placeholder pushes moved
+-- to pendingKeys), so the lemma reduces to `(saveSimpleKey s).tokens = s.tokens`.
 theorem saveSimpleKey_filter_placeholder (s : ScannerState) :
     (saveSimpleKey s).tokens.filter (fun t => t.val != .placeholder)
     = s.tokens.filter (fun t => t.val != .placeholder) := by
-  unfold saveSimpleKey
-  split
-  · rfl
-  · split
-    · dsimp only []
-      simp
+  have h_eq : (saveSimpleKey s).tokens = s.tokens := by
+    unfold saveSimpleKey
+    split
     · rfl
+    · split <;> rfl
+  rw [h_eq]
 
 -- ═══ AllTokensOnLine transfer lemmas ═══
 
@@ -3077,23 +3057,20 @@ theorem AllTokensOnLine_advance (s : ScannerState) (l : Nat)
   simp only [ScannerCorrectness.advance_preserves_tokens s] at h_bound ⊢
   exact h_atol i h_bound
 
-/-- saveSimpleKey preserves AllTokensOnLine (pushes 0 or 2 placeholders at currentPos). -/
+/-- saveSimpleKey preserves AllTokensOnLine.
+
+**Initiative 3 / J.2 step 5 cutover** (Category B): post-cutover
+saveSimpleKey is identity on tokens, so the lemma is preserved
+trivially. -/
 theorem AllTokensOnLine_saveSimpleKey (s : ScannerState) (l : Nat)
     (h_atol : AllTokensOnLine s l) (h_line : s.line = l) :
     AllTokensOnLine (saveSimpleKey s) l := by
+  let _ := h_line
   unfold saveSimpleKey
   split
   · exact h_atol
   · split
-    · -- simpleKeyAllowed: pushes 2 placeholders at currentPos
-      intro i h_bound
-      simp only [] at h_bound ⊢
-      simp only [Array.getElem_push]
-      split
-      · split
-        · exact h_atol i (by omega)
-        · simp [ScannerState.currentPos, h_line]
-      · simp [ScannerState.currentPos, h_line]
+    · exact h_atol
     · exact h_atol
 
 /-- saveSimpleKey establishes EndLineOnLine in flow context.
@@ -3183,33 +3160,27 @@ theorem AllTokensOnLine_allowDirectives (s : ScannerState) (l : Nat)
   split <;> exact h_atol
 
 /-- scanValuePrepare in flow context preserves AllTokensOnLine.
-    When simpleKey.possible, setIfInBounds replaces a token whose new pos.line
-    equals the current line (from EndLineOnLine's pos.line conjunct). -/
+
+**Initiative 3 / J.2 step 5 cutover** (Category B): post-cutover the
+flow branch is identity on tokens (setIfInBounds dropped), so the
+proof reduces to the unchanged-tokens case in every sub-branch.
+`h_endline` is no longer needed. -/
 theorem AllTokensOnLine_scanValuePrepare_flow (s : ScannerState) (l : Nat)
     (h_atol : AllTokensOnLine s l) (h_line : s.line = l)
     (h_flow : s.inFlow = true)
     (h_ek : s.explicitKeyLine = none)
     (h_endline : EndLineOnLine s) :
     AllTokensOnLine (scanValuePrepare s) l := by
+  let _ := h_line; let _ := h_endline
   unfold AllTokensOnLine scanValuePrepare
-  cases h_poss : s.simpleKey.possible <;> simp only [ite_true]
+  cases h_poss : s.simpleKey.possible
   · -- possible = false: explicitKeyLine = none, inFlow = true → identity
     simp only [h_ek, Option.isSome_none, ite_false,
                h_flow, Bool.not_true, Bool.false_eq_true, ite_false]
-    intro i h_bound
-    exact h_atol i h_bound
-  · -- possible = true: flow branch uses setIfInBounds
+    intro i h_bound; exact h_atol i h_bound
+  · -- possible = true, inFlow: tokens unchanged
     simp only [h_flow, Bool.not_true, Bool.false_eq_true, ite_false]
-    intro i h_bound
-    have h_bound' : i < s.tokens.size := by
-      rwa [Array.size_setIfInBounds] at h_bound
-    rw [Array.getElem_setIfInBounds h_bound']
-    by_cases h_eq : s.simpleKey.tokenIndex + 1 = i
-    · subst h_eq; simp only [↓reduceIte]
-      have ⟨_, h_pl⟩ := h_endline h_poss
-      exact h_pl.trans h_line
-    · simp only [h_eq, ↓reduceIte]
-      exact h_atol i h_bound'
+    intro i h_bound; exact h_atol i h_bound
 
 /-- scanDoubleQuoted preserves AllTokensOnLine: the loop doesn't add tokens,
     and emitAt pushes one token at currentPos.line = s.line. -/
@@ -3497,38 +3468,18 @@ theorem scanNextToken_emitScalar_init (content : String) :
   exact h_cbfi_ad ▸ h_dfi_ad ▸ h_dbi_ad ▸ h_dc_eq ▸ rfl
 
 /-- **Scalar case**: The scanner accepts any double-quoted scalar produced
-    by the emitter. -/
+    by the emitter.
+
+    **Initiative 3 / J.2 step 5 cutover** (Category C): pre-cutover the
+    proof reduced `scanFiltered` to `scan input` then `.filter`.
+    Post-cutover `scanFiltered` flows through `scanLoopFull` directly,
+    so the bridge step changes shape.  Structurally similar — replace
+    `scanLoop` with `scanLoopFull` throughout — but mechanical re-work.
+    J.3 manifest 5.d. -/
 theorem scan_accepts_emitScalar (content : String) :
     ∃ tokens, scanFiltered (emitScalar content) = .ok tokens := by
-  simp only [scanFiltered]
-  suffices h : ∃ toks, scan (emitScalar content) = .ok toks by
-    obtain ⟨toks, h⟩ := h
-    exact ⟨toks.filter fun t => t.val != .placeholder, by rw [h]⟩
-  -- First scanNextToken: dispatches to scanDoubleQuoted, succeeds
-  obtain ⟨s₁, h_snt1, h_peek1, h_flow1, h_dp1, _h_tok1, _, _⟩ := scanNextToken_emitScalar_init content
-  -- Second scanNextToken: EOF → .ok none
-  have h_snt2 : scanNextToken s₁ = .ok none := scanNextToken_eof s₁ h_peek1
-  have h_size := emitScalar_utf8ByteSize_ge content
-  have h_fuel : ((emitScalar content).utf8ByteSize + 1) * 4 ≥ 2 := by omega
-  -- Reduce scan to scanLoop (BOM check is no-op since first char is '"' ≠ '\uFEFF')
-  have h_scan_eq : scan (emitScalar content)
-      = scanLoop ((ScannerState.mk' (emitScalar content)).emit .streamStart)
-          (((emitScalar content).utf8ByteSize + 1) * 4) := by
-    -- Derive peek? = some '"' from ScannerSurfCorr
-    have h_chars := chars_from_zero_toList (emitScalar content)
-    rw [emitScalar_toList] at h_chars
-    have h_corr := initial_corr (emitScalar content) _ h_chars
-    have ⟨h_pk, _⟩ := peek_of_chars_cons (ScannerState.mk' (emitScalar content)) '"'
-      ((escapeString content).toList ++ ['"']) 0 h_corr
-    -- emit doesn't change peek?
-    have h_pk_emit : ((ScannerState.mk' (emitScalar content)).emit .streamStart).peek?
-        = (ScannerState.mk' (emitScalar content)).peek? := rfl
-    unfold scan; dsimp only []
-    rw [h_pk_emit, h_pk]
-    -- match some '"' with | some '\uFEFF' => ... | _ => s reduces to s
-    split <;> first | rfl | exact absurd ‹_› (by decide)
-  rw [h_scan_eq]
-  exact scanLoop_two_iter h_fuel h_snt1 h_snt2 h_flow1 h_dp1
+  -- J.3 manifest 5.d: re-prove via scanLoopFull / linearise.
+  sorry
 
 -- ═══ Flow collection scanner acceptance ═══
 -- Infrastructure for proving that the scanner accepts emitted flow collections.
@@ -4458,71 +4409,35 @@ theorem scanFlowEntry_detail (s : ScannerState) (rest : List Char)
     dsimp only []
     exact h_adv_corr.col_eq.symm
 
--- Helper: lastTokenVal? on array.push tok when tok.val ≠ .placeholder returns tok.val.
+-- Helper: lastTokenVal? on array.push tok returns tok.val.
+--
+-- **Initiative 3 / J.2 step 5 cutover** (Category B): same as
+-- `lastTokenVal_push_non_ph'` — body simplifies under the new
+-- `tokens.back?.map (·.val)` definition; `h_nph` is unused.
 theorem lastTokenVal_push_non_ph
     (tokens : Array (Positioned YamlToken))
     (tok : Positioned YamlToken) (h_nph : tok.val ≠ .placeholder) :
     lastTokenVal? (tokens.push tok) = some tok.val := by
-  unfold lastTokenVal?; dsimp only []
-  simp only [Array.size_push, show tokens.size + 1 > 0 from by omega, ↓reduceIte,
-    show tokens.size + 1 - 1 = tokens.size from by omega]
-  rw [getElem!_pos _ _ (by simp [Array.size_push])]
-  simp only [Array.getElem_push_eq]
-  have : (tok.val == YamlToken.placeholder) = false :=
-    beq_eq_false_iff_ne.mpr h_nph
-  simp [this]
+  let _ := h_nph
+  simp [lastTokenVal?]
 
--- Helper: saveSimpleKey preserves "no trailing flow delimiter" property of lastTokenVal?.
--- saveSimpleKey either leaves tokens unchanged or pushes exactly 2 .placeholder tokens.
--- lastTokenVal? skips up to 2 trailing placeholders, so either reaches the same original
--- token (which h_last covers) or returns .placeholder (which is trivially ≠ flow delimiters).
+-- Helper: pushing two placeholders, the "skip up to 2 placeholders" lookup
+-- on the new array either reaches `tokens`'s last token or returns placeholder.
+--
+-- **Initiative 3 / J.2 step 5 cutover** (Category A): post-cutover
+-- `lastTokenVal? = tokens.back?.map (·.val)`, so on `(_.push ph1).push ph2`
+-- it returns `some ph2.val = some .placeholder`.  Hence `t = .placeholder`
+-- always — the disjunct holds vacuously on the right.
 theorem lastTokenVal_push_two_ph
     (tokens : Array (Positioned YamlToken))
     (ph1 ph2 : Positioned YamlToken) (h1 : ph1.val = .placeholder) (h2 : ph2.val = .placeholder)
     (t : YamlToken)
     (ht : lastTokenVal? ((tokens.push ph1).push ph2) = some t) :
     lastTokenVal? tokens = some t ∨ t = .placeholder := by
-  unfold lastTokenVal? at ht
-  dsimp only [] at ht  -- inline have/let bindings
-  simp only [Array.size_push] at ht
-  -- First if: tokens.size + 2 > 0 → true
-  simp only [show tokens.size + 2 > 0 from by omega, ↓reduceIte,
-    show tokens.size + 2 - 1 = tokens.size + 1 from by omega] at ht
-  -- tok1 = arr[tokens.size + 1]!.val = ph2.val = .placeholder
-  have h_elem1 : ((tokens.push ph1).push ph2)[tokens.size + 1]!.val = .placeholder := by
-    rw [getElem!_pos _ _ (by simp [Array.size_push])]
-    simp [Array.getElem_push, Array.size_push, h2]
-  simp only [h_elem1, show (YamlToken.placeholder == YamlToken.placeholder) = true from by decide,
-    Bool.true_and, show tokens.size + 1 > 0 from by omega,
-    show tokens.size + 1 - 1 = tokens.size from by omega] at ht
-  -- ht now has tok2 part remaining (with decide True/False for conditions)
-  -- and possibly the tokens.size > 0 branch
-  -- Try: further simp to resolve decides, then case split
-  have h_elem2 : ((tokens.push ph1).push ph2)[tokens.size]!.val = .placeholder := by
-    rw [getElem!_pos _ _ (by simp [Array.size_push]; omega)]
-    simp [Array.getElem_push, Array.size_push, h1]
-  by_cases h_gt : tokens.size > 0
-  · have h_elem3 : ((tokens.push ph1).push ph2)[tokens.size - 1]!.val =
-        tokens[tokens.size - 1]!.val := by
-      rw [getElem!_pos _ _ (by simp [Array.size_push]; omega),
-          getElem!_pos _ _ (by omega)]
-      simp only [Array.getElem_push,
-        show tokens.size - 1 < (tokens.push ph1).size from by simp [Array.size_push]; omega,
-        show tokens.size - 1 < tokens.size from by omega, dite_true]
-    simp only [h_elem2, show (YamlToken.placeholder == YamlToken.placeholder) = true from by decide,
-      Bool.true_and, show tokens.size + 1 > 1 from by omega, ↓reduceIte,
-      show tokens.size + 1 - 2 = tokens.size - 1 from by omega,
-      h_elem3, decide_true] at ht
-    injection ht with ht_val
-    by_cases h_ne : t = .placeholder
-    · exact .inr h_ne
-    · left; unfold lastTokenVal?; dsimp only []
-      simp [h_gt, ht_val,
-        show (t == YamlToken.placeholder) = false from beq_eq_false_iff_ne.mpr h_ne]
-  · simp only [h_elem2, show (YamlToken.placeholder == YamlToken.placeholder) = true from by decide,
-      Bool.true_and, show ¬(tokens.size + 1 > 1) from by omega, ↓reduceIte,
-      decide_true, decide_false] at ht
-    injection ht with ht_val; exact .inr ht_val.symm
+  let _ := h1
+  right
+  simp [lastTokenVal?] at ht
+  exact ht.symm.trans h2
 
 theorem saveSimpleKey_preserves_lastTokenVal_ne_flow (s : ScannerState)
     (h_last : ∀ t, lastTokenVal? s.tokens = some t →
@@ -4530,15 +4445,17 @@ theorem saveSimpleKey_preserves_lastTokenVal_ne_flow (s : ScannerState)
     (t : YamlToken)
     (ht : lastTokenVal? (saveSimpleKey s).tokens = some t) :
     t ≠ .flowSequenceStart ∧ t ≠ .flowMappingStart ∧ t ≠ .flowEntry := by
+  -- **Initiative 3 / J.2 step 5 cutover** (Category B): post-cutover
+  -- saveSimpleKey is identity on tokens, so the "two-placeholders" branch
+  -- of the original case-split is dead.
   have h_cases : (saveSimpleKey s).tokens = s.tokens ∨
       (saveSimpleKey s).tokens = ((s.tokens.push ⟨s.currentPos, .placeholder, s.currentPos⟩).push
         ⟨s.currentPos, .placeholder, s.currentPos⟩) := by
+    left
     unfold saveSimpleKey
     split
-    · exact .inl rfl
-    · split
-      · right; dsimp only []
-      · exact .inl rfl
+    · rfl
+    · split <;> rfl
   rcases h_cases with h_eq | h_eq
   · rw [h_eq] at ht; exact h_last t ht
   · rw [h_eq] at ht
@@ -8544,60 +8461,10 @@ from the emitter's escape-encoded output. This is the key roundtrip property.
 theorem scanFiltered_emitScalar_content (content : String) (tokens : Array (Positioned YamlToken))
     (h_scan : scanFiltered (emitScalar content) = .ok tokens) :
     ∃ i, i < tokens.size ∧ tokens[i]!.val = .scalar content .doubleQuoted := by
-  -- Get scanner state with token membership
-  obtain ⟨s₁, h_snt1, h_peek1, h_flow1, h_dp1, ⟨tok, h_tok_mem, h_tok_val⟩, h_ids1, _⟩ :=
-    scanNextToken_emitScalar_init content
-  have h_snt2 : scanNextToken s₁ = .ok none := scanNextToken_eof s₁ h_peek1
-  -- Compute the raw scan result
-  have h_size := emitScalar_utf8ByteSize_ge content
-  have h_fuel : ((emitScalar content).utf8ByteSize + 1) * 4 ≥ 2 := by omega
-  -- scan reduces to scanLoop on the initial state
-  have h_scan_eq : scan (emitScalar content)
-      = scanLoop ((ScannerState.mk' (emitScalar content)).emit .streamStart)
-          (((emitScalar content).utf8ByteSize + 1) * 4) := by
-    have h_chars := chars_from_zero_toList (emitScalar content)
-    rw [emitScalar_toList] at h_chars
-    have h_corr := initial_corr (emitScalar content) _ h_chars
-    have ⟨h_pk, _⟩ := peek_of_chars_cons (ScannerState.mk' (emitScalar content)) '"'
-      ((escapeString content).toList ++ ['"']) 0 h_corr
-    have h_pk_emit : ((ScannerState.mk' (emitScalar content)).emit .streamStart).peek?
-        = (ScannerState.mk' (emitScalar content)).peek? := rfl
-    unfold scan; dsimp only []
-    rw [h_pk_emit, h_pk]
-    split <;> first | rfl | exact absurd ‹_› (by decide)
-  -- Get concrete token array via scanLoop_two_iter_eq
-  have h_loop_eq := scanLoop_two_iter_eq h_fuel h_snt1 h_snt2 h_flow1 h_dp1
-  -- The raw scan result is ((unwindIndents s₁ (-1)).emit .streamEnd).tokens
-  have h_scan_raw : scan (emitScalar content) =
-      .ok ((unwindIndents s₁ (-1)).emit .streamEnd).tokens := by
-    rw [h_scan_eq, h_loop_eq]
-  -- Scalar token survives through unwindIndents (prefix preservation)
-  have h_tok_in_uwi : tok ∈ (unwindIndents s₁ (-1)).tokens := by
-    obtain ⟨i, hi, rfl⟩ := Array.mem_iff_getElem.mp h_tok_mem
-    rw [Array.mem_iff_getElem]
-    have h_sz := ScannerCorrectness.unwindIndents_adds_tokens s₁ (-1)
-    have h_pref := ScannerCorrectness.unwindIndents_preserves_prefix s₁ (-1) i hi
-    exact ⟨i, by omega, h_pref⟩
-  -- Scalar token survives through .emit .streamEnd (push preserves membership)
-  have h_tok_in_raw : tok ∈ ((unwindIndents s₁ (-1)).emit .streamEnd).tokens := by
-    exact Array.mem_push_of_mem _ h_tok_in_uwi
-  -- Scalar token survives through filter (scalar ≠ placeholder)
-  have h_tok_filtered : tok ∈ ((unwindIndents s₁ (-1)).emit .streamEnd).tokens.filter
-      (fun t => t.val != .placeholder) := by
-    rw [Array.mem_filter]
-    refine ⟨h_tok_in_raw, ?_⟩
-    rw [h_tok_val]
-    -- Different constructors: .scalar vs .placeholder → beq = false → bne = true
-    rfl
-  -- Link filtered result to `tokens` via h_scan
-  have h_tokens_eq : tokens = ((unwindIndents s₁ (-1)).emit .streamEnd).tokens.filter
-      (fun t => t.val != .placeholder) := by
-    simp only [scanFiltered, h_scan_raw] at h_scan
-    exact (Except.ok.inj h_scan).symm
-  -- Extract index from membership
-  rw [h_tokens_eq]
-  obtain ⟨i, hi, rfl⟩ := Array.mem_iff_getElem.mp h_tok_filtered
-  exact ⟨i, hi, by rw [getElem!_pos]; exact h_tok_val⟩
+  -- **Initiative 3 / J.2 step 5 cutover** (Category C): scanFiltered
+  -- now uses linearise rather than `tokens.filter`; the proof needs
+  -- to bridge the new shape.  J.3 manifest 5.d.
+  sorry
 
 /-- Token structure: the filtered scan of `emitScalar content` produces
     exactly 3 tokens: `streamStart`, `scalar content .doubleQuoted`, `streamEnd`.
@@ -8607,67 +8474,9 @@ theorem scanFiltered_emitScalar_vals (content : String) (tokens : Array (Positio
     (h_scan : scanFiltered (emitScalar content) = .ok tokens) :
     tokens.size = 3 ∧ tokens[0]!.val = .streamStart ∧
     tokens[1]!.val = .scalar content .doubleQuoted ∧ tokens[2]!.val = .streamEnd := by
-  -- Reuse scanner infrastructure from scanFiltered_emitScalar_content
-  obtain ⟨s₁, h_snt1, h_peek1, h_flow1, h_dp1, ⟨tok, h_tok_mem, h_tok_val⟩, h_ids1, h_filt1⟩ :=
-    scanNextToken_emitScalar_init content
-  have h_snt2 : scanNextToken s₁ = .ok none := scanNextToken_eof s₁ h_peek1
-  have h_fuel : ((emitScalar content).utf8ByteSize + 1) * 4 ≥ 2 := by
-    have := emitScalar_utf8ByteSize_ge content; omega
-  -- Compute raw scan and unwindIndents identity
-  have h_scan_eq : scan (emitScalar content)
-      = scanLoop ((ScannerState.mk' (emitScalar content)).emit .streamStart)
-          (((emitScalar content).utf8ByteSize + 1) * 4) := by
-    have h_chars := chars_from_zero_toList (emitScalar content)
-    rw [emitScalar_toList] at h_chars
-    have h_corr := initial_corr (emitScalar content) _ h_chars
-    have ⟨h_pk, _⟩ := peek_of_chars_cons (ScannerState.mk' (emitScalar content)) '"'
-      ((escapeString content).toList ++ ['"']) 0 h_corr
-    have h_pk_emit : ((ScannerState.mk' (emitScalar content)).emit .streamStart).peek?
-        = (ScannerState.mk' (emitScalar content)).peek? := rfl
-    unfold scan; dsimp only []; rw [h_pk_emit, h_pk]
-    split <;> first | rfl | exact absurd ‹_› (by decide)
-  have h_ci : s₁.currentIndent = -1 := by
-    unfold ScannerState.currentIndent; rw [h_ids1]; rfl
-  have h_uwi : unwindIndents s₁ (-1) = s₁ := by
-    unfold unwindIndents
-    rw [show s₁.indents.size = 1 from by rw [h_ids1]; rfl]
-    unfold unwindIndentsLoop; simp [h_ci]
-  have h_scan_raw : scan (emitScalar content) =
-      .ok (s₁.emit .streamEnd).tokens := by
-    rw [h_scan_eq, scanLoop_two_iter_eq h_fuel h_snt1 h_snt2 h_flow1 h_dp1, h_uwi]
-  have h_tokens_eq : tokens = (s₁.emit .streamEnd).tokens.filter
-      (fun t => t.val != .placeholder) := by
-    simp only [scanFiltered, h_scan_raw] at h_scan
-    exact (Except.ok.inj h_scan).symm
-  -- Now characterize the token structure using the filtered token values from h_filt1.
-  -- (s₁.emit .streamEnd).tokens = s₁.tokens.push {streamEnd_tok}
-  -- After filter (since streamEnd ≠ placeholder): (s₁.tokens.filter p).push {streamEnd_tok}
-  -- After map: [streamStart, scalar, streamEnd] (3 elements)
-  have h_filt_full : tokens.map (·.val)
-      = #[.streamStart, .scalar content .doubleQuoted, .streamEnd] := by
-    rw [h_tokens_eq]
-    -- Unfold emit to expose push, then distribute filter and map
-    show ((s₁.tokens.push ⟨s₁.currentPos, .streamEnd, s₁.currentPos⟩).filter
-          (fun t => t.val != .placeholder)).map (·.val) = _
-    simp only [Array.filter_push,
-      show (YamlToken.streamEnd != .placeholder) = true from rfl,
-      ite_true, Array.map_push, h_filt1]
-    rfl
-  have h_sz : tokens.size = 3 := by
-    have := congrArg Array.size h_filt_full; rwa [Array.size_map] at this
-  refine ⟨h_sz, ?_, ?_, ?_⟩
-  · rw [show tokens[0]! = tokens[0]'(by omega) from getElem!_pos tokens 0 (by omega)]
-    have h := Array.getElem_map (f := (·.val)) (xs := tokens) (i := 0)
-      (show 0 < (tokens.map _).size from by rw [Array.size_map]; omega)
-    simp only [h_filt_full] at h; exact h.symm
-  · rw [show tokens[1]! = tokens[1]'(by omega) from getElem!_pos tokens 1 (by omega)]
-    have h := Array.getElem_map (f := (·.val)) (xs := tokens) (i := 1)
-      (show 1 < (tokens.map _).size from by rw [Array.size_map]; omega)
-    simp only [h_filt_full] at h; exact h.symm
-  · rw [show tokens[2]! = tokens[2]'(by omega) from getElem!_pos tokens 2 (by omega)]
-    have h := Array.getElem_map (f := (·.val)) (xs := tokens) (i := 2)
-      (show 2 < (tokens.map _).size from by rw [Array.size_map]; omega)
-    simp only [h_filt_full] at h; exact h.symm
+  -- **Initiative 3 / J.2 step 5 cutover** (Category C): same shape
+  -- problem as `scanFiltered_emitScalar_content`.  J.3 manifest 5.d.
+  sorry
 
 /-- When `parseDirectives` sees a non-directive token, it returns immediately
     with empty directives and unchanged state.
@@ -9269,111 +9078,12 @@ theorem scanFiltered_boundary_tokens (input : String)
     tokens.size ≥ 2 ∧
     tokens[0]!.val = .streamStart ∧
     tokens[tokens.size - 1]!.val = .streamEnd := by
-  unfold Scanner.scanFiltered at h
-  -- Case split on the underlying scan result
-  generalize h_scan : Scanner.scan input = result at h
-  match result with
-  | .error _ => simp at h
-  | .ok raw =>
-  -- h : .ok (raw.filter (fun t => t.val != .placeholder)) = .ok tokens
-  injection h with h_eq
-  -- h_eq : raw.filter ... = tokens — keep tokens in goal, transport via ← h_eq
-  let p : Positioned YamlToken → Bool := fun t => t.val != .placeholder
-  let l := raw.toList
-  -- Raw scan properties
-  have h_raw_sz := ScannerCorrectness.scan_produces_at_least_two input raw h_scan
-  have h_raw_first := ScannerCorrectness.scan_first_is_streamStart input raw h_scan (by omega)
-  have h_raw_last := ScannerCorrectness.scan_last_is_streamEnd input raw h_scan (by omega)
-  -- List-level reasoning: head/last pass filter, preserved in filtered list
-  have h_l_ne : l ≠ [] := by
-    intro h0
-    have : raw.size = 0 := by show l.length = 0; simp [h0]
-    omega
-  have h_p_first : p (l.head h_l_ne) = true := by
-    show ((l.head h_l_ne).val != .placeholder) = true
-    have : (l.head h_l_ne).val = .streamStart := by
-      rw [List.head_eq_getElem]; exact h_raw_first
-    rw [this]; decide
-  have h_p_last : p (l.getLast h_l_ne) = true := by
-    show ((l.getLast h_l_ne).val != .placeholder) = true
-    have : (l.getLast h_l_ne).val = .streamEnd := by
-      rw [List.getLast_eq_getElem]; exact h_raw_last
-    rw [this]; decide
-  have h_flt_ne : l.filter p ≠ [] := by
-    rw [show l = l.head h_l_ne :: l.tail from (List.cons_head_tail h_l_ne).symm,
-        List.filter_cons_of_pos h_p_first]
-    exact List.cons_ne_nil _ _
-  have h_find : l.find? p = some (l.head h_l_ne) := by
-    conv => lhs; rw [show l = l.head h_l_ne :: l.tail from (List.cons_head_tail h_l_ne).symm]
-    exact List.find?_cons_of_pos h_p_first
-  have h_head_filt : (l.filter p).head h_flt_ne = l.head h_l_ne := by
-    rw [List.head_filter]; simp [h_find]
-  have h_rev_ne : l.reverse ≠ [] := by simp [h_l_ne]
-  have h_rfind : l.reverse.find? p = some (l.getLast h_l_ne) := by
-    conv => lhs; rw [show l.reverse = l.reverse.head h_rev_ne :: l.reverse.tail
-                        from (List.cons_head_tail h_rev_ne).symm,
-                      show l.reverse.head h_rev_ne = l.getLast h_l_ne
-                        from List.head_reverse ..]
-    exact List.find?_cons_of_pos h_p_last
-  have h_last_filt : (l.filter p).getLast h_flt_ne = l.getLast h_l_ne := by
-    rw [List.getLast_filter]; simp [h_rfind]
-  -- Filtered size ≥ 2
-  have h_filt_sz_list : (l.filter p).length ≥ 2 := by
-    have h_pos : (l.filter p).length > 0 := List.length_pos_iff.mpr h_flt_ne
-    have h_ne_1 : (l.filter p).length ≠ 1 := by
-      intro h1
-      obtain ⟨a, h_eq'⟩ := List.length_eq_one_iff.mp h1
-      have : l.head h_l_ne = l.getLast h_l_ne := by
-        rw [← h_head_filt, ← h_last_filt]; simp [h_eq']
-      have := congrArg Positioned.val this
-      rw [show (l.head h_l_ne).val = .streamStart
-            from by rw [List.head_eq_getElem]; exact h_raw_first,
-          show (l.getLast h_l_ne).val = .streamEnd
-            from by rw [List.getLast_eq_getElem]; exact h_raw_last] at this
-      cases this
-    omega
-  have h_filt_sz : (raw.filter p).size ≥ 2 := by
-    show (raw.filter p).toList.length ≥ 2
-    rw [Array.toList_filter]; exact h_filt_sz_list
-  -- Bridge Array.size ↔ List.length for omega
-  have h_filt_len : (raw.filter p).toList.length ≥ 2 := by
-    rw [Array.toList_filter]; exact h_filt_sz_list
-  -- Transport to tokens via ← h_eq
-  have h_tsz : tokens.size ≥ 2 := h_eq ▸ h_filt_sz
-  refine ⟨h_tsz, ?_, ?_⟩
-  · -- tokens[0]!.val = .streamStart
-    suffices h : (raw.filter p)[0]!.val = .streamStart by rwa [h_eq] at h
-    rw [getElem!_pos _ 0 (by omega)]
-    have h_first_val : ((l.filter p).head h_flt_ne).val = .streamStart := by
-      rw [h_head_filt, List.head_eq_getElem]; exact h_raw_first
-    rw [List.head_eq_getElem] at h_first_val
-    show ((raw.filter p).toList[0]'(show 0 < (raw.filter p).size from by omega)).val
-      = .streamStart
-    simp only [Array.toList_filter]; exact h_first_val
-  · -- tokens[N-1]!.val = .streamEnd
-    suffices h : (raw.filter p)[(raw.filter p).size - 1]!.val = .streamEnd by rwa [h_eq] at h
-    rw [getElem!_pos _ _ (by omega)]
-    have h_last_val : ((l.filter p).getLast h_flt_ne).val = .streamEnd := by
-      rw [h_last_filt, List.getLast_eq_getElem]; exact h_raw_last
-    rw [List.getLast_eq_getElem] at h_last_val
-    have h_sz_eq : (raw.filter p).size = (l.filter p).length := by
-      have : (raw.filter p).toList = l.filter p := Array.toList_filter
-      show (raw.filter p).toList.length = (l.filter p).length; rw [this]
-    show ((raw.filter p).toList[(raw.filter p).size - 1]'(show (raw.filter p).size - 1 < (raw.filter p).size from by omega)).val
-      = .streamEnd
-    simp only [Array.toList_filter, h_sz_eq]; exact h_last_val
+  -- **Initiative 3 / J.2 step 5 cutover** (Category C): scanFiltered
+  -- now uses linearise rather than tokens.filter; the boundary-token
+  -- proof needs to be re-derived against linearise's shape.
+  -- J.3 manifest 5.d.
+  sorry
 
--- These characterize the filtered token array produced by scanning emitter output,
--- providing the properties needed by the parser flow loop fuel sufficiency theorems.
-
--- Flow bracket nesting utilities (flowBracketDelta, flowBracketBalance) are defined
--- in ParserGrammableBase.lean and available via the ParserGrammable import.
-open L4YAML.Proofs.ParserGrammable (flowBracketDelta flowBracketBalance
-  flowBracketBalance_compose flowBracketBalance_push)
-
--- ═══ Filtered token lemmas for scanner handlers ═══
-
-/-- `scanFlowSequenceStart` filtered token equation: adds exactly one `.flowSequenceStart`. -/
 theorem scanFlowSequenceStart_filtered (s : ScannerState) :
     let p := fun (t : Positioned YamlToken) => t.val != .placeholder
     (scanFlowSequenceStart s).tokens.filter p =

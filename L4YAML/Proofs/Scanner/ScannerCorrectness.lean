@@ -361,21 +361,23 @@ theorem advanceN_preserves_tokens (s : ScannerState) (n : Nat) :
   unfold ScannerState.advanceN
   exact advanceNLoop_preserves_tokens s n
 
-/-- saveSimpleKey preserves or grows the token array.
+/-- saveSimpleKey preserves the token array (post-cutover identity on `.tokens`).
 
-saveSimpleKey either returns the state unchanged (identity/explicitKey branches)
-or pushes 2 placeholder tokens (reservation slots for key/blockMappingStart). -/
+**Initiative 3 / J.2 step 5 cutover**: pre-cutover this lemma stated
+size ≥ s.tokens.size; post-cutover saveSimpleKey only touches
+`pendingKeys`/`pendingKeyActive`/`simpleKey`, never `tokens`, so the
+sharper equality holds by `rfl` after unfolding. -/
 theorem saveSimpleKey_tokens_monotonic (s : ScannerState) :
     (saveSimpleKey s).tokens.size ≥ s.tokens.size := by
   unfold saveSimpleKey
-  split <;> try omega
-  split <;> try (dsimp only []; simp [Array.size_push]; omega)
-  omega
+  split
+  · exact Nat.le_refl _
+  · split <;> exact Nat.le_refl _
 
-/-- saveSimpleKey preserves existing token prefix.
+/-- saveSimpleKey preserves existing token prefix (in fact the whole array).
 
-saveSimpleKey either returns the state unchanged or pushes 2 placeholders.
-In either case, tokens at existing indices are unchanged. -/
+**Initiative 3 / J.2 step 5 cutover**: post-cutover saveSimpleKey is
+identity on `.tokens`, so this reduces to `rfl` after unfolding. -/
 theorem saveSimpleKey_preserves_prefix (s : ScannerState)
     (i : Nat) (h_bound : i < s.tokens.size) :
     have h : i < (saveSimpleKey s).tokens.size :=
@@ -384,12 +386,7 @@ theorem saveSimpleKey_preserves_prefix (s : ScannerState)
   unfold saveSimpleKey
   split
   · rfl
-  · split
-    · -- simpleKeyAllowed: push 2 placeholders, preserves prefix
-      dsimp only []
-      rw [Array.getElem_push, dif_pos (show i < (s.tokens.push _).size by simp; omega)]
-      rw [Array.getElem_push, dif_pos h_bound]
-    · rfl
+  · split <;> rfl
 
 /-- scanFlowSequenceStart adds exactly one token.
 
@@ -523,13 +520,13 @@ theorem scanValuePrepare_tokens_monotonic (s : ScannerState) :
       split
       · -- keyCol > currentIndent: two setIfInBounds
         dsimp only []
-        simp [Array.size_setIfInBounds]
+        simp
       · -- keyCol ≤ currentIndent: one setIfInBounds
         dsimp only []
-        simp [Array.size_setIfInBounds]
+        simp
     · -- inFlow: one setIfInBounds
       dsimp only []
-      simp [Array.size_setIfInBounds]
+      simp
   · -- simpleKey.possible = false
     split
     · -- explicitKeyLine.isSome: only simpleKey field changes
@@ -2614,43 +2611,25 @@ so indices below n are untouched. If not possible, tokens are either unchanged o
 via pushMappingIndent (append-only). -/
 theorem scanValuePrepare_preserves_prefix (s : ScannerState)
     (n : Nat) (h_n : n ≤ s.tokens.size)
-    (h_inv : s.simpleKey.possible = true → s.simpleKey.tokenIndex ≥ n)
     (i : Nat) (h_bound : i < n) :
     (scanValuePrepare s).tokens[i]'(by
       have := scanValuePrepare_tokens_monotonic s; omega) =
     s.tokens[i]'(by omega) := by
+  -- Initiative 3 / J.2 step 5 cutover: scanValuePrepare no longer
+  -- mutates tokens (the three setIfInBounds calls were dropped).
+  -- Every branch except `pushMappingIndent` is identity on `.tokens`.
   unfold scanValuePrepare
   split
   · -- simpleKey.possible = true
-    rename_i h_poss
-    have h_idx := h_inv h_poss
     split
-    · -- !inFlow
-      split
-      · -- keyCol > currentIndent: two setIfInBounds at idx, idx+1
-        dsimp only []
-        rw [Array.getElem_setIfInBounds (by simp [Array.size_setIfInBounds]; omega)]
-        simp only [show s.simpleKey.tokenIndex + 1 ≠ i from by omega, ite_false]
-        rw [Array.getElem_setIfInBounds (by omega)]
-        simp only [show s.simpleKey.tokenIndex ≠ i from by omega, ite_false]
-      · -- keyCol ≤ currentIndent: one setIfInBounds at idx+1
-        dsimp only []
-        rw [Array.getElem_setIfInBounds (by omega)]
-        simp only [show s.simpleKey.tokenIndex + 1 ≠ i from by omega, ite_false]
-    · -- inFlow: one setIfInBounds at idx+1
-      dsimp only []
-      rw [Array.getElem_setIfInBounds (by omega)]
-      simp only [show s.simpleKey.tokenIndex + 1 ≠ i from by omega, ite_false]
+    · split <;> rfl  -- !inFlow (both keyCol arms)
+    · rfl            -- inFlow
   · -- simpleKey.possible = false
     split
-    · -- explicitKeyLine.isSome: only simpleKey field changes
-      dsimp only []
-    · -- else
-      split
-      · -- !inFlow: pushMappingIndent
-        exact pushMappingIndent_preserves_prefix s s.col i (by omega)
-      · -- inFlow: identity
-        rfl
+    · rfl            -- explicitKeyLine.isSome
+    · split
+      · exact pushMappingIndent_preserves_prefix s s.col i (by omega)
+      · rfl          -- inFlow: identity
 
 /-- scanValuePrepare preserves `.pos` at ALL existing token positions.
 
@@ -2659,65 +2638,27 @@ When `possible = true`, `setIfInBounds` at `idx` and `idx+1` replaces the token 
 but the new element has `.pos = simpleKey.pos`, which equals the old `.pos`
 (from `SimpleKeyValid`). So `.pos` is preserved everywhere. -/
 theorem scanValuePrepare_preserves_all_pos (s : ScannerState)
-    (h_skv : s.simpleKey.possible = true →
-      s.simpleKey.tokenIndex < s.tokens.size ∧
-      s.simpleKey.tokenIndex + 1 < s.tokens.size ∧
-      (∀ (h1 : s.simpleKey.tokenIndex < s.tokens.size),
-        s.tokens[s.simpleKey.tokenIndex].pos = s.simpleKey.pos) ∧
-      (∀ (h2 : s.simpleKey.tokenIndex + 1 < s.tokens.size),
-        s.tokens[s.simpleKey.tokenIndex + 1].pos = s.simpleKey.pos))
     (i : Nat) (hi : i < s.tokens.size) :
     ((scanValuePrepare s).tokens[i]'(by
       have := scanValuePrepare_tokens_monotonic s; omega)).pos =
     s.tokens[i].pos := by
+  -- Initiative 3 / J.2 step 5 cutover: scanValuePrepare no longer
+  -- mutates tokens, so `.pos` is preserved trivially everywhere except
+  -- the `pushMappingIndent` branch.
   unfold scanValuePrepare
   split
   · -- simpleKey.possible = true
-    rename_i h_poss
-    obtain ⟨h_idx, h_idx1, h_pos_idx, h_pos_idx1⟩ := h_skv h_poss
     split
-    · -- !inFlow
-      split
-      · -- keyCol > currentIndent: setIfInBounds at idx and idx+1
-        dsimp only []
-        rw [Array.getElem_setIfInBounds (by simp [Array.size_setIfInBounds]; omega)]
-        split
-        · -- i = idx + 1
-          rename_i h_eq; subst h_eq
-          simp [h_pos_idx1 h_idx1]
-        · -- i ≠ idx + 1
-          rw [Array.getElem_setIfInBounds (by omega)]
-          split
-          · -- i = idx
-            rename_i h_eq; subst h_eq
-            simp [h_pos_idx h_idx]
-          · -- i ≠ idx: token unchanged
-            rfl
-      · -- keyCol ≤ currentIndent: setIfInBounds at idx+1 only
-        dsimp only []
-        rw [Array.getElem_setIfInBounds (by omega)]
-        split
-        · rename_i h_eq; subst h_eq
-          simp [h_pos_idx1 h_idx1]
-        · rfl
-    · -- inFlow: setIfInBounds at idx+1 only
-      dsimp only []
-      rw [Array.getElem_setIfInBounds (by omega)]
-      split
-      · rename_i h_eq; subst h_eq
-        simp [h_pos_idx1 h_idx1]
-      · rfl
+    · split <;> rfl  -- !inFlow (both keyCol arms)
+    · rfl            -- inFlow
   · -- simpleKey.possible = false
     split
-    · -- explicitKeyLine.isSome: only simpleKey field changes
-      dsimp only []
-    · -- else
-      split
+    · rfl            -- explicitKeyLine.isSome
+    · split
       · -- !inFlow: pushMappingIndent
         have := pushMappingIndent_preserves_prefix s s.col i (by omega)
         simp [this]
-      · -- inFlow: identity
-        rfl
+      · rfl          -- inFlow: identity
 
 set_option maxHeartbeats 400000 in
 /-- scanValue preserves tokens at indices below n, given the simpleKey invariant.
@@ -2752,7 +2693,7 @@ theorem scanValue_preserves_prefix (s s' : ScannerState)
             · exact h_inv
         · exact h_inv
       have h_prep := scanValuePrepare_preserves_prefix (scanValueClearKey s) n
-        (by rw [h_ck]; exact h_n) h_inv' i h_bound
+        (by rw [h_ck]; exact h_n) i h_bound
       have h_emit := emit_preserves_tokens_at (scanValuePrepare (scanValueClearKey s))
         YamlToken.value i (by have := scanValuePrepare_tokens_monotonic (scanValueClearKey s); rw [h_ck] at this; omega)
       have h_adv := advance_preserves_tokens ((scanValuePrepare (scanValueClearKey s)).emit .value)
@@ -2795,7 +2736,7 @@ theorem scanValue_preserves_all_pos (s s' : ScannerState)
         cases scanValueClearKey_identity_or_clear s with
         | inl h_eq => rw [h_eq]; exact h_skv
         | inr h_cl => intro h_poss; rw [h_cl.1] at h_poss; contradiction
-      have h_prep := scanValuePrepare_preserves_all_pos (scanValueClearKey s) h_skv' i (by rw [h_ck]; exact hi)
+      have h_prep := scanValuePrepare_preserves_all_pos (scanValueClearKey s) i (by rw [h_ck]; exact hi)
       have h_emit := emit_preserves_tokens_at (scanValuePrepare (scanValueClearKey s))
         YamlToken.value i (by have := scanValuePrepare_tokens_monotonic (scanValueClearKey s); rw [h_ck] at this; omega)
       have h_adv := advance_preserves_tokens ((scanValuePrepare (scanValueClearKey s)).emit .value)
@@ -4591,7 +4532,6 @@ theorem scanKey_preserves_flowLevel (s : ScannerState) (s' : ScannerState)
 theorem scanValuePrepare_clears_simpleKey (s : ScannerState) :
     (scanValuePrepare s).simpleKey.possible = false := by
   unfold scanValuePrepare
-  simp only []
   split
   · -- s.simpleKey.possible = true
     split
@@ -6670,27 +6610,21 @@ theorem emitAt_preserves_ScanInv_eq (s : ScannerState) (pos : YamlPos) (tok : Ya
   intro ⟨i, hi⟩
   exact Nat.le_of_lt_succ (by rw [h_pos]; exact Nat.lt_succ_of_le (h.2 ⟨i, hi⟩))
 
--- saveSimpleKey preserves ScanInv: pushes 0 or 2 placeholders at s.offset.
+-- saveSimpleKey preserves ScanInv.
+--
+-- **Initiative 3 / J.2 step 5 cutover**: the simpleKeyAllowed branch
+-- no longer pushes placeholders (those moved to the `pendingKeys`
+-- side-channel, which doesn't enter ScanInv).  The proof reduces to
+-- `field_update_preserves_ScanInv` since `tokens` and `offset` are
+-- both unchanged.
 theorem saveSimpleKey_preserves_ScanInv (s : ScannerState)
     (h : ScanInv s) : ScanInv (saveSimpleKey s) := by
   unfold saveSimpleKey
-  -- Branch 1: explicitKeyLine == some s.line → no-op
   split
-  · exact h
-  · -- Branch 2: simpleKeyAllowed → push 2 placeholders at s.currentPos
-    split
-    · -- Push 2 placeholders at s.currentPos (offset = s.offset)
-      -- The result is ScanInv' (tokens.push ph |>.push ph) s.offset
-      -- where ph = ⟨s.currentPos, .placeholder⟩ and s.currentPos.offset = s.offset.
-      -- This is the same as two emit operations.
-      have h1 : ScanInv (s.emit .placeholder) := emit_preserves_ScanInv s .placeholder h
-      have h2 : ScanInv ((s.emit .placeholder).emit .placeholder) :=
-        emit_preserves_ScanInv (s.emit .placeholder) .placeholder h1
-      -- The saveSimpleKey result has tokens = (s.emit ph).emit ph |>.tokens and offset = s.offset
-      show ScanInv' _ s.offset
-      exact h2
-    · -- Branch 3: not allowed → no-op
-      exact h
+  · exact h                                          -- inFlow && explicitKeyLine → identity
+  · split
+    · exact field_update_preserves_ScanInv _ _ h rfl rfl  -- simpleKeyAllowed: pendingKeys/simpleKey only
+    · exact h                                        -- not allowed → identity
 
 -- setIfInBounds at index idx preserves ScanInv' when the replacement has
 -- the same offset as the original element.
@@ -6752,8 +6686,13 @@ theorem setIfInBounds_twice_preserves_ScanInv' (tokens : Array (Positioned YamlT
     exact if_neg h_ne
   simp only [h_eq]; exact h_off2
 
--- scanValuePrepare preserves ScanInv, given that simpleKey placeholders
--- were created at simpleKey.pos (same offset as the replacement values).
+-- scanValuePrepare preserves ScanInv.
+--
+-- **Initiative 3 / J.2 step 5 cutover**: the three `setIfInBounds`
+-- calls were dropped, so all `simpleKey.possible = true` branches are
+-- now field-only updates that leave `tokens` and `offset` unchanged.
+-- `h_sk` is no longer needed (kept in the signature for callers'
+-- benefit and J.4 cleanup).
 theorem scanValuePrepare_preserves_ScanInv (s : ScannerState) (h : ScanInv s)
     (h_sk : s.simpleKey.possible = true →
       s.simpleKey.tokenIndex < s.tokens.size ∧
@@ -6763,50 +6702,26 @@ theorem scanValuePrepare_preserves_ScanInv (s : ScannerState) (h : ScanInv s)
       (∀ (h2 : s.simpleKey.tokenIndex + 1 < s.tokens.size),
         s.tokens[s.simpleKey.tokenIndex + 1].pos = s.simpleKey.pos)) :
     ScanInv (scanValuePrepare s) := by
+  let _ := h_sk  -- silence unused-arg warning; kept for callers
   unfold scanValuePrepare
   split
   · -- simpleKey.possible = true
-    rename_i h_poss
-    obtain ⟨h_idx_lt, h_idx1_lt, h_pos_eq, h_pos1_eq⟩ := h_sk h_poss
-    have h_pe := h_pos_eq h_idx_lt
-    have h_pe1 := h_pos1_eq h_idx1_lt
     split
-    · -- !inFlow
-      split
-      · -- keyCol > currentIndent: two setIfInBounds + push indent
-        show ScanInv' _ s.offset
-        exact setIfInBounds_twice_preserves_ScanInv' s.tokens s.offset
-          s.simpleKey.tokenIndex (s.simpleKey.tokenIndex + 1)
-          ⟨s.simpleKey.pos, .blockMappingStart, s.simpleKey.pos⟩ ⟨s.simpleKey.pos, .key, s.simpleKey.pos⟩
-          h h_idx_lt h_idx1_lt
-          (by simp [h_pe]) (by simp [h_pe1])
-          (by omega)
-      · -- keyCol ≤ currentIndent: one setIfInBounds at idx+1
-        show ScanInv' _ s.offset
-        exact setIfInBounds_preserves_ScanInv' s.tokens s.offset
-          (s.simpleKey.tokenIndex + 1) ⟨s.simpleKey.pos, .key, s.simpleKey.pos⟩
-          h h_idx1_lt (by simp [h_pe1])
-    · -- inFlow: one setIfInBounds at idx+1
-      show ScanInv' _ s.offset
-      exact setIfInBounds_preserves_ScanInv' s.tokens s.offset
-        (s.simpleKey.tokenIndex + 1) ⟨s.simpleKey.pos, .key, s.simpleKey.pos⟩
-        h h_idx1_lt (by simp [h_pe1])
+    · split
+      · exact field_update_preserves_ScanInv _ _ h rfl rfl  -- !inFlow, keyCol > currentIndent
+      · exact field_update_preserves_ScanInv _ _ h rfl rfl  -- !inFlow, keyCol ≤ currentIndent
+    · exact field_update_preserves_ScanInv _ _ h rfl rfl    -- inFlow
   · -- simpleKey.possible = false
     split
-    · -- explicitKeyLine.isSome: field-only update
-      exact field_update_preserves_ScanInv _ _ h rfl rfl
-    · -- else
-      split
+    · exact field_update_preserves_ScanInv _ _ h rfl rfl    -- explicitKeyLine.isSome
+    · split
       · -- !inFlow: pushMappingIndent
         unfold pushMappingIndent
         split
-        · -- indent check true: emit blockMappingStart + push indent
-          exact emit_preserves_ScanInv { s with indents := _ } .blockMappingStart
+        · exact emit_preserves_ScanInv { s with indents := _ } .blockMappingStart
             (field_update_preserves_ScanInv _ _ h rfl rfl)
-        · -- indent check false: no-op
-          exact h
-      · -- inFlow: identity
-        exact h
+        · exact h
+      · exact h                                             -- inFlow: identity
 
 -- skipSpacesLoop preserves ScanInv: only calls advance.
 theorem skipSpacesLoop_preserves_ScanInv (s : ScannerState) (fuel : Nat)
@@ -8664,20 +8579,19 @@ theorem SimpleKeyValid_mono (s s' : ScannerState)
   · intro h2; rw [h_pref _ hb2]; exact hp2 hb2
 
 -- saveSimpleKey establishes SimpleKeyValid from any state.
+--
+-- **Initiative 3 / J.2 step 5 cutover**: the simpleKeyAllowed branch
+-- no longer pushes placeholder slots, so `simpleKey.tokenIndex =
+-- s.tokens.size` after the call — i.e. `tokenIndex < tokens.size` is
+-- false at that exact moment.  The candidate scalar fills the slot
+-- on the next emit, after which the invariant holds again.
+-- J.3 manifest 5.d: re-state SimpleKeyValid as a *conditional*
+-- invariant (asserted only at consumer sites, not at save time), or
+-- replace with a `pendingKeys`-flavoured invariant.
 theorem saveSimpleKey_preserves_SimpleKeyValid (s : ScannerState)
     (h_skv : SimpleKeyValid s) : SimpleKeyValid (saveSimpleKey s) := by
-  unfold saveSimpleKey
-  split
-  · exact h_skv
-  · split
-    · -- simpleKeyAllowed = true: pushes 2 placeholders, sets tokenIndex = s.tokens.size
-      unfold SimpleKeyValid
-      intro _h_poss
-      simp only [Array.size_push]
-      exact ⟨by omega, by omega,
-        fun h1 => by simp [Array.getElem_push, ScannerState.currentPos],
-        fun h2 => by simp [Array.getElem_push, ScannerState.currentPos]⟩
-    · exact h_skv
+  -- J.3 manifest 5.d: SimpleKeyValid family — Category C
+  sorry
 
 -- skipToContent preserves SimpleKeyValid (preserves simpleKey and tokens exactly).
 theorem skipToContent_preserves_SimpleKeyValid (s s' : ScannerState)
@@ -8857,27 +8771,17 @@ theorem unwindIndents_preserves_SimpleKeyStackValid (s : ScannerState) (col : In
     (fun i hi => unwindIndents_preserves_prefix s col i hi)
 
 -- saveSimpleKey preserves SimpleKeyStackValid.
+--
+-- **Initiative 3 / J.2 step 5 cutover**: post-cutover saveSimpleKey
+-- leaves both `simpleKeyStack` and `tokens` unchanged in every branch,
+-- so the invariant is preserved trivially.
 theorem saveSimpleKey_preserves_SimpleKeyStackValid (s : ScannerState)
     (h_ssv : SimpleKeyStackValid s) : SimpleKeyStackValid (saveSimpleKey s) := by
   unfold saveSimpleKey
   split
   · exact h_ssv
   · split
-    · -- simpleKeyAllowed = true: stack unchanged, tokens grow by 2
-      intro j hj h_poss
-      simp only [] at hj h_poss ⊢
-      have ⟨hb1, hb2, hp1, hp2⟩ := h_ssv j hj h_poss
-      refine ⟨by simp [Array.size_push]; omega, by simp [Array.size_push]; omega, ?_, ?_⟩
-      · intro h1
-        have : (s.tokens.push ⟨s.currentPos, .placeholder, s.currentPos⟩ |>.push ⟨s.currentPos, .placeholder, s.currentPos⟩)[s.simpleKeyStack[j].tokenIndex]'h1 = s.tokens[s.simpleKeyStack[j].tokenIndex] := by
-          rw [Array.getElem_push_lt (by simp [Array.size_push]; omega),
-              Array.getElem_push_lt (by omega)]
-        rw [this]; exact hp1 hb1
-      · intro h2
-        have : (s.tokens.push ⟨s.currentPos, .placeholder, s.currentPos⟩ |>.push ⟨s.currentPos, .placeholder, s.currentPos⟩)[s.simpleKeyStack[j].tokenIndex + 1]'h2 = s.tokens[s.simpleKeyStack[j].tokenIndex + 1] := by
-          rw [Array.getElem_push_lt (by simp [Array.size_push]; omega),
-              Array.getElem_push_lt (by omega)]
-        rw [this]; exact hp2 hb2
+    · exact h_ssv
     · exact h_ssv
 
 -- preprocess preserves AllKeysValid.
@@ -9521,120 +9425,21 @@ invariants (size, envelope, ordering).  This bridges the scanner's internal
 representation to the token stream consumed by `TokenParser`.
 -/
 
-/-- Filtering out placeholder tokens from a valid scan result preserves ValidTokenStream. -/
+/-- `scanFiltered` produces a `ValidTokenStream`.
+
+**Initiative 3 / J.2 step 5 cutover**: pre-cutover this was proven via
+`List.filter_sublist` against the unfiltered `scan` output.  Post-cutover
+`scanFiltered` routes through `linearise`, so the proof must re-derive
+each `ValidTokenStream` field against `linearise`'s shape lemmas
+(`linearise_append_token`, `linearise_append_unresolved`, `linearise_resolved`)
+which are themselves J.3 deliverables in `Scanner/Linearise.lean`.
+
+J.3 manifest 5.d: `scanFiltered`-shape lemma — Category C. -/
 def scanFiltered_produces_valid_tokens (input : String) (ftokens : Array (Positioned YamlToken))
     (h : scanFiltered input = .ok ftokens) : ValidTokenStream := by
-  -- Step 1: Case split on underlying scan result
-  unfold scanFiltered at h
-  revert h
-  generalize h_scan : scan input = result
-  cases result with
-  | error e => intro h; contradiction
-  | ok tokens =>
-  intro h
-  injection h with h_filt
-  subst h_filt
-  -- Step 2: Build ValidTokenStream for unfiltered tokens
-  let vts := scan_produces_valid_tokens input tokens h_scan
-  let p : Positioned YamlToken → Bool := fun t => t.val != .placeholder
-  let l := tokens.toList
-  -- Step 3: List-level facts
-  have h_l_ne : l ≠ [] := by
-    intro h0
-    have h0' : tokens.size = 0 := by show l.length = 0; simp [h0]
-    have h_sz2 : tokens.size ≥ 2 := vts.sizeGe2
-    omega
-  have h_p_first : p (l.head h_l_ne) = true := by
-    show ((l.head h_l_ne).val != .placeholder) = true
-    have : (l.head h_l_ne).val = .streamStart := by
-      rw [List.head_eq_getElem]; exact vts.firstIsStreamStart
-    rw [this]; decide
-  have h_p_last : p (l.getLast h_l_ne) = true := by
-    show ((l.getLast h_l_ne).val != .placeholder) = true
-    have : (l.getLast h_l_ne).val = .streamEnd := by
-      rw [List.getLast_eq_getElem]; exact vts.lastIsStreamEnd
-    rw [this]; decide
-  have h_find : l.find? p = some (l.head h_l_ne) := by
-    conv => lhs; rw [show l = l.head h_l_ne :: l.tail from (List.cons_head_tail h_l_ne).symm]
-    exact List.find?_cons_of_pos h_p_first
-  have h_rev_ne : l.reverse ≠ [] := by simp [h_l_ne]
-  have h_rfind : l.reverse.find? p = some (l.getLast h_l_ne) := by
-    conv => lhs; rw [show l.reverse = l.reverse.head h_rev_ne :: l.reverse.tail
-                        from (List.cons_head_tail h_rev_ne).symm,
-                      show l.reverse.head h_rev_ne = l.getLast h_l_ne
-                        from List.head_reverse ..]
-    exact List.find?_cons_of_pos h_p_last
-  have h_flt_ne : l.filter p ≠ [] := by
-    intro h0
-    rw [show l = l.head h_l_ne :: l.tail from (List.cons_head_tail h_l_ne).symm,
-        List.filter_cons_of_pos h_p_first] at h0
-    exact absurd h0 (List.cons_ne_nil _ _)
-  have h_head_filt : (l.filter p).head h_flt_ne = l.head h_l_ne := by
-    rw [List.head_filter]; simp [h_find]
-  have h_last_filt : (l.filter p).getLast h_flt_ne = l.getLast h_l_ne := by
-    rw [List.getLast_filter]; simp [h_rfind]
-  -- Step 4: Filtered list has size ≥ 2
-  have h_filt_sz_list : (l.filter p).length ≥ 2 := by
-    have h_pos : (l.filter p).length > 0 := List.length_pos_iff.mpr h_flt_ne
-    have h_ne_1 : (l.filter p).length ≠ 1 := by
-      intro h1
-      obtain ⟨a, h_eq⟩ := List.length_eq_one_iff.mp h1
-      have h_ha : (l.filter p).head h_flt_ne = a := by simp [h_eq]
-      have h_la : (l.filter p).getLast h_flt_ne = a := by simp [h_eq]
-      have : l.head h_l_ne = l.getLast h_l_ne := by
-        rw [← h_head_filt, ← h_last_filt, h_ha, h_la]
-      have := congrArg Positioned.val this
-      rw [show (l.head h_l_ne).val = .streamStart
-            from by rw [List.head_eq_getElem]; exact vts.firstIsStreamStart,
-          show (l.getLast h_l_ne).val = .streamEnd
-            from by rw [List.getLast_eq_getElem]; exact vts.lastIsStreamEnd] at this
-      cases this
-    omega
-  have h_filt_sz : (tokens.filter p).size ≥ 2 := by
-    show (tokens.filter p).toList.length ≥ 2
-    rw [Array.toList_filter]; exact h_filt_sz_list
-  -- Step 5: Build ValidTokenStream
-  exact {
-    input := input,
-    tokens := tokens.filter p,
-    sizeGe2 := h_filt_sz,
-    firstIsStreamStart := by
-      have h_first_val : ((l.filter p).head h_flt_ne).val = .streamStart := by
-        rw [h_head_filt, List.head_eq_getElem]; exact vts.firstIsStreamStart
-      rw [List.head_eq_getElem] at h_first_val
-      show ((tokens.filter p).toList[0]'(show 0 < (tokens.filter p).size from by omega)).val
-        = .streamStart
-      simp only [Array.toList_filter]
-      exact h_first_val,
-    lastIsStreamEnd := by
-      have h_last_val : ((l.filter p).getLast h_flt_ne).val = .streamEnd := by
-        rw [h_last_filt, List.getLast_eq_getElem]; exact vts.lastIsStreamEnd
-      rw [List.getLast_eq_getElem] at h_last_val
-      have h_sz_eq : (tokens.filter p).size = (l.filter p).length := by
-        have : (tokens.filter p).toList = l.filter p := Array.toList_filter
-        show (tokens.filter p).toList.length = (l.filter p).length
-        rw [this]
-      show ((tokens.filter p).toList[(tokens.filter p).size - 1]'(show (tokens.filter p).size - 1 < (tokens.filter p).size from by omega)).val
-        = .streamEnd
-      simp only [Array.toList_filter, h_sz_eq]
-      exact h_last_val,
-    positionsOrdered := by
-      intro ⟨i, hi⟩ ⟨j, hj⟩ h_lt
-      have h_pw : List.Pairwise (fun a b => a.pos.offset ≤ b.pos.offset) l :=
-        List.pairwise_iff_getElem.mpr fun i j hi hj h_ij =>
-          vts.positionsOrdered ⟨i, hi⟩ ⟨j, hj⟩ h_ij
-      have h_sublist : (l.filter p).Sublist l := List.filter_sublist
-      have h_pw_filt : List.Pairwise (fun a b => a.pos.offset ≤ b.pos.offset) (l.filter p) :=
-        List.Pairwise.sublist h_sublist h_pw
-      have h_filt_len : (tokens.filter p).size = (l.filter p).length := by
-        have : (tokens.filter p).toList = l.filter p := Array.toList_filter
-        show (tokens.filter p).toList.length = (l.filter p).length; rw [this]
-      have h_result := List.pairwise_iff_getElem.mp h_pw_filt i j (by omega) (by omega) h_lt
-      show ((tokens.filter p).toList[i]'(show i < (tokens.filter p).size from hi)).pos.offset
-        ≤ ((tokens.filter p).toList[j]'(show j < (tokens.filter p).size from hj)).pos.offset
-      simp only [Array.toList_filter]
-      exact h_result
-  }
+  -- J.3 manifest 5.d: scanFiltered now uses linearise; re-derive against
+  -- linearise's shape lemmas (currently sorry'd in Scanner/Linearise.lean).
+  sorry
 
 /-! ## §4  Compile-Time Verification
 
@@ -9927,10 +9732,11 @@ theorem svck_inputEnd (s : ScannerState) :
   split <;> (try split) <;> (try split) <;> rfl
 
 -- scanValuePrepare preserves offset
+-- (Initiative 3 / J.2 step 5: the `simp ... { zetaDelta := true }`
+-- step that folded the setIfInBounds let-bindings is no longer needed.)
 theorem svp_offset (s : ScannerState) :
     (scanValuePrepare s).offset = s.offset := by
   unfold scanValuePrepare
-  simp (config := { zetaDelta := true }) only []
   split
   · split
     · split <;> rfl
@@ -9942,7 +9748,6 @@ theorem svp_offset (s : ScannerState) :
 theorem svp_inputEnd (s : ScannerState) :
     (scanValuePrepare s).inputEnd = s.inputEnd := by
   unfold scanValuePrepare
-  simp (config := { zetaDelta := true }) only []
   split
   · split
     · split <;> rfl

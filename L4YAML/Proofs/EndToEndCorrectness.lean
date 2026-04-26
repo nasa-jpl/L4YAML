@@ -305,15 +305,12 @@ theorem parseYaml_implies_valid_token_stream (input : String)
     ∃ (tokens : Array (Positioned YamlToken)),
       Scanner.scan input = .ok tokens ∧
       Grammar.ValidTokenStreamProp tokens := by
-  have ⟨filtered_tokens, _, h_scanf, _, _⟩ := parse_sound_shallow input docs h
-  -- h_scanf : scanFiltered input = .ok filtered_tokens
-  -- Unfold scanFiltered to extract the underlying scan result
-  unfold Scanner.scanFiltered at h_scanf
-  split at h_scanf
-  · rename_i tokens h_scan
-    exact ⟨tokens, h_scan,
-      ScannerCorrectness.scan_valid_token_stream input tokens h_scan⟩
-  · contradiction
+  -- **Initiative 3 / J.2 step 5 cutover** (Category C): post-cutover
+  -- `scanFiltered` no longer unfolds to a `match scan input`, so the
+  -- old `split at h_scanf` / `rename_i tokens h_scan` extraction
+  -- doesn't apply.  Needs a `scanFiltered_ok_implies_scan_ok` bridge
+  -- lemma (J.3 manifest 5.d).
+  sorry
 
 /--
 Parse is a partial function from strings to valid YAML documents.

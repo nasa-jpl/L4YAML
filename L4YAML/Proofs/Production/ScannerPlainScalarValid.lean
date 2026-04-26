@@ -203,32 +203,25 @@ theorem unwindIndents_new_tokens_not_plain (s : ScannerState) (col : Int)
   unfold unwindIndents
   exact unwindIndentsLoop_new_tokens_not_plain s col s.indents.size j hj hge
 
-set_option maxHeartbeats 400000 in
-/-- `saveSimpleKey` only inserts `.placeholder` tokens at new positions. -/
+/-- `saveSimpleKey` does not add any tokens (post-cutover); hypothesis `hge` is vacuous.
+
+**Initiative 3 / J.2 step 5 cutover** (Category A): pre-cutover this
+quantified over the two placeholder slots that `saveSimpleKey` pushed.
+Post-cutover those pushes moved to the `pendingKeys` side-channel, so
+`(saveSimpleKey s).tokens = s.tokens` and the hypothesis
+`j ≥ s.tokens.size ∧ j < (saveSimpleKey s).tokens.size` is unsatisfiable. -/
 theorem saveSimpleKey_new_tokens_not_plain (s : ScannerState)
     (j : Nat) (hj : j < (saveSimpleKey s).tokens.size) (hge : j ≥ s.tokens.size) :
     match ((saveSimpleKey s).tokens[j]'hj).val with
     | .scalar _ .plain => False
     | _ => True := by
-  have h_cases : (saveSimpleKey s).tokens = s.tokens ∨
-                 (saveSimpleKey s).tokens = (s.tokens.push ⟨s.currentPos, .placeholder, s.currentPos⟩).push ⟨s.currentPos, .placeholder, s.currentPos⟩ := by
+  exfalso
+  have h_eq : (saveSimpleKey s).tokens = s.tokens := by
     unfold saveSimpleKey
     split
-    · left; rfl
-    · split
-      · right; rfl
-      · left; rfl
-  rcases h_cases with h_eq | h_eq
-  · rw [h_eq] at hj; omega
-  · simp only [h_eq] at hj ⊢
-    by_cases h : j < s.tokens.size + 1
-    · have hj_eq : j = s.tokens.size := by omega
-      subst hj_eq
-      simp [Array.getElem_push]
-    · have hj_eq : j = s.tokens.size + 1 := by
-        simp [Array.size_push] at hj; omega
-      subst hj_eq
-      simp [Array.getElem_push]
+    · rfl
+    · split <;> rfl
+  rw [h_eq] at hj; omega
 
 theorem scanPlainScalar_preserves_PlainScalarsValid
     (s s' : ScannerState) (h_old : PlainScalarsValid s.tokens)
@@ -1148,6 +1141,12 @@ theorem scanKey_preserves_PlainScalarsValid
       simp only [advance_preserves_tokens]
       apply PlainScalarsValid_push_non_plain _ _ _ (by trivial); exact h_old
 
+/-- **Initiative 3 / J.2 step 5 cutover** (Category C → reduced):
+post-cutover `scanValuePrepare` no longer mutates `tokens` (all three
+`setIfInBounds` calls dropped), so every branch except the
+`pushMappingIndent` case is identity on `.tokens`.  The
+`PlainScalarsValid_setIfInBounds_non_plain` helper has no callers in
+this file anymore (orphaned; J.4 deletion). -/
 theorem scanValuePrepare_preserves_PlainScalarsValid
     (s : ScannerState) (h_old : PlainScalarsValid s.tokens) :
     PlainScalarsValid (scanValuePrepare s).tokens := by
@@ -1155,15 +1154,11 @@ theorem scanValuePrepare_preserves_PlainScalarsValid
   split
   · split
     · split
-      · apply PlainScalarsValid_setIfInBounds_non_plain _ _ _ _ (by trivial)
-        apply PlainScalarsValid_setIfInBounds_non_plain _ _ _ _ (by trivial)
-        exact h_old
-      · apply PlainScalarsValid_setIfInBounds_non_plain _ _ _ _ (by trivial)
-        exact h_old
-    · apply PlainScalarsValid_setIfInBounds_non_plain _ _ _ _ (by trivial)
-      exact h_old
+      · exact h_old      -- !inFlow, keyCol > currentIndent
+      · exact h_old      -- !inFlow, keyCol ≤ currentIndent
+    · exact h_old        -- inFlow
   · split
-    · exact h_old
+    · exact h_old        -- explicitKeyLine.isSome
     · split
       · exact pushMappingIndent_preserves_PlainScalarsValid s s.col h_old
       · exact h_old
@@ -1353,18 +1348,9 @@ theorem scan_plain_scalar_valid (input : String)
     | .scalar content .plain =>
         ScalarScannable ⟨content, .plain, none, none, none⟩ false
     | _ => True := by
-  unfold Scanner.scanFiltered at h
-  split at h
-  · rename_i all_tokens h_scan
-    have h_all := scan_all_plain_scalars_valid input all_tokens h_scan
-    injection h with h_eq; subst h_eq
-    -- Each filtered token is an element of all_tokens; PlainScalarsValid transfers.
-    have h_in : (all_tokens.filter fun t => t.val != YamlToken.placeholder)[i] ∈ all_tokens := by
-      exact (Array.mem_filter.mp (Array.getElem_mem hi)).1
-    obtain ⟨j, hj_lt, hj_eq⟩ := Array.mem_iff_getElem.mp h_in
-    rw [← hj_eq]
-    exact h_all j hj_lt
-  · simp at h
+  -- J.3 manifest 5.d: scanFiltered now uses linearise (not filter); re-derive
+  -- via linearise's membership lemma (Category C, pending Linearise.lean).
+  sorry
 
 /-! ## Flow-Aware Plain Scalar Validity (B3.5+)
 
@@ -1715,31 +1701,22 @@ theorem unwindIndents_preserves_FlowNestingInv (s : ScannerState) (col : Int)
   unfold unwindIndents
   exact unwindIndentsLoop_preserves_FlowNestingInv s col s.indents.size h_fni
 
-/-- `saveSimpleKey` preserves `FlowNestingInv`. -/
+/-- `saveSimpleKey` preserves `FlowNestingInv`.
+
+**Initiative 3 / J.2 step 5 cutover** (Category B): post-cutover
+`saveSimpleKey` leaves `tokens` and `flowLevel` unchanged, so the
+invariant is preserved trivially. -/
 theorem saveSimpleKey_preserves_FlowNestingInv (s : ScannerState)
     (h_fni : FlowNestingInv s) :
     FlowNestingInv (saveSimpleKey s) := by
   unfold FlowNestingInv at *
   rw [saveSimpleKey_preserves_flowLevel]
-  have h_cases : (saveSimpleKey s).tokens = s.tokens ∨
-      ∃ ph : Positioned YamlToken, ph.val = .placeholder ∧
-        (saveSimpleKey s).tokens = (s.tokens.push ph).push ph := by
-    unfold saveSimpleKey; split
-    · left; rfl
-    · split
-      · right; exact ⟨⟨s.currentPos, .placeholder, s.currentPos⟩, rfl, rfl⟩
-      · left; rfl
-  rcases h_cases with h_eq | ⟨ph, h_ph, h_eq⟩
-  · rw [h_eq]; exact h_fni
-  · rw [h_eq, Array.size_push]
-    rw [flowNesting_push_non_flow (s.tokens.push ph) ph
-      (by rw [h_ph]; decide) (by rw [h_ph]; decide)
-      (by rw [h_ph]; decide) (by rw [h_ph]; decide)]
-    rw [Array.size_push]
-    rw [flowNesting_push_non_flow s.tokens ph
-      (by rw [h_ph]; decide) (by rw [h_ph]; decide)
-      (by rw [h_ph]; decide) (by rw [h_ph]; decide)]
-    exact h_fni
+  have h_eq : (saveSimpleKey s).tokens = s.tokens := by
+    unfold saveSimpleKey
+    split
+    · rfl
+    · split <;> rfl
+  rw [h_eq]; exact h_fni
 
 /-- Preprocessing preserves `FlowNestingInv`. -/
 theorem preprocess_preserves_FlowNestingInv
@@ -1890,32 +1867,25 @@ theorem unwindIndents_new_tokens_not_flow (s : ScannerState) (col : Int)
   unfold unwindIndents
   exact unwindIndentsLoop_new_tokens_not_flow s col s.indents.size j hj hge
 
-/-- `saveSimpleKey` new tokens are non-flow (.placeholder only). -/
+/-- `saveSimpleKey` adds no new tokens post-cutover; hypothesis is vacuous.
+
+**Initiative 3 / J.2 step 5 cutover** (Category A): mirrors
+`saveSimpleKey_new_tokens_not_plain` — `(saveSimpleKey s).tokens =
+s.tokens`, so `hge : j ≥ s.tokens.size` combined with `hj : j <
+(saveSimpleKey s).tokens.size` is contradictory. -/
 theorem saveSimpleKey_new_tokens_not_flow (s : ScannerState)
     (j : Nat) (hj : j < (saveSimpleKey s).tokens.size) (hge : j ≥ s.tokens.size) :
     ((saveSimpleKey s).tokens[j]'hj).val ≠ .flowSequenceStart ∧
     ((saveSimpleKey s).tokens[j]'hj).val ≠ .flowMappingStart ∧
     ((saveSimpleKey s).tokens[j]'hj).val ≠ .flowSequenceEnd ∧
     ((saveSimpleKey s).tokens[j]'hj).val ≠ .flowMappingEnd := by
-  have h_cases : (saveSimpleKey s).tokens = s.tokens ∨
-                 (saveSimpleKey s).tokens = (s.tokens.push ⟨s.currentPos, .placeholder, s.currentPos⟩).push ⟨s.currentPos, .placeholder, s.currentPos⟩ := by
+  exfalso
+  have h_eq : (saveSimpleKey s).tokens = s.tokens := by
     unfold saveSimpleKey
     split
-    · left; rfl
-    · split
-      · right; rfl
-      · left; rfl
-  rcases h_cases with h_eq | h_eq
-  · rw [h_eq] at hj; omega
-  · simp only [h_eq] at hj ⊢
-    by_cases h : j < s.tokens.size + 1
-    · have hj_eq : j = s.tokens.size := by omega
-      subst hj_eq
-      simp [Array.getElem_push]
-    · have hj_eq : j = s.tokens.size + 1 := by
-        simp [Array.size_push] at hj; omega
-      subst hj_eq
-      simp [Array.getElem_push]
+    · rfl
+    · split <;> rfl
+  rw [h_eq] at hj; omega
 
 /-! ### Dispatch-level FlowInv preservation
 
@@ -4030,8 +4000,12 @@ theorem FlowContextPSV_setIfInBounds
       unfold Array.setIfInBounds; simp [show ¬(idx < tokens.size) from h_idx]
     rw [this]; exact h_old
 
-/-- `scanValuePrepare` preserves `FlowContextPSV` provided tokens at simple-key
-    positions are placeholders (non-flow tokens). -/
+/-- `scanValuePrepare` preserves `FlowContextPSV`.
+
+**Initiative 3 / J.2 step 5 cutover** (Category B): post-cutover the
+three `setIfInBounds` calls are gone, so every `simpleKey.possible = true`
+branch leaves `tokens` unchanged.  `h_ph` is no longer needed (kept in
+the signature for callers' benefit; J.4 cleanup). -/
 theorem scanValuePrepare_preserves_FlowContextPSV
     (s : ScannerState) (h_old : FlowContextPSV s.tokens)
     (h_ph : s.simpleKey.possible = true →
@@ -4040,40 +4014,16 @@ theorem scanValuePrepare_preserves_FlowContextPSV
       (∀ (h : s.simpleKey.tokenIndex + 1 < s.tokens.size),
         (s.tokens[s.simpleKey.tokenIndex + 1]'h).val = .placeholder)) :
     FlowContextPSV (scanValuePrepare s).tokens := by
+  let _ := h_ph  -- kept for callers; unused post-cutover
   unfold scanValuePrepare
   split
-  · -- simpleKey.possible = true
-    rename_i h_poss
-    have ⟨h_ph1, h_ph2⟩ := h_ph h_poss
-    split
-    · -- !inFlow
-      split
-      · -- col > currentIndent: two setIfInBounds
-        dsimp only []
-        apply FlowContextPSV_setIfInBounds _ _ _ ⟨s.simpleKey.pos, .key, s.simpleKey.pos⟩ (by trivial)
-            ⟨by nofun, by nofun, by nofun, by nofun⟩
-        · intro h_lt
-          rw [Array.size_setIfInBounds] at h_lt
-          simp only [Array.getElem_setIfInBounds h_lt,
-                     if_neg (show s.simpleKey.tokenIndex ≠ s.simpleKey.tokenIndex + 1 from by omega)]
-          rw [h_ph2 h_lt]; exact ⟨by nofun, by nofun, by nofun, by nofun⟩
-        · apply FlowContextPSV_setIfInBounds _ h_old _ ⟨s.simpleKey.pos, .blockMappingStart, s.simpleKey.pos⟩
-              (by trivial) ⟨by nofun, by nofun, by nofun, by nofun⟩
-          intro h_lt; rw [h_ph1 h_lt]; exact ⟨by nofun, by nofun, by nofun, by nofun⟩
-      · -- col ≤ currentIndent: one setIfInBounds
-        dsimp only []
-        apply FlowContextPSV_setIfInBounds _ h_old _ ⟨s.simpleKey.pos, .key, s.simpleKey.pos⟩ (by trivial)
-            ⟨by nofun, by nofun, by nofun, by nofun⟩
-        intro h_lt; rw [h_ph2 h_lt]; exact ⟨by nofun, by nofun, by nofun, by nofun⟩
-    · -- inFlow: one setIfInBounds
-      dsimp only []
-      apply FlowContextPSV_setIfInBounds _ h_old _ ⟨s.simpleKey.pos, .key, s.simpleKey.pos⟩ (by trivial)
-          ⟨by nofun, by nofun, by nofun, by nofun⟩
-      intro h_lt; rw [h_ph2 h_lt]; exact ⟨by nofun, by nofun, by nofun, by nofun⟩
-  · -- simpleKey.possible = false
-    split
-    · -- explicitKeyLine.isSome: tokens unchanged
-      exact h_old
+  · split
+    · split
+      · exact h_old      -- !inFlow, col > currentIndent
+      · exact h_old      -- !inFlow, col ≤ currentIndent
+    · exact h_old        -- inFlow
+  · split
+    · exact h_old        -- explicitKeyLine.isSome
     · split
       · -- !inFlow: pushMappingIndent
         refine FlowContextPSV_of_prefix_and_new s.tokens _ h_old ?_ ?_ ?_
@@ -4081,8 +4031,7 @@ theorem scanValuePrepare_preserves_FlowContextPSV
         · intro i hi; exact pushMappingIndent_preserves_prefix s s.col i hi
         · intro j hj hge h_flow
           by_cases h_col : ↑s.col > s.currentIndent
-          · -- col > currentIndent: pushMappingIndent emits blockMappingStart
-            have h_tok : (pushMappingIndent s ↑s.col).tokens = (s.emit .blockMappingStart).tokens := by
+          · have h_tok : (pushMappingIndent s ↑s.col).tokens = (s.emit .blockMappingStart).tokens := by
               unfold pushMappingIndent; simp [h_col]
             have h_sz_eq : (pushMappingIndent s ↑s.col).tokens.size = s.tokens.size + 1 := by
               rw [h_tok]; simp [ScannerState.emit, Array.size_push]
@@ -4091,16 +4040,18 @@ theorem scanValuePrepare_preserves_FlowContextPSV
             have h_val : (pushMappingIndent s ↑s.col).tokens[j].val = .blockMappingStart := by
               simp only [h_tok, ScannerState.emit, h_jeq, Array.getElem_push_eq]
             rw [h_val]; trivial
-          · -- col ≤ currentIndent: identity, tokens unchanged
-            exfalso
+          · exfalso
             have : (pushMappingIndent s ↑s.col).tokens.size = s.tokens.size := by
               unfold pushMappingIndent; rw [if_neg h_col]
             omega
-      · -- inFlow: identity
-        exact h_old
+      · exact h_old        -- inFlow: identity
 
-/-- `scanValuePrepare` preserves `FlowNestingInv` provided tokens at simple-key
-    positions are placeholders (non-flow tokens). -/
+/-- `scanValuePrepare` preserves `FlowNestingInv`.
+
+**Initiative 3 / J.2 step 5 cutover** (Category B): post-cutover the
+three `setIfInBounds` calls are gone, so every `simpleKey.possible = true`
+branch leaves `tokens` and `flowLevel` unchanged.  `h_ph` is no longer
+needed. -/
 theorem scanValuePrepare_preserves_FlowNestingInv
     (s : ScannerState) (h_fni : FlowNestingInv s)
     (h_ph : s.simpleKey.possible = true →
@@ -4109,64 +4060,28 @@ theorem scanValuePrepare_preserves_FlowNestingInv
       (∀ (h : s.simpleKey.tokenIndex + 1 < s.tokens.size),
         (s.tokens[s.simpleKey.tokenIndex + 1]'h).val = .placeholder)) :
     FlowNestingInv (scanValuePrepare s) := by
+  let _ := h_ph
   unfold scanValuePrepare
   split
-  · -- simpleKey.possible = true
-    rename_i h_poss
-    have ⟨h_ph1, h_ph2⟩ := h_ph h_poss
-    split
-    · -- !inFlow
-      split
-      · -- col > currentIndent: two setIfInBounds
-        show flowNesting _ _ = s.flowLevel
-        unfold FlowNestingInv at h_fni
-        rw [Array.size_setIfInBounds, Array.size_setIfInBounds]
-        rw [flowNesting_setIfInBounds_non_flow _ _ ⟨s.simpleKey.pos, .key, s.simpleKey.pos⟩
-            ⟨by nofun, by nofun, by nofun, by nofun⟩
-            (fun h_lt => by
-              rw [Array.size_setIfInBounds] at h_lt
-              simp only [Array.getElem_setIfInBounds h_lt,
-                         if_neg (show s.simpleKey.tokenIndex ≠ s.simpleKey.tokenIndex + 1 from by omega)]
-              rw [h_ph2 h_lt]; exact ⟨by nofun, by nofun, by nofun, by nofun⟩)]
-        rw [flowNesting_setIfInBounds_non_flow _ _ ⟨s.simpleKey.pos, .blockMappingStart, s.simpleKey.pos⟩
-            ⟨by nofun, by nofun, by nofun, by nofun⟩
-            (fun h_lt => by rw [h_ph1 h_lt]; exact ⟨by nofun, by nofun, by nofun, by nofun⟩)]
-        exact h_fni
-      · -- col ≤ currentIndent: one setIfInBounds
-        show flowNesting _ _ = s.flowLevel
-        unfold FlowNestingInv at h_fni
-        rw [Array.size_setIfInBounds]
-        rw [flowNesting_setIfInBounds_non_flow _ _ ⟨s.simpleKey.pos, .key, s.simpleKey.pos⟩
-            ⟨by nofun, by nofun, by nofun, by nofun⟩
-            (fun h_lt => by rw [h_ph2 h_lt]; exact ⟨by nofun, by nofun, by nofun, by nofun⟩)]
-        exact h_fni
-    · -- inFlow: one setIfInBounds
-      show flowNesting _ _ = s.flowLevel
-      unfold FlowNestingInv at h_fni
-      rw [Array.size_setIfInBounds]
-      rw [flowNesting_setIfInBounds_non_flow _ _ ⟨s.simpleKey.pos, .key, s.simpleKey.pos⟩
-          ⟨by nofun, by nofun, by nofun, by nofun⟩
-          (fun h_lt => by rw [h_ph2 h_lt]; exact ⟨by nofun, by nofun, by nofun, by nofun⟩)]
-      exact h_fni
-  · -- simpleKey.possible = false
-    split
-    · -- explicitKeyLine.isSome: tokens unchanged
-      exact h_fni
+  · split
+    · split
+      · exact h_fni      -- !inFlow, col > currentIndent
+      · exact h_fni      -- !inFlow, col ≤ currentIndent
+    · exact h_fni        -- inFlow
+  · split
+    · exact h_fni        -- explicitKeyLine.isSome
     · split
       · -- !inFlow: pushMappingIndent
         unfold FlowNestingInv at h_fni ⊢
         unfold pushMappingIndent
         split
-        · -- col > currentIndent: emit .blockMappingStart
-          simp only [emit_preserves_flowLevel, emit_tokens_size]
+        · simp only [emit_preserves_flowLevel, emit_tokens_size]
           rw [show (s.emit .blockMappingStart).tokens = s.tokens.push ⟨s.currentPos, .blockMappingStart, s.currentPos⟩ from rfl]
           rw [flowNesting_push_non_flow s.tokens ⟨s.currentPos, .blockMappingStart, s.currentPos⟩
               (by nofun) (by nofun) (by nofun) (by nofun)]
           exact h_fni
-        · -- col ≤ currentIndent: identity
-          exact h_fni
-      · -- inFlow: identity
-        exact h_fni
+        · exact h_fni
+      · exact h_fni        -- inFlow: identity
 
 theorem scanValue_preserves_FlowContextPSV
     (s s' : ScannerState) (h_fpsv : FlowContextPSV s.tokens)
@@ -4428,49 +4343,20 @@ theorem AllKeysPlaceholderInv_of_cleared_mono (s s' : ScannerState)
 /-! #### AllKeysPlaceholderInv preservation chain -/
 
 /-- `saveSimpleKey` preserves `AllKeysPlaceholderInv`.
-    Branch 1 (explicitKeyLine): no-op.
-    Branch 2 (simpleKeyAllowed): pushes 2 placeholder tokens at `tokens.size`,
-      sets `tokenIndex = tokens.size`, stack unchanged.
-    Branch 3 (else): no-op. -/
+
+**Initiative 3 / J.2 step 5 cutover** (Category C): post-cutover the
+`simpleKeyAllowed` branch sets `simpleKey.tokenIndex = s.tokens.size`
+without pushing the placeholder slots, so the
+`SimpleKeyPlaceholderInv` conjunct of `AllKeysPlaceholderInv` is
+structurally unprovable at that point.  The whole `*PlaceholderInv`
+family is tied to the legacy placeholder model and needs a
+`pendingKeys`-flavoured replacement in J.3.
+J.3 manifest 5.d: AllKeysPlaceholderInv family — Category C. -/
 theorem saveSimpleKey_preserves_AllKeysPlaceholderInv (s : ScannerState)
     (h_akpi : AllKeysPlaceholderInv s) : AllKeysPlaceholderInv (saveSimpleKey s) := by
-  unfold saveSimpleKey
-  split
-  · exact h_akpi -- Branch 1: no-op
-  · split
-    · -- Branch 2: simpleKeyAllowed = true, pushes 2 placeholders
-      refine ⟨?_, ?_, ?_, ?_⟩
-      · -- SimpleKeyPlaceholderInv: new key has tokenIndex = s.tokens.size, both slots are placeholder
-        intro _h_poss
-        simp only [Array.size_push]
-        exact ⟨by omega, by omega,
-          fun h1 => by simp [Array.getElem_push],
-          fun h2 => by simp [Array.getElem_push]⟩
-      · -- SimpleKeyStackPlaceholderInv: stack unchanged, tokens grow by 2, prefix preserved
-        intro j hj h_poss
-        simp only [] at hj h_poss ⊢
-        have ⟨hb1, hb2, hp1, hp2⟩ := h_akpi.2.1 j hj h_poss
-        refine ⟨by simp [Array.size_push]; omega, by simp [Array.size_push]; omega, ?_, ?_⟩
-        · intro h1
-          have : (s.tokens.push ⟨s.currentPos, .placeholder, s.currentPos⟩ |>.push ⟨s.currentPos, .placeholder, s.currentPos⟩)[s.simpleKeyStack[j].tokenIndex]'h1 = s.tokens[s.simpleKeyStack[j].tokenIndex] := by
-            rw [Array.getElem_push_lt (by simp [Array.size_push]; omega),
-                Array.getElem_push_lt (by omega)]
-          rw [this]; exact hp1 hb1
-        · intro h2
-          have : (s.tokens.push ⟨s.currentPos, .placeholder, s.currentPos⟩ |>.push ⟨s.currentPos, .placeholder, s.currentPos⟩)[s.simpleKeyStack[j].tokenIndex + 1]'h2 = s.tokens[s.simpleKeyStack[j].tokenIndex + 1] := by
-            rw [Array.getElem_push_lt (by simp [Array.size_push]; omega),
-                Array.getElem_push_lt (by omega)]
-          rw [this]; exact hp2 hb2
-      · -- SimpleKeyTokenDisjoint: new tokenIndex = tokens.size, stacked indices < tokens.size
-        intro _h_poss j hj h_poss_j
-        simp only [] at hj h_poss_j ⊢
-        have ⟨_, hb2, _, _⟩ := h_akpi.2.1 j hj h_poss_j
-        exact hb2
-      · -- SimpleKeyStackOrdering: stack unchanged
-        intro j hj h_poss_j k hk h_poss_k
-        simp only [] at hj h_poss_j hk h_poss_k ⊢
-        exact h_akpi.2.2.2 j hj h_poss_j k hk h_poss_k
-    · exact h_akpi -- Branch 3: no-op
+  -- J.3 manifest 5.d: re-state in terms of pendingKeys, or restrict
+  -- consumers to use the pendingKeys-flavoured replacement.
+  sorry
 
 /-- `preprocess` preserves `AllKeysPlaceholderInv`.
     `preprocess` = `skipToContent` → `unwindIndents` → `saveSimpleKey`.
@@ -5410,18 +5296,20 @@ theorem filter_preserves_FlowContextPSV
 
 /-! ### Main theorems -/
 
-/-- **B3.5+**: Flow-context plain scalar tokens satisfy `ScalarScannable _ true`. -/
+/-- **B3.5+**: Flow-context plain scalar tokens satisfy `ScalarScannable _ true`.
+
+**Initiative 3 / J.2 step 5 cutover** (Category C): pre-cutover the
+proof split on `scan input = .ok tokens` and applied
+`filter_preserves_FlowContextPSV`.  Post-cutover `scanFiltered` routes
+through `scanLoopFull`+`linearise`; the corresponding bridge lemma
+(`linearise_preserves_FlowContextPSV`) is a J.3 deliverable.
+J.3 manifest 5.d. -/
 theorem scan_flow_context_psv (input : String)
     (tokens : Array (Positioned YamlToken))
     (h : Scanner.scanFiltered input = .ok tokens) :
     FlowContextPSV tokens := by
-  unfold Scanner.scanFiltered at h
-  split at h
-  · rename_i all_tokens h_scan
-    injection h with h_eq; subst h_eq
-    exact filter_preserves_FlowContextPSV all_tokens
-      (scan_all_flow_context_psv input all_tokens h_scan)
-  · simp at h
+  -- J.3 manifest 5.d: re-derive against linearise's shape.
+  sorry
 
 /-- **B3.5+ main**: Scanner output satisfies `FlowAwarePSV`.
     Combines B3.5's `PlainScalarsValid` with `FlowContextPSV`. -/
@@ -5567,18 +5455,17 @@ theorem filter_preserves_FlowBracketsMatched
   omega
 
 /-- Scanner output has matched flow brackets.
-    The scanner checks `flowLevel > 0` at completion and errors if so.
-    Combined with `FlowNestingInv`, this gives `flowNesting = 0` on success. -/
+
+**Initiative 3 / J.2 step 5 cutover** (Category C): same shape change
+as `scan_flow_context_psv` — `scanFiltered` no longer goes through
+`tokens.filter`, so `filter_preserves_FlowBracketsMatched` doesn't
+apply directly.  J.3 manifest 5.d: re-derive via the linearise-shape
+bridge. -/
 theorem scan_flow_brackets_matched (input : String)
     (tokens : Array (Positioned YamlToken))
     (h : Scanner.scanFiltered input = .ok tokens) :
     FlowBracketsMatched tokens := by
-  unfold Scanner.scanFiltered at h
-  split at h
-  · rename_i all_tokens h_scan
-    injection h with h_eq; subst h_eq
-    exact filter_preserves_FlowBracketsMatched all_tokens
-      (scan_FlowBracketsMatched input all_tokens h_scan)
-  · simp at h
+  -- J.3 manifest 5.d: re-derive against linearise's shape.
+  sorry
 
 end L4YAML.Proofs.ScannerPlainScalarValid
