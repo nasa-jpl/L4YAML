@@ -239,9 +239,15 @@ def scanFlowMappingEnd (s : ScannerState) : ScannerState :=
       pendingKeyActive := restoredPending,
       pendingKeyStack := s_after_advance.pendingKeyStack.pop }
 
-/-- Find the last non-placeholder token value, skipping reservation slots.
-    Returns `none` if there are no real tokens. -/
-def lastRealTokenVal? (tokens : Array (Positioned YamlToken)) : Option YamlToken :=
+/-- Last token value in the array, skipping up to two trailing
+    `.placeholder` reservation slots inserted by `saveSimpleKey`.
+    Returns `none` if there are no real tokens.
+
+    **Initiative 3 / J.2 step 4**: renamed from `lastRealTokenVal?` since
+    the "real vs. placeholder" distinction is going away.  At the J.2
+    cutover (step 5) the body simplifies to `tokens.back?.map (·.val)`
+    once `saveSimpleKey` stops pushing placeholders. -/
+def lastTokenVal? (tokens : Array (Positioned YamlToken)) : Option YamlToken :=
   if tokens.size > 0 then
     let lastIdx := tokens.size - 1
     let tok1 := tokens[lastIdx]!.val
@@ -268,7 +274,7 @@ def lastRealTokenVal? (tokens : Array (Positioned YamlToken)) : Option YamlToken
 @[yaml_spec "7.4" 7 "c-collect-entry"]
 def scanFlowEntry (s : ScannerState) : Except ScanError ScannerState := do
   -- §7.4: Leading comma (after flow-open) or consecutive commas are invalid.
-  if let some lastTok := lastRealTokenVal? s.tokens then
+  if let some lastTok := lastTokenVal? s.tokens then
     if lastTok == .flowSequenceStart || lastTok == .flowMappingStart ||
        lastTok == .flowEntry then
       throw (.invalidFlowEntry s.line s.col)

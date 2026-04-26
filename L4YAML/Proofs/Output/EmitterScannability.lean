@@ -2741,13 +2741,13 @@ theorem scanDoubleQuoted_preserves_ek (s s' : ScannerState)
   · injection h_ok with h_eq; subst h_eq
     simp [emitAt_preserves_ek, h_ek_collect, advance_explicitKeyLine]
 
--- Helper: lastRealTokenVal? on array.push tok when tok.val ≠ .placeholder returns tok.val.
+-- Helper: lastTokenVal? on array.push tok when tok.val ≠ .placeholder returns tok.val.
 -- Placed here (before scanDoubleQuoted_flow_ok) so it can be used in flow proofs.
-theorem lastRealTokenVal_push_non_ph'
+theorem lastTokenVal_push_non_ph'
     (tokens : Array (Positioned YamlToken))
     (tok : Positioned YamlToken) (h_nph : tok.val ≠ .placeholder) :
-    lastRealTokenVal? (tokens.push tok) = some tok.val := by
-  unfold lastRealTokenVal?; dsimp only []
+    lastTokenVal? (tokens.push tok) = some tok.val := by
+  unfold lastTokenVal?; dsimp only []
   simp only [Array.size_push, show tokens.size + 1 > 0 from by omega, ↓reduceIte,
     show tokens.size + 1 - 1 = tokens.size from by omega]
   rw [getElem!_pos _ _ (by simp [Array.size_push])]
@@ -2770,7 +2770,7 @@ theorem scanDoubleQuoted_flow_ok (sc : ScannerState)
       ∧ s'.indents = sc.indents
       ∧ s'.explicitKeyLine = sc.explicitKeyLine
       ∧ s'.col > 0
-      ∧ lastRealTokenVal? s'.tokens = some (.scalar content .doubleQuoted)
+      ∧ lastTokenVal? s'.tokens = some (.scalar content .doubleQuoted)
       ∧ s'.simpleKeyAllowed = false
       ∧ s'.line = sc.line := by
   -- Surface after advancing past opening quote
@@ -2848,9 +2848,9 @@ theorem scanDoubleQuoted_flow_ok (sc : ScannerState)
   · -- col > 0
     show s_after.col > 0
     exact h_col_loop
-  · -- lastRealTokenVal? = .scalar content .doubleQuoted
-    show lastRealTokenVal? (s_after.tokens.push _) = some (.scalar content .doubleQuoted)
-    exact lastRealTokenVal_push_non_ph' s_after.tokens _ nofun
+  · -- lastTokenVal? = .scalar content .doubleQuoted
+    show lastTokenVal? (s_after.tokens.push _) = some (.scalar content .doubleQuoted)
+    exact lastTokenVal_push_non_ph' s_after.tokens _ nofun
   · -- simpleKeyAllowed = false
     rfl
   · -- line preserved: s_result.line = sc.line
@@ -3921,7 +3921,7 @@ theorem scanNextToken_flow_scanDoubleQuoted (s : ScannerState)
       ∧ s'.indents = s.indents
       ∧ s'.explicitKeyLine = s.explicitKeyLine
       ∧ s'.col > 0
-      ∧ (∀ t, lastRealTokenVal? s'.tokens = some t →
+      ∧ (∀ t, lastTokenVal? s'.tokens = some t →
           t ≠ .flowSequenceStart ∧ t ≠ .flowMappingStart ∧ t ≠ .flowEntry)
       ∧ s'.simpleKeyAllowed = false
       ∧ s'.line = s.line
@@ -3996,7 +3996,7 @@ theorem scanNextToken_flow_scanDoubleQuoted (s : ScannerState)
       ∧ s_final.indents = s.indents
       ∧ s_final.explicitKeyLine = s.explicitKeyLine
       ∧ s_final.col > 0
-      ∧ lastRealTokenVal? s_final.tokens = some (.scalar content .doubleQuoted)
+      ∧ lastTokenVal? s_final.tokens = some (.scalar content .doubleQuoted)
       ∧ s_final.simpleKeyAllowed = false
       ∧ s_final.line = s.line
       ∧ AllTokensOnLine s_final s.line
@@ -4395,12 +4395,12 @@ theorem checkBlockFlowIndent_ok_close_bracket (s : ScannerState) :
     delimiter (flowSequenceStart, flowMappingStart, or flowEntry).
     This holds whenever we've just scanned a content token (scalar, etc.). -/
 theorem scanFlowEntry_ok (s : ScannerState)
-    (h_last : ∀ t, lastRealTokenVal? s.tokens = some t →
+    (h_last : ∀ t, lastTokenVal? s.tokens = some t →
       t ≠ .flowSequenceStart ∧ t ≠ .flowMappingStart ∧ t ≠ .flowEntry) :
     scanFlowEntry s = .ok { (s.emit .flowEntry).advance with simpleKeyAllowed := true } := by
   unfold scanFlowEntry; dsimp only [bind, Except.bind, pure, Except.pure]
-  -- After unfold+dsimp, the goal has a match on lastRealTokenVal? and if-then-else
-  cases h_lrt : lastRealTokenVal? s.tokens with
+  -- After unfold+dsimp, the goal has a match on lastTokenVal? and if-then-else
+  cases h_lrt : lastTokenVal? s.tokens with
   | none => rfl
   | some t =>
     have ⟨h1, h2, h3⟩ := h_last t h_lrt
@@ -4422,7 +4422,7 @@ theorem scanFlowEntry_ok (s : ScannerState)
 /-- Field preservation through scanFlowEntry. -/
 theorem scanFlowEntry_detail (s : ScannerState) (rest : List Char)
     (hcorr : ScannerSurfCorr s ⟨',' :: rest, s.col⟩)
-    (h_last : ∀ t, lastRealTokenVal? s.tokens = some t →
+    (h_last : ∀ t, lastTokenVal? s.tokens = some t →
       t ≠ .flowSequenceStart ∧ t ≠ .flowMappingStart ∧ t ≠ .flowEntry) :
     let s' := { (s.emit .flowEntry).advance with simpleKeyAllowed := true }
     scanFlowEntry s = .ok s'
@@ -4458,12 +4458,12 @@ theorem scanFlowEntry_detail (s : ScannerState) (rest : List Char)
     dsimp only []
     exact h_adv_corr.col_eq.symm
 
--- Helper: lastRealTokenVal? on array.push tok when tok.val ≠ .placeholder returns tok.val.
-theorem lastRealTokenVal_push_non_ph
+-- Helper: lastTokenVal? on array.push tok when tok.val ≠ .placeholder returns tok.val.
+theorem lastTokenVal_push_non_ph
     (tokens : Array (Positioned YamlToken))
     (tok : Positioned YamlToken) (h_nph : tok.val ≠ .placeholder) :
-    lastRealTokenVal? (tokens.push tok) = some tok.val := by
-  unfold lastRealTokenVal?; dsimp only []
+    lastTokenVal? (tokens.push tok) = some tok.val := by
+  unfold lastTokenVal?; dsimp only []
   simp only [Array.size_push, show tokens.size + 1 > 0 from by omega, ↓reduceIte,
     show tokens.size + 1 - 1 = tokens.size from by omega]
   rw [getElem!_pos _ _ (by simp [Array.size_push])]
@@ -4472,17 +4472,17 @@ theorem lastRealTokenVal_push_non_ph
     beq_eq_false_iff_ne.mpr h_nph
   simp [this]
 
--- Helper: saveSimpleKey preserves "no trailing flow delimiter" property of lastRealTokenVal?.
+-- Helper: saveSimpleKey preserves "no trailing flow delimiter" property of lastTokenVal?.
 -- saveSimpleKey either leaves tokens unchanged or pushes exactly 2 .placeholder tokens.
--- lastRealTokenVal? skips up to 2 trailing placeholders, so either reaches the same original
+-- lastTokenVal? skips up to 2 trailing placeholders, so either reaches the same original
 -- token (which h_last covers) or returns .placeholder (which is trivially ≠ flow delimiters).
-theorem lastRealTokenVal_push_two_ph
+theorem lastTokenVal_push_two_ph
     (tokens : Array (Positioned YamlToken))
     (ph1 ph2 : Positioned YamlToken) (h1 : ph1.val = .placeholder) (h2 : ph2.val = .placeholder)
     (t : YamlToken)
-    (ht : lastRealTokenVal? ((tokens.push ph1).push ph2) = some t) :
-    lastRealTokenVal? tokens = some t ∨ t = .placeholder := by
-  unfold lastRealTokenVal? at ht
+    (ht : lastTokenVal? ((tokens.push ph1).push ph2) = some t) :
+    lastTokenVal? tokens = some t ∨ t = .placeholder := by
+  unfold lastTokenVal? at ht
   dsimp only [] at ht  -- inline have/let bindings
   simp only [Array.size_push] at ht
   -- First if: tokens.size + 2 > 0 → true
@@ -4516,7 +4516,7 @@ theorem lastRealTokenVal_push_two_ph
     injection ht with ht_val
     by_cases h_ne : t = .placeholder
     · exact .inr h_ne
-    · left; unfold lastRealTokenVal?; dsimp only []
+    · left; unfold lastTokenVal?; dsimp only []
       simp [h_gt, ht_val,
         show (t == YamlToken.placeholder) = false from beq_eq_false_iff_ne.mpr h_ne]
   · simp only [h_elem2, show (YamlToken.placeholder == YamlToken.placeholder) = true from by decide,
@@ -4524,11 +4524,11 @@ theorem lastRealTokenVal_push_two_ph
       decide_true, decide_false] at ht
     injection ht with ht_val; exact .inr ht_val.symm
 
-theorem saveSimpleKey_preserves_lastRealTokenVal_ne_flow (s : ScannerState)
-    (h_last : ∀ t, lastRealTokenVal? s.tokens = some t →
+theorem saveSimpleKey_preserves_lastTokenVal_ne_flow (s : ScannerState)
+    (h_last : ∀ t, lastTokenVal? s.tokens = some t →
       t ≠ .flowSequenceStart ∧ t ≠ .flowMappingStart ∧ t ≠ .flowEntry)
     (t : YamlToken)
-    (ht : lastRealTokenVal? (saveSimpleKey s).tokens = some t) :
+    (ht : lastTokenVal? (saveSimpleKey s).tokens = some t) :
     t ≠ .flowSequenceStart ∧ t ≠ .flowMappingStart ∧ t ≠ .flowEntry := by
   have h_cases : (saveSimpleKey s).tokens = s.tokens ∨
       (saveSimpleKey s).tokens = ((s.tokens.push ⟨s.currentPos, .placeholder, s.currentPos⟩).push
@@ -4542,7 +4542,7 @@ theorem saveSimpleKey_preserves_lastRealTokenVal_ne_flow (s : ScannerState)
   rcases h_cases with h_eq | h_eq
   · rw [h_eq] at ht; exact h_last t ht
   · rw [h_eq] at ht
-    have h_or := lastRealTokenVal_push_two_ph s.tokens
+    have h_or := lastTokenVal_push_two_ph s.tokens
       ⟨s.currentPos, .placeholder, s.currentPos⟩
       ⟨s.currentPos, .placeholder, s.currentPos⟩ rfl rfl t ht
     cases h_or with
@@ -4552,7 +4552,7 @@ theorem saveSimpleKey_preserves_lastRealTokenVal_ne_flow (s : ScannerState)
 /-- Flow dispatch for `,` returns `some (scanFlowEntry result)` when flowLevel > 0. -/
 theorem dispatchFlowIndicators_comma (s : ScannerState)
     (h_fl : s.flowLevel > 0)
-    (h_last : ∀ t, lastRealTokenVal? s.tokens = some t →
+    (h_last : ∀ t, lastTokenVal? s.tokens = some t →
       t ≠ .flowSequenceStart ∧ t ≠ .flowMappingStart ∧ t ≠ .flowEntry) :
     scanNextToken_dispatchFlowIndicators s ',' =
       .ok (some { (s.emit .flowEntry).advance with simpleKeyAllowed := true }) := by
@@ -4577,7 +4577,7 @@ theorem scanNextToken_flow_comma (s : ScannerState)
     (h_flow : s.inFlow = true)
     (h_indent : s.currentIndent < 0)
     (h_col_pos : s.col > 0)
-    (h_last : ∀ t, lastRealTokenVal? s.tokens = some t →
+    (h_last : ∀ t, lastTokenVal? s.tokens = some t →
       t ≠ .flowSequenceStart ∧ t ≠ .flowMappingStart ∧ t ≠ .flowEntry)
     (h_atol : AllTokensOnLine s s.line)
     (h_endline : EndLineOnLine s) :
@@ -4623,13 +4623,13 @@ theorem scanNextToken_flow_comma (s : ScannerState)
       (by simp only [s_ad]; split <;> exact saveSimpleKey_preserves_inputEnd s)
       h_ad_col_eq
       (by simp only [s_ad]; split <;> exact saveSimpleKey_preserves_indents s)
-  have h_ad_last : ∀ t, lastRealTokenVal? s_ad.tokens = some t →
+  have h_ad_last : ∀ t, lastTokenVal? s_ad.tokens = some t →
       t ≠ .flowSequenceStart ∧ t ≠ .flowMappingStart ∧ t ≠ .flowEntry := by
     intro t ht
     have h_ad_toks : s_ad.tokens = (saveSimpleKey s).tokens := by
       simp only [s_ad]; split <;> rfl
     rw [h_ad_toks] at ht
-    exact saveSimpleKey_preserves_lastRealTokenVal_ne_flow s h_last t ht
+    exact saveSimpleKey_preserves_lastTokenVal_ne_flow s h_last t ht
   have h_flow_disp := dispatchFlowIndicators_comma s_ad h_fl_pos h_ad_last
   -- Step 6: compose
   have h_snt := scanNextToken_via_flow_dispatch _ _ _ _ _ h_pp h_struct rfl h_check h_flow_disp
@@ -4732,16 +4732,16 @@ theorem scanFlowSequenceEnd_detail (s : ScannerState) (rest : List Char)
          h_adv_corr.input_prefix, h_adv_corr.indent_cols_nonneg⟩
 
 /-- Token property: `scanFlowSequenceEnd` ends with `.flowSequenceEnd` as last real token. -/
-theorem scanFlowSequenceEnd_lastRealTokenVal (s : ScannerState) :
-    lastRealTokenVal? (scanFlowSequenceEnd s).tokens = some .flowSequenceEnd := by
+theorem scanFlowSequenceEnd_lastTokenVal (s : ScannerState) :
+    lastTokenVal? (scanFlowSequenceEnd s).tokens = some .flowSequenceEnd := by
   unfold scanFlowSequenceEnd; dsimp only []
   -- tokens = (s.emit .flowSequenceEnd).advance.tokens
   --        = (s.emit .flowSequenceEnd).tokens (advance preserves tokens)
   --        = s.tokens.push { pos := s.currentPos, val := .flowSequenceEnd }
-  show lastRealTokenVal? (s.emit .flowSequenceEnd).advance.tokens = _
+  show lastTokenVal? (s.emit .flowSequenceEnd).advance.tokens = _
   rw [ScannerCorrectness.advance_preserves_tokens (s.emit .flowSequenceEnd)]
-  show lastRealTokenVal? (s.tokens.push { pos := s.currentPos, val := .flowSequenceEnd }) = _
-  exact lastRealTokenVal_push_non_ph' s.tokens _ nofun
+  show lastTokenVal? (s.tokens.push { pos := s.currentPos, val := .flowSequenceEnd }) = _
+  exact lastTokenVal_push_non_ph' s.tokens _ nofun
 
 /-- `validateFlowClose` passes when flowLevel > 0. -/
 theorem validateFlowClose_pass_nested (s : ScannerState) (h_fl : s.flowLevel > 0) :
@@ -4805,7 +4805,7 @@ theorem scanNextToken_flow_close_seq_nested (s : ScannerState)
       ∧ s'.indents = s.indents
       ∧ s'.explicitKeyLine = s.explicitKeyLine
       ∧ s'.col = s.col + 1
-      ∧ (∀ t, lastRealTokenVal? s'.tokens = some t →
+      ∧ (∀ t, lastTokenVal? s'.tokens = some t →
           t ≠ .flowSequenceStart ∧ t ≠ .flowMappingStart ∧ t ≠ .flowEntry)
       ∧ s'.simpleKeyAllowed = false
       ∧ s'.line = s.line
@@ -4872,9 +4872,9 @@ theorem scanNextToken_flow_close_seq_nested (s : ScannerState)
     · rw [h_ad_fl]
     · exfalso; omega
   · rw [h_col_f, h_ad_col]
-  · -- lastRealTokenVal? = .flowSequenceEnd
+  · -- lastTokenVal? = .flowSequenceEnd
     intro t ht
-    have h_lrt := scanFlowSequenceEnd_lastRealTokenVal s_ad
+    have h_lrt := scanFlowSequenceEnd_lastTokenVal s_ad
     rw [h_lrt] at ht; injection ht with ht; subst ht
     exact ⟨by decide, by decide, by decide⟩
   · -- simpleKeyAllowed = false
@@ -5103,13 +5103,13 @@ theorem scanFlowMappingEnd_detail (s : ScannerState) (rest : List Char)
   exact ⟨h_adv_corr.chars_from, h_adv_corr.col_eq, h_adv_corr.end_eq,
          h_adv_corr.input_prefix, h_adv_corr.indent_cols_nonneg⟩
 
-theorem scanFlowMappingEnd_lastRealTokenVal (s : ScannerState) :
-    lastRealTokenVal? (scanFlowMappingEnd s).tokens = some .flowMappingEnd := by
+theorem scanFlowMappingEnd_lastTokenVal (s : ScannerState) :
+    lastTokenVal? (scanFlowMappingEnd s).tokens = some .flowMappingEnd := by
   unfold scanFlowMappingEnd; dsimp only []
-  show lastRealTokenVal? (s.emit .flowMappingEnd).advance.tokens = _
+  show lastTokenVal? (s.emit .flowMappingEnd).advance.tokens = _
   rw [ScannerCorrectness.advance_preserves_tokens (s.emit .flowMappingEnd)]
-  show lastRealTokenVal? (s.tokens.push { pos := s.currentPos, val := .flowMappingEnd }) = _
-  exact lastRealTokenVal_push_non_ph' s.tokens _ nofun
+  show lastTokenVal? (s.tokens.push { pos := s.currentPos, val := .flowMappingEnd }) = _
+  exact lastTokenVal_push_non_ph' s.tokens _ nofun
 
 theorem scanFlowMappingEnd_peek (s : ScannerState) :
     (scanFlowMappingEnd s).peek? = (s.emit .flowMappingEnd).advance.peek? := by
@@ -5153,7 +5153,7 @@ theorem scanNextToken_flow_close_mapping_nested (s : ScannerState)
       ∧ s'.indents = s.indents
       ∧ s'.explicitKeyLine = s.explicitKeyLine
       ∧ s'.col = s.col + 1
-      ∧ (∀ t, lastRealTokenVal? s'.tokens = some t →
+      ∧ (∀ t, lastTokenVal? s'.tokens = some t →
           t ≠ .flowSequenceStart ∧ t ≠ .flowMappingStart ∧ t ≠ .flowEntry)
       ∧ s'.simpleKeyAllowed = false
       ∧ s'.line = s.line
@@ -5212,7 +5212,7 @@ theorem scanNextToken_flow_close_mapping_nested (s : ScannerState)
     · exfalso; omega
   · rw [h_col_f, h_ad_col]
   · intro t ht
-    have h_lrt := scanFlowMappingEnd_lastRealTokenVal s_ad
+    have h_lrt := scanFlowMappingEnd_lastTokenVal s_ad
     rw [h_lrt] at ht; injection ht with ht; subst ht
     exact ⟨nofun, nofun, nofun⟩
   · -- simpleKeyAllowed = false
@@ -7020,7 +7020,7 @@ def EmitScansInFlow (v : YamlValue) : Prop :=
       ∧ s'.currentIndent < 0
       ∧ s'.line = s.line
       ∧ s'.simpleKeyAllowed = false
-      ∧ (∀ t, lastRealTokenVal? s'.tokens = some t →
+      ∧ (∀ t, lastTokenVal? s'.tokens = some t →
           t ≠ .flowSequenceStart ∧ t ≠ .flowMappingStart ∧ t ≠ .flowEntry)
       ∧ AllTokensOnLine s' s'.line
       ∧ EndLineOnLine s'
