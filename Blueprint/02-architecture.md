@@ -12,7 +12,7 @@
 ```
           String                 Array (Positioned YamlToken)
         ┌──────────┐    scan    ┌──────────────────────────────┐
-Input ─▶│ Source   │ ─────────▶│ Tokens                       │
+Input ─▶│ Source   │ ──────────▶│ Tokens                       │
         └──────────┘            └──────────────────────────────┘
                                            │
                                            │ parseStream
