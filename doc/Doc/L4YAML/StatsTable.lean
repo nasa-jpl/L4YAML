@@ -116,8 +116,6 @@ def buildCells (j : Json) : Array Cell := Id.run do
   let envAxioms     := jNat j ["env", "axioms"]
   let envSorry      := jNat j ["env", "theorems_with_direct_sorry"]
   let partialDefs   := jNat j ["static", "library", "partial_defs"]
-  let bjPassed      := jNat j ["build_jobs", "passed"]
-  let bjTotal       := jNat j ["build_jobs", "total"]
   let suitesPassed  := jNat j ["test_suites", "total_passed"]
   let suiteCount    := jNat j ["test_suites", "suite_count"]
   let specPassed    := jNat j ["spec_examples", "passed"]
@@ -128,10 +126,6 @@ def buildCells (j : Json) : Array Cell := Id.run do
   let ytsTotal      := jNat j ["yaml_test_suite", "total"]
   let ytsPassed     := jNat j ["yaml_test_suite", "passed"]
   let ytsSkipped    := jNat j ["yaml_test_suite", "skipped"]
-
-  let buildJobsCell : Cell := match bjPassed, bjTotal with
-    | some p, some t => [.text s!"{p}/{t} (clean, zero warnings)"]
-    | _, _           => [.text "? (run `lake build` with BUILD_JOBS_TOTAL/PASSED set)"]
 
   let ytsTotalCell : Cell :=
     match ytsTotal, ytsPassed, ytsSkipped with
@@ -151,8 +145,6 @@ def buildCells (j : Json) : Array Cell := Id.run do
 
     ( [.text "Axioms / ", .code "sorry", .text " / ", .code "partial def"],
       [.text s!"{natOpt envAxioms} / {natOpt envSorry} / {natOpt partialDefs}"] ),
-
-    ( [.text "Build jobs"], buildJobsCell ),
 
     ( [.text "Runtime test suites"],
       [.text s!"{withCommasOpt suitesPassed} tests across {natOpt suiteCount} suites"] ),
