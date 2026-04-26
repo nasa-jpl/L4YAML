@@ -12,11 +12,13 @@
 -/
 import Lean
 import VersoManual
+import Doc.L4YAML.CellDsl
 
 open Lean Elab
 open Verso Doc Elab
 open Verso.Genre Manual
 open Lean.Doc.Syntax
+open Doc.L4YAML.CellDsl
 
 namespace Doc.L4YAML.StatsTable
 
@@ -75,28 +77,6 @@ def fracOpt (p? t? : Option Nat) : String :=
   match p?, t? with
   | some p, some t => s!"{withCommas p}/{withCommas t}"
   | _, _ => "?"
-
-/-! ## Cell-spec DSL
-
-  A cell is a sequence of `Run`s — runs of plain text or inline code.
-  This lets us preserve the inline `\`#guard\``, `\`sorry\``, etc. that
-  appeared in the original hand-typed markup. -/
-
-inductive Run where
-  | text (s : String)
-  | code (s : String)
-
-abbrev Cell := List Run
-
-/-- Quote a `Run` as the corresponding `Verso.Doc.Inline` term. -/
-def Run.toInlineSyntax : Run → DocElabM (TSyntax `term)
-  | .text s => `(Verso.Doc.Inline.text $(Lean.quote s))
-  | .code s => `(Verso.Doc.Inline.code $(Lean.quote s))
-
-/-- Quote a `Cell` as a `ListItem.mk #[Block.para #[<inlines>]]` term. -/
-def Cell.toListItemSyntax (c : Cell) : DocElabM (TSyntax `term) := do
-  let inls : Array (TSyntax `term) ← c.toArray.mapM Run.toInlineSyntax
-  `(Verso.Doc.ListItem.mk #[Verso.Doc.Block.para #[$inls,*]])
 
 /-! ## Row builder -/
 
@@ -176,14 +156,6 @@ def buildCells (j : Json) : Array Cell := Id.run do
 def statsTable : DirectiveExpanderOf Unit
   | (), _ => do
     let j ← Doc.L4YAML.StatsTable.loadJson
-    let cells := buildCells j
-    let listItems ← cells.mapM Cell.toListItemSyntax
-    let columns : Nat := 2
-    let header : Bool := true
-    let tag : Option String := none
-    let alignment : Option Verso.Genre.Manual.TableConfig.Alignment := none
-    `(Verso.Doc.Block.other
-        (Verso.Genre.Manual.Block.table $(Lean.quote columns) $(Lean.quote header) $(Lean.quote tag) $(Lean.quote alignment))
-        #[Verso.Doc.Block.ul #[$[$listItems],*]])
+    buildTableSyntax 2 (header := true) (buildCells j)
 
 end Doc.L4YAML.StatsTable
