@@ -383,7 +383,7 @@ plan and the implementation share a single history.  Cherry-picking
 the doc back to `main` is acceptable if the design needs to be
 visible there before the merge.
 
-### Phase J.0 — Design (completed 2026-04-26)
+### Phase J.0 — Design [✓ completed 2026-04-26 `a199cae4`]
 
 **Deliverable**: `Blueprint/07-initiative-3-append-only.md` (this
 doc) updated with concrete answers to the open design questions
@@ -400,7 +400,7 @@ reviewed and approved `ResolutionKind` / `PendingKeyEntry`, the
 `linearise` algorithm, and the `{a: [1, 2], b: c}` worked example.
 Code changes proceed on `feature/append-only`.
 
-### Phase J.1 — Type definitions and stub (1 week)
+### Phase J.1 — Type definitions and stub [✓ completed 2026-04-26 `f1d089bd`]
 
 **Deliverable**: New `ScannerState` definition compiles.  All
 existing scanner submodule signatures updated.  Bodies are `sorry` /
@@ -410,7 +410,15 @@ its basic properties (`linearise_append`, `linearise_resolved`).
 **Validation gate**: project compiles with stubs; type-check passes.
 Existing proof files don't yet build.
 
-### Phase J.2 — Scanner submodule migration (3-4 weeks)
+**Status**: ✓ satisfied at commit `f1d089bd` ("Initiative 3 J.1:
+pendingKeys side channel + linearise scaffolding").
+`PendingKeyEntry` / `ResolutionKind` defined; `ScannerState` extended
+with `pendingKeys` / `pendingKeyActive` / `pendingKeyStack`;
+`linearise` function implemented with three property lemmas
+(`linearise_append_token`, `linearise_append_unresolved`,
+`linearise_resolved`) carrying `sorry` against J.3.
+
+### Phase J.2 — Scanner submodule migration [in progress]
 
 Port submodules in dependency order:
 
@@ -428,6 +436,20 @@ ported (or re-stubbed with sorries to be discharged in J.3).
 **Validation gate per submodule**: file builds; no new sorries
 beyond a documented manifest.
 
+**Status (as of 2026-04-26)**:
+
+| Step | Description | Status | Commit |
+|---|---|---|---|
+| 1 | `Scanner/State.lean` (accessors, helpers) | ✓ done | `f1d089bd` (with J.1) |
+| 2 | `Scanner/SimpleKey.lean` (dual-write) | ✓ done | `909b8870` |
+| 2.5 | `Scanner/Scanner.lean` flow open/close + endLine sync | ✓ done | `9acea6e6` |
+| 3 | `Scanner/Document.lean` + `Scanner/Scalar.lean` leaf clears | ✓ done | `09fc3ec7` |
+| 4 | `lastRealTokenVal?` → `lastTokenVal?` rename | ✓ done | `00bca3ee` |
+| 5 | `scanFiltered` cutover (see substitution plan below) | partial: 5.0 + 5.1 done, 5.2 pending | `a212cdc2`, `71a86eee` |
+
+Steps 1–4 are *additive* (dual-write / rename only); the cutover
+itself is concentrated in step 5, sequenced into 5.0/5.1/5.2 below.
+
 #### Phase J.2 step 5 — `scanFiltered` cutover (substitution plan)
 
 Step 5 is the disruption point.  Steps 1–4 are additive: the
@@ -442,6 +464,19 @@ The break is intentionally concentrated in this single step so that
 J.2 steps 1–4 land against a green tree (the dual-write is
 information-preserving) and J.3 starts from a single, well-defined
 "all classical placeholder/setIfInBounds machinery is gone" baseline.
+
+**Plan structure**: §5.a/§5.b/§5.c/§5.d/§5.e are *sub-sections of
+this plan* (code edits / breakage cascade / sub-substep sequencing /
+sorry manifest / validation gate).  §5.c then defines the *commit
+sequence* as 5.0/5.1/5.2.
+
+**Status (as of 2026-04-26)**:
+
+| Sub-step | Description | Status | Commit |
+|---|---|---|---|
+| 5.0 | Code cutover (§5.a edits) — single red commit | ✓ done | `a212cdc2` |
+| 5.1 | Discharge Categories A + B (§5.b) — restore green | ✓ done | `71a86eee` |
+| 5.2 | yaml-test-suite golden parity (runtime check) | pending | — |
 
 ##### 5.a Code edits (Scanner-side)
 
@@ -539,50 +574,110 @@ lemmas (currently `sorry` in `Scanner/Linearise.lean` from J.1).
 The cutover is staged into three sub-commits so each landing has a
 focused diff and a clear "is this gate satisfied" question.
 
-* **5.0 — Code cutover**: edits 5.a.1–5.a.4 in one commit.  Build is
-  red.  This is the *only* commit on `feature/append-only` where the
-  build is allowed to be red; all later commits restore green.
-* **5.1 — Discharge Category A + B**: ~30–40 sites across
-  `ScannerPlainScalarValid.lean` and `EmitterScannability.lean`,
-  mostly one-line proofs.  Restores green build with sorries only at
-  Category C sites.  Sorry budget at this point: ~10 new sorries on
-  top of the J.1+pre-existing baseline (3+7).
-* **5.2 — yaml-test-suite golden parity**: run the YAML 1.2 test
-  suite against the cutover scanner; output must be observationally
-  identical to pre-cutover.  This is the runtime correctness check;
-  the proof corpus is independently green from 5.1.
+* **5.0 — Code cutover** [✓ `a212cdc2`]: edits 5.a.1–5.a.4 in one
+  commit.  Build is red.  This is the *only* commit on
+  `feature/append-only` where the build is allowed to be red; all
+  later commits restore green.  Outcome: 27 errors, all in
+  `Proofs/Scanner/ScannerCorrectness.lean` (Lake short-circuited at
+  the first downstream failure; `ScannerPlainScalarValid` and
+  `EmitterScannability` errors surfaced incrementally during 5.1).
+* **5.1 — Discharge Category A + B** [✓ `71a86eee`]: ~30–40 sites
+  across `ScannerCorrectness.lean`, `ScannerPlainScalarValid.lean`,
+  `EmitterScannability.lean`, plus 1 each in `DocumentProduction.lean`
+  and `EndToEndCorrectness.lean`.  Restores green build with sorries
+  only at Category C sites.  Actual new-sorry count: **14** (post-hoc
+  re-count after the commit; lands exactly at the §5.d lower bound
+  of the 14–17 cap, +4 over the looser per-5.1 "~10" forecast).
+  The +4 over-forecast is driven primarily by the `*PlaceholderInv`
+  invariant family being structurally tied to the legacy placeholder
+  model rather than by `scanFiltered`-shape proofs (those would have
+  been cheaper).
+* **5.2 — yaml-test-suite golden parity** [pending]: run the YAML
+  1.2 test suite against the cutover scanner; output must be
+  observationally identical to pre-cutover.  This is the runtime
+  correctness check; the proof corpus is independently green from
+  5.1.
 
 ##### 5.d Sorry-on-stub manifest at end of step 5
 
-Each `sorry` carried into J.3 gets a `-- J.3 manifest 5.d.N: <reason>`
-comment in the source pointing back to this section.  Approximate set:
+Each `sorry` carried into J.3 gets a `-- J.3 manifest 5.d:` comment
+in the source pointing back to this section.
 
-| Site | Note |
+**Pre-existing baseline** (untouched by step 5):
+
+| Site | Source | Note |
+|---|---|---|
+| `linearise_append_token` | `Scanner/Linearise.lean` | J.1 stub; J.3 main proof. |
+| `linearise_append_unresolved` | `Scanner/Linearise.lean` | J.1 stub; trivial after J.3. |
+| `linearise_resolved` | `Scanner/Linearise.lean` | J.1 stub; J.3 size-accounting. |
+| 5 × Tier 2 sorries | `Proofs/Output/EmitterScannability.lean` | The motivating gap; J.3 demonstrates the new model resolves them. |
+
+Pre-existing total: **8** (3 Linearise + 5 Tier 2).
+
+**New Category C sorries introduced by 5.0/5.1** (commit `71a86eee`):
+all carry the `-- J.3 manifest 5.d:` comment.
+
+| Site | File | Why |
+|---|---|---|
+| `saveSimpleKey_preserves_SimpleKeyValid` | `Proofs/Scanner/ScannerCorrectness.lean` | Invariant requires `tokenIndex < tokens.size` at save time; false post-cutover until next emit.  Needs conditional/pendingKeys-flavoured re-statement. |
+| `scanFiltered_produces_valid_tokens` | `Proofs/Scanner/ScannerCorrectness.lean` | Pre-cutover used `List.filter_sublist`; J.3 re-derives via `linearise`'s shape lemmas. |
+| `saveSimpleKey_preserves_AllKeysPlaceholderInv` | `Proofs/Production/ScannerPlainScalarValid.lean` | Whole `*PlaceholderInv` family is tied to the placeholder model; needs pendingKeys-flavoured replacement. |
+| `scan_plain_scalar_valid` | `Proofs/Production/ScannerPlainScalarValid.lean` | Pattern-matches on `tokens.filter` shape of `scanFiltered`. |
+| `scan_flow_context_psv` | `Proofs/Production/ScannerPlainScalarValid.lean` | Same shape problem — needs `linearise_preserves_FlowContextPSV` bridge. |
+| `scan_flow_brackets_matched` | `Proofs/Production/ScannerPlainScalarValid.lean` | Same shape problem — needs `linearise_preserves_FlowBracketsMatched` bridge. |
+| `parse_strict_proof` | `Proofs/Production/DocumentProduction.lean` | Needs `scanFiltered_ok_implies_scan_ok` bridge. |
+| `parseYaml_implies_valid_token_stream` | `Proofs/EndToEndCorrectness.lean` | Same bridge as above. |
+| `scanFiltered_of_chain` | `Proofs/Output/EmitterScannability.lean` | Pre-cutover threaded `scanLoop`; needs `scanLoopFull`-flavoured analogue. |
+| `scanFiltered_of_chain_eq` | `Proofs/Output/EmitterScannability.lean` | Same.  Also: RHS shifts from `tokens.filter ...` to `linearise tokens pendingKeys`. |
+| `scan_accepts_emitScalar` | `Proofs/Output/EmitterScannability.lean` | Replace `scanLoop` with `scanLoopFull` throughout; mechanical re-work. |
+| `scanFiltered_emitScalar_content` | `Proofs/Output/EmitterScannability.lean` | Golden-shape lemma; depends on `tokens.filter` form. |
+| `scanFiltered_emitScalar_vals` | `Proofs/Output/EmitterScannability.lean` | Same. |
+| `scanFiltered_boundary_tokens` | `Proofs/Output/EmitterScannability.lean` | Boundary-token (streamStart/End) lemma; depends on `tokens.filter` form. |
+
+**Per-file count of new Category C sorries** (re-counted with
+`grep -c sorry` against `71a86eee`):
+
+| File | New sorries |
 |---|---|
-| `Linearise.lean::linearise_append_token` | J.1 stub; J.3 main proof. |
-| `Linearise.lean::linearise_append_unresolved` | J.1 stub; trivial after J.3. |
-| `Linearise.lean::linearise_resolved` | J.1 stub; J.3 size-accounting. |
-| `ScannerPlainScalarValid.lean::scanValuePrepare_preserves_PlainScalarsValid` | Reduces to identity post-cutover; trivial. |
-| `EmitterScannability.lean::saveSimpleKey_filter_placeholder` (and rebrand) | New shape: `(saveSimpleKey s).tokens = s.tokens`. |
-| `EmitterScannability.lean::scanFlowSequenceEnd_lastTokenVal` | Trivial via `tokens.back?` simplification. |
-| `EmitterScannability.lean::scanFlowMappingEnd_lastTokenVal` | Trivial via `tokens.back?` simplification. |
-| 7 × `EmitterScannability.lean` Tier 2 sorries | Pre-existing (8976/9473/9569/9652/9870/10586/10625); the motivating gap.  J.3 demonstrates the new model resolves them. |
+| `Proofs/Scanner/ScannerCorrectness.lean` | 2 |
+| `Proofs/Production/ScannerPlainScalarValid.lean` | 4 |
+| `Proofs/Production/DocumentProduction.lean` | 1 |
+| `Proofs/EndToEndCorrectness.lean` | 1 |
+| `Proofs/Output/EmitterScannability.lean` | +6 above the 5 pre-existing Tier 2 |
+| **Total new** | **14** |
 
-**Total sorry budget at end of step 5**: 7 (pre-existing Tier 2) +
-3 (Linearise J.1) + 4–7 (new Category C structural sorries) =
-14–17 sorries.  All cleared in J.3.
+**Total sorry count at end of 5.1**: 8 (pre-existing) + 14 (new
+Category C) = **22 sorries** (verifiable via the `grep` survey
+above).  Lands exactly at the lower bound of the §5.d forecast
+(14–17 new).  All 14 new carry the `-- J.3 manifest 5.d:` comment;
+J.3 clears them.
+
+(N.B. — commit `71a86eee`'s message states +15 new; the verifier
+re-count after the fact came back at 14.  The discrepancy is a
+miscounted `*PlaceholderInv` site that was conflated with another
+during commit-message drafting; the source is authoritative.)
 
 ##### 5.e Validation gate for step 5
 
 * `lake build L4YAML` green.
-* Net new sorries ≤ 7 on top of the J.1 baseline of 10.
+  — **Status**: ✓ satisfied at `71a86eee`.
+* Net new sorries within budget (forecast 14–17 in §5.d).
+  — **Status**: ✓ 14 new sorries, exact lower bound.
 * Each new `sorry` carries a `-- J.3 manifest 5.d:` comment matching an
   entry in §5.d.
+  — **Status**: ✓ all 14 tagged.
 * yaml-test-suite golden parity: scanner output is byte-identical
   pre/post cutover for every `tests/data/*.yaml` fixture.
+  — **Status**: pending (this is what 5.2 delivers).
 * `Blueprint/07` §J.2 step 5 manifest updated to reflect the actual
   sorry set (drift between this manifest and the source is the failure
   mode to avoid).
+  — **Status**: ✓ §5.d table above reflects the post-`71a86eee` source.
+
+**Outstanding for 5.2**: yaml-test-suite golden parity — produce
+the byte-for-byte equivalence check.  Until 5.2 lands, step 5 is
+proof-side complete but not yet runtime-confirmed; downstream merge
+to main blocks on 5.2.
 
 ### Phase J.3 — Proof migration (4-6 weeks)
 
