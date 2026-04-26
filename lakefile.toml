@@ -197,6 +197,11 @@ name = "extractSpecExamples"
 root = "ExtractSpecExamples"
 srcDir = "tools"
 
+[[lean_exe]]
+name = "collect-stats"
+root = "CollectStats"
+srcDir = "tools"
+
 
 
 [[lean_lib]]
