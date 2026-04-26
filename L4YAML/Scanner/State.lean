@@ -348,4 +348,22 @@ def ScannerState.emit (s : ScannerState) (tok : YamlToken) : ScannerState :=
 def ScannerState.emitAt (s : ScannerState) (pos : YamlPos) (tok : YamlToken) : ScannerState :=
   { s with tokens := s.tokens.push { pos := pos, val := tok } }
 
+/-! ### Pending-key resolution helper (Initiative 3 / Path C)
+
+`setPendingKeyKind` resolves the active reservation by writing a new
+`ResolutionKind` into the entry pointed at by `pendingKeyActive`.  Kept
+as a top-level helper (rather than inlined into `scanValuePrepare`) so
+that the J.2 dual-write does not introduce extra `split` levels into the
+existing scanner-correctness proof corpus: proofs about `.offset`,
+`.input`, `.tokens`, etc. treat the `pendingKeys := setPendingKeyKind …`
+field assignment as opaque and discharge by record projection alone. -/
+def setPendingKeyKind (pendingKeys : Array PendingKeyEntry)
+    (active : Option Nat) (kind : ResolutionKind) : Array PendingKeyEntry :=
+  match active with
+  | none => pendingKeys
+  | some i =>
+    match pendingKeys[i]? with
+    | none => pendingKeys
+    | some e => pendingKeys.setIfInBounds i { e with kind := kind }
+
 end L4YAML.Scanner

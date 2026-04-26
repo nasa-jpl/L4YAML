@@ -102,8 +102,12 @@ def scanKey (s : ScannerState) : Except ScanError ScannerState := do
   -- Invalidate any pending simple key.  The `?` has already emitted an
   -- explicit `key` token; the next `:` is this key's value indicator,
   -- not confirmation of a new implicit key.
+  -- J.2 dual-write: clear `pendingKeyActive` too — the active reservation
+  -- (if any) stays in `pendingKeys` with `kind := .unresolved` and is
+  -- dropped at linearisation.
   .ok { s_after_advance with simpleKeyAllowed := true, explicitKeyLine := some s.line,
-                              simpleKey := { possible := false } }
+                              simpleKey := { possible := false },
+                              pendingKeyActive := none }
 
 /-! ### scanValue — value indicator `:` (§8.2.2, §7.4)
 
@@ -121,7 +125,11 @@ and the composed proof chains them with `omega`.
 -/
 
 /-- Clear a spurious simple-key when an explicit `?` key is pending.
-    Pure state transformation — never modifies the token array. -/
+    Pure state transformation — never modifies the token array.
+
+    J.2 dual-write: parallel to clearing legacy `simpleKey`, also clear
+    `pendingKeyActive`.  The shadowed reservation stays in `pendingKeys`
+    with `kind := .unresolved` and is dropped by `linearise`. -/
 @[yaml_spec "8.2.2"]
 def scanValueClearKey (s : ScannerState) : ScannerState :=
   if let some ekLine := s.explicitKeyLine then
@@ -132,13 +140,13 @@ def scanValueClearKey (s : ScannerState) : ScannerState :=
     --     `? : x` → explicit key is the compact mapping {"":"x"}.
     if s.simpleKey.possible && s.simpleKey.pos.offset == s.offset
         && s.line != ekLine then
-      { s with simpleKey := { possible := false } }
+      { s with simpleKey := { possible := false }, pendingKeyActive := none }
     -- (2) Clear cross-line simple key from the `?` line: content on the
     --     `?` line is the explicit key's node, not an implicit key to be
     --     resolved by `:` on a subsequent line (§8.2.2 [197]).
     else if s.simpleKey.possible && s.simpleKey.pos.line == ekLine
         && s.line != ekLine && !s.inFlow then
-      { s with simpleKey := { possible := false } }
+      { s with simpleKey := { possible := false }, pendingKeyActive := none }
     else s
   else s
 
@@ -185,7 +193,15 @@ def scanValueValidate (s : ScannerState) : Except ScanError Unit := do
     Tokens are preserved or grown (never shifted).
 
     **Note**: `let` bindings are inlined across `if` boundaries so that
-    `split` can discharge each branch independently in proofs. -/
+    `split` can discharge each branch independently in proofs.
+
+    **Initiative 3 / J.2 dual-write**: Each branch additionally resolves the
+    active `pendingKeyActive` reservation via `setPendingKeyKind` — flipping
+    its kind from `.unresolved` to `.keyOnly` or `.blockMappingStartAndKey`
+    to match the legacy placeholder rewrites.  The helper is opaque to
+    proofs about `offset`/`input`/`tokens`, preserving the existing proof
+    shapes; J.3 will discharge new lemmas tying the resolved-kind output
+    back to the placeholder-rewrite output via `linearise`. -/
 @[yaml_spec "8.2.2"]
 def scanValuePrepare (s : ScannerState) : ScannerState :=
   if s.simpleKey.possible then
@@ -197,15 +213,21 @@ def scanValuePrepare (s : ScannerState) : ScannerState :=
         { s with
           tokens := tokens
           indents := s.indents.push { column := (s.simpleKey.pos.col : Int), isSequence := false }
-          simpleKey := { possible := false } }
+          simpleKey := { possible := false }
+          pendingKeys := setPendingKeyKind s.pendingKeys s.pendingKeyActive .blockMappingStartAndKey
+          pendingKeyActive := none }
       else
         let tokens := s.tokens.setIfInBounds (idx + 1) ⟨s.simpleKey.pos, .key, s.simpleKey.pos⟩
-        { s with tokens := tokens, simpleKey := { possible := false } }
+        { s with tokens := tokens, simpleKey := { possible := false }
+                 pendingKeys := setPendingKeyKind s.pendingKeys s.pendingKeyActive .keyOnly
+                 pendingKeyActive := none }
     else
       let tokens := s.tokens.setIfInBounds (idx + 1) ⟨s.simpleKey.pos, .key, s.simpleKey.pos⟩
-      { s with tokens := tokens, simpleKey := { possible := false } }
+      { s with tokens := tokens, simpleKey := { possible := false }
+               pendingKeys := setPendingKeyKind s.pendingKeys s.pendingKeyActive .keyOnly
+               pendingKeyActive := none }
   else if s.explicitKeyLine.isSome then
-    { s with simpleKey := { possible := false } }
+    { s with simpleKey := { possible := false }, pendingKeyActive := none }
   else
     if !s.inFlow then pushMappingIndent s s.col else s
 
@@ -255,7 +277,21 @@ def saveSimpleKey (st : ScannerState) : ScannerState :=
     -- (block context) or .key + spare (flow context).
     let idx := st.tokens.size
     let ph : Positioned YamlToken := ⟨st.currentPos, .placeholder, st.currentPos⟩
-    let st := { st with tokens := st.tokens.push ph |>.push ph }
+    -- Initiative 3 / J.2 dual-write: also record the reservation in the
+    -- append-only `pendingKeys` side-channel.  `insertBeforeIdx := idx`
+    -- captures the eventual position of the candidate scalar in the
+    -- post-cutover (no-placeholder) token stream — i.e. tokens.size *before*
+    -- the placeholder pushes.  Any prior active entry is shadowed and stays
+    -- `.unresolved`, matching legacy semantics where a fresh save overwrites
+    -- the previous simple-key reservation.
+    let pendingIdx := st.pendingKeys.size
+    let st := { st with tokens := st.tokens.push ph |>.push ph,
+                        pendingKeys := st.pendingKeys.push
+                          { insertBeforeIdx := idx,
+                            pos := st.currentPos,
+                            endLine := st.line,
+                            kind := .unresolved },
+                        pendingKeyActive := some pendingIdx }
     { st with simpleKey := {
         possible := true
         tokenIndex := idx
