@@ -7688,6 +7688,179 @@ theorem scanDocumentEnd_filtered_grows (s s' : ScannerState)
          simp only [Array.size_push, Nat.add_sub_cancel, Array.getElem_push_eq]
          decide)
 
+/-! #### Directive new-token identification (Tier 1, Turn 1)
+
+`scanDirective` is the one structural-dispatch leaf where the post-state's
+filtered token count is *not* always strictly greater than the pre-state:
+the YAML 1.2.2 §6.8.3 reserved-directive branch (`%FOO ...`) skips the
+trailing line and emits no token at all.  The two YAML/TAG branches do
+emit a `.versionDirective`/`.tagDirective` token via `emitAt`.
+
+The three lemmas below characterize the YAML/TAG branches' new token
+exactly (`scan{Yaml,Tag}Directive_new_token_eq`) and combine that with a
+contradiction in the reserved branch to produce a clean "filtered grows
+by ≥1" lemma at the `scanDirective` level under a raw-growth precondition
+(`scanDirective_filtered_grows`).  The `h_grew` hypothesis is sound here
+because `scanDirective` itself does not invoke `scanNextToken_preprocess`
+— the `saveSimpleKey`-induced placeholder pushes happen *before*
+structural dispatch, so at this level a strict raw-token-size increase
+genuinely identifies a YAML/TAG branch.
+-/
+
+/-- The new token emitted by a successful `scanYamlDirective` is exactly
+    `.versionDirective major minor` for some `major`/`minor` parsed from
+    the input — a non-placeholder. -/
+theorem scanYamlDirective_new_token_eq (s s_after_ws : ScannerState) (startPos : YamlPos)
+    (s' : ScannerState)
+    (h_ws : s_after_ws.tokens = s.tokens)
+    (h : scanYamlDirective s s_after_ws startPos = .ok s') :
+    ∃ major minor : Nat,
+      s'.tokens = s.tokens.push { pos := startPos, val := .versionDirective major minor } := by
+  unfold scanYamlDirective at h
+  dsimp only [] at h
+  simp only [bind, Except.bind] at h
+  split at h
+  · contradiction
+  · split at h
+    · contradiction
+    · split at h
+      · -- some '#'
+        split at h
+        · contradiction
+        · injection h with h_eq; subst h_eq
+          dsimp only [ScannerState.emitAt]
+          apply Exists.intro
+          apply Exists.intro
+          rw [ScannerCorrectness.skipWhitespace_preserves_tokens,
+              ScannerCorrectness.ScanHelpers.collectVersionMinorLoop_preserves_tokens,
+              ScannerCorrectness.ScanHelpers.collectVersionMajorLoop_preserves_tokens, h_ws]
+      · -- some c (not '#')
+        split at h
+        · contradiction
+        · split at h <;> try contradiction
+          all_goals (injection h with h_eq; subst h_eq
+                     dsimp only [ScannerState.emitAt]
+                     apply Exists.intro
+                     apply Exists.intro
+                     rw [ScannerCorrectness.skipWhitespace_preserves_tokens,
+                         ScannerCorrectness.ScanHelpers.collectVersionMinorLoop_preserves_tokens,
+                         ScannerCorrectness.ScanHelpers.collectVersionMajorLoop_preserves_tokens, h_ws])
+      · -- none
+        injection h with h_eq; subst h_eq
+        dsimp only [ScannerState.emitAt]
+        apply Exists.intro
+        apply Exists.intro
+        rw [ScannerCorrectness.skipWhitespace_preserves_tokens,
+            ScannerCorrectness.ScanHelpers.collectVersionMinorLoop_preserves_tokens,
+            ScannerCorrectness.ScanHelpers.collectVersionMajorLoop_preserves_tokens, h_ws]
+
+/-- The new token emitted by a successful `scanTagDirective` is exactly
+    `.tagDirective handle pfx` for some `handle`/`pfx` parsed from the
+    input — a non-placeholder. -/
+theorem scanTagDirective_new_token_eq (s s_after_ws : ScannerState) (startPos : YamlPos)
+    (s' : ScannerState)
+    (h_ws : s_after_ws.tokens = s.tokens)
+    (h : scanTagDirective s s_after_ws startPos = .ok s') :
+    ∃ handle pfx : String,
+      s'.tokens = s.tokens.push { pos := startPos, val := .tagDirective handle pfx } := by
+  unfold scanTagDirective at h
+  dsimp only [] at h
+  simp only [bind, Except.bind] at h
+  split at h
+  · -- some '#'
+    split at h
+    · contradiction
+    · injection h with h_eq; subst h_eq
+      dsimp only [ScannerState.emitAt]
+      apply Exists.intro
+      apply Exists.intro
+      rw [ScannerCorrectness.skipWhitespace_preserves_tokens,
+          ScannerCorrectness.ScanHelpers.collectTagPrefixLoop_preserves_tokens,
+          ScannerCorrectness.skipWhitespace_preserves_tokens,
+          ScannerCorrectness.ScanHelpers.collectTagHandleDirectiveLoop_preserves_tokens, h_ws]
+  · -- some c (not '#')
+    split at h
+    · contradiction
+    · injection h with h_eq; subst h_eq
+      dsimp only [ScannerState.emitAt]
+      apply Exists.intro
+      apply Exists.intro
+      rw [ScannerCorrectness.skipWhitespace_preserves_tokens,
+          ScannerCorrectness.ScanHelpers.collectTagPrefixLoop_preserves_tokens,
+          ScannerCorrectness.skipWhitespace_preserves_tokens,
+          ScannerCorrectness.ScanHelpers.collectTagHandleDirectiveLoop_preserves_tokens, h_ws]
+  · -- none
+    injection h with h_eq; subst h_eq
+    dsimp only [ScannerState.emitAt]
+    apply Exists.intro
+    apply Exists.intro
+    rw [ScannerCorrectness.skipWhitespace_preserves_tokens,
+        ScannerCorrectness.ScanHelpers.collectTagPrefixLoop_preserves_tokens,
+        ScannerCorrectness.skipWhitespace_preserves_tokens,
+        ScannerCorrectness.ScanHelpers.collectTagHandleDirectiveLoop_preserves_tokens, h_ws]
+
+/-- `scanDirective` grows the filtered token count by ≥1 *whenever* it
+    grows the raw token count.  The contrapositive of the awkward case:
+    the RESERVED branch (`%FOO`) yields `s'.tokens.size = s.tokens.size`,
+    which contradicts `h_grew`; in YAML/TAG branches the new token is
+    `.versionDirective`/`.tagDirective` (non-placeholder) by the
+    `*_new_token_eq` lemmas above. -/
+theorem scanDirective_filtered_grows (s s' : ScannerState)
+    (h : scanDirective s = .ok s')
+    (h_grew : s'.tokens.size > s.tokens.size) :
+    (s'.tokens.filter (fun t => t.val != .placeholder)).size ≥
+    (s.tokens.filter (fun t => t.val != .placeholder)).size + 1 := by
+  apply filtered_grows_of_any_new s.tokens s'.tokens _
+    (by omega)
+    (fun i hi => ScannerCorrectness.ScanHelpers.scanDirective_preserves_prefix s s' h i hi)
+    s.tokens.size
+    (Nat.le_refl _)
+    (by omega)
+  -- Goal: (s'.tokens[s.tokens.size]'_).val != .placeholder = true
+  unfold scanDirective at h
+  dsimp only [] at h
+  split at h
+  · contradiction  -- !s.allowDirectives → throw
+  · have h_ws : (skipWhitespace (collectDirectiveNameLoop s.advance ""
+        (s.inputEnd - s.advance.offset)).2).tokens = s.tokens := by
+      rw [ScannerCorrectness.skipWhitespace_preserves_tokens,
+          ScannerCorrectness.ScanHelpers.collectDirectiveNameLoop_preserves_tokens,
+          ScannerCorrectness.advance_preserves_tokens]
+    split at h
+    · -- YAML
+      split at h
+      · rename_i s_inner h_inner
+        have h_eq := Except.ok.inj h
+        subst h_eq
+        obtain ⟨major, minor, h_eq_tok⟩ :=
+          scanYamlDirective_new_token_eq s _ _ s_inner h_ws h_inner
+        have h_tokens : (skipToEndOfLine s_inner).tokens =
+            s.tokens.push { pos := s.currentPos, val := .versionDirective major minor } := by
+          rw [ScannerCorrectness.skipToEndOfLine_preserves_tokens, h_eq_tok]
+        simp only [h_tokens, Array.getElem_push_eq]
+        rfl
+      · contradiction
+    · split at h
+      · -- TAG
+        split at h
+        · rename_i s_inner h_inner
+          have h_eq := Except.ok.inj h
+          subst h_eq
+          obtain ⟨handle, tagPfx, h_eq_tok⟩ :=
+            scanTagDirective_new_token_eq s _ _ s_inner h_ws h_inner
+          have h_tokens : (skipToEndOfLine s_inner).tokens =
+              s.tokens.push { pos := s.currentPos, val := .tagDirective handle tagPfx } := by
+            rw [ScannerCorrectness.skipToEndOfLine_preserves_tokens, h_eq_tok]
+          simp only [h_tokens, Array.getElem_push_eq]
+          rfl
+        · contradiction
+      · -- RESERVED: no token emitted, contradicts h_grew
+        injection h with h_eq
+        subst h_eq
+        exfalso
+        rw [ScannerCorrectness.skipToEndOfLine_preserves_tokens, h_ws] at h_grew
+        omega
+
 -- Structural dispatch: full case analysis proving ≥+1 for docStart and docEnd,
 -- and ≥0 for directives.  For the directive case, YAML/TAG emit non-placeholder
 -- tokens but unknown directives (%RESERVED) emit none.
