@@ -337,23 +337,146 @@ is a string-level "no RESERVED" hypothesis on the input rather than the
 chain-level migration. Decision should be informed by the actual cost
 of Turn 1.
 
-#### Tier 2: Body Token Characterization (2 declarations, ~100-200 lines each)
+#### Tier 2: Body Token Characterization (2 declarations, 5 sorries total)
 **Compositional tracking of body tokens**
 
-2. **Line 8666**: `emitList_body_filtered_characterization`
-   - Characterizes what tokens emitList produces
-   - Proof: Induction on items list, compose per-item tokens
-   - Shows body doesn't contain flowSequenceEnd at top level
-   - Uses ScanChain composition + lastRealTokenVal? postconditions
-   - **Depends on**: Line 8170 (filtered infrastructure)
-   - ~100-150 lines
+After Tier 1 Turn 3 the two body-characterization theorems are scaffolded —
+they obtain a `ScanChainGrew` from `emit{,Pair}List_scans_nonempty`, derive
+`h_grows := ScanChainGrew_filtered_grows h_chain`, and discharge the
+prefix-uniqueness / `n ≥ 1` boilerplate.  What remains is content
+reasoning about which token sits at which filtered index, split across 5
+sorries:
 
-3. **Line 8758**: `emitPairList_body_filtered_characterization`
-   - Parallel to emitList but for mapping pairs
-   - Shows body doesn't contain flowMappingEnd at top level
-   - Same proof structure as emitList case
-   - **Depends on**: Line 8170 (filtered infrastructure)
-   - ~100-150 lines
+- [`emitList_body_filtered_characterization`](L4YAML/Proofs/Output/EmitterScannability.lean#L9213) — 2 sorries
+  - line 9289: token at `old_sz` is a content start (scalar / flowSeqStart / flowMapStart)
+  - line 9291: after every outer-level `.flowEntry`, next filtered token is a content start
+- [`emitPairList_body_filtered_characterization`](L4YAML/Proofs/Output/EmitterScannability.lean#L9309) — 3 sorries
+  - line 9377: `n ≥ 3` (key + value-indicator + value-content)
+  - line 9383: first new filtered token is `.key`
+  - line 9385: after every outer-level `.flowEntry`, next filtered token is `.key`
+
+The cost driver is **missing infrastructure**: there are no per-scanner
+"first filtered token" lemmas for `scanDoubleQuoted` /
+`scanFlowSequenceStart` / `scanFlowMappingStart`, and the `.key`
+retroactive promotion (`saveSimpleKey` saves placeholder → `scanValuePrepare`
+rewrites to `.key`) needs an inversion lemma.  In addition,
+`emitList_scans_nonempty` and `emitPairList_scans_nonempty` build their
+chains compositionally but do not expose per-item / per-pair segment
+witnesses — Tier 2 will either re-derive segments by induction in the
+body characterization itself, or strengthen the scans theorems to return
+segment information.
+
+##### Turn Breakdown
+
+###### Turn 1 — First-Filtered-Token Lemmas ✅ COMPLETE
+
+Three lemmas characterize the first new filtered token after `scanNextToken`
+in flow context, dispatched by the leading character (`"`, `[`, `{`).
+Plus two helpers:
+
+- [`scanNextToken_via_content_dispatch_error`](L4YAML/Proofs/Output/EmitterScannability.lean#L3868) —
+  error-variant of the existing `scanNextToken_via_content_dispatch`, used
+  to invert dispatch into a successful `dispatchContent` call.
+- [`scanFlowSequenceStart_first_filtered_token`](L4YAML/Proofs/Output/EmitterScannability.lean#L5597) —
+  `((s'.tokens.filter p)[old_sz]'h).val = .flowSequenceStart`.
+- [`scanFlowMappingStart_first_filtered_token`](L4YAML/Proofs/Output/EmitterScannability.lean#L5656) —
+  `((s'.tokens.filter p)[old_sz]'h).val = .flowMappingStart`.
+- [`scanDoubleQuoted_tokens_push`](L4YAML/Proofs/Output/EmitterScannability.lean#L5715) —
+  extracts `s'.tokens = s.tokens.push ⟨_, .scalar c .doubleQuoted, _⟩`
+  from `scanDoubleQuoted s = .ok s'`.
+- [`scanDoubleQuoted_first_filtered_token`](L4YAML/Proofs/Output/EmitterScannability.lean#L5745) —
+  `∃ c sc, ((s'.tokens.filter p)[old_sz]'h).val = .scalar c sc`.
+
+Each lemma re-runs the dispatch pipeline (preprocess → structural → flow →
+block → content) and uses `Array.filter_push` after observing that
+`saveSimpleKey_filter_placeholder` collapses the preprocess effect on
+filtered tokens.
+
+**Status**: lemmas in file, no new sorries (count unchanged at 9), build green.
+
+###### Turn 2 — `emitList_body_filtered_characterization` (~150-200 lines)
+
+Discharge the 2 sorries at lines 9289 and 9291.
+
+**Part 1 (line 9289)** — token at `old_sz` is content start.
+Strategy: `emitList` of `v :: tail` starts with `emit v`.  The first
+character of `emit v` is dispatched by `EmitScansInFlow v` to one of
+{`scanDoubleQuoted`, `scanFlowSequenceStart`, `scanFlowMappingStart`}.
+Apply Turn 1's first-token lemma matching that dispatch.
+
+**Part 2 (line 9291)** — outer-level flowEntry → next is content start.
+Strategy: induct on `items`.  Each `, ` separator is scanned by
+`scanFlowEntry`, after which the next call dispatches `emit v'` for the
+next item — same content-start argument as Part 1.  The
+`flowBracketBalance = 0` precondition rules out `.flowEntry`s emitted
+inside nested `[...]` / `{...}` (which sit at balance > 0).
+
+**Acceptance**: 2 sorries gone, build green, sorry count drops 9 → 7.
+
+###### Turn 3 — `emitPairList` Part 1: `n ≥ 3` (~40 lines)
+
+Discharge the sorry at line 9377.  This one is structural-counting only:
+each pair runs `saveSimpleKey + emit k + ': ' + emit v`, which produces
+at least 3 scanner steps regardless of `EmitScansInFlow` content.
+Inspect the chain construction in `emitPairList_scans_nonempty` and
+extract the step count directly, or re-do the count via induction on
+`pairs`.  Cleanly separable from Turn 4.
+
+**Acceptance**: 1 sorry gone, build green, sorry count drops 7 → 6.
+
+###### Turn 4 — `emitPairList` Parts 2+3: `.key` characterization (~150-200 lines)
+
+Discharge the 2 sorries at lines 9383 and 9385.
+
+**Subtle bit**: `.key` does not arrive directly from `saveSimpleKey` —
+that pushes a `.placeholder`.  When the scanner later sees `: ` and
+calls `scanValuePrepare`, it retroactively rewrites the placeholder to
+`.key`.  Need an inversion lemma:
+
+```lean
+theorem scanValuePrepare_promotes_simpleKey ... :
+  -- if simpleKey was possible at index i, after scanValuePrepare
+  -- (s'.tokens[i]'h).val = .key
+```
+
+**Part 2 (line 9383)** — first new filtered token is `.key`.  After
+`saveSimpleKey + emit k + ': '` the placeholder at `old_sz` has been
+promoted to `.key`.  This is the first non-placeholder token in
+`s'.tokens.filter p`.
+
+**Part 3 (line 9385)** — after outer-level flowEntry, next is `.key`.
+Mirrors Part 2 inductively across pairs.  Same `flowBracketBalance = 0`
+filter as emitList Part 2.
+
+**Acceptance**: 2 sorries gone, build green, sorry count drops 6 → 4
+(only Tier 3 + Tier 4 sorries remain).
+
+##### Estimated Total
+
+~420-560 lines across 4 turns:
+- Turn 1: ~80-120 lines (3 first-token lemmas)
+- Turn 2: ~150-200 lines (emitList characterization)
+- Turn 3: ~40 lines (pair count)
+- Turn 4: ~150-200 lines (pair .key characterization + promotion lemma)
+
+##### Risks
+
+- **Segment witnesses**: if reasoning about flowEntry positions cannot
+  be done by re-inducting in the body theorem and instead requires
+  segment witnesses from `emit{,Pair}List_scans_nonempty`, those scans
+  theorems need restructuring — adding ~50-100 lines of bookkeeping
+  upstream and shrinking Turn 2/4 by similar amount.
+- **`scanValuePrepare` promotion lemma**: if `scanValuePrepare`'s
+  current statement doesn't expose token-rewrite information, may need
+  a small precursor lemma in `Scanner/` proofs (~30-50 lines).  Audit
+  in Turn 1.
+- **EmitScansInFlow first-token info**: the predicate's postcondition
+  currently characterizes the *last* real token (via `lastRealTokenVal?`)
+  but not the *first*.  If Turn 1's lemmas can only characterize the
+  first scanner step (not the first filtered token of the entire `emit v`
+  chain), Turn 2 Part 1 needs an additional step: show that the chain's
+  first step's token survives subsequent steps unchanged.  This follows
+  from `ScanChainGrew_filtered_grows` + array-prefix preservation.
 
 #### Tier 3: Structure Theorems (2 declarations, ~150-300 lines each)
 **Main token array structure proofs**
