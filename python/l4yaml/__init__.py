@@ -23,6 +23,11 @@ from l4yaml.exceptions import (
 )
 from l4yaml.types import YamlDocument, YamlValue
 
+# Keep this in sync with python/pyproject.toml's `version` field,
+# and with the version declarations in lakefile.toml and the rust
+# crates.  See "Versioning" in the project README.
+__version__ = "0.4.6"
+
 __all__: list[str] = [
     "load",
     "load_all",

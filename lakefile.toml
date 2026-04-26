@@ -1,4 +1,8 @@
 name = "L4YAML"
+# Keep this in sync with rust/l4yaml{,-sys}/Cargo.toml,
+# python/pyproject.toml, and python/l4yaml/__init__.py.
+# See "Versioning" in README.md.
+version = "0.4.6"
 defaultTargets = [
   "L4YAML",
   "Tests.Guards",

@@ -139,51 +139,57 @@ unsafe fn extract_single_result(result: *mut c_void) -> Result<YamlValue> {
     if result.is_null() {
         return Err(Error::NullHandle);
     }
-    let ok = l4yaml_result_is_ok(result);
-    if ok == 0 {
-        let msg = extract_error_message(result);
+    unsafe {
+        let ok = l4yaml_result_is_ok(result);
+        if ok == 0 {
+            let msg = extract_error_message(result);
+            l4yaml_free(result);
+            return Err(error::classify_error(msg));
+        }
+        let value_handle = l4yaml_result_value(result);
         l4yaml_free(result);
-        return Err(error::classify_error(msg));
+        YamlValue::from_raw(value_handle)
     }
-    let value_handle = l4yaml_result_value(result);
-    l4yaml_free(result);
-    YamlValue::from_raw(value_handle)
 }
 
 unsafe fn extract_multi_result(result: *mut c_void) -> Result<Vec<YamlDocument>> {
     if result.is_null() {
         return Err(Error::NullHandle);
     }
-    let ok = l4yaml_result_is_ok(result);
-    if ok == 0 {
-        let msg = extract_error_message(result);
+    unsafe {
+        let ok = l4yaml_result_is_ok(result);
+        if ok == 0 {
+            let msg = extract_error_message(result);
+            l4yaml_free(result);
+            return Err(error::classify_error(msg));
+        }
+        let docs_handle = l4yaml_result_docs(result);
         l4yaml_free(result);
-        return Err(error::classify_error(msg));
-    }
-    let docs_handle = l4yaml_result_docs(result);
-    l4yaml_free(result);
 
-    if docs_handle.is_null() {
-        return Err(Error::NullHandle);
-    }
+        if docs_handle.is_null() {
+            return Err(Error::NullHandle);
+        }
 
-    let count = l4yaml_docs_count(docs_handle) as usize;
-    let mut docs = Vec::with_capacity(count);
-    for i in 0..count {
-        let doc_handle = l4yaml_docs_get(docs_handle, i as u32);
-        docs.push(YamlDocument::from_raw(doc_handle)?);
+        let count = l4yaml_docs_count(docs_handle) as usize;
+        let mut docs = Vec::with_capacity(count);
+        for i in 0..count {
+            let doc_handle = l4yaml_docs_get(docs_handle, i as u32);
+            docs.push(YamlDocument::from_raw(doc_handle)?);
+        }
+        l4yaml_free(docs_handle);
+        Ok(docs)
     }
-    l4yaml_free(docs_handle);
-    Ok(docs)
 }
 
 unsafe fn extract_error_message(result: *mut c_void) -> String {
-    let ptr = l4yaml_result_error_message(result);
-    if ptr.is_null() {
-        return "unknown error".to_string();
+    unsafe {
+        let ptr = l4yaml_result_error_message(result);
+        if ptr.is_null() {
+            return "unknown error".to_string();
+        }
+        CStr::from_ptr(ptr)
+            .to_str()
+            .unwrap_or("non-utf8 error")
+            .to_string()
     }
-    CStr::from_ptr(ptr)
-        .to_str()
-        .unwrap_or("non-utf8 error")
-        .to_string()
 }
