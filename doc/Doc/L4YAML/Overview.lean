@@ -2,8 +2,10 @@
   L4YAML Documentation — Overview
 -/
 import VersoManual
+import Doc.L4YAML.StatsTable
 
 open Verso.Genre Manual
+open Doc.L4YAML.StatsTable
 
 set_option pp.rawOnError true
 
@@ -27,34 +29,7 @@ Lean 4, with practical performance and comprehensive test coverage.
 tag := "at-a-glance"
 %%%
 
-:::table +header
-*
-  * Key Metric
-  * Value
-*
-  * Machine-checked theorems
-  * 2,309 across 61 proof modules (~47,000 lines)
-*
-  * Compile-time `#guard` tests
-  * 2,124 (kernel-evaluated at build time)
-*
-  * Axioms / `sorry` / `partial def`
-  * Zero / Zero / Zero
-*
-  * Build jobs
-  * 415/415 (clean, zero warnings)
-*
-  * Runtime test suites
-  * 1,041 tests across 19 suites
-*
-  * Spec examples passing
-  * 132/132 (100%)
-*
-  * yaml-test-suite IDs
-  * 225/225 YAML 1.2.2-applicable (100%)
-*
-  * yaml-test-suite total
-  * 354/406 (87.2%; 52 skipped are YAML 1.1/1.3)
+:::statsTable
 :::
 
 # Key Design Decisions
