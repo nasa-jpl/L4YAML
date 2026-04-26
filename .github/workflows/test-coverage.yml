@@ -254,6 +254,16 @@ jobs:
         run: |
           python3 scripts/generate-test-reports.py docs/reports
 
+      - name: Collect stats (kernel-accurate axiom + sorry counts)
+        # Runs after every other report under docs/reports/ has landed so
+        # the JSON aggregates source-scan, env-scan (via Lean.collectAxioms
+        # on the compiled L4YAML environment), and the existing test-runner
+        # totals. Output: docs/reports/stats.json — picked up by the
+        # `git add docs/` commit step below.
+        run: |
+          lake exe collect-stats
+          test -f docs/reports/stats.json
+
       # -------------------------------------------------------
       # Phase 5: Generate PDF from HTML
       # -------------------------------------------------------
