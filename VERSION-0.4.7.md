@@ -9,9 +9,63 @@ theorem universal_roundtrip (v : YamlValue) (hg : Grammable v false) :
             contentEq v docs[0]!.value = true
 ```
 
+## Status (as of 2026-04-25): PARTIAL — one pocket remains
+
+Steps 1–7 (the structural backbone of the round-trip proof) are complete in
+the codebase. The ParserWellBehaved pocket has been **cleared by deletion**:
+mechanical analysis (via `unified-dep-table --external-only`) showed the
+fuel-monotonicity machinery (`parser_fuel_mono_succ` and its 24-theorem
+subtree, plus the `parseEntry_in_flowMap` cluster and `flow_parser_ok_of_structure`)
+had zero out-of-namespace callers. ~3,200 lines and all 16 sorry'd
+declarations were removed without breaking the build. The remaining work
+is **the EmitterScannability Step 8 sorrys**.
+
+| Step | Status | Evidence |
+|---|---|---|
+| 1. `emit_produces_valid_yaml` (emitter output is scanner-accepted) | ✅ done | [Output/EmitterScannability.lean](L4YAML/Proofs/Output/EmitterScannability.lean) §1 |
+| 2. Compose with parse pipeline (`parse_emitted_tokens`) | ✅ done | [Composition.lean](L4YAML/Proofs/Composition.lean) |
+| 3. Close universal round-trip skeleton | ✅ done (modulo Step 8 sorrys) | [Output/EmitterScannability.lean](L4YAML/Proofs/Output/EmitterScannability.lean) |
+| 4. Escape character properties (Stubs 1–3) | ✅ done | escapeChar_passthrough_is_valid, escapeChar_output_nbJson, emit_nonempty all discharged |
+| 5. Scanner acceptance infrastructure | ✅ done | helper lemmas + structural decomposition in place |
+| 5b. Scanner + parser acceptance (Stubs 4–8) | ✅ done | scan_accepts_emitScalar, parseStream_accepts_emit_tokens complete |
+| 6. Parser acceptance + document properties (Stubs 6–8) | ✅ done | emit_produces_single_document, emit_parsed_grammable, emit_roundtrip_content_eq |
+| 7. Flow collection scanner/parser acceptance infrastructure | ✅ done | flow-specific lemmas + composition in place |
+| **8. Non-empty flow collection proofs** | ⏳ **PENDING** | **7 sorrys remaining in [EmitterScannability.lean](L4YAML/Proofs/Output/EmitterScannability.lean)** (lines 8170, 8666, 8758, 8840, 9058, 9774, 9813) |
+| ~~Layer 2 parser acceptance~~ | ✅ **resolved by deletion** | the 16 sorry'd theorems in [ParserWellBehaved.lean](L4YAML/Proofs/Parser/ParserWellBehaved.lean) were dead code (proven via `unified-dep-table --external-only`) and removed; `lake build L4YAML` is green |
+
+### Path to completion
+
+Single pocket remaining:
+
+**EmitterScannability.lean (7 sorrys)** — Step 8 non-empty flow collection
+cases. Layers 1, 1.1 (type system), and 1.2 (line preservation threading)
+are done; remaining work is the per-construct flow scanner + parser
+acceptance proofs at lines 8170, 8666, 8758, 8840, 9058, 9774, 9813.
+
+The earlier ~28 sorrys in ParserWellBehaved are **gone** as of the
+2026-04-25 cleanup pass. The dead-code analysis that justified the
+deletion is reproducible:
+
+```sh
+# From the L4YAML repo root, with DocVerificationBridge built on a
+# matching toolchain:
+lake env /path/to/DocVerificationBridge/.lake/build/bin/unified-dep-table \
+  fresh --namespace L4YAML.Proofs.ParserWellBehaved \
+        --external-only --proof-dep-workers 4 \
+        --output dep-parser-wellbehaved.md \
+        L4YAML
+```
+
+## Original framing (retained for context)
+
 **Status:** Open. This is the sole remaining proof obligation in the completeness/correctness pipeline.
 
 **Codebase baseline (post-v0.4.6):** 61 proof modules, 47k LOC proof, 2,268 theorems, 0 sorry, 0 axiom, 0 admit. Build: 415/415 jobs, 0 warnings.
+
+> The baseline claim of "0 sorry" reflects the state at the moment v0.4.7
+> work began; the in-flight Step 8 / ParserWellBehaved sorrys above were
+> introduced as proof scaffolding during this version's work and have not
+> all closed yet.
 
 ---
 
