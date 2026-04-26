@@ -45,7 +45,13 @@ structure IndentEntry where
 
 /-- Simple key tracking state.
     YAML §7.4: implicit keys are limited to a single line
-    and 1024 characters in block context. -/
+    and 1024 characters in block context.
+
+    **Note (Initiative 3 / J.1)**: this structure is being phased out in
+    favour of `PendingKeyEntry` + the `pendingKeys` side-channel.  It is
+    retained here so existing scanner submodules continue to build during
+    the J.1 → J.2 migration window; submodule call sites flip over
+    individually in J.2. -/
 structure SimpleKeyState where
   /-- Whether a simple key is possible at the current position -/
   possible : Bool := false
@@ -58,6 +64,66 @@ structure SimpleKeyState where
       on the same line as the key's end, not just its start. -/
   endLine : Nat := 0
   deriving Repr, BEq, Inhabited
+
+/-! ### Pending-key side channel (Initiative 3 / Path C)
+
+The append-only token stream architecture moves *implicit-key reservations*
+out of the `tokens` array (where `setIfInBounds` retroactively rewrote
+placeholder slots into `.blockMappingStart` / `.key`) and into a parallel
+`pendingKeys : Array PendingKeyEntry` side-channel.  Strict append-only
+semantics on both arrays make filter-monotonicity trivial by construction —
+see `Blueprint/07-initiative-3-append-only.md`.
+
+These types are defined in J.1; the scanner call sites that produce them
+land in J.2; the proof corpus is re-discharged in J.3. -/
+
+/-- Resolution kind of a pending implicit-key reservation.
+
+    Determined at *resolution* time (when `:` confirms the key) — not at
+    *save* time — because indentation may change between the two events.
+    Linearisation expands `blockMappingStartAndKey` into the two-token
+    sequence the parser expects. -/
+inductive ResolutionKind where
+  /-- Reservation is not (yet) confirmed by a following `:`.  Linearisation
+      drops these — they are virtual until resolved. -/
+  | unresolved
+  /-- Confirmed by `:`; linearisation splices a single `.key` token.
+      Used in flow context, and in block context when
+      `keyCol ≤ currentIndent` (no new mapping is opened). -/
+  | keyOnly
+  /-- Confirmed by `:` in block context with `keyCol > currentIndent`.
+      Linearisation splices `.blockMappingStart` followed by `.key`,
+      matching the current scanner's two-slot placeholder rewrite. -/
+  | blockMappingStartAndKey
+deriving Repr, BEq, Inhabited
+
+/-- One pending implicit-key reservation in the append-only model.
+
+    Recorded by `saveSimpleKey` at the position of a candidate plain/flow
+    scalar; later either resolved by `scanValuePrepare` (kind flips from
+    `unresolved` to `keyOnly` / `blockMappingStartAndKey`) or left
+    `unresolved` and dropped at linearisation.
+
+    `insertBeforeIdx` names the *current* `tokens.size` at save time — i.e.
+    the eventual array index of the candidate scalar in the raw `tokens`
+    stream.  Linearisation walks `tokens`, and immediately before emitting
+    `tokens[insertBeforeIdx]` it splices the resolved entries.  Save-time
+    `tokens.size` values are strictly monotone across successive saves
+    (each save is preceded by at least one new token), so the resulting
+    `insertBeforeIdx` sequence is strictly monotone — the property the
+    linearisation algorithm relies on. -/
+structure PendingKeyEntry where
+  /-- Index in `tokens` *before* which resolved entries are spliced. -/
+  insertBeforeIdx : Nat
+  /-- Source position of the candidate key. -/
+  pos : YamlPos
+  /-- Line on which the candidate key token ended (multi-line quoted
+      scalars).  Used to enforce same-line `:` for implicit keys. -/
+  endLine : Nat
+  /-- Resolution status; flips at most once, from `unresolved` to a
+      resolved kind, or stays `unresolved` and is dropped on linearise. -/
+  kind : ResolutionKind
+deriving Repr, BEq, Inhabited
 
 /-- The scanner's mutable state. -/
 structure ScannerState where
@@ -77,13 +143,37 @@ structure ScannerState where
   flowLevel : Nat := 0
   /-- Emitted tokens -/
   tokens : Array (Positioned YamlToken) := #[]
-  /-- Simple key tracking -/
+  /-- Simple key tracking (legacy; being phased out — see `pendingKeys`). -/
   simpleKey : SimpleKeyState := {}
   /-- Stack of saved simple keys for enclosing flow nesting levels.
       Pushed on flow-open (`[`, `{`), popped on flow-close (`]`, `}`).
       This allows a simple key (e.g., a flow mapping used as a key:
-      `{a: b}: val`) to survive nested flow collection scanning. -/
+      `{a: b}: val`) to survive nested flow collection scanning.
+      Legacy; being phased out — see `pendingKeyStack`. -/
   simpleKeyStack : Array SimpleKeyState := #[]
+  /-- **Pending implicit-key reservations** (Initiative 3 / Path C).
+
+      Append-only side-channel replacing the in-place placeholder rewrites
+      done via `setIfInBounds` in the legacy model.  Each entry records
+      where (`insertBeforeIdx`) and how (`kind`) a `.key` (and optionally
+      `.blockMappingStart`) token will be spliced into the linearised
+      output stream — but only if the entry's kind has been resolved by a
+      following `:`.  Unresolved entries are dropped at `scanFiltered`.
+
+      Save-time `insertBeforeIdx` values are strictly monotone across
+      successive entries (each save is preceded by at least one newly
+      pushed real token), giving the linearisation a clean splice-merge
+      shape and making filter-monotonicity hold by construction. -/
+  pendingKeys : Array PendingKeyEntry := #[]
+  /-- Index into `pendingKeys` of the currently-active reservation, if
+      any.  Mirrors the legacy `simpleKey.possible`-bit machinery: at most
+      one reservation is the *active candidate* at any given point in
+      scanning.  `none` means no reservation is currently in flight. -/
+  pendingKeyActive : Option Nat := none
+  /-- Stack of saved active-reservation indices, parallel to
+      `simpleKeyStack`.  Pushed on flow-open / popped on flow-close so an
+      outer reservation survives nested flow scanning. -/
+  pendingKeyStack : Array (Option Nat) := #[]
   /-- Whether a simple key is allowed at the current position.
       Set true after line breaks, block entries, keys, values.
       Set false after scalars, anchors, aliases, tags. -/

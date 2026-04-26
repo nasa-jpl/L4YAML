@@ -9,6 +9,7 @@ import L4YAML.Scanner.Document
 import L4YAML.Scanner.NodeProperties
 import L4YAML.Scanner.Scalar
 import L4YAML.Scanner.SimpleKey
+import L4YAML.Scanner.Linearise
 
 /-!
 # YAML Scanner (Tokenizer) — Dispatch Umbrella
