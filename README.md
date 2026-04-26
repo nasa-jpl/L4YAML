@@ -219,23 +219,110 @@ let text = Dump::new().style_block().indent(2).render(&value);
 
 ## Building
 
+The recommended one-shot driver is the top-level CMake project, which invokes
+Lake for the Lean side and compiles the C FFI and (optionally) Rust shim in
+the same configuration:
+
+```sh
+cmake -B build -S . -DL4YAML_BUILD_RUST=ON
+cmake --build build -j
+cmake --install build --prefix /path/to/stage   # optional
+```
+
+This produces, in order:
+
+1. The Lean library, proof modules, compile-time guards, and every executable
+   listed in `L4YAML_EXES` (a superset of `defaultTargets`) — via `lake build`.
+2. `libl4yaml.so` + the C example `tryparse_c` — via [ffi/CMakeLists.txt](ffi/CMakeLists.txt).
+3. The Rust workspace (`l4yaml-sys`, `l4yaml`) and the `tryparse_rs` example —
+   via `cargo build --release --workspace --examples`.
+
+`cmake --install` lays everything into a standard `${prefix}/{bin,lib,include}`
+tree plus the compiled Lean module tree under `${prefix}/lib/lean/`. The
+installed C and Rust binaries have RPATHs that find `libl4yaml.so` via
+`$ORIGIN/../lib` and `libleanshared.so` from the Lean toolchain.
+
+CMake options:
+
+| Option | Default | Effect |
+|---|---|---|
+| `L4YAML_BUILD_FFI`       | `ON`     | Build `libl4yaml.so` and `tryparse_c` |
+| `L4YAML_BUILD_RUST`      | `OFF`    | Also build the Rust shim and `tryparse_rs` |
+| `L4YAML_PYTHON_INSTALL`  | `auto`   | Python install mode: `auto`, `ament`, `venv`, `none` |
+| `L4YAML_PYTHON_VENV`     | (empty)  | Path to a Python venv (used when mode is `venv`) |
+| `L4YAML_ENABLE_TESTS`    | `OFF`    | Register lake-built test runners with CTest |
+
+`L4YAML_PYTHON_INSTALL=auto` picks `ament` when `ament_cmake_python` is on the
+CMake prefix path (i.e. a ROS underlay is sourced), `venv` when
+`L4YAML_PYTHON_VENV` is set, otherwise `none`. Each mode does:
+
+- **`ament`** — installs the `l4yaml` package at
+  `${prefix}/lib/pythonX.Y/site-packages/l4yaml/` via
+  `ament_python_install_package`; colcon's `setup.bash` auto-prepends the path
+  to `PYTHONPATH`. This is the right mode for a ROS 2 / colcon workflow.
+- **`venv`** — runs `pip install -e python` from `${L4YAML_PYTHON_VENV}/bin/python`
+  at configure time. The install is editable so source edits take effect
+  without re-running cmake.
+- **`none`** — cmake doesn't touch Python; install manually (see below).
+
+Prerequisites: `elan` on `PATH` (provides the `lean`/`lake` matching
+[lean-toolchain](lean-toolchain)). `L4YAML_BUILD_RUST=ON` additionally
+requires `cargo` and `libclang` (for `bindgen`) and network access on the
+first build (cargo fetches `bindgen` and `thiserror` from crates.io).
+
+### ROS 2 (colcon) workflow
+
+In a colcon workspace with a ROS underlay sourced (e.g.
+`source /opt/ros/jazzy/setup.bash`), `L4YAML_PYTHON_INSTALL=auto` (the
+default) detects `ament_cmake_python` and installs the Python package the
+ROS-native way. No venv, no pip, no extra flags:
+
+```sh
+colcon build --packages-select L4YAML
+# Optional flags:
+colcon build --packages-select L4YAML --cmake-args -DL4YAML_BUILD_RUST=ON
+```
+
+After build, source the workspace overlay and `import l4yaml` works without
+further setup.
+
+### venv workflow (non-ROS)
+
+For local development outside ROS, point the same cmake driver at a venv:
+
+```sh
+python -m venv .venv && . .venv/bin/activate
+cmake -B build -S . -DL4YAML_PYTHON_INSTALL=venv -DL4YAML_PYTHON_VENV=$VIRTUAL_ENV
+cmake --build build -j
+```
+
+`pip install -e python` runs at configure time; subsequent `.py` edits in
+`python/l4yaml/` are picked up by the venv automatically.
+
+### Lean-only build
+
+If you don't need the C/Rust shims and just want to typecheck and build the
+Lean library + proofs + tests:
+
 ```sh
 lake build
 ```
 
-This builds the Lean library, the proof modules, the compile-time guards, and
-every test executable registered in [lakefile.toml](lakefile.toml).
+### Standalone bindings (without the top-level driver)
 
-To build and run the FFI adapters:
+Each binding can also be built independently:
 
 ```sh
-# C library + header
+# C library + header (libl4yaml.so → ffi/build/, tryparse_c → ffi/build/)
 cmake -B ffi/build ffi && cmake --build ffi/build
 
-# Python package (editable install)
+# Python package (editable install — use a venv).  Or use the
+# top-level cmake driver above with -DL4YAML_PYTHON_INSTALL=venv.
+python -m venv .venv && . .venv/bin/activate
 python -m pip install -e python
 
-# Rust crates
+# Rust crates — requires libl4yaml.so somewhere; either build via the line
+# above and rely on the default ffi/out path, or set L4YAML_LIB_DIR.
 cargo build --manifest-path rust/Cargo.toml
 ```
 
@@ -312,6 +399,33 @@ docs/                Generated documentation (Verso, PDF, coverage reports)
   flight-software integration
 - [docs/](docs/) — generated API documentation and coverage reports
 - [docs.internal/README-historical.md](docs.internal/README-historical.md) — full development log, phase-by-phase proof history, and design retrospectives
+
+## Versioning
+
+L4YAML's version is declared independently in each language's package
+manifest, plus once in the Python package's `__init__` so the value is
+introspectable at runtime. **All five locations must be updated together**
+when cutting a release; there is no automation that propagates between them.
+
+| Location | Field |
+|---|---|
+| [lakefile.toml](lakefile.toml) | `version = "..."` |
+| [rust/l4yaml-sys/Cargo.toml](rust/l4yaml-sys/Cargo.toml) | `version = "..."` |
+| [rust/l4yaml/Cargo.toml](rust/l4yaml/Cargo.toml) | `version = "..."` |
+| [python/pyproject.toml](python/pyproject.toml) | `version = "..."` |
+| [python/l4yaml/\_\_init\_\_.py](python/l4yaml/__init__.py) | `__version__ = "..."` |
+
+A grep target for sanity-checking that nothing has drifted:
+
+```sh
+grep -REn '^\s*version\s*=' lakefile.toml rust/*/Cargo.toml python/pyproject.toml
+grep -n  '^__version__' python/l4yaml/__init__.py
+```
+
+The Lean side reads its version from the lakefile (no in-source constant);
+the Rust workspace currently declares `version` per-crate (it could be
+centralized via `[workspace.package]` if cross-crate sync becomes a
+maintenance pain).
 
 ## Contributing
 

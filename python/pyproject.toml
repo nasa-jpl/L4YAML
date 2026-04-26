@@ -1,10 +1,13 @@
 [build-system]
 requires = ["setuptools>=68.0"]
-build-backend = "setuptools.backends._legacy:_Backend"
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "l4yaml"
-version = "0.4.1"
+# Keep this in sync with python/l4yaml/__init__.py's __version__,
+# and with the version declarations in lakefile.toml and the rust
+# crates.  See "Versioning" in the project README.
+version = "0.4.6"
 description = "Python bindings for the verified Lean 4 YAML parser"
 readme = "README.md"
 requires-python = ">=3.10"

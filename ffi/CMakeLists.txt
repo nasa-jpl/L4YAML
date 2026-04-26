@@ -91,21 +91,47 @@ set_source_files_properties(${LEAN_IR_SOURCES} ${NATIVE_C_SOURCES}
 
 target_compile_options(l4yaml PRIVATE -O2)
 
-# Link against libleanshared, native archives, and set RPATH
-target_link_directories(l4yaml PRIVATE "${LEAN_LIB_DIR}")
-target_link_libraries(l4yaml PRIVATE leanshared ${NATIVE_ARCHIVES})
+# Link against libleanshared.so — the 138M umbrella that bundles the
+# entire Lean stdlib (Init / Std / Lean.Meta / Lean.Compiler /
+# Lean.Server / runtime).  We do NOT use the .a archives: lake compiles
+# them with TLS local-exec relocations (they're meant for executables),
+# so linking them into a .so fails with R_X86_64_TPOFF32 errors.
+#
+# PUBLIC visibility is critical: modern linkers default to
+# --no-copy-dt-needed-entries, so the consumer (tryparse_c) won't pick
+# up libleanshared.so via libl4yaml.so's NEEDED entry.  PUBLIC adds it
+# to consumers' link lines explicitly.
+target_link_directories(l4yaml PUBLIC "${LEAN_LIB_DIR}")
+target_link_libraries(l4yaml
+  PRIVATE ${NATIVE_ARCHIVES} m
+  PUBLIC  leanshared)
+
+# Catch missing symbols at libl4yaml.so link time rather than later
+# when downstream consumers fail.
+target_link_options(l4yaml PRIVATE "-Wl,--no-undefined")
+
 set_target_properties(l4yaml PROPERTIES
   BUILD_RPATH   "${LEAN_LIB_DIR}"
   INSTALL_RPATH "${LEAN_LIB_DIR}")
 
-# ── Install (optional) ──────────────────────────────────────────────
-install(TARGETS l4yaml LIBRARY DESTINATION lib)
-install(FILES l4yaml.h DESTINATION include)
+# ── Install ─────────────────────────────────────────────────────────
+include(GNUInstallDirs)
+install(TARGETS l4yaml
+        LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+        COMPONENT L4YAML_Runtime)
+install(FILES l4yaml.h
+        DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
+        COMPONENT L4YAML_Devel)
 
 # ── tryparse_c executable (for cross-language yaml-test-suite) ──────
 add_executable(tryparse_c tryparse_c.c)
 target_include_directories(tryparse_c PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(tryparse_c PRIVATE l4yaml)
+# RPATH: $ORIGIN/../<libdir> finds installed libl4yaml.so;
+# LEAN_LIB_DIR finds libleanshared.so.
 set_target_properties(tryparse_c PROPERTIES
-  BUILD_RPATH   "$ORIGIN;${LEAN_LIB_DIR}"
-  INSTALL_RPATH "$ORIGIN;${LEAN_LIB_DIR}")
+  BUILD_RPATH   "\$ORIGIN;${LEAN_LIB_DIR}"
+  INSTALL_RPATH "\$ORIGIN/../${CMAKE_INSTALL_LIBDIR};${LEAN_LIB_DIR}")
+install(TARGETS tryparse_c
+        RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
+        COMPONENT L4YAML_Runtime)
