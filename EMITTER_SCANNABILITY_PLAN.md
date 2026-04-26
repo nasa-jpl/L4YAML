@@ -3,11 +3,12 @@
 ## Status: 7 sorry-using declarations remaining
 
 (Build-authoritative: `lake build L4YAML.Proofs.Output.EmitterScannability`
-flags warnings at lines 8410, 8969, 9061, 9143, 9361, 10077, 10116.
+flags warnings at lines 8716, 9213, 9309, 9392, 9610, 10326, 10365.
 Line numbers shifted from the original 8170/8666/8758/8840/9058/9774/9813
 after Tier 1 Turn 1 (+173 lines, directive helpers), Turn 2 (+63 lines,
-`ScanChainGrew` strict track), and Turn 3 partial (+67 lines, three
-dispatch-level filtered-grows wrappers) landed.)
+`ScanChainGrew` strict track), and Turn 3 (+~370 lines, full
+`EmitScansInFlow` family migration to `ScanChainGrew` plus file
+reorganization) landed.)
 
 ### Remaining Sorries (7 declarations, grouped by difficulty)
 
@@ -112,10 +113,94 @@ The strict track is purely additive at this point; no caller has been
 migrated.  Sorry count unchanged at 7 (warnings shifted from
 8170/8666/8758/8840/9058/9774/9813 to 8343/8902/8994/9076/9294/10010/10049).
 
-**Turn 3 — Strengthen `EmitScansInFlow` and family** (~300-500 lines, the heaviest turn) — **PARTIALLY LANDED + BLOCKED**
+**Turn 3 — Strengthen `EmitScansInFlow` and family** (~370 lines net, file reorganization + propagation) — ✅ **DONE**
 
-✅ **Partial progress**: Three dispatch-level filtered-grows wrappers landed
-just before `scanNextToken_filtered_grows` (~70 lines, around new line 8336):
+This was the heaviest turn.  Strategy A (replacement) was chosen and
+required a substantial file reorganization to make the filtered-growth
+infrastructure available where the constructions live.  All four
+`scanNextToken_preprocess_flow_ws1` call sites were updated to bind a
+new `tokens = tokens` conjunct.
+
+##### What landed
+
+1. **File reorganization (~945 lines moved)**: the entire filtered-growth
+   infrastructure block (lines 7457–8401: `Array_filter_prefix_of_raw_prefix`,
+   `preprocess_filtered_mono`, `allowDir_ite_filter`, `filtered_grows_of_*`,
+   `dispatch*_filtered_grows`, `scanBlockEntry/Key/Value_filtered_grows`,
+   `dispatchContent_new_not_placeholder`, plus the three Turn 3-partial
+   dispatch-level wrappers) was moved to before line 5611 (just before
+   the `EmitScansInFlow` predicate definitions).  `emit_tokens_push` was
+   forward-declared near the move's start since it's used inside the
+   block.  The `ScanChainGrew` block (originally added in Turn 2 right
+   after `ScanChain_filtered_grows`) was also moved to immediately
+   before `EmitScansInFlow`.
+
+2. **`scanNextToken_filtered_grows_in_flow`** (around new line ~6573,
+   ~50 lines): the in-flow analogue of `scanNextToken_filtered_grows`.
+   With `s.inFlow = true ∧ s.currentIndent < 0 ∧ s.col > 0` and the
+   next character being non-whitespace,
+   `dispatchStructural_none_flow` rules out the directive branch
+   entirely, so the conclusion goes through unconditionally without a
+   sorry.  Used at every `ScanChainGrew.single` construction site to
+   produce the per-step witness.
+
+3. **`ScanChainGrew_of_scanNextToken_eq`** helper next to the other
+   `ScanChainGrew` lemmas: lifts a `ScanChainGrew p s₂ (n+1) s'` to
+   `ScanChainGrew p s₁ (n+1) s'` given `scanNextToken s₁ = scanNextToken s₂`
+   and `(s₁.tokens.filter p).size ≤ (s₂.tokens.filter p).size`.  Used
+   to thread the strict witness through `scanNextToken_preprocess_flow_ws1`
+   in `emitList_scans_nonempty` and `emitPairList_scans_nonempty`.
+
+4. **Predicate migration**: `EmitScansInFlow`, `EmitListScansInFlow`,
+   `EmitPairListScansInFlow` now produce
+   `ScanChainGrew (fun t => t.val != .placeholder) s n s'` instead of
+   `ScanChain s n s'`.
+
+5. **Construction-site updates**:
+   - `emitList_scans_empty`/`emitList_scans_nonempty` (singleton +
+     multi-item composition with `ScanChainGrew.single h_snt₂ h_grew₂`
+     for the comma step and `ScanChainGrew_of_scanNextToken_eq` for the
+     preprocess-equality lift).
+   - `emitPairList_scans_empty`/`emitPairList_scans_nonempty`
+     (analogous, with two `ScanChainGrew.single` insertions for the
+     `:` and `,` steps and two `ScanChainGrew_of_scanNextToken_eq`
+     lifts).
+   - `emit_scans_in_flow` for all three `Grammable` cases:
+     - **scalar**: `ScanChainGrew.single h_snt h_grew` for the
+       double-quoted scalar step.
+     - **sequence**: `ScanChainGrew.single h_snt₁ h_grew₁` for `[`,
+       composed with the IH chain and
+       `ScanChainGrew.single h_snt₃ h_grew₃` for `]`.
+     - **mapping**: analogous with `{`/`}`.
+
+6. **Downstream consumers**:
+   - `scanner_accepts_emit_main` (sequence and mapping): forgot the
+     strict witness back to `ScanChain` via `.toScanChain` for the
+     `scanFiltered_of_chain` consumer.
+   - `emitList_body_filtered_characterization` and
+     `emitPairList_body_filtered_characterization`: use
+     `ScanChainGrew_filtered_grows` (from the strict track, sorry-free)
+     instead of the loose `ScanChain_filtered_grows` (which depends on
+     the line-8716 sorry).  Public boundary still returns `ScanChain`
+     via `.toScanChain`.
+
+##### Status after Turn 3
+
+Sorry count unchanged at **7** (warnings now at 8716/9213/9309/9392/
+9610/10326/10365).  Critically, `emitList_body_filtered_characterization`
+(line 9213) and `emitPairList_body_filtered_characterization` (line
+9309) — Tier 2 sorries — now use `ScanChainGrew_filtered_grows`
+internally, decoupling them from the line-8716 sorry.  Turn 5 can now
+delete the loose `scanNextToken_filtered_grows` and
+`ScanChain_filtered_grows` once the four direct consumers in
+`scanFiltered_emitSeq_nonempty_structure` and
+`scanFiltered_emitMap_nonempty_structure` are migrated in Turn 4.
+
+##### Original strategy notes (kept for context)
+
+✅ **Earlier partial progress**: Three dispatch-level filtered-grows
+wrappers landed just before `scanNextToken_filtered_grows` (~70 lines,
+now at ~6519):
 
 - `scanNextToken_via_flow_dispatch_filtered_grows` — given `h_pp` +
   `h_struct = .ok none` + `h_check` + `h_flow = .ok (some s')` (the
