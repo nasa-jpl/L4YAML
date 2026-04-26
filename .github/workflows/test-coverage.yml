@@ -86,6 +86,35 @@ jobs:
           lake update
           lake build l4yaml-doc
 
+      - name: Generate L4YAML import graph
+        # Renders the runtime module-import graph that the Architecture
+        # page embeds at `Architecture/Import-Graph/graphs/import-graph.svg`.
+        # The Proofs subtree is excluded — `L4YAML.Surface.Surface` would
+        # otherwise pull `L4YAML.Proofs.Production.DocumentProduction`,
+        # and merging the full Proofs environment trips a duplicate
+        # equation-lemma error in `lake exe graph`. Surface itself is
+        # represented via `L4YAML.Surface.Document` (its non-Proofs leaf).
+        run: |
+          # graphviz `dot` is needed to render the .dot file to .svg.
+          if ! command -v dot >/dev/null 2>&1; then
+            if sudo -n true 2>/dev/null && command -v dnf >/dev/null 2>&1; then
+              sudo dnf install -y graphviz
+            elif sudo -n true 2>/dev/null && command -v apt-get >/dev/null 2>&1; then
+              sudo apt-get update -qq && sudo apt-get install -y -qq graphviz
+            else
+              echo "::error::graphviz 'dot' not found and no passwordless sudo to install it"
+              exit 1
+            fi
+          fi
+          mkdir -p doc/Doc/L4YAML/graphs
+          lake build graph
+          lake exe graph \
+            --to=L4YAML.Scanner.Scanner,L4YAML.Parser.Composition,L4YAML.Surface.Document,L4YAML.Output.Dump,L4YAML.Output.Emitter,L4YAML.FFI.FFI,L4YAML.Schema.Api,L4YAML.Config.Config \
+            doc/Doc/L4YAML/graphs/import-graph.dot
+          dot -Tsvg doc/Doc/L4YAML/graphs/import-graph.dot \
+            -o doc/Doc/L4YAML/graphs/import-graph.svg
+          ls -lh doc/Doc/L4YAML/graphs/import-graph.*
+
       # -------------------------------------------------------
       # Phase 2: Generate Verso HTML documentation
       # -------------------------------------------------------

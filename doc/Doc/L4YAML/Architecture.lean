@@ -2,8 +2,10 @@
   L4YAML Documentation — Architecture
 -/
 import VersoManual
+import Doc.L4YAML.ModuleGroups
 
 open Verso.Genre Manual
+open Doc.L4YAML.ModuleGroups
 
 set_option pp.rawOnError true
 
@@ -124,41 +126,12 @@ tag := "module-organization"
 %%%
 
 {index}[module organization]
-The project is organized into several module groups:
+The project is organized into several module groups.
+The table below is regenerated at doc-elaboration time by walking each
+group's source directory under `L4YAML/`, so the file lists stay in
+sync with the actual code.
 
-:::table +header
-*
-  * Group
-  * Key Modules
-  * Purpose
-*
-  * Core
-  * `Types.lean`, `Token.lean`, `Grammar.lean`, `YamlSpec.lean`, `CharPredicates.lean`
-  * Type definitions, token types, grammar inductive, spec production predicates
-*
-  * Scanner
-  * `Scanner/Scanner.lean` (umbrella), `State.lean`, `Whitespace.lean`, `Indent.lean`, `Document.lean`, `NodeProperties.lean`, `Scalar.lean`, `SimpleKey.lean`
-  * Character-to-token conversion with full state management. Split into seven role-named submodules (Blueprint Phase 2, 2026-04-21); the umbrella owns flow-collection indicators and the `scanNextToken` dispatch / `scan` / `scanLoop` main loop.
-*
-  * Parser
-  * `Parser/Composition.lean` (umbrella), `TokenParser.lean` (mutual block), `State.lean`, `Fuel.lean`
-  * Token-to-AST recursive descent. Split into four role-named files (Blueprint Phase 3, 2026-04-21); `Composition.lean` owns the user-facing pipeline (`parseYaml*`, `scanAndParse`, comment classification), `TokenParser.lean` keeps the 14-function mutually-recursive block plus `parseStream` / `parseDocument`, `State.lean` holds `ParseState` + `NodeProperties` helpers, and `Fuel.lean` factors out the `initialFuel := 4*N+4` formula.
-*
-  * Validation
-  * `Limits.lean`, `Schema.lean`
-  * Security limits, Core Schema type resolution
-*
-  * Output
-  * `Emitter.lean`, `Dump.lean`, `RoundTrip.lean`
-  * Canonical emitter (~164L), style-aware dump, round-trip properties
-*
-  * FFI
-  * `FFI.lean`, `ffi/`, `python/`, `rust/`
-  * C/Python/Rust bindings via `@[export]`
-*
-  * Proofs
-  * `Proofs/` (61 modules, ~47,000 lines)
-  * Machine-checked theorems for soundness, completeness, progress, well-formedness
+:::moduleGroups
 :::
 
 # Import Graph
@@ -166,16 +139,8 @@ The project is organized into several module groups:
 tag := "import-graph"
 %%%
 
-The project's dependency structure can be visualized using
-`lake exe graph`.
-The FFI layer sits at the top, depending on `Config`, which
-in turn depends on the scanner/parser/schema pipeline:
+The runtime module dependency graph (Scanner, Parser, Surface, Schema,
+Output, FFI, Config — the `Proofs/` subtree is excluded) is regenerated
+in CI by `lake exe graph` and rendered to SVG via Graphviz.
 
-```
-FFI ← Config ← Dump ← Schema ← Token ← Scanner ← TokenParser
-                                   ↑
-                          CharPredicates ← YamlSpec
-```
-
-The full import graph and component-level dependency graphs are
-available in the `graphs/` directory as Graphviz DOT files.
+![L4YAML runtime import graph](graphs/import-graph.svg)
