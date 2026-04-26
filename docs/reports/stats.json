@@ -59,7 +59,7 @@
    "axioms": 0}},
  "spec_examples": {"total": 132, "passed": 132},
  "schema_version": 2,
- "generated_at_ms": 4661919830,
+ "generated_at_ms": 4664198595,
  "env":
  {"theorems_with_transitive_sorry": 16,
   "theorems_with_direct_sorry": 7,
