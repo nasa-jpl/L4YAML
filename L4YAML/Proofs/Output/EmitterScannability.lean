@@ -8332,6 +8332,73 @@ theorem dispatchContent_filtered_grows (s s' : ScannerState) (c : Char)
     (by have := dispatchContent_new_not_placeholder s s' c h h_strict
         simp only [bne_iff_ne]; exact this)
 
+/-! #### Dispatch-level filtered growth (Turn 3 of EmitterScannability migration)
+
+These three helpers compose `preprocess_filtered_mono` (≥), `allowDir_ite_filter`
+(=), and one of the `dispatch*_filtered_grows` lemmas (≥ +1) to give a clean
+witness that — given a SUCCESSFUL non-structural dispatch path — `scanNextToken`
+strictly grows the filtered token count.  They are the building blocks Turn 3
+uses inside each `scanNextToken_flow_*` emitter helper to expose a per-step
+`ScanChainGrew` witness alongside the existing `scanNextToken s = .ok (some s')`
+output, sidestepping the line-8343 sorry. -/
+
+theorem scanNextToken_via_flow_dispatch_filtered_grows
+    (s s_pp s_ad s_result : ScannerState) (c : Char)
+    (h_pp : scanNextToken_preprocess s = .ok (some (s_pp, c)))
+    (_h_struct : scanNextToken_dispatchStructural s_pp c = .ok none)
+    (h_ad_eq : s_ad = if s_pp.allowDirectives then
+      { s_pp with allowDirectives := false, documentEverStarted := true } else s_pp)
+    (_h_check : scanNextToken_checkBlockFlowIndent s_ad c = .ok ())
+    (h_flow : scanNextToken_dispatchFlowIndicators s_ad c = .ok (some s_result)) :
+    (s_result.tokens.filter (fun t => t.val != .placeholder)).size ≥
+    (s.tokens.filter (fun t => t.val != .placeholder)).size + 1 := by
+  have h_pp_mono := preprocess_filtered_mono s _ _ h_pp
+  have h_ad_eq_filter :
+      (s_ad.tokens.filter (fun t => t.val != .placeholder)).size =
+      (s_pp.tokens.filter (fun t => t.val != .placeholder)).size := by
+    rw [h_ad_eq]; split <;> rfl
+  have h_disp := dispatchFlowIndicators_filtered_grows _ _ _ h_flow
+  omega
+
+theorem scanNextToken_via_block_dispatch_filtered_grows
+    (s s_pp s_ad s_result : ScannerState) (c : Char)
+    (h_pp : scanNextToken_preprocess s = .ok (some (s_pp, c)))
+    (_h_struct : scanNextToken_dispatchStructural s_pp c = .ok none)
+    (h_ad_eq : s_ad = if s_pp.allowDirectives then
+      { s_pp with allowDirectives := false, documentEverStarted := true } else s_pp)
+    (_h_check : scanNextToken_checkBlockFlowIndent s_ad c = .ok ())
+    (_h_flow : scanNextToken_dispatchFlowIndicators s_ad c = .ok none)
+    (h_block : scanNextToken_dispatchBlockIndicators s_ad c = .ok (some s_result)) :
+    (s_result.tokens.filter (fun t => t.val != .placeholder)).size ≥
+    (s.tokens.filter (fun t => t.val != .placeholder)).size + 1 := by
+  have h_pp_mono := preprocess_filtered_mono s _ _ h_pp
+  have h_ad_eq_filter :
+      (s_ad.tokens.filter (fun t => t.val != .placeholder)).size =
+      (s_pp.tokens.filter (fun t => t.val != .placeholder)).size := by
+    rw [h_ad_eq]; split <;> rfl
+  have h_disp := dispatchBlockIndicators_filtered_grows _ _ _ h_block
+  omega
+
+theorem scanNextToken_via_content_dispatch_filtered_grows
+    (s s_pp s_ad s_result : ScannerState) (c : Char)
+    (h_pp : scanNextToken_preprocess s = .ok (some (s_pp, c)))
+    (_h_struct : scanNextToken_dispatchStructural s_pp c = .ok none)
+    (h_ad_eq : s_ad = if s_pp.allowDirectives then
+      { s_pp with allowDirectives := false, documentEverStarted := true } else s_pp)
+    (_h_check : scanNextToken_checkBlockFlowIndent s_ad c = .ok ())
+    (_h_flow : scanNextToken_dispatchFlowIndicators s_ad c = .ok none)
+    (_h_block : scanNextToken_dispatchBlockIndicators s_ad c = .ok none)
+    (h_content : scanNextToken_dispatchContent s_ad c = .ok s_result) :
+    (s_result.tokens.filter (fun t => t.val != .placeholder)).size ≥
+    (s.tokens.filter (fun t => t.val != .placeholder)).size + 1 := by
+  have h_pp_mono := preprocess_filtered_mono s _ _ h_pp
+  have h_ad_eq_filter :
+      (s_ad.tokens.filter (fun t => t.val != .placeholder)).size =
+      (s_pp.tokens.filter (fun t => t.val != .placeholder)).size := by
+    rw [h_ad_eq]; split <;> rfl
+  have h_disp := dispatchContent_filtered_grows _ _ _ h_content
+  omega
+
 /-! #### Main theorem: filtered growth through scanNextToken -/
 
 -- Every `scanNextToken` step adds at least one non-placeholder token to the

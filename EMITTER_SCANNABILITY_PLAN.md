@@ -3,10 +3,11 @@
 ## Status: 7 sorry-using declarations remaining
 
 (Build-authoritative: `lake build L4YAML.Proofs.Output.EmitterScannability`
-flags warnings at lines 8343, 8902, 8994, 9076, 9294, 10010, 10049.
+flags warnings at lines 8410, 8969, 9061, 9143, 9361, 10077, 10116.
 Line numbers shifted from the original 8170/8666/8758/8840/9058/9774/9813
-after Tier 1 Turn 1 (+173 lines, directive helpers) and Turn 2 (+63 lines,
-`ScanChainGrew` strict track) landed.)
+after Tier 1 Turn 1 (+173 lines, directive helpers), Turn 2 (+63 lines,
+`ScanChainGrew` strict track), and Turn 3 partial (+67 lines, three
+dispatch-level filtered-grows wrappers) landed.)
 
 ### Remaining Sorries (7 declarations, grouped by difficulty)
 
@@ -111,34 +112,87 @@ The strict track is purely additive at this point; no caller has been
 migrated.  Sorry count unchanged at 7 (warnings shifted from
 8170/8666/8758/8840/9058/9774/9813 to 8343/8902/8994/9076/9294/10010/10049).
 
-**Turn 3 — Strengthen `EmitScansInFlow` and family** (~300-500 lines, the heaviest turn)
+**Turn 3 — Strengthen `EmitScansInFlow` and family** (~300-500 lines, the heaviest turn) — **PARTIALLY LANDED + BLOCKED**
 
-This is the propagation work. Each lemma that constructs a `ScanChain`
-in the emitter-output context needs to additionally construct a
-`ScanChainGrew` with the per-step filtered-growth witness. Two
-sub-strategies:
+✅ **Partial progress**: Three dispatch-level filtered-grows wrappers landed
+just before `scanNextToken_filtered_grows` (~70 lines, around new line 8336):
+
+- `scanNextToken_via_flow_dispatch_filtered_grows` — given `h_pp` +
+  `h_struct = .ok none` + `h_check` + `h_flow = .ok (some s')` (the
+  five components produced by `scanNextToken_via_flow_dispatch`), composes
+  `preprocess_filtered_mono` + `allowDir_ite_filter` +
+  `dispatchFlowIndicators_filtered_grows` to give the `≥ +1` witness on
+  filtered tokens.  Used for the comma path (`,`) and bracket/brace
+  open/close (`[`, `]`, `{`, `}`).
+- `scanNextToken_via_block_dispatch_filtered_grows` — analogous, using
+  `dispatchBlockIndicators_filtered_grows`.  Used for the value
+  indicator (`:`) which goes through block dispatch.
+- `scanNextToken_via_content_dispatch_filtered_grows` — analogous, using
+  `dispatchContent_filtered_grows`.  Used for the scalar path
+  (`scanNextToken_flow_scanDoubleQuoted`).
+
+These three wrappers are net-positive infrastructure that downstream
+turns (Turn 4 and beyond) can use directly even if the EmitScansInFlow
+strengthening lands via a different route.
+
+⚠ **Blocker discovered**: the filtered-grows infrastructure (lines
+7459–8400: `Array_filter_prefix_of_raw_prefix`, `preprocess_filtered_mono`,
+`filtered_grows_of_extended_prefix`, `dispatchFlowIndicators_filtered_grows`,
+`dispatchBlockIndicators_filtered_grows`, `dispatchContent_filtered_grows`,
+plus the three new dispatch-level wrappers above) is defined **AFTER**
+both the emitter helpers (`scanNextToken_flow_*` family at 3890–5400) and
+the `EmitScansInFlow` predicates and constructions (5611–6739).
+
+To strengthen the construction sites to produce `ScanChainGrew p s n s'`
+(which requires per-step filtered-growth witnesses at each
+`scanNextToken s = .ok (some s_mid)` step), the filtered-growth
+infrastructure must be available where those constructions live.
+
+##### Two sub-strategies:
 
 - **Sub-strategy A (replacement)**: change `EmitScansInFlow` /
-  `EmitListScansInFlow` /related definitions to produce `ScanChainGrew`
-  in place of `ScanChain`. Pros: clean. Cons: cascading changes through
-  ~43 references.
-- **Sub-strategy B (parallel field)**: add a new `*Grew` variant of each
-  predicate that produces `ScanChainGrew` alongside `ScanChain`. Existing
-  consumers see no change; new consumers can use the strict variant.
-  Pros: incremental. Cons: duplicate API surface during migration.
+  `EmitListScansInFlow` /`EmitPairListScansInFlow` definitions to produce
+  `ScanChainGrew` in place of `ScanChain`. Pros: clean. Cons: cascading
+  changes through ~43 references; **requires reorganizing the file** to
+  move ~400-900 lines of filtered-growth infrastructure earlier
+  (currently 7459–8400, would need to land before 5611).
 
-Recommend **(A)** — the replacement approach — since the per-step
-witness is *constructive*: every primitive scanner that emit produces
-(scanFlowSequenceStart, scanFlowMappingStart, scanDoubleQuoted,
-scanFlowEntry, scanFlowSequenceEnd, scanFlowMappingEnd) emits ≥1
-non-placeholder token, which gives the witness directly. None of them
-go through the directive path. So strengthening is purely additive at
-each construction site.
+- **Sub-strategy B (parallel field)**: add `ScanChainGrew p s n s'` as
+  an additional conjunct alongside the existing `ScanChain s n s'` in
+  each predicate. Existing consumers see no change; new consumers can
+  use the strict variant. Pros: incremental; no signature breakage.
+  Cons: duplicate API surface during migration; **also requires
+  filtered-growth infrastructure to be available at construction sites**
+  (same topological problem).
 
-May need to first add ~5-10 missing per-scanner filtered-growth lemmas:
-`scanFlowSequenceStart_filtered_grows`, `scanFlowMappingStart_filtered_grows`,
-`scanFlowEntry_filtered_grows`, etc. (existing dispatch-level lemmas
-cover the common entry points but not all individual scanners.)
+- **Sub-strategy C (post-hoc upgrade)**: keep `EmitScansInFlow` etc.
+  unchanged; introduce a NEW lemma `EmitScansInFlow_to_grew` defined
+  AFTER all filtered-growth infrastructure that takes an existing
+  `EmitScansInFlow v` and produces `ScanChainGrew p s n s'` by
+  re-tracing the chain step-by-step.  This requires per-step witnesses
+  that the original chain provides only via `scanNextToken s = .ok (some
+  s_mid)`; the upgrade needs an in-flow filtered-growth lemma
+  `scanNextToken_filtered_grows_in_flow` that closes the directive case
+  via `dispatchStructural_none_flow`.  Cons: requires propagating
+  inFlow + currentIndent < 0 + col > 0 invariants through the whole
+  chain (FlowMonoChain only carries flowLevel), which may not hold if
+  preprocess crosses a newline.
+
+##### Recommended path forward:
+
+Given the topology issue, **sub-strategy A with file reorganization** is
+still the cleanest end state — the per-step witness is constructive at
+each construction site once the infrastructure is available there.  The
+reorganization is risky but mechanical.
+
+Alternative: **defer the `ScanChainGrew` migration** and instead pursue a
+**string-level "no RESERVED directive"** precondition on `scanFiltered`
+inputs (the original "decision point" mentioned below).  For
+emitter-produced inputs this is easily provable since the emitter only
+produces `%YAML`/`%TAG` directives (and only at very specific positions,
+none of which are in the EmitScansInFlow context).  This sidesteps the
+chain-level migration entirely but couples `scanFiltered_emitSeq_*` and
+`scanFiltered_emitMap_*` to a string-level invariant.
 
 **Turn 4 — Migrate the 4 callers** (~50 lines)
 
