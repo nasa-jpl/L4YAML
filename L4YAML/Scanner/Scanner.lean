@@ -239,25 +239,14 @@ def scanFlowMappingEnd (s : ScannerState) : ScannerState :=
       pendingKeyActive := restoredPending,
       pendingKeyStack := s_after_advance.pendingKeyStack.pop }
 
-/-- Last token value in the array, skipping up to two trailing
-    `.placeholder` reservation slots inserted by `saveSimpleKey`.
-    Returns `none` if there are no real tokens.
+/-- Last token value in the array, or `none` if empty.
 
-    **Initiative 3 / J.2 step 4**: renamed from `lastRealTokenVal?` since
-    the "real vs. placeholder" distinction is going away.  At the J.2
-    cutover (step 5) the body simplifies to `tokens.back?.map (·.val)`
-    once `saveSimpleKey` stops pushing placeholders. -/
+    **Initiative 3 / J.2 step 5 cutover**: simplified.  Pre-cutover this
+    skipped up to two trailing `.placeholder` reservation slots pushed by
+    `saveSimpleKey`; post-cutover those pushes are gone, so the body
+    reduces to `tokens.back?.map (·.val)`. -/
 def lastTokenVal? (tokens : Array (Positioned YamlToken)) : Option YamlToken :=
-  if tokens.size > 0 then
-    let lastIdx := tokens.size - 1
-    let tok1 := tokens[lastIdx]!.val
-    if tok1 == .placeholder && lastIdx > 0 then
-      let tok2 := tokens[lastIdx - 1]!.val
-      if tok2 == .placeholder && lastIdx > 1 then
-        some (tokens[lastIdx - 2]!.val)
-      else some tok2
-    else some tok1
-  else none
+  tokens.back?.map (·.val)
 
 /-- Scan a flow entry separator `,`.
 
@@ -560,14 +549,6 @@ def scan (input : String) : Except ScanError (Array (Positioned YamlToken)) :=
   let fuel := input.utf8ByteSize + 1
   scanLoop s (fuel * 4)
 
-/-- Like `scan` but filters out internal placeholder tokens.
-    Use this for all user-facing output and tests. -/
-@[yaml_spec "9.2" 211 "l-yaml-stream"]
-def scanFiltered (input : String) : Except ScanError (Array (Positioned YamlToken)) :=
-  match scan input with
-  | .ok tokens => .ok (tokens.filter fun t => t.val != .placeholder)
-  | .error e => .error e
-
 /-- Like `scanLoop` but returns the full final `ScannerState` (including
     collected comments) rather than just the token array. -/
 @[yaml_spec "9.2" 211 "l-yaml-stream"]
@@ -595,6 +576,26 @@ def scanLoopFull (s : ScannerState) (fuel : Nat) : Except ScanError ScannerState
     | .ok (some s') => scanLoopFull s' fuel'
 termination_by fuel
 
+/-- Like `scan` but resolves the append-only `pendingKeys` reservations
+    via `linearise`, producing the user-facing token stream.
+    Use this for all user-facing output and tests.
+
+    **Initiative 3 / J.2 step 5 cutover**: replaced the legacy
+    `tokens.filter (· != .placeholder)` step with `linearise tokens pendingKeys`,
+    which splices `.key` / `.blockMappingStart, .key` runs at the indices
+    each pending entry recorded as `insertBeforeIdx`. -/
+@[yaml_spec "9.2" 211 "l-yaml-stream"]
+def scanFiltered (input : String) : Except ScanError (Array (Positioned YamlToken)) :=
+  let s := ScannerState.mk' input
+  let s := s.emit .streamStart
+  let s := match s.peek? with
+    | some '\uFEFF' => s.advance
+    | _ => s
+  let fuel := input.utf8ByteSize + 1
+  match scanLoopFull s (fuel * 4) with
+  | .ok final => .ok (linearise final.tokens final.pendingKeys)
+  | .error e => .error e
+
 /-- Scan with comment preservation.
 
     Returns both the filtered token array and the collected comments
@@ -615,7 +616,7 @@ def scanWithComments (input : String) :
   let fuel := input.utf8ByteSize + 1
   match scanLoopFull s (fuel * 4) with
   | .ok final =>
-    let tokens := final.tokens.filter fun t => t.val != .placeholder
+    let tokens := linearise final.tokens final.pendingKeys
     .ok (tokens, final.comments)
   | .error e => .error e
 

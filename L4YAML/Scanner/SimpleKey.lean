@@ -205,25 +205,19 @@ def scanValueValidate (s : ScannerState) : Except ScanError Unit := do
 @[yaml_spec "8.2.2"]
 def scanValuePrepare (s : ScannerState) : ScannerState :=
   if s.simpleKey.possible then
-    let idx := s.simpleKey.tokenIndex
     if !s.inFlow then
       if (s.simpleKey.pos.col : Int) > s.currentIndent then
-        let tokens := s.tokens.setIfInBounds idx ⟨s.simpleKey.pos, .blockMappingStart, s.simpleKey.pos⟩
-                      |>.setIfInBounds (idx + 1) ⟨s.simpleKey.pos, .key, s.simpleKey.pos⟩
         { s with
-          tokens := tokens
           indents := s.indents.push { column := (s.simpleKey.pos.col : Int), isSequence := false }
           simpleKey := { possible := false }
           pendingKeys := setPendingKeyKind s.pendingKeys s.pendingKeyActive .blockMappingStartAndKey
           pendingKeyActive := none }
       else
-        let tokens := s.tokens.setIfInBounds (idx + 1) ⟨s.simpleKey.pos, .key, s.simpleKey.pos⟩
-        { s with tokens := tokens, simpleKey := { possible := false }
+        { s with simpleKey := { possible := false }
                  pendingKeys := setPendingKeyKind s.pendingKeys s.pendingKeyActive .keyOnly
                  pendingKeyActive := none }
     else
-      let tokens := s.tokens.setIfInBounds (idx + 1) ⟨s.simpleKey.pos, .key, s.simpleKey.pos⟩
-      { s with tokens := tokens, simpleKey := { possible := false }
+      { s with simpleKey := { possible := false }
                pendingKeys := setPendingKeyKind s.pendingKeys s.pendingKeyActive .keyOnly
                pendingKeyActive := none }
   else if s.explicitKeyLine.isSome then
@@ -273,20 +267,16 @@ def saveSimpleKey (st : ScannerState) : ScannerState :=
   -- mapping (e.g., `? a : b` → `{a: b}` as key), so saving IS allowed.
   if st.inFlow && st.explicitKeyLine == some st.line then st
   else if st.simpleKeyAllowed then
-    -- Reserve 2 placeholder slots for potential .blockMappingStart + .key
-    -- (block context) or .key + spare (flow context).
+    -- Initiative 3 / J.2 step 5 cutover: placeholder pushes dropped.
+    -- The reservation is recorded only in the append-only `pendingKeys`
+    -- side-channel.  `insertBeforeIdx := idx` captures the candidate
+    -- scalar's slot in the post-cutover (no-placeholder) token stream,
+    -- which equals `tokens.size` at this point.  Any prior active entry
+    -- is shadowed and stays `.unresolved`, matching legacy semantics
+    -- where a fresh save overwrites the previous simple-key reservation.
     let idx := st.tokens.size
-    let ph : Positioned YamlToken := ⟨st.currentPos, .placeholder, st.currentPos⟩
-    -- Initiative 3 / J.2 dual-write: also record the reservation in the
-    -- append-only `pendingKeys` side-channel.  `insertBeforeIdx := idx`
-    -- captures the eventual position of the candidate scalar in the
-    -- post-cutover (no-placeholder) token stream — i.e. tokens.size *before*
-    -- the placeholder pushes.  Any prior active entry is shadowed and stays
-    -- `.unresolved`, matching legacy semantics where a fresh save overwrites
-    -- the previous simple-key reservation.
     let pendingIdx := st.pendingKeys.size
-    let st := { st with tokens := st.tokens.push ph |>.push ph,
-                        pendingKeys := st.pendingKeys.push
+    let st := { st with pendingKeys := st.pendingKeys.push
                           { insertBeforeIdx := idx,
                             pos := st.currentPos,
                             endLine := st.line,
