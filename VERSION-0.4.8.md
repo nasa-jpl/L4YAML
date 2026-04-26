@@ -11,9 +11,44 @@ Both directions:
 - **Forward** (v0.4.6, proven): `parseYaml input = .ok docs → InYamlLanguage input`
 - **Converse** (v0.4.8, target): `InYamlLanguage input → ∃ docs, parseYaml input = .ok docs`
 
+## Status (as of 2026-04-25): NOT STARTED — BLOCKED on v0.4.7
+
+| Step | Status | Notes |
+|---|---|---|
+| 0. Scanner audit for directive handling | ❌ open | not started; needed to scope Fix B |
+| 1. Remove `directiveDrop` / `scannerDrop` constructors from `SLYamlStream` | ❌ open | both still present in [Surface/Document.lean](L4YAML/Surface/Document.lean) |
+| Fix A: eliminate `scannerDrop` (flow indicator grammar evidence) | ❌ open | blocking lemma `SFlowNode_context_lift` not proven |
+| Fix B: eliminate `directiveDrop` (orphaned directive resolution) | ❌ open | est. 100–500 LoC depending on Step 0 outcome |
+| 5. Prove the converse `grammar_completeness` | ❌ open | depends on Steps 0–4 |
+| 6. Assemble `parse_iff_grammar` biconditional | ❌ open | depends on Step 5 |
+
+**Blocker:** v0.4.7 is partial — see [VERSION-0.4.7.md](VERSION-0.4.7.md).
+0.4.8 work cannot begin until the EmitterScannability pocket closes
+(7 sorrys remaining as of 2026-04-25; the ParserWellBehaved pocket has
+been resolved by deleting dead code, see VERSION-0.4.7.md).
+
+The earlier framing of this document mentioned "28 sorrys in StreamAccum
+related to Fixes A and B" — that figure was an artifact of counting
+docstring narrative mentions of `sorry'd` rather than actual `sorry`
+tactics. **StreamAccum.lean currently has 0 sorry tactics** (the file
+builds clean); all 28 mentions are documentation prose describing the
+*future* sorry lemmas that the constructor-elimination work will introduce
+or close. The structural challenges this version addresses
+(`SFlowNode_context_lift`, h_closable construction, BOM col≠0 handling,
+orphaned directive resolution) are still open as proof obligations — they
+just haven't been written down as `sorry`-bearing skeletons yet.
+
+**Estimated effort:** ~150–600 LoC depending on Step 0 audit; the bulk lands
+in [Production/StreamAccum.lean](L4YAML/Proofs/Production/StreamAccum.lean) (currently 3,332 lines).
+
+## Original framing (retained for context)
+
 **Status:** Open. Depends on v0.4.7 completion and on eliminating the two over-approximation constructors from `SLYamlStream`.
 
 **Codebase baseline (post-v0.4.7):** Assumes v0.4.7's round-trip proof is complete.
+
+> The "post-v0.4.7" baseline this section presupposes does not yet exist:
+> v0.4.7 is partial. See the status table above for the actual blocker set.
 
 ---
 

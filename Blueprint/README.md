@@ -42,8 +42,22 @@ Read in order on first visit:
    🗑 deletion candidate).
 5. [`05-current-state.md`](05-current-state.md) — honest accounting
    of where we are: sorry count, deletion candidates, claims that
-   need reconciling against reality (`Overview.lean` says "Zero
-   `sorry`" — that is aspirational; actual grep shows ~100).
+   need reconciling against reality.  After the 2026-04-25 cleanup
+   pass, **the build emits 7 sorry warnings, all in
+   [Output/EmitterScannability.lean](../L4YAML/Proofs/Output/EmitterScannability.lean)**
+   (lines 8170, 8666, 8758, 8840, 9058, 9774, 9813).  The earlier
+   audit figure of ~138 sorrys was inflated by counting narrative
+   mentions in docstrings (`sorry'd lemmas`, etc.); the
+   build-authoritative count was always smaller.  Remaining work
+   is the EmitterScannability Step 8 pocket — see
+   [`../VERSION-0.4.7.md`](../VERSION-0.4.7.md).
+   The 16 sorry'd theorems in
+   [`Parser/ParserWellBehaved.lean`](../L4YAML/Proofs/Parser/ParserWellBehaved.lean)
+   listed in the blueprint's earlier writing have been **deleted as
+   dead code** after a `unified-dep-table --external-only` run
+   showed they had zero out-of-namespace callers; this validates
+   the parser_fuel_mono observation that motivated this blueprint
+   in the first place.
 6. [`06-discipline.md`](06-discipline.md) — the discipline going
    forward: blueprint-first theorem proposals, adversarial
    instantiation before proof, sorry policy.
