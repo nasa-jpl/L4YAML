@@ -12,6 +12,7 @@ import Doc.L4YAML.Architecture
 import Doc.L4YAML.Verification
 import Doc.L4YAML.Security
 import Doc.L4YAML.FFI
+import Doc.L4YAML.Building
 import Doc.L4YAML.Testing
 import Doc.L4YAML.TestResults
 
@@ -46,6 +47,8 @@ strategy, security model, and FFI bindings for C, Python, and Rust.
 {include 0 Doc.L4YAML.Security}
 
 {include 0 Doc.L4YAML.FFI}
+
+{include 0 Doc.L4YAML.Building}
 
 {include 0 Doc.L4YAML.Testing}
 

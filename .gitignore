@@ -45,9 +45,15 @@ _out/
 # Python
 __pycache__/
 .venv
+*.egg-info/
+.eggs/
+python/build/
+python/dist/
 # CFFI build artifacts
 ffi/build/
 ffi/out
+# Top-level CMake build dir (e.g. `cmake -B build -S .`)
+/build/
 # Rust
 rust/target/
 rust/Cargo.lock
