@@ -136,15 +136,20 @@ def scanFlowSequenceStart (s : ScannerState) : ScannerState :=
   -- Save the outer simple key so it survives flow nesting.
   -- Example: `[a, b]: value` — the simple key saved before `[` must
   -- still be pending after `]` for `:` to confirm it.
+  -- J.2 dual-write: shadow `pendingKeyActive` onto `pendingKeyStack`
+  -- in lockstep with `simpleKeyStack`.
   let savedKey := s.simpleKey
-  let s_key_disabled := { s with simpleKey := { possible := false } }
+  let savedPending := s.pendingKeyActive
+  let s_key_disabled := { s with simpleKey := { possible := false },
+                                  pendingKeyActive := none }
   let s_with_token := s_key_disabled.emit .flowSequenceStart
   let s_after_advance := s_with_token.advance
   { s_after_advance with
       flowLevel := s_after_advance.flowLevel + 1,
       simpleKeyAllowed := true,
       flowStack := s_after_advance.flowStack.push true,
-      simpleKeyStack := s_after_advance.simpleKeyStack.push savedKey }
+      simpleKeyStack := s_after_advance.simpleKeyStack.push savedKey,
+      pendingKeyStack := s_after_advance.pendingKeyStack.push savedPending }
 
 /-- Scan a flow sequence end indicator `]`.
 
@@ -162,13 +167,17 @@ def scanFlowSequenceEnd (s : ScannerState) : ScannerState :=
   let s_with_token := s.emit .flowSequenceEnd
   let s_after_advance := s_with_token.advance
   -- Restore the outer simple key saved by the matching flow-open.
+  -- J.2 dual-write: also restore `pendingKeyActive` from `pendingKeyStack`.
   let restored := s_with_token.simpleKeyStack.back?.getD {}
+  let restoredPending := s_with_token.pendingKeyStack.back?.getD none
   { s_after_advance with
       flowLevel := if s_after_advance.flowLevel > 0 then s_after_advance.flowLevel - 1 else 0,
       simpleKeyAllowed := false,
       flowStack := s_after_advance.flowStack.pop,
       simpleKey := restored,
-      simpleKeyStack := s_after_advance.simpleKeyStack.pop }
+      simpleKeyStack := s_after_advance.simpleKeyStack.pop,
+      pendingKeyActive := restoredPending,
+      pendingKeyStack := s_after_advance.pendingKeyStack.pop }
 
 /-- Scan a flow mapping start indicator `{`.
 
@@ -187,15 +196,20 @@ def scanFlowMappingStart (s : ScannerState) : ScannerState :=
   -- Save the outer simple key so it survives flow nesting.
   -- Example: `{a: b}: value` — the simple key saved before `{` must
   -- still be pending after `}` for `:` to confirm it.
+  -- J.2 dual-write: shadow `pendingKeyActive` onto `pendingKeyStack`
+  -- in lockstep with `simpleKeyStack`.
   let savedKey := s.simpleKey
-  let s_key_disabled := { s with simpleKey := { possible := false } }
+  let savedPending := s.pendingKeyActive
+  let s_key_disabled := { s with simpleKey := { possible := false },
+                                  pendingKeyActive := none }
   let s_with_token := s_key_disabled.emit .flowMappingStart
   let s_after_advance := s_with_token.advance
   { s_after_advance with
       flowLevel := s_after_advance.flowLevel + 1,
       simpleKeyAllowed := true,
       flowStack := s_after_advance.flowStack.push false,
-      simpleKeyStack := s_after_advance.simpleKeyStack.push savedKey }
+      simpleKeyStack := s_after_advance.simpleKeyStack.push savedKey,
+      pendingKeyStack := s_after_advance.pendingKeyStack.push savedPending }
 
 /-- Scan a flow mapping end indicator `}`.
 
@@ -213,13 +227,17 @@ def scanFlowMappingEnd (s : ScannerState) : ScannerState :=
   let s_with_token := s.emit .flowMappingEnd
   let s_after_advance := s_with_token.advance
   -- Restore the outer simple key saved by the matching flow-open.
+  -- J.2 dual-write: also restore `pendingKeyActive` from `pendingKeyStack`.
   let restored := s_with_token.simpleKeyStack.back?.getD {}
+  let restoredPending := s_with_token.pendingKeyStack.back?.getD none
   { s_after_advance with
       flowLevel := if s_after_advance.flowLevel > 0 then s_after_advance.flowLevel - 1 else 0,
       simpleKeyAllowed := false,
       flowStack := s_after_advance.flowStack.pop,
       simpleKey := restored,
-      simpleKeyStack := s_after_advance.simpleKeyStack.pop }
+      simpleKeyStack := s_after_advance.simpleKeyStack.pop,
+      pendingKeyActive := restoredPending,
+      pendingKeyStack := s_after_advance.pendingKeyStack.pop }
 
 /-- Find the last non-placeholder token value, skipping reservation slots.
     Returns `none` if there are no real tokens. -/
@@ -387,14 +405,17 @@ def scanNextToken_dispatchContent (s : ScannerState) (c : Char) :
     let s' ← scanDoubleQuoted s
     -- §7.4: Quoted scalars can span lines; update simpleKey.endLine
     -- so scanValue can check key-end-line vs `:` line.
+    -- J.2 dual-write: parallel update to the active pendingKey's endLine.
     let s' := if s'.simpleKey.possible then
-      { s' with simpleKey := { s'.simpleKey with endLine := s'.line } }
+      { s' with simpleKey := { s'.simpleKey with endLine := s'.line },
+                pendingKeys := setPendingKeyEndLine s'.pendingKeys s'.pendingKeyActive s'.line }
     else s'
     return s'
   if c == '\'' then
     let s' ← scanSingleQuoted s
     let s' := if s'.simpleKey.possible then
-      { s' with simpleKey := { s'.simpleKey with endLine := s'.line } }
+      { s' with simpleKey := { s'.simpleKey with endLine := s'.line },
+                pendingKeys := setPendingKeyEndLine s'.pendingKeys s'.pendingKeyActive s'.line }
     else s'
     return s'
   if canStartPlainScalarBool c (s.peekAt? 1) s.inFlow then

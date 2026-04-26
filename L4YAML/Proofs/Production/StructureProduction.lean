@@ -49,11 +49,11 @@ theorem scanFlowSequenceStart_prod (sc : ScannerState) (sp : SurfPos)
   refine ⟨⟨rest, sc.col + 1⟩, GLit.mk rest sc.col, ?_⟩
   unfold scanFlowSequenceStart
   have hcorr_emit : ScannerSurfCorr
-      ({ sc with simpleKey := { possible := false } }.emit .flowSequenceStart)
+      ({ sc with simpleKey := { possible := false }, pendingKeyActive := none }.emit .flowSequenceStart)
       ⟨'[' :: rest, sc.col⟩ :=
     ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq, hcorr.input_prefix, hcorr.indent_cols_nonneg⟩
   have hcorr_adv := advance_non_newline_corr
-    ({ sc with simpleKey := { possible := false } }.emit .flowSequenceStart)
+    ({ sc with simpleKey := { possible := false }, pendingKeyActive := none }.emit .flowSequenceStart)
     '[' rest hcorr_emit hmore (by decide) (by decide)
   exact ⟨hcorr_adv.chars_from, hcorr_adv.col_eq, hcorr_adv.end_eq, hcorr_adv.input_prefix, hcorr_adv.indent_cols_nonneg⟩
 
@@ -85,11 +85,11 @@ theorem scanFlowMappingStart_prod (sc : ScannerState) (sp : SurfPos)
   refine ⟨⟨rest, sc.col + 1⟩, GLit.mk rest sc.col, ?_⟩
   unfold scanFlowMappingStart
   have hcorr_emit : ScannerSurfCorr
-      ({ sc with simpleKey := { possible := false } }.emit .flowMappingStart)
+      ({ sc with simpleKey := { possible := false }, pendingKeyActive := none }.emit .flowMappingStart)
       ⟨'{' :: rest, sc.col⟩ :=
     ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq, hcorr.input_prefix, hcorr.indent_cols_nonneg⟩
   have hcorr_adv := advance_non_newline_corr
-    ({ sc with simpleKey := { possible := false } }.emit .flowMappingStart)
+    ({ sc with simpleKey := { possible := false }, pendingKeyActive := none }.emit .flowMappingStart)
     '{' rest hcorr_emit hmore (by decide) (by decide)
   exact ⟨hcorr_adv.chars_from, hcorr_adv.col_eq, hcorr_adv.end_eq, hcorr_adv.input_prefix, hcorr_adv.indent_cols_nonneg⟩
 

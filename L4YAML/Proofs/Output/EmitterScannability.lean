@@ -3822,11 +3822,11 @@ theorem scanFlowSequenceStart_detail (s : ScannerState) (rest : List Char)
     ∧ (scanFlowSequenceStart s).col = s.col + 1 := by
   have ⟨_, h_lt⟩ := peek_of_chars_cons s '[' rest _ hcorr
   have h_emit_corr : ScannerSurfCorr
-      ({ s with simpleKey := { possible := false } }.emit .flowSequenceStart)
+      ({ s with simpleKey := { possible := false }, pendingKeyActive := none }.emit .flowSequenceStart)
       ⟨'[' :: rest, s.col⟩ :=
     ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq, hcorr.input_prefix, hcorr.indent_cols_nonneg⟩
   have h_adv_corr := advance_non_newline_corr
-    ({ s with simpleKey := { possible := false } }.emit .flowSequenceStart)
+    ({ s with simpleKey := { possible := false }, pendingKeyActive := none }.emit .flowSequenceStart)
     '[' rest h_emit_corr h_lt (by decide) (by decide)
   -- Transfer corr from advance result to scanFlowSequenceStart result
   -- After unfold, struct-with on advance result preserves ScannerSurfCorr fields
@@ -4210,9 +4210,9 @@ theorem scanNextToken_flow_open_init (input : String) (rest : List Char)
          by -- Filtered token characterization:
             have h_fss_tokens : (scanFlowSequenceStart s_ad).tokens
                 = s_ad.tokens.push ⟨s_ad.currentPos, .flowSequenceStart, s_ad.currentPos⟩ := by
-              show ({ ({ s_ad with simpleKey := _ }.emit .flowSequenceStart).advance with
+              show ({ ({ s_ad with simpleKey := _, pendingKeyActive := _ }.emit .flowSequenceStart).advance with
                   flowLevel := _, simpleKeyAllowed := _,
-                  flowStack := _, simpleKeyStack := _ }).tokens = _
+                  flowStack := _, simpleKeyStack := _, pendingKeyStack := _ }).tokens = _
               simp only [ScannerCorrectness.advance_preserves_tokens,
                          ScannerState.emit, ScannerState.currentPos]
             have h_ad_tokens : s_ad.tokens = s_pp.tokens := by
@@ -5037,11 +5037,11 @@ theorem scanFlowMappingStart_detail (s : ScannerState) (rest : List Char)
     ∧ (scanFlowMappingStart s).col = s.col + 1 := by
   have ⟨_, h_lt⟩ := peek_of_chars_cons s '{' rest _ hcorr
   have h_emit_corr : ScannerSurfCorr
-      ({ s with simpleKey := { possible := false } }.emit .flowMappingStart)
+      ({ s with simpleKey := { possible := false }, pendingKeyActive := none }.emit .flowMappingStart)
       ⟨'{' :: rest, s.col⟩ :=
     ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq, hcorr.input_prefix, hcorr.indent_cols_nonneg⟩
   have h_adv_corr := advance_non_newline_corr
-    ({ s with simpleKey := { possible := false } }.emit .flowMappingStart)
+    ({ s with simpleKey := { possible := false }, pendingKeyActive := none }.emit .flowMappingStart)
     '{' rest h_emit_corr h_lt (by decide) (by decide)
   have h_corr_final : ScannerSurfCorr (scanFlowMappingStart s) ⟨rest, s.col + 1⟩ := by
     unfold scanFlowMappingStart
@@ -5558,9 +5558,9 @@ theorem scanNextToken_flow_open_mapping_init (input : String) (rest : List Char)
          by -- Filtered token characterization for mapping (mirrors sequence case)
             have h_fms_tokens : (scanFlowMappingStart s_ad).tokens
                 = s_ad.tokens.push ⟨s_ad.currentPos, .flowMappingStart, s_ad.currentPos⟩ := by
-              show ({ ({ s_ad with simpleKey := _ }.emit .flowMappingStart).advance with
+              show ({ ({ s_ad with simpleKey := _, pendingKeyActive := _ }.emit .flowMappingStart).advance with
                   flowLevel := _, simpleKeyAllowed := _,
-                  flowStack := _, simpleKeyStack := _ }).tokens = _
+                  flowStack := _, simpleKeyStack := _, pendingKeyStack := _ }).tokens = _
               simp only [ScannerCorrectness.advance_preserves_tokens,
                          ScannerState.emit, ScannerState.currentPos]
             have h_ad_tokens : s_ad.tokens = s_pp.tokens := by
@@ -5633,9 +5633,9 @@ theorem scanFlowSequenceStart_first_filtered_token (s : ScannerState) (rest : Li
   -- Tokens shape: scanFlowSequenceStart s_ad pushes one .flowSequenceStart token
   have h_fss_tokens : (scanFlowSequenceStart s_ad).tokens
       = s_ad.tokens.push ⟨s_ad.currentPos, .flowSequenceStart, s_ad.currentPos⟩ := by
-    show ({ ({ s_ad with simpleKey := _ }.emit .flowSequenceStart).advance with
+    show ({ ({ s_ad with simpleKey := _, pendingKeyActive := _ }.emit .flowSequenceStart).advance with
         flowLevel := _, simpleKeyAllowed := _,
-        flowStack := _, simpleKeyStack := _ }).tokens = _
+        flowStack := _, simpleKeyStack := _, pendingKeyStack := _ }).tokens = _
     simp only [ScannerCorrectness.advance_preserves_tokens,
                ScannerState.emit, ScannerState.currentPos]
   have h_ad_tokens_filter :
@@ -5690,9 +5690,9 @@ theorem scanFlowMappingStart_first_filtered_token (s : ScannerState) (rest : Lis
     exact Option.some.inj (Except.ok.inj h)
   have h_fms_tokens : (scanFlowMappingStart s_ad).tokens
       = s_ad.tokens.push ⟨s_ad.currentPos, .flowMappingStart, s_ad.currentPos⟩ := by
-    show ({ ({ s_ad with simpleKey := _ }.emit .flowMappingStart).advance with
+    show ({ ({ s_ad with simpleKey := _, pendingKeyActive := _ }.emit .flowMappingStart).advance with
         flowLevel := _, simpleKeyAllowed := _,
-        flowStack := _, simpleKeyStack := _ }).tokens = _
+        flowStack := _, simpleKeyStack := _, pendingKeyStack := _ }).tokens = _
     simp only [ScannerCorrectness.advance_preserves_tokens,
                ScannerState.emit, ScannerState.currentPos]
   have h_ad_tokens_filter :

@@ -64,7 +64,7 @@ theorem scanFlowSequenceStart_corr (sc : ScannerState) (sp : SurfPos)
     ∃ sp', ScannerSurfCorr (scanFlowSequenceStart sc) sp' := by
   unfold scanFlowSequenceStart
   obtain ⟨sp', hcorr'⟩ := advance_corr
-    ({ sc with simpleKey := { possible := false } }.emit .flowSequenceStart) sp
+    ({ sc with simpleKey := { possible := false }, pendingKeyActive := none }.emit .flowSequenceStart) sp
     ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq, hcorr.input_prefix, hcorr.indent_cols_nonneg⟩
   exact ⟨sp', ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq, hcorr'.input_prefix, hcorr'.indent_cols_nonneg⟩⟩
 
@@ -81,7 +81,7 @@ theorem scanFlowMappingStart_corr (sc : ScannerState) (sp : SurfPos)
     ∃ sp', ScannerSurfCorr (scanFlowMappingStart sc) sp' := by
   unfold scanFlowMappingStart
   obtain ⟨sp', hcorr'⟩ := advance_corr
-    ({ sc with simpleKey := { possible := false } }.emit .flowMappingStart) sp
+    ({ sc with simpleKey := { possible := false }, pendingKeyActive := none }.emit .flowMappingStart) sp
     ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq, hcorr.input_prefix, hcorr.indent_cols_nonneg⟩
   exact ⟨sp', ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq, hcorr'.input_prefix, hcorr'.indent_cols_nonneg⟩⟩
 

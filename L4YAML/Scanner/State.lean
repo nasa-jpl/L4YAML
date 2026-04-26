@@ -366,4 +366,19 @@ def setPendingKeyKind (pendingKeys : Array PendingKeyEntry)
     | none => pendingKeys
     | some e => pendingKeys.setIfInBounds i { e with kind := kind }
 
+/-- Update the `endLine` of the active pending-key reservation.
+
+    Mirror of the legacy `simpleKey.endLine` write that quoted-scalar
+    scans do at the end of multi-line keys (e.g. `"foo\nbar"`).  Same
+    proof-opaque shape as `setPendingKeyKind` so existing scanner
+    proofs are unaffected. -/
+def setPendingKeyEndLine (pendingKeys : Array PendingKeyEntry)
+    (active : Option Nat) (endLine : Nat) : Array PendingKeyEntry :=
+  match active with
+  | none => pendingKeys
+  | some i =>
+    match pendingKeys[i]? with
+    | none => pendingKeys
+    | some e => pendingKeys.setIfInBounds i { e with endLine := endLine }
+
 end L4YAML.Scanner

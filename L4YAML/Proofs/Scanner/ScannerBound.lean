@@ -146,9 +146,9 @@ theorem scanFlowSequenceStart_BoundInv (s : ScannerState)
     (h : BoundInv s s) (hend : s.inputEnd = s.input.utf8ByteSize) :
     BoundInv s (scanFlowSequenceStart s) := by
   -- scanFlowSequenceStart s = { s_adv with flowLevel, flowStack, ... }
-  -- where s_adv = ({ s with simpleKey := ... }.emit .flowSequenceStart).advance
+  -- where s_adv = ({ s with simpleKey := ..., pendingKeyActive := none }.emit .flowSequenceStart).advance
   -- The result has the same offset/inputEnd/input as s_adv.
-  let s_kd : ScannerState := { s with simpleKey := { possible := false } }
+  let s_kd : ScannerState := { s with simpleKey := { possible := false }, pendingKeyActive := none }
   let s_em := s_kd.emit .flowSequenceStart
   let s_adv := s_em.advance
   have h1 : BoundInv s s_kd := fieldUpdate_BoundInv _ _ h rfl rfl rfl
@@ -159,7 +159,7 @@ theorem scanFlowSequenceStart_BoundInv (s : ScannerState)
 theorem scanFlowMappingStart_BoundInv (s : ScannerState)
     (h : BoundInv s s) (hend : s.inputEnd = s.input.utf8ByteSize) :
     BoundInv s (scanFlowMappingStart s) := by
-  let s_kd : ScannerState := { s with simpleKey := { possible := false } }
+  let s_kd : ScannerState := { s with simpleKey := { possible := false }, pendingKeyActive := none }
   let s_em := s_kd.emit .flowMappingStart
   let s_adv := s_em.advance
   have h1 : BoundInv s s_kd := fieldUpdate_BoundInv _ _ h rfl rfl rfl
