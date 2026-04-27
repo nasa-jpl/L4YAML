@@ -2705,13 +2705,7 @@ Requires `SimpleKeyValid` to establish that placeholder tokens at `tokenIndex`
 already have `.pos = simpleKey.pos`. -/
 theorem scanValue_preserves_all_pos (s s' : ScannerState)
     (h : scanValue s = .ok s')
-    (h_skv : s.simpleKey.possible = true →
-      s.simpleKey.tokenIndex < s.tokens.size ∧
-      s.simpleKey.tokenIndex + 1 < s.tokens.size ∧
-      (∀ (h1 : s.simpleKey.tokenIndex < s.tokens.size),
-        s.tokens[s.simpleKey.tokenIndex].pos = s.simpleKey.pos) ∧
-      (∀ (h2 : s.simpleKey.tokenIndex + 1 < s.tokens.size),
-        s.tokens[s.simpleKey.tokenIndex + 1].pos = s.simpleKey.pos))
+    (_h_skv : s.simpleKey.possible = true → s.simpleKey.tokenIndex ≤ s.tokens.size)
     (i : Nat) (hi : i < s.tokens.size) :
     (s'.tokens[i]'(by have := scanValue_adds_tokens s s' h; omega)).pos =
     s.tokens[i].pos := by
@@ -2724,18 +2718,6 @@ theorem scanValue_preserves_all_pos (s s' : ScannerState)
     · contradiction
     · injection h with h_eq; subst h_eq; dsimp only []
       have h_ck := scanValueClearKey_preserves_tokens s
-      have h_skv' : (scanValueClearKey s).simpleKey.possible = true →
-          (scanValueClearKey s).simpleKey.tokenIndex < (scanValueClearKey s).tokens.size ∧
-          (scanValueClearKey s).simpleKey.tokenIndex + 1 < (scanValueClearKey s).tokens.size ∧
-          (∀ (h1 : (scanValueClearKey s).simpleKey.tokenIndex < (scanValueClearKey s).tokens.size),
-            (scanValueClearKey s).tokens[(scanValueClearKey s).simpleKey.tokenIndex].pos =
-              (scanValueClearKey s).simpleKey.pos) ∧
-          (∀ (h2 : (scanValueClearKey s).simpleKey.tokenIndex + 1 < (scanValueClearKey s).tokens.size),
-            (scanValueClearKey s).tokens[(scanValueClearKey s).simpleKey.tokenIndex + 1].pos =
-              (scanValueClearKey s).simpleKey.pos) := by
-        cases scanValueClearKey_identity_or_clear s with
-        | inl h_eq => rw [h_eq]; exact h_skv
-        | inr h_cl => intro h_poss; rw [h_cl.1] at h_poss; contradiction
       have h_prep := scanValuePrepare_preserves_all_pos (scanValueClearKey s) i (by rw [h_ck]; exact hi)
       have h_emit := emit_preserves_tokens_at (scanValuePrepare (scanValueClearKey s))
         YamlToken.value i (by have := scanValuePrepare_tokens_monotonic (scanValueClearKey s); rw [h_ck] at this; omega)
@@ -6694,15 +6676,9 @@ theorem setIfInBounds_twice_preserves_ScanInv' (tokens : Array (Positioned YamlT
 -- `h_sk` is no longer needed (kept in the signature for callers'
 -- benefit and J.4 cleanup).
 theorem scanValuePrepare_preserves_ScanInv (s : ScannerState) (h : ScanInv s)
-    (h_sk : s.simpleKey.possible = true →
-      s.simpleKey.tokenIndex < s.tokens.size ∧
-      s.simpleKey.tokenIndex + 1 < s.tokens.size ∧
-      (∀ (h1 : s.simpleKey.tokenIndex < s.tokens.size),
-        s.tokens[s.simpleKey.tokenIndex].pos = s.simpleKey.pos) ∧
-      (∀ (h2 : s.simpleKey.tokenIndex + 1 < s.tokens.size),
-        s.tokens[s.simpleKey.tokenIndex + 1].pos = s.simpleKey.pos)) :
+    (_h_sk : s.simpleKey.possible = true →
+      s.simpleKey.tokenIndex ≤ s.tokens.size) :
     ScanInv (scanValuePrepare s) := by
-  let _ := h_sk  -- silence unused-arg warning; kept for callers
   unfold scanValuePrepare
   split
   · -- simpleKey.possible = true
@@ -8058,14 +8034,7 @@ theorem scanValueClearKey_preserves_ScanInv (s : ScannerState)
 theorem scanValue_preserves_ScanInv (s s' : ScannerState)
     (h : ScanInv s)
     (h_sk : (scanValueClearKey s).simpleKey.possible = true →
-      (scanValueClearKey s).simpleKey.tokenIndex < (scanValueClearKey s).tokens.size ∧
-      (scanValueClearKey s).simpleKey.tokenIndex + 1 < (scanValueClearKey s).tokens.size ∧
-      (∀ (h1 : (scanValueClearKey s).simpleKey.tokenIndex < (scanValueClearKey s).tokens.size),
-        (scanValueClearKey s).tokens[(scanValueClearKey s).simpleKey.tokenIndex].pos =
-          (scanValueClearKey s).simpleKey.pos) ∧
-      (∀ (h2 : (scanValueClearKey s).simpleKey.tokenIndex + 1 < (scanValueClearKey s).tokens.size),
-        (scanValueClearKey s).tokens[(scanValueClearKey s).simpleKey.tokenIndex + 1].pos =
-          (scanValueClearKey s).simpleKey.pos))
+      (scanValueClearKey s).simpleKey.tokenIndex ≤ (scanValueClearKey s).tokens.size)
     (h_ok : scanValue s = .ok s') : ScanInv s' := by
   unfold scanValue at h_ok
   simp only [bind, Except.bind] at h_ok
@@ -8088,14 +8057,7 @@ theorem scanValue_preserves_ScanInv (s s' : ScannerState)
 theorem dispatchBlockIndicators_preserves_ScanInv (s : ScannerState) (c : Char)
     (h : ScanInv s)
     (h_sk : (scanValueClearKey s).simpleKey.possible = true →
-      (scanValueClearKey s).simpleKey.tokenIndex < (scanValueClearKey s).tokens.size ∧
-      (scanValueClearKey s).simpleKey.tokenIndex + 1 < (scanValueClearKey s).tokens.size ∧
-      (∀ (h1 : (scanValueClearKey s).simpleKey.tokenIndex < (scanValueClearKey s).tokens.size),
-        (scanValueClearKey s).tokens[(scanValueClearKey s).simpleKey.tokenIndex].pos =
-          (scanValueClearKey s).simpleKey.pos) ∧
-      (∀ (h2 : (scanValueClearKey s).simpleKey.tokenIndex + 1 < (scanValueClearKey s).tokens.size),
-        (scanValueClearKey s).tokens[(scanValueClearKey s).simpleKey.tokenIndex + 1].pos =
-          (scanValueClearKey s).simpleKey.pos))
+      (scanValueClearKey s).simpleKey.tokenIndex ≤ (scanValueClearKey s).tokens.size)
     (s' : ScannerState)
     (h_ok : scanNextToken_dispatchBlockIndicators s c = .ok (some s')) : ScanInv s' := by
   unfold scanNextToken_dispatchBlockIndicators at h_ok
@@ -8530,28 +8492,31 @@ theorem dispatchContent_preserves_ScanInv (s : ScannerState) (c : Char)
 /-!
 ### SimpleKeyValid: simpleKey bookkeeping invariant
 
-When `simpleKey.possible` is true, the placeholder tokens at the saved
-indices have the correct position.  This links `simpleKey` metadata to
-actual token array content and is needed by `scanValuePrepare_preserves_ScanInv`
-(which calls `setIfInBounds` at those indices).
+When `simpleKey.possible` is true, the saved `tokenIndex` is within
+bounds (or one past the end, indicating the candidate scalar slot
+hasn't been emitted yet).  This is the bookkeeping link between
+`simpleKey` metadata and the token array.
 
-`saveSimpleKey` establishes this by pushing two placeholders at
-`currentPos` and recording `tokenIndex = old_size`, `pos = currentPos`.
-Between `saveSimpleKey` and `scanValue`, only token-appending operations
-occur, so the placeholders at the saved indices remain untouched.
+**Initiative 3 / J.2 step 5 cutover**: the pre-cutover invariant also
+asserted `tokens[tokenIndex].pos = simpleKey.pos` and `tokens[tokenIndex+1].pos =
+simpleKey.pos`, established by the two placeholder pushes in
+`saveSimpleKey`.  Post-cutover those placeholders are gone — the
+candidate scalar fills slot `tokenIndex` on its own emit (so
+`tokenIndex = tokens.size` momentarily after `saveSimpleKey`, until
+the dispatch in the same `scanNextToken` call appends).  The
+position-equality conjuncts are no longer load-bearing on any consumer
+(`scanValuePrepare_preserves_ScanInv` and friends silence their
+`h_sk` argument with `let _ := h_sk` per the J.2 cutover comments),
+so this file weakens `SimpleKeyValid` to a bound-only invariant.
+The `h_sk` arguments are kept on the consumers' signatures for
+J.4 cleanup.
 -/
 
 /-- The simpleKey validity condition: when the simple key is possible,
-    the saved tokenIndex and tokenIndex+1 are within bounds and the
-    tokens at those positions have pos = simpleKey.pos. -/
+    the saved `tokenIndex` is at most `tokens.size` (limbo case allowed
+    between `saveSimpleKey` and the candidate scalar's emit). -/
 def SimpleKeyValid (s : ScannerState) : Prop :=
-  s.simpleKey.possible = true →
-    s.simpleKey.tokenIndex < s.tokens.size ∧
-    s.simpleKey.tokenIndex + 1 < s.tokens.size ∧
-    (∀ (h1 : s.simpleKey.tokenIndex < s.tokens.size),
-      s.tokens[s.simpleKey.tokenIndex].pos = s.simpleKey.pos) ∧
-    (∀ (h2 : s.simpleKey.tokenIndex + 1 < s.tokens.size),
-      s.tokens[s.simpleKey.tokenIndex + 1].pos = s.simpleKey.pos)
+  s.simpleKey.possible = true → s.simpleKey.tokenIndex ≤ s.tokens.size
 
 -- SimpleKeyValid is vacuously true when possible = false.
 theorem SimpleKeyValid_of_not_possible (s : ScannerState)
@@ -8565,33 +8530,35 @@ theorem SimpleKeyValid_of_cleared (_s : ScannerState)
   SimpleKeyValid_of_not_possible s' h
 
 -- SimpleKeyValid is monotone: preserved when tokens grow and existing entries unchanged.
+-- Initiative 3 / J.2 step 5 cutover: the `h_sk`/`h_pref` arguments are
+-- retained for callers' benefit, but with the bound-only invariant the
+-- monotone proof reduces to `omega` over `tokenIndex ≤ s.size ≤ s'.size`.
 theorem SimpleKeyValid_mono (s s' : ScannerState)
     (h_skv : SimpleKeyValid s)
     (h_sk : s'.simpleKey = s.simpleKey)
     (h_mono : s'.tokens.size ≥ s.tokens.size)
-    (h_pref : ∀ i (h : i < s.tokens.size), s'.tokens[i]'(by omega) = s.tokens[i]) :
+    (_h_pref : ∀ i (h : i < s.tokens.size), s'.tokens[i]'(by omega) = s.tokens[i]) :
     SimpleKeyValid s' := by
   intro h_poss
   rw [h_sk] at h_poss ⊢
-  have ⟨hb1, hb2, hp1, hp2⟩ := h_skv h_poss
-  refine ⟨by omega, by omega, ?_, ?_⟩
-  · intro h1; rw [h_pref _ hb1]; exact hp1 hb1
-  · intro h2; rw [h_pref _ hb2]; exact hp2 hb2
+  have hb := h_skv h_poss
+  omega
 
--- saveSimpleKey establishes SimpleKeyValid from any state.
+-- saveSimpleKey preserves SimpleKeyValid.
 --
--- **Initiative 3 / J.2 step 5 cutover**: the simpleKeyAllowed branch
--- no longer pushes placeholder slots, so `simpleKey.tokenIndex =
--- s.tokens.size` after the call — i.e. `tokenIndex < tokens.size` is
--- false at that exact moment.  The candidate scalar fills the slot
--- on the next emit, after which the invariant holds again.
--- J.3 manifest 5.d: re-state SimpleKeyValid as a *conditional*
--- invariant (asserted only at consumer sites, not at save time), or
--- replace with a `pendingKeys`-flavoured invariant.
+-- **Initiative 3 / J.2 step 5 cutover**: the `simpleKeyAllowed` branch
+-- records `tokenIndex := s.tokens.size` (the candidate scalar's
+-- upcoming slot) without growing `tokens`.  The bound `tokenIndex ≤
+-- tokens.size` therefore holds with equality after the save.  The
+-- other two branches return `s` unchanged.
 theorem saveSimpleKey_preserves_SimpleKeyValid (s : ScannerState)
     (h_skv : SimpleKeyValid s) : SimpleKeyValid (saveSimpleKey s) := by
-  -- J.3 manifest 5.d: SimpleKeyValid family — Category C
-  sorry
+  unfold saveSimpleKey
+  split
+  · exact h_skv
+  · split
+    · intro _; simp  -- simpleKeyAllowed: tokenIndex = tokens.size, bound holds with equality
+    · exact h_skv
 
 -- skipToContent preserves SimpleKeyValid (preserves simpleKey and tokens exactly).
 theorem skipToContent_preserves_SimpleKeyValid (s s' : ScannerState)
@@ -8601,9 +8568,8 @@ theorem skipToContent_preserves_SimpleKeyValid (s s' : ScannerState)
   unfold SimpleKeyValid at h_skv ⊢
   intro h_poss
   rw [h_sk] at h_poss
-  obtain ⟨h1, h2, h3, h4⟩ := h_skv h_poss
   rw [h_tok, h_sk]
-  exact ⟨h1, h2, h3, h4⟩
+  exact h_skv h_poss
 
 -- unwindIndents preserves SimpleKeyValid (preserves simpleKey, only appends tokens).
 theorem unwindIndents_preserves_SimpleKeyValid (s : ScannerState) (col : Int)
@@ -8663,14 +8629,7 @@ theorem allowDir_ite_preserves_ScanInv (s : ScannerState)
 -- scanValueClearKey transfers SimpleKeyValid to h_sk condition.
 theorem SimpleKeyValid_implies_scanValue_h_sk (s : ScannerState) (h_skv : SimpleKeyValid s) :
     (scanValueClearKey s).simpleKey.possible = true →
-      (scanValueClearKey s).simpleKey.tokenIndex < (scanValueClearKey s).tokens.size ∧
-      (scanValueClearKey s).simpleKey.tokenIndex + 1 < (scanValueClearKey s).tokens.size ∧
-      (∀ (h1 : (scanValueClearKey s).simpleKey.tokenIndex < (scanValueClearKey s).tokens.size),
-        (scanValueClearKey s).tokens[(scanValueClearKey s).simpleKey.tokenIndex].pos =
-          (scanValueClearKey s).simpleKey.pos) ∧
-      (∀ (h2 : (scanValueClearKey s).simpleKey.tokenIndex + 1 < (scanValueClearKey s).tokens.size),
-        (scanValueClearKey s).tokens[(scanValueClearKey s).simpleKey.tokenIndex + 1].pos =
-          (scanValueClearKey s).simpleKey.pos) := by
+      (scanValueClearKey s).simpleKey.tokenIndex ≤ (scanValueClearKey s).tokens.size := by
   cases scanValueClearKey_identity_or_clear s with
   | inl h_eq => rw [h_eq]; exact h_skv
   | inr h_cl => intro h_poss; rw [h_cl.1] at h_poss; contradiction
@@ -8685,55 +8644,50 @@ Therefore, the token-position equalities that held at push time continue
 to hold at pop time.
 -/
 
-/-- Validity of every simple key entry on the stack. -/
+/-- Validity of every simple key entry on the stack.
+    **Initiative 3 / J.2 step 5 cutover**: weakened to a bound-only
+    invariant in lockstep with `SimpleKeyValid` (see comment there). -/
 def SimpleKeyStackValid (s : ScannerState) : Prop :=
   ∀ j (h : j < s.simpleKeyStack.size),
     s.simpleKeyStack[j].possible = true →
-    s.simpleKeyStack[j].tokenIndex < s.tokens.size ∧
-    s.simpleKeyStack[j].tokenIndex + 1 < s.tokens.size ∧
-    (∀ (h1 : s.simpleKeyStack[j].tokenIndex < s.tokens.size),
-      s.tokens[s.simpleKeyStack[j].tokenIndex].pos = s.simpleKeyStack[j].pos) ∧
-    (∀ (h2 : s.simpleKeyStack[j].tokenIndex + 1 < s.tokens.size),
-      s.tokens[s.simpleKeyStack[j].tokenIndex + 1].pos = s.simpleKeyStack[j].pos)
+    s.simpleKeyStack[j].tokenIndex ≤ s.tokens.size
 
 /-- Combined simple key validity for both current and stacked keys. -/
 def AllKeysValid (s : ScannerState) : Prop :=
   SimpleKeyValid s ∧ SimpleKeyStackValid s
 
 -- SimpleKeyStackValid is monotone: preserved when tokens grow and existing entries unchanged.
+-- Initiative 3 / J.2 step 5 cutover: bound-only invariant, h_pref retained for callers.
 theorem SimpleKeyStackValid_mono (s s' : ScannerState)
     (h_ssv : SimpleKeyStackValid s)
     (h_stack : s'.simpleKeyStack = s.simpleKeyStack)
     (h_mono : s'.tokens.size ≥ s.tokens.size)
-    (h_pref : ∀ i (h : i < s.tokens.size), s'.tokens[i]'(by omega) = s.tokens[i]) :
+    (_h_pref : ∀ i (h : i < s.tokens.size), s'.tokens[i]'(by omega) = s.tokens[i]) :
     SimpleKeyStackValid s' := by
   intro j hj h_poss
   have hj_s : j < s.simpleKeyStack.size := by rw [← h_stack]; exact hj
   have h_get : s'.simpleKeyStack[j] = s.simpleKeyStack[j]'hj_s := by
     simp [h_stack]
   rw [h_get] at h_poss ⊢
-  have ⟨hb1, hb2, hp1, hp2⟩ := h_ssv j hj_s h_poss
-  refine ⟨by omega, by omega, ?_, ?_⟩
-  · intro h1; rw [h_pref _ hb1]; exact hp1 hb1
-  · intro h2; rw [h_pref _ hb2]; exact hp2 hb2
+  have hb := h_ssv j hj_s h_poss
+  omega
 
--- SimpleKeyStackValid is preserved when tokens grow and `.pos` is preserved at all existing positions.
--- This is weaker than `SimpleKeyStackValid_mono` (which requires full token equality).
+-- Initiative 3 / J.2 step 5 cutover: with the bound-only invariant, the `_pos`
+-- variant is structurally identical to `_mono`; both are kept for caller
+-- ergonomics (callers in different branches have different .pos witnesses).
 theorem SimpleKeyStackValid_mono_pos (s s' : ScannerState)
     (h_ssv : SimpleKeyStackValid s)
     (h_stack : s'.simpleKeyStack = s.simpleKeyStack)
     (h_mono : s'.tokens.size ≥ s.tokens.size)
-    (h_pos : ∀ i (h : i < s.tokens.size), (s'.tokens[i]'(by omega)).pos = s.tokens[i].pos) :
+    (_h_pos : ∀ i (h : i < s.tokens.size), (s'.tokens[i]'(by omega)).pos = s.tokens[i].pos) :
     SimpleKeyStackValid s' := by
   intro j hj h_poss
   have hj_s : j < s.simpleKeyStack.size := by rw [← h_stack]; exact hj
   have h_get : s'.simpleKeyStack[j] = s.simpleKeyStack[j]'hj_s := by
     simp [h_stack]
   rw [h_get] at h_poss ⊢
-  have ⟨hb1, hb2, hp1, hp2⟩ := h_ssv j hj_s h_poss
-  refine ⟨by omega, by omega, ?_, ?_⟩
-  · intro h1; rw [h_pos _ hb1]; exact hp1 hb1
-  · intro h2; rw [h_pos _ hb2]; exact hp2 hb2
+  have hb := h_ssv j hj_s h_poss
+  omega
 
 -- AllKeysValid is monotone under the same conditions.
 theorem AllKeysValid_mono (s s' : ScannerState)
@@ -8900,7 +8854,7 @@ theorem flowStart_preserves_AllKeysValid (s s' : ScannerState)
     (h_cleared : s'.simpleKey.possible = false)
     (h_pushed : s'.simpleKeyStack = s.simpleKeyStack.push s.simpleKey)
     (h_mono : s'.tokens.size ≥ s.tokens.size)
-    (h_pref : ∀ i (hi : i < s.tokens.size), s'.tokens[i]'(by omega) = s.tokens[i]) :
+    (_h_pref : ∀ i (hi : i < s.tokens.size), s'.tokens[i]'(by omega) = s.tokens[i]) :
     AllKeysValid s' := by
   constructor
   · exact SimpleKeyValid_of_not_possible _ h_cleared
@@ -8913,25 +8867,21 @@ theorem flowStart_preserves_AllKeysValid (s s' : ScannerState)
     by_cases hlt : j < s.simpleKeyStack.size
     · -- existing stack entry
       rw [Array.getElem_push_lt hlt] at h_poss ⊢
-      have ⟨hb1, hb2, hp1, hp2⟩ := h_akv.2 j hlt h_poss
-      refine ⟨by omega, by omega, ?_, ?_⟩
-      · intro h1; rw [h_pref _ hb1]; exact hp1 hb1
-      · intro h2; rw [h_pref _ hb2]; exact hp2 hb2
+      have hb := h_akv.2 j hlt h_poss
+      omega
     · -- newly pushed entry (j = s.simpleKeyStack.size)
       have hj_eq : j = s.simpleKeyStack.size := by omega
       subst hj_eq
       rw [Array.getElem_push_eq] at h_poss ⊢
-      have ⟨hb1, hb2, hp1, hp2⟩ := h_akv.1 h_poss
-      refine ⟨by omega, by omega, ?_, ?_⟩
-      · intro h1; rw [h_pref _ hb1]; exact hp1 hb1
-      · intro h2; rw [h_pref _ hb2]; exact hp2 hb2
+      have hb := h_akv.1 h_poss
+      omega
 -- Restores current key from stack top (valid), pops stack.
 theorem flowEnd_preserves_AllKeysValid (s s' : ScannerState)
     (h_akv : AllKeysValid s)
     (h_restored : s'.simpleKey = s.simpleKeyStack.back?.getD {})
     (h_popped : s'.simpleKeyStack = s.simpleKeyStack.pop)
     (h_mono : s'.tokens.size ≥ s.tokens.size)
-    (h_pref : ∀ i (hi : i < s.tokens.size), s'.tokens[i]'(by omega) = s.tokens[i]) :
+    (_h_pref : ∀ i (hi : i < s.tokens.size), s'.tokens[i]'(by omega) = s.tokens[i]) :
     AllKeysValid s' := by
   constructor
   · -- current key: restored from stack top
@@ -8944,10 +8894,8 @@ theorem flowEnd_preserves_AllKeysValid (s s' : ScannerState)
           s.simpleKeyStack[s.simpleKeyStack.size - 1]'h_bound := by
         simp [Array.back?, h_bound]
       rw [h_get] at h_poss ⊢
-      have ⟨hb1, hb2, hp1, hp2⟩ := h_akv.2 (s.simpleKeyStack.size - 1) h_bound h_poss
-      refine ⟨by omega, by omega, ?_, ?_⟩
-      · intro h1; rw [h_pref _ hb1]; exact hp1 hb1
-      · intro h2; rw [h_pref _ hb2]; exact hp2 hb2
+      have hb := h_akv.2 (s.simpleKeyStack.size - 1) h_bound h_poss
+      omega
     · -- stack empty: back? = none, getD = {}, possible = false → contradiction
       have h_empty : s.simpleKeyStack.size = 0 := by omega
       simp [Array.back?, h_empty] at h_poss
@@ -8958,10 +8906,8 @@ theorem flowEnd_preserves_AllKeysValid (s s' : ScannerState)
     have h_get : s'.simpleKeyStack[j] = s.simpleKeyStack[j]'hj' := by
       simp [h_popped, Array.getElem_pop]
     rw [h_get] at h_poss ⊢
-    have ⟨hb1, hb2, hp1, hp2⟩ := h_akv.2 j hj' h_poss
-    refine ⟨by omega, by omega, ?_, ?_⟩
-    · intro h1; rw [h_pref _ hb1]; exact hp1 hb1
-    · intro h2; rw [h_pref _ hb2]; exact hp2 hb2
+    have hb := h_akv.2 j hj' h_poss
+    omega
 theorem dispatchFlowIndicators_preserves_AllKeysValid (s : ScannerState) (c : Char)
     (s' : ScannerState) (h : scanNextToken_dispatchFlowIndicators s c = .ok (some s'))
     (h_akv : AllKeysValid s) : AllKeysValid s' := by
@@ -9433,6 +9379,208 @@ control flow except for an extra `skipToContent` call in `scanLoopFull`'s
 completion branch (collects trailing comments).  Because `skipToContent`
 preserves both `tokens` and `flowLevel`, the success/failure of the two
 loops coincides, giving us a clean `scanFiltered.ok → scan.ok` bridge. -/
+
+/-! #### J.3.3: `scanLoopFull` token-shape mirrors of the `scanLoop` family
+
+Each lemma here mirrors its `scanLoop_*` analogue.  `scanLoopFull`'s
+recursive `.ok (some s')` arm is identical to `scanLoop`'s; the only
+divergence is in the `.ok none` completion branch, where `scanLoopFull`
+runs an extra `skipToContent` before `unwindIndents`.  Because
+`skipToContent` preserves the token array (only updating
+offset/line/col/comments), the shape arguments lift unchanged. -/
+
+/-- `scanLoopFull` increases token count by at least 1 (mirror of
+    `scanLoop_increases_tokens`). -/
+theorem scanLoopFull_increases_tokens (s : ScannerState) (fuel : Nat) (final : ScannerState) :
+    scanLoopFull s fuel = .ok final →
+    final.tokens.size ≥ s.tokens.size + 1 := by
+  intro h
+  induction fuel generalizing s with
+  | zero => unfold scanLoopFull at h; simp at h
+  | succ fuel' IH =>
+    unfold scanLoopFull at h
+    simp only [] at h
+    split at h
+    · simp at h
+    · -- .ok none: completion
+      split at h
+      · simp at h  -- flowLevel > 0
+      · split at h
+        · simp at h  -- directives without document
+        · -- normal completion
+          injection h with h_eq
+          subst h_eq
+          -- after skipToContent, tokens preserved (set s_skip via cases on the match)
+          cases h_skip : skipToContent s with
+          | ok s_skip =>
+            show ((unwindIndents s_skip (-1)).emit YamlToken.streamEnd).tokens.size
+                  ≥ s.tokens.size + 1
+            have h_skip_size : s_skip.tokens.size = s.tokens.size :=
+              skipToContent_preserves_tokens s s_skip h_skip ▸ rfl
+            have h_unwind := unwindIndents_adds_tokens s_skip (-1)
+            have h_emit := emit_tokens_size (unwindIndents s_skip (-1)) .streamEnd
+            omega
+          | error e =>
+            show ((unwindIndents s (-1)).emit YamlToken.streamEnd).tokens.size
+                  ≥ s.tokens.size + 1
+            have h_unwind := unwindIndents_adds_tokens s (-1)
+            have h_emit := emit_tokens_size (unwindIndents s (-1)) .streamEnd
+            omega
+    · rename_i s' h_snt
+      have h_ih := IH s' h
+      have h_adds := scanNextToken_adds_tokens s s' h_snt
+      omega
+
+/-- `scanLoopFull` preserves an existing token prefix (mirror of
+    `scanLoop_preserves_tokens`).  The completion branch's extra
+    `skipToContent` preserves tokens (per `skipToContent_preserves_tokens`),
+    and `unwindIndents` + `emit .streamEnd` only append. -/
+theorem scanLoopFull_preserves_tokens (s : ScannerState) (fuel : Nat) (final : ScannerState)
+    (n : Nat) (h_n : n ≤ s.tokens.size) (h_inv : SimpleKeyAbove s n)
+    (h : scanLoopFull s fuel = .ok final) :
+    ∀ (i : Nat) (h_bound : i < n),
+      ∃ (h_bound' : i < final.tokens.size), final.tokens[i] = s.tokens[i]'(by omega) := by
+  induction fuel generalizing s final with
+  | zero =>
+    intro i h_bound
+    unfold scanLoopFull at h
+    simp at h
+  | succ fuel' IH =>
+    intro i h_bound
+    unfold scanLoopFull at h
+    simp only [] at h
+    split at h
+    · simp at h
+    · -- .ok none: completion
+      split at h
+      · simp at h
+      · split at h
+        · simp at h
+        · injection h with h_eq
+          have h_i_lt_s : i < s.tokens.size := by omega
+          -- After skipToContent (or error), unwindIndents, emit streamEnd
+          cases h_skip : skipToContent s with
+          | ok s_skip =>
+            have h_skip_tok : s_skip.tokens = s.tokens :=
+              skipToContent_preserves_tokens s s_skip h_skip
+            have h_i_lt_skip : i < s_skip.tokens.size := by rw [h_skip_tok]; exact h_i_lt_s
+            have h_unwind_mono : (unwindIndents s_skip (-1)).tokens.size ≥ s_skip.tokens.size :=
+              unwindIndents_adds_tokens s_skip (-1)
+            have h_i_lt_unwind : i < (unwindIndents s_skip (-1)).tokens.size := by omega
+            have h_emit_size :
+                ((unwindIndents s_skip (-1)).emit .streamEnd).tokens.size
+                  = (unwindIndents s_skip (-1)).tokens.size + 1 :=
+              emit_tokens_size _ _
+            have h_i_lt_emit : i < ((unwindIndents s_skip (-1)).emit .streamEnd).tokens.size := by
+              rw [h_emit_size]; omega
+            rw [h_skip] at h_eq
+            simp only [] at h_eq
+            subst h_eq
+            refine ⟨h_i_lt_emit, ?_⟩
+            calc ((unwindIndents s_skip (-1)).emit .streamEnd).tokens[i]
+                = (unwindIndents s_skip (-1)).tokens[i]'h_i_lt_unwind :=
+                  emit_preserves_tokens_at _ _ i h_i_lt_unwind
+              _ = s_skip.tokens[i]'h_i_lt_skip :=
+                  unwindIndents_preserves_prefix s_skip (-1) i h_i_lt_skip
+              _ = s.tokens[i]'h_i_lt_s := by simp [h_skip_tok]
+          | error e =>
+            have h_unwind_mono : (unwindIndents s (-1)).tokens.size ≥ s.tokens.size :=
+              unwindIndents_adds_tokens s (-1)
+            have h_i_lt_unwind : i < (unwindIndents s (-1)).tokens.size := by omega
+            have h_emit_size :
+                ((unwindIndents s (-1)).emit .streamEnd).tokens.size
+                  = (unwindIndents s (-1)).tokens.size + 1 :=
+              emit_tokens_size _ _
+            have h_i_lt_emit : i < ((unwindIndents s (-1)).emit .streamEnd).tokens.size := by
+              rw [h_emit_size]; omega
+            rw [h_skip] at h_eq
+            simp only [] at h_eq
+            subst h_eq
+            refine ⟨h_i_lt_emit, ?_⟩
+            calc ((unwindIndents s (-1)).emit .streamEnd).tokens[i]
+                = (unwindIndents s (-1)).tokens[i]'h_i_lt_unwind :=
+                  emit_preserves_tokens_at _ _ i h_i_lt_unwind
+              _ = s.tokens[i]'h_i_lt_s :=
+                  unwindIndents_preserves_prefix s (-1) i h_i_lt_s
+    · -- recursive case: scanNextToken s = .ok (some s')
+      rename_i s' h_snt
+      have h_s_mono := scanNextToken_adds_tokens s s' h_snt
+      have h_n' : n ≤ s'.tokens.size := by omega
+      have h_inv' := scanNextToken_maintains_simpleKeyAbove s s' h_snt n h_n h_inv
+      have ⟨h_i_lt_final, h_eq_s'⟩ := IH s' final h_n' h_inv' h i h_bound
+      have h_prefix := scanNextToken_preserves_prefix s s' h_snt n h_n h_inv i h_bound
+      exact ⟨h_i_lt_final, h_eq_s'.trans h_prefix⟩
+
+/-- `scanLoopFull` always emits `.streamEnd` as its final operation
+    (mirror of `scanLoop_success_emits_streamEnd`). -/
+theorem scanLoopFull_success_emits_streamEnd :
+    ∀ (s : ScannerState) (fuel : Nat) (final : ScannerState),
+      scanLoopFull s fuel = .ok final →
+      ∃ (s' : ScannerState), final = s'.emit .streamEnd := by
+  intro s fuel
+  induction fuel generalizing s with
+  | zero => intro final h; unfold scanLoopFull at h; simp at h
+  | succ fuel' IH =>
+    intro final h
+    unfold scanLoopFull at h
+    simp only [] at h
+    split at h
+    · simp at h
+    · split at h
+      · simp at h
+      · split at h
+        · simp at h
+        · injection h with h_eq
+          cases h_skip : skipToContent s with
+          | ok s_skip =>
+            rw [h_skip] at h_eq
+            simp only [] at h_eq
+            exact ⟨unwindIndents s_skip (-1), h_eq.symm⟩
+          | error e =>
+            rw [h_skip] at h_eq
+            simp only [] at h_eq
+            exact ⟨unwindIndents s (-1), h_eq.symm⟩
+    · rename_i s' h_snt
+      exact IH s' final h
+
+/-- `scanLoopFull` preserves token offset ordering (mirror of `scanLoop_ordered`).
+    `ScanInv` is preserved by every step (including the extra `skipToContent`
+    in the completion branch), so the final state's tokens remain ordered. -/
+theorem scanLoopFull_ordered (s : ScannerState) (fuel : Nat) (final : ScannerState)
+    (h_inv : ScanInv s) (h_akv : AllKeysValid s) (h_ok : scanLoopFull s fuel = .ok final) :
+    ∀ i j : Fin final.tokens.size, i.val < j.val →
+      final.tokens[i].pos.offset ≤ final.tokens[j].pos.offset := by
+  induction fuel generalizing s with
+  | zero => simp [scanLoopFull] at h_ok
+  | succ fuel' ih =>
+    simp only [scanLoopFull] at h_ok
+    split at h_ok
+    · simp at h_ok
+    · split at h_ok
+      · simp at h_ok
+      · split at h_ok
+        · simp at h_ok
+        · injection h_ok with h_eq
+          cases h_skip : skipToContent s with
+          | ok s_skip =>
+            rw [h_skip] at h_eq
+            simp only [] at h_eq
+            subst h_eq
+            have h_inv_skip : ScanInv s_skip :=
+              skipToContent_preserves_ScanInv s s_skip h_inv h_skip
+            exact (emit_preserves_ScanInv _ .streamEnd
+              (unwindIndents_preserves_ScanInv s_skip (-1) h_inv_skip)).1
+          | error e =>
+            rw [h_skip] at h_eq
+            simp only [] at h_eq
+            subst h_eq
+            exact (emit_preserves_ScanInv _ .streamEnd
+              (unwindIndents_preserves_ScanInv s (-1) h_inv)).1
+    · rename_i s' h_snt
+      exact ih s'
+        (scanNextToken_preserves_ScanInv s s' h_inv h_akv.1 h_snt)
+        (scanNextToken_preserves_AllKeysValid s s' h_akv h_snt)
+        h_ok
 
 /-- Both fuel-bounded loops succeed under exactly the same conditions:
     if `scanLoopFull` succeeds, `scanLoop` succeeds too. -/

@@ -749,7 +749,7 @@ rooted at `Scanner/Linearise.lean`:
 |---|---|---|---|---|
 | J.3.1 | Linearise foundations | 3 | `Scanner/Linearise.lean` → `Proofs/Scanner/ScannerLinearise.lean` | ✓ done 2026-04-26 |
 | J.3.2 | Bridge lemmas | 0 (new infrastructure) | `Proofs/Scanner/ScannerLinearise.lean`, `Proofs/Scanner/ScannerCorrectness.lean`, `Proofs/Production/ScannerPlainScalarValid.lean` | ✓ done 2026-04-26 |
-| J.3.3 | ScannerCorrectness consumers | 2 | `Proofs/Scanner/ScannerCorrectness.lean` | pending |
+| J.3.3 | ScannerCorrectness consumers | 1/2 | `Proofs/Scanner/ScannerCorrectness.lean`, `Proofs/Scanner/ScannerLinearise.lean` | partial 2026-04-26 |
 | J.3.4 | ScannerPlainScalarValid consumers | 4 | `Proofs/Production/ScannerPlainScalarValid.lean` | pending |
 | J.3.5 | Production+EndToEnd bridges | 2 | `Proofs/Production/DocumentProduction.lean`, `Proofs/EndToEndCorrectness.lean` | pending |
 | J.3.6 | EmitterScannability Cat C | 6 | `Proofs/Output/EmitterScannability.lean` (Cat C only; 7 Tier 2 deferred to J.4) | pending |
@@ -811,7 +811,51 @@ count unchanged at 21.
   `linearise_go_extends`, `linearise_go_eq_acc_append`,
   `linearise_go_getElem_lt_acc`.
 
-**J.3.3–J.3.6**: re-discharge consumers in dependency order, each
+**J.3.3 — ScannerCorrectness consumers** [partial 2026-04-26, 1/2]:
+
+* **`saveSimpleKey_preserves_SimpleKeyValid`** [✓ discharged 2026-04-26]:
+  obstructed because, post-cutover, `saveSimpleKey` records
+  `simpleKey.tokenIndex := s.tokens.size` (limbo state) rather than
+  pushing two placeholder slots — the legacy 4-conjunct
+  `SimpleKeyValid` invariant is therefore false at the `saveSimpleKey`
+  return.  Resolved per the manifest's first option: re-stated
+  `SimpleKeyValid` and `SimpleKeyStackValid` as **bound-only**
+  invariants (`simpleKey.possible = true → tokenIndex ≤ tokens.size`),
+  dropping the position-equality conjuncts.  The position equalities
+  were no longer load-bearing post-cutover — every consumer
+  (`scanValuePrepare_preserves_ScanInv`, `scanValue_preserves_ScanInv`,
+  `dispatchBlockIndicators_preserves_ScanInv`,
+  `scanValue_preserves_all_pos`) had its `h_sk`/`h_skv` argument
+  silenced under the J.2-cutover comment.  The `SimpleKeyValid_mono`,
+  `SimpleKeyStackValid_mono(_pos)`, `flowStart_preserves_AllKeysValid`,
+  `flowEnd_preserves_AllKeysValid` proofs simplify to one-line
+  `omega` discharges.  `h_pref` / `h_skv` arguments retained on the
+  signatures (renamed to `_h_*`) for J.4 cleanup.
+* **`scanFiltered_produces_valid_tokens`** [pending — substantial
+  infrastructure required]:
+  Discharging this requires four classes of lemma:
+  (a) `scanLoopFull_*` mirrors of `scanLoop_*` (envelope/ordering
+  facts about `final.tokens`); (b) linearise preservation of each
+  `ValidTokenStream` field; (c) well-indexedness invariants on
+  `final.pendingKeys` (`1 ≤ insertBeforeIdx ≤ tokens.size`); (d)
+  position-fit invariants for spliced tokens.  J.3.3 added (a) in full
+  and started (b):
+  - `scanLoopFull_increases_tokens`, `scanLoopFull_preserves_tokens`,
+    `scanLoopFull_success_emits_streamEnd`, `scanLoopFull_ordered` —
+    each mirrors the corresponding `scanLoop_*` lemma, with the
+    completion-branch's extra `skipToContent` discharged via
+    `skipToContent_preserves_tokens` / `skipToContent_preserves_ScanInv`.
+  - `linearise_size_ge_tokens`, `linearise_first_eq_tokens_first`
+    (in `Proofs/Scanner/ScannerLinearise.lean`).
+  Remaining work: `linearise_last_eq_tokens_last`,
+  `linearise_positions_ordered`, the pendingKeys well-indexedness
+  invariant proven through `scanNextToken`, and the composition.
+  Approximately 250–300 LOC.  Folds naturally into J.3.4 since the
+  same pendingKeys invariants and position-fit lemmas are needed by
+  the `ScannerPlainScalarValid` consumers (which already import
+  `ScannerLinearise`).
+
+**J.3.4–J.3.6**: re-discharge consumers in dependency order, each
 substep removing its sorry-using declarations and the matching
 `-- J.3 manifest 5.d:` markers.
 
