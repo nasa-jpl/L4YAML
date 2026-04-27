@@ -748,7 +748,7 @@ rooted at `Scanner/Linearise.lean`:
 | Substep | Scope | Sorries cleared | Files touched | Status |
 |---|---|---|---|---|
 | J.3.1 | Linearise foundations | 3 | `Scanner/Linearise.lean` → `Proofs/Scanner/ScannerLinearise.lean` | ✓ done 2026-04-26 |
-| J.3.2 | Bridge lemmas | 0 (new infrastructure) | `Proofs/Scanner/ScannerLinearise.lean`, new helpers | pending |
+| J.3.2 | Bridge lemmas | 0 (new infrastructure) | `Proofs/Scanner/ScannerLinearise.lean`, `Proofs/Scanner/ScannerCorrectness.lean`, `Proofs/Production/ScannerPlainScalarValid.lean` | ✓ done 2026-04-26 |
 | J.3.3 | ScannerCorrectness consumers | 2 | `Proofs/Scanner/ScannerCorrectness.lean` | pending |
 | J.3.4 | ScannerPlainScalarValid consumers | 4 | `Proofs/Production/ScannerPlainScalarValid.lean` | pending |
 | J.3.5 | Production+EndToEnd bridges | 2 | `Proofs/Production/DocumentProduction.lean`, `Proofs/EndToEndCorrectness.lean` | pending |
@@ -783,10 +783,33 @@ public, proofs separated from source"):
   theorems).  Namespace: `L4YAML.Proofs.ScannerLinearise`.  All
   declarations public — no `private` modifiers.
 
-**J.3.2 — Bridge lemmas**: introduce
+**J.3.2 — Bridge lemmas** [✓ completed 2026-04-26]: introduced
 `scanFiltered_ok_implies_scan_ok`, `linearise_preserves_FlowContextPSV`,
-`linearise_preserves_FlowBracketsMatched`.  Pure infrastructure;
-must not introduce new sorries.
+`linearise_preserves_FlowBracketsMatched`.  Pure infrastructure; sorry
+count unchanged at 21.
+
+* **`scanFiltered_ok_implies_scan_ok`** in
+  `Proofs/Scanner/ScannerCorrectness.lean` — `scanFiltered.ok →
+  ∃ tokens, scan.ok`.  Routes through a new helper
+  `scanLoopFull_ok_implies_scanLoop_ok`; the two loops share control
+  flow and differ only in `scanLoopFull`'s extra trailing
+  `skipToContent` (which preserves tokens/flowLevel and so doesn't
+  affect success).
+* **`linearise_preserves_FlowBracketsMatched`** in
+  `Proofs/Production/ScannerPlainScalarValid.lean` — direct corollary
+  of new `linearise_flowNesting_eq` (total flow nesting unchanged
+  under linearise, since spliced `.key` / `.blockMappingStart` are
+  flow-neutral).
+* **`linearise_preserves_FlowContextPSV`** in same file — strong
+  induction on `linearise.go` maintaining (i) `FCPSV(acc)`, (ii)
+  `flowNesting acc acc.size = flowNesting tokens k`.  Splice branch
+  uses `FlowContextPSV_of_prefix_and_new` (spliced tokens are
+  flow-neutral non-scalars); push branch dispatches the new element's
+  FCPSV obligation to `h_global` at index `k` via depth matching.
+* **Helpers added** to `Proofs/Scanner/ScannerLinearise.lean`:
+  `expandKind_val_neutral`, `linearise_go_size_mono`,
+  `linearise_go_extends`, `linearise_go_eq_acc_append`,
+  `linearise_go_getElem_lt_acc`.
 
 **J.3.3–J.3.6**: re-discharge consumers in dependency order, each
 substep removing its sorry-using declarations and the matching

@@ -5,7 +5,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 import L4YAML.Scanner.Linearise
 
 /-!
-# Linearisation correctness (Initiative 3 / Phase J.3.1)
+# Linearisation correctness (Initiative 3 / Phase J.3.1 + J.3.2)
 
 Proofs for the three foundational properties of `linearise` declared
 in `L4YAML/Scanner/Linearise.lean`:
@@ -16,6 +16,17 @@ in `L4YAML/Scanner/Linearise.lean`:
 * `linearise_append_token` — append-monotonicity (the headline Path C
   property): pushing a real token to `tokens` only extends the
   linearised output rightward.
+
+J.3.2 also adds these flow-aware bridge helpers (the `Preserves` suite),
+consumed by `Proofs/Production/ScannerPlainScalarValid.lean`:
+
+* `expandKind_val_neutral` — spliced `expandKind` tokens are never flow
+  brackets and never plain scalars.
+* `linearise_go_prefix` — `linearise.go` extends its accumulator (size
+  monotone, prefix-equal).
+* `linearise_go_get_at_acc_size` / `linearise_go_get_in_expand` —
+  characterise the values of `linearise.go`'s output at the boundary
+  positions used by the bridge proofs.
 
 Auxiliary helpers (`pendingExpandSumFrom`, `linearise.go_size`,
 `linearise_go_done`, `linearise_go_step_token`,
@@ -444,5 +455,126 @@ theorem linearise_append_token
           (tokens.size - (k + 1)) + (pendingKeys.size - pendingKeys.size) = n := by omega
       exact ih (k + 1) pendingKeys.size (acc.push tokens[k]) h_meas
               (by omega) (Nat.le_refl _)
+
+/-! ## J.3.2 bridge helpers: spliced-token shape and prefix-stability
+
+These helpers expose the structure of `linearise.go`'s output at the
+indices that the flow-aware preservation proofs need to inspect.  They
+are purely about `linearise.go` (no `flowNesting`); the consumers in
+`Proofs/Production/ScannerPlainScalarValid.lean` combine them with the
+existing `flowNesting_*` helpers to derive
+`linearise_preserves_FlowContextPSV` and
+`linearise_preserves_FlowBracketsMatched`. -/
+
+/-- The token values produced by `expandKind` are always `.key` or
+    `.blockMappingStart` — never flow brackets, never plain scalars. -/
+theorem expandKind_val_neutral (e : PendingKeyEntry)
+    (i : Nat) (h : i < (expandKind e).size) :
+    (expandKind e)[i].val = .key ∨ (expandKind e)[i].val = .blockMappingStart := by
+  unfold expandKind at *
+  match _hk : e.kind, h with
+  | .keyOnly, h =>
+    simp at h
+    have hi : i = 0 := by omega
+    subst hi
+    simp
+  | .blockMappingStartAndKey, h =>
+    simp at h
+    have hi : i = 0 ∨ i = 1 := by omega
+    rcases hi with rfl | rfl
+    · simp
+    · simp
+
+/-- `linearise.go` is size-monotone: output size ≥ accumulator size. -/
+theorem linearise_go_size_mono
+    (tokens : Array (Positioned YamlToken))
+    (pks : Array PendingKeyEntry) :
+    ∀ (n k p : Nat) (acc : Array (Positioned YamlToken)),
+      (tokens.size - k) + (pks.size - p) = n →
+      acc.size ≤ (linearise.go tokens pks k p acc).size := by
+  intro n k p acc h_meas
+  rw [linearise_go_size tokens pks n k p acc h_meas]
+  omega
+
+/-- `linearise.go` extends its accumulator: the output equals
+    `acc ++ tail` for some tail.  This is the cleanest prefix-stability
+    statement, avoiding dependent-type issues with `[i]'h_size` proofs. -/
+theorem linearise_go_extends
+    (tokens : Array (Positioned YamlToken))
+    (pks : Array PendingKeyEntry) :
+    ∀ (n k p : Nat) (acc : Array (Positioned YamlToken)),
+      (tokens.size - k) + (pks.size - p) = n →
+      ∃ tail, linearise.go tokens pks k p acc = acc ++ tail := by
+  intro n
+  induction n with
+  | zero =>
+    intro k p acc h_meas
+    have h_p : pks.size ≤ p := by omega
+    have h_k : tokens.size ≤ k := by omega
+    refine ⟨#[], ?_⟩
+    rw [linearise_go_done tokens pks k p acc h_k h_p, Array.append_empty]
+  | succ n ih =>
+    intro k p acc h_meas
+    rw [linearise.go]
+    by_cases hp : p < pks.size
+    · simp only [hp, ↓reduceDIte]
+      by_cases hsplice : pks[p].insertBeforeIdx ≤ k
+      · simp only [hsplice, ↓reduceIte]
+        have h_meas' : (tokens.size - k) + (pks.size - (p + 1)) = n := by omega
+        obtain ⟨tail', h_tail'⟩ :=
+          ih k (p + 1) (acc ++ expandKind pks[p]) h_meas'
+        refine ⟨expandKind pks[p] ++ tail', ?_⟩
+        rw [h_tail', Array.append_assoc]
+      · simp only [hsplice, ↓reduceIte]
+        by_cases hk : k < tokens.size
+        · simp only [hk, ↓reduceDIte]
+          have h_meas' : (tokens.size - (k + 1)) + (pks.size - p) = n := by omega
+          obtain ⟨tail', h_tail'⟩ :=
+            ih (k + 1) p (acc.push tokens[k]) h_meas'
+          refine ⟨#[tokens[k]] ++ tail', ?_⟩
+          rw [h_tail']
+          show (acc ++ #[tokens[k]]) ++ tail' = acc ++ (#[tokens[k]] ++ tail')
+          rw [Array.append_assoc]
+        · simp only [hk, ↓reduceDIte]
+          have h_meas' : (tokens.size - k) + (pks.size - (p + 1)) = n := by omega
+          obtain ⟨tail', h_tail'⟩ :=
+            ih k (p + 1) (acc ++ expandKind pks[p]) h_meas'
+          refine ⟨expandKind pks[p] ++ tail', ?_⟩
+          rw [h_tail', Array.append_assoc]
+    · simp only [hp, ↓reduceDIte]
+      by_cases hk : k < tokens.size
+      · simp only [hk, ↓reduceDIte]
+        have h_meas' : (tokens.size - (k + 1)) + (pks.size - p) = n := by omega
+        obtain ⟨tail', h_tail'⟩ :=
+          ih (k + 1) p (acc.push tokens[k]) h_meas'
+        refine ⟨#[tokens[k]] ++ tail', ?_⟩
+        rw [h_tail']
+        show (acc ++ #[tokens[k]]) ++ tail' = acc ++ (#[tokens[k]] ++ tail')
+        rw [Array.append_assoc]
+      · exfalso; omega
+
+/-- Top-level `linearise.go` extension: the output equals the
+    accumulator concatenated with some tail. -/
+theorem linearise_go_eq_acc_append
+    (tokens : Array (Positioned YamlToken))
+    (pks : Array PendingKeyEntry)
+    (k p : Nat) (acc : Array (Positioned YamlToken)) :
+    ∃ tail, linearise.go tokens pks k p acc = acc ++ tail :=
+  linearise_go_extends tokens pks _ k p acc rfl
+
+/-- Element-level prefix-stability: `(linearise.go tokens pks k p acc)[i] = acc[i]`
+    for `i < acc.size`.  Derived from `linearise_go_eq_acc_append`. -/
+theorem linearise_go_getElem_lt_acc
+    (tokens : Array (Positioned YamlToken))
+    (pks : Array PendingKeyEntry)
+    (k p : Nat) (acc : Array (Positioned YamlToken))
+    (i : Nat) (hi : i < acc.size)
+    (h_size : i < (linearise.go tokens pks k p acc).size) :
+    (linearise.go tokens pks k p acc)[i]'h_size = acc[i] := by
+  obtain ⟨tail, h_eq⟩ := linearise_go_eq_acc_append tokens pks k p acc
+  have h_size' : i < (acc ++ tail).size := h_eq ▸ h_size
+  have : (linearise.go tokens pks k p acc)[i]'h_size = (acc ++ tail)[i]'h_size' := by
+    congr 1
+  rw [this, Array.getElem_append_left hi]
 
 end L4YAML.Proofs.ScannerLinearise

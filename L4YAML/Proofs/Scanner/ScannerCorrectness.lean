@@ -9425,6 +9425,78 @@ invariants (size, envelope, ordering).  This bridges the scanner's internal
 representation to the token stream consumed by `TokenParser`.
 -/
 
+/-! #### J.3.2 Bridge: `scanFiltered` ↔ `scan`
+
+Post-cutover `scanFiltered` routes through `scanLoopFull` (returns full
+state) rather than `scanLoop` (returns tokens).  The two share their
+control flow except for an extra `skipToContent` call in `scanLoopFull`'s
+completion branch (collects trailing comments).  Because `skipToContent`
+preserves both `tokens` and `flowLevel`, the success/failure of the two
+loops coincides, giving us a clean `scanFiltered.ok → scan.ok` bridge. -/
+
+/-- Both fuel-bounded loops succeed under exactly the same conditions:
+    if `scanLoopFull` succeeds, `scanLoop` succeeds too. -/
+theorem scanLoopFull_ok_implies_scanLoop_ok :
+    ∀ (s : ScannerState) (fuel : Nat) (final : ScannerState),
+      scanLoopFull s fuel = .ok final →
+      ∃ tokens, scanLoop s fuel = .ok tokens := by
+  intro s fuel
+  induction fuel generalizing s with
+  | zero =>
+    intro final h
+    simp [scanLoopFull] at h
+  | succ fuel' ih =>
+    intro final h
+    unfold scanLoopFull at h
+    simp only [] at h
+    cases h_snt : scanNextToken s with
+    | error e => rw [h_snt] at h; simp at h
+    | ok val =>
+      cases val with
+      | none =>
+        rw [h_snt] at h; simp only [] at h
+        by_cases hflow : s.flowLevel > 0
+        · simp only [hflow, ↓reduceIte] at h; simp at h
+        · simp only [hflow, ↓reduceIte] at h
+          by_cases hdir : s.directivesPresent && !s.documentEverStarted
+          · simp only [hdir, ↓reduceIte] at h; simp at h
+          · simp only [hdir] at h
+            -- Both branches in scanLoop also reach the .ok arm.
+            unfold scanLoop
+            simp only [h_snt, hflow, ↓reduceIte, hdir, ↓reduceIte]
+            exact ⟨_, rfl⟩
+      | some s' =>
+        rw [h_snt] at h; simp only [] at h
+        obtain ⟨tokens', h_rec⟩ := ih s' final h
+        refine ⟨tokens', ?_⟩
+        unfold scanLoop
+        simp only [h_snt]
+        exact h_rec
+
+/-- **J.3.2 bridge**: `scanFiltered` succeeded ⟹ `scan` succeeded.
+
+    The two share the BOM-handling prefix; their tails differ only in
+    that `scanFiltered` calls `scanLoopFull` (returning the full state
+    so `linearise` has access to `pendingKeys`) and post-processes via
+    `linearise`.  Used by parser-strictness and parse→token-stream
+    bridge proofs to relate `scanFiltered.ok` (the actual API the
+    parser uses) back to `scan.ok` (the surface used by the legacy
+    correctness corpus). -/
+theorem scanFiltered_ok_implies_scan_ok (input : String)
+    (ftokens : Array (Positioned YamlToken))
+    (h : scanFiltered input = .ok ftokens) :
+    ∃ tokens, scan input = .ok tokens := by
+  unfold scanFiltered at h
+  simp only [] at h
+  split at h
+  · -- scanLoopFull s _ = .ok final
+    rename_i final h_full
+    obtain ⟨tokens, h_loop⟩ := scanLoopFull_ok_implies_scanLoop_ok _ _ final h_full
+    refine ⟨tokens, ?_⟩
+    unfold scan
+    exact h_loop
+  · simp at h
+
 /-- `scanFiltered` produces a `ValidTokenStream`.
 
 **Initiative 3 / J.2 step 5 cutover**: pre-cutover this was proven via

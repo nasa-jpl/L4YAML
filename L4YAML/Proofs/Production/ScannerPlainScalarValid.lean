@@ -6,6 +6,7 @@ import L4YAML.Spec.Grammar
 import L4YAML.Proofs.Scanner.ScannerPlainScalar
 import L4YAML.Proofs.Scanner.ScannerCorrectness
 import L4YAML.Proofs.Scanner.ScannerFlowCollection
+import L4YAML.Proofs.Scanner.ScannerLinearise
 
 /-!
 # Plain Scalar Validity for the Full Scan Chain (B3.5)
@@ -40,6 +41,10 @@ Sorries in this file fall into two categories:
 -/
 
 namespace L4YAML.Proofs.ScannerPlainScalarValid
+
+open L4YAML.Proofs.ScannerLinearise (linearise_go_size linearise_go_size_mono
+  linearise_go_done linearise_go_step_token linearise_go_eq_acc_append
+  linearise_go_getElem_lt_acc expandKind_val_neutral)
 
 open L4YAML
 open L4YAML.Scanner
@@ -5293,6 +5298,437 @@ theorem filter_preserves_FlowContextPSV
   rw [h_nest_eq] at h_flow
   have h_j := h_fpsv j hj_arr h_flow
   exact val_eq_arr ▸ h_j
+
+/-! ### J.3.2 bridge: `linearise` preserves `FlowContextPSV`
+
+`linearise` splices `expandKind` outputs (`.key` / `.blockMappingStart`)
+into the token stream.  Both spliced kinds are flow-neutral (not
+`.flowSequenceStart`/`.flowMappingStart`/`.flowSequenceEnd`/
+`.flowMappingEnd`) and never plain scalars.  Hence the splices preserve
+`flowNesting` at every position and never violate FCPSV at their own
+positions; original tokens map to positions of equal `flowNesting`,
+inheriting their FCPSV from the input. -/
+
+/-- Tokens from `expandKind` are never flow brackets.  Bridges
+    `expandKind_val_neutral` (which classifies them as `.key` /
+    `.blockMappingStart`) to the four `≠ flow*` predicates demanded by
+    `flowNesting_go_non_flow`. -/
+theorem expandKind_not_flow (e : Scanner.PendingKeyEntry)
+    (j : Nat) (hj : j < (Scanner.expandKind e).size) :
+    (Scanner.expandKind e)[j].val ≠ .flowSequenceStart ∧
+    (Scanner.expandKind e)[j].val ≠ .flowMappingStart ∧
+    (Scanner.expandKind e)[j].val ≠ .flowSequenceEnd ∧
+    (Scanner.expandKind e)[j].val ≠ .flowMappingEnd := by
+  rcases expandKind_val_neutral e j hj with hk | hk
+  · refine ⟨?_, ?_, ?_, ?_⟩ <;> rw [hk] <;> decide
+  · refine ⟨?_, ?_, ?_, ?_⟩ <;> rw [hk] <;> decide
+
+/-- Tokens from `expandKind` are never plain scalars.  Used to dispatch
+    the FCPSV match arm trivially at spliced positions. -/
+theorem expandKind_not_plain_scalar (e : Scanner.PendingKeyEntry)
+    (j : Nat) (hj : j < (Scanner.expandKind e).size) :
+    match ((Scanner.expandKind e)[j]).val with
+    | .scalar _ .plain => False
+    | _ => True := by
+  rcases expandKind_val_neutral e j hj with hk | hk
+  · rw [hk]; trivial
+  · rw [hk]; trivial
+
+/-- Branch helper for `linearise_go_flowNesting_segment_eq`: handles the
+    splice branch (`expandKind pks[p]` is appended to the accumulator).
+    The spliced `expandKind` content is flow-neutral, so the inner
+    flow-walk over the splice preserves depth, and the IH closes the
+    remaining suffix walk. -/
+theorem lin_flowNesting_splice
+    (n : Nat)
+    (tokens : Array (Positioned YamlToken))
+    (pks : Array Scanner.PendingKeyEntry)
+    (ih : ∀ (k p : Nat) (acc : Array (Positioned YamlToken)),
+      tokens.size - k + (pks.size - p) = n →
+        ∀ (depth : Nat),
+          flowNesting.go (Scanner.linearise.go tokens pks k p acc) acc.size
+                        (Scanner.linearise.go tokens pks k p acc).size depth =
+            flowNesting.go tokens k tokens.size depth)
+    (k p : Nat) (acc : Array (Positioned YamlToken))
+    (h_meas : tokens.size - k + (pks.size - p) = n + 1)
+    (hp : p < pks.size) (depth : Nat) :
+    flowNesting.go
+        (Scanner.linearise.go tokens pks k (p + 1) (acc ++ Scanner.expandKind pks[p])) acc.size
+        (Scanner.linearise.go tokens pks k (p + 1) (acc ++ Scanner.expandKind pks[p])).size depth =
+      flowNesting.go tokens k tokens.size depth := by
+  have h_meas' : (tokens.size - k) + (pks.size - (p + 1)) = n := by omega
+  have h_acc'_size :
+      (acc ++ Scanner.expandKind pks[p]).size =
+        acc.size + (Scanner.expandKind pks[p]).size := by
+    simp [Array.size_append]
+  obtain ⟨tail', h_tail'⟩ :=
+    linearise_go_eq_acc_append tokens pks k (p + 1) (acc ++ Scanner.expandKind pks[p])
+  have h_acc'_le_res :
+      (acc ++ Scanner.expandKind pks[p]).size ≤
+        (Scanner.linearise.go tokens pks k (p + 1) (acc ++ Scanner.expandKind pks[p])).size := by
+    rw [h_tail']; simp [Array.size_append]
+  rw [flowNesting_go_split _ acc.size (acc ++ Scanner.expandKind pks[p]).size _ depth
+        (by rw [h_acc'_size]; omega) h_acc'_le_res]
+  have h_inner :
+      flowNesting.go (Scanner.linearise.go tokens pks k (p + 1) (acc ++ Scanner.expandKind pks[p]))
+                    acc.size (acc ++ Scanner.expandKind pks[p]).size depth = depth := by
+    apply flowNesting_go_non_flow
+    intro j h_ge h_lt h_j
+    have h_eq_at_j :
+        (Scanner.linearise.go tokens pks k (p + 1) (acc ++ Scanner.expandKind pks[p]))[j]'h_j =
+        (acc ++ Scanner.expandKind pks[p])[j]'(by rw [h_acc'_size] at h_lt; rw [h_acc'_size]; omega) :=
+      linearise_go_getElem_lt_acc tokens pks k (p + 1) (acc ++ Scanner.expandKind pks[p]) j
+        (by rw [h_acc'_size] at h_lt; rw [h_acc'_size]; omega) h_j
+    rw [h_eq_at_j]
+    have h_jma : j - acc.size < (Scanner.expandKind pks[p]).size := by
+      rw [h_acc'_size] at h_lt
+      omega
+    rw [Array.getElem_append_right h_ge]
+    exact expandKind_not_flow pks[p] (j - acc.size) h_jma
+  rw [h_inner]
+  exact ih k (p + 1) (acc ++ Scanner.expandKind pks[p]) h_meas' depth
+
+/-- Branch helper for `linearise_go_flowNesting_segment_eq`: handles the
+    push branch (`acc.push tokens[k]` extends the accumulator by one
+    original token).  The single-step flow walk on `result[acc.size]
+    = tokens[k]` matches the one-step walk on the original `tokens` at
+    index `k`, then the IH lines up the suffix walks. -/
+theorem lin_flowNesting_push
+    (n : Nat)
+    (tokens : Array (Positioned YamlToken))
+    (pks : Array Scanner.PendingKeyEntry)
+    (ih : ∀ (k p : Nat) (acc : Array (Positioned YamlToken)),
+      tokens.size - k + (pks.size - p) = n →
+        ∀ (depth : Nat),
+          flowNesting.go (Scanner.linearise.go tokens pks k p acc) acc.size
+                        (Scanner.linearise.go tokens pks k p acc).size depth =
+            flowNesting.go tokens k tokens.size depth)
+    (k p : Nat) (acc : Array (Positioned YamlToken))
+    (h_meas : tokens.size - k + (pks.size - p) = n + 1)
+    (hk : k < tokens.size) (depth : Nat) :
+    flowNesting.go
+        (Scanner.linearise.go tokens pks (k + 1) p (acc.push tokens[k])) acc.size
+        (Scanner.linearise.go tokens pks (k + 1) p (acc.push tokens[k])).size depth =
+      flowNesting.go tokens k tokens.size depth := by
+  have h_meas' : (tokens.size - (k + 1)) + (pks.size - p) = n := by omega
+  have h_acc''_size : (acc.push tokens[k]).size = acc.size + 1 := by
+    simp [Array.size_push]
+  obtain ⟨tail'', h_tail''⟩ :=
+    linearise_go_eq_acc_append tokens pks (k + 1) p (acc.push tokens[k])
+  have h_acc''_le_res :
+      (acc.push tokens[k]).size ≤
+        (Scanner.linearise.go tokens pks (k + 1) p (acc.push tokens[k])).size := by
+    rw [h_tail'']; simp [Array.size_append]
+  have h_acc_lt_res :
+      acc.size < (Scanner.linearise.go tokens pks (k + 1) p (acc.push tokens[k])).size := by
+    omega
+  rw [flowNesting_go_split _ acc.size (acc.push tokens[k]).size _ depth
+        (by rw [h_acc''_size]; omega) h_acc''_le_res]
+  rw [flowNesting_go_step _ acc.size (acc.push tokens[k]).size depth h_acc_lt_res
+        (by rw [h_acc''_size]; omega)]
+  have h_tok_eq :
+      (Scanner.linearise.go tokens pks (k + 1) p (acc.push tokens[k]))[acc.size]'h_acc_lt_res =
+      tokens[k] := by
+    rw [linearise_go_getElem_lt_acc tokens pks (k + 1) p (acc.push tokens[k])
+          acc.size (by rw [h_acc''_size]; omega) h_acc_lt_res]
+    simp [Array.getElem_push_eq]
+  rw [h_tok_eq]
+  have h_eq_one : acc.size + 1 = (acc.push tokens[k]).size := by
+    rw [h_acc''_size]
+  rw [h_eq_one]
+  -- inner walk: pos = target = acc''.size, returns depth'
+  rw [flowNesting_go_ge_target _ _ _ _ (Nat.le_refl _)]
+  rw [ih (k + 1) p (acc.push tokens[k]) h_meas']
+  rw [flowNesting_go_step tokens k tokens.size depth hk (by omega)]
+
+/-- **Strong helper**: walking `flowNesting.go` through `linearise.go`'s
+    suffix (positions `≥ acc.size`) yields the same depth as walking
+    through `tokens[k..]`.  Spliced `expandKind` tokens are flow-neutral,
+    so they don't shift the running depth.
+
+    Proof by strong induction on the lex measure
+    `(tokens.size - k) + (pks.size - p)`.  Each branch of `linearise.go`
+    either (i) extends the accumulator by `expandKind` (treated via
+    flow-neutral walk on a non-flow segment) or (ii) extends by a single
+    original token (one-step walk matches one-step on `tokens[k]`). -/
+theorem linearise_go_flowNesting_segment_eq
+    (tokens : Array (Positioned YamlToken))
+    (pks : Array Scanner.PendingKeyEntry) :
+    ∀ (n k p : Nat) (acc : Array (Positioned YamlToken)),
+      (tokens.size - k) + (pks.size - p) = n →
+      ∀ (depth : Nat),
+        flowNesting.go (Scanner.linearise.go tokens pks k p acc) acc.size
+                      (Scanner.linearise.go tokens pks k p acc).size depth
+        = flowNesting.go tokens k tokens.size depth := by
+  intro n
+  induction n with
+  | zero =>
+    intro k p acc h_meas depth
+    have h_p : pks.size ≤ p := by omega
+    have h_k : tokens.size ≤ k := by omega
+    rw [linearise_go_done tokens pks k p acc h_k h_p]
+    rw [flowNesting_go_oob _ _ _ _ (Nat.le_refl _)]
+    rw [flowNesting_go_oob _ _ _ _ h_k]
+  | succ n ih =>
+    intro k p acc h_meas depth
+    rw [Scanner.linearise.go]
+    by_cases hp : p < pks.size
+    · simp only [hp, ↓reduceDIte]
+      by_cases hsplice : pks[p].insertBeforeIdx ≤ k
+      · simp only [hsplice, ↓reduceIte]
+        exact lin_flowNesting_splice n tokens pks ih k p acc h_meas hp depth
+      · simp only [hsplice, ↓reduceIte]
+        by_cases hk : k < tokens.size
+        · simp only [hk, ↓reduceDIte]
+          exact lin_flowNesting_push n tokens pks ih k p acc h_meas hk depth
+        · simp only [hk, ↓reduceDIte]
+          exact lin_flowNesting_splice n tokens pks ih k p acc h_meas hp depth
+    · simp only [hp, ↓reduceDIte]
+      by_cases hk : k < tokens.size
+      · simp only [hk, ↓reduceDIte]
+        exact lin_flowNesting_push n tokens pks ih k p acc h_meas hk depth
+      · exfalso; omega
+
+/-- **J.3.2 bridge corollary**: `linearise`'s output has the same total
+    flow-nesting as the original tokens.  Specialisation of
+    `linearise_go_flowNesting_segment_eq` at `acc = #[]`, `k = 0`,
+    `p = 0`, `depth = 0`. -/
+theorem linearise_flowNesting_eq
+    (tokens : Array (Positioned YamlToken))
+    (pks : Array Scanner.PendingKeyEntry) :
+    flowNesting (Scanner.linearise tokens pks) (Scanner.linearise tokens pks).size
+    = flowNesting tokens tokens.size := by
+  unfold Scanner.linearise flowNesting
+  have h := linearise_go_flowNesting_segment_eq tokens pks _ 0 0 #[] rfl 0
+  simpa using h
+
+/-- **J.3.2 bridge**: `linearise` preserves `FlowBracketsMatched`.
+
+    Direct corollary of `linearise_flowNesting_eq`: if the original
+    `tokens` array has `flowNesting tokens tokens.size = 0`, so does
+    the linearised output.  The spliced `expandKind` content is all
+    `.key` / `.blockMappingStart`, which contribute zero to the running
+    flow depth. -/
+theorem linearise_preserves_FlowBracketsMatched
+    (tokens : Array (Positioned YamlToken))
+    (pks : Array Scanner.PendingKeyEntry)
+    (h : FlowBracketsMatched tokens) :
+    FlowBracketsMatched (Scanner.linearise tokens pks) := by
+  unfold FlowBracketsMatched at *
+  rw [linearise_flowNesting_eq]
+  exact h
+
+/-! ### J.3.2 bridge: `linearise` preserves `FlowContextPSV`
+
+The proof maintains three invariants through `linearise.go`'s recursion:
+* `FlowContextPSV acc` (the accumulator already satisfies FCPSV);
+* `flowNesting acc acc.size = flowNesting tokens k` (depth at the
+  accumulator's tail matches depth at the consumed-tokens tail);
+* `k ≤ tokens.size` (consumed-tokens index doesn't outrun the array).
+
+At the splice branch, `expandKind pks[p]` is all flow-neutral
+non-scalars: `FCPSV(acc ++ expandKind)` falls out of
+`FlowContextPSV_of_prefix_and_new`, and the depth invariant is
+preserved (no flow brackets in the splice).  At the push branch, the
+new element is `tokens[k]`; if its position has positive flow depth
+and it's a plain scalar, the global `FCPSV(tokens)` discharges the
+ScalarScannable obligation, and depth advances by `flowNesting_push`
+on both sides. -/
+
+/-- One-step incremental update for `flowNesting` at successor index. -/
+theorem flowNesting_succ
+    (tokens : Array (Positioned YamlToken))
+    (k : Nat) (h : k < tokens.size) :
+    flowNesting tokens (k + 1) =
+      (match (tokens[k]'h).val with
+       | .flowSequenceStart | .flowMappingStart => flowNesting tokens k + 1
+       | .flowSequenceEnd | .flowMappingEnd =>
+           if flowNesting tokens k > 0 then flowNesting tokens k - 1 else 0
+       | _ => flowNesting tokens k) := by
+  unfold flowNesting
+  rw [flowNesting_go_split tokens 0 k (k + 1) 0 (by omega) (by omega)]
+  rw [flowNesting_go_step tokens k (k + 1) _ h (by omega)]
+  rw [flowNesting_go_ge_target tokens (k + 1) (k + 1) _ (Nat.le_refl _)]
+
+/-- Pushing a flow-neutral suffix preserves total `flowNesting`. -/
+theorem flowNesting_append_neutral_eq
+    (xs ys : Array (Positioned YamlToken))
+    (h_neutral : ∀ j (hj : j < ys.size),
+      (ys[j]'hj).val ≠ .flowSequenceStart ∧
+      (ys[j]'hj).val ≠ .flowMappingStart ∧
+      (ys[j]'hj).val ≠ .flowSequenceEnd ∧
+      (ys[j]'hj).val ≠ .flowMappingEnd) :
+    flowNesting (xs ++ ys) (xs ++ ys).size = flowNesting xs xs.size := by
+  unfold flowNesting
+  have h_size_eq : (xs ++ ys).size = xs.size + ys.size := by simp [Array.size_append]
+  rw [h_size_eq]
+  rw [flowNesting_go_split (xs ++ ys) 0 xs.size (xs.size + ys.size) 0 (by omega) (by omega)]
+  rw [flowNesting_go_prefix_stable xs (xs ++ ys) (by simp [Array.size_append])
+        (by intro j hj; simp [Array.getElem_append_left hj]) 0 xs.size 0 (Nat.le_refl _)]
+  apply flowNesting_go_non_flow
+  intro j h_ge h_lt h_j
+  have h_jma : j - xs.size < ys.size := by omega
+  rw [Array.getElem_append_right h_ge]
+  exact h_neutral (j - xs.size) h_jma
+
+/-- Branch helper for `linearise_go_preserves_FlowContextPSV`: splice
+    branch.  Extending `acc` by `expandKind pks[p]` (flow-neutral
+    non-scalars) maintains the invariants needed by the IH. -/
+theorem lin_FCPSV_splice
+    (n : Nat)
+    (tokens : Array (Positioned YamlToken))
+    (pks : Array Scanner.PendingKeyEntry)
+    (_h_global : FlowContextPSV tokens)
+    (ih : ∀ (k p : Nat) (acc : Array (Positioned YamlToken)),
+      tokens.size - k + (pks.size - p) = n →
+        k ≤ tokens.size →
+        FlowContextPSV acc →
+        flowNesting acc acc.size = flowNesting tokens k →
+          FlowContextPSV (Scanner.linearise.go tokens pks k p acc))
+    (k p : Nat) (acc : Array (Positioned YamlToken))
+    (h_meas : tokens.size - k + (pks.size - p) = n + 1)
+    (h_k_le : k ≤ tokens.size)
+    (h_acc : FlowContextPSV acc)
+    (h_depth : flowNesting acc acc.size = flowNesting tokens k)
+    (hp : p < pks.size) :
+    FlowContextPSV
+      (Scanner.linearise.go tokens pks k (p + 1) (acc ++ Scanner.expandKind pks[p])) := by
+  have h_meas' : (tokens.size - k) + (pks.size - (p + 1)) = n := by omega
+  -- New accumulator: acc ++ expandKind pks[p]
+  have h_new_acc : FlowContextPSV (acc ++ Scanner.expandKind pks[p]) := by
+    apply FlowContextPSV_of_prefix_and_new acc (acc ++ Scanner.expandKind pks[p]) h_acc
+      (by simp [Array.size_append])
+      (by intro i hi; simp [Array.getElem_append_left hi])
+    intro j hj h_ge h_flow
+    have h_size : (acc ++ Scanner.expandKind pks[p]).size =
+                    acc.size + (Scanner.expandKind pks[p]).size := by
+      simp [Array.size_append]
+    have h_jma : j - acc.size < (Scanner.expandKind pks[p]).size := by
+      rw [h_size] at hj; omega
+    rw [Array.getElem_append_right h_ge]
+    exact fpsv_of_not_plain _ (expandKind_not_plain_scalar pks[p] (j - acc.size) h_jma)
+  -- Depth invariant maintained: spliced tokens are flow-neutral
+  have h_new_depth :
+      flowNesting (acc ++ Scanner.expandKind pks[p]) (acc ++ Scanner.expandKind pks[p]).size =
+      flowNesting tokens k := by
+    rw [flowNesting_append_neutral_eq acc (Scanner.expandKind pks[p])
+          (fun j hj => expandKind_not_flow pks[p] j hj)]
+    exact h_depth
+  exact ih k (p + 1) (acc ++ Scanner.expandKind pks[p]) h_meas' h_k_le h_new_acc h_new_depth
+
+/-- Branch helper for `linearise_go_preserves_FlowContextPSV`: push
+    branch.  Extending `acc` by a single original `tokens[k]`; the new
+    element's FCPSV obligation reduces to `h_global` at index `k`,
+    using the depth-matching invariant. -/
+theorem lin_FCPSV_push
+    (n : Nat)
+    (tokens : Array (Positioned YamlToken))
+    (pks : Array Scanner.PendingKeyEntry)
+    (h_global : FlowContextPSV tokens)
+    (ih : ∀ (k p : Nat) (acc : Array (Positioned YamlToken)),
+      tokens.size - k + (pks.size - p) = n →
+        k ≤ tokens.size →
+        FlowContextPSV acc →
+        flowNesting acc acc.size = flowNesting tokens k →
+          FlowContextPSV (Scanner.linearise.go tokens pks k p acc))
+    (k p : Nat) (acc : Array (Positioned YamlToken))
+    (h_meas : tokens.size - k + (pks.size - p) = n + 1)
+    (h_acc : FlowContextPSV acc)
+    (h_depth : flowNesting acc acc.size = flowNesting tokens k)
+    (hk : k < tokens.size) :
+    FlowContextPSV (Scanner.linearise.go tokens pks (k + 1) p (acc.push tokens[k])) := by
+  have h_meas' : (tokens.size - (k + 1)) + (pks.size - p) = n := by omega
+  -- New accumulator: acc.push tokens[k]
+  have h_new_acc : FlowContextPSV (acc.push tokens[k]) := by
+    apply FlowContextPSV_of_prefix_and_new acc (acc.push tokens[k]) h_acc
+      (by simp [Array.size_push])
+      (by intro i hi; simp [Array.getElem_push_lt hi])
+    intro j hj h_ge h_flow
+    have h_size : (acc.push tokens[k]).size = acc.size + 1 := by simp [Array.size_push]
+    have hj_eq : j = acc.size := by rw [h_size] at hj; omega
+    subst hj_eq
+    -- (acc.push tokens[k])[acc.size] = tokens[k]
+    rw [Array.getElem_push_eq]
+    -- flowNesting (acc.push tokens[k]) acc.size = flowNesting acc acc.size = flowNesting tokens k
+    have h_flow_eq : flowNesting (acc.push tokens[k]) acc.size = flowNesting tokens k := by
+      rw [flowNesting_prefix_stable acc (acc.push tokens[k])
+            (by simp [Array.size_push])
+            (by intro j hj; simp [Array.getElem_push_lt hj]) acc.size (Nat.le_refl _)]
+      exact h_depth
+    rw [h_flow_eq] at h_flow
+    -- Apply h_global at index k
+    have h_k := h_global k hk h_flow
+    exact h_k
+  -- Depth invariant maintained: one-step update on tokens[k] is the same on both sides
+  have h_new_depth :
+      flowNesting (acc.push tokens[k]) (acc.push tokens[k]).size =
+      flowNesting tokens (k + 1) := by
+    have h_push : (acc.push tokens[k]).size = acc.size + 1 := by simp [Array.size_push]
+    rw [h_push, flowNesting_push acc tokens[k]]
+    rw [flowNesting_succ tokens k hk]
+    rw [h_depth]
+  exact ih (k + 1) p (acc.push tokens[k]) h_meas' hk h_new_acc h_new_depth
+
+/-- Strong helper: `linearise.go` preserves `FlowContextPSV` while
+    maintaining the depth-matching invariant.  Proof by strong
+    induction on the lex measure. -/
+theorem linearise_go_preserves_FlowContextPSV
+    (tokens : Array (Positioned YamlToken))
+    (pks : Array Scanner.PendingKeyEntry)
+    (h_global : FlowContextPSV tokens) :
+    ∀ (n k p : Nat) (acc : Array (Positioned YamlToken)),
+      (tokens.size - k) + (pks.size - p) = n →
+      k ≤ tokens.size →
+      FlowContextPSV acc →
+      flowNesting acc acc.size = flowNesting tokens k →
+      FlowContextPSV (Scanner.linearise.go tokens pks k p acc) := by
+  intro n
+  induction n with
+  | zero =>
+    intro k p acc h_meas h_k_le h_acc h_depth
+    have h_p : pks.size ≤ p := by omega
+    have h_k : tokens.size ≤ k := by omega
+    rw [linearise_go_done tokens pks k p acc h_k h_p]
+    exact h_acc
+  | succ n ih =>
+    intro k p acc h_meas h_k_le h_acc h_depth
+    rw [Scanner.linearise.go]
+    by_cases hp : p < pks.size
+    · simp only [hp, ↓reduceDIte]
+      by_cases hsplice : pks[p].insertBeforeIdx ≤ k
+      · simp only [hsplice, ↓reduceIte]
+        exact lin_FCPSV_splice n tokens pks h_global ih k p acc h_meas h_k_le h_acc h_depth hp
+      · simp only [hsplice, ↓reduceIte]
+        by_cases hk : k < tokens.size
+        · simp only [hk, ↓reduceDIte]
+          exact lin_FCPSV_push n tokens pks h_global ih k p acc h_meas h_acc h_depth hk
+        · simp only [hk, ↓reduceDIte]
+          exact lin_FCPSV_splice n tokens pks h_global ih k p acc h_meas h_k_le h_acc h_depth hp
+    · simp only [hp, ↓reduceDIte]
+      by_cases hk : k < tokens.size
+      · simp only [hk, ↓reduceDIte]
+        exact lin_FCPSV_push n tokens pks h_global ih k p acc h_meas h_acc h_depth hk
+      · exfalso; omega
+
+/-- **J.3.2 bridge**: `linearise` preserves `FlowContextPSV`.
+
+    Specialisation of `linearise_go_preserves_FlowContextPSV` at
+    `acc = #[]`, `k = 0`, `p = 0`. -/
+theorem linearise_preserves_FlowContextPSV
+    (tokens : Array (Positioned YamlToken))
+    (pks : Array Scanner.PendingKeyEntry)
+    (h : FlowContextPSV tokens) :
+    FlowContextPSV (Scanner.linearise tokens pks) := by
+  unfold Scanner.linearise
+  apply linearise_go_preserves_FlowContextPSV tokens pks h _ 0 0 #[] rfl (Nat.zero_le _)
+        FlowContextPSV_empty
+  -- flowNesting #[] 0 = flowNesting tokens 0 = 0 (#[].size = 0; both are oob)
+  unfold flowNesting
+  show flowNesting.go #[] 0 (#[] : Array (Positioned YamlToken)).size 0 =
+        flowNesting.go tokens 0 0 0
+  rw [show (#[] : Array (Positioned YamlToken)).size = 0 from rfl]
+  rw [flowNesting_go_ge_target #[] 0 0 0 (Nat.le_refl _)]
+  rw [flowNesting_go_ge_target tokens 0 0 0 (Nat.le_refl _)]
 
 /-! ### Main theorems -/
 
