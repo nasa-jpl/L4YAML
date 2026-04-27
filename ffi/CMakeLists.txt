@@ -45,9 +45,26 @@ set(PACKAGES_DIR "${PROJECT_ROOT}/.lake/packages")
 file(GLOB LAKE_PACKAGE_DIRS "${PACKAGES_DIR}/*")
 set(NATIVE_C_SOURCES "")
 set(NATIVE_ARCHIVES "")
+# Tooling-only Lake packages whose IR is invoked only via `lake exe …`
+# (DocGen4, importGraph) — never linked into libl4yaml.so.  Both
+# bundle `lean_exe` entry points (collide on `main`) and reference the
+# Lake runtime (`l_Lake_Manifest_*`) which isn't part of this shared
+# library.  Add new tooling-only packages here as they appear.
+set(L4YAML_FFI_SKIP_PACKAGES "DocGen4" "importGraph")
+
 foreach(PKG_DIR ${LAKE_PACKAGE_DIRS})
   if(IS_DIRECTORY "${PKG_DIR}")
+    get_filename_component(PKG_NAME "${PKG_DIR}" NAME)
+    if(PKG_NAME IN_LIST L4YAML_FFI_SKIP_PACKAGES)
+      message(STATUS "Skipping tooling package ${PKG_NAME} from libl4yaml IR collection")
+      continue()
+    endif()
     file(GLOB_RECURSE PKG_IR_SOURCES "${PKG_DIR}/.lake/build/ir/*.c")
+    # Safety net for any other dep that bundles a `lean_exe` entry: drop
+    # top-level `Main*.c` (Lake convention for exe roots) so two `main`
+    # symbols can't sneak through.
+    list(FILTER PKG_IR_SOURCES EXCLUDE REGEX
+      "\\.lake/build/ir/Main[A-Za-z0-9_]*\\.c$")
     list(APPEND LEAN_IR_SOURCES ${PKG_IR_SOURCES})
     # Native C libraries (e.g. UnicodeBasic/UnicodeCLib/*.c)
     file(GLOB_RECURSE PKG_NATIVE_C
