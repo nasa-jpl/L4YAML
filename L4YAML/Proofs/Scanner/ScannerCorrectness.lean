@@ -10797,6 +10797,68 @@ theorem scanNextToken_preserves_PendingKeysWellIndexed
         simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
         exact dispatchContent_preserves_PendingKeysWellIndexed _ c _ (by assumption) h_inv3
 
+/-! ### scanLoopFull preserves PendingKeysWellIndexed
+
+By induction on fuel.  Recursive arm: apply scanNextToken preservation,
+then IH.  Completion arm: skipToContent (Class A) + unwindIndents
+(Class A) + emit .streamEnd, all preserving the invariant. -/
+theorem scanLoopFull_preserves_PendingKeysWellIndexed
+    (s : ScannerState) (fuel : Nat) (final : ScannerState)
+    (h_inv : PendingKeysWellIndexed s)
+    (h : scanLoopFull s fuel = .ok final) : PendingKeysWellIndexed final := by
+  induction fuel generalizing s with
+  | zero => unfold scanLoopFull at h; simp at h
+  | succ fuel' IH =>
+    unfold scanLoopFull at h
+    simp only [] at h
+    split at h
+    · simp at h
+    · -- .ok none: completion arm
+      split at h
+      · simp at h  -- flowLevel > 0 → error
+      · split at h
+        · simp at h  -- directives without document
+        · -- normal completion
+          injection h with h_eq
+          subst h_eq
+          cases h_skip : skipToContent s with
+          | ok s_skip =>
+            show PendingKeysWellIndexed ((unwindIndents s_skip (-1)).emit .streamEnd)
+            have h_skip_inv : PendingKeysWellIndexed s_skip :=
+              PendingKeysWellIndexed_mono s s_skip
+                (skipToContent_preserves_pendingKeys s s_skip h_skip)
+                (by rw [skipToContent_preserves_tokens s s_skip h_skip]; omega)
+                h_inv
+            have h_unwind_inv : PendingKeysWellIndexed (unwindIndents s_skip (-1)) :=
+              PendingKeysWellIndexed_mono s_skip _
+                (unwindIndents_preserves_pendingKeys s_skip (-1))
+                (unwindIndents_adds_tokens s_skip (-1))
+                h_skip_inv
+            apply PendingKeysWellIndexed_mono _ _
+              (emit_preserves_pendingKeys (unwindIndents s_skip (-1)) .streamEnd)
+              (by rw [emit_tokens_size]; omega)
+              h_unwind_inv
+          | error e =>
+            -- skipToContent failed in the live path — but scanLoopFull's
+            -- branch unfolds with the same `s` whether skipToContent
+            -- succeeds or not (skipToContent isn't actually called here).
+            -- The branch we're in just emits streamEnd via unwindIndents s.
+            show PendingKeysWellIndexed ((unwindIndents s (-1)).emit .streamEnd)
+            have h_unwind_inv : PendingKeysWellIndexed (unwindIndents s (-1)) :=
+              PendingKeysWellIndexed_mono s _
+                (unwindIndents_preserves_pendingKeys s (-1))
+                (unwindIndents_adds_tokens s (-1))
+                h_inv
+            apply PendingKeysWellIndexed_mono _ _
+              (emit_preserves_pendingKeys (unwindIndents s (-1)) .streamEnd)
+              (by rw [emit_tokens_size]; omega)
+              h_unwind_inv
+    · -- .ok (some s'): recursive arm
+      rename_i s' h_snt
+      exact IH s'
+        (scanNextToken_preserves_PendingKeysWellIndexed s s' h_inv h_snt)
+        h
+
 /-!
 ### scanNextToken preserves ScanInv
 
