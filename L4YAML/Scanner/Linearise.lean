@@ -12,8 +12,11 @@ Path C) that splices resolved `pendingKeys` entries into the linear
 token stream at their `insertBeforeIdx` positions.  Replaces the
 legacy in-place `Array.setIfInBounds` placeholder rewrites.
 
-Introduced in **Phase J.1**: types, function body, and property
-*statements* land here; the proofs are sorry'd until **Phase J.3**.
+Introduced in **Phase J.1**: types and function body land here.
+**Phase J.3.1** (2026-04-26) discharged the foundational properties
+(`linearise_resolved`, `linearise_append_unresolved`,
+`linearise_append_token`); their proofs live in
+`L4YAML/Proofs/Scanner/ScannerLinearise.lean`.
 
 See `Blueprint/07-initiative-3-append-only.md` for the algorithm
 design and the `{a: [1, 2], b: c}` worked example.
@@ -88,60 +91,5 @@ def linearise (tokens : Array (Positioned YamlToken))
               (pendingKeys : Array PendingKeyEntry)
               : Array (Positioned YamlToken) :=
   linearise.go tokens pendingKeys 0 0 #[]
-
-/-! ## Basic properties (J.1 statements; J.3 proofs)
-
-These three theorems pin down the *shape* of `linearise` for downstream
-use; their proofs are deferred to J.3 alongside the rest of the
-scanner-proof corpus migration.  Each statement is independently
-useful in scanner reasoning even before its proof is discharged: the
-J.2 migration plugs `linearise` into `scanFiltered`'s seam and treats
-these as black-box lemmas.
--/
-
-/-- **Append-monotonicity** (the headline property of Path C).
-
-    Pushing a new token to `tokens` extends `linearise`'s output
-    rightward — the existing prefix is preserved, only a tail is
-    appended.  This is the "filter monotonicity" property the legacy
-    `setIfInBounds` model could not deliver: under the legacy scheme
-    the same token push could trigger a placeholder rewrite that
-    *changed* an earlier output position.
-
-    The hypothesis `h` says every pending entry's `insertBeforeIdx` is
-    at most `tokens.size` — i.e. all current pendings target a slot
-    inside (or at the tail of) the existing token array.  Save-time
-    monotonicity guarantees this throughout scanning. -/
-theorem linearise_append_token
-    (tokens : Array (Positioned YamlToken))
-    (pendingKeys : Array PendingKeyEntry)
-    (t : Positioned YamlToken)
-    (h : ∀ e ∈ pendingKeys, e.insertBeforeIdx ≤ tokens.size) :
-    ∃ tail, linearise (tokens.push t) pendingKeys
-              = linearise tokens pendingKeys ++ tail := by
-  sorry
-
-/-- **Unresolved-key invariance**: pushing an unresolved pending key is
-    a no-op for the linearised output.  Equivalent to "placeholders
-    don't appear in the user-facing token stream" in the legacy model,
-    but established constructively here (no filter pass needed). -/
-theorem linearise_append_unresolved
-    (tokens : Array (Positioned YamlToken))
-    (pendingKeys : Array PendingKeyEntry)
-    (e : PendingKeyEntry) (he : e.kind = .unresolved) :
-    linearise tokens (pendingKeys.push e) = linearise tokens pendingKeys := by
-  sorry
-
-/-- **Output-size accounting**: linearise's output is exactly the
-    original tokens plus the total expansion of all pending entries.
-    Unresolved entries contribute zero, `keyOnly` contributes one,
-    `blockMappingStartAndKey` contributes two — matching the legacy
-    `placeholder` slot-reservation count. -/
-theorem linearise_resolved
-    (tokens : Array (Positioned YamlToken))
-    (pendingKeys : Array PendingKeyEntry) :
-    (linearise tokens pendingKeys).size
-      = tokens.size + pendingKeys.foldl (fun n e => n + (expandKind e).size) 0 := by
-  sorry
 
 end L4YAML.Scanner

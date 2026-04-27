@@ -745,16 +745,16 @@ demonstration.
 The 17 non-Tier-2 sorries decompose along the dependency graph
 rooted at `Scanner/Linearise.lean`:
 
-| Substep | Scope | Sorries cleared | Files touched |
-|---|---|---|---|
-| J.3.1 | Linearise foundations | 3 | `Scanner/Linearise.lean` |
-| J.3.2 | Bridge lemmas | 0 (new infrastructure) | `Scanner/Linearise.lean`, new helpers |
-| J.3.3 | ScannerCorrectness consumers | 2 | `Proofs/Scanner/ScannerCorrectness.lean` |
-| J.3.4 | ScannerPlainScalarValid consumers | 4 | `Proofs/Production/ScannerPlainScalarValid.lean` |
-| J.3.5 | Production+EndToEnd bridges | 2 | `Proofs/Production/DocumentProduction.lean`, `Proofs/EndToEndCorrectness.lean` |
-| J.3.6 | EmitterScannability Cat C | 6 | `Proofs/Output/EmitterScannability.lean` (Cat C only; 7 Tier 2 deferred to J.4) |
+| Substep | Scope | Sorries cleared | Files touched | Status |
+|---|---|---|---|---|
+| J.3.1 | Linearise foundations | 3 | `Scanner/Linearise.lean` → `Proofs/Scanner/ScannerLinearise.lean` | ✓ done 2026-04-26 |
+| J.3.2 | Bridge lemmas | 0 (new infrastructure) | `Proofs/Scanner/ScannerLinearise.lean`, new helpers | pending |
+| J.3.3 | ScannerCorrectness consumers | 2 | `Proofs/Scanner/ScannerCorrectness.lean` | pending |
+| J.3.4 | ScannerPlainScalarValid consumers | 4 | `Proofs/Production/ScannerPlainScalarValid.lean` | pending |
+| J.3.5 | Production+EndToEnd bridges | 2 | `Proofs/Production/DocumentProduction.lean`, `Proofs/EndToEndCorrectness.lean` | pending |
+| J.3.6 | EmitterScannability Cat C | 6 | `Proofs/Output/EmitterScannability.lean` (Cat C only; 7 Tier 2 deferred to J.4) | pending |
 
-**J.3.1 — Linearise foundations** (3 sorries):
+**J.3.1 — Linearise foundations** [✓ completed 2026-04-26]:
 
 1. `linearise_resolved` (size accounting; pure structural induction
    over `linearise.go`).  Output cardinality equals
@@ -768,9 +768,20 @@ rooted at `Scanner/Linearise.lean`:
    entry's `insertBeforeIdx ≤ tokens.size`.
 
 These are independently useful and consumed by every downstream
-substep.  J.3.1's gate: `lake build L4YAML` green, sorry count drops
-from 24 → 21, three `J.3 manifest 5.d` markers removed from
-`Linearise.lean`.
+substep.  Gate satisfied: `lake build L4YAML` green; sorry count
+24 → 21; the 3 `J.3 manifest 5.d` Linearise markers cleared.
+
+**J.3.1 file layout** (per maintainer convention "all theorems
+public, proofs separated from source"):
+
+* `L4YAML/Scanner/Linearise.lean` — `expandKind`, `linearise.go`,
+  `linearise` (function definitions only; no theorems).
+* `L4YAML/Proofs/Scanner/ScannerLinearise.lean` (new file) — all
+  proofs and helpers (`pendingExpandSumFrom`, the foldl bridges,
+  `linearise_go_size`, `linearise_go_done`, `linearise_go_step_token`,
+  `linearise_go_tail_pks_invariant`, and the three discharged
+  theorems).  Namespace: `L4YAML.Proofs.ScannerLinearise`.  All
+  declarations public — no `private` modifiers.
 
 **J.3.2 — Bridge lemmas**: introduce
 `scanFiltered_ok_implies_scan_ok`, `linearise_preserves_FlowContextPSV`,
