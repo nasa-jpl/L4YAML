@@ -619,16 +619,31 @@ focused diff and a clear "is this gate satisfied" question.
 Each `sorry` carried into J.3 gets a `-- J.3 manifest 5.d:` comment
 in the source pointing back to this section.
 
-**Pre-existing baseline** (untouched by step 5):
+**Pre-existing baseline** (untouched by step 5; verified
+declaration-level against `f0ce18d3` — the cutover's parent commit):
 
 | Site | Source | Note |
 |---|---|---|
 | `linearise_append_token` | `Scanner/Linearise.lean` | J.1 stub; J.3 main proof. |
 | `linearise_append_unresolved` | `Scanner/Linearise.lean` | J.1 stub; trivial after J.3. |
 | `linearise_resolved` | `Scanner/Linearise.lean` | J.1 stub; J.3 size-accounting. |
-| 5 × Tier 2 sorries | `Proofs/Output/EmitterScannability.lean` | The motivating gap; J.3 demonstrates the new model resolves them. |
+| `scanNextToken_filtered_grows` | `Proofs/Output/EmitterScannability.lean` | Tier 2 — filtered-token monotonicity; J.3 re-derives via `linearise`'s shape lemmas. |
+| `emitList_body_filtered_characterization` | `Proofs/Output/EmitterScannability.lean` | Tier 2 — emitter-shape characterization; multi-sorry body. |
+| `emitPairList_body_filtered_characterization` | `Proofs/Output/EmitterScannability.lean` | Tier 2 — emitter-shape characterization; multi-sorry body. |
+| `scanFiltered_emitSeq_nonempty_structure` | `Proofs/Output/EmitterScannability.lean` | Tier 2 — non-empty sequence structure preservation. |
+| `scanFiltered_emitMap_nonempty_structure` | `Proofs/Output/EmitterScannability.lean` | Tier 2 — non-empty mapping structure preservation. |
+| `emit_roundtrip_sequence_content_eq` | `Proofs/Output/EmitterScannability.lean` | Tier 2 — roundtrip content equivalence (sequence). |
+| `emit_roundtrip_mapping_content_eq` | `Proofs/Output/EmitterScannability.lean` | Tier 2 — roundtrip content equivalence (mapping). |
 
-Pre-existing total: **8** (3 Linearise + 5 Tier 2).
+Pre-existing total: **10 declarations** using `sorry` (3 Linearise +
+7 Tier 2 EmitterScannability).  These are the motivating gap; J.3
+demonstrates the new model resolves them.
+
+(N.B. — earlier drafts of this manifest stated "5 × Tier 2 sorries"
+without enumerating; the principal verifier recount against
+`f0ce18d3` corrected the Tier 2 declaration count to 7.  The
+"5 vs 7" discrepancy was a token-count vs declaration-count confusion
+in the original draft, not a change in the underlying work.)
 
 **New Category C sorries introduced by 5.0/5.1** (commit `71a86eee`):
 all carry the `-- J.3 manifest 5.d:` comment.
@@ -659,19 +674,30 @@ all carry the `-- J.3 manifest 5.d:` comment.
 | `Proofs/Production/ScannerPlainScalarValid.lean` | 4 |
 | `Proofs/Production/DocumentProduction.lean` | 1 |
 | `Proofs/EndToEndCorrectness.lean` | 1 |
-| `Proofs/Output/EmitterScannability.lean` | +6 above the 5 pre-existing Tier 2 |
+| `Proofs/Output/EmitterScannability.lean` | +6 above the 7 pre-existing Tier 2 |
 | **Total new** | **14** |
 
-**Total sorry count at end of 5.1**: 8 (pre-existing) + 14 (new
-Category C) = **22 sorries** (verifiable via the `grep` survey
-above).  Lands exactly at the lower bound of the §5.d forecast
-(14–17 new).  All 14 new carry the `-- J.3 manifest 5.d:` comment;
-J.3 clears them.
+**Total sorry-using declarations at HEAD (post-5.2)**: 10
+(pre-existing) + 14 (new Category C) = **24** (matches the live
+`lake build L4YAML` warning count: 3 in `Linearise.lean`, 13 in
+`EmitterScannability.lean`, 4 in `ScannerPlainScalarValid.lean`, 2 in
+`ScannerCorrectness.lean`, 1 in `DocumentProduction.lean`, 1 in
+`EndToEndCorrectness.lean`).  Lands at the lower bound of the
+original 14–17 new-sorries forecast.  All 14 new carry the `-- J.3
+manifest 5.d:` comment; J.3 clears them.
 
-(N.B. — commit `71a86eee`'s message states +15 new; the verifier
-re-count after the fact came back at 14.  The discrepancy is a
-miscounted `*PlaceholderInv` site that was conflated with another
-during commit-message drafting; the source is authoritative.)
+**Verifier re-count notes**:
+
+* Commit `71a86eee`'s message states +15 new; the verifier re-count
+  after the fact came back at 14.  The discrepancy was a miscounted
+  `*PlaceholderInv` site conflated with another during
+  commit-message drafting; the source is authoritative.
+* Earlier drafts gave the post-5.1 total as 22.  The 22 figure used
+  "5 × Tier 2 sorries" for the pre-existing EmitterScannability
+  baseline; the actual declaration-level count at `f0ce18d3` is 7
+  (enumerated in the pre-existing baseline table above), so the
+  correct total is **24**.  The 14 new-Category-C count is unchanged
+  — only the pre-existing baseline differs from the earlier draft.
 
 ##### 5.e Validation gate for step 5
 
@@ -684,16 +710,15 @@ during commit-message drafting; the source is authoritative.)
   — **Status**: ✓ all 14 tagged.
 * yaml-test-suite golden parity: scanner output is byte-identical
   pre/post cutover for every `tests/data/*.yaml` fixture.
-  — **Status**: pending (this is what 5.2 delivers).
+  — **Status**: ✓ satisfied at `abe092a6` (3681/3681 verified;
+  per-stage and per-test pass/fail status byte-identical to the
+  pre-cutover baseline at `docs/reports/coverage-summary.json`).
 * `Blueprint/07` §J.2 step 5 manifest updated to reflect the actual
   sorry set (drift between this manifest and the source is the failure
   mode to avoid).
-  — **Status**: ✓ §5.d table above reflects the post-`71a86eee` source.
-
-**Outstanding for 5.2**: yaml-test-suite golden parity — produce
-the byte-for-byte equivalence check.  Until 5.2 lands, step 5 is
-proof-side complete but not yet runtime-confirmed; downstream merge
-to main blocks on 5.2.
+  — **Status**: ✓ §5.d table above reconciled against `lake build
+  L4YAML` warnings at HEAD (24 sorry-using declarations: 10
+  pre-existing + 14 new Category C).
 
 ### Phase J.3 — Proof migration (4-6 weeks)
 
@@ -728,6 +753,13 @@ demonstration.
 **Validation gate**: full build green, sorry count reduced by ≥ N
 (target N = 6: the 2 Tier 2 sorries + 4 in `_structure` theorems
 that depend on them), Blueprint docs consistent.
+
+(Cross-reference to §5.d: the current sorry-using-declaration count
+at HEAD is **24** — 3 Linearise + 7 EmitterScannability Tier 2 + 14
+new Category C.  J.3's target is to clear all 17 non-Tier-2 sorries
+(3 Linearise + 14 Category C); J.4's N=6 target then bites against
+the residual 7 Tier 2 declarations.  Post-J.4, the natural ceiling is
+≤1 declaration, with the stretch target being 0.)
 
 ## Estimated total effort
 
