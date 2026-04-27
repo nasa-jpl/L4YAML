@@ -655,4 +655,173 @@ theorem linearise_first_eq_tokens_first
     rw [h_eq]; exact h_lin_at_0
   exact h_lin_at_0'
 
+/-- Equation form of `linearise_append_token`: pushing `t` extends the
+    output by exactly `#[t]`.  This is the actual content of
+    `linearise_append_token`'s proof body (which uses
+    `refine ⟨#[t], ?_⟩`); restating it here lets us read off the
+    last element of the result directly. -/
+theorem linearise_append_token_eq
+    (tokens : Array (Positioned YamlToken))
+    (pendingKeys : Array PendingKeyEntry)
+    (t : Positioned YamlToken)
+    (h : ∀ e ∈ pendingKeys, e.insertBeforeIdx ≤ tokens.size) :
+    linearise (tokens.push t) pendingKeys
+      = linearise tokens pendingKeys ++ #[t] := by
+  -- Strong helper: for all (k, p, acc) with k ≤ tokens.size and p ≤ pks.size,
+  --   linearise.go (tokens.push t) pks k p acc = (linearise.go tokens pks k p acc).push t.
+  -- Combined with `Array.push_eq_append`, this gives the equation.
+  suffices h' : ∀ (n k p : Nat) (acc : Array (Positioned YamlToken)),
+      (tokens.size - k) + (pendingKeys.size - p) = n →
+      k ≤ tokens.size → p ≤ pendingKeys.size →
+      linearise.go (tokens.push t) pendingKeys k p acc
+        = (linearise.go tokens pendingKeys k p acc).push t by
+    unfold linearise
+    rw [h' _ 0 0 #[] rfl (Nat.zero_le _) (Nat.zero_le _)]
+    exact Array.push_eq_append
+  intro n
+  induction n with
+  | zero =>
+    intro k p acc h_n h_k_le h_p_le
+    have h_k_eq : k = tokens.size := by omega
+    have h_p_eq : p = pendingKeys.size := by omega
+    subst h_k_eq
+    subst h_p_eq
+    rw [linearise_go_done tokens pendingKeys tokens.size pendingKeys.size acc
+          (Nat.le_refl _) (Nat.le_refl _)]
+    rw [linearise.go]
+    have hp_neg : ¬ pendingKeys.size < pendingKeys.size := Nat.lt_irrefl _
+    have hk_new : tokens.size < (tokens.push t).size := by
+      simp [Array.size_push]
+    simp only [hp_neg, hk_new, ↓reduceDIte]
+    simp only [Array.getElem_push_eq]
+    exact linearise_go_done (tokens.push t) pendingKeys (tokens.size + 1) pendingKeys.size
+            (acc.push t) (by simp [Array.size_push]) (Nat.le_refl _)
+  | succ n ih =>
+    intro k p acc h_n h_k_le h_p_le
+    by_cases hp : p < pendingKeys.size
+    · rw [linearise.go, linearise.go]
+      simp only [hp, ↓reduceDIte]
+      by_cases hsplice : pendingKeys[p].insertBeforeIdx ≤ k
+      · simp only [hsplice, ↓reduceIte]
+        have h_meas : (tokens.size - k) + (pendingKeys.size - (p + 1)) = n := by omega
+        exact ih k (p + 1) (acc ++ expandKind pendingKeys[p]) h_meas
+                h_k_le (by omega)
+      · simp only [hsplice, ↓reduceIte]
+        have h_e_ip : pendingKeys[p].insertBeforeIdx ≤ tokens.size :=
+          h _ (pendingKeys.getElem_mem hp)
+        have h_k_lt : k < tokens.size := by omega
+        have h_k_lt_new : k < (tokens.push t).size := by
+          simp [Array.size_push]; omega
+        simp only [h_k_lt, h_k_lt_new, ↓reduceDIte]
+        simp only [Array.getElem_push_lt h_k_lt]
+        have h_meas : (tokens.size - (k + 1)) + (pendingKeys.size - p) = n := by omega
+        exact ih (k + 1) p (acc.push tokens[k]) h_meas (by omega) h_p_le
+    · have h_p_eq : p = pendingKeys.size := by omega
+      subst h_p_eq
+      have h_k_lt : k < tokens.size := by omega
+      have h_k_lt_new : k < (tokens.push t).size := by
+        simp [Array.size_push]; omega
+      rw [linearise.go, linearise.go]
+      have hp_neg : ¬ pendingKeys.size < pendingKeys.size := Nat.lt_irrefl _
+      simp only [hp_neg, h_k_lt, h_k_lt_new, ↓reduceDIte]
+      simp only [Array.getElem_push_lt h_k_lt]
+      have h_meas :
+          (tokens.size - (k + 1)) + (pendingKeys.size - pendingKeys.size) = n := by omega
+      exact ih (k + 1) pendingKeys.size (acc.push tokens[k]) h_meas
+              (by omega) (Nat.le_refl _)
+
+/-- Round-trip: popping and pushing back the last element yields the
+    original array.  Used by `linearise_last_eq_tokens_last`. -/
+private theorem array_pop_push_back_self
+    {α : Type _} (xs : Array α) (h : xs.size > 0) :
+    xs.pop.push (xs[xs.size - 1]'(by omega)) = xs := by
+  apply Array.ext
+  · simp; omega
+  · intro i hi₁ hi₂
+    by_cases hi : i < xs.size - 1
+    · have hi_pop : i < xs.pop.size := by simp; omega
+      rw [Array.getElem_push_lt hi_pop]
+      simp [Array.getElem_pop]
+    · -- i = xs.size - 1
+      have hi_eq : i = xs.size - 1 := by
+        have : i < xs.size := hi₂
+        omega
+      subst hi_eq
+      have h_pop_size : xs.pop.size = xs.size - 1 := by simp
+      simp [Array.getElem_push, h_pop_size]
+
+/-- If every pending entry has `insertBeforeIdx ≤ tokens.size - 1` and
+    `tokens` is nonempty, the last element of `linearise tokens pks`
+    equals `tokens[tokens.size - 1]`.
+
+    Proof strategy: split `tokens` as `tokens.pop.push tokens[size-1]`
+    (via `array_pop_push_back_self`) and apply `linearise_append_token_eq`
+    — the bound `insertBeforeIdx ≤ tokens.size - 1 = tokens.pop.size`
+    is exactly the hypothesis the append-token lemma needs.  The
+    resulting tail is `#[tokens[size-1]]`, so the last element of the
+    linearise output equals `tokens[size-1]`. -/
+theorem linearise_last_eq_tokens_last
+    (tokens : Array (Positioned YamlToken))
+    (pks : Array PendingKeyEntry)
+    (h_size : tokens.size > 0)
+    (h_pks_le : ∀ p (h : p < pks.size), pks[p].insertBeforeIdx ≤ tokens.size - 1) :
+    ∃ h_lin : (linearise tokens pks).size > 0,
+      (linearise tokens pks)[(linearise tokens pks).size - 1]'(by omega)
+        = tokens[tokens.size - 1]'(by omega) := by
+  have h_lin_size_ge : (linearise tokens pks).size ≥ tokens.size :=
+    linearise_size_ge_tokens tokens pks
+  have h_lin_size_pos : (linearise tokens pks).size > 0 := by omega
+  refine ⟨h_lin_size_pos, ?_⟩
+  -- Express tokens as tokens.pop.push tokens[size-1].
+  have h_pop_push : tokens.pop.push (tokens[tokens.size - 1]'(by omega)) = tokens :=
+    array_pop_push_back_self tokens h_size
+  have h_pop_size : tokens.pop.size = tokens.size - 1 := by simp
+  have h_pks_le_pop : ∀ e ∈ pks, e.insertBeforeIdx ≤ tokens.pop.size := by
+    intro e h_mem
+    rw [h_pop_size]
+    obtain ⟨p, hp, h_eq⟩ := Array.getElem_of_mem h_mem
+    rw [← h_eq]
+    exact h_pks_le p hp
+  -- Apply linearise_append_token_eq with tokens := tokens.pop, t := tokens[size-1].
+  have h_eq :=
+    linearise_append_token_eq tokens.pop pks (tokens[tokens.size - 1]'(by omega)) h_pks_le_pop
+  -- LHS = linearise (tokens.pop.push tokens[size-1]) pks = linearise tokens pks (via h_pop_push).
+  rw [h_pop_push] at h_eq
+  -- So: linearise tokens pks = linearise tokens.pop pks ++ #[tokens[size-1]].
+  -- The last element is therefore tokens[size-1].
+  have h_lin_pop_size : (linearise tokens.pop pks).size + 1 = (linearise tokens pks).size := by
+    rw [h_eq]; simp
+  have h_idx : (linearise tokens pks).size - 1 = (linearise tokens.pop pks).size := by omega
+  -- Strategy: rewrite via h_eq, then read off the last element of the append.
+  have h_idx_app : (linearise tokens.pop pks).size <
+      (linearise tokens.pop pks ++ #[tokens[tokens.size - 1]'(by omega)]).size := by
+    simp
+  -- The last element of the append is tokens[size-1].
+  have h_append_last :
+      (linearise tokens.pop pks ++
+          #[tokens[tokens.size - 1]'(by omega)])[(linearise tokens.pop pks).size]'h_idx_app
+        = tokens[tokens.size - 1]'(by omega) := by
+    rw [Array.getElem_append_right (Nat.le_refl _)]
+    simp
+  -- Now combine: the LHS of the goal equals (append)[(linearise tokens.pop pks).size] via h_eq.
+  rw [show (linearise tokens pks)[(linearise tokens pks).size - 1]'(by omega) =
+      (linearise tokens.pop pks ++
+          #[tokens[tokens.size - 1]'(by omega)])[(linearise tokens.pop pks).size]'h_idx_app from ?_]
+  · exact h_append_last
+  · -- Show the LHS equality using h_eq and h_idx.
+    have h_eq_arr : linearise tokens pks
+        = linearise tokens.pop pks ++ #[tokens[tokens.size - 1]'(by omega)] := h_eq
+    -- Use h_eq_arr to convert LHS array, then h_idx to convert the index.
+    have h_idx_via :
+        (linearise tokens pks).size - 1 <
+          (linearise tokens.pop pks ++ #[tokens[tokens.size - 1]'(by omega)]).size := by
+      rw [← h_eq_arr]; omega
+    have step1 :
+        (linearise tokens pks)[(linearise tokens pks).size - 1]'(by omega)
+          = (linearise tokens.pop pks ++
+              #[tokens[tokens.size - 1]'(by omega)])[(linearise tokens pks).size - 1]'h_idx_via := by
+      congr 1
+    rw [step1]
+    simp only [h_idx]
+
 end L4YAML.Proofs.ScannerLinearise
