@@ -886,25 +886,36 @@ count unchanged at 21.
   `_adds_tokens` / `_preserves_pendingKeys` lemmas.
 
   **Steps**:
-  1. Define `PendingKeysWellIndexed` and `PendingKeysPosBounded` and
-     prove their generic mono lemmas (~30 LOC).
-  2. Add `op_preserves_pendingKeys` micro-lemmas for the operations
-     used in `scanNextToken`'s dispatcher chain — only the ones that
-     actually appear in the proof tree (~30-50 lemmas, mostly `rfl`
-     after unfolding).
-  3. Prove Class B / Class C characterizations (~20 LOC).
-  4. Compose dispatcher-level preservation lemmas
+  1. ✓ Define `PendingKeysWellIndexed` and prove generic mono lemma
+     for Class A passthroughs.
+  2. ✓ Class A passthrough micro-lemmas for `advance`, `emit`,
+     `emitAt` (`*_preserves_pendingKeys`).
+  3. ✓ Class B (`saveSimpleKey_preserves_PendingKeysWellIndexed`):
+     direct case analysis on the three branches.
+  4. ✓ Class C decomp + size + `insertBeforeIdx`-pointwise for
+     `setPendingKeyKind` and `setPendingKeyEndLine`.  Direct unfold
+     hits Lean's dependent-index limitation; the decomp lemmas
+     factor out the existential cleanly so the pointwise fact reduces
+     to `Array.getElem_setIfInBounds_*`.
+  5. Add remaining Class A passthrough micro-lemmas for ops in the
+     `scanNextToken` chain (~30 lemmas, mostly `rfl` or one-line
+     proofs that mirror the existing `*_preserves_simpleKeyStack`
+     shapes).  Note: only `scanValuePrepare` (uses `setPendingKeyKind`)
+     and the double/single-quoted branches in
+     `scanNextToken_dispatchContent` (use `setPendingKeyEndLine`)
+     are non-Class A — everything else passes through.
+  6. Compose dispatcher-level preservation lemmas
      (`preprocess_preserves_PendingKeysWellIndexed`,
      `dispatch{Structural,FlowIndicators,BlockIndicators,Content}_preserves_…`,
      `scanNextToken_preserves_…`) — mechanical mirror of the
      AllKeysValid chain (~60 LOC).
-  5. `scanLoopFull_preserves_PendingKeysWellIndexed` by induction (~30 LOC).
-  6. `linearise_positions_ordered` with pendingKey position-fit
+  7. `scanLoopFull_preserves_PendingKeysWellIndexed` by induction (~30 LOC).
+  8. `linearise_positions_ordered` with pendingKey position-fit
      hypotheses (~120 LOC).
-  7. Compose into `scanFiltered_produces_valid_tokens` (~50 LOC).
+  9. Compose into `scanFiltered_produces_valid_tokens` (~50 LOC).
 
-  Total estimate: ~350 LOC (≈ same as before, but better factored —
-  most micro-lemmas are 1–2 lines).  Folds naturally into J.3.4 since
+  Status (2026-04-26): Steps 1-4 ✓ done (~340 LOC across two commits);
+  remaining ~280 LOC.  Folds naturally into J.3.4 since
   `ScannerPlainScalarValid` consumers need the same invariants.
 
 **J.3.4–J.3.6**: re-discharge consumers in dependency order, each
