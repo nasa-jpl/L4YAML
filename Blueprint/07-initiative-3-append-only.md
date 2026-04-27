@@ -845,15 +845,20 @@ count unchanged at 21.
     each mirrors the corresponding `scanLoop_*` lemma, with the
     completion-branch's extra `skipToContent` discharged via
     `skipToContent_preserves_tokens` / `skipToContent_preserves_ScanInv`.
-  - `linearise_size_ge_tokens`, `linearise_first_eq_tokens_first`
+  - `linearise_size_ge_tokens`, `linearise_first_eq_tokens_first`,
+    `linearise_append_token_eq` (equation form of
+    `linearise_append_token` for direct rewriting),
+    `linearise_last_eq_tokens_last`
     (in `Proofs/Scanner/ScannerLinearise.lean`).
-  Remaining work: `linearise_last_eq_tokens_last`,
-  `linearise_positions_ordered`, the pendingKeys well-indexedness
-  invariant proven through `scanNextToken`, and the composition.
-  Approximately 250–300 LOC.  Folds naturally into J.3.4 since the
-  same pendingKeys invariants and position-fit lemmas are needed by
-  the `ScannerPlainScalarValid` consumers (which already import
-  `ScannerLinearise`).
+  Remaining work: `linearise_positions_ordered`, the pendingKeys
+  well-indexedness/position invariant proven through `scanNextToken`,
+  and the composition.  Approximately 350–400 LOC remaining (the
+  pendingKeys invariant proof is the bulk — must touch every dispatcher
+  that doesn't change `pendingKeys` plus `saveSimpleKey` /
+  `setPendingKeyKind` / `setPendingKeyEndLine`).  Folds naturally
+  into J.3.4 since the same pendingKeys invariants and position-fit
+  lemmas are needed by the `ScannerPlainScalarValid` consumers (which
+  already import `ScannerLinearise`).
 
 **J.3.4–J.3.6**: re-discharge consumers in dependency order, each
 substep removing its sorry-using declarations and the matching
