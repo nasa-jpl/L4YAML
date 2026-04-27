@@ -187,16 +187,11 @@ table.tabular td > p:last-child, table.tabular th > p:first-child {
             <h1>
               2.5. Import Graph<span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=import-graph" title="Permalink">🔗</a></span></h1>
             <p>
-              The project's dependency structure can be visualized using
-<code>lake exe graph</code>.
-The FFI layer sits at the top, depending on <code>Config</code>, which
-in turn depends on the scanner/parser/schema pipeline:</p>
-            <pre>FFI ← Config ← Dump ← Schema ← Token ← Scanner ← TokenParser
-                                   ↑
-                          CharPredicates ← YamlSpec
-</pre><p>
-              The full import graph and component-level dependency graphs are
-available in the <code>graphs/</code> directory as Graphviz DOT files.
+              The runtime module dependency graph (Scanner, Parser, Surface, Schema,
+Output, FFI, Config — the <code>Proofs/</code> subtree is excluded) is regenerated
+in CI by <code>lake exe graph</code> and rendered to SVG via Graphviz.</p>
+            <p>
+              <object type="image/svg+xml" data="Architecture/Import-Graph/graphs/import-graph.svg">L4YAML runtime import graph</object>
 </p>
             </section>
           <nav class="prev-next-buttons">

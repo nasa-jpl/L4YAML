@@ -188,62 +188,70 @@ table.tabular td > p:last-child, table.tabular th > p:first-child {
               2.4. Module Organization<span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=module-organization" title="Permalink">🔗</a></span></h1>
             <p>
               <span id="--index--next-next-next-next-next-next-next-next"></span>
-The project is organized into several module groups:</p>
+The project is organized into several module groups.
+The table below is regenerated at doc-elaboration time by walking each
+group's source directory under <code>L4YAML/</code>, so the file lists stay in
+sync with the actual code.</p>
             <table class="tabular"><thead><tr><th><p>
                       Group</p>
                     </th><th><p>
                       Key Modules</p>
                     </th><th><p>
-                      Purpose
-</p>
+                      Purpose</p>
                     </th></tr></thead><tr><td><p>
-                    Core</p>
+                    Spec</p>
                   </td><td><p>
-                    <code>Types.lean</code>, <code>Token.lean</code>, <code>Grammar.lean</code>, <code>YamlSpec.lean</code>, <code>CharPredicates.lean</code></p>
+                    <code>CharPredicates.lean</code>, <code>Grammar.lean</code>, <code>Types.lean</code>, <code>YamlSpec.lean</code>, <code>Token.lean</code></p>
                   </td><td><p>
-                    Type definitions, token types, grammar inductive, spec production predicates
-</p>
+                    Type definitions, token types, grammar inductive, spec production predicates.</p>
+                  </td></tr><tr><td><p>
+                    Config</p>
+                  </td><td><p>
+                    <code>Config.lean</code>, <code>Limits.lean</code></p>
+                  </td><td><p>
+                    Parser limits and configuration presets (<code>strict</code> / <code>default</code> / <code>permissive</code> / <code>unlimited</code> / <code>safe_tags</code>).</p>
                   </td></tr><tr><td><p>
                     Scanner</p>
                   </td><td><p>
-                    <code>Scanner/Scanner.lean</code> (umbrella), <code>State.lean</code>, <code>Whitespace.lean</code>, <code>Indent.lean</code>, <code>Document.lean</code>, <code>NodeProperties.lean</code>, <code>Scalar.lean</code>, <code>SimpleKey.lean</code></p>
+                    <code>Document.lean</code>, <code>Indent.lean</code>, <code>NodeProperties.lean</code>, <code>Scalar.lean</code>, <code>Scanner.lean</code>, <code>SimpleKey.lean</code>, <code>State.lean</code>, <code>Whitespace.lean</code></p>
                   </td><td><p>
-                    Character-to-token conversion with full state management. Split into seven role-named submodules (Blueprint Phase 2, 2026-04-21); the umbrella owns flow-collection indicators and the <code>scanNextToken</code> dispatch / <code>scan</code> / <code>scanLoop</code> main loop.
-</p>
+                    Character-to-token conversion with full state management. Split into role-named submodules; the umbrella <code>Scanner.lean</code> owns flow-collection indicators and the <code>scanNextToken</code> dispatch / <code>scan</code> / <code>scanLoop</code> main loop.</p>
                   </td></tr><tr><td><p>
                     Parser</p>
                   </td><td><p>
-                    <code>Parser/Composition.lean</code> (umbrella), <code>TokenParser.lean</code> (mutual block), <code>State.lean</code>, <code>Fuel.lean</code></p>
+                    <code>Composition.lean</code>, <code>Fuel.lean</code>, <code>State.lean</code>, <code>TokenParser.lean</code></p>
                   </td><td><p>
-                    Token-to-AST recursive descent. Split into four role-named files (Blueprint Phase 3, 2026-04-21); <code>Composition.lean</code> owns the user-facing pipeline (<code>parseYaml*</code>, <code>scanAndParse</code>, comment classification), <code>TokenParser.lean</code> keeps the 14-function mutually-recursive block plus <code>parseStream</code> / <code>parseDocument</code>, <code>State.lean</code> holds <code>ParseState</code> + <code>NodeProperties</code> helpers, and <code>Fuel.lean</code> factors out the <code>initialFuel := 4*N+4</code> formula.
-</p>
+                    Token-to-AST recursive descent. <code>Composition.lean</code> owns the user-facing pipeline (<code>parseYaml*</code>, <code>scanAndParse</code>, comment classification); <code>TokenParser.lean</code> keeps the 14-function mutually-recursive block plus <code>parseStream</code> / <code>parseDocument</code>; <code>State.lean</code> holds <code>ParseState</code> + <code>NodeProperties</code> helpers; <code>Fuel.lean</code> factors out the <code>initialFuel := 4*N+4</code> formula.</p>
                   </td></tr><tr><td><p>
-                    Validation</p>
+                    Surface</p>
                   </td><td><p>
-                    <code>Limits.lean</code>, <code>Schema.lean</code></p>
+                    <code>Basic.lean</code>, <code>Combinators.lean</code>, <code>Document.lean</code>, <code>Node.lean</code>, <code>Scalars.lean</code>, <code>Surface.lean</code></p>
                   </td><td><p>
-                    Security limits, Core Schema type resolution
-</p>
+                    Formal YAML 1.2.2 surface-syntax grammar productions used to state and discharge the acceptance-strictness theorem.</p>
+                  </td></tr><tr><td><p>
+                    Schema</p>
+                  </td><td><p>
+                    <code>Api.lean</code>, <code>Deriving.lean</code>, <code>Dump.lean</code>, <code>FromToYaml.lean</code>, <code>Schema.lean</code>, <code>Struct.lean</code></p>
+                  </td><td><p>
+                    Core Schema type resolution, structural API (<code>Api.lean</code>), and deriving for round-tripping user types via <code>FromToYaml.lean</code>.</p>
                   </td></tr><tr><td><p>
                     Output</p>
                   </td><td><p>
-                    <code>Emitter.lean</code>, <code>Dump.lean</code>, <code>RoundTrip.lean</code></p>
+                    <code>Dump.lean</code>, <code>Emitter.lean</code></p>
                   </td><td><p>
-                    Canonical emitter (~164L), style-aware dump, round-trip properties
-</p>
+                    Canonical <code>Emitter.lean</code>, style-aware <code>Dump.lean</code>, and <code>RoundTrip.lean</code> (<code>emit ∘ parse = id</code> properties).</p>
                   </td></tr><tr><td><p>
                     FFI</p>
                   </td><td><p>
-                    <code>FFI.lean</code>, <code>ffi/</code>, <code>python/</code>, <code>rust/</code></p>
+                    <code>FFI.lean</code></p>
                   </td><td><p>
-                    C/Python/Rust bindings via <code>@[export]</code>
-</p>
+                    C/Python/Rust bindings via <code>@[export]</code>. The companion <code>ffi/</code>, <code>python/</code>, and <code>rust/</code> directories outside <code>L4YAML/</code> carry the non-Lean glue.</p>
                   </td></tr><tr><td><p>
                     Proofs</p>
                   </td><td><p>
-                    <code>Proofs/</code> (61 modules, ~47,000 lines)</p>
+                    63 modules</p>
                   </td><td><p>
-                    Machine-checked theorems for soundness, completeness, progress, well-formedness</p>
+                    Machine-checked theorems for soundness, completeness, progress, and well-formedness.</p>
                   </td></tr></table></section>
           <nav class="prev-next-buttons">
             <a class="local-button active" href="Architecture/Type-System/#type-system" rel="prev" title="2.3. Type System"><span class="arrow">←</span><span class="where">2.3. Type System</span></a><a class="local-button active" href="Architecture/Import-Graph/#import-graph" rel="next" title="2.5. Import Graph"><span class="where">2.5. Import Graph</span><span class="arrow">→</span></a></nav>
