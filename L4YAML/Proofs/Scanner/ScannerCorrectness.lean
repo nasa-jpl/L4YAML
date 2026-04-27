@@ -10324,6 +10324,479 @@ theorem scanSingleQuoted_preserves_pendingKeys (s : ScannerState) (s' : ScannerS
     have := collectSingleQuotedLoop_preserves_pendingKeys s.advance "" _ _ _ _ _ result heq
     rw [this, advance_preserves_pendingKeys]
 
+/-! ### Class C composition: scanValueClearKey / scanValuePrepare / scanValue
+
+`scanValueClearKey` is Class A (only sets `pendingKeyActive := none`,
+leaves `pendingKeys` unchanged).  `scanValuePrepare` and `scanValue`
+hit `setPendingKeyKind` in three of their branches, so we work directly
+with `PendingKeysWellIndexed` via `PendingKeysWellIndexed_field_update`. -/
+
+theorem scanValueClearKey_preserves_pendingKeys (s : ScannerState) :
+    (scanValueClearKey s).pendingKeys = s.pendingKeys := by
+  unfold scanValueClearKey
+  split
+  · split
+    · rfl
+    · split <;> rfl
+  · rfl
+
+/-- Pointwise: `scanValuePrepare` preserves each entry's `insertBeforeIdx`.
+    The three `setPendingKeyKind` branches change only `kind`. -/
+theorem scanValuePrepare_pendingKeys_insertBeforeIdx (s : ScannerState) (i : Nat)
+    (hi : i < s.pendingKeys.size)
+    (hi' : i < (scanValuePrepare s).pendingKeys.size) :
+    ((scanValuePrepare s).pendingKeys[i]'hi').insertBeforeIdx
+      = (s.pendingKeys[i]'hi).insertBeforeIdx := by
+  unfold scanValuePrepare
+  split
+  · split
+    · split
+      · -- Branch 1: blockMappingStartAndKey
+        show ((setPendingKeyKind s.pendingKeys s.pendingKeyActive .blockMappingStartAndKey)[i]'_).insertBeforeIdx
+          = (s.pendingKeys[i]'hi).insertBeforeIdx
+        exact setPendingKeyKind_insertBeforeIdx s.pendingKeys s.pendingKeyActive
+          .blockMappingStartAndKey i hi (by
+            rw [setPendingKeyKind_size]; exact hi)
+      · -- Branch 2: keyOnly (block)
+        show ((setPendingKeyKind s.pendingKeys s.pendingKeyActive .keyOnly)[i]'_).insertBeforeIdx
+          = (s.pendingKeys[i]'hi).insertBeforeIdx
+        exact setPendingKeyKind_insertBeforeIdx s.pendingKeys s.pendingKeyActive
+          .keyOnly i hi (by rw [setPendingKeyKind_size]; exact hi)
+    · -- Branch 3: keyOnly (flow)
+      show ((setPendingKeyKind s.pendingKeys s.pendingKeyActive .keyOnly)[i]'_).insertBeforeIdx
+        = (s.pendingKeys[i]'hi).insertBeforeIdx
+      exact setPendingKeyKind_insertBeforeIdx s.pendingKeys s.pendingKeyActive
+        .keyOnly i hi (by rw [setPendingKeyKind_size]; exact hi)
+  · split
+    · -- Branch 4: explicitKeyLine.isSome — pendingKeys unchanged
+      rfl
+    · split
+      · -- Branch 5: pushMappingIndent — pendingKeys unchanged
+        have h_eq : (pushMappingIndent s s.col).pendingKeys = s.pendingKeys :=
+          pushMappingIndent_preserves_pendingKeys s s.col
+        have hi'' : i < s.pendingKeys.size := hi
+        have hi''' : i < (pushMappingIndent s s.col).pendingKeys.size := by rw [h_eq]; exact hi''
+        have h_at : (pushMappingIndent s s.col).pendingKeys[i]'hi''' = s.pendingKeys[i]'hi'' := by
+          congr 1
+        show ((pushMappingIndent s s.col).pendingKeys[i]'hi''').insertBeforeIdx
+            = (s.pendingKeys[i]'hi'').insertBeforeIdx
+        rw [h_at]
+      · -- Branch 6: identity
+        rfl
+
+theorem scanValuePrepare_pendingKeys_size (s : ScannerState) :
+    (scanValuePrepare s).pendingKeys.size = s.pendingKeys.size := by
+  unfold scanValuePrepare
+  split
+  · split
+    · split
+      · simp [setPendingKeyKind_size]
+      · simp [setPendingKeyKind_size]
+    · simp [setPendingKeyKind_size]
+  · split
+    · rfl
+    · split
+      · rw [pushMappingIndent_preserves_pendingKeys]
+      · rfl
+
+theorem scanValuePrepare_preserves_PendingKeysWellIndexed (s : ScannerState)
+    (h : PendingKeysWellIndexed s) : PendingKeysWellIndexed (scanValuePrepare s) := by
+  apply PendingKeysWellIndexed_field_update s (scanValuePrepare s)
+    (scanValuePrepare_pendingKeys_size s)
+    (fun p hp hp' => scanValuePrepare_pendingKeys_insertBeforeIdx s p hp hp')
+    (scanValuePrepare_tokens_monotonic s)
+    h
+
+theorem scanValue_pendingKeys_size (s : ScannerState) (s' : ScannerState)
+    (h : scanValue s = .ok s') :
+    s'.pendingKeys.size = s.pendingKeys.size := by
+  unfold scanValue at h
+  simp only [bind, Except.bind] at h
+  split at h <;> try contradiction
+  split at h <;> try contradiction
+  simp only [Except.ok.injEq] at h; subst h
+  -- s' = (scanValuePrepare (scanValueClearKey s)).emit .value |>.advance with simpleKeyAllowed/explicitKeyLine
+  show ((scanValuePrepare (scanValueClearKey s)).emit .value).advance.pendingKeys.size = _
+  rw [advance_preserves_pendingKeys, emit_preserves_pendingKeys, scanValuePrepare_pendingKeys_size,
+      scanValueClearKey_preserves_pendingKeys]
+
+theorem scanValue_pendingKeys_insertBeforeIdx (s : ScannerState) (s' : ScannerState)
+    (h : scanValue s = .ok s') (i : Nat) (hi : i < s.pendingKeys.size)
+    (hi' : i < s'.pendingKeys.size) :
+    (s'.pendingKeys[i]'hi').insertBeforeIdx
+      = (s.pendingKeys[i]'hi).insertBeforeIdx := by
+  unfold scanValue at h
+  simp only [bind, Except.bind] at h
+  split at h <;> try contradiction
+  split at h <;> try contradiction
+  simp only [Except.ok.injEq] at h; subst h
+  -- The chain: scanValueClearKey → scanValuePrepare → emit → advance.
+  -- emit/advance preserve pendingKeys (Class A); scanValueClearKey too.
+  -- Only scanValuePrepare may field-update via setPendingKeyKind.
+  have h_clear := scanValueClearKey_preserves_pendingKeys s
+  have h_prep_size := scanValuePrepare_pendingKeys_size (scanValueClearKey s)
+  have h_emit := emit_preserves_pendingKeys (scanValuePrepare (scanValueClearKey s)) .value
+  have h_adv := advance_preserves_pendingKeys ((scanValuePrepare (scanValueClearKey s)).emit .value)
+  -- Goal: ((((scanValuePrepare (scanValueClearKey s)).emit .value).advance).pendingKeys[i]'hi').insertBeforeIdx
+  --     = (s.pendingKeys[i]'hi).insertBeforeIdx
+  -- After simplification, this reduces to scanValuePrepare's insertBeforeIdx preservation.
+  show (((scanValuePrepare (scanValueClearKey s)).emit .value).advance.pendingKeys[i]'hi').insertBeforeIdx
+    = (s.pendingKeys[i]'hi).insertBeforeIdx
+  have hi_clear : i < (scanValueClearKey s).pendingKeys.size := by rw [h_clear]; exact hi
+  have hi_prep : i < (scanValuePrepare (scanValueClearKey s)).pendingKeys.size := by
+    rw [h_prep_size]; exact hi_clear
+  have hi_emit : i < ((scanValuePrepare (scanValueClearKey s)).emit .value).pendingKeys.size := by
+    rw [h_emit]; exact hi_prep
+  have h_step1 :
+      (((scanValuePrepare (scanValueClearKey s)).emit .value).advance.pendingKeys[i]'hi').insertBeforeIdx
+        = (((scanValuePrepare (scanValueClearKey s)).emit .value).pendingKeys[i]'hi_emit).insertBeforeIdx := by
+    congr 1
+    have : ((scanValuePrepare (scanValueClearKey s)).emit .value).advance.pendingKeys[i]'hi'
+        = ((scanValuePrepare (scanValueClearKey s)).emit .value).pendingKeys[i]'hi_emit := by
+      congr 1
+    exact this
+  have h_step2 :
+      (((scanValuePrepare (scanValueClearKey s)).emit .value).pendingKeys[i]'hi_emit).insertBeforeIdx
+        = ((scanValuePrepare (scanValueClearKey s)).pendingKeys[i]'hi_prep).insertBeforeIdx := by
+    have : ((scanValuePrepare (scanValueClearKey s)).emit .value).pendingKeys[i]'hi_emit
+         = (scanValuePrepare (scanValueClearKey s)).pendingKeys[i]'hi_prep := by congr 1
+    rw [this]
+  have h_step3 :
+      ((scanValuePrepare (scanValueClearKey s)).pendingKeys[i]'hi_prep).insertBeforeIdx
+        = ((scanValueClearKey s).pendingKeys[i]'hi_clear).insertBeforeIdx :=
+    scanValuePrepare_pendingKeys_insertBeforeIdx (scanValueClearKey s) i hi_clear hi_prep
+  have h_step4 :
+      ((scanValueClearKey s).pendingKeys[i]'hi_clear).insertBeforeIdx
+        = (s.pendingKeys[i]'hi).insertBeforeIdx := by
+    congr 1
+    have : (scanValueClearKey s).pendingKeys[i]'hi_clear = s.pendingKeys[i]'hi := by congr 1
+    exact this
+  rw [h_step1, h_step2, h_step3, h_step4]
+
+theorem scanValue_preserves_PendingKeysWellIndexed (s : ScannerState) (s' : ScannerState)
+    (h : scanValue s = .ok s') (h_inv : PendingKeysWellIndexed s) :
+    PendingKeysWellIndexed s' := by
+  apply PendingKeysWellIndexed_field_update s s'
+    (scanValue_pendingKeys_size s s' h)
+    (fun p hp hp' => scanValue_pendingKeys_insertBeforeIdx s s' h p hp hp')
+    (by have := scanValue_adds_tokens s s' h; omega)
+    h_inv
+
+/-! ### Dispatcher-level invariant preservation -/
+
+theorem dispatchStructural_preserves_pendingKeys (s : ScannerState) (c : Char) (s' : ScannerState)
+    (h : scanNextToken_dispatchStructural s c = .ok (some s')) :
+    s'.pendingKeys = s.pendingKeys := by
+  unfold scanNextToken_dispatchStructural at h
+  simp only [bind, ScanHelpers.bind_ok_simp, pure, Pure.pure, Except.pure] at h
+  simp only [Except.bind] at h
+  repeat (any_goals (split at h))
+  any_goals contradiction
+  all_goals (try simp only [Except.ok.injEq, Option.some.injEq] at *)
+  any_goals contradiction
+  all_goals (try subst_vars)
+  all_goals first
+    | exact scanDocumentStart_preserves_pendingKeys s
+    | exact scanDocumentEnd_preserves_pendingKeys _ _ (by assumption)
+    | exact scanDirective_preserves_pendingKeys _ _ (by assumption)
+    | (simp_all [scanDocumentStart_preserves_pendingKeys,
+        scanDocumentEnd_preserves_pendingKeys, scanDirective_preserves_pendingKeys]; done)
+
+theorem dispatchStructural_preserves_PendingKeysWellIndexed
+    (s : ScannerState) (c : Char) (s' : ScannerState)
+    (h : scanNextToken_dispatchStructural s c = .ok (some s')) (h_inv : PendingKeysWellIndexed s) :
+    PendingKeysWellIndexed s' := by
+  apply PendingKeysWellIndexed_mono s s'
+    (dispatchStructural_preserves_pendingKeys s c s' h)
+    (ScanHelpers.dispatchStructural_tokens_mono s c s' h)
+    h_inv
+
+theorem dispatchFlowIndicators_preserves_pendingKeys (s : ScannerState) (c : Char) (s' : ScannerState)
+    (h : scanNextToken_dispatchFlowIndicators s c = .ok (some s')) :
+    s'.pendingKeys = s.pendingKeys := by
+  unfold scanNextToken_dispatchFlowIndicators at h
+  simp only [bind, ScanHelpers.bind_ok_simp, pure, Pure.pure, Except.pure] at h
+  simp only [Except.bind] at h
+  repeat (any_goals (split at h))
+  any_goals contradiction
+  all_goals (try simp only [Except.ok.injEq, Option.some.injEq] at *)
+  any_goals contradiction
+  all_goals (try subst_vars)
+  all_goals first
+    | exact scanFlowEntry_preserves_pendingKeys _ _ (by assumption)
+    | exact scanFlowSequenceStart_preserves_pendingKeys _
+    | exact scanFlowSequenceEnd_preserves_pendingKeys _
+    | exact scanFlowMappingStart_preserves_pendingKeys _
+    | exact scanFlowMappingEnd_preserves_pendingKeys _
+    | (simp_all [scanFlowEntry_preserves_pendingKeys,
+        scanFlowSequenceStart_preserves_pendingKeys,
+        scanFlowSequenceEnd_preserves_pendingKeys,
+        scanFlowMappingStart_preserves_pendingKeys,
+        scanFlowMappingEnd_preserves_pendingKeys]; done)
+
+theorem dispatchFlowIndicators_preserves_PendingKeysWellIndexed
+    (s : ScannerState) (c : Char) (s' : ScannerState)
+    (h : scanNextToken_dispatchFlowIndicators s c = .ok (some s')) (h_inv : PendingKeysWellIndexed s) :
+    PendingKeysWellIndexed s' := by
+  apply PendingKeysWellIndexed_mono s s'
+    (dispatchFlowIndicators_preserves_pendingKeys s c s' h)
+    (ScanHelpers.dispatchFlowIndicators_tokens_mono s c s' h)
+    h_inv
+
+/-- Block indicators: scanBlockEntry/scanKey are Class A (preserve pendingKeys);
+    scanValue is Class C (field-update via scanValuePrepare). -/
+theorem dispatchBlockIndicators_preserves_PendingKeysWellIndexed
+    (s : ScannerState) (c : Char) (s' : ScannerState)
+    (h : scanNextToken_dispatchBlockIndicators s c = .ok (some s')) (h_inv : PendingKeysWellIndexed s) :
+    PendingKeysWellIndexed s' := by
+  unfold scanNextToken_dispatchBlockIndicators at h
+  simp only [bind, ScanHelpers.bind_ok_simp, pure, Pure.pure, Except.pure] at h
+  simp only [Except.bind] at h
+  -- Case-split on three branches: scanBlockEntry / scanKey / scanValue.
+  split at h
+  · -- '-': scanBlockEntry
+    split at h <;> try contradiction
+    rename_i h_be
+    simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+    apply PendingKeysWellIndexed_mono s _
+      (scanBlockEntry_preserves_pendingKeys _ _ h_be)
+      (by have := ScanHelpers.scanBlockEntry_adds_tokens _ _ h_be; omega)
+      h_inv
+  · split at h
+    · -- '?': scanKey
+      split at h <;> try contradiction
+      rename_i h_key
+      simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+      apply PendingKeysWellIndexed_mono s _
+        (scanKey_preserves_pendingKeys _ _ h_key)
+        (by have := scanKey_adds_one_token _ _ h_key; omega)
+        h_inv
+    · split at h
+      · -- ':': scanValue
+        split at h <;> try contradiction
+        rename_i h_val
+        simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+        exact scanValue_preserves_PendingKeysWellIndexed _ _ h_val h_inv
+      · -- fallthrough
+        simp at h
+
+/-- Content dispatch: most scanners are Class A; the double-quoted and
+    single-quoted branches additionally apply `setPendingKeyEndLine`
+    (Class C field-update). -/
+theorem dispatchContent_preserves_PendingKeysWellIndexed
+    (s : ScannerState) (c : Char) (s' : ScannerState)
+    (h : scanNextToken_dispatchContent s c = .ok s') (h_inv : PendingKeysWellIndexed s) :
+    PendingKeysWellIndexed s' := by
+  unfold scanNextToken_dispatchContent at h
+  simp only [bind, ScanHelpers.bind_ok_simp, pure, Pure.pure, Except.pure] at h
+  simp only [Except.bind] at h
+  split at h
+  · -- '&': scanAnchorOrAlias true (then push to definedAnchors)
+    generalize h_fn : scanAnchorOrAlias s true = result at h
+    cases result with
+    | error e => simp at h
+    | ok s_a =>
+      simp only [Except.ok.injEq] at h; subst h
+      -- s' = { s_a with definedAnchors := s_a.definedAnchors.push name }
+      apply PendingKeysWellIndexed_mono s _ ?_ ?_ h_inv
+      · show s_a.pendingKeys = s.pendingKeys
+        exact scanAnchorOrAlias_preserves_pendingKeys s true s_a h_fn
+      · show s_a.tokens.size ≥ s.tokens.size
+        have := ScanHelpers.scanAnchorOrAlias_adds_one_token s true s_a h_fn; omega
+  · split at h
+    · -- '*': alias
+      split at h
+      · simp at h
+      · generalize h_fn : scanAnchorOrAlias s false = result at h
+        cases result with
+        | error e => simp at h
+        | ok s_a =>
+          simp only [Except.ok.injEq] at h; subst h
+          apply PendingKeysWellIndexed_mono s _
+            (scanAnchorOrAlias_preserves_pendingKeys s false s_a h_fn)
+            (by have := ScanHelpers.scanAnchorOrAlias_adds_one_token s false s_a h_fn; omega)
+            h_inv
+    · split at h
+      · -- '!': tag
+        generalize h_fn : scanTag s = result at h
+        cases result with
+        | error e => simp at h
+        | ok s_t =>
+          simp only [Except.ok.injEq] at h; subst h
+          apply PendingKeysWellIndexed_mono s _
+            (scanTag_preserves_pendingKeys s s_t h_fn)
+            (by have := ScanHelpers.scanTag_adds_one_token s s_t h_fn; omega)
+            h_inv
+      · -- block scalar / quoted / plain
+        split at h
+        · -- block scalar
+          generalize h_fn : scanBlockScalar s = result at h
+          cases result with
+          | error e => simp at h
+          | ok s_b =>
+            simp only [Except.ok.injEq] at h; subst h
+            apply PendingKeysWellIndexed_mono s _
+              (scanBlockScalar_preserves_pendingKeys s s_b h_fn)
+              (by have := ScanHelpers.scanBlockScalar_adds_one_token s s_b h_fn; omega)
+              h_inv
+        · split at h
+          · -- '"': scanDoubleQuoted + endLine wrapper (Class C if simpleKey.possible)
+            generalize h_fn : scanDoubleQuoted s = result at h
+            cases result with
+            | error e => simp at h
+            | ok s_dq =>
+              simp only [Except.ok.injEq] at h; subst h
+              -- Inner: s_dq preserves invariant via Class A.
+              have h_dq_inv : PendingKeysWellIndexed s_dq :=
+                PendingKeysWellIndexed_mono s s_dq
+                  (scanDoubleQuoted_preserves_pendingKeys s s_dq h_fn)
+                  (by have := ScanHelpers.scanDoubleQuoted_adds_one_token s s_dq h_fn; omega)
+                  h_inv
+              -- Outer: if simpleKey.possible, wrap with setPendingKeyEndLine.
+              show PendingKeysWellIndexed (
+                if s_dq.simpleKey.possible then
+                  { s_dq with simpleKey := { s_dq.simpleKey with endLine := s_dq.line },
+                              pendingKeys := setPendingKeyEndLine s_dq.pendingKeys s_dq.pendingKeyActive s_dq.line }
+                else s_dq)
+              split
+              · -- field-update branch: Class C
+                apply PendingKeysWellIndexed_field_update s_dq _
+                  (by simp [setPendingKeyEndLine_size])
+                  (fun p hp hp' => setPendingKeyEndLine_insertBeforeIdx s_dq.pendingKeys
+                    s_dq.pendingKeyActive s_dq.line p hp hp')
+                  (by show s_dq.tokens.size ≥ s_dq.tokens.size; omega)
+                  h_dq_inv
+              · exact h_dq_inv
+          · split at h
+            · -- '\'': scanSingleQuoted + endLine wrapper
+              generalize h_fn : scanSingleQuoted s = result at h
+              cases result with
+              | error e => simp at h
+              | ok s_sq =>
+                simp only [Except.ok.injEq] at h; subst h
+                have h_sq_inv : PendingKeysWellIndexed s_sq :=
+                  PendingKeysWellIndexed_mono s s_sq
+                    (scanSingleQuoted_preserves_pendingKeys s s_sq h_fn)
+                    (by have := ScanHelpers.scanSingleQuoted_adds_one_token s s_sq h_fn; omega)
+                    h_inv
+                show PendingKeysWellIndexed (
+                  if s_sq.simpleKey.possible then
+                    { s_sq with simpleKey := { s_sq.simpleKey with endLine := s_sq.line },
+                                pendingKeys := setPendingKeyEndLine s_sq.pendingKeys s_sq.pendingKeyActive s_sq.line }
+                  else s_sq)
+                split
+                · apply PendingKeysWellIndexed_field_update s_sq _
+                    (by simp [setPendingKeyEndLine_size])
+                    (fun p hp hp' => setPendingKeyEndLine_insertBeforeIdx s_sq.pendingKeys
+                      s_sq.pendingKeyActive s_sq.line p hp hp')
+                    (by show s_sq.tokens.size ≥ s_sq.tokens.size; omega)
+                    h_sq_inv
+                · exact h_sq_inv
+            · -- plain scalar (or error)
+              split at h
+              · generalize h_fn : scanPlainScalar s = result at h
+                cases result with
+                | error e => simp at h
+                | ok s_p =>
+                  simp only [Except.ok.injEq] at h; subst h
+                  apply PendingKeysWellIndexed_mono s _
+                    (scanPlainScalar_preserves_pendingKeys s s_p h_fn)
+                    (by have := ScanHelpers.scanPlainScalar_adds_one_token s s_p h_fn; omega)
+                    h_inv
+              · simp at h
+
+/-- preprocess: composes skipToContent (A) + unwindIndents (A) + saveSimpleKey (B). -/
+theorem preprocess_preserves_PendingKeysWellIndexed (s : ScannerState) (s1 : ScannerState) (c : Char)
+    (h : scanNextToken_preprocess s = .ok (some (s1, c))) (h_inv : PendingKeysWellIndexed s) :
+    PendingKeysWellIndexed s1 := by
+  unfold scanNextToken_preprocess at h
+  simp only [bind, ScanHelpers.bind_error_simp, ScanHelpers.bind_ok_simp,
+             pure, Pure.pure, Except.pure] at h
+  simp only [Except.bind] at h
+  split at h
+  · contradiction
+  · rename_i s_skip h_skip
+    have h_skip_inv : PendingKeysWellIndexed s_skip :=
+      PendingKeysWellIndexed_mono s s_skip
+        (skipToContent_preserves_pendingKeys s s_skip h_skip)
+        (by rw [skipToContent_preserves_tokens s s_skip h_skip]; omega)
+        h_inv
+    split at h
+    · simp at h
+    · split at h
+      · -- needIndentCheck path
+        split at h
+        · contradiction
+        · split at h
+          · simp at h
+          · simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq] at h
+            obtain ⟨rfl, _⟩ := h
+            -- s1 = saveSimpleKey { unwindIndents s_skip s_skip.col with needIndentCheck := false }
+            -- Step 1: unwindIndents preserves invariant
+            have h_unwind_inv : PendingKeysWellIndexed (unwindIndents s_skip s_skip.col) :=
+              PendingKeysWellIndexed_mono s_skip _
+                (unwindIndents_preserves_pendingKeys s_skip s_skip.col)
+                (unwindIndents_adds_tokens s_skip s_skip.col)
+                h_skip_inv
+            -- Step 2: needIndentCheck := false is a non-pendingKeys/tokens field
+            have h_pre_inv : PendingKeysWellIndexed
+                { unwindIndents s_skip s_skip.col with needIndentCheck := false } :=
+              PendingKeysWellIndexed_mono _ _ rfl (by show _ ≥ _; omega) h_unwind_inv
+            -- Step 3: saveSimpleKey is Class B (uses dedicated lemma)
+            exact saveSimpleKey_preserves_PendingKeysWellIndexed _ h_pre_inv
+      · -- no needIndentCheck path
+        split at h
+        · contradiction
+        · split at h
+          · simp at h
+          · simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq] at h
+            obtain ⟨rfl, _⟩ := h
+            exact saveSimpleKey_preserves_PendingKeysWellIndexed _ h_skip_inv
+
+/-! ### scanNextToken preserves PendingKeysWellIndexed -/
+
+theorem allowDir_ite_preserves_PendingKeysWellIndexed (s : ScannerState)
+    (h_inv : PendingKeysWellIndexed s) :
+    PendingKeysWellIndexed (if s.allowDirectives then
+      { s with allowDirectives := false, documentEverStarted := true } else s) := by
+  split
+  · exact PendingKeysWellIndexed_mono s _ rfl (Nat.le_refl _) h_inv
+  · exact h_inv
+
+theorem scanNextToken_preserves_PendingKeysWellIndexed
+    (s s' : ScannerState) (h_inv : PendingKeysWellIndexed s)
+    (h_ok : scanNextToken s = .ok (some s')) : PendingKeysWellIndexed s' := by
+  unfold scanNextToken at h_ok
+  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  split at h_ok <;> (try (simp at h_ok; done)) -- preprocess Except
+  split at h_ok <;> (try (simp at h_ok; done)) -- preprocess Option
+  rename_i s2 c h_pre
+  have h_inv2 := preprocess_preserves_PendingKeysWellIndexed s s2 c h_pre h_inv
+  split at h_ok <;> (try (simp at h_ok; done)) -- structural Except
+  split at h_ok
+  · -- structural some
+    simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
+    exact dispatchStructural_preserves_PendingKeysWellIndexed s2 c _ (by assumption) h_inv2
+  · -- structural none → continue
+    have h_inv3 := allowDir_ite_preserves_PendingKeysWellIndexed s2 h_inv2
+    -- checkBlockFlowIndent
+    split at h_ok <;> (try (simp at h_ok; done))
+    -- Flow Except
+    split at h_ok <;> (try (simp at h_ok; done))
+    -- Flow Option
+    split at h_ok
+    · simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
+      exact dispatchFlowIndicators_preserves_PendingKeysWellIndexed _ c _ (by assumption) h_inv3
+    · -- block Except
+      split at h_ok <;> (try (simp at h_ok; done))
+      split at h_ok
+      · simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
+        exact dispatchBlockIndicators_preserves_PendingKeysWellIndexed _ c _ (by assumption) h_inv3
+      · -- content
+        split at h_ok <;> (try (simp at h_ok; done))
+        simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
+        exact dispatchContent_preserves_PendingKeysWellIndexed _ c _ (by assumption) h_inv3
+
 /-!
 ### scanNextToken preserves ScanInv
 
