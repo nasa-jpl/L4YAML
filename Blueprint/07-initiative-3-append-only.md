@@ -478,7 +478,7 @@ sequence* as 5.0/5.1/5.2.
 | 5.1 | Discharge Categories A + B (§5.b) — restore green | ✓ done | `71a86eee` |
 | 5.2 | yaml-test-suite golden parity (runtime check) | pending | — |
 
-##### 5.a Code edits (Scanner-side)
+##### 5.a Code edits (Scanner-side) [✓ landed by 5.0 `a212cdc2`]
 
 1. **`saveSimpleKey`** — drop the two `tokens.push placeholder` calls.
    The `pendingKeys.push { …, kind := .unresolved }` survives, and
@@ -515,7 +515,7 @@ sequence* as 5.0/5.1/5.2.
    (they consume `scanFiltered`'s public output and never observed
    placeholders).
 
-##### 5.b Proof breakage cascade — three categories
+##### 5.b Proof breakage cascade — three categories [Cat A+B ✓ discharged by 5.1 `71a86eee`; Cat C sorry'd → J.3]
 
 **Category A — vacuous post-cutover** (delete or replace with `nofun`)
 Hypothesis no longer holdable; the theorem statement is still true
