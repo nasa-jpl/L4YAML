@@ -188,10 +188,10 @@ table.tabular td > p:last-child, table.tabular th > p:first-child {
               2.2. Token Parser (Syntactic Layer)<span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=token-parser" title="Permalink">🔗</a></span></h1>
             <p>
               <span id="--index--next-next-next-next-next-next"></span>
-The token parser (<code>TokenParser.lean</code>, ~426 lines) consumes the
-<code>YamlToken</code> stream and produces an <code>Array YamlDocument</code>.
-It implements 54 YAML productions via hand-written recursive descent
-(no parser combinator library).</p>
+The token parser (<code>TokenParser.lean</code>, 790 lines)
+consumes the <code>YamlToken</code> stream and produces an <code>Array YamlDocument</code>.
+It implements the spec's grammar-layer (S) productions via hand-written
+recursive descent (no parser combinator library).</p>
             <p>
               Key responsibilities:</p>
             <ul>

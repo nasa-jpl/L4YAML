@@ -188,9 +188,9 @@ table.tabular td > p:last-child, table.tabular th > p:first-child {
               2.1. Scanner (Lexical Layer)<span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=scanner" title="Permalink">🔗</a></span></h1>
             <p>
               <span id="--index--next-next-next"></span>
-The scanner (<code>Scanner.lean</code>, ~920 lines) converts a UTF-8 input string
-into a stream of <code>YamlToken</code> values.
-It implements 132 YAML productions from the specification and maintains
+The scanner (<code>Scanner.lean</code>, 594 lines)
+converts a UTF-8 input string into a stream of <code>YamlToken</code> values.
+It implements the spec's lexical-layer (L) productions and maintains
 several pieces of state:</p>
             <ul>
               <li>
