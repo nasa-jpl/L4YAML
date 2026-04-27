@@ -2,8 +2,10 @@
   L4YAML Documentation — Verification Strategy
 -/
 import VersoManual
+import Doc.L4YAML.Stats
 
 open Verso.Genre Manual
+open Doc.L4YAML.Stats
 
 set_option pp.rawOnError true
 
@@ -28,8 +30,8 @@ tag := "formal-proofs"
 %%%
 
 {index}[machine-checked proofs]
-The core layer consists of 2,309 Lean 4 theorems across 61 proof
-modules (~47,000 lines).
+The core layer consists of {numTheorems}[] Lean 4 theorems across
+{numProofModules}[] proof modules ({leanLines}[L4YAML/Proofs] lines).
 These proofs are checked by the Lean kernel — the small trusted
 core of the system — and establish properties including:
 

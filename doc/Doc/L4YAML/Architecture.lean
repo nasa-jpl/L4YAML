@@ -3,9 +3,11 @@
 -/
 import VersoManual
 import Doc.L4YAML.ModuleGroups
+import Doc.L4YAML.Stats
 
 open Verso.Genre Manual
 open Doc.L4YAML.ModuleGroups
+open Doc.L4YAML.Stats
 
 set_option pp.rawOnError true
 
@@ -27,9 +29,9 @@ tag := "scanner"
 %%%
 
 {index}[scanner]
-The scanner (`Scanner.lean`, ~920 lines) converts a UTF-8 input string
-into a stream of `YamlToken` values.
-It implements 132 YAML productions from the specification and maintains
+The scanner (`Scanner.lean`, {leanLines}[L4YAML/Scanner/Scanner.lean] lines)
+converts a UTF-8 input string into a stream of `YamlToken` values.
+It implements the spec's lexical-layer (L) productions and maintains
 several pieces of state:
 
  * _Indentation stack_ — tracks block-level nesting via column positions
@@ -87,10 +89,10 @@ tag := "token-parser"
 %%%
 
 {index}[token parser]
-The token parser (`TokenParser.lean`, ~426 lines) consumes the
-`YamlToken` stream and produces an `Array YamlDocument`.
-It implements 54 YAML productions via hand-written recursive descent
-(no parser combinator library).
+The token parser (`TokenParser.lean`, {leanLines}[L4YAML/Parser/TokenParser.lean] lines)
+consumes the `YamlToken` stream and produces an `Array YamlDocument`.
+It implements the spec's grammar-layer (S) productions via hand-written
+recursive descent (no parser combinator library).
 
 Key responsibilities:
 
