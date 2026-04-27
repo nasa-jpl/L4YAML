@@ -1,8 +1,8 @@
 # Initiative 3 — Append-Only Token Stream
 
-**Status**: Phase J.0 approved (2026-04-26); execution proceeds on
-branch `feature/append-only`.  Main stays in a usable state until
-the feature branch merges back.
+**Status**: Phase J.0/J.1/J.2 complete; **Phase J.3 in progress
+(started 2026-04-26)** on branch `feature/append-only`.  Main stays
+in a usable state until the feature branch merges back.
 **Driver**: Tier 2 emitter-scannability work hit a structural blocker
 that traces to a deliberate architectural choice (`02-architecture.md`
 §Append-only token stream).  This initiative revises that choice.
@@ -720,7 +720,7 @@ manifest 5.d:` comment; J.3 clears them.
   L4YAML` warnings at HEAD (24 sorry-using declarations: 10
   pre-existing + 14 new Category C).
 
-### Phase J.3 — Proof migration (4-6 weeks)
+### Phase J.3 — Proof migration (4-6 weeks) [in progress, started 2026-04-26]
 
 Re-discharge the corpus.  Many existing lemmas simplify drastically:
 
@@ -739,6 +739,51 @@ Re-discharge the corpus.  Many existing lemmas simplify drastically:
 less than pre-initiative.  Tier 2 Turn 2 (`emitList_body_filtered_
 characterization` Parts 1+2) discharged in this phase as
 demonstration.
+
+#### J.3 substep manifest
+
+The 17 non-Tier-2 sorries decompose along the dependency graph
+rooted at `Scanner/Linearise.lean`:
+
+| Substep | Scope | Sorries cleared | Files touched |
+|---|---|---|---|
+| J.3.1 | Linearise foundations | 3 | `Scanner/Linearise.lean` |
+| J.3.2 | Bridge lemmas | 0 (new infrastructure) | `Scanner/Linearise.lean`, new helpers |
+| J.3.3 | ScannerCorrectness consumers | 2 | `Proofs/Scanner/ScannerCorrectness.lean` |
+| J.3.4 | ScannerPlainScalarValid consumers | 4 | `Proofs/Production/ScannerPlainScalarValid.lean` |
+| J.3.5 | Production+EndToEnd bridges | 2 | `Proofs/Production/DocumentProduction.lean`, `Proofs/EndToEndCorrectness.lean` |
+| J.3.6 | EmitterScannability Cat C | 6 | `Proofs/Output/EmitterScannability.lean` (Cat C only; 7 Tier 2 deferred to J.4) |
+
+**J.3.1 — Linearise foundations** (3 sorries):
+
+1. `linearise_resolved` (size accounting; pure structural induction
+   over `linearise.go`).  Output cardinality equals
+   `tokens.size + Σ (expandKind e).size`.
+2. `linearise_append_unresolved` (no-op-ness of pushing an
+   `.unresolved` pending entry).  Falls out of `expandKind` reducing
+   to `#[]` on `.unresolved`.
+3. `linearise_append_token` (Path C's headline append-monotonicity).
+   Pushing a token to `tokens` extends `linearise`'s output rightward;
+   the existing prefix is preserved.  Hypothesis: every pending
+   entry's `insertBeforeIdx ≤ tokens.size`.
+
+These are independently useful and consumed by every downstream
+substep.  J.3.1's gate: `lake build L4YAML` green, sorry count drops
+from 24 → 21, three `J.3 manifest 5.d` markers removed from
+`Linearise.lean`.
+
+**J.3.2 — Bridge lemmas**: introduce
+`scanFiltered_ok_implies_scan_ok`, `linearise_preserves_FlowContextPSV`,
+`linearise_preserves_FlowBracketsMatched`.  Pure infrastructure;
+must not introduce new sorries.
+
+**J.3.3–J.3.6**: re-discharge consumers in dependency order, each
+substep removing its sorry-using declarations and the matching
+`-- J.3 manifest 5.d:` markers.
+
+**J.3 final gate**: `lake build` green; sorry count 24 → 7 (only
+the 7 Tier 2 EmitterScannability declarations remain, deferred to
+J.4).
 
 ### Phase J.4 — Cleanup and follow-on (1-2 weeks)
 
