@@ -850,15 +850,62 @@ count unchanged at 21.
     `linearise_append_token` for direct rewriting),
     `linearise_last_eq_tokens_last`
     (in `Proofs/Scanner/ScannerLinearise.lean`).
-  Remaining work: `linearise_positions_ordered`, the pendingKeys
-  well-indexedness/position invariant proven through `scanNextToken`,
-  and the composition.  Approximately 350–400 LOC remaining (the
-  pendingKeys invariant proof is the bulk — must touch every dispatcher
-  that doesn't change `pendingKeys` plus `saveSimpleKey` /
-  `setPendingKeyKind` / `setPendingKeyEndLine`).  Folds naturally
-  into J.3.4 since the same pendingKeys invariants and position-fit
-  lemmas are needed by the `ScannerPlainScalarValid` consumers (which
-  already import `ScannerLinearise`).
+  Remaining work plan, organised around the algebraic structure of
+  how scanner ops affect `pendingKeys`:
+
+  **Three operation classes** (derived from `grep` for `pendingKeys :=`
+  in `L4YAML/Scanner/`):
+
+  * **Class A — passthrough**: `(op s).pendingKeys = s.pendingKeys`.
+    Every operation outside of `saveSimpleKey` / `setPendingKeyKind` /
+    `setPendingKeyEndLine`: `advance`, `emit`, `skipToContent`,
+    `unwindIndents`, all the `scan*` content scanners, all dispatchers'
+    non-key paths.  Mirrors the existing `_preserves_simpleKeyStack`
+    chain (~280 instances).
+
+  * **Class B — append-with-bounded-entry**: `saveSimpleKey` only.
+    Either returns `s` unchanged (guard fails) or appends exactly one
+    entry whose `insertBeforeIdx = s.tokens.size` and `pos = s.currentPos`.
+
+  * **Class C — element field-update at active index**:
+    `setPendingKeyKind` (modifies `kind` only), `setPendingKeyEndLine`
+    (modifies `endLine` only).  Both preserve `pendingKeys.size`,
+    `[i].insertBeforeIdx`, and `[i].pos` for every `i`.
+
+  **Invariant**: `PendingKeysWellIndexed s := s.tokens.size ≥ 1 ∧
+  ∀ p, 1 ≤ s.pendingKeys[p].insertBeforeIdx ≤ s.tokens.size`.  Plus
+  `PendingKeysPosBounded s := ∀ p, s.pendingKeys[p].pos.offset ≤ s.offset`.
+
+  **Generic mono lemma** (the workhorse):
+  ```
+  PendingKeysWellIndexed_mono :
+    s'.pendingKeys = s.pendingKeys → s'.tokens.size ≥ s.tokens.size →
+    PendingKeysWellIndexed s → PendingKeysWellIndexed s'
+  ```
+  Discharges every Class A op in one application, given the existing
+  `_adds_tokens` / `_preserves_pendingKeys` lemmas.
+
+  **Steps**:
+  1. Define `PendingKeysWellIndexed` and `PendingKeysPosBounded` and
+     prove their generic mono lemmas (~30 LOC).
+  2. Add `op_preserves_pendingKeys` micro-lemmas for the operations
+     used in `scanNextToken`'s dispatcher chain — only the ones that
+     actually appear in the proof tree (~30-50 lemmas, mostly `rfl`
+     after unfolding).
+  3. Prove Class B / Class C characterizations (~20 LOC).
+  4. Compose dispatcher-level preservation lemmas
+     (`preprocess_preserves_PendingKeysWellIndexed`,
+     `dispatch{Structural,FlowIndicators,BlockIndicators,Content}_preserves_…`,
+     `scanNextToken_preserves_…`) — mechanical mirror of the
+     AllKeysValid chain (~60 LOC).
+  5. `scanLoopFull_preserves_PendingKeysWellIndexed` by induction (~30 LOC).
+  6. `linearise_positions_ordered` with pendingKey position-fit
+     hypotheses (~120 LOC).
+  7. Compose into `scanFiltered_produces_valid_tokens` (~50 LOC).
+
+  Total estimate: ~350 LOC (≈ same as before, but better factored —
+  most micro-lemmas are 1–2 lines).  Folds naturally into J.3.4 since
+  `ScannerPlainScalarValid` consumers need the same invariants.
 
 **J.3.4–J.3.6**: re-discharge consumers in dependency order, each
 substep removing its sorry-using declarations and the matching

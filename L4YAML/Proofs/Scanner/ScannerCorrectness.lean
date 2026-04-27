@@ -9174,6 +9174,286 @@ theorem scanNextToken_preserves_AllKeysValid :
         exact dispatchContent_preserves_AllKeysValid _ c _ (by assumption) h_akv3
 
 /-!
+### PendingKeysWellIndexed: pendingKeys are bounded into tokens
+
+Post-cutover invariant on the append-only side-channel: every entry's
+`insertBeforeIdx` falls in the range `[1, tokens.size]`.  Combined with
+`tokens.size ≥ 1` (true after the initial `streamStart` emit), this is
+exactly the bound the linearise lemmas
+`linearise_first_eq_tokens_first` and `linearise_last_eq_tokens_last`
+need.  After the final `streamEnd` emit, `tokens.size` strictly
+exceeds every saved `insertBeforeIdx`, giving the strict bound
+`< final.tokens.size` required for the linearise last-element
+preservation.
+
+**Algebraic preservation classes** (see Blueprint J.3.3):
+* Class A — passthrough (`s'.pendingKeys = s.pendingKeys`): every op
+  outside `saveSimpleKey` / `setPendingKeyKind` / `setPendingKeyEndLine`.
+  Preserves the invariant via `PendingKeysWellIndexed_mono`.
+* Class B — append-with-bounded-entry: `saveSimpleKey` (when its
+  `simpleKeyAllowed` guard fires) appends one entry with
+  `insertBeforeIdx = s.tokens.size` and `pos = s.currentPos`.
+* Class C — element field-update at active index:
+  `setPendingKeyKind` (kind only) and `setPendingKeyEndLine` (endLine
+  only) preserve `pendingKeys.size`, `[i].insertBeforeIdx`, and
+  `[i].pos` for every `i`.  Preserves the invariant via the structure
+  characterizations below.
+-/
+
+/-- The pendingKeys well-indexedness invariant. -/
+def PendingKeysWellIndexed (s : ScannerState) : Prop :=
+  s.tokens.size ≥ 1 ∧
+  ∀ p (h : p < s.pendingKeys.size),
+    1 ≤ s.pendingKeys[p].insertBeforeIdx ∧
+    s.pendingKeys[p].insertBeforeIdx ≤ s.tokens.size
+
+/-- Generic mono lemma: a Class-A passthrough op (preserves
+    `pendingKeys`) plus tokens-size-monotone preserves the invariant. -/
+theorem PendingKeysWellIndexed_mono (s s' : ScannerState)
+    (h_pks_eq : s'.pendingKeys = s.pendingKeys)
+    (h_tok_mono : s'.tokens.size ≥ s.tokens.size)
+    (h : PendingKeysWellIndexed s) : PendingKeysWellIndexed s' := by
+  obtain ⟨h_tok, h_pks⟩ := h
+  refine ⟨by omega, ?_⟩
+  intro p hp
+  have hp_s : p < s.pendingKeys.size := by rw [h_pks_eq] at hp; exact hp
+  have h_get : s'.pendingKeys[p]'hp = s.pendingKeys[p]'hp_s := by
+    simp [h_pks_eq]
+  rw [h_get]
+  have ⟨hb_lo, hb_hi⟩ := h_pks p hp_s
+  exact ⟨hb_lo, by omega⟩
+
+/-- Class C characterization: any operation that preserves
+    `pendingKeys.size` and each entry's `insertBeforeIdx`, plus
+    tokens-size-monotone, preserves the invariant.  Covers
+    `setPendingKeyKind` / `setPendingKeyEndLine`. -/
+theorem PendingKeysWellIndexed_field_update (s s' : ScannerState)
+    (h_size_eq : s'.pendingKeys.size = s.pendingKeys.size)
+    (h_idx_eq : ∀ p (hp : p < s.pendingKeys.size)
+                  (hp' : p < s'.pendingKeys.size),
+                  (s'.pendingKeys[p]'hp').insertBeforeIdx
+                    = (s.pendingKeys[p]'hp).insertBeforeIdx)
+    (h_tok_mono : s'.tokens.size ≥ s.tokens.size)
+    (h : PendingKeysWellIndexed s) : PendingKeysWellIndexed s' := by
+  obtain ⟨h_tok, h_pks⟩ := h
+  refine ⟨by omega, ?_⟩
+  intro p hp
+  have hp_s : p < s.pendingKeys.size := by rw [h_size_eq] at hp; exact hp
+  rw [h_idx_eq p hp_s hp]
+  have ⟨hb_lo, hb_hi⟩ := h_pks p hp_s
+  exact ⟨hb_lo, by omega⟩
+
+/-! ### Class A passthrough micro-lemmas (`*_preserves_pendingKeys`)
+
+For every scanner operation outside of `saveSimpleKey` /
+`setPendingKeyKind` / `setPendingKeyEndLine`, the `pendingKeys` field
+is unchanged.  These are the structural counterparts to the existing
+`*_preserves_simpleKeyStack` chain. -/
+
+theorem advance_preserves_pendingKeys (s : ScannerState) :
+    s.advance.pendingKeys = s.pendingKeys := by
+  unfold ScannerState.advance
+  split
+  · dsimp only
+    split
+    · rfl
+    · split <;> rfl
+  · rfl
+
+theorem emit_preserves_pendingKeys (s : ScannerState) (tok : YamlToken) :
+    (s.emit tok).pendingKeys = s.pendingKeys := rfl
+
+theorem emitAt_preserves_pendingKeys (s : ScannerState) (pos : YamlPos) (tok : YamlToken) :
+    (s.emitAt pos tok).pendingKeys = s.pendingKeys := rfl
+
+/-! ### Class C: setPendingKeyKind / setPendingKeyEndLine size and field
+preservation.
+
+Both helpers operate via `Array.setIfInBounds`, which preserves size
+and is the identity on indices other than the one being written.  The
+field they write (`kind` or `endLine`) is irrelevant to
+`PendingKeysWellIndexed`. -/
+
+theorem setPendingKeyKind_size (pks : Array PendingKeyEntry)
+    (active : Option Nat) (kind : ResolutionKind) :
+    (setPendingKeyKind pks active kind).size = pks.size := by
+  unfold setPendingKeyKind
+  split
+  · rfl
+  · split
+    · rfl
+    · simp [Array.size_setIfInBounds]
+
+/-- `setPendingKeyKind` decomposition: either identity or a single-element
+    `setIfInBounds` update at the active index. -/
+theorem setPendingKeyKind_decomp (pks : Array PendingKeyEntry)
+    (active : Option Nat) (kind : ResolutionKind) :
+    setPendingKeyKind pks active kind = pks
+      ∨ ∃ j, ∃ (h : j < pks.size),
+          setPendingKeyKind pks active kind
+            = pks.setIfInBounds j { (pks[j]'h) with kind := kind } := by
+  unfold setPendingKeyKind
+  split
+  · left; rfl
+  · rename_i j
+    split
+    · left; rfl
+    · rename_i e h_get
+      have hj : j < pks.size := by
+        rcases Nat.lt_or_ge j pks.size with h | h
+        · exact h
+        · exfalso
+          rw [Array.getElem?_eq_none h] at h_get
+          contradiction
+      have h_get_eq : pks[j]'hj = e := by
+        have := h_get
+        rw [Array.getElem?_eq_getElem hj] at this
+        injection this
+      right
+      refine ⟨j, hj, ?_⟩
+      simp [h_get_eq]
+
+/-- Pointwise consequence: `setPendingKeyKind` preserves `insertBeforeIdx`. -/
+theorem setPendingKeyKind_insertBeforeIdx (pks : Array PendingKeyEntry)
+    (active : Option Nat) (kind : ResolutionKind) (i : Nat)
+    (hi : i < pks.size)
+    (hi' : i < (setPendingKeyKind pks active kind).size) :
+    ((setPendingKeyKind pks active kind)[i]'hi').insertBeforeIdx
+      = (pks[i]'hi).insertBeforeIdx := by
+  rcases setPendingKeyKind_decomp pks active kind with h_id | ⟨j, hj, h_set⟩
+  · -- Identity case: setPendingKeyKind pks active kind = pks
+    congr 1
+    -- Goal: (setPendingKeyKind pks active kind)[i] = pks[i]
+    have h_at_eq : (setPendingKeyKind pks active kind)[i]'hi' = pks[i]'hi := by
+      congr 1
+    exact h_at_eq
+  · -- setIfInBounds case: re-cast the dependent index, then case split on i = j.
+    have hi_set : i < (pks.setIfInBounds j
+        { (pks[j]'hj) with kind := kind }).size := by
+      simp [Array.size_setIfInBounds]; exact hi
+    have h_at_eq :
+        (setPendingKeyKind pks active kind)[i]'hi'
+          = (pks.setIfInBounds j { (pks[j]'hj) with kind := kind })[i]'hi_set := by
+      congr 1
+    rw [h_at_eq]
+    by_cases h_eq : i = j
+    · subst h_eq
+      rw [Array.getElem_setIfInBounds_self]
+    · rw [Array.getElem_setIfInBounds_ne (h := fun h => h_eq h.symm)]
+
+theorem setPendingKeyEndLine_size (pks : Array PendingKeyEntry)
+    (active : Option Nat) (endLine : Nat) :
+    (setPendingKeyEndLine pks active endLine).size = pks.size := by
+  unfold setPendingKeyEndLine
+  split
+  · rfl
+  · split
+    · rfl
+    · simp [Array.size_setIfInBounds]
+
+/-- `setPendingKeyEndLine` decomposition (parallel to
+    `setPendingKeyKind_decomp`). -/
+theorem setPendingKeyEndLine_decomp (pks : Array PendingKeyEntry)
+    (active : Option Nat) (endLine : Nat) :
+    setPendingKeyEndLine pks active endLine = pks
+      ∨ ∃ j, ∃ (h : j < pks.size),
+          setPendingKeyEndLine pks active endLine
+            = pks.setIfInBounds j { (pks[j]'h) with endLine := endLine } := by
+  unfold setPendingKeyEndLine
+  split
+  · left; rfl
+  · rename_i j
+    split
+    · left; rfl
+    · rename_i e h_get
+      have hj : j < pks.size := by
+        rcases Nat.lt_or_ge j pks.size with h | h
+        · exact h
+        · exfalso
+          rw [Array.getElem?_eq_none h] at h_get
+          contradiction
+      have h_get_eq : pks[j]'hj = e := by
+        have := h_get
+        rw [Array.getElem?_eq_getElem hj] at this
+        injection this
+      right
+      refine ⟨j, hj, ?_⟩
+      simp [h_get_eq]
+
+theorem setPendingKeyEndLine_insertBeforeIdx (pks : Array PendingKeyEntry)
+    (active : Option Nat) (endLine : Nat) (i : Nat)
+    (hi : i < pks.size)
+    (hi' : i < (setPendingKeyEndLine pks active endLine).size) :
+    ((setPendingKeyEndLine pks active endLine)[i]'hi').insertBeforeIdx
+      = (pks[i]'hi).insertBeforeIdx := by
+  rcases setPendingKeyEndLine_decomp pks active endLine with h_id | ⟨j, hj, h_set⟩
+  · congr 1
+    have h_at_eq : (setPendingKeyEndLine pks active endLine)[i]'hi' = pks[i]'hi := by
+      congr 1
+    exact h_at_eq
+  · have hi_set : i < (pks.setIfInBounds j
+        { (pks[j]'hj) with endLine := endLine }).size := by
+      simp [Array.size_setIfInBounds]; exact hi
+    have h_at_eq :
+        (setPendingKeyEndLine pks active endLine)[i]'hi'
+          = (pks.setIfInBounds j { (pks[j]'hj) with endLine := endLine })[i]'hi_set := by
+      congr 1
+    rw [h_at_eq]
+    by_cases h_eq : i = j
+    · subst h_eq
+      rw [Array.getElem_setIfInBounds_self]
+    · rw [Array.getElem_setIfInBounds_ne (h := fun h => h_eq h.symm)]
+
+/-! ### Class B: saveSimpleKey decomposition
+
+`saveSimpleKey` either returns `s` unchanged (guard fails) or appends
+exactly one entry with `insertBeforeIdx = s.tokens.size` and
+`pos = s.currentPos`.  Direct proof of invariant preservation. -/
+
+/-- saveSimpleKey preserves `PendingKeysWellIndexed` when started from
+    a state with at least one token (guaranteed by the initial
+    `streamStart` emit).  If the `simpleKeyAllowed` guard fires, the
+    new entry has `insertBeforeIdx = s.tokens.size ≥ 1` (lower bound
+    from `h.1`) and `≤ s.tokens.size` (saveSimpleKey doesn't grow
+    tokens).  Otherwise saveSimpleKey is identity on `pendingKeys`. -/
+theorem saveSimpleKey_preserves_PendingKeysWellIndexed (s : ScannerState)
+    (h : PendingKeysWellIndexed s) : PendingKeysWellIndexed (saveSimpleKey s) := by
+  obtain ⟨h_tok, h_pks⟩ := h
+  unfold saveSimpleKey
+  split
+  · exact ⟨h_tok, h_pks⟩
+  · split
+    · -- simpleKeyAllowed: pendingKeys appended with the new entry.
+      refine ⟨?_, ?_⟩
+      · -- tokens.size unchanged in this branch.
+        show s.tokens.size ≥ 1
+        exact h_tok
+      · intro p hp
+        have h_size :
+            (s.pendingKeys.push
+              { insertBeforeIdx := s.tokens.size,
+                pos := s.currentPos,
+                endLine := s.line,
+                kind := .unresolved }).size = s.pendingKeys.size + 1 := by
+          simp [Array.size_push]
+        by_cases h_p_lt : p < s.pendingKeys.size
+        · -- Existing entry: preserved by getElem_push_lt.
+          have ⟨hb_lo, hb_hi⟩ := h_pks p h_p_lt
+          show 1 ≤ _ ∧ _
+          rw [Array.getElem_push_lt h_p_lt]
+          exact ⟨hb_lo, hb_hi⟩
+        · -- New entry: p = s.pendingKeys.size.
+          have h_p_eq : p = s.pendingKeys.size := by
+            have := hp
+            simp at this
+            omega
+          subst h_p_eq
+          show 1 ≤ _ ∧ _
+          rw [Array.getElem_push_eq]
+          exact ⟨h_tok, Nat.le_refl _⟩
+    · exact ⟨h_tok, h_pks⟩
+
+/-!
 ### scanNextToken preserves ScanInv
 
 The proof composes all per-dispatcher preservation theorems.
