@@ -418,7 +418,7 @@ with `pendingKeys` / `pendingKeyActive` / `pendingKeyStack`;
 (`linearise_append_token`, `linearise_append_unresolved`,
 `linearise_resolved`) carrying `sorry` against J.3.
 
-### Phase J.2 — Scanner submodule migration [in progress]
+### Phase J.2 — Scanner submodule migration [✓ completed 2026-04-26]
 
 Port submodules in dependency order:
 
@@ -445,7 +445,7 @@ beyond a documented manifest.
 | 2.5 | `Scanner/Scanner.lean` flow open/close + endLine sync | ✓ done | `9acea6e6` |
 | 3 | `Scanner/Document.lean` + `Scanner/Scalar.lean` leaf clears | ✓ done | `09fc3ec7` |
 | 4 | `lastRealTokenVal?` → `lastTokenVal?` rename | ✓ done | `00bca3ee` |
-| 5 | `scanFiltered` cutover (see substitution plan below) | partial: 5.0 + 5.1 done, 5.2 pending | `a212cdc2`, `71a86eee` |
+| 5 | `scanFiltered` cutover (see substitution plan below) | ✓ done | `a212cdc2`, `71a86eee`, this |
 
 Steps 1–4 are *additive* (dual-write / rename only); the cutover
 itself is concentrated in step 5, sequenced into 5.0/5.1/5.2 below.
@@ -476,7 +476,7 @@ sequence* as 5.0/5.1/5.2.
 |---|---|---|---|
 | 5.0 | Code cutover (§5.a edits) — single red commit | ✓ done | `a212cdc2` |
 | 5.1 | Discharge Categories A + B (§5.b) — restore green | ✓ done | `71a86eee` |
-| 5.2 | yaml-test-suite golden parity (runtime check) | pending | — |
+| 5.2 | yaml-test-suite golden parity (runtime check) | ✓ done | this commit |
 
 ##### 5.a Code edits (Scanner-side) [✓ landed by 5.0 `a212cdc2`]
 
@@ -592,11 +592,27 @@ focused diff and a clear "is this gate satisfied" question.
   invariant family being structurally tied to the legacy placeholder
   model rather than by `scanFiltered`-shape proofs (those would have
   been cheaper).
-* **5.2 — yaml-test-suite golden parity** [pending]: run the YAML
-  1.2 test suite against the cutover scanner; output must be
-  observationally identical to pre-cutover.  This is the runtime
-  correctness check; the proof corpus is independently green from
-  5.1.
+* **5.2 — yaml-test-suite golden parity** [✓ this commit]: ran the
+  YAML 1.2 test suite against the cutover scanner via `suiterunner
+  --json`; **3681/3681 verified**, every stage 100% correctRate, 0
+  failed / 0 timeout / 0 unexpectedPass.  Compared the resulting
+  `coverage-summary.json` to the pre-cutover baseline at
+  `docs/reports/coverage-summary.json` (committed `01a6decd`,
+  reflecting source `8bdf4dfd` — the first Initiative 3 commit, before
+  any code changes).  After stripping the `date` field and the `name`
+  strings, the two JSONs are byte-identical: same per-stage pass /
+  fail / skip counts, same per-test status across all 358 applicable
+  yaml-test-suite cases, and same overall (358/358 correct, 263
+  passed, 95 expectedFail, 48 skipped, 0 failed/timeout/unexpectedPass).
+  The *only* differences are in the Adversarial Instantiation suite's
+  "prefix preserved (k steps, n∈[1,X])" test names, where the upper
+  bound `X` shrinks (e.g. `n∈[1,4]` → `n∈[1,2]`).  This is the
+  expected, *intended* effect of the cutover: with placeholders
+  removed, k authoring steps now produce exactly k tokens instead of
+  up to 2k, so the natural prefix-bound is correspondingly tighter.
+  The *test outcome* (every prefix-preserved assertion still passes)
+  is unchanged.  Runtime correctness gate satisfied; J.2 is now fully
+  green at HEAD.
 
 ##### 5.d Sorry-on-stub manifest at end of step 5
 
