@@ -12115,7 +12115,7 @@ These ops run a sequence of `advance`s through `collect…Loop`, then
 new token's `pos` equals the saved start position, so `pos.offset = s.offset`. -/
 
 /-- The first new token's `pos` after `scanAnchorOrAlias` is `s.currentPos`. -/
-private theorem scanAnchorOrAlias_first_new_pos (s : ScannerState) (isAnchor : Bool)
+theorem scanAnchorOrAlias_first_new_pos (s : ScannerState) (isAnchor : Bool)
     (s' : ScannerState) (hok : scanAnchorOrAlias s isAnchor = .ok s')
     (h_lt : s.tokens.size < s'.tokens.size) :
     (s'.tokens[s.tokens.size]'h_lt).pos = s.currentPos := by
@@ -12143,7 +12143,7 @@ theorem scanAnchorOrAlias_preserves_LineariseFit (s s' : ScannerState) (isAnchor
     omega
 
 /-- The first new token's `pos` after `scanVerbatimTag s pos` is `pos`. -/
-private theorem scanVerbatimTag_first_new_pos (s : ScannerState) (pos : YamlPos)
+theorem scanVerbatimTag_first_new_pos (s : ScannerState) (pos : YamlPos)
     (s' : ScannerState) (hok : scanVerbatimTag s pos = .ok s')
     (h_lt : s.tokens.size < s'.tokens.size) :
     (s'.tokens[s.tokens.size]'h_lt).pos = pos := by
@@ -12157,7 +12157,7 @@ private theorem scanVerbatimTag_first_new_pos (s : ScannerState) (pos : YamlPos)
       rw [ScanHelpers.collectVerbatimTagLoop_preserves_tokens, advance_preserves_tokens]
 
 /-- The first new token's `pos` after `scanSecondaryTag s pos` is `pos`. -/
-private theorem scanSecondaryTag_first_new_pos (s : ScannerState) (pos : YamlPos)
+theorem scanSecondaryTag_first_new_pos (s : ScannerState) (pos : YamlPos)
     (h_lt : s.tokens.size < (scanSecondaryTag s pos).tokens.size) :
     ((scanSecondaryTag s pos).tokens[s.tokens.size]'h_lt).pos = pos := by
   unfold scanSecondaryTag
@@ -12165,7 +12165,7 @@ private theorem scanSecondaryTag_first_new_pos (s : ScannerState) (pos : YamlPos
   rw [ScanHelpers.collectTagSuffixLoop_preserves_tokens, advance_preserves_tokens]
 
 /-- The first new token's `pos` after `scanNamedTag s pos inputEnd` is `pos`. -/
-private theorem scanNamedTag_first_new_pos (s : ScannerState) (pos : YamlPos) (inputEnd : Nat)
+theorem scanNamedTag_first_new_pos (s : ScannerState) (pos : YamlPos) (inputEnd : Nat)
     (h_lt : s.tokens.size < (scanNamedTag s pos inputEnd).tokens.size) :
     ((scanNamedTag s pos inputEnd).tokens[s.tokens.size]'h_lt).pos = pos := by
   unfold scanNamedTag; simp only []
@@ -12177,7 +12177,7 @@ private theorem scanNamedTag_first_new_pos (s : ScannerState) (pos : YamlPos) (i
     rw [h_handle]
 
 /-- The first new token's `pos` after `scanTag` is `s.currentPos`. -/
-private theorem scanTag_first_new_pos (s : ScannerState)
+theorem scanTag_first_new_pos (s : ScannerState)
     (s' : ScannerState) (hok : scanTag s = .ok s')
     (h_lt : s.tokens.size < s'.tokens.size) :
     (s'.tokens[s.tokens.size]'h_lt).pos = s.currentPos := by
@@ -12227,7 +12227,7 @@ theorem scanTag_preserves_LineariseFit (s s' : ScannerState)
 /-! ##### Scalar `emitAt`-class leaves -/
 
 /-- The first new token's `pos` after `scanDoubleQuoted` is `s.currentPos`. -/
-private theorem scanDoubleQuoted_first_new_pos (s : ScannerState)
+theorem scanDoubleQuoted_first_new_pos (s : ScannerState)
     (s' : ScannerState) (hok : scanDoubleQuoted s = .ok s')
     (h_lt : s.tokens.size < s'.tokens.size) :
     (s'.tokens[s.tokens.size]'h_lt).pos = s.currentPos := by
@@ -12260,7 +12260,7 @@ theorem scanDoubleQuoted_preserves_LineariseFit (s s' : ScannerState)
     omega
 
 /-- The first new token's `pos` after `scanSingleQuoted` is `s.currentPos`. -/
-private theorem scanSingleQuoted_first_new_pos (s : ScannerState)
+theorem scanSingleQuoted_first_new_pos (s : ScannerState)
     (s' : ScannerState) (hok : scanSingleQuoted s = .ok s')
     (h_lt : s.tokens.size < s'.tokens.size) :
     (s'.tokens[s.tokens.size]'h_lt).pos = s.currentPos := by
@@ -12293,7 +12293,7 @@ theorem scanSingleQuoted_preserves_LineariseFit (s s' : ScannerState)
     omega
 
 /-- The first new token's `pos` after `scanPlainScalar` is `s.currentPos`. -/
-private theorem scanPlainScalar_first_new_pos (s : ScannerState)
+theorem scanPlainScalar_first_new_pos (s : ScannerState)
     (s' : ScannerState) (hok : scanPlainScalar s = .ok s')
     (h_lt : s.tokens.size < s'.tokens.size) :
     (s'.tokens[s.tokens.size]'h_lt).pos = s.currentPos := by
@@ -12322,7 +12322,7 @@ theorem scanPlainScalar_preserves_LineariseFit (s s' : ScannerState)
 
 /-- The first new token's `pos` after `scanBlockScalarBody` is `startPos`
     (provided the loop's preserves-tokens chain holds). -/
-private theorem scanBlockScalarBody_first_new_pos (s_orig s_nl : ScannerState)
+theorem scanBlockScalarBody_first_new_pos (s_orig s_nl : ScannerState)
     (chomp : ChompStyle) (expl : Option Nat) (isLit : Bool) (startPos : YamlPos)
     (s' : ScannerState) (h_tok : s_nl.tokens = s_orig.tokens)
     (h : scanBlockScalarBody s_orig s_nl chomp expl isLit startPos = .ok s')
@@ -12338,7 +12338,7 @@ private theorem scanBlockScalarBody_first_new_pos (s_orig s_nl : ScannerState)
      rw [ScanHelpers.collectBlockScalarLoop_preserves_tokens, h_tok])
 
 /-- The first new token's `pos` after `scanBlockScalar` is `s.currentPos`. -/
-private theorem scanBlockScalar_first_new_pos (s : ScannerState)
+theorem scanBlockScalar_first_new_pos (s : ScannerState)
     (s' : ScannerState) (hok : scanBlockScalar s = .ok s')
     (h_lt : s.tokens.size < s'.tokens.size) :
     (s'.tokens[s.tokens.size]'h_lt).pos = s.currentPos := by
@@ -13185,7 +13185,7 @@ offset/line/col.  So the FIRST new token's pos = original `s.currentPos`. -/
 
 /-- If `unwindIndentsLoop` adds at least one token, the first new
     token's `pos` equals the input state's `currentPos`. -/
-private theorem unwindIndentsLoop_first_new_pos
+theorem unwindIndentsLoop_first_new_pos
     (s : ScannerState) (col : Int) (fuel : Nat)
     (h_lt : s.tokens.size < (unwindIndentsLoop s col fuel).tokens.size) :
     ((unwindIndentsLoop s col fuel).tokens[s.tokens.size]'h_lt).pos = s.currentPos := by
@@ -13217,7 +13217,7 @@ private theorem unwindIndentsLoop_first_new_pos
     · -- no-emit: h_lt becomes s.tokens.size < s.tokens.size, false
       omega
 
-private theorem unwindIndents_first_new_pos
+theorem unwindIndents_first_new_pos
     (s : ScannerState) (col : Int)
     (h_lt : s.tokens.size < (unwindIndents s col).tokens.size) :
     ((unwindIndents s col).tokens[s.tokens.size]'h_lt).pos = s.currentPos := by
@@ -13535,7 +13535,7 @@ theorem scanValuePrepare_first_new_pos (s : ScannerState)
 /-- The first new token of `scanValue` has pos.offset = s.offset.
     Whether the new token is the `.blockMappingStart` from `scanValuePrepare`
     or the trailing `.value`, its pos = s.currentPos and offset = s.offset. -/
-private theorem scanValue_first_new_pos_offset (s s' : ScannerState)
+theorem scanValue_first_new_pos_offset (s s' : ScannerState)
     (h_eq : scanValue s = .ok s')
     (h_lt : s.tokens.size < s'.tokens.size) :
     (s'.tokens[s.tokens.size]'h_lt).pos.offset = s.offset := by
@@ -13610,7 +13610,7 @@ private theorem scanValue_first_new_pos_offset (s s' : ScannerState)
 /-- Strict prefix preservation: scanValue preserves all existing tokens.
     No `h_inv` precondition needed (the existing `scanValue_preserves_prefix`
     threads `h_inv` only to derive an unused `h_inv'`). -/
-private theorem scanValue_preserves_prefix_strict (s s' : ScannerState)
+theorem scanValue_preserves_prefix_strict (s s' : ScannerState)
     (h_eq : scanValue s = .ok s')
     (i : Nat) (h_bound : i < s.tokens.size) :
     s'.tokens[i]'(by have := scanValue_adds_tokens s s' h_eq; omega) =
