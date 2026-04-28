@@ -11429,6 +11429,35 @@ theorem consumeNewline_preserves_LineariseFit (s : ScannerState)
 -- skipToContent_preserves_LineariseFit deferred until after
 -- skipToContent_offset_ge (defined later in the file at §5.2).
 
+/-! #### Class A emit-class leaves: emit
+
+`emit s tok` pushes a token at `s.currentPos`, so the new token has
+offset = `s.offset`.  Offset is unchanged. -/
+
+theorem emit_preserves_LineariseFit (s : ScannerState) (tok : YamlToken)
+    (h : LineariseFit s) : LineariseFit (s.emit tok) := by
+  apply LineariseFit_extend s (s.emit tok)
+    (emit_preserves_ScanInv s tok h.1)
+    (emit_preserves_pendingKeys s tok)
+    (by rw [emit_tokens_size]; omega)
+    (fun i hi => emit_preserves_tokens_at s tok i hi)
+    ?new_ge
+    ?off_mono
+    h
+  case new_ge =>
+    intro i hi h_ge
+    have h_emit_size := emit_tokens_size s tok
+    have hi_eq : i = s.tokens.size := by omega
+    subst hi_eq
+    show s.offset ≤ ((s.emit tok).tokens[s.tokens.size]'hi).pos.offset
+    have h_pos_eq : ((s.emit tok).tokens[s.tokens.size]'hi).pos = s.currentPos := by
+      simp [ScannerState.emit, Array.getElem_push_eq]
+    rw [h_pos_eq]
+    simp [ScannerState.currentPos]
+  case off_mono =>
+    show s.offset ≤ (s.emit tok).offset
+    rw [ScannerProgress.emit_offset]; omega
+
 /-!
 ### scanNextToken preserves ScanInv
 
