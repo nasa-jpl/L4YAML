@@ -284,6 +284,10 @@ structure SpecImplEntry where
   ruleNum : Option Nat
   ruleName : Option String
   specSection : String
+  /-- 1-based source line of the declaration, when known. Used to build
+      `path.lean#L{line}` deep-links in the HTML report. Comes from
+      `Lean.findDeclarationRanges?`. -/
+  line : Option Nat := none
   deriving Repr, Inhabited
 
 /-- Resolve a module name to a file path (L4YAML.Scanner → L4YAML/Scanner.lean). -/
@@ -300,13 +304,15 @@ elab "#build_spec_coverage" : command => do
     let modName := match env.getModuleIdxFor? name with
       | some idx => s!"{env.header.moduleNames[idx.toNat]!}"
       | none => "(current)"
+    let lineNo? := (← Lean.findDeclarationRanges? name).map (·.selectionRange.pos.line)
     for ref in refs do
       result := result.push {
         declName := toString name,
         moduleName := modName,
         ruleNum := ref.rule,
         ruleName := ref.name,
-        specSection := ref.specSection
+        specSection := ref.specSection,
+        line := lineNo?
       }
   -- Build the array literal via parsing a source string
   let mut src := "def discoveredSpecEntries : Array SpecImplEntry := #[\n"
@@ -318,8 +324,11 @@ elab "#build_spec_coverage" : command => do
     let nameStr := match e.ruleName with
       | some s => s!"some \"{s}\""
       | none => "none"
+    let lineStr := match e.line with
+      | some n => s!"some {n}"
+      | none => "none"
     let comma := if idx + 1 < result.size then "," else ""
-    src := src ++ s!"  ⟨\"{e.declName}\", \"{e.moduleName}\", {ruleStr}, {nameStr}, \"{e.specSection}\"⟩{comma}\n"
+    src := src ++ s!"  ⟨\"{e.declName}\", \"{e.moduleName}\", {ruleStr}, {nameStr}, \"{e.specSection}\", {lineStr}⟩{comma}\n"
     idx := idx + 1
   src := src ++ "]\n"
   match Lean.Parser.runParserCategory (← getEnv) `command src with
@@ -729,13 +738,19 @@ def generateProductionCoverageHtml : String :=
           let path := moduleToPath e.moduleName
           let pathEsc := escapeHtml path
           let nameEsc := escapeHtml e.declName
+          let (urlSuffix, pathDisp) := match e.line with
+            | some n => (s!"{path}#L{n}", s!"{pathEsc}:{n}")
+            | none   => (path, pathEsc)
           s!"<div class=\"impl-entry\">" ++
-          s!"<div class=\"impl-decl\"><a href=\"{repoSourceUrl}{path}\" target=\"_blank\" class=\"impl-link\" title=\"Open source on GitHub\">{nameEsc}</a></div>" ++
-          s!"<div class=\"impl-path\"><span class=\"impl-path-label\">in</span> <code>{pathEsc}</code></div>" ++
+          s!"<div class=\"impl-decl\"><a href=\"{repoSourceUrl}{urlSuffix}\" target=\"_blank\" class=\"impl-link\" title=\"Open source on GitHub\">{nameEsc}</a></div>" ++
+          s!"<div class=\"impl-path\"><span class=\"impl-path-label\">in</span> <code>{pathDisp}</code></div>" ++
           s!"</div>")
     let searchText :=
       let implSearch := String.intercalate " " (impls.toList.map fun e =>
-        s!"{e.declName} {moduleToPath e.moduleName}")
+        let path := moduleToPath e.moduleName
+        match e.line with
+        | some n => s!"{e.declName} {path}:{n}"
+        | none   => s!"{e.declName} {path}")
       s!"{p.number} {p.name} {p.specSec} {status} {implSearch}".toLower
     s!"      <tr class=\"prod-row\" data-status=\"{status}\" data-chapter=\"{p.chapter}\" data-search=\"{escapeHtml searchText}\">\n" ++
     s!"        <td>{p.number}</td>\n" ++
@@ -853,8 +868,11 @@ def collectTests : IO VerifiedSuiteResult := do
     else
       for e in impls do
         let path := moduleToPath e.moduleName
+        let loc := match e.line with
+          | some n => s!"{path}:{n}"
+          | none   => path
         check state
-          s!"[{p.number}] {p.name} (§{p.specSec}) ← {e.declName} @ {path}" true
+          s!"[{p.number}] {p.name} (§{p.specSec}) ← {e.declName} @ {loc}" true
 
   let results ← finish state
   return { name := "productioncoverage",
