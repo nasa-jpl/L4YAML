@@ -13243,13 +13243,77 @@ theorem unwindIndents_preserves_LineariseFit (s : ScannerState) (col : Int)
     rw [unwindIndents_offset_eq]
     omega
 
-/-! ##### `scanDocument*` / `scanDirective` `_preserves_LineariseFit` (deferred)
+/-! ##### `scanDocumentStart_preserves_LineariseFit` (Step 8b leaf)
 
-Multi-emit through `unwindIndents` + `.emit` + `.advanceN`.  The
-unwindIndents currentPos preservation helpers are now in place
-(`unwindIndents_{offset,line,col,currentPos}_eq`), but the per-op
-first_new_pos extraction through the explicit-record-update chain still
-requires careful tactic crafting.  Deferred. -/
+Multi-emit through `unwindIndents` + `.emit .documentStart` + `.advanceN 3`
++ outer record update.  Pending keys are preserved (no field-update),
+tokens are monotonically appended, and the first new token (whether an
+unwind `.blockEnd` or the `.documentStart`) sits at `s.currentPos`. -/
+
+/-- The first token added by `scanDocumentStart` sits at `s.currentPos`.
+
+    Two cases: if `unwindIndents` emitted ≥ 1 `.blockEnd`, the first new
+    slot belongs to that loop and `unwindIndents_first_new_pos` gives
+    `s.currentPos`; otherwise the first new slot is the `.documentStart`
+    emit, whose position is `(unwindIndents s (-1)).currentPos = s.currentPos`. -/
+theorem scanDocumentStart_first_new_pos (s : ScannerState)
+    (h_lt : s.tokens.size < (scanDocumentStart s).tokens.size) :
+    ((scanDocumentStart s).tokens[s.tokens.size]'h_lt).pos = s.currentPos := by
+  -- Bind the empty SimpleKeyState as a typed local so the record-update
+  -- below resolves to `ScannerState` (rather than Lean trying to read
+  -- `simpleKey` as an Array field).
+  let sk_empty : SimpleKeyState := { possible := false }
+  let s_kd : ScannerState :=
+    { unwindIndents s (-1) with simpleKey := sk_empty, pendingKeyActive := none }
+  -- Strip the outer record update and the trailing advanceN 3 — both
+  -- preserve tokens — so we land on `(s_kd.emit .documentStart).tokens`.
+  have h_tokens_eq : (scanDocumentStart s).tokens = (s_kd.emit .documentStart).tokens := by
+    show (scanDocumentStart s).tokens = (s_kd.emit .documentStart).tokens
+    unfold scanDocumentStart
+    dsimp only []
+    rw [advanceN_preserves_tokens]
+  have h_lt' : s.tokens.size < (s_kd.emit .documentStart).tokens.size := by
+    have h_size := congrArg Array.size h_tokens_eq
+    omega
+  rw [array_get_eq_of_array_eq h_tokens_eq s.tokens.size h_lt h_lt']
+  have h_kd_pos : s_kd.currentPos = s.currentPos := unwindIndents_currentPos_eq s (-1)
+  have h_kd_tokens : s_kd.tokens = (unwindIndents s (-1)).tokens := rfl
+  -- Case split on whether unwindIndents fired
+  by_cases h_size : (unwindIndents s (-1)).tokens.size = s.tokens.size
+  · -- Didn't fire: emit pushes at exactly index s.tokens.size
+    have h_kd_size : s_kd.tokens.size = s.tokens.size := by rw [h_kd_tokens]; exact h_size
+    have h_target :
+        (s_kd.emit .documentStart).tokens[s.tokens.size]'h_lt'
+          = ⟨s_kd.currentPos, .documentStart, s_kd.currentPos⟩ := by
+      simp only [ScannerState.emit, ← h_kd_size, Array.getElem_push_eq]
+    rw [h_target]
+    exact h_kd_pos
+  · -- Fired: index s.tokens.size sits below the push, in the unwound prefix
+    have h_uw_lt : s.tokens.size < (unwindIndents s (-1)).tokens.size := by
+      have := unwindIndents_adds_tokens s (-1); omega
+    have h_target :
+        (s_kd.emit .documentStart).tokens[s.tokens.size]'h_lt'
+          = (unwindIndents s (-1)).tokens[s.tokens.size]'h_uw_lt := by
+      show ((unwindIndents s (-1)).tokens.push _)[s.tokens.size]'h_lt' = _
+      exact Array.getElem_push_lt h_uw_lt
+    rw [h_target]
+    exact unwindIndents_first_new_pos s (-1) h_uw_lt
+
+theorem scanDocumentStart_preserves_LineariseFit (s : ScannerState)
+    (h : LineariseFit s) : LineariseFit (scanDocumentStart s) := by
+  apply LineariseFit_via_first_new_strict s (scanDocumentStart s)
+    (scanDocumentStart_preserves_ScanInv s h.1)
+    (scanDocumentStart_preserves_pendingKeys s)
+    (by have := ScanHelpers.scanDocumentStart_adds_tokens s; omega)
+    (fun i hi => ScanHelpers.scanDocumentStart_preserves_prefix s i hi)
+    ?first_new
+    h
+  case first_new =>
+    have h_lt : s.tokens.size < (scanDocumentStart s).tokens.size := by
+      have := ScanHelpers.scanDocumentStart_adds_tokens s; omega
+    rw [scanDocumentStart_first_new_pos s h_lt]
+    show s.offset ≤ s.offset
+    omega
 
 /-! #### §5.3  `scanNextToken_preprocess` Offset Monotonicity
 
