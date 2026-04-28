@@ -914,11 +914,14 @@ count unchanged at 21.
      hypotheses (~120 LOC).
   9. Compose into `scanFiltered_produces_valid_tokens` (~50 LOC).
 
-  Status (2026-04-28): Steps 1-7, 8a, 8c ✓ done; Step 8b ~83% complete
-  (25 of ~30 per-op leaves landed including the Class C `scanValue`
-  composition, both multi-emit document-marker scanners
-  (`scanDocumentStart`, `scanDocumentEnd`), and the three-branch
-  `scanDirective`; remaining is the dispatcher chain).
+  Status (2026-04-28): Steps 1-8 ✓ done.  Step 8b closed: 25 per-op
+  leaves landed (Class A passthroughs, single-emit emit-class,
+  push-indent + emit chain, emitAt-class scalars/anchors/tags, indent
+  / whitespace standalones, the Class C `scanValue` composition, both
+  multi-emit document markers, and the three-branch `scanDirective`),
+  plus the 4 dispatchers + `preprocess` + `scanNextToken` +
+  `scanLoopFull` composition theorems.  Step 9
+  (`scanFiltered_produces_valid_tokens`) is next.
   Eight prior commits (~2434 LOC): `c6bfab0a` saveSimpleKey discharge,
   `1e6b4741` Class A/B/C foundation, `de7610d9` Blueprint update,
   `c4dc838a` ~30 Class A *_preserves_pendingKeys leaves, `fbd330d4`
@@ -1086,34 +1089,67 @@ count unchanged at 21.
     so `scanDirective_offset_ge` can reach them without forward
     reference.
 
-  **Remaining for Step 8b — concrete next steps**
+  *Dispatcher composition + `scanLoopFull` landed (commits
+  `c1fce4cd`, `2c43b328`):*
+  - `setPendingKeyEndLine_wrap_preserves_LineariseFit` — Class C
+    helper for the double/single-quoted `endLine` field-update.
+    Authored with `refine LineariseFit_field_update s _ ?_ ?_ ?_ ?_
+    rfl rfl h` rather than `apply` — `apply` left `?s'` as a
+    metavariable that simp on `setPendingKeyEndLine_size` couldn't
+    constrain (the simp lemma's LHS pattern `(setPendingKeyEndLine
+    _ _ _).size` doesn't match `?s'.pendingKeys.size`), so the
+    metavariable defaulted to `?s' = s` and the subsequent `hp'`
+    parameters got the wrong bound type.  The `refine` form forces
+    `s'` to be unified from the goal first, fixing all downstream
+    types.
+  - `definedAnchors_push_preserves_LineariseFit` — Class A
+    field-update helper for the trailing `definedAnchors.push name`
+    in the `&` branch of `dispatchContent`.
+  - `dispatchStructural_preserves_LineariseFit`,
+    `dispatchFlowIndicators_preserves_LineariseFit` — automated by
+    the `repeat (any_goals (split at h)); all_goals subst_vars;
+    all_goals first | … | …` pattern over the per-op
+    `*_preserves_LineariseFit` leaves.
+  - `dispatchBlockIndicators_preserves_LineariseFit` — explicit
+    three-way case-split on `-` / `?` / `:`; threads the
+    `(scanValueClearKey s).simpleKey.{possible,tokenIndex}` `h_sk`
+    precondition required by `scanValue_preserves_LineariseFit`.
+  - `dispatchContent_preserves_LineariseFit` — six-way case-split;
+    the double/single-quoted branches go through the
+    `setPendingKeyEndLine_wrap` helper.
+  - `preprocess_preserves_LineariseFit` — composes
+    `skipToContent` (A) + `unwindIndents` (A) + needIndentCheck
+    field-update (A) + `saveSimpleKey` (B).
+  - `allowDir_ite_preserves_LineariseFit` — the directive-allowance
+    toggle (Class A field-update).
+  - `scanNextToken_preserves_LineariseFit` — final dispatcher
+    composition; shape mirrors
+    `scanNextToken_preserves_PendingKeysWellIndexed`.
+  - `scanLoopFull_preserves_LineariseFit` — fuel induction.
+    Recursive arm threads `AllKeysValid` for the `SimpleKeyValid`
+    precondition of `scanNextToken_preserves_LineariseFit`.
+    Completion arm: `skipToContent` + `unwindIndents` + emit
+    `.streamEnd` (all Class A).
 
-  1. **Dispatcher composition** (~150 LOC).  Mirror the existing
-     `*_preserves_pendingKeys` chain:
-     - `dispatchStructural_preserves_LineariseFit`
-     - `dispatchFlowIndicators_preserves_LineariseFit`
-     - `dispatchBlockIndicators_preserves_LineariseFit`
-     - `dispatchContent_preserves_LineariseFit`
-     - `preprocess_preserves_LineariseFit`
-     - `scanNextToken_preserves_LineariseFit`
+  **Step 9 — concrete next step**
 
-  2. **`scanLoopFull_preserves_LineariseFit`** (~30 LOC) by induction
-     on fuel, identical shape to
-     `scanLoopFull_preserves_PendingKeysWellIndexed`.
-
-  *Then Step 9* (~50 LOC): composes
-  `scanFiltered_produces_valid_tokens` using `linearise_size_ge_tokens`,
-  `linearise_first_eq_tokens_first`, `linearise_last_eq_tokens_last`,
-  and `linearise_positions_ordered`.  Folds naturally into J.3.4 since
+  Compose `scanFiltered_produces_valid_tokens` (~50 LOC) using
+  `linearise_size_ge_tokens`, `linearise_first_eq_tokens_first`,
+  `linearise_last_eq_tokens_last`, and `linearise_positions_ordered`.
+  The Step-8 chain provides `LineariseFit (final state)` from
+  `scanLoopFull` success; Step 9 feeds that into
+  `linearise_positions_ordered` to discharge the surviving sorry at
+  `ScannerCorrectness.lean:12932`.  Folds naturally into J.3.4 since
   `ScannerPlainScalarValid` consumers need the same invariants.
 
-  *Cumulative session log (2026-04-27 → 2026-04-28):* 18 commits
+  *Cumulative session log (2026-04-27 → 2026-04-28):* 20 commits
   including `807b91df`, `0ec064a7`, `f35a04ac`, `4af1fc1a`, `ef90bd62`,
   `bdd27512`, `b83e8252`, `7046048b`, `8133ab94`, `d41f13b4`,
   `aaa5cc1e`, `4c664b58`, `067a6e35`, `6cbc43d6`, `9d1146a1`,
-  `1a8c8f0f`, `811622ca`, `81391a63`, `743a9e6a`.  Build green; sorry
-  count unchanged at the original Step 9 baseline (1 sorry in this
-  file, the same count as before Step 8b started).
+  `1a8c8f0f`, `811622ca`, `81391a63`, `743a9e6a`, `c1fce4cd`,
+  `2c43b328`.  Build green; sorry count unchanged at the original
+  Step 9 baseline (1 sorry in this file, the same count as before
+  Step 8b started).
 
 **J.3.4–J.3.6**: re-discharge consumers in dependency order, each
 substep removing its sorry-using declarations and the matching
