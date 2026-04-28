@@ -12141,6 +12141,80 @@ theorem scanBlockScalar_preserves_LineariseFit (s s' : ScannerState)
     show s.offset ≤ s.offset
     omega
 
+/-! ##### `pushSequenceIndent` / `pushMappingIndent` standalone leaves
+
+These ops fire at most once: when `col > s.currentIndent` they emit
+`.blockSequenceStart` / `.blockMappingStart` at `s.currentPos` and push
+an indent level; otherwise they're identity.  Tokens monotonic, pending
+keys preserved, offset preserved. -/
+
+theorem pushSequenceIndent_preserves_LineariseFit (s : ScannerState) (col : Int)
+    (h : LineariseFit s) : LineariseFit (pushSequenceIndent s col) := by
+  apply LineariseFit_via_first_new s (pushSequenceIndent s col)
+    (pushSequenceIndent_preserves_ScanInv s col h.1)
+    (pushSequenceIndent_preserves_pendingKeys s col)
+    (pushSequenceIndent_tokens_monotonic s col)
+    (fun i hi => ScanHelpers.pushSequenceIndent_preserves_prefix s col i hi)
+    ?first_new
+    ?off_mono
+    h
+  case first_new =>
+    intro h_lt
+    by_cases hfire : col > s.currentIndent
+    · have h_psi : pushSequenceIndent s col =
+          { s.emit .blockSequenceStart with
+              indents := (s.emit .blockSequenceStart).indents.push
+                { column := col, isSequence := true } } := by
+        unfold pushSequenceIndent; split
+        · rfl
+        · contradiction
+      show s.offset ≤ ((pushSequenceIndent s col).tokens[s.tokens.size]'h_lt).pos.offset
+      simp only [h_psi, ScannerState.emit, Array.getElem_push_eq, ScannerState.currentPos]
+      omega
+    · -- doesn't fire: pushSequenceIndent s col = s, so h_lt is vacuous
+      have h_psi : pushSequenceIndent s col = s := by
+        unfold pushSequenceIndent; split
+        · contradiction
+        · rfl
+      rw [h_psi] at h_lt; omega
+  case off_mono =>
+    show s.offset ≤ (pushSequenceIndent s col).offset
+    rw [ScannerProgress.pushSequenceIndent_offset]
+    omega
+
+theorem pushMappingIndent_preserves_LineariseFit (s : ScannerState) (col : Int)
+    (h : LineariseFit s) : LineariseFit (pushMappingIndent s col) := by
+  apply LineariseFit_via_first_new s (pushMappingIndent s col)
+    (pushMappingIndent_preserves_ScanInv s col h.1)
+    (pushMappingIndent_preserves_pendingKeys s col)
+    (pushMappingIndent_tokens_monotonic s col)
+    (fun i hi => ScanHelpers.pushMappingIndent_preserves_prefix s col i hi)
+    ?first_new
+    ?off_mono
+    h
+  case first_new =>
+    intro h_lt
+    by_cases hfire : col > s.currentIndent
+    · have h_pmi : pushMappingIndent s col =
+          { s.emit .blockMappingStart with
+              indents := (s.emit .blockMappingStart).indents.push
+                { column := col, isSequence := false } } := by
+        unfold pushMappingIndent; split
+        · rfl
+        · contradiction
+      show s.offset ≤ ((pushMappingIndent s col).tokens[s.tokens.size]'h_lt).pos.offset
+      simp only [h_pmi, ScannerState.emit, Array.getElem_push_eq, ScannerState.currentPos]
+      omega
+    · have h_pmi : pushMappingIndent s col = s := by
+        unfold pushMappingIndent; split
+        · contradiction
+        · rfl
+      rw [h_pmi] at h_lt; omega
+  case off_mono =>
+    show s.offset ≤ (pushMappingIndent s col).offset
+    rw [ScannerProgress.pushMappingIndent_offset]
+    omega
+
 /-!
 ### scanNextToken preserves ScanInv
 
@@ -12829,6 +12903,27 @@ theorem skipToContent_offset_ge (s s' : ScannerState)
     (h : skipToContent s = .ok s') : s'.offset ≥ s.offset := by
   unfold skipToContent at h
   exact skipToContentLoop_offset_ge s s' _ h
+
+/-! ##### `skipToContent` `_preserves_LineariseFit`
+
+Class A passthrough: tokens unchanged, pendingKeys preserved, offset
+monotone.  Uses the no-change convenience helper. -/
+
+theorem skipToContent_preserves_LineariseFit (s s' : ScannerState)
+    (h_eq : skipToContent s = .ok s') (h : LineariseFit s) : LineariseFit s' :=
+  LineariseFit_via_no_change s s'
+    (skipToContent_preserves_ScanInv s s' h.1 h_eq)
+    (skipToContent_preserves_pendingKeys s s' h_eq)
+    (skipToContent_preserves_tokens s s' h_eq)
+    (skipToContent_offset_ge s s' h_eq)
+    h
+
+/-! ##### `unwindIndents` `_preserves_LineariseFit` (deferred)
+
+The leaf is straightforward in shape (multi-emit at `s.currentPos`,
+all new tokens have offset = `s.offset`, offset unchanged), but the
+per-iteration first-new-token helper requires induction on `fuel` with
+case-split on token index — clean approach pending.  Deferred. -/
 
 /-! #### §5.3  `scanNextToken_preprocess` Offset Monotonicity
 
