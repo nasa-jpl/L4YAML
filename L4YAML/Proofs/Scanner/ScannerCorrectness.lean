@@ -13315,6 +13315,76 @@ theorem scanDocumentStart_preserves_LineariseFit (s : ScannerState)
     show s.offset ≤ s.offset
     omega
 
+/-! ##### `scanDocumentEnd_preserves_LineariseFit` (Step 8b leaf)
+
+Same shape as `scanDocumentStart` but inside an `Except` chain: an
+early `directiveWithoutDocument` exit and a trailing
+`skipDocEndWhitespace` + content-validation tail (which may throw but
+does not change the returned state — `scanDocumentEnd` returns
+`.ok result`, not the post-validation state).  All success branches
+collapse to the same `result`, so token-side reasoning factors
+identically: tokens equal `(s_kd.emit .documentEnd).tokens`, and the
+case-split on whether `unwindIndents` fired closes the proof. -/
+
+theorem scanDocumentEnd_first_new_pos (s s' : ScannerState)
+    (h : scanDocumentEnd s = .ok s')
+    (h_lt : s.tokens.size < s'.tokens.size) :
+    (s'.tokens[s.tokens.size]'h_lt).pos = s.currentPos := by
+  let sk_empty : SimpleKeyState := { possible := false }
+  let s_kd : ScannerState :=
+    { unwindIndents s (-1) with simpleKey := sk_empty, pendingKeyActive := none }
+  -- Every success branch of scanDocumentEnd returns the same `result`,
+  -- whose token array equals `(s_kd.emit .documentEnd).tokens` after
+  -- stripping the outer record-update and `advanceN 3`.
+  have h_tokens_eq : s'.tokens = (s_kd.emit .documentEnd).tokens := by
+    unfold scanDocumentEnd at h
+    simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h
+    repeat (any_goals (split at h))
+    all_goals (try contradiction)
+    all_goals (simp only [Except.ok.injEq] at h; subst h)
+    all_goals (dsimp only []; rw [advanceN_preserves_tokens])
+  have h_lt' : s.tokens.size < (s_kd.emit .documentEnd).tokens.size := by
+    have h_size := congrArg Array.size h_tokens_eq
+    omega
+  rw [array_get_eq_of_array_eq h_tokens_eq s.tokens.size h_lt h_lt']
+  have h_kd_pos : s_kd.currentPos = s.currentPos := unwindIndents_currentPos_eq s (-1)
+  have h_kd_tokens : s_kd.tokens = (unwindIndents s (-1)).tokens := rfl
+  by_cases h_size : (unwindIndents s (-1)).tokens.size = s.tokens.size
+  · -- unwindIndents didn't fire: emit pushes at exactly index s.tokens.size
+    have h_kd_size : s_kd.tokens.size = s.tokens.size := by rw [h_kd_tokens]; exact h_size
+    have h_target :
+        (s_kd.emit .documentEnd).tokens[s.tokens.size]'h_lt'
+          = ⟨s_kd.currentPos, .documentEnd, s_kd.currentPos⟩ := by
+      simp only [ScannerState.emit, ← h_kd_size, Array.getElem_push_eq]
+    rw [h_target]
+    exact h_kd_pos
+  · -- unwindIndents fired: index s.tokens.size sits in the unwound prefix
+    have h_uw_lt : s.tokens.size < (unwindIndents s (-1)).tokens.size := by
+      have := unwindIndents_adds_tokens s (-1); omega
+    have h_target :
+        (s_kd.emit .documentEnd).tokens[s.tokens.size]'h_lt'
+          = (unwindIndents s (-1)).tokens[s.tokens.size]'h_uw_lt := by
+      show ((unwindIndents s (-1)).tokens.push _)[s.tokens.size]'h_lt' = _
+      exact Array.getElem_push_lt h_uw_lt
+    rw [h_target]
+    exact unwindIndents_first_new_pos s (-1) h_uw_lt
+
+theorem scanDocumentEnd_preserves_LineariseFit (s s' : ScannerState)
+    (h : LineariseFit s) (h_ok : scanDocumentEnd s = .ok s') : LineariseFit s' := by
+  apply LineariseFit_via_first_new_strict s s'
+    (scanDocumentEnd_preserves_ScanInv s s' h.1 h_ok)
+    (scanDocumentEnd_preserves_pendingKeys s s' h_ok)
+    (by have := ScanHelpers.scanDocumentEnd_adds_tokens s s' h_ok; omega)
+    (fun i hi => ScanHelpers.scanDocumentEnd_preserves_prefix s s' h_ok i hi)
+    ?first_new
+    h
+  case first_new =>
+    have h_lt : s.tokens.size < s'.tokens.size := by
+      have := ScanHelpers.scanDocumentEnd_adds_tokens s s' h_ok; omega
+    rw [scanDocumentEnd_first_new_pos s s' h_ok h_lt]
+    show s.offset ≤ s.offset
+    omega
+
 /-! #### §5.3  `scanNextToken_preprocess` Offset Monotonicity
 
 `scanNextToken_preprocess` runs skipToContent + unwindIndents + saveSimpleKey.
