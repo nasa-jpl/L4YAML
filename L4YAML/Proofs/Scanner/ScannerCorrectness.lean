@@ -9404,6 +9404,54 @@ theorem setPendingKeyEndLine_insertBeforeIdx (pks : Array PendingKeyEntry)
       rw [Array.getElem_setIfInBounds_self]
     · rw [Array.getElem_setIfInBounds_ne (h := fun h => h_eq h.symm)]
 
+/-- `setPendingKeyKind` preserves `pos` (the field-update only touches `kind`). -/
+theorem setPendingKeyKind_pos (pks : Array PendingKeyEntry)
+    (active : Option Nat) (kind : ResolutionKind) (i : Nat)
+    (hi : i < pks.size)
+    (hi' : i < (setPendingKeyKind pks active kind).size) :
+    ((setPendingKeyKind pks active kind)[i]'hi').pos = (pks[i]'hi).pos := by
+  rcases setPendingKeyKind_decomp pks active kind with h_id | ⟨j, hj, h_set⟩
+  · congr 1
+    have h_at_eq : (setPendingKeyKind pks active kind)[i]'hi' = pks[i]'hi := by
+      congr 1
+    exact h_at_eq
+  · have hi_set : i < (pks.setIfInBounds j
+        { (pks[j]'hj) with kind := kind }).size := by
+      simp [Array.size_setIfInBounds]; exact hi
+    have h_at_eq :
+        (setPendingKeyKind pks active kind)[i]'hi'
+          = (pks.setIfInBounds j { (pks[j]'hj) with kind := kind })[i]'hi_set := by
+      congr 1
+    rw [h_at_eq]
+    by_cases h_eq : i = j
+    · subst h_eq
+      rw [Array.getElem_setIfInBounds_self]
+    · rw [Array.getElem_setIfInBounds_ne (h := fun h => h_eq h.symm)]
+
+/-- `setPendingKeyEndLine` preserves `pos` (the field-update only touches `endLine`). -/
+theorem setPendingKeyEndLine_pos (pks : Array PendingKeyEntry)
+    (active : Option Nat) (endLine : Nat) (i : Nat)
+    (hi : i < pks.size)
+    (hi' : i < (setPendingKeyEndLine pks active endLine).size) :
+    ((setPendingKeyEndLine pks active endLine)[i]'hi').pos = (pks[i]'hi).pos := by
+  rcases setPendingKeyEndLine_decomp pks active endLine with h_id | ⟨j, hj, h_set⟩
+  · congr 1
+    have h_at_eq : (setPendingKeyEndLine pks active endLine)[i]'hi' = pks[i]'hi := by
+      congr 1
+    exact h_at_eq
+  · have hi_set : i < (pks.setIfInBounds j
+        { (pks[j]'hj) with endLine := endLine }).size := by
+      simp [Array.size_setIfInBounds]; exact hi
+    have h_at_eq :
+        (setPendingKeyEndLine pks active endLine)[i]'hi'
+          = (pks.setIfInBounds j { (pks[j]'hj) with endLine := endLine })[i]'hi_set := by
+      congr 1
+    rw [h_at_eq]
+    by_cases h_eq : i = j
+    · subst h_eq
+      rw [Array.getElem_setIfInBounds_self]
+    · rw [Array.getElem_setIfInBounds_ne (h := fun h => h_eq h.symm)]
+
 /-! ### Class B: saveSimpleKey decomposition
 
 `saveSimpleKey` either returns `s` unchanged (guard fails) or appends
@@ -10384,6 +10432,41 @@ theorem scanValuePrepare_pendingKeys_insertBeforeIdx (s : ScannerState) (i : Nat
       · -- Branch 6: identity
         rfl
 
+theorem scanValuePrepare_pendingKeys_pos (s : ScannerState) (i : Nat)
+    (hi : i < s.pendingKeys.size)
+    (hi' : i < (scanValuePrepare s).pendingKeys.size) :
+    ((scanValuePrepare s).pendingKeys[i]'hi').pos
+      = (s.pendingKeys[i]'hi).pos := by
+  unfold scanValuePrepare
+  split
+  · split
+    · split
+      · show ((setPendingKeyKind s.pendingKeys s.pendingKeyActive .blockMappingStartAndKey)[i]'_).pos
+          = (s.pendingKeys[i]'hi).pos
+        exact setPendingKeyKind_pos s.pendingKeys s.pendingKeyActive
+          .blockMappingStartAndKey i hi (by rw [setPendingKeyKind_size]; exact hi)
+      · show ((setPendingKeyKind s.pendingKeys s.pendingKeyActive .keyOnly)[i]'_).pos
+          = (s.pendingKeys[i]'hi).pos
+        exact setPendingKeyKind_pos s.pendingKeys s.pendingKeyActive
+          .keyOnly i hi (by rw [setPendingKeyKind_size]; exact hi)
+    · show ((setPendingKeyKind s.pendingKeys s.pendingKeyActive .keyOnly)[i]'_).pos
+        = (s.pendingKeys[i]'hi).pos
+      exact setPendingKeyKind_pos s.pendingKeys s.pendingKeyActive
+        .keyOnly i hi (by rw [setPendingKeyKind_size]; exact hi)
+  · split
+    · rfl
+    · split
+      · have h_eq : (pushMappingIndent s s.col).pendingKeys = s.pendingKeys :=
+          pushMappingIndent_preserves_pendingKeys s s.col
+        have hi'' : i < s.pendingKeys.size := hi
+        have hi''' : i < (pushMappingIndent s s.col).pendingKeys.size := by rw [h_eq]; exact hi''
+        have h_at : (pushMappingIndent s s.col).pendingKeys[i]'hi''' = s.pendingKeys[i]'hi'' := by
+          congr 1
+        show ((pushMappingIndent s s.col).pendingKeys[i]'hi''').pos
+            = (s.pendingKeys[i]'hi'').pos
+        rw [h_at]
+      · rfl
+
 theorem scanValuePrepare_pendingKeys_size (s : ScannerState) :
     (scanValuePrepare s).pendingKeys.size = s.pendingKeys.size := by
   unfold scanValuePrepare
@@ -10468,6 +10551,52 @@ theorem scanValue_pendingKeys_insertBeforeIdx (s : ScannerState) (s' : ScannerSt
   have h_step4 :
       ((scanValueClearKey s).pendingKeys[i]'hi_clear).insertBeforeIdx
         = (s.pendingKeys[i]'hi).insertBeforeIdx := by
+    congr 1
+    have : (scanValueClearKey s).pendingKeys[i]'hi_clear = s.pendingKeys[i]'hi := by congr 1
+    exact this
+  rw [h_step1, h_step2, h_step3, h_step4]
+
+theorem scanValue_pendingKeys_pos (s : ScannerState) (s' : ScannerState)
+    (h : scanValue s = .ok s') (i : Nat) (hi : i < s.pendingKeys.size)
+    (hi' : i < s'.pendingKeys.size) :
+    (s'.pendingKeys[i]'hi').pos = (s.pendingKeys[i]'hi).pos := by
+  unfold scanValue at h
+  simp only [bind, Except.bind] at h
+  split at h <;> try contradiction
+  split at h <;> try contradiction
+  simp only [Except.ok.injEq] at h; subst h
+  have h_clear := scanValueClearKey_preserves_pendingKeys s
+  have h_prep_size := scanValuePrepare_pendingKeys_size (scanValueClearKey s)
+  have h_emit := emit_preserves_pendingKeys (scanValuePrepare (scanValueClearKey s)) .value
+  have h_adv := advance_preserves_pendingKeys ((scanValuePrepare (scanValueClearKey s)).emit .value)
+  show (((scanValuePrepare (scanValueClearKey s)).emit .value).advance.pendingKeys[i]'hi').pos
+    = (s.pendingKeys[i]'hi).pos
+  have hi_clear : i < (scanValueClearKey s).pendingKeys.size := by rw [h_clear]; exact hi
+  have hi_prep : i < (scanValuePrepare (scanValueClearKey s)).pendingKeys.size := by
+    rw [h_prep_size]; exact hi_clear
+  have hi_emit : i < ((scanValuePrepare (scanValueClearKey s)).emit .value).pendingKeys.size := by
+    rw [h_emit]; exact hi_prep
+  have h_step1 :
+      (((scanValuePrepare (scanValueClearKey s)).emit .value).advance.pendingKeys[i]'hi').pos
+        = (((scanValuePrepare (scanValueClearKey s)).emit .value).pendingKeys[i]'hi_emit).pos := by
+    congr 1
+    have : ((scanValuePrepare (scanValueClearKey s)).emit .value).advance.pendingKeys[i]'hi'
+        = ((scanValuePrepare (scanValueClearKey s)).emit .value).pendingKeys[i]'hi_emit := by
+      congr 1
+    exact this
+  have h_step2 :
+      (((scanValuePrepare (scanValueClearKey s)).emit .value).pendingKeys[i]'hi_emit).pos
+        = ((scanValuePrepare (scanValueClearKey s)).pendingKeys[i]'hi_prep).pos := by
+    have : ((scanValuePrepare (scanValueClearKey s)).emit .value).pendingKeys[i]'hi_emit
+         = (scanValuePrepare (scanValueClearKey s)).pendingKeys[i]'hi_prep := by congr 1
+    rw [this]
+  have h_step3 :
+      ((scanValuePrepare (scanValueClearKey s)).pendingKeys[i]'hi_prep).pos
+        = ((scanValueClearKey s).pendingKeys[i]'hi_clear).pos :=
+    scanValuePrepare_pendingKeys_pos (scanValueClearKey s) i hi_clear hi_prep
+  have h_step4 :
+      ((scanValueClearKey s).pendingKeys[i]'hi_clear).pos
+        = (s.pendingKeys[i]'hi).pos := by
     congr 1
     have : (scanValueClearKey s).pendingKeys[i]'hi_clear = s.pendingKeys[i]'hi := by congr 1
     exact this
@@ -11448,6 +11577,66 @@ theorem LineariseFit_via_first_new_strict (s s' : ScannerState)
     (fun _ => h_first_new)
     (offset_mono_via_first_new s s' h_inv' h_size_mono h_first_new)
     h
+
+/-! #### Generalized mono lemma: Class C + token extension
+
+`LineariseFit_extend_field_update` generalises both `LineariseFit_extend`
+(which assumes `s'.pendingKeys = s.pendingKeys`) and `LineariseFit_field_update`
+(which assumes `s'.tokens = s.tokens`).  Required for ops like `scanValue`
+that simultaneously field-update `pendingKeys` (Class C) AND emit a token. -/
+theorem LineariseFit_extend_field_update (s s' : ScannerState)
+    (h_inv' : ScanInv s')
+    (h_size_eq : s'.pendingKeys.size = s.pendingKeys.size)
+    (h_idx_eq : ∀ p (hp : p < s.pendingKeys.size)
+                  (hp' : p < s'.pendingKeys.size),
+                  (s'.pendingKeys[p]'hp').insertBeforeIdx
+                    = (s.pendingKeys[p]'hp).insertBeforeIdx)
+    (h_pos_eq : ∀ p (hp : p < s.pendingKeys.size)
+                  (hp' : p < s'.pendingKeys.size),
+                  (s'.pendingKeys[p]'hp').pos
+                    = (s.pendingKeys[p]'hp).pos)
+    (h_size_mono : s.tokens.size ≤ s'.tokens.size)
+    (h_prefix : ∀ i (hi : i < s.tokens.size),
+        s'.tokens[i]'(by omega) = s.tokens[i]'hi)
+    (h_new_ge : ∀ i (hi : i < s'.tokens.size), s.tokens.size ≤ i →
+        s.offset ≤ (s'.tokens[i]'hi).pos.offset)
+    (h_off_mono : s.offset ≤ s'.offset)
+    (h : LineariseFit s) : LineariseFit s' := by
+  obtain ⟨_, h_well, h_idx, h_pos, h_lo, h_hi, h_off⟩ := h
+  refine ⟨h_inv', ?_, ?_, ?_, ?_, ?_, ?_⟩
+  · exact PendingKeysWellIndexed_field_update s s' h_size_eq h_idx_eq
+      (by omega) h_well
+  · intro p q hp hq hpq
+    have hp_s : p < s.pendingKeys.size := by omega
+    have hq_s : q < s.pendingKeys.size := by omega
+    rw [h_idx_eq p hp_s hp, h_idx_eq q hq_s hq]
+    exact h_idx p q hp_s hq_s hpq
+  · intro p q hp hq hpq
+    have hp_s : p < s.pendingKeys.size := by omega
+    have hq_s : q < s.pendingKeys.size := by omega
+    rw [h_pos_eq p hp_s hp, h_pos_eq q hq_s hq]
+    exact h_pos p q hp_s hq_s hpq
+  · intro p hp i hi h_lt
+    have hp_s : p < s.pendingKeys.size := by omega
+    rw [h_pos_eq p hp_s hp]
+    rw [h_idx_eq p hp_s hp] at h_lt
+    have ⟨_, h_idx_le⟩ := h_well.2 p hp_s
+    have hi_s : i < s.tokens.size := by omega
+    rw [h_prefix i hi_s]
+    exact h_lo p hp_s i hi_s h_lt
+  · intro p hp i hi h_ge
+    have hp_s : p < s.pendingKeys.size := by omega
+    rw [h_pos_eq p hp_s hp]
+    rw [h_idx_eq p hp_s hp] at h_ge
+    by_cases hi_s : i < s.tokens.size
+    · rw [h_prefix i hi_s]
+      exact h_hi p hp_s i hi_s h_ge
+    · have h_i_ge : s.tokens.size ≤ i := by omega
+      exact Nat.le_trans (h_off p hp_s) (h_new_ge i hi h_i_ge)
+  · intro p hp
+    have hp_s : p < s.pendingKeys.size := by omega
+    rw [h_pos_eq p hp_s hp]
+    exact Nat.le_trans (h_off p hp_s) h_off_mono
 
 /-! #### Class A passthrough leaves (`*_preserves_LineariseFit`)
 
