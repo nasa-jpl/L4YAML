@@ -11880,17 +11880,121 @@ theorem scanKey_preserves_LineariseFit (s s' : ScannerState)
          rw [ScannerProgress.emit_offset] at this
          exact this)
 
-/-! ##### Tag/anchor/alias `emitAt`-class leaves (deferred)
+/-! ##### Tag/anchor/alias `emitAt`-class leaves
 
 These ops run a sequence of `advance`s through `collect…Loop`, then
 `emitAt startPos token` where `startPos = s.currentPos`.  The first
-new token's `pos` equals the saved start position, so `pos.offset = s.offset`.
+new token's `pos` equals the saved start position, so `pos.offset = s.offset`. -/
 
-The infrastructure (`first_new_pos_emitAt`, `LineariseFit_via_first_new_strict`)
-is in place; the per-op leaves (`scanAnchorOrAlias`, `scanTag`,
-`scanBlockScalar`, `scanPlainScalar`) require resolving a definitional
-mismatch between the loop's expected fuel parameter and the call-site
-fuel.  Deferred. -/
+/-- The first new token's `pos` after `scanAnchorOrAlias` is `s.currentPos`. -/
+private theorem scanAnchorOrAlias_first_new_pos (s : ScannerState) (isAnchor : Bool)
+    (s' : ScannerState) (hok : scanAnchorOrAlias s isAnchor = .ok s')
+    (h_lt : s.tokens.size < s'.tokens.size) :
+    (s'.tokens[s.tokens.size]'h_lt).pos = s.currentPos := by
+  unfold scanAnchorOrAlias at hok; dsimp only [] at hok
+  split at hok
+  · exact absurd hok (by simp)
+  · have h := Except.ok.inj hok; subst h; dsimp only []
+    apply first_new_pos_emitAt
+    rw [ScanHelpers.collectAnchorNameLoop_preserves_tokens, advance_preserves_tokens]
+
+theorem scanAnchorOrAlias_preserves_LineariseFit (s s' : ScannerState) (isAnchor : Bool)
+    (h_eq : scanAnchorOrAlias s isAnchor = .ok s') (h : LineariseFit s) : LineariseFit s' := by
+  apply LineariseFit_via_first_new_strict s s'
+    (scanAnchorOrAlias_preserves_ScanInv s isAnchor h.1 s' h_eq)
+    (scanAnchorOrAlias_preserves_pendingKeys s isAnchor s' h_eq)
+    (by have := ScanHelpers.scanAnchorOrAlias_adds_one_token s isAnchor s' h_eq; omega)
+    (fun i hi => ScanHelpers.scanAnchorOrAlias_preserves_prefix s isAnchor s' h_eq i hi)
+    ?first_new
+    h
+  case first_new =>
+    have h_size : s.tokens.size < s'.tokens.size := by
+      have := ScanHelpers.scanAnchorOrAlias_adds_one_token s isAnchor s' h_eq; omega
+    rw [scanAnchorOrAlias_first_new_pos s isAnchor s' h_eq h_size]
+    show s.offset ≤ s.offset
+    omega
+
+/-- The first new token's `pos` after `scanVerbatimTag s pos` is `pos`. -/
+private theorem scanVerbatimTag_first_new_pos (s : ScannerState) (pos : YamlPos)
+    (s' : ScannerState) (hok : scanVerbatimTag s pos = .ok s')
+    (h_lt : s.tokens.size < s'.tokens.size) :
+    (s'.tokens[s.tokens.size]'h_lt).pos = pos := by
+  unfold scanVerbatimTag at hok; dsimp only [] at hok
+  split at hok
+  · exact absurd hok (by simp)
+  · split at hok
+    · exact absurd hok (by simp)
+    · have h := Except.ok.inj hok; subst h
+      apply first_new_pos_emitAt
+      rw [ScanHelpers.collectVerbatimTagLoop_preserves_tokens, advance_preserves_tokens]
+
+/-- The first new token's `pos` after `scanSecondaryTag s pos` is `pos`. -/
+private theorem scanSecondaryTag_first_new_pos (s : ScannerState) (pos : YamlPos)
+    (h_lt : s.tokens.size < (scanSecondaryTag s pos).tokens.size) :
+    ((scanSecondaryTag s pos).tokens[s.tokens.size]'h_lt).pos = pos := by
+  unfold scanSecondaryTag
+  apply first_new_pos_emitAt
+  rw [ScanHelpers.collectTagSuffixLoop_preserves_tokens, advance_preserves_tokens]
+
+/-- The first new token's `pos` after `scanNamedTag s pos inputEnd` is `pos`. -/
+private theorem scanNamedTag_first_new_pos (s : ScannerState) (pos : YamlPos) (inputEnd : Nat)
+    (h_lt : s.tokens.size < (scanNamedTag s pos inputEnd).tokens.size) :
+    ((scanNamedTag s pos inputEnd).tokens[s.tokens.size]'h_lt).pos = pos := by
+  unfold scanNamedTag; simp only []
+  have h_handle := ScanHelpers.collectTagHandleLoop_preserves_tokens s "" (inputEnd - s.offset)
+  split
+  · apply first_new_pos_emitAt
+    rw [ScanHelpers.collectTagSuffixLoop_preserves_tokens, h_handle]
+  · apply first_new_pos_emitAt
+    rw [h_handle]
+
+/-- The first new token's `pos` after `scanTag` is `s.currentPos`. -/
+private theorem scanTag_first_new_pos (s : ScannerState)
+    (s' : ScannerState) (hok : scanTag s = .ok s')
+    (h_lt : s.tokens.size < s'.tokens.size) :
+    (s'.tokens[s.tokens.size]'h_lt).pos = s.currentPos := by
+  unfold scanTag at hok; dsimp only [] at hok
+  have h_adv := advance_preserves_tokens s
+  split at hok
+  · -- verbatim
+    simp only [bind, Except.bind] at hok
+    generalize hv : scanVerbatimTag s.advance s.currentPos = result at hok
+    cases result with
+    | error e => simp at hok
+    | ok s_verb =>
+      dsimp only [] at hok
+      have h := Except.ok.inj hok; subst h; dsimp only [] at h_lt ⊢
+      have h_lt' : s.advance.tokens.size < s_verb.tokens.size := by
+        rw [h_adv]; exact h_lt
+      have := scanVerbatimTag_first_new_pos s.advance s.currentPos s_verb hv h_lt'
+      simp_all
+  · have h := Except.ok.inj hok; subst h; dsimp only [] at h_lt ⊢
+    have h_lt' : s.advance.tokens.size < (scanSecondaryTag s.advance s.currentPos).tokens.size := by
+      rw [h_adv]; exact h_lt
+    have := scanSecondaryTag_first_new_pos s.advance s.currentPos h_lt'
+    simp_all
+  · have h := Except.ok.inj hok; subst h; dsimp only [] at h_lt ⊢
+    have h_lt' : s.advance.tokens.size <
+        (scanNamedTag s.advance s.currentPos s.inputEnd).tokens.size := by
+      rw [h_adv]; exact h_lt
+    have := scanNamedTag_first_new_pos s.advance s.currentPos s.inputEnd h_lt'
+    simp_all
+
+theorem scanTag_preserves_LineariseFit (s s' : ScannerState)
+    (h_eq : scanTag s = .ok s') (h : LineariseFit s) : LineariseFit s' := by
+  apply LineariseFit_via_first_new_strict s s'
+    (scanTag_preserves_ScanInv s h.1 s' h_eq)
+    (scanTag_preserves_pendingKeys s s' h_eq)
+    (by have := ScanHelpers.scanTag_adds_one_token s s' h_eq; omega)
+    (fun i hi => ScanHelpers.scanTag_preserves_prefix s s' h_eq i hi)
+    ?first_new
+    h
+  case first_new =>
+    have h_size : s.tokens.size < s'.tokens.size := by
+      have := ScanHelpers.scanTag_adds_one_token s s' h_eq; omega
+    rw [scanTag_first_new_pos s s' h_eq h_size]
+    show s.offset ≤ s.offset
+    omega
 
 /-!
 ### scanNextToken preserves ScanInv
