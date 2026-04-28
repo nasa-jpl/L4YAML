@@ -914,13 +914,15 @@ count unchanged at 21.
      hypotheses (~120 LOC).
   9. Compose into `scanFiltered_produces_valid_tokens` (~50 LOC).
 
-  Status (2026-04-27): Steps 1-7, 8a, 8c ✓ done (~2434 LOC across eight
-  commits: `c6bfab0a` saveSimpleKey discharge, `1e6b4741` Class A/B/C
-  foundation, `de7610d9` Blueprint update, `c4dc838a` ~30 Class A
-  *_preserves_pendingKeys leaves, `fbd330d4` dispatcher composition +
-  scanNextToken preservation, `cbba890e` scanLoopFull preservation,
-  `a5aa58e8` LineariseFit invariant + mono/field/save core lemmas
-  (~423 LOC), `ca29c9b2` linearise_positions_ordered (~261 LOC)).
+  Status (2026-04-28): Steps 1-7, 8a, 8c ✓ done; Step 8b ~70% complete
+  (21 of ~30 per-op leaves landed plus all Class C building blocks).
+  Eight prior commits (~2434 LOC): `c6bfab0a` saveSimpleKey discharge,
+  `1e6b4741` Class A/B/C foundation, `de7610d9` Blueprint update,
+  `c4dc838a` ~30 Class A *_preserves_pendingKeys leaves, `fbd330d4`
+  dispatcher composition + scanNextToken preservation, `cbba890e`
+  scanLoopFull preservation, `a5aa58e8` LineariseFit invariant +
+  mono/field/save core lemmas (~423 LOC), `ca29c9b2`
+  linearise_positions_ordered (~261 LOC).
 
   Step 8a (`a5aa58e8`) defines `LineariseFit` bundling ScanInv +
   PendingKeysWellIndexed + (pks sorted by idx and pos) + I1 (tokens
@@ -940,57 +942,129 @@ count unchanged at 21.
   `expandKind_offset_const` shows expandKind produces a constant-offset
   run.
 
-  Step 8b in-progress (2026-04-27, ~390 LOC across five additional
-  commits): `807b91df` adds the unified `LineariseFit_extend` mono
-  lemma plus the `LineariseFit_via_no_change` convenience wrapper for
-  Class A passthrough leaves.  `0ec064a7` adds five Class A passthrough
-  leaves (`advance`, `skipSpaces`, `skipWhitespace`, `skipToEndOfLine`,
-  `consumeNewline`) — each is a one-shot instantiation of the
-  passthrough wrapper.  `f35a04ac` adds `emit_preserves_LineariseFit`,
-  validating the emit-class pattern (new token at index `s.tokens.size`
-  has `pos.offset = s.currentPos.offset = s.offset`).  `4af1fc1a` adds
-  the four scanFlow*Start/End leaves (Sequence/Mapping bracket
-  scanners), each unfolding the scanner to derive `h_new_ge` from
-  `currentPos.offset = s.offset` and `h_off_mono` from
-  `advance_offset_ge`.  `ef90bd62` adds `scanFlowEntry` plus a more
-  practical mono lemma `LineariseFit_via_first_new` for multi-emit ops
-  — only the *first* new token's offset bound needs explicit proof;
-  subsequent new tokens inherit it via ScanInv's tokens-sorted property
-  at `s'`.
+  **Step 8b — per-op `*_preserves_LineariseFit` leaves (in progress)**
 
-  Step 8b continued (2026-04-27, ~234 LOC across two more commits):
-  `bdd27512` adds `scanBlockEntry_preserves_LineariseFit` and
-  `scanKey_preserves_LineariseFit` (push*Indent + emit + advance chain).
-  Two private helpers `pushSequenceIndent_emit_first_new_offset` /
-  `pushMappingIndent_emit_first_new_offset` discharge the first-new-token
-  bound via case-split on whether the indent push fires (col vs
-  currentIndent).  `b83e8252` adds three reusable infrastructure
-  helpers: `offset_mono_via_first_new` (derives s.offset ≤ s'.offset
-  from first_new + ScanInv at s'), `LineariseFit_via_first_new_strict`
-  (auto-derives h_off_mono for ops that always add ≥ 1 token), and
-  `first_new_pos_emitAt` (extracts pos.offset for emitAt-class ops
-  via index alignment under `subst`).
+  *Mono lemma infrastructure (commits `807b91df`, `ef90bd62`,
+  `b83e8252`, `6cbc43d6`):*
+  - `LineariseFit_extend` — unified Class A mono (preserves pks, allows
+    token append + offset mono).
+  - `LineariseFit_via_no_change` — Class A passthrough wrapper.
+  - `LineariseFit_via_first_new` — multi-emit; only the FIRST new
+    token's offset bound needs proof, subsequent tokens inherit via
+    ScanInv tokens-sorted at s'.
+  - `LineariseFit_via_first_new_strict` — auto-derives off_mono for ops
+    that always add ≥ 1 token (via ScanInv tokens_le_offset at s').
+  - `LineariseFit_extend_field_update` — Class C generalisation of
+    `LineariseFit_extend` (per-entry idx/pos preservation rather than
+    full pks array equality), required for `scanValue`.
+  - `first_new_pos_emitAt` — extracts pos for emitAt-class ops via
+    index alignment under `subst`.
+  - `offset_mono_via_first_new` — derives s.offset ≤ s'.offset from
+    first_new bound + ScanInv at s'.
 
-  Remaining for Step 8b (~280 LOC): per-op leaves for `unwindIndents`,
-  `pushSequenceIndent`/`pushMappingIndent`, `scanValue` (Class C via
-  setPendingKeyKind — needs LineariseFit_extend generalization for
-  pendingKeys-kind-only changes), `scanAnchorOrAlias`, `scanTag`,
-  `scanBlockScalar`, `scanDoubleQuoted`, `scanSingleQuoted` (+ Class C
-  wrapper via setPendingKeyEndLine), `scanPlainScalar`,
-  `scanDocumentStart`, `scanDocumentEnd`, `scanDirective`, plus
-  `skipToContent_preserves_LineariseFit` (deferred — its `_offset_ge`
-  dependency is in §5.2, defined later in the file).  The
-  scanAnchor/scanTag leaves were prototyped using
-  `first_new_pos_emitAt` but hit a fuel-parameter definitional
-  mismatch between `collect*Loop`'s expected signature and the call-
-  site fuel expression — needs a different framing.  Then dispatcher
-  composition (4 dispatchers + `allowDir_ite`), `preprocess`,
-  `scanNextToken`, `scanLoopFull`.  Step 9 (~50 LOC) composes
-  `scanFiltered_produces_valid_tokens` using
-  `linearise_size_ge_tokens`, `linearise_first_eq_tokens_first`,
-  `linearise_last_eq_tokens_last`, and `linearise_positions_ordered`.
-  Folds naturally into J.3.4 since `ScannerPlainScalarValid` consumers
-  need the same invariants.
+  *Per-op leaves landed (21 total, in dependency order):*
+  - **Class A passthroughs** (`0ec064a7`): `advance`, `skipSpaces`,
+    `skipWhitespace`, `skipToEndOfLine`, `consumeNewline`.
+  - **Single-emit Class A** (`f35a04ac`, `4af1fc1a`, `ef90bd62`):
+    `emit`, `scanFlowSequenceStart/End`, `scanFlowMappingStart/End`,
+    `scanFlowEntry`.
+  - **Push-indent + emit chain** (`bdd27512`): `scanBlockEntry`,
+    `scanKey` via private helpers `pushSequenceIndent_emit_first_new_offset` /
+    `pushMappingIndent_emit_first_new_offset`.
+  - **emitAt-class scalar/anchor/tag** (`d41f13b4`, `aaa5cc1e`):
+    `scanAnchorOrAlias`, `scanTag` (verbatim/secondary/named),
+    `scanDoubleQuoted`, `scanSingleQuoted`, `scanPlainScalar`,
+    `scanBlockScalar`.  The original "fuel-parameter mismatch"
+    diagnosis was incorrect: it was a tactical issue (rw vs simp_only
+    through `{state with simpleKeyAllowed := false}` defeq), not
+    architectural — `rw [first_new_pos_emitAt …]` correctly unifies
+    through the record-update wrapper.
+  - **Indent / whitespace standalones** (`4c664b58`, `067a6e35`):
+    `pushSequenceIndent`, `pushMappingIndent`, `skipToContent`,
+    `unwindIndents`.
+
+  *Class C building blocks landed (commit `6cbc43d6`):*
+  - `setPendingKeyKind_pos`, `setPendingKeyEndLine_pos` — siblings to
+    the existing `*_insertBeforeIdx` lemmas (per-entry pos preserved
+    under field-update via `setIfInBounds`).
+  - `scanValuePrepare_pendingKeys_pos`, `scanValue_pendingKeys_pos` —
+    chain through `scanValueClearKey → scanValuePrepare → emit →
+    advance` to give the LineariseFit_extend_field_update prerequisites.
+  - `LineariseFit_extend_field_update` mono lemma (above).
+
+  *unwindIndents currentPos preservation landed (commit `9d1146a1`):*
+  - `unwindIndents_{line,col,currentPos}_eq` — sibling to the existing
+    `unwindIndents_offset_eq`.  Together they establish unwindIndents
+    preserves (offset, line, col), needed so emits AFTER unwindIndents
+    in scanDocumentStart/End/Directive happen at `s.currentPos`.
+
+  **Remaining for Step 8b — concrete next steps**
+
+  1. **`scanValue_preserves_LineariseFit`** (~80 LOC).  All Class C
+     prerequisites are in place; the bottleneck is
+     `scanValue_first_new_pos_offset` — the first new token (either
+     `.blockMappingStart` from `scanValuePrepare`'s pushMappingIndent
+     branch or `.value` from the trailing emit) has pos.offset =
+     s.offset.  Need to compose through the chain `clear → prepare →
+     emit → advance` with case-split on whether prepare's
+     pushMappingIndent fires.  Use `LineariseFit_via_first_new_strict`
+     (NOT array-equality version) → call `LineariseFit_extend_field_update`
+     with the four `scanValue_pendingKeys_*` chain lemmas.  Add
+     intermediate helpers as needed for `scanValueClearKey` /
+     `scanValuePrepare` line/col preservation, mirroring the
+     `unwindIndents_currentPos_eq` recipe.
+
+  2. **`scanDocumentStart_preserves_LineariseFit`** (~60 LOC).  Form:
+     `unwindIndents s (-1)` → record-update → emit `.documentStart` →
+     `advanceN 3` → record-update.  Use `LineariseFit_via_first_new`
+     (size mono is ≥ since unwindIndents may not fire).  The first new
+     token's pos = s.currentPos in both cases (case-split: if
+     unwindIndents fires, first new is from `unwindIndents_first_new_pos`;
+     otherwise it's the `.documentStart` emit at the unchanged
+     currentPos).  `unwindIndents_currentPos_eq` is the key new
+     prerequisite (already landed).
+
+  3. **`scanDocumentEnd_preserves_LineariseFit`** (~80 LOC).  Same
+     shape as scanDocumentStart but inside an Except chain; one early
+     exit (`directiveWithoutDocument`) plus the trailing
+     `skipDocEndWhitespace` + content validation that doesn't emit.
+     Will need a `skipDocEndWhitespace_preserves_LineariseFit` micro
+     leaf (Class A: tokens unchanged, offset monotone).
+
+  4. **`scanDirective_preserves_LineariseFit`** (~80 LOC).  Branches:
+     YAML directive (Class C — uses `setPendingKeyEndLine` indirectly
+     through quoted scalars? no — directives don't touch pendingKeys),
+     TAG directive, and reserved.  All emit one `.versionDirective` /
+     `.tagDirective` / no token (reserved branch swallows).  The
+     `collectDirectiveNameLoop` + `collectVersionMajor/MinorLoop` etc.
+     need `_preserves_tokens` lemmas (likely already exist for the
+     dispatcher chain).
+
+  5. **Dispatcher composition** (~150 LOC).  Mirror the existing
+     `*_preserves_pendingKeys` chain:
+     - `dispatchStructural_preserves_LineariseFit`
+     - `dispatchFlowIndicators_preserves_LineariseFit`
+     - `dispatchBlockIndicators_preserves_LineariseFit`
+     - `dispatchContent_preserves_LineariseFit`
+     - `preprocess_preserves_LineariseFit`
+     - `scanNextToken_preserves_LineariseFit`
+
+  6. **`scanLoopFull_preserves_LineariseFit`** (~30 LOC) by induction
+     on fuel, identical shape to
+     `scanLoopFull_preserves_PendingKeysWellIndexed`.
+
+  *Then Step 9* (~50 LOC): composes
+  `scanFiltered_produces_valid_tokens` using `linearise_size_ge_tokens`,
+  `linearise_first_eq_tokens_first`, `linearise_last_eq_tokens_last`,
+  and `linearise_positions_ordered`.  Folds naturally into J.3.4 since
+  `ScannerPlainScalarValid` consumers need the same invariants.
+
+  *Cumulative session log (2026-04-27 → 2026-04-28):* 14 commits
+  including `807b91df`, `0ec064a7`, `f35a04ac`, `4af1fc1a`, `ef90bd62`,
+  `bdd27512`, `b83e8252`, `7046048b`, `8133ab94`, `d41f13b4`,
+  `aaa5cc1e`, `4c664b58`, `067a6e35`, `6cbc43d6`, `9d1146a1`.  Build
+  green; sorry count unchanged at the original Step 9 baseline (1
+  sorry in this file, the same count as before Step 8b started).
 
 **J.3.4–J.3.6**: re-discharge consumers in dependency order, each
 substep removing its sorry-using declarations and the matching
