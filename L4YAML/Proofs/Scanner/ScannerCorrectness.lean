@@ -11383,7 +11383,7 @@ theorem LineariseFit_via_no_change (s s' : ScannerState)
 /-- The token at index `n` in `(s_after.emitAt pos tok).tokens` is `{pos := pos, val := tok}`
     when `s_after.tokens.size = n`.  Used by emitAt-class ops where the loop preserves
     the token array but the index in the goal is from the caller (`s.tokens.size`). -/
-private theorem first_new_pos_emitAt (s_after : ScannerState) (pos : YamlPos)
+theorem first_new_pos_emitAt (s_after : ScannerState) (pos : YamlPos)
     (tok : YamlToken) (n : Nat) (h_eq : s_after.tokens.size = n)
     (h_lt : n < (s_after.emitAt pos tok).tokens.size) :
     ((s_after.emitAt pos tok).tokens[n]'h_lt).pos = pos := by
@@ -11396,7 +11396,7 @@ private theorem first_new_pos_emitAt (s_after : ScannerState) (pos : YamlPos)
 
 /-! #### Helper: derive off_mono from first_new + ScanInv at s' -/
 
-private theorem offset_mono_via_first_new
+theorem offset_mono_via_first_new
     (s s' : ScannerState) (h_inv' : ScanInv s')
     (h_lt : s.tokens.size < s'.tokens.size)
     (h_first_new : s.offset ≤ (s'.tokens[s.tokens.size]'h_lt).pos.offset) :
@@ -11710,7 +11710,7 @@ the FIRST new token is at `s.currentPos` with offset = s.offset, so
 
 /-- After `(pushSequenceIndent s col).emit tok`, the token at `s.tokens.size`
     has `pos.offset = s.offset` (whether or not pushSequenceIndent fired). -/
-private theorem pushSequenceIndent_emit_first_new_offset (s : ScannerState) (col : Int)
+theorem pushSequenceIndent_emit_first_new_offset (s : ScannerState) (col : Int)
     (tok : YamlToken)
     (h_lt : s.tokens.size <
       ((pushSequenceIndent s col).emit tok).tokens.size) :
@@ -11752,7 +11752,7 @@ private theorem pushSequenceIndent_emit_first_new_offset (s : ScannerState) (col
 
 /-- After `(pushMappingIndent s col).emit tok`, the token at `s.tokens.size`
     has `pos.offset = s.offset` (whether or not pushMappingIndent fired). -/
-private theorem pushMappingIndent_emit_first_new_offset (s : ScannerState) (col : Int)
+theorem pushMappingIndent_emit_first_new_offset (s : ScannerState) (col : Int)
     (tok : YamlToken)
     (h_lt : s.tokens.size <
       ((pushMappingIndent s col).emit tok).tokens.size) :
