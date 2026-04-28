@@ -12957,6 +12957,37 @@ theorem unwindIndents_offset_eq (s : ScannerState) (col : Int) :
     (unwindIndents s col).offset = s.offset :=
   unwindIndentsLoop_offset_eq s col s.indents.size
 
+theorem unwindIndentsLoop_line_eq (s : ScannerState) (col : Int) (fuel : Nat) :
+    (unwindIndentsLoop s col fuel).line = s.line := by
+  induction fuel generalizing s with
+  | zero => unfold unwindIndentsLoop; rfl
+  | succ fuel' ih =>
+    unfold unwindIndentsLoop; split
+    · rw [ih]; rfl
+    · rfl
+
+theorem unwindIndents_line_eq (s : ScannerState) (col : Int) :
+    (unwindIndents s col).line = s.line :=
+  unwindIndentsLoop_line_eq s col s.indents.size
+
+theorem unwindIndentsLoop_col_eq (s : ScannerState) (col : Int) (fuel : Nat) :
+    (unwindIndentsLoop s col fuel).col = s.col := by
+  induction fuel generalizing s with
+  | zero => unfold unwindIndentsLoop; rfl
+  | succ fuel' ih =>
+    unfold unwindIndentsLoop; split
+    · rw [ih]; rfl
+    · rfl
+
+theorem unwindIndents_col_eq (s : ScannerState) (col : Int) :
+    (unwindIndents s col).col = s.col :=
+  unwindIndentsLoop_col_eq s col s.indents.size
+
+theorem unwindIndents_currentPos_eq (s : ScannerState) (col : Int) :
+    (unwindIndents s col).currentPos = s.currentPos := by
+  unfold ScannerState.currentPos
+  rw [unwindIndents_offset_eq, unwindIndents_line_eq, unwindIndents_col_eq]
+
 theorem unwindIndentsLoop_inputEnd_eq (s : ScannerState) (col : Int) (fuel : Nat) :
     (unwindIndentsLoop s col fuel).inputEnd = s.inputEnd := by
   induction fuel generalizing s with
@@ -13172,6 +13203,14 @@ theorem unwindIndents_preserves_LineariseFit (s : ScannerState) (col : Int)
   case off_mono =>
     rw [unwindIndents_offset_eq]
     omega
+
+/-! ##### `scanDocument*` / `scanDirective` `_preserves_LineariseFit` (deferred)
+
+Multi-emit through `unwindIndents` + `.emit` + `.advanceN`.  The
+unwindIndents currentPos preservation helpers are now in place
+(`unwindIndents_{offset,line,col,currentPos}_eq`), but the per-op
+first_new_pos extraction through the explicit-record-update chain still
+requires careful tactic crafting.  Deferred. -/
 
 /-! #### §5.3  `scanNextToken_preprocess` Offset Monotonicity
 
