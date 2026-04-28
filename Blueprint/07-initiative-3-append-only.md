@@ -914,23 +914,38 @@ count unchanged at 21.
      hypotheses (~120 LOC).
   9. Compose into `scanFiltered_produces_valid_tokens` (~50 LOC).
 
-  Status (2026-04-27): Steps 1-7 ✓ done (~1750 LOC across six commits:
-  `c6bfab0a` saveSimpleKey discharge, `1e6b4741` Class A/B/C foundation,
-  `de7610d9` Blueprint update, `c4dc838a` ~30 Class A *_preserves_pendingKeys
-  leaves, `fbd330d4` dispatcher composition + scanNextToken preservation,
-  `cbba890e` scanLoopFull preservation).  Step 5's per-op chain (~870 LOC)
-  mirrors every `*_preserves_simpleKeyStack` lemma for `pendingKeys`;
-  Step 6's dispatchers (~470 LOC) compose Class A leaves and Class C
-  field-updates uniformly via `PendingKeysWellIndexed_mono` and
-  `PendingKeysWellIndexed_field_update`; Step 7 (~60 LOC) closes the
-  scanLoopFull loop induction.
-  Remaining: Steps 8-9 (~170 LOC).  Step 8 (`linearise_positions_ordered`)
-  needs an additional position-fit invariant on `pendingKeys` (e.pos
-  fits between tokens before/after insertBeforeIdx, and pendingKeys
-  themselves are sorted by both `insertBeforeIdx` and `pos`); since
-  these invariants need their own per-op preservation chain analogous
-  to `PendingKeysWellIndexed`, the actual remaining LOC is closer to
-  300-400.  Folds naturally into J.3.4 since
+  Status (2026-04-27): Steps 1-7, 8a, 8c ✓ done (~2434 LOC across eight
+  commits: `c6bfab0a` saveSimpleKey discharge, `1e6b4741` Class A/B/C
+  foundation, `de7610d9` Blueprint update, `c4dc838a` ~30 Class A
+  *_preserves_pendingKeys leaves, `fbd330d4` dispatcher composition +
+  scanNextToken preservation, `cbba890e` scanLoopFull preservation,
+  `a5aa58e8` LineariseFit invariant + mono/field/save core lemmas
+  (~423 LOC), `ca29c9b2` linearise_positions_ordered (~261 LOC)).
+
+  Step 8a (`a5aa58e8`) defines `LineariseFit` bundling ScanInv +
+  PendingKeysWellIndexed + (pks sorted by idx and pos) + I1 (tokens
+  before insertBeforeIdx ≤ pos) + I2 (tokens at/after insertBeforeIdx ≥
+  pos) + I4 (pos ≤ offset).  Discharges 4 workhorse mono lemmas
+  (`LineariseFit_no_token_change`, `LineariseFit_emit_one`,
+  `LineariseFit_field_update`, `saveSimpleKey_preserves_LineariseFit`).
+  Uses Nat-indexed bounds throughout (`pendingKeys[p]'hp` style) +
+  helper `array_get_eq_of_array_eq` to handle dependent-indexing
+  cleanly across array equality rewrites.
+
+  Step 8c (`ca29c9b2`) discharges `linearise_positions_ordered`: the
+  output of `linearise tokens pks` has non-decreasing `pos.offset`s,
+  given the LineariseFit hypotheses.  Proof by strong induction on
+  `(tokens.size − k) + (pks.size − p)` with inductive invariant
+  `goSortedInv` on the `(k, p, acc)` recursion state.  Helper
+  `expandKind_offset_const` shows expandKind produces a constant-offset
+  run.
+
+  Remaining: Step 8b (per-op `*_preserves_LineariseFit` chain through
+  scanLoopFull, mirroring the existing PendingKeysWellIndexed chain;
+  ~500-800 LOC) and Step 9 (compose `scanFiltered_produces_valid_tokens`
+  using `linearise_size_ge_tokens`, `linearise_first_eq_tokens_first`,
+  `linearise_last_eq_tokens_last`, `linearise_positions_ordered`;
+  ~50 LOC).  Folds naturally into J.3.4 since
   `ScannerPlainScalarValid` consumers need the same invariants.
 
 **J.3.4–J.3.6**: re-discharge consumers in dependency order, each
