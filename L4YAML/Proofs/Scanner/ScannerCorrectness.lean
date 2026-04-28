@@ -10912,7 +10912,7 @@ def LineariseFit (s : ScannerState) : Prop :=
   (∀ p (hp : p < s.pendingKeys.size), (s.pendingKeys[p]'hp).pos.offset ≤ s.offset)
 
 /-- Indexing helper: array equality + same index gives element equality. -/
-private theorem array_get_eq_of_array_eq {α : Type _} {a b : Array α}
+theorem array_get_eq_of_array_eq {α : Type _} {a b : Array α}
     (h : a = b) (i : Nat) (h1 : i < a.size) (h2 : i < b.size) :
     a[i]'h1 = b[i]'h2 := by subst h; rfl
 

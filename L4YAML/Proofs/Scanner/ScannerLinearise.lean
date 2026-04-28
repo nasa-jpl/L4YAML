@@ -732,7 +732,7 @@ theorem linearise_append_token_eq
 
 /-- Round-trip: popping and pushing back the last element yields the
     original array.  Used by `linearise_last_eq_tokens_last`. -/
-private theorem array_pop_push_back_self
+theorem array_pop_push_back_self
     {α : Type _} (xs : Array α) (h : xs.size > 0) :
     xs.pop.push (xs[xs.size - 1]'(by omega)) = xs := by
   apply Array.ext
@@ -825,7 +825,7 @@ theorem linearise_last_eq_tokens_last
     simp only [h_idx]
 
 /-- Indexing helper: array equality + same index gives element equality. -/
-private theorem array_get_eq_of_eq {α : Type _} {a b : Array α}
+theorem array_get_eq_of_eq {α : Type _} {a b : Array α}
     (h : a = b) (i : Nat) (h1 : i < a.size) (h2 : i < b.size) :
     a[i]'h1 = b[i]'h2 := by subst h; rfl
 
@@ -878,7 +878,7 @@ theorem expandKind_offset_const (e : PendingKeyEntry)
 /-- Sorted-acc invariant for `linearise.go`. Recursion-friendly:
     captures internal sortedness plus the bridge to the next remaining
     `tokens[k]` and `pks[p].pos`. -/
-private def goSortedInv (tokens : Array (Positioned YamlToken))
+def goSortedInv (tokens : Array (Positioned YamlToken))
     (pks : Array PendingKeyEntry) (k p : Nat)
     (acc : Array (Positioned YamlToken)) : Prop :=
   -- acc is sorted internally
@@ -898,8 +898,6 @@ theorem linearise_go_ordered_helper
     (pks : Array PendingKeyEntry)
     (h_tok_ord : ∀ a b (ha : a < tokens.size) (hb : b < tokens.size), a < b →
       (tokens[a]'ha).pos.offset ≤ (tokens[b]'hb).pos.offset)
-    (h_pks_idx : ∀ a b (ha : a < pks.size) (hb : b < pks.size), a < b →
-      (pks[a]'ha).insertBeforeIdx ≤ (pks[b]'hb).insertBeforeIdx)
     (h_pks_pos : ∀ a b (ha : a < pks.size) (hb : b < pks.size), a < b →
       (pks[a]'ha).pos.offset ≤ (pks[b]'hb).pos.offset)
     (h_lo : ∀ p (hp : p < pks.size) i (hi : i < tokens.size),
@@ -1062,8 +1060,6 @@ theorem linearise_positions_ordered
     (pks : Array PendingKeyEntry)
     (h_tok_ord : ∀ a b (ha : a < tokens.size) (hb : b < tokens.size), a < b →
       (tokens[a]'ha).pos.offset ≤ (tokens[b]'hb).pos.offset)
-    (h_pks_idx : ∀ a b (ha : a < pks.size) (hb : b < pks.size), a < b →
-      (pks[a]'ha).insertBeforeIdx ≤ (pks[b]'hb).insertBeforeIdx)
     (h_pks_pos : ∀ a b (ha : a < pks.size) (hb : b < pks.size), a < b →
       (pks[a]'ha).pos.offset ≤ (pks[b]'hb).pos.offset)
     (h_lo : ∀ p (hp : p < pks.size) i (hi : i < tokens.size),
@@ -1082,7 +1078,7 @@ theorem linearise_positions_ordered
     · intro a b ha _ _; simp at ha
     · intro _ i hi; simp at hi
     · intro _ i hi; simp at hi
-  exact linearise_go_ordered_helper tokens pks h_tok_ord h_pks_idx h_pks_pos h_lo h_hi
+  exact linearise_go_ordered_helper tokens pks h_tok_ord h_pks_pos h_lo h_hi
     _ 0 0 #[] rfl h_init a b ha hb hab
 
 end L4YAML.Proofs.ScannerLinearise
