@@ -13385,6 +13385,204 @@ theorem scanDocumentEnd_preserves_LineariseFit (s s' : ScannerState)
     show s.offset ≤ s.offset
     omega
 
+/-! ##### `scanDirective_preserves_LineariseFit` (Step 8b leaf)
+
+Three branches: YAML / TAG / reserved.  Reserved adds no token (it
+just runs `skipToEndOfLine`), so we use the non-strict
+`LineariseFit_via_first_new` (rather than `_strict`) and discharge
+`h_off_mono` separately via a chain of `_offset_ge` lemmas.  The
+first new token (when one is added) is the `emitAt startPos`
+versionDirective/tagDirective at `startPos = s.currentPos`.
+
+`scanYamlDirective_offset_ge'` and `scanTagDirective_offset_ge'` are
+declared here (rather than later in §5.3) because
+`scanDirective_offset_ge` below depends on them. -/
+
+theorem scanYamlDirective_offset_ge' (s s_after_ws : ScannerState) (startPos : YamlPos)
+    (s' : ScannerState)
+    (h : scanYamlDirective s s_after_ws startPos = .ok s') :
+    s'.offset ≥ s_after_ws.offset := by
+  unfold scanYamlDirective at h
+  dsimp only [] at h
+  simp only [bind, Except.bind] at h
+  split at h
+  · contradiction
+  · split at h
+    · contradiction
+    · split at h
+      · split at h
+        · contradiction
+        · injection h with h_eq; subst h_eq; dsimp only []
+          exact Nat.le_trans (collectVersionMajorLoop_offset_ge _ _ _)
+            (Nat.le_trans (collectVersionMinorLoop_offset_ge _ _ _) (skipWhitespace_offset_ge _))
+      · split at h
+        · contradiction
+        · split at h <;> try contradiction
+          all_goals (injection h with h_eq; subst h_eq; dsimp only []
+                     exact Nat.le_trans (collectVersionMajorLoop_offset_ge _ _ _)
+                       (Nat.le_trans (collectVersionMinorLoop_offset_ge _ _ _) (skipWhitespace_offset_ge _)))
+      · injection h with h_eq; subst h_eq; dsimp only []
+        exact Nat.le_trans (collectVersionMajorLoop_offset_ge _ _ _)
+          (Nat.le_trans (collectVersionMinorLoop_offset_ge _ _ _) (skipWhitespace_offset_ge _))
+
+theorem scanTagDirective_offset_ge' (s s_after_ws : ScannerState) (startPos : YamlPos)
+    (s' : ScannerState)
+    (h : scanTagDirective s s_after_ws startPos = .ok s') :
+    s'.offset ≥ s_after_ws.offset := by
+  unfold scanTagDirective at h
+  dsimp only [] at h
+  simp only [bind, Except.bind] at h
+  split at h
+  · split at h
+    · contradiction
+    · injection h with h_eq; subst h_eq; dsimp only []
+      exact Nat.le_trans (collectTagHandleDirectiveLoop_offset_ge _ _ _)
+        (Nat.le_trans (skipWhitespace_offset_ge _)
+          (Nat.le_trans (collectTagPrefixLoop_offset_ge _ _ _) (skipWhitespace_offset_ge _)))
+  · split at h
+    · contradiction
+    · split at h <;> try contradiction
+      all_goals (injection h with h_eq; subst h_eq; dsimp only []
+                 exact Nat.le_trans (collectTagHandleDirectiveLoop_offset_ge _ _ _)
+                   (Nat.le_trans (skipWhitespace_offset_ge _)
+                     (Nat.le_trans (collectTagPrefixLoop_offset_ge _ _ _) (skipWhitespace_offset_ge _))))
+  · injection h with h_eq; subst h_eq; dsimp only []
+    exact Nat.le_trans (collectTagHandleDirectiveLoop_offset_ge _ _ _)
+      (Nat.le_trans (skipWhitespace_offset_ge _)
+        (Nat.le_trans (collectTagPrefixLoop_offset_ge _ _ _) (skipWhitespace_offset_ge _)))
+
+/-- The first new token added by `scanYamlDirective` sits at `startPos`. -/
+theorem scanYamlDirective_first_new_pos
+    (s s_after_ws : ScannerState) (startPos : YamlPos)
+    (s' : ScannerState)
+    (h_ws : s_after_ws.tokens = s.tokens)
+    (h : scanYamlDirective s s_after_ws startPos = .ok s')
+    (h_lt : s.tokens.size < s'.tokens.size) :
+    (s'.tokens[s.tokens.size]'h_lt).pos = startPos := by
+  unfold scanYamlDirective at h
+  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h
+  repeat (any_goals (split at h))
+  all_goals (try contradiction)
+  all_goals (simp only [Except.ok.injEq] at h; subst h)
+  all_goals (
+    refine first_new_pos_emitAt _ startPos _ s.tokens.size ?_ h_lt
+    rw [skipWhitespace_preserves_tokens, ScanHelpers.collectVersionMinorLoop_preserves_tokens,
+        ScanHelpers.collectVersionMajorLoop_preserves_tokens, h_ws])
+
+/-- The first new token added by `scanTagDirective` sits at `startPos`. -/
+theorem scanTagDirective_first_new_pos
+    (s s_after_ws : ScannerState) (startPos : YamlPos)
+    (s' : ScannerState)
+    (h_ws : s_after_ws.tokens = s.tokens)
+    (h : scanTagDirective s s_after_ws startPos = .ok s')
+    (h_lt : s.tokens.size < s'.tokens.size) :
+    (s'.tokens[s.tokens.size]'h_lt).pos = startPos := by
+  unfold scanTagDirective at h
+  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h
+  repeat (any_goals (split at h))
+  all_goals (try contradiction)
+  all_goals (simp only [Except.ok.injEq] at h; subst h)
+  all_goals (
+    refine first_new_pos_emitAt _ startPos _ s.tokens.size ?_ h_lt
+    rw [skipWhitespace_preserves_tokens, ScanHelpers.collectTagPrefixLoop_preserves_tokens,
+        skipWhitespace_preserves_tokens, ScanHelpers.collectTagHandleDirectiveLoop_preserves_tokens,
+        h_ws])
+
+/-- `scanDirective` is offset-monotonic on success.  Always advances at
+    least past the leading `%` (via `s.advance`), then through the
+    directive name + whitespace, and either through the chosen sub-scanner
+    or directly through `skipToEndOfLine` (reserved branch). -/
+theorem scanDirective_offset_ge (s s' : ScannerState)
+    (h : scanDirective s = .ok s') : s.offset ≤ s'.offset := by
+  unfold scanDirective at h
+  split at h
+  · contradiction
+  · dsimp only [] at h
+    have h_adv := ScannerProgress.advance_offset_ge s
+    have h_chain : s.advance.offset ≤ (skipWhitespace
+        (collectDirectiveNameLoop s.advance "" (s.inputEnd - s.advance.offset)).snd).offset :=
+      Nat.le_trans (collectDirectiveNameLoop_offset_ge _ _ _) (skipWhitespace_offset_ge _)
+    split at h
+    · -- YAML
+      split at h <;> try contradiction
+      rename_i s_inner h_inner
+      have h_eq := Except.ok.inj h; subst h_eq
+      exact Nat.le_trans h_adv (Nat.le_trans h_chain
+        (Nat.le_trans (scanYamlDirective_offset_ge' _ _ _ _ h_inner)
+          (skipToEndOfLine_offset_ge _)))
+    · split at h
+      · -- TAG
+        split at h <;> try contradiction
+        rename_i s_inner h_inner
+        have h_eq := Except.ok.inj h; subst h_eq
+        exact Nat.le_trans h_adv (Nat.le_trans h_chain
+          (Nat.le_trans (scanTagDirective_offset_ge' _ _ _ _ h_inner)
+            (skipToEndOfLine_offset_ge _)))
+      · -- reserved
+        injection h with h_eq; subst h_eq
+        exact Nat.le_trans h_adv (Nat.le_trans h_chain (skipToEndOfLine_offset_ge _))
+
+/-- The first new token added by `scanDirective` sits at `s.currentPos`.
+    Reserved branch adds no tokens (so `h_lt` only fires on YAML/TAG). -/
+theorem scanDirective_first_new_pos (s s' : ScannerState)
+    (h : scanDirective s = .ok s')
+    (h_lt : s.tokens.size < s'.tokens.size) :
+    (s'.tokens[s.tokens.size]'h_lt).pos = s.currentPos := by
+  unfold scanDirective at h
+  split at h
+  · contradiction
+  · dsimp only [] at h
+    have h_ws_tok : (skipWhitespace (collectDirectiveNameLoop s.advance ""
+        (s.inputEnd - s.advance.offset)).2).tokens = s.tokens := by
+      rw [skipWhitespace_preserves_tokens, ScanHelpers.collectDirectiveNameLoop_preserves_tokens,
+          advance_preserves_tokens]
+    split at h
+    · -- YAML
+      split at h <;> try contradiction
+      rename_i s_inner h_inner
+      have h_eq := Except.ok.inj h; subst h_eq
+      have h_tok_eq : (skipToEndOfLine s_inner).tokens = s_inner.tokens :=
+        skipToEndOfLine_preserves_tokens s_inner
+      have h_lt' : s.tokens.size < s_inner.tokens.size := by
+        have h_size := congrArg Array.size h_tok_eq; omega
+      rw [array_get_eq_of_array_eq h_tok_eq s.tokens.size h_lt h_lt']
+      exact scanYamlDirective_first_new_pos s _ _ s_inner h_ws_tok h_inner h_lt'
+    · split at h
+      · -- TAG
+        split at h <;> try contradiction
+        rename_i s_inner h_inner
+        have h_eq := Except.ok.inj h; subst h_eq
+        have h_tok_eq : (skipToEndOfLine s_inner).tokens = s_inner.tokens :=
+          skipToEndOfLine_preserves_tokens s_inner
+        have h_lt' : s.tokens.size < s_inner.tokens.size := by
+          have h_size := congrArg Array.size h_tok_eq; omega
+        rw [array_get_eq_of_array_eq h_tok_eq s.tokens.size h_lt h_lt']
+        exact scanTagDirective_first_new_pos s _ _ s_inner h_ws_tok h_inner h_lt'
+      · -- reserved: no token added → contradicts h_lt
+        injection h with h_eq; subst h_eq
+        have h_tok_eq : (skipToEndOfLine (skipWhitespace
+            (collectDirectiveNameLoop s.advance "" (s.inputEnd - s.advance.offset)).2)).tokens
+            = s.tokens := by
+          rw [skipToEndOfLine_preserves_tokens, h_ws_tok]
+        have h_size := congrArg Array.size h_tok_eq
+        omega
+
+theorem scanDirective_preserves_LineariseFit (s s' : ScannerState)
+    (h : LineariseFit s) (h_ok : scanDirective s = .ok s') : LineariseFit s' := by
+  apply LineariseFit_via_first_new s s'
+    (scanDirective_preserves_ScanInv s s' h.1 h_ok)
+    (scanDirective_preserves_pendingKeys s s' h_ok)
+    (ScanHelpers.scanDirective_monotonic s s' h_ok)
+    (fun i hi => ScanHelpers.scanDirective_preserves_prefix s s' h_ok i hi)
+    ?first_new
+    (scanDirective_offset_ge s s' h_ok)
+    h
+  case first_new =>
+    intro h_lt
+    rw [scanDirective_first_new_pos s s' h_ok h_lt]
+    show s.offset ≤ s.offset
+    omega
+
 /-! #### §5.3  `scanNextToken_preprocess` Offset Monotonicity
 
 `scanNextToken_preprocess` runs skipToContent + unwindIndents + saveSimpleKey.
@@ -13844,59 +14042,6 @@ theorem scanAnchorOrAlias_offset_lt (s s' : ScannerState) (isAnchor : Bool)
   · simp only [Except.ok.injEq] at h; subst h
     exact Nat.lt_of_lt_of_le (ScannerProgress.advance_offset_lt s hlt)
       (collectAnchorNameLoop_offset_ge _ _ _)
-
-theorem scanYamlDirective_offset_ge' (s s_after_ws : ScannerState) (startPos : YamlPos)
-    (s' : ScannerState)
-    (h : scanYamlDirective s s_after_ws startPos = .ok s') :
-    s'.offset ≥ s_after_ws.offset := by
-  unfold scanYamlDirective at h
-  dsimp only [] at h
-  simp only [bind, Except.bind] at h
-  split at h
-  · contradiction
-  · split at h
-    · contradiction
-    · split at h
-      · split at h
-        · contradiction
-        · injection h with h_eq; subst h_eq; dsimp only []
-          exact Nat.le_trans (collectVersionMajorLoop_offset_ge _ _ _)
-            (Nat.le_trans (collectVersionMinorLoop_offset_ge _ _ _) (skipWhitespace_offset_ge _))
-      · split at h
-        · contradiction
-        · split at h <;> try contradiction
-          all_goals (injection h with h_eq; subst h_eq; dsimp only []
-                     exact Nat.le_trans (collectVersionMajorLoop_offset_ge _ _ _)
-                       (Nat.le_trans (collectVersionMinorLoop_offset_ge _ _ _) (skipWhitespace_offset_ge _)))
-      · injection h with h_eq; subst h_eq; dsimp only []
-        exact Nat.le_trans (collectVersionMajorLoop_offset_ge _ _ _)
-          (Nat.le_trans (collectVersionMinorLoop_offset_ge _ _ _) (skipWhitespace_offset_ge _))
-
-theorem scanTagDirective_offset_ge' (s s_after_ws : ScannerState) (startPos : YamlPos)
-    (s' : ScannerState)
-    (h : scanTagDirective s s_after_ws startPos = .ok s') :
-    s'.offset ≥ s_after_ws.offset := by
-  unfold scanTagDirective at h
-  dsimp only [] at h
-  simp only [bind, Except.bind] at h
-  split at h
-  · split at h
-    · contradiction
-    · injection h with h_eq; subst h_eq; dsimp only []
-      exact Nat.le_trans (collectTagHandleDirectiveLoop_offset_ge _ _ _)
-        (Nat.le_trans (skipWhitespace_offset_ge _)
-          (Nat.le_trans (collectTagPrefixLoop_offset_ge _ _ _) (skipWhitespace_offset_ge _)))
-  · split at h
-    · contradiction
-    · split at h <;> try contradiction
-      all_goals (injection h with h_eq; subst h_eq; dsimp only []
-                 exact Nat.le_trans (collectTagHandleDirectiveLoop_offset_ge _ _ _)
-                   (Nat.le_trans (skipWhitespace_offset_ge _)
-                     (Nat.le_trans (collectTagPrefixLoop_offset_ge _ _ _) (skipWhitespace_offset_ge _))))
-  · injection h with h_eq; subst h_eq; dsimp only []
-    exact Nat.le_trans (collectTagHandleDirectiveLoop_offset_ge _ _ _)
-      (Nat.le_trans (skipWhitespace_offset_ge _)
-        (Nat.le_trans (collectTagPrefixLoop_offset_ge _ _ _) (skipWhitespace_offset_ge _)))
 
 set_option maxHeartbeats 1600000 in
 /-- `scanDirective` strictly advances offset when `offset < inputEnd`. -/
