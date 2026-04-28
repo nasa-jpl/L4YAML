@@ -914,11 +914,11 @@ count unchanged at 21.
      hypotheses (~120 LOC).
   9. Compose into `scanFiltered_produces_valid_tokens` (~50 LOC).
 
-  Status (2026-04-28): Steps 1-7, 8a, 8c ✓ done; Step 8b ~80% complete
-  (24 of ~30 per-op leaves landed including the Class C `scanValue`
-  composition and both multi-emit document-marker scanners
-  (`scanDocumentStart`, `scanDocumentEnd`); remaining are
-  `scanDirective` and the dispatcher chain).
+  Status (2026-04-28): Steps 1-7, 8a, 8c ✓ done; Step 8b ~83% complete
+  (25 of ~30 per-op leaves landed including the Class C `scanValue`
+  composition, both multi-emit document-marker scanners
+  (`scanDocumentStart`, `scanDocumentEnd`), and the three-branch
+  `scanDirective`; remaining is the dispatcher chain).
   Eight prior commits (~2434 LOC): `c6bfab0a` saveSimpleKey discharge,
   `1e6b4741` Class A/B/C foundation, `de7610d9` Blueprint update,
   `c4dc838a` ~30 Class A *_preserves_pendingKeys leaves, `fbd330d4`
@@ -965,7 +965,7 @@ count unchanged at 21.
   - `offset_mono_via_first_new` — derives s.offset ≤ s'.offset from
     first_new bound + ScanInv at s'.
 
-  *Per-op leaves landed (24 total, in dependency order):*
+  *Per-op leaves landed (25 total, in dependency order):*
   - **Class A passthroughs** (`0ec064a7`): `advance`, `skipSpaces`,
     `skipWhitespace`, `skipToEndOfLine`, `consumeNewline`.
   - **Single-emit Class A** (`f35a04ac`, `4af1fc1a`, `ef90bd62`):
@@ -997,6 +997,11 @@ count unchanged at 21.
     early `directiveWithoutDocument` exit and a trailing
     `skipDocEndWhitespace` + content-validation tail that doesn't
     affect the returned state).
+  - **Three-branch directive** (`743a9e6a`): `scanDirective` —
+    YAML / TAG / reserved.  Reserved adds no token, so uses non-strict
+    `LineariseFit_via_first_new` (rather than `_strict`) with explicit
+    `scanDirective_offset_ge`.  YAML/TAG branches each emit a single
+    `emitAt startPos` token at `s.currentPos`.
 
   *Class C building blocks landed (commit `6cbc43d6`):*
   - `setPendingKeyKind_pos`, `setPendingKeyEndLine_pos` — siblings to
@@ -1058,18 +1063,32 @@ count unchanged at 21.
     pre-existing `scanDocumentEnd_preserves_{ScanInv,pendingKeys}` and
     `ScanHelpers.scanDocumentEnd_{adds_tokens,preserves_prefix}`.
 
+  *`scanDirective_preserves_LineariseFit` landed (commit `743a9e6a`):*
+  - `scanYamlDirective_first_new_pos`, `scanTagDirective_first_new_pos`
+    — pin the (single) emitted token to `startPos = s.currentPos`
+    after unfolding the inner Except chain via
+    `repeat (any_goals (split at h)) … all_goals subst` followed by
+    `refine first_new_pos_emitAt _ startPos _ s.tokens.size ?_ h_lt`
+    and a `rw` chain through the `_preserves_tokens` helpers
+    (skipWhitespace + collectVersion{Major,Minor}Loop or
+    skipWhitespace + collectTag{Handle,Prefix}Loop).
+  - `scanDirective_offset_ge` — chain through advance +
+    collectDirectiveNameLoop + skipWhitespace + sub-scanner +
+    skipToEndOfLine, used to discharge `h_off_mono` for the
+    non-strict `LineariseFit_via_first_new` (since the reserved
+    branch adds no tokens, `_strict`'s auto-derivation can't fire).
+  - `scanDirective_first_new_pos` — composes the two sub-scanner
+    helpers via `array_get_eq_of_array_eq` to bridge the
+    `skipToEndOfLine s_inner` wrap; reserved branch derives a
+    contradiction from `h_lt` (no token added).
+  - `scanYamlDirective_offset_ge'` and `scanTagDirective_offset_ge'`
+    relocated from §5.3 to just before the LineariseFit subsection
+    so `scanDirective_offset_ge` can reach them without forward
+    reference.
+
   **Remaining for Step 8b — concrete next steps**
 
-  1. **`scanDirective_preserves_LineariseFit`** (~80 LOC).  Branches:
-     YAML directive (Class C — uses `setPendingKeyEndLine` indirectly
-     through quoted scalars? no — directives don't touch pendingKeys),
-     TAG directive, and reserved.  All emit one `.versionDirective` /
-     `.tagDirective` / no token (reserved branch swallows).  The
-     `collectDirectiveNameLoop` + `collectVersionMajor/MinorLoop` etc.
-     need `_preserves_tokens` lemmas (likely already exist for the
-     dispatcher chain).
-
-  2. **Dispatcher composition** (~150 LOC).  Mirror the existing
+  1. **Dispatcher composition** (~150 LOC).  Mirror the existing
      `*_preserves_pendingKeys` chain:
      - `dispatchStructural_preserves_LineariseFit`
      - `dispatchFlowIndicators_preserves_LineariseFit`
@@ -1078,7 +1097,7 @@ count unchanged at 21.
      - `preprocess_preserves_LineariseFit`
      - `scanNextToken_preserves_LineariseFit`
 
-  3. **`scanLoopFull_preserves_LineariseFit`** (~30 LOC) by induction
+  2. **`scanLoopFull_preserves_LineariseFit`** (~30 LOC) by induction
      on fuel, identical shape to
      `scanLoopFull_preserves_PendingKeysWellIndexed`.
 
@@ -1088,13 +1107,13 @@ count unchanged at 21.
   and `linearise_positions_ordered`.  Folds naturally into J.3.4 since
   `ScannerPlainScalarValid` consumers need the same invariants.
 
-  *Cumulative session log (2026-04-27 → 2026-04-28):* 17 commits
+  *Cumulative session log (2026-04-27 → 2026-04-28):* 18 commits
   including `807b91df`, `0ec064a7`, `f35a04ac`, `4af1fc1a`, `ef90bd62`,
   `bdd27512`, `b83e8252`, `7046048b`, `8133ab94`, `d41f13b4`,
   `aaa5cc1e`, `4c664b58`, `067a6e35`, `6cbc43d6`, `9d1146a1`,
-  `1a8c8f0f`, `811622ca`, `81391a63`.  Build green; sorry count
-  unchanged at the original Step 9 baseline (1 sorry in this file,
-  the same count as before Step 8b started).
+  `1a8c8f0f`, `811622ca`, `81391a63`, `743a9e6a`.  Build green; sorry
+  count unchanged at the original Step 9 baseline (1 sorry in this
+  file, the same count as before Step 8b started).
 
 **J.3.4–J.3.6**: re-discharge consumers in dependency order, each
 substep removing its sorry-using declarations and the matching
