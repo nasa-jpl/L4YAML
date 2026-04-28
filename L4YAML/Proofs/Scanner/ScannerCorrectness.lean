@@ -11378,6 +11378,31 @@ theorem LineariseFit_via_no_change (s s' : ScannerState)
   · exact h_off_mono
   · exact h
 
+/-! #### Helper: first new token position from `emitAt` -/
+
+/-- The token at index `n` in `(s_after.emitAt pos tok).tokens` is `{pos := pos, val := tok}`
+    when `s_after.tokens.size = n`.  Used by emitAt-class ops where the loop preserves
+    the token array but the index in the goal is from the caller (`s.tokens.size`). -/
+private theorem first_new_pos_emitAt (s_after : ScannerState) (pos : YamlPos)
+    (tok : YamlToken) (n : Nat) (h_eq : s_after.tokens.size = n)
+    (h_lt : n < (s_after.emitAt pos tok).tokens.size) :
+    ((s_after.emitAt pos tok).tokens[n]'h_lt).pos = pos := by
+  subst h_eq
+  have h : (s_after.emitAt pos tok).tokens[s_after.tokens.size]'h_lt =
+      ⟨pos, tok, pos⟩ := by
+    show (s_after.tokens.push ⟨pos, tok, pos⟩)[s_after.tokens.size] = _
+    exact Array.getElem_push_eq
+  rw [h]
+
+/-! #### Helper: derive off_mono from first_new + ScanInv at s' -/
+
+private theorem offset_mono_via_first_new
+    (s s' : ScannerState) (h_inv' : ScanInv s')
+    (h_lt : s.tokens.size < s'.tokens.size)
+    (h_first_new : s.offset ≤ (s'.tokens[s.tokens.size]'h_lt).pos.offset) :
+    s.offset ≤ s'.offset :=
+  Nat.le_trans h_first_new (h_inv'.2 ⟨s.tokens.size, h_lt⟩)
+
 /-! #### Convenience: only need first-new-token's offset bound
 
 For multi-emit Class A ops, instead of bounding *every* new token's
@@ -11406,6 +11431,23 @@ theorem LineariseFit_via_first_new (s s' : ScannerState)
       have h_lt_size : s.tokens.size < s'.tokens.size := by omega
       have h_sorted := h_inv'.1 ⟨s.tokens.size, h_lt_size⟩ ⟨i, hi⟩ h_lt
       exact Nat.le_trans (h_first_new h_lt_size) h_sorted
+
+/-! #### Convenience: derive off_mono automatically when at least one token is added
+
+For ops that always add ≥ 1 token (so we have `s.tokens.size < s'.tokens.size`),
+we can derive `h_off_mono` from `h_first_new` + ScanInv at s'. -/
+theorem LineariseFit_via_first_new_strict (s s' : ScannerState)
+    (h_inv' : ScanInv s')
+    (h_pks_eq : s'.pendingKeys = s.pendingKeys)
+    (h_size_mono : s.tokens.size < s'.tokens.size)
+    (h_prefix : ∀ i (hi : i < s.tokens.size),
+        s'.tokens[i]'(by omega) = s.tokens[i]'hi)
+    (h_first_new : s.offset ≤ (s'.tokens[s.tokens.size]'h_size_mono).pos.offset)
+    (h : LineariseFit s) : LineariseFit s' := by
+  apply LineariseFit_via_first_new s s' h_inv' h_pks_eq (by omega) h_prefix
+    (fun _ => h_first_new)
+    (offset_mono_via_first_new s s' h_inv' h_size_mono h_first_new)
+    h
 
 /-! #### Class A passthrough leaves (`*_preserves_LineariseFit`)
 
@@ -11837,6 +11879,18 @@ theorem scanKey_preserves_LineariseFit (s s' : ScannerState)
          have := ScannerProgress.advance_offset_ge (s.emit .key)
          rw [ScannerProgress.emit_offset] at this
          exact this)
+
+/-! ##### Tag/anchor/alias `emitAt`-class leaves (deferred)
+
+These ops run a sequence of `advance`s through `collect…Loop`, then
+`emitAt startPos token` where `startPos = s.currentPos`.  The first
+new token's `pos` equals the saved start position, so `pos.offset = s.offset`.
+
+The infrastructure (`first_new_pos_emitAt`, `LineariseFit_via_first_new_strict`)
+is in place; the per-op leaves (`scanAnchorOrAlias`, `scanTag`,
+`scanBlockScalar`, `scanPlainScalar`) require resolving a definitional
+mismatch between the loop's expected fuel parameter and the call-site
+fuel.  Deferred. -/
 
 /-!
 ### scanNextToken preserves ScanInv
