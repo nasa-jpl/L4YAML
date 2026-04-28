@@ -12918,12 +12918,71 @@ theorem skipToContent_preserves_LineariseFit (s s' : ScannerState)
     (skipToContent_offset_ge s s' h_eq)
     h
 
-/-! ##### `unwindIndents` `_preserves_LineariseFit` (deferred)
+/-! ##### `unwindIndents` `_preserves_LineariseFit`
 
-The leaf is straightforward in shape (multi-emit at `s.currentPos`,
-all new tokens have offset = `s.offset`, offset unchanged), but the
-per-iteration first-new-token helper requires induction on `fuel` with
-case-split on token index — clean approach pending.  Deferred. -/
+Multi-emit: any new tokens are `.blockEnd` at the loop state's
+`currentPos`, which doesn't drift since `emit`/`indents.pop` preserve
+offset/line/col.  So the FIRST new token's pos = original `s.currentPos`. -/
+
+/-- If `unwindIndentsLoop` adds at least one token, the first new
+    token's `pos` equals the input state's `currentPos`. -/
+private theorem unwindIndentsLoop_first_new_pos
+    (s : ScannerState) (col : Int) (fuel : Nat)
+    (h_lt : s.tokens.size < (unwindIndentsLoop s col fuel).tokens.size) :
+    ((unwindIndentsLoop s col fuel).tokens[s.tokens.size]'h_lt).pos = s.currentPos := by
+  match fuel with
+  | 0 =>
+    -- result is s, contradicts h_lt
+    simp only [unwindIndentsLoop] at h_lt
+    omega
+  | fuel' + 1 =>
+    simp only [unwindIndentsLoop] at h_lt ⊢
+    split at h_lt
+    · -- emit + pop + recurse
+      split  -- in goal
+      · -- consistent: emit branch
+        have h_emit_size : (s.emit .blockEnd).tokens.size = s.tokens.size + 1 :=
+          emit_tokens_size s _
+        have h_pop_size :
+            ({s.emit .blockEnd with indents := (s.emit .blockEnd).indents.pop}).tokens.size
+              = s.tokens.size + 1 := h_emit_size
+        have h_lt_pop : s.tokens.size <
+            ({s.emit .blockEnd with indents := (s.emit .blockEnd).indents.pop}).tokens.size := by
+          rw [h_pop_size]; omega
+        rw [unwindIndentsLoop_preserves_prefix
+            ({s.emit .blockEnd with indents := (s.emit .blockEnd).indents.pop})
+            col fuel' s.tokens.size h_lt_pop]
+        show ((s.emit .blockEnd).tokens[s.tokens.size]'h_lt_pop).pos = s.currentPos
+        simp only [ScannerState.emit, Array.getElem_push_eq]
+      · contradiction
+    · -- no-emit: h_lt becomes s.tokens.size < s.tokens.size, false
+      omega
+
+private theorem unwindIndents_first_new_pos
+    (s : ScannerState) (col : Int)
+    (h_lt : s.tokens.size < (unwindIndents s col).tokens.size) :
+    ((unwindIndents s col).tokens[s.tokens.size]'h_lt).pos = s.currentPos := by
+  unfold unwindIndents at h_lt ⊢
+  exact unwindIndentsLoop_first_new_pos s col s.indents.size h_lt
+
+theorem unwindIndents_preserves_LineariseFit (s : ScannerState) (col : Int)
+    (h : LineariseFit s) : LineariseFit (unwindIndents s col) := by
+  apply LineariseFit_via_first_new s (unwindIndents s col)
+    (unwindIndents_preserves_ScanInv s col h.1)
+    (unwindIndents_preserves_pendingKeys s col)
+    (unwindIndents_adds_tokens s col)
+    (fun i hi => unwindIndents_preserves_prefix s col i hi)
+    ?first_new
+    ?off_mono
+    h
+  case first_new =>
+    intro h_lt
+    rw [unwindIndents_first_new_pos s col h_lt]
+    show s.offset ≤ s.offset
+    omega
+  case off_mono =>
+    rw [unwindIndents_offset_eq]
+    omega
 
 /-! #### §5.3  `scanNextToken_preprocess` Offset Monotonicity
 
