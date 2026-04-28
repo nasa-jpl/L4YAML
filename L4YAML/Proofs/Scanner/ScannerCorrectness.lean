@@ -11378,6 +11378,57 @@ theorem LineariseFit_via_no_change (s s' : ScannerState)
   · exact h_off_mono
   · exact h
 
+/-! #### Class A passthrough leaves (`*_preserves_LineariseFit`)
+
+For each scanner op that preserves both `tokens` and `pendingKeys` and
+has monotone `offset`, derive `LineariseFit` preservation by composing
+existing per-op `*_preserves_tokens`, `*_preserves_pendingKeys`,
+`*_preserves_ScanInv`, and `*_offset_ge` lemmas through the
+`LineariseFit_via_no_change` helper. -/
+
+theorem advance_preserves_LineariseFit (s : ScannerState)
+    (h : LineariseFit s) : LineariseFit s.advance :=
+  LineariseFit_via_no_change s s.advance
+    (advance_preserves_ScanInv s h.1)
+    (advance_preserves_pendingKeys s)
+    (advance_preserves_tokens s)
+    (ScannerProgress.advance_offset_ge s) h
+
+theorem skipSpaces_preserves_LineariseFit (s : ScannerState)
+    (h : LineariseFit s) : LineariseFit (skipSpaces s) :=
+  LineariseFit_via_no_change s (skipSpaces s)
+    (skipSpaces_preserves_ScanInv s h.1)
+    (skipSpaces_preserves_pendingKeys s)
+    (skipSpaces_preserves_tokens s)
+    (skipSpaces_offset_ge s) h
+
+theorem skipWhitespace_preserves_LineariseFit (s : ScannerState)
+    (h : LineariseFit s) : LineariseFit (skipWhitespace s) :=
+  LineariseFit_via_no_change s (skipWhitespace s)
+    (skipWhitespace_preserves_ScanInv s h.1)
+    (skipWhitespace_preserves_pendingKeys s)
+    (skipWhitespace_preserves_tokens s)
+    (skipWhitespace_offset_ge s) h
+
+theorem skipToEndOfLine_preserves_LineariseFit (s : ScannerState)
+    (h : LineariseFit s) : LineariseFit (skipToEndOfLine s) :=
+  LineariseFit_via_no_change s (skipToEndOfLine s)
+    (skipToEndOfLine_preserves_ScanInv s h.1)
+    (skipToEndOfLine_preserves_pendingKeys s)
+    (skipToEndOfLine_preserves_tokens s)
+    (skipToEndOfLine_offset_ge s) h
+
+theorem consumeNewline_preserves_LineariseFit (s : ScannerState)
+    (h : LineariseFit s) : LineariseFit (consumeNewline s) :=
+  LineariseFit_via_no_change s (consumeNewline s)
+    (consumeNewline_preserves_ScanInv s h.1)
+    (consumeNewline_preserves_pendingKeys s)
+    (consumeNewline_preserves_tokens s)
+    (consumeNewline_offset_ge s) h
+
+-- skipToContent_preserves_LineariseFit deferred until after
+-- skipToContent_offset_ge (defined later in the file at §5.2).
+
 /-!
 ### scanNextToken preserves ScanInv
 
