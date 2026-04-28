@@ -824,4 +824,265 @@ theorem linearise_last_eq_tokens_last
     rw [step1]
     simp only [h_idx]
 
+/-- Indexing helper: array equality + same index gives element equality. -/
+private theorem array_get_eq_of_eq {α : Type _} {a b : Array α}
+    (h : a = b) (i : Nat) (h1 : i < a.size) (h2 : i < b.size) :
+    a[i]'h1 = b[i]'h2 := by subst h; rfl
+
+/-! ## J.3.3 step 8c: `linearise_positions_ordered`
+
+The headline ordering theorem: under the well-formedness conditions
+captured by the scanner-side `LineariseFit` invariant (tokens sorted +
+pks sorted by `insertBeforeIdx` + pks sorted by `pos.offset` + I1 + I2),
+the output of `linearise tokens pks` has non-decreasing `pos.offset`s.
+
+Proof outline:
+1. Strong induction on the lex measure `(tokens.size − k) + (pks.size − p)`
+   of `linearise.go tokens pks k p acc`.
+2. The inductive invariant on `acc`:
+   * `acc` is sorted internally (step-1 case-analysis).
+   * If `acc.size > 0`, `(acc.back).pos.offset ≤ tokens[k].pos.offset`
+     for all `k' ≥ k` with `k' < tokens.size` (compressed to `k`-only
+     by `tokens` sortedness).
+   * Similarly for `pks` tail.
+3. At each recursion step, both branches preserve the invariant:
+   * **Splice step** (`pks[p].insertBeforeIdx ≤ k`): new tail has
+     constant offset = `pks[p].pos`.  Bridge to old `acc.back` via the
+     pks-side invariant; bridge forward via I2 (for tokens) and pks
+     pos-sortedness.
+   * **Token-push step** (`pks[p].insertBeforeIdx > k`, `k < tokens.size`):
+     new last is `tokens[k]`.  Bridge to old `acc.back` via the
+     tokens-side invariant; bridge forward via tokens sortedness and I1
+     (for pks).
+-/
+
+/-- `expandKind` produces a constant-offset run: every token in
+    `expandKind e` has `pos.offset = e.pos.offset`. -/
+theorem expandKind_offset_const (e : PendingKeyEntry)
+    (i : Nat) (hi : i < (Scanner.expandKind e).size) :
+    ((Scanner.expandKind e)[i]'hi).pos.offset = e.pos.offset := by
+  unfold Scanner.expandKind at *
+  match _hk : e.kind, hi with
+  | .keyOnly, hi =>
+    simp at hi
+    have h_i : i = 0 := by omega
+    subst h_i
+    simp
+  | .blockMappingStartAndKey, hi =>
+    simp at hi
+    have h_i : i = 0 ∨ i = 1 := by omega
+    rcases h_i with rfl | rfl
+    · simp
+    · simp
+
+/-- Sorted-acc invariant for `linearise.go`. Recursion-friendly:
+    captures internal sortedness plus the bridge to the next remaining
+    `tokens[k]` and `pks[p].pos`. -/
+private def goSortedInv (tokens : Array (Positioned YamlToken))
+    (pks : Array PendingKeyEntry) (k p : Nat)
+    (acc : Array (Positioned YamlToken)) : Prop :=
+  -- acc is sorted internally
+  (∀ a b (ha : a < acc.size) (hb : b < acc.size), a < b →
+    (acc[a]'ha).pos.offset ≤ (acc[b]'hb).pos.offset) ∧
+  -- acc.last is bounded by tokens[k]
+  (∀ (hk : k < tokens.size) (i : Nat) (hi : i < acc.size),
+    (acc[i]'hi).pos.offset ≤ (tokens[k]'hk).pos.offset) ∧
+  -- acc.last is bounded by pks[p].pos
+  (∀ (hp : p < pks.size) (i : Nat) (hi : i < acc.size),
+    (acc[i]'hi).pos.offset ≤ (pks[p]'hp).pos.offset)
+
+/-- `linearise.go` preserves `goSortedInv`, lifting it to a Nat-indexed
+    sortedness statement on the output. -/
+theorem linearise_go_ordered_helper
+    (tokens : Array (Positioned YamlToken))
+    (pks : Array PendingKeyEntry)
+    (h_tok_ord : ∀ a b (ha : a < tokens.size) (hb : b < tokens.size), a < b →
+      (tokens[a]'ha).pos.offset ≤ (tokens[b]'hb).pos.offset)
+    (h_pks_idx : ∀ a b (ha : a < pks.size) (hb : b < pks.size), a < b →
+      (pks[a]'ha).insertBeforeIdx ≤ (pks[b]'hb).insertBeforeIdx)
+    (h_pks_pos : ∀ a b (ha : a < pks.size) (hb : b < pks.size), a < b →
+      (pks[a]'ha).pos.offset ≤ (pks[b]'hb).pos.offset)
+    (h_lo : ∀ p (hp : p < pks.size) i (hi : i < tokens.size),
+      i < (pks[p]'hp).insertBeforeIdx →
+      (tokens[i]'hi).pos.offset ≤ (pks[p]'hp).pos.offset)
+    (h_hi : ∀ p (hp : p < pks.size) i (hi : i < tokens.size),
+      (pks[p]'hp).insertBeforeIdx ≤ i →
+      (pks[p]'hp).pos.offset ≤ (tokens[i]'hi).pos.offset) :
+    ∀ (n k p : Nat) (acc : Array (Positioned YamlToken)),
+      (tokens.size - k) + (pks.size - p) = n →
+      goSortedInv tokens pks k p acc →
+      ∀ a b (ha : a < (linearise.go tokens pks k p acc).size)
+            (hb : b < (linearise.go tokens pks k p acc).size), a < b →
+        ((linearise.go tokens pks k p acc)[a]'ha).pos.offset
+          ≤ ((linearise.go tokens pks k p acc)[b]'hb).pos.offset := by
+  intro n
+  induction n with
+  | zero =>
+    intro k p acc h_meas h_inv
+    -- termination case: linearise.go = acc (no more steps)
+    have h_k : tokens.size ≤ k := by omega
+    have h_p : pks.size ≤ p := by omega
+    have h_eq : linearise.go tokens pks k p acc = acc :=
+      linearise_go_done tokens pks k p acc h_k h_p
+    intro a b ha hb hab
+    have ha' : a < acc.size := h_eq ▸ ha
+    have hb' : b < acc.size := h_eq ▸ hb
+    have h_at_a : (linearise.go tokens pks k p acc)[a]'ha = acc[a]'ha' :=
+      array_get_eq_of_eq h_eq a ha ha'
+    have h_at_b : (linearise.go tokens pks k p acc)[b]'hb = acc[b]'hb' :=
+      array_get_eq_of_eq h_eq b hb hb'
+    rw [h_at_a, h_at_b]
+    exact h_inv.1 a b ha' hb' hab
+  | succ n ih =>
+    intro k p acc h_meas h_inv
+    obtain ⟨h_acc_ord, h_acc_tok, h_acc_pks⟩ := h_inv
+    -- Helper: invariant for the `acc ++ expandKind pks[p]` recursive case.
+    have h_inv_splice : ∀ (hp : p < pks.size),
+        pks[p].insertBeforeIdx ≤ k ∨ tokens.size ≤ k →
+        goSortedInv tokens pks k (p + 1) (acc ++ Scanner.expandKind pks[p]) := by
+      intro hp h_or
+      refine ⟨?_, ?_, ?_⟩
+      · intro a b ha hb hab
+        simp only [Array.size_append] at ha hb
+        by_cases ha' : a < acc.size
+        · by_cases hb' : b < acc.size
+          · rw [Array.getElem_append_left ha', Array.getElem_append_left hb']
+            exact h_acc_ord a b ha' hb' hab
+          · rw [Array.getElem_append_left ha']
+            rw [Array.getElem_append_right (Nat.le_of_not_lt hb')]
+            rw [expandKind_offset_const pks[p] (b - acc.size) (by omega)]
+            exact h_acc_pks hp a ha'
+        · have ha'' : acc.size ≤ a := Nat.le_of_not_lt ha'
+          have hb'' : acc.size ≤ b := by omega
+          rw [Array.getElem_append_right ha'']
+          rw [Array.getElem_append_right hb'']
+          rw [expandKind_offset_const pks[p] (a - acc.size) (by omega)]
+          rw [expandKind_offset_const pks[p] (b - acc.size) (by omega)]
+          omega
+      · intro hk i hi
+        simp only [Array.size_append] at hi
+        by_cases h_in_acc : i < acc.size
+        · rw [Array.getElem_append_left h_in_acc]
+          exact h_acc_tok hk i h_in_acc
+        · rw [Array.getElem_append_right (Nat.le_of_not_lt h_in_acc)]
+          rw [expandKind_offset_const pks[p] (i - acc.size) (by omega)]
+          rcases h_or with hsplice | hbeyond
+          · exact h_hi p hp k hk hsplice
+          · omega
+      · intro hp1 i hi
+        simp only [Array.size_append] at hi
+        by_cases h_in_acc : i < acc.size
+        · rw [Array.getElem_append_left h_in_acc]
+          calc (acc[i]'h_in_acc).pos.offset
+              ≤ (pks[p]'hp).pos.offset := h_acc_pks hp i h_in_acc
+            _ ≤ (pks[p+1]'hp1).pos.offset := h_pks_pos p (p+1) hp hp1 (Nat.lt_succ_self _)
+        · rw [Array.getElem_append_right (Nat.le_of_not_lt h_in_acc)]
+          rw [expandKind_offset_const pks[p] (i - acc.size) (by omega)]
+          exact h_pks_pos p (p+1) hp hp1 (Nat.lt_succ_self _)
+    -- Helper: invariant for the `acc.push tokens[k]` recursive case.
+    have h_inv_push : ∀ (hk : k < tokens.size),
+        (∀ (hp : p < pks.size), k < pks[p].insertBeforeIdx) →
+        goSortedInv tokens pks (k + 1) p (acc.push (tokens[k]'hk)) := by
+      intro hk h_idx_gt
+      refine ⟨?_, ?_, ?_⟩
+      · intro a b ha hb hab
+        simp only [Array.size_push] at ha hb
+        by_cases ha' : a < acc.size
+        · by_cases hb' : b < acc.size
+          · rw [Array.getElem_push_lt ha', Array.getElem_push_lt hb']
+            exact h_acc_ord a b ha' hb' hab
+          · have hb_eq : b = acc.size := by omega
+            rw [Array.getElem_push_lt ha']
+            rw [show ((acc.push (tokens[k]'hk))[b]'(by simp [Array.size_push]; omega)) =
+                ((acc.push (tokens[k]'hk))[acc.size]'(by simp [Array.size_push])) from by
+              congr 1]
+            rw [Array.getElem_push_eq]
+            exact h_acc_tok hk a ha'
+        · omega
+      · intro hk1 i hi
+        simp only [Array.size_push] at hi
+        by_cases h_in_acc : i < acc.size
+        · rw [Array.getElem_push_lt h_in_acc]
+          calc (acc[i]'h_in_acc).pos.offset
+              ≤ (tokens[k]'hk).pos.offset := h_acc_tok hk i h_in_acc
+            _ ≤ (tokens[k+1]'hk1).pos.offset :=
+                h_tok_ord k (k+1) hk hk1 (Nat.lt_succ_self _)
+        · have hi_eq : i = acc.size := by omega
+          subst hi_eq
+          rw [Array.getElem_push_eq]
+          exact h_tok_ord k (k+1) hk hk1 (Nat.lt_succ_self _)
+      · intro hp i hi
+        simp only [Array.size_push] at hi
+        by_cases h_in_acc : i < acc.size
+        · rw [Array.getElem_push_lt h_in_acc]
+          exact h_acc_pks hp i h_in_acc
+        · have hi_eq : i = acc.size := by omega
+          subst hi_eq
+          rw [Array.getElem_push_eq]
+          exact h_lo p hp k hk (h_idx_gt hp)
+    rw [linearise.go]
+    by_cases hp : p < pks.size
+    · simp only [hp, ↓reduceDIte]
+      by_cases hsplice : pks[p].insertBeforeIdx ≤ k
+      · -- Splice branch
+        simp only [hsplice, ↓reduceIte]
+        have h_meas' : (tokens.size - k) + (pks.size - (p + 1)) = n := by omega
+        apply ih k (p + 1) (acc ++ Scanner.expandKind pks[p]) h_meas'
+        exact h_inv_splice hp (Or.inl hsplice)
+      · simp only [hsplice, ↓reduceIte]
+        by_cases hk : k < tokens.size
+        · -- Token-push branch
+          simp only [hk, ↓reduceDIte]
+          have h_meas' : (tokens.size - (k + 1)) + (pks.size - p) = n := by omega
+          apply ih (k + 1) p (acc.push tokens[k]) h_meas'
+          exact h_inv_push hk (fun _ => Nat.lt_of_not_le hsplice)
+        · -- Splice-at-tail branch (k ≥ tokens.size)
+          simp only [hk, ↓reduceDIte]
+          have h_meas' : (tokens.size - k) + (pks.size - (p + 1)) = n := by omega
+          apply ih k (p + 1) (acc ++ Scanner.expandKind pks[p]) h_meas'
+          exact h_inv_splice hp (Or.inr (Nat.le_of_not_lt hk))
+    · -- p ≥ pks.size: only tokens-push remaining or termination
+      simp only [hp, ↓reduceDIte]
+      by_cases hk : k < tokens.size
+      · simp only [hk, ↓reduceDIte]
+        have h_meas' : (tokens.size - (k + 1)) + (pks.size - p) = n := by omega
+        apply ih (k + 1) p (acc.push tokens[k]) h_meas'
+        exact h_inv_push hk (fun hp_lt => absurd hp_lt hp)
+      · -- termination: linearise.go tokens pks k p acc = acc
+        simp only [hk, ↓reduceDIte]
+        intro a b ha hb hab
+        exact h_acc_ord a b ha hb hab
+
+/-- **Headline ordering theorem (J.3.3)**: `linearise tokens pks` is
+    sorted in `pos.offset` provided `tokens` is sorted, `pks` is sorted
+    in both `insertBeforeIdx` and `pos.offset`, and the I1/I2 fit
+    conditions hold between tokens and pks. -/
+theorem linearise_positions_ordered
+    (tokens : Array (Positioned YamlToken))
+    (pks : Array PendingKeyEntry)
+    (h_tok_ord : ∀ a b (ha : a < tokens.size) (hb : b < tokens.size), a < b →
+      (tokens[a]'ha).pos.offset ≤ (tokens[b]'hb).pos.offset)
+    (h_pks_idx : ∀ a b (ha : a < pks.size) (hb : b < pks.size), a < b →
+      (pks[a]'ha).insertBeforeIdx ≤ (pks[b]'hb).insertBeforeIdx)
+    (h_pks_pos : ∀ a b (ha : a < pks.size) (hb : b < pks.size), a < b →
+      (pks[a]'ha).pos.offset ≤ (pks[b]'hb).pos.offset)
+    (h_lo : ∀ p (hp : p < pks.size) i (hi : i < tokens.size),
+      i < (pks[p]'hp).insertBeforeIdx →
+      (tokens[i]'hi).pos.offset ≤ (pks[p]'hp).pos.offset)
+    (h_hi : ∀ p (hp : p < pks.size) i (hi : i < tokens.size),
+      (pks[p]'hp).insertBeforeIdx ≤ i →
+      (pks[p]'hp).pos.offset ≤ (tokens[i]'hi).pos.offset) :
+    ∀ a b (ha : a < (linearise tokens pks).size) (hb : b < (linearise tokens pks).size),
+      a < b →
+      ((linearise tokens pks)[a]'ha).pos.offset ≤ ((linearise tokens pks)[b]'hb).pos.offset := by
+  intro a b ha hb hab
+  -- Initial accumulator is empty; goSortedInv holds vacuously.
+  have h_init : goSortedInv tokens pks 0 0 #[] := by
+    refine ⟨?_, ?_, ?_⟩
+    · intro a b ha _ _; simp at ha
+    · intro _ i hi; simp at hi
+    · intro _ i hi; simp at hi
+  exact linearise_go_ordered_helper tokens pks h_tok_ord h_pks_idx h_pks_pos h_lo h_hi
+    _ 0 0 #[] rfl h_init a b ha hb hab
+
 end L4YAML.Proofs.ScannerLinearise
