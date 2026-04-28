@@ -890,7 +890,7 @@ def generateIndexHtml (results : Array ReportResult)
         s!"      <div class=\"description\">{totalPassed}/{totalTests} tests across {suites.size} suites</div>\n",
         "    </div>\n",
         "    <div class=\"link-box\">\n",
-        "      <a href=\"production-coverage.html\">YAML 1.2.2 Production Coverage</a>\n",
+        "      <a href=\"reports/production-coverage.html\">YAML 1.2.2 Production Coverage</a>\n",
         "      <div class=\"description\">All productions cross-referenced with @[yaml_spec] annotations</div>\n",
         "    </div>\n",
         "  </div>\n\n"

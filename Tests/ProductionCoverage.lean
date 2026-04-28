@@ -16,12 +16,15 @@ production to its corresponding Lean source code.
 
 ## How it works
 
-1. All 205 YAML 1.2.2 productions are cataloged (static — defines the spec)
+1. All 211 YAML 1.2.2 productions are cataloged (static — defines the spec)
 2. At **elaboration time**, `@[yaml_spec]` annotations are queried from the
    Lean environment via `getAllYamlSpecDecls`
 3. Module names are resolved via `env.getModuleIdxFor?` for source links
 4. The coverage matrix is cross-referenced automatically
-5. An HTML report can be generated linking productions → spec URLs → source code
+5. For each of the 211 BNF rules the report records, per `@[yaml_spec]`
+   annotation, the **fully-qualified declaration name** and the
+   **relative source path** (e.g. `L4YAML/Scanner/Indent.lean`)
+6. An HTML report can be generated linking productions → spec URLs → source code
 -/
 
 namespace Tests.ProdCoverage
@@ -268,7 +271,13 @@ def yamlProductions : Array YamlProduction := #[
 At elaboration time, we query the Lean environment to discover which
 productions have `@[yaml_spec]`-tagged implementations. -/
 
-/-- An implementation mapping discovered from the environment. -/
+/-- An implementation mapping discovered from the environment.
+
+    `declName` is the fully-qualified Lean declaration name
+    (e.g. `L4YAML.Scanner.unwindIndents`).
+    `moduleName` is the dotted module path (e.g. `L4YAML.Scanner.Indent`);
+    use `moduleToPath` to obtain the relative source path
+    (e.g. `L4YAML/Scanner/Indent.lean`). -/
 structure SpecImplEntry where
   declName : String
   moduleName : String
@@ -387,7 +396,7 @@ private def escapeHtml (s : String) : String :=
    |>.replace "'" "&#39;"
 
 def repoSourceUrl : String :=
-  "https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/"
+  "https://github.com/nasa-jpl/L4YAML/blob/main/"
 
 private def reportCss : String :=
   "    :root {
@@ -492,6 +501,20 @@ private def reportCss : String :=
     .badge-uncovered { background: var(--color-uncovered); }
     .badge-oos { background: var(--color-oos); }
 
+    .impl-cell { vertical-align: top; }
+    .impl-entry {
+      padding: 4px 0; border-bottom: 1px dashed #eee;
+    }
+    .impl-entry:last-child { border-bottom: none; }
+    .impl-decl { font-family: 'Courier New', monospace; font-size: 12px; }
+    .impl-path {
+      font-size: 11px; color: #666; margin-top: 2px; padding-left: 8px;
+    }
+    .impl-path-label { color: #999; font-style: italic; }
+    .impl-path code {
+      background: #f4f4f4; padding: 1px 5px; border-radius: 3px;
+      font-family: 'Courier New', monospace; color: #333;
+    }
     .impl-link {
       color: #1565C0; text-decoration: none; font-family: 'Courier New', monospace;
       font-size: 12px;
@@ -695,23 +718,31 @@ def generateProductionCoverageHtml : String :=
     let badge := statusBadge status
     let specUrl := s!"https://yaml.org/spec/1.2.2/#rule-{(p.name.takeWhile (· ≠ '('))}"
     let nameLink := s!"<a href=\"{specUrl}\" target=\"_blank\" class=\"spec-link\">{escapeHtml p.name}</a>"
-    -- Implementation links
+    -- Implementation entries: show qualified name AND relative source path
     let impls := getImplementations p.number
     let implLinks := if impls.isEmpty then
         if p.status == "OOS" then "—"
         else if p.status == "G" then "<em>Grammar spec only</em>"
         else "<em>No @[yaml_spec] annotation</em>"
       else
-        String.intercalate "<br>" (impls.toList.map fun e =>
+        String.join (impls.toList.map fun e =>
           let path := moduleToPath e.moduleName
-          s!"<a href=\"{repoSourceUrl}{path}\" target=\"_blank\" class=\"impl-link\">{escapeHtml e.declName}</a>")
-    let searchText := s!"{p.number} {p.name} {p.specSec} {status}".toLower
+          let pathEsc := escapeHtml path
+          let nameEsc := escapeHtml e.declName
+          s!"<div class=\"impl-entry\">" ++
+          s!"<div class=\"impl-decl\"><a href=\"{repoSourceUrl}{path}\" target=\"_blank\" class=\"impl-link\" title=\"Open source on GitHub\">{nameEsc}</a></div>" ++
+          s!"<div class=\"impl-path\"><span class=\"impl-path-label\">in</span> <code>{pathEsc}</code></div>" ++
+          s!"</div>")
+    let searchText :=
+      let implSearch := String.intercalate " " (impls.toList.map fun e =>
+        s!"{e.declName} {moduleToPath e.moduleName}")
+      s!"{p.number} {p.name} {p.specSec} {status} {implSearch}".toLower
     s!"      <tr class=\"prod-row\" data-status=\"{status}\" data-chapter=\"{p.chapter}\" data-search=\"{escapeHtml searchText}\">\n" ++
     s!"        <td>{p.number}</td>\n" ++
     s!"        <td>{nameLink}</td>\n" ++
     s!"        <td>§{p.specSec}</td>\n" ++
     s!"        <td>{badge}</td>\n" ++
-    s!"        <td>{implLinks}</td>\n" ++
+    s!"        <td class=\"impl-cell\">{implLinks}</td>\n" ++
     s!"      </tr>\n")
 
   -- Assemble
@@ -723,7 +754,7 @@ def generateProductionCoverageHtml : String :=
     "  <style>\n", reportCss, "  </style>\n",
     "</head>\n<body>\n",
     "<div class=\"container\">\n",
-    "  <a href=\"index.html\" class=\"nav-link\">← Back to Coverage Index</a>\n",
+    "  <a href=\"../index.html\" class=\"nav-link\">← Back to Coverage Index</a>\n",
     "  <h1>YAML 1.2.2 Production Coverage</h1>\n",
     "  <p class=\"subtitle\">Automated cross-reference of YAML 1.2.2 productions with <code>@[yaml_spec]</code> annotations in lean4-yaml-verified</p>\n\n",
     statsHtml,
@@ -809,6 +840,21 @@ def collectTests : IO VerifiedSuiteResult := do
   setCategory state "Unannotated productions (gaps)"
   for p in uncoveredProductions do
     check state s!"[{p.number}] {p.name} (§{p.specSec}) — no @[yaml_spec]" true
+
+  setCategory state "Per-rule @[yaml_spec] locations"
+  for p in yamlProductions do
+    let impls := getImplementations p.number
+    if impls.isEmpty then
+      let note :=
+        if p.status == "OOS" then "out of scope"
+        else if p.status == "G" then "grammar spec only"
+        else "no @[yaml_spec] annotation"
+      check state s!"[{p.number}] {p.name} (§{p.specSec}) — {note}" true
+    else
+      for e in impls do
+        let path := moduleToPath e.moduleName
+        check state
+          s!"[{p.number}] {p.name} (§{p.specSec}) ← {e.declName} @ {path}" true
 
   let results ← finish state
   return { name := "productioncoverage",
