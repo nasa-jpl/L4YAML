@@ -14869,4 +14869,52 @@ theorem scanNextToken_preserves_LineariseFit
         simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
         exact dispatchContent_preserves_LineariseFit _ c _ h_inv3 (by assumption)
 
+/-! ### `scanLoopFull` preserves `LineariseFit`
+
+By induction on fuel.  Recursive arm: apply `scanNextToken_preserves_LineariseFit`
+(which needs `SimpleKeyValid`, supplied via `AllKeysValid.1`), then IH.
+Completion arm: `skipToContent` (Class A) + `unwindIndents` (Class A)
++ emit `.streamEnd` (Class A), each preserving the invariant. -/
+theorem scanLoopFull_preserves_LineariseFit
+    (s : ScannerState) (fuel : Nat) (final : ScannerState)
+    (h_inv : LineariseFit s) (h_akv : AllKeysValid s)
+    (h : scanLoopFull s fuel = .ok final) : LineariseFit final := by
+  induction fuel generalizing s with
+  | zero => unfold scanLoopFull at h; simp at h
+  | succ fuel' IH =>
+    unfold scanLoopFull at h
+    simp only [] at h
+    split at h
+    · simp at h
+    · -- .ok none: completion arm
+      split at h
+      · simp at h
+      · split at h
+        · simp at h
+        · injection h with h_eq
+          subst h_eq
+          cases h_skip : skipToContent s with
+          | ok s_skip =>
+            show LineariseFit ((unwindIndents s_skip (-1)).emit .streamEnd)
+            have h_skip_inv : LineariseFit s_skip :=
+              skipToContent_preserves_LineariseFit s s_skip h_skip h_inv
+            have h_unwind_inv : LineariseFit (unwindIndents s_skip (-1)) :=
+              unwindIndents_preserves_LineariseFit s_skip (-1) h_skip_inv
+            exact emit_preserves_LineariseFit
+              (unwindIndents s_skip (-1)) .streamEnd h_unwind_inv
+          | error e =>
+            -- Live path: scanLoopFull's completion arm unfolds with `s`
+            -- whether skipToContent succeeds or not.
+            show LineariseFit ((unwindIndents s (-1)).emit .streamEnd)
+            have h_unwind_inv : LineariseFit (unwindIndents s (-1)) :=
+              unwindIndents_preserves_LineariseFit s (-1) h_inv
+            exact emit_preserves_LineariseFit
+              (unwindIndents s (-1)) .streamEnd h_unwind_inv
+    · -- .ok (some s'): recursive arm
+      rename_i s' h_snt
+      exact IH s'
+        (scanNextToken_preserves_LineariseFit s s' h_inv h_akv.1 h_snt)
+        (scanNextToken_preserves_AllKeysValid s s' h_akv h_snt)
+        h
+
 end L4YAML.Proofs.ScannerCorrectness
