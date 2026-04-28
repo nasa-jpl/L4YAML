@@ -11458,6 +11458,131 @@ theorem emit_preserves_LineariseFit (s : ScannerState) (tok : YamlToken)
     show s.offset ≤ (s.emit tok).offset
     rw [ScannerProgress.emit_offset]; omega
 
+/-! #### scanFlow* emit-class leaves
+
+Each `scanFlow{Sequence,Mapping}{Start,End}` and `scanFlowEntry` op
+follows the same shape: optional simpleKey/pendingKeyActive disable
+(no offset/tokens change) → `.emit .flow*` → `.advance` → field
+updates.  The new token has `pos = s.currentPos`, so its offset
+equals `s.offset`.  Offset monotonicity comes from `advance_offset_ge`
+applied after the emit. -/
+
+theorem scanFlowSequenceEnd_preserves_LineariseFit (s : ScannerState)
+    (h : LineariseFit s) : LineariseFit (scanFlowSequenceEnd s) := by
+  apply LineariseFit_extend s (scanFlowSequenceEnd s)
+    (scanFlowSequenceEnd_preserves_ScanInv s h.1)
+    (scanFlowSequenceEnd_preserves_pendingKeys s)
+    (by have := scanFlowSequenceEnd_adds_one_token s; omega)
+    (fun i hi => ScanHelpers.scanFlowSequenceEnd_preserves_prefix s i hi)
+    ?new_ge
+    ?off_mono
+    h
+  case new_ge =>
+    intro i hi h_ge
+    have h_size := scanFlowSequenceEnd_adds_one_token s
+    have hi_eq : i = s.tokens.size := by omega
+    subst hi_eq
+    show s.offset ≤ ((scanFlowSequenceEnd s).tokens[s.tokens.size]'hi).pos.offset
+    have h_pos : ((scanFlowSequenceEnd s).tokens[s.tokens.size]'hi).pos = s.currentPos := by
+      unfold scanFlowSequenceEnd
+      simp only [advance_preserves_tokens, ScannerState.emit, Array.getElem_push_eq]
+    rw [h_pos]
+    simp [ScannerState.currentPos]
+  case off_mono =>
+    have := ScannerProgress.advance_offset_ge (s.emit .flowSequenceEnd)
+    rw [ScannerProgress.emit_offset] at this
+    show s.offset ≤ (scanFlowSequenceEnd s).offset
+    unfold scanFlowSequenceEnd
+    simp only []
+    exact this
+
+theorem scanFlowSequenceStart_preserves_LineariseFit (s : ScannerState)
+    (h : LineariseFit s) : LineariseFit (scanFlowSequenceStart s) := by
+  apply LineariseFit_extend s (scanFlowSequenceStart s)
+    (scanFlowSequenceStart_preserves_ScanInv s h.1)
+    (scanFlowSequenceStart_preserves_pendingKeys s)
+    (by have := scanFlowSequenceStart_adds_one_token s; omega)
+    (fun i hi => ScanHelpers.scanFlowSequenceStart_preserves_prefix s i hi)
+    ?new_ge
+    ?off_mono
+    h
+  case new_ge =>
+    intro i hi h_ge
+    have h_size := scanFlowSequenceStart_adds_one_token s
+    have hi_eq : i = s.tokens.size := by omega
+    subst hi_eq
+    show s.offset ≤ ((scanFlowSequenceStart s).tokens[s.tokens.size]'hi).pos.offset
+    unfold scanFlowSequenceStart
+    simp only [advance_preserves_tokens, ScannerState.emit, Array.getElem_push_eq,
+               ScannerState.currentPos]
+    omega
+  case off_mono =>
+    have := ScannerProgress.advance_offset_ge
+      ({ s with simpleKey := { possible := false }, pendingKeyActive := none }.emit .flowSequenceStart)
+    rw [ScannerProgress.emit_offset] at this
+    show s.offset ≤ (scanFlowSequenceStart s).offset
+    unfold scanFlowSequenceStart
+    simp only []
+    exact this
+
+theorem scanFlowMappingEnd_preserves_LineariseFit (s : ScannerState)
+    (h : LineariseFit s) : LineariseFit (scanFlowMappingEnd s) := by
+  apply LineariseFit_extend s (scanFlowMappingEnd s)
+    (scanFlowMappingEnd_preserves_ScanInv s h.1)
+    (scanFlowMappingEnd_preserves_pendingKeys s)
+    (by have := scanFlowMappingEnd_adds_one_token s; omega)
+    (fun i hi => ScanHelpers.scanFlowMappingEnd_preserves_prefix s i hi)
+    ?new_ge
+    ?off_mono
+    h
+  case new_ge =>
+    intro i hi h_ge
+    have h_size := scanFlowMappingEnd_adds_one_token s
+    have hi_eq : i = s.tokens.size := by omega
+    subst hi_eq
+    show s.offset ≤ ((scanFlowMappingEnd s).tokens[s.tokens.size]'hi).pos.offset
+    have h_pos : ((scanFlowMappingEnd s).tokens[s.tokens.size]'hi).pos = s.currentPos := by
+      unfold scanFlowMappingEnd
+      simp only [advance_preserves_tokens, ScannerState.emit, Array.getElem_push_eq]
+    rw [h_pos]
+    simp [ScannerState.currentPos]
+  case off_mono =>
+    have := ScannerProgress.advance_offset_ge (s.emit .flowMappingEnd)
+    rw [ScannerProgress.emit_offset] at this
+    show s.offset ≤ (scanFlowMappingEnd s).offset
+    unfold scanFlowMappingEnd
+    simp only []
+    exact this
+
+theorem scanFlowMappingStart_preserves_LineariseFit (s : ScannerState)
+    (h : LineariseFit s) : LineariseFit (scanFlowMappingStart s) := by
+  apply LineariseFit_extend s (scanFlowMappingStart s)
+    (scanFlowMappingStart_preserves_ScanInv s h.1)
+    (scanFlowMappingStart_preserves_pendingKeys s)
+    (by have := scanFlowMappingStart_adds_one_token s; omega)
+    (fun i hi => ScanHelpers.scanFlowMappingStart_preserves_prefix s i hi)
+    ?new_ge
+    ?off_mono
+    h
+  case new_ge =>
+    intro i hi h_ge
+    have h_size := scanFlowMappingStart_adds_one_token s
+    have hi_eq : i = s.tokens.size := by omega
+    subst hi_eq
+    show s.offset ≤ ((scanFlowMappingStart s).tokens[s.tokens.size]'hi).pos.offset
+    unfold scanFlowMappingStart
+    simp only [advance_preserves_tokens, ScannerState.emit, Array.getElem_push_eq,
+               ScannerState.currentPos]
+    omega
+  case off_mono =>
+    have := ScannerProgress.advance_offset_ge
+      ({ s with simpleKey := { possible := false }, pendingKeyActive := none }.emit .flowMappingStart)
+    rw [ScannerProgress.emit_offset] at this
+    show s.offset ≤ (scanFlowMappingStart s).offset
+    unfold scanFlowMappingStart
+    simp only []
+    exact this
+
 /-!
 ### scanNextToken preserves ScanInv
 
