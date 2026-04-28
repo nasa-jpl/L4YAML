@@ -940,13 +940,39 @@ count unchanged at 21.
   `expandKind_offset_const` shows expandKind produces a constant-offset
   run.
 
-  Remaining: Step 8b (per-op `*_preserves_LineariseFit` chain through
-  scanLoopFull, mirroring the existing PendingKeysWellIndexed chain;
-  ~500-800 LOC) and Step 9 (compose `scanFiltered_produces_valid_tokens`
-  using `linearise_size_ge_tokens`, `linearise_first_eq_tokens_first`,
-  `linearise_last_eq_tokens_last`, `linearise_positions_ordered`;
-  ~50 LOC).  Folds naturally into J.3.4 since
-  `ScannerPlainScalarValid` consumers need the same invariants.
+  Step 8b in-progress (2026-04-27, ~390 LOC across five additional
+  commits): `807b91df` adds the unified `LineariseFit_extend` mono
+  lemma plus the `LineariseFit_via_no_change` convenience wrapper for
+  Class A passthrough leaves.  `0ec064a7` adds five Class A passthrough
+  leaves (`advance`, `skipSpaces`, `skipWhitespace`, `skipToEndOfLine`,
+  `consumeNewline`) — each is a one-shot instantiation of the
+  passthrough wrapper.  `f35a04ac` adds `emit_preserves_LineariseFit`,
+  validating the emit-class pattern (new token at index `s.tokens.size`
+  has `pos.offset = s.currentPos.offset = s.offset`).  `4af1fc1a` adds
+  the four scanFlow*Start/End leaves (Sequence/Mapping bracket
+  scanners), each unfolding the scanner to derive `h_new_ge` from
+  `currentPos.offset = s.offset` and `h_off_mono` from
+  `advance_offset_ge`.  `ef90bd62` adds `scanFlowEntry` plus a more
+  practical mono lemma `LineariseFit_via_first_new` for multi-emit ops
+  — only the *first* new token's offset bound needs explicit proof;
+  subsequent new tokens inherit it via ScanInv's tokens-sorted property
+  at `s'`.
+
+  Remaining for Step 8b (~400 LOC): per-op leaves for `unwindIndents`,
+  `pushSequenceIndent`/`pushMappingIndent`, `scanBlockEntry`, `scanKey`,
+  `scanValue` (Class C via setPendingKeyKind), `scanAnchorOrAlias`,
+  `scanTag`, `scanBlockScalar`, `scanDoubleQuoted`, `scanSingleQuoted`
+  (+ Class C wrapper via setPendingKeyEndLine), `scanPlainScalar`,
+  `scanDocumentStart`, `scanDocumentEnd`, `scanDirective`, plus
+  `skipToContent_preserves_LineariseFit` (deferred — its `_offset_ge`
+  dependency is in §5.2, defined later in the file).  Then dispatcher
+  composition (4 dispatchers + `allowDir_ite`), `preprocess`,
+  `scanNextToken`, `scanLoopFull`.  Step 9 (~50 LOC) composes
+  `scanFiltered_produces_valid_tokens` using
+  `linearise_size_ge_tokens`, `linearise_first_eq_tokens_first`,
+  `linearise_last_eq_tokens_last`, and `linearise_positions_ordered`.
+  Folds naturally into J.3.4 since `ScannerPlainScalarValid` consumers
+  need the same invariants.
 
 **J.3.4–J.3.6**: re-discharge consumers in dependency order, each
 substep removing its sorry-using declarations and the matching
