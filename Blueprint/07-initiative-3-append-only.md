@@ -897,19 +897,19 @@ count unchanged at 21.
      hits Lean's dependent-index limitation; the decomp lemmas
      factor out the existential cleanly so the pointwise fact reduces
      to `Array.getElem_setIfInBounds_*`.
-  5. Add remaining Class A passthrough micro-lemmas for ops in the
+  5. ✓ Add remaining Class A passthrough micro-lemmas for ops in the
      `scanNextToken` chain (~30 lemmas, mostly `rfl` or one-line
      proofs that mirror the existing `*_preserves_simpleKeyStack`
      shapes).  Note: only `scanValuePrepare` (uses `setPendingKeyKind`)
      and the double/single-quoted branches in
      `scanNextToken_dispatchContent` (use `setPendingKeyEndLine`)
      are non-Class A — everything else passes through.
-  6. Compose dispatcher-level preservation lemmas
+  6. ✓ Compose dispatcher-level preservation lemmas
      (`preprocess_preserves_PendingKeysWellIndexed`,
      `dispatch{Structural,FlowIndicators,BlockIndicators,Content}_preserves_…`,
      `scanNextToken_preserves_…`) — mechanical mirror of the
      AllKeysValid chain (~60 LOC).
-  7. `scanLoopFull_preserves_PendingKeysWellIndexed` by induction (~30 LOC).
+  7. ✓ `scanLoopFull_preserves_PendingKeysWellIndexed` by induction (~30 LOC).
   8. `linearise_positions_ordered` with pendingKey position-fit
      hypotheses (~120 LOC).
   9. Compose into `scanFiltered_produces_valid_tokens` (~50 LOC).
