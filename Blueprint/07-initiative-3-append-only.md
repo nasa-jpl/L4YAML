@@ -914,10 +914,10 @@ count unchanged at 21.
      hypotheses (~120 LOC).
   9. Compose into `scanFiltered_produces_valid_tokens` (~50 LOC).
 
-  Status (2026-04-28): Steps 1-7, 8a, 8c ✓ done; Step 8b ~75% complete
-  (22 of ~30 per-op leaves landed including the Class C `scanValue`
-  composition; remaining are scanDocument*/scanDirective and the
-  dispatcher chain).
+  Status (2026-04-28): Steps 1-7, 8a, 8c ✓ done; Step 8b ~77% complete
+  (23 of ~30 per-op leaves landed including the Class C `scanValue`
+  composition and the multi-emit `scanDocumentStart`; remaining are
+  `scanDocumentEnd` / `scanDirective` and the dispatcher chain).
   Eight prior commits (~2434 LOC): `c6bfab0a` saveSimpleKey discharge,
   `1e6b4741` Class A/B/C foundation, `de7610d9` Blueprint update,
   `c4dc838a` ~30 Class A *_preserves_pendingKeys leaves, `fbd330d4`
@@ -964,7 +964,7 @@ count unchanged at 21.
   - `offset_mono_via_first_new` — derives s.offset ≤ s'.offset from
     first_new bound + ScanInv at s'.
 
-  *Per-op leaves landed (22 total, in dependency order):*
+  *Per-op leaves landed (23 total, in dependency order):*
   - **Class A passthroughs** (`0ec064a7`): `advance`, `skipSpaces`,
     `skipWhitespace`, `skipToEndOfLine`, `consumeNewline`.
   - **Single-emit Class A** (`f35a04ac`, `4af1fc1a`, `ef90bd62`):
@@ -988,6 +988,10 @@ count unchanged at 21.
     field-updates `pendingKeys` via `setPendingKeyKind` AND emits ≥ 1
     token (always trailing `.value`, optionally preceded by
     `.blockMappingStart` from prepare's pushMappingIndent branch).
+  - **Multi-emit composition** (`811622ca`): `scanDocumentStart` —
+    `unwindIndents s (-1)` (variable `.blockEnd` count) → field-update
+    of `simpleKey` / `pendingKeyActive` → `.emit .documentStart` →
+    `.advanceN 3` → outer record update.
 
   *Class C building blocks landed (commit `6cbc43d6`):*
   - `setPendingKeyKind_pos`, `setPendingKeyEndLine_pos` — siblings to
@@ -1018,26 +1022,31 @@ count unchanged at 21.
     `array_get_eq_of_array_eq` to dodge `rw` motive issues under
     dependent indexing.
 
+  *`scanDocumentStart_preserves_LineariseFit` landed (commit `811622ca`):*
+  - `scanDocumentStart_first_new_pos` — case-splits on whether
+    `unwindIndents s (-1)` fires.  Bridges via `array_get_eq_of_array_eq`
+    against the equality `(scanDocumentStart s).tokens =
+    (s_kd.emit .documentStart).tokens` (advanceN-preserves-tokens +
+    outer record update).  Branch 1: unwindIndents didn't fire — the
+    push lands at index s.tokens.size, pos = s_kd.currentPos which
+    collapses to s.currentPos via `unwindIndents_currentPos_eq`.
+    Branch 2: unwindIndents fired — index s.tokens.size lies below the
+    push and inside the unwound prefix, pos given by
+    `unwindIndents_first_new_pos`.
+  - Composes via `LineariseFit_via_first_new_strict` threading the
+    pre-existing `scanDocumentStart_preserves_{ScanInv,pendingKeys}`
+    and `ScanHelpers.scanDocumentStart_{adds_tokens,preserves_prefix}`.
+
   **Remaining for Step 8b — concrete next steps**
 
-  1. **`scanDocumentStart_preserves_LineariseFit`** (~60 LOC).  Form:
-     `unwindIndents s (-1)` → record-update → emit `.documentStart` →
-     `advanceN 3` → record-update.  Use `LineariseFit_via_first_new`
-     (size mono is ≥ since unwindIndents may not fire).  The first new
-     token's pos = s.currentPos in both cases (case-split: if
-     unwindIndents fires, first new is from `unwindIndents_first_new_pos`;
-     otherwise it's the `.documentStart` emit at the unchanged
-     currentPos).  `unwindIndents_currentPos_eq` is the key new
-     prerequisite (already landed).
-
-  2. **`scanDocumentEnd_preserves_LineariseFit`** (~80 LOC).  Same
+  1. **`scanDocumentEnd_preserves_LineariseFit`** (~80 LOC).  Same
      shape as scanDocumentStart but inside an Except chain; one early
      exit (`directiveWithoutDocument`) plus the trailing
      `skipDocEndWhitespace` + content validation that doesn't emit.
      Will need a `skipDocEndWhitespace_preserves_LineariseFit` micro
      leaf (Class A: tokens unchanged, offset monotone).
 
-  3. **`scanDirective_preserves_LineariseFit`** (~80 LOC).  Branches:
+  2. **`scanDirective_preserves_LineariseFit`** (~80 LOC).  Branches:
      YAML directive (Class C — uses `setPendingKeyEndLine` indirectly
      through quoted scalars? no — directives don't touch pendingKeys),
      TAG directive, and reserved.  All emit one `.versionDirective` /
@@ -1046,7 +1055,7 @@ count unchanged at 21.
      need `_preserves_tokens` lemmas (likely already exist for the
      dispatcher chain).
 
-  4. **Dispatcher composition** (~150 LOC).  Mirror the existing
+  3. **Dispatcher composition** (~150 LOC).  Mirror the existing
      `*_preserves_pendingKeys` chain:
      - `dispatchStructural_preserves_LineariseFit`
      - `dispatchFlowIndicators_preserves_LineariseFit`
@@ -1055,7 +1064,7 @@ count unchanged at 21.
      - `preprocess_preserves_LineariseFit`
      - `scanNextToken_preserves_LineariseFit`
 
-  5. **`scanLoopFull_preserves_LineariseFit`** (~30 LOC) by induction
+  4. **`scanLoopFull_preserves_LineariseFit`** (~30 LOC) by induction
      on fuel, identical shape to
      `scanLoopFull_preserves_PendingKeysWellIndexed`.
 
@@ -1065,13 +1074,13 @@ count unchanged at 21.
   and `linearise_positions_ordered`.  Folds naturally into J.3.4 since
   `ScannerPlainScalarValid` consumers need the same invariants.
 
-  *Cumulative session log (2026-04-27 → 2026-04-28):* 15 commits
+  *Cumulative session log (2026-04-27 → 2026-04-28):* 16 commits
   including `807b91df`, `0ec064a7`, `f35a04ac`, `4af1fc1a`, `ef90bd62`,
   `bdd27512`, `b83e8252`, `7046048b`, `8133ab94`, `d41f13b4`,
   `aaa5cc1e`, `4c664b58`, `067a6e35`, `6cbc43d6`, `9d1146a1`,
-  `1a8c8f0f`.  Build green; sorry count unchanged at the original Step
-  9 baseline (1 sorry in this file, the same count as before Step 8b
-  started).
+  `1a8c8f0f`, `811622ca`.  Build green; sorry count unchanged at the
+  original Step 9 baseline (1 sorry in this file, the same count as
+  before Step 8b started).
 
 **J.3.4–J.3.6**: re-discharge consumers in dependency order, each
 substep removing its sorry-using declarations and the matching
