@@ -11282,6 +11282,102 @@ theorem saveSimpleKey_preserves_LineariseFit (s : ScannerState)
           simp [ScannerState.currentPos]
     · exact ⟨h_inv, h_well, h_idx, h_pos, h_lo, h_hi, h_off⟩
 
+/-! #### Generalized mono lemma: `LineariseFit_extend`
+
+Subsumes both `LineariseFit_no_token_change` and `LineariseFit_emit_one`.
+Handles any Class A op that:
+* preserves pendingKeys (`h_pks_eq`),
+* appends zero or more tokens with old indices preserved (`h_prefix`),
+* has new tokens (if any) emitted at offsets ≥ `s.offset` (`h_new_ge`),
+* has monotone offset (`h_off_mono`),
+* preserves `ScanInv` (`h_inv'`).
+
+This is the workhorse used by every per-op `*_preserves_LineariseFit`. -/
+theorem LineariseFit_extend (s s' : ScannerState)
+    (h_inv' : ScanInv s')
+    (h_pks_eq : s'.pendingKeys = s.pendingKeys)
+    (h_size_mono : s.tokens.size ≤ s'.tokens.size)
+    (h_prefix : ∀ i (hi : i < s.tokens.size),
+        s'.tokens[i]'(by omega) = s.tokens[i]'hi)
+    (h_new_ge : ∀ i (hi : i < s'.tokens.size), s.tokens.size ≤ i →
+        s.offset ≤ (s'.tokens[i]'hi).pos.offset)
+    (h_off_mono : s.offset ≤ s'.offset)
+    (h : LineariseFit s) : LineariseFit s' := by
+  obtain ⟨_, h_well, h_idx, h_pos, h_lo, h_hi, h_off⟩ := h
+  refine ⟨h_inv', ?_, ?_, ?_, ?_, ?_, ?_⟩
+  · exact PendingKeysWellIndexed_mono s s' h_pks_eq h_size_mono h_well
+  · intro p q hp hq hpq
+    have hp_s : p < s.pendingKeys.size := by
+      have h_se : s'.pendingKeys.size = s.pendingKeys.size := by rw [h_pks_eq]
+      omega
+    have hq_s : q < s.pendingKeys.size := by
+      have h_se : s'.pendingKeys.size = s.pendingKeys.size := by rw [h_pks_eq]
+      omega
+    rw [array_get_eq_of_array_eq h_pks_eq p hp hp_s,
+        array_get_eq_of_array_eq h_pks_eq q hq hq_s]
+    exact h_idx p q hp_s hq_s hpq
+  · intro p q hp hq hpq
+    have hp_s : p < s.pendingKeys.size := by
+      have h_se : s'.pendingKeys.size = s.pendingKeys.size := by rw [h_pks_eq]
+      omega
+    have hq_s : q < s.pendingKeys.size := by
+      have h_se : s'.pendingKeys.size = s.pendingKeys.size := by rw [h_pks_eq]
+      omega
+    rw [array_get_eq_of_array_eq h_pks_eq p hp hp_s,
+        array_get_eq_of_array_eq h_pks_eq q hq hq_s]
+    exact h_pos p q hp_s hq_s hpq
+  · intro p hp i hi h_lt
+    have hp_s : p < s.pendingKeys.size := by
+      have h_se : s'.pendingKeys.size = s.pendingKeys.size := by rw [h_pks_eq]
+      omega
+    have h_pks_get : s'.pendingKeys[p]'hp = s.pendingKeys[p]'hp_s :=
+      array_get_eq_of_array_eq h_pks_eq p hp hp_s
+    rw [h_pks_get]
+    rw [h_pks_get] at h_lt
+    -- i < insertBeforeIdx ≤ s.tokens.size by PendingKeysWellIndexed
+    have ⟨_, h_idx_le⟩ := h_well.2 p hp_s
+    have hi_s : i < s.tokens.size := by omega
+    rw [h_prefix i hi_s]
+    exact h_lo p hp_s i hi_s h_lt
+  · intro p hp i hi h_ge
+    have hp_s : p < s.pendingKeys.size := by
+      have h_se : s'.pendingKeys.size = s.pendingKeys.size := by rw [h_pks_eq]
+      omega
+    have h_pks_get : s'.pendingKeys[p]'hp = s.pendingKeys[p]'hp_s :=
+      array_get_eq_of_array_eq h_pks_eq p hp hp_s
+    rw [h_pks_get]
+    rw [h_pks_get] at h_ge
+    by_cases hi_s : i < s.tokens.size
+    · rw [h_prefix i hi_s]
+      exact h_hi p hp_s i hi_s h_ge
+    · have h_i_ge : s.tokens.size ≤ i := by omega
+      exact Nat.le_trans (h_off p hp_s) (h_new_ge i hi h_i_ge)
+  · intro p hp
+    have hp_s : p < s.pendingKeys.size := by
+      have h_se : s'.pendingKeys.size = s.pendingKeys.size := by rw [h_pks_eq]
+      omega
+    rw [array_get_eq_of_array_eq h_pks_eq p hp hp_s]
+    exact Nat.le_trans (h_off p hp_s) h_off_mono
+
+/-! #### Convenience: Class A passthrough with no token change
+
+For ops where `s'.tokens = s.tokens` and `s'.pendingKeys = s.pendingKeys`
+and offset is monotone — covers all skip*, advance*, and most non-emitting
+helpers.  Just instantiates `LineariseFit_extend` with size-eq + refl. -/
+theorem LineariseFit_via_no_change (s s' : ScannerState)
+    (h_inv' : ScanInv s')
+    (h_pks_eq : s'.pendingKeys = s.pendingKeys)
+    (h_tok_eq : s'.tokens = s.tokens)
+    (h_off_mono : s.offset ≤ s'.offset)
+    (h : LineariseFit s) : LineariseFit s' := by
+  have h_size : s'.tokens.size = s.tokens.size := by rw [h_tok_eq]
+  apply LineariseFit_extend s s' h_inv' h_pks_eq (by omega)
+  · intro i hi
+    exact array_get_eq_of_array_eq h_tok_eq i (by omega) hi
+  · intro i _ h_ge; omega
+  · exact h_off_mono
+  · exact h
+
 /-!
 ### scanNextToken preserves ScanInv
 
