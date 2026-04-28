@@ -914,8 +914,10 @@ count unchanged at 21.
      hypotheses (~120 LOC).
   9. Compose into `scanFiltered_produces_valid_tokens` (~50 LOC).
 
-  Status (2026-04-28): Steps 1-7, 8a, 8c ✓ done; Step 8b ~70% complete
-  (21 of ~30 per-op leaves landed plus all Class C building blocks).
+  Status (2026-04-28): Steps 1-7, 8a, 8c ✓ done; Step 8b ~75% complete
+  (22 of ~30 per-op leaves landed including the Class C `scanValue`
+  composition; remaining are scanDocument*/scanDirective and the
+  dispatcher chain).
   Eight prior commits (~2434 LOC): `c6bfab0a` saveSimpleKey discharge,
   `1e6b4741` Class A/B/C foundation, `de7610d9` Blueprint update,
   `c4dc838a` ~30 Class A *_preserves_pendingKeys leaves, `fbd330d4`
@@ -962,7 +964,7 @@ count unchanged at 21.
   - `offset_mono_via_first_new` — derives s.offset ≤ s'.offset from
     first_new bound + ScanInv at s'.
 
-  *Per-op leaves landed (21 total, in dependency order):*
+  *Per-op leaves landed (22 total, in dependency order):*
   - **Class A passthroughs** (`0ec064a7`): `advance`, `skipSpaces`,
     `skipWhitespace`, `skipToEndOfLine`, `consumeNewline`.
   - **Single-emit Class A** (`f35a04ac`, `4af1fc1a`, `ef90bd62`):
@@ -982,6 +984,10 @@ count unchanged at 21.
   - **Indent / whitespace standalones** (`4c664b58`, `067a6e35`):
     `pushSequenceIndent`, `pushMappingIndent`, `skipToContent`,
     `unwindIndents`.
+  - **Class C composition** (`1a8c8f0f`): `scanValue` —
+    field-updates `pendingKeys` via `setPendingKeyKind` AND emits ≥ 1
+    token (always trailing `.value`, optionally preceded by
+    `.blockMappingStart` from prepare's pushMappingIndent branch).
 
   *Class C building blocks landed (commit `6cbc43d6`):*
   - `setPendingKeyKind_pos`, `setPendingKeyEndLine_pos` — siblings to
@@ -998,23 +1004,23 @@ count unchanged at 21.
     preserves (offset, line, col), needed so emits AFTER unwindIndents
     in scanDocumentStart/End/Directive happen at `s.currentPos`.
 
+  *`scanValue_preserves_LineariseFit` landed (commit `1a8c8f0f`):*
+  - `LineariseFit_via_first_new_field_update` — combines Class C
+    field-update prerequisites with the first-new-token shortcut.
+  - `pushMappingIndent_{line,col,currentPos}_eq`, `svck_{line,col,currentPos}`,
+    `svp_{line,col,currentPos}` — line/col chains so emitted tokens
+    reduce to `s.currentPos`.
+  - `pushMappingIndent_first_new_pos`, `scanValuePrepare_tokens_or`,
+    `scanValuePrepare_first_new_pos` — branch-by-branch first-new-token
+    derivation.
+  - `scanValue_first_new_pos_offset`, `scanValue_preserves_prefix_strict`
+    — bridge through `{emit .value → advance → record-update}` using
+    `array_get_eq_of_array_eq` to dodge `rw` motive issues under
+    dependent indexing.
+
   **Remaining for Step 8b — concrete next steps**
 
-  1. **`scanValue_preserves_LineariseFit`** (~80 LOC).  All Class C
-     prerequisites are in place; the bottleneck is
-     `scanValue_first_new_pos_offset` — the first new token (either
-     `.blockMappingStart` from `scanValuePrepare`'s pushMappingIndent
-     branch or `.value` from the trailing emit) has pos.offset =
-     s.offset.  Need to compose through the chain `clear → prepare →
-     emit → advance` with case-split on whether prepare's
-     pushMappingIndent fires.  Use `LineariseFit_via_first_new_strict`
-     (NOT array-equality version) → call `LineariseFit_extend_field_update`
-     with the four `scanValue_pendingKeys_*` chain lemmas.  Add
-     intermediate helpers as needed for `scanValueClearKey` /
-     `scanValuePrepare` line/col preservation, mirroring the
-     `unwindIndents_currentPos_eq` recipe.
-
-  2. **`scanDocumentStart_preserves_LineariseFit`** (~60 LOC).  Form:
+  1. **`scanDocumentStart_preserves_LineariseFit`** (~60 LOC).  Form:
      `unwindIndents s (-1)` → record-update → emit `.documentStart` →
      `advanceN 3` → record-update.  Use `LineariseFit_via_first_new`
      (size mono is ≥ since unwindIndents may not fire).  The first new
@@ -1024,14 +1030,14 @@ count unchanged at 21.
      currentPos).  `unwindIndents_currentPos_eq` is the key new
      prerequisite (already landed).
 
-  3. **`scanDocumentEnd_preserves_LineariseFit`** (~80 LOC).  Same
+  2. **`scanDocumentEnd_preserves_LineariseFit`** (~80 LOC).  Same
      shape as scanDocumentStart but inside an Except chain; one early
      exit (`directiveWithoutDocument`) plus the trailing
      `skipDocEndWhitespace` + content validation that doesn't emit.
      Will need a `skipDocEndWhitespace_preserves_LineariseFit` micro
      leaf (Class A: tokens unchanged, offset monotone).
 
-  4. **`scanDirective_preserves_LineariseFit`** (~80 LOC).  Branches:
+  3. **`scanDirective_preserves_LineariseFit`** (~80 LOC).  Branches:
      YAML directive (Class C — uses `setPendingKeyEndLine` indirectly
      through quoted scalars? no — directives don't touch pendingKeys),
      TAG directive, and reserved.  All emit one `.versionDirective` /
@@ -1040,7 +1046,7 @@ count unchanged at 21.
      need `_preserves_tokens` lemmas (likely already exist for the
      dispatcher chain).
 
-  5. **Dispatcher composition** (~150 LOC).  Mirror the existing
+  4. **Dispatcher composition** (~150 LOC).  Mirror the existing
      `*_preserves_pendingKeys` chain:
      - `dispatchStructural_preserves_LineariseFit`
      - `dispatchFlowIndicators_preserves_LineariseFit`
@@ -1049,7 +1055,7 @@ count unchanged at 21.
      - `preprocess_preserves_LineariseFit`
      - `scanNextToken_preserves_LineariseFit`
 
-  6. **`scanLoopFull_preserves_LineariseFit`** (~30 LOC) by induction
+  5. **`scanLoopFull_preserves_LineariseFit`** (~30 LOC) by induction
      on fuel, identical shape to
      `scanLoopFull_preserves_PendingKeysWellIndexed`.
 
@@ -1059,12 +1065,13 @@ count unchanged at 21.
   and `linearise_positions_ordered`.  Folds naturally into J.3.4 since
   `ScannerPlainScalarValid` consumers need the same invariants.
 
-  *Cumulative session log (2026-04-27 → 2026-04-28):* 14 commits
+  *Cumulative session log (2026-04-27 → 2026-04-28):* 15 commits
   including `807b91df`, `0ec064a7`, `f35a04ac`, `4af1fc1a`, `ef90bd62`,
   `bdd27512`, `b83e8252`, `7046048b`, `8133ab94`, `d41f13b4`,
-  `aaa5cc1e`, `4c664b58`, `067a6e35`, `6cbc43d6`, `9d1146a1`.  Build
-  green; sorry count unchanged at the original Step 9 baseline (1
-  sorry in this file, the same count as before Step 8b started).
+  `aaa5cc1e`, `4c664b58`, `067a6e35`, `6cbc43d6`, `9d1146a1`,
+  `1a8c8f0f`.  Build green; sorry count unchanged at the original Step
+  9 baseline (1 sorry in this file, the same count as before Step 8b
+  started).
 
 **J.3.4–J.3.6**: re-discharge consumers in dependency order, each
 substep removing its sorry-using declarations and the matching
