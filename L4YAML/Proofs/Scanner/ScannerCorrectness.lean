@@ -11996,6 +11996,151 @@ theorem scanTag_preserves_LineariseFit (s s' : ScannerState)
     show s.offset ≤ s.offset
     omega
 
+/-! ##### Scalar `emitAt`-class leaves -/
+
+/-- The first new token's `pos` after `scanDoubleQuoted` is `s.currentPos`. -/
+private theorem scanDoubleQuoted_first_new_pos (s : ScannerState)
+    (s' : ScannerState) (hok : scanDoubleQuoted s = .ok s')
+    (h_lt : s.tokens.size < s'.tokens.size) :
+    (s'.tokens[s.tokens.size]'h_lt).pos = s.currentPos := by
+  unfold scanDoubleQuoted at hok; simp only [bind, Except.bind] at hok
+  split at hok <;> try contradiction
+  rename_i heq
+  have h_collect := ScanHelpers.collectDoubleQuotedLoop_preserves_tokens s.advance "" _ _ _ _ _ _ heq
+  have h_adv := advance_preserves_tokens s
+  split at hok
+  · split at hok <;> try contradiction
+    injection hok with h_eq; subst h_eq; dsimp only []
+    apply first_new_pos_emitAt; rw [h_collect, h_adv]
+  · injection hok with h_eq; subst h_eq; dsimp only []
+    apply first_new_pos_emitAt; rw [h_collect, h_adv]
+
+theorem scanDoubleQuoted_preserves_LineariseFit (s s' : ScannerState)
+    (h_eq : scanDoubleQuoted s = .ok s') (h : LineariseFit s) : LineariseFit s' := by
+  apply LineariseFit_via_first_new_strict s s'
+    (scanDoubleQuoted_preserves_ScanInv s s' h.1 h_eq)
+    (scanDoubleQuoted_preserves_pendingKeys s s' h_eq)
+    (by have := ScanHelpers.scanDoubleQuoted_adds_one_token s s' h_eq; omega)
+    (fun i hi => ScanHelpers.scanDoubleQuoted_preserves_prefix s s' h_eq i hi)
+    ?first_new
+    h
+  case first_new =>
+    have h_size : s.tokens.size < s'.tokens.size := by
+      have := ScanHelpers.scanDoubleQuoted_adds_one_token s s' h_eq; omega
+    rw [scanDoubleQuoted_first_new_pos s s' h_eq h_size]
+    show s.offset ≤ s.offset
+    omega
+
+/-- The first new token's `pos` after `scanSingleQuoted` is `s.currentPos`. -/
+private theorem scanSingleQuoted_first_new_pos (s : ScannerState)
+    (s' : ScannerState) (hok : scanSingleQuoted s = .ok s')
+    (h_lt : s.tokens.size < s'.tokens.size) :
+    (s'.tokens[s.tokens.size]'h_lt).pos = s.currentPos := by
+  unfold scanSingleQuoted at hok; simp only [bind, Except.bind] at hok
+  split at hok <;> try contradiction
+  rename_i heq
+  have h_collect := ScanHelpers.collectSingleQuotedLoop_preserves_tokens s.advance "" _ _ _ _ _ _ heq
+  have h_adv := advance_preserves_tokens s
+  split at hok
+  · split at hok <;> try contradiction
+    injection hok with h_eq; subst h_eq; dsimp only []
+    apply first_new_pos_emitAt; rw [h_collect, h_adv]
+  · injection hok with h_eq; subst h_eq; dsimp only []
+    apply first_new_pos_emitAt; rw [h_collect, h_adv]
+
+theorem scanSingleQuoted_preserves_LineariseFit (s s' : ScannerState)
+    (h_eq : scanSingleQuoted s = .ok s') (h : LineariseFit s) : LineariseFit s' := by
+  apply LineariseFit_via_first_new_strict s s'
+    (scanSingleQuoted_preserves_ScanInv s s' h.1 h_eq)
+    (scanSingleQuoted_preserves_pendingKeys s s' h_eq)
+    (by have := ScanHelpers.scanSingleQuoted_adds_one_token s s' h_eq; omega)
+    (fun i hi => ScanHelpers.scanSingleQuoted_preserves_prefix s s' h_eq i hi)
+    ?first_new
+    h
+  case first_new =>
+    have h_size : s.tokens.size < s'.tokens.size := by
+      have := ScanHelpers.scanSingleQuoted_adds_one_token s s' h_eq; omega
+    rw [scanSingleQuoted_first_new_pos s s' h_eq h_size]
+    show s.offset ≤ s.offset
+    omega
+
+/-- The first new token's `pos` after `scanPlainScalar` is `s.currentPos`. -/
+private theorem scanPlainScalar_first_new_pos (s : ScannerState)
+    (s' : ScannerState) (hok : scanPlainScalar s = .ok s')
+    (h_lt : s.tokens.size < s'.tokens.size) :
+    (s'.tokens[s.tokens.size]'h_lt).pos = s.currentPos := by
+  unfold scanPlainScalar at hok; simp only [bind, Except.bind] at hok
+  split at hok <;> try contradiction
+  rename_i heq
+  have h_collect := ScanHelpers.collectPlainScalarLoop_preserves_tokens s "" "" _ _ _ _ _ heq
+  injection hok with h_eq; subst h_eq; dsimp only []
+  apply first_new_pos_emitAt; rw [h_collect]
+
+theorem scanPlainScalar_preserves_LineariseFit (s s' : ScannerState)
+    (h_eq : scanPlainScalar s = .ok s') (h : LineariseFit s) : LineariseFit s' := by
+  apply LineariseFit_via_first_new_strict s s'
+    (scanPlainScalar_preserves_ScanInv s s' h.1 h_eq)
+    (scanPlainScalar_preserves_pendingKeys s s' h_eq)
+    (by have := ScanHelpers.scanPlainScalar_adds_one_token s s' h_eq; omega)
+    (fun i hi => ScanHelpers.scanPlainScalar_preserves_prefix s s' h_eq i hi)
+    ?first_new
+    h
+  case first_new =>
+    have h_size : s.tokens.size < s'.tokens.size := by
+      have := ScanHelpers.scanPlainScalar_adds_one_token s s' h_eq; omega
+    rw [scanPlainScalar_first_new_pos s s' h_eq h_size]
+    show s.offset ≤ s.offset
+    omega
+
+/-- The first new token's `pos` after `scanBlockScalarBody` is `startPos`
+    (provided the loop's preserves-tokens chain holds). -/
+private theorem scanBlockScalarBody_first_new_pos (s_orig s_nl : ScannerState)
+    (chomp : ChompStyle) (expl : Option Nat) (isLit : Bool) (startPos : YamlPos)
+    (s' : ScannerState) (h_tok : s_nl.tokens = s_orig.tokens)
+    (h : scanBlockScalarBody s_orig s_nl chomp expl isLit startPos = .ok s')
+    (h_lt : s_orig.tokens.size < s'.tokens.size) :
+    (s'.tokens[s_orig.tokens.size]'h_lt).pos = startPos := by
+  unfold scanBlockScalarBody at h
+  simp only [] at h
+  repeat (any_goals (split at h))
+  all_goals (try contradiction)
+  all_goals (simp only [Except.ok.injEq] at h; subst h; dsimp only [])
+  all_goals
+    (apply first_new_pos_emitAt
+     rw [ScanHelpers.collectBlockScalarLoop_preserves_tokens, h_tok])
+
+/-- The first new token's `pos` after `scanBlockScalar` is `s.currentPos`. -/
+private theorem scanBlockScalar_first_new_pos (s : ScannerState)
+    (s' : ScannerState) (hok : scanBlockScalar s = .ok s')
+    (h_lt : s.tokens.size < s'.tokens.size) :
+    (s'.tokens[s.tokens.size]'h_lt).pos = s.currentPos := by
+  unfold scanBlockScalar at hok
+  simp only [] at hok
+  split at hok
+  · contradiction
+  · exact scanBlockScalarBody_first_new_pos s _ _ _ _ _ s'
+      (by rw [ScanHelpers.scanBlockScalarConsumeNewline_preserves_tokens _ _ (by assumption),
+              ScanHelpers.scanBlockScalarSkipComment_preserves_tokens,
+              skipWhitespace_preserves_tokens,
+              ScanHelpers.parseBlockHeaderLoop_preserves_tokens,
+              advance_preserves_tokens]) hok h_lt
+
+theorem scanBlockScalar_preserves_LineariseFit (s s' : ScannerState)
+    (h_eq : scanBlockScalar s = .ok s') (h : LineariseFit s) : LineariseFit s' := by
+  apply LineariseFit_via_first_new_strict s s'
+    (scanBlockScalar_preserves_ScanInv s s' h.1 h_eq)
+    (scanBlockScalar_preserves_pendingKeys s s' h_eq)
+    (by have := ScanHelpers.scanBlockScalar_adds_one_token s s' h_eq; omega)
+    (fun i hi => ScanHelpers.scanBlockScalar_preserves_prefix s s' h_eq i hi)
+    ?first_new
+    h
+  case first_new =>
+    have h_size : s.tokens.size < s'.tokens.size := by
+      have := ScanHelpers.scanBlockScalar_adds_one_token s s' h_eq; omega
+    rw [scanBlockScalar_first_new_pos s s' h_eq h_size]
+    show s.offset ≤ s.offset
+    omega
+
 /-!
 ### scanNextToken preserves ScanInv
 
