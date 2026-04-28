@@ -958,14 +958,32 @@ count unchanged at 21.
   subsequent new tokens inherit it via ScanInv's tokens-sorted property
   at `s'`.
 
-  Remaining for Step 8b (~400 LOC): per-op leaves for `unwindIndents`,
-  `pushSequenceIndent`/`pushMappingIndent`, `scanBlockEntry`, `scanKey`,
-  `scanValue` (Class C via setPendingKeyKind), `scanAnchorOrAlias`,
-  `scanTag`, `scanBlockScalar`, `scanDoubleQuoted`, `scanSingleQuoted`
-  (+ Class C wrapper via setPendingKeyEndLine), `scanPlainScalar`,
+  Step 8b continued (2026-04-27, ~234 LOC across two more commits):
+  `bdd27512` adds `scanBlockEntry_preserves_LineariseFit` and
+  `scanKey_preserves_LineariseFit` (push*Indent + emit + advance chain).
+  Two private helpers `pushSequenceIndent_emit_first_new_offset` /
+  `pushMappingIndent_emit_first_new_offset` discharge the first-new-token
+  bound via case-split on whether the indent push fires (col vs
+  currentIndent).  `b83e8252` adds three reusable infrastructure
+  helpers: `offset_mono_via_first_new` (derives s.offset ≤ s'.offset
+  from first_new + ScanInv at s'), `LineariseFit_via_first_new_strict`
+  (auto-derives h_off_mono for ops that always add ≥ 1 token), and
+  `first_new_pos_emitAt` (extracts pos.offset for emitAt-class ops
+  via index alignment under `subst`).
+
+  Remaining for Step 8b (~280 LOC): per-op leaves for `unwindIndents`,
+  `pushSequenceIndent`/`pushMappingIndent`, `scanValue` (Class C via
+  setPendingKeyKind — needs LineariseFit_extend generalization for
+  pendingKeys-kind-only changes), `scanAnchorOrAlias`, `scanTag`,
+  `scanBlockScalar`, `scanDoubleQuoted`, `scanSingleQuoted` (+ Class C
+  wrapper via setPendingKeyEndLine), `scanPlainScalar`,
   `scanDocumentStart`, `scanDocumentEnd`, `scanDirective`, plus
   `skipToContent_preserves_LineariseFit` (deferred — its `_offset_ge`
-  dependency is in §5.2, defined later in the file).  Then dispatcher
+  dependency is in §5.2, defined later in the file).  The
+  scanAnchor/scanTag leaves were prototyped using
+  `first_new_pos_emitAt` but hit a fuel-parameter definitional
+  mismatch between `collect*Loop`'s expected signature and the call-
+  site fuel expression — needs a different framing.  Then dispatcher
   composition (4 dispatchers + `allowDir_ite`), `preprocess`,
   `scanNextToken`, `scanLoopFull`.  Step 9 (~50 LOC) composes
   `scanFiltered_produces_valid_tokens` using
