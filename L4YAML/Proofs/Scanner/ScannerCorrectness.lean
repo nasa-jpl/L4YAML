@@ -11378,6 +11378,35 @@ theorem LineariseFit_via_no_change (s s' : ScannerState)
   · exact h_off_mono
   · exact h
 
+/-! #### Convenience: only need first-new-token's offset bound
+
+For multi-emit Class A ops, instead of bounding *every* new token's
+offset, it suffices to bound the *first* new token's offset.  ScanInv
+at `s'` gives sorted tokens, so all subsequent new tokens (at indices
+> `s.tokens.size`) inherit the bound from the first new token's. -/
+theorem LineariseFit_via_first_new (s s' : ScannerState)
+    (h_inv' : ScanInv s')
+    (h_pks_eq : s'.pendingKeys = s.pendingKeys)
+    (h_size_mono : s.tokens.size ≤ s'.tokens.size)
+    (h_prefix : ∀ i (hi : i < s.tokens.size),
+        s'.tokens[i]'(by omega) = s.tokens[i]'hi)
+    (h_first_new : ∀ (h_lt : s.tokens.size < s'.tokens.size),
+        s.offset ≤ (s'.tokens[s.tokens.size]'h_lt).pos.offset)
+    (h_off_mono : s.offset ≤ s'.offset)
+    (h : LineariseFit s) : LineariseFit s' := by
+  apply LineariseFit_extend s s' h_inv' h_pks_eq h_size_mono h_prefix
+    ?new_ge h_off_mono h
+  case new_ge =>
+    intro i hi h_ge
+    by_cases h_eq : i = s.tokens.size
+    · subst h_eq
+      exact h_first_new hi
+    · -- i > s.tokens.size, use ScanInv's sorted property
+      have h_lt : s.tokens.size < i := by omega
+      have h_lt_size : s.tokens.size < s'.tokens.size := by omega
+      have h_sorted := h_inv'.1 ⟨s.tokens.size, h_lt_size⟩ ⟨i, hi⟩ h_lt
+      exact Nat.le_trans (h_first_new h_lt_size) h_sorted
+
 /-! #### Class A passthrough leaves (`*_preserves_LineariseFit`)
 
 For each scanner op that preserves both `tokens` and `pendingKeys` and
@@ -11582,6 +11611,52 @@ theorem scanFlowMappingStart_preserves_LineariseFit (s : ScannerState)
     unfold scanFlowMappingStart
     simp only []
     exact this
+
+theorem scanFlowEntry_preserves_LineariseFit (s s' : ScannerState)
+    (h_eq : scanFlowEntry s = .ok s') (h : LineariseFit s) : LineariseFit s' := by
+  apply LineariseFit_via_first_new s s'
+    (scanFlowEntry_preserves_ScanInv s h.1 s' h_eq)
+    (scanFlowEntry_preserves_pendingKeys s s' h_eq)
+    (by have := ScanHelpers.scanFlowEntry_adds_one_token s s' h_eq; omega)
+    (fun i hi => ScanHelpers.scanFlowEntry_preserves_prefix s s' h_eq i hi)
+    ?first_new
+    ?off_mono
+    h
+  case first_new =>
+    intro h_lt
+    -- The first new token comes from `s.emit .flowEntry` at currentPos.
+    show s.offset ≤ (s'.tokens[s.tokens.size]'h_lt).pos.offset
+    unfold scanFlowEntry at h_eq
+    simp only [bind, Except.bind, pure, Except.pure] at h_eq
+    split at h_eq
+    · split at h_eq
+      · simp at h_eq
+      · simp only [Except.ok.injEq] at h_eq; subst h_eq
+        simp only [advance_preserves_tokens, ScannerState.emit, Array.getElem_push_eq,
+                   ScannerState.currentPos]
+        omega
+    · simp only [Except.ok.injEq] at h_eq; subst h_eq
+      simp only [advance_preserves_tokens, ScannerState.emit, Array.getElem_push_eq,
+                 ScannerState.currentPos]
+      omega
+  case off_mono =>
+    -- After successful scanFlowEntry: offset increases by emit (no-op) + advance.
+    show s.offset ≤ s'.offset
+    unfold scanFlowEntry at h_eq
+    simp only [bind, Except.bind, pure, Except.pure] at h_eq
+    split at h_eq
+    · split at h_eq
+      · simp at h_eq
+      · simp only [Except.ok.injEq] at h_eq; subst h_eq
+        have := ScannerProgress.advance_offset_ge (s.emit .flowEntry)
+        rw [ScannerProgress.emit_offset] at this
+        simp only []
+        exact this
+    · simp only [Except.ok.injEq] at h_eq; subst h_eq
+      have := ScannerProgress.advance_offset_ge (s.emit .flowEntry)
+      rw [ScannerProgress.emit_offset] at this
+      simp only []
+      exact this
 
 /-!
 ### scanNextToken preserves ScanInv
