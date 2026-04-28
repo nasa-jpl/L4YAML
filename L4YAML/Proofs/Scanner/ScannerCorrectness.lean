@@ -11658,6 +11658,186 @@ theorem scanFlowEntry_preserves_LineariseFit (s s' : ScannerState)
       simp only []
       exact this
 
+/-! ##### `scanBlockEntry` and `scanKey` (push*Indent + emit + advance)
+
+These ops may add 1 or 2 tokens (pushSequenceIndent/pushMappingIndent
+optionally emits .blockSequenceStart/.blockMappingStart at currentPos;
+the main op then emits .blockEntry/.key at currentPos).  In both cases,
+the FIRST new token is at `s.currentPos` with offset = s.offset, so
+`LineariseFit_via_first_new` discharges. -/
+
+/-- After `(pushSequenceIndent s col).emit tok`, the token at `s.tokens.size`
+    has `pos.offset = s.offset` (whether or not pushSequenceIndent fired). -/
+private theorem pushSequenceIndent_emit_first_new_offset (s : ScannerState) (col : Int)
+    (tok : YamlToken)
+    (h_lt : s.tokens.size <
+      ((pushSequenceIndent s col).emit tok).tokens.size) :
+    (((pushSequenceIndent s col).emit tok).tokens[s.tokens.size]'h_lt).pos.offset
+      = s.offset := by
+  by_cases hfire : col > s.currentIndent
+  · -- pushSequenceIndent fires: first new token is .blockSequenceStart at s.currentPos
+    have h_psi : pushSequenceIndent s col =
+        { s.emit .blockSequenceStart with
+            indents := (s.emit .blockSequenceStart).indents.push
+              { column := col, isSequence := true } } := by
+      unfold pushSequenceIndent
+      split
+      · rfl
+      · contradiction
+    have h_inner_lt : s.tokens.size <
+        (s.tokens.push ⟨s.currentPos, .blockSequenceStart, s.currentPos⟩).size := by
+      rw [Array.size_push]; omega
+    have h_target :
+        (((pushSequenceIndent s col).emit tok).tokens[s.tokens.size]'h_lt) =
+        ⟨s.currentPos, .blockSequenceStart, s.currentPos⟩ := by
+      simp only [h_psi]
+      simp only [ScannerState.emit, Array.getElem_push_lt h_inner_lt, Array.getElem_push_eq]
+    rw [h_target]
+    rfl
+  · -- pushSequenceIndent doesn't fire: tokens = s.tokens.push (tok at s.currentPos)
+    have h_psi : pushSequenceIndent s col = s := by
+      unfold pushSequenceIndent
+      split
+      · contradiction
+      · rfl
+    have h_target :
+        (((pushSequenceIndent s col).emit tok).tokens[s.tokens.size]'h_lt) =
+        ⟨s.currentPos, tok, s.currentPos⟩ := by
+      simp only [h_psi]
+      simp only [ScannerState.emit, Array.getElem_push_eq]
+    rw [h_target]
+    rfl
+
+/-- After `(pushMappingIndent s col).emit tok`, the token at `s.tokens.size`
+    has `pos.offset = s.offset` (whether or not pushMappingIndent fired). -/
+private theorem pushMappingIndent_emit_first_new_offset (s : ScannerState) (col : Int)
+    (tok : YamlToken)
+    (h_lt : s.tokens.size <
+      ((pushMappingIndent s col).emit tok).tokens.size) :
+    (((pushMappingIndent s col).emit tok).tokens[s.tokens.size]'h_lt).pos.offset
+      = s.offset := by
+  by_cases hfire : col > s.currentIndent
+  · have h_pmi : pushMappingIndent s col =
+        { s.emit .blockMappingStart with
+            indents := (s.emit .blockMappingStart).indents.push
+              { column := col, isSequence := false } } := by
+      unfold pushMappingIndent
+      split
+      · rfl
+      · contradiction
+    have h_inner_lt : s.tokens.size <
+        (s.tokens.push ⟨s.currentPos, .blockMappingStart, s.currentPos⟩).size := by
+      rw [Array.size_push]; omega
+    have h_target :
+        (((pushMappingIndent s col).emit tok).tokens[s.tokens.size]'h_lt) =
+        ⟨s.currentPos, .blockMappingStart, s.currentPos⟩ := by
+      simp only [h_pmi]
+      simp only [ScannerState.emit, Array.getElem_push_lt h_inner_lt, Array.getElem_push_eq]
+    rw [h_target]
+    rfl
+  · have h_pmi : pushMappingIndent s col = s := by
+      unfold pushMappingIndent
+      split
+      · contradiction
+      · rfl
+    have h_target :
+        (((pushMappingIndent s col).emit tok).tokens[s.tokens.size]'h_lt) =
+        ⟨s.currentPos, tok, s.currentPos⟩ := by
+      simp only [h_pmi]
+      simp only [ScannerState.emit, Array.getElem_push_eq]
+    rw [h_target]
+    rfl
+
+theorem scanBlockEntry_preserves_LineariseFit (s s' : ScannerState)
+    (h_eq : scanBlockEntry s = .ok s') (h : LineariseFit s) : LineariseFit s' := by
+  apply LineariseFit_via_first_new s s'
+    (scanBlockEntry_preserves_ScanInv s s' h.1 h_eq)
+    (scanBlockEntry_preserves_pendingKeys s s' h_eq)
+    (by have := ScanHelpers.scanBlockEntry_adds_tokens s s' h_eq; omega)
+    (fun i hi => ScanHelpers.scanBlockEntry_preserves_prefix s s' h_eq i hi)
+    ?first_new
+    ?off_mono
+    h
+  case first_new =>
+    intro h_lt
+    show s.offset ≤ (s'.tokens[s.tokens.size]'h_lt).pos.offset
+    unfold scanBlockEntry at h_eq
+    simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h_eq
+    repeat (any_goals (split at h_eq))
+    all_goals (try contradiction)
+    all_goals (simp only [Except.ok.injEq] at h_eq; subst h_eq)
+    all_goals first
+      | (dsimp only []
+         simp only [advance_preserves_tokens]
+         rw [pushSequenceIndent_emit_first_new_offset s s.col .blockEntry]
+         omega)
+      | (dsimp only []
+         simp only [advance_preserves_tokens, ScannerState.emit, Array.getElem_push_eq,
+                    ScannerState.currentPos]
+         omega)
+  case off_mono =>
+    show s.offset ≤ s'.offset
+    unfold scanBlockEntry at h_eq
+    simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h_eq
+    repeat (any_goals (split at h_eq))
+    all_goals (try contradiction)
+    all_goals (simp only [Except.ok.injEq] at h_eq; subst h_eq)
+    all_goals first
+      | (dsimp only []
+         have h_pi := ScannerProgress.pushSequenceIndent_offset s s.col
+         have := ScannerProgress.advance_offset_ge ((pushSequenceIndent s s.col).emit .blockEntry)
+         rw [ScannerProgress.emit_offset, h_pi] at this
+         exact this)
+      | (dsimp only []
+         have := ScannerProgress.advance_offset_ge (s.emit .blockEntry)
+         rw [ScannerProgress.emit_offset] at this
+         exact this)
+
+theorem scanKey_preserves_LineariseFit (s s' : ScannerState)
+    (h_eq : scanKey s = .ok s') (h : LineariseFit s) : LineariseFit s' := by
+  apply LineariseFit_via_first_new s s'
+    (scanKey_preserves_ScanInv s s' h.1 h_eq)
+    (scanKey_preserves_pendingKeys s s' h_eq)
+    (by have := scanKey_adds_one_token s s' h_eq; omega)
+    (fun i hi => ScanHelpers.scanKey_preserves_prefix s s' h_eq i hi)
+    ?first_new
+    ?off_mono
+    h
+  case first_new =>
+    intro h_lt
+    show s.offset ≤ (s'.tokens[s.tokens.size]'h_lt).pos.offset
+    unfold scanKey at h_eq
+    simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h_eq
+    repeat (any_goals (split at h_eq))
+    all_goals (try contradiction)
+    all_goals (simp only [Except.ok.injEq] at h_eq; subst h_eq)
+    all_goals first
+      | (dsimp only []
+         simp only [advance_preserves_tokens]
+         rw [pushMappingIndent_emit_first_new_offset s s.col .key]
+         omega)
+      | (dsimp only []
+         simp only [advance_preserves_tokens, ScannerState.emit, Array.getElem_push_eq,
+                    ScannerState.currentPos]
+         omega)
+  case off_mono =>
+    show s.offset ≤ s'.offset
+    unfold scanKey at h_eq
+    simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h_eq
+    repeat (any_goals (split at h_eq))
+    all_goals (try contradiction)
+    all_goals (simp only [Except.ok.injEq] at h_eq; subst h_eq)
+    all_goals first
+      | (dsimp only []
+         have h_pi := ScannerProgress.pushMappingIndent_offset s s.col
+         have := ScannerProgress.advance_offset_ge ((pushMappingIndent s s.col).emit .key)
+         rw [ScannerProgress.emit_offset, h_pi] at this
+         exact this)
+      | (dsimp only []
+         have := ScannerProgress.advance_offset_ge (s.emit .key)
+         rw [ScannerProgress.emit_offset] at this
+         exact this)
+
 /-!
 ### scanNextToken preserves ScanInv
 
