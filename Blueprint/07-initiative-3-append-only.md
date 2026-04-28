@@ -914,10 +914,11 @@ count unchanged at 21.
      hypotheses (~120 LOC).
   9. Compose into `scanFiltered_produces_valid_tokens` (~50 LOC).
 
-  Status (2026-04-28): Steps 1-7, 8a, 8c ✓ done; Step 8b ~77% complete
-  (23 of ~30 per-op leaves landed including the Class C `scanValue`
-  composition and the multi-emit `scanDocumentStart`; remaining are
-  `scanDocumentEnd` / `scanDirective` and the dispatcher chain).
+  Status (2026-04-28): Steps 1-7, 8a, 8c ✓ done; Step 8b ~80% complete
+  (24 of ~30 per-op leaves landed including the Class C `scanValue`
+  composition and both multi-emit document-marker scanners
+  (`scanDocumentStart`, `scanDocumentEnd`); remaining are
+  `scanDirective` and the dispatcher chain).
   Eight prior commits (~2434 LOC): `c6bfab0a` saveSimpleKey discharge,
   `1e6b4741` Class A/B/C foundation, `de7610d9` Blueprint update,
   `c4dc838a` ~30 Class A *_preserves_pendingKeys leaves, `fbd330d4`
@@ -964,7 +965,7 @@ count unchanged at 21.
   - `offset_mono_via_first_new` — derives s.offset ≤ s'.offset from
     first_new bound + ScanInv at s'.
 
-  *Per-op leaves landed (23 total, in dependency order):*
+  *Per-op leaves landed (24 total, in dependency order):*
   - **Class A passthroughs** (`0ec064a7`): `advance`, `skipSpaces`,
     `skipWhitespace`, `skipToEndOfLine`, `consumeNewline`.
   - **Single-emit Class A** (`f35a04ac`, `4af1fc1a`, `ef90bd62`):
@@ -988,10 +989,14 @@ count unchanged at 21.
     field-updates `pendingKeys` via `setPendingKeyKind` AND emits ≥ 1
     token (always trailing `.value`, optionally preceded by
     `.blockMappingStart` from prepare's pushMappingIndent branch).
-  - **Multi-emit composition** (`811622ca`): `scanDocumentStart` —
-    `unwindIndents s (-1)` (variable `.blockEnd` count) → field-update
-    of `simpleKey` / `pendingKeyActive` → `.emit .documentStart` →
-    `.advanceN 3` → outer record update.
+  - **Multi-emit composition** (`811622ca`, `81391a63`):
+    `scanDocumentStart` — `unwindIndents s (-1)` (variable `.blockEnd`
+    count) → field-update of `simpleKey` / `pendingKeyActive` →
+    `.emit .documentStart` → `.advanceN 3` → outer record update.
+    `scanDocumentEnd` — same shape inside an `Except` chain (one
+    early `directiveWithoutDocument` exit and a trailing
+    `skipDocEndWhitespace` + content-validation tail that doesn't
+    affect the returned state).
 
   *Class C building blocks landed (commit `6cbc43d6`):*
   - `setPendingKeyKind_pos`, `setPendingKeyEndLine_pos` — siblings to
@@ -1037,16 +1042,25 @@ count unchanged at 21.
     pre-existing `scanDocumentStart_preserves_{ScanInv,pendingKeys}`
     and `ScanHelpers.scanDocumentStart_{adds_tokens,preserves_prefix}`.
 
+  *`scanDocumentEnd_preserves_LineariseFit` landed (commit `81391a63`):*
+  - `scanDocumentEnd_first_new_pos` — parallel to the scanDocumentStart
+    helper.  All success branches of the Except chain (validation
+    `none` / `'#'` / newline) collapse to the same `result`, so the
+    canonical equality `s'.tokens = (s_kd.emit .documentEnd).tokens`
+    is extracted via `repeat (any_goals (split at h)) … all_goals
+    subst` followed by `dsimp only []; rw [advanceN_preserves_tokens]`.
+    Same case-split (`unwindIndents` fired vs not) closes the proof.
+    The trailing `skipDocEndWhitespace` and content-validation match
+    don't affect the returned state, so no separate
+    `skipDocEndWhitespace_preserves_LineariseFit` micro-leaf was
+    needed.
+  - Composes via `LineariseFit_via_first_new_strict` threading the
+    pre-existing `scanDocumentEnd_preserves_{ScanInv,pendingKeys}` and
+    `ScanHelpers.scanDocumentEnd_{adds_tokens,preserves_prefix}`.
+
   **Remaining for Step 8b — concrete next steps**
 
-  1. **`scanDocumentEnd_preserves_LineariseFit`** (~80 LOC).  Same
-     shape as scanDocumentStart but inside an Except chain; one early
-     exit (`directiveWithoutDocument`) plus the trailing
-     `skipDocEndWhitespace` + content validation that doesn't emit.
-     Will need a `skipDocEndWhitespace_preserves_LineariseFit` micro
-     leaf (Class A: tokens unchanged, offset monotone).
-
-  2. **`scanDirective_preserves_LineariseFit`** (~80 LOC).  Branches:
+  1. **`scanDirective_preserves_LineariseFit`** (~80 LOC).  Branches:
      YAML directive (Class C — uses `setPendingKeyEndLine` indirectly
      through quoted scalars? no — directives don't touch pendingKeys),
      TAG directive, and reserved.  All emit one `.versionDirective` /
@@ -1055,7 +1069,7 @@ count unchanged at 21.
      need `_preserves_tokens` lemmas (likely already exist for the
      dispatcher chain).
 
-  3. **Dispatcher composition** (~150 LOC).  Mirror the existing
+  2. **Dispatcher composition** (~150 LOC).  Mirror the existing
      `*_preserves_pendingKeys` chain:
      - `dispatchStructural_preserves_LineariseFit`
      - `dispatchFlowIndicators_preserves_LineariseFit`
@@ -1064,7 +1078,7 @@ count unchanged at 21.
      - `preprocess_preserves_LineariseFit`
      - `scanNextToken_preserves_LineariseFit`
 
-  4. **`scanLoopFull_preserves_LineariseFit`** (~30 LOC) by induction
+  3. **`scanLoopFull_preserves_LineariseFit`** (~30 LOC) by induction
      on fuel, identical shape to
      `scanLoopFull_preserves_PendingKeysWellIndexed`.
 
@@ -1074,13 +1088,13 @@ count unchanged at 21.
   and `linearise_positions_ordered`.  Folds naturally into J.3.4 since
   `ScannerPlainScalarValid` consumers need the same invariants.
 
-  *Cumulative session log (2026-04-27 → 2026-04-28):* 16 commits
+  *Cumulative session log (2026-04-27 → 2026-04-28):* 17 commits
   including `807b91df`, `0ec064a7`, `f35a04ac`, `4af1fc1a`, `ef90bd62`,
   `bdd27512`, `b83e8252`, `7046048b`, `8133ab94`, `d41f13b4`,
   `aaa5cc1e`, `4c664b58`, `067a6e35`, `6cbc43d6`, `9d1146a1`,
-  `1a8c8f0f`, `811622ca`.  Build green; sorry count unchanged at the
-  original Step 9 baseline (1 sorry in this file, the same count as
-  before Step 8b started).
+  `1a8c8f0f`, `811622ca`, `81391a63`.  Build green; sorry count
+  unchanged at the original Step 9 baseline (1 sorry in this file,
+  the same count as before Step 8b started).
 
 **J.3.4–J.3.6**: re-discharge consumers in dependency order, each
 substep removing its sorry-using declarations and the matching
