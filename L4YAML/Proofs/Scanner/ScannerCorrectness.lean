@@ -10860,6 +10860,429 @@ theorem scanLoopFull_preserves_PendingKeysWellIndexed
         h
 
 /-!
+### LineariseFit: bundle of position invariants on (tokens, pendingKeys)
+
+Added in **Phase J.3.3 step 8** (2026-04-27).  The invariant captures
+exactly the hypotheses `linearise_positions_ordered` (in
+`Proofs/Scanner/ScannerLinearise.lean`) consumes:
+
+* `PendingKeysWellIndexed` (existing): every entry's `insertBeforeIdx`
+  is in `[1, tokens.size]`.
+* **Sorted-pks**: pks are non-decreasing in both `insertBeforeIdx` and
+  `pos.offset` (saveSimpleKey appends with `idx = current size` and
+  `pos = currentPos`, both monotone).
+* **I1** (low-side fit): every token strictly before `e.insertBeforeIdx`
+  has offset ≤ `e.pos.offset`.  Holds because at save time, `e.pos =
+  currentPos` and ScanInv gives `tokens[i].offset ≤ currentPos`; later
+  emits only add tokens at indices ≥ `e.insertBeforeIdx`.
+* **I2** (high-side fit): every token at index ≥ `e.insertBeforeIdx`
+  has offset ≥ `e.pos.offset`.  Holds because new tokens emitted after
+  the save have offset ≥ `currentPos at save = e.pos.offset` (offset
+  monotonicity).
+* **I4** (offset bound): `e.pos.offset ≤ s.offset` (trivially true at
+  save time and preserved by offset monotonicity).
+
+Bundled with the tokens-sorted property from `ScanInv`, this gives the
+exact preconditions for `linearise_positions_ordered` at the scanFiltered
+call site. -/
+
+/-- The full positional well-formedness bundle on `(tokens, pendingKeys)`.
+
+    Uses explicit `Nat + bound` indexing throughout (rather than `Fin`)
+    so that mono lemmas can rewrite array equalities cleanly via
+    `array_get_eq_of_array_eq` without elaboration mismatch between
+    `arr[p]` (Fin) and `arr[p.val]'p.isLt` (Nat) elaborations. -/
+def LineariseFit (s : ScannerState) : Prop :=
+  ScanInv s ∧
+  PendingKeysWellIndexed s ∧
+  -- pks sorted (idx and pos both non-decreasing)
+  (∀ p q (hp : p < s.pendingKeys.size) (hq : q < s.pendingKeys.size), p < q →
+    (s.pendingKeys[p]'hp).insertBeforeIdx ≤ (s.pendingKeys[q]'hq).insertBeforeIdx) ∧
+  (∀ p q (hp : p < s.pendingKeys.size) (hq : q < s.pendingKeys.size), p < q →
+    (s.pendingKeys[p]'hp).pos.offset ≤ (s.pendingKeys[q]'hq).pos.offset) ∧
+  -- I1: tokens strictly before insertBeforeIdx have offset ≤ pos
+  (∀ p (hp : p < s.pendingKeys.size) i (hi : i < s.tokens.size),
+    i < (s.pendingKeys[p]'hp).insertBeforeIdx →
+    (s.tokens[i]'hi).pos.offset ≤ (s.pendingKeys[p]'hp).pos.offset) ∧
+  -- I2: tokens at/after insertBeforeIdx have offset ≥ pos
+  (∀ p (hp : p < s.pendingKeys.size) i (hi : i < s.tokens.size),
+    (s.pendingKeys[p]'hp).insertBeforeIdx ≤ i →
+    (s.pendingKeys[p]'hp).pos.offset ≤ (s.tokens[i]'hi).pos.offset) ∧
+  -- I4: pks pos bounded by current offset
+  (∀ p (hp : p < s.pendingKeys.size), (s.pendingKeys[p]'hp).pos.offset ≤ s.offset)
+
+/-- Indexing helper: array equality + same index gives element equality. -/
+private theorem array_get_eq_of_array_eq {α : Type _} {a b : Array α}
+    (h : a = b) (i : Nat) (h1 : i < a.size) (h2 : i < b.size) :
+    a[i]'h1 = b[i]'h2 := by subst h; rfl
+
+/-! #### Generic mono lemma: no-token-change ops preserve LineariseFit
+
+Class A leaves that leave `tokens` unchanged (skipSpaces, skipWhitespace,
+allowDir-ite, etc.) preserve every conjunct trivially (offset-mono only
+strengthens the `pos ≤ offset` bound; pks unchanged so all pks-side
+conjuncts hold; tokens unchanged so I1/I2 hold). -/
+theorem LineariseFit_no_token_change (s s' : ScannerState)
+    (h_inv' : ScanInv s')
+    (h_pks_eq : s'.pendingKeys = s.pendingKeys)
+    (h_tok_eq : s'.tokens = s.tokens)
+    (h_off_mono : s'.offset ≥ s.offset)
+    (h : LineariseFit s) : LineariseFit s' := by
+  obtain ⟨_, h_well, h_idx, h_pos, h_lo, h_hi, h_off⟩ := h
+  refine ⟨h_inv', ?_, ?_, ?_, ?_, ?_, ?_⟩
+  · -- PendingKeysWellIndexed
+    exact PendingKeysWellIndexed_mono s s' h_pks_eq
+      (by rw [h_tok_eq]; omega) h_well
+  · -- pks sorted by idx
+    intro p q hp hq hpq
+    have hp_s : p < s.pendingKeys.size := by
+      have h_size_eq : s'.pendingKeys.size = s.pendingKeys.size := by rw [h_pks_eq]
+      omega
+    have hq_s : q < s.pendingKeys.size := by
+      have h_size_eq : s'.pendingKeys.size = s.pendingKeys.size := by rw [h_pks_eq]
+      omega
+    have hp_get : s'.pendingKeys[p]'hp = s.pendingKeys[p]'hp_s :=
+      array_get_eq_of_array_eq h_pks_eq p hp hp_s
+    have hq_get : s'.pendingKeys[q]'hq = s.pendingKeys[q]'hq_s :=
+      array_get_eq_of_array_eq h_pks_eq q hq hq_s
+    rw [hp_get, hq_get]
+    exact h_idx p q hp_s hq_s hpq
+  · -- pks sorted by pos
+    intro p q hp hq hpq
+    have hp_s : p < s.pendingKeys.size := by
+      have h_size_eq : s'.pendingKeys.size = s.pendingKeys.size := by rw [h_pks_eq]
+      omega
+    have hq_s : q < s.pendingKeys.size := by
+      have h_size_eq : s'.pendingKeys.size = s.pendingKeys.size := by rw [h_pks_eq]
+      omega
+    have hp_get : s'.pendingKeys[p]'hp = s.pendingKeys[p]'hp_s :=
+      array_get_eq_of_array_eq h_pks_eq p hp hp_s
+    have hq_get : s'.pendingKeys[q]'hq = s.pendingKeys[q]'hq_s :=
+      array_get_eq_of_array_eq h_pks_eq q hq hq_s
+    rw [hp_get, hq_get]
+    exact h_pos p q hp_s hq_s hpq
+  · -- I1
+    intro p hp i hi h_lt
+    have hp_s : p < s.pendingKeys.size := by
+      have h_size_eq : s'.pendingKeys.size = s.pendingKeys.size := by rw [h_pks_eq]
+      omega
+    have hi_s : i < s.tokens.size := by
+      have h_size_eq : s'.tokens.size = s.tokens.size := by rw [h_tok_eq]
+      omega
+    have h_pks_get : s'.pendingKeys[p]'hp = s.pendingKeys[p]'hp_s :=
+      array_get_eq_of_array_eq h_pks_eq p hp hp_s
+    have h_tok_get : s'.tokens[i]'hi = s.tokens[i]'hi_s :=
+      array_get_eq_of_array_eq h_tok_eq i hi hi_s
+    rw [h_pks_get, h_tok_get]
+    rw [h_pks_get] at h_lt
+    exact h_lo p hp_s i hi_s h_lt
+  · -- I2
+    intro p hp i hi h_ge
+    have hp_s : p < s.pendingKeys.size := by
+      have h_size_eq : s'.pendingKeys.size = s.pendingKeys.size := by rw [h_pks_eq]
+      omega
+    have hi_s : i < s.tokens.size := by
+      have h_size_eq : s'.tokens.size = s.tokens.size := by rw [h_tok_eq]
+      omega
+    have h_pks_get : s'.pendingKeys[p]'hp = s.pendingKeys[p]'hp_s :=
+      array_get_eq_of_array_eq h_pks_eq p hp hp_s
+    have h_tok_get : s'.tokens[i]'hi = s.tokens[i]'hi_s :=
+      array_get_eq_of_array_eq h_tok_eq i hi hi_s
+    rw [h_pks_get, h_tok_get]
+    rw [h_pks_get] at h_ge
+    exact h_hi p hp_s i hi_s h_ge
+  · -- I4: pos ≤ offset
+    intro p hp
+    have hp_s : p < s.pendingKeys.size := by
+      have h_size_eq : s'.pendingKeys.size = s.pendingKeys.size := by rw [h_pks_eq]
+      omega
+    have h_pks_get : s'.pendingKeys[p]'hp = s.pendingKeys[p]'hp_s :=
+      array_get_eq_of_array_eq h_pks_eq p hp hp_s
+    rw [h_pks_get]
+    exact Nat.le_trans (h_off p hp_s) h_off_mono
+
+/-! #### Mono lemma: emit-one (single token append) preserves LineariseFit
+
+Covers `emit`, `emitAt` at startPos, and any composite that adds exactly
+one token whose offset is between `s.offset` (old) and `s'.offset` (new). -/
+theorem LineariseFit_emit_one (s s' : ScannerState)
+    (h_inv' : ScanInv s')
+    (h_pks_eq : s'.pendingKeys = s.pendingKeys)
+    (h_size : s'.tokens.size = s.tokens.size + 1)
+    (h_old : ∀ i (hi : i < s.tokens.size),
+        (s'.tokens[i]'(by omega)).pos.offset = (s.tokens[i]'hi).pos.offset)
+    (h_new_ge : (s'.tokens[s.tokens.size]'(by omega)).pos.offset ≥ s.offset)
+    (h_off_mono : s'.offset ≥ s.offset)
+    (h : LineariseFit s) : LineariseFit s' := by
+  obtain ⟨_, h_well, h_idx, h_pos, h_lo, h_hi, h_off⟩ := h
+  refine ⟨h_inv', ?_, ?_, ?_, ?_, ?_, ?_⟩
+  · exact PendingKeysWellIndexed_mono s s' h_pks_eq (by omega) h_well
+  · intro p q hp hq hpq
+    have hp_s : p < s.pendingKeys.size := by
+      have h_size_eq : s'.pendingKeys.size = s.pendingKeys.size := by rw [h_pks_eq]
+      omega
+    have hq_s : q < s.pendingKeys.size := by
+      have h_size_eq : s'.pendingKeys.size = s.pendingKeys.size := by rw [h_pks_eq]
+      omega
+    have hp_get : s'.pendingKeys[p]'hp = s.pendingKeys[p]'hp_s :=
+      array_get_eq_of_array_eq h_pks_eq p hp hp_s
+    have hq_get : s'.pendingKeys[q]'hq = s.pendingKeys[q]'hq_s :=
+      array_get_eq_of_array_eq h_pks_eq q hq hq_s
+    rw [hp_get, hq_get]
+    exact h_idx p q hp_s hq_s hpq
+  · intro p q hp hq hpq
+    have hp_s : p < s.pendingKeys.size := by
+      have h_size_eq : s'.pendingKeys.size = s.pendingKeys.size := by rw [h_pks_eq]
+      omega
+    have hq_s : q < s.pendingKeys.size := by
+      have h_size_eq : s'.pendingKeys.size = s.pendingKeys.size := by rw [h_pks_eq]
+      omega
+    have hp_get : s'.pendingKeys[p]'hp = s.pendingKeys[p]'hp_s :=
+      array_get_eq_of_array_eq h_pks_eq p hp hp_s
+    have hq_get : s'.pendingKeys[q]'hq = s.pendingKeys[q]'hq_s :=
+      array_get_eq_of_array_eq h_pks_eq q hq hq_s
+    rw [hp_get, hq_get]
+    exact h_pos p q hp_s hq_s hpq
+  · -- I1
+    intro p hp i hi h_lt
+    have hp_s : p < s.pendingKeys.size := by
+      have h_size_eq : s'.pendingKeys.size = s.pendingKeys.size := by rw [h_pks_eq]
+      omega
+    have h_pks_get : s'.pendingKeys[p]'hp = s.pendingKeys[p]'hp_s :=
+      array_get_eq_of_array_eq h_pks_eq p hp hp_s
+    rw [h_pks_get]
+    rw [h_pks_get] at h_lt
+    by_cases hi_s : i < s.tokens.size
+    · rw [h_old i hi_s]; exact h_lo p hp_s i hi_s h_lt
+    · -- i = s.tokens.size: new index ≥ insertBeforeIdx ≤ s.tokens.size = i
+      have hi_eq : i = s.tokens.size := by omega
+      have ⟨_, h_idx_le⟩ := h_well.2 p hp_s
+      omega
+  · -- I2
+    intro p hp i hi h_ge
+    have hp_s : p < s.pendingKeys.size := by
+      have h_size_eq : s'.pendingKeys.size = s.pendingKeys.size := by rw [h_pks_eq]
+      omega
+    have h_pks_get : s'.pendingKeys[p]'hp = s.pendingKeys[p]'hp_s :=
+      array_get_eq_of_array_eq h_pks_eq p hp hp_s
+    rw [h_pks_get]
+    rw [h_pks_get] at h_ge
+    by_cases hi_s : i < s.tokens.size
+    · rw [h_old i hi_s]; exact h_hi p hp_s i hi_s h_ge
+    · have hi_eq : i = s.tokens.size := by omega
+      subst hi_eq
+      exact Nat.le_trans (h_off p hp_s) h_new_ge
+  · intro p hp
+    have hp_s : p < s.pendingKeys.size := by
+      have h_size_eq : s'.pendingKeys.size = s.pendingKeys.size := by rw [h_pks_eq]
+      omega
+    have h_pks_get : s'.pendingKeys[p]'hp = s.pendingKeys[p]'hp_s :=
+      array_get_eq_of_array_eq h_pks_eq p hp hp_s
+    rw [h_pks_get]
+    exact Nat.le_trans (h_off p hp_s) h_off_mono
+
+/-! #### Field-update lemma for setPendingKeyKind / setPendingKeyEndLine
+
+These ops preserve pendingKeys size, every entry's `insertBeforeIdx`,
+and every entry's `pos`.  Tokens unchanged.  All conjuncts of
+LineariseFit are preserved. -/
+theorem LineariseFit_field_update (s s' : ScannerState)
+    (h_inv' : ScanInv s')
+    (h_size_eq : s'.pendingKeys.size = s.pendingKeys.size)
+    (h_idx_eq : ∀ p (hp : p < s.pendingKeys.size)
+                  (hp' : p < s'.pendingKeys.size),
+                  (s'.pendingKeys[p]'hp').insertBeforeIdx
+                    = (s.pendingKeys[p]'hp).insertBeforeIdx)
+    (h_pos_eq : ∀ p (hp : p < s.pendingKeys.size)
+                  (hp' : p < s'.pendingKeys.size),
+                  (s'.pendingKeys[p]'hp').pos
+                    = (s.pendingKeys[p]'hp).pos)
+    (h_tok_eq : s'.tokens = s.tokens)
+    (h_off_eq : s'.offset = s.offset)
+    (h : LineariseFit s) : LineariseFit s' := by
+  obtain ⟨_, h_well, h_idx, h_pos, h_lo, h_hi, h_off⟩ := h
+  refine ⟨h_inv', ?_, ?_, ?_, ?_, ?_, ?_⟩
+  · exact PendingKeysWellIndexed_field_update s s' h_size_eq h_idx_eq
+      (by rw [h_tok_eq]; omega) h_well
+  · intro p q hp hq hpq
+    have hp_s : p < s.pendingKeys.size := by omega
+    have hq_s : q < s.pendingKeys.size := by omega
+    rw [h_idx_eq p hp_s hp, h_idx_eq q hq_s hq]
+    exact h_idx p q hp_s hq_s hpq
+  · intro p q hp hq hpq
+    have hp_s : p < s.pendingKeys.size := by omega
+    have hq_s : q < s.pendingKeys.size := by omega
+    rw [h_pos_eq p hp_s hp, h_pos_eq q hq_s hq]
+    exact h_pos p q hp_s hq_s hpq
+  · intro p hp i hi h_lt
+    have hp_s : p < s.pendingKeys.size := by omega
+    have hi_s : i < s.tokens.size := by
+      have h_size_eq : s'.tokens.size = s.tokens.size := by rw [h_tok_eq]
+      omega
+    have h_tok_get : s'.tokens[i]'hi = s.tokens[i]'hi_s :=
+      array_get_eq_of_array_eq h_tok_eq i hi hi_s
+    rw [h_tok_get, h_pos_eq p hp_s hp]
+    rw [h_idx_eq p hp_s hp] at h_lt
+    exact h_lo p hp_s i hi_s h_lt
+  · intro p hp i hi h_ge
+    have hp_s : p < s.pendingKeys.size := by omega
+    have hi_s : i < s.tokens.size := by
+      have h_size_eq : s'.tokens.size = s.tokens.size := by rw [h_tok_eq]
+      omega
+    have h_tok_get : s'.tokens[i]'hi = s.tokens[i]'hi_s :=
+      array_get_eq_of_array_eq h_tok_eq i hi hi_s
+    rw [h_tok_get, h_pos_eq p hp_s hp]
+    rw [h_idx_eq p hp_s hp] at h_ge
+    exact h_hi p hp_s i hi_s h_ge
+  · intro p hp
+    have hp_s : p < s.pendingKeys.size := by omega
+    rw [h_pos_eq p hp_s hp, h_off_eq]
+    exact h_off p hp_s
+
+/-! #### saveSimpleKey-specific preservation
+
+`saveSimpleKey` either is identity on pendingKeys (guard fails) or
+appends one new entry with `insertBeforeIdx = s.tokens.size` and
+`pos = s.currentPos` (offset = `s.offset`).  All conjuncts re-establish
+naturally:
+* idx-sorted: previous idx ≤ s.tokens.size = new idx (PendingKeysWellIndexed).
+* pos-sorted: previous pos ≤ s.offset = new pos (I4).
+* I1 for new entry: tokens[i].offset ≤ s.offset = new pos (ScanInv).
+* I2 for new entry: vacuous (no tokens at index ≥ tokens.size).
+* I4 for new entry: new pos = s.offset ≤ s.offset. -/
+theorem saveSimpleKey_preserves_LineariseFit (s : ScannerState)
+    (h : LineariseFit s) : LineariseFit (saveSimpleKey s) := by
+  obtain ⟨h_inv, h_well, h_idx, h_pos, h_lo, h_hi, h_off⟩ := h
+  unfold saveSimpleKey
+  split
+  · exact ⟨h_inv, h_well, h_idx, h_pos, h_lo, h_hi, h_off⟩
+  · split
+    · -- simpleKeyAllowed branch: appends new entry
+      refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+      · -- ScanInv: tokens and offset unchanged from s
+        exact h_inv
+      · -- PendingKeysWellIndexed
+        refine ⟨h_well.1, ?_⟩
+        intro p hp
+        by_cases h_p_lt : p < s.pendingKeys.size
+        · have ⟨hb_lo, hb_hi⟩ := h_well.2 p h_p_lt
+          show 1 ≤ _ ∧ _
+          rw [Array.getElem_push_lt h_p_lt]
+          exact ⟨hb_lo, hb_hi⟩
+        · have h_p_eq : p = s.pendingKeys.size := by
+            have := hp; simp [Array.size_push] at this; omega
+          subst h_p_eq
+          show 1 ≤ _ ∧ _
+          rw [Array.getElem_push_eq]
+          exact ⟨h_well.1, Nat.le_refl _⟩
+      · -- pks sorted by idx
+        intro p q hp hq hpq
+        have hp_b : p < s.pendingKeys.size + 1 := by
+          simp [Array.size_push] at hp; exact hp
+        have hq_b : q < s.pendingKeys.size + 1 := by
+          simp [Array.size_push] at hq; exact hq
+        by_cases hp_lt : p < s.pendingKeys.size
+        · by_cases hq_lt : q < s.pendingKeys.size
+          · -- both old
+            show (s.pendingKeys.push
+                    { insertBeforeIdx := s.tokens.size, pos := s.currentPos,
+                      endLine := s.line, kind := .unresolved })[p].insertBeforeIdx ≤
+                (s.pendingKeys.push
+                    { insertBeforeIdx := s.tokens.size, pos := s.currentPos,
+                      endLine := s.line, kind := .unresolved })[q].insertBeforeIdx
+            rw [Array.getElem_push_lt hp_lt, Array.getElem_push_lt hq_lt]
+            exact h_idx p q hp_lt hq_lt hpq
+          · -- p old, q new
+            have hq_eq : q = s.pendingKeys.size := by omega
+            show (s.pendingKeys.push
+                    { insertBeforeIdx := s.tokens.size, pos := s.currentPos,
+                      endLine := s.line, kind := .unresolved })[p].insertBeforeIdx ≤
+                (s.pendingKeys.push
+                    { insertBeforeIdx := s.tokens.size, pos := s.currentPos,
+                      endLine := s.line, kind := .unresolved })[q].insertBeforeIdx
+            subst hq_eq
+            rw [Array.getElem_push_lt hp_lt]
+            rw [Array.getElem_push_eq]
+            exact (h_well.2 p hp_lt).2
+        · omega
+      · -- pks sorted by pos
+        intro p q hp hq hpq
+        have hp_b : p < s.pendingKeys.size + 1 := by
+          simp [Array.size_push] at hp; exact hp
+        have hq_b : q < s.pendingKeys.size + 1 := by
+          simp [Array.size_push] at hq; exact hq
+        by_cases hp_lt : p < s.pendingKeys.size
+        · by_cases hq_lt : q < s.pendingKeys.size
+          · show (s.pendingKeys.push
+                    { insertBeforeIdx := s.tokens.size, pos := s.currentPos,
+                      endLine := s.line, kind := .unresolved })[p].pos.offset ≤
+                (s.pendingKeys.push
+                    { insertBeforeIdx := s.tokens.size, pos := s.currentPos,
+                      endLine := s.line, kind := .unresolved })[q].pos.offset
+            rw [Array.getElem_push_lt hp_lt, Array.getElem_push_lt hq_lt]
+            exact h_pos p q hp_lt hq_lt hpq
+          · have hq_eq : q = s.pendingKeys.size := by omega
+            show (s.pendingKeys.push
+                    { insertBeforeIdx := s.tokens.size, pos := s.currentPos,
+                      endLine := s.line, kind := .unresolved })[p].pos.offset ≤
+                (s.pendingKeys.push
+                    { insertBeforeIdx := s.tokens.size, pos := s.currentPos,
+                      endLine := s.line, kind := .unresolved })[q].pos.offset
+            subst hq_eq
+            rw [Array.getElem_push_lt hp_lt]
+            rw [Array.getElem_push_eq]
+            show s.pendingKeys[p].pos.offset ≤ (ScannerState.currentPos s).offset
+            simp [ScannerState.currentPos]
+            exact h_off p hp_lt
+        · omega
+      · -- I1
+        intro p hp i hi h_lt
+        have hi_s : i < s.tokens.size := hi
+        by_cases hp_lt : p < s.pendingKeys.size
+        · -- old entry
+          show (s.tokens[i]'hi_s).pos.offset ≤ (s.pendingKeys.push _)[p].pos.offset
+          rw [Array.getElem_push_lt hp_lt]
+          rw [Array.getElem_push_lt hp_lt] at h_lt
+          exact h_lo p hp_lt i hi_s h_lt
+        · have h_p_eq : p = s.pendingKeys.size := by
+            have := hp; simp [Array.size_push] at this; omega
+          subst h_p_eq
+          show (s.tokens[i]'hi_s).pos.offset ≤ (s.pendingKeys.push _)[s.pendingKeys.size].pos.offset
+          rw [Array.getElem_push_eq]
+          show (s.tokens[i]'hi_s).pos.offset ≤ s.currentPos.offset
+          simp [ScannerState.currentPos]
+          exact h_inv.2 ⟨i, hi_s⟩
+      · -- I2
+        intro p hp i hi h_ge
+        have hi_s : i < s.tokens.size := hi
+        by_cases hp_lt : p < s.pendingKeys.size
+        · show (s.pendingKeys.push _)[p].pos.offset ≤ (s.tokens[i]'hi_s).pos.offset
+          rw [Array.getElem_push_lt hp_lt]
+          rw [Array.getElem_push_lt hp_lt] at h_ge
+          exact h_hi p hp_lt i hi_s h_ge
+        · have h_p_eq : p = s.pendingKeys.size := by
+            have := hp; simp [Array.size_push] at this; omega
+          subst h_p_eq
+          rw [Array.getElem_push_eq] at h_ge
+          change s.tokens.size ≤ i at h_ge
+          exfalso
+          omega
+      · -- I4
+        intro p hp
+        by_cases hp_lt : p < s.pendingKeys.size
+        · show (s.pendingKeys.push _)[p].pos.offset ≤ s.offset
+          rw [Array.getElem_push_lt hp_lt]
+          exact h_off p hp_lt
+        · have h_p_eq : p = s.pendingKeys.size := by
+            have := hp; simp [Array.size_push] at this; omega
+          subst h_p_eq
+          show (s.pendingKeys.push _)[s.pendingKeys.size].pos.offset ≤ s.offset
+          rw [Array.getElem_push_eq]
+          show s.currentPos.offset ≤ s.offset
+          simp [ScannerState.currentPos]
+    · exact ⟨h_inv, h_well, h_idx, h_pos, h_lo, h_hi, h_off⟩
+
+/-!
 ### scanNextToken preserves ScanInv
 
 The proof composes all per-dispatcher preservation theorems.
