@@ -11638,6 +11638,45 @@ theorem LineariseFit_extend_field_update (s s' : ScannerState)
     rw [h_pos_eq p hp_s hp]
     exact Nat.le_trans (h_off p hp_s) h_off_mono
 
+/-! #### Convenience: first-new-token bound + Class C field-update
+
+Combines `LineariseFit_extend_field_update` (Class C — pendingKeys
+field-updated) with the `first_new` shortcut: only the FIRST new
+token's offset bound needs proof; subsequent tokens inherit via
+ScanInv tokens-sorted at `s'`.  Auto-derives `h_off_mono` from
+`h_first_new` + ScanInv at `s'`.  Used by `scanValue` (which both
+field-updates `pendingKeys` via `setPendingKeyKind` and emits ≥ 1
+token). -/
+theorem LineariseFit_via_first_new_field_update (s s' : ScannerState)
+    (h_inv' : ScanInv s')
+    (h_size_eq : s'.pendingKeys.size = s.pendingKeys.size)
+    (h_idx_eq : ∀ p (hp : p < s.pendingKeys.size)
+                  (hp' : p < s'.pendingKeys.size),
+                  (s'.pendingKeys[p]'hp').insertBeforeIdx
+                    = (s.pendingKeys[p]'hp).insertBeforeIdx)
+    (h_pos_eq : ∀ p (hp : p < s.pendingKeys.size)
+                  (hp' : p < s'.pendingKeys.size),
+                  (s'.pendingKeys[p]'hp').pos
+                    = (s.pendingKeys[p]'hp).pos)
+    (h_size_mono : s.tokens.size < s'.tokens.size)
+    (h_prefix : ∀ i (hi : i < s.tokens.size),
+        s'.tokens[i]'(by omega) = s.tokens[i]'hi)
+    (h_first_new : s.offset ≤ (s'.tokens[s.tokens.size]'h_size_mono).pos.offset)
+    (h : LineariseFit s) : LineariseFit s' := by
+  apply LineariseFit_extend_field_update s s' h_inv'
+    h_size_eq h_idx_eq h_pos_eq
+    (Nat.le_of_lt h_size_mono) h_prefix
+    ?h_new_ge
+    (offset_mono_via_first_new s s' h_inv' h_size_mono h_first_new)
+    h
+  case h_new_ge =>
+    intro i hi h_ge
+    by_cases h_eq : i = s.tokens.size
+    · subst h_eq; exact h_first_new
+    · have h_lt : s.tokens.size < i := by omega
+      have h_sorted := h_inv'.1 ⟨s.tokens.size, h_size_mono⟩ ⟨i, hi⟩ h_lt
+      exact Nat.le_trans h_first_new h_sorted
+
 /-! #### Class A passthrough leaves (`*_preserves_LineariseFit`)
 
 For each scanner op that preserves both `tokens` and `pendingKeys` and
@@ -13345,6 +13384,274 @@ theorem scanValue_offset_lt (s s' : ScannerState)
       have h1 := ScannerProgress.advance_offset_lt ((scanValuePrepare (scanValueClearKey s)).emit .value)
         (by rw [ScannerProgress.emit_offset, ScannerProgress.emit_inputEnd, hvp, hvpe]; exact hlt)
       rw [ScannerProgress.emit_offset, hvp] at h1; exact h1
+
+/-! #### `scanValue_preserves_LineariseFit` (Step 8b leaf)
+
+scanValue is the canonical Class C op: it field-updates `pendingKeys`
+via `setPendingKeyKind` (preserves entry-wise idx/pos) AND emits ≥ 1
+token (always the trailing `.value`, optionally preceded by a
+`.blockMappingStart` from `scanValuePrepare`'s `pushMappingIndent`
+branch).  Use `LineariseFit_via_first_new_field_update` since
+`pendingKeys` is field-updated (not array-equal) and only the first
+new token's offset bound matters (subsequent inherit via ScanInv).
+
+The first new token's `pos.offset = s.offset` in both branches:
+* If `scanValuePrepare`'s `pushMappingIndent` fires: first new is
+  `.blockMappingStart` at `(scanValueClearKey s).currentPos`, equal
+  to `s.currentPos` (clear preserves currentPos).
+* Otherwise: first new is `.value` at `(scanValuePrepare (scanValueClearKey s)).currentPos`,
+  equal to `s.currentPos` (both clear and prepare preserve currentPos
+  when prepare doesn't fire pushMappingIndent). -/
+
+theorem pushMappingIndent_line_eq (s : ScannerState) (col : Int) :
+    (pushMappingIndent s col).line = s.line := by
+  unfold pushMappingIndent
+  split <;> rfl
+
+theorem pushMappingIndent_col_eq (s : ScannerState) (col : Int) :
+    (pushMappingIndent s col).col = s.col := by
+  unfold pushMappingIndent
+  split <;> rfl
+
+theorem pushMappingIndent_currentPos_eq (s : ScannerState) (col : Int) :
+    (pushMappingIndent s col).currentPos = s.currentPos := by
+  unfold ScannerState.currentPos
+  rw [ScannerProgress.pushMappingIndent_offset, pushMappingIndent_line_eq,
+      pushMappingIndent_col_eq]
+
+theorem svck_line (s : ScannerState) :
+    (scanValueClearKey s).line = s.line := by
+  unfold scanValueClearKey
+  split <;> (try split) <;> (try split) <;> rfl
+
+theorem svck_col (s : ScannerState) :
+    (scanValueClearKey s).col = s.col := by
+  unfold scanValueClearKey
+  split <;> (try split) <;> (try split) <;> rfl
+
+theorem svck_currentPos (s : ScannerState) :
+    (scanValueClearKey s).currentPos = s.currentPos := by
+  unfold ScannerState.currentPos
+  rw [svck_offset, svck_line, svck_col]
+
+theorem svp_line (s : ScannerState) :
+    (scanValuePrepare s).line = s.line := by
+  unfold scanValuePrepare
+  split
+  · split
+    · split <;> rfl
+    · rfl
+  · split
+    · rfl
+    · split
+      · exact pushMappingIndent_line_eq s s.col
+      · rfl
+
+theorem svp_col (s : ScannerState) :
+    (scanValuePrepare s).col = s.col := by
+  unfold scanValuePrepare
+  split
+  · split
+    · split <;> rfl
+    · rfl
+  · split
+    · rfl
+    · split
+      · exact pushMappingIndent_col_eq s s.col
+      · rfl
+
+theorem svp_currentPos (s : ScannerState) :
+    (scanValuePrepare s).currentPos = s.currentPos := by
+  unfold ScannerState.currentPos
+  rw [svp_offset, svp_line, svp_col]
+
+/-- `pushMappingIndent` adds at most one token; if it adds one, that
+    token is at `s.currentPos`. -/
+theorem pushMappingIndent_first_new_pos (s : ScannerState) (col : Int)
+    (h_lt : s.tokens.size < (pushMappingIndent s col).tokens.size) :
+    ((pushMappingIndent s col).tokens[s.tokens.size]'h_lt).pos = s.currentPos := by
+  by_cases hfire : col > s.currentIndent
+  · have h_pmi : pushMappingIndent s col =
+        { s.emit .blockMappingStart with
+            indents := (s.emit .blockMappingStart).indents.push
+              { column := col, isSequence := false } } := by
+      unfold pushMappingIndent
+      split
+      · rfl
+      · contradiction
+    have h_lt' : s.tokens.size < (s.emit .blockMappingStart).tokens.size := by
+      simp [h_pmi] at h_lt; exact h_lt
+    have h_target : ((pushMappingIndent s col).tokens[s.tokens.size]'h_lt) =
+        ⟨s.currentPos, .blockMappingStart, s.currentPos⟩ := by
+      simp only [h_pmi]
+      show ((s.emit .blockMappingStart).tokens[s.tokens.size]'h_lt') = _
+      simp only [ScannerState.emit, Array.getElem_push_eq]
+    rw [h_target]
+  · have h_pmi : pushMappingIndent s col = s := by
+      unfold pushMappingIndent
+      split
+      · contradiction
+      · rfl
+    rw [h_pmi] at h_lt
+    omega
+
+/-- `scanValuePrepare`'s tokens are either equal to `s.tokens` (in branches
+    that don't fire `pushMappingIndent`) or equal to `(pushMappingIndent s s.col).tokens`. -/
+theorem scanValuePrepare_tokens_or (s : ScannerState) :
+    (scanValuePrepare s).tokens = s.tokens ∨
+    (scanValuePrepare s).tokens = (pushMappingIndent s s.col).tokens := by
+  unfold scanValuePrepare
+  split
+  · split
+    · split <;> (left; rfl)
+    · left; rfl
+  · split
+    · left; rfl
+    · split
+      · right; rfl
+      · left; rfl
+
+/-- When `scanValuePrepare` adds a token, that token has pos = s.currentPos.
+    Only the `pushMappingIndent` branch can add tokens. -/
+theorem scanValuePrepare_first_new_pos (s : ScannerState)
+    (h_lt : s.tokens.size < (scanValuePrepare s).tokens.size) :
+    ((scanValuePrepare s).tokens[s.tokens.size]'h_lt).pos = s.currentPos := by
+  cases scanValuePrepare_tokens_or s with
+  | inl h_eq =>
+    -- Tokens unchanged → h_lt is contradictory.
+    exfalso
+    have h_size := congrArg Array.size h_eq
+    omega
+  | inr h_eq =>
+    have h_lt' : s.tokens.size < (pushMappingIndent s s.col).tokens.size := by
+      have h_size := congrArg Array.size h_eq
+      omega
+    have h_idx : ((scanValuePrepare s).tokens[s.tokens.size]'h_lt) =
+        ((pushMappingIndent s s.col).tokens[s.tokens.size]'h_lt') :=
+      array_get_eq_of_array_eq h_eq s.tokens.size h_lt h_lt'
+    rw [h_idx]
+    exact pushMappingIndent_first_new_pos s s.col h_lt'
+
+/-- The first new token of `scanValue` has pos.offset = s.offset.
+    Whether the new token is the `.blockMappingStart` from `scanValuePrepare`
+    or the trailing `.value`, its pos = s.currentPos and offset = s.offset. -/
+private theorem scanValue_first_new_pos_offset (s s' : ScannerState)
+    (h_eq : scanValue s = .ok s')
+    (h_lt : s.tokens.size < s'.tokens.size) :
+    (s'.tokens[s.tokens.size]'h_lt).pos.offset = s.offset := by
+  unfold scanValue at h_eq
+  simp only [bind, Except.bind] at h_eq
+  split at h_eq
+  · contradiction
+  · split at h_eq
+    · contradiction
+    · simp only [Except.ok.injEq] at h_eq; subst h_eq
+      -- After subst, s' becomes an explicit record-update wrapper around .advance.
+      -- Unfold the wrapper: {(...emit .value).advance with simpleKeyAllowed := ...}.tokens
+      --   = ((...emit .value).advance).tokens (defeq via dsimp).
+      dsimp only [] at h_lt ⊢
+      -- Bridge .advance.tokens → (emit).tokens via array_get_eq_of_array_eq
+      -- (avoids motive issues with rw under dependent indexing).
+      have h_adv := advance_preserves_tokens
+        ((scanValuePrepare (scanValueClearKey s)).emit .value)
+      have h_lt_emit : s.tokens.size <
+          ((scanValuePrepare (scanValueClearKey s)).emit .value).tokens.size := by
+        have := congrArg Array.size h_adv
+        omega
+      have h_idx :
+          (((((scanValuePrepare (scanValueClearKey s)).emit .value).advance).tokens)[s.tokens.size]'h_lt) =
+          ((((scanValuePrepare (scanValueClearKey s)).emit .value).tokens)[s.tokens.size]'h_lt_emit) :=
+        array_get_eq_of_array_eq h_adv s.tokens.size h_lt h_lt_emit
+      rw [h_idx]
+      -- Goal: (((scanValuePrepare (scanValueClearKey s)).emit .value).tokens[s.tokens.size]'h_lt_emit).pos.offset = s.offset
+      have h_clear_size : (scanValueClearKey s).tokens.size = s.tokens.size := by
+        rw [scanValueClearKey_preserves_tokens]
+      have h_prep_mono : (scanValuePrepare (scanValueClearKey s)).tokens.size
+          ≥ (scanValueClearKey s).tokens.size :=
+        scanValuePrepare_tokens_monotonic _
+      by_cases h_eq_sz : (scanValuePrepare (scanValueClearKey s)).tokens.size = s.tokens.size
+      · -- scanValuePrepare didn't add: first new is the .value emit at s_p.currentPos
+        have h_target :
+            (((scanValuePrepare (scanValueClearKey s)).emit .value).tokens[s.tokens.size]'h_lt_emit) =
+            ⟨(scanValuePrepare (scanValueClearKey s)).currentPos, .value,
+             (scanValuePrepare (scanValueClearKey s)).currentPos⟩ := by
+          simp only [ScannerState.emit, ← h_eq_sz, Array.getElem_push_eq]
+        rw [h_target]
+        show (scanValuePrepare (scanValueClearKey s)).currentPos.offset = s.offset
+        rw [svp_currentPos, svck_currentPos]
+        rfl
+      · -- scanValuePrepare added a token: first new is the pushMappingIndent emit at s_kc.currentPos
+        have h_lt_p : s.tokens.size < (scanValuePrepare (scanValueClearKey s)).tokens.size := by
+          rw [h_clear_size] at h_prep_mono; omega
+        have h_target :
+            (((scanValuePrepare (scanValueClearKey s)).emit .value).tokens[s.tokens.size]'h_lt_emit) =
+            (scanValuePrepare (scanValueClearKey s)).tokens[s.tokens.size]'h_lt_p := by
+          show ((scanValuePrepare (scanValueClearKey s)).tokens.push
+            ⟨(scanValuePrepare (scanValueClearKey s)).currentPos, .value,
+             (scanValuePrepare (scanValueClearKey s)).currentPos⟩)[s.tokens.size]'h_lt_emit = _
+          exact Array.getElem_push_lt h_lt_p
+        rw [h_target]
+        -- The token at index s.tokens.size in (scanValuePrepare s_kc).tokens.
+        -- s.tokens.size = s_kc.tokens.size (clear preserves tokens), so index into
+        -- the prepare-output points to the pushMappingIndent emission.
+        have h_lt_kc : (scanValueClearKey s).tokens.size <
+            (scanValuePrepare (scanValueClearKey s)).tokens.size := by
+          rw [h_clear_size]; exact h_lt_p
+        have h_at : (scanValuePrepare (scanValueClearKey s)).tokens[s.tokens.size]'h_lt_p =
+            (scanValuePrepare (scanValueClearKey s)).tokens[(scanValueClearKey s).tokens.size]'h_lt_kc := by
+          congr 1
+          exact h_clear_size.symm
+        rw [h_at]
+        rw [scanValuePrepare_first_new_pos (scanValueClearKey s) h_lt_kc]
+        show (scanValueClearKey s).currentPos.offset = s.offset
+        rw [svck_currentPos]
+        rfl
+
+/-- Strict prefix preservation: scanValue preserves all existing tokens.
+    No `h_inv` precondition needed (the existing `scanValue_preserves_prefix`
+    threads `h_inv` only to derive an unused `h_inv'`). -/
+private theorem scanValue_preserves_prefix_strict (s s' : ScannerState)
+    (h_eq : scanValue s = .ok s')
+    (i : Nat) (h_bound : i < s.tokens.size) :
+    s'.tokens[i]'(by have := scanValue_adds_tokens s s' h_eq; omega) =
+    s.tokens[i]'h_bound := by
+  unfold scanValue at h_eq
+  simp only [bind, Except.bind] at h_eq
+  split at h_eq
+  · contradiction
+  · split at h_eq
+    · contradiction
+    · injection h_eq with h_eq; subst h_eq; dsimp only []
+      have h_ck := scanValueClearKey_preserves_tokens s
+      have h_prep := ScanHelpers.scanValuePrepare_preserves_prefix (scanValueClearKey s) s.tokens.size
+        (by rw [h_ck]; omega) i h_bound
+      have h_emit := emit_preserves_tokens_at (scanValuePrepare (scanValueClearKey s))
+        YamlToken.value i (by
+          have := scanValuePrepare_tokens_monotonic (scanValueClearKey s)
+          rw [h_ck] at this; omega)
+      have h_adv := advance_preserves_tokens
+        ((scanValuePrepare (scanValueClearKey s)).emit .value)
+      simp_all
+
+set_option maxHeartbeats 800000 in
+theorem scanValue_preserves_LineariseFit (s s' : ScannerState)
+    (h_sk : (scanValueClearKey s).simpleKey.possible = true →
+      (scanValueClearKey s).simpleKey.tokenIndex ≤ (scanValueClearKey s).tokens.size)
+    (h_eq : scanValue s = .ok s') (h : LineariseFit s) : LineariseFit s' := by
+  apply LineariseFit_via_first_new_field_update s s'
+    (scanValue_preserves_ScanInv s s' h.1 h_sk h_eq)
+    (scanValue_pendingKeys_size s s' h_eq)
+    (fun p hp hp' => scanValue_pendingKeys_insertBeforeIdx s s' h_eq p hp hp')
+    (fun p hp hp' => scanValue_pendingKeys_pos s s' h_eq p hp hp')
+    (by have := scanValue_adds_tokens s s' h_eq; omega)
+    (fun i hi => scanValue_preserves_prefix_strict s s' h_eq i hi)
+    ?first_new
+    h
+  case first_new =>
+    have h_lt : s.tokens.size < s'.tokens.size := by
+      have := scanValue_adds_tokens s s' h_eq; omega
+    rw [scanValue_first_new_pos_offset s s' h_eq h_lt]
+    omega
 
 set_option maxHeartbeats 800000 in
 /-- `scanDocumentStart` strictly advances offset when `offset < inputEnd`. -/
