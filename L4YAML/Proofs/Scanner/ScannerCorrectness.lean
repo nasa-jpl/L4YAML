@@ -14602,4 +14602,271 @@ theorem scanNextToken_progress (s s' : ScannerState)
                         have := dispatchContent_offset_gt sp2 _ c h_hm2 h_peek2 hnoDoc2 h_dc
                         omega
 
+/-! ### Dispatcher composition: `*_preserves_LineariseFit`
+
+Composes the per-op `*_preserves_LineariseFit` leaves into the four
+dispatcher-level theorems, then `preprocess`, then `scanNextToken`,
+then `scanLoopFull`.  Mirrors the existing
+`*_preserves_PendingKeysWellIndexed` chain (lines 10616-10989) but
+threading the full 7-conjunct `LineariseFit` invariant.  The
+double/single-quoted Class C wrapper in `dispatchContent` is handled
+by the dedicated helper below. -/
+
+/-- `setPendingKeyEndLine` Class C wrapper: if `simpleKey.possible`,
+    field-update `pendingKeys` (idx and pos preserved entry-wise);
+    otherwise identity.  Used by `dispatchContent` for the
+    double/single-quoted endLine update. -/
+theorem setPendingKeyEndLine_wrap_preserves_LineariseFit (s : ScannerState)
+    (h : LineariseFit s) :
+    LineariseFit (if s.simpleKey.possible then
+      { s with simpleKey := { s.simpleKey with endLine := s.line },
+               pendingKeys := setPendingKeyEndLine s.pendingKeys s.pendingKeyActive s.line }
+      else s) := by
+  split
+  · refine LineariseFit_field_update s _ ?_ ?_ ?_ ?_ rfl rfl h
+    · exact field_update_preserves_ScanInv s _ h.1 rfl rfl
+    · exact setPendingKeyEndLine_size s.pendingKeys s.pendingKeyActive s.line
+    · intro p hp hp'
+      exact setPendingKeyEndLine_insertBeforeIdx s.pendingKeys
+        s.pendingKeyActive s.line p hp hp'
+    · intro p hp hp'
+      exact setPendingKeyEndLine_pos s.pendingKeys
+        s.pendingKeyActive s.line p hp hp'
+  · exact h
+
+/-- The `& <name>` content branch ends with a `definedAnchors.push`,
+    a Class A field-update (no LineariseFit field changed). -/
+theorem definedAnchors_push_preserves_LineariseFit (s : ScannerState) (name : String)
+    (h : LineariseFit s) :
+    LineariseFit { s with definedAnchors := s.definedAnchors.push name } :=
+  LineariseFit_no_token_change s _
+    (field_update_preserves_ScanInv _ _ h.1 rfl rfl) rfl rfl (Nat.le_refl _) h
+
+theorem dispatchStructural_preserves_LineariseFit (s : ScannerState) (c : Char) (s' : ScannerState)
+    (h_inv : LineariseFit s) (h : scanNextToken_dispatchStructural s c = .ok (some s')) :
+    LineariseFit s' := by
+  unfold scanNextToken_dispatchStructural at h
+  simp only [bind, ScanHelpers.bind_ok_simp, pure, Pure.pure, Except.pure] at h
+  simp only [Except.bind] at h
+  repeat (any_goals (split at h))
+  any_goals contradiction
+  all_goals (try simp only [Except.ok.injEq, Option.some.injEq] at *)
+  any_goals contradiction
+  all_goals (try subst_vars)
+  all_goals first
+    | exact scanDocumentStart_preserves_LineariseFit s h_inv
+    | exact scanDocumentEnd_preserves_LineariseFit _ _ h_inv (by assumption)
+    | exact scanDirective_preserves_LineariseFit _ _ h_inv (by assumption)
+
+theorem dispatchFlowIndicators_preserves_LineariseFit (s : ScannerState) (c : Char) (s' : ScannerState)
+    (h_inv : LineariseFit s)
+    (h : scanNextToken_dispatchFlowIndicators s c = .ok (some s')) :
+    LineariseFit s' := by
+  unfold scanNextToken_dispatchFlowIndicators at h
+  simp only [bind, ScanHelpers.bind_ok_simp, pure, Pure.pure, Except.pure] at h
+  simp only [Except.bind] at h
+  repeat (any_goals (split at h))
+  any_goals contradiction
+  all_goals (try simp only [Except.ok.injEq, Option.some.injEq] at *)
+  any_goals contradiction
+  all_goals (try subst_vars)
+  all_goals first
+    | exact scanFlowSequenceStart_preserves_LineariseFit s h_inv
+    | exact scanFlowSequenceEnd_preserves_LineariseFit s h_inv
+    | exact scanFlowMappingStart_preserves_LineariseFit s h_inv
+    | exact scanFlowMappingEnd_preserves_LineariseFit s h_inv
+    | exact scanFlowEntry_preserves_LineariseFit _ _ (by assumption) h_inv
+
+theorem dispatchBlockIndicators_preserves_LineariseFit
+    (s : ScannerState) (c : Char) (s' : ScannerState)
+    (h_inv : LineariseFit s)
+    (h_sk : (scanValueClearKey s).simpleKey.possible = true →
+      (scanValueClearKey s).simpleKey.tokenIndex ≤ (scanValueClearKey s).tokens.size)
+    (h : scanNextToken_dispatchBlockIndicators s c = .ok (some s')) :
+    LineariseFit s' := by
+  unfold scanNextToken_dispatchBlockIndicators at h
+  simp only [bind, ScanHelpers.bind_ok_simp, pure, Pure.pure, Except.pure] at h
+  simp only [Except.bind] at h
+  split at h
+  · -- '-': scanBlockEntry
+    split at h <;> try contradiction
+    rename_i h_be
+    simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+    exact scanBlockEntry_preserves_LineariseFit _ _ h_be h_inv
+  · split at h
+    · -- '?': scanKey
+      split at h <;> try contradiction
+      rename_i h_key
+      simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+      exact scanKey_preserves_LineariseFit _ _ h_key h_inv
+    · split at h
+      · -- ':': scanValue
+        split at h <;> try contradiction
+        rename_i h_val
+        simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+        exact scanValue_preserves_LineariseFit _ _ h_sk h_val h_inv
+      · -- fallthrough
+        simp at h
+
+theorem dispatchContent_preserves_LineariseFit
+    (s : ScannerState) (c : Char) (s' : ScannerState)
+    (h_inv : LineariseFit s)
+    (h : scanNextToken_dispatchContent s c = .ok s') :
+    LineariseFit s' := by
+  unfold scanNextToken_dispatchContent at h
+  simp only [bind, ScanHelpers.bind_ok_simp, pure, Pure.pure, Except.pure] at h
+  simp only [Except.bind] at h
+  split at h
+  · -- '&': scanAnchorOrAlias true (then push to definedAnchors)
+    generalize h_fn : scanAnchorOrAlias s true = result at h
+    cases result with
+    | error e => simp at h
+    | ok s_a =>
+      simp only [Except.ok.injEq] at h; subst h
+      exact definedAnchors_push_preserves_LineariseFit s_a _
+        (scanAnchorOrAlias_preserves_LineariseFit s s_a true h_fn h_inv)
+  · split at h
+    · -- '*': alias
+      split at h
+      · simp at h
+      · generalize h_fn : scanAnchorOrAlias s false = result at h
+        cases result with
+        | error e => simp at h
+        | ok s_a =>
+          simp only [Except.ok.injEq] at h; subst h
+          exact scanAnchorOrAlias_preserves_LineariseFit s s_a false h_fn h_inv
+    · split at h
+      · -- '!': tag
+        generalize h_fn : scanTag s = result at h
+        cases result with
+        | error e => simp at h
+        | ok s_t =>
+          simp only [Except.ok.injEq] at h; subst h
+          exact scanTag_preserves_LineariseFit s s_t h_fn h_inv
+      · split at h
+        · -- block scalar
+          generalize h_fn : scanBlockScalar s = result at h
+          cases result with
+          | error e => simp at h
+          | ok s_b =>
+            simp only [Except.ok.injEq] at h; subst h
+            exact scanBlockScalar_preserves_LineariseFit s s_b h_fn h_inv
+        · split at h
+          · -- '"': scanDoubleQuoted + endLine wrapper
+            generalize h_fn : scanDoubleQuoted s = result at h
+            cases result with
+            | error e => simp at h
+            | ok s_dq =>
+              simp only [Except.ok.injEq] at h; subst h
+              exact setPendingKeyEndLine_wrap_preserves_LineariseFit s_dq
+                (scanDoubleQuoted_preserves_LineariseFit s s_dq h_fn h_inv)
+          · split at h
+            · -- '\'': scanSingleQuoted + endLine wrapper
+              generalize h_fn : scanSingleQuoted s = result at h
+              cases result with
+              | error e => simp at h
+              | ok s_sq =>
+                simp only [Except.ok.injEq] at h; subst h
+                exact setPendingKeyEndLine_wrap_preserves_LineariseFit s_sq
+                  (scanSingleQuoted_preserves_LineariseFit s s_sq h_fn h_inv)
+            · -- plain scalar (or error)
+              split at h
+              · generalize h_fn : scanPlainScalar s = result at h
+                cases result with
+                | error e => simp at h
+                | ok s_p =>
+                  simp only [Except.ok.injEq] at h; subst h
+                  exact scanPlainScalar_preserves_LineariseFit s s_p h_fn h_inv
+              · simp at h
+
+/-- preprocess: composes skipToContent (A) + unwindIndents (A) +
+    needIndentCheck := false (Class A field-update) + saveSimpleKey (B). -/
+theorem preprocess_preserves_LineariseFit (s : ScannerState) (s1 : ScannerState) (c : Char)
+    (h_inv : LineariseFit s)
+    (h : scanNextToken_preprocess s = .ok (some (s1, c))) :
+    LineariseFit s1 := by
+  unfold scanNextToken_preprocess at h
+  simp only [bind, ScanHelpers.bind_error_simp, ScanHelpers.bind_ok_simp,
+             pure, Pure.pure, Except.pure] at h
+  simp only [Except.bind] at h
+  split at h
+  · contradiction
+  · rename_i s_skip h_skip
+    have h_skip_inv : LineariseFit s_skip :=
+      skipToContent_preserves_LineariseFit s s_skip h_skip h_inv
+    split at h
+    · simp at h
+    · split at h
+      · -- needIndentCheck path
+        split at h
+        · contradiction
+        · split at h
+          · simp at h
+          · simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq] at h
+            obtain ⟨rfl, _⟩ := h
+            -- s1 = saveSimpleKey { unwindIndents s_skip s_skip.col with needIndentCheck := false }
+            have h_unwind_inv : LineariseFit (unwindIndents s_skip s_skip.col) :=
+              unwindIndents_preserves_LineariseFit s_skip s_skip.col h_skip_inv
+            have h_pre_inv : LineariseFit
+                { unwindIndents s_skip s_skip.col with needIndentCheck := false } :=
+              LineariseFit_no_token_change _ _
+                (field_update_preserves_ScanInv _ _ h_unwind_inv.1 rfl rfl)
+                rfl rfl (Nat.le_refl _) h_unwind_inv
+            exact saveSimpleKey_preserves_LineariseFit _ h_pre_inv
+      · -- no needIndentCheck path
+        split at h
+        · contradiction
+        · split at h
+          · simp at h
+          · simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq] at h
+            obtain ⟨rfl, _⟩ := h
+            exact saveSimpleKey_preserves_LineariseFit _ h_skip_inv
+
+theorem allowDir_ite_preserves_LineariseFit (s : ScannerState)
+    (h_inv : LineariseFit s) :
+    LineariseFit (if s.allowDirectives then
+      { s with allowDirectives := false, documentEverStarted := true } else s) := by
+  split
+  · exact LineariseFit_no_token_change _ _
+      (field_update_preserves_ScanInv _ _ h_inv.1 rfl rfl)
+      rfl rfl (Nat.le_refl _) h_inv
+  · exact h_inv
+
+theorem scanNextToken_preserves_LineariseFit
+    (s s' : ScannerState) (h_inv : LineariseFit s) (h_skv : SimpleKeyValid s)
+    (h_ok : scanNextToken s = .ok (some s')) : LineariseFit s' := by
+  unfold scanNextToken at h_ok
+  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  split at h_ok <;> (try (simp at h_ok; done)) -- preprocess Except
+  split at h_ok <;> (try (simp at h_ok; done)) -- preprocess Option
+  rename_i s2 c h_pre
+  have h_inv2 := preprocess_preserves_LineariseFit s s2 c h_inv h_pre
+  have h_skv2 := preprocess_preserves_SimpleKeyValid s s2 c h_pre h_skv
+  split at h_ok <;> (try (simp at h_ok; done)) -- structural Except
+  split at h_ok
+  · -- structural some
+    simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
+    exact dispatchStructural_preserves_LineariseFit s2 c _ h_inv2 (by assumption)
+  · -- structural none → continue
+    have h_inv3 := allowDir_ite_preserves_LineariseFit s2 h_inv2
+    have h_skv3 := allowDir_ite_preserves_SimpleKeyValid s2 h_skv2
+    -- checkBlockFlowIndent
+    split at h_ok <;> (try (simp at h_ok; done))
+    -- Flow Except
+    split at h_ok <;> (try (simp at h_ok; done))
+    -- Flow Option
+    split at h_ok
+    · simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
+      exact dispatchFlowIndicators_preserves_LineariseFit _ c _ h_inv3 (by assumption)
+    · -- block Except
+      split at h_ok <;> (try (simp at h_ok; done))
+      split at h_ok
+      · simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
+        exact dispatchBlockIndicators_preserves_LineariseFit _ c _ h_inv3
+          (SimpleKeyValid_implies_scanValue_h_sk _ h_skv3) (by assumption)
+      · -- content
+        split at h_ok <;> (try (simp at h_ok; done))
+        simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
+        exact dispatchContent_preserves_LineariseFit _ c _ h_inv3 (by assumption)
+
 end L4YAML.Proofs.ScannerCorrectness
