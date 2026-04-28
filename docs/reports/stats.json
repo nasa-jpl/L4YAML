@@ -34,7 +34,7 @@
   {"theorems_plus_lemmas": 2,
    "theorems": 2,
    "partial_defs": 1,
-   "lines": 18974,
+   "lines": 18992,
    "lemmas": 0,
    "lean_files": 84,
    "guards": 2141,
@@ -59,7 +59,7 @@
    "axioms": 0}},
  "spec_examples": {"total": 132, "passed": 132},
  "schema_version": 2,
- "generated_at_ms": 4829380778,
+ "generated_at_ms": 4833487093,
  "env":
  {"theorems_with_transitive_sorry": 16,
   "theorems_with_direct_sorry": 7,
