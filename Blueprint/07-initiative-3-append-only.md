@@ -752,7 +752,8 @@ rooted at `Scanner/Linearise.lean`:
 | J.3.3 | ScannerCorrectness consumers | 1/2 | `Proofs/Scanner/ScannerCorrectness.lean`, `Proofs/Scanner/ScannerLinearise.lean` | partial 2026-04-26 |
 | J.3.4 | ScannerPlainScalarValid consumers | 4 | `Proofs/Production/ScannerPlainScalarValid.lean` | ✓ done 2026-04-28 |
 | J.3.5 | Production+EndToEnd bridges | 2 | `Proofs/Production/DocumentProduction.lean`, `Proofs/EndToEndCorrectness.lean` | ✓ done 2026-04-28 |
-| J.3.6 | EmitterScannability Cat C | 6 | `Proofs/Output/EmitterScannability.lean` (Cat C only; 7 Tier 2 deferred to J.4) | pending |
+| J.3.6 | EmitterScannability Cat C — chain-bridge subset | 3 | `Proofs/Output/EmitterScannability.lean` (`scanFiltered_boundary_tokens`, `scanFiltered_of_chain`, `scan_accepts_emitScalar`); supporting bridges in `Proofs/Scanner/ScannerCorrectness.lean` | ✓ done 2026-04-29 |
+| J.3.7 | EmitterScannability Cat C — filter-shape subset | 3 | `Proofs/Output/EmitterScannability.lean` (`scanFiltered_of_chain_eq`, `scanFiltered_emitScalar_content`, `scanFiltered_emitScalar_vals`) | pending |
 
 **J.3.1 — Linearise foundations** [✓ completed 2026-04-26]:
 
@@ -1306,27 +1307,96 @@ count unchanged at 21.
 
   Build status (2026-04-28 late evening): full project (453/453)
   green; **13 sorries remaining**, all in
-  `Proofs/Output/EmitterScannability.lean` (6 Cat C for J.3.6,
+  `Proofs/Output/EmitterScannability.lean` (6 Cat C for J.3.6/J.3.7,
   7 Tier 2 for J.4).
 
-  **Next concrete step (J.3.6)**
+  **J.3.6 landed (2026-04-29) — `EmitterScannability` chain-bridge
+  subset**
 
-  Discharge the six `J.3 manifest 5.d` Category C sorries in
-  `Proofs/Output/EmitterScannability.lean` at lines 2060, 2080,
-  3482, 8467, 8479, 9085.  These are emitter-side consumers that
-  previously inspected the legacy `tokens.filter` output shape; each
-  needs re-routing through the linearised token stream.  Likely
-  patterns: leverage the J.3.2 `LineariseFit`-derived facts
-  (`scanFiltered_produces_valid_tokens` and its field theorems) and
-  the now-clean `scan_*` consumers in `ScannerPlainScalarValid`.
-  Target: drop the J.3 sorry count from 13 to 7.
+  Three of the six `J.3 manifest 5.d` Category C sorries in
+  `Proofs/Output/EmitterScannability.lean` discharged:
+
+  - **`scanFiltered_boundary_tokens`**: routes directly through the
+    J.3.2 field theorems (`scanFiltered_produces_at_least_two`,
+    `scanFiltered_first_is_streamStart`,
+    `scanFiltered_last_is_streamEnd`) — pure repackaging into the
+    plain-conjunction shape downstream consumers want.
+  - **`scanFiltered_of_chain`**: existential bridge from a `ScanChain`
+    + EOF + flow/directives invariants to `∃ tokens, scanFiltered
+    input = .ok tokens`.  Now composes the existing
+    `scanLoop_eof_eq` + `ScanChain.to_scanLoop` machinery with the
+    new J.3.6 reverse bridge.
+  - **`scan_accepts_emitScalar`**: the scalar leaf of
+    `emit_produces_valid_yaml`.  Builds the one-step chain from
+    `scanNextToken_emitScalar_init`, closes the loop via
+    `scanNextToken_eof`, and applies `scanFiltered_of_chain`.
+
+  Sorry count drop: **13 → 10**.
+
+  *New infrastructure added in `Proofs/Scanner/ScannerCorrectness.lean`*:
+
+  - **`scanLoop_ok_implies_scanLoopFull_ok`** — symmetric mirror of
+    the J.3.2 `scanLoopFull_ok_implies_scanLoop_ok`.  `scanLoop` and
+    `scanLoopFull` step in lock-step on `scanNextToken`; the only
+    difference is the `.ok none` arm where `scanLoopFull` runs an
+    extra `skipToContent` whose inline match falls back to the input
+    state on error.  That fallback never produces a new error, so
+    any input that lets `scanLoop` close into `.ok _` also lets
+    `scanLoopFull` close into `.ok _`.
+  - **`scan_ok_implies_scanFiltered_ok`** — lifts the loop bridge
+    across the shared BOM-handling prefix.  Used here by
+    `scanFiltered_of_chain` to convert a `scan` success
+    constructed from a `ScanChain` into a `scanFiltered` success.
+
+  These two reverse bridges are the natural twins of the J.3.2
+  forward bridges and unblock any remaining emitter-side proof that
+  builds a `scanLoop`-flavoured witness but needs to conclude at the
+  `scanFiltered` layer.
+
+  Build status (2026-04-29): full project (453/453) green; **10
+  sorries remaining**, all in `Proofs/Output/EmitterScannability.lean`
+  (3 Cat C for J.3.7, 7 Tier 2 for J.4).
+
+  **Next concrete step (J.3.7)**
+
+  Discharge the remaining three `J.3 manifest 5.d` Category C sorries
+  in `Proofs/Output/EmitterScannability.lean`:
+
+  - **`scanFiltered_of_chain_eq`** — equality version of
+    `scanFiltered_of_chain`.  Pre-cutover RHS was
+    `((unwindIndents s_final (-1)).emit .streamEnd).tokens.filter
+    (· != .placeholder)`; post-cutover the RHS must shift to
+    `linearise final_state.tokens final_state.pendingKeys` (or
+    equivalent).  Several downstream consumers
+    (`scanFiltered_tokens_eq_of_chain_short_stack`,
+    `scanFiltered_emitSeq_nonempty_structure`,
+    `scanFiltered_emitMap_nonempty_structure`, …) read the legacy
+    `tokens.filter`-shape directly, so the rewrite cascades — either
+    re-state with linearise on both sides, or thread an auxiliary
+    "linearise on emitter output coincides with `tokens.filter`" lemma
+    that exploits the empty-pendingKeys property of emitter scans.
+  - **`scanFiltered_emitScalar_content`** and
+    **`scanFiltered_emitScalar_vals`** — concrete-shape claims about
+    the linearised scan of `emitScalar content`.  Need a
+    characterization that `linearise final.tokens final.pendingKeys =
+    #[streamStart, scalar content .doubleQuoted, streamEnd]` for the
+    scalar case, exploiting that the saveSimpleKey reservation in
+    `pendingKeys` is `.unresolved` (and so contributes `#[]` via
+    `expandKind`) at `scanFiltered` time.
+
+  Target: drop the J.3 sorry count from 10 to 7.
 
 **J.3.5 landed**: `DocumentProduction` / `EndToEndCorrectness`
 consumers re-discharged via direct `scanFiltered_ok_implies_scan_ok`
 plumbing.
 
-**J.3.6**: re-discharge `EmitterScannability` Cat C (6 sorries),
-removing the matching `-- J.3 manifest 5.d:` markers.
+**J.3.6 landed**: `EmitterScannability` chain-bridge subset (3
+sorries) discharged via new `scan_ok_implies_scanFiltered_ok` and
+`scanLoop_ok_implies_scanLoopFull_ok` reverse bridges.
+
+**J.3.7**: re-discharge the remaining `EmitterScannability` Cat C
+filter-shape consumers (3 sorries), removing the matching
+`-- J.3 manifest 5.d:` markers.
 
 **J.3 final gate**: `lake build` green; sorry count 19 → 7 (only
 the 7 Tier 2 EmitterScannability declarations remain, deferred to
