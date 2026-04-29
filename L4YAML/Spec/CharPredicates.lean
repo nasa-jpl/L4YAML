@@ -48,11 +48,15 @@ YAML 1.2.2: [24] b-line-feed, [25] b-carriage-return, [26] b-char
 -/
 
 /-- `[26] b-char`: line feed or carriage return (Bool). -/
-@[yaml_spec "5.4" 24 "b-line-feed", yaml_spec "5.4" 25 "b-carriage-return", yaml_spec "5.4" 26 "b-char"]
+@[yaml_spec "5.4" 24 "b-line-feed",
+  yaml_spec "5.4" 25 "b-carriage-return",
+  yaml_spec "5.4" 26 "b-char"]
 def isLineBreakBool (c : Char) : Bool := c == '\n' || c == '\r'
 
 /-- `[26] b-char`: line feed or carriage return (Prop). -/
-@[yaml_spec "5.4" 24 "b-line-feed", yaml_spec "5.4" 25 "b-carriage-return", yaml_spec "5.4" 26 "b-char"]
+@[yaml_spec "5.4" 24 "b-line-feed",
+  yaml_spec "5.4" 25 "b-carriage-return",
+  yaml_spec "5.4" 26 "b-char"]
 def isLineBreakProp (c : Char) : Prop := c == '\n' ∨ c == '\r'
 
 theorem isLineBreak_iff (c : Char) : isLineBreakBool c = true ↔ isLineBreakProp c := by
@@ -67,11 +71,15 @@ YAML 1.2.2: [33] s-white (§5.5, https://yaml.org/spec/1.2.2/#55-white-space-cha
 -/
 
 /-- `[33] s-white`: space or tab (Bool). -/
-@[yaml_spec "5.5" 31 "s-space", yaml_spec "5.5" 32 "s-tab", yaml_spec "5.5" 33 "s-white"]
+@[yaml_spec "5.5" 31 "s-space",
+  yaml_spec "5.5" 32 "s-tab",
+  yaml_spec "5.5" 33 "s-white"]
 def isWhiteSpaceBool (c : Char) : Bool := c == ' ' || c == '\t'
 
 /-- `[33] s-white`: space or tab (Prop). -/
-@[yaml_spec "5.5" 31 "s-space", yaml_spec "5.5" 32 "s-tab", yaml_spec "5.5" 33 "s-white"]
+@[yaml_spec "5.5" 31 "s-space",
+  yaml_spec "5.5" 32 "s-tab",
+  yaml_spec "5.5" 33 "s-white"]
 def isWhiteSpaceProp (c : Char) : Prop := c == ' ' ∨ c == '\t'
 
 theorem isWhiteSpace_iff (c : Char) : isWhiteSpaceBool c = true ↔ isWhiteSpaceProp c := by
@@ -192,12 +200,12 @@ YAML 1.2.2: [1] c-printable (§5.1, https://yaml.org/spec/1.2.2/#51-character-se
 /-- `[1] c-printable`: characters that can appear in a YAML stream (Prop). -/
 @[yaml_spec "5.1" 1 "c-printable"]
 def isPrintableProp (c : Char) : Prop :=
-  c == '\t'                                    -- Tab
-  ∨ (c.val ≥ 0x20 ∧ c.val ≤ 0x7E)            -- Basic ASCII printable
-  ∨ c == '\u0085'                              -- Next Line
-  ∨ (c.val ≥ 0xA0 ∧ c.val ≤ 0xD7FF)          -- Basic Multilingual Plane
-  ∨ (c.val ≥ 0xE000 ∧ c.val ≤ 0xFFFD)        -- More BMP
-  ∨ (c.val ≥ 0x10000 ∧ c.val ≤ 0x10FFFF)     -- Supplementary planes
+  c == '\t'                                  -- Tab
+  ∨ (c.val ≥ 0x20 ∧ c.val ≤ 0x7E)            -- Printable ASCII
+  ∨ c == '\u0085'                            -- Next Line
+  ∨ (c.val ≥ 0xA0 ∧ c.val ≤ 0xD7FF)          -- Basic Multilingual Plane (BMP)
+  ∨ (c.val ≥ 0xE000 ∧ c.val ≤ 0xFFFD)        -- Additional Unicode Areas
+  ∨ (c.val ≥ 0x10000 ∧ c.val ≤ 0x10FFFF)     -- 32-bit Unicode
 
 instance (c : Char) : Decidable (isPrintableProp c) := by
   unfold isPrintableProp; infer_instance
@@ -240,11 +248,11 @@ YAML 1.2.2: [31] s-space (§6.1, https://yaml.org/spec/1.2.2/#61-indentation-spa
 -/
 
 /-- `[31] s-space`: only the space character is valid for indentation (Bool). -/
-@[yaml_spec "6.1" 31 "s-space"]
+@[yaml_spec "5.5" 31 "s-space"]
 def isIndentCharBool (c : Char) : Bool := c == ' '
 
 /-- `[31] s-space`: only the space character is valid for indentation (Prop). -/
-@[yaml_spec "6.1" 31 "s-space"]
+@[yaml_spec "5.5" 31 "s-space"]
 def isIndentCharProp (c : Char) : Prop := c == ' '
 
 theorem isIndentChar_iff (c : Char) :
@@ -278,10 +286,11 @@ theorem isAsciiLetter_iff (c : Char) : isAsciiLetterBool c = true ↔ isAsciiLet
 
 /-- `[38] ns-word-char`: `ns-dec-digit | ns-ascii-letter | '-'` (Prop). -/
 @[yaml_spec "5.6" 35 "ns-dec-digit",
+  yaml_spec "5.6" 37 "ns-ascii-letter",
   yaml_spec "5.6" 38 "ns-word-char"]
 def isWordCharProp (c : Char) : Prop :=
   (c.val ≥ 0x30 ∧ c.val ≤ 0x39)  -- [35] ns-dec-digit
-  ∨ isAsciiLetterProp c             -- [37] ns-ascii-letter
+  ∨ isAsciiLetterProp c          -- [37] ns-ascii-letter
   ∨ c = '-'
 
 instance (c : Char) : Decidable (isWordCharProp c) := by
@@ -289,6 +298,7 @@ instance (c : Char) : Decidable (isWordCharProp c) := by
 
 /-- `[38] ns-word-char`: `ns-dec-digit | ns-ascii-letter | '-'` (Bool). -/
 @[yaml_spec "5.6" 35 "ns-dec-digit",
+  yaml_spec "5.6" 37 "ns-ascii-letter",
   yaml_spec "5.6" 38 "ns-word-char"]
 def isWordCharBool (c : Char) : Bool := decide (isWordCharProp c)
 
@@ -300,24 +310,29 @@ theorem isWordChar_iff (c : Char) : isWordCharBool c = true ↔ isWordCharProp c
     The spec production `'%' ns-hex-digit ns-hex-digit` is a multi-character
     sequence; at the single-character level we accept `%` and leave hex-digit
     validation to the enclosing loop. -/
-@[yaml_spec "5.6" 39 "ns-uri-char"]
+@[yaml_spec "5.6" 36 "ns-hex-digit",
+  yaml_spec "5.6" 38 "ns-word-char",
+  yaml_spec "5.6" 39 "ns-uri-char"]
 def isUriCharProp (c : Char) : Prop :=
   isWordCharProp c
   ∨ c ∈ ['%', '#', ';', '/', '?', ':', '@', '&', '=', '+', '$', ',',
-          '_', '.', '!', '~', '*', '\'', '(', ')']
+          '_', '.', '!', '~', '*', '\'', '(', ')', '[', ']']
 
 instance (c : Char) : Decidable (isUriCharProp c) := by
   unfold isUriCharProp; infer_instance
 
 /-- `[39] ns-uri-char`: word-char plus URI-special characters and `%` (Bool). -/
-@[yaml_spec "5.6" 39 "ns-uri-char"]
+@[yaml_spec "5.6" 36 "ns-hex-digit",
+  yaml_spec "5.6" 38 "ns-word-char",
+  yaml_spec "5.6" 39 "ns-uri-char"]
 def isUriCharBool (c : Char) : Bool := decide (isUriCharProp c)
 
 theorem isUriChar_iff (c : Char) : isUriCharBool c = true ↔ isUriCharProp c := by
   simp [isUriCharBool, decide_eq_true_eq]
 
 /-- `[40] ns-tag-char`: `ns-uri-char - '!' - c-flow-indicator` (Prop). -/
-@[yaml_spec "5.6" 40 "ns-tag-char"]
+@[yaml_spec "5.6" 39 "ns-uri-char",
+  yaml_spec "5.6" 40 "ns-tag-char"]
 def isTagCharProp (c : Char) : Prop :=
   isUriCharProp c ∧ c ≠ '!' ∧ ¬isFlowIndicatorProp c
 
@@ -325,7 +340,8 @@ instance (c : Char) : Decidable (isTagCharProp c) := by
   unfold isTagCharProp; infer_instance
 
 /-- `[40] ns-tag-char`: `ns-uri-char - '!' - c-flow-indicator` (Bool). -/
-@[yaml_spec "5.6" 40 "ns-tag-char"]
+@[yaml_spec "5.6" 39 "ns-uri-char",
+  yaml_spec "5.6" 40 "ns-tag-char"]
 def isTagCharBool (c : Char) : Bool := decide (isTagCharProp c)
 
 theorem isTagChar_iff (c : Char) : isTagCharBool c = true ↔ isTagCharProp c := by
@@ -341,7 +357,11 @@ non-flow-indicator).
 -/
 
 /-- `[126] ns-plain-first(c)`: can character start a plain scalar? (Bool). -/
-@[yaml_spec "7.3.3" 126 "ns-plain-first"]
+@[yaml_spec "5.5" 34 "ns-char",
+  yaml_spec "5.3" 5 "c-mapping-key",
+  yaml_spec "5.3" 6 "c-mapping-value",
+  yaml_spec "5.3" 4 "c-sequence-entry",
+  yaml_spec "7.3.3" 126 "ns-plain-first"]
 def canStartPlainScalarBool (c : Char) (next : Option Char) (inFlow : Bool) : Bool :=
   if c = '-' ∨ c = '?' ∨ c = ':' then
     match next with
@@ -351,7 +371,11 @@ def canStartPlainScalarBool (c : Char) (next : Option Char) (inFlow : Bool) : Bo
     !isIndicatorBool c && !isWhiteSpaceBool c && !isLineBreakBool c
 
 /-- `[126] ns-plain-first(c)`: can character start a plain scalar? (Prop). -/
-@[yaml_spec "7.3.3" 126 "ns-plain-first"]
+@[yaml_spec "5.5" 34 "ns-char",
+  yaml_spec "5.3" 5 "c-mapping-key",
+  yaml_spec "5.3" 6 "c-mapping-value",
+  yaml_spec "5.3" 4 "c-sequence-entry",
+  yaml_spec "7.3.3" 126 "ns-plain-first"]
 def canStartPlainScalarProp (c : Char) (next : Option Char) (inFlow : Bool) : Prop :=
   if c = '-' ∨ c = '?' ∨ c = ':' then
     match next with
@@ -403,7 +427,19 @@ In block context: not whitespace, not line break.
 In flow context: additionally not a flow indicator.
 -/
 
-/-- `[127] ns-plain-safe(c)`: safe continuation character for plain scalars (Bool). -/
+/-- `[127] ns-plain-safe(c)`: safe continuation character for plain scalars (Bool).
+
+    The spec dispatches on `c : YamlContext` with four cases:
+      `[127] ns-plain-safe(FLOW-OUT)  ::= ns-plain-safe-out`
+      `[127] ns-plain-safe(FLOW-IN)   ::= ns-plain-safe-in`
+      `[127] ns-plain-safe(BLOCK-KEY) ::= ns-plain-safe-out`
+      `[127] ns-plain-safe(FLOW-KEY)  ::= ns-plain-safe-in`
+    These collapse into two equivalence classes, captured here by the
+    Bool parameter `inFlow`:
+      `inFlow = false` ↔ FLOW-OUT, BLOCK-KEY (→ ns-plain-safe-out)
+      `inFlow = true`  ↔ FLOW-IN,  FLOW-KEY  (→ ns-plain-safe-in)
+    The spec does not define [127] for BLOCK-OUT / BLOCK-IN; callers in those
+    contexts are out of spec for this production. -/
 @[yaml_spec "7.3.3" 127 "ns-plain-safe",
   yaml_spec "7.3.3" 128 "ns-plain-safe-out",
   yaml_spec "7.3.3" 129 "ns-plain-safe-in"]
@@ -413,7 +449,12 @@ def isPlainSafeBool (c : Char) (inFlow : Bool) : Bool :=
   else
     !isWhiteSpaceBool c && !isLineBreakBool c
 
-/-- `[127] ns-plain-safe(c)`: safe continuation character for plain scalars (Prop). -/
+/-- `[127] ns-plain-safe(c)`: safe continuation character for plain scalars (Prop).
+
+    Bool parameter `inFlow` encodes the spec's 4→2 partition (see
+    `isPlainSafeBool` for details):
+      `inFlow = false` ↔ FLOW-OUT, BLOCK-KEY
+      `inFlow = true`  ↔ FLOW-IN,  FLOW-KEY -/
 @[yaml_spec "7.3.3" 127 "ns-plain-safe",
   yaml_spec "7.3.3" 128 "ns-plain-safe-out",
   yaml_spec "7.3.3" 129 "ns-plain-safe-in"]
@@ -454,7 +495,11 @@ a string. 2-argument version with flow context.
     following `ns-plain-safe` character in the INPUT context. When the content
     is a single exception char (the safe char was consumed by a terminator),
     the scanner already validated the input context, so we accept it. -/
-@[yaml_spec "7.3.3" 126 "ns-plain-first"]
+@[yaml_spec "5.5" 34 "ns-char",
+  yaml_spec "5.3" 5 "c-mapping-key",
+  yaml_spec "5.3" 6 "c-mapping-value",
+  yaml_spec "5.3" 4 "c-sequence-entry",
+  yaml_spec "7.3.3" 126 "ns-plain-first"]
 def validPlainFirstBool (content : String) (inFlow : Bool) : Bool :=
   match content.toList with
   | c :: n :: _ => canStartPlainScalarBool c (some n) inFlow
@@ -468,7 +513,11 @@ def validPlainFirstBool (content : String) (inFlow : Bool) : Bool :=
     following `ns-plain-safe` character in the INPUT context. When the content
     is a single exception char (the safe char was consumed by a terminator),
     the scanner already validated the input context, so we accept it. -/
-@[yaml_spec "7.3.3" 126 "ns-plain-first"]
+@[yaml_spec "5.5" 34 "ns-char",
+  yaml_spec "5.3" 5 "c-mapping-key",
+  yaml_spec "5.3" 6 "c-mapping-value",
+  yaml_spec "5.3" 4 "c-sequence-entry",
+  yaml_spec "7.3.3" 126 "ns-plain-first"]
 def validPlainFirstProp (content : String) (inFlow : Bool) : Prop :=
   match content.toList with
   | c :: n :: _ => canStartPlainScalarProp c (some n) inFlow

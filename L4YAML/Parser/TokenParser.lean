@@ -695,11 +695,11 @@ def prepareDocumentState (ps : ParseState) :
 
 /-- Parse a single YAML document.
 
-    **Implements** (YAML 1.2.2 §9.1):
-    - `[205] l-any-document` = `l-directive-document | l-explicit-document | l-bare-document`
-    - `[208] l-directive-document` = `l-directive+ l-explicit-document`
-    - `[207] l-explicit-document` = `c-directives-end (l-bare-document | e-node s-l-comments)`
-    - `[206] l-bare-document` = `s-l+block-node(-1,BLOCK-IN)`
+    **Implements** (YAML 1.2.2 §9.2):
+    - `[210] l-any-document` = `l-directive-document | l-explicit-document | l-bare-document`
+    - `[207] l-bare-document` = `s-l+block-node(-1,BLOCK-IN)`
+    - `[208] l-explicit-document` = `c-directives-end (l-bare-document | e-node s-l-comments)`
+    - `[209] l-directive-document` = `l-directive+ l-explicit-document`
 
     Sequence: `prepareDocumentState` (directives + validation) → root node dispatch.
 

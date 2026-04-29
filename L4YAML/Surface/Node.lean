@@ -58,6 +58,7 @@ mutual
 
   /-- [196] s-l+block-node(n,c): block-context YAML node.
       Can be a block scalar, block collection, flow node, or empty node. -/
+  @[yaml_spec "8.2.3" 196 "s-l+block-node(n,c)"]
   inductive SBlockNode : Nat → YamlContext → SurfPos → SurfPos → Prop where
     /-- [198] Block scalar: separator + optional properties + literal or folded.
         Note: n is the content indent level (= spec's n+1, since we use
@@ -95,8 +96,9 @@ mutual
         SSLComments s s' →
         SBlockNode n c s s'
 
-  /-- [182] s-l+block-indented(n,c): content inside a block entry.
+  /-- [185] s-l+block-indented(n,c): content inside a block entry.
       Can be compact notation, a regular block node, or empty. -/
+  @[yaml_spec "8.2.1" 185 "s-l+block-indented(n,c)"]
   inductive SBlockIndented : Nat → YamlContext → SurfPos → SurfPos → Prop where
     /-- Compact sequence: indent(m) + compact-sequence(n+m). -/
     | compactSeq (n : Nat) (c : YamlContext) (m : Nat) (s s₁ s' : SurfPos) :
@@ -117,10 +119,11 @@ mutual
         SSLComments s s' →
         SBlockIndented n c s s'
 
-  /-- [180] l+block-sequence(n): one or more block sequence entries.
+  /-- [183] l+block-sequence(n): one or more block sequence entries.
       Each entry = s-indent(n+1) + '-' + s-l+block-indented(n+1,BLOCK-IN).
       The '-' indicator must NOT be followed by ns-char (distinguishes
       block entry from plain scalar starting with '-'). -/
+  @[yaml_spec "8.2.1" 183 "l+block-sequence(n)"]
   inductive SBlockSeqEntries : Nat → SurfPos → SurfPos → Prop where
     | single (n : Nat) (s s₁ s₂ s₃ s' : SurfPos) :
         SIndent n s s₁ →
@@ -136,7 +139,8 @@ mutual
         SBlockSeqEntries n s₃ s' →
         SBlockSeqEntries n s s'
 
-  /-- [185] ns-l-block-map-entry(n): explicit or implicit mapping entry. -/
+  /-- [188] ns-l-block-map-entry(n): explicit or implicit mapping entry. -/
+  @[yaml_spec "8.2.2" 188 "ns-l-block-map-entry(n)"]
   inductive SBlockMapEntry : Nat → SurfPos → SurfPos → Prop where
     /-- [186] Explicit entry: '?' key + ':' value. -/
     | explicit (n : Nat) (s s₁ s₂ s₃ s₄ s' : SurfPos) :
@@ -169,7 +173,8 @@ mutual
         SSLComments s₁ s' →
         SBlockMapEntry n s s'
 
-  /-- [184] l+block-mapping(n): one or more block mapping entries. -/
+  /-- [187] l+block-mapping(n): one or more block mapping entries. -/
+  @[yaml_spec "8.2.2" 187 "l+block-mapping(n)"]
   inductive SBlockMapEntries : Nat → SurfPos → SurfPos → Prop where
     | single (n : Nat) (s s₁ s' : SurfPos) :
         SIndent n s s₁ →
@@ -181,7 +186,8 @@ mutual
         SBlockMapEntries n s₂ s' →
         SBlockMapEntries n s s'
 
-  /-- [183] ns-l-compact-sequence(n): compact block sequence (no leading indent). -/
+  /-- [186] ns-l-compact-sequence(n): compact block sequence (no leading indent). -/
+  @[yaml_spec "8.2.2" 186 "ns-l-compact-sequence(n)"]
   inductive SCompactSeq : Nat → SurfPos → SurfPos → Prop where
     | mk (n : Nat) (s s₁ s₂ s' : SurfPos) :
         GLit '-' s s₁ →
@@ -201,7 +207,8 @@ mutual
         SCompactSeqTail n s₃ s' →
         SCompactSeqTail n s s'
 
-  /-- [193] ns-l-compact-mapping(n): compact block mapping. -/
+  /-- [195] ns-l-compact-mapping(n): compact block mapping. -/
+  @[yaml_spec "8.2.2" 195 "ns-l-compact-mapping(n)"]
   inductive SCompactMap : Nat → SurfPos → SurfPos → Prop where
     | mk (n : Nat) (s s₁ s' : SurfPos) :
         SBlockMapEntry n s s₁ →
@@ -217,8 +224,9 @@ mutual
         SCompactMapTail n s₂ s' →
         SCompactMapTail n s s'
 
-  /-- [190] ns-s-block-map-implicit-key: implicit key on a mapping line.
+  /-- [193] ns-s-block-map-implicit-key: implicit key on a mapping line.
       Either a JSON-style implicit key or a YAML-style implicit key. -/
+  @[yaml_spec "8.2.2" 193 "ns-s-block-map-implicit-key"]
   inductive SImplicitKey : SurfPos → SurfPos → Prop where
     /-- JSON-style implicit key: flow node in BLOCK-KEY context. -/
     | jsonKey (s s₁ s' : SurfPos) :
@@ -233,6 +241,7 @@ mutual
 
   /-- [161] ns-flow-node(n,c): flow-context YAML node.
       Alias, direct content, or properties + optional content. -/
+  @[yaml_spec "7.5" 161 "ns-flow-node(n,c)"]
   inductive SFlowNode : Nat → YamlContext → SurfPos → SurfPos → Prop where
     /-- [104] Alias node: '*name'. -/
     | alias (n : Nat) (c : YamlContext) (s s' : SurfPos) :
@@ -253,7 +262,8 @@ mutual
         SCNsProperties n c s s' →
         SFlowNode n c s s'
 
-  /-- [160] ns-flow-content(n,c): flow YAML or JSON content. -/
+  /-- [158] ns-flow-content(n,c): flow YAML or JSON content. -/
+  @[yaml_spec "7.5" 158 "ns-flow-content(n,c)"]
   inductive SFlowContent : Nat → YamlContext → SurfPos → SurfPos → Prop where
     /-- [159] Flow YAML: plain scalar. -/
     | plain (n : Nat) (c : YamlContext) (s s' : SurfPos) :
@@ -276,7 +286,8 @@ mutual
         SCDoubleQuoted n c s s' →
         SFlowContent n c s s'
 
-  /-- [134] c-flow-sequence(n,c): '[' + entries + ']'. -/
+  /-- [137] c-flow-sequence(n,c): '[' + entries + ']'. -/
+  @[yaml_spec "7.4.1" 137 "c-flow-sequence(n,c)"]
   inductive SFlowSequence : Nat → YamlContext → SurfPos → SurfPos → Prop where
     | empty (n : Nat) (c : YamlContext) (s s₁ s₂ s' : SurfPos) :
         GLit '[' s s₁ →
@@ -290,7 +301,8 @@ mutual
         GLit ']' s₃ s' →
         SFlowSequence n c s s'
 
-  /-- [135] ns-s-flow-seq-entries(n,c): comma-separated flow sequence entries. -/
+  /-- [138] ns-s-flow-seq-entries(n,c): comma-separated flow sequence entries. -/
+  @[yaml_spec "7.4.1" 138 "ns-s-flow-seq-entries(n,c)"]
   inductive SFlowSeqEntries : Nat → YamlContext → SurfPos → SurfPos → Prop where
     | single (n : Nat) (c : YamlContext) (s s₁ s' : SurfPos) :
         SFlowSeqEntry n c s s₁ →
@@ -310,7 +322,8 @@ mutual
         GOpt (SSeparate n c) s₃ s' →
         SFlowSeqEntries n c s s'
 
-  /-- [136] ns-flow-seq-entry(n,c): flow sequence entry (flow node or pair). -/
+  /-- [139] ns-flow-seq-entry(n,c): flow sequence entry (flow node or pair). -/
+  @[yaml_spec "7.4.1" 139 "ns-flow-seq-entry(n,c)"]
   inductive SFlowSeqEntry : Nat → YamlContext → SurfPos → SurfPos → Prop where
     /-- Regular flow node. -/
     | node (n : Nat) (c : YamlContext) (s s' : SurfPos) :
@@ -331,7 +344,8 @@ mutual
         GLit ':' s₂ s' →
         SFlowSeqEntry n c s s'
 
-  /-- [137] c-flow-mapping(n,c): '{' + entries + '}'. -/
+  /-- [140] c-flow-mapping(n,c): '{' + entries + '}'. -/
+  @[yaml_spec "7.4.2" 140 "c-flow-mapping(n,c)"]
   inductive SFlowMapping : Nat → YamlContext → SurfPos → SurfPos → Prop where
     | empty (n : Nat) (c : YamlContext) (s s₁ s₂ s' : SurfPos) :
         GLit '{' s s₁ →
@@ -345,7 +359,8 @@ mutual
         GLit '}' s₃ s' →
         SFlowMapping n c s s'
 
-  /-- [138] ns-s-flow-map-entries(n,c): comma-separated flow mapping entries. -/
+  /-- [141] ns-s-flow-map-entries(n,c): comma-separated flow mapping entries. -/
+  @[yaml_spec "7.4.2" 141 "ns-s-flow-map-entries(n,c)"]
   inductive SFlowMapEntries : Nat → YamlContext → SurfPos → SurfPos → Prop where
     | single (n : Nat) (c : YamlContext) (s s₁ s' : SurfPos) :
         SFlowMapEntry n c s s₁ →
@@ -365,7 +380,8 @@ mutual
         GOpt (SSeparate n c) s₃ s' →
         SFlowMapEntries n c s s'
 
-  /-- [139] ns-flow-map-entry(n,c): explicit '?' entry or implicit entry. -/
+  /-- [142] ns-flow-map-entry(n,c): explicit '?' entry or implicit entry. -/
+  @[yaml_spec "7.4.2" 142 "ns-flow-map-entry(n,c)"]
   inductive SFlowMapEntry : Nat → YamlContext → SurfPos → SurfPos → Prop where
     /-- Explicit '?' + key + ':' + separator + value. -/
     | explicitValue (n : Nat) (c : YamlContext) (s s₁ s₂ s₃ s₄ s₅ s₆ s' : SurfPos) :

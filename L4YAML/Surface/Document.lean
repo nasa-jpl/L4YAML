@@ -13,9 +13,9 @@ and stream-level composition.
 
 ## Productions Covered
 
-- **Document markers**: [200]-[202] c-forbidden, c-directives-end,
+- **Document markers**: c-forbidden, c-directives-end,
   c-document-end
-- **Document types**: [203]-[205] l-bare-document, l-explicit-document,
+- **Document types**: l-bare-document, l-explicit-document,
   l-directive-document
 - **Stream**: [206]-[211] l-any-document, l-yaml-stream
 -/
@@ -27,7 +27,7 @@ namespace L4YAML.Surface
 open L4YAML (YamlContext)
 open L4YAML.CharPredicates
 
-/-! ## §1 Document Markers [200]–[202] -/
+/-! ## §1 Document Markers -/
 
 /-- Helper: the characters after '---' or '...' must be whitespace,
     line break, or end of input. -/
@@ -35,8 +35,9 @@ def isMarkerFollower : List Char → Prop
   | [] => True
   | c :: _ => isWhiteSpaceProp c ∨ isLineBreakProp c
 
-/-- [200] c-forbidden: document boundary markers at column 0.
+/-- [206] c-forbidden: document boundary markers at column 0.
     Matches '---' or '...' at column 0 followed by whitespace/break/eof. -/
+@[yaml_spec "9.1.2" 206 "c-forbidden"]
 inductive SCForbidden : SurfPos → Prop where
   | directivesEnd (rest : List Char)
       (hFollow : isMarkerFollower rest) :
@@ -45,40 +46,45 @@ inductive SCForbidden : SurfPos → Prop where
       (hFollow : isMarkerFollower rest) :
       SCForbidden ⟨'.' :: '.' :: '.' :: rest, 0⟩
 
-/-- [201] c-directives-end: the '---' marker.
+/-- [203] c-directives-end: the '---' marker.
     Must be at column 0. Consumes 3 characters, advancing to column 3. -/
+@[yaml_spec "9.1.2" 203 "c-directives-end"]
 inductive SCDirectivesEnd : SurfPos → SurfPos → Prop where
   | mk (rest : List Char) :
       SCDirectivesEnd ⟨'-' :: '-' :: '-' :: rest, 0⟩ ⟨rest, 3⟩
 
-/-- [202] c-document-end: the '...' marker.
+/-- [204] c-document-end: the '...' marker.
     Must be at column 0. Consumes 3 characters, advancing to column 3. -/
+@[yaml_spec "9.1.2" 204 "c-document-end"]
 inductive SCDocumentEnd : SurfPos → SurfPos → Prop where
   | mk (rest : List Char) :
       SCDocumentEnd ⟨'.' :: '.' :: '.' :: rest, 0⟩ ⟨rest, 3⟩
 
-/-! ## §2 Document Types [203]–[205] -/
+/-! ## §2 Document Types -/
 
-/-- [203] l-bare-document: document without explicit markers.
+/-- [207] l-bare-document: document without explicit markers.
     Content is a block node at indent -1 (top level).
     We use indent = 0 since Nat can't represent -1; hence n_lean = n_spec + 1
     throughout (spec's -1 maps to our 0, spec's 0 maps to our 1, etc.).
     SBlockNode constructors use n directly (not n+1) to match this convention. -/
+@[yaml_spec "9.1.3" 207 "l-bare-document"]
 inductive SLBareDocument : SurfPos → SurfPos → Prop where
   | mk (s s' : SurfPos) :
       SBlockNode 0 .blockIn s s' →
       SLBareDocument s s'
 
-/-- [204] l-explicit-document: '---' + content or empty.
+/-- [208] l-explicit-document: '---' + content or empty.
     The content starts after the '---' marker. -/
+@[yaml_spec "9.1.4" 208 "l-explicit-document"]
 inductive SLExplicitDocument : SurfPos → SurfPos → Prop where
   | withContent (s s₁ s' : SurfPos) :
       SCDirectivesEnd s s₁ →
       GAlt SLBareDocument (GSeq SENode SSLComments) s₁ s' →
       SLExplicitDocument s s'
 
-/-- [205] l-directive-document: directives + '---' + content.
+/-- [209] l-directive-document: directives + '---' + content.
     One or more directives followed by an explicit document. -/
+@[yaml_spec "9.1.5" 209 "l-directive-document"]
 inductive SLDirectiveDocument : SurfPos → SurfPos → Prop where
   | mk (s s₁ s' : SurfPos) :
       GPlus SLDirective s s₁ →
@@ -86,6 +92,7 @@ inductive SLDirectiveDocument : SurfPos → SurfPos → Prop where
       SLDirectiveDocument s s'
 
 /-- [210] l-any-document: any document form. -/
+@[yaml_spec "9.2" 210 "l-any-document"]
 inductive SLAnyDocument : SurfPos → SurfPos → Prop where
   | directive (s s' : SurfPos) :
       SLDirectiveDocument s s' → SLAnyDocument s s'
@@ -94,7 +101,7 @@ inductive SLAnyDocument : SurfPos → SurfPos → Prop where
   | bare (s s' : SurfPos) :
       SLBareDocument s s' → SLAnyDocument s s'
 
-/-! ## §3 Stream [206]–[211]
+/-! ## §3 Stream
 
 The YAML stream is the top-level grammar production. It represents one
 or more documents separated by document markers, with optional leading
@@ -105,8 +112,9 @@ and trailing comments/whitespace.
   ( l-document-suffix+ l-document-prefix* l-any-document?
   | l-document-prefix* l-explicit-document? )* -/
 
-/-- [206] l-document-prefix: optional BOM + l-comment*.
+/-- [202] l-document-prefix: optional BOM + l-comment*.
     Simplified: just comments (BOM is a single-character check). -/
+@[yaml_spec "9.1.1" 202 "l-document-prefix"]
 inductive SLDocumentPrefix : SurfPos → SurfPos → Prop where
   | comments (s s' : SurfPos) :
       GStar SLComment s s' → SLDocumentPrefix s s'
@@ -114,7 +122,8 @@ inductive SLDocumentPrefix : SurfPos → SurfPos → Prop where
       GStar SLComment ⟨rest, col + 1⟩ s' →
       SLDocumentPrefix ⟨'\uFEFF' :: rest, col⟩ s'
 
-/-- [207] l-document-suffix: '...' + s-l-comments. -/
+/-- [205] l-document-suffix: '...' + s-l-comments. -/
+@[yaml_spec "9.1.2" 205 "l-document-suffix"]
 inductive SLDocumentSuffix : SurfPos → SurfPos → Prop where
   | mk (s s₁ s' : SurfPos) :
       SCDocumentEnd s s₁ → SSLComments s₁ s' →
@@ -123,6 +132,7 @@ inductive SLDocumentSuffix : SurfPos → SurfPos → Prop where
 /-- [211] l-yaml-stream: the complete YAML stream.
     One or more documents with prefixes and suffixes.
     This is the top-level surface syntax production. -/
+@[yaml_spec "9.2" 211 "l-yaml-stream"]
 inductive SLYamlStream : SurfPos → SurfPos → Prop where
   /-- Single document (possibly bare, explicit, or directive). -/
   | single (s s₁ s₂ s' : SurfPos) :
