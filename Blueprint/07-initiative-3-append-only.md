@@ -1194,23 +1194,102 @@ count unchanged at 21.
   + `LineariseFit_of_empty_pendingKeys` + import/open additions).
   Build green throughout; sorry count for this file: **1 → 0**.
 
-  **Next concrete step (J.3.4)**
+  **J.3.4 landed (2026-04-28 evening) — `ScannerPlainScalarValid`
+  consumers cleared**
 
-  Re-discharge consumers in dependency order: the
-  `ScannerPlainScalarValid` machinery in
-  `Proofs/Production/ScannerPlainScalarValid.lean` (which now imports
-  ScannerLinearise) reads the linearised token stream — its
-  consumers need the same `LineariseFit`-derived invariants.
-  Each substep removes its `-- J.3 manifest 5.d:` marker and the
-  matching `sorry`-using declaration.  Target: drop the J.3 sorry
-  count from 24 to 7 (the 7 deferred Tier 2 EmitterScannability
-  declarations).
+  The four `J.3 manifest 5.d` Category C sorries in
+  `Proofs/Production/ScannerPlainScalarValid.lean` (`scan_plain_scalar_valid`,
+  `saveSimpleKey_preserves_AllKeysPlaceholderInv`,
+  `scan_flow_context_psv`, `scan_flow_brackets_matched`) all dropped.
+  Sorry count for this file: **4 → 0**; full project sorry count:
+  **19 → 15**.
 
-**J.3.4–J.3.6**: re-discharge consumers in dependency order, each
-substep removing its sorry-using declarations and the matching
-`-- J.3 manifest 5.d:` markers.
+  *AKPI dead-code removal (closes the 4364 sorry).*  Post-cutover
+  `saveSimpleKey` reserves `tokenIndex = tokens.size` without pushing
+  the legacy two-placeholder slot pair, so `SimpleKeyPlaceholderInv`
+  (which requires `tokenIndex < tokens.size` and `tokens[tokenIndex] = .placeholder`)
+  is structurally false at the save site.  Tracing the consumer
+  chain showed the family was *already* dead weight: the only live
+  use-site, `dispatchBlockIndicators_preserves_FlowInv`, threaded
+  `h_phi` solely to feed `scanValuePrepare_preserves_FlowContextPSV/FlowNestingInv`,
+  whose post-cutover bodies ignored the placeholder hypothesis (`let _ := h_ph`
+  with no further use).  J.3.4 dropped the parameter from each
+  link in the chain (`scanValuePrepare_preserves_*` →
+  `scanValue_preserves_*` → `dispatchBlockIndicators_preserves_FlowInv`
+  → `scanNextToken_preserves_FlowInv` → `scanLoop_preserves_FlowInv`,
+  `scanLoop_FlowBracketsMatched`, and the corresponding initialiser
+  block in `scan_FlowBracketsMatched`), then removed the orphan
+  `*_preserves_AllKeysPlaceholderInv` family wholesale (8 lemmas
+  including the sorry'd `saveSimpleKey_preserves_AllKeysPlaceholderInv`,
+  ~503 lines).  The `AllKeysPlaceholderInv` definition and its
+  `_mono`/`_of_*` helpers stay (orphan, no sorry exposure) for a J.4
+  cleanup pass.
 
-**J.3 final gate**: `lake build` green; sorry count 24 → 7 (only
+  *Three consumer sorries dispatched via paired `scanLoopFull` +
+  `linearise` bridges.*
+
+  - **`linearise_preserves_PlainScalarsValid`** (J.3.4 bridge,
+    mirror of `linearise_preserves_FlowContextPSV` from J.3.2 but
+    simpler — PSV is unconditional, no flow-tracking invariant).
+    Strong induction on the lex measure `(tokens.size - k) + (pks.size - p)`;
+    splice branch uses `expandKind_not_plain_scalar` (`.key` /
+    `.blockMappingStart` are non-plain), push branch reads the new
+    element from the input via `h_global k hk`.  Closed via
+    `linearise_go_preserves_PlainScalarsValid` then `acc = #[]`,
+    `k = 0`, `p = 0`.
+  - **`scanLoopFull_preserves_PlainScalarsValid`**,
+    **`scanLoopFull_preserves_FlowContextPSV`**, and
+    **`scanLoopFull_FlowBracketsMatched`** — `scanLoop_*` mirrors
+    diverging only in the completion branch's extra `skipToContent`
+    (which preserves `tokens` per `skipToContent_preserves_tokens`
+    and `flowLevel` per `skipToContent_preserves_flowLevel`, hence
+    preserves all three invariants).
+  - **Three post-BOM helpers** (`scanFiltered_post_bom_PlainScalarsValid`,
+    `scanFiltered_post_bom_FlowContextPSV`,
+    `scanFiltered_post_bom_FlowNestingInv`) establish each invariant
+    at the post-BOM state where `tokens.size = 1` (just `.streamStart`)
+    via `array_get_eq_of_array_eq` to fold the BOM `match` to the
+    pre-BOM token.
+  - **`scan_plain_scalar_valid`** / **`scan_flow_context_psv`** /
+    **`scan_flow_brackets_matched`** — each composes the post-BOM
+    helper, the `scanLoopFull_*` mirror, and the `linearise_*`
+    bridge.  Pattern: `unfold scanFiltered; simp; split` on the
+    `scanLoopFull` result, `injection h with h_eq; subst h_eq` to
+    substitute `linearise final.tokens final.pendingKeys` for the
+    output `tokens`, then chain the three preservation lemmas.
+
+  *File restructure.*  Moved `expandKind_not_plain_scalar` (10 LOC)
+  and the J.3.4 PSV bridge block (`linearise_go_preserves_PlainScalarsValid`
+  + `linearise_preserves_PlainScalarsValid`, ~91 LOC) above
+  `scan_plain_scalar_valid` so the discharge has access to the bridge
+  in scope (the FCPSV/FBM bridges, defined for J.3.2, were already
+  positioned correctly relative to their consumers).
+
+  Build status (2026-04-28 evening, J.3.4 commit pending): full
+  project (453/453) green; **15 sorries remaining** (1 DocumentProduction
+  + 1 EndToEndCorrectness for J.3.5; 6 Cat C + 7 Tier 2 in
+  EmitterScannability for J.3.6 / J.4).
+
+  **Next concrete step (J.3.5)**
+
+  Discharge the two `J.3 manifest 5.d` sorries in
+  `Proofs/Production/DocumentProduction.lean:245` (`parse_strict_proof`)
+  and `Proofs/EndToEndCorrectness.lean:313`
+  (`parseYaml_implies_valid_token_stream`).  Both currently rely on
+  the legacy `tokens.filter` shape of `scanFiltered`; the J.3.2
+  `scanFiltered_ok_implies_scan_ok` bridge plus the now-clean
+  `scan_*` consumers in `ScannerPlainScalarValid` should suffice to
+  re-route them.  Target: drop the J.3 sorry count from 15 to 13.
+
+**J.3.4 landed**: `ScannerPlainScalarValid` consumers re-discharged,
+AKPI dead-code chain removed.
+
+**J.3.5–J.3.6**: re-discharge `DocumentProduction` /
+`EndToEndCorrectness` (J.3.5, 2 sorries) and `EmitterScannability`
+Cat C (J.3.6, 6 sorries), each substep removing its sorry-using
+declarations and the matching `-- J.3 manifest 5.d:` markers.
+
+**J.3 final gate**: `lake build` green; sorry count 19 → 7 (only
 the 7 Tier 2 EmitterScannability declarations remain, deferred to
 J.4).
 
