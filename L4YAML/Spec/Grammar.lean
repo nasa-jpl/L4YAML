@@ -195,22 +195,41 @@ This is the specification against which the parser's `processEscape`
 function (in `Parser/Scalar.lean`) is verified. The 18 named escapes
 follow YAML 1.2.2 §5.7 Table 5.13 exactly.
 -/
-@[yaml_spec "5.7" 62 "c-ns-esc-char"]
+@[yaml_spec "5.7" 62 "c-ns-esc-char",
+  yaml_spec "5.7" 42 "ns-esc-null",
+  yaml_spec "5.7" 43 "ns-esc-bell",
+  yaml_spec "5.7" 44 "ns-esc-backspace",
+  yaml_spec "5.7" 45 "ns-esc-horizontal-tab",
+  yaml_spec "5.7" 45 "ns-esc-horizontal-tab (literal)",
+  yaml_spec "5.7" 46 "ns-esc-line-feed",
+  yaml_spec "5.7" 47 "ns-esc-vertical-tab",
+  yaml_spec "5.7" 48 "ns-esc-form-feed",
+  yaml_spec "5.7" 49 "ns-esc-carriage-return",
+  yaml_spec "5.7" 50 "ns-esc-escape",
+  yaml_spec "5.7" 51 "ns-esc-space",
+  yaml_spec "5.7" 52 "ns-esc-double-quote",
+  yaml_spec "5.7" 53 "ns-esc-slash",
+  yaml_spec "5.7" 54 "ns-esc-backslash",
+  yaml_spec "5.7" 55 "ns-esc-next-line",
+  yaml_spec "5.7" 56 "ns-esc-non-breaking-space",
+  yaml_spec "5.7" 57 "ns-esc-line-separator",
+  yaml_spec "5.7" 58 "ns-esc-paragraph-separator"
+  ]
 def resolveNamedEscape : Char → Option Char
   | '0'  => some '\x00'   -- [42] ns-esc-null
   | 'a'  => some '\x07'   -- [43] ns-esc-bell
   | 'b'  => some '\x08'   -- [44] ns-esc-backspace
   | 't'  => some '\t'     -- [45] ns-esc-horizontal-tab
-  | '\t' => some '\t'     -- [46] ns-esc-horizontal-tab (literal)
-  | 'n'  => some '\n'     -- [47] ns-esc-line-feed
-  | 'v'  => some '\x0b'   -- [48] ns-esc-vertical-tab
-  | 'f'  => some '\x0c'   -- [49] ns-esc-form-feed
-  | 'r'  => some '\r'     -- [50] ns-esc-carriage-return
-  | 'e'  => some '\x1b'   -- [51] ns-esc-escape
-  | ' '  => some ' '      -- [52] ns-esc-space
-  | '"'  => some '"'      -- [53] ns-esc-double-quote
-  | '/'  => some '/'      -- [54] ns-esc-slash
-  | '\\' => some '\\'     -- [55] ns-esc-backslash
+  | '\t' => some '\t'     -- [45] ns-esc-horizontal-tab (literal)
+  | 'n'  => some '\n'     -- [46] ns-esc-line-feed
+  | 'v'  => some '\x0b'   -- [47] ns-esc-vertical-tab
+  | 'f'  => some '\x0c'   -- [48] ns-esc-form-feed
+  | 'r'  => some '\r'     -- [49] ns-esc-carriage-return
+  | 'e'  => some '\x1b'   -- [50] ns-esc-escape
+  | ' '  => some ' '      -- [51] ns-esc-space
+  | '"'  => some '"'      -- [52] ns-esc-double-quote
+  | '/'  => some '/'      -- [53] ns-esc-slash
+  | '\\' => some '\\'     -- [54] ns-esc-backslash
   | 'N'  => some '\x85'   -- [55] ns-esc-next-line
   | '_'  => some '\xa0'   -- [56] ns-esc-non-breaking-space
   | 'L'  => some (Char.ofNat 0x2028) -- [57] ns-esc-line-separator
@@ -249,56 +268,78 @@ and block collections (§8: https://yaml.org/spec/1.2.2/#chapter-8-block-style-p
 /--
 A valid YAML node — the top-level grammar production.
 
-**YAML 1.2.2**: [196] s-l+block-node(n,c) / [161] ns-flow-node(n,c)
+**YAML 1.2.2**:
+  - [196] s-l+block-node(n,c) (§8.2.3, https://yaml.org/spec/1.2.2/#82-block-node)
+  - [161] ns-flow-node(n,c) (§7.5, https://yaml.org/spec/1.2.2/#75-ns-flow-node)
 
 A node is any valid YAML value: scalar, sequence, or mapping,
 in either block or flow style. Defined as a single inductive to
 avoid mutual recursion between structures.
 -/
-@[yaml_spec "8.2.3" 196 "s-l+block-node(n,c)", yaml_spec "7.5" 161 "ns-flow-node(n,c)"]
+@[yaml_spec "8.2.3" 196 "s-l+block-node(n,c)",
+  yaml_spec "7.5" 161 "ns-flow-node(n,c)"]
 inductive ValidNode where
-  /-- [128] ns-plain(n,BLOCK-KEY/BLOCK-OUT) — Plain scalar in block context.
+  /-- [131] ns-plain(n,FLOW-OUT/BLOCK-KEY (also BLOCK-OUT, BLOCK-IN indirectly)) (§7.3.3; https://yaml.org/spec/1.2.2/#733-plain-scalar) — Plain scalar in block context.
       Carries character-level production-rule constraints:
       [123] ns-plain-first, [127] no `: ` or ` #`. -/
   | plainScalarBlock (content : String) (nonempty : content.length > 0)
       (firstValid : validPlainFirstProp content false)
       (noCS : noColonSpaceProp content) (noSH : noSpaceHashProp content)
-  /-- [128] ns-plain(n,FLOW-OUT/FLOW-IN) — Plain scalar in flow context.
+  /-- [131] ns-plain(n,FLOW-IN/FLOW-KEY) (§7.3.3; https://yaml.org/spec/1.2.2/#733-plain-scalar) — Plain scalar in flow context.
       Additionally [126] no flow-indicator characters. -/
   | plainScalarFlow (content : String) (nonempty : content.length > 0)
       (firstValid : validPlainFirstProp content true)
       (noCS : noColonSpaceProp content) (noSH : noSpaceHashProp content)
       (noFlow : noFlowIndicatorsProp content)
-  /-- [118] c-single-quoted(n,c) (§7.3.2) — Single-quoted scalar -/
+  /-- [120] c-single-quoted(n,c) (§7.3.2; https://yaml.org/spec/1.2.2/#732-single-quoted-style) — Single-quoted scalar -/
   | singleQuoted (content : String)
-  /-- [107] c-double-quoted(n,c) (§7.3.1) — Double-quoted scalar -/
+  /-- [109] c-double-quoted(n,c) (§7.3.1; https://yaml.org/spec/1.2.2/#731-double-quoted-style) — Double-quoted scalar -/
   | doubleQuoted (content : String)
-  /-- [170] c-l+literal(n) (§8.1.2) — Literal block scalar -/
+  /-- [170] c-l+literal(n) (§8.1.2; https://yaml.org/spec/1.2.2/#812-literal-style) — Literal block scalar -/
   | literalScalar (content : String) (indent : Nat) (chomp : ChompStyle)
-  /-- [175] c-l+folded(n) (§8.1.3) — Folded block scalar -/
+  /-- [174] c-l+folded(n) (§8.1.3; https://yaml.org/spec/1.2.2/#813-folded-style) — Folded block scalar -/
   | foldedScalar (content : String) (indent : Nat) (chomp : ChompStyle)
-  /-- [180] l+block-sequence(n) (§8.2.1) — Block sequence -/
+  /-- [183] l+block-sequence(n) (§8.2.1; https://yaml.org/spec/1.2.2/#821-block-sequences) — Block sequence -/
   | blockSeq (indent : Nat) (items : List ValidNode)
-  /-- [184] l+block-mapping(n) (§8.2.2) — Block mapping -/
+  /-- [187] l+block-mapping(n) (§8.2.2; https://yaml.org/spec/1.2.2/#822-block-mappings) — Block mapping -/
   | blockMap (indent : Nat) (entries : List (ValidNode × ValidNode))
-  /-- [134] c-flow-sequence(n,c) (§7.4.1) — Flow sequence -/
+  /-- [137] c-flow-sequence(n,c) (§7.4.1; https://yaml.org/spec/1.2.2/#741-flow-sequences) — Flow sequence -/
   | flowSeq (items : List ValidNode)
-  /-- [137] c-flow-mapping(n,c) (§7.4.2) — Flow mapping -/
+  /-- [140] c-flow-mapping(n,c) (§7.4.2; https://yaml.org/spec/1.2.2/#742-flow-mappings) — Flow mapping -/
   | flowMap (entries : List (ValidNode × ValidNode))
-  /-- [72] e-node (§7.2.1) — Empty node (implicit null).
+  /-- [106] e-node (§7.2; https://yaml.org/spec/1.2.2/#72-empty-nodes) — Empty node (implicit null).
       YAML 1.2.2: `e-node ::= e-scalar`, `e-scalar ::= /* empty */`.
       The parser produces this for absent values (e.g., empty block entries). -/
   | emptyNode
+
+attribute [yaml_spec "7.3.3" 131 "ns-plain(n,FLOW-OUT/BLOCK-KEY (also BLOCK-OUT, BLOCK-IN indirectly))"] ValidNode.plainScalarBlock
+attribute [yaml_spec "7.3.3" 131 "ns-plain(n,FLOW-IN/FLOW-KEY)"] ValidNode.plainScalarFlow
+attribute [yaml_spec "7.3.2" 120 "c-single-quoted(n,c)"] ValidNode.singleQuoted
+attribute [yaml_spec "7.3.2" 120 "c-single-quoted(n,c)"] ValidNode.singleQuoted
+attribute [yaml_spec "7.3.1" 109 "c-double-quoted(n,c)"] ValidNode.doubleQuoted
+attribute [yaml_spec "7.3.1" 109 "c-double-quoted(n,c)"] ValidNode.doubleQuoted
+attribute [yaml_spec "8.1.2" 170 "c-l+literal(n)"] ValidNode.literalScalar
+attribute [yaml_spec "8.1.2" 170 "c-l+literal(n)"] ValidNode.literalScalar
+attribute [yaml_spec "8.1.3" 174 "c-l+folded(n)"] ValidNode.foldedScalar
+attribute [yaml_spec "8.1.3" 174 "c-l+folded(n)"] ValidNode.foldedScalar
+attribute [yaml_spec "8.2.1" 183 "l+block-sequence(n)"] ValidNode.blockSeq
+attribute [yaml_spec "8.2.1" 183 "l+block-sequence(n)"] ValidNode.blockSeq
+attribute [yaml_spec "8.2.2" 187 "l+block-mapping(n)"] ValidNode.blockMap
+attribute [yaml_spec "8.2.2" 187 "l+block-mapping(n)"] ValidNode.blockMap
+attribute [yaml_spec "7.4.1" 137 "c-flow-sequence(n,c)"] ValidNode.flowSeq
+attribute [yaml_spec "7.4.1" 137 "c-flow-sequence(n,c)"] ValidNode.flowSeq
+attribute [yaml_spec "7.4.2" 140 "c-flow-mapping(n,c)"] ValidNode.flowMap
+attribute [yaml_spec "7.2" 106 "e-node"] ValidNode.emptyNode
 
 /-! ## Document Grammar (YAML 1.2.2 §9: https://yaml.org/spec/1.2.2/#chapter-9-document-stream-productions) -/
 
 /--
 A valid YAML document.
 
-**YAML 1.2.2**: [204] l-any-document (§9, https://yaml.org/spec/1.2.2/#chapter-9-document-stream-productions)
-- [201] l-bare-document: implicit document
-- [202] l-explicit-document: `---` prefixed document
-- [203] l-directive-document: directives + `---` prefixed document
+**YAML 1.2.2**: [210] l-any-document (§9.2, https://yaml.org/spec/1.2.2/#92-streams)
+- [207] l-bare-document: implicit document
+- [208] l-explicit-document: `---` prefixed document
+- [209] l-directive-document: directives + `---` prefixed document
 
 Documents may optionally start with `---` and end with `...`.
 
@@ -306,7 +347,10 @@ Documents may optionally start with `---` and end with `...`.
 stream support. Not yet referenced by proof files — bridge theorems will
 connect when full stream-level parsing proofs are developed.
 -/
-@[yaml_spec "9" 210 "l-any-document"]
+@[yaml_spec "9.1" 210 "l-any-document",
+  yaml_spec "9.1.3" 207 "l-bare-document",
+  yaml_spec "9.1.4" 208 "l-explicit-document",
+  yaml_spec "9.1.5" 209 "l-directive-document"]
 structure ValidDocument where
   /-- The document content -/
   content : ValidNode
@@ -316,7 +360,7 @@ structure ValidDocument where
 /--
 A valid YAML stream — one or more documents.
 
-**YAML 1.2.2**: [205] l-yaml-stream (§9, https://yaml.org/spec/1.2.2/#chapter-9-document-stream-productions)
+**YAML 1.2.2**: [211] l-yaml-stream (§9.2, https://yaml.org/spec/1.2.2/#92-streams)
 
 Used by `parse_produces_valid_stream` in `EndToEndCorrectness.lean`,
 which constructs a list of `ValidDocument` witnesses from `parseYaml`
@@ -732,9 +776,9 @@ inductive FoldResult where
 /--
 A character is a valid block scalar header indicator character.
 
-**YAML 1.2.2**: [158] c-b-block-header(m,t) (§8.1.1, https://yaml.org/spec/1.2.2/#811-block-scalar-headers)
-- [159] c-indentation-indicator(m): digit `1`–`9`
-- [160] c-chomping-indicator(t): `-` (strip) or `+` (keep)
+**YAML 1.2.2**: [162] c-b-block-header(m,t) (§8.1.1, https://yaml.org/spec/1.2.2/#811-block-scalar-headers)
+- [163] c-indentation-indicator(m): digit `1`–`9`
+- [164] c-chomping-indicator(t): `-` (strip) or `+` (keep)
 
 This is the formal specification of which characters `blockScalarHeader`
 is allowed to consume as indicator characters (before trailing
@@ -742,7 +786,9 @@ whitespace/comment/newline).
 
 **Decidable**: used both in proofs and runtime assertions.
 -/
-@[yaml_spec "8.1.1" 162 "c-b-block-header(m,t)"]
+@[yaml_spec "8.1.1" 162 "c-b-block-header(m,t)",
+  yaml_spec "8.1.1.1" 163 "c-indentation-indicator(m)",
+  yaml_spec "8.1.1.2" 164 "c-chomping-indicator(t)"]
 def isBlockScalarHeaderChar (c : Char) : Bool :=
   c == '-' || c == '+' || (c >= '1' && c <= '9')
 
