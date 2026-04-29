@@ -6,6 +6,7 @@ import L4YAML.Scanner.Scanner
 import L4YAML.Spec.Grammar
 import L4YAML.Proofs.Scanner.ScannerProofs
 import L4YAML.Proofs.Scanner.ScannerProgress
+import L4YAML.Proofs.Scanner.ScannerLinearise
 
 /-!
 # Scanner Correctness (P10.11a)
@@ -74,6 +75,7 @@ open L4YAML.CharPredicates
 open L4YAML.Grammar
 open L4YAML.Proofs.ScannerProgress
 open L4YAML.Proofs.ScannerProofs
+open L4YAML.Proofs.ScannerLinearise
 
 /-- Simple key invariant: all simple keys (current and stacked) have
     `tokenIndex ≥ n`. This is threaded through `scanLoop` to ensure that
@@ -12915,21 +12917,10 @@ theorem scanFiltered_ok_implies_scan_ok (input : String)
     exact h_loop
   · simp at h
 
-/-- `scanFiltered` produces a `ValidTokenStream`.
-
-**Initiative 3 / J.2 step 5 cutover**: pre-cutover this was proven via
-`List.filter_sublist` against the unfiltered `scan` output.  Post-cutover
-`scanFiltered` routes through `linearise`, so the proof must re-derive
-each `ValidTokenStream` field against `linearise`'s shape lemmas
-(`linearise_append_token`, `linearise_append_unresolved`, `linearise_resolved`)
-which are themselves J.3 deliverables in `Scanner/Linearise.lean`.
-
-J.3 manifest 5.d: `scanFiltered`-shape lemma — Category C. -/
-def scanFiltered_produces_valid_tokens (input : String) (ftokens : Array (Positioned YamlToken))
-    (h : scanFiltered input = .ok ftokens) : ValidTokenStream := by
-  -- J.3 manifest 5.d: scanFiltered now uses linearise; re-derive against
-  -- linearise's shape lemmas (currently sorry'd in Scanner/Linearise.lean).
-  sorry
+-- `scanFiltered_produces_valid_tokens` is defined at the end of this
+-- file (after `scanLoopFull_preserves_LineariseFit`, which it
+-- consumes).  Forward declaration would require lexical reordering;
+-- the full definition lives below the dispatcher composition section.
 
 /-! ## §4  Compile-Time Verification
 
@@ -14916,5 +14907,423 @@ theorem scanLoopFull_preserves_LineariseFit
         (scanNextToken_preserves_LineariseFit s s' h_inv h_akv.1 h_snt)
         (scanNextToken_preserves_AllKeysValid s s' h_akv h_snt)
         h
+
+/-! ### Step 9: `scanFiltered_produces_valid_tokens`
+
+After the J.2 step 5 cutover, `scanFiltered` post-processes the
+final `scanLoopFull` state through `linearise`.  The four
+`ValidTokenStream` fields are derived by composing
+`scanLoopFull_preserves_LineariseFit` (Step 8b chain) with the
+`linearise_*` shape lemmas in `Proofs/Scanner/ScannerLinearise.lean`. -/
+
+/-- After `scanLoopFull` succeeds, every saved `pendingKey`'s
+    `insertBeforeIdx` is *strictly* less than `final.tokens.size`.
+
+    Stronger than the `≤ tokens.size` bound from
+    `PendingKeysWellIndexed` — required by `linearise_last_eq_tokens_last`,
+    which needs `insertBeforeIdx ≤ tokens.size - 1` so that the splice
+    does not fire after the last real token.
+
+    The strictness is "free" in `scanLoopFull`: its completion arm
+    always emits `.streamEnd` last, and `emit` adds a token without
+    changing `pendingKeys` — so the post-emit `tokens.size` strictly
+    exceeds every saved index. -/
+theorem scanLoopFull_pendingKeys_lt_tokens_size
+    (s : ScannerState) (fuel : Nat) (final : ScannerState)
+    (h_inv : LineariseFit s) (h_akv : AllKeysValid s)
+    (h : scanLoopFull s fuel = .ok final) :
+    ∀ p (hp : p < final.pendingKeys.size),
+      final.pendingKeys[p].insertBeforeIdx < final.tokens.size := by
+  induction fuel generalizing s with
+  | zero => unfold scanLoopFull at h; simp at h
+  | succ fuel' IH =>
+    unfold scanLoopFull at h
+    simp only [] at h
+    split at h
+    · simp at h
+    · -- .ok none: completion arm emits streamEnd last
+      split at h
+      · simp at h
+      · split at h
+        · simp at h
+        · injection h with h_eq
+          subst h_eq
+          cases h_skip : skipToContent s with
+          | ok s_skip =>
+            show ∀ p (hp : p < ((unwindIndents s_skip (-1)).emit .streamEnd).pendingKeys.size),
+              ((unwindIndents s_skip (-1)).emit .streamEnd).pendingKeys[p].insertBeforeIdx <
+                ((unwindIndents s_skip (-1)).emit .streamEnd).tokens.size
+            have h_skip_inv : LineariseFit s_skip :=
+              skipToContent_preserves_LineariseFit s s_skip h_skip h_inv
+            have h_unwind_inv : LineariseFit (unwindIndents s_skip (-1)) :=
+              unwindIndents_preserves_LineariseFit s_skip (-1) h_skip_inv
+            intro p hp
+            have h_pks_eq :=
+              emit_preserves_pendingKeys (unwindIndents s_skip (-1)) .streamEnd
+            have h_size_eq :=
+              emit_tokens_size (unwindIndents s_skip (-1)) .streamEnd
+            have hp_pre : p < (unwindIndents s_skip (-1)).pendingKeys.size := by
+              rw [h_pks_eq] at hp; exact hp
+            have h_get :
+                ((unwindIndents s_skip (-1)).emit .streamEnd).pendingKeys[p]'hp
+                  = (unwindIndents s_skip (-1)).pendingKeys[p]'hp_pre :=
+              array_get_eq_of_array_eq h_pks_eq p hp hp_pre
+            rw [h_get]
+            have h_bound := (h_unwind_inv.2.1.2 p hp_pre).2
+            omega
+          | error e =>
+            show ∀ p (hp : p < ((unwindIndents s (-1)).emit .streamEnd).pendingKeys.size),
+              ((unwindIndents s (-1)).emit .streamEnd).pendingKeys[p].insertBeforeIdx <
+                ((unwindIndents s (-1)).emit .streamEnd).tokens.size
+            have h_unwind_inv : LineariseFit (unwindIndents s (-1)) :=
+              unwindIndents_preserves_LineariseFit s (-1) h_inv
+            intro p hp
+            have h_pks_eq :=
+              emit_preserves_pendingKeys (unwindIndents s (-1)) .streamEnd
+            have h_size_eq :=
+              emit_tokens_size (unwindIndents s (-1)) .streamEnd
+            have hp_pre : p < (unwindIndents s (-1)).pendingKeys.size := by
+              rw [h_pks_eq] at hp; exact hp
+            have h_get :
+                ((unwindIndents s (-1)).emit .streamEnd).pendingKeys[p]'hp
+                  = (unwindIndents s (-1)).pendingKeys[p]'hp_pre :=
+              array_get_eq_of_array_eq h_pks_eq p hp hp_pre
+            rw [h_get]
+            have h_bound := (h_unwind_inv.2.1.2 p hp_pre).2
+            omega
+    · rename_i s' h_snt
+      exact IH s'
+        (scanNextToken_preserves_LineariseFit s s' h_inv h_akv.1 h_snt)
+        (scanNextToken_preserves_AllKeysValid s s' h_akv h_snt)
+        h
+
+/-- LineariseFit at any state with empty `pendingKeys` and
+    `tokens.size ≥ 1` reduces to `ScanInv`: every pks-side conjunct
+    is vacuously satisfied by the empty array. Used to seed the
+    `scanLoopFull_preserves_LineariseFit` induction at the post-BOM
+    state of `scanFiltered`. -/
+theorem LineariseFit_of_empty_pendingKeys (s : ScannerState)
+    (h_inv : ScanInv s) (h_pks : s.pendingKeys.size = 0)
+    (h_tok : s.tokens.size ≥ 1) : LineariseFit s := by
+  refine ⟨h_inv, ?_, ?_, ?_, ?_, ?_, ?_⟩
+  · exact ⟨h_tok, fun p hp => by rw [h_pks] at hp; omega⟩
+  · intro p q hp _ _; rw [h_pks] at hp; omega
+  · intro p q hp _ _; rw [h_pks] at hp; omega
+  · intro p hp _ _ _; rw [h_pks] at hp; omega
+  · intro p hp _ _ _; rw [h_pks] at hp; omega
+  · intro p hp; rw [h_pks] at hp; omega
+
+/-- Post-BOM state of `scanFiltered`'s prefix: `pendingKeys` is empty
+    (mk' default; `emit`/`advance` preserve `pendingKeys`). -/
+theorem scanFiltered_post_bom_pendingKeys_empty (input : String) :
+    (match ((ScannerState.mk' input).emit .streamStart).peek? with
+      | some '﻿' => ((ScannerState.mk' input).emit .streamStart).advance
+      | _ => (ScannerState.mk' input).emit .streamStart).pendingKeys.size = 0 := by
+  split
+  · rw [advance_preserves_pendingKeys, emit_preserves_pendingKeys]
+    show (ScannerState.mk' input).pendingKeys.size = 0
+    rfl
+  · rw [emit_preserves_pendingKeys]
+    show (ScannerState.mk' input).pendingKeys.size = 0
+    rfl
+
+/-- Post-BOM state of `scanFiltered`'s prefix: `tokens.size = 1`. -/
+theorem scanFiltered_post_bom_tokens_size_eq_one (input : String) :
+    (match ((ScannerState.mk' input).emit .streamStart).peek? with
+      | some '﻿' => ((ScannerState.mk' input).emit .streamStart).advance
+      | _ => (ScannerState.mk' input).emit .streamStart).tokens.size = 1 := by
+  have h_init : ((ScannerState.mk' input).emit .streamStart).tokens.size = 1 := by
+    rw [emit_tokens_size, mk'_tokens_empty]; simp
+  split
+  · rw [advance_preserves_tokens]; exact h_init
+  · exact h_init
+
+/-- Post-BOM state of `scanFiltered`'s prefix: tokens equal the
+    pre-BOM `(emit .streamStart)` tokens (since both branches of the
+    BOM `match` preserve tokens — `.advance` via `advance_preserves_tokens`
+    and the wildcard branch identically). -/
+theorem scanFiltered_post_bom_tokens_eq (input : String) :
+    (match ((ScannerState.mk' input).emit .streamStart).peek? with
+      | some '﻿' => ((ScannerState.mk' input).emit .streamStart).advance
+      | _ => (ScannerState.mk' input).emit .streamStart).tokens
+    = ((ScannerState.mk' input).emit .streamStart).tokens := by
+  split
+  · exact advance_preserves_tokens _
+  · rfl
+
+/-- Post-BOM state of `scanFiltered`'s prefix: `ScanInv` holds.
+    Inlined from `scan_positions_ordered`'s setup (lines 12568–12585). -/
+theorem scanFiltered_post_bom_ScanInv (input : String) :
+    ScanInv (match ((ScannerState.mk' input).emit .streamStart).peek? with
+      | some '﻿' => ((ScannerState.mk' input).emit .streamStart).advance
+      | _ => (ScannerState.mk' input).emit .streamStart) := by
+  have h_inv0 : ScanInv ((ScannerState.mk' input).emit .streamStart) := by
+    have h_sz : ((ScannerState.mk' input).emit .streamStart).tokens.size = 1 := by
+      rw [emit_tokens_size, mk'_tokens_empty]; simp
+    constructor
+    · intro ⟨i, hi⟩ ⟨j, hj⟩ hij
+      rw [h_sz] at hi hj; omega
+    · intro ⟨i, hi⟩
+      rw [h_sz] at hi
+      have h_i0 : i = 0 := by omega
+      subst h_i0
+      simp [ScannerState.emit, ScannerState.mk', ScannerState.currentPos]
+  split
+  · exact advance_preserves_ScanInv _ h_inv0
+  · exact h_inv0
+
+/-- Post-BOM state of `scanFiltered`'s prefix: `AllKeysValid` holds.
+    Inlined from `scan_positions_ordered`'s setup. -/
+theorem scanFiltered_post_bom_AllKeysValid (input : String) :
+    AllKeysValid (match ((ScannerState.mk' input).emit .streamStart).peek? with
+      | some '﻿' => ((ScannerState.mk' input).emit .streamStart).advance
+      | _ => (ScannerState.mk' input).emit .streamStart) := by
+  have h_akv0 : AllKeysValid ((ScannerState.mk' input).emit .streamStart) := by
+    constructor
+    · intro h_poss; simp [ScannerState.mk', ScannerState.emit] at h_poss
+    · intro j hj; simp [ScannerState.mk', ScannerState.emit] at hj
+  split
+  · have h_tok := advance_preserves_tokens ((ScannerState.mk' input).emit .streamStart)
+    exact AllKeysValid_mono _ _ h_akv0
+      (advance_preserves_simpleKey _)
+      (advance_preserves_simpleKeyStack _)
+      (by simp [h_tok])
+      (fun i hi => by simp [h_tok])
+  · exact h_akv0
+
+/-- Post-BOM state of `scanFiltered`'s prefix: `LineariseFit` holds.
+    Bridges into `scanLoopFull_preserves_LineariseFit`. -/
+theorem scanFiltered_post_bom_LineariseFit (input : String) :
+    LineariseFit (match ((ScannerState.mk' input).emit .streamStart).peek? with
+      | some '﻿' => ((ScannerState.mk' input).emit .streamStart).advance
+      | _ => (ScannerState.mk' input).emit .streamStart) :=
+  LineariseFit_of_empty_pendingKeys _
+    (scanFiltered_post_bom_ScanInv input)
+    (scanFiltered_post_bom_pendingKeys_empty input)
+    (by rw [scanFiltered_post_bom_tokens_size_eq_one]; omega)
+
+/-- **Step 9.a**: Envelope: `scanFiltered`'s output has at least 2 tokens.
+
+    Composes `scanLoopFull_increases_tokens` (final state has
+    `tokens.size ≥ post_bom.tokens.size + 1 = 2`) with
+    `linearise_size_ge_tokens` (linearise output ≥ tokens.size). -/
+theorem scanFiltered_produces_at_least_two (input : String)
+    (ftokens : Array (Positioned YamlToken))
+    (h : scanFiltered input = .ok ftokens) : ftokens.size ≥ 2 := by
+  unfold scanFiltered at h
+  simp only [] at h
+  split at h
+  · rename_i final h_full
+    injection h with h_eq
+    rw [← h_eq]
+    -- Case-analyze on peek? to reduce the BOM match in h_full to a single branch
+    -- (avoids alpha-rename issues with the match expression).
+    have h_init : ((ScannerState.mk' input).emit .streamStart).tokens.size = 1 := by
+      rw [emit_tokens_size, mk'_tokens_empty]; simp
+    have h_lin_ge := linearise_size_ge_tokens final.tokens final.pendingKeys
+    -- Split the BOM match in h_full to a single branch (avoids alpha-rename).
+    have h_final_ge_2 : final.tokens.size ≥ 2 := by
+      split at h_full
+      · -- BOM branch: state = advance
+        have h_inc := scanLoopFull_increases_tokens _ _ _ h_full
+        rw [advance_preserves_tokens, h_init] at h_inc; omega
+      · -- non-BOM branch: state unchanged
+        have h_inc := scanLoopFull_increases_tokens _ _ _ h_full
+        rw [h_init] at h_inc; omega
+    omega
+  · simp at h
+
+/-- **Step 9.b**: First token: `scanFiltered`'s output starts with
+    `streamStart`.  `linearise_first_eq_tokens_first` reduces this to
+    the same property on `final.tokens`, which `scanLoopFull_preserves_tokens`
+    (with `n = 1`) carries from the post-BOM state's first token (the
+    initial `emit .streamStart`). -/
+theorem scanFiltered_first_is_streamStart (input : String)
+    (ftokens : Array (Positioned YamlToken))
+    (h : scanFiltered input = .ok ftokens) (h_size : ftokens.size > 0) :
+    (ftokens[0]'h_size).val = YamlToken.streamStart := by
+  unfold scanFiltered at h
+  simp only [] at h
+  split at h
+  · rename_i final h_full
+    injection h with h_eq
+    have h_lf : LineariseFit final :=
+      scanLoopFull_preserves_LineariseFit _ _ _
+        (scanFiltered_post_bom_LineariseFit input)
+        (scanFiltered_post_bom_AllKeysValid input)
+        h_full
+    have h_full_ge := scanLoopFull_increases_tokens _ _ _ h_full
+    have h_post_bom_size_eq := scanFiltered_post_bom_tokens_size_eq_one input
+    have h_final_size_pos : final.tokens.size > 0 := by omega
+    have h_pks_lo : ∀ p (h : p < final.pendingKeys.size),
+        1 ≤ final.pendingKeys[p].insertBeforeIdx :=
+      fun p hp => (h_lf.2.1.2 p hp).1
+    obtain ⟨h_lin_pos, h_first_eq⟩ :=
+      linearise_first_eq_tokens_first final.tokens final.pendingKeys
+        h_final_size_pos h_pks_lo
+    -- final.tokens[0] = streamStart via scanLoopFull_preserves_tokens with n = 1.
+    have h_post_bom_size := scanFiltered_post_bom_tokens_size_eq_one input
+    have h_post_bom_tok_eq := scanFiltered_post_bom_tokens_eq input
+    have h_init_token :
+        (((ScannerState.mk' input).emit .streamStart).tokens[0]'(by
+            rw [emit_tokens_size, mk'_tokens_empty]; simp)).val =
+          YamlToken.streamStart := by
+      unfold ScannerState.emit
+      simp [mk'_tokens_empty]
+    -- Reduce the post-BOM token to the pre-BOM token via h_post_bom_tok_eq.
+    have h_post_bom_token :
+        ((match ((ScannerState.mk' input).emit .streamStart).peek? with
+            | some '﻿' => ((ScannerState.mk' input).emit .streamStart).advance
+            | _ => (ScannerState.mk' input).emit .streamStart).tokens[0]'(by
+            rw [h_post_bom_size]; omega)).val = YamlToken.streamStart := by
+      have h_get :
+          (match ((ScannerState.mk' input).emit .streamStart).peek? with
+            | some '﻿' => ((ScannerState.mk' input).emit .streamStart).advance
+            | _ => (ScannerState.mk' input).emit .streamStart).tokens[0]'(by
+              rw [h_post_bom_size]; omega)
+            = ((ScannerState.mk' input).emit .streamStart).tokens[0]'(by
+              rw [emit_tokens_size, mk'_tokens_empty]; simp) :=
+        array_get_eq_of_array_eq h_post_bom_tok_eq 0 _ _
+      rw [h_get]; exact h_init_token
+    -- SimpleKeyAbove for n = 1 at post-BOM state.
+    have h_inv1 :
+        SimpleKeyAbove (match ((ScannerState.mk' input).emit .streamStart).peek? with
+            | some '﻿' => ((ScannerState.mk' input).emit .streamStart).advance
+            | _ => (ScannerState.mk' input).emit .streamStart) 1 := by
+      unfold SimpleKeyAbove
+      constructor
+      · -- simpleKey.possible = false in mk'/emit/advance
+        suffices h : ¬ (match ((ScannerState.mk' input).emit .streamStart).peek? with
+            | some '﻿' => ((ScannerState.mk' input).emit .streamStart).advance
+            | _ => (ScannerState.mk' input).emit .streamStart).simpleKey.possible by
+          intro h_poss; exact absurd h_poss h
+        split
+        · dsimp only [ScannerState.advance, ScannerState.emit, ScannerState.mk']
+          split <;> (try split) <;> (try split) <;> (try split) <;> simp
+        · dsimp only [ScannerState.emit, ScannerState.mk']; simp
+      · -- simpleKeyStack is empty
+        suffices h : (match ((ScannerState.mk' input).emit .streamStart).peek? with
+            | some '﻿' => ((ScannerState.mk' input).emit .streamStart).advance
+            | _ => (ScannerState.mk' input).emit .streamStart).simpleKeyStack.size = 0 by
+          intro j h_j; rw [h] at h_j; omega
+        split
+        · dsimp only [ScannerState.advance, ScannerState.emit, ScannerState.mk']
+          split <;> (try split) <;> (try split) <;> (try split) <;> simp
+        · dsimp only [ScannerState.emit, ScannerState.mk']; simp
+    have ⟨h_0_lt_final, h_preserved⟩ :=
+      scanLoopFull_preserves_tokens _ _ final 1
+        (Nat.le_of_eq h_post_bom_size.symm) h_inv1 h_full 0 (by omega)
+    have h_final_token : (final.tokens[0]'h_0_lt_final).val = YamlToken.streamStart := by
+      rw [h_preserved]; exact h_post_bom_token
+    subst h_eq
+    rw [show (linearise final.tokens final.pendingKeys)[0]'(by omega) =
+            final.tokens[0]'h_0_lt_final from h_first_eq]
+    exact h_final_token
+  · simp at h
+
+/-- **Step 9.c**: Last token: `scanFiltered`'s output ends with `streamEnd`.
+
+    `linearise_last_eq_tokens_last` reduces this to the same property
+    on `final.tokens`.  The strict bound on `insertBeforeIdx`
+    (`scanLoopFull_pendingKeys_lt_tokens_size`) supplies its
+    `≤ tokens.size - 1` precondition; the final-token equation
+    follows from `scanLoopFull_success_emits_streamEnd`. -/
+theorem scanFiltered_last_is_streamEnd (input : String)
+    (ftokens : Array (Positioned YamlToken))
+    (h : scanFiltered input = .ok ftokens) (h_size : ftokens.size > 0) :
+    (ftokens[ftokens.size - 1]'(by omega)).val = YamlToken.streamEnd := by
+  unfold scanFiltered at h
+  simp only [] at h
+  split at h
+  · rename_i final h_full
+    injection h with h_eq
+    have h_full_ge := scanLoopFull_increases_tokens _ _ _ h_full
+    have h_post_bom_size_eq := scanFiltered_post_bom_tokens_size_eq_one input
+    have h_final_size_pos : final.tokens.size > 0 := by omega
+    have h_pks_lt :=
+      scanLoopFull_pendingKeys_lt_tokens_size _ _ _
+        (scanFiltered_post_bom_LineariseFit input)
+        (scanFiltered_post_bom_AllKeysValid input)
+        h_full
+    have h_pks_le : ∀ p (h : p < final.pendingKeys.size),
+        final.pendingKeys[p].insertBeforeIdx ≤ final.tokens.size - 1 :=
+      fun p hp => Nat.le_sub_one_of_lt (h_pks_lt p hp)
+    obtain ⟨h_lin_pos, h_last_eq⟩ :=
+      linearise_last_eq_tokens_last final.tokens final.pendingKeys
+        h_final_size_pos h_pks_le
+    obtain ⟨s_pre, h_final_eq⟩ := scanLoopFull_success_emits_streamEnd _ _ _ h_full
+    -- Establish final.tokens[size-1].val = streamEnd FIRST while final is still
+    -- a free variable (avoids motive issues from a later rw of `final`).
+    have h_pre_last : (final.tokens[final.tokens.size - 1]'(by omega)).val
+        = YamlToken.streamEnd := by
+      subst h_final_eq
+      unfold ScannerState.emit
+      simp only [Array.size_push]
+      have h_idx : s_pre.tokens.size + 1 - 1 = s_pre.tokens.size := by omega
+      simp [Array.getElem_push, h_idx]
+    subst h_eq
+    rw [show (linearise final.tokens final.pendingKeys)[
+              (linearise final.tokens final.pendingKeys).size - 1]'(by omega) =
+            final.tokens[final.tokens.size - 1]'(by omega) from h_last_eq]
+    exact h_pre_last
+  · simp at h
+
+/-- **Step 9.d**: Position ordering: `scanFiltered`'s output is sorted
+    in `pos.offset`.  `linearise_positions_ordered` consumes the four
+    LineariseFit hypotheses produced by `scanLoopFull_preserves_LineariseFit`. -/
+theorem scanFiltered_positions_ordered (input : String)
+    (ftokens : Array (Positioned YamlToken))
+    (h : scanFiltered input = .ok ftokens) :
+    ∀ (i j : Fin ftokens.size), i.val < j.val →
+      (ftokens[i]).pos.offset ≤ (ftokens[j]).pos.offset := by
+  unfold scanFiltered at h
+  simp only [] at h
+  split at h
+  · rename_i final h_full
+    injection h with h_eq
+    have h_lf : LineariseFit final :=
+      scanLoopFull_preserves_LineariseFit _ _ _
+        (scanFiltered_post_bom_LineariseFit input)
+        (scanFiltered_post_bom_AllKeysValid input)
+        h_full
+    obtain ⟨h_inv_final, _, _, h_pos_sorted, h_lo, h_hi, _⟩ := h_lf
+    have h_tok_ord : ∀ a b (ha : a < final.tokens.size) (hb : b < final.tokens.size),
+        a < b →
+        (final.tokens[a]'ha).pos.offset ≤ (final.tokens[b]'hb).pos.offset := by
+      intro a b ha hb hab
+      exact h_inv_final.1 ⟨a, ha⟩ ⟨b, hb⟩ hab
+    have h_lin_ord :=
+      linearise_positions_ordered final.tokens final.pendingKeys
+        h_tok_ord h_pos_sorted h_lo h_hi
+    -- Substitute `ftokens` with `linearise ...` so the Fin indices refer
+    -- to the linearise array directly; avoids dependent-rewrite motive issues.
+    subst h_eq
+    intro i j hij
+    exact h_lin_ord i.val j.val i.isLt j.isLt hij
+  · simp at h
+
+/-- `scanFiltered` produces a `ValidTokenStream`.
+
+**Initiative 3 / J.2 step 5 cutover**: pre-cutover this was proven via
+`List.filter_sublist` against the unfiltered `scan` output.  Post-cutover
+`scanFiltered` routes through `linearise`, so the proof re-derives each
+`ValidTokenStream` field against `linearise`'s shape lemmas
+(`linearise_first_eq_tokens_first`, `linearise_last_eq_tokens_last`,
+`linearise_size_ge_tokens`, `linearise_positions_ordered`) composed with
+`scanLoopFull_preserves_LineariseFit` (Step 8b chain).
+
+J.3 manifest 5.d: `scanFiltered`-shape lemma — Category C. -/
+def scanFiltered_produces_valid_tokens (input : String) (ftokens : Array (Positioned YamlToken))
+    (h : scanFiltered input = .ok ftokens) : ValidTokenStream := by
+  have h_size : ftokens.size ≥ 2 := scanFiltered_produces_at_least_two input ftokens h
+  have h_pos : ftokens.size > 0 := by omega
+  exact {
+    input := input,
+    tokens := ftokens,
+    sizeGe2 := h_size,
+    firstIsStreamStart := scanFiltered_first_is_streamStart input ftokens h h_pos,
+    lastIsStreamEnd := scanFiltered_last_is_streamEnd input ftokens h h_pos,
+    positionsOrdered := scanFiltered_positions_ordered input ftokens h
+  }
 
 end L4YAML.Proofs.ScannerCorrectness
