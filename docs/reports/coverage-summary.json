@@ -1,5 +1,5 @@
 {
-  "date": "2026-04-29T08:35:51-0700",
+  "date": "2026-04-29T09:48:02-0700",
   "overall": {
     "applicable": 358,
     "correct": 358,
@@ -20666,7 +20666,7 @@
       {
         "allPass": true,
         "label": "Production Coverage Analysis",
-        "passed": 443,
+        "passed": 588,
         "tests": [
           {
             "category": "Catalog completeness",
@@ -20685,7 +20685,7 @@
           },
           {
             "category": "Automated @[yaml_spec] discovery",
-            "name": "@[yaml_spec] entries discovered: 434",
+            "name": "@[yaml_spec] entries discovered: 568",
             "outcome": "pass"
           },
           {
@@ -20695,7 +20695,7 @@
           },
           {
             "category": "Automated @[yaml_spec] discovery",
-            "name": "source modules with annotations: 12",
+            "name": "source modules with annotations: 17",
             "outcome": "pass"
           },
           {
@@ -20714,6 +20714,36 @@
             "outcome": "pass"
           },
           {
+            "category": "Per-folder annotation counts",
+            "name": "L4YAML/Parser: 56 annotations",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-folder annotation counts",
+            "name": "L4YAML/Proofs: 2 annotations",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-folder annotation counts",
+            "name": "L4YAML/Scanner: 239 annotations",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-folder annotation counts",
+            "name": "L4YAML/Spec: 168 annotations",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-folder annotation counts",
+            "name": "L4YAML/Surface: 82 annotations",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-folder annotation counts",
+            "name": "L4YAML/Token: 21 annotations",
+            "outcome": "pass"
+          },
+          {
             "category": "Per-module annotation counts",
             "name": "L4YAML.Scanner.Scalar: 107 annotations",
             "outcome": "pass"
@@ -20725,7 +20755,27 @@
           },
           {
             "category": "Per-module annotation counts",
+            "name": "L4YAML.Surface.Scalars: 56 annotations",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-module annotation counts",
+            "name": "L4YAML.Spec.Grammar: 50 annotations",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-module annotation counts",
             "name": "L4YAML.Scanner.Document: 26 annotations",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-module annotation counts",
+            "name": "L4YAML.Surface.Node: 16 annotations",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-module annotation counts",
+            "name": "L4YAML.Surface.Document: 10 annotations",
             "outcome": "pass"
           },
           {
@@ -20766,6 +20816,11 @@
           {
             "category": "Per-module annotation counts",
             "name": "L4YAML.Scanner.Indent: 11 annotations",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-module annotation counts",
+            "name": "L4YAML.Proofs.Production.NodeProduction: 2 annotations",
             "outcome": "pass"
           },
           {
@@ -20816,6 +20871,11 @@
           {
             "category": "Per-rule @[yaml_spec] locations",
             "name": "[2] nb-json (§5.1) ← L4YAML.CharPredicates.isNbJsonProp @ L4YAML/Spec/CharPredicates.lean:232",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[2] nb-json (§5.1) ← L4YAML.Surface.SNbDoubleChar.plain @ L4YAML/Surface/Scalars.lean:39",
             "outcome": "pass"
           },
           {
@@ -21525,7 +21585,27 @@
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
+            "name": "[42] ns-esc-null (§5.7) ← L4YAML.Surface.SNbDoubleChar.escape @ L4YAML/Surface/Scalars.lean:42",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[42] ns-esc-null (§5.7) ← L4YAML.Grammar.resolveNamedEscape @ L4YAML/Spec/Grammar.lean:218",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
             "name": "[42] ns-esc-null (§5.7) ← L4YAML.Scanner.processEscape @ L4YAML/Scanner/Scalar.lean:110",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[43] ns-esc-bell (§5.7) ← L4YAML.Surface.SNbDoubleChar.escape @ L4YAML/Surface/Scalars.lean:42",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[43] ns-esc-bell (§5.7) ← L4YAML.Grammar.resolveNamedEscape @ L4YAML/Spec/Grammar.lean:218",
             "outcome": "pass"
           },
           {
@@ -21535,7 +21615,37 @@
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
+            "name": "[44] ns-esc-backspace (§5.7) ← L4YAML.Surface.SNbDoubleChar.escape @ L4YAML/Surface/Scalars.lean:42",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[44] ns-esc-backspace (§5.7) ← L4YAML.Grammar.resolveNamedEscape @ L4YAML/Spec/Grammar.lean:218",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
             "name": "[44] ns-esc-backspace (§5.7) ← L4YAML.Scanner.processEscape @ L4YAML/Scanner/Scalar.lean:110",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[45] ns-esc-horizontal-tab (§5.7) ← L4YAML.Surface.SNbDoubleChar.escape @ L4YAML/Surface/Scalars.lean:42",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[45] ns-esc-horizontal-tab (§5.7) ← L4YAML.Surface.SNbDoubleChar.escape @ L4YAML/Surface/Scalars.lean:42",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[45] ns-esc-horizontal-tab (§5.7) ← L4YAML.Grammar.resolveNamedEscape @ L4YAML/Spec/Grammar.lean:218",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[45] ns-esc-horizontal-tab (§5.7) ← L4YAML.Grammar.resolveNamedEscape @ L4YAML/Spec/Grammar.lean:218",
             "outcome": "pass"
           },
           {
@@ -21545,7 +21655,27 @@
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
+            "name": "[46] ns-esc-line-feed (§5.7) ← L4YAML.Surface.SNbDoubleChar.escape @ L4YAML/Surface/Scalars.lean:42",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[46] ns-esc-line-feed (§5.7) ← L4YAML.Grammar.resolveNamedEscape @ L4YAML/Spec/Grammar.lean:218",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
             "name": "[46] ns-esc-line-feed (§5.7) ← L4YAML.Scanner.processEscape @ L4YAML/Scanner/Scalar.lean:110",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[47] ns-esc-vertical-tab (§5.7) ← L4YAML.Surface.SNbDoubleChar.escape @ L4YAML/Surface/Scalars.lean:42",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[47] ns-esc-vertical-tab (§5.7) ← L4YAML.Grammar.resolveNamedEscape @ L4YAML/Spec/Grammar.lean:218",
             "outcome": "pass"
           },
           {
@@ -21555,7 +21685,27 @@
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
+            "name": "[48] ns-esc-form-feed (§5.7) ← L4YAML.Surface.SNbDoubleChar.escape @ L4YAML/Surface/Scalars.lean:42",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[48] ns-esc-form-feed (§5.7) ← L4YAML.Grammar.resolveNamedEscape @ L4YAML/Spec/Grammar.lean:218",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
             "name": "[48] ns-esc-form-feed (§5.7) ← L4YAML.Scanner.processEscape @ L4YAML/Scanner/Scalar.lean:110",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[49] ns-esc-carriage-return (§5.7) ← L4YAML.Surface.SNbDoubleChar.escape @ L4YAML/Surface/Scalars.lean:42",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[49] ns-esc-carriage-return (§5.7) ← L4YAML.Grammar.resolveNamedEscape @ L4YAML/Spec/Grammar.lean:218",
             "outcome": "pass"
           },
           {
@@ -21565,7 +21715,32 @@
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
+            "name": "[50] ns-esc-escape (§5.7) ← L4YAML.Surface.SNbDoubleChar.escape @ L4YAML/Surface/Scalars.lean:42",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[50] ns-esc-escape (§5.7) ← L4YAML.Grammar.resolveNamedEscape @ L4YAML/Spec/Grammar.lean:218",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
             "name": "[50] ns-esc-escape (§5.7) ← L4YAML.Scanner.processEscape @ L4YAML/Scanner/Scalar.lean:110",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[50] ns-esc-escape (§5.7) ← L4YAML.Surface.SNbDoubleChar.hexEscape2 @ L4YAML/Surface/Scalars.lean:45",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[51] ns-esc-space (§5.7) ← L4YAML.Surface.SNbDoubleChar.escape @ L4YAML/Surface/Scalars.lean:42",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[51] ns-esc-space (§5.7) ← L4YAML.Grammar.resolveNamedEscape @ L4YAML/Spec/Grammar.lean:218",
             "outcome": "pass"
           },
           {
@@ -21575,7 +21750,27 @@
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
+            "name": "[52] ns-esc-double-quote (§5.7) ← L4YAML.Surface.SNbDoubleChar.escape @ L4YAML/Surface/Scalars.lean:42",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[52] ns-esc-double-quote (§5.7) ← L4YAML.Grammar.resolveNamedEscape @ L4YAML/Spec/Grammar.lean:218",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
             "name": "[52] ns-esc-double-quote (§5.7) ← L4YAML.Scanner.processEscape @ L4YAML/Scanner/Scalar.lean:110",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[53] ns-esc-slash (§5.7) ← L4YAML.Surface.SNbDoubleChar.escape @ L4YAML/Surface/Scalars.lean:42",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[53] ns-esc-slash (§5.7) ← L4YAML.Grammar.resolveNamedEscape @ L4YAML/Spec/Grammar.lean:218",
             "outcome": "pass"
           },
           {
@@ -21585,7 +21780,27 @@
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
+            "name": "[54] ns-esc-backslash (§5.7) ← L4YAML.Surface.SNbDoubleChar.escape @ L4YAML/Surface/Scalars.lean:42",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[54] ns-esc-backslash (§5.7) ← L4YAML.Grammar.resolveNamedEscape @ L4YAML/Spec/Grammar.lean:218",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
             "name": "[54] ns-esc-backslash (§5.7) ← L4YAML.Scanner.processEscape @ L4YAML/Scanner/Scalar.lean:110",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[55] ns-esc-next-line (§5.7) ← L4YAML.Surface.SNbDoubleChar.escape @ L4YAML/Surface/Scalars.lean:42",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[55] ns-esc-next-line (§5.7) ← L4YAML.Grammar.resolveNamedEscape @ L4YAML/Spec/Grammar.lean:218",
             "outcome": "pass"
           },
           {
@@ -21595,12 +21810,42 @@
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
+            "name": "[56] ns-esc-non-breaking-space (§5.7) ← L4YAML.Surface.SNbDoubleChar.escape @ L4YAML/Surface/Scalars.lean:42",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[56] ns-esc-non-breaking-space (§5.7) ← L4YAML.Grammar.resolveNamedEscape @ L4YAML/Spec/Grammar.lean:218",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
             "name": "[56] ns-esc-non-breaking-space (§5.7) ← L4YAML.Scanner.processEscape @ L4YAML/Scanner/Scalar.lean:110",
             "outcome": "pass"
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
+            "name": "[57] ns-esc-line-separator (§5.7) ← L4YAML.Surface.SNbDoubleChar.escape @ L4YAML/Surface/Scalars.lean:42",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[57] ns-esc-line-separator (§5.7) ← L4YAML.Grammar.resolveNamedEscape @ L4YAML/Spec/Grammar.lean:218",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
             "name": "[57] ns-esc-line-separator (§5.7) ← L4YAML.Scanner.processEscape @ L4YAML/Scanner/Scalar.lean:110",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[58] ns-esc-paragraph-separator (§5.7) ← L4YAML.Surface.SNbDoubleChar.escape @ L4YAML/Surface/Scalars.lean:42",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[58] ns-esc-paragraph-separator (§5.7) ← L4YAML.Grammar.resolveNamedEscape @ L4YAML/Spec/Grammar.lean:218",
             "outcome": "pass"
           },
           {
@@ -21616,6 +21861,11 @@
           {
             "category": "Per-rule @[yaml_spec] locations",
             "name": "[59] ns-esc-8-bit (§5.7) ← L4YAML.Scanner.parseHexEscape @ L4YAML/Scanner/Scalar.lean:71",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[60] ns-esc-16-bit (§5.7) ← L4YAML.Surface.SNbDoubleChar.hexEscape4 @ L4YAML/Surface/Scalars.lean:48",
             "outcome": "pass"
           },
           {
@@ -21640,6 +21890,16 @@
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
+            "name": "[61] ns-esc-32-bit (§5.7) ← L4YAML.Surface.SNbDoubleChar.hexEscape8 @ L4YAML/Surface/Scalars.lean:52",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[62] c-ns-esc-char (§5.7) ← L4YAML.Grammar.resolveNamedEscape @ L4YAML/Spec/Grammar.lean:218",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
             "name": "[62] c-ns-esc-char (§5.7) ← L4YAML.Scanner.processEscape @ L4YAML/Scanner/Scalar.lean:110",
             "outcome": "pass"
           },
@@ -21651,6 +21911,11 @@
           {
             "category": "Per-rule @[yaml_spec] locations",
             "name": "[63] s-indent(n) (§6.1) ← L4YAML.Scanner.skipSpacesLoop @ L4YAML/Scanner/Whitespace.lean:88",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[63] s-indent(n) (§6.1) ← L4YAML.Grammar.Indented @ L4YAML/Spec/Grammar.lean:89",
             "outcome": "pass"
           },
           {
@@ -21691,6 +21956,11 @@
           {
             "category": "Per-rule @[yaml_spec] locations",
             "name": "[65] s-indent(≤n) (§6.1) ← L4YAML.Scanner.unwindIndentsLoop @ L4YAML/Scanner/Indent.lean:41",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[65] s-indent(≤n) (§6.1) ← L4YAML.Grammar.IndentedAtLeast @ L4YAML/Spec/Grammar.lean:115",
             "outcome": "pass"
           },
           {
@@ -22025,6 +22295,11 @@
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
+            "name": "[104] c-ns-alias-node (§7.1) ← L4YAML.Surface.SCNsAliasNode @ L4YAML/Surface/Scalars.lean:324",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
             "name": "[104] c-ns-alias-node (§7.1) ← L4YAML.Scanner.collectAnchorNameLoop @ L4YAML/Scanner/NodeProperties.lean:55",
             "outcome": "pass"
           },
@@ -22050,6 +22325,41 @@
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
+            "name": "[106] e-node (§7.2) ← L4YAML.Grammar.ValidNode.emptyNode @ L4YAML/Spec/Grammar.lean:313",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[107] nb-double-char (§7.3.1) ← L4YAML.Surface.SNbDoubleChar @ L4YAML/Surface/Scalars.lean:38",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[107] nb-double-char (§7.3.1) ← L4YAML.Surface.SNbDoubleChar.plain @ L4YAML/Surface/Scalars.lean:39",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[107] nb-double-char (§7.3.1) ← L4YAML.Surface.SNbDoubleChar.hexEscape4 @ L4YAML/Surface/Scalars.lean:48",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[107] nb-double-char (§7.3.1) ← L4YAML.Surface.SNbDoubleChar.escape @ L4YAML/Surface/Scalars.lean:42",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[107] nb-double-char (§7.3.1) ← L4YAML.Surface.SNbDoubleChar.hexEscape2 @ L4YAML/Surface/Scalars.lean:45",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[107] nb-double-char (§7.3.1) ← L4YAML.Surface.SNbDoubleChar.hexEscape8 @ L4YAML/Surface/Scalars.lean:52",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
             "name": "[107] nb-double-char (§7.3.1) ← L4YAML.Scanner.collectDoubleQuotedLoop @ L4YAML/Scanner/Scalar.lean:229",
             "outcome": "pass"
           },
@@ -22065,7 +22375,32 @@
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
+            "name": "[109] c-double-quoted(n,c) (§7.3.1) ← L4YAML.Surface.SCDoubleQuoted @ L4YAML/Surface/Scalars.lean:156",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[109] c-double-quoted(n,c) (§7.3.1) ← L4YAML.Grammar.ValidNode.doubleQuoted @ L4YAML/Spec/Grammar.lean:297",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[109] c-double-quoted(n,c) (§7.3.1) ← L4YAML.Grammar.ValidNode.doubleQuoted @ L4YAML/Spec/Grammar.lean:297",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
             "name": "[109] c-double-quoted(n,c) (§7.3.1) ← L4YAML.Scanner.scanDoubleQuoted @ L4YAML/Scanner/Scalar.lean:297",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[109] c-double-quoted(n,c) (§7.3.1) ← L4YAML.Proofs.NodeProduction.SCDoubleQuoted_ctx_lift @ L4YAML/Proofs/Production/NodeProduction.lean:249",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[110] nb-double-text(n,c) (§7.3.1) ← L4YAML.Surface.SNbDoubleText @ L4YAML/Surface/Scalars.lean:148",
             "outcome": "pass"
           },
           {
@@ -22080,7 +22415,22 @@
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
+            "name": "[111] nb-double-one-line (§7.3.1) ← L4YAML.Surface.SNbDoubleOneLine @ L4YAML/Surface/Scalars.lean:130",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[112] s-double-escaped(n) (§7.3.1) ← L4YAML.Surface.SSDoubleEscaped @ L4YAML/Surface/Scalars.lean:107",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
             "name": "[112] s-double-escaped(n) (§7.3.1) ← L4YAML.Scanner.collectDoubleQuotedLoop @ L4YAML/Scanner/Scalar.lean:229",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[113] s-double-break(n) (§7.3.1) ← L4YAML.Surface.SSDoubleBreak @ L4YAML/Surface/Scalars.lean:119",
             "outcome": "pass"
           },
           {
@@ -22100,12 +22450,22 @@
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
+            "name": "[116] nb-double-multi-line(n) (§7.3.1) ← L4YAML.Surface.SNbDoubleMultiLine @ L4YAML/Surface/Scalars.lean:134",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
             "name": "[116] nb-double-multi-line(n) (§7.3.1) ← L4YAML.Scanner.collectDoubleQuotedLoop @ L4YAML/Scanner/Scalar.lean:229",
             "outcome": "pass"
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
             "name": "[117] c-quoted-quote (§7.3.2) ← L4YAML.Scanner.collectSingleQuotedLoop @ L4YAML/Scanner/Scalar.lean:318",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[118] nb-single-char (§7.3.2) ← L4YAML.Surface.SNbSingleChar @ L4YAML/Surface/Scalars.lean:168",
             "outcome": "pass"
           },
           {
@@ -22125,12 +22485,42 @@
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
+            "name": "[120] c-single-quoted(n,c) (§7.3.2) ← L4YAML.Surface.SCSingleQuoted @ L4YAML/Surface/Scalars.lean:205",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[120] c-single-quoted(n,c) (§7.3.2) ← L4YAML.Grammar.ValidNode.singleQuoted @ L4YAML/Spec/Grammar.lean:295",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[120] c-single-quoted(n,c) (§7.3.2) ← L4YAML.Grammar.ValidNode.singleQuoted @ L4YAML/Spec/Grammar.lean:295",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[120] c-single-quoted(n,c) (§7.3.2) ← L4YAML.Proofs.NodeProduction.SCSingleQuoted_ctx_lift @ L4YAML/Proofs/Production/NodeProduction.lean:268",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
             "name": "[120] c-single-quoted(n,c) (§7.3.2) ← L4YAML.Scanner.scanSingleQuoted @ L4YAML/Scanner/Scalar.lean:374",
             "outcome": "pass"
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
             "name": "[121] nb-single-text(n,c) (§7.3.2) ← L4YAML.Scanner.collectSingleQuotedLoop @ L4YAML/Scanner/Scalar.lean:318",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[121] nb-single-text(n,c) (§7.3.2) ← L4YAML.Surface.SNbSingleText @ L4YAML/Surface/Scalars.lean:197",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[122] nb-single-one-line (§7.3.2) ← L4YAML.Surface.SNbSingleOneLine @ L4YAML/Surface/Scalars.lean:177",
             "outcome": "pass"
           },
           {
@@ -22151,6 +22541,11 @@
           {
             "category": "Per-rule @[yaml_spec] locations",
             "name": "[125] nb-single-multi-line(n) (§7.3.2) ← L4YAML.Scanner.collectSingleQuotedLoop @ L4YAML/Scanner/Scalar.lean:318",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[125] nb-single-multi-line(n) (§7.3.2) ← L4YAML.Surface.SNbSingleMultiLine @ L4YAML/Surface/Scalars.lean:181",
             "outcome": "pass"
           },
           {
@@ -22176,6 +22571,16 @@
           {
             "category": "Per-rule @[yaml_spec] locations",
             "name": "[126] ns-plain-first(c) (§7.3.3) ← L4YAML.CharPredicates.validPlainFirstBool @ L4YAML/Spec/CharPredicates.lean:503",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[126] ns-plain-first(c) (§7.3.3) ← L4YAML.Surface.SNsPlainFirst @ L4YAML/Surface/Scalars.lean:227",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[127] ns-plain-safe(c) (§7.3.3) ← L4YAML.Surface.isNsPlainSafe @ L4YAML/Surface/Scalars.lean:217",
             "outcome": "pass"
           },
           {
@@ -22245,7 +22650,22 @@
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
+            "name": "[130] ns-plain-char(c) (§7.3.3) ← L4YAML.Surface.SNsPlainChar @ L4YAML/Surface/Scalars.lean:244",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
             "name": "[131] ns-plain(n,c) (§7.3.3) ← L4YAML.YamlToken.scalar @ L4YAML/Token/Token.lean:190",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[131] ns-plain(n,c) (§7.3.3) ← L4YAML.Grammar.ValidNode.plainScalarFlow @ L4YAML/Spec/Grammar.lean:290",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[131] ns-plain(n,c) (§7.3.3) ← L4YAML.Grammar.ValidNode.plainScalarBlock @ L4YAML/Spec/Grammar.lean:285",
             "outcome": "pass"
           },
           {
@@ -22260,12 +22680,32 @@
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
+            "name": "[131] ns-plain(n,c) (§7.3.3) ← L4YAML.Surface.SNsPlain @ L4YAML/Surface/Scalars.lean:314",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
             "name": "[132] nb-ns-plain-in-line(c) (§7.3.3) ← L4YAML.Scanner.collectPlainScalarLoop @ L4YAML/Scanner/Scalar.lean:480",
             "outcome": "pass"
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
+            "name": "[132] nb-ns-plain-in-line(c) (§7.3.3) ← L4YAML.Surface.SNbNsPlainInLineEntry @ L4YAML/Surface/Scalars.lean:263",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
             "name": "[133] ns-plain-one-line(c) (§7.3.3) ← L4YAML.Scanner.collectPlainScalarLoop @ L4YAML/Scanner/Scalar.lean:480",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[133] ns-plain-one-line(c) (§7.3.3) ← L4YAML.Surface.SNsPlainOneLine @ L4YAML/Surface/Scalars.lean:273",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[134] s-ns-plain-next-line(n,c) (§7.3.3) ← L4YAML.Surface.SSNsPlainNextLine @ L4YAML/Surface/Scalars.lean:291",
             "outcome": "pass"
           },
           {
@@ -22285,12 +22725,27 @@
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
+            "name": "[135] ns-plain-multi-line(n,c) (§7.3.3) ← L4YAML.Surface.SNsPlainMultiLine @ L4YAML/Surface/Scalars.lean:302",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
             "name": "[135] ns-plain-multi-line(n,c) (§7.3.3) ← L4YAML.Scanner.collectPlainScalar_handleBlockLineBreak @ L4YAML/Scanner/Scalar.lean:457",
             "outcome": "pass"
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
             "name": "[136] in-flow(c) (§7.4) ← L4YAML.Scanner.ScannerState.inFlow @ L4YAML/Scanner/State.lean:243",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[137] c-flow-sequence(n,c) (§7.4.1) ← L4YAML.Grammar.ValidNode.flowSeq @ L4YAML/Spec/Grammar.lean:307",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[137] c-flow-sequence(n,c) (§7.4.1) ← L4YAML.Grammar.ValidNode.flowSeq @ L4YAML/Spec/Grammar.lean:307",
             "outcome": "pass"
           },
           {
@@ -22305,7 +22760,17 @@
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
+            "name": "[137] c-flow-sequence(n,c) (§7.4.1) ← L4YAML.Surface.SFlowSequence @ L4YAML/Surface/Node.lean:291",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
             "name": "[137] c-flow-sequence(n,c) (§7.4.1) ← L4YAML.Scanner.scanNextToken_dispatchFlowIndicators @ L4YAML/Scanner/Scanner.lean:319",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[138] ns-s-flow-seq-entries(n,c) (§7.4.1) ← L4YAML.Surface.SFlowSeqEntries @ L4YAML/Surface/Node.lean:306",
             "outcome": "pass"
           },
           {
@@ -22315,12 +22780,27 @@
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
+            "name": "[139] ns-flow-seq-entry(n,c) (§7.4.1) ← L4YAML.Surface.SFlowSeqEntry @ L4YAML/Surface/Node.lean:327",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
             "name": "[139] ns-flow-seq-entry(n,c) (§7.4.1) ← L4YAML.TokenParser.parseFlowSequenceLoop @ L4YAML/Parser/TokenParser.lean:400",
             "outcome": "pass"
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
+            "name": "[140] c-flow-mapping(n,c) (§7.4.2) ← L4YAML.Grammar.ValidNode.flowMap @ L4YAML/Spec/Grammar.lean:309",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
             "name": "[140] c-flow-mapping(n,c) (§7.4.2) ← L4YAML.TokenParser.parseFlowMapping @ L4YAML/Parser/TokenParser.lean:445",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[140] c-flow-mapping(n,c) (§7.4.2) ← L4YAML.Surface.SFlowMapping @ L4YAML/Surface/Node.lean:349",
             "outcome": "pass"
           },
           {
@@ -22340,7 +22820,17 @@
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
+            "name": "[141] ns-s-flow-map-entries(n,c) (§7.4.2) ← L4YAML.Surface.SFlowMapEntries @ L4YAML/Surface/Node.lean:364",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
             "name": "[142] ns-flow-map-entry(n,c) (§7.4.2) ← L4YAML.TokenParser.parseFlowMappingLoop @ L4YAML/Parser/TokenParser.lean:495",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[142] ns-flow-map-entry(n,c) (§7.4.2) ← L4YAML.Surface.SFlowMapEntry @ L4YAML/Surface/Node.lean:385",
             "outcome": "pass"
           },
           {
@@ -22430,6 +22920,11 @@
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
+            "name": "[158] ns-flow-content(n,c) (§7.5) ← L4YAML.Surface.SFlowContent @ L4YAML/Surface/Node.lean:267",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
             "name": "[158] ns-flow-content(n,c) (§7.5) ← L4YAML.TokenParser.parseNodeContent._mutual @ L4YAML/Parser/TokenParser.lean",
             "outcome": "pass"
           },
@@ -22455,12 +22950,27 @@
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
+            "name": "[161] ns-flow-node(n,c) (§7.5) ← L4YAML.Surface.SFlowNode @ L4YAML/Surface/Node.lean:245",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
             "name": "[161] ns-flow-node(n,c) (§7.5) ← L4YAML.Scanner.scanNextToken_dispatchContent @ L4YAML/Scanner/Scanner.lean:366",
             "outcome": "pass"
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
+            "name": "[161] ns-flow-node(n,c) (§7.5) ← L4YAML.Grammar.ValidNode @ L4YAML/Spec/Grammar.lean:281",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
             "name": "[161] ns-flow-node(n,c) (§7.5) ← L4YAML.TokenParser.parseNode @ L4YAML/Parser/TokenParser.lean:131",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[162] c-b-block-header(t) (§8.1.1) ← L4YAML.Surface.SCBBlockHeader @ L4YAML/Surface/Scalars.lean:339",
             "outcome": "pass"
           },
           {
@@ -22471,6 +22981,11 @@
           {
             "category": "Per-rule @[yaml_spec] locations",
             "name": "[162] c-b-block-header(t) (§8.1.1) ← L4YAML.Scanner.parseBlockHeaderLoop @ L4YAML/Scanner/Scalar.lean:796",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[162] c-b-block-header(t) (§8.1.1) ← L4YAML.Grammar.isBlockScalarHeaderChar @ L4YAML/Spec/Grammar.lean:792",
             "outcome": "pass"
           },
           {
@@ -22495,12 +23010,22 @@
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
+            "name": "[163] c-indentation-indicator (§8.1.1) ← L4YAML.Grammar.isBlockScalarHeaderChar @ L4YAML/Spec/Grammar.lean:792",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
             "name": "[164] c-chomping-indicator(t) (§8.1.1) ← L4YAML.Scanner.scanBlockScalarBody @ L4YAML/Scanner/Scalar.lean:875",
             "outcome": "pass"
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
             "name": "[164] c-chomping-indicator(t) (§8.1.1) ← L4YAML.Scanner.scanBlockScalar @ L4YAML/Scanner/Scalar.lean:932",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[164] c-chomping-indicator(t) (§8.1.1) ← L4YAML.Grammar.isBlockScalarHeaderChar @ L4YAML/Spec/Grammar.lean:792",
             "outcome": "pass"
           },
           {
@@ -22535,7 +23060,27 @@
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
+            "name": "[170] c-l+literal(n) (§8.1.2) ← L4YAML.Surface.SCLLiteral @ L4YAML/Surface/Scalars.lean:378",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[170] c-l+literal(n) (§8.1.2) ← L4YAML.Grammar.ValidNode.literalScalar @ L4YAML/Spec/Grammar.lean:299",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[170] c-l+literal(n) (§8.1.2) ← L4YAML.Grammar.ValidNode.literalScalar @ L4YAML/Spec/Grammar.lean:299",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
             "name": "[170] c-l+literal(n) (§8.1.2) ← L4YAML.Scanner.scanBlockScalar @ L4YAML/Scanner/Scalar.lean:932",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[171] l-nb-literal-text(n) (§8.1.2) ← L4YAML.Surface.SLNbLiteralText @ L4YAML/Surface/Scalars.lean:348",
             "outcome": "pass"
           },
           {
@@ -22555,12 +23100,22 @@
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
+            "name": "[172] b-nb-literal-next(n) (§8.1.2) ← L4YAML.Surface.SBNbLiteralNext @ L4YAML/Surface/Scalars.lean:356",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
             "name": "[172] b-nb-literal-next(n) (§8.1.2) ← L4YAML.Scanner.collectBlockScalarLoop @ L4YAML/Scanner/Scalar.lean:750",
             "outcome": "pass"
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
             "name": "[172] b-nb-literal-next(n) (§8.1.2) ← L4YAML.Scanner.scanBlockScalar @ L4YAML/Scanner/Scalar.lean:932",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[173] l-literal-content(n,t) (§8.1.2) ← L4YAML.Surface.SLLiteralContent @ L4YAML/Surface/Scalars.lean:365",
             "outcome": "pass"
           },
           {
@@ -22580,6 +23135,21 @@
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
+            "name": "[174] c-l+folded(n) (§8.1.3) ← L4YAML.Surface.SCLFolded @ L4YAML/Surface/Scalars.lean:408",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[174] c-l+folded(n) (§8.1.3) ← L4YAML.Grammar.ValidNode.foldedScalar @ L4YAML/Spec/Grammar.lean:301",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[174] c-l+folded(n) (§8.1.3) ← L4YAML.Grammar.ValidNode.foldedScalar @ L4YAML/Spec/Grammar.lean:301",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
             "name": "[174] c-l+folded(n) (§8.1.3) ← L4YAML.Scanner.scanBlockScalar @ L4YAML/Scanner/Scalar.lean:932",
             "outcome": "pass"
           },
@@ -22590,7 +23160,17 @@
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
+            "name": "[175] s-nb-folded-text(n) (§8.1.3) ← L4YAML.Surface.SSNbFoldedText @ L4YAML/Surface/Scalars.lean:386",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
             "name": "[175] s-nb-folded-text(n) (§8.1.3) ← L4YAML.Scanner.foldBlockContent @ L4YAML/Scanner/Scalar.lean:620",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[176] l-nb-folded-lines(n) (§8.1.3) ← L4YAML.Surface.SLNbFoldedLines @ L4YAML/Surface/Scalars.lean:393",
             "outcome": "pass"
           },
           {
@@ -22635,7 +23215,22 @@
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
+            "name": "[183] l+block-sequence(n) (§8.2.1) ← L4YAML.Surface.SBlockSeqEntries @ L4YAML/Surface/Node.lean:127",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
             "name": "[183] l+block-sequence(n) (§8.2.1) ← L4YAML.TokenParser.parseBlockSequence @ L4YAML/Parser/TokenParser.lean:172",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[183] l+block-sequence(n) (§8.2.1) ← L4YAML.Grammar.ValidNode.blockSeq @ L4YAML/Spec/Grammar.lean:303",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[183] l+block-sequence(n) (§8.2.1) ← L4YAML.Grammar.ValidNode.blockSeq @ L4YAML/Spec/Grammar.lean:303",
             "outcome": "pass"
           },
           {
@@ -22660,6 +23255,11 @@
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
+            "name": "[185] s-l+block-indented(n,c) (§8.2.1) ← L4YAML.Surface.SBlockIndented @ L4YAML/Surface/Node.lean:102",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
             "name": "[185] s-l+block-indented(n,c) (§8.2.1) ← L4YAML.TokenParser.parseNode @ L4YAML/Parser/TokenParser.lean:131",
             "outcome": "pass"
           },
@@ -22670,12 +23270,37 @@
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
+            "name": "[186] ns-l-compact-sequence(n) (§8.2.1) ← L4YAML.Surface.SCompactSeq @ L4YAML/Surface/Node.lean:191",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[187] l+block-mapping(n) (§8.2.2) ← L4YAML.Grammar.ValidNode.blockMap @ L4YAML/Spec/Grammar.lean:305",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[187] l+block-mapping(n) (§8.2.2) ← L4YAML.Grammar.ValidNode.blockMap @ L4YAML/Spec/Grammar.lean:305",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[187] l+block-mapping(n) (§8.2.2) ← L4YAML.Surface.SBlockMapEntries @ L4YAML/Surface/Node.lean:178",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
             "name": "[187] l+block-mapping(n) (§8.2.2) ← L4YAML.TokenParser.parseBlockMapping @ L4YAML/Parser/TokenParser.lean:265",
             "outcome": "pass"
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
             "name": "[187] l+block-mapping(n) (§8.2.2) ← L4YAML.Scanner.pushMappingIndent @ L4YAML/Scanner/Indent.lean:90",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[188] ns-l-block-map-entry(n) (§8.2.2) ← L4YAML.Surface.SBlockMapEntry @ L4YAML/Surface/Node.lean:144",
             "outcome": "pass"
           },
           {
@@ -22720,6 +23345,11 @@
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
+            "name": "[193] ns-s-block-map-implicit-key (§8.2.2) ← L4YAML.Surface.SImplicitKey @ L4YAML/Surface/Node.lean:230",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
             "name": "[193] ns-s-block-map-implicit-key (§8.2.2) ← L4YAML.TokenParser.handleBlockMappingKeyEntry @ L4YAML/Parser/TokenParser.lean:316",
             "outcome": "pass"
           },
@@ -22735,7 +23365,22 @@
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
+            "name": "[195] ns-l-compact-mapping(n) (§8.2.2) ← L4YAML.Surface.SCompactMap @ L4YAML/Surface/Node.lean:212",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[196] s-l+block-node(n,c) (§8.2.3) ← L4YAML.Grammar.ValidNode @ L4YAML/Spec/Grammar.lean:281",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
             "name": "[196] s-l+block-node(n,c) (§8.2.3) ← L4YAML.TokenParser.parseNode @ L4YAML/Parser/TokenParser.lean:131",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[196] s-l+block-node(n,c) (§8.2.3) ← L4YAML.Surface.SBlockNode @ L4YAML/Surface/Node.lean:62",
             "outcome": "pass"
           },
           {
@@ -22770,6 +23415,11 @@
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
+            "name": "[202] l-document-prefix (§9.1.1) ← L4YAML.Surface.SLDocumentPrefix @ L4YAML/Surface/Document.lean:118",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
             "name": "[202] l-document-prefix (§9.1.1) ← L4YAML.TokenParser.prepareDocumentState @ L4YAML/Parser/TokenParser.lean:675",
             "outcome": "pass"
           },
@@ -22785,6 +23435,11 @@
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
+            "name": "[203] c-directives-end (§9.1.2) ← L4YAML.Surface.SCDirectivesEnd @ L4YAML/Surface/Document.lean:52",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
             "name": "[203] c-directives-end (§9.1.2) ← L4YAML.Scanner.scanDocumentStart @ L4YAML/Scanner/Document.lean:275",
             "outcome": "pass"
           },
@@ -22796,6 +23451,11 @@
           {
             "category": "Per-rule @[yaml_spec] locations",
             "name": "[204] c-document-end (§9.1.2) ← L4YAML.Scanner.scanDocumentEnd @ L4YAML/Scanner/Document.lean:314",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[204] c-document-end (§9.1.2) ← L4YAML.Surface.SCDocumentEnd @ L4YAML/Surface/Document.lean:59",
             "outcome": "pass"
           },
           {
@@ -22820,7 +23480,27 @@
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
+            "name": "[205] l-document-suffix (§9.1.2) ← L4YAML.Surface.SLDocumentSuffix @ L4YAML/Surface/Document.lean:127",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[206] c-forbidden (§9.1.2) ← L4YAML.Grammar.isCForbiddenPrefix @ L4YAML/Spec/Grammar.lean:164",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[206] c-forbidden (§9.1.2) ← L4YAML.Surface.SCForbidden @ L4YAML/Surface/Document.lean:41",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
             "name": "[206] c-forbidden (§9.1.2) ← L4YAML.Scanner.atDocumentBoundary @ L4YAML/Scanner/Document.lean:79",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[207] l-bare-document (§9.1.3) ← L4YAML.Grammar.ValidDocument @ L4YAML/Spec/Grammar.lean:354",
             "outcome": "pass"
           },
           {
@@ -22830,7 +23510,32 @@
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
+            "name": "[207] l-bare-document (§9.1.3) ← L4YAML.Surface.SLBareDocument @ L4YAML/Surface/Document.lean:71",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[208] l-explicit-document (§9.1.4) ← L4YAML.Surface.SLExplicitDocument @ L4YAML/Surface/Document.lean:79",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[208] l-explicit-document (§9.1.4) ← L4YAML.Grammar.ValidDocument @ L4YAML/Spec/Grammar.lean:354",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
             "name": "[208] l-explicit-document (§9.1.4) ← L4YAML.TokenParser.parseDocument @ L4YAML/Parser/TokenParser.lean:713",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[209] l-directive-document (§9.1.5) ← L4YAML.Grammar.ValidDocument @ L4YAML/Spec/Grammar.lean:354",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[209] l-directive-document (§9.1.5) ← L4YAML.Surface.SLDirectiveDocument @ L4YAML/Surface/Document.lean:88",
             "outcome": "pass"
           },
           {
@@ -22840,7 +23545,17 @@
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
+            "name": "[210] l-any-document (§9.2) ← L4YAML.Grammar.ValidDocument @ L4YAML/Spec/Grammar.lean:354",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
             "name": "[210] l-any-document (§9.2) ← L4YAML.TokenParser.parseDocument @ L4YAML/Parser/TokenParser.lean:713",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[210] l-any-document (§9.2) ← L4YAML.Surface.SLAnyDocument @ L4YAML/Surface/Document.lean:96",
             "outcome": "pass"
           },
           {
@@ -22870,6 +23585,16 @@
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
+            "name": "[211] l-yaml-stream (§9.2) ← L4YAML.Surface.SLYamlStream @ L4YAML/Surface/Document.lean:136",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[211] l-yaml-stream (§9.2) ← L4YAML.Grammar.ValidStream @ L4YAML/Spec/Grammar.lean:371",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
             "name": "[211] l-yaml-stream (§9.2) ← L4YAML.Scanner.scanWithComments @ L4YAML/Scanner/Scanner.lean:580",
             "outcome": "pass"
           },
@@ -22884,7 +23609,7 @@
             "outcome": "pass"
           }
         ],
-        "total": 443
+        "total": 588
       },
       {
         "allPass": true,
@@ -23153,7 +23878,7 @@
         "total": 7
       }
     ],
-    "totalPassed": 4098,
-    "totalTests": 4098
+    "totalPassed": 4243,
+    "totalTests": 4243
   }
 }

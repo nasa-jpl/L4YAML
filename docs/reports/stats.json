@@ -10,8 +10,8 @@
   "correct": 358,
   "applicable": 358},
  "test_suites":
- {"total_tests": 1525,
-  "total_passed": 1525,
+ {"total_tests": 1670,
+  "total_passed": 1670,
   "suites":
   [{"total": 10, "passed": 10, "name": "unit-tests"},
    {"total": 149, "passed": 149, "name": "explicit-key-tests"},
@@ -24,7 +24,7 @@
    {"total": 154, "passed": 154, "name": "adversarial-tests"},
    {"total": 45, "passed": 45, "name": "mutation-tests"},
    {"total": 124, "passed": 124, "name": "property-tests"},
-   {"total": 443, "passed": 443, "name": "production-coverage"},
+   {"total": 588, "passed": 588, "name": "production-coverage"},
    {"total": 43, "passed": 43, "name": "limit-tests"},
    {"total": 68, "passed": 68, "name": "schema-dump"},
    {"total": 7, "passed": 7, "name": "demo"}],
@@ -34,10 +34,10 @@
   {"theorems_plus_lemmas": 2,
    "theorems": 2,
    "partial_defs": 1,
-   "lines": 18992,
+   "lines": 19039,
    "lemmas": 0,
    "lean_files": 84,
-   "guards": 2141,
+   "guards": 2142,
    "axioms": 0},
   "proofs":
   {"theorems_plus_lemmas": 2770,
@@ -59,7 +59,7 @@
    "axioms": 0}},
  "spec_examples": {"total": 132, "passed": 132},
  "schema_version": 2,
- "generated_at_ms": 4902194032,
+ "generated_at_ms": 4906490428,
  "env":
  {"theorems_with_transitive_sorry": 16,
   "theorems_with_direct_sorry": 7,

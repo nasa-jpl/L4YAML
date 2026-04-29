@@ -7,19 +7,31 @@
   ✓ indent-dependent productions: 49
 
 --- Automated @[yaml_spec] discovery ---
-  ✓ @[yaml_spec] entries discovered: 434
+  ✓ @[yaml_spec] entries discovered: 568
   ✓ unique production rules annotated: 211
-  ✓ source modules with annotations: 12
+  ✓ source modules with annotations: 17
 
 --- Coverage analysis ---
   ✓ annotated productions: 211/211
   ✓ unannotated in-scope productions: 0
   ✓ indent-dependent with annotations: 49/49
 
+--- Per-folder annotation counts ---
+  ✓ L4YAML/Parser: 56 annotations
+  ✓ L4YAML/Proofs: 2 annotations
+  ✓ L4YAML/Scanner: 239 annotations
+  ✓ L4YAML/Spec: 168 annotations
+  ✓ L4YAML/Surface: 82 annotations
+  ✓ L4YAML/Token: 21 annotations
+
 --- Per-module annotation counts ---
   ✓ L4YAML.Scanner.Scalar: 107 annotations
   ✓ L4YAML.Token.Token: 21 annotations
+  ✓ L4YAML.Surface.Scalars: 56 annotations
+  ✓ L4YAML.Spec.Grammar: 50 annotations
   ✓ L4YAML.Scanner.Document: 26 annotations
+  ✓ L4YAML.Surface.Node: 16 annotations
+  ✓ L4YAML.Surface.Document: 10 annotations
   ✓ L4YAML.Scanner.Scanner: 32 annotations
   ✓ L4YAML.Spec.CharPredicates: 118 annotations
   ✓ L4YAML.Scanner.Whitespace: 28 annotations
@@ -28,6 +40,7 @@
   ✓ L4YAML.Parser.State: 4 annotations
   ✓ L4YAML.Scanner.NodeProperties: 20 annotations
   ✓ L4YAML.Scanner.Indent: 11 annotations
+  ✓ L4YAML.Proofs.Production.NodeProduction: 2 annotations
   ✓ L4YAML.Scanner.State: 1 annotations
 
 --- Per-chapter coverage ---
@@ -42,6 +55,7 @@
   ✓ [1] c-printable (§5.1) ← L4YAML.CharPredicates.isPrintableProp @ L4YAML/Spec/CharPredicates.lean:202
   ✓ [2] nb-json (§5.1) ← L4YAML.Scanner.collectSingleQuotedLoop @ L4YAML/Scanner/Scalar.lean:318
   ✓ [2] nb-json (§5.1) ← L4YAML.CharPredicates.isNbJsonProp @ L4YAML/Spec/CharPredicates.lean:232
+  ✓ [2] nb-json (§5.1) ← L4YAML.Surface.SNbDoubleChar.plain @ L4YAML/Surface/Scalars.lean:39
   ✓ [2] nb-json (§5.1) ← L4YAML.Scanner.collectDoubleQuotedLoop @ L4YAML/Scanner/Scalar.lean:229
   ✓ [2] nb-json (§5.1) ← L4YAML.CharPredicates.isNbJsonBool @ L4YAML/Spec/CharPredicates.lean:240
   ✓ [3] c-byte-order-mark (§5.2) ← L4YAML.Scanner.scan @ L4YAML/Scanner/Scanner.lean:524
@@ -183,32 +197,73 @@
   ✓ [40] ns-tag-char (§5.6) ← L4YAML.CharPredicates.isTagCharBool @ L4YAML/Spec/CharPredicates.lean:345
   ✓ [40] ns-tag-char (§5.6) ← L4YAML.CharPredicates.isTagCharProp @ L4YAML/Spec/CharPredicates.lean:336
   ✓ [41] c-escape (§5.7) ← L4YAML.Scanner.processEscape @ L4YAML/Scanner/Scalar.lean:110
+  ✓ [42] ns-esc-null (§5.7) ← L4YAML.Surface.SNbDoubleChar.escape @ L4YAML/Surface/Scalars.lean:42
+  ✓ [42] ns-esc-null (§5.7) ← L4YAML.Grammar.resolveNamedEscape @ L4YAML/Spec/Grammar.lean:218
   ✓ [42] ns-esc-null (§5.7) ← L4YAML.Scanner.processEscape @ L4YAML/Scanner/Scalar.lean:110
+  ✓ [43] ns-esc-bell (§5.7) ← L4YAML.Surface.SNbDoubleChar.escape @ L4YAML/Surface/Scalars.lean:42
+  ✓ [43] ns-esc-bell (§5.7) ← L4YAML.Grammar.resolveNamedEscape @ L4YAML/Spec/Grammar.lean:218
   ✓ [43] ns-esc-bell (§5.7) ← L4YAML.Scanner.processEscape @ L4YAML/Scanner/Scalar.lean:110
+  ✓ [44] ns-esc-backspace (§5.7) ← L4YAML.Surface.SNbDoubleChar.escape @ L4YAML/Surface/Scalars.lean:42
+  ✓ [44] ns-esc-backspace (§5.7) ← L4YAML.Grammar.resolveNamedEscape @ L4YAML/Spec/Grammar.lean:218
   ✓ [44] ns-esc-backspace (§5.7) ← L4YAML.Scanner.processEscape @ L4YAML/Scanner/Scalar.lean:110
+  ✓ [45] ns-esc-horizontal-tab (§5.7) ← L4YAML.Surface.SNbDoubleChar.escape @ L4YAML/Surface/Scalars.lean:42
+  ✓ [45] ns-esc-horizontal-tab (§5.7) ← L4YAML.Surface.SNbDoubleChar.escape @ L4YAML/Surface/Scalars.lean:42
+  ✓ [45] ns-esc-horizontal-tab (§5.7) ← L4YAML.Grammar.resolveNamedEscape @ L4YAML/Spec/Grammar.lean:218
+  ✓ [45] ns-esc-horizontal-tab (§5.7) ← L4YAML.Grammar.resolveNamedEscape @ L4YAML/Spec/Grammar.lean:218
   ✓ [45] ns-esc-horizontal-tab (§5.7) ← L4YAML.Scanner.processEscape @ L4YAML/Scanner/Scalar.lean:110
+  ✓ [46] ns-esc-line-feed (§5.7) ← L4YAML.Surface.SNbDoubleChar.escape @ L4YAML/Surface/Scalars.lean:42
+  ✓ [46] ns-esc-line-feed (§5.7) ← L4YAML.Grammar.resolveNamedEscape @ L4YAML/Spec/Grammar.lean:218
   ✓ [46] ns-esc-line-feed (§5.7) ← L4YAML.Scanner.processEscape @ L4YAML/Scanner/Scalar.lean:110
+  ✓ [47] ns-esc-vertical-tab (§5.7) ← L4YAML.Surface.SNbDoubleChar.escape @ L4YAML/Surface/Scalars.lean:42
+  ✓ [47] ns-esc-vertical-tab (§5.7) ← L4YAML.Grammar.resolveNamedEscape @ L4YAML/Spec/Grammar.lean:218
   ✓ [47] ns-esc-vertical-tab (§5.7) ← L4YAML.Scanner.processEscape @ L4YAML/Scanner/Scalar.lean:110
+  ✓ [48] ns-esc-form-feed (§5.7) ← L4YAML.Surface.SNbDoubleChar.escape @ L4YAML/Surface/Scalars.lean:42
+  ✓ [48] ns-esc-form-feed (§5.7) ← L4YAML.Grammar.resolveNamedEscape @ L4YAML/Spec/Grammar.lean:218
   ✓ [48] ns-esc-form-feed (§5.7) ← L4YAML.Scanner.processEscape @ L4YAML/Scanner/Scalar.lean:110
+  ✓ [49] ns-esc-carriage-return (§5.7) ← L4YAML.Surface.SNbDoubleChar.escape @ L4YAML/Surface/Scalars.lean:42
+  ✓ [49] ns-esc-carriage-return (§5.7) ← L4YAML.Grammar.resolveNamedEscape @ L4YAML/Spec/Grammar.lean:218
   ✓ [49] ns-esc-carriage-return (§5.7) ← L4YAML.Scanner.processEscape @ L4YAML/Scanner/Scalar.lean:110
+  ✓ [50] ns-esc-escape (§5.7) ← L4YAML.Surface.SNbDoubleChar.escape @ L4YAML/Surface/Scalars.lean:42
+  ✓ [50] ns-esc-escape (§5.7) ← L4YAML.Grammar.resolveNamedEscape @ L4YAML/Spec/Grammar.lean:218
   ✓ [50] ns-esc-escape (§5.7) ← L4YAML.Scanner.processEscape @ L4YAML/Scanner/Scalar.lean:110
+  ✓ [50] ns-esc-escape (§5.7) ← L4YAML.Surface.SNbDoubleChar.hexEscape2 @ L4YAML/Surface/Scalars.lean:45
+  ✓ [51] ns-esc-space (§5.7) ← L4YAML.Surface.SNbDoubleChar.escape @ L4YAML/Surface/Scalars.lean:42
+  ✓ [51] ns-esc-space (§5.7) ← L4YAML.Grammar.resolveNamedEscape @ L4YAML/Spec/Grammar.lean:218
   ✓ [51] ns-esc-space (§5.7) ← L4YAML.Scanner.processEscape @ L4YAML/Scanner/Scalar.lean:110
+  ✓ [52] ns-esc-double-quote (§5.7) ← L4YAML.Surface.SNbDoubleChar.escape @ L4YAML/Surface/Scalars.lean:42
+  ✓ [52] ns-esc-double-quote (§5.7) ← L4YAML.Grammar.resolveNamedEscape @ L4YAML/Spec/Grammar.lean:218
   ✓ [52] ns-esc-double-quote (§5.7) ← L4YAML.Scanner.processEscape @ L4YAML/Scanner/Scalar.lean:110
+  ✓ [53] ns-esc-slash (§5.7) ← L4YAML.Surface.SNbDoubleChar.escape @ L4YAML/Surface/Scalars.lean:42
+  ✓ [53] ns-esc-slash (§5.7) ← L4YAML.Grammar.resolveNamedEscape @ L4YAML/Spec/Grammar.lean:218
   ✓ [53] ns-esc-slash (§5.7) ← L4YAML.Scanner.processEscape @ L4YAML/Scanner/Scalar.lean:110
+  ✓ [54] ns-esc-backslash (§5.7) ← L4YAML.Surface.SNbDoubleChar.escape @ L4YAML/Surface/Scalars.lean:42
+  ✓ [54] ns-esc-backslash (§5.7) ← L4YAML.Grammar.resolveNamedEscape @ L4YAML/Spec/Grammar.lean:218
   ✓ [54] ns-esc-backslash (§5.7) ← L4YAML.Scanner.processEscape @ L4YAML/Scanner/Scalar.lean:110
+  ✓ [55] ns-esc-next-line (§5.7) ← L4YAML.Surface.SNbDoubleChar.escape @ L4YAML/Surface/Scalars.lean:42
+  ✓ [55] ns-esc-next-line (§5.7) ← L4YAML.Grammar.resolveNamedEscape @ L4YAML/Spec/Grammar.lean:218
   ✓ [55] ns-esc-next-line (§5.7) ← L4YAML.Scanner.processEscape @ L4YAML/Scanner/Scalar.lean:110
+  ✓ [56] ns-esc-non-breaking-space (§5.7) ← L4YAML.Surface.SNbDoubleChar.escape @ L4YAML/Surface/Scalars.lean:42
+  ✓ [56] ns-esc-non-breaking-space (§5.7) ← L4YAML.Grammar.resolveNamedEscape @ L4YAML/Spec/Grammar.lean:218
   ✓ [56] ns-esc-non-breaking-space (§5.7) ← L4YAML.Scanner.processEscape @ L4YAML/Scanner/Scalar.lean:110
+  ✓ [57] ns-esc-line-separator (§5.7) ← L4YAML.Surface.SNbDoubleChar.escape @ L4YAML/Surface/Scalars.lean:42
+  ✓ [57] ns-esc-line-separator (§5.7) ← L4YAML.Grammar.resolveNamedEscape @ L4YAML/Spec/Grammar.lean:218
   ✓ [57] ns-esc-line-separator (§5.7) ← L4YAML.Scanner.processEscape @ L4YAML/Scanner/Scalar.lean:110
+  ✓ [58] ns-esc-paragraph-separator (§5.7) ← L4YAML.Surface.SNbDoubleChar.escape @ L4YAML/Surface/Scalars.lean:42
+  ✓ [58] ns-esc-paragraph-separator (§5.7) ← L4YAML.Grammar.resolveNamedEscape @ L4YAML/Spec/Grammar.lean:218
   ✓ [58] ns-esc-paragraph-separator (§5.7) ← L4YAML.Scanner.processEscape @ L4YAML/Scanner/Scalar.lean:110
   ✓ [59] ns-esc-8-bit (§5.7) ← L4YAML.Scanner.processEscape @ L4YAML/Scanner/Scalar.lean:110
   ✓ [59] ns-esc-8-bit (§5.7) ← L4YAML.Scanner.parseHexEscape @ L4YAML/Scanner/Scalar.lean:71
+  ✓ [60] ns-esc-16-bit (§5.7) ← L4YAML.Surface.SNbDoubleChar.hexEscape4 @ L4YAML/Surface/Scalars.lean:48
   ✓ [60] ns-esc-16-bit (§5.7) ← L4YAML.Scanner.processEscape @ L4YAML/Scanner/Scalar.lean:110
   ✓ [60] ns-esc-16-bit (§5.7) ← L4YAML.Scanner.parseHexEscape @ L4YAML/Scanner/Scalar.lean:71
   ✓ [61] ns-esc-32-bit (§5.7) ← L4YAML.Scanner.processEscape @ L4YAML/Scanner/Scalar.lean:110
   ✓ [61] ns-esc-32-bit (§5.7) ← L4YAML.Scanner.parseHexEscape @ L4YAML/Scanner/Scalar.lean:71
+  ✓ [61] ns-esc-32-bit (§5.7) ← L4YAML.Surface.SNbDoubleChar.hexEscape8 @ L4YAML/Surface/Scalars.lean:52
+  ✓ [62] c-ns-esc-char (§5.7) ← L4YAML.Grammar.resolveNamedEscape @ L4YAML/Spec/Grammar.lean:218
   ✓ [62] c-ns-esc-char (§5.7) ← L4YAML.Scanner.processEscape @ L4YAML/Scanner/Scalar.lean:110
   ✓ [63] s-indent(n) (§6.1) ← L4YAML.Scanner.skipSpaces @ L4YAML/Scanner/Whitespace.lean:101
   ✓ [63] s-indent(n) (§6.1) ← L4YAML.Scanner.skipSpacesLoop @ L4YAML/Scanner/Whitespace.lean:88
+  ✓ [63] s-indent(n) (§6.1) ← L4YAML.Grammar.Indented @ L4YAML/Spec/Grammar.lean:89
   ✓ [63] s-indent(n) (§6.1) ← L4YAML.Scanner.consumeExactSpaces @ L4YAML/Scanner/Scalar.lean:721
   ✓ [63] s-indent(n) (§6.1) ← L4YAML.Scanner.scanBlockScalar @ L4YAML/Scanner/Scalar.lean:932
   ✓ [63] s-indent(n) (§6.1) ← L4YAML.Scanner.skipSpacesLoop._unary @ L4YAML/Scanner/Whitespace.lean
@@ -217,6 +272,7 @@
   ✓ [64] s-indent(<n) (§6.1) ← L4YAML.Scanner.unwindIndents @ L4YAML/Scanner/Indent.lean:65
   ✓ [65] s-indent(≤n) (§6.1) ← L4YAML.Scanner.unwindIndentsLoop._unary @ L4YAML/Scanner/Indent.lean
   ✓ [65] s-indent(≤n) (§6.1) ← L4YAML.Scanner.unwindIndentsLoop @ L4YAML/Scanner/Indent.lean:41
+  ✓ [65] s-indent(≤n) (§6.1) ← L4YAML.Grammar.IndentedAtLeast @ L4YAML/Spec/Grammar.lean:115
   ✓ [65] s-indent(≤n) (§6.1) ← L4YAML.Scanner.unwindIndents @ L4YAML/Scanner/Indent.lean:65
   ✓ [66] s-separate-in-line (§6.2) ← L4YAML.Scanner.skipTrailingSpaces @ L4YAML/Scanner/Whitespace.lean:302
   ✓ [66] s-separate-in-line (§6.2) ← L4YAML.Scanner.skipWhitespaceLoop @ L4YAML/Scanner/Whitespace.lean:68
@@ -283,37 +339,64 @@
   ✓ [102] ns-anchor-char (§6.9) ← L4YAML.Scanner.collectAnchorNameLoop @ L4YAML/Scanner/NodeProperties.lean:55
   ✓ [103] ns-anchor-name (§6.9) ← L4YAML.Scanner.collectAnchorNameLoop @ L4YAML/Scanner/NodeProperties.lean:55
   ✓ [104] c-ns-alias-node (§7.1) ← L4YAML.YamlToken.alias @ L4YAML/Token/Token.lean:178
+  ✓ [104] c-ns-alias-node (§7.1) ← L4YAML.Surface.SCNsAliasNode @ L4YAML/Surface/Scalars.lean:324
   ✓ [104] c-ns-alias-node (§7.1) ← L4YAML.Scanner.collectAnchorNameLoop @ L4YAML/Scanner/NodeProperties.lean:55
   ✓ [104] c-ns-alias-node (§7.1) ← L4YAML.Scanner.scanAnchorOrAlias @ L4YAML/Scanner/NodeProperties.lean:69
   ✓ [105] e-scalar (§7.2) ← L4YAML.Scanner.scanNextToken_dispatchContent @ L4YAML/Scanner/Scanner.lean:366
   ✓ [105] e-scalar (§7.2) ← L4YAML.TokenParser.emptyNode @ L4YAML/Parser/State.lean:217
   ✓ [106] e-node (§7.2) ← L4YAML.TokenParser.emptyNode @ L4YAML/Parser/State.lean:217
+  ✓ [106] e-node (§7.2) ← L4YAML.Grammar.ValidNode.emptyNode @ L4YAML/Spec/Grammar.lean:313
+  ✓ [107] nb-double-char (§7.3.1) ← L4YAML.Surface.SNbDoubleChar @ L4YAML/Surface/Scalars.lean:38
+  ✓ [107] nb-double-char (§7.3.1) ← L4YAML.Surface.SNbDoubleChar.plain @ L4YAML/Surface/Scalars.lean:39
+  ✓ [107] nb-double-char (§7.3.1) ← L4YAML.Surface.SNbDoubleChar.hexEscape4 @ L4YAML/Surface/Scalars.lean:48
+  ✓ [107] nb-double-char (§7.3.1) ← L4YAML.Surface.SNbDoubleChar.escape @ L4YAML/Surface/Scalars.lean:42
+  ✓ [107] nb-double-char (§7.3.1) ← L4YAML.Surface.SNbDoubleChar.hexEscape2 @ L4YAML/Surface/Scalars.lean:45
+  ✓ [107] nb-double-char (§7.3.1) ← L4YAML.Surface.SNbDoubleChar.hexEscape8 @ L4YAML/Surface/Scalars.lean:52
   ✓ [107] nb-double-char (§7.3.1) ← L4YAML.Scanner.collectDoubleQuotedLoop @ L4YAML/Scanner/Scalar.lean:229
   ✓ [108] ns-double-char (§7.3.1) ← L4YAML.Scanner.collectDoubleQuotedLoop @ L4YAML/Scanner/Scalar.lean:229
   ✓ [109] c-double-quoted(n,c) (§7.3.1) ← L4YAML.YamlToken.scalar @ L4YAML/Token/Token.lean:190
+  ✓ [109] c-double-quoted(n,c) (§7.3.1) ← L4YAML.Surface.SCDoubleQuoted @ L4YAML/Surface/Scalars.lean:156
+  ✓ [109] c-double-quoted(n,c) (§7.3.1) ← L4YAML.Grammar.ValidNode.doubleQuoted @ L4YAML/Spec/Grammar.lean:297
+  ✓ [109] c-double-quoted(n,c) (§7.3.1) ← L4YAML.Grammar.ValidNode.doubleQuoted @ L4YAML/Spec/Grammar.lean:297
   ✓ [109] c-double-quoted(n,c) (§7.3.1) ← L4YAML.Scanner.scanDoubleQuoted @ L4YAML/Scanner/Scalar.lean:297
+  ✓ [109] c-double-quoted(n,c) (§7.3.1) ← L4YAML.Proofs.NodeProduction.SCDoubleQuoted_ctx_lift @ L4YAML/Proofs/Production/NodeProduction.lean:249
+  ✓ [110] nb-double-text(n,c) (§7.3.1) ← L4YAML.Surface.SNbDoubleText @ L4YAML/Surface/Scalars.lean:148
   ✓ [110] nb-double-text(n,c) (§7.3.1) ← L4YAML.Scanner.collectDoubleQuotedLoop @ L4YAML/Scanner/Scalar.lean:229
   ✓ [111] nb-double-one-line (§7.3.1) ← L4YAML.Scanner.collectDoubleQuotedLoop @ L4YAML/Scanner/Scalar.lean:229
+  ✓ [111] nb-double-one-line (§7.3.1) ← L4YAML.Surface.SNbDoubleOneLine @ L4YAML/Surface/Scalars.lean:130
+  ✓ [112] s-double-escaped(n) (§7.3.1) ← L4YAML.Surface.SSDoubleEscaped @ L4YAML/Surface/Scalars.lean:107
   ✓ [112] s-double-escaped(n) (§7.3.1) ← L4YAML.Scanner.collectDoubleQuotedLoop @ L4YAML/Scanner/Scalar.lean:229
+  ✓ [113] s-double-break(n) (§7.3.1) ← L4YAML.Surface.SSDoubleBreak @ L4YAML/Surface/Scalars.lean:119
   ✓ [113] s-double-break(n) (§7.3.1) ← L4YAML.Scanner.collectDoubleQuotedLoop @ L4YAML/Scanner/Scalar.lean:229
   ✓ [114] nb-ns-double-in-line (§7.3.1) ← L4YAML.Scanner.collectDoubleQuotedLoop @ L4YAML/Scanner/Scalar.lean:229
   ✓ [115] s-double-next-line(n) (§7.3.1) ← L4YAML.Scanner.collectDoubleQuotedLoop @ L4YAML/Scanner/Scalar.lean:229
+  ✓ [116] nb-double-multi-line(n) (§7.3.1) ← L4YAML.Surface.SNbDoubleMultiLine @ L4YAML/Surface/Scalars.lean:134
   ✓ [116] nb-double-multi-line(n) (§7.3.1) ← L4YAML.Scanner.collectDoubleQuotedLoop @ L4YAML/Scanner/Scalar.lean:229
   ✓ [117] c-quoted-quote (§7.3.2) ← L4YAML.Scanner.collectSingleQuotedLoop @ L4YAML/Scanner/Scalar.lean:318
+  ✓ [118] nb-single-char (§7.3.2) ← L4YAML.Surface.SNbSingleChar @ L4YAML/Surface/Scalars.lean:168
   ✓ [118] nb-single-char (§7.3.2) ← L4YAML.Scanner.collectSingleQuotedLoop @ L4YAML/Scanner/Scalar.lean:318
   ✓ [119] ns-single-char (§7.3.2) ← L4YAML.Scanner.collectSingleQuotedLoop @ L4YAML/Scanner/Scalar.lean:318
   ✓ [120] c-single-quoted(n,c) (§7.3.2) ← L4YAML.YamlToken.scalar @ L4YAML/Token/Token.lean:190
+  ✓ [120] c-single-quoted(n,c) (§7.3.2) ← L4YAML.Surface.SCSingleQuoted @ L4YAML/Surface/Scalars.lean:205
+  ✓ [120] c-single-quoted(n,c) (§7.3.2) ← L4YAML.Grammar.ValidNode.singleQuoted @ L4YAML/Spec/Grammar.lean:295
+  ✓ [120] c-single-quoted(n,c) (§7.3.2) ← L4YAML.Grammar.ValidNode.singleQuoted @ L4YAML/Spec/Grammar.lean:295
+  ✓ [120] c-single-quoted(n,c) (§7.3.2) ← L4YAML.Proofs.NodeProduction.SCSingleQuoted_ctx_lift @ L4YAML/Proofs/Production/NodeProduction.lean:268
   ✓ [120] c-single-quoted(n,c) (§7.3.2) ← L4YAML.Scanner.scanSingleQuoted @ L4YAML/Scanner/Scalar.lean:374
   ✓ [121] nb-single-text(n,c) (§7.3.2) ← L4YAML.Scanner.collectSingleQuotedLoop @ L4YAML/Scanner/Scalar.lean:318
+  ✓ [121] nb-single-text(n,c) (§7.3.2) ← L4YAML.Surface.SNbSingleText @ L4YAML/Surface/Scalars.lean:197
+  ✓ [122] nb-single-one-line (§7.3.2) ← L4YAML.Surface.SNbSingleOneLine @ L4YAML/Surface/Scalars.lean:177
   ✓ [122] nb-single-one-line (§7.3.2) ← L4YAML.Scanner.collectSingleQuotedLoop @ L4YAML/Scanner/Scalar.lean:318
   ✓ [123] nb-ns-single-in-line (§7.3.2) ← L4YAML.Scanner.collectSingleQuotedLoop @ L4YAML/Scanner/Scalar.lean:318
   ✓ [124] s-single-next-line(n) (§7.3.2) ← L4YAML.Scanner.collectSingleQuotedLoop @ L4YAML/Scanner/Scalar.lean:318
   ✓ [125] nb-single-multi-line(n) (§7.3.2) ← L4YAML.Scanner.collectSingleQuotedLoop @ L4YAML/Scanner/Scalar.lean:318
+  ✓ [125] nb-single-multi-line(n) (§7.3.2) ← L4YAML.Surface.SNbSingleMultiLine @ L4YAML/Surface/Scalars.lean:181
   ✓ [126] ns-plain-first(c) (§7.3.3) ← L4YAML.CharPredicates.canStartPlainScalarBool @ L4YAML/Spec/CharPredicates.lean:365
   ✓ [126] ns-plain-first(c) (§7.3.3) ← L4YAML.Scanner.collectPlainScalar_terminates? @ L4YAML/Scanner/Scalar.lean:427
   ✓ [126] ns-plain-first(c) (§7.3.3) ← L4YAML.CharPredicates.canStartPlainScalarProp @ L4YAML/Spec/CharPredicates.lean:379
   ✓ [126] ns-plain-first(c) (§7.3.3) ← L4YAML.CharPredicates.validPlainFirstProp @ L4YAML/Spec/CharPredicates.lean:521
   ✓ [126] ns-plain-first(c) (§7.3.3) ← L4YAML.CharPredicates.validPlainFirstBool @ L4YAML/Spec/CharPredicates.lean:503
+  ✓ [126] ns-plain-first(c) (§7.3.3) ← L4YAML.Surface.SNsPlainFirst @ L4YAML/Surface/Scalars.lean:227
+  ✓ [127] ns-plain-safe(c) (§7.3.3) ← L4YAML.Surface.isNsPlainSafe @ L4YAML/Surface/Scalars.lean:217
   ✓ [127] ns-plain-safe(c) (§7.3.3) ← L4YAML.CharPredicates.isPlainSafeBool @ L4YAML/Spec/CharPredicates.lean:446
   ✓ [127] ns-plain-safe(c) (§7.3.3) ← L4YAML.CharPredicates.isPlainSafeProp @ L4YAML/Spec/CharPredicates.lean:461
   ✓ [127] ns-plain-safe(c) (§7.3.3) ← L4YAML.CharPredicates.noFlowIndicatorsProp @ L4YAML/Spec/CharPredicates.lean:769
@@ -327,26 +410,43 @@
   ✓ [130] ns-plain-char(c) (§7.3.3) ← L4YAML.CharPredicates.noColonSpaceBool @ L4YAML/Spec/CharPredicates.lean:710
   ✓ [130] ns-plain-char(c) (§7.3.3) ← L4YAML.CharPredicates.noSpaceHashProp @ L4YAML/Spec/CharPredicates.lean:742
   ✓ [130] ns-plain-char(c) (§7.3.3) ← L4YAML.CharPredicates.noColonSpaceProp @ L4YAML/Spec/CharPredicates.lean:715
+  ✓ [130] ns-plain-char(c) (§7.3.3) ← L4YAML.Surface.SNsPlainChar @ L4YAML/Surface/Scalars.lean:244
   ✓ [131] ns-plain(n,c) (§7.3.3) ← L4YAML.YamlToken.scalar @ L4YAML/Token/Token.lean:190
+  ✓ [131] ns-plain(n,c) (§7.3.3) ← L4YAML.Grammar.ValidNode.plainScalarFlow @ L4YAML/Spec/Grammar.lean:290
+  ✓ [131] ns-plain(n,c) (§7.3.3) ← L4YAML.Grammar.ValidNode.plainScalarBlock @ L4YAML/Spec/Grammar.lean:285
   ✓ [131] ns-plain(n,c) (§7.3.3) ← L4YAML.Scanner.collectPlainScalar_terminates? @ L4YAML/Scanner/Scalar.lean:427
   ✓ [131] ns-plain(n,c) (§7.3.3) ← L4YAML.Scanner.scanPlainScalar @ L4YAML/Scanner/Scalar.lean:555
+  ✓ [131] ns-plain(n,c) (§7.3.3) ← L4YAML.Surface.SNsPlain @ L4YAML/Surface/Scalars.lean:314
   ✓ [132] nb-ns-plain-in-line(c) (§7.3.3) ← L4YAML.Scanner.collectPlainScalarLoop @ L4YAML/Scanner/Scalar.lean:480
+  ✓ [132] nb-ns-plain-in-line(c) (§7.3.3) ← L4YAML.Surface.SNbNsPlainInLineEntry @ L4YAML/Surface/Scalars.lean:263
   ✓ [133] ns-plain-one-line(c) (§7.3.3) ← L4YAML.Scanner.collectPlainScalarLoop @ L4YAML/Scanner/Scalar.lean:480
+  ✓ [133] ns-plain-one-line(c) (§7.3.3) ← L4YAML.Surface.SNsPlainOneLine @ L4YAML/Surface/Scalars.lean:273
+  ✓ [134] s-ns-plain-next-line(n,c) (§7.3.3) ← L4YAML.Surface.SSNsPlainNextLine @ L4YAML/Surface/Scalars.lean:291
   ✓ [134] s-ns-plain-next-line(n,c) (§7.3.3) ← L4YAML.Scanner.collectPlainScalarLoop @ L4YAML/Scanner/Scalar.lean:480
   ✓ [134] s-ns-plain-next-line(n,c) (§7.3.3) ← L4YAML.Scanner.collectPlainScalar_handleBlockLineBreak @ L4YAML/Scanner/Scalar.lean:457
   ✓ [135] ns-plain-multi-line(n,c) (§7.3.3) ← L4YAML.Scanner.collectPlainScalarLoop @ L4YAML/Scanner/Scalar.lean:480
+  ✓ [135] ns-plain-multi-line(n,c) (§7.3.3) ← L4YAML.Surface.SNsPlainMultiLine @ L4YAML/Surface/Scalars.lean:302
   ✓ [135] ns-plain-multi-line(n,c) (§7.3.3) ← L4YAML.Scanner.collectPlainScalar_handleBlockLineBreak @ L4YAML/Scanner/Scalar.lean:457
   ✓ [136] in-flow(c) (§7.4) ← L4YAML.Scanner.ScannerState.inFlow @ L4YAML/Scanner/State.lean:243
+  ✓ [137] c-flow-sequence(n,c) (§7.4.1) ← L4YAML.Grammar.ValidNode.flowSeq @ L4YAML/Spec/Grammar.lean:307
+  ✓ [137] c-flow-sequence(n,c) (§7.4.1) ← L4YAML.Grammar.ValidNode.flowSeq @ L4YAML/Spec/Grammar.lean:307
   ✓ [137] c-flow-sequence(n,c) (§7.4.1) ← L4YAML.TokenParser.parseFlowSequence @ L4YAML/Parser/TokenParser.lean:387
   ✓ [137] c-flow-sequence(n,c) (§7.4.1) ← L4YAML.Scanner.scanFlowSequenceStart @ L4YAML/Scanner/Scanner.lean:134
+  ✓ [137] c-flow-sequence(n,c) (§7.4.1) ← L4YAML.Surface.SFlowSequence @ L4YAML/Surface/Node.lean:291
   ✓ [137] c-flow-sequence(n,c) (§7.4.1) ← L4YAML.Scanner.scanNextToken_dispatchFlowIndicators @ L4YAML/Scanner/Scanner.lean:319
+  ✓ [138] ns-s-flow-seq-entries(n,c) (§7.4.1) ← L4YAML.Surface.SFlowSeqEntries @ L4YAML/Surface/Node.lean:306
   ✓ [138] ns-s-flow-seq-entries(n,c) (§7.4.1) ← L4YAML.TokenParser.parseFlowSequenceLoop @ L4YAML/Parser/TokenParser.lean:400
+  ✓ [139] ns-flow-seq-entry(n,c) (§7.4.1) ← L4YAML.Surface.SFlowSeqEntry @ L4YAML/Surface/Node.lean:327
   ✓ [139] ns-flow-seq-entry(n,c) (§7.4.1) ← L4YAML.TokenParser.parseFlowSequenceLoop @ L4YAML/Parser/TokenParser.lean:400
+  ✓ [140] c-flow-mapping(n,c) (§7.4.2) ← L4YAML.Grammar.ValidNode.flowMap @ L4YAML/Spec/Grammar.lean:309
   ✓ [140] c-flow-mapping(n,c) (§7.4.2) ← L4YAML.TokenParser.parseFlowMapping @ L4YAML/Parser/TokenParser.lean:445
+  ✓ [140] c-flow-mapping(n,c) (§7.4.2) ← L4YAML.Surface.SFlowMapping @ L4YAML/Surface/Node.lean:349
   ✓ [140] c-flow-mapping(n,c) (§7.4.2) ← L4YAML.Scanner.scanFlowMappingStart @ L4YAML/Scanner/Scanner.lean:185
   ✓ [140] c-flow-mapping(n,c) (§7.4.2) ← L4YAML.Scanner.scanNextToken_dispatchFlowIndicators @ L4YAML/Scanner/Scanner.lean:319
   ✓ [141] ns-s-flow-map-entries(n,c) (§7.4.2) ← L4YAML.TokenParser.parseFlowMappingLoop @ L4YAML/Parser/TokenParser.lean:495
+  ✓ [141] ns-s-flow-map-entries(n,c) (§7.4.2) ← L4YAML.Surface.SFlowMapEntries @ L4YAML/Surface/Node.lean:364
   ✓ [142] ns-flow-map-entry(n,c) (§7.4.2) ← L4YAML.TokenParser.parseFlowMappingLoop @ L4YAML/Parser/TokenParser.lean:495
+  ✓ [142] ns-flow-map-entry(n,c) (§7.4.2) ← L4YAML.Surface.SFlowMapEntry @ L4YAML/Surface/Node.lean:385
   ✓ [143] ns-flow-map-explicit-entry(n,c) (§7.4.2) ← L4YAML.TokenParser.parseExplicitKey @ L4YAML/Parser/TokenParser.lean:481
   ✓ [144] ns-flow-map-implicit-entry(n,c) (§7.4.2) ← L4YAML.TokenParser.parseFlowMappingLoop @ L4YAML/Parser/TokenParser.lean:495
   ✓ [145] ns-flow-map-yaml-key-entry(n,c) (§7.4.2) ← L4YAML.TokenParser.parseFlowMappingLoop @ L4YAML/Parser/TokenParser.lean:495
@@ -364,39 +464,57 @@
   ✓ [156] ns-flow-yaml-content(n,c) (§7.5) ← L4YAML.TokenParser.parseNodeContent @ L4YAML/Parser/TokenParser.lean:92
   ✓ [157] c-flow-json-content(n,c) (§7.5) ← L4YAML.TokenParser.parseNodeContent._mutual @ L4YAML/Parser/TokenParser.lean
   ✓ [157] c-flow-json-content(n,c) (§7.5) ← L4YAML.TokenParser.parseNodeContent @ L4YAML/Parser/TokenParser.lean:92
+  ✓ [158] ns-flow-content(n,c) (§7.5) ← L4YAML.Surface.SFlowContent @ L4YAML/Surface/Node.lean:267
   ✓ [158] ns-flow-content(n,c) (§7.5) ← L4YAML.TokenParser.parseNodeContent._mutual @ L4YAML/Parser/TokenParser.lean
   ✓ [158] ns-flow-content(n,c) (§7.5) ← L4YAML.TokenParser.parseNodeContent @ L4YAML/Parser/TokenParser.lean:92
   ✓ [159] ns-flow-yaml-node(n,c) (§7.5) ← L4YAML.TokenParser.parseNodeContent._mutual @ L4YAML/Parser/TokenParser.lean
   ✓ [159] ns-flow-yaml-node(n,c) (§7.5) ← L4YAML.TokenParser.parseNodeContent @ L4YAML/Parser/TokenParser.lean:92
   ✓ [160] c-flow-json-node(n,c) (§7.5) ← L4YAML.Scanner.isJsonNodeToken @ L4YAML/Scanner/SimpleKey.lean:287
+  ✓ [161] ns-flow-node(n,c) (§7.5) ← L4YAML.Surface.SFlowNode @ L4YAML/Surface/Node.lean:245
   ✓ [161] ns-flow-node(n,c) (§7.5) ← L4YAML.Scanner.scanNextToken_dispatchContent @ L4YAML/Scanner/Scanner.lean:366
+  ✓ [161] ns-flow-node(n,c) (§7.5) ← L4YAML.Grammar.ValidNode @ L4YAML/Spec/Grammar.lean:281
   ✓ [161] ns-flow-node(n,c) (§7.5) ← L4YAML.TokenParser.parseNode @ L4YAML/Parser/TokenParser.lean:131
+  ✓ [162] c-b-block-header(t) (§8.1.1) ← L4YAML.Surface.SCBBlockHeader @ L4YAML/Surface/Scalars.lean:339
   ✓ [162] c-b-block-header(t) (§8.1.1) ← L4YAML.Scanner.scanBlockScalar @ L4YAML/Scanner/Scalar.lean:932
   ✓ [162] c-b-block-header(t) (§8.1.1) ← L4YAML.Scanner.parseBlockHeaderLoop @ L4YAML/Scanner/Scalar.lean:796
+  ✓ [162] c-b-block-header(t) (§8.1.1) ← L4YAML.Grammar.isBlockScalarHeaderChar @ L4YAML/Spec/Grammar.lean:792
   ✓ [163] c-indentation-indicator (§8.1.1) ← L4YAML.Scanner.autoDetectBlockScalarIndentLoop @ L4YAML/Scanner/Scalar.lean:674
   ✓ [163] c-indentation-indicator (§8.1.1) ← L4YAML.Scanner.autoDetectBlockScalarIndent @ L4YAML/Scanner/Scalar.lean:713
   ✓ [163] c-indentation-indicator (§8.1.1) ← L4YAML.Scanner.scanBlockScalarBody @ L4YAML/Scanner/Scalar.lean:875
   ✓ [163] c-indentation-indicator (§8.1.1) ← L4YAML.Scanner.scanBlockScalar @ L4YAML/Scanner/Scalar.lean:932
+  ✓ [163] c-indentation-indicator (§8.1.1) ← L4YAML.Grammar.isBlockScalarHeaderChar @ L4YAML/Spec/Grammar.lean:792
   ✓ [164] c-chomping-indicator(t) (§8.1.1) ← L4YAML.Scanner.scanBlockScalarBody @ L4YAML/Scanner/Scalar.lean:875
   ✓ [164] c-chomping-indicator(t) (§8.1.1) ← L4YAML.Scanner.scanBlockScalar @ L4YAML/Scanner/Scalar.lean:932
+  ✓ [164] c-chomping-indicator(t) (§8.1.1) ← L4YAML.Grammar.isBlockScalarHeaderChar @ L4YAML/Spec/Grammar.lean:792
   ✓ [165] b-chomped-last(t) (§8.1.1) ← L4YAML.Scanner.scanBlockScalarBody @ L4YAML/Scanner/Scalar.lean:875
   ✓ [166] l-chomped-empty(n,t) (§8.1.1) ← L4YAML.Scanner.scanBlockScalarBody @ L4YAML/Scanner/Scalar.lean:875
   ✓ [167] l-strip-empty(n) (§8.1.1) ← L4YAML.Scanner.scanBlockScalarBody @ L4YAML/Scanner/Scalar.lean:875
   ✓ [168] l-keep-empty(n) (§8.1.1) ← L4YAML.Scanner.scanBlockScalarBody @ L4YAML/Scanner/Scalar.lean:875
   ✓ [169] l-trail-comments(n) (§8.1.1) ← L4YAML.Scanner.scanBlockScalarBody @ L4YAML/Scanner/Scalar.lean:875
   ✓ [170] c-l+literal(n) (§8.1.2) ← L4YAML.YamlToken.scalar @ L4YAML/Token/Token.lean:190
+  ✓ [170] c-l+literal(n) (§8.1.2) ← L4YAML.Surface.SCLLiteral @ L4YAML/Surface/Scalars.lean:378
+  ✓ [170] c-l+literal(n) (§8.1.2) ← L4YAML.Grammar.ValidNode.literalScalar @ L4YAML/Spec/Grammar.lean:299
+  ✓ [170] c-l+literal(n) (§8.1.2) ← L4YAML.Grammar.ValidNode.literalScalar @ L4YAML/Spec/Grammar.lean:299
   ✓ [170] c-l+literal(n) (§8.1.2) ← L4YAML.Scanner.scanBlockScalar @ L4YAML/Scanner/Scalar.lean:932
+  ✓ [171] l-nb-literal-text(n) (§8.1.2) ← L4YAML.Surface.SLNbLiteralText @ L4YAML/Surface/Scalars.lean:348
   ✓ [171] l-nb-literal-text(n) (§8.1.2) ← L4YAML.Scanner.scanBlockScalarBody @ L4YAML/Scanner/Scalar.lean:875
   ✓ [171] l-nb-literal-text(n) (§8.1.2) ← L4YAML.Scanner.scanBlockScalar @ L4YAML/Scanner/Scalar.lean:932
   ✓ [171] l-nb-literal-text(n) (§8.1.2) ← L4YAML.Scanner.collectLineContentLoop @ L4YAML/Scanner/Scalar.lean:734
+  ✓ [172] b-nb-literal-next(n) (§8.1.2) ← L4YAML.Surface.SBNbLiteralNext @ L4YAML/Surface/Scalars.lean:356
   ✓ [172] b-nb-literal-next(n) (§8.1.2) ← L4YAML.Scanner.collectBlockScalarLoop @ L4YAML/Scanner/Scalar.lean:750
   ✓ [172] b-nb-literal-next(n) (§8.1.2) ← L4YAML.Scanner.scanBlockScalar @ L4YAML/Scanner/Scalar.lean:932
+  ✓ [173] l-literal-content(n,t) (§8.1.2) ← L4YAML.Surface.SLLiteralContent @ L4YAML/Surface/Scalars.lean:365
   ✓ [173] l-literal-content(n,t) (§8.1.2) ← L4YAML.Scanner.collectBlockScalarLoop @ L4YAML/Scanner/Scalar.lean:750
   ✓ [173] l-literal-content(n,t) (§8.1.2) ← L4YAML.Scanner.scanBlockScalar @ L4YAML/Scanner/Scalar.lean:932
   ✓ [174] c-l+folded(n) (§8.1.3) ← L4YAML.YamlToken.scalar @ L4YAML/Token/Token.lean:190
+  ✓ [174] c-l+folded(n) (§8.1.3) ← L4YAML.Surface.SCLFolded @ L4YAML/Surface/Scalars.lean:408
+  ✓ [174] c-l+folded(n) (§8.1.3) ← L4YAML.Grammar.ValidNode.foldedScalar @ L4YAML/Spec/Grammar.lean:301
+  ✓ [174] c-l+folded(n) (§8.1.3) ← L4YAML.Grammar.ValidNode.foldedScalar @ L4YAML/Spec/Grammar.lean:301
   ✓ [174] c-l+folded(n) (§8.1.3) ← L4YAML.Scanner.scanBlockScalar @ L4YAML/Scanner/Scalar.lean:932
   ✓ [174] c-l+folded(n) (§8.1.3) ← L4YAML.Scanner.foldBlockContent @ L4YAML/Scanner/Scalar.lean:620
+  ✓ [175] s-nb-folded-text(n) (§8.1.3) ← L4YAML.Surface.SSNbFoldedText @ L4YAML/Surface/Scalars.lean:386
   ✓ [175] s-nb-folded-text(n) (§8.1.3) ← L4YAML.Scanner.foldBlockContent @ L4YAML/Scanner/Scalar.lean:620
+  ✓ [176] l-nb-folded-lines(n) (§8.1.3) ← L4YAML.Surface.SLNbFoldedLines @ L4YAML/Surface/Scalars.lean:393
   ✓ [176] l-nb-folded-lines(n) (§8.1.3) ← L4YAML.Scanner.foldBlockContent @ L4YAML/Scanner/Scalar.lean:620
   ✓ [177] s-nb-spaced-text(n) (§8.1.3) ← L4YAML.Scanner.foldBlockContent @ L4YAML/Scanner/Scalar.lean:620
   ✓ [178] b-l-spaced(n) (§8.1.3) ← L4YAML.Scanner.foldBlockContent @ L4YAML/Scanner/Scalar.lean:620
@@ -405,15 +523,24 @@
   ✓ [181] l-nb-diff-lines(n) (§8.1.3) ← L4YAML.Scanner.foldBlockContent @ L4YAML/Scanner/Scalar.lean:620
   ✓ [182] l-folded-content(n,t) (§8.1.3) ← L4YAML.Scanner.foldBlockContent @ L4YAML/Scanner/Scalar.lean:620
   ✓ [183] l+block-sequence(n) (§8.2.1) ← L4YAML.Scanner.pushSequenceIndent @ L4YAML/Scanner/Indent.lean:76
+  ✓ [183] l+block-sequence(n) (§8.2.1) ← L4YAML.Surface.SBlockSeqEntries @ L4YAML/Surface/Node.lean:127
   ✓ [183] l+block-sequence(n) (§8.2.1) ← L4YAML.TokenParser.parseBlockSequence @ L4YAML/Parser/TokenParser.lean:172
+  ✓ [183] l+block-sequence(n) (§8.2.1) ← L4YAML.Grammar.ValidNode.blockSeq @ L4YAML/Spec/Grammar.lean:303
+  ✓ [183] l+block-sequence(n) (§8.2.1) ← L4YAML.Grammar.ValidNode.blockSeq @ L4YAML/Spec/Grammar.lean:303
   ✓ [184] c-l-block-seq-entry(n) (§8.2.1) ← L4YAML.TokenParser.parseBlockSequenceLoop @ L4YAML/Parser/TokenParser.lean:185
   ✓ [184] c-l-block-seq-entry(n) (§8.2.1) ← L4YAML.Scanner.isBlockEntryCandidate @ L4YAML/Scanner/SimpleKey.lean:269
   ✓ [184] c-l-block-seq-entry(n) (§8.2.1) ← L4YAML.Scanner.scanBlockEntry @ L4YAML/Scanner/SimpleKey.lean:63
   ✓ [184] c-l-block-seq-entry(n) (§8.2.1) ← L4YAML.Scanner.scanNextToken_dispatchBlockIndicators @ L4YAML/Scanner/Scanner.lean:346
+  ✓ [185] s-l+block-indented(n,c) (§8.2.1) ← L4YAML.Surface.SBlockIndented @ L4YAML/Surface/Node.lean:102
   ✓ [185] s-l+block-indented(n,c) (§8.2.1) ← L4YAML.TokenParser.parseNode @ L4YAML/Parser/TokenParser.lean:131
   ✓ [186] ns-l-compact-sequence(n) (§8.2.1) ← L4YAML.TokenParser.parseImplicitBlockSequence @ L4YAML/Parser/TokenParser.lean:220
+  ✓ [186] ns-l-compact-sequence(n) (§8.2.1) ← L4YAML.Surface.SCompactSeq @ L4YAML/Surface/Node.lean:191
+  ✓ [187] l+block-mapping(n) (§8.2.2) ← L4YAML.Grammar.ValidNode.blockMap @ L4YAML/Spec/Grammar.lean:305
+  ✓ [187] l+block-mapping(n) (§8.2.2) ← L4YAML.Grammar.ValidNode.blockMap @ L4YAML/Spec/Grammar.lean:305
+  ✓ [187] l+block-mapping(n) (§8.2.2) ← L4YAML.Surface.SBlockMapEntries @ L4YAML/Surface/Node.lean:178
   ✓ [187] l+block-mapping(n) (§8.2.2) ← L4YAML.TokenParser.parseBlockMapping @ L4YAML/Parser/TokenParser.lean:265
   ✓ [187] l+block-mapping(n) (§8.2.2) ← L4YAML.Scanner.pushMappingIndent @ L4YAML/Scanner/Indent.lean:90
+  ✓ [188] ns-l-block-map-entry(n) (§8.2.2) ← L4YAML.Surface.SBlockMapEntry @ L4YAML/Surface/Node.lean:144
   ✓ [188] ns-l-block-map-entry(n) (§8.2.2) ← L4YAML.TokenParser.parseBlockMappingEntryValue @ L4YAML/Parser/TokenParser.lean:280
   ✓ [189] c-l-block-map-explicit-entry(n) (§8.2.2) ← L4YAML.TokenParser.handleBlockMappingKeyEntry @ L4YAML/Parser/TokenParser.lean:316
   ✓ [190] c-l-block-map-explicit-key(n) (§8.2.2) ← L4YAML.Scanner.scanKey @ L4YAML/Scanner/SimpleKey.lean:93
@@ -422,39 +549,59 @@
   ✓ [191] l-block-map-explicit-value(n) (§8.2.2) ← L4YAML.TokenParser.handleBlockMappingValueEntry @ L4YAML/Parser/TokenParser.lean:344
   ✓ [191] l-block-map-explicit-value(n) (§8.2.2) ← L4YAML.Scanner.isKeyCandidate @ L4YAML/Scanner/SimpleKey.lean:277
   ✓ [192] ns-l-block-map-implicit-entry(n) (§8.2.2) ← L4YAML.TokenParser.parseBlockMappingLoop @ L4YAML/Parser/TokenParser.lean:360
+  ✓ [193] ns-s-block-map-implicit-key (§8.2.2) ← L4YAML.Surface.SImplicitKey @ L4YAML/Surface/Node.lean:230
   ✓ [193] ns-s-block-map-implicit-key (§8.2.2) ← L4YAML.TokenParser.handleBlockMappingKeyEntry @ L4YAML/Parser/TokenParser.lean:316
   ✓ [194] c-l-block-map-implicit-value(n) (§8.2.2) ← L4YAML.TokenParser.handleBlockMappingValueEntry @ L4YAML/Parser/TokenParser.lean:344
   ✓ [195] ns-l-compact-mapping(n) (§8.2.2) ← L4YAML.TokenParser.parseBlockMappingLoop @ L4YAML/Parser/TokenParser.lean:360
+  ✓ [195] ns-l-compact-mapping(n) (§8.2.2) ← L4YAML.Surface.SCompactMap @ L4YAML/Surface/Node.lean:212
+  ✓ [196] s-l+block-node(n,c) (§8.2.3) ← L4YAML.Grammar.ValidNode @ L4YAML/Spec/Grammar.lean:281
   ✓ [196] s-l+block-node(n,c) (§8.2.3) ← L4YAML.TokenParser.parseNode @ L4YAML/Parser/TokenParser.lean:131
+  ✓ [196] s-l+block-node(n,c) (§8.2.3) ← L4YAML.Surface.SBlockNode @ L4YAML/Surface/Node.lean:62
   ✓ [197] s-l+flow-in-block(n) (§8.2.3) ← L4YAML.TokenParser.parseNode @ L4YAML/Parser/TokenParser.lean:131
   ✓ [198] s-l+block-in-block(n,c) (§8.2.3) ← L4YAML.TokenParser.parseNode @ L4YAML/Parser/TokenParser.lean:131
   ✓ [199] s-l+block-scalar(n,c) (§8.2.3) ← L4YAML.TokenParser.parseNode @ L4YAML/Parser/TokenParser.lean:131
   ✓ [200] s-l+block-collection(n,c) (§8.2.3) ← L4YAML.TokenParser.parseNode @ L4YAML/Parser/TokenParser.lean:131
   ✓ [201] seq-space(n,c) (§8.2.1) ← L4YAML.TokenParser.parseNode @ L4YAML/Parser/TokenParser.lean:131
   ✓ [202] l-document-prefix (§9.1.1) ← L4YAML.Scanner.scan @ L4YAML/Scanner/Scanner.lean:524
+  ✓ [202] l-document-prefix (§9.1.1) ← L4YAML.Surface.SLDocumentPrefix @ L4YAML/Surface/Document.lean:118
   ✓ [202] l-document-prefix (§9.1.1) ← L4YAML.TokenParser.prepareDocumentState @ L4YAML/Parser/TokenParser.lean:675
   ✓ [203] c-directives-end (§9.1.2) ← L4YAML.Scanner.atDocumentStart @ L4YAML/Scanner/Document.lean:45
   ✓ [203] c-directives-end (§9.1.2) ← L4YAML.Scanner.scanNextToken_dispatchStructural @ L4YAML/Scanner/Scanner.lean:293
+  ✓ [203] c-directives-end (§9.1.2) ← L4YAML.Surface.SCDirectivesEnd @ L4YAML/Surface/Document.lean:52
   ✓ [203] c-directives-end (§9.1.2) ← L4YAML.Scanner.scanDocumentStart @ L4YAML/Scanner/Document.lean:275
   ✓ [203] c-directives-end (§9.1.2) ← L4YAML.YamlToken.documentStart @ L4YAML/Token/Token.lean:120
   ✓ [204] c-document-end (§9.1.2) ← L4YAML.Scanner.scanDocumentEnd @ L4YAML/Scanner/Document.lean:314
+  ✓ [204] c-document-end (§9.1.2) ← L4YAML.Surface.SCDocumentEnd @ L4YAML/Surface/Document.lean:59
   ✓ [204] c-document-end (§9.1.2) ← L4YAML.Scanner.atDocumentEnd @ L4YAML/Scanner/Document.lean:64
   ✓ [204] c-document-end (§9.1.2) ← L4YAML.YamlToken.documentEnd @ L4YAML/Token/Token.lean:122
   ✓ [204] c-document-end (§9.1.2) ← L4YAML.Scanner.scanNextToken_dispatchStructural @ L4YAML/Scanner/Scanner.lean:293
   ✓ [205] l-document-suffix (§9.1.2) ← L4YAML.Scanner.scanDocumentEnd @ L4YAML/Scanner/Document.lean:314
+  ✓ [205] l-document-suffix (§9.1.2) ← L4YAML.Surface.SLDocumentSuffix @ L4YAML/Surface/Document.lean:127
+  ✓ [206] c-forbidden (§9.1.2) ← L4YAML.Grammar.isCForbiddenPrefix @ L4YAML/Spec/Grammar.lean:164
+  ✓ [206] c-forbidden (§9.1.2) ← L4YAML.Surface.SCForbidden @ L4YAML/Surface/Document.lean:41
   ✓ [206] c-forbidden (§9.1.2) ← L4YAML.Scanner.atDocumentBoundary @ L4YAML/Scanner/Document.lean:79
+  ✓ [207] l-bare-document (§9.1.3) ← L4YAML.Grammar.ValidDocument @ L4YAML/Spec/Grammar.lean:354
   ✓ [207] l-bare-document (§9.1.3) ← L4YAML.TokenParser.parseDocument @ L4YAML/Parser/TokenParser.lean:713
+  ✓ [207] l-bare-document (§9.1.3) ← L4YAML.Surface.SLBareDocument @ L4YAML/Surface/Document.lean:71
+  ✓ [208] l-explicit-document (§9.1.4) ← L4YAML.Surface.SLExplicitDocument @ L4YAML/Surface/Document.lean:79
+  ✓ [208] l-explicit-document (§9.1.4) ← L4YAML.Grammar.ValidDocument @ L4YAML/Spec/Grammar.lean:354
   ✓ [208] l-explicit-document (§9.1.4) ← L4YAML.TokenParser.parseDocument @ L4YAML/Parser/TokenParser.lean:713
+  ✓ [209] l-directive-document (§9.1.5) ← L4YAML.Grammar.ValidDocument @ L4YAML/Spec/Grammar.lean:354
+  ✓ [209] l-directive-document (§9.1.5) ← L4YAML.Surface.SLDirectiveDocument @ L4YAML/Surface/Document.lean:88
   ✓ [209] l-directive-document (§9.1.5) ← L4YAML.TokenParser.parseDocument @ L4YAML/Parser/TokenParser.lean:713
+  ✓ [210] l-any-document (§9.2) ← L4YAML.Grammar.ValidDocument @ L4YAML/Spec/Grammar.lean:354
   ✓ [210] l-any-document (§9.2) ← L4YAML.TokenParser.parseDocument @ L4YAML/Parser/TokenParser.lean:713
+  ✓ [210] l-any-document (§9.2) ← L4YAML.Surface.SLAnyDocument @ L4YAML/Surface/Document.lean:96
   ✓ [211] l-yaml-stream (§9.2) ← L4YAML.Scanner.scan @ L4YAML/Scanner/Scanner.lean:524
   ✓ [211] l-yaml-stream (§9.2) ← L4YAML.Scanner.scanFiltered @ L4YAML/Scanner/Scanner.lean:538
   ✓ [211] l-yaml-stream (§9.2) ← L4YAML.Scanner.scanLoopFull @ L4YAML/Scanner/Scanner.lean:546
   ✓ [211] l-yaml-stream (§9.2) ← L4YAML.TokenParser.parseStream @ L4YAML/Parser/TokenParser.lean:784
   ✓ [211] l-yaml-stream (§9.2) ← L4YAML.Scanner.scanLoopFull._unary @ L4YAML/Scanner/Scanner.lean
+  ✓ [211] l-yaml-stream (§9.2) ← L4YAML.Surface.SLYamlStream @ L4YAML/Surface/Document.lean:136
+  ✓ [211] l-yaml-stream (§9.2) ← L4YAML.Grammar.ValidStream @ L4YAML/Spec/Grammar.lean:371
   ✓ [211] l-yaml-stream (§9.2) ← L4YAML.Scanner.scanWithComments @ L4YAML/Scanner/Scanner.lean:580
   ✓ [211] l-yaml-stream (§9.2) ← L4YAML.TokenParser.StreamState.validNextToken @ L4YAML/Parser/TokenParser.lean:609
   ✓ [211] l-yaml-stream (§9.2) ← L4YAML.Scanner.scanNextToken_preprocess @ L4YAML/Scanner/Scanner.lean:270
 
-=== Results: 443/443 passed ===
+=== Results: 588/588 passed ===
   wrote docs/reports/production-coverage.html

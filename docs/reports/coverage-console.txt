@@ -451,11 +451,11 @@ Running verified test suites...
   Adversarial Instantiation Tests (sorry audit): ✓ 2441/2441
   Mutation Testing on yaml-test-suite (v0.2.13.2): ✓ 45/45
   Property-Based Round-Trip Tests (v0.2.13.3): ✓ 124/124
-  Production Coverage Analysis: ✓ 443/443
+  Production Coverage Analysis: ✓ 588/588
   Parser Security Limit Tests: ✓ 43/43
   Demo: ✓ 7/7
 
-Verified: 4098/4098
+Verified: 4243/4243
 
 Generating HTML reports...
   wrote docs/reports/index.html
