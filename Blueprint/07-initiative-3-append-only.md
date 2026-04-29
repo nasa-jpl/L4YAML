@@ -914,14 +914,15 @@ count unchanged at 21.
      hypotheses (~120 LOC).
   9. Compose into `scanFiltered_produces_valid_tokens` (~50 LOC).
 
-  Status (2026-04-28): Steps 1-8 ✓ done.  Step 8b closed: 25 per-op
+  Status (2026-04-28): Steps 1-9 ✓ done.  Step 8b closed: 25 per-op
   leaves landed (Class A passthroughs, single-emit emit-class,
   push-indent + emit chain, emitAt-class scalars/anchors/tags, indent
   / whitespace standalones, the Class C `scanValue` composition, both
   multi-emit document markers, and the three-branch `scanDirective`),
   plus the 4 dispatchers + `preprocess` + `scanNextToken` +
-  `scanLoopFull` composition theorems.  Step 9
-  (`scanFiltered_produces_valid_tokens`) is next.
+  `scanLoopFull` composition theorems.  Step 9 closed:
+  `scanFiltered_produces_valid_tokens` discharged (no sorry); J.3.3
+  is now sorry-free for its primary deliverable.
   Eight prior commits (~2434 LOC): `c6bfab0a` saveSimpleKey discharge,
   `1e6b4741` Class A/B/C foundation, `de7610d9` Blueprint update,
   `c4dc838a` ~30 Class A *_preserves_pendingKeys leaves, `fbd330d4`
@@ -1131,25 +1132,79 @@ count unchanged at 21.
     Completion arm: `skipToContent` + `unwindIndents` + emit
     `.streamEnd` (all Class A).
 
-  **Step 9 — concrete next step**
+  **Step 9 — `scanFiltered_produces_valid_tokens` landed**
 
-  Compose `scanFiltered_produces_valid_tokens` (~50 LOC) using
-  `linearise_size_ge_tokens`, `linearise_first_eq_tokens_first`,
-  `linearise_last_eq_tokens_last`, and `linearise_positions_ordered`.
-  The Step-8 chain provides `LineariseFit (final state)` from
-  `scanLoopFull` success; Step 9 feeds that into
-  `linearise_positions_ordered` to discharge the surviving sorry at
-  `ScannerCorrectness.lean:12932`.  Folds naturally into J.3.4 since
-  `ScannerPlainScalarValid` consumers need the same invariants.
+  Discharged the surviving sorry (previously at line 12932) by
+  composing the Step-8 `scanLoopFull_preserves_LineariseFit` chain
+  with the four `linearise_*` shape lemmas:
+  - **`scanFiltered_produces_at_least_two`** — composes
+    `scanLoopFull_increases_tokens` (final.size ≥ post_bom.size + 1)
+    with `linearise_size_ge_tokens` (linearise.size ≥ tokens.size).
+    Proof uses `split at h_full` on the BOM `match` to expose
+    `post_bom.tokens.size = 1` per branch, sidestepping a Lean
+    alpha-rename quirk where the helper-form `| _ =>` and the
+    unfolded form `| x =>` are not unified by `rw`/`simp`/`omega`.
+  - **`scanFiltered_first_is_streamStart`** — uses
+    `linearise_first_eq_tokens_first` (needs `1 ≤ insertBeforeIdx`
+    from `LineariseFit final`'s `PendingKeysWellIndexed` lower bound)
+    + `scanLoopFull_preserves_tokens` (n=1) to carry the post-BOM
+    streamStart token through to `final.tokens[0]`.
+  - **`scanFiltered_last_is_streamEnd`** — needs the *strict* bound
+    `insertBeforeIdx < final.tokens.size` (added as
+    `scanLoopFull_pendingKeys_lt_tokens_size`, ~50 LOC).  The
+    looser `≤ tokens.size` from `PendingKeysWellIndexed` is
+    insufficient because `linearise_last_eq_tokens_last` requires
+    `≤ tokens.size − 1`.  Strictness is "free" in `scanLoopFull`:
+    the completion arm always emits `.streamEnd` last, and `emit`
+    adds a token without changing `pendingKeys`, so the post-emit
+    `tokens.size` strictly exceeds every saved index.
+  - **`scanFiltered_positions_ordered`** — extracts the four
+    LineariseFit conjuncts (tokens-sorted via ScanInv,
+    pks-pos-sorted, I1, I2) and feeds them into
+    `linearise_positions_ordered`.  Uses `subst h_eq` to substitute
+    `ftokens` with `linearise final.tokens final.pendingKeys`, so
+    Fin indices refer to the linearise array directly (avoids
+    dependent-rewrite motive issues).
 
-  *Cumulative session log (2026-04-27 → 2026-04-28):* 20 commits
+  Five private setup helpers establish `LineariseFit` and
+  `AllKeysValid` at the post-BOM state of `scanFiltered`'s prefix:
+  `scanFiltered_post_bom_pendingKeys_empty` (rfl-level: mk' has
+  empty pks, emit/advance preserve), `scanFiltered_post_bom_tokens_size_eq_one`,
+  `scanFiltered_post_bom_tokens_eq` (post-BOM tokens = post-streamStart
+  tokens), `scanFiltered_post_bom_ScanInv` /
+  `scanFiltered_post_bom_AllKeysValid` (inlined from
+  `scan_positions_ordered`'s setup), and
+  `scanFiltered_post_bom_LineariseFit` (composes the above via
+  `LineariseFit_of_empty_pendingKeys`).
+
+  Required `import L4YAML.Proofs.Scanner.ScannerLinearise` +
+  `open L4YAML.Proofs.ScannerLinearise` at the top of
+  `ScannerCorrectness.lean` to surface the four `linearise_*` lemmas.
+
+  Build status (2026-04-28 evening): full project (453/453) green;
+  0 sorry, 0 warnings in `ScannerCorrectness.lean`.
+
+  *Cumulative session log (2026-04-27 → 2026-04-28):* 21 commits
   including `807b91df`, `0ec064a7`, `f35a04ac`, `4af1fc1a`, `ef90bd62`,
   `bdd27512`, `b83e8252`, `7046048b`, `8133ab94`, `d41f13b4`,
   `aaa5cc1e`, `4c664b58`, `067a6e35`, `6cbc43d6`, `9d1146a1`,
   `1a8c8f0f`, `811622ca`, `81391a63`, `743a9e6a`, `c1fce4cd`,
-  `2c43b328`.  Build green; sorry count unchanged at the original
-  Step 9 baseline (1 sorry in this file, the same count as before
-  Step 8b started).
+  `2c43b328`, plus the Step 9 commit (`scanFiltered_produces_valid_tokens`
+  + four field theorems + strict-bound lemma + post-BOM helpers
+  + `LineariseFit_of_empty_pendingKeys` + import/open additions).
+  Build green throughout; sorry count for this file: **1 → 0**.
+
+  **Next concrete step (J.3.4)**
+
+  Re-discharge consumers in dependency order: the
+  `ScannerPlainScalarValid` machinery in
+  `Proofs/Production/ScannerPlainScalarValid.lean` (which now imports
+  ScannerLinearise) reads the linearised token stream — its
+  consumers need the same `LineariseFit`-derived invariants.
+  Each substep removes its `-- J.3 manifest 5.d:` marker and the
+  matching `sorry`-using declaration.  Target: drop the J.3 sorry
+  count from 24 to 7 (the 7 deferred Tier 2 EmitterScannability
+  declarations).
 
 **J.3.4–J.3.6**: re-discharge consumers in dependency order, each
 substep removing its sorry-using declarations and the matching
