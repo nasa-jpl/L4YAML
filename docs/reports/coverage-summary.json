@@ -1,5 +1,5 @@
 {
-  "date": "2026-04-28T13:31:05-0700",
+  "date": "2026-04-28T22:19:19-0700",
   "overall": {
     "applicable": 358,
     "correct": 358,
@@ -20666,7 +20666,7 @@
       {
         "allPass": true,
         "label": "Production Coverage Analysis",
-        "passed": 419,
+        "passed": 443,
         "tests": [
           {
             "category": "Catalog completeness",
@@ -20685,7 +20685,7 @@
           },
           {
             "category": "Automated @[yaml_spec] discovery",
-            "name": "@[yaml_spec] entries discovered: 410",
+            "name": "@[yaml_spec] entries discovered: 434",
             "outcome": "pass"
           },
           {
@@ -20735,7 +20735,7 @@
           },
           {
             "category": "Per-module annotation counts",
-            "name": "L4YAML.Spec.CharPredicates: 94 annotations",
+            "name": "L4YAML.Spec.CharPredicates: 118 annotations",
             "outcome": "pass"
           },
           {
@@ -20800,12 +20800,12 @@
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[1] c-printable (§5.1) ← L4YAML.CharPredicates.isPrintableBool @ L4YAML/Spec/CharPredicates.lean:207",
+            "name": "[1] c-printable (§5.1) ← L4YAML.CharPredicates.isPrintableBool @ L4YAML/Spec/CharPredicates.lean:215",
             "outcome": "pass"
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[1] c-printable (§5.1) ← L4YAML.CharPredicates.isPrintableProp @ L4YAML/Spec/CharPredicates.lean:194",
+            "name": "[1] c-printable (§5.1) ← L4YAML.CharPredicates.isPrintableProp @ L4YAML/Spec/CharPredicates.lean:202",
             "outcome": "pass"
           },
           {
@@ -20815,7 +20815,7 @@
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[2] nb-json (§5.1) ← L4YAML.CharPredicates.isNbJsonProp @ L4YAML/Spec/CharPredicates.lean:224",
+            "name": "[2] nb-json (§5.1) ← L4YAML.CharPredicates.isNbJsonProp @ L4YAML/Spec/CharPredicates.lean:232",
             "outcome": "pass"
           },
           {
@@ -20825,7 +20825,7 @@
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[2] nb-json (§5.1) ← L4YAML.CharPredicates.isNbJsonBool @ L4YAML/Spec/CharPredicates.lean:232",
+            "name": "[2] nb-json (§5.1) ← L4YAML.CharPredicates.isNbJsonBool @ L4YAML/Spec/CharPredicates.lean:240",
             "outcome": "pass"
           },
           {
@@ -20835,7 +20835,27 @@
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[4] c-sequence-entry (§5.3) ← L4YAML.CharPredicates.isIndicatorProp @ L4YAML/Spec/CharPredicates.lean:176",
+            "name": "[4] c-sequence-entry (§5.3) ← L4YAML.CharPredicates.canStartPlainScalarBool @ L4YAML/Spec/CharPredicates.lean:365",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[4] c-sequence-entry (§5.3) ← L4YAML.CharPredicates.canStartPlainScalarProp @ L4YAML/Spec/CharPredicates.lean:379",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[4] c-sequence-entry (§5.3) ← L4YAML.CharPredicates.validPlainFirstProp @ L4YAML/Spec/CharPredicates.lean:521",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[4] c-sequence-entry (§5.3) ← L4YAML.CharPredicates.isIndicatorProp @ L4YAML/Spec/CharPredicates.lean:184",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[4] c-sequence-entry (§5.3) ← L4YAML.CharPredicates.validPlainFirstBool @ L4YAML/Spec/CharPredicates.lean:503",
             "outcome": "pass"
           },
           {
@@ -20845,17 +20865,37 @@
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[4] c-sequence-entry (§5.3) ← L4YAML.CharPredicates.isIndicatorBool @ L4YAML/Spec/CharPredicates.lean:152",
+            "name": "[4] c-sequence-entry (§5.3) ← L4YAML.CharPredicates.isIndicatorBool @ L4YAML/Spec/CharPredicates.lean:160",
             "outcome": "pass"
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[5] c-mapping-key (§5.3) ← L4YAML.CharPredicates.isIndicatorProp @ L4YAML/Spec/CharPredicates.lean:176",
+            "name": "[5] c-mapping-key (§5.3) ← L4YAML.CharPredicates.canStartPlainScalarBool @ L4YAML/Spec/CharPredicates.lean:365",
             "outcome": "pass"
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[5] c-mapping-key (§5.3) ← L4YAML.CharPredicates.isIndicatorBool @ L4YAML/Spec/CharPredicates.lean:152",
+            "name": "[5] c-mapping-key (§5.3) ← L4YAML.CharPredicates.canStartPlainScalarProp @ L4YAML/Spec/CharPredicates.lean:379",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[5] c-mapping-key (§5.3) ← L4YAML.CharPredicates.validPlainFirstProp @ L4YAML/Spec/CharPredicates.lean:521",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[5] c-mapping-key (§5.3) ← L4YAML.CharPredicates.isIndicatorProp @ L4YAML/Spec/CharPredicates.lean:184",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[5] c-mapping-key (§5.3) ← L4YAML.CharPredicates.validPlainFirstBool @ L4YAML/Spec/CharPredicates.lean:503",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[5] c-mapping-key (§5.3) ← L4YAML.CharPredicates.isIndicatorBool @ L4YAML/Spec/CharPredicates.lean:160",
             "outcome": "pass"
           },
           {
@@ -20865,12 +20905,32 @@
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
+            "name": "[6] c-mapping-value (§5.3) ← L4YAML.CharPredicates.canStartPlainScalarBool @ L4YAML/Spec/CharPredicates.lean:365",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[6] c-mapping-value (§5.3) ← L4YAML.CharPredicates.canStartPlainScalarProp @ L4YAML/Spec/CharPredicates.lean:379",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
             "name": "[6] c-mapping-value (§5.3) ← L4YAML.Scanner.scanValue @ L4YAML/Scanner/SimpleKey.lean:224",
             "outcome": "pass"
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[6] c-mapping-value (§5.3) ← L4YAML.CharPredicates.isIndicatorProp @ L4YAML/Spec/CharPredicates.lean:176",
+            "name": "[6] c-mapping-value (§5.3) ← L4YAML.CharPredicates.validPlainFirstProp @ L4YAML/Spec/CharPredicates.lean:521",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[6] c-mapping-value (§5.3) ← L4YAML.CharPredicates.isIndicatorProp @ L4YAML/Spec/CharPredicates.lean:184",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[6] c-mapping-value (§5.3) ← L4YAML.CharPredicates.validPlainFirstBool @ L4YAML/Spec/CharPredicates.lean:503",
             "outcome": "pass"
           },
           {
@@ -20880,7 +20940,7 @@
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[6] c-mapping-value (§5.3) ← L4YAML.CharPredicates.isIndicatorBool @ L4YAML/Spec/CharPredicates.lean:152",
+            "name": "[6] c-mapping-value (§5.3) ← L4YAML.CharPredicates.isIndicatorBool @ L4YAML/Spec/CharPredicates.lean:160",
             "outcome": "pass"
           },
           {
@@ -20895,22 +20955,22 @@
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[7] c-collect-entry (§5.3) ← L4YAML.CharPredicates.isIndicatorProp @ L4YAML/Spec/CharPredicates.lean:176",
+            "name": "[7] c-collect-entry (§5.3) ← L4YAML.CharPredicates.isIndicatorProp @ L4YAML/Spec/CharPredicates.lean:184",
             "outcome": "pass"
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[7] c-collect-entry (§5.3) ← L4YAML.CharPredicates.isFlowIndicatorProp @ L4YAML/Spec/CharPredicates.lean:118",
+            "name": "[7] c-collect-entry (§5.3) ← L4YAML.CharPredicates.isFlowIndicatorProp @ L4YAML/Spec/CharPredicates.lean:126",
             "outcome": "pass"
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[7] c-collect-entry (§5.3) ← L4YAML.CharPredicates.isFlowIndicatorBool @ L4YAML/Spec/CharPredicates.lean:109",
+            "name": "[7] c-collect-entry (§5.3) ← L4YAML.CharPredicates.isFlowIndicatorBool @ L4YAML/Spec/CharPredicates.lean:117",
             "outcome": "pass"
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[7] c-collect-entry (§5.3) ← L4YAML.CharPredicates.isIndicatorBool @ L4YAML/Spec/CharPredicates.lean:152",
+            "name": "[7] c-collect-entry (§5.3) ← L4YAML.CharPredicates.isIndicatorBool @ L4YAML/Spec/CharPredicates.lean:160",
             "outcome": "pass"
           },
           {
@@ -20925,17 +20985,17 @@
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[8] c-sequence-start (§5.3) ← L4YAML.CharPredicates.isIndicatorProp @ L4YAML/Spec/CharPredicates.lean:176",
+            "name": "[8] c-sequence-start (§5.3) ← L4YAML.CharPredicates.isIndicatorProp @ L4YAML/Spec/CharPredicates.lean:184",
             "outcome": "pass"
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[8] c-sequence-start (§5.3) ← L4YAML.CharPredicates.isFlowIndicatorProp @ L4YAML/Spec/CharPredicates.lean:118",
+            "name": "[8] c-sequence-start (§5.3) ← L4YAML.CharPredicates.isFlowIndicatorProp @ L4YAML/Spec/CharPredicates.lean:126",
             "outcome": "pass"
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[8] c-sequence-start (§5.3) ← L4YAML.CharPredicates.isFlowIndicatorBool @ L4YAML/Spec/CharPredicates.lean:109",
+            "name": "[8] c-sequence-start (§5.3) ← L4YAML.CharPredicates.isFlowIndicatorBool @ L4YAML/Spec/CharPredicates.lean:117",
             "outcome": "pass"
           },
           {
@@ -20945,7 +21005,7 @@
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[8] c-sequence-start (§5.3) ← L4YAML.CharPredicates.isIndicatorBool @ L4YAML/Spec/CharPredicates.lean:152",
+            "name": "[8] c-sequence-start (§5.3) ← L4YAML.CharPredicates.isIndicatorBool @ L4YAML/Spec/CharPredicates.lean:160",
             "outcome": "pass"
           },
           {
@@ -20960,17 +21020,17 @@
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[9] c-sequence-end (§5.3) ← L4YAML.CharPredicates.isIndicatorProp @ L4YAML/Spec/CharPredicates.lean:176",
+            "name": "[9] c-sequence-end (§5.3) ← L4YAML.CharPredicates.isIndicatorProp @ L4YAML/Spec/CharPredicates.lean:184",
             "outcome": "pass"
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[9] c-sequence-end (§5.3) ← L4YAML.CharPredicates.isFlowIndicatorProp @ L4YAML/Spec/CharPredicates.lean:118",
+            "name": "[9] c-sequence-end (§5.3) ← L4YAML.CharPredicates.isFlowIndicatorProp @ L4YAML/Spec/CharPredicates.lean:126",
             "outcome": "pass"
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[9] c-sequence-end (§5.3) ← L4YAML.CharPredicates.isFlowIndicatorBool @ L4YAML/Spec/CharPredicates.lean:109",
+            "name": "[9] c-sequence-end (§5.3) ← L4YAML.CharPredicates.isFlowIndicatorBool @ L4YAML/Spec/CharPredicates.lean:117",
             "outcome": "pass"
           },
           {
@@ -20980,7 +21040,7 @@
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[9] c-sequence-end (§5.3) ← L4YAML.CharPredicates.isIndicatorBool @ L4YAML/Spec/CharPredicates.lean:152",
+            "name": "[9] c-sequence-end (§5.3) ← L4YAML.CharPredicates.isIndicatorBool @ L4YAML/Spec/CharPredicates.lean:160",
             "outcome": "pass"
           },
           {
@@ -20990,22 +21050,22 @@
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[10] c-mapping-start (§5.3) ← L4YAML.CharPredicates.isIndicatorProp @ L4YAML/Spec/CharPredicates.lean:176",
+            "name": "[10] c-mapping-start (§5.3) ← L4YAML.CharPredicates.isIndicatorProp @ L4YAML/Spec/CharPredicates.lean:184",
             "outcome": "pass"
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[10] c-mapping-start (§5.3) ← L4YAML.CharPredicates.isFlowIndicatorProp @ L4YAML/Spec/CharPredicates.lean:118",
+            "name": "[10] c-mapping-start (§5.3) ← L4YAML.CharPredicates.isFlowIndicatorProp @ L4YAML/Spec/CharPredicates.lean:126",
             "outcome": "pass"
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[10] c-mapping-start (§5.3) ← L4YAML.CharPredicates.isFlowIndicatorBool @ L4YAML/Spec/CharPredicates.lean:109",
+            "name": "[10] c-mapping-start (§5.3) ← L4YAML.CharPredicates.isFlowIndicatorBool @ L4YAML/Spec/CharPredicates.lean:117",
             "outcome": "pass"
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[10] c-mapping-start (§5.3) ← L4YAML.CharPredicates.isIndicatorBool @ L4YAML/Spec/CharPredicates.lean:152",
+            "name": "[10] c-mapping-start (§5.3) ← L4YAML.CharPredicates.isIndicatorBool @ L4YAML/Spec/CharPredicates.lean:160",
             "outcome": "pass"
           },
           {
@@ -21015,17 +21075,17 @@
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[11] c-mapping-end (§5.3) ← L4YAML.CharPredicates.isIndicatorProp @ L4YAML/Spec/CharPredicates.lean:176",
+            "name": "[11] c-mapping-end (§5.3) ← L4YAML.CharPredicates.isIndicatorProp @ L4YAML/Spec/CharPredicates.lean:184",
             "outcome": "pass"
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[11] c-mapping-end (§5.3) ← L4YAML.CharPredicates.isFlowIndicatorProp @ L4YAML/Spec/CharPredicates.lean:118",
+            "name": "[11] c-mapping-end (§5.3) ← L4YAML.CharPredicates.isFlowIndicatorProp @ L4YAML/Spec/CharPredicates.lean:126",
             "outcome": "pass"
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[11] c-mapping-end (§5.3) ← L4YAML.CharPredicates.isFlowIndicatorBool @ L4YAML/Spec/CharPredicates.lean:109",
+            "name": "[11] c-mapping-end (§5.3) ← L4YAML.CharPredicates.isFlowIndicatorBool @ L4YAML/Spec/CharPredicates.lean:117",
             "outcome": "pass"
           },
           {
@@ -21040,27 +21100,27 @@
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[11] c-mapping-end (§5.3) ← L4YAML.CharPredicates.isIndicatorBool @ L4YAML/Spec/CharPredicates.lean:152",
+            "name": "[11] c-mapping-end (§5.3) ← L4YAML.CharPredicates.isIndicatorBool @ L4YAML/Spec/CharPredicates.lean:160",
             "outcome": "pass"
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[12] c-comment (§5.3) ← L4YAML.CharPredicates.isIndicatorProp @ L4YAML/Spec/CharPredicates.lean:176",
+            "name": "[12] c-comment (§5.3) ← L4YAML.CharPredicates.isIndicatorProp @ L4YAML/Spec/CharPredicates.lean:184",
             "outcome": "pass"
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[12] c-comment (§5.3) ← L4YAML.CharPredicates.isIndicatorBool @ L4YAML/Spec/CharPredicates.lean:152",
+            "name": "[12] c-comment (§5.3) ← L4YAML.CharPredicates.isIndicatorBool @ L4YAML/Spec/CharPredicates.lean:160",
             "outcome": "pass"
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[13] c-anchor (§5.3) ← L4YAML.CharPredicates.isIndicatorProp @ L4YAML/Spec/CharPredicates.lean:176",
+            "name": "[13] c-anchor (§5.3) ← L4YAML.CharPredicates.isIndicatorProp @ L4YAML/Spec/CharPredicates.lean:184",
             "outcome": "pass"
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[13] c-anchor (§5.3) ← L4YAML.CharPredicates.isIndicatorBool @ L4YAML/Spec/CharPredicates.lean:152",
+            "name": "[13] c-anchor (§5.3) ← L4YAML.CharPredicates.isIndicatorBool @ L4YAML/Spec/CharPredicates.lean:160",
             "outcome": "pass"
           },
           {
@@ -21070,12 +21130,12 @@
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[14] c-alias (§5.3) ← L4YAML.CharPredicates.isIndicatorProp @ L4YAML/Spec/CharPredicates.lean:176",
+            "name": "[14] c-alias (§5.3) ← L4YAML.CharPredicates.isIndicatorProp @ L4YAML/Spec/CharPredicates.lean:184",
             "outcome": "pass"
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[14] c-alias (§5.3) ← L4YAML.CharPredicates.isIndicatorBool @ L4YAML/Spec/CharPredicates.lean:152",
+            "name": "[14] c-alias (§5.3) ← L4YAML.CharPredicates.isIndicatorBool @ L4YAML/Spec/CharPredicates.lean:160",
             "outcome": "pass"
           },
           {
@@ -21085,37 +21145,37 @@
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[15] c-tag (§5.3) ← L4YAML.CharPredicates.isIndicatorProp @ L4YAML/Spec/CharPredicates.lean:176",
+            "name": "[15] c-tag (§5.3) ← L4YAML.CharPredicates.isIndicatorProp @ L4YAML/Spec/CharPredicates.lean:184",
             "outcome": "pass"
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[15] c-tag (§5.3) ← L4YAML.CharPredicates.isIndicatorBool @ L4YAML/Spec/CharPredicates.lean:152",
+            "name": "[15] c-tag (§5.3) ← L4YAML.CharPredicates.isIndicatorBool @ L4YAML/Spec/CharPredicates.lean:160",
             "outcome": "pass"
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[16] c-literal (§5.3) ← L4YAML.CharPredicates.isIndicatorProp @ L4YAML/Spec/CharPredicates.lean:176",
+            "name": "[16] c-literal (§5.3) ← L4YAML.CharPredicates.isIndicatorProp @ L4YAML/Spec/CharPredicates.lean:184",
             "outcome": "pass"
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[16] c-literal (§5.3) ← L4YAML.CharPredicates.isIndicatorBool @ L4YAML/Spec/CharPredicates.lean:152",
+            "name": "[16] c-literal (§5.3) ← L4YAML.CharPredicates.isIndicatorBool @ L4YAML/Spec/CharPredicates.lean:160",
             "outcome": "pass"
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[17] c-folded (§5.3) ← L4YAML.CharPredicates.isIndicatorProp @ L4YAML/Spec/CharPredicates.lean:176",
+            "name": "[17] c-folded (§5.3) ← L4YAML.CharPredicates.isIndicatorProp @ L4YAML/Spec/CharPredicates.lean:184",
             "outcome": "pass"
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[17] c-folded (§5.3) ← L4YAML.CharPredicates.isIndicatorBool @ L4YAML/Spec/CharPredicates.lean:152",
+            "name": "[17] c-folded (§5.3) ← L4YAML.CharPredicates.isIndicatorBool @ L4YAML/Spec/CharPredicates.lean:160",
             "outcome": "pass"
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[18] c-single-quote (§5.3) ← L4YAML.CharPredicates.isIndicatorProp @ L4YAML/Spec/CharPredicates.lean:176",
+            "name": "[18] c-single-quote (§5.3) ← L4YAML.CharPredicates.isIndicatorProp @ L4YAML/Spec/CharPredicates.lean:184",
             "outcome": "pass"
           },
           {
@@ -21125,17 +21185,17 @@
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[18] c-single-quote (§5.3) ← L4YAML.CharPredicates.isIndicatorBool @ L4YAML/Spec/CharPredicates.lean:152",
+            "name": "[18] c-single-quote (§5.3) ← L4YAML.CharPredicates.isIndicatorBool @ L4YAML/Spec/CharPredicates.lean:160",
             "outcome": "pass"
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[19] c-double-quote (§5.3) ← L4YAML.CharPredicates.isIndicatorProp @ L4YAML/Spec/CharPredicates.lean:176",
+            "name": "[19] c-double-quote (§5.3) ← L4YAML.CharPredicates.isIndicatorProp @ L4YAML/Spec/CharPredicates.lean:184",
             "outcome": "pass"
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[19] c-double-quote (§5.3) ← L4YAML.CharPredicates.isIndicatorBool @ L4YAML/Spec/CharPredicates.lean:152",
+            "name": "[19] c-double-quote (§5.3) ← L4YAML.CharPredicates.isIndicatorBool @ L4YAML/Spec/CharPredicates.lean:160",
             "outcome": "pass"
           },
           {
@@ -21145,7 +21205,7 @@
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[20] c-directive (§5.3) ← L4YAML.CharPredicates.isIndicatorProp @ L4YAML/Spec/CharPredicates.lean:176",
+            "name": "[20] c-directive (§5.3) ← L4YAML.CharPredicates.isIndicatorProp @ L4YAML/Spec/CharPredicates.lean:184",
             "outcome": "pass"
           },
           {
@@ -21155,67 +21215,67 @@
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[20] c-directive (§5.3) ← L4YAML.CharPredicates.isIndicatorBool @ L4YAML/Spec/CharPredicates.lean:152",
+            "name": "[20] c-directive (§5.3) ← L4YAML.CharPredicates.isIndicatorBool @ L4YAML/Spec/CharPredicates.lean:160",
             "outcome": "pass"
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[21] c-reserved (§5.3) ← L4YAML.CharPredicates.isIndicatorProp @ L4YAML/Spec/CharPredicates.lean:176",
+            "name": "[21] c-reserved (§5.3) ← L4YAML.CharPredicates.isIndicatorProp @ L4YAML/Spec/CharPredicates.lean:184",
             "outcome": "pass"
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[21] c-reserved (§5.3) ← L4YAML.CharPredicates.isIndicatorBool @ L4YAML/Spec/CharPredicates.lean:152",
+            "name": "[21] c-reserved (§5.3) ← L4YAML.CharPredicates.isIndicatorBool @ L4YAML/Spec/CharPredicates.lean:160",
             "outcome": "pass"
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[22] c-indicator (§5.3) ← L4YAML.CharPredicates.isIndicatorProp @ L4YAML/Spec/CharPredicates.lean:176",
+            "name": "[22] c-indicator (§5.3) ← L4YAML.CharPredicates.isIndicatorProp @ L4YAML/Spec/CharPredicates.lean:184",
             "outcome": "pass"
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[22] c-indicator (§5.3) ← L4YAML.CharPredicates.isIndicatorBool @ L4YAML/Spec/CharPredicates.lean:152",
+            "name": "[22] c-indicator (§5.3) ← L4YAML.CharPredicates.isIndicatorBool @ L4YAML/Spec/CharPredicates.lean:160",
             "outcome": "pass"
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[23] c-flow-indicator (§5.3) ← L4YAML.CharPredicates.isFlowIndicatorProp @ L4YAML/Spec/CharPredicates.lean:118",
+            "name": "[23] c-flow-indicator (§5.3) ← L4YAML.CharPredicates.isFlowIndicatorProp @ L4YAML/Spec/CharPredicates.lean:126",
             "outcome": "pass"
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[23] c-flow-indicator (§5.3) ← L4YAML.CharPredicates.isFlowIndicatorBool @ L4YAML/Spec/CharPredicates.lean:109",
+            "name": "[23] c-flow-indicator (§5.3) ← L4YAML.CharPredicates.isFlowIndicatorBool @ L4YAML/Spec/CharPredicates.lean:117",
             "outcome": "pass"
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[24] b-line-feed (§5.4) ← L4YAML.CharPredicates.isLineBreakProp @ L4YAML/Spec/CharPredicates.lean:56",
+            "name": "[24] b-line-feed (§5.4) ← L4YAML.CharPredicates.isLineBreakProp @ L4YAML/Spec/CharPredicates.lean:60",
             "outcome": "pass"
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[24] b-line-feed (§5.4) ← L4YAML.CharPredicates.isLineBreakBool @ L4YAML/Spec/CharPredicates.lean:52",
+            "name": "[24] b-line-feed (§5.4) ← L4YAML.CharPredicates.isLineBreakBool @ L4YAML/Spec/CharPredicates.lean:54",
             "outcome": "pass"
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[25] b-carriage-return (§5.4) ← L4YAML.CharPredicates.isLineBreakProp @ L4YAML/Spec/CharPredicates.lean:56",
+            "name": "[25] b-carriage-return (§5.4) ← L4YAML.CharPredicates.isLineBreakProp @ L4YAML/Spec/CharPredicates.lean:60",
             "outcome": "pass"
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[25] b-carriage-return (§5.4) ← L4YAML.CharPredicates.isLineBreakBool @ L4YAML/Spec/CharPredicates.lean:52",
+            "name": "[25] b-carriage-return (§5.4) ← L4YAML.CharPredicates.isLineBreakBool @ L4YAML/Spec/CharPredicates.lean:54",
             "outcome": "pass"
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[26] b-char (§5.4) ← L4YAML.CharPredicates.isLineBreakProp @ L4YAML/Spec/CharPredicates.lean:56",
+            "name": "[26] b-char (§5.4) ← L4YAML.CharPredicates.isLineBreakProp @ L4YAML/Spec/CharPredicates.lean:60",
             "outcome": "pass"
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[26] b-char (§5.4) ← L4YAML.CharPredicates.isLineBreakBool @ L4YAML/Spec/CharPredicates.lean:52",
+            "name": "[26] b-char (§5.4) ← L4YAML.CharPredicates.isLineBreakBool @ L4YAML/Spec/CharPredicates.lean:54",
             "outcome": "pass"
           },
           {
@@ -21265,42 +21325,57 @@
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[31] s-space (§5.5) ← L4YAML.CharPredicates.isIndentCharBool @ L4YAML/Spec/CharPredicates.lean:244",
+            "name": "[31] s-space (§5.5) ← L4YAML.CharPredicates.isIndentCharBool @ L4YAML/Spec/CharPredicates.lean:252",
             "outcome": "pass"
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[31] s-space (§5.5) ← L4YAML.CharPredicates.isIndentCharProp @ L4YAML/Spec/CharPredicates.lean:248",
+            "name": "[31] s-space (§5.5) ← L4YAML.CharPredicates.isIndentCharProp @ L4YAML/Spec/CharPredicates.lean:256",
             "outcome": "pass"
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[31] s-space (§5.5) ← L4YAML.CharPredicates.isWhiteSpaceProp @ L4YAML/Spec/CharPredicates.lean:75",
+            "name": "[31] s-space (§5.5) ← L4YAML.CharPredicates.isWhiteSpaceProp @ L4YAML/Spec/CharPredicates.lean:83",
             "outcome": "pass"
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[31] s-space (§5.5) ← L4YAML.CharPredicates.isWhiteSpaceBool @ L4YAML/Spec/CharPredicates.lean:71",
+            "name": "[31] s-space (§5.5) ← L4YAML.CharPredicates.isWhiteSpaceBool @ L4YAML/Spec/CharPredicates.lean:77",
             "outcome": "pass"
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[32] s-tab (§5.5) ← L4YAML.CharPredicates.isWhiteSpaceProp @ L4YAML/Spec/CharPredicates.lean:75",
+            "name": "[32] s-tab (§5.5) ← L4YAML.CharPredicates.isWhiteSpaceProp @ L4YAML/Spec/CharPredicates.lean:83",
             "outcome": "pass"
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[32] s-tab (§5.5) ← L4YAML.CharPredicates.isWhiteSpaceBool @ L4YAML/Spec/CharPredicates.lean:71",
+            "name": "[32] s-tab (§5.5) ← L4YAML.CharPredicates.isWhiteSpaceBool @ L4YAML/Spec/CharPredicates.lean:77",
             "outcome": "pass"
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[33] s-white (§5.5) ← L4YAML.CharPredicates.isWhiteSpaceProp @ L4YAML/Spec/CharPredicates.lean:75",
+            "name": "[33] s-white (§5.5) ← L4YAML.CharPredicates.isWhiteSpaceProp @ L4YAML/Spec/CharPredicates.lean:83",
             "outcome": "pass"
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[33] s-white (§5.5) ← L4YAML.CharPredicates.isWhiteSpaceBool @ L4YAML/Spec/CharPredicates.lean:71",
+            "name": "[33] s-white (§5.5) ← L4YAML.CharPredicates.isWhiteSpaceBool @ L4YAML/Spec/CharPredicates.lean:77",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[34] ns-char (§5.5) ← L4YAML.CharPredicates.canStartPlainScalarBool @ L4YAML/Spec/CharPredicates.lean:365",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[34] ns-char (§5.5) ← L4YAML.CharPredicates.canStartPlainScalarProp @ L4YAML/Spec/CharPredicates.lean:379",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[34] ns-char (§5.5) ← L4YAML.CharPredicates.validPlainFirstProp @ L4YAML/Spec/CharPredicates.lean:521",
             "outcome": "pass"
           },
           {
@@ -21310,12 +21385,17 @@
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
+            "name": "[34] ns-char (§5.5) ← L4YAML.CharPredicates.validPlainFirstBool @ L4YAML/Spec/CharPredicates.lean:503",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
             "name": "[35] ns-dec-digit (§5.6) ← L4YAML.Scanner.collectVersionMajorLoop @ L4YAML/Scanner/Document.lean:102",
             "outcome": "pass"
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[35] ns-dec-digit (§5.6) ← L4YAML.CharPredicates.isWordCharProp @ L4YAML/Spec/CharPredicates.lean:282",
+            "name": "[35] ns-dec-digit (§5.6) ← L4YAML.CharPredicates.isWordCharProp @ L4YAML/Spec/CharPredicates.lean:291",
             "outcome": "pass"
           },
           {
@@ -21325,7 +21405,7 @@
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[35] ns-dec-digit (§5.6) ← L4YAML.CharPredicates.isWordCharBool @ L4YAML/Spec/CharPredicates.lean:293",
+            "name": "[35] ns-dec-digit (§5.6) ← L4YAML.CharPredicates.isWordCharBool @ L4YAML/Spec/CharPredicates.lean:303",
             "outcome": "pass"
           },
           {
@@ -21335,12 +21415,32 @@
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[37] ns-ascii-letter (§5.6) ← L4YAML.CharPredicates.isAsciiLetterBool @ L4YAML/Spec/CharPredicates.lean:274",
+            "name": "[36] ns-hex-digit (§5.6) ← L4YAML.CharPredicates.isUriCharProp @ L4YAML/Spec/CharPredicates.lean:316",
             "outcome": "pass"
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[37] ns-ascii-letter (§5.6) ← L4YAML.CharPredicates.isAsciiLetterProp @ L4YAML/Spec/CharPredicates.lean:266",
+            "name": "[36] ns-hex-digit (§5.6) ← L4YAML.CharPredicates.isUriCharBool @ L4YAML/Spec/CharPredicates.lean:328",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[37] ns-ascii-letter (§5.6) ← L4YAML.CharPredicates.isAsciiLetterBool @ L4YAML/Spec/CharPredicates.lean:282",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[37] ns-ascii-letter (§5.6) ← L4YAML.CharPredicates.isAsciiLetterProp @ L4YAML/Spec/CharPredicates.lean:274",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[37] ns-ascii-letter (§5.6) ← L4YAML.CharPredicates.isWordCharProp @ L4YAML/Spec/CharPredicates.lean:291",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[37] ns-ascii-letter (§5.6) ← L4YAML.CharPredicates.isWordCharBool @ L4YAML/Spec/CharPredicates.lean:303",
             "outcome": "pass"
           },
           {
@@ -21350,7 +21450,7 @@
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[38] ns-word-char (§5.6) ← L4YAML.CharPredicates.isWordCharProp @ L4YAML/Spec/CharPredicates.lean:282",
+            "name": "[38] ns-word-char (§5.6) ← L4YAML.CharPredicates.isWordCharProp @ L4YAML/Spec/CharPredicates.lean:291",
             "outcome": "pass"
           },
           {
@@ -21360,7 +21460,17 @@
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[38] ns-word-char (§5.6) ← L4YAML.CharPredicates.isWordCharBool @ L4YAML/Spec/CharPredicates.lean:293",
+            "name": "[38] ns-word-char (§5.6) ← L4YAML.CharPredicates.isWordCharBool @ L4YAML/Spec/CharPredicates.lean:303",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[38] ns-word-char (§5.6) ← L4YAML.CharPredicates.isUriCharProp @ L4YAML/Spec/CharPredicates.lean:316",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[38] ns-word-char (§5.6) ← L4YAML.CharPredicates.isUriCharBool @ L4YAML/Spec/CharPredicates.lean:328",
             "outcome": "pass"
           },
           {
@@ -21375,12 +21485,22 @@
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[39] ns-uri-char (§5.6) ← L4YAML.CharPredicates.isUriCharProp @ L4YAML/Spec/CharPredicates.lean:304",
+            "name": "[39] ns-uri-char (§5.6) ← L4YAML.CharPredicates.isTagCharBool @ L4YAML/Spec/CharPredicates.lean:345",
             "outcome": "pass"
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[39] ns-uri-char (§5.6) ← L4YAML.CharPredicates.isUriCharBool @ L4YAML/Spec/CharPredicates.lean:314",
+            "name": "[39] ns-uri-char (§5.6) ← L4YAML.CharPredicates.isTagCharProp @ L4YAML/Spec/CharPredicates.lean:336",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[39] ns-uri-char (§5.6) ← L4YAML.CharPredicates.isUriCharProp @ L4YAML/Spec/CharPredicates.lean:316",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-rule @[yaml_spec] locations",
+            "name": "[39] ns-uri-char (§5.6) ← L4YAML.CharPredicates.isUriCharBool @ L4YAML/Spec/CharPredicates.lean:328",
             "outcome": "pass"
           },
           {
@@ -21390,12 +21510,12 @@
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[40] ns-tag-char (§5.6) ← L4YAML.CharPredicates.isTagCharBool @ L4YAML/Spec/CharPredicates.lean:329",
+            "name": "[40] ns-tag-char (§5.6) ← L4YAML.CharPredicates.isTagCharBool @ L4YAML/Spec/CharPredicates.lean:345",
             "outcome": "pass"
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[40] ns-tag-char (§5.6) ← L4YAML.CharPredicates.isTagCharProp @ L4YAML/Spec/CharPredicates.lean:321",
+            "name": "[40] ns-tag-char (§5.6) ← L4YAML.CharPredicates.isTagCharProp @ L4YAML/Spec/CharPredicates.lean:336",
             "outcome": "pass"
           },
           {
@@ -22035,7 +22155,7 @@
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[126] ns-plain-first(c) (§7.3.3) ← L4YAML.CharPredicates.canStartPlainScalarBool @ L4YAML/Spec/CharPredicates.lean:345",
+            "name": "[126] ns-plain-first(c) (§7.3.3) ← L4YAML.CharPredicates.canStartPlainScalarBool @ L4YAML/Spec/CharPredicates.lean:365",
             "outcome": "pass"
           },
           {
@@ -22045,47 +22165,47 @@
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[126] ns-plain-first(c) (§7.3.3) ← L4YAML.CharPredicates.canStartPlainScalarProp @ L4YAML/Spec/CharPredicates.lean:355",
+            "name": "[126] ns-plain-first(c) (§7.3.3) ← L4YAML.CharPredicates.canStartPlainScalarProp @ L4YAML/Spec/CharPredicates.lean:379",
             "outcome": "pass"
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[126] ns-plain-first(c) (§7.3.3) ← L4YAML.CharPredicates.validPlainFirstProp @ L4YAML/Spec/CharPredicates.lean:472",
+            "name": "[126] ns-plain-first(c) (§7.3.3) ← L4YAML.CharPredicates.validPlainFirstProp @ L4YAML/Spec/CharPredicates.lean:521",
             "outcome": "pass"
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[126] ns-plain-first(c) (§7.3.3) ← L4YAML.CharPredicates.validPlainFirstBool @ L4YAML/Spec/CharPredicates.lean:458",
+            "name": "[126] ns-plain-first(c) (§7.3.3) ← L4YAML.CharPredicates.validPlainFirstBool @ L4YAML/Spec/CharPredicates.lean:503",
             "outcome": "pass"
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[127] ns-plain-safe(c) (§7.3.3) ← L4YAML.CharPredicates.isPlainSafeBool @ L4YAML/Spec/CharPredicates.lean:410",
+            "name": "[127] ns-plain-safe(c) (§7.3.3) ← L4YAML.CharPredicates.isPlainSafeBool @ L4YAML/Spec/CharPredicates.lean:446",
             "outcome": "pass"
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[127] ns-plain-safe(c) (§7.3.3) ← L4YAML.CharPredicates.isPlainSafeProp @ L4YAML/Spec/CharPredicates.lean:420",
+            "name": "[127] ns-plain-safe(c) (§7.3.3) ← L4YAML.CharPredicates.isPlainSafeProp @ L4YAML/Spec/CharPredicates.lean:461",
             "outcome": "pass"
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[127] ns-plain-safe(c) (§7.3.3) ← L4YAML.CharPredicates.noFlowIndicatorsProp @ L4YAML/Spec/CharPredicates.lean:720",
+            "name": "[127] ns-plain-safe(c) (§7.3.3) ← L4YAML.CharPredicates.noFlowIndicatorsProp @ L4YAML/Spec/CharPredicates.lean:769",
             "outcome": "pass"
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[127] ns-plain-safe(c) (§7.3.3) ← L4YAML.CharPredicates.noFlowIndicatorsBool @ L4YAML/Spec/CharPredicates.lean:715",
+            "name": "[127] ns-plain-safe(c) (§7.3.3) ← L4YAML.CharPredicates.noFlowIndicatorsBool @ L4YAML/Spec/CharPredicates.lean:764",
             "outcome": "pass"
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[128] ns-plain-safe-out (§7.3.3) ← L4YAML.CharPredicates.isPlainSafeBool @ L4YAML/Spec/CharPredicates.lean:410",
+            "name": "[128] ns-plain-safe-out (§7.3.3) ← L4YAML.CharPredicates.isPlainSafeBool @ L4YAML/Spec/CharPredicates.lean:446",
             "outcome": "pass"
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[128] ns-plain-safe-out (§7.3.3) ← L4YAML.CharPredicates.isPlainSafeProp @ L4YAML/Spec/CharPredicates.lean:420",
+            "name": "[128] ns-plain-safe-out (§7.3.3) ← L4YAML.CharPredicates.isPlainSafeProp @ L4YAML/Spec/CharPredicates.lean:461",
             "outcome": "pass"
           },
           {
@@ -22095,32 +22215,32 @@
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[129] ns-plain-safe-in (§7.3.3) ← L4YAML.CharPredicates.isPlainSafeBool @ L4YAML/Spec/CharPredicates.lean:410",
+            "name": "[129] ns-plain-safe-in (§7.3.3) ← L4YAML.CharPredicates.isPlainSafeBool @ L4YAML/Spec/CharPredicates.lean:446",
             "outcome": "pass"
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[129] ns-plain-safe-in (§7.3.3) ← L4YAML.CharPredicates.isPlainSafeProp @ L4YAML/Spec/CharPredicates.lean:420",
+            "name": "[129] ns-plain-safe-in (§7.3.3) ← L4YAML.CharPredicates.isPlainSafeProp @ L4YAML/Spec/CharPredicates.lean:461",
             "outcome": "pass"
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[130] ns-plain-char(c) (§7.3.3) ← L4YAML.CharPredicates.noSpaceHashBool @ L4YAML/Spec/CharPredicates.lean:688",
+            "name": "[130] ns-plain-char(c) (§7.3.3) ← L4YAML.CharPredicates.noSpaceHashBool @ L4YAML/Spec/CharPredicates.lean:737",
             "outcome": "pass"
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[130] ns-plain-char(c) (§7.3.3) ← L4YAML.CharPredicates.noColonSpaceBool @ L4YAML/Spec/CharPredicates.lean:661",
+            "name": "[130] ns-plain-char(c) (§7.3.3) ← L4YAML.CharPredicates.noColonSpaceBool @ L4YAML/Spec/CharPredicates.lean:710",
             "outcome": "pass"
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[130] ns-plain-char(c) (§7.3.3) ← L4YAML.CharPredicates.noSpaceHashProp @ L4YAML/Spec/CharPredicates.lean:693",
+            "name": "[130] ns-plain-char(c) (§7.3.3) ← L4YAML.CharPredicates.noSpaceHashProp @ L4YAML/Spec/CharPredicates.lean:742",
             "outcome": "pass"
           },
           {
             "category": "Per-rule @[yaml_spec] locations",
-            "name": "[130] ns-plain-char(c) (§7.3.3) ← L4YAML.CharPredicates.noColonSpaceProp @ L4YAML/Spec/CharPredicates.lean:666",
+            "name": "[130] ns-plain-char(c) (§7.3.3) ← L4YAML.CharPredicates.noColonSpaceProp @ L4YAML/Spec/CharPredicates.lean:715",
             "outcome": "pass"
           },
           {
@@ -22764,7 +22884,7 @@
             "outcome": "pass"
           }
         ],
-        "total": 419
+        "total": 443
       },
       {
         "allPass": true,
@@ -23033,7 +23153,7 @@
         "total": 7
       }
     ],
-    "totalPassed": 4074,
-    "totalTests": 4074
+    "totalPassed": 4098,
+    "totalTests": 4098
   }
 }

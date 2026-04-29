@@ -1464,7 +1464,7 @@
   ✓ indent-dependent productions: 49
 
 --- Automated @[yaml_spec] discovery ---
-  ✓ @[yaml_spec] entries discovered: 410
+  ✓ @[yaml_spec] entries discovered: 434
   ✓ unique production rules annotated: 211
   ✓ source modules with annotations: 12
 
@@ -1478,7 +1478,7 @@
   ✓ L4YAML.Token.Token: 21 annotations
   ✓ L4YAML.Scanner.Document: 26 annotations
   ✓ L4YAML.Scanner.Scanner: 32 annotations
-  ✓ L4YAML.Spec.CharPredicates: 94 annotations
+  ✓ L4YAML.Spec.CharPredicates: 118 annotations
   ✓ L4YAML.Scanner.Whitespace: 28 annotations
   ✓ L4YAML.Parser.TokenParser: 52 annotations
   ✓ L4YAML.Scanner.SimpleKey: 14 annotations
@@ -1495,90 +1495,102 @@
   ✓ Ch 9 (Documents): 10/10
 
 --- Per-rule @[yaml_spec] locations ---
-  ✓ [1] c-printable (§5.1) ← L4YAML.CharPredicates.isPrintableBool @ L4YAML/Spec/CharPredicates.lean:207
-  ✓ [1] c-printable (§5.1) ← L4YAML.CharPredicates.isPrintableProp @ L4YAML/Spec/CharPredicates.lean:194
+  ✓ [1] c-printable (§5.1) ← L4YAML.CharPredicates.isPrintableBool @ L4YAML/Spec/CharPredicates.lean:215
+  ✓ [1] c-printable (§5.1) ← L4YAML.CharPredicates.isPrintableProp @ L4YAML/Spec/CharPredicates.lean:202
   ✓ [2] nb-json (§5.1) ← L4YAML.Scanner.collectSingleQuotedLoop @ L4YAML/Scanner/Scalar.lean:318
-  ✓ [2] nb-json (§5.1) ← L4YAML.CharPredicates.isNbJsonProp @ L4YAML/Spec/CharPredicates.lean:224
+  ✓ [2] nb-json (§5.1) ← L4YAML.CharPredicates.isNbJsonProp @ L4YAML/Spec/CharPredicates.lean:232
   ✓ [2] nb-json (§5.1) ← L4YAML.Scanner.collectDoubleQuotedLoop @ L4YAML/Scanner/Scalar.lean:229
-  ✓ [2] nb-json (§5.1) ← L4YAML.CharPredicates.isNbJsonBool @ L4YAML/Spec/CharPredicates.lean:232
+  ✓ [2] nb-json (§5.1) ← L4YAML.CharPredicates.isNbJsonBool @ L4YAML/Spec/CharPredicates.lean:240
   ✓ [3] c-byte-order-mark (§5.2) ← L4YAML.Scanner.scan @ L4YAML/Scanner/Scanner.lean:524
-  ✓ [4] c-sequence-entry (§5.3) ← L4YAML.CharPredicates.isIndicatorProp @ L4YAML/Spec/CharPredicates.lean:176
+  ✓ [4] c-sequence-entry (§5.3) ← L4YAML.CharPredicates.canStartPlainScalarBool @ L4YAML/Spec/CharPredicates.lean:365
+  ✓ [4] c-sequence-entry (§5.3) ← L4YAML.CharPredicates.canStartPlainScalarProp @ L4YAML/Spec/CharPredicates.lean:379
+  ✓ [4] c-sequence-entry (§5.3) ← L4YAML.CharPredicates.validPlainFirstProp @ L4YAML/Spec/CharPredicates.lean:521
+  ✓ [4] c-sequence-entry (§5.3) ← L4YAML.CharPredicates.isIndicatorProp @ L4YAML/Spec/CharPredicates.lean:184
+  ✓ [4] c-sequence-entry (§5.3) ← L4YAML.CharPredicates.validPlainFirstBool @ L4YAML/Spec/CharPredicates.lean:503
   ✓ [4] c-sequence-entry (§5.3) ← L4YAML.YamlToken.blockEntry @ L4YAML/Token/Token.lean:145
-  ✓ [4] c-sequence-entry (§5.3) ← L4YAML.CharPredicates.isIndicatorBool @ L4YAML/Spec/CharPredicates.lean:152
-  ✓ [5] c-mapping-key (§5.3) ← L4YAML.CharPredicates.isIndicatorProp @ L4YAML/Spec/CharPredicates.lean:176
-  ✓ [5] c-mapping-key (§5.3) ← L4YAML.CharPredicates.isIndicatorBool @ L4YAML/Spec/CharPredicates.lean:152
+  ✓ [4] c-sequence-entry (§5.3) ← L4YAML.CharPredicates.isIndicatorBool @ L4YAML/Spec/CharPredicates.lean:160
+  ✓ [5] c-mapping-key (§5.3) ← L4YAML.CharPredicates.canStartPlainScalarBool @ L4YAML/Spec/CharPredicates.lean:365
+  ✓ [5] c-mapping-key (§5.3) ← L4YAML.CharPredicates.canStartPlainScalarProp @ L4YAML/Spec/CharPredicates.lean:379
+  ✓ [5] c-mapping-key (§5.3) ← L4YAML.CharPredicates.validPlainFirstProp @ L4YAML/Spec/CharPredicates.lean:521
+  ✓ [5] c-mapping-key (§5.3) ← L4YAML.CharPredicates.isIndicatorProp @ L4YAML/Spec/CharPredicates.lean:184
+  ✓ [5] c-mapping-key (§5.3) ← L4YAML.CharPredicates.validPlainFirstBool @ L4YAML/Spec/CharPredicates.lean:503
+  ✓ [5] c-mapping-key (§5.3) ← L4YAML.CharPredicates.isIndicatorBool @ L4YAML/Spec/CharPredicates.lean:160
   ✓ [5] c-mapping-key (§5.3) ← L4YAML.YamlToken.key @ L4YAML/Token/Token.lean:148
+  ✓ [6] c-mapping-value (§5.3) ← L4YAML.CharPredicates.canStartPlainScalarBool @ L4YAML/Spec/CharPredicates.lean:365
+  ✓ [6] c-mapping-value (§5.3) ← L4YAML.CharPredicates.canStartPlainScalarProp @ L4YAML/Spec/CharPredicates.lean:379
   ✓ [6] c-mapping-value (§5.3) ← L4YAML.Scanner.scanValue @ L4YAML/Scanner/SimpleKey.lean:224
-  ✓ [6] c-mapping-value (§5.3) ← L4YAML.CharPredicates.isIndicatorProp @ L4YAML/Spec/CharPredicates.lean:176
+  ✓ [6] c-mapping-value (§5.3) ← L4YAML.CharPredicates.validPlainFirstProp @ L4YAML/Spec/CharPredicates.lean:521
+  ✓ [6] c-mapping-value (§5.3) ← L4YAML.CharPredicates.isIndicatorProp @ L4YAML/Spec/CharPredicates.lean:184
+  ✓ [6] c-mapping-value (§5.3) ← L4YAML.CharPredicates.validPlainFirstBool @ L4YAML/Spec/CharPredicates.lean:503
   ✓ [6] c-mapping-value (§5.3) ← L4YAML.YamlToken.value @ L4YAML/Token/Token.lean:151
-  ✓ [6] c-mapping-value (§5.3) ← L4YAML.CharPredicates.isIndicatorBool @ L4YAML/Spec/CharPredicates.lean:152
+  ✓ [6] c-mapping-value (§5.3) ← L4YAML.CharPredicates.isIndicatorBool @ L4YAML/Spec/CharPredicates.lean:160
   ✓ [6] c-mapping-value (§5.3) ← L4YAML.Scanner.scanNextToken_dispatchBlockIndicators @ L4YAML/Scanner/Scanner.lean:346
   ✓ [7] c-collect-entry (§5.3) ← L4YAML.YamlToken.flowEntry @ L4YAML/Token/Token.lean:169
-  ✓ [7] c-collect-entry (§5.3) ← L4YAML.CharPredicates.isIndicatorProp @ L4YAML/Spec/CharPredicates.lean:176
-  ✓ [7] c-collect-entry (§5.3) ← L4YAML.CharPredicates.isFlowIndicatorProp @ L4YAML/Spec/CharPredicates.lean:118
-  ✓ [7] c-collect-entry (§5.3) ← L4YAML.CharPredicates.isFlowIndicatorBool @ L4YAML/Spec/CharPredicates.lean:109
-  ✓ [7] c-collect-entry (§5.3) ← L4YAML.CharPredicates.isIndicatorBool @ L4YAML/Spec/CharPredicates.lean:152
+  ✓ [7] c-collect-entry (§5.3) ← L4YAML.CharPredicates.isIndicatorProp @ L4YAML/Spec/CharPredicates.lean:184
+  ✓ [7] c-collect-entry (§5.3) ← L4YAML.CharPredicates.isFlowIndicatorProp @ L4YAML/Spec/CharPredicates.lean:126
+  ✓ [7] c-collect-entry (§5.3) ← L4YAML.CharPredicates.isFlowIndicatorBool @ L4YAML/Spec/CharPredicates.lean:117
+  ✓ [7] c-collect-entry (§5.3) ← L4YAML.CharPredicates.isIndicatorBool @ L4YAML/Spec/CharPredicates.lean:160
   ✓ [7] c-collect-entry (§5.3) ← L4YAML.Scanner.scanFlowEntry @ L4YAML/Scanner/Scanner.lean:250
   ✓ [7] c-collect-entry (§5.3) ← L4YAML.Scanner.scanNextToken_dispatchFlowIndicators @ L4YAML/Scanner/Scanner.lean:319
-  ✓ [8] c-sequence-start (§5.3) ← L4YAML.CharPredicates.isIndicatorProp @ L4YAML/Spec/CharPredicates.lean:176
-  ✓ [8] c-sequence-start (§5.3) ← L4YAML.CharPredicates.isFlowIndicatorProp @ L4YAML/Spec/CharPredicates.lean:118
-  ✓ [8] c-sequence-start (§5.3) ← L4YAML.CharPredicates.isFlowIndicatorBool @ L4YAML/Spec/CharPredicates.lean:109
+  ✓ [8] c-sequence-start (§5.3) ← L4YAML.CharPredicates.isIndicatorProp @ L4YAML/Spec/CharPredicates.lean:184
+  ✓ [8] c-sequence-start (§5.3) ← L4YAML.CharPredicates.isFlowIndicatorProp @ L4YAML/Spec/CharPredicates.lean:126
+  ✓ [8] c-sequence-start (§5.3) ← L4YAML.CharPredicates.isFlowIndicatorBool @ L4YAML/Spec/CharPredicates.lean:117
   ✓ [8] c-sequence-start (§5.3) ← L4YAML.Scanner.scanFlowSequenceStart @ L4YAML/Scanner/Scanner.lean:134
-  ✓ [8] c-sequence-start (§5.3) ← L4YAML.CharPredicates.isIndicatorBool @ L4YAML/Spec/CharPredicates.lean:152
+  ✓ [8] c-sequence-start (§5.3) ← L4YAML.CharPredicates.isIndicatorBool @ L4YAML/Spec/CharPredicates.lean:160
   ✓ [8] c-sequence-start (§5.3) ← L4YAML.YamlToken.flowSequenceStart @ L4YAML/Token/Token.lean:157
   ✓ [9] c-sequence-end (§5.3) ← L4YAML.Scanner.scanFlowSequenceEnd @ L4YAML/Scanner/Scanner.lean:160
-  ✓ [9] c-sequence-end (§5.3) ← L4YAML.CharPredicates.isIndicatorProp @ L4YAML/Spec/CharPredicates.lean:176
-  ✓ [9] c-sequence-end (§5.3) ← L4YAML.CharPredicates.isFlowIndicatorProp @ L4YAML/Spec/CharPredicates.lean:118
-  ✓ [9] c-sequence-end (§5.3) ← L4YAML.CharPredicates.isFlowIndicatorBool @ L4YAML/Spec/CharPredicates.lean:109
+  ✓ [9] c-sequence-end (§5.3) ← L4YAML.CharPredicates.isIndicatorProp @ L4YAML/Spec/CharPredicates.lean:184
+  ✓ [9] c-sequence-end (§5.3) ← L4YAML.CharPredicates.isFlowIndicatorProp @ L4YAML/Spec/CharPredicates.lean:126
+  ✓ [9] c-sequence-end (§5.3) ← L4YAML.CharPredicates.isFlowIndicatorBool @ L4YAML/Spec/CharPredicates.lean:117
   ✓ [9] c-sequence-end (§5.3) ← L4YAML.YamlToken.flowSequenceEnd @ L4YAML/Token/Token.lean:160
-  ✓ [9] c-sequence-end (§5.3) ← L4YAML.CharPredicates.isIndicatorBool @ L4YAML/Spec/CharPredicates.lean:152
+  ✓ [9] c-sequence-end (§5.3) ← L4YAML.CharPredicates.isIndicatorBool @ L4YAML/Spec/CharPredicates.lean:160
   ✓ [10] c-mapping-start (§5.3) ← L4YAML.YamlToken.flowMappingStart @ L4YAML/Token/Token.lean:163
-  ✓ [10] c-mapping-start (§5.3) ← L4YAML.CharPredicates.isIndicatorProp @ L4YAML/Spec/CharPredicates.lean:176
-  ✓ [10] c-mapping-start (§5.3) ← L4YAML.CharPredicates.isFlowIndicatorProp @ L4YAML/Spec/CharPredicates.lean:118
-  ✓ [10] c-mapping-start (§5.3) ← L4YAML.CharPredicates.isFlowIndicatorBool @ L4YAML/Spec/CharPredicates.lean:109
-  ✓ [10] c-mapping-start (§5.3) ← L4YAML.CharPredicates.isIndicatorBool @ L4YAML/Spec/CharPredicates.lean:152
+  ✓ [10] c-mapping-start (§5.3) ← L4YAML.CharPredicates.isIndicatorProp @ L4YAML/Spec/CharPredicates.lean:184
+  ✓ [10] c-mapping-start (§5.3) ← L4YAML.CharPredicates.isFlowIndicatorProp @ L4YAML/Spec/CharPredicates.lean:126
+  ✓ [10] c-mapping-start (§5.3) ← L4YAML.CharPredicates.isFlowIndicatorBool @ L4YAML/Spec/CharPredicates.lean:117
+  ✓ [10] c-mapping-start (§5.3) ← L4YAML.CharPredicates.isIndicatorBool @ L4YAML/Spec/CharPredicates.lean:160
   ✓ [10] c-mapping-start (§5.3) ← L4YAML.Scanner.scanFlowMappingStart @ L4YAML/Scanner/Scanner.lean:185
-  ✓ [11] c-mapping-end (§5.3) ← L4YAML.CharPredicates.isIndicatorProp @ L4YAML/Spec/CharPredicates.lean:176
-  ✓ [11] c-mapping-end (§5.3) ← L4YAML.CharPredicates.isFlowIndicatorProp @ L4YAML/Spec/CharPredicates.lean:118
-  ✓ [11] c-mapping-end (§5.3) ← L4YAML.CharPredicates.isFlowIndicatorBool @ L4YAML/Spec/CharPredicates.lean:109
+  ✓ [11] c-mapping-end (§5.3) ← L4YAML.CharPredicates.isIndicatorProp @ L4YAML/Spec/CharPredicates.lean:184
+  ✓ [11] c-mapping-end (§5.3) ← L4YAML.CharPredicates.isFlowIndicatorProp @ L4YAML/Spec/CharPredicates.lean:126
+  ✓ [11] c-mapping-end (§5.3) ← L4YAML.CharPredicates.isFlowIndicatorBool @ L4YAML/Spec/CharPredicates.lean:117
   ✓ [11] c-mapping-end (§5.3) ← L4YAML.YamlToken.flowMappingEnd @ L4YAML/Token/Token.lean:166
   ✓ [11] c-mapping-end (§5.3) ← L4YAML.Scanner.scanFlowMappingEnd @ L4YAML/Scanner/Scanner.lean:211
-  ✓ [11] c-mapping-end (§5.3) ← L4YAML.CharPredicates.isIndicatorBool @ L4YAML/Spec/CharPredicates.lean:152
-  ✓ [12] c-comment (§5.3) ← L4YAML.CharPredicates.isIndicatorProp @ L4YAML/Spec/CharPredicates.lean:176
-  ✓ [12] c-comment (§5.3) ← L4YAML.CharPredicates.isIndicatorBool @ L4YAML/Spec/CharPredicates.lean:152
-  ✓ [13] c-anchor (§5.3) ← L4YAML.CharPredicates.isIndicatorProp @ L4YAML/Spec/CharPredicates.lean:176
-  ✓ [13] c-anchor (§5.3) ← L4YAML.CharPredicates.isIndicatorBool @ L4YAML/Spec/CharPredicates.lean:152
+  ✓ [11] c-mapping-end (§5.3) ← L4YAML.CharPredicates.isIndicatorBool @ L4YAML/Spec/CharPredicates.lean:160
+  ✓ [12] c-comment (§5.3) ← L4YAML.CharPredicates.isIndicatorProp @ L4YAML/Spec/CharPredicates.lean:184
+  ✓ [12] c-comment (§5.3) ← L4YAML.CharPredicates.isIndicatorBool @ L4YAML/Spec/CharPredicates.lean:160
+  ✓ [13] c-anchor (§5.3) ← L4YAML.CharPredicates.isIndicatorProp @ L4YAML/Spec/CharPredicates.lean:184
+  ✓ [13] c-anchor (§5.3) ← L4YAML.CharPredicates.isIndicatorBool @ L4YAML/Spec/CharPredicates.lean:160
   ✓ [13] c-anchor (§5.3) ← L4YAML.Scanner.collectAnchorNameLoop @ L4YAML/Scanner/NodeProperties.lean:55
-  ✓ [14] c-alias (§5.3) ← L4YAML.CharPredicates.isIndicatorProp @ L4YAML/Spec/CharPredicates.lean:176
-  ✓ [14] c-alias (§5.3) ← L4YAML.CharPredicates.isIndicatorBool @ L4YAML/Spec/CharPredicates.lean:152
+  ✓ [14] c-alias (§5.3) ← L4YAML.CharPredicates.isIndicatorProp @ L4YAML/Spec/CharPredicates.lean:184
+  ✓ [14] c-alias (§5.3) ← L4YAML.CharPredicates.isIndicatorBool @ L4YAML/Spec/CharPredicates.lean:160
   ✓ [14] c-alias (§5.3) ← L4YAML.Scanner.collectAnchorNameLoop @ L4YAML/Scanner/NodeProperties.lean:55
-  ✓ [15] c-tag (§5.3) ← L4YAML.CharPredicates.isIndicatorProp @ L4YAML/Spec/CharPredicates.lean:176
-  ✓ [15] c-tag (§5.3) ← L4YAML.CharPredicates.isIndicatorBool @ L4YAML/Spec/CharPredicates.lean:152
-  ✓ [16] c-literal (§5.3) ← L4YAML.CharPredicates.isIndicatorProp @ L4YAML/Spec/CharPredicates.lean:176
-  ✓ [16] c-literal (§5.3) ← L4YAML.CharPredicates.isIndicatorBool @ L4YAML/Spec/CharPredicates.lean:152
-  ✓ [17] c-folded (§5.3) ← L4YAML.CharPredicates.isIndicatorProp @ L4YAML/Spec/CharPredicates.lean:176
-  ✓ [17] c-folded (§5.3) ← L4YAML.CharPredicates.isIndicatorBool @ L4YAML/Spec/CharPredicates.lean:152
-  ✓ [18] c-single-quote (§5.3) ← L4YAML.CharPredicates.isIndicatorProp @ L4YAML/Spec/CharPredicates.lean:176
+  ✓ [15] c-tag (§5.3) ← L4YAML.CharPredicates.isIndicatorProp @ L4YAML/Spec/CharPredicates.lean:184
+  ✓ [15] c-tag (§5.3) ← L4YAML.CharPredicates.isIndicatorBool @ L4YAML/Spec/CharPredicates.lean:160
+  ✓ [16] c-literal (§5.3) ← L4YAML.CharPredicates.isIndicatorProp @ L4YAML/Spec/CharPredicates.lean:184
+  ✓ [16] c-literal (§5.3) ← L4YAML.CharPredicates.isIndicatorBool @ L4YAML/Spec/CharPredicates.lean:160
+  ✓ [17] c-folded (§5.3) ← L4YAML.CharPredicates.isIndicatorProp @ L4YAML/Spec/CharPredicates.lean:184
+  ✓ [17] c-folded (§5.3) ← L4YAML.CharPredicates.isIndicatorBool @ L4YAML/Spec/CharPredicates.lean:160
+  ✓ [18] c-single-quote (§5.3) ← L4YAML.CharPredicates.isIndicatorProp @ L4YAML/Spec/CharPredicates.lean:184
   ✓ [18] c-single-quote (§5.3) ← L4YAML.Scanner.scanSingleQuoted @ L4YAML/Scanner/Scalar.lean:374
-  ✓ [18] c-single-quote (§5.3) ← L4YAML.CharPredicates.isIndicatorBool @ L4YAML/Spec/CharPredicates.lean:152
-  ✓ [19] c-double-quote (§5.3) ← L4YAML.CharPredicates.isIndicatorProp @ L4YAML/Spec/CharPredicates.lean:176
-  ✓ [19] c-double-quote (§5.3) ← L4YAML.CharPredicates.isIndicatorBool @ L4YAML/Spec/CharPredicates.lean:152
+  ✓ [18] c-single-quote (§5.3) ← L4YAML.CharPredicates.isIndicatorBool @ L4YAML/Spec/CharPredicates.lean:160
+  ✓ [19] c-double-quote (§5.3) ← L4YAML.CharPredicates.isIndicatorProp @ L4YAML/Spec/CharPredicates.lean:184
+  ✓ [19] c-double-quote (§5.3) ← L4YAML.CharPredicates.isIndicatorBool @ L4YAML/Spec/CharPredicates.lean:160
   ✓ [19] c-double-quote (§5.3) ← L4YAML.Scanner.scanDoubleQuoted @ L4YAML/Scanner/Scalar.lean:297
-  ✓ [20] c-directive (§5.3) ← L4YAML.CharPredicates.isIndicatorProp @ L4YAML/Spec/CharPredicates.lean:176
+  ✓ [20] c-directive (§5.3) ← L4YAML.CharPredicates.isIndicatorProp @ L4YAML/Spec/CharPredicates.lean:184
   ✓ [20] c-directive (§5.3) ← L4YAML.Scanner.scanDirective @ L4YAML/Scanner/Document.lean:243
-  ✓ [20] c-directive (§5.3) ← L4YAML.CharPredicates.isIndicatorBool @ L4YAML/Spec/CharPredicates.lean:152
-  ✓ [21] c-reserved (§5.3) ← L4YAML.CharPredicates.isIndicatorProp @ L4YAML/Spec/CharPredicates.lean:176
-  ✓ [21] c-reserved (§5.3) ← L4YAML.CharPredicates.isIndicatorBool @ L4YAML/Spec/CharPredicates.lean:152
-  ✓ [22] c-indicator (§5.3) ← L4YAML.CharPredicates.isIndicatorProp @ L4YAML/Spec/CharPredicates.lean:176
-  ✓ [22] c-indicator (§5.3) ← L4YAML.CharPredicates.isIndicatorBool @ L4YAML/Spec/CharPredicates.lean:152
-  ✓ [23] c-flow-indicator (§5.3) ← L4YAML.CharPredicates.isFlowIndicatorProp @ L4YAML/Spec/CharPredicates.lean:118
-  ✓ [23] c-flow-indicator (§5.3) ← L4YAML.CharPredicates.isFlowIndicatorBool @ L4YAML/Spec/CharPredicates.lean:109
-  ✓ [24] b-line-feed (§5.4) ← L4YAML.CharPredicates.isLineBreakProp @ L4YAML/Spec/CharPredicates.lean:56
-  ✓ [24] b-line-feed (§5.4) ← L4YAML.CharPredicates.isLineBreakBool @ L4YAML/Spec/CharPredicates.lean:52
-  ✓ [25] b-carriage-return (§5.4) ← L4YAML.CharPredicates.isLineBreakProp @ L4YAML/Spec/CharPredicates.lean:56
-  ✓ [25] b-carriage-return (§5.4) ← L4YAML.CharPredicates.isLineBreakBool @ L4YAML/Spec/CharPredicates.lean:52
-  ✓ [26] b-char (§5.4) ← L4YAML.CharPredicates.isLineBreakProp @ L4YAML/Spec/CharPredicates.lean:56
-  ✓ [26] b-char (§5.4) ← L4YAML.CharPredicates.isLineBreakBool @ L4YAML/Spec/CharPredicates.lean:52
+  ✓ [20] c-directive (§5.3) ← L4YAML.CharPredicates.isIndicatorBool @ L4YAML/Spec/CharPredicates.lean:160
+  ✓ [21] c-reserved (§5.3) ← L4YAML.CharPredicates.isIndicatorProp @ L4YAML/Spec/CharPredicates.lean:184
+  ✓ [21] c-reserved (§5.3) ← L4YAML.CharPredicates.isIndicatorBool @ L4YAML/Spec/CharPredicates.lean:160
+  ✓ [22] c-indicator (§5.3) ← L4YAML.CharPredicates.isIndicatorProp @ L4YAML/Spec/CharPredicates.lean:184
+  ✓ [22] c-indicator (§5.3) ← L4YAML.CharPredicates.isIndicatorBool @ L4YAML/Spec/CharPredicates.lean:160
+  ✓ [23] c-flow-indicator (§5.3) ← L4YAML.CharPredicates.isFlowIndicatorProp @ L4YAML/Spec/CharPredicates.lean:126
+  ✓ [23] c-flow-indicator (§5.3) ← L4YAML.CharPredicates.isFlowIndicatorBool @ L4YAML/Spec/CharPredicates.lean:117
+  ✓ [24] b-line-feed (§5.4) ← L4YAML.CharPredicates.isLineBreakProp @ L4YAML/Spec/CharPredicates.lean:60
+  ✓ [24] b-line-feed (§5.4) ← L4YAML.CharPredicates.isLineBreakBool @ L4YAML/Spec/CharPredicates.lean:54
+  ✓ [25] b-carriage-return (§5.4) ← L4YAML.CharPredicates.isLineBreakProp @ L4YAML/Spec/CharPredicates.lean:60
+  ✓ [25] b-carriage-return (§5.4) ← L4YAML.CharPredicates.isLineBreakBool @ L4YAML/Spec/CharPredicates.lean:54
+  ✓ [26] b-char (§5.4) ← L4YAML.CharPredicates.isLineBreakProp @ L4YAML/Spec/CharPredicates.lean:60
+  ✓ [26] b-char (§5.4) ← L4YAML.CharPredicates.isLineBreakBool @ L4YAML/Spec/CharPredicates.lean:54
   ✓ [27] nb-char (§5.4) ← L4YAML.Scanner.skipToEndOfLine @ L4YAML/Scanner/Whitespace.lean:120
   ✓ [27] nb-char (§5.4) ← L4YAML.Scanner.scanBlockScalarSkipComment @ L4YAML/Scanner/Scalar.lean:820
   ✓ [27] nb-char (§5.4) ← L4YAML.Scanner.collectCommentTextLoop @ L4YAML/Scanner/Whitespace.lean:205
@@ -1588,33 +1600,45 @@
   ✓ [28] b-break (§5.4) ← L4YAML.Scanner.consumeNewline @ L4YAML/Scanner/Whitespace.lean:129
   ✓ [29] b-as-line-feed (§5.4) ← L4YAML.Scanner.consumeNewline @ L4YAML/Scanner/Whitespace.lean:129
   ✓ [30] b-non-content (§5.4) ← L4YAML.Scanner.scanBlockScalarConsumeNewline @ L4YAML/Scanner/Scalar.lean:845
-  ✓ [31] s-space (§5.5) ← L4YAML.CharPredicates.isIndentCharBool @ L4YAML/Spec/CharPredicates.lean:244
-  ✓ [31] s-space (§5.5) ← L4YAML.CharPredicates.isIndentCharProp @ L4YAML/Spec/CharPredicates.lean:248
-  ✓ [31] s-space (§5.5) ← L4YAML.CharPredicates.isWhiteSpaceProp @ L4YAML/Spec/CharPredicates.lean:75
-  ✓ [31] s-space (§5.5) ← L4YAML.CharPredicates.isWhiteSpaceBool @ L4YAML/Spec/CharPredicates.lean:71
-  ✓ [32] s-tab (§5.5) ← L4YAML.CharPredicates.isWhiteSpaceProp @ L4YAML/Spec/CharPredicates.lean:75
-  ✓ [32] s-tab (§5.5) ← L4YAML.CharPredicates.isWhiteSpaceBool @ L4YAML/Spec/CharPredicates.lean:71
-  ✓ [33] s-white (§5.5) ← L4YAML.CharPredicates.isWhiteSpaceProp @ L4YAML/Spec/CharPredicates.lean:75
-  ✓ [33] s-white (§5.5) ← L4YAML.CharPredicates.isWhiteSpaceBool @ L4YAML/Spec/CharPredicates.lean:71
+  ✓ [31] s-space (§5.5) ← L4YAML.CharPredicates.isIndentCharBool @ L4YAML/Spec/CharPredicates.lean:252
+  ✓ [31] s-space (§5.5) ← L4YAML.CharPredicates.isIndentCharProp @ L4YAML/Spec/CharPredicates.lean:256
+  ✓ [31] s-space (§5.5) ← L4YAML.CharPredicates.isWhiteSpaceProp @ L4YAML/Spec/CharPredicates.lean:83
+  ✓ [31] s-space (§5.5) ← L4YAML.CharPredicates.isWhiteSpaceBool @ L4YAML/Spec/CharPredicates.lean:77
+  ✓ [32] s-tab (§5.5) ← L4YAML.CharPredicates.isWhiteSpaceProp @ L4YAML/Spec/CharPredicates.lean:83
+  ✓ [32] s-tab (§5.5) ← L4YAML.CharPredicates.isWhiteSpaceBool @ L4YAML/Spec/CharPredicates.lean:77
+  ✓ [33] s-white (§5.5) ← L4YAML.CharPredicates.isWhiteSpaceProp @ L4YAML/Spec/CharPredicates.lean:83
+  ✓ [33] s-white (§5.5) ← L4YAML.CharPredicates.isWhiteSpaceBool @ L4YAML/Spec/CharPredicates.lean:77
+  ✓ [34] ns-char (§5.5) ← L4YAML.CharPredicates.canStartPlainScalarBool @ L4YAML/Spec/CharPredicates.lean:365
+  ✓ [34] ns-char (§5.5) ← L4YAML.CharPredicates.canStartPlainScalarProp @ L4YAML/Spec/CharPredicates.lean:379
+  ✓ [34] ns-char (§5.5) ← L4YAML.CharPredicates.validPlainFirstProp @ L4YAML/Spec/CharPredicates.lean:521
   ✓ [34] ns-char (§5.5) ← L4YAML.Scanner.collectDirectiveNameLoop @ L4YAML/Scanner/Document.lean:87
+  ✓ [34] ns-char (§5.5) ← L4YAML.CharPredicates.validPlainFirstBool @ L4YAML/Spec/CharPredicates.lean:503
   ✓ [35] ns-dec-digit (§5.6) ← L4YAML.Scanner.collectVersionMajorLoop @ L4YAML/Scanner/Document.lean:102
-  ✓ [35] ns-dec-digit (§5.6) ← L4YAML.CharPredicates.isWordCharProp @ L4YAML/Spec/CharPredicates.lean:282
+  ✓ [35] ns-dec-digit (§5.6) ← L4YAML.CharPredicates.isWordCharProp @ L4YAML/Spec/CharPredicates.lean:291
   ✓ [35] ns-dec-digit (§5.6) ← L4YAML.Scanner.collectVersionMinorLoop @ L4YAML/Scanner/Document.lean:117
-  ✓ [35] ns-dec-digit (§5.6) ← L4YAML.CharPredicates.isWordCharBool @ L4YAML/Spec/CharPredicates.lean:293
+  ✓ [35] ns-dec-digit (§5.6) ← L4YAML.CharPredicates.isWordCharBool @ L4YAML/Spec/CharPredicates.lean:303
   ✓ [36] ns-hex-digit (§5.6) ← L4YAML.Scanner.collectHexDigitsLoop @ L4YAML/Scanner/Scalar.lean:46
-  ✓ [37] ns-ascii-letter (§5.6) ← L4YAML.CharPredicates.isAsciiLetterBool @ L4YAML/Spec/CharPredicates.lean:274
-  ✓ [37] ns-ascii-letter (§5.6) ← L4YAML.CharPredicates.isAsciiLetterProp @ L4YAML/Spec/CharPredicates.lean:266
+  ✓ [36] ns-hex-digit (§5.6) ← L4YAML.CharPredicates.isUriCharProp @ L4YAML/Spec/CharPredicates.lean:316
+  ✓ [36] ns-hex-digit (§5.6) ← L4YAML.CharPredicates.isUriCharBool @ L4YAML/Spec/CharPredicates.lean:328
+  ✓ [37] ns-ascii-letter (§5.6) ← L4YAML.CharPredicates.isAsciiLetterBool @ L4YAML/Spec/CharPredicates.lean:282
+  ✓ [37] ns-ascii-letter (§5.6) ← L4YAML.CharPredicates.isAsciiLetterProp @ L4YAML/Spec/CharPredicates.lean:274
+  ✓ [37] ns-ascii-letter (§5.6) ← L4YAML.CharPredicates.isWordCharProp @ L4YAML/Spec/CharPredicates.lean:291
+  ✓ [37] ns-ascii-letter (§5.6) ← L4YAML.CharPredicates.isWordCharBool @ L4YAML/Spec/CharPredicates.lean:303
   ✓ [38] ns-word-char (§5.6) ← L4YAML.Scanner.collectTagHandleLoop @ L4YAML/Scanner/NodeProperties.lean:118
-  ✓ [38] ns-word-char (§5.6) ← L4YAML.CharPredicates.isWordCharProp @ L4YAML/Spec/CharPredicates.lean:282
+  ✓ [38] ns-word-char (§5.6) ← L4YAML.CharPredicates.isWordCharProp @ L4YAML/Spec/CharPredicates.lean:291
   ✓ [38] ns-word-char (§5.6) ← L4YAML.Scanner.collectTagHandleDirectiveLoop @ L4YAML/Scanner/Document.lean:132
-  ✓ [38] ns-word-char (§5.6) ← L4YAML.CharPredicates.isWordCharBool @ L4YAML/Spec/CharPredicates.lean:293
+  ✓ [38] ns-word-char (§5.6) ← L4YAML.CharPredicates.isWordCharBool @ L4YAML/Spec/CharPredicates.lean:303
+  ✓ [38] ns-word-char (§5.6) ← L4YAML.CharPredicates.isUriCharProp @ L4YAML/Spec/CharPredicates.lean:316
+  ✓ [38] ns-word-char (§5.6) ← L4YAML.CharPredicates.isUriCharBool @ L4YAML/Spec/CharPredicates.lean:328
   ✓ [39] ns-uri-char (§5.6) ← L4YAML.Scanner.collectTagSuffixLoop @ L4YAML/Scanner/NodeProperties.lean:102
   ✓ [39] ns-uri-char (§5.6) ← L4YAML.Scanner.collectVerbatimTagLoop @ L4YAML/Scanner/NodeProperties.lean:86
-  ✓ [39] ns-uri-char (§5.6) ← L4YAML.CharPredicates.isUriCharProp @ L4YAML/Spec/CharPredicates.lean:304
-  ✓ [39] ns-uri-char (§5.6) ← L4YAML.CharPredicates.isUriCharBool @ L4YAML/Spec/CharPredicates.lean:314
+  ✓ [39] ns-uri-char (§5.6) ← L4YAML.CharPredicates.isTagCharBool @ L4YAML/Spec/CharPredicates.lean:345
+  ✓ [39] ns-uri-char (§5.6) ← L4YAML.CharPredicates.isTagCharProp @ L4YAML/Spec/CharPredicates.lean:336
+  ✓ [39] ns-uri-char (§5.6) ← L4YAML.CharPredicates.isUriCharProp @ L4YAML/Spec/CharPredicates.lean:316
+  ✓ [39] ns-uri-char (§5.6) ← L4YAML.CharPredicates.isUriCharBool @ L4YAML/Spec/CharPredicates.lean:328
   ✓ [40] ns-tag-char (§5.6) ← L4YAML.Scanner.collectTagSuffixLoop @ L4YAML/Scanner/NodeProperties.lean:102
-  ✓ [40] ns-tag-char (§5.6) ← L4YAML.CharPredicates.isTagCharBool @ L4YAML/Spec/CharPredicates.lean:329
-  ✓ [40] ns-tag-char (§5.6) ← L4YAML.CharPredicates.isTagCharProp @ L4YAML/Spec/CharPredicates.lean:321
+  ✓ [40] ns-tag-char (§5.6) ← L4YAML.CharPredicates.isTagCharBool @ L4YAML/Spec/CharPredicates.lean:345
+  ✓ [40] ns-tag-char (§5.6) ← L4YAML.CharPredicates.isTagCharProp @ L4YAML/Spec/CharPredicates.lean:336
   ✓ [41] c-escape (§5.7) ← L4YAML.Scanner.processEscape @ L4YAML/Scanner/Scalar.lean:110
   ✓ [42] ns-esc-null (§5.7) ← L4YAML.Scanner.processEscape @ L4YAML/Scanner/Scalar.lean:110
   ✓ [43] ns-esc-bell (§5.7) ← L4YAML.Scanner.processEscape @ L4YAML/Scanner/Scalar.lean:110
@@ -1742,24 +1766,24 @@
   ✓ [123] nb-ns-single-in-line (§7.3.2) ← L4YAML.Scanner.collectSingleQuotedLoop @ L4YAML/Scanner/Scalar.lean:318
   ✓ [124] s-single-next-line(n) (§7.3.2) ← L4YAML.Scanner.collectSingleQuotedLoop @ L4YAML/Scanner/Scalar.lean:318
   ✓ [125] nb-single-multi-line(n) (§7.3.2) ← L4YAML.Scanner.collectSingleQuotedLoop @ L4YAML/Scanner/Scalar.lean:318
-  ✓ [126] ns-plain-first(c) (§7.3.3) ← L4YAML.CharPredicates.canStartPlainScalarBool @ L4YAML/Spec/CharPredicates.lean:345
+  ✓ [126] ns-plain-first(c) (§7.3.3) ← L4YAML.CharPredicates.canStartPlainScalarBool @ L4YAML/Spec/CharPredicates.lean:365
   ✓ [126] ns-plain-first(c) (§7.3.3) ← L4YAML.Scanner.collectPlainScalar_terminates? @ L4YAML/Scanner/Scalar.lean:427
-  ✓ [126] ns-plain-first(c) (§7.3.3) ← L4YAML.CharPredicates.canStartPlainScalarProp @ L4YAML/Spec/CharPredicates.lean:355
-  ✓ [126] ns-plain-first(c) (§7.3.3) ← L4YAML.CharPredicates.validPlainFirstProp @ L4YAML/Spec/CharPredicates.lean:472
-  ✓ [126] ns-plain-first(c) (§7.3.3) ← L4YAML.CharPredicates.validPlainFirstBool @ L4YAML/Spec/CharPredicates.lean:458
-  ✓ [127] ns-plain-safe(c) (§7.3.3) ← L4YAML.CharPredicates.isPlainSafeBool @ L4YAML/Spec/CharPredicates.lean:410
-  ✓ [127] ns-plain-safe(c) (§7.3.3) ← L4YAML.CharPredicates.isPlainSafeProp @ L4YAML/Spec/CharPredicates.lean:420
-  ✓ [127] ns-plain-safe(c) (§7.3.3) ← L4YAML.CharPredicates.noFlowIndicatorsProp @ L4YAML/Spec/CharPredicates.lean:720
-  ✓ [127] ns-plain-safe(c) (§7.3.3) ← L4YAML.CharPredicates.noFlowIndicatorsBool @ L4YAML/Spec/CharPredicates.lean:715
-  ✓ [128] ns-plain-safe-out (§7.3.3) ← L4YAML.CharPredicates.isPlainSafeBool @ L4YAML/Spec/CharPredicates.lean:410
-  ✓ [128] ns-plain-safe-out (§7.3.3) ← L4YAML.CharPredicates.isPlainSafeProp @ L4YAML/Spec/CharPredicates.lean:420
+  ✓ [126] ns-plain-first(c) (§7.3.3) ← L4YAML.CharPredicates.canStartPlainScalarProp @ L4YAML/Spec/CharPredicates.lean:379
+  ✓ [126] ns-plain-first(c) (§7.3.3) ← L4YAML.CharPredicates.validPlainFirstProp @ L4YAML/Spec/CharPredicates.lean:521
+  ✓ [126] ns-plain-first(c) (§7.3.3) ← L4YAML.CharPredicates.validPlainFirstBool @ L4YAML/Spec/CharPredicates.lean:503
+  ✓ [127] ns-plain-safe(c) (§7.3.3) ← L4YAML.CharPredicates.isPlainSafeBool @ L4YAML/Spec/CharPredicates.lean:446
+  ✓ [127] ns-plain-safe(c) (§7.3.3) ← L4YAML.CharPredicates.isPlainSafeProp @ L4YAML/Spec/CharPredicates.lean:461
+  ✓ [127] ns-plain-safe(c) (§7.3.3) ← L4YAML.CharPredicates.noFlowIndicatorsProp @ L4YAML/Spec/CharPredicates.lean:769
+  ✓ [127] ns-plain-safe(c) (§7.3.3) ← L4YAML.CharPredicates.noFlowIndicatorsBool @ L4YAML/Spec/CharPredicates.lean:764
+  ✓ [128] ns-plain-safe-out (§7.3.3) ← L4YAML.CharPredicates.isPlainSafeBool @ L4YAML/Spec/CharPredicates.lean:446
+  ✓ [128] ns-plain-safe-out (§7.3.3) ← L4YAML.CharPredicates.isPlainSafeProp @ L4YAML/Spec/CharPredicates.lean:461
   ✓ [129] ns-plain-safe-in (§7.3.3) ← L4YAML.Scanner.collectPlainScalar_terminates? @ L4YAML/Scanner/Scalar.lean:427
-  ✓ [129] ns-plain-safe-in (§7.3.3) ← L4YAML.CharPredicates.isPlainSafeBool @ L4YAML/Spec/CharPredicates.lean:410
-  ✓ [129] ns-plain-safe-in (§7.3.3) ← L4YAML.CharPredicates.isPlainSafeProp @ L4YAML/Spec/CharPredicates.lean:420
-  ✓ [130] ns-plain-char(c) (§7.3.3) ← L4YAML.CharPredicates.noSpaceHashBool @ L4YAML/Spec/CharPredicates.lean:688
-  ✓ [130] ns-plain-char(c) (§7.3.3) ← L4YAML.CharPredicates.noColonSpaceBool @ L4YAML/Spec/CharPredicates.lean:661
-  ✓ [130] ns-plain-char(c) (§7.3.3) ← L4YAML.CharPredicates.noSpaceHashProp @ L4YAML/Spec/CharPredicates.lean:693
-  ✓ [130] ns-plain-char(c) (§7.3.3) ← L4YAML.CharPredicates.noColonSpaceProp @ L4YAML/Spec/CharPredicates.lean:666
+  ✓ [129] ns-plain-safe-in (§7.3.3) ← L4YAML.CharPredicates.isPlainSafeBool @ L4YAML/Spec/CharPredicates.lean:446
+  ✓ [129] ns-plain-safe-in (§7.3.3) ← L4YAML.CharPredicates.isPlainSafeProp @ L4YAML/Spec/CharPredicates.lean:461
+  ✓ [130] ns-plain-char(c) (§7.3.3) ← L4YAML.CharPredicates.noSpaceHashBool @ L4YAML/Spec/CharPredicates.lean:737
+  ✓ [130] ns-plain-char(c) (§7.3.3) ← L4YAML.CharPredicates.noColonSpaceBool @ L4YAML/Spec/CharPredicates.lean:710
+  ✓ [130] ns-plain-char(c) (§7.3.3) ← L4YAML.CharPredicates.noSpaceHashProp @ L4YAML/Spec/CharPredicates.lean:742
+  ✓ [130] ns-plain-char(c) (§7.3.3) ← L4YAML.CharPredicates.noColonSpaceProp @ L4YAML/Spec/CharPredicates.lean:715
   ✓ [131] ns-plain(n,c) (§7.3.3) ← L4YAML.YamlToken.scalar @ L4YAML/Token/Token.lean:190
   ✓ [131] ns-plain(n,c) (§7.3.3) ← L4YAML.Scanner.collectPlainScalar_terminates? @ L4YAML/Scanner/Scalar.lean:427
   ✓ [131] ns-plain(n,c) (§7.3.3) ← L4YAML.Scanner.scanPlainScalar @ L4YAML/Scanner/Scalar.lean:555
@@ -1889,7 +1913,7 @@
   ✓ [211] l-yaml-stream (§9.2) ← L4YAML.TokenParser.StreamState.validNextToken @ L4YAML/Parser/TokenParser.lean:609
   ✓ [211] l-yaml-stream (§9.2) ← L4YAML.Scanner.scanNextToken_preprocess @ L4YAML/Scanner/Scanner.lean:270
 
-=== Results: 419/419 passed ===
+=== Results: 443/443 passed ===
   wrote docs/reports/production-coverage.html
 === limittests ===
 === Parser Security Limit Tests ===
