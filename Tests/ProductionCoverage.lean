@@ -1,4 +1,4 @@
-import L4YAML.Parser.Composition
+import L4YAML
 import Tests.VerifiedResult
 
 /-
@@ -294,6 +294,14 @@ structure SpecImplEntry where
 def moduleToPath (modName : String) : String :=
   modName.replace "." "/" ++ ".lean"
 
+/-- Top-level folder under `L4YAML/` that a module belongs to.
+    `L4YAML.Surface.Scalars` → `Surface`; falls back to `(other)` for modules
+    that do not live under the `L4YAML.*` namespace. -/
+def moduleToFolder (modName : String) : String :=
+  match modName.splitOn "." with
+  | "L4YAML" :: folder :: _ => folder
+  | _ => "(other)"
+
 /-- Query all `@[yaml_spec]` entries from the environment at elaboration time
     and store them as a definition. -/
 elab "#build_spec_coverage" : command => do
@@ -358,6 +366,15 @@ def coveredModules : Array String :=
   discoveredSpecEntries.foldl (fun acc e =>
     if acc.contains e.moduleName then acc else acc.push e.moduleName) #[]
 
+/-- Top-level L4YAML folders that contain at least one `@[yaml_spec]`
+    annotation, sorted alphabetically. Used to lay out one report column
+    per implementation folder. -/
+def coveredFolders : Array String :=
+  let folders := discoveredSpecEntries.foldl (fun acc e =>
+    let f := moduleToFolder e.moduleName
+    if acc.contains f then acc else acc.push f) #[]
+  folders.qsort (· < ·)
+
 /-- In-scope productions (excluding out-of-scope). -/
 def inScopeProductions : Array YamlProduction :=
   yamlProductions.filter fun p => p.status != "OOS"
@@ -394,6 +411,7 @@ def coveredIndentProductions : Array Nat :=
 #guard discoveredSpecEntries.size > 0
 #guard coveredProductionNums.size > 0
 #guard coveredModules.size > 0
+#guard coveredFolders.size > 0
 
 /-! ## HTML Report Generation -/
 
@@ -721,30 +739,43 @@ def generateProductionCoverageHtml : String :=
     "  </div>\n"
   ]
 
+  -- Folder columns (one per top-level L4YAML/ folder with annotations)
+  let folderColSpan := max coveredFolders.size 1
+  let renderImplEntry := fun (e : SpecImplEntry) =>
+    let path := moduleToPath e.moduleName
+    let pathEsc := escapeHtml path
+    let nameEsc := escapeHtml e.declName
+    let (urlSuffix, pathDisp) := match e.line with
+      | some n => (s!"{path}#L{n}", s!"{pathEsc}:{n}")
+      | none   => (path, pathEsc)
+    s!"<div class=\"impl-entry\">" ++
+    s!"<div class=\"impl-decl\"><a href=\"{repoSourceUrl}{urlSuffix}\" target=\"_blank\" class=\"impl-link\" title=\"Open source on GitHub\">{nameEsc}</a></div>" ++
+    s!"<div class=\"impl-path\"><span class=\"impl-path-label\">in</span> <code>{pathDisp}</code></div>" ++
+    s!"</div>"
+
   -- Table rows
   let tableRows := String.join (yamlProductions.toList.map fun p =>
     let status := productionStatus p
     let badge := statusBadge status
     let specUrl := s!"https://yaml.org/spec/1.2.2/#rule-{(p.name.takeWhile (· ≠ '('))}"
     let nameLink := s!"<a href=\"{specUrl}\" target=\"_blank\" class=\"spec-link\">{escapeHtml p.name}</a>"
-    -- Implementation entries: show qualified name AND relative source path
+    -- Implementation entries grouped by top-level folder
     let impls := getImplementations p.number
-    let implLinks := if impls.isEmpty then
-        if p.status == "OOS" then "—"
-        else if p.status == "G" then "<em>Grammar spec only</em>"
-        else "<em>No @[yaml_spec] annotation</em>"
+    let folderCells :=
+      if impls.isEmpty then
+        let msg :=
+          if p.status == "OOS" then "—"
+          else if p.status == "G" then "<em>Grammar spec only</em>"
+          else "<em>No @[yaml_spec] annotation</em>"
+        s!"        <td class=\"impl-cell\" colspan=\"{folderColSpan}\">{msg}</td>\n"
       else
-        String.join (impls.toList.map fun e =>
-          let path := moduleToPath e.moduleName
-          let pathEsc := escapeHtml path
-          let nameEsc := escapeHtml e.declName
-          let (urlSuffix, pathDisp) := match e.line with
-            | some n => (s!"{path}#L{n}", s!"{pathEsc}:{n}")
-            | none   => (path, pathEsc)
-          s!"<div class=\"impl-entry\">" ++
-          s!"<div class=\"impl-decl\"><a href=\"{repoSourceUrl}{urlSuffix}\" target=\"_blank\" class=\"impl-link\" title=\"Open source on GitHub\">{nameEsc}</a></div>" ++
-          s!"<div class=\"impl-path\"><span class=\"impl-path-label\">in</span> <code>{pathDisp}</code></div>" ++
-          s!"</div>")
+        String.join (coveredFolders.toList.map fun f =>
+          let folderImpls := impls.filter (fun e => moduleToFolder e.moduleName == f)
+          if folderImpls.isEmpty then
+            "        <td class=\"impl-cell\"></td>\n"
+          else
+            let content := String.join (folderImpls.toList.map renderImplEntry)
+            s!"        <td class=\"impl-cell\">{content}</td>\n")
     let searchText :=
       let implSearch := String.intercalate " " (impls.toList.map fun e =>
         let path := moduleToPath e.moduleName
@@ -757,8 +788,18 @@ def generateProductionCoverageHtml : String :=
     s!"        <td>{nameLink}</td>\n" ++
     s!"        <td>§{p.specSec}</td>\n" ++
     s!"        <td>{badge}</td>\n" ++
-    s!"        <td class=\"impl-cell\">{implLinks}</td>\n" ++
+    folderCells ++
     s!"      </tr>\n")
+
+  -- Per-folder header cells (column index = 4 + folder index)
+  let folderHeaders : String := Id.run do
+    let mut s := ""
+    let mut i : Nat := 0
+    for f in coveredFolders do
+      let colIdx := 4 + i
+      s := s ++ s!"        <th onclick=\"sortTable({colIdx})\">{escapeHtml f} <span class=\"sort-arrow\">↕</span></th>\n"
+      i := i + 1
+    return s
 
   -- Assemble
   String.join [
@@ -785,7 +826,7 @@ def generateProductionCoverageHtml : String :=
     "        <th onclick=\"sortTable(1)\">Production <span class=\"sort-arrow\">↕</span></th>\n",
     "        <th onclick=\"sortTable(2)\">Section <span class=\"sort-arrow\">↕</span></th>\n",
     "        <th onclick=\"sortTable(3)\">Status <span class=\"sort-arrow\">↕</span></th>\n",
-    "        <th onclick=\"sortTable(4)\">Lean Implementation <span class=\"sort-arrow\">↕</span></th>\n",
+    folderHeaders,
     "      </tr>\n",
     "    </thead>\n",
     "    <tbody>\n",
@@ -837,6 +878,12 @@ def collectTests : IO VerifiedSuiteResult := do
     true
   check state s!"indent-dependent with annotations: {coveredIndentProductions.size}/{indentProductionNums.size}"
     (coveredIndentProductions.size > 0)
+
+  setCategory state "Per-folder annotation counts"
+  for folder in coveredFolders do
+    let count := discoveredSpecEntries.filter
+      (fun e => moduleToFolder e.moduleName == folder) |>.size
+    check state s!"L4YAML/{folder}: {count} annotations" (count > 0)
 
   setCategory state "Per-module annotation counts"
   for modName in coveredModules do
