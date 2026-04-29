@@ -230,18 +230,28 @@ theorem scan_strict_proof
     Proof: parseYaml calls scanFiltered which calls scan. If parseYaml
     succeeds, scan must have succeeded, so scan_strict applies.
 
-    **Initiative 3 / J.2 step 5 cutover** (Category C): post-cutover
-    `scanFiltered` no longer matches on `scan input`; it threads through
-    `scanLoopFull` and `linearise`.  The bridge from "scanFiltered .ok"
-    back to "scan .ok" needs a small bridging lemma
-    (`scanFiltered_ok_implies_scan_ok`) — straightforward but new.
-    J.3 manifest 5.d. -/
+    **Initiative 3 / J.3.5** (2026-04-28): post-cutover `scanFiltered`
+    routes through `scanLoopFull` and `linearise`; we extract
+    `scanFiltered.ok` from `parseYaml.ok` by unfolding the parser
+    pipeline, then route through the J.3.2 bridge
+    `scanFiltered_ok_implies_scan_ok` to recover `scan.ok` and apply
+    `scan_strict_proof`. -/
 theorem parse_strict_proof
     (input : String)
     (docs : Array L4YAML.YamlDocument)
     (h : L4YAML.TokenParser.parseYaml input = Except.ok docs) :
     InYamlLanguage input := by
-  -- J.3 manifest 5.d: bridge scanFiltered.ok → scan.ok against linearise.
-  sorry
+  unfold L4YAML.TokenParser.parseYaml at h
+  split at h
+  · rename_i raw_docs h_raw
+    unfold L4YAML.TokenParser.parseYamlRaw at h_raw
+    split at h_raw
+    · rename_i ftokens h_scanf
+      obtain ⟨tokens, h_scan⟩ :=
+        L4YAML.Proofs.ScannerCorrectness.scanFiltered_ok_implies_scan_ok
+          input ftokens h_scanf
+      exact scan_strict_proof input tokens h_scan
+    · contradiction
+  · contradiction
 
 end L4YAML.Proofs.DocumentProduction
