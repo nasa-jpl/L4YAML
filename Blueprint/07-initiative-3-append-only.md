@@ -750,8 +750,8 @@ rooted at `Scanner/Linearise.lean`:
 | J.3.1 | Linearise foundations | 3 | `Scanner/Linearise.lean` → `Proofs/Scanner/ScannerLinearise.lean` | ✓ done 2026-04-26 |
 | J.3.2 | Bridge lemmas | 0 (new infrastructure) | `Proofs/Scanner/ScannerLinearise.lean`, `Proofs/Scanner/ScannerCorrectness.lean`, `Proofs/Production/ScannerPlainScalarValid.lean` | ✓ done 2026-04-26 |
 | J.3.3 | ScannerCorrectness consumers | 1/2 | `Proofs/Scanner/ScannerCorrectness.lean`, `Proofs/Scanner/ScannerLinearise.lean` | partial 2026-04-26 |
-| J.3.4 | ScannerPlainScalarValid consumers | 4 | `Proofs/Production/ScannerPlainScalarValid.lean` | pending |
-| J.3.5 | Production+EndToEnd bridges | 2 | `Proofs/Production/DocumentProduction.lean`, `Proofs/EndToEndCorrectness.lean` | pending |
+| J.3.4 | ScannerPlainScalarValid consumers | 4 | `Proofs/Production/ScannerPlainScalarValid.lean` | ✓ done 2026-04-28 |
+| J.3.5 | Production+EndToEnd bridges | 2 | `Proofs/Production/DocumentProduction.lean`, `Proofs/EndToEndCorrectness.lean` | ✓ done 2026-04-28 |
 | J.3.6 | EmitterScannability Cat C | 6 | `Proofs/Output/EmitterScannability.lean` (Cat C only; 7 Tier 2 deferred to J.4) | pending |
 
 **J.3.1 — Linearise foundations** [✓ completed 2026-04-26]:
@@ -1270,24 +1270,63 @@ count unchanged at 21.
   + 1 EndToEndCorrectness for J.3.5; 6 Cat C + 7 Tier 2 in
   EmitterScannability for J.3.6 / J.4).
 
-  **Next concrete step (J.3.5)**
+  **J.3.5 landed (2026-04-28 late evening) — `DocumentProduction` /
+  `EndToEndCorrectness` consumers cleared**
 
-  Discharge the two `J.3 manifest 5.d` sorries in
+  The two `J.3 manifest 5.d` Category C sorries in
   `Proofs/Production/DocumentProduction.lean:245` (`parse_strict_proof`)
   and `Proofs/EndToEndCorrectness.lean:313`
-  (`parseYaml_implies_valid_token_stream`).  Both currently rely on
-  the legacy `tokens.filter` shape of `scanFiltered`; the J.3.2
-  `scanFiltered_ok_implies_scan_ok` bridge plus the now-clean
-  `scan_*` consumers in `ScannerPlainScalarValid` should suffice to
-  re-route them.  Target: drop the J.3 sorry count from 15 to 13.
+  (`parseYaml_implies_valid_token_stream`) both dropped.  Sorry count
+  for these files: **2 → 0**; full project sorry count: **15 → 13**
+  (all remaining sorries now confined to
+  `Proofs/Output/EmitterScannability.lean`).
 
-**J.3.4 landed**: `ScannerPlainScalarValid` consumers re-discharged,
-AKPI dead-code chain removed.
+  *Direct routing through the J.3.2 bridge.*  Both consumers extract
+  `scanFiltered.ok` from `parseYaml.ok` by the same standard
+  unfolding pattern (`unfold parseYaml; split; rename_i raw_docs h_raw;
+  unfold parseYamlRaw at h_raw; split; rename_i ftokens h_scanf`),
+  then route through `scanFiltered_ok_implies_scan_ok` (J.3.2
+  bridge, `Proofs/Scanner/ScannerCorrectness.lean:12905`) to recover
+  `∃ tokens, scan input = .ok tokens`.  From there:
 
-**J.3.5–J.3.6**: re-discharge `DocumentProduction` /
-`EndToEndCorrectness` (J.3.5, 2 sorries) and `EmitterScannability`
-Cat C (J.3.6, 6 sorries), each substep removing its sorry-using
-declarations and the matching `-- J.3 manifest 5.d:` markers.
+  - **`parse_strict_proof`** applies `scan_strict_proof input tokens
+    h_scan` (the existing scan-strictness theorem in the same file)
+    to get `InYamlLanguage input`.
+  - **`parseYaml_implies_valid_token_stream`** packages `tokens`
+    with `h_scan` and `scan_valid_token_stream input tokens h_scan`
+    (`Proofs/Scanner/ScannerCorrectness.lean:12943`) into the
+    triple `⟨tokens, scan.ok, ValidTokenStreamProp⟩`.
+
+  No new lemmas needed — both proofs are pure plumbing through
+  pre-existing bridges.  `ScannerCorrectness` was already
+  transitively imported into `DocumentProduction.lean` via
+  `ScalarProduction → StructureProduction → NodeProduction` (no
+  import-graph changes); `EndToEndCorrectness.lean` already imports
+  it directly and opens its namespace.
+
+  Build status (2026-04-28 late evening): full project (453/453)
+  green; **13 sorries remaining**, all in
+  `Proofs/Output/EmitterScannability.lean` (6 Cat C for J.3.6,
+  7 Tier 2 for J.4).
+
+  **Next concrete step (J.3.6)**
+
+  Discharge the six `J.3 manifest 5.d` Category C sorries in
+  `Proofs/Output/EmitterScannability.lean` at lines 2060, 2080,
+  3482, 8467, 8479, 9085.  These are emitter-side consumers that
+  previously inspected the legacy `tokens.filter` output shape; each
+  needs re-routing through the linearised token stream.  Likely
+  patterns: leverage the J.3.2 `LineariseFit`-derived facts
+  (`scanFiltered_produces_valid_tokens` and its field theorems) and
+  the now-clean `scan_*` consumers in `ScannerPlainScalarValid`.
+  Target: drop the J.3 sorry count from 13 to 7.
+
+**J.3.5 landed**: `DocumentProduction` / `EndToEndCorrectness`
+consumers re-discharged via direct `scanFiltered_ok_implies_scan_ok`
+plumbing.
+
+**J.3.6**: re-discharge `EmitterScannability` Cat C (6 sorries),
+removing the matching `-- J.3 manifest 5.d:` markers.
 
 **J.3 final gate**: `lake build` green; sorry count 19 → 7 (only
 the 7 Tier 2 EmitterScannability declarations remain, deferred to
