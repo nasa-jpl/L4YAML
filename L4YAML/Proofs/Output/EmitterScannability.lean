@@ -1230,6 +1230,68 @@ theorem ScanChain.to_scanLoop_exists {s s' : ScannerState} {n : Nat}
   obtain ⟨fuel, toks, h⟩ := h_loop
   exact ⟨fuel + n, toks, h_chain.to_scanLoop h⟩
 
+/-- **Initiative 3 / J.3.7**: skipToContent is identity at EOF.
+    Inline-derived in `scanNextToken_eof`; factored out so
+    `scanFiltered_emitScalar_vals` can stitch a full scanFiltered walk. -/
+theorem skipToContent_eq_self_of_peek_none {s : ScannerState}
+    (h_peek : s.peek? = none) : skipToContent s = .ok s := by
+  have h_not_lt : ¬(s.offset < s.inputEnd) := by
+    intro h_lt; have : s.peek? ≠ none := by unfold ScannerState.peek?; simp [h_lt]
+    exact this h_peek
+  have h_fuel_zero : s.inputEnd - s.offset = 0 := by omega
+  have h_sw : skipWhitespace s = s := by
+    unfold skipWhitespace; rw [h_fuel_zero]; unfold skipWhitespaceLoop; rfl
+  have h_ss : skipSpaces s = s := by
+    unfold skipSpaces; rw [h_fuel_zero]; unfold skipSpacesLoop; rfl
+  unfold skipToContent
+  rw [show s.inputEnd - s.offset + 1 = 1 from by omega]
+  unfold skipToContentLoop
+  have h_ws : skipToContentWs s = .ok s := by
+    unfold skipToContentWs
+    split
+    · simp [h_ss, h_peek, h_sw]
+    · simp [h_sw]
+  simp [h_ws, skipToContentComment, h_peek]
+
+/-- **Initiative 3 / J.3.7**: equality form of `scanLoopFull` at EOF.
+    Mirrors `scanLoop_eof_eq` for the `scanLoopFull` variant used by
+    `scanFiltered`.  The extra `skipToContent` step in `scanLoopFull`'s
+    EOF arm is supplied as `h_skip`. -/
+theorem scanLoopFull_eof_eq {s s_skipped : ScannerState} {fuel : Nat}
+    (h_fuel : fuel ≥ 1)
+    (h_snt : scanNextToken s = .ok none)
+    (h_fl : s.flowLevel = 0)
+    (h_dp : s.directivesPresent = false)
+    (h_skip : skipToContent s = .ok s_skipped) :
+    scanLoopFull s fuel = .ok ((unwindIndents s_skipped (-1)).emit .streamEnd) := by
+  obtain ⟨f, rfl⟩ : ∃ n, fuel = n + 1 := ⟨fuel - 1, by omega⟩
+  unfold scanLoopFull
+  rw [h_snt]
+  simp only []
+  have h_not_pos : ¬(s.flowLevel > 0) := by omega
+  simp only [h_not_pos, ↓reduceIte]
+  have h_dir_false : (s.directivesPresent && !s.documentEverStarted) = false := by
+    rw [h_dp]; simp
+  simp only [h_dir_false, Bool.false_eq_true, ↓reduceIte]
+  rw [h_skip]
+
+/-- **Initiative 3 / J.3.7**: `ScanChain` composes with `scanLoopFull`.
+    Mirrors `ScanChain.to_scanLoop` for the `scanLoopFull` variant. -/
+theorem ScanChain.to_scanLoopFull {s s' : ScannerState} {n fuel : Nat}
+    {final : ScannerState}
+    (h_chain : ScanChain s n s')
+    (h_loop : scanLoopFull s' fuel = .ok final) :
+    scanLoopFull s (fuel + n) = .ok final := by
+  induction h_chain with
+  | zero => exact h_loop
+  | @step s s_mid s' k h_snt h_rest ih =>
+    have h_ih := ih h_loop
+    have h_eq : fuel + (k + 1) = (fuel + k) + 1 := by omega
+    rw [h_eq]
+    unfold scanLoopFull
+    rw [h_snt]
+    exact h_ih
+
 /-- The chain fuel bound: any `ScanChain` followed by EOF fits within
     the standard fuel `(input.utf8ByteSize + 1) * 4`.
 
@@ -3326,13 +3388,23 @@ theorem scanNextToken_preprocess_init_state (input : String) (c : Char)
 
 -- The first scanNextToken call on the initial emitScalar state
 -- dispatches to scanDoubleQuoted and succeeds.
+--
+-- **Initiative 3 / J.3.7** (2026-04-29): added two unfiltered clauses
+-- (`s₁.tokens.map (·.val) = #[.streamStart, .scalar ...]` and
+-- `pendingKeys all unresolved`) needed by `scanFiltered_emitScalar_vals`
+-- and `scanFiltered_emitScalar_content`.  Post-cutover the scanner
+-- never pushes `.placeholder`, so the filter and unfiltered shapes
+-- coincide, but the unfiltered form is what `linearise_all_unresolved`
+-- consumes.
 theorem scanNextToken_emitScalar_init (content : String) :
     ∃ s₁, scanNextToken ((ScannerState.mk' (emitScalar content)).emit .streamStart) = .ok (some s₁)
       ∧ s₁.peek? = none ∧ s₁.flowLevel = 0 ∧ s₁.directivesPresent = false
       ∧ (∃ tok ∈ s₁.tokens, tok.val = .scalar content .doubleQuoted)
       ∧ s₁.indents = #[{column := -1, isSequence := false}]
       ∧ (s₁.tokens.filter (fun t => t.val != .placeholder)).map (·.val)
-          = #[.streamStart, .scalar content .doubleQuoted] := by
+          = #[.streamStart, .scalar content .doubleQuoted]
+      ∧ s₁.tokens.map (·.val) = #[.streamStart, .scalar content .doubleQuoted]
+      ∧ (∀ e ∈ s₁.pendingKeys, e.kind = .unresolved) := by
   -- Build ScannerSurfCorr for the initial state
   have h_chars := chars_from_zero_toList (emitScalar content)
   rw [emitScalar_toList] at h_chars
@@ -3349,7 +3421,9 @@ theorem scanNextToken_emitScalar_init (content : String) :
     ∧ s_pp.indents = #[{column := -1, isSequence := false}]
     ∧ s_pp.flowLevel = 0 ∧ s_pp.directivesPresent = false
     ∧ s_pp.allowDirectives = true ∧ s_pp.currentIndent = -1
-    ∧ (s_pp.tokens.filter (fun t => t.val != .placeholder)).map (·.val) = #[.streamStart] := by
+    ∧ (s_pp.tokens.filter (fun t => t.val != .placeholder)).map (·.val) = #[.streamStart]
+    ∧ s_pp.tokens.map (·.val) = #[.streamStart]
+    ∧ (∀ e ∈ s_pp.pendingKeys, e.kind = .unresolved) := by
     -- Get peek? for initial state
     have h_corr_s₀ : ScannerSurfCorr
         ((ScannerState.mk' (emitScalar content)).emit .streamStart)
@@ -3365,7 +3439,7 @@ theorem scanNextToken_emitScalar_init (content : String) :
     -- (default needIndentCheck is true; the if-branch sets it to false after unwindIndents)
     refine ⟨saveSimpleKey { (ScannerState.mk' (emitScalar content)).emit .streamStart
               with needIndentCheck := false },
-      ?_, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, ?_⟩
+      ?_, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, ?_, ?_, ?_⟩
     · -- Prove: scanNextToken_preprocess = .ok (some (saveSimpleKey {...}, '"'))
       unfold scanNextToken_preprocess
       -- Step 1: resolve skipToContent bind
@@ -3403,8 +3477,37 @@ theorem scanNextToken_emitScalar_init (content : String) :
         · dsimp only []
           simp [ScannerState.emit, ScannerState.mk']
         · simp [ScannerState.emit, ScannerState.mk']
+    · -- **J.3.7**: unfiltered tokens = #[streamStart].  Post-cutover
+      -- saveSimpleKey doesn't push tokens, so all three branches
+      -- preserve the streamStart-emitted token array.
+      unfold saveSimpleKey
+      split
+      · simp [ScannerState.emit, ScannerState.mk']
+      · split
+        · dsimp only []
+          simp [ScannerState.emit, ScannerState.mk']
+        · simp [ScannerState.emit, ScannerState.mk']
+    · -- **J.3.7**: pendingKeys are all unresolved.  The streamStart-
+      -- emitted state has empty pendingKeys (vacuous); saveSimpleKey
+      -- pushes at most one entry whose kind is `.unresolved`.
+      unfold saveSimpleKey
+      split
+      · -- Branch 1: state unchanged → pendingKeys is initial (empty).
+        intro e h_mem
+        simp [ScannerState.emit, ScannerState.mk'] at h_mem
+      · split
+        · -- Branch 2: pushes one .unresolved entry.  The starting
+          -- pendingKeys is empty (mk' default), so the only member is
+          -- the freshly-pushed entry whose `.kind = .unresolved`.
+          dsimp only []
+          intro e h_mem
+          simp [ScannerState.emit, ScannerState.mk'] at h_mem
+          subst h_mem; rfl
+        · -- Branch 3: state unchanged.
+          intro e h_mem
+          simp [ScannerState.emit, ScannerState.mk'] at h_mem
   obtain ⟨s_pp, h_pp_eq, h_inp, h_off, h_ie, h_col_pp, h_ids,
-          h_fl_pp, h_dp_pp, h_ad_pp, h_ci_pp, h_filt_pp⟩ := h_pp
+          h_fl_pp, h_dp_pp, h_ad_pp, h_ci_pp, h_filt_pp, h_map_pp, h_pks_pp⟩ := h_pp
   -- ═══ Step 2: build ScannerSurfCorr for s_pp from field equalities ═══
   have h_corr_pp : ScannerSurfCorr s_pp
       ⟨['"'] ++ (escapeString content).toList ++ ['"'], s_pp.col⟩ := by
@@ -3445,7 +3548,9 @@ theorem scanNextToken_emitScalar_init (content : String) :
     ∧ (∃ tok ∈ s_final.tokens, tok.val = .scalar content .doubleQuoted)
     ∧ s_final.indents = s_ad.indents
     ∧ (s_final.tokens.filter (fun t => t.val != .placeholder)).map (·.val)
-        = #[.streamStart, .scalar content .doubleQuoted] := by
+        = #[.streamStart, .scalar content .doubleQuoted]
+    ∧ s_final.tokens.map (·.val) = #[.streamStart, .scalar content .doubleQuoted]
+    ∧ (∀ e ∈ s_final.pendingKeys, e.kind = .unresolved) := by
     -- scanDoubleQuoted succeeds and preserves fields
     obtain ⟨s_dq, h_dq, h_pk_dq, h_tok_dq⟩ := scanDoubleQuoted_emitScalar_ok s_ad content h_corr_ad h_inFlow
     have h_fl_dq : s_dq.flowLevel = 0 :=
@@ -3455,6 +3560,15 @@ theorem scanNextToken_emitScalar_init (content : String) :
       (scanDoubleQuoted_preserves_dp s_ad s_dq h_dq).trans h_dp_pp
     have h_ids_dq : s_dq.indents = s_ad.indents :=
       scanDoubleQuoted_preserves_indents s_ad s_dq h_dq
+    -- **J.3.7**: scanDoubleQuoted preserves pendingKeys (proven in
+    -- ScannerCorrectness.lean line 10343).  Combined with `s_ad.pendingKeys
+    -- = s_pp.pendingKeys` (struct-update on different field) and
+    -- `h_pks_pp`, all entries of s_dq.pendingKeys are unresolved.
+    have h_pks_dq : ∀ e ∈ s_dq.pendingKeys, e.kind = .unresolved := by
+      have h_eq : s_dq.pendingKeys = s_ad.pendingKeys :=
+        L4YAML.Proofs.ScannerCorrectness.scanDoubleQuoted_preserves_pendingKeys s_ad s_dq h_dq
+      rw [h_eq, show s_ad.pendingKeys = s_pp.pendingKeys from rfl]
+      exact h_pks_pp
     -- Token membership: scalar is in s_dq.tokens
     have h_tok_mem : ∃ tok ∈ s_dq.tokens, tok.val = .scalar content .doubleQuoted :=
       ⟨_, by rw [h_tok_dq]; exact Array.mem_push_self, rfl⟩
@@ -3468,21 +3582,58 @@ theorem scanNextToken_emitScalar_init (content : String) :
         ite_true, Array.map_push,
         show s_ad.tokens = s_pp.tokens from rfl, h_filt_pp]
       rfl
+    -- **J.3.7**: unfiltered map shape derived from h_map_pp.
+    have h_map_dq : s_dq.tokens.map (·.val) = #[.streamStart, .scalar content .doubleQuoted] := by
+      rw [h_tok_dq, Array.map_push,
+          show s_ad.tokens = s_pp.tokens from rfl, h_map_pp]
+      rfl
     -- Unfold dispatchContent: all if-branches except '"' are eliminated by decide
     unfold scanNextToken_dispatchContent
     simp (config := { decide := true }) only [bind, Except.bind, pure, h_dq]
-    -- The simpleKey update preserves peek?/flowLevel/directivesPresent/tokens/indents.
+    -- The simpleKey update preserves peek?/flowLevel/directivesPresent/tokens/indents/
+    -- pendingKey-kinds.  In the `simpleKey.possible = true` branch the update wraps
+    -- s_dq with `setPendingKeyEndLine` on pendingKeys, which only touches the
+    -- `endLine` field — preserving every entry's `.kind`.
     -- Use Bool.rec to avoid dependent elimination issues with cases.
+    have h_pks_setEL : ∀ (active : Option Nat) (line : Nat)
+        (e : PendingKeyEntry),
+        e ∈ setPendingKeyEndLine s_dq.pendingKeys active line →
+        e.kind = .unresolved := by
+      intro active line e h_mem
+      unfold setPendingKeyEndLine at h_mem
+      cases active with
+      | none => exact h_pks_dq e h_mem
+      | some i =>
+        simp only [] at h_mem
+        cases h_get : s_dq.pendingKeys[i]? with
+        | none =>
+          rw [h_get] at h_mem
+          exact h_pks_dq e h_mem
+        | some entry =>
+          rw [h_get] at h_mem
+          -- `setIfInBounds i entry'` may either return original or update entry at i
+          have h_entry_unres : entry.kind = .unresolved :=
+            h_pks_dq entry (Array.mem_of_getElem? h_get)
+          have h_mem_or := Array.mem_or_eq_of_mem_setIfInBounds h_mem
+          cases h_mem_or with
+          | inl h => exact h_pks_dq e h
+          | inr h =>
+            -- e = { entry with endLine := line } → e.kind = entry.kind
+            rw [h]; exact h_entry_unres
     exact ⟨_, rfl,
       s_dq.simpleKey.possible.rec h_pk_dq h_pk_dq,
       s_dq.simpleKey.possible.rec h_fl_dq h_fl_dq,
       s_dq.simpleKey.possible.rec h_dp_dq h_dp_dq,
       s_dq.simpleKey.possible.rec h_tok_mem h_tok_mem,
       s_dq.simpleKey.possible.rec h_ids_dq h_ids_dq,
-      s_dq.simpleKey.possible.rec h_filt_dq h_filt_dq⟩
-  obtain ⟨s_final, h_dc_eq, h_pkf, h_flf, h_dpf, h_tokf, h_idsf, h_filtf⟩ := h_dc
+      s_dq.simpleKey.possible.rec h_filt_dq h_filt_dq,
+      s_dq.simpleKey.possible.rec h_map_dq h_map_dq,
+      s_dq.simpleKey.possible.rec h_pks_dq (h_pks_setEL _ _)⟩
+  obtain ⟨s_final, h_dc_eq, h_pkf, h_flf, h_dpf, h_tokf, h_idsf, h_filtf,
+          h_mapf, h_pksf⟩ := h_dc
   -- ═══ Step 6: compose all steps through scanNextToken ═══
-  refine ⟨s_final, ?_, h_pkf, h_flf, h_dpf, h_tokf, h_idsf.trans h_ids, h_filtf⟩
+  refine ⟨s_final, ?_, h_pkf, h_flf, h_dpf, h_tokf, h_idsf.trans h_ids, h_filtf,
+          h_mapf, h_pksf⟩
   -- Reduce: scanNextToken = preprocess →ᵦ dispatchStructural →ᵦ allowDirectives →
   --   checkBlockFlowIndent →ᵦ dispatchFlowIndicators →ᵦ dispatchBlockIndicators →ᵦ dispatchContent
   unfold scanNextToken
@@ -3503,7 +3654,7 @@ theorem scanNextToken_emitScalar_init (content : String) :
     `scanNextToken_eof` closes the loop on `s₁`. -/
 theorem scan_accepts_emitScalar (content : String) :
     ∃ tokens, scanFiltered (emitScalar content) = .ok tokens := by
-  obtain ⟨s₁, h_snt₁, h_peek₁, h_fl₁, h_dp₁, _, _, _⟩ :=
+  obtain ⟨s₁, h_snt₁, h_peek₁, h_fl₁, h_dp₁, _, _, _, _, _⟩ :=
     scanNextToken_emitScalar_init content
   let s₀ := (ScannerState.mk' (emitScalar content)).emit .streamStart
   have h_chain : ScanChain s₀ 1 s₁ := ScanChain.single h_snt₁
@@ -8491,32 +8642,208 @@ from the emitter's escape-encoded output. This is the key roundtrip property.
 -/
 
 -- Hex foldl roundtrip for control characters (c.val.toNat < 0x20)
-/-- **Scanner content preservation**: scanning `emitScalar content` produces
-    a token stream where the scalar token's content equals the original.
-
-    This bridges the emitter's `escapeString` encoding with the scanner's
-    `collectDoubleQuotedLoop` + `processEscape` decoding. The proof follows
-    from `collectDoubleQuotedLoop_escapeString_succeeds` strengthened with
-    content equality (the loop accumulator reconstructs the original string). -/
-theorem scanFiltered_emitScalar_content (content : String) (tokens : Array (Positioned YamlToken))
-    (h_scan : scanFiltered (emitScalar content) = .ok tokens) :
-    ∃ i, i < tokens.size ∧ tokens[i]!.val = .scalar content .doubleQuoted := by
-  -- **Initiative 3 / J.2 step 5 cutover** (Category C): scanFiltered
-  -- now uses linearise rather than `tokens.filter`; the proof needs
-  -- to bridge the new shape.  J.3 manifest 5.d.
-  sorry
+-- (`scanFiltered_emitScalar_content` is defined after
+--  `scanFiltered_emitScalar_vals` so the corollary proof can reuse the
+--  vals-shape characterization.)
 
 /-- Token structure: the filtered scan of `emitScalar content` produces
     exactly 3 tokens: `streamStart`, `scalar content .doubleQuoted`, `streamEnd`.
-    This follows from the scanner producing `[streamStart, ph, ph, scalar, streamEnd]`
-    (where `ph` are saveSimpleKey placeholders) and filtering removes placeholders. -/
+
+    **Initiative 3 / J.3.7** (2026-04-29): post-cutover proof routes
+    through the strengthened `scanNextToken_emitScalar_init` (concrete
+    `s₁.tokens` shape + pendingKeys all unresolved) +
+    `scanLoopFull_eof_eq` + `linearise_all_unresolved`.  No reliance on
+    the legacy `tokens.filter (· != .placeholder)` shape. -/
 theorem scanFiltered_emitScalar_vals (content : String) (tokens : Array (Positioned YamlToken))
     (h_scan : scanFiltered (emitScalar content) = .ok tokens) :
     tokens.size = 3 ∧ tokens[0]!.val = .streamStart ∧
     tokens[1]!.val = .scalar content .doubleQuoted ∧ tokens[2]!.val = .streamEnd := by
-  -- **Initiative 3 / J.2 step 5 cutover** (Category C): same shape
-  -- problem as `scanFiltered_emitScalar_content`.  J.3 manifest 5.d.
-  sorry
+  -- ═══ Step 1: extract concrete s₁ from strengthened init ═══
+  obtain ⟨s₁, h_snt₁, h_peek₁, h_fl₁, h_dp₁, _, h_inds₁, _, h_map_s₁, h_pks_s₁⟩ :=
+    scanNextToken_emitScalar_init content
+  -- Build chain s₀ →¹ s₁.
+  have h_chain : ScanChain ((ScannerState.mk' (emitScalar content)).emit .streamStart) 1 s₁ :=
+    ScanChain.single h_snt₁
+  have h_eof : scanNextToken s₁ = .ok none := scanNextToken_eof s₁ h_peek₁
+  -- BOM: emitScalar starts with '"', not BOM.
+  have h_no_bom : (ScannerState.mk' (emitScalar content)).peek? ≠ some '﻿' := by
+    have h_chars := chars_from_zero_toList (emitScalar content)
+    rw [emitScalar_toList] at h_chars
+    have h_corr := initial_corr (emitScalar content) _ h_chars
+    have ⟨h_pk, _⟩ := peek_of_chars_cons _ '"' _ 0 h_corr
+    rw [h_pk]; decide
+  -- skipToContent identity (peek? = none).
+  have h_skip : skipToContent s₁ = .ok s₁ := skipToContent_eq_self_of_peek_none h_peek₁
+  -- unwindIndents identity (indents.size = 1) — inline since
+  -- `unwindIndents_noop_short_stack` is defined later in the file.
+  have h_uwi : unwindIndents s₁ (-1) = s₁ := by
+    have h_stack : s₁.indents.size ≤ 1 := by rw [h_inds₁]; decide
+    unfold unwindIndents unwindIndentsLoop
+    split
+    · rfl
+    · split
+      · exfalso
+        rename_i h_cond
+        simp only [Bool.and_eq_true, decide_eq_true_iff] at h_cond
+        omega
+      · rfl
+  -- scanLoopFull at s₁ closes.
+  have h_loop_s₁ :
+      scanLoopFull s₁ (((emitScalar content).utf8ByteSize + 1) * 4 - 1)
+        = .ok ((unwindIndents s₁ (-1)).emit .streamEnd) := by
+    have h_size := emitScalar_utf8ByteSize_ge content
+    exact scanLoopFull_eof_eq (by omega) h_eof h_fl₁ h_dp₁ h_skip
+  -- scanLoopFull at s₀ closes via chain composition.
+  have h_loop_s₀ := h_chain.to_scanLoopFull h_loop_s₁
+  have h_fuel_eq : ((emitScalar content).utf8ByteSize + 1) * 4 - 1 + 1 =
+      ((emitScalar content).utf8ByteSize + 1) * 4 := by
+    have h_size := emitScalar_utf8ByteSize_ge content; omega
+  rw [h_fuel_eq] at h_loop_s₀
+  rw [h_uwi] at h_loop_s₀
+  -- ═══ Step 3: scanFiltered = (s₁.emit streamEnd).tokens (after linearise) ═══
+  -- Walk scanFiltered: BOM identity + scanLoopFull + linearise.
+  have h_pks_final : ∀ e ∈ (s₁.emit .streamEnd).pendingKeys, e.kind = .unresolved := by
+    show ∀ e ∈ s₁.pendingKeys, e.kind = .unresolved
+    exact h_pks_s₁
+  have h_lin :
+      Scanner.linearise (s₁.emit .streamEnd).tokens (s₁.emit .streamEnd).pendingKeys
+        = (s₁.emit .streamEnd).tokens :=
+    L4YAML.Proofs.ScannerLinearise.linearise_all_unresolved
+      (s₁.emit .streamEnd).tokens (s₁.emit .streamEnd).pendingKeys h_pks_final
+  -- Reduce h_scan to a concrete tokens equation.
+  have h_scan_explicit :
+      Scanner.scanFiltered (emitScalar content) =
+        Except.ok (s₁.emit .streamEnd).tokens := by
+    -- Use `show` to reshape the goal into a form where we can split on the
+    -- BOM-match and rewrite scanLoopFull explicitly (mirroring the
+    -- J.3.6 `scanFiltered_of_chain` proof technique).
+    show (match scanLoopFull
+            (match ((ScannerState.mk' (emitScalar content)).emit .streamStart).peek? with
+             | some '﻿' => ((ScannerState.mk' (emitScalar content)).emit .streamStart).advance
+             | _ => (ScannerState.mk' (emitScalar content)).emit .streamStart)
+            (((emitScalar content).utf8ByteSize + 1) * 4) with
+          | Except.ok final =>
+              Except.ok (Scanner.linearise final.tokens final.pendingKeys)
+          | Except.error e => Except.error e) =
+        Except.ok (s₁.emit .streamEnd).tokens
+    -- BOM identity.
+    have h_bom_branch :
+        (match ((ScannerState.mk' (emitScalar content)).emit .streamStart).peek? with
+         | some '﻿' => ((ScannerState.mk' (emitScalar content)).emit .streamStart).advance
+         | _ => (ScannerState.mk' (emitScalar content)).emit .streamStart)
+          = (ScannerState.mk' (emitScalar content)).emit .streamStart := by
+      split
+      · rename_i h_bom; exact absurd h_bom h_no_bom
+      · rfl
+    rw [h_bom_branch]
+    rw [h_loop_s₀]
+    show Except.ok (Scanner.linearise (s₁.emit .streamEnd).tokens
+            (s₁.emit .streamEnd).pendingKeys) =
+          Except.ok (s₁.emit .streamEnd).tokens
+    rw [h_lin]
+  have h_scan_eq : tokens = (s₁.emit .streamEnd).tokens := by
+    rw [h_scan_explicit] at h_scan
+    exact (Except.ok.inj h_scan).symm
+  -- ═══ Step 4: derive size + element vals ═══
+  -- Substitute tokens by the concrete `s₁.tokens.push streamEnd-pos` shape.
+  have h_final_tokens : (s₁.emit .streamEnd).tokens = s₁.tokens.push
+      { pos := s₁.currentPos, val := YamlToken.streamEnd } := by
+    unfold ScannerState.emit; rfl
+  have h_tokens_eq :
+      tokens = s₁.tokens.push { pos := s₁.currentPos, val := YamlToken.streamEnd } := by
+    rw [h_scan_eq, h_final_tokens]
+  -- Discharge size + per-index claims from the concrete shape.
+  have h_s1_size : s₁.tokens.size = 2 := by
+    have h := congrArg Array.size h_map_s₁
+    simpa [Array.size_map] using h
+  have h_tok_size : tokens.size = 3 := by
+    rw [h_tokens_eq, Array.size_push, h_s1_size]
+  -- Convert s₁.tokens.map vals = [ss, scalar] to per-element facts via toList.
+  have h_s1_toList_map :
+      s₁.tokens.toList.map (·.val) = [.streamStart, .scalar content .doubleQuoted] := by
+    have h := congrArg Array.toList h_map_s₁
+    simpa [Array.toList_map] using h
+  have h_s1_size_list : s₁.tokens.toList.length = 2 := by
+    rw [Array.length_toList]; exact h_s1_size
+  obtain ⟨a, b, h_ab⟩ : ∃ a b, s₁.tokens.toList = [a, b] := by
+    match h_eq : s₁.tokens.toList, h_s1_size_list with
+    | [a, b], _ => exact ⟨a, b, rfl⟩
+  have h_ab_vals : a.val = .streamStart ∧ b.val = .scalar content .doubleQuoted := by
+    rw [h_ab] at h_s1_toList_map
+    simp at h_s1_toList_map
+    exact h_s1_toList_map
+  obtain ⟨h_a_val, h_b_val⟩ := h_ab_vals
+  -- Lift list elements to array via Array.toList_inj: s₁.tokens = #[a, b],
+  -- so s₁.tokens[0] = a and s₁.tokens[1] = b by rfl.
+  have h_s1_arr_eq : s₁.tokens = #[a, b] := Array.toList_inj.mp h_ab
+  have h_s1_t0 : s₁.tokens[0]'(by rw [h_s1_size]; omega) = a := by
+    have h_lit : (#[a, b] : Array (Positioned YamlToken))[0]'(by simp) = a := rfl
+    have h_eq :
+        s₁.tokens[0]'(by rw [h_s1_size]; omega) =
+          (#[a, b] : Array (Positioned YamlToken))[0]'(by simp) := by
+      congr 1 <;> exact h_s1_arr_eq
+    rw [h_eq]; exact h_lit
+  have h_s1_t1 : s₁.tokens[1]'(by rw [h_s1_size]; omega) = b := by
+    have h_lit : (#[a, b] : Array (Positioned YamlToken))[1]'(by simp) = b := rfl
+    have h_eq :
+        s₁.tokens[1]'(by rw [h_s1_size]; omega) =
+          (#[a, b] : Array (Positioned YamlToken))[1]'(by simp) := by
+      congr 1 <;> exact h_s1_arr_eq
+    rw [h_eq]; exact h_lit
+  refine ⟨h_tok_size, ?_, ?_, ?_⟩
+  · -- tokens[0]!.val = .streamStart
+    have h0 : 0 < tokens.size := by rw [h_tok_size]; omega
+    rw [getElem!_pos tokens 0 h0]
+    have h_lt : (0 : Nat) < s₁.tokens.size := by rw [h_s1_size]; omega
+    have h_get :
+        tokens[0]'h0 = (s₁.tokens.push
+          { pos := s₁.currentPos, val := YamlToken.streamEnd })[0]'(by
+            rw [h_tokens_eq] at h0; exact h0) := by
+      congr 1 <;> exact h_tokens_eq
+    rw [h_get, Array.getElem_push_lt h_lt, h_s1_t0]
+    exact h_a_val
+  · -- tokens[1]!.val = .scalar content .doubleQuoted
+    have h1 : 1 < tokens.size := by rw [h_tok_size]; omega
+    rw [getElem!_pos tokens 1 h1]
+    have h_lt : (1 : Nat) < s₁.tokens.size := by rw [h_s1_size]; omega
+    have h_get :
+        tokens[1]'h1 = (s₁.tokens.push
+          { pos := s₁.currentPos, val := YamlToken.streamEnd })[1]'(by
+            rw [h_tokens_eq] at h1; exact h1) := by
+      congr 1 <;> exact h_tokens_eq
+    rw [h_get, Array.getElem_push_lt h_lt, h_s1_t1]
+    exact h_b_val
+  · -- tokens[2]!.val = .streamEnd
+    have h2 : 2 < tokens.size := by rw [h_tok_size]; omega
+    rw [getElem!_pos tokens 2 h2]
+    have h_get :
+        tokens[2]'h2 = (s₁.tokens.push
+          { pos := s₁.currentPos, val := YamlToken.streamEnd })[2]'(by
+            rw [h_tokens_eq] at h2; exact h2) := by
+      congr 1 <;> exact h_tokens_eq
+    rw [h_get]
+    -- (s₁.tokens.push x)[2] when s₁.tokens.size = 2 is just x.
+    -- Use Array.getElem_push to compute (s₁.tokens.push x)[i] in general,
+    -- then split on whether i < s₁.tokens.size.
+    rw [Array.getElem_push]
+    -- Goal: if h : 2 < s₁.tokens.size then s₁.tokens[2]'h else x = x, but 2 ≥ size so else branch.
+    have h_not_lt : ¬ (2 < s₁.tokens.size) := by rw [h_s1_size]; omega
+    simp [h_not_lt]
+
+/-- **Scanner content preservation**: scanning `emitScalar content` produces
+    a token stream where the scalar token's content equals the original.
+
+    This bridges the emitter's `escapeString` encoding with the scanner's
+    `collectDoubleQuotedLoop` + `processEscape` decoding.
+
+    **Initiative 3 / J.3.7** (2026-04-29): post-cutover, this is a
+    direct corollary of `scanFiltered_emitScalar_vals` — `tokens[1]!.val`
+    pins the scalar at index 1 and `tokens.size = 3` provides the bound. -/
+theorem scanFiltered_emitScalar_content (content : String) (tokens : Array (Positioned YamlToken))
+    (h_scan : scanFiltered (emitScalar content) = .ok tokens) :
+    ∃ i, i < tokens.size ∧ tokens[i]!.val = .scalar content .doubleQuoted := by
+  obtain ⟨h_size, _, h_val1, _⟩ := scanFiltered_emitScalar_vals content tokens h_scan
+  exact ⟨1, by rw [h_size]; omega, h_val1⟩
 
 /-- When `parseDirectives` sees a non-directive token, it returns immediately
     with empty directives and unchanged state.

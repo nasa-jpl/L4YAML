@@ -369,6 +369,96 @@ theorem linearise_append_unresolved
             (tokens.size - (k + 1)) + (pendingKeys.size - pendingKeys.size) = n := by omega
         exact ih (k + 1) pendingKeys.size (acc.push tokens[k]) h_meas (Nat.le_refl _)
 
+/-- **All-unresolved invariance**: when every pending entry is unresolved,
+    `linearise tokens pendingKeys = tokens`.  Generalises
+    `linearise_append_unresolved` (single push) to arbitrary unresolved
+    pending arrays.
+
+    Used by `Proofs/Output/EmitterScannability.lean` (Initiative 3 / J.3.7)
+    to derive the linearised shape of `scanFiltered (emitScalar content)`,
+    where the scanner's `saveSimpleKey` reservation never resolves (no `:`
+    follows). -/
+theorem linearise_all_unresolved
+    (tokens : Array (Positioned YamlToken))
+    (pendingKeys : Array PendingKeyEntry)
+    (h_unres : ∀ e ∈ pendingKeys, e.kind = .unresolved) :
+    linearise tokens pendingKeys = tokens := by
+  -- Strong helper, in `toList` form (cleaner List.drop manipulation).
+  -- For all (n, k, p, acc): when the lex-measure equals n and indices
+  -- are in-bounds, `(linearise.go tokens pendingKeys k p acc).toList`
+  -- equals `acc.toList ++ tokens.toList.drop k`.
+  suffices h : ∀ (n k p : Nat) (acc : Array (Positioned YamlToken)),
+      (tokens.size - k) + (pendingKeys.size - p) = n →
+      k ≤ tokens.size → p ≤ pendingKeys.size →
+      (linearise.go tokens pendingKeys k p acc).toList
+        = acc.toList ++ tokens.toList.drop k by
+    apply Array.toList_inj.mp
+    unfold linearise
+    rw [h ((tokens.size - 0) + (pendingKeys.size - 0)) 0 0 #[] rfl
+          (Nat.zero_le _) (Nat.zero_le _)]
+    simp
+  intro n
+  induction n with
+  | zero =>
+    intro k p acc h_meas h_k h_p
+    have h_k_eq : k = tokens.size := by omega
+    have h_p_eq : p = pendingKeys.size := by omega
+    subst h_k_eq
+    subst h_p_eq
+    rw [linearise_go_done tokens pendingKeys tokens.size pendingKeys.size acc
+          (Nat.le_refl _) (Nat.le_refl _)]
+    have h_drop : tokens.toList.drop tokens.size = [] := by
+      apply List.drop_eq_nil_of_le
+      rw [Array.length_toList]; exact Nat.le_refl _
+    rw [h_drop, List.append_nil]
+  | succ n ih =>
+    intro k p acc h_meas h_k h_p
+    rw [linearise.go]
+    by_cases hp : p < pendingKeys.size
+    · simp only [hp, ↓reduceDIte]
+      have h_e_unres : pendingKeys[p].kind = .unresolved :=
+        h_unres _ (pendingKeys.getElem_mem hp)
+      have h_expand : expandKind pendingKeys[p] = #[] := by
+        unfold expandKind; rw [h_e_unres]
+      by_cases hsplice : pendingKeys[p].insertBeforeIdx ≤ k
+      · simp only [hsplice, ↓reduceIte]
+        have h_meas' : (tokens.size - k) + (pendingKeys.size - (p + 1)) = n := by omega
+        rw [h_expand, Array.append_empty]
+        exact ih k (p + 1) acc h_meas' h_k (by omega)
+      · simp only [hsplice, ↓reduceIte]
+        by_cases hk : k < tokens.size
+        · simp only [hk, ↓reduceDIte]
+          have h_meas' : (tokens.size - (k + 1)) + (pendingKeys.size - p) = n := by omega
+          rw [ih (k + 1) p (acc.push tokens[k]) h_meas' (by omega) h_p]
+          rw [Array.toList_push, List.append_assoc]
+          congr 1
+          have h_k_len : k < tokens.toList.length := by
+            rw [Array.length_toList]; exact hk
+          rw [List.drop_eq_getElem_cons h_k_len]
+          rw [Array.getElem_toList]
+          rfl
+        · simp only [hk, ↓reduceDIte]
+          have h_meas' : (tokens.size - k) + (pendingKeys.size - (p + 1)) = n := by omega
+          rw [h_expand, Array.append_empty]
+          exact ih k (p + 1) acc h_meas' h_k (by omega)
+    · simp only [hp, ↓reduceDIte]
+      have h_p_eq : p = pendingKeys.size := by omega
+      subst h_p_eq
+      by_cases hk : k < tokens.size
+      · simp only [hk, ↓reduceDIte]
+        have h_meas' : (tokens.size - (k + 1)) + (pendingKeys.size - pendingKeys.size) = n := by
+          omega
+        rw [ih (k + 1) pendingKeys.size (acc.push tokens[k]) h_meas'
+              (by omega) (Nat.le_refl _)]
+        rw [Array.toList_push, List.append_assoc]
+        congr 1
+        have h_k_len : k < tokens.toList.length := by
+          rw [Array.length_toList]; exact hk
+        rw [List.drop_eq_getElem_cons h_k_len]
+        rw [Array.getElem_toList]
+        rfl
+      · exfalso; omega
+
 /-- **Append-monotonicity** (the headline property of Path C).
 
     Pushing a new token to `tokens` extends `linearise`'s output
