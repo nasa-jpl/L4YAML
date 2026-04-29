@@ -12893,6 +12893,57 @@ theorem scanLoopFull_ok_implies_scanLoop_ok :
         simp only [h_snt]
         exact h_rec
 
+/-- **J.3.6 reverse bridge**: `scanLoop` succeeded ⟹ `scanLoopFull` succeeded.
+
+    The mirror of `scanLoopFull_ok_implies_scanLoop_ok`.  `scanLoop`
+    and `scanLoopFull` step in lock-step on `scanNextToken`; the only
+    difference is in the `.ok none` arm where `scanLoopFull` runs an
+    extra `skipToContent` that falls back to the input state on error.
+    That fallback never produces a new error, so any input that lets
+    `scanLoop` reach `.ok _` also lets `scanLoopFull` reach `.ok _`.
+
+    Lifts emitter-side chain reasoning (which lives at the
+    `scanLoop` / `ScanChain` layer) up to the `scanLoopFull`-flavoured
+    layer that `scanFiltered` actually consumes — used by
+    `scanFiltered_of_chain` and friends. -/
+theorem scanLoop_ok_implies_scanLoopFull_ok :
+    ∀ (s : ScannerState) (fuel : Nat) (tokens : Array (Positioned YamlToken)),
+      scanLoop s fuel = .ok tokens →
+      ∃ final, scanLoopFull s fuel = .ok final := by
+  intro s fuel
+  induction fuel generalizing s with
+  | zero =>
+    intro tokens h
+    simp [scanLoop] at h
+  | succ fuel' ih =>
+    intro tokens h
+    unfold scanLoop at h
+    simp only [] at h
+    cases h_snt : scanNextToken s with
+    | error e => rw [h_snt] at h; simp at h
+    | ok val =>
+      cases val with
+      | none =>
+        rw [h_snt] at h; simp only [] at h
+        by_cases hflow : s.flowLevel > 0
+        · simp only [hflow, ↓reduceIte] at h; simp at h
+        · simp only [hflow, ↓reduceIte] at h
+          by_cases hdir : s.directivesPresent && !s.documentEverStarted
+          · simp only [hdir, ↓reduceIte] at h; simp at h
+          · simp only [hdir] at h
+            -- Both branches in scanLoopFull also reach the .ok arm
+            -- (the inline `skipToContent` match is total).
+            unfold scanLoopFull
+            simp only [h_snt, hflow, ↓reduceIte, hdir, ↓reduceIte]
+            exact ⟨_, rfl⟩
+      | some s' =>
+        rw [h_snt] at h; simp only [] at h
+        obtain ⟨final', h_rec⟩ := ih s' tokens h
+        refine ⟨final', ?_⟩
+        unfold scanLoopFull
+        simp only [h_snt]
+        exact h_rec
+
 /-- **J.3.2 bridge**: `scanFiltered` succeeded ⟹ `scan` succeeded.
 
     The two share the BOM-handling prefix; their tails differ only in
@@ -12916,6 +12967,23 @@ theorem scanFiltered_ok_implies_scan_ok (input : String)
     unfold scan
     exact h_loop
   · simp at h
+
+/-- **J.3.6 reverse bridge** (BOM-aware): `scan` succeeded ⟹ `scanFiltered`
+    succeeded.
+
+    Lifts the `scanLoop → scanLoopFull` bridge across the shared BOM-handling
+    prefix.  Used by emitter-side scanner-acceptance proofs that build a
+    `ScanChain → scanLoop = .ok` witness and need to conclude existence at
+    the `scanFiltered` layer. -/
+theorem scan_ok_implies_scanFiltered_ok (input : String)
+    (tokens : Array (Positioned YamlToken))
+    (h : scan input = .ok tokens) :
+    ∃ ftokens, scanFiltered input = .ok ftokens := by
+  unfold scan at h
+  obtain ⟨final, h_full⟩ := scanLoop_ok_implies_scanLoopFull_ok _ _ _ h
+  refine ⟨linearise final.tokens final.pendingKeys, ?_⟩
+  unfold scanFiltered
+  simp only [h_full]
 
 -- `scanFiltered_produces_valid_tokens` is defined at the end of this
 -- file (after `scanLoopFull_preserves_LineariseFit`, which it

@@ -2040,12 +2040,12 @@ theorem FlowMonoChain_preserves_raw_prefix {s s' : ScannerState} {n fl₀ : Nat}
 
 /-- Connect a ScanChain to scanFiltered.
 
-    **Initiative 3 / J.2 step 5 cutover** (Category C): post-cutover
-    `scanFiltered` routes through `scanLoopFull` (not `scan`); the
-    chain bridge needs a `scanLoopFull`-flavoured analogue.
-    Structurally similar — every `scanLoop` reference becomes
-    `scanLoopFull` and the BOM/fuel reasoning carries over unchanged.
-    J.3 manifest 5.d. -/
+    **Initiative 3 / J.3.6** (2026-04-28): post-cutover `scanFiltered`
+    routes through `scanLoopFull`.  We compose the existing
+    `ScanChain → scanLoop = .ok` machinery (`scanLoop_eof_eq` +
+    `ScanChain.to_scanLoop`) with the J.3.6 reverse bridge
+    `scan_ok_implies_scanFiltered_ok` (in `ScannerCorrectness`) to
+    recover existence at the `scanFiltered` layer. -/
 theorem scanFiltered_of_chain (input : String)
     (s₀ s_final : ScannerState) (n : Nat)
     (h_s0 : s₀ = (ScannerState.mk' input).emit .streamStart)
@@ -2056,8 +2056,34 @@ theorem scanFiltered_of_chain (input : String)
     (h_dp : s_final.directivesPresent = false)
     (h_fuel : n + 1 ≤ (input.utf8ByteSize + 1) * 4) :
     ∃ tokens, scanFiltered input = .ok tokens := by
-  -- J.3 manifest 5.d: re-prove against scanLoopFull + linearise.
-  sorry
+  -- Step 1: scanLoop on s_final closes into `.ok ...` for any fuel ≥ 1.
+  have h_f_ge : (input.utf8ByteSize + 1) * 4 - n ≥ 1 := by omega
+  have h_loop_final := scanLoop_eof_eq h_f_ge h_eof h_fl h_dp
+  -- Step 2: Compose with the chain → scanLoop on s₀ closes into `.ok ...`.
+  have h_loop_s0 := h_chain.to_scanLoop h_loop_final
+  have h_fuel_eq : ((input.utf8ByteSize + 1) * 4 - n) + n = (input.utf8ByteSize + 1) * 4 := by
+    omega
+  rw [h_fuel_eq] at h_loop_s0
+  -- Step 3: scan input = .ok _ via the BOM/fuel bookkeeping.
+  have h_scan_eq : scan input =
+      .ok ((unwindIndents s_final (-1)).emit .streamEnd).tokens := by
+    -- `peek?` is invariant under `emit` (which only touches `tokens`),
+    -- so the BOM-handle in `scan` resolves to identity and the start
+    -- state matches s₀.
+    have h_no_bom' : ((ScannerState.mk' input).emit .streamStart).peek? ≠ some '﻿' :=
+      h_no_bom
+    show scanLoop (match ((ScannerState.mk' input).emit .streamStart).peek? with
+            | some '﻿' => ((ScannerState.mk' input).emit .streamStart).advance
+            | _ => (ScannerState.mk' input).emit .streamStart)
+          ((input.utf8ByteSize + 1) * 4) =
+          .ok ((unwindIndents s_final (-1)).emit .streamEnd).tokens
+    split
+    · rename_i h_bom
+      exact absurd h_bom h_no_bom'
+    · rw [← h_s0]
+      exact h_loop_s0
+  -- Step 4: lift to scanFiltered via the J.3.6 reverse bridge.
+  exact L4YAML.Proofs.ScannerCorrectness.scan_ok_implies_scanFiltered_ok _ _ h_scan_eq
 
 /-- **Equality version**: gives the exact filtered token array from a ScanChain.
 
@@ -3470,16 +3496,30 @@ theorem scanNextToken_emitScalar_init (content : String) :
 /-- **Scalar case**: The scanner accepts any double-quoted scalar produced
     by the emitter.
 
-    **Initiative 3 / J.2 step 5 cutover** (Category C): pre-cutover the
-    proof reduced `scanFiltered` to `scan input` then `.filter`.
-    Post-cutover `scanFiltered` flows through `scanLoopFull` directly,
-    so the bridge step changes shape.  Structurally similar — replace
-    `scanLoop` with `scanLoopFull` throughout — but mechanical re-work.
-    J.3 manifest 5.d. -/
+    **Initiative 3 / J.3.6** (2026-04-28): post-cutover, route the
+    one-step `scanNextToken_emitScalar_init` chain through the J.3.6
+    `scanFiltered_of_chain` consumer.  The init lemma already supplies
+    `s₁.peek? = none`, `flowLevel = 0`, `directivesPresent = false`;
+    `scanNextToken_eof` closes the loop on `s₁`. -/
 theorem scan_accepts_emitScalar (content : String) :
     ∃ tokens, scanFiltered (emitScalar content) = .ok tokens := by
-  -- J.3 manifest 5.d: re-prove via scanLoopFull / linearise.
-  sorry
+  obtain ⟨s₁, h_snt₁, h_peek₁, h_fl₁, h_dp₁, _, _, _⟩ :=
+    scanNextToken_emitScalar_init content
+  let s₀ := (ScannerState.mk' (emitScalar content)).emit .streamStart
+  have h_chain : ScanChain s₀ 1 s₁ := ScanChain.single h_snt₁
+  have h_eof : scanNextToken s₁ = .ok none := scanNextToken_eof s₁ h_peek₁
+  -- BOM check: emitScalar content starts with '"', not '﻿'.
+  have h_no_bom : (ScannerState.mk' (emitScalar content)).peek? ≠ some '﻿' := by
+    have h_chars := chars_from_zero_toList (emitScalar content)
+    rw [emitScalar_toList] at h_chars
+    have h_corr := initial_corr (emitScalar content) _ h_chars
+    have ⟨h_pk, _⟩ := peek_of_chars_cons _ '"' _ 0 h_corr
+    rw [h_pk]; decide
+  -- Fuel: emitScalar produces ≥ 2 bytes, so (utf8ByteSize + 1) * 4 ≥ 12 ≥ 1 + 1.
+  have h_fuel : 1 + 1 ≤ ((emitScalar content).utf8ByteSize + 1) * 4 := by
+    have h := emitScalar_utf8ByteSize_ge content; omega
+  exact scanFiltered_of_chain (emitScalar content) s₀ s₁ 1 rfl h_no_bom
+    h_chain h_eof h_fl₁ h_dp₁ h_fuel
 
 -- ═══ Flow collection scanner acceptance ═══
 -- Infrastructure for proving that the scanner accepts emitted flow collections.
@@ -9078,11 +9118,22 @@ theorem scanFiltered_boundary_tokens (input : String)
     tokens.size ≥ 2 ∧
     tokens[0]!.val = .streamStart ∧
     tokens[tokens.size - 1]!.val = .streamEnd := by
-  -- **Initiative 3 / J.2 step 5 cutover** (Category C): scanFiltered
-  -- now uses linearise rather than tokens.filter; the boundary-token
-  -- proof needs to be re-derived against linearise's shape.
-  -- J.3 manifest 5.d.
-  sorry
+  -- **Initiative 3 / J.3.6** (2026-04-28): post-cutover `scanFiltered`
+  -- uses `linearise`; the per-field theorems
+  -- `scanFiltered_first_is_streamStart` / `scanFiltered_last_is_streamEnd`
+  -- (Step 9.b in `ScannerCorrectness`) already discharge the new shape.
+  have h_size : tokens.size ≥ 2 :=
+    L4YAML.Proofs.ScannerCorrectness.scanFiltered_produces_at_least_two
+      input tokens h
+  have h_pos₀ : 0 < tokens.size := by omega
+  have h_pos_last : tokens.size - 1 < tokens.size := by omega
+  refine ⟨h_size, ?_, ?_⟩
+  · rw [getElem!_pos _ 0 h_pos₀]
+    exact L4YAML.Proofs.ScannerCorrectness.scanFiltered_first_is_streamStart
+      input tokens h h_pos₀
+  · rw [getElem!_pos _ (tokens.size - 1) h_pos_last]
+    exact L4YAML.Proofs.ScannerCorrectness.scanFiltered_last_is_streamEnd
+      input tokens h h_pos₀
 
 theorem scanFlowSequenceStart_filtered (s : ScannerState) :
     let p := fun (t : Positioned YamlToken) => t.val != .placeholder
