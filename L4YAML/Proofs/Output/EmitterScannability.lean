@@ -10267,9 +10267,32 @@ theorem emitPairList_body_linearise_characterization
         (s.tokens.filter (fun t => t.val != .placeholder)).size
         h_size_le h_pos h_idx h_kind
     exact ⟨h_lin, fun _ => h_at⟩
-  · -- Part (3): linearise-shape after-flowEntry-key claim — resolved-key splice analysis
-    -- (Foundation B + chain-side accounting), deferred as J.4.2.b-2d-key-fe.
-    sorry
+  · -- Part (3): linearise-shape after-flowEntry-key claim — discharged via Foundation B
+    -- (`linearise_splice_keyonly_at_index`) plus chain-side accounting of the
+    -- `s'.pendingKeys[p]` shape for each outer-level flowEntry.  Foundation B
+    -- supplies the splice mechanic (transport + .keyOnly readout); the chain
+    -- supplies the (j, p, acc) state with `acc.size = k + 1` matching the
+    -- after-flowEntry position.  The remaining sorry is narrowed to chain-side
+    -- accounting (J.4.2.b-2d-key-chain extended to all outer pairs).
+    intro k h_old_le_k h_hi h_fe h_balance
+    -- Chain-side accounting (J.4.2.b-2d-key-chain): the pending key entry
+    -- corresponding to the pair AFTER the flowEntry at outer-level position `k`
+    -- has `kind = .keyOnly` and the linearise walk reaches state `(j, p, acc)`
+    -- with `acc.size = k + 1` and `pks[p].insertBeforeIdx ≤ j`.
+    have h_chain_facts :
+        ∃ (j p : Nat) (acc : Array (Positioned YamlToken))
+          (_ : linearise s'.tokens s'.pendingKeys
+                = L4YAML.Scanner.linearise.go s'.tokens s'.pendingKeys j p acc)
+          (_ : acc.size = k + 1)
+          (h_p : p < s'.pendingKeys.size),
+          s'.pendingKeys[p].insertBeforeIdx ≤ j ∧ s'.pendingKeys[p].kind = .keyOnly := by
+      sorry
+    obtain ⟨j, p, acc, h_eq_lin, h_acc_size, h_p, h_splice, h_kind⟩ := h_chain_facts
+    obtain ⟨h_k1_lt, h_at⟩ :=
+      L4YAML.Proofs.ScannerLinearise.linearise_splice_keyonly_at_index
+        s'.tokens s'.pendingKeys j p (k + 1) acc
+        h_eq_lin h_acc_size h_p h_splice h_kind
+    exact ⟨h_k1_lt, fun _ => h_at⟩
 
 /-- Token structure of `scanFiltered ("[" ++ emitList items ++ "]")` for non-empty items.
     Establishes boundary tokens, body token patterns, and `parseNode` success within

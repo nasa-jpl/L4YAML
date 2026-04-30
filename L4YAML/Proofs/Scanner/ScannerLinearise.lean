@@ -1576,4 +1576,107 @@ theorem linearise_first_splice_keyonly
     · simp [h_acc_size]
     · rw [h_eq, h_step_one]
 
+/-- **Foundation B for J.4.2.b-2d-key (linearise-shape pair body, Part 3)**:
+    when `linearise tokens pks` has reached state `(j, p, acc)` (witnessed
+    by a transport equation `linearise tokens pks = linearise.go tokens pks j p acc`)
+    and the next pending key splice fires with `.keyOnly` kind, position
+    `acc.size` of the linearised output is `.key`.
+
+    Companion to `linearise_first_splice_keyonly` (Foundation A): Foundation
+    A indexes from the start (walks `(0, 0, #[]) → (j, 0, tokens[0..j])`
+    internally, then fires `pks[0]`); Foundation B is the splice mechanic
+    in isolation — it doesn't know how the walk reached `(j, p, acc)`,
+    leaving that to chain-side accounting (J.4.2.b-2d-key-chain).
+
+    Used by `emitPairList_body_linearise_characterization` Part (3) to
+    discharge the after-flowEntry-key claim: chain-side accounting supplies
+    the `(j, p, acc)` state with `acc.size = k + 1` (where `acc[k] =
+    .flowEntry`) and the splice precondition (`pks[p].insertBeforeIdx ≤ j`,
+    `pks[p].kind = .keyOnly`); Foundation B reads off `linearise[k+1] = .key`.
+
+    Proof structure (mirrors the inner half of Foundation A):
+    1. Step `linearise.go` once from `(j, p, acc)` to fire the splice:
+       result is `linearise.go tokens pks j (p+1) (acc ++ expandKind pks[p])`.
+    2. Since `pks[p].kind = .keyOnly`, `expandKind pks[p] = #[⟨pos, .key, pos⟩]`,
+       so `(acc ++ expandKind pks[p])[acc.size].val = .key`.
+    3. Prefix-stability (`linearise_go_getElem_lt_acc`) carries this to
+       `(linearise.go tokens pks j (p+1) (acc ++ expandKind pks[p]))[acc.size]`.
+    4. Transport via `h_eq` and the step equation gives the result on
+       `linearise tokens pks`. -/
+theorem linearise_splice_keyonly_at
+    (tokens : Array (Positioned YamlToken))
+    (pks : Array PendingKeyEntry)
+    (j p : Nat)
+    (acc : Array (Positioned YamlToken))
+    (h_eq : linearise tokens pks = linearise.go tokens pks j p acc)
+    (h_p : p < pks.size)
+    (h_splice_fires : pks[p].insertBeforeIdx ≤ j)
+    (h_kind : pks[p].kind = .keyOnly) :
+    ∃ (h_lin : acc.size < (linearise tokens pks).size),
+      ((linearise tokens pks)[acc.size]'h_lin).val = .key := by
+  -- Step 1: fire the splice.
+  have h_step_splice :
+      linearise.go tokens pks j p acc
+        = linearise.go tokens pks j (p + 1) (acc ++ expandKind pks[p]) := by
+    rw [linearise.go]
+    simp only [h_p, ↓reduceDIte, h_splice_fires, ↓reduceIte]
+  -- Step 2: expandKind pks[p] = #[⟨pks[p].pos, .key, pks[p].pos⟩].
+  have h_expand_eq : expandKind pks[p]
+      = (#[⟨pks[p].pos, .key, pks[p].pos⟩] : Array (Positioned YamlToken)) := by
+    simp [expandKind, h_kind]
+  have h_expand_size : (expandKind pks[p]).size = 1 := by
+    rw [h_expand_eq]; rfl
+  have h_acc_ext_size : (acc ++ expandKind pks[p]).size = acc.size + 1 := by
+    rw [Array.size_append, h_expand_size]
+  have h_acc_lt_acc_ext : acc.size < (acc ++ expandKind pks[p]).size := by
+    rw [h_acc_ext_size]; omega
+  have h_acc_ext_at_acc :
+      ((acc ++ expandKind pks[p])[acc.size]'h_acc_lt_acc_ext).val = .key := by
+    rw [Array.getElem_append_right (Nat.le_refl _)]
+    have h_idx_zero : acc.size - acc.size = 0 := Nat.sub_self _
+    simp only [h_idx_zero, h_expand_eq]
+    rfl
+  -- Step 3: prefix-stability carries the readout through linearise.go from (j, p+1).
+  have h_mono := linearise_go_size_mono tokens pks
+    ((tokens.size - j) + (pks.size - (p + 1))) j (p + 1) (acc ++ expandKind pks[p]) rfl
+  rw [h_acc_ext_size] at h_mono
+  have h_lt_lin' :
+      acc.size < (linearise.go tokens pks j (p + 1) (acc ++ expandKind pks[p])).size := h_mono
+  have h_at_acc :
+      (linearise.go tokens pks j (p + 1) (acc ++ expandKind pks[p]))[acc.size]'h_lt_lin'
+        = (acc ++ expandKind pks[p])[acc.size]'h_acc_lt_acc_ext :=
+    linearise_go_getElem_lt_acc tokens pks j (p + 1) (acc ++ expandKind pks[p]) acc.size
+      h_acc_lt_acc_ext h_lt_lin'
+  -- Step 4: transport along h_eq + h_step_splice.
+  have h_lin_eq : linearise tokens pks
+      = linearise.go tokens pks j (p + 1) (acc ++ expandKind pks[p]) := by
+    rw [h_eq, h_step_splice]
+  have h_lt_lin : acc.size < (linearise tokens pks).size := by
+    rw [h_lin_eq]; exact h_lt_lin'
+  refine ⟨h_lt_lin, ?_⟩
+  have h_lin_at : (linearise tokens pks)[acc.size]'h_lt_lin
+      = (linearise.go tokens pks j (p + 1) (acc ++ expandKind pks[p]))[acc.size]'h_lt_lin' := by
+    congr 1 <;> exact h_lin_eq
+  rw [h_lin_at, h_at_acc]
+  exact h_acc_ext_at_acc
+
+/-- Index-form corollary of Foundation B: the consumer typically knows
+    `acc.size = k` for some target index `k` (e.g., `k + 1` after a
+    flowEntry).  This form unifies the readout on `linearise[k]` directly,
+    saving the consumer one transport step. -/
+theorem linearise_splice_keyonly_at_index
+    (tokens : Array (Positioned YamlToken))
+    (pks : Array PendingKeyEntry)
+    (j p k : Nat)
+    (acc : Array (Positioned YamlToken))
+    (h_eq : linearise tokens pks = linearise.go tokens pks j p acc)
+    (h_acc_size : acc.size = k)
+    (h_p : p < pks.size)
+    (h_splice_fires : pks[p].insertBeforeIdx ≤ j)
+    (h_kind : pks[p].kind = .keyOnly) :
+    ∃ (h_lin : k < (linearise tokens pks).size),
+      ((linearise tokens pks)[k]'h_lin).val = .key := by
+  subst h_acc_size
+  exact linearise_splice_keyonly_at tokens pks j p acc h_eq h_p h_splice_fires h_kind
+
 end L4YAML.Proofs.ScannerLinearise
