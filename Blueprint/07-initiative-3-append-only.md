@@ -761,6 +761,7 @@ rooted at `Scanner/Linearise.lean`:
 | J.4.2.c-pos1 | Positional lemma `linearise_second_eq_tokens_second` (index-1 readout for `flowSequenceStart` / `blockMappingStart`) | 0 (new infrastructure) | `Proofs/Scanner/ScannerLinearise.lean` | ✓ done 2026-04-29 |
 | J.4.2.b-pkwi | Chain-side `PendingKeysWellIndexed` helpers (`PendingKeysWellIndexed_init`, `ScanChain.preserves_PendingKeysWellIndexed`, `PendingKeysWellIndexed_of_chain_from_init`, `PendingKeysWellIndexed_emit_streamEnd`) | 0 (new infrastructure) | `Proofs/Output/EmitterScannability.lean` | ✓ done 2026-04-30 |
 | J.4.2.c-pos2 | Positional lemma `linearise_secondLast_eq_tokens_last_inner` (second-to-last readout for `flowSequenceEnd` / `blockMappingEnd` after `streamEnd` push) | 0 (new infrastructure) | `Proofs/Scanner/ScannerLinearise.lean` | ✓ done 2026-04-30 |
+| J.4.2.c-prefix | Positional lemma `linearise_prefix_eq_tokens_prefix` (arbitrary-prefix readout under "no early splice"; subsumes `linearise_first_eq_tokens_first` and the index-1 readout from `linearise_second_eq_tokens_second`) | 0 (new infrastructure) | `Proofs/Scanner/ScannerLinearise.lean` | ✓ done 2026-04-30 |
 
 **J.3.1 — Linearise foundations** [✓ completed 2026-04-26]:
 
@@ -1657,6 +1658,40 @@ cascade consumers need to pin down `streamStart` / `flowSequenceStart`
 unchanged (12); infrastructure landing.  Build green (453 jobs); ~69
 lines including docstring.
 
+**J.4.2.c-prefix landed (2026-04-30)**: arbitrary-prefix readout in
+`Proofs/Scanner/ScannerLinearise.lean`:
+
+```
+linearise_prefix_eq_tokens_prefix
+    (tokens : Array (Positioned YamlToken))
+    (pks : Array PendingKeyEntry)
+    (i : Nat)
+    (h_i : i ≤ tokens.size)
+    (h_pks : ∀ p (h : p < pks.size), i ≤ pks[p].insertBeforeIdx) :
+    ∃ (h_lin : i ≤ (linearise tokens pks).size),
+      ∀ (j : Nat) (hj : j < i),
+        (linearise tokens pks)[j] = tokens[j]
+```
+
+Mechanism: induct on `k` (number of `linearise.go` steps already taken)
+to build an accumulator of size `k` whose contents are `(tokens[0], …,
+tokens[k-1])`.  At each step the splice test `pks[0].insertBeforeIdx ≤
+k` is false (since `insertBeforeIdx ≥ i > k` by hypothesis), so
+`linearise.go` pushes `tokens[k]` and recurses to `(k+1, 0, acc.push
+tokens[k])`.  After `i` steps prefix-stability
+(`linearise_go_getElem_lt_acc`) reads off `tokens[0..i)`.  Implemented
+via a `suffices` / nested existential to expose the size-equality
+`acc.size = k` so the per-index proof obligation `j < acc.size` can be
+discharged uniformly.
+
+This generalises both `linearise_first_eq_tokens_first` (the `i = 1`
+specialisation) and the index-1 readout from
+`linearise_second_eq_tokens_second` (the `i = 2` specialisation), so
+future cascade work can read off any number of leading boundary tokens
+in a single `linearise_prefix_eq_tokens_prefix` call rather than chaining
+per-position lemmas.  Sorry count unchanged (12); infrastructure
+landing.  Build green (453 jobs); ~93 lines including docstring.
+
 **Next concrete step (J.4.2.b — consumer refactor)**
 
 The `_structure` consumers' `h_tok_eq` bridge is FALSE in general
@@ -1723,6 +1758,13 @@ Positional lemma status (in `Proofs/Scanner/ScannerLinearise.lean`):
   `linearise_push_eq_push_linearise` and `linearise_last_eq_tokens_last`.
   Reads `tokens[tokens.size - 2]` (closing `flowSequenceEnd` /
   `blockMappingEnd`) on the post-`streamEnd` linearised output.
+- ✓ **`linearise_prefix_eq_tokens_prefix`** (J.4.2.c-prefix) —
+  arbitrary-prefix readout: for any `i ≤ tokens.size`, if every pending
+  entry's `insertBeforeIdx ≥ i`, the first `i` slots of `linearise tokens
+  pks` equal the first `i` slots of `tokens` pointwise.  Subsumes
+  `linearise_first_eq_tokens_first` (`i = 1`) and the index-1 readout
+  from `linearise_second_eq_tokens_second` (`i = 2`).  Used to read off
+  any number of leading boundary tokens uniformly.
 
 Remaining J.4.2.b work:
 
@@ -1734,20 +1776,42 @@ Remaining J.4.2.b work:
    `ScanChain.preserves_PendingKeysWellIndexed` (chain induction), and
    `PendingKeysWellIndexed_emit_streamEnd` (final emit step).  Step 2 of
    the cascade skeleton above now uses these directly.
-2. **Linearise-shape body characterizations (the bulk)**: variants of
-   `emitList_body_filtered_characterization` and
-   `emitPairList_body_filtered_characterization` that produce
-   linearise-shape rather than `(s₂.tokens.filter p)`-shape conclusions.
-   ≥ 200 lines per consumer; this is the substantial multi-day leg of
-   J.4.2.b.
+2. **Linearise-shape body characterizations (the bulk)** — substantial
+   multi-day leg.  The bulk task is now broken into smaller cadence-sized
+   substeps:
+   - **2a (no-resolutions sub-class)**: characterize the syntactic class
+     of inputs (flow seqs of scalars / nested flow seqs without
+     `:`-bearing pairs) for which `pendingKeys` stays all-unresolved
+     through scanFiltered, so that `linearise_eq_filter_no_resolutions`
+     (J.4.1) bridges the existing filter-shape body characterizations to
+     linearise-shape directly.  Lives in `Proofs/Scanner/...` as a chain
+     invariant.  Estimate: 1 cadence step.
+   - **2b (placeholder-free invariant)**: prove the global invariant that
+     `s.tokens` contains no `.placeholder` at the chain endpoint when no
+     resolutions have fired (stronger version of the per-position
+     invariant).  Feeds the no-placeholder hypothesis of
+     `linearise_eq_filter_no_resolutions`.  Estimate: 1 cadence step.
+   - **2c (linearise-shape seq body)**: produce a linearise-shape variant
+     of `emitList_body_filtered_characterization` for the all-scalar /
+     no-resolution case, using 2a + 2b as the bridge.  Estimate: 1-2
+     cadence steps.
+   - **2d (linearise-shape pair body)**: produce a linearise-shape variant
+     of `emitPairList_body_filtered_characterization`, which is harder
+     because `:` resolutions DO fire — needs richer linearise-aware
+     reasoning over the resolved-key splices, not just the no-resolution
+     bridge.  This is the largest remaining sub-task.  Estimate: 2-3
+     cadence steps (or one multi-day landing).
 3. **Stitch the cascade** into `scanFiltered_emitSeq_nonempty_structure`
    (currently line 9844 sorry) and `scanFiltered_emitMap_nonempty_structure`
    (currently line 10070 sorry), discharging both Tier 1 cascade sorries
    using the J.4.2.c family of positional lemmas + the J.4.2.b-pkwi
-   chain-endpoint invariant.
+   chain-endpoint invariant + the linearise-shape body characterizations
+   from item (2).  Estimate: 1-2 cadence steps once (2c, 2d) are in tree.
 
-This remaining chunk (items 2 + 3) is the substantial leg of J.4
-(multi-day effort).
+The remaining chunk (items 2 + 3) is the substantial leg of J.4 — but
+the breakdown above lets each substep land in cadence-size, with the
+positional family (J.4.2.c-prefix / -pos1 / -pos2) and the chain-endpoint
+invariant (J.4.2.b-pkwi) already in place to support them.
 
 **J.3 final gate**: `lake build` green; sorry count 19 → 12
 (2 cascade Cat C for J.4 cleanup + 10 Tier 2 EmitterScannability
@@ -1767,6 +1831,12 @@ J.4.2.c-pos2 (`linearise_secondLast_eq_tokens_last_inner`) landed
 cascade discharge, no sorry cleared).  This closes the J.4.2.c
 positional family — index 0, 1, size-2, size-1 readouts on the
 post-`streamEnd` linearised output are all in tree.
+J.4.2.c-prefix (`linearise_prefix_eq_tokens_prefix`) landed 2026-04-30
+with sorry count unchanged at 12 (infrastructure for the cascade
+discharge, no sorry cleared).  Generalises `linearise_first_eq_tokens_first`
+and the index-1 readout from `linearise_second_eq_tokens_second` into
+a single arbitrary-prefix readout, so future cascade work can read off
+any number of leading tokens uniformly.
 
 ### Phase J.4 — Cleanup and follow-on (1-2 weeks)
 
