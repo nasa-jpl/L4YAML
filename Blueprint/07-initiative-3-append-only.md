@@ -762,6 +762,7 @@ rooted at `Scanner/Linearise.lean`:
 | J.4.2.b-pkwi | Chain-side `PendingKeysWellIndexed` helpers (`PendingKeysWellIndexed_init`, `ScanChain.preserves_PendingKeysWellIndexed`, `PendingKeysWellIndexed_of_chain_from_init`, `PendingKeysWellIndexed_emit_streamEnd`) | 0 (new infrastructure) | `Proofs/Output/EmitterScannability.lean` | ✓ done 2026-04-30 |
 | J.4.2.c-pos2 | Positional lemma `linearise_secondLast_eq_tokens_last_inner` (second-to-last readout for `flowSequenceEnd` / `blockMappingEnd` after `streamEnd` push) | 0 (new infrastructure) | `Proofs/Scanner/ScannerLinearise.lean` | ✓ done 2026-04-30 |
 | J.4.2.c-prefix | Positional lemma `linearise_prefix_eq_tokens_prefix` (arbitrary-prefix readout under "no early splice"; subsumes `linearise_first_eq_tokens_first` and the index-1 readout from `linearise_second_eq_tokens_second`) | 0 (new infrastructure) | `Proofs/Scanner/ScannerLinearise.lean` | ✓ done 2026-04-30 |
+| J.4.2.b-2a | `AllUnresolved` predicate + Class A/B/C preservation lemmas (`AllUnresolved_mono`, `AllUnresolved_push_unresolved`, `AllUnresolved_field_update`, `setPendingKeyKind_unresolved_preserves_AllUnresolved`, `saveSimpleKey_preserves_AllUnresolved`) | 0 (new infrastructure) | `Proofs/Scanner/ScannerCorrectness.lean` | ✓ done 2026-04-30 |
 
 **J.3.1 — Linearise foundations** [✓ completed 2026-04-26]:
 
@@ -1692,6 +1693,43 @@ in a single `linearise_prefix_eq_tokens_prefix` call rather than chaining
 per-position lemmas.  Sorry count unchanged (12); infrastructure
 landing.  Build green (453 jobs); ~93 lines including docstring.
 
+**J.4.2.b-2a landed (2026-04-30)**: `AllUnresolved` predicate +
+algebraic-class preservation lemmas in
+`Proofs/Scanner/ScannerCorrectness.lean`:
+
+```
+def AllUnresolved (s : ScannerState) : Prop :=
+  ∀ e ∈ s.pendingKeys, e.kind = .unresolved
+
+AllUnresolved_mono                              -- Class A passthrough
+AllUnresolved_push_unresolved                   -- Class B append-.unresolved
+AllUnresolved_field_update                      -- Class C kind-preserving
+setPendingKeyKind_unresolved_preserves_AllUnresolved
+                                                -- Class C variant for
+                                                --   setPendingKeyKind .unresolved
+saveSimpleKey_preserves_AllUnresolved           -- Class B specialisation
+```
+
+Mechanism: parallels the `PendingKeysWellIndexed` algebraic-class
+machinery established in J.3.3.  Class A (passthrough) is the
+trivial mono lemma.  Class B (append) uses
+`Array.mem_push.rcases`; the appended entry from `saveSimpleKey`
+always has `kind := .unresolved`.  Class C (field update) uses
+`Array.mem_iff_getElem` plus a kind-equality hypothesis on every
+kept entry.  The `setPendingKeyKind` variant uses the existing
+`setPendingKeyKind_decomp` (identity ∨ `setIfInBounds`) and
+`Array.mem_or_eq_of_mem_setIfInBounds` to dispatch over membership in
+the post-update array — when the kind being written is
+`.unresolved`, both arms preserve the predicate.
+
+Single operation that breaks the predicate: `setPendingKeyKind active
+<non-.unresolved>` fired by `scanValuePrepare` to confirm a
+`:`-resolution.  Inputs that never trigger that path (no
+`:`-bearing pairs) keep `AllUnresolved` through the chain — exactly
+the syntactic sub-class 2c will exploit.  Sorry count unchanged
+(12); infrastructure landing.  Build green (453 jobs); ~103 lines
+including docstring.
+
 **Next concrete step (J.4.2.b — consumer refactor)**
 
 The `_structure` consumers' `h_tok_eq` bridge is FALSE in general
@@ -1779,13 +1817,24 @@ Remaining J.4.2.b work:
 2. **Linearise-shape body characterizations (the bulk)** — substantial
    multi-day leg.  The bulk task is now broken into smaller cadence-sized
    substeps:
-   - **2a (no-resolutions sub-class)**: characterize the syntactic class
-     of inputs (flow seqs of scalars / nested flow seqs without
-     `:`-bearing pairs) for which `pendingKeys` stays all-unresolved
-     through scanFiltered, so that `linearise_eq_filter_no_resolutions`
-     (J.4.1) bridges the existing filter-shape body characterizations to
-     linearise-shape directly.  Lives in `Proofs/Scanner/...` as a chain
-     invariant.  Estimate: 1 cadence step.
+   - ✓ **Done (J.4.2.b-2a, 2026-04-30)**: `AllUnresolved` predicate +
+     Class A/B/C preservation lemmas (`AllUnresolved_mono`,
+     `AllUnresolved_push_unresolved`, `AllUnresolved_field_update`,
+     `setPendingKeyKind_unresolved_preserves_AllUnresolved`,
+     `saveSimpleKey_preserves_AllUnresolved`) in
+     `Proofs/Scanner/ScannerCorrectness.lean`.  The predicate captures
+     "no `:`-resolution has fired" as a named definition, with
+     algebraic-class preservation lemmas mirroring the
+     `PendingKeysWellIndexed` machinery.  Step preservation across
+     `scanNextToken` / `scanLoopFull` (the chain induction) is
+     deferred to 2a-chain (a follow-up landing) or rolled into 2c —
+     it requires showing that for inputs without `:`-bearing pairs,
+     `scanValuePrepare` never fires `setPendingKeyKind` with a
+     non-unresolved kind.
+   - **2a-chain (chain induction, optional follow-up)**: prove
+     `ScanChain.preserves_AllUnresolved` for inputs in the
+     no-`:`-pair sub-class — the chain-side companion to the
+     per-action lemmas just landed.  Estimate: 1 cadence step.
    - **2b (placeholder-free invariant)**: prove the global invariant that
      `s.tokens` contains no `.placeholder` at the chain endpoint when no
      resolutions have fired (stronger version of the per-position
@@ -1837,6 +1886,13 @@ discharge, no sorry cleared).  Generalises `linearise_first_eq_tokens_first`
 and the index-1 readout from `linearise_second_eq_tokens_second` into
 a single arbitrary-prefix readout, so future cascade work can read off
 any number of leading tokens uniformly.
+J.4.2.b-2a (`AllUnresolved` predicate + Class A/B/C preservation
+lemmas) landed 2026-04-30 with sorry count unchanged at 12
+(infrastructure for the cascade discharge, no sorry cleared).
+Establishes the "no resolutions fired" predicate as a named
+definition with the algebraic-class machinery mirroring
+`PendingKeysWellIndexed`, ready for chain-side propagation in 2a-chain
+or 2c.
 
 ### Phase J.4 — Cleanup and follow-on (1-2 weeks)
 
