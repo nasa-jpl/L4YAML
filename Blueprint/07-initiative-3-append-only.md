@@ -764,6 +764,7 @@ rooted at `Scanner/Linearise.lean`:
 | J.4.2.c-prefix | Positional lemma `linearise_prefix_eq_tokens_prefix` (arbitrary-prefix readout under "no early splice"; subsumes `linearise_first_eq_tokens_first` and the index-1 readout from `linearise_second_eq_tokens_second`) | 0 (new infrastructure) | `Proofs/Scanner/ScannerLinearise.lean` | ✓ done 2026-04-30 |
 | J.4.2.b-2a | `AllUnresolved` predicate + Class A/B/C preservation lemmas (`AllUnresolved_mono`, `AllUnresolved_push_unresolved`, `AllUnresolved_field_update`, `setPendingKeyKind_unresolved_preserves_AllUnresolved`, `saveSimpleKey_preserves_AllUnresolved`) | 0 (new infrastructure) | `Proofs/Scanner/ScannerCorrectness.lean` | ✓ done 2026-04-30 |
 | J.4.2.b-2a-chain | Chain-side `AllUnresolved` propagation: `AllUnresolved_init`, parametric `ScanChain.preserves_AllUnresolved`, `AllUnresolved_of_chain_from_init`, `AllUnresolved_emit_streamEnd` | 0 (new infrastructure) | `Proofs/Output/EmitterScannability.lean` | ✓ done 2026-04-30 |
+| J.4.2.b-2a-discharge | Per-action `AllUnresolved` preservation discharging the parametric `h_step` for the no-`:`-pair sub-class: `setPendingKeyEndLine_kind`, `setPendingKeyEndLine_wrap_preserves_AllUnresolved`, `scanValueClearKey_no_key`, `scanValuePrepare_no_key_preserves_pendingKeys`, `scanValue_{no_key_preserves_pendingKeys, preserves_AllUnresolved}`, the four per-dispatcher `*_preserves_AllUnresolved` lemmas, `preprocess_preserves_AllUnresolved`, `allowDir_ite_preserves_AllUnresolved`, `scanNextToken_preserves_AllUnresolved` | 0 (new infrastructure) | `Proofs/Scanner/ScannerCorrectness.lean` | ✓ done 2026-04-30 |
 
 **J.3.1 — Linearise foundations** [✓ completed 2026-04-26]:
 
@@ -1771,6 +1772,71 @@ survives the final `streamEnd` push that
 unchanged (12); infrastructure landing.  Build green (453 jobs); +86
 lines including docstring.
 
+**J.4.2.b-2a-discharge landed (2026-04-30)**: per-action preservation
+discharging the parametric `h_step` of
+`ScanChain.preserves_AllUnresolved` for the no-`:`-pair sub-class.
+Lands in `Proofs/Scanner/ScannerCorrectness.lean`:
+
+```
+-- Class C ingredients (quoted-scalar wrappers):
+setPendingKeyEndLine_kind                          -- kind preserved by endLine update
+setPendingKeyEndLine_wrap_preserves_AllUnresolved  -- "/'  arms
+
+-- scanValue sub-class (`simpleKey.possible = false` → Class A):
+scanValueClearKey_no_key                                 -- identity result
+scanValuePrepare_no_key_preserves_pendingKeys            -- Class A on pendingKeys
+scanValue_no_key_preserves_pendingKeys                   -- full chain Class A
+scanValue_preserves_AllUnresolved                        -- with sub-class hyp
+
+-- Per-dispatcher AllUnresolved preservation:
+dispatchStructural_preserves_AllUnresolved          -- Class A (mono lift)
+dispatchFlowIndicators_preserves_AllUnresolved      -- Class A (mono lift)
+dispatchBlockIndicators_preserves_AllUnresolved     -- with `c = ':' → ¬ simpleKey.possible`
+dispatchContent_preserves_AllUnresolved             -- Class A + " /' Class C
+preprocess_preserves_AllUnresolved                  -- A + Class B (saveSimpleKey)
+allowDir_ite_preserves_AllUnresolved                -- pure projection
+
+-- Top-level (parametric sub-class hypothesis):
+scanNextToken_preserves_AllUnresolved
+```
+
+Mechanism: mirrors the `*_preserves_PendingKeysWellIndexed` chain
+exactly, with each Class A action's preservation lifted from the
+existing `*_preserves_pendingKeys` lemma via `AllUnresolved_mono`.
+The single break path — `scanValuePrepare`'s `simpleKey.possible =
+true` arm — is sealed off by carrying `s.simpleKey.possible = false`
+through `scanValueClearKey` (no-op when not possible),
+`scanValuePrepare` (skips the breaking branch, falls through to
+`pushMappingIndent` / identity), `emit`, `advance`, and the final
+`with simpleKeyAllowed, explicitKeyLine` projection — all of which
+leave `pendingKeys` unchanged.  Quoted-scalar arms in
+`dispatchContent` apply the Class C field-update via
+`setPendingKeyEndLine_kind`, which leaves every entry's `kind`
+fixed.  `preprocess` re-uses `saveSimpleKey_preserves_AllUnresolved`
+(Class B, push of `.unresolved`) from J.4.2.b-2a.
+
+The top-level lemma signature:
+
+```
+scanNextToken_preserves_AllUnresolved :
+    ∀ (s s' : ScannerState),
+      AllUnresolved s →
+      scanNextToken s = .ok (some s') →
+      (∀ s_pre c,
+        scanNextToken_preprocess s = .ok (some (s_pre, c)) →
+        c = ':' → s_pre.simpleKey.possible = false) →
+      AllUnresolved s'
+```
+
+The hypothesis bridges the post-`allowDir_ite` state by an inline
+`split <;> rfl` projection over `simpleKey.possible` (the
+`allowDir_ite` mutation only touches `allowDirectives` /
+`documentEverStarted`).  For the no-`:`-pair sub-class (flow seqs of
+scalars; nested flow seqs), the hypothesis collapses to `c ≠ ':'`
+at every preprocess output, trivially discharged by induction on
+the input shape.  Sorry count unchanged (12); infrastructure
+landing.  Build green (453 jobs); +350 lines.
+
 **Next concrete step (J.4.2.b — consumer refactor)**
 
 The `_structure` consumers' `h_tok_eq` bridge is FALSE in general
@@ -1880,21 +1946,28 @@ Remaining J.4.2.b work:
      path.  Cascade consumers in 2c/2d discharge `h_step` step-by-step
      via the Class A/B/C machinery from 2a, scoped to the no-`:`-pair
      sub-class they target.  The `_emit_streamEnd` companion is
-     unconditional.  Open follow-up work tracked under 2a-discharge
-     below.
-   - **2a-discharge (per-action `h_step` for the no-`:`-pair sub-class)**:
-     specialise `h_step` for the sub-class — prove
-     `scanNextToken_preserves_AllUnresolved` under a hypothesis that
-     captures "the dispatched character does not trigger
-     `scanValuePrepare`'s `:`-resolution arm".  Concretely: every
-     scanner action other than `scanValuePrepare`'s
-     `simpleKey.possible = true` arm preserves `AllUnresolved` via
-     Class A passthrough or Class B/C with `.unresolved`.  Estimate:
-     1-2 cadence steps (per-dispatcher proofs mirror the
-     `*_preserves_PendingKeysWellIndexed` chain).  Optional — if 2c's
-     direct cascade derivation does not need a generic
-     `scanNextToken`-level lemma, the per-step discharge can be inlined
-     locally where the sub-class hypothesis is in scope.
+     unconditional.
+   - ✓ **Done (J.4.2.b-2a-discharge, 2026-04-30)**: per-action
+     preservation discharging the parametric `h_step` of
+     `ScanChain.preserves_AllUnresolved` for the no-`:`-pair
+     sub-class.  Lands the full `*_preserves_AllUnresolved` chain
+     mirroring `*_preserves_PendingKeysWellIndexed`: Class C
+     ingredients (`setPendingKeyEndLine_kind`,
+     `setPendingKeyEndLine_wrap_preserves_AllUnresolved`); the
+     `scanValue` sub-class triple
+     (`scanValueClearKey_no_key`,
+     `scanValuePrepare_no_key_preserves_pendingKeys`,
+     `scanValue_no_key_preserves_pendingKeys`,
+     `scanValue_preserves_AllUnresolved`); per-dispatcher
+     preservation (`dispatchStructural`, `dispatchFlowIndicators`,
+     `dispatchBlockIndicators` with `c = ':' → simpleKey.possible
+     = false`, `dispatchContent`, `preprocess`, `allowDir_ite`); and
+     the top-level `scanNextToken_preserves_AllUnresolved`
+     parametric in a sub-class hypothesis on the post-preprocess
+     state.  For the no-`:`-pair sub-class the hypothesis collapses
+     to `c ≠ ':'` at every dispatch point.  Cascade consumers (2c)
+     plug this directly into `ScanChain.preserves_AllUnresolved`
+     (J.4.2.b-2a-chain) after sub-class specialization.
    - **2b (placeholder-free invariant)**: prove the global invariant that
      `s.tokens` contains no `.placeholder` at the chain endpoint when no
      resolutions have fired (stronger version of the per-position
@@ -1962,6 +2035,19 @@ chain-side block; the chain induction is parametric in a per-action
 preservation hypothesis to reflect that `scanValuePrepare`'s
 `:`-resolution is the single break path — cascade consumers
 discharge it scoped to the no-`:`-pair sub-class they target.
+J.4.2.b-2a-discharge (per-action `AllUnresolved` preservation:
+`scanValue_preserves_AllUnresolved` with sub-class hypothesis +
+the four per-dispatcher `*_preserves_AllUnresolved` lemmas +
+`preprocess_preserves_AllUnresolved` +
+`scanNextToken_preserves_AllUnresolved`) landed 2026-04-30 with
+sorry count unchanged at 12 (infrastructure for the cascade
+discharge, no sorry cleared).  Discharges the parametric `h_step`
+of `ScanChain.preserves_AllUnresolved` for the no-`:`-pair
+sub-class — cascade consumers in 2c plug it in after sub-class
+specialization (the hypothesis collapses to `c ≠ ':'` at every
+preprocess output for flow seqs of scalars / nested flow seqs).
+Closes the J.4.2.b-2a chain (predicate → chain induction →
+per-action discharge); 2b/2c/2d remain.
 
 ### Phase J.4 — Cleanup and follow-on (1-2 weeks)
 
