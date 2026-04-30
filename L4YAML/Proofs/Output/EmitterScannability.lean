@@ -10229,13 +10229,46 @@ theorem emitPairList_body_linearise_characterization
     h_chain.preserves_NoPlaceholders
       (fun h h_ok => ScannerCorrectness.scanNextToken_preserves_NoPlaceholders _ _ h h_ok)
       h_no_pl
-  -- Step 3: assemble; linearise-shape Parts (2)/(3) sorry'd as J.4.2.b-2d-key.
+  -- Step 3: assemble.
   refine ⟨n, s', h_chain, h_corr', h_fl', h_dp', h_ids', h_ek',
           h_col', h_inflow', h_indent', h_line', h_atol', h_endline',
           h_stack', h_fmc', h_n_ge3, h_no_pl', ?_, ?_⟩
-  · -- Part (2): linearise-shape first-key claim — resolved-key splice analysis
-    sorry
+  · -- Part (2): linearise-shape first-key claim — discharged via Foundation A
+    -- (`linearise_first_splice_keyonly`) plus chain-side accounting of
+    -- `s'.pendingKeys[0]`'s shape.  The splice analysis is now closed; only
+    -- the chain-side facts remain as J.4.2.b-2d-key-chain.
+
+    -- (s.tokens.filter p) = s.tokens since `NoPlaceholders s`.
+    have h_filter_eq_s :
+        s.tokens.filter (fun t => t.val != .placeholder) = s.tokens := by
+      apply Array.filter_eq_self.mpr
+      intro t h_mem
+      have h_ne : t.val ≠ .placeholder := h_no_pl t h_mem
+      simp [bne_iff_ne, h_ne]
+    -- Chain-side accounting (J.4.2.b-2d-key-chain): the first pending key
+    -- entry in `s'.pendingKeys` is the resolved key for pair 1 — its
+    -- `insertBeforeIdx` matches the saveSimpleKey time stamp `s.tokens.size`
+    -- (= `(s.tokens.filter p).size` via the filter identity), and its kind
+    -- has been resolved to `.keyOnly` by `scanValuePrepare` on the first `:`.
+    -- Also bundles `(s.tokens.filter p).size ≤ s'.tokens.size` (chain-side
+    -- token monotonicity) as Foundation A's `h_j_le` precondition.
+    have h_chain_facts :
+        ∃ (_ : 0 < s'.pendingKeys.size),
+          (s.tokens.filter (fun t => t.val != .placeholder)).size ≤ s'.tokens.size ∧
+          s'.pendingKeys[0].insertBeforeIdx
+            = (s.tokens.filter (fun t => t.val != .placeholder)).size ∧
+          s'.pendingKeys[0].kind = .keyOnly := by
+      sorry
+    obtain ⟨h_pos, h_size_le, h_idx, h_kind⟩ := h_chain_facts
+    -- Apply Foundation A.
+    obtain ⟨h_lin, h_at⟩ :=
+      L4YAML.Proofs.ScannerLinearise.linearise_first_splice_keyonly
+        s'.tokens s'.pendingKeys
+        (s.tokens.filter (fun t => t.val != .placeholder)).size
+        h_size_le h_pos h_idx h_kind
+    exact ⟨h_lin, fun _ => h_at⟩
   · -- Part (3): linearise-shape after-flowEntry-key claim — resolved-key splice analysis
+    -- (Foundation B + chain-side accounting), deferred as J.4.2.b-2d-key-fe.
     sorry
 
 /-- Token structure of `scanFiltered ("[" ++ emitList items ++ "]")` for non-empty items.

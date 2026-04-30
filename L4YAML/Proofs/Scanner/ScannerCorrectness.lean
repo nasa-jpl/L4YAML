@@ -11739,7 +11739,7 @@ theorem NoPlaceholders_extension {s s' : ScannerState}
     (h_size : s.tokens.size ≤ s'.tokens.size)
     (h_prefix : ∀ i (h_i : i < s.tokens.size),
       s'.tokens[i]'(Nat.lt_of_lt_of_le h_i h_size) = s.tokens[i])
-    (h_new : ∀ i (h_old : s.tokens.size ≤ i) (h_new : i < s'.tokens.size),
+    (h_new : ∀ i (_h_old : s.tokens.size ≤ i) (h_new : i < s'.tokens.size),
       (s'.tokens[i]'h_new).val ≠ .placeholder)
     (h : NoPlaceholders s) : NoPlaceholders s' := by
   intro t ht
@@ -12053,7 +12053,7 @@ theorem scanDirective_preserves_NoPlaceholders {s s' : ScannerState}
     (h_size := ScanHelpers.scanDirective_monotonic s s' h_ok)
     (h_prefix := fun i hi => ScanHelpers.scanDirective_preserves_prefix s s' h_ok i hi)
     ?_ h
-  -- `NoPlaceholders_extension` binds `h_old : s.tokens.size ≤ j` before
+  -- `NoPlaceholders_extension` binds `_h_old : s.tokens.size ≤ j` before
   -- `h_lt : j < s'.tokens.size`.
   intro j hge hlt
   -- The arm structure of scanDirective: YAML directive | TAG directive | comment

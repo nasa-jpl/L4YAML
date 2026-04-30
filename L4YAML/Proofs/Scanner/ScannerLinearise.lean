@@ -1462,4 +1462,118 @@ theorem linearise_prefix_eq_tokens_prefix
         simp [Array.getElem_push, h_not_lt]
     · rw [h_eq, h_step_one]
 
+/-- **Foundation A for J.4.2.b-2d-key (linearise-shape pair body, Part 2)**:
+    when the first pending key entry is `.keyOnly` with
+    `insertBeforeIdx = j ≤ tokens.size`, the linearised output has `.key`
+    at index `j`.
+
+    Proof sketch (adapted from `linearise_prefix_eq_tokens_prefix`):
+    1. Walk `linearise.go` from `(0, 0, #[])` to `(j, 0, tokens[0..j])`
+       without firing any splices: at each `k < j`, `pks[0].insertBeforeIdx
+       = j > k`, so the splice test fails and `linearise.go` copies
+       `tokens[k]`.
+    2. At `(j, 0, tokens[0..j])`, the splice test `pks[0].insertBeforeIdx
+       ≤ j` holds, so `linearise.go` recurses to `(j, 1, tokens[0..j] ++
+       expandKind pks[0])`.  Since `pks[0].kind = .keyOnly`, `expandKind
+       pks[0] = #[⟨pos, .key, pos⟩]`, so the new accumulator's index `j`
+       is `.key`.
+    3. Subsequent `linearise.go` iterations only push at indices `> j`,
+       so prefix-stability (`linearise_go_getElem_lt_acc`) reads
+       `linearise[j] = .key` off the post-splice accumulator.
+
+    Used by the resolution-case body characterization
+    (`emitPairList_body_linearise_characterization`) to discharge
+    Part (2) (`linearise[old_sz].val = .key`) once chain-side accounting
+    establishes that `s'.pendingKeys[0].kind = .keyOnly` and
+    `s'.pendingKeys[0].insertBeforeIdx = s.tokens.size`. -/
+theorem linearise_first_splice_keyonly
+    (tokens : Array (Positioned YamlToken))
+    (pks : Array PendingKeyEntry)
+    (j : Nat)
+    (h_j_le : j ≤ tokens.size)
+    (h_pks_pos : 0 < pks.size)
+    (h_first_idx : pks[0].insertBeforeIdx = j)
+    (h_first_kind : pks[0].kind = .keyOnly) :
+    ∃ (h_lin : j < (linearise tokens pks).size),
+      ((linearise tokens pks)[j]'h_lin).val = .key := by
+  -- Build acc of size j with prefix tokens[0..j] via the no-splice walk.
+  suffices h_walk : ∃ (acc : Array (Positioned YamlToken)) (_ : acc.size = j),
+      linearise tokens pks = linearise.go tokens pks j 0 acc by
+    obtain ⟨acc, h_acc_size, h_eq⟩ := h_walk
+    -- Step linearise.go once more: splice pks[0] (test fires since
+    -- pks[0].insertBeforeIdx = j ≤ j).
+    have h_splice_le : pks[0].insertBeforeIdx ≤ j :=
+      h_first_idx ▸ Nat.le_refl _
+    have h_step_splice :
+        linearise.go tokens pks j 0 acc
+          = linearise.go tokens pks j 1 (acc ++ expandKind pks[0]) := by
+      rw [linearise.go]
+      simp only [h_pks_pos, ↓reduceDIte, h_splice_le, ↓reduceIte]
+    -- expandKind pks[0] = #[⟨pks[0].pos, .key, pks[0].pos⟩] since kind = .keyOnly.
+    have h_expand_eq : expandKind pks[0]
+        = (#[⟨pks[0].pos, .key, pks[0].pos⟩] : Array (Positioned YamlToken)) := by
+      simp [expandKind, h_first_kind]
+    -- (acc ++ expandKind pks[0]).size = j + 1.
+    have h_expand_size : (expandKind pks[0]).size = 1 := by
+      rw [h_expand_eq]; rfl
+    have h_acc_ext_size : (acc ++ expandKind pks[0]).size = j + 1 := by
+      rw [Array.size_append, h_acc_size, h_expand_size]
+    have h_j_lt_acc_ext : j < (acc ++ expandKind pks[0]).size := by
+      rw [h_acc_ext_size]; omega
+    -- (acc ++ expandKind pks[0])[j].val = .key.
+    have h_acc_ext_at_j : ((acc ++ expandKind pks[0])[j]'h_j_lt_acc_ext).val = .key := by
+      have h_acc_le_j : acc.size ≤ j := h_acc_size ▸ Nat.le_refl _
+      rw [Array.getElem_append_right h_acc_le_j]
+      -- Now goal: (expandKind pks[0])[j - acc.size]'_.val = .key.
+      have h_idx_zero : j - acc.size = 0 := by rw [h_acc_size]; omega
+      simp only [h_idx_zero, h_expand_eq]
+      rfl
+    -- linearise.go from (j, 1, acc ++ expandKind pks[0]) is monotone; index j is preserved.
+    have h_mono := linearise_go_size_mono tokens pks
+      ((tokens.size - j) + (pks.size - 1)) j 1 (acc ++ expandKind pks[0]) rfl
+    rw [h_acc_ext_size] at h_mono
+    have h_j_lt_lin' :
+        j < (linearise.go tokens pks j 1 (acc ++ expandKind pks[0])).size := h_mono
+    have h_at_acc :
+        (linearise.go tokens pks j 1 (acc ++ expandKind pks[0]))[j]'h_j_lt_lin'
+          = (acc ++ expandKind pks[0])[j]'h_j_lt_acc_ext :=
+      linearise_go_getElem_lt_acc tokens pks j 1 (acc ++ expandKind pks[0]) j
+        h_j_lt_acc_ext h_j_lt_lin'
+    -- Transport along h_eq + h_step_splice.
+    have h_lin_eq : linearise tokens pks
+        = linearise.go tokens pks j 1 (acc ++ expandKind pks[0]) := by
+      rw [h_eq, h_step_splice]
+    have h_j_lt_lin : j < (linearise tokens pks).size := by
+      rw [h_lin_eq]; exact h_j_lt_lin'
+    refine ⟨h_j_lt_lin, ?_⟩
+    have h_lin_at_j : (linearise tokens pks)[j]'h_j_lt_lin
+        = (linearise.go tokens pks j 1 (acc ++ expandKind pks[0]))[j]'h_j_lt_lin' := by
+      congr 1 <;> exact h_lin_eq
+    rw [h_lin_at_j, h_at_acc]
+    exact h_acc_ext_at_j
+  -- Walk linearise.go from (0, 0, #[]) to (j, 0, tokens[0..j]) without
+  -- firing any splices.  Proof by induction on `k ≤ j`.
+  suffices h_step : ∀ (k : Nat) (_ : k ≤ j),
+      ∃ (acc : Array (Positioned YamlToken)) (_ : acc.size = k),
+        linearise tokens pks = linearise.go tokens pks k 0 acc by
+    exact h_step j (Nat.le_refl _)
+  intro k h_k_le
+  induction k with
+  | zero =>
+    refine ⟨#[], by simp, ?_⟩
+    unfold linearise; rfl
+  | succ k ih =>
+    obtain ⟨acc, h_acc_size, h_eq⟩ := ih (by omega)
+    have h_k_lt : k < tokens.size := by omega
+    have h_step_one : linearise.go tokens pks k 0 acc
+        = linearise.go tokens pks (k+1) 0 (acc.push (tokens[k]'h_k_lt)) := by
+      rw [linearise.go]
+      simp only [h_pks_pos, ↓reduceDIte]
+      have h_not_splice : ¬ pks[0].insertBeforeIdx ≤ k := by
+        rw [h_first_idx]; omega
+      simp only [h_not_splice, ↓reduceIte, h_k_lt, ↓reduceDIte]
+    refine ⟨acc.push (tokens[k]'h_k_lt), ?_, ?_⟩
+    · simp [h_acc_size]
+    · rw [h_eq, h_step_one]
+
 end L4YAML.Proofs.ScannerLinearise
