@@ -763,6 +763,7 @@ rooted at `Scanner/Linearise.lean`:
 | J.4.2.c-pos2 | Positional lemma `linearise_secondLast_eq_tokens_last_inner` (second-to-last readout for `flowSequenceEnd` / `blockMappingEnd` after `streamEnd` push) | 0 (new infrastructure) | `Proofs/Scanner/ScannerLinearise.lean` | ✓ done 2026-04-30 |
 | J.4.2.c-prefix | Positional lemma `linearise_prefix_eq_tokens_prefix` (arbitrary-prefix readout under "no early splice"; subsumes `linearise_first_eq_tokens_first` and the index-1 readout from `linearise_second_eq_tokens_second`) | 0 (new infrastructure) | `Proofs/Scanner/ScannerLinearise.lean` | ✓ done 2026-04-30 |
 | J.4.2.b-2a | `AllUnresolved` predicate + Class A/B/C preservation lemmas (`AllUnresolved_mono`, `AllUnresolved_push_unresolved`, `AllUnresolved_field_update`, `setPendingKeyKind_unresolved_preserves_AllUnresolved`, `saveSimpleKey_preserves_AllUnresolved`) | 0 (new infrastructure) | `Proofs/Scanner/ScannerCorrectness.lean` | ✓ done 2026-04-30 |
+| J.4.2.b-2a-chain | Chain-side `AllUnresolved` propagation: `AllUnresolved_init`, parametric `ScanChain.preserves_AllUnresolved`, `AllUnresolved_of_chain_from_init`, `AllUnresolved_emit_streamEnd` | 0 (new infrastructure) | `Proofs/Output/EmitterScannability.lean` | ✓ done 2026-04-30 |
 
 **J.3.1 — Linearise foundations** [✓ completed 2026-04-26]:
 
@@ -1730,6 +1731,46 @@ the syntactic sub-class 2c will exploit.  Sorry count unchanged
 (12); infrastructure landing.  Build green (453 jobs); ~103 lines
 including docstring.
 
+**J.4.2.b-2a-chain landed (2026-04-30)**: chain-side companion to the
+per-action `AllUnresolved` lemmas in
+`Proofs/Output/EmitterScannability.lean`:
+
+```
+AllUnresolved_init                              -- vacuous on initial state
+ScanChain.preserves_AllUnresolved               -- parametric chain induction
+AllUnresolved_of_chain_from_init                -- combined helper from init
+AllUnresolved_emit_streamEnd                    -- final emit step
+```
+
+Mechanism: mirrors the four-theorem PKWI chain-side block
+(`PendingKeysWellIndexed_init` / `ScanChain.preserves_PendingKeysWellIndexed`
+/ `PendingKeysWellIndexed_of_chain_from_init` /
+`PendingKeysWellIndexed_emit_streamEnd`).  The key shape difference
+is that `ScanChain.preserves_AllUnresolved` takes a **parametric**
+per-action preservation hypothesis
+
+```
+h_step : ∀ {sa sb : ScannerState},
+           AllUnresolved sa →
+           scanNextToken sa = .ok sb →
+           AllUnresolved sb
+```
+
+rather than relying on an unconditional `scanNextToken_preserves_*`
+lemma.  This reflects the J.4.2.b-2a observation that
+`AllUnresolved` is broken by `setPendingKeyKind active <non-.unresolved>`
+fired in `scanValuePrepare`, so the per-action discharge depends on
+the input sub-class (no `:`-bearing pairs).  Cascade consumers in
+2c/2d will discharge `h_step` step-by-step via the Class A/B/C
+machinery, scoped to the sub-class they target.
+
+The `_emit_streamEnd` companion is unconditional — `emit` only pushes
+a token and leaves `pendingKeys` unchanged, so `AllUnresolved`
+survives the final `streamEnd` push that
+`linearise_eq_filter_no_resolutions` operates on.  Sorry count
+unchanged (12); infrastructure landing.  Build green (453 jobs); +86
+lines including docstring.
+
 **Next concrete step (J.4.2.b — consumer refactor)**
 
 The `_structure` consumers' `h_tok_eq` bridge is FALSE in general
@@ -1825,16 +1866,35 @@ Remaining J.4.2.b work:
      `Proofs/Scanner/ScannerCorrectness.lean`.  The predicate captures
      "no `:`-resolution has fired" as a named definition, with
      algebraic-class preservation lemmas mirroring the
-     `PendingKeysWellIndexed` machinery.  Step preservation across
-     `scanNextToken` / `scanLoopFull` (the chain induction) is
-     deferred to 2a-chain (a follow-up landing) or rolled into 2c —
-     it requires showing that for inputs without `:`-bearing pairs,
-     `scanValuePrepare` never fires `setPendingKeyKind` with a
-     non-unresolved kind.
-   - **2a-chain (chain induction, optional follow-up)**: prove
-     `ScanChain.preserves_AllUnresolved` for inputs in the
-     no-`:`-pair sub-class — the chain-side companion to the
-     per-action lemmas just landed.  Estimate: 1 cadence step.
+     `PendingKeysWellIndexed` machinery.
+   - ✓ **Done (J.4.2.b-2a-chain, 2026-04-30)**: chain-side propagation
+     of `AllUnresolved` (`AllUnresolved_init`,
+     `ScanChain.preserves_AllUnresolved`,
+     `AllUnresolved_of_chain_from_init`,
+     `AllUnresolved_emit_streamEnd`) in
+     `Proofs/Output/EmitterScannability.lean`.  The chain induction is
+     **parametric** in a per-action preservation hypothesis (`h_step :
+     AllUnresolved sa → scanNextToken sa = .ok sb → AllUnresolved
+     sb`), reflecting the observation that `setPendingKeyKind active
+     <non-.unresolved>` from `scanValuePrepare` is the single break
+     path.  Cascade consumers in 2c/2d discharge `h_step` step-by-step
+     via the Class A/B/C machinery from 2a, scoped to the no-`:`-pair
+     sub-class they target.  The `_emit_streamEnd` companion is
+     unconditional.  Open follow-up work tracked under 2a-discharge
+     below.
+   - **2a-discharge (per-action `h_step` for the no-`:`-pair sub-class)**:
+     specialise `h_step` for the sub-class — prove
+     `scanNextToken_preserves_AllUnresolved` under a hypothesis that
+     captures "the dispatched character does not trigger
+     `scanValuePrepare`'s `:`-resolution arm".  Concretely: every
+     scanner action other than `scanValuePrepare`'s
+     `simpleKey.possible = true` arm preserves `AllUnresolved` via
+     Class A passthrough or Class B/C with `.unresolved`.  Estimate:
+     1-2 cadence steps (per-dispatcher proofs mirror the
+     `*_preserves_PendingKeysWellIndexed` chain).  Optional — if 2c's
+     direct cascade derivation does not need a generic
+     `scanNextToken`-level lemma, the per-step discharge can be inlined
+     locally where the sub-class hypothesis is in scope.
    - **2b (placeholder-free invariant)**: prove the global invariant that
      `s.tokens` contains no `.placeholder` at the chain endpoint when no
      resolutions have fired (stronger version of the per-position
@@ -1893,6 +1953,15 @@ Establishes the "no resolutions fired" predicate as a named
 definition with the algebraic-class machinery mirroring
 `PendingKeysWellIndexed`, ready for chain-side propagation in 2a-chain
 or 2c.
+J.4.2.b-2a-chain (chain-side `AllUnresolved` propagation:
+`AllUnresolved_init`, parametric `ScanChain.preserves_AllUnresolved`,
+`AllUnresolved_of_chain_from_init`, `AllUnresolved_emit_streamEnd`)
+landed 2026-04-30 with sorry count unchanged at 12 (infrastructure
+for the cascade discharge, no sorry cleared).  Mirrors the PKWI
+chain-side block; the chain induction is parametric in a per-action
+preservation hypothesis to reflect that `scanValuePrepare`'s
+`:`-resolution is the single break path — cascade consumers
+discharge it scoped to the no-`:`-pair sub-class they target.
 
 ### Phase J.4 — Cleanup and follow-on (1-2 weeks)
 
