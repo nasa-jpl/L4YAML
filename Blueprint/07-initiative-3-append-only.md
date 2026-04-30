@@ -767,6 +767,7 @@ rooted at `Scanner/Linearise.lean`:
 | J.4.2.b-2a-discharge | Per-action `AllUnresolved` preservation discharging the parametric `h_step` for the no-`:`-pair sub-class: `setPendingKeyEndLine_kind`, `setPendingKeyEndLine_wrap_preserves_AllUnresolved`, `scanValueClearKey_no_key`, `scanValuePrepare_no_key_preserves_pendingKeys`, `scanValue_{no_key_preserves_pendingKeys, preserves_AllUnresolved}`, the four per-dispatcher `*_preserves_AllUnresolved` lemmas, `preprocess_preserves_AllUnresolved`, `allowDir_ite_preserves_AllUnresolved`, `scanNextToken_preserves_AllUnresolved` | 0 (new infrastructure) | `Proofs/Scanner/ScannerCorrectness.lean` | ✓ done 2026-04-30 |
 | J.4.2.b-2b | `NoPlaceholders` predicate + Class A/B preservation lemmas (`NoPlaceholders_mono`, `NoPlaceholders_emit`, `NoPlaceholders_emitAt`) and chain-side propagation (`NoPlaceholders_init`, parametric `ScanChain.preserves_NoPlaceholders`, `NoPlaceholders_of_chain_from_init`, `NoPlaceholders_emit_streamEnd`) | 0 (new infrastructure) | `Proofs/Scanner/ScannerCorrectness.lean`, `Proofs/Output/EmitterScannability.lean` | ✓ done 2026-04-30 |
 | J.4.2.b-2b-discharge | Per-action `NoPlaceholders` preservation discharging the parametric `h_step` (unconditional — no sub-class hypothesis): `NoPlaceholders_extension` / `NoPlaceholders_extension_one` generic helpers; primitive Class A leaves (`advance_preserves_NoPlaceholders`, `advanceN_preserves_NoPlaceholders`, `skipToContent_preserves_NoPlaceholders`, `saveSimpleKey_preserves_{tokens,NoPlaceholders}`, `scanValueClearKey_preserves_NoPlaceholders`); indent helpers (`pushSequenceIndent_preserves_NoPlaceholders`, `pushMappingIndent_preserves_NoPlaceholders`, `unwindIndentsLoop_preserves_NoPlaceholders`, `unwindIndents_preserves_NoPlaceholders`); per-scanner `*_preserves_NoPlaceholders` for `scanFlow{SequenceStart, SequenceEnd, MappingStart, MappingEnd, Entry}`, `scanBlockEntry`, `scanKey`, `scanValuePrepare`, `scanValue`, `scanDocumentStart`, `scanDocumentEnd`, `scanAnchorOrAlias`, `scanTag`, `scanBlockScalar`, `scanDoubleQuoted`, `scanSingleQuoted`, `scanPlainScalar`, `scanDirective`; supporting `*_new_token_not_placeholder` helpers (canonical `_new_token_not_plain` style) for the content scanners + `scanVerbatimTag` / `scanSecondaryTag` / `scanNamedTag` / `scanBlockScalarBody` / `scanYamlDirective` / `scanTagDirective`; the four per-dispatcher `*_preserves_NoPlaceholders` lemmas; `preprocess_preserves_NoPlaceholders`, `allowDir_ite_preserves_NoPlaceholders`, top-level `scanNextToken_preserves_NoPlaceholders` | 0 (new infrastructure) | `Proofs/Scanner/ScannerCorrectness.lean` | ✓ done 2026-04-30 |
+| J.4.2.b-2c | Linearise-shape variant of `emitList_body_filtered_characterization` for the no-resolution sub-class: `emitList_body_linearise_characterization` wraps the filter-shape body characterization, derives `AllUnresolved s'` (parametric in `h_step_unres` — caller plugs in `scanNextToken_preserves_AllUnresolved` from J.4.2.b-2a-discharge under the no-`:`-pair sub-class) and `NoPlaceholders s'` (unconditional via `scanNextToken_preserves_NoPlaceholders` from J.4.2.b-2b-discharge), then bridges `linearise s'.tokens s'.pendingKeys = s'.tokens.filter p` via `linearise_eq_filter_no_resolutions` (J.4.1) | 0 (new infrastructure) | `Proofs/Output/EmitterScannability.lean` | ✓ done 2026-04-30 |
 
 **J.3.1 — Linearise foundations** [✓ completed 2026-04-26]:
 
@@ -2180,13 +2181,26 @@ Remaining J.4.2.b work:
      proofs follow the `*_preserves_PendingKeysWellIndexed` template.
      Closes the J.4.2.b-2b chain symmetrically with the
      J.4.2.b-2a → 2a-chain → 2a-discharge pattern.
-   - **2c (linearise-shape seq body)**: produce a linearise-shape variant
-     of `emitList_body_filtered_characterization` for the all-scalar /
-     no-resolution case, using 2a + 2b as the bridge.  Equipped with
-     2a-discharge + 2b-discharge (top-level `scanNextToken_preserves_*`
-     lemmas) plus the J.4.2.c positional family (`-pos1`, `-pos2`,
-     `-prefix`) and the J.4.2.b-pkwi chain-endpoint invariant.
-     Estimate: 1-2 cadence steps.
+   - ✓ **Done (J.4.2.b-2c, 2026-04-30)**: linearise-shape variant of
+     `emitList_body_filtered_characterization` for the no-resolution
+     sub-class.  `emitList_body_linearise_characterization` wraps the
+     filter-shape body characterization with three additional outputs:
+     (i) `AllUnresolved s'` derived via `ScanChain.preserves_AllUnresolved`
+     (J.4.2.b-2a-chain), parametric in a per-action `h_step_unres`
+     hypothesis discharged by `scanNextToken_preserves_AllUnresolved`
+     (J.4.2.b-2a-discharge) under the no-`:`-pair sub-class; (ii)
+     `NoPlaceholders s'` derived via `ScanChain.preserves_NoPlaceholders`
+     (J.4.2.b-2b-chain), discharged unconditionally by
+     `scanNextToken_preserves_NoPlaceholders` (J.4.2.b-2b-discharge);
+     (iii) the bridge equality `linearise s'.tokens s'.pendingKeys =
+     s'.tokens.filter p` via `linearise_eq_filter_no_resolutions` (J.4.1).
+     Parts (1) and (2) of the conclusion are restated on `linearise
+     s'.tokens s'.pendingKeys` instead of `s'.tokens.filter p`, transported
+     via `rw [h_lin_eq]`.  Cascade consumers in
+     `scanFiltered_emitSeq_nonempty_structure` can now read body content
+     tokens off the linearise-shape post-cutover bridge target using the
+     J.4.2.c positional family (`-pos1`, `-pos2`, `-prefix`) and the
+     `linearise_push_eq_push_linearise` (J.4.2.c-prep) `streamEnd` peeler.
    - **2d (linearise-shape pair body)**: produce a linearise-shape variant
      of `emitPairList_body_filtered_characterization`, which is harder
      because `:` resolutions DO fire — needs richer linearise-aware
@@ -2293,6 +2307,27 @@ a single concrete non-`.placeholder` token (Class B).  Cascade
 consumers in 2c plug `scanNextToken_preserves_NoPlaceholders`
 directly into `ScanChain.preserves_NoPlaceholders` for any input
 (no sub-class specialisation needed).  2c / 2d remain.
+J.4.2.b-2c (linearise-shape variant of body characterization for the
+no-resolution sub-class: `emitList_body_linearise_characterization`
+in `Proofs/Output/EmitterScannability.lean`) landed 2026-04-30 with
+sorry count unchanged at 12 (infrastructure for the cascade discharge,
+no sorry cleared).  Wraps `emitList_body_filtered_characterization`
+with three additional outputs: `AllUnresolved s'` (parametric in the
+per-action discharge — caller plugs in
+`scanNextToken_preserves_AllUnresolved` from J.4.2.b-2a-discharge under
+the no-`:`-pair sub-class), `NoPlaceholders s'` (unconditional via
+`scanNextToken_preserves_NoPlaceholders`), and the bridge equality
+`linearise s'.tokens s'.pendingKeys = s'.tokens.filter p` from
+`linearise_eq_filter_no_resolutions` (J.4.1).  Parts (1) and (2) of the
+characterization are restated on `linearise s'.tokens s'.pendingKeys`
+instead of `s'.tokens.filter p`, transported via `rw [h_lin_eq]` from
+the filter-shape body characterization.  Cascade consumers in
+`scanFiltered_emitSeq_nonempty_structure` can now read body content
+tokens off the linearise-shape post-cutover bridge target using the
+J.4.2.c positional family (`-pos1`, `-pos2`, `-prefix`) and the
+`linearise_push_eq_push_linearise` (J.4.2.c-prep) `streamEnd` peeler.
+Closes the linearise-shape seq-body sub-task; 2d (linearise-shape pair
+body) and the cascade stitching (item 3) remain.
 
 ### Phase J.4 — Cleanup and follow-on (1-2 weeks)
 
