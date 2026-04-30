@@ -2149,23 +2149,55 @@ theorem scanFiltered_of_chain (input : String)
 
 /-- **Equality version**: gives the exact filtered token array from a ScanChain.
 
-    **Initiative 3 / J.2 step 5 cutover** (Category C): RHS now needs
-    to be `linearise final.tokens final.pendingKeys`, not
-    `tokens.filter (· != .placeholder)`.  Statement + proof both shift;
-    J.3 manifest 5.d. -/
+    **Initiative 3 / J.2 step 5 cutover** (Category C, J.3.8): RHS is
+    `linearise final.tokens final.pendingKeys` rather than the legacy
+    `tokens.filter (· != .placeholder)` shape.  The `skipToContent`
+    fallback in `scanLoopFull`'s EOF arm is exposed via `h_skip`; callers
+    that have `s_final.peek? = none` discharge it via
+    `skipToContent_eq_self_of_peek_none`. -/
 theorem scanFiltered_of_chain_eq (input : String)
-    (s₀ s_final : ScannerState) (n : Nat)
+    (s₀ s_final s_skipped : ScannerState) (n : Nat)
     (h_s0 : s₀ = (ScannerState.mk' input).emit .streamStart)
     (h_no_bom : (ScannerState.mk' input).peek? ≠ some '\uFEFF')
     (h_chain : ScanChain s₀ n s_final)
     (h_eof : scanNextToken s_final = .ok none)
     (h_fl : s_final.flowLevel = 0)
     (h_dp : s_final.directivesPresent = false)
+    (h_skip : skipToContent s_final = .ok s_skipped)
     (h_fuel : n + 1 ≤ (input.utf8ByteSize + 1) * 4) :
-    scanFiltered input = .ok (((unwindIndents s_final (-1)).emit .streamEnd).tokens.filter
-        (fun t => t.val != .placeholder)) := by
-  -- J.3 manifest 5.d: re-state with linearise on the RHS.
-  sorry
+    scanFiltered input = .ok (Scanner.linearise
+        ((unwindIndents s_skipped (-1)).emit .streamEnd).tokens
+        ((unwindIndents s_skipped (-1)).emit .streamEnd).pendingKeys) := by
+  -- Step 1: scanLoopFull on s_final closes with `s_skipped` flowed through.
+  have h_f_ge : (input.utf8ByteSize + 1) * 4 - n ≥ 1 := by omega
+  have h_loop_final :=
+    scanLoopFull_eof_eq h_f_ge h_eof h_fl h_dp h_skip
+  -- Step 2: Compose chain → scanLoopFull on s₀.
+  have h_loop_s0 := h_chain.to_scanLoopFull h_loop_final
+  have h_fuel_eq :
+      ((input.utf8ByteSize + 1) * 4 - n) + n = (input.utf8ByteSize + 1) * 4 := by omega
+  rw [h_fuel_eq] at h_loop_s0
+  -- Step 3: walk scanFiltered: BOM identity + scanLoopFull + linearise.
+  show (match scanLoopFull
+          (match ((ScannerState.mk' input).emit .streamStart).peek? with
+           | some '﻿' => ((ScannerState.mk' input).emit .streamStart).advance
+           | _ => (ScannerState.mk' input).emit .streamStart)
+          ((input.utf8ByteSize + 1) * 4) with
+        | Except.ok final =>
+            Except.ok (Scanner.linearise final.tokens final.pendingKeys)
+        | Except.error e => Except.error e) =
+      Except.ok (Scanner.linearise
+        ((unwindIndents s_skipped (-1)).emit .streamEnd).tokens
+        ((unwindIndents s_skipped (-1)).emit .streamEnd).pendingKeys)
+  have h_bom_branch :
+      (match ((ScannerState.mk' input).emit .streamStart).peek? with
+       | some '﻿' => ((ScannerState.mk' input).emit .streamStart).advance
+       | _ => (ScannerState.mk' input).emit .streamStart)
+        = (ScannerState.mk' input).emit .streamStart := by
+    split
+    · rename_i h_bom; exact absurd h_bom h_no_bom
+    · rfl
+  rw [h_bom_branch, ← h_s0, h_loop_s0]
 
 -- ═══ scanNextToken preprocessing equality ═══
 
@@ -9071,7 +9103,12 @@ theorem unwindIndents_noop_short_stack (s : ScannerState)
     · rfl
 
 /-- When a ScanChain starts from s₀ via scanFiltered, the token array equation.
-    Combines `scanFiltered_of_chain_eq` with `unwindIndents` identity for emitter states. -/
+    Combines `scanFiltered_of_chain_eq` with `unwindIndents` identity for emitter states.
+
+    **Initiative 3 / J.3.8** (2026-04-29): post-cutover RHS is
+    `linearise final.tokens final.pendingKeys` rather than the legacy
+    `tokens.filter (· != .placeholder)`.  Callers that have
+    `s_final.peek? = none` discharge `h_peek_eof` accordingly. -/
 theorem scanFiltered_tokens_eq_of_chain_short_stack
     (input : String) (s₀ s_final : ScannerState) (n : Nat)
     (h_s0 : s₀ = (ScannerState.mk' input).emit .streamStart)
@@ -9080,11 +9117,15 @@ theorem scanFiltered_tokens_eq_of_chain_short_stack
     (h_eof : scanNextToken s_final = .ok none)
     (h_fl : s_final.flowLevel = 0)
     (h_dp : s_final.directivesPresent = false)
+    (h_peek_eof : s_final.peek? = none)
     (h_fuel : n + 1 ≤ (input.utf8ByteSize + 1) * 4)
     (h_stack : s_final.indents.size ≤ 1) :
-    Scanner.scanFiltered input =
-      .ok ((s_final.emit .streamEnd).tokens.filter (fun t => t.val != .placeholder)) := by
-  have h_eq := scanFiltered_of_chain_eq input s₀ s_final n h_s0 h_no_bom h_chain h_eof h_fl h_dp h_fuel
+    Scanner.scanFiltered input = .ok (Scanner.linearise
+      (s_final.emit .streamEnd).tokens (s_final.emit .streamEnd).pendingKeys) := by
+  have h_skip : skipToContent s_final = .ok s_final :=
+    skipToContent_eq_self_of_peek_none h_peek_eof
+  have h_eq := scanFiltered_of_chain_eq input s₀ s_final s_final n
+    h_s0 h_no_bom h_chain h_eof h_fl h_dp h_skip h_fuel
   rwa [unwindIndents_noop_short_stack s_final h_stack] at h_eq
 
 /-- `ScanChain` token array monotonicity: tokens array size grows (non-strictly)
@@ -9802,12 +9843,17 @@ theorem scanFiltered_emitSeq_nonempty_structure
     decide
   -- ═══ Token equation: tokens = (s₃.emit .streamEnd).tokens.filter p ═══
   let p := fun (t : Positioned YamlToken) => t.val != .placeholder
+  -- Initiative 3 / J.3.8 (2026-04-29): post-cutover, the bridge yields
+  -- `linearise (...).tokens (...).pendingKeys` rather than the legacy
+  -- `tokens.filter p` shape used by the Tier 1 derivations below.  The
+  -- legacy form is recoverable when all `pendingKeys` at `s₃` are
+  -- `.unresolved` AND `s₃.tokens` contains no `.placeholder`.  The
+  -- former fails when items contain flow maps (`{k: v}`-style with
+  -- `:`-resolution), so this bridge is sorry'd as J.4 cascade work.
+  -- Cf. linearise_all_unresolved + post-cutover no-placeholder invariant.
   have h_tok_eq : Scanner.scanFiltered input =
-      .ok ((s₃.emit .streamEnd).tokens.filter p) :=
-    scanFiltered_tokens_eq_of_chain_short_stack input _ s₃ _ rfl h_no_bom
-      h_chain_all h_eof h_fl₃ h_dp₃
-      (ScanChain.fuel_bound _ _ _ _ rfl h_chain_all h_eof)
-      h_indents_small
+      .ok ((s₃.emit .streamEnd).tokens.filter p) := by
+    sorry
   -- Extract: tokens = (s₃.emit .streamEnd).tokens.filter p
   have h_tokens_eq : tokens = (s₃.emit .streamEnd).tokens.filter p := by
     have : Scanner.scanFiltered input = .ok tokens := h_scan
@@ -10016,12 +10062,17 @@ theorem scanFiltered_emitMap_nonempty_structure
     decide
   -- ═══ Token equation: tokens = (s₃.emit .streamEnd).tokens.filter p ═══
   let p := fun (t : Positioned YamlToken) => t.val != .placeholder
+  -- Initiative 3 / J.3.8 (2026-04-29): post-cutover, the bridge yields
+  -- `linearise (...).tokens (...).pendingKeys` rather than the legacy
+  -- `tokens.filter p` shape used by the Tier 1 derivations below.  Map
+  -- pairs always trigger `:`-resolution at top level, so resolved
+  -- `.keyOnly` entries always exist in `pendingKeys` at `s₃` — i.e.
+  -- `linearise ≠ tokens.filter p` even after the no-placeholder
+  -- invariant.  The Tier 1 derivations need re-stating in linearise
+  -- terms (J.4 cascade work).
   have h_tok_eq : Scanner.scanFiltered input =
-      .ok ((s₃.emit .streamEnd).tokens.filter p) :=
-    scanFiltered_tokens_eq_of_chain_short_stack input _ s₃ _ rfl h_no_bom
-      h_chain_all h_eof h_fl₃ h_dp₃
-      (ScanChain.fuel_bound _ _ _ _ rfl h_chain_all h_eof)
-      h_indents_small
+      .ok ((s₃.emit .streamEnd).tokens.filter p) := by
+    sorry
   -- Extract: tokens = (s₃.emit .streamEnd).tokens.filter p
   have h_tokens_eq : tokens = (s₃.emit .streamEnd).tokens.filter p := by
     have : Scanner.scanFiltered input = .ok tokens := h_scan
