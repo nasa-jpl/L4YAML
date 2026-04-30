@@ -11031,6 +11031,356 @@ theorem scanNextToken_preserves_PendingKeysWellIndexed
         simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
         exact dispatchContent_preserves_PendingKeysWellIndexed _ c _ (by assumption) h_inv3
 
+/-! ### J.4.2.b-2a-discharge — `AllUnresolved` per-action preservation
+
+Per-action `AllUnresolved` preservation lemmas, mirroring the
+`*_preserves_PendingKeysWellIndexed` chain.  Most actions are Class A
+(passthrough on `pendingKeys`); the quoted-scalar arms in
+`dispatchContent` apply `setPendingKeyEndLine` (Class C, kind preserved).
+The single break path is `scanValuePrepare`'s `simpleKey.possible = true`
+arm — the `:`-resolution that flips a pending entry's kind from
+`.unresolved` to `.keyOnly` / `.blockMappingStartAndKey`.  The
+`scanValue` lemma takes `s.simpleKey.possible = false` as a precondition;
+the `dispatchBlockIndicators` lemma propagates it to its `:` arm; the
+top-level `scanNextToken_preserves_AllUnresolved` takes a parametric
+sub-class hypothesis on the post-preprocess state.
+
+Discharges the `h_step` parameter of `ScanChain.preserves_AllUnresolved`
+(`Proofs/Output/EmitterScannability`, J.4.2.b-2a-chain) for inputs in
+the no-`:`-pair sub-class (flow seqs of scalars; nested flow seqs).
+For those inputs the sub-class hypothesis collapses to `c ≠ ':'` at
+every preprocess-output character. -/
+
+/-- `setPendingKeyEndLine` preserves each entry's `kind` (the
+    field-update only touches `endLine`).  Class C ingredient for the
+    quoted-scalar wrappers in `dispatchContent`. -/
+theorem setPendingKeyEndLine_kind (pks : Array PendingKeyEntry)
+    (active : Option Nat) (endLine : Nat) (i : Nat)
+    (hi : i < pks.size)
+    (hi' : i < (setPendingKeyEndLine pks active endLine).size) :
+    ((setPendingKeyEndLine pks active endLine)[i]'hi').kind = (pks[i]'hi).kind := by
+  rcases setPendingKeyEndLine_decomp pks active endLine with h_id | ⟨j, hj, h_set⟩
+  · congr 1
+    have h_at : (setPendingKeyEndLine pks active endLine)[i]'hi' = pks[i]'hi := by congr 1
+    exact h_at
+  · have hi_set : i < (pks.setIfInBounds j
+        { (pks[j]'hj) with endLine := endLine }).size := by
+      simp [Array.size_setIfInBounds]; exact hi
+    have h_at :
+        (setPendingKeyEndLine pks active endLine)[i]'hi'
+          = (pks.setIfInBounds j { (pks[j]'hj) with endLine := endLine })[i]'hi_set := by
+      congr 1
+    rw [h_at]
+    by_cases h_eq : i = j
+    · subst h_eq; rw [Array.getElem_setIfInBounds_self]
+    · rw [Array.getElem_setIfInBounds_ne (h := fun h => h_eq h.symm)]
+
+/-- The quoted-scalar `setPendingKeyEndLine` wrapper preserves
+    `AllUnresolved`: size unchanged, every entry's `kind` preserved. -/
+theorem setPendingKeyEndLine_wrap_preserves_AllUnresolved (s : ScannerState)
+    (h_inv : AllUnresolved s) :
+    AllUnresolved
+      { s with simpleKey := { s.simpleKey with endLine := s.line },
+               pendingKeys := setPendingKeyEndLine s.pendingKeys s.pendingKeyActive s.line } :=
+  AllUnresolved_field_update
+    (show (setPendingKeyEndLine s.pendingKeys s.pendingKeyActive s.line).size
+        = s.pendingKeys.size
+      from setPendingKeyEndLine_size _ _ _)
+    (fun p hp hp' => setPendingKeyEndLine_kind s.pendingKeys s.pendingKeyActive s.line p hp hp')
+    h_inv
+
+/-- `scanValueClearKey` is a no-op when `s.simpleKey.possible = false`:
+    every clearing arm requires `simpleKey.possible = true`. -/
+theorem scanValueClearKey_no_key (s : ScannerState)
+    (h_no_key : s.simpleKey.possible = false) : scanValueClearKey s = s := by
+  unfold scanValueClearKey
+  split
+  · split
+    · rename_i h_cond
+      simp [h_no_key] at h_cond
+    · split
+      · rename_i h_cond
+        simp [h_no_key] at h_cond
+      · rfl
+  · rfl
+
+/-- `scanValuePrepare` is Class A on `pendingKeys` when
+    `s.simpleKey.possible = false` — the breaking arm requires
+    `simpleKey.possible = true`; the remaining arms either leave
+    `pendingKeys` untouched or apply `pushMappingIndent` (Class A). -/
+theorem scanValuePrepare_no_key_preserves_pendingKeys (s : ScannerState)
+    (h_no_key : s.simpleKey.possible = false) :
+    (scanValuePrepare s).pendingKeys = s.pendingKeys := by
+  unfold scanValuePrepare
+  simp only [h_no_key, Bool.false_eq_true, ↓reduceIte]
+  split
+  · rfl
+  · split
+    · exact pushMappingIndent_preserves_pendingKeys s s.col
+    · rfl
+
+/-- `scanValue` is Class A on `pendingKeys` when `s.simpleKey.possible = false`:
+    the chain `scanValueClearKey → scanValuePrepare → emit → advance` is
+    identity on `pendingKeys`, and the trailing `with simpleKeyAllowed,
+    explicitKeyLine` doesn't touch `pendingKeys` either. -/
+theorem scanValue_no_key_preserves_pendingKeys
+    (s : ScannerState) (s' : ScannerState)
+    (h : scanValue s = .ok s') (h_no_key : s.simpleKey.possible = false) :
+    s'.pendingKeys = s.pendingKeys := by
+  unfold scanValue at h
+  simp only [bind, Except.bind] at h
+  split at h <;> try contradiction
+  split at h <;> try contradiction
+  simp only [Except.ok.injEq] at h; subst h
+  show ((scanValuePrepare (scanValueClearKey s)).emit .value).advance.pendingKeys = s.pendingKeys
+  rw [advance_preserves_pendingKeys, emit_preserves_pendingKeys,
+      scanValueClearKey_no_key s h_no_key,
+      scanValuePrepare_no_key_preserves_pendingKeys s h_no_key]
+
+/-- `scanValue` preserves `AllUnresolved` provided `s.simpleKey.possible = false`
+    — Class A on `pendingKeys` via `scanValue_no_key_preserves_pendingKeys`. -/
+theorem scanValue_preserves_AllUnresolved
+    (s : ScannerState) (s' : ScannerState)
+    (h : scanValue s = .ok s') (h_no_key : s.simpleKey.possible = false)
+    (h_inv : AllUnresolved s) : AllUnresolved s' :=
+  AllUnresolved_mono (scanValue_no_key_preserves_pendingKeys s s' h h_no_key) h_inv
+
+/-! #### Per-dispatcher `AllUnresolved` preservation -/
+
+theorem dispatchStructural_preserves_AllUnresolved
+    (s : ScannerState) (c : Char) (s' : ScannerState)
+    (h : scanNextToken_dispatchStructural s c = .ok (some s'))
+    (h_inv : AllUnresolved s) : AllUnresolved s' :=
+  AllUnresolved_mono (dispatchStructural_preserves_pendingKeys s c s' h) h_inv
+
+theorem dispatchFlowIndicators_preserves_AllUnresolved
+    (s : ScannerState) (c : Char) (s' : ScannerState)
+    (h : scanNextToken_dispatchFlowIndicators s c = .ok (some s'))
+    (h_inv : AllUnresolved s) : AllUnresolved s' :=
+  AllUnresolved_mono (dispatchFlowIndicators_preserves_pendingKeys s c s' h) h_inv
+
+/-- Block indicators: `scanBlockEntry`/`scanKey` are Class A; `scanValue`
+    requires `s.simpleKey.possible = false` (sub-class hypothesis on the
+    `:` arm). -/
+theorem dispatchBlockIndicators_preserves_AllUnresolved
+    (s : ScannerState) (c : Char) (s' : ScannerState)
+    (h : scanNextToken_dispatchBlockIndicators s c = .ok (some s'))
+    (h_no_key : c = ':' → s.simpleKey.possible = false)
+    (h_inv : AllUnresolved s) : AllUnresolved s' := by
+  unfold scanNextToken_dispatchBlockIndicators at h
+  simp only [bind, ScanHelpers.bind_ok_simp, pure, Pure.pure, Except.pure] at h
+  simp only [Except.bind] at h
+  split at h
+  · split at h <;> try contradiction
+    rename_i h_be
+    simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+    exact AllUnresolved_mono (scanBlockEntry_preserves_pendingKeys _ _ h_be) h_inv
+  · split at h
+    · split at h <;> try contradiction
+      rename_i h_key
+      simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+      exact AllUnresolved_mono (scanKey_preserves_pendingKeys _ _ h_key) h_inv
+    · split at h
+      · rename_i h_guard
+        split at h <;> try contradiction
+        rename_i h_val
+        simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+        rw [Bool.and_eq_true] at h_guard
+        obtain ⟨h_c_colon, _⟩ := h_guard
+        rw [beq_iff_eq] at h_c_colon
+        exact scanValue_preserves_AllUnresolved _ _ h_val
+                (h_no_key h_c_colon) h_inv
+      · simp at h
+
+/-- Content dispatch: most arms are Class A; quoted-scalar arms apply
+    `setPendingKeyEndLine` (Class C, kind preserved). -/
+theorem dispatchContent_preserves_AllUnresolved
+    (s : ScannerState) (c : Char) (s' : ScannerState)
+    (h : scanNextToken_dispatchContent s c = .ok s')
+    (h_inv : AllUnresolved s) : AllUnresolved s' := by
+  unfold scanNextToken_dispatchContent at h
+  simp only [bind, ScanHelpers.bind_ok_simp, pure, Pure.pure, Except.pure] at h
+  simp only [Except.bind] at h
+  split at h
+  · -- '&'
+    generalize h_fn : scanAnchorOrAlias s true = result at h
+    cases result with
+    | error e => simp at h
+    | ok s_a =>
+      simp only [Except.ok.injEq] at h; subst h
+      exact AllUnresolved_mono
+        (show s_a.pendingKeys = s.pendingKeys
+          from scanAnchorOrAlias_preserves_pendingKeys s true s_a h_fn)
+        h_inv
+  · split at h
+    · -- '*'
+      split at h
+      · simp at h
+      · generalize h_fn : scanAnchorOrAlias s false = result at h
+        cases result with
+        | error e => simp at h
+        | ok s_a =>
+          simp only [Except.ok.injEq] at h; subst h
+          exact AllUnresolved_mono
+            (scanAnchorOrAlias_preserves_pendingKeys s false s_a h_fn) h_inv
+    · split at h
+      · -- '!'
+        generalize h_fn : scanTag s = result at h
+        cases result with
+        | error e => simp at h
+        | ok s_t =>
+          simp only [Except.ok.injEq] at h; subst h
+          exact AllUnresolved_mono (scanTag_preserves_pendingKeys s s_t h_fn) h_inv
+      · split at h
+        · -- block scalar
+          generalize h_fn : scanBlockScalar s = result at h
+          cases result with
+          | error e => simp at h
+          | ok s_b =>
+            simp only [Except.ok.injEq] at h; subst h
+            exact AllUnresolved_mono
+              (scanBlockScalar_preserves_pendingKeys s s_b h_fn) h_inv
+        · split at h
+          · -- '"'
+            generalize h_fn : scanDoubleQuoted s = result at h
+            cases result with
+            | error e => simp at h
+            | ok s_dq =>
+              simp only [Except.ok.injEq] at h; subst h
+              have h_dq_inv : AllUnresolved s_dq :=
+                AllUnresolved_mono
+                  (scanDoubleQuoted_preserves_pendingKeys s s_dq h_fn) h_inv
+              show AllUnresolved (
+                if s_dq.simpleKey.possible then
+                  { s_dq with simpleKey := { s_dq.simpleKey with endLine := s_dq.line },
+                              pendingKeys := setPendingKeyEndLine s_dq.pendingKeys s_dq.pendingKeyActive s_dq.line }
+                else s_dq)
+              split
+              · exact setPendingKeyEndLine_wrap_preserves_AllUnresolved s_dq h_dq_inv
+              · exact h_dq_inv
+          · split at h
+            · -- '\''
+              generalize h_fn : scanSingleQuoted s = result at h
+              cases result with
+              | error e => simp at h
+              | ok s_sq =>
+                simp only [Except.ok.injEq] at h; subst h
+                have h_sq_inv : AllUnresolved s_sq :=
+                  AllUnresolved_mono
+                    (scanSingleQuoted_preserves_pendingKeys s s_sq h_fn) h_inv
+                show AllUnresolved (
+                  if s_sq.simpleKey.possible then
+                    { s_sq with simpleKey := { s_sq.simpleKey with endLine := s_sq.line },
+                                pendingKeys := setPendingKeyEndLine s_sq.pendingKeys s_sq.pendingKeyActive s_sq.line }
+                  else s_sq)
+                split
+                · exact setPendingKeyEndLine_wrap_preserves_AllUnresolved s_sq h_sq_inv
+                · exact h_sq_inv
+            · split at h
+              · generalize h_fn : scanPlainScalar s = result at h
+                cases result with
+                | error e => simp at h
+                | ok s_p =>
+                  simp only [Except.ok.injEq] at h; subst h
+                  exact AllUnresolved_mono
+                    (scanPlainScalar_preserves_pendingKeys s s_p h_fn) h_inv
+              · simp at h
+
+/-- preprocess: composes `skipToContent` (A) + `unwindIndents` (A)
+    + `saveSimpleKey` (Class B with `.unresolved` push). -/
+theorem preprocess_preserves_AllUnresolved (s : ScannerState) (s1 : ScannerState) (c : Char)
+    (h : scanNextToken_preprocess s = .ok (some (s1, c)))
+    (h_inv : AllUnresolved s) : AllUnresolved s1 := by
+  unfold scanNextToken_preprocess at h
+  simp only [bind, ScanHelpers.bind_error_simp, ScanHelpers.bind_ok_simp,
+             pure, Pure.pure, Except.pure] at h
+  simp only [Except.bind] at h
+  split at h
+  · contradiction
+  · rename_i s_skip h_skip
+    have h_skip_inv : AllUnresolved s_skip :=
+      AllUnresolved_mono (skipToContent_preserves_pendingKeys s s_skip h_skip) h_inv
+    split at h
+    · simp at h
+    · split at h
+      · split at h
+        · contradiction
+        · split at h
+          · simp at h
+          · simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq] at h
+            obtain ⟨rfl, _⟩ := h
+            have h_unwind_inv : AllUnresolved (unwindIndents s_skip s_skip.col) :=
+              AllUnresolved_mono
+                (unwindIndents_preserves_pendingKeys s_skip s_skip.col) h_skip_inv
+            have h_pre_inv : AllUnresolved
+                { unwindIndents s_skip s_skip.col with needIndentCheck := false } :=
+              AllUnresolved_mono rfl h_unwind_inv
+            exact saveSimpleKey_preserves_AllUnresolved h_pre_inv
+      · split at h
+        · contradiction
+        · split at h
+          · simp at h
+          · simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq] at h
+            obtain ⟨rfl, _⟩ := h
+            exact saveSimpleKey_preserves_AllUnresolved h_skip_inv
+
+theorem allowDir_ite_preserves_AllUnresolved (s : ScannerState)
+    (h_inv : AllUnresolved s) :
+    AllUnresolved (if s.allowDirectives then
+      { s with allowDirectives := false, documentEverStarted := true } else s) := by
+  split
+  · exact AllUnresolved_mono rfl h_inv
+  · exact h_inv
+
+/-- `scanNextToken` preserves `AllUnresolved` under the parametric
+    sub-class hypothesis: at the dispatched character `c` from the
+    preprocess output, if `c = ':'` then `simpleKey.possible = false`.
+    Discharges the `h_step` parameter of
+    `ScanChain.preserves_AllUnresolved`. -/
+theorem scanNextToken_preserves_AllUnresolved
+    (s s' : ScannerState) (h_inv : AllUnresolved s)
+    (h_ok : scanNextToken s = .ok (some s'))
+    (h_no_resolve : ∀ s_pre c,
+      scanNextToken_preprocess s = .ok (some (s_pre, c)) →
+      c = ':' → s_pre.simpleKey.possible = false) :
+    AllUnresolved s' := by
+  unfold scanNextToken at h_ok
+  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  split at h_ok <;> (try (simp at h_ok; done))
+  split at h_ok <;> (try (simp at h_ok; done))
+  rename_i s2 c h_pre
+  have h_inv2 := preprocess_preserves_AllUnresolved s s2 c h_pre h_inv
+  split at h_ok <;> (try (simp at h_ok; done))
+  split at h_ok
+  · simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
+    exact dispatchStructural_preserves_AllUnresolved s2 c _ (by assumption) h_inv2
+  · have h_inv3 := allowDir_ite_preserves_AllUnresolved s2 h_inv2
+    have h_sk_eq :
+        (if s2.allowDirectives then
+            { s2 with allowDirectives := false, documentEverStarted := true }
+          else s2).simpleKey.possible = s2.simpleKey.possible := by
+      split <;> rfl
+    split at h_ok <;> (try (simp at h_ok; done))
+    split at h_ok <;> (try (simp at h_ok; done))
+    split at h_ok
+    · simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
+      exact dispatchFlowIndicators_preserves_AllUnresolved _ c _ (by assumption) h_inv3
+    · split at h_ok <;> (try (simp at h_ok; done))
+      split at h_ok
+      · simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
+        have h_no_key : c = ':' →
+            (if s2.allowDirectives then
+                { s2 with allowDirectives := false, documentEverStarted := true }
+              else s2).simpleKey.possible = false := by
+          intro h_c
+          rw [h_sk_eq]
+          exact h_no_resolve s2 c h_pre h_c
+        exact dispatchBlockIndicators_preserves_AllUnresolved _ c _
+                (by assumption) h_no_key h_inv3
+      · split at h_ok <;> (try (simp at h_ok; done))
+        simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
+        exact dispatchContent_preserves_AllUnresolved _ c _ (by assumption) h_inv3
+
 /-! ### scanLoopFull preserves PendingKeysWellIndexed
 
 By induction on fuel.  Recursive arm: apply scanNextToken preservation,
