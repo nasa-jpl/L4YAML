@@ -765,6 +765,7 @@ rooted at `Scanner/Linearise.lean`:
 | J.4.2.b-2a | `AllUnresolved` predicate + Class A/B/C preservation lemmas (`AllUnresolved_mono`, `AllUnresolved_push_unresolved`, `AllUnresolved_field_update`, `setPendingKeyKind_unresolved_preserves_AllUnresolved`, `saveSimpleKey_preserves_AllUnresolved`) | 0 (new infrastructure) | `Proofs/Scanner/ScannerCorrectness.lean` | ✓ done 2026-04-30 |
 | J.4.2.b-2a-chain | Chain-side `AllUnresolved` propagation: `AllUnresolved_init`, parametric `ScanChain.preserves_AllUnresolved`, `AllUnresolved_of_chain_from_init`, `AllUnresolved_emit_streamEnd` | 0 (new infrastructure) | `Proofs/Output/EmitterScannability.lean` | ✓ done 2026-04-30 |
 | J.4.2.b-2a-discharge | Per-action `AllUnresolved` preservation discharging the parametric `h_step` for the no-`:`-pair sub-class: `setPendingKeyEndLine_kind`, `setPendingKeyEndLine_wrap_preserves_AllUnresolved`, `scanValueClearKey_no_key`, `scanValuePrepare_no_key_preserves_pendingKeys`, `scanValue_{no_key_preserves_pendingKeys, preserves_AllUnresolved}`, the four per-dispatcher `*_preserves_AllUnresolved` lemmas, `preprocess_preserves_AllUnresolved`, `allowDir_ite_preserves_AllUnresolved`, `scanNextToken_preserves_AllUnresolved` | 0 (new infrastructure) | `Proofs/Scanner/ScannerCorrectness.lean` | ✓ done 2026-04-30 |
+| J.4.2.b-2b | `NoPlaceholders` predicate + Class A/B preservation lemmas (`NoPlaceholders_mono`, `NoPlaceholders_emit`, `NoPlaceholders_emitAt`) and chain-side propagation (`NoPlaceholders_init`, parametric `ScanChain.preserves_NoPlaceholders`, `NoPlaceholders_of_chain_from_init`, `NoPlaceholders_emit_streamEnd`) | 0 (new infrastructure) | `Proofs/Scanner/ScannerCorrectness.lean`, `Proofs/Output/EmitterScannability.lean` | ✓ done 2026-04-30 |
 
 **J.3.1 — Linearise foundations** [✓ completed 2026-04-26]:
 
@@ -1837,6 +1838,73 @@ at every preprocess output, trivially discharged by induction on
 the input shape.  Sorry count unchanged (12); infrastructure
 landing.  Build green (453 jobs); +350 lines.
 
+**J.4.2.b-2b landed (2026-04-30)**: placeholder-free invariant
+predicate plus chain-side propagation, the second of the two
+hypotheses of `linearise_eq_filter_no_resolutions` (J.4.1).
+Companion to J.4.2.b-2a/-2a-chain (`AllUnresolved`); together
+they bridge the post-cutover `linearise` shape to the legacy
+`tokens.filter (· != .placeholder)` shape used by Tier 1 emitter
+derivations.
+
+Lands in `Proofs/Scanner/ScannerCorrectness.lean` (predicate +
+abstract preservation classes) and `Proofs/Output/EmitterScannability.lean`
+(chain-side propagation):
+
+```
+-- Predicate + abstract preservation classes:
+NoPlaceholders                                  -- ∀ t ∈ s.tokens, t.val ≠ .placeholder
+NoPlaceholders_mono                             -- Class A (tokens equality)
+NoPlaceholders_emit                             -- Class B (push non-.placeholder)
+NoPlaceholders_emitAt                           -- Class B' (emitAt at fixed position)
+
+-- Chain-side propagation (parametric in per-action `h_step`):
+NoPlaceholders_init                             -- post-`streamStart` initial state
+ScanChain.preserves_NoPlaceholders              -- chain induction
+NoPlaceholders_of_chain_from_init               -- combined helper
+NoPlaceholders_emit_streamEnd                   -- final `streamEnd` emit
+```
+
+The chain induction signature:
+
+```
+ScanChain.preserves_NoPlaceholders :
+    ∀ {s s' : ScannerState} {n : Nat},
+      ScanChain s n s' →
+      (∀ {sa sb : ScannerState},
+        NoPlaceholders sa →
+        scanNextToken sa = .ok sb →
+        NoPlaceholders sb) →
+      NoPlaceholders s →
+      NoPlaceholders s'
+```
+
+Mechanism: unlike `AllUnresolved`'s break path
+(`scanValuePrepare`'s `:`-resolution arm flips a pending entry's
+`kind` from `.unresolved`), `NoPlaceholders` has *no* break path
+post-cutover.  J.2 step 5 removed every legacy `placeholder` push
+from the scanner; the only mutations to `tokens` are now `emit`/
+`emitAt` calls that always use a concrete YAML token
+(`.streamStart`, `.flowSequenceStart`, `.scalar _ _`, etc.) — never
+`.placeholder`.  No `setIfInBounds` on `tokens` either: the J.2
+dual-write moved retroactive rewrites to `pendingKeys` only.  So
+the predicate holds *unconditionally* through every scanner action
+— the consumer discharges the parametric `h_step` without an input
+sub-class restriction (in contrast to the no-`:`-pair restriction
+on `AllUnresolved`).  Class C is absent from the algebraic
+breakdown for the same reason: `tokens` is append-only, so no
+field-update class is needed.
+
+The parametric form mirrors `ScanChain.preserves_AllUnresolved` for
+uniform consumer ergonomics — the cascade body characterizations
+(2c/2d) take both `h_step` parameters together and discharge them
+at the same place.  Per-action discharge (`scanNextToken_preserves_NoPlaceholders`)
+is split out into the forthcoming **J.4.2.b-2b-discharge** landing,
+mirroring the J.4.2.b-2a → J.4.2.b-2a-chain → J.4.2.b-2a-discharge
+split.
+
+Sorry count unchanged (12); infrastructure landing.  Build green
+(453 jobs); +154 lines.
+
 **Next concrete step (J.4.2.b — consumer refactor)**
 
 The `_structure` consumers' `h_tok_eq` bridge is FALSE in general
@@ -1968,11 +2036,35 @@ Remaining J.4.2.b work:
      to `c ≠ ':'` at every dispatch point.  Cascade consumers (2c)
      plug this directly into `ScanChain.preserves_AllUnresolved`
      (J.4.2.b-2a-chain) after sub-class specialization.
-   - **2b (placeholder-free invariant)**: prove the global invariant that
-     `s.tokens` contains no `.placeholder` at the chain endpoint when no
-     resolutions have fired (stronger version of the per-position
-     invariant).  Feeds the no-placeholder hypothesis of
-     `linearise_eq_filter_no_resolutions`.  Estimate: 1 cadence step.
+   - ✓ **Done (J.4.2.b-2b, 2026-04-30)**: placeholder-free invariant
+     predicate plus chain-side propagation.  `NoPlaceholders s := ∀
+     t ∈ s.tokens, t.val ≠ .placeholder` lands in
+     `Proofs/Scanner/ScannerCorrectness.lean` with Class A
+     (`NoPlaceholders_mono`) + Class B (`NoPlaceholders_emit`,
+     `NoPlaceholders_emitAt`); chain-side
+     `NoPlaceholders_init` / parametric
+     `ScanChain.preserves_NoPlaceholders` /
+     `NoPlaceholders_of_chain_from_init` /
+     `NoPlaceholders_emit_streamEnd` land in
+     `Proofs/Output/EmitterScannability.lean`.  No break path
+     post-cutover (the J.2 step 5 cutover removed every legacy
+     `.placeholder` push), so the chain induction's parametric
+     `h_step` is dischargeable unconditionally — open follow-up
+     work tracked under 2b-discharge below.
+   - **2b-discharge (per-action `h_step` for `NoPlaceholders`)**:
+     specialise `h_step` to the unconditional form — prove
+     `scanNextToken_preserves_NoPlaceholders` *without* any
+     sub-class hypothesis, since post-cutover every scanner action
+     either leaves `tokens` unchanged (Class A passthrough via the
+     existing `*_preserves_tokens` chain) or pushes a single
+     concrete non-`.placeholder` token (Class B via
+     `NoPlaceholders_emit` plus a `decide`-style check on the
+     emitted token).  Per-dispatcher proofs mirror the
+     `*_preserves_PendingKeysWellIndexed` chain.  Estimate: 1-2
+     cadence steps.  Optional — if 2c's direct cascade derivation
+     does not need a generic `scanNextToken`-level lemma, the
+     per-step discharge can be inlined locally where the consumer
+     state is in scope.
    - **2c (linearise-shape seq body)**: produce a linearise-shape variant
      of `emitList_body_filtered_characterization` for the all-scalar /
      no-resolution case, using 2a + 2b as the bridge.  Estimate: 1-2
@@ -2048,6 +2140,23 @@ specialization (the hypothesis collapses to `c ≠ ':'` at every
 preprocess output for flow seqs of scalars / nested flow seqs).
 Closes the J.4.2.b-2a chain (predicate → chain induction →
 per-action discharge); 2b/2c/2d remain.
+J.4.2.b-2b (placeholder-free invariant: `NoPlaceholders` predicate
++ Class A/B preservation lemmas + chain-side propagation
+`NoPlaceholders_init` / parametric `ScanChain.preserves_NoPlaceholders`
+/ `NoPlaceholders_of_chain_from_init` /
+`NoPlaceholders_emit_streamEnd`) landed 2026-04-30 with sorry
+count unchanged at 12 (infrastructure for the cascade discharge,
+no sorry cleared).  Companion to J.4.2.b-2a/-2a-chain — provides
+the second of the two hypotheses of
+`linearise_eq_filter_no_resolutions` (the no-placeholder
+hypothesis on `tokens`).  Unlike `AllUnresolved`'s break path, no
+input sub-class restriction is needed: the J.2 step 5 cutover
+removed every legacy `.placeholder` push, so the chain induction's
+parametric `h_step` is dischargeable unconditionally — the
+follow-up J.4.2.b-2b-discharge landing will provide the per-action
+`scanNextToken_preserves_NoPlaceholders` that mirrors
+`scanNextToken_preserves_AllUnresolved` (without the sub-class
+hypothesis).  2b-discharge / 2c / 2d remain.
 
 ### Phase J.4 — Cleanup and follow-on (1-2 weeks)
 
