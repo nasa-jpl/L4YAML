@@ -10186,7 +10186,8 @@ theorem emitPairList_body_linearise_characterization
     (h_atol : AllTokensOnLine s s.line)
     (h_endline : EndLineOnLine s)
     (h_sk : s.simpleKey.possible = false)
-    (h_no_pl : ScannerCorrectness.NoPlaceholders s) :
+    (h_no_pl : ScannerCorrectness.NoPlaceholders s)
+    (h_pks_empty : s.pendingKeys = #[]) :
     let p := fun (t : Positioned YamlToken) => t.val != .placeholder
     let old_sz := (s.tokens.filter p).size
     ∃ n s', ScanChain s n s'
@@ -10245,21 +10246,30 @@ theorem emitPairList_body_linearise_characterization
       intro t h_mem
       have h_ne : t.val ≠ .placeholder := h_no_pl t h_mem
       simp [bne_iff_ne, h_ne]
-    -- Chain-side accounting (J.4.2.b-2d-key-chain): the first pending key
-    -- entry in `s'.pendingKeys` is the resolved key for pair 1 — its
+    -- Trivial sub-fact: token monotonicity through the chain (filter ≤ identity
+    -- on `s.tokens`, then chain extends).  Discharged directly via
+    -- `ScanChain_tokens_mono` + `Array.size_filter_le`.
+    have h_size_le : (s.tokens.filter (fun t => t.val != .placeholder)).size
+        ≤ s'.tokens.size := by
+      have h_filt_le : (s.tokens.filter (fun t => t.val != .placeholder)).size
+          ≤ s.tokens.size := Array.size_filter_le
+      have h_chain_mono : s.tokens.size ≤ s'.tokens.size :=
+        ScanChain_tokens_mono h_chain
+      exact Nat.le_trans h_filt_le h_chain_mono
+    -- Chain-side accounting (J.4.2.b-2d-key-chain-Part2): the first pending
+    -- key entry in `s'.pendingKeys` is the resolved key for pair 1 — its
     -- `insertBeforeIdx` matches the saveSimpleKey time stamp `s.tokens.size`
     -- (= `(s.tokens.filter p).size` via the filter identity), and its kind
     -- has been resolved to `.keyOnly` by `scanValuePrepare` on the first `:`.
-    -- Also bundles `(s.tokens.filter p).size ≤ s'.tokens.size` (chain-side
-    -- token monotonicity) as Foundation A's `h_j_le` precondition.
+    -- Relies on `h_pks_empty` so `s'.pendingKeys[0]` is the FIRST new entry
+    -- (not an outer-scope leftover).
     have h_chain_facts :
         ∃ (_ : 0 < s'.pendingKeys.size),
-          (s.tokens.filter (fun t => t.val != .placeholder)).size ≤ s'.tokens.size ∧
           s'.pendingKeys[0].insertBeforeIdx
             = (s.tokens.filter (fun t => t.val != .placeholder)).size ∧
           s'.pendingKeys[0].kind = .keyOnly := by
       sorry
-    obtain ⟨h_pos, h_size_le, h_idx, h_kind⟩ := h_chain_facts
+    obtain ⟨h_pos, h_idx, h_kind⟩ := h_chain_facts
     -- Apply Foundation A.
     obtain ⟨h_lin, h_at⟩ :=
       L4YAML.Proofs.ScannerLinearise.linearise_first_splice_keyonly
