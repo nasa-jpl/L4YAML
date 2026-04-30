@@ -766,6 +766,7 @@ rooted at `Scanner/Linearise.lean`:
 | J.4.2.b-2a-chain | Chain-side `AllUnresolved` propagation: `AllUnresolved_init`, parametric `ScanChain.preserves_AllUnresolved`, `AllUnresolved_of_chain_from_init`, `AllUnresolved_emit_streamEnd` | 0 (new infrastructure) | `Proofs/Output/EmitterScannability.lean` | ✓ done 2026-04-30 |
 | J.4.2.b-2a-discharge | Per-action `AllUnresolved` preservation discharging the parametric `h_step` for the no-`:`-pair sub-class: `setPendingKeyEndLine_kind`, `setPendingKeyEndLine_wrap_preserves_AllUnresolved`, `scanValueClearKey_no_key`, `scanValuePrepare_no_key_preserves_pendingKeys`, `scanValue_{no_key_preserves_pendingKeys, preserves_AllUnresolved}`, the four per-dispatcher `*_preserves_AllUnresolved` lemmas, `preprocess_preserves_AllUnresolved`, `allowDir_ite_preserves_AllUnresolved`, `scanNextToken_preserves_AllUnresolved` | 0 (new infrastructure) | `Proofs/Scanner/ScannerCorrectness.lean` | ✓ done 2026-04-30 |
 | J.4.2.b-2b | `NoPlaceholders` predicate + Class A/B preservation lemmas (`NoPlaceholders_mono`, `NoPlaceholders_emit`, `NoPlaceholders_emitAt`) and chain-side propagation (`NoPlaceholders_init`, parametric `ScanChain.preserves_NoPlaceholders`, `NoPlaceholders_of_chain_from_init`, `NoPlaceholders_emit_streamEnd`) | 0 (new infrastructure) | `Proofs/Scanner/ScannerCorrectness.lean`, `Proofs/Output/EmitterScannability.lean` | ✓ done 2026-04-30 |
+| J.4.2.b-2b-discharge | Per-action `NoPlaceholders` preservation discharging the parametric `h_step` (unconditional — no sub-class hypothesis): `NoPlaceholders_extension` / `NoPlaceholders_extension_one` generic helpers; primitive Class A leaves (`advance_preserves_NoPlaceholders`, `advanceN_preserves_NoPlaceholders`, `skipToContent_preserves_NoPlaceholders`, `saveSimpleKey_preserves_{tokens,NoPlaceholders}`, `scanValueClearKey_preserves_NoPlaceholders`); indent helpers (`pushSequenceIndent_preserves_NoPlaceholders`, `pushMappingIndent_preserves_NoPlaceholders`, `unwindIndentsLoop_preserves_NoPlaceholders`, `unwindIndents_preserves_NoPlaceholders`); per-scanner `*_preserves_NoPlaceholders` for `scanFlow{SequenceStart, SequenceEnd, MappingStart, MappingEnd, Entry}`, `scanBlockEntry`, `scanKey`, `scanValuePrepare`, `scanValue`, `scanDocumentStart`, `scanDocumentEnd`, `scanAnchorOrAlias`, `scanTag`, `scanBlockScalar`, `scanDoubleQuoted`, `scanSingleQuoted`, `scanPlainScalar`, `scanDirective`; supporting `*_new_token_not_placeholder` helpers (canonical `_new_token_not_plain` style) for the content scanners + `scanVerbatimTag` / `scanSecondaryTag` / `scanNamedTag` / `scanBlockScalarBody` / `scanYamlDirective` / `scanTagDirective`; the four per-dispatcher `*_preserves_NoPlaceholders` lemmas; `preprocess_preserves_NoPlaceholders`, `allowDir_ite_preserves_NoPlaceholders`, top-level `scanNextToken_preserves_NoPlaceholders` | 0 (new infrastructure) | `Proofs/Scanner/ScannerCorrectness.lean` | ✓ done 2026-04-30 |
 
 **J.3.1 — Linearise foundations** [✓ completed 2026-04-26]:
 
@@ -1905,6 +1906,120 @@ split.
 Sorry count unchanged (12); infrastructure landing.  Build green
 (453 jobs); +154 lines.
 
+**J.4.2.b-2b-discharge landed (2026-04-30)**: per-action discharge of
+the parametric `h_step` parameter of `ScanChain.preserves_NoPlaceholders`
+(J.4.2.b-2b chain).  Mirrors the J.4.2.b-2a-discharge structure but is
+**unconditional** — no sub-class hypothesis on the input is required,
+since post-cutover every scanner action either preserves `tokens`
+(Class A passthrough) or pushes a single concrete non-`.placeholder`
+token (Class B).
+
+Lands in `Proofs/Scanner/ScannerCorrectness.lean` (after
+`scanNextToken_preserves_AllUnresolved`):
+
+```
+-- Generic helpers (extension via _adds_one_token + _preserves_prefix
+-- + _new_token_not_placeholder):
+NoPlaceholders_extension                        -- generic _size + _prefix + _new
+NoPlaceholders_extension_one                    -- specialisation for single-push functions
+
+-- Class A leaves:
+advance_preserves_NoPlaceholders
+advanceN_preserves_NoPlaceholders
+skipToContent_preserves_NoPlaceholders
+saveSimpleKey_preserves_tokens                  -- post-cutover identity on `tokens`
+saveSimpleKey_preserves_NoPlaceholders
+scanValueClearKey_preserves_NoPlaceholders
+
+-- Indent helpers (Class B with .blockEnd / .blockSequenceStart /
+-- .blockMappingStart):
+pushSequenceIndent_preserves_NoPlaceholders
+pushMappingIndent_preserves_NoPlaceholders
+unwindIndentsLoop_preserves_NoPlaceholders      -- recursive on fuel
+unwindIndents_preserves_NoPlaceholders
+
+-- Flow indicator scanners:
+scanFlow{SequenceStart,SequenceEnd,MappingStart,MappingEnd,Entry}_preserves_NoPlaceholders
+
+-- Block indicator scanners:
+scanBlockEntry_preserves_NoPlaceholders
+scanKey_preserves_NoPlaceholders
+scanValuePrepare_preserves_NoPlaceholders
+scanValue_preserves_NoPlaceholders
+
+-- Document/directive scanners:
+scanDocumentStart_preserves_NoPlaceholders
+scanDocumentEnd_preserves_NoPlaceholders
+scanYamlDirective_new_token_not_placeholder    -- helper
+scanTagDirective_new_token_not_placeholder     -- helper
+scanDirective_preserves_NoPlaceholders
+
+-- Content scanners (mirror canonical `_new_token_not_plain` helpers):
+scanAnchorOrAlias_{new_token_not_placeholder, preserves_NoPlaceholders}
+scanVerbatimTag_new_token_not_placeholder       -- helper
+scanSecondaryTag_new_token_not_placeholder      -- helper
+scanNamedTag_new_token_not_placeholder          -- helper
+scanTag_{new_token_not_placeholder, preserves_NoPlaceholders}
+scanBlockScalarBody_new_token_not_placeholder   -- helper
+scanBlockScalar_{new_token_not_placeholder, preserves_NoPlaceholders}
+scanDoubleQuoted_{new_token_not_placeholder, preserves_NoPlaceholders}
+scanSingleQuoted_{new_token_not_placeholder, preserves_NoPlaceholders}
+scanPlainScalar_{new_token_not_placeholder, preserves_NoPlaceholders}
+
+-- Per-dispatcher:
+dispatchStructural_preserves_NoPlaceholders
+dispatchFlowIndicators_preserves_NoPlaceholders
+dispatchBlockIndicators_preserves_NoPlaceholders
+dispatchContent_preserves_NoPlaceholders
+
+-- Top-level:
+preprocess_preserves_NoPlaceholders
+allowDir_ite_preserves_NoPlaceholders
+scanNextToken_preserves_NoPlaceholders          -- ∀ s s', NoPlaceholders s →
+                                                --   scanNextToken s = .ok (some s') →
+                                                --   NoPlaceholders s'
+                                                -- (NO sub-class hypothesis)
+```
+
+Mechanism: each per-function lemma reduces to one of two forms:
+
+* **Class A** (e.g., `skipToContent`, `saveSimpleKey`, `scanValueClearKey`):
+  apply `NoPlaceholders_mono` to the existing `_preserves_tokens` lemma.
+* **Class B** (single-emit scanners): apply `NoPlaceholders_extension_one`
+  with the existing `_adds_one_token` and `_preserves_prefix` lemmas plus
+  a new `_new_token_not_placeholder` helper.  Each helper mirrors the
+  canonical `_new_token_not_plain` proof from
+  `Proofs/Production/ScannerPlainScalarValid` (substituting
+  `.placeholder` for `.scalar _ .plain`): unfold the scanner function,
+  resolve Except cases, reduce the new-token slot via
+  `Array.getElem_push_eq` plus the appropriate `_preserves_tokens`
+  chain, and close with `nofun` (token constructor mismatch).
+
+Per-dispatcher lemmas mirror the existing
+`*_preserves_PendingKeysWellIndexed` chain: `repeat (any_goals (split at h_ok))`
++ `all_goals first | exact ... | (simp_all; done)`.
+
+Top-level `scanNextToken_preserves_NoPlaceholders` chains through
+`preprocess_preserves_NoPlaceholders` and the four dispatcher
+lemmas, structured identically to
+`scanNextToken_preserves_AllUnresolved` but **without** the parametric
+`h_no_resolve : ∀ s_pre c, ... → c = ':' → s_pre.simpleKey.possible = false`
+sub-class hypothesis — all four dispatcher arms preserve
+`NoPlaceholders` unconditionally.
+
+This closes the J.4.2.b-2b chain symmetrically with the
+J.4.2.b-2a chain (`AllUnresolved`):
+
+| Predicate            | Predicate + Class A/B/C    | Chain induction        | Per-action discharge        |
+| -------------------- | -------------------------- | ---------------------- | --------------------------- |
+| `AllUnresolved`      | J.4.2.b-2a                 | J.4.2.b-2a-chain       | J.4.2.b-2a-discharge        |
+|                      |                            |                        | (sub-class restricted)      |
+| `NoPlaceholders`     | J.4.2.b-2b                 | J.4.2.b-2b (chain      | J.4.2.b-2b-discharge        |
+|                      |                            |  in `EmitterScannability`) | (unconditional)         |
+
+Sorry count unchanged (7 build / 12 logical); infrastructure landing.
+Build green (453 jobs); +485 lines.
+
 **Next concrete step (J.4.2.b — consumer refactor)**
 
 The `_structure` consumers' `h_tok_eq` bridge is FALSE in general
@@ -2051,24 +2166,27 @@ Remaining J.4.2.b work:
      `.placeholder` push), so the chain induction's parametric
      `h_step` is dischargeable unconditionally — open follow-up
      work tracked under 2b-discharge below.
-   - **2b-discharge (per-action `h_step` for `NoPlaceholders`)**:
-     specialise `h_step` to the unconditional form — prove
-     `scanNextToken_preserves_NoPlaceholders` *without* any
-     sub-class hypothesis, since post-cutover every scanner action
-     either leaves `tokens` unchanged (Class A passthrough via the
-     existing `*_preserves_tokens` chain) or pushes a single
-     concrete non-`.placeholder` token (Class B via
-     `NoPlaceholders_emit` plus a `decide`-style check on the
-     emitted token).  Per-dispatcher proofs mirror the
-     `*_preserves_PendingKeysWellIndexed` chain.  Estimate: 1-2
-     cadence steps.  Optional — if 2c's direct cascade derivation
-     does not need a generic `scanNextToken`-level lemma, the
-     per-step discharge can be inlined locally where the consumer
-     state is in scope.
+   - ✓ **Done (J.4.2.b-2b-discharge, 2026-04-30)**: per-action discharge
+     of the parametric `h_step` parameter of
+     `ScanChain.preserves_NoPlaceholders`.  `scanNextToken_preserves_NoPlaceholders`
+     proves `∀ s s', NoPlaceholders s → scanNextToken s = .ok (some s') →
+     NoPlaceholders s'` **unconditionally** (no sub-class hypothesis):
+     post-cutover every scanner action is either Class A passthrough
+     (`*_preserves_tokens` lemmas) or Class B push of a concrete
+     non-`.placeholder` token (`NoPlaceholders_emit` /
+     `NoPlaceholders_emitAt`, with `_new_token_not_placeholder` helpers
+     mirroring the canonical `_new_token_not_plain` proofs from
+     `Proofs/Production/ScannerPlainScalarValid`).  Per-dispatcher
+     proofs follow the `*_preserves_PendingKeysWellIndexed` template.
+     Closes the J.4.2.b-2b chain symmetrically with the
+     J.4.2.b-2a → 2a-chain → 2a-discharge pattern.
    - **2c (linearise-shape seq body)**: produce a linearise-shape variant
      of `emitList_body_filtered_characterization` for the all-scalar /
-     no-resolution case, using 2a + 2b as the bridge.  Estimate: 1-2
-     cadence steps.
+     no-resolution case, using 2a + 2b as the bridge.  Equipped with
+     2a-discharge + 2b-discharge (top-level `scanNextToken_preserves_*`
+     lemmas) plus the J.4.2.c positional family (`-pos1`, `-pos2`,
+     `-prefix`) and the J.4.2.b-pkwi chain-endpoint invariant.
+     Estimate: 1-2 cadence steps.
    - **2d (linearise-shape pair body)**: produce a linearise-shape variant
      of `emitPairList_body_filtered_characterization`, which is harder
      because `:` resolutions DO fire — needs richer linearise-aware
@@ -2156,7 +2274,25 @@ parametric `h_step` is dischargeable unconditionally — the
 follow-up J.4.2.b-2b-discharge landing will provide the per-action
 `scanNextToken_preserves_NoPlaceholders` that mirrors
 `scanNextToken_preserves_AllUnresolved` (without the sub-class
-hypothesis).  2b-discharge / 2c / 2d remain.
+hypothesis).
+J.4.2.b-2b-discharge (per-action `NoPlaceholders` preservation:
+generic `NoPlaceholders_extension` / `NoPlaceholders_extension_one`
+helpers, primitive Class A leaves, indent helpers, per-scanner
+`*_preserves_NoPlaceholders` lemmas + supporting
+`*_new_token_not_placeholder` helpers, the four per-dispatcher
+lemmas, `preprocess_preserves_NoPlaceholders`,
+`allowDir_ite_preserves_NoPlaceholders`, top-level
+`scanNextToken_preserves_NoPlaceholders`) landed 2026-04-30 with
+sorry count unchanged at 12 (infrastructure for the cascade
+discharge, no sorry cleared).  Closes the J.4.2.b-2b chain
+symmetrically with J.4.2.b-2a → 2a-chain → 2a-discharge.
+`scanNextToken_preserves_NoPlaceholders` is **unconditional** — no
+sub-class hypothesis on the input character, since post-cutover
+every scanner action either preserves `tokens` (Class A) or pushes
+a single concrete non-`.placeholder` token (Class B).  Cascade
+consumers in 2c plug `scanNextToken_preserves_NoPlaceholders`
+directly into `ScanChain.preserves_NoPlaceholders` for any input
+(no sub-class specialisation needed).  2c / 2d remain.
 
 ### Phase J.4 — Cleanup and follow-on (1-2 weeks)
 
