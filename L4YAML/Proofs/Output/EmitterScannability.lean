@@ -10135,6 +10135,109 @@ theorem emitPairList_body_filtered_characterization
   · -- Part 3: After every outer-level flowEntry, next is .key
     sorry
 
+/-! ### J.4.2.b-2d — Linearise-shape body characterization for `emitPairList`
+
+Linearise-shape variant of `emitPairList_body_filtered_characterization` for
+the resolution case (each pair contributes one `:` resolution that converts
+its `.unresolved` pendingKey entry into `.keyOnly`).  Unlike 2c (seq body),
+the bridge `linearise = filter` does NOT hold here: the linearise output
+splices a `.key` token at each resolved pendingKey's `insertBeforeIdx`, so
+linearise[old_sz] = .key whereas filter[old_sz] = first content token of
+`emit k`.  The wrapper therefore states the linearise-shape claims directly
+rather than transporting from the filter shape.
+
+Stub-level discharge for this cadence step:
+* Chain side: reuse `emitPairList_body_filtered_characterization` for the
+  chain, all 13 invariant carries, `n ≥ 3`, and `FlowMonoChain`.
+* `NoPlaceholders s'`: chain-side propagation via
+  `ScanChain.preserves_NoPlaceholders` (J.4.2.b-2b-chain), discharged
+  unconditionally by `scanNextToken_preserves_NoPlaceholders`
+  (J.4.2.b-2b-discharge).
+* Linearise-shape Parts (2)/(3) (`linearise[old_sz] = .key` and
+  `linearise[k+1] = .key` after outer-level flowEntry): SORRY'd as
+  J.4.2.b-2d-key follow-up.  These require resolved-key splice analysis
+  using the J.4.2.c positional family + new pendingKey-aware linearise
+  lemmas (forthcoming).
+
+NOTE: `AllUnresolved s'` does NOT carry through (the `:` actions resolve
+pendingKey entries to `.keyOnly`).  The pair body's per-action discharge
+condition for AllUnresolved fails by design — this is why the legacy
+`linearise = filter` bridge cannot carry the pair-body conclusion. -/
+
+/-- Linearise-shape variant of `emitPairList_body_filtered_characterization`
+    for the resolution case.  Carries the chain, structural invariants,
+    `n ≥ 3`, and `NoPlaceholders s'` from the filter-shape characterization;
+    states the linearise-shape Parts (2) and (3) (first new linearised
+    token is `.key`; after every outer-level flowEntry, next is `.key`)
+    directly on `linearise s'.tokens s'.pendingKeys` without the
+    `linearise = filter` bridge (which fails when `:` resolutions fire).
+
+    Stub-level discharge: linearise-shape Parts (2)/(3) are sorry'd as
+    J.4.2.b-2d-key follow-up (resolved-key splice analysis). -/
+theorem emitPairList_body_linearise_characterization
+    (pairs : List (YamlValue × YamlValue)) (h_ne : pairs ≠ [])
+    (h_all_k : ∀ p ∈ pairs, EmitScansInFlow p.1)
+    (h_all_v : ∀ p ∈ pairs, EmitScansInFlow p.2)
+    (s : ScannerState) (rest : List Char)
+    (h_corr : ScannerSurfCorr s ⟨(emit.emitPairList pairs).toList ++ rest, s.col⟩)
+    (h_flow : s.inFlow = true) (h_fl : s.flowLevel > 0)
+    (h_indent : s.currentIndent < 0) (h_col : s.col > 0)
+    (h_ek : s.explicitKeyLine = none)
+    (h_atol : AllTokensOnLine s s.line)
+    (h_endline : EndLineOnLine s)
+    (h_sk : s.simpleKey.possible = false)
+    (h_no_pl : ScannerCorrectness.NoPlaceholders s) :
+    let p := fun (t : Positioned YamlToken) => t.val != .placeholder
+    let old_sz := (s.tokens.filter p).size
+    ∃ n s', ScanChain s n s'
+    ∧ ScannerSurfCorr s' ⟨rest, s'.col⟩
+    ∧ s'.flowLevel = s.flowLevel
+    ∧ s'.directivesPresent = s.directivesPresent
+    ∧ s'.indents = s.indents
+    ∧ s'.explicitKeyLine = s.explicitKeyLine
+    ∧ s'.col > 0
+    ∧ s'.inFlow = true
+    ∧ s'.currentIndent < 0
+    ∧ s'.line = s.line
+    ∧ AllTokensOnLine s' s'.line
+    ∧ EndLineOnLine s'
+    ∧ s'.simpleKeyStack = s.simpleKeyStack
+    ∧ FlowMonoChain s.flowLevel s n s'
+    ∧ n ≥ 3
+    ∧ ScannerCorrectness.NoPlaceholders s'
+    -- (2) First new linearised token is .key
+    ∧ (old_sz < (linearise s'.tokens s'.pendingKeys).size ∧
+       (∀ (h : old_sz < (linearise s'.tokens s'.pendingKeys).size),
+         ((linearise s'.tokens s'.pendingKeys)[old_sz]'h).val = .key))
+    -- (3) After every OUTER-LEVEL flowEntry in linearised output, next is .key
+    ∧ (∀ (k : Nat), old_sz ≤ k →
+       (h_hi : k < (linearise s'.tokens s'.pendingKeys).size) →
+       ((linearise s'.tokens s'.pendingKeys)[k]'h_hi).val = .flowEntry →
+       flowBracketBalance (linearise s'.tokens s'.pendingKeys) old_sz k = 0 →
+       k + 1 < (linearise s'.tokens s'.pendingKeys).size ∧
+       (∀ (h' : k + 1 < (linearise s'.tokens s'.pendingKeys).size),
+         ((linearise s'.tokens s'.pendingKeys)[k + 1]'h').val = .key)) := by
+  -- Step 1: invoke the filter-shape body characterization for `emitPairList`
+  have h_filt := emitPairList_body_filtered_characterization pairs h_ne h_all_k h_all_v
+    s rest h_corr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_sk
+  obtain ⟨n, s', h_chain, h_corr', h_fl', h_dp', h_ids', h_ek', h_col', h_inflow',
+          h_indent', h_line', h_atol', h_endline', h_stack', h_fmc',
+          h_n_ge3, _h_body_key, _h_body_fe_next⟩ := h_filt
+  -- Step 2: derive NoPlaceholders s' (unconditional via 2b-discharge).
+  -- AllUnresolved does NOT carry — `:` resolutions are by design here.
+  have h_no_pl' : ScannerCorrectness.NoPlaceholders s' :=
+    h_chain.preserves_NoPlaceholders
+      (fun h h_ok => ScannerCorrectness.scanNextToken_preserves_NoPlaceholders _ _ h h_ok)
+      h_no_pl
+  -- Step 3: assemble; linearise-shape Parts (2)/(3) sorry'd as J.4.2.b-2d-key.
+  refine ⟨n, s', h_chain, h_corr', h_fl', h_dp', h_ids', h_ek',
+          h_col', h_inflow', h_indent', h_line', h_atol', h_endline',
+          h_stack', h_fmc', h_n_ge3, h_no_pl', ?_, ?_⟩
+  · -- Part (2): linearise-shape first-key claim — resolved-key splice analysis
+    sorry
+  · -- Part (3): linearise-shape after-flowEntry-key claim — resolved-key splice analysis
+    sorry
+
 /-- Token structure of `scanFiltered ("[" ++ emitList items ++ "]")` for non-empty items.
     Establishes boundary tokens, body token patterns, and `parseNode` success within
     the flow sequence body.
