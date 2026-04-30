@@ -1434,6 +1434,92 @@ theorem PendingKeysWellIndexed_emit_streamEnd
     (ScannerCorrectness.emit_preserves_pendingKeys s tok)
     (by rw [ScannerProofs.emit_tokens_size]; omega) h_inv
 
+/-! ### J.4.2.b-2a-chain — `AllUnresolved` propagation through `ScanChain`
+
+Chain-side companion to the per-action lemmas landed in `J.4.2.b-2a`
+(`AllUnresolved_mono`, `AllUnresolved_push_unresolved`,
+`AllUnresolved_field_update`, `setPendingKeyKind_unresolved_preserves_AllUnresolved`,
+`saveSimpleKey_preserves_AllUnresolved`).
+
+Unlike `PendingKeysWellIndexed` — preserved by *every* scanner action,
+including `scanValuePrepare`'s `:`-resolution — `AllUnresolved` is
+broken by the single per-action path
+`setPendingKeyKind active <non-.unresolved>`.  The chain induction
+therefore takes the per-action preservation as a parametric
+hypothesis: for inputs in the no-`:`-pair sub-class (flow seqs of
+scalars; nested flow seqs), the consumer discharges that hypothesis
+via the Class A/B/C machinery on a step-by-step basis (every action
+along the chain falls into Class A passthrough, Class B push of
+`.unresolved`, or Class C with kind preserved).
+
+Companion to `ScanChain.preserves_PendingKeysWellIndexed` for the
+linearise-shape body characterizations of the seq/map cascade
+(J.4.2.b-2c, J.4.2.b-2d): combined with
+`linearise_eq_filter_no_resolutions` (J.4.1) it lets cascade consumers
+collapse `linearise` to the legacy filter shape used by Tier 1
+emitter derivations. -/
+
+/-- The initial scanner state immediately after `streamStart` has been
+    emitted satisfies `AllUnresolved`: `pendingKeys = #[]`, so the
+    predicate holds vacuously. -/
+theorem AllUnresolved_init (input : String) :
+    ScannerCorrectness.AllUnresolved
+      ((ScannerState.mk' input).emit .streamStart) := by
+  intro e he
+  rw [Array.mem_iff_getElem] at he
+  obtain ⟨i, hi, _⟩ := he
+  have h_emp :
+      ((ScannerState.mk' input).emit .streamStart).pendingKeys.size = 0 := by
+    rw [ScannerCorrectness.emit_preserves_pendingKeys]; rfl
+  omega
+
+/-- `ScanChain` preserves `AllUnresolved` parametrically in a per-action
+    preservation hypothesis: by induction on the chain, applying
+    `h_step` at each successful `scanNextToken` step.  For inputs in
+    the no-`:`-pair sub-class, the consumer discharges `h_step` via the
+    Class A/B/C machinery from `J.4.2.b-2a`. -/
+theorem ScanChain.preserves_AllUnresolved
+    {s s' : ScannerState} {n : Nat}
+    (h_chain : ScanChain s n s')
+    (h_step : ∀ {sa sb : ScannerState},
+                ScannerCorrectness.AllUnresolved sa →
+                scanNextToken sa = .ok sb →
+                ScannerCorrectness.AllUnresolved sb)
+    (h_inv : ScannerCorrectness.AllUnresolved s) :
+    ScannerCorrectness.AllUnresolved s' := by
+  induction h_chain with
+  | zero => exact h_inv
+  | step h_snt _ ih =>
+    exact ih (h_step h_inv h_snt)
+
+/-- Combined helper: any chain anchored at the `streamStart`-initialized
+    state, whose per-action transitions all preserve `AllUnresolved`,
+    extends the invariant to the chain endpoint.  Companion to
+    `PendingKeysWellIndexed_of_chain_from_init` for the
+    linearise-shape cascade derivations. -/
+theorem AllUnresolved_of_chain_from_init
+    (input : String) (s₀ s_final : ScannerState) (n : Nat)
+    (h_s0 : s₀ = (ScannerState.mk' input).emit .streamStart)
+    (h_chain : ScanChain s₀ n s_final)
+    (h_step : ∀ {sa sb : ScannerState},
+                ScannerCorrectness.AllUnresolved sa →
+                scanNextToken sa = .ok sb →
+                ScannerCorrectness.AllUnresolved sb) :
+    ScannerCorrectness.AllUnresolved s_final :=
+  h_chain.preserves_AllUnresolved h_step
+    (h_s0 ▸ AllUnresolved_init input)
+
+/-- After the final `streamEnd` emit, `AllUnresolved` still holds:
+    `emit` only pushes a token and leaves `pendingKeys` unchanged.
+    Consumed in the cascade where `linearise_eq_filter_no_resolutions`
+    operates on `(s_final.emit .streamEnd)`. -/
+theorem AllUnresolved_emit_streamEnd
+    (s : ScannerState) (tok : YamlToken)
+    (h_inv : ScannerCorrectness.AllUnresolved s) :
+    ScannerCorrectness.AllUnresolved (s.emit tok) :=
+  ScannerCorrectness.AllUnresolved_mono
+    (ScannerCorrectness.emit_preserves_pendingKeys s tok) h_inv
+
 -- ═══ FlowMonoChain: ScanChain with flow-level lower bound ═══
 
 /-- `FlowMonoChain fl₀ s n s'` is a `ScanChain` where every intermediate state
