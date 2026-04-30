@@ -1227,4 +1227,80 @@ theorem linearise_push_eq_push_linearise
   rw [linearise_append_token_eq tokens pks t h]
   exact Array.push_eq_append.symm
 
+/-- If every pending entry has `insertBeforeIdx ≥ 2` and `tokens.size ≥ 2`,
+    the second element of `linearise tokens pks` equals `tokens[1]`.
+
+    Proof strategy: step `linearise.go` twice from `(k=0, p=0, acc=#[])`.
+    The hypothesis `2 ≤ pks[p].insertBeforeIdx` ensures no splice fires at
+    indices 0 or 1, so the first two actions are `acc.push tokens[0]` then
+    `acc.push tokens[1]`.  The accumulator after two steps has `tokens[1]`
+    at index 1, and prefix-stability (`linearise_go_getElem_lt_acc`) carries
+    this through the rest of the recursion.
+
+    At `scanFiltered`, the earliest `saveSimpleKey` registers a pending key
+    only after `[streamStart, flowSequenceStart]` (or block analogue) have
+    been emitted, i.e. when `s.tokens.size = 2`, so this hypothesis holds
+    for every step downstream.  Used by the seq/map cascade consumers in
+    `Proofs/Output/EmitterScannability.lean` to read off the
+    `flowSequenceStart` / `blockMappingStart` token at index 1. -/
+theorem linearise_second_eq_tokens_second
+    (tokens : Array (Positioned YamlToken))
+    (pks : Array PendingKeyEntry)
+    (h_size : tokens.size ≥ 2)
+    (h_pks : ∀ p (h : p < pks.size), 2 ≤ pks[p].insertBeforeIdx) :
+    ∃ h_lin : 1 < (linearise tokens pks).size,
+      (linearise tokens pks)[1]'h_lin = tokens[1]'h_size := by
+  have h_size0 : 0 < tokens.size := by omega
+  have h_size1 : 1 < tokens.size := by omega
+  have h_lin_size_ge : (linearise tokens pks).size ≥ tokens.size :=
+    linearise_size_ge_tokens tokens pks
+  have h_lin_size : 1 < (linearise tokens pks).size := by omega
+  refine ⟨h_lin_size, ?_⟩
+  -- Step linearise.go twice from (0,0,#[]):
+  --   (0,0,#[]) → (1,0,#[tokens[0]]) → (2,0,#[tokens[0], tokens[1]])
+  have h_step : linearise tokens pks
+        = linearise.go tokens pks 2 0
+            (((#[] : Array _).push (tokens[0]'h_size0)).push (tokens[1]'h_size1)) := by
+    unfold linearise
+    rw [linearise.go]
+    by_cases hp : 0 < pks.size
+    · simp only [hp, ↓reduceDIte]
+      have h_pks0 := h_pks 0 hp
+      have h_not_splice0 : ¬ pks[0].insertBeforeIdx ≤ 0 := by omega
+      simp only [h_not_splice0, ↓reduceIte, h_size0, ↓reduceDIte]
+      rw [linearise.go]
+      simp only [hp, ↓reduceDIte]
+      have h_not_splice1 : ¬ pks[0].insertBeforeIdx ≤ 1 := by omega
+      simp only [h_not_splice1, ↓reduceIte, h_size1, ↓reduceDIte]
+    · simp only [hp, ↓reduceDIte, h_size0, ↓reduceDIte]
+      rw [linearise.go]
+      simp only [hp, ↓reduceDIte, h_size1, ↓reduceDIte]
+  -- Use prefix-stability on the stepped form: acc[1] = tokens[1]
+  have h_acc_size :
+      (((#[] : Array _).push (tokens[0]'h_size0)).push (tokens[1]'h_size1)).size = 2 := by simp
+  have h_acc_at_1 :
+      (((#[] : Array _).push (tokens[0]'h_size0)).push (tokens[1]'h_size1))[1]'(by simp)
+        = tokens[1]'h_size1 := by simp
+  have h_lin_size' : 1 < (linearise.go tokens pks 2 0
+      (((#[] : Array _).push (tokens[0]'h_size0)).push (tokens[1]'h_size1))).size := by
+    have h_mono := linearise_go_size_mono tokens pks
+      ((tokens.size - 2) + (pks.size - 0)) 2 0
+      (((#[] : Array _).push (tokens[0]'h_size0)).push (tokens[1]'h_size1)) (by omega)
+    rw [h_acc_size] at h_mono
+    omega
+  have h_lin_at_1 :
+      (linearise.go tokens pks 2 0
+        (((#[] : Array _).push (tokens[0]'h_size0)).push (tokens[1]'h_size1)))[1]'h_lin_size'
+        = tokens[1]'h_size1 := by
+    rw [linearise_go_getElem_lt_acc tokens pks 2 0
+      (((#[] : Array _).push (tokens[0]'h_size0)).push (tokens[1]'h_size1)) 1
+      (by simp) h_lin_size']
+    exact h_acc_at_1
+  -- Transport along h_step
+  have h_eq : (linearise tokens pks)[1]'h_lin_size
+      = (linearise.go tokens pks 2 0
+          (((#[] : Array _).push (tokens[0]'h_size0)).push (tokens[1]'h_size1)))[1]'h_lin_size' := by
+    congr 1 <;> exact h_step
+  rw [h_eq]; exact h_lin_at_1
+
 end L4YAML.Proofs.ScannerLinearise
