@@ -769,6 +769,7 @@ rooted at `Scanner/Linearise.lean`:
 | J.4.2.b-2b-discharge | Per-action `NoPlaceholders` preservation discharging the parametric `h_step` (unconditional — no sub-class hypothesis): `NoPlaceholders_extension` / `NoPlaceholders_extension_one` generic helpers; primitive Class A leaves (`advance_preserves_NoPlaceholders`, `advanceN_preserves_NoPlaceholders`, `skipToContent_preserves_NoPlaceholders`, `saveSimpleKey_preserves_{tokens,NoPlaceholders}`, `scanValueClearKey_preserves_NoPlaceholders`); indent helpers (`pushSequenceIndent_preserves_NoPlaceholders`, `pushMappingIndent_preserves_NoPlaceholders`, `unwindIndentsLoop_preserves_NoPlaceholders`, `unwindIndents_preserves_NoPlaceholders`); per-scanner `*_preserves_NoPlaceholders` for `scanFlow{SequenceStart, SequenceEnd, MappingStart, MappingEnd, Entry}`, `scanBlockEntry`, `scanKey`, `scanValuePrepare`, `scanValue`, `scanDocumentStart`, `scanDocumentEnd`, `scanAnchorOrAlias`, `scanTag`, `scanBlockScalar`, `scanDoubleQuoted`, `scanSingleQuoted`, `scanPlainScalar`, `scanDirective`; supporting `*_new_token_not_placeholder` helpers (canonical `_new_token_not_plain` style) for the content scanners + `scanVerbatimTag` / `scanSecondaryTag` / `scanNamedTag` / `scanBlockScalarBody` / `scanYamlDirective` / `scanTagDirective`; the four per-dispatcher `*_preserves_NoPlaceholders` lemmas; `preprocess_preserves_NoPlaceholders`, `allowDir_ite_preserves_NoPlaceholders`, top-level `scanNextToken_preserves_NoPlaceholders` | 0 (new infrastructure) | `Proofs/Scanner/ScannerCorrectness.lean` | ✓ done 2026-04-30 |
 | J.4.2.b-2c | Linearise-shape variant of `emitList_body_filtered_characterization` for the no-resolution sub-class: `emitList_body_linearise_characterization` wraps the filter-shape body characterization, derives `AllUnresolved s'` (parametric in `h_step_unres` — caller plugs in `scanNextToken_preserves_AllUnresolved` from J.4.2.b-2a-discharge under the no-`:`-pair sub-class) and `NoPlaceholders s'` (unconditional via `scanNextToken_preserves_NoPlaceholders` from J.4.2.b-2b-discharge), then bridges `linearise s'.tokens s'.pendingKeys = s'.tokens.filter p` via `linearise_eq_filter_no_resolutions` (J.4.1) | 0 (new infrastructure) | `Proofs/Output/EmitterScannability.lean` | ✓ done 2026-04-30 |
 | J.4.2.b-2d-stub | Stub-level linearise-shape variant of `emitPairList_body_filtered_characterization` for the resolution case: `emitPairList_body_linearise_characterization` wraps the filter-shape body characterization, carries the chain + 13 invariants + `n ≥ 3` from filter-shape, derives `NoPlaceholders s'` (unconditional via `scanNextToken_preserves_NoPlaceholders` from J.4.2.b-2b-discharge); states linearise-shape Part (2) (`linearise[old_sz].val = .key`) and Part (3) (`linearise[k+1].val = .key` after outer-level flowEntry) on `linearise s'.tokens s'.pendingKeys` directly (no `linearise = filter` bridge — fails when `:` resolutions fire); both linearise-shape parts SORRY'd as J.4.2.b-2d-key follow-up | +2 (sorry stubs for the linearise-shape parts; chain + invariants + `n ≥ 3` + `NoPlaceholders s'` proven) | `Proofs/Output/EmitterScannability.lean` | ✓ done 2026-04-30 |
+| J.4.2.b-2d-key-foundation-A | Foundation A for the 2d-key splice mechanic: `linearise_first_splice_keyonly` (in `Proofs/Scanner/ScannerLinearise.lean`, after `linearise_prefix_eq_tokens_prefix`).  Given `pks.size > 0`, `pks[0].kind = .keyOnly`, `pks[0].insertBeforeIdx = j ≤ tokens.size`, derives `(linearise tokens pks)[j].val = .key`.  Proof: walk `linearise.go` from `(0, 0, #[])` to `(j, 0, tokens[0..j])` without firing splices (induction adapted from `linearise_prefix_eq_tokens_prefix`), step once to fire the `pks[0]` splice (`expandKind .keyOnly = #[⟨pos, .key, pos⟩]`), read off `.key` at index `j` via `linearise_go_getElem_lt_acc`.  Reshapes Part (2) of `emitPairList_body_linearise_characterization` to consume Foundation A — splice analysis fully discharged; remaining sorry narrowed to chain-side accounting (J.4.2.b-2d-key-chain) | 0 (Part (2) splice-analysis sorry replaced by chain-side accounting sorry — same count, narrowed shape) | `Proofs/Scanner/ScannerLinearise.lean`, `Proofs/Output/EmitterScannability.lean` | ✓ done 2026-04-30 |
 
 **J.3.1 — Linearise foundations** [✓ completed 2026-04-26]:
 
@@ -2217,30 +2218,68 @@ Remaining J.4.2.b work:
      design here), so the 2c transport pattern (`rw [h_lin_eq]`) cannot be
      reused.  Sorry count delta: +2 (one sorry per linearise-shape part,
      stubbed as **J.4.2.b-2d-key** follow-up).
-   - **2d-key (linearise-shape pair body — proof discharge)**: discharge
-     the two linearise-shape sorries inside `emitPairList_body_linearise_characterization`
-     (Part (2) `linearise[old_sz].val = .key`; Part (3) `linearise[k+1].val
-     = .key` after outer-level flowEntry).  Requires resolved-key splice
-     analysis: under pre-state `AllUnresolved s` + `NoPlaceholders s` plus
-     post-execution facts about `s'.pendingKeys` (each pair contributes a
-     `.keyOnly` entry with `insertBeforeIdx` matching the saveSimpleKey
-     time stamp), use `linearise_prefix_eq_tokens_prefix` and the splice
-     positions to read off `.key` at the relevant indices.  Likely needs
-     1-2 new linearise lemmas characterizing the position of the first
-     `.keyOnly` splice and the post-flowEntry splice, plus chain-side
-     accounting of the pendingKey extension shape (one per pair, all
-     `.keyOnly` post-resolution).  Estimate: 2-3 cadence steps (or one
-     multi-day landing) — the largest remaining J.4.2.b sub-task.
+   - ✓ **Done (J.4.2.b-2d-key-foundation-A, 2026-04-30)**: Foundation A
+     for the 2d-key splice mechanic — `linearise_first_splice_keyonly`
+     in `Proofs/Scanner/ScannerLinearise.lean` (after
+     `linearise_prefix_eq_tokens_prefix`).  Closes the splice-mechanic
+     half of Part (2): given `pks.size > 0`, `pks[0].kind = .keyOnly`,
+     and `pks[0].insertBeforeIdx = j ≤ tokens.size`, derives
+     `(linearise tokens pks)[j].val = .key`.  Proof structure: walk
+     `linearise.go` from `(0, 0, #[])` to `(j, 0, tokens[0..j])` without
+     firing splices (induction adapted from
+     `linearise_prefix_eq_tokens_prefix`), step once more to fire the
+     `pks[0]` splice (`expandKind .keyOnly = #[⟨pos, .key, pos⟩]`), then
+     read off `.key` at index `j` via `linearise_go_getElem_lt_acc`.
+     Reshapes Part (2) of `emitPairList_body_linearise_characterization`
+     to consume Foundation A: the splice analysis is fully discharged;
+     only the chain-side facts remain as **J.4.2.b-2d-key-chain**.  Sorry
+     count delta: 0 (the Part (2) splice-analysis sorry is replaced by
+     the chain-side accounting sorry, same shape narrowed to a concrete
+     fact about `s'.pendingKeys[0]`).  Foundation A is now also a reusable
+     building block for the analogous `.blockMappingStartAndKey` splice
+     case if needed downstream.
+   - **2d-key-foundation-B (linearise lemma for after-flowEntry splice)**:
+     companion to Foundation A.  Given a position `k` in
+     `linearise tokens pks` where `linearise[k].val = .flowEntry` and the
+     bracket balance from `old_sz` to `k` is 0, plus chain-side facts
+     about which `pks[p]` corresponds to `k+1`, derives
+     `linearise[k+1].val = .key`.  More complex than Foundation A
+     because we don't index from the start — we need a "splice happens
+     immediately after this flowEntry" characterization.  Likely a
+     general lemma about splice positions in `linearise.go`.
+     Estimate: 1 cadence step.
+   - **2d-key-chain (chain-side accounting for `s'.pendingKeys`)**:
+     prove the bundled fact required by the reshaped Part (2)
+     (and Part (3) once Foundation B lands): from the `emitPairList`
+     chain `s ↦ s'` with pre-state `s.simpleKey.possible = false`,
+     derive
+     `0 < s'.pendingKeys.size ∧ s'.pendingKeys[0].insertBeforeIdx
+       = s.tokens.size ∧ s'.pendingKeys[0].kind = .keyOnly`
+     plus the token-monotonicity bound
+     `s.tokens.size ≤ s'.tokens.size`.  Proof: induction over the chain
+     tracking when the FIRST `saveSimpleKey` fires (at the start of
+     `emit k_1`, at scanner position with size = `s.tokens.size`) and
+     when `scanValuePrepare` resolves it to `.keyOnly` (at the first
+     `:` after `emit k_1` is fully scanned).  May share infrastructure
+     with the existing `AllUnresolved`/`NoPlaceholders` chain-propagation
+     lemmas.  Estimate: 1-2 cadence steps.
+   - **2d-key-wrap (Part (3) discharge)**: combine Foundation B with
+     2d-key-chain (extended to cover all pairs, not just the first) to
+     discharge the remaining Part (3) sorry inside
+     `emitPairList_body_linearise_characterization`.  Estimate: 1
+     cadence step once 2d-key-foundation-B and 2d-key-chain are in
+     tree.
 3. **Stitch the cascade** into `scanFiltered_emitSeq_nonempty_structure`
    (currently line 9844 sorry) and `scanFiltered_emitMap_nonempty_structure`
    (currently line 10070 sorry), discharging both Tier 1 cascade sorries
    using the J.4.2.c family of positional lemmas + the J.4.2.b-pkwi
    chain-endpoint invariant + the linearise-shape body characterizations
    from item (2).  Sequencing: the seq-side cascade can land as soon as
-   2c is in tree (already done); the map-side cascade requires 2d-key
-   (the linearise-shape Parts (2)/(3) discharge inside the 2d-stub
-   theorem) to be in tree first.  Estimate: 1-2 cadence steps once
-   (2c, 2d-key) are in tree.
+   2c is in tree (already done); the map-side cascade requires
+   2d-key-wrap (the final discharge of Parts (2)/(3) inside the 2d-stub
+   theorem, blocked on 2d-key-foundation-B + 2d-key-chain) to be in
+   tree first.  Estimate: 1-2 cadence steps once (2c, 2d-key-wrap) are
+   in tree.
 
 The remaining chunk (items 2 + 3) is the substantial leg of J.4 — but
 the breakdown above lets each substep land in cadence-size, with the
@@ -2387,6 +2426,30 @@ splice, plus chain-side accounting of the post-execution
 pendingKey extension shape (one `.keyOnly` per pair).  This sets up the
 cascade-ready toolkit slot for `scanFiltered_emitMap_nonempty_structure`
 to consume in item 3 of the cascade work.
+J.4.2.b-2d-key-foundation-A (Foundation A for the splice mechanic:
+`linearise_first_splice_keyonly` in `Proofs/Scanner/ScannerLinearise.lean`)
+landed 2026-04-30 with sorry count **unchanged** in EmitterScannability
+(the Part (2) splice-analysis sorry is replaced by a chain-side
+accounting sorry of the same count but narrower shape; Foundation A
+itself adds 0 sorries in `ScannerLinearise.lean`).  Foundation A closes
+the splice mechanic of Part (2) by adapting the no-splice walk from
+`linearise_prefix_eq_tokens_prefix`, then stepping `linearise.go` once
+to fire the first `.keyOnly` splice (`expandKind .keyOnly = #[⟨pos, .key,
+pos⟩]`), and reading off `.key` at index `j` via prefix-stability
+(`linearise_go_getElem_lt_acc`).  The wrapper `emitPairList_body_linearise_characterization`
+is reshaped to consume Foundation A: Part (2) is now reduced to a single
+named obligation **J.4.2.b-2d-key-chain** (chain-side accounting
+of `s'.pendingKeys[0]`'s shape: `0 < s'.pendingKeys.size`,
+`s'.pendingKeys[0].insertBeforeIdx = s.tokens.size`,
+`s'.pendingKeys[0].kind = .keyOnly`, plus the token-monotonicity
+bound `s.tokens.size ≤ s'.tokens.size`).  Part (3) remains sorry'd
+as **J.4.2.b-2d-key-wrap** (blocked on **J.4.2.b-2d-key-foundation-B**
+— a companion linearise lemma for splices at after-flowEntry positions
+— and **J.4.2.b-2d-key-chain** extended to all pairs).  Net effect:
+this cadence step does not reduce sorry count but converts an opaque
+splice-analysis sorry into a concrete chain-side accounting obligation
+that's amenable to the existing `AllUnresolved`/`NoPlaceholders`
+chain-propagation infrastructure.
 
 ### Phase J.4 — Cleanup and follow-on (1-2 weeks)
 
