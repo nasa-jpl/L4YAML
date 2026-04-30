@@ -759,6 +759,7 @@ rooted at `Scanner/Linearise.lean`:
 | J.4.1 | Bridge helper `linearise_eq_filter_no_resolutions` (all-unresolved + no-placeholder ⟹ linearise = filter) | 0 (new infrastructure) | `Proofs/Scanner/ScannerLinearise.lean` | ✓ done 2026-04-29 |
 | J.4.2.c-prep | Bridge helper `linearise_push_eq_push_linearise` (clean `.push` form of `linearise_append_token_eq`) | 0 (new infrastructure) | `Proofs/Scanner/ScannerLinearise.lean` | ✓ done 2026-04-29 |
 | J.4.2.c-pos1 | Positional lemma `linearise_second_eq_tokens_second` (index-1 readout for `flowSequenceStart` / `blockMappingStart`) | 0 (new infrastructure) | `Proofs/Scanner/ScannerLinearise.lean` | ✓ done 2026-04-29 |
+| J.4.2.b-pkwi | Chain-side `PendingKeysWellIndexed` helpers (`PendingKeysWellIndexed_init`, `ScanChain.preserves_PendingKeysWellIndexed`, `PendingKeysWellIndexed_of_chain_from_init`, `PendingKeysWellIndexed_emit_streamEnd`) | 0 (new infrastructure) | `Proofs/Output/EmitterScannability.lean` | ✓ done 2026-04-30 |
 
 **J.3.1 — Linearise foundations** [✓ completed 2026-04-26]:
 
@@ -1585,6 +1586,45 @@ Sorry count unchanged (12); pure infrastructure for J.4.2.b consumer
 refactor.  Build green (453 jobs), proof compiled clean on first
 attempt (~75 lines including docstring).
 
+**J.4.2.b-pkwi landed (2026-04-30)**: chain-side `PendingKeysWellIndexed`
+helpers in `Proofs/Output/EmitterScannability.lean`:
+
+```
+PendingKeysWellIndexed_init (input : String) :
+    PendingKeysWellIndexed ((ScannerState.mk' input).emit .streamStart)
+
+ScanChain.preserves_PendingKeysWellIndexed
+    {s s' : ScannerState} {n : Nat} (h_chain : ScanChain s n s')
+    (h_inv : PendingKeysWellIndexed s) : PendingKeysWellIndexed s'
+
+PendingKeysWellIndexed_of_chain_from_init
+    (input : String) (s₀ s_final : ScannerState) (n : Nat)
+    (h_s0 : s₀ = (ScannerState.mk' input).emit .streamStart)
+    (h_chain : ScanChain s₀ n s_final) :
+    PendingKeysWellIndexed s_final
+
+PendingKeysWellIndexed_emit_streamEnd (s : ScannerState) (tok : YamlToken)
+    (h_inv : PendingKeysWellIndexed s) :
+    PendingKeysWellIndexed (s.emit tok)
+```
+
+Mechanism: the initial state has empty `pendingKeys` and `tokens.size = 1`
+after the `streamStart` emit, so the invariant holds vacuously; chain
+preservation is induction over `ScanChain` applying
+`scanNextToken_preserves_PendingKeysWellIndexed` at each step (mirroring
+the existing `scanLoopFull_preserves_PendingKeysWellIndexed` on the
+loop side); the final `emit .streamEnd` step preserves via
+`PendingKeysWellIndexed_mono` (emit only adds tokens, does not touch
+pending keys).
+
+These four lemmas together discharge the chain-endpoint
+`PendingKeysWellIndexed` precondition needed by step 2 of the cascade
+skeleton below — specifically the `h_pks_bound : ∀ p (h : p < pks.size),
+pks[p].insertBeforeIdx ≤ s₃.tokens.size` precondition of
+`linearise_push_eq_push_linearise`.  Sorry count unchanged (12);
+infrastructure landing.  Build green (453 jobs); ~70 lines including
+docstrings.
+
 **Next concrete step (J.4.2.b — consumer refactor)**
 
 The `_structure` consumers' `h_tok_eq` bridge is FALSE in general
@@ -1604,9 +1644,12 @@ have h_tok_lin : Scanner.scanFiltered input = .ok
     (linearise (s₃.emit .streamEnd).tokens (s₃.emit .streamEnd).pendingKeys) :=
   scanFiltered_of_chain_eq input s₀ s₃ s₃ (n+2) ... -- chain composition
 
--- 2. Decompose streamEnd push (uses J.4.2.c-prep + PendingKeysWellIndexed s₃):
-have h_pks_bound : ∀ e ∈ s₃.pendingKeys, e.insertBeforeIdx ≤ s₃.tokens.size :=
-  fun e he => (PendingKeysWellIndexed_at_s₃ ...).2 _ (Array.indexOf?_some_implies_lt _ he) |>.2
+-- 2. Decompose streamEnd push (uses J.4.2.c-prep + J.4.2.b-pkwi):
+have h_pkwi_s₃ : PendingKeysWellIndexed s₃ :=
+  PendingKeysWellIndexed_of_chain_from_init input _ s₃ (n+2) rfl h_chain_all
+have h_pks_bound : ∀ p (h : p < s₃.pendingKeys.size),
+    s₃.pendingKeys[p].insertBeforeIdx ≤ s₃.tokens.size :=
+  fun p hp => (h_pkwi_s₃.2 p hp).2
 have h_emit_se_pks : (s₃.emit .streamEnd).pendingKeys = s₃.pendingKeys := rfl
 have h_lin_decomp : linearise (s₃.emit .streamEnd).tokens (s₃.emit .streamEnd).pendingKeys
     = (linearise s₃.tokens s₃.pendingKeys).push { pos := s₃.currentPos, val := .streamEnd } := by
@@ -1647,18 +1690,28 @@ Positional lemma status (in `Proofs/Scanner/ScannerLinearise.lean`):
 
 Remaining J.4.2.b work:
 
-1. Derive `PendingKeysWellIndexed` at `s₃` (the chain endpoint) — uses
-   `scanLoopFull_preserves_PendingKeysWellIndexed`.  This produces the
-   `h_pks_bound` hypothesis the cascade needs at step 2 above.
-2. Linearise-shape variants of `emitList_body_filtered_characterization`,
-   `emitPairList_body_filtered_characterization` — currently produce
-   `(s₂.tokens.filter p)`-shape conclusions and need parallel linearise-shape
-   variants.  This is the bulk of the refactor (≥ 200 lines per consumer).
-3. Stitch the cascade derivation into `scanFiltered_emitSeq_nonempty_structure`
-   (line 9856) and `scanFiltered_emitMap_nonempty_structure` (line 10075),
-   discharging both Tier 1 cascade sorries.
+1. ✓ **Done (J.4.2.b-pkwi, 2026-04-30)**: chain-endpoint
+   `PendingKeysWellIndexed` derivation — landed as
+   `PendingKeysWellIndexed_of_chain_from_init` (chain-side companion to
+   `scanLoopFull_preserves_PendingKeysWellIndexed`) plus
+   `PendingKeysWellIndexed_init` (initial state),
+   `ScanChain.preserves_PendingKeysWellIndexed` (chain induction), and
+   `PendingKeysWellIndexed_emit_streamEnd` (final emit step).  Step 2 of
+   the cascade skeleton above now uses these directly.
+2. **Linearise-shape body characterizations (the bulk)**: variants of
+   `emitList_body_filtered_characterization` and
+   `emitPairList_body_filtered_characterization` that produce
+   linearise-shape rather than `(s₂.tokens.filter p)`-shape conclusions.
+   ≥ 200 lines per consumer; this is the substantial multi-day leg of
+   J.4.2.b.
+3. **Stitch the cascade** into `scanFiltered_emitSeq_nonempty_structure`
+   (currently line 9844 sorry) and `scanFiltered_emitMap_nonempty_structure`
+   (currently line 10070 sorry), discharging both Tier 1 cascade sorries
+   using the J.4.2.c family of positional lemmas + the J.4.2.b-pkwi
+   chain-endpoint invariant.
 
-This remaining chunk is the substantial leg of J.4 (multi-day effort).
+This remaining chunk (items 2 + 3) is the substantial leg of J.4
+(multi-day effort).
 
 **J.3 final gate**: `lake build` green; sorry count 19 → 12
 (2 cascade Cat C for J.4 cleanup + 10 Tier 2 EmitterScannability
@@ -1670,6 +1723,9 @@ J.4.2.c-prep (`linearise_push_eq_push_linearise`) landed 2026-04-29
 with sorry count unchanged at 12 (infrastructure, no discharge).
 J.4.2.c-pos1 (`linearise_second_eq_tokens_second`) landed 2026-04-29
 with sorry count unchanged at 12 (infrastructure, no discharge).
+J.4.2.b-pkwi (chain-endpoint `PendingKeysWellIndexed` helpers) landed
+2026-04-30 with sorry count unchanged at 12 (infrastructure for the
+cascade discharge, no sorry cleared).
 
 ### Phase J.4 — Cleanup and follow-on (1-2 weeks)
 
