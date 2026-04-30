@@ -768,6 +768,7 @@ rooted at `Scanner/Linearise.lean`:
 | J.4.2.b-2b | `NoPlaceholders` predicate + Class A/B preservation lemmas (`NoPlaceholders_mono`, `NoPlaceholders_emit`, `NoPlaceholders_emitAt`) and chain-side propagation (`NoPlaceholders_init`, parametric `ScanChain.preserves_NoPlaceholders`, `NoPlaceholders_of_chain_from_init`, `NoPlaceholders_emit_streamEnd`) | 0 (new infrastructure) | `Proofs/Scanner/ScannerCorrectness.lean`, `Proofs/Output/EmitterScannability.lean` | ✓ done 2026-04-30 |
 | J.4.2.b-2b-discharge | Per-action `NoPlaceholders` preservation discharging the parametric `h_step` (unconditional — no sub-class hypothesis): `NoPlaceholders_extension` / `NoPlaceholders_extension_one` generic helpers; primitive Class A leaves (`advance_preserves_NoPlaceholders`, `advanceN_preserves_NoPlaceholders`, `skipToContent_preserves_NoPlaceholders`, `saveSimpleKey_preserves_{tokens,NoPlaceholders}`, `scanValueClearKey_preserves_NoPlaceholders`); indent helpers (`pushSequenceIndent_preserves_NoPlaceholders`, `pushMappingIndent_preserves_NoPlaceholders`, `unwindIndentsLoop_preserves_NoPlaceholders`, `unwindIndents_preserves_NoPlaceholders`); per-scanner `*_preserves_NoPlaceholders` for `scanFlow{SequenceStart, SequenceEnd, MappingStart, MappingEnd, Entry}`, `scanBlockEntry`, `scanKey`, `scanValuePrepare`, `scanValue`, `scanDocumentStart`, `scanDocumentEnd`, `scanAnchorOrAlias`, `scanTag`, `scanBlockScalar`, `scanDoubleQuoted`, `scanSingleQuoted`, `scanPlainScalar`, `scanDirective`; supporting `*_new_token_not_placeholder` helpers (canonical `_new_token_not_plain` style) for the content scanners + `scanVerbatimTag` / `scanSecondaryTag` / `scanNamedTag` / `scanBlockScalarBody` / `scanYamlDirective` / `scanTagDirective`; the four per-dispatcher `*_preserves_NoPlaceholders` lemmas; `preprocess_preserves_NoPlaceholders`, `allowDir_ite_preserves_NoPlaceholders`, top-level `scanNextToken_preserves_NoPlaceholders` | 0 (new infrastructure) | `Proofs/Scanner/ScannerCorrectness.lean` | ✓ done 2026-04-30 |
 | J.4.2.b-2c | Linearise-shape variant of `emitList_body_filtered_characterization` for the no-resolution sub-class: `emitList_body_linearise_characterization` wraps the filter-shape body characterization, derives `AllUnresolved s'` (parametric in `h_step_unres` — caller plugs in `scanNextToken_preserves_AllUnresolved` from J.4.2.b-2a-discharge under the no-`:`-pair sub-class) and `NoPlaceholders s'` (unconditional via `scanNextToken_preserves_NoPlaceholders` from J.4.2.b-2b-discharge), then bridges `linearise s'.tokens s'.pendingKeys = s'.tokens.filter p` via `linearise_eq_filter_no_resolutions` (J.4.1) | 0 (new infrastructure) | `Proofs/Output/EmitterScannability.lean` | ✓ done 2026-04-30 |
+| J.4.2.b-2d-stub | Stub-level linearise-shape variant of `emitPairList_body_filtered_characterization` for the resolution case: `emitPairList_body_linearise_characterization` wraps the filter-shape body characterization, carries the chain + 13 invariants + `n ≥ 3` from filter-shape, derives `NoPlaceholders s'` (unconditional via `scanNextToken_preserves_NoPlaceholders` from J.4.2.b-2b-discharge); states linearise-shape Part (2) (`linearise[old_sz].val = .key`) and Part (3) (`linearise[k+1].val = .key` after outer-level flowEntry) on `linearise s'.tokens s'.pendingKeys` directly (no `linearise = filter` bridge — fails when `:` resolutions fire); both linearise-shape parts SORRY'd as J.4.2.b-2d-key follow-up | +2 (sorry stubs for the linearise-shape parts; chain + invariants + `n ≥ 3` + `NoPlaceholders s'` proven) | `Proofs/Output/EmitterScannability.lean` | ✓ done 2026-04-30 |
 
 **J.3.1 — Linearise foundations** [✓ completed 2026-04-26]:
 
@@ -2201,18 +2202,45 @@ Remaining J.4.2.b work:
      tokens off the linearise-shape post-cutover bridge target using the
      J.4.2.c positional family (`-pos1`, `-pos2`, `-prefix`) and the
      `linearise_push_eq_push_linearise` (J.4.2.c-prep) `streamEnd` peeler.
-   - **2d (linearise-shape pair body)**: produce a linearise-shape variant
-     of `emitPairList_body_filtered_characterization`, which is harder
-     because `:` resolutions DO fire — needs richer linearise-aware
-     reasoning over the resolved-key splices, not just the no-resolution
-     bridge.  This is the largest remaining sub-task.  Estimate: 2-3
-     cadence steps (or one multi-day landing).
+   - ✓ **Done at stub level (J.4.2.b-2d-stub, 2026-04-30)**: linearise-shape
+     variant of `emitPairList_body_filtered_characterization` for the
+     resolution case.  `emitPairList_body_linearise_characterization` wraps
+     the filter-shape body characterization, carries the chain + 13
+     invariants + `n ≥ 3` from the filter-shape result, and derives
+     `NoPlaceholders s'` (unconditional via `scanNextToken_preserves_NoPlaceholders`
+     from J.4.2.b-2b-discharge).  States linearise-shape Part (2)
+     (`linearise[old_sz].val = .key`) and Part (3) (`linearise[k+1].val
+     = .key` after every outer-level flowEntry) on `linearise s'.tokens
+     s'.pendingKeys` directly — no `linearise = filter` bridge, since the
+     `:` resolutions splice `.key` tokens not present in the filter shape.
+     Note: `AllUnresolved s'` does NOT carry through (resolutions are by
+     design here), so the 2c transport pattern (`rw [h_lin_eq]`) cannot be
+     reused.  Sorry count delta: +2 (one sorry per linearise-shape part,
+     stubbed as **J.4.2.b-2d-key** follow-up).
+   - **2d-key (linearise-shape pair body — proof discharge)**: discharge
+     the two linearise-shape sorries inside `emitPairList_body_linearise_characterization`
+     (Part (2) `linearise[old_sz].val = .key`; Part (3) `linearise[k+1].val
+     = .key` after outer-level flowEntry).  Requires resolved-key splice
+     analysis: under pre-state `AllUnresolved s` + `NoPlaceholders s` plus
+     post-execution facts about `s'.pendingKeys` (each pair contributes a
+     `.keyOnly` entry with `insertBeforeIdx` matching the saveSimpleKey
+     time stamp), use `linearise_prefix_eq_tokens_prefix` and the splice
+     positions to read off `.key` at the relevant indices.  Likely needs
+     1-2 new linearise lemmas characterizing the position of the first
+     `.keyOnly` splice and the post-flowEntry splice, plus chain-side
+     accounting of the pendingKey extension shape (one per pair, all
+     `.keyOnly` post-resolution).  Estimate: 2-3 cadence steps (or one
+     multi-day landing) — the largest remaining J.4.2.b sub-task.
 3. **Stitch the cascade** into `scanFiltered_emitSeq_nonempty_structure`
    (currently line 9844 sorry) and `scanFiltered_emitMap_nonempty_structure`
    (currently line 10070 sorry), discharging both Tier 1 cascade sorries
    using the J.4.2.c family of positional lemmas + the J.4.2.b-pkwi
    chain-endpoint invariant + the linearise-shape body characterizations
-   from item (2).  Estimate: 1-2 cadence steps once (2c, 2d) are in tree.
+   from item (2).  Sequencing: the seq-side cascade can land as soon as
+   2c is in tree (already done); the map-side cascade requires 2d-key
+   (the linearise-shape Parts (2)/(3) discharge inside the 2d-stub
+   theorem) to be in tree first.  Estimate: 1-2 cadence steps once
+   (2c, 2d-key) are in tree.
 
 The remaining chunk (items 2 + 3) is the substantial leg of J.4 — but
 the breakdown above lets each substep land in cadence-size, with the
@@ -2328,6 +2356,37 @@ J.4.2.c positional family (`-pos1`, `-pos2`, `-prefix`) and the
 `linearise_push_eq_push_linearise` (J.4.2.c-prep) `streamEnd` peeler.
 Closes the linearise-shape seq-body sub-task; 2d (linearise-shape pair
 body) and the cascade stitching (item 3) remain.
+J.4.2.b-2d-stub (stub-level linearise-shape variant of body characterization
+for the resolution case: `emitPairList_body_linearise_characterization`
+in `Proofs/Output/EmitterScannability.lean`) landed 2026-04-30 with sorry
+count **+2 in EmitterScannability** (11 → 13 raw `grep` occurrences;
+in declaration-count terms: +1 new sorry-using declaration carrying two
+stub sorries — first stub for Part (2) `linearise[old_sz].val = .key`,
+second stub for Part (3) `linearise[k+1].val = .key` after outer-level
+flowEntry).  The chain + 13 invariants + `n ≥ 3` + `NoPlaceholders s'`
+are proven by wrapping `emitPairList_body_filtered_characterization` —
+this is the first J.4.2.b landing that does NOT keep sorry count
+unchanged, because the 2c transport pattern (`linearise = filter` bridge)
+fails for the resolution case and the linearise-shape parts must be
+proven directly (deferred to J.4.2.b-2d-key).  Carries the
+chain side and structural invariants from the filter-shape body
+characterization, derives `NoPlaceholders s'` unconditionally via
+`scanNextToken_preserves_NoPlaceholders` (J.4.2.b-2b-discharge); states
+linearise-shape Part (2) (`linearise[old_sz].val = .key`) and Part (3)
+(`linearise[k+1].val = .key` after every outer-level flowEntry) on
+`linearise s'.tokens s'.pendingKeys` directly.  No `linearise = filter`
+bridge — the 2c transport pattern fails here because the `:` resolutions
+splice `.key` tokens that are absent in the filter shape.  `AllUnresolved
+s'` does NOT carry through (resolutions are by design here), so the
+J.4.2.b-2a-chain propagation cannot be plugged in either.  The two
+linearise-shape parts are sorry'd as the J.4.2.b-2d-key follow-up;
+discharging them requires resolved-key splice analysis using the J.4.2.c
+positional family + new pendingKey-aware linearise lemmas characterising
+the position of the first `.keyOnly` splice and the post-flowEntry
+splice, plus chain-side accounting of the post-execution
+pendingKey extension shape (one `.keyOnly` per pair).  This sets up the
+cascade-ready toolkit slot for `scanFiltered_emitMap_nonempty_structure`
+to consume in item 3 of the cascade work.
 
 ### Phase J.4 — Cleanup and follow-on (1-2 weeks)
 
