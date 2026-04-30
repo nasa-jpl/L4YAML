@@ -757,6 +757,7 @@ rooted at `Scanner/Linearise.lean`:
 | J.3.8 | EmitterScannability Cat C — `scanFiltered_of_chain_eq` re-state in linearise terms | 1 cleared, 2 cascade exposed | `Proofs/Output/EmitterScannability.lean` (`scanFiltered_of_chain_eq`, `scanFiltered_tokens_eq_of_chain_short_stack`, `scanFiltered_emitSeq_nonempty_structure`, `scanFiltered_emitMap_nonempty_structure`) | ✓ done 2026-04-29 |
 | J.4   | EmitterScannability Tier 2 + seq/map structure linearise rewrite | 7 + 2 cascade | `Proofs/Output/EmitterScannability.lean` (Tier 2 declarations + seq/map consumer Tier 1 derivations) | in progress |
 | J.4.1 | Bridge helper `linearise_eq_filter_no_resolutions` (all-unresolved + no-placeholder ⟹ linearise = filter) | 0 (new infrastructure) | `Proofs/Scanner/ScannerLinearise.lean` | ✓ done 2026-04-29 |
+| J.4.2.c-prep | Bridge helper `linearise_push_eq_push_linearise` (clean `.push` form of `linearise_append_token_eq`) | 0 (new infrastructure) | `Proofs/Scanner/ScannerLinearise.lean` | ✓ done 2026-04-29 |
 
 **J.3.1 — Linearise foundations** [✓ completed 2026-04-26]:
 
@@ -1530,40 +1531,104 @@ shape) is broken, not the conclusions.  This rules out approach
 (c) "restrict structure theorem signature" — keep the conclusions,
 swap the proof.
 
-**Next concrete step (J.4.2 — bridge in seq/map consumers)**
+**J.4.2.c-prep landed (2026-04-29)**: `linearise_push_eq_push_linearise`
+in `Proofs/Scanner/ScannerLinearise.lean`.  Statement:
+
+```
+linearise (tokens.push t) pks = (linearise tokens pks).push t
+  given (∀ e ∈ pks, e.insertBeforeIdx ≤ tokens.size)
+```
+
+Proof is one-line: `rw [linearise_append_token_eq] ; exact Array.push_eq_append.symm`.
+Sorry count unchanged (12); pure infrastructure for J.4.2.b consumer
+refactor.  The lemma's hypothesis matches the upper half of
+`PendingKeysWellIndexed`, which is already propagated through
+`scanLoopFull` by `scanLoopFull_preserves_PendingKeysWellIndexed`
+(in `Proofs/Scanner/ScannerCorrectness.lean` line ≈10936).
+
+**Strategic re-evaluation of J.4.2.a (2026-04-29)**: After surveying
+existing scanner infrastructure, the no-placeholder global invariant
+(originally posed as a J.4.2 prerequisite) is **not actually required**
+for the cascade discharge.  The bridge helper `linearise_eq_filter_no_resolutions`
+(J.4.1) does need it, but the helper itself is unusable for general
+inputs (the `all-unresolved` clause fails on any input with a `:`-resolution).
+The remaining viable path — refactor consumers to use direct linearise
+positional reasoning — depends on `linearise_append_token_eq` +
+`PendingKeysWellIndexed` (both already in tree) plus
+`linearise_push_eq_push_linearise` (J.4.2.c-prep, just landed).
+
+J.4.2.a is therefore reclassified as **optional follow-up infrastructure**
+(useful for future consumers that want to manipulate `tokens.filter p`
+shapes directly), not a blocker for J.4.2.b cascade discharge.
+
+**Next concrete step (J.4.2.b — consumer refactor)**
 
 The `_structure` consumers' `h_tok_eq` bridge is FALSE in general
 (linearise output strictly larger than `(s₃.emit .streamEnd).tokens.filter p`
 for any input containing a flow/block map pair), so it cannot be
-discharged at the layer where it currently sits.  Two-track
-remediation:
+discharged at the layer where it currently sits.  Replace each consumer's
+`h_tok_eq` by `h_tok_lin : Scanner.scanFiltered input = .ok
+(linearise (s₃.emit .streamEnd).tokens (s₃.emit .streamEnd).pendingKeys)`
+(already true via `scanFiltered_of_chain_eq`), then re-derive the Tier 1
+positional facts.
 
-- **J.4.2.a (no-placeholder invariant)**: prove
-  `∀ s reachable, ∀ t ∈ s.tokens, t.val ≠ .placeholder` by
-  structural induction over `scanLoopFull`.  All scanner code
-  paths post-cutover never push `.placeholder` (verified by grep:
-  only mentions are in comments and proof witnesses).  The proof
-  inducts over each `scanNextToken` dispatch arm and reuses
-  `dispatchContent_new_not_placeholder`-style component lemmas.
-  Output: `s_final_no_placeholder : ∀ t ∈ (s₃.emit .streamEnd).tokens,
-  t.val ≠ .placeholder` discharged from chain hypotheses.
+Skeleton of the cascade derivation (seq case; map is symmetric):
 
-- **J.4.2.b (consumer refactor)**: replace each consumer's
-  `h_tok_eq` by `h_tok_lin : Scanner.scanFiltered input = .ok
-  (linearise (s₃.emit .streamEnd).tokens (s₃.emit .streamEnd).pendingKeys)`
-  (already true via `scanFiltered_of_chain_eq`), then re-derive
-  the Tier 1 positional facts using `linearise_first_eq_tokens_first`,
-  `linearise_last_eq_tokens_last`, and a new
-  `linearise_second_eq_tokens_second` / `linearise_secondLast_eq_tokens_secondLast`
-  pair (positions 1 and size−2 — splices avoided when all
-  `insertBeforeIdx ≥ 2` resp. `≤ size−2`).  The body
-  characterizations (`emitList_body_filtered_characterization`,
-  `emitPairList_body_filtered_characterization`) need parallel
-  re-statement in linearise-positional form.
+```
+-- 1. Bridge to linearise form (replaces h_tok_eq, uses J.3.8 result):
+have h_tok_lin : Scanner.scanFiltered input = .ok
+    (linearise (s₃.emit .streamEnd).tokens (s₃.emit .streamEnd).pendingKeys) :=
+  scanFiltered_of_chain_eq input s₀ s₃ s₃ (n+2) ... -- chain composition
 
-This is the substantial leg of J.4 (≥ 200 lines per consumer);
-J.4.2.a is a prerequisite "everywhere" lemma that future work
-across the file can also import.
+-- 2. Decompose streamEnd push (uses J.4.2.c-prep + PendingKeysWellIndexed s₃):
+have h_pks_bound : ∀ e ∈ s₃.pendingKeys, e.insertBeforeIdx ≤ s₃.tokens.size :=
+  fun e he => (PendingKeysWellIndexed_at_s₃ ...).2 _ (Array.indexOf?_some_implies_lt _ he) |>.2
+have h_emit_se_pks : (s₃.emit .streamEnd).pendingKeys = s₃.pendingKeys := rfl
+have h_lin_decomp : linearise (s₃.emit .streamEnd).tokens (s₃.emit .streamEnd).pendingKeys
+    = (linearise s₃.tokens s₃.pendingKeys).push { pos := s₃.currentPos, val := .streamEnd } := by
+  rw [show (s₃.emit .streamEnd).tokens = s₃.tokens.push _ from rfl, h_emit_se_pks]
+  exact linearise_push_eq_push_linearise s₃.tokens s₃.pendingKeys _ h_pks_bound
+
+-- 3. Last element via Array.getElem_push_eq:
+-- tokens[size-1] = .streamEnd  ← from push of streamEnd
+
+-- 4. Second-last via linearise_last_eq_tokens_last on inner:
+-- tokens[size-2] = (linearise s₃.tokens s₃.pendingKeys).last
+--                = s₃.tokens[s₃.tokens.size - 1]   (via linearise_last_eq_tokens_last,
+--                                                    needs pks ≤ s₃.tokens.size - 1,
+--                                                    derivable since flowSeqEnd close
+--                                                    doesn't register a new pendingKey)
+--                = .flowSequenceEnd   (closure step)
+
+-- 5. First element via linearise_first_eq_tokens_first:
+-- tokens[0] = s₃.tokens[0] = .streamStart  (initial emit)
+
+-- 6. Position 1 (flowSequenceStart): need new lemma
+--    linearise_second_eq_tokens_second when ∀ pk, insertBeforeIdx ≥ 2
+--    (always true at scanFiltered: earliest saveSimpleKey happens at
+--    s₁.tokens.size = 2, after [streamStart, flowSequenceStart] are emitted)
+```
+
+Two new positional lemmas needed in `Proofs/Scanner/ScannerLinearise.lean`:
+
+- **`linearise_secondLast_eq_tokens_last_inner`**: when pks bounded by
+  `tokens.size`, applying `linearise_push_eq_push_linearise` then
+  `linearise_last_eq_tokens_last` to the inner gives the second-to-last
+  element.  This is a one-line corollary; can be inlined per call site
+  or extracted.
+- **`linearise_second_eq_tokens_second`**: when `tokens.size ≥ 2` and
+  `∀ p, 2 ≤ pks[p].insertBeforeIdx` (no splice at index 1), the second
+  element of `linearise tokens pks` equals `tokens[1]`.  Proves by
+  induction over `linearise.go` similar to `linearise_first_eq_tokens_first`.
+
+The body characterizations (`emitList_body_filtered_characterization`,
+`emitPairList_body_filtered_characterization`) currently produce
+`(s₂.tokens.filter p)`-shape conclusions and would need parallel
+linearise-shape variants — that's the bulk of the refactor work
+(≥ 200 lines per consumer including the new body characterization
+helpers).
+
+This is the substantial leg of J.4 (multi-day effort).
 
 **J.3 final gate**: `lake build` green; sorry count 19 → 12
 (2 cascade Cat C for J.4 cleanup + 10 Tier 2 EmitterScannability
@@ -1571,6 +1636,8 @@ declarations deferred to J.4 — line counts in the actual file may
 report more depending on how nested-let/sorry occurrences are
 counted by `grep`).  J.4.1 (helper) landed 2026-04-29 with sorry
 count unchanged at 12 (infrastructure, no discharge).
+J.4.2.c-prep (`linearise_push_eq_push_linearise`) landed 2026-04-29
+with sorry count unchanged at 12 (infrastructure, no discharge).
 
 ### Phase J.4 — Cleanup and follow-on (1-2 weeks)
 
