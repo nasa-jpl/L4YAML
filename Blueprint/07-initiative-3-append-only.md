@@ -770,6 +770,7 @@ rooted at `Scanner/Linearise.lean`:
 | J.4.2.b-2c | Linearise-shape variant of `emitList_body_filtered_characterization` for the no-resolution sub-class: `emitList_body_linearise_characterization` wraps the filter-shape body characterization, derives `AllUnresolved s'` (parametric in `h_step_unres` — caller plugs in `scanNextToken_preserves_AllUnresolved` from J.4.2.b-2a-discharge under the no-`:`-pair sub-class) and `NoPlaceholders s'` (unconditional via `scanNextToken_preserves_NoPlaceholders` from J.4.2.b-2b-discharge), then bridges `linearise s'.tokens s'.pendingKeys = s'.tokens.filter p` via `linearise_eq_filter_no_resolutions` (J.4.1) | 0 (new infrastructure) | `Proofs/Output/EmitterScannability.lean` | ✓ done 2026-04-30 |
 | J.4.2.b-2d-stub | Stub-level linearise-shape variant of `emitPairList_body_filtered_characterization` for the resolution case: `emitPairList_body_linearise_characterization` wraps the filter-shape body characterization, carries the chain + 13 invariants + `n ≥ 3` from filter-shape, derives `NoPlaceholders s'` (unconditional via `scanNextToken_preserves_NoPlaceholders` from J.4.2.b-2b-discharge); states linearise-shape Part (2) (`linearise[old_sz].val = .key`) and Part (3) (`linearise[k+1].val = .key` after outer-level flowEntry) on `linearise s'.tokens s'.pendingKeys` directly (no `linearise = filter` bridge — fails when `:` resolutions fire); both linearise-shape parts SORRY'd as J.4.2.b-2d-key follow-up | +2 (sorry stubs for the linearise-shape parts; chain + invariants + `n ≥ 3` + `NoPlaceholders s'` proven) | `Proofs/Output/EmitterScannability.lean` | ✓ done 2026-04-30 |
 | J.4.2.b-2d-key-foundation-A | Foundation A for the 2d-key splice mechanic: `linearise_first_splice_keyonly` (in `Proofs/Scanner/ScannerLinearise.lean`, after `linearise_prefix_eq_tokens_prefix`).  Given `pks.size > 0`, `pks[0].kind = .keyOnly`, `pks[0].insertBeforeIdx = j ≤ tokens.size`, derives `(linearise tokens pks)[j].val = .key`.  Proof: walk `linearise.go` from `(0, 0, #[])` to `(j, 0, tokens[0..j])` without firing splices (induction adapted from `linearise_prefix_eq_tokens_prefix`), step once to fire the `pks[0]` splice (`expandKind .keyOnly = #[⟨pos, .key, pos⟩]`), read off `.key` at index `j` via `linearise_go_getElem_lt_acc`.  Reshapes Part (2) of `emitPairList_body_linearise_characterization` to consume Foundation A — splice analysis fully discharged; remaining sorry narrowed to chain-side accounting (J.4.2.b-2d-key-chain) | 0 (Part (2) splice-analysis sorry replaced by chain-side accounting sorry — same count, narrowed shape) | `Proofs/Scanner/ScannerLinearise.lean`, `Proofs/Output/EmitterScannability.lean` | ✓ done 2026-04-30 |
+| J.4.2.b-2d-key-foundation-B | Foundation B for the 2d-key splice mechanic at general `(j, p, acc)` state: `linearise_splice_keyonly_at` + index-form corollary `linearise_splice_keyonly_at_index` (in `Proofs/Scanner/ScannerLinearise.lean`, after `linearise_first_splice_keyonly`).  Given a transport equation `linearise tokens pks = linearise.go tokens pks j p acc` and splice-fire preconditions (`p < pks.size`, `pks[p].insertBeforeIdx ≤ j`, `pks[p].kind = .keyOnly`), derives `(linearise tokens pks)[acc.size].val = .key`.  Companion to Foundation A: A walks from the start internally and fires `pks[0]`; B is the splice mechanic in isolation, parameterized on a general `(j, p, acc)` state — chain-side accounting supplies the transport equation (J.4.2.b-2d-key-chain).  Proof structure (mirrors the inner half of Foundation A): step once to fire splice; `expandKind .keyOnly = #[⟨pos, .key, pos⟩]` gives `.key` at the new acc's index `acc.size`; prefix-stability (`linearise_go_getElem_lt_acc`) propagates to final result; transport via `h_eq` + step equation.  Reshapes Part (3) of `emitPairList_body_linearise_characterization` to consume Foundation B (index form, with `acc.size = k + 1` for the after-flowEntry position) — splice analysis fully discharged; remaining sorry narrowed to chain-side accounting (J.4.2.b-2d-key-chain extended to all outer pairs) | 0 (Part (3) splice-analysis sorry replaced by chain-side accounting sorry — same count, narrowed shape) | `Proofs/Scanner/ScannerLinearise.lean`, `Proofs/Output/EmitterScannability.lean` | ✓ done 2026-04-30 |
 
 **J.3.1 — Linearise foundations** [✓ completed 2026-04-26]:
 
@@ -2238,37 +2239,55 @@ Remaining J.4.2.b work:
      fact about `s'.pendingKeys[0]`).  Foundation A is now also a reusable
      building block for the analogous `.blockMappingStartAndKey` splice
      case if needed downstream.
-   - **2d-key-foundation-B (linearise lemma for after-flowEntry splice)**:
-     companion to Foundation A.  Given a position `k` in
-     `linearise tokens pks` where `linearise[k].val = .flowEntry` and the
-     bracket balance from `old_sz` to `k` is 0, plus chain-side facts
-     about which `pks[p]` corresponds to `k+1`, derives
-     `linearise[k+1].val = .key`.  More complex than Foundation A
-     because we don't index from the start — we need a "splice happens
-     immediately after this flowEntry" characterization.  Likely a
-     general lemma about splice positions in `linearise.go`.
-     Estimate: 1 cadence step.
+   - ✓ **Done (J.4.2.b-2d-key-foundation-B, 2026-04-30)**: Foundation B
+     for the 2d-key splice mechanic at general `(j, p, acc)` state —
+     `linearise_splice_keyonly_at` (and index-form corollary
+     `linearise_splice_keyonly_at_index`) in
+     `Proofs/Scanner/ScannerLinearise.lean` (after Foundation A).  Closes
+     the splice-mechanic half of Part (3): given a transport equation
+     `linearise tokens pks = linearise.go tokens pks j p acc` and
+     splice-fire preconditions (`p < pks.size`,
+     `pks[p].insertBeforeIdx ≤ j`, `pks[p].kind = .keyOnly`), derives
+     `(linearise tokens pks)[acc.size].val = .key`.  Companion to
+     Foundation A: A indexes from the start (walks `(0, 0, #[]) → (j, 0,
+     tokens[0..j])` internally, then fires `pks[0]`); B is the splice
+     mechanic in isolation, parameterized on a general `(j, p, acc)`
+     state — chain-side accounting supplies the transport equation.
+     Proof structure (mirrors the inner half of Foundation A): step once
+     to fire splice; `expandKind .keyOnly = #[⟨pos, .key, pos⟩]` gives
+     `.key` at the new acc's index `acc.size`; prefix-stability
+     (`linearise_go_getElem_lt_acc`) propagates to final result;
+     transport via `h_eq` + step equation.  Reshapes Part (3) of
+     `emitPairList_body_linearise_characterization` to consume Foundation B
+     (index form, with `acc.size = k + 1` for the after-flowEntry
+     position): the splice analysis is fully discharged; only the
+     chain-side facts remain as **J.4.2.b-2d-key-chain** (extended).
+     Sorry count delta: 0 (Part (3) splice-analysis sorry replaced by
+     chain-side accounting sorry, same shape narrowed to a concrete
+     fact about `s'.pendingKeys[p]`).
    - **2d-key-chain (chain-side accounting for `s'.pendingKeys`)**:
-     prove the bundled fact required by the reshaped Part (2)
-     (and Part (3) once Foundation B lands): from the `emitPairList`
-     chain `s ↦ s'` with pre-state `s.simpleKey.possible = false`,
-     derive
+     prove the bundled facts required by the reshaped Parts (2) and (3).
+     **Part (2) shape** (first key splice): from the `emitPairList` chain
+     `s ↦ s'` with pre-state `s.simpleKey.possible = false`, derive
      `0 < s'.pendingKeys.size ∧ s'.pendingKeys[0].insertBeforeIdx
        = s.tokens.size ∧ s'.pendingKeys[0].kind = .keyOnly`
      plus the token-monotonicity bound
-     `s.tokens.size ≤ s'.tokens.size`.  Proof: induction over the chain
-     tracking when the FIRST `saveSimpleKey` fires (at the start of
-     `emit k_1`, at scanner position with size = `s.tokens.size`) and
-     when `scanValuePrepare` resolves it to `.keyOnly` (at the first
-     `:` after `emit k_1` is fully scanned).  May share infrastructure
-     with the existing `AllUnresolved`/`NoPlaceholders` chain-propagation
-     lemmas.  Estimate: 1-2 cadence steps.
-   - **2d-key-wrap (Part (3) discharge)**: combine Foundation B with
-     2d-key-chain (extended to cover all pairs, not just the first) to
-     discharge the remaining Part (3) sorry inside
-     `emitPairList_body_linearise_characterization`.  Estimate: 1
-     cadence step once 2d-key-foundation-B and 2d-key-chain are in
-     tree.
+     `s.tokens.size ≤ s'.tokens.size`.  **Part (3) shape**
+     (after-flowEntry splice): for each outer-level flowEntry at
+     position `k` in `linearise s'.tokens s'.pendingKeys`, supply
+     `(j, p, acc)` with `acc.size = k + 1`,
+     `linearise s'.tokens s'.pendingKeys
+       = linearise.go s'.tokens s'.pendingKeys j p acc`,
+     `pks[p].insertBeforeIdx ≤ j`, and `pks[p].kind = .keyOnly`.
+     Proof: induction over the chain tracking when each `saveSimpleKey`
+     fires (at the start of `emit k_i`, at scanner position with
+     `tokens.size` matching the post-flowEntry index) and when
+     `scanValuePrepare` resolves it to `.keyOnly` (at the first `:`
+     after `emit k_i` is fully scanned).  May share infrastructure with
+     the existing `AllUnresolved`/`NoPlaceholders` chain-propagation
+     lemmas.  Estimate: 1-2 cadence steps.  Closes both Part (2) and
+     Part (3) splice-mechanic sorries — once chain lands, 2d-stub is
+     fully discharged (no further wrap needed).
 3. **Stitch the cascade** into `scanFiltered_emitSeq_nonempty_structure`
    (currently line 9844 sorry) and `scanFiltered_emitMap_nonempty_structure`
    (currently line 10070 sorry), discharging both Tier 1 cascade sorries
@@ -2276,10 +2295,10 @@ Remaining J.4.2.b work:
    chain-endpoint invariant + the linearise-shape body characterizations
    from item (2).  Sequencing: the seq-side cascade can land as soon as
    2c is in tree (already done); the map-side cascade requires
-   2d-key-wrap (the final discharge of Parts (2)/(3) inside the 2d-stub
-   theorem, blocked on 2d-key-foundation-B + 2d-key-chain) to be in
-   tree first.  Estimate: 1-2 cadence steps once (2c, 2d-key-wrap) are
-   in tree.
+   2d-key-chain (the final discharge of Parts (2)/(3) inside the
+   2d-stub theorem, now that Foundations A and B are in tree) to be in
+   tree first.  Estimate: 1-2 cadence steps once (2c, 2d-key-chain)
+   are in tree.
 
 The remaining chunk (items 2 + 3) is the substantial leg of J.4 — but
 the breakdown above lets each substep land in cadence-size, with the
@@ -2450,6 +2469,36 @@ this cadence step does not reduce sorry count but converts an opaque
 splice-analysis sorry into a concrete chain-side accounting obligation
 that's amenable to the existing `AllUnresolved`/`NoPlaceholders`
 chain-propagation infrastructure.
+J.4.2.b-2d-key-foundation-B (Foundation B for the splice mechanic at
+general `(j, p, acc)` state: `linearise_splice_keyonly_at` and index-form
+corollary `linearise_splice_keyonly_at_index` in
+`Proofs/Scanner/ScannerLinearise.lean`) landed 2026-04-30 with sorry
+count **unchanged** in EmitterScannability (the Part (3) splice-analysis
+sorry is replaced by a chain-side accounting sorry of the same count
+but narrower shape; Foundation B itself adds 0 sorries in
+`ScannerLinearise.lean`).  Foundation B closes the splice mechanic of
+Part (3) by isolating the splice fire from the start-of-walk: given a
+transport equation `linearise tokens pks = linearise.go tokens pks j p acc`
+(supplied by chain-side accounting) and splice-fire preconditions
+(`p < pks.size`, `pks[p].insertBeforeIdx ≤ j`, `pks[p].kind = .keyOnly`),
+it derives `(linearise tokens pks)[acc.size].val = .key` by stepping
+`linearise.go` once to push `expandKind .keyOnly = #[⟨pos, .key, pos⟩]`
+into the accumulator and propagating via prefix-stability
+(`linearise_go_getElem_lt_acc`).  The wrapper
+`emitPairList_body_linearise_characterization` is reshaped to consume
+Foundation B (index form, with `acc.size = k + 1` for the after-flowEntry
+position): Part (3) is now reduced to a single named obligation
+**J.4.2.b-2d-key-chain** (extended to all outer pairs — supplying
+`(j, p, acc)` with the right shape for each outer-level flowEntry index
+`k`).  Foundations A and B together close the splice mechanic for both
+Parts (2) and (3); the remaining work to discharge the 2d-stub theorem
+is the chain-side accounting itself.  This dissolves the previous
+**J.4.2.b-2d-key-wrap** sub-task — once **J.4.2.b-2d-key-chain** lands
+covering both first-key and after-flowEntry-key shapes, the 2d-stub
+theorem is fully discharged with no further wrapping needed.  Net effect:
+this cadence step does not reduce sorry count but converts the second of
+two opaque splice-analysis sorries into a concrete chain-side accounting
+obligation, completing the splice-mechanic toolkit for Initiative 3.
 
 ### Phase J.4 — Cleanup and follow-on (1-2 weeks)
 
