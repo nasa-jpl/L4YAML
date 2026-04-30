@@ -1372,4 +1372,94 @@ theorem linearise_secondLast_eq_tokens_last_inner
   simp only [h_idx_simpl]
   exact h_lin_inner_last
 
+/-- Prefix readout: for any `i ≤ tokens.size`, if every pending entry's
+    `insertBeforeIdx` is at least `i` (no splice fires within the first
+    `i` slots), then the first `i` elements of `linearise tokens pks` agree
+    pointwise with the first `i` elements of `tokens`.
+
+    Proof strategy: induct on `k` (the number of `linearise.go` steps already
+    taken from the initial state).  At each step from `(k, 0, acc)` to
+    `(k+1, 0, acc.push tokens[k])`, the splice test `pks[0].insertBeforeIdx ≤ k`
+    is false (since `insertBeforeIdx ≥ i > k`), so `linearise.go` pushes
+    `tokens[k]` and recurses.  After `i` such steps, prefix-stability
+    (`linearise_go_getElem_lt_acc`) reads off `tokens[0]`, …, `tokens[i-1]`.
+
+    Generalises `linearise_first_eq_tokens_first` (the `i = 1` case) and the
+    index-1 readout from `linearise_second_eq_tokens_second` (the `i = 2`
+    case).  Used by the seq/map cascade in `Proofs/Output/EmitterScannability`
+    to read off boundary tokens (`streamStart`, `flowSequenceStart` /
+    `blockMappingStart`, …) at multiple low indices uniformly. -/
+theorem linearise_prefix_eq_tokens_prefix
+    (tokens : Array (Positioned YamlToken))
+    (pks : Array PendingKeyEntry)
+    (i : Nat)
+    (h_i : i ≤ tokens.size)
+    (h_pks : ∀ p (h : p < pks.size), i ≤ pks[p].insertBeforeIdx) :
+    ∃ (h_lin : i ≤ (linearise tokens pks).size),
+      ∀ (j : Nat) (hj : j < i),
+        (linearise tokens pks)[j]'(Nat.lt_of_lt_of_le hj h_lin)
+          = tokens[j]'(Nat.lt_of_lt_of_le hj h_i) := by
+  -- Inductive helper: for every `k ≤ i`, there is an accumulator of size `k`
+  -- whose contents are the first `k` tokens, and such that
+  -- `linearise tokens pks = linearise.go tokens pks k 0 acc`.  The size
+  -- equality is exposed as a separate existential binder so that the
+  -- agreement clause can index `acc[j]` with a derived proof.
+  suffices h_step : ∀ (k : Nat) (h_k_le : k ≤ i),
+      ∃ (acc : Array (Positioned YamlToken)) (h_acc_size : acc.size = k),
+        (∀ (j : Nat) (hj : j < acc.size),
+          acc[j]'hj = tokens[j]'(by omega)) ∧
+        linearise tokens pks = linearise.go tokens pks k 0 acc by
+    obtain ⟨acc, h_acc_size, h_acc_at, h_eq⟩ := h_step i (Nat.le_refl _)
+    have h_mono := linearise_go_size_mono tokens pks
+      ((tokens.size - i) + (pks.size - 0)) i 0 acc rfl
+    rw [h_acc_size] at h_mono
+    have h_lin_ge : i ≤ (linearise tokens pks).size := by rw [h_eq]; exact h_mono
+    refine ⟨h_lin_ge, ?_⟩
+    intro j hj
+    have h_acc_lt : j < acc.size := by rw [h_acc_size]; exact hj
+    have h_lin_size_ge : j < (linearise.go tokens pks i 0 acc).size := by omega
+    have h_at_acc :
+        (linearise.go tokens pks i 0 acc)[j]'h_lin_size_ge = acc[j]'h_acc_lt :=
+      linearise_go_getElem_lt_acc tokens pks i 0 acc j h_acc_lt h_lin_size_ge
+    have h_at_lin : (linearise tokens pks)[j]'(Nat.lt_of_lt_of_le hj h_lin_ge)
+        = (linearise.go tokens pks i 0 acc)[j]'h_lin_size_ge := by
+      congr 1 <;> exact h_eq
+    rw [h_at_lin, h_at_acc]
+    exact h_acc_at j h_acc_lt
+  intro k h_k_le
+  induction k with
+  | zero =>
+    refine ⟨#[], by simp, ?_, ?_⟩
+    · intro j hj; simp at hj
+    · unfold linearise; rfl
+  | succ k ih =>
+    obtain ⟨acc, h_acc_size, h_acc_at, h_eq⟩ := ih (by omega)
+    have h_k_lt : k < tokens.size := by omega
+    -- Step linearise.go from (k, 0, acc) to (k+1, 0, acc.push tokens[k]):
+    -- since pks[0].insertBeforeIdx ≥ i > k, no splice fires at index k.
+    have h_step_one : linearise.go tokens pks k 0 acc
+        = linearise.go tokens pks (k+1) 0 (acc.push (tokens[k]'h_k_lt)) := by
+      rw [linearise.go]
+      by_cases hp : 0 < pks.size
+      · simp only [hp, ↓reduceDIte]
+        have h_pks_0 := h_pks 0 hp
+        have h_not_splice : ¬ pks[0].insertBeforeIdx ≤ k := by omega
+        simp only [h_not_splice, ↓reduceIte, h_k_lt, ↓reduceDIte]
+      · simp only [hp, ↓reduceDIte, h_k_lt, ↓reduceDIte]
+    refine ⟨acc.push (tokens[k]'h_k_lt), ?_, ?_, ?_⟩
+    · simp [h_acc_size]
+    · intro j hj
+      have h_size_succ : (acc.push (tokens[k]'h_k_lt)).size = k + 1 := by
+        simp [h_acc_size]
+      have hj' : j < k + 1 := h_size_succ ▸ hj
+      by_cases h_lt : j < k
+      · have h_lt_acc : j < acc.size := by rw [h_acc_size]; exact h_lt
+        rw [Array.getElem_push_lt h_lt_acc]
+        exact h_acc_at j h_lt_acc
+      · have h_eq_k : j = k := by omega
+        subst h_eq_k
+        have h_not_lt : ¬ j < acc.size := by rw [h_acc_size]; omega
+        simp [Array.getElem_push, h_not_lt]
+    · rw [h_eq, h_step_one]
+
 end L4YAML.Proofs.ScannerLinearise
