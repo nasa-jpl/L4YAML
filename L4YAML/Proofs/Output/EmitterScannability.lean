@@ -9928,6 +9928,119 @@ theorem emitList_body_filtered_characterization
   · -- Part 2: After every outer-level flowEntry, next is a content start
     sorry
 
+/-! ### J.4.2.b-2c — Linearise-shape body characterization for `emitList`
+
+Linearise-shape variant of `emitList_body_filtered_characterization` for the
+no-resolution sub-class.  Wraps the filter-shape characterization with three
+extra outputs:
+
+* `AllUnresolved s'`: chain-side propagation via
+  `ScanChain.preserves_AllUnresolved` (J.4.2.b-2a-chain), parametric in a
+  per-action `h_step_unres` discharge — the consumer plugs in
+  `scanNextToken_preserves_AllUnresolved` (J.4.2.b-2a-discharge) under the
+  no-`:`-pair sub-class hypothesis.
+* `NoPlaceholders s'`: chain-side propagation via
+  `ScanChain.preserves_NoPlaceholders` (J.4.2.b-2b-chain), discharged
+  unconditionally by `scanNextToken_preserves_NoPlaceholders`
+  (J.4.2.b-2b-discharge).
+* `linearise s'.tokens s'.pendingKeys = s'.tokens.filter p`: the bridge
+  collapse via `linearise_eq_filter_no_resolutions` (J.4.1).
+
+Together these let cascade consumers in
+`scanFiltered_emitSeq_nonempty_structure` read the body content tokens off
+the linearise-shape output (the post-cutover bridge target) using the
+J.4.2.c positional family (`-pos1`, `-pos2`, `-prefix`) and the
+`linearise_push_eq_push_linearise` (J.4.2.c-prep) `streamEnd` peeler. -/
+
+/-- Linearise-shape variant of `emitList_body_filtered_characterization`
+    for the no-resolution sub-class.  Restates parts (1) and (2) of the
+    filter-shape body characterization on `linearise s'.tokens s'.pendingKeys`,
+    using `linearise_eq_filter_no_resolutions` (J.4.1) as the bridge after
+    chain-side propagation of `AllUnresolved` (J.4.2.b-2a-chain) and
+    `NoPlaceholders` (J.4.2.b-2b-chain). -/
+theorem emitList_body_linearise_characterization
+    (items : List YamlValue) (h_ne : items ≠ [])
+    (h_all : ∀ v ∈ items, EmitScansInFlow v)
+    (s : ScannerState) (rest : List Char)
+    (h_corr : ScannerSurfCorr s ⟨(emit.emitList items).toList ++ rest, s.col⟩)
+    (h_flow : s.inFlow = true) (h_fl : s.flowLevel > 0)
+    (h_indent : s.currentIndent < 0) (h_col : s.col > 0)
+    (h_ek : s.explicitKeyLine = none)
+    (h_atol : AllTokensOnLine s s.line)
+    (h_endline : EndLineOnLine s)
+    (h_sk : s.simpleKey.possible = false)
+    (h_unres : ScannerCorrectness.AllUnresolved s)
+    (h_no_pl : ScannerCorrectness.NoPlaceholders s)
+    (h_step_unres : ∀ {sa sb : ScannerState},
+        ScannerCorrectness.AllUnresolved sa →
+        scanNextToken sa = .ok (some sb) →
+        ScannerCorrectness.AllUnresolved sb) :
+    let p := fun (t : Positioned YamlToken) => t.val != .placeholder
+    let old_sz := (s.tokens.filter p).size
+    ∃ n s', ScanChain s n s'
+    ∧ ScannerSurfCorr s' ⟨rest, s'.col⟩
+    ∧ s'.flowLevel = s.flowLevel
+    ∧ s'.directivesPresent = s.directivesPresent
+    ∧ s'.indents = s.indents
+    ∧ s'.explicitKeyLine = s.explicitKeyLine
+    ∧ s'.col > 0
+    ∧ s'.inFlow = true
+    ∧ s'.currentIndent < 0
+    ∧ s'.line = s.line
+    ∧ AllTokensOnLine s' s'.line
+    ∧ EndLineOnLine s'
+    ∧ s'.simpleKeyStack = s.simpleKeyStack
+    ∧ FlowMonoChain s.flowLevel s n s'
+    ∧ ScannerCorrectness.AllUnresolved s'
+    ∧ ScannerCorrectness.NoPlaceholders s'
+    ∧ linearise s'.tokens s'.pendingKeys = s'.tokens.filter p
+    -- (1) First new linearised token is a content start
+    ∧ (old_sz < (linearise s'.tokens s'.pendingKeys).size ∧
+       (∀ (h : old_sz < (linearise s'.tokens s'.pendingKeys).size),
+         ((∃ c sc, ((linearise s'.tokens s'.pendingKeys)[old_sz]'h).val = .scalar c sc) ∨
+          ((linearise s'.tokens s'.pendingKeys)[old_sz]'h).val = .flowSequenceStart ∨
+          ((linearise s'.tokens s'.pendingKeys)[old_sz]'h).val = .flowMappingStart)))
+    -- (2) After every OUTER-LEVEL flowEntry in linearised output, next is a content start
+    ∧ (∀ (k : Nat), old_sz ≤ k →
+       (h_hi : k < (linearise s'.tokens s'.pendingKeys).size) →
+       ((linearise s'.tokens s'.pendingKeys)[k]'h_hi).val = .flowEntry →
+       flowBracketBalance (linearise s'.tokens s'.pendingKeys) old_sz k = 0 →
+       k + 1 < (linearise s'.tokens s'.pendingKeys).size ∧
+       (∀ (h' : k + 1 < (linearise s'.tokens s'.pendingKeys).size),
+         ((∃ c sc, ((linearise s'.tokens s'.pendingKeys)[k + 1]'h').val = .scalar c sc) ∨
+          ((linearise s'.tokens s'.pendingKeys)[k + 1]'h').val = .flowSequenceStart ∨
+          ((linearise s'.tokens s'.pendingKeys)[k + 1]'h').val = .flowMappingStart))) := by
+  -- Step 1: invoke the filter-shape body characterization
+  have h_filt := emitList_body_filtered_characterization items h_ne h_all s rest
+    h_corr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_sk
+  obtain ⟨n, s', h_chain, h_corr', h_fl', h_dp', h_ids', h_ek', h_col', h_inflow',
+          h_indent', h_line', h_atol', h_endline', h_stack', h_fmc',
+          h_body_pair, h_body_fe_next⟩ := h_filt
+  -- Step 2: derive AllUnresolved s' (parametric in h_step_unres)
+  have h_unres' : ScannerCorrectness.AllUnresolved s' :=
+    h_chain.preserves_AllUnresolved h_step_unres h_unres
+  -- Step 3: derive NoPlaceholders s' (unconditional via 2b-discharge)
+  have h_no_pl' : ScannerCorrectness.NoPlaceholders s' :=
+    h_chain.preserves_NoPlaceholders
+      (fun h h_ok => ScannerCorrectness.scanNextToken_preserves_NoPlaceholders _ _ h h_ok)
+      h_no_pl
+  -- Step 4: bridge linearise = filter via J.4.1
+  have h_lin_eq :
+      linearise s'.tokens s'.pendingKeys =
+        s'.tokens.filter (fun (t : Positioned YamlToken) => t.val != .placeholder) :=
+    L4YAML.Proofs.ScannerLinearise.linearise_eq_filter_no_resolutions
+      s'.tokens s'.pendingKeys h_unres' h_no_pl'
+  -- Step 5: assemble the conclusion, transporting (1) and (2) via h_lin_eq
+  refine ⟨n, s', h_chain, h_corr', h_fl', h_dp', h_ids', h_ek',
+          h_col', h_inflow', h_indent', h_line', h_atol', h_endline',
+          h_stack', h_fmc', h_unres', h_no_pl', h_lin_eq, ?_, ?_⟩
+  · -- Part (1): linearise-shape content start at old_sz
+    rw [h_lin_eq]
+    exact h_body_pair
+  · -- Part (2): linearise-shape after-flowEntry pattern
+    rw [h_lin_eq]
+    exact h_body_fe_next
+
 /-- Body token characterization for `emitPairList` in flow context:
     (1) The chain has ≥ 3 steps (key handling + value indicator + value content).
     (2) The first new filtered token is `.key` (from `saveSimpleKey` + `scanValuePrepare`
