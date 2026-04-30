@@ -11444,6 +11444,869 @@ theorem scanNextToken_preserves_AllUnresolved
         simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
         exact dispatchContent_preserves_AllUnresolved _ c _ (by assumption) h_inv3
 
+/-! ### J.4.2.b-2b-discharge — `NoPlaceholders` per-action preservation
+
+Per-action `NoPlaceholders` preservation lemmas, mirroring the
+`*_preserves_PendingKeysWellIndexed` / `*_preserves_AllUnresolved` chains.
+Unlike the 2a chain, **2b is unconditional**: every scanner action either
+leaves `tokens` unchanged (Class A passthrough via the existing
+`*_preserves_tokens` chain) or pushes one or more concrete
+non-`.placeholder` tokens (Class B via `NoPlaceholders_emit` /
+`NoPlaceholders_emitAt`).  Post-cutover the scanner contains no
+`tokens.setIfInBounds` calls, so the predicate propagates without any
+sub-class hypothesis.
+
+Discharges the `h_step` parameter of `ScanChain.preserves_NoPlaceholders`
+(`Proofs/Output/EmitterScannability`, J.4.2.b-2b chain) for **every**
+input — pairs with `AllUnresolved` (J.4.2.b-2a-discharge, sub-class
+restricted) at the consumer site to enable
+`linearise_eq_filter_no_resolutions` (J.4.1) on the no-resolution
+sub-class. -/
+
+/-! #### Class A leaves: tokens-equality preserves `NoPlaceholders` -/
+
+theorem advance_preserves_NoPlaceholders (s : ScannerState)
+    (h : NoPlaceholders s) : NoPlaceholders s.advance :=
+  NoPlaceholders_mono (advance_preserves_tokens s) h
+
+theorem advanceN_preserves_NoPlaceholders (s : ScannerState) (n : Nat)
+    (h : NoPlaceholders s) : NoPlaceholders (s.advanceN n) :=
+  NoPlaceholders_mono (advanceN_preserves_tokens s n) h
+
+theorem skipToContent_preserves_NoPlaceholders {s s' : ScannerState}
+    (h_skip : skipToContent s = .ok s') (h : NoPlaceholders s) :
+    NoPlaceholders s' :=
+  NoPlaceholders_mono (skipToContent_preserves_tokens s s' h_skip) h
+
+/-- `saveSimpleKey` is identity on `.tokens` post-cutover. -/
+theorem saveSimpleKey_preserves_tokens (s : ScannerState) :
+    (saveSimpleKey s).tokens = s.tokens := by
+  unfold saveSimpleKey
+  split
+  · rfl
+  · split <;> rfl
+
+theorem saveSimpleKey_preserves_NoPlaceholders {s : ScannerState}
+    (h : NoPlaceholders s) : NoPlaceholders (saveSimpleKey s) :=
+  NoPlaceholders_mono (saveSimpleKey_preserves_tokens s) h
+
+theorem scanValueClearKey_preserves_NoPlaceholders (s : ScannerState)
+    (h : NoPlaceholders s) : NoPlaceholders (scanValueClearKey s) :=
+  NoPlaceholders_mono (scanValueClearKey_preserves_tokens s) h
+
+/-! #### Class B leaves: indent helpers (`pushSequenceIndent` /
+`pushMappingIndent` push at most one virtual block-start; `unwindIndents`
+recursively pushes `.blockEnd`). -/
+
+theorem pushSequenceIndent_preserves_NoPlaceholders (s : ScannerState) (col : Int)
+    (h : NoPlaceholders s) : NoPlaceholders (pushSequenceIndent s col) := by
+  unfold pushSequenceIndent
+  split
+  · -- emit .blockSequenceStart, then with-update on indents (preserves tokens)
+    show NoPlaceholders { s.emit .blockSequenceStart with indents := _ }
+    exact NoPlaceholders_mono (s := s.emit .blockSequenceStart) rfl
+            (NoPlaceholders_emit (by nofun) h)
+  · exact h
+
+theorem pushMappingIndent_preserves_NoPlaceholders (s : ScannerState) (col : Int)
+    (h : NoPlaceholders s) : NoPlaceholders (pushMappingIndent s col) := by
+  unfold pushMappingIndent
+  split
+  · show NoPlaceholders { s.emit .blockMappingStart with indents := _ }
+    exact NoPlaceholders_mono (s := s.emit .blockMappingStart) rfl
+            (NoPlaceholders_emit (by nofun) h)
+  · exact h
+
+theorem unwindIndentsLoop_preserves_NoPlaceholders (s : ScannerState) (col : Int)
+    (fuel : Nat) (h : NoPlaceholders s) :
+    NoPlaceholders (unwindIndentsLoop s col fuel) := by
+  induction fuel generalizing s with
+  | zero => unfold unwindIndentsLoop; exact h
+  | succ fuel' ih =>
+    unfold unwindIndentsLoop
+    split
+    · apply ih
+      show NoPlaceholders { s.emit .blockEnd with indents := _ }
+      exact NoPlaceholders_mono (s := s.emit .blockEnd) rfl
+              (NoPlaceholders_emit (by nofun) h)
+    · exact h
+
+theorem unwindIndents_preserves_NoPlaceholders (s : ScannerState) (col : Int)
+    (h : NoPlaceholders s) : NoPlaceholders (unwindIndents s col) :=
+  unwindIndentsLoop_preserves_NoPlaceholders s col s.indents.size h
+
+/-! #### Flow indicator scanners -/
+
+theorem scanFlowSequenceStart_preserves_NoPlaceholders (s : ScannerState)
+    (h : NoPlaceholders s) : NoPlaceholders (scanFlowSequenceStart s) := by
+  intro t ht
+  unfold scanFlowSequenceStart ScannerState.emit at ht
+  simp only [advance_preserves_tokens, Array.mem_push] at ht
+  rcases ht with h_old | h_new
+  · exact h t h_old
+  · subst h_new; nofun
+
+theorem scanFlowSequenceEnd_preserves_NoPlaceholders (s : ScannerState)
+    (h : NoPlaceholders s) : NoPlaceholders (scanFlowSequenceEnd s) := by
+  intro t ht
+  unfold scanFlowSequenceEnd ScannerState.emit at ht
+  simp only [advance_preserves_tokens, Array.mem_push] at ht
+  rcases ht with h_old | h_new
+  · exact h t h_old
+  · subst h_new; nofun
+
+theorem scanFlowMappingStart_preserves_NoPlaceholders (s : ScannerState)
+    (h : NoPlaceholders s) : NoPlaceholders (scanFlowMappingStart s) := by
+  intro t ht
+  unfold scanFlowMappingStart ScannerState.emit at ht
+  simp only [advance_preserves_tokens, Array.mem_push] at ht
+  rcases ht with h_old | h_new
+  · exact h t h_old
+  · subst h_new; nofun
+
+theorem scanFlowMappingEnd_preserves_NoPlaceholders (s : ScannerState)
+    (h : NoPlaceholders s) : NoPlaceholders (scanFlowMappingEnd s) := by
+  intro t ht
+  unfold scanFlowMappingEnd ScannerState.emit at ht
+  simp only [advance_preserves_tokens, Array.mem_push] at ht
+  rcases ht with h_old | h_new
+  · exact h t h_old
+  · subst h_new; nofun
+
+theorem scanFlowEntry_preserves_NoPlaceholders {s s' : ScannerState}
+    (h_ok : scanFlowEntry s = .ok s') (h : NoPlaceholders s) :
+    NoPlaceholders s' := by
+  unfold scanFlowEntry at h_ok
+  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h_ok
+  split at h_ok
+  · split at h_ok
+    · contradiction
+    · injection h_ok with h_eq; subst h_eq
+      intro t ht
+      unfold ScannerState.emit at ht
+      simp only [advance_preserves_tokens, Array.mem_push] at ht
+      rcases ht with h_old | h_new
+      · exact h t h_old
+      · subst h_new; nofun
+  · injection h_ok with h_eq; subst h_eq
+    intro t ht
+    unfold ScannerState.emit at ht
+    simp only [advance_preserves_tokens, Array.mem_push] at ht
+    rcases ht with h_old | h_new
+    · exact h t h_old
+    · subst h_new; nofun
+
+/-! #### Block indicator scanners -/
+
+theorem scanBlockEntry_preserves_NoPlaceholders {s s' : ScannerState}
+    (h_ok : scanBlockEntry s = .ok s') (h : NoPlaceholders s) :
+    NoPlaceholders s' := by
+  unfold scanBlockEntry at h_ok
+  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h_ok
+  split at h_ok
+  · split at h_ok
+    · contradiction
+    · injection h_ok with h_eq; subst h_eq
+      -- !inFlow: pushSequenceIndent → emit .blockEntry → advance
+      show NoPlaceholders _
+      refine NoPlaceholders_mono (s := (pushSequenceIndent s s.col).emit .blockEntry)
+              (advance_preserves_tokens _) ?_
+      exact NoPlaceholders_emit (by nofun)
+              (pushSequenceIndent_preserves_NoPlaceholders s s.col h)
+  · injection h_ok with h_eq; subst h_eq
+    -- inFlow: just emit .blockEntry → advance
+    show NoPlaceholders _
+    exact NoPlaceholders_mono (s := s.emit .blockEntry)
+            (advance_preserves_tokens _) (NoPlaceholders_emit (by nofun) h)
+
+theorem scanKey_preserves_NoPlaceholders {s s' : ScannerState}
+    (h_ok : scanKey s = .ok s') (h : NoPlaceholders s) :
+    NoPlaceholders s' := by
+  unfold scanKey at h_ok
+  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h_ok
+  split at h_ok
+  · -- !inFlow
+    split at h_ok
+    · split at h_ok
+      · contradiction
+      · injection h_ok with h_eq; subst h_eq
+        show NoPlaceholders _
+        refine NoPlaceholders_mono (s := (pushMappingIndent s s.col).emit .key)
+                (advance_preserves_tokens _) ?_
+        exact NoPlaceholders_emit (by nofun)
+                (pushMappingIndent_preserves_NoPlaceholders s s.col h)
+    · injection h_ok with h_eq; subst h_eq
+      show NoPlaceholders _
+      refine NoPlaceholders_mono (s := (pushMappingIndent s s.col).emit .key)
+              (advance_preserves_tokens _) ?_
+      exact NoPlaceholders_emit (by nofun)
+              (pushMappingIndent_preserves_NoPlaceholders s s.col h)
+  · -- inFlow: no pushMappingIndent
+    split at h_ok
+    · split at h_ok
+      · contradiction
+      · injection h_ok with h_eq; subst h_eq
+        show NoPlaceholders _
+        exact NoPlaceholders_mono (s := s.emit .key) (advance_preserves_tokens _)
+                (NoPlaceholders_emit (by nofun) h)
+    · injection h_ok with h_eq; subst h_eq
+      show NoPlaceholders _
+      exact NoPlaceholders_mono (s := s.emit .key) (advance_preserves_tokens _)
+              (NoPlaceholders_emit (by nofun) h)
+
+/-- `scanValuePrepare` preserves `NoPlaceholders`: every arm is either
+    a non-tokens field update (Class A) or `pushMappingIndent` (Class B
+    with `.blockMappingStart`). -/
+theorem scanValuePrepare_preserves_NoPlaceholders (s : ScannerState)
+    (h : NoPlaceholders s) : NoPlaceholders (scanValuePrepare s) := by
+  unfold scanValuePrepare
+  split
+  · split
+    · split
+      · exact NoPlaceholders_mono (s := s) rfl h
+      · exact NoPlaceholders_mono (s := s) rfl h
+    · exact NoPlaceholders_mono (s := s) rfl h
+  · split
+    · exact NoPlaceholders_mono (s := s) rfl h
+    · split
+      · exact pushMappingIndent_preserves_NoPlaceholders s s.col h
+      · exact h
+
+theorem scanValue_preserves_NoPlaceholders {s s' : ScannerState}
+    (h_ok : scanValue s = .ok s') (h : NoPlaceholders s) :
+    NoPlaceholders s' := by
+  unfold scanValue at h_ok
+  simp only [bind, Except.bind] at h_ok
+  split at h_ok <;> try contradiction
+  split at h_ok <;> try contradiction
+  injection h_ok with h_eq; subst h_eq
+  -- chain: scanValueClearKey → scanValuePrepare → emit .value → advance → with-update
+  show NoPlaceholders _
+  refine NoPlaceholders_mono (s := ((scanValuePrepare (scanValueClearKey s)).emit .value).advance)
+          rfl ?_
+  apply advance_preserves_NoPlaceholders
+  apply NoPlaceholders_emit (by nofun)
+  apply scanValuePrepare_preserves_NoPlaceholders
+  exact scanValueClearKey_preserves_NoPlaceholders s h
+
+/-! #### Document/directive scanners -/
+
+theorem scanDocumentStart_preserves_NoPlaceholders (s : ScannerState)
+    (h : NoPlaceholders s) : NoPlaceholders (scanDocumentStart s) := by
+  unfold scanDocumentStart
+  apply advanceN_preserves_NoPlaceholders
+  apply NoPlaceholders_emit (by nofun)
+  exact unwindIndents_preserves_NoPlaceholders s (-1) h
+
+theorem scanDocumentEnd_preserves_NoPlaceholders {s s' : ScannerState}
+    (h_ok : scanDocumentEnd s = .ok s') (h : NoPlaceholders s) :
+    NoPlaceholders s' := by
+  unfold scanDocumentEnd at h_ok
+  dsimp only [] at h_ok
+  simp only [bind, Except.bind] at h_ok
+  -- All success arms emit .documentEnd after unwindIndents s (-1)
+  repeat (any_goals (split at h_ok))
+  all_goals (try contradiction)
+  all_goals (injection h_ok with h_eq; subst h_eq)
+  all_goals (
+    show NoPlaceholders _
+    apply advanceN_preserves_NoPlaceholders
+    apply NoPlaceholders_emit (by nofun)
+    exact unwindIndents_preserves_NoPlaceholders s (-1) h)
+
+/-! #### Content scanners (anchor / tag / scalars).  Each pushes a
+single concrete non-`.placeholder` token via `emitAt`.
+
+We follow the canonical `_new_token_not_plain` template from
+`Proofs/Production/ScannerPlainScalarValid` (mirrors the existing
+`PlainScalarsValid`-preservation chain), adapted from
+`.scalar _ .plain` to `.placeholder`.  Each helper:
+
+  1. Unfolds the scanner function.
+  2. Resolves Except cases.
+  3. Reduces the new-token slot via `Array.getElem_push_eq` and
+     concrete `_preserves_tokens` lemmas for skip helpers.
+  4. Closes with `nofun` (token constructor mismatch).
+
+Then `_preserves_NoPlaceholders` combines `_adds_one_token`,
+`_preserves_prefix`, and `_new_token_not_placeholder` via
+`NoPlaceholders_extension`. -/
+
+/-- Generic extension lemma: combine `_size`, `_preserves_prefix`, and
+    a "new tokens not `.placeholder`" hypothesis to conclude
+    `NoPlaceholders` preservation. -/
+theorem NoPlaceholders_extension {s s' : ScannerState}
+    (h_size : s.tokens.size ≤ s'.tokens.size)
+    (h_prefix : ∀ i (h_i : i < s.tokens.size),
+      s'.tokens[i]'(Nat.lt_of_lt_of_le h_i h_size) = s.tokens[i])
+    (h_new : ∀ i (h_old : s.tokens.size ≤ i) (h_new : i < s'.tokens.size),
+      (s'.tokens[i]'h_new).val ≠ .placeholder)
+    (h : NoPlaceholders s) : NoPlaceholders s' := by
+  intro t ht
+  rw [Array.mem_iff_getElem] at ht
+  obtain ⟨i, h_lt, h_eq⟩ := ht
+  by_cases h_old : i < s.tokens.size
+  · rw [← h_eq, h_prefix i h_old]
+    exact h _ (s.tokens.getElem_mem h_old)
+  · rw [Nat.not_lt] at h_old
+    rw [← h_eq]
+    exact h_new i h_old h_lt
+
+/-- Specialisation: when `s'.tokens.size = s.tokens.size + 1` (single
+    new token at index `s.tokens.size`), preservation reduces to
+    "new token at `s.tokens.size` is not `.placeholder`". -/
+theorem NoPlaceholders_extension_one
+    {s s' : ScannerState}
+    (h_size : s'.tokens.size = s.tokens.size + 1)
+    (h_prefix : ∀ i (h_i : i < s.tokens.size),
+      s'.tokens[i]'(by omega) = s.tokens[i])
+    (h_new_tok : (s'.tokens[s.tokens.size]'(by omega)).val ≠ .placeholder)
+    (h : NoPlaceholders s) : NoPlaceholders s' :=
+  NoPlaceholders_extension (by omega)
+    (fun i h_i => h_prefix i h_i)
+    (fun i h_old h_new => by
+      have h_eq : i = s.tokens.size := by omega
+      subst h_eq; exact h_new_tok)
+    h
+
+/-! ##### `_new_token_not_placeholder` helpers (mirrors
+`_new_token_not_plain` from `ScannerPlainScalarValid`) -/
+
+theorem scanAnchorOrAlias_new_token_not_placeholder
+    (s : ScannerState) (isAnchor : Bool) (s' : ScannerState)
+    (hok : scanAnchorOrAlias s isAnchor = .ok s') :
+    let tok := s'.tokens[s.tokens.size]'(by
+      have := ScanHelpers.scanAnchorOrAlias_adds_one_token s isAnchor s' hok; omega)
+    tok.val ≠ .placeholder := by
+  unfold scanAnchorOrAlias at hok; dsimp only [] at hok
+  split at hok
+  · exact absurd hok (by simp)
+  · have h := Except.ok.inj hok; subst h; dsimp only []
+    simp [ScannerState.emitAt, ScanHelpers.collectAnchorNameLoop_preserves_tokens,
+          advance_preserves_tokens, Array.getElem_push_eq]
+    cases isAnchor <;> simp
+
+theorem scanAnchorOrAlias_preserves_NoPlaceholders {s : ScannerState} (isAnchor : Bool)
+    {s' : ScannerState} (h_ok : scanAnchorOrAlias s isAnchor = .ok s')
+    (h : NoPlaceholders s) : NoPlaceholders s' :=
+  NoPlaceholders_extension_one
+    (by have := ScanHelpers.scanAnchorOrAlias_adds_one_token s isAnchor s' h_ok; omega)
+    (fun i hi => ScanHelpers.scanAnchorOrAlias_preserves_prefix s isAnchor s' h_ok i hi)
+    (scanAnchorOrAlias_new_token_not_placeholder s isAnchor s' h_ok) h
+
+theorem scanVerbatimTag_new_token_not_placeholder
+    (s : ScannerState) (startPos : YamlPos) (s' : ScannerState)
+    (hok : scanVerbatimTag s startPos = .ok s') :
+    let tok := s'.tokens[s.tokens.size]'(by
+      have := ScanHelpers.scanVerbatimTag_adds_one_token s startPos s' hok; omega)
+    tok.val ≠ .placeholder := by
+  unfold scanVerbatimTag at hok; dsimp only [] at hok
+  split at hok
+  · exact absurd hok (by simp)
+  · split at hok
+    · exact absurd hok (by simp)
+    · have h := Except.ok.inj hok; subst h
+      simp [ScannerState.emitAt, ScanHelpers.collectVerbatimTagLoop_preserves_tokens,
+            advance_preserves_tokens, Array.getElem_push_eq]
+
+theorem scanSecondaryTag_new_token_not_placeholder
+    (s : ScannerState) (startPos : YamlPos) :
+    let tok := (scanSecondaryTag s startPos).tokens[s.tokens.size]'(by
+      have := ScanHelpers.scanSecondaryTag_adds_one_token s startPos; omega)
+    tok.val ≠ .placeholder := by
+  unfold scanSecondaryTag
+  simp [ScannerState.emitAt, ScanHelpers.collectTagSuffixLoop_preserves_tokens,
+        advance_preserves_tokens, Array.getElem_push_eq]
+
+theorem scanNamedTag_new_token_not_placeholder
+    (s : ScannerState) (startPos : YamlPos) (inputEnd : Nat) :
+    let tok := (scanNamedTag s startPos inputEnd).tokens[s.tokens.size]'(by
+      have := ScanHelpers.scanNamedTag_adds_one_token s startPos inputEnd; omega)
+    tok.val ≠ .placeholder := by
+  unfold scanNamedTag
+  generalize h_handle : collectTagHandleLoop s "" (inputEnd - s.offset) = handle_result
+  have h_tok : handle_result.2.2.tokens = s.tokens := by
+    rw [← h_handle]
+    exact ScanHelpers.collectTagHandleLoop_preserves_tokens s "" (inputEnd - s.offset)
+  simp only [h_handle]
+  split
+  · simp [ScannerState.emitAt, ScanHelpers.collectTagSuffixLoop_preserves_tokens,
+          h_tok, Array.getElem_push_eq]
+  · simp [ScannerState.emitAt, h_tok, Array.getElem_push_eq]
+
+theorem scanTag_new_token_not_placeholder
+    (s : ScannerState) (s' : ScannerState) (hok : scanTag s = .ok s') :
+    let tok := s'.tokens[s.tokens.size]'(by
+      have := ScanHelpers.scanTag_adds_one_token s s' hok; omega)
+    tok.val ≠ .placeholder := by
+  unfold scanTag at hok; dsimp only [] at hok
+  split at hok
+  · -- '<' verbatim
+    simp only [bind, Except.bind] at hok
+    generalize h_v : scanVerbatimTag s.advance s.currentPos = vr at hok
+    cases vr with
+    | error e => simp at hok
+    | ok s_v =>
+      change Except.ok { s_v with simpleKeyAllowed := false } = .ok s' at hok
+      have h_inj := Except.ok.inj hok; subst h_inj
+      dsimp only []
+      simp only [← advance_preserves_tokens (s := s)]
+      exact scanVerbatimTag_new_token_not_placeholder s.advance s.currentPos s_v h_v
+  · -- '!' secondary
+    have h_inj := Except.ok.inj hok; subst h_inj
+    dsimp only []
+    simp only [← advance_preserves_tokens (s := s)]
+    exact scanSecondaryTag_new_token_not_placeholder s.advance s.currentPos
+  · -- catch-all: named
+    have h_inj := Except.ok.inj hok; subst h_inj
+    dsimp only []
+    simp only [← advance_preserves_tokens (s := s)]
+    exact scanNamedTag_new_token_not_placeholder s.advance s.currentPos s.inputEnd
+
+theorem scanTag_preserves_NoPlaceholders {s s' : ScannerState}
+    (h_ok : scanTag s = .ok s') (h : NoPlaceholders s) : NoPlaceholders s' :=
+  NoPlaceholders_extension_one
+    (by have := ScanHelpers.scanTag_adds_one_token s s' h_ok; omega)
+    (fun i hi => ScanHelpers.scanTag_preserves_prefix s s' h_ok i hi)
+    (scanTag_new_token_not_placeholder s s' h_ok) h
+
+theorem scanBlockScalarBody_new_token_not_placeholder
+    (s_orig s_nl : ScannerState) (chomp : ChompStyle) (expl : Option Nat) (isLit : Bool)
+    (startPos : YamlPos) (s' : ScannerState) (h_tok : s_nl.tokens = s_orig.tokens)
+    (h : scanBlockScalarBody s_orig s_nl chomp expl isLit startPos = .ok s') :
+    let new_tok := s'.tokens[s_orig.tokens.size]'(by
+      have := ScanHelpers.scanBlockScalarBody_adds_one_token s_orig s_nl chomp expl isLit
+                startPos s' h_tok h
+      omega)
+    new_tok.val ≠ .placeholder := by
+  unfold scanBlockScalarBody at h
+  simp only [] at h
+  repeat (any_goals (split at h))
+  all_goals (try contradiction)
+  all_goals (simp only [Except.ok.injEq] at h; subst h; dsimp only [])
+  all_goals (
+    simp [ScannerState.emitAt, ScanHelpers.collectBlockScalarLoop_preserves_tokens, h_tok,
+          Array.getElem_push_eq])
+
+theorem scanBlockScalar_new_token_not_placeholder
+    (s s' : ScannerState) (h_ok : scanBlockScalar s = .ok s') :
+    let new_tok := s'.tokens[s.tokens.size]'(by
+      have := ScanHelpers.scanBlockScalar_adds_one_token s s' h_ok; omega)
+    new_tok.val ≠ .placeholder := by
+  unfold scanBlockScalar at h_ok
+  simp only [] at h_ok
+  split at h_ok
+  · contradiction
+  · exact scanBlockScalarBody_new_token_not_placeholder s _ _ _ _ _ s'
+      (by rw [ScanHelpers.scanBlockScalarConsumeNewline_preserves_tokens _ _ (by assumption),
+              ScanHelpers.scanBlockScalarSkipComment_preserves_tokens,
+              skipWhitespace_preserves_tokens,
+              ScanHelpers.parseBlockHeaderLoop_preserves_tokens,
+              advance_preserves_tokens]) h_ok
+
+theorem scanBlockScalar_preserves_NoPlaceholders {s s' : ScannerState}
+    (h_ok : scanBlockScalar s = .ok s') (h : NoPlaceholders s) :
+    NoPlaceholders s' :=
+  NoPlaceholders_extension_one
+    (by have := ScanHelpers.scanBlockScalar_adds_one_token s s' h_ok; omega)
+    (fun i hi => ScanHelpers.scanBlockScalar_preserves_prefix s s' h_ok i hi)
+    (scanBlockScalar_new_token_not_placeholder s s' h_ok) h
+
+theorem scanDoubleQuoted_new_token_not_placeholder
+    (s s' : ScannerState) (h_ok : scanDoubleQuoted s = .ok s') :
+    let tok := s'.tokens[s.tokens.size]'(by
+      have := ScanHelpers.scanDoubleQuoted_adds_one_token s s' h_ok; omega)
+    tok.val ≠ .placeholder := by
+  unfold scanDoubleQuoted at h_ok
+  simp only [bind, Except.bind] at h_ok
+  split at h_ok <;> try contradiction
+  rename_i heq
+  have h_collect := ScanHelpers.collectDoubleQuotedLoop_preserves_tokens s.advance "" _ _ _ _ _ _ heq
+  have h_adv := advance_preserves_tokens s
+  split at h_ok
+  · split at h_ok <;> try contradiction
+    injection h_ok with h_eq; subst h_eq
+    dsimp only []
+    simp [ScannerState.emitAt, h_collect, h_adv, Array.getElem_push_eq]
+  · injection h_ok with h_eq; subst h_eq
+    dsimp only []
+    simp [ScannerState.emitAt, h_collect, h_adv, Array.getElem_push_eq]
+
+theorem scanDoubleQuoted_preserves_NoPlaceholders {s s' : ScannerState}
+    (h_ok : scanDoubleQuoted s = .ok s') (h : NoPlaceholders s) :
+    NoPlaceholders s' :=
+  NoPlaceholders_extension_one
+    (by have := ScanHelpers.scanDoubleQuoted_adds_one_token s s' h_ok; omega)
+    (fun i hi => ScanHelpers.scanDoubleQuoted_preserves_prefix s s' h_ok i hi)
+    (scanDoubleQuoted_new_token_not_placeholder s s' h_ok) h
+
+theorem scanSingleQuoted_new_token_not_placeholder
+    (s s' : ScannerState) (h_ok : scanSingleQuoted s = .ok s') :
+    let tok := s'.tokens[s.tokens.size]'(by
+      have := ScanHelpers.scanSingleQuoted_adds_one_token s s' h_ok; omega)
+    tok.val ≠ .placeholder := by
+  unfold scanSingleQuoted at h_ok
+  simp only [bind, Except.bind] at h_ok
+  split at h_ok <;> try contradiction
+  rename_i heq
+  have h_collect := ScanHelpers.collectSingleQuotedLoop_preserves_tokens s.advance "" _ _ _ _ _ _ heq
+  have h_adv := advance_preserves_tokens s
+  split at h_ok
+  · split at h_ok <;> try contradiction
+    injection h_ok with h_eq; subst h_eq
+    dsimp only []
+    simp [ScannerState.emitAt, h_collect, h_adv, Array.getElem_push_eq]
+  · injection h_ok with h_eq; subst h_eq
+    dsimp only []
+    simp [ScannerState.emitAt, h_collect, h_adv, Array.getElem_push_eq]
+
+theorem scanSingleQuoted_preserves_NoPlaceholders {s s' : ScannerState}
+    (h_ok : scanSingleQuoted s = .ok s') (h : NoPlaceholders s) :
+    NoPlaceholders s' :=
+  NoPlaceholders_extension_one
+    (by have := ScanHelpers.scanSingleQuoted_adds_one_token s s' h_ok; omega)
+    (fun i hi => ScanHelpers.scanSingleQuoted_preserves_prefix s s' h_ok i hi)
+    (scanSingleQuoted_new_token_not_placeholder s s' h_ok) h
+
+theorem scanPlainScalar_new_token_not_placeholder
+    (s s' : ScannerState) (h_ok : scanPlainScalar s = .ok s') :
+    let tok := s'.tokens[s.tokens.size]'(by
+      have := ScanHelpers.scanPlainScalar_adds_one_token s s' h_ok; omega)
+    tok.val ≠ .placeholder := by
+  unfold scanPlainScalar at h_ok
+  simp only [bind, Except.bind] at h_ok
+  split at h_ok; · contradiction
+  rename_i result heq
+  injection h_ok with h_eq; subst h_eq
+  dsimp only []
+  have h_tok : result.state.tokens = s.tokens :=
+    ScanHelpers.collectPlainScalarLoop_preserves_tokens s "" "" _ _ _ _ _ heq
+  simp [ScannerState.emitAt, h_tok, Array.getElem_push_eq]
+
+theorem scanPlainScalar_preserves_NoPlaceholders {s s' : ScannerState}
+    (h_ok : scanPlainScalar s = .ok s') (h : NoPlaceholders s) :
+    NoPlaceholders s' :=
+  NoPlaceholders_extension_one
+    (by have := ScanHelpers.scanPlainScalar_adds_one_token s s' h_ok; omega)
+    (fun i hi => ScanHelpers.scanPlainScalar_preserves_prefix s s' h_ok i hi)
+    (scanPlainScalar_new_token_not_placeholder s s' h_ok) h
+
+/-! ##### `scanDirective_preserves_NoPlaceholders` -/
+
+theorem scanYamlDirective_new_token_not_placeholder
+    (s s_after_ws : ScannerState) (startPos : YamlPos) (s' : ScannerState)
+    (h_ws : s_after_ws.tokens = s.tokens)
+    (h_ok : scanYamlDirective s s_after_ws startPos = .ok s') :
+    ∀ j (hj : j < s'.tokens.size) (_ : j ≥ s.tokens.size),
+      (s'.tokens[j]'hj).val ≠ .placeholder := by
+  intro j hj hge
+  unfold scanYamlDirective at h_ok
+  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h_ok
+  repeat (any_goals (split at h_ok))
+  all_goals (try contradiction)
+  all_goals (simp only [Except.ok.injEq] at h_ok; subst h_ok)
+  all_goals (
+    dsimp only []
+    simp only [ScannerState.emitAt, skipWhitespace_preserves_tokens,
+               ScanHelpers.collectVersionMinorLoop_preserves_tokens,
+               ScanHelpers.collectVersionMajorLoop_preserves_tokens, h_ws,
+               Array.size_push] at hj
+    simp only [ScannerState.emitAt, skipWhitespace_preserves_tokens,
+               ScanHelpers.collectVersionMinorLoop_preserves_tokens,
+               ScanHelpers.collectVersionMajorLoop_preserves_tokens, h_ws]
+    have h_eq_j : j = s.tokens.size := by omega
+    subst h_eq_j
+    rw [Array.getElem_push_eq]
+    nofun)
+
+theorem scanTagDirective_new_token_not_placeholder
+    (s s_after_ws : ScannerState) (startPos : YamlPos) (s' : ScannerState)
+    (h_ws : s_after_ws.tokens = s.tokens)
+    (h_ok : scanTagDirective s s_after_ws startPos = .ok s') :
+    ∀ j (hj : j < s'.tokens.size) (_ : j ≥ s.tokens.size),
+      (s'.tokens[j]'hj).val ≠ .placeholder := by
+  intro j hj hge
+  unfold scanTagDirective at h_ok
+  dsimp only [] at h_ok
+  simp only [bind, Except.bind] at h_ok
+  split at h_ok <;> try (split at h_ok <;> try contradiction)
+  all_goals (try contradiction)
+  all_goals (simp only [pure, Except.pure, Pure.pure, Except.ok.injEq] at h_ok; subst h_ok)
+  all_goals (
+    dsimp only []
+    simp only [ScannerState.emitAt, ScanHelpers.collectTagPrefixLoop_preserves_tokens,
+               skipWhitespace_preserves_tokens,
+               ScanHelpers.collectTagHandleDirectiveLoop_preserves_tokens, h_ws,
+               Array.size_push] at hj
+    simp only [ScannerState.emitAt, ScanHelpers.collectTagPrefixLoop_preserves_tokens,
+               skipWhitespace_preserves_tokens,
+               ScanHelpers.collectTagHandleDirectiveLoop_preserves_tokens, h_ws]
+    have h_eq_j : j = s.tokens.size := by omega
+    subst h_eq_j
+    rw [Array.getElem_push_eq]
+    nofun)
+
+theorem scanDirective_preserves_NoPlaceholders {s s' : ScannerState}
+    (h_ok : scanDirective s = .ok s') (h : NoPlaceholders s) :
+    NoPlaceholders s' := by
+  apply NoPlaceholders_extension
+    (h_size := ScanHelpers.scanDirective_monotonic s s' h_ok)
+    (h_prefix := fun i hi => ScanHelpers.scanDirective_preserves_prefix s s' h_ok i hi)
+    ?_ h
+  -- `NoPlaceholders_extension` binds `h_old : s.tokens.size ≤ j` before
+  -- `h_lt : j < s'.tokens.size`.
+  intro j hge hlt
+  -- The arm structure of scanDirective: YAML directive | TAG directive | comment
+  unfold scanDirective at h_ok
+  dsimp only [] at h_ok
+  split at h_ok
+  any_goals contradiction
+  have h_ws_tok : (skipWhitespace (collectDirectiveNameLoop s.advance ""
+                       (s.inputEnd - s.advance.offset)).2).tokens = s.tokens := by
+    rw [skipWhitespace_preserves_tokens, ScanHelpers.collectDirectiveNameLoop_preserves_tokens,
+        advance_preserves_tokens]
+  split at h_ok
+  · -- YAML directive: tokens after = (scanYamlDirective ...).tokens then skipToEndOfLine
+    generalize hm : scanYamlDirective _ _ _ = result at h_ok
+    cases result with
+    | ok s_yaml =>
+      simp only [Except.ok.injEq] at h_ok; subst h_ok
+      simp only [skipToEndOfLine_preserves_tokens] at hlt ⊢
+      exact scanYamlDirective_new_token_not_placeholder s _ _ s_yaml h_ws_tok hm j hlt hge
+    | error => contradiction
+  · split at h_ok
+    · -- TAG directive
+      generalize hm : scanTagDirective _ _ _ = result at h_ok
+      cases result with
+      | ok s_tag =>
+        simp only [Except.ok.injEq] at h_ok; subst h_ok
+        simp only [skipToEndOfLine_preserves_tokens] at hlt ⊢
+        exact scanTagDirective_new_token_not_placeholder s _ _ s_tag h_ws_tok hm j hlt hge
+      | error => contradiction
+    · -- unknown directive: tokens unchanged → contradicts hge/hlt
+      injection h_ok with h_eq; subst h_eq
+      simp only [skipToEndOfLine_preserves_tokens, h_ws_tok] at hlt
+      exfalso; omega
+
+/-! #### Per-dispatcher `NoPlaceholders` preservation -/
+
+theorem dispatchStructural_preserves_NoPlaceholders
+    (s : ScannerState) (c : Char) (s' : ScannerState)
+    (h_ok : scanNextToken_dispatchStructural s c = .ok (some s'))
+    (h : NoPlaceholders s) : NoPlaceholders s' := by
+  unfold scanNextToken_dispatchStructural at h_ok
+  simp only [bind, ScanHelpers.bind_ok_simp, pure, Pure.pure, Except.pure] at h_ok
+  simp only [Except.bind] at h_ok
+  repeat (any_goals (split at h_ok))
+  any_goals contradiction
+  all_goals (try simp only [Except.ok.injEq, Option.some.injEq] at *)
+  any_goals contradiction
+  all_goals (try subst_vars)
+  all_goals first
+    | exact scanDocumentStart_preserves_NoPlaceholders s h
+    | exact scanDocumentEnd_preserves_NoPlaceholders (by assumption) h
+    | exact scanDirective_preserves_NoPlaceholders (by assumption) h
+    | (simp_all; done)
+
+theorem dispatchFlowIndicators_preserves_NoPlaceholders
+    (s : ScannerState) (c : Char) (s' : ScannerState)
+    (h_ok : scanNextToken_dispatchFlowIndicators s c = .ok (some s'))
+    (h : NoPlaceholders s) : NoPlaceholders s' := by
+  unfold scanNextToken_dispatchFlowIndicators at h_ok
+  simp only [bind, ScanHelpers.bind_ok_simp, pure, Pure.pure, Except.pure] at h_ok
+  simp only [Except.bind] at h_ok
+  repeat (any_goals (split at h_ok))
+  any_goals contradiction
+  all_goals (try simp only [Except.ok.injEq, Option.some.injEq] at *)
+  any_goals contradiction
+  all_goals (try subst_vars)
+  all_goals first
+    | exact scanFlowSequenceStart_preserves_NoPlaceholders s h
+    | exact scanFlowSequenceEnd_preserves_NoPlaceholders s h
+    | exact scanFlowMappingStart_preserves_NoPlaceholders s h
+    | exact scanFlowMappingEnd_preserves_NoPlaceholders s h
+    | exact scanFlowEntry_preserves_NoPlaceholders (by assumption) h
+    | (simp_all; done)
+
+theorem dispatchBlockIndicators_preserves_NoPlaceholders
+    (s : ScannerState) (c : Char) (s' : ScannerState)
+    (h_ok : scanNextToken_dispatchBlockIndicators s c = .ok (some s'))
+    (h : NoPlaceholders s) : NoPlaceholders s' := by
+  unfold scanNextToken_dispatchBlockIndicators at h_ok
+  simp only [bind, ScanHelpers.bind_ok_simp, pure, Pure.pure, Except.pure] at h_ok
+  simp only [Except.bind] at h_ok
+  split at h_ok
+  · split at h_ok <;> try contradiction
+    rename_i h_be
+    simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
+    exact scanBlockEntry_preserves_NoPlaceholders h_be h
+  · split at h_ok
+    · split at h_ok <;> try contradiction
+      rename_i h_key
+      simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
+      exact scanKey_preserves_NoPlaceholders h_key h
+    · split at h_ok
+      · split at h_ok <;> try contradiction
+        rename_i h_val
+        simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
+        exact scanValue_preserves_NoPlaceholders h_val h
+      · simp at h_ok
+
+theorem dispatchContent_preserves_NoPlaceholders
+    (s : ScannerState) (c : Char) (s' : ScannerState)
+    (h_ok : scanNextToken_dispatchContent s c = .ok s')
+    (h : NoPlaceholders s) : NoPlaceholders s' := by
+  unfold scanNextToken_dispatchContent at h_ok
+  simp only [bind, ScanHelpers.bind_ok_simp, pure, Pure.pure, Except.pure] at h_ok
+  simp only [Except.bind] at h_ok
+  split at h_ok
+  · -- '&' anchor
+    generalize h_fn : scanAnchorOrAlias s true = result at h_ok
+    cases result with
+    | error e => simp at h_ok
+    | ok s_a =>
+      simp only [Except.ok.injEq] at h_ok; subst h_ok
+      have h_sa : NoPlaceholders s_a :=
+        scanAnchorOrAlias_preserves_NoPlaceholders true h_fn h
+      -- definedAnchors update preserves tokens
+      exact NoPlaceholders_mono (s := s_a) rfl h_sa
+  · split at h_ok
+    · -- '*' alias
+      split at h_ok
+      · simp at h_ok
+      · generalize h_fn : scanAnchorOrAlias s false = result at h_ok
+        cases result with
+        | error e => simp at h_ok
+        | ok s_a =>
+          simp only [Except.ok.injEq] at h_ok; subst h_ok
+          exact scanAnchorOrAlias_preserves_NoPlaceholders false h_fn h
+    · split at h_ok
+      · -- '!' tag
+        generalize h_fn : scanTag s = result at h_ok
+        cases result with
+        | error e => simp at h_ok
+        | ok s_t =>
+          simp only [Except.ok.injEq] at h_ok; subst h_ok
+          exact scanTag_preserves_NoPlaceholders h_fn h
+      · split at h_ok
+        · -- block scalar
+          generalize h_fn : scanBlockScalar s = result at h_ok
+          cases result with
+          | error e => simp at h_ok
+          | ok s_b =>
+            simp only [Except.ok.injEq] at h_ok; subst h_ok
+            exact scanBlockScalar_preserves_NoPlaceholders h_fn h
+        · split at h_ok
+          · -- '"' double-quoted
+            generalize h_fn : scanDoubleQuoted s = result at h_ok
+            cases result with
+            | error e => simp at h_ok
+            | ok s_dq =>
+              simp only [Except.ok.injEq] at h_ok; subst h_ok
+              have h_dq : NoPlaceholders s_dq :=
+                scanDoubleQuoted_preserves_NoPlaceholders h_fn h
+              -- The trailing setPendingKeyEndLine wrap doesn't touch tokens
+              show NoPlaceholders (if _ then _ else _)
+              split
+              · exact NoPlaceholders_mono (s := s_dq) rfl h_dq
+              · exact h_dq
+          · split at h_ok
+            · -- '\'' single-quoted
+              generalize h_fn : scanSingleQuoted s = result at h_ok
+              cases result with
+              | error e => simp at h_ok
+              | ok s_sq =>
+                simp only [Except.ok.injEq] at h_ok; subst h_ok
+                have h_sq : NoPlaceholders s_sq :=
+                  scanSingleQuoted_preserves_NoPlaceholders h_fn h
+                show NoPlaceholders (if _ then _ else _)
+                split
+                · exact NoPlaceholders_mono (s := s_sq) rfl h_sq
+                · exact h_sq
+            · split at h_ok
+              · generalize h_fn : scanPlainScalar s = result at h_ok
+                cases result with
+                | error e => simp at h_ok
+                | ok s_p =>
+                  simp only [Except.ok.injEq] at h_ok; subst h_ok
+                  exact scanPlainScalar_preserves_NoPlaceholders h_fn h
+              · simp at h_ok
+
+/-! #### preprocess + top-level `scanNextToken` preservation -/
+
+theorem preprocess_preserves_NoPlaceholders {s s1 : ScannerState} {c : Char}
+    (h_ok : scanNextToken_preprocess s = .ok (some (s1, c)))
+    (h : NoPlaceholders s) : NoPlaceholders s1 := by
+  unfold scanNextToken_preprocess at h_ok
+  simp only [bind, ScanHelpers.bind_error_simp, ScanHelpers.bind_ok_simp,
+             pure, Pure.pure, Except.pure] at h_ok
+  simp only [Except.bind] at h_ok
+  split at h_ok
+  · contradiction
+  · rename_i s_skip h_skip
+    have h_skip_inv : NoPlaceholders s_skip :=
+      skipToContent_preserves_NoPlaceholders h_skip h
+    split at h_ok
+    · simp at h_ok
+    · split at h_ok
+      · split at h_ok
+        · contradiction
+        · split at h_ok
+          · simp at h_ok
+          · simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq] at h_ok
+            obtain ⟨rfl, _⟩ := h_ok
+            have h_unwind : NoPlaceholders (unwindIndents s_skip s_skip.col) :=
+              unwindIndents_preserves_NoPlaceholders s_skip s_skip.col h_skip_inv
+            have h_pre : NoPlaceholders
+                { unwindIndents s_skip s_skip.col with needIndentCheck := false } :=
+              NoPlaceholders_mono (s := unwindIndents s_skip s_skip.col) rfl h_unwind
+            exact saveSimpleKey_preserves_NoPlaceholders h_pre
+      · split at h_ok
+        · contradiction
+        · split at h_ok
+          · simp at h_ok
+          · simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq] at h_ok
+            obtain ⟨rfl, _⟩ := h_ok
+            exact saveSimpleKey_preserves_NoPlaceholders h_skip_inv
+
+theorem allowDir_ite_preserves_NoPlaceholders (s : ScannerState)
+    (h : NoPlaceholders s) :
+    NoPlaceholders (if s.allowDirectives then
+      { s with allowDirectives := false, documentEverStarted := true } else s) := by
+  split
+  · exact NoPlaceholders_mono (s := s) rfl h
+  · exact h
+
+/-- `scanNextToken` preserves `NoPlaceholders` unconditionally
+    (no sub-class hypothesis required).  Discharges the `h_step`
+    parameter of `ScanChain.preserves_NoPlaceholders`. -/
+theorem scanNextToken_preserves_NoPlaceholders
+    (s s' : ScannerState) (h : NoPlaceholders s)
+    (h_ok : scanNextToken s = .ok (some s')) : NoPlaceholders s' := by
+  unfold scanNextToken at h_ok
+  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  split at h_ok <;> (try (simp at h_ok; done))
+  split at h_ok <;> (try (simp at h_ok; done))
+  rename_i s2 c h_pre
+  have h2 := preprocess_preserves_NoPlaceholders h_pre h
+  split at h_ok <;> (try (simp at h_ok; done))
+  split at h_ok
+  · simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
+    exact dispatchStructural_preserves_NoPlaceholders s2 c _ (by assumption) h2
+  · have h3 := allowDir_ite_preserves_NoPlaceholders s2 h2
+    split at h_ok <;> (try (simp at h_ok; done))
+    split at h_ok <;> (try (simp at h_ok; done))
+    split at h_ok
+    · simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
+      exact dispatchFlowIndicators_preserves_NoPlaceholders _ c _ (by assumption) h3
+    · split at h_ok <;> (try (simp at h_ok; done))
+      split at h_ok
+      · simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
+        exact dispatchBlockIndicators_preserves_NoPlaceholders _ c _ (by assumption) h3
+      · split at h_ok <;> (try (simp at h_ok; done))
+        simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
+        exact dispatchContent_preserves_NoPlaceholders _ c _ (by assumption) h3
+
 /-! ### scanLoopFull preserves PendingKeysWellIndexed
 
 By induction on fuel.  Recursive arm: apply scanNextToken preservation,
