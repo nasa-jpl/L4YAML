@@ -1171,4 +1171,35 @@ theorem linearise_positions_ordered
   exact linearise_go_ordered_helper tokens pks h_tok_ord h_pks_pos h_lo h_hi
     _ 0 0 #[] rfl h_init a b ha hb hab
 
+/-! ## J.4 cascade helper
+
+Bridge between the post-cutover `linearise` shape and the legacy
+`tokens.filter (· != .placeholder)` shape used by Tier 1 derivations
+in `Proofs/Output/EmitterScannability.lean`.  The bridge holds under
+two pre-conditions:
+
+* every pending entry is `.unresolved` (so `linearise` performs no
+  splice, via `linearise_all_unresolved`); and
+* `tokens` contains no `.placeholder` token (so `Array.filter_eq_self`
+  collapses the filter to identity).
+
+The all-unresolved hypothesis fails whenever a `:`-resolution has fired
+during scanning — i.e. whenever the input contains a flow or block
+mapping pair (`{k: v}`, `k: v`).  Consumers that need the bridge for
+inputs containing flow maps must split on item shape and use direct
+`linearise` positional reasoning (`linearise_first_eq_tokens_first`,
+`linearise_last_eq_tokens_last`) for the resolved case. -/
+theorem linearise_eq_filter_no_resolutions
+    (tokens : Array (Positioned YamlToken))
+    (pks : Array PendingKeyEntry)
+    (h_unres : ∀ e ∈ pks, e.kind = .unresolved)
+    (h_no_pl : ∀ t ∈ tokens, t.val ≠ .placeholder) :
+    linearise tokens pks = tokens.filter (fun t => t.val != .placeholder) := by
+  rw [linearise_all_unresolved tokens pks h_unres]
+  symm
+  apply (Array.filter_eq_self).mpr
+  intro t h_mem
+  have h_ne : t.val ≠ .placeholder := h_no_pl t h_mem
+  simp [bne_iff_ne, h_ne]
+
 end L4YAML.Proofs.ScannerLinearise
