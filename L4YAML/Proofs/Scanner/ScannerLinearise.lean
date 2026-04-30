@@ -1202,4 +1202,29 @@ theorem linearise_eq_filter_no_resolutions
   have h_ne : t.val ≠ .placeholder := h_no_pl t h_mem
   simp [bne_iff_ne, h_ne]
 
+/-! ## J.4.2 cascade infrastructure: linearise streamEnd push commutes
+
+When a token is appended to `tokens` and every pending entry's
+`insertBeforeIdx` is bounded by the original `tokens.size`, the linearised
+output simply has the new token appended at the end.  This is the `.push`
+form of `linearise_append_token_eq`, more convenient for cascade consumers
+that want to peel off the trailing `streamEnd` token before applying
+positional lemmas like `linearise_last_eq_tokens_last` to the inner
+`linearise s.tokens s.pendingKeys`.
+
+The bound `e.insertBeforeIdx ≤ tokens.size` matches the upper half of
+`PendingKeysWellIndexed`, which is propagated through `scanLoopFull` by
+`scanLoopFull_preserves_PendingKeysWellIndexed`.  Combined with that
+propagation, this lemma lets cascade consumers extract clean structural
+facts about `linearise (s.tokens.push streamEnd) s.pendingKeys` from the
+chain hypotheses without needing a separate no-placeholder invariant. -/
+theorem linearise_push_eq_push_linearise
+    (tokens : Array (Positioned YamlToken))
+    (pks : Array PendingKeyEntry)
+    (t : Positioned YamlToken)
+    (h : ∀ e ∈ pks, e.insertBeforeIdx ≤ tokens.size) :
+    linearise (tokens.push t) pks = (linearise tokens pks).push t := by
+  rw [linearise_append_token_eq tokens pks t h]
+  exact Array.push_eq_append.symm
+
 end L4YAML.Proofs.ScannerLinearise
