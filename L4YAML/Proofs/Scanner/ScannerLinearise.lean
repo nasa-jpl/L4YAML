@@ -1303,4 +1303,73 @@ theorem linearise_second_eq_tokens_second
     congr 1 <;> exact h_step
   rw [h_eq]; exact h_lin_at_1
 
+/-- Second-to-last positional readout: when a trailing token `t` (typically
+    `streamEnd`) is pushed onto `tokens` and every pending entry's
+    `insertBeforeIdx` is bounded by `tokens.size - 1`, the second-to-last
+    element of `linearise (tokens.push t) pks` equals `tokens[tokens.size - 1]`.
+
+    Proof strategy: a one-step composition.  `linearise_push_eq_push_linearise`
+    peels the trailing `t` push to expose `(linearise tokens pks).push t`, then
+    `Array.getElem_push_lt` reads the second-to-last index as
+    `(linearise tokens pks)[size - 1]`, which equals `tokens[tokens.size - 1]`
+    by `linearise_last_eq_tokens_last`.  The `pks ≤ tokens.size - 1` bound
+    feeds both: it implies the `≤ tokens.size` bound `linearise_push_eq_…`
+    needs and is exactly what `linearise_last_eq_…` requires.
+
+    Consumed by the seq/map cascade in `Proofs/Output/EmitterScannability.lean`
+    to read `tokens[tokens.size - 2]` (the closing `flowSequenceEnd` /
+    `blockMappingEnd`) on the post-`streamEnd` linearised output. -/
+theorem linearise_secondLast_eq_tokens_last_inner
+    (tokens : Array (Positioned YamlToken))
+    (pks : Array PendingKeyEntry)
+    (t : Positioned YamlToken)
+    (h_size : tokens.size > 0)
+    (h_pks_le : ∀ p (h : p < pks.size), pks[p].insertBeforeIdx ≤ tokens.size - 1) :
+    ∃ h_lin : (linearise (tokens.push t) pks).size ≥ 2,
+      (linearise (tokens.push t) pks)[(linearise (tokens.push t) pks).size - 2]'(by omega)
+        = tokens[tokens.size - 1]'(by omega) := by
+  -- The bound `≤ tokens.size - 1` implies the weaker `≤ tokens.size` that
+  -- `linearise_push_eq_push_linearise` needs.
+  have h_pks_le_size : ∀ e ∈ pks, e.insertBeforeIdx ≤ tokens.size := by
+    intro e h_mem
+    obtain ⟨p, hp, h_eq⟩ := Array.getElem_of_mem h_mem
+    rw [← h_eq]
+    have := h_pks_le p hp
+    omega
+  -- Peel the trailing push.
+  have h_push : linearise (tokens.push t) pks = (linearise tokens pks).push t :=
+    linearise_push_eq_push_linearise tokens pks t h_pks_le_size
+  -- Inner last element via `linearise_last_eq_tokens_last`.
+  obtain ⟨_h_lin_inner_pos, h_lin_inner_last⟩ :=
+    linearise_last_eq_tokens_last tokens pks h_size h_pks_le
+  -- Size facts.
+  have h_inner_pos : (linearise tokens pks).size > 0 :=
+    Nat.lt_of_lt_of_le h_size (linearise_size_ge_tokens tokens pks)
+  have h_inner_lt : (linearise tokens pks).size - 1 < (linearise tokens pks).size := by omega
+  have h_lin_size_ge : (linearise (tokens.push t) pks).size ≥ 2 := by
+    rw [h_push]; simp; omega
+  refine ⟨h_lin_size_ge, ?_⟩
+  -- Dependent indices defeat `rw [h_push]`.  Sidestep by generalising over an
+  -- array propositionally equal to the inner-push form, then `subst` makes the
+  -- subsequent rewrites work without dependent-motive issues.
+  suffices h_gen : ∀ (arr : Array (Positioned YamlToken))
+      (h_eq : arr = (linearise tokens pks).push t)
+      (h_arr_size : arr.size ≥ 2),
+      arr[arr.size - 2]'(by omega) = tokens[tokens.size - 1]'(by omega) by
+    exact h_gen (linearise (tokens.push t) pks) h_push h_lin_size_ge
+  intro arr h_eq h_arr_size
+  subst h_eq
+  -- Goal: ((linearise tokens pks).push t)[((linearise tokens pks).push t).size - 2]'… = tokens[…]
+  -- Apply `Array.getElem_push_lt` with the unreduced index, then simplify the
+  -- inner array's index from `(inner.size + 1) - 2` to `inner.size - 1`.
+  have h_idx_lt :
+      ((linearise tokens pks).push t).size - 2 < (linearise tokens pks).size := by
+    simp; omega
+  rw [Array.getElem_push_lt h_idx_lt]
+  -- Goal: (linearise tokens pks)[((linearise tokens pks).push t).size - 2]'_ = tokens[…]
+  have h_idx_simpl : ((linearise tokens pks).push t).size - 2
+      = (linearise tokens pks).size - 1 := by simp
+  simp only [h_idx_simpl]
+  exact h_lin_inner_last
+
 end L4YAML.Proofs.ScannerLinearise
