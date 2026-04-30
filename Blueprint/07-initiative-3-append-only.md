@@ -760,6 +760,7 @@ rooted at `Scanner/Linearise.lean`:
 | J.4.2.c-prep | Bridge helper `linearise_push_eq_push_linearise` (clean `.push` form of `linearise_append_token_eq`) | 0 (new infrastructure) | `Proofs/Scanner/ScannerLinearise.lean` | ✓ done 2026-04-29 |
 | J.4.2.c-pos1 | Positional lemma `linearise_second_eq_tokens_second` (index-1 readout for `flowSequenceStart` / `blockMappingStart`) | 0 (new infrastructure) | `Proofs/Scanner/ScannerLinearise.lean` | ✓ done 2026-04-29 |
 | J.4.2.b-pkwi | Chain-side `PendingKeysWellIndexed` helpers (`PendingKeysWellIndexed_init`, `ScanChain.preserves_PendingKeysWellIndexed`, `PendingKeysWellIndexed_of_chain_from_init`, `PendingKeysWellIndexed_emit_streamEnd`) | 0 (new infrastructure) | `Proofs/Output/EmitterScannability.lean` | ✓ done 2026-04-30 |
+| J.4.2.c-pos2 | Positional lemma `linearise_secondLast_eq_tokens_last_inner` (second-to-last readout for `flowSequenceEnd` / `blockMappingEnd` after `streamEnd` push) | 0 (new infrastructure) | `Proofs/Scanner/ScannerLinearise.lean` | ✓ done 2026-04-30 |
 
 **J.3.1 — Linearise foundations** [✓ completed 2026-04-26]:
 
@@ -1625,6 +1626,37 @@ pks[p].insertBeforeIdx ≤ s₃.tokens.size` precondition of
 infrastructure landing.  Build green (453 jobs); ~70 lines including
 docstrings.
 
+**J.4.2.c-pos2 landed (2026-04-30)**: second-to-last positional readout
+in `Proofs/Scanner/ScannerLinearise.lean`:
+
+```
+linearise_secondLast_eq_tokens_last_inner
+    (tokens : Array (Positioned YamlToken))
+    (pks : Array PendingKeyEntry)
+    (t : Positioned YamlToken)
+    (h_size : tokens.size > 0)
+    (h_pks_le : ∀ p (h : p < pks.size), pks[p].insertBeforeIdx ≤ tokens.size - 1) :
+    ∃ h_lin : (linearise (tokens.push t) pks).size ≥ 2,
+      (linearise (tokens.push t) pks)[(linearise (tokens.push t) pks).size - 2]
+        = tokens[tokens.size - 1]
+```
+
+Mechanism: peel the trailing `t` push via
+`linearise_push_eq_push_linearise` (the `≤ tokens.size - 1` bound
+implies the weaker `≤ tokens.size` that lemma needs), then read the
+prefix element via `Array.getElem_push_lt` and compose with
+`linearise_last_eq_tokens_last`.  The dependent index of
+`linearise (tokens.push t) pks` is sidestepped via a `suffices`/`subst`
+generalisation pattern.
+
+This closes the J.4.2.c positional family at `{0, 1, size-2, size-1}`
+plus the streamEnd push-peel — the four index readouts the seq/map
+cascade consumers need to pin down `streamStart` / `flowSequenceStart`
+(or `blockMappingStart`) / `flowSequenceEnd` (or `blockMappingEnd`) /
+`streamEnd` on the post-`streamEnd` linearised output.  Sorry count
+unchanged (12); infrastructure landing.  Build green (453 jobs); ~69
+lines including docstring.
+
 **Next concrete step (J.4.2.b — consumer refactor)**
 
 The `_structure` consumers' `h_tok_eq` bridge is FALSE in general
@@ -1659,12 +1691,15 @@ have h_lin_decomp : linearise (s₃.emit .streamEnd).tokens (s₃.emit .streamEn
 -- 3. Last element via Array.getElem_push_eq:
 -- tokens[size-1] = .streamEnd  ← from push of streamEnd
 
--- 4. Second-last via linearise_last_eq_tokens_last on inner:
--- tokens[size-2] = (linearise s₃.tokens s₃.pendingKeys).last
---                = s₃.tokens[s₃.tokens.size - 1]   (via linearise_last_eq_tokens_last,
---                                                    needs pks ≤ s₃.tokens.size - 1,
---                                                    derivable since flowSeqEnd close
---                                                    doesn't register a new pendingKey)
+-- 4. Second-last via linearise_secondLast_eq_tokens_last_inner (J.4.2.c-pos2):
+-- tokens[size-2] = s₃.tokens[s₃.tokens.size - 1]   (one-step composition: peels
+--                                                    the streamEnd push and
+--                                                    applies linearise_last on
+--                                                    the inner array; needs
+--                                                    pks ≤ s₃.tokens.size - 1,
+--                                                    derivable since flowSeqEnd
+--                                                    close doesn't register a
+--                                                    new pendingKey)
 --                = .flowSequenceEnd   (closure step)
 
 -- 5. First element via linearise_first_eq_tokens_first:
@@ -1683,10 +1718,11 @@ Positional lemma status (in `Proofs/Scanner/ScannerLinearise.lean`):
 - ✓ **`linearise_push_eq_push_linearise`** (J.4.2.c-prep) — peel trailing
   `streamEnd` push.
 - ✓ **`linearise_second_eq_tokens_second`** (J.4.2.c-pos1) — index 1 readout.
-- ⏳ **`linearise_secondLast_eq_tokens_last_inner`** — second-to-last via
-  push-decomp + last-on-inner.  One-line corollary of
-  `linearise_push_eq_push_linearise` + `linearise_last_eq_tokens_last`.
-  Optional: can be inlined per call site instead of extracted as a lemma.
+- ✓ **`linearise_secondLast_eq_tokens_last_inner`** (J.4.2.c-pos2) —
+  second-to-last via push-decomp + last-on-inner; composes
+  `linearise_push_eq_push_linearise` and `linearise_last_eq_tokens_last`.
+  Reads `tokens[tokens.size - 2]` (closing `flowSequenceEnd` /
+  `blockMappingEnd`) on the post-`streamEnd` linearised output.
 
 Remaining J.4.2.b work:
 
@@ -1726,6 +1762,11 @@ with sorry count unchanged at 12 (infrastructure, no discharge).
 J.4.2.b-pkwi (chain-endpoint `PendingKeysWellIndexed` helpers) landed
 2026-04-30 with sorry count unchanged at 12 (infrastructure for the
 cascade discharge, no sorry cleared).
+J.4.2.c-pos2 (`linearise_secondLast_eq_tokens_last_inner`) landed
+2026-04-30 with sorry count unchanged at 12 (infrastructure for the
+cascade discharge, no sorry cleared).  This closes the J.4.2.c
+positional family — index 0, 1, size-2, size-1 readouts on the
+post-`streamEnd` linearised output are all in tree.
 
 ### Phase J.4 — Cleanup and follow-on (1-2 weeks)
 
