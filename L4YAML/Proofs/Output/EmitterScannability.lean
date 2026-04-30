@@ -1520,6 +1520,97 @@ theorem AllUnresolved_emit_streamEnd
   ScannerCorrectness.AllUnresolved_mono
     (ScannerCorrectness.emit_preserves_pendingKeys s tok) h_inv
 
+/-! ### J.4.2.b-2b — `NoPlaceholders` propagation through `ScanChain`
+
+Chain-side companion to the per-state lemmas landed in `J.4.2.b-2b`
+(`NoPlaceholders_mono`, `NoPlaceholders_emit`, `NoPlaceholders_emitAt`).
+
+Unlike `AllUnresolved` — broken by `scanValuePrepare`'s `:`-resolution
+arm — `NoPlaceholders` has no break path: the J.2 step 5 cutover
+removed every legacy `placeholder` push from the scanner, so every
+scanner action either leaves `tokens` unchanged (Class A) or pushes
+a single concrete non-`.placeholder` token (Class B).  The chain
+induction is therefore parametric in a per-action preservation
+hypothesis (uniform with `ScanChain.preserves_AllUnresolved`),
+discharged unconditionally by the consumer (every input shape) via
+the J.4.2.b-2b-discharge per-action chain.
+
+Together with `AllUnresolved` (J.4.2.b-2a) and
+`linearise_eq_filter_no_resolutions` (J.4.1), this lets cascade
+consumers collapse `linearise s.tokens s.pendingKeys` to
+`s.tokens.filter (· != .placeholder)` and then to `s.tokens` itself
+(filter is identity when no placeholders are present), bridging the
+post-cutover linearise shape to the legacy filter shape used by
+Tier 1 emitter derivations. -/
+
+/-- The initial scanner state immediately after `streamStart` has been
+    emitted satisfies `NoPlaceholders`: the only token is
+    `.streamStart`, which is not `.placeholder`. -/
+theorem NoPlaceholders_init (input : String) :
+    ScannerCorrectness.NoPlaceholders
+      ((ScannerState.mk' input).emit .streamStart) := by
+  intro t ht
+  have h_emp : (ScannerState.mk' input).tokens = #[] := rfl
+  unfold ScannerState.emit at ht
+  dsimp only [] at ht
+  rw [h_emp] at ht
+  rw [Array.mem_push] at ht
+  rcases ht with h_old | h_new
+  · simp at h_old
+  · subst h_new
+    exact YamlToken.noConfusion
+
+/-- `ScanChain` preserves `NoPlaceholders` parametrically in a
+    per-action preservation hypothesis: by induction on the chain,
+    applying `h_step` at each successful `scanNextToken` step.  Unlike
+    `ScanChain.preserves_AllUnresolved`, no extra sub-class hypothesis
+    is needed — the consumer discharges `h_step` unconditionally via
+    the J.4.2.b-2b-discharge per-action chain. -/
+theorem ScanChain.preserves_NoPlaceholders
+    {s s' : ScannerState} {n : Nat}
+    (h_chain : ScanChain s n s')
+    (h_step : ∀ {sa sb : ScannerState},
+                ScannerCorrectness.NoPlaceholders sa →
+                scanNextToken sa = .ok sb →
+                ScannerCorrectness.NoPlaceholders sb)
+    (h_inv : ScannerCorrectness.NoPlaceholders s) :
+    ScannerCorrectness.NoPlaceholders s' := by
+  induction h_chain with
+  | zero => exact h_inv
+  | step h_snt _ ih =>
+    exact ih (h_step h_inv h_snt)
+
+/-- Combined helper: any chain anchored at the `streamStart`-initialized
+    state, whose per-action transitions all preserve `NoPlaceholders`,
+    extends the invariant to the chain endpoint.  Companion to
+    `AllUnresolved_of_chain_from_init` for the linearise-shape cascade
+    derivations. -/
+theorem NoPlaceholders_of_chain_from_init
+    (input : String) (s₀ s_final : ScannerState) (n : Nat)
+    (h_s0 : s₀ = (ScannerState.mk' input).emit .streamStart)
+    (h_chain : ScanChain s₀ n s_final)
+    (h_step : ∀ {sa sb : ScannerState},
+                ScannerCorrectness.NoPlaceholders sa →
+                scanNextToken sa = .ok sb →
+                ScannerCorrectness.NoPlaceholders sb) :
+    ScannerCorrectness.NoPlaceholders s_final :=
+  h_chain.preserves_NoPlaceholders h_step
+    (h_s0 ▸ NoPlaceholders_init input)
+
+/-- After the final `streamEnd` emit, `NoPlaceholders` still holds:
+    `streamEnd ≠ .placeholder` is decidable, and `emit` only pushes
+    that token without mutating earlier ones.  Consumed in the
+    cascade where `linearise_eq_filter_no_resolutions` operates on
+    `(s_final.emit .streamEnd)`. -/
+theorem NoPlaceholders_emit_streamEnd
+    (s : ScannerState)
+    (h_inv : ScannerCorrectness.NoPlaceholders s) :
+    ScannerCorrectness.NoPlaceholders (s.emit .streamEnd) :=
+  ScannerCorrectness.NoPlaceholders_emit
+    (show (.streamEnd : YamlToken) ≠ .placeholder from
+      fun h => YamlToken.noConfusion h)
+    h_inv
+
 -- ═══ FlowMonoChain: ScanChain with flow-level lower bound ═══
 
 /-- `FlowMonoChain fl₀ s n s'` is a `ScanChain` where every intermediate state

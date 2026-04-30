@@ -9606,6 +9606,69 @@ theorem saveSimpleKey_preserves_AllUnresolved {s : ScannerState}
       · subst h_new; rfl
     · exact h
 
+/-! ### NoPlaceholders: every token has `val ≠ .placeholder`
+(Initiative 3 / J.4.2.b-2b)
+
+The "no placeholder slots in tokens" predicate.  Companion to
+`AllUnresolved`: combined with it,
+`linearise_eq_filter_no_resolutions` (J.4.1) collapses `linearise`
+to the legacy filter shape used by Tier 1 emitter cascade
+derivations in `Proofs/Output/EmitterScannability`.
+
+Unlike `AllUnresolved`, which can be broken by
+`scanValuePrepare`'s `:`-resolution arm,
+`NoPlaceholders` is **unconditional**: the J.2 step 5 cutover
+moved every legacy `placeholder` push out of the scanner — the
+post-cutover code never emits `.placeholder` and never mutates
+existing tokens (no `tokens.setIfInBounds`).  The predicate
+therefore propagates through every scanner action.
+
+Algebraic preservation classes (only two are needed since `tokens`
+is append-only post-cutover):
+
+* Class A — passthrough (`s'.tokens = s.tokens`): preserved
+  trivially.
+* Class B — single push of a concrete non-`.placeholder` token via
+  `s.emit tok`.  Every `emit` call in the scanner uses a structural
+  token (`.streamStart`, `.flowSequenceStart`, `.scalar _ _`, etc.)
+  or a parsed scalar/anchor/tag; never `.placeholder`. -/
+
+/-- The "no placeholder in tokens" predicate on a scanner state. -/
+def NoPlaceholders (s : ScannerState) : Prop :=
+  ∀ t ∈ s.tokens, t.val ≠ .placeholder
+
+/-- Class A: equality of tokens preserves `NoPlaceholders`. -/
+theorem NoPlaceholders_mono {s s' : ScannerState}
+    (h_eq : s'.tokens = s.tokens) (h : NoPlaceholders s) : NoPlaceholders s' := by
+  intro t ht; rw [h_eq] at ht; exact h t ht
+
+/-- Class B: pushing a non-`.placeholder` token preserves
+    `NoPlaceholders`. -/
+theorem NoPlaceholders_emit {s : ScannerState} {tok : YamlToken}
+    (h_tok : tok ≠ .placeholder) (h : NoPlaceholders s) :
+    NoPlaceholders (s.emit tok) := by
+  intro t ht
+  unfold ScannerState.emit at ht
+  dsimp only [] at ht
+  rw [Array.mem_push] at ht
+  rcases ht with h_old | h_new
+  · exact h t h_old
+  · subst h_new; exact h_tok
+
+/-- Class B' for `emitAt` (used by some scalar emitters): pushing a
+    non-`.placeholder` token at an explicit position preserves
+    `NoPlaceholders`. -/
+theorem NoPlaceholders_emitAt {s : ScannerState} {pos : YamlPos} {tok : YamlToken}
+    (h_tok : tok ≠ .placeholder) (h : NoPlaceholders s) :
+    NoPlaceholders (s.emitAt pos tok) := by
+  intro t ht
+  unfold ScannerState.emitAt at ht
+  dsimp only [] at ht
+  rw [Array.mem_push] at ht
+  rcases ht with h_old | h_new
+  · exact h t h_old
+  · subst h_new; exact h_tok
+
 /-! ### Class A passthrough leaves (`*_preserves_pendingKeys`)
 
 Mirrors of the corresponding `*_preserves_simpleKeyStack` chain.  Every
