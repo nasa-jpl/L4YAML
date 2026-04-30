@@ -1362,6 +1362,78 @@ theorem ScanChain.fuel_bound (input : String)
   -- n ≤ utf8ByteSize, so n + 1 ≤ utf8ByteSize + 1 ≤ (utf8ByteSize + 1) * 4
   omega
 
+/-! ### J.4.2.b — `PendingKeysWellIndexed` propagation through `ScanChain`
+
+The seq/map cascade consumers (`scanFiltered_emitSeq_nonempty_structure`,
+`scanFiltered_emitMap_nonempty_structure`) need
+`PendingKeysWellIndexed (s_final.emit .streamEnd)` to discharge the
+`h_pks_bound` precondition of `linearise_push_eq_push_linearise`.  The
+chain endpoint version follows by induction along `ScanChain` from the
+initial state, using `scanNextToken_preserves_PendingKeysWellIndexed`
+at each step.  Companion to `scanLoopFull_preserves_PendingKeysWellIndexed`
+in `ScannerCorrectness.lean` (which lives downstream of the chain
+abstraction). -/
+
+/-- The initial scanner state immediately after `streamStart` has been
+    emitted satisfies `PendingKeysWellIndexed`: `tokens.size = 1` and
+    `pendingKeys = #[]`, so the well-indexed bound holds vacuously. -/
+theorem PendingKeysWellIndexed_init (input : String) :
+    ScannerCorrectness.PendingKeysWellIndexed
+      ((ScannerState.mk' input).emit .streamStart) := by
+  refine ⟨?_, ?_⟩
+  · -- tokens.size ≥ 1
+    rw [ScannerProofs.emit_tokens_size]; omega
+  · -- pks empty → vacuous
+    intro p hp
+    have h_emp :
+        ((ScannerState.mk' input).emit .streamStart).pendingKeys.size = 0 := by
+      rw [ScannerCorrectness.emit_preserves_pendingKeys]; rfl
+    omega
+
+/-- `ScanChain` preserves `PendingKeysWellIndexed`: by induction on the
+    chain, applying `scanNextToken_preserves_PendingKeysWellIndexed` at
+    each step.  This is the chain-side companion to
+    `scanLoopFull_preserves_PendingKeysWellIndexed` for use by emitter
+    consumers that work in `ScanChain`-shape. -/
+theorem ScanChain.preserves_PendingKeysWellIndexed
+    {s s' : ScannerState} {n : Nat}
+    (h_chain : ScanChain s n s')
+    (h_inv : ScannerCorrectness.PendingKeysWellIndexed s) :
+    ScannerCorrectness.PendingKeysWellIndexed s' := by
+  induction h_chain with
+  | zero => exact h_inv
+  | step h_snt _ ih =>
+    exact ih (ScannerCorrectness.scanNextToken_preserves_PendingKeysWellIndexed
+      _ _ h_inv h_snt)
+
+/-- Combined helper: any chain anchored at the `streamStart`-initialized
+    state preserves `PendingKeysWellIndexed` to its endpoint.  This is the
+    form the seq/map cascade consumers use to derive the chain-endpoint
+    invariant they need to discharge `linearise_push_eq_push_linearise`'s
+    `h_pks_bound` after replacing `h_tok_eq` with the linearise bridge
+    from `scanFiltered_tokens_eq_of_chain_short_stack`. -/
+theorem PendingKeysWellIndexed_of_chain_from_init
+    (input : String) (s₀ s_final : ScannerState) (n : Nat)
+    (h_s0 : s₀ = (ScannerState.mk' input).emit .streamStart)
+    (h_chain : ScanChain s₀ n s_final) :
+    ScannerCorrectness.PendingKeysWellIndexed s_final :=
+  h_chain.preserves_PendingKeysWellIndexed
+    (h_s0 ▸ PendingKeysWellIndexed_init input)
+
+/-- After the final `streamEnd` emit, the invariant still holds: `emit`
+    pushes one token (preserving the `tokens.size ≥ 1` lower bound and
+    only weakening the upper bound on each pending entry) and leaves
+    `pendingKeys` unchanged.  Consumed in the cascade where
+    `linearise_push_eq_push_linearise` operates on
+    `(s_final.emit .streamEnd)`. -/
+theorem PendingKeysWellIndexed_emit_streamEnd
+    (s : ScannerState) (tok : YamlToken)
+    (h_inv : ScannerCorrectness.PendingKeysWellIndexed s) :
+    ScannerCorrectness.PendingKeysWellIndexed (s.emit tok) :=
+  ScannerCorrectness.PendingKeysWellIndexed_mono s (s.emit tok)
+    (ScannerCorrectness.emit_preserves_pendingKeys s tok)
+    (by rw [ScannerProofs.emit_tokens_size]; omega) h_inv
+
 -- ═══ FlowMonoChain: ScanChain with flow-level lower bound ═══
 
 /-- `FlowMonoChain fl₀ s n s'` is a `ScanChain` where every intermediate state
