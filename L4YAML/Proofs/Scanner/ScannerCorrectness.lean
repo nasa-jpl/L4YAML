@@ -9503,6 +9503,109 @@ theorem saveSimpleKey_preserves_PendingKeysWellIndexed (s : ScannerState)
           exact ⟨h_tok, Nat.le_refl _⟩
     · exact ⟨h_tok, h_pks⟩
 
+/-! ### AllUnresolved: every pending entry has kind = .unresolved
+(Initiative 3 / J.4.2.b-2a)
+
+The "no resolutions fired" predicate.  Holds at the chain endpoint
+for the syntactic sub-class of inputs that contain no `:`-bearing
+pairs (flow seqs of scalars, nested flow seqs).  When combined with
+a no-placeholder hypothesis on `tokens`,
+`linearise_eq_filter_no_resolutions` (J.4.1) collapses `linearise`
+to the legacy filter shape used by Tier 1 emitter cascade
+derivations in `Proofs/Output/EmitterScannability`.
+
+Algebraic preservation classes mirror those of
+`PendingKeysWellIndexed`:
+
+* Class A — passthrough (`s'.pendingKeys = s.pendingKeys`): preserved
+  trivially.
+* Class B — append-`.unresolved`: `saveSimpleKey`'s push uses
+  `kind := .unresolved` unconditionally, so the predicate survives.
+* Class C — element field-update with kind preserved:
+  `setPendingKeyEndLine` writes only `endLine`.
+  `setPendingKeyKind pks active .unresolved` either is the identity
+  or writes `.unresolved` at the active index — either way every
+  entry's `kind` stays `.unresolved`.
+
+The single operation that *breaks* the predicate is
+`setPendingKeyKind active <non-.unresolved>`, fired by
+`scanValuePrepare` to confirm a key.  Inputs that never trigger that
+path (no `:`-bearing pairs) keep `AllUnresolved` through the chain,
+exactly the bridge needed for the linearise-shape body
+characterizations of the seq/map cascade. -/
+
+/-- The "no resolutions fired" predicate on a scanner state. -/
+def AllUnresolved (s : ScannerState) : Prop :=
+  ∀ e ∈ s.pendingKeys, e.kind = .unresolved
+
+/-- Class A: equality-of-pendingKeys preserves `AllUnresolved`. -/
+theorem AllUnresolved_mono {s s' : ScannerState}
+    (h_pks_eq : s'.pendingKeys = s.pendingKeys)
+    (h : AllUnresolved s) : AllUnresolved s' := by
+  intro e he; rw [h_pks_eq] at he; exact h e he
+
+/-- Class B: appending a single `.unresolved` entry preserves
+    `AllUnresolved`. -/
+theorem AllUnresolved_push_unresolved {s s' : ScannerState}
+    {e : PendingKeyEntry} (h_kind : e.kind = .unresolved)
+    (h_pks_eq : s'.pendingKeys = s.pendingKeys.push e)
+    (h : AllUnresolved s) : AllUnresolved s' := by
+  intro f hf
+  rw [h_pks_eq, Array.mem_push] at hf
+  rcases hf with h_old | h_new
+  · exact h f h_old
+  · subst h_new; exact h_kind
+
+/-- Class C: a field update that preserves `pendingKeys.size` and
+    each entry's `kind` preserves `AllUnresolved`.  Covers
+    `setPendingKeyEndLine` (writes `endLine` only). -/
+theorem AllUnresolved_field_update {s s' : ScannerState}
+    (h_size_eq : s'.pendingKeys.size = s.pendingKeys.size)
+    (h_kind_eq : ∀ p (hp : p < s.pendingKeys.size)
+                   (hp' : p < s'.pendingKeys.size),
+                   (s'.pendingKeys[p]'hp').kind
+                     = (s.pendingKeys[p]'hp).kind)
+    (h : AllUnresolved s) : AllUnresolved s' := by
+  intro e he
+  rw [Array.mem_iff_getElem] at he
+  obtain ⟨p, hp', h_get⟩ := he
+  have hp : p < s.pendingKeys.size := by rw [h_size_eq] at hp'; exact hp'
+  rw [← h_get, h_kind_eq p hp hp']
+  exact h _ (s.pendingKeys.getElem_mem hp)
+
+/-- Class C variant for `setPendingKeyKind` with `.unresolved`: the
+    update writes `.unresolved` (or is identity), so the predicate
+    survives. -/
+theorem setPendingKeyKind_unresolved_preserves_AllUnresolved
+    (pks : Array PendingKeyEntry) (active : Option Nat)
+    (h : ∀ e ∈ pks, e.kind = .unresolved) :
+    ∀ e ∈ setPendingKeyKind pks active .unresolved,
+      e.kind = .unresolved := by
+  rcases setPendingKeyKind_decomp pks active .unresolved with h_id | ⟨j, hj, h_set⟩
+  · rw [h_id]; exact h
+  · rw [h_set]
+    intro e he
+    rcases Array.mem_or_eq_of_mem_setIfInBounds he with h_old | h_eq
+    · exact h e h_old
+    · rw [h_eq]
+
+/-- saveSimpleKey preserves `AllUnresolved`: the push branch appends
+    a `.unresolved` entry; the no-op branches leave `pendingKeys`
+    unchanged.  Direct mirror of
+    `saveSimpleKey_preserves_PendingKeysWellIndexed`. -/
+theorem saveSimpleKey_preserves_AllUnresolved {s : ScannerState}
+    (h : AllUnresolved s) : AllUnresolved (saveSimpleKey s) := by
+  unfold saveSimpleKey
+  split
+  · exact h
+  · split
+    · intro f hf
+      rw [Array.mem_push] at hf
+      rcases hf with h_old | h_new
+      · exact h f h_old
+      · subst h_new; rfl
+    · exact h
+
 /-! ### Class A passthrough leaves (`*_preserves_pendingKeys`)
 
 Mirrors of the corresponding `*_preserves_simpleKeyStack` chain.  Every
