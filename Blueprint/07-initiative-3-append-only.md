@@ -758,6 +758,7 @@ rooted at `Scanner/Linearise.lean`:
 | J.4   | EmitterScannability Tier 2 + seq/map structure linearise rewrite | 7 + 2 cascade | `Proofs/Output/EmitterScannability.lean` (Tier 2 declarations + seq/map consumer Tier 1 derivations) | in progress |
 | J.4.1 | Bridge helper `linearise_eq_filter_no_resolutions` (all-unresolved + no-placeholder ⟹ linearise = filter) | 0 (new infrastructure) | `Proofs/Scanner/ScannerLinearise.lean` | ✓ done 2026-04-29 |
 | J.4.2.c-prep | Bridge helper `linearise_push_eq_push_linearise` (clean `.push` form of `linearise_append_token_eq`) | 0 (new infrastructure) | `Proofs/Scanner/ScannerLinearise.lean` | ✓ done 2026-04-29 |
+| J.4.2.c-pos1 | Positional lemma `linearise_second_eq_tokens_second` (index-1 readout for `flowSequenceStart` / `blockMappingStart`) | 0 (new infrastructure) | `Proofs/Scanner/ScannerLinearise.lean` | ✓ done 2026-04-29 |
 
 **J.3.1 — Linearise foundations** [✓ completed 2026-04-26]:
 
@@ -1561,6 +1562,29 @@ J.4.2.a is therefore reclassified as **optional follow-up infrastructure**
 (useful for future consumers that want to manipulate `tokens.filter p`
 shapes directly), not a blocker for J.4.2.b cascade discharge.
 
+**J.4.2.c-pos1 landed (2026-04-29)**: `linearise_second_eq_tokens_second`
+in `Proofs/Scanner/ScannerLinearise.lean`.  Statement:
+
+```
+∃ h_lin : 1 < (linearise tokens pks).size,
+  (linearise tokens pks)[1]'h_lin = tokens[1]'h_size
+  given tokens.size ≥ 2 and ∀ p (h : p < pks.size), 2 ≤ pks[p].insertBeforeIdx
+```
+
+Proof mirrors `linearise_first_eq_tokens_first`: step `linearise.go`
+twice from `(0, 0, #[])` to `(2, 0, #[tokens[0], tokens[1]])` (the
+`insertBeforeIdx ≥ 2` hypothesis ensures no splice fires at indices 0
+or 1), then prefix-stability via `linearise_go_getElem_lt_acc` carries
+`tokens[1]` at index 1 through the rest of the recursion.  The bound
+`2 ≤ pks[p].insertBeforeIdx` always holds at `scanFiltered` because
+the earliest `saveSimpleKey` registers a pending key only after
+`[streamStart, flowSequenceStart]` (or block analogue) have been
+emitted, i.e. when `s.tokens.size = 2`.
+
+Sorry count unchanged (12); pure infrastructure for J.4.2.b consumer
+refactor.  Build green (453 jobs), proof compiled clean on first
+attempt (~75 lines including docstring).
+
 **Next concrete step (J.4.2.b — consumer refactor)**
 
 The `_structure` consumers' `h_tok_eq` bridge is FALSE in general
@@ -1603,32 +1627,38 @@ have h_lin_decomp : linearise (s₃.emit .streamEnd).tokens (s₃.emit .streamEn
 -- 5. First element via linearise_first_eq_tokens_first:
 -- tokens[0] = s₃.tokens[0] = .streamStart  (initial emit)
 
--- 6. Position 1 (flowSequenceStart): need new lemma
---    linearise_second_eq_tokens_second when ∀ pk, insertBeforeIdx ≥ 2
---    (always true at scanFiltered: earliest saveSimpleKey happens at
---    s₁.tokens.size = 2, after [streamStart, flowSequenceStart] are emitted)
+-- 6. Position 1 (flowSequenceStart): via linearise_second_eq_tokens_second
+--    (J.4.2.c-pos1, just landed; needs ∀ pk, insertBeforeIdx ≥ 2,
+--    always true at scanFiltered since earliest saveSimpleKey happens
+--    at s₁.tokens.size = 2 after [streamStart, flowSequenceStart] emit)
 ```
 
-Two new positional lemmas needed in `Proofs/Scanner/ScannerLinearise.lean`:
+Positional lemma status (in `Proofs/Scanner/ScannerLinearise.lean`):
 
-- **`linearise_secondLast_eq_tokens_last_inner`**: when pks bounded by
-  `tokens.size`, applying `linearise_push_eq_push_linearise` then
-  `linearise_last_eq_tokens_last` to the inner gives the second-to-last
-  element.  This is a one-line corollary; can be inlined per call site
-  or extracted.
-- **`linearise_second_eq_tokens_second`**: when `tokens.size ≥ 2` and
-  `∀ p, 2 ≤ pks[p].insertBeforeIdx` (no splice at index 1), the second
-  element of `linearise tokens pks` equals `tokens[1]`.  Proves by
-  induction over `linearise.go` similar to `linearise_first_eq_tokens_first`.
+- ✓ **`linearise_first_eq_tokens_first`** (pre-existing) — index 0 readout.
+- ✓ **`linearise_last_eq_tokens_last`** (pre-existing) — last-index readout.
+- ✓ **`linearise_push_eq_push_linearise`** (J.4.2.c-prep) — peel trailing
+  `streamEnd` push.
+- ✓ **`linearise_second_eq_tokens_second`** (J.4.2.c-pos1) — index 1 readout.
+- ⏳ **`linearise_secondLast_eq_tokens_last_inner`** — second-to-last via
+  push-decomp + last-on-inner.  One-line corollary of
+  `linearise_push_eq_push_linearise` + `linearise_last_eq_tokens_last`.
+  Optional: can be inlined per call site instead of extracted as a lemma.
 
-The body characterizations (`emitList_body_filtered_characterization`,
-`emitPairList_body_filtered_characterization`) currently produce
-`(s₂.tokens.filter p)`-shape conclusions and would need parallel
-linearise-shape variants — that's the bulk of the refactor work
-(≥ 200 lines per consumer including the new body characterization
-helpers).
+Remaining J.4.2.b work:
 
-This is the substantial leg of J.4 (multi-day effort).
+1. Derive `PendingKeysWellIndexed` at `s₃` (the chain endpoint) — uses
+   `scanLoopFull_preserves_PendingKeysWellIndexed`.  This produces the
+   `h_pks_bound` hypothesis the cascade needs at step 2 above.
+2. Linearise-shape variants of `emitList_body_filtered_characterization`,
+   `emitPairList_body_filtered_characterization` — currently produce
+   `(s₂.tokens.filter p)`-shape conclusions and need parallel linearise-shape
+   variants.  This is the bulk of the refactor (≥ 200 lines per consumer).
+3. Stitch the cascade derivation into `scanFiltered_emitSeq_nonempty_structure`
+   (line 9856) and `scanFiltered_emitMap_nonempty_structure` (line 10075),
+   discharging both Tier 1 cascade sorries.
+
+This remaining chunk is the substantial leg of J.4 (multi-day effort).
 
 **J.3 final gate**: `lake build` green; sorry count 19 → 12
 (2 cascade Cat C for J.4 cleanup + 10 Tier 2 EmitterScannability
@@ -1637,6 +1667,8 @@ report more depending on how nested-let/sorry occurrences are
 counted by `grep`).  J.4.1 (helper) landed 2026-04-29 with sorry
 count unchanged at 12 (infrastructure, no discharge).
 J.4.2.c-prep (`linearise_push_eq_push_linearise`) landed 2026-04-29
+with sorry count unchanged at 12 (infrastructure, no discharge).
+J.4.2.c-pos1 (`linearise_second_eq_tokens_second`) landed 2026-04-29
 with sorry count unchanged at 12 (infrastructure, no discharge).
 
 ### Phase J.4 — Cleanup and follow-on (1-2 weeks)
