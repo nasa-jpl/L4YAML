@@ -754,7 +754,8 @@ rooted at `Scanner/Linearise.lean`:
 | J.3.5 | Production+EndToEnd bridges | 2 | `Proofs/Production/DocumentProduction.lean`, `Proofs/EndToEndCorrectness.lean` | ✓ done 2026-04-28 |
 | J.3.6 | EmitterScannability Cat C — chain-bridge subset | 3 | `Proofs/Output/EmitterScannability.lean` (`scanFiltered_boundary_tokens`, `scanFiltered_of_chain`, `scan_accepts_emitScalar`); supporting bridges in `Proofs/Scanner/ScannerCorrectness.lean` | ✓ done 2026-04-29 |
 | J.3.7 | EmitterScannability Cat C — emitScalar filter-shape pair | 2 | `Proofs/Output/EmitterScannability.lean` (`scanFiltered_emitScalar_content`, `scanFiltered_emitScalar_vals`); supporting `linearise_all_unresolved` in `Proofs/Scanner/ScannerLinearise.lean`; strengthened `scanNextToken_emitScalar_init` + new `scanLoopFull_eof_eq` / `ScanChain.to_scanLoopFull` / `skipToContent_eq_self_of_peek_none` helpers | ✓ done 2026-04-29 |
-| J.3.8 | EmitterScannability Cat C — `scanFiltered_of_chain_eq` cascade | 1 + cascade | `Proofs/Output/EmitterScannability.lean` (`scanFiltered_of_chain_eq`, `scanFiltered_tokens_eq_of_chain_short_stack`, `scanFiltered_emitSeq_nonempty_structure`, `scanFiltered_emitMap_nonempty_structure`) | pending |
+| J.3.8 | EmitterScannability Cat C — `scanFiltered_of_chain_eq` re-state in linearise terms | 1 cleared, 2 cascade exposed | `Proofs/Output/EmitterScannability.lean` (`scanFiltered_of_chain_eq`, `scanFiltered_tokens_eq_of_chain_short_stack`, `scanFiltered_emitSeq_nonempty_structure`, `scanFiltered_emitMap_nonempty_structure`) | ✓ done 2026-04-29 |
+| J.4   | EmitterScannability Tier 2 + seq/map structure linearise rewrite | 7 + 2 cascade | `Proofs/Output/EmitterScannability.lean` (Tier 2 declarations + seq/map consumer Tier 1 derivations) | pending |
 
 **J.3.1 — Linearise foundations** [✓ completed 2026-04-26]:
 
@@ -1424,41 +1425,61 @@ count unchanged at 21.
     `.endLine`), tracked inline.
 
   Build status (2026-04-29): full project (453/453) green; **11
+  sorries remaining** prior to J.3.8, all in
+  `Proofs/Output/EmitterScannability.lean`.
+
+  **J.3.8 landed (2026-04-29) — `EmitterScannability`
+  `scanFiltered_of_chain_eq` re-stated in linearise terms**
+
+  - **`scanFiltered_of_chain_eq`** is now stated in post-cutover
+    form: RHS is `Scanner.linearise (...).tokens (...).pendingKeys`
+    instead of the legacy `tokens.filter (· != .placeholder)`.  An
+    extra `s_skipped` parameter + `h_skip : skipToContent s_final
+    = .ok s_skipped` hypothesis surface the inline `skipToContent`
+    fallback in `scanLoopFull`'s EOF arm.  Proof composes the J.3.7
+    helpers `scanLoopFull_eof_eq` and `ScanChain.to_scanLoopFull`,
+    then walks the `scanFiltered` definition (BOM identity +
+    `scanLoopFull` reduction + `linearise` post-step) using the
+    same `show ... = Except.ok ...` reshape pattern from
+    `scanFiltered_emitScalar_vals`.
+
+  - **`scanFiltered_tokens_eq_of_chain_short_stack`** updated
+    in lockstep: takes `h_peek_eof : s_final.peek? = none`,
+    discharges `h_skip` via
+    `skipToContent_eq_self_of_peek_none`, returns the linearise
+    RHS.  No sorry change at this layer.
+
+  - **Seq/map consumer cascade** (`scanFiltered_emitSeq_nonempty_structure`,
+    `scanFiltered_emitMap_nonempty_structure`): the post-cutover
+    bridge yields `linearise` shape, but the existing Tier 1
+    derivations (e.g. `tokens[k]!.val = .key`,
+    `tokens[k]!.val = .scalar c s`) consume the legacy
+    `(s₃.emit .streamEnd).tokens.filter p` shape via
+    `(s₂.tokens.filter p)`-shaped body characterizations.
+    Bridging `linearise` → legacy filter shape requires
+    `linearise_all_unresolved` (only valid when no `pendingKeys`
+    are resolved) plus a no-`.placeholder` invariant on `tokens`.
+    The unresolved hypothesis fails for items containing flow
+    maps (`{k: v}`-style with `:`-resolution).  Rather than push
+    additional hypotheses or introduce a partially-true bridge,
+    the `h_tok_eq` step in each of the two consumers is now
+    `sorry`'d with a J.4-cascade marker — exposing what was
+    previously masked behind the `scanFiltered_of_chain_eq` sorry.
+    The consumer Tier 1 derivations (≥ 200 lines each) need
+    re-stating in `linearise` terms; J.4 will rewrite them around
+    `linearise.go` step-induction + `expandKind` cases for
+    `.keyOnly` and `.unresolved`.
+
+  Sorry-count accounting: line 2168 sorry cleared (-1); two
+  cascade sorries exposed in seq/map consumers (+2); net **11
+  → 12** raw sorry count.  Declarations using `sorry` go from 8
+  to 7, since both consumers already used `sorry` for `h_pnok`
+  (`ParseNodeFlowSeqOk` / `ParseEntryFlowMapOk`); the new bridge
+  sorries fall under the same declarations.
+
+  Build status (2026-04-29): full project (453/453) green; **12
   sorries remaining**, all in `Proofs/Output/EmitterScannability.lean`
-  (1 Cat C for J.3.8, 10 Tier 2/cleanup for J.4 — note that the J.4
-  Tier 2 count is higher than the manifest target because line counts
-  shifted with the new infrastructure; the underlying declarations
-  are unchanged).
-
-  **Next concrete step (J.3.8)**
-
-  Discharge the last `J.3 manifest 5.d` Category C sorry in
-  `Proofs/Output/EmitterScannability.lean`:
-
-  - **`scanFiltered_of_chain_eq`** — equality version of
-    `scanFiltered_of_chain`.  Pre-cutover RHS was
-    `((unwindIndents s_final (-1)).emit .streamEnd).tokens.filter
-    (· != .placeholder)`; post-cutover the RHS must shift to
-    `linearise final.tokens final.pendingKeys` (or equivalent).
-    Several downstream consumers
-    (`scanFiltered_tokens_eq_of_chain_short_stack`,
-    `scanFiltered_emitSeq_nonempty_structure`,
-    `scanFiltered_emitMap_nonempty_structure`) read the legacy
-    `tokens.filter`-shape directly, so the rewrite cascades.
-
-    The seq case (`scanFiltered_emitSeq_nonempty_structure`) is
-    provable with the J.3.7 `linearise_all_unresolved` lemma alone
-    because flow-seq items don't resolve simple keys.  The map case
-    (`scanFiltered_emitMap_nonempty_structure`) has resolved
-    `.keyOnly` entries in `pendingKeys`, so the legacy filter shape
-    differs from `linearise` — that branch needs either a re-stating
-    in `linearise` terms on both sides, or a finer auxiliary lemma
-    that pins down where `.key` tokens get spliced for the
-    `{a: b}` shape.
-
-    Target: drop the J.3 sorry count from 11 to 10.  Cascade work on
-    seq/map structure lemmas may continue beyond J.3.8 into J.4
-    cleanup if it touches Tier 2 lemmas already in the manifest.
+  (2 Cat C cascade for J.4, 10 Tier 2/cleanup for J.4).
 
 **J.3.5 landed**: `DocumentProduction` / `EndToEndCorrectness`
 consumers re-discharged via direct `scanFiltered_ok_implies_scan_ok`
@@ -1474,12 +1495,43 @@ pair (2 sorries) discharged via new `linearise_all_unresolved`
 `ScanChain.to_scanLoopFull`, `skipToContent_eq_self_of_peek_none`
 helpers + strengthened `scanNextToken_emitScalar_init`.
 
-**J.3.8** (pending): `scanFiltered_of_chain_eq` cascade — re-state
-or rewrite the seq/map structure consumers around the post-cutover
-linearise shape (1 + cascade).
+**J.3.8 landed**: `scanFiltered_of_chain_eq` re-stated in
+linearise terms (post-cutover RHS); the `_short_stack` companion
+follows.  Seq/map consumer Tier 1 derivations remain on legacy
+filter shape, with the bridge step `sorry`'d for J.4 cascade
+rewrite.  Net sorry count 11 → 12 (one bridge cleared, two
+cascade sorries exposed); declarations using `sorry` 8 → 7.
 
-**J.3 final gate**: `lake build` green; sorry count 19 → 8 (1
-remaining Cat C for J.3.8 + 7 Tier 2 EmitterScannability
+**Next concrete step (J.4 cascade)**
+
+Discharge the two J.3.8-exposed bridge sorries by rewriting the
+seq/map consumer Tier 1 derivations in `linearise` terms:
+
+- `scanFiltered_emitSeq_nonempty_structure` — replace the
+  `(s₂.tokens.filter p)`-shaped reasoning with `linearise`-aware
+  positional analysis.  For all-scalar (or scalar+seq) items
+  `pendingKeys` stay `.unresolved` and `linearise = tokens`
+  (recoverable via `linearise_all_unresolved`); for items
+  containing flow maps, `linearise` splices `.key` tokens INSIDE
+  each map but the top-level positions (item starts, outer
+  `flowEntry` separators) are unaffected.  Likely auxiliary
+  lemma: `linearise_top_level_positions_invariant` describing
+  how `linearise` preserves outer-bracket-balanced positions.
+
+- `scanFiltered_emitMap_nonempty_structure` — `tokens[2]!.val =
+  .key` is now produced by `linearise`'s splice at
+  `pendingKeys[0].insertBeforeIdx = 2`.  Need a finer lemma:
+  for the `{k: v, …}` shape, `pendingKeys[0]` is the outermost
+  pair's pre-key reservation with `insertBeforeIdx = 2` and
+  `kind = .keyOnly` (resolved by the first `:`).  Prove this
+  via per-step accounting through the map body characterization.
+
+Both proofs likely share infrastructure: a "top-level splice
+counting" helper that bridges `linearise` output positions to
+chain-step accounting.
+
+**J.3 final gate**: `lake build` green; sorry count 19 → 12
+(2 cascade Cat C for J.4 cleanup + 10 Tier 2 EmitterScannability
 declarations deferred to J.4 — line counts in the actual file may
 report more depending on how nested-let/sorry occurrences are
 counted by `grep`).
