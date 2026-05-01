@@ -2316,15 +2316,17 @@ Remaining J.4.2.b work:
         `s'.pendingKeyActive = some s.pendingKeys.size`,
         `s'.simpleKey.possible = true`.  Investigation showed this
         decomposes naturally into 4 sub-steps:
-        - **A1 (`saveSimpleKey_pkPush_when_allowed` foundational lemma)**:
-          exact pendingKey effect of `saveSimpleKey` under the push
-          branch — `(saveSimpleKey s).pendingKeys = s.pendingKeys.push
+        - ✓ **A1 (`saveSimpleKey_pkPush_when_allowed` foundational
+          lemma)** [done 2026-05-01]: exact pendingKey effect of
+          `saveSimpleKey` under the push branch —
+          `(saveSimpleKey s).pendingKeys = s.pendingKeys.push
           <unresolved at s.tokens.size>`, `pendingKeyActive = some
           s.pendingKeys.size`, `simpleKey.possible = true`.  Companion
           to the existing `saveSimpleKey_id_of_flow_ska_false_ek_none`
           (identity branch).  Consumed by A2/A3/A4 and potentially
-          Part2-body-B (`:`-resolution).  Estimate: ~0 cadence steps
-          (one-line foundational lemma).
+          Part2-body-B (`:`-resolution).  Lives in
+          `Proofs/Output/EmitterScannability.lean` after the existing
+          identity-branch lemma.
         - **A2 (per-leaf scalar `scanNextToken_flow_scanDoubleQuoted_pkPush`)**:
           mirrors `scanNextToken_flow_scanDoubleQuoted` but tracks
           pendingKey shape through preprocess + dispatcher chain +
