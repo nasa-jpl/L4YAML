@@ -3366,6 +3366,26 @@ theorem scanValueValidate_ok_of_not_possible_ek_none (s : ScannerState)
   simp only [h_sk, Bool.false_and, ite_false, h_ek, reduceCtorEq]
   rfl
 
+/-- **J.4.2.b-2d-key-chain-Part2-body-B foundational lemma**:
+    `scanValuePrepare`'s exact pendingKey effect in flow context with an
+    active simple-key reservation.
+
+    Under `s.inFlow = true ∧ s.simpleKey.possible = true`, the flow branch
+    of `scanValuePrepare` resolves the active pending-key reservation via
+    `setPendingKeyKind …  .keyOnly` and clears `pendingKeyActive`.  The
+    `pendingKeys` field equation extracted here is the engine of
+    Part2-body-B's per-entry conclusions (size preservation, kind set to
+    `.keyOnly` at the active index, insertBeforeIdx preserved, other
+    entries unchanged) via the existing `setPendingKeyKind_*` lemmas. -/
+theorem scanValuePrepare_pendingKeys_flow_resolve (s : ScannerState)
+    (h_flow : s.inFlow = true)
+    (h_sk_poss : s.simpleKey.possible = true) :
+    (scanValuePrepare s).pendingKeys
+      = setPendingKeyKind s.pendingKeys s.pendingKeyActive .keyOnly := by
+  unfold scanValuePrepare
+  simp only [h_sk_poss, ite_true, h_flow, Bool.not_true, Bool.false_eq_true,
+             ite_false]
+
 -- All tokens in the array have pos.line equal to a given line number.
 -- This captures the invariant that the emitter produces single-line output.
 def AllTokensOnLine (s : ScannerState) (l : Nat) : Prop :=
@@ -8484,6 +8504,245 @@ theorem scanNextToken_flow_value (s : ScannerState)
       · split <;> rfl
     rw [h_svp_stack]
     simp only [s_ad]; split <;> exact ScannerCorrectness.saveSimpleKey_preserves_simpleKeyStack s
+
+/-- **J.4.2.b-2d-key-chain-Part2-body-B**: strengthened
+    `scanNextToken_flow_value` exposing the resolution effect on the
+    active pendingKey.  Under preconditions
+      `s.simpleKeyAllowed = false ∧ s.simpleKey.possible = true ∧
+       s.pendingKeyActive = some i ∧ i < s.pendingKeys.size`,
+    the `:` step's `scanValuePrepare` flow branch resolves the entry
+    at index `i` to `.keyOnly`, preserving size, the entry's
+    `insertBeforeIdx`, and all other entries.
+
+    Mirrors `scanNextToken_flow_value` (above) with three additional
+    pkResolve conjuncts.  The `simpleKeyAllowed = false` precondition
+    makes `saveSimpleKey s = s` (via `saveSimpleKey_id_of_flow_ska_false_ek_none`),
+    so `s.pendingKeyActive` flows unchanged into `scanValuePrepare`'s
+    flow branch where it is consumed by `setPendingKeyKind`.
+
+    Used by Part2-body-C to compose `:`-resolution into
+    `emitPairList_chain_first_pkShape` after a per-leaf pkPush
+    (A2/A3/A4) has installed an `.unresolved` entry. -/
+theorem scanNextToken_flow_value_pkResolve (s : ScannerState)
+    (rest' : List Char)
+    (hcorr : ScannerSurfCorr s ⟨':' :: ' ' :: rest', s.col⟩)
+    (h_flow : s.inFlow = true)
+    (h_indent : s.currentIndent < 0)
+    (h_col_pos : s.col > 0)
+    (h_ek : s.explicitKeyLine = none)
+    (h_sv : scanValueValidate (saveSimpleKey s) = .ok ())
+    (h_atol : AllTokensOnLine s s.line)
+    (h_endline : EndLineOnLine s)
+    (h_ska : s.simpleKeyAllowed = false)
+    (h_sk_poss : s.simpleKey.possible = true)
+    (i : Nat) (h_pka : s.pendingKeyActive = some i)
+    (h_lt : i < s.pendingKeys.size) :
+    ∃ s', scanNextToken s = .ok (some s')
+      ∧ ScannerSurfCorr s' ⟨' ' :: rest', s'.col⟩
+      ∧ s'.flowLevel = s.flowLevel
+      ∧ s'.directivesPresent = s.directivesPresent
+      ∧ s'.indents = s.indents
+      ∧ s'.col = s.col + 1
+      ∧ s'.inFlow = true
+      ∧ s'.currentIndent < 0
+      ∧ s'.explicitKeyLine = none
+      ∧ s'.line = s.line
+      ∧ AllTokensOnLine s' s'.line
+      ∧ EndLineOnLine s'
+      ∧ s'.simpleKeyStack = s.simpleKeyStack
+      ∧ s'.pendingKeys.size = s.pendingKeys.size
+      ∧ (∃ (h' : i < s'.pendingKeys.size),
+          (s'.pendingKeys[i]'h').kind = .keyOnly
+            ∧ (s'.pendingKeys[i]'h').insertBeforeIdx = (s.pendingKeys[i]'h_lt).insertBeforeIdx)
+      ∧ (∀ j (hj : j < s.pendingKeys.size) (hj' : j < s'.pendingKeys.size),
+          j ≠ i → s'.pendingKeys[j]'hj' = s.pendingKeys[j]'hj) := by
+  -- Get surface conjuncts and `s'` from the existing theorem.
+  obtain ⟨s', h_snt, h_corr, h_fl, h_dp, h_ids, h_col_eq, h_iflow, h_ind_neg,
+         h_ek_none, h_line, h_atol', h_endline', h_stack⟩ :=
+    scanNextToken_flow_value s rest' hcorr h_flow h_indent h_col_pos h_ek h_sv h_atol h_endline
+  -- Re-derive the chain to identify `s'` with the canonical `s_final` and
+  -- track `pendingKeys` through it.  `simpleKeyAllowed = false` makes
+  -- `saveSimpleKey s = s`, simplifying the chain.
+  have h_sk_id : saveSimpleKey s = s :=
+    saveSimpleKey_id_of_flow_ska_false_ek_none s h_flow h_ska h_ek
+  have h_pp : scanNextToken_preprocess s = .ok (some (saveSimpleKey s, ':')) :=
+    scanNextToken_preprocess_flow s ':' (' ' :: rest') s.col hcorr h_flow
+      (by decide) (by decide) (by decide)
+  have h_sk_flow : (saveSimpleKey s).inFlow = s.inFlow := saveSimpleKey_preserves_inFlow s
+  have h_sk_indent : (saveSimpleKey s).currentIndent = s.currentIndent := by
+    unfold ScannerState.currentIndent; rw [saveSimpleKey_preserves_indents]
+  have h_sk_col : (saveSimpleKey s).col = s.col := saveSimpleKey_preserves_col s
+  have h_struct : scanNextToken_dispatchStructural (saveSimpleKey s) ':' = .ok none :=
+    dispatchStructural_none_flow _ _ (h_sk_flow ▸ h_flow) (h_sk_indent ▸ h_indent) (h_sk_col ▸ h_col_pos)
+  let s_ad := if (saveSimpleKey s).allowDirectives then
+    { saveSimpleKey s with allowDirectives := false, documentEverStarted := true }
+  else saveSimpleKey s
+  have h_ad_flow : s_ad.inFlow = s.inFlow := by
+    simp only [s_ad]; split <;> exact h_sk_flow
+  have h_check : scanNextToken_checkBlockFlowIndent s_ad ':' = .ok () :=
+    checkBlockFlowIndent_ok_flow _ _ (h_ad_flow ▸ h_flow)
+  have h_flow_none : scanNextToken_dispatchFlowIndicators s_ad ':' = .ok none :=
+    dispatchFlowIndicators_none _ _ (by decide) (by decide) (by decide) (by decide) (by decide)
+  have h_ad_offset : s_ad.offset = s.offset := by
+    simp only [s_ad]; split <;> exact saveSimpleKey_preserves_offset s
+  have h_ad_input : s_ad.input = s.input := by
+    simp only [s_ad]; split <;> exact saveSimpleKey_preserves_input s
+  have h_ad_inputEnd : s_ad.inputEnd = s.inputEnd := by
+    simp only [s_ad]; split <;> exact saveSimpleKey_preserves_inputEnd s
+  have ⟨h_pk_colon, h_lt_colon⟩ := peek_of_chars_cons s ':' (' ' :: rest') s.col hcorr
+  have h_adv_corr := advance_non_newline_corr s ':' (' ' :: rest') hcorr h_lt_colon
+    (by decide) (by decide)
+  have ⟨h_pk_space, _⟩ := peek_of_chars_cons s.advance ' ' rest' (s.col + 1) h_adv_corr
+  have h_peekAt1 : s.peekAt? 1 = some ' ' := by
+    rw [← L4YAML.Proofs.ScannerPlainContent.advance_peek_eq_peekAt_one s ':' h_pk_colon]
+    exact h_pk_space
+  have h_ad_peekAt1 : s_ad.peekAt? 1 = some ' ' := by
+    unfold ScannerState.peekAt? ScannerState.peekAt?Loop
+    rw [h_ad_offset, h_ad_input, h_ad_inputEnd]
+    change ScannerState.peekAt?Loop s.input s.inputEnd ⟨s.offset⟩ 1 = some ' '
+    unfold ScannerState.peekAt? ScannerState.peekAt?Loop at h_peekAt1; exact h_peekAt1
+  have h_vc : isValueCandidate s_ad = true :=
+    isValueCandidate_of_peekAt_blank s_ad h_ad_peekAt1
+  have h_block_eq : scanNextToken_dispatchBlockIndicators s_ad ':' =
+      (scanValue s_ad >>= fun s' => .ok (some s')) := by
+    unfold scanNextToken_dispatchBlockIndicators
+    simp only [show (':' == '-') = false from by decide, Bool.false_and,
+               show (':' == '?') = false from by decide,
+               show (':' == ':') = true from by decide, Bool.true_and, h_vc, ite_true]
+    rfl
+  have h_ad_ek : s_ad.explicitKeyLine = none := by
+    simp only [s_ad]; split
+    · show (saveSimpleKey s).explicitKeyLine = none
+      unfold saveSimpleKey; split <;> (try exact h_ek) <;> split <;> exact h_ek
+    · unfold saveSimpleKey; split <;> (try exact h_ek) <;> split <;> exact h_ek
+  have h_ckr : scanValueClearKey s_ad = s_ad := by
+    unfold scanValueClearKey; rw [h_ad_ek]
+  have h_validate : scanValueValidate s_ad = .ok () := by
+    have : scanValueValidate s_ad = scanValueValidate (saveSimpleKey s) := by
+      simp only [s_ad]; split <;> (unfold scanValueValidate; rfl)
+    rw [this]; exact h_sv
+  have h_ad_inFlow : s_ad.inFlow = true := h_ad_flow ▸ h_flow
+  let s_prep := scanValuePrepare s_ad
+  let s_tok := s_prep.emit .value
+  let s_adv := s_tok.advance
+  have h_scanValue_result : scanValue s_ad =
+      (scanValueTabCheck (s_ad.col : Int) s_ad.currentIndent s_adv >>= fun () =>
+        .ok { s_adv with simpleKeyAllowed := true, explicitKeyLine := none }) := by
+    unfold scanValue
+    dsimp only []
+    rw [h_ckr, h_validate]
+    dsimp only [Bind.bind, Except.bind]
+  have h_prep_inFlow : s_prep.inFlow = s_ad.inFlow := by
+    show (scanValuePrepare s_ad).inFlow = s_ad.inFlow
+    unfold scanValuePrepare
+    split <;> (split <;> try split) <;> simp_all [ScannerState.inFlow]
+  have h_tok_inFlow : s_tok.inFlow = s_prep.inFlow := by
+    show (s_prep.emit .value).inFlow = s_prep.inFlow
+    simp only [ScannerState.emit, ScannerState.inFlow]; rfl
+  have h_adv_inFlow : s_adv.inFlow = s_tok.inFlow := by
+    show s_tok.advance.inFlow = s_tok.inFlow
+    exact advance_inFlow s_tok
+  have h_tab_ok : scanValueTabCheck (s_ad.col : Int) s_ad.currentIndent s_adv = .ok () := by
+    unfold scanValueTabCheck
+    have : s_adv.inFlow = true := by
+      rw [h_adv_inFlow, h_tok_inFlow, h_prep_inFlow]; exact h_ad_inFlow
+    simp [this]
+  let s_final : ScannerState := { s_adv with simpleKeyAllowed := true, explicitKeyLine := none }
+  have h_scanValue_ok : scanValue s_ad = .ok s_final := by
+    rw [h_scanValue_result, h_tab_ok]; dsimp only [Bind.bind, Except.bind]
+  have h_block_result : scanNextToken_dispatchBlockIndicators s_ad ':' = .ok (some s_final) := by
+    rw [h_block_eq, h_scanValue_ok]; dsimp only [Bind.bind, Except.bind]
+  have h_snt_final : scanNextToken s = .ok (some s_final) :=
+    scanNextToken_via_block_dispatch s (saveSimpleKey s) s_ad s_final ':'
+      h_pp h_struct (by rfl) h_check h_flow_none h_block_result
+  -- Identify s' with s_final via determinism of scanNextToken.
+  have h_eq : s' = s_final := by
+    rw [h_snt] at h_snt_final
+    exact Option.some.inj (Except.ok.injEq .. |>.mp h_snt_final)
+  -- Track pendingKeys through the chain: s → saveSimpleKey s = s → s_ad
+  -- (allowDirectives doesn't touch pendingKeys/pendingKeyActive) → scanValueClearKey s_ad
+  -- = s_ad → scanValuePrepare s_ad (flow + simpleKey.possible = true → setPendingKeyKind)
+  -- → emit/advance/record-update preserve pendingKeys.
+  have h_ad_pks : s_ad.pendingKeys = s.pendingKeys := by
+    simp only [s_ad]
+    split
+    · show (saveSimpleKey s).pendingKeys = s.pendingKeys; rw [h_sk_id]
+    · show (saveSimpleKey s).pendingKeys = s.pendingKeys; rw [h_sk_id]
+  have h_ad_pka : s_ad.pendingKeyActive = s.pendingKeyActive := by
+    simp only [s_ad]
+    split
+    · show (saveSimpleKey s).pendingKeyActive = s.pendingKeyActive; rw [h_sk_id]
+    · show (saveSimpleKey s).pendingKeyActive = s.pendingKeyActive; rw [h_sk_id]
+  have h_ad_sk_poss : s_ad.simpleKey.possible = true := by
+    have : s_ad.simpleKey = s.simpleKey := by
+      simp only [s_ad]
+      split
+      · show (saveSimpleKey s).simpleKey = s.simpleKey; rw [h_sk_id]
+      · show (saveSimpleKey s).simpleKey = s.simpleKey; rw [h_sk_id]
+    rw [this]; exact h_sk_poss
+  have h_prep_pks : s_prep.pendingKeys
+      = setPendingKeyKind s.pendingKeys s.pendingKeyActive .keyOnly := by
+    show (scanValuePrepare s_ad).pendingKeys = _
+    rw [scanValuePrepare_pendingKeys_flow_resolve s_ad h_ad_inFlow h_ad_sk_poss,
+        h_ad_pks, h_ad_pka]
+  have h_final_pks : s_final.pendingKeys
+      = setPendingKeyKind s.pendingKeys s.pendingKeyActive .keyOnly := by
+    show s_adv.pendingKeys = _
+    rw [show s_adv.pendingKeys = s_tok.pendingKeys
+          from ScannerCorrectness.advance_preserves_pendingKeys s_tok]
+    show s_prep.pendingKeys = _
+    exact h_prep_pks
+  -- Now derive the new conjuncts at s'.
+  have h_s'_pks : s'.pendingKeys
+      = setPendingKeyKind s.pendingKeys s.pendingKeyActive .keyOnly := by
+    rw [h_eq]; exact h_final_pks
+  -- The setPendingKeyKind operation reduces to setIfInBounds at i.
+  have h_get_some : s.pendingKeys[i]? = some (s.pendingKeys[i]'h_lt) :=
+    Array.getElem?_eq_getElem h_lt
+  have h_pks_full : s'.pendingKeys = s.pendingKeys.setIfInBounds i
+      { (s.pendingKeys[i]'h_lt) with kind := .keyOnly } := by
+    rw [h_s'_pks]
+    show setPendingKeyKind s.pendingKeys s.pendingKeyActive .keyOnly = _
+    unfold setPendingKeyKind
+    simp only [h_pka, h_get_some]
+  -- Discharge.
+  refine ⟨s', h_snt, h_corr, h_fl, h_dp, h_ids, h_col_eq, h_iflow, h_ind_neg,
+          h_ek_none, h_line, h_atol', h_endline', h_stack, ?_, ?_, ?_⟩
+  · -- size preservation
+    rw [h_pks_full, Array.size_setIfInBounds]
+  · -- entry at i: kind = .keyOnly ∧ insertBeforeIdx preserved
+    have h_lt' : i < s'.pendingKeys.size := by
+      rw [h_pks_full, Array.size_setIfInBounds]; exact h_lt
+    refine ⟨h_lt', ?_, ?_⟩
+    · -- kind = .keyOnly via Array.getElem_setIfInBounds_self
+      have h_lt_setIf : i < (s.pendingKeys.setIfInBounds i
+          { (s.pendingKeys[i]'h_lt) with kind := .keyOnly }).size := by
+        rw [Array.size_setIfInBounds]; exact h_lt
+      have h_get_eq : s'.pendingKeys[i]'h_lt'
+          = (s.pendingKeys.setIfInBounds i
+              { (s.pendingKeys[i]'h_lt) with kind := .keyOnly })[i]'h_lt_setIf := by
+        simp [h_pks_full]
+      rw [h_get_eq, Array.getElem_setIfInBounds_self]
+    · -- insertBeforeIdx preserved at i via Array.getElem_setIfInBounds_self
+      have h_lt_setIf : i < (s.pendingKeys.setIfInBounds i
+          { (s.pendingKeys[i]'h_lt) with kind := .keyOnly }).size := by
+        rw [Array.size_setIfInBounds]; exact h_lt
+      have h_get_eq : s'.pendingKeys[i]'h_lt'
+          = (s.pendingKeys.setIfInBounds i
+              { (s.pendingKeys[i]'h_lt) with kind := .keyOnly })[i]'h_lt_setIf := by
+        simp [h_pks_full]
+      rw [h_get_eq, Array.getElem_setIfInBounds_self]
+  · -- j ≠ i → entries unchanged via Array.getElem_setIfInBounds_ne
+    intro j hj hj' h_ne
+    have hj_setIf : j < (s.pendingKeys.setIfInBounds i
+        { (s.pendingKeys[i]'h_lt) with kind := .keyOnly }).size := by
+      rw [Array.size_setIfInBounds]; exact hj
+    have h_get_eq : s'.pendingKeys[j]'hj'
+        = (s.pendingKeys.setIfInBounds i
+            { (s.pendingKeys[i]'h_lt) with kind := .keyOnly })[j]'hj_setIf := by
+      simp [h_pks_full]
+    rw [h_get_eq]
+    exact Array.getElem_setIfInBounds_ne hj h_ne.symm
 
 /-- `EmitPairListScansInFlow pairs` asserts that scanning the
     emitPairList output succeeds in flow context, preserving invariants.

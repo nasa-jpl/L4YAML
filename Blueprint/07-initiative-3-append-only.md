@@ -777,6 +777,7 @@ rooted at `Scanner/Linearise.lean`:
 | J.4.2.b-2d-key-chain-Part2-body-A2 | Per-leaf scalar pkPush theorem `scanNextToken_flow_scanDoubleQuoted_pkPush` (in `Proofs/Output/EmitterScannability.lean`, immediately after `scanNextToken_flow_scanDoubleQuoted`).  Parallel to the base theorem under additional hypotheses `s.simpleKeyAllowed = true ∧ s.explicitKeyLine = none`; conclusion adds three pendingKey-tracking conjuncts on top of the existing 13: `s'.pendingKeys.size = s.pendingKeys.size + 1`, `s'.pendingKeys[s.pendingKeys.size].insertBeforeIdx = s.tokens.size`, `s'.pendingKeys[s.pendingKeys.size].kind = .unresolved`.  Proof composes A1 (`saveSimpleKey_pkPush_when_allowed`) for the push, `ScannerCorrectness.scanDoubleQuoted_preserves_pendingKeys` for the inner scan, and `ScannerCorrectness.setPendingKeyEndLine_{size,insertBeforeIdx,kind}` for the dispatchContent J.2 dual-write wrap (which only touches the active entry's `endLine` field, preserving size + insertBeforeIdx + kind per-entry).  Implementation chose parallel-proof copy (~150 lines) over in-place augmentation since the base theorem has only one in-tree caller (`emit_scans_in_flow`) which would need re-threading anyway when `EmitScansInFlow` is strengthened (Part2-body-A4-and-final-def step) | 0 (per-leaf theorem fully proven, no sorry) | `Proofs/Output/EmitterScannability.lean` | ✓ done 2026-05-01 |
 | J.4.2.b-2d-key-chain-Part2-body-A3 | Per-leaf flow-sequence-open pkPush theorem `scanNextToken_flow_open_nested_pkPush` (in `Proofs/Output/EmitterScannability.lean`, immediately after `scanNextToken_flow_open_nested`).  Parallel to the base theorem under the same additional hypotheses as A2 (`s.simpleKeyAllowed = true ∧ s.explicitKeyLine = none`); conclusion adds the same three pendingKey-tracking conjuncts on top of the existing 12.  Simpler than A2 since the `[` flow path is dispatched via flow indicators (not content) — no `setPendingKeyEndLine` wrap, just A1 (`saveSimpleKey_pkPush_when_allowed`) + `ScannerCorrectness.scanFlowSequenceStart_preserves_pendingKeys` (Class A pure preservation).  Covers ONLY the `[` open step; full body+close emerges from recursive composition through other per-leaf lemmas, with the outer entry untouched by inner scans (they push at fresh indices > `s.pendingKeys.size`).  A4 (mapping `{` open) is now narrowed to a mechanical mirror of A3 with `scanFlowMappingStart_preserves_pendingKeys` (~0.5 cadence step, refined down from the original 1-2 estimate) | 0 (per-leaf theorem fully proven on first try, no sorry) | `Proofs/Output/EmitterScannability.lean` | ✓ done 2026-05-01 |
 | J.4.2.b-2d-key-chain-Part2-body-A4 | Per-leaf flow-mapping-open pkPush theorem `scanNextToken_flow_open_mapping_nested_pkPush` (in `Proofs/Output/EmitterScannability.lean`, immediately after `scanNextToken_flow_open_mapping_nested`).  Mechanical mirror of A3 with `[` → `{`, `scanFlowSequenceStart` → `scanFlowMappingStart`, `dispatchFlowIndicators_bracket` → `dispatchFlowIndicators_brace`, `ScannerCorrectness.scanFlowSequenceStart_preserves_pendingKeys` → `ScannerCorrectness.scanFlowMappingStart_preserves_pendingKeys`.  Same hypotheses (`s.simpleKeyAllowed = true ∧ s.explicitKeyLine = none`) and same 12 + 3 conjunct shape.  No `setPendingKeyEndLine` wrap (the `{` flow path also skips `dispatchContent`).  Covers ONLY the `{` open step; inner pair scans (key/`:`/value bodies) push new entries at later indices and do not touch the outer entry recorded by the outer `saveSimpleKey`.  Completes the per-leaf chain A1-A4; next step is `EmitScansInFlow` def strengthening + `emit_scans_in_flow` re-prove (~0.5 cadence step) | 0 (per-leaf theorem fully proven on first try, no sorry) | `Proofs/Output/EmitterScannability.lean` | ✓ done 2026-05-01 |
+| J.4.2.b-2d-key-chain-Part2-body-B | Per-`:`-step pkResolve theorem `scanNextToken_flow_value_pkResolve` (in `Proofs/Output/EmitterScannability.lean`, immediately after `scanNextToken_flow_value`).  Strengthens the existing 13-conjunct surface theorem with 3 pkResolve conjuncts (size preservation, `(s'.pendingKeys[i]).kind = .keyOnly` together with `insertBeforeIdx` preservation at the active index `i`, and unchanged-elsewhere `j ≠ i`) under the additional preconditions `s.simpleKeyAllowed = false ∧ s.simpleKey.possible = true ∧ s.pendingKeyActive = some i ∧ i < s.pendingKeys.size`.  The `simpleKeyAllowed = false` precondition is essential: it makes `saveSimpleKey s = s` (via the existing `saveSimpleKey_id_of_flow_ska_false_ek_none`) so the pre-existing active reservation flows unchanged into `scanValuePrepare`'s flow branch, where it is consumed by `setPendingKeyKind … .keyOnly`.  Foundational helper `scanValuePrepare_pendingKeys_flow_resolve` (added next to `saveSimpleKey_pkPush_when_allowed` / `scanValueValidate_ok_of_not_possible_ek_none`) gives the pure characterization.  Proof uses the existing `scanNextToken_flow_value` for surface conjuncts plus a re-derivation of the canonical `s_final` chain to identify `s'` via determinism, tracks pendingKeys through `saveSimpleKey` (identity) → `s_ad` (allowDirectives passthrough) → `scanValueClearKey` (identity since `ek = none`) → `scanValuePrepare` flow branch → `emit`/`advance`/final record-update (Class A passthroughs).  Per-entry pkResolve facts derived via `Array.getElem_setIfInBounds_self` / `Array.getElem_setIfInBounds_ne`.  Together with A1-A4 this completes Part2-body's leaf and `:`-step machinery; remaining for full 2d discharge: Part2-body-C composition (~0.5 step) and Part3 splice locator (separate track) | 0 (theorem fully proven, no sorry) | `Proofs/Output/EmitterScannability.lean` | ✓ done 2026-05-01 |
 
 **J.3.1 — Linearise foundations** [✓ completed 2026-04-26]:
 
@@ -2388,14 +2389,38 @@ Remaining J.4.2.b work:
         After A1-A4: add the gated conjunct to `EmitScansInFlow`
         definition; re-prove `emit_scans_in_flow` cases scalar/seq/map
         using the per-leaf lemmas.  Estimate: ~0.5 cadence step.
-     2. **2d-key-chain-Part2-body-B (`scanNextToken_flow_value` strengthening)**:
-        expose the resolution effect on the active pendingKey — under
-        precondition `s.simpleKey.possible = true ∧ s.pendingKeyActive
-        = some i` (with `i < s.pendingKeys.size`), conclude
-        `s'.pendingKeys.size = s.pendingKeys.size`, `s'.pendingKeys[i].kind
-        = .keyOnly`, `s'.pendingKeys[i].insertBeforeIdx
-        = s.pendingKeys[i].insertBeforeIdx`, and the `j ≠ i` entries
-        unchanged.  Estimate: 1 cadence step.
+     2. ✓ **2d-key-chain-Part2-body-B (`scanNextToken_flow_value`
+        strengthening, theorem `scanNextToken_flow_value_pkResolve`)**
+        [done 2026-05-01]: under preconditions `s.simpleKeyAllowed =
+        false ∧ s.simpleKey.possible = true ∧ s.pendingKeyActive = some
+        i ∧ i < s.pendingKeys.size` (the `simpleKeyAllowed = false`
+        precondition makes `saveSimpleKey s = s` so the active pending
+        index flows unchanged into `scanValuePrepare`'s flow branch),
+        the `:` step's `scanValuePrepare` flow branch resolves the
+        entry at index `i` to `.keyOnly` via `setPendingKeyKind`.
+        Concludes the existing 13 surface conjuncts of
+        `scanNextToken_flow_value` plus 3 pkResolve conjuncts:
+        `s'.pendingKeys.size = s.pendingKeys.size`,
+        `(s'.pendingKeys[i]).kind = .keyOnly` together with
+        `insertBeforeIdx` preservation at `i`, and `s'.pendingKeys[j]
+        = s.pendingKeys[j]` for all `j ≠ i`.  Foundational helper
+        `scanValuePrepare_pendingKeys_flow_resolve` (in flow with
+        `simpleKey.possible = true`, the prepare's pendingKeys equals
+        `setPendingKeyKind s.pendingKeys s.pendingKeyActive .keyOnly`)
+        sits next to `saveSimpleKey_pkPush_when_allowed` /
+        `scanValueValidate_ok_of_not_possible_ek_none`.  Proof reuses
+        the existing `scanNextToken_flow_value` to discharge surface
+        conjuncts, then re-derives the canonical `s_final` chain to
+        identify `s'` via determinism and tracks pendingKeys through
+        `saveSimpleKey` (identity) → `s_ad` (allowDirectives doesn't
+        touch pendingKeys/pendingKeyActive) → `scanValueClearKey`
+        (identity since `ek = none`) → `scanValuePrepare` flow branch
+        (the `setPendingKeyKind` write) → `emit`/`advance`/final
+        record-update (Class A passthroughs).  Per-entry pkResolve
+        conjuncts derived via `Array.getElem_setIfInBounds_self` /
+        `Array.getElem_setIfInBounds_ne`.  Landed in
+        `Proofs/Output/EmitterScannability.lean` next to
+        `scanNextToken_flow_value`.
      3. **2d-key-chain-Part2-body-C (compose + dispatch in
         `emitPairList_chain_first_pkShape`)**: walk the singleton/cons
         induction structure of `emitPairList_scans_nonempty` using the
@@ -2755,6 +2780,45 @@ final `EmitScansInFlow` def strengthening + `emit_scans_in_flow`
 re-prove (~0.5 cadence step) remains before Part2-body-B's `:`
 resolution exposure can compose against the strengthened conclusions.
 Sorry count unchanged (no discharge, just infrastructure).
+J.4.2.b-2d-key-chain-Part2-body-B (per-`:`-step pkResolve theorem
+`scanNextToken_flow_value_pkResolve`) landed 2026-05-01 with sorry
+count **unchanged** in EmitterScannability — landed in one cadence
+step matching the original 1-step estimate.  Theorem sits immediately
+after `scanNextToken_flow_value`; signature accepts the existing 9
+preconditions plus three new hypotheses (`s.simpleKeyAllowed = false`,
+`s.simpleKey.possible = true`, and `s.pendingKeyActive = some i` with
+`i < s.pendingKeys.size`) and concludes the existing 13 surface
+conjuncts plus 3 pkResolve conjuncts: size preservation
+(`s'.pendingKeys.size = s.pendingKeys.size`), per-active-index
+resolution (`(s'.pendingKeys[i]).kind = .keyOnly` together with
+`insertBeforeIdx` preservation at `i`), and unchanged-elsewhere
+(`s'.pendingKeys[j] = s.pendingKeys[j]` for all `j ≠ i`).  The
+`simpleKeyAllowed = false` precondition is the linchpin — it makes
+`saveSimpleKey s = s` (via the already-tree
+`saveSimpleKey_id_of_flow_ska_false_ek_none`) so the
+pre-existing active reservation flows unchanged into
+`scanValuePrepare`'s flow branch where `setPendingKeyKind … .keyOnly`
+fires.  Foundational helper `scanValuePrepare_pendingKeys_flow_resolve`
+(added next to `saveSimpleKey_pkPush_when_allowed` /
+`scanValueValidate_ok_of_not_possible_ek_none`) gives the pure
+characterization: `(scanValuePrepare s).pendingKeys =
+setPendingKeyKind s.pendingKeys s.pendingKeyActive .keyOnly` under
+`s.inFlow = true ∧ s.simpleKey.possible = true`.  Proof reuses the
+existing `scanNextToken_flow_value` to discharge surface conjuncts,
+then re-derives the canonical `s_final` chain to identify the
+existential `s'` via determinism of `scanNextToken`, and tracks
+pendingKeys through the chain (`saveSimpleKey` identity → `s_ad`
+allowDirectives passthrough → `scanValueClearKey` identity → flow
+branch's `setPendingKeyKind` write → `emit`/`advance`/final
+record-update Class A passthroughs).  Per-entry pkResolve facts
+derived via `Array.getElem_setIfInBounds_self` (for the active
+index) and `Array.getElem_setIfInBounds_ne` (for the unchanged
+indices).  Net effect: Part2-body's leaf and `:`-step machinery
+complete (A1-A4 + B); only Part2-body-C composition (~0.5 step)
+remains for the cons-side recursion in `emitPairList_chain_first_pkShape`,
+plus the orthogonal `EmitScansInFlow` def strengthening (the natural
+seal on A1-A4).  Sorry count unchanged (no discharge, just
+infrastructure).
 J.4.2.b-2d-key-chain-Part2-stub (named extraction of the first-key
 chain-side accounting) landed 2026-04-30 with sorry count **unchanged**
 in EmitterScannability.  Introduced freestanding theorem
