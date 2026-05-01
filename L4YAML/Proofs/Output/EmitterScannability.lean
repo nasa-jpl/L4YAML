@@ -6155,6 +6155,135 @@ theorem scanNextToken_flow_open_mapping_nested (s : ScannerState) (rest : List C
     show s_ad.simpleKeyStack = s.simpleKeyStack
     simp only [s_ad]; split <;> exact ScannerCorrectness.saveSimpleKey_preserves_simpleKeyStack s
 
+/-- Per-leaf flow-mapping pkPush theorem.  Mirrors
+    `scanNextToken_flow_open_mapping_nested` but additionally exposes the
+    pendingKeys push effect under the assumption that the push branch
+    of `saveSimpleKey` fires (`simpleKeyAllowed = true ∧
+    explicitKeyLine = none`).  Mechanical mirror of A3
+    (`scanNextToken_flow_open_nested_pkPush`) with `[` → `{`,
+    `scanFlowSequenceStart` → `scanFlowMappingStart`,
+    `dispatchFlowIndicators_bracket` → `dispatchFlowIndicators_brace`,
+    using `scanFlowMappingStart_preserves_pendingKeys`: the `{` flow
+    path does NOT invoke `dispatchContent`, so there is no
+    `setPendingKeyEndLine` wrap — pendingKeys is just `s.pendingKeys.push`
+    of the unresolved entry recorded by `saveSimpleKey`. -/
+theorem scanNextToken_flow_open_mapping_nested_pkPush (s : ScannerState) (rest : List Char)
+    (hcorr : ScannerSurfCorr s ⟨'{' :: rest, s.col⟩)
+    (h_flow : s.inFlow = true)
+    (h_indent : s.currentIndent < 0)
+    (h_col_pos : s.col > 0)
+    (h_atol : AllTokensOnLine s s.line)
+    (h_endline : EndLineOnLine s)
+    (h_ska : s.simpleKeyAllowed = true)
+    (h_ek_none : s.explicitKeyLine = none) :
+    ∃ s', scanNextToken s = .ok (some s')
+      ∧ ScannerSurfCorr s' ⟨rest, s'.col⟩
+      ∧ s'.flowLevel = s.flowLevel + 1
+      ∧ s'.directivesPresent = s.directivesPresent
+      ∧ s'.indents = s.indents
+      ∧ s'.explicitKeyLine = s.explicitKeyLine
+      ∧ s'.col = s.col + 1
+      ∧ s'.line = s.line
+      ∧ AllTokensOnLine s' s'.line
+      ∧ EndLineOnLine s'
+      ∧ StackEndLineOnLine s' s'.line
+      ∧ s'.simpleKeyStack.pop = s.simpleKeyStack
+      ∧ s'.pendingKeys.size = s.pendingKeys.size + 1
+      ∧ ∃ (h : s.pendingKeys.size < s'.pendingKeys.size),
+          (s'.pendingKeys[s.pendingKeys.size]'h).insertBeforeIdx = s.tokens.size
+          ∧ (s'.pendingKeys[s.pendingKeys.size]'h).kind = .unresolved := by
+  have h_pp : scanNextToken_preprocess s = .ok (some (saveSimpleKey s, '{')) :=
+    scanNextToken_preprocess_flow s '{' rest s.col hcorr h_flow
+      (by decide) (by decide) (by decide)
+  have h_sk_flow : (saveSimpleKey s).inFlow = s.inFlow := saveSimpleKey_preserves_inFlow s
+  have h_sk_col : (saveSimpleKey s).col = s.col := saveSimpleKey_preserves_col s
+  have h_sk_indent : (saveSimpleKey s).currentIndent = s.currentIndent := by
+    unfold ScannerState.currentIndent; rw [saveSimpleKey_preserves_indents]
+  have h_struct : scanNextToken_dispatchStructural (saveSimpleKey s) '{' = .ok none :=
+    dispatchStructural_none_flow _ _ (h_sk_flow ▸ h_flow) (h_sk_indent ▸ h_indent)
+      (h_sk_col ▸ h_col_pos)
+  let s_ad := if (saveSimpleKey s).allowDirectives then
+    { saveSimpleKey s with allowDirectives := false, documentEverStarted := true }
+  else saveSimpleKey s
+  have h_ad_flow : s_ad.inFlow = s.inFlow := by
+    simp only [s_ad]; split <;> exact h_sk_flow
+  have h_check := checkBlockFlowIndent_ok_flow s_ad '{' (h_ad_flow ▸ h_flow)
+  have h_flow_disp := dispatchFlowIndicators_brace s_ad
+  have h_snt := scanNextToken_via_flow_dispatch _ _ _ _ _ h_pp h_struct rfl h_check h_flow_disp
+  have h_ad_fl : s_ad.flowLevel = s.flowLevel := by
+    simp only [s_ad]; split <;> exact saveSimpleKey_preserves_flowLevel s
+  have h_ad_dp : s_ad.directivesPresent = s.directivesPresent := by
+    simp only [s_ad]; split <;> exact saveSimpleKey_preserves_directivesPresent s
+  have h_ad_ids : s_ad.indents = s.indents := by
+    simp only [s_ad]; split <;> exact saveSimpleKey_preserves_indents s
+  have h_ad_ek : s_ad.explicitKeyLine = s.explicitKeyLine := by
+    simp only [s_ad]; split <;> exact saveSimpleKey_preserves_ek s
+  have h_ad_col : s_ad.col = s.col := by
+    simp only [s_ad]; split <;> exact h_sk_col
+  have h_ad_corr : ScannerSurfCorr s_ad ⟨'{' :: rest, s_ad.col⟩ := by
+    rw [show s_ad.col = s.col from h_ad_col]
+    exact ScannerSurfCorr_transfer hcorr
+      (by simp only [s_ad]; split <;> exact saveSimpleKey_preserves_input s)
+      (by simp only [s_ad]; split <;> exact saveSimpleKey_preserves_offset s)
+      (by simp only [s_ad]; split <;> exact saveSimpleKey_preserves_inputEnd s)
+      h_ad_col
+      (by simp only [s_ad]; split <;> exact saveSimpleKey_preserves_indents s)
+  obtain ⟨h_corr_f, h_fl_f, h_dp_f, h_ids_f, h_col_f⟩ :=
+    scanFlowMappingStart_detail s_ad rest h_ad_corr
+  have h_ek_f := scanFlowMappingStart_preserves_ek s_ad
+  have h_ad_line : s_ad.line = s.line := by
+    simp only [s_ad]; split <;> exact saveSimpleKey_preserves_line s
+  have ⟨h_peek_ad, h_lt_ad⟩ := peek_of_chars_cons s_ad '{' rest s_ad.col h_ad_corr
+  have h_line_f : (scanFlowMappingStart s_ad).line = s.line := by
+    rw [scanFlowMappingStart_line_eq]
+    exact (advance_line_of_peek s_ad '{' h_lt_ad h_peek_ad (by decide) (by decide)).trans h_ad_line
+  -- pkPush tracking: A1 lemma + record-update + scanFlowMappingStart preservation
+  obtain ⟨h_sk_pks, _h_sk_pka, _h_sk_skp⟩ :=
+    saveSimpleKey_pkPush_when_allowed s h_ska h_ek_none
+  have h_ad_pks : s_ad.pendingKeys = (saveSimpleKey s).pendingKeys := by
+    simp only [s_ad]; split <;> rfl
+  have h_fms_pks : (scanFlowMappingStart s_ad).pendingKeys = s_ad.pendingKeys :=
+    ScannerCorrectness.scanFlowMappingStart_preserves_pendingKeys s_ad
+  have h_fms_pks_full : (scanFlowMappingStart s_ad).pendingKeys = s.pendingKeys.push
+      { insertBeforeIdx := s.tokens.size, pos := s.currentPos,
+        endLine := s.line, kind := .unresolved } := by
+    rw [h_fms_pks, h_ad_pks, h_sk_pks]
+  have h_fms_size : (scanFlowMappingStart s_ad).pendingKeys.size = s.pendingKeys.size + 1 := by
+    rw [h_fms_pks_full, Array.size_push]
+  have h_lt : s.pendingKeys.size < (scanFlowMappingStart s_ad).pendingKeys.size := by
+    rw [h_fms_size]; exact Nat.lt_succ_self _
+  have h_get : (scanFlowMappingStart s_ad).pendingKeys[s.pendingKeys.size]'h_lt =
+      { insertBeforeIdx := s.tokens.size, pos := s.currentPos,
+        endLine := s.line, kind := .unresolved } := by
+    simp only [h_fms_pks_full, Array.getElem_push]
+    rw [dif_neg (Nat.lt_irrefl _)]
+  refine ⟨_, h_snt, ?_, h_fl_f.trans (congrArg (· + 1) h_ad_fl),
+    h_dp_f.trans h_ad_dp, h_ids_f.trans h_ad_ids, h_ek_f.trans h_ad_ek,
+    ?_, h_line_f, ?_, ?_, ?_, ?_, h_fms_size, h_lt, ?_, ?_⟩
+  · rw [h_col_f]; exact h_corr_f
+  · rw [h_col_f, h_ad_col]
+  · rw [h_line_f]
+    exact AllTokensOnLine_scanFlowMappingStart s_ad s.line
+      (AllTokensOnLine_allowDirectives _ _
+        (AllTokensOnLine_saveSimpleKey _ _ h_atol rfl)) h_ad_line
+  · intro h_poss
+    rw [scanFlowMappingStart_simpleKey_not_possible] at h_poss
+    exact absurd h_poss (by decide)
+  · unfold StackEndLineOnLine
+    rw [ScannerCorrectness.scanFlowMappingStart_stack_pushed, Array.back?_push, h_line_f]
+    intro h_poss
+    have h_ad_endline : EndLineOnLine s_ad := by
+      simp only [s_ad]; split
+      · show EndLineOnLine { saveSimpleKey s with allowDirectives := false, documentEverStarted := true }
+        exact EndLineOnLine_saveSimpleKey_flow s h_endline
+      · exact EndLineOnLine_saveSimpleKey_flow s h_endline
+    exact ⟨(h_ad_endline h_poss).1.trans h_ad_line, (h_ad_endline h_poss).2.trans h_ad_line⟩
+  · rw [ScannerCorrectness.scanFlowMappingStart_stack_pushed, Array.pop_push]
+    show s_ad.simpleKeyStack = s.simpleKeyStack
+    simp only [s_ad]; split <;> exact ScannerCorrectness.saveSimpleKey_preserves_simpleKeyStack s
+  · rw [h_get]
+  · rw [h_get]
+
 -- ═══ Init flow open: `{` — mapping at top level ═══
 
 /-- Structural dispatch returns none for `{` at initial state. -/
