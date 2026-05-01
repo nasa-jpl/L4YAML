@@ -5043,9 +5043,11 @@ theorem scanNextToken_flow_open_nested_pkPush (s : ScannerState) (rest : List Ch
       ∧ StackEndLineOnLine s' s'.line
       ∧ s'.simpleKeyStack.pop = s.simpleKeyStack
       ∧ s'.pendingKeys.size = s.pendingKeys.size + 1
-      ∧ ∃ (h : s.pendingKeys.size < s'.pendingKeys.size),
+      ∧ (∃ (h : s.pendingKeys.size < s'.pendingKeys.size),
           (s'.pendingKeys[s.pendingKeys.size]'h).insertBeforeIdx = s.tokens.size
-          ∧ (s'.pendingKeys[s.pendingKeys.size]'h).kind = .unresolved := by
+          ∧ (s'.pendingKeys[s.pendingKeys.size]'h).kind = .unresolved)
+      ∧ (∀ j (hj : j < s.pendingKeys.size) (hj' : j < s'.pendingKeys.size),
+          s'.pendingKeys[j]'hj' = s.pendingKeys[j]'hj) := by
   have h_pp : scanNextToken_preprocess s = .ok (some (saveSimpleKey s, '[')) :=
     scanNextToken_preprocess_flow s '[' rest s.col hcorr h_flow
       (by decide) (by decide) (by decide)
@@ -5113,7 +5115,7 @@ theorem scanNextToken_flow_open_nested_pkPush (s : ScannerState) (rest : List Ch
     rw [dif_neg (Nat.lt_irrefl _)]
   refine ⟨_, h_snt, ?_, h_fl_f.trans (congrArg (· + 1) h_ad_fl),
     h_dp_f.trans h_ad_dp, h_ids_f.trans h_ad_ids, h_ek_f.trans h_ad_ek,
-    ?_, h_line_f, ?_, ?_, ?_, ?_, h_fss_size, h_lt, ?_, ?_⟩
+    ?_, h_line_f, ?_, ?_, ?_, ?_, h_fss_size, ⟨h_lt, ?_, ?_⟩, ?_⟩
   · rw [h_col_f]; exact h_corr_f
   · rw [h_col_f, h_ad_col]
   · rw [h_line_f]
@@ -5137,6 +5139,10 @@ theorem scanNextToken_flow_open_nested_pkPush (s : ScannerState) (rest : List Ch
     simp only [s_ad]; split <;> exact ScannerCorrectness.saveSimpleKey_preserves_simpleKeyStack s
   · rw [h_get]
   · rw [h_get]
+  · -- preserves-prior: pendingKeys at j < s.pendingKeys.size unchanged through the push
+    intro j hj _hj'
+    simp only [h_fss_pks_full]
+    exact Array.getElem_push_lt hj
 
 -- ═══ Block indicators: concrete none lemmas ═══
 
@@ -6209,9 +6215,11 @@ theorem scanNextToken_flow_open_mapping_nested_pkPush (s : ScannerState) (rest :
       ∧ StackEndLineOnLine s' s'.line
       ∧ s'.simpleKeyStack.pop = s.simpleKeyStack
       ∧ s'.pendingKeys.size = s.pendingKeys.size + 1
-      ∧ ∃ (h : s.pendingKeys.size < s'.pendingKeys.size),
+      ∧ (∃ (h : s.pendingKeys.size < s'.pendingKeys.size),
           (s'.pendingKeys[s.pendingKeys.size]'h).insertBeforeIdx = s.tokens.size
-          ∧ (s'.pendingKeys[s.pendingKeys.size]'h).kind = .unresolved := by
+          ∧ (s'.pendingKeys[s.pendingKeys.size]'h).kind = .unresolved)
+      ∧ (∀ j (hj : j < s.pendingKeys.size) (hj' : j < s'.pendingKeys.size),
+          s'.pendingKeys[j]'hj' = s.pendingKeys[j]'hj) := by
   have h_pp : scanNextToken_preprocess s = .ok (some (saveSimpleKey s, '{')) :=
     scanNextToken_preprocess_flow s '{' rest s.col hcorr h_flow
       (by decide) (by decide) (by decide)
@@ -6279,7 +6287,7 @@ theorem scanNextToken_flow_open_mapping_nested_pkPush (s : ScannerState) (rest :
     rw [dif_neg (Nat.lt_irrefl _)]
   refine ⟨_, h_snt, ?_, h_fl_f.trans (congrArg (· + 1) h_ad_fl),
     h_dp_f.trans h_ad_dp, h_ids_f.trans h_ad_ids, h_ek_f.trans h_ad_ek,
-    ?_, h_line_f, ?_, ?_, ?_, ?_, h_fms_size, h_lt, ?_, ?_⟩
+    ?_, h_line_f, ?_, ?_, ?_, ?_, h_fms_size, ⟨h_lt, ?_, ?_⟩, ?_⟩
   · rw [h_col_f]; exact h_corr_f
   · rw [h_col_f, h_ad_col]
   · rw [h_line_f]
@@ -6303,6 +6311,10 @@ theorem scanNextToken_flow_open_mapping_nested_pkPush (s : ScannerState) (rest :
     simp only [s_ad]; split <;> exact ScannerCorrectness.saveSimpleKey_preserves_simpleKeyStack s
   · rw [h_get]
   · rw [h_get]
+  · -- preserves-prior: pendingKeys at j < s.pendingKeys.size unchanged through the push
+    intro j hj _hj'
+    simp only [h_fms_pks_full]
+    exact Array.getElem_push_lt hj
 
 -- ═══ Init flow open: `{` — mapping at top level ═══
 
