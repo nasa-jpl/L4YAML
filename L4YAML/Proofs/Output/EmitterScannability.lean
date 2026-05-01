@@ -10164,6 +10164,68 @@ pendingKey entries to `.keyOnly`).  The pair body's per-action discharge
 condition for AllUnresolved fails by design — this is why the legacy
 `linearise = filter` bridge cannot carry the pair-body conclusion. -/
 
+/-- **J.4.2.b-2d-key-chain-Part2** — chain-side accounting stub for the first
+    resolved pendingKey through `emitPairList`.
+
+    Given the same hypotheses as `emitPairList_scans_nonempty` plus
+    `s.pendingKeys = #[]` (caller exposes via `scanNextToken_flow_open_mapping_init`'s
+    post-`{` state), and given the chain `s ↦ s'` already produced by
+    `emitPairList_body_filtered_characterization`, this stub exposes the shape
+    of `s'.pendingKeys[0]`:
+    * The first pendingKey exists (`0 < s'.pendingKeys.size`).
+    * Its `insertBeforeIdx` matches `s.tokens.size` (the saveSimpleKey
+      time-stamp at the start of pair 1's key scan; with
+      `h_pks_empty`, this is the FIRST new entry).
+    * Its kind has been resolved to `.keyOnly` by `scanValuePrepare`'s flow
+      branch on the first `:`.
+
+    Consumed by `emitPairList_body_linearise_characterization` Part (2) to
+    apply Foundation A (`linearise_first_splice_keyonly`) and conclude
+    `linearise[old_sz] = .key`.
+
+    **Proof obligation (sorry'd, deferred to a multi-cadence-step follow-up
+    chain on `EmitScansInFlow` / `scanNextToken_flow_value`)**:
+
+    Trace the singleton/cons induction in `emitPairList_scans_nonempty`:
+    * Singleton: in `EmitScansInFlow p.1 s`, the first `saveSimpleKey`
+      (during `emit k_1`'s first-content-character preprocess) appends one
+      `.unresolved` entry at `insertBeforeIdx = s.tokens.size` — needs
+      strengthening of `EmitScansInFlow` (or a per-leaf scalar/coll
+      strengthening) to expose this.  Then `scanNextToken_flow_value` on
+      `:` calls `scanValuePrepare`, which (with `simpleKey.possible = true`
+      and `inFlow = true`) hits the flow branch and resolves the active
+      pendingKey to `.keyOnly` via
+      `setPendingKeyKind s.pendingKeys s.pendingKeyActive .keyOnly`.
+      Subsequent value scan and tail recursion preserve `pendingKeys[0]`
+      since further `saveSimpleKey` calls only PUSH new entries.
+    * Cons: same as singleton for pair 1, then `,` step preserves
+      `pendingKeys[0]`, then IH on tail also preserves index 0 (only
+      pushes/resolves later indices).
+
+    This stub captures the chain-side proof obligation precisely; once
+    discharged, it serves both Part (2) (this theorem) and the analogous
+    extended-form for Part (3) (J.4.2.b-2d-key-chain-Part3). -/
+theorem emitPairList_chain_first_pkShape
+    (pairs : List (YamlValue × YamlValue)) (h_ne : pairs ≠ [])
+    (h_all_k : ∀ p ∈ pairs, EmitScansInFlow p.1)
+    (h_all_v : ∀ p ∈ pairs, EmitScansInFlow p.2)
+    (s : ScannerState) (rest : List Char)
+    (h_corr : ScannerSurfCorr s ⟨(emit.emitPairList pairs).toList ++ rest, s.col⟩)
+    (h_flow : s.inFlow = true) (h_fl : s.flowLevel > 0)
+    (h_indent : s.currentIndent < 0) (h_col : s.col > 0)
+    (h_ek : s.explicitKeyLine = none)
+    (h_atol : AllTokensOnLine s s.line)
+    (h_endline : EndLineOnLine s)
+    (h_sk : s.simpleKey.possible = false)
+    (h_pks_empty : s.pendingKeys = #[])
+    (n : Nat) (s' : ScannerState)
+    (h_chain : ScanChain s n s')
+    (h_corr' : ScannerSurfCorr s' ⟨rest, s'.col⟩) :
+    ∃ (_ : 0 < s'.pendingKeys.size),
+      s'.pendingKeys[0].insertBeforeIdx = s.tokens.size ∧
+      s'.pendingKeys[0].kind = .keyOnly := by
+  sorry
+
 /-- Linearise-shape variant of `emitPairList_body_filtered_characterization`
     for the resolution case.  Carries the chain, structural invariants,
     `n ≥ 3`, and `NoPlaceholders s'` from the filter-shape characterization;
@@ -10257,19 +10319,18 @@ theorem emitPairList_body_linearise_characterization
         ScanChain_tokens_mono h_chain
       exact Nat.le_trans h_filt_le h_chain_mono
     -- Chain-side accounting (J.4.2.b-2d-key-chain-Part2): the first pending
-    -- key entry in `s'.pendingKeys` is the resolved key for pair 1 — its
-    -- `insertBeforeIdx` matches the saveSimpleKey time stamp `s.tokens.size`
-    -- (= `(s.tokens.filter p).size` via the filter identity), and its kind
-    -- has been resolved to `.keyOnly` by `scanValuePrepare` on the first `:`.
-    -- Relies on `h_pks_empty` so `s'.pendingKeys[0]` is the FIRST new entry
-    -- (not an outer-scope leftover).
-    have h_chain_facts :
-        ∃ (_ : 0 < s'.pendingKeys.size),
-          s'.pendingKeys[0].insertBeforeIdx
-            = (s.tokens.filter (fun t => t.val != .placeholder)).size ∧
-          s'.pendingKeys[0].kind = .keyOnly := by
-      sorry
-    obtain ⟨h_pos, h_idx, h_kind⟩ := h_chain_facts
+    -- key entry in `s'.pendingKeys` is the resolved key for pair 1.
+    -- Discharged via the named stub `emitPairList_chain_first_pkShape`,
+    -- which captures the chain-side proof obligation precisely.  The stub's
+    -- conclusion uses `s.tokens.size`; we transport via `h_filter_eq_s`
+    -- to match Foundation A's index `(s.tokens.filter p).size`.
+    obtain ⟨h_pos, h_idx_raw, h_kind⟩ :=
+      emitPairList_chain_first_pkShape pairs h_ne h_all_k h_all_v
+        s rest h_corr h_flow h_fl h_indent h_col h_ek h_atol h_endline
+        h_sk h_pks_empty n s' h_chain h_corr'
+    have h_idx : s'.pendingKeys[0].insertBeforeIdx
+        = (s.tokens.filter (fun t => t.val != .placeholder)).size := by
+      rw [h_idx_raw, h_filter_eq_s]
     -- Apply Foundation A.
     obtain ⟨h_lin, h_at⟩ :=
       L4YAML.Proofs.ScannerLinearise.linearise_first_splice_keyonly
