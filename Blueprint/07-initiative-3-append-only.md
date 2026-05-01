@@ -773,6 +773,7 @@ rooted at `Scanner/Linearise.lean`:
 | J.4.2.b-2d-key-foundation-B | Foundation B for the 2d-key splice mechanic at general `(j, p, acc)` state: `linearise_splice_keyonly_at` + index-form corollary `linearise_splice_keyonly_at_index` (in `Proofs/Scanner/ScannerLinearise.lean`, after `linearise_first_splice_keyonly`).  Given a transport equation `linearise tokens pks = linearise.go tokens pks j p acc` and splice-fire preconditions (`p < pks.size`, `pks[p].insertBeforeIdx ≤ j`, `pks[p].kind = .keyOnly`), derives `(linearise tokens pks)[acc.size].val = .key`.  Companion to Foundation A: A walks from the start internally and fires `pks[0]`; B is the splice mechanic in isolation, parameterized on a general `(j, p, acc)` state — chain-side accounting supplies the transport equation (J.4.2.b-2d-key-chain).  Proof structure (mirrors the inner half of Foundation A): step once to fire splice; `expandKind .keyOnly = #[⟨pos, .key, pos⟩]` gives `.key` at the new acc's index `acc.size`; prefix-stability (`linearise_go_getElem_lt_acc`) propagates to final result; transport via `h_eq` + step equation.  Reshapes Part (3) of `emitPairList_body_linearise_characterization` to consume Foundation B (index form, with `acc.size = k + 1` for the after-flowEntry position) — splice analysis fully discharged; remaining sorry narrowed to chain-side accounting (J.4.2.b-2d-key-chain extended to all outer pairs) | 0 (Part (3) splice-analysis sorry replaced by chain-side accounting sorry — same count, narrowed shape) | `Proofs/Scanner/ScannerLinearise.lean`, `Proofs/Output/EmitterScannability.lean` | ✓ done 2026-04-30 |
 | J.4.2.b-2d-key-prep | Pre-step toward chain-side accounting: (i) added `h_pks_empty : s.pendingKeys = #[]` precondition to `emitPairList_body_linearise_characterization` — needed to make Foundation A's `[0]`-index semantically aligned with "first new pendingKey from the body" (without it, `pks[0]` could be an outer-scope leftover with smaller `insertBeforeIdx`); (ii) discharged the trivial token-monotonicity sub-fact `(s.tokens.filter p).size ≤ s'.tokens.size` directly from `ScanChain_tokens_mono` + `Array.size_filter_le`, no longer bundled in the chain-side sorry; (iii) decomposed remaining 2d-key-chain into `-Part2` (first-key splice shape: `0 < s'.pendingKeys.size ∧ s'.pendingKeys[0].insertBeforeIdx = (s.tokens.filter p).size ∧ s'.pendingKeys[0].kind = .keyOnly`) and `-Part3` (after-flowEntry splice: for each outer-level flowEntry at position `k`, supply `(j, p, acc)` with `acc.size = k + 1` and the splice fire preconditions).  At the eventual call site (`scanFiltered_emitMap_nonempty_structure` from `scanNextToken_flow_open_mapping_init`), `s₁.pendingKeys = #[]` is structurally true (init scanner state has empty pendingKeys; `{` scan only emits `.flowMappingStart` — no save).  Exposing this fact at `scanNextToken_flow_open_mapping_init`'s output is part of cascade stitching (item 3), not 2d-key-chain itself | 0 (precondition refinement + trivial sub-fact discharged; same chain-side accounting count, narrower shape) | `Proofs/Output/EmitterScannability.lean` | ✓ done 2026-04-30 |
 | J.4.2.b-2d-key-chain-Part2-stub | Stub-level extraction of the chain-side accounting for the first resolved pendingKey: introduced freestanding theorem `emitPairList_chain_first_pkShape` (in `Proofs/Output/EmitterScannability.lean`, just before `emitPairList_body_linearise_characterization`) with the precise signature for the first-key chain-side facts (`0 < s'.pendingKeys.size ∧ s'.pendingKeys[0].insertBeforeIdx = s.tokens.size ∧ s'.pendingKeys[0].kind = .keyOnly`), parameterized on the chain `ScanChain s n s'` and the same hypotheses as `emitPairList_scans_nonempty` plus `h_pks_empty : s.pendingKeys = #[]`.  The stub's body is `sorry`, but the wrapper theorem `emitPairList_body_linearise_characterization` Part (2) now consumes the stub cleanly (replacing the inline sorry with a call + filter-identity transport via `h_filter_eq_s`).  Investigation showed the body discharge requires deeper infrastructure than initially scoped in 1 cadence step: strengthening (a) `EmitScansInFlow` (or per-leaf scalar/coll variants) to expose pendingKey shape after key scan, (b) `scanNextToken_flow_value` to expose the resolution effect on the active pendingKey, (c) `EmitScansInFlow` preservation through the value scan.  Refined estimate: 2-3 cadence steps for the body discharge (Part2 body proper) | 0 (named extraction; Part2 inline sorry replaced by stub sorry — same count, structurally cleaner with reusable signature) | `Proofs/Output/EmitterScannability.lean` | ✓ done 2026-04-30 |
+| J.4.2.b-2d-key-chain-Part2-body-A1 | Foundational lemma `saveSimpleKey_pkPush_when_allowed` (in `Proofs/Output/EmitterScannability.lean`, after `saveSimpleKey_id_of_flow_ska_false_ek_none`): exact pendingKey effect of `saveSimpleKey` when the push branch fires — under `simpleKeyAllowed = true ∧ explicitKeyLine = none`, conclude `(saveSimpleKey s).pendingKeys = s.pendingKeys.push <unresolved at s.tokens.size>`, `(saveSimpleKey s).pendingKeyActive = some s.pendingKeys.size`, `(saveSimpleKey s).simpleKey.possible = true`.  Companion to the existing identity-branch lemma.  Investigation showed Part2-body-A genuinely decomposes into A1 (this) + A2 (per-leaf scalar) + A3 (per-leaf seq) + A4 (per-leaf map) + final `EmitScansInFlow` def strengthening.  This step lands the foundational ingredient consumed by all per-leaf theorems and potentially Part2-body-B (`:`-resolution exposure on `scanNextToken_flow_value`) | 0 (foundational lemma fully proven, no sorry) | `Proofs/Output/EmitterScannability.lean` | ✓ done 2026-05-01 |
 
 **J.3.1 — Linearise foundations** [✓ completed 2026-04-26]:
 
@@ -2313,11 +2314,45 @@ Remaining J.4.2.b work:
         `s'.pendingKeys[s.pendingKeys.size].kind = .unresolved`,
         `s'.pendingKeys[s.pendingKeys.size].insertBeforeIdx = s.tokens.size`,
         `s'.pendingKeyActive = some s.pendingKeys.size`,
-        `s'.simpleKey.possible = true`.  Re-prove all
-        `EmitScansInFlow` instances (scalar via
-        `scanNextToken_flow_scanDoubleQuoted`, sequence via nested
-        flow open + body + close, mapping similar).  Estimate: 1-2
-        cadence steps.
+        `s'.simpleKey.possible = true`.  Investigation showed this
+        decomposes naturally into 4 sub-steps:
+        - **A1 (`saveSimpleKey_pkPush_when_allowed` foundational lemma)**:
+          exact pendingKey effect of `saveSimpleKey` under the push
+          branch — `(saveSimpleKey s).pendingKeys = s.pendingKeys.push
+          <unresolved at s.tokens.size>`, `pendingKeyActive = some
+          s.pendingKeys.size`, `simpleKey.possible = true`.  Companion
+          to the existing `saveSimpleKey_id_of_flow_ska_false_ek_none`
+          (identity branch).  Consumed by A2/A3/A4 and potentially
+          Part2-body-B (`:`-resolution).  Estimate: ~0 cadence steps
+          (one-line foundational lemma).
+        - **A2 (per-leaf scalar `scanNextToken_flow_scanDoubleQuoted_pkPush`)**:
+          mirrors `scanNextToken_flow_scanDoubleQuoted` but tracks
+          pendingKey shape through preprocess + dispatcher chain +
+          scanDoubleQuoted (preserves) + setPendingKeyEndLine wrap
+          (size + insertBeforeIdx + kind preserved per-entry; only
+          endLine field changes).  Conclusion: under
+          `s.simpleKeyAllowed = true ∧ s.explicitKeyLine = none`,
+          `s'.pendingKeys.size = s.pendingKeys.size + 1`,
+          `s'.pendingKeys[s.pendingKeys.size].insertBeforeIdx
+            = s.tokens.size`, `s'.pendingKeys[s.pendingKeys.size].kind
+            = .unresolved`.  Estimate: 1 cadence step (~80 lines of
+          parallel proof — duplicates dispatcher trace from existing
+          theorem; alternative: augment existing theorem in-place with
+          new conjuncts).
+        - **A3 (per-leaf sequence)**: through nested flow open + body
+          + close.  The OUTER `saveSimpleKey` (during preprocess of
+          `[`) pushes the entry; inner content scans push more entries
+          but do NOT touch the outer entry (since `[` scan sets
+          `pendingKeyActive := none` after, so inner resolutions
+          target NEW indices).  Estimate: 1-2 cadence steps.
+        - **A4 (per-leaf mapping)**: similar to A3 but inner content
+          may include `:` resolutions for inner pairs.  The outer
+          mapping's pendingKey still untouched (different
+          `pendingKeyActive`).  Estimate: 1-2 cadence steps.
+
+        After A1-A4: add the gated conjunct to `EmitScansInFlow`
+        definition; re-prove `emit_scans_in_flow` cases scalar/seq/map
+        using the per-leaf lemmas.  Estimate: ~0.5 cadence step.
      2. **2d-key-chain-Part2-body-B (`scanNextToken_flow_value` strengthening)**:
         expose the resolution effect on the active pendingKey — under
         precondition `s.simpleKey.possible = true ∧ s.pendingKeyActive
@@ -2597,6 +2632,22 @@ this fact at `scanNextToken_flow_open_mapping_init`'s output is a small
 cascade-stitching task (item 3), not 2d-key-chain itself.  Net effect:
 contract refinement + trivial sub-fact discharged + named decomposition,
 no sorry count change.
+J.4.2.b-2d-key-chain-Part2-body-A1 (foundational lemma
+`saveSimpleKey_pkPush_when_allowed`) landed 2026-05-01 with sorry count
+**unchanged** in EmitterScannability.  Adds a one-line foundational
+lemma in `Proofs/Output/EmitterScannability.lean` (next to the existing
+identity-branch lemma `saveSimpleKey_id_of_flow_ska_false_ek_none`)
+exposing the exact pendingKey effect of `saveSimpleKey` under the push
+branch (`simpleKeyAllowed = true ∧ explicitKeyLine = none`):
+`(saveSimpleKey s).pendingKeys = s.pendingKeys.push <unresolved at
+s.tokens.size>`, `pendingKeyActive = some s.pendingKeys.size`,
+`simpleKey.possible = true`.  Investigation showed Part2-body-A
+genuinely decomposes into A1 (this lemma) + A2 (per-leaf scalar) + A3
+(per-leaf seq) + A4 (per-leaf map) + final `EmitScansInFlow` def
+strengthening — Blueprint substep manifest updated with the refined
+A1-A4 plan.  Net effect: foundational ingredient in tree, ready for
+consumption by the per-leaf theorems landing in the next cadence steps.
+Sorry count unchanged (no discharge, just infrastructure).
 J.4.2.b-2d-key-chain-Part2-stub (named extraction of the first-key
 chain-side accounting) landed 2026-04-30 with sorry count **unchanged**
 in EmitterScannability.  Introduced freestanding theorem

@@ -3329,6 +3329,33 @@ theorem saveSimpleKey_id_of_flow_ska_false_ek_none (s : ScannerState)
   simp only [h_flow, h_ek, show (none == some s.line) = false from by rfl,
              Bool.true_and, Bool.false_eq_true, ite_false, h_ska]
 
+/-- **J.4.2.b-2d-key-chain-Part2-body-A foundational lemma**:
+    `saveSimpleKey`'s exact pendingKey effect when the push branch fires.
+
+    Under `simpleKeyAllowed = true` and `explicitKeyLine = none` (so the
+    flow-context explicit-key guard doesn't fire), `saveSimpleKey` pushes
+    one new `.unresolved` entry at `insertBeforeIdx = s.tokens.size`,
+    sets `pendingKeyActive` to its index, and marks `simpleKey.possible
+    = true`.  Companion to `saveSimpleKey_id_of_flow_ska_false_ek_none`
+    (which covers the identity branch).
+
+    Used by `scanNextToken_flow_scanDoubleQuoted_pkPush` (per-leaf
+    scalar pkPush theorem). -/
+theorem saveSimpleKey_pkPush_when_allowed (s : ScannerState)
+    (h_ska : s.simpleKeyAllowed = true)
+    (h_ek : s.explicitKeyLine = none) :
+    (saveSimpleKey s).pendingKeys = s.pendingKeys.push
+      { insertBeforeIdx := s.tokens.size,
+        pos := s.currentPos,
+        endLine := s.line,
+        kind := .unresolved }
+    ∧ (saveSimpleKey s).pendingKeyActive = some s.pendingKeys.size
+    ∧ (saveSimpleKey s).simpleKey.possible = true := by
+  refine ⟨?_, ?_, ?_⟩ <;>
+  · unfold saveSimpleKey
+    simp only [h_ek, show (none == some s.line) = false from by rfl,
+               Bool.and_false, Bool.false_eq_true, ↓reduceIte, h_ska]
+
 -- scanValueValidate always succeeds when simpleKey.possible is false
 -- and explicitKeyLine is none: all 5 checks short-circuit.
 theorem scanValueValidate_ok_of_not_possible_ek_none (s : ScannerState)
