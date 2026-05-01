@@ -4509,6 +4509,200 @@ theorem scanNextToken_flow_scanDoubleQuoted (s : ScannerState)
     fun t ht => by rw [h_tok_f] at ht; injection ht with ht; subst ht; exact ⟨nofun, nofun, nofun⟩,
     h_ska_f, h_line_f, (by rw [h_line_f]; exact h_atol_f), h_endline_f, h_stack_f⟩
 
+/-- Per-leaf scalar pkPush variant of `scanNextToken_flow_scanDoubleQuoted`.
+
+    Adds three pendingKey-tracking conclusions under the additional
+    `simpleKeyAllowed = true` and `explicitKeyLine = none` hypotheses:
+    the `saveSimpleKey` push branch fires (A1 lemma),
+    `scanDoubleQuoted` preserves `pendingKeys`, and the
+    `dispatchContent` `setPendingKeyEndLine` wrap preserves size,
+    insertBeforeIdx, and kind per-entry — so the new entry at index
+    `s.pendingKeys.size` carries `insertBeforeIdx = s.tokens.size` and
+    `kind = .unresolved`.
+
+    Initiative 3 J.4.2.b-2d-key-chain-Part2-body-A2: per-leaf scalar
+    pkPush theorem.  Consumed by an eventual strengthening of
+    `EmitScansInFlow` (A4) to expose the first-key chain-side
+    accounting facts required by `emitPairList_chain_first_pkShape`. -/
+theorem scanNextToken_flow_scanDoubleQuoted_pkPush (s : ScannerState)
+    (content : String) (rest : List Char)
+    (hcorr : ScannerSurfCorr s ⟨['"'] ++ (escapeString content).toList ++ ['"'] ++ rest, s.col⟩)
+    (h_flow : s.inFlow = true)
+    (h_indent : s.currentIndent < 0)
+    (h_col_pos : s.col > 0)
+    (h_atol : AllTokensOnLine s s.line)
+    (h_endline : EndLineOnLine s)
+    (h_ska : s.simpleKeyAllowed = true)
+    (h_ek_none : s.explicitKeyLine = none) :
+    ∃ s', scanNextToken s = .ok (some s')
+      ∧ ScannerSurfCorr s' ⟨rest, s'.col⟩
+      ∧ s'.flowLevel = s.flowLevel
+      ∧ s'.directivesPresent = s.directivesPresent
+      ∧ s'.indents = s.indents
+      ∧ s'.explicitKeyLine = s.explicitKeyLine
+      ∧ s'.col > 0
+      ∧ (∀ t, lastTokenVal? s'.tokens = some t →
+          t ≠ .flowSequenceStart ∧ t ≠ .flowMappingStart ∧ t ≠ .flowEntry)
+      ∧ s'.simpleKeyAllowed = false
+      ∧ s'.line = s.line
+      ∧ AllTokensOnLine s' s'.line
+      ∧ EndLineOnLine s'
+      ∧ s'.simpleKeyStack = s.simpleKeyStack
+      ∧ s'.pendingKeys.size = s.pendingKeys.size + 1
+      ∧ ∃ (h : s.pendingKeys.size < s'.pendingKeys.size),
+          (s'.pendingKeys[s.pendingKeys.size]'h).insertBeforeIdx = s.tokens.size
+          ∧ (s'.pendingKeys[s.pendingKeys.size]'h).kind = .unresolved := by
+  -- Step 1: preprocessing (parallel to base theorem)
+  have h_pp : scanNextToken_preprocess s = .ok (some (saveSimpleKey s, '"')) :=
+    scanNextToken_preprocess_flow s '"' ((escapeString content).toList ++ ['"'] ++ rest) s.col
+      hcorr h_flow (by decide) (by decide) (by decide)
+  -- Step 2: structural dispatch returns none
+  have h_sk_flow : (saveSimpleKey s).inFlow = s.inFlow := saveSimpleKey_preserves_inFlow s
+  have h_sk_indent : (saveSimpleKey s).currentIndent = s.currentIndent := by
+    unfold ScannerState.currentIndent; rw [saveSimpleKey_preserves_indents]
+  have h_sk_col : (saveSimpleKey s).col = s.col := saveSimpleKey_preserves_col s
+  have h_struct : scanNextToken_dispatchStructural (saveSimpleKey s) '"' = .ok none :=
+    dispatchStructural_none_flow _ _ (h_sk_flow ▸ h_flow) (h_sk_indent ▸ h_indent) (h_sk_col ▸ h_col_pos)
+  -- Step 3: allowDirectives update
+  let s_ad := if (saveSimpleKey s).allowDirectives then
+    { saveSimpleKey s with allowDirectives := false, documentEverStarted := true }
+  else saveSimpleKey s
+  have h_ad_flow : s_ad.inFlow = s.inFlow := by
+    simp only [s_ad]; split <;> exact h_sk_flow
+  have h_ad_col : s_ad.col = s.col := by
+    simp only [s_ad]; split <;> exact h_sk_col
+  -- Step 4: checkBlockFlowIndent
+  have h_check : scanNextToken_checkBlockFlowIndent s_ad '"' = .ok () :=
+    checkBlockFlowIndent_ok_flow _ _ (h_ad_flow ▸ h_flow)
+  -- Step 5: flow dispatch returns none
+  have h_flow_none : scanNextToken_dispatchFlowIndicators s_ad '"' = .ok none :=
+    dispatchFlowIndicators_none _ _ (by decide) (by decide) (by decide) (by decide) (by decide)
+  -- Step 6: block dispatch returns none
+  have h_block_none : scanNextToken_dispatchBlockIndicators s_ad '"' = .ok none :=
+    dispatchBlockIndicators_none_quote _
+  -- Step 7: content dispatch → scanDoubleQuoted
+  have h_ad_corr : ScannerSurfCorr s_ad ⟨['"'] ++ (escapeString content).toList ++ ['"'] ++ rest, s_ad.col⟩ := by
+    have h_ad_input : s_ad.input = s.input := by
+      simp only [s_ad]; split <;> exact saveSimpleKey_preserves_input s
+    have h_ad_offset : s_ad.offset = s.offset := by
+      simp only [s_ad]; split <;> exact saveSimpleKey_preserves_offset s
+    have h_ad_inputEnd : s_ad.inputEnd = s.inputEnd := by
+      simp only [s_ad]; split <;> exact saveSimpleKey_preserves_inputEnd s
+    have h_ad_indents : s_ad.indents = s.indents := by
+      simp only [s_ad]; split <;> exact saveSimpleKey_preserves_indents s
+    rw [h_ad_col]
+    exact ScannerSurfCorr_transfer hcorr h_ad_input h_ad_offset h_ad_inputEnd h_ad_col h_ad_indents
+  have h_ad_flow_bool : s_ad.inFlow = true := h_ad_flow ▸ h_flow
+  have h_ad_fl : s_ad.flowLevel = s.flowLevel := by
+    simp only [s_ad]; split <;> exact saveSimpleKey_preserves_flowLevel s
+  have h_ad_dp : s_ad.directivesPresent = s.directivesPresent := by
+    simp only [s_ad]; split <;> exact saveSimpleKey_preserves_directivesPresent s
+  have h_ad_ids : s_ad.indents = s.indents := by
+    simp only [s_ad]; split <;> exact saveSimpleKey_preserves_indents s
+  have h_ad_ek : s_ad.explicitKeyLine = s.explicitKeyLine := by
+    simp only [s_ad]; split <;> exact saveSimpleKey_preserves_ek s
+  obtain ⟨s_dq, h_dq, h_dq_corr, h_dq_fl, h_dq_dp, h_dq_ids, h_dq_ek, h_dq_col, h_dq_tokens, h_dq_ska, h_dq_line⟩ :=
+    scanDoubleQuoted_flow_ok s_ad content rest h_ad_corr h_ad_flow_bool
+  have h_ad_line : s_ad.line = s.line := by
+    simp only [s_ad]; split <;> exact saveSimpleKey_preserves_line s
+  -- pkPush tracking: A1 lemma + record-update preservations
+  obtain ⟨h_sk_pks, _h_sk_pka, h_sk_skp⟩ :=
+    saveSimpleKey_pkPush_when_allowed s h_ska h_ek_none
+  have h_ad_pks : s_ad.pendingKeys = (saveSimpleKey s).pendingKeys := by
+    simp only [s_ad]; split <;> rfl
+  have h_dq_pks : s_dq.pendingKeys = s_ad.pendingKeys :=
+    ScannerCorrectness.scanDoubleQuoted_preserves_pendingKeys s_ad s_dq h_dq
+  have h_dq_pks_full : s_dq.pendingKeys = s.pendingKeys.push
+      { insertBeforeIdx := s.tokens.size, pos := s.currentPos,
+        endLine := s.line, kind := .unresolved } := by
+    rw [h_dq_pks, h_ad_pks, h_sk_pks]
+  -- s_dq.simpleKey.possible = true: dispatchContent wrap fires
+  have h_ad_sk : s_ad.simpleKey = (saveSimpleKey s).simpleKey := by
+    simp only [s_ad]; split <;> rfl
+  have h_dq_sk : s_dq.simpleKey = s_ad.simpleKey :=
+    scanDoubleQuoted_preserves_simpleKey s_ad s_dq h_dq
+  have h_dq_skp : s_dq.simpleKey.possible = true := by
+    rw [h_dq_sk, h_ad_sk]; exact h_sk_skp
+  have h_content : ∃ s_final, scanNextToken_dispatchContent s_ad '"' = .ok s_final
+      ∧ ScannerSurfCorr s_final ⟨rest, s_final.col⟩
+      ∧ s_final.flowLevel = s.flowLevel
+      ∧ s_final.directivesPresent = s.directivesPresent
+      ∧ s_final.indents = s.indents
+      ∧ s_final.explicitKeyLine = s.explicitKeyLine
+      ∧ s_final.col > 0
+      ∧ lastTokenVal? s_final.tokens = some (.scalar content .doubleQuoted)
+      ∧ s_final.simpleKeyAllowed = false
+      ∧ s_final.line = s.line
+      ∧ AllTokensOnLine s_final s.line
+      ∧ EndLineOnLine s_final
+      ∧ s_final.simpleKeyStack = s.simpleKeyStack
+      ∧ s_final.pendingKeys.size = s.pendingKeys.size + 1
+      ∧ ∃ (h : s.pendingKeys.size < s_final.pendingKeys.size),
+          (s_final.pendingKeys[s.pendingKeys.size]'h).insertBeforeIdx = s.tokens.size
+          ∧ (s_final.pendingKeys[s.pendingKeys.size]'h).kind = .unresolved := by
+    unfold scanNextToken_dispatchContent
+    simp (config := { decide := true }) only [bind, Except.bind, pure, Except.pure, h_dq]
+    have h_atol_ad : AllTokensOnLine s_ad s.line :=
+      AllTokensOnLine_allowDirectives _ _
+        (AllTokensOnLine_saveSimpleKey _ _ h_atol rfl)
+    have h_atol_dq : AllTokensOnLine s_dq s.line :=
+      AllTokensOnLine_scanDoubleQuoted s_ad s_dq h_dq h_ad_flow_bool
+        s.line h_atol_ad h_ad_line
+    have h_dq_stack : s_dq.simpleKeyStack = s_ad.simpleKeyStack :=
+      ScannerCorrectness.scanDoubleQuoted_preserves_simpleKeyStack s_ad s_dq h_dq
+    have h_ad_stack : s_ad.simpleKeyStack = s.simpleKeyStack := by
+      simp only [s_ad]; split <;> exact ScannerCorrectness.saveSimpleKey_preserves_simpleKeyStack s
+    -- Reduce the inner ite via h_dq_skp = true
+    simp only [h_dq_skp, ↓reduceIte]
+    refine ⟨_, rfl,
+      ⟨h_dq_corr.chars_from, h_dq_corr.col_eq, h_dq_corr.end_eq,
+       h_dq_corr.input_prefix, h_dq_corr.indent_cols_nonneg⟩,
+      h_dq_fl.trans h_ad_fl, h_dq_dp.trans h_ad_dp, h_dq_ids.trans h_ad_ids,
+      h_dq_ek.trans h_ad_ek, h_dq_col, h_dq_tokens, h_dq_ska,
+      h_dq_line.trans h_ad_line, h_atol_dq, ?_, h_dq_stack.trans h_ad_stack, ?_, ?_⟩
+    · -- EndLineOnLine on the wrap (parallel to base theorem true branch)
+      intro _
+      constructor
+      · rfl
+      · show s_dq.simpleKey.pos.line = s_dq.line
+        rw [h_dq_sk, h_ad_sk]
+        have h_eol_sk := EndLineOnLine_saveSimpleKey_flow s h_endline
+        have h_sk_poss : (saveSimpleKey s).simpleKey.possible = true := h_sk_skp
+        exact (h_eol_sk h_sk_poss).2 |>.trans (saveSimpleKey_preserves_line s)
+          |>.trans (h_dq_line.trans h_ad_line).symm
+    · -- pkPush size: setPendingKeyEndLine preserves size, then s_dq.pendingKeys = push
+      show (setPendingKeyEndLine s_dq.pendingKeys s_dq.pendingKeyActive s_dq.line).size
+        = s.pendingKeys.size + 1
+      rw [ScannerCorrectness.setPendingKeyEndLine_size, h_dq_pks_full, Array.size_push]
+    · -- pkPush entry at s.pendingKeys.size
+      have h_dq_size : s_dq.pendingKeys.size = s.pendingKeys.size + 1 := by
+        rw [h_dq_pks_full, Array.size_push]
+      have h_dq_lt : s.pendingKeys.size < s_dq.pendingKeys.size := by
+        rw [h_dq_size]; exact Nat.lt_succ_self _
+      have h_size_eq : (setPendingKeyEndLine s_dq.pendingKeys s_dq.pendingKeyActive s_dq.line).size
+          = s_dq.pendingKeys.size := ScannerCorrectness.setPendingKeyEndLine_size _ _ _
+      have h_lt_wrap : s.pendingKeys.size <
+          (setPendingKeyEndLine s_dq.pendingKeys s_dq.pendingKeyActive s_dq.line).size := by
+        rw [h_size_eq]; exact h_dq_lt
+      have h_get : s_dq.pendingKeys[s.pendingKeys.size]'h_dq_lt =
+          { insertBeforeIdx := s.tokens.size, pos := s.currentPos,
+            endLine := s.line, kind := .unresolved } := by
+        simp only [h_dq_pks_full, Array.getElem_push]
+        rw [dif_neg (Nat.lt_irrefl _)]
+      refine ⟨h_lt_wrap, ?_, ?_⟩
+      · rw [ScannerCorrectness.setPendingKeyEndLine_insertBeforeIdx s_dq.pendingKeys s_dq.pendingKeyActive
+            s_dq.line s.pendingKeys.size h_dq_lt h_lt_wrap, h_get]
+      · rw [ScannerCorrectness.setPendingKeyEndLine_kind s_dq.pendingKeys s_dq.pendingKeyActive
+            s_dq.line s.pendingKeys.size h_dq_lt h_lt_wrap, h_get]
+  obtain ⟨s_final, h_dc_eq, h_corr_f, h_fl_f, h_dp_f, h_ids_f, h_ek_f, h_col_f,
+         h_tok_f, h_ska_f, h_line_f, h_atol_f, h_endline_f, h_stack_f,
+         h_pks_size_f, h_pks_idx_f⟩ := h_content
+  exact ⟨s_final, scanNextToken_via_content_dispatch _ _ _ _ _ h_pp h_struct rfl h_check
+    h_flow_none h_block_none h_dc_eq, h_corr_f, h_fl_f, h_dp_f, h_ids_f, h_ek_f, h_col_f,
+    fun t ht => by rw [h_tok_f] at ht; injection ht with ht; subst ht; exact ⟨nofun, nofun, nofun⟩,
+    h_ska_f, h_line_f, (by rw [h_line_f]; exact h_atol_f), h_endline_f, h_stack_f,
+    h_pks_size_f, h_pks_idx_f⟩
+
 -- ═══ scanNextToken for '[' from initial state ═══
 
 /-- Structural dispatch returns none for `[` at initial state. -/
