@@ -3412,24 +3412,6 @@ theorem pkRec_size_of_pks_eq {s₁ s₂ : ScannerState}
   intro j hj hj'
   refine ⟨?_, ?_⟩ <;> simp only [h]
 
-/-- **J.4.2.b-2d-key-chain-Part2-body-C-foundation-EmitScansInFlow-stack-restore**
-    sorry'd helper: `scanDoubleQuoted` preserves `pendingKeyStack`.
-
-    True (scanDoubleQuoted is a Class A passthrough — its body of
-    `collectDoubleQuotedLoop` + `emitAt` + advance steps never invokes
-    flow-open/close, the only operations that push/pop pendingKeyStack).
-    Proper discharge requires building a parallel
-    `_preserves_pendingKeyStack` chain through `collectDoubleQuotedLoop`,
-    `processEscape`, etc. — mechanically identical to the existing
-    `_preserves_simpleKeyStack` chain (≈30 lemmas) but a separate cadence
-    step's worth of mechanical work.  Deferred to a follow-on
-    "preservation-chain" sub-step so `stack-restore` stays focused on the
-    close-side restore lemmas + framework conjuncts. -/
-theorem scanDoubleQuoted_preserves_pendingKeyStack_sorry
-    (s s_dq : ScannerState) (_h : scanDoubleQuoted s = .ok s_dq) :
-    s_dq.pendingKeyStack = s.pendingKeyStack := by
-  sorry
-
 /-- **J.4.2.b-2d-key-chain-Part2-body-C-foundation-EmitScansInFlow-defns-prove**:
     Compose two consecutive (size-mono + pkRec-preservation) witnesses through
     an intermediate state.  Used by `emit_scans_in_flow` and consumer lemmas
@@ -4535,14 +4517,12 @@ theorem scanNextToken_flow_scanDoubleQuoted (s : ScannerState)
       ∧ (∀ j (hj : j < s.pendingKeys.size) (hj' : j < s'.pendingKeys.size),
           (s'.pendingKeys[j]'hj').insertBeforeIdx = (s.pendingKeys[j]'hj).insertBeforeIdx
           ∧ (s'.pendingKeys[j]'hj').kind = (s.pendingKeys[j]'hj).kind)
-      -- J.4.2.b-2d-key-chain-Part2-body-C-foundation-EmitScansInFlow-stack-restore:
-      -- pendingKeyStack preserved (scanDoubleQuoted is a Class A passthrough
-      -- that doesn't push/pop pendingKeyStack; the surrounding setPendingKeyEndLine
-      -- wrap mutates pendingKeys[active].endLine but leaves pendingKeyStack alone).
-      -- Discharged via a sorry'd helper `scanDoubleQuoted_preserves_pendingKeyStack_sorry`
-      -- pending the parallel `_preserves_pendingKeyStack` chain through
-      -- collectDoubleQuotedLoop / processEscape (≈300 lemmas mirroring the
-      -- `_preserves_simpleKeyStack` chain).
+      -- J.4.2.b-2d-key-chain-Part2-body-C-foundation-EmitScansInFlow-stack-restore +
+      -- preservation-chain: pendingKeyStack preserved (scanDoubleQuoted is a Class A
+      -- passthrough that doesn't push/pop pendingKeyStack; the surrounding
+      -- setPendingKeyEndLine wrap mutates pendingKeys[active].endLine but leaves
+      -- pendingKeyStack alone).  Discharged via the proven
+      -- `ScannerCorrectness.scanDoubleQuoted_preserves_pendingKeyStack` chain.
       ∧ s'.pendingKeyStack = s.pendingKeyStack := by
   -- Step 1: preprocessing
   have h_pp : scanNextToken_preprocess s = .ok (some (saveSimpleKey s, '"')) :=
@@ -4622,8 +4602,9 @@ theorem scanNextToken_flow_scanDoubleQuoted (s : ScannerState)
       ∧ (∀ j (hj : j < s.pendingKeys.size) (hj' : j < s_final.pendingKeys.size),
           (s_final.pendingKeys[j]'hj').insertBeforeIdx = (s.pendingKeys[j]'hj).insertBeforeIdx
           ∧ (s_final.pendingKeys[j]'hj').kind = (s.pendingKeys[j]'hj).kind)
-      -- stack-restore: pendingKeyStack preserved (Class A passthrough — sorry'd
-      -- in `scanDoubleQuoted_preserves_pendingKeyStack_sorry`).
+      -- stack-restore + preservation-chain: pendingKeyStack preserved (Class A
+      -- passthrough — discharged via
+      -- `ScannerCorrectness.scanDoubleQuoted_preserves_pendingKeyStack`).
       ∧ s_final.pendingKeyStack = s.pendingKeyStack := by
     unfold scanNextToken_dispatchContent
     simp (config := { decide := true }) only [bind, Except.bind, pure, Except.pure, h_dq]
@@ -4651,10 +4632,10 @@ theorem scanNextToken_flow_scanDoubleQuoted (s : ScannerState)
       simp only [s_ad]; split <;> rfl
     have h_dq_pks_full : s_dq.pendingKeys = (saveSimpleKey s).pendingKeys :=
       h_dq_pks.trans h_ad_pks
-    -- pendingKeyStack chain s → saveSimpleKey s → s_ad → s_dq (sorry'd at the
-    -- scanDoubleQuoted leg pending the parallel preservation chain).
+    -- pendingKeyStack chain s → saveSimpleKey s → s_ad → s_dq via the proven
+    -- `_preserves_pendingKeyStack` chain (preservation-chain sub-step).
     have h_dq_pks_stack : s_dq.pendingKeyStack = s_ad.pendingKeyStack :=
-      scanDoubleQuoted_preserves_pendingKeyStack_sorry s_ad s_dq h_dq
+      ScannerCorrectness.scanDoubleQuoted_preserves_pendingKeyStack s_ad s_dq h_dq
     have h_ad_pks_stack : s_ad.pendingKeyStack = s.pendingKeyStack := by
       simp only [s_ad]; split <;> exact ScannerCorrectness.saveSimpleKey_preserves_pendingKeyStack s
     have h_dq_pks_stack_full : s_dq.pendingKeyStack = s.pendingKeyStack :=

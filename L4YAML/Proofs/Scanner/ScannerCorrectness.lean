@@ -3820,6 +3820,176 @@ theorem skipToContent_preserves_pendingKeyStack (s s' : ScannerState)
   unfold skipToContent at h; exact skipToContentLoop_preserves_pendingKeyStack s s' _ h
 
 
+/-! ### pendingKeyStack preservation through quoted-scalar chain
+(mirrors the corresponding `_simpleKeyStack` chain — `scanDoubleQuoted` and its
+helpers never touch `pendingKeyStack`). -/
+
+theorem emitAt_preserves_pendingKeyStack (s : ScannerState) (pos : YamlPos) (tok : YamlToken) :
+    (s.emitAt pos tok).pendingKeyStack = s.pendingKeyStack := by
+  unfold ScannerState.emitAt; rfl
+
+theorem collectHexDigitsLoop_preserves_pendingKeyStack (s : ScannerState) (hex : String) (n : Nat) :
+    (collectHexDigitsLoop s hex n).snd.pendingKeyStack = s.pendingKeyStack := by
+  induction n generalizing s hex with
+  | zero => unfold collectHexDigitsLoop; rfl
+  | succ n' ih =>
+    unfold collectHexDigitsLoop
+    cases h_peek : s.peek? with
+    | none => simp []
+    | some c =>
+      simp []
+      split
+      · have h_adv := advance_preserves_pendingKeyStack s
+        rw [ih, h_adv]
+      · rfl
+
+theorem parseHexEscape_preserves_pendingKeyStack (s : ScannerState) (n : Nat) (ch : Char) (s' : ScannerState)
+    (h : parseHexEscape s n = .ok (ch, s')) :
+    s'.pendingKeyStack = s.pendingKeyStack := by
+  unfold parseHexEscape at h
+  simp only [] at h
+  have h_collect := collectHexDigitsLoop_preserves_pendingKeyStack s "" n
+  split at h <;> try contradiction
+  split at h <;> try contradiction
+  injection h with h_eq; cases h_eq
+  rw [h_collect]
+
+theorem processEscape_preserves_pendingKeyStack (s : ScannerState) (ch : Char) (s' : ScannerState)
+    (h : processEscape s = .ok (ch, s')) :
+    s'.pendingKeyStack = s.pendingKeyStack := by
+  unfold processEscape at h
+  simp only [] at h
+  split at h <;> try contradiction
+  repeat (split at h)
+  all_goals (
+    first
+    | (injection h with h_eq; cases h_eq; exact advance_preserves_pendingKeyStack s)
+    | (have h_adv := advance_preserves_pendingKeyStack s
+       have h_hex := parseHexEscape_preserves_pendingKeyStack s.advance _ ch s' h
+       rw [h_hex, h_adv])
+    | contradiction
+  )
+
+theorem skipBlankLinesLoop_preserves_pendingKeyStack (s : ScannerState) (cnt fuel inputEnd : Nat) :
+    (skipBlankLinesLoop s cnt fuel inputEnd).snd.pendingKeyStack = s.pendingKeyStack := by
+  induction fuel generalizing s cnt with
+  | zero => unfold skipBlankLinesLoop; rfl
+  | succ fuel' ih =>
+    unfold skipBlankLinesLoop
+    cases h_peek : (skipSpaces s).peek? with
+    | none => simp [h_peek]
+    | some c =>
+      simp [h_peek]
+      cases h_lb : isLineBreakBool c with
+      | false => simp []
+      | true =>
+        simp []
+        have h_sp := skipSpaces_preserves_pendingKeyStack s
+        have h_cn := consumeNewline_preserves_pendingKeyStack (skipSpaces s)
+        rw [ih, h_cn, h_sp]
+
+theorem foldQuotedNewlinesLoop_preserves_pendingKeyStack (s : ScannerState) (emptyCount fuel : Nat) :
+    (foldQuotedNewlinesLoop s emptyCount fuel).fst.pendingKeyStack = s.pendingKeyStack := by
+  induction fuel generalizing s emptyCount with
+  | zero => unfold foldQuotedNewlinesLoop; rfl
+  | succ fuel' ih =>
+    unfold foldQuotedNewlinesLoop
+    cases h_peek : (skipSpaces s).peek? with
+    | none => simp [h_peek]
+    | some c =>
+      simp [h_peek]
+      cases h_lb : isLineBreakBool c with
+      | false => simp []
+      | true =>
+        simp []
+        have h_sp := skipSpaces_preserves_pendingKeyStack s
+        have h_cn := consumeNewline_preserves_pendingKeyStack (skipSpaces s)
+        rw [ih, h_cn, h_sp]
+
+theorem foldQuotedNewlines_preserves_pendingKeyStack (s : ScannerState) (s' : ScannerState) (content : String)
+    (h : foldQuotedNewlines s = .ok (content, s')) :
+    s'.pendingKeyStack = s.pendingKeyStack := by
+  unfold foldQuotedNewlines at h
+  simp only [bind, Except.bind, pure] at h
+  have h_cn := consumeNewline_preserves_pendingKeyStack s
+  let fuel := s.inputEnd - (consumeNewline s).offset + 1
+  have h_fold := foldQuotedNewlinesLoop_preserves_pendingKeyStack (consumeNewline s) 0 fuel
+  have h_sp := skipSpaces_preserves_pendingKeyStack (foldQuotedNewlinesLoop (consumeNewline s) 0 fuel).fst
+  have h_sw := skipWhitespace_preserves_pendingKeyStack (skipSpaces (foldQuotedNewlinesLoop (consumeNewline s) 0 fuel).fst)
+  split at h <;> try contradiction
+  · split at h <;> try contradiction
+    split at h <;> try contradiction
+    split at h
+    · injection h with heq; cases heq; rw [h_sw, h_sp, h_fold, h_cn]
+    · injection h with heq; cases heq; rw [h_sw, h_sp, h_fold, h_cn]
+  · split at h <;> try contradiction
+    split at h
+    · injection h with heq; cases heq; rw [h_sw, h_sp, h_fold, h_cn]
+    · injection h with heq; cases heq; rw [h_sw, h_sp, h_fold, h_cn]
+
+theorem collectDoubleQuotedLoop_preserves_pendingKeyStack (s : ScannerState) (content : String)
+    (fuel : Nat) (startPos : YamlPos) (inFlow : Bool) (currentIndent : Int) (inputEnd : Nat) :
+    ∀ result, collectDoubleQuotedLoop s content fuel startPos inFlow currentIndent inputEnd = .ok result →
+    result.snd.pendingKeyStack = s.pendingKeyStack := by
+  intro result h
+  induction fuel generalizing s content with
+  | zero =>
+    unfold collectDoubleQuotedLoop at h
+    contradiction
+  | succ fuel' ih =>
+    unfold collectDoubleQuotedLoop at h
+    split at h
+    · contradiction
+    · injection h with h_eq; cases h_eq
+      exact advance_preserves_pendingKeyStack s
+    · simp only [] at h
+      split at h <;> try contradiction
+      split at h
+      · have h_cn := consumeNewline_preserves_pendingKeyStack s.advance
+        have h_sw := skipWhitespace_preserves_pendingKeyStack (consumeNewline s.advance)
+        have h_adv := advance_preserves_pendingKeyStack s
+        rw [ih _ _ h, h_sw, h_cn, h_adv]
+      · simp only [bind, Except.bind] at h
+        split at h <;> try contradiction
+        rename_i escape_result heq
+        cases escape_result with
+        | mk ch s_after_escape =>
+          have h_proc := processEscape_preserves_pendingKeyStack s.advance ch s_after_escape heq
+          have h_adv := advance_preserves_pendingKeyStack s
+          rw [ih _ _ h, h_proc, h_adv]
+    · split at h
+      · simp only [bind, Except.bind] at h
+        split at h <;> try contradiction
+        rename_i fold_result heq
+        cases fold_result with
+        | mk folded s_fold =>
+          have h_fold := foldQuotedNewlines_preserves_pendingKeyStack s s_fold folded heq
+          split at h <;> try contradiction
+          split at h <;> try contradiction
+          split at h <;> try contradiction
+          rw [ih s_fold (trimTrailingWS content ++ folded) h, h_fold]
+      · split at h <;> try contradiction
+        have h_adv := advance_preserves_pendingKeyStack s
+        rw [ih _ _ h, h_adv]
+
+theorem scanDoubleQuoted_preserves_pendingKeyStack (s : ScannerState) (s' : ScannerState)
+    (h : scanDoubleQuoted s = .ok s') : s'.pendingKeyStack = s.pendingKeyStack := by
+  unfold scanDoubleQuoted at h
+  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h
+  split at h <;> try contradiction
+  rename_i result heq
+  split at h
+  · split at h <;> try contradiction
+    simp only [Except.ok.injEq] at h; subst h
+    simp [emitAt_preserves_pendingKeyStack]
+    have := collectDoubleQuotedLoop_preserves_pendingKeyStack s.advance "" _ _ _ _ _ result heq
+    rw [this, advance_preserves_pendingKeyStack]
+  · simp only [Except.ok.injEq] at h; subst h
+    simp [emitAt_preserves_pendingKeyStack]
+    have := collectDoubleQuotedLoop_preserves_pendingKeyStack s.advance "" _ _ _ _ _ result heq
+    rw [this, advance_preserves_pendingKeyStack]
+
+
 /-! ### Loop-level simpleKeyStack preservation lemmas -/
 
 theorem collectHexDigitsLoop_preserves_simpleKeyStack (s : ScannerState) (hex : String) (n : Nat) :
