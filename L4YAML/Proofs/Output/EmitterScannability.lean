@@ -3397,6 +3397,76 @@ theorem saveSimpleKey_preserves_pkRec_prior (s : ScannerState) :
       · simp only [Array.getElem_push_lt hj]
     · refine ⟨rfl, rfl⟩
 
+/-- **J.4.2.b-2d-key-chain-Part2-body-C-foundation-EmitScansInFlow-defns-prove**:
+    `pendingKeys` equality lifts to (size-mono + pkRec-preservation) — used
+    when bridging through `scanNextToken_preprocess_flow_ws1` (which has
+    `s₃.pendingKeys = s₂.pendingKeys` via skipToContent's no-op on
+    pendingKeys). -/
+theorem pkRec_size_of_pks_eq {s₁ s₂ : ScannerState}
+    (h : s₂.pendingKeys = s₁.pendingKeys) :
+    s₁.pendingKeys.size ≤ s₂.pendingKeys.size ∧
+    (∀ j (hj : j < s₁.pendingKeys.size) (hj' : j < s₂.pendingKeys.size),
+        (s₂.pendingKeys[j]'hj').insertBeforeIdx = (s₁.pendingKeys[j]'hj).insertBeforeIdx
+        ∧ (s₂.pendingKeys[j]'hj').kind = (s₁.pendingKeys[j]'hj).kind) := by
+  refine ⟨h ▸ Nat.le_refl _, ?_⟩
+  intro j hj hj'
+  refine ⟨?_, ?_⟩ <;> simp only [h]
+
+/-- **J.4.2.b-2d-key-chain-Part2-body-C-foundation-EmitScansInFlow-defns-prove**
+    sorry'd placeholder for the body-C colon-step (size + pkRec) preservation,
+    deferred to the *gated* cadence sub-step.
+
+    The colon step (`scanNextToken_flow_value` / `scanValuePrepare`) modifies
+    `kind` at `pendingKeyActive`; the consumer-side scenario in
+    `emitPairList_scans_nonempty` ensures `pendingKeyActive ≥ s.pendingKeys.size`
+    (the body's initial size, set by the key's `saveSimpleKey` push) so
+    pkRec preservation at `j < s.pendingKeys.size` holds — but the precise
+    discharge needs the gated step's analysis of `scanNextToken_flow_value`'s
+    effect on `pendingKeys`, which is the next cadence sub-step.
+
+    Used in two call sites of `emitPairList_scans_nonempty` (singleton + cons);
+    consolidating into one sorry'd helper reduces the sorry-count regression
+    from `defns-prove` to a single sorry instead of two. -/
+private theorem emitPairList_body_size_pkRec_through_colon_sorry
+    (s s' : ScannerState) :
+    s.pendingKeys.size ≤ s'.pendingKeys.size ∧
+    (∀ j (hj : j < s.pendingKeys.size) (hj' : j < s'.pendingKeys.size),
+        (s'.pendingKeys[j]'hj').insertBeforeIdx = (s.pendingKeys[j]'hj).insertBeforeIdx
+        ∧ (s'.pendingKeys[j]'hj').kind = (s.pendingKeys[j]'hj).kind) := by
+  sorry
+
+/-- **J.4.2.b-2d-key-chain-Part2-body-C-foundation-EmitScansInFlow-defns-prove**:
+    Compose two consecutive (size-mono + pkRec-preservation) witnesses through
+    an intermediate state.  Used by `emit_scans_in_flow` and consumer lemmas
+    to chain helper-level pkRec preservation across multi-step paths
+    (key + colon + value + comma + recurse). -/
+theorem pkRec_size_compose
+    {s s_mid s_end : ScannerState}
+    (h_size_mid : s.pendingKeys.size ≤ s_mid.pendingKeys.size)
+    (h_size_end : s_mid.pendingKeys.size ≤ s_end.pendingKeys.size)
+    (h_rec_mid : ∀ j (hj : j < s.pendingKeys.size) (hj' : j < s_mid.pendingKeys.size),
+        (s_mid.pendingKeys[j]'hj').insertBeforeIdx
+          = (s.pendingKeys[j]'hj).insertBeforeIdx
+        ∧ (s_mid.pendingKeys[j]'hj').kind
+          = (s.pendingKeys[j]'hj).kind)
+    (h_rec_end : ∀ j (hj : j < s_mid.pendingKeys.size) (hj' : j < s_end.pendingKeys.size),
+        (s_end.pendingKeys[j]'hj').insertBeforeIdx
+          = (s_mid.pendingKeys[j]'hj).insertBeforeIdx
+        ∧ (s_end.pendingKeys[j]'hj').kind
+          = (s_mid.pendingKeys[j]'hj).kind) :
+    s.pendingKeys.size ≤ s_end.pendingKeys.size ∧
+    (∀ j (hj : j < s.pendingKeys.size) (hj' : j < s_end.pendingKeys.size),
+        (s_end.pendingKeys[j]'hj').insertBeforeIdx
+          = (s.pendingKeys[j]'hj).insertBeforeIdx
+        ∧ (s_end.pendingKeys[j]'hj').kind
+          = (s.pendingKeys[j]'hj).kind) := by
+  refine ⟨Nat.le_trans h_size_mid h_size_end, ?_⟩
+  intro j hj hj'
+  have hj_mid : j < s_mid.pendingKeys.size := Nat.lt_of_lt_of_le hj h_size_mid
+  obtain ⟨h_idx_mid, h_kind_mid⟩ := h_rec_mid j hj hj_mid
+  obtain ⟨h_idx_end, h_kind_end⟩ := h_rec_end j hj_mid hj'
+  exact ⟨h_idx_end.trans h_idx_mid, h_kind_end.trans h_kind_mid⟩
+
 -- scanValueValidate always succeeds when simpleKey.possible is false
 -- and explicitKeyLine is none: all 5 checks short-circuit.
 theorem scanValueValidate_ok_of_not_possible_ek_none (s : ScannerState)
@@ -8237,6 +8307,14 @@ def EmitScansInFlow (v : YamlValue) : Prop :=
       ∧ EndLineOnLine s'
       ∧ s'.simpleKeyStack = s.simpleKeyStack
       ∧ FlowMonoChain s.flowLevel s n s'
+      -- J.4.2.b-2d-key-chain-Part2-body-C-foundation-EmitScansInFlow-defns-prove:
+      -- pkRec preserved at indices < initial size, plus size monotonicity.
+      -- Composes through the (helper) per-step preservation along all paths
+      -- of `emit_scans_in_flow`'s induction (scalar/seq/map).
+      ∧ s.pendingKeys.size ≤ s'.pendingKeys.size
+      ∧ (∀ j (hj : j < s.pendingKeys.size) (hj' : j < s'.pendingKeys.size),
+          (s'.pendingKeys[j]'hj').insertBeforeIdx = (s.pendingKeys[j]'hj).insertBeforeIdx
+          ∧ (s'.pendingKeys[j]'hj').kind = (s.pendingKeys[j]'hj).kind)
 
 /-- `EmitListScansInFlow items` asserts that scanning the comma-separated
     emitList output succeeds in flow context, preserving invariants.
@@ -8265,6 +8343,11 @@ def EmitListScansInFlow (items : List YamlValue) : Prop :=
       ∧ EndLineOnLine s'
       ∧ s'.simpleKeyStack = s.simpleKeyStack
       ∧ FlowMonoChain s.flowLevel s n s'
+      -- J.4.2.b-2d-key-chain-Part2-body-C-foundation-EmitScansInFlow-defns-prove.
+      ∧ s.pendingKeys.size ≤ s'.pendingKeys.size
+      ∧ (∀ j (hj : j < s.pendingKeys.size) (hj' : j < s'.pendingKeys.size),
+          (s'.pendingKeys[j]'hj').insertBeforeIdx = (s.pendingKeys[j]'hj).insertBeforeIdx
+          ∧ (s'.pendingKeys[j]'hj').kind = (s.pendingKeys[j]'hj).kind)
 
 /-- Empty list body is trivially scanned (0-step chain). -/
 theorem emitList_scans_empty : EmitListScansInFlow [] := by
@@ -8273,7 +8356,8 @@ theorem emitList_scans_empty : EmitListScansInFlow [] := by
   have h_eq : (emit.emitList ([] : List YamlValue)).toList ++ rest = rest := by
     simp only [emit.emitList]; rfl
   rw [h_eq] at hcorr
-  exact ⟨0, s, .zero, hcorr, rfl, rfl, rfl, rfl, h_col, h_flow, h_indent, rfl, h_atol, h_endline, rfl, .zero (Nat.le_refl _)⟩
+  exact ⟨0, s, .zero, hcorr, rfl, rfl, rfl, rfl, h_col, h_flow, h_indent, rfl, h_atol,
+    h_endline, rfl, .zero (Nat.le_refl _), Nat.le_refl _, fun _ _ _ => ⟨rfl, rfl⟩⟩
 
 /-- Non-empty list scanning via induction on the item list.
     Structure: singleton case uses EmitScansInFlow directly;
@@ -8291,9 +8375,11 @@ theorem emitList_scans_nonempty (items : List YamlValue) (h_ne : items ≠ [])
       have h_eq : (emit.emitList [v]).toList = (emit v).toList := by
         simp only [emit.emitList]
       rw [h_eq] at hcorr
-      obtain ⟨n, s', h_chain, h_corr, h_fl', h_dp, h_ids, h_ek', h_col', h_flow', h_indent', h_line_v, _, _, h_atol', h_endline', h_stack', h_fmc'⟩ :=
+      obtain ⟨n, s', h_chain, h_corr, h_fl', h_dp, h_ids, h_ek', h_col', h_flow', h_indent',
+              h_line_v, _, _, h_atol', h_endline', h_stack', h_fmc', h_size', h_pkRec'⟩ :=
         h_all v (.head _) s rest_chars hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline
-      exact ⟨n, s', h_chain, h_corr, h_fl', h_dp, h_ids, h_ek', h_col', h_flow', h_indent', h_line_v, h_atol', h_endline', h_stack', h_fmc'⟩
+      exact ⟨n, s', h_chain, h_corr, h_fl', h_dp, h_ids, h_ek', h_col', h_flow', h_indent',
+        h_line_v, h_atol', h_endline', h_stack', h_fmc', h_size', h_pkRec'⟩
     | v' :: vs, ih =>
       -- Multi-item: emitList (v :: v' :: vs) = emit v ++ ", " ++ emitList (v' :: vs)
       -- Rewrite chars to decompose
@@ -8303,11 +8389,14 @@ theorem emitList_scans_nonempty (items : List YamlValue) (h_ne : items ≠ [])
       rw [h_eq] at hcorr
       -- Step 1: Scan emit v via EmitScansInFlow
       have h_ev : EmitScansInFlow v := h_all v (.head _)
-      obtain ⟨n₁, s₁, h_chain₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_ek₁, h_col₁, h_flow₁, h_indent₁, _h_line₁, _, h_last₁, h_atol₁, h_endline₁, h_stack₁, h_fmc₁⟩ :=
+      obtain ⟨n₁, s₁, h_chain₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_ek₁, h_col₁, h_flow₁,
+              h_indent₁, _h_line₁, _, h_last₁, h_atol₁, h_endline₁, h_stack₁, h_fmc₁,
+              h_size₁, h_pkRec₁⟩ :=
         h_ev s ([',', ' '] ++ (emit.emitList (v' :: vs)).toList ++ rest_chars)
           hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline
       -- Step 2: Scan ',' via scanNextToken_flow_comma
-      obtain ⟨s₂, h_snt₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, h_ek₂, h_col₂, _h_line₂, h_atol₂, h_endline₂, h_stack₂, _h_pks₂⟩ :=
+      obtain ⟨s₂, h_snt₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, h_ek₂, h_col₂, _h_line₂,
+              h_atol₂, h_endline₂, h_stack₂, h_size₂, h_pkRec₂⟩ :=
         scanNextToken_flow_comma s₁
           (' ' :: (emit.emitList (v' :: vs)).toList ++ rest_chars)
           h_corr₁ h_flow₁ h_indent₁ h_col₁
@@ -8341,7 +8430,8 @@ theorem emitList_scans_nonempty (items : List YamlValue) (h_ne : items ≠ [])
       have h_ih_list : EmitListScansInFlow (v' :: vs) :=
         ih (by simp) h_tail_all
       obtain ⟨n₃, s_end, h_chain₃, h_corr_end, h_fl_end, h_dp_end, h_ids_end,
-              h_ek_end, h_col_end, h_flow_end, h_indent_end, h_line_end, h_atol_end, h_endline_end, h_stack_end, h_fmc₃⟩ :=
+              h_ek_end, h_col_end, h_flow_end, h_indent_end, h_line_end, h_atol_end,
+              h_endline_end, h_stack_end, h_fmc₃, h_size₃, h_pkRec₃⟩ :=
         h_ih_list s₃ rest_chars h_corr₃'
           h_flow₃ (by rw [h_fl₃, h_fl₂, h_fl₁]; exact h_fl)
           (by rw [h_indent₃]; exact h_s2_indent)
@@ -8400,8 +8490,17 @@ theorem emitList_scans_nonempty (items : List YamlValue) (h_ne : items ≠ [])
       have h_chain_all := h_chain₁.trans
         ((ScanChainGrew.single h_snt₂ h_grew₂).trans h_chain_ws)
       have h_arith : n₁ + (1 + (n₃' + 1)) = n₁ + 1 + (n₃' + 1) := by omega
+      -- pkRec / size composition along s → s₁ → s₂ → s₃ → s_end
+      have ⟨h_size₁₂, h_pkRec₁₂⟩ :=
+        pkRec_size_compose h_size₁ h_size₂ h_pkRec₁ h_pkRec₂
+      have ⟨h_size_pp, h_pkRec_pp⟩ := pkRec_size_of_pks_eq _h_pks_pp₃
+      have ⟨h_size₁₂₃, h_pkRec₁₂₃⟩ :=
+        pkRec_size_compose h_size₁₂ h_size_pp h_pkRec₁₂ h_pkRec_pp
+      have ⟨h_size_all, h_pkRec_all⟩ :=
+        pkRec_size_compose h_size₁₂₃ h_size₃ h_pkRec₁₂₃ h_pkRec₃
       refine ⟨n₁ + 1 + (n₃' + 1), s_end, h_arith ▸ h_chain_all,
-        h_corr_end, ?_, ?_, ?_, ?_, h_col_end, h_flow_end, h_indent_end, ?_, h_atol_end, h_endline_end, ?_, h_arith ▸ h_fmc_all⟩
+        h_corr_end, ?_, ?_, ?_, ?_, h_col_end, h_flow_end, h_indent_end, ?_, h_atol_end,
+        h_endline_end, ?_, h_arith ▸ h_fmc_all, h_size_all, h_pkRec_all⟩
       · -- flowLevel preserved
         rw [h_fl_end, h_fl₃, h_fl₂, h_fl₁]
       · -- directivesPresent preserved
@@ -9096,12 +9195,18 @@ def EmitPairListScansInFlow (pairs : List (YamlValue × YamlValue)) : Prop :=
       ∧ EndLineOnLine s'
       ∧ s'.simpleKeyStack = s.simpleKeyStack
       ∧ FlowMonoChain s.flowLevel s n s'
+      -- J.4.2.b-2d-key-chain-Part2-body-C-foundation-EmitScansInFlow-defns-prove.
+      ∧ s.pendingKeys.size ≤ s'.pendingKeys.size
+      ∧ (∀ j (hj : j < s.pendingKeys.size) (hj' : j < s'.pendingKeys.size),
+          (s'.pendingKeys[j]'hj').insertBeforeIdx = (s.pendingKeys[j]'hj).insertBeforeIdx
+          ∧ (s'.pendingKeys[j]'hj').kind = (s.pendingKeys[j]'hj).kind)
 
 theorem emitPairList_scans_empty : EmitPairListScansInFlow [] := by
   intro s rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline
   have h_eq : (emit.emitPairList ([] : List (YamlValue × YamlValue))).toList ++ rest = rest := by
     simp [emit.emitPairList]
-  exact ⟨0, s, .zero, h_eq ▸ hcorr, rfl, rfl, rfl, rfl, h_col, h_flow, h_indent, rfl, h_atol, h_endline, rfl, .zero (Nat.le_refl _)⟩
+  exact ⟨0, s, .zero, h_eq ▸ hcorr, rfl, rfl, rfl, rfl, h_col, h_flow, h_indent, rfl,
+    h_atol, h_endline, rfl, .zero (Nat.le_refl _), Nat.le_refl _, fun _ _ _ => ⟨rfl, rfl⟩⟩
 
 -- Non-empty pair list scanning: each pair contributes key + ":" + space + value steps.
 -- Uses emitPairList_first_char, scanNextToken_flow_value, scanNextToken_flow_comma,
@@ -9128,7 +9233,8 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
       -- Step 1: Scan key via EmitScansInFlow
       have h_ek_key : EmitScansInFlow p.1 := h_all_k p (.head _)
       obtain ⟨n₁, s₁, h_chain₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_ek₁, h_col₁,
-              h_flow₁, h_indent₁, _h_line₁, h_ska₁, _, h_atol₁, h_endline₁, h_stack₁, h_fmc₁⟩ :=
+              h_flow₁, h_indent₁, _h_line₁, h_ska₁, _, h_atol₁, h_endline₁, h_stack₁,
+              h_fmc₁, _h_size₁, _h_pkRec₁⟩ :=
         h_ek_key s ([':',  ' '] ++ (emit p.2).toList ++ rest_chars)
           hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline
       -- Step 2: Derive saveSimpleKey identity and scanValueValidate
@@ -9164,7 +9270,8 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
       -- Step 5: Scan value via EmitScansInFlow
       have h_ev : EmitScansInFlow p.2 := h_all_v p (.head _)
       obtain ⟨n₃, s_end, h_chain₃, h_corr_end, h_fl_end, h_dp_end, h_ids_end,
-              h_ek_end, h_col_end, h_flow_end, h_indent_end, h_line_end, _, _, h_atol_end, h_endline_end, h_stack_end, h_fmc₃⟩ :=
+              h_ek_end, h_col_end, h_flow_end, h_indent_end, h_line_end, _, _,
+              h_atol_end, h_endline_end, h_stack_end, h_fmc₃, _h_size₃, _h_pkRec₃⟩ :=
         h_ev s₃ rest_chars h_corr₃'
           h_flow₃ (by rw [h_fl₃, h_fl₂, h_fl₁]; exact h_fl)
           (by rw [h_indent₃]; exact h_indent₂)
@@ -9221,13 +9328,17 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
         ((ScanChainGrew.single h_snt₂ h_grew₂).trans h_chain_ws)
       have h_arith : n₁ + (1 + (n₃' + 1)) = n₁ + 1 + (n₃' + 1) := by omega
       refine ⟨n₁ + 1 + (n₃' + 1), s_end, h_arith ▸ h_chain_all,
-        h_corr_end, ?_, ?_, ?_, ?_, h_col_end, h_flow_end, h_indent_end, ?_, h_atol_end, h_endline_end, ?_, h_arith ▸ h_fmc_all⟩
+        h_corr_end, ?_, ?_, ?_, ?_, h_col_end, h_flow_end, h_indent_end, ?_, h_atol_end,
+        h_endline_end, ?_, h_arith ▸ h_fmc_all, ?_⟩
       · rw [h_fl_end, h_fl₃, h_fl₂, h_fl₁]
       · rw [h_dp_end, h_dp₃, h_dp₂, h_dp₁]
       · rw [h_ids_end, h_ids₃, h_ids₂, h_ids₁]
       · rw [h_ek_end, h_ek₃, h_ek₂]; exact h_ek.symm
       · rw [h_line_end, _h_line₃, _h_line₂, _h_line₁]
       · rw [h_stack_end, h_stack_pp₃, h_stack_v₂, h_stack₁]
+      · -- size mono + pkRec preservation: deferred to gated cadence via the
+        -- shared `emitPairList_body_size_pkRec_through_colon_sorry` placeholder.
+        exact emitPairList_body_size_pkRec_through_colon_sorry s s_end
     | p' :: ps, ih =>
       -- ══ Multi-pair: emit k ++ ": " ++ emit v ++ ", " ++ emitPairList (p' :: ps) ══
       have h_eq : (emit.emitPairList (p :: p' :: ps)).toList ++ rest_chars =
@@ -9238,7 +9349,8 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
       -- Step 1: Scan key via EmitScansInFlow
       have h_ek_key : EmitScansInFlow p.1 := h_all_k p (.head _)
       obtain ⟨n₁, s₁, h_chain₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_ek₁, h_col₁,
-              h_flow₁, h_indent₁, _h_line₁, h_ska₁, h_last₁, h_atol₁, h_endline₁, h_stack₁, h_fmc₁⟩ :=
+              h_flow₁, h_indent₁, _h_line₁, h_ska₁, h_last₁, h_atol₁, h_endline₁,
+              h_stack₁, h_fmc₁, _h_size₁, _h_pkRec₁⟩ :=
         h_ek_key s ([':',  ' '] ++ (emit p.2).toList ++
             [',',  ' '] ++ (emit.emitPairList (p' :: ps)).toList ++ rest_chars)
           hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline
@@ -9287,7 +9399,8 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
           ⟨(emit p.2).toList ++ ([',',  ' '] ++ (emit.emitPairList (p' :: ps)).toList ++ rest_chars), s₃.col⟩ := by
         simp only [List.append_assoc] at h_corr₃' ⊢; exact h_corr₃'
       obtain ⟨n_v, s_v, h_chain_v, h_corr_v, h_fl_v, h_dp_v, h_ids_v,
-              h_ek_v, h_col_v, h_flow_v, h_indent_v, _h_line_v, _, h_last_v, h_atol_v, h_endline_v, h_stack_v, h_fmc_v⟩ :=
+              h_ek_v, h_col_v, h_flow_v, h_indent_v, _h_line_v, _, h_last_v, h_atol_v,
+              h_endline_v, h_stack_v, h_fmc_v, _h_size_v, _h_pkRec_v⟩ :=
         h_ev s₃
           ([',',  ' '] ++ (emit.emitPairList (p' :: ps)).toList ++ rest_chars)
           h_corr₃_assoc
@@ -9339,7 +9452,8 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
           h_corr₁_cons h_flow₁ h_indent₁ h_col₁
           (by decide) (by decide) (by decide) h_snt₂
       -- Step 6: Scan ',' via scanNextToken_flow_comma
-      obtain ⟨s_c, h_snt_c, h_corr_c, h_fl_c, h_dp_c, h_ids_c, h_ek_c, h_col_c, _h_line_c, h_atol_c, h_endline_c, h_stack_c, _h_pks_c⟩ :=
+      obtain ⟨s_c, h_snt_c, h_corr_c, h_fl_c, h_dp_c, h_ids_c, h_ek_c, h_col_c, _h_line_c,
+              h_atol_c, h_endline_c, h_stack_c, _h_size_c, _h_pkRec_c⟩ :=
         scanNextToken_flow_comma s_v
           (' ' :: (emit.emitPairList (p' :: ps)).toList ++ rest_chars)
           h_corr_v h_flow_v h_indent_v h_col_v h_last_v h_atol_v h_endline_v
@@ -9374,7 +9488,8 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
       have h_ih_list : EmitPairListScansInFlow (p' :: ps) :=
         ih (by simp) h_tail_all_k h_tail_all_v
       obtain ⟨n_r, s_end, h_chain_r, h_corr_end, h_fl_end, h_dp_end, h_ids_end,
-              h_ek_end, h_col_end, h_flow_end, h_indent_end, h_line_end, h_atol_end, h_endline_end, h_stack_end, h_fmc_r⟩ :=
+              h_ek_end, h_col_end, h_flow_end, h_indent_end, h_line_end, h_atol_end,
+              h_endline_end, h_stack_end, h_fmc_r, _h_size_r, _h_pkRec_r⟩ :=
         h_ih_list s_pp rest_chars h_corr_pp'
           h_flow_pp
           (by rw [h_fl_pp, h_fl_c]; rw [h_fl_v, h_fl₃, h_fl₂, h_fl₁]; exact h_fl)
@@ -9446,7 +9561,8 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
           n₁ + 1 + (n_v' + 1) + 1 + (n_r' + 1) := by omega
       refine ⟨n₁ + 1 + (n_v' + 1) + 1 + (n_r' + 1), s_end,
         h_arith ▸ h_chain_all,
-        h_corr_end, ?_, ?_, ?_, ?_, h_col_end, h_flow_end, h_indent_end, ?_, h_atol_end, h_endline_end, ?_, h_arith ▸ h_fmc_all⟩
+        h_corr_end, ?_, ?_, ?_, ?_, h_col_end, h_flow_end, h_indent_end, ?_, h_atol_end,
+        h_endline_end, ?_, h_arith ▸ h_fmc_all, ?_⟩
       · -- flowLevel preserved
         rw [h_fl_end, h_fl_pp, h_fl_c, h_fl_v, h_fl₃, h_fl₂, h_fl₁]
       · -- directivesPresent preserved
@@ -9458,6 +9574,9 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
       · rw [h_line_end, _h_line_pp, _h_line_c, _h_line_v, _h_line₃, _h_line₂, _h_line₁]
       · -- simpleKeyStack preserved
         rw [h_stack_end, h_stack_pp, h_stack_c, h_stack_v, h_stack_pp₃, h_stack_v₂, h_stack₁]
+      · -- size mono + pkRec preservation: deferred to gated cadence via the
+        -- shared `emitPairList_body_size_pkRec_through_colon_sorry` placeholder.
+        exact emitPairList_body_size_pkRec_through_colon_sorry s s_end
 
 /-- Every grammable value satisfies `EmitScansInFlow`. -/
 theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inFlow) :
@@ -9473,7 +9592,8 @@ theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inF
     have hcorr' : ScannerSurfCorr s_state
         ⟨['"'] ++ (escapeString s.content).toList ++ ['"'] ++ rest, s_state.col⟩ := by
       rwa [← h_chars]
-    obtain ⟨s', h_snt, h_corr', h_fl', h_dp', h_ids', h_ek', h_col', h_tok', h_ska', _h_line', h_atol', h_endline', h_stack', _h_pkRec'⟩ :=
+    obtain ⟨s', h_snt, h_corr', h_fl', h_dp', h_ids', h_ek', h_col', h_tok', h_ska',
+            _h_line', h_atol', h_endline', h_stack', h_size', h_pkRec'⟩ :=
       scanNextToken_flow_scanDoubleQuoted s_state s.content rest hcorr' h_flow h_indent h_col
         h_atol (by intro h_poss; exact h_endline h_poss)
     -- Per-step witness for the scalar's scanNextToken call.
@@ -9487,7 +9607,7 @@ theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inF
             rwa [this] at hcorr')
         h_flow h_indent h_col (by decide) (by decide) (by decide) h_snt
     refine ⟨1, s', ScanChainGrew.single h_snt h_grew, h_corr', h_fl', h_dp', h_ids', h_ek',
-      ?_, ?_, ?_, _h_line', h_ska', ?_, ?_, ?_, ?_, ?_⟩
+      ?_, ?_, ?_, _h_line', h_ska', ?_, ?_, ?_, ?_, ?_, h_size', h_pkRec'⟩
     · exact h_col'
     · unfold ScannerState.inFlow; rw [h_fl']
       unfold ScannerState.inFlow at h_flow; exact h_flow
@@ -9507,7 +9627,8 @@ theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inF
     have hcorr₀ := hcorr; rw [h_chars] at hcorr₀
     -- hcorr₀ now has ['['] ++ ... which is def-eq to '[' :: ...
     -- Step 1: Scan '[' with nested flow open
-    obtain ⟨s₁, h_snt₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_ek₁, h_col₁, _h_line₁, h_atol₁, h_endline₁, h_stack_endline₁, h_stack_pop₁, _h_pks₁⟩ :=
+    obtain ⟨s₁, h_snt₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_ek₁, h_col₁, _h_line₁, h_atol₁,
+            h_endline₁, h_stack_endline₁, h_stack_pop₁, h_size₁, h_pkRec₁⟩ :=
       scanNextToken_flow_open_nested s_state
         ((emit.emitList items.toList).toList ++ [']'] ++ rest) hcorr₀ h_flow h_indent h_col
         h_atol h_endline
@@ -9532,7 +9653,8 @@ theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inF
     have h_corr₁_assoc : ScannerSurfCorr s₁
         ⟨(emit.emitList items.toList).toList ++ ([']'] ++ rest), s₁.col⟩ := by
       rw [List.append_assoc] at h_corr₁; exact h_corr₁
-    obtain ⟨n₂, s₂, h_chain₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, h_ek₂, h_col₂, h_s2_inflow, h_s2_indent, _h_line₂, h_atol₂, h_endline₂, h_stack₂, h_fmc₂⟩ :=
+    obtain ⟨n₂, s₂, h_chain₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, h_ek₂, h_col₂, h_s2_inflow,
+            h_s2_indent, _h_line₂, h_atol₂, h_endline₂, h_stack₂, h_fmc₂, h_size₂, h_pkRec₂⟩ :=
       h_list_scan s₁ ([']'] ++ rest) h_corr₁_assoc h_s1_inflow (by rw [h_fl₁]; omega) h_s1_indent h_s1_col
         (by rw [h_ek₁]; exact h_ek)
         h_atol₁ -- AllTokensOnLine s₁ s₁.line (from flow_open_nested postcondition)
@@ -9543,7 +9665,8 @@ theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inF
     have h_stack_endline₂ : StackEndLineOnLine s₂ s₂.line := by
       unfold StackEndLineOnLine at h_stack_endline₁ ⊢
       rw [h_stack₂, _h_line₂]; exact h_stack_endline₁
-    obtain ⟨s₃, h_snt₃, h_corr₃, h_fl₃, h_dp₃, h_ids₃, h_ek₃, h_col₃, h_tok₃, h_ska₃, _h_line₃, h_atol₃, h_endline₃, h_stack₃, _h_pks₃⟩ :=
+    obtain ⟨s₃, h_snt₃, h_corr₃, h_fl₃, h_dp₃, h_ids₃, h_ek₃, h_col₃, h_tok₃, h_ska₃,
+            _h_line₃, h_atol₃, h_endline₃, h_stack₃, h_size₃, h_pkRec₃⟩ :=
       scanNextToken_flow_close_seq_nested s₂ rest h_corr₂ h_s2_inflow h_s2_indent h_col₂ h_fl₂_ge2
         h_atol₂ h_stack_endline₂
     -- Compose: [ (1 step) + list body (n₂ steps) + ] (1 step)
@@ -9577,10 +9700,16 @@ theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inF
       exact scanNextToken_filtered_grows_in_flow s₂ s₃ ']' rest
         h_corr₂_cons h_s2_inflow h_s2_indent h_col₂
         (by decide) (by decide) (by decide) h_snt₃
+    -- pkRec / size composition: s_state → s₁ → s₂ → s₃
+    have ⟨h_size₁₂, h_pkRec₁₂⟩ :=
+      pkRec_size_compose h_size₁ h_size₂ h_pkRec₁ h_pkRec₂
+    have ⟨h_size_all, h_pkRec_all⟩ :=
+      pkRec_size_compose h_size₁₂ h_size₃ h_pkRec₁₂ h_pkRec₃
     refine ⟨(1 + n₂) + 1, s₃,
       (ScanChainGrew.single h_snt₁ h_grew₁).trans
         (h_chain₂.trans (ScanChainGrew.single h_snt₃ h_grew₃)),
-      h_corr₃, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, h_ska₃, h_tok₃, ?_, ?_, ?_, h_fmc_all⟩
+      h_corr₃, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, h_ska₃, h_tok₃, ?_, ?_, ?_, h_fmc_all,
+      h_size_all, h_pkRec_all⟩
     · -- flowLevel: (fl+1) - 1 = fl
       rw [h_fl₃, h_fl₂, h_fl₁]; omega
     · rw [h_dp₃, h_dp₂, h_dp₁]
@@ -9611,7 +9740,8 @@ theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inF
       simp only [emit, String.toList_append]; rfl
     have hcorr₀ := hcorr; rw [h_chars] at hcorr₀
     -- Step 1: Scan '{' with nested flow open
-    obtain ⟨s₁, h_snt₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_ek₁, h_col₁, _h_line₁, h_atol₁, h_endline₁, h_stack_endline₁, h_stack_pop₁, _h_pks₁⟩ :=
+    obtain ⟨s₁, h_snt₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_ek₁, h_col₁, _h_line₁, h_atol₁,
+            h_endline₁, h_stack_endline₁, h_stack_pop₁, h_size₁, h_pkRec₁⟩ :=
       scanNextToken_flow_open_mapping_nested s_state
         ((emit.emitPairList pairs.toList).toList ++ ['}'] ++ rest) hcorr₀ h_flow h_indent h_col
         h_atol h_endline
@@ -9638,7 +9768,8 @@ theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inF
     have h_corr₁_assoc : ScannerSurfCorr s₁
         ⟨(emit.emitPairList pairs.toList).toList ++ (['}'] ++ rest), s₁.col⟩ := by
       rw [List.append_assoc] at h_corr₁; exact h_corr₁
-    obtain ⟨n₂, s₂, h_chain₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, h_ek₂, h_col₂, h_s2_inflow, h_s2_indent, _h_line₂, h_atol₂, h_endline₂, h_stack₂, h_fmc₂⟩ :=
+    obtain ⟨n₂, s₂, h_chain₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, h_ek₂, h_col₂, h_s2_inflow,
+            h_s2_indent, _h_line₂, h_atol₂, h_endline₂, h_stack₂, h_fmc₂, h_size₂, h_pkRec₂⟩ :=
       h_pair_scan s₁ (['}'] ++ rest) h_corr₁_assoc h_s1_inflow (by rw [h_fl₁]; omega) h_s1_indent h_s1_col
         (by rw [h_ek₁]; exact h_ek)
         h_atol₁
@@ -9649,7 +9780,8 @@ theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inF
     have h_stack_endline₂ : StackEndLineOnLine s₂ s₂.line := by
       unfold StackEndLineOnLine at h_stack_endline₁ ⊢
       rw [h_stack₂, _h_line₂]; exact h_stack_endline₁
-    obtain ⟨s₃, h_snt₃, h_corr₃, h_fl₃, h_dp₃, h_ids₃, h_ek₃, h_col₃, h_tok₃, h_ska₃, _h_line₃, h_atol₃, h_endline₃, h_stack₃, _h_pks₃⟩ :=
+    obtain ⟨s₃, h_snt₃, h_corr₃, h_fl₃, h_dp₃, h_ids₃, h_ek₃, h_col₃, h_tok₃, h_ska₃,
+            _h_line₃, h_atol₃, h_endline₃, h_stack₃, h_size₃, h_pkRec₃⟩ :=
       scanNextToken_flow_close_mapping_nested s₂ rest h_corr₂ h_s2_inflow h_s2_indent h_col₂ h_fl₂_ge2
         h_atol₂ h_stack_endline₂
     -- Compose: { (1 step) + pair body (n₂ steps) + } (1 step)
@@ -9681,10 +9813,18 @@ theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inF
       exact scanNextToken_filtered_grows_in_flow s₂ s₃ '}' rest
         h_corr₂_cons h_s2_inflow h_s2_indent h_col₂
         (by decide) (by decide) (by decide) h_snt₃
+    -- pkRec / size composition: s_state → s₁ → s₂ → s₃
+    -- (s₁→s₂ leg uses EmitPairListScansInFlow; size+pkRec there are sorry'd
+    --  for the colon-step pkRec analysis — propagated downstream as gated work.)
+    have ⟨h_size₁₂, h_pkRec₁₂⟩ :=
+      pkRec_size_compose h_size₁ h_size₂ h_pkRec₁ h_pkRec₂
+    have ⟨h_size_all, h_pkRec_all⟩ :=
+      pkRec_size_compose h_size₁₂ h_size₃ h_pkRec₁₂ h_pkRec₃
     refine ⟨(1 + n₂) + 1, s₃,
       (ScanChainGrew.single h_snt₁ h_grew₁).trans
         (h_chain₂.trans (ScanChainGrew.single h_snt₃ h_grew₃)),
-      h_corr₃, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, h_ska₃, h_tok₃, ?_, ?_, ?_, h_fmc_all⟩
+      h_corr₃, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, h_ska₃, h_tok₃, ?_, ?_, ?_, h_fmc_all,
+      h_size_all, h_pkRec_all⟩
     · rw [h_fl₃, h_fl₂, h_fl₁]; omega
     · rw [h_dp₃, h_dp₂, h_dp₁]
     · rw [h_ids₃, h_ids₂, h_ids₁]
@@ -10957,7 +11097,7 @@ theorem emitList_body_filtered_characterization
   -- bypass the line-8541 sorry.
   have h_scan := emitList_scans_nonempty items h_ne h_all
   obtain ⟨n, s', h_chain, h_corr', h_fl', h_dp', h_ids', h_ek', h_col', h_inflow',
-          h_indent', h_line', h_atol', h_endline', h_stack', h_fmc⟩ :=
+          h_indent', h_line', h_atol', h_endline', h_stack', h_fmc, _h_size, _h_pkRec⟩ :=
     h_scan s rest h_corr h_flow h_fl h_indent h_col h_ek h_atol h_endline
   refine ⟨n, s', h_chain.toScanChain, h_corr', h_fl', h_dp', h_ids', h_ek',
           h_col', h_inflow', h_indent', h_line', h_atol', h_endline',
@@ -11162,7 +11302,7 @@ theorem emitPairList_body_filtered_characterization
   -- Construct the chain from EmitPairListScansInFlow
   have h_scan := emitPairList_scans_nonempty pairs h_ne h_all_k h_all_v
   obtain ⟨n, s', h_chain, h_corr', h_fl', h_dp', h_ids', h_ek', h_col', h_inflow',
-          h_indent', h_line', h_atol', h_endline', h_stack', h_fmc⟩ :=
+          h_indent', h_line', h_atol', h_endline', h_stack', h_fmc, _h_size, _h_pkRec⟩ :=
     h_scan s rest h_corr h_flow h_fl h_indent h_col h_ek h_atol h_endline
   have h_n_pos : n ≥ 1 := by
     match n, h_chain with
