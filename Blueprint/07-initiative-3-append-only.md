@@ -781,6 +781,7 @@ rooted at `Scanner/Linearise.lean`:
 | J.4.2.b-2d-key-chain-Part2-body-C-foundation-Aseq/Amap | Preserves-prior strengthening on A3 (`scanNextToken_flow_open_nested_pkPush`) and A4 (`scanNextToken_flow_open_mapping_nested_pkPush`): under existing hypotheses, additionally conclude `∀ j (hj : j < s.pendingKeys.size) (hj' : j < s'.pendingKeys.size), s'.pendingKeys[j]'hj' = s.pendingKeys[j]'hj`.  Investigation during the cadence revealed body-C requires `pendingKeyActive = some s.pendingKeys.size`, `simpleKey.possible = true`, AND preserves-prior conjuncts at the post-key state — none of which A1-A4 currently expose.  This step lands the easiest of those (preserves-prior) on A3/A4.  Proof: the flow-open path (`scanNextToken_dispatchFlowIndicators`) skips `dispatchContent`, so `s'.pendingKeys = s.pendingKeys.push <new>` directly and preservation follows from `Array.getElem_push_lt` after `simp only [h_fss_pks_full]` (resp. `h_fms_pks_full`).  Body-C decomposed into four sub-steps in the open-bullet section: **C-foundation-Aseq/Amap** (this step), **C-foundation-Ascalar** (extend A2 — needs new `*_preserves_pendingKeyActive` chain in `Proofs/Scanner/ScannerCorrectness.lean` because `dispatchContent`'s `setPendingKeyEndLine` wrap requires knowing the active index, ~0.5 step), **C-foundation-EmitScansInFlow** (uniform preserves-prior + first-key gated conjunct on the `EmitScansInFlow` family, with seq/map cases threading the `simpleKeyStack` / `pendingKeyStack` pop on `]` / `}`, ~1 step), **C-compose** (singleton/cons walk in `emitPairList_chain_first_pkShape` plus `scanNextToken_flow_comma_pkPreserve`, ~0.5–1 step).  Cleaner cadence sizing than the original "~0.5 step" estimate on body-C as a single unit | 0 (no new sorries; A3/A4 each gain one conjunct without breaking existing 15-conjunct shape) | `Proofs/Output/EmitterScannability.lean` | ✓ done 2026-05-01 |
 | J.4.2.b-2d-key-chain-Part2-body-C-foundation-Ascalar | A2 (`scanNextToken_flow_scanDoubleQuoted_pkPush`) extended with three new conjuncts at the post-key state: `s'.pendingKeyActive = some s.pendingKeys.size`, `s'.simpleKey.possible = true`, and preserves-prior on `pendingKeys` (`∀ j (hj : j < s.pendingKeys.size) (hj' : j < s'.pendingKeys.size), s'.pendingKeys[j]'hj' = s.pendingKeys[j]'hj`).  Tricky because `dispatchContent` wraps via `setPendingKeyEndLine s_dq.pendingKeys s_dq.pendingKeyActive s_dq.line` — to discharge preserves-prior we must know `s_dq.pendingKeyActive = some s.pendingKeys.size` so the `setIfInBounds` write index lands at `s.pendingKeys.size > j`.  Required (a) a new `*_preserves_pendingKeyActive` chain in `Proofs/Scanner/ScannerCorrectness.lean` mirroring the existing `*_preserves_pendingKeys` chain (advance/emit/emitAt + skipSpacesLoop/skipSpaces/skipWhitespaceLoop/skipWhitespace + consumeNewline + collectHexDigitsLoop/parseHexEscape/processEscape + foldQuotedNewlinesLoop/foldQuotedNewlines + collectDoubleQuotedLoop + scanDoubleQuoted) — none of these touch `pendingKeyActive`, so all proofs are pure passthroughs structurally identical to their `_preserves_pendingKeys` counterparts; (b) two new helpers `setPendingKeyEndLine_decomp_some` (specialization of the existing decomp that exposes the active index `j`) and `setPendingKeyEndLine_some_at_other_unchanged` (record-level "at index `i ≠ j`, the wrap is the identity" via `Array.getElem_setIfInBounds_ne`).  A2's conclusion now exposes 17 conjuncts (was 15) with no break to the existing `emit_scans_in_flow` consumer (it ignores the new conjuncts).  Completes the per-leaf foundation for body-C; remaining for body-C: **C-foundation-EmitScansInFlow** (uniform preserves-prior + gated active/possible on the `EmitScansInFlow` family, ~1 step) and **C-compose** (singleton/cons walk in `emitPairList_chain_first_pkShape` + `scanNextToken_flow_comma_pkPreserve`, ~0.5–1 step) | 0 (theorem fully proven; ScannerCorrectness chain fully proven; sorry count unchanged at 9 — locations shifted by +53 lines from prior baseline due to the new chain insertion) | `Proofs/Output/EmitterScannability.lean`, `Proofs/Scanner/ScannerCorrectness.lean` | ✓ done 2026-05-01 |
 | J.4.2.b-2d-key-chain-Part2-body-C-foundation-EmitScansInFlow-defns-prove | Size-mono + pkRec preservation conjuncts added to the three `EmitScansInFlow{,List,PairList}` definitions in `Proofs/Output/EmitterScannability.lean`.  Each conjunct shape is `s.pendingKeys.size ≤ s'.pendingKeys.size ∧ ∀ j (hj : j < s.pendingKeys.size) (hj' : j < s'.pendingKeys.size), s'.pendingKeys[j].insertBeforeIdx = s.pendingKeys[j].insertBeforeIdx ∧ s'.pendingKeys[j].kind = s.pendingKeys[j].kind`.  Two new composition helpers introduced: (a) `pkRec_size_compose` chains two consecutive (size-mono + pkRec-preservation) witnesses through an intermediate state — the workhorse for chaining helper-level pkRec preservation across multi-step paths (key + colon + value + comma + recurse); (b) `pkRec_size_of_pks_eq` lifts a `pendingKeys` equality to (size-mono + pkRec-preservation) — used to bridge through `scanNextToken_preprocess_flow_ws1` (which preserves `pendingKeys` exactly).  Consumers re-proved: `emitList_scans_empty/nonempty` (composition through key + comma + space-preprocess + recursive emitList; both singleton and multi-item cases discharge cleanly); `emitPairList_scans_empty` (zero-chain identity); `emitPairList_scans_nonempty` (singleton + cons cases use the shared sorry'd helper `emitPairList_body_size_pkRec_through_colon_sorry` for size+pkRec — see below); `emit_scans_in_flow` (scalar via `scanNextToken_flow_scanDoubleQuoted`'s witness; sequence via open + EmitListScansInFlow body + close composition; mapping via open + EmitPairListScansInFlow body + close composition).  Downstream destructures updated: `emitList_body_filtered_characterization`, `emitPairList_body_filtered_characterization`, and 6+ EmitScansInFlow destructures (singleton/multi-item key+value pairs in emitList/emitPairList) extended to bind `_h_size…`/`_h_pkRec…`.  Net regression: +1 sorry — the body-C colon-step (size + pkRec) preservation through `scanNextToken_flow_value` is captured in a single sorry'd helper `emitPairList_body_size_pkRec_through_colon_sorry` (line 3436), used at both call sites of `emitPairList_scans_nonempty` (singleton + cons).  The consumer-side scenario ensures `pendingKeyActive ≥ s.pendingKeys.size` (the body's initial size, set by the key's `saveSimpleKey` push), so pkRec preservation at `j < s.pendingKeys.size` holds — but the precise discharge needs the **gated** sub-step's analysis of `scanNextToken_flow_value`'s effect on `pendingKeys`.  Sorry count: 9 → 10 (single new sorry, factored into reusable helper) | 0 (build clean; +1 sorry net via shared helper; ~210-line addition) | `Proofs/Output/EmitterScannability.lean` | ✓ done 2026-05-02 |
+| J.4.2.b-2d-key-chain-Part2-body-C-foundation-EmitScansInFlow-gated | Gated first-key conjunct added to `EmitScansInFlow` (only — not List/PairList) under a `s.simpleKeyAllowed = true` gate.  New conjunct shape: `s.simpleKeyAllowed = true → (∃ (h : s.pendingKeys.size < s'.pendingKeys.size), s'.pendingKeys[s.pendingKeys.size].insertBeforeIdx = s.tokens.size ∧ s'.pendingKeys[s.pendingKeys.size].kind = .unresolved) ∧ s'.pendingKeyActive = some s.pendingKeys.size ∧ s'.simpleKey.possible = true`.  Note: the duplicate "preserves-prior at j < s.pendingKeys.size" was dropped from the gated branch since the unconditional kind+insertBeforeIdx conjunct already covers it (the eventual colon-step discharge needs that weaker form, not entry-equality, and dropping it avoids needing to strengthen the body's preserves-prior to full record equality).  Scalar case discharged inline by calling `scanNextToken_flow_scanDoubleQuoted_pkPush` in parallel under the gate and using determinism of `scanNextToken` to identify the s' from the unconditional + pkPush variants — ~14 lines of inline code in `emit_scans_in_flow` scalar.  Seq/map cases deferred via two named sorry'd helpers `emit_scans_in_flow_seq_gated_sorry` and `emit_scans_in_flow_map_gated_sorry`, since the proper discharge requires either (a) extending `_pkPush` open helpers with `simpleKeyStack`/`pendingKeyStack` push-shape conjuncts (so close's restore lemmas can compute the back-of-stack values) or (b) inline reasoning about `scanFlowSequenceStart`/`MappingStart`'s effect on stacks via `_pushed` lemmas + `back?_push` (≈40-60 lines per case) — split out as its own focused **gated-discharge** sub-step.  Consumer destructure patterns updated to bind the new gated conjunct (`_h_gated…` placeholders) at 4 call sites: `emitList_scans_nonempty` singleton+cons, `emitPairList_scans_nonempty` singleton+cons.  The body-C colon-step sorry'd helper `emitPairList_body_size_pkRec_through_colon_sorry` remains as is; its discharge is split out as a separate **discharge-colon** sub-step since it needs the seq/map gated discharges to be proper (not sorry'd) for the gated facts to flow into `pkResolve`.  Net regression: +2 sorries (seq + map gated placeholders), sorry count: 11 → 13 | 0 (build clean across 453 jobs; +2 sorries net via factored seq/map placeholders; ~50-line addition) | `Proofs/Output/EmitterScannability.lean` | ✓ done 2026-05-02 |
 | J.4.2.b-2d-key-chain-Part2-body-C-foundation-EmitScansInFlow-stack-restore | Close-side stack-restore lemmas + body-side `pendingKeyStack` preservation conjunct, completing the framework needed by the **gated** sub-step.  ScannerCorrectness additions: (a) `advance_preserves_pendingKeyStack` + `emit_preserves_pendingKeyStack` — base ops don't touch pendingKeyStack; (b) `saveSimpleKey_preserves_pendingKeyStack` — saveSimpleKey is push-or-id on `pendingKeys` only; (c) `scanFlowSequenceEnd_pendingKeyActive_restored` (= `s.pendingKeyStack.back?.getD none`) and `scanFlowSequenceEnd_pendingKeyStack_popped` (= `s.pendingKeyStack.pop`) — close pops both stacks in tandem (J.2 dual-write mirror of simpleKey/Stack restore); (d) `scanFlowMappingEnd_…` analogs; (e) `scanFlowSequenceStart_pendingKeyStack_pushed` / `scanFlowMappingStart_…` — open pushes prior `pendingKeyActive` onto stack; (f) full `_preserves_pendingKeyStack` chain through `skipToContent` (skipSpaces/skipWhitespace/Loop variants, collectCommentTextLoop, skipToContentWs/Comment, consumeNewline, skipToContentLoop) mirroring the existing simpleKeyStack chain (≈12 lemmas, all mechanical).  EmitterScannability additions: (1) `scanNextToken_flow_close_seq_nested` extended with three new conjuncts `s'.simpleKey = s.simpleKeyStack.back?.getD {}`, `s'.pendingKeyActive = s.pendingKeyStack.back?.getD none`, `s'.pendingKeyStack = s.pendingKeyStack.pop`; (2) `scanNextToken_flow_close_mapping_nested` analog; (3) `scanNextToken_flow_open_nested` extended with `s'.pendingKeyStack.pop = s.pendingKeyStack` (mirror of existing simpleKeyStack pop); (4) `scanNextToken_flow_open_mapping_nested` analog; (5) `scanNextToken_flow_comma` extended with `s'.pendingKeyStack = s.pendingKeyStack` (Class A passthrough — scanFlowEntry doesn't touch stack); (6) `scanNextToken_preprocess_flow_ws1` extended with `s'.pendingKeyStack = s.pendingKeyStack` (skipToContent passthrough); (7) `scanNextToken_flow_scanDoubleQuoted` extended with `s'.pendingKeyStack = s.pendingKeyStack` — discharged via new sorry'd helper `scanDoubleQuoted_preserves_pendingKeyStack_sorry` because the proper proof requires a parallel `_preserves_pendingKeyStack` chain through `collectDoubleQuotedLoop` / `processEscape` / `parseHexEscape` etc. (≈30 lemmas mirroring the `_preserves_simpleKeyStack` chain), which is mechanically uniform but fills its own cadence step (a follow-on "preservation-chain" sub-step is the cleanest place to discharge this); (8) `EmitScansInFlow` (main) extended with `s'.pendingKeyStack = s.pendingKeyStack` conjunct; (9) `EmitListScansInFlow` / `EmitPairListScansInFlow` extended with same; (10) `emitPairList_body_size_pkRec_through_colon_sorry` placeholder extended to also bundle `s'.pendingKeyStack = s.pendingKeyStack` (no new sorry — the helper is already sorry'd, and `pendingKeyStack` preservation through the colon step holds for the same reason as size+pkRec).  Consumers re-proved: `emit_scans_in_flow` scalar (via scanDoubleQuoted's new conjunct), seq (via open `pop` + body preservation + close `pop` cancellation), map (analog); `emitList_scans_empty/nonempty` (singleton via EmitScansInFlow's conjunct; multi-item via comma + preprocess + recursive emitList chain); `emitPairList_scans_empty/nonempty` (empty trivial; singleton+cons use the extended sorry'd colon-step helper).  Net regression: +1 sorry — `scanDoubleQuoted_preserves_pendingKeyStack_sorry`, factored into a single helper with a documented discharge path (parallel preservation chain).  Sorry count: 10 → 11 | 0 (build clean across 453 jobs; +1 sorry net via factored scalar-helper placeholder; ~250-line addition between the two files) | `Proofs/Output/EmitterScannability.lean`, `Proofs/Scanner/ScannerCorrectness.lean` | ✓ done 2026-05-02 |
 | J.4.2.b-2d-key-chain-Part2-body-C-foundation-EmitScansInFlow-defns-consumers | Folded into **defns-prove**: the downstream destructure updates (10+ patterns binding `_h_size…`/`_h_pkRec…` at consumer sites) landed mechanically alongside `defns-prove` since the consumer changes were uniform pattern extensions, not standalone work.  Tracked here for cadence-completeness | 0 (no separate code change; folded into defns-prove) | `Blueprint/07-initiative-3-append-only.md` (only) | ✓ done 2026-05-02 (folded) |
 | J.4.2.b-2d-key-chain-Part2-body-C-foundation-EmitScansInFlow-defns-helpers-size | Size monotonicity (`s.pendingKeys.size ≤ s'.pendingKeys.size`) added to all 6 scanner-helper theorems used inside `emit_scans_in_flow` and `emit{List,PairList}_scans_*` proofs.  Foundational lemma `saveSimpleKey_pendingKeys_size_ge` introduced (`saveSimpleKey` is push-or-id, so size grows or preserves).  Helper theorems strengthened: `scanNextToken_flow_scanDoubleQuoted` (inner `h_content` existential extended; size discharge in both `simpleKey.possible = true/false` branches via `setPendingKeyEndLine_size` + `saveSimpleKey_pendingKeys_size_ge`), `scanNextToken_flow_open_nested` (`scanFlowSequenceStart_preserves_pendingKeys` chain), `scanNextToken_flow_close_seq_nested` (`scanFlowSequenceEnd_preserves_pendingKeys` chain), `scanNextToken_flow_open_mapping_nested` (`scanFlowMappingStart_preserves_pendingKeys`), `scanNextToken_flow_close_mapping_nested` (`scanFlowMappingEnd_preserves_pendingKeys`), `scanNextToken_flow_comma` (advance + emit + saveSimpleKey).  Each discharge re-uses each helper's existing inner pendingKeys-equation chain (already proved for the pkRec preservation conjunct in sub-step 1), then composes with `saveSimpleKey_pendingKeys_size_ge`.  `scanNextToken_preprocess_flow_ws1` already exposes full `pendingKeys = pendingKeys` equality, so size mono is trivially derivable via `Nat.le_refl`.  No consumer destructure updates needed: the new conjunct gets right-associatively bundled with the existing pkRec conjunct in callers' anonymous `_h_pks…` binders.  Sorry count unchanged at 9 — locations shifted by ~+90 lines from prior baseline due to helper additions, no new sorries | 0 (sorry count unchanged at 9; 90-line addition; build clean) | `Proofs/Output/EmitterScannability.lean` | ✓ done 2026-05-02 |
@@ -2594,40 +2595,99 @@ Remaining J.4.2.b work:
                through `collectDoubleQuotedLoop` / `processEscape` /
                `parseHexEscape` etc., ≈30 lemmas).  Sorry count:
                10 → 11.
-          3. **C-foundation-EmitScansInFlow-gated** (~1 step): add
-             gated first-key conjuncts (size strict-grew, first-key
-             reservation at `s.pendingKeys.size` with
-             `insertBeforeIdx = s.tokens.size` and `kind = .unresolved`,
-             `pendingKeyActive = some s.pendingKeys.size`,
-             `simpleKey.possible = true`, full preserves-prior under
-             a `simpleKeyAllowed = true` gate) to `EmitScansInFlow`.
-             For scalar: A2 directly under `h_ska`.  For seq/map:
-             A3/A4 (gated key push at OPEN) + body preserves-prior +
-             stack restore lemmas (now landed) to recover the gated
-             facts at the post-CLOSE state.  Plus discharge the
+          3. ✓ **C-foundation-EmitScansInFlow-gated** (landed
+             2026-05-02 as
+             `J.4.2.b-2d-key-chain-Part2-body-C-foundation-EmitScansInFlow-gated`):
+             added the gated first-key conjunct to `EmitScansInFlow`
+             (only — not List/PairList) under a
+             `s.simpleKeyAllowed = true` gate, exposing the
+             three first-key facts at the post-state: existential
+             of strict-grew + entry kind/insertBeforeIdx, plus
+             `pendingKeyActive = some s.pendingKeys.size` and
+             `simpleKey.possible = true`.  The duplicate
+             "preserves-prior at j < s.pendingKeys.size" was
+             dropped from the gated branch since the unconditional
+             kind+insertBeforeIdx conjunct already covers it (the
+             colon-step discharge needs that weaker form, not
+             entry-equality).  Scalar case discharged inline by
+             calling `scanNextToken_flow_scanDoubleQuoted_pkPush`
+             in parallel under the gate and using determinism of
+             `scanNextToken` to identify the s' from the
+             unconditional + pkPush variants.  Seq/map cases
+             deferred via two named sorry'd helpers
+             `emit_scans_in_flow_seq_gated_sorry` and
+             `emit_scans_in_flow_map_gated_sorry`, since the
+             proper discharge requires either (a) extending
+             `_pkPush` open helpers with `simpleKeyStack`/
+             `pendingKeyStack` push-shape conjuncts (so close's
+             restore lemmas can compute the back-of-stack values)
+             or (b) inline reasoning about
+             `scanFlowSequenceStart`/`MappingStart`'s effect on
+             stacks via `_pushed` lemmas + `back?_push` (≈40-60
+             lines per case) — split out as its own focused
+             sub-step.  Consumer destructures updated to bind the
+             new gated conjunct (`_h_gated…` placeholders) at 4
+             call sites: `emitList_scans_nonempty` singleton+cons,
+             `emitPairList_scans_nonempty` singleton+cons.  The
              body-C colon-step sorry'd helper
              `emitPairList_body_size_pkRec_through_colon_sorry`
-             (now bundling size + pkRec + pendingKeyStack since the
-             stack-restore step folded the third in) — the proper
-             proof requires extending `scanNextToken_flow_value`
-             with size + pkRec preservation under
-             `pendingKeyActive ≥ s.pendingKeys.size`, derivable from
-             A1's saveSimpleKey push.
-          4. **C-foundation-EmitScansInFlow-preservation-chain**
-             (follow-on, ~0.5 step): discharge
-             `scanDoubleQuoted_preserves_pendingKeyStack_sorry` by
-             building the parallel preservation chain through
+             remains; its discharge is split out as a separate
+             sub-step (see **discharge-colon** below) since it
+             needs the seq/map gated discharges to be proper
+             (not sorry'd) for the gated facts to flow into
+             `pkResolve`.  Net regression: +2 sorries
+             (seq + map gated placeholders), sorry count:
+             11 → 13.  Build clean across 453 jobs.
+          4. **C-foundation-EmitScansInFlow-gated-discharge**
+             (follow-on, ~1 step): discharge
+             `emit_scans_in_flow_seq_gated_sorry` and
+             `emit_scans_in_flow_map_gated_sorry` by extending
+             `scanNextToken_flow_open_nested_pkPush` and
+             `scanNextToken_flow_open_mapping_nested_pkPush`
+             with explicit `pendingKeyStack`/`simpleKeyStack`
+             push-shape conjuncts (`s'.pendingKeyStack =
+             s.pendingKeyStack.push (some s.pendingKeys.size)`
+             and `s'.simpleKeyStack.back?` shape exposing
+             `possible = true`), then composing through body
+             `pks` preservation and the close's restore lemmas
+             to recover `s₃.pendingKeyActive = some s.pendingKeys.size`
+             and `s₃.simpleKey.possible = true`.  Once landed,
+             sorry count: 13 → 11.
+          5. **C-foundation-EmitScansInFlow-discharge-colon**
+             (follow-on, ~1 step, depends on **gated-discharge**):
+             discharge
+             `emitPairList_body_size_pkRec_through_colon_sorry`
+             by adding `s.simpleKeyAllowed = true` precondition to
+             `EmitPairListScansInFlow`, extending
+             `scanNextToken_flow_comma` and
+             `scanNextToken_preprocess_flow_ws1` to expose
+             `simpleKeyAllowed` (= true post-comma; = preserved
+             through ws1) so the cons recursive call's
+             precondition is satisfied, then composing
+             `pkRec_size_compose`: key (gated facts at s₁) +
+             colon (via `scanNextToken_flow_value_pkResolve` with
+             i = s.pendingKeys.size) + ws1 (preserves) + value
+             (unconditional pkRec).  The pkResolve route gives
+             prefix preservation at j < s.pendingKeys.size since
+             the resolved index = s.pendingKeys.size > j.  Once
+             landed, sorry count: 11 → 10.
+          6. **C-foundation-EmitScansInFlow-preservation-chain**
+             (follow-on, ~0.5 step, optional/orthogonal):
+             discharge `scanDoubleQuoted_preserves_pendingKeyStack_sorry`
+             by building the parallel preservation chain through
              `advance` / `emit` / `emitAt` /
              `collectDoubleQuotedLoop` / `processEscape` /
              `foldQuotedNewlinesLoop` etc. (≈30 lemmas).
              Mechanically uniform mirror of the existing
              `_preserves_simpleKeyStack` chain — can land
-             independently or be folded into **gated**.
-          The original "~1 step" estimate underestimated the
+             independently of **gated-discharge** or **discharge-colon**.
+          The original "~1 step" estimate (now refined to 4
+          sub-steps in body-C foundation: defns-helpers-size +
+          defns-prove + stack-restore + gated, with 3 follow-on
+          discharges) underestimated the
           helper-level preservation work plus the stack-restore
-          machinery.  Once **gated** (and optionally
-          **preservation-chain**) lands, **C-compose** is
-          mechanical (~0.5–1 step).
+          machinery.  Once **gated-discharge** + **discharge-colon**
+          both land, **C-compose** is mechanical (~0.5–1 step).
         * **C-compose (body-C composition)**: with the strengthened
           per-leaf and EmitScansInFlow conclusions, walk the
           singleton/cons induction in `emitPairList_chain_first_pkShape`,
