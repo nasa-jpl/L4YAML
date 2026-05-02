@@ -3356,6 +3356,21 @@ theorem saveSimpleKey_pkPush_when_allowed (s : ScannerState)
     simp only [h_ek, show (none == some s.line) = false from by rfl,
                Bool.and_false, Bool.false_eq_true, ↓reduceIte, h_ska]
 
+/-- **J.4.2.b-2d-key-chain-Part2-body-C-foundation-EmitScansInFlow-defns-helpers-size**:
+    `saveSimpleKey` is push-or-id on `pendingKeys`, so size grows or
+    stays.  Used by the size-monotonicity conjuncts of the
+    `scanNextToken_flow_*` helpers (each helper's `s'.pendingKeys`
+    factors through `(saveSimpleKey s).pendingKeys` via emit/advance
+    and inner-scan preservation lemmas, so size mono follows). -/
+theorem saveSimpleKey_pendingKeys_size_ge (s : ScannerState) :
+    s.pendingKeys.size ≤ (saveSimpleKey s).pendingKeys.size := by
+  unfold saveSimpleKey
+  split
+  · exact Nat.le_refl _
+  · split
+    · simp [Array.size_push]
+    · exact Nat.le_refl _
+
 /-- **J.4.2.b-2d-key-chain-Part2-body-C-foundation-EmitScansInFlow-helpers**:
     `saveSimpleKey` preserves `(insertBeforeIdx, kind)` of every prior
     pendingKey entry.  Applies unconditionally — when `saveSimpleKey`
@@ -4433,6 +4448,8 @@ theorem scanNextToken_flow_scanDoubleQuoted (s : ScannerState)
       -- pkRec preserved at indices < initial size.  scanDoubleQuoted preserves
       -- pendingKeys; the dispatchContent wrap fires `setPendingKeyEndLine`
       -- which only touches endLine, leaving insertBeforeIdx + kind intact.
+      -- C-foundation-EmitScansInFlow-defns-helpers-size: size monotonic.
+      ∧ s.pendingKeys.size ≤ s'.pendingKeys.size
       ∧ (∀ j (hj : j < s.pendingKeys.size) (hj' : j < s'.pendingKeys.size),
           (s'.pendingKeys[j]'hj').insertBeforeIdx = (s.pendingKeys[j]'hj).insertBeforeIdx
           ∧ (s'.pendingKeys[j]'hj').kind = (s.pendingKeys[j]'hj).kind) := by
@@ -4510,6 +4527,7 @@ theorem scanNextToken_flow_scanDoubleQuoted (s : ScannerState)
       ∧ AllTokensOnLine s_final s.line
       ∧ EndLineOnLine s_final
       ∧ s_final.simpleKeyStack = s.simpleKeyStack
+      ∧ s.pendingKeys.size ≤ s_final.pendingKeys.size
       ∧ (∀ j (hj : j < s.pendingKeys.size) (hj' : j < s_final.pendingKeys.size),
           (s_final.pendingKeys[j]'hj').insertBeforeIdx = (s.pendingKeys[j]'hj).insertBeforeIdx
           ∧ (s_final.pendingKeys[j]'hj').kind = (s.pendingKeys[j]'hj).kind) := by
@@ -4546,8 +4564,10 @@ theorem scanNextToken_flow_scanDoubleQuoted (s : ScannerState)
       refine ⟨_, rfl, h_dq_corr,
         h_dq_fl.trans h_ad_fl, h_dq_dp.trans h_ad_dp, h_dq_ids.trans h_ad_ids,
         h_dq_ek.trans h_ad_ek, h_dq_col, h_dq_tokens, h_dq_ska,
-        h_dq_line.trans h_ad_line, h_atol_dq, ?_, h_dq_stack.trans h_ad_stack, ?_⟩
+        h_dq_line.trans h_ad_line, h_atol_dq, ?_, h_dq_stack.trans h_ad_stack, ?_, ?_⟩
       · intro h_poss; rw [h_skp] at h_poss; exact absurd h_poss (by decide)
+      · -- size monotonic: s_dq.pendingKeys = (saveSimpleKey s).pendingKeys
+        rw [h_dq_pks_full]; exact saveSimpleKey_pendingKeys_size_ge s
       · -- pkRec preserved: s_dq.pendingKeys = (saveSimpleKey s).pendingKeys
         intro j hj hj'
         have hj'_sk : j < (saveSimpleKey s).pendingKeys.size := by
@@ -4565,7 +4585,7 @@ theorem scanNextToken_flow_scanDoubleQuoted (s : ScannerState)
          h_dq_corr.input_prefix, h_dq_corr.indent_cols_nonneg⟩,
         h_dq_fl.trans h_ad_fl, h_dq_dp.trans h_ad_dp, h_dq_ids.trans h_ad_ids,
         h_dq_ek.trans h_ad_ek, h_dq_col, h_dq_tokens, h_dq_ska,
-        h_dq_line.trans h_ad_line, h_atol_dq, ?_, h_dq_stack.trans h_ad_stack, ?_⟩
+        h_dq_line.trans h_ad_line, h_atol_dq, ?_, h_dq_stack.trans h_ad_stack, ?_, ?_⟩
       · -- EndLineOnLine: endLine just set to s_dq.line, pos from saveSimpleKey
         intro _
         constructor
@@ -4580,6 +4600,10 @@ theorem scanNextToken_flow_scanDoubleQuoted (s : ScannerState)
             rw [← h_ad_sk, ← h_sk_dq]; exact h_skp
           exact (h_eol_sk h_sk_poss).2 |>.trans (saveSimpleKey_preserves_line s)
             |>.trans (h_dq_line.trans h_ad_line).symm
+      · -- size monotonic: setPendingKeyEndLine preserves size; s_dq.pks = saveSimpleKey s.pks
+        show s.pendingKeys.size ≤ (setPendingKeyEndLine s_dq.pendingKeys s_dq.pendingKeyActive s_dq.line).size
+        rw [ScannerCorrectness.setPendingKeyEndLine_size, h_dq_pks_full]
+        exact saveSimpleKey_pendingKeys_size_ge s
       · -- pkRec preserved through setPendingKeyEndLine wrap on top of s_dq chain
         intro j hj hj'
         -- Goal pendingKeys is `setPendingKeyEndLine s_dq.pendingKeys s_dq.pendingKeyActive s_dq.line`
@@ -4600,12 +4624,12 @@ theorem scanNextToken_flow_scanDoubleQuoted (s : ScannerState)
         refine ⟨?_, ?_⟩
         · exact h_ib_set.trans (h_eq ▸ h_ib_chain)
         · exact h_kd_set.trans (h_eq ▸ h_kd_chain)
-  obtain ⟨s_final, h_dc_eq, h_corr_f, h_fl_f, h_dp_f, h_ids_f, h_ek_f, h_col_f, h_tok_f, h_ska_f, h_line_f, h_atol_f, h_endline_f, h_stack_f, h_pkRec_f⟩ := h_content
+  obtain ⟨s_final, h_dc_eq, h_corr_f, h_fl_f, h_dp_f, h_ids_f, h_ek_f, h_col_f, h_tok_f, h_ska_f, h_line_f, h_atol_f, h_endline_f, h_stack_f, h_size_f, h_pkRec_f⟩ := h_content
   -- Step 8: compose through scanNextToken
   exact ⟨s_final, scanNextToken_via_content_dispatch _ _ _ _ _ h_pp h_struct rfl h_check
     h_flow_none h_block_none h_dc_eq, h_corr_f, h_fl_f, h_dp_f, h_ids_f, h_ek_f, h_col_f,
     fun t ht => by rw [h_tok_f] at ht; injection ht with ht; subst ht; exact ⟨nofun, nofun, nofun⟩,
-    h_ska_f, h_line_f, (by rw [h_line_f]; exact h_atol_f), h_endline_f, h_stack_f, h_pkRec_f⟩
+    h_ska_f, h_line_f, (by rw [h_line_f]; exact h_atol_f), h_endline_f, h_stack_f, h_size_f, h_pkRec_f⟩
 
 /-- Per-leaf scalar pkPush variant of `scanNextToken_flow_scanDoubleQuoted`.
 
@@ -5058,6 +5082,8 @@ theorem scanNextToken_flow_open_nested (s : ScannerState) (rest : List Char)
       -- J.4.2.b-2d-key-chain-Part2-body-C-foundation-EmitScansInFlow-helpers:
       -- pkRec preserved at indices < initial size (saveSimpleKey is push-or-id;
       -- scanFlowSequenceStart doesn't touch pendingKeys).
+      -- C-foundation-EmitScansInFlow-defns-helpers-size: size monotonic.
+      ∧ s.pendingKeys.size ≤ s'.pendingKeys.size
       ∧ (∀ j (hj : j < s.pendingKeys.size) (hj' : j < s'.pendingKeys.size),
           (s'.pendingKeys[j]'hj').insertBeforeIdx = (s.pendingKeys[j]'hj).insertBeforeIdx
           ∧ (s'.pendingKeys[j]'hj').kind = (s.pendingKeys[j]'hj).kind) := by
@@ -5116,7 +5142,7 @@ theorem scanNextToken_flow_open_nested (s : ScannerState) (rest : List Char)
     rw [scanFlowSequenceStart_line_eq]
     exact (advance_line_of_peek s_ad '[' h_lt_ad h_peek_ad (by decide) (by decide)).trans h_ad_line
   refine ⟨_, h_snt, ?_, h_fl_f.trans (congrArg (· + 1) h_ad_fl),
-    h_dp_f.trans h_ad_dp, h_ids_f.trans h_ad_ids, h_ek_f.trans h_ad_ek, ?_, h_line_f, ?_, ?_, ?_, ?_, ?_⟩
+    h_dp_f.trans h_ad_dp, h_ids_f.trans h_ad_ids, h_ek_f.trans h_ad_ek, ?_, h_line_f, ?_, ?_, ?_, ?_, ?_, ?_⟩
   · rw [h_col_f]; exact h_corr_f
   · rw [h_col_f, h_ad_col]
   · rw [h_line_f]
@@ -5141,6 +5167,13 @@ theorem scanNextToken_flow_open_nested (s : ScannerState) (rest : List Char)
     rw [ScannerCorrectness.scanFlowSequenceStart_stack_pushed, Array.pop_push]
     show s_ad.simpleKeyStack = s.simpleKeyStack
     simp only [s_ad]; split <;> exact ScannerCorrectness.saveSimpleKey_preserves_simpleKeyStack s
+  · -- size monotonic
+    have h_fss_pks : (scanFlowSequenceStart s_ad).pendingKeys = s_ad.pendingKeys :=
+      ScannerCorrectness.scanFlowSequenceStart_preserves_pendingKeys s_ad
+    have h_ad_pks : s_ad.pendingKeys = (saveSimpleKey s).pendingKeys := by
+      simp only [s_ad]; split <;> rfl
+    rw [h_fss_pks, h_ad_pks]
+    exact saveSimpleKey_pendingKeys_size_ge s
   · -- pkRec preserved at j < initial size
     intro j hj hj'
     have h_fss_pks : (scanFlowSequenceStart s_ad).pendingKeys = s_ad.pendingKeys :=
@@ -5506,6 +5539,8 @@ theorem scanNextToken_flow_comma (s : ScannerState)
       -- J.4.2.b-2d-key-chain-Part2-body-C-foundation-EmitScansInFlow-helpers:
       -- pkRec preserved at indices < initial size (saveSimpleKey is push-or-id;
       -- scanFlowEntry doesn't touch pendingKeys).
+      -- C-foundation-EmitScansInFlow-defns-helpers-size: size monotonic.
+      ∧ s.pendingKeys.size ≤ s'.pendingKeys.size
       ∧ (∀ j (hj : j < s.pendingKeys.size) (hj' : j < s'.pendingKeys.size),
           (s'.pendingKeys[j]'hj').insertBeforeIdx = (s.pendingKeys[j]'hj).insertBeforeIdx
           ∧ (s'.pendingKeys[j]'hj').kind = (s.pendingKeys[j]'hj).kind) := by
@@ -5573,7 +5608,7 @@ theorem scanNextToken_flow_comma (s : ScannerState)
     rw [advance_line_of_peek (s_ad.emit .flowEntry) ',' h_lt_ad h_peek_ad (by decide) (by decide)]
     exact h_ad_line
   refine ⟨_, h_snt, ?_, h_fl_f.trans h_ad_fl, h_dp_f.trans h_ad_dp, h_ids_f.trans h_ad_ids,
-    h_ek_f.trans h_ad_ek, ?_, h_line_f, ?_, ?_, ?_, ?_⟩
+    h_ek_f.trans h_ad_ek, ?_, h_line_f, ?_, ?_, ?_, ?_, ?_⟩
   · rw [h_col_f]; exact h_corr_f
   · rw [h_col_f, h_ad_col]
   · rw [h_line_f]
@@ -5598,6 +5633,16 @@ theorem scanNextToken_flow_comma (s : ScannerState)
     rw [ScannerCorrectness.advance_preserves_simpleKeyStack, ScannerCorrectness.emit_preserves_simpleKeyStack]
     show s_ad.simpleKeyStack = s.simpleKeyStack
     simp only [s_ad]; split <;> exact ScannerCorrectness.saveSimpleKey_preserves_simpleKeyStack s
+  · -- size monotonic: emit/advance/record-update preserve pendingKeys; saveSimpleKey grows
+    show s.pendingKeys.size ≤ ({ (s_ad.emit .flowEntry).advance with simpleKeyAllowed := true }).pendingKeys.size
+    have h_pks_f : ({ (s_ad.emit .flowEntry).advance with simpleKeyAllowed := true }).pendingKeys
+        = (saveSimpleKey s).pendingKeys := by
+      show (s_ad.emit .flowEntry).advance.pendingKeys = (saveSimpleKey s).pendingKeys
+      rw [ScannerCorrectness.advance_preserves_pendingKeys,
+          ScannerCorrectness.emit_preserves_pendingKeys]
+      show s_ad.pendingKeys = (saveSimpleKey s).pendingKeys
+      simp only [s_ad]; split <;> rfl
+    rw [h_pks_f]; exact saveSimpleKey_pendingKeys_size_ge s
   · -- pkRec preserved at j < initial size: pendingKeys flow through saveSimpleKey
     -- (push or identity), s_ad (record-update), emit/advance (no-touch).
     intro j hj hj'
@@ -5755,6 +5800,8 @@ theorem scanNextToken_flow_close_seq_nested (s : ScannerState)
       -- J.4.2.b-2d-key-chain-Part2-body-C-foundation-EmitScansInFlow-helpers:
       -- pkRec preserved at indices < initial size (saveSimpleKey is push-or-id;
       -- scanFlowSequenceEnd doesn't touch pendingKeys).
+      -- C-foundation-EmitScansInFlow-defns-helpers-size: size monotonic.
+      ∧ s.pendingKeys.size ≤ s'.pendingKeys.size
       ∧ (∀ j (hj : j < s.pendingKeys.size) (hj' : j < s'.pendingKeys.size),
           (s'.pendingKeys[j]'hj').insertBeforeIdx = (s.pendingKeys[j]'hj).insertBeforeIdx
           ∧ (s'.pendingKeys[j]'hj').kind = (s.pendingKeys[j]'hj).kind) := by
@@ -5812,7 +5859,7 @@ theorem scanNextToken_flow_close_seq_nested (s : ScannerState)
     show (s_ad.emit .flowSequenceEnd).advance.line = s.line
     rw [advance_line_of_peek (s_ad.emit .flowSequenceEnd) ']' h_lt_ad h_peek_ad (by decide) (by decide)]
     exact h_ad_line
-  refine ⟨_, h_snt, ?_, ?_, h_dp_f.trans h_ad_dp, h_ids_f.trans h_ad_ids, h_ek_f.trans h_ad_ek, ?_, ?_, ?_, h_line_f, ?_, ?_, ?_, ?_⟩
+  refine ⟨_, h_snt, ?_, ?_, h_dp_f.trans h_ad_dp, h_ids_f.trans h_ad_ids, h_ek_f.trans h_ad_ek, ?_, ?_, ?_, h_line_f, ?_, ?_, ?_, ?_, ?_⟩
   · rw [h_col_f]; exact h_corr_f
   · rw [h_fl_f]; split
     · rw [h_ad_fl]
@@ -5850,6 +5897,13 @@ theorem scanNextToken_flow_close_seq_nested (s : ScannerState)
     show s_ad.simpleKeyStack.pop = s.simpleKeyStack.pop
     congr 1
     simp only [s_ad]; split <;> exact ScannerCorrectness.saveSimpleKey_preserves_simpleKeyStack s
+  · -- size monotonic
+    have h_fse_pks : (scanFlowSequenceEnd s_ad).pendingKeys = s_ad.pendingKeys :=
+      ScannerCorrectness.scanFlowSequenceEnd_preserves_pendingKeys s_ad
+    have h_ad_pks : s_ad.pendingKeys = (saveSimpleKey s).pendingKeys := by
+      simp only [s_ad]; split <;> rfl
+    rw [h_fse_pks, h_ad_pks]
+    exact saveSimpleKey_pendingKeys_size_ge s
   · -- pkRec preserved at j < initial size
     intro j hj hj'
     have h_fse_pks : (scanFlowSequenceEnd s_ad).pendingKeys = s_ad.pendingKeys :=
@@ -6124,6 +6178,8 @@ theorem scanNextToken_flow_close_mapping_nested (s : ScannerState)
       ∧ s'.simpleKeyStack = s.simpleKeyStack.pop
       -- J.4.2.b-2d-key-chain-Part2-body-C-foundation-EmitScansInFlow-helpers:
       -- pkRec preserved at indices < initial size.
+      -- C-foundation-EmitScansInFlow-defns-helpers-size: size monotonic.
+      ∧ s.pendingKeys.size ≤ s'.pendingKeys.size
       ∧ (∀ j (hj : j < s.pendingKeys.size) (hj' : j < s'.pendingKeys.size),
           (s'.pendingKeys[j]'hj').insertBeforeIdx = (s.pendingKeys[j]'hj).insertBeforeIdx
           ∧ (s'.pendingKeys[j]'hj').kind = (s.pendingKeys[j]'hj).kind) := by
@@ -6172,7 +6228,7 @@ theorem scanNextToken_flow_close_mapping_nested (s : ScannerState)
     show (s_ad.emit .flowMappingEnd).advance.line = s.line
     rw [advance_line_of_peek (s_ad.emit .flowMappingEnd) '}' h_lt_ad h_peek_ad (by decide) (by decide)]
     exact h_ad_line
-  refine ⟨_, h_snt, ?_, ?_, h_dp_f.trans h_ad_dp, h_ids_f.trans h_ad_ids, h_ek_f.trans h_ad_ek, ?_, ?_, ?_, h_line_f, ?_, ?_, ?_, ?_⟩
+  refine ⟨_, h_snt, ?_, ?_, h_dp_f.trans h_ad_dp, h_ids_f.trans h_ad_ids, h_ek_f.trans h_ad_ek, ?_, ?_, ?_, h_line_f, ?_, ?_, ?_, ?_, ?_⟩
   · rw [h_col_f]; exact h_corr_f
   · rw [h_fl_f]; split
     · rw [h_ad_fl]
@@ -6209,6 +6265,13 @@ theorem scanNextToken_flow_close_mapping_nested (s : ScannerState)
     show s_ad.simpleKeyStack.pop = s.simpleKeyStack.pop
     congr 1
     simp only [s_ad]; split <;> exact ScannerCorrectness.saveSimpleKey_preserves_simpleKeyStack s
+  · -- size monotonic
+    have h_fme_pks : (scanFlowMappingEnd s_ad).pendingKeys = s_ad.pendingKeys :=
+      ScannerCorrectness.scanFlowMappingEnd_preserves_pendingKeys s_ad
+    have h_ad_pks : s_ad.pendingKeys = (saveSimpleKey s).pendingKeys := by
+      simp only [s_ad]; split <;> rfl
+    rw [h_fme_pks, h_ad_pks]
+    exact saveSimpleKey_pendingKeys_size_ge s
   · -- pkRec preserved at j < initial size
     intro j hj hj'
     have h_fme_pks : (scanFlowMappingEnd s_ad).pendingKeys = s_ad.pendingKeys :=
@@ -6329,6 +6392,8 @@ theorem scanNextToken_flow_open_mapping_nested (s : ScannerState) (rest : List C
       ∧ s'.simpleKeyStack.pop = s.simpleKeyStack
       -- J.4.2.b-2d-key-chain-Part2-body-C-foundation-EmitScansInFlow-helpers:
       -- pkRec preserved at indices < initial size.
+      -- C-foundation-EmitScansInFlow-defns-helpers-size: size monotonic.
+      ∧ s.pendingKeys.size ≤ s'.pendingKeys.size
       ∧ (∀ j (hj : j < s.pendingKeys.size) (hj' : j < s'.pendingKeys.size),
           (s'.pendingKeys[j]'hj').insertBeforeIdx = (s.pendingKeys[j]'hj).insertBeforeIdx
           ∧ (s'.pendingKeys[j]'hj').kind = (s.pendingKeys[j]'hj).kind) := by
@@ -6380,7 +6445,7 @@ theorem scanNextToken_flow_open_mapping_nested (s : ScannerState) (rest : List C
     rw [scanFlowMappingStart_line_eq]
     exact (advance_line_of_peek s_ad '{' h_lt_ad h_peek_ad (by decide) (by decide)).trans h_ad_line
   refine ⟨_, h_snt, ?_, h_fl_f.trans (congrArg (· + 1) h_ad_fl),
-    h_dp_f.trans h_ad_dp, h_ids_f.trans h_ad_ids, h_ek_f.trans h_ad_ek, ?_, h_line_f, ?_, ?_, ?_, ?_, ?_⟩
+    h_dp_f.trans h_ad_dp, h_ids_f.trans h_ad_ids, h_ek_f.trans h_ad_ek, ?_, h_line_f, ?_, ?_, ?_, ?_, ?_, ?_⟩
   · rw [h_col_f]; exact h_corr_f
   · rw [h_col_f, h_ad_col]
   · rw [h_line_f]
@@ -6405,6 +6470,13 @@ theorem scanNextToken_flow_open_mapping_nested (s : ScannerState) (rest : List C
     rw [ScannerCorrectness.scanFlowMappingStart_stack_pushed, Array.pop_push]
     show s_ad.simpleKeyStack = s.simpleKeyStack
     simp only [s_ad]; split <;> exact ScannerCorrectness.saveSimpleKey_preserves_simpleKeyStack s
+  · -- size monotonic
+    have h_fms_pks : (scanFlowMappingStart s_ad).pendingKeys = s_ad.pendingKeys :=
+      ScannerCorrectness.scanFlowMappingStart_preserves_pendingKeys s_ad
+    have h_ad_pks : s_ad.pendingKeys = (saveSimpleKey s).pendingKeys := by
+      simp only [s_ad]; split <;> rfl
+    rw [h_fms_pks, h_ad_pks]
+    exact saveSimpleKey_pendingKeys_size_ge s
   · -- pkRec preserved at j < initial size
     intro j hj hj'
     have h_fms_pks : (scanFlowMappingStart s_ad).pendingKeys = s_ad.pendingKeys :=
