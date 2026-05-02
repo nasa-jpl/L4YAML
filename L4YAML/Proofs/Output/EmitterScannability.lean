@@ -3424,15 +3424,40 @@ theorem pkRec_size_of_pks_eq {s₁ s₂ : ScannerState}
     discharge needs the gated step's analysis of `scanNextToken_flow_value`'s
     effect on `pendingKeys`, which is the next cadence sub-step.
 
+    **stack-restore extension (2026-05-02)**: also packages
+    `s'.pendingKeyStack = s.pendingKeyStack`, which is true uniformly through
+    the colon step (`scanValuePrepare` mutates kind/pendingKeyActive but not
+    `pendingKeyStack`); bundling here keeps the colon-step regression at a
+    single sorry rather than fragmenting into a separate helper.
+
     Used in two call sites of `emitPairList_scans_nonempty` (singleton + cons);
     consolidating into one sorry'd helper reduces the sorry-count regression
     from `defns-prove` to a single sorry instead of two. -/
 private theorem emitPairList_body_size_pkRec_through_colon_sorry
     (s s' : ScannerState) :
-    s.pendingKeys.size ≤ s'.pendingKeys.size ∧
-    (∀ j (hj : j < s.pendingKeys.size) (hj' : j < s'.pendingKeys.size),
+    s.pendingKeys.size ≤ s'.pendingKeys.size
+    ∧ (∀ j (hj : j < s.pendingKeys.size) (hj' : j < s'.pendingKeys.size),
         (s'.pendingKeys[j]'hj').insertBeforeIdx = (s.pendingKeys[j]'hj).insertBeforeIdx
-        ∧ (s'.pendingKeys[j]'hj').kind = (s.pendingKeys[j]'hj).kind) := by
+        ∧ (s'.pendingKeys[j]'hj').kind = (s.pendingKeys[j]'hj).kind)
+    ∧ s'.pendingKeyStack = s.pendingKeyStack := by
+  sorry
+
+/-- **J.4.2.b-2d-key-chain-Part2-body-C-foundation-EmitScansInFlow-stack-restore**
+    sorry'd helper: `scanDoubleQuoted` preserves `pendingKeyStack`.
+
+    True (scanDoubleQuoted is a Class A passthrough — its body of
+    `collectDoubleQuotedLoop` + `emitAt` + advance steps never invokes
+    flow-open/close, the only operations that push/pop pendingKeyStack).
+    Proper discharge requires building a parallel
+    `_preserves_pendingKeyStack` chain through `collectDoubleQuotedLoop`,
+    `processEscape`, etc. — mechanically identical to the existing
+    `_preserves_simpleKeyStack` chain (≈30 lemmas) but a separate cadence
+    step's worth of mechanical work.  Deferred to a follow-on
+    "preservation-chain" sub-step so `stack-restore` stays focused on the
+    close-side restore lemmas + framework conjuncts. -/
+private theorem scanDoubleQuoted_preserves_pendingKeyStack_sorry
+    (s s_dq : ScannerState) (_h : scanDoubleQuoted s = .ok s_dq) :
+    s_dq.pendingKeyStack = s.pendingKeyStack := by
   sorry
 
 /-- **J.4.2.b-2d-key-chain-Part2-body-C-foundation-EmitScansInFlow-defns-prove**:
@@ -4192,7 +4217,10 @@ theorem scanNextToken_preprocess_flow_ws1 (s : ScannerState) (c : Char)
       -- J.4.2.b-2d-key-chain-Part2-body-C-foundation-EmitScansInFlow-helpers:
       -- skipToContent doesn't touch pendingKeys, so the preprocessed state's
       -- pendingKeys equal the input's.
-      ∧ s₁.pendingKeys = s.pendingKeys := by
+      ∧ s₁.pendingKeys = s.pendingKeys
+      -- J.4.2.b-2d-key-chain-Part2-body-C-foundation-EmitScansInFlow-stack-restore:
+      -- pendingKeyStack also passes through (mirror of simpleKeyStack).
+      ∧ s₁.pendingKeyStack = s.pendingKeyStack := by
   -- Key: skipToContent absorbs the single space. We decompose the proof:
   -- (a) skipToContent s = .ok s₁ for some s₁ at c :: rest with field preservation
   -- (b) skipToContent s₁ = .ok s₁ (identity, via skipToContent_of_content_char)
@@ -4311,7 +4339,8 @@ theorem scanNextToken_preprocess_flow_ws1 (s : ScannerState) (c : Char)
     fun h_a => by unfold AllTokensOnLine at h_a ⊢; simp only [h_line₁, h_toks₁]; exact h_a,
     fun h_e => by unfold EndLineOnLine at h_e ⊢; rw [h_sk₁, h_line₁]; exact h_e,
     h_stack₁, h_toks₁,
-    ScannerCorrectness.skipToContent_preserves_pendingKeys s s₁ h_stc_ok⟩
+    ScannerCorrectness.skipToContent_preserves_pendingKeys s s₁ h_stc_ok,
+    ScannerCorrectness.skipToContent_preserves_pendingKeyStack s s₁ h_stc_ok⟩
 
 -- ═══ Flow-context dispatch lemmas ═══
 
@@ -4522,7 +4551,16 @@ theorem scanNextToken_flow_scanDoubleQuoted (s : ScannerState)
       ∧ s.pendingKeys.size ≤ s'.pendingKeys.size
       ∧ (∀ j (hj : j < s.pendingKeys.size) (hj' : j < s'.pendingKeys.size),
           (s'.pendingKeys[j]'hj').insertBeforeIdx = (s.pendingKeys[j]'hj).insertBeforeIdx
-          ∧ (s'.pendingKeys[j]'hj').kind = (s.pendingKeys[j]'hj).kind) := by
+          ∧ (s'.pendingKeys[j]'hj').kind = (s.pendingKeys[j]'hj).kind)
+      -- J.4.2.b-2d-key-chain-Part2-body-C-foundation-EmitScansInFlow-stack-restore:
+      -- pendingKeyStack preserved (scanDoubleQuoted is a Class A passthrough
+      -- that doesn't push/pop pendingKeyStack; the surrounding setPendingKeyEndLine
+      -- wrap mutates pendingKeys[active].endLine but leaves pendingKeyStack alone).
+      -- Discharged via a sorry'd helper `scanDoubleQuoted_preserves_pendingKeyStack_sorry`
+      -- pending the parallel `_preserves_pendingKeyStack` chain through
+      -- collectDoubleQuotedLoop / processEscape (≈300 lemmas mirroring the
+      -- `_preserves_simpleKeyStack` chain).
+      ∧ s'.pendingKeyStack = s.pendingKeyStack := by
   -- Step 1: preprocessing
   have h_pp : scanNextToken_preprocess s = .ok (some (saveSimpleKey s, '"')) :=
     scanNextToken_preprocess_flow s '"' ((escapeString content).toList ++ ['"'] ++ rest) s.col
@@ -4600,7 +4638,10 @@ theorem scanNextToken_flow_scanDoubleQuoted (s : ScannerState)
       ∧ s.pendingKeys.size ≤ s_final.pendingKeys.size
       ∧ (∀ j (hj : j < s.pendingKeys.size) (hj' : j < s_final.pendingKeys.size),
           (s_final.pendingKeys[j]'hj').insertBeforeIdx = (s.pendingKeys[j]'hj).insertBeforeIdx
-          ∧ (s_final.pendingKeys[j]'hj').kind = (s.pendingKeys[j]'hj).kind) := by
+          ∧ (s_final.pendingKeys[j]'hj').kind = (s.pendingKeys[j]'hj).kind)
+      -- stack-restore: pendingKeyStack preserved (Class A passthrough — sorry'd
+      -- in `scanDoubleQuoted_preserves_pendingKeyStack_sorry`).
+      ∧ s_final.pendingKeyStack = s.pendingKeyStack := by
     unfold scanNextToken_dispatchContent
     simp (config := { decide := true }) only [bind, Except.bind, pure, Except.pure, h_dq]
     -- AllTokensOnLine for s_dq: scanDoubleQuoted preserves AllTokensOnLine
@@ -4627,6 +4668,14 @@ theorem scanNextToken_flow_scanDoubleQuoted (s : ScannerState)
       simp only [s_ad]; split <;> rfl
     have h_dq_pks_full : s_dq.pendingKeys = (saveSimpleKey s).pendingKeys :=
       h_dq_pks.trans h_ad_pks
+    -- pendingKeyStack chain s → saveSimpleKey s → s_ad → s_dq (sorry'd at the
+    -- scanDoubleQuoted leg pending the parallel preservation chain).
+    have h_dq_pks_stack : s_dq.pendingKeyStack = s_ad.pendingKeyStack :=
+      scanDoubleQuoted_preserves_pendingKeyStack_sorry s_ad s_dq h_dq
+    have h_ad_pks_stack : s_ad.pendingKeyStack = s.pendingKeyStack := by
+      simp only [s_ad]; split <;> exact ScannerCorrectness.saveSimpleKey_preserves_pendingKeyStack s
+    have h_dq_pks_stack_full : s_dq.pendingKeyStack = s.pendingKeyStack :=
+      h_dq_pks_stack.trans h_ad_pks_stack
     -- After scanDoubleQuoted, simpleKey.possible branches
     cases h_skp : s_dq.simpleKey.possible
     · -- simpleKey.possible = false: s' = s_dq
@@ -4634,7 +4683,7 @@ theorem scanNextToken_flow_scanDoubleQuoted (s : ScannerState)
       refine ⟨_, rfl, h_dq_corr,
         h_dq_fl.trans h_ad_fl, h_dq_dp.trans h_ad_dp, h_dq_ids.trans h_ad_ids,
         h_dq_ek.trans h_ad_ek, h_dq_col, h_dq_tokens, h_dq_ska,
-        h_dq_line.trans h_ad_line, h_atol_dq, ?_, h_dq_stack.trans h_ad_stack, ?_, ?_⟩
+        h_dq_line.trans h_ad_line, h_atol_dq, ?_, h_dq_stack.trans h_ad_stack, ?_, ?_, ?_⟩
       · intro h_poss; rw [h_skp] at h_poss; exact absurd h_poss (by decide)
       · -- size monotonic: s_dq.pendingKeys = (saveSimpleKey s).pendingKeys
         rw [h_dq_pks_full]; exact saveSimpleKey_pendingKeys_size_ge s
@@ -4648,6 +4697,7 @@ theorem scanNextToken_flow_scanDoubleQuoted (s : ScannerState)
         refine ⟨?_, ?_⟩
         · rw [h_eq]; exact h_ib
         · rw [h_eq]; exact h_kd
+      · exact h_dq_pks_stack_full
     · -- simpleKey.possible = true: s' = { s_dq with simpleKey endLine update }
       simp only [↓reduceIte]
       refine ⟨_, rfl,
@@ -4655,7 +4705,7 @@ theorem scanNextToken_flow_scanDoubleQuoted (s : ScannerState)
          h_dq_corr.input_prefix, h_dq_corr.indent_cols_nonneg⟩,
         h_dq_fl.trans h_ad_fl, h_dq_dp.trans h_ad_dp, h_dq_ids.trans h_ad_ids,
         h_dq_ek.trans h_ad_ek, h_dq_col, h_dq_tokens, h_dq_ska,
-        h_dq_line.trans h_ad_line, h_atol_dq, ?_, h_dq_stack.trans h_ad_stack, ?_, ?_⟩
+        h_dq_line.trans h_ad_line, h_atol_dq, ?_, h_dq_stack.trans h_ad_stack, ?_, ?_, ?_⟩
       · -- EndLineOnLine: endLine just set to s_dq.line, pos from saveSimpleKey
         intro _
         constructor
@@ -4694,12 +4744,17 @@ theorem scanNextToken_flow_scanDoubleQuoted (s : ScannerState)
         refine ⟨?_, ?_⟩
         · exact h_ib_set.trans (h_eq ▸ h_ib_chain)
         · exact h_kd_set.trans (h_eq ▸ h_kd_chain)
-  obtain ⟨s_final, h_dc_eq, h_corr_f, h_fl_f, h_dp_f, h_ids_f, h_ek_f, h_col_f, h_tok_f, h_ska_f, h_line_f, h_atol_f, h_endline_f, h_stack_f, h_size_f, h_pkRec_f⟩ := h_content
+      · -- pendingKeyStack: setPendingKeyEndLine wrap doesn't touch stack
+        show s_dq.pendingKeyStack = s.pendingKeyStack
+        exact h_dq_pks_stack_full
+  obtain ⟨s_final, h_dc_eq, h_corr_f, h_fl_f, h_dp_f, h_ids_f, h_ek_f, h_col_f, h_tok_f,
+          h_ska_f, h_line_f, h_atol_f, h_endline_f, h_stack_f, h_size_f, h_pkRec_f, h_pks_f⟩ := h_content
   -- Step 8: compose through scanNextToken
   exact ⟨s_final, scanNextToken_via_content_dispatch _ _ _ _ _ h_pp h_struct rfl h_check
     h_flow_none h_block_none h_dc_eq, h_corr_f, h_fl_f, h_dp_f, h_ids_f, h_ek_f, h_col_f,
     fun t ht => by rw [h_tok_f] at ht; injection ht with ht; subst ht; exact ⟨nofun, nofun, nofun⟩,
-    h_ska_f, h_line_f, (by rw [h_line_f]; exact h_atol_f), h_endline_f, h_stack_f, h_size_f, h_pkRec_f⟩
+    h_ska_f, h_line_f, (by rw [h_line_f]; exact h_atol_f), h_endline_f, h_stack_f, h_size_f, h_pkRec_f,
+    h_pks_f⟩
 
 /-- Per-leaf scalar pkPush variant of `scanNextToken_flow_scanDoubleQuoted`.
 
@@ -5156,7 +5211,12 @@ theorem scanNextToken_flow_open_nested (s : ScannerState) (rest : List Char)
       ∧ s.pendingKeys.size ≤ s'.pendingKeys.size
       ∧ (∀ j (hj : j < s.pendingKeys.size) (hj' : j < s'.pendingKeys.size),
           (s'.pendingKeys[j]'hj').insertBeforeIdx = (s.pendingKeys[j]'hj).insertBeforeIdx
-          ∧ (s'.pendingKeys[j]'hj').kind = (s.pendingKeys[j]'hj).kind) := by
+          ∧ (s'.pendingKeys[j]'hj').kind = (s.pendingKeys[j]'hj).kind)
+      -- J.4.2.b-2d-key-chain-Part2-body-C-foundation-EmitScansInFlow-stack-restore:
+      -- pendingKeyStack pushed (saveSimpleKey + allowDirectives preserve it;
+      -- scanFlowSequenceStart pushes prior pendingKeyActive); the matching
+      -- close-side pop cancels this push in the seq composition.
+      ∧ s'.pendingKeyStack.pop = s.pendingKeyStack := by
   have h_pp : scanNextToken_preprocess s = .ok (some (saveSimpleKey s, '[')) :=
     scanNextToken_preprocess_flow s '[' rest s.col hcorr h_flow
       (by decide) (by decide) (by decide)
@@ -5212,7 +5272,7 @@ theorem scanNextToken_flow_open_nested (s : ScannerState) (rest : List Char)
     rw [scanFlowSequenceStart_line_eq]
     exact (advance_line_of_peek s_ad '[' h_lt_ad h_peek_ad (by decide) (by decide)).trans h_ad_line
   refine ⟨_, h_snt, ?_, h_fl_f.trans (congrArg (· + 1) h_ad_fl),
-    h_dp_f.trans h_ad_dp, h_ids_f.trans h_ad_ids, h_ek_f.trans h_ad_ek, ?_, h_line_f, ?_, ?_, ?_, ?_, ?_, ?_⟩
+    h_dp_f.trans h_ad_dp, h_ids_f.trans h_ad_ids, h_ek_f.trans h_ad_ek, ?_, h_line_f, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
   · rw [h_col_f]; exact h_corr_f
   · rw [h_col_f, h_ad_col]
   · rw [h_line_f]
@@ -5261,6 +5321,10 @@ theorem scanNextToken_flow_open_nested (s : ScannerState) (rest : List Char)
     refine ⟨?_, ?_⟩
     · rw [h_eq]; exact h_ib
     · rw [h_eq]; exact h_kd
+  · -- pendingKeyStack.pop = s.pendingKeyStack (mirror of simpleKeyStack)
+    rw [ScannerCorrectness.scanFlowSequenceStart_pendingKeyStack_pushed, Array.pop_push]
+    show s_ad.pendingKeyStack = s.pendingKeyStack
+    simp only [s_ad]; split <;> exact ScannerCorrectness.saveSimpleKey_preserves_pendingKeyStack s
 
 /-- Per-leaf flow-sequence pkPush theorem.  Mirrors
     `scanNextToken_flow_open_nested` but additionally exposes the
@@ -5613,7 +5677,11 @@ theorem scanNextToken_flow_comma (s : ScannerState)
       ∧ s.pendingKeys.size ≤ s'.pendingKeys.size
       ∧ (∀ j (hj : j < s.pendingKeys.size) (hj' : j < s'.pendingKeys.size),
           (s'.pendingKeys[j]'hj').insertBeforeIdx = (s.pendingKeys[j]'hj).insertBeforeIdx
-          ∧ (s'.pendingKeys[j]'hj').kind = (s.pendingKeys[j]'hj).kind) := by
+          ∧ (s'.pendingKeys[j]'hj').kind = (s.pendingKeys[j]'hj).kind)
+      -- J.4.2.b-2d-key-chain-Part2-body-C-foundation-EmitScansInFlow-stack-restore:
+      -- pendingKeyStack preserved (scanFlowEntry doesn't touch it; saveSimpleKey
+      -- and the allowDirectives record-update preserve it).
+      ∧ s'.pendingKeyStack = s.pendingKeyStack := by
   -- Step 1: preprocessing
   have h_pp : scanNextToken_preprocess s = .ok (some (saveSimpleKey s, ',')) :=
     scanNextToken_preprocess_flow s ',' rest s.col hcorr h_flow
@@ -5678,7 +5746,7 @@ theorem scanNextToken_flow_comma (s : ScannerState)
     rw [advance_line_of_peek (s_ad.emit .flowEntry) ',' h_lt_ad h_peek_ad (by decide) (by decide)]
     exact h_ad_line
   refine ⟨_, h_snt, ?_, h_fl_f.trans h_ad_fl, h_dp_f.trans h_ad_dp, h_ids_f.trans h_ad_ids,
-    h_ek_f.trans h_ad_ek, ?_, h_line_f, ?_, ?_, ?_, ?_, ?_⟩
+    h_ek_f.trans h_ad_ek, ?_, h_line_f, ?_, ?_, ?_, ?_, ?_, ?_⟩
   · rw [h_col_f]; exact h_corr_f
   · rw [h_col_f, h_ad_col]
   · rw [h_line_f]
@@ -5736,6 +5804,14 @@ theorem scanNextToken_flow_comma (s : ScannerState)
               ).pendingKeys[j]'hj' = (saveSimpleKey s).pendingKeys[j]'hj'_sk := by
         congr 1
       rw [this]; exact h_kd
+  · -- pendingKeyStack preserved: scanFlowEntry doesn't touch it
+    show ({ (s_ad.emit .flowEntry).advance with simpleKeyAllowed := true }).pendingKeyStack
+        = s.pendingKeyStack
+    dsimp only []
+    rw [ScannerCorrectness.advance_preserves_pendingKeyStack,
+        ScannerCorrectness.emit_preserves_pendingKeyStack]
+    show s_ad.pendingKeyStack = s.pendingKeyStack
+    simp only [s_ad]; split <;> exact ScannerCorrectness.saveSimpleKey_preserves_pendingKeyStack s
 
 -- ═══ Flow close bracket: scanFlowSequenceEnd dispatch ═══
 
@@ -5874,7 +5950,13 @@ theorem scanNextToken_flow_close_seq_nested (s : ScannerState)
       ∧ s.pendingKeys.size ≤ s'.pendingKeys.size
       ∧ (∀ j (hj : j < s.pendingKeys.size) (hj' : j < s'.pendingKeys.size),
           (s'.pendingKeys[j]'hj').insertBeforeIdx = (s.pendingKeys[j]'hj).insertBeforeIdx
-          ∧ (s'.pendingKeys[j]'hj').kind = (s.pendingKeys[j]'hj).kind) := by
+          ∧ (s'.pendingKeys[j]'hj').kind = (s.pendingKeys[j]'hj).kind)
+      -- J.4.2.b-2d-key-chain-Part2-body-C-foundation-EmitScansInFlow-stack-restore:
+      -- close-side restore: simpleKey/pendingKeyActive recover from the
+      -- corresponding stack tops, and the stacks pop in tandem (J.2 dual-write).
+      ∧ s'.simpleKey = s.simpleKeyStack.back?.getD {}
+      ∧ s'.pendingKeyActive = s.pendingKeyStack.back?.getD none
+      ∧ s'.pendingKeyStack = s.pendingKeyStack.pop := by
   -- Step 1: preprocessing
   have h_pp : scanNextToken_preprocess s = .ok (some (saveSimpleKey s, ']')) :=
     scanNextToken_preprocess_flow s ']' rest s.col hcorr h_flow
@@ -5929,7 +6011,15 @@ theorem scanNextToken_flow_close_seq_nested (s : ScannerState)
     show (s_ad.emit .flowSequenceEnd).advance.line = s.line
     rw [advance_line_of_peek (s_ad.emit .flowSequenceEnd) ']' h_lt_ad h_peek_ad (by decide) (by decide)]
     exact h_ad_line
-  refine ⟨_, h_snt, ?_, ?_, h_dp_f.trans h_ad_dp, h_ids_f.trans h_ad_ids, h_ek_f.trans h_ad_ek, ?_, ?_, ?_, h_line_f, ?_, ?_, ?_, ?_, ?_⟩
+  -- Stack-restore facts (J.4.2.b…stack-restore): `s_ad.simpleKeyStack`,
+  -- `s_ad.pendingKeyStack`, and `s_ad.pendingKeys` all equal the
+  -- corresponding `saveSimpleKey s` projections (which equal `s`'s
+  -- projections for the stacks; saveSimpleKey only mutates pendingKeys).
+  have h_ad_simpleKeyStack : s_ad.simpleKeyStack = s.simpleKeyStack := by
+    simp only [s_ad]; split <;> exact ScannerCorrectness.saveSimpleKey_preserves_simpleKeyStack s
+  have h_ad_pendingKeyStack : s_ad.pendingKeyStack = s.pendingKeyStack := by
+    simp only [s_ad]; split <;> exact ScannerCorrectness.saveSimpleKey_preserves_pendingKeyStack s
+  refine ⟨_, h_snt, ?_, ?_, h_dp_f.trans h_ad_dp, h_ids_f.trans h_ad_ids, h_ek_f.trans h_ad_ek, ?_, ?_, ?_, h_line_f, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
   · rw [h_col_f]; exact h_corr_f
   · rw [h_fl_f]; split
     · rw [h_ad_fl]
@@ -5951,9 +6041,7 @@ theorem scanNextToken_flow_close_seq_nested (s : ScannerState)
   · -- EndLineOnLine: simpleKey restored from stack
     intro h_poss
     rw [ScannerCorrectness.scanFlowSequenceEnd_simpleKey_restored] at h_poss ⊢
-    have h_ad_stack : s_ad.simpleKeyStack = s.simpleKeyStack := by
-      simp only [s_ad]; split <;> exact ScannerCorrectness.saveSimpleKey_preserves_simpleKeyStack s
-    rw [h_ad_stack] at h_poss ⊢
+    rw [h_ad_simpleKeyStack] at h_poss ⊢
     unfold StackEndLineOnLine at h_stack_endline
     rw [h_line_f]
     cases h_back : s.simpleKeyStack.back? with
@@ -5963,10 +6051,7 @@ theorem scanNextToken_flow_close_seq_nested (s : ScannerState)
       exact h_stack_endline h_poss
   · -- simpleKeyStack.pop
     show (scanFlowSequenceEnd s_ad).simpleKeyStack = s.simpleKeyStack.pop
-    rw [ScannerCorrectness.scanFlowSequenceEnd_stack_popped]
-    show s_ad.simpleKeyStack.pop = s.simpleKeyStack.pop
-    congr 1
-    simp only [s_ad]; split <;> exact ScannerCorrectness.saveSimpleKey_preserves_simpleKeyStack s
+    rw [ScannerCorrectness.scanFlowSequenceEnd_stack_popped, h_ad_simpleKeyStack]
   · -- size monotonic
     have h_fse_pks : (scanFlowSequenceEnd s_ad).pendingKeys = s_ad.pendingKeys :=
       ScannerCorrectness.scanFlowSequenceEnd_preserves_pendingKeys s_ad
@@ -5990,6 +6075,17 @@ theorem scanNextToken_flow_close_seq_nested (s : ScannerState)
     refine ⟨?_, ?_⟩
     · rw [h_eq]; exact h_ib
     · rw [h_eq]; exact h_kd
+  · -- simpleKey restored
+    show (scanFlowSequenceEnd s_ad).simpleKey = s.simpleKeyStack.back?.getD {}
+    rw [ScannerCorrectness.scanFlowSequenceEnd_simpleKey_restored, h_ad_simpleKeyStack]
+  · -- pendingKeyActive restored
+    show (scanFlowSequenceEnd s_ad).pendingKeyActive = s.pendingKeyStack.back?.getD none
+    rw [ScannerCorrectness.scanFlowSequenceEnd_pendingKeyActive_restored,
+        h_ad_pendingKeyStack]
+  · -- pendingKeyStack popped
+    show (scanFlowSequenceEnd s_ad).pendingKeyStack = s.pendingKeyStack.pop
+    rw [ScannerCorrectness.scanFlowSequenceEnd_pendingKeyStack_popped,
+        h_ad_pendingKeyStack]
 
 -- ═══ Outermost flow close: ] at flowLevel = 1 ═══
 
@@ -6252,7 +6348,13 @@ theorem scanNextToken_flow_close_mapping_nested (s : ScannerState)
       ∧ s.pendingKeys.size ≤ s'.pendingKeys.size
       ∧ (∀ j (hj : j < s.pendingKeys.size) (hj' : j < s'.pendingKeys.size),
           (s'.pendingKeys[j]'hj').insertBeforeIdx = (s.pendingKeys[j]'hj).insertBeforeIdx
-          ∧ (s'.pendingKeys[j]'hj').kind = (s.pendingKeys[j]'hj).kind) := by
+          ∧ (s'.pendingKeys[j]'hj').kind = (s.pendingKeys[j]'hj).kind)
+      -- J.4.2.b-2d-key-chain-Part2-body-C-foundation-EmitScansInFlow-stack-restore:
+      -- close-side restore: simpleKey/pendingKeyActive recover from the
+      -- corresponding stack tops, and the stacks pop in tandem (J.2 dual-write).
+      ∧ s'.simpleKey = s.simpleKeyStack.back?.getD {}
+      ∧ s'.pendingKeyActive = s.pendingKeyStack.back?.getD none
+      ∧ s'.pendingKeyStack = s.pendingKeyStack.pop := by
   have h_pp : scanNextToken_preprocess s = .ok (some (saveSimpleKey s, '}')) :=
     scanNextToken_preprocess_flow s '}' rest s.col hcorr h_flow
       (by decide) (by decide) (by decide)
@@ -6298,7 +6400,13 @@ theorem scanNextToken_flow_close_mapping_nested (s : ScannerState)
     show (s_ad.emit .flowMappingEnd).advance.line = s.line
     rw [advance_line_of_peek (s_ad.emit .flowMappingEnd) '}' h_lt_ad h_peek_ad (by decide) (by decide)]
     exact h_ad_line
-  refine ⟨_, h_snt, ?_, ?_, h_dp_f.trans h_ad_dp, h_ids_f.trans h_ad_ids, h_ek_f.trans h_ad_ek, ?_, ?_, ?_, h_line_f, ?_, ?_, ?_, ?_, ?_⟩
+  -- Stack-restore facts (J.4.2.b…stack-restore): saveSimpleKey + allowDirectives
+  -- update preserve both stacks; close pops both in tandem.
+  have h_ad_simpleKeyStack : s_ad.simpleKeyStack = s.simpleKeyStack := by
+    simp only [s_ad]; split <;> exact ScannerCorrectness.saveSimpleKey_preserves_simpleKeyStack s
+  have h_ad_pendingKeyStack : s_ad.pendingKeyStack = s.pendingKeyStack := by
+    simp only [s_ad]; split <;> exact ScannerCorrectness.saveSimpleKey_preserves_pendingKeyStack s
+  refine ⟨_, h_snt, ?_, ?_, h_dp_f.trans h_ad_dp, h_ids_f.trans h_ad_ids, h_ek_f.trans h_ad_ek, ?_, ?_, ?_, h_line_f, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
   · rw [h_col_f]; exact h_corr_f
   · rw [h_fl_f]; split
     · rw [h_ad_fl]
@@ -6319,9 +6427,7 @@ theorem scanNextToken_flow_close_mapping_nested (s : ScannerState)
   · -- EndLineOnLine: simpleKey restored from stack
     intro h_poss
     rw [ScannerCorrectness.scanFlowMappingEnd_simpleKey_restored] at h_poss ⊢
-    have h_ad_stack : s_ad.simpleKeyStack = s.simpleKeyStack := by
-      simp only [s_ad]; split <;> exact ScannerCorrectness.saveSimpleKey_preserves_simpleKeyStack s
-    rw [h_ad_stack] at h_poss ⊢
+    rw [h_ad_simpleKeyStack] at h_poss ⊢
     unfold StackEndLineOnLine at h_stack_endline
     rw [h_line_f]
     cases h_back : s.simpleKeyStack.back? with
@@ -6331,10 +6437,7 @@ theorem scanNextToken_flow_close_mapping_nested (s : ScannerState)
       exact h_stack_endline h_poss
   · -- simpleKeyStack.pop
     show (scanFlowMappingEnd s_ad).simpleKeyStack = s.simpleKeyStack.pop
-    rw [ScannerCorrectness.scanFlowMappingEnd_stack_popped]
-    show s_ad.simpleKeyStack.pop = s.simpleKeyStack.pop
-    congr 1
-    simp only [s_ad]; split <;> exact ScannerCorrectness.saveSimpleKey_preserves_simpleKeyStack s
+    rw [ScannerCorrectness.scanFlowMappingEnd_stack_popped, h_ad_simpleKeyStack]
   · -- size monotonic
     have h_fme_pks : (scanFlowMappingEnd s_ad).pendingKeys = s_ad.pendingKeys :=
       ScannerCorrectness.scanFlowMappingEnd_preserves_pendingKeys s_ad
@@ -6358,6 +6461,17 @@ theorem scanNextToken_flow_close_mapping_nested (s : ScannerState)
     refine ⟨?_, ?_⟩
     · rw [h_eq]; exact h_ib
     · rw [h_eq]; exact h_kd
+  · -- simpleKey restored
+    show (scanFlowMappingEnd s_ad).simpleKey = s.simpleKeyStack.back?.getD {}
+    rw [ScannerCorrectness.scanFlowMappingEnd_simpleKey_restored, h_ad_simpleKeyStack]
+  · -- pendingKeyActive restored
+    show (scanFlowMappingEnd s_ad).pendingKeyActive = s.pendingKeyStack.back?.getD none
+    rw [ScannerCorrectness.scanFlowMappingEnd_pendingKeyActive_restored,
+        h_ad_pendingKeyStack]
+  · -- pendingKeyStack popped
+    show (scanFlowMappingEnd s_ad).pendingKeyStack = s.pendingKeyStack.pop
+    rw [ScannerCorrectness.scanFlowMappingEnd_pendingKeyStack_popped,
+        h_ad_pendingKeyStack]
 
 theorem dispatchFlowIndicators_close_brace_outermost (s : ScannerState)
     (h_fl : s.flowLevel = 1)
@@ -6466,7 +6580,11 @@ theorem scanNextToken_flow_open_mapping_nested (s : ScannerState) (rest : List C
       ∧ s.pendingKeys.size ≤ s'.pendingKeys.size
       ∧ (∀ j (hj : j < s.pendingKeys.size) (hj' : j < s'.pendingKeys.size),
           (s'.pendingKeys[j]'hj').insertBeforeIdx = (s.pendingKeys[j]'hj).insertBeforeIdx
-          ∧ (s'.pendingKeys[j]'hj').kind = (s.pendingKeys[j]'hj).kind) := by
+          ∧ (s'.pendingKeys[j]'hj').kind = (s.pendingKeys[j]'hj).kind)
+      -- J.4.2.b-2d-key-chain-Part2-body-C-foundation-EmitScansInFlow-stack-restore:
+      -- pendingKeyStack pushed (mirror of simpleKeyStack); the matching
+      -- close-side pop cancels in the map composition.
+      ∧ s'.pendingKeyStack.pop = s.pendingKeyStack := by
   have h_pp : scanNextToken_preprocess s = .ok (some (saveSimpleKey s, '{')) :=
     scanNextToken_preprocess_flow s '{' rest s.col hcorr h_flow
       (by decide) (by decide) (by decide)
@@ -6515,7 +6633,7 @@ theorem scanNextToken_flow_open_mapping_nested (s : ScannerState) (rest : List C
     rw [scanFlowMappingStart_line_eq]
     exact (advance_line_of_peek s_ad '{' h_lt_ad h_peek_ad (by decide) (by decide)).trans h_ad_line
   refine ⟨_, h_snt, ?_, h_fl_f.trans (congrArg (· + 1) h_ad_fl),
-    h_dp_f.trans h_ad_dp, h_ids_f.trans h_ad_ids, h_ek_f.trans h_ad_ek, ?_, h_line_f, ?_, ?_, ?_, ?_, ?_, ?_⟩
+    h_dp_f.trans h_ad_dp, h_ids_f.trans h_ad_ids, h_ek_f.trans h_ad_ek, ?_, h_line_f, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
   · rw [h_col_f]; exact h_corr_f
   · rw [h_col_f, h_ad_col]
   · rw [h_line_f]
@@ -6563,6 +6681,10 @@ theorem scanNextToken_flow_open_mapping_nested (s : ScannerState) (rest : List C
     refine ⟨?_, ?_⟩
     · rw [h_eq]; exact h_ib
     · rw [h_eq]; exact h_kd
+  · -- pendingKeyStack.pop = s.pendingKeyStack
+    rw [ScannerCorrectness.scanFlowMappingStart_pendingKeyStack_pushed, Array.pop_push]
+    show s_ad.pendingKeyStack = s.pendingKeyStack
+    simp only [s_ad]; split <;> exact ScannerCorrectness.saveSimpleKey_preserves_pendingKeyStack s
 
 /-- Per-leaf flow-mapping pkPush theorem.  Mirrors
     `scanNextToken_flow_open_mapping_nested` but additionally exposes the
@@ -8315,6 +8437,11 @@ def EmitScansInFlow (v : YamlValue) : Prop :=
       ∧ (∀ j (hj : j < s.pendingKeys.size) (hj' : j < s'.pendingKeys.size),
           (s'.pendingKeys[j]'hj').insertBeforeIdx = (s.pendingKeys[j]'hj).insertBeforeIdx
           ∧ (s'.pendingKeys[j]'hj').kind = (s.pendingKeys[j]'hj).kind)
+      -- J.4.2.b-2d-key-chain-Part2-body-C-foundation-EmitScansInFlow-stack-restore:
+      -- pendingKeyStack preserved (scalar: helper preserves it; seq/map: open
+      -- pushes and matching close pops cancel; the body of EmitListScansInFlow /
+      -- EmitPairListScansInFlow preserves it).
+      ∧ s'.pendingKeyStack = s.pendingKeyStack
 
 /-- `EmitListScansInFlow items` asserts that scanning the comma-separated
     emitList output succeeds in flow context, preserving invariants.
@@ -8348,6 +8475,10 @@ def EmitListScansInFlow (items : List YamlValue) : Prop :=
       ∧ (∀ j (hj : j < s.pendingKeys.size) (hj' : j < s'.pendingKeys.size),
           (s'.pendingKeys[j]'hj').insertBeforeIdx = (s.pendingKeys[j]'hj).insertBeforeIdx
           ∧ (s'.pendingKeys[j]'hj').kind = (s.pendingKeys[j]'hj).kind)
+      -- J.4.2.b-2d-key-chain-Part2-body-C-foundation-EmitScansInFlow-stack-restore:
+      -- pendingKeyStack preserved across the body (mirrors simpleKeyStack;
+      -- inner [/{ pushes are cancelled by the matching ]/} pops).
+      ∧ s'.pendingKeyStack = s.pendingKeyStack
 
 /-- Empty list body is trivially scanned (0-step chain). -/
 theorem emitList_scans_empty : EmitListScansInFlow [] := by
@@ -8357,7 +8488,7 @@ theorem emitList_scans_empty : EmitListScansInFlow [] := by
     simp only [emit.emitList]; rfl
   rw [h_eq] at hcorr
   exact ⟨0, s, .zero, hcorr, rfl, rfl, rfl, rfl, h_col, h_flow, h_indent, rfl, h_atol,
-    h_endline, rfl, .zero (Nat.le_refl _), Nat.le_refl _, fun _ _ _ => ⟨rfl, rfl⟩⟩
+    h_endline, rfl, .zero (Nat.le_refl _), Nat.le_refl _, fun _ _ _ => ⟨rfl, rfl⟩, rfl⟩
 
 /-- Non-empty list scanning via induction on the item list.
     Structure: singleton case uses EmitScansInFlow directly;
@@ -8376,10 +8507,12 @@ theorem emitList_scans_nonempty (items : List YamlValue) (h_ne : items ≠ [])
         simp only [emit.emitList]
       rw [h_eq] at hcorr
       obtain ⟨n, s', h_chain, h_corr, h_fl', h_dp, h_ids, h_ek', h_col', h_flow', h_indent',
-              h_line_v, _, _, h_atol', h_endline', h_stack', h_fmc', h_size', h_pkRec'⟩ :=
+              h_line_v, _, _, h_atol', h_endline', h_stack', h_fmc', h_size', h_pkRec',
+              h_pks_v⟩ :=
         h_all v (.head _) s rest_chars hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline
       exact ⟨n, s', h_chain, h_corr, h_fl', h_dp, h_ids, h_ek', h_col', h_flow', h_indent',
-        h_line_v, h_atol', h_endline', h_stack', h_fmc', h_size', h_pkRec'⟩
+        h_line_v, h_atol', h_endline', h_stack', h_fmc', h_size', h_pkRec', h_pks_v⟩
+        -- (singleton: h_pks_v = s'.pendingKeyStack = s.pendingKeyStack from EmitScansInFlow)
     | v' :: vs, ih =>
       -- Multi-item: emitList (v :: v' :: vs) = emit v ++ ", " ++ emitList (v' :: vs)
       -- Rewrite chars to decompose
@@ -8391,12 +8524,12 @@ theorem emitList_scans_nonempty (items : List YamlValue) (h_ne : items ≠ [])
       have h_ev : EmitScansInFlow v := h_all v (.head _)
       obtain ⟨n₁, s₁, h_chain₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_ek₁, h_col₁, h_flow₁,
               h_indent₁, _h_line₁, _, h_last₁, h_atol₁, h_endline₁, h_stack₁, h_fmc₁,
-              h_size₁, h_pkRec₁⟩ :=
+              h_size₁, h_pkRec₁, h_pks_v⟩ :=
         h_ev s ([',', ' '] ++ (emit.emitList (v' :: vs)).toList ++ rest_chars)
           hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline
       -- Step 2: Scan ',' via scanNextToken_flow_comma
       obtain ⟨s₂, h_snt₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, h_ek₂, h_col₂, _h_line₂,
-              h_atol₂, h_endline₂, h_stack₂, h_size₂, h_pkRec₂⟩ :=
+              h_atol₂, h_endline₂, h_stack₂, h_size₂, h_pkRec₂, h_pks₂⟩ :=
         scanNextToken_flow_comma s₁
           (' ' :: (emit.emitList (v' :: vs)).toList ++ rest_chars)
           h_corr₁ h_flow₁ h_indent₁ h_col₁
@@ -8415,7 +8548,7 @@ theorem emitList_scans_nonempty (items : List YamlValue) (h_ne : items ≠ [])
       have h_s2_indent : s₂.currentIndent < 0 := by
         unfold ScannerState.currentIndent; rw [h_ids₂]; exact h_indent₁
       have h_s2_col : s₂.col > 0 := by rw [h_col₂]; omega
-      obtain ⟨s₃, h_corr₃, h_flow₃, h_fl₃, h_indent₃, h_col₃, h_dp₃, h_ids₃, h_ek₃, _h_line₃, h_pp_eq, h_atol_transfer₃, h_endline_transfer₃, h_stack_pp₃, h_toks_pp₃, _h_pks_pp₃⟩ :=
+      obtain ⟨s₃, h_corr₃, h_flow₃, h_fl₃, h_indent₃, h_col₃, h_dp₃, h_ids₃, h_ek₃, _h_line₃, h_pp_eq, h_atol_transfer₃, h_endline_transfer₃, h_stack_pp₃, h_toks_pp₃, _h_pks_pp₃, h_pks_pp₃⟩ :=
         scanNextToken_preprocess_flow_ws1 s₂ c (rest' ++ rest_chars) h_corr₂_ws
           h_s2_flow h_nws h_nlb h_nc h_s2_indent
       -- s₃ at c :: rest' ++ rest_chars = (emitList (v' :: vs)).toList ++ rest_chars
@@ -8431,7 +8564,7 @@ theorem emitList_scans_nonempty (items : List YamlValue) (h_ne : items ≠ [])
         ih (by simp) h_tail_all
       obtain ⟨n₃, s_end, h_chain₃, h_corr_end, h_fl_end, h_dp_end, h_ids_end,
               h_ek_end, h_col_end, h_flow_end, h_indent_end, h_line_end, h_atol_end,
-              h_endline_end, h_stack_end, h_fmc₃, h_size₃, h_pkRec₃⟩ :=
+              h_endline_end, h_stack_end, h_fmc₃, h_size₃, h_pkRec₃, h_pks_end⟩ :=
         h_ih_list s₃ rest_chars h_corr₃'
           h_flow₃ (by rw [h_fl₃, h_fl₂, h_fl₁]; exact h_fl)
           (by rw [h_indent₃]; exact h_s2_indent)
@@ -8500,7 +8633,7 @@ theorem emitList_scans_nonempty (items : List YamlValue) (h_ne : items ≠ [])
         pkRec_size_compose h_size₁₂₃ h_size₃ h_pkRec₁₂₃ h_pkRec₃
       refine ⟨n₁ + 1 + (n₃' + 1), s_end, h_arith ▸ h_chain_all,
         h_corr_end, ?_, ?_, ?_, ?_, h_col_end, h_flow_end, h_indent_end, ?_, h_atol_end,
-        h_endline_end, ?_, h_arith ▸ h_fmc_all, h_size_all, h_pkRec_all⟩
+        h_endline_end, ?_, h_arith ▸ h_fmc_all, h_size_all, h_pkRec_all, ?_⟩
       · -- flowLevel preserved
         rw [h_fl_end, h_fl₃, h_fl₂, h_fl₁]
       · -- directivesPresent preserved
@@ -8513,6 +8646,8 @@ theorem emitList_scans_nonempty (items : List YamlValue) (h_ne : items ≠ [])
         rw [h_line_end, _h_line₃, _h_line₂, _h_line₁]
       · -- simpleKeyStack preserved
         rw [h_stack_end, h_stack_pp₃, h_stack₂, h_stack₁]
+      · -- pendingKeyStack preserved through s → s₁ → s₂ → s₃ → s_end
+        rw [h_pks_end, h_pks_pp₃, h_pks₂, h_pks_v]
 
 -- ═══ Flow mapping pair list scanning ═══
 
@@ -9200,13 +9335,17 @@ def EmitPairListScansInFlow (pairs : List (YamlValue × YamlValue)) : Prop :=
       ∧ (∀ j (hj : j < s.pendingKeys.size) (hj' : j < s'.pendingKeys.size),
           (s'.pendingKeys[j]'hj').insertBeforeIdx = (s.pendingKeys[j]'hj).insertBeforeIdx
           ∧ (s'.pendingKeys[j]'hj').kind = (s.pendingKeys[j]'hj).kind)
+      -- J.4.2.b-2d-key-chain-Part2-body-C-foundation-EmitScansInFlow-stack-restore:
+      -- pendingKeyStack preserved across the body (mirrors simpleKeyStack;
+      -- inner [/{ pushes are cancelled by the matching ]/} pops).
+      ∧ s'.pendingKeyStack = s.pendingKeyStack
 
 theorem emitPairList_scans_empty : EmitPairListScansInFlow [] := by
   intro s rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline
   have h_eq : (emit.emitPairList ([] : List (YamlValue × YamlValue))).toList ++ rest = rest := by
     simp [emit.emitPairList]
   exact ⟨0, s, .zero, h_eq ▸ hcorr, rfl, rfl, rfl, rfl, h_col, h_flow, h_indent, rfl,
-    h_atol, h_endline, rfl, .zero (Nat.le_refl _), Nat.le_refl _, fun _ _ _ => ⟨rfl, rfl⟩⟩
+    h_atol, h_endline, rfl, .zero (Nat.le_refl _), Nat.le_refl _, fun _ _ _ => ⟨rfl, rfl⟩, rfl⟩
 
 -- Non-empty pair list scanning: each pair contributes key + ":" + space + value steps.
 -- Uses emitPairList_first_char, scanNextToken_flow_value, scanNextToken_flow_comma,
@@ -9628,7 +9767,7 @@ theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inF
     -- hcorr₀ now has ['['] ++ ... which is def-eq to '[' :: ...
     -- Step 1: Scan '[' with nested flow open
     obtain ⟨s₁, h_snt₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_ek₁, h_col₁, _h_line₁, h_atol₁,
-            h_endline₁, h_stack_endline₁, h_stack_pop₁, h_size₁, h_pkRec₁⟩ :=
+            h_endline₁, h_stack_endline₁, h_stack_pop₁, h_size₁, h_pkRec₁, h_pks_pop₁⟩ :=
       scanNextToken_flow_open_nested s_state
         ((emit.emitList items.toList).toList ++ [']'] ++ rest) hcorr₀ h_flow h_indent h_col
         h_atol h_endline
@@ -9654,7 +9793,8 @@ theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inF
         ⟨(emit.emitList items.toList).toList ++ ([']'] ++ rest), s₁.col⟩ := by
       rw [List.append_assoc] at h_corr₁; exact h_corr₁
     obtain ⟨n₂, s₂, h_chain₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, h_ek₂, h_col₂, h_s2_inflow,
-            h_s2_indent, _h_line₂, h_atol₂, h_endline₂, h_stack₂, h_fmc₂, h_size₂, h_pkRec₂⟩ :=
+            h_s2_indent, _h_line₂, h_atol₂, h_endline₂, h_stack₂, h_fmc₂, h_size₂, h_pkRec₂,
+            h_pks₂⟩ :=
       h_list_scan s₁ ([']'] ++ rest) h_corr₁_assoc h_s1_inflow (by rw [h_fl₁]; omega) h_s1_indent h_s1_col
         (by rw [h_ek₁]; exact h_ek)
         h_atol₁ -- AllTokensOnLine s₁ s₁.line (from flow_open_nested postcondition)
@@ -9666,7 +9806,8 @@ theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inF
       unfold StackEndLineOnLine at h_stack_endline₁ ⊢
       rw [h_stack₂, _h_line₂]; exact h_stack_endline₁
     obtain ⟨s₃, h_snt₃, h_corr₃, h_fl₃, h_dp₃, h_ids₃, h_ek₃, h_col₃, h_tok₃, h_ska₃,
-            _h_line₃, h_atol₃, h_endline₃, h_stack₃, h_size₃, h_pkRec₃⟩ :=
+            _h_line₃, h_atol₃, h_endline₃, h_stack₃, h_size₃, h_pkRec₃,
+            _h_sk_restore₃, _h_pka_restore₃, _h_pks_pop₃⟩ :=
       scanNextToken_flow_close_seq_nested s₂ rest h_corr₂ h_s2_inflow h_s2_indent h_col₂ h_fl₂_ge2
         h_atol₂ h_stack_endline₂
     -- Compose: [ (1 step) + list body (n₂ steps) + ] (1 step)
@@ -9709,7 +9850,7 @@ theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inF
       (ScanChainGrew.single h_snt₁ h_grew₁).trans
         (h_chain₂.trans (ScanChainGrew.single h_snt₃ h_grew₃)),
       h_corr₃, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, h_ska₃, h_tok₃, ?_, ?_, ?_, h_fmc_all,
-      h_size_all, h_pkRec_all⟩
+      h_size_all, h_pkRec_all, ?_⟩
     · -- flowLevel: (fl+1) - 1 = fl
       rw [h_fl₃, h_fl₂, h_fl₁]; omega
     · rw [h_dp₃, h_dp₂, h_dp₁]
@@ -9732,6 +9873,9 @@ theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inF
     · -- simpleKeyStack: s₃.simpleKeyStack = s_state.simpleKeyStack
       -- Chain: close pops → list preserved → open pushed then pop cancels
       rw [h_stack₃, h_stack₂, h_stack_pop₁]
+    · -- pendingKeyStack: s₃.pendingKeyStack = s_state.pendingKeyStack
+      -- Chain: close pops → body preserves → open pushed then pop cancels
+      rw [_h_pks_pop₃, h_pks₂, h_pks_pop₁]
   | mapping style pairs tag anchor _ hk hv ihk ihv =>
     intro s_state rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline
     -- emit (.mapping ...) = "{" ++ emitPairList pairs.toList ++ "}"
@@ -9741,7 +9885,7 @@ theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inF
     have hcorr₀ := hcorr; rw [h_chars] at hcorr₀
     -- Step 1: Scan '{' with nested flow open
     obtain ⟨s₁, h_snt₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_ek₁, h_col₁, _h_line₁, h_atol₁,
-            h_endline₁, h_stack_endline₁, h_stack_pop₁, h_size₁, h_pkRec₁⟩ :=
+            h_endline₁, h_stack_endline₁, h_stack_pop₁, h_size₁, h_pkRec₁, h_pks_pop₁⟩ :=
       scanNextToken_flow_open_mapping_nested s_state
         ((emit.emitPairList pairs.toList).toList ++ ['}'] ++ rest) hcorr₀ h_flow h_indent h_col
         h_atol h_endline
@@ -9769,7 +9913,8 @@ theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inF
         ⟨(emit.emitPairList pairs.toList).toList ++ (['}'] ++ rest), s₁.col⟩ := by
       rw [List.append_assoc] at h_corr₁; exact h_corr₁
     obtain ⟨n₂, s₂, h_chain₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, h_ek₂, h_col₂, h_s2_inflow,
-            h_s2_indent, _h_line₂, h_atol₂, h_endline₂, h_stack₂, h_fmc₂, h_size₂, h_pkRec₂⟩ :=
+            h_s2_indent, _h_line₂, h_atol₂, h_endline₂, h_stack₂, h_fmc₂, h_size₂, h_pkRec₂,
+            h_pks₂⟩ :=
       h_pair_scan s₁ (['}'] ++ rest) h_corr₁_assoc h_s1_inflow (by rw [h_fl₁]; omega) h_s1_indent h_s1_col
         (by rw [h_ek₁]; exact h_ek)
         h_atol₁
@@ -9781,7 +9926,8 @@ theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inF
       unfold StackEndLineOnLine at h_stack_endline₁ ⊢
       rw [h_stack₂, _h_line₂]; exact h_stack_endline₁
     obtain ⟨s₃, h_snt₃, h_corr₃, h_fl₃, h_dp₃, h_ids₃, h_ek₃, h_col₃, h_tok₃, h_ska₃,
-            _h_line₃, h_atol₃, h_endline₃, h_stack₃, h_size₃, h_pkRec₃⟩ :=
+            _h_line₃, h_atol₃, h_endline₃, h_stack₃, h_size₃, h_pkRec₃,
+            _h_sk_restore₃, _h_pka_restore₃, _h_pks_pop₃⟩ :=
       scanNextToken_flow_close_mapping_nested s₂ rest h_corr₂ h_s2_inflow h_s2_indent h_col₂ h_fl₂_ge2
         h_atol₂ h_stack_endline₂
     -- Compose: { (1 step) + pair body (n₂ steps) + } (1 step)
@@ -9824,7 +9970,7 @@ theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inF
       (ScanChainGrew.single h_snt₁ h_grew₁).trans
         (h_chain₂.trans (ScanChainGrew.single h_snt₃ h_grew₃)),
       h_corr₃, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, h_ska₃, h_tok₃, ?_, ?_, ?_, h_fmc_all,
-      h_size_all, h_pkRec_all⟩
+      h_size_all, h_pkRec_all, ?_⟩
     · rw [h_fl₃, h_fl₂, h_fl₁]; omega
     · rw [h_dp₃, h_dp₂, h_dp₁]
     · rw [h_ids₃, h_ids₂, h_ids₁]
@@ -9842,6 +9988,9 @@ theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inF
       exact h_endline₃
     · -- simpleKeyStack: s₃.simpleKeyStack = s_state.simpleKeyStack
       rw [h_stack₃, h_stack₂, h_stack_pop₁]
+    · -- pendingKeyStack: s₃.pendingKeyStack = s_state.pendingKeyStack
+      -- Chain: close pops → body preserves → open pushed then pop cancels
+      rw [_h_pks_pop₃, h_pks₂, h_pks_pop₁]
 
 -- Helper: extract existential from isOk
 theorem scanFiltered_exists_of_isOk {s : String}

@@ -3532,6 +3532,20 @@ theorem emit_preserves_simpleKeyStack (s : ScannerState) (tok : YamlToken) :
     (s.emit tok).simpleKeyStack = s.simpleKeyStack := by
   unfold ScannerState.emit; rfl
 
+/-! ### pendingKeyStack Preservation Lemmas
+
+    J.4.2.b-2d-key-chain-Part2-body-C-foundation-EmitScansInFlow-stack-restore:
+    `pendingKeyStack` is touched only by flow-open/flow-close (push/pop in
+    tandem with `simpleKeyStack`); base ops `advance`/`emit` preserve it. -/
+
+theorem advance_preserves_pendingKeyStack (s : ScannerState) :
+    s.advance.pendingKeyStack = s.pendingKeyStack := by
+  unfold ScannerState.advance; dsimp only []; split <;> (try split) <;> (try split) <;> rfl
+
+theorem emit_preserves_pendingKeyStack (s : ScannerState) (tok : YamlToken) :
+    (s.emit tok).pendingKeyStack = s.pendingKeyStack := by
+  unfold ScannerState.emit; rfl
+
 theorem skipSpacesLoop_preserves_simpleKeyStack (s : ScannerState) (fuel : Nat) :
     (skipSpacesLoop s fuel).simpleKeyStack = s.simpleKeyStack := by
   induction fuel generalizing s with
@@ -3682,6 +3696,128 @@ theorem saveSimpleKey_preserves_simpleKeyStack (st : ScannerState) :
   split
   · rfl
   · split <;> rfl
+
+theorem saveSimpleKey_preserves_pendingKeyStack (st : ScannerState) :
+    (saveSimpleKey st).pendingKeyStack = st.pendingKeyStack := by
+  unfold saveSimpleKey
+  split
+  · rfl
+  · split <;> rfl
+
+/-! ### pendingKeyStack chain through skipToContent (mirror of simpleKeyStack)
+
+    J.4.2.b-2d-key-chain-Part2-body-C-foundation-EmitScansInFlow-stack-restore. -/
+
+theorem skipSpacesLoop_preserves_pendingKeyStack (s : ScannerState) (fuel : Nat) :
+    (skipSpacesLoop s fuel).pendingKeyStack = s.pendingKeyStack := by
+  induction fuel generalizing s with
+  | zero => unfold skipSpacesLoop; rfl
+  | succ _ ih =>
+    unfold skipSpacesLoop; split
+    · exact (ih _).trans (advance_preserves_pendingKeyStack _)
+    · rfl
+
+theorem skipWhitespaceLoop_preserves_pendingKeyStack (s : ScannerState) (fuel : Nat) :
+    (skipWhitespaceLoop s fuel).pendingKeyStack = s.pendingKeyStack := by
+  induction fuel generalizing s with
+  | zero => unfold skipWhitespaceLoop; rfl
+  | succ _ ih =>
+    unfold skipWhitespaceLoop; split
+    · split
+      · exact (ih _).trans (advance_preserves_pendingKeyStack _)
+      · rfl
+    · rfl
+
+theorem skipSpaces_preserves_pendingKeyStack (s : ScannerState) :
+    (skipSpaces s).pendingKeyStack = s.pendingKeyStack := by
+  unfold skipSpaces; exact skipSpacesLoop_preserves_pendingKeyStack s _
+
+theorem skipWhitespace_preserves_pendingKeyStack (s : ScannerState) :
+    (skipWhitespace s).pendingKeyStack = s.pendingKeyStack := by
+  unfold skipWhitespace; exact skipWhitespaceLoop_preserves_pendingKeyStack s _
+
+theorem collectCommentTextLoop_preserves_pendingKeyStack (s : ScannerState)
+    (text : String) (fuel : Nat) :
+    (collectCommentTextLoop s text fuel).2.pendingKeyStack = s.pendingKeyStack := by
+  induction fuel generalizing s text with
+  | zero => unfold collectCommentTextLoop; rfl
+  | succ fuel' IH =>
+    unfold collectCommentTextLoop; split
+    · split
+      · rfl
+      · rw [IH, advance_preserves_pendingKeyStack]
+    · rfl
+
+theorem skipToContentWs_preserves_pendingKeyStack (s : ScannerState) (s' : ScannerState)
+    (h : skipToContentWs s = .ok s') : s'.pendingKeyStack = s.pendingKeyStack := by
+  unfold skipToContentWs at h
+  split at h
+  · simp only [] at h
+    split at h
+    · split at h
+      · split at h
+        · simp at h; rw [← h, skipWhitespace_preserves_pendingKeyStack, skipSpaces_preserves_pendingKeyStack]
+        · split at h
+          · simp at h; rw [← h, skipWhitespace_preserves_pendingKeyStack, skipSpaces_preserves_pendingKeyStack]
+          · split at h
+            · simp at h; rw [← h, skipWhitespace_preserves_pendingKeyStack, skipSpaces_preserves_pendingKeyStack]
+            · simp at h
+        · simp at h; rw [← h, skipWhitespace_preserves_pendingKeyStack, skipSpaces_preserves_pendingKeyStack]
+      · simp at h; rw [← h, skipSpaces_preserves_pendingKeyStack]
+    · simp at h; rw [← h, skipWhitespace_preserves_pendingKeyStack, skipSpaces_preserves_pendingKeyStack]
+  · simp at h; rw [← h, skipWhitespace_preserves_pendingKeyStack]
+
+theorem skipToContentComment_preserves_pendingKeyStack (s : ScannerState) :
+    (skipToContentComment s).pendingKeyStack = s.pendingKeyStack := by
+  unfold skipToContentComment
+  split
+  · simp only []
+    split
+    · split
+      · simp only []
+        rw [collectCommentTextLoop_preserves_pendingKeyStack, advance_preserves_pendingKeyStack]
+      · rfl
+    · split
+      · simp only []
+        rw [collectCommentTextLoop_preserves_pendingKeyStack, advance_preserves_pendingKeyStack]
+      · rfl
+  · rfl
+
+theorem consumeNewline_preserves_pendingKeyStack (s : ScannerState) :
+    (consumeNewline s).pendingKeyStack = s.pendingKeyStack := by
+  unfold consumeNewline
+  split
+  · exact advance_preserves_pendingKeyStack s
+  · simp only []; split
+    · exact advance_preserves_pendingKeyStack _
+    · exact advance_preserves_pendingKeyStack _
+  · rfl
+
+theorem skipToContentLoop_preserves_pendingKeyStack (s s' : ScannerState) (fuel : Nat)
+    (h : skipToContentLoop s fuel = .ok s') : s'.pendingKeyStack = s.pendingKeyStack := by
+  induction fuel generalizing s with
+  | zero => unfold skipToContentLoop at h; simp at h; rw [← h]
+  | succ _ ih =>
+    unfold skipToContentLoop at h
+    split at h
+    · simp at h
+    · rename_i s1 hws
+      simp only [] at h
+      split at h
+      · split at h
+        · split at h
+          · have := ih _ h; rw [this, consumeNewline_preserves_pendingKeyStack,
+              skipToContentComment_preserves_pendingKeyStack]; exact skipToContentWs_preserves_pendingKeyStack s s1 hws
+          · have := ih _ h; rw [this, consumeNewline_preserves_pendingKeyStack,
+              skipToContentComment_preserves_pendingKeyStack]; exact skipToContentWs_preserves_pendingKeyStack s s1 hws
+        · simp at h; rw [← h, skipToContentComment_preserves_pendingKeyStack]
+          exact skipToContentWs_preserves_pendingKeyStack s s1 hws
+      · simp at h; rw [← h, skipToContentComment_preserves_pendingKeyStack]
+        exact skipToContentWs_preserves_pendingKeyStack s s1 hws
+
+theorem skipToContent_preserves_pendingKeyStack (s s' : ScannerState)
+    (h : skipToContent s = .ok s') : s'.pendingKeyStack = s.pendingKeyStack := by
+  unfold skipToContent at h; exact skipToContentLoop_preserves_pendingKeyStack s s' _ h
 
 
 /-! ### Loop-level simpleKeyStack preservation lemmas -/
@@ -5797,6 +5933,42 @@ theorem scanFlowMappingEnd_stack_popped (s : ScannerState) :
     (scanFlowMappingEnd s).simpleKeyStack = s.simpleKeyStack.pop := by
   unfold scanFlowMappingEnd
   simp [advance_preserves_simpleKeyStack, emit_preserves_simpleKeyStack]
+
+-- Category 4b: Flow close — pendingKeyActive restored from pendingKeyStack,
+-- pendingKeyStack popped (J.2 dual-write mirror of simpleKey/Stack restore).
+
+theorem scanFlowSequenceEnd_pendingKeyActive_restored (s : ScannerState) :
+    (scanFlowSequenceEnd s).pendingKeyActive = s.pendingKeyStack.back?.getD none := by
+  unfold scanFlowSequenceEnd
+  simp [emit_preserves_pendingKeyStack]
+
+theorem scanFlowSequenceEnd_pendingKeyStack_popped (s : ScannerState) :
+    (scanFlowSequenceEnd s).pendingKeyStack = s.pendingKeyStack.pop := by
+  unfold scanFlowSequenceEnd
+  simp [advance_preserves_pendingKeyStack, emit_preserves_pendingKeyStack]
+
+theorem scanFlowMappingEnd_pendingKeyActive_restored (s : ScannerState) :
+    (scanFlowMappingEnd s).pendingKeyActive = s.pendingKeyStack.back?.getD none := by
+  unfold scanFlowMappingEnd
+  simp [emit_preserves_pendingKeyStack]
+
+theorem scanFlowMappingEnd_pendingKeyStack_popped (s : ScannerState) :
+    (scanFlowMappingEnd s).pendingKeyStack = s.pendingKeyStack.pop := by
+  unfold scanFlowMappingEnd
+  simp [advance_preserves_pendingKeyStack, emit_preserves_pendingKeyStack]
+
+-- Category 3b: Flow open — pendingKeyActive cleared, prior value pushed onto
+-- pendingKeyStack (J.2 dual-write mirror of simpleKey/Stack push).
+
+theorem scanFlowSequenceStart_pendingKeyStack_pushed (s : ScannerState) :
+    (scanFlowSequenceStart s).pendingKeyStack = s.pendingKeyStack.push s.pendingKeyActive := by
+  unfold scanFlowSequenceStart
+  simp [advance_preserves_pendingKeyStack, emit_preserves_pendingKeyStack]
+
+theorem scanFlowMappingStart_pendingKeyStack_pushed (s : ScannerState) :
+    (scanFlowMappingStart s).pendingKeyStack = s.pendingKeyStack.push s.pendingKeyActive := by
+  unfold scanFlowMappingStart
+  simp [advance_preserves_pendingKeyStack, emit_preserves_pendingKeyStack]
 
 set_option maxHeartbeats 400000 in
 /-- scanNextToken preserves existing token prefix below `n`.
