@@ -790,6 +790,7 @@ rooted at `Scanner/Linearise.lean`:
 | J.4.2.b-2d-key-chain-Part2-body-C-foundation-EmitScansInFlow-defns-helpers-size | Size monotonicity (`s.pendingKeys.size ≤ s'.pendingKeys.size`) added to all 6 scanner-helper theorems used inside `emit_scans_in_flow` and `emit{List,PairList}_scans_*` proofs.  Foundational lemma `saveSimpleKey_pendingKeys_size_ge` introduced (`saveSimpleKey` is push-or-id, so size grows or preserves).  Helper theorems strengthened: `scanNextToken_flow_scanDoubleQuoted` (inner `h_content` existential extended; size discharge in both `simpleKey.possible = true/false` branches via `setPendingKeyEndLine_size` + `saveSimpleKey_pendingKeys_size_ge`), `scanNextToken_flow_open_nested` (`scanFlowSequenceStart_preserves_pendingKeys` chain), `scanNextToken_flow_close_seq_nested` (`scanFlowSequenceEnd_preserves_pendingKeys` chain), `scanNextToken_flow_open_mapping_nested` (`scanFlowMappingStart_preserves_pendingKeys`), `scanNextToken_flow_close_mapping_nested` (`scanFlowMappingEnd_preserves_pendingKeys`), `scanNextToken_flow_comma` (advance + emit + saveSimpleKey).  Each discharge re-uses each helper's existing inner pendingKeys-equation chain (already proved for the pkRec preservation conjunct in sub-step 1), then composes with `saveSimpleKey_pendingKeys_size_ge`.  `scanNextToken_preprocess_flow_ws1` already exposes full `pendingKeys = pendingKeys` equality, so size mono is trivially derivable via `Nat.le_refl`.  No consumer destructure updates needed: the new conjunct gets right-associatively bundled with the existing pkRec conjunct in callers' anonymous `_h_pks…` binders.  Sorry count unchanged at 9 — locations shifted by ~+90 lines from prior baseline due to helper additions, no new sorries | 0 (sorry count unchanged at 9; 90-line addition; build clean) | `Proofs/Output/EmitterScannability.lean` | ✓ done 2026-05-02 |
 | J.4.2.b-2d-key-chain-Part2-body-C-foundation-EmitScansInFlow-defns-scope-discovery | Scope investigation on the `defns` sub-step (no code change, baseline preserved).  Original "~1 step" estimate on `defns` was based on adding pkRec preservation conjunct to the three `EmitScansInFlow{,List,PairList}` definitions and re-proving consumers.  Implementation attempt revealed an additional infrastructure dependency: chain proofs through helpers require intermediate `j < intermediate.pendingKeys.size` bounds, derivable only from size monotonicity (`s.pendingKeys.size ≤ s'.pendingKeys.size`); the helpers from sub-step 1 (`helpers`) expose pkRec preservation but NOT size monotonicity.  Without size-mono, given outer hypothesis `j < s.pendingKeys.size` and `j < s_end.pendingKeys.size`, we can't derive `j < s_intermediate.pendingKeys.size` to apply each step's pkRec conjunct.  Refined sizing: ~2.5 steps for `defns`, decomposed into `defns-helpers-size` (extend 6 helpers with size-mono conjunct + new `saveSimpleKey_pendingKeys_size_ge` foundational lemma; `_preprocess_flow_ws1` already provides full pendingKeys equality), `defns-prove` (add size-mono + pkRec to 3 definitions, re-prove consumers), `defns-consumers` (update downstream destructures in `body_filtered_characterization` callers).  Partial implementation explored (extended `EmitScansInFlow{,List,PairList}` definitions and 2 of 6 helpers — `_comma`, `_open_nested` — plus added `saveSimpleKey_pendingKeys_size_ge`); reverted to keep baseline clean since the work spans more than one cadence step.  See open-bullet section's body-C decomposition for refined plan.  Baseline preserved exactly: 9 sorries, no edits committed | 0 (no code change; sorry count unchanged at 9; baseline preserved) | `Blueprint/07-initiative-3-append-only.md` (only) | ✓ done 2026-05-02 |
 | J.4.2.b-2d-key-chain-Part2-body-C-foundation-EmitScansInFlow-helpers | Helper-level pkRec (insertBeforeIdx + kind) preservation conjuncts on 7 of 8 scanner-helper theorems used inside `emit_scans_in_flow` and `emit{List,PairList}_scans_*` proofs.  Each conjunct is `∀ j (hj : j < s.pendingKeys.size) (hj' : j < s'.pendingKeys.size), s'.pendingKeys[j].insertBeforeIdx = s.pendingKeys[j].insertBeforeIdx ∧ s'.pendingKeys[j].kind = s.pendingKeys[j].kind`.  Foundational helper `saveSimpleKey_preserves_pkRec_prior` introduced (next to `saveSimpleKey_pkPush_when_allowed`) — under any preconditions, `saveSimpleKey` preserves prior-pkRec (push-or-id at the underlying pendingKeys array, preserves `insertBeforeIdx + kind` of all entries < initial size via `Array.getElem_push_lt`).  Helper theorems strengthened: (1) `scanNextToken_preprocess_flow_ws1` — full `s₁.pendingKeys = s.pendingKeys` (skipToContent doesn't touch pendingKeys, via `ScannerCorrectness.skipToContent_preserves_pendingKeys`); (2) `scanNextToken_flow_comma` — saveSimpleKey + scanFlowEntry chain (scanFlowEntry preserves pendingKeys); (3) `scanNextToken_flow_open_nested` (`[`) — saveSimpleKey + scanFlowSequenceStart chain; (4) `scanNextToken_flow_close_seq_nested` (`]`) — saveSimpleKey + scanFlowSequenceEnd chain; (5) `scanNextToken_flow_open_mapping_nested` (`{`) — saveSimpleKey + scanFlowMappingStart chain; (6) `scanNextToken_flow_close_mapping_nested` (`}`) — saveSimpleKey + scanFlowMappingEnd chain; (7) `scanNextToken_flow_scanDoubleQuoted` — saveSimpleKey + scanDoubleQuoted + dispatchContent wrap (uses existing `setPendingKeyEndLine_insertBeforeIdx` and `setPendingKeyEndLine_kind` lemmas — the wrap modifies only endLine).  Deferred to a follow-up sub-step: `scanNextToken_flow_value` — needs gated treatment because `scanValuePrepare`'s flow branch fires `setPendingKeyKind` at the active index, which can land at j < initial-size if the active was pre-set (this is the `:`-resolve path covered by Part2-body-B; the helper-style preservation needs an active-index gate).  All caller destructure patterns at consumer sites updated to bind the new conjunct as `_h_pks…` (10 callers across `emit_scans_in_flow` and `emit{List,PairList}_scans_nonempty`) | 0 (sorry count unchanged at 9 — locations shifted by ~+150 lines from prior baseline due to helper additions, no new sorries) | `Proofs/Output/EmitterScannability.lean` | ✓ done 2026-05-02 |
+| J.4.2.b-2d-key-chain-Part2-body-C-compose | Discharged the body-C umbrella's final sub-step by extending `EmitPairListScansInFlow` with a first-pair resolved-key conjunct and using it to remove the sorry'd stub `emitPairList_chain_first_pkShape`.  Mechanism: (a) added a new conjunct to `EmitPairListScansInFlow` of shape `pairs ≠ [] → ∃ (h : s.pendingKeys.size < s'.pendingKeys.size), s'.pendingKeys[s.pendingKeys.size].insertBeforeIdx = s.tokens.size ∧ s'.pendingKeys[s.pendingKeys.size].kind = .keyOnly` (gated on `pairs ≠ []` since the empty-pairs body returns the input state with no pendingKey resolution); (b) re-proved `emitPairList_scans_nonempty` (singleton + cons cases) by binding the previously-discarded resolved-entry conjunct from `scanNextToken_flow_value_pkResolve` (slot 15 of 17) and the previously-discarded insertBeforeIdx-equality from the gated A1 push (`_h_gated₁ h_ska`'s inner `⟨h_lt_pk_s1, h_ib_s1, _⟩`), then chaining the `(insertBeforeIdx, kind)` preservation through ws1 (preserves pendingKeys) → value (`_h_pkRec₃`/`_h_pkRec_v` at j = s.pendingKeys.size < s₃.size) → in cons also comma (`_h_pkRec_c`) → ws1 → recursive IH (`h_pkRec_r` at j < s_pp.size); (c) discharged `emitPairList_scans_empty`'s new conjunct vacuously (the precondition `[] ≠ []` is false); (d) threaded the new conjunct through `emitPairList_body_filtered_characterization`'s conclusion as a new Part (4) (no precondition gate needed since `h_ne` is already a hypothesis); (e) used the new Part (4) conjunct directly in `emitPairList_body_linearise_characterization` Part (2) — under `h_pks_empty : s.pendingKeys = #[]`, specialize the conjunct's index `s.pendingKeys.size` to `0` (via type-level `▸ rewrite`) to align with Foundation A's `[0]`-index splice; (f) **removed** the entire `emitPairList_chain_first_pkShape` sorry'd stub theorem (≈42 lines of signature + sorry'd body + docstring) since the wrapper now consumes the conjunct directly.  Cascading consumer updates: 4 destructures of `emitPairList_scans_nonempty` (recursive IH at line ~9787 `_h_first_r`; `emit_scans_in_flow` mapping at line ~10295 `_h_first₂`; `scanFiltered_exists_emit_aux` mapping at line ~10518 trailing `_`; `emitPairList_body_filtered_characterization` at line ~11865 `h_first` followed by `h_first h_ne` at the refine).  This **closes the body-C umbrella**: all 10 sub-steps under `J.4.2.b-2d-key-chain-Part2-body-C` are now ✓ done.  Sorry count: 9 → 8 | 0 (build clean across 453 jobs; -1 sorry net via stub removal; ≈100-line addition for the new conjunct + discharges, ≈42-line removal of the stub) | `Proofs/Output/EmitterScannability.lean` | ✓ done 2026-05-02 |
 | J.4.2.b-2d-key-chain-Part2-body-C-foundation-EmitScansInFlow-scope-investigation | Scope investigation cadence (no code change, baseline preserved).  Original "~1 cadence step" estimate on `C-foundation-EmitScansInFlow` was based on adding a single `preserves-prior` conjunct + first-key gated conjuncts to the three `EmitScansInFlow{,List,PairList}` definitions and re-proving consumers.  Investigation revealed: (a) the FULL preserves-prior (record equality at indices < initial size) is NOT unconditional under the existing `EmitScansInFlow` precondition list — `dispatchContent`'s `setPendingKeyEndLine` wrap modifies `endLine` at the original active when `simpleKeyAllowed` is false at scan start, so endLine-preservation requires gating; (b) a WEAKER preserves-prior on (`insertBeforeIdx`, `kind`) only IS uniform (insertBeforeIdx is never mutated; kind is mutated only by `setPendingKeyKind` in `scanValuePrepare` flow branch, which fires at fresh-pushed indices ≥ initial size during `emit_scans_in_flow` body scans); (c) the consumers of these strengthenings (`emit_scans_in_flow` scalar/seq/map cases + `emit{List,PairList}_scans_{empty,nonempty}` family + `emitPairList_chain_first_pkShape` discharge) need pkRec preservation threaded through 8+ helper theorems (`scanNextToken_flow_scanDoubleQuoted`, `_open_nested`, `_close_seq_nested`, `_open_mapping_nested`, `_close_mapping_nested`, `_comma`, `_value`, `_preprocess_flow_ws1`); (d) seq/map cases of `emit_scans_in_flow` additionally need stack-restore lemmas for `scanFlowSequenceEnd` / `scanFlowMappingEnd` (`s'.simpleKey = s.simpleKeyStack.back?.getD {}` and `s'.pendingKeyActive = s.pendingKeyStack.back?.getD none`) plus `pendingKeyStack` preservation conjuncts on `EmitListScansInFlow` / `EmitPairListScansInFlow` (mirrors existing `simpleKeyStack` preservation).  Refined sizing: ~3-4 cadence steps to fully discharge `C-foundation-EmitScansInFlow`, decomposed into `helpers` (8 helper-theorem strengthenings) → `defns` (3 def strengthenings + helper re-proofs) → `stack-restore` (close-side restore lemmas + body-side stack preservation) → `gated` (first-key gated conjuncts on `EmitScansInFlow` under `h_ska` precondition).  See open-bullet section's body-C decomposition for full details.  Baseline preserved exactly: 9 sorries, no edits committed.  This entry tracks the cadence as honest scope investigation rather than failed implementation | 0 (no code change; sorry count unchanged at 9; baseline preserved) | `Blueprint/07-initiative-3-append-only.md` (only) | ✓ done 2026-05-01 |
 
 **J.3.1 — Linearise foundations** [✓ completed 2026-04-26]:
@@ -2434,9 +2435,10 @@ Remaining J.4.2.b work:
         `Array.getElem_setIfInBounds_ne`.  Landed in
         `Proofs/Output/EmitterScannability.lean` next to
         `scanNextToken_flow_value`.
-     3. **2d-key-chain-Part2-body-C (compose + dispatch in
-        `emitPairList_chain_first_pkShape`)**: walk the singleton/cons
-        induction structure of `emitPairList_scans_nonempty` using the
+     3. ✓ **2d-key-chain-Part2-body-C (compose + dispatch in
+        `emitPairList_chain_first_pkShape`)** [done 2026-05-02; all
+        10 sub-steps below ✓]: walked the singleton/cons induction
+        structure of `emitPairList_scans_nonempty` using the
         strengthened conclusions.  After `EmitScansInFlow p.1` from
         `s.pendingKeys = #[]`, `s₁.pendingKeys = #[<unresolved at
         s.tokens.size>]`, `s₁.pendingKeyActive = some 0`,
@@ -2445,6 +2447,17 @@ Remaining J.4.2.b work:
         `scanValuePrepare`'s flow branch resolves index 0 to
         `.keyOnly`.  Subsequent value scan and IH on tail only push
         new entries / resolve later indices, preserving `[0]`.
+
+        **Status snapshot (as of 2026-05-02, sorry count 8):**
+        body-C is **fully discharged**.  The body-C umbrella's
+        proof landed in the **C-compose** sub-step by extending
+        `EmitPairListScansInFlow` with a first-pair resolved-key
+        conjunct (under `pairs ≠ []`), threading it through
+        `emitPairList_body_filtered_characterization` as Part (4),
+        and using it directly in
+        `emitPairList_body_linearise_characterization` Part (2) —
+        which let us **remove** the sorry'd stub
+        `emitPairList_chain_first_pkShape` entirely.
 
         On closer look during the 2026-05-01 cadence, body-C decomposes
         into multiple sub-steps because per-leaf A2/A3/A4's existing
@@ -2716,14 +2729,29 @@ Remaining J.4.2.b work:
           **preservation-chain** landed (sorry count 9), the
           body-C foundation is fully discharged; **C-compose**
           (~0.5–1 step, mechanical) is now unblocked.
-        * **C-compose (body-C composition)**: with the strengthened
-          per-leaf and EmitScansInFlow conclusions, walk the
-          singleton/cons induction in `emitPairList_chain_first_pkShape`,
-          discharging the named stub.  Also add a
-          `scanNextToken_flow_comma_pkPreserve` variant
-          (preserves-prior under `simpleKeyAllowed = false`
-          precondition, which holds post-value).  Estimate: ~0.5–1
-          cadence step (mechanical once foundations land).
+        * ✓ **C-compose (body-C composition)** [done 2026-05-02 as
+          `J.4.2.b-2d-key-chain-Part2-body-C-compose`]: extended
+          `EmitPairListScansInFlow` with a first-pair resolved-key
+          conjunct of shape `pairs ≠ [] → ∃ (h : s.pendingKeys.size <
+          s'.pendingKeys.size), s'.pendingKeys[s.pendingKeys.size].insertBeforeIdx
+          = s.tokens.size ∧ s'.pendingKeys[s.pendingKeys.size].kind
+          = .keyOnly`.  Re-proved `emitPairList_scans_nonempty`
+          (singleton + cons cases) by binding the resolved-entry
+          conjunct from `scanNextToken_flow_value_pkResolve` (slot
+          15) and the insertBeforeIdx-equality from the gated A1
+          push, then chaining `(insertBeforeIdx, kind)` preservation
+          through ws1 → value → in cons also comma → ws1 → IH.
+          No new helper `scanNextToken_flow_comma_pkPreserve`
+          needed: the existing `scanNextToken_flow_comma`'s pkRec
+          conjunct already covers preservation at j < s_v.size.
+          Threaded the conjunct through
+          `emitPairList_body_filtered_characterization` as Part (4)
+          and consumed it directly in
+          `emitPairList_body_linearise_characterization` Part (2),
+          specializing the index to `0` via type-level `▸` rewrite
+          under `h_pks_empty`.  **Removed** the
+          `emitPairList_chain_first_pkShape` sorry'd stub entirely.
+          Sorry count: 9 → 8.  This **closes the body-C umbrella**.
    - **2d-key-chain-Part3 (after-flowEntry splice locator)**: for each
      outer-level flowEntry at position `k` in
      `linearise s'.tokens s'.pendingKeys`, supply
@@ -2764,6 +2792,37 @@ The remaining chunk (items 2 + 3) is the substantial leg of J.4 — but
 the breakdown above lets each substep land in cadence-size, with the
 positional family (J.4.2.c-prefix / -pos1 / -pos2) and the chain-endpoint
 invariant (J.4.2.b-pkwi) already in place to support them.
+
+**Concrete next steps (in order, as of 2026-05-02, sorry count 8):**
+
+1. **2d-key-chain-Part3** (after-flowEntry splice locator; ~1–2 cadence
+   steps) ← *current next step*: per-pair chain-side accounting of
+   the `(j, p, acc)` state and `pks[p].kind = .keyOnly` shape for
+   outer-level flowEntries — discharges the Part (3) sorry in
+   `emitPairList_body_linearise_characterization` (now the only
+   remaining sorry in that wrapper).  This is structurally analogous
+   to C-compose but extends to all pairs (not just the first) and
+   threads `acc.size = k + 1` synchronization through Foundation B
+   (`linearise_splice_keyonly_at_index`).  Sorry count 8 → 7 (or
+   sub-stepped further).  This **closes 2d-stub** — no further
+   wrap needed.
+2. **Cascade stitching** (item 3 above; ~1–2 cadence steps once Part3
+   is in tree): discharge the seq-side cascade
+   (`scanFiltered_emitSeq_nonempty_structure`) and the map-side
+   cascade (`scanFiltered_emitMap_nonempty_structure`) using the
+   J.4.2.c positional family + J.4.2.b-pkwi chain-endpoint invariant
+   + the linearise-shape body characterizations.  Map-side also
+   needs `s'.pendingKeys = #[]` exposed from
+   `scanNextToken_flow_open_mapping_init`.  Sorry count 7 → 5 (or
+   lower depending on how the remaining EmitterScannability declarations
+   compose).  This **closes J.4** (the substantial leg).
+3. **Remaining EmitterScannability sorries** (7 ↦ 0; cadence-sized
+   sub-steps): the remaining sorries (`emitList_body_filtered_characterization`
+   Parts 1/2/3; `emitPairList_body_filtered_characterization` Parts
+   1/2/3; two `ParseFlowSeqOk`/`ParseEntryFlowMapOk` body characterizations;
+   etc.) are independent of the body-C/Part3 chain and can land
+   in any order once their respective parser-acceptance fuel
+   bounds are in tree.
 
 **J.3 final gate**: `lake build` green; sorry count 19 → 12
 (2 cascade Cat C for J.4 cleanup + 10 Tier 2 EmitterScannability
