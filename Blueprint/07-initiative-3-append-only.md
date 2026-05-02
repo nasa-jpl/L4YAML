@@ -779,6 +779,7 @@ rooted at `Scanner/Linearise.lean`:
 | J.4.2.b-2d-key-chain-Part2-body-A4 | Per-leaf flow-mapping-open pkPush theorem `scanNextToken_flow_open_mapping_nested_pkPush` (in `Proofs/Output/EmitterScannability.lean`, immediately after `scanNextToken_flow_open_mapping_nested`).  Mechanical mirror of A3 with `[` → `{`, `scanFlowSequenceStart` → `scanFlowMappingStart`, `dispatchFlowIndicators_bracket` → `dispatchFlowIndicators_brace`, `ScannerCorrectness.scanFlowSequenceStart_preserves_pendingKeys` → `ScannerCorrectness.scanFlowMappingStart_preserves_pendingKeys`.  Same hypotheses (`s.simpleKeyAllowed = true ∧ s.explicitKeyLine = none`) and same 12 + 3 conjunct shape.  No `setPendingKeyEndLine` wrap (the `{` flow path also skips `dispatchContent`).  Covers ONLY the `{` open step; inner pair scans (key/`:`/value bodies) push new entries at later indices and do not touch the outer entry recorded by the outer `saveSimpleKey`.  Completes the per-leaf chain A1-A4; next step is `EmitScansInFlow` def strengthening + `emit_scans_in_flow` re-prove (~0.5 cadence step) | 0 (per-leaf theorem fully proven on first try, no sorry) | `Proofs/Output/EmitterScannability.lean` | ✓ done 2026-05-01 |
 | J.4.2.b-2d-key-chain-Part2-body-B | Per-`:`-step pkResolve theorem `scanNextToken_flow_value_pkResolve` (in `Proofs/Output/EmitterScannability.lean`, immediately after `scanNextToken_flow_value`).  Strengthens the existing 13-conjunct surface theorem with 3 pkResolve conjuncts (size preservation, `(s'.pendingKeys[i]).kind = .keyOnly` together with `insertBeforeIdx` preservation at the active index `i`, and unchanged-elsewhere `j ≠ i`) under the additional preconditions `s.simpleKeyAllowed = false ∧ s.simpleKey.possible = true ∧ s.pendingKeyActive = some i ∧ i < s.pendingKeys.size`.  The `simpleKeyAllowed = false` precondition is essential: it makes `saveSimpleKey s = s` (via the existing `saveSimpleKey_id_of_flow_ska_false_ek_none`) so the pre-existing active reservation flows unchanged into `scanValuePrepare`'s flow branch, where it is consumed by `setPendingKeyKind … .keyOnly`.  Foundational helper `scanValuePrepare_pendingKeys_flow_resolve` (added next to `saveSimpleKey_pkPush_when_allowed` / `scanValueValidate_ok_of_not_possible_ek_none`) gives the pure characterization.  Proof uses the existing `scanNextToken_flow_value` for surface conjuncts plus a re-derivation of the canonical `s_final` chain to identify `s'` via determinism, tracks pendingKeys through `saveSimpleKey` (identity) → `s_ad` (allowDirectives passthrough) → `scanValueClearKey` (identity since `ek = none`) → `scanValuePrepare` flow branch → `emit`/`advance`/final record-update (Class A passthroughs).  Per-entry pkResolve facts derived via `Array.getElem_setIfInBounds_self` / `Array.getElem_setIfInBounds_ne`.  Together with A1-A4 this completes Part2-body's leaf and `:`-step machinery; remaining for full 2d discharge: Part2-body-C composition (~0.5 step) and Part3 splice locator (separate track) | 0 (theorem fully proven, no sorry) | `Proofs/Output/EmitterScannability.lean` | ✓ done 2026-05-01 |
 | J.4.2.b-2d-key-chain-Part2-body-C-foundation-Aseq/Amap | Preserves-prior strengthening on A3 (`scanNextToken_flow_open_nested_pkPush`) and A4 (`scanNextToken_flow_open_mapping_nested_pkPush`): under existing hypotheses, additionally conclude `∀ j (hj : j < s.pendingKeys.size) (hj' : j < s'.pendingKeys.size), s'.pendingKeys[j]'hj' = s.pendingKeys[j]'hj`.  Investigation during the cadence revealed body-C requires `pendingKeyActive = some s.pendingKeys.size`, `simpleKey.possible = true`, AND preserves-prior conjuncts at the post-key state — none of which A1-A4 currently expose.  This step lands the easiest of those (preserves-prior) on A3/A4.  Proof: the flow-open path (`scanNextToken_dispatchFlowIndicators`) skips `dispatchContent`, so `s'.pendingKeys = s.pendingKeys.push <new>` directly and preservation follows from `Array.getElem_push_lt` after `simp only [h_fss_pks_full]` (resp. `h_fms_pks_full`).  Body-C decomposed into four sub-steps in the open-bullet section: **C-foundation-Aseq/Amap** (this step), **C-foundation-Ascalar** (extend A2 — needs new `*_preserves_pendingKeyActive` chain in `Proofs/Scanner/ScannerCorrectness.lean` because `dispatchContent`'s `setPendingKeyEndLine` wrap requires knowing the active index, ~0.5 step), **C-foundation-EmitScansInFlow** (uniform preserves-prior + first-key gated conjunct on the `EmitScansInFlow` family, with seq/map cases threading the `simpleKeyStack` / `pendingKeyStack` pop on `]` / `}`, ~1 step), **C-compose** (singleton/cons walk in `emitPairList_chain_first_pkShape` plus `scanNextToken_flow_comma_pkPreserve`, ~0.5–1 step).  Cleaner cadence sizing than the original "~0.5 step" estimate on body-C as a single unit | 0 (no new sorries; A3/A4 each gain one conjunct without breaking existing 15-conjunct shape) | `Proofs/Output/EmitterScannability.lean` | ✓ done 2026-05-01 |
+| J.4.2.b-2d-key-chain-Part2-body-C-foundation-Ascalar | A2 (`scanNextToken_flow_scanDoubleQuoted_pkPush`) extended with three new conjuncts at the post-key state: `s'.pendingKeyActive = some s.pendingKeys.size`, `s'.simpleKey.possible = true`, and preserves-prior on `pendingKeys` (`∀ j (hj : j < s.pendingKeys.size) (hj' : j < s'.pendingKeys.size), s'.pendingKeys[j]'hj' = s.pendingKeys[j]'hj`).  Tricky because `dispatchContent` wraps via `setPendingKeyEndLine s_dq.pendingKeys s_dq.pendingKeyActive s_dq.line` — to discharge preserves-prior we must know `s_dq.pendingKeyActive = some s.pendingKeys.size` so the `setIfInBounds` write index lands at `s.pendingKeys.size > j`.  Required (a) a new `*_preserves_pendingKeyActive` chain in `Proofs/Scanner/ScannerCorrectness.lean` mirroring the existing `*_preserves_pendingKeys` chain (advance/emit/emitAt + skipSpacesLoop/skipSpaces/skipWhitespaceLoop/skipWhitespace + consumeNewline + collectHexDigitsLoop/parseHexEscape/processEscape + foldQuotedNewlinesLoop/foldQuotedNewlines + collectDoubleQuotedLoop + scanDoubleQuoted) — none of these touch `pendingKeyActive`, so all proofs are pure passthroughs structurally identical to their `_preserves_pendingKeys` counterparts; (b) two new helpers `setPendingKeyEndLine_decomp_some` (specialization of the existing decomp that exposes the active index `j`) and `setPendingKeyEndLine_some_at_other_unchanged` (record-level "at index `i ≠ j`, the wrap is the identity" via `Array.getElem_setIfInBounds_ne`).  A2's conclusion now exposes 17 conjuncts (was 15) with no break to the existing `emit_scans_in_flow` consumer (it ignores the new conjuncts).  Completes the per-leaf foundation for body-C; remaining for body-C: **C-foundation-EmitScansInFlow** (uniform preserves-prior + gated active/possible on the `EmitScansInFlow` family, ~1 step) and **C-compose** (singleton/cons walk in `emitPairList_chain_first_pkShape` + `scanNextToken_flow_comma_pkPreserve`, ~0.5–1 step) | 0 (theorem fully proven; ScannerCorrectness chain fully proven; sorry count unchanged at 9 — locations shifted by +53 lines from prior baseline due to the new chain insertion) | `Proofs/Output/EmitterScannability.lean`, `Proofs/Scanner/ScannerCorrectness.lean` | ✓ done 2026-05-01 |
 
 **J.3.1 — Linearise foundations** [✓ completed 2026-04-26]:
 
@@ -2451,22 +2452,27 @@ Remaining J.4.2.b work:
           via `Array.getElem_push_lt`.  No `pendingKeyActive` chain
           needed since there is no `setPendingKeyEndLine` wrap.  Sorry
           count unchanged at 9.
-        * **C-foundation-Ascalar (preserves-prior + active + possible
-          on A2)**: extend `scanNextToken_flow_scanDoubleQuoted_pkPush`
-          (A2) to also conclude `s'.pendingKeyActive = some
-          s.pendingKeys.size`, `s'.simpleKey.possible = true`,
-          `preserves-prior`.  Tricky because `dispatchContent` wraps
-          via `setPendingKeyEndLine s_dq.pendingKeys s_dq.pendingKeyActive
-          s_dq.line` — to show preserves-prior, need
-          `s_dq.pendingKeyActive = some s.pendingKeys.size` so the
-          `setIfInBounds` write index is `s.pendingKeys.size > j`.
-          Requires a new chain of `*_preserves_pendingKeyActive` lemmas
-          in `Proofs/Scanner/ScannerCorrectness.lean` (advance, emit,
-          emitAt, consumeNewline, skipWhitespace, processEscape,
+        * ✓ **C-foundation-Ascalar (preserves-prior + active + possible
+          on A2)** [done 2026-05-01]: extended
+          `scanNextToken_flow_scanDoubleQuoted_pkPush` (A2) with three
+          new conjuncts at the post-key state — `s'.pendingKeyActive
+          = some s.pendingKeys.size`, `s'.simpleKey.possible = true`,
+          and `preserves-prior` (`∀ j (hj : j < s.pendingKeys.size)
+          (hj' : j < s'.pendingKeys.size), s'.pendingKeys[j]'hj' =
+          s.pendingKeys[j]'hj`).  The `setPendingKeyEndLine` wrap in
+          `dispatchContent` was the trickier piece: needed a new
+          `*_preserves_pendingKeyActive` chain in
+          `Proofs/Scanner/ScannerCorrectness.lean` (advance, emit,
+          emitAt, skipSpacesLoop/skipSpaces, skipWhitespaceLoop/
+          skipWhitespace, consumeNewline, collectHexDigitsLoop,
+          parseHexEscape, processEscape, foldQuotedNewlinesLoop/
           foldQuotedNewlines, collectDoubleQuotedLoop, scanDoubleQuoted)
-          to thread `pendingKeyActive` through the scalar scan body.
-          Estimate: ~0.5 cadence step (mechanical, ~50–100 lines for
-          the chain).
+          to thread `pendingKeyActive` through the scalar scan body
+          unchanged.  Two new helpers `setPendingKeyEndLine_decomp_some`
+          and `setPendingKeyEndLine_some_at_other_unchanged` expose the
+          active index in the decomposition so preserves-prior at
+          `j < s.pendingKeys.size = active` can be discharged via
+          `Array.getElem_setIfInBounds_ne`.  Sorry count unchanged at 9.
         * **C-foundation-EmitScansInFlow (uniform preserves-prior +
           first-key gated conjunct)**: add the conjuncts to
           `EmitScansInFlow`, `EmitListScansInFlow`,
@@ -2902,6 +2908,37 @@ preserves-prior; needs the `pendingKeyActive` preservation chain in
 `scanNextToken_flow_comma_pkPreserve` variant — ~0.5–1 step).
 Cleaner cadence sizing than the original "~0.5 step" estimate
 on body-C as a single unit.
+
+J.4.2.b-2d-key-chain-Part2-body-C-foundation-Ascalar (the per-leaf
+scalar foundation for body-C) landed 2026-05-01 with sorry count
+**unchanged at 9**.  A2 (`scanNextToken_flow_scanDoubleQuoted_pkPush`)
+now exposes 17 conjuncts (was 15), adding `s'.pendingKeyActive =
+some s.pendingKeys.size`, `s'.simpleKey.possible = true`, and
+preserves-prior on `pendingKeys`.  The two infrastructure additions
+that made this possible: (a) a parallel `*_preserves_pendingKeyActive`
+chain in `Proofs/Scanner/ScannerCorrectness.lean`, mirroring the
+existing `*_preserves_pendingKeys` chain for the operations called
+by `scanDoubleQuoted` (advance/emit/emitAt + skipSpacesLoop/skipSpaces
++ skipWhitespaceLoop/skipWhitespace + consumeNewline +
+collectHexDigitsLoop/parseHexEscape/processEscape +
+foldQuotedNewlinesLoop/foldQuotedNewlines + collectDoubleQuotedLoop +
+scanDoubleQuoted) — none of these helpers touch `pendingKeyActive`,
+so all proofs are pure passthroughs structurally identical to the
+`_preserves_pendingKeys` versions; (b) two new helpers
+`setPendingKeyEndLine_decomp_some` (specialization of the existing
+decomp that exposes the active index `j` directly) and
+`setPendingKeyEndLine_some_at_other_unchanged` (record-level "at index
+`i ≠ j`, the `(some j)` wrap is the identity") — together these
+discharge preserves-prior under `dispatchContent`'s
+`setPendingKeyEndLine s_dq.pendingKeys s_dq.pendingKeyActive s_dq.line`
+J.2 dual-write wrap, since `s_dq.pendingKeyActive = some s.pendingKeys.size`
+threaded by the new chain means the wrap's write index is
+`s.pendingKeys.size > j`, never colliding with prior indices.  Only
+the `emit_scans_in_flow` consumer references A2 in tree, and it ignores
+the new conjuncts — no consumer rewiring needed.  Sorry locations
+shifted by +53 lines from the prior baseline due to the new chain
+insertion in ScannerCorrectness.lean.  Body-C remaining: **C-foundation-EmitScansInFlow**
+(~1 step) and **C-compose** (~0.5–1 step), in that order.
 J.4.2.b-2d-key-chain-Part2-stub (named extraction of the first-key
 chain-side accounting) landed 2026-04-30 with sorry count **unchanged**
 in EmitterScannability.  Introduced freestanding theorem

@@ -9454,6 +9454,59 @@ theorem setPendingKeyEndLine_pos (pks : Array PendingKeyEntry)
       rw [Array.getElem_setIfInBounds_self]
     · rw [Array.getElem_setIfInBounds_ne (h := fun h => h_eq h.symm)]
 
+/-- Specialization of `setPendingKeyEndLine_decomp` that exposes the
+    active index `j` directly when the active option is `some j`.
+    Useful when the caller already knows the active index and needs to
+    rule out collisions at other indices. -/
+theorem setPendingKeyEndLine_decomp_some (pks : Array PendingKeyEntry)
+    (j : Nat) (endLine : Nat) :
+    setPendingKeyEndLine pks (some j) endLine = pks
+      ∨ ∃ (h : j < pks.size),
+          setPendingKeyEndLine pks (some j) endLine
+            = pks.setIfInBounds j { (pks[j]'h) with endLine := endLine } := by
+  unfold setPendingKeyEndLine
+  cases h_get : pks[j]? with
+  | none => left; simp [h_get]
+  | some e =>
+    have hj : j < pks.size := by
+      rcases Nat.lt_or_ge j pks.size with h | h
+      · exact h
+      · exfalso
+        rw [Array.getElem?_eq_none h] at h_get
+        contradiction
+    have h_get_eq : pks[j]'hj = e := by
+      have := h_get
+      rw [Array.getElem?_eq_getElem hj] at this
+      injection this
+    right
+    refine ⟨hj, ?_⟩
+    simp [h_get, h_get_eq]
+
+/-- At any in-bounds index `i ≠ j`, the entry returned by
+    `setPendingKeyEndLine pks (some j) endLine` equals `pks[i]`.  Built
+    on `setPendingKeyEndLine_decomp_some`. -/
+theorem setPendingKeyEndLine_some_at_other_unchanged
+    (pks : Array PendingKeyEntry) (j : Nat) (endLine : Nat) (i : Nat)
+    (hi : i < pks.size)
+    (hi' : i < (setPendingKeyEndLine pks (some j) endLine).size)
+    (h_ne : i ≠ j) :
+    (setPendingKeyEndLine pks (some j) endLine)[i]'hi' = pks[i]'hi := by
+  rcases setPendingKeyEndLine_decomp_some pks j endLine with h_id | ⟨hj, h_set⟩
+  · -- identity case
+    have h_at_eq : (setPendingKeyEndLine pks (some j) endLine)[i]'hi' = pks[i]'hi := by
+      congr 1
+    exact h_at_eq
+  · -- setIfInBounds case at index j
+    have hi_set : i < (pks.setIfInBounds j
+        { (pks[j]'hj) with endLine := endLine }).size := by
+      simp [Array.size_setIfInBounds]; exact hi
+    have h_at_eq :
+        (setPendingKeyEndLine pks (some j) endLine)[i]'hi'
+          = (pks.setIfInBounds j { (pks[j]'hj) with endLine := endLine })[i]'hi_set := by
+      congr 1
+    rw [h_at_eq]
+    rw [Array.getElem_setIfInBounds_ne (h := fun h => h_ne h.symm)]
+
 /-! ### Class B: saveSimpleKey decomposition
 
 `saveSimpleKey` either returns `s` unchanged (guard fails) or appends
@@ -10522,6 +10575,213 @@ theorem scanDoubleQuoted_preserves_pendingKeys (s : ScannerState) (s' : ScannerS
     simp [emitAt_preserves_pendingKeys]
     have := collectDoubleQuotedLoop_preserves_pendingKeys s.advance "" _ _ _ _ _ result heq
     rw [this, advance_preserves_pendingKeys]
+
+/-! ### Class A passthrough chain (`*_preserves_pendingKeyActive`)
+
+Mirror of `*_preserves_pendingKeys` for the `pendingKeyActive` field.
+None of the helpers below touches `pendingKeyActive` — only
+`saveSimpleKey` (sets to `some pendingKeys.size`), `clearSimpleKey`
+(sets to `none`), and `scanValuePrepare`/flow-stack ops do.  Used by
+J.4.2.b-2d-key-chain-Part2-body-C-foundation-Ascalar to thread the
+`pendingKeyActive = some s.pendingKeys.size` invariant through the A2
+scalar leaf. -/
+
+theorem advance_preserves_pendingKeyActive (s : ScannerState) :
+    s.advance.pendingKeyActive = s.pendingKeyActive := by
+  unfold ScannerState.advance
+  split
+  · dsimp only
+    split
+    · rfl
+    · split <;> rfl
+  · rfl
+
+theorem emit_preserves_pendingKeyActive (s : ScannerState) (tok : YamlToken) :
+    (s.emit tok).pendingKeyActive = s.pendingKeyActive := rfl
+
+theorem emitAt_preserves_pendingKeyActive (s : ScannerState) (pos : YamlPos) (tok : YamlToken) :
+    (s.emitAt pos tok).pendingKeyActive = s.pendingKeyActive := rfl
+
+theorem skipSpacesLoop_preserves_pendingKeyActive (s : ScannerState) (fuel : Nat) :
+    (skipSpacesLoop s fuel).pendingKeyActive = s.pendingKeyActive := by
+  induction fuel generalizing s with
+  | zero => unfold skipSpacesLoop; rfl
+  | succ _ ih =>
+    unfold skipSpacesLoop; split
+    · exact (ih _).trans (advance_preserves_pendingKeyActive _)
+    · rfl
+
+theorem skipWhitespaceLoop_preserves_pendingKeyActive (s : ScannerState) (fuel : Nat) :
+    (skipWhitespaceLoop s fuel).pendingKeyActive = s.pendingKeyActive := by
+  induction fuel generalizing s with
+  | zero => unfold skipWhitespaceLoop; rfl
+  | succ _ ih =>
+    unfold skipWhitespaceLoop; split
+    · split
+      · exact (ih _).trans (advance_preserves_pendingKeyActive _)
+      · rfl
+    · rfl
+
+theorem skipSpaces_preserves_pendingKeyActive (s : ScannerState) :
+    (skipSpaces s).pendingKeyActive = s.pendingKeyActive := by
+  unfold skipSpaces; exact skipSpacesLoop_preserves_pendingKeyActive s _
+
+theorem skipWhitespace_preserves_pendingKeyActive (s : ScannerState) :
+    (skipWhitespace s).pendingKeyActive = s.pendingKeyActive := by
+  unfold skipWhitespace; exact skipWhitespaceLoop_preserves_pendingKeyActive s _
+
+theorem consumeNewline_preserves_pendingKeyActive (s : ScannerState) :
+    (consumeNewline s).pendingKeyActive = s.pendingKeyActive := by
+  unfold consumeNewline
+  split
+  · exact advance_preserves_pendingKeyActive s
+  · simp only []; split
+    · exact advance_preserves_pendingKeyActive _
+    · exact advance_preserves_pendingKeyActive _
+  · rfl
+
+theorem collectHexDigitsLoop_preserves_pendingKeyActive (s : ScannerState) (hex : String) (n : Nat) :
+    (collectHexDigitsLoop s hex n).snd.pendingKeyActive = s.pendingKeyActive := by
+  induction n generalizing s hex with
+  | zero => unfold collectHexDigitsLoop; rfl
+  | succ n' ih =>
+    unfold collectHexDigitsLoop
+    cases h_peek : s.peek? with
+    | none => simp []
+    | some c =>
+      simp []
+      split
+      · have h_adv := advance_preserves_pendingKeyActive s
+        rw [ih, h_adv]
+      · rfl
+
+theorem parseHexEscape_preserves_pendingKeyActive (s : ScannerState) (n : Nat) (ch : Char) (s' : ScannerState)
+    (h : parseHexEscape s n = .ok (ch, s')) :
+    s'.pendingKeyActive = s.pendingKeyActive := by
+  unfold parseHexEscape at h
+  simp only [] at h
+  have h_collect := collectHexDigitsLoop_preserves_pendingKeyActive s "" n
+  split at h <;> try contradiction
+  split at h <;> try contradiction
+  injection h with h_eq; cases h_eq
+  rw [h_collect]
+
+theorem processEscape_preserves_pendingKeyActive (s : ScannerState) (ch : Char) (s' : ScannerState)
+    (h : processEscape s = .ok (ch, s')) :
+    s'.pendingKeyActive = s.pendingKeyActive := by
+  unfold processEscape at h
+  simp only [] at h
+  split at h <;> try contradiction
+  repeat (split at h)
+  all_goals (
+    first
+    | (injection h with h_eq; cases h_eq; exact advance_preserves_pendingKeyActive s)
+    | (have h_adv := advance_preserves_pendingKeyActive s
+       have h_hex := parseHexEscape_preserves_pendingKeyActive s.advance _ ch s' h
+       rw [h_hex, h_adv])
+    | contradiction
+  )
+
+theorem foldQuotedNewlinesLoop_preserves_pendingKeyActive (s : ScannerState) (emptyCount fuel : Nat) :
+    (foldQuotedNewlinesLoop s emptyCount fuel).fst.pendingKeyActive = s.pendingKeyActive := by
+  induction fuel generalizing s emptyCount with
+  | zero => unfold foldQuotedNewlinesLoop; rfl
+  | succ fuel' ih =>
+    unfold foldQuotedNewlinesLoop
+    cases h_peek : (skipSpaces s).peek? with
+    | none => simp [h_peek]
+    | some c =>
+      simp [h_peek]
+      cases h_lb : isLineBreakBool c with
+      | false => simp []
+      | true =>
+        simp []
+        have h_sp := skipSpaces_preserves_pendingKeyActive s
+        have h_cn := consumeNewline_preserves_pendingKeyActive (skipSpaces s)
+        rw [ih, h_cn, h_sp]
+
+theorem foldQuotedNewlines_preserves_pendingKeyActive (s : ScannerState) (s' : ScannerState) (content : String)
+    (h : foldQuotedNewlines s = .ok (content, s')) :
+    s'.pendingKeyActive = s.pendingKeyActive := by
+  unfold foldQuotedNewlines at h
+  simp only [bind, Except.bind, pure] at h
+  have h_cn := consumeNewline_preserves_pendingKeyActive s
+  let fuel := s.inputEnd - (consumeNewline s).offset + 1
+  have h_fold := foldQuotedNewlinesLoop_preserves_pendingKeyActive (consumeNewline s) 0 fuel
+  have h_sp := skipSpaces_preserves_pendingKeyActive (foldQuotedNewlinesLoop (consumeNewline s) 0 fuel).fst
+  have h_sw := skipWhitespace_preserves_pendingKeyActive (skipSpaces (foldQuotedNewlinesLoop (consumeNewline s) 0 fuel).fst)
+  split at h <;> try contradiction
+  · split at h <;> try contradiction
+    split at h <;> try contradiction
+    split at h
+    · injection h with heq; cases heq; rw [h_sw, h_sp, h_fold, h_cn]
+    · injection h with heq; cases heq; rw [h_sw, h_sp, h_fold, h_cn]
+  · split at h <;> try contradiction
+    split at h
+    · injection h with heq; cases heq; rw [h_sw, h_sp, h_fold, h_cn]
+    · injection h with heq; cases heq; rw [h_sw, h_sp, h_fold, h_cn]
+
+theorem collectDoubleQuotedLoop_preserves_pendingKeyActive (s : ScannerState) (content : String)
+    (fuel : Nat) (startPos : YamlPos) (inFlow : Bool) (currentIndent : Int) (inputEnd : Nat) :
+    ∀ result, collectDoubleQuotedLoop s content fuel startPos inFlow currentIndent inputEnd = .ok result →
+    result.snd.pendingKeyActive = s.pendingKeyActive := by
+  intro result h
+  induction fuel generalizing s content with
+  | zero =>
+    unfold collectDoubleQuotedLoop at h
+    contradiction
+  | succ fuel' ih =>
+    unfold collectDoubleQuotedLoop at h
+    split at h
+    · contradiction
+    · injection h with h_eq; cases h_eq
+      exact advance_preserves_pendingKeyActive s
+    · simp only [] at h
+      split at h <;> try contradiction
+      split at h
+      · have h_cn := consumeNewline_preserves_pendingKeyActive s.advance
+        have h_sw := skipWhitespace_preserves_pendingKeyActive (consumeNewline s.advance)
+        have h_adv := advance_preserves_pendingKeyActive s
+        rw [ih _ _ h, h_sw, h_cn, h_adv]
+      · simp only [bind, Except.bind] at h
+        split at h <;> try contradiction
+        rename_i escape_result heq
+        cases escape_result with
+        | mk ch s_after_escape =>
+          have h_proc := processEscape_preserves_pendingKeyActive s.advance ch s_after_escape heq
+          have h_adv := advance_preserves_pendingKeyActive s
+          rw [ih _ _ h, h_proc, h_adv]
+    · split at h
+      · simp only [bind, Except.bind] at h
+        split at h <;> try contradiction
+        rename_i fold_result heq
+        cases fold_result with
+        | mk folded s_fold =>
+          have h_fold := foldQuotedNewlines_preserves_pendingKeyActive s s_fold folded heq
+          split at h <;> try contradiction
+          split at h <;> try contradiction
+          split at h <;> try contradiction
+          rw [ih s_fold (trimTrailingWS content ++ folded) h, h_fold]
+      · split at h <;> try contradiction
+        have h_adv := advance_preserves_pendingKeyActive s
+        rw [ih _ _ h, h_adv]
+
+theorem scanDoubleQuoted_preserves_pendingKeyActive (s : ScannerState) (s' : ScannerState)
+    (h : scanDoubleQuoted s = .ok s') : s'.pendingKeyActive = s.pendingKeyActive := by
+  unfold scanDoubleQuoted at h
+  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h
+  split at h <;> try contradiction
+  rename_i result heq
+  split at h
+  · split at h <;> try contradiction
+    simp only [Except.ok.injEq] at h; subst h
+    simp [emitAt_preserves_pendingKeyActive]
+    have := collectDoubleQuotedLoop_preserves_pendingKeyActive s.advance "" _ _ _ _ _ result heq
+    rw [this, advance_preserves_pendingKeyActive]
+  · simp only [Except.ok.injEq] at h; subst h
+    simp [emitAt_preserves_pendingKeyActive]
+    have := collectDoubleQuotedLoop_preserves_pendingKeyActive s.advance "" _ _ _ _ _ result heq
+    rw [this, advance_preserves_pendingKeyActive]
 
 theorem scanSingleQuoted_preserves_pendingKeys (s : ScannerState) (s' : ScannerState)
     (h : scanSingleQuoted s = .ok s') : s'.pendingKeys = s.pendingKeys := by

@@ -4569,9 +4569,13 @@ theorem scanNextToken_flow_scanDoubleQuoted_pkPush (s : ScannerState)
       ∧ EndLineOnLine s'
       ∧ s'.simpleKeyStack = s.simpleKeyStack
       ∧ s'.pendingKeys.size = s.pendingKeys.size + 1
-      ∧ ∃ (h : s.pendingKeys.size < s'.pendingKeys.size),
+      ∧ (∃ (h : s.pendingKeys.size < s'.pendingKeys.size),
           (s'.pendingKeys[s.pendingKeys.size]'h).insertBeforeIdx = s.tokens.size
-          ∧ (s'.pendingKeys[s.pendingKeys.size]'h).kind = .unresolved := by
+          ∧ (s'.pendingKeys[s.pendingKeys.size]'h).kind = .unresolved)
+      ∧ s'.pendingKeyActive = some s.pendingKeys.size
+      ∧ s'.simpleKey.possible = true
+      ∧ (∀ j (hj : j < s.pendingKeys.size) (hj' : j < s'.pendingKeys.size),
+          s'.pendingKeys[j]'hj' = s.pendingKeys[j]'hj) := by
   -- Step 1: preprocessing (parallel to base theorem)
   have h_pp : scanNextToken_preprocess s = .ok (some (saveSimpleKey s, '"')) :=
     scanNextToken_preprocess_flow s '"' ((escapeString content).toList ++ ['"'] ++ rest) s.col
@@ -4626,7 +4630,7 @@ theorem scanNextToken_flow_scanDoubleQuoted_pkPush (s : ScannerState)
   have h_ad_line : s_ad.line = s.line := by
     simp only [s_ad]; split <;> exact saveSimpleKey_preserves_line s
   -- pkPush tracking: A1 lemma + record-update preservations
-  obtain ⟨h_sk_pks, _h_sk_pka, h_sk_skp⟩ :=
+  obtain ⟨h_sk_pks, h_sk_pka, h_sk_skp⟩ :=
     saveSimpleKey_pkPush_when_allowed s h_ska h_ek_none
   have h_ad_pks : s_ad.pendingKeys = (saveSimpleKey s).pendingKeys := by
     simp only [s_ad]; split <;> rfl
@@ -4643,6 +4647,13 @@ theorem scanNextToken_flow_scanDoubleQuoted_pkPush (s : ScannerState)
     scanDoubleQuoted_preserves_simpleKey s_ad s_dq h_dq
   have h_dq_skp : s_dq.simpleKey.possible = true := by
     rw [h_dq_sk, h_ad_sk]; exact h_sk_skp
+  -- pendingKeyActive tracking: saveSimpleKey sets it, s_ad/s_dq preserve it.
+  have h_ad_pka : s_ad.pendingKeyActive = (saveSimpleKey s).pendingKeyActive := by
+    simp only [s_ad]; split <;> rfl
+  have h_dq_pka : s_dq.pendingKeyActive = s_ad.pendingKeyActive :=
+    ScannerCorrectness.scanDoubleQuoted_preserves_pendingKeyActive s_ad s_dq h_dq
+  have h_dq_pka_full : s_dq.pendingKeyActive = some s.pendingKeys.size := by
+    rw [h_dq_pka, h_ad_pka, h_sk_pka]
   have h_content : ∃ s_final, scanNextToken_dispatchContent s_ad '"' = .ok s_final
       ∧ ScannerSurfCorr s_final ⟨rest, s_final.col⟩
       ∧ s_final.flowLevel = s.flowLevel
@@ -4657,9 +4668,13 @@ theorem scanNextToken_flow_scanDoubleQuoted_pkPush (s : ScannerState)
       ∧ EndLineOnLine s_final
       ∧ s_final.simpleKeyStack = s.simpleKeyStack
       ∧ s_final.pendingKeys.size = s.pendingKeys.size + 1
-      ∧ ∃ (h : s.pendingKeys.size < s_final.pendingKeys.size),
+      ∧ (∃ (h : s.pendingKeys.size < s_final.pendingKeys.size),
           (s_final.pendingKeys[s.pendingKeys.size]'h).insertBeforeIdx = s.tokens.size
-          ∧ (s_final.pendingKeys[s.pendingKeys.size]'h).kind = .unresolved := by
+          ∧ (s_final.pendingKeys[s.pendingKeys.size]'h).kind = .unresolved)
+      ∧ s_final.pendingKeyActive = some s.pendingKeys.size
+      ∧ s_final.simpleKey.possible = true
+      ∧ (∀ j (hj : j < s.pendingKeys.size) (hj' : j < s_final.pendingKeys.size),
+          s_final.pendingKeys[j]'hj' = s.pendingKeys[j]'hj) := by
     unfold scanNextToken_dispatchContent
     simp (config := { decide := true }) only [bind, Except.bind, pure, Except.pure, h_dq]
     have h_atol_ad : AllTokensOnLine s_ad s.line :=
@@ -4679,7 +4694,8 @@ theorem scanNextToken_flow_scanDoubleQuoted_pkPush (s : ScannerState)
        h_dq_corr.input_prefix, h_dq_corr.indent_cols_nonneg⟩,
       h_dq_fl.trans h_ad_fl, h_dq_dp.trans h_ad_dp, h_dq_ids.trans h_ad_ids,
       h_dq_ek.trans h_ad_ek, h_dq_col, h_dq_tokens, h_dq_ska,
-      h_dq_line.trans h_ad_line, h_atol_dq, ?_, h_dq_stack.trans h_ad_stack, ?_, ?_⟩
+      h_dq_line.trans h_ad_line, h_atol_dq, ?_, h_dq_stack.trans h_ad_stack,
+      ?_, ?_, ?_, ?_, ?_⟩
     · -- EndLineOnLine on the wrap (parallel to base theorem true branch)
       intro _
       constructor
@@ -4714,14 +4730,45 @@ theorem scanNextToken_flow_scanDoubleQuoted_pkPush (s : ScannerState)
             s_dq.line s.pendingKeys.size h_dq_lt h_lt_wrap, h_get]
       · rw [ScannerCorrectness.setPendingKeyEndLine_kind s_dq.pendingKeys s_dq.pendingKeyActive
             s_dq.line s.pendingKeys.size h_dq_lt h_lt_wrap, h_get]
+    · -- pendingKeyActive: wrap leaves it untouched, s_dq inherits from saveSimpleKey
+      show s_dq.pendingKeyActive = some s.pendingKeys.size
+      exact h_dq_pka_full
+    · -- simpleKey.possible: after `↓reduceIte` substitution the wrap has
+      -- `simpleKey.possible := true` baked in by simp, so the goal is `true = true`.
+      rfl
+    · -- preserves-prior: setPendingKeyEndLine doesn't touch indices < active = s.pendingKeys.size
+      intro j hj _hj'
+      have h_dq_lt : j < s_dq.pendingKeys.size := by
+        rw [h_dq_pks_full, Array.size_push]; omega
+      have h_ne : j ≠ s.pendingKeys.size := Nat.ne_of_lt hj
+      -- Bridge: rewrite s_dq.pendingKeyActive to some s.pendingKeys.size, then use the helper
+      have h_pka_eq :
+          (setPendingKeyEndLine s_dq.pendingKeys s_dq.pendingKeyActive s_dq.line)
+          = (setPendingKeyEndLine s_dq.pendingKeys (some s.pendingKeys.size) s_dq.line) := by
+        rw [h_dq_pka_full]
+      have _hj'_some : j < (setPendingKeyEndLine s_dq.pendingKeys (some s.pendingKeys.size) s_dq.line).size :=
+        h_pka_eq ▸ _hj'
+      have step1 :
+          (setPendingKeyEndLine s_dq.pendingKeys s_dq.pendingKeyActive s_dq.line)[j]'_hj'
+            = (setPendingKeyEndLine s_dq.pendingKeys (some s.pendingKeys.size) s_dq.line)[j]'_hj'_some := by
+        congr 1
+      have step2 :
+          (setPendingKeyEndLine s_dq.pendingKeys (some s.pendingKeys.size) s_dq.line)[j]'_hj'_some
+            = s_dq.pendingKeys[j]'h_dq_lt :=
+        ScannerCorrectness.setPendingKeyEndLine_some_at_other_unchanged
+          s_dq.pendingKeys s.pendingKeys.size s_dq.line j h_dq_lt _hj'_some h_ne
+      have step3 : s_dq.pendingKeys[j]'h_dq_lt = s.pendingKeys[j]'hj := by
+        simp only [h_dq_pks_full]
+        exact Array.getElem_push_lt hj
+      exact (step1.trans step2).trans step3
   obtain ⟨s_final, h_dc_eq, h_corr_f, h_fl_f, h_dp_f, h_ids_f, h_ek_f, h_col_f,
          h_tok_f, h_ska_f, h_line_f, h_atol_f, h_endline_f, h_stack_f,
-         h_pks_size_f, h_pks_idx_f⟩ := h_content
+         h_pks_size_f, h_pks_idx_f, h_pka_f, h_skp_f, h_prior_f⟩ := h_content
   exact ⟨s_final, scanNextToken_via_content_dispatch _ _ _ _ _ h_pp h_struct rfl h_check
     h_flow_none h_block_none h_dc_eq, h_corr_f, h_fl_f, h_dp_f, h_ids_f, h_ek_f, h_col_f,
     fun t ht => by rw [h_tok_f] at ht; injection ht with ht; subst ht; exact ⟨nofun, nofun, nofun⟩,
     h_ska_f, h_line_f, (by rw [h_line_f]; exact h_atol_f), h_endline_f, h_stack_f,
-    h_pks_size_f, h_pks_idx_f⟩
+    h_pks_size_f, h_pks_idx_f, h_pka_f, h_skp_f, h_prior_f⟩
 
 -- ═══ scanNextToken for '[' from initial state ═══
 
