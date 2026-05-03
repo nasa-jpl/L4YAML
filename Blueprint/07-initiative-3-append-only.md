@@ -796,6 +796,7 @@ rooted at `Scanner/Linearise.lean`:
 | J.4.2.b-2d-key-chain-Part3-locator-shape | Design-decision cadence (no code change, baseline preserved at 8 sorries).  Settles the precise per-pair locator shape for the new conjunct on `EmitPairListScansInFlow` (open-bullet sub-step 2 of the Part3 cascade).  **Candidates considered:** (i) array form `∃ (qs : Array Nat), qs.size = pairs.length ∧ qs[0] = s.pendingKeys.size ∧ ∀ i, ⟨qs[i] < s'.pendingKeys.size, kind = .keyOnly⟩ ∧ strict-monotone-qs`; (ii) recursive sigma-list shape mirroring the cons induction's structure; (iii) per-i existential `∀ i ∈ [0, pairs.length), ∃ q, ⟨properties⟩`.  **Decision: (i) array form.**  Rationale: (ii) is unworkable because the cons-induction's intermediate state `s_pp` (between the head pair's recursive ws-step and the IH's tail body) is NOT visible from the predicate signature `(s, s')`, so a recursive shape can't reference the per-pair anchor `s_(i,pre).pendingKeys.size` symbolically; (iii) lacks a natural way to express strict monotonicity across `i` without an explicit array witness, and the consumer in sub-step 5 (`Part3-walk-locator-foundation`) wants a fixed array to walk over — re-extracting the array from a per-`i` existential each time would re-introduce the same complexity (i) avoids upfront.  Cons-case construction for (i): `qs = #[s.pendingKeys.size] ++ qs_tail` where `qs_tail` is the IH's array on the tail (under state `s_pp`).  Strict monotonicity at the seam `qs[0] < qs[1]` follows from `s.pendingKeys.size < s_pp.pendingKeys.size` (the head pair's gated A1 push at s→s₁, preserved through `:`/value/comma/ws₁ to s_pp); the rest follows from the IH's monotonicity on `qs_tail`.  Singleton case: `qs = #[s.pendingKeys.size]`.  **Final conjunct shape (added in sub-step 3):** under `pairs ≠ []`, `∃ (qs : Array Nat) (h_size : qs.size = pairs.length) (h_pos : 0 < qs.size), qs[0]'h_pos = s.pendingKeys.size ∧ (∀ i (h : i < qs.size), ∃ (h_lt : qs[i]'h < s'.pendingKeys.size), (s'.pendingKeys[qs[i]]'h_lt).kind = .keyOnly) ∧ (∀ i j (hi : i < qs.size) (hj : j < qs.size), i < j → qs[i]'hi < qs[j]'hj)`.  **`insertBeforeIdx` deferred:** the conjunct does NOT include per-pair `insertBeforeIdx` info.  Foundation B's splice-firing precondition `pks[p].insertBeforeIdx ≤ j` will be discharged in sub-step 5 from the SCANNER-LEVEL fact that `pks` insertBeforeIdx is monotonic in pendingKey-index (a saveSimpleKey invariant: each push records `insertBeforeIdx = current tokens.size`, which only grows over the chain).  If sub-step 5 uncovers a gap, the conjunct can be extended in sub-step 3 to also expose the per-pair `insertBeforeIdx` array.  **Existing first-key conjunct retained:** the existing `pairs ≠ [] → ∃ h, pks[s.pendingKeys.size].(insertBeforeIdx,kind) = (s.tokens.size, .keyOnly)` conjunct (added by C-compose) is KEPT alongside the new array conjunct rather than subsumed.  Reason: the existing conjunct is consumed at three sites (linearise wrapper at line ~12036 via `h_first_key`; recursive IH destructure at line ~9816 via `_h_first_r`; mapping consumers at lines ~10295/~10518) — subsuming would require refactoring all three sites and provide no information not already implied by `qs[0] = s.pendingKeys.size` ∧ `pks[qs[0]].kind = .keyOnly`.  The redundancy is cheap (one `∃` + a few conjuncts).  **Open question for sub-step 3:** does the `qs` array's `Array.append`-construction in the cons case need a Lean-prelude lemma about `(#[x] ++ a).size = 1 + a.size` and `(#[x] ++ a)[0] = x`?  These are standard `Array` / `Array.append` lemmas; expect `Array.size_append`, `Array.getElem_append_left` (for `i = 0`), and `Array.getElem_append_right` (for `i ≥ 1`) to suffice.  Baseline preserved exactly: 8 sorries, no edits committed.  This entry tracks the design decision before mechanical extension lands in sub-step 3 | 0 (no code change; sorry count unchanged at 8; baseline preserved) | `Blueprint/07-initiative-3-append-only.md` (only) | ✓ done 2026-05-02 |
 | J.4.2.b-2d-key-chain-Part3-extend-EmitPairListScansInFlow-per-pair | Mechanical extension of `EmitPairListScansInFlow` with the per-pair locator conjunct chosen in `Part3-locator-shape` (sub-step 3 of the Part3 cascade).  **Definition extension:** added a second gated conjunct to `EmitPairListScansInFlow` of shape `pairs ≠ [] → ∃ (qs : Array Nat) (_h_size : qs.size = pairs.length) (h_pos : 0 < qs.size), qs[0]'h_pos = s.pendingKeys.size ∧ (∀ i (h : i < qs.size), ∃ (h_lt : qs[i]'h < s'.pendingKeys.size), (s'.pendingKeys[qs[i]'h]'h_lt).kind = .keyOnly) ∧ strict-monotone-qs`, retaining the existing C-compose first-key conjunct alongside.  **`emitPairList_scans_empty`:** vacuous discharge `fun h_ne => absurd rfl h_ne`, mirroring the existing first-key conjunct's empty-case discharge.  **`emitPairList_scans_nonempty` singleton case:** `qs = #[s.pendingKeys.size]`; per-i (only `i = 0`) reuses the first-key conjunct's resolution-chain pre-derivation; strict-mono vacuous (single element).  **Cons case:** `qs = #[s.pendingKeys.size] ++ qs_tail` where `qs_tail` is the IH's array on the tail under state `s_pp`; per-i splits on `i = 0` (head pair facts) vs `i = j+1` (IH's `h_per_i_t j` after `Array.getElem_append_right` rewrite); strict-mono splits on `(a = 0, b = b'+1)` (uses `h_lt_s_spp : s.pendingKeys.size < s_pp.pendingKeys.size` plus IH's `h_strict_t 0 b'`) vs `(a = a'+1, b = b'+1)` (direct IH `h_strict_t a' b'`).  **Restructuring:** both non-empty branches were restructured to PRE-DERIVE the shared first-pair facts (`h_lt_s_send : s.pendingKeys.size < s_end.pendingKeys.size`, `h_kd_s_end`, `h_ib_s_end`) BEFORE the trailing `refine ⟨h_size_all, h_pkRec_all, ?_, ?_, ?_⟩`, so the new Part3 bullet can reuse them alongside the existing first-key bullet (Lean's `refine`-bullet scoping isolates per-bullet `have`s, so without pre-derivation each bullet would have to redo the chain).  **Destructure sites:** updated 3 explicit-name sites (recursive IH `_h_first_r⟩` → `_h_first_r, h_first_qs_r⟩` at line ~9816, used by the cons-case discharge to bind the IH's qs_tail; `emit_scans_in_flow` mapping `_h_first₂⟩` → `_h_first₂, _h_first_qs₂⟩` at line ~10295; `emitPairList_body_filtered_characterization` `h_first⟩` → `h_first, _h_first_qs⟩` at line ~11873); the 4th candidate site (`scanFiltered_exists_emit_aux` ~10518) uses anonymous-`_` placeholders that auto-absorb the new conjunct via the trailing residual conjunction (no edit needed).  **Lean idiom snag:** `decide` on `0 < (#[s.pendingKeys.size] : Array Nat).size` fails with "Expected type must not contain free variables" because Lean's `Decidable` evaluator refuses to fully reduce `Array.size #[x]` when `x` is opaque — the `Decidable.isTrue` constructor can't be synthesized symbolically.  Worked around via `h_size_one ▸ Nat.zero_lt_one` (where `h_size_one : (#[s.pendingKeys.size] : Array Nat).size = 1 := rfl` — `rfl` works because definitional equality doesn't require constructor evaluation).  Lemma usage: `Array.size_append`, `Array.getElem_append_left` (i = 0), `Array.getElem_append_right` (i ≥ 1) — all standard Lean prelude, no new infrastructure needed.  Sorry count unchanged at 8 (build replays 78/453 EmitterScannability jobs; total 453 jobs green) | 0 (build clean across 453 jobs; ≈100-line addition net for the new conjunct + discharges; no sorry change) | `Proofs/Output/EmitterScannability.lean` | ✓ done 2026-05-02 |
 | J.4.2.b-2d-key-chain-Part3-thread-body-filtered-char | Mechanical threading of the per-pair locator conjunct (added by `Part3-extend-EmitPairListScansInFlow-per-pair`) through `emitPairList_body_filtered_characterization`'s conclusion as Part (5) (sub-step 4 of the Part3 cascade, ~0.5 step estimated, ~0.3 step actual since destructure binding was already in place).  **Conjunct shape:** identical to the `EmitPairListScansInFlow` Part3 conjunct (re-stated at the body-characterization layer rather than wrapped, so consumers like the linearise wrapper and Tier 1 stitching don't need to re-invoke `emitPairList_scans_nonempty` to access the per-pair locator).  Under `pairs ≠ []`: `∃ (qs : Array Nat) (_h_size : qs.size = pairs.length) (h_pos : 0 < qs.size), qs[0]'h_pos = s.pendingKeys.size ∧ ⟨per-i keyOnly readout⟩ ∧ strict-monotone-qs`.  Note absence of `pairs ≠ [] →` precondition gate at this layer: the body characterization already takes `h_ne : pairs ≠ []` as a hypothesis, so the ungated form is correct.  **Discharge:** the destructure of `h_scan := emitPairList_scans_nonempty …` at line ~11997 already exposed `_h_first_qs` from the `Part3-extend` sub-step's binding contract; the only proof edit was renaming `_h_first_qs` → `h_first_qs` and appending `h_first_qs h_ne` to the closing `refine ⟨…, h_first h_ne, h_first_qs h_ne⟩` anonymous constructor (no proof body change beyond the binding rename).  **Destructure sites updated (2):** (a) `emitPairList_body_linearise_characterization` ~12120 — added slot `_h_first_qs` after `h_first_key` (unused at this layer; reserved for sub-step 6 `Part3-final-discharge`); (b) `scanFiltered_emitMap_nonempty_structure` ~12459 — added slot `_h_body_first_qs` after `_h_body_first` (unused at this layer; the Tier 1 stitching is downstream of the linearise wrapper so it consumes the linearise wrapper's sorry'd Part (3) directly rather than re-walking the locator).  Sorry count unchanged at 8 (8 sorries at lines 11325, 11734, 11943, 12088, 12222, 12445, 13167, 13206; 57/57 EmitterScannability jobs green) | 0 (build clean across 57 EmitterScannability jobs; ≈40-line addition for the Part (5) conjunct + 1-line `refine` extension + 2 destructure-site `_`-prefixed slots; no sorry change) | `Proofs/Output/EmitterScannability.lean` | ✓ done 2026-05-02 |
+| J.4.2.b-2d-key-chain-Part3-final-discharge-bridge-6a | Chain-side cadence for the J.4.2.b-2d-key Part3 cascade's sub-step 6a (split: 6a chain-side now, 6b linearise-side + lift-discharge next).  **Goal:** expose, in the cons case of `emitPairList_scans_nonempty`, the predecessor-flowEntry fact so that the linearise-side bridge (sub-step 6b) can invert the walk-locator and identify which outer flowEntry sits at a given linearise position.  **Predicate extension:** added a fourth sub-conjunct to `EmitPairListScansInFlow`'s per-pair locator (under `pairs ≠ []`): `∀ i (hi : i < qs.size) (_h_pos_i : 0 < i), ∃ (h_lt : qs[i]'hi < s'.pendingKeys.size) (_h_ib_pos : 0 < (s'.pendingKeys[qs[i]'hi]'h_lt).insertBeforeIdx) (h_pred_lt : (s'.pendingKeys[qs[i]'hi]'h_lt).insertBeforeIdx - 1 < s'.tokens.size), (s'.tokens[(s'.pendingKeys[qs[i]'hi]'h_lt).insertBeforeIdx - 1]'h_pred_lt).val = .flowEntry`.  **`emitPairList_scans_empty`:** vacuous via the existing `pairs ≠ []` gate (the `absurd rfl h_ne` already in tree).  **Singleton case (`pairs = [p]`):** vacuous — `qs = #[s.pendingKeys.size]` has only `i = 0`, so `0 < i` is false.  **Cons case:** decomposes the new conjunct on `i = j + 1`, `j < qs_tail.size`.  For `j ≥ 1`: applies the IH's predecessor-flowEntry conjunct (`h_pred_t j h_j (by omega)`) directly via `qs[j+1] = qs_tail[j]` (cons-append rewrite).  For `j = 0` (outer `i = 1`): the predecessor index is `qs_tail[0] = s_pp.pendingKeys.size`, and the IH's first-pair conjunct (C-compose) gives `pks[s_pp.pendingKeys.size].insertBeforeIdx = s_pp.tokens.size = s_c.tokens.size = s_v.tokens.size + 1` (via `h_toks_pp` + the comma push).  The token at index `s_v.tokens.size` in `s_c.tokens` is `.flowEntry` (newly exposed by `scanNextToken_flow_comma`'s extension; see below).  **Sub-task 6a-i1-lift sorry'd at line 9543:** lifting the `.flowEntry` fact from `s_c.tokens` (or `s_pp.tokens`) to `s_end.tokens` requires `FlowMonoChain_preserves_raw_prefix` which needs `SimpleKeyAboveFloor s_pp s_pp.tokens.size s_pp.flowLevel` — depending on tracing `s_pp.simpleKey`/`simpleKeyStack` state through the comma + ws1 sequence (out of scope for 6a; deferred to 6b).  **`scanNextToken_flow_comma` extension:** added one extra conjunct `(s'.tokens.size = s.tokens.size + 1) ∧ (∀ (h_lt : s.tokens.size < s'.tokens.size), (s'.tokens[s.tokens.size]'h_lt).val = .flowEntry)` to expose the comma's flowEntry push.  Proof: chase tokens through `advance` (preserves), `record-update` (preserves), `emit .flowEntry` (`s.tokens.push ⟨s.currentPos, .flowEntry, s.currentPos⟩`), `allowDirectives if-update` (both branches preserve tokens), `saveSimpleKey` (preserves tokens via `saveSimpleKey_preserves_tokens`).  The dependent `[size]'h_lt` indexing in the proof needed a `generalize`+`subst` pattern to substitute the underlying array via the equation lemma before applying `Array.getElem_push_eq`.  **Threading:** the new conjunct propagated through `emitPairList_body_filtered_characterization`'s conclusion as part of the per-pair existential (Part 5) — single `∃` binding so consumer destructure sites (recursive IH ~9914, mapping ~10528, filtered-char ~12015, Tier 1 emitMap ~12598) auto-absorb the new sub-conjunct without edit.  Two `scanNextToken_flow_comma` callers (line ~8627 in singleton emitList comma + line ~9883 in cons emitPairList comma) updated with one extra `_`/named slot each.  **Sorry count: 8 → 9** (+1 from the 6a-i1-lift sub-task, to be discharged in 6b).  Build green (453/453 jobs) | +1 (build clean across 453 jobs; ~110-line addition for the new conjunct + comma extension + cons discharge; +1 sorry from 6a-i1-lift) | `Proofs/Output/EmitterScannability.lean` | ✓ done 2026-05-02 |
 | J.4.2.b-2d-key-chain-Part3-walk-locator-foundation | Foundation cadence for the J.4.2.b-2d-key Part3 cascade's sub-step 5: added `linearise_walk_at_kth_resolved_splice` and four supporting declarations to `Proofs/Scanner/ScannerLinearise.lean` (~190 net lines).  **Sub-lemmas added:** (a) `linearise_go_step_splice` / `linearise_go_step_copy` — one-step unfoldings of `linearise.go` for the splice-fires and token-copy cases (companions to the existing `linearise_go_step_token`).  (b) `linearise_go_walk_eq` — the workhorse: from a transport equation at state `(j, p, acc)` to `(j', p', acc')` given the **in-range** condition (`pks[r].insertBeforeIdx ≤ j'` for `r ∈ [p, p')`) and **barrier** condition (`pks[p'].insertBeforeIdx ≥ j'` if `p' < pks.size`).  Proof: induction on the lex-measure `(j' - j) + (p' - p)`; each `linearise.go` step either fires `pks[p]` or copies `tokens[j]`, decreasing the measure by 1.  Three branches in the recursive case (splice fires, token copy, pendings-exhausted token copy) plus a base case at measure 0.  (c) `linearise_go_walk_eq_top` — top-level wrapper absorbing the lex-measure argument.  (d) `linearise_go_walk_size` — derives `acc'.size + (tokens.size - j') + pendingExpandSumFrom pks p' = acc.size + (tokens.size - j) + pendingExpandSumFrom pks p` from the walk equation, by equating `linearise_go_size` on both sides.  **Main lemma `linearise_walk_at_kth_resolved_splice`:** per `i < qs.size`, the linearised output has `.key` at position `pks[qs[i]].insertBeforeIdx + (pks.foldl (fun n e => n + (expandKind e).size) 0 0 qs[i])`.  **Hypotheses:** `h_qs_lt`, `h_qs_kind`, `h_qs_mono` (from EmitPairListScansInFlow's Part3 conjunct), plus `h_idx_mono` (save-time monotonicity of `pks` insertBeforeIdx) and `h_idx_le` (every insertBeforeIdx ≤ tokens.size) — both expected from the chain endpoint invariant.  **Key design choice (better than the originally-sketched induction-on-i):** the walk-state equation lets us jump *directly* from `(0, 0, #[])` to `(j_i, qs[i], acc)` for any `i` — no induction over `i` needed in the main lemma itself.  The induction is implicit in `linearise_go_walk_eq` (over the lex-measure).  The "subsidiary lemma about `.unresolved` having zero expansion" mentioned in the original plan is also unnecessary: `linearise_go_walk_eq` handles all kinds uniformly, and the position formula uses the cumulative `expandKind` sum (foldl), so `.unresolved` contributions are correctly counted as 0 without a special case.  **Bridge to nested mappings:** the `prefixSum_i = pks.foldl 0 0 qs[i]` term accommodates inner-mapping `.keyOnly` entries between outer pairs — no "non-`qs` are `.unresolved`" hypothesis required (which would have failed for nested flow values).  Estimate was 1.5–2 cadence steps; actual ≈1 step because the foldl-based position formula obviated the induction.  Sorry count unchanged at 8 (build clean: 8/8 ScannerLinearise + 57/57 EmitterScannability jobs green; ~190 net lines of new proof code) | 0 (no sorry change; ~190 net lines proof code added; build clean) | `Proofs/Scanner/ScannerLinearise.lean` | ✓ done 2026-05-02 |
 
 **J.3.1 — Linearise foundations** [✓ completed 2026-04-26]:
@@ -2930,21 +2931,57 @@ Remaining J.4.2.b work:
         11943, 12088, 12222, 12445, 13167, 13206; 57/57 EmitterScannability
         jobs green).
 
-     6. **Part3-final-discharge**: discharge the Part (3) sorry in
-        `emitPairList_body_linearise_characterization` (line ~12067)
-        by combining: (i) the per-pair conjunct from Part3-thread
-        (sub-step 4); (ii) the walk-locator foundation from
-        Part3-walk-locator-foundation (sub-step 5); (iii) a small
-        bridge connecting "linearise[k] = .flowEntry, balance = 0" to
-        "k is the linearise position of the i-th outer flowEntry for
-        some i ≥ 0".  The bridge may require a separate sub-cadence
-        if it gets large (TBD); a candidate approach is to first
-        prove a stronger version of Part (3) that takes `i` as input
-        (the outer-flowEntry index) and yields the locator + readout,
-        then derive the consumer's form by case-splitting on `i` over
-        the linearise tokens.  Sorry count: 8 → 7 (closes the only
-        remaining sorry in `emitPairList_body_linearise_characterization`).
-        Estimate: ~1 step.
+     6. **Part3-final-discharge** (split into 6a + 6b — bridge sub-cadence
+        flagged in original plan materialised; 6a in tree as of 2026-05-02):
+        - 6a. ✓ **Part3-final-discharge-bridge-6a (chain-side)** [done
+          2026-05-02]: extended `EmitPairListScansInFlow`'s per-pair conjunct
+          with the predecessor-flowEntry fact (for each `i ≥ 1`,
+          `s'.tokens[pks[qs[i]].insertBeforeIdx - 1].val = .flowEntry`).
+          Re-proved `emitPairList_scans_empty` (vacuous) and
+          `emitPairList_scans_nonempty`'s singleton (vacuous: only `i = 0`).
+          Cons case decomposes the new conjunct on `i = j + 1`, `j < qs_tail.size`:
+          for `j ≥ 1` the IH's predecessor-flowEntry conjunct discharges directly;
+          for `j = 0` (outer `i = 1`) the predecessor is the `.flowEntry` pushed
+          by the comma step (`s_v → s_c`), persisted through ws1
+          (`s_pp.tokens = s_c.tokens`) and lifted across the IH chain
+          (`s_pp → s_end`).  Extended `scanNextToken_flow_comma`'s output
+          with `(s'.tokens.size = s.tokens.size + 1) ∧
+          (∀ h_lt, (s'.tokens[s.tokens.size]'h_lt).val = .flowEntry)`
+          (proof: chase tokens through advance/record-update/emit/saveSimpleKey/
+          allowDirectives wrappers, all preserve tokens except the single
+          `.flowEntry` push).  Threaded through
+          `emitPairList_body_filtered_characterization`'s conclusion (Part 5
+          extended in-place, no new conjunct shape).  Two existing
+          `scanNextToken_flow_comma` callers updated with one extra `_`
+          slot each.  Three existing per-pair-conjunct destructure sites
+          (recursive IH ~9914, mapping ~10528, filtered-char ~12015,
+          Tier 1 emitMap ~12598) auto-absorb the new sub-conjunct (single
+          `∃` binding).  **Sub-task 6a-i1-lift sorry'd at line 9543** in
+          the cons case `j = 0` branch: the lift through the IH chain
+          requires `SimpleKeyAboveFloor s_pp s_pp.tokens.size s_pp.flowLevel`
+          (precondition for `FlowMonoChain_preserves_raw_prefix`), which
+          depends on tracing `s_pp.simpleKey`/`simpleKeyStack` state through
+          comma + ws1 — deferred to 6b alongside the linearise-side bridge.
+          Sorry count: 8 → 9 (+1 from 6a-i1-lift).  Build green
+          (453/453 jobs).
+        - 6b. **Part3-final-discharge-bridge-6b (linearise-side + i1-lift
+          discharge)** ← *current next step*: (i) discharge the 6a-i1-lift
+          sorry by establishing `SimpleKeyAboveFloor s_pp ... s_pp.flowLevel`
+          and applying `FlowMonoChain_preserves_raw_prefix` to the IH's
+          `h_fmc_r` chain; (ii) build a small token-copy walk lemma in
+          `ScannerLinearise.lean` that combines the walk-locator
+          (`linearise_walk_at_kth_resolved_splice`) with the predecessor-
+          flowEntry fact to give: at each splice state
+          `(pks[qs[i]].insertBeforeIdx, qs[i], acc)`, the previous step in
+          the walk was a copy of `tokens[pks[qs[i]].insertBeforeIdx - 1]`,
+          so `linearise[acc.size - 1] = tokens[...] = .flowEntry`; (iii)
+          combine to discharge the Part (3) sorry in
+          `emitPairList_body_linearise_characterization` (line ~12217).
+          Bridge equation: for the outer-level flowEntry at linearise
+          position `k`, find `i ≥ 1` such that
+          `k + 1 = pks[qs[i]].insertBeforeIdx + (pks.foldl 0 0 qs[i])`
+          (linearise position of the `qs[i]`-th splice).  Sorry count:
+          9 → 7 (closes both 6a-i1-lift and Part (3)).  Estimate: 1-2 steps.
 
      This **closes 2d-stub** — no further wrap needed once Part3-final
      lands.  Filtered-shape Parts (2)/(3) sorries (lines 11903, 11905
@@ -2975,14 +3012,15 @@ the breakdown above lets each substep land in cadence-size, with the
 positional family (J.4.2.c-prefix / -pos1 / -pos2) and the chain-endpoint
 invariant (J.4.2.b-pkwi) already in place to support them.
 
-**Concrete next steps (in order, as of 2026-05-02, sorry count 8):**
+**Concrete next steps (in order, as of 2026-05-02, sorry count 9):**
 
 1. **2d-key-chain-Part3** (after-flowEntry splice locator; refined
-   ~5–6 cadence steps; scope-investigation done 2026-05-02,
+   ~6–7 cadence steps; scope-investigation done 2026-05-02,
    locator-shape done 2026-05-02, extend-per-pair done 2026-05-02,
    thread-body-filtered-char done 2026-05-02, walk-locator-foundation
-   done 2026-05-02) — Part3 is now decomposed into 6 cadence-sized
-   sub-steps (sub-steps 1–5 ✓ done):
+   done 2026-05-02, final-discharge-bridge-6a done 2026-05-02) —
+   Part3 is now decomposed into 7 cadence-sized sub-steps (sub-steps 1–5
+   + 6a ✓ done; 6b is the only remaining):
    - 2. ✓ **Part3-locator-shape** [done 2026-05-02]: chose option (i)
      array form `∃ (qs : Array Nat) (_h_size : qs.size = pairs.length)
      (h_pos : 0 < qs.size), qs[0] = s.pendingKeys.size ∧ ⟨per-i
@@ -3028,15 +3066,31 @@ invariant (J.4.2.b-pkwi) already in place to support them.
      "non-`qs` are `.unresolved`" hypothesis required).  See manifest
      entry `J.4.2.b-2d-key-chain-Part3-walk-locator-foundation`.
      Sorry count unchanged at 8.
-   - 6. **Part3-final-discharge** (~1 step) ← *current next step*:
-     combine `linearise_walk_at_kth_resolved_splice` with the per-pair
-     locator from sub-step 4 (Part3-thread-body-filtered-char) plus a
-     small bridge (`linearise[k] = .flowEntry` ↔ `k = j_{i+1} + i +
-     prefixSum_i` for some `i`) to discharge the Part (3) sorry in
-     `emitPairList_body_linearise_characterization` (line ~12222).
-     The walk-locator's hypotheses (`h_idx_mono`, `h_idx_le`) need to
-     be supplied from the chain-endpoint invariant or the Path C
-     monotonicity of `saveSimpleKey`.  Sorry count 8 → 7.
+   - 6a. ✓ **Part3-final-discharge-bridge-6a (chain-side)** [done
+     2026-05-02]: extended `EmitPairListScansInFlow`'s per-pair conjunct
+     with a predecessor-flowEntry fact (for `i ≥ 1`,
+     `s'.tokens[pks[qs[i]].insertBeforeIdx - 1].val = .flowEntry`),
+     re-proved both the empty/singleton (vacuous) and cons cases.  Cons
+     `j ≥ 1` discharges via the IH directly; cons `j = 0` lifts the
+     comma's flowEntry push through ws1 + the IH chain — the lift is
+     sorry'd (sub-task 6a-i1-lift) pending 6b's `SimpleKeyAboveFloor`
+     trace.  Extended `scanNextToken_flow_comma`'s output with the
+     comma push token equation; threaded through
+     `emitPairList_body_filtered_characterization`.  Sorry count 8 → 9.
+     See manifest entry `J.4.2.b-2d-key-chain-Part3-final-discharge-bridge-6a`.
+   - 6b. **Part3-final-discharge-bridge-6b (linearise-side + i1-lift
+     discharge)** (~1-2 steps) ← *current next step*: discharge the
+     6a-i1-lift sorry (line 9543) by establishing
+     `SimpleKeyAboveFloor s_pp s_pp.tokens.size s_pp.flowLevel` and
+     applying `FlowMonoChain_preserves_raw_prefix` to the IH's chain.
+     Then build a small token-copy walk lemma in `ScannerLinearise.lean`
+     showing that at each splice state `(pks[qs[i]].insertBeforeIdx,
+     qs[i], acc)`, the previous walk step was a copy of
+     `tokens[pks[qs[i]].insertBeforeIdx - 1]`; combine with the
+     predecessor-flowEntry conjunct from 6a to invert the walk-locator
+     and discharge Part (3) of `emitPairList_body_linearise_characterization`
+     (line ~12217).  Sorry count 9 → 7 (closes both 6a-i1-lift and
+     Part (3)).
 
    See open-bullet section's body decomposition (just above this
    "Concrete next steps") for full details on each sub-step.  This

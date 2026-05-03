@@ -5678,8 +5678,18 @@ theorem scanNextToken_flow_comma (s : ScannerState)
       -- scanFlowEntry's final record-update sets `simpleKeyAllowed := true`,
       -- which is the gate the next key needs to fire `saveSimpleKey`'s push
       -- branch.  Used by `emitPairList_scans_nonempty`'s recursive case to
-      -- thread the gate through ws1 into the IH call. -/
-      ∧ s'.simpleKeyAllowed = true := by
+      -- thread the gate through ws1 into the IH call.
+      ∧ s'.simpleKeyAllowed = true
+      -- J.4.2.b-2d-key-chain-Part3-final-discharge-bridge-6a (2026-05-02):
+      -- the comma push.  scanFlowEntry pushes exactly one `.flowEntry` token
+      -- at the previous tail (`s.tokens.size`), under the saveSimpleKey/
+      -- allowDirectives wrappers (both preserve `tokens`).  Threaded into
+      -- `emitPairList_scans_nonempty`'s recursive case to seed the
+      -- predecessor-flowEntry conjunct for `qs[1]` (and lifted through the
+      -- IH via tokens-prefix preservation). -/
+      ∧ (s'.tokens.size = s.tokens.size + 1
+          ∧ (∀ (h_lt : s.tokens.size < s'.tokens.size),
+              (s'.tokens[s.tokens.size]'h_lt).val = .flowEntry)) := by
   -- Step 1: preprocessing
   have h_pp : scanNextToken_preprocess s = .ok (some (saveSimpleKey s, ',')) :=
     scanNextToken_preprocess_flow s ',' rest s.col hcorr h_flow
@@ -5744,7 +5754,7 @@ theorem scanNextToken_flow_comma (s : ScannerState)
     rw [advance_line_of_peek (s_ad.emit .flowEntry) ',' h_lt_ad h_peek_ad (by decide) (by decide)]
     exact h_ad_line
   refine ⟨_, h_snt, ?_, h_fl_f.trans h_ad_fl, h_dp_f.trans h_ad_dp, h_ids_f.trans h_ad_ids,
-    h_ek_f.trans h_ad_ek, ?_, h_line_f, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+    h_ek_f.trans h_ad_ek, ?_, h_line_f, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
   · rw [h_col_f]; exact h_corr_f
   · rw [h_col_f, h_ad_col]
   · rw [h_line_f]
@@ -5813,6 +5823,43 @@ theorem scanNextToken_flow_comma (s : ScannerState)
   · -- simpleKeyAllowed = true: scanFlowEntry's record-update sets it directly.
     show ({ (s_ad.emit .flowEntry).advance with simpleKeyAllowed := true }).simpleKeyAllowed = true
     rfl
+  · -- Part3-final-discharge-bridge-6a: the comma's flowEntry push.
+    -- s' = ({ (s_ad.emit .flowEntry).advance with simpleKeyAllowed := true });
+    -- chase tokens through advance/record-update/emit/saveSimpleKey/allowDirectives.
+    have h_ad_tk : s_ad.tokens = s.tokens := by
+      simp only [s_ad]; split
+      · show (saveSimpleKey s).tokens = s.tokens
+        exact ScannerCorrectness.saveSimpleKey_preserves_tokens s
+      · exact ScannerCorrectness.saveSimpleKey_preserves_tokens s
+    have h_s'_tokens :
+        ({ (s_ad.emit .flowEntry).advance with simpleKeyAllowed := true }).tokens
+          = s.tokens.push ⟨s_ad.currentPos, .flowEntry, s_ad.currentPos⟩ := by
+      show (s_ad.emit .flowEntry).advance.tokens = _
+      rw [ScannerCorrectness.advance_preserves_tokens]
+      show s_ad.tokens.push _ = _
+      rw [h_ad_tk]
+    refine ⟨?_, ?_⟩
+    · rw [h_s'_tokens, Array.size_push]
+    · intro h_lt
+      -- Index into the push via h_s'_tokens.  Use a generalize + subst
+      -- pattern to rewrite the dependent array under the bound.
+      have h_lt' :
+          s.tokens.size <
+            (s.tokens.push ⟨s_ad.currentPos, .flowEntry, s_ad.currentPos⟩).size := by
+        rw [Array.size_push]; omega
+      have h_get :
+          ({ (s_ad.emit .flowEntry).advance with simpleKeyAllowed := true }
+            ).tokens[s.tokens.size]'h_lt
+            = (s.tokens.push ⟨s_ad.currentPos, .flowEntry, s_ad.currentPos⟩
+                )[s.tokens.size]'h_lt' := by
+        -- generalize the LHS array, subst via h_s'_tokens, then rfl.
+        generalize h_arr : ({ (s_ad.emit .flowEntry).advance with
+            simpleKeyAllowed := true }).tokens = arr at h_lt ⊢
+        have h_arr_eq :
+            arr = s.tokens.push ⟨s_ad.currentPos, .flowEntry, s_ad.currentPos⟩ := by
+          rw [← h_arr]; exact h_s'_tokens
+        subst h_arr_eq; rfl
+      rw [h_get, Array.getElem_push_eq]
 
 -- ═══ Flow close bracket: scanFlowSequenceEnd dispatch ═══
 
@@ -8587,7 +8634,8 @@ theorem emitList_scans_nonempty (items : List YamlValue) (h_ne : items ≠ [])
           hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline
       -- Step 2: Scan ',' via scanNextToken_flow_comma
       obtain ⟨s₂, h_snt₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, h_ek₂, h_col₂, _h_line₂,
-              h_atol₂, h_endline₂, h_stack₂, h_size₂, h_pkRec₂, h_pks₂, _h_ska₂⟩ :=
+              h_atol₂, h_endline₂, h_stack₂, h_size₂, h_pkRec₂, h_pks₂, _h_ska₂,
+              _h_comma_push⟩ :=
         scanNextToken_flow_comma s₁
           (' ' :: (emit.emitList (v' :: vs)).toList ++ rest_chars)
           h_corr₁ h_flow₁ h_indent₁ h_col₁
@@ -9444,10 +9492,21 @@ def EmitPairListScansInFlow (pairs : List (YamlValue × YamlValue)) : Prop :=
       -- pair; `qs[0] = s.pendingKeys.size` from the gated push of the first
       -- pair's key, `qs[i+1] = qs_tail[i]` from the IH on the tail).
       -- Strict-monotonicity of `qs` reflects pendingKey monotonicity at
-      -- each pair's saveSimpleKey.  `insertBeforeIdx` is NOT exposed here
-      -- — sub-step 5's `linearise_walk_at_kth_resolved_splice` consumer
-      -- derives it from the saveSimpleKey monotonicity invariant.  Cons
-      -- construction: `qs = #[s.pendingKeys.size] ++ qs_tail`.
+      -- each pair's saveSimpleKey.  `insertBeforeIdx` is NOT exposed
+      -- directly for `i = 0` here — sub-step 5's
+      -- `linearise_walk_at_kth_resolved_splice` consumer derives it from
+      -- the saveSimpleKey monotonicity invariant.  Cons construction:
+      -- `qs = #[s.pendingKeys.size] ++ qs_tail`.
+      --
+      -- J.4.2.b-2d-key-chain-Part3-final-discharge-bridge-6a (2026-05-02):
+      -- predecessor-flowEntry conjunct.  For each `i ≥ 1`, the token at
+      -- index `pks[qs[i]].insertBeforeIdx - 1` in `s'.tokens` is
+      -- `.flowEntry` — the comma separating pair `i-1` from pair `i`,
+      -- pushed by `scanFlowEntry` in `emitPairList_scans_nonempty`'s
+      -- recursive case and persisting through ws1 + the IH's recursive
+      -- chain via tokens-prefix preservation.  Consumed by
+      -- 6b's linearise-side bridge to invert the walk-locator state and
+      -- discharge `emitPairList_body_linearise_characterization`'s Part (3).
       ∧ (pairs ≠ [] →
           ∃ (qs : Array Nat) (_h_size : qs.size = pairs.length)
             (h_pos : 0 < qs.size),
@@ -9456,7 +9515,16 @@ def EmitPairListScansInFlow (pairs : List (YamlValue × YamlValue)) : Prop :=
                 ∃ (h_lt : qs[i]'h < s'.pendingKeys.size),
                   (s'.pendingKeys[qs[i]'h]'h_lt).kind = .keyOnly)
             ∧ (∀ i j (hi : i < qs.size) (hj : j < qs.size),
-                i < j → qs[i]'hi < qs[j]'hj))
+                i < j → qs[i]'hi < qs[j]'hj)
+            ∧ (∀ i (hi : i < qs.size) (_h_pos_i : 0 < i),
+                ∃ (h_lt : qs[i]'hi < s'.pendingKeys.size)
+                  (_h_ib_pos : 0 < (s'.pendingKeys[qs[i]'hi]'h_lt).insertBeforeIdx)
+                  (h_pred_lt :
+                    (s'.pendingKeys[qs[i]'hi]'h_lt).insertBeforeIdx - 1
+                      < s'.tokens.size),
+                  (s'.tokens[
+                      (s'.pendingKeys[qs[i]'hi]'h_lt).insertBeforeIdx - 1
+                    ]'h_pred_lt).val = .flowEntry))
 
 theorem emitPairList_scans_empty : EmitPairListScansInFlow [] := by
   intro s rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline _h_ska
@@ -9692,7 +9760,7 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
         · -- Part3-extend: per-pair locator (singleton: qs = #[s.pendingKeys.size]).
           intro _h_ne_pairs
           have h_size_one : (#[s.pendingKeys.size] : Array Nat).size = 1 := rfl
-          refine ⟨#[s.pendingKeys.size], rfl, h_size_one ▸ Nat.zero_lt_one, rfl, ?_, ?_⟩
+          refine ⟨#[s.pendingKeys.size], rfl, h_size_one ▸ Nat.zero_lt_one, rfl, ?_, ?_, ?_⟩
           · -- per-i kind = .keyOnly (only i = 0)
             intro i h_i
             rw [h_size_one] at h_i
@@ -9702,6 +9770,11 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
           · -- strict-monotone (vacuous: only one element)
             intro a b h_a h_b h_lt
             rw [h_size_one] at h_a h_b
+            omega
+          · -- Part3-final-discharge-bridge-6a: predecessor-flowEntry
+            -- (vacuous: only i = 0, but conjunct requires 0 < i).
+            intro i h_i h_pos_i
+            rw [h_size_one] at h_i
             omega
     | p' :: ps, ih =>
       -- ══ Multi-pair: emit k ++ ": " ++ emit v ++ ", " ++ emitPairList (p' :: ps) ══
@@ -9817,7 +9890,8 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
           (by decide) (by decide) (by decide) h_snt₂
       -- Step 6: Scan ',' via scanNextToken_flow_comma
       obtain ⟨s_c, h_snt_c, h_corr_c, h_fl_c, h_dp_c, h_ids_c, h_ek_c, h_col_c, _h_line_c,
-              h_atol_c, h_endline_c, h_stack_c, _h_size_c, _h_pkRec_c, _h_pks_c, h_ska_c⟩ :=
+              h_atol_c, h_endline_c, h_stack_c, _h_size_c, _h_pkRec_c, _h_pks_c, h_ska_c,
+              h_comma_push⟩ :=
         scanNextToken_flow_comma s_v
           (' ' :: (emit.emitPairList (p' :: ps)).toList ++ rest_chars)
           h_corr_v h_flow_v h_indent_v h_col_v h_last_v h_atol_v h_endline_v
@@ -9854,7 +9928,7 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
       obtain ⟨n_r, s_end, h_chain_r, h_corr_end, h_fl_end, h_dp_end, h_ids_end,
               h_ek_end, h_col_end, h_flow_end, h_indent_end, h_line_end, h_atol_end,
               h_endline_end, h_stack_end, h_fmc_r, h_size_r, h_pkRec_r, h_pks_r,
-              _h_first_r, h_first_qs_r⟩ :=
+              h_first_r, h_first_qs_r⟩ :=
         h_ih_list s_pp rest_chars h_corr_pp'
           h_flow_pp
           (by rw [h_fl_pp, h_fl_c]; rw [h_fl_v, h_fl₃, h_fl₂, h_fl₁]; exact h_fl)
@@ -10087,11 +10161,15 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
           -- IH on the tail (p' :: ps) under s_pp gives qs_tail of size = (p'::ps).length
           -- with qs_tail[0] = s_pp.pendingKeys.size; values are indices into
           -- s_end.pendingKeys (the IH's "s'") with kind = .keyOnly; strict-monotone.
+          -- Part3-final-discharge-bridge-6a (2026-05-02): also threads
+          -- the IH's predecessor-flowEntry conjunct (`h_pred_t`) for `i_tail ≥ 1`
+          -- entries; cons-case `i = 1` discharge requires lifting the comma push
+          -- through ws1 + the IH chain (sub-task 6a-i1-lift).
           intro _h_ne_pairs
-          obtain ⟨qs_tail, h_size_t, h_pos_t, h_q0_t, h_per_i_t, h_strict_t⟩ :=
+          obtain ⟨qs_tail, h_size_t, h_pos_t, h_q0_t, h_per_i_t, h_strict_t, h_pred_t⟩ :=
             h_first_qs_r (by simp)
           have h_size_one : (#[s.pendingKeys.size] : Array Nat).size = 1 := rfl
-          refine ⟨#[s.pendingKeys.size] ++ qs_tail, ?_, ?_, ?_, ?_, ?_⟩
+          refine ⟨#[s.pendingKeys.size] ++ qs_tail, ?_, ?_, ?_, ?_, ?_, ?_⟩
           · -- size: 1 + qs_tail.size = (p :: p' :: ps).length
             rw [Array.size_append, h_size_one, h_size_t]
             simp [List.length]; omega
@@ -10163,6 +10241,44 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
                 rw [h_size_one]; omega
               simp only [h_sub_a, h_sub_b]
               exact h_strict_t a' b' h_a' h_b' (by omega)
+          · -- Part3-final-discharge-bridge-6a: predecessor-flowEntry conjunct.
+            -- Outer index i ≥ 1 in `qs = #[s.pendingKeys.size] ++ qs_tail`
+            -- decomposes as `i = j + 1` for `j < qs_tail.size`.  When `j ≥ 1`,
+            -- the IH's `h_pred_t` provides the fact directly.  When `j = 0`
+            -- (outer `i = 1`), the predecessor token is the `.flowEntry` pushed
+            -- by the comma step (`s_v → s_c`) at index `s_v.tokens.size`,
+            -- preserved through ws1 (`s_pp.tokens = s_c.tokens`), and lifted
+            -- across the IH chain (`s_pp → s_end`) via tokens-prefix
+            -- preservation (`FlowMonoChain_preserves_raw_prefix`).
+            --
+            -- **Sub-task 6a-i1-lift (sorry'd 2026-05-02)**: the j = 0 lift
+            -- requires `SimpleKeyAboveFloor s_pp s_pp.tokens.size s_pp.flowLevel`
+            -- which depends on tracing `s_pp.simpleKey`/`simpleKeyStack` state
+            -- through the comma + ws1 sequence.  Discharged in 6b alongside
+            -- the linearise-side bridge for `emitPairList_body_linearise_characterization`'s
+            -- Part (3).  Net sorry-count effect: 6a adds +1, 6b discharges
+            -- both this and the Part (3) sorry (8 → 9 → 7 across the pair).
+            intro i h_i h_pos_i
+            rw [Array.size_append, h_size_one] at h_i
+            obtain ⟨j, rfl⟩ : ∃ j, i = j + 1 := ⟨i - 1, by omega⟩
+            have h_j : j < qs_tail.size := by omega
+            have h_ge : (#[s.pendingKeys.size] : Array Nat).size ≤ j + 1 := by
+              rw [h_size_one]; omega
+            have h_sub : j + 1 - (#[s.pendingKeys.size] : Array Nat).size = j := by
+              rw [h_size_one]; omega
+            -- Get `qs[j+1] = qs_tail[j]` via append + sub.
+            have h_qj_eq :
+                (#[s.pendingKeys.size] ++ qs_tail)[j + 1]'(by
+                    rw [Array.size_append, h_size_one]; omega)
+                  = qs_tail[j]'h_j := by
+              rw [Array.getElem_append_right h_ge]; simp only [h_sub]
+            rw [h_qj_eq]
+            by_cases h_j_zero : j = 0
+            · -- j = 0 (outer i = 1): the predecessor is the comma's flowEntry.
+              -- Sub-task 6a-i1-lift: lift through IH chain (sorry pending 6b).
+              sorry
+            · -- j ≥ 1: from IH's predecessor-flowEntry conjunct directly.
+              exact h_pred_t j h_j (by omega)
 
 /-- Every grammable value satisfies `EmitScansInFlow`. -/
 theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inFlow) :
@@ -12007,7 +12123,20 @@ theorem emitPairList_body_filtered_characterization
              ∃ (h_lt : qs[i]'h < s'.pendingKeys.size),
                (s'.pendingKeys[qs[i]'h]'h_lt).kind = .keyOnly)
          ∧ (∀ i j (hi : i < qs.size) (hj : j < qs.size),
-             i < j → qs[i]'hi < qs[j]'hj)) := by
+             i < j → qs[i]'hi < qs[j]'hj)
+         -- (6) Part3-final-discharge-bridge-6a (2026-05-02): predecessor-flowEntry.
+         -- For each `i ≥ 1`, the token at `pks[qs[i]].insertBeforeIdx - 1`
+         -- in `s'.tokens` is `.flowEntry` (the comma between pair i-1 and pair i).
+         -- Threaded from `emitPairList_scans_nonempty`'s new conjunct.
+         ∧ (∀ i (hi : i < qs.size) (_h_pos_i : 0 < i),
+             ∃ (h_lt : qs[i]'hi < s'.pendingKeys.size)
+               (_h_ib_pos : 0 < (s'.pendingKeys[qs[i]'hi]'h_lt).insertBeforeIdx)
+               (h_pred_lt :
+                 (s'.pendingKeys[qs[i]'hi]'h_lt).insertBeforeIdx - 1
+                   < s'.tokens.size),
+               (s'.tokens[
+                   (s'.pendingKeys[qs[i]'hi]'h_lt).insertBeforeIdx - 1
+                 ]'h_pred_lt).val = .flowEntry)) := by
   -- Construct the chain from EmitPairListScansInFlow
   have h_scan := emitPairList_scans_nonempty pairs h_ne h_all_k h_all_v
   obtain ⟨n, s', h_chain, h_corr', h_fl', h_dp', h_ids', h_ek', h_col', h_inflow',
