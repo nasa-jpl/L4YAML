@@ -1679,4 +1679,294 @@ theorem linearise_splice_keyonly_at_index
   subst h_acc_size
   exact linearise_splice_keyonly_at tokens pks j p acc h_eq h_p h_splice_fires h_kind
 
+/-! ## Walk-locator foundation for J.4.2.b-2d-key Part3 (sub-step 5a)
+
+These helpers underpin the inductive walk through a sequence of `.keyOnly`
+splices used by `emitPairList_body_linearise_characterization` Part (3).
+Where Foundation A handles the "first splice from `(0, 0, #[])`" case and
+Foundation B handles the "splice fires from any state" case, the walk-state
+equation here lets us *advance* a transport equation across an arbitrary
+contiguous block of pending entries, regardless of their kinds.  Combined
+with Foundation B, callers can chain splices inductively without rebuilding
+the walk for each pair.
+
+Introduced in **Phase J.4.2.b-2d-key-chain-Part3-walk-locator-foundation**
+(2026-05-02).  Sub-step 5a discharges the foundational helpers below; the
+main inductive `linearise_walk_at_kth_resolved_splice` follows in
+sub-step 5b.  See `Blueprint/07-initiative-3-append-only.md` §J.4.2.b. -/
+
+/-- One-step unfolding of `linearise.go` when a splice fires (`pks[p]`'s
+    `insertBeforeIdx` has been reached).  Companion to
+    `linearise_go_step_token` (token-copy step). -/
+theorem linearise_go_step_splice
+    (tokens : Array (Positioned YamlToken))
+    (pks : Array PendingKeyEntry)
+    (j p : Nat) (acc : Array (Positioned YamlToken))
+    (hp : p < pks.size) (h_splice : (pks[p]'hp).insertBeforeIdx ≤ j) :
+    linearise.go tokens pks j p acc
+      = linearise.go tokens pks j (p + 1) (acc ++ expandKind (pks[p]'hp)) := by
+  rw [linearise.go]
+  simp [hp, h_splice]
+
+/-- One-step unfolding of `linearise.go` when no splice fires and a token is
+    copied (`pks[p]`'s `insertBeforeIdx` is still ahead of the token cursor,
+    and there are tokens left).  Companion to `linearise_go_step_splice`. -/
+theorem linearise_go_step_copy
+    (tokens : Array (Positioned YamlToken))
+    (pks : Array PendingKeyEntry)
+    (j p : Nat) (acc : Array (Positioned YamlToken))
+    (hp : p < pks.size) (h_no_splice : ¬ (pks[p]'hp).insertBeforeIdx ≤ j)
+    (h_j : j < tokens.size) :
+    linearise.go tokens pks j p acc
+      = linearise.go tokens pks (j + 1) p (acc.push (tokens[j]'h_j)) := by
+  rw [linearise.go]
+  simp [hp, h_no_splice, h_j]
+
+/-- **Walk-state equation**: from a transport equation at state `(j, p, acc)`
+    to a transport equation at the later state `(j', p', acc')`, given that
+    the pending-entry firings between `p` and `p'` are consistent with the
+    token cursor advancing from `j` to `j'`.
+
+    The two key conditions:
+    * **In-range firings**: every pending entry in `[p, p')` has
+      `insertBeforeIdx ≤ j'`, so it will fire by the time the token cursor
+      reaches `j'`.
+    * **Barrier**: `pks[p']` (if it exists) has `insertBeforeIdx ≥ j'`, so
+      it does NOT fire prematurely while the cursor is still walking
+      towards `j'`.
+
+    Together these imply a unique walk path from `(j, p, acc)` to
+    `(j', p', acc')`.  The output `acc'` is the accumulator after the walk;
+    its size is determined by `linearise_go_walk_size` (below).
+
+    Proof: induction on the lex-measure `(j' - j) + (p' - p)`.  At each
+    step `linearise.go` either fires `pks[p]` (advancing `p`) or copies a
+    token (advancing `j`); either reduces the measure by `1`. -/
+theorem linearise_go_walk_eq
+    (tokens : Array (Positioned YamlToken))
+    (pks : Array PendingKeyEntry) :
+    ∀ (n j p j' p' : Nat) (acc : Array (Positioned YamlToken)),
+      (j' - j) + (p' - p) = n →
+      j ≤ j' → j' ≤ tokens.size →
+      p ≤ p' → p' ≤ pks.size →
+      (∀ r (_hpr : p ≤ r) (_hrp' : r < p') (hr : r < pks.size),
+        (pks[r]'hr).insertBeforeIdx ≤ j') →
+      (∀ (hp' : p' < pks.size), j' ≤ (pks[p']'hp').insertBeforeIdx) →
+      ∃ (acc' : Array (Positioned YamlToken)),
+        linearise.go tokens pks j p acc = linearise.go tokens pks j' p' acc' := by
+  intro n
+  induction n with
+  | zero =>
+    intro j p j' p' acc h_n h_jj' _h_j'_le h_pp' _h_p'_le _h_inrange _h_p'_ge
+    have h_j_eq : j = j' := by omega
+    have h_p_eq : p = p' := by omega
+    refine ⟨acc, ?_⟩
+    rw [h_j_eq, h_p_eq]
+  | succ n ih =>
+    intro j p j' p' acc h_n h_jj' h_j'_le h_pp' h_p'_le h_inrange h_p'_ge
+    by_cases hp : p < pks.size
+    · by_cases hsplice : (pks[p]'hp).insertBeforeIdx ≤ j
+      · -- Splice fires.  First show p < p' (else contradiction with the
+        -- barrier condition).
+        have h_p_lt_p' : p < p' := by
+          rcases Nat.lt_or_ge p p' with h_lt | h_ge
+          · exact h_lt
+          · exfalso
+            have h_eq : p = p' := Nat.le_antisymm h_pp' h_ge
+            have h_p'_lt : p' < pks.size := h_eq ▸ hp
+            have h_p'_idx_ge : j' ≤ (pks[p']'h_p'_lt).insertBeforeIdx := h_p'_ge h_p'_lt
+            have h_p_idx_eq :
+                (pks[p]'hp).insertBeforeIdx = (pks[p']'h_p'_lt).insertBeforeIdx := by
+              congr
+            omega
+        rw [linearise_go_step_splice tokens pks j p acc hp hsplice]
+        have h_meas : (j' - j) + (p' - (p + 1)) = n := by omega
+        exact ih j (p + 1) j' p' (acc ++ expandKind (pks[p]'hp)) h_meas h_jj' h_j'_le
+                (by omega) h_p'_le
+                (fun r _hpr hrp' hr => h_inrange r (by omega) hrp' hr)
+                h_p'_ge
+      · -- Copy token.  Need j < tokens.size; derive from j < j' ≤ tokens.size.
+        have h_j_lt_j' : j < j' := by
+          rcases Nat.lt_or_ge p p' with h_lt | h_ge
+          · have h_idx := h_inrange p (Nat.le_refl _) h_lt hp
+            omega
+          · have h_eq : p = p' := Nat.le_antisymm h_pp' h_ge
+            have h_p'_lt : p' < pks.size := h_eq ▸ hp
+            have h_p'_idx_ge : j' ≤ (pks[p']'h_p'_lt).insertBeforeIdx := h_p'_ge h_p'_lt
+            have h_p_idx_eq :
+                (pks[p]'hp).insertBeforeIdx = (pks[p']'h_p'_lt).insertBeforeIdx := by
+              congr
+            omega
+        have h_j_lt_tok : j < tokens.size := by omega
+        rw [linearise_go_step_copy tokens pks j p acc hp hsplice h_j_lt_tok]
+        have h_meas : (j' - (j + 1)) + (p' - p) = n := by omega
+        exact ih (j + 1) p j' p' (acc.push (tokens[j]'h_j_lt_tok)) h_meas
+                (by omega) h_j'_le h_pp' h_p'_le h_inrange h_p'_ge
+    · -- p ≥ pks.size, so p = p' = pks.size.  Then (j' - j) > 0 forces
+      -- j < j' ≤ tokens.size, and the loop copies a token via
+      -- `linearise_go_step_token`.
+      have h_p_eq : p = pks.size := by omega
+      have h_p'_eq : p' = pks.size := by omega
+      have h_j_lt_j' : j < j' := by omega
+      have h_j_lt_tok : j < tokens.size := by omega
+      have h_step :
+          linearise.go tokens pks j p acc
+            = linearise.go tokens pks (j + 1) p (acc.push (tokens[j]'h_j_lt_tok)) := by
+        rw [h_p_eq]
+        exact linearise_go_step_token tokens pks j pks.size acc h_j_lt_tok (Nat.le_refl _)
+      rw [h_step]
+      have h_meas : (j' - (j + 1)) + (p' - p) = n := by omega
+      exact ih (j + 1) p j' p' (acc.push (tokens[j]'h_j_lt_tok)) h_meas
+              (by omega) h_j'_le h_pp' h_p'_le
+              (fun r hpr _hrp' hr => by
+                -- p = pks.size and p ≤ r, so r ≥ pks.size, contradicting hr.
+                have := h_p_eq
+                omega)
+              h_p'_ge
+
+/-- Top-level walk-state equation: convenience wrapper around
+    `linearise_go_walk_eq` that absorbs the lex-measure argument. -/
+theorem linearise_go_walk_eq_top
+    (tokens : Array (Positioned YamlToken))
+    (pks : Array PendingKeyEntry)
+    (j p j' p' : Nat) (acc : Array (Positioned YamlToken))
+    (h_jj' : j ≤ j') (h_j'_le : j' ≤ tokens.size)
+    (h_pp' : p ≤ p') (h_p'_le : p' ≤ pks.size)
+    (h_inrange : ∀ r (_hpr : p ≤ r) (_hrp' : r < p') (hr : r < pks.size),
+      (pks[r]'hr).insertBeforeIdx ≤ j')
+    (h_p'_ge : ∀ (hp' : p' < pks.size), j' ≤ (pks[p']'hp').insertBeforeIdx) :
+    ∃ (acc' : Array (Positioned YamlToken)),
+      linearise.go tokens pks j p acc = linearise.go tokens pks j' p' acc' :=
+  linearise_go_walk_eq tokens pks _ j p j' p' acc rfl h_jj' h_j'_le h_pp' h_p'_le
+    h_inrange h_p'_ge
+
+/-- **Walk-state size formula**: combined with `linearise_go_walk_eq`, this
+    pins down `acc'.size` in terms of the input data.  Derived purely from
+    `linearise_go_size`: equating the sizes of two `linearise.go` outputs
+    that are equal as arrays gives the desired arithmetic.
+
+    The formula reads (rearranged):
+    `acc'.size = acc.size + (j' - j) + (pendingExpandSumFrom pks p
+                                         - pendingExpandSumFrom pks p')`.
+    Token copies contribute `(j' - j)` and pending firings contribute the
+    difference of suffix-sums (i.e. the sum of `expandKind` sizes for the
+    fired entries `[p, p')`). -/
+theorem linearise_go_walk_size
+    (tokens : Array (Positioned YamlToken))
+    (pks : Array PendingKeyEntry)
+    (j p j' p' : Nat) (acc acc' : Array (Positioned YamlToken))
+    (h_eq : linearise.go tokens pks j p acc = linearise.go tokens pks j' p' acc') :
+    acc'.size + (tokens.size - j') + pendingExpandSumFrom pks p'
+      = acc.size + (tokens.size - j) + pendingExpandSumFrom pks p := by
+  have h_size_lhs :=
+    linearise_go_size tokens pks ((tokens.size - j) + (pks.size - p)) j p acc rfl
+  have h_size_rhs :=
+    linearise_go_size tokens pks ((tokens.size - j') + (pks.size - p')) j' p' acc' rfl
+  rw [h_eq] at h_size_lhs
+  omega
+
+/-! ## Walk-locator main lemma -/
+
+/-- **Walk-locator foundation lemma** (J.4.2.b-2d-key Part3): given an
+    array `qs` of strictly-monotone pending-key indices that all resolve to
+    `.keyOnly`, plus save-time monotonicity on `pks` (every entry's
+    `insertBeforeIdx` is non-decreasing in its index), for every `i < qs.size`
+    the linearised output has `.key` at the position computed by the
+    `j_i + prefixSum_i` formula:
+
+    * `j_i = pks[qs[i]].insertBeforeIdx` — the token cursor when the
+      `i`-th `.keyOnly` entry fires.
+    * `prefixSum_i = pks.foldl 0 0 qs[i]` — the cumulative `expandKind`
+      contribution of pending entries `[0, qs[i])`, accounting for any
+      earlier `.keyOnly` / `.blockMappingStartAndKey` splices (including
+      *nested* ones from inner flow scopes).
+
+    Generalises Foundation A (`linearise_first_splice_keyonly`, which
+    handles the special case `qs[0] = 0` and assumes nothing about other
+    pending entries).  The `prefixSum_i` term lets the formula stay
+    correct even when `pks[r]` for `r < qs[i]` is a non-`.unresolved`
+    inner-mapping key.
+
+    Proof: walk `linearise.go` from `(0, 0, #[])` to `(j_i, qs[i], acc)`
+    via `linearise_go_walk_eq_top` (the in-range condition holds by
+    save-time monotonicity, the barrier condition by `j_i = j_i`), then
+    fire the `qs[i]`-th splice via Foundation B's index form.  The
+    `acc.size = j_i + prefixSum_i` accounting comes from
+    `linearise_go_walk_size` combined with
+    `foldl_prefix_plus_pendingExpandSumFrom`.
+
+    Note: this lemma processes each `i` independently — no induction on
+    `i` is needed, because the walk-state equation can jump straight from
+    `(0, 0, #[])` to the `i`-th splice's state without visiting
+    intermediate splices.  The "induction-on-i" structure mentioned in
+    the Blueprint plan is implicitly carried inside `linearise_go_walk_eq`
+    (whose induction over the lex-measure handles all intermediate
+    pending-entry firings, regardless of kind).
+
+    The hypothesis `h_qs_mono` (strict monotonicity of `qs`) is not
+    consumed by this proof; it is part of the predicate's contract for
+    downstream consumers and is included for forward compatibility. -/
+theorem linearise_walk_at_kth_resolved_splice
+    (tokens : Array (Positioned YamlToken))
+    (pks : Array PendingKeyEntry)
+    (qs : Array Nat)
+    (h_qs_lt : ∀ i (h : i < qs.size), qs[i] < pks.size)
+    (h_qs_kind : ∀ i (h : i < qs.size),
+      (pks[qs[i]]'(h_qs_lt i h)).kind = .keyOnly)
+    (_h_qs_mono : ∀ i₁ i₂ (h₁ : i₁ < qs.size) (h₂ : i₂ < qs.size),
+      i₁ < i₂ → qs[i₁] < qs[i₂])
+    (h_idx_mono : ∀ p p' (h_p : p < pks.size) (h_p' : p' < pks.size),
+      p ≤ p' → (pks[p]'h_p).insertBeforeIdx ≤ (pks[p']'h_p').insertBeforeIdx)
+    (h_idx_le : ∀ p (h : p < pks.size),
+      (pks[p]'h).insertBeforeIdx ≤ tokens.size)
+    (i : Nat) (h_i : i < qs.size) :
+    ∃ (h_lin : (pks[qs[i]]'(h_qs_lt i h_i)).insertBeforeIdx
+                  + (pks.foldl (fun n e => n + (expandKind e).size) 0 0 qs[i])
+                  < (linearise tokens pks).size),
+      ((linearise tokens pks)[
+            (pks[qs[i]]'(h_qs_lt i h_i)).insertBeforeIdx
+            + (pks.foldl (fun n e => n + (expandKind e).size) 0 0 qs[i])
+          ]'h_lin).val = .key := by
+  -- Walk from (0, 0, #[]) to (j_i, qs[i], acc) via the walk-state equation.
+  have h_q_lt : qs[i] < pks.size := h_qs_lt i h_i
+  have h_q_kind : (pks[qs[i]]'h_q_lt).kind = .keyOnly := h_qs_kind i h_i
+  have h_q_idx_le : (pks[qs[i]]'h_q_lt).insertBeforeIdx ≤ tokens.size := h_idx_le _ h_q_lt
+  -- The in-range condition: every pks[r] for r < qs[i] has insertBeforeIdx ≤ j_i.
+  -- Holds by save-time monotonicity (h_idx_mono): r ≤ qs[i] → pks[r].insertBeforeIdx
+  -- ≤ pks[qs[i]].insertBeforeIdx.
+  have h_walk : ∃ (acc : Array (Positioned YamlToken)),
+      linearise.go tokens pks 0 0 #[]
+        = linearise.go tokens pks (pks[qs[i]]'h_q_lt).insertBeforeIdx qs[i] acc :=
+    linearise_go_walk_eq_top tokens pks 0 0 (pks[qs[i]]'h_q_lt).insertBeforeIdx qs[i] #[]
+      (Nat.zero_le _) h_q_idx_le (Nat.zero_le _) (Nat.le_of_lt h_q_lt)
+      (fun r _hpr hrp' hr => h_idx_mono r qs[i] hr h_q_lt (Nat.le_of_lt hrp'))
+      (fun _hp' => Nat.le_refl _)
+  obtain ⟨acc, h_walk_eq⟩ := h_walk
+  have h_lin_eq : linearise tokens pks
+      = linearise.go tokens pks (pks[qs[i]]'h_q_lt).insertBeforeIdx qs[i] acc := by
+    unfold linearise; exact h_walk_eq
+  -- acc.size = j_i + prefixSum_i, derived from `linearise_go_walk_size` and
+  -- the `foldl ↔ pendingExpandSumFrom` bridge.
+  have h_acc_size :
+      acc.size = (pks[qs[i]]'h_q_lt).insertBeforeIdx
+                    + (pks.foldl (fun n e => n + (expandKind e).size) 0 0 qs[i]) := by
+    have h_size :=
+      linearise_go_walk_size tokens pks 0 0
+        (pks[qs[i]]'h_q_lt).insertBeforeIdx qs[i] #[] acc h_walk_eq
+    have h_bridge :
+        pks.foldl (fun n e => n + (expandKind e).size) 0 0 qs[i]
+            + pendingExpandSumFrom pks qs[i]
+          = pendingExpandSumFrom pks 0 := by
+      rw [pendingExpandSumFrom_zero_eq_foldl]
+      exact foldl_prefix_plus_pendingExpandSumFrom pks (pks.size - qs[i]) qs[i] (by omega)
+    have h_emp : (#[] : Array (Positioned YamlToken)).size = 0 := rfl
+    rw [h_emp] at h_size
+    omega
+  -- Apply Foundation B (index form) to read off linearise[j_i + prefixSum_i] = .key.
+  exact linearise_splice_keyonly_at_index tokens pks
+    (pks[qs[i]]'h_q_lt).insertBeforeIdx qs[i]
+    ((pks[qs[i]]'h_q_lt).insertBeforeIdx
+      + (pks.foldl (fun n e => n + (expandKind e).size) 0 0 qs[i])) acc
+    h_lin_eq h_acc_size h_q_lt (Nat.le_refl _) h_q_kind
+
 end L4YAML.Proofs.ScannerLinearise
