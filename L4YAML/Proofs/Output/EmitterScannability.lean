@@ -4412,6 +4412,13 @@ theorem scanNextToken_preprocess_flow_ws1 (s : ScannerState) (c : Char)
       -- skipToContent doesn't touch pendingKeys, so the preprocessed state's
       -- pendingKeys equal the input's.
       ∧ s₁.pendingKeys = s.pendingKeys
+      -- J.4.2.b-2d-key-chain-Part3-final-discharge-bridge-6c-ii-γ-3b-ii-leaves-C
+      -- (2026-05-03): vacuous new-kind conjunct.  `s₁.pendingKeys = s.pendingKeys`
+      -- means `s₁.pendingKeys.size = s.pendingKeys.size`, so no q satisfies
+      -- `s.pendingKeys.size ≤ q < s₁.pendingKeys.size`.  Exposed for uniform
+      -- composition with γ-3b-ii-leaves-{A,B,D} via the EmitScansInFlow chain.
+      ∧ (∀ (q : Nat) (h_q : q < s₁.pendingKeys.size) (_h_q_ge : s.pendingKeys.size ≤ q),
+          (s₁.pendingKeys[q]'h_q).kind = .unresolved)
       -- J.4.2.b-2d-key-chain-Part2-body-C-foundation-EmitScansInFlow-stack-restore:
       -- pendingKeyStack also passes through (mirror of simpleKeyStack).
       ∧ s₁.pendingKeyStack = s.pendingKeyStack
@@ -4546,6 +4553,9 @@ theorem scanNextToken_preprocess_flow_ws1 (s : ScannerState) (c : Char)
     fun h_e => by unfold EndLineOnLine at h_e ⊢; rw [h_sk₁, h_line₁]; exact h_e,
     h_stack₁, h_toks₁,
     ScannerCorrectness.skipToContent_preserves_pendingKeys s s₁ h_stc_ok,
+    fun q h_q h_q_ge => by
+      rw [ScannerCorrectness.skipToContent_preserves_pendingKeys s s₁ h_stc_ok] at h_q
+      exact absurd h_q_ge (Nat.not_le_of_lt h_q),
     ScannerCorrectness.skipToContent_preserves_pendingKeyStack s s₁ h_stc_ok,
     h_ska₁⟩
 
@@ -9252,7 +9262,7 @@ theorem emitList_scans_nonempty (items : List YamlValue) (h_ne : items ≠ [])
       have h_s2_indent : s₂.currentIndent < 0 := by
         unfold ScannerState.currentIndent; rw [h_ids₂]; exact h_indent₁
       have h_s2_col : s₂.col > 0 := by rw [h_col₂]; omega
-      obtain ⟨s₃, h_corr₃, h_flow₃, h_fl₃, h_indent₃, h_col₃, h_dp₃, h_ids₃, h_ek₃, _h_line₃, h_pp_eq, h_atol_transfer₃, h_endline_transfer₃, h_stack_pp₃, h_toks_pp₃, _h_pks_pp₃, h_pks_pp₃, _h_ska_pp₃⟩ :=
+      obtain ⟨s₃, h_corr₃, h_flow₃, h_fl₃, h_indent₃, h_col₃, h_dp₃, h_ids₃, h_ek₃, _h_line₃, h_pp_eq, h_atol_transfer₃, h_endline_transfer₃, h_stack_pp₃, h_toks_pp₃, _h_pks_pp₃, _h_newkind_pp₃, h_pks_pp₃, _h_ska_pp₃⟩ :=
         scanNextToken_preprocess_flow_ws1 s₂ c (rest' ++ rest_chars) h_corr₂_ws
           h_s2_flow h_nws h_nlb h_nc h_s2_indent
       -- s₃ at c :: rest' ++ rest_chars = (emitList (v' :: vs)).toList ++ rest_chars
@@ -9975,6 +9985,13 @@ theorem scanNextToken_flow_value_pkResolve (s : ScannerState)
             ∧ (s'.pendingKeys[i]'h').insertBeforeIdx = (s.pendingKeys[i]'h_lt).insertBeforeIdx)
       ∧ (∀ j (hj : j < s.pendingKeys.size) (hj' : j < s'.pendingKeys.size),
           j ≠ i → s'.pendingKeys[j]'hj' = s.pendingKeys[j]'hj)
+      -- J.4.2.b-2d-key-chain-Part3-final-discharge-bridge-6c-ii-γ-3b-ii-leaves-C
+      -- (2026-05-03): vacuous new-kind conjunct.  `s'.pendingKeys.size = s.pendingKeys.size`
+      -- (no push at colon — `setPendingKeyKind` overwrites in place), so no q
+      -- satisfies `s.pendingKeys.size ≤ q < s'.pendingKeys.size`.  Exposed for
+      -- uniform composition with γ-3b-ii-leaves-{A,B,D} via the EmitScansInFlow chain.
+      ∧ (∀ (q : Nat) (h_q : q < s'.pendingKeys.size) (_h_q_ge : s.pendingKeys.size ≤ q),
+          (s'.pendingKeys[q]'h_q).kind = .unresolved)
       -- J.4.2.b-2d-key-chain-Part2-body-C-foundation-EmitScansInFlow-discharge-colon:
       -- pendingKeyStack preserved through the colon step (scanValuePrepare modifies
       -- pendingKeys/pendingKeyActive/simpleKey but not pendingKeyStack;
@@ -10134,7 +10151,7 @@ theorem scanNextToken_flow_value_pkResolve (s : ScannerState)
     simp only [h_pka, h_get_some]
   -- Discharge.
   refine ⟨s', h_snt, h_corr, h_fl, h_dp, h_ids, h_col_eq, h_iflow, h_ind_neg,
-          h_ek_none, h_line, h_atol', h_endline', h_stack, ?_, ?_, ?_, ?_⟩
+          h_ek_none, h_line, h_atol', h_endline', h_stack, ?_, ?_, ?_, ?_, ?_⟩
   · -- size preservation
     rw [h_pks_full, Array.size_setIfInBounds]
   · -- entry at i: kind = .keyOnly ∧ insertBeforeIdx preserved
@@ -10170,6 +10187,11 @@ theorem scanNextToken_flow_value_pkResolve (s : ScannerState)
       simp [h_pks_full]
     rw [h_get_eq]
     exact Array.getElem_setIfInBounds_ne hj h_ne.symm
+  · -- 6c-ii-γ-3b-ii-leaves-C: new entries kind = .unresolved (vacuous: size preserved
+    -- via setIfInBounds at index i, no push).
+    intro q h_q h_q_ge
+    rw [h_pks_full, Array.size_setIfInBounds] at h_q
+    exact absurd h_q_ge (Nat.not_le_of_lt h_q)
   · -- pendingKeyStack preservation: s' = s_final = { s_adv with ... }; chain
     -- through advance/emit/scanValuePrepare/s_ad/saveSimpleKey, none of which
     -- touch pendingKeyStack.
@@ -10385,7 +10407,7 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
             (' ' :: c_v :: (rest_v ++ rest_chars)) := by
           congr 1; rw [h_first_v]; simp only [List.cons_append]
         exact h_eq_chars ▸ h_corr₂
-      obtain ⟨s₃, h_corr₃, h_flow₃, h_fl₃, h_indent₃, h_col₃, h_dp₃, h_ids₃, h_ek₃, _h_line₃, h_pp_eq, h_atol_transfer₃, h_endline_transfer₃, h_stack_pp₃, h_toks_pp₃, _h_pks_pp₃, h_pks_pp₃, _h_ska_pp₃⟩ :=
+      obtain ⟨s₃, h_corr₃, h_flow₃, h_fl₃, h_indent₃, h_col₃, h_dp₃, h_ids₃, h_ek₃, _h_line₃, h_pp_eq, h_atol_transfer₃, h_endline_transfer₃, h_stack_pp₃, h_toks_pp₃, _h_pks_pp₃, _h_newkind_pp₃, h_pks_pp₃, _h_ska_pp₃⟩ :=
         scanNextToken_preprocess_flow_ws1 s₂ c_v (rest_v ++ rest_chars) h_corr₂_ws
           h_flow₂ h_nws_v h_nlb_v h_nc_v h_indent₂
       have h_corr₃' : ScannerSurfCorr s₃
@@ -10481,7 +10503,7 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
             simp only [List.cons_append, List.nil_append]
           rwa [this] at h_corr₁
         obtain ⟨s₂_pk, h_snt₂_pk, _, _, _, _, _, _, _, _, _, _, _, _,
-                h_size_pk, h_pk_resolved, h_pks_other_pk, h_pks_pk_pkr⟩ :=
+                h_size_pk, h_pk_resolved, h_pks_other_pk, _h_newkind_pkr, h_pks_pk_pkr⟩ :=
           scanNextToken_flow_value_pkResolve s₁
             ((emit p.2).toList ++ rest_chars) h_corr₁_colon h_flow₁ h_indent₁ h_col₁
             (by rw [h_ek₁]; exact h_ek) h_sv h_atol₁ h_endline₁ h_ska₁ h_skp_eq
@@ -10865,7 +10887,7 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
             [',',  ' '] ++ (emit.emitPairList (p' :: ps)).toList ++ rest_chars)) := by
           congr 1; rw [h_first_v]; simp only [List.cons_append, List.append_assoc]
         exact h_eq_chars ▸ h_corr₂
-      obtain ⟨s₃, h_corr₃, h_flow₃, h_fl₃, h_indent₃, h_col₃, h_dp₃, h_ids₃, h_ek₃, _h_line₃, h_pp_eq, h_atol_transfer₃, h_endline_transfer₃, h_stack_pp₃, h_toks_pp₃, _h_pks_pp₃, h_pks_pp₃, _h_ska_pp₃⟩ :=
+      obtain ⟨s₃, h_corr₃, h_flow₃, h_fl₃, h_indent₃, h_col₃, h_dp₃, h_ids₃, h_ek₃, _h_line₃, h_pp_eq, h_atol_transfer₃, h_endline_transfer₃, h_stack_pp₃, h_toks_pp₃, _h_pks_pp₃, _h_newkind_pp₃, h_pks_pp₃, _h_ska_pp₃⟩ :=
         scanNextToken_preprocess_flow_ws1 s₂ c_v
           (rest_v ++ [',',  ' '] ++ (emit.emitPairList (p' :: ps)).toList ++ rest_chars)
           h_corr₂_ws h_flow₂ h_nws_v h_nlb_v h_nc_v h_indent₂
@@ -10958,7 +10980,7 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
       have h_sc_indent : s_c.currentIndent < 0 := by
         unfold ScannerState.currentIndent; rw [h_ids_c]; exact h_indent_v
       obtain ⟨s_pp, h_corr_pp, h_flow_pp, h_fl_pp, h_indent_pp, h_col_pp,
-              h_dp_pp, h_ids_pp, h_ek_pp, _h_line_pp, h_pp_eq_r, h_atol_transfer_pp, h_endline_transfer_pp, h_stack_pp, h_toks_pp, _h_pks_pp_pks, _h_pks_pp_stk, h_ska_pp⟩ :=
+              h_dp_pp, h_ids_pp, h_ek_pp, _h_line_pp, h_pp_eq_r, h_atol_transfer_pp, h_endline_transfer_pp, h_stack_pp, h_toks_pp, _h_pks_pp_pks, _h_newkind_pp, _h_pks_pp_stk, h_ska_pp⟩ :=
         scanNextToken_preprocess_flow_ws1 s_c c_p (rest_p ++ rest_chars) h_corr_c_ws
           h_sc_flow h_nws_p h_nlb_p h_nc_p h_sc_indent
       have h_corr_pp' : ScannerSurfCorr s_pp
@@ -11080,7 +11102,7 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
             simp only [List.cons_append, List.nil_append]
           rwa [this] at h_corr₁
         obtain ⟨s₂_pk, h_snt₂_pk, _, _, _, _, _, _, _, _, _, _, _, _,
-                h_size_pk, h_pk_resolved, h_pks_other_pk, h_pks_pk_pkr⟩ :=
+                h_size_pk, h_pk_resolved, h_pks_other_pk, _h_newkind_pkr, h_pks_pk_pkr⟩ :=
           scanNextToken_flow_value_pkResolve s₁
             ((emit p.2).toList ++ [',',  ' '] ++
               (emit.emitPairList (p' :: ps)).toList ++ rest_chars)
@@ -14885,9 +14907,16 @@ theorem emitPairList_body_linearise_characterization
     --         `scanFlowMappingEnd_preserves_pendingKeys`,
     --         emit/advance preservation for comma).  4 consumer destructure
     --         binders updated.  ~140 lines.
-    --       - **γ-3b-ii-leaves-C (PENDING)**: value-pkResolve (`:`) +
-    --         ws1 (both vacuous: `s'.pendingKeys.size = s.pendingKeys.size`).
-    --         ~30 lines.
+    --       - **γ-3b-ii-leaves-C (DONE 2026-05-03)**: value-pkResolve (`:`)
+    --         (`scanNextToken_flow_value_pkResolve`) + ws1
+    --         (`scanNextToken_preprocess_flow_ws1`) — added the universal
+    --         new-kind conjunct to both leaf signatures.  Both discharges
+    --         are vacuous: `s'.pendingKeys.size = s.pendingKeys.size` (no push
+    --         at colon — `setPendingKeyKind` overwrites in place; ws1's
+    --         `skipToContent` doesn't touch pendingKeys), so no q satisfies
+    --         `s.pendingKeys.size ≤ q < s'.pendingKeys.size`.  6 consumer
+    --         destructure binders updated (4 ws1 sites + 2 value_pkResolve
+    --         sites).  ~30 lines.
     --       - **γ-3b-ii-predicate (PENDING)**: predicate definitions +
     --         composition discharge in `*_empty` + `emit_scans_in_flow`
     --         + `emitList_scans_nonempty` + `emitPairList_scans_nonempty`.
