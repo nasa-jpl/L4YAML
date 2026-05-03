@@ -3286,7 +3286,13 @@ theorem scanDoubleQuoted_flow_ok (sc : ScannerState)
       ∧ s'.col > 0
       ∧ lastTokenVal? s'.tokens = some (.scalar content .doubleQuoted)
       ∧ s'.simpleKeyAllowed = false
-      ∧ s'.line = sc.line := by
+      ∧ s'.line = sc.line
+      -- J.4.2.b-2d-key-chain-Part3-final-discharge-bridge-6c-ii-γ-2c (2026-05-03):
+      -- token-push facts: scanDoubleQuoted appends exactly one `.scalar` token
+      -- (via the trailing `s_after.emitAt sc.currentPos (.scalar ...)`).
+      ∧ (s'.tokens.size = sc.tokens.size + 1
+          ∧ (∀ (h_lt : sc.tokens.size < s'.tokens.size),
+              (s'.tokens[sc.tokens.size]'h_lt).val = .scalar content .doubleQuoted)) := by
   -- Surface after advancing past opening quote
   have ⟨_, h_lt⟩ := peek_of_chars_cons sc '"'
     ((escapeString content).toList ++ ['"'] ++ rest) _ hcorr
@@ -3336,7 +3342,7 @@ theorem scanDoubleQuoted_flow_ok (sc : ScannerState)
   -- Build the result state
   let s_result := { (s_after.emitAt sc.currentPos (.scalar content .doubleQuoted))
                      with simpleKeyAllowed := false }
-  refine ⟨s_result, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+  refine ⟨s_result, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
   · -- scanDoubleQuoted sc = .ok s_result
     simp only [scanDoubleQuoted, bind, Except.bind]
     rw [h_ie]
@@ -3373,6 +3379,29 @@ theorem scanDoubleQuoted_flow_ok (sc : ScannerState)
       advance_line_of_peek sc '"' (by exact (peek_of_chars_cons sc '"' _ _ hcorr).2)
         (by exact (peek_of_chars_cons sc '"' _ _ hcorr).1) (by decide) (by decide)
     exact h_line_loop.trans h_line_adv
+  · -- token-push facts (6c-ii-γ-2c): s_result.tokens = s_after.tokens.push tok
+    --                                = sc.tokens.push tok via h_tok_pres
+    have h_result_tokens :
+        s_result.tokens
+          = sc.tokens.push ⟨sc.currentPos, .scalar content .doubleQuoted, sc.currentPos⟩ := by
+      show s_after.tokens.push _ = _
+      rw [h_tok_pres]
+    refine ⟨by rw [h_result_tokens, Array.size_push], ?_⟩
+    intro h_lt
+    have h_lt' :
+        sc.tokens.size <
+          (sc.tokens.push ⟨sc.currentPos, .scalar content .doubleQuoted, sc.currentPos⟩).size := by
+      rw [Array.size_push]; omega
+    have h_get :
+        s_result.tokens[sc.tokens.size]'h_lt
+          = (sc.tokens.push ⟨sc.currentPos, .scalar content .doubleQuoted, sc.currentPos⟩
+              )[sc.tokens.size]'h_lt' := by
+      generalize h_arr : s_result.tokens = arr at h_lt ⊢
+      have h_arr_eq :
+          arr = sc.tokens.push ⟨sc.currentPos, .scalar content .doubleQuoted, sc.currentPos⟩ := by
+        rw [← h_arr]; exact h_result_tokens
+      subst h_arr_eq; rfl
+    rw [h_get, Array.getElem_push_eq]
 
 -- Helper: skipWhitespace is identity when first char is not whitespace
 theorem skipWhitespace_of_not_ws (s : ScannerState) (c : Char)
@@ -4691,7 +4720,14 @@ theorem scanNextToken_flow_scanDoubleQuoted (s : ScannerState)
       -- setPendingKeyEndLine wrap mutates pendingKeys[active].endLine but leaves
       -- pendingKeyStack alone).  Discharged via the proven
       -- `ScannerCorrectness.scanDoubleQuoted_preserves_pendingKeyStack` chain.
-      ∧ s'.pendingKeyStack = s.pendingKeyStack := by
+      ∧ s'.pendingKeyStack = s.pendingKeyStack
+      -- J.4.2.b-2d-key-chain-Part3-final-discharge-bridge-6c-ii-γ-2c (2026-05-03):
+      -- token-push facts: scanDoubleQuoted appends one `.scalar` token; the
+      -- saveSimpleKey/allowDirectives wrappers preserve tokens before, and the
+      -- `setPendingKeyEndLine` wrap after only touches pendingKeys.
+      ∧ (s'.tokens.size = s.tokens.size + 1
+          ∧ (∀ (h_lt : s.tokens.size < s'.tokens.size),
+              (s'.tokens[s.tokens.size]'h_lt).val = .scalar content .doubleQuoted)) := by
   -- Step 1: preprocessing
   have h_pp : scanNextToken_preprocess s = .ok (some (saveSimpleKey s, '"')) :=
     scanNextToken_preprocess_flow s '"' ((escapeString content).toList ++ ['"'] ++ rest) s.col
@@ -4748,8 +4784,14 @@ theorem scanNextToken_flow_scanDoubleQuoted (s : ScannerState)
     · show (saveSimpleKey s).explicitKeyLine = _
       unfold saveSimpleKey; split <;> (try rfl); split <;> rfl
     · unfold saveSimpleKey; split <;> (try rfl); split <;> rfl
-  obtain ⟨s_dq, h_dq, h_dq_corr, h_dq_fl, h_dq_dp, h_dq_ids, h_dq_ek, h_dq_col, h_dq_tokens, h_dq_ska, h_dq_line⟩ :=
+  obtain ⟨s_dq, h_dq, h_dq_corr, h_dq_fl, h_dq_dp, h_dq_ids, h_dq_ek, h_dq_col, h_dq_tokens, h_dq_ska, h_dq_line, h_dq_token_push⟩ :=
     scanDoubleQuoted_flow_ok s_ad content rest h_ad_corr h_ad_flow_bool
+  -- saveSimpleKey + allowDirectives wrappers preserve tokens.
+  have h_ad_tokens : s_ad.tokens = s.tokens := by
+    simp only [s_ad]; split
+    · show (saveSimpleKey s).tokens = s.tokens
+      exact ScannerCorrectness.saveSimpleKey_preserves_tokens s
+    · exact ScannerCorrectness.saveSimpleKey_preserves_tokens s
   -- Content dispatch: unfold to reach scanDoubleQuoted + simpleKey update
   have h_ad_line : s_ad.line = s.line := by
     simp only [s_ad]; split <;> exact saveSimpleKey_preserves_line s
@@ -4773,7 +4815,11 @@ theorem scanNextToken_flow_scanDoubleQuoted (s : ScannerState)
       -- stack-restore + preservation-chain: pendingKeyStack preserved (Class A
       -- passthrough — discharged via
       -- `ScannerCorrectness.scanDoubleQuoted_preserves_pendingKeyStack`).
-      ∧ s_final.pendingKeyStack = s.pendingKeyStack := by
+      ∧ s_final.pendingKeyStack = s.pendingKeyStack
+      -- 6c-ii-γ-2c: token-push facts (size + value at index `s.tokens.size`).
+      ∧ (s_final.tokens.size = s.tokens.size + 1
+          ∧ (∀ (h_lt : s.tokens.size < s_final.tokens.size),
+              (s_final.tokens[s.tokens.size]'h_lt).val = .scalar content .doubleQuoted)) := by
     unfold scanNextToken_dispatchContent
     simp (config := { decide := true }) only [bind, Except.bind, pure, Except.pure, h_dq]
     -- AllTokensOnLine for s_dq: scanDoubleQuoted preserves AllTokensOnLine
@@ -4815,7 +4861,7 @@ theorem scanNextToken_flow_scanDoubleQuoted (s : ScannerState)
       refine ⟨_, rfl, h_dq_corr,
         h_dq_fl.trans h_ad_fl, h_dq_dp.trans h_ad_dp, h_dq_ids.trans h_ad_ids,
         h_dq_ek.trans h_ad_ek, h_dq_col, h_dq_tokens, h_dq_ska,
-        h_dq_line.trans h_ad_line, h_atol_dq, ?_, h_dq_stack.trans h_ad_stack, ?_, ?_, ?_⟩
+        h_dq_line.trans h_ad_line, h_atol_dq, ?_, h_dq_stack.trans h_ad_stack, ?_, ?_, ?_, ?_⟩
       · intro h_poss; rw [h_skp] at h_poss; exact absurd h_poss (by decide)
       · -- size monotonic: s_dq.pendingKeys = (saveSimpleKey s).pendingKeys
         rw [h_dq_pks_full]; exact saveSimpleKey_pendingKeys_size_ge s
@@ -4830,6 +4876,20 @@ theorem scanNextToken_flow_scanDoubleQuoted (s : ScannerState)
         · rw [h_eq]; exact h_ib
         · rw [h_eq]; exact h_kd
       · exact h_dq_pks_stack_full
+      · -- 6c-ii-γ-2c: token-push facts.  s_final = s_dq, and h_dq_token_push gives
+        --   s_dq.tokens.size = s_ad.tokens.size + 1
+        --   ∀ h, s_dq.tokens[s_ad.tokens.size].val = .scalar content .doubleQuoted
+        -- Bridge s_ad.tokens = s.tokens via h_ad_tokens.
+        obtain ⟨h_dq_size, h_dq_val⟩ := h_dq_token_push
+        have h_size_eq : s_ad.tokens.size = s.tokens.size := by rw [h_ad_tokens]
+        refine ⟨by rw [h_dq_size, h_size_eq], ?_⟩
+        intro h_lt
+        have h_lt_ad : s_ad.tokens.size < s_dq.tokens.size := by
+          rw [h_size_eq]; exact h_lt
+        have h_get_eq :
+            s_dq.tokens[s.tokens.size]'h_lt = s_dq.tokens[s_ad.tokens.size]'h_lt_ad := by
+          congr 1; exact h_size_eq.symm
+        rw [h_get_eq]; exact h_dq_val h_lt_ad
     · -- simpleKey.possible = true: s' = { s_dq with simpleKey endLine update }
       simp only [↓reduceIte]
       refine ⟨_, rfl,
@@ -4837,7 +4897,7 @@ theorem scanNextToken_flow_scanDoubleQuoted (s : ScannerState)
          h_dq_corr.input_prefix, h_dq_corr.indent_cols_nonneg⟩,
         h_dq_fl.trans h_ad_fl, h_dq_dp.trans h_ad_dp, h_dq_ids.trans h_ad_ids,
         h_dq_ek.trans h_ad_ek, h_dq_col, h_dq_tokens, h_dq_ska,
-        h_dq_line.trans h_ad_line, h_atol_dq, ?_, h_dq_stack.trans h_ad_stack, ?_, ?_, ?_⟩
+        h_dq_line.trans h_ad_line, h_atol_dq, ?_, h_dq_stack.trans h_ad_stack, ?_, ?_, ?_, ?_⟩
       · -- EndLineOnLine: endLine just set to s_dq.line, pos from saveSimpleKey
         intro _
         constructor
@@ -4879,14 +4939,30 @@ theorem scanNextToken_flow_scanDoubleQuoted (s : ScannerState)
       · -- pendingKeyStack: setPendingKeyEndLine wrap doesn't touch stack
         show s_dq.pendingKeyStack = s.pendingKeyStack
         exact h_dq_pks_stack_full
+      · -- 6c-ii-γ-2c: token-push facts.  s_final's tokens field is s_dq.tokens
+        -- (record-update only changes simpleKey + pendingKeys; tokens preserved).
+        obtain ⟨h_dq_size, h_dq_val⟩ := h_dq_token_push
+        have h_size_eq : s_ad.tokens.size = s.tokens.size := by rw [h_ad_tokens]
+        change s_dq.tokens.size = s.tokens.size + 1
+            ∧ ∀ (h_lt : s.tokens.size < s_dq.tokens.size),
+                (s_dq.tokens[s.tokens.size]'h_lt).val = .scalar content .doubleQuoted
+        refine ⟨by rw [h_dq_size, h_size_eq], ?_⟩
+        intro h_lt
+        have h_lt_ad : s_ad.tokens.size < s_dq.tokens.size := by
+          rw [h_size_eq]; exact h_lt
+        have h_get_eq :
+            s_dq.tokens[s.tokens.size]'h_lt = s_dq.tokens[s_ad.tokens.size]'h_lt_ad := by
+          congr 1; exact h_size_eq.symm
+        rw [h_get_eq]; exact h_dq_val h_lt_ad
   obtain ⟨s_final, h_dc_eq, h_corr_f, h_fl_f, h_dp_f, h_ids_f, h_ek_f, h_col_f, h_tok_f,
-          h_ska_f, h_line_f, h_atol_f, h_endline_f, h_stack_f, h_size_f, h_pkRec_f, h_pks_f⟩ := h_content
+          h_ska_f, h_line_f, h_atol_f, h_endline_f, h_stack_f, h_size_f, h_pkRec_f, h_pks_f,
+          h_token_push_f⟩ := h_content
   -- Step 8: compose through scanNextToken
   exact ⟨s_final, scanNextToken_via_content_dispatch _ _ _ _ _ h_pp h_struct rfl h_check
     h_flow_none h_block_none h_dc_eq, h_corr_f, h_fl_f, h_dp_f, h_ids_f, h_ek_f, h_col_f,
     fun t ht => by rw [h_tok_f] at ht; injection ht with ht; subst ht; exact ⟨nofun, nofun, nofun⟩,
     h_ska_f, h_line_f, (by rw [h_line_f]; exact h_atol_f), h_endline_f, h_stack_f, h_size_f, h_pkRec_f,
-    h_pks_f⟩
+    h_pks_f, h_token_push_f⟩
 
 /-- Per-leaf scalar pkPush variant of `scanNextToken_flow_scanDoubleQuoted`.
 
@@ -4984,7 +5060,7 @@ theorem scanNextToken_flow_scanDoubleQuoted_pkPush (s : ScannerState)
     simp only [s_ad]; split <;> exact saveSimpleKey_preserves_indents s
   have h_ad_ek : s_ad.explicitKeyLine = s.explicitKeyLine := by
     simp only [s_ad]; split <;> exact saveSimpleKey_preserves_ek s
-  obtain ⟨s_dq, h_dq, h_dq_corr, h_dq_fl, h_dq_dp, h_dq_ids, h_dq_ek, h_dq_col, h_dq_tokens, h_dq_ska, h_dq_line⟩ :=
+  obtain ⟨s_dq, h_dq, h_dq_corr, h_dq_fl, h_dq_dp, h_dq_ids, h_dq_ek, h_dq_col, h_dq_tokens, h_dq_ska, h_dq_line, _h_dq_token_push⟩ :=
     scanDoubleQuoted_flow_ok s_ad content rest h_ad_corr h_ad_flow_bool
   have h_ad_line : s_ad.line = s.line := by
     simp only [s_ad]; split <;> exact saveSimpleKey_preserves_line s
@@ -11058,7 +11134,8 @@ theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inF
         ⟨['"'] ++ (escapeString s.content).toList ++ ['"'] ++ rest, s_state.col⟩ := by
       rwa [← h_chars]
     obtain ⟨s', h_snt, h_corr', h_fl', h_dp', h_ids', h_ek', h_col', h_tok', h_ska',
-            _h_line', h_atol', h_endline', h_stack', h_size', h_pkRec', h_pks'⟩ :=
+            _h_line', h_atol', h_endline', h_stack', h_size', h_pkRec', h_pks',
+            h_token_push'⟩ :=
       scanNextToken_flow_scanDoubleQuoted s_state s.content rest hcorr' h_flow h_indent h_col
         h_atol (by intro h_poss; exact h_endline h_poss)
     -- Per-step witness for the scalar's scanNextToken call.
@@ -11104,12 +11181,39 @@ theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inF
           rw [h_eq]; exact h_pka_pk
         · -- simpleKey.possible = true
           rw [h_eq]; exact h_skp_pk
-      · -- 6c-ii-γ-2 bundled (balance = 0 ∧ no-outer-flowEntry) for scalar case.
-        -- Scalar `emit(s)` produces a single `.scalar` token; no brackets and no
-        -- flowEntry pushed.  Discharge requires a token-push lemma exposing
-        -- `s'.tokens.size = s_state.tokens.size + 1` and the value of the new
-        -- token (`.scalar`).  Sorry'd as sub-task 6c-ii-γ-2-discharge-scalar.
-        sorry
+      · -- 6c-ii-γ-2c (2026-05-03): bundled (balance = 0 ∧ no-outer-flowEntry).
+        -- Scalar `emit(s)` produces a single `.scalar` token (h_token_push'):
+        --   * size:  s'.tokens.size = s_state.tokens.size + 1
+        --   * value: (s'.tokens[s_state.tokens.size]).val = .scalar s.content .doubleQuoted
+        -- Range [s_state.tokens.size, s'.tokens.size) covers exactly that one
+        -- token.  Balance: `.scalar` has flowBracketDelta = 0.  No-outer-flowEntry:
+        -- the only valid `kk` is `s_state.tokens.size`, where the token is
+        -- `.scalar`, not `.flowEntry` — vacuous.
+        obtain ⟨h_size_eq, h_val_eq⟩ := h_token_push'
+        have h_lo_lt_hi : s_state.tokens.size < s'.tokens.size := by
+          rw [h_size_eq]; omega
+        have h_idx_lt_list : s_state.tokens.size < s'.tokens.toList.length := by
+          rw [Array.length_toList]; exact h_lo_lt_hi
+        have h_hi_eq : s'.tokens.size = s_state.tokens.size + 1 := h_size_eq
+        have h_val_at_idx :
+            s'.tokens.toList[s_state.tokens.size]'h_idx_lt_list
+              = (s'.tokens[s_state.tokens.size]'h_lo_lt_hi) := by
+          simp [Array.getElem_toList]
+        refine ⟨?_, ?_⟩
+        · -- Balance over [s_state.tokens.size, s'.tokens.size) = single `.scalar`.
+          rw [h_hi_eq]
+          rw [flowBracketBalance_single s'.tokens s_state.tokens.size h_idx_lt_list]
+          rw [h_val_at_idx, h_val_eq h_lo_lt_hi]
+          rfl
+        · -- No-outer-flowEntry: the only `kk` in range is `s_state.tokens.size`
+          -- (since s'.tokens.size = s_state.tokens.size + 1).  The token there is
+          -- `.scalar`, contradicting `.val = .flowEntry`.
+          intro kk h_kk_lt h_kk_ge h_kk_fe
+          have h_kk_eq : kk = s_state.tokens.size := by
+            rw [h_size_eq] at h_kk_lt; omega
+          subst h_kk_eq
+          rw [h_val_eq h_kk_lt] at h_kk_fe
+          exact absurd h_kk_fe nofun
   | sequence style items tag anchor _ h ih =>
     intro s_state rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline
     -- emit (.sequence ...) = "[" ++ emitList items.toList ++ "]"
@@ -13606,12 +13710,19 @@ theorem emitPairList_body_linearise_characterization
     --     `scanNextToken_flow_value` to expose `.value` push fact
     --     (mirrors `scanNextToken_flow_comma`'s comma-push conjunct).
     --     Sorry count: 13 → 11.
-    --   * **Sub-step 6c-ii-γ-2c (PENDING)**: discharge scalar case
-    --     in `emit_scans_in_flow`.  Requires a stronger
-    --     `scanNextToken_flow_scanDoubleQuoted` variant exposing the
-    --     +1 token push and `.scalar` val.  Then balance = 0 (single
-    --     non-bracket) and no-outer-flowEntry (vacuous: `.scalar` ≠
-    --     `.flowEntry`) discharge inline.
+    --   * **Sub-step 6c-ii-γ-2c (DONE 2026-05-03)**: discharge scalar
+    --     case in `emit_scans_in_flow`.  Strengthened
+    --     `scanDoubleQuoted_flow_ok` and `scanNextToken_flow_scanDoubleQuoted`
+    --     with bundled `(s'.tokens.size = sc.tokens.size + 1 ∧
+    --     ∀ h_lt, s'.tokens[sc.tokens.size].val = .scalar content
+    --     .doubleQuoted)` conjunct (threaded through `s_after.emitAt`
+    --     push + `setPendingKeyEndLine`-wrap token preservation in
+    --     both simpleKey.possible branches).  Discharged scalar
+    --     bundled balance/no-outer-flowEntry: balance = `flowBracketDelta`
+    --     of single `.scalar` token = 0 (`rfl` on the `_ => 0` arm,
+    --     not `decide` due to free `s.content`); no-outer-flowEntry
+    --     vacuous (only `kk = s_state.tokens.size` is in range, where
+    --     token is `.scalar`, refuted via `nofun`).  Sorry count: 11 → 10.
     --   * **Sub-step 6c-ii-γ-2d (PENDING)**: discharge sequence + mapping
     --     cases in `emit_scans_in_flow`.  Requires bracket-push
     --     lemmas for `[`/`]` and `{`/`}` + strengthening `EmitListScansInFlow`
