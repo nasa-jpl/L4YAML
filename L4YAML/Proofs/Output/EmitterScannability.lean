@@ -3686,6 +3686,39 @@ theorem pkRec_size_compose
   obtain ⟨h_idx_end, h_kind_end⟩ := h_rec_end j hj_mid hj'
   exact ⟨h_idx_end.trans h_idx_mid, h_kind_end.trans h_kind_mid⟩
 
+/-- **J.4.2.b-2d-key-chain-Part3-final-discharge-bridge-6c-ii-γ-3b-ii-predicate**:
+    Compose two consecutive new-kind disjunctive witnesses through an
+    intermediate state.  At `q ∈ [s.pks.sz, s_mid.pks.sz)` the `mid` witness
+    fires and pkRec preservation lifts kind unchanged to `s_end`.  At
+    `q ∈ [s_mid.pks.sz, s_end.pks.sz)` the `end` witness fires directly. -/
+theorem newkind_disj_compose
+    {s s_mid s_end : ScannerState}
+    (h_pkRec_end : ∀ j (hj : j < s_mid.pendingKeys.size) (hj' : j < s_end.pendingKeys.size),
+        (s_end.pendingKeys[j]'hj').insertBeforeIdx
+          = (s_mid.pendingKeys[j]'hj).insertBeforeIdx
+        ∧ (s_end.pendingKeys[j]'hj').kind
+          = (s_mid.pendingKeys[j]'hj).kind)
+    (h_new_mid : ∀ q (h_q : q < s_mid.pendingKeys.size)
+                   (_h_q_ge : s.pendingKeys.size ≤ q),
+        (s_mid.pendingKeys[q]'h_q).kind = .unresolved ∨
+          (s_mid.pendingKeys[q]'h_q).kind = .keyOnly)
+    (h_new_end : ∀ q (h_q : q < s_end.pendingKeys.size)
+                   (_h_q_ge : s_mid.pendingKeys.size ≤ q),
+        (s_end.pendingKeys[q]'h_q).kind = .unresolved ∨
+          (s_end.pendingKeys[q]'h_q).kind = .keyOnly) :
+    ∀ q (h_q : q < s_end.pendingKeys.size) (_h_q_ge : s.pendingKeys.size ≤ q),
+      (s_end.pendingKeys[q]'h_q).kind = .unresolved ∨
+        (s_end.pendingKeys[q]'h_q).kind = .keyOnly := by
+  intro q h_q h_q_ge
+  by_cases h_q_lt_mid : q < s_mid.pendingKeys.size
+  · have h_disj_mid := h_new_mid q h_q_lt_mid h_q_ge
+    have ⟨_, h_kd_eq⟩ := h_pkRec_end q h_q_lt_mid h_q
+    rcases h_disj_mid with h | h
+    · left; rw [h_kd_eq]; exact h
+    · right; rw [h_kd_eq]; exact h
+  · have h_q_ge_mid : s_mid.pendingKeys.size ≤ q := Nat.le_of_not_lt h_q_lt_mid
+    exact h_new_end q h_q h_q_ge_mid
+
 -- scanValueValidate always succeeds when simpleKey.possible is false
 -- and explicitKeyLine is none: all 5 checks short-circuit.
 theorem scanValueValidate_ok_of_not_possible_ek_none (s : ScannerState)
@@ -7161,6 +7194,13 @@ theorem scanNextToken_flow_open_mapping_nested (s : ScannerState) (rest : List C
       ∧ (∀ j (hj : j < s.pendingKeys.size) (hj' : j < s'.pendingKeys.size),
           (s'.pendingKeys[j]'hj').insertBeforeIdx = (s.pendingKeys[j]'hj).insertBeforeIdx
           ∧ (s'.pendingKeys[j]'hj').kind = (s.pendingKeys[j]'hj).kind)
+      -- J.4.2.b-2d-key-chain-Part3-final-discharge-bridge-6c-ii-γ-3b-ii-leaves-A
+      -- (2026-05-03): new pendingKey entries (q ≥ s.pendingKeys.size) carry
+      -- kind = .unresolved.  scanFlowMappingStart preserves pendingKeys, so
+      -- s'.pendingKeys = (saveSimpleKey s).pendingKeys; the foundation helper
+      -- `saveSimpleKey_new_kind_unresolved` discharges the conjunct.
+      ∧ (∀ (q : Nat) (h_q : q < s'.pendingKeys.size) (_h_q_ge : s.pendingKeys.size ≤ q),
+          (s'.pendingKeys[q]'h_q).kind = .unresolved)
       -- J.4.2.b-2d-key-chain-Part2-body-C-foundation-EmitScansInFlow-stack-restore:
       -- pendingKeyStack pushed (mirror of simpleKeyStack); the matching
       -- close-side pop cancels in the map composition.
@@ -7223,7 +7263,7 @@ theorem scanNextToken_flow_open_mapping_nested (s : ScannerState) (rest : List C
     rw [scanFlowMappingStart_line_eq]
     exact (advance_line_of_peek s_ad '{' h_lt_ad h_peek_ad (by decide) (by decide)).trans h_ad_line
   refine ⟨_, h_snt, ?_, h_fl_f.trans (congrArg (· + 1) h_ad_fl),
-    h_dp_f.trans h_ad_dp, h_ids_f.trans h_ad_ids, h_ek_f.trans h_ad_ek, ?_, h_line_f, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+    h_dp_f.trans h_ad_dp, h_ids_f.trans h_ad_ids, h_ek_f.trans h_ad_ek, ?_, h_line_f, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
   · rw [h_col_f]; exact h_corr_f
   · rw [h_col_f, h_ad_col]
   · rw [h_line_f]
@@ -7271,6 +7311,21 @@ theorem scanNextToken_flow_open_mapping_nested (s : ScannerState) (rest : List C
     refine ⟨?_, ?_⟩
     · rw [h_eq]; exact h_ib
     · rw [h_eq]; exact h_kd
+  · -- 6c-ii-γ-3b-ii-leaves-A: new pendingKey entries kind = .unresolved.
+    -- scanFlowMappingStart preserves pendingKeys, so s'.pendingKeys = (saveSimpleKey s).pendingKeys.
+    intro q h_q h_q_ge
+    have h_fms_pks : (scanFlowMappingStart s_ad).pendingKeys = s_ad.pendingKeys :=
+      ScannerCorrectness.scanFlowMappingStart_preserves_pendingKeys s_ad
+    have h_ad_pks : s_ad.pendingKeys = (saveSimpleKey s).pendingKeys := by
+      simp only [s_ad]; split <;> rfl
+    have h_full_pks : (scanFlowMappingStart s_ad).pendingKeys = (saveSimpleKey s).pendingKeys :=
+      h_fms_pks.trans h_ad_pks
+    have h_q_sk : q < (saveSimpleKey s).pendingKeys.size := by
+      rw [← h_full_pks]; exact h_q
+    have h_eq : (scanFlowMappingStart s_ad).pendingKeys[q]'h_q
+                = (saveSimpleKey s).pendingKeys[q]'h_q_sk := by congr 1
+    rw [h_eq]
+    exact saveSimpleKey_new_kind_unresolved s q h_q_sk h_q_ge
   · -- pendingKeyStack.pop = s.pendingKeyStack
     rw [ScannerCorrectness.scanFlowMappingStart_pendingKeyStack_pushed, Array.pop_push]
     show s_ad.pendingKeyStack = s.pendingKeyStack
@@ -9081,6 +9136,14 @@ def EmitScansInFlow (v : YamlValue) : Prop :=
       ∧ (∀ j (hj : j < s.pendingKeys.size) (hj' : j < s'.pendingKeys.size),
           (s'.pendingKeys[j]'hj').insertBeforeIdx = (s.pendingKeys[j]'hj).insertBeforeIdx
           ∧ (s'.pendingKeys[j]'hj').kind = (s.pendingKeys[j]'hj).kind)
+      -- J.4.2.b-2d-key-chain-Part3-final-discharge-bridge-6c-ii-γ-3b-ii-predicate
+      -- (2026-05-03): every newly-pushed pendingKey entry has kind in
+      -- `{.unresolved, .keyOnly}`.  Per-leaf saveSimpleKey pushes give
+      -- `.unresolved`; the `:` step transitions an active entry to `.keyOnly`.
+      -- pkRec preservation carries kind unchanged through subsequent steps.
+      ∧ (∀ (q : Nat) (h_q : q < s'.pendingKeys.size) (_h_q_ge : s.pendingKeys.size ≤ q),
+          (s'.pendingKeys[q]'h_q).kind = .unresolved ∨
+            (s'.pendingKeys[q]'h_q).kind = .keyOnly)
       -- J.4.2.b-2d-key-chain-Part2-body-C-foundation-EmitScansInFlow-stack-restore:
       -- pendingKeyStack preserved (scalar: helper preserves it; seq/map: open
       -- pushes and matching close pops cancel; the body of EmitListScansInFlow /
@@ -9156,6 +9219,12 @@ def EmitListScansInFlow (items : List YamlValue) : Prop :=
       ∧ (∀ j (hj : j < s.pendingKeys.size) (hj' : j < s'.pendingKeys.size),
           (s'.pendingKeys[j]'hj').insertBeforeIdx = (s.pendingKeys[j]'hj).insertBeforeIdx
           ∧ (s'.pendingKeys[j]'hj').kind = (s.pendingKeys[j]'hj).kind)
+      -- J.4.2.b-2d-key-chain-Part3-final-discharge-bridge-6c-ii-γ-3b-ii-predicate
+      -- (2026-05-03): newly-pushed pendingKey entries have kind in
+      -- `{.unresolved, .keyOnly}` (mirrors `EmitScansInFlow`).
+      ∧ (∀ (q : Nat) (h_q : q < s'.pendingKeys.size) (_h_q_ge : s.pendingKeys.size ≤ q),
+          (s'.pendingKeys[q]'h_q).kind = .unresolved ∨
+            (s'.pendingKeys[q]'h_q).kind = .keyOnly)
       -- J.4.2.b-2d-key-chain-Part2-body-C-foundation-EmitScansInFlow-stack-restore:
       -- pendingKeyStack preserved across the body (mirrors simpleKeyStack;
       -- inner [/{ pushes are cancelled by the matching ]/} pops).
@@ -9190,7 +9259,8 @@ theorem emitList_scans_empty : EmitListScansInFlow [] := by
   have h_bal_empty : flowBracketBalance s.tokens s.tokens.size s.tokens.size = 0 := by
     simp [flowBracketBalance]
   exact ⟨0, s, .zero, hcorr, rfl, rfl, rfl, rfl, h_col, h_flow, h_indent, rfl, h_atol,
-    h_endline, rfl, .zero (Nat.le_refl _), Nat.le_refl _, fun _ _ _ => ⟨rfl, rfl⟩, rfl,
+    h_endline, rfl, .zero (Nat.le_refl _), Nat.le_refl _, fun _ _ _ => ⟨rfl, rfl⟩,
+    fun _ h_q h_q_ge => absurd h_q_ge (Nat.not_le_of_lt h_q), rfl,
     h_bal_empty, fun _ h_kk_lt h_kk_ge _ =>
       absurd (Nat.lt_of_le_of_lt h_kk_ge h_kk_lt) (Nat.lt_irrefl _)⟩
 
@@ -9212,15 +9282,15 @@ theorem emitList_scans_nonempty (items : List YamlValue) (h_ne : items ≠ [])
       rw [h_eq] at hcorr
       obtain ⟨n, s', h_chain, h_corr, h_fl', h_dp, h_ids, h_ek', h_col', h_flow', h_indent',
               h_line_v, _, _, h_atol', h_endline', h_stack', h_fmc', h_size', h_pkRec',
-              h_pks_v, _h_gated_v, h_balfacts_v⟩ :=
+              h_newkind_v, h_pks_v, _h_gated_v, h_balfacts_v⟩ :=
         h_all v (.head _) s rest_chars hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline
       -- Singleton bundled conjunct: balance = 0 from inner EmitScansInFlow's
       -- bundled (`h_balfacts_v.1`); flowEntry → ≥ 0 follows from inner's
       -- `flowEntry → ≥ 1` by weakening 1 ≥ 0.
       obtain ⟨h_bal_v, h_exh_v⟩ := h_balfacts_v
       refine ⟨n, s', h_chain, h_corr, h_fl', h_dp, h_ids, h_ek', h_col', h_flow', h_indent',
-        h_line_v, h_atol', h_endline', h_stack', h_fmc', h_size', h_pkRec', h_pks_v,
-        h_bal_v, ?_⟩
+        h_line_v, h_atol', h_endline', h_stack', h_fmc', h_size', h_pkRec', h_newkind_v,
+        h_pks_v, h_bal_v, ?_⟩
       intro kk h_kk_lt h_kk_ge h_kk_fe
       have h_ge1 := h_exh_v kk h_kk_lt h_kk_ge h_kk_fe
       omega
@@ -9237,12 +9307,12 @@ theorem emitList_scans_nonempty (items : List YamlValue) (h_ne : items ≠ [])
       have h_ev : EmitScansInFlow v := h_all v (.head _)
       obtain ⟨n₁, s₁, h_chain₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_ek₁, h_col₁, h_flow₁,
               h_indent₁, _h_line₁, _, h_last₁, h_atol₁, h_endline₁, h_stack₁, h_fmc₁,
-              h_size₁, h_pkRec₁, h_pks_v, _h_gated₁, h_balfacts₁⟩ :=
+              h_size₁, h_pkRec₁, h_newkind₁, h_pks_v, _h_gated₁, h_balfacts₁⟩ :=
         h_ev s ([',', ' '] ++ (emit.emitList (v' :: vs)).toList ++ rest_chars)
           hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline
       -- Step 2: Scan ',' via scanNextToken_flow_comma
       obtain ⟨s₂, h_snt₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, h_ek₂, h_col₂, _h_line₂,
-              h_atol₂, h_endline₂, h_stack₂, h_size₂, h_pkRec₂, _h_newkind₂, h_pks₂, _h_ska₂,
+              h_atol₂, h_endline₂, h_stack₂, h_size₂, h_pkRec₂, h_newkind₂, h_pks₂, _h_ska₂,
               h_comma_push⟩ :=
         scanNextToken_flow_comma s₁
           (' ' :: (emit.emitList (v' :: vs)).toList ++ rest_chars)
@@ -9278,8 +9348,8 @@ theorem emitList_scans_nonempty (items : List YamlValue) (h_ne : items ≠ [])
         ih (by simp) h_tail_all
       obtain ⟨n₃, s_end, h_chain₃, h_corr_end, h_fl_end, h_dp_end, h_ids_end,
               h_ek_end, h_col_end, h_flow_end, h_indent_end, h_line_end, h_atol_end,
-              h_endline_end, h_stack_end, h_fmc₃, h_size₃, h_pkRec₃, h_pks_end,
-              h_balfacts_tail⟩ :=
+              h_endline_end, h_stack_end, h_fmc₃, h_size₃, h_pkRec₃, h_newkind_tail,
+              h_pks_end, h_balfacts_tail⟩ :=
         h_ih_list s₃ rest_chars h_corr₃'
           h_flow₃ (by rw [h_fl₃, h_fl₂, h_fl₁]; exact h_fl)
           (by rw [h_indent₃]; exact h_s2_indent)
@@ -9348,7 +9418,7 @@ theorem emitList_scans_nonempty (items : List YamlValue) (h_ne : items ≠ [])
         pkRec_size_compose h_size₁₂₃ h_size₃ h_pkRec₁₂₃ h_pkRec₃
       refine ⟨n₁ + 1 + (n₃' + 1), s_end, h_arith ▸ h_chain_all,
         h_corr_end, ?_, ?_, ?_, ?_, h_col_end, h_flow_end, h_indent_end, ?_, h_atol_end,
-        h_endline_end, ?_, h_arith ▸ h_fmc_all, h_size_all, h_pkRec_all, ?_, ?_⟩
+        h_endline_end, ?_, h_arith ▸ h_fmc_all, h_size_all, h_pkRec_all, ?_, ?_, ?_⟩
       · -- flowLevel preserved
         rw [h_fl_end, h_fl₃, h_fl₂, h_fl₁]
       · -- directivesPresent preserved
@@ -9361,6 +9431,34 @@ theorem emitList_scans_nonempty (items : List YamlValue) (h_ne : items ≠ [])
         rw [h_line_end, _h_line₃, _h_line₂, _h_line₁]
       · -- simpleKeyStack preserved
         rw [h_stack_end, h_stack_pp₃, h_stack₂, h_stack₁]
+      · -- 6c-ii-γ-3b-ii-predicate (2026-05-03): cons case.  Compose
+        -- s → s₁ (emit v leaf-A: kind = .unresolved disj of leaf-A `_h_newkind₁` lifted)
+        -- → s₂ (comma leaf-B: .unresolved) → s₃ (ws1 leaf-C: vacuous)
+        -- → s_end (recursive IH: disj).  Use `newkind_disj_compose` repeatedly.
+        have h_newkind₁_disj :
+            ∀ q (h_q : q < s₁.pendingKeys.size) (_h_q_ge : s.pendingKeys.size ≤ q),
+              (s₁.pendingKeys[q]'h_q).kind = .unresolved ∨
+                (s₁.pendingKeys[q]'h_q).kind = .keyOnly :=
+          h_newkind₁
+        have h_newkind₂_disj :
+            ∀ q (h_q : q < s₂.pendingKeys.size) (_h_q_ge : s₁.pendingKeys.size ≤ q),
+              (s₂.pendingKeys[q]'h_q).kind = .unresolved ∨
+                (s₂.pendingKeys[q]'h_q).kind = .keyOnly :=
+          fun q h_q h_q_ge => Or.inl (h_newkind₂ q h_q h_q_ge)
+        have h_newkind_pp₃_disj :
+            ∀ q (h_q : q < s₃.pendingKeys.size) (_h_q_ge : s₂.pendingKeys.size ≤ q),
+              (s₃.pendingKeys[q]'h_q).kind = .unresolved ∨
+                (s₃.pendingKeys[q]'h_q).kind = .keyOnly := by
+          intro q h_q h_q_ge
+          have h_q_s2 : q < s₂.pendingKeys.size := by
+            rw [_h_pks_pp₃] at h_q; exact h_q
+          have h_q_eq : (s₃.pendingKeys[q]'h_q) = (s₂.pendingKeys[q]'h_q_s2) := by
+            congr 1
+          rw [h_q_eq]
+          exact absurd h_q_ge (Nat.not_le_of_lt h_q_s2)
+        have h_newkind_s_s2 := newkind_disj_compose h_pkRec₂ h_newkind₁_disj h_newkind₂_disj
+        have h_newkind_s_s3 := newkind_disj_compose h_pkRec_pp h_newkind_s_s2 h_newkind_pp₃_disj
+        exact newkind_disj_compose h_pkRec₃ h_newkind_s_s3 h_newkind_tail
       · -- pendingKeyStack preserved through s → s₁ → s₂ → s₃ → s_end
         rw [h_pks_end, h_pks_pp₃, h_pks₂, h_pks_v]
       · -- 6c-ii-γ-2d (2026-05-03): bundled balance + flowEntry-non-negative-prefix
@@ -10250,6 +10348,12 @@ def EmitPairListScansInFlow (pairs : List (YamlValue × YamlValue)) : Prop :=
       ∧ (∀ j (hj : j < s.pendingKeys.size) (hj' : j < s'.pendingKeys.size),
           (s'.pendingKeys[j]'hj').insertBeforeIdx = (s.pendingKeys[j]'hj).insertBeforeIdx
           ∧ (s'.pendingKeys[j]'hj').kind = (s.pendingKeys[j]'hj).kind)
+      -- J.4.2.b-2d-key-chain-Part3-final-discharge-bridge-6c-ii-γ-3b-ii-predicate
+      -- (2026-05-03): newly-pushed pendingKey entries have kind in
+      -- `{.unresolved, .keyOnly}` (mirrors `EmitScansInFlow`).
+      ∧ (∀ (q : Nat) (h_q : q < s'.pendingKeys.size) (_h_q_ge : s.pendingKeys.size ≤ q),
+          (s'.pendingKeys[q]'h_q).kind = .unresolved ∨
+            (s'.pendingKeys[q]'h_q).kind = .keyOnly)
       -- J.4.2.b-2d-key-chain-Part2-body-C-foundation-EmitScansInFlow-stack-restore:
       -- pendingKeyStack preserved across the body (mirrors simpleKeyStack;
       -- inner [/{ pushes are cancelled by the matching ]/} pops).
@@ -10350,7 +10454,8 @@ theorem emitPairList_scans_empty : EmitPairListScansInFlow [] := by
   have h_bal_empty : flowBracketBalance s.tokens s.tokens.size s.tokens.size = 0 := by
     simp [flowBracketBalance]
   exact ⟨0, s, .zero, h_eq ▸ hcorr, rfl, rfl, rfl, rfl, h_col, h_flow, h_indent, rfl,
-    h_atol, h_endline, rfl, .zero (Nat.le_refl _), Nat.le_refl _, fun _ _ _ => ⟨rfl, rfl⟩, rfl,
+    h_atol, h_endline, rfl, .zero (Nat.le_refl _), Nat.le_refl _, fun _ _ _ => ⟨rfl, rfl⟩,
+    fun _ h_q h_q_ge => absurd h_q_ge (Nat.not_le_of_lt h_q), rfl,
     fun h_ne => absurd rfl h_ne, fun h_ne => absurd rfl h_ne,
     h_bal_empty, fun _ h_kk_lt h_kk_ge _ =>
       absurd (Nat.lt_of_le_of_lt h_kk_ge h_kk_lt) (Nat.lt_irrefl _)⟩
@@ -10381,7 +10486,7 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
       have h_ek_key : EmitScansInFlow p.1 := h_all_k p (.head _)
       obtain ⟨n₁, s₁, h_chain₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_ek₁, h_col₁,
               h_flow₁, h_indent₁, _h_line₁, h_ska₁, _, h_atol₁, h_endline₁, h_stack₁,
-              h_fmc₁, _h_size₁, _h_pkRec₁, _h_pks₁, _h_gated₁,
+              h_fmc₁, _h_size₁, _h_pkRec₁, _h_newkind_k, _h_pks₁, _h_gated₁,
               h_balfacts_k_singleton⟩ :=
         h_ek_key s ([':',  ' '] ++ (emit p.2).toList ++ rest_chars)
           hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline
@@ -10420,8 +10525,8 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
       have h_ev : EmitScansInFlow p.2 := h_all_v p (.head _)
       obtain ⟨n₃, s_end, h_chain₃, h_corr_end, h_fl_end, h_dp_end, h_ids_end,
               h_ek_end, h_col_end, h_flow_end, h_indent_end, h_line_end, _, _,
-              h_atol_end, h_endline_end, h_stack_end, h_fmc₃, _h_size₃, _h_pkRec₃, _h_pks₃,
-              _h_gated₃, h_balfacts_v_singleton⟩ :=
+              h_atol_end, h_endline_end, h_stack_end, h_fmc₃, _h_size₃, _h_pkRec₃, _h_newkind_v,
+              _h_pks₃, _h_gated₃, h_balfacts_v_singleton⟩ :=
         h_ev s₃ rest_chars h_corr₃'
           h_flow₃ (by rw [h_fl₃, h_fl₂, h_fl₁]; exact h_fl)
           (by rw [h_indent₃]; exact h_indent₂)
@@ -10576,7 +10681,39 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
             (s_end.pendingKeys[s.pendingKeys.size]'h_lt_s_s_end).insertBeforeIdx
               = s.tokens.size := by
           rw [h_ib_pres, h_eq_s3_s2_ib, h_ib_s2_s1]; exact h_ib_s1
-        refine ⟨h_size_all, h_pkRec_all, ?_, ?_, ?_, ?_⟩
+        refine ⟨h_size_all, h_pkRec_all, ?_, ?_, ?_, ?_, ?_⟩
+        · -- 6c-ii-γ-3b-ii-predicate (2026-05-03): singleton pair case.
+          -- Chain: s → s₁ (key emit) → s₂ (colon) → s₃ (ws1) → s_end (value emit).
+          -- Case split: q ∈ [s.pks.size, s₃.pks.size) (key+colon+ws1 range; size
+          -- preserved across colon+ws1) or q ∈ [s₃.pks.size, s_end.pks.size) (value).
+          intro q h_q h_q_ge
+          have h_eq_s1_s2 : s₁.pendingKeys.size = s₂.pendingKeys.size := h_size_pk.symm
+          have h_eq_s2_s3 : s₂.pendingKeys.size = s₃.pendingKeys.size := by rw [_h_pks_pp₃]
+          have h_eq_s1_s3 : s₁.pendingKeys.size = s₃.pendingKeys.size :=
+            h_eq_s1_s2.trans h_eq_s2_s3
+          by_cases h_q_lt_s3 : q < s₃.pendingKeys.size
+          · have h_q_lt_s1 : q < s₁.pendingKeys.size := h_eq_s1_s3 ▸ h_q_lt_s3
+            have h_disj_s1 := _h_newkind_k q h_q_lt_s1 h_q_ge
+            by_cases h_q_eq : q = s.pendingKeys.size
+            · subst h_q_eq; right; exact h_kd_s_end
+            · -- q ≠ s.pks.size: kind preserved s₁ → s₂ (h_pks_other_pk),
+              -- s₂ → s₃ (_h_pks_pp₃), s₃ → s_end (_h_pkRec₃).
+              have h_q_lt_s2 : q < s₂.pendingKeys.size := h_eq_s1_s2 ▸ h_q_lt_s1
+              have h_q_lt_s_end : q < s_end.pendingKeys.size :=
+                Nat.lt_of_lt_of_le h_q_lt_s3 _h_size₃
+              have h_pks_at_s2 := h_pks_other_pk q h_q_lt_s1 h_q_lt_s2 h_q_eq
+              have h_kd_s3_s2 :
+                  (s₃.pendingKeys[q]'h_q_lt_s3).kind = (s₂.pendingKeys[q]'h_q_lt_s2).kind := by
+                simp only [_h_pks_pp₃]
+              have ⟨_, h_kd_send_s3⟩ := _h_pkRec₃ q h_q_lt_s3 h_q_lt_s_end
+              have h_kd_s2_s1 :
+                  (s₂.pendingKeys[q]'h_q_lt_s2).kind = (s₁.pendingKeys[q]'h_q_lt_s1).kind :=
+                congrArg PendingKeyEntry.kind h_pks_at_s2
+              rcases h_disj_s1 with h | h
+              · left; rw [h_kd_send_s3, h_kd_s3_s2, h_kd_s2_s1]; exact h
+              · right; rw [h_kd_send_s3, h_kd_s3_s2, h_kd_s2_s1]; exact h
+          · have h_q_ge_s3 : s₃.pendingKeys.size ≤ q := Nat.le_of_not_lt h_q_lt_s3
+            exact _h_newkind_v q h_q h_q_ge_s3
         · rw [_h_pks₃, h_pks_pp₃, h_pks_pk_pkr, _h_pks₁]
         · -- C-compose: first-pair resolved-key facts at index s.pendingKeys.size.
           intro _h_ne_pairs
@@ -10855,7 +10992,7 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
       have h_ek_key : EmitScansInFlow p.1 := h_all_k p (.head _)
       obtain ⟨n₁, s₁, h_chain₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_ek₁, h_col₁,
               h_flow₁, h_indent₁, _h_line₁, h_ska₁, h_last₁, h_atol₁, h_endline₁,
-              h_stack₁, h_fmc₁, _h_size₁, _h_pkRec₁, _h_pks₁, _h_gated₁,
+              h_stack₁, h_fmc₁, _h_size₁, _h_pkRec₁, _h_newkind_k, _h_pks₁, _h_gated₁,
               h_balfacts_k_cons⟩ :=
         h_ek_key s ([':',  ' '] ++ (emit p.2).toList ++
             [',',  ' '] ++ (emit.emitPairList (p' :: ps)).toList ++ rest_chars)
@@ -10907,7 +11044,7 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
         simp only [List.append_assoc] at h_corr₃' ⊢; exact h_corr₃'
       obtain ⟨n_v, s_v, h_chain_v, h_corr_v, h_fl_v, h_dp_v, h_ids_v,
               h_ek_v, h_col_v, h_flow_v, h_indent_v, _h_line_v, _, h_last_v, h_atol_v,
-              h_endline_v, h_stack_v, h_fmc_v, _h_size_v, _h_pkRec_v, _h_pks_v, _h_gated_v,
+              h_endline_v, h_stack_v, h_fmc_v, _h_size_v, _h_pkRec_v, _h_newkind_v, _h_pks_v, _h_gated_v,
               h_balfacts_v_cons⟩ :=
         h_ev s₃
           ([',',  ' '] ++ (emit.emitPairList (p' :: ps)).toList ++ rest_chars)
@@ -10998,8 +11135,8 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
         ih (by simp) h_tail_all_k h_tail_all_v
       obtain ⟨n_r, s_end, h_chain_r, h_corr_end, h_fl_end, h_dp_end, h_ids_end,
               h_ek_end, h_col_end, h_flow_end, h_indent_end, h_line_end, h_atol_end,
-              h_endline_end, h_stack_end, h_fmc_r, h_size_r, h_pkRec_r, h_pks_r,
-              h_first_r, h_first_qs_r, _h_balfacts_r⟩ :=
+              h_endline_end, h_stack_end, h_fmc_r, h_size_r, h_pkRec_r, h_newkind_r,
+              h_pks_r, h_first_r, h_first_qs_r, _h_balfacts_r⟩ :=
         h_ih_list s_pp rest_chars h_corr_pp'
           h_flow_pp
           (by rw [h_fl_pp, h_fl_c]; rw [h_fl_v, h_fl₃, h_fl₂, h_fl₁]; exact h_fl)
@@ -11223,7 +11360,108 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
               = s.tokens.size := by
           rw [h_ib_send, h_eq_spp_sc_ib, h_ib_sc, h_ib_sv, h_eq_s3_s2_ib, h_ib_s2_s1]
           exact h_ib_s1
-        refine ⟨h_size_all, h_pkRec_all, ?_, ?_, ?_, ?_⟩
+        refine ⟨h_size_all, h_pkRec_all, ?_, ?_, ?_, ?_, ?_⟩
+        · -- 6c-ii-γ-3b-ii-predicate (2026-05-03): cons pair case.
+          -- Chain: s → s₁ → s₂ → s₃ → s_v → s_c → s_pp → s_end.
+          -- Case split: q ∈ [s.pks.size, s_pp.pks.size) (key+colon+ws1+value+comma+ws1
+          -- range; route via s₁ pkRec preservation through colon transition) or
+          -- q ∈ [s_pp.pks.size, s_end.pks.size) (recursive IH disj).
+          intro q h_q h_q_ge
+          have h_eq_s1_s2 : s₁.pendingKeys.size = s₂.pendingKeys.size := h_size_pk.symm
+          have h_eq_s2_s3 : s₂.pendingKeys.size = s₃.pendingKeys.size := by rw [_h_pks_pp₃]
+          have h_eq_sc_spp : s_c.pendingKeys.size = s_pp.pendingKeys.size := by
+            rw [_h_pks_pp_pks]
+          by_cases h_q_lt_spp : q < s_pp.pendingKeys.size
+          · -- q ∈ [s.pks.size, s_pp.pks.size): pushed during key+value emit.
+            -- At s₁, q < s₁.pks.size requires q < s_pp.pks.size and chain monotonicity.
+            -- We need to identify whether q was pushed during key emit (q < s₁) or
+            -- during value emit (s₃ ≤ q < s_v) — the colon and ws1 don't push.
+            by_cases h_q_lt_s1 : q < s₁.pendingKeys.size
+            · -- Pushed during key emit.  At s₁: kind ∈ disj from _h_newkind_k.
+              -- Lift to s_end through colon transition + pkRec preservation.
+              have h_disj_s1 := _h_newkind_k q h_q_lt_s1 h_q_ge
+              have h_q_lt_s_end : q < s_end.pendingKeys.size :=
+                Nat.lt_of_lt_of_le h_q_lt_spp h_size_r
+              by_cases h_q_eq : q = s.pendingKeys.size
+              · subst h_q_eq; right; exact h_kd_s_end
+              · have h_q_lt_s2 : q < s₂.pendingKeys.size := h_eq_s1_s2 ▸ h_q_lt_s1
+                have h_q_lt_s3 : q < s₃.pendingKeys.size := h_eq_s2_s3 ▸ h_q_lt_s2
+                have h_q_lt_sv : q < s_v.pendingKeys.size :=
+                  Nat.lt_of_lt_of_le h_q_lt_s3 _h_size_v
+                have h_q_lt_sc : q < s_c.pendingKeys.size :=
+                  Nat.lt_of_lt_of_le h_q_lt_sv _h_size_c
+                have h_q_lt_spp' : q < s_pp.pendingKeys.size := h_eq_sc_spp ▸ h_q_lt_sc
+                have h_pks_at_s2 := h_pks_other_pk q h_q_lt_s1 h_q_lt_s2 h_q_eq
+                have h_kd_s2_s1 :
+                    (s₂.pendingKeys[q]'h_q_lt_s2).kind = (s₁.pendingKeys[q]'h_q_lt_s1).kind :=
+                  congrArg PendingKeyEntry.kind h_pks_at_s2
+                have h_kd_s3_s2 :
+                    (s₃.pendingKeys[q]'h_q_lt_s3).kind = (s₂.pendingKeys[q]'h_q_lt_s2).kind := by
+                  simp only [_h_pks_pp₃]
+                have ⟨_, h_kd_sv_s3⟩ := _h_pkRec_v q h_q_lt_s3 h_q_lt_sv
+                have ⟨_, h_kd_sc_sv⟩ := _h_pkRec_c q h_q_lt_sv h_q_lt_sc
+                have h_kd_spp_sc :
+                    (s_pp.pendingKeys[q]'h_q_lt_spp').kind
+                      = (s_c.pendingKeys[q]'h_q_lt_sc).kind := by
+                  simp only [_h_pks_pp_pks]
+                have ⟨_, h_kd_send_spp⟩ := h_pkRec_r q h_q_lt_spp' h_q_lt_s_end
+                rcases h_disj_s1 with h | h
+                · left; rw [h_kd_send_spp, h_kd_spp_sc, h_kd_sc_sv, h_kd_sv_s3,
+                            h_kd_s3_s2, h_kd_s2_s1]; exact h
+                · right; rw [h_kd_send_spp, h_kd_spp_sc, h_kd_sc_sv, h_kd_sv_s3,
+                              h_kd_s3_s2, h_kd_s2_s1]; exact h
+            · -- q ≥ s₁.pks.size: not pushed during key emit.  Colon and ws1
+              -- preserve size, so q ≥ s₃.pks.size.  Use _h_newkind_v (disj at s_v).
+              have h_q_ge_s1 : s₁.pendingKeys.size ≤ q := Nat.le_of_not_lt h_q_lt_s1
+              have h_q_ge_s3 : s₃.pendingKeys.size ≤ q := by
+                rw [← h_eq_s2_s3, ← h_eq_s1_s2]; exact h_q_ge_s1
+              -- q < s_v.pks.size? Could be ≥. Case-split.
+              by_cases h_q_lt_sv : q < s_v.pendingKeys.size
+              · -- pushed during value emit.  At s_v: disj from _h_newkind_v.
+                have h_disj_sv := _h_newkind_v q h_q_lt_sv h_q_ge_s3
+                have h_q_lt_sc : q < s_c.pendingKeys.size :=
+                  Nat.lt_of_lt_of_le h_q_lt_sv _h_size_c
+                have h_q_lt_spp' : q < s_pp.pendingKeys.size := h_eq_sc_spp ▸ h_q_lt_sc
+                have h_q_lt_s_end : q < s_end.pendingKeys.size :=
+                  Nat.lt_of_lt_of_le h_q_lt_spp' h_size_r
+                have ⟨_, h_kd_sc_sv⟩ := _h_pkRec_c q h_q_lt_sv h_q_lt_sc
+                have h_kd_spp_sc :
+                    (s_pp.pendingKeys[q]'h_q_lt_spp').kind
+                      = (s_c.pendingKeys[q]'h_q_lt_sc).kind := by
+                  simp only [_h_pks_pp_pks]
+                have ⟨_, h_kd_send_spp⟩ := h_pkRec_r q h_q_lt_spp' h_q_lt_s_end
+                rcases h_disj_sv with h | h
+                · left; rw [h_kd_send_spp, h_kd_spp_sc, h_kd_sc_sv]; exact h
+                · right; rw [h_kd_send_spp, h_kd_spp_sc, h_kd_sc_sv]; exact h
+              · -- q ≥ s_v.pks.size.  Comma and ws1 preserve size, so q ≥ s_pp.pks.size.
+                -- But that contradicts h_q_lt_spp; so actually q ∈ [s_v, s_c).
+                -- The comma's leaf-B newkind says kind = .unresolved at q ≥ s_v.pks.size.
+                have h_q_ge_sv : s_v.pendingKeys.size ≤ q := Nat.le_of_not_lt h_q_lt_sv
+                by_cases h_q_lt_sc : q < s_c.pendingKeys.size
+                · -- comma push at q ≥ s_v.pks.size: but comma preserves size!
+                  -- _h_size_c gives s_v.pks.size ≤ s_c.pks.size.  Need to confirm
+                  -- the comma's signature.  Use leaf-B newkind: kind = .unresolved.
+                  -- Wait, comma is pure (no push?).  Actually the leaf says preserves.
+                  -- We just need disj at s_pp.  pkRec preservation chain.
+                  -- For q ∈ [s_v.pks.size, s_c.pks.size), the comma's leaf-B newkind
+                  -- gives kind = .unresolved.
+                  have h_kd_unres := _h_newkind_c q h_q_lt_sc h_q_ge_sv
+                  have h_q_lt_spp' : q < s_pp.pendingKeys.size := h_eq_sc_spp ▸ h_q_lt_sc
+                  have h_q_lt_s_end : q < s_end.pendingKeys.size :=
+                    Nat.lt_of_lt_of_le h_q_lt_spp' h_size_r
+                  have h_kd_spp_sc :
+                      (s_pp.pendingKeys[q]'h_q_lt_spp').kind
+                        = (s_c.pendingKeys[q]'h_q_lt_sc).kind := by
+                    simp only [_h_pks_pp_pks]
+                  have ⟨_, h_kd_send_spp⟩ := h_pkRec_r q h_q_lt_spp' h_q_lt_s_end
+                  left; rw [h_kd_send_spp, h_kd_spp_sc]; exact h_kd_unres
+                · -- q ≥ s_c.pks.size.  ws1 preserves size, so q < s_pp.pks.size implies
+                  -- q < s_c.pks.size — contradiction.
+                  have h_q_ge_sc : s_c.pendingKeys.size ≤ q := Nat.le_of_not_lt h_q_lt_sc
+                  exact absurd h_q_lt_spp (Nat.not_lt_of_le (h_eq_sc_spp ▸ h_q_ge_sc))
+          · -- q ∈ [s_pp.pks.size, s_end.pks.size): use IH disj.
+            have h_q_ge_spp : s_pp.pendingKeys.size ≤ q := Nat.le_of_not_lt h_q_lt_spp
+            exact h_newkind_r q h_q h_q_ge_spp
         · rw [h_pks_r, _h_pks_pp_stk, _h_pks_c, _h_pks_v, h_pks_pp₃, h_pks_pk_pkr, _h_pks₁]
         · -- C-compose: first-pair resolved-key facts at index s.pendingKeys.size.
           intro _h_ne_pairs
@@ -11741,7 +11979,7 @@ theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inF
         ⟨['"'] ++ (escapeString s.content).toList ++ ['"'] ++ rest, s_state.col⟩ := by
       rwa [← h_chars]
     obtain ⟨s', h_snt, h_corr', h_fl', h_dp', h_ids', h_ek', h_col', h_tok', h_ska',
-            _h_line', h_atol', h_endline', h_stack', h_size', h_pkRec', _h_newkind',
+            _h_line', h_atol', h_endline', h_stack', h_size', h_pkRec', h_newkind',
             h_pks', h_token_push'⟩ :=
       scanNextToken_flow_scanDoubleQuoted s_state s.content rest hcorr' h_flow h_indent h_col
         h_atol (by intro h_poss; exact h_endline h_poss)
@@ -11756,7 +11994,7 @@ theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inF
             rwa [this] at hcorr')
         h_flow h_indent h_col (by decide) (by decide) (by decide) h_snt
     refine ⟨1, s', ScanChainGrew.single h_snt h_grew, h_corr', h_fl', h_dp', h_ids', h_ek',
-      ?_, ?_, ?_, _h_line', h_ska', ?_, ?_, ?_, ?_, ?_, h_size', h_pkRec', h_pks', ?_⟩
+      ?_, ?_, ?_, _h_line', h_ska', ?_, ?_, ?_, ?_, ?_, h_size', h_pkRec', ?_, h_pks', ?_⟩
     · exact h_col'
     · unfold ScannerState.inFlow; rw [h_fl']
       unfold ScannerState.inFlow at h_flow; exact h_flow
@@ -11766,6 +12004,9 @@ theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inF
     · exact h_endline'
     · exact h_stack'
     · exact FlowMonoChain.single h_snt (Nat.le_refl _) (by omega)
+    · -- 6c-ii-γ-3b-ii-predicate (2026-05-03): scalar — directly from leaf-A.
+      intro q h_q h_q_ge
+      exact Or.inl (h_newkind' q h_q h_q_ge)
     · -- gated first-key conjunct + 6c-ii-γ-2 bundled balance/no-outer conjunct.
       refine ⟨?_, ?_⟩
       · -- gated first-key conjunct (J.4.2.b-2d-key-chain-Part2-body-C-foundation-EmitScansInFlow-gated):
@@ -11832,7 +12073,7 @@ theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inF
     -- hcorr₀ now has ['['] ++ ... which is def-eq to '[' :: ...
     -- Step 1: Scan '[' with nested flow open
     obtain ⟨s₁, h_snt₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_ek₁, h_col₁, _h_line₁, h_atol₁,
-            h_endline₁, h_stack_endline₁, h_stack_pop₁, h_size₁, h_pkRec₁, _h_newkind₁,
+            h_endline₁, h_stack_endline₁, h_stack_pop₁, h_size₁, h_pkRec₁, h_newkind₁,
             h_pks_pop₁, h_open_push⟩ :=
       scanNextToken_flow_open_nested s_state
         ((emit.emitList items.toList).toList ++ [']'] ++ rest) hcorr₀ h_flow h_indent h_col
@@ -11860,7 +12101,7 @@ theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inF
       rw [List.append_assoc] at h_corr₁; exact h_corr₁
     obtain ⟨n₂, s₂, h_chain₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, h_ek₂, h_col₂, h_s2_inflow,
             h_s2_indent, _h_line₂, h_atol₂, h_endline₂, h_stack₂, h_fmc₂, h_size₂, h_pkRec₂,
-            h_pks₂, h_balfacts_body⟩ :=
+            h_newkind₂, h_pks₂, h_balfacts_body⟩ :=
       h_list_scan s₁ ([']'] ++ rest) h_corr₁_assoc h_s1_inflow (by rw [h_fl₁]; omega) h_s1_indent h_s1_col
         (by rw [h_ek₁]; exact h_ek)
         h_atol₁ -- AllTokensOnLine s₁ s₁.line (from flow_open_nested postcondition)
@@ -11872,7 +12113,7 @@ theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inF
       unfold StackEndLineOnLine at h_stack_endline₁ ⊢
       rw [h_stack₂, _h_line₂]; exact h_stack_endline₁
     obtain ⟨s₃, h_snt₃, h_corr₃, h_fl₃, h_dp₃, h_ids₃, h_ek₃, h_col₃, h_tok₃, h_ska₃,
-            _h_line₃, h_atol₃, h_endline₃, h_stack₃, h_size₃, h_pkRec₃, _h_newkind₃,
+            _h_line₃, h_atol₃, h_endline₃, h_stack₃, h_size₃, h_pkRec₃, h_newkind₃,
             _h_sk_restore₃, _h_pka_restore₃, _h_pks_pop₃, h_close_push⟩ :=
       scanNextToken_flow_close_seq_nested s₂ rest h_corr₂ h_s2_inflow h_s2_indent h_col₂ h_fl₂_ge2
         h_atol₂ h_stack_endline₂
@@ -11916,7 +12157,7 @@ theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inF
       (ScanChainGrew.single h_snt₁ h_grew₁).trans
         (h_chain₂.trans (ScanChainGrew.single h_snt₃ h_grew₃)),
       h_corr₃, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, h_ska₃, h_tok₃, ?_, ?_, ?_, h_fmc_all,
-      h_size_all, h_pkRec_all, ?_⟩
+      h_size_all, h_pkRec_all, ?_, ?_⟩
     · -- flowLevel: (fl+1) - 1 = fl
       rw [h_fl₃, h_fl₂, h_fl₁]; omega
     · rw [h_dp₃, h_dp₂, h_dp₁]
@@ -11939,6 +12180,21 @@ theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inF
     · -- simpleKeyStack: s₃.simpleKeyStack = s_state.simpleKeyStack
       -- Chain: close pops → list preserved → open pushed then pop cancels
       rw [h_stack₃, h_stack₂, h_stack_pop₁]
+    · -- 6c-ii-γ-3b-ii-predicate (2026-05-03): seq case.  Compose leaf-A `[`
+      -- (h_newkind₁ : kind = .unresolved) → body (h_newkind₂ : disj) → leaf-B
+      -- `]` (h_newkind₃ : kind = .unresolved) via `newkind_disj_compose`.
+      have h_newkind₁_disj :
+          ∀ q (h_q : q < s₁.pendingKeys.size) (_h_q_ge : s_state.pendingKeys.size ≤ q),
+            (s₁.pendingKeys[q]'h_q).kind = .unresolved ∨
+              (s₁.pendingKeys[q]'h_q).kind = .keyOnly :=
+        fun q h_q h_q_ge => Or.inl (h_newkind₁ q h_q h_q_ge)
+      have h_newkind₃_disj :
+          ∀ q (h_q : q < s₃.pendingKeys.size) (_h_q_ge : s₂.pendingKeys.size ≤ q),
+            (s₃.pendingKeys[q]'h_q).kind = .unresolved ∨
+              (s₃.pendingKeys[q]'h_q).kind = .keyOnly :=
+        fun q h_q h_q_ge => Or.inl (h_newkind₃ q h_q h_q_ge)
+      have h_newkind_s_s2 := newkind_disj_compose h_pkRec₂ h_newkind₁_disj h_newkind₂
+      exact newkind_disj_compose h_pkRec₃ h_newkind_s_s2 h_newkind₃_disj
     · -- pendingKeyStack equality + gated conjunct + 6c-ii-γ-2 bundled.
       refine ⟨?_, ?_, ?_⟩
       · -- pendingKeyStack: s₃.pendingKeyStack = s_state.pendingKeyStack
@@ -12108,8 +12364,8 @@ theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inF
     have hcorr₀ := hcorr; rw [h_chars] at hcorr₀
     -- Step 1: Scan '{' with nested flow open
     obtain ⟨s₁, h_snt₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_ek₁, h_col₁, _h_line₁, h_atol₁,
-            h_endline₁, h_stack_endline₁, h_stack_pop₁, h_size₁, h_pkRec₁, h_pks_pop₁, h_ska₁,
-            h_open_push⟩ :=
+            h_endline₁, h_stack_endline₁, h_stack_pop₁, h_size₁, h_pkRec₁, h_newkind₁,
+            h_pks_pop₁, h_ska₁, h_open_push⟩ :=
       scanNextToken_flow_open_mapping_nested s_state
         ((emit.emitPairList pairs.toList).toList ++ ['}'] ++ rest) hcorr₀ h_flow h_indent h_col
         h_atol h_endline
@@ -12138,7 +12394,7 @@ theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inF
       rw [List.append_assoc] at h_corr₁; exact h_corr₁
     obtain ⟨n₂, s₂, h_chain₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, h_ek₂, h_col₂, h_s2_inflow,
             h_s2_indent, _h_line₂, h_atol₂, h_endline₂, h_stack₂, h_fmc₂, h_size₂, h_pkRec₂,
-            h_pks₂, _h_first₂, _h_first_qs₂, h_balfacts_body⟩ :=
+            h_newkind₂, h_pks₂, _h_first₂, _h_first_qs₂, h_balfacts_body⟩ :=
       h_pair_scan s₁ (['}'] ++ rest) h_corr₁_assoc h_s1_inflow (by rw [h_fl₁]; omega) h_s1_indent h_s1_col
         (by rw [h_ek₁]; exact h_ek)
         h_atol₁
@@ -12151,7 +12407,7 @@ theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inF
       unfold StackEndLineOnLine at h_stack_endline₁ ⊢
       rw [h_stack₂, _h_line₂]; exact h_stack_endline₁
     obtain ⟨s₃, h_snt₃, h_corr₃, h_fl₃, h_dp₃, h_ids₃, h_ek₃, h_col₃, h_tok₃, h_ska₃,
-            _h_line₃, h_atol₃, h_endline₃, h_stack₃, h_size₃, h_pkRec₃, _h_newkind₃,
+            _h_line₃, h_atol₃, h_endline₃, h_stack₃, h_size₃, h_pkRec₃, h_newkind₃,
             _h_sk_restore₃, _h_pka_restore₃, _h_pks_pop₃, h_close_push⟩ :=
       scanNextToken_flow_close_mapping_nested s₂ rest h_corr₂ h_s2_inflow h_s2_indent h_col₂ h_fl₂_ge2
         h_atol₂ h_stack_endline₂
@@ -12195,7 +12451,7 @@ theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inF
       (ScanChainGrew.single h_snt₁ h_grew₁).trans
         (h_chain₂.trans (ScanChainGrew.single h_snt₃ h_grew₃)),
       h_corr₃, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, h_ska₃, h_tok₃, ?_, ?_, ?_, h_fmc_all,
-      h_size_all, h_pkRec_all, ?_⟩
+      h_size_all, h_pkRec_all, ?_, ?_⟩
     · rw [h_fl₃, h_fl₂, h_fl₁]; omega
     · rw [h_dp₃, h_dp₂, h_dp₁]
     · rw [h_ids₃, h_ids₂, h_ids₁]
@@ -12213,6 +12469,21 @@ theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inF
       exact h_endline₃
     · -- simpleKeyStack: s₃.simpleKeyStack = s_state.simpleKeyStack
       rw [h_stack₃, h_stack₂, h_stack_pop₁]
+    · -- 6c-ii-γ-3b-ii-predicate (2026-05-03): mapping case.  Compose leaf-A `{`
+      -- (h_newkind₁ : kind = .unresolved) → body (h_newkind₂ : disj) → leaf-B
+      -- `}` (h_newkind₃ : kind = .unresolved) via `newkind_disj_compose`.
+      have h_newkind₁_disj :
+          ∀ q (h_q : q < s₁.pendingKeys.size) (_h_q_ge : s_state.pendingKeys.size ≤ q),
+            (s₁.pendingKeys[q]'h_q).kind = .unresolved ∨
+              (s₁.pendingKeys[q]'h_q).kind = .keyOnly :=
+        fun q h_q h_q_ge => Or.inl (h_newkind₁ q h_q h_q_ge)
+      have h_newkind₃_disj :
+          ∀ q (h_q : q < s₃.pendingKeys.size) (_h_q_ge : s₂.pendingKeys.size ≤ q),
+            (s₃.pendingKeys[q]'h_q).kind = .unresolved ∨
+              (s₃.pendingKeys[q]'h_q).kind = .keyOnly :=
+        fun q h_q h_q_ge => Or.inl (h_newkind₃ q h_q h_q_ge)
+      have h_newkind_s_s2 := newkind_disj_compose h_pkRec₂ h_newkind₁_disj h_newkind₂
+      exact newkind_disj_compose h_pkRec₃ h_newkind_s_s2 h_newkind₃_disj
     · -- pendingKeyStack equality + gated conjunct + 6c-ii-γ-2 bundled.
       refine ⟨?_, ?_, ?_⟩
       · -- pendingKeyStack: s₃.pendingKeyStack = s_state.pendingKeyStack
@@ -13865,7 +14136,7 @@ theorem emitPairList_body_filtered_characterization
   have h_scan := emitPairList_scans_nonempty pairs h_ne h_all_k h_all_v
   obtain ⟨n, s', h_chain, h_corr', h_fl', h_dp', h_ids', h_ek', h_col', h_inflow',
           h_indent', h_line', h_atol', h_endline', h_stack', h_fmc, _h_size, _h_pkRec,
-          _h_pks_eq, h_first, h_first_qs, _h_balfacts_body⟩ :=
+          _h_newkind, _h_pks_eq, h_first, h_first_qs, _h_balfacts_body⟩ :=
     h_scan s rest h_corr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_ska
   have h_n_pos : n ≥ 1 := by
     match n, h_chain with
@@ -14917,10 +15188,29 @@ theorem emitPairList_body_linearise_characterization
     --         `s.pendingKeys.size ≤ q < s'.pendingKeys.size`.  6 consumer
     --         destructure binders updated (4 ws1 sites + 2 value_pkResolve
     --         sites).  ~30 lines.
-    --       - **γ-3b-ii-predicate (PENDING)**: predicate definitions +
-    --         composition discharge in `*_empty` + `emit_scans_in_flow`
-    --         + `emitList_scans_nonempty` + `emitPairList_scans_nonempty`.
-    --         ~120 lines.
+    --       - **γ-3b-ii-predicate (DONE 2026-05-03)**: extended
+    --         `EmitScansInFlow` / `EmitListScansInFlow` /
+    --         `EmitPairListScansInFlow` predicate definitions with the
+    --         disjunctive new-kind conjunct
+    --         `∀ q ∈ [s.pks.sz, s'.pks.sz), kind ∈ {.unresolved, .keyOnly}`
+    --         (placed between pkRec preservation and pendingKeyStack
+    --         equality).  Discharge in `emitList_scans_empty` /
+    --         `emitPairList_scans_empty` (vacuous, size preserved); in
+    --         `emit_scans_in_flow`'s scalar/seq/map cases via the new
+    --         `newkind_disj_compose` helper composing leaf-A `[`/`{`/scalar
+    --         (kind = .unresolved → Or.inl) → body (disj from inner predicate)
+    --         → leaf-B `]`/`}` (kind = .unresolved → Or.inl); in
+    --         `emitList_scans_nonempty` singleton (direct from inner) +
+    --         cons (compose key emit + comma + ws1 + recurse via
+    --         `newkind_disj_compose`); in `emitPairList_scans_nonempty`
+    --         singleton + cons via direct case-split discharge (handles
+    --         the colon's `.unresolved → .keyOnly` transition at
+    --         `s.pks.size` explicitly).  Also extended leaves-A coverage
+    --         to `scanNextToken_flow_open_mapping_nested` (was missing).
+    --         12 consumer destructure binders updated to bind the new
+    --         conjunct.  Build green 453/453 jobs; sorry count unchanged
+    --         at 9.  ~250 lines net.  See manifest entry
+    --         `J.4.2.b-2d-key-chain-Part3-final-discharge-bridge-6c-ii-γ-3b-ii-predicate`.
     --   * **Sub-step 6c-ii-γ-3b-iii (PENDING)**: final discharge.  Apply
     --     γ-3b-i to obtain `(j_k, p_k, acc')` with `acc'.size = k + 1`
     --     and transport eq.  Apply γ-1 to identify pair index `i ≥ 1`
