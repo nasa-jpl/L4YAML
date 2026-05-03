@@ -14628,7 +14628,9 @@ identify the matching pair index `i ≥ 1`. -/
     -/
 theorem linearise_outer_flowEntry_decode
     (tokens : Array (Positioned YamlToken))
-    (pks : Array PendingKeyEntry) :
+    (pks : Array PendingKeyEntry)
+    (h_idx_le_tok :
+      ∀ r (h : r < pks.size), (pks[r]'h).insertBeforeIdx ≤ tokens.size) :
     ∀ (n j p k : Nat) (acc : Array (Positioned YamlToken)),
       (tokens.size - j) + (pks.size - p) = n →
       p ≤ pks.size →
@@ -14644,7 +14646,16 @@ theorem linearise_outer_flowEntry_decode
             p ≤ p_k ∧ p_k ≤ pks.size ∧
             linearise.go tokens pks j p acc
               = linearise.go tokens pks (j_k + 1) p_k acc' ∧
-            acc'.size = k + 1 := by
+            acc'.size = k + 1 ∧
+            -- 6c-ii-γ-3b-iii-A (2026-05-03): ∀ r ∈ [p, p_k) with
+            -- r < pks.size, pks[r].insertBeforeIdx ≤ j_k.  Intrinsic
+            -- to linearise.go's execution: splices that fired during
+            -- the walk to (j_k+1, p_k, acc') had insertBeforeIdx ≤
+            -- cursor at fire time ≤ j_k (cursor is monotone).  Tail-
+            -- splice fires (j ≥ tokens.size) covered by the precondition
+            -- `pks[r].insertBeforeIdx ≤ tokens.size ≤ j`.
+            (∀ r (_h_r_ge : p ≤ r) (_h_r_lt : r < p_k) (h_r_pks : r < pks.size),
+              (pks[r]'h_r_pks).insertBeforeIdx ≤ j_k) := by
   intro n
   induction n with
   | zero =>
@@ -14657,10 +14668,16 @@ theorem linearise_outer_flowEntry_decode
     intro j p k acc h_meas h_p_le h_acc_le_k h_lt h_fe
     -- Splice handler: cases 1 (insertBeforeIdx ≤ j) and 3 (tail-splice).
     -- Both share the step shape `linearise.go ... = linearise.go ... j (p+1) (acc ++ expandKind e)`.
+    -- Caller passes `h_e_idx_le_j : e.insertBeforeIdx ≤ j` (true in case 1
+    -- by `hsplice`; in case 3 derived from `h_idx_le_tok p hp` + `j ≥
+    -- tokens.size`).  This pins down `e.insertBeforeIdx ≤ j ≤ j_k` so
+    -- the new γ-3b-iii-A conjunct discharges for `r = p`.
     have splice_handler : ∀ (e : PendingKeyEntry)
         (h_p1_le : p + 1 ≤ pks.size)
         (h_step : linearise.go tokens pks j p acc
-                    = linearise.go tokens pks j (p + 1) (acc ++ expandKind e)),
+                    = linearise.go tokens pks j (p + 1) (acc ++ expandKind e))
+        (h_e_idx_le_j : e.insertBeforeIdx ≤ j)
+        (h_e_eq : ∀ (h_p : p < pks.size), e = (pks[p]'h_p)),
         (tokens.size - j) + (pks.size - (p + 1)) = n →
         ∃ (j_k : Nat) (h_j_k_lt : j_k < tokens.size),
           j ≤ j_k ∧
@@ -14671,8 +14688,10 @@ theorem linearise_outer_flowEntry_decode
             p ≤ p_k ∧ p_k ≤ pks.size ∧
             linearise.go tokens pks j p acc
               = linearise.go tokens pks (j_k + 1) p_k acc' ∧
-            acc'.size = k + 1 := by
-      intro e h_p1_le h_step h_meas'
+            acc'.size = k + 1 ∧
+            (∀ r (_h_r_ge : p ≤ r) (_h_r_lt : r < p_k) (h_r_pks : r < pks.size),
+              (pks[r]'h_r_pks).insertBeforeIdx ≤ j_k) := by
+      intro e h_p1_le h_step h_e_idx_le_j h_e_eq h_meas'
       have h_size_split : (acc ++ expandKind e).size = acc.size + (expandKind e).size := by
         rw [Array.size_append]
       have h_lt' : k < (linearise.go tokens pks j (p + 1) (acc ++ expandKind e)).size :=
@@ -14702,10 +14721,10 @@ theorem linearise_outer_flowEntry_decode
       · -- k beyond extension; recurse via ih
         have h_acc'_le_k : (acc ++ expandKind e).size ≤ k := Nat.le_of_not_lt h_in_ext
         obtain ⟨j_k, h_j_k_lt, h_j_le, h_tok_fe, h_bal,
-                p_k, acc', h_p1_le_pk, h_pk_le, h_walk_eq, h_acc'_size⟩ :=
+                p_k, acc', h_p1_le_pk, h_pk_le, h_walk_eq, h_acc'_size, h_idx_inv⟩ :=
           ih j (p + 1) k (acc ++ expandKind e) h_meas' h_p1_le h_acc'_le_k h_lt' h_fe'
         refine ⟨j_k, h_j_k_lt, h_j_le, h_tok_fe, ?_, p_k, acc', by omega, h_pk_le,
-                ?_, h_acc'_size⟩
+                ?_, h_acc'_size, ?_⟩
         · rw [h_step]
           have h_acc_le_acc' : acc.size ≤ (acc ++ expandKind e).size := by
             rw [h_size_split]; omega
@@ -14726,6 +14745,16 @@ theorem linearise_outer_flowEntry_decode
             simp [flowBracketBalance]
           rw [h_bal_splice, Int.zero_add]
         · rw [h_step]; exact h_walk_eq
+        · -- 6c-ii-γ-3b-iii-A: idx-inv conjunct.  For r = p: e.insertBeforeIdx
+          -- ≤ j ≤ j_k.  For r ∈ [p+1, p_k): from IH `h_idx_inv`.
+          intro r h_r_ge h_r_lt h_r_pks
+          by_cases h_r_eq_p : r = p
+          · subst h_r_eq_p
+            have h_e_at_p : e = (pks[r]'h_r_pks) := h_e_eq h_r_pks
+            rw [← h_e_at_p]
+            exact Nat.le_trans h_e_idx_le_j h_j_le
+          · have h_p_lt_r : p + 1 ≤ r := by omega
+            exact h_idx_inv r h_p_lt_r h_r_lt h_r_pks
     -- Copy handler: cases 2 (¬splice, j < tokens.size) and 4 (p ≥ pks.size, j < tokens.size).
     -- Both share the step shape `linearise.go ... = linearise.go ... (j+1) p (acc.push tokens[j])`.
     have copy_handler : ∀ (h_j_lt : j < tokens.size)
@@ -14741,7 +14770,9 @@ theorem linearise_outer_flowEntry_decode
             p ≤ p_k ∧ p_k ≤ pks.size ∧
             linearise.go tokens pks j p acc
               = linearise.go tokens pks (j_k + 1) p_k acc' ∧
-            acc'.size = k + 1 := by
+            acc'.size = k + 1 ∧
+            (∀ r (_h_r_ge : p ≤ r) (_h_r_lt : r < p_k) (h_r_pks : r < pks.size),
+              (pks[r]'h_r_pks).insertBeforeIdx ≤ j_k) := by
       intro h_j_lt h_step h_meas'
       have h_size_push : (acc.push (tokens[j]'h_j_lt)).size = acc.size + 1 := by
         rw [Array.size_push]
@@ -14769,19 +14800,22 @@ theorem linearise_outer_flowEntry_decode
           rw [h_at_push, h_acc_at] at h_fe'; exact h_fe'
         -- Walk-state: terminating step gives state (j+1, p, acc.push tokens[j])
         -- with size acc.size + 1 = k + 1.  The transport is exactly h_step.
+        -- 6c-ii-γ-3b-iii-A: the idx-inv conjunct is vacuous since p_k = p
+        -- (range [p, p) is empty).
         refine ⟨j, h_j_lt, Nat.le_refl _, h_fe_tok, ?_,
-                p, acc.push (tokens[j]'h_j_lt), Nat.le_refl _, h_p_le, h_step, ?_⟩
+                p, acc.push (tokens[j]'h_j_lt), Nat.le_refl _, h_p_le, h_step, ?_, ?_⟩
         · simp [flowBracketBalance]
         · rw [h_size_push]
+        · intro r h_r_ge h_r_lt _; omega
       · -- k > acc.size: recurse via ih
         have h_acc_lt : acc.size < k := by omega
         have h_acc_push_le_k : (acc.push (tokens[j]'h_j_lt)).size ≤ k := by
           rw [h_size_push]; omega
         obtain ⟨j_k, h_j_k_lt, h_jp1_le, h_tok_fe, h_bal,
-                p_k, acc', h_p_le_pk, h_pk_le, h_walk_eq, h_acc'_size⟩ :=
+                p_k, acc', h_p_le_pk, h_pk_le, h_walk_eq, h_acc'_size, h_idx_inv⟩ :=
           ih (j + 1) p k (acc.push (tokens[j]'h_j_lt)) h_meas' h_p_le h_acc_push_le_k h_lt' h_fe'
         refine ⟨j_k, h_j_k_lt, by omega, h_tok_fe, ?_,
-                p_k, acc', h_p_le_pk, h_pk_le, ?_, h_acc'_size⟩
+                p_k, acc', h_p_le_pk, h_pk_le, ?_, h_acc'_size, ?_⟩
         · rw [h_step]
           have h_acc_le_pushsize : acc.size ≤ (acc.push (tokens[j]'h_j_lt)).size := by
             rw [h_size_push]; omega
@@ -14810,23 +14844,35 @@ theorem linearise_outer_flowEntry_decode
           rw [flowBracketBalance_single tokens j (by rw [Array.length_toList]; omega)]
           rfl
         · rw [h_step]; exact h_walk_eq
+        · -- 6c-ii-γ-3b-iii-A: idx-inv conjunct.  Copy step doesn't push
+          -- new pks; IH directly gives `pks[r].insertBeforeIdx ≤ j_k` for
+          -- r ∈ [p, p_k).
+          intro r h_r_ge h_r_lt h_r_pks
+          exact h_idx_inv r h_r_ge h_r_lt h_r_pks
     -- Main case-split on the linearise.go step.
     by_cases hp : p < pks.size
     · by_cases hsplice : (pks[p]'hp).insertBeforeIdx ≤ j
-      · -- Case 1: splice fires
+      · -- Case 1: splice fires (insertBeforeIdx ≤ j directly).
         exact splice_handler (pks[p]'hp) hp
           (L4YAML.Proofs.ScannerLinearise.linearise_go_step_splice tokens pks j p acc hp hsplice)
+          hsplice (fun _ => rfl)
           (by omega)
       · by_cases hk : j < tokens.size
         · -- Case 2: copy fires
           exact copy_handler hk
             (L4YAML.Proofs.ScannerLinearise.linearise_go_step_copy tokens pks j p acc
               hp hsplice hk) (by omega)
-        · -- Case 3: tail-splice (k ≥ tokens.size, ¬insertBeforeIdx ≤ k)
+        · -- Case 3: tail-splice (k ≥ tokens.size, ¬insertBeforeIdx ≤ k).
+          -- `e.insertBeforeIdx ≤ tokens.size ≤ j` from precondition `h_idx_le_tok`.
           have h_step : linearise.go tokens pks j p acc
                         = linearise.go tokens pks j (p + 1) (acc ++ expandKind (pks[p]'hp)) := by
             rw [linearise.go]; simp [hp, hsplice, hk]
-          exact splice_handler (pks[p]'hp) hp h_step (by omega)
+          have h_e_idx_le_j : (pks[p]'hp).insertBeforeIdx ≤ j := by
+            have h_idx_le := h_idx_le_tok p hp
+            have h_tok_le_j : tokens.size ≤ j := Nat.le_of_not_lt hk
+            exact Nat.le_trans h_idx_le h_tok_le_j
+          exact splice_handler (pks[p]'hp) hp h_step h_e_idx_le_j
+            (fun _ => rfl) (by omega)
     · by_cases hk : j < tokens.size
       · -- Case 4: token-copy via step_token (p ≥ pks.size)
         exact copy_handler hk
@@ -14846,6 +14892,8 @@ theorem linearise_outer_flowEntry_decode
 theorem linearise_outer_flowEntry_decode_top
     (tokens : Array (Positioned YamlToken))
     (pks : Array PendingKeyEntry)
+    (h_idx_le_tok :
+      ∀ r (h : r < pks.size), (pks[r]'h).insertBeforeIdx ≤ tokens.size)
     (k : Nat)
     (h_lt : k < (linearise tokens pks).size)
     (h_fe : ((linearise tokens pks)[k]'h_lt).val = .flowEntry) :
@@ -14857,14 +14905,19 @@ theorem linearise_outer_flowEntry_decode_top
         p_k ≤ pks.size ∧
         linearise tokens pks
           = L4YAML.Scanner.linearise.go tokens pks (j_k + 1) p_k acc' ∧
-        acc'.size = k + 1 := by
+        acc'.size = k + 1 ∧
+        -- 6c-ii-γ-3b-iii-A (2026-05-03): ∀ r < p_k (with r < pks.size),
+        -- pks[r].insertBeforeIdx ≤ j_k.  Specialisation of the inner
+        -- lemma's idx-inv conjunct at p = 0 (range [0, p_k)).
+        (∀ r (_h_r_lt : r < p_k) (h_r_pks : r < pks.size),
+          (pks[r]'h_r_pks).insertBeforeIdx ≤ j_k) := by
   have h_lt_go : k < (linearise.go tokens pks 0 0 #[]).size := h_lt
   have h_fe_go : ((linearise.go tokens pks 0 0 #[])[k]'h_lt_go).val = .flowEntry := h_fe
   obtain ⟨j_k, h_j_k_lt, _h_zero_le, h_tok_fe, h_bal,
-          p_k, acc', _h_zero_le_pk, h_pk_le, h_walk_eq, h_acc'_size⟩ :=
-    linearise_outer_flowEntry_decode tokens pks _ 0 0 k #[] rfl
+          p_k, acc', _h_zero_le_pk, h_pk_le, h_walk_eq, h_acc'_size, h_idx_inv⟩ :=
+    linearise_outer_flowEntry_decode tokens pks h_idx_le_tok _ 0 0 k #[] rfl
       (Nat.zero_le _) (by simp) h_lt_go h_fe_go
-  refine ⟨j_k, h_j_k_lt, h_tok_fe, ?_, p_k, acc', h_pk_le, ?_, h_acc'_size⟩
+  refine ⟨j_k, h_j_k_lt, h_tok_fe, ?_, p_k, acc', h_pk_le, ?_, h_acc'_size, ?_⟩
   · show flowBracketBalance (linearise tokens pks) 0 k = flowBracketBalance tokens 0 j_k
     have h_eq : (linearise tokens pks) = linearise.go tokens pks 0 0 #[] := rfl
     have h_acc_zero : (#[] : Array (Positioned YamlToken)).size = 0 := rfl
@@ -14875,6 +14928,8 @@ theorem linearise_outer_flowEntry_decode_top
     have h_eq : (linearise tokens pks) = linearise.go tokens pks 0 0 #[] := rfl
     rw [h_eq]
     exact h_walk_eq
+  · intro r h_r_lt h_r_pks
+    exact h_idx_inv r (Nat.zero_le _) h_r_lt h_r_pks
 
 /-! ### J.4.2.b-2d — Linearise-shape body characterization for `emitPairList`
 
@@ -15211,14 +15266,52 @@ theorem emitPairList_body_linearise_characterization
     --         conjunct.  Build green 453/453 jobs; sorry count unchanged
     --         at 9.  ~250 lines net.  See manifest entry
     --         `J.4.2.b-2d-key-chain-Part3-final-discharge-bridge-6c-ii-γ-3b-ii-predicate`.
-    --   * **Sub-step 6c-ii-γ-3b-iii (PENDING)**: final discharge.  Apply
-    --     γ-3b-i to obtain `(j_k, p_k, acc')` with `acc'.size = k + 1`
-    --     and transport eq.  Apply γ-1 to identify pair index `i ≥ 1`
-    --     with `j_k + 1 = pks[qs[i]].insertBeforeIdx`.  Walk from
-    --     `(j_k+1, p_k, acc')` through unresolved entries (size 0) to
-    --     `(j_k+1, qs[i], acc'')` with `acc''.size = k + 1`, using
-    --     γ-3b-ii's flow-kind restriction.  Apply
-    --     `linearise_splice_keyonly_at_index`.  Sorry count: 9 → 8.
+    --   * **Sub-step 6c-ii-γ-3b-iii (decomposed 2026-05-03 after
+    --     prerequisite investigation)**: original plan assumed walking
+    --     `(j_k+1, p_k, acc') → (j_k+1, qs[i], acc'')` through
+    --     `.unresolved` entries was straightforward given γ-3b-ii's
+    --     kind restriction; investigation revealed two missing
+    --     prerequisites: (a) γ-3b-i's strengthened decode lacks a
+    --     fact tying `p_k` to `j_k` (need `pks[r].insertBeforeIdx ≤
+    --     j_k` for `r < p_k` to derive `qs[i] ≥ p_k`), (b) save-time
+    --     monotonicity of `pks[..].insertBeforeIdx` is required
+    --     for the splice loop to advance through `[p_k, qs[i])`
+    --     without blocking on an out-of-order entry — currently
+    --     captured by `LineariseFit` in `ScannerCorrectness.lean`
+    --     but not threaded through any of the three flow-context
+    --     predicates.  Decomposed into:
+    --       - **γ-3b-iii-A (DONE 2026-05-03, ~70 lines)**: strengthened
+    --         `linearise_outer_flowEntry_decode` and `_top` with the
+    --         new conjunct `∀ r ∈ [p, p_k) (with r < pks.size),
+    --         pks[r].insertBeforeIdx ≤ j_k`.  Added precondition
+    --         `h_idx_le_tok : ∀ r < pks.size, pks[r].insertBeforeIdx ≤
+    --         tokens.size` (rules out the tail-splice case where
+    --         insertBeforeIdx could exceed `j_k`).  Discharge in the
+    --         induction structure: splice handler takes new arguments
+    --         `h_e_idx_le_j : e.insertBeforeIdx ≤ j` (true in case 1
+    --         directly, in case 3 derived from `h_idx_le_tok` + j ≥
+    --         tokens.size) and `h_e_eq` (identifying e with pks[p]) so
+    --         the new conjunct's `r = p` sub-case rewrites back to
+    --         pks[r] form before applying the inequality chain
+    --         e.insertBeforeIdx ≤ j ≤ j_k; `r ∈ [p+1, p_k)` sub-case
+    --         delegates to IH.  Copy handler propagates IH unchanged
+    --         (no new pks).  Terminating copy step (k = acc.size) gives
+    --         vacuous discharge (p_k = p, range empty).  Sorry count
+    --         unchanged at 9.  See manifest entry
+    --         `J.4.2.b-2d-key-chain-Part3-final-discharge-bridge-6c-ii-γ-3b-iii-A`.
+    --       - **γ-3b-iii-B (PENDING, ~250–400 lines)**: add save-time
+    --         monotonicity conjunct to all three predicates,
+    --         discharge in leaf + composition + recursive sites
+    --         (parallels γ-3b-ii-predicate's scope).
+    --       - **γ-3b-iii-C (PENDING, ~80 lines)**: add
+    --         `linearise_walk_through_unresolved_keyOnly` lemma to
+    --         `Proofs/Scanner/ScannerLinearise.lean` (induction on
+    --         `q - p`; .unresolved fires advance `p` without
+    --         changing `acc`, .keyOnly fires apply Foundation B).
+    --       - **γ-3b-iii-D (PENDING, sorry 9 → 8, ~80 lines)**:
+    --         apply γ-3b-iii-A's decode + γ-3b-iii-B's save-time
+    --         mono + γ-3b-iii-C's walk lemma + γ-1's exhaustiveness
+    --         to discharge Part (3).
     --
     -- Sub-step 6b dispatched the easier 6a-i1-lift sorry (cons-case `i = 1`
     -- predecessor-flowEntry lift via `FlowMonoChain_preserves_existing_tokens`).
