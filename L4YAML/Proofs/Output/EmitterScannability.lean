@@ -12372,6 +12372,116 @@ theorem emitPairList_body_filtered_characterization
   · -- Part 3: After every outer-level flowEntry, next is .key
     sorry
 
+/-! ### J.4.2.b-2d-key-chain-Part3 sub-step 6c-ii-α (2026-05-02):
+    bracket-balance preservation through `linearise.go`
+
+Bracket-balance preservation is the foundational mechanism for the
+inversion-direction discharge of `emitPairList_body_linearise_characterization`
+Part (3): an outer-level `.flowEntry` in `linearise` (balance = 0) corresponds
+to an outer-level `.flowEntry` in `s'.tokens` at the matching token-cursor
+position.
+
+Spliced tokens (`.key`, `.blockMappingStart` from `expandKind`) all have
+`flowBracketDelta = 0`, so they never affect cumulative bracket count.
+Token-copy steps push `tokens[j]`, advancing both `linearise`'s and
+`tokens`'s bracket balances by the same `flowBracketDelta tokens[j].val`.
+Therefore `flowBracketBalance acc 0 acc.size = flowBracketBalance tokens 0 j`
+is invariant across the walk.
+
+Sub-step 6c-ii-β (forthcoming) consumes this preservation to invert
+`linearise[k] = .flowEntry` ∧ outer-level into `s'.tokens[j_k] = .flowEntry`
+∧ outer-level, then chain-side `qs` enumeration yields the matching
+pair index `i ≥ 1`. -/
+
+/-- Splice tokens contributed by `expandKind` (`.key`, `.blockMappingStart`)
+    have `flowBracketDelta = 0`.  Trivial corollary of `expandKind_val_neutral`
+    (the splice tokens are never flow brackets). -/
+theorem expandKind_flowBracketDelta_zero (e : PendingKeyEntry)
+    (i : Nat) (h : i < (expandKind e).size) :
+    flowBracketDelta (expandKind e)[i].val = 0 := by
+  rcases L4YAML.Proofs.ScannerLinearise.expandKind_val_neutral e i h with h_key | h_bms
+  · rw [h_key]; rfl
+  · rw [h_bms]; rfl
+
+/-- Pushing one token to `acc` and extending the balance range by 1 picks up
+    the new token's `flowBracketDelta`.  Builds on `flowBracketBalance_compose`
+    + `flowBracketBalance_push` + `flowBracketBalance_single`. -/
+theorem flowBracketBalance_push_extend
+    (acc : Array (Positioned YamlToken))
+    (tok : Positioned YamlToken) (lo : Nat) (h_lo : lo ≤ acc.size) :
+    flowBracketBalance (acc.push tok) lo (acc.size + 1)
+      = flowBracketBalance acc lo acc.size + flowBracketDelta tok.val := by
+  rw [flowBracketBalance_compose (acc.push tok) lo acc.size (acc.size + 1)
+        h_lo (Nat.le_succ _)]
+  rw [flowBracketBalance_push acc tok lo acc.size (Nat.le_refl _)]
+  congr 1
+  -- balance over [acc.size, acc.size + 1] = flowBracketDelta tok.val
+  have h_lt : acc.size < (acc.push tok).toList.length := by
+    rw [Array.length_toList, Array.size_push]; omega
+  rw [flowBracketBalance_single (acc.push tok) acc.size h_lt]
+  congr 1
+  -- (acc.push tok).toList[acc.size] = tok
+  have h_idx_eq : (acc.push tok).toList[acc.size]'h_lt = tok := by
+    have h_arr_lt : acc.size < (acc.push tok).size := by rw [Array.size_push]; omega
+    have h_arr_eq : (acc.push tok)[acc.size]'h_arr_lt = tok :=
+      Array.getElem_push_eq (xs := acc) (x := tok)
+    exact h_arr_eq
+  rw [h_idx_eq]
+
+/-- Splice step: `acc ++ expandKind e` extends `acc` by 0, 1, or 2 tokens,
+    each with `flowBracketDelta = 0`.  The bracket balance is unchanged
+    over the extended range.  Proof by case analysis on `e.kind`, applying
+    `flowBracketBalance_push_extend` once or twice. -/
+theorem flowBracketBalance_splice_unchanged
+    (acc : Array (Positioned YamlToken)) (e : PendingKeyEntry)
+    (lo : Nat) (h_lo : lo ≤ acc.size) :
+    flowBracketBalance (acc ++ expandKind e) lo (acc.size + (expandKind e).size)
+      = flowBracketBalance acc lo acc.size := by
+  match h_kind : e.kind with
+  | .unresolved =>
+    have h_exp : expandKind e = (#[] : Array (Positioned YamlToken)) := by
+      simp [expandKind, h_kind]
+    rw [h_exp]
+    rw [show (#[] : Array (Positioned YamlToken)).size = 0 from rfl]
+    rw [show acc ++ (#[] : Array (Positioned YamlToken)) = acc from Array.append_empty]
+    rw [Nat.add_zero]
+  | .keyOnly =>
+    have h_exp : expandKind e = #[⟨e.pos, .key, e.pos⟩] := by
+      simp [expandKind, h_kind]
+    rw [h_exp]
+    rw [show acc ++ (#[⟨e.pos, .key, e.pos⟩] : Array (Positioned YamlToken))
+            = acc.push ⟨e.pos, .key, e.pos⟩ from rfl]
+    rw [show (#[⟨e.pos, .key, e.pos⟩] : Array (Positioned YamlToken)).size = 1 from rfl]
+    rw [flowBracketBalance_push_extend acc ⟨e.pos, .key, e.pos⟩ lo h_lo]
+    rw [show flowBracketDelta (Positioned.mk e.pos YamlToken.key e.pos).val = 0 from rfl]
+    rw [Int.add_zero]
+  | .blockMappingStartAndKey =>
+    have h_exp : expandKind e
+                  = #[⟨e.pos, .blockMappingStart, e.pos⟩, ⟨e.pos, .key, e.pos⟩] := by
+      simp [expandKind, h_kind]
+    rw [h_exp]
+    rw [show acc ++ (#[⟨e.pos, .blockMappingStart, e.pos⟩,
+                       ⟨e.pos, .key, e.pos⟩] : Array (Positioned YamlToken))
+            = (acc.push ⟨e.pos, .blockMappingStart, e.pos⟩).push ⟨e.pos, .key, e.pos⟩ from rfl]
+    rw [show (#[⟨e.pos, .blockMappingStart, e.pos⟩,
+                ⟨e.pos, .key, e.pos⟩] : Array (Positioned YamlToken)).size = 2 from rfl]
+    -- balance over [lo, acc.size + 2] = balance over [lo, (acc.push bms).size + 1]
+    have h_lo' : lo ≤ (acc.push ⟨e.pos, .blockMappingStart, e.pos⟩).size := by
+      rw [Array.size_push]; omega
+    have h_size_two_eq : acc.size + 2
+                          = (acc.push ⟨e.pos, .blockMappingStart, e.pos⟩).size + 1 := by
+      rw [Array.size_push]
+    rw [h_size_two_eq]
+    rw [flowBracketBalance_push_extend (acc.push ⟨e.pos, .blockMappingStart, e.pos⟩)
+          ⟨e.pos, .key, e.pos⟩ lo h_lo']
+    rw [show flowBracketDelta (Positioned.mk e.pos YamlToken.key e.pos).val = 0 from rfl]
+    rw [Int.add_zero]
+    rw [Array.size_push]
+    rw [flowBracketBalance_push_extend acc ⟨e.pos, .blockMappingStart, e.pos⟩ lo h_lo]
+    rw [show flowBracketDelta (Positioned.mk e.pos YamlToken.blockMappingStart e.pos).val
+            = 0 from rfl]
+    rw [Int.add_zero]
+
 /-! ### J.4.2.b-2d — Linearise-shape body characterization for `emitPairList`
 
 Linearise-shape variant of `emitPairList_body_filtered_characterization` for
@@ -12526,7 +12636,7 @@ theorem emitPairList_body_linearise_characterization
     -- has `kind = .keyOnly` and the linearise walk reaches state `(j, p, acc)`
     -- with `acc.size = k + 1` and `pks[p].insertBeforeIdx ≤ j`.
     --
-    -- **Sub-task 6c-ii-bridge-inversion (sorry'd, deferred to a future cadence)**:
+    -- **Sub-task 6c-ii-bridge-inversion (sorry'd, decomposed across sub-steps)**:
     -- The forward direction (each pair contributes a `.flowEntry → .key` pair
     -- at consecutive linearise positions `(pks[qs[i]].insertBeforeIdx - 1 +
     -- P(qs[i]), pks[qs[i]].insertBeforeIdx + P(qs[i]))` for `i ≥ 1`) is now
@@ -12542,15 +12652,29 @@ theorem emitPairList_body_linearise_characterization
     -- linearise position `k`, identify the unique pair index `i ≥ 1` such
     -- that `k + 1 = pks[qs[i]].insertBeforeIdx + P(qs[i])` — requires
     -- bracket-balance accounting to enumerate all outer-level flowEntries
-    -- and rule out any coming from inner flow scopes.  This is a
-    -- significant proof artifact (separate from the chain-side facts already
-    -- in scope) and is the remaining sub-step 6c-ii.
+    -- and rule out any coming from inner flow scopes.  Decomposed into:
+    --   * **Sub-step 6c-ii-α (DONE 2026-05-02)**: bracket-balance algebra
+    --     helpers — `expandKind_flowBracketDelta_zero`,
+    --     `flowBracketBalance_push_extend`, `flowBracketBalance_splice_unchanged`.
+    --     These establish that splice tokens contribute 0 to bracket balance and
+    --     that `linearise.go`'s push/append steps update balance predictably.
+    --   * **Sub-step 6c-ii-β (PENDING)**: bracket-balance preservation lemma
+    --     `linearise_go_walk_flowBracketBalance` — the parallel induction over
+    --     `linearise.go`'s lex-measure proving
+    --     `flowBracketBalance acc' acc.size acc'.size = flowBracketBalance tokens j j'`
+    --     for any walk transport `(j, p, acc) → (j', p', acc')`.
+    --   * **Sub-step 6c-ii-γ (PENDING)**: inversion enumeration — given an
+    --     outer-level `.flowEntry` at linearise position `k`, identify the
+    --     unique pair index `i ≥ 1` with `k + 1 = j_i + P(qs[i])`.  Consumes
+    --     6c-ii-β to translate balance condition to `s'.tokens` side, then
+    --     uses chain-side `qs` enumeration to pin down `i`.
     --
     -- Sub-step 6b dispatched the easier 6a-i1-lift sorry (cons-case `i = 1`
     -- predecessor-flowEntry lift via `FlowMonoChain_preserves_existing_tokens`).
     -- Sub-step 6c-i landed the forward-direction readout
-    -- (`linearise_walk_at_kth_predecessor_token`); the inversion bridge here
-    -- remains as 6c-ii.
+    -- (`linearise_walk_at_kth_predecessor_token`); sub-step 6c-ii-α landed
+    -- the bracket-balance algebra helpers.  The full inversion bridge here
+    -- remains pending across 6c-ii-β / 6c-ii-γ.
     have h_chain_facts :
         ∃ (j p : Nat) (acc : Array (Positioned YamlToken))
           (_ : linearise s'.tokens s'.pendingKeys
