@@ -9634,6 +9634,21 @@ def EmitPairListScansInFlow (pairs : List (YamlValue × YamlValue)) : Prop :=
       -- chain via tokens-prefix preservation.  Consumed by
       -- 6b's linearise-side bridge to invert the walk-locator state and
       -- discharge `emitPairList_body_linearise_characterization`'s Part (3).
+      -- J.4.2.b-2d-key-chain-Part3-final-discharge-bridge-6c-ii-γ-1 (2026-05-03):
+      -- outer-flowEntry exhaustiveness.  Strengthens the qs-locator existential
+      -- with a bidirectional bijection between outer-level `.flowEntry` tokens
+      -- in `s'.tokens[s.tokens.size:]` and pair indices `i ≥ 1`.  Forward
+      -- direction: each `qs[i]` for `i ≥ 1` has a `.flowEntry` predecessor
+      -- (already in `Part3-final-discharge-bridge-6a`).  Inverse direction
+      -- (NEW): every outer-level `.flowEntry` token at index `kk ≥ s.tokens.size`
+      -- is at position `pks[qs[i]].insertBeforeIdx - 1` for some `0 < i < qs.size`.
+      -- The chain knows this because (a) `EmitScansInFlow` invocations push only
+      -- inner-level `.flowEntry` tokens (those nested within `[`/`{` flow scopes
+      -- inside emit(k)/emit(v)), and (b) the only outer-level `.flowEntry` push
+      -- in `emitPairList`'s chain is the comma between pairs (`scanFlowEntry`).
+      -- Consumed by `emitPairList_body_linearise_characterization` Part (3) to
+      -- invert `k ↦ i` after translating the linearise outer-level condition
+      -- to `s'.tokens` via `linearise_go_walk_flowBracketBalance` (6c-ii-β).
       ∧ (pairs ≠ [] →
           ∃ (qs : Array Nat) (_h_size : qs.size = pairs.length)
             (h_pos : 0 < qs.size),
@@ -9651,7 +9666,15 @@ def EmitPairListScansInFlow (pairs : List (YamlValue × YamlValue)) : Prop :=
                       < s'.tokens.size),
                   (s'.tokens[
                       (s'.pendingKeys[qs[i]'hi]'h_lt).insertBeforeIdx - 1
-                    ]'h_pred_lt).val = .flowEntry))
+                    ]'h_pred_lt).val = .flowEntry)
+            -- 6c-ii-γ-1: outer-flowEntry exhaustiveness (NEW conjunct).
+            ∧ (∀ (kk : Nat) (h_kk_lt : kk < s'.tokens.size)
+                 (_h_kk_ge : s.tokens.size ≤ kk),
+                (s'.tokens[kk]'h_kk_lt).val = .flowEntry →
+                flowBracketBalance s'.tokens s.tokens.size kk = 0 →
+                ∃ (i : Nat) (hi : i < qs.size) (_h_pos_i : 0 < i)
+                  (h_lt : qs[i]'hi < s'.pendingKeys.size),
+                  kk + 1 = (s'.pendingKeys[qs[i]'hi]'h_lt).insertBeforeIdx))
 
 theorem emitPairList_scans_empty : EmitPairListScansInFlow [] := by
   intro s rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline _h_ska
@@ -9887,7 +9910,8 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
         · -- Part3-extend: per-pair locator (singleton: qs = #[s.pendingKeys.size]).
           intro _h_ne_pairs
           have h_size_one : (#[s.pendingKeys.size] : Array Nat).size = 1 := rfl
-          refine ⟨#[s.pendingKeys.size], rfl, h_size_one ▸ Nat.zero_lt_one, rfl, ?_, ?_, ?_⟩
+          refine ⟨#[s.pendingKeys.size], rfl, h_size_one ▸ Nat.zero_lt_one, rfl,
+                  ?_, ?_, ?_, ?_⟩
           · -- per-i kind = .keyOnly (only i = 0)
             intro i h_i
             rw [h_size_one] at h_i
@@ -9903,6 +9927,17 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
             intro i h_i h_pos_i
             rw [h_size_one] at h_i
             omega
+          · -- 6c-ii-γ-1 (2026-05-03): outer-flowEntry exhaustiveness.
+            -- Singleton case: the chain `s → s_end` consists of `emit p.1` (key
+            -- via `EmitScansInFlow`) + `:` + ws1 + `emit p.2` (value via
+            -- `EmitScansInFlow`).  No comma push, so no outer-level `.flowEntry`
+            -- is added between `s.tokens.size` and `s_end.tokens.size`.
+            -- Discharge requires a strengthened `EmitScansInFlow` conjunct
+            -- ("no outer-level `.flowEntry` pushed during the chain"), which
+            -- itself requires balance reasoning over the recursive emit
+            -- structure.  Sorry'd as sub-task 6c-ii-γ-2 (to be discharged
+            -- once `EmitScansInFlow` exposes the balance-preservation invariant).
+            sorry
     | p' :: ps, ih =>
       -- ══ Multi-pair: emit k ++ ": " ++ emit v ++ ", " ++ emitPairList (p' :: ps) ══
       have h_eq : (emit.emitPairList (p :: p' :: ps)).toList ++ rest_chars =
@@ -10293,10 +10328,11 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
           -- entries; cons-case `i = 1` discharge requires lifting the comma push
           -- through ws1 + the IH chain (sub-task 6a-i1-lift).
           intro _h_ne_pairs
-          obtain ⟨qs_tail, h_size_t, h_pos_t, h_q0_t, h_per_i_t, h_strict_t, h_pred_t⟩ :=
+          obtain ⟨qs_tail, h_size_t, h_pos_t, h_q0_t, h_per_i_t, h_strict_t, h_pred_t,
+                  _h_exh_t⟩ :=
             h_first_qs_r (by simp)
           have h_size_one : (#[s.pendingKeys.size] : Array Nat).size = 1 := rfl
-          refine ⟨#[s.pendingKeys.size] ++ qs_tail, ?_, ?_, ?_, ?_, ?_, ?_⟩
+          refine ⟨#[s.pendingKeys.size] ++ qs_tail, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
           · -- size: 1 + qs_tail.size = (p :: p' :: ps).length
             rw [Array.size_append, h_size_one, h_size_t]
             simp [List.length]; omega
@@ -10476,6 +10512,34 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
               exact h_ph_at h_sv_lt_sc
             · -- j ≥ 1: from IH's predecessor-flowEntry conjunct directly.
               exact h_pred_t j h_j (by omega)
+          · -- 6c-ii-γ-1 (2026-05-03): outer-flowEntry exhaustiveness.
+            -- Cons case: the chain `s → s_end` decomposes into `s → s_v` (key
+            -- + ":" + ws1 + value via two `EmitScansInFlow` calls + flow-value
+            -- + ws steps), `s_v → s_c` (comma push at outer level), `s_c →
+            -- s_pp` (ws1, no token), and `s_pp → s_end` (IH's emitPairList tail).
+            --
+            -- Argument: given `kk` in `[s.tokens.size, s_end.tokens.size)`
+            -- with `s_end.tokens[kk].val = .flowEntry` ∧ outer-level (balance
+            -- 0 from `s.tokens.size` to `kk`):
+            --   * `kk < s_v.tokens.size` (key + value emit segment): all
+            --     `.flowEntry` pushes are at inner level — requires
+            --     strengthened `EmitScansInFlow` invariant ("no outer-level
+            --     `.flowEntry` pushed").  Contradicts the outer-level premise.
+            --   * `kk = s_v.tokens.size` (the comma): matches `qs[1] =
+            --     qs_tail[0] = s_pp.pendingKeys.size`, with `pks[qs[1]]
+            --     .insertBeforeIdx = s_pp.tokens.size = s_v.tokens.size + 1`,
+            --     i.e. `kk + 1 = pks[qs[1]].insertBeforeIdx`.
+            --   * `s_v.tokens.size < kk`: in IH's emitPairList tail range.
+            --     Apply `_h_exh_t` (IH's exhaustiveness conjunct) — requires
+            --     translating `kk` into the IH's frame (`kk - s_pp.tokens.size`
+            --     not needed; `kk` is already an absolute index).  Outputs
+            --     `i_tail ≥ 1` with `kk + 1 = pks[qs_tail[i_tail]].insertBeforeIdx
+            --     = pks[qs[i_tail + 1]].insertBeforeIdx`.
+            --
+            -- Discharge requires `EmitScansInFlow` strengthening (sub-task
+            -- 6c-ii-γ-2: "no outer-level `.flowEntry` pushed during emit").
+            -- Sorry'd until that lands.
+            sorry
 
 /-- Every grammable value satisfies `EmitScansInFlow`. -/
 theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inFlow) :
@@ -12333,7 +12397,23 @@ theorem emitPairList_body_filtered_characterization
                    < s'.tokens.size),
                (s'.tokens[
                    (s'.pendingKeys[qs[i]'hi]'h_lt).insertBeforeIdx - 1
-                 ]'h_pred_lt).val = .flowEntry)) := by
+                 ]'h_pred_lt).val = .flowEntry)
+         -- (7) Part3-final-discharge-bridge-6c-ii-γ-1 (2026-05-03):
+         -- outer-flowEntry exhaustiveness.  Every outer-level `.flowEntry`
+         -- token in `s'.tokens` at index `≥ s.tokens.size` is at position
+         -- `pks[qs[i]].insertBeforeIdx - 1` for some `0 < i < qs.size`.
+         -- Threaded from `emitPairList_scans_nonempty`'s new conjunct;
+         -- consumed by `emitPairList_body_linearise_characterization` Part (3)
+         -- to invert `k ↦ i` after translating the linearise outer-level
+         -- condition to `s'.tokens` via `linearise_go_walk_flowBracketBalance`
+         -- (6c-ii-β).
+         ∧ (∀ (kk : Nat) (h_kk_lt : kk < s'.tokens.size)
+              (_h_kk_ge : s.tokens.size ≤ kk),
+             (s'.tokens[kk]'h_kk_lt).val = .flowEntry →
+             flowBracketBalance s'.tokens s.tokens.size kk = 0 →
+             ∃ (i : Nat) (hi : i < qs.size) (_h_pos_i : 0 < i)
+               (h_lt : qs[i]'hi < s'.pendingKeys.size),
+               kk + 1 = (s'.pendingKeys[qs[i]'hi]'h_lt).insertBeforeIdx)) := by
   -- Construct the chain from EmitPairListScansInFlow
   have h_scan := emitPairList_scans_nonempty pairs h_ne h_all_k h_all_v
   obtain ⟨n, s', h_chain, h_corr', h_fl', h_dp', h_ids', h_ek', h_col', h_inflow',
@@ -12968,19 +13048,39 @@ theorem emitPairList_body_linearise_characterization
     --     whose balance over the extension matches `flowBracketBalance tokens
     --     j j'`.  Adds one supporting helper `flowBracketBalance_append_left`
     --     (general append-left invariance, generalises `flowBracketBalance_push`).
-    --   * **Sub-step 6c-ii-γ (PENDING)**: inversion enumeration — given an
-    --     outer-level `.flowEntry` at linearise position `k`, identify the
-    --     unique pair index `i ≥ 1` with `k + 1 = j_i + P(qs[i])`.  Consumes
-    --     6c-ii-β to translate balance condition to `s'.tokens` side, then
-    --     uses chain-side `qs` enumeration to pin down `i`.
+    --   * **Sub-step 6c-ii-γ-1 (DONE 2026-05-03)**: ghost-predicate
+    --     strengthening.  Extended `EmitPairListScansInFlow`'s qs-locator
+    --     existential (and the body characterization's threaded conjunct)
+    --     with an *outer-flowEntry exhaustiveness* sub-claim: every
+    --     outer-level `.flowEntry` token in `s'.tokens` at index `≥ s.tokens.size`
+    --     is at position `pks[qs[i]].insertBeforeIdx - 1` for some
+    --     `0 < i < qs.size`.  Discharge in `emitPairList_scans_nonempty`
+    --     (singleton + cons cases) is sorry'd pending 6c-ii-γ-2.
+    --   * **Sub-step 6c-ii-γ-2 (PENDING)**: discharge the chain-side
+    --     exhaustiveness sorrys.  Requires strengthening `EmitScansInFlow`
+    --     with a "no outer-level `.flowEntry` pushed during the body"
+    --     invariant (key/value emit segments push only inner-level
+    --     flowEntries, since they're nested inside `[` / `{` flow scopes).
+    --     Singleton case discharges by appealing to this invariant
+    --     directly; cons case lifts via comma push (outer-level by
+    --     construction) + IH on tail.
+    --   * **Sub-step 6c-ii-γ-3 (PENDING)**: discharge Part (3) using the
+    --     strengthened predicate.  Translate the linearise outer-level
+    --     condition (`linearise[k] = .flowEntry, balance = 0`) to the
+    --     `s'.tokens` side via 6c-ii-β; apply the new exhaustiveness
+    --     conjunct to identify pair index `i ≥ 1` with `k + 1 =
+    --     pks[qs[i]].insertBeforeIdx`; walk to the matching `(j, p, acc)`
+    --     state; conclude via `linearise_splice_keyonly_at_index`.
     --
     -- Sub-step 6b dispatched the easier 6a-i1-lift sorry (cons-case `i = 1`
     -- predecessor-flowEntry lift via `FlowMonoChain_preserves_existing_tokens`).
     -- Sub-step 6c-i landed the forward-direction readout
     -- (`linearise_walk_at_kth_predecessor_token`); sub-step 6c-ii-α landed
     -- the bracket-balance algebra helpers; sub-step 6c-ii-β landed the
-    -- bracket-balance preservation lemma.  The full inversion bridge here
-    -- remains pending in 6c-ii-γ (inversion enumeration + Part (3) discharge).
+    -- bracket-balance preservation lemma.  Sub-step 6c-ii-γ-1 strengthened
+    -- the ghost predicate with the outer-flowEntry exhaustiveness conjunct.
+    -- The full inversion bridge here remains pending in 6c-ii-γ-2/3
+    -- (chain-side discharge + linearise-side Part (3) discharge).
     have h_chain_facts :
         ∃ (j p : Nat) (acc : Array (Positioned YamlToken))
           (_ : linearise s'.tokens s'.pendingKeys
