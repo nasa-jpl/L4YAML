@@ -2349,6 +2349,133 @@ theorem FlowMonoChain_preserves_raw_prefix {s s' : ScannerState} {n fl₀ : Nat}
       h_stack_floor.1 i hi
     exact (ih (Nat.le_trans h_n₀ h_adds) h_sk_inv h_sync').trans h_pres
 
+/-! ### Path C unconditional strict prefix preservation
+(J.4.2.b-2d-key-chain-Part3-final-discharge-bridge-6b)
+
+Post-cutover (Initiative 3 / J.2 step 5), the scanner is append-only on
+`tokens`: every code path either leaves `tokens` unchanged or pushes a
+single concrete (non-`.placeholder`) token via `emit`/`emitAt`.  No
+`Array.setIfInBounds` mutates existing tokens, so prefix preservation
+holds **unconditionally** — no `SimpleKeyAbove` / `SimpleKeyAboveFloor`
+hypothesis is required.
+
+The existing `scanNextToken_preserves_prefix` /
+`scanNextToken_preserves_prefix_of_skFloor` are Path-B-aware and thread
+the simpleKey invariant for compatibility with the legacy proof shape.
+The strict variants below mirror the existing proofs but use
+`scanValue_preserves_prefix_strict` (already discharged in
+`ScannerCorrectness`) for the `:` case, dropping the hypothesis.
+
+Used in `emitPairList_scans_nonempty`'s recursive case to lift the
+comma's `.flowEntry` push through the IH chain without having to
+establish `SimpleKeyAboveFloor s_pp s_pp.tokens.size s_pp.flowLevel`
+(which would require non-trivial tracing of `s_pp.simpleKey`/
+`simpleKeyStack` state). -/
+
+/-- Strict (unconditional) version of
+    `ScanHelpers.dispatchBlockIndicators_preserves_prefix`: drops the
+    `SimpleKeyAbove`-style precondition by routing the `scanValue` case
+    through `scanValue_preserves_prefix_strict`. -/
+theorem dispatchBlockIndicators_preserves_prefix_strict
+    (s : ScannerState) (c : Char) (s' : ScannerState)
+    (h : scanNextToken_dispatchBlockIndicators s c = .ok (some s'))
+    (i : Nat) (h_bound : i < s.tokens.size) :
+    s'.tokens[i]'(by
+      have := ScannerCorrectness.ScanHelpers.dispatchBlockIndicators_tokens_mono s c s' h
+      omega) =
+    s.tokens[i]'h_bound := by
+  -- Mirrors the existing `dispatchBlockIndicators_preserves_prefix` proof
+  -- structure, but routes the `:` branch through `scanValue_preserves_prefix_strict`
+  -- (which has no h_inv requirement).
+  unfold scanNextToken_dispatchBlockIndicators at h
+  simp only [bind, ScannerCorrectness.ScanHelpers.bind_ok_simp,
+    pure, Pure.pure, Except.pure] at h
+  simp only [Except.bind] at h
+  repeat (any_goals (split at h))
+  any_goals contradiction
+  all_goals (try simp only [Except.ok.injEq, Option.some.injEq] at *)
+  any_goals contradiction
+  all_goals (try subst_vars)
+  all_goals first
+    | exact ScannerCorrectness.ScanHelpers.scanBlockEntry_preserves_prefix
+        s _ (by assumption) i h_bound
+    | exact ScannerCorrectness.ScanHelpers.scanKey_preserves_prefix
+        s _ (by assumption) i h_bound
+    | exact ScannerCorrectness.scanValue_preserves_prefix_strict
+        s _ (by assumption) i h_bound
+    | (simp_all)
+
+-- Strict (unconditional) version of `ScannerCorrectness.scanNextToken_preserves_prefix`:
+-- drops the `SimpleKeyAbove` hypothesis.  Path C is append-only on tokens, so every
+-- existing token at index `< s.tokens.size` is preserved through a `scanNextToken`
+-- step regardless of simpleKey state.
+set_option maxHeartbeats 400000 in
+theorem scanNextToken_preserves_prefix_strict (s s' : ScannerState)
+    (h_next : scanNextToken s = .ok (some s'))
+    (i : Nat) (h_bound : i < s.tokens.size) :
+    s'.tokens[i]'(by
+      have := ScannerCorrectness.scanNextToken_adds_tokens s s' h_next; omega) =
+    s.tokens[i]'h_bound := by
+  unfold scanNextToken at h_next
+  simp only [bind, pure, Pure.pure, Except.pure] at h_next
+  simp only [Except.bind] at h_next
+  split at h_next
+  · contradiction
+  · split at h_next
+    · simp at h_next
+    · have h_pre_pref :=
+        ScannerCorrectness.ScanHelpers.preprocess_preserves_prefix s _ _ (by assumption) i h_bound
+      have h_pre_mono :=
+        ScannerCorrectness.ScanHelpers.preprocess_tokens_mono s _ _ (by assumption)
+      have h_allow_tok : ∀ st : ScannerState,
+        (if st.allowDirectives then
+          { st with allowDirectives := false, documentEverStarted := true }
+        else st).tokens = st.tokens :=
+        ScannerCorrectness.ScanHelpers.allowDir_ite_tokens
+      repeat (any_goals (split at h_next))
+      any_goals contradiction
+      any_goals (simp at h_next)
+      all_goals (try subst_vars)
+      all_goals first
+        | contradiction
+        | (simp at h_next)
+        | (have h_d := ScannerCorrectness.ScanHelpers.dispatchStructural_preserves_prefix
+             _ _ _ (by assumption) i (by omega)
+           simp_all)
+        | (have h_d := ScannerCorrectness.ScanHelpers.dispatchFlowIndicators_preserves_prefix
+             _ _ _ (by assumption) i
+             (by simp only [ScannerCorrectness.ScanHelpers.allowDir_ite_tokens]; omega)
+           simp only [ScannerCorrectness.ScanHelpers.allowDir_ite_tokens] at h_d
+           simp_all)
+        | (have h_d := dispatchBlockIndicators_preserves_prefix_strict
+             _ _ _ (by assumption) i
+             (by simp only [ScannerCorrectness.ScanHelpers.allowDir_ite_tokens]; omega)
+           simp only [ScannerCorrectness.ScanHelpers.allowDir_ite_tokens] at h_d
+           simp_all)
+        | (have h_d := ScannerCorrectness.ScanHelpers.dispatchContent_preserves_prefix
+             _ _ _ (by assumption) i
+             (by simp only [ScannerCorrectness.ScanHelpers.allowDir_ite_tokens]; omega)
+           simp only [ScannerCorrectness.ScanHelpers.allowDir_ite_tokens] at h_d
+           simp_all)
+        | (simp_all)
+
+/-- Chain version of `scanNextToken_preserves_prefix_strict` over a
+    `FlowMonoChain`: every existing token is preserved through any
+    chain step, unconditionally.  Used in `emitPairList_scans_nonempty`'s
+    recursive case (sub-task 6a-i1-lift) to carry the comma's
+    `.flowEntry` push through the IH chain `s_pp → s_end`. -/
+theorem FlowMonoChain_preserves_existing_tokens {s s' : ScannerState} {n fl₀ : Nat}
+    (h_fmc : FlowMonoChain fl₀ s n s')
+    (i : Nat) (h_bound : i < s.tokens.size) :
+    s'.tokens[i]'(by have := FlowMonoChain.tokens_mono h_fmc; omega) =
+    s.tokens[i]'h_bound := by
+  induction h_fmc with
+  | zero => rfl
+  | step _ h_snt _ ih =>
+    have h_adds := ScannerCorrectness.scanNextToken_adds_tokens _ _ h_snt
+    have h_pres := scanNextToken_preserves_prefix_strict _ _ h_snt i h_bound
+    exact (ih (Nat.lt_of_lt_of_le h_bound h_adds)).trans h_pres
+
 /-- Connect a ScanChain to scanFiltered.
 
     **Initiative 3 / J.3.6** (2026-04-28): post-cutover `scanFiltered`
@@ -10275,8 +10402,78 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
             rw [h_qj_eq]
             by_cases h_j_zero : j = 0
             · -- j = 0 (outer i = 1): the predecessor is the comma's flowEntry.
-              -- Sub-task 6a-i1-lift: lift through IH chain (sorry pending 6b).
-              sorry
+              -- Discharged in 6b via FlowMonoChain_preserves_existing_tokens
+              -- (Path C unconditional prefix preservation).
+              subst h_j_zero
+              -- Get the IH's first-key fact at index `s_pp.pendingKeys.size`
+              -- (insertBeforeIdx = s_pp.tokens.size, kind = .keyOnly).
+              obtain ⟨h_lt_pp_send, h_ib_pp, _h_kd_pp⟩ := h_first_r (by simp)
+              -- qs_tail[0] = s_pp.pendingKeys.size (h_q0_t).
+              rw [h_q0_t]
+              -- Decompose comma push: s_c.tokens.size = s_v.tokens.size + 1
+              -- and s_c.tokens[s_v.tokens.size].val = .flowEntry.
+              obtain ⟨h_sc_size, h_ph_at⟩ := h_comma_push
+              -- s_pp.tokens.size = s_c.tokens.size = s_v.tokens.size + 1.
+              have h_pp_size : s_pp.tokens.size = s_v.tokens.size + 1 := by
+                rw [h_toks_pp]; exact h_sc_size
+              -- (ib at this index = s_pp.tokens.size); ib > 0 since ≥ 1.
+              have h_ib_pos :
+                  0 < (s_end.pendingKeys[s_pp.pendingKeys.size]'h_lt_pp_send).insertBeforeIdx := by
+                rw [h_ib_pp, h_pp_size]; omega
+              -- ib - 1 = s_pp.tokens.size - 1 = s_v.tokens.size.
+              have h_ib_minus_one :
+                  (s_end.pendingKeys[s_pp.pendingKeys.size]'h_lt_pp_send).insertBeforeIdx - 1
+                    = s_v.tokens.size := by
+                rw [h_ib_pp, h_pp_size]; omega
+              -- s_v.tokens.size < s_pp.tokens.size (= s_v.tokens.size + 1).
+              have h_sv_lt_pp : s_v.tokens.size < s_pp.tokens.size := by
+                rw [h_pp_size]; omega
+              -- s_v.tokens.size < s_end.tokens.size via chain monotonicity.
+              have h_sv_lt_send : s_v.tokens.size < s_end.tokens.size := by
+                have h_mono := FlowMonoChain.tokens_mono h_fmc_r
+                omega
+              have h_pred_lt :
+                  (s_end.pendingKeys[s_pp.pendingKeys.size]'h_lt_pp_send).insertBeforeIdx - 1
+                    < s_end.tokens.size := by
+                rw [h_ib_minus_one]; exact h_sv_lt_send
+              refine ⟨h_lt_pp_send, h_ib_pos, h_pred_lt, ?_⟩
+              -- Goal: s_end.tokens[ib - 1].val = .flowEntry.  The index is a
+              -- complex expression involving `pks[s_pp.pks.size].insertBeforeIdx - 1`.
+              -- Strategy: show the equality of the indexed tokens via a helper that
+              -- carries the bound through.
+              have h_sv_lt_sc : s_v.tokens.size < s_c.tokens.size := by
+                rw [h_sc_size]; omega
+              -- Key identity: the token at the predecessor index equals the comma's
+              -- pushed flowEntry.  Use `h_ib_minus_one` to align indices, then chain
+              -- through h_pres + h_toks_pp.
+              have h_tok_eq :
+                  s_end.tokens[
+                      (s_end.pendingKeys[s_pp.pendingKeys.size]'h_lt_pp_send).insertBeforeIdx - 1
+                    ]'h_pred_lt
+                    = s_c.tokens[s_v.tokens.size]'h_sv_lt_sc := by
+                -- Substitute the index expression by `s_v.tokens.size`.
+                have h_idx_eq :
+                    (s_end.pendingKeys[s_pp.pendingKeys.size]'h_lt_pp_send).insertBeforeIdx - 1
+                      = s_v.tokens.size := h_ib_minus_one
+                -- generalize+subst pattern handles the dependent bound proof.
+                generalize h_idx : (s_end.pendingKeys[s_pp.pendingKeys.size]'h_lt_pp_send).insertBeforeIdx - 1
+                  = idx at h_pred_lt ⊢
+                rw [h_idx] at h_idx_eq
+                subst h_idx_eq
+                -- Now goal: s_end.tokens[s_v.tokens.size]'h_pred_lt = s_c.tokens[s_v.tokens.size]'h_sv_lt_sc.
+                have h_pres :
+                    s_end.tokens[s_v.tokens.size]'h_pred_lt
+                      = s_pp.tokens[s_v.tokens.size]'h_sv_lt_pp :=
+                  FlowMonoChain_preserves_existing_tokens h_fmc_r s_v.tokens.size h_sv_lt_pp
+                rw [h_pres]
+                -- s_pp.tokens = s_c.tokens via h_toks_pp.
+                generalize h_arr_pp : s_pp.tokens = arr_pp at h_sv_lt_pp ⊢
+                generalize h_arr_sc : s_c.tokens = arr_sc at h_sv_lt_sc
+                have h_arr_eq : arr_pp = arr_sc := by
+                  rw [← h_arr_pp, ← h_arr_sc]; exact h_toks_pp
+                subst h_arr_eq; rfl
+              rw [h_tok_eq]
+              exact h_ph_at h_sv_lt_sc
             · -- j ≥ 1: from IH's predecessor-flowEntry conjunct directly.
               exact h_pred_t j h_j (by omega)
 
@@ -12328,6 +12525,22 @@ theorem emitPairList_body_linearise_characterization
     -- corresponding to the pair AFTER the flowEntry at outer-level position `k`
     -- has `kind = .keyOnly` and the linearise walk reaches state `(j, p, acc)`
     -- with `acc.size = k + 1` and `pks[p].insertBeforeIdx ≤ j`.
+    --
+    -- **Sub-task 6b-bridge-inversion (sorry'd, deferred to a future cadence)**:
+    -- The forward direction (each pair contributes a `.flowEntry` at
+    -- `pks[qs[i]].insertBeforeIdx + P(qs[i]) - 1` in linearise) follows from
+    -- the walk-locator + the predecessor-flowEntry conjunct (already in
+    -- `h_first_qs` from `emitPairList_body_filtered_characterization`).  The
+    -- INVERSE — given an arbitrary outer-level flowEntry at linearise position
+    -- `k`, identify the pair index `i ≥ 1` such that `k + 1 =
+    -- pks[qs[i]].insertBeforeIdx + P(qs[i])` — requires bracket-balance
+    -- accounting to enumerate all outer-level flowEntries and rule out any
+    -- coming from inner flow scopes.  This is a significant proof artifact
+    -- (separate from the chain-side facts already in scope).
+    --
+    -- Sub-step 6b dispatched the easier 6a-i1-lift sorry (cons-case `i = 1`
+    -- predecessor-flowEntry lift via `FlowMonoChain_preserves_existing_tokens`);
+    -- the inversion bridge here remains future work.
     have h_chain_facts :
         ∃ (j p : Nat) (acc : Array (Positioned YamlToken))
           (_ : linearise s'.tokens s'.pendingKeys
