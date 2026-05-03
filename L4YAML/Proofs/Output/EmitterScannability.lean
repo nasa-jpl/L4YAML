@@ -14113,22 +14113,34 @@ Consumed by `emitPairList_body_linearise_characterization` Part (3) (sub-step
 flowEntry, then apply the chain-side exhaustiveness conjunct (γ-1) to
 identify the matching pair index `i ≥ 1`. -/
 
-/-- **Outer-flowEntry inversion** (Sub-step 6c-ii-γ-3a).  Walks
-    `linearise.go tokens pks j p acc` step-by-step (induction on the
-    lex-measure `n = (tokens.size - j) + (pks.size - p)`); when a
-    `.flowEntry` is detected at linearise position `k ≥ acc.size`, the
-    splice case refutes (splice tokens are `.key`/`.blockMappingStart`,
+/-- **Outer-flowEntry inversion** (Sub-step 6c-ii-γ-3a; **strengthened
+    in 6c-ii-γ-3b-i (2026-05-04)** with the walk-state-after-copy
+    conjunct).  Walks `linearise.go tokens pks j p acc` step-by-step
+    (induction on the lex-measure `n = (tokens.size - j) + (pks.size - p)`);
+    when a `.flowEntry` is detected at linearise position `k ≥ acc.size`,
+    the splice case refutes (splice tokens are `.key`/`.blockMappingStart`,
     never `.flowEntry`) and the copy case yields the matching token
     cursor.  Splice steps contribute zero to balance via
     `flowBracketBalance_splice_unchanged`; copy steps contribute the
     new token's `flowBracketDelta` via `flowBracketBalance_push_extend`,
     which composes with `flowBracketBalance_compose` on the tokens side
-    to yield the translation equation. -/
+    to yield the translation equation.
+
+    The 6c-ii-γ-3b-i strengthening adds a fourth conjunct exposing the
+    walk-state immediately after the matching copy step: there exist
+    `p_k ≤ pks.size` and `acc'` with `acc'.size = k + 1` such that
+    `linearise.go tokens pks j p acc = linearise.go tokens pks (j_k + 1)
+    p_k acc'`.  This pin-points the post-copy state so consumers can
+    apply Foundation B (`linearise_splice_keyonly_at_index`) at index
+    `k + 1`.  Requires precondition `p ≤ pks.size` (preserved through
+    splice/copy steps); each call site already establishes this trivially.
+    -/
 theorem linearise_outer_flowEntry_decode
     (tokens : Array (Positioned YamlToken))
     (pks : Array PendingKeyEntry) :
     ∀ (n j p k : Nat) (acc : Array (Positioned YamlToken)),
       (tokens.size - j) + (pks.size - p) = n →
+      p ≤ pks.size →
       acc.size ≤ k →
       ∀ (h_lt : k < (linearise.go tokens pks j p acc).size),
         ((linearise.go tokens pks j p acc)[k]'h_lt).val = .flowEntry →
@@ -14136,20 +14148,26 @@ theorem linearise_outer_flowEntry_decode
           j ≤ j_k ∧
           (tokens[j_k]'h_j_k_lt).val = .flowEntry ∧
           flowBracketBalance (linearise.go tokens pks j p acc) acc.size k
-            = flowBracketBalance tokens j j_k := by
+            = flowBracketBalance tokens j j_k ∧
+          ∃ (p_k : Nat) (acc' : Array (Positioned YamlToken)),
+            p ≤ p_k ∧ p_k ≤ pks.size ∧
+            linearise.go tokens pks j p acc
+              = linearise.go tokens pks (j_k + 1) p_k acc' ∧
+            acc'.size = k + 1 := by
   intro n
   induction n with
   | zero =>
-    intro j p k acc h_meas h_acc_le_k h_lt _h_fe
+    intro j p k acc h_meas _h_p_le h_acc_le_k h_lt _h_fe
     have h_j_ge : tokens.size ≤ j := by omega
     have h_p_ge : pks.size ≤ p := by omega
     rw [L4YAML.Proofs.ScannerLinearise.linearise_go_done tokens pks j p acc h_j_ge h_p_ge] at h_lt
     omega
   | succ n ih =>
-    intro j p k acc h_meas h_acc_le_k h_lt h_fe
+    intro j p k acc h_meas h_p_le h_acc_le_k h_lt h_fe
     -- Splice handler: cases 1 (insertBeforeIdx ≤ j) and 3 (tail-splice).
     -- Both share the step shape `linearise.go ... = linearise.go ... j (p+1) (acc ++ expandKind e)`.
     have splice_handler : ∀ (e : PendingKeyEntry)
+        (h_p1_le : p + 1 ≤ pks.size)
         (h_step : linearise.go tokens pks j p acc
                     = linearise.go tokens pks j (p + 1) (acc ++ expandKind e)),
         (tokens.size - j) + (pks.size - (p + 1)) = n →
@@ -14157,8 +14175,13 @@ theorem linearise_outer_flowEntry_decode
           j ≤ j_k ∧
           (tokens[j_k]'h_j_k_lt).val = .flowEntry ∧
           flowBracketBalance (linearise.go tokens pks j p acc) acc.size k
-            = flowBracketBalance tokens j j_k := by
-      intro e h_step h_meas'
+            = flowBracketBalance tokens j j_k ∧
+          ∃ (p_k : Nat) (acc' : Array (Positioned YamlToken)),
+            p ≤ p_k ∧ p_k ≤ pks.size ∧
+            linearise.go tokens pks j p acc
+              = linearise.go tokens pks (j_k + 1) p_k acc' ∧
+            acc'.size = k + 1 := by
+      intro e h_p1_le h_step h_meas'
       have h_size_split : (acc ++ expandKind e).size = acc.size + (expandKind e).size := by
         rw [Array.size_append]
       have h_lt' : k < (linearise.go tokens pks j (p + 1) (acc ++ expandKind e)).size :=
@@ -14187,28 +14210,31 @@ theorem linearise_outer_flowEntry_decode
         · rw [h_bms] at h_fe'; exact YamlToken.noConfusion h_fe'
       · -- k beyond extension; recurse via ih
         have h_acc'_le_k : (acc ++ expandKind e).size ≤ k := Nat.le_of_not_lt h_in_ext
-        obtain ⟨j_k, h_j_k_lt, h_j_le, h_tok_fe, h_bal⟩ :=
-          ih j (p + 1) k (acc ++ expandKind e) h_meas' h_acc'_le_k h_lt' h_fe'
-        refine ⟨j_k, h_j_k_lt, h_j_le, h_tok_fe, ?_⟩
-        rw [h_step]
-        have h_acc_le_acc' : acc.size ≤ (acc ++ expandKind e).size := by
-          rw [h_size_split]; omega
-        rw [flowBracketBalance_compose _ acc.size (acc ++ expandKind e).size k
-              h_acc_le_acc' h_acc'_le_k]
-        rw [h_bal]
-        have h_bal_splice :
-            flowBracketBalance (linearise.go tokens pks j (p + 1) (acc ++ expandKind e))
-              acc.size (acc ++ expandKind e).size = 0 := by
-          obtain ⟨tail, h_tail_eq⟩ :=
-            L4YAML.Proofs.ScannerLinearise.linearise_go_eq_acc_append tokens pks j (p + 1)
-              (acc ++ expandKind e)
-          rw [h_tail_eq]
-          rw [flowBracketBalance_append_left (acc ++ expandKind e) tail acc.size
-                (acc ++ expandKind e).size (Nat.le_refl _)]
-          rw [h_size_split]
-          rw [flowBracketBalance_splice_unchanged acc e acc.size (Nat.le_refl _)]
-          simp [flowBracketBalance]
-        rw [h_bal_splice, Int.zero_add]
+        obtain ⟨j_k, h_j_k_lt, h_j_le, h_tok_fe, h_bal,
+                p_k, acc', h_p1_le_pk, h_pk_le, h_walk_eq, h_acc'_size⟩ :=
+          ih j (p + 1) k (acc ++ expandKind e) h_meas' h_p1_le h_acc'_le_k h_lt' h_fe'
+        refine ⟨j_k, h_j_k_lt, h_j_le, h_tok_fe, ?_, p_k, acc', by omega, h_pk_le,
+                ?_, h_acc'_size⟩
+        · rw [h_step]
+          have h_acc_le_acc' : acc.size ≤ (acc ++ expandKind e).size := by
+            rw [h_size_split]; omega
+          rw [flowBracketBalance_compose _ acc.size (acc ++ expandKind e).size k
+                h_acc_le_acc' h_acc'_le_k]
+          rw [h_bal]
+          have h_bal_splice :
+              flowBracketBalance (linearise.go tokens pks j (p + 1) (acc ++ expandKind e))
+                acc.size (acc ++ expandKind e).size = 0 := by
+            obtain ⟨tail, h_tail_eq⟩ :=
+              L4YAML.Proofs.ScannerLinearise.linearise_go_eq_acc_append tokens pks j (p + 1)
+                (acc ++ expandKind e)
+            rw [h_tail_eq]
+            rw [flowBracketBalance_append_left (acc ++ expandKind e) tail acc.size
+                  (acc ++ expandKind e).size (Nat.le_refl _)]
+            rw [h_size_split]
+            rw [flowBracketBalance_splice_unchanged acc e acc.size (Nat.le_refl _)]
+            simp [flowBracketBalance]
+          rw [h_bal_splice, Int.zero_add]
+        · rw [h_step]; exact h_walk_eq
     -- Copy handler: cases 2 (¬splice, j < tokens.size) and 4 (p ≥ pks.size, j < tokens.size).
     -- Both share the step shape `linearise.go ... = linearise.go ... (j+1) p (acc.push tokens[j])`.
     have copy_handler : ∀ (h_j_lt : j < tokens.size)
@@ -14219,7 +14245,12 @@ theorem linearise_outer_flowEntry_decode
           j ≤ j_k ∧
           (tokens[j_k]'h_j_k_lt).val = .flowEntry ∧
           flowBracketBalance (linearise.go tokens pks j p acc) acc.size k
-            = flowBracketBalance tokens j j_k := by
+            = flowBracketBalance tokens j j_k ∧
+          ∃ (p_k : Nat) (acc' : Array (Positioned YamlToken)),
+            p ≤ p_k ∧ p_k ≤ pks.size ∧
+            linearise.go tokens pks j p acc
+              = linearise.go tokens pks (j_k + 1) p_k acc' ∧
+            acc'.size = k + 1 := by
       intro h_j_lt h_step h_meas'
       have h_size_push : (acc.push (tokens[j]'h_j_lt)).size = acc.size + 1 := by
         rw [Array.size_push]
@@ -14232,7 +14263,7 @@ theorem linearise_outer_flowEntry_decode
           congr 1 <;> exact h_step
         rw [← h_eq]; exact h_fe
       by_cases h_at : k = acc.size
-      · -- k = acc.size: just-pushed token at this position
+      · -- k = acc.size: just-pushed token at this position; TERMINATING case
         subst h_at
         have h_lt_push : acc.size < (acc.push (tokens[j]'h_j_lt)).size := by
           rw [h_size_push]; omega
@@ -14245,47 +14276,54 @@ theorem linearise_outer_flowEntry_decode
           Array.getElem_push_eq (xs := acc) (x := tokens[j]'h_j_lt)
         have h_fe_tok : (tokens[j]'h_j_lt).val = .flowEntry := by
           rw [h_at_push, h_acc_at] at h_fe'; exact h_fe'
-        refine ⟨j, h_j_lt, Nat.le_refl _, h_fe_tok, ?_⟩
-        simp [flowBracketBalance]
+        -- Walk-state: terminating step gives state (j+1, p, acc.push tokens[j])
+        -- with size acc.size + 1 = k + 1.  The transport is exactly h_step.
+        refine ⟨j, h_j_lt, Nat.le_refl _, h_fe_tok, ?_,
+                p, acc.push (tokens[j]'h_j_lt), Nat.le_refl _, h_p_le, h_step, ?_⟩
+        · simp [flowBracketBalance]
+        · rw [h_size_push]
       · -- k > acc.size: recurse via ih
         have h_acc_lt : acc.size < k := by omega
         have h_acc_push_le_k : (acc.push (tokens[j]'h_j_lt)).size ≤ k := by
           rw [h_size_push]; omega
-        obtain ⟨j_k, h_j_k_lt, h_jp1_le, h_tok_fe, h_bal⟩ :=
-          ih (j + 1) p k (acc.push (tokens[j]'h_j_lt)) h_meas' h_acc_push_le_k h_lt' h_fe'
-        refine ⟨j_k, h_j_k_lt, by omega, h_tok_fe, ?_⟩
-        rw [h_step]
-        have h_acc_le_pushsize : acc.size ≤ (acc.push (tokens[j]'h_j_lt)).size := by
-          rw [h_size_push]; omega
-        rw [flowBracketBalance_compose _ acc.size (acc.push (tokens[j]'h_j_lt)).size k
-              h_acc_le_pushsize h_acc_push_le_k]
-        rw [h_bal]
-        -- Show balance over [acc.size, (acc.push tokens[j]).size] = flowBracketDelta tokens[j].val
-        have h_bal_step :
-            flowBracketBalance
-              (linearise.go tokens pks (j + 1) p (acc.push (tokens[j]'h_j_lt)))
-              acc.size (acc.push (tokens[j]'h_j_lt)).size
-              = flowBracketDelta (tokens[j]'h_j_lt).val := by
-          obtain ⟨tail, h_tail_eq⟩ :=
-            L4YAML.Proofs.ScannerLinearise.linearise_go_eq_acc_append tokens pks (j + 1) p
-              (acc.push (tokens[j]'h_j_lt))
-          rw [h_tail_eq]
-          rw [flowBracketBalance_append_left (acc.push (tokens[j]'h_j_lt)) tail acc.size
-                (acc.push (tokens[j]'h_j_lt)).size (Nat.le_refl _)]
-          rw [h_size_push]
-          rw [flowBracketBalance_push_extend acc (tokens[j]'h_j_lt) acc.size (Nat.le_refl _)]
-          simp [flowBracketBalance]
-        rw [h_bal_step]
-        rw [show flowBracketBalance tokens j j_k
-                = flowBracketBalance tokens j (j + 1) + flowBracketBalance tokens (j + 1) j_k from
-              flowBracketBalance_compose tokens j (j + 1) j_k (Nat.le_succ _) (by omega)]
-        rw [flowBracketBalance_single tokens j (by rw [Array.length_toList]; omega)]
-        rfl
+        obtain ⟨j_k, h_j_k_lt, h_jp1_le, h_tok_fe, h_bal,
+                p_k, acc', h_p_le_pk, h_pk_le, h_walk_eq, h_acc'_size⟩ :=
+          ih (j + 1) p k (acc.push (tokens[j]'h_j_lt)) h_meas' h_p_le h_acc_push_le_k h_lt' h_fe'
+        refine ⟨j_k, h_j_k_lt, by omega, h_tok_fe, ?_,
+                p_k, acc', h_p_le_pk, h_pk_le, ?_, h_acc'_size⟩
+        · rw [h_step]
+          have h_acc_le_pushsize : acc.size ≤ (acc.push (tokens[j]'h_j_lt)).size := by
+            rw [h_size_push]; omega
+          rw [flowBracketBalance_compose _ acc.size (acc.push (tokens[j]'h_j_lt)).size k
+                h_acc_le_pushsize h_acc_push_le_k]
+          rw [h_bal]
+          -- Show balance over [acc.size, (acc.push tokens[j]).size] = flowBracketDelta tokens[j].val
+          have h_bal_step :
+              flowBracketBalance
+                (linearise.go tokens pks (j + 1) p (acc.push (tokens[j]'h_j_lt)))
+                acc.size (acc.push (tokens[j]'h_j_lt)).size
+                = flowBracketDelta (tokens[j]'h_j_lt).val := by
+            obtain ⟨tail, h_tail_eq⟩ :=
+              L4YAML.Proofs.ScannerLinearise.linearise_go_eq_acc_append tokens pks (j + 1) p
+                (acc.push (tokens[j]'h_j_lt))
+            rw [h_tail_eq]
+            rw [flowBracketBalance_append_left (acc.push (tokens[j]'h_j_lt)) tail acc.size
+                  (acc.push (tokens[j]'h_j_lt)).size (Nat.le_refl _)]
+            rw [h_size_push]
+            rw [flowBracketBalance_push_extend acc (tokens[j]'h_j_lt) acc.size (Nat.le_refl _)]
+            simp [flowBracketBalance]
+          rw [h_bal_step]
+          rw [show flowBracketBalance tokens j j_k
+                  = flowBracketBalance tokens j (j + 1) + flowBracketBalance tokens (j + 1) j_k from
+                flowBracketBalance_compose tokens j (j + 1) j_k (Nat.le_succ _) (by omega)]
+          rw [flowBracketBalance_single tokens j (by rw [Array.length_toList]; omega)]
+          rfl
+        · rw [h_step]; exact h_walk_eq
     -- Main case-split on the linearise.go step.
     by_cases hp : p < pks.size
     · by_cases hsplice : (pks[p]'hp).insertBeforeIdx ≤ j
       · -- Case 1: splice fires
-        exact splice_handler (pks[p]'hp)
+        exact splice_handler (pks[p]'hp) hp
           (L4YAML.Proofs.ScannerLinearise.linearise_go_step_splice tokens pks j p acc hp hsplice)
           (by omega)
       · by_cases hk : j < tokens.size
@@ -14297,7 +14335,7 @@ theorem linearise_outer_flowEntry_decode
           have h_step : linearise.go tokens pks j p acc
                         = linearise.go tokens pks j (p + 1) (acc ++ expandKind (pks[p]'hp)) := by
             rw [linearise.go]; simp [hp, hsplice, hk]
-          exact splice_handler (pks[p]'hp) h_step (by omega)
+          exact splice_handler (pks[p]'hp) hp h_step (by omega)
     · by_cases hk : j < tokens.size
       · -- Case 4: token-copy via step_token (p ≥ pks.size)
         exact copy_handler hk
@@ -14310,8 +14348,9 @@ theorem linearise_outer_flowEntry_decode
         omega
 
 /-- Top-level wrapper for `linearise_outer_flowEntry_decode` (Sub-step
-    6c-ii-γ-3a).  Specialises the inner walk-state induction at
-    `(j, p, acc) = (0, 0, #[])` to operate directly on
+    6c-ii-γ-3a; **strengthened in 6c-ii-γ-3b-i (2026-05-04)** with the
+    walk-state-after-copy conjunct).  Specialises the inner walk-state
+    induction at `(j, p, acc) = (0, 0, #[])` to operate directly on
     `linearise tokens pks` rather than the auxiliary `linearise.go`. -/
 theorem linearise_outer_flowEntry_decode_top
     (tokens : Array (Positioned YamlToken))
@@ -14322,18 +14361,29 @@ theorem linearise_outer_flowEntry_decode_top
     ∃ (j_k : Nat) (h_j_k_lt : j_k < tokens.size),
       (tokens[j_k]'h_j_k_lt).val = .flowEntry ∧
       flowBracketBalance (linearise tokens pks) 0 k
-        = flowBracketBalance tokens 0 j_k := by
+        = flowBracketBalance tokens 0 j_k ∧
+      ∃ (p_k : Nat) (acc' : Array (Positioned YamlToken)),
+        p_k ≤ pks.size ∧
+        linearise tokens pks
+          = L4YAML.Scanner.linearise.go tokens pks (j_k + 1) p_k acc' ∧
+        acc'.size = k + 1 := by
   have h_lt_go : k < (linearise.go tokens pks 0 0 #[]).size := h_lt
   have h_fe_go : ((linearise.go tokens pks 0 0 #[])[k]'h_lt_go).val = .flowEntry := h_fe
-  obtain ⟨j_k, h_j_k_lt, _h_zero_le, h_tok_fe, h_bal⟩ :=
+  obtain ⟨j_k, h_j_k_lt, _h_zero_le, h_tok_fe, h_bal,
+          p_k, acc', _h_zero_le_pk, h_pk_le, h_walk_eq, h_acc'_size⟩ :=
     linearise_outer_flowEntry_decode tokens pks _ 0 0 k #[] rfl
-      (by simp) h_lt_go h_fe_go
-  refine ⟨j_k, h_j_k_lt, h_tok_fe, ?_⟩
-  show flowBracketBalance (linearise tokens pks) 0 k = flowBracketBalance tokens 0 j_k
-  have h_eq : (linearise tokens pks) = linearise.go tokens pks 0 0 #[] := rfl
-  have h_acc_zero : (#[] : Array (Positioned YamlToken)).size = 0 := rfl
-  rw [h_eq, ← h_acc_zero]
-  exact h_bal
+      (Nat.zero_le _) (by simp) h_lt_go h_fe_go
+  refine ⟨j_k, h_j_k_lt, h_tok_fe, ?_, p_k, acc', h_pk_le, ?_, h_acc'_size⟩
+  · show flowBracketBalance (linearise tokens pks) 0 k = flowBracketBalance tokens 0 j_k
+    have h_eq : (linearise tokens pks) = linearise.go tokens pks 0 0 #[] := rfl
+    have h_acc_zero : (#[] : Array (Positioned YamlToken)).size = 0 := rfl
+    rw [h_eq, ← h_acc_zero]
+    exact h_bal
+  · show linearise tokens pks
+          = L4YAML.Scanner.linearise.go tokens pks (j_k + 1) p_k acc'
+    have h_eq : (linearise tokens pks) = linearise.go tokens pks 0 0 #[] := rfl
+    rw [h_eq]
+    exact h_walk_eq
 
 /-! ### J.4.2.b-2d — Linearise-shape body characterization for `emitPairList`
 
@@ -14590,17 +14640,33 @@ theorem emitPairList_body_linearise_characterization
     --     `linearise_outer_flowEntry_decode_top` specialises at
     --     `(j, p, acc) = (0, 0, #[])` for direct use on
     --     `linearise tokens pks`.
-    --   * **Sub-step 6c-ii-γ-3b (PENDING)**: discharge `h_chain_facts` sorry
-    --     below using the γ-3a inversion lemma.  Apply
-    --     `linearise_outer_flowEntry_decode_top` to extract `j_k` with
-    --     `s'.tokens[j_k] = .flowEntry`; relate balance over
-    --     `[s.tokens.size, j_k]` to the linearise-side balance via the
-    --     translation equation; apply the γ-1 chain-side exhaustiveness
-    --     conjunct (in `_h_first_qs`) to identify pair index `i ≥ 1` with
-    --     `j_k + 1 = pks[qs[i]].insertBeforeIdx`; walk to
-    --     `(pks[qs[i]].insertBeforeIdx, qs[i], acc_witness)` via
-    --     `linearise_go_walk_eq_top` and verify
-    --     `acc_witness.size = k + 1` via `linearise_go_walk_size`.
+    --   * **Sub-step 6c-ii-γ-3b-i (DONE 2026-05-04)**: walk-state
+    --     strengthening of γ-3a.  Extended `linearise_outer_flowEntry_decode`
+    --     and `_top` with a fourth conjunct `∃ p_k acc', p_k ≤ pks.size ∧
+    --     linearise.go ... 0 0 #[] = linearise.go ... (j_k + 1) p_k acc' ∧
+    --     acc'.size = k + 1` — pin-points the walk state immediately after
+    --     the copy step that pushed `tokens[j_k] = .flowEntry`.  Added
+    --     precondition `p ≤ pks.size`.  Decomposition rationale: original
+    --     γ-3b plan needed size relation `k = j_k + foldlSum 0 qs[i]`,
+    --     which is NOT a corollary of γ-3a's bracket-balance equation;
+    --     exposing the walk state directly bypasses the need for
+    --     chain-side strict-monotonicity reasoning.  Sorry count unchanged
+    --     at 9.
+    --   * **Sub-step 6c-ii-γ-3b-ii (PENDING)**: chain-side flow-context
+    --     kind restriction.  Strengthen `EmitScansInFlow` /
+    --     `EmitListScansInFlow` / `EmitPairListScansInFlow` with a
+    --     conjunct asserting that, in flow context, every pendingKey
+    --     entry has kind ∈ {`.unresolved`, `.keyOnly`} — never
+    --     `.blockMappingStartAndKey`.  Required by γ-3b-iii to rule out
+    --     `.blockMappingStart` interfering at position k+1.
+    --   * **Sub-step 6c-ii-γ-3b-iii (PENDING)**: final discharge.  Apply
+    --     γ-3b-i to obtain `(j_k, p_k, acc')` with `acc'.size = k + 1`
+    --     and transport eq.  Apply γ-1 to identify pair index `i ≥ 1`
+    --     with `j_k + 1 = pks[qs[i]].insertBeforeIdx`.  Walk from
+    --     `(j_k+1, p_k, acc')` through unresolved entries (size 0) to
+    --     `(j_k+1, qs[i], acc'')` with `acc''.size = k + 1`, using
+    --     γ-3b-ii's flow-kind restriction.  Apply
+    --     `linearise_splice_keyonly_at_index`.  Sorry count: 9 → 8.
     --
     -- Sub-step 6b dispatched the easier 6a-i1-lift sorry (cons-case `i = 1`
     -- predecessor-flowEntry lift via `FlowMonoChain_preserves_existing_tokens`).
@@ -14610,8 +14676,10 @@ theorem emitPairList_body_linearise_characterization
     -- bracket-balance preservation lemma.  Sub-step 6c-ii-γ-1 strengthened
     -- the ghost predicate with the outer-flowEntry exhaustiveness conjunct.
     -- Sub-step 6c-ii-γ-3a landed the linearise outer-flowEntry inversion
-    -- lemma.  The full inversion bridge here remains pending in 6c-ii-γ-3b
-    -- (linearise-side Part (3) discharge using γ-3a + γ-1 exhaustiveness).
+    -- lemma; sub-step 6c-ii-γ-3b-i strengthened it with the walk-state-
+    -- after-copy conjunct.  The full inversion bridge here remains pending
+    -- in 6c-ii-γ-3b-ii (chain-side flow-context kind restriction) +
+    -- 6c-ii-γ-3b-iii (linearise-side Part (3) final discharge).
     have h_chain_facts :
         ∃ (j p : Nat) (acc : Array (Positioned YamlToken))
           (_ : linearise s'.tokens s'.pendingKeys
