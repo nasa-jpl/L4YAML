@@ -1969,4 +1969,165 @@ theorem linearise_walk_at_kth_resolved_splice
       + (pks.foldl (fun n e => n + (expandKind e).size) 0 0 qs[i])) acc
     h_lin_eq h_acc_size h_q_lt (Nat.le_refl _) h_q_kind
 
+/-- **Forward walk lemma — predecessor-token readout** (J.4.2.b-2d-key-chain
+    Part3 sub-step 6c-i): under save-time strict monotonicity of `pks` at the
+    prefix `[0, q)` (i.e., every preceding pending entry has `insertBeforeIdx`
+    strictly less than `pks[q]`'s, reflecting at-least-one-token-between-saves),
+    the linearised output's element at position `pks[q].insertBeforeIdx - 1 +
+    (pks.foldl 0 0 q)` equals the token preceding `pks[q]`'s splice point in
+    `tokens` (i.e., `tokens[pks[q].insertBeforeIdx - 1]`).
+
+    Companion to `linearise_walk_at_kth_resolved_splice`: that lemma reads off
+    `.key` at the q-th `.keyOnly` splice's POST-fire position
+    (`pks[q].insertBeforeIdx + foldlSum_q`); this lemma reads off the
+    predecessor token at the position immediately before
+    (`pks[q].insertBeforeIdx - 1 + foldlSum_q`).  Combining the two lemmas
+    with the chain-side `tokens[pks[q].insertBeforeIdx - 1] = .flowEntry`
+    fact yields the structural pattern `.flowEntry → .key` at consecutive
+    linearise positions, the forward direction of the
+    `emitPairList_body_linearise_characterization` Part (3) bridge.
+
+    Proof: walk from `(0, 0, #[])` to `(pks[q].insertBeforeIdx - 1, q, acc')`
+    via `linearise_go_walk_eq_top` (in-range condition holds by save-time
+    strict monotonicity: `pks[r].insertBeforeIdx + 1 ≤ pks[q].insertBeforeIdx`
+    gives `pks[r].insertBeforeIdx ≤ pks[q].insertBeforeIdx - 1`; barrier holds
+    since `pks[q].insertBeforeIdx - 1 ≤ pks[q].insertBeforeIdx`).  Then take
+    a token-copy step (`linearise_go_step_copy`) advancing to
+    `(pks[q].insertBeforeIdx, q, acc'.push tokens[pks[q].insertBeforeIdx - 1])`.
+    `acc'.size = (pks[q].insertBeforeIdx - 1) + foldlSum_q` from
+    `linearise_go_walk_size`.  Apply `linearise_go_getElem_lt_acc` to read off
+    `linearise[acc'.size] = (acc'.push tokens[..])[acc'.size] = tokens[..]`.
+
+    The strictness hypothesis `h_idx_strict` (vs the non-strict `h_idx_mono` of
+    the splice-readout sibling) is essential: if some `pks[r]` for `r < q` had
+    the same `insertBeforeIdx` as `pks[q]`, then at the j-cursor reaching
+    `pks[q].insertBeforeIdx`, both `r` and `q` would be ready to splice — the
+    walk loop fires `r` first (advancing `p` from `r` to `r+1`), so the LAST
+    push to `acc` before reaching state `(j, q, acc)` would be a splice, not a
+    token copy.  Strict monotonicity rules this out, ensuring the predecessor
+    in `acc` is exactly `tokens[pks[q].insertBeforeIdx - 1]`. -/
+theorem linearise_walk_at_kth_predecessor_token
+    (tokens : Array (Positioned YamlToken))
+    (pks : Array PendingKeyEntry)
+    (q : Nat)
+    (h_q_lt : q < pks.size)
+    (h_ib_pos : 0 < (pks[q]'h_q_lt).insertBeforeIdx)
+    (h_q_idx_le : (pks[q]'h_q_lt).insertBeforeIdx ≤ tokens.size)
+    (h_idx_strict : ∀ r (h : r < q),
+      (pks[r]'(Nat.lt_trans h h_q_lt)).insertBeforeIdx + 1
+        ≤ (pks[q]'h_q_lt).insertBeforeIdx) :
+    ∃ (h_lin : (pks[q]'h_q_lt).insertBeforeIdx - 1
+                  + (pks.foldl (fun n e => n + (expandKind e).size) 0 0 q)
+                  < (linearise tokens pks).size)
+      (h_pred_lt : (pks[q]'h_q_lt).insertBeforeIdx - 1 < tokens.size),
+      (linearise tokens pks)[
+            (pks[q]'h_q_lt).insertBeforeIdx - 1
+            + (pks.foldl (fun n e => n + (expandKind e).size) 0 0 q)
+          ]'h_lin
+        = tokens[(pks[q]'h_q_lt).insertBeforeIdx - 1]'h_pred_lt := by
+  -- Setup: j = pks[q].insertBeforeIdx, jp = j - 1 (the predecessor token cursor).
+  have h_pred_lt_j : (pks[q]'h_q_lt).insertBeforeIdx - 1
+                       < (pks[q]'h_q_lt).insertBeforeIdx := by omega
+  have h_pred_lt_tok : (pks[q]'h_q_lt).insertBeforeIdx - 1 < tokens.size :=
+    Nat.lt_of_lt_of_le h_pred_lt_j h_q_idx_le
+  have h_pred_le_tok : (pks[q]'h_q_lt).insertBeforeIdx - 1 ≤ tokens.size :=
+    Nat.le_of_lt h_pred_lt_tok
+  -- Step 1: walk from (0, 0, #[]) to (jp, q, acc') via the walk-state equation.
+  have h_walk : ∃ (acc' : Array (Positioned YamlToken)),
+      linearise.go tokens pks 0 0 #[]
+        = linearise.go tokens pks ((pks[q]'h_q_lt).insertBeforeIdx - 1) q acc' :=
+    linearise_go_walk_eq_top tokens pks 0 0
+      ((pks[q]'h_q_lt).insertBeforeIdx - 1) q #[]
+      (Nat.zero_le _) h_pred_le_tok (Nat.zero_le _) (Nat.le_of_lt h_q_lt)
+      (fun r _hpr hrq hr => by
+        have h_r_lt_q : r < q := hrq
+        have h_strict := h_idx_strict r h_r_lt_q
+        omega)
+      (fun _hp' => by omega)
+  obtain ⟨acc', h_walk_eq⟩ := h_walk
+  -- Step 2: apply a copy step from (jp, q, acc') to (j, q, acc'.push tokens[jp]).
+  have h_no_splice :
+      ¬ (pks[q]'h_q_lt).insertBeforeIdx ≤ (pks[q]'h_q_lt).insertBeforeIdx - 1 := by
+    omega
+  have h_copy_step :
+      linearise.go tokens pks ((pks[q]'h_q_lt).insertBeforeIdx - 1) q acc'
+        = linearise.go tokens pks
+            ((pks[q]'h_q_lt).insertBeforeIdx - 1 + 1) q
+            (acc'.push (tokens[(pks[q]'h_q_lt).insertBeforeIdx - 1]'h_pred_lt_tok)) :=
+    linearise_go_step_copy tokens pks ((pks[q]'h_q_lt).insertBeforeIdx - 1) q acc'
+      h_q_lt h_no_splice h_pred_lt_tok
+  -- Rewrite jp + 1 = j (using h_ib_pos: j ≥ 1).
+  have h_jp_succ : (pks[q]'h_q_lt).insertBeforeIdx - 1 + 1
+                  = (pks[q]'h_q_lt).insertBeforeIdx := by omega
+  -- Step 3: combine into a transport equation
+  --   linearise tokens pks = linearise.go tokens pks j q (acc'.push tok).
+  have h_lin_eq :
+      linearise tokens pks
+        = linearise.go tokens pks (pks[q]'h_q_lt).insertBeforeIdx q
+            (acc'.push (tokens[(pks[q]'h_q_lt).insertBeforeIdx - 1]'h_pred_lt_tok)) := by
+    unfold linearise
+    rw [h_walk_eq, h_copy_step, h_jp_succ]
+  -- Step 4: pin acc'.size via linearise_go_walk_size.
+  have h_acc'_size :
+      acc'.size = ((pks[q]'h_q_lt).insertBeforeIdx - 1)
+                    + (pks.foldl (fun n e => n + (expandKind e).size) 0 0 q) := by
+    have h_size :=
+      linearise_go_walk_size tokens pks 0 0
+        ((pks[q]'h_q_lt).insertBeforeIdx - 1) q #[] acc' h_walk_eq
+    have h_bridge :
+        pks.foldl (fun n e => n + (expandKind e).size) 0 0 q
+            + pendingExpandSumFrom pks q
+          = pendingExpandSumFrom pks 0 := by
+      rw [pendingExpandSumFrom_zero_eq_foldl]
+      exact foldl_prefix_plus_pendingExpandSumFrom pks (pks.size - q) q (by omega)
+    have h_emp : (#[] : Array (Positioned YamlToken)).size = 0 := rfl
+    rw [h_emp] at h_size
+    omega
+  -- Step 5: read off the linearise element at position acc'.size.
+  let tok_pred := tokens[(pks[q]'h_q_lt).insertBeforeIdx - 1]'h_pred_lt_tok
+  let acc_ext := acc'.push tok_pred
+  have h_acc_ext_size : acc_ext.size = acc'.size + 1 := Array.size_push (xs := acc') (v := tok_pred)
+  have h_acc_lt_acc_ext : acc'.size < acc_ext.size := by rw [h_acc_ext_size]; omega
+  have h_acc_at :
+      acc_ext[acc'.size]'h_acc_lt_acc_ext
+        = tokens[(pks[q]'h_q_lt).insertBeforeIdx - 1]'h_pred_lt_tok :=
+    Array.getElem_push_eq (xs := acc') (x := tok_pred)
+  have h_mono := linearise_go_size_mono tokens pks
+    ((tokens.size - (pks[q]'h_q_lt).insertBeforeIdx) + (pks.size - q))
+    (pks[q]'h_q_lt).insertBeforeIdx q acc_ext rfl
+  rw [h_acc_ext_size] at h_mono
+  have h_lt_lin' :
+      acc'.size
+        < (linearise.go tokens pks (pks[q]'h_q_lt).insertBeforeIdx q acc_ext).size := by
+    omega
+  have h_lin_at :
+      (linearise.go tokens pks (pks[q]'h_q_lt).insertBeforeIdx q acc_ext)[acc'.size]'h_lt_lin'
+        = acc_ext[acc'.size]'h_acc_lt_acc_ext :=
+    linearise_go_getElem_lt_acc tokens pks (pks[q]'h_q_lt).insertBeforeIdx q acc_ext
+      acc'.size h_acc_lt_acc_ext h_lt_lin'
+  -- Transport via h_lin_eq.
+  have h_lt_lin : acc'.size < (linearise tokens pks).size := by
+    rw [h_lin_eq]; exact h_lt_lin'
+  have h_lin_at_acc :
+      (linearise tokens pks)[acc'.size]'h_lt_lin
+        = (linearise.go tokens pks (pks[q]'h_q_lt).insertBeforeIdx q acc_ext)[acc'.size]'h_lt_lin' := by
+    congr 1 <;> exact h_lin_eq
+  have h_at_acc'sz : (linearise tokens pks)[acc'.size]'h_lt_lin
+          = tokens[(pks[q]'h_q_lt).insertBeforeIdx - 1]'h_pred_lt_tok := by
+    rw [h_lin_at_acc, h_lin_at, h_acc_at]
+  -- Index-rewrite helper: equal indices on the same array give equal values
+  -- (the bound proofs are propositionally equal — Prop is irrelevant).
+  have h_get_eq_idx : ∀ (i j : Nat) (hi : i < (linearise tokens pks).size)
+                       (hj : j < (linearise tokens pks).size),
+      i = j → (linearise tokens pks)[i]'hi = (linearise tokens pks)[j]'hj := by
+    intros i j hi hj heq; subst heq; rfl
+  refine ⟨?_, h_pred_lt_tok, ?_⟩
+  · rw [← h_acc'_size]; exact h_lt_lin
+  · have h_lt_lin_idx : (pks[q]'h_q_lt).insertBeforeIdx - 1
+                          + pks.foldl (fun n e => n + (expandKind e).size) 0 0 q
+                          < (linearise tokens pks).size := by
+      rw [← h_acc'_size]; exact h_lt_lin
+    rw [h_get_eq_idx _ acc'.size h_lt_lin_idx h_lt_lin h_acc'_size.symm]
+    exact h_at_acc'sz
+
 end L4YAML.Proofs.ScannerLinearise

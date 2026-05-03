@@ -12526,21 +12526,31 @@ theorem emitPairList_body_linearise_characterization
     -- has `kind = .keyOnly` and the linearise walk reaches state `(j, p, acc)`
     -- with `acc.size = k + 1` and `pks[p].insertBeforeIdx ≤ j`.
     --
-    -- **Sub-task 6b-bridge-inversion (sorry'd, deferred to a future cadence)**:
-    -- The forward direction (each pair contributes a `.flowEntry` at
-    -- `pks[qs[i]].insertBeforeIdx + P(qs[i]) - 1` in linearise) follows from
-    -- the walk-locator + the predecessor-flowEntry conjunct (already in
-    -- `h_first_qs` from `emitPairList_body_filtered_characterization`).  The
-    -- INVERSE — given an arbitrary outer-level flowEntry at linearise position
-    -- `k`, identify the pair index `i ≥ 1` such that `k + 1 =
-    -- pks[qs[i]].insertBeforeIdx + P(qs[i])` — requires bracket-balance
-    -- accounting to enumerate all outer-level flowEntries and rule out any
-    -- coming from inner flow scopes.  This is a significant proof artifact
-    -- (separate from the chain-side facts already in scope).
+    -- **Sub-task 6c-ii-bridge-inversion (sorry'd, deferred to a future cadence)**:
+    -- The forward direction (each pair contributes a `.flowEntry → .key` pair
+    -- at consecutive linearise positions `(pks[qs[i]].insertBeforeIdx - 1 +
+    -- P(qs[i]), pks[qs[i]].insertBeforeIdx + P(qs[i]))` for `i ≥ 1`) is now
+    -- discharged via two ScannerLinearise lemmas:
+    --   * `linearise_walk_at_kth_predecessor_token` (sub-step 6c-i, 2026-05-02)
+    --     reads off `linearise[(j_i - 1) + P(qs[i])] = tokens[j_i - 1]` (where
+    --     `j_i = pks[qs[i]].insertBeforeIdx`); combined with `h_first_qs`'s
+    --     predecessor-flowEntry conjunct, this gives `.flowEntry` at the
+    --     forward position.
+    --   * `linearise_walk_at_kth_resolved_splice` reads off `linearise[j_i +
+    --     P(qs[i])] = .key` at the immediately following position.
+    -- The INVERSE direction — given an arbitrary outer-level flowEntry at
+    -- linearise position `k`, identify the unique pair index `i ≥ 1` such
+    -- that `k + 1 = pks[qs[i]].insertBeforeIdx + P(qs[i])` — requires
+    -- bracket-balance accounting to enumerate all outer-level flowEntries
+    -- and rule out any coming from inner flow scopes.  This is a
+    -- significant proof artifact (separate from the chain-side facts already
+    -- in scope) and is the remaining sub-step 6c-ii.
     --
     -- Sub-step 6b dispatched the easier 6a-i1-lift sorry (cons-case `i = 1`
-    -- predecessor-flowEntry lift via `FlowMonoChain_preserves_existing_tokens`);
-    -- the inversion bridge here remains future work.
+    -- predecessor-flowEntry lift via `FlowMonoChain_preserves_existing_tokens`).
+    -- Sub-step 6c-i landed the forward-direction readout
+    -- (`linearise_walk_at_kth_predecessor_token`); the inversion bridge here
+    -- remains as 6c-ii.
     have h_chain_facts :
         ∃ (j p : Nat) (acc : Array (Positioned YamlToken))
           (_ : linearise s'.tokens s'.pendingKeys
