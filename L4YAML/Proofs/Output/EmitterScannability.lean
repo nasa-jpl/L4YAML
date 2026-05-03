@@ -3568,6 +3568,51 @@ theorem saveSimpleKey_pendingKeys_size_ge (s : ScannerState) :
     · simp [Array.size_push]
     · exact Nat.le_refl _
 
+/-- **J.4.2.b-2d-key-chain-Part3-final-discharge-bridge-6c-ii-γ-3b-ii-foundation**:
+    Any pendingKey entry pushed by `saveSimpleKey` has kind
+    `.unresolved`.  The push branch (under `simpleKeyAllowed = true ∧
+    not (inFlow ∧ explicitKeyLine = some line)`) writes a fresh
+    `.unresolved` entry; identity branches don't grow the array, making
+    the conjunct vacuous.  Reusable foundation for the γ-3b-ii cadence
+    family discharging "new entries have kind `.unresolved`" at each
+    `scanNextToken_flow_*` leaf step. -/
+theorem saveSimpleKey_new_kind_unresolved (s : ScannerState) :
+    ∀ (q : Nat) (h_q : q < (saveSimpleKey s).pendingKeys.size)
+      (_h_q_ge : s.pendingKeys.size ≤ q),
+      ((saveSimpleKey s).pendingKeys[q]'h_q).kind = .unresolved := by
+  intro q h_q h_q_ge
+  -- `saveSimpleKey` is push-or-id; case-split via the explicit decomposition.
+  have h_either : (saveSimpleKey s).pendingKeys = s.pendingKeys ∨
+    (saveSimpleKey s).pendingKeys = s.pendingKeys.push
+      { insertBeforeIdx := s.tokens.size, pos := s.currentPos,
+        endLine := s.line, kind := .unresolved } := by
+    unfold saveSimpleKey
+    split
+    · left; rfl
+    · split
+      · right; rfl
+      · left; rfl
+  rcases h_either with h_id | h_push
+  · -- identity case: q < s.pendingKeys.size, but q ≥ s.pendingKeys.size — absurd.
+    have h_q' : q < s.pendingKeys.size := h_id ▸ h_q
+    exact absurd (Nat.lt_of_le_of_lt h_q_ge h_q') (Nat.lt_irrefl _)
+  · -- push case: q = s.pendingKeys.size (size grew by 1), kind = .unresolved.
+    have h_q' : q < s.pendingKeys.size + 1 := by
+      rw [h_push, Array.size_push] at h_q; exact h_q
+    have h_q_eq : q = s.pendingKeys.size := by omega
+    have h_q_lt :
+        q < (s.pendingKeys.push
+          { insertBeforeIdx := s.tokens.size, pos := s.currentPos,
+            endLine := s.line, kind := .unresolved }).size := h_push ▸ h_q
+    have h_idx_eq : ((saveSimpleKey s).pendingKeys[q]'h_q) =
+      (s.pendingKeys.push
+        { insertBeforeIdx := s.tokens.size, pos := s.currentPos,
+          endLine := s.line, kind := .unresolved })[q]'h_q_lt := by
+      congr 1
+    rw [h_idx_eq]
+    subst h_q_eq
+    rw [Array.getElem_push_eq]
+
 /-- **J.4.2.b-2d-key-chain-Part2-body-C-foundation-EmitScansInFlow-helpers**:
     `saveSimpleKey` preserves `(insertBeforeIdx, kind)` of every prior
     pendingKey entry.  Applies unconditionally — when `saveSimpleKey`
@@ -14652,13 +14697,34 @@ theorem emitPairList_body_linearise_characterization
     --     exposing the walk state directly bypasses the need for
     --     chain-side strict-monotonicity reasoning.  Sorry count unchanged
     --     at 9.
-    --   * **Sub-step 6c-ii-γ-3b-ii (PENDING)**: chain-side flow-context
-    --     kind restriction.  Strengthen `EmitScansInFlow` /
-    --     `EmitListScansInFlow` / `EmitPairListScansInFlow` with a
-    --     conjunct asserting that, in flow context, every pendingKey
-    --     entry has kind ∈ {`.unresolved`, `.keyOnly`} — never
-    --     `.blockMappingStartAndKey`.  Required by γ-3b-iii to rule out
-    --     `.blockMappingStart` interfering at position k+1.
+    --   * **Sub-step 6c-ii-γ-3b-ii (further decomposed 2026-05-04)**:
+    --     chain-side flow-context kind restriction.  Strengthen
+    --     `EmitScansInFlow` / `EmitListScansInFlow` /
+    --     `EmitPairListScansInFlow` with a conjunct asserting that, in
+    --     flow context, every pendingKey entry has kind ∈ {`.unresolved`,
+    --     `.keyOnly`} — never `.blockMappingStartAndKey`.  Required by
+    --     γ-3b-iii to rule out `.blockMappingStart` interfering at
+    --     position k+1.  **Decomposition rationale:** the original plan
+    --     estimated ~150 lines for "predicate def + ~6 leaf discharge
+    --     sites".  In practice each `scanNextToken_flow_*` helper has an
+    --     internal `h_content` lemma (~70 lines) with two-branch case
+    --     split (`simpleKey.possible = true/false`), and the new-kind
+    --     conjunct needs discharge in each branch — realistic scope is
+    --     ~250-400 lines.  Decomposed into:
+    --       - **γ-3b-ii-foundation (DONE 2026-05-04)**: reusable helper
+    --         `saveSimpleKey_new_kind_unresolved` — any pendingKey entry
+    --         pushed by `saveSimpleKey` has kind `.unresolved`.  ~40 lines.
+    --       - **γ-3b-ii-leaves-A (PENDING)**: scalar +
+    --         `[`/`{` open-nested.  ~120 lines.
+    --       - **γ-3b-ii-leaves-B (PENDING)**: `]` + `}` close-nested
+    --         + `,` comma.  ~100 lines.
+    --       - **γ-3b-ii-leaves-C (PENDING)**: value-pkResolve (`:`) +
+    --         ws1 (both vacuous: `s'.pendingKeys.size = s.pendingKeys.size`).
+    --         ~30 lines.
+    --       - **γ-3b-ii-predicate (PENDING)**: predicate definitions +
+    --         composition discharge in `*_empty` + `emit_scans_in_flow`
+    --         + `emitList_scans_nonempty` + `emitPairList_scans_nonempty`.
+    --         ~120 lines.
     --   * **Sub-step 6c-ii-γ-3b-iii (PENDING)**: final discharge.  Apply
     --     γ-3b-i to obtain `(j_k, p_k, acc')` with `acc'.size = k + 1`
     --     and transport eq.  Apply γ-1 to identify pair index `i ≥ 1`
