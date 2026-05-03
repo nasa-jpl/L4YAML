@@ -9438,6 +9438,25 @@ def EmitPairListScansInFlow (pairs : List (YamlValue × YamlValue)) : Prop :=
           ∃ (h : s.pendingKeys.size < s'.pendingKeys.size),
             (s'.pendingKeys[s.pendingKeys.size]'h).insertBeforeIdx = s.tokens.size
             ∧ (s'.pendingKeys[s.pendingKeys.size]'h).kind = .keyOnly)
+      -- J.4.2.b-2d-key-chain-Part3-extend-EmitPairListScansInFlow-per-pair:
+      -- per-pair locator array.  Under `pairs ≠ []`, exposes the indices in
+      -- `s'.pendingKeys` of the resolved-key entries for each pair (one per
+      -- pair; `qs[0] = s.pendingKeys.size` from the gated push of the first
+      -- pair's key, `qs[i+1] = qs_tail[i]` from the IH on the tail).
+      -- Strict-monotonicity of `qs` reflects pendingKey monotonicity at
+      -- each pair's saveSimpleKey.  `insertBeforeIdx` is NOT exposed here
+      -- — sub-step 5's `linearise_walk_at_kth_resolved_splice` consumer
+      -- derives it from the saveSimpleKey monotonicity invariant.  Cons
+      -- construction: `qs = #[s.pendingKeys.size] ++ qs_tail`.
+      ∧ (pairs ≠ [] →
+          ∃ (qs : Array Nat) (_h_size : qs.size = pairs.length)
+            (h_pos : 0 < qs.size),
+            qs[0]'h_pos = s.pendingKeys.size
+            ∧ (∀ i (h : i < qs.size),
+                ∃ (h_lt : qs[i]'h < s'.pendingKeys.size),
+                  (s'.pendingKeys[qs[i]'h]'h_lt).kind = .keyOnly)
+            ∧ (∀ i j (hi : i < qs.size) (hj : j < qs.size),
+                i < j → qs[i]'hi < qs[j]'hj))
 
 theorem emitPairList_scans_empty : EmitPairListScansInFlow [] := by
   intro s rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline _h_ska
@@ -9445,7 +9464,7 @@ theorem emitPairList_scans_empty : EmitPairListScansInFlow [] := by
     simp [emit.emitPairList]
   exact ⟨0, s, .zero, h_eq ▸ hcorr, rfl, rfl, rfl, rfl, h_col, h_flow, h_indent, rfl,
     h_atol, h_endline, rfl, .zero (Nat.le_refl _), Nat.le_refl _, fun _ _ _ => ⟨rfl, rfl⟩, rfl,
-    fun h_ne => absurd rfl h_ne⟩
+    fun h_ne => absurd rfl h_ne, fun h_ne => absurd rfl h_ne⟩
 
 -- Non-empty pair list scanning: each pair contributes key + ":" + space + value steps.
 -- Uses emitPairList_first_char, scanNextToken_flow_value, scanNextToken_flow_comma,
@@ -9639,30 +9658,51 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
         have ⟨h_size_all, h_pkRec_all⟩ :=
           pkRec_size_compose h_size_s_s3 _h_size₃ h_pkRec_s_s3 _h_pkRec₃
         -- pendingKeyStack: chain s → s₁ → s₂ → s₃ → s_end.
-        refine ⟨h_size_all, h_pkRec_all, ?_, ?_⟩
+        -- Pre-derive first-pair resolved-key facts at index s.pendingKeys.size
+        -- (shared by C-compose first-key conjunct and Part3 per-pair locator).
+        obtain ⟨h_lt_at_s2, h_kd_s2, h_ib_s2_s1⟩ := h_pk_resolved
+        have h_lt_s_s3 : s.pendingKeys.size < s₃.pendingKeys.size := by
+          have h_eq_sz : s₂.pendingKeys.size = s₃.pendingKeys.size := by
+            rw [_h_pks_pp₃]
+          omega
+        have h_lt_s_s_end : s.pendingKeys.size < s_end.pendingKeys.size :=
+          Nat.lt_of_lt_of_le h_lt_s_s3 _h_size₃
+        have ⟨h_ib_pres, h_kd_pres⟩ :=
+          _h_pkRec₃ s.pendingKeys.size h_lt_s_s3 h_lt_s_s_end
+        have h_eq_s3_s2_ib :
+            (s₃.pendingKeys[s.pendingKeys.size]'h_lt_s_s3).insertBeforeIdx
+              = (s₂.pendingKeys[s.pendingKeys.size]'h_lt_at_s2).insertBeforeIdx := by
+          simp only [_h_pks_pp₃]
+        have h_eq_s3_s2_kd :
+            (s₃.pendingKeys[s.pendingKeys.size]'h_lt_s_s3).kind
+              = (s₂.pendingKeys[s.pendingKeys.size]'h_lt_at_s2).kind := by
+          simp only [_h_pks_pp₃]
+        have h_kd_s_end :
+            (s_end.pendingKeys[s.pendingKeys.size]'h_lt_s_s_end).kind = .keyOnly := by
+          rw [h_kd_pres, h_eq_s3_s2_kd]; exact h_kd_s2
+        have h_ib_s_end :
+            (s_end.pendingKeys[s.pendingKeys.size]'h_lt_s_s_end).insertBeforeIdx
+              = s.tokens.size := by
+          rw [h_ib_pres, h_eq_s3_s2_ib, h_ib_s2_s1]; exact h_ib_s1
+        refine ⟨h_size_all, h_pkRec_all, ?_, ?_, ?_⟩
         · rw [_h_pks₃, h_pks_pp₃, h_pks_pk_pkr, _h_pks₁]
         · -- C-compose: first-pair resolved-key facts at index s.pendingKeys.size.
           intro _h_ne_pairs
-          obtain ⟨h_lt_at_s2, h_kd_s2, h_ib_s2_s1⟩ := h_pk_resolved
-          have h_lt_s_s3 : s.pendingKeys.size < s₃.pendingKeys.size := by
-            have h_eq_sz : s₂.pendingKeys.size = s₃.pendingKeys.size := by
-              rw [_h_pks_pp₃]
+          exact ⟨h_lt_s_s_end, h_ib_s_end, h_kd_s_end⟩
+        · -- Part3-extend: per-pair locator (singleton: qs = #[s.pendingKeys.size]).
+          intro _h_ne_pairs
+          have h_size_one : (#[s.pendingKeys.size] : Array Nat).size = 1 := rfl
+          refine ⟨#[s.pendingKeys.size], rfl, h_size_one ▸ Nat.zero_lt_one, rfl, ?_, ?_⟩
+          · -- per-i kind = .keyOnly (only i = 0)
+            intro i h_i
+            rw [h_size_one] at h_i
+            have h_i_eq : i = 0 := by omega
+            subst h_i_eq
+            exact ⟨h_lt_s_s_end, h_kd_s_end⟩
+          · -- strict-monotone (vacuous: only one element)
+            intro a b h_a h_b h_lt
+            rw [h_size_one] at h_a h_b
             omega
-          have h_lt_s_s_end : s.pendingKeys.size < s_end.pendingKeys.size :=
-            Nat.lt_of_lt_of_le h_lt_s_s3 _h_size₃
-          have ⟨h_ib_pres, h_kd_pres⟩ :=
-            _h_pkRec₃ s.pendingKeys.size h_lt_s_s3 h_lt_s_s_end
-          have h_eq_s3_s2_ib :
-              (s₃.pendingKeys[s.pendingKeys.size]'h_lt_s_s3).insertBeforeIdx
-                = (s₂.pendingKeys[s.pendingKeys.size]'h_lt_at_s2).insertBeforeIdx := by
-            simp only [_h_pks_pp₃]
-          have h_eq_s3_s2_kd :
-              (s₃.pendingKeys[s.pendingKeys.size]'h_lt_s_s3).kind
-                = (s₂.pendingKeys[s.pendingKeys.size]'h_lt_at_s2).kind := by
-            simp only [_h_pks_pp₃]
-          exact ⟨h_lt_s_s_end,
-            by rw [h_ib_pres, h_eq_s3_s2_ib, h_ib_s2_s1]; exact h_ib_s1,
-            by rw [h_kd_pres, h_eq_s3_s2_kd]; exact h_kd_s2⟩
     | p' :: ps, ih =>
       -- ══ Multi-pair: emit k ++ ": " ++ emit v ++ ", " ++ emitPairList (p' :: ps) ══
       have h_eq : (emit.emitPairList (p :: p' :: ps)).toList ++ rest_chars =
@@ -9813,7 +9853,8 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
         ih (by simp) h_tail_all_k h_tail_all_v
       obtain ⟨n_r, s_end, h_chain_r, h_corr_end, h_fl_end, h_dp_end, h_ids_end,
               h_ek_end, h_col_end, h_flow_end, h_indent_end, h_line_end, h_atol_end,
-              h_endline_end, h_stack_end, h_fmc_r, h_size_r, h_pkRec_r, h_pks_r, _h_first_r⟩ :=
+              h_endline_end, h_stack_end, h_fmc_r, h_size_r, h_pkRec_r, h_pks_r,
+              _h_first_r, h_first_qs_r⟩ :=
         h_ih_list s_pp rest_chars h_corr_pp'
           h_flow_pp
           (by rw [h_fl_pp, h_fl_c]; rw [h_fl_v, h_fl₃, h_fl₂, h_fl₁]; exact h_fl)
@@ -9982,63 +10023,146 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
         have ⟨h_size_all, h_pkRec_all⟩ :=
           pkRec_size_compose h_size_s_spp h_size_r h_pkRec_s_spp h_pkRec_r
         -- pendingKeyStack: chain s → s₁ → s₂ → s₃ → s_v → s_c → s_pp → s_end.
-        refine ⟨h_size_all, h_pkRec_all, ?_, ?_⟩
+        -- Pre-derive first-pair resolved-key facts at index s.pendingKeys.size
+        -- (shared by C-compose first-key conjunct and Part3 per-pair locator).
+        -- Chain: s → s₁ (gated push, kind=.unresolved, ib=s.tokens.size)
+        --        → s₂ (pkResolve, kind=.keyOnly, ib preserved)
+        --        → s₃ (ws1 preserves pendingKeys)
+        --        → s_v (value pkRec at j < s₃.size)
+        --        → s_c (comma pkRec at j < s_v.size)
+        --        → s_pp (ws1 preserves pendingKeys)
+        --        → s_end (IH pkRec at j < s_pp.size).
+        obtain ⟨h_lt_at_s2, h_kd_s2, h_ib_s2_s1⟩ := h_pk_resolved
+        have h_lt_s_s3 : s.pendingKeys.size < s₃.pendingKeys.size := by
+          have h_eq_sz : s₂.pendingKeys.size = s₃.pendingKeys.size := by
+            rw [_h_pks_pp₃]
+          omega
+        have h_lt_s_sv : s.pendingKeys.size < s_v.pendingKeys.size :=
+          Nat.lt_of_lt_of_le h_lt_s_s3 _h_size_v
+        have h_lt_s_sc : s.pendingKeys.size < s_c.pendingKeys.size :=
+          Nat.lt_of_lt_of_le h_lt_s_sv _h_size_c
+        have h_lt_s_spp : s.pendingKeys.size < s_pp.pendingKeys.size := by
+          have h_eq_sz : s_c.pendingKeys.size = s_pp.pendingKeys.size := by
+            rw [_h_pks_pp_pks]
+          omega
+        have h_lt_s_send : s.pendingKeys.size < s_end.pendingKeys.size :=
+          Nat.lt_of_lt_of_le h_lt_s_spp h_size_r
+        have h_eq_s3_s2_ib :
+            (s₃.pendingKeys[s.pendingKeys.size]'h_lt_s_s3).insertBeforeIdx
+              = (s₂.pendingKeys[s.pendingKeys.size]'h_lt_at_s2).insertBeforeIdx := by
+          simp only [_h_pks_pp₃]
+        have h_eq_s3_s2_kd :
+            (s₃.pendingKeys[s.pendingKeys.size]'h_lt_s_s3).kind
+              = (s₂.pendingKeys[s.pendingKeys.size]'h_lt_at_s2).kind := by
+          simp only [_h_pks_pp₃]
+        have h_eq_spp_sc_ib :
+            (s_pp.pendingKeys[s.pendingKeys.size]'h_lt_s_spp).insertBeforeIdx
+              = (s_c.pendingKeys[s.pendingKeys.size]'h_lt_s_sc).insertBeforeIdx := by
+          simp only [_h_pks_pp_pks]
+        have h_eq_spp_sc_kd :
+            (s_pp.pendingKeys[s.pendingKeys.size]'h_lt_s_spp).kind
+              = (s_c.pendingKeys[s.pendingKeys.size]'h_lt_s_sc).kind := by
+          simp only [_h_pks_pp_pks]
+        have ⟨h_ib_sv, h_kd_sv⟩ :=
+          _h_pkRec_v s.pendingKeys.size h_lt_s_s3 h_lt_s_sv
+        have ⟨h_ib_sc, h_kd_sc⟩ :=
+          _h_pkRec_c s.pendingKeys.size h_lt_s_sv h_lt_s_sc
+        have ⟨h_ib_send, h_kd_send⟩ :=
+          h_pkRec_r s.pendingKeys.size h_lt_s_spp h_lt_s_send
+        have h_kd_s_end :
+            (s_end.pendingKeys[s.pendingKeys.size]'h_lt_s_send).kind = .keyOnly := by
+          rw [h_kd_send, h_eq_spp_sc_kd, h_kd_sc, h_kd_sv, h_eq_s3_s2_kd]
+          exact h_kd_s2
+        have h_ib_s_end :
+            (s_end.pendingKeys[s.pendingKeys.size]'h_lt_s_send).insertBeforeIdx
+              = s.tokens.size := by
+          rw [h_ib_send, h_eq_spp_sc_ib, h_ib_sc, h_ib_sv, h_eq_s3_s2_ib, h_ib_s2_s1]
+          exact h_ib_s1
+        refine ⟨h_size_all, h_pkRec_all, ?_, ?_, ?_⟩
         · rw [h_pks_r, _h_pks_pp_stk, _h_pks_c, _h_pks_v, h_pks_pp₃, h_pks_pk_pkr, _h_pks₁]
         · -- C-compose: first-pair resolved-key facts at index s.pendingKeys.size.
-          -- Chain: s → s₁ (gated push, kind=.unresolved, ib=s.tokens.size)
-          --        → s₂ (pkResolve, kind=.keyOnly, ib preserved)
-          --        → s₃ (ws1 preserves pendingKeys)
-          --        → s_v (value pkRec at j < s₃.size)
-          --        → s_c (comma pkRec at j < s_v.size)
-          --        → s_pp (ws1 preserves pendingKeys)
-          --        → s_end (IH pkRec at j < s_pp.size).
           intro _h_ne_pairs
-          obtain ⟨h_lt_at_s2, h_kd_s2, h_ib_s2_s1⟩ := h_pk_resolved
-          have h_lt_s_s3 : s.pendingKeys.size < s₃.pendingKeys.size := by
-            have h_eq_sz : s₂.pendingKeys.size = s₃.pendingKeys.size := by
-              rw [_h_pks_pp₃]
-            omega
-          have h_lt_s_sv : s.pendingKeys.size < s_v.pendingKeys.size :=
-            Nat.lt_of_lt_of_le h_lt_s_s3 _h_size_v
-          have h_lt_s_sc : s.pendingKeys.size < s_c.pendingKeys.size :=
-            Nat.lt_of_lt_of_le h_lt_s_sv _h_size_c
-          have h_lt_s_spp : s.pendingKeys.size < s_pp.pendingKeys.size := by
-            have h_eq_sz : s_c.pendingKeys.size = s_pp.pendingKeys.size := by
-              rw [_h_pks_pp_pks]
-            omega
-          have h_lt_s_send : s.pendingKeys.size < s_end.pendingKeys.size :=
-            Nat.lt_of_lt_of_le h_lt_s_spp h_size_r
-          -- Chain pkRec preservation through s₃ → s_v → s_c → s_pp → s_end.
-          have h_eq_s3_s2_ib :
-              (s₃.pendingKeys[s.pendingKeys.size]'h_lt_s_s3).insertBeforeIdx
-                = (s₂.pendingKeys[s.pendingKeys.size]'h_lt_at_s2).insertBeforeIdx := by
-            simp only [_h_pks_pp₃]
-          have h_eq_s3_s2_kd :
-              (s₃.pendingKeys[s.pendingKeys.size]'h_lt_s_s3).kind
-                = (s₂.pendingKeys[s.pendingKeys.size]'h_lt_at_s2).kind := by
-            simp only [_h_pks_pp₃]
-          have h_eq_spp_sc_ib :
-              (s_pp.pendingKeys[s.pendingKeys.size]'h_lt_s_spp).insertBeforeIdx
-                = (s_c.pendingKeys[s.pendingKeys.size]'h_lt_s_sc).insertBeforeIdx := by
-            simp only [_h_pks_pp_pks]
-          have h_eq_spp_sc_kd :
-              (s_pp.pendingKeys[s.pendingKeys.size]'h_lt_s_spp).kind
-                = (s_c.pendingKeys[s.pendingKeys.size]'h_lt_s_sc).kind := by
-            simp only [_h_pks_pp_pks]
-          have ⟨h_ib_sv, h_kd_sv⟩ :=
-            _h_pkRec_v s.pendingKeys.size h_lt_s_s3 h_lt_s_sv
-          have ⟨h_ib_sc, h_kd_sc⟩ :=
-            _h_pkRec_c s.pendingKeys.size h_lt_s_sv h_lt_s_sc
-          have ⟨h_ib_send, h_kd_send⟩ :=
-            h_pkRec_r s.pendingKeys.size h_lt_s_spp h_lt_s_send
-          refine ⟨h_lt_s_send, ?_, ?_⟩
-          · -- insertBeforeIdx = s.tokens.size
-            rw [h_ib_send, h_eq_spp_sc_ib, h_ib_sc, h_ib_sv, h_eq_s3_s2_ib,
-                h_ib_s2_s1]
-            exact h_ib_s1
-          · -- kind = .keyOnly
-            rw [h_kd_send, h_eq_spp_sc_kd, h_kd_sc, h_kd_sv, h_eq_s3_s2_kd]
-            exact h_kd_s2
+          exact ⟨h_lt_s_send, h_ib_s_end, h_kd_s_end⟩
+        · -- Part3-extend: per-pair locator (cons: qs = #[s.pendingKeys.size] ++ qs_tail).
+          -- IH on the tail (p' :: ps) under s_pp gives qs_tail of size = (p'::ps).length
+          -- with qs_tail[0] = s_pp.pendingKeys.size; values are indices into
+          -- s_end.pendingKeys (the IH's "s'") with kind = .keyOnly; strict-monotone.
+          intro _h_ne_pairs
+          obtain ⟨qs_tail, h_size_t, h_pos_t, h_q0_t, h_per_i_t, h_strict_t⟩ :=
+            h_first_qs_r (by simp)
+          have h_size_one : (#[s.pendingKeys.size] : Array Nat).size = 1 := rfl
+          refine ⟨#[s.pendingKeys.size] ++ qs_tail, ?_, ?_, ?_, ?_, ?_⟩
+          · -- size: 1 + qs_tail.size = (p :: p' :: ps).length
+            rw [Array.size_append, h_size_one, h_size_t]
+            simp [List.length]; omega
+          · -- 0 < size
+            rw [Array.size_append, h_size_one]; omega
+          · -- qs[0] = s.pendingKeys.size
+            rw [Array.getElem_append_left (h_size_one ▸ Nat.zero_lt_one)]
+            rfl
+          · -- per-i kind = .keyOnly
+            intro i h_i
+            rw [Array.size_append, h_size_one] at h_i
+            by_cases h_i_zero : i = 0
+            · subst h_i_zero
+              have h_lt_one : 0 < (#[s.pendingKeys.size] : Array Nat).size :=
+                h_size_one ▸ Nat.zero_lt_one
+              rw [Array.getElem_append_left h_lt_one]
+              show ∃ (h_lt : (#[s.pendingKeys.size] : Array Nat)[0]'h_lt_one
+                              < s_end.pendingKeys.size),
+                  (s_end.pendingKeys[(#[s.pendingKeys.size] : Array Nat)[0]'h_lt_one]'h_lt).kind
+                    = .keyOnly
+              exact ⟨h_lt_s_send, h_kd_s_end⟩
+            · obtain ⟨j, rfl⟩ : ∃ j, i = j + 1 := ⟨i - 1, by omega⟩
+              have h_j : j < qs_tail.size := by omega
+              have h_ge : (#[s.pendingKeys.size] : Array Nat).size ≤ j + 1 := by
+                rw [h_size_one]; omega
+              rw [Array.getElem_append_right h_ge]
+              have h_sub : j + 1 - (#[s.pendingKeys.size] : Array Nat).size = j := by
+                rw [h_size_one]; omega
+              simp only [h_sub]
+              exact h_per_i_t j h_j
+          · -- strict-monotone
+            intro a b h_a h_b h_lt
+            rw [Array.size_append, h_size_one] at h_a h_b
+            by_cases h_a_zero : a = 0
+            · subst h_a_zero
+              have h_b_pos : 0 < b := h_lt
+              obtain ⟨b', rfl⟩ : ∃ b', b = b' + 1 := ⟨b - 1, by omega⟩
+              have h_b' : b' < qs_tail.size := by omega
+              have h_lt_one : 0 < (#[s.pendingKeys.size] : Array Nat).size :=
+                h_size_one ▸ Nat.zero_lt_one
+              rw [Array.getElem_append_left h_lt_one]
+              have h_ge_b : (#[s.pendingKeys.size] : Array Nat).size ≤ b' + 1 := by
+                rw [h_size_one]; omega
+              rw [Array.getElem_append_right h_ge_b]
+              have h_sub_b : b' + 1 - (#[s.pendingKeys.size] : Array Nat).size = b' := by
+                rw [h_size_one]; omega
+              simp only [h_sub_b]
+              show s.pendingKeys.size < qs_tail[b']'h_b'
+              by_cases h_b'_zero : b' = 0
+              · subst h_b'_zero
+                rw [h_q0_t]; exact h_lt_s_spp
+              · have h_b'_pos : 0 < b' := by omega
+                have h_strict := h_strict_t 0 b' h_pos_t h_b' h_b'_pos
+                rw [h_q0_t] at h_strict
+                exact Nat.lt_of_lt_of_le h_lt_s_spp (Nat.le_of_lt h_strict)
+            · obtain ⟨a', rfl⟩ : ∃ a', a = a' + 1 := ⟨a - 1, by omega⟩
+              have h_b_pos : 0 < b := by omega
+              obtain ⟨b', rfl⟩ : ∃ b', b = b' + 1 := ⟨b - 1, by omega⟩
+              have h_a' : a' < qs_tail.size := by omega
+              have h_b' : b' < qs_tail.size := by omega
+              have h_ge_a : (#[s.pendingKeys.size] : Array Nat).size ≤ a' + 1 := by
+                rw [h_size_one]; omega
+              have h_ge_b : (#[s.pendingKeys.size] : Array Nat).size ≤ b' + 1 := by
+                rw [h_size_one]; omega
+              rw [Array.getElem_append_right h_ge_a, Array.getElem_append_right h_ge_b]
+              have h_sub_a : a' + 1 - (#[s.pendingKeys.size] : Array Nat).size = a' := by
+                rw [h_size_one]; omega
+              have h_sub_b : b' + 1 - (#[s.pendingKeys.size] : Array Nat).size = b' := by
+                rw [h_size_one]; omega
+              simp only [h_sub_a, h_sub_b]
+              exact h_strict_t a' b' h_a' h_b' (by omega)
 
 /-- Every grammable value satisfies `EmitScansInFlow`. -/
 theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inFlow) :
@@ -10293,7 +10417,7 @@ theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inF
       rw [List.append_assoc] at h_corr₁; exact h_corr₁
     obtain ⟨n₂, s₂, h_chain₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, h_ek₂, h_col₂, h_s2_inflow,
             h_s2_indent, _h_line₂, h_atol₂, h_endline₂, h_stack₂, h_fmc₂, h_size₂, h_pkRec₂,
-            h_pks₂, _h_first₂⟩ :=
+            h_pks₂, _h_first₂, _h_first_qs₂⟩ :=
       h_pair_scan s₁ (['}'] ++ rest) h_corr₁_assoc h_s1_inflow (by rw [h_fl₁]; omega) h_s1_indent h_s1_col
         (by rw [h_ek₁]; exact h_ek)
         h_atol₁
@@ -11870,7 +11994,7 @@ theorem emitPairList_body_filtered_characterization
   have h_scan := emitPairList_scans_nonempty pairs h_ne h_all_k h_all_v
   obtain ⟨n, s', h_chain, h_corr', h_fl', h_dp', h_ids', h_ek', h_col', h_inflow',
           h_indent', h_line', h_atol', h_endline', h_stack', h_fmc, _h_size, _h_pkRec,
-          _h_pks_eq, h_first⟩ :=
+          _h_pks_eq, h_first, _h_first_qs⟩ :=
     h_scan s rest h_corr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_ska
   have h_n_pos : n ≥ 1 := by
     match n, h_chain with
