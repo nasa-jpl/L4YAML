@@ -8673,6 +8673,27 @@ def EmitScansInFlow (v : YamlValue) : Prop :=
               ∧ (s'.pendingKeys[s.pendingKeys.size]'h).kind = .unresolved)
           ∧ s'.pendingKeyActive = some s.pendingKeys.size
           ∧ s'.simpleKey.possible = true)
+      -- J.4.2.b-2d-key-chain-Part3-final-discharge-bridge-6c-ii-γ-2 (2026-05-03):
+      -- balance-zero + no-outer-flowEntry strengthening (single bundled conjunct).
+      -- `emit(v)` is a single grammable value: scalars produce one `.scalar`
+      -- token (no bracket / no flowEntry), and sequence/mapping bodies are
+      -- wrapped in matching `[`/`]` or `{`/`}` brackets.  Therefore:
+      --   * the cumulative bracket balance from `s.tokens.size` to
+      --     `s'.tokens.size` is 0 (entry = exit), and
+      --   * every `.flowEntry` token pushed during the chain is *inside*
+      --     a flow scope opened by `emit(v)` itself (not at the outer
+      --     scope where balance from `s.tokens.size` is 0).
+      -- Consumed by `emitPairList_scans_nonempty`'s singleton + cons case
+      -- discharges to discharge γ-1's outer-flowEntry exhaustiveness sorry.
+      -- Discharge in `emit_scans_in_flow`'s scalar/sequence/mapping cases is
+      -- sorry'd as sub-task 6c-ii-γ-2-discharge (requires balance reasoning
+      -- over `EmitListScansInFlow`/`EmitPairListScansInFlow` bodies +
+      -- token-push facts for the per-leaf scalar/`[`/`]`/`{`/`}` scanners).
+      ∧ (flowBracketBalance s'.tokens s.tokens.size s'.tokens.size = 0
+          ∧ ∀ (kk : Nat) (h_kk_lt : kk < s'.tokens.size)
+                 (_h_kk_ge : s.tokens.size ≤ kk),
+              (s'.tokens[kk]'h_kk_lt).val = .flowEntry →
+              flowBracketBalance s'.tokens s.tokens.size kk ≥ 1)
 
 /-- `EmitListScansInFlow items` asserts that scanning the comma-separated
     emitList output succeeds in flow context, preserving invariants.
@@ -8739,7 +8760,7 @@ theorem emitList_scans_nonempty (items : List YamlValue) (h_ne : items ≠ [])
       rw [h_eq] at hcorr
       obtain ⟨n, s', h_chain, h_corr, h_fl', h_dp, h_ids, h_ek', h_col', h_flow', h_indent',
               h_line_v, _, _, h_atol', h_endline', h_stack', h_fmc', h_size', h_pkRec',
-              h_pks_v, _h_gated_v⟩ :=
+              h_pks_v, _h_gated_v, _h_balfacts_v⟩ :=
         h_all v (.head _) s rest_chars hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline
       exact ⟨n, s', h_chain, h_corr, h_fl', h_dp, h_ids, h_ek', h_col', h_flow', h_indent',
         h_line_v, h_atol', h_endline', h_stack', h_fmc', h_size', h_pkRec', h_pks_v⟩
@@ -8756,7 +8777,7 @@ theorem emitList_scans_nonempty (items : List YamlValue) (h_ne : items ≠ [])
       have h_ev : EmitScansInFlow v := h_all v (.head _)
       obtain ⟨n₁, s₁, h_chain₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_ek₁, h_col₁, h_flow₁,
               h_indent₁, _h_line₁, _, h_last₁, h_atol₁, h_endline₁, h_stack₁, h_fmc₁,
-              h_size₁, h_pkRec₁, h_pks_v, _h_gated₁⟩ :=
+              h_size₁, h_pkRec₁, h_pks_v, _h_gated₁, _h_balfacts₁⟩ :=
         h_ev s ([',', ' '] ++ (emit.emitList (v' :: vs)).toList ++ rest_chars)
           hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline
       -- Step 2: Scan ',' via scanNextToken_flow_comma
@@ -9710,7 +9731,8 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
       have h_ek_key : EmitScansInFlow p.1 := h_all_k p (.head _)
       obtain ⟨n₁, s₁, h_chain₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_ek₁, h_col₁,
               h_flow₁, h_indent₁, _h_line₁, h_ska₁, _, h_atol₁, h_endline₁, h_stack₁,
-              h_fmc₁, _h_size₁, _h_pkRec₁, _h_pks₁, _h_gated₁⟩ :=
+              h_fmc₁, _h_size₁, _h_pkRec₁, _h_pks₁, _h_gated₁,
+              h_balfacts_k_singleton⟩ :=
         h_ek_key s ([':',  ' '] ++ (emit p.2).toList ++ rest_chars)
           hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline
       -- Step 2: Derive saveSimpleKey identity and scanValueValidate
@@ -9747,7 +9769,8 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
       have h_ev : EmitScansInFlow p.2 := h_all_v p (.head _)
       obtain ⟨n₃, s_end, h_chain₃, h_corr_end, h_fl_end, h_dp_end, h_ids_end,
               h_ek_end, h_col_end, h_flow_end, h_indent_end, h_line_end, _, _,
-              h_atol_end, h_endline_end, h_stack_end, h_fmc₃, _h_size₃, _h_pkRec₃, _h_pks₃, _h_gated₃⟩ :=
+              h_atol_end, h_endline_end, h_stack_end, h_fmc₃, _h_size₃, _h_pkRec₃, _h_pks₃,
+              _h_gated₃, h_balfacts_v_singleton⟩ :=
         h_ev s₃ rest_chars h_corr₃'
           h_flow₃ (by rw [h_fl₃, h_fl₂, h_fl₁]; exact h_fl)
           (by rw [h_indent₃]; exact h_indent₂)
@@ -9949,7 +9972,8 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
       have h_ek_key : EmitScansInFlow p.1 := h_all_k p (.head _)
       obtain ⟨n₁, s₁, h_chain₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_ek₁, h_col₁,
               h_flow₁, h_indent₁, _h_line₁, h_ska₁, h_last₁, h_atol₁, h_endline₁,
-              h_stack₁, h_fmc₁, _h_size₁, _h_pkRec₁, _h_pks₁, _h_gated₁⟩ :=
+              h_stack₁, h_fmc₁, _h_size₁, _h_pkRec₁, _h_pks₁, _h_gated₁,
+              h_balfacts_k_cons⟩ :=
         h_ek_key s ([':',  ' '] ++ (emit p.2).toList ++
             [',',  ' '] ++ (emit.emitPairList (p' :: ps)).toList ++ rest_chars)
           hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline
@@ -9999,7 +10023,8 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
         simp only [List.append_assoc] at h_corr₃' ⊢; exact h_corr₃'
       obtain ⟨n_v, s_v, h_chain_v, h_corr_v, h_fl_v, h_dp_v, h_ids_v,
               h_ek_v, h_col_v, h_flow_v, h_indent_v, _h_line_v, _, h_last_v, h_atol_v,
-              h_endline_v, h_stack_v, h_fmc_v, _h_size_v, _h_pkRec_v, _h_pks_v, _h_gated_v⟩ :=
+              h_endline_v, h_stack_v, h_fmc_v, _h_size_v, _h_pkRec_v, _h_pks_v, _h_gated_v,
+              h_balfacts_v_cons⟩ :=
         h_ev s₃
           ([',',  ' '] ++ (emit.emitPairList (p' :: ps)).toList ++ rest_chars)
           h_corr₃_assoc
@@ -10580,26 +10605,34 @@ theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inF
     · exact h_endline'
     · exact h_stack'
     · exact FlowMonoChain.single h_snt (Nat.le_refl _) (by omega)
-    · -- gated first-key conjunct (J.4.2.b-2d-key-chain-Part2-body-C-foundation-EmitScansInFlow-gated):
-      -- under simpleKeyAllowed = true, derive first-key facts via the scalar pkPush variant.
-      -- By determinism of scanNextToken, the s' from scanNextToken_flow_scanDoubleQuoted_pkPush
-      -- equals the s' we already have.
-      intro h_ska_input
-      have h_ek_none : s_state.explicitKeyLine = none := h_ek
-      obtain ⟨s'_pk, h_snt_pk, _, _, _, _, _, _, _, _, _, _, _, _, _h_size_eq, h_pk_entry,
-              h_pka_pk, h_skp_pk, _h_pkRec_pk⟩ :=
-        scanNextToken_flow_scanDoubleQuoted_pkPush s_state s.content rest hcorr' h_flow h_indent h_col
-          h_atol (by intro h_poss; exact h_endline h_poss) h_ska_input h_ek_none
-      have h_eq : s' = s'_pk := by
-        rw [h_snt] at h_snt_pk
-        exact Option.some.inj (Except.ok.injEq .. |>.mp h_snt_pk)
-      refine ⟨?_, ?_, ?_⟩
-      · -- first-key entry at s_state.pendingKeys.size
-        rw [h_eq]; exact h_pk_entry
-      · -- pendingKeyActive = some s_state.pendingKeys.size
-        rw [h_eq]; exact h_pka_pk
-      · -- simpleKey.possible = true
-        rw [h_eq]; exact h_skp_pk
+    · -- gated first-key conjunct + 6c-ii-γ-2 bundled balance/no-outer conjunct.
+      refine ⟨?_, ?_⟩
+      · -- gated first-key conjunct (J.4.2.b-2d-key-chain-Part2-body-C-foundation-EmitScansInFlow-gated):
+        -- under simpleKeyAllowed = true, derive first-key facts via the scalar pkPush variant.
+        -- By determinism of scanNextToken, the s' from scanNextToken_flow_scanDoubleQuoted_pkPush
+        -- equals the s' we already have.
+        intro h_ska_input
+        have h_ek_none : s_state.explicitKeyLine = none := h_ek
+        obtain ⟨s'_pk, h_snt_pk, _, _, _, _, _, _, _, _, _, _, _, _, _h_size_eq, h_pk_entry,
+                h_pka_pk, h_skp_pk, _h_pkRec_pk⟩ :=
+          scanNextToken_flow_scanDoubleQuoted_pkPush s_state s.content rest hcorr' h_flow h_indent h_col
+            h_atol (by intro h_poss; exact h_endline h_poss) h_ska_input h_ek_none
+        have h_eq : s' = s'_pk := by
+          rw [h_snt] at h_snt_pk
+          exact Option.some.inj (Except.ok.injEq .. |>.mp h_snt_pk)
+        refine ⟨?_, ?_, ?_⟩
+        · -- first-key entry at s_state.pendingKeys.size
+          rw [h_eq]; exact h_pk_entry
+        · -- pendingKeyActive = some s_state.pendingKeys.size
+          rw [h_eq]; exact h_pka_pk
+        · -- simpleKey.possible = true
+          rw [h_eq]; exact h_skp_pk
+      · -- 6c-ii-γ-2 bundled (balance = 0 ∧ no-outer-flowEntry) for scalar case.
+        -- Scalar `emit(s)` produces a single `.scalar` token; no brackets and no
+        -- flowEntry pushed.  Discharge requires a token-push lemma exposing
+        -- `s'.tokens.size = s_state.tokens.size + 1` and the value of the new
+        -- token (`.scalar`).  Sorry'd as sub-task 6c-ii-γ-2-discharge-scalar.
+        sorry
   | sequence style items tag anchor _ h ih =>
     intro s_state rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline
     -- emit (.sequence ...) = "[" ++ emitList items.toList ++ "]"
@@ -10717,8 +10750,8 @@ theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inF
     · -- simpleKeyStack: s₃.simpleKeyStack = s_state.simpleKeyStack
       -- Chain: close pops → list preserved → open pushed then pop cancels
       rw [h_stack₃, h_stack₂, h_stack_pop₁]
-    · -- pendingKeyStack equality + gated conjunct (right-assoc ∧ absorption).
-      refine ⟨?_, ?_⟩
+    · -- pendingKeyStack equality + gated conjunct + 6c-ii-γ-2 bundled.
+      refine ⟨?_, ?_, ?_⟩
       · -- pendingKeyStack: s₃.pendingKeyStack = s_state.pendingKeyStack
         -- Chain: close pops → body preserves → open pushed then pop cancels
         rw [_h_pks_pop₃, h_pks₂, h_pks_pop₁]
@@ -10756,6 +10789,13 @@ theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inF
         · -- simpleKey.possible: close restores from s₂.simpleKeyStack;
           --   body preserves it from s₁; s₁'s top simpleKey has possible = true.
           rw [_h_sk_restore₃, h_stack₂]; exact h_skback
+      · -- 6c-ii-γ-2 bundled (balance = 0 ∧ no-outer-flowEntry) for sequence case.
+        -- Sequence `[` + emitList body + `]` is bracket-balanced.  Body's outer
+        -- flowEntries (commas between items) are at balance 1 from `s_state.tokens.size`
+        -- (inside the `[`/`]` scope), so no outer-level flowEntry exists.  Discharge
+        -- requires an EmitListScansInFlow strengthening (body's balance behavior)
+        -- + bracket-push lemmas.  Sorry'd as 6c-ii-γ-2-discharge-sequence.
+        sorry
   | mapping style pairs tag anchor _ hk hv ihk ihv =>
     intro s_state rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline
     -- emit (.mapping ...) = "{" ++ emitPairList pairs.toList ++ "}"
@@ -10869,8 +10909,8 @@ theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inF
       exact h_endline₃
     · -- simpleKeyStack: s₃.simpleKeyStack = s_state.simpleKeyStack
       rw [h_stack₃, h_stack₂, h_stack_pop₁]
-    · -- pendingKeyStack equality + gated conjunct (right-assoc ∧ absorption).
-      refine ⟨?_, ?_⟩
+    · -- pendingKeyStack equality + gated conjunct + 6c-ii-γ-2 bundled.
+      refine ⟨?_, ?_, ?_⟩
       · -- pendingKeyStack: s₃.pendingKeyStack = s_state.pendingKeyStack
         -- Chain: close pops → body preserves → open pushed then pop cancels
         rw [_h_pks_pop₃, h_pks₂, h_pks_pop₁]
@@ -10900,6 +10940,13 @@ theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inF
         · rw [h_kd_s3]; exact h_kd_s1
         · rw [_h_pka_restore₃, h_pks₂, h_pks_push, Array.back?_push]; rfl
         · rw [_h_sk_restore₃, h_stack₂]; exact h_skback
+      · -- 6c-ii-γ-2 bundled (balance = 0 ∧ no-outer-flowEntry) for mapping case.
+        -- Mapping `{` + emitPairList body + `}` is bracket-balanced.  Body's outer
+        -- flowEntries (commas between pairs, `:` separators are .value not .flowEntry)
+        -- are at balance 1 from `s_state.tokens.size` (inside the `{`/`}` scope).
+        -- Discharge requires an EmitPairListScansInFlow strengthening (body's balance
+        -- behavior) + bracket-push lemmas.  Sorry'd as 6c-ii-γ-2-discharge-mapping.
+        sorry
 
 -- Helper: extract existential from isOk
 theorem scanFiltered_exists_of_isOk {s : String}
@@ -13056,14 +13103,44 @@ theorem emitPairList_body_linearise_characterization
     --     is at position `pks[qs[i]].insertBeforeIdx - 1` for some
     --     `0 < i < qs.size`.  Discharge in `emitPairList_scans_nonempty`
     --     (singleton + cons cases) is sorry'd pending 6c-ii-γ-2.
-    --   * **Sub-step 6c-ii-γ-2 (PENDING)**: discharge the chain-side
-    --     exhaustiveness sorrys.  Requires strengthening `EmitScansInFlow`
-    --     with a "no outer-level `.flowEntry` pushed during the body"
-    --     invariant (key/value emit segments push only inner-level
-    --     flowEntries, since they're nested inside `[` / `{` flow scopes).
-    --     Singleton case discharges by appealing to this invariant
-    --     directly; cons case lifts via comma push (outer-level by
-    --     construction) + IH on tail.
+    --   * **Sub-step 6c-ii-γ-2a (DONE 2026-05-03)**: ghost-predicate
+    --     strengthening (predicate level).  Extended `EmitScansInFlow`
+    --     with a single bundled conjunct `(flowBracketBalance s'.tokens
+    --     s.tokens.size s'.tokens.size = 0 ∧ ∀ kk in [s.tokens.size,
+    --     s'.tokens.size), s'.tokens[kk] = .flowEntry → balance ≥ 1)`.
+    --     Updated all 6 destructure sites in `emitList_scans_nonempty`
+    --     and `emitPairList_scans_nonempty` to extract the bundled
+    --     hypothesis (`h_balfacts_*`).  Updated all 3 cases in
+    --     `emit_scans_in_flow` (scalar/sequence/mapping) to provide
+    --     the bundled conjunct via `refine` slots; **discharge sorry'd**
+    --     as sub-tasks 6c-ii-γ-2c (scalar) + 6c-ii-γ-2d (sequence/
+    --     mapping).  **Architectural finding**: full discharge of
+    --     `emit_scans_in_flow`'s case sorrys requires (i) per-leaf
+    --     token-push lemmas exposing `s'.tokens.size = s.tokens.size + 1`
+    --     and the new token's `val` for scalar (and similarly for
+    --     `[`/`]`/`{`/`}`); and (ii) a `flowBracketBalance` chain-extension
+    --     lemma showing append-past-`hi` preserves balance over `[lo, hi)`.
+    --   * **Sub-step 6c-ii-γ-2b (PENDING)**: discharge the chain-side
+    --     γ-1 exhaustiveness sorrys (singleton at line 9941; cons at
+    --     line 10543) using the new bundled hypotheses.  Singleton:
+    --     decompose `s → s_end` into `emit(p.1) → ":" → ws → emit(p.2)`
+    --     and discharge via `h_balfacts_k_singleton`/`h_balfacts_v_singleton`
+    --     (no comma push).  Cons: same per-segment decomposition + outer
+    --     `.flowEntry` at `kk = s_v.tokens.size` matches `qs[1] = qs_tail[0]`
+    --     + IH's `_h_exh_t` for `kk > s_v.tokens.size`.  Needs token-prefix
+    --     preservation (already in tree) and a balance chain-extension
+    --     helper.
+    --   * **Sub-step 6c-ii-γ-2c (PENDING)**: discharge scalar case
+    --     in `emit_scans_in_flow`.  Requires a stronger
+    --     `scanNextToken_flow_scanDoubleQuoted` variant exposing the
+    --     +1 token push and `.scalar` val.  Then balance = 0 (single
+    --     non-bracket) and no-outer-flowEntry (vacuous: `.scalar` ≠
+    --     `.flowEntry`) discharge inline.
+    --   * **Sub-step 6c-ii-γ-2d (PENDING)**: discharge sequence + mapping
+    --     cases in `emit_scans_in_flow`.  Requires bracket-push
+    --     lemmas for `[`/`]` and `{`/`}` + strengthening `EmitListScansInFlow`
+    --     and `EmitPairListScansInFlow` with their own balance facts
+    --     (this cascade is the substantial part).
     --   * **Sub-step 6c-ii-γ-3 (PENDING)**: discharge Part (3) using the
     --     strengthened predicate.  Translate the linearise outer-level
     --     condition (`linearise[k] = .flowEntry, balance = 0`) to the
