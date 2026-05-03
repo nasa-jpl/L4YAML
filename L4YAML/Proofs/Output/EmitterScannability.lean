@@ -5424,7 +5424,16 @@ theorem scanNextToken_flow_open_nested (s : ScannerState) (rest : List Char)
       -- pendingKeyStack pushed (saveSimpleKey + allowDirectives preserve it;
       -- scanFlowSequenceStart pushes prior pendingKeyActive); the matching
       -- close-side pop cancels this push in the seq composition.
-      ∧ s'.pendingKeyStack.pop = s.pendingKeyStack := by
+      ∧ s'.pendingKeyStack.pop = s.pendingKeyStack
+      -- J.4.2.b-2d-key-chain-Part3-final-discharge-bridge-6c-ii-γ-2d (2026-05-03):
+      -- the `[` push.  scanFlowSequenceStart pushes exactly one
+      -- `.flowSequenceStart` token at index `s.tokens.size` (under the
+      -- saveSimpleKey/allowDirectives wrappers, both preserve `tokens`).
+      -- Used in `emit_scans_in_flow`'s sequence case to discharge the
+      -- bundled balance/no-outer-flowEntry conjunct.
+      ∧ (s'.tokens.size = s.tokens.size + 1
+          ∧ (∀ (h_lt : s.tokens.size < s'.tokens.size),
+              (s'.tokens[s.tokens.size]'h_lt).val = .flowSequenceStart)) := by
   have h_pp : scanNextToken_preprocess s = .ok (some (saveSimpleKey s, '[')) :=
     scanNextToken_preprocess_flow s '[' rest s.col hcorr h_flow
       (by decide) (by decide) (by decide)
@@ -5480,7 +5489,7 @@ theorem scanNextToken_flow_open_nested (s : ScannerState) (rest : List Char)
     rw [scanFlowSequenceStart_line_eq]
     exact (advance_line_of_peek s_ad '[' h_lt_ad h_peek_ad (by decide) (by decide)).trans h_ad_line
   refine ⟨_, h_snt, ?_, h_fl_f.trans (congrArg (· + 1) h_ad_fl),
-    h_dp_f.trans h_ad_dp, h_ids_f.trans h_ad_ids, h_ek_f.trans h_ad_ek, ?_, h_line_f, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+    h_dp_f.trans h_ad_dp, h_ids_f.trans h_ad_ids, h_ek_f.trans h_ad_ek, ?_, h_line_f, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
   · rw [h_col_f]; exact h_corr_f
   · rw [h_col_f, h_ad_col]
   · rw [h_line_f]
@@ -5533,6 +5542,28 @@ theorem scanNextToken_flow_open_nested (s : ScannerState) (rest : List Char)
     rw [ScannerCorrectness.scanFlowSequenceStart_pendingKeyStack_pushed, Array.pop_push]
     show s_ad.pendingKeyStack = s.pendingKeyStack
     simp only [s_ad]; split <;> exact ScannerCorrectness.saveSimpleKey_preserves_pendingKeyStack s
+  · -- 6c-ii-γ-2d (2026-05-03): the `[` push.  scanFlowSequenceStart pushes
+    -- exactly one `.flowSequenceStart` token at index `s.tokens.size`.
+    have h_ad_tokens : s_ad.tokens = s.tokens := by
+      simp only [s_ad]; split <;> exact ScannerCorrectness.saveSimpleKey_preserves_tokens s
+    have h_size : (scanFlowSequenceStart s_ad).tokens.size = s.tokens.size + 1 := by
+      rw [ScannerCorrectness.scanFlowSequenceStart_adds_one_token, h_ad_tokens]
+    refine ⟨h_size, ?_⟩
+    intro h_lt
+    show ((scanFlowSequenceStart s_ad).tokens[s.tokens.size]'h_lt).val = .flowSequenceStart
+    -- Unfold scanFlowSequenceStart: pushes ⟨..., .flowSequenceStart, ...⟩ at
+    -- index `s_ad.tokens.size = s.tokens.size`.
+    have h_lt' : s_ad.tokens.size < (scanFlowSequenceStart s_ad).tokens.size := by
+      rw [ScannerCorrectness.scanFlowSequenceStart_adds_one_token]
+      exact Nat.lt_succ_self _
+    have h_eq :
+        (scanFlowSequenceStart s_ad).tokens[s.tokens.size]'h_lt
+          = (scanFlowSequenceStart s_ad).tokens[s_ad.tokens.size]'h_lt' := by
+      congr 1; rw [h_ad_tokens]
+    rw [h_eq]
+    unfold scanFlowSequenceStart
+    simp only [ScannerCorrectness.advance_preserves_tokens, ScannerState.emit,
+               Array.getElem_push_eq]
 
 /-- Per-leaf flow-sequence pkPush theorem.  Mirrors
     `scanNextToken_flow_open_nested` but additionally exposes the
@@ -6248,7 +6279,13 @@ theorem scanNextToken_flow_close_seq_nested (s : ScannerState)
       -- corresponding stack tops, and the stacks pop in tandem (J.2 dual-write).
       ∧ s'.simpleKey = s.simpleKeyStack.back?.getD {}
       ∧ s'.pendingKeyActive = s.pendingKeyStack.back?.getD none
-      ∧ s'.pendingKeyStack = s.pendingKeyStack.pop := by
+      ∧ s'.pendingKeyStack = s.pendingKeyStack.pop
+      -- J.4.2.b-2d-key-chain-Part3-final-discharge-bridge-6c-ii-γ-2d (2026-05-03):
+      -- the `]` push.  scanFlowSequenceEnd pushes one `.flowSequenceEnd` token
+      -- at index `s.tokens.size`.  Used by `emit_scans_in_flow`'s sequence case.
+      ∧ (s'.tokens.size = s.tokens.size + 1
+          ∧ (∀ (h_lt : s.tokens.size < s'.tokens.size),
+              (s'.tokens[s.tokens.size]'h_lt).val = .flowSequenceEnd)) := by
   -- Step 1: preprocessing
   have h_pp : scanNextToken_preprocess s = .ok (some (saveSimpleKey s, ']')) :=
     scanNextToken_preprocess_flow s ']' rest s.col hcorr h_flow
@@ -6311,7 +6348,7 @@ theorem scanNextToken_flow_close_seq_nested (s : ScannerState)
     simp only [s_ad]; split <;> exact ScannerCorrectness.saveSimpleKey_preserves_simpleKeyStack s
   have h_ad_pendingKeyStack : s_ad.pendingKeyStack = s.pendingKeyStack := by
     simp only [s_ad]; split <;> exact ScannerCorrectness.saveSimpleKey_preserves_pendingKeyStack s
-  refine ⟨_, h_snt, ?_, ?_, h_dp_f.trans h_ad_dp, h_ids_f.trans h_ad_ids, h_ek_f.trans h_ad_ek, ?_, ?_, ?_, h_line_f, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+  refine ⟨_, h_snt, ?_, ?_, h_dp_f.trans h_ad_dp, h_ids_f.trans h_ad_ids, h_ek_f.trans h_ad_ek, ?_, ?_, ?_, h_line_f, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
   · rw [h_col_f]; exact h_corr_f
   · rw [h_fl_f]; split
     · rw [h_ad_fl]
@@ -6378,6 +6415,25 @@ theorem scanNextToken_flow_close_seq_nested (s : ScannerState)
     show (scanFlowSequenceEnd s_ad).pendingKeyStack = s.pendingKeyStack.pop
     rw [ScannerCorrectness.scanFlowSequenceEnd_pendingKeyStack_popped,
         h_ad_pendingKeyStack]
+  · -- 6c-ii-γ-2d (2026-05-03): the `]` push.
+    have h_ad_tokens : s_ad.tokens = s.tokens := by
+      simp only [s_ad]; split <;> exact ScannerCorrectness.saveSimpleKey_preserves_tokens s
+    have h_size : (scanFlowSequenceEnd s_ad).tokens.size = s.tokens.size + 1 := by
+      rw [ScannerCorrectness.scanFlowSequenceEnd_adds_one_token, h_ad_tokens]
+    refine ⟨h_size, ?_⟩
+    intro h_lt
+    show ((scanFlowSequenceEnd s_ad).tokens[s.tokens.size]'h_lt).val = .flowSequenceEnd
+    have h_lt' : s_ad.tokens.size < (scanFlowSequenceEnd s_ad).tokens.size := by
+      rw [ScannerCorrectness.scanFlowSequenceEnd_adds_one_token]
+      exact Nat.lt_succ_self _
+    have h_eq :
+        (scanFlowSequenceEnd s_ad).tokens[s.tokens.size]'h_lt
+          = (scanFlowSequenceEnd s_ad).tokens[s_ad.tokens.size]'h_lt' := by
+      congr 1; rw [h_ad_tokens]
+    rw [h_eq]
+    unfold scanFlowSequenceEnd
+    simp only [ScannerCorrectness.advance_preserves_tokens, ScannerState.emit,
+               Array.getElem_push_eq]
 
 -- ═══ Outermost flow close: ] at flowLevel = 1 ═══
 
@@ -6646,7 +6702,12 @@ theorem scanNextToken_flow_close_mapping_nested (s : ScannerState)
       -- corresponding stack tops, and the stacks pop in tandem (J.2 dual-write).
       ∧ s'.simpleKey = s.simpleKeyStack.back?.getD {}
       ∧ s'.pendingKeyActive = s.pendingKeyStack.back?.getD none
-      ∧ s'.pendingKeyStack = s.pendingKeyStack.pop := by
+      ∧ s'.pendingKeyStack = s.pendingKeyStack.pop
+      -- J.4.2.b-2d-key-chain-Part3-final-discharge-bridge-6c-ii-γ-2d (2026-05-03):
+      -- the `}` push.
+      ∧ (s'.tokens.size = s.tokens.size + 1
+          ∧ (∀ (h_lt : s.tokens.size < s'.tokens.size),
+              (s'.tokens[s.tokens.size]'h_lt).val = .flowMappingEnd)) := by
   have h_pp : scanNextToken_preprocess s = .ok (some (saveSimpleKey s, '}')) :=
     scanNextToken_preprocess_flow s '}' rest s.col hcorr h_flow
       (by decide) (by decide) (by decide)
@@ -6698,7 +6759,7 @@ theorem scanNextToken_flow_close_mapping_nested (s : ScannerState)
     simp only [s_ad]; split <;> exact ScannerCorrectness.saveSimpleKey_preserves_simpleKeyStack s
   have h_ad_pendingKeyStack : s_ad.pendingKeyStack = s.pendingKeyStack := by
     simp only [s_ad]; split <;> exact ScannerCorrectness.saveSimpleKey_preserves_pendingKeyStack s
-  refine ⟨_, h_snt, ?_, ?_, h_dp_f.trans h_ad_dp, h_ids_f.trans h_ad_ids, h_ek_f.trans h_ad_ek, ?_, ?_, ?_, h_line_f, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+  refine ⟨_, h_snt, ?_, ?_, h_dp_f.trans h_ad_dp, h_ids_f.trans h_ad_ids, h_ek_f.trans h_ad_ek, ?_, ?_, ?_, h_line_f, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
   · rw [h_col_f]; exact h_corr_f
   · rw [h_fl_f]; split
     · rw [h_ad_fl]
@@ -6764,6 +6825,25 @@ theorem scanNextToken_flow_close_mapping_nested (s : ScannerState)
     show (scanFlowMappingEnd s_ad).pendingKeyStack = s.pendingKeyStack.pop
     rw [ScannerCorrectness.scanFlowMappingEnd_pendingKeyStack_popped,
         h_ad_pendingKeyStack]
+  · -- 6c-ii-γ-2d (2026-05-03): the `}` push.
+    have h_ad_tokens : s_ad.tokens = s.tokens := by
+      simp only [s_ad]; split <;> exact ScannerCorrectness.saveSimpleKey_preserves_tokens s
+    have h_size : (scanFlowMappingEnd s_ad).tokens.size = s.tokens.size + 1 := by
+      rw [ScannerCorrectness.scanFlowMappingEnd_adds_one_token, h_ad_tokens]
+    refine ⟨h_size, ?_⟩
+    intro h_lt
+    show ((scanFlowMappingEnd s_ad).tokens[s.tokens.size]'h_lt).val = .flowMappingEnd
+    have h_lt' : s_ad.tokens.size < (scanFlowMappingEnd s_ad).tokens.size := by
+      rw [ScannerCorrectness.scanFlowMappingEnd_adds_one_token]
+      exact Nat.lt_succ_self _
+    have h_eq :
+        (scanFlowMappingEnd s_ad).tokens[s.tokens.size]'h_lt
+          = (scanFlowMappingEnd s_ad).tokens[s_ad.tokens.size]'h_lt' := by
+      congr 1; rw [h_ad_tokens]
+    rw [h_eq]
+    unfold scanFlowMappingEnd
+    simp only [ScannerCorrectness.advance_preserves_tokens, ScannerState.emit,
+               Array.getElem_push_eq]
 
 theorem dispatchFlowIndicators_close_brace_outermost (s : ScannerState)
     (h_fl : s.flowLevel = 1)
@@ -6881,7 +6961,12 @@ theorem scanNextToken_flow_open_mapping_nested (s : ScannerState) (rest : List C
       -- scanFlowMappingStart's final record-update sets `simpleKeyAllowed := true`;
       -- the consumer in `emit_scans_in_flow`'s mapping case threads this gate
       -- into `EmitPairListScansInFlow`'s precondition. -/
-      ∧ s'.simpleKeyAllowed = true := by
+      ∧ s'.simpleKeyAllowed = true
+      -- J.4.2.b-2d-key-chain-Part3-final-discharge-bridge-6c-ii-γ-2d (2026-05-03):
+      -- the `{` push.
+      ∧ (s'.tokens.size = s.tokens.size + 1
+          ∧ (∀ (h_lt : s.tokens.size < s'.tokens.size),
+              (s'.tokens[s.tokens.size]'h_lt).val = .flowMappingStart)) := by
   have h_pp : scanNextToken_preprocess s = .ok (some (saveSimpleKey s, '{')) :=
     scanNextToken_preprocess_flow s '{' rest s.col hcorr h_flow
       (by decide) (by decide) (by decide)
@@ -6930,7 +7015,7 @@ theorem scanNextToken_flow_open_mapping_nested (s : ScannerState) (rest : List C
     rw [scanFlowMappingStart_line_eq]
     exact (advance_line_of_peek s_ad '{' h_lt_ad h_peek_ad (by decide) (by decide)).trans h_ad_line
   refine ⟨_, h_snt, ?_, h_fl_f.trans (congrArg (· + 1) h_ad_fl),
-    h_dp_f.trans h_ad_dp, h_ids_f.trans h_ad_ids, h_ek_f.trans h_ad_ek, ?_, h_line_f, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+    h_dp_f.trans h_ad_dp, h_ids_f.trans h_ad_ids, h_ek_f.trans h_ad_ek, ?_, h_line_f, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
   · rw [h_col_f]; exact h_corr_f
   · rw [h_col_f, h_ad_col]
   · rw [h_line_f]
@@ -6985,6 +7070,25 @@ theorem scanNextToken_flow_open_mapping_nested (s : ScannerState) (rest : List C
   · -- simpleKeyAllowed = true: scanFlowMappingStart's record-update sets it directly.
     show (scanFlowMappingStart s_ad).simpleKeyAllowed = true
     unfold scanFlowMappingStart; rfl
+  · -- 6c-ii-γ-2d (2026-05-03): the `{` push.
+    have h_ad_tokens : s_ad.tokens = s.tokens := by
+      simp only [s_ad]; split <;> exact ScannerCorrectness.saveSimpleKey_preserves_tokens s
+    have h_size : (scanFlowMappingStart s_ad).tokens.size = s.tokens.size + 1 := by
+      rw [ScannerCorrectness.scanFlowMappingStart_adds_one_token, h_ad_tokens]
+    refine ⟨h_size, ?_⟩
+    intro h_lt
+    show ((scanFlowMappingStart s_ad).tokens[s.tokens.size]'h_lt).val = .flowMappingStart
+    have h_lt' : s_ad.tokens.size < (scanFlowMappingStart s_ad).tokens.size := by
+      rw [ScannerCorrectness.scanFlowMappingStart_adds_one_token]
+      exact Nat.lt_succ_self _
+    have h_eq :
+        (scanFlowMappingStart s_ad).tokens[s.tokens.size]'h_lt
+          = (scanFlowMappingStart s_ad).tokens[s_ad.tokens.size]'h_lt' := by
+      congr 1; rw [h_ad_tokens]
+    rw [h_eq]
+    unfold scanFlowMappingStart
+    simp only [ScannerCorrectness.advance_preserves_tokens, ScannerState.emit,
+               Array.getElem_push_eq]
 
 /-- Per-leaf flow-mapping pkPush theorem.  Mirrors
     `scanNextToken_flow_open_mapping_nested` but additionally exposes the
@@ -8848,6 +8952,22 @@ def EmitListScansInFlow (items : List YamlValue) : Prop :=
       -- pendingKeyStack preserved across the body (mirrors simpleKeyStack;
       -- inner [/{ pushes are cancelled by the matching ]/} pops).
       ∧ s'.pendingKeyStack = s.pendingKeyStack
+      -- J.4.2.b-2d-key-chain-Part3-final-discharge-bridge-6c-ii-γ-2d (2026-05-03):
+      -- balance-zero + flowEntry-non-negative-prefix.  The body
+      -- `emit v ++ ", " ++ emit w ++ ...` is bracket-balanced (sum of inner
+      -- emit(v_i) balances + commas of delta 0 = 0), and at every body
+      -- comma `kk` (the only `.flowEntry` tokens at this body level since
+      -- inner items recurse via `EmitScansInFlow` whose comma flowEntries
+      -- are at outer-balance ≥ 1) the cumulative balance from
+      -- `s.tokens.size` is ≥ 0.  Composes with `[`/`]` bracket-push at the
+      -- outer wrap (`emit_scans_in_flow`'s sequence case) to discharge
+      -- the outer `flowEntry → balance ≥ 1` conjunct (commas inside `[`
+      -- are at balance 1 from the outer reference point).
+      ∧ (flowBracketBalance s'.tokens s.tokens.size s'.tokens.size = 0
+          ∧ ∀ (kk : Nat) (h_kk_lt : kk < s'.tokens.size)
+                 (_h_kk_ge : s.tokens.size ≤ kk),
+              (s'.tokens[kk]'h_kk_lt).val = .flowEntry →
+              flowBracketBalance s'.tokens s.tokens.size kk ≥ 0)
 
 /-- Empty list body is trivially scanned (0-step chain). -/
 theorem emitList_scans_empty : EmitListScansInFlow [] := by
@@ -8856,8 +8976,15 @@ theorem emitList_scans_empty : EmitListScansInFlow [] := by
   have h_eq : (emit.emitList ([] : List YamlValue)).toList ++ rest = rest := by
     simp only [emit.emitList]; rfl
   rw [h_eq] at hcorr
+  -- Empty body: vacuous bundled balance/non-negative-prefix conjunct.
+  -- `flowBracketBalance` over `[s.tokens.size, s.tokens.size)` is 0, and the
+  -- non-negative-prefix is vacuous (range is empty).
+  have h_bal_empty : flowBracketBalance s.tokens s.tokens.size s.tokens.size = 0 := by
+    simp [flowBracketBalance]
   exact ⟨0, s, .zero, hcorr, rfl, rfl, rfl, rfl, h_col, h_flow, h_indent, rfl, h_atol,
-    h_endline, rfl, .zero (Nat.le_refl _), Nat.le_refl _, fun _ _ _ => ⟨rfl, rfl⟩, rfl⟩
+    h_endline, rfl, .zero (Nat.le_refl _), Nat.le_refl _, fun _ _ _ => ⟨rfl, rfl⟩, rfl,
+    h_bal_empty, fun _ h_kk_lt h_kk_ge _ =>
+      absurd (Nat.lt_of_le_of_lt h_kk_ge h_kk_lt) (Nat.lt_irrefl _)⟩
 
 /-- Non-empty list scanning via induction on the item list.
     Structure: singleton case uses EmitScansInFlow directly;
@@ -8877,10 +9004,18 @@ theorem emitList_scans_nonempty (items : List YamlValue) (h_ne : items ≠ [])
       rw [h_eq] at hcorr
       obtain ⟨n, s', h_chain, h_corr, h_fl', h_dp, h_ids, h_ek', h_col', h_flow', h_indent',
               h_line_v, _, _, h_atol', h_endline', h_stack', h_fmc', h_size', h_pkRec',
-              h_pks_v, _h_gated_v, _h_balfacts_v⟩ :=
+              h_pks_v, _h_gated_v, h_balfacts_v⟩ :=
         h_all v (.head _) s rest_chars hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline
-      exact ⟨n, s', h_chain, h_corr, h_fl', h_dp, h_ids, h_ek', h_col', h_flow', h_indent',
-        h_line_v, h_atol', h_endline', h_stack', h_fmc', h_size', h_pkRec', h_pks_v⟩
+      -- Singleton bundled conjunct: balance = 0 from inner EmitScansInFlow's
+      -- bundled (`h_balfacts_v.1`); flowEntry → ≥ 0 follows from inner's
+      -- `flowEntry → ≥ 1` by weakening 1 ≥ 0.
+      obtain ⟨h_bal_v, h_exh_v⟩ := h_balfacts_v
+      refine ⟨n, s', h_chain, h_corr, h_fl', h_dp, h_ids, h_ek', h_col', h_flow', h_indent',
+        h_line_v, h_atol', h_endline', h_stack', h_fmc', h_size', h_pkRec', h_pks_v,
+        h_bal_v, ?_⟩
+      intro kk h_kk_lt h_kk_ge h_kk_fe
+      have h_ge1 := h_exh_v kk h_kk_lt h_kk_ge h_kk_fe
+      omega
         -- (singleton: h_pks_v = s'.pendingKeyStack = s.pendingKeyStack from EmitScansInFlow)
         -- (singleton: _h_gated_v is the gated first-key conjunct, not propagated here)
     | v' :: vs, ih =>
@@ -8894,13 +9029,13 @@ theorem emitList_scans_nonempty (items : List YamlValue) (h_ne : items ≠ [])
       have h_ev : EmitScansInFlow v := h_all v (.head _)
       obtain ⟨n₁, s₁, h_chain₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_ek₁, h_col₁, h_flow₁,
               h_indent₁, _h_line₁, _, h_last₁, h_atol₁, h_endline₁, h_stack₁, h_fmc₁,
-              h_size₁, h_pkRec₁, h_pks_v, _h_gated₁, _h_balfacts₁⟩ :=
+              h_size₁, h_pkRec₁, h_pks_v, _h_gated₁, h_balfacts₁⟩ :=
         h_ev s ([',', ' '] ++ (emit.emitList (v' :: vs)).toList ++ rest_chars)
           hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline
       -- Step 2: Scan ',' via scanNextToken_flow_comma
       obtain ⟨s₂, h_snt₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, h_ek₂, h_col₂, _h_line₂,
               h_atol₂, h_endline₂, h_stack₂, h_size₂, h_pkRec₂, h_pks₂, _h_ska₂,
-              _h_comma_push⟩ :=
+              h_comma_push⟩ :=
         scanNextToken_flow_comma s₁
           (' ' :: (emit.emitList (v' :: vs)).toList ++ rest_chars)
           h_corr₁ h_flow₁ h_indent₁ h_col₁
@@ -8935,7 +9070,8 @@ theorem emitList_scans_nonempty (items : List YamlValue) (h_ne : items ≠ [])
         ih (by simp) h_tail_all
       obtain ⟨n₃, s_end, h_chain₃, h_corr_end, h_fl_end, h_dp_end, h_ids_end,
               h_ek_end, h_col_end, h_flow_end, h_indent_end, h_line_end, h_atol_end,
-              h_endline_end, h_stack_end, h_fmc₃, h_size₃, h_pkRec₃, h_pks_end⟩ :=
+              h_endline_end, h_stack_end, h_fmc₃, h_size₃, h_pkRec₃, h_pks_end,
+              h_balfacts_tail⟩ :=
         h_ih_list s₃ rest_chars h_corr₃'
           h_flow₃ (by rw [h_fl₃, h_fl₂, h_fl₁]; exact h_fl)
           (by rw [h_indent₃]; exact h_s2_indent)
@@ -9004,7 +9140,7 @@ theorem emitList_scans_nonempty (items : List YamlValue) (h_ne : items ≠ [])
         pkRec_size_compose h_size₁₂₃ h_size₃ h_pkRec₁₂₃ h_pkRec₃
       refine ⟨n₁ + 1 + (n₃' + 1), s_end, h_arith ▸ h_chain_all,
         h_corr_end, ?_, ?_, ?_, ?_, h_col_end, h_flow_end, h_indent_end, ?_, h_atol_end,
-        h_endline_end, ?_, h_arith ▸ h_fmc_all, h_size_all, h_pkRec_all, ?_⟩
+        h_endline_end, ?_, h_arith ▸ h_fmc_all, h_size_all, h_pkRec_all, ?_, ?_⟩
       · -- flowLevel preserved
         rw [h_fl_end, h_fl₃, h_fl₂, h_fl₁]
       · -- directivesPresent preserved
@@ -9019,6 +9155,111 @@ theorem emitList_scans_nonempty (items : List YamlValue) (h_ne : items ≠ [])
         rw [h_stack_end, h_stack_pp₃, h_stack₂, h_stack₁]
       · -- pendingKeyStack preserved through s → s₁ → s₂ → s₃ → s_end
         rw [h_pks_end, h_pks_pp₃, h_pks₂, h_pks_v]
+      · -- 6c-ii-γ-2d (2026-05-03): bundled balance + flowEntry-non-negative-prefix
+        -- for the body chain `emit v ++ ", " ++ emitList (v' :: vs)`.  Composes
+        -- emit v's bundled (balance = 0; flowEntry → ≥ 1) + comma's delta = 0
+        -- + tail's bundled (balance = 0; flowEntry → ≥ 0).  Tokens preserved
+        -- via FlowMonoChain lifts each sub-balance fact onto `s_end.tokens`.
+        obtain ⟨h_bal_v_zero, h_exh_v⟩ := h_balfacts₁
+        obtain ⟨h_bal_tail_zero, h_exh_tail⟩ := h_balfacts_tail
+        obtain ⟨h_comma_size, h_comma_val⟩ := h_comma_push
+        -- Sub-FlowMonoChain endpoints.
+        have h_fmc_s1_send : FlowMonoChain s.flowLevel s₁ (1 + (n₃' + 1)) s_end :=
+          (FlowMonoChain.single h_snt₂ (by omega) (by omega)).trans h_fmc_ws
+        have h_fmc_s2_send : FlowMonoChain s.flowLevel s₂ (n₃' + 1) s_end := h_fmc_ws
+        -- Sizes.
+        have h_s2_size : s₂.tokens.size = s₁.tokens.size + 1 := h_comma_size
+        have h_s3_size : s₃.tokens.size = s₂.tokens.size := by rw [h_toks_pp₃]
+        have h_s1_le_send : s₁.tokens.size ≤ s_end.tokens.size :=
+          FlowMonoChain.tokens_mono h_fmc_s1_send
+        have h_s2_le_send : s₂.tokens.size ≤ s_end.tokens.size :=
+          FlowMonoChain.tokens_mono h_fmc_s2_send
+        -- Lift balances to s_end.tokens via FlowMonoChain preservation.
+        have h_bal_s_to_s1 :
+            flowBracketBalance s_end.tokens s.tokens.size s₁.tokens.size = 0 := by
+          rw [flowBracketBalance_FlowMonoChain h_fmc_s1_send s.tokens.size s₁.tokens.size
+              (Nat.le_refl _)]
+          exact h_bal_v_zero
+        have h_bal_s2_to_send :
+            flowBracketBalance s_end.tokens s₂.tokens.size s_end.tokens.size = 0 := by
+          rw [show s₂.tokens.size = s₃.tokens.size from h_s3_size.symm]
+          exact h_bal_tail_zero
+        -- Single comma token: s_end.tokens[s₁.tokens.size] = .flowEntry.
+        have h_idx_lt_s2 : s₁.tokens.size < s₂.tokens.size := by rw [h_s2_size]; omega
+        have h_idx_lt_send : s₁.tokens.size < s_end.tokens.size :=
+          Nat.lt_of_lt_of_le h_idx_lt_s2 h_s2_le_send
+        have h_idx_lt_list : s₁.tokens.size < s_end.tokens.toList.length := by
+          rw [Array.length_toList]; exact h_idx_lt_send
+        have h_comma_at_send :
+            (s_end.tokens[s₁.tokens.size]'h_idx_lt_send).val = .flowEntry := by
+          have h_pres :
+              s_end.tokens[s₁.tokens.size]'h_idx_lt_send
+                = s₂.tokens[s₁.tokens.size]'h_idx_lt_s2 :=
+            FlowMonoChain_preserves_existing_tokens h_fmc_s2_send s₁.tokens.size h_idx_lt_s2
+          rw [h_pres]; exact h_comma_val h_idx_lt_s2
+        have h_bal_s1_to_s2 :
+            flowBracketBalance s_end.tokens s₁.tokens.size s₂.tokens.size = 0 := by
+          rw [h_s2_size,
+              flowBracketBalance_single s_end.tokens s₁.tokens.size h_idx_lt_list]
+          show flowBracketDelta (s_end.tokens[s₁.tokens.size]'h_idx_lt_send).val = 0
+          rw [h_comma_at_send]; rfl
+        have h_s_le_s1 : s.tokens.size ≤ s₁.tokens.size :=
+          FlowMonoChain.tokens_mono h_fmc₁
+        -- Compose total balance.
+        have h_bal_total :
+            flowBracketBalance s_end.tokens s.tokens.size s_end.tokens.size = 0 := by
+          rw [flowBracketBalance_compose s_end.tokens s.tokens.size s₁.tokens.size
+              s_end.tokens.size h_s_le_s1 h_s1_le_send,
+              flowBracketBalance_compose s_end.tokens s₁.tokens.size s₂.tokens.size
+              s_end.tokens.size (Nat.le_of_lt h_idx_lt_s2) h_s2_le_send,
+              h_bal_s_to_s1, h_bal_s1_to_s2, h_bal_s2_to_send]
+          decide
+        refine ⟨h_bal_total, ?_⟩
+        -- Exhaustiveness: case-split on kk's location.
+        intro kk h_kk_lt h_kk_ge h_kk_fe
+        by_cases h_kk_lt_s1 : kk < s₁.tokens.size
+        · -- Case 1: kk in emit v's range.  Use h_exh_v + FlowMonoChain.
+          have h_tok_eq :
+              s_end.tokens[kk]'h_kk_lt = s₁.tokens[kk]'h_kk_lt_s1 :=
+            FlowMonoChain_preserves_existing_tokens h_fmc_s1_send kk h_kk_lt_s1
+          have h_kk_fe_s1 : (s₁.tokens[kk]'h_kk_lt_s1).val = .flowEntry := by
+            rw [← h_tok_eq]; exact h_kk_fe
+          have h_bal_eq :
+              flowBracketBalance s_end.tokens s.tokens.size kk
+                = flowBracketBalance s₁.tokens s.tokens.size kk :=
+            flowBracketBalance_FlowMonoChain h_fmc_s1_send s.tokens.size kk
+              (Nat.le_of_lt h_kk_lt_s1)
+          rw [h_bal_eq]
+          have h_ge1 := h_exh_v kk h_kk_lt_s1 h_kk_ge h_kk_fe_s1
+          omega
+        · -- kk ≥ s₁.tokens.size.
+          have h_kk_ge_s1 : s₁.tokens.size ≤ kk := by omega
+          by_cases h_kk_eq_s1 : kk = s₁.tokens.size
+          · -- Case 2: kk = s₁.tokens.size, the comma.  Balance = 0 ≥ 0.
+            subst h_kk_eq_s1
+            rw [h_bal_s_to_s1]; decide
+          · -- Case 3: kk ≥ s₂.tokens.size = s₃.tokens.size.  Use IH.
+            have h_kk_ge_s3 : s₃.tokens.size ≤ kk := by
+              rw [h_s3_size, h_s2_size]; omega
+            -- Use tail's exhaustiveness.
+            have h_ge_tail :
+                flowBracketBalance s_end.tokens s₃.tokens.size kk ≥ 0 :=
+              h_exh_tail kk h_kk_lt h_kk_ge_s3 h_kk_fe
+            -- Decompose balance from s.tokens.size to kk.
+            have h_kk_ge_s2 : s₂.tokens.size ≤ kk := by rw [h_s2_size]; omega
+            have h_s_le_s1 : s.tokens.size ≤ s₁.tokens.size := by
+              have := FlowMonoChain.tokens_mono h_fmc₁; omega
+            rw [flowBracketBalance_compose s_end.tokens s.tokens.size s₁.tokens.size kk
+                h_s_le_s1 h_kk_ge_s1,
+                flowBracketBalance_compose s_end.tokens s₁.tokens.size s₂.tokens.size kk
+                (Nat.le_of_lt h_idx_lt_s2) h_kk_ge_s2,
+                h_bal_s_to_s1, h_bal_s1_to_s2]
+            have h_eq_s2_s3 :
+                flowBracketBalance s_end.tokens s₂.tokens.size kk
+                  = flowBracketBalance s_end.tokens s₃.tokens.size kk := by
+              rw [h_s3_size]
+            rw [h_eq_s2_s3]
+            omega
 
 -- ═══ Flow mapping pair list scanning ═══
 
@@ -9866,14 +10107,33 @@ def EmitPairListScansInFlow (pairs : List (YamlValue × YamlValue)) : Prop :=
                 ∃ (i : Nat) (hi : i < qs.size) (_h_pos_i : 0 < i)
                   (h_lt : qs[i]'hi < s'.pendingKeys.size),
                   kk + 1 = (s'.pendingKeys[qs[i]'hi]'h_lt).insertBeforeIdx))
+      -- J.4.2.b-2d-key-chain-Part3-final-discharge-bridge-6c-ii-γ-2d (2026-05-03):
+      -- balance-zero + flowEntry-non-negative-prefix.  Mirrors
+      -- `EmitListScansInFlow`'s analogous conjunct.  Composes inner emit(k)
+      -- + ":" (delta 0) + emit(v) + comma (delta 0, the only outer-level
+      -- `.flowEntry` push at body level) + recursive emitPairList.  Used by
+      -- `emit_scans_in_flow`'s mapping case to discharge the bundled
+      -- (balance = 0 ∧ flowEntry → ≥ 1) outer conjunct via `{`/`}`
+      -- bracket-push composition.
+      ∧ (flowBracketBalance s'.tokens s.tokens.size s'.tokens.size = 0
+          ∧ ∀ (kk : Nat) (h_kk_lt : kk < s'.tokens.size)
+                 (_h_kk_ge : s.tokens.size ≤ kk),
+              (s'.tokens[kk]'h_kk_lt).val = .flowEntry →
+              flowBracketBalance s'.tokens s.tokens.size kk ≥ 0)
 
 theorem emitPairList_scans_empty : EmitPairListScansInFlow [] := by
   intro s rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline _h_ska
   have h_eq : (emit.emitPairList ([] : List (YamlValue × YamlValue))).toList ++ rest = rest := by
     simp [emit.emitPairList]
+  -- Empty body: vacuous bundled balance/non-negative-prefix conjunct
+  -- (range [s.tokens.size, s.tokens.size) is empty).
+  have h_bal_empty : flowBracketBalance s.tokens s.tokens.size s.tokens.size = 0 := by
+    simp [flowBracketBalance]
   exact ⟨0, s, .zero, h_eq ▸ hcorr, rfl, rfl, rfl, rfl, h_col, h_flow, h_indent, rfl,
     h_atol, h_endline, rfl, .zero (Nat.le_refl _), Nat.le_refl _, fun _ _ _ => ⟨rfl, rfl⟩, rfl,
-    fun h_ne => absurd rfl h_ne, fun h_ne => absurd rfl h_ne⟩
+    fun h_ne => absurd rfl h_ne, fun h_ne => absurd rfl h_ne,
+    h_bal_empty, fun _ h_kk_lt h_kk_ge _ =>
+      absurd (Nat.lt_of_le_of_lt h_kk_ge h_kk_lt) (Nat.lt_irrefl _)⟩
 
 -- Non-empty pair list scanning: each pair contributes key + ":" + space + value steps.
 -- Uses emitPairList_first_char, scanNextToken_flow_value, scanNextToken_flow_comma,
@@ -10096,7 +10356,7 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
             (s_end.pendingKeys[s.pendingKeys.size]'h_lt_s_s_end).insertBeforeIdx
               = s.tokens.size := by
           rw [h_ib_pres, h_eq_s3_s2_ib, h_ib_s2_s1]; exact h_ib_s1
-        refine ⟨h_size_all, h_pkRec_all, ?_, ?_, ?_⟩
+        refine ⟨h_size_all, h_pkRec_all, ?_, ?_, ?_, ?_⟩
         · rw [_h_pks₃, h_pks_pp₃, h_pks_pk_pkr, _h_pks₁]
         · -- C-compose: first-pair resolved-key facts at index s.pendingKeys.size.
           intro _h_ne_pairs
@@ -10250,6 +10510,120 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
                 rw [h_bal_to_s3_zero, Int.zero_add] at h_bal_kk_compose
                 rw [h_bal_kk_compose] at h_kk_bal
                 omega
+        · -- 6c-ii-γ-2d singleton: bundled (balance = 0 ∧ flowEntry → ≥ 0).
+          -- Chain `s → s_end` is `emit(p.1) → ":" → ws1 → emit(p.2)`.  No comma
+          -- in the singleton chain, so balance = 0 + 0 + 0 + 0 = 0.  Mirrors
+          -- the γ-1 inner discharge above but produces the simpler `≥ 0` bound
+          -- (rather than identifying pair indices).  Reuses the same
+          -- FlowMonoChain construction.
+          obtain ⟨h_bal_k_zero, h_exh_k⟩ := h_balfacts_k_singleton
+          obtain ⟨h_bal_v_zero, h_exh_v⟩ := h_balfacts_v_singleton
+          obtain ⟨h_size_colon, h_val_at_colon⟩ := h_colon_push_singleton
+          have h_fmc_s1_send : FlowMonoChain s.flowLevel s₁ (1 + (n₃' + 1)) s_end :=
+            (FlowMonoChain.single h_snt₂ (by omega) (by omega)).trans h_fmc_ws
+          have h_s2_size : s₂.tokens.size = s₁.tokens.size + 1 := h_size_colon
+          have h_s3_size : s₃.tokens.size = s₂.tokens.size := by rw [h_toks_pp₃]
+          have h_s1_le_send : s₁.tokens.size ≤ s_end.tokens.size :=
+            FlowMonoChain.tokens_mono h_fmc_s1_send
+          have h_s2_le_send : s₂.tokens.size ≤ s_end.tokens.size :=
+            FlowMonoChain.tokens_mono h_fmc_ws
+          have h_le_s1 : s.tokens.size ≤ s₁.tokens.size :=
+            FlowMonoChain.tokens_mono h_fmc₁
+          have h_le_s1_s2 : s₁.tokens.size ≤ s₂.tokens.size := by rw [h_s2_size]; omega
+          have h_le_s2_s3 : s₂.tokens.size ≤ s₃.tokens.size := by rw [h_s3_size]; exact Nat.le_refl _
+          have h_le_s_s3 : s.tokens.size ≤ s₃.tokens.size :=
+            Nat.le_trans h_le_s1 (Nat.le_trans h_le_s1_s2 h_le_s2_s3)
+          -- Sub-balances on s_end.tokens.
+          have h_bal_key :
+              flowBracketBalance s_end.tokens s.tokens.size s₁.tokens.size = 0 := by
+            rw [flowBracketBalance_FlowMonoChain h_fmc_s1_send
+                  s.tokens.size s₁.tokens.size (Nat.le_refl _)]
+            exact h_bal_k_zero
+          have h_bal_colon :
+              flowBracketBalance s_end.tokens s₁.tokens.size s₂.tokens.size = 0 := by
+            rw [flowBracketBalance_FlowMonoChain h_fmc_ws
+                  s₁.tokens.size s₂.tokens.size (Nat.le_refl _)]
+            rw [h_s2_size]
+            have h_idx_lt :
+                s₁.tokens.size < s₂.tokens.toList.length := by
+              rw [Array.length_toList, h_s2_size]; omega
+            rw [flowBracketBalance_single s₂.tokens s₁.tokens.size h_idx_lt]
+            have h_val :
+                (s₂.tokens[s₁.tokens.size]'(by rw [h_s2_size]; omega)).val
+                  = YamlToken.value :=
+              h_val_at_colon (by rw [h_s2_size]; omega)
+            show flowBracketDelta
+                  (s₂.tokens[s₁.tokens.size]'h_idx_lt).val = 0
+            rw [h_val]; rfl
+          have h_bal_ws :
+              flowBracketBalance s_end.tokens s₂.tokens.size s₃.tokens.size = 0 := by
+            rw [h_s3_size]; simp [flowBracketBalance]
+          have h_bal_to_s3 :
+              flowBracketBalance s_end.tokens s.tokens.size s₃.tokens.size = 0 := by
+            rw [flowBracketBalance_compose s_end.tokens s.tokens.size
+                  s₁.tokens.size s₃.tokens.size h_le_s1
+                  (Nat.le_trans h_le_s1_s2 h_le_s2_s3),
+                flowBracketBalance_compose s_end.tokens s₁.tokens.size
+                  s₂.tokens.size s₃.tokens.size h_le_s1_s2 h_le_s2_s3,
+                h_bal_key, h_bal_colon, h_bal_ws]
+            decide
+          have h_le_s3_send : s₃.tokens.size ≤ s_end.tokens.size := by
+            rw [h_s3_size]; exact h_s2_le_send
+          have h_bal_total :
+              flowBracketBalance s_end.tokens s.tokens.size s_end.tokens.size = 0 := by
+            rw [flowBracketBalance_compose s_end.tokens s.tokens.size
+                  s₃.tokens.size s_end.tokens.size h_le_s_s3 h_le_s3_send,
+                h_bal_to_s3]
+            -- balance s_end.tokens s₃.tokens.size s_end.tokens.size = 0
+            -- (h_bal_v_zero is balance over `s_end.tokens` directly since
+            --  EmitScansInFlow for value was called with s₃ as input).
+            rw [h_bal_v_zero]
+            decide
+          refine ⟨h_bal_total, ?_⟩
+          intro kk h_kk_lt h_kk_ge h_kk_fe
+          by_cases h_kk_lt_s1 : kk < s₁.tokens.size
+          · -- kk in key range: use h_exh_k (≥ 1) ≥ 0.
+            have h_tok_eq :
+                s_end.tokens[kk]'h_kk_lt = s₁.tokens[kk]'h_kk_lt_s1 :=
+              FlowMonoChain_preserves_existing_tokens h_fmc_s1_send kk h_kk_lt_s1
+            have h_kk_fe_s1 : (s₁.tokens[kk]'h_kk_lt_s1).val = .flowEntry := by
+              rw [← h_tok_eq]; exact h_kk_fe
+            have h_bal_eq :
+                flowBracketBalance s_end.tokens s.tokens.size kk
+                  = flowBracketBalance s₁.tokens s.tokens.size kk :=
+              flowBracketBalance_FlowMonoChain h_fmc_s1_send s.tokens.size kk
+                (Nat.le_of_lt h_kk_lt_s1)
+            rw [h_bal_eq]
+            have h_ge1 := h_exh_k kk h_kk_lt_s1 h_kk_ge h_kk_fe_s1
+            omega
+          · have h_kk_ge_s1 : s₁.tokens.size ≤ kk := by omega
+            by_cases h_kk_eq_s1 : kk = s₁.tokens.size
+            · -- kk = s₁.tokens.size: ":" push, val = .value, contradiction.
+              have h_kk_lt_s2 : kk < s₂.tokens.size := by rw [h_s2_size]; omega
+              have h_tok_s2 :
+                  s_end.tokens[kk]'h_kk_lt = s₂.tokens[kk]'h_kk_lt_s2 :=
+                FlowMonoChain_preserves_existing_tokens h_fmc_ws kk h_kk_lt_s2
+              have h_val_at :
+                  (s₂.tokens[s₁.tokens.size]'(by rw [h_s2_size]; omega)).val
+                    = YamlToken.value :=
+                h_val_at_colon (by rw [h_s2_size]; omega)
+              subst h_kk_eq_s1
+              rw [h_tok_s2] at h_kk_fe
+              rw [h_val_at] at h_kk_fe
+              exact YamlToken.noConfusion h_kk_fe
+            · have h_kk_ge_s3 : s₃.tokens.size ≤ kk := by
+                rw [h_s3_size, h_s2_size]; omega
+              -- balance s_end.tokens s.size kk = 0 + balance s_end.tokens s₃.size kk
+              have h_compose :
+                  flowBracketBalance s_end.tokens s.tokens.size kk
+                    = flowBracketBalance s_end.tokens s.tokens.size s₃.tokens.size
+                      + flowBracketBalance s_end.tokens s₃.tokens.size kk :=
+                flowBracketBalance_compose s_end.tokens s.tokens.size
+                  s₃.tokens.size kk h_le_s_s3 h_kk_ge_s3
+              rw [h_compose, h_bal_to_s3, Int.zero_add]
+              -- Use value's exhaustiveness directly (over s_end.tokens, ≥ 1 ≥ 0).
+              have h_ge1 := h_exh_v kk h_kk_lt h_kk_ge_s3 h_kk_fe
+              omega
     | p' :: ps, ih =>
       -- ══ Multi-pair: emit k ++ ": " ++ emit v ++ ", " ++ emitPairList (p' :: ps) ══
       have h_eq : (emit.emitPairList (p :: p' :: ps)).toList ++ rest_chars =
@@ -10405,7 +10779,7 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
       obtain ⟨n_r, s_end, h_chain_r, h_corr_end, h_fl_end, h_dp_end, h_ids_end,
               h_ek_end, h_col_end, h_flow_end, h_indent_end, h_line_end, h_atol_end,
               h_endline_end, h_stack_end, h_fmc_r, h_size_r, h_pkRec_r, h_pks_r,
-              h_first_r, h_first_qs_r⟩ :=
+              h_first_r, h_first_qs_r, _h_balfacts_r⟩ :=
         h_ih_list s_pp rest_chars h_corr_pp'
           h_flow_pp
           (by rw [h_fl_pp, h_fl_c]; rw [h_fl_v, h_fl₃, h_fl₂, h_fl₁]; exact h_fl)
@@ -10629,7 +11003,7 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
               = s.tokens.size := by
           rw [h_ib_send, h_eq_spp_sc_ib, h_ib_sc, h_ib_sv, h_eq_s3_s2_ib, h_ib_s2_s1]
           exact h_ib_s1
-        refine ⟨h_size_all, h_pkRec_all, ?_, ?_, ?_⟩
+        refine ⟨h_size_all, h_pkRec_all, ?_, ?_, ?_, ?_⟩
         · rw [h_pks_r, _h_pks_pp_stk, _h_pks_c, _h_pks_v, h_pks_pp₃, h_pks_pk_pkr, _h_pks₁]
         · -- C-compose: first-pair resolved-key facts at index s.pendingKeys.size.
           intro _h_ne_pairs
@@ -11118,6 +11492,19 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
                       -- Goal: ∃ h_lt, kk + 1 = (s_end.pendingKeys[qs[i_tail+1]]'h_lt).insertBeforeIdx.
                       rw [h_qs_at_i]
                       exact ⟨h_lt_qt, h_kk_eq⟩
+        · -- 6c-ii-γ-2d cons (intermediate stub, 2026-05-03):
+          -- bundled (balance = 0 ∧ flowEntry → ≥ 0) for the cons chain
+          -- `emit(p.1) → ":" → ws1 → emit(p.2) → "," → ws1 → emitPairList(p' :: ps)`.
+          -- The full discharge mirrors the singleton case's bundled discharge
+          -- (above) plus `emitList_scans_nonempty`'s cons-case discharge:
+          -- compose key + colon + ws + value + comma + ws + IH, with each
+          -- per-leg balance lifted via `flowBracketBalance_FlowMonoChain`.
+          -- Sorry'd here as the **single intermediate stub** allowed by the
+          -- γ-2d Blueprint (10 → 9 net: -2 from outer sequence/mapping
+          -- discharges, +1 from this stub).  Discharge deferred to a
+          -- follow-up cadence step (γ-2d-ii) that will inline the
+          -- composition similar to the singleton case + emitList cons.
+          sorry
 
 /-- Every grammable value satisfies `EmitScansInFlow`. -/
 theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inFlow) :
@@ -11225,7 +11612,8 @@ theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inF
     -- hcorr₀ now has ['['] ++ ... which is def-eq to '[' :: ...
     -- Step 1: Scan '[' with nested flow open
     obtain ⟨s₁, h_snt₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_ek₁, h_col₁, _h_line₁, h_atol₁,
-            h_endline₁, h_stack_endline₁, h_stack_pop₁, h_size₁, h_pkRec₁, h_pks_pop₁⟩ :=
+            h_endline₁, h_stack_endline₁, h_stack_pop₁, h_size₁, h_pkRec₁, h_pks_pop₁,
+            h_open_push⟩ :=
       scanNextToken_flow_open_nested s_state
         ((emit.emitList items.toList).toList ++ [']'] ++ rest) hcorr₀ h_flow h_indent h_col
         h_atol h_endline
@@ -11252,7 +11640,7 @@ theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inF
       rw [List.append_assoc] at h_corr₁; exact h_corr₁
     obtain ⟨n₂, s₂, h_chain₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, h_ek₂, h_col₂, h_s2_inflow,
             h_s2_indent, _h_line₂, h_atol₂, h_endline₂, h_stack₂, h_fmc₂, h_size₂, h_pkRec₂,
-            h_pks₂⟩ :=
+            h_pks₂, h_balfacts_body⟩ :=
       h_list_scan s₁ ([']'] ++ rest) h_corr₁_assoc h_s1_inflow (by rw [h_fl₁]; omega) h_s1_indent h_s1_col
         (by rw [h_ek₁]; exact h_ek)
         h_atol₁ -- AllTokensOnLine s₁ s₁.line (from flow_open_nested postcondition)
@@ -11265,7 +11653,7 @@ theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inF
       rw [h_stack₂, _h_line₂]; exact h_stack_endline₁
     obtain ⟨s₃, h_snt₃, h_corr₃, h_fl₃, h_dp₃, h_ids₃, h_ek₃, h_col₃, h_tok₃, h_ska₃,
             _h_line₃, h_atol₃, h_endline₃, h_stack₃, h_size₃, h_pkRec₃,
-            _h_sk_restore₃, _h_pka_restore₃, _h_pks_pop₃⟩ :=
+            _h_sk_restore₃, _h_pka_restore₃, _h_pks_pop₃, h_close_push⟩ :=
       scanNextToken_flow_close_seq_nested s₂ rest h_corr₂ h_s2_inflow h_s2_indent h_col₂ h_fl₂_ge2
         h_atol₂ h_stack_endline₂
     -- Compose: [ (1 step) + list body (n₂ steps) + ] (1 step)
@@ -11370,13 +11758,127 @@ theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inF
         · -- simpleKey.possible: close restores from s₂.simpleKeyStack;
           --   body preserves it from s₁; s₁'s top simpleKey has possible = true.
           rw [_h_sk_restore₃, h_stack₂]; exact h_skback
-      · -- 6c-ii-γ-2 bundled (balance = 0 ∧ no-outer-flowEntry) for sequence case.
-        -- Sequence `[` + emitList body + `]` is bracket-balanced.  Body's outer
-        -- flowEntries (commas between items) are at balance 1 from `s_state.tokens.size`
-        -- (inside the `[`/`]` scope), so no outer-level flowEntry exists.  Discharge
-        -- requires an EmitListScansInFlow strengthening (body's balance behavior)
-        -- + bracket-push lemmas.  Sorry'd as 6c-ii-γ-2-discharge-sequence.
-        sorry
+      · -- 6c-ii-γ-2d (2026-05-03): bundled (balance = 0 ∧ flowEntry → ≥ 1)
+        -- for sequence case.  Compose `[` push (delta +1) + emitList body
+        -- (balance = 0; flowEntry → ≥ 0) + `]` push (delta -1).  Balance
+        -- total = +1 + 0 + (-1) = 0.  Outer flowEntry → ≥ 1: only valid in
+        -- body range, where outer balance from `s_state.tokens.size` to kk
+        -- = +1 (from `[` push) + body balance from `s₁.tokens.size` (≥ 0
+        -- by body's bundled).
+        obtain ⟨h_open_size, h_open_val⟩ := h_open_push
+        obtain ⟨h_close_size, h_close_val⟩ := h_close_push
+        obtain ⟨h_bal_body_zero, h_exh_body⟩ := h_balfacts_body
+        -- Sub-FlowMonoChains.
+        have h_fmc_s1_s3 : FlowMonoChain s_state.flowLevel s₁ (n₂ + 1) s₃ :=
+          h_fmc₂'.trans (FlowMonoChain.single h_snt₃ (by omega) (by omega))
+        have h_fmc_s2_s3 : FlowMonoChain s_state.flowLevel s₂ 1 s₃ :=
+          FlowMonoChain.single h_snt₃ (by omega) (by omega)
+        -- Sizes.
+        have h_s1_size : s₁.tokens.size = s_state.tokens.size + 1 := h_open_size
+        have h_s3_size : s₃.tokens.size = s₂.tokens.size + 1 := h_close_size
+        have h_s_le_s1 : s_state.tokens.size ≤ s₁.tokens.size := by omega
+        have h_s1_le_s2 : s₁.tokens.size ≤ s₂.tokens.size :=
+          FlowMonoChain.tokens_mono h_fmc₂
+        have h_s2_le_s3 : s₂.tokens.size ≤ s₃.tokens.size := by omega
+        have h_s1_le_s3 : s₁.tokens.size ≤ s₃.tokens.size :=
+          Nat.le_trans h_s1_le_s2 h_s2_le_s3
+        have h_s_le_s3 : s_state.tokens.size ≤ s₃.tokens.size :=
+          Nat.le_trans h_s_le_s1 h_s1_le_s3
+        -- Token vals at the bracket positions, lifted to s₃.tokens.
+        have h_open_lt_s1 : s_state.tokens.size < s₁.tokens.size := by omega
+        have h_open_lt_s3 : s_state.tokens.size < s₃.tokens.size :=
+          Nat.lt_of_lt_of_le h_open_lt_s1 h_s1_le_s3
+        have h_open_at_s3 :
+            (s₃.tokens[s_state.tokens.size]'h_open_lt_s3).val = .flowSequenceStart := by
+          have h_pres :
+              s₃.tokens[s_state.tokens.size]'h_open_lt_s3
+                = s₁.tokens[s_state.tokens.size]'h_open_lt_s1 :=
+            FlowMonoChain_preserves_existing_tokens h_fmc_s1_s3
+              s_state.tokens.size h_open_lt_s1
+          rw [h_pres]; exact h_open_val h_open_lt_s1
+        have h_close_lt_s3 : s₂.tokens.size < s₃.tokens.size := by omega
+        have h_close_at_s3 :
+            (s₃.tokens[s₂.tokens.size]'h_close_lt_s3).val = .flowSequenceEnd :=
+          h_close_val h_close_lt_s3
+        -- Sub-balances on s₃.tokens.
+        have h_s_to_s1_idx_lt_list :
+            s_state.tokens.size < s₃.tokens.toList.length := by
+          rw [Array.length_toList]; exact h_open_lt_s3
+        have h_bal_open :
+            flowBracketBalance s₃.tokens s_state.tokens.size s₁.tokens.size = 1 := by
+          rw [h_s1_size,
+              flowBracketBalance_single s₃.tokens s_state.tokens.size
+                h_s_to_s1_idx_lt_list]
+          show flowBracketDelta (s₃.tokens[s_state.tokens.size]'h_open_lt_s3).val = 1
+          rw [h_open_at_s3]; rfl
+        have h_bal_body :
+            flowBracketBalance s₃.tokens s₁.tokens.size s₂.tokens.size = 0 := by
+          rw [flowBracketBalance_FlowMonoChain h_fmc_s2_s3 s₁.tokens.size
+              s₂.tokens.size (Nat.le_refl _)]
+          exact h_bal_body_zero
+        have h_close_idx_lt_list :
+            s₂.tokens.size < s₃.tokens.toList.length := by
+          rw [Array.length_toList]; exact h_close_lt_s3
+        have h_bal_close :
+            flowBracketBalance s₃.tokens s₂.tokens.size s₃.tokens.size = -1 := by
+          rw [h_s3_size,
+              flowBracketBalance_single s₃.tokens s₂.tokens.size
+                h_close_idx_lt_list]
+          show flowBracketDelta (s₃.tokens[s₂.tokens.size]'h_close_lt_s3).val = -1
+          rw [h_close_at_s3]; rfl
+        -- Total balance.
+        have h_bal_total :
+            flowBracketBalance s₃.tokens s_state.tokens.size s₃.tokens.size = 0 := by
+          rw [flowBracketBalance_compose s₃.tokens s_state.tokens.size
+                s₁.tokens.size s₃.tokens.size h_s_le_s1 h_s1_le_s3,
+              flowBracketBalance_compose s₃.tokens s₁.tokens.size
+                s₂.tokens.size s₃.tokens.size h_s1_le_s2 h_s2_le_s3,
+              h_bal_open, h_bal_body, h_bal_close]
+          decide
+        refine ⟨h_bal_total, ?_⟩
+        intro kk h_kk_lt h_kk_ge h_kk_fe
+        -- Case split: kk = s_state.tokens.size, body, or s₂.tokens.size.
+        by_cases h_kk_eq_open : kk = s_state.tokens.size
+        · -- `[` is .flowSequenceStart, not .flowEntry → contradiction.
+          exfalso
+          subst h_kk_eq_open
+          rw [h_open_at_s3] at h_kk_fe
+          exact YamlToken.noConfusion h_kk_fe
+        · have h_kk_gt_open : s_state.tokens.size < kk := by omega
+          by_cases h_kk_lt_s2 : kk < s₂.tokens.size
+          · -- kk in body range.  Use body's flowEntry → ≥ 0.
+            have h_kk_ge_s1 : s₁.tokens.size ≤ kk := by omega
+            have h_kk_lt_body : kk < s₂.tokens.size := h_kk_lt_s2
+            have h_kk_lt_s1 : kk < s₃.tokens.size := h_kk_lt
+            have h_tok_eq :
+                s₃.tokens[kk]'h_kk_lt_s1 = s₂.tokens[kk]'h_kk_lt_body :=
+              FlowMonoChain_preserves_existing_tokens h_fmc_s2_s3 kk h_kk_lt_body
+            have h_kk_fe_s2 : (s₂.tokens[kk]'h_kk_lt_body).val = .flowEntry := by
+              rw [← h_tok_eq]; exact h_kk_fe
+            have h_bal_body_kk :
+                flowBracketBalance s₂.tokens s₁.tokens.size kk ≥ 0 :=
+              h_exh_body kk h_kk_lt_body h_kk_ge_s1 h_kk_fe_s2
+            have h_bal_eq :
+                flowBracketBalance s₃.tokens s₁.tokens.size kk
+                  = flowBracketBalance s₂.tokens s₁.tokens.size kk :=
+              flowBracketBalance_FlowMonoChain h_fmc_s2_s3 s₁.tokens.size kk
+                (Nat.le_of_lt h_kk_lt_body)
+            -- balance s₃ s_state.size kk = balance s₃ s_state.size s₁.size +
+            --                              balance s₃ s₁.size kk
+            --                            = +1 + (≥ 0) ≥ 1.
+            rw [flowBracketBalance_compose s₃.tokens s_state.tokens.size
+                  s₁.tokens.size kk h_s_le_s1 h_kk_ge_s1, h_bal_open, h_bal_eq]
+            omega
+          · -- kk ≥ s₂.tokens.size.  Either kk = s₂.tokens.size (`]`) or kk > s₂.tokens.size (impossible).
+            have h_kk_ge_s2 : s₂.tokens.size ≤ kk := by omega
+            by_cases h_kk_eq_close : kk = s₂.tokens.size
+            · -- `]` is .flowSequenceEnd, not .flowEntry → contradiction.
+              exfalso
+              subst h_kk_eq_close
+              rw [h_close_at_s3] at h_kk_fe
+              exact YamlToken.noConfusion h_kk_fe
+            · -- kk > s₂.tokens.size.  But kk < s₃.tokens.size = s₂.tokens.size + 1, so kk = s₂.tokens.size.
+              exfalso; omega
   | mapping style pairs tag anchor _ hk hv ihk ihv =>
     intro s_state rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline
     -- emit (.mapping ...) = "{" ++ emitPairList pairs.toList ++ "}"
@@ -11386,7 +11888,8 @@ theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inF
     have hcorr₀ := hcorr; rw [h_chars] at hcorr₀
     -- Step 1: Scan '{' with nested flow open
     obtain ⟨s₁, h_snt₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_ek₁, h_col₁, _h_line₁, h_atol₁,
-            h_endline₁, h_stack_endline₁, h_stack_pop₁, h_size₁, h_pkRec₁, h_pks_pop₁, h_ska₁⟩ :=
+            h_endline₁, h_stack_endline₁, h_stack_pop₁, h_size₁, h_pkRec₁, h_pks_pop₁, h_ska₁,
+            h_open_push⟩ :=
       scanNextToken_flow_open_mapping_nested s_state
         ((emit.emitPairList pairs.toList).toList ++ ['}'] ++ rest) hcorr₀ h_flow h_indent h_col
         h_atol h_endline
@@ -11415,7 +11918,7 @@ theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inF
       rw [List.append_assoc] at h_corr₁; exact h_corr₁
     obtain ⟨n₂, s₂, h_chain₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, h_ek₂, h_col₂, h_s2_inflow,
             h_s2_indent, _h_line₂, h_atol₂, h_endline₂, h_stack₂, h_fmc₂, h_size₂, h_pkRec₂,
-            h_pks₂, _h_first₂, _h_first_qs₂⟩ :=
+            h_pks₂, _h_first₂, _h_first_qs₂, h_balfacts_body⟩ :=
       h_pair_scan s₁ (['}'] ++ rest) h_corr₁_assoc h_s1_inflow (by rw [h_fl₁]; omega) h_s1_indent h_s1_col
         (by rw [h_ek₁]; exact h_ek)
         h_atol₁
@@ -11429,7 +11932,7 @@ theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inF
       rw [h_stack₂, _h_line₂]; exact h_stack_endline₁
     obtain ⟨s₃, h_snt₃, h_corr₃, h_fl₃, h_dp₃, h_ids₃, h_ek₃, h_col₃, h_tok₃, h_ska₃,
             _h_line₃, h_atol₃, h_endline₃, h_stack₃, h_size₃, h_pkRec₃,
-            _h_sk_restore₃, _h_pka_restore₃, _h_pks_pop₃⟩ :=
+            _h_sk_restore₃, _h_pka_restore₃, _h_pks_pop₃, h_close_push⟩ :=
       scanNextToken_flow_close_mapping_nested s₂ rest h_corr₂ h_s2_inflow h_s2_indent h_col₂ h_fl₂_ge2
         h_atol₂ h_stack_endline₂
     -- Compose: { (1 step) + pair body (n₂ steps) + } (1 step)
@@ -11521,13 +12024,109 @@ theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inF
         · rw [h_kd_s3]; exact h_kd_s1
         · rw [_h_pka_restore₃, h_pks₂, h_pks_push, Array.back?_push]; rfl
         · rw [_h_sk_restore₃, h_stack₂]; exact h_skback
-      · -- 6c-ii-γ-2 bundled (balance = 0 ∧ no-outer-flowEntry) for mapping case.
-        -- Mapping `{` + emitPairList body + `}` is bracket-balanced.  Body's outer
-        -- flowEntries (commas between pairs, `:` separators are .value not .flowEntry)
-        -- are at balance 1 from `s_state.tokens.size` (inside the `{`/`}` scope).
-        -- Discharge requires an EmitPairListScansInFlow strengthening (body's balance
-        -- behavior) + bracket-push lemmas.  Sorry'd as 6c-ii-γ-2-discharge-mapping.
-        sorry
+      · -- 6c-ii-γ-2d (2026-05-03): bundled (balance = 0 ∧ flowEntry → ≥ 1)
+        -- for mapping case.  Mirrors the sequence-case discharge above but
+        -- with `{`/`}` instead of `[`/`]`.
+        obtain ⟨h_open_size, h_open_val⟩ := h_open_push
+        obtain ⟨h_close_size, h_close_val⟩ := h_close_push
+        obtain ⟨h_bal_body_zero, h_exh_body⟩ := h_balfacts_body
+        have h_fmc_s1_s3 : FlowMonoChain s_state.flowLevel s₁ (n₂ + 1) s₃ :=
+          h_fmc₂'.trans (FlowMonoChain.single h_snt₃ (by omega) (by omega))
+        have h_fmc_s2_s3 : FlowMonoChain s_state.flowLevel s₂ 1 s₃ :=
+          FlowMonoChain.single h_snt₃ (by omega) (by omega)
+        have h_s1_size : s₁.tokens.size = s_state.tokens.size + 1 := h_open_size
+        have h_s3_size : s₃.tokens.size = s₂.tokens.size + 1 := h_close_size
+        have h_s_le_s1 : s_state.tokens.size ≤ s₁.tokens.size := by omega
+        have h_s1_le_s2 : s₁.tokens.size ≤ s₂.tokens.size :=
+          FlowMonoChain.tokens_mono h_fmc₂
+        have h_s2_le_s3 : s₂.tokens.size ≤ s₃.tokens.size := by omega
+        have h_s1_le_s3 : s₁.tokens.size ≤ s₃.tokens.size :=
+          Nat.le_trans h_s1_le_s2 h_s2_le_s3
+        have h_s_le_s3 : s_state.tokens.size ≤ s₃.tokens.size :=
+          Nat.le_trans h_s_le_s1 h_s1_le_s3
+        have h_open_lt_s1 : s_state.tokens.size < s₁.tokens.size := by omega
+        have h_open_lt_s3 : s_state.tokens.size < s₃.tokens.size :=
+          Nat.lt_of_lt_of_le h_open_lt_s1 h_s1_le_s3
+        have h_open_at_s3 :
+            (s₃.tokens[s_state.tokens.size]'h_open_lt_s3).val = .flowMappingStart := by
+          have h_pres :
+              s₃.tokens[s_state.tokens.size]'h_open_lt_s3
+                = s₁.tokens[s_state.tokens.size]'h_open_lt_s1 :=
+            FlowMonoChain_preserves_existing_tokens h_fmc_s1_s3
+              s_state.tokens.size h_open_lt_s1
+          rw [h_pres]; exact h_open_val h_open_lt_s1
+        have h_close_lt_s3 : s₂.tokens.size < s₃.tokens.size := by omega
+        have h_close_at_s3 :
+            (s₃.tokens[s₂.tokens.size]'h_close_lt_s3).val = .flowMappingEnd :=
+          h_close_val h_close_lt_s3
+        have h_s_to_s1_idx_lt_list :
+            s_state.tokens.size < s₃.tokens.toList.length := by
+          rw [Array.length_toList]; exact h_open_lt_s3
+        have h_bal_open :
+            flowBracketBalance s₃.tokens s_state.tokens.size s₁.tokens.size = 1 := by
+          rw [h_s1_size,
+              flowBracketBalance_single s₃.tokens s_state.tokens.size
+                h_s_to_s1_idx_lt_list]
+          show flowBracketDelta (s₃.tokens[s_state.tokens.size]'h_open_lt_s3).val = 1
+          rw [h_open_at_s3]; rfl
+        have h_bal_body :
+            flowBracketBalance s₃.tokens s₁.tokens.size s₂.tokens.size = 0 := by
+          rw [flowBracketBalance_FlowMonoChain h_fmc_s2_s3 s₁.tokens.size
+              s₂.tokens.size (Nat.le_refl _)]
+          exact h_bal_body_zero
+        have h_close_idx_lt_list :
+            s₂.tokens.size < s₃.tokens.toList.length := by
+          rw [Array.length_toList]; exact h_close_lt_s3
+        have h_bal_close :
+            flowBracketBalance s₃.tokens s₂.tokens.size s₃.tokens.size = -1 := by
+          rw [h_s3_size,
+              flowBracketBalance_single s₃.tokens s₂.tokens.size
+                h_close_idx_lt_list]
+          show flowBracketDelta (s₃.tokens[s₂.tokens.size]'h_close_lt_s3).val = -1
+          rw [h_close_at_s3]; rfl
+        have h_bal_total :
+            flowBracketBalance s₃.tokens s_state.tokens.size s₃.tokens.size = 0 := by
+          rw [flowBracketBalance_compose s₃.tokens s_state.tokens.size
+                s₁.tokens.size s₃.tokens.size h_s_le_s1 h_s1_le_s3,
+              flowBracketBalance_compose s₃.tokens s₁.tokens.size
+                s₂.tokens.size s₃.tokens.size h_s1_le_s2 h_s2_le_s3,
+              h_bal_open, h_bal_body, h_bal_close]
+          decide
+        refine ⟨h_bal_total, ?_⟩
+        intro kk h_kk_lt h_kk_ge h_kk_fe
+        by_cases h_kk_eq_open : kk = s_state.tokens.size
+        · exfalso
+          subst h_kk_eq_open
+          rw [h_open_at_s3] at h_kk_fe
+          exact YamlToken.noConfusion h_kk_fe
+        · have h_kk_gt_open : s_state.tokens.size < kk := by omega
+          by_cases h_kk_lt_s2 : kk < s₂.tokens.size
+          · have h_kk_ge_s1 : s₁.tokens.size ≤ kk := by omega
+            have h_kk_lt_body : kk < s₂.tokens.size := h_kk_lt_s2
+            have h_kk_lt_s1 : kk < s₃.tokens.size := h_kk_lt
+            have h_tok_eq :
+                s₃.tokens[kk]'h_kk_lt_s1 = s₂.tokens[kk]'h_kk_lt_body :=
+              FlowMonoChain_preserves_existing_tokens h_fmc_s2_s3 kk h_kk_lt_body
+            have h_kk_fe_s2 : (s₂.tokens[kk]'h_kk_lt_body).val = .flowEntry := by
+              rw [← h_tok_eq]; exact h_kk_fe
+            have h_bal_body_kk :
+                flowBracketBalance s₂.tokens s₁.tokens.size kk ≥ 0 :=
+              h_exh_body kk h_kk_lt_body h_kk_ge_s1 h_kk_fe_s2
+            have h_bal_eq :
+                flowBracketBalance s₃.tokens s₁.tokens.size kk
+                  = flowBracketBalance s₂.tokens s₁.tokens.size kk :=
+              flowBracketBalance_FlowMonoChain h_fmc_s2_s3 s₁.tokens.size kk
+                (Nat.le_of_lt h_kk_lt_body)
+            rw [flowBracketBalance_compose s₃.tokens s_state.tokens.size
+                  s₁.tokens.size kk h_s_le_s1 h_kk_ge_s1, h_bal_open, h_bal_eq]
+            omega
+          · have h_kk_ge_s2 : s₂.tokens.size ≤ kk := by omega
+            by_cases h_kk_eq_close : kk = s₂.tokens.size
+            · exfalso
+              subst h_kk_eq_close
+              rw [h_close_at_s3] at h_kk_fe
+              exact YamlToken.noConfusion h_kk_fe
+            · exfalso; omega
 
 -- Helper: extract existential from isOk
 theorem scanFiltered_exists_of_isOk {s : String}
@@ -13046,7 +13645,7 @@ theorem emitPairList_body_filtered_characterization
   have h_scan := emitPairList_scans_nonempty pairs h_ne h_all_k h_all_v
   obtain ⟨n, s', h_chain, h_corr', h_fl', h_dp', h_ids', h_ek', h_col', h_inflow',
           h_indent', h_line', h_atol', h_endline', h_stack', h_fmc, _h_size, _h_pkRec,
-          _h_pks_eq, h_first, h_first_qs⟩ :=
+          _h_pks_eq, h_first, h_first_qs, _h_balfacts_body⟩ :=
     h_scan s rest h_corr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_ska
   have h_n_pos : n ≥ 1 := by
     match n, h_chain with

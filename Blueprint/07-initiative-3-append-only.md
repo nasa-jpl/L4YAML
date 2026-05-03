@@ -3172,13 +3172,29 @@ Remaining J.4.2.b work:
               `(by decide)`.  Sorry count: 11 → 10.  Build green
               (453/453 jobs).  See manifest entry
               `J.4.2.b-2d-key-chain-Part3-final-discharge-bridge-6c-ii-γ-2c`.
-            - 6c-ii-γ-2d. **discharge sequence + mapping cases**:
-              compose `[`/`]` (or `{`/`}`) bracket-push lemmas with the
-              body's balance behavior (requires strengthening
-              `EmitListScansInFlow` / `EmitPairListScansInFlow` with
-              their own balance facts — this cascade is the substantial
-              part).  Sorry count: 10 → 8 (or 9 if the EmitListScansInFlow
-              strengthening adds an intermediate stub).
+            - 6c-ii-γ-2d. ✓ **discharge sequence + mapping cases**
+              [done 2026-05-03]: strengthened `EmitListScansInFlow` and
+              `EmitPairListScansInFlow` with bundled (balance = 0 ∧
+              flowEntry → ≥ 0) conjuncts; strengthened the 4 nested
+              open/close theorems (`scanNextToken_flow_open_nested`,
+              `scanNextToken_flow_close_seq_nested`,
+              `scanNextToken_flow_open_mapping_nested`,
+              `scanNextToken_flow_close_mapping_nested`) with token-push
+              facts (`s'.tokens.size = s.tokens.size + 1` + value at
+              index `s.tokens.size` = `.flowSequenceStart`/End/MappingStart/End).
+              Discharge in `emit_scans_in_flow`'s sequence + mapping
+              cases via `flowBracketBalance_compose` of `[` push
+              (delta +1) + body (= 0) + `]` push (delta -1) = 0;
+              outer flowEntry → ≥ 1 from `[`/`{` push (+1) + body's
+              flowEntry → ≥ 0.  Re-proved `emitList_scans_empty`/
+              `_nonempty` (full discharge) + `emitPairList_scans_empty`/
+              `_nonempty` singleton (full discharge); cons-case
+              bundled balance for `emitPairList_scans_nonempty` is the
+              **intermediate stub** allowed by Blueprint (deferred to
+              follow-up γ-2d-ii).  Sorry count: 10 → 9 (-2 outer
+              discharges, +1 emitPairList cons stub).  Build green
+              (453/453 jobs).  See manifest entry
+              `J.4.2.b-2d-key-chain-Part3-final-discharge-bridge-6c-ii-γ-2d`.
             - 6c-ii-γ-3. **discharge Part (3) using strengthened
               predicate**: translate the linearise outer-level
               condition to `s'.tokens` via 6c-ii-β; apply the new
@@ -3216,7 +3232,7 @@ the breakdown above lets each substep land in cadence-size, with the
 positional family (J.4.2.c-prefix / -pos1 / -pos2) and the chain-endpoint
 invariant (J.4.2.b-pkwi) already in place to support them.
 
-**Concrete next steps (in order, as of 2026-05-03, sorry count 10):**
+**Concrete next steps (in order, as of 2026-05-03, sorry count 9):**
 
 1. **2d-key-chain-Part3** (after-flowEntry splice locator; refined
    ~14–15 cadence steps; scope-investigation done 2026-05-02,
@@ -3232,10 +3248,12 @@ invariant (J.4.2.b-pkwi) already in place to support them.
    EmitScansInFlow-strengthening done 2026-05-03,
    final-discharge-bridge-6c-ii-γ-2b/chain-side-γ-1-discharge done
    2026-05-03, final-discharge-bridge-6c-ii-γ-2c/scalar-discharge done
-   2026-05-03) — Part3 is now decomposed into 15 cadence-sized sub-steps
-   (sub-steps 1–5 + 6a + 6b + 6c-i + 6c-ii-α + 6c-ii-β + 6c-ii-γ-1 +
-   6c-ii-γ-2a + 6c-ii-γ-2b + 6c-ii-γ-2c ✓ done; 6c-ii-γ-2d + 6c-ii-γ-3
-   remaining):
+   2026-05-03, final-discharge-bridge-6c-ii-γ-2d/seq+map-outer-discharge
+   done 2026-05-03 with emitPairList cons stub) — Part3 is now decomposed
+   into 16 cadence-sized sub-steps (sub-steps 1–5 + 6a + 6b + 6c-i +
+   6c-ii-α + 6c-ii-β + 6c-ii-γ-1 + 6c-ii-γ-2a + 6c-ii-γ-2b + 6c-ii-γ-2c
+   + 6c-ii-γ-2d ✓ done; 6c-ii-γ-2d-ii (emitPairList cons stub
+   discharge) + 6c-ii-γ-3 remaining):
    - 2. ✓ **Part3-locator-shape** [done 2026-05-02]: chose option (i)
      array form `∃ (qs : Array Nat) (_h_size : qs.size = pairs.length)
      (h_pos : 0 < qs.size), qs[0] = s.pendingKeys.size ∧ ⟨per-i
