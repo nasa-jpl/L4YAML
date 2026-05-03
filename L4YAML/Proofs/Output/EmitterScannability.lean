@@ -4759,6 +4759,14 @@ theorem scanNextToken_flow_scanDoubleQuoted (s : ScannerState)
       ∧ (∀ j (hj : j < s.pendingKeys.size) (hj' : j < s'.pendingKeys.size),
           (s'.pendingKeys[j]'hj').insertBeforeIdx = (s.pendingKeys[j]'hj).insertBeforeIdx
           ∧ (s'.pendingKeys[j]'hj').kind = (s.pendingKeys[j]'hj).kind)
+      -- J.4.2.b-2d-key-chain-Part3-final-discharge-bridge-6c-ii-γ-3b-ii-leaves-A
+      -- (2026-05-03): new pendingKey entries (q ≥ s.pendingKeys.size) carry
+      -- kind = .unresolved.  saveSimpleKey is push-or-id and only ever pushes
+      -- a fresh `.unresolved` entry (foundation helper); scanDoubleQuoted
+      -- preserves `pendingKeys`, and the dispatchContent `setPendingKeyEndLine`
+      -- wrap only touches `endLine`, leaving `kind` intact.
+      ∧ (∀ (q : Nat) (h_q : q < s'.pendingKeys.size) (_h_q_ge : s.pendingKeys.size ≤ q),
+          (s'.pendingKeys[q]'h_q).kind = .unresolved)
       -- J.4.2.b-2d-key-chain-Part2-body-C-foundation-EmitScansInFlow-stack-restore +
       -- preservation-chain: pendingKeyStack preserved (scanDoubleQuoted is a Class A
       -- passthrough that doesn't push/pop pendingKeyStack; the surrounding
@@ -4857,6 +4865,9 @@ theorem scanNextToken_flow_scanDoubleQuoted (s : ScannerState)
       ∧ (∀ j (hj : j < s.pendingKeys.size) (hj' : j < s_final.pendingKeys.size),
           (s_final.pendingKeys[j]'hj').insertBeforeIdx = (s.pendingKeys[j]'hj).insertBeforeIdx
           ∧ (s_final.pendingKeys[j]'hj').kind = (s.pendingKeys[j]'hj).kind)
+      -- 6c-ii-γ-3b-ii-leaves-A: new entries (q ≥ s.pendingKeys.size) have kind = .unresolved.
+      ∧ (∀ (q : Nat) (h_q : q < s_final.pendingKeys.size) (_h_q_ge : s.pendingKeys.size ≤ q),
+          (s_final.pendingKeys[q]'h_q).kind = .unresolved)
       -- stack-restore + preservation-chain: pendingKeyStack preserved (Class A
       -- passthrough — discharged via
       -- `ScannerCorrectness.scanDoubleQuoted_preserves_pendingKeyStack`).
@@ -4906,7 +4917,7 @@ theorem scanNextToken_flow_scanDoubleQuoted (s : ScannerState)
       refine ⟨_, rfl, h_dq_corr,
         h_dq_fl.trans h_ad_fl, h_dq_dp.trans h_ad_dp, h_dq_ids.trans h_ad_ids,
         h_dq_ek.trans h_ad_ek, h_dq_col, h_dq_tokens, h_dq_ska,
-        h_dq_line.trans h_ad_line, h_atol_dq, ?_, h_dq_stack.trans h_ad_stack, ?_, ?_, ?_, ?_⟩
+        h_dq_line.trans h_ad_line, h_atol_dq, ?_, h_dq_stack.trans h_ad_stack, ?_, ?_, ?_, ?_, ?_⟩
       · intro h_poss; rw [h_skp] at h_poss; exact absurd h_poss (by decide)
       · -- size monotonic: s_dq.pendingKeys = (saveSimpleKey s).pendingKeys
         rw [h_dq_pks_full]; exact saveSimpleKey_pendingKeys_size_ge s
@@ -4920,6 +4931,14 @@ theorem scanNextToken_flow_scanDoubleQuoted (s : ScannerState)
         refine ⟨?_, ?_⟩
         · rw [h_eq]; exact h_ib
         · rw [h_eq]; exact h_kd
+      · -- 6c-ii-γ-3b-ii-leaves-A: new entries kind = .unresolved
+        intro q h_q h_q_ge
+        have h_q_sk : q < (saveSimpleKey s).pendingKeys.size := by
+          rw [← h_dq_pks_full]; exact h_q
+        have h_eq : s_dq.pendingKeys[q]'h_q = (saveSimpleKey s).pendingKeys[q]'h_q_sk := by
+          congr 1
+        rw [h_eq]
+        exact saveSimpleKey_new_kind_unresolved s q h_q_sk h_q_ge
       · exact h_dq_pks_stack_full
       · -- 6c-ii-γ-2c: token-push facts.  s_final = s_dq, and h_dq_token_push gives
         --   s_dq.tokens.size = s_ad.tokens.size + 1
@@ -4942,7 +4961,7 @@ theorem scanNextToken_flow_scanDoubleQuoted (s : ScannerState)
          h_dq_corr.input_prefix, h_dq_corr.indent_cols_nonneg⟩,
         h_dq_fl.trans h_ad_fl, h_dq_dp.trans h_ad_dp, h_dq_ids.trans h_ad_ids,
         h_dq_ek.trans h_ad_ek, h_dq_col, h_dq_tokens, h_dq_ska,
-        h_dq_line.trans h_ad_line, h_atol_dq, ?_, h_dq_stack.trans h_ad_stack, ?_, ?_, ?_, ?_⟩
+        h_dq_line.trans h_ad_line, h_atol_dq, ?_, h_dq_stack.trans h_ad_stack, ?_, ?_, ?_, ?_, ?_⟩
       · -- EndLineOnLine: endLine just set to s_dq.line, pos from saveSimpleKey
         intro _
         constructor
@@ -4981,6 +5000,20 @@ theorem scanNextToken_flow_scanDoubleQuoted (s : ScannerState)
         refine ⟨?_, ?_⟩
         · exact h_ib_set.trans (h_eq ▸ h_ib_chain)
         · exact h_kd_set.trans (h_eq ▸ h_kd_chain)
+      · -- 6c-ii-γ-3b-ii-leaves-A: new entries kind = .unresolved through setPendingKeyEndLine wrap
+        intro q h_q h_q_ge
+        have h_set_size : q < (setPendingKeyEndLine s_dq.pendingKeys s_dq.pendingKeyActive s_dq.line).size :=
+          h_q
+        have h_dq_lt : q < s_dq.pendingKeys.size := by
+          rw [ScannerCorrectness.setPendingKeyEndLine_size] at h_set_size; exact h_set_size
+        have h_kd_set := ScannerCorrectness.setPendingKeyEndLine_kind
+          s_dq.pendingKeys s_dq.pendingKeyActive s_dq.line q h_dq_lt h_set_size
+        have h_q_sk : q < (saveSimpleKey s).pendingKeys.size := by
+          rw [← h_dq_pks_full]; exact h_dq_lt
+        have h_eq : s_dq.pendingKeys[q]'h_dq_lt = (saveSimpleKey s).pendingKeys[q]'h_q_sk := by
+          congr 1
+        rw [h_kd_set, h_eq]
+        exact saveSimpleKey_new_kind_unresolved s q h_q_sk h_q_ge
       · -- pendingKeyStack: setPendingKeyEndLine wrap doesn't touch stack
         show s_dq.pendingKeyStack = s.pendingKeyStack
         exact h_dq_pks_stack_full
@@ -5000,14 +5033,14 @@ theorem scanNextToken_flow_scanDoubleQuoted (s : ScannerState)
           congr 1; exact h_size_eq.symm
         rw [h_get_eq]; exact h_dq_val h_lt_ad
   obtain ⟨s_final, h_dc_eq, h_corr_f, h_fl_f, h_dp_f, h_ids_f, h_ek_f, h_col_f, h_tok_f,
-          h_ska_f, h_line_f, h_atol_f, h_endline_f, h_stack_f, h_size_f, h_pkRec_f, h_pks_f,
-          h_token_push_f⟩ := h_content
+          h_ska_f, h_line_f, h_atol_f, h_endline_f, h_stack_f, h_size_f, h_pkRec_f, h_newkind_f,
+          h_pks_f, h_token_push_f⟩ := h_content
   -- Step 8: compose through scanNextToken
   exact ⟨s_final, scanNextToken_via_content_dispatch _ _ _ _ _ h_pp h_struct rfl h_check
     h_flow_none h_block_none h_dc_eq, h_corr_f, h_fl_f, h_dp_f, h_ids_f, h_ek_f, h_col_f,
     fun t ht => by rw [h_tok_f] at ht; injection ht with ht; subst ht; exact ⟨nofun, nofun, nofun⟩,
     h_ska_f, h_line_f, (by rw [h_line_f]; exact h_atol_f), h_endline_f, h_stack_f, h_size_f, h_pkRec_f,
-    h_pks_f, h_token_push_f⟩
+    h_newkind_f, h_pks_f, h_token_push_f⟩
 
 /-- Per-leaf scalar pkPush variant of `scanNextToken_flow_scanDoubleQuoted`.
 
@@ -5055,7 +5088,13 @@ theorem scanNextToken_flow_scanDoubleQuoted_pkPush (s : ScannerState)
       ∧ s'.pendingKeyActive = some s.pendingKeys.size
       ∧ s'.simpleKey.possible = true
       ∧ (∀ j (hj : j < s.pendingKeys.size) (hj' : j < s'.pendingKeys.size),
-          s'.pendingKeys[j]'hj' = s.pendingKeys[j]'hj) := by
+          s'.pendingKeys[j]'hj' = s.pendingKeys[j]'hj)
+      -- 6c-ii-γ-3b-ii-leaves-A: new pendingKey entries (q ≥ s.pendingKeys.size)
+      -- carry kind = .unresolved (universal form, derivable from the
+      -- size = +1 and the specific @ s.pendingKeys.size pkPush facts above —
+      -- exposed here for uniform composition with the regular variant). -/
+      ∧ (∀ (q : Nat) (h_q : q < s'.pendingKeys.size) (_h_q_ge : s.pendingKeys.size ≤ q),
+          (s'.pendingKeys[q]'h_q).kind = .unresolved) := by
   -- Step 1: preprocessing (parallel to base theorem)
   have h_pp : scanNextToken_preprocess s = .ok (some (saveSimpleKey s, '"')) :=
     scanNextToken_preprocess_flow s '"' ((escapeString content).toList ++ ['"'] ++ rest) s.col
@@ -5154,7 +5193,10 @@ theorem scanNextToken_flow_scanDoubleQuoted_pkPush (s : ScannerState)
       ∧ s_final.pendingKeyActive = some s.pendingKeys.size
       ∧ s_final.simpleKey.possible = true
       ∧ (∀ j (hj : j < s.pendingKeys.size) (hj' : j < s_final.pendingKeys.size),
-          s_final.pendingKeys[j]'hj' = s.pendingKeys[j]'hj) := by
+          s_final.pendingKeys[j]'hj' = s.pendingKeys[j]'hj)
+      -- 6c-ii-γ-3b-ii-leaves-A: universal new-kind conjunct.
+      ∧ (∀ (q : Nat) (h_q : q < s_final.pendingKeys.size) (_h_q_ge : s.pendingKeys.size ≤ q),
+          (s_final.pendingKeys[q]'h_q).kind = .unresolved) := by
     unfold scanNextToken_dispatchContent
     simp (config := { decide := true }) only [bind, Except.bind, pure, Except.pure, h_dq]
     have h_atol_ad : AllTokensOnLine s_ad s.line :=
@@ -5175,7 +5217,7 @@ theorem scanNextToken_flow_scanDoubleQuoted_pkPush (s : ScannerState)
       h_dq_fl.trans h_ad_fl, h_dq_dp.trans h_ad_dp, h_dq_ids.trans h_ad_ids,
       h_dq_ek.trans h_ad_ek, h_dq_col, h_dq_tokens, h_dq_ska,
       h_dq_line.trans h_ad_line, h_atol_dq, ?_, h_dq_stack.trans h_ad_stack,
-      ?_, ?_, ?_, ?_, ?_⟩
+      ?_, ?_, ?_, ?_, ?_, ?_⟩
     · -- EndLineOnLine on the wrap (parallel to base theorem true branch)
       intro _
       constructor
@@ -5241,14 +5283,33 @@ theorem scanNextToken_flow_scanDoubleQuoted_pkPush (s : ScannerState)
         simp only [h_dq_pks_full]
         exact Array.getElem_push_lt hj
       exact (step1.trans step2).trans step3
+    · -- 6c-ii-γ-3b-ii-leaves-A: universal new-kind = .unresolved
+      intro q h_q h_q_ge
+      have h_set_size : q < (setPendingKeyEndLine s_dq.pendingKeys s_dq.pendingKeyActive s_dq.line).size :=
+        h_q
+      have h_dq_lt : q < s_dq.pendingKeys.size := by
+        rw [ScannerCorrectness.setPendingKeyEndLine_size] at h_set_size; exact h_set_size
+      have h_kd_set := ScannerCorrectness.setPendingKeyEndLine_kind
+        s_dq.pendingKeys s_dq.pendingKeyActive s_dq.line q h_dq_lt h_set_size
+      have h_q_eq : q = s.pendingKeys.size := by
+        have h_size : s_dq.pendingKeys.size = s.pendingKeys.size + 1 := by
+          rw [h_dq_pks_full, Array.size_push]
+        omega
+      have h_get : s_dq.pendingKeys[q]'h_dq_lt =
+          { insertBeforeIdx := s.tokens.size, pos := s.currentPos,
+            endLine := s.line, kind := .unresolved } := by
+        subst h_q_eq
+        simp only [h_dq_pks_full, Array.getElem_push]
+        rw [dif_neg (Nat.lt_irrefl _)]
+      rw [h_kd_set, h_get]
   obtain ⟨s_final, h_dc_eq, h_corr_f, h_fl_f, h_dp_f, h_ids_f, h_ek_f, h_col_f,
          h_tok_f, h_ska_f, h_line_f, h_atol_f, h_endline_f, h_stack_f,
-         h_pks_size_f, h_pks_idx_f, h_pka_f, h_skp_f, h_prior_f⟩ := h_content
+         h_pks_size_f, h_pks_idx_f, h_pka_f, h_skp_f, h_prior_f, h_newkind_f⟩ := h_content
   exact ⟨s_final, scanNextToken_via_content_dispatch _ _ _ _ _ h_pp h_struct rfl h_check
     h_flow_none h_block_none h_dc_eq, h_corr_f, h_fl_f, h_dp_f, h_ids_f, h_ek_f, h_col_f,
     fun t ht => by rw [h_tok_f] at ht; injection ht with ht; subst ht; exact ⟨nofun, nofun, nofun⟩,
     h_ska_f, h_line_f, (by rw [h_line_f]; exact h_atol_f), h_endline_f, h_stack_f,
-    h_pks_size_f, h_pks_idx_f, h_pka_f, h_skp_f, h_prior_f⟩
+    h_pks_size_f, h_pks_idx_f, h_pka_f, h_skp_f, h_prior_f, h_newkind_f⟩
 
 -- ═══ scanNextToken for '[' from initial state ═══
 
@@ -5465,6 +5526,15 @@ theorem scanNextToken_flow_open_nested (s : ScannerState) (rest : List Char)
       ∧ (∀ j (hj : j < s.pendingKeys.size) (hj' : j < s'.pendingKeys.size),
           (s'.pendingKeys[j]'hj').insertBeforeIdx = (s.pendingKeys[j]'hj).insertBeforeIdx
           ∧ (s'.pendingKeys[j]'hj').kind = (s.pendingKeys[j]'hj).kind)
+      -- J.4.2.b-2d-key-chain-Part3-final-discharge-bridge-6c-ii-γ-3b-ii-leaves-A
+      -- (2026-05-03): new pendingKey entries (q ≥ s.pendingKeys.size) carry
+      -- kind = .unresolved.  saveSimpleKey is push-or-id and only ever pushes
+      -- a fresh `.unresolved` entry (foundation helper); scanFlowSequenceStart
+      -- preserves `pendingKeys`, and the `[` flow path doesn't enter
+      -- dispatchContent (no `setPendingKeyEndLine` wrap) — so the underlying
+      -- saveSimpleKey kind is exposed unchanged.
+      ∧ (∀ (q : Nat) (h_q : q < s'.pendingKeys.size) (_h_q_ge : s.pendingKeys.size ≤ q),
+          (s'.pendingKeys[q]'h_q).kind = .unresolved)
       -- J.4.2.b-2d-key-chain-Part2-body-C-foundation-EmitScansInFlow-stack-restore:
       -- pendingKeyStack pushed (saveSimpleKey + allowDirectives preserve it;
       -- scanFlowSequenceStart pushes prior pendingKeyActive); the matching
@@ -5534,7 +5604,7 @@ theorem scanNextToken_flow_open_nested (s : ScannerState) (rest : List Char)
     rw [scanFlowSequenceStart_line_eq]
     exact (advance_line_of_peek s_ad '[' h_lt_ad h_peek_ad (by decide) (by decide)).trans h_ad_line
   refine ⟨_, h_snt, ?_, h_fl_f.trans (congrArg (· + 1) h_ad_fl),
-    h_dp_f.trans h_ad_dp, h_ids_f.trans h_ad_ids, h_ek_f.trans h_ad_ek, ?_, h_line_f, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+    h_dp_f.trans h_ad_dp, h_ids_f.trans h_ad_ids, h_ek_f.trans h_ad_ek, ?_, h_line_f, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
   · rw [h_col_f]; exact h_corr_f
   · rw [h_col_f, h_ad_col]
   · rw [h_line_f]
@@ -5583,6 +5653,21 @@ theorem scanNextToken_flow_open_nested (s : ScannerState) (rest : List Char)
     refine ⟨?_, ?_⟩
     · rw [h_eq]; exact h_ib
     · rw [h_eq]; exact h_kd
+  · -- 6c-ii-γ-3b-ii-leaves-A: new pendingKey entries have kind = .unresolved
+    intro q h_q h_q_ge
+    have h_fss_pks : (scanFlowSequenceStart s_ad).pendingKeys = s_ad.pendingKeys :=
+      ScannerCorrectness.scanFlowSequenceStart_preserves_pendingKeys s_ad
+    have h_ad_pks : s_ad.pendingKeys = (saveSimpleKey s).pendingKeys := by
+      simp only [s_ad]; split <;> rfl
+    have h_full_pks : (scanFlowSequenceStart s_ad).pendingKeys = (saveSimpleKey s).pendingKeys :=
+      h_fss_pks.trans h_ad_pks
+    have h_q_sk : q < (saveSimpleKey s).pendingKeys.size := by
+      rw [← h_full_pks]; exact h_q
+    have h_eq : (scanFlowSequenceStart s_ad).pendingKeys[q]'h_q
+                = (saveSimpleKey s).pendingKeys[q]'h_q_sk := by
+      congr 1
+    rw [h_eq]
+    exact saveSimpleKey_new_kind_unresolved s q h_q_sk h_q_ge
   · -- pendingKeyStack.pop = s.pendingKeyStack (mirror of simpleKeyStack)
     rw [ScannerCorrectness.scanFlowSequenceStart_pendingKeyStack_pushed, Array.pop_push]
     show s_ad.pendingKeyStack = s.pendingKeyStack
@@ -11566,8 +11651,8 @@ theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inF
         ⟨['"'] ++ (escapeString s.content).toList ++ ['"'] ++ rest, s_state.col⟩ := by
       rwa [← h_chars]
     obtain ⟨s', h_snt, h_corr', h_fl', h_dp', h_ids', h_ek', h_col', h_tok', h_ska',
-            _h_line', h_atol', h_endline', h_stack', h_size', h_pkRec', h_pks',
-            h_token_push'⟩ :=
+            _h_line', h_atol', h_endline', h_stack', h_size', h_pkRec', _h_newkind',
+            h_pks', h_token_push'⟩ :=
       scanNextToken_flow_scanDoubleQuoted s_state s.content rest hcorr' h_flow h_indent h_col
         h_atol (by intro h_poss; exact h_endline h_poss)
     -- Per-step witness for the scalar's scanNextToken call.
@@ -11657,8 +11742,8 @@ theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inF
     -- hcorr₀ now has ['['] ++ ... which is def-eq to '[' :: ...
     -- Step 1: Scan '[' with nested flow open
     obtain ⟨s₁, h_snt₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_ek₁, h_col₁, _h_line₁, h_atol₁,
-            h_endline₁, h_stack_endline₁, h_stack_pop₁, h_size₁, h_pkRec₁, h_pks_pop₁,
-            h_open_push⟩ :=
+            h_endline₁, h_stack_endline₁, h_stack_pop₁, h_size₁, h_pkRec₁, _h_newkind₁,
+            h_pks_pop₁, h_open_push⟩ :=
       scanNextToken_flow_open_nested s_state
         ((emit.emitList items.toList).toList ++ [']'] ++ rest) hcorr₀ h_flow h_indent h_col
         h_atol h_endline
@@ -14714,8 +14799,14 @@ theorem emitPairList_body_linearise_characterization
     --       - **γ-3b-ii-foundation (DONE 2026-05-04)**: reusable helper
     --         `saveSimpleKey_new_kind_unresolved` — any pendingKey entry
     --         pushed by `saveSimpleKey` has kind `.unresolved`.  ~40 lines.
-    --       - **γ-3b-ii-leaves-A (PENDING)**: scalar +
-    --         `[`/`{` open-nested.  ~120 lines.
+    --       - **γ-3b-ii-leaves-A (DONE 2026-05-03)**: scalar
+    --         (`scanNextToken_flow_scanDoubleQuoted` + `_pkPush`) +
+    --         `[` open-nested (`scanNextToken_flow_open_nested`) — added
+    --         universal `∀ q ≥ s.pendingKeys.size, kind = .unresolved`
+    --         conjunct to all three leaf signatures, discharged via the
+    --         γ-3b-ii-foundation helper + per-leaf `_preserves_pendingKeys`
+    --         + (regular scalar's `simpleKey.possible = true` branch)
+    --         `setPendingKeyEndLine_kind`.  ~140 lines.
     --       - **γ-3b-ii-leaves-B (PENDING)**: `]` + `}` close-nested
     --         + `,` comma.  ~100 lines.
     --       - **γ-3b-ii-leaves-C (PENDING)**: value-pkResolve (`:`) +
