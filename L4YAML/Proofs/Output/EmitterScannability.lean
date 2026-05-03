@@ -12482,6 +12482,309 @@ theorem flowBracketBalance_splice_unchanged
             = 0 from rfl]
     rw [Int.add_zero]
 
+/-! ### J.4.2.b-2d-key-chain-Part3 sub-step 6c-ii-β (2026-05-02):
+    bracket-balance preservation through `linearise.go`
+
+Sub-step 6c-ii-α landed three algebra helpers establishing that splice
+tokens have zero bracket delta and that push/append steps update balance
+predictably.  Sub-step 6c-ii-β consumes those helpers in a parallel
+induction over `linearise.go`'s lex-measure to show that the walk from
+`(j, p, acc)` to `(j', p', acc')` produces an `acc'` extending `acc` by
+some `extra`, with `flowBracketBalance` over the extension matching
+`flowBracketBalance` over `tokens[j .. j')`.  Composes via
+`flowBracketBalance_compose`: splice steps add zero, copy steps add
+`flowBracketDelta tokens[j].val` on both sides.
+
+Sub-step 6c-ii-γ (forthcoming) consumes this preservation to invert
+`linearise[k] = .flowEntry` ∧ outer-level into `s'.tokens[j_k] = .flowEntry`
+∧ outer-level, then chain-side `qs` enumeration yields the matching
+pair index `i ≥ 1`. -/
+
+/-- Bracket balance is unchanged when appending an array, provided the
+    range is fully inside the original.  Generalises
+    `flowBracketBalance_push` from a single-element extension to an
+    arbitrary array extension.  Used by
+    `linearise_go_walk_flowBracketBalance` to translate balance over the
+    unchanged prefix when the walk extends its accumulator. -/
+theorem flowBracketBalance_append_left
+    (xs ys : Array (Positioned YamlToken)) (lo hi : Nat) (h : hi ≤ xs.size) :
+    flowBracketBalance (xs ++ ys) lo hi = flowBracketBalance xs lo hi := by
+  simp only [flowBracketBalance]
+  split
+  · rfl
+  · congr 1
+    have h_sz : xs.toList.length = xs.size := rfl
+    simp only [Array.toList_append, List.drop_append,
+               show lo - xs.toList.length = 0 from by omega,
+               List.take_append, List.length_drop,
+               show (hi - lo) - (xs.toList.length - lo) = 0 from by omega,
+               List.take_zero, List.drop_zero, List.append_nil]
+
+/-- **Bracket-balance preservation through `linearise.go`** (Sub-step 6c-ii-β).
+    The walk from `(j, p, acc)` to `(j', p', acc')` produces an `acc'`
+    extending `acc` by some `extra`, and the `flowBracketBalance` over the
+    extension range matches the balance over `tokens[j .. j')`.
+
+    Conditions match `linearise_go_walk_eq`'s walk-state premises:
+    * **In-range firings**: every pending entry in `[p, p')` has
+      `insertBeforeIdx ≤ j'`.
+    * **Barrier**: `pks[p']` (if it exists) has `insertBeforeIdx ≥ j'`.
+
+    Proof: induction on the lex-measure `(j' - j) + (p' - p)`, mirroring
+    `linearise_go_walk_eq`.  Splice steps consume
+    `flowBracketBalance_splice_unchanged` (zero delta over splice
+    tokens); copy steps consume `flowBracketBalance_push_extend`
+    (single-token delta on both sides), composed via
+    `flowBracketBalance_compose` against `flowBracketBalance_single`. -/
+theorem linearise_go_walk_flowBracketBalance
+    (tokens : Array (Positioned YamlToken))
+    (pks : Array PendingKeyEntry) :
+    ∀ (n j p j' p' : Nat) (acc : Array (Positioned YamlToken)),
+      (j' - j) + (p' - p) = n →
+      j ≤ j' → j' ≤ tokens.size →
+      p ≤ p' → p' ≤ pks.size →
+      (∀ r (_hpr : p ≤ r) (_hrp' : r < p') (hr : r < pks.size),
+        (pks[r]'hr).insertBeforeIdx ≤ j') →
+      (∀ (hp' : p' < pks.size), j' ≤ (pks[p']'hp').insertBeforeIdx) →
+      ∃ (extra : Array (Positioned YamlToken)),
+        linearise.go tokens pks j p acc
+          = linearise.go tokens pks j' p' (acc ++ extra) ∧
+        flowBracketBalance (acc ++ extra) acc.size (acc.size + extra.size)
+          = flowBracketBalance tokens j j' := by
+  intro n
+  induction n with
+  | zero =>
+    intro j p j' p' acc h_n h_jj' _h_j'_le h_pp' _h_p'_le _h_inrange _h_p'_ge
+    have h_j_eq : j = j' := by omega
+    have h_p_eq : p = p' := by omega
+    refine ⟨#[], ?_, ?_⟩
+    · rw [h_j_eq, h_p_eq, Array.append_empty]
+    · rw [h_j_eq]
+      simp [flowBracketBalance]
+  | succ n ih =>
+    intro j p j' p' acc h_n h_jj' h_j'_le h_pp' h_p'_le h_inrange h_p'_ge
+    by_cases hp : p < pks.size
+    · by_cases hsplice : (pks[p]'hp).insertBeforeIdx ≤ j
+      · -- Splice fires: state advances p → p+1, acc → acc ++ expandKind pks[p]
+        have h_p_lt_p' : p < p' := by
+          rcases Nat.lt_or_ge p p' with h_lt | h_ge
+          · exact h_lt
+          · exfalso
+            have h_eq : p = p' := Nat.le_antisymm h_pp' h_ge
+            have h_p'_lt : p' < pks.size := h_eq ▸ hp
+            have h_p'_idx_ge : j' ≤ (pks[p']'h_p'_lt).insertBeforeIdx := h_p'_ge h_p'_lt
+            have h_p_idx_eq :
+                (pks[p]'hp).insertBeforeIdx = (pks[p']'h_p'_lt).insertBeforeIdx := by
+              congr
+            omega
+        rw [L4YAML.Proofs.ScannerLinearise.linearise_go_step_splice
+              tokens pks j p acc hp hsplice]
+        have h_meas : (j' - j) + (p' - (p + 1)) = n := by omega
+        obtain ⟨extra', h_eq, h_bal⟩ :=
+          ih j (p + 1) j' p' (acc ++ expandKind (pks[p]'hp)) h_meas h_jj' h_j'_le
+            (by omega) h_p'_le
+            (fun r _hpr hrp' hr => h_inrange r (by omega) hrp' hr)
+            h_p'_ge
+        refine ⟨expandKind (pks[p]'hp) ++ extra', ?_, ?_⟩
+        · rw [h_eq, Array.append_assoc]
+        · rw [show acc ++ (expandKind (pks[p]'hp) ++ extra')
+                  = (acc ++ expandKind (pks[p]'hp)) ++ extra' from
+                Array.append_assoc.symm]
+          rw [show (expandKind (pks[p]'hp) ++ extra').size
+                  = (expandKind (pks[p]'hp)).size + extra'.size from
+                Array.size_append]
+          have h_lo_le_mid : acc.size
+                              ≤ acc.size + (expandKind (pks[p]'hp)).size := by omega
+          have h_mid_le_hi : acc.size + (expandKind (pks[p]'hp)).size
+                              ≤ acc.size + ((expandKind (pks[p]'hp)).size + extra'.size) := by
+            omega
+          rw [flowBracketBalance_compose
+                ((acc ++ expandKind (pks[p]'hp)) ++ extra')
+                acc.size (acc.size + (expandKind (pks[p]'hp)).size)
+                (acc.size + ((expandKind (pks[p]'hp)).size + extra'.size))
+                h_lo_le_mid h_mid_le_hi]
+          rw [show acc.size + (expandKind (pks[p]'hp)).size
+                  = (acc ++ expandKind (pks[p]'hp)).size from by
+                rw [Array.size_append]]
+          rw [flowBracketBalance_append_left (acc ++ expandKind (pks[p]'hp)) extra'
+                acc.size (acc ++ expandKind (pks[p]'hp)).size (Nat.le_refl _)]
+          rw [show (acc ++ expandKind (pks[p]'hp)).size
+                  = acc.size + (expandKind (pks[p]'hp)).size from Array.size_append]
+          rw [flowBracketBalance_splice_unchanged acc (pks[p]'hp) acc.size (Nat.le_refl _)]
+          rw [show flowBracketBalance acc acc.size acc.size = 0 from by
+                simp [flowBracketBalance]]
+          rw [Int.zero_add]
+          -- Reshape goal hi from `acc.size + ((expandKind pks[p]).size + extra'.size)` to
+          -- `((acc ++ expandKind pks[p]) ++ extra').size`, matching h_bal's hi after rewrite.
+          rw [show acc.size + ((expandKind (pks[p]'hp)).size + extra'.size)
+                  = ((acc ++ expandKind (pks[p]'hp)) ++ extra').size from by
+                rw [Array.size_append, Array.size_append]; omega]
+          -- Convert h_bal's hi `(acc ++ expandKind pks[p]).size + extra'.size`
+          -- to `((acc ++ expandKind pks[p]) ++ extra').size`.
+          rw [show (acc ++ expandKind (pks[p]'hp)).size + extra'.size
+                  = ((acc ++ expandKind (pks[p]'hp)) ++ extra').size from
+                Array.size_append.symm] at h_bal
+          -- Convert h_bal's lo `(acc ++ expandKind pks[p]).size`
+          -- to `acc.size + (expandKind pks[p]).size`, matching the goal.
+          rw [show (acc ++ expandKind (pks[p]'hp)).size
+                  = acc.size + (expandKind (pks[p]'hp)).size from Array.size_append] at h_bal
+          rw [h_bal]
+      · -- Copy fires: state advances j → j+1, acc → acc.push tokens[j]
+        have h_j_lt_j' : j < j' := by
+          rcases Nat.lt_or_ge p p' with h_lt | h_ge
+          · have h_idx := h_inrange p (Nat.le_refl _) h_lt hp
+            omega
+          · have h_eq : p = p' := Nat.le_antisymm h_pp' h_ge
+            have h_p'_lt : p' < pks.size := h_eq ▸ hp
+            have h_p'_idx_ge : j' ≤ (pks[p']'h_p'_lt).insertBeforeIdx := h_p'_ge h_p'_lt
+            have h_p_idx_eq :
+                (pks[p]'hp).insertBeforeIdx = (pks[p']'h_p'_lt).insertBeforeIdx := by
+              congr
+            omega
+        have h_j_lt_tok : j < tokens.size := by omega
+        rw [L4YAML.Proofs.ScannerLinearise.linearise_go_step_copy
+              tokens pks j p acc hp hsplice h_j_lt_tok]
+        have h_meas : (j' - (j + 1)) + (p' - p) = n := by omega
+        obtain ⟨extra', h_eq, h_bal⟩ :=
+          ih (j + 1) p j' p' (acc.push (tokens[j]'h_j_lt_tok)) h_meas
+            (by omega) h_j'_le h_pp' h_p'_le h_inrange h_p'_ge
+        refine ⟨#[(tokens[j]'h_j_lt_tok)] ++ extra', ?_, ?_⟩
+        · rw [h_eq]
+          show linearise.go tokens pks j' p' ((acc.push (tokens[j]'h_j_lt_tok)) ++ extra')
+                = linearise.go tokens pks j' p' (acc ++ (#[(tokens[j]'h_j_lt_tok)] ++ extra'))
+          congr 1
+          rw [show acc.push (tokens[j]'h_j_lt_tok) = acc ++ #[(tokens[j]'h_j_lt_tok)] from
+                Array.push_eq_append, Array.append_assoc]
+        · rw [show acc ++ (#[(tokens[j]'h_j_lt_tok)] ++ extra')
+                  = (acc.push (tokens[j]'h_j_lt_tok)) ++ extra' from by
+                rw [Array.push_eq_append, Array.append_assoc]]
+          rw [show (#[(tokens[j]'h_j_lt_tok)] ++ extra').size
+                  = 1 + extra'.size from by
+                rw [Array.size_append]; rfl]
+          have h_lo_le_mid : acc.size
+                              ≤ (acc.push (tokens[j]'h_j_lt_tok)).size := by
+            rw [Array.size_push]; omega
+          have h_mid_le_hi : (acc.push (tokens[j]'h_j_lt_tok)).size
+                              ≤ acc.size + (1 + extra'.size) := by
+            rw [Array.size_push]; omega
+          rw [flowBracketBalance_compose
+                ((acc.push (tokens[j]'h_j_lt_tok)) ++ extra')
+                acc.size (acc.push (tokens[j]'h_j_lt_tok)).size
+                (acc.size + (1 + extra'.size))
+                h_lo_le_mid h_mid_le_hi]
+          rw [flowBracketBalance_append_left (acc.push (tokens[j]'h_j_lt_tok)) extra'
+                acc.size (acc.push (tokens[j]'h_j_lt_tok)).size (Nat.le_refl _)]
+          rw [show (acc.push (tokens[j]'h_j_lt_tok)).size = acc.size + 1 from by
+                rw [Array.size_push]]
+          rw [flowBracketBalance_push_extend acc (tokens[j]'h_j_lt_tok) acc.size (Nat.le_refl _)]
+          rw [show flowBracketBalance acc acc.size acc.size = 0 from by
+                simp [flowBracketBalance]]
+          rw [Int.zero_add]
+          rw [show acc.size + (1 + extra'.size)
+                  = ((acc.push (tokens[j]'h_j_lt_tok)) ++ extra').size from by
+                rw [Array.size_append, Array.size_push]; omega]
+          rw [show (acc.push (tokens[j]'h_j_lt_tok)).size + extra'.size
+                  = ((acc.push (tokens[j]'h_j_lt_tok)) ++ extra').size from
+                (Array.size_append).symm] at h_bal
+          rw [show (acc.push (tokens[j]'h_j_lt_tok)).size = acc.size + 1 from
+                Array.size_push _] at h_bal
+          rw [h_bal]
+          rw [show flowBracketBalance tokens j j'
+                  = flowBracketBalance tokens j (j + 1)
+                    + flowBracketBalance tokens (j + 1) j' from
+                flowBracketBalance_compose tokens j (j + 1) j' (Nat.le_succ _) h_j_lt_j']
+          rw [flowBracketBalance_single tokens j (by
+                rw [Array.length_toList]; omega)]
+          rfl
+    · -- p ≥ pks.size, so p = p' = pks.size; only token copies fire
+      have h_p_eq : p = pks.size := by omega
+      have h_p'_eq : p' = pks.size := by omega
+      have h_j_lt_j' : j < j' := by omega
+      have h_j_lt_tok : j < tokens.size := by omega
+      have h_step :
+          linearise.go tokens pks j p acc
+            = linearise.go tokens pks (j + 1) p (acc.push (tokens[j]'h_j_lt_tok)) := by
+        rw [h_p_eq]
+        exact L4YAML.Proofs.ScannerLinearise.linearise_go_step_token tokens pks j pks.size acc
+                h_j_lt_tok (Nat.le_refl _)
+      rw [h_step]
+      have h_meas : (j' - (j + 1)) + (p' - p) = n := by omega
+      obtain ⟨extra', h_eq, h_bal⟩ :=
+        ih (j + 1) p j' p' (acc.push (tokens[j]'h_j_lt_tok)) h_meas
+          (by omega) h_j'_le h_pp' h_p'_le
+          (fun r hpr _hrp' hr => by
+            have := h_p_eq
+            omega)
+          h_p'_ge
+      refine ⟨#[(tokens[j]'h_j_lt_tok)] ++ extra', ?_, ?_⟩
+      · rw [h_eq]
+        show linearise.go tokens pks j' p' ((acc.push (tokens[j]'h_j_lt_tok)) ++ extra')
+              = linearise.go tokens pks j' p' (acc ++ (#[(tokens[j]'h_j_lt_tok)] ++ extra'))
+        congr 1
+        rw [show acc.push (tokens[j]'h_j_lt_tok) = acc ++ #[(tokens[j]'h_j_lt_tok)] from
+              Array.push_eq_append, Array.append_assoc]
+      · rw [show acc ++ (#[(tokens[j]'h_j_lt_tok)] ++ extra')
+                = (acc.push (tokens[j]'h_j_lt_tok)) ++ extra' from by
+              rw [Array.push_eq_append, Array.append_assoc]]
+        rw [show (#[(tokens[j]'h_j_lt_tok)] ++ extra').size
+                = 1 + extra'.size from by
+              rw [Array.size_append]; rfl]
+        have h_lo_le_mid : acc.size
+                            ≤ (acc.push (tokens[j]'h_j_lt_tok)).size := by
+          rw [Array.size_push]; omega
+        have h_mid_le_hi : (acc.push (tokens[j]'h_j_lt_tok)).size
+                            ≤ acc.size + (1 + extra'.size) := by
+          rw [Array.size_push]; omega
+        rw [flowBracketBalance_compose
+              ((acc.push (tokens[j]'h_j_lt_tok)) ++ extra')
+              acc.size (acc.push (tokens[j]'h_j_lt_tok)).size
+              (acc.size + (1 + extra'.size))
+              h_lo_le_mid h_mid_le_hi]
+        rw [flowBracketBalance_append_left (acc.push (tokens[j]'h_j_lt_tok)) extra'
+              acc.size (acc.push (tokens[j]'h_j_lt_tok)).size (Nat.le_refl _)]
+        rw [show (acc.push (tokens[j]'h_j_lt_tok)).size = acc.size + 1 from by
+              rw [Array.size_push]]
+        rw [flowBracketBalance_push_extend acc (tokens[j]'h_j_lt_tok) acc.size (Nat.le_refl _)]
+        rw [show flowBracketBalance acc acc.size acc.size = 0 from by
+              simp [flowBracketBalance]]
+        rw [Int.zero_add]
+        rw [show acc.size + (1 + extra'.size)
+                = ((acc.push (tokens[j]'h_j_lt_tok)) ++ extra').size from by
+              rw [Array.size_append, Array.size_push]; omega]
+        rw [show (acc.push (tokens[j]'h_j_lt_tok)).size + extra'.size
+                = ((acc.push (tokens[j]'h_j_lt_tok)) ++ extra').size from
+              (Array.size_append).symm] at h_bal
+        rw [show (acc.push (tokens[j]'h_j_lt_tok)).size = acc.size + 1 from
+              Array.size_push _] at h_bal
+        rw [h_bal]
+        rw [show flowBracketBalance tokens j j'
+                = flowBracketBalance tokens j (j + 1)
+                  + flowBracketBalance tokens (j + 1) j' from
+              flowBracketBalance_compose tokens j (j + 1) j' (Nat.le_succ _) h_j_lt_j']
+        rw [flowBracketBalance_single tokens j (by
+              rw [Array.length_toList]; omega)]
+        rfl
+
+/-- Top-level wrapper for `linearise_go_walk_flowBracketBalance` (Sub-step
+    6c-ii-β).  Convenience form that absorbs the lex-measure argument,
+    matching the API style of `linearise_go_walk_eq_top`. -/
+theorem linearise_go_walk_flowBracketBalance_top
+    (tokens : Array (Positioned YamlToken))
+    (pks : Array PendingKeyEntry)
+    (j p j' p' : Nat) (acc : Array (Positioned YamlToken))
+    (h_jj' : j ≤ j') (h_j'_le : j' ≤ tokens.size)
+    (h_pp' : p ≤ p') (h_p'_le : p' ≤ pks.size)
+    (h_inrange : ∀ r (_hpr : p ≤ r) (_hrp' : r < p') (hr : r < pks.size),
+      (pks[r]'hr).insertBeforeIdx ≤ j')
+    (h_p'_ge : ∀ (hp' : p' < pks.size), j' ≤ (pks[p']'hp').insertBeforeIdx) :
+    ∃ (extra : Array (Positioned YamlToken)),
+      linearise.go tokens pks j p acc
+        = linearise.go tokens pks j' p' (acc ++ extra) ∧
+      flowBracketBalance (acc ++ extra) acc.size (acc.size + extra.size)
+        = flowBracketBalance tokens j j' :=
+  linearise_go_walk_flowBracketBalance tokens pks _ j p j' p' acc rfl
+    h_jj' h_j'_le h_pp' h_p'_le h_inrange h_p'_ge
+
 /-! ### J.4.2.b-2d — Linearise-shape body characterization for `emitPairList`
 
 Linearise-shape variant of `emitPairList_body_filtered_characterization` for
@@ -12658,11 +12961,13 @@ theorem emitPairList_body_linearise_characterization
     --     `flowBracketBalance_push_extend`, `flowBracketBalance_splice_unchanged`.
     --     These establish that splice tokens contribute 0 to bracket balance and
     --     that `linearise.go`'s push/append steps update balance predictably.
-    --   * **Sub-step 6c-ii-β (PENDING)**: bracket-balance preservation lemma
-    --     `linearise_go_walk_flowBracketBalance` — the parallel induction over
-    --     `linearise.go`'s lex-measure proving
-    --     `flowBracketBalance acc' acc.size acc'.size = flowBracketBalance tokens j j'`
-    --     for any walk transport `(j, p, acc) → (j', p', acc')`.
+    --   * **Sub-step 6c-ii-β (DONE 2026-05-02)**: bracket-balance
+    --     preservation lemma `linearise_go_walk_flowBracketBalance` and its
+    --     top wrapper — the parallel induction over `linearise.go`'s
+    --     lex-measure showing that the walk produces an `acc' = acc ++ extra`
+    --     whose balance over the extension matches `flowBracketBalance tokens
+    --     j j'`.  Adds one supporting helper `flowBracketBalance_append_left`
+    --     (general append-left invariance, generalises `flowBracketBalance_push`).
     --   * **Sub-step 6c-ii-γ (PENDING)**: inversion enumeration — given an
     --     outer-level `.flowEntry` at linearise position `k`, identify the
     --     unique pair index `i ≥ 1` with `k + 1 = j_i + P(qs[i])`.  Consumes
@@ -12673,8 +12978,9 @@ theorem emitPairList_body_linearise_characterization
     -- predecessor-flowEntry lift via `FlowMonoChain_preserves_existing_tokens`).
     -- Sub-step 6c-i landed the forward-direction readout
     -- (`linearise_walk_at_kth_predecessor_token`); sub-step 6c-ii-α landed
-    -- the bracket-balance algebra helpers.  The full inversion bridge here
-    -- remains pending across 6c-ii-β / 6c-ii-γ.
+    -- the bracket-balance algebra helpers; sub-step 6c-ii-β landed the
+    -- bracket-balance preservation lemma.  The full inversion bridge here
+    -- remains pending in 6c-ii-γ (inversion enumeration + Part (3) discharge).
     have h_chain_facts :
         ∃ (j p : Nat) (acc : Array (Positioned YamlToken))
           (_ : linearise s'.tokens s'.pendingKeys
