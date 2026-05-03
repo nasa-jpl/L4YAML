@@ -11989,12 +11989,30 @@ theorem emitPairList_body_filtered_characterization
     -- to align with Foundation A's `[0]`-index splice when `s.pendingKeys = #[]`.
     ∧ (∃ (h : s.pendingKeys.size < s'.pendingKeys.size),
         (s'.pendingKeys[s.pendingKeys.size]'h).insertBeforeIdx = s.tokens.size
-        ∧ (s'.pendingKeys[s.pendingKeys.size]'h).kind = .keyOnly) := by
+        ∧ (s'.pendingKeys[s.pendingKeys.size]'h).kind = .keyOnly)
+    -- (5) Part3-extend: per-pair locator array `qs : Array Nat` of pendingKey
+    -- indices (one per pair).  Threaded from `emitPairList_scans_nonempty`'s
+    -- per-pair conjunct (J.4.2.b-2d-key-chain-Part3-extend-EmitPairListScansInFlow-per-pair).
+    -- Sub-step 4 (Part3-thread-body-filtered-char): re-stated here so
+    -- consumers (linearise wrapper + Tier 1 derivations) can read the
+    -- per-pair shape without re-invoking `emitPairList_scans_nonempty`.
+    -- `insertBeforeIdx` is NOT exposed (sub-step 5 derives it from
+    -- saveSimpleKey monotonicity).  `qs[0] = s.pendingKeys.size` aligns
+    -- with conjunct (4); strict-monotonicity reflects pendingKey
+    -- monotonicity at each pair's saveSimpleKey.
+    ∧ (∃ (qs : Array Nat) (_h_size : qs.size = pairs.length)
+         (h_pos : 0 < qs.size),
+         qs[0]'h_pos = s.pendingKeys.size
+         ∧ (∀ i (h : i < qs.size),
+             ∃ (h_lt : qs[i]'h < s'.pendingKeys.size),
+               (s'.pendingKeys[qs[i]'h]'h_lt).kind = .keyOnly)
+         ∧ (∀ i j (hi : i < qs.size) (hj : j < qs.size),
+             i < j → qs[i]'hi < qs[j]'hj)) := by
   -- Construct the chain from EmitPairListScansInFlow
   have h_scan := emitPairList_scans_nonempty pairs h_ne h_all_k h_all_v
   obtain ⟨n, s', h_chain, h_corr', h_fl', h_dp', h_ids', h_ek', h_col', h_inflow',
           h_indent', h_line', h_atol', h_endline', h_stack', h_fmc, _h_size, _h_pkRec,
-          _h_pks_eq, h_first, _h_first_qs⟩ :=
+          _h_pks_eq, h_first, h_first_qs⟩ :=
     h_scan s rest h_corr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_ska
   have h_n_pos : n ≥ 1 := by
     match n, h_chain with
@@ -12016,7 +12034,7 @@ theorem emitPairList_body_filtered_characterization
   have h_grows := ScanChainGrew_filtered_grows h_chain
   refine ⟨n, s', h_chain.toScanChain, h_corr', h_fl', h_dp', h_ids', h_ek',
           h_col', h_inflow', h_indent', h_line', h_atol', h_endline',
-          h_stack', h_fmc, ?_, ?_, ?_, h_first h_ne⟩
+          h_stack', h_fmc, ?_, ?_, ?_, h_first h_ne, h_first_qs h_ne⟩
   · -- Part 1: n ≥ 3
     sorry
   · -- Part 2: First new filtered token is .key
@@ -12117,7 +12135,7 @@ theorem emitPairList_body_linearise_characterization
     s rest h_corr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_sk h_ska
   obtain ⟨n, s', h_chain, h_corr', h_fl', h_dp', h_ids', h_ek', h_col', h_inflow',
           h_indent', h_line', h_atol', h_endline', h_stack', h_fmc',
-          h_n_ge3, _h_body_key, _h_body_fe_next, h_first_key⟩ := h_filt
+          h_n_ge3, _h_body_key, _h_body_fe_next, h_first_key, _h_first_qs⟩ := h_filt
   -- Step 2: derive NoPlaceholders s' (unconditional via 2b-discharge).
   -- AllUnresolved does NOT carry — `:` resolutions are by design here.
   have h_no_pl' : ScannerCorrectness.NoPlaceholders s' :=
@@ -12456,7 +12474,8 @@ theorem scanFiltered_emitMap_nonempty_structure
   -- Body scanning → s₂ (with filtered token characterization)
   obtain ⟨n₂, s₂, h_chain₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂,
           h_ek₂, h_col₂, h_inflow₂, h_indent₂, _, _, _, h_stack₂, h_fmc₂,
-          h_n₂_ge3, ⟨h_body_sz_raw, h_body_key_raw⟩, h_body_fe_next_raw, _h_body_first⟩ :=
+          h_n₂_ge3, ⟨h_body_sz_raw, h_body_key_raw⟩, h_body_fe_next_raw,
+          _h_body_first, _h_body_first_qs⟩ :=
     emitPairList_body_filtered_characterization pairs.toList h_ne
       (fun p hp => h_all_scan_k p hp) (fun p hp => h_all_scan_v p hp) s₁ ['}']
       h_corr₁ h_inflow₁ (by rw [h_fl₁]; omega) h_indent₁ (by rw [h_col₁]; omega)
