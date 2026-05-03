@@ -793,6 +793,7 @@ rooted at `Scanner/Linearise.lean`:
 | J.4.2.b-2d-key-chain-Part2-body-C-compose | Discharged the body-C umbrella's final sub-step by extending `EmitPairListScansInFlow` with a first-pair resolved-key conjunct and using it to remove the sorry'd stub `emitPairList_chain_first_pkShape`.  Mechanism: (a) added a new conjunct to `EmitPairListScansInFlow` of shape `pairs ≠ [] → ∃ (h : s.pendingKeys.size < s'.pendingKeys.size), s'.pendingKeys[s.pendingKeys.size].insertBeforeIdx = s.tokens.size ∧ s'.pendingKeys[s.pendingKeys.size].kind = .keyOnly` (gated on `pairs ≠ []` since the empty-pairs body returns the input state with no pendingKey resolution); (b) re-proved `emitPairList_scans_nonempty` (singleton + cons cases) by binding the previously-discarded resolved-entry conjunct from `scanNextToken_flow_value_pkResolve` (slot 15 of 17) and the previously-discarded insertBeforeIdx-equality from the gated A1 push (`_h_gated₁ h_ska`'s inner `⟨h_lt_pk_s1, h_ib_s1, _⟩`), then chaining the `(insertBeforeIdx, kind)` preservation through ws1 (preserves pendingKeys) → value (`_h_pkRec₃`/`_h_pkRec_v` at j = s.pendingKeys.size < s₃.size) → in cons also comma (`_h_pkRec_c`) → ws1 → recursive IH (`h_pkRec_r` at j < s_pp.size); (c) discharged `emitPairList_scans_empty`'s new conjunct vacuously (the precondition `[] ≠ []` is false); (d) threaded the new conjunct through `emitPairList_body_filtered_characterization`'s conclusion as a new Part (4) (no precondition gate needed since `h_ne` is already a hypothesis); (e) used the new Part (4) conjunct directly in `emitPairList_body_linearise_characterization` Part (2) — under `h_pks_empty : s.pendingKeys = #[]`, specialize the conjunct's index `s.pendingKeys.size` to `0` (via type-level `▸ rewrite`) to align with Foundation A's `[0]`-index splice; (f) **removed** the entire `emitPairList_chain_first_pkShape` sorry'd stub theorem (≈42 lines of signature + sorry'd body + docstring) since the wrapper now consumes the conjunct directly.  Cascading consumer updates: 4 destructures of `emitPairList_scans_nonempty` (recursive IH at line ~9787 `_h_first_r`; `emit_scans_in_flow` mapping at line ~10295 `_h_first₂`; `scanFiltered_exists_emit_aux` mapping at line ~10518 trailing `_`; `emitPairList_body_filtered_characterization` at line ~11865 `h_first` followed by `h_first h_ne` at the refine).  This **closes the body-C umbrella**: all 10 sub-steps under `J.4.2.b-2d-key-chain-Part2-body-C` are now ✓ done.  Sorry count: 9 → 8 | 0 (build clean across 453 jobs; -1 sorry net via stub removal; ≈100-line addition for the new conjunct + discharges, ≈42-line removal of the stub) | `Proofs/Output/EmitterScannability.lean` | ✓ done 2026-05-02 |
 | J.4.2.b-2d-key-chain-Part2-body-C-foundation-EmitScansInFlow-scope-investigation | Scope investigation cadence (no code change, baseline preserved).  Original "~1 cadence step" estimate on `C-foundation-EmitScansInFlow` was based on adding a single `preserves-prior` conjunct + first-key gated conjuncts to the three `EmitScansInFlow{,List,PairList}` definitions and re-proving consumers.  Investigation revealed: (a) the FULL preserves-prior (record equality at indices < initial size) is NOT unconditional under the existing `EmitScansInFlow` precondition list — `dispatchContent`'s `setPendingKeyEndLine` wrap modifies `endLine` at the original active when `simpleKeyAllowed` is false at scan start, so endLine-preservation requires gating; (b) a WEAKER preserves-prior on (`insertBeforeIdx`, `kind`) only IS uniform (insertBeforeIdx is never mutated; kind is mutated only by `setPendingKeyKind` in `scanValuePrepare` flow branch, which fires at fresh-pushed indices ≥ initial size during `emit_scans_in_flow` body scans); (c) the consumers of these strengthenings (`emit_scans_in_flow` scalar/seq/map cases + `emit{List,PairList}_scans_{empty,nonempty}` family + `emitPairList_chain_first_pkShape` discharge) need pkRec preservation threaded through 8+ helper theorems (`scanNextToken_flow_scanDoubleQuoted`, `_open_nested`, `_close_seq_nested`, `_open_mapping_nested`, `_close_mapping_nested`, `_comma`, `_value`, `_preprocess_flow_ws1`); (d) seq/map cases of `emit_scans_in_flow` additionally need stack-restore lemmas for `scanFlowSequenceEnd` / `scanFlowMappingEnd` (`s'.simpleKey = s.simpleKeyStack.back?.getD {}` and `s'.pendingKeyActive = s.pendingKeyStack.back?.getD none`) plus `pendingKeyStack` preservation conjuncts on `EmitListScansInFlow` / `EmitPairListScansInFlow` (mirrors existing `simpleKeyStack` preservation).  Refined sizing: ~3-4 cadence steps to fully discharge `C-foundation-EmitScansInFlow`, decomposed into `helpers` (8 helper-theorem strengthenings) → `defns` (3 def strengthenings + helper re-proofs) → `stack-restore` (close-side restore lemmas + body-side stack preservation) → `gated` (first-key gated conjuncts on `EmitScansInFlow` under `h_ska` precondition).  See open-bullet section's body-C decomposition for full details.  Baseline preserved exactly: 9 sorries, no edits committed.  This entry tracks the cadence as honest scope investigation rather than failed implementation | 0 (no code change; sorry count unchanged at 9; baseline preserved) | `Blueprint/07-initiative-3-append-only.md` (only) | ✓ done 2026-05-01 |
 | J.4.2.b-2d-key-chain-Part3-scope-investigation | Scope investigation cadence (no code change, baseline preserved at 8 sorries).  Original "~1–2 cadence steps" estimate on `Part3` was based on the assumption that Part3 would mirror C-compose's first-pair conjunct extension to all pairs and feed Foundation B (`linearise_splice_keyonly_at_index`) for the discharge.  Investigation revealed three distinct technical challenges that push the work to a multi-cadence cascade: **(a) Non-contiguous outer pendingKey indices.**  Pair `i`'s resolved `.keyOnly` entry sits at index `q_i = s_(i,pre).pendingKeys.size` in `s'.pendingKeys`, where `s_(i,pre)` is the state just before pair `i`'s key emit.  These `q_i` indices are NOT predictable as `s.pendingKeys.size + i` — they depend on the dynamic structure of values: if pair 0's value is a complex flow seq/map, it pushes its own pendingKeys at indices > `s.pendingKeys.size`, so `q_1 = q_0 + 1 + (nested pushes from pair 0's value)`.  The C-compose extension only exposed `q_0 = s.pendingKeys.size`; the per-pair extension must existentialize the entire `(q_0, ..., q_{n-1})` sequence with its order/properties.  **(b) Filtered → linearise position mapping.**  The Part (3) hypothesis is on the LINEARISE output (`linearise[k] = .flowEntry`, `flowBracketBalance ... = 0`), but chain-side facts speak about `s'.tokens` positions (in particular `pks[p].insertBeforeIdx`, which is a token-space position).  The linearise output has `.key` splices interleaved at every `.keyOnly` entry's `insertBeforeIdx`, so the `i`-th outer `.flowEntry` token sits at filtered position `f_i` (where `f_i = (s.tokens.filter p).size + (offset within body)` ) but linearise position `k_i = f_i + (number of .keyOnly entries with ib ≤ f_i)`.  Inner nested values contribute their own splices, complicating the count.  **(c) Walk-state construction at outer flowEntries.**  Foundation B requires a transport equation `linearise s'.tokens s'.pendingKeys = linearise.go s'.tokens s'.pendingKeys j p acc` with `acc.size = k + 1`, `pks[p].insertBeforeIdx ≤ j`, `pks[p].kind = .keyOnly`.  Constructing this `(j, p, acc)` requires a NEW foundation lemma (analogous to Foundation A's prefix-walk but with the walk state stopping just AFTER the `i`-th outer flowEntry copy): given a transport equation at state 0 and the per-pair locator, derive an intermediate transport equation at state `(j_i, q_i + 1, acc_i)`.  This walk-locator foundation is genuinely new infrastructure in `Proofs/Scanner/ScannerLinearise.lean`.  Subsidiary observation: `emitPairList_body_filtered_characterization` Parts (1)/(2)/(3) are sorry'd and currently UNUSED by the linearise wrapper (consumers underscore `_h_body_key, _h_body_fe_next` and only use `h_first_key` from Part (4)).  In particular Part (2)/(3) state `filtered[…] = .key`, but `.key` tokens are only emitted by `scanKey` (the `?` indicator) — not by `:`-resolution — so the filtered claims as currently stated are NOT provable for `emit.emitPairList` output.  These dead Parts (2)/(3) on the filtered char will likely need restating (e.g., to expose per-pair pendingKey shape) or removing as part of Part3.  Refined sizing: ~5–6 cadence steps to fully discharge `Part3`, decomposed into the open-bullet sub-steps below.  Baseline preserved exactly: 8 sorries, no edits committed.  This entry tracks the cadence as honest scope investigation rather than failed implementation | 0 (no code change; sorry count unchanged at 8; baseline preserved) | `Blueprint/07-initiative-3-append-only.md` (only) | ✓ done 2026-05-02 |
+| J.4.2.b-2d-key-chain-Part3-locator-shape | Design-decision cadence (no code change, baseline preserved at 8 sorries).  Settles the precise per-pair locator shape for the new conjunct on `EmitPairListScansInFlow` (open-bullet sub-step 2 of the Part3 cascade).  **Candidates considered:** (i) array form `∃ (qs : Array Nat), qs.size = pairs.length ∧ qs[0] = s.pendingKeys.size ∧ ∀ i, ⟨qs[i] < s'.pendingKeys.size, kind = .keyOnly⟩ ∧ strict-monotone-qs`; (ii) recursive sigma-list shape mirroring the cons induction's structure; (iii) per-i existential `∀ i ∈ [0, pairs.length), ∃ q, ⟨properties⟩`.  **Decision: (i) array form.**  Rationale: (ii) is unworkable because the cons-induction's intermediate state `s_pp` (between the head pair's recursive ws-step and the IH's tail body) is NOT visible from the predicate signature `(s, s')`, so a recursive shape can't reference the per-pair anchor `s_(i,pre).pendingKeys.size` symbolically; (iii) lacks a natural way to express strict monotonicity across `i` without an explicit array witness, and the consumer in sub-step 5 (`Part3-walk-locator-foundation`) wants a fixed array to walk over — re-extracting the array from a per-`i` existential each time would re-introduce the same complexity (i) avoids upfront.  Cons-case construction for (i): `qs = #[s.pendingKeys.size] ++ qs_tail` where `qs_tail` is the IH's array on the tail (under state `s_pp`).  Strict monotonicity at the seam `qs[0] < qs[1]` follows from `s.pendingKeys.size < s_pp.pendingKeys.size` (the head pair's gated A1 push at s→s₁, preserved through `:`/value/comma/ws₁ to s_pp); the rest follows from the IH's monotonicity on `qs_tail`.  Singleton case: `qs = #[s.pendingKeys.size]`.  **Final conjunct shape (added in sub-step 3):** under `pairs ≠ []`, `∃ (qs : Array Nat) (h_size : qs.size = pairs.length) (h_pos : 0 < qs.size), qs[0]'h_pos = s.pendingKeys.size ∧ (∀ i (h : i < qs.size), ∃ (h_lt : qs[i]'h < s'.pendingKeys.size), (s'.pendingKeys[qs[i]]'h_lt).kind = .keyOnly) ∧ (∀ i j (hi : i < qs.size) (hj : j < qs.size), i < j → qs[i]'hi < qs[j]'hj)`.  **`insertBeforeIdx` deferred:** the conjunct does NOT include per-pair `insertBeforeIdx` info.  Foundation B's splice-firing precondition `pks[p].insertBeforeIdx ≤ j` will be discharged in sub-step 5 from the SCANNER-LEVEL fact that `pks` insertBeforeIdx is monotonic in pendingKey-index (a saveSimpleKey invariant: each push records `insertBeforeIdx = current tokens.size`, which only grows over the chain).  If sub-step 5 uncovers a gap, the conjunct can be extended in sub-step 3 to also expose the per-pair `insertBeforeIdx` array.  **Existing first-key conjunct retained:** the existing `pairs ≠ [] → ∃ h, pks[s.pendingKeys.size].(insertBeforeIdx,kind) = (s.tokens.size, .keyOnly)` conjunct (added by C-compose) is KEPT alongside the new array conjunct rather than subsumed.  Reason: the existing conjunct is consumed at three sites (linearise wrapper at line ~12036 via `h_first_key`; recursive IH destructure at line ~9816 via `_h_first_r`; mapping consumers at lines ~10295/~10518) — subsuming would require refactoring all three sites and provide no information not already implied by `qs[0] = s.pendingKeys.size` ∧ `pks[qs[0]].kind = .keyOnly`.  The redundancy is cheap (one `∃` + a few conjuncts).  **Open question for sub-step 3:** does the `qs` array's `Array.append`-construction in the cons case need a Lean-prelude lemma about `(#[x] ++ a).size = 1 + a.size` and `(#[x] ++ a)[0] = x`?  These are standard `Array` / `Array.append` lemmas; expect `Array.size_append`, `Array.getElem_append_left` (for `i = 0`), and `Array.getElem_append_right` (for `i ≥ 1`) to suffice.  Baseline preserved exactly: 8 sorries, no edits committed.  This entry tracks the design decision before mechanical extension lands in sub-step 3 | 0 (no code change; sorry count unchanged at 8; baseline preserved) | `Blueprint/07-initiative-3-append-only.md` (only) | ✓ done 2026-05-02 |
 
 **J.3.1 — Linearise foundations** [✓ completed 2026-04-26]:
 
@@ -2788,20 +2789,28 @@ Remaining J.4.2.b work:
         `:`-resolution), proposed the per-pair locator shape, and
         sized the cascade.  Sorry count unchanged at 8.
 
-     2. **Part3-locator-shape**: settle the precise per-pair locator
-        shape for the new conjunct on `EmitPairListScansInFlow`.
-        Candidates: (i) `∃ (qs : Array Nat), qs.size = pairs.length ∧
-        ∀ i, ⟨qs[i] < s'.pendingKeys.size, kind = .keyOnly,
-        insertBeforeIdx = (s_i.tokens.filter p).size⟩ ∧ qs[0] =
-        s.pendingKeys.size ∧ strict-monotone-qs`; (ii) recursive
-        sigma-list shape mirroring the cons induction's structure;
-        (iii) per-i existential `∀ i ∈ [0, pairs.length), ∃ q,
-        ⟨properties⟩`.  Choose between (i)/(ii)/(iii) based on which
-        matches the `emitPairList_scans_nonempty` cons induction's
-        natural existentials best (likely (i) for its array form
-        which round-trips easily through `Array.push` on the IH side).
-        Sorry count unchanged.  Estimate: ~0.5–1 step (mostly typing
-        + small Lean-prelude lemmas).
+     2. ✓ **Part3-locator-shape** [done 2026-05-02 as
+        `J.4.2.b-2d-key-chain-Part3-locator-shape`]: chose **option (i)
+        array form** for the new per-pair locator conjunct on
+        `EmitPairListScansInFlow`.  Final shape (added by sub-step 3
+        below): under `pairs ≠ []`,
+        `∃ (qs : Array Nat) (h_size : qs.size = pairs.length)
+          (h_pos : 0 < qs.size),
+          qs[0]'h_pos = s.pendingKeys.size
+          ∧ (∀ i (h : i < qs.size),
+              ∃ (h_lt : qs[i]'h < s'.pendingKeys.size),
+                (s'.pendingKeys[qs[i]]'h_lt).kind = .keyOnly)
+          ∧ (∀ i j (hi : i < qs.size) (hj : j < qs.size),
+              i < j → qs[i]'hi < qs[j]'hj)`.
+        Cons-case construction: `qs = #[s.pendingKeys.size] ++
+        qs_tail` (IH's array on the tail under `s_pp`); singleton:
+        `qs = #[s.pendingKeys.size]`.  `insertBeforeIdx` is NOT in
+        the conjunct (sub-step 5 derives `pks[qs[i]].insertBeforeIdx
+        ≤ j_i` from the saveSimpleKey monotonicity invariant); the
+        existing first-key conjunct (added by C-compose) is RETAINED
+        alongside (avoids refactoring 3 consumer sites).
+        See manifest for the rejected (ii)/(iii) candidates and the
+        rationale.  Sorry count unchanged at 8.
 
      3. **Part3-extend-EmitPairListScansInFlow-per-pair**: extend the
         `EmitPairListScansInFlow` predicate with the per-pair locator
@@ -2900,16 +2909,29 @@ invariant (J.4.2.b-pkwi) already in place to support them.
 **Concrete next steps (in order, as of 2026-05-02, sorry count 8):**
 
 1. **2d-key-chain-Part3** (after-flowEntry splice locator; refined
-   ~5–6 cadence steps; scope-investigation done 2026-05-02) — Part3
-   is now decomposed into 6 cadence-sized sub-steps (sub-step 1
-   `Part3-scope-investigation` ✓ done):
-   - 2. **Part3-locator-shape** (~0.5–1 step) ← *current next step*:
-     settle the per-pair locator shape for the new
-     `EmitPairListScansInFlow` conjunct (array vs sigma-list vs
-     per-i existential).  Sorry count unchanged at 8.
-   - 3. **Part3-extend-EmitPairListScansInFlow-per-pair** (~1 step):
-     extend the predicate + re-prove `emitPairList_scans_nonempty`
-     singleton/cons cases.  Sorry count unchanged.
+   ~5–6 cadence steps; scope-investigation done 2026-05-02,
+   locator-shape done 2026-05-02) — Part3 is now decomposed into 6
+   cadence-sized sub-steps (sub-steps 1–2 ✓ done):
+   - 2. ✓ **Part3-locator-shape** [done 2026-05-02]: chose option (i)
+     array form `∃ (qs : Array Nat) (h_size : qs.size = pairs.length)
+     (h_pos : 0 < qs.size), qs[0] = s.pendingKeys.size ∧ ⟨per-i
+     keyOnly⟩ ∧ strict-monotone-qs`, gated on `pairs ≠ []`.  Existing
+     first-key conjunct retained (no consumer-site refactor).
+     `insertBeforeIdx` deferred to sub-step 5.  See manifest entry
+     `J.4.2.b-2d-key-chain-Part3-locator-shape` for the full shape +
+     rejected (ii)/(iii) candidates.
+   - 3. **Part3-extend-EmitPairListScansInFlow-per-pair** (~1 step)
+     ← *current next step*: extend the predicate with the chosen
+     array conjunct + re-prove `emitPairList_scans_empty` (vacuous
+     under empty-pairs gate) and `emitPairList_scans_nonempty`
+     (singleton: `qs = #[s.pendingKeys.size]`; cons: `qs =
+     #[s.pendingKeys.size] ++ qs_tail` from IH on the tail, with
+     monotonicity at the seam from `s.pendingKeys.size <
+     s_pp.pendingKeys.size`).  Update 4 destructure sites (recursive
+     IH ~9816, `emit_scans_in_flow` mapping ~10295,
+     `scanFiltered_exists_emit_aux` ~10518,
+     `emitPairList_body_filtered_characterization` ~11873).  Sorry
+     count unchanged at 8.
    - 4. **Part3-thread-body-filtered-char** (~0.5 step): thread the
      conjunct as Part (5) of `emitPairList_body_filtered_characterization`.
      Sorry count unchanged.
