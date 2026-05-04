@@ -9088,6 +9088,59 @@ theorem ScanChainGrew_of_scanNextToken_eq {p : Positioned YamlToken → Bool}
     refine .step (by rw [h_eq]; exact h_snt) ?_ h_rest
     omega
 
+/-- **J.4.2.b-2d-key-chain-Part3-final-discharge-bridge-6c-ii-γ-3b-iii-B**
+    (2026-05-04): chain-level preservation of `LineariseFit` (with
+    `AllKeysValid` as the side-condition that supplies `SimpleKeyValid`
+    at each step) through `ScanChainGrew`.  By induction: each step
+    applies `scanNextToken_preserves_LineariseFit` (uses `AllKeysValid.1`)
+    composed with `scanNextToken_preserves_AllKeysValid`.
+
+    Used in the discharge of the conditional save-time-monotonicity +
+    well-indexed bound conjunct added to `EmitScansInFlow` /
+    `EmitListScansInFlow` / `EmitPairListScansInFlow` (γ-3b-iii-B): given
+    `LineariseFit s ∧ AllKeysValid s` at the consumer, the helper lifts
+    these to `s'`, from which we project the two facts on
+    `s'.pendingKeys`. -/
+theorem ScanChainGrew.preserves_LineariseFit_AllKeysValid
+    {p : Positioned YamlToken → Bool} {s s' : ScannerState} {n : Nat}
+    (h_chain : ScanChainGrew p s n s')
+    (h_lin : ScannerCorrectness.LineariseFit s)
+    (h_akv : ScannerCorrectness.AllKeysValid s) :
+    ScannerCorrectness.LineariseFit s' ∧
+      ScannerCorrectness.AllKeysValid s' := by
+  induction h_chain with
+  | zero => exact ⟨h_lin, h_akv⟩
+  | step h_snt _ _ ih =>
+    apply ih
+    · exact ScannerCorrectness.scanNextToken_preserves_LineariseFit
+        _ _ h_lin h_akv.1 h_snt
+    · exact ScannerCorrectness.scanNextToken_preserves_AllKeysValid
+        _ _ h_akv h_snt
+
+/-- **γ-3b-iii-B helper** (2026-05-04): project save-time monotonicity
+    (non-strict) and the `insertBeforeIdx ≤ tokens.size` bound from a
+    `LineariseFit` witness.  `LineariseFit`'s sorted-by-idx conjunct uses
+    strict inequality `p < q`; this helper weakens to `p ≤ q` (`p = q`
+    case is `Nat.le_refl`).  The bound is the `≤ s.tokens.size` half of
+    `PendingKeysWellIndexed`.  Used in the discharge of every
+    `EmitScansInFlow` / `EmitListScansInFlow` / `EmitPairListScansInFlow`
+    producer's new conditional conjunct. -/
+theorem mono_and_bound_of_LineariseFit (s : ScannerState)
+    (h : ScannerCorrectness.LineariseFit s) :
+    (∀ p q (hp : p < s.pendingKeys.size) (hq : q < s.pendingKeys.size), p ≤ q →
+        (s.pendingKeys[p]'hp).insertBeforeIdx
+          ≤ (s.pendingKeys[q]'hq).insertBeforeIdx) ∧
+    (∀ r (hr : r < s.pendingKeys.size),
+        (s.pendingKeys[r]'hr).insertBeforeIdx ≤ s.tokens.size) := by
+  obtain ⟨_, h_well, h_idx, _, _, _, _⟩ := h
+  refine ⟨?_, ?_⟩
+  · intro p q hp hq h_le
+    by_cases h_eq : p = q
+    · subst h_eq; exact Nat.le_refl _
+    · exact h_idx p q hp hq (Nat.lt_of_le_of_ne h_le h_eq)
+  · intro r hr
+    exact (h_well.2 r hr).2
+
 -- ═══ EmitScansInFlow: flow-context scanner acceptance ═══
 
 /-- `EmitScansInFlow v` asserts that `emit v` can be scanned successfully
@@ -9186,6 +9239,21 @@ def EmitScansInFlow (v : YamlValue) : Prop :=
                  (_h_kk_ge : s.tokens.size ≤ kk),
               (s'.tokens[kk]'h_kk_lt).val = .flowEntry →
               flowBracketBalance s'.tokens s.tokens.size kk ≥ 1)
+      -- J.4.2.b-2d-key-chain-Part3-final-discharge-bridge-6c-ii-γ-3b-iii-B
+      -- (2026-05-04): conditional save-time monotonicity + well-indexed
+      -- bound on `s'.pendingKeys`.  Conditional on `LineariseFit s ∧
+      -- AllKeysValid s` (so existing call sites are unaffected); discharge
+      -- via `ScanChainGrew.preserves_LineariseFit_AllKeysValid` applied to
+      -- the existing chain witness.  Consumed by γ-3b-iii-D when it
+      -- discharges Part (3)'s line-15334 sorry.  See manifest entry.
+      ∧ (ScannerCorrectness.LineariseFit s →
+          ScannerCorrectness.AllKeysValid s →
+          (∀ p q (hp : p < s'.pendingKeys.size) (hq : q < s'.pendingKeys.size),
+                p ≤ q →
+              (s'.pendingKeys[p]'hp).insertBeforeIdx
+                ≤ (s'.pendingKeys[q]'hq).insertBeforeIdx) ∧
+          (∀ r (hr : r < s'.pendingKeys.size),
+              (s'.pendingKeys[r]'hr).insertBeforeIdx ≤ s'.tokens.size))
 
 /-- `EmitListScansInFlow items` asserts that scanning the comma-separated
     emitList output succeeds in flow context, preserving invariants.
@@ -9245,6 +9313,17 @@ def EmitListScansInFlow (items : List YamlValue) : Prop :=
                  (_h_kk_ge : s.tokens.size ≤ kk),
               (s'.tokens[kk]'h_kk_lt).val = .flowEntry →
               flowBracketBalance s'.tokens s.tokens.size kk ≥ 0)
+      -- J.4.2.b-2d-key-chain-Part3-final-discharge-bridge-6c-ii-γ-3b-iii-B
+      -- (2026-05-04): conditional save-time monotonicity + well-indexed
+      -- bound on `s'.pendingKeys` (mirrors `EmitScansInFlow`).
+      ∧ (ScannerCorrectness.LineariseFit s →
+          ScannerCorrectness.AllKeysValid s →
+          (∀ p q (hp : p < s'.pendingKeys.size) (hq : q < s'.pendingKeys.size),
+                p ≤ q →
+              (s'.pendingKeys[p]'hp).insertBeforeIdx
+                ≤ (s'.pendingKeys[q]'hq).insertBeforeIdx) ∧
+          (∀ r (hr : r < s'.pendingKeys.size),
+              (s'.pendingKeys[r]'hr).insertBeforeIdx ≤ s'.tokens.size))
 
 /-- Empty list body is trivially scanned (0-step chain). -/
 theorem emitList_scans_empty : EmitListScansInFlow [] := by
@@ -9258,11 +9337,16 @@ theorem emitList_scans_empty : EmitListScansInFlow [] := by
   -- non-negative-prefix is vacuous (range is empty).
   have h_bal_empty : flowBracketBalance s.tokens s.tokens.size s.tokens.size = 0 := by
     simp [flowBracketBalance]
-  exact ⟨0, s, .zero, hcorr, rfl, rfl, rfl, rfl, h_col, h_flow, h_indent, rfl, h_atol,
+  -- 6c-ii-γ-3b-iii-B: empty list has s' = s (0-step chain), so the
+  -- conditional save-time-mono + bound conjunct is just `mono_and_bound_of_LineariseFit`
+  -- on the input s.
+  refine ⟨0, s, .zero, hcorr, rfl, rfl, rfl, rfl, h_col, h_flow, h_indent, rfl, h_atol,
     h_endline, rfl, .zero (Nat.le_refl _), Nat.le_refl _, fun _ _ _ => ⟨rfl, rfl⟩,
     fun _ h_q h_q_ge => absurd h_q_ge (Nat.not_le_of_lt h_q), rfl,
-    h_bal_empty, fun _ h_kk_lt h_kk_ge _ =>
-      absurd (Nat.lt_of_le_of_lt h_kk_ge h_kk_lt) (Nat.lt_irrefl _)⟩
+    ⟨h_bal_empty, fun _ h_kk_lt h_kk_ge _ =>
+      absurd (Nat.lt_of_le_of_lt h_kk_ge h_kk_lt) (Nat.lt_irrefl _)⟩, ?_⟩
+  intro h_lin _h_akv
+  exact mono_and_bound_of_LineariseFit s h_lin
 
 /-- Non-empty list scanning via induction on the item list.
     Structure: singleton case uses EmitScansInFlow directly;
@@ -9282,7 +9366,7 @@ theorem emitList_scans_nonempty (items : List YamlValue) (h_ne : items ≠ [])
       rw [h_eq] at hcorr
       obtain ⟨n, s', h_chain, h_corr, h_fl', h_dp, h_ids, h_ek', h_col', h_flow', h_indent',
               h_line_v, _, _, h_atol', h_endline', h_stack', h_fmc', h_size', h_pkRec',
-              h_newkind_v, h_pks_v, _h_gated_v, h_balfacts_v⟩ :=
+              h_newkind_v, h_pks_v, _h_gated_v, h_balfacts_v, h_lin_bound_v⟩ :=
         h_all v (.head _) s rest_chars hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline
       -- Singleton bundled conjunct: balance = 0 from inner EmitScansInFlow's
       -- bundled (`h_balfacts_v.1`); flowEntry → ≥ 0 follows from inner's
@@ -9290,10 +9374,13 @@ theorem emitList_scans_nonempty (items : List YamlValue) (h_ne : items ≠ [])
       obtain ⟨h_bal_v, h_exh_v⟩ := h_balfacts_v
       refine ⟨n, s', h_chain, h_corr, h_fl', h_dp, h_ids, h_ek', h_col', h_flow', h_indent',
         h_line_v, h_atol', h_endline', h_stack', h_fmc', h_size', h_pkRec', h_newkind_v,
-        h_pks_v, h_bal_v, ?_⟩
-      intro kk h_kk_lt h_kk_ge h_kk_fe
-      have h_ge1 := h_exh_v kk h_kk_lt h_kk_ge h_kk_fe
-      omega
+        h_pks_v, ⟨h_bal_v, ?_⟩, ?_⟩
+      · intro kk h_kk_lt h_kk_ge h_kk_fe
+        have h_ge1 := h_exh_v kk h_kk_lt h_kk_ge h_kk_fe
+        omega
+      · -- 6c-ii-γ-3b-iii-B: singleton conditional save-time-mono + bound.
+        -- Lift via inner EmitScansInFlow's analogous conjunct (h_lin_bound_v).
+        exact h_lin_bound_v
         -- (singleton: h_pks_v = s'.pendingKeyStack = s.pendingKeyStack from EmitScansInFlow)
         -- (singleton: _h_gated_v is the gated first-key conjunct, not propagated here)
     | v' :: vs, ih =>
@@ -9307,7 +9394,7 @@ theorem emitList_scans_nonempty (items : List YamlValue) (h_ne : items ≠ [])
       have h_ev : EmitScansInFlow v := h_all v (.head _)
       obtain ⟨n₁, s₁, h_chain₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_ek₁, h_col₁, h_flow₁,
               h_indent₁, _h_line₁, _, h_last₁, h_atol₁, h_endline₁, h_stack₁, h_fmc₁,
-              h_size₁, h_pkRec₁, h_newkind₁, h_pks_v, _h_gated₁, h_balfacts₁⟩ :=
+              h_size₁, h_pkRec₁, h_newkind₁, h_pks_v, _h_gated₁, h_balfacts₁, _h_lin_bound₁⟩ :=
         h_ev s ([',', ' '] ++ (emit.emitList (v' :: vs)).toList ++ rest_chars)
           hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline
       -- Step 2: Scan ',' via scanNextToken_flow_comma
@@ -9349,7 +9436,7 @@ theorem emitList_scans_nonempty (items : List YamlValue) (h_ne : items ≠ [])
       obtain ⟨n₃, s_end, h_chain₃, h_corr_end, h_fl_end, h_dp_end, h_ids_end,
               h_ek_end, h_col_end, h_flow_end, h_indent_end, h_line_end, h_atol_end,
               h_endline_end, h_stack_end, h_fmc₃, h_size₃, h_pkRec₃, h_newkind_tail,
-              h_pks_end, h_balfacts_tail⟩ :=
+              h_pks_end, h_balfacts_tail, _h_lin_bound_tail⟩ :=
         h_ih_list s₃ rest_chars h_corr₃'
           h_flow₃ (by rw [h_fl₃, h_fl₂, h_fl₁]; exact h_fl)
           (by rw [h_indent₃]; exact h_s2_indent)
@@ -9418,7 +9505,7 @@ theorem emitList_scans_nonempty (items : List YamlValue) (h_ne : items ≠ [])
         pkRec_size_compose h_size₁₂₃ h_size₃ h_pkRec₁₂₃ h_pkRec₃
       refine ⟨n₁ + 1 + (n₃' + 1), s_end, h_arith ▸ h_chain_all,
         h_corr_end, ?_, ?_, ?_, ?_, h_col_end, h_flow_end, h_indent_end, ?_, h_atol_end,
-        h_endline_end, ?_, h_arith ▸ h_fmc_all, h_size_all, h_pkRec_all, ?_, ?_, ?_⟩
+        h_endline_end, ?_, h_arith ▸ h_fmc_all, h_size_all, h_pkRec_all, ?_, ?_, ?_, ?_⟩
       · -- flowLevel preserved
         rw [h_fl_end, h_fl₃, h_fl₂, h_fl₁]
       · -- directivesPresent preserved
@@ -9566,6 +9653,13 @@ theorem emitList_scans_nonempty (items : List YamlValue) (h_ne : items ≠ [])
               rw [h_s3_size]
             rw [h_eq_s2_s3]
             omega
+      · -- 6c-ii-γ-3b-iii-B (2026-05-04): cons case conditional save-time-mono +
+        -- bound.  Apply the chain helper to the full ScanChainGrew chain
+        -- s → s_end and project via mono_and_bound_of_LineariseFit.
+        intro h_lin h_akv
+        have ⟨h_lin', _⟩ :=
+          h_chain_all.preserves_LineariseFit_AllKeysValid h_lin h_akv
+        exact mono_and_bound_of_LineariseFit s_end h_lin'
 
 -- ═══ Flow mapping pair list scanning ═══
 
@@ -10444,6 +10538,21 @@ def EmitPairListScansInFlow (pairs : List (YamlValue × YamlValue)) : Prop :=
                  (_h_kk_ge : s.tokens.size ≤ kk),
               (s'.tokens[kk]'h_kk_lt).val = .flowEntry →
               flowBracketBalance s'.tokens s.tokens.size kk ≥ 0)
+      -- J.4.2.b-2d-key-chain-Part3-final-discharge-bridge-6c-ii-γ-3b-iii-B
+      -- (2026-05-04): conditional save-time monotonicity + well-indexed
+      -- bound on `s'.pendingKeys` (mirrors `EmitScansInFlow`).  Consumed
+      -- by γ-3b-iii-D's discharge of `emitPairList_body_linearise_characterization`
+      -- Part (3) line-15334 sorry: walks `[p_k, qs[i])` through linearise
+      -- entries, requires `pks[r].insertBeforeIdx ≤ pks[qs[i]].insertBeforeIdx`
+      -- for `r ≤ qs[i]`.
+      ∧ (ScannerCorrectness.LineariseFit s →
+          ScannerCorrectness.AllKeysValid s →
+          (∀ p q (hp : p < s'.pendingKeys.size) (hq : q < s'.pendingKeys.size),
+                p ≤ q →
+              (s'.pendingKeys[p]'hp).insertBeforeIdx
+                ≤ (s'.pendingKeys[q]'hq).insertBeforeIdx) ∧
+          (∀ r (hr : r < s'.pendingKeys.size),
+              (s'.pendingKeys[r]'hr).insertBeforeIdx ≤ s'.tokens.size))
 
 theorem emitPairList_scans_empty : EmitPairListScansInFlow [] := by
   intro s rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline _h_ska
@@ -10453,12 +10562,16 @@ theorem emitPairList_scans_empty : EmitPairListScansInFlow [] := by
   -- (range [s.tokens.size, s.tokens.size) is empty).
   have h_bal_empty : flowBracketBalance s.tokens s.tokens.size s.tokens.size = 0 := by
     simp [flowBracketBalance]
-  exact ⟨0, s, .zero, h_eq ▸ hcorr, rfl, rfl, rfl, rfl, h_col, h_flow, h_indent, rfl,
+  -- 6c-ii-γ-3b-iii-B: empty pair list has s' = s; conditional save-time-mono +
+  -- bound is just `mono_and_bound_of_LineariseFit` on the input.
+  refine ⟨0, s, .zero, h_eq ▸ hcorr, rfl, rfl, rfl, rfl, h_col, h_flow, h_indent, rfl,
     h_atol, h_endline, rfl, .zero (Nat.le_refl _), Nat.le_refl _, fun _ _ _ => ⟨rfl, rfl⟩,
     fun _ h_q h_q_ge => absurd h_q_ge (Nat.not_le_of_lt h_q), rfl,
     fun h_ne => absurd rfl h_ne, fun h_ne => absurd rfl h_ne,
-    h_bal_empty, fun _ h_kk_lt h_kk_ge _ =>
-      absurd (Nat.lt_of_le_of_lt h_kk_ge h_kk_lt) (Nat.lt_irrefl _)⟩
+    ⟨h_bal_empty, fun _ h_kk_lt h_kk_ge _ =>
+      absurd (Nat.lt_of_le_of_lt h_kk_ge h_kk_lt) (Nat.lt_irrefl _)⟩, ?_⟩
+  intro h_lin _h_akv
+  exact mono_and_bound_of_LineariseFit s h_lin
 
 -- Non-empty pair list scanning: each pair contributes key + ":" + space + value steps.
 -- Uses emitPairList_first_char, scanNextToken_flow_value, scanNextToken_flow_comma,
@@ -10487,7 +10600,7 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
       obtain ⟨n₁, s₁, h_chain₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_ek₁, h_col₁,
               h_flow₁, h_indent₁, _h_line₁, h_ska₁, _, h_atol₁, h_endline₁, h_stack₁,
               h_fmc₁, _h_size₁, _h_pkRec₁, _h_newkind_k, _h_pks₁, _h_gated₁,
-              h_balfacts_k_singleton⟩ :=
+              h_balfacts_k_singleton, _h_lin_bound_k_singleton⟩ :=
         h_ek_key s ([':',  ' '] ++ (emit p.2).toList ++ rest_chars)
           hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline
       -- Step 2: Derive saveSimpleKey identity and scanValueValidate
@@ -10526,7 +10639,7 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
       obtain ⟨n₃, s_end, h_chain₃, h_corr_end, h_fl_end, h_dp_end, h_ids_end,
               h_ek_end, h_col_end, h_flow_end, h_indent_end, h_line_end, _, _,
               h_atol_end, h_endline_end, h_stack_end, h_fmc₃, _h_size₃, _h_pkRec₃, _h_newkind_v,
-              _h_pks₃, _h_gated₃, h_balfacts_v_singleton⟩ :=
+              _h_pks₃, _h_gated₃, h_balfacts_v_singleton, _h_lin_bound_v_singleton⟩ :=
         h_ev s₃ rest_chars h_corr₃'
           h_flow₃ (by rw [h_fl₃, h_fl₂, h_fl₁]; exact h_fl)
           (by rw [h_indent₃]; exact h_indent₂)
@@ -10681,7 +10794,7 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
             (s_end.pendingKeys[s.pendingKeys.size]'h_lt_s_s_end).insertBeforeIdx
               = s.tokens.size := by
           rw [h_ib_pres, h_eq_s3_s2_ib, h_ib_s2_s1]; exact h_ib_s1
-        refine ⟨h_size_all, h_pkRec_all, ?_, ?_, ?_, ?_, ?_⟩
+        refine ⟨h_size_all, h_pkRec_all, ?_, ?_, ?_, ?_, ?_, ?_⟩
         · -- 6c-ii-γ-3b-ii-predicate (2026-05-03): singleton pair case.
           -- Chain: s → s₁ (key emit) → s₂ (colon) → s₃ (ws1) → s_end (value emit).
           -- Case split: q ∈ [s.pks.size, s₃.pks.size) (key+colon+ws1 range; size
@@ -10981,6 +11094,13 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
               -- Use value's exhaustiveness directly (over s_end.tokens, ≥ 1 ≥ 0).
               have h_ge1 := h_exh_v kk h_kk_lt h_kk_ge_s3 h_kk_fe
               omega
+        · -- 6c-ii-γ-3b-iii-B (2026-05-04): singleton pair conditional save-time-mono +
+          -- bound.  Apply chain helper to the full ScanChainGrew chain s → s_end and
+          -- project via mono_and_bound_of_LineariseFit.
+          intro h_lin h_akv
+          have ⟨h_lin', _⟩ :=
+            h_chain_all.preserves_LineariseFit_AllKeysValid h_lin h_akv
+          exact mono_and_bound_of_LineariseFit s_end h_lin'
     | p' :: ps, ih =>
       -- ══ Multi-pair: emit k ++ ": " ++ emit v ++ ", " ++ emitPairList (p' :: ps) ══
       have h_eq : (emit.emitPairList (p :: p' :: ps)).toList ++ rest_chars =
@@ -10993,7 +11113,7 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
       obtain ⟨n₁, s₁, h_chain₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_ek₁, h_col₁,
               h_flow₁, h_indent₁, _h_line₁, h_ska₁, h_last₁, h_atol₁, h_endline₁,
               h_stack₁, h_fmc₁, _h_size₁, _h_pkRec₁, _h_newkind_k, _h_pks₁, _h_gated₁,
-              h_balfacts_k_cons⟩ :=
+              h_balfacts_k_cons, _h_lin_bound_k_cons⟩ :=
         h_ek_key s ([':',  ' '] ++ (emit p.2).toList ++
             [',',  ' '] ++ (emit.emitPairList (p' :: ps)).toList ++ rest_chars)
           hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline
@@ -11045,7 +11165,7 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
       obtain ⟨n_v, s_v, h_chain_v, h_corr_v, h_fl_v, h_dp_v, h_ids_v,
               h_ek_v, h_col_v, h_flow_v, h_indent_v, _h_line_v, _, h_last_v, h_atol_v,
               h_endline_v, h_stack_v, h_fmc_v, _h_size_v, _h_pkRec_v, _h_newkind_v, _h_pks_v, _h_gated_v,
-              h_balfacts_v_cons⟩ :=
+              h_balfacts_v_cons, _h_lin_bound_v_cons⟩ :=
         h_ev s₃
           ([',',  ' '] ++ (emit.emitPairList (p' :: ps)).toList ++ rest_chars)
           h_corr₃_assoc
@@ -11136,7 +11256,7 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
       obtain ⟨n_r, s_end, h_chain_r, h_corr_end, h_fl_end, h_dp_end, h_ids_end,
               h_ek_end, h_col_end, h_flow_end, h_indent_end, h_line_end, h_atol_end,
               h_endline_end, h_stack_end, h_fmc_r, h_size_r, h_pkRec_r, h_newkind_r,
-              h_pks_r, h_first_r, h_first_qs_r, _h_balfacts_r⟩ :=
+              h_pks_r, h_first_r, h_first_qs_r, _h_balfacts_r, _h_lin_bound_r⟩ :=
         h_ih_list s_pp rest_chars h_corr_pp'
           h_flow_pp
           (by rw [h_fl_pp, h_fl_c]; rw [h_fl_v, h_fl₃, h_fl₂, h_fl₁]; exact h_fl)
@@ -11360,7 +11480,7 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
               = s.tokens.size := by
           rw [h_ib_send, h_eq_spp_sc_ib, h_ib_sc, h_ib_sv, h_eq_s3_s2_ib, h_ib_s2_s1]
           exact h_ib_s1
-        refine ⟨h_size_all, h_pkRec_all, ?_, ?_, ?_, ?_, ?_⟩
+        refine ⟨h_size_all, h_pkRec_all, ?_, ?_, ?_, ?_, ?_, ?_⟩
         · -- 6c-ii-γ-3b-ii-predicate (2026-05-03): cons pair case.
           -- Chain: s → s₁ → s₂ → s₃ → s_v → s_c → s_pp → s_end.
           -- Case split: q ∈ [s.pks.size, s_pp.pks.size) (key+colon+ws1+value+comma+ws1
@@ -11963,6 +12083,13 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
           -- follow-up cadence step (γ-2d-ii) that will inline the
           -- composition similar to the singleton case + emitList cons.
           sorry
+        · -- 6c-ii-γ-3b-iii-B (2026-05-04): cons pair conditional save-time-mono +
+          -- bound.  Apply chain helper to the full ScanChainGrew chain s → s_end and
+          -- project via mono_and_bound_of_LineariseFit.
+          intro h_lin h_akv
+          have ⟨h_lin', _⟩ :=
+            h_chain_all.preserves_LineariseFit_AllKeysValid h_lin h_akv
+          exact mono_and_bound_of_LineariseFit s_end h_lin'
 
 /-- Every grammable value satisfies `EmitScansInFlow`. -/
 theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inFlow) :
@@ -12007,8 +12134,9 @@ theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inF
     · -- 6c-ii-γ-3b-ii-predicate (2026-05-03): scalar — directly from leaf-A.
       intro q h_q h_q_ge
       exact Or.inl (h_newkind' q h_q h_q_ge)
-    · -- gated first-key conjunct + 6c-ii-γ-2 bundled balance/no-outer conjunct.
-      refine ⟨?_, ?_⟩
+    · -- gated first-key conjunct + 6c-ii-γ-2 bundled balance/no-outer conjunct
+      -- + 6c-ii-γ-3b-iii-B (2026-05-04) conditional save-time-mono + bound.
+      refine ⟨?_, ?_, ?_⟩
       · -- gated first-key conjunct (J.4.2.b-2d-key-chain-Part2-body-C-foundation-EmitScansInFlow-gated):
         -- under simpleKeyAllowed = true, derive first-key facts via the scalar pkPush variant.
         -- By determinism of scanNextToken, the s' from scanNextToken_flow_scanDoubleQuoted_pkPush
@@ -12062,6 +12190,14 @@ theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inF
           subst h_kk_eq
           rw [h_val_eq h_kk_lt] at h_kk_fe
           exact absurd h_kk_fe nofun
+      · -- 6c-ii-γ-3b-iii-B (2026-05-04): scalar conditional save-time-mono + bound.
+        -- Single-step chain: apply the chain helper to ScanChainGrew.single h_snt h_grew.
+        intro h_lin h_akv
+        have h_chain : ScanChainGrew (fun t => t.val != .placeholder) s_state 1 s' :=
+          ScanChainGrew.single h_snt h_grew
+        have ⟨h_lin', _⟩ :=
+          h_chain.preserves_LineariseFit_AllKeysValid h_lin h_akv
+        exact mono_and_bound_of_LineariseFit s' h_lin'
   | sequence style items tag anchor _ h ih =>
     intro s_state rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline
     -- emit (.sequence ...) = "[" ++ emitList items.toList ++ "]"
@@ -12101,7 +12237,7 @@ theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inF
       rw [List.append_assoc] at h_corr₁; exact h_corr₁
     obtain ⟨n₂, s₂, h_chain₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, h_ek₂, h_col₂, h_s2_inflow,
             h_s2_indent, _h_line₂, h_atol₂, h_endline₂, h_stack₂, h_fmc₂, h_size₂, h_pkRec₂,
-            h_newkind₂, h_pks₂, h_balfacts_body⟩ :=
+            h_newkind₂, h_pks₂, h_balfacts_body, _h_lin_bound_body⟩ :=
       h_list_scan s₁ ([']'] ++ rest) h_corr₁_assoc h_s1_inflow (by rw [h_fl₁]; omega) h_s1_indent h_s1_col
         (by rw [h_ek₁]; exact h_ek)
         h_atol₁ -- AllTokensOnLine s₁ s₁.line (from flow_open_nested postcondition)
@@ -12195,8 +12331,9 @@ theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inF
         fun q h_q h_q_ge => Or.inl (h_newkind₃ q h_q h_q_ge)
       have h_newkind_s_s2 := newkind_disj_compose h_pkRec₂ h_newkind₁_disj h_newkind₂
       exact newkind_disj_compose h_pkRec₃ h_newkind_s_s2 h_newkind₃_disj
-    · -- pendingKeyStack equality + gated conjunct + 6c-ii-γ-2 bundled.
-      refine ⟨?_, ?_, ?_⟩
+    · -- pendingKeyStack equality + gated conjunct + 6c-ii-γ-2 bundled +
+      -- 6c-ii-γ-3b-iii-B (2026-05-04) conditional save-time-mono + bound.
+      refine ⟨?_, ?_, ?_, ?_⟩
       · -- pendingKeyStack: s₃.pendingKeyStack = s_state.pendingKeyStack
         -- Chain: close pops → body preserves → open pushed then pop cancels
         rw [_h_pks_pop₃, h_pks₂, h_pks_pop₁]
@@ -12355,6 +12492,15 @@ theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inF
               exact YamlToken.noConfusion h_kk_fe
             · -- kk > s₂.tokens.size.  But kk < s₃.tokens.size = s₂.tokens.size + 1, so kk = s₂.tokens.size.
               exfalso; omega
+      · -- 6c-ii-γ-3b-iii-B (2026-05-04): seq conditional save-time-mono + bound.
+        intro h_lin h_akv
+        have h_chain_seq : ScanChainGrew (fun t => t.val != .placeholder)
+            s_state ((1 + n₂) + 1) s₃ :=
+          (ScanChainGrew.single h_snt₁ h_grew₁).trans
+            (h_chain₂.trans (ScanChainGrew.single h_snt₃ h_grew₃))
+        have ⟨h_lin', _⟩ :=
+          h_chain_seq.preserves_LineariseFit_AllKeysValid h_lin h_akv
+        exact mono_and_bound_of_LineariseFit s₃ h_lin'
   | mapping style pairs tag anchor _ hk hv ihk ihv =>
     intro s_state rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline
     -- emit (.mapping ...) = "{" ++ emitPairList pairs.toList ++ "}"
@@ -12394,7 +12540,7 @@ theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inF
       rw [List.append_assoc] at h_corr₁; exact h_corr₁
     obtain ⟨n₂, s₂, h_chain₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, h_ek₂, h_col₂, h_s2_inflow,
             h_s2_indent, _h_line₂, h_atol₂, h_endline₂, h_stack₂, h_fmc₂, h_size₂, h_pkRec₂,
-            h_newkind₂, h_pks₂, _h_first₂, _h_first_qs₂, h_balfacts_body⟩ :=
+            h_newkind₂, h_pks₂, _h_first₂, _h_first_qs₂, h_balfacts_body, _h_lin_bound_body⟩ :=
       h_pair_scan s₁ (['}'] ++ rest) h_corr₁_assoc h_s1_inflow (by rw [h_fl₁]; omega) h_s1_indent h_s1_col
         (by rw [h_ek₁]; exact h_ek)
         h_atol₁
@@ -12484,8 +12630,9 @@ theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inF
         fun q h_q h_q_ge => Or.inl (h_newkind₃ q h_q h_q_ge)
       have h_newkind_s_s2 := newkind_disj_compose h_pkRec₂ h_newkind₁_disj h_newkind₂
       exact newkind_disj_compose h_pkRec₃ h_newkind_s_s2 h_newkind₃_disj
-    · -- pendingKeyStack equality + gated conjunct + 6c-ii-γ-2 bundled.
-      refine ⟨?_, ?_, ?_⟩
+    · -- pendingKeyStack equality + gated conjunct + 6c-ii-γ-2 bundled +
+      -- 6c-ii-γ-3b-iii-B (2026-05-04) conditional save-time-mono + bound.
+      refine ⟨?_, ?_, ?_, ?_⟩
       · -- pendingKeyStack: s₃.pendingKeyStack = s_state.pendingKeyStack
         -- Chain: close pops → body preserves → open pushed then pop cancels
         rw [_h_pks_pop₃, h_pks₂, h_pks_pop₁]
@@ -12618,6 +12765,15 @@ theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inF
               rw [h_close_at_s3] at h_kk_fe
               exact YamlToken.noConfusion h_kk_fe
             · exfalso; omega
+      · -- 6c-ii-γ-3b-iii-B (2026-05-04): mapping conditional save-time-mono + bound.
+        intro h_lin h_akv
+        have h_chain_map : ScanChainGrew (fun t => t.val != .placeholder)
+            s_state ((1 + n₂) + 1) s₃ :=
+          (ScanChainGrew.single h_snt₁ h_grew₁).trans
+            (h_chain₂.trans (ScanChainGrew.single h_snt₃ h_grew₃))
+        have ⟨h_lin', _⟩ :=
+          h_chain_map.preserves_LineariseFit_AllKeysValid h_lin h_akv
+        exact mono_and_bound_of_LineariseFit s₃ h_lin'
 
 -- Helper: extract existential from isOk
 theorem scanFiltered_exists_of_isOk {s : String}
@@ -15299,10 +15455,19 @@ theorem emitPairList_body_linearise_characterization
     --         vacuous discharge (p_k = p, range empty).  Sorry count
     --         unchanged at 9.  See manifest entry
     --         `J.4.2.b-2d-key-chain-Part3-final-discharge-bridge-6c-ii-γ-3b-iii-A`.
-    --       - **γ-3b-iii-B (PENDING, ~250–400 lines)**: add save-time
-    --         monotonicity conjunct to all three predicates,
-    --         discharge in leaf + composition + recursive sites
-    --         (parallels γ-3b-ii-predicate's scope).
+    --       - **γ-3b-iii-B (DONE 2026-05-04, ~150 lines)**: added
+    --         conditional save-time monotonicity + well-indexed bound
+    --         conjunct to all three predicates, of shape
+    --         `(LineariseFit s → AllKeysValid s → mono ∧ bound)`.
+    --         Conditional form (rather than hard precondition) means
+    --         existing call sites are untouched — only γ-3b-iii-D will
+    --         provide `LineariseFit s ∧ AllKeysValid s` at the
+    --         consumer.  Discharge per producer collapses to a single
+    --         application of new chain helper
+    --         `ScanChainGrew.preserves_LineariseFit_AllKeysValid`
+    --         followed by `mono_and_bound_of_LineariseFit`.  Sorry
+    --         count unchanged at 9.  See manifest entry
+    --         `J.4.2.b-2d-key-chain-Part3-final-discharge-bridge-6c-ii-γ-3b-iii-B`.
     --       - **γ-3b-iii-C (PENDING, ~80 lines)**: add
     --         `linearise_walk_through_unresolved_keyOnly` lemma to
     --         `Proofs/Scanner/ScannerLinearise.lean` (induction on
