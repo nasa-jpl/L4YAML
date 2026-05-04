@@ -1,11 +1,21 @@
 # Initiative 3 — Append-Only Token Stream
 
-**Status**: Phase J.0/J.1/J.2 complete; **Phase J.3 in progress
-(started 2026-04-26)** on branch `feature/append-only`.  Main stays
-in a usable state until the feature branch merges back.
-**Driver**: Tier 2 emitter-scannability work hit a structural blocker
-that traces to a deliberate architectural choice (`02-architecture.md`
-§Append-only token stream).  This initiative revises that choice.
+**Status**: **STOPPED 2026-05-03** on branch `feature/append-only`.
+Phase J.0/J.1/J.2 complete; Phase J.3 reached γ-3b-iii-D (sorry 9 → 8)
+but the cascade-stitching layer (J.4) was assessed to require
+3–5 additional cadence steps and 700–1000 lines of new infrastructure
+with the proof corpus still showing predicate-growth feedback rather
+than convergence. Main was untouched throughout. See **§Stop assessment
+— 2026-05-03** at the end of this document for the comprehensive
+retrospective and salvage plan.
+
+**Original driver**: Tier 2 emitter-scannability work hit a structural
+blocker that traces to a deliberate architectural choice
+(`02-architecture.md` §Append-only token stream). This initiative
+revised that choice; the revision delivered the three explicitly-listed
+properties (filter monotonicity at scanner level, linearised view as
+a function, no `Array.insertAt` in the hot path) but did **not**
+unblock Tier 2 — see the stop assessment for why.
 
 ## Motivating defect
 
@@ -797,6 +807,7 @@ rooted at `Scanner/Linearise.lean`:
 | J.4.2.b-2d-key-chain-Part3-extend-EmitPairListScansInFlow-per-pair | Mechanical extension of `EmitPairListScansInFlow` with the per-pair locator conjunct chosen in `Part3-locator-shape` (sub-step 3 of the Part3 cascade).  **Definition extension:** added a second gated conjunct to `EmitPairListScansInFlow` of shape `pairs ≠ [] → ∃ (qs : Array Nat) (_h_size : qs.size = pairs.length) (h_pos : 0 < qs.size), qs[0]'h_pos = s.pendingKeys.size ∧ (∀ i (h : i < qs.size), ∃ (h_lt : qs[i]'h < s'.pendingKeys.size), (s'.pendingKeys[qs[i]'h]'h_lt).kind = .keyOnly) ∧ strict-monotone-qs`, retaining the existing C-compose first-key conjunct alongside.  **`emitPairList_scans_empty`:** vacuous discharge `fun h_ne => absurd rfl h_ne`, mirroring the existing first-key conjunct's empty-case discharge.  **`emitPairList_scans_nonempty` singleton case:** `qs = #[s.pendingKeys.size]`; per-i (only `i = 0`) reuses the first-key conjunct's resolution-chain pre-derivation; strict-mono vacuous (single element).  **Cons case:** `qs = #[s.pendingKeys.size] ++ qs_tail` where `qs_tail` is the IH's array on the tail under state `s_pp`; per-i splits on `i = 0` (head pair facts) vs `i = j+1` (IH's `h_per_i_t j` after `Array.getElem_append_right` rewrite); strict-mono splits on `(a = 0, b = b'+1)` (uses `h_lt_s_spp : s.pendingKeys.size < s_pp.pendingKeys.size` plus IH's `h_strict_t 0 b'`) vs `(a = a'+1, b = b'+1)` (direct IH `h_strict_t a' b'`).  **Restructuring:** both non-empty branches were restructured to PRE-DERIVE the shared first-pair facts (`h_lt_s_send : s.pendingKeys.size < s_end.pendingKeys.size`, `h_kd_s_end`, `h_ib_s_end`) BEFORE the trailing `refine ⟨h_size_all, h_pkRec_all, ?_, ?_, ?_⟩`, so the new Part3 bullet can reuse them alongside the existing first-key bullet (Lean's `refine`-bullet scoping isolates per-bullet `have`s, so without pre-derivation each bullet would have to redo the chain).  **Destructure sites:** updated 3 explicit-name sites (recursive IH `_h_first_r⟩` → `_h_first_r, h_first_qs_r⟩` at line ~9816, used by the cons-case discharge to bind the IH's qs_tail; `emit_scans_in_flow` mapping `_h_first₂⟩` → `_h_first₂, _h_first_qs₂⟩` at line ~10295; `emitPairList_body_filtered_characterization` `h_first⟩` → `h_first, _h_first_qs⟩` at line ~11873); the 4th candidate site (`scanFiltered_exists_emit_aux` ~10518) uses anonymous-`_` placeholders that auto-absorb the new conjunct via the trailing residual conjunction (no edit needed).  **Lean idiom snag:** `decide` on `0 < (#[s.pendingKeys.size] : Array Nat).size` fails with "Expected type must not contain free variables" because Lean's `Decidable` evaluator refuses to fully reduce `Array.size #[x]` when `x` is opaque — the `Decidable.isTrue` constructor can't be synthesized symbolically.  Worked around via `h_size_one ▸ Nat.zero_lt_one` (where `h_size_one : (#[s.pendingKeys.size] : Array Nat).size = 1 := rfl` — `rfl` works because definitional equality doesn't require constructor evaluation).  Lemma usage: `Array.size_append`, `Array.getElem_append_left` (i = 0), `Array.getElem_append_right` (i ≥ 1) — all standard Lean prelude, no new infrastructure needed.  Sorry count unchanged at 8 (build replays 78/453 EmitterScannability jobs; total 453 jobs green) | 0 (build clean across 453 jobs; ≈100-line addition net for the new conjunct + discharges; no sorry change) | `Proofs/Output/EmitterScannability.lean` | ✓ done 2026-05-02 |
 | J.4.2.b-2d-key-chain-Part3-thread-body-filtered-char | Mechanical threading of the per-pair locator conjunct (added by `Part3-extend-EmitPairListScansInFlow-per-pair`) through `emitPairList_body_filtered_characterization`'s conclusion as Part (5) (sub-step 4 of the Part3 cascade, ~0.5 step estimated, ~0.3 step actual since destructure binding was already in place).  **Conjunct shape:** identical to the `EmitPairListScansInFlow` Part3 conjunct (re-stated at the body-characterization layer rather than wrapped, so consumers like the linearise wrapper and Tier 1 stitching don't need to re-invoke `emitPairList_scans_nonempty` to access the per-pair locator).  Under `pairs ≠ []`: `∃ (qs : Array Nat) (_h_size : qs.size = pairs.length) (h_pos : 0 < qs.size), qs[0]'h_pos = s.pendingKeys.size ∧ ⟨per-i keyOnly readout⟩ ∧ strict-monotone-qs`.  Note absence of `pairs ≠ [] →` precondition gate at this layer: the body characterization already takes `h_ne : pairs ≠ []` as a hypothesis, so the ungated form is correct.  **Discharge:** the destructure of `h_scan := emitPairList_scans_nonempty …` at line ~11997 already exposed `_h_first_qs` from the `Part3-extend` sub-step's binding contract; the only proof edit was renaming `_h_first_qs` → `h_first_qs` and appending `h_first_qs h_ne` to the closing `refine ⟨…, h_first h_ne, h_first_qs h_ne⟩` anonymous constructor (no proof body change beyond the binding rename).  **Destructure sites updated (2):** (a) `emitPairList_body_linearise_characterization` ~12120 — added slot `_h_first_qs` after `h_first_key` (unused at this layer; reserved for sub-step 6 `Part3-final-discharge`); (b) `scanFiltered_emitMap_nonempty_structure` ~12459 — added slot `_h_body_first_qs` after `_h_body_first` (unused at this layer; the Tier 1 stitching is downstream of the linearise wrapper so it consumes the linearise wrapper's sorry'd Part (3) directly rather than re-walking the locator).  Sorry count unchanged at 8 (8 sorries at lines 11325, 11734, 11943, 12088, 12222, 12445, 13167, 13206; 57/57 EmitterScannability jobs green) | 0 (build clean across 57 EmitterScannability jobs; ≈40-line addition for the Part (5) conjunct + 1-line `refine` extension + 2 destructure-site `_`-prefixed slots; no sorry change) | `Proofs/Output/EmitterScannability.lean` | ✓ done 2026-05-02 |
 | J.4.2.b-2d-key-chain-Part3-final-discharge-bridge-6a | Chain-side cadence for the J.4.2.b-2d-key Part3 cascade's sub-step 6a (split: 6a chain-side now, 6b linearise-side + lift-discharge next).  **Goal:** expose, in the cons case of `emitPairList_scans_nonempty`, the predecessor-flowEntry fact so that the linearise-side bridge (sub-step 6b) can invert the walk-locator and identify which outer flowEntry sits at a given linearise position.  **Predicate extension:** added a fourth sub-conjunct to `EmitPairListScansInFlow`'s per-pair locator (under `pairs ≠ []`): `∀ i (hi : i < qs.size) (_h_pos_i : 0 < i), ∃ (h_lt : qs[i]'hi < s'.pendingKeys.size) (_h_ib_pos : 0 < (s'.pendingKeys[qs[i]'hi]'h_lt).insertBeforeIdx) (h_pred_lt : (s'.pendingKeys[qs[i]'hi]'h_lt).insertBeforeIdx - 1 < s'.tokens.size), (s'.tokens[(s'.pendingKeys[qs[i]'hi]'h_lt).insertBeforeIdx - 1]'h_pred_lt).val = .flowEntry`.  **`emitPairList_scans_empty`:** vacuous via the existing `pairs ≠ []` gate (the `absurd rfl h_ne` already in tree).  **Singleton case (`pairs = [p]`):** vacuous — `qs = #[s.pendingKeys.size]` has only `i = 0`, so `0 < i` is false.  **Cons case:** decomposes the new conjunct on `i = j + 1`, `j < qs_tail.size`.  For `j ≥ 1`: applies the IH's predecessor-flowEntry conjunct (`h_pred_t j h_j (by omega)`) directly via `qs[j+1] = qs_tail[j]` (cons-append rewrite).  For `j = 0` (outer `i = 1`): the predecessor index is `qs_tail[0] = s_pp.pendingKeys.size`, and the IH's first-pair conjunct (C-compose) gives `pks[s_pp.pendingKeys.size].insertBeforeIdx = s_pp.tokens.size = s_c.tokens.size = s_v.tokens.size + 1` (via `h_toks_pp` + the comma push).  The token at index `s_v.tokens.size` in `s_c.tokens` is `.flowEntry` (newly exposed by `scanNextToken_flow_comma`'s extension; see below).  **Sub-task 6a-i1-lift sorry'd at line 9543:** lifting the `.flowEntry` fact from `s_c.tokens` (or `s_pp.tokens`) to `s_end.tokens` requires `FlowMonoChain_preserves_raw_prefix` which needs `SimpleKeyAboveFloor s_pp s_pp.tokens.size s_pp.flowLevel` — depending on tracing `s_pp.simpleKey`/`simpleKeyStack` state through the comma + ws1 sequence (out of scope for 6a; deferred to 6b).  **`scanNextToken_flow_comma` extension:** added one extra conjunct `(s'.tokens.size = s.tokens.size + 1) ∧ (∀ (h_lt : s.tokens.size < s'.tokens.size), (s'.tokens[s.tokens.size]'h_lt).val = .flowEntry)` to expose the comma's flowEntry push.  Proof: chase tokens through `advance` (preserves), `record-update` (preserves), `emit .flowEntry` (`s.tokens.push ⟨s.currentPos, .flowEntry, s.currentPos⟩`), `allowDirectives if-update` (both branches preserve tokens), `saveSimpleKey` (preserves tokens via `saveSimpleKey_preserves_tokens`).  The dependent `[size]'h_lt` indexing in the proof needed a `generalize`+`subst` pattern to substitute the underlying array via the equation lemma before applying `Array.getElem_push_eq`.  **Threading:** the new conjunct propagated through `emitPairList_body_filtered_characterization`'s conclusion as part of the per-pair existential (Part 5) — single `∃` binding so consumer destructure sites (recursive IH ~9914, mapping ~10528, filtered-char ~12015, Tier 1 emitMap ~12598) auto-absorb the new sub-conjunct without edit.  Two `scanNextToken_flow_comma` callers (line ~8627 in singleton emitList comma + line ~9883 in cons emitPairList comma) updated with one extra `_`/named slot each.  **Sorry count: 8 → 9** (+1 from the 6a-i1-lift sub-task, to be discharged in 6b).  Build green (453/453 jobs) | +1 (build clean across 453 jobs; ~110-line addition for the new conjunct + comma extension + cons discharge; +1 sorry from 6a-i1-lift) | `Proofs/Output/EmitterScannability.lean` | ✓ done 2026-05-02 |
+| J.4.2.b-2d-key-chain-Part3-final-discharge-bridge-6c-ii-γ-2d-ii | **emitPairList cons stub discharge cadence** for the J.4.2.b-2d-key Part3 cascade's sub-step 6c-ii-γ-2d-ii (follow-up to γ-2d which left the cons-case bundled balance as the **single intermediate stub**).  **Goal:** discharge the cons-case `(flowBracketBalance s'.tokens s.tokens.size s'.tokens.size = 0 ∧ ∀ kk, .val = .flowEntry → balance ≥ 0)` conjunct in `emitPairList_scans_nonempty` (sorry'd in the cons branch at line ~12085) — drops sorry count 8 → 7.  **Approach:** mirror γ-2d's already-landed discharges in `emitList_scans_nonempty` cons + `emitPairList_scans_nonempty` singleton, scaled to the cons chain's 7-segment structure: `emit(p.1) → ":" → ws1 → emit(p.2) → "," → ws1 → IH(p' :: ps)`.  **No predicate change, no helper additions** — works inline with the existing `flowBracketBalance_FlowMonoChain` + `flowBracketBalance_compose` + `flowBracketBalance_single` + `FlowMonoChain_preserves_existing_tokens` infrastructure landed by γ-2a/2b.  **Discharge structure (~210 lines, 7 sub-balance proofs + composition + 7-case kk-range exhaustiveness split):** Step A — destructure bundled facts: `h_balfacts_k_cons` (key emit), `h_balfacts_v_cons` (value emit), `_h_balfacts_r` (IH; underscore-prefixed but still in scope), `h_colon_push_cons` (`:`'s `+1` token + `.value` val), `h_comma_push` (`,`'s `+1` token + `.flowEntry` val).  Step B — build sub-FlowMonoChains `h_fmc_s1_send` (s₁ → s_end, length-erased via `_`), `h_fmc_sv_send` (s_v → s_end), and the inline `h_fmc_s2_send` for the colon contradiction case.  Step C — token sizes `h_s2_size : s₂.size = s₁.size + 1`, `h_s3_size : s₃.size = s₂.size` (via `h_toks_pp₃`), `h_pp_size_eq : s_pp.size = s_c.size` (via `h_toks_pp`).  Step D — token-size monotonicity ladder (`h_le_s_s1, h_le_s1_s2, h_le_s2_s3, h_le_s3_sv, h_le_sv_sc, h_le_sc_pp, h_le_pp_send` and 5 cumulative `h_le_*_pp` traversals).  Step E — six sub-balance proofs (each = 0 over `s_end.tokens`): `h_bal_key` (key range, lifted via `flowBracketBalance_FlowMonoChain h_fmc_s1_send` from `h_bal_k_zero`); `h_bal_colon` (`s₁ → s₂` is `.value` push, delta 0; lifted via `flowBracketBalance_single` + `FlowMonoChain_preserves_existing_tokens h_fmc_ws_v` to bridge `s_v.tokens[s₁.size] = s₂.tokens[s₁.size]`); `h_bal_ws3` (trivial via `simp [flowBracketBalance]` after `rw [h_s3_size]`); `h_bal_value` (lifted via `flowBracketBalance_FlowMonoChain h_fmc_sv_send` from `h_bal_v_zero`); `h_bal_comma` (`s_v → s_c` is `.flowEntry` push, delta 0; lifted similarly); `h_bal_ws_pp` (trivial).  Step F — composed `h_bal_s_pp_zero` via 5 `flowBracketBalance_compose` rewrites + 6 zero rewrites + `decide`.  Step G — `h_bal_total` extends via `flowBracketBalance_compose` at `s_pp.size` + `h_bal_s_pp_zero` + IH's `h_bal_r_zero`.  Step H — exhaustiveness 7-case split on `kk`: (1) `kk < s₁.size` — h_exh_k gives ≥ 1, lifted via `h_fmc_s1_send`; (2) `kk = s₁.size` — colon's `.value`, refute via `nofun`/`YamlToken.noConfusion` after lifting through `h_fmc_s2_send`; (3) `s₁.size < kk < s_v.size` — h_exh_v gives ≥ 1 over `s_v.tokens` (`h_kk_ge_s3` from `h_kk_eq_s1`-failure ⇒ `kk > s₁.size = s₂.size = s₃.size`); compose `h_bal_to_s3_zero + h_bal_eq` then `omega`; (4) `kk = s_v.size` — comma's `.flowEntry`; balance `[s, kk) = h_bal_to_sv_zero = 0`; goal `0 ≥ 0` discharged via `decide` after `rw`; (5) `s_v.size + 1 ≤ kk < s_c.size` — empty (`s_c.size = s_v.size + 1` ⇒ vacuous, `exfalso` + `omega`); (6) `kk ≥ s_pp.size` — IH's `h_exh_r ≥ 0` composed with `h_bal_s_pp_zero = 0` via `flowBracketBalance_compose`; `omega` finishes.  **`set_option maxHeartbeats 800000 in`** added at theorem boundary: the cons-case bullet (γ-1 cons exhaustiveness ~290 lines + γ-2d-ii bundled balance ~210 lines + γ-3b-iii-B + the surrounding pkRec/qs-locator discharges) collectively exceeds the default 200k heartbeat budget.  800k provides comfortable headroom.  **Lean-tactic notes:** `0 ≥ 0` after `rw [h_kk_eq_sv, h_bal_to_sv_zero]` does NOT auto-close — must explicitly add `; decide` (Lean's `rw` leaves the goal stated rather than discharged via reflexivity for `Int` comparisons).  Underscore-prefixed `_h_balfacts_r` is fully usable as a hypothesis (the `_` prefix is a name convention that suppresses unused-variable warnings; the variable is still bound).  **Sorry count: 8 → 7** (drops the line ~12085 cons stub; warnings now at lines 13803, 14212, 14421, 15940, 16163, 16885, 16924 — 7 total).  Build green (453/453 jobs).  **Cascade after γ-2d-ii:** **Closes the entire 6c-ii-γ-2d cadence** — Part3 final-discharge-bridge work is now fully done.  Tier 1 stitching (`scanFiltered_emitSeq_nonempty_structure` + `scanFiltered_emitMap_nonempty_structure`) consumes the cleaned wrappers next. | -1 (build clean across 453 jobs; ~210-line discharge addition + 1-line `set_option maxHeartbeats 800000 in` insertion; sorry 8 → 7) | `Proofs/Output/EmitterScannability.lean`, `Blueprint/07-initiative-3-append-only.md` | ✓ done 2026-05-03 |
 | J.4.2.b-2d-key-chain-Part3-final-discharge-bridge-6c-ii-γ-3b-iii-D | **Final Part (3) discharge cadence** for the J.4.2.b-2d-key Part3 cascade's sub-step 6c-ii-γ-3b-iii-D (last of γ-3b-iii's four sub-cadences; γ-3b-iii-A landed 2026-05-03, γ-3b-iii-B/C landed 2026-05-04, γ-3b-iii-D this cadence).  **Goal:** discharge `emitPairList_body_linearise_characterization`'s Part (3) sorry (post-Part2 line ~15500 in `EmitterScannability.lean`) — produce `(j, p, acc)` such that `linearise s'.tokens s'.pendingKeys = linearise.go ... j p acc`, `acc.size = k+1`, `pks[p].insertBeforeIdx ≤ j`, `pks[p].kind = .keyOnly` — drops sorry count 9 → 8.  **Approach:** compose the four prerequisites in pipeline form (γ-3b-iii-A's strengthened decode → γ-1's exhaustiveness inversion → γ-3b-iii-B's save-time-mono → γ-3b-iii-C's walk-through-unresolved-keyOnly).  Conclusion goes through γ-3b-iii-C directly (skipping the existing `linearise_splice_keyonly_at_index` scaffold) since γ-3b-iii-C's output IS `linearise[k+1] = .key`, not just an intermediate transport state.  **Helper added (~50 lines):** `linearise_balance_prefix_eq` placed in `EmitterScannability.lean` between `linearise_go_walk_flowBracketBalance_top` and the γ-3a section (couldn't go in `ScannerLinearise.lean` since it depends on `flowBracketBalance` from `ParserGrammableBase` which isn't in `ScannerLinearise.lean`'s import closure).  Translates `flowBracketBalance lin 0 m = flowBracketBalance tokens 0 m` when no splice fires before `m` (i.e., `∀ r, m ≤ pks[r].insertBeforeIdx`).  Proof: walk linearise from `(0, 0, #[])` to `(m, 0, #[] ++ extra)` via `linearise_go_walk_flowBracketBalance_top` (vacuous `h_inrange`; `h_p'_ge` from `h_no_early` at r=0); derive `extra.size = m` via `linearise_go_walk_size` (cancellation); transport equation gives `lin = (#[] ++ extra) ++ tail` via `linearise_go_eq_acc_append`; apply `flowBracketBalance_append_left` (since `m ≤ (#[] ++ extra).size`); rewrite the walk's balance output (`acc.size = 0`, `0 + extra.size = m`) to the target.  **Body characterization extension:** strengthened `emitPairList_body_filtered_characterization`'s return type with two new conjuncts (positions 8 + 9): (8) γ-3b-ii new-kind disjunction `(∀ q ≥ s.pks.sz, kind ∈ {.unresolved, .keyOnly})`, (9) γ-3b-iii-B conditional save-time-mono `(LineariseFit s → AllKeysValid s → mono ∧ bound)`.  Both threaded directly from `EmitPairListScansInFlow`'s existing conjuncts (renamed `_h_newkind` → `h_newkind`, split `_h_balfacts_body` into `_h_balfacts_body, h_save_mono_cond` exploiting right-associativity of `∧`).  **Wrapper signature change:** added `(h_lin : ScannerCorrectness.LineariseFit s)` and `(h_akv : ScannerCorrectness.AllKeysValid s)` preconditions to `emitPairList_body_linearise_characterization` (no current consumers, so additions are non-disruptive).  **Single downstream call site updated:** `scanFiltered_emitMap_nonempty_structure` (line ~15860) — added 2 `_` placeholder slots (`_h_body_newkind, _h_body_save_mono`) to the destructure pattern (the wrapper's body characterization call site, not the linearise wrapper itself).  **Discharge structure (~155 lines, 11 steps):** Step 0 — filter cancellation `(s.tokens.filter p).size = s.tokens.size` via `Array.filter_eq_self.mpr` + `NoPlaceholders s`.  Step A — derive bound + mono via `h_save_mono_cond h_lin h_akv`.  Step B — apply γ-3b-iii-A's `linearise_outer_flowEntry_decode_top` to obtain `(j_k, p_k, acc')` + walk equation + idx-inv.  Step C — derive `h_no_early : ∀ r, s.tokens.size ≤ s'.pks[r].insertBeforeIdx` from γ-3b-iii-B's mono + `h_first_key`'s `pks[0].insertBeforeIdx = s.tokens.size`.  **Step D — case split on `p_k = 0` vs `p_k > 0`** to derive `s.tokens.size ≤ j_k`.  When `p_k = 0`: walk did pure copies, so `linearise_go_walk_size` gives `(k+1) + (tokens.size - (j_k+1)) = tokens.size`, hence `j_k = k ≥ s.tokens.size = old_sz`.  When `p_k > 0`: γ-3b-iii-A's idx-inv at `r = 0` gives `pks[0].insertBeforeIdx ≤ j_k`, combined with `pks[0].insertBeforeIdx = s.tokens.size` yields `s.tokens.size ≤ j_k`.  Step E — translate balance via `linearise_balance_prefix_eq` + `flowBracketBalance_compose` (twice: linearise side splits at `s.tokens.size`, s'.tokens side splits at `s.tokens.size`); `omega` discharges the `flowBracketBalance s'.tokens s.tokens.size j_k = 0` derivation.  Step F — apply γ-1 outer-flowEntry exhaustiveness `h_qs_inv` to obtain pair index `i ≥ 1` with `j_k + 1 = pks[qs[i]].insertBeforeIdx`.  Step G — derive `qs[i] ≥ p_k` via case split (`Nat.lt_or_ge` not `by_contra`/`push_neg` since those tactics aren't in the import closure); contradict via idx-inv + `pks[qs[i]].insertBeforeIdx = j_k + 1`.  Step H — kind disjunction via `h_newkind` (covers all r since `s.pendingKeys.size = 0`).  Step I — idx bound `≤ j_k + 1` for `r ≤ qs[i]` via mono + `pks[qs[i]].insertBeforeIdx = j_k + 1`.  Step J — read `pks[qs[i]].kind = .keyOnly` from qs locator's per-i conjunct (`h_qs_kind`).  **Step K — apply γ-3b-iii-C** with `(j_k+1, p_k, qs[i], k+1, acc')` to read off `linearise[k+1] = .key`.  **Lean-tactic notes:** `by_contra` + `push_neg` aren't available in this file (Mathlib tactics not in scope) — use `Nat.lt_or_ge` branch-discharge instead.  `Nat.add_zero` rewrite via `omega` rather than explicit `rw` (the goal `lhs + 0 = lhs` after splicing constants doesn't always match `?n + 0` syntactically; omega handles it cleanly).  `subst h_pk_zero` substitutes the local pattern variable into the walk equation, which then drops the `pendingExpandSumFrom pks 0` term on both sides of `linearise_go_walk_size` (cancels via `simp at h_size_eq`).  Direction of `linearise_go_walk_size` arguments: `h_walk_eq.symm` because the lemma expects `linearise.go ... j p acc = linearise.go ... j' p' acc'` whereas γ-3b-iii-A returns the reverse direction.  The two `h_qsi_lt` witnesses (one from `h_qs_inv`, one from `h_qs_kind`) are propositionally equal but syntactically distinct; `h_qsi_kind' : (s'.pendingKeys[qs[i]'hi]'h_qsi_lt).kind = .keyOnly := h_qsi_kind` coerces.  **Sorry count: 9 → 8** (drops the line ~15500 sorry; warnings now at lines 10582, 13576, 13985, 14194, 15713, 15936, 16658, 16697 — 8 total).  Build green (453/453 jobs).  **Cascade after γ-3b-iii-D:** **Closes Part3** for γ-3b-iii — only γ-2d-ii (emitPairList cons stub discharge, separate sorry) remains in this neighborhood. | -1 (build clean across 453 jobs; ~210-line net change spread across the helper + body extension + wrapper signature + Part (3) discharge; sorry 9 → 8) | `Proofs/Output/EmitterScannability.lean`, `Blueprint/07-initiative-3-append-only.md` | ✓ done 2026-05-04 |
 | J.4.2.b-2d-key-chain-Part3-final-discharge-bridge-6c-ii-γ-3b-iii-C | Walk-through-unresolved-keyOnly lemma cadence for the J.4.2.b-2d-key Part3 cascade's sub-step 6c-ii-γ-3b-iii-C (third of γ-3b-iii's four sub-cadences; γ-3b-iii-A landed 2026-05-03, γ-3b-iii-B landed 2026-05-04, γ-3b-iii-C (this cadence), γ-3b-iii-D remaining).  **Goal:** add a pure-linearise inductive walk lemma that consumes the predicate-level facts produced by γ-3b-ii (kind disjunction) and γ-3b-iii-B (save-time-mono splice-readiness), advancing a transport equation through a contiguous block of `.unresolved` and `.keyOnly` pending entries to read off `.key` at the accumulator-size index.  Fully isolated to `Proofs/Scanner/ScannerLinearise.lean`; no call site plumbing.  Unblocks γ-3b-iii-D's final Part (3) discharge (sorry 9 → 8) by providing the walk-step infrastructure that γ-3b-iii-D pairs with γ-3b-iii-A's strengthened decode + γ-1's exhaustiveness.  **Lemma signature:** `linearise_walk_through_unresolved_keyOnly` takes `(tokens, pks, j, p, q, k, acc)` plus a transport equation `linearise tokens pks = linearise.go tokens pks j p acc` and `acc.size = k`, plus `p ≤ q`, `q < pks.size`, `pks[q].kind = .keyOnly` (the `.keyOnly` "target" guarantees the walk eventually fires `.key`), plus `h_idx_le : ∀ r ∈ [p, q], pks[r].insertBeforeIdx ≤ j` (splice-readiness — every entry in the range will fire from the j-cursor without requiring a token-copy step), plus `h_kind_disj : ∀ r ∈ [p, q], pks[r].kind ∈ {.unresolved, .keyOnly}` (γ-3b-ii's predicate-level disjunction, restricted to the walk range).  Concludes `∃ h_lin : k < (linearise tokens pks).size, (linearise tokens pks)[k].val = .key`.  **Proof structure:** `suffices` to a strengthened helper `h_step n p' acc' : q - p' = n → p ≤ p' → p' ≤ q → acc'.size = k → transport-eq → ⟨k < size, [k] = .key⟩`, then induct on `n = q - p'`.  **Base case (`n = 0`):** `p' = q`, so `pks[p']` is `.keyOnly` (by `h_q_kind`) with `insertBeforeIdx ≤ j` (by `h_idx_le`); `subst` the equality and apply `linearise_splice_keyonly_at_index` (Foundation B index form) directly.  **Step case (`n = k + 1`):** `p' < q`, so `pks[p']` exists; `rcases h_kind_disj p'` on the kind: (a) `.unresolved` — fire via `linearise_go_step_splice` + `expandKind = #[]` (proven from kind `.unresolved` by unfolding) + `Array.append_empty`, giving an updated transport equation at `(j, p'+1, acc')` (acc' unchanged since `expandKind` yielded `#[]`); apply IH at `(p'+1, acc')`.  (b) `.keyOnly` — apply Foundation B at `(j, p', acc')` directly, the first-`.keyOnly`-suffices shortcut: any `.keyOnly` in the range produces `.key` at position `acc.size = k` regardless of subsequent entries.  **Decision: closed range `[p, q]` for both `h_idx_le` and `h_kind_disj`.**  Initially considered open-on-right `[p, q)` for kind disjunction (since the `.keyOnly` at `q` is given separately via `h_q_kind`), but using closed `[p, q]` simplifies the inductive step (the disjunction at `p' = q` is trivially satisfied by `h_q_kind`'s `.keyOnly`, no special case needed).  Similarly closed for `h_idx_le` (the splice at `q` needs `pks[q].insertBeforeIdx ≤ j` from `h_idx_le q ...`, not from a separate hypothesis).  This matches the contract that γ-3b-iii-B will provide at the consumer site (`pks[r].insertBeforeIdx ≤ pks[q].insertBeforeIdx` for `r ≤ q` from save-time mono, then `≤ j` follows from γ-1's `pks[qs[i]].insertBeforeIdx = j_k + 1 = j`).  **Subst variant:** `subst h_p'_eq_q` substitutes the local intro variable `p'` with the outer-theorem parameter `q`; downstream hypotheses (`h_eq'`, `h_acc'_size`, etc.) automatically rewrite to the `q`-form, allowing direct application of `h_q_kind` and `h_q_lt` in the Foundation B call.  **Lean-tactic notes:** `Nat.lt_trans h_p'_lt_q h_q_lt` could derive `p' < pks.size` but `by omega` is more uniform with the rest of the proof's omega-discharge style.  `Array.append_empty` is named `Array.append_empty` in core Lean (verified usage at lines 328/426/605 of the same file) and supports both `simp only` and direct `rw` rewriting.  The `expandKind` definitional unfolding `expandKind e = #[]` for `e.kind = .unresolved` mirrors the existing pattern in `linearise_append_unresolved` (line 302); inline as `by unfold expandKind; rw [h_unres]`.  **Sorry count unchanged at 9** (lemma addition only — γ-3b-iii-D will consume this lemma alongside γ-3b-iii-A's strengthened decode + γ-3b-iii-B's conditional save-time-mono + γ-1's exhaustiveness to discharge the line-15334 sorry, dropping 9 → 8).  Build green (453/453 jobs).  **Cascade after γ-3b-iii-C:** γ-3b-iii-D (final Part (3) discharge, 9 → 8). | 0 (build clean across 453 jobs; ~100-line net addition — single lemma + docstring; no other file touched, no sorry change) | `Proofs/Scanner/ScannerLinearise.lean`, `Blueprint/07-initiative-3-append-only.md` | ✓ done 2026-05-04 |
 | J.4.2.b-2d-key-chain-Part3-final-discharge-bridge-6c-ii-γ-3b-iii-B | Save-time-mono predicate strengthening cadence for the J.4.2.b-2d-key Part3 cascade's sub-step 6c-ii-γ-3b-iii-B (second of γ-3b-iii's four sub-cadences; γ-3b-iii-A landed 2026-05-03, γ-3b-iii-B (this cadence), γ-3b-iii-C and γ-3b-iii-D remaining).  **Goal:** add `(∀ p ≤ q (with q < s'.pendingKeys.size), pks[p].insertBeforeIdx ≤ pks[q].insertBeforeIdx) ∧ (∀ r (with r < s'.pendingKeys.size), pks[r].insertBeforeIdx ≤ s'.tokens.size)` to all three flow-context predicates `EmitScansInFlow` / `EmitListScansInFlow` / `EmitPairListScansInFlow`, so γ-3b-iii-D's discharge of `emitPairList_body_linearise_characterization` Part (3) can walk `[p_k, qs[i])` through linearise entries (requires `pks[r].insertBeforeIdx ≤ pks[qs[i]].insertBeforeIdx` for `r ≤ qs[i]`).  The bound conjunct is also needed by γ-3b-iii-A's precondition `h_idx_le_tok` at the consumer site.  **Architectural decision: conditional form.**  The originally planned shape (~250–400 lines) added `LineariseFit s` as a hard precondition to all three predicates, requiring extensive plumbing (`LineariseFit` + `AllKeysValid` threading) through ~20+ call sites in `emit_scans_in_flow` / `emitList_scans_nonempty` / `emitPairList_scans_nonempty` / body characterizations / Tier 1 structure theorems.  Investigation revealed a lighter alternative: encode the new facts as a **conditional conjunct** of shape `(LineariseFit s → AllKeysValid s → mono ∧ bound)`.  Conditional form means existing call sites are **untouched** — only consumers needing the new facts (γ-3b-iii-D, future) provide `LineariseFit s ∧ AllKeysValid s` at the application point.  Net change ~150 lines instead of 250–400.  **Chain helper:** added `ScanChainGrew.preserves_LineariseFit_AllKeysValid` (~12 lines) near `ScanChainGrew_of_scanNextToken_eq` (line ~9090).  Induction on `ScanChainGrew p s n s'`: `zero` returns `⟨h_lin, h_akv⟩`; `step h_snt _ _ ih` applies IH to `scanNextToken_preserves_LineariseFit _ _ h_lin h_akv.1 h_snt` + `scanNextToken_preserves_AllKeysValid _ _ h_akv h_snt` (the `.1` projection extracts `SimpleKeyValid` from `AllKeysValid := SimpleKeyValid ∧ SimpleKeyStackValid`).  **Projection helper:** added `mono_and_bound_of_LineariseFit` (~10 lines) right after the chain helper.  Destructures `LineariseFit s` as `⟨_, h_well, h_idx, _, _, _, _⟩` (7-way conjunction).  For the mono conjunct, weakens `LineariseFit`'s strict-sorted `p < q → ...` to non-strict `p ≤ q → ...` via `by_cases h_eq : p = q` (refl) vs `Nat.lt_of_le_of_ne` (apply strict).  For the bound conjunct, `(h_well.2 r hr).2` extracts the upper bound from `PendingKeysWellIndexed`'s second field (note `PendingKeysWellIndexed` is `s.tokens.size ≥ 1 ∧ ∀ p hp, 1 ≤ idx ∧ idx ≤ tokens.size`, so `.2 r hr` applies the Pi part, then `.2` of the result is the upper bound).  **Discharge per producer collapses to single chain helper application.**  In each producer (`emitList_scans_empty`, `emitPairList_scans_empty`, `emit_scans_in_flow` scalar/seq/map, `emitList_scans_nonempty` singleton/cons, `emitPairList_scans_nonempty` singleton/cons), the discharge for the new conditional conjunct is `intro h_lin h_akv; have ⟨h_lin', _⟩ := h_chain.preserves_LineariseFit_AllKeysValid h_lin h_akv; exact mono_and_bound_of_LineariseFit s' h_lin'` (~5 lines per producer).  For empty cases (0-step chain), `s' = s` so the discharge is `intro h_lin _; exact mono_and_bound_of_LineariseFit s h_lin` directly.  For producers in `emitList_scans_nonempty` and `emitPairList_scans_nonempty` cons cases, the chain `h_chain_all` (used in the existential's chain slot via `h_arith ▸`) is reused for the helper application.  For the scalar case in `emit_scans_in_flow`, `h_chain` is constructed inline as `ScanChainGrew.single h_snt h_grew`.  For seq/map, `h_chain_seq`/`h_chain_map` constructed inline as `(ScanChainGrew.single h_snt₁ h_grew₁).trans (h_chain₂.trans (ScanChainGrew.single h_snt₃ h_grew₃))`.  **Refine slot updates (12 sites):** each producer's existential refine grew to add a new `?_` slot for the conditional.  In flat tuples (empty discharges), wrapped the bundled balance pair as `⟨h_bal, h_no_outer⟩` and added `?_` after.  In `emit_scans_in_flow` scalar, the inner `refine ⟨?_, ?_⟩` (gated + balance pair) became `refine ⟨?_, ?_, ?_⟩` (gated + balance pair + conditional).  In seq/map, the inner `refine ⟨?_, ?_, ?_⟩` (pks_eq + gated + balance pair) became `refine ⟨?_, ?_, ?_, ?_⟩` adding a 4th slot for the conditional.  In `emitList_scans_nonempty` cons, the outer refine added a 4th trailing `?_`.  In `emitPairList_scans_nonempty` singleton + cons, the inner `refine ⟨h_size_all, h_pkRec_all, ?_, ?_, ?_, ?_, ?_⟩` (5 trailing `?_`) became `⟨..., ?_, ?_, ?_, ?_, ?_, ?_⟩` (6 trailing `?_`).  **Consumer destructure binders updated (8 sites):** every site that pattern-matches an `EmitScansInFlow` / `EmitListScansInFlow` / `EmitPairListScansInFlow` existential now binds an additional `_h_lin_bound_*` placeholder at the trailing position of `obtain ⟨...⟩`.  Sites: `emitList_scans_nonempty` singleton (h_ev → `_h_lin_bound_v`), cons key emit + recursive IH (`_h_lin_bound₁` + `_h_lin_bound_tail`); `emitPairList_scans_nonempty` singleton key + value (`_h_lin_bound_k_singleton` + `_h_lin_bound_v_singleton`), cons key + value + recursive IH (`_h_lin_bound_k_cons` + `_h_lin_bound_v_cons` + `_h_lin_bound_r`); `emit_scans_in_flow` seq (`_h_lin_bound_body` from list scan) + map (`_h_lin_bound_body` from pair scan).  All placeholders are `_`-prefixed (unused at this layer; consumed by γ-3b-iii-D when it discharges Part (3)'s line-15334 sorry).  **Lean-tactic notes:** the conditional conjunct's structure `(LineariseFit s → AllKeysValid s → A ∧ B)` flattens cleanly via `intro h_lin h_akv; exact ⟨mono_proof, bound_proof⟩` where the helper supplies the pair directly.  When refining the bundled balance pair adjacent to the new conditional, the structure is `... ∧ (balance ∧ no_outer_fe) ∧ conditional` which right-nests as `... ∧ ((balance ∧ no_outer_fe) ∧ conditional)`; explicit grouping `⟨⟨h_bal, h_no_outer⟩, h_cond⟩` is needed at empty-list discharges (flat positional tuple `..., balance, no_outer_fe, cond⟩` ambiguates Lean's elaborator).  The `PendingKeysWellIndexed` projection is `.2 r hr` (the Pi part is the second field, after the `tokens.size ≥ 1` lower bound) — easy to confuse with direct application `h_well r hr` which fails with "Function expected" because Lean doesn't auto-unfold the `def`.  **Sorry count unchanged at 9** (predicate-level threading + chain helper + projection helper only; γ-3b-iii-D will consume the new conditional alongside γ-3b-iii-A's strengthened decode + γ-3b-iii-C's walk lemma + γ-1's exhaustiveness to discharge the line-15334 sorry, dropping 9 → 8).  Build green (453/453 jobs).  **Cascade after γ-3b-iii-B:** γ-3b-iii-C (walk-through-unresolved-keyOnly lemma) → γ-3b-iii-D (final Part (3) discharge, 9 → 8). | 0 (build clean across 453 jobs; ~150-line net change spread across 3 predicate definitions + 2 helper additions + 9 producer discharges + 8 consumer destructure binders; no sorry change) | `Proofs/Output/EmitterScannability.lean`, `Blueprint/07-initiative-3-append-only.md` | ✓ done 2026-05-04 |
@@ -3206,6 +3217,30 @@ Remaining J.4.2.b work:
               discharges, +1 emitPairList cons stub).  Build green
               (453/453 jobs).  See manifest entry
               `J.4.2.b-2d-key-chain-Part3-final-discharge-bridge-6c-ii-γ-2d`.
+            - 6c-ii-γ-2d-ii. ✓ **discharge cons-case stub left by γ-2d**
+              [done 2026-05-03]: composed the 7-segment cons chain
+              `emit(p.1) → ":" → ws1 → emit(p.2) → "," → ws1 →
+              IH(p' :: ps)` directly inside `emitPairList_scans_nonempty`
+              cons.  Each per-segment balance over `s_end.tokens`
+              proven 0 via `flowBracketBalance_FlowMonoChain` + the
+              push-fact bundles (`h_balfacts_k_cons`/`h_balfacts_v_cons`
+              for emit legs; `h_colon_push_cons`/`h_comma_push` for
+              `.value`/`.flowEntry` deltas (=0); ws legs trivial via
+              `h_toks_pp₃`/`h_toks_pp`); IH leg via `_h_balfacts_r`'s
+              `h_bal_r_zero`.  Total balance = 7×0 = 0.  Exhaustiveness
+              kk-range split (Cases 1–7): key range / colon (refute
+              `.value ≠ .flowEntry`) / `[s₃, s_v)` value range / comma
+              (kk = s_v.size; balance = 0 ≥ 0) / empty (s_v.size+1 ≤ kk
+              < s_c.size) / IH range (kk ≥ s_pp.size; use IH's
+              `h_exh_r ≥ 0` composed with `h_bal_s_pp_zero = 0`).
+              **Bumped `maxHeartbeats 800000`** on
+              `emitPairList_scans_nonempty` (combined with γ-1 cons
+              exhaustiveness's ~290 lines, the cons-case bullet
+              exceeded the default 200000 limit; 800000 is comfortable
+              with headroom).  Sorry count: 8 → 7 (drops the line
+              ~12085 cons stub).  Build green (453/453 jobs).  See
+              manifest entry
+              `J.4.2.b-2d-key-chain-Part3-final-discharge-bridge-6c-ii-γ-2d-ii`.
             - 6c-ii-γ-3a. ✓ **linearise outer-flowEntry inversion
               lemma** [done 2026-05-04]: added
               `linearise_outer_flowEntry_decode` (~270 lines) and its
@@ -3611,7 +3646,7 @@ the breakdown above lets each substep land in cadence-size, with the
 positional family (J.4.2.c-prefix / -pos1 / -pos2) and the chain-endpoint
 invariant (J.4.2.b-pkwi) already in place to support them.
 
-**Concrete next steps (in order, as of 2026-05-04, sorry count 9):**
+**Concrete next steps (in order, as of 2026-05-03, sorry count 7):**
 
 1. **2d-key-chain-Part3** (after-flowEntry splice locator; refined
    ~17 cadence steps; scope-investigation done 2026-05-02,
@@ -3643,12 +3678,14 @@ invariant (J.4.2.b-pkwi) already in place to support them.
    final-discharge-bridge-6c-ii-γ-3b-iii-C/walk-through-unresolved-keyOnly-lemma
    done 2026-05-04,
    final-discharge-bridge-6c-ii-γ-3b-iii-D/final-Part3-discharge
-   done 2026-05-04) — Part3 is now decomposed into 24 cadence-sized
+   done 2026-05-04,
+   final-discharge-bridge-6c-ii-γ-2d-ii/emitPairList-cons-stub-discharge
+   done 2026-05-03) — Part3 is now decomposed into 25 cadence-sized
    sub-steps (sub-steps 1–5 + 6a + 6b + 6c-i + 6c-ii-α + 6c-ii-β +
    6c-ii-γ-1 + 6c-ii-γ-2a + 6c-ii-γ-2b + 6c-ii-γ-2c + 6c-ii-γ-2d +
-   6c-ii-γ-3a + 6c-ii-γ-3b-i + 6c-ii-γ-3b-ii + 6c-ii-γ-3b-iii-A +
-   6c-ii-γ-3b-iii-B + 6c-ii-γ-3b-iii-C + 6c-ii-γ-3b-iii-D
-   ✓ done; 6c-ii-γ-2d-ii (emitPairList cons stub discharge) remaining):
+   6c-ii-γ-2d-ii + 6c-ii-γ-3a + 6c-ii-γ-3b-i + 6c-ii-γ-3b-ii +
+   6c-ii-γ-3b-iii-A + 6c-ii-γ-3b-iii-B + 6c-ii-γ-3b-iii-C +
+   6c-ii-γ-3b-iii-D ✓ all done — Part3 is now closed):
    - 2. ✓ **Part3-locator-shape** [done 2026-05-02]: chose option (i)
      array form `∃ (qs : Array Nat) (_h_size : qs.size = pairs.length)
      (h_pos : 0 < qs.size), qs[0] = s.pendingKeys.size ∧ ⟨per-i
@@ -4250,3 +4287,383 @@ if multiple verifiers are available.
    on `main` at least at every phase boundary (end of J.1, J.2, J.3)
    to keep the eventual merge tractable.  If `main` lands a major
    scanner-touching change during J, escalate to a mid-phase rebase.
+
+---
+
+## Stop assessment — 2026-05-03
+
+**Status**: Initiative 3 is being stopped. The proof corpus has not
+converged: 7 sorries remain in `EmitterScannability.lean` after
+~134 commits since 2026-04-26, with each subsequent discharge requiring
+further ghost-predicate strengthening rather than approaching a
+fixed point. This section is a comprehensive retrospective against
+the original motivation (lines 10–33), proposed architecture
+(lines 35–74), and properties (lines 76–87), so the stop is informed
+and the salvage path is clear.
+
+### 1. Was the motivation real? — **Yes, but only partly addressed**
+
+The motivating defect (lines 10–33) was that
+`scanValuePrepare` mutates `tokens[simpleKey.tokenIndex]` in place,
+making `tokens.filter (·.val != .placeholder)` non-monotone across
+`scanNextToken` steps. That is a real cost.
+
+Status of the two listed costs:
+
+1. **Filter is non-monotone** — addressed at the **scanner** level:
+   `setIfInBounds` and `.placeholder` pushes are gone from active
+   scanner code (`L4YAML/Scanner/SimpleKey.lean:270–289`,
+   `L4YAML/Scanner/Linearise.lean:13` — only referenced in comments
+   describing the legacy model). Each `scanNextToken` step now appends
+   monotonically to `tokens`, `pendingKeys`, or both. ✓
+
+2. **No invariant captures forward-looking stability** — **not
+   addressed**. The proof corpus still has to relate `linearise tokens
+   pendingKeys` back to `tokens.filter p`, and that bridge holds *only
+   when* `AllUnresolved tokens pendingKeys ∧ NoPlaceholders tokens` —
+   i.e. when no `:`-resolution has fired. For inputs with mappings,
+   this fails by design (every `:` flips a `kind` field), so the
+   forward-looking stability problem just **moves** from the scanner
+   to the linearise/cascade layer rather than being eliminated.
+
+The motivation was sound; the architectural answer chosen (a parallel
+side-channel + post-pass linearisation) defers the structural-induction
+problem rather than removes it. The Tier 2 surfacing that triggered
+this initiative (`emitList` chain proofs needing
+forward-looking stability) is **structurally identical** to the cascade
+discharge problem now blocking J.4: prove that splice positions don't
+move backwards across emitter recursion.
+
+### 2. Architecture: what changed, why, and at what cost
+
+#### What was actually delivered vs. what the plan said
+
+The plan (lines 56–62) showed a `ScannerState` with `simpleKey` and
+`simpleKeyStack` **removed**, replaced by `pendingKeyActive` and
+`pendingKeyStack`. The actual delivered state
+(`L4YAML/Scanner/State.lean:128–199`) keeps **all four**:
+
+```lean
+structure ScannerState where
+  ...
+  simpleKey       : SimpleKeyState              -- legacy, "being phased out"
+  simpleKeyStack  : Array SimpleKeyState        -- legacy, "being phased out"
+  pendingKeys     : Array PendingKeyEntry       -- new (Initiative 3)
+  pendingKeyActive : Option Nat                 -- new (Initiative 3)
+  pendingKeyStack  : Array (Option Nat)         -- new (Initiative 3)
+  ...
+```
+
+`SimpleKeyState` was retained "for the J.1→J.2 migration window";
+that migration was never completed. Every save now performs a
+**dual write**: `saveSimpleKey` updates both `simpleKey.{possible,
+tokenIndex, pos, endLine}` and pushes a new `PendingKeyEntry`
+(`L4YAML/Scanner/SimpleKey.lean:262–290`). Both `simpleKeyStack` and
+`pendingKeyStack` are pushed on `[`/`{` and popped on `]`/`}`
+(`L4YAML/Scanner/Scanner.lean:135–212`). The functional state
+**doubled** instead of being replaced.
+
+Reason this happened: the J.2 cutover was scoped per-submodule, but
+several submodules' proofs (`scanValueValidate`,
+`scanFlowEntry`-lookback, and the simple-key-stacking discipline at
+flow-open/close) read both `simpleKey.possible` and the resolved
+key value, and the legacy reads were never retired. The
+"transition state" became a steady state.
+
+#### Ghost predicates added
+
+Six new ghost predicates were introduced specifically for Initiative 3
+proof work, on top of the existing seven (`ScannerSurfCorr`,
+`SimpleKeyAbove`, `SimpleKeyAboveFloor`, `AllTokensOnLine`,
+`EndLineOnLine`, `FlowMonoChain`, `ScanChainGrew`):
+
+| Predicate | File:line | Purpose |
+|---|---|---|
+| `PendingKeysWellIndexed` | `Proofs/Scanner/ScannerCorrectness.lean:9548` | `insertBeforeIdx ≤ tokens.size` for every entry |
+| `AllKeysValid` | `Proofs/Scanner/ScannerCorrectness.lean:9000` | every entry's `endLine` matches its tokens' line |
+| `AllUnresolved` | `Proofs/Scanner/ScannerCorrectness.lean:9933` | every entry has `kind = .unresolved` (sub-class invariant) |
+| `NoPlaceholders` | `Proofs/Scanner/ScannerCorrectness.lean:10032` | no `.placeholder` survives in `tokens` (post-cutover invariant) |
+| `LineariseFit` | `Proofs/Scanner/ScannerCorrectness.lean:13007` | save-time monotonicity of `insertBeforeIdx` |
+| `EmitScansInFlow` family | `Proofs/Output/EmitterScannability.lean:9157, 9261, 10415` | the bundled emit-scans return contract |
+
+Each of `EmitScansInFlow`, `EmitListScansInFlow`, and
+`EmitPairListScansInFlow` returns an existential whose body has grown
+to **17–24 conjuncts**, including:
+- chain witness (`ScanChainGrew`, `FlowMonoChain`)
+- 8 surface-state preservation conjuncts (flowLevel, indents,
+  explicitKeyLine, line, simpleKeyStack, pendingKeyStack,
+  AllTokensOnLine, EndLineOnLine)
+- a strengthening conjunct for every J.4.2.b-2d-key sub-cadence:
+  - `s.pendingKeys.size ≤ s'.pendingKeys.size` + per-index
+    `(insertBeforeIdx, kind)` preservation
+  - new-kind disjunction `∀ q ≥ s.pks.size, kind ∈ {.unresolved,
+    .keyOnly}`
+  - bundled bracket-balance `(balance = 0 ∧ ∀ kk ≥ s.tokens.size,
+    .flowEntry → balance ≥ 1)`
+  - C-compose first-key shape (gated, conditional)
+  - per-pair `qs : Array Nat` locator existential with
+    six sub-conjuncts (size, pos, kind, monotonicity,
+    predecessor-flowEntry, outer-flowEntry exhaustiveness)
+  - conditional save-time-mono (`LineariseFit s → AllKeysValid s →
+    mono ∧ bound`)
+
+Every one of these conjuncts was added to discharge a single
+sub-cadence sorry. Each addition required threading through 6+
+destructure binder sites in `emitList_scans_*` /
+`emitPairList_scans_*` and updating every consumer that destructures
+the ∃ tuple. The cadence ledger
+(`Phase J.3 → §J.4.2.b-2d-key-chain`) records the per-step
+predicate growth: each Greek-letter sub-step (γ-1, γ-2a–d, γ-3a, γ-3b-i,
+γ-3b-ii (×4 sub-steps), γ-3b-iii (×4 sub-steps)) **strengthened the
+predicate** before discharging anything, with the discharge itself
+deferred to the next sub-step.
+
+#### Functional architecture: did it improve?
+
+`ScannerState` is morally a state-machine: a configuration record
+threaded through pure transitions. Initiative 3 was an opportunity
+to make the transitions smaller, more local, and more obviously
+append-only. **It did not.**
+
+What improved:
+- The `tokens` array is genuinely append-only. ✓
+- `Array.setIfInBounds` is gone from the hot path. ✓
+- `linearise` is a pure function of `(tokens, pendingKeys)`. ✓
+- `Spec/Grammar.lean`'s `ValidTokenStream.positionsOrdered` carries
+  through the new design unchanged. ✓
+
+What got worse:
+- `ScannerState` surface area grew from 5 fields related to
+  simple-key tracking (`simpleKey`, `simpleKeyStack`,
+  `simpleKeyAllowed`, `simpleKey.tokenIndex`, `simpleKey.endLine`)
+  to **8 fields** (the original 5 plus `pendingKeys`,
+  `pendingKeyActive`, `pendingKeyStack`).
+- Two parallel stacks (`simpleKeyStack`, `pendingKeyStack`) must be
+  kept in lock-step at every flow-open/close, doubling the
+  preservation-lemma surface area.
+- The `setPendingKeyEndLine` / `setPendingKeyKind` operations on
+  `pendingKeys[active]` are still in-place mutations of a record
+  field — just on a different array. They're proof-friendlier than
+  `setIfInBounds` (no token-index shift) but are still mutation, and
+  every `pkRec`-preservation lemma in the corpus exists to defend
+  against them.
+
+Net assessment: **the functional architecture was not improved**.
+The replacement of one in-place mutation (placeholder → key) with a
+different in-place mutation (.unresolved → .keyOnly) plus a
+post-pass linearise was a horizontal move, not a simplification.
+
+### 3. Properties: were they accomplished?
+
+Against lines 76–87:
+
+| Property | Status |
+|---|---|
+| **Filter monotonicity at scanner level** | ✓ delivered (each `scanNextToken` step is monotone on `tokens.filter p` because `setIfInBounds` is gone) |
+| **Linearised view is a function** | ✓ delivered (`L4YAML/Scanner/Linearise.lean:linearise`, 95 lines, total + structurally recursive) |
+| **`Array.insertAt` avoided in the hot path** | ✓ delivered (only `.push` used during scanning; splice happens once at `scanFiltered`) |
+| *Implicit goal*: **proof corpus re-discharged at sorry = 0** | ✗ **not delivered**. 7 sorries remain in `EmitterScannability.lean`; each blocks ≥1 cadence-week of work; the discharge graph has feedback (each predicate strengthening creates new destructure obligations at every consumer). |
+| *Implicit goal*: **simpler proofs about emitter chains** | ✗ **regressed**. The Tier 2 emitter-scannability proof — the trigger for this initiative — now requires the entire J.4.2.b-2d-key-chain machinery (24-conjunct predicates, 4 Foundation lemmas, 5 walk lemmas, a 270-line decode lemma) where the original `setIfInBounds` model was blocked on a single forward-stability lemma. |
+
+The three explicitly-listed properties were delivered; the implicit
+goal (re-discharging Tier 2) was not, and the work to do so has
+grown in complexity rather than shrunk.
+
+### 4. Is the linearisation algorithm beneficial?
+
+**Functional perspective**: `linearise` is a real function in active
+code (`L4YAML/Scanner/Linearise.lean`, called from
+`L4YAML/Scanner/Scanner.lean:596`). It produces the user-facing
+token stream, splicing `.keyOnly` and `.blockMappingStartAndKey`
+entries into `tokens` at their `insertBeforeIdx` positions.
+
+**But functionally identical** to the legacy model: by construction
+the worked example (lines 265–354) shows that
+`linearise (tokens_new, pendingKeys) = scanFiltered_legacy (tokens_old)`
+for every input. The output stream the parser sees is unchanged.
+
+So `linearise` is not a *capability* — it adds no observable behavior.
+It is a *refactoring* of where state lives during scanning:
+
+| Aspect | Legacy | New |
+|---|---|---|
+| Where the `.key` token comes from | `setIfInBounds` rewrites `tokens[idx]` from `.placeholder` to `.key` | `linearise` reads `pendingKeys[i].kind = .keyOnly` and emits a fresh `.key` token at output time |
+| When it appears in `tokens` | At `:`-resolution time (mid-scan) | Never (only in `linearise` output) |
+| Information needed to reconstruct | `tokens` alone | `(tokens, pendingKeys)` pair |
+
+The benefit is **entirely on the proof side**: the legacy model had to
+prove "the placeholder at `tokens[i]` will not be retroactively
+promoted in any future step", which required structural induction
+over future emitter output. The new model lets you reason about
+`tokens` and `pendingKeys` separately, and only assemble them
+once at `scanFiltered`.
+
+**However** — and this is the central finding of this stop — the
+proof benefit is consumed almost entirely by the *new* obligation:
+relating the linearise output back to the parser-facing token stream
+(the cascade-stitching work). The bridge `linearise tokens pks =
+tokens.filter p` only holds when `AllUnresolved ∧ NoPlaceholders`,
+and `AllUnresolved` is broken by every input that contains `:`
+(every mapping). For those inputs we have to either (a) chase
+positional readouts through `linearise.go`'s walk (the J.4.2.c
+positional family + Foundation A/B + the walk-through-resolved/
+unresolved lemmas) or (b) prove the body characterizations
+directly in linearise shape (which currently requires
+`s.pendingKeys = #[]` — a precondition that fails because
+`saveSimpleKey` fires during preprocess before `[`/`{` is
+dispatched).
+
+**So is `linearise` "just a ghost predicate"?** No — it's real
+runtime code, used in production. **Is the bookkeeping around it
+acting like one?** Effectively yes: the architectural simplicity
+of `(tokens, pendingKeys)` is shadowed by ~30 supporting lemmas in
+`Proofs/Scanner/ScannerLinearise.lean` (2,232 lines), most of which
+exist to compensate for the fact that `linearise` is now between
+`scanLoopFull` and the parser. The proof obligations were
+**relocated, not reduced**.
+
+### 5. Why we are stopping
+
+Three concrete blockers, each independently sufficient:
+
+1. **Predicate growth is unbounded.** Every cadence step from γ-1
+   onward (≈26 sub-steps spanning 2026-05-02 → 2026-05-04) added a
+   new conjunct to `EmitScansInFlow` / `EmitListScansInFlow` /
+   `EmitPairListScansInFlow` rather than discharging existing ones.
+   The discharge graph has not shown a fixed point: the
+   cascade-stitching cadence (the "1-2 cadence steps" promise in
+   §J.4 line 3757) was assessed by a planning agent on 2026-05-03 to
+   require **3-5 additional cadence steps and 700-1000 lines of new
+   infrastructure**, including yet another body-characterization
+   variant (`emitList_body_linearise_characterization_general`,
+   without the `AllUnresolved` precondition) that does not currently
+   exist.
+
+2. **Architectural goal not met.** The original plan removed
+   `simpleKey` and `simpleKeyStack`. The actual code keeps both,
+   running them in lock-step with `pendingKeys` /
+   `pendingKeyActive` / `pendingKeyStack`. There is no path from
+   here to the planned end state without unwinding the
+   "J.2 dual-write" decision, which would invalidate the entire
+   J.3 proof corpus built on top of it.
+
+3. **Cost-benefit inversion.** Initiative 3 was scoped at 7-10 weeks
+   single-contributor (line 4230) on the premise that it would
+   unblock Tier 2 emitter-scannability. After ≈10 weeks of work,
+   Tier 2 is **further** from green than it was on `main` before
+   the initiative started, because the cascade-stitching layer
+   (which has no analogue on `main`) is now the binding constraint.
+   The initiative made the proof corpus **larger and more
+   interdependent** while leaving the original Tier 2 question
+   unanswered.
+
+### 6. What to salvage, what to revert
+
+The feature branch contains genuinely useful work that should not
+be discarded wholesale.
+
+**Keep on `feature/append-only` for archival; do not merge to `main`:**
+- The `linearise` algorithm itself
+  (`L4YAML/Scanner/Linearise.lean`, 95 lines).
+- `ScannerLinearise.lean`'s positional family and Foundation
+  lemmas — these are general-purpose and could inform a future
+  redesign even if not used as-is.
+- The 134-commit cadence ledger — it's a forensic record of where
+  the predicate growth went off-rails, and a future initiative
+  should consult it before re-attempting.
+
+**Revert before any new Tier 2 work:**
+- `ScannerState`'s `pendingKeys`, `pendingKeyActive`,
+  `pendingKeyStack` fields. Restore the legacy `simpleKey` /
+  `simpleKeyStack` / `setIfInBounds` model.
+- The 6 ghost predicates introduced for J.4.2.b chain machinery.
+- The 17–24 conjuncts in `Emit*ScansInFlow` predicates — these are
+  initiative-3 specific and have no consumer outside it.
+
+**Re-attack Tier 2 from the legacy model.** The original blocker —
+proving that `simpleKey.tokenIndex + 1` is never promoted in
+`emitList`-shaped chains — is a single forward-stability lemma.
+That is plausibly tractable with a `PlaceholderStable` invariant
+on the legacy model (Path A in the original architecture review),
+which was rejected at the time on the assumption that Initiative 3
+would deliver the same result more cheaply. **It has not.**
+
+### 7. Lessons for the next attempt
+
+If a future initiative revisits append-only-ness:
+
+1. **Do not allow parallel state.** The "J.2 dual-write" decision
+   was the single largest source of debt. If `simpleKey` is being
+   replaced by `pendingKeys`, the migration must be atomic: every
+   read site of `simpleKey.*` must flip to `pendingKeys[active].*`
+   in the same commit. Anything else creates two truths.
+
+2. **Cap the predicate budget upfront.** A bundled return contract
+   that grows past ~6 conjuncts is a smell. If a sub-cadence wants to
+   add the 7th, that's the moment to step back and ask whether the
+   discharge architecture is right, not the moment to thread a new
+   destructure binder through 8 sites.
+
+3. **Discharge before strengthening.** Initiative 3's cadence pattern
+   was: identify a sorry → strengthen the predicate to make discharge
+   possible → defer discharge to the next sub-step → identify the
+   next sorry → repeat. The first commit that discharged a J.4.2.b
+   sorry without strengthening a predicate was γ-3b-iii-D
+   (2026-05-04, 24+ sub-steps after γ-1). That ratio is the
+   warning sign.
+
+4. **The cascade is the gate, not the body.** `Emit*ScansInFlow` is
+   a means; `scanFiltered_emit{Seq,Map}_nonempty_structure` is the
+   end. Any Initiative-3-style refactor should start by drafting
+   the cascade discharge in pseudocode and only then design the
+   ghost predicate that supports it. Initiative 3 designed the
+   predicate first and discovered the cascade did not fit.
+
+5. **Formalize algebraic laws first; ghost predicates last.** A
+   substantial fraction of the J.4.2.b-2d-key-chain conjunct
+   growth was the ad-hoc restatement of algebraic facts inside
+   bundled return contracts: bracket-balance composition,
+   `expandKind`'s neutrality on bracket delta, `insertBeforeIdx`
+   monotonicity under `saveSimpleKey` ordering, `linearise`
+   commuting with trailing `streamEnd` push, `pkRec` preservation
+   under indent updates, etc. Each of these is a single named
+   lemma about an algebraic structure (position monoid, indent
+   stack, splice algebra, save-time order). Stating them as
+   first-class lemmas in a dedicated `L4YAML/Algebra/*.lean`
+   library would have produced a fixed library of ~15–20
+   one-page proofs reused everywhere; instead each property was
+   threaded through `Emit*ScansInFlow`'s ∃ tuple as a new
+   conjunct, forcing every consumer to re-destructure and
+   every producer to re-discharge it locally. Ghost predicates
+   in proof corpora are valid; **ghost predicates that smuggle
+   forgotten algebra are a smell**.
+
+6. **Specification datatypes should carry source provenance.**
+   `YamlValue`, `Scalar`, `YamlDocument` describe abstract
+   structure but not the source string, source range, line/col,
+   or scalar style they came from. Every roundtrip proof
+   (`parseYamlRaw (emit v) = .ok v`, `Grammable v inFlow`,
+   `EmitScansInFlow v`) is therefore a byte-level claim about
+   `(emit v).toList` rather than a structural claim about `v`.
+   The chain of ghost predicates relating an abstract
+   `YamlValue` to its byte-level scan output exists *only*
+   because the abstract value cannot refer to itself as a
+   string. A `YamlValue` annotated with source range + style
+   + scalar-class would let claims like
+   `WellFormedFlow v ↔ (range, style, content) satisfies grammar`
+   be a structural predicate, and `EmitScansInFlow v` would
+   reduce to "the recursive structural predicate holds for
+   every sub-value." Most of the cascade-stitching machinery
+   (`emitList_body_filtered_characterization`,
+   `emitPairList_body_linearise_characterization`, the bracket-
+   balance walk, `linearise_outer_flowEntry_decode_top`) exists
+   to bridge the abstract-vs-byte gap.
+
+These two observations point to the same root cause: the
+verification effort treated `YamlValue` as a black box and tried
+to characterize its byte-level behavior **after the fact**,
+rather than treating its byte-level structure as part of the
+type. The result is that every proof has to reconstruct the
+relationship between value and source — which is the bulk of
+the work and the source of the predicate explosion.
+
