@@ -2130,4 +2130,103 @@ theorem linearise_walk_at_kth_predecessor_token
     rw [h_get_eq_idx _ acc'.size h_lt_lin_idx h_lt_lin h_acc'_size.symm]
     exact h_at_acc'sz
 
+/-- **γ-3b-iii-C / J.4.2.b-2d-key Part(3) walk-through-unresolved-keyOnly**:
+    given a transport equation `linearise tokens pks = linearise.go tokens pks j p acc`
+    with `acc.size = k`, plus a `.keyOnly` "target" entry at some index `q ≥ p`,
+    plus the splice-readiness condition `pks[r].insertBeforeIdx ≤ j` for every
+    `r ∈ [p, q]` (save-time monotonicity at the consumer site), plus the
+    γ-3b-ii kind disjunction `pks[r].kind ∈ {.unresolved, .keyOnly}` for every
+    `r ∈ [p, q]`, conclude `linearise[k].val = .key`.
+
+    Walks `linearise.go` from `(j, p, acc)` through pks entries `[p, q]`:
+    `.unresolved` entries fire without modifying `acc` (since
+    `expandKind` produces `#[]`), `.keyOnly` entries fire and immediately
+    discharge via Foundation B (`linearise_splice_keyonly_at_index`).
+    The first `.keyOnly` encountered is sufficient — it produces `.key`
+    at position `acc.size = k` regardless of whether further entries
+    follow.  When the entire range `[p, q)` is `.unresolved`, the walk
+    advances `p'` up to `q` and then fires `pks[q]` (which is `.keyOnly`
+    by hypothesis) at the same accumulator size.
+
+    Used by `emitPairList_body_linearise_characterization` Part (3)
+    (γ-3b-iii-D, future) to walk from the chain-side state
+    `(j_k+1, p_k, acc')` (with `acc'.size = k+1`) to the next `.keyOnly`
+    entry at `qs[i]`, reading off `linearise[k+1] = .key` for the
+    after-flowEntry-key claim.
+
+    Proof: induction on `q - p'` (the worker's lex-measure for the walk).
+    * **Base (`q - p' = 0`)**: `p' = q`, so `pks[p']` is `.keyOnly` (by
+      `h_q_kind`) with `insertBeforeIdx ≤ j` (by `h_idx_le`); apply
+      Foundation B index form directly.
+    * **Step (`q - p' = n+1`)**: `p' < q`, so `pks[p']` exists; case-split
+      on `h_kind_disj p'`:
+      - `.unresolved`: fire via `linearise_go_step_splice` + `expandKind = #[]`
+        + `Array.append_empty`; `acc'` is unchanged so the IH applies at
+        `(j, p'+1, acc')`.
+      - `.keyOnly`: apply Foundation B at `(j, p', acc')` directly — the
+        first `.keyOnly` in the range is enough; further walking is
+        unnecessary. -/
+theorem linearise_walk_through_unresolved_keyOnly
+    (tokens : Array (Positioned YamlToken))
+    (pks : Array PendingKeyEntry)
+    (j p q k : Nat)
+    (acc : Array (Positioned YamlToken))
+    (h_eq : linearise tokens pks = linearise.go tokens pks j p acc)
+    (h_acc_size : acc.size = k)
+    (h_pq : p ≤ q)
+    (h_q_lt : q < pks.size)
+    (h_q_kind : (pks[q]'h_q_lt).kind = .keyOnly)
+    (h_idx_le : ∀ r (_h_pr : p ≤ r) (_h_rq : r ≤ q) (h_r : r < pks.size),
+      (pks[r]'h_r).insertBeforeIdx ≤ j)
+    (h_kind_disj : ∀ r (_h_pr : p ≤ r) (_h_rq : r ≤ q) (h_r : r < pks.size),
+      (pks[r]'h_r).kind = .unresolved ∨ (pks[r]'h_r).kind = .keyOnly) :
+    ∃ (h_lin : k < (linearise tokens pks).size),
+      ((linearise tokens pks)[k]'h_lin).val = .key := by
+  -- Inductive helper: at any `(j, p', acc')` with `p ≤ p' ≤ q`, `acc'.size = k`,
+  -- and a transport equation, the conclusion holds.  Induct on `q - p'`.
+  suffices h_step : ∀ (n p' : Nat) (acc' : Array (Positioned YamlToken)),
+      q - p' = n →
+      p ≤ p' →
+      p' ≤ q →
+      acc'.size = k →
+      linearise tokens pks = linearise.go tokens pks j p' acc' →
+      ∃ (h_lin : k < (linearise tokens pks).size),
+        ((linearise tokens pks)[k]'h_lin).val = .key by
+    exact h_step (q - p) p acc rfl (Nat.le_refl _) h_pq h_acc_size h_eq
+  intro n
+  induction n with
+  | zero =>
+    intro p' acc' h_meas _h_pp' h_p'q h_acc'_size h_eq'
+    -- p' = q; pks[p'] = pks[q] is .keyOnly, insertBeforeIdx ≤ j.  Apply Foundation B.
+    have h_p'_eq_q : p' = q := by omega
+    subst h_p'_eq_q
+    have h_splice : (pks[p']'h_q_lt).insertBeforeIdx ≤ j :=
+      h_idx_le p' (by omega) (Nat.le_refl _) h_q_lt
+    exact linearise_splice_keyonly_at_index tokens pks j p' k acc'
+      h_eq' h_acc'_size h_q_lt h_splice h_q_kind
+  | succ n ih =>
+    intro p' acc' h_meas h_pp' _h_p'q h_acc'_size h_eq'
+    -- p' < q.  Inspect pks[p']'s kind via the disjunction.
+    have h_p'_lt_q : p' < q := by omega
+    have h_p'_lt : p' < pks.size := by omega
+    have h_kind_p' := h_kind_disj p' h_pp' (Nat.le_of_lt h_p'_lt_q) h_p'_lt
+    have h_splice_p' : (pks[p']'h_p'_lt).insertBeforeIdx ≤ j :=
+      h_idx_le p' h_pp' (Nat.le_of_lt h_p'_lt_q) h_p'_lt
+    rcases h_kind_p' with h_unres | h_keyOnly
+    · -- pks[p'] is .unresolved: fire (acc unchanged), recurse with p'+1.
+      have h_expand : expandKind (pks[p']'h_p'_lt) = #[] := by
+        unfold expandKind; rw [h_unres]
+      have h_step_unres :
+          linearise.go tokens pks j p' acc'
+            = linearise.go tokens pks j (p' + 1) acc' := by
+        rw [linearise_go_step_splice tokens pks j p' acc' h_p'_lt h_splice_p',
+            h_expand, Array.append_empty]
+      have h_eq_next : linearise tokens pks
+          = linearise.go tokens pks j (p' + 1) acc' := by
+        rw [h_eq', h_step_unres]
+      exact ih (p' + 1) acc' (by omega) (by omega) (by omega) h_acc'_size h_eq_next
+    · -- pks[p'] is .keyOnly: apply Foundation B at (j, p', acc') directly.
+      exact linearise_splice_keyonly_at_index tokens pks j p' k acc'
+        h_eq' h_acc'_size h_p'_lt h_splice_p' h_keyOnly
+
 end L4YAML.Proofs.ScannerLinearise
