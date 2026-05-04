@@ -14287,12 +14287,35 @@ theorem emitPairList_body_filtered_characterization
              flowBracketBalance s'.tokens s.tokens.size kk = 0 →
              ∃ (i : Nat) (hi : i < qs.size) (_h_pos_i : 0 < i)
                (h_lt : qs[i]'hi < s'.pendingKeys.size),
-               kk + 1 = (s'.pendingKeys[qs[i]'hi]'h_lt).insertBeforeIdx)) := by
+               kk + 1 = (s'.pendingKeys[qs[i]'hi]'h_lt).insertBeforeIdx))
+    -- (8) Part3-final-discharge-bridge-6c-ii-γ-3b-ii-predicate (2026-05-03):
+    -- newly-pushed pendingKey entries have kind ∈ {.unresolved, .keyOnly}.
+    -- Threaded from `EmitPairListScansInFlow`; consumed by γ-3b-iii-D's
+    -- discharge of `emitPairList_body_linearise_characterization` Part (3)
+    -- to satisfy γ-3b-iii-C's `h_kind_disj` precondition.
+    ∧ (∀ (q : Nat) (h_q : q < s'.pendingKeys.size) (_h_q_ge : s.pendingKeys.size ≤ q),
+        (s'.pendingKeys[q]'h_q).kind = .unresolved ∨
+          (s'.pendingKeys[q]'h_q).kind = .keyOnly)
+    -- (9) Part3-final-discharge-bridge-6c-ii-γ-3b-iii-B (2026-05-04):
+    -- conditional save-time monotonicity + well-indexed bound on
+    -- `s'.pendingKeys`.  Conditional on `LineariseFit s ∧ AllKeysValid s`;
+    -- consumed by γ-3b-iii-D to (i) supply the bound precondition for
+    -- `linearise_outer_flowEntry_decode_top` and (ii) derive
+    -- `pks[r].insertBeforeIdx ≤ pks[qs[i]].insertBeforeIdx` for r ≤ qs[i]
+    -- (γ-3b-iii-C's `h_idx_le` precondition).
+    ∧ (ScannerCorrectness.LineariseFit s →
+        ScannerCorrectness.AllKeysValid s →
+        (∀ p q (hp : p < s'.pendingKeys.size) (hq : q < s'.pendingKeys.size),
+              p ≤ q →
+            (s'.pendingKeys[p]'hp).insertBeforeIdx
+              ≤ (s'.pendingKeys[q]'hq).insertBeforeIdx) ∧
+        (∀ r (hr : r < s'.pendingKeys.size),
+            (s'.pendingKeys[r]'hr).insertBeforeIdx ≤ s'.tokens.size)) := by
   -- Construct the chain from EmitPairListScansInFlow
   have h_scan := emitPairList_scans_nonempty pairs h_ne h_all_k h_all_v
   obtain ⟨n, s', h_chain, h_corr', h_fl', h_dp', h_ids', h_ek', h_col', h_inflow',
           h_indent', h_line', h_atol', h_endline', h_stack', h_fmc, _h_size, _h_pkRec,
-          _h_newkind, _h_pks_eq, h_first, h_first_qs, _h_balfacts_body⟩ :=
+          h_newkind, _h_pks_eq, h_first, h_first_qs, _h_balfacts_body, h_save_mono_cond⟩ :=
     h_scan s rest h_corr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_ska
   have h_n_pos : n ≥ 1 := by
     match n, h_chain with
@@ -14314,7 +14337,8 @@ theorem emitPairList_body_filtered_characterization
   have h_grows := ScanChainGrew_filtered_grows h_chain
   refine ⟨n, s', h_chain.toScanChain, h_corr', h_fl', h_dp', h_ids', h_ek',
           h_col', h_inflow', h_indent', h_line', h_atol', h_endline',
-          h_stack', h_fmc, ?_, ?_, ?_, h_first h_ne, h_first_qs h_ne⟩
+          h_stack', h_fmc, ?_, ?_, ?_, h_first h_ne, h_first_qs h_ne,
+          h_newkind, h_save_mono_cond⟩
   · -- Part 1: n ≥ 3
     sorry
   · -- Part 2: First new filtered token is .key
@@ -14739,6 +14763,69 @@ theorem linearise_go_walk_flowBracketBalance_top
   linearise_go_walk_flowBracketBalance tokens pks _ j p j' p' acc rfl
     h_jj' h_j'_le h_pp' h_p'_le h_inrange h_p'_ge
 
+/-- **Balance prefix equality** (γ-3b-iii-D helper, 2026-05-04): when no
+    splice fires before linearise position `m`, the cumulative bracket
+    balance over `linearise tokens pks` from 0 to `m` matches the balance
+    over `tokens` from 0 to `m`.
+
+    Walks `linearise.go` from `(0, 0, #[])` to `(m, 0, extra)` via
+    `linearise_go_walk_flowBracketBalance_top` (the `h_inrange` precondition
+    is vacuous since `p = p' = 0`; the barrier `h_p'_ge` is the
+    `h_no_early` hypothesis).  Combines with `linearise_go_walk_size`
+    (extra.size = m) and `flowBracketBalance_append_left` (lin = (#[] ++
+    extra) ++ tail; balance over [0, m) of lin = balance over [0, m) of
+    extra) to yield the equation.
+
+    Used by `emitPairList_body_linearise_characterization` Part (3) to
+    translate the linearise-side balance hypothesis
+    (`flowBracketBalance lin old_sz k = 0`) to the s'.tokens-side form
+    expected by γ-1's outer-flowEntry exhaustiveness conjunct
+    (`flowBracketBalance s'.tokens s.tokens.size j_k = 0`). -/
+theorem linearise_balance_prefix_eq
+    (tokens : Array (Positioned YamlToken))
+    (pks : Array PendingKeyEntry)
+    (m : Nat) (h_m : m ≤ tokens.size)
+    (h_no_early : ∀ r (h : r < pks.size), m ≤ (pks[r]'h).insertBeforeIdx) :
+    flowBracketBalance (L4YAML.Scanner.linearise tokens pks) 0 m
+      = flowBracketBalance tokens 0 m := by
+  -- Walk linearise from (0, 0, #[]) to (m, 0, extra) — no splice fires.
+  obtain ⟨extra, h_walk_eq, h_bal_extra⟩ :=
+    linearise_go_walk_flowBracketBalance_top tokens pks 0 0 m 0 #[]
+      (Nat.zero_le _) h_m (Nat.le_refl _) (Nat.zero_le _)
+      (fun r _ h_rp' _ => absurd h_rp' (Nat.not_lt_zero _))
+      (fun hp' => h_no_early 0 hp')
+  -- Compute extra.size = m using linearise_go_walk_size on the walk equation.
+  have h_size_eq :=
+    L4YAML.Proofs.ScannerLinearise.linearise_go_walk_size tokens pks 0 0 m 0 #[]
+      (#[] ++ extra) h_walk_eq
+  have h_extra_size : extra.size = m := by
+    have h_app_size : (#[] ++ extra).size = extra.size := by simp
+    rw [h_app_size] at h_size_eq
+    -- (#[]).size = 0; cancels the pendingExpandSumFrom on both sides.
+    simp at h_size_eq
+    omega
+  -- linearise tokens pks = linearise.go tokens pks 0 0 #[] (definitional);
+  -- transport to (m, 0, #[] ++ extra).
+  have h_lin_eq : L4YAML.Scanner.linearise tokens pks
+      = L4YAML.Scanner.linearise.go tokens pks m 0 (#[] ++ extra) := h_walk_eq
+  -- Use linearise_go_eq_acc_append: lin = (#[] ++ extra) ++ tail.
+  obtain ⟨tail, h_acc_app⟩ :=
+    L4YAML.Proofs.ScannerLinearise.linearise_go_eq_acc_append
+      tokens pks m 0 (#[] ++ extra)
+  have h_lin_app : L4YAML.Scanner.linearise tokens pks
+      = (#[] ++ extra) ++ tail := by rw [h_lin_eq, h_acc_app]
+  -- Apply flowBracketBalance_append_left: balance over [0, m) with m ≤ (#[] ++ extra).size.
+  have h_bound : m ≤ (#[] ++ extra).size := by
+    have h_app_size : (#[] ++ extra).size = extra.size := by simp
+    rw [h_app_size, h_extra_size]; exact Nat.le_refl _
+  rw [h_lin_app, flowBracketBalance_append_left _ tail 0 m h_bound]
+  -- Now: flowBracketBalance (#[] ++ extra) 0 m = flowBracketBalance tokens 0 m.
+  -- h_bal_extra: balance (#[] ++ extra) (#[]).size (#[].size + extra.size) = balance tokens 0 m
+  have h_acc_zero : (#[] : Array (Positioned YamlToken)).size = 0 := rfl
+  rw [h_acc_zero] at h_bal_extra
+  rw [show 0 + extra.size = m from by rw [Nat.zero_add, h_extra_size]] at h_bal_extra
+  exact h_bal_extra
+
 /-! ### J.4.2.b-2d-key-chain-Part3 sub-step 6c-ii-γ-3a (2026-05-04):
     linearise outer-flowEntry inversion
 
@@ -15140,7 +15227,12 @@ theorem emitPairList_body_linearise_characterization
     (h_sk : s.simpleKey.possible = false)
     (h_ska : s.simpleKeyAllowed = true)
     (h_no_pl : ScannerCorrectness.NoPlaceholders s)
-    (h_pks_empty : s.pendingKeys = #[]) :
+    (h_pks_empty : s.pendingKeys = #[])
+    -- γ-3b-iii-D (2026-05-04): preconditions consumed by the chain-side
+    -- save-time-mono + bound conjunct exposed by
+    -- `emitPairList_body_filtered_characterization` (γ-3b-iii-B form).
+    (h_lin : ScannerCorrectness.LineariseFit s)
+    (h_akv : ScannerCorrectness.AllKeysValid s) :
     let p := fun (t : Positioned YamlToken) => t.val != .placeholder
     let old_sz := (s.tokens.filter p).size
     ∃ n s', ScanChain s n s'
@@ -15176,7 +15268,8 @@ theorem emitPairList_body_linearise_characterization
     s rest h_corr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_sk h_ska
   obtain ⟨n, s', h_chain, h_corr', h_fl', h_dp', h_ids', h_ek', h_col', h_inflow',
           h_indent', h_line', h_atol', h_endline', h_stack', h_fmc',
-          h_n_ge3, _h_body_key, _h_body_fe_next, h_first_key, _h_first_qs⟩ := h_filt
+          h_n_ge3, _h_body_key, _h_body_fe_next, h_first_key, h_first_qs,
+          h_newkind, h_save_mono_cond⟩ := h_filt
   -- Step 2: derive NoPlaceholders s' (unconditional via 2b-discharge).
   -- AllUnresolved does NOT carry — `:` resolutions are by design here.
   have h_no_pl' : ScannerCorrectness.NoPlaceholders s' :=
@@ -15490,20 +15583,127 @@ theorem emitPairList_body_linearise_characterization
     -- after-copy conjunct.  The full inversion bridge here remains pending
     -- in 6c-ii-γ-3b-ii (chain-side flow-context kind restriction) +
     -- 6c-ii-γ-3b-iii (linearise-side Part (3) final discharge).
-    have h_chain_facts :
-        ∃ (j p : Nat) (acc : Array (Positioned YamlToken))
-          (_ : linearise s'.tokens s'.pendingKeys
-                = L4YAML.Scanner.linearise.go s'.tokens s'.pendingKeys j p acc)
-          (_ : acc.size = k + 1)
-          (h_p : p < s'.pendingKeys.size),
-          s'.pendingKeys[p].insertBeforeIdx ≤ j ∧ s'.pendingKeys[p].kind = .keyOnly := by
-      sorry
-    obtain ⟨j, p, acc, h_eq_lin, h_acc_size, h_p, h_splice, h_kind⟩ := h_chain_facts
-    obtain ⟨h_k1_lt, h_at⟩ :=
-      L4YAML.Proofs.ScannerLinearise.linearise_splice_keyonly_at_index
-        s'.tokens s'.pendingKeys j p (k + 1) acc
-        h_eq_lin h_acc_size h_p h_splice h_kind
-    exact ⟨h_k1_lt, fun _ => h_at⟩
+    -- γ-3b-iii-D (2026-05-04) discharge: pipeline composing γ-3b-iii-A's
+    -- linearise → s'.tokens decode + γ-1's exhaustiveness inversion +
+    -- γ-3b-iii-B's save-time-mono + γ-3b-iii-C's walk-through-unresolved-
+    -- keyOnly lemma.
+
+    -- old_sz = (s.tokens.filter p).size = s.tokens.size (NoPlaceholders s).
+    have h_filter_eq_s :
+        s.tokens.filter (fun t => t.val != .placeholder) = s.tokens := by
+      apply Array.filter_eq_self.mpr
+      intro t h_mem
+      have h_ne : t.val ≠ .placeholder := h_no_pl t h_mem
+      simp [bne_iff_ne, h_ne]
+    have h_old_sz_eq : (s.tokens.filter (fun t => t.val != .placeholder)).size
+        = s.tokens.size := by rw [h_filter_eq_s]
+    have h_sz_zero : s.pendingKeys.size = 0 := by rw [h_pks_empty]; rfl
+    -- Specialise the body's first-pair conjunct via h_pks_empty.
+    have h_first_key₀ : ∃ (h : 0 < s'.pendingKeys.size),
+        (s'.pendingKeys[0]'h).insertBeforeIdx = s.tokens.size
+        ∧ (s'.pendingKeys[0]'h).kind = .keyOnly := h_sz_zero ▸ h_first_key
+    obtain ⟨h_pos, h_first_idx, _h_first_kind⟩ := h_first_key₀
+    -- Step A: derive bound `pks[r].insertBeforeIdx ≤ s'.tokens.size` and mono
+    -- via γ-3b-iii-B (consumes h_lin + h_akv).
+    have h_save_mono := h_save_mono_cond h_lin h_akv
+    have h_idx_le_tok : ∀ r (h : r < s'.pendingKeys.size),
+        (s'.pendingKeys[r]'h).insertBeforeIdx ≤ s'.tokens.size := h_save_mono.2
+    -- Step B: apply γ-3b-iii-A — linearise outer-flowEntry decode.
+    obtain ⟨j_k, h_j_k_lt, h_tok_fe, h_bal_eq, p_k, acc', h_pk_le, h_walk_eq,
+            h_acc'_size, h_idx_inv⟩ :=
+      linearise_outer_flowEntry_decode_top s'.tokens s'.pendingKeys h_idx_le_tok k h_hi h_fe
+    -- Step C: derive no-early-splice: pks[r].insertBeforeIdx ≥ s.tokens.size for all r.
+    have h_no_early : ∀ r (h : r < s'.pendingKeys.size),
+        s.tokens.size ≤ (s'.pendingKeys[r]'h).insertBeforeIdx := by
+      intro r h_r
+      have h_mono := h_save_mono.1 0 r h_pos h_r (Nat.zero_le _)
+      rw [← h_first_idx]; exact h_mono
+    -- Step D: derive s.tokens.size ≤ j_k (case split on p_k = 0 vs p_k > 0).
+    have h_size_le_k : s.tokens.size ≤ k := h_old_sz_eq ▸ h_old_le_k
+    have h_size_le_jk : s.tokens.size ≤ j_k := by
+      by_cases h_pk_zero : p_k = 0
+      · -- p_k = 0: walk did pure copies; from linearise_go_walk_size, j_k = k.
+        subst h_pk_zero
+        have h_size_eq :=
+          L4YAML.Proofs.ScannerLinearise.linearise_go_walk_size s'.tokens s'.pendingKeys
+            (j_k + 1) 0 0 0 acc' #[] h_walk_eq.symm
+        -- (#[]).size + (tokens.size - 0) + sumFrom 0 = acc'.size + (tokens.size - (j_k+1)) + sumFrom 0
+        -- 0 + tokens.size = (k+1) + (tokens.size - j_k - 1)  ⇒ j_k = k.
+        simp at h_size_eq
+        rw [h_acc'_size] at h_size_eq
+        have h_jk_eq : j_k = k := by
+          have h_jk_lt' : j_k + 1 ≤ s'.tokens.size := h_j_k_lt
+          omega
+        omega
+      · -- p_k > 0: idx-inv at r = 0 gives pks[0].insertBeforeIdx ≤ j_k.
+        have h_zero_lt_pk : 0 < p_k := Nat.pos_of_ne_zero h_pk_zero
+        have h_pks_pos : 0 < s'.pendingKeys.size := h_pos
+        have h_idx_zero := h_idx_inv 0 h_zero_lt_pk h_pks_pos
+        rw [← h_first_idx]; exact h_idx_zero
+    -- Step E: translate balance from linearise side to s'.tokens side.
+    have h_pref_eq : flowBracketBalance (linearise s'.tokens s'.pendingKeys) 0 s.tokens.size
+        = flowBracketBalance s'.tokens 0 s.tokens.size := by
+      have h_size_le_s' : s.tokens.size ≤ s'.tokens.size := ScanChain_tokens_mono h_chain
+      exact linearise_balance_prefix_eq s'.tokens s'.pendingKeys s.tokens.size h_size_le_s'
+        h_no_early
+    have h_split_lin :
+        flowBracketBalance (linearise s'.tokens s'.pendingKeys) 0 k =
+        flowBracketBalance (linearise s'.tokens s'.pendingKeys) 0 s.tokens.size +
+        flowBracketBalance (linearise s'.tokens s'.pendingKeys) s.tokens.size k :=
+      flowBracketBalance_compose _ 0 s.tokens.size k (Nat.zero_le _) h_size_le_k
+    have h_lin_to_k_eq_pref :
+        flowBracketBalance (linearise s'.tokens s'.pendingKeys) s.tokens.size k = 0 := by
+      rw [show s.tokens.size = (s.tokens.filter (fun t => t.val != .placeholder)).size from
+          h_old_sz_eq.symm]
+      exact h_balance
+    have h_split_s' :
+        flowBracketBalance s'.tokens 0 j_k =
+        flowBracketBalance s'.tokens 0 s.tokens.size +
+        flowBracketBalance s'.tokens s.tokens.size j_k :=
+      flowBracketBalance_compose _ 0 s.tokens.size j_k (Nat.zero_le _) h_size_le_jk
+    have h_bal_s' : flowBracketBalance s'.tokens s.tokens.size j_k = 0 := by
+      omega
+    -- Step F: apply γ-1 outer-flowEntry exhaustiveness.
+    obtain ⟨qs, _h_qs_size, h_qs_pos_in, h_qs0, h_qs_kind, _h_qs_mono, _h_qs_pred,
+            h_qs_inv⟩ := h_first_qs
+    have h_jk_ge_s : s.tokens.size ≤ j_k := h_size_le_jk
+    obtain ⟨i, hi, h_pos_i, h_qsi_lt, h_jk_eq⟩ :=
+      h_qs_inv j_k h_j_k_lt h_jk_ge_s h_tok_fe h_bal_s'
+    -- Step G: derive qs[i] ≥ p_k (contrapositive of h_idx_inv).
+    have h_qsi_ge_pk : p_k ≤ qs[i]'hi := by
+      rcases Nat.lt_or_ge (qs[i]'hi) p_k with h_lt | h_ge
+      · -- qs[i] < p_k ⇒ pks[qs[i]].insertBeforeIdx ≤ j_k (idx-inv).
+        -- But pks[qs[i]].insertBeforeIdx = j_k + 1 (from h_jk_eq).  Contradiction.
+        exfalso
+        have h_idx_qsi := h_idx_inv (qs[i]'hi) h_lt h_qsi_lt
+        omega
+      · exact h_ge
+    -- Step H: kind disjunction for r ∈ [p_k, qs[i]] via γ-3b-ii (h_newkind).
+    have h_kind_disj : ∀ r (_h_pk_r : p_k ≤ r) (_h_r_qsi : r ≤ qs[i]'hi)
+        (h_r : r < s'.pendingKeys.size),
+        (s'.pendingKeys[r]'h_r).kind = .unresolved ∨
+          (s'.pendingKeys[r]'h_r).kind = .keyOnly := by
+      intro r _h_pk_r _h_r_qsi h_r
+      exact h_newkind r h_r (h_sz_zero ▸ Nat.zero_le _)
+    -- Step I: idx bound for r ∈ [p_k, qs[i]] via γ-3b-iii-B mono.
+    have h_idx_le_jk1 : ∀ r (_h_pk_r : p_k ≤ r) (h_r_qsi : r ≤ qs[i]'hi)
+        (h_r : r < s'.pendingKeys.size),
+        (s'.pendingKeys[r]'h_r).insertBeforeIdx ≤ j_k + 1 := by
+      intro r _h_pk_r h_r_qsi h_r
+      have h_le_qsi := h_save_mono.1 r (qs[i]'hi) h_r h_qsi_lt h_r_qsi
+      have h_qsi_eq : (s'.pendingKeys[qs[i]'hi]'h_qsi_lt).insertBeforeIdx = j_k + 1 :=
+        h_jk_eq.symm
+      omega
+    -- Step J: read kind = .keyOnly at qs[i] from h_qs_kind.
+    obtain ⟨h_qsi_lt', h_qsi_kind⟩ := h_qs_kind i hi
+    -- The two h_qsi_lt witnesses are propositionally equal; coerce.
+    have h_qsi_kind' : (s'.pendingKeys[qs[i]'hi]'h_qsi_lt).kind = .keyOnly := h_qsi_kind
+    -- Step K: apply γ-3b-iii-C.
+    obtain ⟨h_k1_lt, h_at_k1⟩ :=
+      L4YAML.Proofs.ScannerLinearise.linearise_walk_through_unresolved_keyOnly
+        s'.tokens s'.pendingKeys (j_k + 1) p_k (qs[i]'hi) (k + 1) acc'
+        h_walk_eq h_acc'_size h_qsi_ge_pk h_qsi_lt h_qsi_kind' h_idx_le_jk1 h_kind_disj
+    exact ⟨h_k1_lt, fun _ => h_at_k1⟩
 
 /-- Token structure of `scanFiltered ("[" ++ emitList items ++ "]")` for non-empty items.
     Establishes boundary tokens, body token patterns, and `parseNode` success within
@@ -15766,7 +15966,7 @@ theorem scanFiltered_emitMap_nonempty_structure
   obtain ⟨n₂, s₂, h_chain₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂,
           h_ek₂, h_col₂, h_inflow₂, h_indent₂, _, _, _, h_stack₂, h_fmc₂,
           h_n₂_ge3, ⟨h_body_sz_raw, h_body_key_raw⟩, h_body_fe_next_raw,
-          _h_body_first, _h_body_first_qs⟩ :=
+          _h_body_first, _h_body_first_qs, _h_body_newkind, _h_body_save_mono⟩ :=
     emitPairList_body_filtered_characterization pairs.toList h_ne
       (fun p hp => h_all_scan_k p hp) (fun p hp => h_all_scan_v p hp) s₁ ['}']
       h_corr₁ h_inflow₁ (by rw [h_fl₁]; omega) h_indent₁ (by rw [h_col₁]; omega)
