@@ -125,11 +125,29 @@ option(L4YAML_BUILD_FFI "Build libl4yaml shared library and tryparse_c" ON)
 if(L4YAML_BUILD_FFI)
   # ffi/CMakeLists.txt globs .lake/build/ir/*.c at *configure* time and
   # errors out if empty.  On a fresh tree (e.g. a colcon build), lake
-  # has not run yet, so we bootstrap the IR here.  `lake build L4YAML`
-  # produces the .c files for the L4YAML lib + its transitive deps,
-  # which is what the FFI glob needs.  Lake is incremental, so the
-  # subsequent build-time `lake-build` target is a no-op when nothing
-  # changed.
+  # has not run yet, so we bootstrap the IR here.  First run `lake update`
+  # to resolve dependencies (no-op if manifest is current), then
+  # `lake build L4YAML` to produce the .c files for the L4YAML lib +
+  # its transitive deps, which is what the FFI glob needs.  Lake is
+  # incremental, so the subsequent build-time `lake-build` target is
+  # a no-op when nothing changed.
+  message(STATUS "Updating Lake dependencies (lake update)…")
+  execute_process(
+    COMMAND "${LAKE_EXECUTABLE}" update
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    RESULT_VARIABLE _lake_update_rc
+    OUTPUT_VARIABLE _lake_update_out
+    ERROR_VARIABLE  _lake_update_err)
+  if(NOT _lake_update_rc EQUAL 0)
+    message(FATAL_ERROR
+      "lake update failed (exit ${_lake_update_rc}).\n"
+      "If you see 'Permission denied' with no path, elan is likely the\n"
+      "culprit — check that \$HOME and ~/.elan/ are owned by the user\n"
+      "running colcon, and try `elan show` standalone in this directory.\n"
+      "---- lake stdout ----\n${_lake_update_out}"
+      "---- lake stderr ----\n${_lake_update_err}")
+  endif()
+
   message(STATUS "Bootstrapping Lake IR for ffi/ (lake build L4YAML)…")
   message(STATUS "  HOME=$ENV{HOME}")
   message(STATUS "  cwd=${CMAKE_CURRENT_SOURCE_DIR}")
@@ -142,7 +160,6 @@ if(L4YAML_BUILD_FFI)
   if(NOT _lake_bootstrap_rc EQUAL 0)
     message(FATAL_ERROR
       "lake build L4YAML failed (exit ${_lake_bootstrap_rc}).\n"
-      "If this is a fresh checkout, try `lake update` first.\n"
       "If you see 'Permission denied' with no path, elan is likely the\n"
       "culprit — check that \$HOME and ~/.elan/ are owned by the user\n"
       "running colcon, and try `elan show` standalone in this directory.\n"
