@@ -23,7 +23,7 @@ cmake_minimum_required(VERSION 3.20)
 # C is enabled unconditionally so GNUInstallDirs can resolve lib vs lib64
 # from the target architecture, and so the ffi/ subproject can compile
 # without re-enabling the language later.
-project(L4YAML LANGUAGES C)
+project(l4yaml LANGUAGES C)
 include(GNUInstallDirs)
 
 # ── elan-managed Lean toolchain ─────────────────────────────────────
