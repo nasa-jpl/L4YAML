@@ -86,12 +86,29 @@ if(EXISTS "${_l4yaml_toolchain_file}")
   endif()
 endif()
 
-# Tooling-only Lake packages whose IR is invoked only via `lake exe …`
-# (DocGen4, importGraph) — never linked into libl4yaml.so.  Both bundle
-# `lean_exe` entry points (collide on `main`) and reference the Lake
-# runtime (`l_Lake_Manifest_*`) which isn't part of this shared library.
-# Add new tooling-only packages here as they appear.
-set(L4YAML_FFI_SKIP_PACKAGES "DocGen4" "importGraph")
+# Lake packages whose IR is not part of libl4yaml.so.  Two categories,
+# treated identically — excluded from both the IR collection below and
+# the dep-toolchain guard further down.
+#
+#   * Tooling-only packages whose IR is invoked only via `lake exe …`
+#     (DocGen4, importGraph).  Both bundle `lean_exe` entry points
+#     (collide on `main`) and reference the Lake runtime
+#     (`l_Lake_Manifest_*`) which isn't part of this shared library.
+#
+#   * Transitive deps that L4YAML doesn't import, pulled in only to
+#     satisfy a tooling-only direct dep — BibtexQuery and MD4Lean
+#     come along for DocGen4's citation / markdown rendering.  They
+#     land under .lake/packages/ during resolution and get compiled
+#     once `lake build :docs` runs, but L4YAML's own IR doesn't
+#     reference any of their symbols, so linking them is dead weight.
+#     Worse: both track moving inputRevs (`nightly-testing` and
+#     `main`), so their lean-toolchain routinely drifts past this
+#     project's pin → undefined references at libl4yaml.so link time.
+#
+# Add new entries as Lake's resolution changes.
+set(L4YAML_FFI_SKIP_PACKAGES
+  "DocGen4" "importGraph"
+  "BibtexQuery" "MD4Lean")
 
 # 2. Each Lake-resolved dep's lean-toolchain vs the parent project's.
 #    Lake compiles a dep with that dep's own pin, then we link
