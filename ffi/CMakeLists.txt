@@ -86,7 +86,18 @@ if(EXISTS "${_l4yaml_toolchain_file}")
   endif()
 endif()
 
-# 2. Each Lake-resolved dep's lean-toolchain vs the parent project's.
+# Tooling-only Lake packages whose IR is invoked only via `lake exe …`
+# (DocGen4, importGraph) — never linked into libl4yaml.so.  Both bundle
+# `lean_exe` entry points (collide on `main`) and reference the Lake
+# runtime (`l_Lake_Manifest_*`) which isn't part of this shared library.
+# Add new tooling-only packages here as they appear.  Defined up here
+# (rather than next to the IR collection below) so the dep-toolchain
+# guard can also honor it — a mismatched toolchain on a package we're
+# already excluding from the link can't cause undefined references.
+set(L4YAML_FFI_SKIP_PACKAGES "DocGen4" "importGraph")
+
+# 2. Each Lake-resolved dep's lean-toolchain vs the parent project's,
+#    skipping packages already excluded from the IR collection.
 #    Lake compiles a dep with that dep's own pin, then we link
 #    everything against this project's libleanshared.so — if a dep is
 #    NEWER than the parent, its IR uses runtime / specialized stdlib
@@ -104,10 +115,13 @@ if(EXISTS "${_l4yaml_packages_dir}"
   set(_l4yaml_dep_mismatches "")
   foreach(_pkg_dir ${_l4yaml_pkg_dirs})
     if(IS_DIRECTORY "${_pkg_dir}" AND EXISTS "${_pkg_dir}/lean-toolchain")
+      get_filename_component(_pkg_name "${_pkg_dir}" NAME)
+      if(_pkg_name IN_LIST L4YAML_FFI_SKIP_PACKAGES)
+        continue()
+      endif()
       file(READ "${_pkg_dir}/lean-toolchain" _pkg_tc)
       string(STRIP "${_pkg_tc}" _pkg_tc)
       if(NOT _pkg_tc STREQUAL _l4yaml_toolchain_pin)
-        get_filename_component(_pkg_name "${_pkg_dir}" NAME)
         list(APPEND _l4yaml_dep_mismatches "  ${_pkg_name}: ${_pkg_tc}")
       endif()
     endif()
@@ -147,16 +161,12 @@ if(EXISTS "${IR_DIR}/L4YAML.c")
 endif()
 
 # ── Collect Lake dependency IR files ─────────────────────────────────
+# L4YAML_FFI_SKIP_PACKAGES is defined above with the toolchain guard
+# (so the guard can also honor it).
 set(PACKAGES_DIR "${PROJECT_ROOT}/.lake/packages")
 file(GLOB LAKE_PACKAGE_DIRS "${PACKAGES_DIR}/*")
 set(NATIVE_C_SOURCES "")
 set(NATIVE_ARCHIVES "")
-# Tooling-only Lake packages whose IR is invoked only via `lake exe …`
-# (DocGen4, importGraph) — never linked into libl4yaml.so.  Both
-# bundle `lean_exe` entry points (collide on `main`) and reference the
-# Lake runtime (`l_Lake_Manifest_*`) which isn't part of this shared
-# library.  Add new tooling-only packages here as they appear.
-set(L4YAML_FFI_SKIP_PACKAGES "DocGen4" "importGraph")
 
 foreach(PKG_DIR ${LAKE_PACKAGE_DIRS})
   if(IS_DIRECTORY "${PKG_DIR}")

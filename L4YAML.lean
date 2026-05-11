@@ -1,5 +1,3 @@
-import LeanPrism
-
 import L4YAML.Config.Config
 import L4YAML.Output.Dump
 import L4YAML.Output.Emitter
