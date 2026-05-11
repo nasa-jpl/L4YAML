@@ -46,40 +46,15 @@ message(STATUS "lean sysroot: ${LEAN_SYSROOT}")
 set(L4YAML_LAKE_BUILD "${CMAKE_CURRENT_SOURCE_DIR}/.lake/build")
 
 # ── Executables produced by lake ────────────────────────────────────
-# Mirrors the [[lean_exe]] entries in lakefile.toml.  Trim this list if
-# some of these are internal/diagnostic and shouldn't ship.  Note: this
-# is a superset of lakefile.toml's `defaultTargets`, so we pass it
-# explicitly to `lake build` below — otherwise execs like `tests` and
-# `demo` (which aren't in defaultTargets) wouldn't be built and the
-# install step would fail trying to copy them.
+# Just the user-facing diagnostic CLIs that pair with the C / Python
+# shims.  The full lakefile.toml has ~30 [[lean_exe]] entries (tests,
+# demos, suite runners, spec extractors, regression checks); none of
+# them are reachable through the FFI, so they're not built or shipped
+# from this CMake.  Run `lake build` standalone in the source tree if
+# you need them for development.
 set(L4YAML_EXES
-  tests
-  demo
-  suiterunner
   tryparse
-  tryscan
-  tryroundtrip
-  trydump
-  queryresults
-  propertytests
-  mutationtests
-  adversarialinstantiation
-  adversarialtests
-  explicitkeytests
-  flowtests
-  validationtests
-  limittests
-  flowregressioncheck
-  errorstagediag
-  scalarstagediag
-  dumproundtrip
-  rawparsetests
-  specexamples
-  extractSpecExamples
-  schemadump
-  scannertests
-  scannerspecexamples
-  productioncoverage)
+  trydump)
 
 # ── Drive lake from CMake ───────────────────────────────────────────
 # Lake is internally incremental, so we just invoke it every time and
@@ -99,24 +74,11 @@ foreach(exe IN LISTS L4YAML_EXES)
           COMPONENT L4YAML_Runtime)
 endforeach()
 
-# ── Compiled Lean module tree (.olean / .ilean) ─────────────────────
-# Useful for tarballing or for `LEAN_PATH=<prefix>/lib/lean lean ...`,
-# NOT for `[[require]]`-based consumption from another Lean project.
-install(DIRECTORY "${L4YAML_LAKE_BUILD}/lib/"
-        DESTINATION "${CMAKE_INSTALL_LIBDIR}/lean"
-        COMPONENT L4YAML_LeanLib
-        FILES_MATCHING
-          PATTERN "*.olean"
-          PATTERN "*.ilean")
-
-# Lean sources, in case downstream tooling wants to re-typecheck.
-install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/L4YAML"
-        DESTINATION "${CMAKE_INSTALL_DATADIR}/lean/src"
-        COMPONENT L4YAML_LeanSrc
-        FILES_MATCHING PATTERN "*.lean")
-install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/L4YAML.lean"
-        DESTINATION "${CMAKE_INSTALL_DATADIR}/lean/src"
-        COMPONENT L4YAML_LeanSrc)
+# Note: we intentionally do NOT install the .olean / .ilean tree or the
+# .lean sources.  Lake's `[[require]]` machinery resolves deps via git
+# URLs against a private .lake/packages/, not against an install prefix,
+# so a staged .olean tree can't be picked up by another Lean project —
+# shipping it just wastes tens of MB in the install image.
 
 # ── FFI shared library (libl4yaml + tryparse_c) ─────────────────────
 # Defined in ffi/CMakeLists.txt; depends on `lake build L4YAML` having
@@ -297,16 +259,6 @@ endif()
 
 unset(_l4yaml_py_mode)
 
-# ── Optional: CTest integration ─────────────────────────────────────
-option(L4YAML_ENABLE_TESTS "Register lake-built test runners with CTest" OFF)
-if(L4YAML_ENABLE_TESTS)
-  enable_testing()
-  foreach(t IN ITEMS tests suiterunner propertytests mutationtests
-                     adversarialtests explicitkeytests flowtests
-                     validationtests rawparsetests specexamples
-                     scannertests scannerspecexamples productioncoverage)
-    add_test(NAME L4YAML.${t}
-             COMMAND "${LAKE_EXECUTABLE}" exe ${t}
-             WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
-  endforeach()
-endif()
+# Note: no CTest integration here.  The test/spec runners aren't built
+# from this CMake (see L4YAML_EXES); run `lake test` from the source
+# tree for the developer test loop.
