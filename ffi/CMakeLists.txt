@@ -90,18 +90,21 @@ endif()
 # (DocGen4, importGraph) — never linked into libl4yaml.so.  Both bundle
 # `lean_exe` entry points (collide on `main`) and reference the Lake
 # runtime (`l_Lake_Manifest_*`) which isn't part of this shared library.
-# Add new tooling-only packages here as they appear.  Defined up here
-# (rather than next to the IR collection below) so the dep-toolchain
-# guard can also honor it — a mismatched toolchain on a package we're
-# already excluding from the link can't cause undefined references.
+# Add new tooling-only packages here as they appear.
 set(L4YAML_FFI_SKIP_PACKAGES "DocGen4" "importGraph")
 
-# 2. Each Lake-resolved dep's lean-toolchain vs the parent project's,
-#    skipping packages already excluded from the IR collection.
+# 2. Each Lake-resolved dep's lean-toolchain vs the parent project's.
 #    Lake compiles a dep with that dep's own pin, then we link
 #    everything against this project's libleanshared.so — if a dep is
 #    NEWER than the parent, its IR uses runtime / specialized stdlib
 #    symbols that don't exist in the parent's libleanshared.so.
+#
+#    We only check packages that actually produced IR — transitive
+#    deps that L4YAML never imports (e.g. things pulled in only by
+#    DocGen4) won't have their `.lake/build/ir/*.c` populated, so
+#    their toolchain genuinely can't cause undefined references and
+#    we shouldn't fail on them.  Likewise for the named skip list.
+#
 #    Override with -DL4YAML_SKIP_DEP_TOOLCHAIN_CHECK=ON if you've
 #    verified the mismatch is benign.
 option(L4YAML_SKIP_DEP_TOOLCHAIN_CHECK
@@ -117,6 +120,12 @@ if(EXISTS "${_l4yaml_packages_dir}"
     if(IS_DIRECTORY "${_pkg_dir}" AND EXISTS "${_pkg_dir}/lean-toolchain")
       get_filename_component(_pkg_name "${_pkg_dir}" NAME)
       if(_pkg_name IN_LIST L4YAML_FFI_SKIP_PACKAGES)
+        continue()
+      endif()
+      # If the package produced no IR, it can't be linked into
+      # libl4yaml.so → its toolchain pin is irrelevant.
+      file(GLOB_RECURSE _pkg_ir_check "${_pkg_dir}/.lake/build/ir/*.c")
+      if(NOT _pkg_ir_check)
         continue()
       endif()
       file(READ "${_pkg_dir}/lean-toolchain" _pkg_tc)
