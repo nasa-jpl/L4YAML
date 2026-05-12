@@ -11,19 +11,19 @@ triggers a re-opening of Phase 1 (Guardrail 2).
 
 | File | Items | Status |
 |---|---|---|
-| `Position.lean` | 7, 13 | TODO (Phase 2 §1) |
-| `Indent.lean` | 8 | TODO |
-| `StringList.lean` | 9, 22 | Migrated (Item 22); Item 9 TODO |
+| `Position.lean` | 7, 13 | Landed (Phase 2 §1) |
+| `Indent.lean` | 8 | Landed |
+| `StringList.lean` | 9, 22 | Landed (Item 22 migrated; Item 9 added) |
 | `TokenStream.lean` | 10 | TODO |
 | `Fuel.lean` | 11 | TODO |
-| `AnchorMap.lean` | 12 | TODO (migration from `Spec/Types.lean`) |
+| `AnchorMap.lean` | 12 | Migrated from `Spec/Types.lean` |
 | `Combinators.lean` | 14 | TODO |
 | `Schema.lean` | 15, 16 | TODO |
 | `Token.lean` | 17 | TODO |
 | `Value.lean` | 18–21 | Migrated |
 | `LawfulBEq.lean` | 23 | Migrated |
 | `Equivalence.lean` | 1, 2, 3, 5, 6 | TODO (depends on AnchorMap) |
-| `Idempotence.lean` | 4 | TODO |
+| `Idempotence.lean` | 4 | TODO (capstone of Phase 2) |
 
 Items 0 (immutable data) and the indexed-type substrate live
 under `L4YAML/Indexed/` rather than here.

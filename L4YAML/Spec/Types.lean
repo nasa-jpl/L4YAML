@@ -610,114 +610,13 @@ def YamlDocument.commentTexts (doc : YamlDocument) : Array String :=
 
 /-! ## Anchor Map
 
-An association-list map from anchor names to their resolved `YamlValue`s.
-Represented as `Array (String × YamlValue)` for proof-friendliness —
-all operations reduce to well-supported `Array` combinators (`filter`,
-`push`, `findSome?`).
-
-### Algebraic contracts (Layer 2 proof targets)
-
-1. **Get-after-set** (`find?_insert`): `(m.insert k v).find? k = some v`
-2. **Non-interference** (`find?_insert_ne`): `k ≠ k' → (m.insert k v).find? k' = m.find? k'`
-3. **Empty** (`find?_empty`): `empty.find? k = none`
-
-These three laws fully specify the map's observable behaviour and are
-sufficient for composing with alias-resolution proofs: an alias `*name`
-succeeds iff some prior `&name value` executed `insert`, and the value
-returned equals the stored one.
+The `AnchorMap` type and its algebra (Item 12) live in
+`L4YAML/Algebra/AnchorMap.lean` (Initiative 4 Phase 2 — D4: one
+file per algebra-item cluster). Consumers should
+`import L4YAML.Algebra.AnchorMap` and `open L4YAML.Algebra` to
+access `AnchorMap`, `AnchorMap.empty`, `AnchorMap.insert`,
+`AnchorMap.find?`, and the three laws (`find?_insert`,
+`find?_insert_ne`, `find?_empty`).
 -/
-
-/-- Anchor map: associates anchor names with their resolved values.
-    `abbrev` so `Array` methods (`filter`, `push`, `findSome?`) resolve
-    without manual coercion, keeping both code and proofs short. -/
-abbrev AnchorMap := Array (String × YamlValue)
-
-namespace AnchorMap
-
-/-- The empty anchor map. -/
-def empty : AnchorMap := #[]
-
-/-- Insert or replace a binding.
-    Removes any prior binding for `name`, then appends `(name, val)`,
-    maintaining the unique-key invariant. -/
-def insert (m : AnchorMap) (name : String) (val : YamlValue) : AnchorMap :=
-  (m.filter (fun (n, _) => n != name)).push (name, val)
-
-/-- Look up an anchor by name.
-    Returns the value if the anchor is defined, `none` otherwise. -/
-def find? (m : AnchorMap) (name : String) : Option YamlValue :=
-  m.findSome? (fun (n, v) => if n == name then some v else none)
-
-/-! ### Algebraic Laws
-
-These theorem statements document the essential contracts that
-verification proofs will use. They are the specification of
-`AnchorMap` — any correct implementation must satisfy them.
--/
-
-/-- Auxiliary: filtering by `n != name` preserves `findSome?` for `name' ≠ name`.
-    Elements removed by the filter have `n = name ≠ name'`, so `f` returns
-    `none` for them and the `findSome?` result is unchanged. -/
-theorem list_findSome?_filter_preserves
-    (xs : List (String × YamlValue)) (name name' : String)
-    (hne : name ≠ name') :
-    List.findSome? (fun (n, v) => if n == name' then some v else none)
-      (xs.filter (fun (n, _) => n != name))
-    = List.findSome? (fun (n, v) => if n == name' then some v else none) xs := by
-  induction xs with
-  | nil => rfl
-  | cons x xs ih =>
-    obtain ⟨n, v⟩ := x
-    simp only [List.filter_cons]
-    split
-    · -- filter keeps element: (n != name) = true
-      simp only [List.findSome?_cons]
-      split
-      · rfl
-      · exact ih
-    · -- filter drops element: n = name
-      next hdrop =>
-      have hEqName : n = name := by
-        simp only [bne_iff_ne, ne_eq, Decidable.not_not] at hdrop; exact hdrop
-      have hNe : (n == name') = false := by
-        rw [hEqName]; exact beq_eq_false_iff_ne.mpr hne
-      simp only [List.findSome?_cons, hNe, Bool.false_eq_true, ↓reduceIte]
-      exact ih
-
-/-- **Get-after-set**: looking up a just-inserted key returns the inserted value. -/
-theorem find?_insert (m : AnchorMap) (name : String) (val : YamlValue) :
-    AnchorMap.find? (AnchorMap.insert m name val) name = some val := by
-  simp only [AnchorMap.find?, AnchorMap.insert]
-  rw [Array.findSome?_push]
-  simp only [beq_self_eq_true, ↓reduceIte]
-  -- Show filter part = none, then none.or (some val) = some val
-  suffices h : Array.findSome? _ (Array.filter _ m) = none by
-    rw [h, Option.none_or]
-  rw [← Array.findSome?_toList, Array.toList_filter, List.findSome?_eq_none_iff]
-  intro ⟨n, v⟩ hmem
-  have hfilt := (List.mem_filter.mp hmem).2
-  simp only [bne_iff_ne, ne_eq, beq_iff_eq] at hfilt ⊢
-  exact if_neg hfilt
-
-/-- **Non-interference**: inserting under `k` does not affect lookups for `k' ≠ k`. -/
-theorem find?_insert_ne (m : AnchorMap) (name name' : String) (val : YamlValue)
-    (h : name ≠ name') :
-    AnchorMap.find? (AnchorMap.insert m name val) name' = AnchorMap.find? m name' := by
-  simp only [AnchorMap.find?, AnchorMap.insert]
-  rw [Array.findSome?_push]
-  -- The pushed element (name, val) doesn't match name'
-  have hpush : (fun (n, v) => if n == name' then some v else none) (name, val) = none := by
-    simp [beq_eq_false_iff_ne.mpr h]
-  simp only [hpush, Option.or_none]
-  -- Filtering by n != name preserves findSome? for name' ≠ name
-  rw [← Array.findSome?_toList, Array.toList_filter, ← Array.findSome?_toList]
-  exact list_findSome?_filter_preserves m.toList name name' h
-
-/-- **Empty**: no key is found in an empty map. -/
-theorem find?_empty (name : String) :
-    AnchorMap.find? AnchorMap.empty name = none := by
-  rfl
-
-end AnchorMap
 
 end L4YAML

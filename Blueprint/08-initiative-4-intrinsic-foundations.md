@@ -435,11 +435,11 @@ All five open decisions D1–D5 resolved (see §Decisions table and
 - (iv) Indexed types `RepGraph` and `TokenStream` defined as
   `inductive`/`structure` with no scanning/parsing semantics yet.
 
-**Status (foundation chunk landed)**:
+**Status (foundation + first algebra cluster landed)**:
 
 | # | Criterion | State |
 |---|---|---|
-| (i) | All 23 items proved sorry-free in `L4YAML/Algebra/` | **partial** — Items 18–23 migrated; Items 0–17 are next (see §Phase 2 next steps). |
+| (i) | All 23 items proved sorry-free in `L4YAML/Algebra/` | **partial** — Items 7, 8, 9, 12, 13, 18–23 landed (10 of 23 + Item 0 design constraint). Remaining: Items 1–6, 10, 11, 14–17 (see §Phase 2 next steps). |
 | (ii) | Items 18–23 moved with namespace rename | **done** — `L4YAML/Algebra/Value.lean` (18–21), `L4YAML/Algebra/StringList.lean` (22), `L4YAML/Algebra/LawfulBEq.lean` (23). All downstream imports updated atomically (Guardrail 1). Sorry count in `L4YAML/Algebra/` = 0. |
 | (iii) | `LoadConfig` types defined | **done** — `L4YAML/Config/LoadConfig.lean` defines `EqMode`, `DuplicateKeyPolicy`, `LoadConfig`. Threading into `parse`/`compose`/`construct` is Phase 3+. |
 | (iv) | Indexed type signatures drafted | **done** — `L4YAML/Indexed/Range.lean` (`Range input`), `L4YAML/Indexed/RepGraph.lean` (`RepGraph input range` mutual inductive with `RepGraphChild`/`RepGraphPair`), `L4YAML/Indexed/TokenStream.lean` (`TokenStream input` with `IxToken input`). All compile sorry-free. |
@@ -483,41 +483,115 @@ All five open decisions D1–D5 resolved (see §Decisions table and
    principle (Guardrail 2) is therefore intact for the migrated
    subset; the test for Items 0–17 happens as each lands.
 
+**Reflections** (first algebra cluster — Items 7, 8, 9, 12, 13):
+
+5. **Item 7 design choice — abstract monoid, not scanner-advance**.
+   The Item 7 wording in the inventory was “`YamlPos.advance`
+   left-id + assoc”. The concrete scanner advancement
+   (`ScannerState.advance` in `Scanner/State.lean`) is *not* a
+   monoid op — it resets `col` after newlines, so it has no left
+   identity at the type level. We therefore split the responsibility:
+   `YamlPos.add` (in `L4YAML/Algebra/Position.lean`) is the
+   componentwise-additive monoid op with `zero = ⟨0, 0, 0⟩`,
+   and the scanner's `advance` remains in `Scanner/State.lean`
+   as a *concrete consumer* of positions. The algebra states the
+   monoid laws on the abstract op; the scanner's correctness
+   theorems will reference `add` when composing token positions.
+   This is consistent with how Items 18–23 separate algebraic
+   content from parser pipeline.
+
+6. **Item 8 representation choice — `List α`, not `Array α`**.
+   The scanner's concrete indent stack is `Array IndentEntry`
+   (`Scanner/State.lean:75`), but the algebra is stated on the
+   abstract `List α` carrier so the free-monoid laws reduce to
+   core Lean's `List.append_assoc` / `List.nil_append` /
+   `List.append_nil` without any `Array`-specific reasoning.
+   Phase 3's scanner cutover bridges the two via the trivial
+   `Array.toList`/`Array.mk` isomorphism. The Item 8 file
+   exposes `push`, `pop`, `top?` with `cons` as the underlying
+   primitive — push/pop laws then hold by `rfl`.
+
+7. **Item 9 — no Mathlib dependency**. The original inventory
+   wording mentioned Mathlib's `String.toList` lemmas. L4YAML
+   pulls in `importGraph` and `DocGen4` only; we therefore
+   re-state the relevant laws against **core Lean 4.30**'s
+   `String.toList_append` and `String.length_append`. No new
+   algebraic content beyond the inventory.
+
+8. **Item 12 migration — `Spec/Types.lean` shrinks by ~90 lines**.
+   The full `AnchorMap` definition, `insert`/`find?`/`empty`
+   operations, and the three laws (plus the
+   `list_findSome?_filter_preserves` helper) moved verbatim from
+   `Spec/Types.lean:630–721` to
+   `L4YAML/Algebra/AnchorMap.lean`. The namespace changed from
+   `L4YAML.AnchorMap` to `L4YAML.Algebra.AnchorMap`. Grep
+   confirmed the only consumer outside `Spec/Types.lean` was a
+   docstring reference in `Indexed/RepGraph.lean` — no atomic
+   call-site update was needed (Guardrail 1 trivially satisfied).
+   `Spec/Types.lean` now contains only a forwarding comment
+   pointing at the new location.
+
 **Out of scope**: any scanner/parser code. The algebra library does
 not depend on `Scanner/`, `Parser/`, or any J.3-era infrastructure.
 
-#### Phase 2 next steps (Items 0–17)
+#### Phase 2 next steps (remaining items)
 
-The §Initial implementation order list (below) gives the file
-sequencing. The first cluster ready to land is:
+The first algebra cluster (Items 7, 8, 9, 12, 13) is **landed**.
+Remaining items, in suggested implementation order:
 
-1. `L4YAML/Algebra/Position.lean` — Items 7 (position monoid)
-   and 13 (`YamlPos` total order). Source content already exists in
-   `Spec/Types.lean:127–134`; this is migration + naming the monoid
-   laws explicitly.
-2. `L4YAML/Algebra/Indent.lean` — Item 8 (indent stack as free
-   monoid). Pure new content; small (~50 LOC).
-3. `L4YAML/Algebra/StringList.lean` *(extend)* — Item 9
-   (character/string decomposition). Reuses Mathlib's
-   `String.toList`/`++`/prefix/suffix laws where applicable.
-4. `L4YAML/Algebra/AnchorMap.lean` — Item 12 migration from
-   `Spec/Types.lean:633–721`. Already-proven theorems
-   (`find?_insert`, `find?_insert_ne`, `find?_empty`); namespace
-   move only.
+1. **Item 10 — Token-stream concat monoid** (`L4YAML/Algebra/TokenStream.lean`).
+   Token arrays form a free monoid under concat; `scan` as `foldM`
+   over chars. Builds on Item 8's `List`-monoid pattern. Small
+   (~70 LOC).
+2. **Item 11 — Parse-side fuel monoid** (`L4YAML/Algebra/Fuel.lean`).
+   Fuel composes additively; `parseLoop n` ∘ `parseLoop m =
+   parseLoop (n + m)` modulo termination. The “modulo termination”
+   side-condition is the only subtle part — phrase as a
+   conditional equality with the obvious well-founded measure.
+   Small (~80 LOC).
+3. **Item 14 — Surface grammar combinator algebra**
+   (`L4YAML/Algebra/Combinators.lean`). Re-states the Kleene-like
+   laws currently implicit in `Surface/Combinators.lean:32–82`.
+   The combinators already exist; this file names the laws.
+   Medium (~150 LOC).
+4. **Item 15, 16 — Schema laws** (`L4YAML/Algebra/Schema.lean`).
+   `ToYaml`/`FromYaml` round-trip laws + `resolveImplicit` /
+   `resolveScalar` totality and determinism. Migration from
+   `Schema/Schema.lean:245–305` and statements only at
+   `Schema/FromToYaml.lean:42–107+` (the per-instance round-trip
+   proofs are Phase 5's `FromToYaml` cutover).
+5. **Item 17 — Token discriminator algebra**
+   (`L4YAML/Algebra/Token.lean`). Migration of the partition
+   lemmas implicit in `Token/Token.lean:241–280` for
+   `YamlToken.isVirtual`, `canStartNode`, `isFlowIndicator`.
+   Pure migration; small (~100 LOC).
+6. **Items 1, 2, 3, 5, 6 — Equivalence + collection laws**
+   (`L4YAML/Algebra/Equivalence.lean`). Depends on Item 12
+   (AnchorMap) for Item 6, and on `LoadConfig.EqMode` for Items
+   3 + 5. Designed last so the dependency cone is fully populated.
+   Medium-large (~250 LOC).
+7. **Item 4 — Idempotence capstone** (`L4YAML/Algebra/Idempotence.lean`).
+   `load ∘ dump ∘ load = load`, proved via the full algebra
+   library + indexed types. This is the **Phase 2 stress test**
+   for Guardrail 2 (closure): if the proof needs an algebraic
+   fact not in Items 0–23, Phase 1 re-opens. Large (~400 LOC).
 
-Items 1, 2, 3, 5, 6 (`Equivalence.lean`) depend on AnchorMap and
-are last. Item 4 (`Idempotence.lean`) is the capstone of Phase 2
-itself: `load ∘ dump ∘ load = load`, proved via the algebra library
-+ indexed types — this is the Phase 2 stress test for the closure
-principle.
+Suggested cadence: Items 10, 11, 17 are independent and ~small
+each — one PR per item. Items 14, 15+16 are larger but still
+single-PR. Items 1–6 and Item 4 each warrant their own PR with
+the cadence-step commit discipline (Guardrail 3: every commit
+shows `sorry: N → N − 1` or `sorry: N → N`).
 
-#### Algebra files landed in foundation chunk
+#### Algebra + foundation files landed
 
 | File | Items | LOC | Imports added downstream |
 |---|---|---|---|
 | `L4YAML/Algebra/Value.lean` | 18–21 | ~200 | 3 (was `Proofs.Foundation.ValueAlgebra`) |
 | `L4YAML/Algebra/LawfulBEq.lean` | 23 | ~265 | 1 (`L4YAML.lean` root) |
-| `L4YAML/Algebra/StringList.lean` | 22 | ~60 | 1 (`StringProperties.lean`) |
+| `L4YAML/Algebra/StringList.lean` | 9, 22 | ~120 | 1 (`StringProperties.lean`) |
+| `L4YAML/Algebra/Position.lean` | 7, 13 | ~135 | 1 (`L4YAML.lean` root) |
+| `L4YAML/Algebra/Indent.lean` | 8 | ~110 | 1 (`L4YAML.lean` root) |
+| `L4YAML/Algebra/AnchorMap.lean` | 12 | ~125 | 1 (`L4YAML.lean` root); `Spec/Types.lean` shrinks by ~90 lines |
 | `L4YAML/Config/LoadConfig.lean` | n/a | ~70 | 0 (new file; consumers in Phase 3+) |
 | `L4YAML/Indexed/Range.lean` | n/a | ~60 | 0 |
 | `L4YAML/Indexed/RepGraph.lean` | n/a | ~120 | 0 |
