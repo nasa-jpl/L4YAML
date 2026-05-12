@@ -19,7 +19,13 @@ import L4YAML.Proofs.EndToEndCorrectness
 import L4YAML.Proofs.Errors.ErrorProperties
 import L4YAML.Proofs.Errors.EscapeResolution
 import L4YAML.Proofs.Errors.FoldNewlines
-import L4YAML.Proofs.Foundation.LawfulBEq
+import L4YAML.Algebra.LawfulBEq
+import L4YAML.Algebra.StringList
+import L4YAML.Algebra.Value
+import L4YAML.Config.LoadConfig
+import L4YAML.Indexed.Range
+import L4YAML.Indexed.RepGraph
+import L4YAML.Indexed.TokenStream
 import L4YAML.Proofs.Production.NodeProduction
 import L4YAML.Proofs.Parser.ParserAnchorProofs
 import L4YAML.Proofs.Parser.ParserCompleteness
@@ -65,7 +71,6 @@ import L4YAML.Proofs.Coupling.StructureCoupling
 import L4YAML.Proofs.Production.StructureProduction
 import L4YAML.Proofs.Coupling.SurfaceCoupling
 import L4YAML.Proofs.Schema.TagResolution
-import L4YAML.Proofs.Foundation.ValueAlgebra
 import L4YAML.Scanner.Scanner
 import L4YAML.Schema.Schema
 import L4YAML.Schema.Api

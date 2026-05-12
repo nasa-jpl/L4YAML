@@ -3,6 +3,7 @@ Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
 import L4YAML.Spec.Grammar
+import L4YAML.Algebra.StringList
 
 /-!
 # Pure String and List Properties (Layer 1b + 1d)
@@ -13,16 +14,22 @@ These have **zero** lean4-parser dependency — they reason only about
 
 ## Groups
 
-1. **§1 Whitespace trimming** (Layer 1b) — idempotence via `List.dropWhile`.
+1. **§1 Whitespace trimming** (Layer 1b) — uses Algebra Item 22
+   (`L4YAML.Algebra.StringList.dropWhile_idempotent` etc.) for the
+   core idempotence claims; this file holds the YAML-specific
+   adaptors built on top.
 2. **§2 FoldResult invariants** (Layer 1d) — construction, matching,
    the `folded`/`forbidden` contract.
-3. **§3 List.dropWhile properties** — auxiliary lemmas used by §1.
+3. **§3 List.dropWhile auxiliaries** — lemmas not in the algebra
+   inventory but used by `§4 Trim Preservation`.
 
-## Strategy
+## Initiative 4 Phase 2 note
 
-The trim functions in `Scalar.lean` are local `where` definitions.
-We prove properties about the underlying `List.dropWhile` operations
-that constitute their implementation.
+The two truly algebraic claims previously here
+(`dropWhile_idempotent`, `reverse_dropWhile_reverse_idempotent`)
+have moved to `L4YAML/Algebra/StringList.lean` (Algebra Item 22).
+The remaining content in this file is consumer code, not algebra,
+and is not in the §Algebra library inventory.
 -/
 
 namespace L4YAML.Proofs.StringProperties
@@ -30,8 +37,9 @@ namespace L4YAML.Proofs.StringProperties
 open L4YAML
 open L4YAML.Grammar (FoldResult)
 open L4YAML.CharPredicates
+open L4YAML.Algebra.StringList (dropWhile_cons_false)
 
-/-! ## §3  Auxiliary List Lemmas -/
+/-! ## §3  Auxiliary List Lemmas (non-inventory) -/
 
 /-- Whitespace predicate matching the parser's trim implementations. -/
 def isTrailingWs (c : Char) : Bool :=
@@ -49,12 +57,6 @@ theorem dropWhile_nil_of_all_true {α : Type} (p : α → Bool) (xs : List α)
     simp [hy]
     exact ih (fun x hx => h x (List.mem_cons_of_mem y hx))
 
-/-- `dropWhile p` on a list starting with an element where `p` is false
-    returns the entire list. -/
-theorem dropWhile_cons_false {α : Type} (p : α → Bool) (x : α) (xs : List α)
-    (h : p x = false) : (x :: xs).dropWhile p = x :: xs := by
-  simp [List.dropWhile, h]
-
 /-! ## §1  Whitespace Trimming (List-Level)
 
 The YAML parser's trim functions work by:
@@ -63,32 +65,11 @@ The YAML parser's trim functions work by:
 3. `dropWhile isTrailingWs`
 4. Reverse back
 
-We prove properties at the list level, which is the core algorithm.
+The core idempotence claim lives in
+`L4YAML.Algebra.StringList.dropWhile_idempotent` (Algebra Item 22a),
+and `reverse_dropWhile_reverse_idempotent` (Item 22b). This section
+adds YAML-specific adaptors on top.
 -/
-
-/-- **Idempotence (list level)**: After dropping elements matching `p`,
-    applying `dropWhile p` again is a no-op. -/
-theorem dropWhile_idempotent {α : Type} (p : α → Bool) (xs : List α) :
-    (xs.dropWhile p).dropWhile p = xs.dropWhile p := by
-  induction xs with
-  | nil => rfl
-  | cons y ys ih =>
-    simp only [List.dropWhile]
-    split
-    · -- p y = true, so head is dropped
-      exact ih
-    · -- p y = false, head stays, and dropWhile (y :: ys) = y :: ys
-      rename_i h
-      simp [List.dropWhile, h]
-
-/-- **Reverse-trim-reverse idempotent**:
-    Applying the full trim operation twice is the same as once, at the list level. -/
-theorem reverse_dropWhile_reverse_idempotent {α : Type} (p : α → Bool) (xs : List α) :
-    ((xs.reverse.dropWhile p).reverse.reverse.dropWhile p).reverse
-    = (xs.reverse.dropWhile p).reverse := by
-  rw [List.reverse_reverse]
-  congr 1
-  exact dropWhile_idempotent p xs.reverse
 
 /-- **Empty list**: trimming the empty list returns the empty list. -/
 theorem dropWhile_empty {α : Type} (p : α → Bool) : ([] : List α).dropWhile p = [] := by

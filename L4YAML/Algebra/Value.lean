@@ -1,28 +1,34 @@
-import L4YAML.Proofs.Parser.ParserGrammableBase
-
 /-
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
+-/
+import L4YAML.Proofs.Parser.ParserGrammableBase
+
+/-! # Value Algebra for `YamlValue`  (Algebra Items 18–21)
+
+Algebraic properties of `stripAnchors` and `adaptForFlowContext`:
+
+- **Item 18** — `stripAnchors_idempotent`
+- **Item 19** — `adaptForFlowContext_idempotent`
+- **Item 20** — `stripAnchors ∘ adaptForFlowContext` commutativity
+- **Item 21** — pipeline idempotence: `(strip ∘ adapt)² = strip ∘ adapt`
+
+These properties justify the `addAnchor` pipeline in `TokenParser.lean`:
+  `cleaned = (val.resolveAliases ps.anchors).stripAnchors.adaptForFlowContext`
+and ensure `WellFormedAnchors` is preserved when re-processing anchor values.
+
+## Provenance
+
+Migrated from `L4YAML/Proofs/Foundation/ValueAlgebra.lean` during
+Initiative 4 Phase 2 (D4: one file per item-cluster). No semantic
+change; namespace move only — the namespace changes from
+`L4YAML.Proofs.ValueAlgebra` to `L4YAML.Algebra.Value`.
 -/
 
 set_option autoImplicit false
 open L4YAML L4YAML.Proofs.ParserGrammable
 
-/-! # Value Algebra for YamlValue
-
-Algebraic properties of `stripAnchors` and `adaptForFlowContext`:
-
-- `stripAnchors` is idempotent
-- `adaptForFlowContext` is idempotent
-- The two commute: `strip ∘ adapt = adapt ∘ strip`
-- Combined pipeline idempotency: `(strip ∘ adapt) ∘ (strip ∘ adapt) = strip ∘ adapt`
-
-These properties justify the `addAnchor` pipeline in `TokenParser.lean`:
-  `cleaned = (val.resolveAliases ps.anchors).stripAnchors.adaptForFlowContext`
-and ensure `WellFormedAnchors` is preserved when re-processing anchor values.
--/
-
-namespace L4YAML.Proofs.ValueAlgebra
+namespace L4YAML.Algebra.Value
 
 -- ============================================================
 -- §1 Per-constructor reduction lemmas
@@ -63,7 +69,7 @@ local macro "yaml_decreasing" : tactic =>
       Prod.fst, Prod.snd] at *; omega))
 
 -- ============================================================
--- §3 stripAnchors is idempotent
+-- §3 Item 18 — stripAnchors is idempotent
 -- ============================================================
 
 theorem stripAnchors_idempotent (v : YamlValue) :
@@ -94,7 +100,7 @@ termination_by sizeOf v
 decreasing_by yaml_decreasing
 
 -- ============================================================
--- §4 stripAnchors and adaptForFlowContext commute
+-- §4 Item 20 — stripAnchors and adaptForFlowContext commute
 -- ============================================================
 
 theorem stripAnchors_adaptForFlowContext_comm (v : YamlValue) :
@@ -134,7 +140,7 @@ termination_by sizeOf v
 decreasing_by yaml_decreasing
 
 -- ============================================================
--- §5 adaptForFlowContext is idempotent
+-- §5 Item 19 — adaptForFlowContext is idempotent
 -- ============================================================
 
 theorem adaptForFlowContext_idempotent (v : YamlValue) :
@@ -176,7 +182,7 @@ termination_by sizeOf v
 decreasing_by yaml_decreasing
 
 -- ============================================================
--- §6 Pipeline corollaries
+-- §6 Item 21 — Pipeline corollaries
 -- ============================================================
 
 -- The addAnchor pipeline: resolveAliases → stripAnchors → adaptForFlowContext
@@ -196,4 +202,4 @@ theorem stripAnchors_of_cleaned (v : YamlValue) :
     v.stripAnchors.adaptForFlowContext := by
   rw [stripAnchors_adaptForFlowContext_comm, stripAnchors_idempotent]
 
-end L4YAML.Proofs.ValueAlgebra
+end L4YAML.Algebra.Value
