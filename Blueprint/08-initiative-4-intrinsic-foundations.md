@@ -439,7 +439,7 @@ All five open decisions D1–D5 resolved (see §Decisions table and
 
 | # | Criterion | State |
 |---|---|---|
-| (i) | All 23 items proved sorry-free in `L4YAML/Algebra/` | **partial** — Items 7, 8, 9, 10, 11, 12, 13, 17, 18–23 landed (13 of 23 + Item 0 design constraint). Remaining: Items 1–6, 14, 15, 16 (see §Phase 2 next steps). |
+| (i) | All 23 items proved sorry-free in `L4YAML/Algebra/` | **partial** — Items 7, 8, 9, 10, 11, 12, 13, 14, 17, 18–23 landed (14 of 23 + Item 0 design constraint). Remaining: Items 1–6, 15, 16 (see §Phase 2 next steps). |
 | (ii) | Items 18–23 moved with namespace rename | **done** — `L4YAML/Algebra/Value.lean` (18–21), `L4YAML/Algebra/StringList.lean` (22), `L4YAML/Algebra/LawfulBEq.lean` (23). All downstream imports updated atomically (Guardrail 1). Sorry count in `L4YAML/Algebra/` = 0. |
 | (iii) | `LoadConfig` types defined | **done** — `L4YAML/Config/LoadConfig.lean` defines `EqMode`, `DuplicateKeyPolicy`, `LoadConfig`. Threading into `parse`/`compose`/`construct` is Phase 3+. |
 | (iv) | Indexed type signatures drafted | **done** — `L4YAML/Indexed/Range.lean` (`Range input`), `L4YAML/Indexed/RepGraph.lean` (`RepGraph input range` mutual inductive with `RepGraphChild`/`RepGraphPair`), `L4YAML/Indexed/TokenStream.lean` (`TokenStream input` with `IxToken input`). All compile sorry-free. |
@@ -597,41 +597,75 @@ All five open decisions D1–D5 resolved (see §Decisions table and
     machine) and Phase 4 (parser dispatch). Closure (Guardrail
     2) holds; no new algebra introduced.
 
+**Reflections** (third algebra cluster — Item 14):
+
+13. **Item 14 — relation equivalence, not relation equality**. The
+    inventory wording reads `GStar (GStar P) = GStar P`,
+    `GPlus P = GSeq P (GStar P)`, `GOpt P = GAlt P GEps`, which on
+    its surface asks for *relation* equalities. Two relations
+    `R₁ R₂ : SurfPos → SurfPos → Prop` are pointwise-equivalent
+    iff `∀ s s', R₁ s s' ↔ R₂ s s'` (the relation extensionality
+    principle). `funext` + `propext` would lift each such `Iff`
+    to a strict `=`, but the `Iff` form is what every downstream
+    rewrite actually consumes — proofs case-split on a grammar
+    witness and re-pack it on the other side, which is exactly
+    an `Iff`. The file therefore states each law as
+    `∀ s s', R₁ s s' ↔ R₂ s s'` and leaves the lift to `=` to
+    any consumer that needs it. Closure (Guardrail 2) holds —
+    every law is structural induction over the existing
+    `GSeq`/`GAlt`/`GStar`/`GPlus`/`GOpt`/`GSeq3`/`GEps`
+    constructors.
+
+14. **Item 14 — term-mode `match` over tactic-mode `cases` for
+    indexed inductives**. The seven surface combinators are
+    *indexed* inductives — their indices (`SurfPos` start- and
+    end-positions) constrain which constructors fire. Lean's
+    tactic-mode `cases h with | ctor a b c ...` required the
+    user to know exactly how many name-slots each constructor
+    consumes *after* index unification, which differed per
+    constructor and (in this codebase's observed cases) per
+    constructor inside the same inductive. Term-mode
+    `match h with | .ctor _ _ ... =>` sidesteps that ambiguity:
+    the pattern literally mirrors the constructor's full
+    signature, and the underscore convention discharges
+    name-slot mismatches for free. The bulk of the file is
+    therefore in term mode, with tactic mode used only where
+    index unification needs to substitute back into the goal
+    type (`opt_iff_alt_eps`'s `.none`/`.right` branches and the
+    inductive `star_star` / `star_append`). This is a
+    proof-style refinement, not a soundness or closure concern.
+
 **Out of scope**: any scanner/parser code. The algebra library does
 not depend on `Scanner/`, `Parser/`, or any J.3-era infrastructure.
 
 #### Phase 2 next steps (remaining items)
 
-Two algebra clusters are now **landed**: foundation (Items 18–23,
-Item 12) and the small-independents pair (Items 7, 8, 9, 10, 11,
-13, 17). Remaining items, in suggested implementation order:
+Three algebra clusters are now **landed**: foundation (Items 18–23,
+Item 12), the small-independents pair (Items 7, 8, 9, 10, 11, 13,
+17), and the surface-combinator laws (Item 14). Remaining items, in
+suggested implementation order:
 
-1. **Item 14 — Surface grammar combinator algebra**
-   (`L4YAML/Algebra/Combinators.lean`). Re-states the Kleene-like
-   laws currently implicit in `Surface/Combinators.lean:32–82`.
-   The combinators already exist; this file names the laws.
-   Medium (~150 LOC).
-2. **Item 15, 16 — Schema laws** (`L4YAML/Algebra/Schema.lean`).
+1. **Item 15, 16 — Schema laws** (`L4YAML/Algebra/Schema.lean`).
    `ToYaml`/`FromYaml` round-trip laws + `resolveImplicit` /
    `resolveScalar` totality and determinism. Migration from
    `Schema/Schema.lean:245–305` and statements only at
    `Schema/FromToYaml.lean:42–107+` (the per-instance round-trip
    proofs are Phase 5's `FromToYaml` cutover).
-3. **Items 1, 2, 3, 5, 6 — Equivalence + collection laws**
+2. **Items 1, 2, 3, 5, 6 — Equivalence + collection laws**
    (`L4YAML/Algebra/Equivalence.lean`). Depends on Item 12
    (AnchorMap) for Item 6, and on `LoadConfig.EqMode` for Items
    3 + 5. Designed last so the dependency cone is fully populated.
    Medium-large (~250 LOC).
-4. **Item 4 — Idempotence capstone** (`L4YAML/Algebra/Idempotence.lean`).
+3. **Item 4 — Idempotence capstone** (`L4YAML/Algebra/Idempotence.lean`).
    `load ∘ dump ∘ load = load`, proved via the full algebra
    library + indexed types. This is the **Phase 2 stress test**
    for Guardrail 2 (closure): if the proof needs an algebraic
    fact not in Items 0–23, Phase 1 re-opens. Large (~400 LOC).
 
-Suggested cadence: Item 14 is independent and ~medium — one PR.
-Item 15+16 are a single PR. Items 1–6 and Item 4 each warrant
-their own PR with the cadence-step commit discipline (Guardrail
-3: every commit shows `sorry: N → N − 1` or `sorry: N → N`).
+Suggested cadence: Items 15+16 are a single PR. Items 1–6 and
+Item 4 each warrant their own PR with the cadence-step commit
+discipline (Guardrail 3: every commit shows `sorry: N → N − 1` or
+`sorry: N → N`).
 
 #### Algebra + foundation files landed
 
@@ -646,6 +680,7 @@ their own PR with the cadence-step commit discipline (Guardrail
 | `L4YAML/Algebra/TokenStream.lean` | 10 | ~145 | 1 (`L4YAML.lean` root) |
 | `L4YAML/Algebra/Fuel.lean` | 11 | ~185 | 1 (`L4YAML.lean` root) |
 | `L4YAML/Algebra/Token.lean` | 17 | ~310 | 1 (`L4YAML.lean` root) |
+| `L4YAML/Algebra/Combinators.lean` | 14 | ~235 | 1 (`L4YAML.lean` root) |
 | `L4YAML/Config/LoadConfig.lean` | n/a | ~70 | 0 (new file; consumers in Phase 3+) |
 | `L4YAML/Indexed/Range.lean` | n/a | ~60 | 0 |
 | `L4YAML/Indexed/RepGraph.lean` | n/a | ~120 | 0 |

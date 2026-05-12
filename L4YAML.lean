@@ -20,6 +20,7 @@ import L4YAML.Proofs.Errors.ErrorProperties
 import L4YAML.Proofs.Errors.EscapeResolution
 import L4YAML.Proofs.Errors.FoldNewlines
 import L4YAML.Algebra.AnchorMap
+import L4YAML.Algebra.Combinators
 import L4YAML.Algebra.Fuel
 import L4YAML.Algebra.Indent
 import L4YAML.Algebra.LawfulBEq
