@@ -19,7 +19,10 @@ import L4YAML.Proofs.EndToEndCorrectness
 import L4YAML.Proofs.Errors.ErrorProperties
 import L4YAML.Proofs.Errors.EscapeResolution
 import L4YAML.Proofs.Errors.FoldNewlines
+import L4YAML.Algebra.AnchorMap
+import L4YAML.Algebra.Indent
 import L4YAML.Algebra.LawfulBEq
+import L4YAML.Algebra.Position
 import L4YAML.Algebra.StringList
 import L4YAML.Algebra.Value
 import L4YAML.Config.LoadConfig
