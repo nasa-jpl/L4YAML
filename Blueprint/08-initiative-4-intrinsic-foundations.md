@@ -439,7 +439,7 @@ All five open decisions D1–D5 resolved (see §Decisions table and
 
 | # | Criterion | State |
 |---|---|---|
-| (i) | All 23 items proved sorry-free in `L4YAML/Algebra/` | **partial** — Items 7, 8, 9, 12, 13, 18–23 landed (10 of 23 + Item 0 design constraint). Remaining: Items 1–6, 10, 11, 14–17 (see §Phase 2 next steps). |
+| (i) | All 23 items proved sorry-free in `L4YAML/Algebra/` | **partial** — Items 7, 8, 9, 10, 11, 12, 13, 17, 18–23 landed (13 of 23 + Item 0 design constraint). Remaining: Items 1–6, 14, 15, 16 (see §Phase 2 next steps). |
 | (ii) | Items 18–23 moved with namespace rename | **done** — `L4YAML/Algebra/Value.lean` (18–21), `L4YAML/Algebra/StringList.lean` (22), `L4YAML/Algebra/LawfulBEq.lean` (23). All downstream imports updated atomically (Guardrail 1). Sorry count in `L4YAML/Algebra/` = 0. |
 | (iii) | `LoadConfig` types defined | **done** — `L4YAML/Config/LoadConfig.lean` defines `EqMode`, `DuplicateKeyPolicy`, `LoadConfig`. Threading into `parse`/`compose`/`construct` is Phase 3+. |
 | (iv) | Indexed type signatures drafted | **done** — `L4YAML/Indexed/Range.lean` (`Range input`), `L4YAML/Indexed/RepGraph.lean` (`RepGraph input range` mutual inductive with `RepGraphChild`/`RepGraphPair`), `L4YAML/Indexed/TokenStream.lean` (`TokenStream input` with `IxToken input`). All compile sorry-free. |
@@ -531,56 +531,107 @@ All five open decisions D1–D5 resolved (see §Decisions table and
    `Spec/Types.lean` now contains only a forwarding comment
    pointing at the new location.
 
+**Reflections** (second algebra cluster — Items 10, 11, 17):
+
+9. **Item 10 representation choice — `List τ`, not `Array τ`**. The
+   inventory wording said "token *arrays* form a free monoid".
+   Following the Item 8 precedent (Reflection 6), the algebra is
+   stated on the abstract `List τ` carrier so the free-monoid laws
+   reduce to core Lean's `List` lemmas with no `Array`-specific
+   reasoning. The scanner's concrete `Array (Positioned YamlToken)`
+   and the indexed `TokenStream input` (in
+   `L4YAML/Indexed/TokenStream.lean`) are isomorphic to `List` via
+   `Array.toList`/`Array.mk`, and Phase 3's scanner cutover bridges
+   the two through that trivial isomorphism. Choosing `List`
+   uniformly across Items 8 and 10 means the indent-stack and
+   token-stream algebra share the same equational kernel.
+
+10. **Item 11 — total + partial composition, not just one**. The
+    Phase 1 wording "modulo termination" is realised as **two**
+    iteration-composition laws living side-by-side:
+    `iterate_add` (total `step : α → α`, unconditional) and
+    `iterateOpt_add` (partial `step : α → Option α`, threaded
+    through `Option.bind`). The partial form is the one the
+    parser will actually rewrite onto in Phase 4 (each
+    `parseNode`/`parseBlockSequenceLoop` rule is a partial step
+    after stripping `ParseState` and `Except`); the total form is
+    kept so abstract reasoning about fuel composition that
+    doesn't need failure-threading stays simple. This is the
+    "ghost predicates last" principle applied at the lemma level —
+    the conditional form does not assume any intermediate
+    invariant, leaving per-rule progress to Phase 4. The
+    blueprint estimate of ~80 LOC was light by ~100 (final 187
+    LOC) because of the dual statement; closure (Guardrail 2) is
+    nonetheless intact — every theorem is a `Nat.iterate` /
+    `Option.bind` fact, not new algebra.
+
+11. **Item 17 — classifiers, not a partition**. The Phase 1
+    wording said `isVirtual`/`canStartNode`/`isFlowIndicator`
+    "partition tokens into disjoint classes". Verifying against
+    `Token/Token.lean:241–270`, two of the three pairs overlap:
+    `isVirtual ∩ canStartNode = {blockSequenceStart,
+    blockMappingStart}` and `canStartNode ∩ isFlowIndicator =
+    {flowSequenceStart, flowMappingStart}`. Only
+    `isVirtual ∩ isFlowIndicator = ∅` is genuinely empty. The
+    file therefore exposes them as *classifiers* — three
+    independent decidable predicates with per-constructor `rfl`
+    simp lemmas — and proves only the disjointness that actually
+    holds (`not_virtual_of_flow`, `not_flow_of_virtual`). This is
+    parallel to the Item 7 refinement (Reflection 5):
+    implementation contradicted inventory wording, so the
+    wording was refined rather than the implementation forced to
+    match a false claim. Closure (Guardrail 2) holds — every
+    theorem is a per-constructor evaluation or a Bool-level
+    case-split over those evaluations.
+
+12. **Item 17 LOC overrun, by design**. The blueprint estimate
+    was ~100 LOC; the file landed at 311 LOC because every one
+    of the 22 `YamlToken` constructors contributes one `rfl`
+    simp lemma per discriminator (22 × 3 = 66 lemmas) so
+    downstream `simp` calls discharge case-splits without
+    needing `cases t`. The alternative — stating only the
+    "positive" cases and relying on `cases <;> rfl` at use sites
+    — saves LOC here but pushes the case-split into every
+    consumer. The case-split-per-constructor form is the
+    intended consumer interface for Phase 3 (scanner state
+    machine) and Phase 4 (parser dispatch). Closure (Guardrail
+    2) holds; no new algebra introduced.
+
 **Out of scope**: any scanner/parser code. The algebra library does
 not depend on `Scanner/`, `Parser/`, or any J.3-era infrastructure.
 
 #### Phase 2 next steps (remaining items)
 
-The first algebra cluster (Items 7, 8, 9, 12, 13) is **landed**.
-Remaining items, in suggested implementation order:
+Two algebra clusters are now **landed**: foundation (Items 18–23,
+Item 12) and the small-independents pair (Items 7, 8, 9, 10, 11,
+13, 17). Remaining items, in suggested implementation order:
 
-1. **Item 10 — Token-stream concat monoid** (`L4YAML/Algebra/TokenStream.lean`).
-   Token arrays form a free monoid under concat; `scan` as `foldM`
-   over chars. Builds on Item 8's `List`-monoid pattern. Small
-   (~70 LOC).
-2. **Item 11 — Parse-side fuel monoid** (`L4YAML/Algebra/Fuel.lean`).
-   Fuel composes additively; `parseLoop n` ∘ `parseLoop m =
-   parseLoop (n + m)` modulo termination. The “modulo termination”
-   side-condition is the only subtle part — phrase as a
-   conditional equality with the obvious well-founded measure.
-   Small (~80 LOC).
-3. **Item 14 — Surface grammar combinator algebra**
+1. **Item 14 — Surface grammar combinator algebra**
    (`L4YAML/Algebra/Combinators.lean`). Re-states the Kleene-like
    laws currently implicit in `Surface/Combinators.lean:32–82`.
    The combinators already exist; this file names the laws.
    Medium (~150 LOC).
-4. **Item 15, 16 — Schema laws** (`L4YAML/Algebra/Schema.lean`).
+2. **Item 15, 16 — Schema laws** (`L4YAML/Algebra/Schema.lean`).
    `ToYaml`/`FromYaml` round-trip laws + `resolveImplicit` /
    `resolveScalar` totality and determinism. Migration from
    `Schema/Schema.lean:245–305` and statements only at
    `Schema/FromToYaml.lean:42–107+` (the per-instance round-trip
    proofs are Phase 5's `FromToYaml` cutover).
-5. **Item 17 — Token discriminator algebra**
-   (`L4YAML/Algebra/Token.lean`). Migration of the partition
-   lemmas implicit in `Token/Token.lean:241–280` for
-   `YamlToken.isVirtual`, `canStartNode`, `isFlowIndicator`.
-   Pure migration; small (~100 LOC).
-6. **Items 1, 2, 3, 5, 6 — Equivalence + collection laws**
+3. **Items 1, 2, 3, 5, 6 — Equivalence + collection laws**
    (`L4YAML/Algebra/Equivalence.lean`). Depends on Item 12
    (AnchorMap) for Item 6, and on `LoadConfig.EqMode` for Items
    3 + 5. Designed last so the dependency cone is fully populated.
    Medium-large (~250 LOC).
-7. **Item 4 — Idempotence capstone** (`L4YAML/Algebra/Idempotence.lean`).
+4. **Item 4 — Idempotence capstone** (`L4YAML/Algebra/Idempotence.lean`).
    `load ∘ dump ∘ load = load`, proved via the full algebra
    library + indexed types. This is the **Phase 2 stress test**
    for Guardrail 2 (closure): if the proof needs an algebraic
    fact not in Items 0–23, Phase 1 re-opens. Large (~400 LOC).
 
-Suggested cadence: Items 10, 11, 17 are independent and ~small
-each — one PR per item. Items 14, 15+16 are larger but still
-single-PR. Items 1–6 and Item 4 each warrant their own PR with
-the cadence-step commit discipline (Guardrail 3: every commit
-shows `sorry: N → N − 1` or `sorry: N → N`).
+Suggested cadence: Item 14 is independent and ~medium — one PR.
+Item 15+16 are a single PR. Items 1–6 and Item 4 each warrant
+their own PR with the cadence-step commit discipline (Guardrail
+3: every commit shows `sorry: N → N − 1` or `sorry: N → N`).
 
 #### Algebra + foundation files landed
 
@@ -592,6 +643,9 @@ shows `sorry: N → N − 1` or `sorry: N → N`).
 | `L4YAML/Algebra/Position.lean` | 7, 13 | ~135 | 1 (`L4YAML.lean` root) |
 | `L4YAML/Algebra/Indent.lean` | 8 | ~110 | 1 (`L4YAML.lean` root) |
 | `L4YAML/Algebra/AnchorMap.lean` | 12 | ~125 | 1 (`L4YAML.lean` root); `Spec/Types.lean` shrinks by ~90 lines |
+| `L4YAML/Algebra/TokenStream.lean` | 10 | ~145 | 1 (`L4YAML.lean` root) |
+| `L4YAML/Algebra/Fuel.lean` | 11 | ~185 | 1 (`L4YAML.lean` root) |
+| `L4YAML/Algebra/Token.lean` | 17 | ~310 | 1 (`L4YAML.lean` root) |
 | `L4YAML/Config/LoadConfig.lean` | n/a | ~70 | 0 (new file; consumers in Phase 3+) |
 | `L4YAML/Indexed/Range.lean` | n/a | ~60 | 0 |
 | `L4YAML/Indexed/RepGraph.lean` | n/a | ~120 | 0 |

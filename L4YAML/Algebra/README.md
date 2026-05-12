@@ -14,12 +14,12 @@ triggers a re-opening of Phase 1 (Guardrail 2).
 | `Position.lean` | 7, 13 | Landed (Phase 2 §1) |
 | `Indent.lean` | 8 | Landed |
 | `StringList.lean` | 9, 22 | Landed (Item 22 migrated; Item 9 added) |
-| `TokenStream.lean` | 10 | TODO |
-| `Fuel.lean` | 11 | TODO |
+| `TokenStream.lean` | 10 | Landed (Phase 2 §2) |
+| `Fuel.lean` | 11 | Landed (Phase 2 §2) |
 | `AnchorMap.lean` | 12 | Migrated from `Spec/Types.lean` |
 | `Combinators.lean` | 14 | TODO |
 | `Schema.lean` | 15, 16 | TODO |
-| `Token.lean` | 17 | TODO |
+| `Token.lean` | 17 | Landed (Phase 2 §2) |
 | `Value.lean` | 18–21 | Migrated |
 | `LawfulBEq.lean` | 23 | Migrated |
 | `Equivalence.lean` | 1, 2, 3, 5, 6 | TODO (depends on AnchorMap) |
