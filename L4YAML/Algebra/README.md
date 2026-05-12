@@ -17,7 +17,7 @@ triggers a re-opening of Phase 1 (Guardrail 2).
 | `TokenStream.lean` | 10 | Landed (Phase 2 §2) |
 | `Fuel.lean` | 11 | Landed (Phase 2 §2) |
 | `AnchorMap.lean` | 12 | Migrated from `Spec/Types.lean` |
-| `Combinators.lean` | 14 | TODO |
+| `Combinators.lean` | 14 | Landed (Phase 2 §3) |
 | `Schema.lean` | 15, 16 | TODO |
 | `Token.lean` | 17 | Landed (Phase 2 §2) |
 | `Value.lean` | 18–21 | Migrated |
