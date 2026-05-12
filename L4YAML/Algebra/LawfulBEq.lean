@@ -5,7 +5,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 import L4YAML.Proofs.Completeness
 
 /-!
-# LawfulBEq Instances  (Phase C' — Value-Layer Completeness)
+# LawfulBEq Instances  (Algebra Item 23)
 
 Proves `LawfulBEq` for the YAML AST type hierarchy:
 
@@ -32,9 +32,16 @@ enabling the equational lemmas and structural proofs below.
 Since `beqYamlValue` compiles via `brecOn` (no auto-generated equational
 theorems), we provide manual `@[simp]` lemmas for each constructor pair,
 all proved by `rfl`.
+
+## Provenance
+
+Migrated from `L4YAML/Proofs/Foundation/LawfulBEq.lean` during
+Initiative 4 Phase 2 (D4: one file per item-cluster). No semantic
+change; namespace move only — the namespace changes from
+`L4YAML.Proofs.LawfulBEq` to `L4YAML.Algebra.LawfulBEq`.
 -/
 
-namespace L4YAML.Proofs.LawfulBEq
+namespace L4YAML.Algebra.LawfulBEq
 
 open L4YAML
 
@@ -260,4 +267,4 @@ instance : LawfulBEq YamlValue where
   rfl := beqYamlValue_rfl _
   eq_of_beq h := beqYamlValue_eq _ _ h
 
-end L4YAML.Proofs.LawfulBEq
+end L4YAML.Algebra.LawfulBEq

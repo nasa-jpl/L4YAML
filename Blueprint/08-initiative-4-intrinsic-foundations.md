@@ -403,18 +403,26 @@ committing to the next phase. This is the procedural fix for the
 Initiative 3 failure where J.3 ran past its sorry-budget without
 formal reassessment.
 
-### Phase 1 — Design ← *current phase, this document is the deliverable*
+### Phase 1 — Design  *(closed)*
 
-**DONE criteria**:
+<details>
+
+**DONE criteria** (all met):
 - (i) `Blueprint/08-initiative-4-intrinsic-foundations.md` written and reviewed.
 - (ii) Algebra library inventory **frozen** (this document, §Algebra library).
 - (iii) `LoadConfig` shape settled; `EqMode` and `DuplicateKeyPolicy` enums final.
 - (iv) `RepGraph input range` and `TokenStream input` indexed-type signatures drafted (no proofs).
 - (v) Worked example walked through all four layers.
-- (vi) Branch protocol settled: `feature/append-only` archived as `archive/initiative-3-stopped`; Initiative 4 implementation will land on a fresh branch off `main`.
+- (vi) Branch protocol settled: `feature/append-only` archived as `archive/initiative-3-stopped`; Initiative 4 implementation lands on `feature/intrinsic-foundations` off `main`.
 
-### Phase 2 — Algebra library
+All five open decisions D1–D5 resolved (see §Decisions table and
+§What this document settles).
 
+</details>
+
+### Phase 2 — Algebra library  *(in progress on `feature/intrinsic-foundations`)*
+
+<details>
 **Goal**: prove all 23 inventoried items in a dedicated
 `L4YAML/Algebra/` directory.
 
@@ -427,11 +435,99 @@ formal reassessment.
 - (iv) Indexed types `RepGraph` and `TokenStream` defined as
   `inductive`/`structure` with no scanning/parsing semantics yet.
 
+**Status (foundation chunk landed)**:
+
+| # | Criterion | State |
+|---|---|---|
+| (i) | All 23 items proved sorry-free in `L4YAML/Algebra/` | **partial** — Items 18–23 migrated; Items 0–17 are next (see §Phase 2 next steps). |
+| (ii) | Items 18–23 moved with namespace rename | **done** — `L4YAML/Algebra/Value.lean` (18–21), `L4YAML/Algebra/StringList.lean` (22), `L4YAML/Algebra/LawfulBEq.lean` (23). All downstream imports updated atomically (Guardrail 1). Sorry count in `L4YAML/Algebra/` = 0. |
+| (iii) | `LoadConfig` types defined | **done** — `L4YAML/Config/LoadConfig.lean` defines `EqMode`, `DuplicateKeyPolicy`, `LoadConfig`. Threading into `parse`/`compose`/`construct` is Phase 3+. |
+| (iv) | Indexed type signatures drafted | **done** — `L4YAML/Indexed/Range.lean` (`Range input`), `L4YAML/Indexed/RepGraph.lean` (`RepGraph input range` mutual inductive with `RepGraphChild`/`RepGraphPair`), `L4YAML/Indexed/TokenStream.lean` (`TokenStream input` with `IxToken input`). All compile sorry-free. |
+
+**Reflections** (foundation chunk):
+
+1. **D1(b) refinement during implementation**. The settled wording
+   was “dependent pair `Σ (r : Range input), RepGraph input r`”
+   for nested ranges. Lean 4's nested-inductive elaboration
+   rejects `Sigma` whose second component references the inductive
+   being defined (kernel error: *“nested inductive datatypes
+   parameters cannot contain local variables”*). Resolution:
+   realise the same type-level content via a **mutual inductive**
+   with sibling types `RepGraphChild input` (single-graph existential
+   pack) and `RepGraphPair input` (key/value pair at independent
+   ranges). Semantically identical to the Σ-pair encoding; the
+   syntactic shape is just the form Lean's elaborator accepts. This
+   does **not** trigger a Phase 1 re-open (D1(b) was implementation
+   guidance, not a load-bearing API claim).
+
+2. **Migration shape held**. The "namespace move only" promise of
+   DONE (ii) survived first contact: every external consumer
+   (3 import sites, 1 `open` statement) flipped in the same commit
+   as the file moves, satisfying Guardrail 1. The non-inventory
+   helpers in `Proofs/Foundation/StringProperties.lean`
+   (FoldResult lemmas, validPlainFirst preservation) stayed in place
+   and now `import L4YAML.Algebra.StringList` for the two list
+   lemmas they share with Item 22.
+
+3. **`Proofs/Foundation/` is now legitimately mixed**. After the
+   migration, `Proofs/Foundation/` holds only `CharClass.lean` and
+   `StringProperties.lean` — neither is in the algebra inventory,
+   both are *consumers* of the algebra. Renaming or relocating that
+   directory is **not** a Phase 2 task; it is deferred to whenever
+   the scanner cutover (Phase 3) decides where these consumers fit.
+
+4. **Algebra closure check passed for migrated items**. Items 18–23
+   each compile against the existing `Spec/Types.lean` and
+   `Proofs/Parser/ParserGrammableBase.lean` imports with no
+   additional algebraic content beyond the inventory. The closure
+   principle (Guardrail 2) is therefore intact for the migrated
+   subset; the test for Items 0–17 happens as each lands.
+
 **Out of scope**: any scanner/parser code. The algebra library does
 not depend on `Scanner/`, `Parser/`, or any J.3-era infrastructure.
 
+#### Phase 2 next steps (Items 0–17)
+
+The §Initial implementation order list (below) gives the file
+sequencing. The first cluster ready to land is:
+
+1. `L4YAML/Algebra/Position.lean` — Items 7 (position monoid)
+   and 13 (`YamlPos` total order). Source content already exists in
+   `Spec/Types.lean:127–134`; this is migration + naming the monoid
+   laws explicitly.
+2. `L4YAML/Algebra/Indent.lean` — Item 8 (indent stack as free
+   monoid). Pure new content; small (~50 LOC).
+3. `L4YAML/Algebra/StringList.lean` *(extend)* — Item 9
+   (character/string decomposition). Reuses Mathlib's
+   `String.toList`/`++`/prefix/suffix laws where applicable.
+4. `L4YAML/Algebra/AnchorMap.lean` — Item 12 migration from
+   `Spec/Types.lean:633–721`. Already-proven theorems
+   (`find?_insert`, `find?_insert_ne`, `find?_empty`); namespace
+   move only.
+
+Items 1, 2, 3, 5, 6 (`Equivalence.lean`) depend on AnchorMap and
+are last. Item 4 (`Idempotence.lean`) is the capstone of Phase 2
+itself: `load ∘ dump ∘ load = load`, proved via the algebra library
++ indexed types — this is the Phase 2 stress test for the closure
+principle.
+
+#### Algebra files landed in foundation chunk
+
+| File | Items | LOC | Imports added downstream |
+|---|---|---|---|
+| `L4YAML/Algebra/Value.lean` | 18–21 | ~200 | 3 (was `Proofs.Foundation.ValueAlgebra`) |
+| `L4YAML/Algebra/LawfulBEq.lean` | 23 | ~265 | 1 (`L4YAML.lean` root) |
+| `L4YAML/Algebra/StringList.lean` | 22 | ~60 | 1 (`StringProperties.lean`) |
+| `L4YAML/Config/LoadConfig.lean` | n/a | ~70 | 0 (new file; consumers in Phase 3+) |
+| `L4YAML/Indexed/Range.lean` | n/a | ~60 | 0 |
+| `L4YAML/Indexed/RepGraph.lean` | n/a | ~120 | 0 |
+| `L4YAML/Indexed/TokenStream.lean` | n/a | ~80 | 0 |
+
+</details>
+
 ### Phase 3 — Stage C (scanner) on indexed types
 
+<details>
 **Goal**: replace `Scanner/Scanner.lean` and friends with a
 scanner that produces `TokenStream input` directly, verified
 against YAML 1.2.2 rules in both directions (`present` and
@@ -451,8 +547,11 @@ against YAML 1.2.2 rules in both directions (`present` and
 **Critical guardrail** (Lesson 1): legacy scanner deleted in the
 cutover commit. No "dual-write" interim state.
 
+</details>
+
 ### Phase 4 — Stage B (parser) on indexed types
 
+<details>
 **Goal**: replace the parser with one that consumes `TokenStream input`
 and produces `RepGraph input range`, verified bidirectionally.
 
@@ -466,8 +565,11 @@ and produces `RepGraph input range`, verified bidirectionally.
 - (v) Sorry count = 0 in `L4YAML/Parser/` and
   `L4YAML/Proofs/Parser/`.
 
+</details>
+
 ### Phase 5 — Stage A (document) + ToYaml / FromYaml
 
+<details>
 **Goal**: lift the `ToYaml` / `FromYaml` typeclasses to operate on
 indexed `RepGraph` and verify the round-trip law for every primitive
 instance + a derived-instance generator (similar to Lean's existing
@@ -482,8 +584,11 @@ instance + a derived-instance generator (similar to Lean's existing
   `Schema/Deriving.lean`) extended for indexed types.
 - (iv) Sorry count = 0 in `L4YAML/Schema/`.
 
+</details>
+
 ### Phase 6 — Capstone: end-to-end roundtrip
 
+<details>
 **Goal**: prove the end-to-end roundtrip theorem.
 
 **DONE criteria**:
@@ -496,6 +601,9 @@ instance + a derived-instance generator (similar to Lean's existing
   updated to use indexed types.
 - (iii) `Blueprint/04-capstones.md` updated to point at the new
   capstone proofs.
+
+
+</details>
 
 ---
 
@@ -613,61 +721,19 @@ Initiative 4, the foundation choice is wrong and we stop again.
 
 ---
 
-## Open decisions (Phase 1 to resolve before freezing)
+## Decisions (D1–D5)
 
-These remain open in the current document; resolving them is part of
-the Phase 1 DONE criteria.
+All five Phase-1 decision points are resolved. The full rationale and
+the chosen option for each appears in §What this document settles,
+what it leaves open below. Summary:
 
-### D1 — Final shape of the indexed type
-
-The sketch in §Proposed architecture is illustrative. Decisions to
-make:
-
-- (a) Is `range` a separate parameter or a field of each constructor?
-  Trade-off: parameter gives type-level disjointness for sub-ranges
-  (different sub-graphs of the same input have different types);
-  field gives ergonomics (one type per input).
-- (b) How are nested ranges encoded? The natural shape is dependent
-  pair `Σ (r : Range input), RepGraph input r`, but Lean's
-  elaboration of nested Σ-types can be slow.
-- (c) Do anchors use a separate type parameter (`AnchorMap input`),
-  or are they values of a global type?
-
-### D2 — `LawfulRoundTrip α` typeclass shape
-
-For Phase 6's capstone, `LawfulRoundTrip α` is the predicate that
-`α`'s `[ToYaml]` and `[FromYaml]` instances satisfy
-`fromYaml? ∘ toYaml = some`. Open: should this be a separate
-typeclass, a field of `FromYaml`, or inferred automatically by the
-derivation generator?
-
-### D3 — `EqMode.bisim` witness shape
-
-The `bisim` mode of `EqMode` (cycle equality via bisimulation
-witness) requires the client to supply a coalgebra structure on the
-graph. Open: what's the witness type? Standard options:
-
-- `WellFoundedRelation YamlValue` (well-founded relation on values)
-- `α → α → Option Bool` (partial decision procedure, with a
-  termination obligation)
-- A more abstract `Bisimulation` typeclass
-
-### D4 — Migration of `Proofs/Foundation/` → `L4YAML/Algebra/`
-
-Phase 2 DONE criterion (ii) calls for migrating Items 18–23 from
-`Proofs/Foundation/` to `L4YAML/Algebra/`. Open: namespace structure
-of the new directory. Proposal: one file per item-cluster
-(`L4YAML/Algebra/Position.lean`, `L4YAML/Algebra/AnchorMap.lean`,
-`L4YAML/Algebra/Value.lean`, etc.). Resolving this also resolves
-the shape of `import` statements throughout the rest of the corpus.
-
-### D5 — Test corpus for Phase 3 / 4 / 5 DONE criteria
-
-Each phase's DONE criterion (iv) calls for "an end-to-end test on a
-corpus." Open: is the corpus the existing `yaml-test-suite` runner,
-a hand-curated subset, or something new? Proposal: existing runner,
-Phase 3 must pass all `tags: scan` tests, Phase 4 must pass all
-`tags: parse` tests, Phase 5 must pass all `tags: load` tests.
+| # | Topic | Resolution |
+|---|---|---|
+| **D1** | Indexed type shape | `range` as separate parameter; nested via dependent pair; `AnchorMap input` as separate parameter. |
+| **D2** | `LawfulRoundTrip α` shape | Separate typeclass. |
+| **D3** | `EqMode.bisim` witness | `Bisimulation` typeclass. |
+| **D4** | `L4YAML/Algebra/` namespace | One file per item-cluster (per §Initial implementation order). |
+| **D5** | Per-phase test corpus | Existing `yaml-test-suite` runner with stage-tag filters. |
 
 ---
 
@@ -742,12 +808,37 @@ before committing to the next phase.**
 - `LoadConfig` bundles `EqMode` + `DuplicateKeyPolicy`.
 - Algebra library inventory frozen at 23 items.
 
-**Left open** (Phase 1 to resolve):
-- D1: final shape of indexed type (parameter vs field; nested ranges; anchor parameterisation).
-- D2: `LawfulRoundTrip α` typeclass shape.
-- D3: `EqMode.bisim` witness shape.
-- D4: `L4YAML/Algebra/` namespace structure.
-- D5: test corpus per phase.
+**Resolved during Phase 1**:
+
+- **D1: final shape of indexed type**
+  - (a) `range` is a **separate parameter** of `RepGraph`, not a field.
+    Type-level disjointness of sub-graphs from different inputs is a
+    critical guardrail against the ghost-predicate problem.
+  - (b) Nested ranges encoded via **dependent pair** `Σ (r : Range input), RepGraph input r`.
+    Slow elaboration is mitigated by keeping the dependent pair shallow
+    (one level per constructor) and by `@[reducible]` aliases where the
+    `Σ` would otherwise appear in user-facing signatures.
+  - (c) Anchors use a **separate type parameter** `AnchorMap input`.
+    `AnchorMap` is the coalgebra structure for graph isomorphism (Item 6);
+    indexing it by `input` keeps cross-input alias confusion out of the
+    type system.
+
+- **D2: `LawfulRoundTrip α` typeclass shape** — **separate typeclass**.
+  Clean separation of concerns: the round-trip law is a property of
+  the instances, not of the types themselves. Gives the derivation
+  generator a clear target for proof generation.
+
+- **D3: `EqMode.bisim` witness shape** — **`Bisimulation` typeclass**.
+  Most abstract and flexible: clients choose their bisimulation
+  witness shape while presenting a common interface to the parser.
+
+- **D4: `L4YAML/Algebra/` namespace structure** — **one file per
+  item-cluster**, per the §Initial implementation order list. Keeps
+  related content together while avoiding monolithic files.
+
+- **D5: test corpus per phase** — **existing `yaml-test-suite` runner**,
+  with tag filters per stage. Phase 3 must pass `tags: scan`,
+  Phase 4 must pass `tags: parse`, Phase 5 must pass `tags: load`.
 
 ---
 

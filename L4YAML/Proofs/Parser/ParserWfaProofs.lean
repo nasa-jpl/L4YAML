@@ -3,7 +3,7 @@ import L4YAML.Parser.Composition
 import L4YAML.Proofs.Parser.ParserGrammableBase
 import L4YAML.Proofs.Parser.ParserNodeProofs
 import L4YAML.Proofs.Parser.ParserWellBehaved
-import L4YAML.Proofs.Foundation.ValueAlgebra
+import L4YAML.Algebra.Value
 
 /-
 Copyright (c) 2026. All rights reserved.
@@ -35,7 +35,7 @@ open L4YAML.Proofs.ParserGrammable
 open L4YAML.Proofs.ParserWellBehaved
 open L4YAML.Proofs.ScannerPlainScalarValid
 open L4YAML.Proofs.Composition
-open L4YAML.Proofs.ValueAlgebra
+open L4YAML.Algebra.Value
 open L4YAML.Proofs.ParserNodeProofs
 
 -- Custom tactic: unfold all `*.loop*` constants in a hypothesis.
