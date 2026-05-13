@@ -224,6 +224,25 @@ theorem advance_atEnd {input : String} (c : IxCursor input)
   unfold advance
   simp [h]
 
+/-- `advance` strictly increases the byte offset when the cursor has
+    more input. Proof uses `String.Pos.Raw.byteIdx_lt_byteIdx_next`
+    (stdlib) plus the `Nat.min` clamp. -/
+theorem advance_offset_lt_of_hasMore {input : String} (c : IxCursor input)
+    (h : c.pos.offset < input.utf8ByteSize) :
+    c.pos.offset < c.advance.pos.offset := by
+  have hnext : c.pos.offset < (String.Pos.Raw.next input ⟨c.pos.offset⟩).byteIdx :=
+    String.Pos.Raw.byteIdx_lt_byteIdx_next input ⟨c.pos.offset⟩
+  unfold advance nextOffsetClamped
+  simp only [dif_pos h, Nat.min_def]
+  split <;> omega
+
+/-- `advance` is monotonic on the byte offset (whether or not at end). -/
+theorem advance_offset_monotonic {input : String} (c : IxCursor input) :
+    c.pos.offset ≤ c.advance.pos.offset := by
+  by_cases h : c.pos.offset < input.utf8ByteSize
+  · exact Nat.le_of_lt (advance_offset_lt_of_hasMore c h)
+  · rw [advance_atEnd c h]; exact Nat.le_refl _
+
 end IxCursor
 
 end L4YAML.Indexed
