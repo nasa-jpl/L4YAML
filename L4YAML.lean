@@ -25,6 +25,7 @@ import L4YAML.Algebra.Fuel
 import L4YAML.Algebra.Indent
 import L4YAML.Algebra.LawfulBEq
 import L4YAML.Algebra.Position
+import L4YAML.Algebra.Schema
 import L4YAML.Algebra.StringList
 import L4YAML.Algebra.Token
 import L4YAML.Algebra.TokenStream
