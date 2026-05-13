@@ -363,4 +363,43 @@ theorem consumeLineBreak_offset_monotonic {input : String} (c : IxCursor input) 
         exact IxCursor.advance_offset_monotonic c
     · rw [consumeLineBreak_other_char c hp hLF hCR]; exact Nat.le_refl _
 
+/-! ## `consumeLineBreak` — strict progress on a line-break
+
+When the cursor sits at an LF or CR, `consumeLineBreak` advances by at
+least one byte. This is the strict counterpart of
+`consumeLineBreak_offset_monotonic` and the driving fact behind the
+`skipToContent` global-progress proof in Step 4: every `s-l-comments`
+iteration that doesn't return must consume at least one line break,
+hence at least one byte. -/
+
+theorem consumeLineBreak_strict {input : String} (c : IxCursor input)
+    {ch : Char} (hp : c.peek? = some ch) (hLB : isLineBreakBool ch = true) :
+    c.pos.offset < (consumeLineBreak c).pos.offset := by
+  -- Successful peek ⇒ cursor has more input.
+  have hMore : c.pos.offset < input.utf8ByteSize := by
+    if h' : c.pos.offset < input.utf8ByteSize then
+      exact h'
+    else
+      have hNone : c.peek? = none :=
+        (IxCursor.peek?_eq_none_iff c).mpr (Nat.le_of_not_lt h')
+      rw [hNone] at hp; contradiction
+  have hAdv : c.pos.offset < c.advance.pos.offset :=
+    IxCursor.advance_offset_lt_of_hasMore c hMore
+  -- `ch` is LF or CR.
+  have hOr : ch = '\n' ∨ ch = '\r' := by
+    unfold isLineBreakBool at hLB
+    rcases Bool.or_eq_true _ _ |>.mp hLB with h | h
+    · exact Or.inl (by simpa using h)
+    · exact Or.inr (by simpa using h)
+  rcases hOr with hLFch | hCRch
+  · subst hLFch
+    rw [consumeLineBreak_LF c hp]; exact hAdv
+  · subst hCRch
+    by_cases hCRLF : c.peekAt? 1 = some '\n'
+    · have hOff : (consumeLineBreak c).pos.offset = c.advance.advance.pos.offset :=
+        consumeLineBreak_CRLF_offset c hp hCRLF
+      rw [hOff]
+      exact Nat.lt_of_lt_of_le hAdv (IxCursor.advance_offset_monotonic c.advance)
+    · rw [consumeLineBreak_CR_no_LF c hp hCRLF]; exact hAdv
+
 end L4YAML.Scanner.Indexed
