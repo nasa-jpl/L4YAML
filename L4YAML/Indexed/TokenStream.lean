@@ -19,11 +19,17 @@ Tokens carry positions that are byte offsets into `input`.
   by the `Range input` of its associated source span) to be a valid
   offset into `input`.
 
-## Phase 2 scope (this file)
+## Phase 2 → Phase 3 evolution
 
-Type signature only. The `parse : (s : String) → Subtype (validScan s)`
-function and the `present : TokenStream input → String` function
-land in Phase 3 (Stage C scanner cutover).
+Phase 2 landed type signatures only. Phase 3 Step 1 adds the basic
+container operations the new scanner needs:
+
+- `IxToken.mk'` — bound-discharging convenience constructor;
+- `TokenStream.push`, `append`, `last?`, `isEmpty`, `singleton`.
+
+The `parse : (s : String) → Subtype (validScan s)` function and the
+`present : TokenStream input → String` function land later in
+Phase 3 (Steps 2–5).
 
 ## Counterpart (legacy)
 
@@ -53,6 +59,26 @@ structure IxToken (input : String) where
   startLEStop  : start.offset ≤ stop.offset
   stopLEInput  : stop.offset ≤ input.utf8ByteSize
 
+namespace IxToken
+
+/-- Explicit constructor that names the bound obligations. Used by
+    Phase 3 Step 2+ scanner code which holds the bound proofs locally
+    (typically as the `posBound` field of an `IxCursor`). -/
+def mk' {input : String} (start : YamlPos) (token : YamlToken) (stop : YamlPos)
+    (hOrder : start.offset ≤ stop.offset) (hBound : stop.offset ≤ input.utf8ByteSize) :
+    IxToken input where
+  start := start
+  token := token
+  stop  := stop
+  startLEStop := hOrder
+  stopLEInput := hBound
+
+/-- The byte-length of the source span the token occupies. -/
+@[inline] def byteSize {input : String} (t : IxToken input) : Nat :=
+  t.stop.offset - t.start.offset
+
+end IxToken
+
 /-- The L2 event/token stream indexed by the input string.
 
     **Phase 2 stub**: a flat `Array (IxToken input)`. Phase 3's
@@ -74,6 +100,52 @@ namespace TokenStream
 /-- The empty token stream. -/
 def empty (input : String) : TokenStream input where
   tokens := #[]
+
+/-- Whether the stream contains no tokens. -/
+@[inline] def isEmpty {input : String} (ts : TokenStream input) : Bool :=
+  ts.tokens.isEmpty
+
+/-- A single-token stream. -/
+def singleton {input : String} (t : IxToken input) : TokenStream input where
+  tokens := #[t]
+
+/-- Append a token to the end of the stream. -/
+@[inline] def push {input : String} (ts : TokenStream input)
+    (t : IxToken input) : TokenStream input where
+  tokens := ts.tokens.push t
+
+/-- Concatenate two token streams over the same input. -/
+@[inline] def append {input : String} (ts₁ ts₂ : TokenStream input) :
+    TokenStream input where
+  tokens := ts₁.tokens ++ ts₂.tokens
+
+/-- The last token in the stream, if any. -/
+@[inline] def last? {input : String} (ts : TokenStream input) :
+    Option (IxToken input) :=
+  ts.tokens.back?
+
+/-- Look up the `i`-th token. -/
+@[inline] def get? {input : String} (ts : TokenStream input) (i : Nat) :
+    Option (IxToken input) :=
+  ts.tokens[i]?
+
+@[simp] theorem size_empty (input : String) :
+    size (empty input) = 0 := rfl
+
+@[simp] theorem size_singleton {input : String} (t : IxToken input) :
+    size (singleton t) = 1 := rfl
+
+@[simp] theorem size_push {input : String} (ts : TokenStream input)
+    (t : IxToken input) :
+    size (push ts t) = size ts + 1 := by
+  simp [size, push]
+
+@[simp] theorem size_append {input : String} (ts₁ ts₂ : TokenStream input) :
+    size (append ts₁ ts₂) = size ts₁ + size ts₂ := by
+  simp [size, append]
+
+@[simp] theorem isEmpty_empty (input : String) :
+    isEmpty (empty input) = true := rfl
 
 end TokenStream
 
