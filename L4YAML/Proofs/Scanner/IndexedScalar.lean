@@ -161,6 +161,111 @@ theorem processEscapeIx_offset_lt {input : String} (c : IxCursor input)
             · contradiction
   exact Nat.lt_of_lt_of_le hAdv hKey
 
+/-! ## Layer F1/F2 — fold helpers used by multi-line collectors
+
+Three monotonicity facts feed the multi-line proofs:
+
+- `skipBlankLinesLoopIx_offset_monotonic` — the blank-line counter
+  only ever advances the cursor (or leaves it fixed).
+- `foldQuotedNewlinesIx_offset_monotonic` — quoted-scalar fold step
+  is monotonic on `.2`.
+- `handleBlockLineBreakIx_offset_monotonic` — when the block-context
+  handler returns `some (_, c')`, `c.pos.offset ≤ c'.pos.offset`.
+
+Each lemma's proof unfolds the function and chains the underlying
+`skipSpaces` / `skipWhitespace` / `consumeLineBreak` /
+`skipBlankLinesLoopIx` monotonicity facts. We do **not** need the
+strict (`<`) version for these: the strict bound on the entry-point
+`scanX` recognisers comes from `consumeLineBreak_strict` /
+`IxCursor.advance_offset_lt_of_hasMore` applied at the dispatch site,
+combined with `≤` on the helper. -/
+
+theorem skipBlankLinesLoopIx_offset_monotonic {input : String} (c : IxCursor input)
+    (emptyCount : Nat) (fuel : Nat) :
+    c.pos.offset ≤ (skipBlankLinesLoopIx c emptyCount fuel).1.pos.offset := by
+  induction fuel generalizing c emptyCount with
+  | zero => unfold skipBlankLinesLoopIx; exact Nat.le_refl _
+  | succ fuel ih =>
+    unfold skipBlankLinesLoopIx
+    split
+    · -- some ch
+      split
+      · -- isLineBreakBool ch = true: recurse on consumeLineBreak (skipSpaces c).1
+        have hSP : c.pos.offset ≤ (skipSpaces c).1.pos.offset :=
+          skipSpaces_offset_monotonic c
+        have hCLB : (skipSpaces c).1.pos.offset ≤
+                    (consumeLineBreak (skipSpaces c).1).pos.offset :=
+          consumeLineBreak_offset_monotonic _
+        have hRec :
+            (consumeLineBreak (skipSpaces c).1).pos.offset ≤
+            (skipBlankLinesLoopIx (consumeLineBreak (skipSpaces c).1)
+              (emptyCount + 1) fuel).1.pos.offset :=
+          ih (consumeLineBreak (skipSpaces c).1) (emptyCount + 1)
+        exact Nat.le_trans hSP (Nat.le_trans hCLB hRec)
+      · -- isLineBreakBool ch = false: yields (c, _)
+        exact Nat.le_refl _
+    · -- peek? = none: yields (c, _)
+      exact Nat.le_refl _
+
+theorem foldQuotedNewlinesIx_offset_monotonic {input : String} (c : IxCursor input) :
+    c.pos.offset ≤ (foldQuotedNewlinesIx c).2.pos.offset := by
+  unfold foldQuotedNewlinesIx
+  -- Both branches of the `if emptyCount > 0` use the same cursor:
+  --   skipWhitespace (skipBlankLinesLoopIx (consumeLineBreak c) 0 _).1
+  have hCLB : c.pos.offset ≤ (consumeLineBreak c).pos.offset :=
+    consumeLineBreak_offset_monotonic c
+  have hBL :
+      (consumeLineBreak c).pos.offset ≤
+      (skipBlankLinesLoopIx (consumeLineBreak c) 0 input.utf8ByteSize).1.pos.offset :=
+    skipBlankLinesLoopIx_offset_monotonic _ _ _
+  have hSW :
+      (skipBlankLinesLoopIx (consumeLineBreak c) 0 input.utf8ByteSize).1.pos.offset ≤
+      (skipWhitespace
+        (skipBlankLinesLoopIx (consumeLineBreak c) 0 input.utf8ByteSize).1).pos.offset :=
+    skipWhitespace_offset_monotonic _
+  have hChain : c.pos.offset ≤
+      (skipWhitespace
+        (skipBlankLinesLoopIx (consumeLineBreak c) 0 input.utf8ByteSize).1).pos.offset :=
+    Nat.le_trans hCLB (Nat.le_trans hBL hSW)
+  split
+  · exact hChain
+  · exact hChain
+
+theorem handleBlockLineBreakIx_offset_monotonic {input : String} (c : IxCursor input)
+    (contentIndent : Nat) {folded : String} {c' : IxCursor input}
+    (h : handleBlockLineBreakIx c contentIndent = some (folded, c')) :
+    c.pos.offset ≤ c'.pos.offset := by
+  unfold handleBlockLineBreakIx at h
+  -- Build the monotonicity chain to the result cursor up front.
+  have hCLB : c.pos.offset ≤ (consumeLineBreak c).pos.offset :=
+    consumeLineBreak_offset_monotonic c
+  have hBL :
+      (consumeLineBreak c).pos.offset ≤
+      (skipBlankLinesLoopIx (consumeLineBreak c) 0 input.utf8ByteSize).1.pos.offset :=
+    skipBlankLinesLoopIx_offset_monotonic _ _ _
+  have hSP :
+      (skipBlankLinesLoopIx (consumeLineBreak c) 0 input.utf8ByteSize).1.pos.offset ≤
+      (skipSpaces
+        (skipBlankLinesLoopIx (consumeLineBreak c) 0 input.utf8ByteSize).1).1.pos.offset :=
+    skipSpaces_offset_monotonic _
+  have hChain : c.pos.offset ≤
+      (skipSpaces
+        (skipBlankLinesLoopIx (consumeLineBreak c) 0 input.utf8ByteSize).1).1.pos.offset :=
+    Nat.le_trans hCLB (Nat.le_trans hBL hSP)
+  split at h
+  · contradiction                 -- col < contentIndent → none
+  · split at h
+    · contradiction               -- atDocumentBoundary → none
+    · split at h
+      · simp only [Option.some.injEq, Prod.mk.injEq] at h
+        obtain ⟨_, hcEq⟩ := h
+        rw [← hcEq]
+        exact hChain
+      · simp only [Option.some.injEq, Prod.mk.injEq] at h
+        obtain ⟨_, hcEq⟩ := h
+        rw [← hcEq]
+        exact hChain
+
 /-! ## Layer E2 — double-quoted offset monotonicity & strict progress (working notes)
 
 The `'"'` and closing-quote-of-single branches need to convert
@@ -191,23 +296,44 @@ theorem collectDoubleQuotedLoopIx_offset_monotonic {input : String} (c : IxCurso
     · contradiction
     · -- some '"' branch: h : some (content, c.advance) = some result
       simp only [Option.some.injEq] at h
-      -- h : (content, c.advance) = result
       rw [← h]
       exact IxCursor.advance_offset_monotonic c
-    · -- some '\\' branch
+    · -- some '\\' branch — inner match on c.advance.peek?
       split at h
-      · rename_i pchOption decodedCh cAfterEsc hEsc
-        have hAdvMono : c.pos.offset ≤ c.advance.pos.offset :=
-          IxCursor.advance_offset_monotonic c
-        have hEscMono : c.advance.pos.offset ≤ cAfterEsc.pos.offset :=
-          processEscapeIx_offset_monotonic c.advance hEsc
-        have hRec : cAfterEsc.pos.offset ≤ result.2.pos.offset := ih _ _ h
-        exact Nat.le_trans hAdvMono (Nat.le_trans hEscMono hRec)
+      · -- c.advance.peek? = some lbCh
+        split at h
+        · -- isLineBreakBool lbCh = true: line-continuation
+          have hAdv : c.pos.offset ≤ c.advance.pos.offset :=
+            IxCursor.advance_offset_monotonic c
+          have hCLB : c.advance.pos.offset ≤ (consumeLineBreak c.advance).pos.offset :=
+            consumeLineBreak_offset_monotonic _
+          have hSW : (consumeLineBreak c.advance).pos.offset ≤
+                     (skipWhitespace (consumeLineBreak c.advance)).pos.offset :=
+            skipWhitespace_offset_monotonic _
+          have hRec : (skipWhitespace (consumeLineBreak c.advance)).pos.offset ≤
+                      result.2.pos.offset := ih _ _ h
+          exact Nat.le_trans hAdv (Nat.le_trans hCLB (Nat.le_trans hSW hRec))
+        · -- isLineBreakBool lbCh = false: normal escape
+          split at h
+          · rename_i _ decodedCh cAfterEsc hEsc
+            have hAdvMono : c.pos.offset ≤ c.advance.pos.offset :=
+              IxCursor.advance_offset_monotonic c
+            have hEscMono : c.advance.pos.offset ≤ cAfterEsc.pos.offset :=
+              processEscapeIx_offset_monotonic c.advance hEsc
+            have hRec : cAfterEsc.pos.offset ≤ result.2.pos.offset := ih _ _ h
+            exact Nat.le_trans hAdvMono (Nat.le_trans hEscMono hRec)
+          · contradiction
       · contradiction
     · -- some ch (other) branch
       split at h
-      · contradiction
-      · have hRec : c.advance.pos.offset ≤ result.2.pos.offset := ih _ _ h
+      · -- isLineBreakBool ch = true: fold and recurse
+        have hFoldMono : c.pos.offset ≤ (foldQuotedNewlinesIx c).2.pos.offset :=
+          foldQuotedNewlinesIx_offset_monotonic c
+        have hRec : (foldQuotedNewlinesIx c).2.pos.offset ≤ result.2.pos.offset :=
+          ih _ _ h
+        exact Nat.le_trans hFoldMono hRec
+      · -- regular char: advance and recurse
+        have hRec : c.advance.pos.offset ≤ result.2.pos.offset := ih _ _ h
         exact Nat.le_trans (IxCursor.advance_offset_monotonic c) hRec
 
 theorem scanDoubleQuotedIx_offset_lt {input : String} (c : IxCursor input)
@@ -258,8 +384,14 @@ theorem collectSingleQuotedLoopIx_offset_monotonic {input : String} (c : IxCurso
         exact IxCursor.advance_offset_monotonic c
     · -- some ch (other)
       split at h
-      · contradiction
-      · have hRec : c.advance.pos.offset ≤ result.2.pos.offset := ih _ _ h
+      · -- isLineBreakBool ch = true: fold and recurse
+        have hFoldMono : c.pos.offset ≤ (foldQuotedNewlinesIx c).2.pos.offset :=
+          foldQuotedNewlinesIx_offset_monotonic c
+        have hRec : (foldQuotedNewlinesIx c).2.pos.offset ≤ result.2.pos.offset :=
+          ih _ _ h
+        exact Nat.le_trans hFoldMono hRec
+      · -- regular char: advance and recurse
+        have hRec : c.advance.pos.offset ≤ result.2.pos.offset := ih _ _ h
         exact Nat.le_trans (IxCursor.advance_offset_monotonic c) hRec
 
 theorem scanSingleQuotedIx_offset_lt {input : String} (c : IxCursor input)
@@ -283,41 +415,218 @@ theorem scanSingleQuotedIx_offset_lt {input : String} (c : IxCursor input)
     exact Nat.lt_of_lt_of_le hAdv hRec
   · contradiction
 
-/-! ## Layer E4 — plain scalar offset monotonicity
+/-! ## Layer E4 / F2 — plain scalar offset monotonicity
 
 The plain recogniser is total: it always returns a `String ×
-IxCursor input`. Monotonicity therefore has no "success" guard. -/
+IxCursor input`. Monotonicity therefore has no "success" guard.
+The Step 4b additions introduce two line-break sub-branches (flow
+folding via `foldQuotedNewlinesIx`; block continuation via
+`handleBlockLineBreakIx`) whose chained monotonicity reduces to
+the helper lemmas above. -/
 
 theorem collectPlainScalarLoopIx_offset_monotonic {input : String} (c : IxCursor input)
-    (content spaces : String) (inFlow : Bool) (fuel : Nat) :
-    c.pos.offset ≤ (collectPlainScalarLoopIx c content spaces inFlow fuel).2.pos.offset := by
+    (content spaces : String) (inFlow : Bool) (contentIndent : Nat) (fuel : Nat) :
+    c.pos.offset ≤
+    (collectPlainScalarLoopIx c content spaces inFlow contentIndent fuel).2.pos.offset := by
   induction fuel generalizing c content spaces with
   | zero => unfold collectPlainScalarLoopIx; exact Nat.le_refl _
   | succ fuel ih =>
     unfold collectPlainScalarLoopIx
     split
-    · exact Nat.le_refl _
-    · -- some ch — cascade of 7 nested ifs
+    · exact Nat.le_refl _                                  -- peek? = none
+    · -- some ch — cascade of nested ifs
       split
-      · exact Nat.le_refl _                              -- '#' + spaces.length > 0
+      · exact Nat.le_refl _                                -- '#' + spaces.length > 0
       split
-      · exact Nat.le_refl _                              -- ':' terminates
+      · exact Nat.le_refl _                                -- ':' terminates
       split
       · exact Nat.le_trans (IxCursor.advance_offset_monotonic c) (ih _ _ _)  -- ':' continues
       split
-      · exact Nat.le_refl _                              -- flow indicator in flow
+      · exact Nat.le_refl _                                -- flow indicator in flow
       split
-      · exact Nat.le_refl _                              -- line break
+      · -- line break: either flow fold or block fold
+        split
+        · -- inFlow: foldQuotedNewlinesIx
+          exact Nat.le_trans (foldQuotedNewlinesIx_offset_monotonic c) (ih _ _ _)
+        · -- block: handleBlockLineBreakIx
+          split
+          · exact Nat.le_refl _                            -- handleBlockLineBreakIx = none
+          · rename_i _ _ _ folded cAfterFold hHandle
+            have hHandleMono : c.pos.offset ≤ cAfterFold.pos.offset :=
+              handleBlockLineBreakIx_offset_monotonic c contentIndent hHandle
+            exact Nat.le_trans hHandleMono (ih _ _ _)
       split
       · exact Nat.le_trans (IxCursor.advance_offset_monotonic c) (ih _ _ _)  -- whitespace
       split
-      · exact Nat.le_refl _                              -- not plain-safe
+      · exact Nat.le_refl _                                -- not plain-safe
       · exact Nat.le_trans (IxCursor.advance_offset_monotonic c) (ih _ _ _)  -- plain-safe content
 
 theorem scanPlainScalarIx_offset_monotonic {input : String} (c : IxCursor input)
-    (inFlow : Bool) :
-    c.pos.offset ≤ (scanPlainScalarIx c inFlow).2.pos.offset := by
+    (inFlow : Bool) (contentIndent : Nat) :
+    c.pos.offset ≤ (scanPlainScalarIx c inFlow contentIndent).2.pos.offset := by
   unfold scanPlainScalarIx
-  exact collectPlainScalarLoopIx_offset_monotonic c "" "" inFlow _
+  exact collectPlainScalarLoopIx_offset_monotonic c "" "" inFlow contentIndent _
+
+/-! ## Layer F3 — block scalar offset monotonicity
+
+The block-scalar code path threads several helpers:
+`consumeExactSpacesIx`, `collectLineContentLoopIx`,
+`parseBlockHeaderLoopIx`, and `collectBlockScalarLoopIx`. Each is
+monotonic on the cursor offset; the entry-point `scanBlockScalarIx`
+chains them together. -/
+
+theorem consumeExactSpacesIx_offset_monotonic {input : String} (c : IxCursor input)
+    (count : Nat) :
+    c.pos.offset ≤ (consumeExactSpacesIx c count).2.pos.offset := by
+  induction count generalizing c with
+  | zero => unfold consumeExactSpacesIx; exact Nat.le_refl _
+  | succ count' ih =>
+    unfold consumeExactSpacesIx
+    split
+    · exact Nat.le_trans (IxCursor.advance_offset_monotonic c) (ih c.advance)
+    · exact Nat.le_refl _
+
+theorem collectLineContentLoopIx_offset_monotonic {input : String} (c : IxCursor input)
+    (content : String) (fuel : Nat) :
+    c.pos.offset ≤ (collectLineContentLoopIx c content fuel).2.pos.offset := by
+  induction fuel generalizing c content with
+  | zero => unfold collectLineContentLoopIx; exact Nat.le_refl _
+  | succ fuel ih =>
+    unfold collectLineContentLoopIx
+    split
+    · split
+      · exact Nat.le_refl _
+      · exact Nat.le_trans (IxCursor.advance_offset_monotonic c) (ih _ _)
+    · exact Nat.le_refl _
+
+theorem parseBlockHeaderLoopIx_offset_monotonic {input : String} (c : IxCursor input)
+    (chomp : ChompStyle) (explicitOffset : Option Nat) (fuel : Nat) :
+    c.pos.offset ≤
+    (parseBlockHeaderLoopIx c chomp explicitOffset fuel).2.2.pos.offset := by
+  induction fuel generalizing c chomp explicitOffset with
+  | zero => unfold parseBlockHeaderLoopIx; exact Nat.le_refl _
+  | succ fuel ih =>
+    unfold parseBlockHeaderLoopIx
+    split
+    · exact Nat.le_trans (IxCursor.advance_offset_monotonic c) (ih _ _ _)
+    · exact Nat.le_trans (IxCursor.advance_offset_monotonic c) (ih _ _ _)
+    · split
+      · exact Nat.le_trans (IxCursor.advance_offset_monotonic c) (ih _ _ _)
+      · exact Nat.le_refl _
+    · exact Nat.le_refl _
+
+theorem collectBlockScalarLoopIx_offset_monotonic {input : String} (c : IxCursor input)
+    (rawContent : String) (contentIndent : Nat) (fuel : Nat) :
+    c.pos.offset ≤
+    (collectBlockScalarLoopIx c rawContent contentIndent fuel).2.pos.offset := by
+  induction fuel generalizing c rawContent with
+  | zero => unfold collectBlockScalarLoopIx; exact Nat.le_refl _
+  | succ fuel ih =>
+    unfold collectBlockScalarLoopIx
+    have hSp : c.pos.offset ≤ (consumeExactSpacesIx c contentIndent).2.pos.offset :=
+      consumeExactSpacesIx_offset_monotonic c contentIndent
+    split
+    · exact Nat.le_refl _                                  -- document boundary
+    · split
+      · exact hSp                                          -- cAfterSp.peek? = none
+      · split
+        · -- line break: consumeLineBreak + recurse
+          have hCLB :
+              (consumeExactSpacesIx c contentIndent).2.pos.offset ≤
+              (consumeLineBreak (consumeExactSpacesIx c contentIndent).2).pos.offset :=
+            consumeLineBreak_offset_monotonic _
+          exact Nat.le_trans hSp (Nat.le_trans hCLB (ih _ _))
+        · split
+          · exact Nat.le_refl _                            -- short line: return c
+          · -- normal line: collect content + inspect cAfterLine
+            have hLine :
+                (consumeExactSpacesIx c contentIndent).2.pos.offset ≤
+                (collectLineContentLoopIx (consumeExactSpacesIx c contentIndent).2 ""
+                    input.utf8ByteSize).2.pos.offset :=
+              collectLineContentLoopIx_offset_monotonic _ _ _
+            split
+            · split
+              · -- line break at end of line: consume + recurse
+                have hCLB :
+                    (collectLineContentLoopIx (consumeExactSpacesIx c contentIndent).2 ""
+                        input.utf8ByteSize).2.pos.offset ≤
+                    (consumeLineBreak
+                      (collectLineContentLoopIx (consumeExactSpacesIx c contentIndent).2 ""
+                          input.utf8ByteSize).2).pos.offset :=
+                  consumeLineBreak_offset_monotonic _
+                exact Nat.le_trans hSp
+                  (Nat.le_trans hLine (Nat.le_trans hCLB (ih _ _)))
+              · -- non-LF at end of line: recurse from cAfterLine
+                exact Nat.le_trans hSp (Nat.le_trans hLine (ih _ _))
+            · -- peek? = none after line: return cAfterLine
+              exact Nat.le_trans hSp hLine
+
+/-- Helper: the post-header cursor is monotonic relative to `c`. -/
+theorem blockHeaderToBodyIx_offset_monotonic {input : String} (c : IxCursor input) :
+    c.pos.offset ≤ (blockHeaderToBodyIx c).pos.offset := by
+  unfold blockHeaderToBodyIx
+  have hAdv : c.pos.offset ≤ c.advance.pos.offset :=
+    IxCursor.advance_offset_monotonic c
+  have hHdr : c.advance.pos.offset ≤
+              (parseBlockHeaderLoopIx c.advance .clip none 2).2.2.pos.offset :=
+    parseBlockHeaderLoopIx_offset_monotonic _ _ _ _
+  have hSW : (parseBlockHeaderLoopIx c.advance .clip none 2).2.2.pos.offset ≤
+             (skipWhitespace (parseBlockHeaderLoopIx c.advance .clip none 2).2.2).pos.offset :=
+    skipWhitespace_offset_monotonic _
+  have hComm :
+      (skipWhitespace (parseBlockHeaderLoopIx c.advance .clip none 2).2.2).pos.offset ≤
+      (if (skipWhitespace (parseBlockHeaderLoopIx c.advance .clip none 2).2.2).peek?
+           == some '#' then
+         skipCommentText
+           (skipWhitespace (parseBlockHeaderLoopIx c.advance .clip none 2).2.2).advance
+       else
+         skipWhitespace (parseBlockHeaderLoopIx c.advance .clip none 2).2.2).pos.offset := by
+    split
+    · exact Nat.le_trans (IxCursor.advance_offset_monotonic _)
+        (skipCommentText_offset_monotonic _)
+    · exact Nat.le_refl _
+  have hCLB :
+      (if (skipWhitespace (parseBlockHeaderLoopIx c.advance .clip none 2).2.2).peek?
+           == some '#' then
+         skipCommentText
+           (skipWhitespace (parseBlockHeaderLoopIx c.advance .clip none 2).2.2).advance
+       else
+         skipWhitespace (parseBlockHeaderLoopIx c.advance .clip none 2).2.2).pos.offset ≤
+      (consumeLineBreak
+        (if (skipWhitespace (parseBlockHeaderLoopIx c.advance .clip none 2).2.2).peek?
+             == some '#' then
+           skipCommentText
+             (skipWhitespace (parseBlockHeaderLoopIx c.advance .clip none 2).2.2).advance
+         else
+           skipWhitespace
+             (parseBlockHeaderLoopIx c.advance .clip none 2).2.2)).pos.offset :=
+    consumeLineBreak_offset_monotonic _
+  exact Nat.le_trans hAdv (Nat.le_trans hHdr (Nat.le_trans hSW
+    (Nat.le_trans hComm hCLB)))
+
+theorem scanBlockScalarIx_offset_monotonic {input : String} (c : IxCursor input)
+    (parentIndent : Nat) {result : String × ScalarStyle × IxCursor input}
+    (h : scanBlockScalarIx c parentIndent = some result) :
+    c.pos.offset ≤ result.2.2.pos.offset := by
+  unfold scanBlockScalarIx at h
+  split at h
+  · -- some ch
+    split at h
+    · -- ch = '|' || ch = '>': success branch — result.2.2 is the body cursor.
+      have hHdrToBody : c.pos.offset ≤ (blockHeaderToBodyIx c).pos.offset :=
+        blockHeaderToBodyIx_offset_monotonic c
+      have hBody : (blockHeaderToBodyIx c).pos.offset ≤
+        (collectBlockScalarLoopIx (blockHeaderToBodyIx c) ""
+          (match (parseBlockHeaderLoopIx c.advance .clip none 2).2.1 with
+            | some m => parentIndent + m
+            | none   =>
+              autoDetectBlockScalarIndentIx (blockHeaderToBodyIx c) (parentIndent + 1))
+          input.utf8ByteSize).2.pos.offset :=
+        collectBlockScalarLoopIx_offset_monotonic _ _ _ _
+      simp only [Option.some.injEq] at h
+      rw [← h]
+      exact Nat.le_trans hHdrToBody hBody
+    · contradiction                                        -- not '|' or '>'
+  · contradiction                                          -- EOF
 
 end L4YAML.Scanner.Indexed

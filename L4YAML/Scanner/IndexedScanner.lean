@@ -375,13 +375,82 @@ def processEscapeIx {input : String} (c : IxCursor input) :
       else if ch == 'U' then parseHexEscapeIx c.advance 8
       else none
 
-/-! ### Layer E2 — double-quoted scalar (§7.3.1, single-line)
+/-- Trim trailing space/tab from a string. -/
+def trimTrailingWSIx (s : String) : String :=
+  String.ofList ((s.toList.reverse.dropWhile (fun c => c == ' ' || c == '\t')).reverse)
+
+/-! ### Layer F1 — multi-line quoted scalar folding helpers
+
+`foldQuotedNewlinesIx` is the line-fold step shared by double- and
+single-quoted scalars when they span multiple lines (§6.5 [73] /
+[74]). Given a cursor sitting at a line break, it:
+
+1. Consumes the break.
+2. Counts consecutive *blank* lines (whitespace + LF runs).
+3. Skips leading whitespace on the next non-blank line.
+
+Returns the **folded replacement** (`" "` for a single break,
+`"\n"*emptyCount` for two or more) and the post-fold cursor. Error
+reporting (tab in indentation §6.1) is deferred to the dispatcher
+in line with Step 3's neutrality. -/
+
+/-- Inner loop: count consecutive blank lines, advancing the cursor
+    past each `s-space* b-break` run. Returns `(c', emptyCount)`.
+    Structural recursion on `fuel`. The `(skipSpaces c).1` projection
+    is duplicated rather than `let`-bound; binding would obstruct
+    `split` in the monotonicity proof (Reflection 40 / 37). -/
+def skipBlankLinesLoopIx {input : String} (c : IxCursor input)
+    (emptyCount : Nat) : Nat → IxCursor input × Nat
+  | 0          => (c, emptyCount)
+  | fuel + 1 =>
+    -- After skipSpaces, the cursor sits at LF / non-blank / EOF.
+    match (skipSpaces c).1.peek? with
+    | some ch =>
+      if isLineBreakBool ch then
+        skipBlankLinesLoopIx (consumeLineBreak (skipSpaces c).1) (emptyCount + 1) fuel
+      else
+        -- Hit content: yield the cursor *before* the blank-line
+        -- whitespace was consumed (the caller's `skipSpaces` handles
+        -- the continuation line's leading spaces explicitly).
+        (c, emptyCount)
+    | none    => (c, emptyCount)
+
+/-- Fold a single quoted-scalar line break per §6.5. Cursor must be
+    at the line-break character (caller has detected it). Returns
+    `(folded, c')`:
+    - `folded = " "` if exactly one line break with no intervening
+      blank lines (`b-as-space` [70]).
+    - `folded = String.ofList (List.replicate n '\n')` for `n ≥ 1`
+      blank lines (`b-l-trimmed(n,c)` [69]). -/
+def foldQuotedNewlinesIx {input : String} (c : IxCursor input) :
+    String × IxCursor input :=
+  -- Use `.1`/`.2` projections rather than `let`-destructure on the
+  -- blank-line counter; the `let` would opacify proofs that try to
+  -- `split` on the inner conditional (Reflection 40 / 37).
+  if (skipBlankLinesLoopIx (consumeLineBreak c) 0 input.utf8ByteSize).2 > 0 then
+    (String.ofList
+       (List.replicate
+         (skipBlankLinesLoopIx (consumeLineBreak c) 0 input.utf8ByteSize).2
+         '\n'),
+     skipWhitespace
+       (skipBlankLinesLoopIx (consumeLineBreak c) 0 input.utf8ByteSize).1)
+  else
+    (" ",
+     skipWhitespace
+       (skipBlankLinesLoopIx (consumeLineBreak c) 0 input.utf8ByteSize).1)
+
+/-! ### Layer E2 — double-quoted scalar (§7.3.1)
 
 `collectDoubleQuotedLoopIx` consumes the body of a double-quoted
 scalar starting from *after* the opening `"`. Stops at:
 - `'"'`: closing quote — return content + cursor past the quote
-- `'\\'`: escape — recurse with `processEscapeIx`'s result
-- EOF or unhandled line break: `none` (Step 4a defers multi-line). -/
+- `'\\'` then line break: line-continuation escape — consume LF and
+  leading whitespace, emit no character
+- `'\\'` otherwise: escape — recurse with `processEscapeIx`'s result
+- line break: fold per `foldQuotedNewlinesIx` (Layer F1), trim
+  trailing whitespace of the current content, append the folded
+  string, continue
+- EOF: `none`. -/
 
 def collectDoubleQuotedLoopIx {input : String} (c : IxCursor input)
     (content : String) : Nat → Option (String × IxCursor input)
@@ -391,18 +460,36 @@ def collectDoubleQuotedLoopIx {input : String} (c : IxCursor input)
     | none       => none
     | some '"'   => some (content, c.advance)
     | some '\\'  =>
-      match processEscapeIx c.advance with
-      | some (ch, cAfterEsc) =>
-        collectDoubleQuotedLoopIx cAfterEsc (content.push ch) fuel
+      -- Look at the character after the backslash to decide
+      -- between line-continuation escape and normal escape.
+      match c.advance.peek? with
+      | some lbCh =>
+        if isLineBreakBool lbCh then
+          -- `\\<LF>` line-continuation: consume newline + leading WS,
+          -- emit no character.
+          collectDoubleQuotedLoopIx
+            (skipWhitespace (consumeLineBreak c.advance)) content fuel
+        else
+          match processEscapeIx c.advance with
+          | some (ch, cAfterEsc) =>
+            collectDoubleQuotedLoopIx cAfterEsc (content.push ch) fuel
+          | none => none
       | none => none
     | some ch    =>
       if isLineBreakBool ch then
-        none
+        -- Multi-line continuation: trim trailing WS, fold the break.
+        -- We use `.1`/`.2` projections rather than `let`-destructuring
+        -- on the fold result; the `let` would be hoisted to `have`
+        -- by elaboration and opacify the body to `split` in proofs
+        -- (Reflection 40 / 37).
+        collectDoubleQuotedLoopIx (foldQuotedNewlinesIx c).2
+          (trimTrailingWSIx content ++ (foldQuotedNewlinesIx c).1) fuel
       else
         collectDoubleQuotedLoopIx c.advance (content.push ch) fuel
 
-/-- Scan a single-line double-quoted scalar. Cursor must be at the
-    opening `"`. -/
+/-- Scan a double-quoted scalar. Cursor must be at the opening `"`.
+    Multi-line folding (§6.5) is handled by
+    `collectDoubleQuotedLoopIx`'s line-break branch. -/
 def scanDoubleQuotedIx {input : String} (c : IxCursor input) :
     Option (String × IxCursor input) :=
   match c.peek? with
@@ -410,13 +497,14 @@ def scanDoubleQuotedIx {input : String} (c : IxCursor input) :
     collectDoubleQuotedLoopIx c.advance "" input.utf8ByteSize
   | _ => none
 
-/-! ### Layer E3 — single-quoted scalar (§7.3.2, single-line)
+/-! ### Layer E3 — single-quoted scalar (§7.3.2)
 
 `collectSingleQuotedLoopIx` consumes the body of a single-quoted
 scalar starting from *after* the opening `'`. Stops at:
 - `'\''` not followed by `'\''`: closing quote
 - `'\''` followed by `'\''`: doubled-quote escape — emit one `'`
-- EOF or unhandled line break: `none`. -/
+- line break: fold per §6.5 (multi-line continuation)
+- EOF: `none`. -/
 
 def collectSingleQuotedLoopIx {input : String} (c : IxCursor input)
     (content : String) : Nat → Option (String × IxCursor input)
@@ -432,11 +520,12 @@ def collectSingleQuotedLoopIx {input : String} (c : IxCursor input)
         some (content, c.advance)
     | some ch    =>
       if isLineBreakBool ch then
-        none
+        collectSingleQuotedLoopIx (foldQuotedNewlinesIx c).2
+          (trimTrailingWSIx content ++ (foldQuotedNewlinesIx c).1) fuel
       else
         collectSingleQuotedLoopIx c.advance (content.push ch) fuel
 
-/-- Scan a single-line single-quoted scalar. -/
+/-- Scan a single-quoted scalar. Cursor must be at the opening `'`. -/
 def scanSingleQuotedIx {input : String} (c : IxCursor input) :
     Option (String × IxCursor input) :=
   match c.peek? with
@@ -444,17 +533,20 @@ def scanSingleQuotedIx {input : String} (c : IxCursor input) :
     collectSingleQuotedLoopIx c.advance "" input.utf8ByteSize
   | _ => none
 
-/-! ### Layer E4 — plain scalar (§7.3.3, single-line)
+/-! ### Layer E4 — plain scalar (§7.3.3)
 
-`collectPlainScalarLoopIx` consumes a single-line plain scalar starting
-at a character satisfying `canStartPlainScalarBool`. The scalar
-terminates at end-of-input, a line break (multi-line deferred to
-Step 4b), `' #'`, `: ` / `:EOF` (block), or a flow indicator (flow).
+`collectPlainScalarLoopIx` consumes a plain scalar starting at a
+character satisfying `canStartPlainScalarBool`. The scalar
+terminates at end-of-input, `' #'`, `: ` / `:EOF` (block) or
+`:<flow-indicator>` (flow), or a flow indicator (flow). Line breaks
+trigger multi-line continuation per Layer F2 below:
+
+- In **flow** context, continuation uses `foldQuotedNewlinesIx`
+  (newline → space, blanks → newlines).
+- In **block** context, continuation uses `handleBlockLineBreakIx`
+  with a `contentIndent` floor and document-boundary termination.
+
 Trailing whitespace is trimmed by the entry point `scanPlainScalarIx`. -/
-
-/-- Trim trailing space/tab from a string. -/
-def trimTrailingWSIx (s : String) : String :=
-  String.ofList ((s.toList.reverse.dropWhile (fun c => c == ' ' || c == '\t')).reverse)
 
 /-- Helper: whether `:` at the cursor terminates a plain scalar
     (peeks one past the colon and applies the `inFlow` rule). -/
@@ -464,9 +556,75 @@ def trimTrailingWSIx (s : String) : String :=
   | some n => isBlankBool n || (inFlow && isFlowIndicatorBool n)
   | none   => true
 
+/-! ### Layer F2 — document-boundary check + multi-line plain
+
+`atDocumentBoundaryIx` mirrors `Scanner/Document.lean` for `IxCursor`:
+returns `true` exactly when the cursor sits at column 0 of a `---`
+or `...` marker (followed by blank or EOF). -/
+
+/-- True iff cursor at col 0 is at a `---` document-start marker. -/
+@[inline] def atDocumentStartIx {input : String} (c : IxCursor input) : Bool :=
+  c.pos.col == 0
+  && c.peekAt? 0 == some '-'
+  && c.peekAt? 1 == some '-'
+  && c.peekAt? 2 == some '-'
+  && match c.peekAt? 3 with
+     | none   => true
+     | some d => isBlankBool d
+
+/-- True iff cursor at col 0 is at a `...` document-end marker. -/
+@[inline] def atDocumentEndIx {input : String} (c : IxCursor input) : Bool :=
+  c.pos.col == 0
+  && c.peekAt? 0 == some '.'
+  && c.peekAt? 1 == some '.'
+  && c.peekAt? 2 == some '.'
+  && match c.peekAt? 3 with
+     | none   => true
+     | some d => isBlankBool d
+
+/-- True iff cursor is at a document boundary (start or end marker). -/
+@[inline] def atDocumentBoundaryIx {input : String} (c : IxCursor input) : Bool :=
+  atDocumentStartIx c || atDocumentEndIx c
+
+/-- Block-context line-break handler for plain scalars. Returns
+    `none` if the continuation line is under-indented or hits a
+    document boundary; otherwise `some (folded, c')` with the
+    folded replacement string and the cursor at the continuation
+    line's first non-whitespace character. Projections (`.1`/`.2`)
+    are duplicated rather than `let`-bound — the `let` would
+    obstruct `split` in the monotonicity proof (Reflection 40). -/
+def handleBlockLineBreakIx {input : String} (c : IxCursor input)
+    (contentIndent : Nat) : Option (String × IxCursor input) :=
+  if (skipSpaces
+        (skipBlankLinesLoopIx (consumeLineBreak c) 0 input.utf8ByteSize).1).1.pos.col
+       < contentIndent then
+    none
+  else if atDocumentBoundaryIx
+            (skipSpaces
+              (skipBlankLinesLoopIx (consumeLineBreak c) 0 input.utf8ByteSize).1).1 then
+    none
+  else
+    if (skipBlankLinesLoopIx (consumeLineBreak c) 0 input.utf8ByteSize).2 > 0 then
+      some (String.ofList
+              (List.replicate
+                (skipBlankLinesLoopIx (consumeLineBreak c) 0 input.utf8ByteSize).2
+                '\n'),
+            (skipSpaces
+              (skipBlankLinesLoopIx (consumeLineBreak c) 0 input.utf8ByteSize).1).1)
+    else
+      some (" ",
+            (skipSpaces
+              (skipBlankLinesLoopIx (consumeLineBreak c) 0 input.utf8ByteSize).1).1)
+
+/-- Plain-scalar continuation loop. Adds a `contentIndent` parameter
+    (continuation indent floor in block context) and folds line
+    breaks into the content string. When folding in either context
+    yields an empty continuation (no further non-terminator content),
+    the loop terminates at the pre-fold cursor so the caller can
+    decide what to do with the partially-collected content. -/
 def collectPlainScalarLoopIx {input : String} (c : IxCursor input)
-    (content : String) (spaces : String) (inFlow : Bool) :
-    Nat → String × IxCursor input
+    (content : String) (spaces : String) (inFlow : Bool)
+    (contentIndent : Nat) : Nat → String × IxCursor input
   | 0          => (content ++ spaces, c)
   | fuel + 1 =>
     match c.peek? with
@@ -478,25 +636,317 @@ def collectPlainScalarLoopIx {input : String} (c : IxCursor input)
         (content, c)
       else if ch == ':' then
         collectPlainScalarLoopIx c.advance
-          (content ++ spaces ++ String.singleton ch) "" inFlow fuel
+          (content ++ spaces ++ String.singleton ch) "" inFlow contentIndent fuel
       else if inFlow && isFlowIndicatorBool ch then
         (content, c)
       else if isLineBreakBool ch then
-        (content, c)
+        if inFlow then
+          collectPlainScalarLoopIx (foldQuotedNewlinesIx c).2
+            (content ++ (foldQuotedNewlinesIx c).1) "" inFlow contentIndent fuel
+        else
+          match handleBlockLineBreakIx c contentIndent with
+          | none => (content, c)
+          | some (folded, cAfterFold) =>
+            collectPlainScalarLoopIx cAfterFold (content ++ folded) "" inFlow contentIndent fuel
       else if isWhiteSpaceBool ch then
-        collectPlainScalarLoopIx c.advance content (spaces.push ch) inFlow fuel
+        collectPlainScalarLoopIx c.advance content (spaces.push ch) inFlow contentIndent fuel
       else if !isPlainSafeBool ch inFlow then
         (content, c)
       else
         collectPlainScalarLoopIx c.advance
-          (content ++ spaces ++ String.singleton ch) "" inFlow fuel
+          (content ++ spaces ++ String.singleton ch) "" inFlow contentIndent fuel
 
-/-- Scan a single-line plain scalar starting at the cursor's current
-    character. The caller is responsible for enforcing the
-    `canStartPlainScalarBool` precondition at dispatch. -/
-def scanPlainScalarIx {input : String} (c : IxCursor input) (inFlow : Bool) :
+/-- Scan a plain scalar starting at the cursor's current character.
+    The caller is responsible for enforcing the
+    `canStartPlainScalarBool` precondition at dispatch.
+    `contentIndent` is the continuation-line indent floor used for
+    block context (caller supplies; flow context ignores it). -/
+def scanPlainScalarIx {input : String} (c : IxCursor input)
+    (inFlow : Bool) (contentIndent : Nat) :
     String × IxCursor input :=
-  let (raw, c') := collectPlainScalarLoopIx c "" "" inFlow input.utf8ByteSize
+  let (raw, c') := collectPlainScalarLoopIx c "" "" inFlow contentIndent input.utf8ByteSize
   (trimTrailingWSIx raw, c')
+
+/-! ## Layer F3 — block scalars (§8.1, literal + folded)
+
+Block scalars introduce the only scanner production that requires
+an *enclosing* indent context (`parentIndent`). The body sits
+*below* a header line of the form `('|' | '>') chomp? indent?
+comment?`, with content indented strictly more than the parent.
+
+The fold step (`foldBlockContent`) is a pure `String → String`
+function over the raw line-stripped content: it operates on the
+post-collection accumulator rather than on the cursor, so its
+proof obligations are simple string-induction facts (deferred to
+Step 5/6's content-correctness pass). Chomping (`strip` / `clip` /
+`keep`) likewise acts on the raw string after collection.
+
+The four-state fold machine `FoldState` (start / content / empty /
+more) lives here as an inductive — making each case a named
+constructor for pattern matching in proofs. -/
+
+/-- States for folded block scalar newline processing (§8.1.3).
+    Mirrors `Scanner/Scalar.lean::FoldState`. -/
+inductive FoldState where
+  | start   : FoldState
+  | content : FoldState
+  | empty   : FoldState
+  | more    : FoldState
+  deriving Repr, BEq
+
+/-- Append `n` newlines to `acc`. Structurally recursive. -/
+def appendNewlines (acc : String) : Nat → String
+  | 0      => acc
+  | n + 1 => appendNewlines (acc.push '\n') n
+
+/-- Inner step of `foldBlockContent`. Walks the raw `List Char`,
+    accumulating into `acc`, tracking `FoldState`, and counting
+    pending newlines. The rules derive from YAML 1.2.2 [170]-[181];
+    see legacy `Scanner/Scalar.lean::foldBlockContent` for the
+    long-form table. -/
+def foldBlockContentGo : List Char → String → FoldState → Nat → String
+  | [],            acc, _,   _              => acc
+  | '\n' :: rest,  acc, st,  pending        => foldBlockContentGo rest acc st (pending + 1)
+  | c :: rest,     acc, st,  pending + 1    =>
+    let isMore := c == ' '
+    let newSt  := if isMore then FoldState.more else .content
+    let acc'   := match st with
+      | .start => appendNewlines acc (pending + 1)
+      | .content =>
+        if pending == 0 && !isMore then
+          acc.push ' '
+        else if pending == 0 && isMore then
+          acc.push '\n'
+        else if isMore then
+          appendNewlines acc (pending + 1)
+        else
+          appendNewlines acc pending
+      | .more  => appendNewlines acc (pending + 1)
+      | .empty => appendNewlines acc (pending + 1)
+    foldBlockContentGo rest (acc'.push c) newSt 0
+  | c :: rest,     acc, st,  0              =>
+    let newSt := match st with
+      | .start => if c == ' ' then FoldState.more else .content
+      | s      => s
+    foldBlockContentGo rest (acc.push c) newSt 0
+
+/-- Fold a raw block-scalar accumulator per §8.1.3 (the folded
+    style; literal style skips this pass and uses the raw string
+    directly). -/
+@[inline] def foldBlockContent (raw : String) : String :=
+  foldBlockContentGo raw.toList "" .start 0
+
+/-- Consume exactly `count` spaces (and not tabs) starting at the
+    cursor. Returns the number of spaces actually consumed (≤
+    `count`) and the post-consumption cursor. -/
+def consumeExactSpacesIx {input : String} (c : IxCursor input) :
+    Nat → Nat × IxCursor input
+  | 0          => (0, c)
+  | count' + 1 =>
+    if c.peek? == some ' ' then
+      let (consumed, c') := consumeExactSpacesIx c.advance count'
+      (consumed + 1, c')
+    else
+      (0, c)
+
+/-- Consume characters until a line break or EOF, accumulating into
+    `content`. Mirrors `collectLineContentLoop` from legacy. -/
+def collectLineContentLoopIx {input : String} (c : IxCursor input)
+    (content : String) : Nat → String × IxCursor input
+  | 0          => (content, c)
+  | fuel + 1 =>
+    match c.peek? with
+    | some ch =>
+      if isLineBreakBool ch then (content, c)
+      else collectLineContentLoopIx c.advance (content.push ch) fuel
+    | none    => (content, c)
+
+/-- Auto-detect block-scalar content indentation. Probes whitespace
+    runs and stops at the first non-empty line whose column ≥
+    `minContentIndent`. Returns the detected indent + the input
+    cursor *unchanged* (probe only — actual consumption is done by
+    `collectBlockScalarLoopIx`). -/
+def autoDetectBlockScalarIndentLoopIx {input : String} (probe : IxCursor input)
+    (maxWSCol : Nat) (minContentIndent : Nat) :
+    Nat → Nat
+  | 0          =>
+    if maxWSCol > minContentIndent then maxWSCol else minContentIndent
+  | fuel + 1 =>
+    let (probeAfterSp, _) := skipSpaces probe
+    match probeAfterSp.peek? with
+    | some c =>
+      if isLineBreakBool c then
+        let maxWSCol' := if probeAfterSp.pos.col > maxWSCol then probeAfterSp.pos.col else maxWSCol
+        autoDetectBlockScalarIndentLoopIx (consumeLineBreak probeAfterSp)
+          maxWSCol' minContentIndent fuel
+      else
+        if probeAfterSp.pos.col > minContentIndent then probeAfterSp.pos.col
+        else minContentIndent
+    | none   =>
+      if maxWSCol > minContentIndent then maxWSCol else minContentIndent
+
+/-- Entry point for indent auto-detection. -/
+@[inline] def autoDetectBlockScalarIndentIx {input : String} (c : IxCursor input)
+    (minContentIndent : Nat) : Nat :=
+  autoDetectBlockScalarIndentLoopIx c 0 minContentIndent input.utf8ByteSize
+
+/-- Inner loop of `collectBlockScalarLoopIx`. Consumes content
+    line-by-line starting from a line boundary:
+    1. Probe for document boundary (`---` / `...` at col 0) — stop.
+    2. Consume up to `contentIndent` spaces of indent.
+    3. If next char is a line break (= empty/short line) → append
+       `'\n'` to the raw accumulator and recurse.
+    4. If the line is *less* indented than `contentIndent` and not
+       empty → stop (with the cursor *before* the indent probe).
+    5. Otherwise collect content to the next line break, append
+       `'\n'` if a break is found, and recurse.
+
+    The indent-probe result and per-line collection result are
+    referenced via `.1`/`.2` projections rather than `let`-destructured;
+    `let`-binding would opacify `split` in the monotonicity proof
+    (Reflection 40 / 37). -/
+def collectBlockScalarLoopIx {input : String} (c : IxCursor input)
+    (rawContent : String) (contentIndent : Nat) :
+    Nat → String × IxCursor input
+  | 0          => (rawContent, c)
+  | fuel + 1 =>
+    if c.pos.col == 0 && atDocumentBoundaryIx c then
+      (rawContent, c)
+    else
+      match (consumeExactSpacesIx c contentIndent).2.peek? with
+      | none    => (rawContent, (consumeExactSpacesIx c contentIndent).2)
+      | some ch =>
+        if isLineBreakBool ch then
+          collectBlockScalarLoopIx
+            (consumeLineBreak (consumeExactSpacesIx c contentIndent).2)
+            (rawContent.push '\n') contentIndent fuel
+        else if (consumeExactSpacesIx c contentIndent).1 < contentIndent then
+          (rawContent, c)
+        else
+          match
+              (collectLineContentLoopIx (consumeExactSpacesIx c contentIndent).2 ""
+                input.utf8ByteSize).2.peek? with
+          | some ch' =>
+            if isLineBreakBool ch' then
+              collectBlockScalarLoopIx
+                (consumeLineBreak
+                  (collectLineContentLoopIx (consumeExactSpacesIx c contentIndent).2 ""
+                    input.utf8ByteSize).2)
+                ((rawContent ++
+                  (collectLineContentLoopIx (consumeExactSpacesIx c contentIndent).2 ""
+                    input.utf8ByteSize).1).push '\n')
+                contentIndent fuel
+            else
+              collectBlockScalarLoopIx
+                (collectLineContentLoopIx (consumeExactSpacesIx c contentIndent).2 ""
+                  input.utf8ByteSize).2
+                (rawContent ++
+                  (collectLineContentLoopIx (consumeExactSpacesIx c contentIndent).2 ""
+                    input.utf8ByteSize).1)
+                contentIndent fuel
+          | none   =>
+            (rawContent ++
+              (collectLineContentLoopIx (consumeExactSpacesIx c contentIndent).2 ""
+                input.utf8ByteSize).1,
+             (collectLineContentLoopIx (consumeExactSpacesIx c contentIndent).2 ""
+                input.utf8ByteSize).2)
+
+/-- Parse the header characters that may follow `|` or `>`:
+    chomping indicator (`-` strip / `+` keep) and an explicit
+    indentation indicator (digit `1..9`). Either order is permitted.
+    The fuel is the maximum number of header characters (2 is the
+    spec maximum: one chomp + one indent). -/
+def parseBlockHeaderLoopIx {input : String} (c : IxCursor input)
+    (chomp : ChompStyle) (explicitOffset : Option Nat) :
+    Nat → ChompStyle × Option Nat × IxCursor input
+  | 0          => (chomp, explicitOffset, c)
+  | fuel + 1 =>
+    match c.peek? with
+    | some '-' => parseBlockHeaderLoopIx c.advance .strip explicitOffset fuel
+    | some '+' => parseBlockHeaderLoopIx c.advance .keep  explicitOffset fuel
+    | some ch  =>
+      if ch.isDigit && ch != '0' then
+        parseBlockHeaderLoopIx c.advance chomp (some (ch.toNat - '0'.toNat)) fuel
+      else (chomp, explicitOffset, c)
+    | none     => (chomp, explicitOffset, c)
+
+/-- Strip trailing `\n` characters from `s`. -/
+def stripTrailingNewlines (s : String) : String :=
+  String.ofList ((s.toList.reverse.dropWhile (· == '\n')).reverse)
+
+/-- Apply chomping per §8.1.1: `strip` removes every trailing `\n`,
+    `clip` keeps at most one trailing `\n`, `keep` preserves them. -/
+def applyChomp (chomp : ChompStyle) (raw : String) : String :=
+  match chomp with
+  | .strip => stripTrailingNewlines raw
+  | .clip  =>
+    let stripped := stripTrailingNewlines raw
+    if raw.endsWith "\n" then stripped ++ "\n" else stripped
+  | .keep  => raw
+
+/-- Helper: the post-header cursor for `scanBlockScalarIx`. Built
+    as a chain `skipWhitespace ∘ (optional comment) ∘ consumeLineBreak`
+    on top of `parseBlockHeaderLoopIx`'s output. Named so the proof
+    can refer to it without rebuilding the chain each time. -/
+def blockHeaderToBodyIx {input : String} (c : IxCursor input) : IxCursor input :=
+  consumeLineBreak
+    (if (skipWhitespace (parseBlockHeaderLoopIx c.advance .clip none 2).2.2).peek?
+         == some '#' then
+       skipCommentText
+         (skipWhitespace (parseBlockHeaderLoopIx c.advance .clip none 2).2.2).advance
+     else
+       skipWhitespace (parseBlockHeaderLoopIx c.advance .clip none 2).2.2)
+
+/-- Scan a block scalar. The cursor must be at the introducer `|`
+    (literal) or `>` (folded). Returns `(content, style, c')`
+    where `style` is `.literal` or `.folded` and `c'` is the cursor
+    after the block-scalar content.
+
+    `parentIndent` is the column of the enclosing block (`s.col`
+    at the introducer in the legacy scanner). Content lines must
+    sit at indent ≥ `parentIndent + 1` (or the explicit indicator's
+    offset if supplied).
+
+    The intermediate cursors are not `let`-bound; they reference
+    `blockHeaderToBodyIx c` and `parseBlockHeaderLoopIx`'s output
+    via projection — the `let` would opacify `split` in the
+    monotonicity proof (Reflection 40 / 37). -/
+def scanBlockScalarIx {input : String} (c : IxCursor input)
+    (parentIndent : Nat) :
+    Option (String × ScalarStyle × IxCursor input) :=
+  match c.peek? with
+  | some ch =>
+    if ch == '|' || ch == '>' then
+      some
+        ( (if ch == '|' then
+             applyChomp (parseBlockHeaderLoopIx c.advance .clip none 2).1
+               (collectBlockScalarLoopIx (blockHeaderToBodyIx c) ""
+                 (match (parseBlockHeaderLoopIx c.advance .clip none 2).2.1 with
+                   | some m => parentIndent + m
+                   | none   =>
+                     autoDetectBlockScalarIndentIx (blockHeaderToBodyIx c)
+                       (parentIndent + 1))
+                 input.utf8ByteSize).1
+           else
+             foldBlockContent
+               (applyChomp (parseBlockHeaderLoopIx c.advance .clip none 2).1
+                 (collectBlockScalarLoopIx (blockHeaderToBodyIx c) ""
+                   (match (parseBlockHeaderLoopIx c.advance .clip none 2).2.1 with
+                     | some m => parentIndent + m
+                     | none   =>
+                       autoDetectBlockScalarIndentIx (blockHeaderToBodyIx c)
+                         (parentIndent + 1))
+                   input.utf8ByteSize).1))
+        , (if ch == '|' then ScalarStyle.literal else ScalarStyle.folded)
+        , (collectBlockScalarLoopIx (blockHeaderToBodyIx c) ""
+            (match (parseBlockHeaderLoopIx c.advance .clip none 2).2.1 with
+              | some m => parentIndent + m
+              | none   =>
+                autoDetectBlockScalarIndentIx (blockHeaderToBodyIx c)
+                  (parentIndent + 1))
+            input.utf8ByteSize).2 )
+    else
+      none
+  | none   => none
 
 end L4YAML.Scanner.Indexed
