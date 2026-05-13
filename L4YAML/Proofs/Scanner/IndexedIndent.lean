@@ -229,4 +229,126 @@ theorem skipToContent_at_content {input : String} (c : IxCursor input)
     simp [hHash]
   simp [hHashBool, hLB]
 
+/-! ## `skipToContent` — global progress (closes the Step 3 → Step 4
+deferred obligation, Reflection 38)
+
+The bidirectional spec lemmas above describe `skipToContent`'s
+behaviour *locally* (at content, at EOF). The *global* progress
+claim — at fuel `> utf8ByteSize - offset`, the result is settled —
+is the strict-fuel termination argument deferred from Step 3. It is
+the Step-4 prerequisite for the scalar layer: the scalar recognisers
+call `skipToContent` between scalars and need to know the resulting
+cursor sits at content (not between-content) before each scalar
+boundary is tested.
+
+The argument is a fuel induction: each iteration that does not
+immediately settle consumes at least one byte (via
+`consumeLineBreak_strict` on the line-break / `'#'` branches), so
+after at most `utf8ByteSize - offset` iterations the cursor either
+reaches end-of-input or lands at a non-`s-l-comments` character. -/
+
+/-- `skipToContentLoop c fuel` settles at end-of-input or at a content
+    character (not whitespace, not line break, not `'#'`) provided
+    `fuel > utf8ByteSize - c.pos.offset`. The strict bound matches
+    the strict offset progress of each iterating branch. -/
+theorem skipToContentLoop_progress {input : String} (c : IxCursor input)
+    (fuel : Nat) (hFuel : input.utf8ByteSize - c.pos.offset < fuel) :
+    (skipToContentLoop c fuel).peek? = none ∨
+    ∃ ch, (skipToContentLoop c fuel).peek? = some ch ∧
+          isWhiteSpaceBool ch = false ∧
+          isLineBreakBool ch = false ∧ ch ≠ '#' := by
+  induction fuel generalizing c with
+  | zero => omega
+  | succ fuel ih =>
+    unfold skipToContentLoop
+    split
+    · -- none branch: result is `skipWhitespace c`, whose peek? = none.
+      rename_i hpNone
+      exact Or.inl hpNone
+    · -- some branch: cursor at `(skipWhitespace c).peek? = some ch`.
+      rename_i ch hpSome
+      split
+      · -- '#' branch: recurse on consumeLineBreak (skipCommentText (skipWhitespace c).advance).
+        rename_i hHash
+        have hSW : c.pos.offset ≤ (skipWhitespace c).pos.offset :=
+          skipWhitespace_offset_monotonic c
+        have hMore : (skipWhitespace c).pos.offset < input.utf8ByteSize := by
+          if h' : (skipWhitespace c).pos.offset < input.utf8ByteSize then
+            exact h'
+          else
+            have hNone : (skipWhitespace c).peek? = none :=
+              (IxCursor.peek?_eq_none_iff _).mpr (Nat.le_of_not_lt h')
+            rw [hNone] at hpSome; contradiction
+        have hAdv : (skipWhitespace c).pos.offset <
+            (skipWhitespace c).advance.pos.offset :=
+          IxCursor.advance_offset_lt_of_hasMore _ hMore
+        have hCT : (skipWhitespace c).advance.pos.offset ≤
+            (skipCommentText (skipWhitespace c).advance).pos.offset :=
+          skipCommentText_offset_monotonic _
+        have hLB : (skipCommentText (skipWhitespace c).advance).pos.offset ≤
+            (consumeLineBreak (skipCommentText (skipWhitespace c).advance)).pos.offset :=
+          consumeLineBreak_offset_monotonic _
+        have hStrict : c.pos.offset <
+            (consumeLineBreak (skipCommentText (skipWhitespace c).advance)).pos.offset := by
+          calc c.pos.offset
+              ≤ (skipWhitespace c).pos.offset := hSW
+            _ < (skipWhitespace c).advance.pos.offset := hAdv
+            _ ≤ _ := hCT
+            _ ≤ _ := hLB
+        have hNewBound :
+            (consumeLineBreak (skipCommentText (skipWhitespace c).advance)).pos.offset ≤
+              input.utf8ByteSize :=
+          (consumeLineBreak (skipCommentText (skipWhitespace c).advance)).posBound
+        have hFuel' : input.utf8ByteSize -
+            (consumeLineBreak (skipCommentText (skipWhitespace c).advance)).pos.offset
+              < fuel := by
+          omega
+        exact ih _ hFuel'
+      · split
+        · -- line-break branch: recurse on consumeLineBreak (skipWhitespace c).
+          rename_i hHashFalse hLBch
+          have hSW : c.pos.offset ≤ (skipWhitespace c).pos.offset :=
+            skipWhitespace_offset_monotonic c
+          have hCLB : (skipWhitespace c).pos.offset <
+              (consumeLineBreak (skipWhitespace c)).pos.offset :=
+            consumeLineBreak_strict _ hpSome hLBch
+          have hStrict : c.pos.offset <
+              (consumeLineBreak (skipWhitespace c)).pos.offset :=
+            Nat.lt_of_le_of_lt hSW hCLB
+          have hNewBound : (consumeLineBreak (skipWhitespace c)).pos.offset ≤
+              input.utf8ByteSize := (consumeLineBreak (skipWhitespace c)).posBound
+          have hFuel' : input.utf8ByteSize -
+              (consumeLineBreak (skipWhitespace c)).pos.offset < fuel := by
+            omega
+          exact ih _ hFuel'
+        · -- Content character: stop, result is `skipWhitespace c`.
+          rename_i hHashFalse hLBfalse
+          have hHashChNe : ch ≠ '#' := fun heq => by
+            have : (ch == '#') = true := by simpa using heq
+            exact absurd this hHashFalse
+          have hLBchFalse : isLineBreakBool ch = false := by
+            cases h : isLineBreakBool ch with
+            | true  => exact absurd h hLBfalse
+            | false => rfl
+          have hWSfalse : isWhiteSpaceBool ch = false := by
+            have hTerm := skipWhitespace_terminates c
+            unfold peekIsWhiteSpace at hTerm
+            rw [hpSome] at hTerm
+            exact hTerm
+          exact Or.inr ⟨ch, hpSome, hWSfalse, hLBchFalse, hHashChNe⟩
+
+/-- Entry-point form: `skipToContent c` settles at content/EOF.
+    The entry-point fuel is `input.utf8ByteSize + 1`, which strictly
+    exceeds `utf8ByteSize - c.pos.offset` for any cursor `c` (since
+    `c.posBound : c.pos.offset ≤ utf8ByteSize`). -/
+theorem skipToContent_progress {input : String} (c : IxCursor input) :
+    (skipToContent c).peek? = none ∨
+    ∃ ch, (skipToContent c).peek? = some ch ∧
+          isWhiteSpaceBool ch = false ∧
+          isLineBreakBool ch = false ∧ ch ≠ '#' := by
+  unfold skipToContent
+  apply skipToContentLoop_progress
+  have hBound : c.pos.offset ≤ input.utf8ByteSize := c.posBound
+  omega
+
 end L4YAML.Scanner.Indexed
