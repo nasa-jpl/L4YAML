@@ -83,14 +83,16 @@ all return `false` (no character to inspect). -/
 
 /-- Inner loop for `skipSpaces`. Structurally recursive on `fuel`.
     Returns `(c', n)` where `c'` is the cursor after the run and
-    `n` is the count of spaces consumed. -/
+    `n` is the count of spaces consumed. The body uses `.1`/`.2`
+    projections rather than `let`-destructure so that `simp` /
+    `rfl` reduction goes through cleanly in proofs. -/
 def skipSpacesLoop {input : String} (c : IxCursor input) :
     Nat → IxCursor input × Nat
   | 0          => (c, 0)
   | fuel + 1 =>
     if peekIsIndentChar c then
-      let (c', n) := skipSpacesLoop c.advance fuel
-      (c', n + 1)
+      let r := skipSpacesLoop c.advance fuel
+      (r.1, r.2 + 1)
     else
       (c, 0)
 
@@ -118,6 +120,50 @@ def skipWhitespaceLoop {input : String} (c : IxCursor input) :
 @[inline] def skipWhitespace {input : String} (c : IxCursor input) :
     IxCursor input :=
   skipWhitespaceLoop c input.utf8ByteSize
+
+/-! ## Layer B' — comment text (§6.6 [75] `c-nb-comment-text`)
+
+Comment scanning is split into two halves:
+
+- `skipCommentTextLoop` (here) — consume the body of a comment
+  starting from *after* the `'#'`. The body is `nb-char*`
+  ([27] `nb-char ::= c-printable - b-char - c-byte-order-mark`):
+  every non-line-break, non-EOF character, with no inner
+  validation of `c-printable` (that's a separate spec check, not
+  scanning state).
+
+- `skipToContent` (Layer D, below) — composite that consumes
+  whitespace, a `'#'`-introduced comment if present, the line
+  break, then recurses for the next line.
+
+`skipCommentText` is its own loop because:
+
+1. Its termination condition is *different* from `skipWhitespace`
+   (stops at LF/CR, not at non-whitespace).
+2. It does not produce a count — the comment text characters
+   themselves are uninteresting for indent tracking (comments
+   never establish indent).
+3. Step 4 may want to capture comment text for round-tripping
+   (the legacy scanner has a side-channel `comments` array); the
+   capture is bolted onto `skipCommentTextLoop` then. -/
+
+/-- Inner loop: consume characters until a line break (or EOF).
+    Structurally recursive on `fuel`. -/
+def skipCommentTextLoop {input : String} (c : IxCursor input) :
+    Nat → IxCursor input
+  | 0          => c
+  | fuel + 1 =>
+    if peekIsLineBreak c then c
+    else
+      match c.peek? with
+      | none    => c
+      | some _  => skipCommentTextLoop c.advance fuel
+
+/-- Consume a comment body (`nb-char*`), stopping at the first
+    line-break character or end-of-input. The leading `'#'` must
+    already have been consumed by the caller (Layer D / dispatch). -/
+@[inline] def skipCommentText {input : String} (c : IxCursor input) : IxCursor input :=
+  skipCommentTextLoop c input.utf8ByteSize
 
 /-! ## Layer C — line-break consumption -/
 
@@ -153,5 +199,62 @@ def consumeLineBreak {input : String} (c : IxCursor input) : IxCursor input :=
         c.advance
     else
       c
+
+/-! ## Layer D — composite line-comment dispatch
+    (§6.6 [77] `s-b-comment`, §6.7 [79] `s-l-comments`)
+
+`skipToContent` consumes the *between-token* whitespace:
+
+1. `s-white*` — spaces and tabs (separation, not indentation).
+2. An optional `'#'` comment to end-of-line.
+3. A line break — if present, recurse on the next line.
+
+Stops at the first character that is *content* (not whitespace,
+not a comment, not a line break) or at end-of-input.
+
+This matches the legacy `Scanner/Whitespace.lean::skipToContent`
+*structurally* but without:
+
+- The `needIndentCheck` flag (Step 3's indent-stack approach
+  handles indent measurement explicitly, not via a flag).
+- Tab-as-indentation error reporting (§6.1 tab error checks
+  belong with the indent-stack at Step 4, where the current
+  block's indent is known).
+- The simple-key reset (a parser-layer concern; not in the
+  scanner's character/line layer).
+
+`skipToContent` therefore behaves correctly only as a *neutral*
+consumer of skippable content — error reporting and simple-key
+handling are layered on top in Step 4. -/
+
+/-- Inner loop. Structurally recursive on `fuel`. The body is
+    written without `let`-bindings (each call to `skipWhitespace c`
+    is duplicated) so that `split` can decompose the `match` in
+    proofs — Lean's elaborator opacifies `let`-bound expressions
+    against the `split` tactic. -/
+def skipToContentLoop {input : String} (c : IxCursor input) :
+    Nat → IxCursor input
+  | 0          => c
+  | fuel + 1 =>
+    -- After skipWhitespace, peek? is none, a line break, '#', or content.
+    match (skipWhitespace c).peek? with
+    | none    => skipWhitespace c
+    | some ch =>
+      if ch == '#' then
+        skipToContentLoop
+          (consumeLineBreak (skipCommentText (skipWhitespace c).advance)) fuel
+      else if isLineBreakBool ch then
+        skipToContentLoop (consumeLineBreak (skipWhitespace c)) fuel
+      else
+        skipWhitespace c
+
+/-- Consume skippable inter-token content: whitespace, comments,
+    and line breaks. Stops at the first content character or EOF.
+
+    Matches `s-l-comments` ([79]) semantically; see legacy
+    `Scanner/Whitespace.lean::skipToContent` for the error-aware
+    counterpart that handles §6.1 tab violations. -/
+@[inline] def skipToContent {input : String} (c : IxCursor input) : IxCursor input :=
+  skipToContentLoop c (input.utf8ByteSize + 1)
 
 end L4YAML.Scanner.Indexed
