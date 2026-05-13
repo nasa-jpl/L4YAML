@@ -1119,22 +1119,38 @@ cutover commit. No "dual-write" interim state.
 36. **Closing the Step 2 deferred obligation was easier than the
     blueprint sold.** Termination + count-equals-column-delta
     closed in ~60 LOC in `IndexedWhitespace.lean` via two fuel-
-    inductions and an `advance_indent_col_succ` helper. The
-    column-delta form turned out *not* to need any `utf8Size`
-    apparatus: `IxCursor.advance` already increments `col` by 1
-    for any non-LF/CR character and `isIndentCharBool = (· == ' ')`,
-    so the column-delta-equals-count claim follows from the
-    `advance` rule directly. The byte-offset analog
+    inductions and an `advance_indent_col_succ` helper. Both
+    claims are inherently *single-line*: `skipSpacesLoop` only
+    advances when `peekIsIndentChar c = true` (i.e.
+    `c.peek? = some ' '`), so it stops at the first non-space —
+    which includes `'\n'` and `'\r'`. The cursor therefore never
+    crosses a line boundary inside one `skipSpaces` call, and
+    `skipSpacesLoop_col_eq_count` proves *both* conjuncts:
+    `(skipSpaces c).1.pos.col = c.pos.col + (skipSpaces c).2`
+    *and* `(skipSpaces c).1.pos.line = c.pos.line`. Multi-line
+    indentation is a composition concern handled at the next
+    layer: `consumeLineBreak` resets `col` to 0 and bumps `line`;
+    a fresh `skipSpaces` on the new line measures that line's
+    indent in isolation. The column-delta form turned out *not*
+    to need any `utf8Size` apparatus: `IxCursor.advance` already
+    increments `col` by 1 for any non-LF/CR character and
+    `isIndentCharBool = (· == ' ')`, so the column-delta-equals-
+    count claim follows from the `advance` rule directly. The
+    byte-offset analog
     (`(skipSpaces c).1.pos.offset = c.pos.offset + (skipSpaces c).2`)
-    would require `Char.utf8Size_eq_one_iff` to fire on `' '`, but
-    the indent-stack only needs *column* delta, so the offset
-    version is unneeded. **Lesson (a partial walk-back of
-    Reflection 35): the Step 3 blueprint paragraph promised
-    "count = offset delta ∧ terminates", but the actually-useful
-    invariant turned out to be "count = *column* delta ∧
-    terminates" — a strictly smaller obligation. The deferred-to
-    side should state the deliverable in its eventual form rather
-    than the form initially expected.**
+    is *also* true within the single line (each ASCII space is 1
+    byte) but would require `Char.utf8Size_eq_one_iff` to fire on
+    `' '`; the indent-stack only consumes column delta, so the
+    offset version is unneeded. The distinction between the two
+    forms is purely proof-complexity, not expressivity — both say
+    "count = how many spaces just got eaten on the current line".
+    **Lesson (a partial walk-back of Reflection 35): the Step 3
+    blueprint paragraph promised "count = offset delta ∧
+    terminates", but the actually-useful invariant turned out to
+    be "count = *column* delta ∧ terminates" — a strictly smaller
+    obligation, equally expressive for the indent-stack's
+    purposes. The deferred-to side should state the deliverable
+    in its eventual form rather than the form initially expected.**
 
 37. **`let`-bindings opacify the body to `split` / `cases`.** The
     first draft of `skipToContentLoop` used
@@ -1155,10 +1171,11 @@ cutover commit. No "dual-write" interim state.
     or pattern-destructure. Inline.**
 
 38. **Progress is *not* a bidirectional spec lemma — it deserves
-    its own deliverable.** Step 3's promised "bidirectional spec
-    proofs" landed: single-step soundness/completeness for
-    `s-indent`, `b-break`, `b-non-content`, and the cursor-local
-    lemmas for `s-l-comments` (`skipToContent_atEnd`,
+    its own deliverable, *and* its own explicit deferred-to
+    paragraph.** Step 3's promised "bidirectional spec proofs"
+    landed: single-step soundness/completeness for `s-indent`,
+    `b-break`, `b-non-content`, and the cursor-local lemmas for
+    `s-l-comments` (`skipToContent_atEnd`,
     `skipToContent_at_content`, offset-monotonicity,
     `skipCommentText_terminates`). The *global progress* property
     — that `skipToContent` terminates after finitely many
@@ -1168,13 +1185,25 @@ cutover commit. No "dual-write" interim state.
     Step 4 where the dispatch-loop's fuel measure is the natural
     carrier. Unlike the Step 2 → Step 3 deferral (Reflection 35),
     this one *is* a scope distinction: bidirectional ≠ progress.
-    The deferred-to doc (Step 4 description) was not updated yet
-    because Step 4's blueprint paragraph already implies the
-    dispatch-loop measure exists. **Rule: if a deferral crosses
-    the bidirectional-vs-progress boundary, name the boundary —
-    don't conflate "we didn't prove it" with "it doesn't belong
-    in this step". And if it's the *same* kind of work as the
-    surrounding step but you ran out of time, name *that* instead
+    The Step 4 description was updated with an explicit "Deferred
+    from Step 3 (must close here)" paragraph that names the exact
+    obligation (`(skipToContent c).peek?` settles), the missing
+    auxiliary (`consumeLineBreak_strict` — offset strictly
+    increases on LF/CR), and *why* Step 4 is the natural carrier
+    (scalar recognisers depend on `skipToContent` settling at
+    content before each scalar boundary). **Rule (procedural,
+    sharpened from the Step 2 → Step 3 round-trip): a deferral
+    is not complete until the deferred-to doc *explicitly* names
+    the obligation. "The neighbouring paragraph implies it" is
+    not enough — readers should not have to infer the obligation
+    from surrounding context. If the deferred-to paragraph does
+    not call out the deferred lemma by name and the rationale for
+    deferral, the deferral has not been recorded; it has been
+    forgotten in slow motion. Also: if a deferral crosses the
+    bidirectional-vs-progress boundary, name the boundary — don't
+    conflate "we didn't prove it" with "it doesn't belong in this
+    step". And if it's the *same* kind of work as the surrounding
+    step but you ran out of time, name *that* instead
     (Reflection 35).**
 
 #### Phase 3 sub-plan (six sessions)
@@ -1330,27 +1359,40 @@ strict-fuel termination result, *not* a bidirectional spec
 lemma. It is deferred to Step 4 where the dispatch-loop's fuel
 measure is the natural carrier. See Reflection 38.
 
-**Step 4 — New scanner, scalar lexing**.
-The largest cluster (legacy `Scanner/Scalar.lean` is 940 LOC).
-Plain, single-quoted, double-quoted, and block scalars (literal +
-folded). Bidirectional spec proofs per scalar style. May span two
-sessions if the block-scalar fold/chomp interaction proves
-recalcitrant.
+**Step 4 — New scanner, scalar lexing + `skipToContent` progress
+closure**. Two coupled work items:
 
-**Deferred from Step 3** (must close here): global progress of
-`skipToContent` — the claim that, given fuel `> utf8ByteSize -
-c.pos.offset`, `skipToContent c` returns a cursor whose `peek?`
-is either `none` or `some ch` with
-`isWhiteSpaceBool ch = false ∧ isLineBreakBool ch = false ∧ ch ≠ '#'`.
-Step 3 landed the cursor-local lemmas (`skipToContent_atEnd`,
-`skipToContent_at_content`, `skipToContentLoop_offset_monotonic`,
-`skipCommentText_terminates`); the global progress claim needs
-an auxiliary `consumeLineBreak_strict` (offset strictly
-increases when `peek? c = some ch ∧ isLineBreakBool ch = true`)
-plus a fuel-induction with a strict bound. The Step 4
-dispatch-loop measure is the natural carrier — the scalar
-recognisers depend on `skipToContent` settling at *content* (not
-between-content) before each scalar boundary is tested.
+1. **Scalar lexing** — the largest cluster (legacy
+   `Scanner/Scalar.lean` is 940 LOC). Plain, single-quoted,
+   double-quoted, and block scalars (literal + folded).
+   Bidirectional spec proofs per scalar style. May span two
+   sessions if the block-scalar fold/chomp interaction proves
+   recalcitrant.
+
+2. **`skipToContent` global progress** — deferred from Step 3
+   (Reflection 38). Prove that, given fuel `> utf8ByteSize -
+   c.pos.offset`, `skipToContent c` returns a cursor whose
+   `peek?` is either `none` or `some ch` with
+   `isWhiteSpaceBool ch = false ∧ isLineBreakBool ch = false ∧
+   ch ≠ '#'`. The scalar recognisers depend on this: they call
+   `skipToContent` between scalars and need to know the resulting
+   cursor sits at content (not between-content) before each
+   scalar boundary is tested. Without progress, the scalar loop's
+   termination argument has a hole.
+
+The two items are coupled — the scalar layer is the *caller*
+of `skipToContent`, so finalising the progress lemma here (not
+back in Step 3) lets the scalar termination proofs reference it
+directly. Order within the session: (a) prove
+`consumeLineBreak_strict` (offset strictly increases when
+`peek? c = some ch ∧ isLineBreakBool ch = true`), (b) prove
+`skipToContentLoop_progress` by fuel-induction with a strict
+bound (`fuel > utf8ByteSize - c.pos.offset`), (c) build out the
+scalar productions and their bidirectional proofs on top.
+
+Step 3 landed the cursor-local pieces this work composes with:
+`skipToContent_atEnd`, `skipToContent_at_content`,
+`skipToContentLoop_offset_monotonic`, `skipCommentText_terminates`.
 
 **Step 5 — End-to-end `parse ∘ present = id`**.
 Tie the per-rule bidirectional lemmas into a single corpus
