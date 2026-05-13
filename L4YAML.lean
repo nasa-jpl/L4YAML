@@ -23,6 +23,7 @@ import L4YAML.Algebra.AnchorMap
 import L4YAML.Algebra.Equivalence
 import L4YAML.Algebra.Combinators
 import L4YAML.Algebra.Fuel
+import L4YAML.Algebra.Idempotence
 import L4YAML.Algebra.Indent
 import L4YAML.Algebra.LawfulBEq
 import L4YAML.Algebra.Position

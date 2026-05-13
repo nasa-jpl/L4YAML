@@ -23,7 +23,7 @@ triggers a re-opening of Phase 1 (Guardrail 2).
 | `Value.lean` | 18–21 | Migrated |
 | `LawfulBEq.lean` | 23 | Migrated |
 | `Equivalence.lean` | 1, 2, 3, 5, 6 | Landed (Phase 2 §5) |
-| `Idempotence.lean` | 4 | TODO (capstone of Phase 2) |
+| `Idempotence.lean` | 4 | Landed (Phase 2 §6 — capstone) |
 
 Items 0 (immutable data) and the indexed-type substrate live
 under `L4YAML/Indexed/` rather than here.

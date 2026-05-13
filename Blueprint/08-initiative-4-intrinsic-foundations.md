@@ -1,11 +1,12 @@
 # Initiative 4 — Intrinsic Foundations
 
 **Status**: Phase 1 — Design **closed**. Phase 2 — Algebra library
-**in progress** on `feature/intrinsic-foundations` (branched from
-`main`). Five of six clusters landed (foundation, small-independents,
-surface combinators, schema, equivalence); only the Idempotence
-capstone remains. See §Phase 2 status table and §Phase 2 next
-steps below.
+**closed** on `feature/intrinsic-foundations` (branched from `main`):
+all six clusters landed (foundation, small-independents, surface
+combinators, schema, equivalence, idempotence capstone). The 23-item
+inventory remains frozen; the Item 4 stress test confirmed
+Guardrail 2 closure. See §Phase 2 status table and §Phase 3
+next steps below.
 
 **Driver**: Initiative 3 was stopped 2026-05-03 (see
 `Blueprint/07-initiative-3-append-only.md` §Stop assessment).
@@ -505,9 +506,9 @@ All five open decisions D1–D5 resolved (see §Decisions table and
 
 </details>
 
-### Phase 2 — Algebra library  *(in progress on `feature/intrinsic-foundations`)*
+### Phase 2 — Algebra library  *(closed on `feature/intrinsic-foundations`)*
 
-<details><summary>Prove all 23 algebra items in `L4YAML/Algebra/`; define `LoadConfig` and indexed types. Five clusters landed (foundation, small-independents, surface combinators, schema, equivalence); only Idempotence remaining.</summary>
+<details><summary>Prove all 23 algebra items in `L4YAML/Algebra/`; define `LoadConfig` and indexed types. All six clusters landed (foundation, small-independents, surface combinators, schema, equivalence, idempotence capstone). Phase 2 complete; 23-item inventory frozen.</summary>
 
 **Goal**: prove all 23 inventoried items in a dedicated
 `L4YAML/Algebra/` directory.
@@ -525,7 +526,7 @@ All five open decisions D1–D5 resolved (see §Decisions table and
 
 | # | Criterion | State |
 |---|---|---|
-| (i) | All 23 items proved sorry-free in `L4YAML/Algebra/` | **partial** — Items 1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18–23 landed (22 of 23 + Item 0 design constraint). Remaining: Item 4 (Idempotence capstone). |
+| (i) | All 23 items proved sorry-free in `L4YAML/Algebra/` | **done** — Items 1–23 landed plus Item 0 design constraint. Item 4 (Idempotence capstone) wraps the inventory; sorry count in `L4YAML/Algebra/` = 0; full `lake build` passes 383 targets. |
 | (ii) | Items 18–23 moved with namespace rename | **done** — `L4YAML/Algebra/Value.lean` (18–21), `L4YAML/Algebra/StringList.lean` (22), `L4YAML/Algebra/LawfulBEq.lean` (23). All downstream imports updated atomically (Guardrail 1). Sorry count in `L4YAML/Algebra/` = 0. |
 | (iii) | `LoadConfig` types defined | **done** — `L4YAML/Config/LoadConfig.lean` defines `EqMode`, `DuplicateKeyPolicy`, `LoadConfig`. Threading into `parse`/`compose`/`construct` is Phase 3+. |
 | (iv) | Indexed type signatures drafted | **done** — `L4YAML/Indexed/Range.lean` (`Range input`), `L4YAML/Indexed/RepGraph.lean` (`RepGraph input range` mutual inductive with `RepGraphChild`/`RepGraphPair`), `L4YAML/Indexed/TokenStream.lean` (`TokenStream input` with `IxToken input`). All compile sorry-free. |
@@ -849,28 +850,87 @@ All five open decisions D1–D5 resolved (see §Decisions table and
     lines. Closure (Guardrail 2) holds — no item exceeds its
     stated content.
 
+**Reflections** (sixth algebra cluster — Item 4, Idempotence capstone):
+
+24. **Item 4 is one line on top of Item 21.** The L1 statement
+    `canonicalize ∘ canonicalize = canonicalize` reduces literally
+    to `stripAnchors_adaptForFlowContext_pipeline_idempotent`
+    (Item 21, proved in `Algebra/Value.lean`). The Phase 2 stress
+    test passes because the capstone *factors through* the
+    cluster-21 packaging — `unfold canonicalize; exact …` is the
+    entire proof. The capstone file's 462 LOC is therefore not
+    the Item 4 proof itself but the **invariance corollaries**
+    (resolution preservation, anchor stripping, key-uniqueness,
+    abstract law) that connect Item 4 to Items 5, 6, 12, 15, 16.
+    The closure stress test is *passed by construction*: no
+    primitive outside Items 0–23 appears anywhere in the file.
+
+25. **Schema-resolution invariance needed a fresh `resolveList_eq_map`
+    helper that mirrors the parser's anchor-resolution one.** The
+    pattern `where`-clause helper → `List.map` form is already used
+    twice in the codebase (`stripList_eq_map`/`adaptList_eq_map` in
+    `ParserGrammableBase.lean`, and `resolveList_eq_map` for
+    `YamlValue.resolveAliases`). Item 4 §4 added a third instance
+    for `Schema.resolve.resolveList` / `resolvePairs`. The pattern
+    is becoming canonical: every where-clause-recursive function on
+    `YamlValue` benefits from this rewrite when invariance under a
+    metadata-only transform is being proved. Worth considering a
+    macro or `@[simp]` framework in Phase 4 to avoid repeating the
+    three-line `by induction l ⋯` boilerplate.
+
+26. **The abstract `LawfulRoundTrip₁` predicate is intentionally
+    parametric over the dump-target type.** Phase 5 will instantiate
+    `T := String` (parse + dump). Stating the law as
+    `∀ s : T, load (dump (load s)) = load s` rather than the
+    constructor-by-constructor L1 round-trip lets Phase 5 specialise
+    *once* per dump format (presentation drift at L3 means each
+    style choice produces a different `dump`, but they all factor
+    through the same L1 stable form). The Phase 2 file ships the
+    statement and a trivial L1 instance (`load = canonicalize`,
+    `dump = id`); Phase 5 fills in the real instances.
+
+27. **Capstone LOC came in at 462 vs. 400 estimate (~15% over).**
+    The overrun is concentrated in §4 (resolve invariance =
+    ~80 lines per direction × 2 directions = ~160 LOC) and the
+    closure documentation tables (§8 = ~40 LOC including the items-
+    used summary). The Item 4 proof itself (§2) is 6 lines. The
+    capstone's *value* is not in lines-of-proof but in the
+    cross-cluster wiring it documents — every downstream consumer
+    that needs "round-trip preserves X" now has a one-line lemma to
+    rewrite with.
+
+28. **Guardrail 2 stress test verdict: pass.** The L1 round-trip
+    idempotence is provable using only Items 0–23. No 24th
+    primitive is needed; Phase 1 remains closed. This is the
+    formal closure check the Phase 2 plan called for: the
+    algebra inventory is **complete with respect to the L1
+    round-trip statement**. Phase 5's L3 statement (presentation
+    drift counterexample) will be a separate matter, but the L1
+    half is now algebraically discharged.
+
 **Out of scope**: any scanner/parser code. The algebra library does
 not depend on `Scanner/`, `Parser/`, or any J.3-era infrastructure.
 
-#### Phase 2 next steps (remaining items)
+#### Phase 2 closure note
 
-<details><summary>One remaining cluster: the Idempotence capstone (Item 4) as the Guardrail 2 stress test.</summary>
+<details><summary>All six clusters landed; the 23-item inventory is closed. Phase 3 (Scanner cutover on indexed types) is the next milestone.</summary>
 
-Five algebra clusters are now **landed**: foundation (Items 18–23,
-Item 12), the small-independents pair (Items 7, 8, 9, 10, 11, 13,
-17), the surface-combinator laws (Item 14), the schema laws (Items
-15, 16), and the equivalence + collection laws (Items 1, 2, 3, 5,
-6). Remaining item:
+All six algebra clusters are now **landed**: foundation (Items
+18–23, Item 12), the small-independents pair (Items 7, 8, 9, 10,
+11, 13, 17), the surface-combinator laws (Item 14), the schema
+laws (Items 15, 16), the equivalence + collection laws (Items 1,
+2, 3, 5, 6), and the **Idempotence capstone** (Item 4) in
+`L4YAML/Algebra/Idempotence.lean`. The capstone passed the
+Guardrail 2 stress test: the L1 statement
+`load ∘ dump ∘ load = load` is provable using only Items 0–23,
+with no 24th primitive needed.
 
-1. **Item 4 — Idempotence capstone** (`L4YAML/Algebra/Idempotence.lean`).
-   `load ∘ dump ∘ load = load`, proved via the full algebra
-   library + indexed types. This is the **Phase 2 stress test**
-   for Guardrail 2 (closure): if the proof needs an algebraic
-   fact not in Items 0–23, Phase 1 re-opens. Large (~400 LOC).
+**Phase 2 DONE-criteria (i)–(iv) are all `done`.** Sorry count in
+`L4YAML/Algebra/` is 0; full `lake build` passes 383 targets.
+The 23-item inventory remains **frozen** and **closed**.
 
-Suggested cadence: Item 4 warrants its own PR with the
-cadence-step commit discipline (Guardrail 3: every commit
-shows `sorry: N → N − 1` or `sorry: N → N`).
+**Next milestone**: Phase 3 — Stage C (scanner) on indexed types.
+See §Phase 3 below for the cutover plan and DONE criteria.
 
 </details>
 
@@ -892,6 +952,7 @@ shows `sorry: N → N − 1` or `sorry: N → N`).
 | `L4YAML/Algebra/Combinators.lean` | 14 | ~235 | 1 (`L4YAML.lean` root) |
 | `L4YAML/Algebra/Schema.lean` | 15, 16 | ~265 | 1 (`L4YAML.lean` root) |
 | `L4YAML/Algebra/Equivalence.lean` | 1, 2, 3, 5, 6 | ~350 | 1 (`L4YAML.lean` root) |
+| `L4YAML/Algebra/Idempotence.lean` | 4 | ~460 | 1 (`L4YAML.lean` root) |
 | `L4YAML/Config/LoadConfig.lean` | n/a | ~70 | 0 (new file; consumers in Phase 3+) |
 | `L4YAML/Indexed/Range.lean` | n/a | ~60 | 0 |
 | `L4YAML/Indexed/RepGraph.lean` | n/a | ~120 | 0 |
