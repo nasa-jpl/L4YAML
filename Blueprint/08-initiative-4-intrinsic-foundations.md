@@ -2,9 +2,10 @@
 
 **Status**: Phase 1 — Design **closed**. Phase 2 — Algebra library
 **in progress** on `feature/intrinsic-foundations` (branched from
-`main`). Four of six clusters landed (foundation, small-independents,
-surface combinators, schema); Equivalence and Idempotence remain.
-See §Phase 2 status table and §Phase 2 next steps below.
+`main`). Five of six clusters landed (foundation, small-independents,
+surface combinators, schema, equivalence); only the Idempotence
+capstone remains. See §Phase 2 status table and §Phase 2 next
+steps below.
 
 **Driver**: Initiative 3 was stopped 2026-05-03 (see
 `Blueprint/07-initiative-3-append-only.md` §Stop assessment).
@@ -506,7 +507,7 @@ All five open decisions D1–D5 resolved (see §Decisions table and
 
 ### Phase 2 — Algebra library  *(in progress on `feature/intrinsic-foundations`)*
 
-<details><summary>Prove all 23 algebra items in `L4YAML/Algebra/`; define `LoadConfig` and indexed types. Four clusters landed (foundation, small-independents, surface combinators, schema); Equivalence and Idempotence remaining.</summary>
+<details><summary>Prove all 23 algebra items in `L4YAML/Algebra/`; define `LoadConfig` and indexed types. Five clusters landed (foundation, small-independents, surface combinators, schema, equivalence); only Idempotence remaining.</summary>
 
 **Goal**: prove all 23 inventoried items in a dedicated
 `L4YAML/Algebra/` directory.
@@ -524,7 +525,7 @@ All five open decisions D1–D5 resolved (see §Decisions table and
 
 | # | Criterion | State |
 |---|---|---|
-| (i) | All 23 items proved sorry-free in `L4YAML/Algebra/` | **partial** — Items 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18–23 landed (16 of 23 + Item 0 design constraint). Remaining: Items 1–6 (see §Phase 2 next steps). |
+| (i) | All 23 items proved sorry-free in `L4YAML/Algebra/` | **partial** — Items 1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18–23 landed (22 of 23 + Item 0 design constraint). Remaining: Item 4 (Idempotence capstone). |
 | (ii) | Items 18–23 moved with namespace rename | **done** — `L4YAML/Algebra/Value.lean` (18–21), `L4YAML/Algebra/StringList.lean` (22), `L4YAML/Algebra/LawfulBEq.lean` (23). All downstream imports updated atomically (Guardrail 1). Sorry count in `L4YAML/Algebra/` = 0. |
 | (iii) | `LoadConfig` types defined | **done** — `L4YAML/Config/LoadConfig.lean` defines `EqMode`, `DuplicateKeyPolicy`, `LoadConfig`. Threading into `parse`/`compose`/`construct` is Phase 3+. |
 | (iv) | Indexed type signatures drafted | **done** — `L4YAML/Indexed/Range.lean` (`Range input`), `L4YAML/Indexed/RepGraph.lean` (`RepGraph input range` mutual inductive with `RepGraphChild`/`RepGraphPair`), `L4YAML/Indexed/TokenStream.lean` (`TokenStream input` with `IxToken input`). All compile sorry-free. |
@@ -777,32 +778,98 @@ All five open decisions D1–D5 resolved (see §Decisions table and
     walk `YamlValue` without re-unfolding `resolve` by hand.
     Closure (Guardrail 2) holds — every unfolding is `rfl`.
 
+**Reflections** (fifth algebra cluster — Items 1, 2, 3, 5, 6):
+
+19. **Item 3 — `refl`/`symm`/`trans` as inductive constructors over
+    a derived-equivalence layer**. There are two stylistic choices
+    for stating `YamlEquiv`: (a) derive it as the smallest
+    equivalence containing a single `mapping_perm` axiom, lifted
+    through structural congruence; (b) bake `refl`/`symm`/`trans`
+    in as primitive constructors of the inductive. (a) is cleaner
+    in a typeclass-driven setting (the `Equivalence` instance
+    follows from one auxiliary lemma per direction). (b) is
+    cheaper to *use*: the `Equivalence` instance is one line
+    (`⟨refl, symm, trans⟩`) and downstream proofs case-split on
+    constructors directly. We picked (b) for Phase 2 because the
+    one-line `Equivalence` instance is exactly what Phase 4's
+    `EqMode.strict` consumer needs. Closure (Guardrail 2) holds —
+    no structural-congruence lifting beyond `mapping_perm`.
+
+20. **Item 2 — `decide` discharges string inequality at the
+    bottom of the chain**. The Item 2 counterexample resolves to
+    `"a" = "b"` after three `injection` steps. `decide` closes that
+    leaf goal in one line because `String` has a `DecidableEq`
+    instance pulled in automatically. The chain (`sequence` ≠ →
+    `Array` ≠ → `List` cons inj → `alias` injection → string ≠)
+    is verbose (six lines) but mechanical; using `injection` instead
+    of `simp` keeps the proof legible because each step exposes the
+    *next* injectivity obligation rather than `simp`-collapsing
+    them into one opaque chain. This pattern carries over to any
+    future no-equational-law counterexample (e.g. sequence-style
+    differences if we later want to assert block vs. flow are
+    `=`-distinct).
+
+21. **Item 5 — `dedupFirst` idempotence via `dedupFirst_of_noDup`**.
+    The standard idempotence proof for first-occurrence dedup is:
+    (a) prove `noDup_dedupFirst` (the output is already de-duped);
+    (b) prove `dedupFirst_of_noDup` (an already-de-duped list is
+    fixed by `dedupFirst`); (c) compose. Step (b) is the
+    interesting one — it needs `List.filter_eq_self.mpr` and the
+    fact that `LawfulBEq YamlValue` (Item 23) lets us turn `k' ≠ k`
+    into `(k' == k) = false` via `beq_eq_false_iff_ne`. The proof
+    cost of having `LawfulBEq YamlValue` already discharged was
+    significant: without it, the filter-condition reduction would
+    require additional case-analysis on the `BEq` instance. This
+    is a concrete payoff of Initiative 4's algebra-first ordering
+    (Items 23 first, Item 5 later).
+
+22. **Item 6 — typeclass shape only, deferring `Bisimulation`
+    instances to Phase 4**. Per D3, `Bisimulation` is the witness
+    typeclass for `EqMode.bisim`. Phase 2's deliverable is the
+    typeclass *shape* (carrier `α`, relation `isBisim`, symmetry
+    law). Instances at `RepGraph input range` land in Phase 4
+    with the indexed-type cutover. `anchorReachable` is the one
+    concrete fact Item 6 needs from Item 12 (AnchorMap) — its
+    `iff`-form `anchorReachable m name v ↔ m.find? name = some v`
+    is `rfl`. Closure (Guardrail 2) holds — Item 6's algebraic
+    content lives in Item 12's `find?_insert` / `find?_insert_ne`
+    / `find?_empty` laws; this file adds only the *interface* by
+    which Phase 4's parser will consume them.
+
+23. **Item 5 LOC blew through estimate; rest came in under**. The
+    blueprint estimate for the entire cluster was ~250 LOC; the
+    file landed at 352 LOC (40% over). The overrun is concentrated
+    in Item 5 (`dedupFirst` + idempotence proof = 95 lines vs.
+    ~50 estimated) — the auxiliary lemmas `nodup_filter` and
+    `not_mem_keys_filter` cost 35 lines together because filtering
+    a pair list while reasoning about the **key projection** needs
+    explicit `List.mem_map ↔ ∃ x, x ∈ filter` round-trips. Items
+    1 + 2 + 3 came in under estimate (~70 LOC total for the
+    equivalence relation + counterexample) and Item 6 was ~30
+    lines. Closure (Guardrail 2) holds — no item exceeds its
+    stated content.
+
 **Out of scope**: any scanner/parser code. The algebra library does
 not depend on `Scanner/`, `Parser/`, or any J.3-era infrastructure.
 
 #### Phase 2 next steps (remaining items)
 
-<details><summary>Two remaining clusters in suggested order: Equivalence + collection laws (Items 1, 2, 3, 5, 6), then the Idempotence capstone (Item 4) as the Guardrail 2 stress test.</summary>
+<details><summary>One remaining cluster: the Idempotence capstone (Item 4) as the Guardrail 2 stress test.</summary>
 
-Four algebra clusters are now **landed**: foundation (Items 18–23,
+Five algebra clusters are now **landed**: foundation (Items 18–23,
 Item 12), the small-independents pair (Items 7, 8, 9, 10, 11, 13,
-17), the surface-combinator laws (Item 14), and the schema laws
-(Items 15, 16). Remaining items, in suggested implementation order:
+17), the surface-combinator laws (Item 14), the schema laws (Items
+15, 16), and the equivalence + collection laws (Items 1, 2, 3, 5,
+6). Remaining item:
 
-1. **Items 1, 2, 3, 5, 6 — Equivalence + collection laws**
-   (`L4YAML/Algebra/Equivalence.lean`). Depends on Item 12
-   (AnchorMap) for Item 6, and on `LoadConfig.EqMode` for Items
-   3 + 5. Designed before the Item 4 capstone so the dependency
-   cone is fully populated when the capstone calls into them.
-   Medium-large (~250 LOC).
-2. **Item 4 — Idempotence capstone** (`L4YAML/Algebra/Idempotence.lean`).
+1. **Item 4 — Idempotence capstone** (`L4YAML/Algebra/Idempotence.lean`).
    `load ∘ dump ∘ load = load`, proved via the full algebra
    library + indexed types. This is the **Phase 2 stress test**
    for Guardrail 2 (closure): if the proof needs an algebraic
    fact not in Items 0–23, Phase 1 re-opens. Large (~400 LOC).
 
-Suggested cadence: Items 1–6 and Item 4 each warrant their own PR
-with the cadence-step commit discipline (Guardrail 3: every commit
+Suggested cadence: Item 4 warrants its own PR with the
+cadence-step commit discipline (Guardrail 3: every commit
 shows `sorry: N → N − 1` or `sorry: N → N`).
 
 </details>
@@ -824,6 +891,7 @@ shows `sorry: N → N − 1` or `sorry: N → N`).
 | `L4YAML/Algebra/Token.lean` | 17 | ~310 | 1 (`L4YAML.lean` root) |
 | `L4YAML/Algebra/Combinators.lean` | 14 | ~235 | 1 (`L4YAML.lean` root) |
 | `L4YAML/Algebra/Schema.lean` | 15, 16 | ~265 | 1 (`L4YAML.lean` root) |
+| `L4YAML/Algebra/Equivalence.lean` | 1, 2, 3, 5, 6 | ~350 | 1 (`L4YAML.lean` root) |
 | `L4YAML/Config/LoadConfig.lean` | n/a | ~70 | 0 (new file; consumers in Phase 3+) |
 | `L4YAML/Indexed/Range.lean` | n/a | ~60 | 0 |
 | `L4YAML/Indexed/RepGraph.lean` | n/a | ~120 | 0 |

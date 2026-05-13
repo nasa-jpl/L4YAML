@@ -18,11 +18,11 @@ triggers a re-opening of Phase 1 (Guardrail 2).
 | `Fuel.lean` | 11 | Landed (Phase 2 §2) |
 | `AnchorMap.lean` | 12 | Migrated from `Spec/Types.lean` |
 | `Combinators.lean` | 14 | Landed (Phase 2 §3) |
-| `Schema.lean` | 15, 16 | TODO |
+| `Schema.lean` | 15, 16 | Landed (Phase 2 §4) |
 | `Token.lean` | 17 | Landed (Phase 2 §2) |
 | `Value.lean` | 18–21 | Migrated |
 | `LawfulBEq.lean` | 23 | Migrated |
-| `Equivalence.lean` | 1, 2, 3, 5, 6 | TODO (depends on AnchorMap) |
+| `Equivalence.lean` | 1, 2, 3, 5, 6 | Landed (Phase 2 §5) |
 | `Idempotence.lean` | 4 | TODO (capstone of Phase 2) |
 
 Items 0 (immutable data) and the indexed-type substrate live
