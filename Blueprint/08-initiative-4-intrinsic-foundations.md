@@ -1,8 +1,10 @@
 # Initiative 4 — Intrinsic Foundations
 
-**Status**: **Design phase**, on `main`. No code changes yet.
-This document is the deliverable of *Phase 1 — Design*; subsequent
-phases land on a fresh feature branch off `main` once Phase 1 closes.
+**Status**: Phase 1 — Design **closed**. Phase 2 — Algebra library
+**in progress** on `feature/intrinsic-foundations` (branched from
+`main`). Four of six clusters landed (foundation, small-independents,
+surface combinators, schema); Equivalence and Idempotence remain.
+See §Phase 2 status table and §Phase 2 next steps below.
 
 **Driver**: Initiative 3 was stopped 2026-05-03 (see
 `Blueprint/07-initiative-3-append-only.md` §Stop assessment).
@@ -20,7 +22,11 @@ and is not continued here.
 
 ## Motivation
 
+<details><summary>Why Initiative 4 exists — Initiative 3's stop assessment surfaced two root causes (late algebra, extrinsic data) that this initiative directly reverses.</summary>
+
 ### What Initiative 3 demonstrated
+
+<details><summary>134 commits, 7 sorries, predicates ballooning to 17–24 conjuncts — the stop traces to algebraic laws inlined as predicate conjuncts and spec datatypes that don't carry source provenance.</summary>
 
 Initiative 3 traded `setIfInBounds` (in-place placeholder rewrite)
 for an append-only `(tokens, pendingKeys)` pair plus a one-shot
@@ -56,7 +62,11 @@ this to two underlying causes:
    the value-source relationship as a byte-level claim, which is
    the bulk of the work and the source of the predicate explosion.
 
+</details>
+
 ### What Initiative 4 reverses
+
+<details><summary>Algebra-first foundations and indexed types reverse both root causes; Initiative 3's six lessons become the procedural guardrails.</summary>
 
 Both root causes:
 
@@ -79,11 +89,19 @@ guardrails:
 - **Algebra first, ghost predicates last** (Lesson 5).
 - **Spec datatypes carry source provenance** (Lesson 6).
 
+</details>
+
+</details>
+
 ---
 
 ## Proposed architecture
 
+<details><summary>Four layers (L0–L3) aligned to YAML 1.2.2 §3.1, three bidirectional stages, indexed types, hybrid Subtype/tactic pre-/postconditions, and a bundled LoadConfig.</summary>
+
 ### Four layers
+
+<details><summary>L0 (native records), L1 (representation graph), L2 (token stream), L3 (character stream) — with the algebra library underneath.</summary>
 
 L4YAML's architecture aligns with YAML 1.2.2 §3.1's three-stage
 information model. Adding the application layer (L0) gives four
@@ -113,7 +131,11 @@ layers total:
                                └────────────────────────────┘
 ```
 
+</details>
+
 ### Three stages, each bidirectional
+
+<details><summary>Stage A/B/C forward and backward functions; YAML 1.2.2's 211 rules distribute by grammatical level (`b-`/`s-`/`c-`/`ns-` vs `l-`/`s-l-` vs tag/schema).</summary>
 
 | Stage | Forward | Backward |
 |---|---|---|
@@ -133,7 +155,11 @@ stages by their grammatical level:
 - **Stage A rules**: tags, schemas, the representation graph —
   the application-level rules.
 
+</details>
+
 ### Indexed type discipline
+
+<details><summary>`RepGraph` parameterised by source string + byte range; two graphs from different inputs have different types and cannot be compared at L1.</summary>
 
 The L1 representation graph is parameterised by the source string
 and the byte range it occupies:
@@ -157,7 +183,11 @@ constructs at L0 and converts down through Stage A.
 that are offsets into `input`; mismatched indexing is caught by the
 type system.
 
+</details>
+
 ### Pre/post conditions: refinement types + tactic
+
+<details><summary>Hybrid `Subtype` for input/output contracts plus a `decide_pre` tactic for routine discharge — replaces ghost predicates entirely.</summary>
 
 Settled choice: hybrid `Subtype` + tactic. Each stage function
 carries its precondition in the input subtype and its
@@ -184,7 +214,11 @@ expressed as `EmitScansInFlow v` becomes either:
 There is no free-standing `Prop`-valued predicate threaded through
 existential bundles.
 
+</details>
+
 ### LoadConfig: bundled configuration
+
+<details><summary>Single `LoadConfig` struct threading `EqMode` (cycle handling) and `DuplicateKeyPolicy` through parse/compose/construct; default `{}` is spec-strict.</summary>
 
 Settled choice: bundled into a single `LoadConfig` structure
 threaded through `parse`, `compose`, and `construct`.
@@ -211,9 +245,15 @@ inductive DuplicateKeyPolicy where
 `compose`, and `construct`. The default value (`{}`) gives
 spec-strict behaviour (error on cycle, error on duplicate).
 
+</details>
+
+</details>
+
 ---
 
 ## Properties this delivers
+
+<details><summary>Six explicit success criteria P1–P6 (ghost predicates eliminated, compositional proofs, spec-faithful, roundtrip lawful, sorry-free at boundaries, predicate budget capped).</summary>
 
 | # | Property | Mechanism |
 |---|---|---|
@@ -229,9 +269,13 @@ Initiative 4. Failure to deliver any one of them at its phase
 boundary triggers a stop-and-reassess (mirroring the Initiative 3
 sorry-budget gate that should have been enforced in J.4).
 
+</details>
+
 ---
 
 ## Worked example
+
+<details><summary>`{a: 1}` walked through all four layers in both directions; ends with how Initiative 3's 24-conjunct `EmitScansInFlow` collapses to ≤30 lines of structural induction.</summary>
 
 Input: `{a: 1}` (6 bytes, single line).
 
@@ -240,6 +284,8 @@ showing how the indexed types eliminate the ghost-predicate work
 that Initiative 3's `EmitScansInFlow` was carrying.
 
 ### Stage C (L3 ↔ L2): present / parse
+
+<details><summary>`parse "{a: 1}"` returns a `TokenStream "{a: 1}"` whose token positions are verifiably offsets into the input; the "scanning succeeded" fact lives in the subtype.</summary>
 
 `parse "{a: 1}"` returns:
 
@@ -262,7 +308,11 @@ The `TokenStream input` indexing means:
 - No `EmitScansInFlow` ghost predicate. The "scanning succeeded"
   fact lives in the subtype.
 
+</details>
+
 ### Stage B (L2 ↔ L1): compose / serialize
+
+<details><summary>`compose tokens` produces a `RepGraph` whose outer mapping range is the whole input and each sub-scalar carries its own 1-byte range.</summary>
 
 `compose tokens` produces:
 
@@ -279,7 +329,11 @@ Each sub-graph carries its own range. The outer mapping's range is
 position. The `compose` function's type ensures these ranges are
 well-formed offsets into the input.
 
+</details>
+
 ### Stage A (L1 ↔ L0): construct / represent
+
+<details><summary>`construct (cfg := {})` produces `Map.mk [("a", 1)] : Map String Int` via the existing `FromYamlType Int` instance.</summary>
 
 If the user has `[FromYaml (Map String Int)]` (derived via
 `ToYaml`/`FromYaml` typeclass machinery from Phase 5), then
@@ -293,7 +347,11 @@ The `FromYamlType Int` instance (already present at
 `Schema/FromToYaml.lean:85`) handles the scalar-to-int conversion
 via `Schema.resolve`.
 
+</details>
+
 ### How `EmitScansInFlow v` collapses
+
+<details><summary>Initiative 3's 24-conjunct ∃-tuple collapses to a ≤30-line structural induction over `m`, chaining algebra-library lemmas — the test of whether Initiative 4 delivers what it claims.</summary>
 
 In Initiative 3, the predicate `EmitScansInFlow v` for
 `v = .flowMapping #[(.scalar "a" .plain, .scalar "1" .plain)]`
@@ -332,14 +390,22 @@ The proof becomes ≤ 30 lines of structural induction over `m`,
 chaining algebra-library lemmas. **This is the test of whether
 Initiative 4 delivers what it claims.**
 
+</details>
+
+</details>
+
 ---
 
 ## Algebra library — frozen inventory (23 items)
+
+<details><summary>The 23 named lemmas (Items 0–23) that form the foundation; frozen at end of Phase 1, with any new item triggering a Phase 1 re-open.</summary>
 
 The library is enumerated in this section and **frozen at end of
 Phase 1**. No new items past freeze without re-opening Phase 1.
 
 ### From the original sketch (Items 0–11)
+
+<details><summary>Items 0–11: immutable data, mapping commutativity, sequence non-commutativity, equivalence relation, idempotence, set-uniqueness, anchors/aliases isomorphism, monoids (position/indent/string/token/fuel).</summary>
 
 | # | Name | Encoding |
 |---|---|---|
@@ -356,7 +422,11 @@ Phase 1**. No new items past freeze without re-opening Phase 1.
 | **10** | Token-stream concat monoid | Token arrays form a free monoid under concat; `scan` as `foldM` over chars. |
 | **11** | Parse-side fuel monoid | Fuel composes additively; `parseLoop n` ∘ `parseLoop m` = `parseLoop (n + m)` modulo termination. |
 
+</details>
+
 ### From in-scope file inventory (Items 12–17, verified)
+
+<details><summary>Items 12–17 already present in the codebase (verified): AnchorMap, YamlPos order, surface combinator laws, ToYaml/FromYaml typeclasses, schema resolution, token discriminators.</summary>
 
 | # | Name | Source | Encoding |
 |---|---|---|---|
@@ -367,7 +437,11 @@ Phase 1**. No new items past freeze without re-opening Phase 1.
 | **16** | Schema resolution determinism | `Schema/Schema.lean:245–305` | `resolveImplicit` / `resolveScalar` / `resolve` are total deterministic. Resolution precedence (null → bool → int → float → str) is canonical. Lemma: "resolution is a function." |
 | **17** | Token discriminator algebra | `Token/Token.lean:241–280` | `YamlToken.isVirtual`, `canStartNode`, `isFlowIndicator` partition tokens into disjoint classes. Exhaustiveness laws cut case-split boilerplate. |
 
+</details>
+
 ### From `Proofs/Foundation/` (Items 18–23, already proven)
+
+<details><summary>Items 18–23 are pre-existing in-tree theorems (stripAnchors / adaptForFlowContext idempotence, List/string algebra, LawfulBEq hierarchy) folded into the inventory directly.</summary>
 
 These are pre-existing in-tree theorems that align with the
 algebra-first principle and are folded into the inventory directly:
@@ -381,7 +455,11 @@ algebra-first principle and are folded into the inventory directly:
 | **22** | `List.dropWhile` idempotence + `reverse-trim-reverse` idempotence | `Proofs/Foundation/StringProperties.lean:71–91` | Foundational list/string algebra for whitespace handling. |
 | **23** | LawfulBEq hierarchy | `Proofs/Foundation/LawfulBEq.lean:42–110` | `LawfulBEq` instances for `ScalarStyle`, `ChompStyle`, `CollectionStyle`, `BlockScalarMeta`, `Scalar`, `YamlValue`. Reflexivity + `eq_of_beq`. |
 
+</details>
+
 ### Closure principle
+
+<details><summary>List is final at end of Phase 1; additional algebraic content must either decompose into existing items or trigger a Phase 1 re-open. Procedural enforcement of Lessons 2 + 5.</summary>
 
 The list above is final at end of Phase 1. Any additional algebraic
 content discovered during Phases 3–6 must either:
@@ -393,9 +471,15 @@ content discovered during Phases 3–6 must either:
 This is the procedural enforcement of Lesson 2 (cap predicate
 budget) and Lesson 5 (algebra first, ghost predicates last).
 
+</details>
+
+</details>
+
 ---
 
 ## Phased plan (milestone-gated, no week estimates)
+
+<details><summary>Six phases (Design → Algebra → Stage C → Stage B → Stage A → Capstone) each gated by DONE criteria; missed criteria force stop-and-reassess.</summary>
 
 Per-phase DONE criteria replace week-based scope gates. If a
 phase's criterion isn't met, **stop and reassess** before
@@ -405,7 +489,7 @@ formal reassessment.
 
 ### Phase 1 — Design  *(closed)*
 
-<details>
+<details><summary>Design deliverable complete: blueprint written, algebra inventory frozen, LoadConfig settled, indexed-type signatures drafted, worked example walked, branch protocol fixed, D1–D5 resolved.</summary>
 
 **DONE criteria** (all met):
 - (i) `Blueprint/08-initiative-4-intrinsic-foundations.md` written and reviewed.
@@ -422,7 +506,8 @@ All five open decisions D1–D5 resolved (see §Decisions table and
 
 ### Phase 2 — Algebra library  *(in progress on `feature/intrinsic-foundations`)*
 
-<details>
+<details><summary>Prove all 23 algebra items in `L4YAML/Algebra/`; define `LoadConfig` and indexed types. Four clusters landed (foundation, small-independents, surface combinators, schema); Equivalence and Idempotence remaining.</summary>
+
 **Goal**: prove all 23 inventoried items in a dedicated
 `L4YAML/Algebra/` directory.
 
@@ -435,11 +520,11 @@ All five open decisions D1–D5 resolved (see §Decisions table and
 - (iv) Indexed types `RepGraph` and `TokenStream` defined as
   `inductive`/`structure` with no scanning/parsing semantics yet.
 
-**Status (foundation + first algebra cluster landed)**:
+**Status (foundation + schema cluster landed)**:
 
 | # | Criterion | State |
 |---|---|---|
-| (i) | All 23 items proved sorry-free in `L4YAML/Algebra/` | **partial** — Items 7, 8, 9, 10, 11, 12, 13, 14, 17, 18–23 landed (14 of 23 + Item 0 design constraint). Remaining: Items 1–6, 15, 16 (see §Phase 2 next steps). |
+| (i) | All 23 items proved sorry-free in `L4YAML/Algebra/` | **partial** — Items 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18–23 landed (16 of 23 + Item 0 design constraint). Remaining: Items 1–6 (see §Phase 2 next steps). |
 | (ii) | Items 18–23 moved with namespace rename | **done** — `L4YAML/Algebra/Value.lean` (18–21), `L4YAML/Algebra/StringList.lean` (22), `L4YAML/Algebra/LawfulBEq.lean` (23). All downstream imports updated atomically (Guardrail 1). Sorry count in `L4YAML/Algebra/` = 0. |
 | (iii) | `LoadConfig` types defined | **done** — `L4YAML/Config/LoadConfig.lean` defines `EqMode`, `DuplicateKeyPolicy`, `LoadConfig`. Threading into `parse`/`compose`/`construct` is Phase 3+. |
 | (iv) | Indexed type signatures drafted | **done** — `L4YAML/Indexed/Range.lean` (`Range input`), `L4YAML/Indexed/RepGraph.lean` (`RepGraph input range` mutual inductive with `RepGraphChild`/`RepGraphPair`), `L4YAML/Indexed/TokenStream.lean` (`TokenStream input` with `IxToken input`). All compile sorry-free. |
@@ -635,39 +720,96 @@ All five open decisions D1–D5 resolved (see §Decisions table and
     inductive `star_star` / `star_append`). This is a
     proof-style refinement, not a soundness or closure concern.
 
+**Reflections** (fourth algebra cluster — Items 15, 16):
+
+15. **Item 16 — `unfold` doesn't reduce literal `match`-on-string**.
+    `resolveScalar` is a top-level `match tag? with | some "tag:yaml.org,2002:bool" => ...`.
+    With `tag? = some "tag:yaml.org,2002:bool"` substituted in,
+    `unfold resolveScalar` exposes the body but leaves the outer
+    `match` un-reduced — Lean's elaborator treats string-literal
+    patterns as decidable equalities that aren't normalised by
+    plain unfold. Two paths through this: (a) `simp [resolveScalar]`
+    drives the outer match by definitional equality and works on
+    every arm; (b) `show (match isBool content with | ...)` rewrites
+    the goal to the inner-only match shape, after which a single
+    `rw [h]` discharges the remaining `isBool content`. We picked
+    (b) for the seven tag-precedence lemmas because it leaves the
+    `simp` set minimal and the proof script literally mirrors the
+    intended reduction sequence (outer-match-by-rfl, inner-match-by-rewrite).
+    This is a proof-style refinement, not a soundness concern.
+
+16. **Item 15 — class statement only, no instances**. Per D2
+    (Blueprint 08 §What this document settles), `LawfulRoundTrip`
+    is a separate typeclass carrying the law
+    `∀ a, fromYaml? (toYaml a) = .ok a`. Phase 2's deliverable is
+    the **statement**; Phase 5's `FromToYaml` cutover discharges
+    instances per primitive type (`Int`, `Nat`, `Bool`, `String`,
+    `Float`, …). Co-locating an instance here would either fix the
+    semantics prematurely (e.g. `Int`'s instance has to commit to
+    the precedence ordering's behaviour on decimal vs. octal vs.
+    hex round-trips) or invite ghost-style conjuncts back into the
+    file. Keeping the class isolated preserves Guardrail 2: Item 15
+    is one line of statement, Item 16 is the precedence laws, and
+    the round-trip law-discharge sits at the Phase 5 boundary.
+
+17. **Bridge theorem `fromYaml_via_resolve` is `rfl`, but worth
+    naming**. The bridge `fromYaml? = fromYamlType? ∘ resolve` for
+    types with `[FromYamlType α]` is true *definitionally* (it's
+    just the instance body in `Schema/FromToYaml.lean:63–64`).
+    Stating it as a `theorem` and explicitly pinning the implicit
+    instance argument (`@fromYaml? α (instFromYamlOfFromYamlType)`)
+    gives Phase 5 a named rewrite hook: the first line of every
+    `LawfulRoundTrip Int` (or `Nat`, `Bool`, …) proof can
+    `rw [fromYaml_via_resolve]` rather than `unfold fromYaml?`,
+    which keeps the proof robust against future overlap-instance
+    additions on `FromYaml`. Closure (Guardrail 2) holds — the
+    theorem adds no new algebraic content.
+
+18. **Item 16 LOC came in around blueprint estimate**. The file
+    landed at 265 LOC vs. the blueprint estimate of ~200 LOC. The
+    overrun is 5 `resolveImplicit` precedence lemmas + 7
+    `resolveScalar` tag-precedence lemmas + 6 `resolve` /
+    `resolveList` / `resolvePairs` constructor unfoldings = 18
+    rfl/simp-driven lemmas, each ~5–8 lines. The constructor
+    unfoldings (`resolve_scalar`, `resolve_alias`, the four
+    `resolveList` / `resolvePairs` cases) were not in the original
+    blueprint sketch but are required so Phase 4 / Phase 5 proofs
+    walk `YamlValue` without re-unfolding `resolve` by hand.
+    Closure (Guardrail 2) holds — every unfolding is `rfl`.
+
 **Out of scope**: any scanner/parser code. The algebra library does
 not depend on `Scanner/`, `Parser/`, or any J.3-era infrastructure.
 
 #### Phase 2 next steps (remaining items)
 
-Three algebra clusters are now **landed**: foundation (Items 18–23,
-Item 12), the small-independents pair (Items 7, 8, 9, 10, 11, 13,
-17), and the surface-combinator laws (Item 14). Remaining items, in
-suggested implementation order:
+<details><summary>Two remaining clusters in suggested order: Equivalence + collection laws (Items 1, 2, 3, 5, 6), then the Idempotence capstone (Item 4) as the Guardrail 2 stress test.</summary>
 
-1. **Item 15, 16 — Schema laws** (`L4YAML/Algebra/Schema.lean`).
-   `ToYaml`/`FromYaml` round-trip laws + `resolveImplicit` /
-   `resolveScalar` totality and determinism. Migration from
-   `Schema/Schema.lean:245–305` and statements only at
-   `Schema/FromToYaml.lean:42–107+` (the per-instance round-trip
-   proofs are Phase 5's `FromToYaml` cutover).
-2. **Items 1, 2, 3, 5, 6 — Equivalence + collection laws**
+Four algebra clusters are now **landed**: foundation (Items 18–23,
+Item 12), the small-independents pair (Items 7, 8, 9, 10, 11, 13,
+17), the surface-combinator laws (Item 14), and the schema laws
+(Items 15, 16). Remaining items, in suggested implementation order:
+
+1. **Items 1, 2, 3, 5, 6 — Equivalence + collection laws**
    (`L4YAML/Algebra/Equivalence.lean`). Depends on Item 12
    (AnchorMap) for Item 6, and on `LoadConfig.EqMode` for Items
-   3 + 5. Designed last so the dependency cone is fully populated.
+   3 + 5. Designed before the Item 4 capstone so the dependency
+   cone is fully populated when the capstone calls into them.
    Medium-large (~250 LOC).
-3. **Item 4 — Idempotence capstone** (`L4YAML/Algebra/Idempotence.lean`).
+2. **Item 4 — Idempotence capstone** (`L4YAML/Algebra/Idempotence.lean`).
    `load ∘ dump ∘ load = load`, proved via the full algebra
    library + indexed types. This is the **Phase 2 stress test**
    for Guardrail 2 (closure): if the proof needs an algebraic
    fact not in Items 0–23, Phase 1 re-opens. Large (~400 LOC).
 
-Suggested cadence: Items 15+16 are a single PR. Items 1–6 and
-Item 4 each warrant their own PR with the cadence-step commit
-discipline (Guardrail 3: every commit shows `sorry: N → N − 1` or
-`sorry: N → N`).
+Suggested cadence: Items 1–6 and Item 4 each warrant their own PR
+with the cadence-step commit discipline (Guardrail 3: every commit
+shows `sorry: N → N − 1` or `sorry: N → N`).
+
+</details>
 
 #### Algebra + foundation files landed
+
+<details><summary>Table of landed files (Items 7–23 except 18–22 still pending in their original form, plus indexed types + LoadConfig) with LOC and number of downstream imports added.</summary>
 
 | File | Items | LOC | Imports added downstream |
 |---|---|---|---|
@@ -681,6 +823,7 @@ discipline (Guardrail 3: every commit shows `sorry: N → N − 1` or
 | `L4YAML/Algebra/Fuel.lean` | 11 | ~185 | 1 (`L4YAML.lean` root) |
 | `L4YAML/Algebra/Token.lean` | 17 | ~310 | 1 (`L4YAML.lean` root) |
 | `L4YAML/Algebra/Combinators.lean` | 14 | ~235 | 1 (`L4YAML.lean` root) |
+| `L4YAML/Algebra/Schema.lean` | 15, 16 | ~265 | 1 (`L4YAML.lean` root) |
 | `L4YAML/Config/LoadConfig.lean` | n/a | ~70 | 0 (new file; consumers in Phase 3+) |
 | `L4YAML/Indexed/Range.lean` | n/a | ~60 | 0 |
 | `L4YAML/Indexed/RepGraph.lean` | n/a | ~120 | 0 |
@@ -688,9 +831,12 @@ discipline (Guardrail 3: every commit shows `sorry: N → N − 1` or
 
 </details>
 
+</details>
+
 ### Phase 3 — Stage C (scanner) on indexed types
 
-<details>
+<details><summary>Re-implement scanner to produce `TokenStream input` directly; legacy deleted in the cutover commit; bidirectional verification of Stage-C YAML 1.2.2 rules.</summary>
+
 **Goal**: replace `Scanner/Scanner.lean` and friends with a
 scanner that produces `TokenStream input` directly, verified
 against YAML 1.2.2 rules in both directions (`present` and
@@ -714,7 +860,8 @@ cutover commit. No "dual-write" interim state.
 
 ### Phase 4 — Stage B (parser) on indexed types
 
-<details>
+<details><summary>Re-implement parser to consume `TokenStream input` and produce `RepGraph input range`; integrate `LoadConfig` and `AnchorMap`; bidirectional verification of Stage-B rules.</summary>
+
 **Goal**: replace the parser with one that consumes `TokenStream input`
 and produces `RepGraph input range`, verified bidirectionally.
 
@@ -732,7 +879,8 @@ and produces `RepGraph input range`, verified bidirectionally.
 
 ### Phase 5 — Stage A (document) + ToYaml / FromYaml
 
-<details>
+<details><summary>Lift `ToYaml`/`FromYaml` typeclasses onto indexed `RepGraph`; round-trip law proved per instance; extend the derived-instance generator.</summary>
+
 **Goal**: lift the `ToYaml` / `FromYaml` typeclasses to operate on
 indexed `RepGraph` and verify the round-trip law for every primitive
 instance + a derived-instance generator (similar to Lean's existing
@@ -751,7 +899,8 @@ instance + a derived-instance generator (similar to Lean's existing
 
 ### Phase 6 — Capstone: end-to-end roundtrip
 
-<details>
+<details><summary>Prove `construct ∘ compose ∘ parse ∘ present ∘ serialize ∘ represent = some` end-to-end; re-attack Tier 2 emitter-scannability from the new foundation.</summary>
+
 **Goal**: prove the end-to-end roundtrip theorem.
 
 **DONE criteria**:
@@ -768,27 +917,41 @@ instance + a derived-instance generator (similar to Lean's existing
 
 </details>
 
+</details>
+
 ---
 
 ## Critical guardrails (procedural, from Initiative 3 lessons)
+
+<details><summary>Five enforceable rules (No parallel state, Closed algebra inventory, Discharge before strengthening, Cascade-first design, Sorry budget per phase); each violation triggers stop-and-reassess.</summary>
 
 These are enforceable rules, not aspirational principles. Violating
 any one of them is a stop-and-reassess trigger.
 
 ### Guardrail 1 — No parallel state
 
+<details><summary>Every use site of an old type/function flips in the same commit as its replacement — no transitional dual-write period. (Lesson 1.)</summary>
+
 When a new type or function lands, every use site of the old
 type/function flips in the **same commit**. No transitional
 "dual-write" period. (Lesson 1: the J.2 dual-write became permanent.)
 
+</details>
+
 ### Guardrail 2 — Algebra inventory is closed
+
+<details><summary>The 23 items are the complete list; adding a 24th forces a deliberate Phase 1 re-open. Quiet additions during later phases are forbidden. (Lessons 2 + 5.)</summary>
 
 The 23 items in §Algebra library are the complete list. Adding
 a 24th item triggers a re-opening of Phase 1 (a deliberate design
 re-review). Quiet additions during Phase 3+ are forbidden. (Lesson
 2 + Lesson 5.)
 
+</details>
+
 ### Guardrail 3 — Discharge before strengthening
+
+<details><summary>Every cadence step's commit message must show `sorry: N → N − 1` (a discharge) or `sorry: N → N` (pure infrastructure). No commit may strengthen a predicate without a concurrent discharge. (Lesson 3.)</summary>
 
 Every cadence step's commit message must show one of:
 - `sorry: N → N − 1` (a discharge), OR
@@ -797,7 +960,11 @@ Every cadence step's commit message must show one of:
 A commit that strengthens a predicate without a concurrent discharge
 is not allowed. (Lesson 3.)
 
+</details>
+
 ### Guardrail 4 — Cascade-first design
+
+<details><summary>For any Tier 1 cascade-discharging step: first commit drafts the cascade discharge, second designs the supporting predicate, third lands the discharge. (Lesson 4.)</summary>
 
 For any cadence step that aims to discharge a Tier 1 cascade
 theorem (e.g. `scanFiltered_emit*_nonempty_structure`), the step's
@@ -806,7 +973,11 @@ theorem (e.g. `scanFiltered_emit*_nonempty_structure`), the step's
 **third** commit lands the discharge. (Lesson 4: Initiative 3
 designed predicates first and discovered the cascade didn't fit.)
 
+</details>
+
 ### Guardrail 5 — Sorry budget per phase
+
+<details><summary>Per-phase budget: 0 sorries at every phase boundary (Phases 2–6). In-flight sorries fine; the boundary is hard 0.</summary>
 
 - Phase 2 budget: 0 (algebra library is the foundation).
 - Phase 3 budget: 0 at phase end.
@@ -819,11 +990,19 @@ is a hard 0. (Initiative 3's Phase J.3 had no enforced
 phase-boundary budget; it accumulated 19 → 7 across the entire
 phase, never hitting 0.)
 
+</details>
+
+</details>
+
 ---
 
 ## Risks
 
+<details><summary>Five risks with mitigations: indexed-type friction, algebra inventory closed too early, ToYaml/FromYaml law-discharge cost, late-discovered cascade, Tier 2 re-attack difficulty.</summary>
+
 ### Risk 1 — Indexed-type ergonomic friction
+
+<details><summary>Dependent-type elaboration may force `show`/annotations; mitigated by the Phase 1 worked-example test — >5 annotations or any `show` for routine paths reopens the type design.</summary>
 
 Lean's elaboration of dependent types occasionally requires
 explicit type annotations or `show` tactics. If `RepGraph input range`
@@ -835,7 +1014,11 @@ construction. If it requires more than 5 explicit type annotations
 or any `show` for routine paths, the type design is reopened at end
 of Phase 1.
 
+</details>
+
 ### Risk 2 — Algebra inventory closed too early
+
+<details><summary>Phase 3 may surface a missed algebra item; mitigated by a Phase 1 stress test — attempt a 30-line `mapping_scans` proof using only the 23 items, otherwise expand and re-freeze.</summary>
 
 If Phase 3's scanner work surfaces an algebra item we missed at
 freeze, every subsequent phase has to either decompose into
@@ -847,7 +1030,11 @@ the worked example using only the 23 inventoried items. If that
 proof requires content outside the inventory, the inventory is
 incomplete and freezes only after that content is added.
 
+</details>
+
 ### Risk 3 — `ToYaml` / `FromYaml` law-discharge cost
+
+<details><summary>Every instance must discharge the round-trip law; derived generator must produce instance + proof. Mitigated by starting from a manual `Int` proof — reopen typeclass design if it exceeds 100 lines.</summary>
 
 Every `[ToYaml α]` / `[FromYaml α]` instance must discharge the
 round-trip law. For derived instances (Phase 5), the derivation
@@ -859,7 +1046,11 @@ but with proof obligations.
 (`Int`) and proves the law manually before generalising. If the
 manual proof exceeds 100 lines, the typeclass design is reopened.
 
+</details>
+
 ### Risk 4 — Initiative-3-style cascade discovered late
+
+<details><summary>An analogue of the Initiative 3 cascade may lurk at Stage A↔B or B↔C boundaries; mitigated by an explicit Phase 1 cascade audit that drafts the equivalent of `scanFiltered_emit*_nonempty_structure` at each boundary.</summary>
 
 The cascade-stitching layer that broke Initiative 3 may have an
 analogue at Stage B / Stage A boundaries that we don't notice
@@ -871,7 +1062,11 @@ each stage boundary (A↔B, B↔C), draft the equivalent of
 verify it composes from the algebra library + indexed types. If
 any cascade can't be drafted, Phase 1 is not done.
 
+</details>
+
 ### Risk 5 — "Re-attack Tier 2" is harder than it looks
+
+<details><summary>Tier 2 emitter-scannability is non-trivial regardless of foundation; mitigated by promoting Tier 2 to a required Phase 6 deliverable (criterion ii), not aspirational.</summary>
 
 The original Initiative 3 driver (Tier 2 emitter-scannability) was
 the gate. Initiative 4 promises to deliver it from a stronger
@@ -882,9 +1077,15 @@ arbitrary `v` is non-trivial regardless of foundation choice.
 required deliverable, not aspirational. If it's not provable in
 Initiative 4, the foundation choice is wrong and we stop again.
 
+</details>
+
+</details>
+
 ---
 
 ## Decisions (D1–D5)
+
+<details><summary>Summary table of all five resolved Phase-1 decisions (indexed type shape, LawfulRoundTrip shape, EqMode.bisim witness, Algebra namespace structure, per-phase test corpus).</summary>
 
 All five Phase-1 decision points are resolved. The full rationale and
 the chosen option for each appears in §What this document settles,
@@ -898,9 +1099,13 @@ what it leaves open below. Summary:
 | **D4** | `L4YAML/Algebra/` namespace | One file per item-cluster (per §Initial implementation order). |
 | **D5** | Per-phase test corpus | Existing `yaml-test-suite` runner with stage-tag filters. |
 
+</details>
+
 ---
 
 ## Initial implementation order (sketch for Phase 2 onward)
+
+<details><summary>File-by-file landing order for Phase 2 (17 files): position → indent → string → tokenstream → fuel → anchormap → combinators → schema → token → value → lawfulbeq → equivalence → idempotence, then indexed-type substrate, then LoadConfig.</summary>
 
 Once Phase 1 closes, Phase 2 lands these files in approximately this
 order (internal sequencing of Phase 2; not part of the phase
@@ -929,9 +1134,13 @@ that Phase 3+ build on. Phase 2 is done when all 17 files compile
 sorry-free and the closure check (any algebraic statement decomposes
 into Items 0–23) passes.
 
+</details>
+
 ---
 
 ## Estimated effort
+
+<details><summary>Deliberately not in weeks; gated by per-phase DONE criteria. Phase 1: days. Phase 2: bounded by 23 items. Phases 3–6: scale with 211×2 YAML rule verifications.</summary>
 
 **Deliberately not stated in weeks.** Initiative 3's effort estimates
 were inaccurate by ≈30%; week-based gates encouraged commit-forward
@@ -955,9 +1164,13 @@ The procedural rule that replaces calendar estimates: **at any phase
 boundary, if the DONE criteria are not met, stop and reassess
 before committing to the next phase.**
 
+</details>
+
 ---
 
 ## What this document settles, what it leaves open
+
+<details><summary>Settled choices from the 2026-05-03 conversation plus resolutions for D1–D5 (indexed type shape, LawfulRoundTrip typeclass, EqMode.bisim, Algebra namespace, test corpus).</summary>
 
 **Settled** (decided in conversation 2026-05-03):
 - Numeric phase indexing (not letter-based).
@@ -1003,9 +1216,13 @@ before committing to the next phase.**
   with tag filters per stage. Phase 3 must pass `tags: scan`,
   Phase 4 must pass `tags: parse`, Phase 5 must pass `tags: load`.
 
+</details>
+
 ---
 
 ## Cross-references
+
+<details><summary>Pointers to Blueprint 07 §Stop assessment, YAML 1.2.2 §3.1, Blueprint 02 §Append-only token stream, Blueprint 04 capstones.</summary>
 
 - **`Blueprint/07-initiative-3-append-only.md` §Stop assessment** —
   the retrospective that motivated this initiative.
@@ -1017,3 +1234,5 @@ before committing to the next phase.**
   and Initiative 4 takes a different direction on.
 - **`Blueprint/04-capstones.md`** — Tier 2 emitter-scannability,
   the original driver. Phase 6 DONE criterion (ii) re-attacks it.
+
+</details>
