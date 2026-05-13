@@ -25,9 +25,21 @@ recognisers in `Scanner.Indexed` to the YAML 1.2.2 spec predicates in
   the three break forms (LF, CR-without-LF, CRLF) and the no-op
   default.
 
-Termination correctness (`skipSpaces c` ends at a non-space or
-end-of-input) is deferred to Step 3 — it composes naturally with the
-indentation-stack invariant and is most economical to prove there.
+- **Termination correctness** (deferred from Step 2, closed here in
+  Step 3): when the fuel parameter is at least `utf8ByteSize -
+  offset`, both `skipSpacesLoop` and `skipWhitespaceLoop` return a
+  cursor at a non-matching character or at end-of-input. Combined
+  with `skipSpaces`/`skipWhitespace`'s entry-point fuel of
+  `input.utf8ByteSize`, this gives the unconditional termination
+  guarantee on `IxCursor input`.
+
+- **Count = column delta** (Step 3): since `isIndentCharBool c =
+  (c == ' ')` and `' '` is not a line-break character, advancing
+  past an indent-char only bumps `col` (never `line`). Therefore
+  `(skipSpaces c).1.pos.col = c.pos.col + (skipSpaces c).2` and
+  `(skipSpaces c).1.pos.line = c.pos.line` — the count returned by
+  `skipSpaces` is exactly the column delta. This is the form the
+  Step 3 indent-stack invariant consumes.
 -/
 
 namespace L4YAML.Scanner.Indexed
@@ -155,6 +167,128 @@ theorem skipSpacesLoop_no_indent {input : String} (c : IxCursor input)
     (fuel : Nat) (h : peekIsIndentChar c = false) :
     skipSpacesLoop c (fuel + 1) = (c, 0) := by
   unfold skipSpacesLoop; simp [h]
+
+/-! ## Termination — closes the Step 2 deferred obligation
+
+When the fuel parameter is at least `utf8ByteSize - offset`, the
+loop is guaranteed to exit with the cursor at a non-matching
+character (or at end-of-input). The bound is tight: each iteration
+that advances strictly increases `offset` by at least one
+(`advance_offset_lt_of_hasMore`), so after at most
+`utf8ByteSize - offset` iterations the cursor reaches end-of-input
+and the next peek fails. -/
+
+theorem skipSpacesLoop_terminates {input : String} (c : IxCursor input)
+    (fuel : Nat) (hFuel : input.utf8ByteSize - c.pos.offset ≤ fuel) :
+    peekIsIndentChar (skipSpacesLoop c fuel).1 = false := by
+  induction fuel generalizing c with
+  | zero =>
+    have hLe : input.utf8ByteSize ≤ c.pos.offset := by omega
+    have hpe : c.peek? = none := (IxCursor.peek?_eq_none_iff c).mpr hLe
+    rw [skipSpacesLoop_zero]
+    exact peekIsIndentChar_atEnd c hpe
+  | succ fuel ih =>
+    unfold skipSpacesLoop
+    split
+    · rename_i hPeek
+      simp only
+      have hMore : c.pos.offset < input.utf8ByteSize :=
+        peekIsIndentChar_implies_hasMore c hPeek
+      have hAdv : c.pos.offset < c.advance.pos.offset :=
+        IxCursor.advance_offset_lt_of_hasMore c hMore
+      have hFuel' : input.utf8ByteSize - c.advance.pos.offset ≤ fuel := by omega
+      exact ih c.advance hFuel'
+    · rename_i hPeek
+      simp only
+      match h' : peekIsIndentChar c with
+      | false => rfl
+      | true  => exact absurd h' hPeek
+
+theorem skipSpaces_terminates {input : String} (c : IxCursor input) :
+    peekIsIndentChar (skipSpaces c).1 = false := by
+  unfold skipSpaces
+  exact skipSpacesLoop_terminates c _ (Nat.sub_le _ _)
+
+theorem skipWhitespaceLoop_terminates {input : String} (c : IxCursor input)
+    (fuel : Nat) (hFuel : input.utf8ByteSize - c.pos.offset ≤ fuel) :
+    peekIsWhiteSpace (skipWhitespaceLoop c fuel) = false := by
+  induction fuel generalizing c with
+  | zero =>
+    have hLe : input.utf8ByteSize ≤ c.pos.offset := by omega
+    have hpe : c.peek? = none := (IxCursor.peek?_eq_none_iff c).mpr hLe
+    unfold skipWhitespaceLoop
+    exact peekIsWhiteSpace_atEnd c hpe
+  | succ fuel ih =>
+    unfold skipWhitespaceLoop
+    split
+    · rename_i hPeek
+      have hMore : c.pos.offset < input.utf8ByteSize :=
+        peekIsWhiteSpace_implies_hasMore c hPeek
+      have hAdv : c.pos.offset < c.advance.pos.offset :=
+        IxCursor.advance_offset_lt_of_hasMore c hMore
+      have hFuel' : input.utf8ByteSize - c.advance.pos.offset ≤ fuel := by omega
+      exact ih c.advance hFuel'
+    · rename_i hPeek
+      match h' : peekIsWhiteSpace c with
+      | false => rfl
+      | true  => exact absurd h' hPeek
+
+theorem skipWhitespace_terminates {input : String} (c : IxCursor input) :
+    peekIsWhiteSpace (skipWhitespace c) = false := by
+  unfold skipWhitespace
+  exact skipWhitespaceLoop_terminates c _ (Nat.sub_le _ _)
+
+/-! ## Count = column delta — used by Step 3's indent-stack invariant
+
+An indent character is exactly `' '` (per `isIndentCharBool`), which
+is *not* a line-break. So advancing across a space leaves `line`
+unchanged and bumps `col` by one. The count returned by `skipSpaces`
+is therefore exactly the column delta. -/
+
+/-- Advancing past an indent-char bumps `col` by 1 and leaves `line`
+    unchanged. Builds on `IxCursor.advance`'s line/col update rule. -/
+theorem advance_indent_col_succ {input : String} (c : IxCursor input)
+    (h : peekIsIndentChar c = true) :
+    c.advance.pos.col = c.pos.col + 1 ∧ c.advance.pos.line = c.pos.line := by
+  have hMore : c.pos.offset < input.utf8ByteSize :=
+    peekIsIndentChar_implies_hasMore c h
+  have hCh : String.Pos.Raw.get input ⟨c.pos.offset⟩ = ' ' := by
+    unfold peekIsIndentChar IxCursor.peek? at h
+    rw [if_pos hMore] at h
+    simpa [isIndentCharBool] using h
+  unfold IxCursor.advance
+  simp [dif_pos hMore, hCh]
+
+theorem skipSpacesLoop_col_eq_count {input : String} (c : IxCursor input)
+    (fuel : Nat) :
+    (skipSpacesLoop c fuel).1.pos.col =
+        c.pos.col + (skipSpacesLoop c fuel).2 ∧
+    (skipSpacesLoop c fuel).1.pos.line = c.pos.line := by
+  induction fuel generalizing c with
+  | zero =>
+    rw [skipSpacesLoop_zero]
+    refine ⟨?_, rfl⟩
+    show c.pos.col = c.pos.col + 0
+    omega
+  | succ fuel ih =>
+    unfold skipSpacesLoop
+    split
+    · rename_i hPeek
+      simp only
+      have ⟨hCol, hLine⟩ := advance_indent_col_succ c hPeek
+      have ⟨ihCol, ihLine⟩ := ih c.advance
+      refine ⟨?_, ?_⟩
+      · rw [ihCol, hCol]; omega
+      · rw [ihLine, hLine]
+    · -- false branch: result is (c, 0)
+      refine ⟨?_, rfl⟩
+      show c.pos.col = c.pos.col + 0
+      omega
+
+theorem skipSpaces_col_eq_count {input : String} (c : IxCursor input) :
+    (skipSpaces c).1.pos.col = c.pos.col + (skipSpaces c).2 ∧
+    (skipSpaces c).1.pos.line = c.pos.line :=
+  skipSpacesLoop_col_eq_count c _
 
 /-! ## `consumeLineBreak` — case lemmas -/
 

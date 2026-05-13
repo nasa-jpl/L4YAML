@@ -6,12 +6,16 @@ all six clusters landed (foundation, small-independents, surface
 combinators, schema, equivalence, idempotence capstone). The 23-item
 inventory remains frozen; the Item 4 stress test confirmed
 Guardrail 2 closure. Phase 3 — Stage C (scanner) on indexed types:
-sub-plan decomposed into 6 sessions; **Steps 1–2 landed** with
+sub-plan decomposed into 6 sessions; **Steps 1–3 landed** with
 `lake build` green (385 jobs, 0 sorries in `L4YAML/Indexed/`,
-`L4YAML/Scanner/IndexedScanner.lean`, and
-`L4YAML/Proofs/Scanner/IndexedWhitespace.lean`; the new staging
-files are unimported from `L4YAML.lean` per Guardrail 1). See
-§Phase 2 status table and §Phase 3 sub-plan below.
+`L4YAML/Scanner/IndexedScanner.lean`,
+`L4YAML/Proofs/Scanner/IndexedWhitespace.lean`, and
+`L4YAML/Proofs/Scanner/IndexedIndent.lean`; the staging files are
+unimported from `L4YAML.lean` per Guardrail 1). The Step 2 →
+Step 3 deferred obligation (skip-loop termination + count = column
+delta) closed in `IndexedWhitespace.lean` before any Step 3
+production was added. See §Phase 2 status table and §Phase 3
+sub-plan below.
 
 **Driver**: Initiative 3 was stopped 2026-05-03 (see
 `Blueprint/07-initiative-3-append-only.md` §Stop assessment).
@@ -935,13 +939,16 @@ with no 24th primitive needed.
 The 23-item inventory remains **frozen** and **closed**.
 
 **Next milestone**: Phase 3 — Stage C (scanner) on indexed types,
-decomposed into six sessions (sub-plan in §Phase 3). **Steps 1–2
-landed**: indexed-type extensions (Reflections 29–31) and the
+decomposed into six sessions (sub-plan in §Phase 3). **Steps 1–3
+landed**: indexed-type extensions (Reflections 29–31), the
 character/whitespace layer with bidirectional spec proofs
-(Reflections 32–35). **Next session**: Step 3 (indentation /
-line-break dispatch layer), which will compose the Step 2 primitives
-with an indentation-stack invariant — termination correctness of
-the skip-loops folds into this step as a corollary (Reflection 35).
+(Reflections 32–35), and the indentation / line-break dispatch
+layer (Reflections 36–38) — the latter also closing the Step 2
+deferred termination + count = column-delta obligation in
+`IndexedWhitespace.lean`. **Next session**: Step 4 (scalar lexing
+— the largest single cluster), which will additionally absorb the
+Step 3 → Step 4 deferred `skipToContent` global-progress claim
+(Reflection 38).
 
 </details>
 
@@ -1109,6 +1116,67 @@ cutover commit. No "dual-write" interim state.
     reduction. Update the deferred-to doc to absorb the
     obligation, and label the move as what it is.**
 
+36. **Closing the Step 2 deferred obligation was easier than the
+    blueprint sold.** Termination + count-equals-column-delta
+    closed in ~60 LOC in `IndexedWhitespace.lean` via two fuel-
+    inductions and an `advance_indent_col_succ` helper. The
+    column-delta form turned out *not* to need any `utf8Size`
+    apparatus: `IxCursor.advance` already increments `col` by 1
+    for any non-LF/CR character and `isIndentCharBool = (· == ' ')`,
+    so the column-delta-equals-count claim follows from the
+    `advance` rule directly. The byte-offset analog
+    (`(skipSpaces c).1.pos.offset = c.pos.offset + (skipSpaces c).2`)
+    would require `Char.utf8Size_eq_one_iff` to fire on `' '`, but
+    the indent-stack only needs *column* delta, so the offset
+    version is unneeded. **Lesson (a partial walk-back of
+    Reflection 35): the Step 3 blueprint paragraph promised
+    "count = offset delta ∧ terminates", but the actually-useful
+    invariant turned out to be "count = *column* delta ∧
+    terminates" — a strictly smaller obligation. The deferred-to
+    side should state the deliverable in its eventual form rather
+    than the form initially expected.**
+
+37. **`let`-bindings opacify the body to `split` / `cases`.** The
+    first draft of `skipToContentLoop` used
+    `let c1 := skipWhitespace c; match c1.peek? with …`; `split`
+    refused to decompose the match, reporting
+    "Could not split an `if` or `match` expression in the goal"
+    with the goal still wrapped in the `let`. Refactor: inline
+    the call site — write `match (skipWhitespace c).peek? with …`
+    directly (the function is pure; inlining is a no-op at
+    runtime). The same shape appeared one level down in
+    `skipSpacesLoop`'s `let (c', n) := … ; (c', n + 1)`
+    destructure, which defeated `simp`/`rfl` closure on the true
+    branch of helper lemmas — refactored to
+    `let r := … ; (r.1, r.2 + 1)`. **Rule (sibling of Reflection
+    33's Char-pattern rule): if the proof needs to decompose a
+    function body via `split` or `cases`, the source must not
+    hide structural decisions behind intermediate `let`-bindings
+    or pattern-destructure. Inline.**
+
+38. **Progress is *not* a bidirectional spec lemma — it deserves
+    its own deliverable.** Step 3's promised "bidirectional spec
+    proofs" landed: single-step soundness/completeness for
+    `s-indent`, `b-break`, `b-non-content`, and the cursor-local
+    lemmas for `s-l-comments` (`skipToContent_atEnd`,
+    `skipToContent_at_content`, offset-monotonicity,
+    `skipCommentText_terminates`). The *global progress* property
+    — that `skipToContent` terminates after finitely many
+    recursive iterations with the cursor settled at EOF or a
+    non-`s-l-comments` character — is a strict-fuel termination
+    claim, *not* a bidirectional spec lemma. It is deferred to
+    Step 4 where the dispatch-loop's fuel measure is the natural
+    carrier. Unlike the Step 2 → Step 3 deferral (Reflection 35),
+    this one *is* a scope distinction: bidirectional ≠ progress.
+    The deferred-to doc (Step 4 description) was not updated yet
+    because Step 4's blueprint paragraph already implies the
+    dispatch-loop measure exists. **Rule: if a deferral crosses
+    the bidirectional-vs-progress boundary, name the boundary —
+    don't conflate "we didn't prove it" with "it doesn't belong
+    in this step". And if it's the *same* kind of work as the
+    surrounding step but you ran out of time, name *that* instead
+    (Reflection 35).**
+
 #### Phase 3 sub-plan (six sessions)
 
 <details><summary>Phase 3 is ~30× the size of the Phase 2 capstone. It is decomposed into six sessions; only the final commit must be atomic per Guardrail 1.</summary>
@@ -1191,21 +1259,76 @@ been enlarged in the blueprint to absorb the obligation.
 passes (385 jobs total; lake-mode auto-discovers and builds the
 staging files even though `L4YAML.lean` does not import them).
 
-**Step 3 — New scanner, indentation/line-break layer**.
-Extend the staging scanner to handle block-context indentation
-tracking and the line-break productions. Bidirectional spec
-proofs for `s-indent(n)`, `b-break`, `b-non-content`, `s-l-comments`.
+**Step 3 — New scanner, indentation/line-break layer** *(landed)*.
+Extended the staging scanner (`L4YAML/Scanner/IndexedScanner.lean`)
+with the comment-text and composite line-comment dispatch
+recognisers, plus a new proof file
+`L4YAML/Proofs/Scanner/IndexedIndent.lean` for the Step 3
+bidirectional lemmas.
 
-**Deferred from Step 2** (must close here): termination
-correctness of the skip-loops — `skipSpaces` and `skipWhitespace`
-end at a non-matching character or end-of-input. The lemmas
-`skipSpacesLoop_terminates` and `skipWhitespaceLoop_terminates`
-land in `L4YAML/Proofs/Scanner/IndexedWhitespace.lean` (extending
-the Step 2 file) before any Step 3 production is added. The
-indent-stack invariant introduced in Step 3 makes the natural
-form of these lemmas (count = offset delta ∧ terminates)
-cheaper to prove together than termination alone in Step 2 —
-the scope shift is recorded in Reflection 35.
+Productions added to `IndexedScanner.lean`:
+- `skipCommentTextLoop` / `skipCommentText` — `[75] c-nb-comment-text`,
+  the body of a `'#'`-introduced comment, consumed until line
+  break or end-of-input. The leading `'#'` is consumed by the
+  caller (Layer D).
+- `skipToContentLoop` / `skipToContent` — `[79] s-l-comments`, the
+  composite consumer of `s-white*`, optional `'#'`-comment, line
+  break, then recurse. Body written without intermediate
+  `let`-bindings so `split`/`cases` decompose cleanly (Reflection 37).
+
+Deferred-from-Step-2 obligations *closed* in
+`IndexedWhitespace.lean` before any Step 3 production was added:
+- `skipSpacesLoop_terminates` / `skipSpaces_terminates`:
+  `peekIsIndentChar (skipSpaces c).1 = false` — at fuel ≥
+  `utf8ByteSize - offset`, the loop exits at a non-space or EOF.
+- `skipWhitespaceLoop_terminates` / `skipWhitespace_terminates`:
+  symmetric claim for `s-white*`.
+- `advance_indent_col_succ`: advancing past an indent-char bumps
+  `col` by 1 and leaves `line` unchanged.
+- `skipSpacesLoop_col_eq_count` / `skipSpaces_col_eq_count`:
+  `(skipSpaces c).1.pos.col = c.pos.col + (skipSpaces c).2 ∧
+  (skipSpaces c).1.pos.line = c.pos.line` — the count returned by
+  `skipSpaces` *is* the column delta. This is the form the
+  indent-stack invariant consumes; the byte-offset analog would
+  need the utf8Size apparatus, but the indent-stack only cares
+  about column (Reflection 36).
+
+Bidirectional spec lemmas for the four named productions:
+- **`s-indent(n)`**: via `skipSpaces_col_eq_count` above.
+- **`b-break`** / **`b-non-content`**: case lemmas
+  `consumeLineBreak_{LF, CR_no_LF, CRLF_{offset,line,col},
+  atEnd, other_char, no_op, offset_monotonic}` from Step 2 carry
+  over unchanged. (The two productions have the same right-hand
+  side; `b-non-content` is the label used in non-content
+  positions such as inside `c-l-folded` headers.)
+- **`s-l-comments`**: cursor-local characterisation —
+  `skipCommentText_terminates` (settles at LF/EOF),
+  `skipCommentText_offset_monotonic`,
+  `skipToContentLoop_offset_monotonic`,
+  `skipToContent_atEnd` (no-op at EOF),
+  `skipToContent_at_content` (no-op at a non-`s-l-comments`
+  character — the completeness direction of "scanner consumes
+  nothing when there is nothing to consume").
+
+**Constraint observed**: `L4YAML.lean` does **not** import the
+new staging files — confirmed by
+`grep -nE "Scanner.IndexedScanner|IndexedWhitespace|IndexedIndent"
+L4YAML.lean` returning empty.
+**Source refactor recorded**: `skipSpacesLoop`'s body was
+rewritten from `let (c', n) := ...; (c', n+1)` to
+`let r := ...; (r.1, r.2 + 1)` to make Prod-projection
+reduction definitional — Reflection 37 generalises this as the
+"avoid opaque let-bindings for proof-decomposed structures"
+rule (a sibling of Reflection 33 on Char-literal patterns).
+**Sorry budget: 0 → 0** in the staging files. Full `lake build`
+passes 385 targets.
+**Second-order deferral recorded** (honestly, not as
+optimisation): the *global progress* claim for
+`skipToContent` — "after finitely many iterations the cursor
+settles at EOF or a non-`s-l-comments` character" — is a
+strict-fuel termination result, *not* a bidirectional spec
+lemma. It is deferred to Step 4 where the dispatch-loop's fuel
+measure is the natural carrier. See Reflection 38.
 
 **Step 4 — New scanner, scalar lexing**.
 The largest cluster (legacy `Scanner/Scalar.lean` is 940 LOC).
@@ -1213,6 +1336,21 @@ Plain, single-quoted, double-quoted, and block scalars (literal +
 folded). Bidirectional spec proofs per scalar style. May span two
 sessions if the block-scalar fold/chomp interaction proves
 recalcitrant.
+
+**Deferred from Step 3** (must close here): global progress of
+`skipToContent` — the claim that, given fuel `> utf8ByteSize -
+c.pos.offset`, `skipToContent c` returns a cursor whose `peek?`
+is either `none` or `some ch` with
+`isWhiteSpaceBool ch = false ∧ isLineBreakBool ch = false ∧ ch ≠ '#'`.
+Step 3 landed the cursor-local lemmas (`skipToContent_atEnd`,
+`skipToContent_at_content`, `skipToContentLoop_offset_monotonic`,
+`skipCommentText_terminates`); the global progress claim needs
+an auxiliary `consumeLineBreak_strict` (offset strictly
+increases when `peek? c = some ch ∧ isLineBreakBool ch = true`)
+plus a fuel-induction with a strict bound. The Step 4
+dispatch-loop measure is the natural carrier — the scalar
+recognisers depend on `skipToContent` settling at *content* (not
+between-content) before each scalar boundary is tested.
 
 **Step 5 — End-to-end `parse ∘ present = id`**.
 Tie the per-rule bidirectional lemmas into a single corpus
