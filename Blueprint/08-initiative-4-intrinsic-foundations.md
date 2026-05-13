@@ -1090,21 +1090,24 @@ cutover commit. No "dual-write" interim state.
     the dependency tree, write contradictions as if-then-else with
     explicit `Decidable` dispatch.**
 
-35. **Termination correctness is cheaper to prove with the
-    indentation invariant than in isolation.** The natural
-    "skip-loops terminate at non-whitespace or EOF" lemma is
-    provable by fuel induction with the strict-monotonicity lemma,
-    but the proof is verbose because of the structural-recursion
-    constraint on `Nat`. Stepping back: the **consumer** (Step 3's
-    indentation tracker) already needs an invariant of the form
-    "after `skipSpaces`, the indent count matches the offset
-    delta." That invariant *subsumes* termination correctness — if
-    the count is the offset delta and the cursor's at EOF or a
-    non-space, termination is immediate. Decision recorded: Step 2
-    proves only offset monotonicity; Step 3 lands termination
-    correctness as a corollary of its tracker invariant. Lesson:
-    don't prove a property in isolation if its natural home is one
-    level up.
+35. **Termination correctness was deferred from Step 2 to Step 3 —
+    name it a scope shift, not an optimisation.** The "skip-loops
+    end at non-whitespace or EOF" lemma was within Step 2's stated
+    cluster (bidirectional spec proofs for the character/whitespace
+    layer). It is provable in Step 2 via fuel induction with
+    `advance_offset_lt_of_hasMore` and `input.utf8ByteSize -
+    c.pos.offset ≤ fuel`; the proof is verbose, not infeasible.
+    The defence — that Step 3's indent-stack invariant
+    "count = offset delta ∧ terminates" subsumes termination and
+    is thus the natural home — is *true*, but the right framing
+    is "we chose to ship Step 2 before proving everything Step 2
+    promised, and we paid for it by enlarging Step 3 in the
+    blueprint." The Step 3 description was updated to call out
+    this deferred obligation explicitly. **Lesson: when deferring
+    a stated deliverable, the deferred-from doc should not call
+    the deferral 'cheaper' — that wording rationalises scope
+    reduction. Update the deferred-to doc to absorb the
+    obligation, and label the move as what it is.**
 
 #### Phase 3 sub-plan (six sessions)
 
@@ -1177,17 +1180,32 @@ Plus two foundational lemmas added to `L4YAML/Indexed/CharStream.lean`
 **Constraint observed**: `L4YAML.lean` does **not** import the new
 staging files — confirmed by `grep -nE
 "Scanner.IndexedScanner|Proofs.Scanner.IndexedWhitespace"`.
-**Termination correctness** (skip-loops end at non-whitespace or
-EOF) is deferred to Step 3, where it composes with the indentation
-invariant. **Sorry budget: 0 → 0** in the staging files. Full
-`lake build` passes (385 jobs total; lake-mode auto-discovers and
-builds the staging files even though `L4YAML.lean` does not import
-them).
+**Scope shift recorded**: termination correctness (skip-loops end
+at non-whitespace or EOF) was *within* Step 2's stated cluster but
+was *deferred to Step 3* — see Reflection 35 and the deferred-from
+note in the Step 3 description below. The deferral was a scope
+call, not an infeasibility: the lemma is provable in Step 2 by
+fuel induction with `advance_offset_lt_of_hasMore`, and Step 3 has
+been enlarged in the blueprint to absorb the obligation.
+**Sorry budget: 0 → 0** in the staging files. Full `lake build`
+passes (385 jobs total; lake-mode auto-discovers and builds the
+staging files even though `L4YAML.lean` does not import them).
 
 **Step 3 — New scanner, indentation/line-break layer**.
 Extend the staging scanner to handle block-context indentation
 tracking and the line-break productions. Bidirectional spec
 proofs for `s-indent(n)`, `b-break`, `b-non-content`, `s-l-comments`.
+
+**Deferred from Step 2** (must close here): termination
+correctness of the skip-loops — `skipSpaces` and `skipWhitespace`
+end at a non-matching character or end-of-input. The lemmas
+`skipSpacesLoop_terminates` and `skipWhitespaceLoop_terminates`
+land in `L4YAML/Proofs/Scanner/IndexedWhitespace.lean` (extending
+the Step 2 file) before any Step 3 production is added. The
+indent-stack invariant introduced in Step 3 makes the natural
+form of these lemmas (count = offset delta ∧ terminates)
+cheaper to prove together than termination alone in Step 2 —
+the scope shift is recorded in Reflection 35.
 
 **Step 4 — New scanner, scalar lexing**.
 The largest cluster (legacy `Scanner/Scalar.lean` is 940 LOC).
