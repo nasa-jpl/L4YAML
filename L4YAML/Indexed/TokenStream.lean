@@ -119,6 +119,15 @@ def singleton {input : String} (t : IxToken input) : TokenStream input where
     TokenStream input where
   tokens := ts₁.tokens ++ ts₂.tokens
 
+/-- Overwrite the token at index `i` with `t`, leaving the stream
+    unchanged if `i` is out of bounds. Mirrors
+    `Array.setIfInBounds`; used by the scanner's simple-key
+    resolution (overwrites placeholders reserved by `saveSimpleKey`
+    with the final `blockMappingStart`/`key` tokens). -/
+@[inline] def setIfInBounds {input : String} (ts : TokenStream input) (i : Nat)
+    (t : IxToken input) : TokenStream input where
+  tokens := ts.tokens.setIfInBounds i t
+
 /-- The last token in the stream, if any. -/
 @[inline] def last? {input : String} (ts : TokenStream input) :
     Option (IxToken input) :=
