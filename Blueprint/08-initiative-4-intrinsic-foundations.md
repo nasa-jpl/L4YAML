@@ -6,10 +6,12 @@ all six clusters landed (foundation, small-independents, surface
 combinators, schema, equivalence, idempotence capstone). The 23-item
 inventory remains frozen; the Item 4 stress test confirmed
 Guardrail 2 closure. Phase 3 — Stage C (scanner) on indexed types:
-sub-plan decomposed into 6 sessions; **Step 1 (indexed-type
-extensions) landed** with `lake build` green (385 targets, 0 sorries
-in `L4YAML/Indexed/`). See §Phase 2 status table and §Phase 3
-sub-plan below.
+sub-plan decomposed into 6 sessions; **Steps 1–2 landed** with
+`lake build` green (385 jobs, 0 sorries in `L4YAML/Indexed/`,
+`L4YAML/Scanner/IndexedScanner.lean`, and
+`L4YAML/Proofs/Scanner/IndexedWhitespace.lean`; the new staging
+files are unimported from `L4YAML.lean` per Guardrail 1). See
+§Phase 2 status table and §Phase 3 sub-plan below.
 
 **Driver**: Initiative 3 was stopped 2026-05-03 (see
 `Blueprint/07-initiative-3-append-only.md` §Stop assessment).
@@ -933,11 +935,13 @@ with no 24th primitive needed.
 The 23-item inventory remains **frozen** and **closed**.
 
 **Next milestone**: Phase 3 — Stage C (scanner) on indexed types,
-decomposed into six sessions (sub-plan in §Phase 3). **Step 1
-(indexed-type extensions) landed** in this session — see Reflections
-29–31 above. **Next session**: Step 2 (new scanner,
-character/whitespace layer) in a staging file outside the production
-build graph.
+decomposed into six sessions (sub-plan in §Phase 3). **Steps 1–2
+landed**: indexed-type extensions (Reflections 29–31) and the
+character/whitespace layer with bidirectional spec proofs
+(Reflections 32–35). **Next session**: Step 3 (indentation /
+line-break dispatch layer), which will compose the Step 2 primitives
+with an indentation-stack invariant — termination correctness of
+the skip-loops folds into this step as a corollary (Reflection 35).
 
 </details>
 
@@ -964,7 +968,9 @@ build graph.
 | `L4YAML/Indexed/Range.lean` | n/a | ~150 | 0 (extended in Phase 3 Step 1) |
 | `L4YAML/Indexed/RepGraph.lean` | n/a | ~120 | 0 |
 | `L4YAML/Indexed/TokenStream.lean` | n/a | ~135 | 0 (extended in Phase 3 Step 1) |
-| `L4YAML/Indexed/CharStream.lean` | n/a | ~220 | 1 (`L4YAML.lean` root; new in Phase 3 Step 1) |
+| `L4YAML/Indexed/CharStream.lean` | n/a | ~250 | 1 (`L4YAML.lean` root; new in Phase 3 Step 1, monotonicity lemmas added in Step 2) |
+| `L4YAML/Scanner/IndexedScanner.lean` | n/a | ~155 | 0 (staging — Guardrail 1; new in Phase 3 Step 2) |
+| `L4YAML/Proofs/Scanner/IndexedWhitespace.lean` | n/a | ~230 | 0 (staging — Guardrail 1; new in Phase 3 Step 2) |
 
 </details>
 
@@ -1040,6 +1046,66 @@ cutover commit. No "dual-write" interim state.
     bound's `Nat.min` form makes the cleanest formulation
     use-site-dependent (Reflection 30).
 
+**Reflections** (Phase 3 Step 2 — character/whitespace layer):
+
+32. **The `Nat.min`-clamp obligation cleared at first use, exactly
+    as planned.** Reflection 30 predicted Step 2 would need the
+    bridge from `nextOffsetClamped` to the unclamped `next`. The
+    actual shape of the proof was simpler than the predicted
+    "rewrite lemma": `advance_offset_lt_of_hasMore` proves the strict
+    inequality `c.pos.offset < c.advance.pos.offset` directly,
+    chaining `String.Pos.Raw.byteIdx_lt_byteIdx_next` (stdlib) with
+    a one-line `Nat.min` case split via `simp only [Nat.min_def];
+    split <;> omega`. No intermediate "unclamping" lemma needed.
+    The stdlib lemma `String.Pos.Raw.byteIdx_lt_byteIdx_next` is
+    *unconditional* (no `¬ atEnd` precondition) because `next`
+    always adds `Char.utf8Size_pos > 0` — this saves a side
+    condition. Lesson for future bound-discharging tricks: try the
+    direct strict-inequality form before reaching for an
+    "unclamping" intermediate.
+
+33. **Pattern-matching on `Char` literals defeats `split`; use
+    `if/else` on `==` instead.** First draft of `consumeLineBreak`
+    used `match c.peek? with | some '\n' => ... | some '\r' => ...
+    | _ => c`. Splitting through the literal patterns made the
+    proof obligations carry concrete `Char` values that `simp` and
+    `rfl` couldn't always reduce — `'\r'` was displayed as
+    `'\x0d'` and the match wouldn't unfold definitionally.
+    Restructured to `match c.peek? with | some ch => if ch == '\n'
+    then ... else if ch == '\r' then ... else c | none => c`.
+    Every proof became straightforward: `simp [consumeLineBreak,
+    hp, hLF, hCR]` for the case lemmas, nested `by_cases hX :
+    ch = '\n'` for the monotonicity. **Rule for Step 3+: never
+    pattern-match on `Char` literals in scanner code; always use
+    `==` and let `if/else` carry the case structure.**
+
+34. **`by_contra` is not in stdlib for this Lean version (v4.30.0-rc2)
+    — use `if h : ... then ... else ...` for decidable
+    contradictions.** The `peekIs*_implies_hasMore` proofs initially
+    tried `by_contra hbound; ...` which the elaborator rejected as
+    "unknown tactic". The replacement `if h' : c.pos.offset <
+    input.utf8ByteSize then exact h' else ...` is term-mode-friendly
+    and lets the `else` branch derive a contradiction using
+    `Decidable` instances directly. **Rule: until Mathlib lands in
+    the dependency tree, write contradictions as if-then-else with
+    explicit `Decidable` dispatch.**
+
+35. **Termination correctness is cheaper to prove with the
+    indentation invariant than in isolation.** The natural
+    "skip-loops terminate at non-whitespace or EOF" lemma is
+    provable by fuel induction with the strict-monotonicity lemma,
+    but the proof is verbose because of the structural-recursion
+    constraint on `Nat`. Stepping back: the **consumer** (Step 3's
+    indentation tracker) already needs an invariant of the form
+    "after `skipSpaces`, the indent count matches the offset
+    delta." That invariant *subsumes* termination correctness — if
+    the count is the offset delta and the cursor's at EOF or a
+    non-space, termination is immediate. Decision recorded: Step 2
+    proves only offset monotonicity; Step 3 lands termination
+    correctness as a corollary of its tracker invariant. Lesson:
+    don't prove a property in isolation if its natural home is one
+    level up.
+
 #### Phase 3 sub-plan (six sessions)
 
 <details><summary>Phase 3 is ~30× the size of the Phase 2 capstone. It is decomposed into six sessions; only the final commit must be atomic per Guardrail 1.</summary>
@@ -1069,15 +1135,54 @@ no character-class wiring. Nothing in `L4YAML/Scanner/` was
 touched. **Sorry budget: 0 → 0**; full `lake build` passes 385
 targets (up from 383 at Phase 2 close).
 
-**Step 2 — New scanner, character/whitespace layer**.
-In a staging file `L4YAML/Scanner/IndexedScanner.lean` (not
-imported by `L4YAML.lean`), write the lowest-level character
-recognisers that produce `IxToken input` for whitespace and the
-character-class spec productions. Bidirectional spec proofs for
-this cluster land in `L4YAML/Proofs/Scanner/IndexedWhitespace.lean`
-(also unimported). **Constraint**: file lives outside the build
-graph reachable from `L4YAML.lean` — Guardrail 1 forbids parallel
-*reachable* state, not unreachable staging.
+**Step 2 — New scanner, character/whitespace layer** *(landed)*.
+Built the lowest-level recognisers over `IxCursor input` in the
+staging file `L4YAML/Scanner/IndexedScanner.lean` (namespace
+`L4YAML.Scanner.Indexed`):
+
+- **Layer A — character-class peeks**: `peekIsLineBreak`,
+  `peekIsWhiteSpace`, `peekIsBlank`, `peekIsIndentChar` —
+  uniform shape `match c.peek? with | some ch => isXBool ch | none => false`.
+- **Layer B — whitespace runs**: `skipSpaces` (returns post-run
+  cursor + count for indentation tracking) and `skipWhitespace`
+  (consumes `s-white*` = spaces + tabs). Both use a fuel-driven
+  recursive loop with `input.utf8ByteSize` as the safe upper bound.
+- **Layer C — line break**: `consumeLineBreak` handles LF, CR-without-LF,
+  and CRLF (the last collapsed to a single line bump, matching
+  legacy `ScannerState.consumeNewline`). Uses `if/else` on `Char`
+  equality rather than literal pattern matching to keep proof
+  obligations decidable.
+
+Bidirectional spec proofs landed in
+`L4YAML/Proofs/Scanner/IndexedWhitespace.lean`:
+- `peekIs*_iff` (4 lemmas): `peekIsX c = true ↔ ∃ ch, c.peek? = some ch ∧ isXProp ch` —
+  the spec-runtime bridge for each predicate.
+- `peekIs*_atEnd` (4): predicates evaluate to `false` at end-of-input.
+- `peekIsIndentChar_implies_hasMore`, `peekIsWhiteSpace_implies_hasMore`:
+  a successful peek implies `c.pos.offset < input.utf8ByteSize`.
+- `skipSpaces_offset_monotonic`, `skipWhitespace_offset_monotonic` (+
+  loop variants): byte offset only grows.
+- `consumeLineBreak_{LF, CR_no_LF, CRLF_{offset,line,col}, atEnd,
+  other_char, no_op, offset_monotonic}`: explicit characterisation
+  of each `b-break` form plus monotonicity.
+
+Plus two foundational lemmas added to `L4YAML/Indexed/CharStream.lean`
+(promised in the Step 1 doc):
+- `IxCursor.advance_offset_lt_of_hasMore` — strict offset
+  progress when not at EOF; proved via `String.Pos.Raw.byteIdx_lt_byteIdx_next`
+  + the `Nat.min` clamp.
+- `IxCursor.advance_offset_monotonic` — the (non-strict) monotonicity
+  used by every skip-loop monotonicity proof.
+
+**Constraint observed**: `L4YAML.lean` does **not** import the new
+staging files — confirmed by `grep -nE
+"Scanner.IndexedScanner|Proofs.Scanner.IndexedWhitespace"`.
+**Termination correctness** (skip-loops end at non-whitespace or
+EOF) is deferred to Step 3, where it composes with the indentation
+invariant. **Sorry budget: 0 → 0** in the staging files. Full
+`lake build` passes (385 jobs total; lake-mode auto-discovers and
+builds the staging files even though `L4YAML.lean` does not import
+them).
 
 **Step 3 — New scanner, indentation/line-break layer**.
 Extend the staging scanner to handle block-context indentation
