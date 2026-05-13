@@ -948,9 +948,15 @@ deferred termination + count = column-delta obligation in
 `IndexedWhitespace.lean`. **Step 4a landed** (Reflections 39–40):
 quoted scalars (single + double) and a single-line plain scalar
 recogniser, plus the deferred `skipToContent_progress` closure.
-**Next session**: Step 4b — block scalars (literal + folded) and
-multi-line continuation for quoted + plain scalars, where the
-fold/chomp interaction lives.
+**Step 4b landed** (Reflections 41–42): block scalars
+(literal + folded with `FoldState` + chomping) and multi-line
+continuation for quoted + plain scalars. The Step 4a deferrals
+(a)–(c) are closed; (d) hex-escape value correctness and
+(e) full content-correctness are explicitly carried into Step 5.
+**Next session**: Step 5 — end-to-end `parse ∘ present = id`
+on a fixed test corpus, wiring the dispatcher and lifting
+the per-recogniser offset-monotonicity facts into a corpus
+theorem.
 
 </details>
 
@@ -978,10 +984,10 @@ fold/chomp interaction lives.
 | `L4YAML/Indexed/RepGraph.lean` | n/a | ~120 | 0 |
 | `L4YAML/Indexed/TokenStream.lean` | n/a | ~135 | 0 (extended in Phase 3 Step 1) |
 | `L4YAML/Indexed/CharStream.lean` | n/a | ~250 | 1 (`L4YAML.lean` root; new in Phase 3 Step 1, monotonicity lemmas added in Step 2) |
-| `L4YAML/Scanner/IndexedScanner.lean` | n/a | ~500 | 0 (staging — Guardrail 1; new in Phase 3 Step 2; +Layer D dispatch in Step 3; +Layer E scalar tier in Step 4a) |
+| `L4YAML/Scanner/IndexedScanner.lean` | n/a | ~950 | 0 (staging — Guardrail 1; new in Phase 3 Step 2; +Layer D dispatch in Step 3; +Layer E scalar tier in Step 4a; +Layer F1/F2/F3 multi-line + block scalars in Step 4b) |
 | `L4YAML/Proofs/Scanner/IndexedWhitespace.lean` | n/a | ~405 | 0 (staging — Guardrail 1; new in Phase 3 Step 2; +`consumeLineBreak_strict` in Step 4a) |
 | `L4YAML/Proofs/Scanner/IndexedIndent.lean` | n/a | ~355 | 0 (staging — Guardrail 1; new in Phase 3 Step 3; +`skipToContentLoop_progress` / `skipToContent_progress` in Step 4a) |
-| `L4YAML/Proofs/Scanner/IndexedScalar.lean` | n/a | ~325 | 0 (staging — Guardrail 1; new in Phase 3 Step 4a) |
+| `L4YAML/Proofs/Scanner/IndexedScalar.lean` | n/a | ~630 | 0 (staging — Guardrail 1; new in Phase 3 Step 4a; +F1/F2/F3 monotonicity proofs in Step 4b) |
 
 </details>
 
@@ -1261,6 +1267,47 @@ cutover commit. No "dual-write" interim state.
     else ...) = ...`, the let-binding is the obstacle, not the
     `if`.**
 
+41. **A block-scalar dispatch is small if you push the chain into a
+    named helper.** Step 4b's `scanBlockScalarIx` cores around a
+    five-stage cursor chain: `c → c.advance → parseBlockHeaderLoopIx
+    → skipWhitespace → optional comment → consumeLineBreak →
+    collectBlockScalarLoopIx`. The naive proof rebuilt that chain
+    inside the monotonicity tactic, with each `have hSW`, `have
+    hComm`, `have hCLB` referring to the cursor produced by the
+    previous step. The terms in those `have`s were already
+    100+ characters long because `cAfterHeader`,
+    `cAfterWS`, `cAfterComm` were not source-level names —
+    Reflection 40's rule prohibits `let`-binding them. Factoring
+    the post-header cursor into `blockHeaderToBodyIx : IxCursor →
+    IxCursor` (a single named helper) and proving
+    `blockHeaderToBodyIx_offset_monotonic` once collapsed the
+    dispatcher proof to two chained `have`s.
+    **Rule: when a `let`-binding ban (Reflection 40) forces the
+    same long expression to appear five times in a proof, extract a
+    named helper for the expression. The helper's monotonicity
+    lemma is the same length the inline chain would be — but you
+    write it once, and the caller's proof is small.** Cost: the
+    helper has to handle the `if comment then ... else ...`
+    branching internally; the payoff is that downstream proofs
+    treat the helper as opaque.
+
+42. **Mathlib's `set` is not in the kernel; substitute named
+    `have` blocks.** The first cut at the block-scalar dispatch
+    proof used `set cHdr := ...`, `set cComm := ...`, `set cBreak
+    := ...` to abbreviate the cursor chain. The build failed with
+    "unknown tactic" at the first `set`: `Mathlib.Tactic.Set`
+    isn't in scope of any module the staging proofs reach. Fix:
+    rewrote the chain as named `have` lemmas (`have hSW : ... ≤
+    ...`, `have hComm : ... ≤ ...`, …) — the same logical
+    structure but referring to the long expressions by repetition
+    rather than by abbreviation. Or — as Reflection 41 separately
+    documents — factor the long expression into a named helper.
+    **Rule: do not reach for Mathlib tactics in staging proofs
+    that the cutover commit will re-home into the main proof
+    corpus; the cutover commit's import surface must remain
+    minimal. If you find yourself wanting `set` for legibility,
+    that's a signal to extract a named helper (Reflection 41).**
+
 #### Phase 3 sub-plan (six sessions)
 
 <details><summary>Phase 3 is ~30× the size of the Phase 2 capstone. It is decomposed into six sessions; only the final commit must be atomic per Guardrail 1.</summary>
@@ -1421,13 +1468,13 @@ Step 4 was sized for two sessions per the blueprint
 authorisation ("May span two sessions if the block-scalar
 fold/chomp interaction proves recalcitrant"). Step 4a closed the
 deferred progress obligation and landed the single-line scalar
-recognisers; Step 4b will land block scalars and multi-line
-continuation. The split is explicit because progress + quoted
-single-line is one coherent cluster (the scalar recognisers
-that *call* `skipToContent` between scalars), while block + fold
-is a separate state-machine cluster with its own design
-discussion (chomping `[160]`, indent indicator `[163]`, fold
-state `[170]`–`[181]`).
+recognisers; Step 4b *(also landed)* added block scalars and
+multi-line continuation. The split was explicit because progress
++ quoted single-line is one coherent cluster (the scalar
+recognisers that *call* `skipToContent` between scalars), while
+block + fold is a separate state-machine cluster with its own
+design discussion (chomping `[160]`, indent indicator `[163]`,
+fold state `[170]`–`[181]`).
 
 Deferred-from-Step-3 obligations *closed* in Step 4a (before any
 Step 4 production code was added):
@@ -1457,16 +1504,21 @@ avoid shadowing the legacy short names — Reflection 39):
   offset-monotonicity proof to three top-level cases.
 - **E2 — double-quoted**: `collectDoubleQuotedLoopIx`,
   `scanDoubleQuotedIx`. Handles `"`, `\\` (via
-  `processEscapeIx`), and content characters; line breaks bail
-  out as `none` (multi-line is Step 4b).
+  `processEscapeIx`), and content characters. In Step 4a the
+  line-break path bailed as `none`; Step 4b replaced that with a
+  fold-and-recurse path via `foldQuotedNewlinesIx` (Layer F1).
 - **E3 — single-quoted**: `collectSingleQuotedLoopIx`,
   `scanSingleQuotedIx`. Handles the doubled-quote escape `''`.
-  Line breaks bail out (multi-line is Step 4b).
-- **E4 — plain (single-line)**: `colonTerminatesPlain` (helper
-  for the `:` terminator rule), `collectPlainScalarLoopIx`,
-  `scanPlainScalarIx`, `trimTrailingWSIx`. Termination conditions:
-  EOF, line break, `' #'`, `:` + blank / EOF / flow indicator,
-  flow indicator (in flow context). Single-line only.
+  Step 4b added multi-line continuation through the same fold
+  helper.
+- **E4 — plain**: `colonTerminatesPlain` (helper for the `:`
+  terminator rule), `collectPlainScalarLoopIx`, `scanPlainScalarIx`,
+  `trimTrailingWSIx`. Termination conditions: EOF, `' #'`, `:` +
+  blank / EOF / flow indicator, flow indicator (in flow context),
+  document boundary (block). Step 4a was single-line; Step 4b
+  added a `contentIndent` parameter and threaded line-break
+  continuation through `foldQuotedNewlinesIx` (flow) or
+  `handleBlockLineBreakIx` (block).
 
 Step 4a bidirectional proofs in
 `L4YAML/Proofs/Scanner/IndexedScalar.lean`:
@@ -1494,53 +1546,107 @@ let-bindings obstructed `split` in proofs (Reflection 40, a
 sharpening of Reflection 37).
 **Sorry budget: 0 → 0** in the staging files. Full `lake build`
 passes 385 targets (the staging files are auto-discovered).
-**Deferred to Step 4b (named explicitly per Reflection 38's
-rule)**: (a) multi-line quoted scalar continuation
-(`s-double-multi-line(n)` [116] and the matching single-quoted
-[125]), (b) multi-line plain scalar (`ns-plain-multi-line(n,c)`
-[135]) including `collectPlainScalar_handleBlockLineBreak`, (c)
-block scalars — literal [170] and folded [174] — with the four-
-state fold machine (`FoldState`) and chomping [160], (d)
-hex-escape value-correctness proofs (that `hexStringValue` of a
-hex-digit string equals the decoded `Nat`), (e) bidirectional
-content-correctness proofs (that the resolved scalar content
-matches the spec's substring extraction).
+**Deferred from Step 4a, closed in Step 4b**: (a) multi-line
+quoted scalar continuation, (b) multi-line plain scalar including
+the block-line-break handler, (c) block scalars — literal [170]
+and folded [174] — with `FoldState` and chomping [160].
+**Carried forward into Step 5**: (d) hex-escape value-correctness
+proofs (that `hexStringValue` of a hex-digit string equals the
+decoded `Nat`), and (e) bidirectional content-correctness proofs
+(that the resolved scalar content matches the spec's substring
+extraction).
 
-**Step 4b — New scanner, multi-line + block scalars**. Three
-coupled work items:
+**Step 4b — New scanner, multi-line + block scalars**
+*(landed)*.
 
-1. **Multi-line quoted scalars** — `s-double-multi-line(n)` [116]
-   and `s-single-multi-line(n)` [125]. Continuation across an
-   implicit line break: trim trailing whitespace on the current
+Three coupled work items, all landed:
+
+1. **Multi-line quoted scalars (Layer F1)** — `s-double-multi-line(n)`
+   [116] and `s-single-multi-line(n)` [125]. Continuation across
+   an implicit line break: trim trailing whitespace on the current
    line, consume the line break + leading whitespace on the
    next, and fold (newline → space) per `b-l-folded` [73] /
    `s-flow-folded` [74]. Double-quoted additionally handles the
    `\\`-line-break escape (consume newline + skip whitespace,
-   producing nothing in the resolved content).
+   producing nothing in the resolved content). The fold logic
+   lives in `foldQuotedNewlinesIx`, sharing `skipBlankLinesLoopIx`
+   for the blank-line counter.
 
-2. **Multi-line plain scalars** — `ns-plain-multi-line(n,c)` [135]
-   plus the auxiliary `s-ns-plain-next-line(n,c)` [134]. The
-   continuation indent check `(s'.col ≥ contentIndent)` and
-   document-boundary termination (`---` / `...` at column 0)
-   land here.
+2. **Multi-line plain scalars (Layer F2)** — `ns-plain-multi-line(n,c)`
+   [135] plus the auxiliary `s-ns-plain-next-line(n,c)` [134].
+   The continuation indent check (`cAfterSp.pos.col ≥
+   contentIndent`) and document-boundary termination
+   (`---` / `...` at column 0) land in `handleBlockLineBreakIx`.
+   `atDocumentBoundaryIx` / `atDocumentStartIx` /
+   `atDocumentEndIx` mirror `Scanner/Document.lean`. `scanPlainScalarIx`
+   grew a `contentIndent : Nat` parameter and the dispatcher
+   (Step 5) is responsible for passing the correct floor:
+   `s.col` in flow context, `max 0 (currentIndent + 1)` in block.
 
-3. **Block scalars** — literal `c-l+literal(n)` [170] and folded
-   `c-l+folded(n)` [174]. The four-state fold machine
-   (`FoldState`: `start` / `content` / `empty` / `more`) and
-   chomping indicator [160] (`strip` / `clip` / `keep`) live
-   here. Indent-stack coupling: block scalars read the
-   *enclosing* block indent from the indent-stack — this is the
-   first scanner production that consumes indent-stack state
-   directly (rather than emitting `blockEnd` / `blockMapping/SequenceStart`
-   as side-effect tokens).
+3. **Block scalars (Layer F3)** — literal `c-l+literal(n)` [170]
+   and folded `c-l+folded(n)` [174]. The four-state fold machine
+   (`FoldState`: `start` / `content` / `empty` / `more`) lives in
+   `foldBlockContent` as a pure `String → String`. Chomping [160]
+   (`strip` / `clip` / `keep`) is `applyChomp`. The pipeline:
+   `parseBlockHeaderLoopIx` (chomp + indent indicator) →
+   `blockHeaderToBodyIx` (whitespace + optional comment + line
+   break) → `autoDetectBlockScalarIndentLoopIx` (when no explicit
+   indent) → `collectBlockScalarLoopIx` (line-by-line, with
+   `consumeExactSpacesIx` and `collectLineContentLoopIx`). The
+   `parentIndent : Nat` parameter on `scanBlockScalarIx`
+   substitutes for the indent-stack read that the dispatcher will
+   wire in Step 5 — Step 4b keeps the indent-stack out of the
+   scanner core; the *caller* supplies the parent indent.
 
-Bidirectional proofs per production. The fold/chomp pair is the
-proof item most likely to take a full session by itself —
-Initiative 3's `EmitterScannability` has several `sorry`s in
-exactly this zone. Indent-stack data structure + invariants land
-here alongside the block-scalar productions (block scalars are
-the first caller). Hex-escape value-correctness proofs from
-Step 4a's deferred list close here too.
+Step 4b bidirectional proofs in `IndexedScalar.lean`:
+- **F1**: `skipBlankLinesLoopIx_offset_monotonic`,
+  `foldQuotedNewlinesIx_offset_monotonic`.
+  The existing `collectDoubleQuotedLoopIx_offset_monotonic` /
+  `collectSingleQuotedLoopIx_offset_monotonic` were updated to
+  handle the new fold-and-recurse branch via
+  `foldQuotedNewlinesIx_offset_monotonic`.
+- **F2**: `handleBlockLineBreakIx_offset_monotonic` (success
+  branch only — `none` is a no-progress case). The plain-scalar
+  monotonicity was updated for the new `contentIndent` parameter
+  and the flow / block fold sub-branches.
+- **F3**: `consumeExactSpacesIx_offset_monotonic`,
+  `collectLineContentLoopIx_offset_monotonic`,
+  `parseBlockHeaderLoopIx_offset_monotonic`,
+  `collectBlockScalarLoopIx_offset_monotonic`,
+  `blockHeaderToBodyIx_offset_monotonic`,
+  `scanBlockScalarIx_offset_monotonic`.
+
+**Source refactor recorded**: Per Reflection 40, every helper
+with a multi-`let` destructure that proofs would need to
+`split` past was rewritten in projection form
+(`(skipBlankLinesLoopIx ...).1`, `(consumeExactSpacesIx ...).2`,
+…). `foldQuotedNewlinesIx`, `handleBlockLineBreakIx`,
+`collectBlockScalarLoopIx`, and `scanBlockScalarIx`'s body were
+all written this way from the outset.
+**Source factor recorded**: `scanBlockScalarIx`'s post-header
+cursor was extracted into `blockHeaderToBodyIx : IxCursor →
+IxCursor` (Reflection 41) so the dispatcher's monotonicity proof
+need not rebuild the five-stage chain inline.
+**Sorry budget**: 0 → 0 in the staging files. Full `lake build`
+passes 385 targets; the staging files remain unimported from
+`L4YAML.lean` (Guardrail 1).
+
+**Carried into Step 5**:
+- Hex-escape value correctness: `hexStringValue` matches the
+  intended `Nat` value of a hex-digit string.
+- Block-scalar content correctness: `foldBlockContent` matches
+  the spec's folded-content extraction; `applyChomp` matches
+  `[160] c-chomping-indicator`'s semantics.
+- Quoted multi-line content correctness: that the concatenated
+  `content` matches `[111]`–`[116]` (double) and `[122]`–`[125]`
+  (single) under the fold rules.
+- Plain multi-line content correctness: that the threaded
+  `content ++ folded` matches `[131]`–`[135]`.
+- `autoDetectBlockScalarIndentLoopIx` correctness (terminates
+  at the first non-empty line; respects `minContentIndent`).
+- The dispatcher (Step 5) wires `scanBlockScalarIx`'s
+  `parentIndent` parameter to the indent-stack and threads
+  `inFlow` / `contentIndent` through `scanPlainScalarIx`.
 
 **Step 5 — End-to-end `parse ∘ present = id`**.
 Tie the per-rule bidirectional lemmas into a single corpus
