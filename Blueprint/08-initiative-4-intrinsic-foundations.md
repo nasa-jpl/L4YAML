@@ -5,8 +5,11 @@
 all six clusters landed (foundation, small-independents, surface
 combinators, schema, equivalence, idempotence capstone). The 23-item
 inventory remains frozen; the Item 4 stress test confirmed
-Guardrail 2 closure. See §Phase 2 status table and §Phase 3
-next steps below.
+Guardrail 2 closure. Phase 3 — Stage C (scanner) on indexed types:
+sub-plan decomposed into 6 sessions; **Step 1 (indexed-type
+extensions) landed** with `lake build` green (385 targets, 0 sorries
+in `L4YAML/Indexed/`). See §Phase 2 status table and §Phase 3
+sub-plan below.
 
 **Driver**: Initiative 3 was stopped 2026-05-03 (see
 `Blueprint/07-initiative-3-append-only.md` §Stop assessment).
@@ -929,8 +932,12 @@ with no 24th primitive needed.
 `L4YAML/Algebra/` is 0; full `lake build` passes 383 targets.
 The 23-item inventory remains **frozen** and **closed**.
 
-**Next milestone**: Phase 3 — Stage C (scanner) on indexed types.
-See §Phase 3 below for the cutover plan and DONE criteria.
+**Next milestone**: Phase 3 — Stage C (scanner) on indexed types,
+decomposed into six sessions (sub-plan in §Phase 3). **Step 1
+(indexed-type extensions) landed** in this session — see Reflections
+29–31 above. **Next session**: Step 2 (new scanner,
+character/whitespace layer) in a staging file outside the production
+build graph.
 
 </details>
 
@@ -954,9 +961,10 @@ See §Phase 3 below for the cutover plan and DONE criteria.
 | `L4YAML/Algebra/Equivalence.lean` | 1, 2, 3, 5, 6 | ~350 | 1 (`L4YAML.lean` root) |
 | `L4YAML/Algebra/Idempotence.lean` | 4 | ~460 | 1 (`L4YAML.lean` root) |
 | `L4YAML/Config/LoadConfig.lean` | n/a | ~70 | 0 (new file; consumers in Phase 3+) |
-| `L4YAML/Indexed/Range.lean` | n/a | ~60 | 0 |
+| `L4YAML/Indexed/Range.lean` | n/a | ~150 | 0 (extended in Phase 3 Step 1) |
 | `L4YAML/Indexed/RepGraph.lean` | n/a | ~120 | 0 |
-| `L4YAML/Indexed/TokenStream.lean` | n/a | ~80 | 0 |
+| `L4YAML/Indexed/TokenStream.lean` | n/a | ~135 | 0 (extended in Phase 3 Step 1) |
+| `L4YAML/Indexed/CharStream.lean` | n/a | ~220 | 1 (`L4YAML.lean` root; new in Phase 3 Step 1) |
 
 </details>
 
@@ -984,6 +992,139 @@ against YAML 1.2.2 rules in both directions (`present` and
 
 **Critical guardrail** (Lesson 1): legacy scanner deleted in the
 cutover commit. No "dual-write" interim state.
+
+**Reflections** (Phase 3 Step 1 — indexed-type extensions):
+
+29. **The cursor type is the scanning-side analogue of `Range`.**
+    Phase 2 framed `Range input` as a *static* byte interval — the
+    span a finished token or sub-graph occupies. Step 1 introduces
+    `IxCursor input` as a *moving* read head: a `YamlPos` carrying
+    a bound proof `pos.offset ≤ input.utf8ByteSize`. The two types
+    are *not* the same and should not be conflated: a cursor with
+    `offset = n` and a range `[n, n)` describe the same byte
+    position, but cursors carry line/col while ranges do not. The
+    `rangeBetween : (c₁ c₂ : IxCursor input) → Range input` bridge
+    is the only place these two views meet — Step 2's scanner will
+    use it once per emitted token. Worth recording as a design
+    constraint: do not collapse `IxCursor` into `Range × {line, col}`
+    or vice versa.
+
+30. **`Nat.min` discharges the `advance` bound without a
+    deep stdlib lemma.** The natural bound proof for
+    `advance` is "if `pos.offset < utf8ByteSize`, then
+    `String.Pos.Raw.next` of that position has `byteIdx ≤
+    utf8ByteSize`." This is a true fact about Lean's UTF-8
+    implementation but its proof requires unfolding stdlib
+    internals. Step 1 sidesteps it by clamping the next offset
+    via `Nat.min nextOffset utf8ByteSize` — the bound proof
+    becomes `Nat.min_le_right`. The clamping is semantically a
+    no-op (the unclamped `next` already respects the bound) but
+    moves the obligation off the scanner type and into Step 2's
+    correctness proofs, where it pays off as a single rewrite once
+    rather than a side-condition on every advance. Pattern to
+    reuse in Step 2: prove `nextOffsetClamped c = (String.Pos.Raw.next
+    input ⟨c.pos.offset⟩).byteIdx` whenever `c.hasMore = true`,
+    and use that lemma to bridge to legacy-scanner reasoning.
+
+31. **Step 1's API surface is sized for Step 2's first cluster.**
+    The temptation was to add `peekBack?`-with-proof, range
+    intersection, cursor monotonicity, etc. — anything that *might*
+    be needed later. The discipline observed: include only
+    operations whose semantics are obvious *now* (peek, advance,
+    rangeBetween, emitToken, push, append, last?), and let Step 2
+    grow the surface with operations whose shape depends on actual
+    use sites. The `@[simp]` lemmas are likewise minimal — five in
+    `CharStream.lean` and four in `TokenStream.lean`, all of them
+    one-step rewrites. Monotonicity of `advance` on `offset` is
+    *not* here, even though it is obviously true, because the
+    bound's `Nat.min` form makes the cleanest formulation
+    use-site-dependent (Reflection 30).
+
+#### Phase 3 sub-plan (six sessions)
+
+<details><summary>Phase 3 is ~30× the size of the Phase 2 capstone. It is decomposed into six sessions; only the final commit must be atomic per Guardrail 1.</summary>
+
+The legacy scanner is ~3,100 LOC across 8 files in
+`L4YAML/Scanner/`; the existing scanner proofs are ~17,000 LOC
+across 18 files (14 carry sorries today, including the 10,637-line
+`Proofs/Scanner/ScannerCorrectness.lean`). Doing the cutover in
+one session is infeasible. Guardrail 1 ("no parallel state")
+requires only that the **cutover commit** be atomic — *not* that
+the whole phase fit in one commit. Steps 1–5 below land staging
+code in `L4YAML/Indexed/` and (later) a `Scanner/Indexed*.lean`
+namespace that the production build does **not** import. Step 6
+performs the atomic cutover: rename, delete legacy, retarget every
+downstream proof file in one push.
+
+**Step 1 — Indexed-type extensions** *(landed)*.
+Grew the indexed substrate so steps 2–5 have the primitives they
+need. Added operations on `Range input`, `IxToken input`,
+`TokenStream input`, plus a new `IxCursor input` (position-tracked
+byte cursor with `peek?`, `peekAt?`, `peekBack?`, `advance`,
+`advanceN`, and bound proofs).
+**Files**: `L4YAML/Indexed/Range.lean` (+ops), `L4YAML/Indexed/TokenStream.lean`
+(+ops), new `L4YAML/Indexed/CharStream.lean`.
+**Constraint observed**: type-level only — no scanning algorithm,
+no character-class wiring. Nothing in `L4YAML/Scanner/` was
+touched. **Sorry budget: 0 → 0**; full `lake build` passes 385
+targets (up from 383 at Phase 2 close).
+
+**Step 2 — New scanner, character/whitespace layer**.
+In a staging file `L4YAML/Scanner/IndexedScanner.lean` (not
+imported by `L4YAML.lean`), write the lowest-level character
+recognisers that produce `IxToken input` for whitespace and the
+character-class spec productions. Bidirectional spec proofs for
+this cluster land in `L4YAML/Proofs/Scanner/IndexedWhitespace.lean`
+(also unimported). **Constraint**: file lives outside the build
+graph reachable from `L4YAML.lean` — Guardrail 1 forbids parallel
+*reachable* state, not unreachable staging.
+
+**Step 3 — New scanner, indentation/line-break layer**.
+Extend the staging scanner to handle block-context indentation
+tracking and the line-break productions. Bidirectional spec
+proofs for `s-indent(n)`, `b-break`, `b-non-content`, `s-l-comments`.
+
+**Step 4 — New scanner, scalar lexing**.
+The largest cluster (legacy `Scanner/Scalar.lean` is 940 LOC).
+Plain, single-quoted, double-quoted, and block scalars (literal +
+folded). Bidirectional spec proofs per scalar style. May span two
+sessions if the block-scalar fold/chomp interaction proves
+recalcitrant.
+
+**Step 5 — End-to-end `parse ∘ present = id`**.
+Tie the per-rule bidirectional lemmas into a single corpus
+theorem: `∀ ts : TokenStream input, parse (present ts) = some ts`.
+Build a small fixed corpus of test inputs (mirror the existing
+scanner test harness in `L4YAML/Tests/`). All staging proofs reach
+sorry-free at end of session.
+
+**Step 6 — Atomic cutover**.
+A single commit:
+1. Rename `Scanner/IndexedScanner.lean` → `Scanner/Scanner.lean`
+   (overwriting the legacy file) and likewise for every staging
+   proof file.
+2. Delete every legacy file replaced by the cutover (`Scanner/Scalar.lean`,
+   `Scanner/Whitespace.lean`, `Scanner/Indent.lean`,
+   `Scanner/SimpleKey.lean`, `Scanner/Document.lean`,
+   `Scanner/NodeProperties.lean`, `Scanner/State.lean`, and the
+   ~17,000 LOC of `Proofs/Scanner/*` that no longer apply).
+3. Retarget every downstream import (`Parser/`, `Spec/`,
+   `Output/`, `Proofs/Parser/`, `Proofs/RoundTrip/`, etc.) to the
+   new scanner API.
+4. Update `L4YAML.lean` import list.
+5. Full `lake build` must pass in this single commit.
+
+**Sub-plan guardrails**:
+- Each of steps 1–5 commits with `sorry: N → 0` (or `0 → 0`) in
+  the *new* indexed/staging files; the legacy sorry count is
+  untouched (the legacy scanner still has open sorries today;
+  those are obsoleted, not fixed, by step 6).
+- Step 6 must show `lake build` green in the cutover commit
+  message body.
+- If any step surfaces a missing algebra item, **stop and re-open
+  Phase 1** (Guardrail 2). Do not quietly add a 24th item.
+
+</details>
 
 </details>
 

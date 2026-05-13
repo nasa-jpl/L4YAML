@@ -33,6 +33,7 @@ import L4YAML.Algebra.Token
 import L4YAML.Algebra.TokenStream
 import L4YAML.Algebra.Value
 import L4YAML.Config.LoadConfig
+import L4YAML.Indexed.CharStream
 import L4YAML.Indexed.Range
 import L4YAML.Indexed.RepGraph
 import L4YAML.Indexed.TokenStream
