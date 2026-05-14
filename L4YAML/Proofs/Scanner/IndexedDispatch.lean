@@ -194,4 +194,151 @@ theorem skipToContentS_offset_monotonic {input : String} (s : ScannerStateIx inp
 
 end ScannerStateIx
 
+/-! ## Per-dispatcher offset monotonicity (Step 5b.1b.ii)
+
+The ten simple-shape dispatchers compose `emit` / `advance` /
+`advanceN` / `pushSequenceIndentIx` / `pushMappingIndentIx` /
+`unwindIndentsIx` / `scanValuePrepareIx`. Each proof unfolds, chases
+the `@[simp]` cursor-preservation lemmas from 5b.1b.i, and closes
+with `IxCursor.advance_offset_monotonic` /
+`advanceN_offset_monotonic`. The remaining `scanNextTokenIx_*` /
+`scanLoopIx` family lands in 5b.1b.iv. -/
+
+open ScannerStateIx
+
+/-! ### Pattern A — always-`.ok` dispatchers -/
+
+theorem scanBlockEntryIx_offset_monotonic {input : String}
+    {s s' : ScannerStateIx input} (h : scanBlockEntryIx s = .ok s') :
+    s.cursor.pos.offset ≤ s'.cursor.pos.offset := by
+  unfold scanBlockEntryIx at h
+  simp only [Except.ok.injEq] at h
+  subst h
+  show s.cursor.pos.offset ≤ _
+  split
+  · simp only [advance_cursor, emit_cursor, pushSequenceIndentIx_cursor]
+    exact IxCursor.advance_offset_monotonic _
+  · simp only [advance_cursor, emit_cursor]
+    exact IxCursor.advance_offset_monotonic _
+
+theorem scanKeyIx_offset_monotonic {input : String}
+    {s s' : ScannerStateIx input} (h : scanKeyIx s = .ok s') :
+    s.cursor.pos.offset ≤ s'.cursor.pos.offset := by
+  unfold scanKeyIx at h
+  simp only [Except.ok.injEq] at h
+  subst h
+  show s.cursor.pos.offset ≤ _
+  split
+  · simp only [advance_cursor, emit_cursor, pushMappingIndentIx_cursor]
+    exact IxCursor.advance_offset_monotonic _
+  · simp only [advance_cursor, emit_cursor]
+    exact IxCursor.advance_offset_monotonic _
+
+theorem scanValueIx_offset_monotonic {input : String}
+    {s s' : ScannerStateIx input} (h : scanValueIx s = .ok s') :
+    s.cursor.pos.offset ≤ s'.cursor.pos.offset := by
+  unfold scanValueIx at h
+  simp only [Except.ok.injEq] at h
+  subst h
+  show s.cursor.pos.offset ≤ _
+  simp only [advance_cursor, emit_cursor, scanValuePrepareIx_cursor]
+  exact IxCursor.advance_offset_monotonic _
+
+theorem scanFlowEntryIx_offset_monotonic {input : String}
+    {s s' : ScannerStateIx input} (h : scanFlowEntryIx s = .ok s') :
+    s.cursor.pos.offset ≤ s'.cursor.pos.offset := by
+  unfold scanFlowEntryIx at h
+  simp only [Except.ok.injEq] at h
+  subst h
+  show s.cursor.pos.offset ≤ _
+  simp only [advance_cursor, emit_cursor, scanValuePrepareIx_cursor]
+  exact IxCursor.advance_offset_monotonic _
+
+/-! ### Pattern B — state-returning dispatchers -/
+
+theorem scanDocumentStartIx_offset_monotonic {input : String}
+    (s : ScannerStateIx input) :
+    s.cursor.pos.offset ≤ (scanDocumentStartIx s).cursor.pos.offset := by
+  unfold scanDocumentStartIx
+  show s.cursor.pos.offset ≤ _
+  simp only [advanceN_cursor, emit_cursor, unwindIndentsIx_cursor]
+  exact IxCursor.advanceN_offset_monotonic _ _
+
+theorem scanFlowSequenceStartIx_offset_monotonic {input : String}
+    (s : ScannerStateIx input) :
+    s.cursor.pos.offset ≤ (scanFlowSequenceStartIx s).cursor.pos.offset := by
+  unfold scanFlowSequenceStartIx
+  show s.cursor.pos.offset ≤ _
+  simp only [advance_cursor, emit_cursor]
+  exact IxCursor.advance_offset_monotonic _
+
+theorem scanFlowSequenceEndIx_offset_monotonic {input : String}
+    (s : ScannerStateIx input) :
+    s.cursor.pos.offset ≤ (scanFlowSequenceEndIx s).cursor.pos.offset := by
+  unfold scanFlowSequenceEndIx
+  show s.cursor.pos.offset ≤ _
+  simp only [advance_cursor, emit_cursor]
+  exact IxCursor.advance_offset_monotonic _
+
+theorem scanFlowMappingStartIx_offset_monotonic {input : String}
+    (s : ScannerStateIx input) :
+    s.cursor.pos.offset ≤ (scanFlowMappingStartIx s).cursor.pos.offset := by
+  unfold scanFlowMappingStartIx
+  show s.cursor.pos.offset ≤ _
+  simp only [advance_cursor, emit_cursor]
+  exact IxCursor.advance_offset_monotonic _
+
+theorem scanFlowMappingEndIx_offset_monotonic {input : String}
+    (s : ScannerStateIx input) :
+    s.cursor.pos.offset ≤ (scanFlowMappingEndIx s).cursor.pos.offset := by
+  unfold scanFlowMappingEndIx
+  show s.cursor.pos.offset ≤ _
+  simp only [advance_cursor, emit_cursor]
+  exact IxCursor.advance_offset_monotonic _
+
+/-! ### Pattern C — `Except` with early/late throws
+
+`scanDocumentEndIx` has an early `throw` on
+`directivesPresent ∧ ¬documentEverStarted`, runs an unconditional
+state-mutation chain (`unwindIndentsIx` → simpleKey reset →
+`emit documentEnd` → `advanceN 3` → flag updates), then a trailing
+match on `probe.peek?` that either resolves to `pure ()` or throws.
+
+The state mutation chain preserves `cursor` (the leading `unwindIndentsIx`)
+or advances it (the trailing `advanceN 3`), so on the `.ok` paths the
+final `s'.cursor` differs from `s.cursor` by exactly an `advanceN 3`.
+We use `Except.bind_ok` / explicit `if_pos` / `if_neg` rewriting to
+peel the do-block, then close each surviving branch with
+`advanceN_offset_monotonic`. -/
+
+theorem scanDocumentEndIx_offset_monotonic {input : String}
+    {s s' : ScannerStateIx input} (h : scanDocumentEndIx s = .ok s') :
+    s.cursor.pos.offset ≤ s'.cursor.pos.offset := by
+  unfold scanDocumentEndIx at h
+  -- Peel the early-throw guard.
+  by_cases hd : (s.directivesPresent && !s.documentEverStarted) = true
+  · -- Early throw fires; do-block reduces to `.error _` — contradicts `.ok s'`.
+    rw [if_pos hd] at h
+    simp [Bind.bind, Except.bind] at h
+  · rw [if_neg hd] at h
+    -- Normalize the outer `pure ()`-bind so the match is the next destructible.
+    simp only [pure_bind] at h
+    split at h
+    all_goals first
+      | (simp only [Except.ok.injEq] at h
+         subst h
+         show s.cursor.pos.offset ≤ _
+         simp only [advanceN_cursor, emit_cursor, unwindIndentsIx_cursor]
+         exact IxCursor.advanceN_offset_monotonic _ _)
+      | (-- `some ch` arm: inner `if isLineBreakBool ch`
+         split at h
+         all_goals first
+           | (simp only [Except.ok.injEq] at h
+              subst h
+              show s.cursor.pos.offset ≤ _
+              simp only [advanceN_cursor, emit_cursor, unwindIndentsIx_cursor]
+              exact IxCursor.advanceN_offset_monotonic _ _)
+           | (-- inner throw branch contradicts `.ok s'`
+              simp [Bind.bind, Except.bind] at h))
+
 end L4YAML.Scanner.Indexed

@@ -988,13 +988,22 @@ new `Proofs/Scanner/IndexedDispatch.lean` file:
 `consumeLineBreak` / `skipCommentText` / `skipToContent` already
 existed in `IndexedWhitespace.lean` and `IndexedIndent.lean` —
 5b.1b.i lifts them through `ScannerStateIx`.
-**Next session**: Step 5b.1b.ii — per-dispatcher monotonicity for
-the simple-shape dispatchers (`scanBlockEntryIx`, `scanKeyIx`,
-`scanValueIx`, `scanDocumentStartIx`, `scanDocumentEndIx`, and
-the five `scanFlow*Ix`). Then 5b.1b.iii (`scanAnchorOrAliasIx` /
-`scanTagIx` / `scanYamlDirectiveIx` / `scanTagDirectiveIx` /
-`scanDirectiveIx`) and 5b.1b.iv (the `scanNextTokenIx_*` family,
-`scanNextTokenIx`, `scanLoopIx`). Then Steps 5b.2–5b.8 work
+**Step 5b.1b.ii landed** (Reflection 48): ten per-dispatcher
+offset-monotonicity lemmas added to
+`Proofs/Scanner/IndexedDispatch.lean` —
+`scanBlockEntryIx_offset_monotonic`, `scanKeyIx_offset_monotonic`,
+`scanValueIx_offset_monotonic`, `scanFlowEntryIx_offset_monotonic`
+(Pattern A — always `.ok`); `scanDocumentStartIx_offset_monotonic`,
+the four `scanFlow{Sequence,Mapping}{Start,End}Ix_offset_monotonic`
+(Pattern B — state-returning); `scanDocumentEndIx_offset_monotonic`
+(Pattern C — `Except` with early- and late-`throw` branches). The
+do-block desugaring blocks `split at h` until `pure_bind` and
+`if_pos`/`if_neg` peel the outer wrapper.
+**Next session**: Step 5b.1b.iii — node-property + directive
+dispatcher monotonicity (`scanAnchorOrAliasIx`, `scanTagIx`,
+`scanYamlDirectiveIx`, `scanTagDirectiveIx`, `scanDirectiveIx`).
+Then 5b.1b.iv (the `scanNextTokenIx_*` family, `scanNextTokenIx`,
+`scanLoopIx`). Then Steps 5b.2–5b.8 work
 through the remaining seven Step-5b carry-forward clusters
 (tab-in-indent, `scanValueIx` validation chain, hex-escape
 value, `autoDetectBlockScalarIndentLoopIx`, block-scalar
@@ -1033,7 +1042,7 @@ fold/chomp, quoted multi-line, plain multi-line).
 | `L4YAML/Proofs/Scanner/IndexedWhitespace.lean` | n/a | ~405 | 0 (staging — Guardrail 1; new in Phase 3 Step 2; +`consumeLineBreak_strict` in Step 4a) |
 | `L4YAML/Proofs/Scanner/IndexedIndent.lean` | n/a | ~355 | 0 (staging — Guardrail 1; new in Phase 3 Step 3; +`skipToContentLoop_progress` / `skipToContent_progress` in Step 4a) |
 | `L4YAML/Proofs/Scanner/IndexedScalar.lean` | n/a | ~630 | 0 (staging — Guardrail 1; new in Phase 3 Step 4a; +F1/F2/F3 monotonicity proofs in Step 4b) |
-| `L4YAML/Proofs/Scanner/IndexedDispatch.lean` | n/a | ~200 | 0 (staging — Guardrail 1; new in Phase 3 Step 5b.1b.i: `IxCursor.advanceN_offset_monotonic`; `ScannerStateIx` cursor-preservation lemmas for `emit*`/`overwriteAtCursor`/`advance*`/`pushSequenceIndentIx`/`pushMappingIndentIx`/`unwindIndentsLoopIx`/`unwindIndentsIx`/`saveSimpleKeyIx`/`scanValuePrepareIx`; `skipSpacesS`/`skipWhitespaceS`/`skipToContentS` offset-monotonicity lifts) |
+| `L4YAML/Proofs/Scanner/IndexedDispatch.lean` | n/a | ~340 | 0 (staging — Guardrail 1; new in Phase 3 Step 5b.1b.i: `IxCursor.advanceN_offset_monotonic`; `ScannerStateIx` cursor-preservation lemmas for `emit*`/`overwriteAtCursor`/`advance*`/`pushSequenceIndentIx`/`pushMappingIndentIx`/`unwindIndentsLoopIx`/`unwindIndentsIx`/`saveSimpleKeyIx`/`scanValuePrepareIx`; `skipSpacesS`/`skipWhitespaceS`/`skipToContentS` offset-monotonicity lifts; Step 5b.1b.ii: 10 per-dispatcher offset-monotonicity lemmas — `scanBlockEntryIx`/`scanKeyIx`/`scanValueIx`/`scanFlowEntryIx`/`scanDocumentStartIx`/`scanDocumentEndIx`/`scanFlowSequenceStartIx`/`scanFlowSequenceEndIx`/`scanFlowMappingStartIx`/`scanFlowMappingEndIx`) |
 
 </details>
 
@@ -1506,6 +1515,40 @@ cutover commit. No "dual-write" interim state.
     plan before coding*, then proceed. Five minutes of reading
     saves a session-ending re-plan.**
 
+48. **`split at h` cannot peel a `do throw e; rest` block in an
+    `Except` monad until `pure_bind` and the surrounding
+    `if`/`match` have been rewritten.** The Pattern-C draft of
+    `scanDocumentEndIx_offset_monotonic` (5b.1b.ii) opened with
+    `unfold ... at h; split at h` — and `split` failed because
+    after `unfold`, the hypothesis `h` was not a top-level
+    `if`/`match` but a `bind` expression: in Lean 4, `do
+    if cond then throw e; rest` desugars to a bind where the
+    immediate constructor is `Bind.bind`, not the `if` we wanted
+    to dispatch on. The fix is two layers: (i) use
+    `by_cases hd : cond` and `rw [if_pos hd] at h` / `rw [if_neg
+    hd] at h` to peel the *outer* conditional (so the `then`
+    branch produces a `throw`-bind that `simp [Bind.bind,
+    Except.bind] at h` collapses to `.error _ = .ok s'` —
+    discharged automatically); (ii) `simp only [pure_bind] at h`
+    after the `if_neg` rewrite to flatten the residual
+    `do let y ← pure (); k y` wrapper that the trailing match
+    sits inside, so the *next* `split at h` sees the match
+    directly. Once both wrappers are off, the inner `match
+    probe.peek? with | none => pure () | some '#' => pure () |
+    some ch => if ... then pure () else throw ...` is the
+    target shape `split` was designed for. **Rule: when a proof
+    targets a hypothesis of the form `<exception-monad
+    do-block> = .ok x`, first reduce monad-laws (`pure_bind`,
+    `Bind.bind`, `Except.bind`) and resolve top-level `if`s
+    with `by_cases` + `if_pos`/`if_neg` so the hypothesis is
+    syntactically a `match` or `if` before `split at h`. The
+    diagnostic "Tactic `split` failed: Could not split an `if`
+    or `match` expression in the type" almost always means a
+    bind wrapper survives and needs `simp [pure_bind, Bind.bind,
+    Except.bind]` first.** (See
+    `scanDocumentEndIx_offset_monotonic` in
+    `Proofs/Scanner/IndexedDispatch.lean`.)
+
 #### Phase 3 sub-plan (six sessions)
 
 <details><summary>Phase 3 is ~30× the size of the Phase 2 capstone. It is decomposed into six sessions; only the final commit must be atomic per Guardrail 1.</summary>
@@ -1950,12 +1993,13 @@ clusters become 5b.2–5b.8. Total: nine sub-steps.
   - **5b.1b.i — Preservation infrastructure** *(landed)*. State-level
     cursor-preservation + offset-monotonicity lemmas in a new
     `Proofs/Scanner/IndexedDispatch.lean`. See subsection below.
-  - **5b.1b.ii — Simple-shape dispatcher monotonicity**:
-    `scan*Ix_offset_monotonic` for `scanBlockEntryIx`, `scanKeyIx`,
-    `scanValueIx`, `scanDocumentStartIx`, `scanDocumentEndIx`, and
-    the five `scanFlow*Ix` (10 lemmas; each `unfold` +
-    `simp [emit_cursor, pushSequenceIndentIx_cursor, ...]` chain
-    through 5b.1b.i).
+  - **5b.1b.ii — Simple-shape dispatcher monotonicity** *(landed)*.
+    Ten `scan*Ix_offset_monotonic` lemmas for `scanBlockEntryIx`,
+    `scanKeyIx`, `scanValueIx`, `scanDocumentStartIx`,
+    `scanDocumentEndIx`, and the five `scanFlow*Ix`. See subsection
+    below. (Pattern A — always `.ok`: 4; Pattern B — state-returning:
+    5; Pattern C — early-/late-throw: 1, with Reflection 48's
+    `pure_bind` / `if_pos` peeling trick.)
   - **5b.1b.iii — Node-property + directive dispatcher monotonicity**:
     `scanAnchorOrAliasIx`, `scanTagIx`, `scanYamlDirectiveIx`,
     `scanTagDirectiveIx`, `scanDirectiveIx` (5 lemmas; same shape
@@ -2113,6 +2157,59 @@ preservation `@[simp]` lemmas above, then close with
 `advance_offset_monotonic` (or `Nat.le_refl _` for the trivial
 cases where no `advance` happens before the result is assembled
 — `scanFlowEntryIx` etc.).
+
+**Step 5b.1b.ii — Simple-shape dispatcher monotonicity** *(landed)*.
+
+Ten per-dispatcher offset-monotonicity lemmas added to
+`L4YAML/Proofs/Scanner/IndexedDispatch.lean` (after the
+preservation infrastructure from 5b.1b.i), grouped by return shape:
+
+- **Pattern A** (always `.ok`, `h : scanXIx s = .ok s'` hypothesis):
+  `scanBlockEntryIx_offset_monotonic`, `scanKeyIx_offset_monotonic`,
+  `scanValueIx_offset_monotonic`, `scanFlowEntryIx_offset_monotonic`.
+  Each: `unfold` + `simp only [Except.ok.injEq] at h; subst h`,
+  then `simp only [advance_cursor, emit_cursor, …_cursor]` chases
+  the preservation lemmas, and `IxCursor.advance_offset_monotonic`
+  closes. `scanBlockEntryIx` / `scanKeyIx` need a `split` on
+  `!s.inFlow` (the indent-push branch); the others have no
+  branching.
+- **Pattern B** (returns `ScannerStateIx` directly, no hypothesis):
+  `scanDocumentStartIx_offset_monotonic`,
+  `scanFlowSequenceStartIx_offset_monotonic`,
+  `scanFlowSequenceEndIx_offset_monotonic`,
+  `scanFlowMappingStartIx_offset_monotonic`,
+  `scanFlowMappingEndIx_offset_monotonic`. Each is three lines:
+  `unfold`, `simp only [...]`, `exact IxCursor.advance_offset_monotonic _`
+  (or `advanceN_offset_monotonic _ _` for `scanDocumentStartIx`).
+- **Pattern C** (`Except` with early- and late-`throw` branches):
+  `scanDocumentEndIx_offset_monotonic`. Uses `by_cases` on the
+  `directivesPresent ∧ ¬documentEverStarted` guard, `rw [if_pos/if_neg]`
+  to peel it, `simp only [pure_bind] at h` to flatten the outer
+  `pure ()`-bind, then `split at h` on the trailing `probe.peek?`
+  match (and inner `if isLineBreakBool ch`). The four non-throw
+  arms all close by the same `advanceN_cursor` / `emit_cursor` /
+  `unwindIndentsIx_cursor` chain; the two throw arms contradict
+  `.ok s'` via `simp [Bind.bind, Except.bind] at h`. Written with
+  `all_goals first | (...) | (...)` to keep the proof flat.
+
+The `do throw e; rest` desugars to `(throw e).bind (fun _ => rest)`,
+which `split` cannot directly destructure (the top-level shape is
+a `bind`, not the `if` or `match` we wanted to dispatch on). The
+fix is to first reduce `pure_bind` and rewrite the outer `if`
+with `if_pos` / `if_neg` *before* `split`-ing the inner match —
+see Reflection 48.
+
+Sorry budget: **0 → 0** in the staging files. `lake build` passes
+all 385 targets. `L4YAML.lean` does not import any
+`Scanner.Indexed*` or `Proofs.Scanner.Indexed*` file — confirmed.
+
+**Carried forward into Step 5b.1b.iii**: per-dispatcher
+monotonicity for the five node-property + directive dispatchers
+(`scanAnchorOrAliasIx`, `scanTagIx`, `scanYamlDirectiveIx`,
+`scanTagDirectiveIx`, `scanDirectiveIx`). Same shape as 5b.1b.ii
+but the chains thread through `collectAnchorNameLoopIx` /
+`collectTagHandleLoopIx` / `collectDirectiveNameLoopIx` /
+`skipWhitespace` (the 5b.1a helper-loop monotonicity lemmas).
 
 **Step 5c — `present` + corpus theorem** *(planned)*.
 After Step 5b is sorry-free, build:
