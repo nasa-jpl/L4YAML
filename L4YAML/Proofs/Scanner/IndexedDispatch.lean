@@ -9,10 +9,12 @@ import L4YAML.Scanner.IndexedDispatch
 **Status**: staging file. Not imported by `L4YAML.lean` until the
 Phase 3 cutover commit (Step 6).
 
-## Scope (Step 5b.1b.i)
+## Scope (Step 5b.1b.i–iii)
 
 State-helper cursor-preservation + offset-monotonicity infrastructure
-for the dispatcher monotonicity lemmas in `5b.1b.ii`–`5b.1b.iv`.
+plus per-dispatcher monotonicity for the simple-shape dispatchers
+(5b.1b.ii) and the node-property + directive dispatchers (5b.1b.iii).
+The `scanNextTokenIx_*` / `scanLoopIx` family lands in 5b.1b.iv.
 
 The dispatcher functions in `Scanner/IndexedDispatch.lean` thread the
 cursor through helpers that fall into two families:
@@ -45,11 +47,11 @@ proofs).
 3. `ScannerStateIx` state-level offset-monotonicity lemmas for the
    skip-helpers (`skipSpacesS`, `skipWhitespaceS`, `skipToContentS`).
 
-## What's not here (`5b.1b.ii`–`5b.1b.iv`)
+## What's not here (`5b.1b.iv`)
 
-- Per-dispatcher monotonicity (`scanBlockEntryIx_offset_monotonic`,
-  etc.). These compose the lemmas above through the dispatcher
-  shapes.
+- `scanNextTokenIx_*` / `scanLoopIx` monotonicity. These compose the
+  per-dispatcher lemmas through the five preprocessing/dispatch
+  sub-stages.
 -/
 
 namespace L4YAML.Indexed.IxCursor
@@ -340,5 +342,163 @@ theorem scanDocumentEndIx_offset_monotonic {input : String}
               exact IxCursor.advanceN_offset_monotonic _ _)
            | (-- inner throw branch contradicts `.ok s'`
               simp [Bind.bind, Except.bind] at h))
+
+/-! ## Per-dispatcher offset monotonicity (Step 5b.1b.iii)
+
+The five node-property + directive dispatchers compose the
+`collect*LoopIx_offset_monotonic` helpers (5b.1a) and
+`skipWhitespace_offset_monotonic` (cursor-level). The pattern is the
+same as 5b.1b.ii, with two new wrinkles:
+
+- The directive helpers `scanYamlDirectiveIx` / `scanTagDirectiveIx`
+  take `cAfterWS : IxCursor input` as an explicit cursor parameter;
+  their monotonicity is naturally stated relative to that parameter
+  (`cAfterWS.pos.offset ≤ s'.cursor.pos.offset`). `scanDirectiveIx`
+  chains through these via `skipWhitespace_offset_monotonic` and the
+  pre-call `advance` (R49).
+- `scanTagIx` matches `sAdv.peek?` into three arms (`some '<'`,
+  `some '!'`, `_`); each arm is closed by chaining
+  `IxCursor.advance_offset_monotonic` with the relevant `collect*Loop`
+  lemma, and the verbatim-tag arm has two nested
+  `if/.error` guards that contradict the `.ok` premise. -/
+
+/-! ### Node properties — anchors, aliases, tags -/
+
+theorem scanAnchorOrAliasIx_offset_monotonic {input : String}
+    {s s' : ScannerStateIx input} {isAnchor : Bool}
+    (h : scanAnchorOrAliasIx s isAnchor = .ok s') :
+    s.cursor.pos.offset ≤ s'.cursor.pos.offset := by
+  unfold scanAnchorOrAliasIx at h
+  -- The body is `let* ; if name.isEmpty then .error else .ok ...`. The
+  -- term-level `let`s in `h` block `split` from finding the `if` (R49); peel
+  -- the conditional with `by_cases` + `rw [if_pos/if_neg]` instead.
+  by_cases hn : (collectAnchorNameLoopIx s.advance.cursor ""
+      (input.utf8ByteSize - s.advance.cursor.pos.offset)).1.isEmpty = true
+  · rw [if_pos hn] at h
+    exact absurd h (by simp)
+  · rw [if_neg hn] at h
+    simp only [Except.ok.injEq] at h
+    subst h
+    show s.cursor.pos.offset ≤ _
+    simp only [emitAt_cursor, advance_cursor]
+    exact Nat.le_trans (IxCursor.advance_offset_monotonic _)
+      (collectAnchorNameLoopIx_offset_monotonic _ _ _)
+
+theorem scanTagIx_offset_monotonic {input : String}
+    {s s' : ScannerStateIx input}
+    (h : scanTagIx s = .ok s') :
+    s.cursor.pos.offset ≤ s'.cursor.pos.offset := by
+  unfold scanTagIx at h
+  -- Zeta-reduce the outer `let startPos := ...; let sAdv := ...` so the
+  -- `match sAdv.peek?` rises to the top and `split at h` can dispatch (R49).
+  simp only at h
+  split at h
+  · -- some '<' — verbatim tag arm
+    split at h
+    · simp at h
+    · split at h
+      · simp at h
+      · simp only [Except.ok.injEq] at h
+        subst h
+        show s.cursor.pos.offset ≤ _
+        simp only [emitAt_cursor, advance_cursor]
+        exact Nat.le_trans (IxCursor.advance_offset_monotonic _)
+          (Nat.le_trans (IxCursor.advance_offset_monotonic _)
+            (collectVerbatimTagLoopIx_offset_monotonic _ _ _))
+  · -- some '!' — !! tag arm
+    simp only [Except.ok.injEq] at h
+    subst h
+    show s.cursor.pos.offset ≤ _
+    simp only [emitAt_cursor, advance_cursor]
+    exact Nat.le_trans (IxCursor.advance_offset_monotonic _)
+      (Nat.le_trans (IxCursor.advance_offset_monotonic _)
+        (collectTagSuffixLoopIx_offset_monotonic _ _ _))
+  · -- catch-all: `!handle!suffix` or `!suffix`
+    simp only [Except.ok.injEq] at h
+    subst h
+    show s.cursor.pos.offset ≤ _
+    simp only [emitAt_cursor, advance_cursor]
+    refine Nat.le_trans (IxCursor.advance_offset_monotonic _) ?_
+    refine Nat.le_trans
+      (collectTagHandleLoopIx_offset_monotonic s.cursor.advance ""
+        (input.utf8ByteSize - s.cursor.advance.pos.offset)) ?_
+    split
+    · exact collectTagSuffixLoopIx_offset_monotonic _ _ _
+    · exact Nat.le_refl _
+
+/-! ### Directives -/
+
+theorem scanYamlDirectiveIx_offset_monotonic {input : String}
+    {s s' : ScannerStateIx input} {cAfterWS : IxCursor input} {startPos : YamlPos}
+    {hStart : startPos.offset ≤ cAfterWS.pos.offset}
+    (h : scanYamlDirectiveIx s cAfterWS startPos hStart = .ok s') :
+    cAfterWS.pos.offset ≤ s'.cursor.pos.offset := by
+  unfold scanYamlDirectiveIx at h
+  -- Peel the duplicate-directive throw guard.
+  by_cases hd : s.seenYamlDirective = true
+  · rw [if_pos hd] at h
+    simp [Bind.bind, Except.bind] at h
+  · rw [if_neg hd] at h
+    simp only [pure_bind] at h
+    -- Remaining: `if !major.isEmpty && !minor.isEmpty then .ok ... else throw`.
+    split at h
+    · simp only [Except.ok.injEq] at h
+      subst h
+      show cAfterWS.pos.offset ≤ _
+      simp only [emitAt_cursor]
+      exact Nat.le_trans (collectVersionMajorLoopIx_offset_monotonic _ _ _)
+        (Nat.le_trans (collectVersionMinorLoopIx_offset_monotonic _ _ _)
+          (skipWhitespace_offset_monotonic _))
+    · simp at h
+
+theorem scanTagDirectiveIx_offset_monotonic {input : String}
+    {s s' : ScannerStateIx input} {cAfterWS : IxCursor input} {startPos : YamlPos}
+    {hStart : startPos.offset ≤ cAfterWS.pos.offset}
+    (h : scanTagDirectiveIx s cAfterWS startPos hStart = .ok s') :
+    cAfterWS.pos.offset ≤ s'.cursor.pos.offset := by
+  unfold scanTagDirectiveIx at h
+  simp only [Except.ok.injEq] at h
+  subst h
+  show cAfterWS.pos.offset ≤ _
+  simp only [emitAt_cursor]
+  exact Nat.le_trans (collectTagHandleLoopIx_offset_monotonic _ _ _)
+    (Nat.le_trans (skipWhitespace_offset_monotonic _)
+      (Nat.le_trans (collectTagSuffixLoopIx_offset_monotonic _ _ _)
+        (skipWhitespace_offset_monotonic _)))
+
+theorem scanDirectiveIx_offset_monotonic {input : String}
+    {s s' : ScannerStateIx input}
+    (h : scanDirectiveIx s = .ok s') :
+    s.cursor.pos.offset ≤ s'.cursor.pos.offset := by
+  unfold scanDirectiveIx at h
+  split at h
+  · -- !s.allowDirectives: .error
+    simp at h
+  · -- else branch: zeta-reduce lets before nested `split` (R49).
+    simp only at h
+    split at h
+    · -- name == "YAML": delegate to scanYamlDirectiveIx_offset_monotonic
+      have hChain := scanYamlDirectiveIx_offset_monotonic h
+      refine Nat.le_trans ?_ hChain
+      simp only [advance_cursor]
+      exact Nat.le_trans (IxCursor.advance_offset_monotonic _)
+        (Nat.le_trans (collectDirectiveNameLoopIx_offset_monotonic _ _ _)
+          (skipWhitespace_offset_monotonic _))
+    · split at h
+      · -- name == "TAG": delegate to scanTagDirectiveIx_offset_monotonic
+        have hChain := scanTagDirectiveIx_offset_monotonic h
+        refine Nat.le_trans ?_ hChain
+        simp only [advance_cursor]
+        exact Nat.le_trans (IxCursor.advance_offset_monotonic _)
+          (Nat.le_trans (collectDirectiveNameLoopIx_offset_monotonic _ _ _)
+            (skipWhitespace_offset_monotonic _))
+      · -- reserved directive: .ok { sAdv with cursor := cAfterWS }
+        simp only [Except.ok.injEq] at h
+        subst h
+        show s.cursor.pos.offset ≤ _
+        simp only [advance_cursor]
+        exact Nat.le_trans (IxCursor.advance_offset_monotonic _)
+          (Nat.le_trans (collectDirectiveNameLoopIx_offset_monotonic _ _ _)
+            (skipWhitespace_offset_monotonic _))
 
 end L4YAML.Scanner.Indexed

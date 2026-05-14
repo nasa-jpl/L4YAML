@@ -999,11 +999,31 @@ the four `scanFlow{Sequence,Mapping}{Start,End}Ix_offset_monotonic`
 (Pattern C — `Except` with early- and late-`throw` branches). The
 do-block desugaring blocks `split at h` until `pure_bind` and
 `if_pos`/`if_neg` peel the outer wrapper.
-**Next session**: Step 5b.1b.iii — node-property + directive
-dispatcher monotonicity (`scanAnchorOrAliasIx`, `scanTagIx`,
-`scanYamlDirectiveIx`, `scanTagDirectiveIx`, `scanDirectiveIx`).
-Then 5b.1b.iv (the `scanNextTokenIx_*` family, `scanNextTokenIx`,
-`scanLoopIx`). Then Steps 5b.2–5b.8 work
+**Step 5b.1b.iii landed** (Reflection 49): five per-dispatcher
+offset-monotonicity lemmas for the node-property + directive
+dispatchers —
+`scanAnchorOrAliasIx_offset_monotonic`,
+`scanTagIx_offset_monotonic`,
+`scanYamlDirectiveIx_offset_monotonic`,
+`scanTagDirectiveIx_offset_monotonic`,
+`scanDirectiveIx_offset_monotonic`. Chains thread through the
+5b.1a `collect*LoopIx_offset_monotonic` helpers
+(`collectAnchorNameLoopIx`, `collectTagHandleLoopIx`,
+`collectTagSuffixLoopIx`, `collectVerbatimTagLoopIx`,
+`collectDirectiveNameLoopIx`, `collectVersionMajorLoopIx`,
+`collectVersionMinorLoopIx`) and `skipWhitespace_offset_monotonic`.
+The directive helpers are stated relative to the explicit
+`cAfterWS` parameter (`cAfterWS.pos.offset ≤ s'.cursor.pos.offset`)
+since the dispatcher overwrites the input state's cursor anyway;
+`scanDirectiveIx` chains through them via the leading
+`advance` + `collectDirectiveNameLoopIx` + `skipWhitespace`. The
+new Reflection 49 captures the term-level `let`-block obstacle:
+`split at h` does not see through `let`/`have` bindings buried
+under `unfold`, so we either pre-emit `simp only at h` (to
+zeta-reduce) before `split`, or peel each `if` with
+`by_cases hc` + `rw [if_pos hc / if_neg hc] at h`.
+**Next session**: Step 5b.1b.iv — the `scanNextTokenIx_*` family,
+`scanNextTokenIx`, `scanLoopIx`. Then Steps 5b.2–5b.8 work
 through the remaining seven Step-5b carry-forward clusters
 (tab-in-indent, `scanValueIx` validation chain, hex-escape
 value, `autoDetectBlockScalarIndentLoopIx`, block-scalar
@@ -1042,7 +1062,7 @@ fold/chomp, quoted multi-line, plain multi-line).
 | `L4YAML/Proofs/Scanner/IndexedWhitespace.lean` | n/a | ~405 | 0 (staging — Guardrail 1; new in Phase 3 Step 2; +`consumeLineBreak_strict` in Step 4a) |
 | `L4YAML/Proofs/Scanner/IndexedIndent.lean` | n/a | ~355 | 0 (staging — Guardrail 1; new in Phase 3 Step 3; +`skipToContentLoop_progress` / `skipToContent_progress` in Step 4a) |
 | `L4YAML/Proofs/Scanner/IndexedScalar.lean` | n/a | ~630 | 0 (staging — Guardrail 1; new in Phase 3 Step 4a; +F1/F2/F3 monotonicity proofs in Step 4b) |
-| `L4YAML/Proofs/Scanner/IndexedDispatch.lean` | n/a | ~340 | 0 (staging — Guardrail 1; new in Phase 3 Step 5b.1b.i: `IxCursor.advanceN_offset_monotonic`; `ScannerStateIx` cursor-preservation lemmas for `emit*`/`overwriteAtCursor`/`advance*`/`pushSequenceIndentIx`/`pushMappingIndentIx`/`unwindIndentsLoopIx`/`unwindIndentsIx`/`saveSimpleKeyIx`/`scanValuePrepareIx`; `skipSpacesS`/`skipWhitespaceS`/`skipToContentS` offset-monotonicity lifts; Step 5b.1b.ii: 10 per-dispatcher offset-monotonicity lemmas — `scanBlockEntryIx`/`scanKeyIx`/`scanValueIx`/`scanFlowEntryIx`/`scanDocumentStartIx`/`scanDocumentEndIx`/`scanFlowSequenceStartIx`/`scanFlowSequenceEndIx`/`scanFlowMappingStartIx`/`scanFlowMappingEndIx`) |
+| `L4YAML/Proofs/Scanner/IndexedDispatch.lean` | n/a | ~500 | 0 (staging — Guardrail 1; new in Phase 3 Step 5b.1b.i: `IxCursor.advanceN_offset_monotonic`; `ScannerStateIx` cursor-preservation lemmas for `emit*`/`overwriteAtCursor`/`advance*`/`pushSequenceIndentIx`/`pushMappingIndentIx`/`unwindIndentsLoopIx`/`unwindIndentsIx`/`saveSimpleKeyIx`/`scanValuePrepareIx`; `skipSpacesS`/`skipWhitespaceS`/`skipToContentS` offset-monotonicity lifts; Step 5b.1b.ii: 10 per-dispatcher offset-monotonicity lemmas — `scanBlockEntryIx`/`scanKeyIx`/`scanValueIx`/`scanFlowEntryIx`/`scanDocumentStartIx`/`scanDocumentEndIx`/`scanFlowSequenceStartIx`/`scanFlowSequenceEndIx`/`scanFlowMappingStartIx`/`scanFlowMappingEndIx`; Step 5b.1b.iii: 5 per-dispatcher offset-monotonicity lemmas — `scanAnchorOrAliasIx`/`scanTagIx`/`scanYamlDirectiveIx`/`scanTagDirectiveIx`/`scanDirectiveIx`) |
 
 </details>
 
@@ -1549,6 +1569,42 @@ cutover commit. No "dual-write" interim state.
     `scanDocumentEndIx_offset_monotonic` in
     `Proofs/Scanner/IndexedDispatch.lean`.)
 
+49. **`split at h` also cannot peel a term-level `let`-block
+    until the lets are zeta-reduced.** Reflection 48 covered
+    `do`-block bind wrappers; R49 is the analogue for plain
+    term-level `let`/`have` bindings. The 5b.1b.iii dispatchers
+    (`scanAnchorOrAliasIx`, `scanTagIx`, `scanDirectiveIx`) are
+    *not* `do`-blocks — they're chains of `let startPos := ...;
+    let sAdv := s.advance; let ...; if cond then ... else ...`.
+    After `unfold scanXIx at h`, the hypothesis looks like
+    `(let ... let ... if cond then ... else ...) = .ok s'`, with
+    the `if`/`match` buried under the let-binders. `split at h`
+    fails with the same "Could not split an `if` or `match`
+    expression in the type" diagnostic — but now there is no
+    bind to flatten, just lets to zeta-reduce. Two fixes that
+    work:
+    (i) **`simp only at h`** with no arguments (default
+    `zeta := true`) reduces every let-binding, lifting the
+    outer `if`/`match` to the top so `split at h` reaches it.
+    Used in `scanTagIx`, `scanDirectiveIx`.
+    (ii) **`by_cases hc : <condition>` + `rw [if_pos hc] at h`
+    / `rw [if_neg hc] at h`** to peel the conditional manually,
+    one layer at a time. `rw` handles zeta through lets when
+    matching the condition syntactically. Used in
+    `scanAnchorOrAliasIx`. **Rule: when `split at h` fails on a
+    term-level dispatcher unfold, the obstacle is almost always
+    let-binders (not binds); `simp only at h` is the
+    one-tactic fix, `by_cases` + `rw [if_pos/if_neg]` is the
+    fine-grained alternative when one or both branches contain
+    further structure to dispatch.** This pairs with R48 — both
+    say "`split at h` only works when the hypothesis is already
+    syntactically an `if`/`match` at the head, and `unfold`
+    alone does not put it there." (See
+    `scanAnchorOrAliasIx_offset_monotonic`,
+    `scanTagIx_offset_monotonic`, and
+    `scanDirectiveIx_offset_monotonic` in
+    `Proofs/Scanner/IndexedDispatch.lean`.)
+
 #### Phase 3 sub-plan (six sessions)
 
 <details><summary>Phase 3 is ~30× the size of the Phase 2 capstone. It is decomposed into six sessions; only the final commit must be atomic per Guardrail 1.</summary>
@@ -2000,10 +2056,18 @@ clusters become 5b.2–5b.8. Total: nine sub-steps.
     below. (Pattern A — always `.ok`: 4; Pattern B — state-returning:
     5; Pattern C — early-/late-throw: 1, with Reflection 48's
     `pure_bind` / `if_pos` peeling trick.)
-  - **5b.1b.iii — Node-property + directive dispatcher monotonicity**:
+  - **5b.1b.iii — Node-property + directive dispatcher monotonicity**
+    *(landed)*. Five `scan*Ix_offset_monotonic` lemmas for
     `scanAnchorOrAliasIx`, `scanTagIx`, `scanYamlDirectiveIx`,
-    `scanTagDirectiveIx`, `scanDirectiveIx` (5 lemmas; same shape
-    as 5b.1b.ii but with `collect*Ix` chains from 5b.1a).
+    `scanTagDirectiveIx`, `scanDirectiveIx`. Chains thread through
+    the 5b.1a `collect*LoopIx_offset_monotonic` helpers and
+    `skipWhitespace_offset_monotonic`. The directive helpers are
+    stated relative to the explicit `cAfterWS` parameter (since the
+    dispatcher overwrites the input state's cursor with `cAfterTW`
+    anyway); `scanDirectiveIx` then chains through them via the
+    leading `advance` + `collectDirectiveNameLoopIx` + `skipWhitespace`.
+    See subsection below; the `let`-block destructuring obstacle is
+    Reflection 49.
   - **5b.1b.iv — Top-level dispatcher monotonicity**: the five
     `scanNextTokenIx_*`, `scanNextTokenIx`, and `scanLoopIx` (7
     lemmas). `scanLoopIx_offset_monotonic` is the only non-chain:
@@ -2210,6 +2274,82 @@ monotonicity for the five node-property + directive dispatchers
 but the chains thread through `collectAnchorNameLoopIx` /
 `collectTagHandleLoopIx` / `collectDirectiveNameLoopIx` /
 `skipWhitespace` (the 5b.1a helper-loop monotonicity lemmas).
+
+**Step 5b.1b.iii — Node-property + directive dispatcher
+monotonicity** *(landed)*.
+
+Five `scan*Ix_offset_monotonic` lemmas landed in
+`L4YAML/Proofs/Scanner/IndexedDispatch.lean`, after the 5b.1b.ii
+block:
+
+- `scanAnchorOrAliasIx_offset_monotonic` — `if name.isEmpty then
+  .error else .ok …`. The empty-name branch contradicts `.ok s'`;
+  the non-empty branch chains
+  `IxCursor.advance_offset_monotonic` →
+  `collectAnchorNameLoopIx_offset_monotonic`.
+- `scanTagIx_offset_monotonic` — `match s.advance.peek? with`
+  three-arm dispatch (verbatim `<…>`, `!!suffix`, primary/secondary
+  `!handle!suffix`). The verbatim arm has nested `if !foundClose`
+  and `if uri.isEmpty` throws; both contradict `.ok s'`. Each arm
+  closes by chaining two `advance_offset_monotonic`s with the
+  relevant `collect*Loop_offset_monotonic`.
+- `scanYamlDirectiveIx_offset_monotonic` — `do`-block with an
+  early-throw guard on `seenYamlDirective` (same shape as
+  `scanDocumentEndIx`, but the trailing match is the
+  `!major.isEmpty && !minor.isEmpty` validation `if`).
+- `scanTagDirectiveIx_offset_monotonic` — straight-line `do`-block
+  (no throws on the success path). Closes by chaining
+  `collectTagHandleLoopIx_offset_monotonic` → `skipWhitespace` →
+  `collectTagSuffixLoopIx_offset_monotonic` → `skipWhitespace`.
+- `scanDirectiveIx_offset_monotonic` — composes the previous two
+  via the leading `s.advance` + `collectDirectiveNameLoopIx` +
+  `skipWhitespace cAfterName`. The `name == "YAML"` and
+  `name == "TAG"` arms apply
+  `scanYamlDirectiveIx_offset_monotonic` /
+  `scanTagDirectiveIx_offset_monotonic` directly; the reserved-
+  directive `else` arm threads through the same head chain.
+
+The directive helpers are stated relative to their explicit
+`cAfterWS` parameter (`cAfterWS.pos.offset ≤ s'.cursor.pos.offset`)
+rather than relative to `s.cursor`, since the dispatcher overwrites
+the input state's cursor with `cAfterTW` unconditionally and never
+uses `s.cursor` in its monotonic chain. This matches the call-site
+hypothesis in `scanDirectiveIx`, which holds `cAfterWS :=
+skipWhitespace cAfterName` and discharges
+`startPos.offset ≤ cAfterWS.pos.offset` directly.
+
+The new wrinkle versus 5b.1b.ii is *term-level `let`-blocks block
+`split at h`*: the dispatcher bodies use chains of `let`/`have`
+bindings before the outer `if`/`match`, so after `unfold … at h`
+the conditional is buried under let-binders that `split` cannot
+see through. Two fixes work:
+
+1. **`simp only at h`** — zeta-reduces all lets so `split at h`
+   reaches the outer conditional. Used in `scanTagIx`,
+   `scanDirectiveIx`.
+2. **`by_cases hc : <condition>` + `rw [if_pos hc] at h` /
+   `rw [if_neg hc] at h`** — peels one `if` at a time. Required
+   when the condition naming forces the order, used in
+   `scanAnchorOrAliasIx`.
+
+See Reflection 49.
+
+Sorry budget: **0 → 0** in the staging files. `lake build` passes
+all 385 targets. `L4YAML.lean` does not import any
+`Scanner.Indexed*` or `Proofs.Scanner.Indexed*` file — confirmed.
+
+**Carried forward into Step 5b.1b.iv**: top-level dispatcher
+monotonicity for the five `scanNextTokenIx_*` sub-dispatchers
+(`scanNextTokenIx_preprocess`, `scanNextTokenIx_dispatchStructural`,
+`scanNextTokenIx_dispatchFlowIndicators`,
+`scanNextTokenIx_dispatchBlockIndicators`,
+`scanNextTokenIx_dispatchContent`,
+`scanNextTokenIx_checkBlockFlowIndent`), `scanNextTokenIx`, and the
+fueled top-level `scanLoopIx`. The last is the only non-chain: it
+returns a `TokenStream`, not state, so its statement form is
+*"every token emitted has `start.offset ≥` the initial cursor's
+offset"* — proven by induction on fuel, using the per-step
+`scanNextTokenIx_offset_monotonic`.
 
 **Step 5c — `present` + corpus theorem** *(planned)*.
 After Step 5b is sorry-free, build:
