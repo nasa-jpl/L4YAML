@@ -1022,9 +1022,32 @@ new Reflection 49 captures the term-level `let`-block obstacle:
 under `unfold`, so we either pre-emit `simp only at h` (to
 zeta-reduce) before `split`, or peel each `if` with
 `by_cases hc` + `rw [if_pos hc / if_neg hc] at h`.
-**Next session**: Step 5b.1b.iv — the `scanNextTokenIx_*` family,
-`scanNextTokenIx`, `scanLoopIx`. Then Steps 5b.2–5b.8 work
-through the remaining seven Step-5b carry-forward clusters
+
+**Step 5b.1b.iv-pre landed** (Reflection 50): tokens-size growth
+infrastructure for the dispatcher layer. Added 6 simp lemmas for
+`emit` / `emitAt` / `emitAtCursor` / `overwriteAtCursor` / `advance`
+/ `advanceN` token-side effects, plus 10 `_tokens_size_le` chain
+lemmas for the 5b.1b.ii / 5b.1b.iii dispatchers
+(`scanBlockEntryIx`, `scanKeyIx`, `scanValueIx`, `scanFlowEntryIx`,
+the four `scanFlow*` start/end, `scanDocumentStartIx`,
+`scanDocumentEndIx`, `scanAnchorOrAliasIx`, `scanTagIx`,
+`scanYamlDirectiveIx`, `scanTagDirectiveIx`, `scanDirectiveIx`).
+The seven top-level lemmas the Blueprint named for 5b.1b.iv
+(five `scanNextTokenIx_*`, `scanNextTokenIx`, `scanLoopIx`) did
+*not* land: their proofs hit a new case-shape obstacle in the
+inner-`let`-zeta'd `if` of `scanNextTokenIx_preprocess` — after
+`simp only at h ; split at h ; · simp at h ; · split at h`, the
+second `split at h` produces 2 sub-cases (`isFalse.isTrue` /
+`isFalse.isFalse`) for the inner-let `if`, each of which then
+holds *another* outer `if errCond / match peek?` pair the
+2-level proof skeleton didn't anticipate. Reflection 50
+documents the shape and the two candidate fixes.
+
+**Next session**: Step 5b.1b.iv-cont — pick up the seven
+top-level chain lemmas using one of R50's fixes (likely
+`all_goals first | … | …` with the leaf `_tokens_size_le`
+helpers already in place). Then Steps 5b.2–5b.8 work through
+the remaining seven Step-5b carry-forward clusters
 (tab-in-indent, `scanValueIx` validation chain, hex-escape
 value, `autoDetectBlockScalarIndentLoopIx`, block-scalar
 fold/chomp, quoted multi-line, plain multi-line).
@@ -1062,7 +1085,7 @@ fold/chomp, quoted multi-line, plain multi-line).
 | `L4YAML/Proofs/Scanner/IndexedWhitespace.lean` | n/a | ~405 | 0 (staging — Guardrail 1; new in Phase 3 Step 2; +`consumeLineBreak_strict` in Step 4a) |
 | `L4YAML/Proofs/Scanner/IndexedIndent.lean` | n/a | ~355 | 0 (staging — Guardrail 1; new in Phase 3 Step 3; +`skipToContentLoop_progress` / `skipToContent_progress` in Step 4a) |
 | `L4YAML/Proofs/Scanner/IndexedScalar.lean` | n/a | ~630 | 0 (staging — Guardrail 1; new in Phase 3 Step 4a; +F1/F2/F3 monotonicity proofs in Step 4b) |
-| `L4YAML/Proofs/Scanner/IndexedDispatch.lean` | n/a | ~500 | 0 (staging — Guardrail 1; new in Phase 3 Step 5b.1b.i: `IxCursor.advanceN_offset_monotonic`; `ScannerStateIx` cursor-preservation lemmas for `emit*`/`overwriteAtCursor`/`advance*`/`pushSequenceIndentIx`/`pushMappingIndentIx`/`unwindIndentsLoopIx`/`unwindIndentsIx`/`saveSimpleKeyIx`/`scanValuePrepareIx`; `skipSpacesS`/`skipWhitespaceS`/`skipToContentS` offset-monotonicity lifts; Step 5b.1b.ii: 10 per-dispatcher offset-monotonicity lemmas — `scanBlockEntryIx`/`scanKeyIx`/`scanValueIx`/`scanFlowEntryIx`/`scanDocumentStartIx`/`scanDocumentEndIx`/`scanFlowSequenceStartIx`/`scanFlowSequenceEndIx`/`scanFlowMappingStartIx`/`scanFlowMappingEndIx`; Step 5b.1b.iii: 5 per-dispatcher offset-monotonicity lemmas — `scanAnchorOrAliasIx`/`scanTagIx`/`scanYamlDirectiveIx`/`scanTagDirectiveIx`/`scanDirectiveIx`) |
+| `L4YAML/Proofs/Scanner/IndexedDispatch.lean` | n/a | ~830 | 0 (staging — Guardrail 1; new in Phase 3 Step 5b.1b.i: `IxCursor.advanceN_offset_monotonic`; `ScannerStateIx` cursor-preservation lemmas for `emit*`/`overwriteAtCursor`/`advance*`/`pushSequenceIndentIx`/`pushMappingIndentIx`/`unwindIndentsLoopIx`/`unwindIndentsIx`/`saveSimpleKeyIx`/`scanValuePrepareIx`; `skipSpacesS`/`skipWhitespaceS`/`skipToContentS` offset-monotonicity lifts; Step 5b.1b.ii: 10 per-dispatcher offset-monotonicity lemmas — `scanBlockEntryIx`/`scanKeyIx`/`scanValueIx`/`scanFlowEntryIx`/`scanDocumentStartIx`/`scanDocumentEndIx`/`scanFlowSequenceStartIx`/`scanFlowSequenceEndIx`/`scanFlowMappingStartIx`/`scanFlowMappingEndIx`; Step 5b.1b.iii: 5 per-dispatcher offset-monotonicity lemmas — `scanAnchorOrAliasIx`/`scanTagIx`/`scanYamlDirectiveIx`/`scanTagDirectiveIx`/`scanDirectiveIx`; Step 5b.1b.iv-pre: 6 tokens-size simp lemmas — `skipToContentS_tokens`/`skipSpacesS_tokens`/`skipWhitespaceS_tokens`/`advance_tokens`/`advanceN_tokens`/`emit_tokens_size`/`emitAt_tokens_size`/`emitAtCursor_tokens_size`/`overwriteAtCursor_tokens_size`; 6 indent/key helper `_tokens_size_le` lemmas — `unwindIndentsLoopIx`/`unwindIndentsIx`/`pushSequenceIndentIx`/`pushMappingIndentIx`/`saveSimpleKeyIx`/`scanValuePrepareIx`; 12 dispatcher `_tokens_size_le` lemmas — `scanBlockEntryIx`/`scanKeyIx`/`scanValueIx`/`scanFlowEntryIx`/`scanFlowSequenceStartIx`/`scanFlowSequenceEndIx`/`scanFlowMappingStartIx`/`scanFlowMappingEndIx`/`scanDocumentStartIx`/`scanDocumentEndIx`/`scanAnchorOrAliasIx`/`scanTagIx`/`scanYamlDirectiveIx`/`scanTagDirectiveIx`/`scanDirectiveIx`) |
 
 </details>
 
@@ -2068,13 +2091,28 @@ clusters become 5b.2–5b.8. Total: nine sub-steps.
     leading `advance` + `collectDirectiveNameLoopIx` + `skipWhitespace`.
     See subsection below; the `let`-block destructuring obstacle is
     Reflection 49.
-  - **5b.1b.iv — Top-level dispatcher monotonicity**: the five
-    `scanNextTokenIx_*`, `scanNextTokenIx`, and `scanLoopIx` (7
-    lemmas). `scanLoopIx_offset_monotonic` is the only non-chain:
-    it returns a `TokenStream`, not state, so its statement form
-    is *"every token emitted has `start.offset ≥` the initial
-    cursor's offset"* — proven by induction on fuel, using the
-    per-step `scanNextTokenIx_offset_monotonic`.
+  - **5b.1b.iv-pre — Tokens-size growth leaf helpers** *(landed)*.
+    6 simp lemmas counting emit/overwrite/etc.'s effect on
+    `tokens.size`, plus 6 indent/key helpers + 12 dispatcher
+    `_tokens_size_le` lemmas — one for each of the 5b.1b.ii /
+    5b.1b.iii dispatchers (`scanBlockEntryIx`, `scanKeyIx`,
+    `scanValueIx`, `scanFlowEntryIx`, four `scanFlow*Ix`,
+    `scanDocumentStartIx`, `scanDocumentEndIx`, `scanAnchorOrAliasIx`,
+    `scanTagIx`, `scanYamlDirectiveIx`, `scanTagDirectiveIx`,
+    `scanDirectiveIx`). These are the chain ingredients the
+    eventual top-level claims feed off. See R50.
+  - **5b.1b.iv-cont — Top-level dispatcher monotonicity**: the
+    five `scanNextTokenIx_*`, `scanNextTokenIx`, and `scanLoopIx`
+    (7 lemmas). `scanLoopIx_offset_monotonic` is the only
+    non-chain: it returns a `TokenStream`, not state, so its
+    statement form is *"every token emitted has
+    `start.offset ≥` the initial cursor's offset"* — proven by
+    induction on fuel, using the per-step
+    `scanNextTokenIx_offset_monotonic` together with the 5b.1b.iv-pre
+    `_tokens_size_le` chain. **Deferred** from 5b.1b.iv after the
+    inner-let `if`-shape obstacle (R50) made the 2-arm split
+    skeleton miss the `isFalse.isTrue` / `isFalse.isFalse`
+    sub-cases of `scanNextTokenIx_preprocess`'s zeta'd body.
 - **5b.2 — Tab-in-indentation hardening** for `scanBlockEntryIx`
   and `scanKeyIx` (§6.1 [187]); add the legacy's tab-check error
   branch to both indicator scans.
@@ -2350,6 +2388,74 @@ returns a `TokenStream`, not state, so its statement form is
 *"every token emitted has `start.offset ≥` the initial cursor's
 offset"* — proven by induction on fuel, using the per-step
 `scanNextTokenIx_offset_monotonic`.
+
+### Step 5b.1b.iv-pre — Tokens-size growth leaf helpers *(landed)*
+
+The chain ingredients for the eventual 5b.1b.iv-cont top-level
+proofs landed: 6 simp lemmas counting `tokens.size` effects of
+`emit` / `emitAt` / `emitAtCursor` / `overwriteAtCursor` /
+`advance` / `advanceN`, then 6 indent/key helper
+`_tokens_size_le` lemmas (`unwindIndentsLoopIx`,
+`unwindIndentsIx`, `pushSequenceIndentIx`, `pushMappingIndentIx`,
+`saveSimpleKeyIx`, `scanValuePrepareIx`), then 12 dispatcher
+`_tokens_size_le` lemmas — one for each 5b.1b.ii / 5b.1b.iii
+dispatcher (`scanBlockEntryIx`, `scanKeyIx`, `scanValueIx`,
+`scanFlowEntryIx`, four `scanFlow*Ix` start/end,
+`scanDocumentStartIx`, `scanDocumentEndIx`, `scanAnchorOrAliasIx`,
+`scanTagIx`, `scanYamlDirectiveIx`, `scanTagDirectiveIx`,
+`scanDirectiveIx`). The 2 directive helpers `scanYamlDirectiveIx`
+/ `scanTagDirectiveIx` are stated relative to the explicit
+`cAfterWS` cursor parameter (same shape as the 5b.1b.iii
+cursor-form). `scanDirectiveIx_tokens_size_le` chains through them
+without an inline `unfold scanYamlDirectiveIx at h` (that would
+re-introduce the `seenYamlDirective` guard against `sAdv`, not
+`s`); R49's chain-via-helper pattern carries over cleanly.
+
+**Reflection 50 — *inner-let-`if` produces orthogonal sub-cases
+that 2-arm `split at h` skeletons miss*.**
+While attempting 5b.1b.iv's `scanNextTokenIx_preprocess_*` proof,
+the standard 5b.1b.iii pattern (`unfold + simp only at h ;
+split at h ; · simp at h ; · split at h ; · simp at h ; · …`)
+broke on the inner `let s := if !s.inFlow && s.needIndentCheck
+then …(unwind) else s` of the body. After `simp only at h`
+zeta-reduces that let, the inner `if` survives as a *separate*
+top-level conditional from the outer `if !hasMore`. A 2-arm
+nested `split` only sees 2 cases at each level, but the inner
+`isFalse`-of-outer arm now contains the inner `if`'s two
+sub-cases (`isFalse.isTrue` / `isFalse.isFalse`), each of which
+still holds the trailing-content `if errCond` plus the `match
+s.peek?` — i.e. *four* surviving success paths, not one. The
+proof skeleton aborts because the second `· split at h` lands in
+`isFalse.isFalse` (no trailing splits) and `simp at h` makes no
+progress.
+
+Two fixes:
+1. **`all_goals first | <succ path> | (split at h; <inner>)`** —
+   factors the trailing-content `if` and `match peek?` peeling
+   into a single tactic invoked from each of the 4 sub-cases.
+2. **Case-exhaustive nested splits** — write out all four
+   `isTrue / isFalse.isTrue / isFalse.isFalse.…` sub-cases by
+   hand, each closing with `simp at h` (contradiction) or
+   `simp only [Except.ok.injEq, Option.some.injEq,
+   Prod.mk.injEq] at h ; obtain ⟨hsubst, _⟩ := h ; subst hsubst`
+   followed by the leaf `_tokens_size_le` chain.
+
+R50 pairs with R49 (term-level `let`-block obstacle) and R48
+(do-block `let`-block obstacle): the family is "destructuring
+tactics don't peel through `let`-zeta'd intermediate state, and
+the *number* of surviving sub-cases after `split` depends on the
+zeta'd structure, not just the original surface syntax". When a
+sub-step plan mentions a "single-line chain" or "5-way uniform"
+shape, *count the let-zeta'd `if`s* before estimating proof
+length, not the surface-syntax `if`s.
+
+Sorry budget: **0 → 0** in the staging files. `lake build`
+passes all 385 targets. `L4YAML.lean` does not import any
+`Scanner.Indexed*` or `Proofs.Scanner.Indexed*` file — confirmed.
+
+**Carried forward into Step 5b.1b.iv-cont**: the seven top-level
+chain lemmas. With the leaf `_tokens_size_le` helpers and R50's
+two fix candidates in hand, the next session should fit in scope.
 
 **Step 5c — `present` + corpus theorem** *(planned)*.
 After Step 5b is sorry-free, build:
