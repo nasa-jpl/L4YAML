@@ -968,12 +968,37 @@ inline-proof; `emitAtSafe` deleted. `scanYamlDirectiveIx` and
 `scanTagDirectiveIx` gained an `hStart` parameter (caller-supplied
 bound) discharged by `scanDirectiveIx` via the directive-name
 collect-loop + `skipWhitespace` monotonicity chain.
-**Next session**: Step 5b.1b — per-dispatcher monotonicity
-lemmas (`scan*Ix_offset_monotonic` through `scanLoopIx`); then
-Steps 5b.2–5b.8 work through the remaining seven Step-5b
-carry-forward clusters (tab-in-indent, `scanValueIx` validation
-chain, hex-escape value, `autoDetectBlockScalarIndentLoopIx`,
-block-scalar fold/chomp, quoted multi-line, plain multi-line).
+**Step 5b.1b.i landed** (Reflection 47): the per-dispatcher
+monotonicity cluster (5b.1b) was further split into
+5b.1b.i–iv after first reading turned up ~12 missing
+state-helper preservation lemmas behind the blueprint's
+"single-line chain" framing. 5b.1b.i lands those helpers in a
+new `Proofs/Scanner/IndexedDispatch.lean` file:
+`IxCursor.advanceN_offset_monotonic` plus, on `ScannerStateIx`,
+`emit_cursor` / `emitAt_cursor` / `emitAtCursor_cursor` /
+`overwriteAtCursor_cursor` / `advance_cursor` /
+`advance_offset_monotonic` / `advanceN_cursor` /
+`advanceN_offset_monotonic` / `pushSequenceIndentIx_cursor` /
+`pushMappingIndentIx_cursor` / `unwindIndentsLoopIx_cursor` /
+`unwindIndentsIx_cursor` / `saveSimpleKeyIx_cursor` /
+`scanValuePrepareIx_cursor` / `skipSpacesS_cursor` /
+`skipSpacesS_offset_monotonic` / `skipWhitespaceS_cursor` /
+`skipWhitespaceS_offset_monotonic` / `skipToContentS_cursor` /
+`skipToContentS_offset_monotonic`. The cursor-level lemmas for
+`consumeLineBreak` / `skipCommentText` / `skipToContent` already
+existed in `IndexedWhitespace.lean` and `IndexedIndent.lean` —
+5b.1b.i lifts them through `ScannerStateIx`.
+**Next session**: Step 5b.1b.ii — per-dispatcher monotonicity for
+the simple-shape dispatchers (`scanBlockEntryIx`, `scanKeyIx`,
+`scanValueIx`, `scanDocumentStartIx`, `scanDocumentEndIx`, and
+the five `scanFlow*Ix`). Then 5b.1b.iii (`scanAnchorOrAliasIx` /
+`scanTagIx` / `scanYamlDirectiveIx` / `scanTagDirectiveIx` /
+`scanDirectiveIx`) and 5b.1b.iv (the `scanNextTokenIx_*` family,
+`scanNextTokenIx`, `scanLoopIx`). Then Steps 5b.2–5b.8 work
+through the remaining seven Step-5b carry-forward clusters
+(tab-in-indent, `scanValueIx` validation chain, hex-escape
+value, `autoDetectBlockScalarIndentLoopIx`, block-scalar
+fold/chomp, quoted multi-line, plain multi-line).
 **Then Step 5c**: `present` + corpus theorem.
 
 </details>
@@ -1008,6 +1033,7 @@ block-scalar fold/chomp, quoted multi-line, plain multi-line).
 | `L4YAML/Proofs/Scanner/IndexedWhitespace.lean` | n/a | ~405 | 0 (staging — Guardrail 1; new in Phase 3 Step 2; +`consumeLineBreak_strict` in Step 4a) |
 | `L4YAML/Proofs/Scanner/IndexedIndent.lean` | n/a | ~355 | 0 (staging — Guardrail 1; new in Phase 3 Step 3; +`skipToContentLoop_progress` / `skipToContent_progress` in Step 4a) |
 | `L4YAML/Proofs/Scanner/IndexedScalar.lean` | n/a | ~630 | 0 (staging — Guardrail 1; new in Phase 3 Step 4a; +F1/F2/F3 monotonicity proofs in Step 4b) |
+| `L4YAML/Proofs/Scanner/IndexedDispatch.lean` | n/a | ~200 | 0 (staging — Guardrail 1; new in Phase 3 Step 5b.1b.i: `IxCursor.advanceN_offset_monotonic`; `ScannerStateIx` cursor-preservation lemmas for `emit*`/`overwriteAtCursor`/`advance*`/`pushSequenceIndentIx`/`pushMappingIndentIx`/`unwindIndentsLoopIx`/`unwindIndentsIx`/`saveSimpleKeyIx`/`scanValuePrepareIx`; `skipSpacesS`/`skipWhitespaceS`/`skipToContentS` offset-monotonicity lifts) |
 
 </details>
 
@@ -1438,6 +1464,47 @@ cutover commit. No "dual-write" interim state.
     under-reach (leaving the carry-forward fuzzy). Apply this
     recursively: if a sub-step plan paragraph itself becomes a
     list of more than three items, sub-divide again.**
+
+47. **"Single-line chain" framing in a sub-step plan is a
+    hypothesis to test before coding, not a sizing claim to
+    trust.** The 5b.1b sub-step plan (written at end of 5b.1a)
+    asserted that per-dispatcher monotonicity is "a single-line
+    chain (the helper-loop lemmas from 5b.1a + the per-rule
+    recogniser lemmas already proven in
+    `Proofs/Scanner/IndexedScalar.lean`)." Reading the actual
+    dispatchers at session start surfaced two things the framing
+    missed: (a) `unfold + simp` only collapses to a single line
+    once the state-level helpers (`emit`, `emitAt`,
+    `pushMappingIndentIx`, `saveSimpleKeyIx`, `scanValuePrepareIx`,
+    …) have `@[simp]` cursor-preservation lemmas — ~12 of them
+    are missing; (b) `scanLoopIx` returns a `TokenStream`, not a
+    state, so it doesn't admit a `cursor_offset_monotonic`
+    statement at all — its monotonicity has to be expressed at
+    the token level (every emitted token has `start.offset ≥`
+    initial cursor's offset) and is *not* a one-line chain. Both
+    discoveries happened in the first 20 minutes of reading and
+    were trivially fixable by splitting 5b.1b into i (helpers),
+    ii–iii (dispatcher chains), iv (loop) — but neither was
+    visible from the 5b.1a-era plan paragraph. A complementary
+    failure mode caught in the same pass: the plan listed
+    `consumeLineBreak_offset_monotonic`,
+    `skipCommentText_offset_monotonic`,
+    `skipToContent_offset_monotonic` as *needed*, but a `grep`
+    showed they already existed in `IndexedWhitespace.lean` and
+    `IndexedIndent.lean`. The first-draft file contained
+    re-proofs of these and failed to compile with "already
+    declared" — a five-minute fix, but a five-minute fix that
+    didn't need to happen. **Rule: when a sub-step plan
+    paragraph contains size or shape claims ("single-line",
+    "uniformly thin", "mechanical"), do not trust them as the
+    session begins. The first action of the session is to
+    read the actual code the sub-step touches and (a) `grep`
+    for the supporting infrastructure the chain claims to use
+    — confirm what exists and what is missing; (b) check that
+    the result type of every named function admits the claimed
+    statement form; (c) if either check fails, *update the
+    plan before coding*, then proceed. Five minutes of reading
+    saves a session-ending re-plan.**
 
 #### Phase 3 sub-plan (six sessions)
 
@@ -1873,15 +1940,33 @@ clusters become 5b.2–5b.8. Total: nine sub-steps.
 
 - **5b.1a — Helper-loop monotonicity + `emitAtSafe`→`emitAt`**
   *(landed)*. See subsection below.
-- **5b.1b — Per-dispatcher monotonicity**: `scan*Ix_offset_monotonic`
-  for `scanAnchorOrAliasIx`, `scanTagIx`, `scanYamlDirectiveIx`,
-  `scanTagDirectiveIx`, `scanDirectiveIx`, `scanBlockEntryIx`,
-  `scanKeyIx`, `scanValueIx`, `scanDocumentStartIx`,
-  `scanDocumentEndIx`, the five `scanFlow*Ix`, the five
-  `scanNextTokenIx_*`, and `scanLoopIx`. Each is a single-line
-  chain (the helper-loop lemmas from 5b.1a + the per-rule
-  recogniser lemmas already proven in
-  `Proofs/Scanner/IndexedScalar.lean`).
+- **5b.1b — Per-dispatcher monotonicity**. Reading 5b.1b for
+  implementation revealed ~12 missing state-helper preservation
+  lemmas (`emit_cursor`, `pushMappingIndentIx_cursor`,
+  `saveSimpleKeyIx_cursor`, `skipToContentS_offset_monotonic`,
+  etc.) behind the "single-line chain" framing of the dispatcher
+  lemmas. Per Reflection 46 (apply sub-step ordering
+  recursively), 5b.1b is split into four sub-steps:
+  - **5b.1b.i — Preservation infrastructure** *(landed)*. State-level
+    cursor-preservation + offset-monotonicity lemmas in a new
+    `Proofs/Scanner/IndexedDispatch.lean`. See subsection below.
+  - **5b.1b.ii — Simple-shape dispatcher monotonicity**:
+    `scan*Ix_offset_monotonic` for `scanBlockEntryIx`, `scanKeyIx`,
+    `scanValueIx`, `scanDocumentStartIx`, `scanDocumentEndIx`, and
+    the five `scanFlow*Ix` (10 lemmas; each `unfold` +
+    `simp [emit_cursor, pushSequenceIndentIx_cursor, ...]` chain
+    through 5b.1b.i).
+  - **5b.1b.iii — Node-property + directive dispatcher monotonicity**:
+    `scanAnchorOrAliasIx`, `scanTagIx`, `scanYamlDirectiveIx`,
+    `scanTagDirectiveIx`, `scanDirectiveIx` (5 lemmas; same shape
+    as 5b.1b.ii but with `collect*Ix` chains from 5b.1a).
+  - **5b.1b.iv — Top-level dispatcher monotonicity**: the five
+    `scanNextTokenIx_*`, `scanNextTokenIx`, and `scanLoopIx` (7
+    lemmas). `scanLoopIx_offset_monotonic` is the only non-chain:
+    it returns a `TokenStream`, not state, so its statement form
+    is *"every token emitted has `start.offset ≥` the initial
+    cursor's offset"* — proven by induction on fuel, using the
+    per-step `scanNextTokenIx_offset_monotonic`.
 - **5b.2 — Tab-in-indentation hardening** for `scanBlockEntryIx`
   and `scanKeyIx` (§6.1 [187]); add the legacy's tab-check error
   branch to both indicator scans.
@@ -1954,19 +2039,80 @@ all 385 targets. `L4YAML.lean` does not import any
 `Scanner.Indexed*` or `Proofs.Scanner.Indexed*` file — confirmed.
 
 **Carried forward into Step 5b.1b**: per-dispatcher
-monotonicity lemmas. These are uniformly short — each is the
-single-line chain that 5b.1a's inline `hBound` proofs already
-construct. Lifting them out of the dispatcher functions into
-named theorems is mechanical, but the theorems are needed for
-Step 5c's roundtrip `scanIx (present ts) = .ok ts`: the corpus
-roundtrip will reduce token-by-token, and each step depends on
-`scanLoopIx_offset_monotonic` to prove fuel-sufficiency without
-re-deriving the bound.
+monotonicity lemmas. First reading turned up the "single-line
+chain" framing as too optimistic — see Reflection 47 and the
+recursive split into 5b.1b.i–iv. The infrastructure half lands
+in 5b.1b.i (below); the three dispatcher halves (5b.1b.ii,
+5b.1b.iii, 5b.1b.iv) follow.
 
 **Carried forward into Steps 5b.2–5b.8**: the remaining seven
 clusters (tab-in-indent hardening, `scanValueIx` validation
 chain, hex-escape value, `autoDetectBlockScalarIndentLoopIx`,
 block-scalar fold/chomp, quoted multi-line, plain multi-line).
+
+**Step 5b.1b.i — Preservation infrastructure** *(landed)*.
+
+A new staging proof file `L4YAML/Proofs/Scanner/IndexedDispatch.lean`
+(~200 LOC) lands the state-level lemmas the dispatcher
+monotonicity chains will need.
+
+One cursor-level lemma — `IxCursor.advanceN_offset_monotonic`
+— was missing from `Indexed/CharStream.lean`'s primitive corpus
+(the prior whitespace / indent proofs needed only single-step
+`advance` and the various loop fuel-induction patterns). It is
+the natural induction on `n` chaining `advance_offset_monotonic`.
+
+`ScannerStateIx` cursor-preservation lemmas (12 total, each
+`rfl` or a small `unfold + split`):
+
+- Emit-family: `emit_cursor`, `emitAt_cursor`,
+  `emitAtCursor_cursor`, `overwriteAtCursor_cursor`. All `rfl`
+  (token push is a structure update on `tokens`, leaving
+  `cursor` unspecified, which structurally preserves it).
+- Navigation: `advance_cursor`, `advanceN_cursor` (both `rfl`).
+- Navigation monotonicity: `advance_offset_monotonic`,
+  `advanceN_offset_monotonic` (one-line lifts via the
+  `IxCursor` lemmas).
+- Indent-stack: `pushSequenceIndentIx_cursor`,
+  `pushMappingIndentIx_cursor`, `unwindIndentsLoopIx_cursor`
+  (induction on fuel), `unwindIndentsIx_cursor` (direct
+  application). All `split <;> rfl` after `unfold` — emits push
+  tokens but leave the cursor untouched.
+- Simple-key plumbing: `saveSimpleKeyIx_cursor` (three branches,
+  all `rfl`), `scanValuePrepareIx_cursor` (five branches; four
+  `rfl`, one delegates to `pushMappingIndentIx_cursor`).
+
+`ScannerStateIx` state-level skip lemmas (6 total):
+
+- `skipSpacesS_cursor` / `skipSpacesS_offset_monotonic`,
+- `skipWhitespaceS_cursor` / `skipWhitespaceS_offset_monotonic`,
+- `skipToContentS_cursor` / `skipToContentS_offset_monotonic`.
+
+Each `*_cursor` is `rfl`; each `*_offset_monotonic` is a one-line
+`rw […_cursor]; exact …` lift through the matching cursor-level
+lemma already in `IndexedWhitespace.lean` or `IndexedIndent.lean`.
+
+What did **not** need to land: lemmas about `consumeLineBreak`,
+`skipCommentText`, `skipToContent` at the cursor level — those
+already exist in `Proofs/Scanner/IndexedWhitespace.lean`
+(`consumeLineBreak_offset_monotonic`) and
+`Proofs/Scanner/IndexedIndent.lean` (`skipCommentText_*`,
+`skipToContent_*`). The first-pass plan for 5b.1b.i listed
+these as missing; a grep before coding showed otherwise. See
+Reflection 47 for the lesson.
+
+Sorry budget: **0 → 0** in the staging files. `lake build` passes
+all 385 targets. `L4YAML.lean` does not import any
+`Scanner.Indexed*` or `Proofs.Scanner.Indexed*` file — confirmed.
+
+**Carried forward into Step 5b.1b.ii**: per-dispatcher
+monotonicity for the 10 simple-shape dispatchers. Pattern: for
+each `scanXIx s = .ok s'`, prove `s.cursor.pos.offset ≤
+s'.cursor.pos.offset` by `unfold` + `simp only` with the
+preservation `@[simp]` lemmas above, then close with
+`advance_offset_monotonic` (or `Nat.le_refl _` for the trivial
+cases where no `advance` happens before the result is assembled
+— `scanFlowEntryIx` etc.).
 
 **Step 5c — `present` + corpus theorem** *(planned)*.
 After Step 5b is sorry-free, build:
