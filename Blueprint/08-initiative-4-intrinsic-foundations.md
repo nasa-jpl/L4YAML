@@ -959,15 +959,21 @@ continuation for quoted + plain scalars. The Step 4a deferrals
 directive bookkeeping). `SimpleKeyStateIx` is indexed on `input`
 and carries an `IxCursor`, so placeholder-overwrite at the saved
 key position needs no separate bound proof. The dispatcher's
-offset-monotonicity chain is mediated by `emitAtSafe` (a defensive
-emit that performs the bound check at runtime); the static
-monotonicity proof is the headline Step 5b deliverable.
-**Next session**: Step 5b — discharge the dispatcher offset-
-monotonicity chain (helper-loop monotonicity for the `collect*Ix`
-family, then chain through each `scan*Ix`); also pick up the
-deferred Step 4 content-correctness obligations
-((d) hex-escape value, (e) multi-line content for quoted +
-plain, block-scalar `foldBlockContent` + `applyChomp`).
+offset-monotonicity chain was initially mediated by `emitAtSafe`
+(a defensive emit that performs the bound check at runtime).
+**Step 5b.1a landed** (Reflection 46): the 7 `collect*Ix`
+helper-loop offset-monotonicity lemmas + `skipDocEndWhitespaceIx`
+proven; all 10 `emitAtSafe` call sites replaced with `emitAt` +
+inline-proof; `emitAtSafe` deleted. `scanYamlDirectiveIx` and
+`scanTagDirectiveIx` gained an `hStart` parameter (caller-supplied
+bound) discharged by `scanDirectiveIx` via the directive-name
+collect-loop + `skipWhitespace` monotonicity chain.
+**Next session**: Step 5b.1b — per-dispatcher monotonicity
+lemmas (`scan*Ix_offset_monotonic` through `scanLoopIx`); then
+Steps 5b.2–5b.8 work through the remaining seven Step-5b
+carry-forward clusters (tab-in-indent, `scanValueIx` validation
+chain, hex-escape value, `autoDetectBlockScalarIndentLoopIx`,
+block-scalar fold/chomp, quoted multi-line, plain multi-line).
 **Then Step 5c**: `present` + corpus theorem.
 
 </details>
@@ -997,8 +1003,8 @@ plain, block-scalar `foldBlockContent` + `applyChomp`).
 | `L4YAML/Indexed/TokenStream.lean` | n/a | ~135 | 0 (extended in Phase 3 Step 1) |
 | `L4YAML/Indexed/CharStream.lean` | n/a | ~250 | 1 (`L4YAML.lean` root; new in Phase 3 Step 1, monotonicity lemmas added in Step 2) |
 | `L4YAML/Scanner/IndexedScanner.lean` | n/a | ~950 | 0 (staging — Guardrail 1; new in Phase 3 Step 2; +Layer D dispatch in Step 3; +Layer E scalar tier in Step 4a; +Layer F1/F2/F3 multi-line + block scalars in Step 4b) |
-| `L4YAML/Scanner/IndexedState.lean` | n/a | ~260 | 0 (staging — Guardrail 1; new in Phase 3 Step 5a: `ScannerStateIx input`, indexed `SimpleKeyStateIx`, indent-stack ops, `emit/emitAt/emitAtSafe/emitAtCursor/overwriteAtCursor`) |
-| `L4YAML/Scanner/IndexedDispatch.lean` | n/a | ~720 | 0 (staging — Guardrail 1; new in Phase 3 Step 5a: helper recogniser loops, simple-key save/resolve, block + flow indicator scans, document markers, directives, anchor/alias, tag, dispatch family, `scanLoopIx`, `scanIx`) |
+| `L4YAML/Scanner/IndexedState.lean` | n/a | ~290 | 0 (staging — Guardrail 1; new in Phase 3 Step 5a: `ScannerStateIx input`, indexed `SimpleKeyStateIx`, indent-stack ops, `emit/emitAt/emitAtCursor/overwriteAtCursor`; `emitAtSafe` removed in Step 5b.1a after the static monotonicity chain landed) |
+| `L4YAML/Scanner/IndexedDispatch.lean` | n/a | ~980 | 0 (staging — Guardrail 1; new in Phase 3 Step 5a: helper recogniser loops, simple-key save/resolve, block + flow indicator scans, document markers, directives, anchor/alias, tag, dispatch family, `scanLoopIx`, `scanIx`; Step 5b.1a: 8 helper-loop `*_offset_monotonic` lemmas, 10 `emitAtSafe`→`emitAt` replacements with inline proofs, `hStart` parameter on directive helpers) |
 | `L4YAML/Proofs/Scanner/IndexedWhitespace.lean` | n/a | ~405 | 0 (staging — Guardrail 1; new in Phase 3 Step 2; +`consumeLineBreak_strict` in Step 4a) |
 | `L4YAML/Proofs/Scanner/IndexedIndent.lean` | n/a | ~355 | 0 (staging — Guardrail 1; new in Phase 3 Step 3; +`skipToContentLoop_progress` / `skipToContent_progress` in Step 4a) |
 | `L4YAML/Proofs/Scanner/IndexedScalar.lean` | n/a | ~630 | 0 (staging — Guardrail 1; new in Phase 3 Step 4a; +F1/F2/F3 monotonicity proofs in Step 4b) |
@@ -1401,6 +1407,37 @@ cutover commit. No "dual-write" interim state.
     session's scope. The user is amenable to splits when the
     rationale is "this is the natural decomposition", not "we ran
     out of time".**
+
+46. **Sub-steps within sub-steps: when a "plan" entry is really
+    a backlog, order it and quote the ordering before starting.**
+    Step 5b's blueprint plan listed eight carry-forward clusters
+    behind a single "Step 5b" header. Treating that header as a
+    one-session work item would have repeated the Step-5a scope
+    mistake (Reflection 45) one level deeper. The user asked
+    "order the 8 clusters into a reasonable sub-step plan; start
+    on the 1st sub-step" — which is the right framing: the
+    *plan* is the work item, the *sub-step* is the session.
+    Concretely: the headline cluster (dispatcher
+    offset-monotonicity chain + `emitAtSafe`→`emitAt`) splits at
+    the right seam between helper-loop lemmas (small, local,
+    eight near-identical six-line proofs) and per-dispatcher
+    lemmas (uniformly thin but each touches a different
+    dispatcher); these become 5b.1a and 5b.1b. The remaining
+    seven clusters each become one sub-step (5b.2–5b.8); they
+    are independent and can be reordered if priorities shift.
+    The cost of writing the sub-step ordering down before
+    starting work is one paragraph; the benefit is that the
+    "next session" handoff is unambiguous and the session can
+    end cleanly when 5b.1a lands rather than tempting an
+    over-reach into 5b.1b. **Rule: when a step's plan paragraph
+    is itself a list of more than three items, order the items
+    into named sub-steps in the blueprint *before* coding. The
+    sub-step list is the working contract for the next several
+    sessions; without it the temptation is to either over-reach
+    (claiming multiple sub-steps when one suffices) or
+    under-reach (leaving the carry-forward fuzzy). Apply this
+    recursively: if a sub-step plan paragraph itself becomes a
+    list of more than three items, sub-divide again.**
 
 #### Phase 3 sub-plan (six sessions)
 
@@ -1827,39 +1864,109 @@ deliverable, not a per-session work item. Step 5a is the
 dispatcher-and-state slice; 5b is the monotonicity-and-content
 slice; 5c is the present-plus-corpus slice. (Reflection 45.)
 
-**Carried forward into Step 5b** (was Step 5b/5c in the new
-split, but most belongs in 5b):
-- Dispatcher offset-monotonicity chain: prove
-  `collect*Ix_offset_monotonic` (anchor name, tag handle, tag
-  suffix, verbatim tag, directive name, version major/minor) +
-  `skipDocEndWhitespaceIx_offset_monotonic`, then chain through
-  each dispatcher (`scanAnchorOrAliasIx_offset_monotonic`,
-  `scanTagIx_offset_monotonic`,
-  `scanYamlDirectiveIx_offset_monotonic`,
-  `scanTagDirectiveIx_offset_monotonic`,
-  `scanDirectiveIx_offset_monotonic`,
-  `scanNextTokenIx_*_offset_monotonic`,
-  `scanLoopIx_offset_monotonic`).
-- Replace `emitAtSafe` use sites with `emitAt` once the chain
-  exists.
-- Hex-escape value-correctness (carried from Step 4a):
-  `hexStringValue` of a hex-digit string equals the decoded
-  `Nat` value (mod overflow checks).
-- Block-scalar content correctness (carried from Step 4b):
-  `foldBlockContent` matches the spec's folded-content
+**Step 5b sub-step plan** (Reflection 46). Step 5b's eight
+carry-forward clusters do not fit one session. The original
+"dispatcher offset-monotonicity chain + `emitAtSafe`→`emitAt`"
+cluster splits naturally into helper-loop monotonicity (5b.1a)
+and per-dispatcher monotonicity (5b.1b). The remaining seven
+clusters become 5b.2–5b.8. Total: nine sub-steps.
+
+- **5b.1a — Helper-loop monotonicity + `emitAtSafe`→`emitAt`**
+  *(landed)*. See subsection below.
+- **5b.1b — Per-dispatcher monotonicity**: `scan*Ix_offset_monotonic`
+  for `scanAnchorOrAliasIx`, `scanTagIx`, `scanYamlDirectiveIx`,
+  `scanTagDirectiveIx`, `scanDirectiveIx`, `scanBlockEntryIx`,
+  `scanKeyIx`, `scanValueIx`, `scanDocumentStartIx`,
+  `scanDocumentEndIx`, the five `scanFlow*Ix`, the five
+  `scanNextTokenIx_*`, and `scanLoopIx`. Each is a single-line
+  chain (the helper-loop lemmas from 5b.1a + the per-rule
+  recogniser lemmas already proven in
+  `Proofs/Scanner/IndexedScalar.lean`).
+- **5b.2 — Tab-in-indentation hardening** for `scanBlockEntryIx`
+  and `scanKeyIx` (§6.1 [187]); add the legacy's tab-check error
+  branch to both indicator scans.
+- **5b.3 — `scanValueIx` validation chain**: split the simplified
+  `scanValueIx` into the legacy's four-stage chain
+  (`scanValueClearKey` / `scanValueValidate` / `scanValuePrepare`
+  / `scanValueTabCheck`).
+- **5b.4 — Hex-escape value-correctness** (carried from Step 4a):
+  `hexStringValue` of a hex-digit string equals the decoded `Nat`
+  value (mod overflow checks).
+- **5b.5 — `autoDetectBlockScalarIndentLoopIx` correctness**.
+- **5b.6 — Block-scalar content correctness** (carried from
+  Step 4b): `foldBlockContent` matches the spec's folded-content
   extraction; `applyChomp` matches `[160]`'s semantics.
-- Quoted multi-line content correctness (carried from Step 4b):
-  the concatenated `content` matches `[111]`–`[116]` /
+- **5b.7 — Quoted multi-line content correctness** (carried from
+  Step 4b): the concatenated `content` matches `[111]`–`[116]` /
   `[122]`–`[125]` under the fold rules.
-- Plain multi-line content correctness (carried from Step 4b):
-  the threaded `content ++ folded` matches `[131]`–`[135]`.
-- `autoDetectBlockScalarIndentLoopIx` correctness.
-- `scanValueIx`'s validation chain (the legacy splits this
-  into `scanValueClearKey` / `scanValueValidate` /
-  `scanValuePrepare` / `scanValueTabCheck`; Step 5a landed
-  only `scanValuePrepareIx` and a simplified driver).
-- Tab-in-indentation check for `scanBlockEntryIx` and
-  `scanKeyIx` (§6.1 hardening).
+- **5b.8 — Plain multi-line content correctness** (carried from
+  Step 4b): the threaded `content ++ folded` matches `[131]`–
+  `[135]`.
+
+**Step 5b.1a — Helper-loop monotonicity + `emitAtSafe`→`emitAt`**
+*(landed)*.
+
+Eight monotonicity lemmas landed in
+`L4YAML/Scanner/IndexedDispatch.lean` (between the helper-loop
+defs and the `ScannerStateIx` namespace):
+
+- `collectAnchorNameLoopIx_offset_monotonic`,
+- `collectTagHandleLoopIx_offset_monotonic`,
+- `collectTagSuffixLoopIx_offset_monotonic`,
+- `collectVerbatimTagLoopIx_offset_monotonic`,
+- `collectDirectiveNameLoopIx_offset_monotonic`,
+- `collectVersionMajorLoopIx_offset_monotonic`,
+- `collectVersionMinorLoopIx_offset_monotonic`,
+- `skipDocEndWhitespaceIx_offset_monotonic`.
+
+Each is six lines: `induction fuel` (base = `Nat.le_refl _`;
+succ unfolds the loop, `split`s on `c.peek?` and the inner
+predicate, and chains `advance_offset_monotonic` with the IH).
+The chain matches the pattern used in
+`Proofs/Scanner/IndexedWhitespace.lean::skipSpacesLoop_offset_monotonic`.
+
+`IndexedDispatch.lean` now imports
+`L4YAML.Proofs.Scanner.IndexedWhitespace` (for
+`skipWhitespace_offset_monotonic`) and
+`L4YAML.Proofs.Scanner.IndexedScalar` (for the per-rule
+recogniser monotonicity lemmas
+`scanDoubleQuotedIx_offset_lt`, `scanSingleQuotedIx_offset_lt`,
+`scanPlainScalarIx_offset_monotonic`,
+`scanBlockScalarIx_offset_monotonic`). The 10 `emitAtSafe` use
+sites were replaced with `emitAt … hBound`, where `hBound`
+discharges `startPos.offset ≤ sAfter.cursor.pos.offset` by a
+let-bound `by` block (`show s.cursor.pos.offset ≤ <final>` to
+align the goal with the lemma shape, then `Nat.le_trans` chains).
+`scanYamlDirectiveIx` and `scanTagDirectiveIx` gained an
+`hStart : startPos.offset ≤ cAfterWS.pos.offset` parameter;
+`scanDirectiveIx` discharges it via the
+`collectDirectiveNameLoopIx` + `skipWhitespace` chain.
+
+`emitAtSafe` itself is deleted (it was the last carry-forward
+out of Step 5a's compromise). `ScannerStateIx`'s emit API is
+now `emit` (zero-width at cursor), `emitAt` (saved start, cursor
+end, with explicit bound proof), `emitAtCursor` (zero-width at
+saved cursor — uses cursor's own `posBound`), `overwriteAtCursor`
+(for placeholder slots).
+
+Sorry budget: **0 → 0** in the staging files. `lake build` passes
+all 385 targets. `L4YAML.lean` does not import any
+`Scanner.Indexed*` or `Proofs.Scanner.Indexed*` file — confirmed.
+
+**Carried forward into Step 5b.1b**: per-dispatcher
+monotonicity lemmas. These are uniformly short — each is the
+single-line chain that 5b.1a's inline `hBound` proofs already
+construct. Lifting them out of the dispatcher functions into
+named theorems is mechanical, but the theorems are needed for
+Step 5c's roundtrip `scanIx (present ts) = .ok ts`: the corpus
+roundtrip will reduce token-by-token, and each step depends on
+`scanLoopIx_offset_monotonic` to prove fuel-sufficiency without
+re-deriving the bound.
+
+**Carried forward into Steps 5b.2–5b.8**: the remaining seven
+clusters (tab-in-indent hardening, `scanValueIx` validation
+chain, hex-escape value, `autoDetectBlockScalarIndentLoopIx`,
+block-scalar fold/chomp, quoted multi-line, plain multi-line).
 
 **Step 5c — `present` + corpus theorem** *(planned)*.
 After Step 5b is sorry-free, build:

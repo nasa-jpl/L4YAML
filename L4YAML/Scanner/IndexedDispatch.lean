@@ -3,8 +3,10 @@ Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
 import L4YAML.Scanner.IndexedState
+import L4YAML.Proofs.Scanner.IndexedWhitespace
+import L4YAML.Proofs.Scanner.IndexedScalar
 
-/-! # `IndexedDispatch` — Phase 3 Step 5a top-level scanner (staging)
+/-! # `IndexedDispatch` — Phase 3 top-level scanner (staging)
 
 **Status**: staging file. Not imported by `L4YAML.lean` until the
 Phase 3 cutover commit (Step 6).
@@ -16,26 +18,33 @@ mirrors the legacy `L4YAML/Scanner/{SimpleKey,Document,NodeProperties,
 Scanner}.lean` family, threaded over `IxCursor input` instead of the
 un-indexed offset triple.
 
-## Scope (Step 5a)
+## Layout
 
-This is a **dispatcher skeleton + state**. The per-token scanners
-that need substantial spec-correctness work (`scanDirectiveIx`,
-`scanAnchorOrAliasIx`, `scanTagIx`, the multi-helper `scanValueIx`
-validation chain) are landed in *thin* form here — they call the
-existing per-rule recognisers from `IndexedScanner.lean` where one
-exists, and stub the rest with an error. The carry-forward list
-into Step 5b/5c is recorded in Blueprint 08.
+1. Helper recogniser loops (`collect*Ix`, `skipDocEndWhitespaceIx`).
+2. Helper-loop offset-monotonicity lemmas (Step 5b.1a).
+3. `ScannerStateIx`-namespaced dispatchers: simple-key save/resolve,
+   block indicators, document markers, directives, anchor/alias, tag,
+   flow indicators, the five-way `scanNextTokenIx_*` dispatch family,
+   `scanLoopIx`, and the top-level `scanIx`.
 
-What ships in Step 5a:
-- Simple-key save/resolve (`saveSimpleKeyIx`, `scanValuePrepareIx`).
-- Block indicator scans (`scanBlockEntryIx`, `scanKeyIx`,
-  `scanValueIx` — the validation chain is simplified).
-- Document marker scans (`scanDocumentStartIx`, `scanDocumentEndIx`).
-- Directive scan (`scanDirectiveIx`) — `%YAML`/`%TAG` parsing
-  delegated to thin re-implementations.
-- Anchor/alias (`scanAnchorOrAliasIx`) and tag (`scanTagIx`) scans.
-- Flow indicator scans (`scanFlow*Ix` family).
-- Dispatch family (`scanNextTokenIx_*`), `scanLoopIx`, `scanIx`.
+## Scope
+
+- **Step 5a** landed the dispatcher skeleton + state, with the per-
+  rule recognisers from `IndexedScanner.lean` wired in. The
+  validation chain inside `scanValueIx` was simplified relative to
+  the legacy four-stage split; the tab-in-indentation hardening on
+  `scanBlockEntryIx` / `scanKeyIx` was deferred.
+- **Step 5b.1a** added the eight helper-loop monotonicity lemmas
+  (between sections 1 and 3), replaced the ten `emitAtSafe` use
+  sites with `emitAt` + inline proofs, threaded an `hStart`
+  parameter through `scanYamlDirectiveIx` / `scanTagDirectiveIx`,
+  and deleted `emitAtSafe`.
+- **Step 5b.1b–5b.8** (planned, Blueprint 08): per-dispatcher
+  monotonicity lemmas; `scanValueIx` validation chain split;
+  tab-in-indentation hardening; hex-escape value-correctness;
+  `autoDetectBlockScalarIndentLoopIx` correctness; block-scalar
+  fold/chomp correctness; quoted multi-line correctness; plain
+  multi-line correctness.
 -/
 
 namespace L4YAML.Scanner.Indexed
@@ -149,6 +158,156 @@ def skipDocEndWhitespaceIx {input : String} (c : IxCursor input) :
       if ch == ' ' || ch == '\t' then skipDocEndWhitespaceIx c.advance fuel
       else c
     | none => c
+
+/-! ## Helper-loop offset monotonicity (Step 5b.1a)
+
+Each `collect*Ix` helper consumes characters left-to-right and either
+recurses on `c.advance` or returns the input cursor unchanged. Hence
+every helper's output cursor sits at a byte offset `≥` the input
+cursor's offset. These lemmas discharge the bound obligation when the
+dispatcher functions construct indexed tokens spanning from a saved
+`startPos` to the cursor returned by the helper.
+
+The proofs follow the pattern used by `skipSpacesLoop_offset_monotonic`
+in `Proofs/Scanner/IndexedWhitespace.lean`: induction on `fuel`,
+`unfold` the loop, then `split` on each branching `match` / `if`. The
+recursive branch chains `advance_offset_monotonic` with the IH. -/
+
+theorem collectAnchorNameLoopIx_offset_monotonic {input : String}
+    (c : IxCursor input) (name : String) (fuel : Nat) :
+    c.pos.offset ≤ (collectAnchorNameLoopIx c name fuel).2.pos.offset := by
+  induction fuel generalizing c name with
+  | zero => unfold collectAnchorNameLoopIx; exact Nat.le_refl _
+  | succ fuel ih =>
+    unfold collectAnchorNameLoopIx
+    split
+    · -- some ch
+      split
+      · exact Nat.le_trans (IxCursor.advance_offset_monotonic c) (ih c.advance _)
+      · exact Nat.le_refl _
+    · -- none
+      exact Nat.le_refl _
+
+theorem collectTagHandleLoopIx_offset_monotonic {input : String}
+    (c : IxCursor input) (chars : String) (fuel : Nat) :
+    c.pos.offset ≤ (collectTagHandleLoopIx c chars fuel).2.2.pos.offset := by
+  induction fuel generalizing c chars with
+  | zero => unfold collectTagHandleLoopIx; exact Nat.le_refl _
+  | succ fuel ih =>
+    unfold collectTagHandleLoopIx
+    split
+    · -- some '!': returns (chars, true, c.advance)
+      exact IxCursor.advance_offset_monotonic c
+    · -- some ch (other)
+      split
+      · -- isWordCharBool ch: recurse on c.advance
+        exact Nat.le_trans (IxCursor.advance_offset_monotonic c) (ih c.advance _)
+      · -- not word char: returns (chars, false, c)
+        exact Nat.le_refl _
+    · -- none
+      exact Nat.le_refl _
+
+theorem collectTagSuffixLoopIx_offset_monotonic {input : String}
+    (c : IxCursor input) (suffix : String) (fuel : Nat) :
+    c.pos.offset ≤ (collectTagSuffixLoopIx c suffix fuel).2.pos.offset := by
+  induction fuel generalizing c suffix with
+  | zero => unfold collectTagSuffixLoopIx; exact Nat.le_refl _
+  | succ fuel ih =>
+    unfold collectTagSuffixLoopIx
+    split
+    · -- some ch
+      split
+      · exact Nat.le_trans (IxCursor.advance_offset_monotonic c) (ih c.advance _)
+      · exact Nat.le_refl _
+    · -- none
+      exact Nat.le_refl _
+
+theorem collectVerbatimTagLoopIx_offset_monotonic {input : String}
+    (c : IxCursor input) (uri : String) (fuel : Nat) :
+    c.pos.offset ≤ (collectVerbatimTagLoopIx c uri fuel).2.2.pos.offset := by
+  induction fuel generalizing c uri with
+  | zero => unfold collectVerbatimTagLoopIx; exact Nat.le_refl _
+  | succ fuel ih =>
+    unfold collectVerbatimTagLoopIx
+    split
+    · -- some '>': returns (uri, true, c.advance)
+      exact IxCursor.advance_offset_monotonic c
+    · -- some ch (other)
+      split
+      · -- isUriCharBool ch: recurse on c.advance
+        exact Nat.le_trans (IxCursor.advance_offset_monotonic c) (ih c.advance _)
+      · -- not uri char: returns (uri, false, c)
+        exact Nat.le_refl _
+    · -- none
+      exact Nat.le_refl _
+
+theorem collectDirectiveNameLoopIx_offset_monotonic {input : String}
+    (c : IxCursor input) (name : String) (fuel : Nat) :
+    c.pos.offset ≤ (collectDirectiveNameLoopIx c name fuel).2.pos.offset := by
+  induction fuel generalizing c name with
+  | zero => unfold collectDirectiveNameLoopIx; exact Nat.le_refl _
+  | succ fuel ih =>
+    unfold collectDirectiveNameLoopIx
+    split
+    · -- some ch
+      split
+      · exact Nat.le_trans (IxCursor.advance_offset_monotonic c) (ih c.advance _)
+      · exact Nat.le_refl _
+    · -- none
+      exact Nat.le_refl _
+
+theorem collectVersionMajorLoopIx_offset_monotonic {input : String}
+    (c : IxCursor input) (major : String) (fuel : Nat) :
+    c.pos.offset ≤ (collectVersionMajorLoopIx c major fuel).2.pos.offset := by
+  induction fuel generalizing c major with
+  | zero => unfold collectVersionMajorLoopIx; exact Nat.le_refl _
+  | succ fuel ih =>
+    unfold collectVersionMajorLoopIx
+    split
+    · -- some '.': returns (major, c.advance)
+      exact IxCursor.advance_offset_monotonic c
+    · -- some ch (other)
+      split
+      · -- digit: recurse on c.advance
+        exact Nat.le_trans (IxCursor.advance_offset_monotonic c) (ih c.advance _)
+      · -- non-digit: returns (major, c)
+        exact Nat.le_refl _
+    · -- none
+      exact Nat.le_refl _
+
+theorem collectVersionMinorLoopIx_offset_monotonic {input : String}
+    (c : IxCursor input) (minor : String) (fuel : Nat) :
+    c.pos.offset ≤ (collectVersionMinorLoopIx c minor fuel).2.pos.offset := by
+  induction fuel generalizing c minor with
+  | zero => unfold collectVersionMinorLoopIx; exact Nat.le_refl _
+  | succ fuel ih =>
+    unfold collectVersionMinorLoopIx
+    split
+    · -- some ch
+      split
+      · -- digit: recurse on c.advance
+        exact Nat.le_trans (IxCursor.advance_offset_monotonic c) (ih c.advance _)
+      · -- non-digit: returns (minor, c)
+        exact Nat.le_refl _
+    · -- none
+      exact Nat.le_refl _
+
+theorem skipDocEndWhitespaceIx_offset_monotonic {input : String}
+    (c : IxCursor input) (fuel : Nat) :
+    c.pos.offset ≤ (skipDocEndWhitespaceIx c fuel).pos.offset := by
+  induction fuel generalizing c with
+  | zero => unfold skipDocEndWhitespaceIx; exact Nat.le_refl _
+  | succ fuel ih =>
+    unfold skipDocEndWhitespaceIx
+    split
+    · -- some ch
+      split
+      · -- space or tab: recurse on c.advance
+        exact Nat.le_trans (IxCursor.advance_offset_monotonic c) (ih c.advance)
+      · -- other: returns c
+        exact Nat.le_refl _
+    · -- none
+      exact Nat.le_refl _
 
 namespace ScannerStateIx
 
@@ -324,28 +483,47 @@ def scanDocumentEndIx {input : String} (s : ScannerStateIx input) :
 
 /-! ## Directives -/
 
-/-- Scan a `%YAML major.minor` directive. -/
+/-- Scan a `%YAML major.minor` directive. The caller supplies
+    `hStart : startPos.offset ≤ cAfterWS.pos.offset` so that the
+    constructed `versionDirective` token's bound is discharged
+    without a runtime check (Step 5b.1a). -/
 def scanYamlDirectiveIx {input : String} (s : ScannerStateIx input)
-    (cAfterWS : IxCursor input) (startPos : YamlPos) :
+    (cAfterWS : IxCursor input) (startPos : YamlPos)
+    (hStart : startPos.offset ≤ cAfterWS.pos.offset) :
     Except ScanError (ScannerStateIx input) := do
   if s.seenYamlDirective then
     throw (.duplicateYamlDirective s.cursor.pos.line)
   let fuelM := input.utf8ByteSize - cAfterWS.pos.offset
-  let (major, cAfterDot) := collectVersionMajorLoopIx cAfterWS "" fuelM
+  let rMaj := collectVersionMajorLoopIx cAfterWS "" fuelM
+  let major := rMaj.1
+  let cAfterDot := rMaj.2
   let fuelN := input.utf8ByteSize - cAfterDot.pos.offset
-  let (minor, cAfterVer) := collectVersionMinorLoopIx cAfterDot "" fuelN
+  let rMin := collectVersionMinorLoopIx cAfterDot "" fuelN
+  let minor := rMin.1
+  let cAfterVer := rMin.2
   let cAfterTW := skipWhitespace cAfterVer
   let sAfter : ScannerStateIx input := { s with cursor := cAfterTW }
   if !major.isEmpty && !minor.isEmpty then
-    let sEmit := sAfter.emitAtSafe startPos
-      (YamlToken.versionDirective major.toNat! minor.toNat!)
+    let hBound : startPos.offset ≤ sAfter.cursor.pos.offset := by
+      show startPos.offset ≤ cAfterTW.pos.offset
+      have h2 : cAfterWS.pos.offset ≤ rMaj.2.pos.offset :=
+        collectVersionMajorLoopIx_offset_monotonic cAfterWS "" fuelM
+      have h3 : cAfterDot.pos.offset ≤ rMin.2.pos.offset :=
+        collectVersionMinorLoopIx_offset_monotonic cAfterDot "" fuelN
+      have h4 : cAfterVer.pos.offset ≤ cAfterTW.pos.offset :=
+        skipWhitespace_offset_monotonic cAfterVer
+      exact Nat.le_trans hStart (Nat.le_trans h2 (Nat.le_trans h3 h4))
+    let sEmit := sAfter.emitAt startPos
+      (YamlToken.versionDirective major.toNat! minor.toNat!) hBound
     .ok { sEmit with seenYamlDirective := true, directivesPresent := true }
   else
     throw (.directiveTrailingContent sAfter.cursor.pos.line sAfter.cursor.pos.col)
 
-/-- Scan a `%TAG !handle! prefix` directive. -/
+/-- Scan a `%TAG !handle! prefix` directive. As with
+    `scanYamlDirectiveIx`, the caller supplies the start-pos bound. -/
 def scanTagDirectiveIx {input : String} (s : ScannerStateIx input)
-    (cAfterWS : IxCursor input) (startPos : YamlPos) :
+    (cAfterWS : IxCursor input) (startPos : YamlPos)
+    (hStart : startPos.offset ≤ cAfterWS.pos.offset) :
     Except ScanError (ScannerStateIx input) := do
   let fuelH := input.utf8ByteSize - cAfterWS.pos.offset
   let r := collectTagHandleLoopIx cAfterWS "" fuelH
@@ -358,8 +536,20 @@ def scanTagDirectiveIx {input : String} (s : ScannerStateIx input)
   let cAfterPrefix := r2.2
   let cAfterTW := skipWhitespace cAfterPrefix
   let sAfter : ScannerStateIx input := { s with cursor := cAfterTW }
-  let sEmit := sAfter.emitAtSafe startPos
-    (YamlToken.tagDirective handle tagPrefix)
+  let hBound : startPos.offset ≤ sAfter.cursor.pos.offset := by
+    show startPos.offset ≤ cAfterTW.pos.offset
+    have h2 : cAfterWS.pos.offset ≤ cAfterHandle.pos.offset :=
+      collectTagHandleLoopIx_offset_monotonic cAfterWS "" fuelH
+    have h3 : cAfterHandle.pos.offset ≤ cAfterWS2.pos.offset :=
+      skipWhitespace_offset_monotonic cAfterHandle
+    have h4 : cAfterWS2.pos.offset ≤ r2.2.pos.offset :=
+      collectTagSuffixLoopIx_offset_monotonic cAfterWS2 "" fuelP
+    have h5 : cAfterPrefix.pos.offset ≤ cAfterTW.pos.offset :=
+      skipWhitespace_offset_monotonic cAfterPrefix
+    exact Nat.le_trans hStart
+      (Nat.le_trans h2 (Nat.le_trans h3 (Nat.le_trans h4 h5)))
+  let sEmit := sAfter.emitAt startPos
+    (YamlToken.tagDirective handle tagPrefix) hBound
   .ok { sEmit with directivesPresent := true }
 
 /-- Scan a `%`-introduced directive (YAML/TAG/reserved). -/
@@ -371,14 +561,25 @@ def scanDirectiveIx {input : String} (s : ScannerStateIx input) :
     let startPos := s.cursor.pos
     let sAdv := s.advance
     let fuel := input.utf8ByteSize - sAdv.cursor.pos.offset
-    let (name, cAfterName) := collectDirectiveNameLoopIx sAdv.cursor "" fuel
+    let rName := collectDirectiveNameLoopIx sAdv.cursor "" fuel
+    let name := rName.1
+    let cAfterName := rName.2
     let cAfterWS := skipWhitespace cAfterName
+    have hStart : startPos.offset ≤ cAfterWS.pos.offset := by
+      show s.cursor.pos.offset ≤ cAfterWS.pos.offset
+      have h1 : s.cursor.pos.offset ≤ sAdv.cursor.pos.offset :=
+        IxCursor.advance_offset_monotonic s.cursor
+      have h2 : sAdv.cursor.pos.offset ≤ cAfterName.pos.offset :=
+        collectDirectiveNameLoopIx_offset_monotonic sAdv.cursor "" fuel
+      have h3 : cAfterName.pos.offset ≤ cAfterWS.pos.offset :=
+        skipWhitespace_offset_monotonic cAfterName
+      exact Nat.le_trans h1 (Nat.le_trans h2 h3)
     if name == "YAML" then
       scanYamlDirectiveIx ({ sAdv with cursor := cAfterName } : ScannerStateIx input)
-        cAfterWS startPos
+        cAfterWS startPos hStart
     else if name == "TAG" then
       scanTagDirectiveIx ({ sAdv with cursor := cAfterName } : ScannerStateIx input)
-        cAfterWS startPos
+        cAfterWS startPos hStart
     else
       .ok ({ sAdv with cursor := cAfterWS } : ScannerStateIx input)
 
@@ -390,13 +591,22 @@ def scanAnchorOrAliasIx {input : String} (s : ScannerStateIx input)
   let startPos := s.cursor.pos
   let sAdv := s.advance
   let fuel := input.utf8ByteSize - sAdv.cursor.pos.offset
-  let (name, cAfterName) := collectAnchorNameLoopIx sAdv.cursor "" fuel
+  let r := collectAnchorNameLoopIx sAdv.cursor "" fuel
+  let name := r.1
+  let cAfterName := r.2
   if name.isEmpty then
     .error (.emptyAnchorName startPos.line startPos.col)
   else
     let token := if isAnchor then YamlToken.anchor name else YamlToken.alias name
     let sAfter : ScannerStateIx input := { sAdv with cursor := cAfterName }
-    let sEmit := sAfter.emitAtSafe startPos token
+    let hBound : startPos.offset ≤ sAfter.cursor.pos.offset := by
+      show s.cursor.pos.offset ≤ r.2.pos.offset
+      have h1 : s.cursor.pos.offset ≤ sAdv.cursor.pos.offset :=
+        IxCursor.advance_offset_monotonic s.cursor
+      have h2 : sAdv.cursor.pos.offset ≤ r.2.pos.offset :=
+        collectAnchorNameLoopIx_offset_monotonic sAdv.cursor "" fuel
+      exact Nat.le_trans h1 h2
+    let sEmit := sAfter.emitAt startPos token hBound
     let anchors :=
       if isAnchor then sEmit.definedAnchors.push name
       else sEmit.definedAnchors
@@ -411,21 +621,44 @@ def scanTagIx {input : String} (s : ScannerStateIx input) :
   | some '<' =>
     let s2 := sAdv.advance
     let fuel := input.utf8ByteSize - s2.cursor.pos.offset
-    let (uri, foundClose, cAfter) := collectVerbatimTagLoopIx s2.cursor "" fuel
+    let rVerb := collectVerbatimTagLoopIx s2.cursor "" fuel
+    let uri := rVerb.1
+    let foundClose := rVerb.2.1
+    let cAfter := rVerb.2.2
     if !foundClose then
       .error (.unterminatedVerbatimTag startPos.line startPos.col)
     else if uri.isEmpty then
       .error (.emptyVerbatimTagURI startPos.line startPos.col)
     else
       let sAfter : ScannerStateIx input := { s2 with cursor := cAfter }
-      let sEmit := sAfter.emitAtSafe startPos (YamlToken.tag "" uri)
+      let hBound : startPos.offset ≤ sAfter.cursor.pos.offset := by
+        show s.cursor.pos.offset ≤ rVerb.2.2.pos.offset
+        have h1 : s.cursor.pos.offset ≤ sAdv.cursor.pos.offset :=
+          IxCursor.advance_offset_monotonic s.cursor
+        have h2 : sAdv.cursor.pos.offset ≤ s2.cursor.pos.offset :=
+          IxCursor.advance_offset_monotonic sAdv.cursor
+        have h3 : s2.cursor.pos.offset ≤ rVerb.2.2.pos.offset :=
+          collectVerbatimTagLoopIx_offset_monotonic s2.cursor "" fuel
+        exact Nat.le_trans h1 (Nat.le_trans h2 h3)
+      let sEmit := sAfter.emitAt startPos (YamlToken.tag "" uri) hBound
       .ok { sEmit with simpleKeyAllowed := false }
   | some '!' =>
     let s2 := sAdv.advance
     let fuel := input.utf8ByteSize - s2.cursor.pos.offset
-    let (suffix, cAfter) := collectTagSuffixLoopIx s2.cursor "" fuel
+    let rSec := collectTagSuffixLoopIx s2.cursor "" fuel
+    let suffix := rSec.1
+    let cAfter := rSec.2
     let sAfter : ScannerStateIx input := { s2 with cursor := cAfter }
-    let sEmit := sAfter.emitAtSafe startPos (YamlToken.tag "!!" suffix)
+    let hBound : startPos.offset ≤ sAfter.cursor.pos.offset := by
+      show s.cursor.pos.offset ≤ rSec.2.pos.offset
+      have h1 : s.cursor.pos.offset ≤ sAdv.cursor.pos.offset :=
+        IxCursor.advance_offset_monotonic s.cursor
+      have h2 : sAdv.cursor.pos.offset ≤ s2.cursor.pos.offset :=
+        IxCursor.advance_offset_monotonic sAdv.cursor
+      have h3 : s2.cursor.pos.offset ≤ rSec.2.pos.offset :=
+        collectTagSuffixLoopIx_offset_monotonic s2.cursor "" fuel
+      exact Nat.le_trans h1 (Nat.le_trans h2 h3)
+    let sEmit := sAfter.emitAt startPos (YamlToken.tag "!!" suffix) hBound
     .ok { sEmit with simpleKeyAllowed := false }
   | _ =>
     let fuel := input.utf8ByteSize - sAdv.cursor.pos.offset
@@ -435,13 +668,30 @@ def scanTagIx {input : String} (s : ScannerStateIx input) :
     let cAfterHandle := r.2.2
     let (handle, suffix0) :=
       if foundBang then ("!" ++ chars ++ "!", "") else ("!", chars)
-    let (suffix, cAfter) :=
-      if foundBang then
+    let rSuf := if foundBang then
         let fuel' := input.utf8ByteSize - cAfterHandle.pos.offset
         collectTagSuffixLoopIx cAfterHandle "" fuel'
       else (suffix0, cAfterHandle)
+    let suffix := rSuf.1
+    let cAfter := rSuf.2
     let sAfter : ScannerStateIx input := { sAdv with cursor := cAfter }
-    let sEmit := sAfter.emitAtSafe startPos (YamlToken.tag handle suffix)
+    let hBound : startPos.offset ≤ sAfter.cursor.pos.offset := by
+      show s.cursor.pos.offset ≤ rSuf.2.pos.offset
+      have h1 : s.cursor.pos.offset ≤ sAdv.cursor.pos.offset :=
+        IxCursor.advance_offset_monotonic s.cursor
+      have h2 : sAdv.cursor.pos.offset ≤ cAfterHandle.pos.offset :=
+        collectTagHandleLoopIx_offset_monotonic sAdv.cursor "" fuel
+      have h3 : cAfterHandle.pos.offset ≤ rSuf.2.pos.offset := by
+        show cAfterHandle.pos.offset ≤
+            (if foundBang then
+                let fuel' := input.utf8ByteSize - cAfterHandle.pos.offset
+                collectTagSuffixLoopIx cAfterHandle "" fuel'
+              else (suffix0, cAfterHandle)).2.pos.offset
+        split
+        · exact collectTagSuffixLoopIx_offset_monotonic cAfterHandle "" _
+        · exact Nat.le_refl _
+      exact Nat.le_trans h1 (Nat.le_trans h2 h3)
+    let sEmit := sAfter.emitAt startPos (YamlToken.tag handle suffix) hBound
     .ok { sEmit with simpleKeyAllowed := false }
 
 /-! ## Flow indicators -/
@@ -608,30 +858,46 @@ def scanNextTokenIx_dispatchContent {input : String} (s : ScannerStateIx input)
   if c == '|' || c == '>' then
     let parentIndent := (max 0 s.currentIndent).toNat
     let startPos := s.cursor.pos
-    match scanBlockScalarIx s.cursor parentIndent with
-    | some (content, style, cAfter) =>
+    match hBS : scanBlockScalarIx s.cursor parentIndent with
+    | some r =>
+      let content := r.1
+      let style := r.2.1
+      let cAfter := r.2.2
       let sAfter : ScannerStateIx input := { s with cursor := cAfter }
-      let sEmit := sAfter.emitAtSafe startPos (YamlToken.scalar content style)
+      let hBound : startPos.offset ≤ sAfter.cursor.pos.offset := by
+        show s.cursor.pos.offset ≤ r.2.2.pos.offset
+        exact scanBlockScalarIx_offset_monotonic s.cursor parentIndent hBS
+      let sEmit := sAfter.emitAt startPos (YamlToken.scalar content style) hBound
       return { sEmit with simpleKeyAllowed := false }
     | none =>
       throw (.unexpectedChar c s.cursor.pos.line s.cursor.pos.col)
   if c == '"' then
     let startPos := s.cursor.pos
-    match scanDoubleQuotedIx s.cursor with
-    | some (content, cAfter) =>
+    match hDQ : scanDoubleQuotedIx s.cursor with
+    | some r =>
+      let content := r.1
+      let cAfter := r.2
       let sAfter : ScannerStateIx input := { s with cursor := cAfter }
-      let sEmit := sAfter.emitAtSafe startPos
-        (YamlToken.scalar content ScalarStyle.doubleQuoted)
+      let hBound : startPos.offset ≤ sAfter.cursor.pos.offset := by
+        show s.cursor.pos.offset ≤ r.2.pos.offset
+        exact Nat.le_of_lt (scanDoubleQuotedIx_offset_lt s.cursor hDQ)
+      let sEmit := sAfter.emitAt startPos
+        (YamlToken.scalar content ScalarStyle.doubleQuoted) hBound
       return { sEmit with simpleKeyAllowed := false }
     | none =>
       throw (.unterminatedScalar ScalarStyle.doubleQuoted s.cursor.pos.line)
   if c == '\'' then
     let startPos := s.cursor.pos
-    match scanSingleQuotedIx s.cursor with
-    | some (content, cAfter) =>
+    match hSQ : scanSingleQuotedIx s.cursor with
+    | some r =>
+      let content := r.1
+      let cAfter := r.2
       let sAfter : ScannerStateIx input := { s with cursor := cAfter }
-      let sEmit := sAfter.emitAtSafe startPos
-        (YamlToken.scalar content ScalarStyle.singleQuoted)
+      let hBound : startPos.offset ≤ sAfter.cursor.pos.offset := by
+        show s.cursor.pos.offset ≤ r.2.pos.offset
+        exact Nat.le_of_lt (scanSingleQuotedIx_offset_lt s.cursor hSQ)
+      let sEmit := sAfter.emitAt startPos
+        (YamlToken.scalar content ScalarStyle.singleQuoted) hBound
       return { sEmit with simpleKeyAllowed := false }
     | none =>
       throw (.unterminatedScalar ScalarStyle.singleQuoted s.cursor.pos.line)
@@ -639,10 +905,15 @@ def scanNextTokenIx_dispatchContent {input : String} (s : ScannerStateIx input)
     let startPos := s.cursor.pos
     let contentIndent := if s.inFlow then s.cursor.pos.col
                           else (max 0 (s.currentIndent + 1)).toNat
-    let (content, cAfter) := scanPlainScalarIx s.cursor s.inFlow contentIndent
+    let rP := scanPlainScalarIx s.cursor s.inFlow contentIndent
+    let content := rP.1
+    let cAfter := rP.2
     let sAfter : ScannerStateIx input := { s with cursor := cAfter }
-    let sEmit := sAfter.emitAtSafe startPos
-      (YamlToken.scalar content ScalarStyle.plain)
+    let hBound : startPos.offset ≤ sAfter.cursor.pos.offset := by
+      show s.cursor.pos.offset ≤ rP.2.pos.offset
+      exact scanPlainScalarIx_offset_monotonic s.cursor s.inFlow contentIndent
+    let sEmit := sAfter.emitAt startPos
+      (YamlToken.scalar content ScalarStyle.plain) hBound
     return { sEmit with simpleKeyAllowed := false }
   throw (.unexpectedChar c s.cursor.pos.line s.cursor.pos.col)
 
