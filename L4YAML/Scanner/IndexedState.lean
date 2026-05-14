@@ -196,24 +196,6 @@ def emitAt {input : String} (s : ScannerStateIx input) (startPos : YamlPos)
     IxToken.mk' (input := input) startPos tok s.cursor.pos hOrder s.cursor.posBound
   { s with tokens := s.tokens.push t }
 
-/-- Emit a token at the saved `startPos`, defensively checking the
-    offset ordering at runtime. If the bound fails (only possible
-    in malformed scans), falls back to a zero-width token at the
-    current cursor. This is the dispatcher-side analogue of
-    `emitAt`: it avoids inline monotonicity proofs in the dispatch
-    family while keeping the produced `TokenStream` well-formed.
-
-    Step 5b/5c discharges this by chaining helper-loop monotonicity
-    lemmas and replacing `emitAtSafe` with `emitAt`. -/
-def emitAtSafe {input : String} (s : ScannerStateIx input) (startPos : YamlPos)
-    (tok : YamlToken) : ScannerStateIx input :=
-  if h : startPos.offset ≤ s.cursor.pos.offset then
-    let t : IxToken input :=
-      IxToken.mk' (input := input) startPos tok s.cursor.pos h s.cursor.posBound
-    { s with tokens := s.tokens.push t }
-  else
-    s.emit tok
-
 /-- Emit a zero-width token at the saved cursor `sk` (its `posBound`
     discharges the indexed-token bound obligation). Used for tokens
     constructed at the simple-key save position. -/
