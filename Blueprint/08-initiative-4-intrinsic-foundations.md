@@ -1114,7 +1114,9 @@ against YAML 1.2.2 rules in both directions (`present` and
 **Critical guardrail** (Lesson 1): legacy scanner deleted in the
 cutover commit. No "dual-write" interim state.
 
-**Reflections** (Phase 3 Step 1 — indexed-type extensions):
+#### Reflections
+
+<details><summary>R29 — The cursor type is the scanning-side analogue of `Range` (Phase 3 Step 1).</summary>
 
 29. **The cursor type is the scanning-side analogue of `Range`.**
     Phase 2 framed `Range input` as a *static* byte interval — the
@@ -1129,6 +1131,10 @@ cutover commit. No "dual-write" interim state.
     use it once per emitted token. Worth recording as a design
     constraint: do not collapse `IxCursor` into `Range × {line, col}`
     or vice versa.
+
+</details>
+
+<details><summary>R30 — `Nat.min` discharges the `advance` bound without a deep stdlib lemma.</summary>
 
 30. **`Nat.min` discharges the `advance` bound without a
     deep stdlib lemma.** The natural bound proof for
@@ -1147,6 +1153,10 @@ cutover commit. No "dual-write" interim state.
     input ⟨c.pos.offset⟩).byteIdx` whenever `c.hasMore = true`,
     and use that lemma to bridge to legacy-scanner reasoning.
 
+</details>
+
+<details><summary>R31 — Step 1's API surface is sized for Step 2's first cluster.</summary>
+
 31. **Step 1's API surface is sized for Step 2's first cluster.**
     The temptation was to add `peekBack?`-with-proof, range
     intersection, cursor monotonicity, etc. — anything that *might*
@@ -1161,7 +1171,9 @@ cutover commit. No "dual-write" interim state.
     bound's `Nat.min` form makes the cleanest formulation
     use-site-dependent (Reflection 30).
 
-**Reflections** (Phase 3 Step 2 — character/whitespace layer):
+</details>
+
+<details><summary>R32 — The `Nat.min`-clamp obligation cleared at first use, exactly as planned (Phase 3 Step 2).</summary>
 
 32. **The `Nat.min`-clamp obligation cleared at first use, exactly
     as planned.** Reflection 30 predicted Step 2 would need the
@@ -1179,6 +1191,10 @@ cutover commit. No "dual-write" interim state.
     direct strict-inequality form before reaching for an
     "unclamping" intermediate.
 
+</details>
+
+<details><summary>R33 — Pattern-matching on `Char` literals defeats `split`; use `if/else` on `==` instead.</summary>
+
 33. **Pattern-matching on `Char` literals defeats `split`; use
     `if/else` on `==` instead.** First draft of `consumeLineBreak`
     used `match c.peek? with | some '\n' => ... | some '\r' => ...
@@ -1194,6 +1210,10 @@ cutover commit. No "dual-write" interim state.
     pattern-match on `Char` literals in scanner code; always use
     `==` and let `if/else` carry the case structure.**
 
+</details>
+
+<details><summary>R34 — `by_contra` is not in stdlib for this Lean version; use `if h : ... then ... else ...` for decidable contradictions.</summary>
+
 34. **`by_contra` is not in stdlib for this Lean version (v4.30.0-rc2)
     — use `if h : ... then ... else ...` for decidable
     contradictions.** The `peekIs*_implies_hasMore` proofs initially
@@ -1204,6 +1224,10 @@ cutover commit. No "dual-write" interim state.
     `Decidable` instances directly. **Rule: until Mathlib lands in
     the dependency tree, write contradictions as if-then-else with
     explicit `Decidable` dispatch.**
+
+</details>
+
+<details><summary>R35 — Termination correctness was deferred from Step 2 to Step 3 — name it a scope shift, not an optimisation.</summary>
 
 35. **Termination correctness was deferred from Step 2 to Step 3 —
     name it a scope shift, not an optimisation.** The "skip-loops
@@ -1223,6 +1247,10 @@ cutover commit. No "dual-write" interim state.
     the deferral 'cheaper' — that wording rationalises scope
     reduction. Update the deferred-to doc to absorb the
     obligation, and label the move as what it is.**
+
+</details>
+
+<details><summary>R36 — Closing the Step 2 deferred obligation was easier than the blueprint sold.</summary>
 
 36. **Closing the Step 2 deferred obligation was easier than the
     blueprint sold.** Termination + count-equals-column-delta
@@ -1260,6 +1288,10 @@ cutover commit. No "dual-write" interim state.
     purposes. The deferred-to side should state the deliverable
     in its eventual form rather than the form initially expected.**
 
+</details>
+
+<details><summary>R37 — `let`-bindings opacify the body to `split` / `cases`.</summary>
+
 37. **`let`-bindings opacify the body to `split` / `cases`.** The
     first draft of `skipToContentLoop` used
     `let c1 := skipWhitespace c; match c1.peek? with …`; `split`
@@ -1277,6 +1309,10 @@ cutover commit. No "dual-write" interim state.
     function body via `split` or `cases`, the source must not
     hide structural decisions behind intermediate `let`-bindings
     or pattern-destructure. Inline.**
+
+</details>
+
+<details><summary>R38 — Progress is *not* a bidirectional spec lemma — it deserves its own deliverable, *and* its own explicit deferred-to paragraph.</summary>
 
 38. **Progress is *not* a bidirectional spec lemma — it deserves
     its own deliverable, *and* its own explicit deferred-to
@@ -1314,6 +1350,10 @@ cutover commit. No "dual-write" interim state.
     step but you ran out of time, name *that* instead
     (Reflection 35).**
 
+</details>
+
+<details><summary>R39 — Nested namespaces don't shield short names from a populated parent namespace.</summary>
+
 39. **Nested namespaces don't shield short names from a populated
     parent namespace.** Step 4a's new scalar recognisers
     (`processEscape`, `scanDoubleQuoted`, `collectPlainScalarLoop`,
@@ -1338,6 +1378,10 @@ cutover commit. No "dual-write" interim state.
     aggressive `_root_` qualification or per-callsite `open` —
     spreads through every proof file. The cost is paid once at
     rename time, not at every proof site.**
+
+</details>
+
+<details><summary>R40 — Inline values, not bind them, when a function will be split apart in proofs (Reflection 37, second iteration).</summary>
 
 40. **Inline values, not bind them, when a function will be split
     apart in proofs (Reflection 37, second iteration).** Step 4a's
@@ -1365,6 +1409,10 @@ cutover commit. No "dual-write" interim state.
     else ...) = ...`, the let-binding is the obstacle, not the
     `if`.**
 
+</details>
+
+<details><summary>R41 — A block-scalar dispatch is small if you push the chain into a named helper.</summary>
+
 41. **A block-scalar dispatch is small if you push the chain into a
     named helper.** Step 4b's `scanBlockScalarIx` cores around a
     five-stage cursor chain: `c → c.advance → parseBlockHeaderLoopIx
@@ -1389,6 +1437,10 @@ cutover commit. No "dual-write" interim state.
     branching internally; the payoff is that downstream proofs
     treat the helper as opaque.
 
+</details>
+
+<details><summary>R42 — Mathlib's `set` is not in the kernel; substitute named `have` blocks.</summary>
+
 42. **Mathlib's `set` is not in the kernel; substitute named
     `have` blocks.** The first cut at the block-scalar dispatch
     proof used `set cHdr := ...`, `set cComm := ...`, `set cBreak
@@ -1405,6 +1457,10 @@ cutover commit. No "dual-write" interim state.
     corpus; the cutover commit's import surface must remain
     minimal. If you find yourself wanting `set` for legibility,
     that's a signal to extract a named helper (Reflection 41).**
+
+</details>
+
+<details><summary>R43 — Save the cursor, not the position, when later code needs the bound proof.</summary>
 
 43. **Save the cursor, not the position, when later code needs the
     bound proof.** Step 5a's `SimpleKeyStateIx` originally held a
@@ -1428,6 +1484,10 @@ cutover commit. No "dual-write" interim state.
     this indexes the holder structure on `input`; the cost is
     justified because the alternative is a parallel-state bound
     field at every save site.**
+
+</details>
+
+<details><summary>R44 — `emitAtSafe` is a legitimate dispatcher-side fallback when the static proof is long but mechanical.</summary>
 
 44. **`emitAtSafe` is a legitimate dispatcher-side fallback when the
     static proof is long but mechanical.** Step 5a's dispatch family
@@ -1461,6 +1521,10 @@ cutover commit. No "dual-write" interim state.
     fixed shape, and the dispatcher will be refactored in the next
     step anyway.
 
+</details>
+
+<details><summary>R45 — Forward-looking blueprint paragraphs are *deliverables*, not *session work items*.</summary>
+
 45. **Forward-looking blueprint paragraphs are *deliverables*, not
     *session work items*.** The pre-Step-5a blueprint said: "Step 5
     — End-to-end `parse ∘ present = id`. Tie the per-rule
@@ -1485,6 +1549,10 @@ cutover commit. No "dual-write" interim state.
     session's scope. The user is amenable to splits when the
     rationale is "this is the natural decomposition", not "we ran
     out of time".**
+
+</details>
+
+<details><summary>R46 — Sub-steps within sub-steps: when a "plan" entry is really a backlog, order it and quote the ordering before starting.</summary>
 
 46. **Sub-steps within sub-steps: when a "plan" entry is really
     a backlog, order it and quote the ordering before starting.**
@@ -1516,6 +1584,10 @@ cutover commit. No "dual-write" interim state.
     under-reach (leaving the carry-forward fuzzy). Apply this
     recursively: if a sub-step plan paragraph itself becomes a
     list of more than three items, sub-divide again.**
+
+</details>
+
+<details><summary>R47 — "Single-line chain" framing in a sub-step plan is a hypothesis to test before coding, not a sizing claim to trust.</summary>
 
 47. **"Single-line chain" framing in a sub-step plan is a
     hypothesis to test before coding, not a sizing claim to
@@ -1558,6 +1630,10 @@ cutover commit. No "dual-write" interim state.
     plan before coding*, then proceed. Five minutes of reading
     saves a session-ending re-plan.**
 
+</details>
+
+<details><summary>R48 — `split at h` cannot peel a `do throw e; rest` block in an `Except` monad until `pure_bind` and the surrounding `if`/`match` have been rewritten.</summary>
+
 48. **`split at h` cannot peel a `do throw e; rest` block in an
     `Except` monad until `pure_bind` and the surrounding
     `if`/`match` have been rewritten.** The Pattern-C draft of
@@ -1591,6 +1667,10 @@ cutover commit. No "dual-write" interim state.
     Except.bind]` first.** (See
     `scanDocumentEndIx_offset_monotonic` in
     `Proofs/Scanner/IndexedDispatch.lean`.)
+
+</details>
+
+<details><summary>R49 — `split at h` also cannot peel a term-level `let`-block until the lets are zeta-reduced.</summary>
 
 49. **`split at h` also cannot peel a term-level `let`-block
     until the lets are zeta-reduced.** Reflection 48 covered
@@ -1628,6 +1708,8 @@ cutover commit. No "dual-write" interim state.
     `scanDirectiveIx_offset_monotonic` in
     `Proofs/Scanner/IndexedDispatch.lean`.)
 
+</details>
+
 #### Phase 3 sub-plan (six sessions)
 
 <details><summary>Phase 3 is ~30× the size of the Phase 2 capstone. It is decomposed into six sessions; only the final commit must be atomic per Guardrail 1.</summary>
@@ -1644,6 +1726,8 @@ namespace that the production build does **not** import. Step 6
 performs the atomic cutover: rename, delete legacy, retarget every
 downstream proof file in one push.
 
+<details><summary>Step 1 — Indexed-type extensions <em>(landed)</em>.</summary>
+
 **Step 1 — Indexed-type extensions** *(landed)*.
 Grew the indexed substrate so steps 2–5 have the primitives they
 need. Added operations on `Range input`, `IxToken input`,
@@ -1656,6 +1740,10 @@ byte cursor with `peek?`, `peekAt?`, `peekBack?`, `advance`,
 no character-class wiring. Nothing in `L4YAML/Scanner/` was
 touched. **Sorry budget: 0 → 0**; full `lake build` passes 385
 targets (up from 383 at Phase 2 close).
+
+</details>
+
+<details><summary>Step 2 — New scanner, character/whitespace layer <em>(landed)</em>.</summary>
 
 **Step 2 — New scanner, character/whitespace layer** *(landed)*.
 Built the lowest-level recognisers over `IxCursor input` in the
@@ -1709,6 +1797,10 @@ been enlarged in the blueprint to absorb the obligation.
 **Sorry budget: 0 → 0** in the staging files. Full `lake build`
 passes (385 jobs total; lake-mode auto-discovers and builds the
 staging files even though `L4YAML.lean` does not import them).
+
+</details>
+
+<details><summary>Step 3 — New scanner, indentation/line-break layer <em>(landed)</em>.</summary>
 
 **Step 3 — New scanner, indentation/line-break layer** *(landed)*.
 Extended the staging scanner (`L4YAML/Scanner/IndexedScanner.lean`)
@@ -1780,6 +1872,10 @@ settles at EOF or a non-`s-l-comments` character" — is a
 strict-fuel termination result, *not* a bidirectional spec
 lemma. It is deferred to Step 4 where the dispatch-loop's fuel
 measure is the natural carrier. See Reflection 38.
+
+</details>
+
+<details><summary>Step 4a — New scanner, single-line scalar lexing + `skipToContent` progress closure <em>(landed)</em>.</summary>
 
 **Step 4a — New scanner, single-line scalar lexing +
 `skipToContent` progress closure** *(landed)*.
@@ -1876,6 +1972,10 @@ decoded `Nat`), and (e) bidirectional content-correctness proofs
 (that the resolved scalar content matches the spec's substring
 extraction).
 
+</details>
+
+<details><summary>Step 4b — New scanner, multi-line + block scalars <em>(landed)</em>.</summary>
+
 **Step 4b — New scanner, multi-line + block scalars**
 *(landed)*.
 
@@ -1968,6 +2068,10 @@ passes 385 targets; the staging files remain unimported from
   `parentIndent` parameter to the indent-stack and threads
   `inFlow` / `contentIndent` through `scanPlainScalarIx`.
 
+</details>
+
+<details><summary>Step 5a — Top-level dispatcher + scanner state <em>(landed)</em>.</summary>
+
 **Step 5a — Top-level dispatcher + scanner state** *(landed)*.
 
 Step 5 was sized against the legacy scanner code (~3,100 LOC) and
@@ -2053,6 +2157,10 @@ deliverable, not a per-session work item. Step 5a is the
 dispatcher-and-state slice; 5b is the monotonicity-and-content
 slice; 5c is the present-plus-corpus slice. (Reflection 45.)
 
+</details>
+
+<details><summary>Step 5b sub-step plan (nine sub-steps; per R46).</summary>
+
 **Step 5b sub-step plan** (Reflection 46). Step 5b's eight
 carry-forward clusters do not fit one session. The original
 "dispatcher offset-monotonicity chain + `emitAtSafe`→`emitAt`"
@@ -2134,6 +2242,10 @@ clusters become 5b.2–5b.8. Total: nine sub-steps.
   Step 4b): the threaded `content ++ folded` matches `[131]`–
   `[135]`.
 
+</details>
+
+<details><summary>Step 5b.1a — Helper-loop monotonicity + `emitAtSafe`→`emitAt` <em>(landed)</em>.</summary>
+
 **Step 5b.1a — Helper-loop monotonicity + `emitAtSafe`→`emitAt`**
 *(landed)*.
 
@@ -2195,6 +2307,10 @@ in 5b.1b.i (below); the three dispatcher halves (5b.1b.ii,
 clusters (tab-in-indent hardening, `scanValueIx` validation
 chain, hex-escape value, `autoDetectBlockScalarIndentLoopIx`,
 block-scalar fold/chomp, quoted multi-line, plain multi-line).
+
+</details>
+
+<details><summary>Step 5b.1b.i — Preservation infrastructure <em>(landed)</em>.</summary>
 
 **Step 5b.1b.i — Preservation infrastructure** *(landed)*.
 
@@ -2260,6 +2376,10 @@ preservation `@[simp]` lemmas above, then close with
 cases where no `advance` happens before the result is assembled
 — `scanFlowEntryIx` etc.).
 
+</details>
+
+<details><summary>Step 5b.1b.ii — Simple-shape dispatcher monotonicity <em>(landed)</em>.</summary>
+
 **Step 5b.1b.ii — Simple-shape dispatcher monotonicity** *(landed)*.
 
 Ten per-dispatcher offset-monotonicity lemmas added to
@@ -2312,6 +2432,10 @@ monotonicity for the five node-property + directive dispatchers
 but the chains thread through `collectAnchorNameLoopIx` /
 `collectTagHandleLoopIx` / `collectDirectiveNameLoopIx` /
 `skipWhitespace` (the 5b.1a helper-loop monotonicity lemmas).
+
+</details>
+
+<details><summary>Step 5b.1b.iii — Node-property + directive dispatcher monotonicity <em>(landed)</em>.</summary>
 
 **Step 5b.1b.iii — Node-property + directive dispatcher
 monotonicity** *(landed)*.
@@ -2389,7 +2513,11 @@ returns a `TokenStream`, not state, so its statement form is
 offset"* — proven by induction on fuel, using the per-step
 `scanNextTokenIx_offset_monotonic`.
 
-### Step 5b.1b.iv-pre — Tokens-size growth leaf helpers *(landed)*
+</details>
+
+<details><summary>Step 5b.1b.iv-pre — Tokens-size growth leaf helpers <em>(landed)</em>.</summary>
+
+**Step 5b.1b.iv-pre — Tokens-size growth leaf helpers** *(landed)*.
 
 The chain ingredients for the eventual 5b.1b.iv-cont top-level
 proofs landed: 6 simp lemmas counting `tokens.size` effects of
@@ -2457,6 +2585,10 @@ passes all 385 targets. `L4YAML.lean` does not import any
 chain lemmas. With the leaf `_tokens_size_le` helpers and R50's
 two fix candidates in hand, the next session should fit in scope.
 
+</details>
+
+<details><summary>Step 5c — `present` + corpus theorem <em>(planned)</em>.</summary>
+
 **Step 5c — `present` + corpus theorem** *(planned)*.
 After Step 5b is sorry-free, build:
 - `present : TokenStream input → String` — render an indexed
@@ -2466,6 +2598,10 @@ After Step 5b is sorry-free, build:
 - The corpus roundtrip theorem: for each `ts ∈ corpus`,
   `scanIx (present ts) = .ok ts`.
 - All staging proofs reach sorry-free at end of session.
+
+</details>
+
+<details><summary>Step 6 — Atomic cutover.</summary>
 
 **Step 6 — Atomic cutover**.
 A single commit:
@@ -2483,6 +2619,10 @@ A single commit:
 4. Update `L4YAML.lean` import list.
 5. Full `lake build` must pass in this single commit.
 
+</details>
+
+<details><summary>Sub-plan guardrails.</summary>
+
 **Sub-plan guardrails**:
 - Each of steps 1–5 commits with `sorry: N → 0` (or `0 → 0`) in
   the *new* indexed/staging files; the legacy sorry count is
@@ -2492,6 +2632,8 @@ A single commit:
   message body.
 - If any step surfaces a missing algebra item, **stop and re-open
   Phase 1** (Guardrail 2). Do not quietly add a 24th item.
+
+</details>
 
 </details>
 
