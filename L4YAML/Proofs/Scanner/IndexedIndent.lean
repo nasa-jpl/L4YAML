@@ -225,9 +225,10 @@ theorem skipToContent_at_content {input : String} (c : IxCursor input)
     | succ n => simp [hpw]
   unfold skipToContent skipToContentLoop
   rw [hSW, hpe]
-  have hHashBool : (ch == '#') = false := by
+  have hCommentBool : isCommentBool ch = false := by
+    unfold isCommentBool
     simp [hHash]
-  simp [hHashBool, hLB]
+  simp [hCommentBool, hLB]
 
 /-! ## `skipToContent` — global progress (closes the Step 3 → Step 4
 deferred obligation, Reflection 38)

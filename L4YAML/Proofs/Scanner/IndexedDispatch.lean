@@ -196,6 +196,15 @@ state's `inFlow` after `rw [if_pos/if_neg]`. -/
   · rfl
   · split <;> rfl
 
+@[simp] theorem scanValueClearKeyIx_cursor {input : String} (s : ScannerStateIx input) :
+    (scanValueClearKeyIx s).cursor = s.cursor := by
+  unfold scanValueClearKeyIx
+  split
+  · split
+    · rfl
+    · split <;> rfl
+  · rfl
+
 @[simp] theorem scanValuePrepareIx_cursor {input : String} (s : ScannerStateIx input) :
     (scanValuePrepareIx s).cursor = s.cursor := by
   unfold scanValuePrepareIx
@@ -320,11 +329,17 @@ theorem scanValueIx_offset_monotonic {input : String}
     {s s' : ScannerStateIx input} (h : scanValueIx s = .ok s') :
     s.cursor.pos.offset ≤ s'.cursor.pos.offset := by
   unfold scanValueIx at h
-  simp only [Except.ok.injEq] at h
-  subst h
-  show s.cursor.pos.offset ≤ _
-  simp only [advance_cursor, emit_cursor, scanValuePrepareIx_cursor]
-  exact IxCursor.advance_offset_monotonic _
+  simp only [bind, Except.bind] at h
+  split at h
+  · cases h                                                  -- validate threw
+  · split at h
+    · cases h                                                -- tab-check threw
+    · simp only [Except.ok.injEq] at h
+      subst h
+      show s.cursor.pos.offset ≤ _
+      simp only [advance_cursor, emit_cursor, scanValuePrepareIx_cursor,
+                 scanValueClearKeyIx_cursor]
+      exact IxCursor.advance_offset_monotonic _
 
 theorem scanFlowEntryIx_offset_monotonic {input : String}
     {s s' : ScannerStateIx input} (h : scanFlowEntryIx s = .ok s') :
@@ -689,6 +704,15 @@ theorem saveSimpleKeyIx_tokens_size_le {input : String} (s : ScannerStateIx inpu
     · simp; omega
     · exact Nat.le_refl _
 
+theorem scanValueClearKeyIx_tokens_size_le {input : String} (s : ScannerStateIx input) :
+    s.tokens.size ≤ (scanValueClearKeyIx s).tokens.size := by
+  unfold scanValueClearKeyIx
+  split
+  · split
+    · exact Nat.le_refl _
+    · split <;> exact Nat.le_refl _
+  · exact Nat.le_refl _
+
 theorem scanValuePrepareIx_tokens_size_le {input : String} (s : ScannerStateIx input) :
     s.tokens.size ≤ (scanValuePrepareIx s).tokens.size := by
   unfold scanValuePrepareIx
@@ -765,11 +789,18 @@ theorem scanValueIx_tokens_size_le {input : String}
     {s s' : ScannerStateIx input} (h : scanValueIx s = .ok s') :
     s.tokens.size ≤ s'.tokens.size := by
   unfold scanValueIx at h
-  simp only [Except.ok.injEq] at h
-  subst h
-  refine Nat.le_trans (scanValuePrepareIx_tokens_size_le s) ?_
-  show _ ≤ _
-  simp
+  simp only [bind, Except.bind] at h
+  split at h
+  · cases h                                                  -- validate threw
+  · split at h
+    · cases h                                                -- tab-check threw
+    · simp only [Except.ok.injEq] at h
+      subst h
+      refine Nat.le_trans (scanValueClearKeyIx_tokens_size_le s) ?_
+      refine Nat.le_trans
+        (scanValuePrepareIx_tokens_size_le (scanValueClearKeyIx s)) ?_
+      show _ ≤ _
+      simp
 
 theorem scanFlowEntryIx_tokens_size_le {input : String}
     {s s' : ScannerStateIx input} (h : scanFlowEntryIx s = .ok s') :
