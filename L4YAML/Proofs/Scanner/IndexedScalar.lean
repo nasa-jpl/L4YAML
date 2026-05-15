@@ -827,4 +827,49 @@ theorem autoDetectBlockScalarIndentIx_ge_min
   unfold autoDetectBlockScalarIndentIx
   exact autoDetectBlockScalarIndentLoopIx_ge_min c 0 minContentIndent _
 
+/-! ## Layer F.2 — Block-scalar content correctness (Step 5b.6)
+
+Carried-forward Step 4b obligation: `foldBlockContent` and `applyChomp`
+match their YAML 1.2.2 spec semantics. The fold step lives in §8.1.3
+([170]–[181]); chomping lives in §8.1.1 ([160]).
+
+`applyChomp` is a three-way case split on `[160]`'s `c-chomping-indicator`:
+- `.keep` — preserve all trailing newlines (identity)
+- `.strip` — remove every trailing `\n` (`stripTrailingNewlines`)
+- `.clip` — keep at most one trailing `\n` (exactly one iff `raw`
+  ended with `\n`)
+
+`foldBlockContent` is the four-state machine over the raw block content
+(`FoldState`: `start` / `content` / `empty` / `more`). Both are pure
+`String → String` transformers, so their correctness lemmas reduce to
+*definitional* unfolds — they serve as spec-traceability anchors for the
+downstream multi-line consumers (Steps 5b.7 quoted, 5b.8 plain). -/
+
+theorem applyChomp_keep (raw : String) :
+    applyChomp .keep raw = raw :=
+  rfl
+
+theorem applyChomp_strip (raw : String) :
+    applyChomp .strip raw = stripTrailingNewlines raw :=
+  rfl
+
+theorem applyChomp_clip_of_endsWith {raw : String}
+    (h : raw.endsWith (String.singleton lineFeedChar) = true) :
+    applyChomp .clip raw =
+      stripTrailingNewlines raw ++ String.singleton lineFeedChar := by
+  simp [applyChomp, h]
+
+theorem applyChomp_clip_of_not_endsWith {raw : String}
+    (h : raw.endsWith (String.singleton lineFeedChar) = false) :
+    applyChomp .clip raw = stripTrailingNewlines raw := by
+  simp [applyChomp, h]
+
+theorem foldBlockContentGo_nil (acc : String) (st : FoldState) (pending : Nat) :
+    foldBlockContentGo [] acc st pending = acc :=
+  rfl
+
+theorem foldBlockContent_empty :
+    foldBlockContent "" = "" :=
+  rfl
+
 end L4YAML.Scanner.Indexed
