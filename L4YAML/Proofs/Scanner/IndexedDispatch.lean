@@ -82,7 +82,7 @@ end L4YAML.Indexed.IxCursor
 
 namespace L4YAML.Scanner.Indexed
 
-open L4YAML L4YAML.Indexed
+open L4YAML L4YAML.Indexed L4YAML.CharPredicates
 
 /-! ## `ScannerStateIx` — cursor-preservation lemmas
 
@@ -836,5 +836,674 @@ theorem scanDirectiveIx_tokens_size_le {input : String}
         subst h
         show s.tokens.size ≤ _
         exact Nat.le_refl _
+
+/-! ## Top-level dispatcher monotonicity (Step 5b.1b.iv-cont)
+
+The seven Blueprint-targeted top-level lemmas: five `scanNextTokenIx_*`
+sub-dispatchers (`preprocess`, `dispatchStructural`,
+`dispatchFlowIndicators`, `dispatchBlockIndicators`, `dispatchContent`),
+the per-iteration `scanNextTokenIx`, and the fueled `scanLoopIx`.
+
+The proofs use R50's two-pronged technique: outer `unfold + simp only at h`
+flattens the let-zeta'd body, then we use `split at h` with
+`all_goals first | <success-arm> | <recurse>` patterns to handle the
+let-zeta'd extra sub-cases without writing each path by hand. The
+sub-dispatchers with do-block early-return (`return some _`) are peeled
+guard-by-guard with `by_cases hg + rw [if_pos/if_neg] at h`, then
+`simp only [Bind.bind, Except.bind, pure_bind]` reduces the surviving
+`(throw _) >>= _` / `pure _ >>= _` shape.
+
+`scanLoopIx_offset_monotonic` is stated as `s.tokens.size ≤ ts.tokens.size`
+(not a cursor-comparison, since `scanLoopIx` returns a `TokenStream` and
+not a state). It is proven by induction on fuel, chaining
+`scanNextTokenIx_tokens_size_le` on each step. The stronger
+*"every newly-emitted token's `start.offset ≥` initial cursor's offset"*
+claim is deferred to Step 5b.2 (it requires per-helper bound proofs that
+each leaf lemma's current `_offset_monotonic` statement does not carry). -/
+
+/-! ### Preprocess
+
+`scanNextTokenIx_preprocess` is `let-if-if-match` without a do-block, so
+the R50 nested-`split` pattern applies directly. After `simp only at h`
+zeta-reduces the four `let` shadowings (`s.skipToContentS`, `savedIndentSize`,
+`{ unwindIndentsIx s.skipToContentS ... with needIndentCheck := false } | s`,
+`saveSimpleKeyIx _`), the four conditional layers are:
+(1) outer `if !hasMore` (true ⇒ `.ok none`, contradiction);
+(2) inner-let `if !inFlow && needIndentCheck` (both arms continue);
+(3) middle `if errCond` (true ⇒ `.error`, contradiction);
+(4) `match peek?` (`none` ⇒ `.ok none` contradiction, `some c` ⇒ success).
+The two surviving success paths share the same chain: the final cursor
+is the post-`skipToContentS` cursor (unaffected by `unwindIndentsIx` /
+`saveSimpleKeyIx`, both cursor-preserving), so `_offset_monotonic` chains
+through `skipToContentS_offset_monotonic`. -/
+
+theorem scanNextTokenIx_preprocess_offset_monotonic {input : String}
+    {s s' : ScannerStateIx input} {c : Char}
+    (h : scanNextTokenIx_preprocess s = .ok (some (s', c))) :
+    s.cursor.pos.offset ≤ s'.cursor.pos.offset := by
+  unfold scanNextTokenIx_preprocess at h
+  simp only at h
+  split at h
+  · simp at h
+  · split at h
+    all_goals
+      split at h
+      · simp at h
+      · split at h
+        · simp at h
+        · simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq] at h
+          obtain ⟨hs, _⟩ := h
+          subst hs
+          show s.cursor.pos.offset ≤ _
+          simp only [saveSimpleKeyIx_cursor, unwindIndentsIx_cursor]
+          exact skipToContentS_offset_monotonic s
+
+theorem scanNextTokenIx_preprocess_tokens_size_le {input : String}
+    {s s' : ScannerStateIx input} {c : Char}
+    (h : scanNextTokenIx_preprocess s = .ok (some (s', c))) :
+    s.tokens.size ≤ s'.tokens.size := by
+  unfold scanNextTokenIx_preprocess at h
+  simp only at h
+  split at h
+  · simp at h
+  · split at h
+    all_goals
+      split at h
+      · simp at h
+      · split at h
+        · simp at h
+        · simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq] at h
+          obtain ⟨hs, _⟩ := h
+          subst hs
+          show s.tokens.size ≤ _
+          rw [show s.tokens.size = s.skipToContentS.tokens.size from rfl]
+          refine Nat.le_trans ?_ (saveSimpleKeyIx_tokens_size_le _)
+          first
+            | exact Nat.le_refl _
+            | exact unwindIndentsIx_tokens_size_le _ _
+
+/-! ### Structural dispatch
+
+`scanNextTokenIx_dispatchStructural` is a `do`-block with two early-throw
+guards and three early-return production branches. The early-return form
+`if c then return v` desugars to a conditional that short-circuits the
+remaining `do`-block. Each guard / production is peeled with
+`by_cases hg + rw [if_pos/if_neg] at h`; the throw branches reduce to
+`.error _` (contradicting `.ok _`) via `simp [Bind.bind, Except.bind]`,
+the early-return branches reduce to `.ok (some _)` and chain through
+the per-helper monotonicity. The default `return none` (no production
+fired) contradicts `.ok (some s')` directly. -/
+
+/-- Auxiliary: characterise the `.ok (some s')` output of
+    `scanNextTokenIx_dispatchStructural`. Exactly one of three productions
+    fires (DocumentStart, DocumentEnd, Directive).
+
+    The proof is verbose because the do-block elaborates with `__do_jp`
+    join points whose `simp` reduction is incomplete; we peel each guard
+    explicitly with `by_cases + rw [if_pos / if_neg]` and use `cases hSDE :
+    scanDocumentEndIx s` to step through the bind. -/
+theorem scanNextTokenIx_dispatchStructural_ok_some_cases {input : String}
+    {s s' : ScannerStateIx input} {c : Char}
+    (h : scanNextTokenIx_dispatchStructural s c = .ok (some s')) :
+    s' = scanDocumentStartIx s ∨
+    scanDocumentEndIx s = .ok s' ∨
+    scanDirectiveIx s = .ok s' := by
+  unfold scanNextTokenIx_dispatchStructural at h
+  -- Peel guard 1 outer + inner (under-indent throw).
+  by_cases hg1 :
+      (s.inFlow && decide (s.currentIndent ≥ 0) &&
+       decide ((s.cursor.pos.col : Int) ≤ s.currentIndent)) = true
+  · rw [if_pos hg1] at h
+    by_cases hg1' : (c != ']' && c != '}') = true
+    · rw [if_pos hg1'] at h
+      simp [Bind.bind, Except.bind] at h
+    · rw [if_neg hg1'] at h
+      -- Continue with productions
+      by_cases hg2 : (s.cursor.pos.col == 0 && s.inFlow &&
+                      (atDocumentStartIx s.cursor || atDocumentEndIx s.cursor)) = true
+      · rw [if_pos hg2] at h
+        simp [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
+      · rw [if_neg hg2] at h
+        by_cases hg3 : (s.cursor.pos.col == 0 && atDocumentStartIx s.cursor) = true
+        · rw [if_pos hg3] at h
+          left
+          show s' = _
+          have := (Except.ok.injEq _ _).mp h
+          exact ((Option.some.injEq _ _).mp this).symm
+        · rw [if_neg hg3] at h
+          by_cases hg4 : (s.cursor.pos.col == 0 && atDocumentEndIx s.cursor) = true
+          · rw [if_pos hg4] at h
+            right; left
+            cases hSDE : scanDocumentEndIx s with
+            | error e =>
+              rw [hSDE] at h
+              simp [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
+            | ok v =>
+              rw [hSDE] at h
+              simp [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
+              exact congrArg Except.ok h
+          · rw [if_neg hg4] at h
+            by_cases hg5 : (c == '%' && s.cursor.pos.col == 0) = true
+            · rw [if_pos hg5] at h
+              right; right
+              cases hSD : scanDirectiveIx s with
+              | error e =>
+                rw [hSD] at h
+                simp [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
+              | ok v =>
+                rw [hSD] at h
+                simp [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
+                exact congrArg Except.ok h
+            · rw [if_neg hg5] at h
+              simp [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
+  · rw [if_neg hg1] at h
+    by_cases hg2 : (s.cursor.pos.col == 0 && s.inFlow &&
+                    (atDocumentStartIx s.cursor || atDocumentEndIx s.cursor)) = true
+    · rw [if_pos hg2] at h
+      simp [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
+    · rw [if_neg hg2] at h
+      by_cases hg3 : (s.cursor.pos.col == 0 && atDocumentStartIx s.cursor) = true
+      · rw [if_pos hg3] at h
+        left
+        show s' = _
+        have := (Except.ok.injEq _ _).mp h
+        exact ((Option.some.injEq _ _).mp this).symm
+      · rw [if_neg hg3] at h
+        by_cases hg4 : (s.cursor.pos.col == 0 && atDocumentEndIx s.cursor) = true
+        · rw [if_pos hg4] at h
+          right; left
+          cases hSDE : scanDocumentEndIx s with
+          | error e =>
+            rw [hSDE] at h
+            simp [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
+          | ok v =>
+            rw [hSDE] at h
+            simp [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
+            exact congrArg Except.ok h
+        · rw [if_neg hg4] at h
+          by_cases hg5 : (c == '%' && s.cursor.pos.col == 0) = true
+          · rw [if_pos hg5] at h
+            right; right
+            cases hSD : scanDirectiveIx s with
+            | error e =>
+              rw [hSD] at h
+              simp [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
+            | ok v =>
+              rw [hSD] at h
+              simp [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
+              exact congrArg Except.ok h
+          · rw [if_neg hg5] at h
+            simp [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
+
+theorem scanNextTokenIx_dispatchStructural_offset_monotonic {input : String}
+    {s s' : ScannerStateIx input} {c : Char}
+    (h : scanNextTokenIx_dispatchStructural s c = .ok (some s')) :
+    s.cursor.pos.offset ≤ s'.cursor.pos.offset := by
+  rcases scanNextTokenIx_dispatchStructural_ok_some_cases h with heq | hOk | hOk
+  · subst heq
+    exact scanDocumentStartIx_offset_monotonic s
+  · exact scanDocumentEndIx_offset_monotonic hOk
+  · exact scanDirectiveIx_offset_monotonic hOk
+
+theorem scanNextTokenIx_dispatchStructural_tokens_size_le {input : String}
+    {s s' : ScannerStateIx input} {c : Char}
+    (h : scanNextTokenIx_dispatchStructural s c = .ok (some s')) :
+    s.tokens.size ≤ s'.tokens.size := by
+  rcases scanNextTokenIx_dispatchStructural_ok_some_cases h with heq | hOk | hOk
+  · subst heq
+    exact scanDocumentStartIx_tokens_size_le s
+  · exact scanDocumentEndIx_tokens_size_le hOk
+  · exact scanDirectiveIx_tokens_size_le hOk
+
+/-! ### Flow indicators dispatch
+
+5 productions (`[`, `]`, `{`, `}`, `,`), each guarded by a character
+match. The end-indicators (`]`, `}`, `,`) additionally throw when
+`s.flowLevel == 0`. Same by_cases pattern as structural. -/
+
+theorem scanNextTokenIx_dispatchFlowIndicators_ok_some_cases {input : String}
+    {s s' : ScannerStateIx input} {c : Char}
+    (h : scanNextTokenIx_dispatchFlowIndicators s c = .ok (some s')) :
+    s' = scanFlowSequenceStartIx s ∨
+    s' = scanFlowSequenceEndIx s ∨
+    s' = scanFlowMappingStartIx s ∨
+    s' = scanFlowMappingEndIx s ∨
+    scanFlowEntryIx s = .ok s' := by
+  unfold scanNextTokenIx_dispatchFlowIndicators at h
+  by_cases hg1 : (c == '[') = true
+  · rw [if_pos hg1] at h
+    left
+    show s' = _
+    have hi := (Except.ok.injEq _ _).mp h
+    exact ((Option.some.injEq _ _).mp hi).symm
+  · rw [if_neg hg1] at h
+    by_cases hg2 : (c == ']') = true
+    · rw [if_pos hg2] at h
+      by_cases hg2' : (s.flowLevel == 0) = true
+      · rw [if_pos hg2'] at h
+        simp [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
+      · rw [if_neg hg2'] at h
+        right; left
+        show s' = _
+        have hi := (Except.ok.injEq _ _).mp h
+        exact ((Option.some.injEq _ _).mp hi).symm
+    · rw [if_neg hg2] at h
+      by_cases hg3 : (c == '{') = true
+      · rw [if_pos hg3] at h
+        right; right; left
+        show s' = _
+        have hi := (Except.ok.injEq _ _).mp h
+        exact ((Option.some.injEq _ _).mp hi).symm
+      · rw [if_neg hg3] at h
+        by_cases hg4 : (c == '}') = true
+        · rw [if_pos hg4] at h
+          by_cases hg4' : (s.flowLevel == 0) = true
+          · rw [if_pos hg4'] at h
+            simp [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
+          · rw [if_neg hg4'] at h
+            right; right; right; left
+            show s' = _
+            have hi := (Except.ok.injEq _ _).mp h
+            exact ((Option.some.injEq _ _).mp hi).symm
+        · rw [if_neg hg4] at h
+          by_cases hg5 : (c == ',') = true
+          · rw [if_pos hg5] at h
+            by_cases hg5' : (s.flowLevel == 0) = true
+            · rw [if_pos hg5'] at h
+              simp [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
+            · rw [if_neg hg5'] at h
+              right; right; right; right
+              cases hSFE : scanFlowEntryIx s with
+              | error e =>
+                rw [hSFE] at h
+                simp [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
+              | ok v =>
+                rw [hSFE] at h
+                simp [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
+                exact congrArg Except.ok h
+          · rw [if_neg hg5] at h
+            simp [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
+
+theorem scanNextTokenIx_dispatchFlowIndicators_offset_monotonic {input : String}
+    {s s' : ScannerStateIx input} {c : Char}
+    (h : scanNextTokenIx_dispatchFlowIndicators s c = .ok (some s')) :
+    s.cursor.pos.offset ≤ s'.cursor.pos.offset := by
+  rcases scanNextTokenIx_dispatchFlowIndicators_ok_some_cases h with
+    heq | heq | heq | heq | hOk
+  · subst heq; exact scanFlowSequenceStartIx_offset_monotonic s
+  · subst heq; exact scanFlowSequenceEndIx_offset_monotonic s
+  · subst heq; exact scanFlowMappingStartIx_offset_monotonic s
+  · subst heq; exact scanFlowMappingEndIx_offset_monotonic s
+  · exact scanFlowEntryIx_offset_monotonic hOk
+
+theorem scanNextTokenIx_dispatchFlowIndicators_tokens_size_le {input : String}
+    {s s' : ScannerStateIx input} {c : Char}
+    (h : scanNextTokenIx_dispatchFlowIndicators s c = .ok (some s')) :
+    s.tokens.size ≤ s'.tokens.size := by
+  rcases scanNextTokenIx_dispatchFlowIndicators_ok_some_cases h with
+    heq | heq | heq | heq | hOk
+  · subst heq; exact scanFlowSequenceStartIx_tokens_size_le s
+  · subst heq; exact scanFlowSequenceEndIx_tokens_size_le s
+  · subst heq; exact scanFlowMappingStartIx_tokens_size_le s
+  · subst heq; exact scanFlowMappingEndIx_tokens_size_le s
+  · exact scanFlowEntryIx_tokens_size_le hOk
+
+/-! ### Block indicators dispatch
+
+3 productions (`-`, `?`, `:`) each guarded by a character-and-context
+match; each binds through its `Except`-returning scanner. -/
+
+theorem scanNextTokenIx_dispatchBlockIndicators_ok_some_cases {input : String}
+    {s s' : ScannerStateIx input} {c : Char}
+    (h : scanNextTokenIx_dispatchBlockIndicators s c = .ok (some s')) :
+    scanBlockEntryIx s = .ok s' ∨
+    scanKeyIx s = .ok s' ∨
+    scanValueIx s = .ok s' := by
+  unfold scanNextTokenIx_dispatchBlockIndicators at h
+  by_cases hg1 : (c == '-' && !s.inFlow && isBlockEntryCandidateIx s) = true
+  · rw [if_pos hg1] at h
+    left
+    cases hBE : scanBlockEntryIx s with
+    | error e =>
+      rw [hBE] at h
+      simp [Bind.bind, Except.bind] at h
+    | ok v =>
+      rw [hBE] at h
+      simp [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
+      exact congrArg Except.ok h
+  · rw [if_neg hg1] at h
+    by_cases hg2 : (c == '?' && isKeyCandidateIx s) = true
+    · rw [if_pos hg2] at h
+      right; left
+      cases hK : scanKeyIx s with
+      | error e =>
+        rw [hK] at h
+        simp [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
+      | ok v =>
+        rw [hK] at h
+        simp [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
+        exact congrArg Except.ok h
+    · rw [if_neg hg2] at h
+      by_cases hg3 : (c == ':' && isValueCandidateIx s) = true
+      · rw [if_pos hg3] at h
+        right; right
+        cases hV : scanValueIx s with
+        | error e =>
+          rw [hV] at h
+          simp [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
+        | ok v =>
+          rw [hV] at h
+          simp [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
+          exact congrArg Except.ok h
+      · rw [if_neg hg3] at h
+        simp [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
+
+theorem scanNextTokenIx_dispatchBlockIndicators_offset_monotonic {input : String}
+    {s s' : ScannerStateIx input} {c : Char}
+    (h : scanNextTokenIx_dispatchBlockIndicators s c = .ok (some s')) :
+    s.cursor.pos.offset ≤ s'.cursor.pos.offset := by
+  rcases scanNextTokenIx_dispatchBlockIndicators_ok_some_cases h with hOk | hOk | hOk
+  · exact scanBlockEntryIx_offset_monotonic hOk
+  · exact scanKeyIx_offset_monotonic hOk
+  · exact scanValueIx_offset_monotonic hOk
+
+theorem scanNextTokenIx_dispatchBlockIndicators_tokens_size_le {input : String}
+    {s s' : ScannerStateIx input} {c : Char}
+    (h : scanNextTokenIx_dispatchBlockIndicators s c = .ok (some s')) :
+    s.tokens.size ≤ s'.tokens.size := by
+  rcases scanNextTokenIx_dispatchBlockIndicators_ok_some_cases h with hOk | hOk | hOk
+  · exact scanBlockEntryIx_tokens_size_le hOk
+  · exact scanKeyIx_tokens_size_le hOk
+  · exact scanValueIx_tokens_size_le hOk
+
+/-! ### Content dispatch (scalars + node properties)
+
+7 productions: `&`/`*` (anchor/alias via `scanAnchorOrAliasIx`), `!` (tag),
+`|`/`>` (block scalar match), `"` / `'` (quoted scalar matches), and plain
+scalar; with a final `unexpectedChar` throw fallback.
+
+The block / quoted scalar productions are state-constructive on the
+`some r` arm and throw on `none`; on the constructive arm the result is
+`{ sAfter.emitAt startPos ... with simpleKeyAllowed := false }`. We
+package the per-case monotonicity (cursor + tokens-size) as a conjunctive
+helper, then derive each main theorem by `.1` / `.2`. -/
+
+theorem scanNextTokenIx_dispatchContent_ok_monotonic {input : String}
+    {s s' : ScannerStateIx input} {c : Char}
+    (h : scanNextTokenIx_dispatchContent s c = .ok s') :
+    s.cursor.pos.offset ≤ s'.cursor.pos.offset ∧
+    s.tokens.size ≤ s'.tokens.size := by
+  unfold scanNextTokenIx_dispatchContent at h
+  by_cases hg1 : (c == '&') = true
+  · rw [if_pos hg1] at h
+    simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
+    cases hA : scanAnchorOrAliasIx s true with
+    | error e => rw [hA] at h; cases h
+    | ok v =>
+      rw [hA] at h
+      cases h
+      exact ⟨scanAnchorOrAliasIx_offset_monotonic hA, scanAnchorOrAliasIx_tokens_size_le hA⟩
+  · rw [if_neg hg1] at h
+    simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
+    by_cases hg2 : (c == '*') = true
+    · rw [if_pos hg2] at h
+      cases hA : scanAnchorOrAliasIx s false with
+      | error e => rw [hA] at h; cases h
+      | ok v =>
+        rw [hA] at h
+        cases h
+        exact ⟨scanAnchorOrAliasIx_offset_monotonic hA, scanAnchorOrAliasIx_tokens_size_le hA⟩
+    · rw [if_neg hg2] at h
+      by_cases hg3 : (c == '!') = true
+      · rw [if_pos hg3] at h
+        cases hT : scanTagIx s with
+        | error e => rw [hT] at h; cases h
+        | ok v =>
+          rw [hT] at h
+          cases h
+          exact ⟨scanTagIx_offset_monotonic hT, scanTagIx_tokens_size_le hT⟩
+      · rw [if_neg hg3] at h
+        by_cases hg4 : (c == '|' || c == '>') = true
+        · rw [if_pos hg4] at h
+          -- Use split at h to handle the dependent match's hBS witness.
+          split at h
+          · rename_i r hBS
+            cases h
+            refine ⟨?_, ?_⟩
+            · show s.cursor.pos.offset ≤ _
+              simp only [emitAt_cursor]
+              exact scanBlockScalarIx_offset_monotonic s.cursor _ hBS
+            · show s.tokens.size ≤ _
+              simp only [emitAt_tokens_size]
+              exact Nat.le_succ _
+          · cases h
+        · rw [if_neg hg4] at h
+          by_cases hg5 : (c == '"') = true
+          · rw [if_pos hg5] at h
+            split at h
+            · rename_i r hDQ
+              cases h
+              refine ⟨?_, ?_⟩
+              · show s.cursor.pos.offset ≤ _
+                simp only [emitAt_cursor]
+                exact Nat.le_of_lt (scanDoubleQuotedIx_offset_lt s.cursor hDQ)
+              · show s.tokens.size ≤ _
+                simp only [emitAt_tokens_size]
+                exact Nat.le_succ _
+            · cases h
+          · rw [if_neg hg5] at h
+            by_cases hg6 : (c == '\'') = true
+            · rw [if_pos hg6] at h
+              split at h
+              · rename_i r hSQ
+                cases h
+                refine ⟨?_, ?_⟩
+                · show s.cursor.pos.offset ≤ _
+                  simp only [emitAt_cursor]
+                  exact Nat.le_of_lt (scanSingleQuotedIx_offset_lt s.cursor hSQ)
+                · show s.tokens.size ≤ _
+                  simp only [emitAt_tokens_size]
+                  exact Nat.le_succ _
+              · cases h
+            · rw [if_neg hg6] at h
+              by_cases hg7 : canStartPlainScalarBool c (s.peekAt? 1) s.inFlow = true
+              · rw [if_pos hg7] at h
+                cases h
+                refine ⟨?_, ?_⟩
+                · show s.cursor.pos.offset ≤ _
+                  simp only [emitAt_cursor]
+                  exact scanPlainScalarIx_offset_monotonic s.cursor s.inFlow _
+                · show s.tokens.size ≤ _
+                  simp only [emitAt_tokens_size]
+                  exact Nat.le_succ _
+              · rw [if_neg hg7] at h
+                cases h
+
+theorem scanNextTokenIx_dispatchContent_offset_monotonic {input : String}
+    {s s' : ScannerStateIx input} {c : Char}
+    (h : scanNextTokenIx_dispatchContent s c = .ok s') :
+    s.cursor.pos.offset ≤ s'.cursor.pos.offset :=
+  (scanNextTokenIx_dispatchContent_ok_monotonic h).1
+
+theorem scanNextTokenIx_dispatchContent_tokens_size_le {input : String}
+    {s s' : ScannerStateIx input} {c : Char}
+    (h : scanNextTokenIx_dispatchContent s c = .ok s') :
+    s.tokens.size ≤ s'.tokens.size :=
+  (scanNextTokenIx_dispatchContent_ok_monotonic h).2
+
+/-! ### Per-iteration `scanNextTokenIx`
+
+Chains `preprocess` (advances cursor / grows tokens) → optional dispatcher
+(structural/flow/block/content). The structure update
+`{ s with allowDirectives := false, documentEverStarted := true }` and
+`scanNextTokenIx_checkBlockFlowIndent` (returns `Except Unit`) preserve
+both cursor and tokens; the dispatcher chains close via the per-helper
+lemmas above. -/
+
+theorem scanNextTokenIx_ok_some_monotonic {input : String}
+    {s s' : ScannerStateIx input}
+    (h : scanNextTokenIx s = .ok (some s')) :
+    s.cursor.pos.offset ≤ s'.cursor.pos.offset ∧
+    s.tokens.size ≤ s'.tokens.size := by
+  unfold scanNextTokenIx at h
+  simp only [Bind.bind, Except.bind] at h
+  cases hPre : scanNextTokenIx_preprocess s with
+  | error e => rw [hPre] at h; cases h
+  | ok preRes =>
+    rw [hPre] at h
+    cases preRes with
+    | none => cases h
+    | some sc =>
+      obtain ⟨sp, c⟩ := sc
+      have hPpO := scanNextTokenIx_preprocess_offset_monotonic hPre
+      have hPpT := scanNextTokenIx_preprocess_tokens_size_le hPre
+      simp only at h
+      cases hStr : scanNextTokenIx_dispatchStructural sp c with
+      | error e => rw [hStr] at h; cases h
+      | ok structRes =>
+        rw [hStr] at h
+        cases structRes with
+        | some s'' =>
+          cases h
+          have hStrO := scanNextTokenIx_dispatchStructural_offset_monotonic hStr
+          have hStrT := scanNextTokenIx_dispatchStructural_tokens_size_le hStr
+          exact ⟨Nat.le_trans hPpO hStrO, Nat.le_trans hPpT hStrT⟩
+        | none =>
+          -- Branch on sp.allowDirectives. In both branches, the adjusted state
+          -- `sadj` has cursor = sp.cursor and tokens = sp.tokens, so each
+          -- dispatcher's monotonicity gives the chain via Nat.le_trans.
+          suffices hChain : sp.cursor.pos.offset ≤ s'.cursor.pos.offset ∧
+                            sp.tokens.size ≤ s'.tokens.size by
+            exact ⟨Nat.le_trans hPpO hChain.1, Nat.le_trans hPpT hChain.2⟩
+          by_cases hAD : sp.allowDirectives = true
+          all_goals first
+            | (rw [if_pos hAD] at h
+               -- sadj := { sp with allowDirectives := false, documentEverStarted := true }
+               -- cursor and tokens unchanged: prove via cases on each dispatcher
+               cases hChk : scanNextTokenIx_checkBlockFlowIndent
+                   { sp with allowDirectives := false, documentEverStarted := true } c with
+               | error e => rw [hChk] at h; cases h
+               | ok _ =>
+                 rw [hChk] at h
+                 cases hFlow : scanNextTokenIx_dispatchFlowIndicators
+                     { sp with allowDirectives := false, documentEverStarted := true } c with
+                 | error e => rw [hFlow] at h; cases h
+                 | ok flowRes =>
+                   rw [hFlow] at h
+                   cases flowRes with
+                   | some _ =>
+                     cases h
+                     have hFO := scanNextTokenIx_dispatchFlowIndicators_offset_monotonic hFlow
+                     have hFT := scanNextTokenIx_dispatchFlowIndicators_tokens_size_le hFlow
+                     exact ⟨hFO, hFT⟩
+                   | none =>
+                     cases hBlk : scanNextTokenIx_dispatchBlockIndicators
+                         { sp with allowDirectives := false, documentEverStarted := true } c with
+                     | error e => rw [hBlk] at h; cases h
+                     | ok blkRes =>
+                       rw [hBlk] at h
+                       cases blkRes with
+                       | some _ =>
+                         cases h
+                         have hBO := scanNextTokenIx_dispatchBlockIndicators_offset_monotonic hBlk
+                         have hBT := scanNextTokenIx_dispatchBlockIndicators_tokens_size_le hBlk
+                         exact ⟨hBO, hBT⟩
+                       | none =>
+                         cases hCon : scanNextTokenIx_dispatchContent
+                             { sp with allowDirectives := false, documentEverStarted := true } c with
+                         | error e => rw [hCon] at h; cases h
+                         | ok _ =>
+                           rw [hCon] at h
+                           cases h
+                           have hCO := scanNextTokenIx_dispatchContent_offset_monotonic hCon
+                           have hCT := scanNextTokenIx_dispatchContent_tokens_size_le hCon
+                           exact ⟨hCO, hCT⟩)
+            | (rw [if_neg hAD] at h
+               -- sadj := sp; cursor and tokens are sp's
+               cases hChk : scanNextTokenIx_checkBlockFlowIndent sp c with
+               | error e => rw [hChk] at h; cases h
+               | ok _ =>
+                 rw [hChk] at h
+                 cases hFlow : scanNextTokenIx_dispatchFlowIndicators sp c with
+                 | error e => rw [hFlow] at h; cases h
+                 | ok flowRes =>
+                   rw [hFlow] at h
+                   cases flowRes with
+                   | some _ =>
+                     cases h
+                     have hFO := scanNextTokenIx_dispatchFlowIndicators_offset_monotonic hFlow
+                     have hFT := scanNextTokenIx_dispatchFlowIndicators_tokens_size_le hFlow
+                     exact ⟨hFO, hFT⟩
+                   | none =>
+                     cases hBlk : scanNextTokenIx_dispatchBlockIndicators sp c with
+                     | error e => rw [hBlk] at h; cases h
+                     | ok blkRes =>
+                       rw [hBlk] at h
+                       cases blkRes with
+                       | some _ =>
+                         cases h
+                         have hBO := scanNextTokenIx_dispatchBlockIndicators_offset_monotonic hBlk
+                         have hBT := scanNextTokenIx_dispatchBlockIndicators_tokens_size_le hBlk
+                         exact ⟨hBO, hBT⟩
+                       | none =>
+                         cases hCon : scanNextTokenIx_dispatchContent sp c with
+                         | error e => rw [hCon] at h; cases h
+                         | ok _ =>
+                           rw [hCon] at h
+                           cases h
+                           have hCO := scanNextTokenIx_dispatchContent_offset_monotonic hCon
+                           have hCT := scanNextTokenIx_dispatchContent_tokens_size_le hCon
+                           exact ⟨hCO, hCT⟩)
+
+theorem scanNextTokenIx_offset_monotonic {input : String}
+    {s s' : ScannerStateIx input}
+    (h : scanNextTokenIx s = .ok (some s')) :
+    s.cursor.pos.offset ≤ s'.cursor.pos.offset :=
+  (scanNextTokenIx_ok_some_monotonic h).1
+
+theorem scanNextTokenIx_tokens_size_le {input : String}
+    {s s' : ScannerStateIx input}
+    (h : scanNextTokenIx s = .ok (some s')) :
+    s.tokens.size ≤ s'.tokens.size :=
+  (scanNextTokenIx_ok_some_monotonic h).2
+
+/-! ### Fueled `scanLoopIx` token-stream growth
+
+`scanLoopIx` returns a `TokenStream` (not a state), so the natural
+claim is `s.tokens.size ≤ ts.size`: each loop iteration either
+terminates with `unwindIndents + emit streamEnd` (grows tokens) or
+recurses on a state whose tokens have grown via `scanNextTokenIx`. -/
+
+theorem scanLoopIx_tokens_size_le {input : String}
+    {s : ScannerStateIx input} {fuel : Nat} {ts : Indexed.TokenStream input}
+    (h : scanLoopIx s fuel = .ok ts) :
+    s.tokens.size ≤ ts.size := by
+  induction fuel generalizing s with
+  | zero => unfold scanLoopIx at h; cases h
+  | succ fuel' ih =>
+    unfold scanLoopIx at h
+    cases hSc : scanNextTokenIx s with
+    | error e => rw [hSc] at h; cases h
+    | ok scRes =>
+      rw [hSc] at h
+      cases scRes with
+      | none =>
+        -- Terminal arm: nested ifs then `unwindIndentsIx + emit streamEnd`.
+        by_cases hFL : s.flowLevel > 0
+        · rw [if_pos hFL] at h; cases h
+        · rw [if_neg hFL] at h
+          by_cases hDS : (s.directivesPresent && !s.documentEverStarted) = true
+          · rw [if_pos hDS] at h; cases h
+          · rw [if_neg hDS] at h
+            -- h : .ok ((unwindIndentsIx s (-1)).emit streamEnd).tokens = .ok ts
+            cases h
+            -- Goal: s.tokens.size ≤ ((unwindIndentsIx s (-1)).emit streamEnd).tokens.size
+            show s.tokens.size ≤ _
+            refine Nat.le_trans (unwindIndentsIx_tokens_size_le s (-1)) ?_
+            simp
+      | some s'' =>
+        -- Recursive arm: chain via scanNextTokenIx_tokens_size_le + IH.
+        have hStep := scanNextTokenIx_tokens_size_le hSc
+        exact Nat.le_trans hStep (ih h)
 
 end L4YAML.Scanner.Indexed

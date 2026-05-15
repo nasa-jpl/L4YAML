@@ -155,7 +155,7 @@ theorem alt_idem (s s' : SurfPos) :
 
 /-- Helper: appending two `GStar P` runs gives a single `GStar P`
     run. Used in the forward direction of `star_star`. -/
-private theorem star_append {s₁ s₂ s₃ : SurfPos}
+theorem star_append {s₁ s₂ s₃ : SurfPos}
     (h₁ : GStar P s₁ s₂) (h₂ : GStar P s₂ s₃) :
     GStar P s₁ s₃ := by
   induction h₁ with
