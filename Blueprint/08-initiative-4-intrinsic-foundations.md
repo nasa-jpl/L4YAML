@@ -1096,9 +1096,27 @@ spec-traceability refactor had introduced (quoted-loop /
 parseBlockHeader nested-if shapes, the `'#'` literal → `match …
 isCommentBool d` form) but that the `lake build` cache had hidden.
 
-**Next session**: Steps 5b.4–5b.8 work through the remaining five
-Step-5b carry-forward clusters (hex-escape value,
-`autoDetectBlockScalarIndentLoopIx`, block-scalar fold/chomp,
+**Step 5b.4 landed** (Reflection 54): the hex-escape
+value-correctness obligation carried from Step 4a was discharged
+as four lemmas in `Proofs/Scanner/IndexedScalar.lean`'s Layer
+E1.4 — `hexDigitValue_lt_16` (digit bound for hex chars),
+`hexStringValue_empty` / `hexStringValue_push` (foldl snoc law
+lifted to `List.foldl` via `String.foldl_eq_foldl_toList` +
+`String.toList_push` + `List.foldl_append`), `hexStringValue_lt_pow`
+(`16^n` bound via `String.push_induction`), and
+`parseHexEscapeIx_decoded` packaging the parser spec
+(`ch = Char.ofNat (hexStringValue digits)` with the `< 0x110000`
+guard already discharged). The proof-shape lesson: the simp
+combination that pushes Bool-Or disjuncts into Nat-`≤` conjuncts
+leaves the hypothesis as `(d ∨ u) ∨ l` (Lean's `||` is
+left-associative) with `Nat.le` conjunctions inside. `rcases ... with
+⟨_,_⟩ | ⟨_,_⟩ | ⟨_,_⟩` fails because it tries to destruct `Nat.le`
+via `Nat.le.refl`. Plain `cases h with | inl … | inr …` (two nested
+levels) routes around it.
+
+**Next session**: Steps 5b.5–5b.8 work through the remaining four
+Step-5b carry-forward clusters
+(`autoDetectBlockScalarIndentLoopIx`, block-scalar fold/chomp,
 quoted multi-line, plain multi-line).
 **Then Step 5c**: `present` + corpus theorem.
 
@@ -1133,7 +1151,7 @@ quoted multi-line, plain multi-line).
 | `L4YAML/Scanner/IndexedDispatch.lean` | n/a | ~1050 | 0 (staging — Guardrail 1; new in Phase 3 Step 5a: helper recogniser loops, simple-key save/resolve, block + flow indicator scans, document markers, directives, anchor/alias, tag, dispatch family, `scanLoopIx`, `scanIx`; Step 5b.1a: 8 helper-loop `*_offset_monotonic` lemmas, 10 `emitAtSafe`→`emitAt` replacements with inline proofs, `hStart` parameter on directive helpers; Step 5b.2: `tabInIndentation` throws added to `scanBlockEntryIx` and `scanKeyIx` — the former in block context when `hasTabInPrecedingWhitespace`, the latter when the cursor sits on `'\t'` immediately after consuming `?`; Step 5b.3: `scanValueIx` split into the legacy four-stage chain — `scanValueClearKeyIx` (clear spurious simple key when explicit `?` is pending), `scanValueValidateIx` (five `throw` cases: §7.4 / §7.4.2 / §8.2.1 / T833 / §8.2.2 [197]), `scanValuePrepareIx` (Step 5b.1b.i — placeholder overwrite or push mapping indent), `scanValueTabCheckIx` (§6.1 against the *original* col + indent)) |
 | `L4YAML/Proofs/Scanner/IndexedWhitespace.lean` | n/a | ~405 | 0 (staging — Guardrail 1; new in Phase 3 Step 2; +`consumeLineBreak_strict` in Step 4a) |
 | `L4YAML/Proofs/Scanner/IndexedIndent.lean` | n/a | ~355 | 0 (staging — Guardrail 1; new in Phase 3 Step 3; +`skipToContentLoop_progress` / `skipToContent_progress` in Step 4a) |
-| `L4YAML/Proofs/Scanner/IndexedScalar.lean` | n/a | ~630 | 0 (staging — Guardrail 1; new in Phase 3 Step 4a; +F1/F2/F3 monotonicity proofs in Step 4b) |
+| `L4YAML/Proofs/Scanner/IndexedScalar.lean` | n/a | ~775 | 0 (staging — Guardrail 1; new in Phase 3 Step 4a; +F1/F2/F3 monotonicity proofs in Step 4b; Step 5b.4: new "Layer E1.4 — Hex-escape value-correctness" section — `hexDigitValue_lt_16`, `hexStringValue_empty` `@[simp]`, `hexStringValue_push`, `hexStringValue_lt_pow`, `parseHexEscapeIx_decoded`) |
 | `L4YAML/Proofs/Scanner/IndexedDispatch.lean` | n/a | ~1620 | 0 (staging — Guardrail 1; new in Phase 3 Step 5b.1b.i: `IxCursor.advanceN_offset_monotonic`; `ScannerStateIx` cursor-preservation lemmas for `emit*`/`overwriteAtCursor`/`advance*`/`pushSequenceIndentIx`/`pushMappingIndentIx`/`unwindIndentsLoopIx`/`unwindIndentsIx`/`saveSimpleKeyIx`/`scanValuePrepareIx`; `skipSpacesS`/`skipWhitespaceS`/`skipToContentS` offset-monotonicity lifts; Step 5b.1b.ii: 10 per-dispatcher offset-monotonicity lemmas — `scanBlockEntryIx`/`scanKeyIx`/`scanValueIx`/`scanFlowEntryIx`/`scanDocumentStartIx`/`scanDocumentEndIx`/`scanFlowSequenceStartIx`/`scanFlowSequenceEndIx`/`scanFlowMappingStartIx`/`scanFlowMappingEndIx`; Step 5b.1b.iii: 5 per-dispatcher offset-monotonicity lemmas — `scanAnchorOrAliasIx`/`scanTagIx`/`scanYamlDirectiveIx`/`scanTagDirectiveIx`/`scanDirectiveIx`; Step 5b.1b.iv-pre: 6 tokens-size simp lemmas — `skipToContentS_tokens`/`skipSpacesS_tokens`/`skipWhitespaceS_tokens`/`advance_tokens`/`advanceN_tokens`/`emit_tokens_size`/`emitAt_tokens_size`/`emitAtCursor_tokens_size`/`overwriteAtCursor_tokens_size`; 6 indent/key helper `_tokens_size_le` lemmas — `unwindIndentsLoopIx`/`unwindIndentsIx`/`pushSequenceIndentIx`/`pushMappingIndentIx`/`saveSimpleKeyIx`/`scanValuePrepareIx`; 12 dispatcher `_tokens_size_le` lemmas — `scanBlockEntryIx`/`scanKeyIx`/`scanValueIx`/`scanFlowEntryIx`/`scanFlowSequenceStartIx`/`scanFlowSequenceEndIx`/`scanFlowMappingStartIx`/`scanFlowMappingEndIx`/`scanDocumentStartIx`/`scanDocumentEndIx`/`scanAnchorOrAliasIx`/`scanTagIx`/`scanYamlDirectiveIx`/`scanTagDirectiveIx`/`scanDirectiveIx`; Step 5b.1b.iv-cont: 7 top-level pairs (`_offset_monotonic` + `_tokens_size_le`) for `scanNextTokenIx_preprocess`/`scanNextTokenIx_dispatchStructural`/`scanNextTokenIx_dispatchFlowIndicators`/`scanNextTokenIx_dispatchBlockIndicators`/`scanNextTokenIx_dispatchContent`/`scanNextTokenIx` plus `scanLoopIx_tokens_size_le`; Step 5b.2: 6 `flowLevel`/`inFlow` preservation simp lemmas — `emit_flowLevel`/`advance_flowLevel`/`pushSequenceIndentIx_flowLevel`/`pushMappingIndentIx_flowLevel`/`emit_inFlow`/`advance_inFlow`/`pushMappingIndentIx_inFlow` — used to collapse the post-advance `!s.inFlow` tab-check guard against the *original* `s.inFlow`, then `scanBlockEntryIx`/`scanKeyIx` `_offset_monotonic` + `_tokens_size_le` pairs re-derived with the new throw branches; Step 5b.3: 2 new `scanValueClearKeyIx` helper lemmas (`_cursor` `@[simp]` + `_tokens_size_le`), `scanValueIx_offset_monotonic` and `_tokens_size_le` re-proved with the legacy `simp only [bind, Except.bind] at h; split at h; cases h | …` pattern; same commit fixed cache-hidden breakage in `Proofs/Scanner/IndexedScalar.lean` (quoted/parse-header-loop `split at h` shapes, `blockHeaderToBodyIx` `by_cases hp` for the `match`-inside-`if` condition) and `Proofs/Scanner/IndexedIndent.lean::skipToContent_at_content` (`'#'` literal → `isCommentBool ch`)) |
 
 </details>
@@ -2012,6 +2030,75 @@ cutover commit. No "dual-write" interim state.
 
 </details>
 
+<details><summary>R54 — `rcases` over an `Or` of `Nat.le` conjunctions destructures `Nat.le` itself and chokes; use plain `cases h with | inl … | inr …` instead (Phase 3 Step 5b.4).</summary>
+
+54. **The hex-escape value-correctness proofs picked up a
+    surprising `rcases` failure mode.** `hexDigitValue_lt_16` takes
+    `h : isHexDigitBool ch = true` (a Bool disjunction over three
+    UInt32 ranges) and needs to discharge each range. The natural
+    first move:
+
+    ```lean
+    simp only [isHexDigitBool, Bool.or_eq_true, Bool.and_eq_true,
+               decide_eq_true_eq, UInt32.le_iff_toNat_le] at h
+    rcases h with ⟨hLo, hHi⟩ | ⟨hLo, hHi⟩ | ⟨hLo, hHi⟩
+    ```
+
+    fails with
+
+    > `cases` failed with a nested error: Dependent elimination
+    > failed: Failed to solve equation
+    > `ch.val.toBitVec.toFin.1 = 97` at case `Nat.le.refl`
+
+    The diagnosis took two iterations. First, the disjunction
+    Lean produces is `(d ∨ u) ∨ l`, not the three-way disjunction
+    the `|`-pattern syntax suggests — `||` is left-associative, so
+    the simp result is `(0x30..0x39 ∨ 0x41..0x46) ∨ 0x61..0x66`.
+    Second, and more importantly, **`rcases` aggressively
+    destructs `Nat.le` along with `∧` and `∨`**. After the simp
+    pass each disjunct is a conjunction of two `Nat.le` terms; the
+    angle-bracket pattern tells `rcases` to split the conjunction,
+    but `rcases` then looks one level deeper and tries to do
+    dependent elimination on the underlying `Nat.le` (which has
+    two constructors `refl` and `step`). The `refl` case requires
+    unifying the two arguments — e.g. `ch.val.toBitVec.toFin.1`
+    with `97` — which fails because the left-hand side is a
+    variable expression.
+
+    **Fix — plain `cases`**:
+
+    ```lean
+    cases h with
+    | inr hLower => …
+    | inl hDU =>
+      cases hDU with
+      | inl hDigit => …
+      | inr hUpper => …
+    ```
+
+    `cases` on `Or` produces exactly two sub-goals carrying the
+    intact conjunction — no further destruction. Then `hLower.1`
+    / `hLower.2` extracts the `Nat.le` halves as raw facts that
+    `omega` can consume. **Generalisable rule**: when `rcases`
+    fails on `cases` with a `Nat.le.refl` reference, fall back to
+    plain `cases` and explicit `.1` / `.2` projections; `rcases`'s
+    convenience comes at the price of unwanted deep destruction.
+
+    Two ancillary observations:
+    - Each UInt32 literal needs an explicit `(0xNN : UInt32).toNat
+      = NN` lemma (`by native_decide`) so `omega` has concrete
+      Nat values. The literals survive simp as `UInt32.toNat 48`
+      etc., which `omega` cannot evaluate further.
+    - `simp only [decide_eq_true_eq, UInt32.le_iff_toNat_le]` is
+      strong enough to do everything in one pass — including
+      pushing the conjunction over `Or`. The earlier attempt to
+      stay in Bool land (`(c.val ≥ 0x30) = true` plus a `decide`
+      extraction lemma) hit a different elaboration anomaly where
+      `(c.val ≥ 0x30) : Bool` does not surface as `decide …`
+      cleanly. The Nat-first approach is more robust.
+
+</details>
+
 #### Phase 3 sub-plan (six sessions)
 
 <details><summary>Phase 3 is ~30× the size of the Phase 2 capstone. It is decomposed into six sessions; only the final commit must be atomic per Guardrail 1.</summary>
@@ -2563,9 +2650,25 @@ clusters become 5b.2–5b.8. Total: nine sub-steps.
   and `Proofs/Scanner/IndexedIndent.lean::skipToContent_at_content`
   (`(ch == '#') = false` → `isCommentBool ch = false`) were fixed in
   the same commit. See Reflection 53.
-- **5b.4 — Hex-escape value-correctness** (carried from Step 4a):
-  `hexStringValue` of a hex-digit string equals the decoded `Nat`
-  value (mod overflow checks).
+- **5b.4 — Hex-escape value-correctness** *(landed)*. Four lemmas
+  in `Proofs/Scanner/IndexedScalar.lean` (Layer E1.4): `hexDigitValue_lt_16`
+  (digit bound for `isHexDigitBool ch = true`), `hexStringValue_empty` /
+  `hexStringValue_push` (`String.foldl` snoc law via
+  `String.foldl_eq_foldl_toList` + `String.toList_push` +
+  `List.foldl_append`), `hexStringValue_lt_pow`
+  (`String.push_induction` chaining the digit bound and snoc law),
+  and `parseHexEscapeIx_decoded` packaging the escape spec — on
+  success, `ch = Char.ofNat (hexStringValue digits)` with
+  `hexStringValue digits < 0x110000` already discharged. The proof
+  shape for `hexDigitValue_lt_16` had to avoid `rcases` over the
+  three-way disjunction: after `simp only [isHexDigitBool,
+  Bool.or_eq_true, Bool.and_eq_true, decide_eq_true_eq,
+  UInt32.le_iff_toNat_le]`, the hypothesis is `(d ∨ u) ∨ l` (Lean's
+  `||` left-associativity) where each branch carries `Nat.le`
+  conjunctions; `rcases` then aggressively tries to destruct the
+  `Nat.le` via `Nat.le.refl` and fails with `ch.val.toBitVec.toFin.1
+  = 97`. Plain `cases h with | inl … | inr …` (two nested levels)
+  routes around it. See Reflection 54.
 - **5b.5 — `autoDetectBlockScalarIndentLoopIx` correctness**.
 - **5b.6 — Block-scalar content correctness** (carried from
   Step 4b): `foldBlockContent` matches the spec's folded-content
@@ -3232,6 +3335,78 @@ all 385 targets. `L4YAML.lean` does not import any
 Step-5b clusters (hex-escape value,
 `autoDetectBlockScalarIndentLoopIx`, block-scalar fold/chomp,
 quoted multi-line, plain multi-line).
+
+</details>
+
+<details><summary>Step 5b.4 — Hex-escape value-correctness <em>(landed)</em>.</summary>
+
+**Step 5b.4 — Hex-escape value-correctness** *(landed)*.
+
+Discharges the Step 4a carry-forward: `hexStringValue` of a
+hex-digit string equals the decoded `Nat` value (modulo the
+overflow checks). Four lemmas land in
+`L4YAML/Proofs/Scanner/IndexedScalar.lean` (new section
+"Layer E1.4 — Hex-escape value-correctness", after the F3 block-
+scalar proofs and before `end L4YAML.Scanner.Indexed`):
+
+- **`hexDigitValue_lt_16`** — for every hex digit `ch` (i.e.
+  `isHexDigitBool ch = true`), `hexDigitValue ch < 16`. Proof:
+  `simp only [isHexDigitBool, Bool.or_eq_true, Bool.and_eq_true,
+  decide_eq_true_eq, UInt32.le_iff_toNat_le] at h` pushes the
+  Bool disjunction into a Nat-`≤` disjunction in one pass.
+  `Char.toNat` then unfolds the goal's `ch.toNat` into
+  `ch.val.toNat`, and the matching `simp only [Char.toNat,
+  UInt32.le_iff_toNat_le]` pushes the `hexDigitValue`'s if-
+  condition the same way. Six `(0xNN : UInt32).toNat = NN`
+  facts (`by native_decide`) bridge the literal forms. The
+  case-split uses plain `cases h with | inl … | inr …` —
+  `rcases` aggressively destructs the underlying `Nat.le`
+  conjuncts and fails (Reflection 54).
+- **`hexStringValue_empty`** — `@[simp]`, `hexStringValue "" = 0`.
+  One-line proof: `String.foldl_eq_foldl_toList` + `rfl`.
+- **`hexStringValue_push`** — the snoc law:
+  `hexStringValue (s.push ch) = hexStringValue s * 16 +
+  hexDigitValue ch`. Proof: chain `String.foldl_eq_foldl_toList`,
+  `String.toList_push`, `List.foldl_append`. Two `rfl` cleanups
+  close it.
+- **`hexStringValue_lt_pow`** — the `16^n` bound when every
+  character is a hex digit: `(∀ c ∈ s.toList, isHexDigitBool c
+  = true) → hexStringValue s < 16 ^ s.length`. Induction via
+  `String.push_induction`. The push case rewrites with the
+  snoc law and `String.length_push`, then chains
+  `Nat.mul_le_mul_right 16 hb` (where `hb : hexStringValue b
+  + 1 ≤ 16 ^ b.length` from the IH) so that `omega` can close
+  `hexStringValue b * 16 + hexDigitValue ch < 16 ^ b.length *
+  16` using `hch : hexDigitValue ch < 16`.
+- **`parseHexEscapeIx_decoded`** — the parser spec: when
+  `parseHexEscapeIx c n = some (ch, c')`,
+
+  ```
+  hexStringValue (collectHexDigitsLoopIx c "" n).1 < 0x110000
+  ∧ ch = Char.ofNat (hexStringValue (collectHexDigitsLoopIx c "" n).1)
+  ∧ c' = (collectHexDigitsLoopIx c "" n).2.
+  ```
+
+  Two `split at h` (one per nested `if`) plus
+  `Option.some.injEq` / `Prod.mk.injEq` and a `rename_i hLt` to
+  pick up the value-range hypothesis is the whole proof.
+
+The Unicode-range guard `< 0x110000` is load-bearing only for
+`n = 8` (`\U________`): for `n = 2` and `n = 4` the
+`hexStringValue_lt_pow` bound gives `< 16^4 = 65536`, comfortably
+below `0x110000`. The guard nevertheless stays in the parser for
+the `n = 8` case and survives surrogate hex escapes
+(`\ud800..\udfff`) as `Char.ofNat`'s `default` fallback rather
+than a parser error — that's an existing semantic issue, not a
+Step 5b.4 obligation.
+
+Sorry budget: **0 → 0** in the staging files. `lake build` passes
+all 385 targets. `L4YAML.lean` does not import any
+`Scanner.Indexed*` or `Proofs.Scanner.Indexed*` file — confirmed.
+
+**Carried forward into Steps 5b.5–5b.8**: the four remaining
+Step-5b clusters (`autoDetectBlockScalarIndentLoopIx`,
+block-scalar fold/chomp, quoted multi-line, plain multi-line).
 
 </details>
 

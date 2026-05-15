@@ -653,4 +653,124 @@ theorem scanBlockScalarIx_offset_monotonic {input : String} (c : IxCursor input)
     · contradiction                                        -- not '|' or '>'
   · contradiction                                          -- EOF
 
+/-! ## Layer E1.4 — Hex-escape value-correctness (Step 5b.4)
+
+Carried-forward obligation from Step 4a: `hexStringValue` of a
+hex-digit string equals the decoded `Nat` value (mod overflow checks).
+
+Decomposed into four layers:
+
+1. **Digit bound** — `hexDigitValue_lt_16`: for every hex digit `ch`
+   (`isHexDigitBool ch = true`), `hexDigitValue ch < 16`.
+2. **Snoc law** — `hexStringValue_push`: `hexStringValue (s.push c)
+   = hexStringValue s * 16 + hexDigitValue c`. Lifts `String.foldl`
+   to `List.foldl` via `String.foldl_eq_foldl_toList` and
+   `String.toList_push`.
+3. **Power bound** — `hexStringValue_lt_pow`: when every character
+   of `s` is a hex digit, `hexStringValue s < 16 ^ s.length`. Proof:
+   `String.push_induction` chaining (1) and (2).
+4. **Escape spec** — `parseHexEscapeIx_decoded`: on success,
+   `parseHexEscapeIx c n` returns `Char.ofNat
+   (hexStringValue digits)` with the value-range guard
+   `< 0x110000` already discharged. -/
+
+theorem hexDigitValue_lt_16 {ch : Char} (h : isHexDigitBool ch = true) :
+    hexDigitValue ch < 16 := by
+  -- Push hypotheses *and* goal to Nat in one simp pass.
+  simp only [isHexDigitBool, Bool.or_eq_true, Bool.and_eq_true,
+             decide_eq_true_eq, UInt32.le_iff_toNat_le] at h
+  unfold hexDigitValue
+  simp only [Char.toNat, UInt32.le_iff_toNat_le]
+  -- Concrete UInt32 → Nat literal equalities so `omega` sees plain numbers.
+  have h30 : (0x30 : UInt32).toNat = 48 := by native_decide
+  have h39 : (0x39 : UInt32).toNat = 57 := by native_decide
+  have h41 : (0x41 : UInt32).toNat = 65 := by native_decide
+  have h46 : (0x46 : UInt32).toNat = 70 := by native_decide
+  have h61 : (0x61 : UInt32).toNat = 97 := by native_decide
+  have h66 : (0x66 : UInt32).toNat = 102 := by native_decide
+  -- `||` is left-associative, so `a || b || c = true` simps to `(a ∨ b) ∨ c`.
+  -- Avoid `rcases` — it tries to destruct `Nat.le` and chokes.
+  cases h with
+  | inr hLower =>
+    have hLo := hLower.1
+    have hHi := hLower.2
+    rw [h61] at hLo; rw [h66] at hHi
+    rw [if_neg, if_pos]
+    · omega
+    · rw [h61]; omega
+    · intro hCond; have hLe := hCond.2; rw [h39] at hLe; omega
+  | inl hDU =>
+    cases hDU with
+    | inl hDigit =>
+      have hLo := hDigit.1
+      have hHi := hDigit.2
+      rw [h30] at hLo; rw [h39] at hHi
+      rw [if_pos]
+      · omega
+      · rw [h30, h39]; exact ⟨hLo, hHi⟩
+    | inr hUpper =>
+      have hLo := hUpper.1
+      have hHi := hUpper.2
+      rw [h41] at hLo; rw [h46] at hHi
+      rw [if_neg, if_neg]
+      · omega
+      · intro hGe; rw [h61] at hGe; omega
+      · intro hCond; have hLe := hCond.2; rw [h39] at hLe; omega
+
+@[simp] theorem hexStringValue_empty : hexStringValue "" = 0 := by
+  unfold hexStringValue
+  rw [String.foldl_eq_foldl_toList]
+  rfl
+
+theorem hexStringValue_push (s : String) (ch : Char) :
+    hexStringValue (s.push ch) = hexStringValue s * 16 + hexDigitValue ch := by
+  unfold hexStringValue
+  rw [String.foldl_eq_foldl_toList, String.toList_push, List.foldl_append,
+      String.foldl_eq_foldl_toList]
+  rfl
+
+theorem hexStringValue_lt_pow {s : String}
+    (hAll : ∀ c ∈ s.toList, isHexDigitBool c = true) :
+    hexStringValue s < 16 ^ s.length := by
+  induction s using String.push_induction with
+  | empty =>
+    rw [hexStringValue_empty]
+    show 0 < 16 ^ "".length
+    simp
+  | push b ch ih =>
+    have hCh : isHexDigitBool ch = true := by
+      apply hAll
+      rw [String.toList_push]
+      exact List.mem_append_right _ (List.mem_singleton.mpr rfl)
+    have hRest : ∀ c ∈ b.toList, isHexDigitBool c = true := by
+      intro c hc
+      apply hAll
+      rw [String.toList_push]
+      exact List.mem_append_left _ hc
+    have hb : hexStringValue b < 16 ^ b.length := ih hRest
+    have hch : hexDigitValue ch < 16 := hexDigitValue_lt_16 hCh
+    rw [hexStringValue_push, String.length_push, Nat.pow_succ]
+    have hStep : (hexStringValue b + 1) * 16 ≤ 16 ^ b.length * 16 :=
+      Nat.mul_le_mul_right 16 hb
+    -- (hexStringValue b + 1) * 16 = hexStringValue b * 16 + 16
+    -- hch < 16, so hexStringValue b * 16 + hch < hexStringValue b * 16 + 16
+    -- ≤ 16 ^ b.length * 16.
+    omega
+
+theorem parseHexEscapeIx_decoded {input : String} (c : IxCursor input) (n : Nat)
+    {ch : Char} {c' : IxCursor input}
+    (h : parseHexEscapeIx c n = some (ch, c')) :
+    hexStringValue (collectHexDigitsLoopIx c "" n).1 < 0x110000
+    ∧ ch = Char.ofNat (hexStringValue (collectHexDigitsLoopIx c "" n).1)
+    ∧ c' = (collectHexDigitsLoopIx c "" n).2 := by
+  unfold parseHexEscapeIx at h
+  split at h
+  · contradiction                                        -- length ≠ n
+  · split at h
+    · rename_i hLt
+      simp only [Option.some.injEq, Prod.mk.injEq] at h
+      obtain ⟨hcEq, hc'Eq⟩ := h
+      exact ⟨hLt, hcEq.symm, hc'Eq.symm⟩
+    · contradiction                                      -- value ≥ 0x110000
+
 end L4YAML.Scanner.Indexed
