@@ -1032,25 +1032,29 @@ lemmas for the 5b.1b.ii / 5b.1b.iii dispatchers
 the four `scanFlow*` start/end, `scanDocumentStartIx`,
 `scanDocumentEndIx`, `scanAnchorOrAliasIx`, `scanTagIx`,
 `scanYamlDirectiveIx`, `scanTagDirectiveIx`, `scanDirectiveIx`).
-The seven top-level lemmas the Blueprint named for 5b.1b.iv
-(five `scanNextTokenIx_*`, `scanNextTokenIx`, `scanLoopIx`) did
-*not* land: their proofs hit a new case-shape obstacle in the
-inner-`let`-zeta'd `if` of `scanNextTokenIx_preprocess` — after
-`simp only at h ; split at h ; · simp at h ; · split at h`, the
-second `split at h` produces 2 sub-cases (`isFalse.isTrue` /
-`isFalse.isFalse`) for the inner-let `if`, each of which then
-holds *another* outer `if errCond / match peek?` pair the
-2-level proof skeleton didn't anticipate. Reflection 50
-documents the shape and the two candidate fixes.
 
-**Next session**: Step 5b.1b.iv-cont — pick up the seven
-top-level chain lemmas using one of R50's fixes (likely
-`all_goals first | … | …` with the leaf `_tokens_size_le`
-helpers already in place). Then Steps 5b.2–5b.8 work through
-the remaining seven Step-5b carry-forward clusters
-(tab-in-indent, `scanValueIx` validation chain, hex-escape
-value, `autoDetectBlockScalarIndentLoopIx`, block-scalar
-fold/chomp, quoted multi-line, plain multi-line).
+**Step 5b.1b.iv-cont landed** (Reflection 51): the seven top-level
+chain lemmas — `scanNextTokenIx_preprocess` (only one that uses the
+R50 nested-`split` skeleton without do-block early-return),
+`scanNextTokenIx_dispatchStructural`/`dispatchFlowIndicators`/
+`dispatchBlockIndicators` (do-blocks with early `return some _`),
+`scanNextTokenIx_dispatchContent` (always-state return with three
+scalar-`Option` matches and dependent `hBS`/`hDQ`/`hSQ` witness
+binders), `scanNextTokenIx` (the per-iteration chain), and
+`scanLoopIx_tokens_size_le` (fueled top-level, induction on fuel).
+Two new techniques landed: (1) `by_cases hg + rw [if_pos / if_neg]`
+threaded with `cases hF : f s with | error => cases h | ok v => ...`
+to peel do-block guards explicitly (the `__do_jp` join-point chain
+otherwise blocks `split at h`); (2) `split at h` (not `cases : ...
+with`) is the right tactic for matches with dependent witness binders
+(`match hBS : f s with`), because `cases` introduces a name that
+`rw` can't substitute through the witness-dependent motive.
+Reflection 51 captures both fixes.
+
+**Next session**: Steps 5b.2–5b.8 work through the remaining seven
+Step-5b carry-forward clusters (tab-in-indent, `scanValueIx`
+validation chain, hex-escape value, `autoDetectBlockScalarIndentLoopIx`,
+block-scalar fold/chomp, quoted multi-line, plain multi-line).
 **Then Step 5c**: `present` + corpus theorem.
 
 </details>
@@ -1085,7 +1089,7 @@ fold/chomp, quoted multi-line, plain multi-line).
 | `L4YAML/Proofs/Scanner/IndexedWhitespace.lean` | n/a | ~405 | 0 (staging — Guardrail 1; new in Phase 3 Step 2; +`consumeLineBreak_strict` in Step 4a) |
 | `L4YAML/Proofs/Scanner/IndexedIndent.lean` | n/a | ~355 | 0 (staging — Guardrail 1; new in Phase 3 Step 3; +`skipToContentLoop_progress` / `skipToContent_progress` in Step 4a) |
 | `L4YAML/Proofs/Scanner/IndexedScalar.lean` | n/a | ~630 | 0 (staging — Guardrail 1; new in Phase 3 Step 4a; +F1/F2/F3 monotonicity proofs in Step 4b) |
-| `L4YAML/Proofs/Scanner/IndexedDispatch.lean` | n/a | ~830 | 0 (staging — Guardrail 1; new in Phase 3 Step 5b.1b.i: `IxCursor.advanceN_offset_monotonic`; `ScannerStateIx` cursor-preservation lemmas for `emit*`/`overwriteAtCursor`/`advance*`/`pushSequenceIndentIx`/`pushMappingIndentIx`/`unwindIndentsLoopIx`/`unwindIndentsIx`/`saveSimpleKeyIx`/`scanValuePrepareIx`; `skipSpacesS`/`skipWhitespaceS`/`skipToContentS` offset-monotonicity lifts; Step 5b.1b.ii: 10 per-dispatcher offset-monotonicity lemmas — `scanBlockEntryIx`/`scanKeyIx`/`scanValueIx`/`scanFlowEntryIx`/`scanDocumentStartIx`/`scanDocumentEndIx`/`scanFlowSequenceStartIx`/`scanFlowSequenceEndIx`/`scanFlowMappingStartIx`/`scanFlowMappingEndIx`; Step 5b.1b.iii: 5 per-dispatcher offset-monotonicity lemmas — `scanAnchorOrAliasIx`/`scanTagIx`/`scanYamlDirectiveIx`/`scanTagDirectiveIx`/`scanDirectiveIx`; Step 5b.1b.iv-pre: 6 tokens-size simp lemmas — `skipToContentS_tokens`/`skipSpacesS_tokens`/`skipWhitespaceS_tokens`/`advance_tokens`/`advanceN_tokens`/`emit_tokens_size`/`emitAt_tokens_size`/`emitAtCursor_tokens_size`/`overwriteAtCursor_tokens_size`; 6 indent/key helper `_tokens_size_le` lemmas — `unwindIndentsLoopIx`/`unwindIndentsIx`/`pushSequenceIndentIx`/`pushMappingIndentIx`/`saveSimpleKeyIx`/`scanValuePrepareIx`; 12 dispatcher `_tokens_size_le` lemmas — `scanBlockEntryIx`/`scanKeyIx`/`scanValueIx`/`scanFlowEntryIx`/`scanFlowSequenceStartIx`/`scanFlowSequenceEndIx`/`scanFlowMappingStartIx`/`scanFlowMappingEndIx`/`scanDocumentStartIx`/`scanDocumentEndIx`/`scanAnchorOrAliasIx`/`scanTagIx`/`scanYamlDirectiveIx`/`scanTagDirectiveIx`/`scanDirectiveIx`) |
+| `L4YAML/Proofs/Scanner/IndexedDispatch.lean` | n/a | ~1430 | 0 (staging — Guardrail 1; new in Phase 3 Step 5b.1b.i: `IxCursor.advanceN_offset_monotonic`; `ScannerStateIx` cursor-preservation lemmas for `emit*`/`overwriteAtCursor`/`advance*`/`pushSequenceIndentIx`/`pushMappingIndentIx`/`unwindIndentsLoopIx`/`unwindIndentsIx`/`saveSimpleKeyIx`/`scanValuePrepareIx`; `skipSpacesS`/`skipWhitespaceS`/`skipToContentS` offset-monotonicity lifts; Step 5b.1b.ii: 10 per-dispatcher offset-monotonicity lemmas — `scanBlockEntryIx`/`scanKeyIx`/`scanValueIx`/`scanFlowEntryIx`/`scanDocumentStartIx`/`scanDocumentEndIx`/`scanFlowSequenceStartIx`/`scanFlowSequenceEndIx`/`scanFlowMappingStartIx`/`scanFlowMappingEndIx`; Step 5b.1b.iii: 5 per-dispatcher offset-monotonicity lemmas — `scanAnchorOrAliasIx`/`scanTagIx`/`scanYamlDirectiveIx`/`scanTagDirectiveIx`/`scanDirectiveIx`; Step 5b.1b.iv-pre: 6 tokens-size simp lemmas — `skipToContentS_tokens`/`skipSpacesS_tokens`/`skipWhitespaceS_tokens`/`advance_tokens`/`advanceN_tokens`/`emit_tokens_size`/`emitAt_tokens_size`/`emitAtCursor_tokens_size`/`overwriteAtCursor_tokens_size`; 6 indent/key helper `_tokens_size_le` lemmas — `unwindIndentsLoopIx`/`unwindIndentsIx`/`pushSequenceIndentIx`/`pushMappingIndentIx`/`saveSimpleKeyIx`/`scanValuePrepareIx`; 12 dispatcher `_tokens_size_le` lemmas — `scanBlockEntryIx`/`scanKeyIx`/`scanValueIx`/`scanFlowEntryIx`/`scanFlowSequenceStartIx`/`scanFlowSequenceEndIx`/`scanFlowMappingStartIx`/`scanFlowMappingEndIx`/`scanDocumentStartIx`/`scanDocumentEndIx`/`scanAnchorOrAliasIx`/`scanTagIx`/`scanYamlDirectiveIx`/`scanTagDirectiveIx`/`scanDirectiveIx`; Step 5b.1b.iv-cont: 7 top-level pairs (`_offset_monotonic` + `_tokens_size_le`) for `scanNextTokenIx_preprocess`/`scanNextTokenIx_dispatchStructural`/`scanNextTokenIx_dispatchFlowIndicators`/`scanNextTokenIx_dispatchBlockIndicators`/`scanNextTokenIx_dispatchContent`/`scanNextTokenIx` plus `scanLoopIx_tokens_size_le`) |
 
 </details>
 
@@ -1710,6 +1714,89 @@ cutover commit. No "dual-write" interim state.
 
 </details>
 
+<details><summary>R50 — Inner-let `if` produces orthogonal sub-cases that 2-arm `split at h` skeletons miss (Phase 3 Step 5b.1b.iv-pre).</summary>
+
+50. **Inner-let `if` produces orthogonal sub-cases that 2-arm
+    `split at h` skeletons miss.** When a function body contains
+    `let s := if cond then unwind s else s` followed by trailing
+    matches, `simp only at h` zeta-reduces the let, exposing the
+    inner `if` as a SEPARATE top-level conditional. A nested 2-arm
+    `split at h ; · ... ; · split at h` then encounters MORE
+    sub-cases than the surface syntax suggests, because the
+    inner-let `if`'s `isTrue` arm contains the trailing `if errCond`
+    and `match peek?`, and likewise for the `isFalse` arm. Two
+    fixes: (i) `all_goals first | <success path> | (split at h;
+    <inner>)` factors the trailing-content peeling into a single
+    tactic invoked uniformly from each sub-case; (ii) case-exhaustive
+    nested splits write out all sub-cases explicitly.
+    R50 pairs with R49 (term-level `let`-block obstacle) and R48
+    (do-block `let`-block obstacle): destructuring tactics don't
+    peel through `let`-zeta'd intermediate state, and the *number*
+    of surviving sub-cases after `split` depends on the zeta'd
+    structure, not just the original surface syntax. **Rule: when a
+    sub-step plan mentions a "single-line chain" or "5-way uniform"
+    shape, count the let-zeta'd `if`s before estimating proof
+    length, not the surface-syntax `if`s.** See full text in
+    Step 5b.1b.iv-pre.
+
+</details>
+
+<details><summary>R51 — Do-block early-return needs `by_cases hg + rw [if_pos/if_neg] + cases hF`, not nested `split at h`; dependent matches need `split at h`, not `cases hF : f s` (Phase 3 Step 5b.1b.iv-cont).</summary>
+
+51. **Two technical patterns the top-level dispatcher monotonicity
+    proofs needed beyond R50's candidates.** The seven top-level
+    chain lemmas (`scanNextTokenIx_preprocess`,
+    `scanNextTokenIx_dispatch{Structural,FlowIndicators,
+    BlockIndicators,Content}`, `scanNextTokenIx`,
+    `scanLoopIx_tokens_size_le`) needed two new techniques that
+    R48–R50 had not yet exposed:
+
+    **(i) Do-block early-return is best peeled by
+    `by_cases hg + rw [if_pos / if_neg] at h + cases hF : f s
+    with`.** R50's preferred `simp only at h ; split at h` approach
+    does not cleanly handle do-blocks like `do { if c then return
+    some v ; if c2 then let s' ← g s ; return some s' ; ... }`. The
+    Lean elaborator inserts `__do_jp` join-point chains that
+    `simp [Bind.bind, Except.bind]` partially reduces but leaves
+    residual `match pure PUnit.unit with ...` patterns that don't
+    simplify further (the `match Except.ok x with | error => ... |
+    ok v => f v` doesn't beta-reduce in `simp only`, only in `simp`
+    with structural reduction). Instead, peel each guard with
+    `by_cases hg : (c == 'X') = true` + `rw [if_pos hg / if_neg hg]
+    at h`, then `cases hF : <scanner> s with | error e => rw [hF]
+    at h; simp [...] at h | ok v => rw [hF] at h; simp [..., Pure.pure,
+    Except.pure] at h; cases h; chain`. The `simp` with `Pure.pure`,
+    `Except.pure` reduces `pure (some v) = .ok (some s')` to
+    `v = s'`, which closes via `exact congrArg Except.ok h` or just
+    `cases h`.
+
+    **(ii) Dependent matches (`match hBS : f s with`) need
+    `split at h`, not `cases hF : f s`.** `scanNextTokenIx_dispatchContent`
+    has three scalar-`Option` matches with witness binders
+    (`match hBS : scanBlockScalarIx ... with | some r => ...uses
+    hBS for hBound ... | none => throw _`). Using `cases hF :
+    scanBlockScalarIx ... with` followed by `rw [hF] at h` fails
+    with "motive is not type correct" because the body of the
+    `some r` arm depends on `hBS` (the witness equation), and
+    rewriting the discriminant changes the implicit `hBS`'s type.
+    The fix is `split at h` (which performs case analysis directly
+    on the match in `h`) followed by `rename_i r hBS` to bind the
+    witness in the proof's local scope, then `cases h` to
+    substitute the constructed state. R51 generalises: **when a
+    match has a `: x with`-style witness binder, `cases : x` fails
+    on the resulting `rw`; use `split at h` instead.**
+
+    Also incidental: alpha-equivalent terms with different bound
+    names in `match` patterns (`| some s' => f s'` vs `| some t =>
+    f t`) sometimes fail to unify across a private-helper
+    `Application type mismatch` when one bound name shadows an
+    outer free variable with the same name. Solution: rewrite the
+    proof inline (no helper) when the helper's bound-name
+    expectations diverge from the call site's. See full text in
+    Step 5b.1b.iv-cont.
+
+</details>
+
 #### Phase 3 sub-plan (six sessions)
 
 <details><summary>Phase 3 is ~30× the size of the Phase 2 capstone. It is decomposed into six sessions; only the final commit must be atomic per Guardrail 1.</summary>
@@ -2209,18 +2296,25 @@ clusters become 5b.2–5b.8. Total: nine sub-steps.
     `scanTagIx`, `scanYamlDirectiveIx`, `scanTagDirectiveIx`,
     `scanDirectiveIx`). These are the chain ingredients the
     eventual top-level claims feed off. See R50.
-  - **5b.1b.iv-cont — Top-level dispatcher monotonicity**: the
-    five `scanNextTokenIx_*`, `scanNextTokenIx`, and `scanLoopIx`
-    (7 lemmas). `scanLoopIx_offset_monotonic` is the only
-    non-chain: it returns a `TokenStream`, not state, so its
-    statement form is *"every token emitted has
-    `start.offset ≥` the initial cursor's offset"* — proven by
-    induction on fuel, using the per-step
-    `scanNextTokenIx_offset_monotonic` together with the 5b.1b.iv-pre
-    `_tokens_size_le` chain. **Deferred** from 5b.1b.iv after the
-    inner-let `if`-shape obstacle (R50) made the 2-arm split
-    skeleton miss the `isFalse.isTrue` / `isFalse.isFalse`
-    sub-cases of `scanNextTokenIx_preprocess`'s zeta'd body.
+  - **5b.1b.iv-cont — Top-level dispatcher monotonicity** *(landed)*.
+    14 lemmas across 6 dispatcher pairs (`scanNextTokenIx_preprocess`,
+    `_dispatchStructural`, `_dispatchFlowIndicators`,
+    `_dispatchBlockIndicators`, `_dispatchContent`, and the
+    per-iteration `scanNextTokenIx`) — each producing
+    `_offset_monotonic` + `_tokens_size_le` — plus the fueled
+    `scanLoopIx_tokens_size_le`. The last is the only non-chain:
+    `scanLoopIx` returns a `TokenStream` rather than state, so its
+    claim is `s.tokens.size ≤ ts.size`, proven by induction on fuel,
+    chaining `scanNextTokenIx_tokens_size_le` plus the terminal
+    `unwindIndentsIx_tokens_size_le` + `emit streamEnd` growth.
+    The stronger *"every emitted token has
+    `start.offset ≥` initial cursor's offset"* claim is deferred to
+    Step 5b.2 (it would require strengthening every leaf lemma to
+    carry per-token offset bounds, not just final-cursor monotonicity).
+    See Reflection 51 for the two technical patterns the proofs
+    needed (`by_cases hg + rw [if_pos/if_neg] + cases h : f s` for
+    do-block early-return; `split at h` (not `cases h : ...`) for
+    matches with dependent witness binders).
 - **5b.2 — Tab-in-indentation hardening** for `scanBlockEntryIx`
   and `scanKeyIx` (§6.1 [187]); add the legacy's tab-check error
   branch to both indicator scans.
@@ -2584,6 +2678,60 @@ passes all 385 targets. `L4YAML.lean` does not import any
 **Carried forward into Step 5b.1b.iv-cont**: the seven top-level
 chain lemmas. With the leaf `_tokens_size_le` helpers and R50's
 two fix candidates in hand, the next session should fit in scope.
+
+</details>
+
+<details><summary>Step 5b.1b.iv-cont — Top-level dispatcher monotonicity <em>(landed)</em>.</summary>
+
+**Step 5b.1b.iv-cont — Top-level dispatcher monotonicity** *(landed)*.
+
+The seven top-level chains landed: six dispatcher pairs
+(`_offset_monotonic` + `_tokens_size_le`) for
+`scanNextTokenIx_preprocess`, `_dispatchStructural`,
+`_dispatchFlowIndicators`, `_dispatchBlockIndicators`,
+`_dispatchContent`, and the per-iteration `scanNextTokenIx`; plus
+the fueled `scanLoopIx_tokens_size_le` (the only non-chain — it
+returns a `TokenStream`, not state, so its claim is
+`s.tokens.size ≤ ts.size`, proven by induction on fuel).
+
+The proofs needed two new techniques beyond R50's two candidate
+fixes:
+
+1. **`by_cases hg + rw [if_pos / if_neg] at h + cases hF : f s with`**
+   for do-block early-returns. R50's preferred approach (nested
+   `split at h`) does not work cleanly on do-blocks with multiple
+   `if c then return some v` early-returns, because the elaborator
+   inserts `__do_jp` join-point chains that `simp [Bind.bind,
+   Except.bind]` cannot fully collapse. Instead, peel each guard
+   with `by_cases hg + rw [if_pos hg / if_neg hg] at h`, then for
+   each production use `cases hF : <scanner> s with | error e => rw
+   [hF] at h; simp [...] at h | ok v => rw [hF] at h; simp [...] at
+   h; ...`. The `simp [Bind.bind, Except.bind, Pure.pure,
+   Except.pure]` reduces `pure (some v) = .ok (some s')` to `v =
+   s'`, which closes via `exact congrArg Except.ok h` or `cases h`.
+
+2. **`split at h` (not `cases h : <expr>`) for dependent matches.**
+   `scanNextTokenIx_dispatchContent` has three scalar-`Option`
+   matches with dependent witness binders
+   (`match hBS : scanBlockScalarIx ... with | some r => ... uses
+   hBS to discharge hBound ...`). `cases h : <expr> with` introduces
+   `h : <expr> = constructor`, but `rw [h] at body` fails with
+   "motive is not type correct" because `body` depends on
+   `hBS` (the original witness). The fix is to use `split at h`
+   instead, which performs the case analysis directly on the match
+   in `h` and introduces the witness in the proper scope via
+   `rename_i r hBS`.
+
+Reflection 51 captures both patterns together.
+
+Sorry budget: **0 → 0** in the staging files. `lake build` passes
+all 385 targets. `L4YAML.lean` does not import any
+`Scanner.Indexed*` or `Proofs.Scanner.Indexed*` file — confirmed.
+
+**Carried forward into Steps 5b.2–5b.8**: the seven Step-5b
+clusters (tab-in-indent hardening, `scanValueIx` validation chain,
+hex-escape value, `autoDetectBlockScalarIndentLoopIx`, block-scalar
+fold/chomp, quoted multi-line, plain multi-line).
 
 </details>
 

@@ -222,7 +222,7 @@ def dedupFirst : List (YamlValue × YamlValue) → List (YamlValue × YamlValue)
     (k, v) :: (dedupFirst rest).filter (fun p => !(p.1 == k))
 
 /-- Filtering preserves `Nodup` of the projection. -/
-private theorem nodup_filter {p : YamlValue × YamlValue → Bool}
+theorem nodup_filter {p : YamlValue × YamlValue → Bool}
     (xs : List (YamlValue × YamlValue))
     (h : (xs.map keyOf).Nodup) :
     ((xs.filter p).map keyOf).Nodup := by
@@ -244,7 +244,7 @@ private theorem nodup_filter {p : YamlValue × YamlValue → Bool}
     · exact ih hTail
 
 /-- The head's key does not occur in `(dedupFirst rest).filter (·.1 ≠ k)`. -/
-private theorem not_mem_keys_filter (k : YamlValue) (rest : List (YamlValue × YamlValue)) :
+theorem not_mem_keys_filter (k : YamlValue) (rest : List (YamlValue × YamlValue)) :
     k ∉ ((dedupFirst rest).filter (fun p => !(p.1 == k))).map keyOf := by
   intro hmem
   rw [List.mem_map] at hmem
@@ -272,7 +272,7 @@ theorem noDup_dedupFirst (xs : List (YamlValue × YamlValue)) :
     · exact nodup_filter (dedupFirst rest) ih
 
 /-- A pair list whose key projection is `Nodup` is fixed by `dedupFirst`. -/
-private theorem dedupFirst_of_noDup (xs : List (YamlValue × YamlValue))
+theorem dedupFirst_of_noDup (xs : List (YamlValue × YamlValue))
     (h : (xs.map keyOf).Nodup) :
     dedupFirst xs = xs := by
   induction xs with
