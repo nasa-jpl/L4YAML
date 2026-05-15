@@ -45,45 +45,103 @@ theorem not_and_bool_iff_imp_not {b₁ b₂ : Bool} {p : Prop}
 
 YAML 1.2.2: [24] b-line-feed, [25] b-carriage-return, [26] b-char
 (§5.4, https://yaml.org/spec/1.2.2/#54-line-break-characters)
+
+Each production is its own function for spec traceability: `b-char` is
+defined as the disjunction `b-line-feed | b-carriage-return`, mirroring
+the grammar.
 -/
 
-/-- `[26] b-char`: line feed or carriage return (Bool). -/
-@[yaml_spec "5.4" 24 "b-line-feed",
-  yaml_spec "5.4" 25 "b-carriage-return",
-  yaml_spec "5.4" 26 "b-char"]
-def isLineBreakBool (c : Char) : Bool := c == '\n' || c == '\r'
+/-- `[24] b-line-feed ::= #xA`: the line-feed character (Bool). -/
+@[yaml_spec "5.4" 24 "b-line-feed"]
+def isLineFeedBool (c : Char) : Bool := c == '\n'
 
-/-- `[26] b-char`: line feed or carriage return (Prop). -/
-@[yaml_spec "5.4" 24 "b-line-feed",
-  yaml_spec "5.4" 25 "b-carriage-return",
-  yaml_spec "5.4" 26 "b-char"]
-def isLineBreakProp (c : Char) : Prop := c == '\n' ∨ c == '\r'
+/-- `[24] b-line-feed ::= #xA`: the line-feed character (Prop). -/
+@[yaml_spec "5.4" 24 "b-line-feed"]
+def isLineFeedProp (c : Char) : Prop := c == '\n'
+
+theorem isLineFeed_iff (c : Char) : isLineFeedBool c = true ↔ isLineFeedProp c := by
+  simp [isLineFeedBool, isLineFeedProp]
+
+instance (c : Char) : Decidable (isLineFeedProp c) := by
+  unfold isLineFeedProp; infer_instance
+
+/-- `[25] b-carriage-return ::= #xD`: the carriage-return character (Bool). -/
+@[yaml_spec "5.4" 25 "b-carriage-return"]
+def isCarriageReturnBool (c : Char) : Bool := c == '\r'
+
+/-- `[25] b-carriage-return ::= #xD`: the carriage-return character (Prop). -/
+@[yaml_spec "5.4" 25 "b-carriage-return"]
+def isCarriageReturnProp (c : Char) : Prop := c == '\r'
+
+theorem isCarriageReturn_iff (c : Char) :
+    isCarriageReturnBool c = true ↔ isCarriageReturnProp c := by
+  simp [isCarriageReturnBool, isCarriageReturnProp]
+
+instance (c : Char) : Decidable (isCarriageReturnProp c) := by
+  unfold isCarriageReturnProp; infer_instance
+
+/-- `[26] b-char ::= b-line-feed | b-carriage-return` (Bool). -/
+@[yaml_spec "5.4" 26 "b-char"]
+def isLineBreakBool (c : Char) : Bool := isLineFeedBool c || isCarriageReturnBool c
+
+/-- `[26] b-char ::= b-line-feed | b-carriage-return` (Prop). -/
+@[yaml_spec "5.4" 26 "b-char"]
+def isLineBreakProp (c : Char) : Prop := isLineFeedProp c ∨ isCarriageReturnProp c
 
 theorem isLineBreak_iff (c : Char) : isLineBreakBool c = true ↔ isLineBreakProp c := by
-  simp only [isLineBreakBool, isLineBreakProp, Bool.or_eq_true]
+  simp only [isLineBreakBool, isLineBreakProp, Bool.or_eq_true,
+             isLineFeed_iff, isCarriageReturn_iff]
 
 instance (c : Char) : Decidable (isLineBreakProp c) := by
   unfold isLineBreakProp; infer_instance
 
 /-! ## White Space Characters
 
-YAML 1.2.2: [33] s-white (§5.5, https://yaml.org/spec/1.2.2/#55-white-space-characters)
+YAML 1.2.2: [31] s-space, [32] s-tab, [33] s-white
+(§5.5, https://yaml.org/spec/1.2.2/#55-white-space-characters)
+
+Each production is its own function for spec traceability: `s-white` is
+defined as the disjunction `s-space | s-tab`, mirroring the grammar.
 -/
 
-/-- `[33] s-white`: space or tab (Bool). -/
-@[yaml_spec "5.5" 31 "s-space",
-  yaml_spec "5.5" 32 "s-tab",
-  yaml_spec "5.5" 33 "s-white"]
-def isWhiteSpaceBool (c : Char) : Bool := c == ' ' || c == '\t'
+/-- `[31] s-space ::= #x20`: the space character (Bool). -/
+@[yaml_spec "5.5" 31 "s-space"]
+def isSpaceBool (c : Char) : Bool := c == ' '
 
-/-- `[33] s-white`: space or tab (Prop). -/
-@[yaml_spec "5.5" 31 "s-space",
-  yaml_spec "5.5" 32 "s-tab",
-  yaml_spec "5.5" 33 "s-white"]
-def isWhiteSpaceProp (c : Char) : Prop := c == ' ' ∨ c == '\t'
+/-- `[31] s-space ::= #x20`: the space character (Prop). -/
+@[yaml_spec "5.5" 31 "s-space"]
+def isSpaceProp (c : Char) : Prop := c == ' '
+
+theorem isSpace_iff (c : Char) : isSpaceBool c = true ↔ isSpaceProp c := by
+  simp [isSpaceBool, isSpaceProp]
+
+instance (c : Char) : Decidable (isSpaceProp c) := by
+  unfold isSpaceProp; infer_instance
+
+/-- `[32] s-tab ::= #x9`: the tab character (Bool). -/
+@[yaml_spec "5.5" 32 "s-tab"]
+def isTabBool (c : Char) : Bool := c == '\t'
+
+/-- `[32] s-tab ::= #x9`: the tab character (Prop). -/
+@[yaml_spec "5.5" 32 "s-tab"]
+def isTabProp (c : Char) : Prop := c == '\t'
+
+theorem isTab_iff (c : Char) : isTabBool c = true ↔ isTabProp c := by
+  simp [isTabBool, isTabProp]
+
+instance (c : Char) : Decidable (isTabProp c) := by
+  unfold isTabProp; infer_instance
+
+/-- `[33] s-white ::= s-space | s-tab` (Bool). -/
+@[yaml_spec "5.5" 33 "s-white"]
+def isWhiteSpaceBool (c : Char) : Bool := isSpaceBool c || isTabBool c
+
+/-- `[33] s-white ::= s-space | s-tab` (Prop). -/
+@[yaml_spec "5.5" 33 "s-white"]
+def isWhiteSpaceProp (c : Char) : Prop := isSpaceProp c ∨ isTabProp c
 
 theorem isWhiteSpace_iff (c : Char) : isWhiteSpaceBool c = true ↔ isWhiteSpaceProp c := by
-  simp only [isWhiteSpaceBool, isWhiteSpaceProp, Bool.or_eq_true]
+  simp only [isWhiteSpaceBool, isWhiteSpaceProp, Bool.or_eq_true, isSpace_iff, isTab_iff]
 
 instance (c : Char) : Decidable (isWhiteSpaceProp c) := by
   unfold isWhiteSpaceProp; infer_instance
@@ -191,6 +249,535 @@ theorem isIndicator_iff (c : Char) :
 
 instance (c : Char) : Decidable (isIndicatorProp c) := by
   unfold isIndicatorProp; infer_instance
+
+/-! ## Individual Indicator Characters
+
+YAML 1.2.2 §5.3 — single-character indicators with their own productions.
+Each predicate tests a single role and carries the corresponding
+`@[yaml_spec]` traceability annotation, so the scanner never compares
+against a bare char literal except inside these definitions.
+(§5.3, https://yaml.org/spec/1.2.2/#53-indicator-characters)
+-/
+
+/-- `[4] c-sequence-entry ::= "-"` (Bool). -/
+@[yaml_spec "5.3" 4 "c-sequence-entry"]
+def isSequenceEntryBool (c : Char) : Bool := c == '-'
+
+/-- `[4] c-sequence-entry ::= "-"` (Prop). -/
+@[yaml_spec "5.3" 4 "c-sequence-entry"]
+def isSequenceEntryProp (c : Char) : Prop := c == '-'
+
+theorem isSequenceEntry_iff (c : Char) :
+    isSequenceEntryBool c = true ↔ isSequenceEntryProp c := by
+  simp [isSequenceEntryBool, isSequenceEntryProp]
+
+instance (c : Char) : Decidable (isSequenceEntryProp c) := by
+  unfold isSequenceEntryProp; infer_instance
+
+/-- `[6] c-mapping-value ::= ":"` (Bool). -/
+@[yaml_spec "5.3" 6 "c-mapping-value"]
+def isMappingValueBool (c : Char) : Bool := c == ':'
+
+/-- `[6] c-mapping-value ::= ":"` (Prop). -/
+@[yaml_spec "5.3" 6 "c-mapping-value"]
+def isMappingValueProp (c : Char) : Prop := c == ':'
+
+theorem isMappingValue_iff (c : Char) :
+    isMappingValueBool c = true ↔ isMappingValueProp c := by
+  simp [isMappingValueBool, isMappingValueProp]
+
+instance (c : Char) : Decidable (isMappingValueProp c) := by
+  unfold isMappingValueProp; infer_instance
+
+/-- `[12] c-comment ::= "#"` (Bool). -/
+@[yaml_spec "5.3" 12 "c-comment"]
+def isCommentBool (c : Char) : Bool := c == '#'
+
+/-- `[12] c-comment ::= "#"` (Prop). -/
+@[yaml_spec "5.3" 12 "c-comment"]
+def isCommentProp (c : Char) : Prop := c == '#'
+
+theorem isComment_iff (c : Char) :
+    isCommentBool c = true ↔ isCommentProp c := by
+  simp [isCommentBool, isCommentProp]
+
+instance (c : Char) : Decidable (isCommentProp c) := by
+  unfold isCommentProp; infer_instance
+
+/-- `[16] c-literal ::= "|"` (Bool). -/
+@[yaml_spec "5.3" 16 "c-literal"]
+def isLiteralBool (c : Char) : Bool := c == '|'
+
+/-- `[16] c-literal ::= "|"` (Prop). -/
+@[yaml_spec "5.3" 16 "c-literal"]
+def isLiteralProp (c : Char) : Prop := c == '|'
+
+theorem isLiteral_iff (c : Char) :
+    isLiteralBool c = true ↔ isLiteralProp c := by
+  simp [isLiteralBool, isLiteralProp]
+
+instance (c : Char) : Decidable (isLiteralProp c) := by
+  unfold isLiteralProp; infer_instance
+
+/-- `[17] c-folded ::= ">"` (Bool). -/
+@[yaml_spec "5.3" 17 "c-folded"]
+def isFoldedBool (c : Char) : Bool := c == '>'
+
+/-- `[17] c-folded ::= ">"` (Prop). -/
+@[yaml_spec "5.3" 17 "c-folded"]
+def isFoldedProp (c : Char) : Prop := c == '>'
+
+theorem isFolded_iff (c : Char) :
+    isFoldedBool c = true ↔ isFoldedProp c := by
+  simp [isFoldedBool, isFoldedProp]
+
+instance (c : Char) : Decidable (isFoldedProp c) := by
+  unfold isFoldedProp; infer_instance
+
+/-- `[18] c-single-quote ::= "'"` (Bool). -/
+@[yaml_spec "5.3" 18 "c-single-quote"]
+def isSingleQuoteBool (c : Char) : Bool := c == '\''
+
+/-- `[18] c-single-quote ::= "'"` (Prop). -/
+@[yaml_spec "5.3" 18 "c-single-quote"]
+def isSingleQuoteProp (c : Char) : Prop := c == '\''
+
+theorem isSingleQuote_iff (c : Char) :
+    isSingleQuoteBool c = true ↔ isSingleQuoteProp c := by
+  simp [isSingleQuoteBool, isSingleQuoteProp]
+
+instance (c : Char) : Decidable (isSingleQuoteProp c) := by
+  unfold isSingleQuoteProp; infer_instance
+
+/-- `[19] c-double-quote ::= '"'` (Bool). -/
+@[yaml_spec "5.3" 19 "c-double-quote"]
+def isDoubleQuoteBool (c : Char) : Bool := c == '"'
+
+/-- `[19] c-double-quote ::= '"'` (Prop). -/
+@[yaml_spec "5.3" 19 "c-double-quote"]
+def isDoubleQuoteProp (c : Char) : Prop := c == '"'
+
+theorem isDoubleQuote_iff (c : Char) :
+    isDoubleQuoteBool c = true ↔ isDoubleQuoteProp c := by
+  simp [isDoubleQuoteBool, isDoubleQuoteProp]
+
+instance (c : Char) : Decidable (isDoubleQuoteProp c) := by
+  unfold isDoubleQuoteProp; infer_instance
+
+/-! ## Escape Indicators
+
+YAML 1.2.2 §5.7 — the backslash and the single-character escape
+selectors that may follow it in double-quoted scalars.
+(§5.7, https://yaml.org/spec/1.2.2/#57-escaped-characters)
+-/
+
+/-- `[41] c-escape ::= "\\"` (Bool). -/
+@[yaml_spec "5.7" 41 "c-escape"]
+def isEscapeBool (c : Char) : Bool := c == '\\'
+
+/-- `[41] c-escape ::= "\\"` (Prop). -/
+@[yaml_spec "5.7" 41 "c-escape"]
+def isEscapeProp (c : Char) : Prop := c == '\\'
+
+theorem isEscape_iff (c : Char) :
+    isEscapeBool c = true ↔ isEscapeProp c := by
+  simp [isEscapeBool, isEscapeProp]
+
+instance (c : Char) : Decidable (isEscapeProp c) := by
+  unfold isEscapeProp; infer_instance
+
+/-- `[42] ns-esc-null ::= "0"` selector char (Bool). -/
+@[yaml_spec "5.7" 42 "ns-esc-null"]
+def isNsEscNullBool (c : Char) : Bool := c == '0'
+
+/-- `[42] ns-esc-null ::= "0"` selector char (Prop). -/
+@[yaml_spec "5.7" 42 "ns-esc-null"]
+def isNsEscNullProp (c : Char) : Prop := c == '0'
+
+theorem isNsEscNull_iff (c : Char) :
+    isNsEscNullBool c = true ↔ isNsEscNullProp c := by
+  simp [isNsEscNullBool, isNsEscNullProp]
+
+instance (c : Char) : Decidable (isNsEscNullProp c) := by
+  unfold isNsEscNullProp; infer_instance
+
+/-- `[43] ns-esc-bell ::= "a"` selector char (Bool). -/
+@[yaml_spec "5.7" 43 "ns-esc-bell"]
+def isNsEscBellBool (c : Char) : Bool := c == 'a'
+
+/-- `[43] ns-esc-bell ::= "a"` selector char (Prop). -/
+@[yaml_spec "5.7" 43 "ns-esc-bell"]
+def isNsEscBellProp (c : Char) : Prop := c == 'a'
+
+theorem isNsEscBell_iff (c : Char) :
+    isNsEscBellBool c = true ↔ isNsEscBellProp c := by
+  simp [isNsEscBellBool, isNsEscBellProp]
+
+instance (c : Char) : Decidable (isNsEscBellProp c) := by
+  unfold isNsEscBellProp; infer_instance
+
+/-- `[44] ns-esc-backspace ::= "b"` selector char (Bool). -/
+@[yaml_spec "5.7" 44 "ns-esc-backspace"]
+def isNsEscBackspaceBool (c : Char) : Bool := c == 'b'
+
+/-- `[44] ns-esc-backspace ::= "b"` selector char (Prop). -/
+@[yaml_spec "5.7" 44 "ns-esc-backspace"]
+def isNsEscBackspaceProp (c : Char) : Prop := c == 'b'
+
+theorem isNsEscBackspace_iff (c : Char) :
+    isNsEscBackspaceBool c = true ↔ isNsEscBackspaceProp c := by
+  simp [isNsEscBackspaceBool, isNsEscBackspaceProp]
+
+instance (c : Char) : Decidable (isNsEscBackspaceProp c) := by
+  unfold isNsEscBackspaceProp; infer_instance
+
+/-- `[45] ns-esc-horizontal-tab ::= "t" | #x9` letter selector (Bool).
+    The `#x9` alternative is recognised by `isTabBool`. -/
+@[yaml_spec "5.7" 45 "ns-esc-horizontal-tab"]
+def isNsEscHorizontalTabBool (c : Char) : Bool := c == 't'
+
+/-- `[45] ns-esc-horizontal-tab ::= "t" | #x9` letter selector (Prop). -/
+@[yaml_spec "5.7" 45 "ns-esc-horizontal-tab"]
+def isNsEscHorizontalTabProp (c : Char) : Prop := c == 't'
+
+theorem isNsEscHorizontalTab_iff (c : Char) :
+    isNsEscHorizontalTabBool c = true ↔ isNsEscHorizontalTabProp c := by
+  simp [isNsEscHorizontalTabBool, isNsEscHorizontalTabProp]
+
+instance (c : Char) : Decidable (isNsEscHorizontalTabProp c) := by
+  unfold isNsEscHorizontalTabProp; infer_instance
+
+/-- `[46] ns-esc-line-feed ::= "n"` selector char (Bool). -/
+@[yaml_spec "5.7" 46 "ns-esc-line-feed"]
+def isNsEscLineFeedBool (c : Char) : Bool := c == 'n'
+
+/-- `[46] ns-esc-line-feed ::= "n"` selector char (Prop). -/
+@[yaml_spec "5.7" 46 "ns-esc-line-feed"]
+def isNsEscLineFeedProp (c : Char) : Prop := c == 'n'
+
+theorem isNsEscLineFeed_iff (c : Char) :
+    isNsEscLineFeedBool c = true ↔ isNsEscLineFeedProp c := by
+  simp [isNsEscLineFeedBool, isNsEscLineFeedProp]
+
+instance (c : Char) : Decidable (isNsEscLineFeedProp c) := by
+  unfold isNsEscLineFeedProp; infer_instance
+
+/-- `[47] ns-esc-vertical-tab ::= "v"` selector char (Bool). -/
+@[yaml_spec "5.7" 47 "ns-esc-vertical-tab"]
+def isNsEscVerticalTabBool (c : Char) : Bool := c == 'v'
+
+/-- `[47] ns-esc-vertical-tab ::= "v"` selector char (Prop). -/
+@[yaml_spec "5.7" 47 "ns-esc-vertical-tab"]
+def isNsEscVerticalTabProp (c : Char) : Prop := c == 'v'
+
+theorem isNsEscVerticalTab_iff (c : Char) :
+    isNsEscVerticalTabBool c = true ↔ isNsEscVerticalTabProp c := by
+  simp [isNsEscVerticalTabBool, isNsEscVerticalTabProp]
+
+instance (c : Char) : Decidable (isNsEscVerticalTabProp c) := by
+  unfold isNsEscVerticalTabProp; infer_instance
+
+/-- `[48] ns-esc-form-feed ::= "f"` selector char (Bool). -/
+@[yaml_spec "5.7" 48 "ns-esc-form-feed"]
+def isNsEscFormFeedBool (c : Char) : Bool := c == 'f'
+
+/-- `[48] ns-esc-form-feed ::= "f"` selector char (Prop). -/
+@[yaml_spec "5.7" 48 "ns-esc-form-feed"]
+def isNsEscFormFeedProp (c : Char) : Prop := c == 'f'
+
+theorem isNsEscFormFeed_iff (c : Char) :
+    isNsEscFormFeedBool c = true ↔ isNsEscFormFeedProp c := by
+  simp [isNsEscFormFeedBool, isNsEscFormFeedProp]
+
+instance (c : Char) : Decidable (isNsEscFormFeedProp c) := by
+  unfold isNsEscFormFeedProp; infer_instance
+
+/-- `[49] ns-esc-carriage-return ::= "r"` selector char (Bool). -/
+@[yaml_spec "5.7" 49 "ns-esc-carriage-return"]
+def isNsEscCarriageReturnBool (c : Char) : Bool := c == 'r'
+
+/-- `[49] ns-esc-carriage-return ::= "r"` selector char (Prop). -/
+@[yaml_spec "5.7" 49 "ns-esc-carriage-return"]
+def isNsEscCarriageReturnProp (c : Char) : Prop := c == 'r'
+
+theorem isNsEscCarriageReturn_iff (c : Char) :
+    isNsEscCarriageReturnBool c = true ↔ isNsEscCarriageReturnProp c := by
+  simp [isNsEscCarriageReturnBool, isNsEscCarriageReturnProp]
+
+instance (c : Char) : Decidable (isNsEscCarriageReturnProp c) := by
+  unfold isNsEscCarriageReturnProp; infer_instance
+
+/-- `[50] ns-esc-escape ::= "e"` selector char (Bool). -/
+@[yaml_spec "5.7" 50 "ns-esc-escape"]
+def isNsEscEscapeBool (c : Char) : Bool := c == 'e'
+
+/-- `[50] ns-esc-escape ::= "e"` selector char (Prop). -/
+@[yaml_spec "5.7" 50 "ns-esc-escape"]
+def isNsEscEscapeProp (c : Char) : Prop := c == 'e'
+
+theorem isNsEscEscape_iff (c : Char) :
+    isNsEscEscapeBool c = true ↔ isNsEscEscapeProp c := by
+  simp [isNsEscEscapeBool, isNsEscEscapeProp]
+
+instance (c : Char) : Decidable (isNsEscEscapeProp c) := by
+  unfold isNsEscEscapeProp; infer_instance
+
+/-- `[53] ns-esc-slash ::= "/"` selector char (Bool). -/
+@[yaml_spec "5.7" 53 "ns-esc-slash"]
+def isNsEscSlashBool (c : Char) : Bool := c == '/'
+
+/-- `[53] ns-esc-slash ::= "/"` selector char (Prop). -/
+@[yaml_spec "5.7" 53 "ns-esc-slash"]
+def isNsEscSlashProp (c : Char) : Prop := c == '/'
+
+theorem isNsEscSlash_iff (c : Char) :
+    isNsEscSlashBool c = true ↔ isNsEscSlashProp c := by
+  simp [isNsEscSlashBool, isNsEscSlashProp]
+
+instance (c : Char) : Decidable (isNsEscSlashProp c) := by
+  unfold isNsEscSlashProp; infer_instance
+
+/-- `[55] ns-esc-next-line ::= "N"` selector char (Bool). -/
+@[yaml_spec "5.7" 55 "ns-esc-next-line"]
+def isNsEscNextLineBool (c : Char) : Bool := c == 'N'
+
+/-- `[55] ns-esc-next-line ::= "N"` selector char (Prop). -/
+@[yaml_spec "5.7" 55 "ns-esc-next-line"]
+def isNsEscNextLineProp (c : Char) : Prop := c == 'N'
+
+theorem isNsEscNextLine_iff (c : Char) :
+    isNsEscNextLineBool c = true ↔ isNsEscNextLineProp c := by
+  simp [isNsEscNextLineBool, isNsEscNextLineProp]
+
+instance (c : Char) : Decidable (isNsEscNextLineProp c) := by
+  unfold isNsEscNextLineProp; infer_instance
+
+/-- `[56] ns-esc-non-breaking-space ::= "_"` selector char (Bool). -/
+@[yaml_spec "5.7" 56 "ns-esc-non-breaking-space"]
+def isNsEscNbspBool (c : Char) : Bool := c == '_'
+
+/-- `[56] ns-esc-non-breaking-space ::= "_"` selector char (Prop). -/
+@[yaml_spec "5.7" 56 "ns-esc-non-breaking-space"]
+def isNsEscNbspProp (c : Char) : Prop := c == '_'
+
+theorem isNsEscNbsp_iff (c : Char) :
+    isNsEscNbspBool c = true ↔ isNsEscNbspProp c := by
+  simp [isNsEscNbspBool, isNsEscNbspProp]
+
+instance (c : Char) : Decidable (isNsEscNbspProp c) := by
+  unfold isNsEscNbspProp; infer_instance
+
+/-- `[57] ns-esc-line-separator ::= "L"` selector char (Bool). -/
+@[yaml_spec "5.7" 57 "ns-esc-line-separator"]
+def isNsEscLineSeparatorBool (c : Char) : Bool := c == 'L'
+
+/-- `[57] ns-esc-line-separator ::= "L"` selector char (Prop). -/
+@[yaml_spec "5.7" 57 "ns-esc-line-separator"]
+def isNsEscLineSeparatorProp (c : Char) : Prop := c == 'L'
+
+theorem isNsEscLineSeparator_iff (c : Char) :
+    isNsEscLineSeparatorBool c = true ↔ isNsEscLineSeparatorProp c := by
+  simp [isNsEscLineSeparatorBool, isNsEscLineSeparatorProp]
+
+instance (c : Char) : Decidable (isNsEscLineSeparatorProp c) := by
+  unfold isNsEscLineSeparatorProp; infer_instance
+
+/-- `[58] ns-esc-paragraph-separator ::= "P"` selector char (Bool). -/
+@[yaml_spec "5.7" 58 "ns-esc-paragraph-separator"]
+def isNsEscParagraphSeparatorBool (c : Char) : Bool := c == 'P'
+
+/-- `[58] ns-esc-paragraph-separator ::= "P"` selector char (Prop). -/
+@[yaml_spec "5.7" 58 "ns-esc-paragraph-separator"]
+def isNsEscParagraphSeparatorProp (c : Char) : Prop := c == 'P'
+
+theorem isNsEscParagraphSeparator_iff (c : Char) :
+    isNsEscParagraphSeparatorBool c = true ↔ isNsEscParagraphSeparatorProp c := by
+  simp [isNsEscParagraphSeparatorBool, isNsEscParagraphSeparatorProp]
+
+instance (c : Char) : Decidable (isNsEscParagraphSeparatorProp c) := by
+  unfold isNsEscParagraphSeparatorProp; infer_instance
+
+/-- `[59] ns-esc-8-bit` introducer char `"x"` (Bool). -/
+@[yaml_spec "5.7" 59 "ns-esc-8-bit"]
+def isNsEsc8BitBool (c : Char) : Bool := c == 'x'
+
+/-- `[59] ns-esc-8-bit` introducer char `"x"` (Prop). -/
+@[yaml_spec "5.7" 59 "ns-esc-8-bit"]
+def isNsEsc8BitProp (c : Char) : Prop := c == 'x'
+
+theorem isNsEsc8Bit_iff (c : Char) :
+    isNsEsc8BitBool c = true ↔ isNsEsc8BitProp c := by
+  simp [isNsEsc8BitBool, isNsEsc8BitProp]
+
+instance (c : Char) : Decidable (isNsEsc8BitProp c) := by
+  unfold isNsEsc8BitProp; infer_instance
+
+/-- `[60] ns-esc-16-bit` introducer char `"u"` (Bool). -/
+@[yaml_spec "5.7" 60 "ns-esc-16-bit"]
+def isNsEsc16BitBool (c : Char) : Bool := c == 'u'
+
+/-- `[60] ns-esc-16-bit` introducer char `"u"` (Prop). -/
+@[yaml_spec "5.7" 60 "ns-esc-16-bit"]
+def isNsEsc16BitProp (c : Char) : Prop := c == 'u'
+
+theorem isNsEsc16Bit_iff (c : Char) :
+    isNsEsc16BitBool c = true ↔ isNsEsc16BitProp c := by
+  simp [isNsEsc16BitBool, isNsEsc16BitProp]
+
+instance (c : Char) : Decidable (isNsEsc16BitProp c) := by
+  unfold isNsEsc16BitProp; infer_instance
+
+/-- `[61] ns-esc-32-bit` introducer char `"U"` (Bool). -/
+@[yaml_spec "5.7" 61 "ns-esc-32-bit"]
+def isNsEsc32BitBool (c : Char) : Bool := c == 'U'
+
+/-- `[61] ns-esc-32-bit` introducer char `"U"` (Prop). -/
+@[yaml_spec "5.7" 61 "ns-esc-32-bit"]
+def isNsEsc32BitProp (c : Char) : Prop := c == 'U'
+
+theorem isNsEsc32Bit_iff (c : Char) :
+    isNsEsc32BitBool c = true ↔ isNsEsc32BitProp c := by
+  simp [isNsEsc32BitBool, isNsEsc32BitProp]
+
+instance (c : Char) : Decidable (isNsEsc32BitProp c) := by
+  unfold isNsEsc32BitProp; infer_instance
+
+/-! ## Block-Scalar Header Indicators
+
+YAML 1.2.2 §8.1.1.2 [164] c-chomping-indicator. The `strip` case is the
+sequence-entry character (already covered by `isSequenceEntryBool`);
+the `keep` case has its own dedicated predicate below.
+(§8.1.1.2, https://yaml.org/spec/1.2.2/#8112-block-chomping-indicator)
+-/
+
+/-- `[164] c-chomping-indicator(keep) ::= "+"` (Bool). -/
+@[yaml_spec "8.1.1.2" 164 "c-chomping-indicator"]
+def isChompKeepBool (c : Char) : Bool := c == '+'
+
+/-- `[164] c-chomping-indicator(keep) ::= "+"` (Prop). -/
+@[yaml_spec "8.1.1.2" 164 "c-chomping-indicator"]
+def isChompKeepProp (c : Char) : Prop := c == '+'
+
+theorem isChompKeep_iff (c : Char) :
+    isChompKeepBool c = true ↔ isChompKeepProp c := by
+  simp [isChompKeepBool, isChompKeepProp]
+
+instance (c : Char) : Decidable (isChompKeepProp c) := by
+  unfold isChompKeepProp; infer_instance
+
+/-! ## Document-End Marker Character
+
+YAML 1.2.2 §9.1.4 [203] c-document-end ::= "..." — the dot character
+has no single-character production of its own; the predicate below is
+introduced for spec traceability of the three-dot marker check.
+(§9.1.4, https://yaml.org/spec/1.2.2/#914-explicit-document-end-marker)
+-/
+
+/-- Dot character `"."` used in [203] c-document-end (Bool). -/
+@[yaml_spec "9.1.4" 203 "c-document-end"]
+def isDocEndDotBool (c : Char) : Bool := c == '.'
+
+/-- Dot character `"."` used in [203] c-document-end (Prop). -/
+@[yaml_spec "9.1.4" 203 "c-document-end"]
+def isDocEndDotProp (c : Char) : Prop := c == '.'
+
+theorem isDocEndDot_iff (c : Char) :
+    isDocEndDotBool c = true ↔ isDocEndDotProp c := by
+  simp [isDocEndDotBool, isDocEndDotProp]
+
+instance (c : Char) : Decidable (isDocEndDotProp c) := by
+  unfold isDocEndDotProp; infer_instance
+
+/-! ## Spec-Level Character Constants
+
+Concrete `Char` values for characters that the scanner emits (rather
+than tests against input). Each constant carries the `@[yaml_spec]`
+annotation pointing to the spec production whose literal it realises,
+so even output characters remain traceable to the spec.
+-/
+
+/-- `#xA`: line-feed character emitted for [24] b-line-feed. -/
+@[yaml_spec "5.4" 24 "b-line-feed"]
+def lineFeedChar : Char := '\n'
+
+/-- `#xD`: carriage-return character emitted for [25] b-carriage-return. -/
+@[yaml_spec "5.4" 25 "b-carriage-return"]
+def carriageReturnChar : Char := '\r'
+
+/-- `#x20`: space character emitted for [31] s-space. -/
+@[yaml_spec "5.5" 31 "s-space"]
+def spaceChar : Char := ' '
+
+/-- `#x9`: tab character emitted for [32] s-tab. -/
+@[yaml_spec "5.5" 32 "s-tab"]
+def tabChar : Char := '\t'
+
+/-- `#x27`: single-quote character emitted for [18] c-single-quote. -/
+@[yaml_spec "5.3" 18 "c-single-quote"]
+def singleQuoteChar : Char := '\''
+
+/-- `#x22`: double-quote character emitted for [19] c-double-quote
+    and [52] ns-esc-double-quote. -/
+@[yaml_spec "5.3" 19 "c-double-quote",
+  yaml_spec "5.7" 52 "ns-esc-double-quote"]
+def doubleQuoteChar : Char := '"'
+
+/-- `#x5C`: backslash character emitted for [41] c-escape and
+    [54] ns-esc-backslash. -/
+@[yaml_spec "5.7" 41 "c-escape",
+  yaml_spec "5.7" 54 "ns-esc-backslash"]
+def backslashChar : Char := '\\'
+
+/-- `#x2F`: forward-slash character emitted for [53] ns-esc-slash. -/
+@[yaml_spec "5.7" 53 "ns-esc-slash"]
+def slashChar : Char := '/'
+
+/-! ### Escape-Result Characters (§5.7)
+
+The values the scanner emits when it decodes a `c-ns-esc-char` escape
+sequence. Each is the unicode code point named by the corresponding
+`ns-esc-*` production.
+-/
+
+/-- `#x00`: result of [42] ns-esc-null escape. -/
+@[yaml_spec "5.7" 42 "ns-esc-null"]
+def nsEscNullChar : Char := '\x00'
+
+/-- `#x07`: result of [43] ns-esc-bell escape. -/
+@[yaml_spec "5.7" 43 "ns-esc-bell"]
+def nsEscBellChar : Char := '\x07'
+
+/-- `#x08`: result of [44] ns-esc-backspace escape. -/
+@[yaml_spec "5.7" 44 "ns-esc-backspace"]
+def nsEscBackspaceChar : Char := '\x08'
+
+/-- `#x0B`: result of [47] ns-esc-vertical-tab escape. -/
+@[yaml_spec "5.7" 47 "ns-esc-vertical-tab"]
+def nsEscVerticalTabChar : Char := '\x0B'
+
+/-- `#x0C`: result of [48] ns-esc-form-feed escape. -/
+@[yaml_spec "5.7" 48 "ns-esc-form-feed"]
+def nsEscFormFeedChar : Char := '\x0C'
+
+/-- `#x1B`: result of [50] ns-esc-escape escape. -/
+@[yaml_spec "5.7" 50 "ns-esc-escape"]
+def nsEscEscapeChar : Char := '\x1B'
+
+/-- `#x85`: result of [55] ns-esc-next-line escape. -/
+@[yaml_spec "5.7" 55 "ns-esc-next-line"]
+def nsEscNextLineChar : Char := '\x85'
+
+/-- `#xA0`: result of [56] ns-esc-non-breaking-space escape. -/
+@[yaml_spec "5.7" 56 "ns-esc-non-breaking-space"]
+def nsEscNbspChar : Char := '\xA0'
+
+/-- `#x2028`: result of [57] ns-esc-line-separator escape. -/
+@[yaml_spec "5.7" 57 "ns-esc-line-separator"]
+def nsEscLineSeparatorChar : Char := Char.ofNat 0x2028
+
+/-- `#x2029`: result of [58] ns-esc-paragraph-separator escape. -/
+@[yaml_spec "5.7" 58 "ns-esc-paragraph-separator"]
+def nsEscParagraphSeparatorChar : Char := Char.ofNat 0x2029
 
 /-! ## Printable Characters
 
@@ -938,7 +1525,7 @@ theorem mem_of_getElemQ_some {l : List Char} {a : Char} {i : Nat}
 theorem not_space_of_plainSafe (c : Char) (inFlow : Bool)
     (h : isPlainSafeProp c inFlow) : c ≠ ' ' := by
   intro heq; rw [heq] at h
-  simp [isPlainSafeProp, isWhiteSpaceProp] at h
+  simp [isPlainSafeProp, isWhiteSpaceProp, isSpaceProp, isTabProp] at h
 
 /-- Whitespace chars have `getLast? = some ' '` or `some '\t'`. -/
 theorem whitespace_getLast?_cases (spaces : String)
@@ -948,7 +1535,7 @@ theorem whitespace_getLast?_cases (spaces : String)
   rw [hLast]
   have hMem := List.getLast_mem hne
   have hws := h _ hMem
-  simp only [isWhiteSpaceProp, beq_iff_eq] at hws
+  simp only [isWhiteSpaceProp, isSpaceProp, isTabProp, beq_iff_eq] at hws
   rcases hws with h1 | h1 <;> simp [h1]
 
 /-- A string of pure whitespace has no colon-space pattern. -/
@@ -957,7 +1544,7 @@ theorem noColonSpaceProp_of_whitespace (s : String)
   intro ⟨i, h1, _⟩
   have hMem := mem_of_getElemQ_some h1
   have hws := h ':' hMem
-  simp [isWhiteSpaceProp] at hws
+  simp [isWhiteSpaceProp, isSpaceProp, isTabProp] at hws
 
 /-- A string of pure whitespace has no space-hash pattern. -/
 theorem noSpaceHashProp_of_whitespace (s : String)
@@ -965,14 +1552,14 @@ theorem noSpaceHashProp_of_whitespace (s : String)
   intro ⟨i, _, h2⟩
   have hMem := mem_of_getElemQ_some h2
   have hws := h '#' hMem
-  simp [isWhiteSpaceProp] at hws
+  simp [isWhiteSpaceProp, isSpaceProp, isTabProp] at hws
 
 /-- A string of pure whitespace has no flow indicators. -/
 theorem noFlowIndicatorsProp_of_whitespace (s : String)
     (h : ∀ c ∈ s.toList, isWhiteSpaceProp c) : noFlowIndicatorsProp s := by
   intro c hc hfi
   have := h c hc
-  simp only [isWhiteSpaceProp, beq_iff_eq] at this
+  simp only [isWhiteSpaceProp, isSpaceProp, isTabProp, beq_iff_eq] at this
   rcases this with rfl | rfl <;> simp [isFlowIndicatorProp] at hfi
 
 end L4YAML.CharPredicates

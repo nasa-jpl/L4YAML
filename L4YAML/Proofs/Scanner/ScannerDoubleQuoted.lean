@@ -172,7 +172,7 @@ theorem escapeChar_identity_implies_safe (c : Char) (h : isEscapedChar c = false
   · intro heq; subst heq; simp at h
   constructor
   · intro heq; subst heq; simp at h
-  · unfold isLineBreakBool
+  · unfold isLineBreakBool isLineFeedBool isCarriageReturnBool
     split at h <;> simp_all
 
 /-- For non-escaped characters, `escapeChar c = c.toString`. -/

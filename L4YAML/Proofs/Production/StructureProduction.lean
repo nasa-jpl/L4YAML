@@ -188,8 +188,10 @@ theorem scanBlockEntry_prod (sc : ScannerState) (sp : SurfPos)
 -- Bridge: isBlankBool c → ¬isNsChar c (converse of not_blank_to_nsChar in ScalarProduction).
 theorem blank_to_not_nsChar {c : Char}
     (h : isBlankBool c = true) : ¬isNsChar c := by
-  simp [isNsChar, isLineBreakProp, isWhiteSpaceProp, isBlankBool, isWhiteSpaceBool,
-    isLineBreakBool, beq_iff_eq] at *
+  simp [isNsChar, isLineBreakProp, isLineFeedProp, isCarriageReturnProp,
+    isWhiteSpaceProp, isSpaceProp, isTabProp,
+    isBlankBool, isWhiteSpaceBool, isSpaceBool, isTabBool,
+    isLineBreakBool, isLineFeedBool, isCarriageReturnBool, beq_iff_eq] at *
   intro h1 h2 h3
   rcases h with (rfl | rfl) | rfl | rfl <;> first | contradiction | rfl
 
@@ -1066,7 +1068,7 @@ theorem collectDirectiveNameLoop_prod (sc : ScannerState) (sp : SurfPos)
 
 theorem isDigit_not_isLineBreak (c : Char) (h : c.isDigit = true) :
     ¬isLineBreakBool c = true := by
-  intro hlb; simp [isLineBreakBool] at hlb
+  intro hlb; simp [isLineBreakBool, isLineFeedBool, isCarriageReturnBool] at hlb
   cases hlb with
   | inl h1 => subst h1; simp [Char.isDigit] at h
   | inr h1 => subst h1; simp [Char.isDigit] at h
@@ -1123,7 +1125,7 @@ theorem collectVersionMinorLoop_prod (sc : ScannerState) (sp : SurfPos)
 theorem isWordCharOrBang_not_isLineBreak (c : Char)
     (h : (isWordCharBool c || c == '!') = true) :
     ¬isLineBreakBool c = true := by
-  intro hlb; simp [isLineBreakBool] at hlb
+  intro hlb; simp [isLineBreakBool, isLineFeedBool, isCarriageReturnBool] at hlb
   simp [isWordCharBool, isWordCharProp, isAsciiLetterProp] at h
   rcases hlb with rfl | rfl <;> simp_all
 
@@ -1150,7 +1152,7 @@ theorem collectTagHandleDirectiveLoop_prod (sc : ScannerState) (sp : SurfPos)
 theorem isUriChar_not_isLineBreak (c : Char)
     (h : isUriCharBool c = true) :
     ¬isLineBreakBool c = true := by
-  intro hlb; simp [isLineBreakBool] at hlb
+  intro hlb; simp [isLineBreakBool, isLineFeedBool, isCarriageReturnBool] at hlb
   simp [isUriCharBool, isUriCharProp, isWordCharProp, isAsciiLetterProp] at h
   rcases hlb with rfl | rfl <;> simp_all
 

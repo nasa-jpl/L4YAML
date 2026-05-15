@@ -139,7 +139,8 @@ theorem consumeNewline_sbreak_corr (sc : ScannerState) (sp : SurfPos) (c : Char)
   obtain ⟨rest, hsp_eq⟩ := peek_some_sp hcorr hpeek
   subst hsp_eq
   have hmore := peek_some_has_more hpeek
-  simp [isLineBreakBool, Bool.or_eq_true, beq_iff_eq] at hlb
+  simp [isLineBreakBool, isLineFeedBool, isCarriageReturnBool,
+        Bool.or_eq_true, beq_iff_eq] at hlb
   rcases hlb with rfl | rfl
   · -- c = '\n'
     have hadv := advance_newline_corr sc rest hcorr hmore
@@ -1279,8 +1280,11 @@ theorem colon_not_terminated_next (sc : ScannerState) (content spaces : String) 
 
 -- Bridge: ¬isBlankBool → isNsChar (for colonSafe)
 theorem not_blank_to_nsChar {c : Char} (h : isBlankBool c = false) : isNsChar c := by
-  simp [isNsChar, isLineBreakProp, isWhiteSpaceProp, isBlankBool, isWhiteSpaceBool,
-    isLineBreakBool, beq_iff_eq, Bool.or_eq_false_iff] at *
+  simp [isNsChar, isLineBreakProp, isLineFeedProp, isCarriageReturnProp,
+    isWhiteSpaceProp, isSpaceProp, isTabProp,
+    isBlankBool, isWhiteSpaceBool, isSpaceBool, isTabBool,
+    isLineBreakBool, isLineFeedBool, isCarriageReturnBool,
+    beq_iff_eq, Bool.or_eq_false_iff] at *
   -- h : (¬c = ' ' ∧ ¬c = '\t') ∧ ¬c = '\n' ∧ ¬c = '\r'
   -- goal : (¬c = '\n' ∧ ¬c = '\r') ∧ ¬c = ' ' ∧ ¬c = '\t'
   exact ⟨h.2, h.1⟩
@@ -1540,7 +1544,8 @@ theorem collectPlainScalarLoop_prod (sc : ScannerState) (sp : SurfPos)
             have hcr := isWhiteSpace_not_cr c hws_char
             have hcorr_adv := advance_non_newline_corr sc c rest hcorr hmore hnl hcr
             have hw : SSWhite ⟨c :: rest, sc.col⟩ ⟨rest, sc.col + 1⟩ := by
-              simp [isWhiteSpaceBool, Bool.or_eq_true, beq_iff_eq] at hws_char
+              simp [isWhiteSpaceBool, isSpaceBool, isTabBool, Bool.or_eq_true,
+                beq_iff_eq] at hws_char
               rcases hws_char with rfl | rfl
               · exact SSWhite.space rest sc.col
               · exact SSWhite.tab rest sc.col
@@ -1634,7 +1639,8 @@ theorem gstar_sswhite_at_non_ws {c : Char} {rest : List Char} {col : Nat} {s₁ 
     s₁ = ⟨c :: rest, col⟩ := by
   cases h
   · rfl
-  · rename_i sp_mid hw _; exfalso; cases hw <;> simp [isWhiteSpaceBool] at h_nws
+  · rename_i sp_mid hw _; exfalso
+    cases hw <;> simp [isWhiteSpaceBool, isSpaceBool, isTabBool] at h_nws
 
 -- Helper: SNsPlainChar at ⟨c :: rest, col⟩ always produces ⟨rest, col + 1⟩.
 theorem SNsPlainChar_at_head {c : Char} {rest : List Char} {col : Nat} {sp' : SurfPos}
@@ -2537,7 +2543,9 @@ theorem headerChar_notWsLbBom (c : Char)
   rcases h with (rfl | rfl) | ⟨h1, h2⟩
   · exact ⟨by native_decide, by native_decide, by native_decide⟩
   · exact ⟨by native_decide, by native_decide, by native_decide⟩
-  · simp only [isWhiteSpaceBool, isLineBreakBool, Bool.or_eq_false_iff, beq_eq_false_iff_ne]
+  · simp only [isWhiteSpaceBool, isSpaceBool, isTabBool,
+               isLineBreakBool, isLineFeedBool, isCarriageReturnBool,
+               Bool.or_eq_false_iff, beq_eq_false_iff_ne]
     refine ⟨⟨?_, ?_⟩, ⟨?_, ?_⟩, ?_⟩ <;> (intro heq; subst heq; simp at h1 h2 <;> omega)
 
 -- `parseBlockHeaderLoop` preserves the property that `peekBack?` is not ws/lb/BOM.

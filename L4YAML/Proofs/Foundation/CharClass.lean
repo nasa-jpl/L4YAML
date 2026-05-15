@@ -32,24 +32,26 @@ open L4YAML.CharPredicates
 /--
 The Prop specification of line breaks matches the Bool implementation.
 
-- Prop: `c == '\n' ∨ c == '\r'`
-- Bool: `c == '\n' || c == '\r'`
+- Prop: `isLineFeedProp c ∨ isCarriageReturnProp c`
+- Bool: `isLineFeedBool c || isCarriageReturnBool c`
 -/
 theorem isLineBreak_correspondence (c : Char) :
     isLineBreakProp c ↔ isLineBreakBool c = true := by
-  simp only [isLineBreakProp, isLineBreakBool, Bool.or_eq_true]
+  simp only [isLineBreakProp, isLineBreakBool, isLineFeedProp, isLineFeedBool,
+             isCarriageReturnProp, isCarriageReturnBool, Bool.or_eq_true]
 
 /-! ## isWhiteSpace: isWhiteSpaceProp ↔ isWhiteSpaceBool -/
 
 /--
 The Prop specification of white space matches the Bool implementation.
 
-- Prop: `c == ' ' ∨ c == '\t'`
-- Bool: `c == ' ' || c == '\t'`
+- Prop: `isSpaceProp c ∨ isTabProp c`
+- Bool: `isSpaceBool c || isTabBool c`
 -/
 theorem isWhiteSpace_correspondence (c : Char) :
     isWhiteSpaceProp c ↔ isWhiteSpaceBool c = true := by
-  simp only [isWhiteSpaceProp, isWhiteSpaceBool, Bool.or_eq_true]
+  simp only [isWhiteSpaceProp, isWhiteSpaceBool, isSpaceProp, isSpaceBool,
+             isTabProp, isTabBool, Bool.or_eq_true]
 
 /-! ## isIndentChar: isIndentCharProp ↔ (c == ' ') -/
 

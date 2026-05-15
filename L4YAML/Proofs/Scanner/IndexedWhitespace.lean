@@ -294,27 +294,37 @@ theorem skipSpaces_col_eq_count {input : String} (c : IxCursor input) :
 
 theorem consumeLineBreak_LF {input : String} (c : IxCursor input)
     (h : c.peek? = some '\n') : consumeLineBreak c = c.advance := by
-  simp [consumeLineBreak, h]
+  simp [consumeLineBreak, isLineFeedBool, h]
 
 theorem consumeLineBreak_CR_no_LF {input : String} (c : IxCursor input)
     (hCR : c.peek? = some '\r') (hNotLF : c.peekAt? 1 ≠ some '\n') :
     consumeLineBreak c = c.advance := by
-  simp [consumeLineBreak, hCR, hNotLF]
+  unfold consumeLineBreak
+  rw [hCR]
+  cases h : c.peekAt? 1 with
+  | none =>
+    simp [isLineFeedBool, isCarriageReturnBool]
+  | some n =>
+    have hne : n ≠ '\n' := fun heq => hNotLF (heq ▸ h)
+    simp [isLineFeedBool, isCarriageReturnBool, hne]
 
 theorem consumeLineBreak_CRLF_offset {input : String} (c : IxCursor input)
     (hCR : c.peek? = some '\r') (hLF : c.peekAt? 1 = some '\n') :
     (consumeLineBreak c).pos.offset = c.advance.advance.pos.offset := by
-  simp [consumeLineBreak, hCR, hLF]
+  unfold consumeLineBreak
+  simp [hCR, hLF, isLineFeedBool, isCarriageReturnBool]
 
 theorem consumeLineBreak_CRLF_line {input : String} (c : IxCursor input)
     (hCR : c.peek? = some '\r') (hLF : c.peekAt? 1 = some '\n') :
     (consumeLineBreak c).pos.line = c.advance.pos.line := by
-  simp [consumeLineBreak, hCR, hLF]
+  unfold consumeLineBreak
+  simp [hCR, hLF, isLineFeedBool, isCarriageReturnBool]
 
 theorem consumeLineBreak_CRLF_col {input : String} (c : IxCursor input)
     (hCR : c.peek? = some '\r') (hLF : c.peekAt? 1 = some '\n') :
     (consumeLineBreak c).pos.col = 0 := by
-  simp [consumeLineBreak, hCR, hLF]
+  unfold consumeLineBreak
+  simp [hCR, hLF, isLineFeedBool, isCarriageReturnBool]
 
 theorem consumeLineBreak_atEnd {input : String} (c : IxCursor input)
     (h : c.peek? = none) : consumeLineBreak c = c := by
@@ -326,8 +336,8 @@ theorem consumeLineBreak_other_char {input : String} (c : IxCursor input)
     {ch : Char} (hp : c.peek? = some ch) (hLF : ch ≠ '\n') (hCR : ch ≠ '\r') :
     consumeLineBreak c = c := by
   unfold consumeLineBreak; rw [hp]
-  have hb1 : (ch == '\n') = false := by simp [hLF]
-  have hb2 : (ch == '\r') = false := by simp [hCR]
+  have hb1 : isLineFeedBool ch = false := by simp [isLineFeedBool, hLF]
+  have hb2 : isCarriageReturnBool ch = false := by simp [isCarriageReturnBool, hCR]
   simp [hb1, hb2]
 
 theorem consumeLineBreak_no_op {input : String} (c : IxCursor input)
@@ -387,7 +397,7 @@ theorem consumeLineBreak_strict {input : String} (c : IxCursor input)
     IxCursor.advance_offset_lt_of_hasMore c hMore
   -- `ch` is LF or CR.
   have hOr : ch = '\n' ∨ ch = '\r' := by
-    unfold isLineBreakBool at hLB
+    unfold isLineBreakBool isLineFeedBool isCarriageReturnBool at hLB
     rcases Bool.or_eq_true _ _ |>.mp hLB with h | h
     · exact Or.inl (by simpa using h)
     · exact Or.inr (by simpa using h)

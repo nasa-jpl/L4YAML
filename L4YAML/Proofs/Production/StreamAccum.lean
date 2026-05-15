@@ -1382,11 +1382,11 @@ theorem accum_flow_pending (sc : ScannerState)
               | space ws_rest ws_col =>
                 have hlist : ' ' :: ws_rest = ch :: rest' := h_chars
                 injection hlist with hch _
-                simp [← hch, isLineBreakBool] at h_lb
+                simp [← hch, isLineBreakBool, isLineFeedBool, isCarriageReturnBool] at h_lb
               | tab ws_rest ws_col =>
                 have hlist : '\t' :: ws_rest = ch :: rest' := h_chars
                 injection hlist with hch _
-                simp [← hch, isLineBreakBool] at h_lb
+                simp [← hch, isLineBreakBool, isLineFeedBool, isCarriageReturnBool] at h_lb
           have hcmt_nil : sp_prep = sp_ws := by
             cases hcmt with
             | none => rfl
@@ -1397,7 +1397,7 @@ theorem accum_flow_pending (sc : ScannerState)
                 have hlist : '#' :: cmt_rest = ch :: rest' := by
                   have := h_chars; dsimp only [] at this; exact this
                 injection hlist with hch _
-                simp [← hch, isLineBreakBool] at h_lb
+                simp [← hch, isLineBreakBool, isLineFeedBool, isCarriageReturnBool] at h_lb
           have h_prep_chars : sp_prep.chars = ch :: rest' := by
             simp only [hcmt_nil, hws_nil]; exact h_chars
           have h_sp_eq : sp_prep = ⟨ch :: rest', sp_prep.col⟩ := by
@@ -2867,11 +2867,11 @@ theorem accum_content_pending (sc : ScannerState)
               | space ws_rest ws_col =>
                 have hlist : ' ' :: ws_rest = ch :: rest' := h_chars
                 injection hlist with hch _
-                simp [← hch, isLineBreakBool] at h_lb
+                simp [← hch, isLineBreakBool, isLineFeedBool, isCarriageReturnBool] at h_lb
               | tab ws_rest ws_col =>
                 have hlist : '\t' :: ws_rest = ch :: rest' := h_chars
                 injection hlist with hch _
-                simp [← hch, isLineBreakBool] at h_lb
+                simp [← hch, isLineBreakBool, isLineFeedBool, isCarriageReturnBool] at h_lb
           have hcmt_nil : sp_prep = sp_ws := by
             cases h_cmt with
             | none => rfl
@@ -2882,7 +2882,7 @@ theorem accum_content_pending (sc : ScannerState)
                 have hlist : '#' :: cmt_rest = ch :: rest' := by
                   have := h_chars; dsimp only [] at this; exact this
                 injection hlist with hch _
-                simp [← hch, isLineBreakBool] at h_lb
+                simp [← hch, isLineBreakBool, isLineFeedBool, isCarriageReturnBool] at h_lb
           have h_prep_chars : sp_prep.chars = ch :: rest' := by
             simp only [hcmt_nil, hws_nil]; exact h_chars
           have h_sp_eq : sp_prep = ⟨ch :: rest', sp_prep.col⟩ := by

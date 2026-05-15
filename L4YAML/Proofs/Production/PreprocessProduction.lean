@@ -59,7 +59,8 @@ theorem consumeNewline_break_prod (sc : ScannerState) (sp : SurfPos) (c : Char)
   have hsp_eq : sp = ⟨c :: rest, sc.col⟩ := by
     cases sp with | mk cs cl => simp only [] at hchars hcol; subst hchars; subst hcol; rfl
   subst hsp_eq
-  simp [isLineBreakBool, Bool.or_eq_true, beq_iff_eq] at hlb
+  simp [isLineBreakBool, isLineFeedBool, isCarriageReturnBool,
+        Bool.or_eq_true, beq_iff_eq] at hlb
   unfold consumeNewline
   rcases hlb with rfl | rfl
   · -- '\n'
