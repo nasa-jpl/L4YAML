@@ -1114,9 +1114,24 @@ left-associative) with `Nat.le` conjunctions inside. `rcases ... with
 via `Nat.le.refl`. Plain `cases h with | inl … | inr …` (two nested
 levels) routes around it.
 
-**Next session**: Steps 5b.5–5b.8 work through the remaining four
-Step-5b carry-forward clusters
-(`autoDetectBlockScalarIndentLoopIx`, block-scalar fold/chomp,
+**Step 5b.5 landed** (Reflection 55): the block-scalar auto-detect
+indent loop now carries the lower-bound lemma
+`autoDetectBlockScalarIndentLoopIx_ge_min` plus its entry-point
+wrapper `autoDetectBlockScalarIndentIx_ge_min` in
+`Proofs/Scanner/IndexedScalar.lean`'s new "Layer F.1" section. Both
+state `minContentIndent ≤ result`, which is the spec-mandated bound
+that downstream block-scalar content-correctness proofs (Step 5b.6)
+will need to mediate against the YAML 1.2.2 content-indent rule
+([162]). The proof shape: induction on `fuel` (zero ⇒ EOF-style
+guard, `split <;> omega`; succ ⇒ three nested `split`s — the
+`let (probeAfterSp, _) := skipSpaces probe` prod destructure, the
+`match probeAfterSp.peek?` arm, and finally the inner
+`if isLineBreakBool ch`). The recursive branch is closed by
+`apply ih` because the IH is universally quantified over `maxWSCol`
+(the running max-whitespace-column accumulator).
+
+**Next session**: Steps 5b.6–5b.8 work through the remaining three
+Step-5b carry-forward clusters (block-scalar fold/chomp,
 quoted multi-line, plain multi-line).
 **Then Step 5c**: `present` + corpus theorem.
 
@@ -1151,7 +1166,7 @@ quoted multi-line, plain multi-line).
 | `L4YAML/Scanner/IndexedDispatch.lean` | n/a | ~1050 | 0 (staging — Guardrail 1; new in Phase 3 Step 5a: helper recogniser loops, simple-key save/resolve, block + flow indicator scans, document markers, directives, anchor/alias, tag, dispatch family, `scanLoopIx`, `scanIx`; Step 5b.1a: 8 helper-loop `*_offset_monotonic` lemmas, 10 `emitAtSafe`→`emitAt` replacements with inline proofs, `hStart` parameter on directive helpers; Step 5b.2: `tabInIndentation` throws added to `scanBlockEntryIx` and `scanKeyIx` — the former in block context when `hasTabInPrecedingWhitespace`, the latter when the cursor sits on `'\t'` immediately after consuming `?`; Step 5b.3: `scanValueIx` split into the legacy four-stage chain — `scanValueClearKeyIx` (clear spurious simple key when explicit `?` is pending), `scanValueValidateIx` (five `throw` cases: §7.4 / §7.4.2 / §8.2.1 / T833 / §8.2.2 [197]), `scanValuePrepareIx` (Step 5b.1b.i — placeholder overwrite or push mapping indent), `scanValueTabCheckIx` (§6.1 against the *original* col + indent)) |
 | `L4YAML/Proofs/Scanner/IndexedWhitespace.lean` | n/a | ~405 | 0 (staging — Guardrail 1; new in Phase 3 Step 2; +`consumeLineBreak_strict` in Step 4a) |
 | `L4YAML/Proofs/Scanner/IndexedIndent.lean` | n/a | ~355 | 0 (staging — Guardrail 1; new in Phase 3 Step 3; +`skipToContentLoop_progress` / `skipToContent_progress` in Step 4a) |
-| `L4YAML/Proofs/Scanner/IndexedScalar.lean` | n/a | ~775 | 0 (staging — Guardrail 1; new in Phase 3 Step 4a; +F1/F2/F3 monotonicity proofs in Step 4b; Step 5b.4: new "Layer E1.4 — Hex-escape value-correctness" section — `hexDigitValue_lt_16`, `hexStringValue_empty` `@[simp]`, `hexStringValue_push`, `hexStringValue_lt_pow`, `parseHexEscapeIx_decoded`) |
+| `L4YAML/Proofs/Scanner/IndexedScalar.lean` | n/a | ~825 | 0 (staging — Guardrail 1; new in Phase 3 Step 4a; +F1/F2/F3 monotonicity proofs in Step 4b; Step 5b.4: new "Layer E1.4 — Hex-escape value-correctness" section — `hexDigitValue_lt_16`, `hexStringValue_empty` `@[simp]`, `hexStringValue_push`, `hexStringValue_lt_pow`, `parseHexEscapeIx_decoded`; Step 5b.5: new "Layer F.1 — Auto-detected block-scalar indent ≥ `minContentIndent`" section — `autoDetectBlockScalarIndentLoopIx_ge_min` + `autoDetectBlockScalarIndentIx_ge_min`) |
 | `L4YAML/Proofs/Scanner/IndexedDispatch.lean` | n/a | ~1620 | 0 (staging — Guardrail 1; new in Phase 3 Step 5b.1b.i: `IxCursor.advanceN_offset_monotonic`; `ScannerStateIx` cursor-preservation lemmas for `emit*`/`overwriteAtCursor`/`advance*`/`pushSequenceIndentIx`/`pushMappingIndentIx`/`unwindIndentsLoopIx`/`unwindIndentsIx`/`saveSimpleKeyIx`/`scanValuePrepareIx`; `skipSpacesS`/`skipWhitespaceS`/`skipToContentS` offset-monotonicity lifts; Step 5b.1b.ii: 10 per-dispatcher offset-monotonicity lemmas — `scanBlockEntryIx`/`scanKeyIx`/`scanValueIx`/`scanFlowEntryIx`/`scanDocumentStartIx`/`scanDocumentEndIx`/`scanFlowSequenceStartIx`/`scanFlowSequenceEndIx`/`scanFlowMappingStartIx`/`scanFlowMappingEndIx`; Step 5b.1b.iii: 5 per-dispatcher offset-monotonicity lemmas — `scanAnchorOrAliasIx`/`scanTagIx`/`scanYamlDirectiveIx`/`scanTagDirectiveIx`/`scanDirectiveIx`; Step 5b.1b.iv-pre: 6 tokens-size simp lemmas — `skipToContentS_tokens`/`skipSpacesS_tokens`/`skipWhitespaceS_tokens`/`advance_tokens`/`advanceN_tokens`/`emit_tokens_size`/`emitAt_tokens_size`/`emitAtCursor_tokens_size`/`overwriteAtCursor_tokens_size`; 6 indent/key helper `_tokens_size_le` lemmas — `unwindIndentsLoopIx`/`unwindIndentsIx`/`pushSequenceIndentIx`/`pushMappingIndentIx`/`saveSimpleKeyIx`/`scanValuePrepareIx`; 12 dispatcher `_tokens_size_le` lemmas — `scanBlockEntryIx`/`scanKeyIx`/`scanValueIx`/`scanFlowEntryIx`/`scanFlowSequenceStartIx`/`scanFlowSequenceEndIx`/`scanFlowMappingStartIx`/`scanFlowMappingEndIx`/`scanDocumentStartIx`/`scanDocumentEndIx`/`scanAnchorOrAliasIx`/`scanTagIx`/`scanYamlDirectiveIx`/`scanTagDirectiveIx`/`scanDirectiveIx`; Step 5b.1b.iv-cont: 7 top-level pairs (`_offset_monotonic` + `_tokens_size_le`) for `scanNextTokenIx_preprocess`/`scanNextTokenIx_dispatchStructural`/`scanNextTokenIx_dispatchFlowIndicators`/`scanNextTokenIx_dispatchBlockIndicators`/`scanNextTokenIx_dispatchContent`/`scanNextTokenIx` plus `scanLoopIx_tokens_size_le`; Step 5b.2: 6 `flowLevel`/`inFlow` preservation simp lemmas — `emit_flowLevel`/`advance_flowLevel`/`pushSequenceIndentIx_flowLevel`/`pushMappingIndentIx_flowLevel`/`emit_inFlow`/`advance_inFlow`/`pushMappingIndentIx_inFlow` — used to collapse the post-advance `!s.inFlow` tab-check guard against the *original* `s.inFlow`, then `scanBlockEntryIx`/`scanKeyIx` `_offset_monotonic` + `_tokens_size_le` pairs re-derived with the new throw branches; Step 5b.3: 2 new `scanValueClearKeyIx` helper lemmas (`_cursor` `@[simp]` + `_tokens_size_le`), `scanValueIx_offset_monotonic` and `_tokens_size_le` re-proved with the legacy `simp only [bind, Except.bind] at h; split at h; cases h | …` pattern; same commit fixed cache-hidden breakage in `Proofs/Scanner/IndexedScalar.lean` (quoted/parse-header-loop `split at h` shapes, `blockHeaderToBodyIx` `by_cases hp` for the `match`-inside-`if` condition) and `Proofs/Scanner/IndexedIndent.lean::skipToContent_at_content` (`'#'` literal → `isCommentBool ch`)) |
 
 </details>
@@ -2099,6 +2114,91 @@ cutover commit. No "dual-write" interim state.
 
 </details>
 
+<details><summary>R55 — `split` after `unfold` fires on the *first* `match`/`if` it finds, including the implicit prod-destructure inside `let (a, b) := …`; count the nested constructs before placing bullets (Phase 3 Step 5b.5).</summary>
+
+55. **The auto-detect-indent loop proof exposed a counting bug in
+    nested `split` tactics.** `autoDetectBlockScalarIndentLoopIx`'s
+    recursive body has the shape
+
+    ```lean
+    | fuel + 1 =>
+      let (probeAfterSp, _) := skipSpaces probe
+      match probeAfterSp.peek? with
+      | some c =>
+        if isLineBreakBool c then
+          let maxWSCol' := if … then … else …
+          autoDetectBlockScalarIndentLoopIx … fuel
+        else
+          if probeAfterSp.pos.col > minContentIndent then … else …
+      | none => if maxWSCol > minContentIndent then … else …
+    ```
+
+    The natural proof is induction on `fuel`. After `unfold`, the
+    `succ fuel` body has three nested splittable forms:
+    1. The `let (probeAfterSp, _) := skipSpaces probe` prod
+       destructure — `split` treats it as a `match` with **one**
+       case.
+    2. The `match probeAfterSp.peek?` arm — two cases (some/none).
+    3. The inner `if isLineBreakBool ch` — two cases.
+
+    My first attempt placed two bullets after a single outer
+    `split` (anticipating some/none from the peek? match), then a
+    nested `split` inside the "some" branch. The error message gave
+    the game away: `case h_1` after the inner `split` carried both
+    `x✝¹ : IxCursor input × Nat` (the prod from the let) **and**
+    `x✝ : Option Char` (the peek? result) as hypotheses, with the
+    goal still containing the full `if isLineBreakBool` if-then-else.
+    Translation: the *outer* `split` had consumed the prod
+    destructure (1 case), the *inner* `split` had consumed the
+    peek? match (2 cases), and the `if isLineBreakBool` had never
+    been split. So `apply ih` was looking at the whole if-then-else.
+    Worse, the second top-level bullet (intended for the "none"
+    case) saw "No goals to be solved" — because the outer split's
+    single case was already consumed by the first top-level
+    bullet's body.
+
+    **Fix — three `split`s, two bullets**:
+
+    ```lean
+    | succ fuel ih =>
+      unfold autoDetectBlockScalarIndentLoopIx
+      split  -- (1) prod destructure (1 case)
+      split  -- (2) peek? match (2 cases)
+      · -- some ch
+        split  -- (3) if isLineBreakBool ch (2 cases)
+        · apply ih           -- true: recurse, IH ∀ maxWSCol'
+        · split <;> omega    -- false: column bound
+      · -- none — EOF
+        split <;> omega
+    ```
+
+    Two consecutive `split`s with no intervening `·` is the
+    idiomatic way to thread through a one-case match: the second
+    `split` sees the still-open single goal and splits it again.
+
+    **Generalisable rule**: before placing bullets after `split`,
+    count *all* the splittable forms in the goal — including
+    implicit prod-destructures from `let (a, b) := …`. The
+    diagnostic-printed case label (`case h_1`/`h_2`) and the
+    sequence of `x✝` hypotheses are reliable evidence of how many
+    `split`s actually fired. A failing `apply` whose goal still
+    contains the if-then-else you *thought* you had just split is
+    the canonical signature of this bug.
+
+    Two ancillary observations:
+    - The IH for `autoDetectBlockScalarIndentLoopIx_ge_min` is
+      universally quantified over `(probe, maxWSCol)` (via
+      `induction fuel generalizing probe maxWSCol`). This is
+      load-bearing: the recursive call carries an updated
+      `maxWSCol'`, and the IH must absorb that.
+    - The entry-point wrapper
+      `autoDetectBlockScalarIndentIx_ge_min` is a one-liner
+      because `autoDetectBlockScalarIndentIx` is a wrapper passing
+      `0` for `maxWSCol` and `input.utf8ByteSize` for `fuel` — the
+      loop lemma's universal quantification covers both.
+
+</details>
+
 #### Phase 3 sub-plan (six sessions)
 
 <details><summary>Phase 3 is ~30× the size of the Phase 2 capstone. It is decomposed into six sessions; only the final commit must be atomic per Guardrail 1.</summary>
@@ -2669,7 +2769,24 @@ clusters become 5b.2–5b.8. Total: nine sub-steps.
   `Nat.le` via `Nat.le.refl` and fails with `ch.val.toBitVec.toFin.1
   = 97`. Plain `cases h with | inl … | inr …` (two nested levels)
   routes around it. See Reflection 54.
-- **5b.5 — `autoDetectBlockScalarIndentLoopIx` correctness**.
+- **5b.5 — `autoDetectBlockScalarIndentLoopIx` correctness** *(landed)*.
+  Carried-forward Step 4b obligation discharged as two lemmas in
+  `Proofs/Scanner/IndexedScalar.lean`'s new "Layer F.1 — Auto-detected
+  block-scalar indent ≥ `minContentIndent`" section:
+  `autoDetectBlockScalarIndentLoopIx_ge_min` (loop body) +
+  `autoDetectBlockScalarIndentIx_ge_min` (entry-point wrapper). Both
+  state `minContentIndent ≤ result`, which downstream block-scalar
+  content-correctness proofs (Step 5b.6) need as the spec-mandated
+  lower bound. The proof: induction on `fuel`; base case is the
+  `if maxWSCol > minContentIndent then maxWSCol else minContentIndent`
+  guard (`split <;> omega`); the recursive case requires *three*
+  nested `split`s — the `let (probeAfterSp, _) := skipSpaces probe`
+  prod destructure (1 case), then the `match probeAfterSp.peek?`
+  arm (some/none), then the inner `if isLineBreakBool ch`
+  (recurse/bound). The IH is universally quantified over `maxWSCol`
+  (since the loop carries a running max-whitespace-column), so
+  `apply ih` closes the recursive branch regardless of which
+  `maxWSCol'` the body computed. See Reflection 55.
 - **5b.6 — Block-scalar content correctness** (carried from
   Step 4b): `foldBlockContent` matches the spec's folded-content
   extraction; `applyChomp` matches `[160]`'s semantics.
@@ -3407,6 +3524,71 @@ all 385 targets. `L4YAML.lean` does not import any
 **Carried forward into Steps 5b.5–5b.8**: the four remaining
 Step-5b clusters (`autoDetectBlockScalarIndentLoopIx`,
 block-scalar fold/chomp, quoted multi-line, plain multi-line).
+
+</details>
+
+<details><summary>Step 5b.5 — `autoDetectBlockScalarIndentLoopIx` correctness <em>(landed)</em>.</summary>
+
+**Step 5b.5 — `autoDetectBlockScalarIndentLoopIx` correctness**
+*(landed)*.
+
+Discharges the Step 4b carry-forward: the block-scalar
+auto-detect-indent loop chooses a content indent that is at least
+the spec-mandated minimum. Two lemmas land in
+`L4YAML/Proofs/Scanner/IndexedScalar.lean` (new section
+"Layer F.1 — Auto-detected block-scalar indent ≥
+`minContentIndent`", after the Layer E1.4 hex-escape proofs and
+before `end L4YAML.Scanner.Indexed`):
+
+- **`autoDetectBlockScalarIndentLoopIx_ge_min`** — for any `(probe,
+  maxWSCol, minContentIndent, fuel)`,
+
+  ```
+  minContentIndent ≤
+    autoDetectBlockScalarIndentLoopIx probe maxWSCol minContentIndent fuel.
+  ```
+
+  Proof: induction on `fuel` (`generalizing probe maxWSCol` so the
+  IH absorbs the recursive call's updated `maxWSCol'`). Base case
+  is the EOF-style `if maxWSCol > minContentIndent then maxWSCol
+  else minContentIndent` — `split <;> omega` from either branch.
+  Recursive case is three nested `split`s: (1) the
+  `let (probeAfterSp, _) := skipSpaces probe` prod destructure
+  (1 case), (2) `match probeAfterSp.peek?` (some/none), (3) inside
+  `some ch`, `if isLineBreakBool ch`. The true (`isLineBreakBool ch
+  = true`) recursive branch closes by `apply ih`; the false branch
+  and the EOF branch both reduce to `split <;> omega` on the inner
+  `if probeAfterSp.pos.col > minContentIndent` / `if maxWSCol >
+  minContentIndent` guards. The proof-shape lesson — count the
+  three nested splittables (the let-prod destructure is the
+  unintuitive one) — is captured in Reflection 55.
+- **`autoDetectBlockScalarIndentIx_ge_min`** — entry-point
+  wrapper: `minContentIndent ≤ autoDetectBlockScalarIndentIx c
+  minContentIndent`. One-line proof: unfold and apply the loop
+  lemma with `maxWSCol := 0`, `fuel := input.utf8ByteSize`.
+
+The lower-bound property is the spec-mandated invariant from
+YAML 1.2.2 [162] (`c-l+literal`/`c-l+folded` indent rules): the
+content indent of a block scalar must exceed the parent indent.
+Since `autoDetectBlockScalarIndentIx` is called with
+`minContentIndent = parentIndent + 1`, downstream content-
+correctness proofs (Step 5b.6) will lift this lower bound into
+the parent-indent strict inequality the spec demands.
+
+The function deliberately does *not* return a `Char × IxCursor` or
+similar — it returns a bare `Nat` (the chosen indent) — so the
+"correctness" property is a bound on that `Nat`, not a
+monotonicity or progress lemma. That matches the function's role
+as a *probe* (the call site does not consume input; the actual
+indent consumption happens later in `collectBlockScalarLoopIx`).
+
+Sorry budget: **0 → 0** in the staging files. `lake build` passes
+all 385 targets. `L4YAML.lean` does not import any
+`Scanner.Indexed*` or `Proofs.Scanner.Indexed*` file — confirmed.
+
+**Carried forward into Steps 5b.6–5b.8**: the three remaining
+Step-5b clusters (block-scalar fold/chomp, quoted multi-line,
+plain multi-line).
 
 </details>
 
