@@ -1051,10 +1051,28 @@ with`) is the right tactic for matches with dependent witness binders
 `rw` can't substitute through the witness-dependent motive.
 Reflection 51 captures both fixes.
 
-**Next session**: Steps 5b.2–5b.8 work through the remaining seven
-Step-5b carry-forward clusters (tab-in-indent, `scanValueIx`
-validation chain, hex-escape value, `autoDetectBlockScalarIndentLoopIx`,
-block-scalar fold/chomp, quoted multi-line, plain multi-line).
+**Step 5b.2 landed** (Reflection 52): tab-in-indentation hardening
+for `scanBlockEntryIx` and `scanKeyIx`. `IndexedState.lean` gained
+the indexed analogues of the legacy `hasTabInPrecedingWhitespace`
+backward-scan; `IndexedDispatch.lean` gained the `tabInIndentation`
+throw branch in both indicator scans (in block context only). The
+monotonicity proofs (`_offset_monotonic` + `_tokens_size_le` for
+both scans) were re-derived; the key new technique was three
+`inFlow`-preservation simp lemmas (`emit_inFlow`, `advance_inFlow`,
+`pushMappingIndentIx_inFlow`, all rfl-trivial) plus three
+corresponding `flowLevel` lemmas, which let
+`simp only [if_pos hi, advance_inFlow, emit_inFlow,
+pushMappingIndentIx_inFlow] at h` collapse the post-pushMapping/
+emit/advance `!s.inFlow` guard against the *original* `s.inFlow`
+with a single `by_cases hi` on the original flag. Reflection 52
+generalises: **when the same flag gates both a let-binding side
+effect and a subsequent guard, add a preservation simp lemma for
+each intermediate operation.**
+
+**Next session**: Steps 5b.3–5b.8 work through the remaining six
+Step-5b carry-forward clusters (`scanValueIx` validation chain,
+hex-escape value, `autoDetectBlockScalarIndentLoopIx`, block-scalar
+fold/chomp, quoted multi-line, plain multi-line).
 **Then Step 5c**: `present` + corpus theorem.
 
 </details>
@@ -1084,12 +1102,12 @@ block-scalar fold/chomp, quoted multi-line, plain multi-line).
 | `L4YAML/Indexed/TokenStream.lean` | n/a | ~135 | 0 (extended in Phase 3 Step 1) |
 | `L4YAML/Indexed/CharStream.lean` | n/a | ~250 | 1 (`L4YAML.lean` root; new in Phase 3 Step 1, monotonicity lemmas added in Step 2) |
 | `L4YAML/Scanner/IndexedScanner.lean` | n/a | ~950 | 0 (staging — Guardrail 1; new in Phase 3 Step 2; +Layer D dispatch in Step 3; +Layer E scalar tier in Step 4a; +Layer F1/F2/F3 multi-line + block scalars in Step 4b) |
-| `L4YAML/Scanner/IndexedState.lean` | n/a | ~290 | 0 (staging — Guardrail 1; new in Phase 3 Step 5a: `ScannerStateIx input`, indexed `SimpleKeyStateIx`, indent-stack ops, `emit/emitAt/emitAtCursor/overwriteAtCursor`; `emitAtSafe` removed in Step 5b.1a after the static monotonicity chain landed) |
-| `L4YAML/Scanner/IndexedDispatch.lean` | n/a | ~980 | 0 (staging — Guardrail 1; new in Phase 3 Step 5a: helper recogniser loops, simple-key save/resolve, block + flow indicator scans, document markers, directives, anchor/alias, tag, dispatch family, `scanLoopIx`, `scanIx`; Step 5b.1a: 8 helper-loop `*_offset_monotonic` lemmas, 10 `emitAtSafe`→`emitAt` replacements with inline proofs, `hStart` parameter on directive helpers) |
+| `L4YAML/Scanner/IndexedState.lean` | n/a | ~335 | 0 (staging — Guardrail 1; new in Phase 3 Step 5a: `ScannerStateIx input`, indexed `SimpleKeyStateIx`, indent-stack ops, `emit/emitAt/emitAtCursor/overwriteAtCursor`; `emitAtSafe` removed in Step 5b.1a after the static monotonicity chain landed; Step 5b.2: `hasTabInPrecedingWhitespaceLoop` + `hasTabInPrecedingWhitespace` — indexed analogues of the legacy backward-scan, used by `scanBlockEntryIx` to enforce §6.1) |
+| `L4YAML/Scanner/IndexedDispatch.lean` | n/a | ~1000 | 0 (staging — Guardrail 1; new in Phase 3 Step 5a: helper recogniser loops, simple-key save/resolve, block + flow indicator scans, document markers, directives, anchor/alias, tag, dispatch family, `scanLoopIx`, `scanIx`; Step 5b.1a: 8 helper-loop `*_offset_monotonic` lemmas, 10 `emitAtSafe`→`emitAt` replacements with inline proofs, `hStart` parameter on directive helpers; Step 5b.2: `tabInIndentation` throws added to `scanBlockEntryIx` and `scanKeyIx` — the former in block context when `hasTabInPrecedingWhitespace`, the latter when the cursor sits on `'\t'` immediately after consuming `?`) |
 | `L4YAML/Proofs/Scanner/IndexedWhitespace.lean` | n/a | ~405 | 0 (staging — Guardrail 1; new in Phase 3 Step 2; +`consumeLineBreak_strict` in Step 4a) |
 | `L4YAML/Proofs/Scanner/IndexedIndent.lean` | n/a | ~355 | 0 (staging — Guardrail 1; new in Phase 3 Step 3; +`skipToContentLoop_progress` / `skipToContent_progress` in Step 4a) |
 | `L4YAML/Proofs/Scanner/IndexedScalar.lean` | n/a | ~630 | 0 (staging — Guardrail 1; new in Phase 3 Step 4a; +F1/F2/F3 monotonicity proofs in Step 4b) |
-| `L4YAML/Proofs/Scanner/IndexedDispatch.lean` | n/a | ~1430 | 0 (staging — Guardrail 1; new in Phase 3 Step 5b.1b.i: `IxCursor.advanceN_offset_monotonic`; `ScannerStateIx` cursor-preservation lemmas for `emit*`/`overwriteAtCursor`/`advance*`/`pushSequenceIndentIx`/`pushMappingIndentIx`/`unwindIndentsLoopIx`/`unwindIndentsIx`/`saveSimpleKeyIx`/`scanValuePrepareIx`; `skipSpacesS`/`skipWhitespaceS`/`skipToContentS` offset-monotonicity lifts; Step 5b.1b.ii: 10 per-dispatcher offset-monotonicity lemmas — `scanBlockEntryIx`/`scanKeyIx`/`scanValueIx`/`scanFlowEntryIx`/`scanDocumentStartIx`/`scanDocumentEndIx`/`scanFlowSequenceStartIx`/`scanFlowSequenceEndIx`/`scanFlowMappingStartIx`/`scanFlowMappingEndIx`; Step 5b.1b.iii: 5 per-dispatcher offset-monotonicity lemmas — `scanAnchorOrAliasIx`/`scanTagIx`/`scanYamlDirectiveIx`/`scanTagDirectiveIx`/`scanDirectiveIx`; Step 5b.1b.iv-pre: 6 tokens-size simp lemmas — `skipToContentS_tokens`/`skipSpacesS_tokens`/`skipWhitespaceS_tokens`/`advance_tokens`/`advanceN_tokens`/`emit_tokens_size`/`emitAt_tokens_size`/`emitAtCursor_tokens_size`/`overwriteAtCursor_tokens_size`; 6 indent/key helper `_tokens_size_le` lemmas — `unwindIndentsLoopIx`/`unwindIndentsIx`/`pushSequenceIndentIx`/`pushMappingIndentIx`/`saveSimpleKeyIx`/`scanValuePrepareIx`; 12 dispatcher `_tokens_size_le` lemmas — `scanBlockEntryIx`/`scanKeyIx`/`scanValueIx`/`scanFlowEntryIx`/`scanFlowSequenceStartIx`/`scanFlowSequenceEndIx`/`scanFlowMappingStartIx`/`scanFlowMappingEndIx`/`scanDocumentStartIx`/`scanDocumentEndIx`/`scanAnchorOrAliasIx`/`scanTagIx`/`scanYamlDirectiveIx`/`scanTagDirectiveIx`/`scanDirectiveIx`; Step 5b.1b.iv-cont: 7 top-level pairs (`_offset_monotonic` + `_tokens_size_le`) for `scanNextTokenIx_preprocess`/`scanNextTokenIx_dispatchStructural`/`scanNextTokenIx_dispatchFlowIndicators`/`scanNextTokenIx_dispatchBlockIndicators`/`scanNextTokenIx_dispatchContent`/`scanNextTokenIx` plus `scanLoopIx_tokens_size_le`) |
+| `L4YAML/Proofs/Scanner/IndexedDispatch.lean` | n/a | ~1600 | 0 (staging — Guardrail 1; new in Phase 3 Step 5b.1b.i: `IxCursor.advanceN_offset_monotonic`; `ScannerStateIx` cursor-preservation lemmas for `emit*`/`overwriteAtCursor`/`advance*`/`pushSequenceIndentIx`/`pushMappingIndentIx`/`unwindIndentsLoopIx`/`unwindIndentsIx`/`saveSimpleKeyIx`/`scanValuePrepareIx`; `skipSpacesS`/`skipWhitespaceS`/`skipToContentS` offset-monotonicity lifts; Step 5b.1b.ii: 10 per-dispatcher offset-monotonicity lemmas — `scanBlockEntryIx`/`scanKeyIx`/`scanValueIx`/`scanFlowEntryIx`/`scanDocumentStartIx`/`scanDocumentEndIx`/`scanFlowSequenceStartIx`/`scanFlowSequenceEndIx`/`scanFlowMappingStartIx`/`scanFlowMappingEndIx`; Step 5b.1b.iii: 5 per-dispatcher offset-monotonicity lemmas — `scanAnchorOrAliasIx`/`scanTagIx`/`scanYamlDirectiveIx`/`scanTagDirectiveIx`/`scanDirectiveIx`; Step 5b.1b.iv-pre: 6 tokens-size simp lemmas — `skipToContentS_tokens`/`skipSpacesS_tokens`/`skipWhitespaceS_tokens`/`advance_tokens`/`advanceN_tokens`/`emit_tokens_size`/`emitAt_tokens_size`/`emitAtCursor_tokens_size`/`overwriteAtCursor_tokens_size`; 6 indent/key helper `_tokens_size_le` lemmas — `unwindIndentsLoopIx`/`unwindIndentsIx`/`pushSequenceIndentIx`/`pushMappingIndentIx`/`saveSimpleKeyIx`/`scanValuePrepareIx`; 12 dispatcher `_tokens_size_le` lemmas — `scanBlockEntryIx`/`scanKeyIx`/`scanValueIx`/`scanFlowEntryIx`/`scanFlowSequenceStartIx`/`scanFlowSequenceEndIx`/`scanFlowMappingStartIx`/`scanFlowMappingEndIx`/`scanDocumentStartIx`/`scanDocumentEndIx`/`scanAnchorOrAliasIx`/`scanTagIx`/`scanYamlDirectiveIx`/`scanTagDirectiveIx`/`scanDirectiveIx`; Step 5b.1b.iv-cont: 7 top-level pairs (`_offset_monotonic` + `_tokens_size_le`) for `scanNextTokenIx_preprocess`/`scanNextTokenIx_dispatchStructural`/`scanNextTokenIx_dispatchFlowIndicators`/`scanNextTokenIx_dispatchBlockIndicators`/`scanNextTokenIx_dispatchContent`/`scanNextTokenIx` plus `scanLoopIx_tokens_size_le`; Step 5b.2: 6 `flowLevel`/`inFlow` preservation simp lemmas — `emit_flowLevel`/`advance_flowLevel`/`pushSequenceIndentIx_flowLevel`/`pushMappingIndentIx_flowLevel`/`emit_inFlow`/`advance_inFlow`/`pushMappingIndentIx_inFlow` — used to collapse the post-advance `!s.inFlow` tab-check guard against the *original* `s.inFlow`, then `scanBlockEntryIx`/`scanKeyIx` `_offset_monotonic` + `_tokens_size_le` pairs re-derived with the new throw branches) |
 
 </details>
 
@@ -1797,6 +1815,64 @@ cutover commit. No "dual-write" interim state.
 
 </details>
 
+<details><summary>R52 — Post-advance guards on the *same* `inFlow` flag dispatch cleanly only after `flowLevel`/`inFlow` preservation simp lemmas are in scope (Phase 3 Step 5b.2).</summary>
+
+52. **`scanBlockEntryIx` and `scanKeyIx` now carry the legacy's
+    `tabInIndentation` throw; their monotonicity needed three new
+    `inFlow`-preservation simp lemmas.** Both indicator scans have
+    the shape
+
+    ```
+    do
+      let s := if !s.inFlow then pushMappingIndentIx s c else s
+      let s := s.emit YamlToken.key
+      let s := s.advance
+      if !s.inFlow then if let some '\t' := s.peek? then throw err
+      .ok { s with … }
+    ```
+
+    The post-advance `if !s.inFlow` guards on the *post-pushMapping/
+    emit/advance* state's `inFlow`, but `pushMappingIndentIx`, `emit`,
+    and `advance` all preserve `flowLevel` (rfl on the structure
+    update), so the post-state's `inFlow` is definitionally the
+    *original* `s.inFlow`. The monotonicity proof wants to peel both
+    `if !s.inFlow` guards with the same `by_cases hi : (!s.inFlow) =
+    true`. Without preservation lemmas, simp leaves the inner
+    condition as `(!(s.pushMappingIndentIx col).inFlow)`, and
+    `if_pos hi` only fires on the outer occurrence; the inner if
+    survives and `split at h` introduces a discordant
+    `h✝ : (!(post).inFlow) = true` hypothesis that doesn't close.
+
+    **Fix:** add `emit_flowLevel`/`advance_flowLevel`/
+    `pushMappingIndentIx_flowLevel` (proofs: `rfl` or
+    `unfold; split <;> rfl`) plus the corresponding `_inFlow` lemmas
+    (each proved `unfold pushMappingIndentIx; split <;> rfl`), all
+    tagged `@[simp]`. Then `simp only [if_pos hi, advance_inFlow,
+    emit_inFlow, pushMappingIndentIx_inFlow] at h` chains: `if_pos hi`
+    eliminates the outer if (so the post-state is now
+    `pushMappingIndentIx s c`, not an `if`), the inFlow chain
+    rewrites the inner condition's `((push s c).emit key).advance.inFlow`
+    to `s.inFlow`, and `if_pos hi` then fires again on the inner if.
+    What remains is the `match s.peek?` over the tab discriminant —
+    `split at h` dispatches it cleanly.
+
+    **Generalisable rule:** **when the same flag (e.g. `inFlow`)
+    gates both a let-binding side effect *and* a subsequent guard,
+    add a preservation simp lemma for each intermediate operation,
+    so a single `by_cases` on the original flag collapses both ifs
+    via `simp only [if_pos hi]`.** This is cheap (rfl-trivial
+    lemmas), eliminates the "split-produces-discordant-hypothesis"
+    failure mode, and keeps the proof linear instead of branching
+    on case-shape that the elaborator already knows is impossible.
+
+    **Aside on `@[inline]`:** `inFlow` is `@[inline]`, but Lean's
+    elaborator keeps it as a projection at the term level — the
+    inline expansion happens only at compile time. So the simp
+    lemma's `(pushMappingIndentIx s col).inFlow = s.inFlow` does
+    apply syntactically, despite the inline annotation.
+
+</details>
+
 #### Phase 3 sub-plan (six sessions)
 
 <details><summary>Phase 3 is ~30× the size of the Phase 2 capstone. It is decomposed into six sessions; only the final commit must be atomic per Guardrail 1.</summary>
@@ -2316,8 +2392,18 @@ clusters become 5b.2–5b.8. Total: nine sub-steps.
     do-block early-return; `split at h` (not `cases h : ...`) for
     matches with dependent witness binders).
 - **5b.2 — Tab-in-indentation hardening** for `scanBlockEntryIx`
-  and `scanKeyIx` (§6.1 [187]); add the legacy's tab-check error
-  branch to both indicator scans.
+  and `scanKeyIx` (§6.1 [187]) *(landed)*.
+  `scanBlockEntryIx` now throws `tabInIndentation` in block context
+  when `s.hasTabInPrecedingWhitespace` (an indexed analogue of the
+  legacy backward-scan, added to `IndexedState.lean` as
+  `ScannerStateIx.hasTabInPrecedingWhitespace`); `scanKeyIx` now
+  throws when the cursor sits on `'\t'` immediately after consuming
+  `?` in block context. Both monotonicity proofs (`_offset_monotonic`
+  + `_tokens_size_le`) were re-derived; the proofs needed three new
+  `inFlow`-preservation simp lemmas (`emit_inFlow`, `advance_inFlow`,
+  `pushMappingIndentIx_inFlow`) so `simp only [if_pos hi, …]` could
+  collapse the post-advance `!s.inFlow` guard against the *original*
+  `s.inFlow` (Reflection 52).
 - **5b.3 — `scanValueIx` validation chain**: split the simplified
   `scanValueIx` into the legacy's four-stage chain
   (`scanValueClearKey` / `scanValueValidate` / `scanValuePrepare`
@@ -2732,6 +2818,144 @@ all 385 targets. `L4YAML.lean` does not import any
 clusters (tab-in-indent hardening, `scanValueIx` validation chain,
 hex-escape value, `autoDetectBlockScalarIndentLoopIx`, block-scalar
 fold/chomp, quoted multi-line, plain multi-line).
+
+</details>
+
+<details><summary>Step 5b.2 — Tab-in-indentation hardening <em>(landed)</em>.</summary>
+
+**Step 5b.2 — Tab-in-indentation hardening** *(landed)*.
+
+Both `scanBlockEntryIx` (the `-` block-entry indicator) and
+`scanKeyIx` (the `?` explicit-key indicator) now carry the legacy's
+§6.1 [187] `tabInIndentation` throw, mirroring
+`L4YAML.Scanner.SimpleKey.scanBlockEntry` /
+`L4YAML.Scanner.SimpleKey.scanKey` in `Scanner/SimpleKey.lean`.
+
+**Source changes** (`L4YAML/Scanner/IndexedDispatch.lean`,
+`L4YAML/Scanner/IndexedState.lean`):
+
+- `IndexedState.lean` gained two new functions:
+  - `hasTabInPrecedingWhitespaceLoop` (structurally recursive on
+    fuel, scans backward through the contiguous whitespace run
+    before the cursor; returns `true` iff at least one `\t`
+    appears).
+  - `hasTabInPrecedingWhitespace` (the entry point — calls the loop
+    with `s.cursor.pos.offset` as both starting position and fuel).
+
+  Both indexed analogues of `ScannerState.hasTabInPrecedingWhitespace`
+  in `Scanner/Whitespace.lean`.
+
+- `IndexedDispatch.lean::scanBlockEntryIx` now reads:
+  ```
+  do
+    if !s.inFlow then
+      if s.hasTabInPrecedingWhitespace then
+        throw (.tabInIndentation s.cursor.pos.line s.cursor.pos.col)
+    let s := if !s.inFlow then pushSequenceIndentIx s s.cursor.pos.col else s
+    let s := s.emit YamlToken.blockEntry
+    let s := s.advance
+    .ok { s with simpleKeyAllowed := true }
+  ```
+
+  catching tabs in `-\t-`, `- \t-`, `-\t -`, etc. (any tab in the
+  preceding whitespace run is forbidden in block context).
+
+- `IndexedDispatch.lean::scanKeyIx` now reads:
+  ```
+  do
+    let s := if !s.inFlow then pushMappingIndentIx s s.cursor.pos.col else s
+    let line := s.cursor.pos.line
+    let s := s.emit YamlToken.key
+    let s := s.advance
+    if !s.inFlow then
+      if let some '\t' := s.peek? then
+        throw (.tabInIndentation s.cursor.pos.line s.cursor.pos.col)
+    .ok { s with simpleKeyAllowed := true, explicitKeyLine := some line,
+                  simpleKey := { cursor := IxCursor.start input } }
+  ```
+
+  catching a tab immediately following `?` in block context (the
+  tab would be indentation for the key content per §6.1).
+
+**Proof changes** (`L4YAML/Proofs/Scanner/IndexedDispatch.lean`):
+
+- Six new `flowLevel` / `inFlow` preservation simp lemmas added to
+  the `ScannerStateIx` namespace, between
+  `pushMappingIndentIx_cursor` and `unwindIndentsLoopIx_cursor`:
+  `emit_flowLevel` (`rfl`), `advance_flowLevel` (`rfl`),
+  `pushSequenceIndentIx_flowLevel` and `pushMappingIndentIx_flowLevel`
+  (each `unfold pushXxxIndentIx; split <;> rfl`), `emit_inFlow`
+  (`rfl`), `advance_inFlow` (`rfl`), `pushMappingIndentIx_inFlow`
+  (`unfold pushMappingIndentIx; split <;> rfl`). These let
+  `simp only [advance_inFlow, emit_inFlow, pushMappingIndentIx_inFlow]`
+  collapse the post-pushMapping/emit/advance `inFlow` projection
+  back to the original `s.inFlow`, so the post-advance tab-check
+  guard can be dispatched against the *original* `s.inFlow` via
+  `simp only [if_pos hi, …]`.
+
+- `scanBlockEntryIx_offset_monotonic` and
+  `scanBlockEntryIx_tokens_size_le` re-derived with the early-throw
+  pattern from R51 (R50's preferred `split at h` cannot peel both
+  the outer `if !s.inFlow` *and* the inner `if hasTab` cleanly):
+
+  ```
+  unfold scanBlockEntryIx at h
+  by_cases hi : (!s.inFlow) = true
+  · rw [if_pos hi] at h
+    by_cases ht : s.hasTabInPrecedingWhitespace = true
+    · rw [if_pos ht] at h          -- throw fires
+      simp [Bind.bind, Except.bind] at h
+    · rw [if_neg ht] at h
+      simp only [pure_bind] at h
+      rw [if_pos hi] at h          -- second `if !s.inFlow` for push
+      simp only [Except.ok.injEq] at h
+      subst h
+      show s.cursor.pos.offset ≤ _
+      simp only [advance_cursor, emit_cursor, pushSequenceIndentIx_cursor]
+      exact IxCursor.advance_offset_monotonic _
+  · rw [if_neg hi] at h            -- flow context: outer guard skipped
+    simp only [pure_bind] at h
+    rw [if_neg hi] at h
+    simp only [Except.ok.injEq] at h
+    subst h
+    show s.cursor.pos.offset ≤ _
+    simp only [advance_cursor, emit_cursor]
+    exact IxCursor.advance_offset_monotonic _
+  ```
+
+- `scanKeyIx_offset_monotonic` and `scanKeyIx_tokens_size_le`
+  re-derived with the more compact `simp only [if_pos hi,
+  advance_inFlow, emit_inFlow, pushMappingIndentIx_inFlow]` chain
+  (R52). The proof's block-context branch reads:
+
+  ```
+  by_cases hi : (!s.inFlow) = true
+  · simp only [if_pos hi, advance_inFlow, emit_inFlow,
+      pushMappingIndentIx_inFlow] at h
+    split at h
+    · simp [Bind.bind, Except.bind] at h     -- some '\t' arm
+    · simp only [pure_bind, Except.ok.injEq] at h
+      subst h
+      show s.cursor.pos.offset ≤ _
+      simp only [advance_cursor, emit_cursor, pushMappingIndentIx_cursor]
+      exact IxCursor.advance_offset_monotonic _
+  · ...
+  ```
+
+  The simp set chains `if_pos hi` (outer if), then the inFlow chain
+  (post-pushMapping/emit/advance `inFlow` ↝ `s.inFlow`), then
+  `if_pos hi` *again* (now firing on the inner if whose condition
+  is now syntactically `(!s.inFlow) = true`), leaving only the
+  `match s.peek?` over the tab discriminant.
+
+Sorry budget: **0 → 0** in the staging files. `lake build` passes
+all 385 targets. `L4YAML.lean` does not import any
+`Scanner.Indexed*` or `Proofs.Scanner.Indexed*` file — confirmed.
+
+**Carried forward into Steps 5b.3–5b.8**: the six remaining Step-5b
+clusters (`scanValueIx` validation chain, hex-escape value,
+`autoDetectBlockScalarIndentLoopIx`, block-scalar fold/chomp,
+quoted multi-line, plain multi-line).
 
 </details>
 

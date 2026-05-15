@@ -283,6 +283,50 @@ def skipSpacesS {input : String} (s : ScannerStateIx input) :
     ScannerStateIx input :=
   { s with cursor := L4YAML.Scanner.Indexed.skipToContent s.cursor }
 
+/-! ## Tab-in-indentation backward scan (§6.1)
+
+Indexed analogue of `ScannerState.hasTabInPrecedingWhitespace`
+(`Scanner/Whitespace.lean`). Used by `scanBlockEntryIx` to enforce
+YAML 1.2.2 §6.1: tabs must not be used in indentation. Scans
+backward through the contiguous whitespace run immediately before
+the cursor; returns `true` iff at least one `\t` appears in it.
+
+Pure on `input` and the cursor offset — does not consume any
+characters, does not modify state. -/
+
+/-- Backward-scan loop (structurally recursive on `fuel`).
+
+    `pos` is the byte offset at which we look one character back.
+    The loop terminates when:
+    - `pos = 0` (start of input): no tab found, returns `false`.
+    - The character at `pos - 1` is `\t`: returns `true`.
+    - The character at `pos - 1` is `' '`: continue scanning back.
+    - Otherwise (non-whitespace): the indentation run ended, returns
+      `false`.
+
+    Caller passes `pos` as the fuel — guaranteed sufficient because
+    each iteration strictly decreases `pos`. -/
+@[yaml_spec "6.1"]
+def hasTabInPrecedingWhitespaceLoop (input : String) (pos : Nat) :
+    Nat → Bool
+  | 0 => false
+  | fuel + 1 =>
+    if pos == 0 then false
+    else
+      let prevPos := (String.Pos.Raw.prev input ⟨pos⟩).byteIdx
+      let c := String.Pos.Raw.get input ⟨prevPos⟩
+      if c == '\t' then true
+      else if c == ' ' then hasTabInPrecedingWhitespaceLoop input prevPos fuel
+      else false
+
+/-- Detect a tab in the whitespace immediately before the cursor.
+    Returns `true` iff any `\t` appears in the contiguous
+    spaces-and-tabs run ending at the cursor. -/
+@[yaml_spec "6.1"]
+def hasTabInPrecedingWhitespace {input : String}
+    (s : ScannerStateIx input) : Bool :=
+  hasTabInPrecedingWhitespaceLoop input s.cursor.pos.offset s.cursor.pos.offset
+
 end ScannerStateIx
 
 end L4YAML.Scanner.Indexed

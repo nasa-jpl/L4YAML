@@ -135,6 +135,44 @@ theorem advanceN_offset_monotonic {input : String} (s : ScannerStateIx input) (n
   unfold pushMappingIndentIx
   split <;> rfl
 
+/-! ## `flowLevel`/`inFlow` preservation lemmas (used by Step 5b.2)
+
+`pushSequenceIndentIx` / `pushMappingIndentIx` / `emit` / `advance`
+all keep the `flowLevel` field intact (they only update tokens / cursor /
+indents). This lets the post-advance `if (!s.inFlow)` in `scanBlockEntryIx`
+/ `scanKeyIx` (Step 5b.2 tab-check) be reasoned about with the original
+state's `inFlow` after `rw [if_pos/if_neg]`. -/
+
+@[simp] theorem emit_flowLevel {input : String} (s : ScannerStateIx input)
+    (tok : YamlToken) : (s.emit tok).flowLevel = s.flowLevel := rfl
+
+@[simp] theorem advance_flowLevel {input : String} (s : ScannerStateIx input) :
+    s.advance.flowLevel = s.flowLevel := rfl
+
+@[simp] theorem pushSequenceIndentIx_flowLevel {input : String}
+    (s : ScannerStateIx input) (col : Int) :
+    (pushSequenceIndentIx s col).flowLevel = s.flowLevel := by
+  unfold pushSequenceIndentIx
+  split <;> rfl
+
+@[simp] theorem pushMappingIndentIx_flowLevel {input : String}
+    (s : ScannerStateIx input) (col : Int) :
+    (pushMappingIndentIx s col).flowLevel = s.flowLevel := by
+  unfold pushMappingIndentIx
+  split <;> rfl
+
+@[simp] theorem emit_inFlow {input : String} (s : ScannerStateIx input)
+    (tok : YamlToken) : (s.emit tok).inFlow = s.inFlow := rfl
+
+@[simp] theorem advance_inFlow {input : String} (s : ScannerStateIx input) :
+    s.advance.inFlow = s.inFlow := rfl
+
+@[simp] theorem pushMappingIndentIx_inFlow {input : String}
+    (s : ScannerStateIx input) (col : Int) :
+    (pushMappingIndentIx s col).inFlow = s.inFlow := by
+  unfold pushMappingIndentIx
+  split <;> rfl
+
 @[simp] theorem unwindIndentsLoopIx_cursor {input : String} (s : ScannerStateIx input)
     (col : Int) (fuel : Nat) :
     (unwindIndentsLoopIx s col fuel).cursor = s.cursor := by
@@ -226,26 +264,56 @@ theorem scanBlockEntryIx_offset_monotonic {input : String}
     {s s' : ScannerStateIx input} (h : scanBlockEntryIx s = .ok s') :
     s.cursor.pos.offset ≤ s'.cursor.pos.offset := by
   unfold scanBlockEntryIx at h
-  simp only [Except.ok.injEq] at h
-  subst h
-  show s.cursor.pos.offset ≤ _
-  split
-  · simp only [advance_cursor, emit_cursor, pushSequenceIndentIx_cursor]
-    exact IxCursor.advance_offset_monotonic _
-  · simp only [advance_cursor, emit_cursor]
+  by_cases hi : (!s.inFlow) = true
+  · rw [if_pos hi] at h
+    by_cases ht : s.hasTabInPrecedingWhitespace = true
+    · -- §6.1 tab-throw fires; do-block reduces to `.error _` — contradicts `.ok s'`.
+      rw [if_pos ht] at h
+      simp [Bind.bind, Except.bind] at h
+    · rw [if_neg ht] at h
+      simp only [pure_bind] at h
+      rw [if_pos hi] at h
+      simp only [Except.ok.injEq] at h
+      subst h
+      show s.cursor.pos.offset ≤ _
+      simp only [advance_cursor, emit_cursor, pushSequenceIndentIx_cursor]
+      exact IxCursor.advance_offset_monotonic _
+  · rw [if_neg hi] at h
+    simp only [pure_bind] at h
+    rw [if_neg hi] at h
+    simp only [Except.ok.injEq] at h
+    subst h
+    show s.cursor.pos.offset ≤ _
+    simp only [advance_cursor, emit_cursor]
     exact IxCursor.advance_offset_monotonic _
 
 theorem scanKeyIx_offset_monotonic {input : String}
     {s s' : ScannerStateIx input} (h : scanKeyIx s = .ok s') :
     s.cursor.pos.offset ≤ s'.cursor.pos.offset := by
   unfold scanKeyIx at h
-  simp only [Except.ok.injEq] at h
-  subst h
-  show s.cursor.pos.offset ≤ _
-  split
-  · simp only [advance_cursor, emit_cursor, pushMappingIndentIx_cursor]
-    exact IxCursor.advance_offset_monotonic _
-  · simp only [advance_cursor, emit_cursor]
+  by_cases hi : (!s.inFlow) = true
+  · -- Block context: rewrite the outer let-if first; that normalises
+    -- the post-state to `pushMappingIndentIx s c` and lets the inFlow
+    -- preservation lemmas collapse the inner if's condition to `s.inFlow`,
+    -- which the second `if_pos hi` then rewrites to its `then` branch.
+    simp only [if_pos hi, advance_inFlow, emit_inFlow,
+      pushMappingIndentIx_inFlow] at h
+    -- `if let some '\t' := … then throw` is `match s.peek? with`.
+    split at h
+    · -- some '\t' — throw fires; bind reduces to `.error _`, contradicts `.ok s'`.
+      simp [Bind.bind, Except.bind] at h
+    · -- catch-all — `pure () >>= ... = .ok {...}`.
+      simp only [pure_bind, Except.ok.injEq] at h
+      subst h
+      show s.cursor.pos.offset ≤ _
+      simp only [advance_cursor, emit_cursor, pushMappingIndentIx_cursor]
+      exact IxCursor.advance_offset_monotonic _
+  · -- Flow context: outer if collapses to `s`; inner if also takes else.
+    simp only [if_neg hi, advance_inFlow, emit_inFlow] at h
+    simp only [pure_bind, Except.ok.injEq] at h
+    subst h
+    show s.cursor.pos.offset ≤ _
+    simp only [advance_cursor, emit_cursor]
     exact IxCursor.advance_offset_monotonic _
 
 theorem scanValueIx_offset_monotonic {input : String}
@@ -648,25 +716,50 @@ theorem scanBlockEntryIx_tokens_size_le {input : String}
     {s s' : ScannerStateIx input} (h : scanBlockEntryIx s = .ok s') :
     s.tokens.size ≤ s'.tokens.size := by
   unfold scanBlockEntryIx at h
-  simp only [Except.ok.injEq] at h
-  subst h
-  show s.tokens.size ≤ _
-  split
-  · refine Nat.le_trans (pushSequenceIndentIx_tokens_size_le s s.cursor.pos.col) ?_
+  by_cases hi : (!s.inFlow) = true
+  · rw [if_pos hi] at h
+    by_cases ht : s.hasTabInPrecedingWhitespace = true
+    · -- §6.1 tab-throw fires; contradicts `.ok s'`.
+      rw [if_pos ht] at h
+      simp [Bind.bind, Except.bind] at h
+    · rw [if_neg ht] at h
+      simp only [pure_bind] at h
+      rw [if_pos hi] at h
+      simp only [Except.ok.injEq] at h
+      subst h
+      show s.tokens.size ≤ _
+      refine Nat.le_trans (pushSequenceIndentIx_tokens_size_le s s.cursor.pos.col) ?_
+      simp
+  · rw [if_neg hi] at h
+    simp only [pure_bind] at h
+    rw [if_neg hi] at h
+    simp only [Except.ok.injEq] at h
+    subst h
+    show s.tokens.size ≤ _
     simp
-  · simp
 
 theorem scanKeyIx_tokens_size_le {input : String}
     {s s' : ScannerStateIx input} (h : scanKeyIx s = .ok s') :
     s.tokens.size ≤ s'.tokens.size := by
   unfold scanKeyIx at h
-  simp only [Except.ok.injEq] at h
-  subst h
-  show s.tokens.size ≤ _
-  split
-  · refine Nat.le_trans (pushMappingIndentIx_tokens_size_le s s.cursor.pos.col) ?_
+  by_cases hi : (!s.inFlow) = true
+  · -- Block context: outer if rewrites; inFlow chains normalise the inner
+    -- if's condition to `s.inFlow`; second if_pos hi rewrites the inner if.
+    simp only [if_pos hi, advance_inFlow, emit_inFlow,
+      pushMappingIndentIx_inFlow] at h
+    split at h
+    · simp [Bind.bind, Except.bind] at h
+    · simp only [pure_bind, Except.ok.injEq] at h
+      subst h
+      show s.tokens.size ≤ _
+      refine Nat.le_trans (pushMappingIndentIx_tokens_size_le s s.cursor.pos.col) ?_
+      simp
+  · -- Flow context: outer if collapses to `s`; inner if takes else.
+    simp only [if_neg hi, advance_inFlow, emit_inFlow] at h
+    simp only [pure_bind, Except.ok.injEq] at h
+    subst h
+    show s.tokens.size ≤ _
     simp
-  · simp
 
 theorem scanValueIx_tokens_size_le {input : String}
     {s s' : ScannerStateIx input} (h : scanValueIx s = .ok s') :

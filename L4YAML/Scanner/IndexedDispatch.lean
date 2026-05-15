@@ -383,24 +383,40 @@ def isValueCandidateIx {input : String} (s : ScannerStateIx input) : Bool :=
 /-! ## Block-indicator scanners
 
 `scanBlockEntryIx` (`-`), `scanKeyIx` (`?`), `scanValueIx` (`:`).
-These follow the legacy structure but skip the tab-in-indentation
-check (§6.1 [187] hardening — landed in Step 5b). -/
+Both `scanBlockEntryIx` and `scanKeyIx` carry the legacy tab-in-
+indentation check (§6.1 [187] hardening — landed in Step 5b.2). -/
 
-/-- Scan `-` block-entry indicator. -/
+/-- Scan `-` block-entry indicator.
+
+    Throws `tabInIndentation` if a tab appears in the contiguous
+    whitespace immediately before the cursor — `skipToContent` runs
+    in same-line continuations consume tabs without checking, so this
+    backward scan catches tabs that slipped through as indentation
+    for this block entry (handles `-\t-`, `- \t-`, `-\t -`, etc.). -/
 def scanBlockEntryIx {input : String} (s : ScannerStateIx input) :
-    Except ScanError (ScannerStateIx input) :=
+    Except ScanError (ScannerStateIx input) := do
+  if !s.inFlow then
+    if s.hasTabInPrecedingWhitespace then
+      throw (.tabInIndentation s.cursor.pos.line s.cursor.pos.col)
   let s := if !s.inFlow then pushSequenceIndentIx s s.cursor.pos.col else s
   let s := s.emit YamlToken.blockEntry
   let s := s.advance
   .ok { s with simpleKeyAllowed := true }
 
-/-- Scan `?` explicit-key indicator. -/
+/-- Scan `?` explicit-key indicator.
+
+    Throws `tabInIndentation` if a tab character immediately follows
+    the `?` indicator in block context — that tab would be
+    indentation for the key content (§6.1). -/
 def scanKeyIx {input : String} (s : ScannerStateIx input) :
     Except ScanError (ScannerStateIx input) := do
   let s := if !s.inFlow then pushMappingIndentIx s s.cursor.pos.col else s
   let line := s.cursor.pos.line
   let s := s.emit YamlToken.key
   let s := s.advance
+  if !s.inFlow then
+    if let some '\t' := s.peek? then
+      throw (.tabInIndentation s.cursor.pos.line s.cursor.pos.col)
   .ok { s with simpleKeyAllowed := true,
                 explicitKeyLine := some line,
                 simpleKey := { cursor := IxCursor.start input } }
