@@ -773,4 +773,58 @@ theorem parseHexEscapeIx_decoded {input : String} (c : IxCursor input) (n : Nat)
       exact ⟨hLt, hcEq.symm, hc'Eq.symm⟩
     · contradiction                                      -- value ≥ 0x110000
 
+/-! ## Layer F.1 — Auto-detected block-scalar indent ≥ `minContentIndent` (Step 5b.5)
+
+`autoDetectBlockScalarIndentLoopIx` probes a sequence of leading
+whitespace runs to determine the content indent of a block scalar
+when the header omits an explicit indicator. The loop returns a
+`Nat` (the chosen indent), not a cursor — so the relevant
+correctness property is a *bound*, not a monotonicity statement.
+
+The downstream proofs (block-scalar content correctness, Step 5b.6)
+need to know that the auto-detected indent is at least the
+spec-mandated minimum. This is the carried-forward obligation for
+Step 5b.5.
+
+The proof is a four-way `split` per `fuel + 1` step:
+1. Base (`fuel = 0`) and EOF (`none`) and end-of-fuel branches all
+   return `if maxWSCol > minContentIndent then maxWSCol else minContentIndent`
+   — `omega` from either disjunct.
+2. Non-blank line: return `if probeAfterSp.pos.col > minContentIndent
+   then probeAfterSp.pos.col else minContentIndent` — same `omega`.
+3. Blank line: recurse on a new `maxWSCol'`. The IH gives
+   `minContentIndent ≤ result` for any `maxWSCol`, so it discharges
+   directly. -/
+
+theorem autoDetectBlockScalarIndentLoopIx_ge_min
+    {input : String} (probe : IxCursor input)
+    (maxWSCol minContentIndent fuel : Nat) :
+    minContentIndent ≤
+      autoDetectBlockScalarIndentLoopIx probe maxWSCol minContentIndent fuel := by
+  induction fuel generalizing probe maxWSCol with
+  | zero =>
+    unfold autoDetectBlockScalarIndentLoopIx
+    split <;> omega
+  | succ fuel ih =>
+    unfold autoDetectBlockScalarIndentLoopIx
+    -- Three nested splits: (1) the `let (probeAfterSp, _) := skipSpaces probe`
+    -- prod destructure (1 case), (2) `match probeAfterSp.peek?`
+    -- (some/none), (3) inside `some ch`, `if isLineBreakBool ch`.
+    split  -- (1) prod destructure
+    split  -- (2) peek?
+    · -- some ch at probeAfterSp
+      split  -- (3) isLineBreakBool
+      · -- true: recurse — IH gives `minContentIndent ≤ result` for any maxWSCol'
+        apply ih
+      · -- false: result = max probeAfterSp.pos.col minContentIndent
+        split <;> omega
+    · -- none — EOF: result = max maxWSCol minContentIndent
+      split <;> omega
+
+theorem autoDetectBlockScalarIndentIx_ge_min
+    {input : String} (c : IxCursor input) (minContentIndent : Nat) :
+    minContentIndent ≤ autoDetectBlockScalarIndentIx c minContentIndent := by
+  unfold autoDetectBlockScalarIndentIx
+  exact autoDetectBlockScalarIndentLoopIx_ge_min c 0 minContentIndent _
+
 end L4YAML.Scanner.Indexed
