@@ -293,48 +293,50 @@ theorem collectDoubleQuotedLoopIx_offset_monotonic {input : String} (c : IxCurso
   | succ fuel ih =>
     unfold collectDoubleQuotedLoopIx at h
     split at h
-    · contradiction
-    · -- some '"' branch: h : some (content, c.advance) = some result
-      simp only [Option.some.injEq] at h
-      rw [← h]
-      exact IxCursor.advance_offset_monotonic c
-    · -- some '\\' branch — inner match on c.advance.peek?
+    · contradiction                                          -- peek? = none
+    · -- some ch — cascade of nested ifs
       split at h
-      · -- c.advance.peek? = some lbCh
-        split at h
-        · -- isLineBreakBool lbCh = true: line-continuation
-          have hAdv : c.pos.offset ≤ c.advance.pos.offset :=
-            IxCursor.advance_offset_monotonic c
-          have hCLB : c.advance.pos.offset ≤ (consumeLineBreak c.advance).pos.offset :=
-            consumeLineBreak_offset_monotonic _
-          have hSW : (consumeLineBreak c.advance).pos.offset ≤
-                     (skipWhitespace (consumeLineBreak c.advance)).pos.offset :=
-            skipWhitespace_offset_monotonic _
-          have hRec : (skipWhitespace (consumeLineBreak c.advance)).pos.offset ≤
-                      result.2.pos.offset := ih _ _ h
-          exact Nat.le_trans hAdv (Nat.le_trans hCLB (Nat.le_trans hSW hRec))
-        · -- isLineBreakBool lbCh = false: normal escape
+      · -- isDoubleQuoteBool ch: h : some (content, c.advance) = some result
+        simp only [Option.some.injEq] at h
+        rw [← h]
+        exact IxCursor.advance_offset_monotonic c
+      · split at h
+        · -- isEscapeBool ch: inner match on c.advance.peek?
           split at h
-          · rename_i _ decodedCh cAfterEsc hEsc
-            have hAdvMono : c.pos.offset ≤ c.advance.pos.offset :=
-              IxCursor.advance_offset_monotonic c
-            have hEscMono : c.advance.pos.offset ≤ cAfterEsc.pos.offset :=
-              processEscapeIx_offset_monotonic c.advance hEsc
-            have hRec : cAfterEsc.pos.offset ≤ result.2.pos.offset := ih _ _ h
-            exact Nat.le_trans hAdvMono (Nat.le_trans hEscMono hRec)
+          · -- some lbCh
+            split at h
+            · -- isLineBreakBool lbCh = true: line-continuation
+              have hAdv : c.pos.offset ≤ c.advance.pos.offset :=
+                IxCursor.advance_offset_monotonic c
+              have hCLB : c.advance.pos.offset ≤ (consumeLineBreak c.advance).pos.offset :=
+                consumeLineBreak_offset_monotonic _
+              have hSW : (consumeLineBreak c.advance).pos.offset ≤
+                         (skipWhitespace (consumeLineBreak c.advance)).pos.offset :=
+                skipWhitespace_offset_monotonic _
+              have hRec : (skipWhitespace (consumeLineBreak c.advance)).pos.offset ≤
+                          result.2.pos.offset := ih _ _ h
+              exact Nat.le_trans hAdv (Nat.le_trans hCLB (Nat.le_trans hSW hRec))
+            · -- isLineBreakBool lbCh = false: normal escape
+              split at h
+              · rename_i _ _ _ decodedCh cAfterEsc hEsc
+                have hAdvMono : c.pos.offset ≤ c.advance.pos.offset :=
+                  IxCursor.advance_offset_monotonic c
+                have hEscMono : c.advance.pos.offset ≤ cAfterEsc.pos.offset :=
+                  processEscapeIx_offset_monotonic c.advance hEsc
+                have hRec : cAfterEsc.pos.offset ≤ result.2.pos.offset := ih _ _ h
+                exact Nat.le_trans hAdvMono (Nat.le_trans hEscMono hRec)
+              · contradiction
           · contradiction
-      · contradiction
-    · -- some ch (other) branch
-      split at h
-      · -- isLineBreakBool ch = true: fold and recurse
-        have hFoldMono : c.pos.offset ≤ (foldQuotedNewlinesIx c).2.pos.offset :=
-          foldQuotedNewlinesIx_offset_monotonic c
-        have hRec : (foldQuotedNewlinesIx c).2.pos.offset ≤ result.2.pos.offset :=
-          ih _ _ h
-        exact Nat.le_trans hFoldMono hRec
-      · -- regular char: advance and recurse
-        have hRec : c.advance.pos.offset ≤ result.2.pos.offset := ih _ _ h
-        exact Nat.le_trans (IxCursor.advance_offset_monotonic c) hRec
+        · split at h
+          · -- isLineBreakBool ch = true: fold and recurse
+            have hFoldMono : c.pos.offset ≤ (foldQuotedNewlinesIx c).2.pos.offset :=
+              foldQuotedNewlinesIx_offset_monotonic c
+            have hRec : (foldQuotedNewlinesIx c).2.pos.offset ≤ result.2.pos.offset :=
+              ih _ _ h
+            exact Nat.le_trans hFoldMono hRec
+          · -- regular char: advance and recurse
+            have hRec : c.advance.pos.offset ≤ result.2.pos.offset := ih _ _ h
+            exact Nat.le_trans (IxCursor.advance_offset_monotonic c) hRec
 
 theorem scanDoubleQuotedIx_offset_lt {input : String} (c : IxCursor input)
     {result : String × IxCursor input}
@@ -342,19 +344,23 @@ theorem scanDoubleQuotedIx_offset_lt {input : String} (c : IxCursor input)
     c.pos.offset < result.2.pos.offset := by
   unfold scanDoubleQuotedIx at h
   split at h
-  · rename_i hp
-    have hMore : c.pos.offset < input.utf8ByteSize := by
-      if h' : c.pos.offset < input.utf8ByteSize then
-        exact h'
-      else
-        have : c.peek? = none :=
-          (IxCursor.peek?_eq_none_iff c).mpr (Nat.le_of_not_lt h')
-        rw [this] at hp; contradiction
-    have hAdv : c.pos.offset < c.advance.pos.offset :=
-      IxCursor.advance_offset_lt_of_hasMore c hMore
-    have hRec : c.advance.pos.offset ≤ result.2.pos.offset :=
-      collectDoubleQuotedLoopIx_offset_monotonic c.advance "" _ h
-    exact Nat.lt_of_lt_of_le hAdv hRec
+  · -- some ch
+    split at h
+    · -- isDoubleQuoteBool ch
+      rename_i hp _
+      have hMore : c.pos.offset < input.utf8ByteSize := by
+        if h' : c.pos.offset < input.utf8ByteSize then
+          exact h'
+        else
+          have : c.peek? = none :=
+            (IxCursor.peek?_eq_none_iff c).mpr (Nat.le_of_not_lt h')
+          rw [this] at hp; contradiction
+      have hAdv : c.pos.offset < c.advance.pos.offset :=
+        IxCursor.advance_offset_lt_of_hasMore c hMore
+      have hRec : c.advance.pos.offset ≤ result.2.pos.offset :=
+        collectDoubleQuotedLoopIx_offset_monotonic c.advance "" _ h
+      exact Nat.lt_of_lt_of_le hAdv hRec
+    · contradiction
   · contradiction
 
 /-! ## Layer E3 — single-quoted offset monotonicity & strict progress -/
@@ -368,31 +374,38 @@ theorem collectSingleQuotedLoopIx_offset_monotonic {input : String} (c : IxCurso
   | succ fuel ih =>
     unfold collectSingleQuotedLoopIx at h
     split at h
-    · contradiction
-    · -- some '\''
+    · contradiction                                          -- peek? = none
+    · -- some ch — cascade of nested ifs
       split at h
-      · -- doubled-quote escape: recurse on c.advance.advance
-        have hAdv1 : c.pos.offset ≤ c.advance.pos.offset :=
-          IxCursor.advance_offset_monotonic c
-        have hAdv2 : c.advance.pos.offset ≤ c.advance.advance.pos.offset :=
-          IxCursor.advance_offset_monotonic c.advance
-        have hRec : c.advance.advance.pos.offset ≤ result.2.pos.offset := ih _ _ h
-        exact Nat.le_trans hAdv1 (Nat.le_trans hAdv2 hRec)
-      · -- closing quote: h : some (content, c.advance) = some result
-        simp only [Option.some.injEq] at h
-        rw [← h]
-        exact IxCursor.advance_offset_monotonic c
-    · -- some ch (other)
-      split at h
-      · -- isLineBreakBool ch = true: fold and recurse
-        have hFoldMono : c.pos.offset ≤ (foldQuotedNewlinesIx c).2.pos.offset :=
-          foldQuotedNewlinesIx_offset_monotonic c
-        have hRec : (foldQuotedNewlinesIx c).2.pos.offset ≤ result.2.pos.offset :=
-          ih _ _ h
-        exact Nat.le_trans hFoldMono hRec
-      · -- regular char: advance and recurse
-        have hRec : c.advance.pos.offset ≤ result.2.pos.offset := ih _ _ h
-        exact Nat.le_trans (IxCursor.advance_offset_monotonic c) hRec
+      · -- isSingleQuoteBool ch: inner match on c.advance.peek?
+        split at h
+        · -- some next
+          split at h
+          · -- isSingleQuoteBool next: doubled-quote escape, recurse on c.advance.advance
+            have hAdv1 : c.pos.offset ≤ c.advance.pos.offset :=
+              IxCursor.advance_offset_monotonic c
+            have hAdv2 : c.advance.pos.offset ≤ c.advance.advance.pos.offset :=
+              IxCursor.advance_offset_monotonic c.advance
+            have hRec : c.advance.advance.pos.offset ≤ result.2.pos.offset := ih _ _ h
+            exact Nat.le_trans hAdv1 (Nat.le_trans hAdv2 hRec)
+          · -- closing quote (single `'` followed by non-`'`): h : some (content, c.advance) = some result
+            simp only [Option.some.injEq] at h
+            rw [← h]
+            exact IxCursor.advance_offset_monotonic c
+        · -- none after single `'`: also closing quote
+          simp only [Option.some.injEq] at h
+          rw [← h]
+          exact IxCursor.advance_offset_monotonic c
+      · split at h
+        · -- isLineBreakBool ch = true: fold and recurse
+          have hFoldMono : c.pos.offset ≤ (foldQuotedNewlinesIx c).2.pos.offset :=
+            foldQuotedNewlinesIx_offset_monotonic c
+          have hRec : (foldQuotedNewlinesIx c).2.pos.offset ≤ result.2.pos.offset :=
+            ih _ _ h
+          exact Nat.le_trans hFoldMono hRec
+        · -- regular char: advance and recurse
+          have hRec : c.advance.pos.offset ≤ result.2.pos.offset := ih _ _ h
+          exact Nat.le_trans (IxCursor.advance_offset_monotonic c) hRec
 
 theorem scanSingleQuotedIx_offset_lt {input : String} (c : IxCursor input)
     {result : String × IxCursor input}
@@ -400,19 +413,23 @@ theorem scanSingleQuotedIx_offset_lt {input : String} (c : IxCursor input)
     c.pos.offset < result.2.pos.offset := by
   unfold scanSingleQuotedIx at h
   split at h
-  · rename_i hp
-    have hMore : c.pos.offset < input.utf8ByteSize := by
-      if h' : c.pos.offset < input.utf8ByteSize then
-        exact h'
-      else
-        have : c.peek? = none :=
-          (IxCursor.peek?_eq_none_iff c).mpr (Nat.le_of_not_lt h')
-        rw [this] at hp; contradiction
-    have hAdv : c.pos.offset < c.advance.pos.offset :=
-      IxCursor.advance_offset_lt_of_hasMore c hMore
-    have hRec : c.advance.pos.offset ≤ result.2.pos.offset :=
-      collectSingleQuotedLoopIx_offset_monotonic c.advance "" _ h
-    exact Nat.lt_of_lt_of_le hAdv hRec
+  · -- some ch
+    split at h
+    · -- isSingleQuoteBool ch
+      rename_i hp _
+      have hMore : c.pos.offset < input.utf8ByteSize := by
+        if h' : c.pos.offset < input.utf8ByteSize then
+          exact h'
+        else
+          have : c.peek? = none :=
+            (IxCursor.peek?_eq_none_iff c).mpr (Nat.le_of_not_lt h')
+          rw [this] at hp; contradiction
+      have hAdv : c.pos.offset < c.advance.pos.offset :=
+        IxCursor.advance_offset_lt_of_hasMore c hMore
+      have hRec : c.advance.pos.offset ≤ result.2.pos.offset :=
+        collectSingleQuotedLoopIx_offset_monotonic c.advance "" _ h
+      exact Nat.lt_of_lt_of_le hAdv hRec
+    · contradiction
   · contradiction
 
 /-! ## Layer E4 / F2 — plain scalar offset monotonicity
@@ -508,12 +525,15 @@ theorem parseBlockHeaderLoopIx_offset_monotonic {input : String} (c : IxCursor i
   | succ fuel ih =>
     unfold parseBlockHeaderLoopIx
     split
-    · exact Nat.le_trans (IxCursor.advance_offset_monotonic c) (ih _ _ _)
-    · exact Nat.le_trans (IxCursor.advance_offset_monotonic c) (ih _ _ _)
-    · split
+    · -- some ch — cascade of nested ifs
+      split
       · exact Nat.le_trans (IxCursor.advance_offset_monotonic c) (ih _ _ _)
-      · exact Nat.le_refl _
-    · exact Nat.le_refl _
+      · split
+        · exact Nat.le_trans (IxCursor.advance_offset_monotonic c) (ih _ _ _)
+        · split
+          · exact Nat.le_trans (IxCursor.advance_offset_monotonic c) (ih _ _ _)
+          · exact Nat.le_refl _
+    · exact Nat.le_refl _                                    -- peek? = none
 
 theorem collectBlockScalarLoopIx_offset_monotonic {input : String} (c : IxCursor input)
     (rawContent : String) (contentIndent : Nat) (fuel : Nat) :
@@ -575,26 +595,30 @@ theorem blockHeaderToBodyIx_offset_monotonic {input : String} (c : IxCursor inpu
     skipWhitespace_offset_monotonic _
   have hComm :
       (skipWhitespace (parseBlockHeaderLoopIx c.advance .clip none 2).2.2).pos.offset ≤
-      (if (skipWhitespace (parseBlockHeaderLoopIx c.advance .clip none 2).2.2).peek?
-           == some '#' then
+      (if (match (skipWhitespace (parseBlockHeaderLoopIx c.advance .clip none 2).2.2).peek?
+            with | some d => isCommentBool d | none => false) then
          skipCommentText
            (skipWhitespace (parseBlockHeaderLoopIx c.advance .clip none 2).2.2).advance
        else
          skipWhitespace (parseBlockHeaderLoopIx c.advance .clip none 2).2.2).pos.offset := by
-    split
-    · exact Nat.le_trans (IxCursor.advance_offset_monotonic _)
+    by_cases hp :
+        (match (skipWhitespace (parseBlockHeaderLoopIx c.advance .clip none 2).2.2).peek?
+              with | some d => isCommentBool d | none => false) = true
+    · rw [if_pos hp]
+      exact Nat.le_trans (IxCursor.advance_offset_monotonic _)
         (skipCommentText_offset_monotonic _)
-    · exact Nat.le_refl _
+    · rw [if_neg hp]
+      exact Nat.le_refl _
   have hCLB :
-      (if (skipWhitespace (parseBlockHeaderLoopIx c.advance .clip none 2).2.2).peek?
-           == some '#' then
+      (if (match (skipWhitespace (parseBlockHeaderLoopIx c.advance .clip none 2).2.2).peek?
+            with | some d => isCommentBool d | none => false) then
          skipCommentText
            (skipWhitespace (parseBlockHeaderLoopIx c.advance .clip none 2).2.2).advance
        else
          skipWhitespace (parseBlockHeaderLoopIx c.advance .clip none 2).2.2).pos.offset ≤
       (consumeLineBreak
-        (if (skipWhitespace (parseBlockHeaderLoopIx c.advance .clip none 2).2.2).peek?
-             == some '#' then
+        (if (match (skipWhitespace (parseBlockHeaderLoopIx c.advance .clip none 2).2.2).peek?
+              with | some d => isCommentBool d | none => false) then
            skipCommentText
              (skipWhitespace (parseBlockHeaderLoopIx c.advance .clip none 2).2.2).advance
          else

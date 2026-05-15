@@ -421,6 +421,63 @@ def scanKeyIx {input : String} (s : ScannerStateIx input) :
                 explicitKeyLine := some line,
                 simpleKey := { cursor := IxCursor.start input } }
 
+/-- Clear a spurious simple-key when an explicit `?` key is pending.
+    Pure state transformation — never modifies the token array.
+
+    Indexed analogue of `L4YAML.Scanner.scanValueClearKey`.
+    See `Scanner/SimpleKey.lean` for the case analysis. -/
+@[yaml_spec "8.2.2"]
+def scanValueClearKeyIx {input : String} (s : ScannerStateIx input) :
+    ScannerStateIx input :=
+  match s.explicitKeyLine with
+  | some ekLine =>
+    if s.simpleKey.possible
+        && s.simpleKey.cursor.pos.offset == s.cursor.pos.offset
+        && s.cursor.pos.line != ekLine then
+      { s with simpleKey := { cursor := IxCursor.start input } }
+    else if s.simpleKey.possible
+        && s.simpleKey.cursor.pos.line == ekLine
+        && s.cursor.pos.line != ekLine && !s.inFlow then
+      { s with simpleKey := { cursor := IxCursor.start input } }
+    else s
+  | none => s
+
+/-- Validate pre-conditions for `:` as a value indicator.
+    Returns `Unit` on success, throws on violation. Does **not**
+    modify the scanner state — only inspects it.
+
+    Indexed analogue of `L4YAML.Scanner.scanValueValidate`. -/
+@[yaml_spec "8.2.2"]
+def scanValueValidateIx {input : String} (s : ScannerStateIx input) :
+    Except ScanError Unit := do
+  -- §7.4: block-context multiline implicit key
+  if s.simpleKey.possible && !s.inFlow
+      && s.simpleKey.cursor.pos.line != s.cursor.pos.line then
+    throw (.invalidImplicitKey s.cursor.pos.line)
+  -- §7.4.2: flow-sequence multiline implicit key
+  if s.simpleKey.possible && s.isInFlowSequence && s.explicitKeyLine.isNone
+      && s.simpleKey.endLine != s.cursor.pos.line then
+    throw (.invalidImplicitKey s.cursor.pos.line)
+  -- §8.2.1: key at same indent as block sequence
+  if s.simpleKey.possible && !s.inFlow then
+    let keyCol : Int := s.simpleKey.cursor.pos.col
+    if keyCol <= s.currentIndent then
+      if let some top := s.indents.back? then
+        if top.isSequence && keyCol == top.column then
+          throw (.trailingContent s.simpleKey.cursor.pos.line s.simpleKey.cursor.pos.col)
+  -- T833: missing comma in flow mapping
+  if s.simpleKey.possible && s.inFlow && s.simpleKey.tokenIndex > 0 then
+    if let some prevTok := s.tokens.tokens[s.simpleKey.tokenIndex - 1]? then
+      if prevTok.token == .value && prevTok.start.line != s.cursor.pos.line then
+        throw (.invalidFlowEntry s.cursor.pos.line s.cursor.pos.col)
+  -- §8.2.2 [197]: explicit value `:` must be at mapping indent level
+  if let some ekLine := s.explicitKeyLine then
+    if !s.simpleKey.possible && !s.inFlow then
+      if s.cursor.pos.line == ekLine then
+        throw (.sameLineExplicitValue s.cursor.pos.line s.cursor.pos.col)
+      else if (s.cursor.pos.col : Int) != s.currentIndent then
+        throw (.misindentedExplicitValue s.cursor.pos.line s.cursor.pos.col s.currentIndent)
+
 /-- Resolve a pending simple key by overwriting placeholders at
     `simpleKey.tokenIndex`. Pure state update on the token stream
     and indent stack. -/
@@ -448,14 +505,34 @@ def scanValuePrepareIx {input : String} (s : ScannerStateIx input) :
   else
     if !s.inFlow then pushMappingIndentIx s s.cursor.pos.col else s
 
-/-- Scan `:` value indicator. Validation is simplified (Step 5b
-    hardens this to match the legacy `scanValueValidate` chain). -/
+/-- §6.1 tab-after-`:` check: if the explicit value was at or below
+    the current indent level and is in block context, the character
+    immediately after the consumed `:` must not be a tab.
+
+    Indexed analogue of `L4YAML.Scanner.scanValueTabCheck`. -/
+@[yaml_spec "6.1"]
+def scanValueTabCheckIx {input : String} (origCol : Int) (origIndent : Int)
+    (s_adv : ScannerStateIx input) : Except ScanError Unit :=
+  if origCol ≤ origIndent && !s_adv.inFlow then
+    if let some '\t' := s_adv.peek? then
+      throw (.tabInIndentation s_adv.cursor.pos.line s_adv.cursor.pos.col)
+    else .ok ()
+  else .ok ()
+
+/-- Scan `:` value indicator. Mirrors the legacy four-stage chain
+    `scanValueClearKey` / `scanValueValidate` / `scanValuePrepare` /
+    `scanValueTabCheck` so each stage carries a single provable
+    property. -/
+@[yaml_spec "8.2.2" 6 "c-mapping-value"]
 def scanValueIx {input : String} (s : ScannerStateIx input) :
-    Except ScanError (ScannerStateIx input) :=
-  let s := scanValuePrepareIx s
-  let s := s.emit YamlToken.value
-  let s := s.advance
-  .ok { s with simpleKeyAllowed := true, explicitKeyLine := none }
+    Except ScanError (ScannerStateIx input) := do
+  let s_kc := scanValueClearKeyIx s
+  scanValueValidateIx s_kc
+  let s_prepared := scanValuePrepareIx s_kc
+  let s_with_token := s_prepared.emit YamlToken.value
+  let s_after_advance := s_with_token.advance
+  scanValueTabCheckIx (s.cursor.pos.col : Int) s.currentIndent s_after_advance
+  .ok { s_after_advance with simpleKeyAllowed := true, explicitKeyLine := none }
 
 /-! ## Document-marker scanners -/
 

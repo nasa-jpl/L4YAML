@@ -1069,10 +1069,37 @@ generalises: **when the same flag gates both a let-binding side
 effect and a subsequent guard, add a preservation simp lemma for
 each intermediate operation.**
 
-**Next session**: Steps 5b.3–5b.8 work through the remaining six
-Step-5b carry-forward clusters (`scanValueIx` validation chain,
-hex-escape value, `autoDetectBlockScalarIndentLoopIx`, block-scalar
-fold/chomp, quoted multi-line, plain multi-line).
+**Step 5b.3 landed** (Reflection 53): `scanValueIx` was split
+into the legacy four-stage chain `scanValueClearKeyIx /
+scanValueValidateIx / scanValuePrepareIx / scanValueTabCheckIx` so
+each stage carries one provable property — clear-key is a pure
+state transformation, validate is `Except ScanError Unit` (five
+violation cases per §7.4 / §7.4.2 / §8.2.1 / T833 / §8.2.2 [197]),
+prepare resolves placeholders or pushes mapping indent (already
+landed in Step 5b.1b.i), and tab-check enforces §6.1 against the
+*original* `s.cursor.pos.col` + `s.currentIndent`. The two existing
+`scanValueIx_*` monotonicity proofs needed structural updates:
+`subst h` after `simp only [Except.ok.injEq] at h` no longer fits
+once the do-block contains two `Except`-throwing calls (the
+elaborated term carries `have s_kc := scanValueClearKeyIx s; do …`
+with a `have`-binder that blocks `rw`/`subst` over the
+sub-expressions). The legacy pattern — `simp only [bind,
+Except.bind] at h; split at h; cases h | ...` — peels each
+`.error`-branch as `cases h` (contradiction) and leaves the
+all-`.ok` branch with the constructed state to `simp` over emit/
+advance preservation lemmas. Two new helper lemmas landed
+(`scanValueClearKeyIx_cursor` `@[simp]`,
+`scanValueClearKeyIx_tokens_size_le`); the same commit fixed
+unrelated breakage in `Proofs/Scanner/IndexedScalar.lean` and
+`Proofs/Scanner/IndexedIndent.lean` that the prior
+spec-traceability refactor had introduced (quoted-loop /
+parseBlockHeader nested-if shapes, the `'#'` literal → `match …
+isCommentBool d` form) but that the `lake build` cache had hidden.
+
+**Next session**: Steps 5b.4–5b.8 work through the remaining five
+Step-5b carry-forward clusters (hex-escape value,
+`autoDetectBlockScalarIndentLoopIx`, block-scalar fold/chomp,
+quoted multi-line, plain multi-line).
 **Then Step 5c**: `present` + corpus theorem.
 
 </details>
@@ -1103,11 +1130,11 @@ fold/chomp, quoted multi-line, plain multi-line).
 | `L4YAML/Indexed/CharStream.lean` | n/a | ~250 | 1 (`L4YAML.lean` root; new in Phase 3 Step 1, monotonicity lemmas added in Step 2) |
 | `L4YAML/Scanner/IndexedScanner.lean` | n/a | ~950 | 0 (staging — Guardrail 1; new in Phase 3 Step 2; +Layer D dispatch in Step 3; +Layer E scalar tier in Step 4a; +Layer F1/F2/F3 multi-line + block scalars in Step 4b) |
 | `L4YAML/Scanner/IndexedState.lean` | n/a | ~335 | 0 (staging — Guardrail 1; new in Phase 3 Step 5a: `ScannerStateIx input`, indexed `SimpleKeyStateIx`, indent-stack ops, `emit/emitAt/emitAtCursor/overwriteAtCursor`; `emitAtSafe` removed in Step 5b.1a after the static monotonicity chain landed; Step 5b.2: `hasTabInPrecedingWhitespaceLoop` + `hasTabInPrecedingWhitespace` — indexed analogues of the legacy backward-scan, used by `scanBlockEntryIx` to enforce §6.1) |
-| `L4YAML/Scanner/IndexedDispatch.lean` | n/a | ~1000 | 0 (staging — Guardrail 1; new in Phase 3 Step 5a: helper recogniser loops, simple-key save/resolve, block + flow indicator scans, document markers, directives, anchor/alias, tag, dispatch family, `scanLoopIx`, `scanIx`; Step 5b.1a: 8 helper-loop `*_offset_monotonic` lemmas, 10 `emitAtSafe`→`emitAt` replacements with inline proofs, `hStart` parameter on directive helpers; Step 5b.2: `tabInIndentation` throws added to `scanBlockEntryIx` and `scanKeyIx` — the former in block context when `hasTabInPrecedingWhitespace`, the latter when the cursor sits on `'\t'` immediately after consuming `?`) |
+| `L4YAML/Scanner/IndexedDispatch.lean` | n/a | ~1050 | 0 (staging — Guardrail 1; new in Phase 3 Step 5a: helper recogniser loops, simple-key save/resolve, block + flow indicator scans, document markers, directives, anchor/alias, tag, dispatch family, `scanLoopIx`, `scanIx`; Step 5b.1a: 8 helper-loop `*_offset_monotonic` lemmas, 10 `emitAtSafe`→`emitAt` replacements with inline proofs, `hStart` parameter on directive helpers; Step 5b.2: `tabInIndentation` throws added to `scanBlockEntryIx` and `scanKeyIx` — the former in block context when `hasTabInPrecedingWhitespace`, the latter when the cursor sits on `'\t'` immediately after consuming `?`; Step 5b.3: `scanValueIx` split into the legacy four-stage chain — `scanValueClearKeyIx` (clear spurious simple key when explicit `?` is pending), `scanValueValidateIx` (five `throw` cases: §7.4 / §7.4.2 / §8.2.1 / T833 / §8.2.2 [197]), `scanValuePrepareIx` (Step 5b.1b.i — placeholder overwrite or push mapping indent), `scanValueTabCheckIx` (§6.1 against the *original* col + indent)) |
 | `L4YAML/Proofs/Scanner/IndexedWhitespace.lean` | n/a | ~405 | 0 (staging — Guardrail 1; new in Phase 3 Step 2; +`consumeLineBreak_strict` in Step 4a) |
 | `L4YAML/Proofs/Scanner/IndexedIndent.lean` | n/a | ~355 | 0 (staging — Guardrail 1; new in Phase 3 Step 3; +`skipToContentLoop_progress` / `skipToContent_progress` in Step 4a) |
 | `L4YAML/Proofs/Scanner/IndexedScalar.lean` | n/a | ~630 | 0 (staging — Guardrail 1; new in Phase 3 Step 4a; +F1/F2/F3 monotonicity proofs in Step 4b) |
-| `L4YAML/Proofs/Scanner/IndexedDispatch.lean` | n/a | ~1600 | 0 (staging — Guardrail 1; new in Phase 3 Step 5b.1b.i: `IxCursor.advanceN_offset_monotonic`; `ScannerStateIx` cursor-preservation lemmas for `emit*`/`overwriteAtCursor`/`advance*`/`pushSequenceIndentIx`/`pushMappingIndentIx`/`unwindIndentsLoopIx`/`unwindIndentsIx`/`saveSimpleKeyIx`/`scanValuePrepareIx`; `skipSpacesS`/`skipWhitespaceS`/`skipToContentS` offset-monotonicity lifts; Step 5b.1b.ii: 10 per-dispatcher offset-monotonicity lemmas — `scanBlockEntryIx`/`scanKeyIx`/`scanValueIx`/`scanFlowEntryIx`/`scanDocumentStartIx`/`scanDocumentEndIx`/`scanFlowSequenceStartIx`/`scanFlowSequenceEndIx`/`scanFlowMappingStartIx`/`scanFlowMappingEndIx`; Step 5b.1b.iii: 5 per-dispatcher offset-monotonicity lemmas — `scanAnchorOrAliasIx`/`scanTagIx`/`scanYamlDirectiveIx`/`scanTagDirectiveIx`/`scanDirectiveIx`; Step 5b.1b.iv-pre: 6 tokens-size simp lemmas — `skipToContentS_tokens`/`skipSpacesS_tokens`/`skipWhitespaceS_tokens`/`advance_tokens`/`advanceN_tokens`/`emit_tokens_size`/`emitAt_tokens_size`/`emitAtCursor_tokens_size`/`overwriteAtCursor_tokens_size`; 6 indent/key helper `_tokens_size_le` lemmas — `unwindIndentsLoopIx`/`unwindIndentsIx`/`pushSequenceIndentIx`/`pushMappingIndentIx`/`saveSimpleKeyIx`/`scanValuePrepareIx`; 12 dispatcher `_tokens_size_le` lemmas — `scanBlockEntryIx`/`scanKeyIx`/`scanValueIx`/`scanFlowEntryIx`/`scanFlowSequenceStartIx`/`scanFlowSequenceEndIx`/`scanFlowMappingStartIx`/`scanFlowMappingEndIx`/`scanDocumentStartIx`/`scanDocumentEndIx`/`scanAnchorOrAliasIx`/`scanTagIx`/`scanYamlDirectiveIx`/`scanTagDirectiveIx`/`scanDirectiveIx`; Step 5b.1b.iv-cont: 7 top-level pairs (`_offset_monotonic` + `_tokens_size_le`) for `scanNextTokenIx_preprocess`/`scanNextTokenIx_dispatchStructural`/`scanNextTokenIx_dispatchFlowIndicators`/`scanNextTokenIx_dispatchBlockIndicators`/`scanNextTokenIx_dispatchContent`/`scanNextTokenIx` plus `scanLoopIx_tokens_size_le`; Step 5b.2: 6 `flowLevel`/`inFlow` preservation simp lemmas — `emit_flowLevel`/`advance_flowLevel`/`pushSequenceIndentIx_flowLevel`/`pushMappingIndentIx_flowLevel`/`emit_inFlow`/`advance_inFlow`/`pushMappingIndentIx_inFlow` — used to collapse the post-advance `!s.inFlow` tab-check guard against the *original* `s.inFlow`, then `scanBlockEntryIx`/`scanKeyIx` `_offset_monotonic` + `_tokens_size_le` pairs re-derived with the new throw branches) |
+| `L4YAML/Proofs/Scanner/IndexedDispatch.lean` | n/a | ~1620 | 0 (staging — Guardrail 1; new in Phase 3 Step 5b.1b.i: `IxCursor.advanceN_offset_monotonic`; `ScannerStateIx` cursor-preservation lemmas for `emit*`/`overwriteAtCursor`/`advance*`/`pushSequenceIndentIx`/`pushMappingIndentIx`/`unwindIndentsLoopIx`/`unwindIndentsIx`/`saveSimpleKeyIx`/`scanValuePrepareIx`; `skipSpacesS`/`skipWhitespaceS`/`skipToContentS` offset-monotonicity lifts; Step 5b.1b.ii: 10 per-dispatcher offset-monotonicity lemmas — `scanBlockEntryIx`/`scanKeyIx`/`scanValueIx`/`scanFlowEntryIx`/`scanDocumentStartIx`/`scanDocumentEndIx`/`scanFlowSequenceStartIx`/`scanFlowSequenceEndIx`/`scanFlowMappingStartIx`/`scanFlowMappingEndIx`; Step 5b.1b.iii: 5 per-dispatcher offset-monotonicity lemmas — `scanAnchorOrAliasIx`/`scanTagIx`/`scanYamlDirectiveIx`/`scanTagDirectiveIx`/`scanDirectiveIx`; Step 5b.1b.iv-pre: 6 tokens-size simp lemmas — `skipToContentS_tokens`/`skipSpacesS_tokens`/`skipWhitespaceS_tokens`/`advance_tokens`/`advanceN_tokens`/`emit_tokens_size`/`emitAt_tokens_size`/`emitAtCursor_tokens_size`/`overwriteAtCursor_tokens_size`; 6 indent/key helper `_tokens_size_le` lemmas — `unwindIndentsLoopIx`/`unwindIndentsIx`/`pushSequenceIndentIx`/`pushMappingIndentIx`/`saveSimpleKeyIx`/`scanValuePrepareIx`; 12 dispatcher `_tokens_size_le` lemmas — `scanBlockEntryIx`/`scanKeyIx`/`scanValueIx`/`scanFlowEntryIx`/`scanFlowSequenceStartIx`/`scanFlowSequenceEndIx`/`scanFlowMappingStartIx`/`scanFlowMappingEndIx`/`scanDocumentStartIx`/`scanDocumentEndIx`/`scanAnchorOrAliasIx`/`scanTagIx`/`scanYamlDirectiveIx`/`scanTagDirectiveIx`/`scanDirectiveIx`; Step 5b.1b.iv-cont: 7 top-level pairs (`_offset_monotonic` + `_tokens_size_le`) for `scanNextTokenIx_preprocess`/`scanNextTokenIx_dispatchStructural`/`scanNextTokenIx_dispatchFlowIndicators`/`scanNextTokenIx_dispatchBlockIndicators`/`scanNextTokenIx_dispatchContent`/`scanNextTokenIx` plus `scanLoopIx_tokens_size_le`; Step 5b.2: 6 `flowLevel`/`inFlow` preservation simp lemmas — `emit_flowLevel`/`advance_flowLevel`/`pushSequenceIndentIx_flowLevel`/`pushMappingIndentIx_flowLevel`/`emit_inFlow`/`advance_inFlow`/`pushMappingIndentIx_inFlow` — used to collapse the post-advance `!s.inFlow` tab-check guard against the *original* `s.inFlow`, then `scanBlockEntryIx`/`scanKeyIx` `_offset_monotonic` + `_tokens_size_le` pairs re-derived with the new throw branches; Step 5b.3: 2 new `scanValueClearKeyIx` helper lemmas (`_cursor` `@[simp]` + `_tokens_size_le`), `scanValueIx_offset_monotonic` and `_tokens_size_le` re-proved with the legacy `simp only [bind, Except.bind] at h; split at h; cases h | …` pattern; same commit fixed cache-hidden breakage in `Proofs/Scanner/IndexedScalar.lean` (quoted/parse-header-loop `split at h` shapes, `blockHeaderToBodyIx` `by_cases hp` for the `match`-inside-`if` condition) and `Proofs/Scanner/IndexedIndent.lean::skipToContent_at_content` (`'#'` literal → `isCommentBool ch`)) |
 
 </details>
 
@@ -1873,6 +1900,118 @@ cutover commit. No "dual-write" interim state.
 
 </details>
 
+<details><summary>R53 — Named-let do-blocks need `simp only [bind, Except.bind] at h; split at h; cases h`, not `simp only [Except.ok.injEq] at h; subst h`; and `lake build` cache hides upstream breakage until a downstream edit invalidates it (Phase 3 Step 5b.3).</summary>
+
+53. **`scanValueIx`'s four-stage `do`-chain, and the cache-hidden
+    breakage we paid for after `5994edce`.** Splitting `scanValueIx`
+    from one-stage to four (`scanValueClearKeyIx /
+    scanValueValidateIx / scanValuePrepareIx / scanValueTabCheckIx`)
+    surfaced two distinct lessons.
+
+    **Proof-shape lesson — `subst h` does not survive named-let
+    do-blocks**. The Step 5b.1b.ii proof of `scanValueIx_*` was:
+
+    ```lean
+    unfold scanValueIx at h
+    simp only [Except.ok.injEq] at h
+    subst h
+    show s.cursor.pos.offset ≤ _
+    simp only [advance_cursor, emit_cursor, scanValuePrepareIx_cursor]
+    exact IxCursor.advance_offset_monotonic _
+    ```
+
+    That worked while `scanValueIx` was a flat composition
+    (`let s := scanValuePrepareIx s; let s := s.emit .value;
+    let s := s.advance; .ok { s with … }`). After Step 5b.3 the
+    definition is
+
+    ```lean
+    do
+      let s_kc := scanValueClearKeyIx s
+      scanValueValidateIx s_kc
+      let s_prepared := scanValuePrepareIx s_kc
+      let s_with_token := s_prepared.emit YamlToken.value
+      let s_after_advance := s_with_token.advance
+      scanValueTabCheckIx (s.cursor.pos.col : Int) s.currentIndent
+                           s_after_advance
+      .ok { s_after_advance with … }
+    ```
+
+    Two changes break the old proof. First, the elaborator renders
+    `let s_kc := scanValueClearKeyIx s` (followed by no `do`-bind
+    on `s_kc`) as `have s_kc := …; do …`. `simp only [Except.ok.injEq]
+    at h` doesn't reduce the `do` block because the `do` block isn't
+    `Except.ok`-shaped at the syntactic level — the `s_kc.scanValueValidateIx`
+    and `scanValueTabCheckIx … s_after_advance` calls produce
+    `Except` values that need bind-reduction first. Second, when
+    `subst h` does fire (after a successful `injEq` rewrite), it
+    tries to substitute through the `have`-bound variable names —
+    but the lemmas in the goal refer to `scanValueClearKeyIx s`
+    spelled out, and `rw [hV]` over `s.scanValueClearKeyIx.scanValueValidateIx`
+    cannot find that pattern because the term has `s_kc.scanValueValidateIx`.
+
+    **Fix — the legacy pattern**: `simp only [bind, Except.bind]
+    at h` evaluates the do-block to a nested match, exposing the
+    `.error` / `.ok` cases of each `Except`-throwing stage. Then
+    `split at h` opens one match per throwing stage, `cases h`
+    discharges each `.error` branch (since `h : .error e = .ok s'`
+    is `False`), and the surviving `.ok`/`.ok` branch reduces to
+    the constructed state which `simp only [advance_cursor,
+    emit_cursor, scanValuePrepareIx_cursor, scanValueClearKeyIx_cursor]
+    + IxCursor.advance_offset_monotonic _` closes. This is
+    exactly the legacy `Proofs/Scanner/ScannerCorrectness.lean::
+    scanValue_offset_lt` shape, translated 1:1 to the indexed
+    types. **Generalisable rule**: whenever a `do`-block contains
+    two or more `Except`-throwing calls and uses named `let`
+    bindings between them, expect `simp only [bind, Except.bind]
+    at h; split at h` as the proof skeleton, with `cases h` on
+    each error branch.
+
+    **Cache lesson — `lake build` reuses `.olean` files even when
+    the originating source has been deleted/refactored**. Commit
+    `5994edce` ("Spec traceability: per-character predicates +
+    emission constants") changed the shape of several functions in
+    `L4YAML/Scanner/IndexedScanner.lean` —
+    `collectDoubleQuotedLoopIx`, `collectSingleQuotedLoopIx`,
+    `parseBlockHeaderLoopIx`, `blockHeaderToBodyIx`, and
+    `skipToContentLoop` — but `Proofs/Scanner/IndexedScalar.lean`
+    and `Proofs/Scanner/IndexedIndent.lean` had no source edits,
+    so the cached `.olean` files were re-used. The proofs *inside*
+    those files referenced the old function shapes (`split at h`
+    with four match branches for the old `some '"' | some '\\' |
+    some ch | none`, `(ch == '#') = false` for the old comment
+    test) and would have failed to recompile from scratch. The
+    build reported "385/385" because nothing forced a recompile of
+    the affected files.
+
+    Step 5b.3 edited `IndexedDispatch.lean`, which transitively
+    forces `IndexedScalar.lean` and `IndexedIndent.lean` to
+    rebuild — at which point all six previously-cached proofs
+    failed. The fix was mechanical (re-shape `split at h` to the
+    new outer `some ch` / `none` split followed by nested
+    `if`-cascade splits; switch `(ch == '#') = false` to
+    `isCommentBool ch = false` via `unfold isCommentBool;
+    simp [hHash]`; switch `(peek? == some '#')` to `by_cases hp :
+    (match … isCommentBool d | none => false) = true; rw [if_pos
+    hp]/[if_neg hp]`), but the deeper lesson is
+
+    > **A successful `lake build` after a refactor only proves
+    > "downstream files that were already compiled remain valid"
+    > — it does *not* prove "every dependent file will recompile
+    > cleanly." When changing a function's match/if structure (not
+    > just renaming), force a downstream recompile (`touch` the
+    > consumer, or temporarily flip a non-trivial import) before
+    > calling the refactor complete.**
+
+    This is dual to R47's pre-coding `grep` advice: there, we
+    burned cycles writing lemmas that already existed; here, we
+    shipped a commit whose stale-cache success masked latent
+    incompatibility. Both failure modes have the same root —
+    treating `lake build` as a proof-of-coherence rather than as
+    a proof-of-cached-coherence.
+
+</details>
+
 #### Phase 3 sub-plan (six sessions)
 
 <details><summary>Phase 3 is ~30× the size of the Phase 2 capstone. It is decomposed into six sessions; only the final commit must be atomic per Guardrail 1.</summary>
@@ -2404,10 +2543,26 @@ clusters become 5b.2–5b.8. Total: nine sub-steps.
   `pushMappingIndentIx_inFlow`) so `simp only [if_pos hi, …]` could
   collapse the post-advance `!s.inFlow` guard against the *original*
   `s.inFlow` (Reflection 52).
-- **5b.3 — `scanValueIx` validation chain**: split the simplified
-  `scanValueIx` into the legacy's four-stage chain
-  (`scanValueClearKey` / `scanValueValidate` / `scanValuePrepare`
-  / `scanValueTabCheck`).
+- **5b.3 — `scanValueIx` validation chain** *(landed)*. Split the
+  simplified `scanValueIx` into the legacy's four-stage chain
+  (`scanValueClearKeyIx` / `scanValueValidateIx` /
+  `scanValuePrepareIx` / `scanValueTabCheckIx`). Three new defs in
+  `Scanner/IndexedDispatch.lean` (clear-key pure transform, validate
+  + tab-check `Except ScanError Unit`); `scanValueIx` rewritten as a
+  `do`-block chaining all four. Existing `scanValueIx_offset_monotonic`
+  / `_tokens_size_le` re-proved with the legacy `simp only [bind,
+  Except.bind] at h; split at h; cases h | ...` pattern (the indexed
+  proofs previously used `subst h` directly, which no longer fits
+  once two `Except`-throwing stages appear). Two new helper lemmas
+  landed (`scanValueClearKeyIx_cursor` `@[simp]`,
+  `scanValueClearKeyIx_tokens_size_le`); a small unrelated breakage
+  carried over from the prior char-predicate refactor in
+  `Proofs/Scanner/IndexedScalar.lean` (quoted-loop `split at h` shapes,
+  `parseBlockHeaderLoopIx` nested-if cascade,
+  `blockHeaderToBodyIx_offset_monotonic`'s `'#'` literal → match form)
+  and `Proofs/Scanner/IndexedIndent.lean::skipToContent_at_content`
+  (`(ch == '#') = false` → `isCommentBool ch = false`) were fixed in
+  the same commit. See Reflection 53.
 - **5b.4 — Hex-escape value-correctness** (carried from Step 4a):
   `hexStringValue` of a hex-digit string equals the decoded `Nat`
   value (mod overflow checks).
@@ -2954,6 +3109,127 @@ all 385 targets. `L4YAML.lean` does not import any
 
 **Carried forward into Steps 5b.3–5b.8**: the six remaining Step-5b
 clusters (`scanValueIx` validation chain, hex-escape value,
+`autoDetectBlockScalarIndentLoopIx`, block-scalar fold/chomp,
+quoted multi-line, plain multi-line).
+
+</details>
+
+<details><summary>Step 5b.3 — <code>scanValueIx</code> validation chain <em>(landed)</em>.</summary>
+
+**Step 5b.3 — `scanValueIx` validation chain** *(landed)*.
+
+Three new defs lifted from `L4YAML/Scanner/SimpleKey.lean` into
+`L4YAML/Scanner/IndexedDispatch.lean` (alongside the already-landed
+`scanValuePrepareIx`):
+
+- **`scanValueClearKeyIx`** (§8.2.2). Pure state transform that
+  clears a spurious simple key when an explicit `?` is pending and
+  either (a) the simple key was saved AT the `:` position itself on
+  a different line from `?`, or (b) the simple key was saved on the
+  `?` line and `:` is on a subsequent line in block context. The
+  body matches on `s.explicitKeyLine`; both `some`-branch clears
+  produce `{ s with simpleKey := { cursor := IxCursor.start input }
+  }` (the indexed convention for "reset to default"). Never touches
+  `tokens` or `cursor`.
+- **`scanValueValidateIx`** (§8.2.2). `Except ScanError Unit`. Five
+  separate `throw` cases mirroring the legacy verbatim, translated
+  to indexed accessors: §7.4 block-context multiline implicit key;
+  §7.4.2 flow-sequence multiline implicit key; §8.2.1 key at same
+  indent as block sequence; T833 missing comma in flow mapping
+  (uses `s.tokens.tokens[i]?` and `.token`); §8.2.2 [197] explicit
+  value `:` must be at mapping indent level (two sub-checks for
+  `sameLineExplicitValue` / `misindentedExplicitValue`).
+- **`scanValueTabCheckIx`** (§6.1). `Except ScanError Unit` taking
+  `origCol : Int` and `origIndent : Int` from the *pre-emit*
+  state, then peeks the *post-advance* cursor for `'\t'`.
+
+`scanValueIx` itself is rewritten as the legacy four-stage `do`-chain:
+
+```lean
+def scanValueIx ... := do
+  let s_kc := scanValueClearKeyIx s
+  scanValueValidateIx s_kc
+  let s_prepared := scanValuePrepareIx s_kc
+  let s_with_token := s_prepared.emit YamlToken.value
+  let s_after_advance := s_with_token.advance
+  scanValueTabCheckIx (s.cursor.pos.col : Int) s.currentIndent
+                       s_after_advance
+  .ok { s_after_advance with simpleKeyAllowed := true,
+                              explicitKeyLine := none }
+```
+
+The two existing monotonicity proofs (`scanValueIx_offset_monotonic`
+and `_tokens_size_le` in `Proofs/Scanner/IndexedDispatch.lean`)
+were re-derived. The Step 5b.1b.ii style — `simp only [Except.ok.injEq]
+at h; subst h` — no longer fits: the elaborated `do` carries
+`have s_kc := scanValueClearKeyIx s; …` (a `have`-binder shadowing
+the do-block let), so `rw` over the sub-expression names fails. The
+fix is the legacy pattern:
+
+```lean
+unfold scanValueIx at h
+simp only [bind, Except.bind] at h
+split at h
+· cases h                                                  -- validate threw
+· split at h
+  · cases h                                                -- tab-check threw
+  · simp only [Except.ok.injEq] at h
+    subst h
+    show s.cursor.pos.offset ≤ _
+    simp only [advance_cursor, emit_cursor, scanValuePrepareIx_cursor,
+               scanValueClearKeyIx_cursor]
+    exact IxCursor.advance_offset_monotonic _
+```
+
+Two new helper simp lemmas landed: `scanValueClearKeyIx_cursor`
+`@[simp]` (every branch leaves `.cursor` untouched — `unfold;
+split; · split; · rfl; · split <;> rfl; · rfl`) and
+`scanValueClearKeyIx_tokens_size_le` (every branch leaves `.tokens`
+untouched — `Nat.le_refl _` in all five leaves).
+
+**Unrelated breakage swept in the same commit**: the prior
+spec-traceability commit (`5994edce`) had left two proof files
+broken under the `lake build` cache. After the staging recompile
+chain was disturbed by Step 5b.3's edits, the cache invalidated and
+the underlying breakage surfaced:
+
+- `Proofs/Scanner/IndexedScalar.lean`:
+  `collectDoubleQuotedLoopIx_offset_monotonic`,
+  `scanDoubleQuotedIx_offset_lt`,
+  `collectSingleQuotedLoopIx_offset_monotonic`,
+  `scanSingleQuotedIx_offset_lt`,
+  `parseBlockHeaderLoopIx_offset_monotonic`, and
+  `blockHeaderToBodyIx_offset_monotonic`. All needed `split at h`
+  shape updates: the quoted/header loops moved from
+  `match c.peek? with | some 'X' => …` (4+ direct match branches) to
+  `match c.peek? with | some ch => if isXBool ch then … else if …`
+  (2 outer branches plus a nested if-cascade), so the proofs now
+  open with an outer `some ch` / `none` split and then nest one
+  `split at h` per `else if` level. `blockHeaderToBodyIx` further
+  has `(peek? == some '#')` replaced by `(match peek? with | some d
+  => isCommentBool d | none => false)`, which `split` opens as a
+  match-then-if, requiring an explicit `by_cases hp : … = true`
+  with `rw [if_pos hp]` / `rw [if_neg hp]` rather than two
+  back-to-back `split`s.
+- `Proofs/Scanner/IndexedIndent.lean::skipToContent_at_content`:
+  `(ch == '#') = false` → `isCommentBool ch = false`. One-line fix
+  (`unfold isCommentBool; simp [hHash]`), but the proof would not
+  compile until the underlying simp shape was restated.
+
+The reason `lake build` had shown 385/385 after `5994edce`: the
+`.olean` cache for `IndexedScalar` / `IndexedIndent` predated the
+predicate refactor — only `IndexedScanner.lean`'s `.olean` was
+rebuilt by the prior commit, because nothing else's source had
+changed yet. Step 5b.3 touched `IndexedDispatch.lean`, which
+transitively forces `IndexedScalar.lean` to recompile, which is
+when the breakage surfaced. See Reflection 53.
+
+Sorry budget: **0 → 0** in the staging files. `lake build` passes
+all 385 targets. `L4YAML.lean` does not import any
+`Scanner.Indexed*` or `Proofs.Scanner.Indexed*` file — confirmed.
+
+**Carried forward into Steps 5b.4–5b.8**: the five remaining
+Step-5b clusters (hex-escape value,
 `autoDetectBlockScalarIndentLoopIx`, block-scalar fold/chomp,
 quoted multi-line, plain multi-line).
 
