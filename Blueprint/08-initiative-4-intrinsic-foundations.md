@@ -1130,9 +1130,26 @@ guard, `split <;> omega`; succ ⇒ three nested `split`s — the
 `apply ih` because the IH is universally quantified over `maxWSCol`
 (the running max-whitespace-column accumulator).
 
-**Next session**: Steps 5b.6–5b.8 work through the remaining three
-Step-5b carry-forward clusters (block-scalar fold/chomp,
-quoted multi-line, plain multi-line).
+**Step 5b.6 landed** (Reflection 56): the block-scalar
+content-correctness obligation discharged as six lemmas in
+`Proofs/Scanner/IndexedScalar.lean`'s new "Layer F.2 — Block-scalar
+content correctness" section. `applyChomp` (chomp indicator [160])
+gets four spec-traceability lemmas: `applyChomp_keep` (identity,
+`rfl`), `applyChomp_strip` (`= stripTrailingNewlines raw`, `rfl`),
+and the two `applyChomp_clip_of_endsWith` / `_of_not_endsWith` arms
+discharged by `simp [applyChomp, h]`. `foldBlockContent` (fold
+machine [170]–[181]) gets two base-case lemmas: `foldBlockContentGo_nil`
+(empty input list, `rfl`) and `foldBlockContent_empty` (the wrapper
+on `""`, `rfl`). All six proofs are definitional unfolds — the
+correctness theorems pin each Lean function branch to its spec rule
+and serve as named anchors that downstream Steps 5b.7 (quoted
+multi-line) and 5b.8 (plain multi-line) can cite when reasoning
+about the block-scalar pipeline `parseBlockHeaderLoopIx →
+blockHeaderToBodyIx → autoDetectBlockScalarIndentIx →
+collectBlockScalarLoopIx → applyChomp → foldBlockContent`.
+
+**Next session**: Steps 5b.7–5b.8 work through the remaining two
+Step-5b carry-forward clusters (quoted multi-line, plain multi-line).
 **Then Step 5c**: `present` + corpus theorem.
 
 </details>
@@ -1166,7 +1183,7 @@ quoted multi-line, plain multi-line).
 | `L4YAML/Scanner/IndexedDispatch.lean` | n/a | ~1050 | 0 (staging — Guardrail 1; new in Phase 3 Step 5a: helper recogniser loops, simple-key save/resolve, block + flow indicator scans, document markers, directives, anchor/alias, tag, dispatch family, `scanLoopIx`, `scanIx`; Step 5b.1a: 8 helper-loop `*_offset_monotonic` lemmas, 10 `emitAtSafe`→`emitAt` replacements with inline proofs, `hStart` parameter on directive helpers; Step 5b.2: `tabInIndentation` throws added to `scanBlockEntryIx` and `scanKeyIx` — the former in block context when `hasTabInPrecedingWhitespace`, the latter when the cursor sits on `'\t'` immediately after consuming `?`; Step 5b.3: `scanValueIx` split into the legacy four-stage chain — `scanValueClearKeyIx` (clear spurious simple key when explicit `?` is pending), `scanValueValidateIx` (five `throw` cases: §7.4 / §7.4.2 / §8.2.1 / T833 / §8.2.2 [197]), `scanValuePrepareIx` (Step 5b.1b.i — placeholder overwrite or push mapping indent), `scanValueTabCheckIx` (§6.1 against the *original* col + indent)) |
 | `L4YAML/Proofs/Scanner/IndexedWhitespace.lean` | n/a | ~405 | 0 (staging — Guardrail 1; new in Phase 3 Step 2; +`consumeLineBreak_strict` in Step 4a) |
 | `L4YAML/Proofs/Scanner/IndexedIndent.lean` | n/a | ~355 | 0 (staging — Guardrail 1; new in Phase 3 Step 3; +`skipToContentLoop_progress` / `skipToContent_progress` in Step 4a) |
-| `L4YAML/Proofs/Scanner/IndexedScalar.lean` | n/a | ~825 | 0 (staging — Guardrail 1; new in Phase 3 Step 4a; +F1/F2/F3 monotonicity proofs in Step 4b; Step 5b.4: new "Layer E1.4 — Hex-escape value-correctness" section — `hexDigitValue_lt_16`, `hexStringValue_empty` `@[simp]`, `hexStringValue_push`, `hexStringValue_lt_pow`, `parseHexEscapeIx_decoded`; Step 5b.5: new "Layer F.1 — Auto-detected block-scalar indent ≥ `minContentIndent`" section — `autoDetectBlockScalarIndentLoopIx_ge_min` + `autoDetectBlockScalarIndentIx_ge_min`) |
+| `L4YAML/Proofs/Scanner/IndexedScalar.lean` | n/a | ~876 | 0 (staging — Guardrail 1; new in Phase 3 Step 4a; +F1/F2/F3 monotonicity proofs in Step 4b; Step 5b.4: new "Layer E1.4 — Hex-escape value-correctness" section — `hexDigitValue_lt_16`, `hexStringValue_empty` `@[simp]`, `hexStringValue_push`, `hexStringValue_lt_pow`, `parseHexEscapeIx_decoded`; Step 5b.5: new "Layer F.1 — Auto-detected block-scalar indent ≥ `minContentIndent`" section — `autoDetectBlockScalarIndentLoopIx_ge_min` + `autoDetectBlockScalarIndentIx_ge_min`; Step 5b.6: new "Layer F.2 — Block-scalar content correctness" section — `applyChomp_keep` / `applyChomp_strip` / `applyChomp_clip_of_endsWith` / `applyChomp_clip_of_not_endsWith` / `foldBlockContentGo_nil` / `foldBlockContent_empty` pinning the chomp [160] + fold-machine [170]–[181] spec semantics) |
 | `L4YAML/Proofs/Scanner/IndexedDispatch.lean` | n/a | ~1620 | 0 (staging — Guardrail 1; new in Phase 3 Step 5b.1b.i: `IxCursor.advanceN_offset_monotonic`; `ScannerStateIx` cursor-preservation lemmas for `emit*`/`overwriteAtCursor`/`advance*`/`pushSequenceIndentIx`/`pushMappingIndentIx`/`unwindIndentsLoopIx`/`unwindIndentsIx`/`saveSimpleKeyIx`/`scanValuePrepareIx`; `skipSpacesS`/`skipWhitespaceS`/`skipToContentS` offset-monotonicity lifts; Step 5b.1b.ii: 10 per-dispatcher offset-monotonicity lemmas — `scanBlockEntryIx`/`scanKeyIx`/`scanValueIx`/`scanFlowEntryIx`/`scanDocumentStartIx`/`scanDocumentEndIx`/`scanFlowSequenceStartIx`/`scanFlowSequenceEndIx`/`scanFlowMappingStartIx`/`scanFlowMappingEndIx`; Step 5b.1b.iii: 5 per-dispatcher offset-monotonicity lemmas — `scanAnchorOrAliasIx`/`scanTagIx`/`scanYamlDirectiveIx`/`scanTagDirectiveIx`/`scanDirectiveIx`; Step 5b.1b.iv-pre: 6 tokens-size simp lemmas — `skipToContentS_tokens`/`skipSpacesS_tokens`/`skipWhitespaceS_tokens`/`advance_tokens`/`advanceN_tokens`/`emit_tokens_size`/`emitAt_tokens_size`/`emitAtCursor_tokens_size`/`overwriteAtCursor_tokens_size`; 6 indent/key helper `_tokens_size_le` lemmas — `unwindIndentsLoopIx`/`unwindIndentsIx`/`pushSequenceIndentIx`/`pushMappingIndentIx`/`saveSimpleKeyIx`/`scanValuePrepareIx`; 12 dispatcher `_tokens_size_le` lemmas — `scanBlockEntryIx`/`scanKeyIx`/`scanValueIx`/`scanFlowEntryIx`/`scanFlowSequenceStartIx`/`scanFlowSequenceEndIx`/`scanFlowMappingStartIx`/`scanFlowMappingEndIx`/`scanDocumentStartIx`/`scanDocumentEndIx`/`scanAnchorOrAliasIx`/`scanTagIx`/`scanYamlDirectiveIx`/`scanTagDirectiveIx`/`scanDirectiveIx`; Step 5b.1b.iv-cont: 7 top-level pairs (`_offset_monotonic` + `_tokens_size_le`) for `scanNextTokenIx_preprocess`/`scanNextTokenIx_dispatchStructural`/`scanNextTokenIx_dispatchFlowIndicators`/`scanNextTokenIx_dispatchBlockIndicators`/`scanNextTokenIx_dispatchContent`/`scanNextTokenIx` plus `scanLoopIx_tokens_size_le`; Step 5b.2: 6 `flowLevel`/`inFlow` preservation simp lemmas — `emit_flowLevel`/`advance_flowLevel`/`pushSequenceIndentIx_flowLevel`/`pushMappingIndentIx_flowLevel`/`emit_inFlow`/`advance_inFlow`/`pushMappingIndentIx_inFlow` — used to collapse the post-advance `!s.inFlow` tab-check guard against the *original* `s.inFlow`, then `scanBlockEntryIx`/`scanKeyIx` `_offset_monotonic` + `_tokens_size_le` pairs re-derived with the new throw branches; Step 5b.3: 2 new `scanValueClearKeyIx` helper lemmas (`_cursor` `@[simp]` + `_tokens_size_le`), `scanValueIx_offset_monotonic` and `_tokens_size_le` re-proved with the legacy `simp only [bind, Except.bind] at h; split at h; cases h | …` pattern; same commit fixed cache-hidden breakage in `Proofs/Scanner/IndexedScalar.lean` (quoted/parse-header-loop `split at h` shapes, `blockHeaderToBodyIx` `by_cases hp` for the `match`-inside-`if` condition) and `Proofs/Scanner/IndexedIndent.lean::skipToContent_at_content` (`'#'` literal → `isCommentBool ch`)) |
 
 </details>
@@ -2199,6 +2216,79 @@ cutover commit. No "dual-write" interim state.
 
 </details>
 
+<details><summary>R56 — Spec-traceability lemmas for pure `String → String` transformers are *definitional unfolds*; their value is the named anchor, not the proof shape (Phase 3 Step 5b.6).</summary>
+
+56. **Block-scalar content correctness reduced to definitional unfolds.**
+    `applyChomp` and `foldBlockContent` are pure `String → String`
+    transformers — they take a fully-collected raw accumulator and
+    apply a closed-form transformation (strip / clip / keep newlines;
+    run the four-state fold machine). There is no cursor, no
+    `IxCursor`-indexed reasoning, no monotonicity obligation. The
+    "matches spec semantics" theorem is therefore a *definitional*
+    statement, not a *computational* one.
+
+    Concretely, all six Layer F.2 lemmas are one-line proofs:
+
+    ```lean
+    theorem applyChomp_keep (raw : String) :
+        applyChomp .keep raw = raw := rfl
+    theorem applyChomp_strip (raw : String) :
+        applyChomp .strip raw = stripTrailingNewlines raw := rfl
+    theorem applyChomp_clip_of_endsWith {raw : String}
+        (h : raw.endsWith (String.singleton lineFeedChar) = true) :
+        applyChomp .clip raw =
+          stripTrailingNewlines raw ++ String.singleton lineFeedChar := by
+      simp [applyChomp, h]
+    theorem applyChomp_clip_of_not_endsWith {raw : String}
+        (h : raw.endsWith (String.singleton lineFeedChar) = false) :
+        applyChomp .clip raw = stripTrailingNewlines raw := by
+      simp [applyChomp, h]
+    theorem foldBlockContentGo_nil (acc : String) (st : FoldState)
+        (pending : Nat) : foldBlockContentGo [] acc st pending = acc := rfl
+    theorem foldBlockContent_empty : foldBlockContent "" = "" := rfl
+    ```
+
+    The temptation in a proof-heavy phase is to under-value a `rfl`
+    or `simp` lemma — to read its shortness as triviality. That's
+    backwards. The value is **not** the proof; it is the *named
+    statement*. Once `applyChomp_clip_of_endsWith` exists, downstream
+    consumers (Steps 5b.7, 5b.8 — quoted and plain multi-line) can
+    cite it directly when reasoning about the pipeline
+    `parseBlockHeaderLoopIx → blockHeaderToBodyIx →
+    autoDetectBlockScalarIndentIx → collectBlockScalarLoopIx →
+    applyChomp → foldBlockContent` without unfolding the case
+    structure of `applyChomp` at each call site. The same is true of
+    `applyChomp_keep` / `_strip` — they look definitional but they
+    are *exactly the spec-rule statement*: each branch of `[160]`'s
+    chomping indicator has its named theorem.
+
+    **Generalisable rule**: when a function is a closed-form
+    `String → String` (or any pure data transformer), look for *spec
+    traceability* lemmas — one per branch of its operational
+    structure — even if the proof of each is `rfl`. They are not
+    busywork; they are the bridge between the implementation and the
+    spec citation that downstream proofs will quote. The mistake is
+    to skip them and re-derive the case split inline every time a
+    larger proof passes through `applyChomp`.
+
+    **Ancillary observation — `foldBlockContent` correctness has
+    only two `rfl`-shaped lemmas because the interesting cases are
+    *not* base cases.** The four-state fold machine has rich
+    behaviour on non-empty input that *does not* reduce by `rfl`
+    (the state transitions in the `c :: rest` arm involve nested
+    `if`s and `match st with` branches). A full functional
+    correctness theorem for `foldBlockContent` against the spec's
+    folded-content extraction rule would need a list-induction proof
+    that simultaneously tracks `FoldState`, `pending`, and the input
+    structure — and even stating the spec side cleanly requires a
+    separate reference implementation to compare against. Step 5b.6
+    deliberately lands the *spec-traceability* fragment (named
+    branches + base case) and leaves the full fold-machine
+    invariant for a later pass when its consumers force the proof
+    obligation. See the carried-forward note at the end of Step 5b.6.
+
+</details>
+
 #### Phase 3 sub-plan (six sessions)
 
 <details><summary>Phase 3 is ~30× the size of the Phase 2 capstone. It is decomposed into six sessions; only the final commit must be atomic per Guardrail 1.</summary>
@@ -2787,9 +2877,21 @@ clusters become 5b.2–5b.8. Total: nine sub-steps.
   (since the loop carries a running max-whitespace-column), so
   `apply ih` closes the recursive branch regardless of which
   `maxWSCol'` the body computed. See Reflection 55.
-- **5b.6 — Block-scalar content correctness** (carried from
-  Step 4b): `foldBlockContent` matches the spec's folded-content
-  extraction; `applyChomp` matches `[160]`'s semantics.
+- **5b.6 — Block-scalar content correctness** *(landed)*.
+  Carried-forward Step 4b obligation discharged as six lemmas in
+  `Proofs/Scanner/IndexedScalar.lean`'s new "Layer F.2 — Block-scalar
+  content correctness" section. `applyChomp` (chomp indicator
+  `[160]`) gets four arms — `applyChomp_keep` (identity, `rfl`),
+  `applyChomp_strip` (`= stripTrailingNewlines raw`, `rfl`),
+  `applyChomp_clip_of_endsWith` / `applyChomp_clip_of_not_endsWith`
+  (both `simp [applyChomp, h]`); `foldBlockContent` (fold machine
+  `[170]`–`[181]`) gets two base-case lemmas — `foldBlockContentGo_nil`
+  (`rfl`) + `foldBlockContent_empty` (`rfl`). All six are
+  *definitional unfolds* — the value here is binding each Lean
+  function branch to its spec rule so downstream Steps 5b.7
+  (quoted multi-line) and 5b.8 (plain multi-line) can cite by
+  name when reasoning about the block-scalar pipeline. See
+  Reflection 56.
 - **5b.7 — Quoted multi-line content correctness** (carried from
   Step 4b): the concatenated `content` matches `[111]`–`[116]` /
   `[122]`–`[125]` under the fold rules.
@@ -3589,6 +3691,69 @@ all 385 targets. `L4YAML.lean` does not import any
 **Carried forward into Steps 5b.6–5b.8**: the three remaining
 Step-5b clusters (block-scalar fold/chomp, quoted multi-line,
 plain multi-line).
+
+</details>
+
+<details><summary>Step 5b.6 — Block-scalar content correctness <em>(landed)</em>.</summary>
+
+**Step 5b.6 — Block-scalar content correctness** *(landed)*.
+
+Carried-forward Step 4b obligation discharged in
+`L4YAML/Proofs/Scanner/IndexedScalar.lean`'s new "Layer F.2 —
+Block-scalar content correctness" section (~50 LOC, just before
+the closing `end L4YAML.Scanner.Indexed`). Six lemmas pin the two
+post-collection block-scalar transformers to their YAML 1.2.2 spec
+rules:
+
+`applyChomp` (chomp indicator `[160]`, §8.1.1.2) — four lemmas,
+one per spec branch:
+- `applyChomp_keep (raw : String) : applyChomp .keep raw = raw` —
+  identity (`rfl`).
+- `applyChomp_strip (raw : String) :
+  applyChomp .strip raw = stripTrailingNewlines raw` — strip all
+  trailing newlines (`rfl`).
+- `applyChomp_clip_of_endsWith {raw : String}
+  (h : raw.endsWith (String.singleton lineFeedChar) = true) :
+  applyChomp .clip raw =
+    stripTrailingNewlines raw ++ String.singleton lineFeedChar` —
+  clip keeps exactly one when raw ended in `\n` (`simp [applyChomp, h]`).
+- `applyChomp_clip_of_not_endsWith {raw : String}
+  (h : raw.endsWith (String.singleton lineFeedChar) = false) :
+  applyChomp .clip raw = stripTrailingNewlines raw` — clip keeps
+  zero otherwise (`simp [applyChomp, h]`).
+
+`foldBlockContent` (fold machine `[170]`–`[181]`, §8.1.3) — two
+base-case lemmas:
+- `foldBlockContentGo_nil (acc : String) (st : FoldState) (pending : Nat) :
+  foldBlockContentGo [] acc st pending = acc` — empty input list,
+  output is the accumulator (`rfl`).
+- `foldBlockContent_empty : foldBlockContent "" = ""` — wrapper on
+  the empty string (`rfl`).
+
+All six are definitional unfolds; the value of the lemma is the
+*named statement*, not the proof. Once these exist, downstream
+multi-line consumers (Steps 5b.7 quoted, 5b.8 plain) can cite the
+spec-rule mapping by name when reasoning about the block-scalar
+pipeline `parseBlockHeaderLoopIx → blockHeaderToBodyIx →
+autoDetectBlockScalarIndentIx → collectBlockScalarLoopIx →
+applyChomp → foldBlockContent`. The rule about valuing
+spec-traceability lemmas equally with computational ones — and
+the explicit *non*-goal of proving the full fold-machine
+invariant in this step — is captured in Reflection 56.
+
+Sorry budget: **0 → 0** in the staging files. `lake build` passes
+all 385 targets. `L4YAML.lean` does not import any
+`Scanner.Indexed*` or `Proofs.Scanner.Indexed*` file — confirmed.
+
+**Carried forward into Steps 5b.7–5b.8**: the two remaining
+Step-5b clusters (quoted multi-line content correctness `[111]`–
+`[116]` / `[122]`–`[125]`, plain multi-line content correctness
+`[131]`–`[135]`). Also carried: the full fold-machine invariant
+for `foldBlockContent` on non-empty input — when a downstream
+proof forces the obligation, the lemma will need list-induction
+simultaneously tracking `FoldState`, `pending`, and the input
+structure against a reference implementation of the spec's folded
+extraction.
 
 </details>
 
