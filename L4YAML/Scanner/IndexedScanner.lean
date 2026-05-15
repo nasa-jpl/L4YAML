@@ -185,18 +185,21 @@ def consumeLineBreak {input : String} (c : IxCursor input) : IxCursor input :=
   match c.peek? with
   | none    => c
   | some ch =>
-    if ch == '\n' then
+    if isLineFeedBool ch then
       c.advance
-    else if ch == '\r' then
-      if c.peekAt? 1 == some '\n' then
-        let cAfterCR := c.advance
-        let cAfterLF := cAfterCR.advance
-        { pos := { offset := cAfterLF.pos.offset
-                   line   := cAfterCR.pos.line
-                   col    := 0 }
-          posBound := cAfterLF.posBound }
-      else
-        c.advance
+    else if isCarriageReturnBool ch then
+      match c.peekAt? 1 with
+      | some n =>
+        if isLineFeedBool n then
+          let cAfterCR := c.advance
+          let cAfterLF := cAfterCR.advance
+          { pos := { offset := cAfterLF.pos.offset
+                     line   := cAfterCR.pos.line
+                     col    := 0 }
+            posBound := cAfterLF.posBound }
+        else
+          c.advance
+      | none => c.advance
     else
       c
 
@@ -240,7 +243,7 @@ def skipToContentLoop {input : String} (c : IxCursor input) :
     match (skipWhitespace c).peek? with
     | none    => skipWhitespace c
     | some ch =>
-      if ch == '#' then
+      if isCommentBool ch then
         skipToContentLoop
           (consumeLineBreak (skipCommentText (skipWhitespace c).advance)) fuel
       else if isLineBreakBool ch then
@@ -284,9 +287,14 @@ empty plain scalar is `("", c)` which is a valid (degenerate) match.
 `\u`, `\U` with 2/4/8 hex digits). The cursor must already be
 positioned *after* the leading `\`. -/
 
-/-- Whether `c` is an ASCII hex digit (`0..9`, `a..f`, `A..F`). -/
-@[inline] def isHexDigitBool (c : Char) : Bool :=
-  c.isDigit || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')
+/-- `[36] ns-hex-digit ::= ns-dec-digit | [#x41-#x46] | [#x61-#x66]`
+    — code-point ranges so the spec literals stay in numeric form. -/
+@[inline,
+  yaml_spec "5.6" 35 "ns-dec-digit",
+  yaml_spec "5.6" 36 "ns-hex-digit"]
+def isHexDigitBool (c : Char) : Bool :=
+  (c.val ≥ 0x30 && c.val ≤ 0x39) || (c.val ≥ 0x41 && c.val ≤ 0x46)
+  || (c.val ≥ 0x61 && c.val ≤ 0x66)
 
 /-- Collect `n` hex digits from the cursor. Returns the digit string
     and the post-collection cursor. Stops early on non-hex or EOF —
@@ -305,11 +313,15 @@ def collectHexDigitsLoopIx {input : String} (c : IxCursor input)
 /-- Hex-digit value, decoded under the assumption that the character
     is in `0..9 | a..f | A..F`. For non-hex inputs the result is
     undefined (in practice the caller has already filtered via
-    `isHexDigitBool`). -/
-@[inline] def hexDigitValue (ch : Char) : Nat :=
-  if ch.isDigit then ch.toNat - '0'.toNat
-  else if ch >= 'a' then ch.toNat - 'a'.toNat + 10
-  else ch.toNat - 'A'.toNat + 10
+    `isHexDigitBool`). Code points refer to `[35] ns-dec-digit` (`#x30`)
+    and `[36] ns-hex-digit` (`#x41`, `#x61`). -/
+@[inline,
+  yaml_spec "5.6" 35 "ns-dec-digit",
+  yaml_spec "5.6" 36 "ns-hex-digit"]
+def hexDigitValue (ch : Char) : Nat :=
+  if ch.val ≥ 0x30 ∧ ch.val ≤ 0x39 then ch.toNat - 0x30
+  else if ch.val ≥ 0x61 then ch.toNat - 0x61 + 10
+  else ch.toNat - 0x41 + 10
 
 /-- Fold a hex-digit string to its `Nat` value. Standalone so the
     `let val := ...` does not appear inside the `parseHexEscapeIx`
@@ -334,24 +346,24 @@ def parseHexEscapeIx {input : String} (c : IxCursor input) (n : Nat) :
     character is not a simple-escape indicator (could still be `'x'`,
     `'u'`, `'U'`, or unknown — `processEscapeIx` dispatches further). -/
 def simpleEscapeChar (ch : Char) : Option Char :=
-  if ch == '0'       then some '\x00'
-  else if ch == 'a'  then some '\x07'
-  else if ch == 'b'  then some '\x08'
-  else if ch == 't'  then some '\t'
-  else if ch == '\t' then some '\t'
-  else if ch == 'n'  then some '\n'
-  else if ch == 'v'  then some '\x0B'
-  else if ch == 'f'  then some '\x0C'
-  else if ch == 'r'  then some '\r'
-  else if ch == 'e'  then some '\x1B'
-  else if ch == ' '  then some ' '
-  else if ch == '"'  then some '"'
-  else if ch == '/'  then some '/'
-  else if ch == '\\' then some '\\'
-  else if ch == 'N'  then some '\x85'
-  else if ch == '_'  then some '\xA0'
-  else if ch == 'L'  then some (Char.ofNat 0x2028)
-  else if ch == 'P'  then some (Char.ofNat 0x2029)
+  if isNsEscNullBool ch              then some nsEscNullChar
+  else if isNsEscBellBool ch         then some nsEscBellChar
+  else if isNsEscBackspaceBool ch    then some nsEscBackspaceChar
+  else if isNsEscHorizontalTabBool ch then some tabChar
+  else if isTabBool ch               then some tabChar
+  else if isNsEscLineFeedBool ch     then some lineFeedChar
+  else if isNsEscVerticalTabBool ch  then some nsEscVerticalTabChar
+  else if isNsEscFormFeedBool ch     then some nsEscFormFeedChar
+  else if isNsEscCarriageReturnBool ch then some carriageReturnChar
+  else if isNsEscEscapeBool ch       then some nsEscEscapeChar
+  else if isSpaceBool ch             then some spaceChar
+  else if isDoubleQuoteBool ch       then some doubleQuoteChar
+  else if isNsEscSlashBool ch        then some slashChar
+  else if isEscapeBool ch            then some backslashChar
+  else if isNsEscNextLineBool ch     then some nsEscNextLineChar
+  else if isNsEscNbspBool ch         then some nsEscNbspChar
+  else if isNsEscLineSeparatorBool ch then some nsEscLineSeparatorChar
+  else if isNsEscParagraphSeparatorBool ch then some nsEscParagraphSeparatorChar
   else none
 
 /-- Process a single escape sequence. Cursor is positioned at the
@@ -370,14 +382,14 @@ def processEscapeIx {input : String} (c : IxCursor input) :
     match simpleEscapeChar ch with
     | some decoded => some (decoded, c.advance)
     | none =>
-      if ch == 'x' then parseHexEscapeIx c.advance 2
-      else if ch == 'u' then parseHexEscapeIx c.advance 4
-      else if ch == 'U' then parseHexEscapeIx c.advance 8
+      if isNsEsc8BitBool ch then parseHexEscapeIx c.advance 2
+      else if isNsEsc16BitBool ch then parseHexEscapeIx c.advance 4
+      else if isNsEsc32BitBool ch then parseHexEscapeIx c.advance 8
       else none
 
 /-- Trim trailing space/tab from a string. -/
 def trimTrailingWSIx (s : String) : String :=
-  String.ofList ((s.toList.reverse.dropWhile (fun c => c == ' ' || c == '\t')).reverse)
+  String.ofList ((s.toList.reverse.dropWhile isWhiteSpaceBool).reverse)
 
 /-! ### Layer F1 — multi-line quoted scalar folding helpers
 
@@ -431,11 +443,11 @@ def foldQuotedNewlinesIx {input : String} (c : IxCursor input) :
     (String.ofList
        (List.replicate
          (skipBlankLinesLoopIx (consumeLineBreak c) 0 input.utf8ByteSize).2
-         '\n'),
+         lineFeedChar),
      skipWhitespace
        (skipBlankLinesLoopIx (consumeLineBreak c) 0 input.utf8ByteSize).1)
   else
-    (" ",
+    (String.singleton spaceChar,
      skipWhitespace
        (skipBlankLinesLoopIx (consumeLineBreak c) 0 input.utf8ByteSize).1)
 
@@ -458,25 +470,26 @@ def collectDoubleQuotedLoopIx {input : String} (c : IxCursor input)
   | fuel + 1 =>
     match c.peek? with
     | none       => none
-    | some '"'   => some (content, c.advance)
-    | some '\\'  =>
-      -- Look at the character after the backslash to decide
-      -- between line-continuation escape and normal escape.
-      match c.advance.peek? with
-      | some lbCh =>
-        if isLineBreakBool lbCh then
-          -- `\\<LF>` line-continuation: consume newline + leading WS,
-          -- emit no character.
-          collectDoubleQuotedLoopIx
-            (skipWhitespace (consumeLineBreak c.advance)) content fuel
-        else
-          match processEscapeIx c.advance with
-          | some (ch, cAfterEsc) =>
-            collectDoubleQuotedLoopIx cAfterEsc (content.push ch) fuel
-          | none => none
-      | none => none
     | some ch    =>
-      if isLineBreakBool ch then
+      if isDoubleQuoteBool ch then
+        some (content, c.advance)
+      else if isEscapeBool ch then
+        -- Look at the character after the backslash to decide
+        -- between line-continuation escape and normal escape.
+        match c.advance.peek? with
+        | some lbCh =>
+          if isLineBreakBool lbCh then
+            -- `\\<LF>` line-continuation: consume newline + leading WS,
+            -- emit no character.
+            collectDoubleQuotedLoopIx
+              (skipWhitespace (consumeLineBreak c.advance)) content fuel
+          else
+            match processEscapeIx c.advance with
+            | some (decoded, cAfterEsc) =>
+              collectDoubleQuotedLoopIx cAfterEsc (content.push decoded) fuel
+            | none => none
+        | none => none
+      else if isLineBreakBool ch then
         -- Multi-line continuation: trim trailing WS, fold the break.
         -- We use `.1`/`.2` projections rather than `let`-destructuring
         -- on the fold result; the `let` would be hoisted to `have`
@@ -493,9 +506,12 @@ def collectDoubleQuotedLoopIx {input : String} (c : IxCursor input)
 def scanDoubleQuotedIx {input : String} (c : IxCursor input) :
     Option (String × IxCursor input) :=
   match c.peek? with
-  | some '"' =>
-    collectDoubleQuotedLoopIx c.advance "" input.utf8ByteSize
-  | _ => none
+  | some ch =>
+    if isDoubleQuoteBool ch then
+      collectDoubleQuotedLoopIx c.advance "" input.utf8ByteSize
+    else
+      none
+  | none => none
 
 /-! ### Layer E3 — single-quoted scalar (§7.3.2)
 
@@ -512,14 +528,18 @@ def collectSingleQuotedLoopIx {input : String} (c : IxCursor input)
   | fuel + 1 =>
     match c.peek? with
     | none      => none
-    | some '\'' =>
-      match c.advance.peek? with
-      | some '\'' =>
-        collectSingleQuotedLoopIx c.advance.advance (content.push '\'') fuel
-      | _ =>
-        some (content, c.advance)
-    | some ch    =>
-      if isLineBreakBool ch then
+    | some ch   =>
+      if isSingleQuoteBool ch then
+        match c.advance.peek? with
+        | some next =>
+          if isSingleQuoteBool next then
+            collectSingleQuotedLoopIx c.advance.advance
+              (content.push singleQuoteChar) fuel
+          else
+            some (content, c.advance)
+        | none =>
+          some (content, c.advance)
+      else if isLineBreakBool ch then
         collectSingleQuotedLoopIx (foldQuotedNewlinesIx c).2
           (trimTrailingWSIx content ++ (foldQuotedNewlinesIx c).1) fuel
       else
@@ -529,9 +549,12 @@ def collectSingleQuotedLoopIx {input : String} (c : IxCursor input)
 def scanSingleQuotedIx {input : String} (c : IxCursor input) :
     Option (String × IxCursor input) :=
   match c.peek? with
-  | some '\'' =>
-    collectSingleQuotedLoopIx c.advance "" input.utf8ByteSize
-  | _ => none
+  | some ch =>
+    if isSingleQuoteBool ch then
+      collectSingleQuotedLoopIx c.advance "" input.utf8ByteSize
+    else
+      none
+  | none => none
 
 /-! ### Layer E4 — plain scalar (§7.3.3)
 
@@ -565,9 +588,9 @@ or `...` marker (followed by blank or EOF). -/
 /-- True iff cursor at col 0 is at a `---` document-start marker. -/
 @[inline] def atDocumentStartIx {input : String} (c : IxCursor input) : Bool :=
   c.pos.col == 0
-  && c.peekAt? 0 == some '-'
-  && c.peekAt? 1 == some '-'
-  && c.peekAt? 2 == some '-'
+  && (match c.peekAt? 0 with | some d => isSequenceEntryBool d | none => false)
+  && (match c.peekAt? 1 with | some d => isSequenceEntryBool d | none => false)
+  && (match c.peekAt? 2 with | some d => isSequenceEntryBool d | none => false)
   && match c.peekAt? 3 with
      | none   => true
      | some d => isBlankBool d
@@ -575,9 +598,9 @@ or `...` marker (followed by blank or EOF). -/
 /-- True iff cursor at col 0 is at a `...` document-end marker. -/
 @[inline] def atDocumentEndIx {input : String} (c : IxCursor input) : Bool :=
   c.pos.col == 0
-  && c.peekAt? 0 == some '.'
-  && c.peekAt? 1 == some '.'
-  && c.peekAt? 2 == some '.'
+  && (match c.peekAt? 0 with | some d => isDocEndDotBool d | none => false)
+  && (match c.peekAt? 1 with | some d => isDocEndDotBool d | none => false)
+  && (match c.peekAt? 2 with | some d => isDocEndDotBool d | none => false)
   && match c.peekAt? 3 with
      | none   => true
      | some d => isBlankBool d
@@ -608,11 +631,11 @@ def handleBlockLineBreakIx {input : String} (c : IxCursor input)
       some (String.ofList
               (List.replicate
                 (skipBlankLinesLoopIx (consumeLineBreak c) 0 input.utf8ByteSize).2
-                '\n'),
+                lineFeedChar),
             (skipSpaces
               (skipBlankLinesLoopIx (consumeLineBreak c) 0 input.utf8ByteSize).1).1)
     else
-      some (" ",
+      some (String.singleton spaceChar,
             (skipSpaces
               (skipBlankLinesLoopIx (consumeLineBreak c) 0 input.utf8ByteSize).1).1)
 
@@ -630,11 +653,11 @@ def collectPlainScalarLoopIx {input : String} (c : IxCursor input)
     match c.peek? with
     | none    => (content ++ spaces, c)
     | some ch =>
-      if ch == '#' && spaces.length > 0 then
+      if isCommentBool ch && spaces.length > 0 then
         (content, c)
-      else if ch == ':' && colonTerminatesPlain c inFlow then
+      else if isMappingValueBool ch && colonTerminatesPlain c inFlow then
         (content, c)
-      else if ch == ':' then
+      else if isMappingValueBool ch then
         collectPlainScalarLoopIx c.advance
           (content ++ spaces ++ String.singleton ch) "" inFlow contentIndent fuel
       else if inFlow && isFlowIndicatorBool ch then
@@ -697,7 +720,7 @@ inductive FoldState where
 /-- Append `n` newlines to `acc`. Structurally recursive. -/
 def appendNewlines (acc : String) : Nat → String
   | 0      => acc
-  | n + 1 => appendNewlines (acc.push '\n') n
+  | n + 1 => appendNewlines (acc.push lineFeedChar) n
 
 /-- Inner step of `foldBlockContent`. Walks the raw `List Char`,
     accumulating into `acc`, tracking `FoldState`, and counting
@@ -705,30 +728,34 @@ def appendNewlines (acc : String) : Nat → String
     see legacy `Scanner/Scalar.lean::foldBlockContent` for the
     long-form table. -/
 def foldBlockContentGo : List Char → String → FoldState → Nat → String
-  | [],            acc, _,   _              => acc
-  | '\n' :: rest,  acc, st,  pending        => foldBlockContentGo rest acc st (pending + 1)
-  | c :: rest,     acc, st,  pending + 1    =>
-    let isMore := c == ' '
-    let newSt  := if isMore then FoldState.more else .content
-    let acc'   := match st with
-      | .start => appendNewlines acc (pending + 1)
-      | .content =>
-        if pending == 0 && !isMore then
-          acc.push ' '
-        else if pending == 0 && isMore then
-          acc.push '\n'
-        else if isMore then
-          appendNewlines acc (pending + 1)
-        else
-          appendNewlines acc pending
-      | .more  => appendNewlines acc (pending + 1)
-      | .empty => appendNewlines acc (pending + 1)
-    foldBlockContentGo rest (acc'.push c) newSt 0
-  | c :: rest,     acc, st,  0              =>
-    let newSt := match st with
-      | .start => if c == ' ' then FoldState.more else .content
-      | s      => s
-    foldBlockContentGo rest (acc.push c) newSt 0
+  | [],            acc, _,   _       => acc
+  | c :: rest,     acc, st,  pending =>
+    if isLineFeedBool c then
+      foldBlockContentGo rest acc st (pending + 1)
+    else
+      match pending with
+      | pending' + 1 =>
+        let isMore := isSpaceBool c
+        let newSt  := if isMore then FoldState.more else .content
+        let acc'   := match st with
+          | .start => appendNewlines acc (pending' + 1)
+          | .content =>
+            if pending' == 0 && !isMore then
+              acc.push spaceChar
+            else if pending' == 0 && isMore then
+              acc.push lineFeedChar
+            else if isMore then
+              appendNewlines acc (pending' + 1)
+            else
+              appendNewlines acc pending'
+          | .more  => appendNewlines acc (pending' + 1)
+          | .empty => appendNewlines acc (pending' + 1)
+        foldBlockContentGo rest (acc'.push c) newSt 0
+      | 0 =>
+        let newSt := match st with
+          | .start => if isSpaceBool c then FoldState.more else .content
+          | s      => s
+        foldBlockContentGo rest (acc.push c) newSt 0
 
 /-- Fold a raw block-scalar accumulator per §8.1.3 (the folded
     style; literal style skips this pass and uses the raw string
@@ -743,7 +770,7 @@ def consumeExactSpacesIx {input : String} (c : IxCursor input) :
     Nat → Nat × IxCursor input
   | 0          => (0, c)
   | count' + 1 =>
-    if c.peek? == some ' ' then
+    if peekIsIndentChar c then
       let (consumed, c') := consumeExactSpacesIx c.advance count'
       (consumed + 1, c')
     else
@@ -819,7 +846,7 @@ def collectBlockScalarLoopIx {input : String} (c : IxCursor input)
         if isLineBreakBool ch then
           collectBlockScalarLoopIx
             (consumeLineBreak (consumeExactSpacesIx c contentIndent).2)
-            (rawContent.push '\n') contentIndent fuel
+            (rawContent.push lineFeedChar) contentIndent fuel
         else if (consumeExactSpacesIx c contentIndent).1 < contentIndent then
           (rawContent, c)
         else
@@ -834,7 +861,7 @@ def collectBlockScalarLoopIx {input : String} (c : IxCursor input)
                     input.utf8ByteSize).2)
                 ((rawContent ++
                   (collectLineContentLoopIx (consumeExactSpacesIx c contentIndent).2 ""
-                    input.utf8ByteSize).1).push '\n')
+                    input.utf8ByteSize).1).push lineFeedChar)
                 contentIndent fuel
             else
               collectBlockScalarLoopIx
@@ -862,17 +889,21 @@ def parseBlockHeaderLoopIx {input : String} (c : IxCursor input)
   | 0          => (chomp, explicitOffset, c)
   | fuel + 1 =>
     match c.peek? with
-    | some '-' => parseBlockHeaderLoopIx c.advance .strip explicitOffset fuel
-    | some '+' => parseBlockHeaderLoopIx c.advance .keep  explicitOffset fuel
-    | some ch  =>
-      if ch.isDigit && ch != '0' then
-        parseBlockHeaderLoopIx c.advance chomp (some (ch.toNat - '0'.toNat)) fuel
-      else (chomp, explicitOffset, c)
-    | none     => (chomp, explicitOffset, c)
+    | some ch =>
+      if isSequenceEntryBool ch then
+        parseBlockHeaderLoopIx c.advance .strip explicitOffset fuel
+      else if isChompKeepBool ch then
+        parseBlockHeaderLoopIx c.advance .keep explicitOffset fuel
+      else if ch.isDigit && !isNsEscNullBool ch then
+        parseBlockHeaderLoopIx c.advance chomp
+          (some (ch.toNat - nsEscNullChar.toNat)) fuel
+      else
+        (chomp, explicitOffset, c)
+    | none => (chomp, explicitOffset, c)
 
 /-- Strip trailing `\n` characters from `s`. -/
 def stripTrailingNewlines (s : String) : String :=
-  String.ofList ((s.toList.reverse.dropWhile (· == '\n')).reverse)
+  String.ofList ((s.toList.reverse.dropWhile isLineFeedBool).reverse)
 
 /-- Apply chomping per §8.1.1: `strip` removes every trailing `\n`,
     `clip` keeps at most one trailing `\n`, `keep` preserves them. -/
@@ -881,7 +912,8 @@ def applyChomp (chomp : ChompStyle) (raw : String) : String :=
   | .strip => stripTrailingNewlines raw
   | .clip  =>
     let stripped := stripTrailingNewlines raw
-    if raw.endsWith "\n" then stripped ++ "\n" else stripped
+    let nl      := String.singleton lineFeedChar
+    if raw.endsWith nl then stripped ++ nl else stripped
   | .keep  => raw
 
 /-- Helper: the post-header cursor for `scanBlockScalarIx`. Built
@@ -890,8 +922,8 @@ def applyChomp (chomp : ChompStyle) (raw : String) : String :=
     can refer to it without rebuilding the chain each time. -/
 def blockHeaderToBodyIx {input : String} (c : IxCursor input) : IxCursor input :=
   consumeLineBreak
-    (if (skipWhitespace (parseBlockHeaderLoopIx c.advance .clip none 2).2.2).peek?
-         == some '#' then
+    (if (match (skipWhitespace (parseBlockHeaderLoopIx c.advance .clip none 2).2.2).peek?
+          with | some d => isCommentBool d | none => false) then
        skipCommentText
          (skipWhitespace (parseBlockHeaderLoopIx c.advance .clip none 2).2.2).advance
      else
@@ -916,9 +948,9 @@ def scanBlockScalarIx {input : String} (c : IxCursor input)
     Option (String × ScalarStyle × IxCursor input) :=
   match c.peek? with
   | some ch =>
-    if ch == '|' || ch == '>' then
+    if isLiteralBool ch || isFoldedBool ch then
       some
-        ( (if ch == '|' then
+        ( (if isLiteralBool ch then
              applyChomp (parseBlockHeaderLoopIx c.advance .clip none 2).1
                (collectBlockScalarLoopIx (blockHeaderToBodyIx c) ""
                  (match (parseBlockHeaderLoopIx c.advance .clip none 2).2.1 with
@@ -937,7 +969,7 @@ def scanBlockScalarIx {input : String} (c : IxCursor input)
                        autoDetectBlockScalarIndentIx (blockHeaderToBodyIx c)
                          (parentIndent + 1))
                    input.utf8ByteSize).1))
-        , (if ch == '|' then ScalarStyle.literal else ScalarStyle.folded)
+        , (if isLiteralBool ch then ScalarStyle.literal else ScalarStyle.folded)
         , (collectBlockScalarLoopIx (blockHeaderToBodyIx c) ""
             (match (parseBlockHeaderLoopIx c.advance .clip none 2).2.1 with
               | some m => parentIndent + m

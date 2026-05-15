@@ -186,7 +186,8 @@ theorem head_replicate_newline (n : Nat) (hn : n > 0) :
 
 /-- Helper: `'#'` is not blank. -/
 theorem hash_not_blank : ¬isBlankProp '#' := by
-  simp [isBlankProp, isWhiteSpaceProp, isLineBreakProp]
+  simp [isBlankProp, isWhiteSpaceProp, isSpaceProp, isTabProp,
+        isLineBreakProp, isLineFeedProp, isCarriageReturnProp]
 
 /-- When `_terminates?` returns `some result`, content, spaces, and state are unchanged. -/
 theorem terminates_preserves_all
@@ -485,7 +486,7 @@ theorem collectPlainScalarLoop_preserves_contentInv
                       | cons x xs =>
                         simp [hl] at hh; rw [hh] at hl
                         exact absurd (inv.spaces_whitespace '#' (hl ▸ List.Mem.head _))
-                          (by simp [isWhiteSpaceProp])
+                          (by simp [isWhiteSpaceProp, isSpaceProp, isTabProp])
                     · intro ⟨_, h2⟩; simp [String.toList_singleton] at h2
                     · intro ⟨hgl, hch⟩
                       simp [String.toList_singleton] at hch

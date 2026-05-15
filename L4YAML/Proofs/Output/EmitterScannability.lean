@@ -803,7 +803,8 @@ theorem collectDoubleQuotedLoop_escapeString_succeeds
           have h_ne_nl : c ≠ '\n' := fun h => by subst h; exact absurd h_ef (by decide)
           have h_ne_cr : c ≠ '\r' := fun h => by subst h; exact absurd h_ef (by decide)
           have h_nlb : isLineBreakBool c = false := by
-            unfold isLineBreakBool; simp [beq_eq_false_iff_ne, h_ne_nl, h_ne_cr]
+            unfold isLineBreakBool isLineFeedBool isCarriageReturnBool
+            simp [beq_eq_false_iff_ne, h_ne_nl, h_ne_cr]
           rw [h_nlb, if_neg Bool.false_ne_true]
           -- isNbJsonBool c = true (c.val ≥ 0x20)
           have h_json : isNbJsonBool c = true := by
@@ -7250,7 +7251,7 @@ theorem isValueCandidate_of_peekAt_blank (s : ScannerState)
         · dsimp only []
         · rw [h]; decide
       · rw [h]; decide
-  · rw [h]; dsimp only []; simp [isBlankBool, isWhiteSpaceBool]
+  · rw [h]; dsimp only []; simp [isBlankBool, isWhiteSpaceBool, isSpaceBool, isTabBool]
 
 -- Value indicator `:` scanning in flow context.
 -- Value indicator `:` scanning in flow context.
