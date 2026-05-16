@@ -1263,23 +1263,52 @@ functions that needed both token and position. Staging
 namespace `L4YAML.TokenParser.Indexed` (matches the Step 5b/5c
 `L4YAML.Scanner.Indexed` convention).
 
-**Next session**: Step 6b — `TokenParserIx` + `FuelIx` staging.
-Clone the 14 mutually-recursive parser functions from
-`Parser/TokenParser.lean` over `ParseStateIx`, preserving the
-fuel discipline (`initialFuelIx ts := 4 * ts.tokens.size + 4`).
-Target signature for the top-level entry:
-`parseStreamIx : Indexed.TokenStream input → Except ParseError
-(Array YamlDocument)`. The output type stays plain (no
-`input` parameter) because the L2 → L1 step of the four-stage
-pipeline produces a `YamlDocument` that is no longer tied to
-the source string. Estimated ~850 LOC across two new files
-(`Parser/TokenParserIx.lean` + `Parser/FuelIx.lean`); the
-per-rule logic is a near-verbatim clone modulo the state type
-swap and the `IxToken.token` accessor. The one surviving
-Phase-3 carry-forward is **5b.6's fold-machine invariant for
-non-empty input** (`foldBlockContentGo_preserves`), explicitly
-deferred to the load-pipeline step that will quote it against
-canonicalised input.
+**Step 6b landed** (Reflection 62): the 18-function mutual block
+plus stream/document driver land in two staging files,
+`L4YAML/Parser/FuelIx.lean` (~61 LOC) and
+`L4YAML/Parser/TokenParserIx.lean` (~647 LOC), both sorry-free.
+`FuelIx` is a direct port of `Parser/Fuel.lean` — same arithmetic
+(`4 * tokens.size + 4`), only the container type swaps to
+`Indexed.TokenStream input`. `TokenParserIx` is a near-verbatim
+clone of `Parser/TokenParser.lean`'s mutual block + stream/document
+layer, with three structural changes: every function carries an
+`{input : String}` implicit so the state `ParseStateIx input` is
+dependently typed; token accessors switch from `Positioned.val` /
+`Positioned.pos` to `IxToken.token` / `IxToken.start`; the one
+random-access site in `parseBlockMappingEntryValue` rewrites
+`ps.tokens[i]!` to `ps.tokens.get? i` followed by `match`, on the
+same `Inhabited (IxToken input)` constraint Step 6a's
+`validateNodeProps` worked around (Reflection 61). All
+`@[yaml_spec ...]` attributes from the legacy parser are
+reproduced verbatim — the `yaml_spec` env extension keys entries
+by fully-qualified `declName`, so `L4YAML.TokenParser.parseNode`
+and `L4YAML.TokenParser.Indexed.parseNode` coexist without
+collision (Reflection 62). Top-level entry-point is
+`parseStreamIx : Indexed.TokenStream input → Except ScanError
+(Array YamlDocument)`; the output type stays plain (no `input`
+parameter) because the L2 → L1 step of the four-stage pipeline
+produces a `YamlDocument` that is no longer tied to the source
+string.
+
+**Next session**: Step 6c — Indexed `Wfa` + `NodeProofs`. Re-prove
+parser well-formedness and node-shape lemmas against
+`ParseStateIx` / `parseStreamIx`. The two big legacy proof files
+map roughly 1-to-1: `Proofs/Parser/ParserWfaProofs.lean`
+(1,692 LOC) → `Proofs/Parser/IndexedWfa.lean`, and
+`Proofs/Parser/ParserNodeProofs.lean` (1,781 LOC) →
+`Proofs/Parser/IndexedNodeProofs.lean`. Strategy is translation
+not rebuild — the underlying induction structure (on fuel, on
+token-stream position) is identical, only the witness type
+changes (`Array.get? tokens pos` becomes `TokenStream.get? ts pos`,
+`Array.size tokens` becomes `ts.tokens.size`). Most lemma
+statements should transfer with mechanical substitution; tactic
+blocks that quote `Positioned.value` need rewriting to
+`IxToken.token`. Estimated 2–3 sessions; the per-lemma
+translation cost dominates and is roughly linear in lemma count.
+The one surviving Phase-3 carry-forward is **5b.6's fold-machine
+invariant for non-empty input** (`foldBlockContentGo_preserves`),
+explicitly deferred to the load-pipeline step that will quote it
+against canonicalised input.
 
 </details>
 
@@ -1315,6 +1344,8 @@ canonicalised input.
 | `L4YAML/Proofs/Scanner/IndexedScalar.lean` | n/a | ~1158 | 0 (staging — Guardrail 1; new in Phase 3 Step 4a; +F1/F2/F3 monotonicity proofs in Step 4b; Step 5b.4: new "Layer E1.4 — Hex-escape value-correctness" section — `hexDigitValue_lt_16`, `hexStringValue_empty` `@[simp]`, `hexStringValue_push`, `hexStringValue_lt_pow`, `parseHexEscapeIx_decoded`; Step 5b.5: new "Layer F.1 — Auto-detected block-scalar indent ≥ `minContentIndent`" section — `autoDetectBlockScalarIndentLoopIx_ge_min` + `autoDetectBlockScalarIndentIx_ge_min`; Step 5b.6: new "Layer F.2 — Block-scalar content correctness" section — `applyChomp_keep` / `applyChomp_strip` / `applyChomp_clip_of_endsWith` / `applyChomp_clip_of_not_endsWith` / `foldBlockContentGo_nil` / `foldBlockContent_empty` pinning the chomp [160] + fold-machine [170]–[181] spec semantics; Step 5b.7: new "Layer F.3 — Quoted multi-line content correctness" section — `foldQuotedNewlinesIx_of_blank_lines` / `foldQuotedNewlinesIx_of_single_break` (§6.5 [73] / [74]), `collectDoubleQuotedLoopIx_zero` / `_closing` / `_linebreak` (§7.3.1 [111]–[116]), `collectSingleQuotedLoopIx_zero` / `_doubled` / `_closing_some` / `_closing_none` / `_linebreak` (§7.3.2 [122]–[125]); the three RHS-recursive lemmas use `conv => lhs; unfold …` to avoid `unfold` rewriting both sides of the goal — see Reflection 57; Step 5b.8: new "Layer F.4 — Plain multi-line content correctness" section — 12 branch-mapping lemmas covering every outcome of `collectPlainScalarLoopIx` (§7.3.3 [131]–[135]): `_zero`, `_eof`, `_comment`, `_colon_terminate`, `_colon_continue`, `_flow_indicator`, `_linebreak_flow`, `_linebreak_block_none`, `_linebreak_block_some`, `_whitespace`, `_not_plain_safe`, `_content`; the five RHS-recursive branches reuse the `conv => lhs; unfold …` pattern from Reflection 57) |
 | `L4YAML/Scanner/IndexedPresenter.lean` | n/a | ~121 | 0 (staging — Guardrail 1; new in Phase 3 Step 5c: `renderToken : IxToken input → String` — per-constructor dispatch from token to source contribution — and `present : TokenStream input → String` = `ts.tokens.foldl (· ++ renderToken ·) ""`; virtual tokens (`streamStart`/`streamEnd`/`placeholder`/`block*Start`/`blockEnd`/implicit `key`/`value`) render to `""`, single-character indicators (`flow*Start`/`flow*End`/`flowEntry`/`blockEntry`) render to their literal character, `documentStart`/`documentEnd` render to `---`/`...`, and content tokens (`scalar`/`anchor`/`alias`/`tag`/`comment`/`versionDirective`/`tagDirective`) render via `String.Pos.Raw.extract input ⟨start⟩ ⟨stop⟩` — the Lean 4.30 raw-offset extract API, chosen over the new `String.extract` because `IxToken`'s positions are plain `Nat` offsets without the `Pos.Raw.IsValid` proof; `present_empty` simp lemma; `@[simp] theorem present_empty (input : String) : present (TokenStream.empty input) = "" := rfl` lands as a sanity check on the empty stream) |
 | `L4YAML/Proofs/Scanner/IndexedRoundtrip.lean` | n/a | ~158 | 0 (staging — Guardrail 1; new in Phase 3 Step 5c: `roundtripOk : String → Bool` Bool-valued check `match scanIx input with | .ok ts => present ts == input | .error _ => false`; 19 corpus theorems `roundtrip_xxx : roundtripOk "…" = true := by native_decide` covering the empty input, plain scalars at root (`x`/`abc`/`hello`), empty/one-/two-/three-/four-element flow sequences (`[]`/`[x]`/`[x,y]`/`[a,b,c]`/`[a,b,c,d]`), empty/one-/two-key flow mappings (`{}`/`{a}`/`{a,b}`), nested patterns (`[[]]`/`[{}]`/`[a,[b,c]]`/`[{a},b]`/`{a,{b}}`/`[[],[]]`/`{[]}`); closing `scanIx_present_of_roundtripOk` lemma turns `roundtripOk input = true` into the existential `∃ ts, scanIx input = .ok ts ∧ present ts = input` form, from which the Blueprint's `scanIx (present ts) = .ok ts` statement follows by rewriting `present ts = input` on the LHS) |
+| `L4YAML/Parser/FuelIx.lean` | n/a | ~61 | 0 (staging — Guardrail 1; new in Phase 3 Step 6b: indexed twin of legacy `Parser/Fuel.lean`; `initialFuelIx : Indexed.TokenStream input → Nat := fun ts => 4 * ts.tokens.size + 4`; arithmetic byte-identical to legacy, container type swaps to `Indexed.TokenStream input`; namespace `L4YAML.TokenParser.Indexed`) |
+| `L4YAML/Parser/TokenParserIx.lean` | n/a | ~647 | 0 (staging — Guardrail 1; new in Phase 3 Step 6b: indexed twin of legacy `Parser/TokenParser.lean`; 18-function mutual block (`set_option maxHeartbeats 400000 in mutual`, structural recursion on `fuel`) — `parseNodeContent`, `parseNode`, `parseBlockSequence`, `parseBlockSequenceLoop`, `parseImplicitBlockSequence`, `parseImplicitBlockSequenceLoop`, `parseBlockMapping`, `parseBlockMappingEntryValue`, `handleBlockMappingKeyEntry`, `handleBlockMappingValueEntry`, `parseBlockMappingLoop`, `parseFlowSequence`, `parseFlowSequenceLoop`, `parseFlowMapping`, `parseFlowMappingValue`, `parseExplicitKey`, `parseFlowMappingLoop`, `parseSinglePairMapping`; stream/document layer outside the mutual block — `StreamState` + `StreamState.validNextToken`, `parseDirectives`, `prepareDocumentState`, `parseDocument`, `parseStreamLoop`, `parseStreamIx`; top-level entry `parseStreamIx {input : String} (tokens : Indexed.TokenStream input) (trackPositions : Bool := false) : Except ScanError (Array YamlDocument)` — output type plain `Array YamlDocument` since the L2 → L1 step of the four-stage pipeline erases the type-level binding to `input`; departures from legacy — every function carries `{input : String}` implicit, token accessors swap from `Positioned.val`/`Positioned.pos` to `IxToken.token`/`IxToken.start`, random-access reads in `parseBlockMappingEntryValue` use `ps.tokens.get?` + `match` rather than `[i]!` to avoid the `Inhabited (IxToken input)` constraint that proof-field-bearing `IxToken` cannot satisfy (Reflection 61); all `@[yaml_spec ...]` attributes reproduced verbatim — the env extension keys by fully-qualified `declName` so `L4YAML.TokenParser.parseNode` and `L4YAML.TokenParser.Indexed.parseNode` coexist without collision; namespace `L4YAML.TokenParser.Indexed`) |
 | `L4YAML/Parser/ParseStateIx.lean` | n/a | ~304 | 0 (staging — Guardrail 1; new in Phase 3 Step 6a: indexed twin of legacy `Parser/State.lean`, parameterised by `input : String`; structure `ParseStateIx (input : String)` carries `tokens : Indexed.TokenStream input` + `pos : Nat` cursor + auxiliary state (`anchors`, `tagHandles`, `trackPositions`, `currentPath`, `nodePositions`); explicit `Inhabited (ParseStateIx input)` instance built from `Indexed.TokenStream.empty input` since `IxToken input`'s proof fields prevent deriving; navigation API in staging namespace `L4YAML.TokenParser.Indexed` — `mk'`, `hasMore`, `peekIx?` (new — returns `Option (IxToken input)` rolling token + positions + bound proofs into one accessor), `peek?` / `peekPos?` derived via `peekIx?.map (·.token)` / `peekIx?.map (·.start)`, `advance`, `lastPos?` (rewritten around `get? (ps.pos - 1)` since `Array.get?`-based form avoids the `Inhabited (IxToken input)` constraint that `[i]!` indexing demands), `currentLine`, `expect`, `tryConsume`, `addAnchor`; node-property scaffolding ported verbatim from legacy — `NodeProperties`, `resolveTag`, `parseNodeProperties` `@[yaml_spec "6.9" 96]`, `emptyNode` `@[yaml_spec "7.2" 105/106]`, `applyNodeFinalization`, `validateNodeProps`) |
 | `L4YAML/Proofs/Scanner/IndexedDispatch.lean` | n/a | ~1620 | 0 (staging — Guardrail 1; new in Phase 3 Step 5b.1b.i: `IxCursor.advanceN_offset_monotonic`; `ScannerStateIx` cursor-preservation lemmas for `emit*`/`overwriteAtCursor`/`advance*`/`pushSequenceIndentIx`/`pushMappingIndentIx`/`unwindIndentsLoopIx`/`unwindIndentsIx`/`saveSimpleKeyIx`/`scanValuePrepareIx`; `skipSpacesS`/`skipWhitespaceS`/`skipToContentS` offset-monotonicity lifts; Step 5b.1b.ii: 10 per-dispatcher offset-monotonicity lemmas — `scanBlockEntryIx`/`scanKeyIx`/`scanValueIx`/`scanFlowEntryIx`/`scanDocumentStartIx`/`scanDocumentEndIx`/`scanFlowSequenceStartIx`/`scanFlowSequenceEndIx`/`scanFlowMappingStartIx`/`scanFlowMappingEndIx`; Step 5b.1b.iii: 5 per-dispatcher offset-monotonicity lemmas — `scanAnchorOrAliasIx`/`scanTagIx`/`scanYamlDirectiveIx`/`scanTagDirectiveIx`/`scanDirectiveIx`; Step 5b.1b.iv-pre: 6 tokens-size simp lemmas — `skipToContentS_tokens`/`skipSpacesS_tokens`/`skipWhitespaceS_tokens`/`advance_tokens`/`advanceN_tokens`/`emit_tokens_size`/`emitAt_tokens_size`/`emitAtCursor_tokens_size`/`overwriteAtCursor_tokens_size`; 6 indent/key helper `_tokens_size_le` lemmas — `unwindIndentsLoopIx`/`unwindIndentsIx`/`pushSequenceIndentIx`/`pushMappingIndentIx`/`saveSimpleKeyIx`/`scanValuePrepareIx`; 12 dispatcher `_tokens_size_le` lemmas — `scanBlockEntryIx`/`scanKeyIx`/`scanValueIx`/`scanFlowEntryIx`/`scanFlowSequenceStartIx`/`scanFlowSequenceEndIx`/`scanFlowMappingStartIx`/`scanFlowMappingEndIx`/`scanDocumentStartIx`/`scanDocumentEndIx`/`scanAnchorOrAliasIx`/`scanTagIx`/`scanYamlDirectiveIx`/`scanTagDirectiveIx`/`scanDirectiveIx`; Step 5b.1b.iv-cont: 7 top-level pairs (`_offset_monotonic` + `_tokens_size_le`) for `scanNextTokenIx_preprocess`/`scanNextTokenIx_dispatchStructural`/`scanNextTokenIx_dispatchFlowIndicators`/`scanNextTokenIx_dispatchBlockIndicators`/`scanNextTokenIx_dispatchContent`/`scanNextTokenIx` plus `scanLoopIx_tokens_size_le`; Step 5b.2: 6 `flowLevel`/`inFlow` preservation simp lemmas — `emit_flowLevel`/`advance_flowLevel`/`pushSequenceIndentIx_flowLevel`/`pushMappingIndentIx_flowLevel`/`emit_inFlow`/`advance_inFlow`/`pushMappingIndentIx_inFlow` — used to collapse the post-advance `!s.inFlow` tab-check guard against the *original* `s.inFlow`, then `scanBlockEntryIx`/`scanKeyIx` `_offset_monotonic` + `_tokens_size_le` pairs re-derived with the new throw branches; Step 5b.3: 2 new `scanValueClearKeyIx` helper lemmas (`_cursor` `@[simp]` + `_tokens_size_le`), `scanValueIx_offset_monotonic` and `_tokens_size_le` re-proved with the legacy `simp only [bind, Except.bind] at h; split at h; cases h | …` pattern; same commit fixed cache-hidden breakage in `Proofs/Scanner/IndexedScalar.lean` (quoted/parse-header-loop `split at h` shapes, `blockHeaderToBodyIx` `by_cases hp` for the `match`-inside-`if` condition) and `Proofs/Scanner/IndexedIndent.lean::skipToContent_at_content` (`'#'` literal → `isCommentBool ch`)) |
 
@@ -4487,8 +4518,8 @@ proof.
 
 | Sub-step | Scope | New staging files | LOC added | Sessions |
 |----------|-------|-------------------|-----------|----------|
-| **6a** | `ParseStateIx` — state record holding `Indexed.TokenStream input` + cursor; re-implement navigation primitives (`hasMore`, `peek?`, `advance`, `expect`, `tryConsume`, `lastPos?`, `currentLine`). Production code only; no proofs. | `Parser/ParseStateIx.lean` | ~300 | 1 |
-| **6b** | `TokenParserIx` — clone the 14 mutually-recursive parser functions over `ParseStateIx`; preserve fuel discipline (`4 * ts.tokens.size + 4`). Add `parseStreamIx : Indexed.TokenStream input → Except _ (Array YamlDocument)`. | `Parser/TokenParserIx.lean`, `Parser/FuelIx.lean` | ~850 | 1–2 |
+| **6a** ✅ | `ParseStateIx` — state record holding `Indexed.TokenStream input` + cursor; re-implement navigation primitives (`hasMore`, `peek?`, `advance`, `expect`, `tryConsume`, `lastPos?`, `currentLine`). Production code only; no proofs. **Landed** in Step 6a commit (~304 LOC). | `Parser/ParseStateIx.lean` | ~304 (landed) | 1 (actual) |
+| **6b** ✅ | `TokenParserIx` — clone the 18-function mutually-recursive parser block + stream/document layer over `ParseStateIx`; preserve fuel discipline (`4 * ts.tokens.size + 4`). Add `parseStreamIx : Indexed.TokenStream input → Except ScanError (Array YamlDocument)`. **Landed** in Step 6b commit (~708 LOC). | `Parser/TokenParserIx.lean`, `Parser/FuelIx.lean` | ~708 (landed) | 1 (actual) |
 | **6c** | Re-prove **WfaProofs** + **NodeProofs** against `ParseStateIx`. Mostly mechanical translation (token-cursor lemmas migrate from `Array.get?`/`Array.size` to `TokenStream.get?`/`TokenStream.tokens.size`), but volume is high. | `Proofs/Parser/IndexedWfa.lean`, `Proofs/Parser/IndexedNodeProofs.lean` | ~3,500 (revised) | 2–3 |
 | **6d** | Re-prove **WellBehaved** + **Correctness** + **Completeness** + **Grammable** against `parseStreamIx`. The hardest sub-step — `WellBehaved` alone is 4,797 LOC. Per-rule strong-induction tactics may need adjustment for the dependent token type. | `Proofs/Parser/IndexedWellBehaved.lean`, `IndexedCorrectness.lean`, `IndexedCompleteness.lean`, `IndexedGrammable.lean` | ~5,000 (revised) | 3–5 |
 | **6e** | `IndexedComposition` — top-level `scanAndParseIx : String → Except _ (Array YamlDocument)` chaining `scanIx` then `parseStreamIx`. Exhibit end-to-end roundtrip on the Step 5c corpus via `native_decide` (extends `IndexedRoundtrip` with a parser-level check). | `Parser/IndexedComposition.lean`, `Proofs/Parser/IndexedComposition.lean` | ~250 | 1 |
@@ -4631,43 +4662,105 @@ load-bearing for the indexed substrate's disjointness guardrail
 passed off as positions of another); introducing a "synthetic
 zero" inhabitant would undermine the type-level discipline.
 
-#### Step 6b — `TokenParserIx` + `FuelIx` staging *(planned)*
+#### Step 6b — `TokenParserIx` + `FuelIx` staging *(landed)*
 
-**Goal**: clone the 14 mutually-recursive parser functions over
-`ParseStateIx`. Output type is `Except ParseError (Array
+**Goal**: clone the mutually-recursive parser functions over
+`ParseStateIx`. Output type is `Except ScanError (Array
 YamlDocument)` (same as legacy — the parser produces a flat
 document AST, not an indexed graph; the indexed-graph form is
 Phase 4 RepGraph territory).
 
-**Scope**:
-- `Parser/FuelIx.lean` — fuel formula `initialFuelIx ts := 4 *
-  ts.tokens.size + 4` (same arithmetic as legacy, keyed on
-  `tokens.size` of the indexed stream).
-- `Parser/TokenParserIx.lean` — 14 functions:
-  `parseNode`, `parseNodeContent`, `parseBlockSequence`,
-  `parseBlockMapping`, `parseBlockMappingEntry`, `parseBlockSequenceEntry`,
-  `parseFlowSequence`, `parseFlowMapping`, `parseFlowEntry`,
-  `parseDirectives`, `parseDocument`, `parseStream`,
-  `parseAnchorOrAlias`, `parseTagged` (exact function set TBD by
-  legacy mirror). Mutual recursion via `decreasing_by` on fuel.
-- Top-level entry: `parseStreamIx : Indexed.TokenStream input →
-  Except ParseError (Array YamlDocument)`.
+**Scope landed**:
+- `Parser/FuelIx.lean` (~61 LOC) — `initialFuelIx ts := 4 *
+  ts.tokens.size + 4`, keyed on `Indexed.TokenStream.size`. The
+  formula matches `Parser/Fuel.lean` byte-for-byte; only the
+  input type changes.
+- `Parser/TokenParserIx.lean` (~647 LOC) — the full 18-function
+  mutual block plus the stream-level grammar table and document
+  driver:
+  - **Mutual block** (`set_option maxHeartbeats 400000 in mutual`,
+    structural recursion on `fuel`): `parseNodeContent`,
+    `parseNode`, `parseBlockSequence`, `parseBlockSequenceLoop`,
+    `parseImplicitBlockSequence`, `parseImplicitBlockSequenceLoop`,
+    `parseBlockMapping`, `parseBlockMappingEntryValue`,
+    `handleBlockMappingKeyEntry`, `handleBlockMappingValueEntry`,
+    `parseBlockMappingLoop`, `parseFlowSequence`,
+    `parseFlowSequenceLoop`, `parseFlowMapping`,
+    `parseFlowMappingValue`, `parseExplicitKey`,
+    `parseFlowMappingLoop`, `parseSinglePairMapping`.
+  - **Stream/document layer** (outside the mutual block):
+    `StreamState` + `StreamState.validNextToken`,
+    `parseDirectives`, `prepareDocumentState`, `parseDocument`,
+    `parseStreamLoop`, `parseStreamIx`.
+- Top-level entry: `parseStreamIx {input : String} (tokens :
+  Indexed.TokenStream input) (trackPositions : Bool := false) :
+  Except ScanError (Array YamlDocument)`.
 
-**Design notes**:
-- The `parseStreamIx` signature does *not* depend on `input`
-  beyond what `TokenStream input` already pins (the input is
-  carried by the stream). Output `Array YamlDocument` is plain
-  (no `input` parameter), which is the right shape for the
-  L2 → L1 step of the four-stage pipeline.
-- Per-rule logic is a near-verbatim clone of `TokenParser.lean`;
-  the only changes are the state type (`ParseStateIx` not
-  `ParseState`) and the token accessor (`IxToken.token` not
-  `Positioned.value`).
+**Departures from legacy `Parser/TokenParser.lean`**:
+- Every function carries an `{input : String}` implicit parameter
+  so the state type `ParseStateIx input` is dependently typed.
+- Token accessor: `IxToken.token` (was `Positioned.value`) and
+  `IxToken.start` (was `Positioned.pos`).
+- Random-access reads in `parseBlockMappingEntryValue` use
+  `ps.tokens.get?` (returning `Option`) rather than `[i]!`.
+  Reason: `IxToken input` carries the `startLEStop` /
+  `stopLEInput` proof fields, which block deriving `Inhabited`,
+  which `[i]!` requires. The match-on-`Option` rewrite is the
+  same pattern Step 6a applied in `validateNodeProps`. See
+  Reflection 61 (Step 6a) for the underlying constraint.
+- All `@[yaml_spec ...]` attributes from the legacy parser are
+  reproduced verbatim on the indexed twins. They're keyed by
+  fully-qualified `declName`, so the two namespaces coexist
+  without collision; at Step 6f cutover the legacy entries get
+  deleted and the indexed entries become canonical.
 
-**DONE criteria**: file compiles green; `lake build` green;
-sorry budget `0 → 0`; behavioral parity with legacy parser
-exercised on the Step 5c corpus via `native_decide` in a small
-smoke test (deferred to 6e if it complicates 6b's scope).
+**Namespace**: `L4YAML.TokenParser.Indexed` — keeps per-rule
+function names unqualified (`parseNode`, `parseFlowSequence`, …)
+without colliding with the legacy `L4YAML.TokenParser`
+declarations. Only the top-level entry-point gets a suffix
+(`parseStreamIx`) so external callers can distinguish the two
+parsers during the staging period.
+
+**Output type**: plain `Array YamlDocument` (no `input`
+parameter). This is the L2 → L1 step of the four-stage pipeline,
+where the type-level binding to `input` is erased — exactly the
+shape downstream stages (`Compose`, `Serialize`) expect.
+
+**Smoke testing**: deferred to Step 6e per the Step 6b plan
+(behavioural parity with the legacy parser on the Step 5c corpus
+sits naturally in `IndexedComposition.lean` next to the
+`scanAndParseIx` entry point).
+
+**DONE criteria**: `lake build` green (385/385 jobs); sorry
+budget `0 → 0`; Guardrail 1 preserved (`L4YAML.lean` does not
+import either file).
+
+##### Reflection 62 — *`@[yaml_spec ...]` attributes are keyed by fully-qualified `declName`, so indexed and legacy twins coexist without collision; copy them verbatim.*
+
+**Why:** `Spec/YamlSpec.lean` registers `yaml_spec` as a builtin
+attribute backed by a `SimplePersistentEnvExtension` whose entries
+are `Name × YamlSpecRef`. The `add` handler does
+`modifyEnv fun env => yamlSpecExt.addEntry env (declName, ref)` —
+keying purely on the fully-qualified name of the *decorated*
+declaration. That means `L4YAML.TokenParser.parseNode` and
+`L4YAML.TokenParser.Indexed.parseNode` register independent
+entries even when both carry `@[yaml_spec "7.5" 161 …]`. Before I
+checked, I almost stripped the indexed copies of their attributes
+on the assumption they'd duplicate-key against the legacy parser
+in `#yaml_spec_coverage`. They don't — both entries surface as
+distinct declarations under the same production rule.
+
+**How to apply:** when cloning a legacy file into a staging
+namespace (`L4YAML.TokenParser.Indexed`, `L4YAML.Scanner.Indexed`,
+…), preserve `@[yaml_spec ...]` annotations verbatim on every
+function. The coverage report will list both the legacy and the
+indexed declaration under each production rule during the
+staging period; at the cutover commit (Step 6f / scanner Step 6),
+the legacy declarations are deleted and the indexed entries become
+the canonical (singleton) coverage. Symmetrically, do not
+duplicate the *attribute definition* across namespaces — the
+extension is a single environment-wide table keyed by
+declaration name.
 
 #### Step 6c — Indexed Wfa + NodeProofs *(planned)*
 
