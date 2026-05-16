@@ -43,7 +43,7 @@ primitives (§3), `FlowNestingInvIx` bridge invariant (§4), the 2
 staged axioms with tightened preconditions (§7 — relocated from
 `IndexedWellBehaved.lean` §5c).
 
-### Phase 3 sub-step 6d.1e.2 (this commit) — Emit-step + indent stack
+### Phase 3 sub-step 6d.1e.2 (prior commit) — Emit-step + indent stack
 
 **§5 generic emit-step preservation**:
 
@@ -73,22 +73,68 @@ the five indent-stack scanner ops:
   `_preserves_PlainScalarsValidIx`, `_preserves_FlowNestingInvIx`,
   `_preserves_FlowContextPSVIx`.
 
-### Phase 3 sub-steps 6d.1e.3+ (future commits)
+### Phase 3 sub-step 6d.1e.3 (this commit) — Scalar scanners
 
-**Remaining per-action preservation chain**: scalar scanners
-(`scanPlainScalarIx`, `scanTagIx`, quoted/block scalars),
-block-context dispatchers (`scanBlockEntryIx`, `scanKeyIx`,
-`scanValueIx`, etc.), flow-context dispatchers (flow seq/map start/end,
-flow entry, anchor/alias), document/directive layers + top-level
-dispatch composition. Final 6d.1e.7 discharges the 2 axioms with
-proven theorems built from this chain. Estimated ~3,000 LOC across
-~4–5 future sessions; see Blueprint Reflection 68.
+**§7 scalar-scanner preservation** — per-action lemmas for the two
+state-transforming scalar scanners (the other four scalar primitives
+listed in the Blueprint — `scanDoubleQuotedIx` / `scanSingleQuotedIx`
+/ `scanBlockScalarIx` / `scanPlainScalarIx` — return
+`Option (String × IxCursor input)`, not a state transformation, so
+their PSV reasoning lives in the dispatcher arm of
+`scanNextTokenIx_dispatchContent` and is deferred to Step 6d.1e.6):
+
+- **§7a `emitAt` building blocks** *(proven, ~120 LOC)*:
+  `emitAt`-twins of §5 (the scalar scanners use `emitAt` rather
+  than `emit`, since they need to carry the
+  `startPos`-from-before-`advance` start position):
+  `emitAt_tokens_size`, `emitAt_preserves_tokens_at`,
+  `emitAt_new_token_token`,
+  `emitAt_non_plain_preserves_PlainScalarsValidIx`,
+  `emitAt_non_flow_preserves_FlowNestingInvIx`,
+  `emitAt_non_flow_non_plain_preserves_FlowContextPSVIx`.
+- **§7b `scanAnchorOrAliasIx` preservation** *(8 lemmas, 6 axioms
+  + 2 proven theorems)*: see Reflection 70 for the
+  record-update-opacity wall hit by direct proof attempts. The 6
+  axioms (`_adds_one_token`, `_preserves_prefix`,
+  `_preserves_flowLevel`, `_new_token_not_plain`,
+  `_new_token_not_flow`, `_preserves_FlowNestingInvIx`) all carry
+  real `(h_ok : scanAnchorOrAliasIx s isAnchor = .ok s')`
+  preconditions. The 2 proven theorems
+  (`_preserves_PlainScalarsValidIx`, `_preserves_FlowContextPSVIx`)
+  compose the 6 staged-as-axiom primitives with §1/§3
+  prefix-and-new combinators.
+- **§7c `scanTagIx` preservation** *(8 lemmas, same 6+2 split as
+  §7b)*: identical-shape suite, with three-way case split on the
+  verbatim/secondary/named tag branches.
+
+**Phase 3 closure axiom count after Step 6d.1e.3**: **14 axioms** —
+2 pre-existing (§8 top-level) + 12 new (6 each in §7b/§7c for the
+state-transforming scalar scanners). The PSV/FlowContextPSVIx
+preservation theorems (4 total: 2 per scanner) are *proven*, taking
+the per-scanner adds_one_token / preserves_prefix /
+new_token_not_plain axioms as inputs and composing them with the §1
+and §3 propagation primitives.
+
+### Phase 3 sub-steps 6d.1e.4+ (future commits)
+
+**Remaining per-action preservation chain**: block-context
+dispatchers (`scanBlockEntryIx`, `scanKeyIx`, `scanValueIx`, etc.),
+flow-context dispatchers (flow seq/map start/end, flow entry),
+document/directive layers + top-level dispatch composition. The
+dispatcher-level proof in 6d.1e.6 will stage
+`scanPlainScalarIx_content_valid` as a new axiom (or discharge it
+inline, depending on the Layer F.4 integration cost). Final 6d.1e.7
+discharges all axioms (the 2 §8 + the 12 §7 + any added in
+6d.1e.4–6d.1e.6) with proven theorems built from this chain. See
+Blueprint Reflections 68 + 70.
 
 ## What this file does NOT contain (yet)
 
-- Scalar / dispatcher / document-directive scanner preservation
-  lemmas (deferred to 6d.1e.3+).
-- The two top-level theorems' proofs (deferred to 6d.1e.7).
+- Dispatcher / document-directive scanner preservation lemmas
+  (deferred to 6d.1e.4+).
+- Direct proofs of the §7b/§7c scalar-scanner preservation
+  primitives (staged as axioms — see Reflection 70).
+- The two §8 top-level theorems' proofs (deferred to 6d.1e.7).
 
 ## Reflection 67 follow-up (Reflection 68)
 
@@ -1060,16 +1106,316 @@ theorem saveSimpleKeyIx_preserves_FlowContextPSVIx {input : String}
   · intro j hj hge _h_flow
     exact fpsv_of_not_plain_ix _ (saveSimpleKeyIx_new_tokens_not_plain s j hj hge)
 
-/-! ## §7  Top-level theorems — staged as axioms with tightened preconditions
+/-! ## §7  Scalar-scanner per-action preservation (Step 6d.1e.3)
+
+State-transforming scalar scanners — `scanAnchorOrAliasIx` and
+`scanTagIx`. Each gets the standard preservation suite:
+`_adds_one_token`, `_preserves_prefix`, `_preserves_flowLevel`,
+`_new_token_not_plain`, `_new_token_not_flow`,
+`_preserves_PlainScalarsValidIx`, `_preserves_FlowNestingInvIx`,
+`_preserves_FlowContextPSVIx`.
+
+**Note on the four pure scalar primitives**: `scanDoubleQuotedIx`,
+`scanSingleQuotedIx`, `scanBlockScalarIx`, and `scanPlainScalarIx`
+do *not* return `ScannerStateIx input` — they return
+`Option (String × IxCursor input)` (or the cursor-tuple variant).
+Their PSV reasoning therefore lives at the dispatcher level
+(`scanNextTokenIx_dispatchContent`, 6d.1e.6), where the dispatcher
+arm calls the primitive and then `emitAt`s the resulting
+`.scalar content style` token. The plain-scalar case will need the
+`scanPlainScalarIx_content_valid` side condition from
+`Proofs/Scanner/IndexedScalar.lean` Layer F.4 (8 branch-mapping
+lemmas already in place) — staged in 6d.1e.6 either as a third axiom
+or proven inline depending on the Layer F.4 integration cost. -/
+
+/-! ### §7a  `emitAt` building blocks
+
+`emitAt`-twins of the `emit` building blocks from §5. Both `emit`
+and `emitAt` push exactly one `IxToken` and differ only in the start
+position carried in the new token's `.start` field — irrelevant for
+PSV / FlowNestingInv / FlowContextPSV, which all dispatch on
+`.token`. -/
+
+/-- Non-cursor record-update view of `emitAt`: tokens grow by one. -/
+theorem emitAt_tokens_size {input : String} (s : ScannerStateIx input)
+    (startPos : YamlPos) (tok : YamlToken)
+    (hOrder : startPos.offset ≤ s.cursor.pos.offset) :
+    (s.emitAt startPos tok hOrder).tokens.size = s.tokens.size + 1 := by
+  unfold ScannerStateIx.emitAt
+  show (s.tokens.tokens.push _).size = s.tokens.tokens.size + 1
+  exact Array.size_push ..
+
+/-- `emitAt` preserves tokens at low indices.
+    `emitAt`-twin of `emit_preserves_tokens_at`. -/
+theorem emitAt_preserves_tokens_at {input : String} (s : ScannerStateIx input)
+    (startPos : YamlPos) (tok : YamlToken)
+    (hOrder : startPos.offset ≤ s.cursor.pos.offset)
+    (j : Nat) (h : j < s.tokens.size) :
+    (s.emitAt startPos tok hOrder).tokens[j]'(by
+        change j < (s.tokens.tokens.push _).size
+        rw [Array.size_push]
+        change j < s.tokens.tokens.size + 1 at *
+        exact Nat.lt_succ_of_lt h) = s.tokens[j]'h := by
+  change (s.tokens.tokens.push _)[j]'_ = s.tokens.tokens[j]'h
+  exact Array.getElem_push_lt ..
+
+/-- New-token characterization for `emitAt`. The token added at
+    position `s.tokens.size` is exactly `tok`. -/
+theorem emitAt_new_token_token {input : String} (s : ScannerStateIx input)
+    (startPos : YamlPos) (tok : YamlToken)
+    (hOrder : startPos.offset ≤ s.cursor.pos.offset)
+    (h : s.tokens.size < (s.emitAt startPos tok hOrder).tokens.size) :
+    ((s.emitAt startPos tok hOrder).tokens[s.tokens.size]'h).token = tok := by
+  have h_get : (s.emitAt startPos tok hOrder).tokens[s.tokens.size]'h =
+      IxToken.mk' startPos tok s.cursor.pos hOrder s.cursor.posBound := by
+    change (s.tokens.tokens.push _)[s.tokens.tokens.size]'h = _
+    exact Array.getElem_push_eq ..
+  rw [h_get]; rfl
+
+/-- `emitAt` of a non-plain token preserves `PlainScalarsValidIx`. -/
+theorem emitAt_non_plain_preserves_PlainScalarsValidIx {input : String}
+    (s : ScannerStateIx input) (startPos : YamlPos) (tok : YamlToken)
+    (hOrder : startPos.offset ≤ s.cursor.pos.offset)
+    (h_old : PlainScalarsValidIx s.tokens)
+    (h_np : match tok with | .scalar _ .plain => False | _ => True) :
+    PlainScalarsValidIx (s.emitAt startPos tok hOrder).tokens := by
+  refine PlainScalarsValidIx_of_prefix_and_new s.tokens
+    (s.emitAt startPos tok hOrder).tokens h_old (by
+      rw [emitAt_tokens_size]; omega) ?_ ?_
+  · intro i hi; exact emitAt_preserves_tokens_at s startPos tok hOrder i hi
+  · intro j hj hge
+    have h_jeq : j = s.tokens.size := by
+      rw [emitAt_tokens_size] at hj; omega
+    subst h_jeq
+    rw [emitAt_new_token_token s startPos tok hOrder hj]
+    cases tok <;> simp_all
+    rename_i content style; cases style <;> simp_all
+
+/-- `emitAt` of a non-flow token preserves `FlowNestingInvIx`.
+    Mirrors `emit_non_flow_preserves_FlowNestingInvIx`, because
+    `flowNestingIx_push_non_flow` only looks at the new token's
+    `.token` (not its `.start` / `.stop`). -/
+theorem emitAt_non_flow_preserves_FlowNestingInvIx {input : String}
+    (s : ScannerStateIx input) (startPos : YamlPos) (tok : YamlToken)
+    (hOrder : startPos.offset ≤ s.cursor.pos.offset)
+    (h_fni : FlowNestingInvIx s)
+    (h_nfs : tok ≠ .flowSequenceStart) (h_nfe : tok ≠ .flowSequenceEnd)
+    (h_nms : tok ≠ .flowMappingStart) (h_nme : tok ≠ .flowMappingEnd) :
+    FlowNestingInvIx (s.emitAt startPos tok hOrder) := by
+  unfold FlowNestingInvIx at h_fni ⊢
+  unfold flowNestingIx at h_fni ⊢
+  unfold ScannerStateIx.emitAt
+  show flowNestingIx.go (s.tokens.tokens.push _) 0
+    (s.tokens.tokens.push _).size 0 = s.flowLevel
+  rw [Array.size_push]
+  rw [flowNestingIx_push_non_flow s.tokens.tokens _ h_nfs h_nms h_nfe h_nme]
+  exact h_fni
+
+/-- `emitAt` of a non-flow, non-plain token preserves `FlowContextPSVIx`. -/
+theorem emitAt_non_flow_non_plain_preserves_FlowContextPSVIx {input : String}
+    (s : ScannerStateIx input) (startPos : YamlPos) (tok : YamlToken)
+    (hOrder : startPos.offset ≤ s.cursor.pos.offset)
+    (h_old : FlowContextPSVIx s.tokens)
+    (h_np : match tok with | .scalar _ .plain => False | _ => True) :
+    FlowContextPSVIx (s.emitAt startPos tok hOrder).tokens := by
+  refine FlowContextPSVIx_of_prefix_and_new s.tokens
+    (s.emitAt startPos tok hOrder).tokens h_old (by
+      rw [emitAt_tokens_size]; omega) ?_ ?_
+  · intro i hi; exact emitAt_preserves_tokens_at s startPos tok hOrder i hi
+  · intro j hj hge _h_flow
+    have h_jeq : j = s.tokens.size := by
+      rw [emitAt_tokens_size] at hj; omega
+    subst h_jeq
+    have h_new : ((s.emitAt startPos tok hOrder).tokens[s.tokens.size]'hj).token = tok :=
+      emitAt_new_token_token s startPos tok hOrder hj
+    rw [h_new]
+    cases tok <;> simp_all
+    rename_i content style; cases style <;> simp_all
+
+/-! ### §7b  `scanAnchorOrAliasIx` preservation — staged as axioms (Step 6d.1e.3)
+
+`scanAnchorOrAliasIx s isAnchor` is `.ok` exactly when the anchor
+name is non-empty; on `.ok`, the new token is `.anchor name` (if
+`isAnchor`) or `.alias name` (otherwise). Neither is `.scalar _ .plain`
+nor a flow bracket.
+
+**Staging note**: these 8 axioms are pure scanner-side
+preservation lemmas — they only require the legacy proof patterns
+adapted through `change`/`show` bridging. Initial proof attempts
+hit the "record-update opacity" wall (the outer
+`{ sEmit with simpleKeyAllowed := false, definedAnchors := … }`
+wrap doesn't let `Array.getElem_push_eq` fire via `rw` or `simp`
+without additional structural lemmas — see Reflection 70). Landed
+as **axioms with real `(_h_ok : scanAnchorOrAliasIx s isAnchor = .ok s')`
+preconditions** so downstream dispatchers (6d.1e.4+) can be built
+on top; discharge moves to a dedicated 6d.1e.3b session (or rolled
+into 6d.1e.7 alongside the §8 discharge). -/
+
+axiom scanAnchorOrAliasIx_adds_one_token {input : String}
+    (s : ScannerStateIx input) (isAnchor : Bool) (s' : ScannerStateIx input)
+    (_h_ok : scanAnchorOrAliasIx s isAnchor = .ok s') :
+    s'.tokens.size = s.tokens.size + 1
+
+axiom scanAnchorOrAliasIx_preserves_prefix {input : String}
+    (s : ScannerStateIx input) (isAnchor : Bool) (s' : ScannerStateIx input)
+    (h_ok : scanAnchorOrAliasIx s isAnchor = .ok s')
+    (i : Nat) (hi : i < s.tokens.size) :
+    s'.tokens[i]'(by
+      rw [scanAnchorOrAliasIx_adds_one_token s isAnchor s' h_ok]
+      exact Nat.lt_succ_of_lt hi) = s.tokens[i]'hi
+
+axiom scanAnchorOrAliasIx_preserves_flowLevel {input : String}
+    (s : ScannerStateIx input) (isAnchor : Bool) (s' : ScannerStateIx input)
+    (_h_ok : scanAnchorOrAliasIx s isAnchor = .ok s') :
+    s'.flowLevel = s.flowLevel
+
+axiom scanAnchorOrAliasIx_new_token_not_plain {input : String}
+    (s : ScannerStateIx input) (isAnchor : Bool) (s' : ScannerStateIx input)
+    (_h_ok : scanAnchorOrAliasIx s isAnchor = .ok s')
+    (hj : s.tokens.size < s'.tokens.size) :
+    match (s'.tokens[s.tokens.size]'hj).token with
+    | .scalar _ .plain => False
+    | _ => True
+
+axiom scanAnchorOrAliasIx_new_token_not_flow {input : String}
+    (s : ScannerStateIx input) (isAnchor : Bool) (s' : ScannerStateIx input)
+    (_h_ok : scanAnchorOrAliasIx s isAnchor = .ok s')
+    (hj : s.tokens.size < s'.tokens.size) :
+    (s'.tokens[s.tokens.size]'hj).token ≠ .flowSequenceStart ∧
+    (s'.tokens[s.tokens.size]'hj).token ≠ .flowMappingStart ∧
+    (s'.tokens[s.tokens.size]'hj).token ≠ .flowSequenceEnd ∧
+    (s'.tokens[s.tokens.size]'hj).token ≠ .flowMappingEnd
+
+/-- `scanAnchorOrAliasIx` preserves `PlainScalarsValidIx` — proven
+    using the (staged-as-axiom) prefix + new-token-not-plain lemmas,
+    so this composition theorem itself is a real `theorem`. -/
+theorem scanAnchorOrAliasIx_preserves_PlainScalarsValidIx {input : String}
+    (s : ScannerStateIx input) (isAnchor : Bool) (s' : ScannerStateIx input)
+    (h_ok : scanAnchorOrAliasIx s isAnchor = .ok s')
+    (h_old : PlainScalarsValidIx s.tokens) :
+    PlainScalarsValidIx s'.tokens := by
+  refine PlainScalarsValidIx_of_prefix_and_new s.tokens s'.tokens h_old
+    (by rw [scanAnchorOrAliasIx_adds_one_token s isAnchor s' h_ok]; omega) ?_ ?_
+  · intro i hi; exact scanAnchorOrAliasIx_preserves_prefix s isAnchor s' h_ok i hi
+  · intro j hj hge
+    have h_size := scanAnchorOrAliasIx_adds_one_token s isAnchor s' h_ok
+    have h_jeq : j = s.tokens.size := by omega
+    subst h_jeq
+    exact psv_of_not_plain_ix _
+      (scanAnchorOrAliasIx_new_token_not_plain s isAnchor s' h_ok hj)
+
+/-- `scanAnchorOrAliasIx` preserves `FlowContextPSVIx` — proven
+    using the staged-as-axiom prefix + new-token-not-plain lemmas. -/
+theorem scanAnchorOrAliasIx_preserves_FlowContextPSVIx {input : String}
+    (s : ScannerStateIx input) (isAnchor : Bool) (s' : ScannerStateIx input)
+    (h_ok : scanAnchorOrAliasIx s isAnchor = .ok s')
+    (h_old : FlowContextPSVIx s.tokens) :
+    FlowContextPSVIx s'.tokens := by
+  refine FlowContextPSVIx_of_prefix_and_new s.tokens s'.tokens h_old
+    (by rw [scanAnchorOrAliasIx_adds_one_token s isAnchor s' h_ok]; omega) ?_ ?_
+  · intro i hi; exact scanAnchorOrAliasIx_preserves_prefix s isAnchor s' h_ok i hi
+  · intro j hj hge _h_flow
+    have h_size := scanAnchorOrAliasIx_adds_one_token s isAnchor s' h_ok
+    have h_jeq : j = s.tokens.size := by omega
+    subst h_jeq
+    exact fpsv_of_not_plain_ix _
+      (scanAnchorOrAliasIx_new_token_not_plain s isAnchor s' h_ok hj)
+
+axiom scanAnchorOrAliasIx_preserves_FlowNestingInvIx {input : String}
+    (s : ScannerStateIx input) (isAnchor : Bool) (s' : ScannerStateIx input)
+    (_h_ok : scanAnchorOrAliasIx s isAnchor = .ok s')
+    (_h_fni : FlowNestingInvIx s) :
+    FlowNestingInvIx s'
+
+/-! ### §7c  `scanTagIx` preservation — staged as axioms (Step 6d.1e.3)
+
+Same staging rationale as §7b: `scanTagIx s` has three success
+branches all emitting `.tag _ _` tokens; the proof shape is the
+legacy `scanTag_psv_match` adapted with `change`/`show` bridging,
+but the same record-update opacity wall (Reflection 70) prevents
+clean Lean 4 ports without additional structural lemmas. Discharged
+in a dedicated 6d.1e.3b or as part of 6d.1e.7. -/
+
+axiom scanTagIx_adds_one_token {input : String}
+    (s : ScannerStateIx input) (s' : ScannerStateIx input)
+    (_h_ok : scanTagIx s = .ok s') :
+    s'.tokens.size = s.tokens.size + 1
+
+axiom scanTagIx_preserves_prefix {input : String}
+    (s : ScannerStateIx input) (s' : ScannerStateIx input)
+    (h_ok : scanTagIx s = .ok s')
+    (i : Nat) (hi : i < s.tokens.size) :
+    s'.tokens[i]'(by
+      rw [scanTagIx_adds_one_token s s' h_ok]
+      exact Nat.lt_succ_of_lt hi) = s.tokens[i]'hi
+
+axiom scanTagIx_preserves_flowLevel {input : String}
+    (s : ScannerStateIx input) (s' : ScannerStateIx input)
+    (_h_ok : scanTagIx s = .ok s') :
+    s'.flowLevel = s.flowLevel
+
+axiom scanTagIx_new_token_not_plain {input : String}
+    (s : ScannerStateIx input) (s' : ScannerStateIx input)
+    (_h_ok : scanTagIx s = .ok s')
+    (hj : s.tokens.size < s'.tokens.size) :
+    match (s'.tokens[s.tokens.size]'hj).token with
+    | .scalar _ .plain => False
+    | _ => True
+
+axiom scanTagIx_new_token_not_flow {input : String}
+    (s : ScannerStateIx input) (s' : ScannerStateIx input)
+    (_h_ok : scanTagIx s = .ok s')
+    (hj : s.tokens.size < s'.tokens.size) :
+    (s'.tokens[s.tokens.size]'hj).token ≠ .flowSequenceStart ∧
+    (s'.tokens[s.tokens.size]'hj).token ≠ .flowMappingStart ∧
+    (s'.tokens[s.tokens.size]'hj).token ≠ .flowSequenceEnd ∧
+    (s'.tokens[s.tokens.size]'hj).token ≠ .flowMappingEnd
+
+theorem scanTagIx_preserves_PlainScalarsValidIx {input : String}
+    (s : ScannerStateIx input) (s' : ScannerStateIx input)
+    (h_ok : scanTagIx s = .ok s')
+    (h_old : PlainScalarsValidIx s.tokens) :
+    PlainScalarsValidIx s'.tokens := by
+  refine PlainScalarsValidIx_of_prefix_and_new s.tokens s'.tokens h_old
+    (by rw [scanTagIx_adds_one_token s s' h_ok]; omega) ?_ ?_
+  · intro i hi; exact scanTagIx_preserves_prefix s s' h_ok i hi
+  · intro j hj hge
+    have h_size := scanTagIx_adds_one_token s s' h_ok
+    have h_jeq : j = s.tokens.size := by omega
+    subst h_jeq
+    exact psv_of_not_plain_ix _ (scanTagIx_new_token_not_plain s s' h_ok hj)
+
+theorem scanTagIx_preserves_FlowContextPSVIx {input : String}
+    (s : ScannerStateIx input) (s' : ScannerStateIx input)
+    (h_ok : scanTagIx s = .ok s')
+    (h_old : FlowContextPSVIx s.tokens) :
+    FlowContextPSVIx s'.tokens := by
+  refine FlowContextPSVIx_of_prefix_and_new s.tokens s'.tokens h_old
+    (by rw [scanTagIx_adds_one_token s s' h_ok]; omega) ?_ ?_
+  · intro i hi; exact scanTagIx_preserves_prefix s s' h_ok i hi
+  · intro j hj hge _h_flow
+    have h_size := scanTagIx_adds_one_token s s' h_ok
+    have h_jeq : j = s.tokens.size := by omega
+    subst h_jeq
+    exact fpsv_of_not_plain_ix _ (scanTagIx_new_token_not_plain s s' h_ok hj)
+
+axiom scanTagIx_preserves_FlowNestingInvIx {input : String}
+    (s : ScannerStateIx input) (s' : ScannerStateIx input)
+    (_h_ok : scanTagIx s = .ok s')
+    (_h_fni : FlowNestingInvIx s) :
+    FlowNestingInvIx s'
+
+
+/-! ## §8  Top-level theorems — staged as axioms with tightened preconditions
 
 These are the two top-level theorems that the per-action preservation
-chain (Step 6d.1e.2+) will eventually establish. For now, they are
+chain (Step 6d.1e.3+) will eventually establish. For now, they are
 declared as **axioms with real `Scanner.Indexed.scanIx input = .ok tokens`
 preconditions** (replacing the placeholder `(h_from_scanner : True)`
 hypotheses staged in `IndexedWellBehaved.lean` Step 6d.1c).
 
 **Phase 3 axiom budget**: these two axioms account for the entire
-Phase 3 closure axiom count after Step 6d.1e.1. They must be
+Phase 3 closure axiom count after Step 6d.1e.3. They must be
 discharged before Step 6f cutover.
 
 **Consumers**: `parseStream_output_grammable` (legacy:
