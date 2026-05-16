@@ -1290,25 +1290,49 @@ parameter) because the L2 → L1 step of the four-stage pipeline
 produces a `YamlDocument` that is no longer tied to the source
 string.
 
-**Next session**: Step 6c — Indexed `Wfa` + `NodeProofs`. Re-prove
-parser well-formedness and node-shape lemmas against
-`ParseStateIx` / `parseStreamIx`. The two big legacy proof files
-map roughly 1-to-1: `Proofs/Parser/ParserWfaProofs.lean`
-(1,692 LOC) → `Proofs/Parser/IndexedWfa.lean`, and
-`Proofs/Parser/ParserNodeProofs.lean` (1,781 LOC) →
-`Proofs/Parser/IndexedNodeProofs.lean`. Strategy is translation
-not rebuild — the underlying induction structure (on fuel, on
-token-stream position) is identical, only the witness type
-changes (`Array.get? tokens pos` becomes `TokenStream.get? ts pos`,
-`Array.size tokens` becomes `ts.tokens.size`). Most lemma
-statements should transfer with mechanical substitution; tactic
-blocks that quote `Positioned.value` need rewriting to
-`IxToken.token`. Estimated 2–3 sessions; the per-lemma
-translation cost dominates and is roughly linear in lemma count.
-The one surviving Phase-3 carry-forward is **5b.6's fold-machine
-invariant for non-empty input** (`foldBlockContentGo_preserves`),
-explicitly deferred to the load-pipeline step that will quote it
-against canonicalised input.
+**Step 6c.1 landed** (Reflection 63): the `NodeProofs` half of the
+original Step 6c scope (`AG` AnchorsGrow propagation + `AAR`
+AllAliasesResolve propagation through `parseNode` and all 17 sub-parser
+helpers) lands in a single staging file
+`L4YAML/Proofs/Parser/IndexedNodeProofs.lean` (~1,814 LOC), sorry-free
+on first build. Translation is **purely structural** — none of the
+AG/AAR lemmas touch `ps.tokens` (they reason only about anchor-array
+growth and alias resolution against the anchor map), so the indexed
+proofs are a mechanical substitution of `ParseState → ParseStateIx
+input` plus the namespace shift `L4YAML.TokenParser →
+L4YAML.TokenParser.Indexed`. The one structural correction over the
+naive cp+sed approach: the `ParseNodeAG` and `ParseNodeAAR` predicate
+definitions had to take `input : String` as an **explicit** parameter
+(legacy: `def ParseNodeAG (n : Nat) : Prop`; indexed: `def ParseNodeAG
+(input : String) (n : Nat) : Prop`). With `input` implicit, Lean
+cannot synthesise it at the `(h_ih : ParseNodeAG n)` hypothesis site
+because the predicate returns `Prop` (no `input` in the result type to
+unify against), and hypothesis parameters are resolved before later
+`(ps : ParseStateIx input)` arguments are seen (Reflection 63).
+**WfaProofs** is **not** in the 6c scope — it consumes three WellBehaved
+lemmas directly (`parseNode_wb_all`, `parseNodeContent_wb`,
+`parseNodeProperties_tokens`), and translating it standalone would
+require porting a non-trivial fragment of `ParserWellBehaved.lean`
+(4,797 LOC) ahead of its natural home. The Blueprint sub-plan ladder
+above is updated to reflect this: WfaProofs is folded into 6d (where
+WB lives), the 6c row is checked off as 6c.1 NodeProofs only.
+
+**Next session**: Step 6d — Indexed WellBehaved + Wfa + Correctness +
+Completeness + Grammable. The hardest sub-step. `WellBehaved` (4,797
+LOC) provides the token-preservation foundation (`parseNode_wb_all`)
+that both `IndexedWfa` (1,692 LOC) and the downstream correctness
+proofs need; the dependency ordering is WB → Wfa → Correctness +
+Completeness → Grammable. Per-rule strong-induction tactics may need
+adjustment for the dependent token type; where the indexed substrate
+lacks a needed lemma, it goes into `Indexed/TokenStream.lean` (not the
+proof file). Estimated 3–5 sessions. Suggested decomposition:
+6d.1 = IndexedWellBehaved (3 sessions), 6d.2 = IndexedWfa (1 session,
+purely mechanical once WB lemmas exist), 6d.3 = Correctness +
+Completeness + Grammable (1 session each, parallelisable). The one
+surviving Phase-3 carry-forward is **5b.6's fold-machine invariant for
+non-empty input** (`foldBlockContentGo_preserves`), explicitly deferred
+to the load-pipeline step that will quote it against canonicalised
+input.
 
 </details>
 
@@ -1346,6 +1370,7 @@ against canonicalised input.
 | `L4YAML/Proofs/Scanner/IndexedRoundtrip.lean` | n/a | ~158 | 0 (staging — Guardrail 1; new in Phase 3 Step 5c: `roundtripOk : String → Bool` Bool-valued check `match scanIx input with | .ok ts => present ts == input | .error _ => false`; 19 corpus theorems `roundtrip_xxx : roundtripOk "…" = true := by native_decide` covering the empty input, plain scalars at root (`x`/`abc`/`hello`), empty/one-/two-/three-/four-element flow sequences (`[]`/`[x]`/`[x,y]`/`[a,b,c]`/`[a,b,c,d]`), empty/one-/two-key flow mappings (`{}`/`{a}`/`{a,b}`), nested patterns (`[[]]`/`[{}]`/`[a,[b,c]]`/`[{a},b]`/`{a,{b}}`/`[[],[]]`/`{[]}`); closing `scanIx_present_of_roundtripOk` lemma turns `roundtripOk input = true` into the existential `∃ ts, scanIx input = .ok ts ∧ present ts = input` form, from which the Blueprint's `scanIx (present ts) = .ok ts` statement follows by rewriting `present ts = input` on the LHS) |
 | `L4YAML/Parser/FuelIx.lean` | n/a | ~61 | 0 (staging — Guardrail 1; new in Phase 3 Step 6b: indexed twin of legacy `Parser/Fuel.lean`; `initialFuelIx : Indexed.TokenStream input → Nat := fun ts => 4 * ts.tokens.size + 4`; arithmetic byte-identical to legacy, container type swaps to `Indexed.TokenStream input`; namespace `L4YAML.TokenParser.Indexed`) |
 | `L4YAML/Parser/TokenParserIx.lean` | n/a | ~647 | 0 (staging — Guardrail 1; new in Phase 3 Step 6b: indexed twin of legacy `Parser/TokenParser.lean`; 18-function mutual block (`set_option maxHeartbeats 400000 in mutual`, structural recursion on `fuel`) — `parseNodeContent`, `parseNode`, `parseBlockSequence`, `parseBlockSequenceLoop`, `parseImplicitBlockSequence`, `parseImplicitBlockSequenceLoop`, `parseBlockMapping`, `parseBlockMappingEntryValue`, `handleBlockMappingKeyEntry`, `handleBlockMappingValueEntry`, `parseBlockMappingLoop`, `parseFlowSequence`, `parseFlowSequenceLoop`, `parseFlowMapping`, `parseFlowMappingValue`, `parseExplicitKey`, `parseFlowMappingLoop`, `parseSinglePairMapping`; stream/document layer outside the mutual block — `StreamState` + `StreamState.validNextToken`, `parseDirectives`, `prepareDocumentState`, `parseDocument`, `parseStreamLoop`, `parseStreamIx`; top-level entry `parseStreamIx {input : String} (tokens : Indexed.TokenStream input) (trackPositions : Bool := false) : Except ScanError (Array YamlDocument)` — output type plain `Array YamlDocument` since the L2 → L1 step of the four-stage pipeline erases the type-level binding to `input`; departures from legacy — every function carries `{input : String}` implicit, token accessors swap from `Positioned.val`/`Positioned.pos` to `IxToken.token`/`IxToken.start`, random-access reads in `parseBlockMappingEntryValue` use `ps.tokens.get?` + `match` rather than `[i]!` to avoid the `Inhabited (IxToken input)` constraint that proof-field-bearing `IxToken` cannot satisfy (Reflection 61); all `@[yaml_spec ...]` attributes reproduced verbatim — the env extension keys by fully-qualified `declName` so `L4YAML.TokenParser.parseNode` and `L4YAML.TokenParser.Indexed.parseNode` coexist without collision; namespace `L4YAML.TokenParser.Indexed`) |
+| `L4YAML/Proofs/Parser/IndexedNodeProofs.lean` | n/a | ~1,814 | 0 (staging — Guardrail 1; new in Phase 3 Step 6c.1: indexed twin of legacy `Proofs/Parser/ParserNodeProofs.lean` (1,781 LOC); namespace `L4YAML.Proofs.Indexed.NodeProofs` — at cutover renamed back to `L4YAML.Proofs.ParserNodeProofs`. Re-proves `AG` (AnchorsGrow) propagation through `parseNode` and all 17 sub-parser helpers (`parseBlockSequenceLoop`/`parseBlockSequence`/`parseImplicitBlockSequenceLoop`/`parseImplicitBlockSequence`/`parseBlockMappingEntryValue`/`handleBlockMappingKeyEntry`/`handleBlockMappingValueEntry`/`parseBlockMappingLoop`/`parseBlockMapping`/`parseExplicitKey`/`parseFlowMappingValue`/`parseSinglePairMapping`/`parseFlowSequenceLoop`/`parseFlowSequence`/`parseFlowMappingLoop`/`parseFlowMapping`/`parseNodeProperties`/`parseNodeContent`), culminating in `parseNode_ag_all : ∀ n, ParseNodeAG input n` by strong induction on fuel; and `AAR` (AllAliasesResolve) propagation through the same family, culminating in `parseNode_aar_all : ∀ n, ParseNodeAAR input n`. Helper extractors `parseNode_anchors_grow` and `parseNode_aliases_resolve'` exposed for downstream callers. Structural changes from legacy (3, all mechanical): state-type substitution `ParseState → ParseStateIx input` with `variable {input : String}` at file scope, accessor-namespace shift `ParseState.X → ParseStateIx.X` for advance/tryConsume/addAnchor, **explicit** `input : String` parameter on the `ParseNodeAG` and `ParseNodeAAR` predicate definitions — implicit `input` causes "don't know how to synthesize implicit argument `input`" errors at `(h_ih : ParseNodeAG n)` hypothesis sites because the predicate returns `Prop` with no `input` in the result type to unify against, and hypothesis parameters are resolved before the later `(ps : ParseStateIx input)` arguments can supply context (Reflection 63). Only one heartbeat override needed adjustment — `parseSinglePairMapping_ag` bumped from 800,000 to 1,600,000 to absorb the 17-arm `split <;> first | contradiction | skip` cascade under the new `ParseStateIx input` dependent-type unification. Bridge lemma `any_name_implies_findSome_isSome'` copied into the indexed namespace to keep the cutover atomic. **Status**: Step 6c's `IndexedWfa` half **deferred to Step 6d** — `WfaProofs` consumes three WB lemmas directly that don't have indexed twins yet) |
 | `L4YAML/Parser/ParseStateIx.lean` | n/a | ~304 | 0 (staging — Guardrail 1; new in Phase 3 Step 6a: indexed twin of legacy `Parser/State.lean`, parameterised by `input : String`; structure `ParseStateIx (input : String)` carries `tokens : Indexed.TokenStream input` + `pos : Nat` cursor + auxiliary state (`anchors`, `tagHandles`, `trackPositions`, `currentPath`, `nodePositions`); explicit `Inhabited (ParseStateIx input)` instance built from `Indexed.TokenStream.empty input` since `IxToken input`'s proof fields prevent deriving; navigation API in staging namespace `L4YAML.TokenParser.Indexed` — `mk'`, `hasMore`, `peekIx?` (new — returns `Option (IxToken input)` rolling token + positions + bound proofs into one accessor), `peek?` / `peekPos?` derived via `peekIx?.map (·.token)` / `peekIx?.map (·.start)`, `advance`, `lastPos?` (rewritten around `get? (ps.pos - 1)` since `Array.get?`-based form avoids the `Inhabited (IxToken input)` constraint that `[i]!` indexing demands), `currentLine`, `expect`, `tryConsume`, `addAnchor`; node-property scaffolding ported verbatim from legacy — `NodeProperties`, `resolveTag`, `parseNodeProperties` `@[yaml_spec "6.9" 96]`, `emptyNode` `@[yaml_spec "7.2" 105/106]`, `applyNodeFinalization`, `validateNodeProps`) |
 | `L4YAML/Proofs/Scanner/IndexedDispatch.lean` | n/a | ~1620 | 0 (staging — Guardrail 1; new in Phase 3 Step 5b.1b.i: `IxCursor.advanceN_offset_monotonic`; `ScannerStateIx` cursor-preservation lemmas for `emit*`/`overwriteAtCursor`/`advance*`/`pushSequenceIndentIx`/`pushMappingIndentIx`/`unwindIndentsLoopIx`/`unwindIndentsIx`/`saveSimpleKeyIx`/`scanValuePrepareIx`; `skipSpacesS`/`skipWhitespaceS`/`skipToContentS` offset-monotonicity lifts; Step 5b.1b.ii: 10 per-dispatcher offset-monotonicity lemmas — `scanBlockEntryIx`/`scanKeyIx`/`scanValueIx`/`scanFlowEntryIx`/`scanDocumentStartIx`/`scanDocumentEndIx`/`scanFlowSequenceStartIx`/`scanFlowSequenceEndIx`/`scanFlowMappingStartIx`/`scanFlowMappingEndIx`; Step 5b.1b.iii: 5 per-dispatcher offset-monotonicity lemmas — `scanAnchorOrAliasIx`/`scanTagIx`/`scanYamlDirectiveIx`/`scanTagDirectiveIx`/`scanDirectiveIx`; Step 5b.1b.iv-pre: 6 tokens-size simp lemmas — `skipToContentS_tokens`/`skipSpacesS_tokens`/`skipWhitespaceS_tokens`/`advance_tokens`/`advanceN_tokens`/`emit_tokens_size`/`emitAt_tokens_size`/`emitAtCursor_tokens_size`/`overwriteAtCursor_tokens_size`; 6 indent/key helper `_tokens_size_le` lemmas — `unwindIndentsLoopIx`/`unwindIndentsIx`/`pushSequenceIndentIx`/`pushMappingIndentIx`/`saveSimpleKeyIx`/`scanValuePrepareIx`; 12 dispatcher `_tokens_size_le` lemmas — `scanBlockEntryIx`/`scanKeyIx`/`scanValueIx`/`scanFlowEntryIx`/`scanFlowSequenceStartIx`/`scanFlowSequenceEndIx`/`scanFlowMappingStartIx`/`scanFlowMappingEndIx`/`scanDocumentStartIx`/`scanDocumentEndIx`/`scanAnchorOrAliasIx`/`scanTagIx`/`scanYamlDirectiveIx`/`scanTagDirectiveIx`/`scanDirectiveIx`; Step 5b.1b.iv-cont: 7 top-level pairs (`_offset_monotonic` + `_tokens_size_le`) for `scanNextTokenIx_preprocess`/`scanNextTokenIx_dispatchStructural`/`scanNextTokenIx_dispatchFlowIndicators`/`scanNextTokenIx_dispatchBlockIndicators`/`scanNextTokenIx_dispatchContent`/`scanNextTokenIx` plus `scanLoopIx_tokens_size_le`; Step 5b.2: 6 `flowLevel`/`inFlow` preservation simp lemmas — `emit_flowLevel`/`advance_flowLevel`/`pushSequenceIndentIx_flowLevel`/`pushMappingIndentIx_flowLevel`/`emit_inFlow`/`advance_inFlow`/`pushMappingIndentIx_inFlow` — used to collapse the post-advance `!s.inFlow` tab-check guard against the *original* `s.inFlow`, then `scanBlockEntryIx`/`scanKeyIx` `_offset_monotonic` + `_tokens_size_le` pairs re-derived with the new throw branches; Step 5b.3: 2 new `scanValueClearKeyIx` helper lemmas (`_cursor` `@[simp]` + `_tokens_size_le`), `scanValueIx_offset_monotonic` and `_tokens_size_le` re-proved with the legacy `simp only [bind, Except.bind] at h; split at h; cases h | …` pattern; same commit fixed cache-hidden breakage in `Proofs/Scanner/IndexedScalar.lean` (quoted/parse-header-loop `split at h` shapes, `blockHeaderToBodyIx` `by_cases hp` for the `match`-inside-`if` condition) and `Proofs/Scanner/IndexedIndent.lean::skipToContent_at_content` (`'#'` literal → `isCommentBool ch`)) |
 
@@ -4520,8 +4545,8 @@ proof.
 |----------|-------|-------------------|-----------|----------|
 | **6a** ✅ | `ParseStateIx` — state record holding `Indexed.TokenStream input` + cursor; re-implement navigation primitives (`hasMore`, `peek?`, `advance`, `expect`, `tryConsume`, `lastPos?`, `currentLine`). Production code only; no proofs. **Landed** in Step 6a commit (~304 LOC). | `Parser/ParseStateIx.lean` | ~304 (landed) | 1 (actual) |
 | **6b** ✅ | `TokenParserIx` — clone the 18-function mutually-recursive parser block + stream/document layer over `ParseStateIx`; preserve fuel discipline (`4 * ts.tokens.size + 4`). Add `parseStreamIx : Indexed.TokenStream input → Except ScanError (Array YamlDocument)`. **Landed** in Step 6b commit (~708 LOC). | `Parser/TokenParserIx.lean`, `Parser/FuelIx.lean` | ~708 (landed) | 1 (actual) |
-| **6c** | Re-prove **WfaProofs** + **NodeProofs** against `ParseStateIx`. Mostly mechanical translation (token-cursor lemmas migrate from `Array.get?`/`Array.size` to `TokenStream.get?`/`TokenStream.tokens.size`), but volume is high. | `Proofs/Parser/IndexedWfa.lean`, `Proofs/Parser/IndexedNodeProofs.lean` | ~3,500 (revised) | 2–3 |
-| **6d** | Re-prove **WellBehaved** + **Correctness** + **Completeness** + **Grammable** against `parseStreamIx`. The hardest sub-step — `WellBehaved` alone is 4,797 LOC. Per-rule strong-induction tactics may need adjustment for the dependent token type. | `Proofs/Parser/IndexedWellBehaved.lean`, `IndexedCorrectness.lean`, `IndexedCompleteness.lean`, `IndexedGrammable.lean` | ~5,000 (revised) | 3–5 |
+| **6c** ✅ | Re-prove **NodeProofs** (`AG` + `AAR` propagation) against `ParseStateIx`. Pure structural translation — none of the AG/AAR lemmas touch `ps.tokens`, so the substitution is `ParseState → ParseStateIx input` plus the new explicit `input : String` parameter on `ParseNodeAG` / `ParseNodeAAR` (Reflection 63). **Landed** in Step 6c.1 commit (~1,814 LOC). Step 6c's original **WfaProofs** scope is moved into 6d alongside `IndexedWellBehaved`, where its three WB-lemma dependencies (`parseNode_wb_all`, `parseNodeContent_wb`, `parseNodeProperties_tokens`) naturally live. | `Proofs/Parser/IndexedNodeProofs.lean` | ~1,814 (landed) | 1 (actual) |
+| **6d** | Re-prove **WellBehaved** + **Wfa** + **Correctness** + **Completeness** + **Grammable** against `parseStreamIx`. The hardest sub-step — `WellBehaved` alone is 4,797 LOC. **WfaProofs** (1,692 LOC) is folded in here because it consumes three WB lemmas directly; translating Wfa before WellBehaved would either require WB-fragment porting or pseudo-defining the dependencies. Per-rule strong-induction tactics may need adjustment for the dependent token type. | `Proofs/Parser/IndexedWellBehaved.lean`, `IndexedWfa.lean`, `IndexedCorrectness.lean`, `IndexedCompleteness.lean`, `IndexedGrammable.lean` | ~6,700 (revised) | 3–5 |
 | **6e** | `IndexedComposition` — top-level `scanAndParseIx : String → Except _ (Array YamlDocument)` chaining `scanIx` then `parseStreamIx`. Exhibit end-to-end roundtrip on the Step 5c corpus via `native_decide` (extends `IndexedRoundtrip` with a parser-level check). | `Parser/IndexedComposition.lean`, `Proofs/Parser/IndexedComposition.lean` | ~250 | 1 |
 | **6f** | **Atomic cutover commit**. Rename every staging `*Ix.lean` → production name (overwriting legacy: `IndexedScanner.lean` → `Scanner.lean`, `ParseStateIx.lean` → `State.lean`, `TokenParserIx.lean` → `TokenParser.lean`, etc.). Delete legacy `Scanner/{Scalar,Whitespace,Indent,SimpleKey,Document,NodeProperties,State}.lean`, all of `Proofs/Scanner/*` (~26,858 LOC across 23 files), and legacy `Proofs/Parser/{ParserWellBehaved,ParserCorrectness,ParserCompleteness,ParserGrammable,ParserNodeProofs,ParserWfaProofs,…}.lean`. Retarget `L4YAML.lean` imports. Single `lake build` green. | mass rename + delete | net **≈ −30,000** | 1 |
 
@@ -4762,32 +4787,121 @@ duplicate the *attribute definition* across namespaces — the
 extension is a single environment-wide table keyed by
 declaration name.
 
-#### Step 6c — Indexed Wfa + NodeProofs *(planned)*
+#### Step 6c.1 — Indexed NodeProofs *(landed)*
 
-**Goal**: re-prove parser well-formedness and node-shape lemmas
-against `ParseStateIx` / `parseStreamIx`. The two big legacy
-proof files map roughly 1-to-1:
+**Goal**: re-prove the `AG` (AnchorsGrow) and `AAR`
+(AllAliasesResolve) propagation lemmas — every sub-parser preserves
+`AG ps ps'` and every successful `parseNode` outputs a value whose
+aliases all resolve against the (possibly grown) anchor map — against
+the indexed parser stack landed in Step 6a/6b.
 
-- `Proofs/Parser/ParserWfaProofs.lean` (1,692 LOC) →
-  `Proofs/Parser/IndexedWfa.lean` (well-formed-state / advance
-  preservation lemmas).
-- `Proofs/Parser/ParserNodeProofs.lean` (1,781 LOC) →
-  `Proofs/Parser/IndexedNodeProofs.lean` (node-shape / scalar /
-  collection lemmas).
+**Original Step 6c scope** was both `ParserNodeProofs.lean` (1,781
+LOC) and `ParserWfaProofs.lean` (1,692 LOC). During scoping it
+surfaced that `ParserWfaProofs` consumes three lemmas
+(`parseNode_wb_all`, `parseNodeContent_wb`,
+`parseNodeProperties_tokens`) directly from `ParserWellBehaved.lean`
+(4,797 LOC, scheduled for Step 6d), so translating WfaProofs alongside
+NodeProofs would have required porting a non-trivial WB fragment
+*before* its natural home. We split Step 6c: 6c.1 lands NodeProofs
+this session (no WB dependency), and the WfaProofs translation moves
+into Step 6d alongside `IndexedWellBehaved` where the WB lemmas
+naturally live (sub-plan ladder updated, see 6d row).
 
-**Strategy**: translation, not rebuild-from-scratch. The
-underlying induction structure (on fuel, on token-stream
-position) is identical; only the witness type changes
-(`Array.get? tokens pos` becomes `TokenStream.get? ts pos`,
-`Array.size tokens` becomes `ts.tokens.size`). Most lemma
-statements transfer with mechanical substitution; tactic blocks
-that quote `Positioned.value` need rewriting to `IxToken.token`.
+**Scope (landed in Step 6c.1)**:
+- `L4YAML/Proofs/Parser/IndexedNodeProofs.lean` (~1,814 LOC,
+  sorry-free) — indexed twin of `ParserNodeProofs.lean`. Reparented
+  onto `ParseStateIx input` and the indexed `parseNode` in
+  `L4YAML.TokenParser.Indexed`. Namespace
+  `L4YAML.Proofs.Indexed.NodeProofs` (matches the Step 5b/5c
+  `L4YAML.Scanner.Indexed` convention; renamed to
+  `L4YAML.Proofs.ParserNodeProofs` at cutover).
 
-**DONE criteria**: both files sorry-free, `lake build` green.
-Estimated 2–3 sessions; the per-lemma translation cost dominates
-and is roughly linear in lemma count.
+**Structural changes from legacy** (3, all mechanical):
+1. **State type substitution** — `(ps : ParseState)` →
+   `(ps : ParseStateIx input)` everywhere in theorem signatures and
+   `variable` declarations. The `{input : String}` implicit is
+   threaded via a single `variable {input : String}` declaration at
+   the top of the file (active before all theorems).
+2. **Accessor namespace** — `ParseState.advance` →
+   `ParseStateIx.advance`; same for `tryConsume`, `addAnchor`. The
+   bodies of the helper theorems (e.g., `AG.advance`, `AG.tryConsume`)
+   use the new `ParseStateIx.X` accessors directly.
+3. **Predicate signatures** — `def ParseNodeAG (n : Nat) : Prop` →
+   `def ParseNodeAG (input : String) (n : Nat) : Prop` (`input`
+   **explicit**, not implicit — see Reflection 63). The 17 `_ag` and
+   17 `_aar` sub-parser theorems that take `(h_ih : ParseNodeAG n)` /
+   `(h_ih_aar : ParseNodeAAR n)` hypotheses all rewrite to
+   `ParseNodeAG input n` / `ParseNodeAAR input n` at the hypothesis
+   site.
 
-#### Step 6d — Indexed WellBehaved + Correctness + Completeness + Grammable *(planned)*
+**What did not need touching**:
+- `AllAliasesResolve`, `WellFormedAnchors`, `AG`, `AAR.mono`,
+  `aar_retag_*`, `aar_push`, `applyNodeFinalization_aar`,
+  `emptyNode_aar`, `items_push_aar`, `pairs_push_aar`,
+  `parseNode_aliases_resolve'` — all preserved verbatim modulo the
+  state-type substitution.
+- The bridge lemma `any_name_implies_findSome_isSome'` is copied into
+  the indexed namespace (it was a self-contained Array lemma in the
+  legacy file too; the staging copy avoids cross-importing the
+  legacy `ParserNodeProofs` and keeps the 6f cutover clean).
+- Every tactic block. The `unfold_loop_at` elab tactic was carried
+  over without changes — it pattern-matches on `loop`-suffixed
+  constants by name, not by their parser provenance.
+- All `maxHeartbeats` overrides — except `parseSinglePairMapping_ag`,
+  which was bumped from 800,000 to 1,600,000. The 17-arm cascade of
+  `split <;> first | contradiction | skip` plus the bidirectional
+  trans-chain construction (4 closing variants × 2 trans depths) hit
+  `whnf` timeout in the indexed setting where each `ParseStateIx
+  input` unification carries the `input : String` proof obligation.
+  No other proof in the file needed adjustment, including the parallel
+  `parseSinglePairMapping_aar` (which inherited the 800,000 bump from
+  the legacy file).
+
+**DONE criteria** (all met):
+- `L4YAML/Proofs/Parser/IndexedNodeProofs.lean` builds via
+  `lake build L4YAML.Proofs.Parser.IndexedNodeProofs` (41/41).
+- `lake build` full: 385/385 green (legacy stack untouched).
+- Sorry budget: 0 → 0 in the new staging file; legacy `EmitterScannability`
+  carries 7 pre-existing sorries (untouched).
+
+##### Reflection 63 — *Induction-hypothesis predicates with `input : String` must take it explicitly, not implicitly: the predicate returns `Prop` so there's no result-type slot for Lean to unify `input` against at hypothesis sites.*
+
+**Why**: The legacy `ParseNodeAG` predicate is
+`def ParseNodeAG (n : Nat) : Prop := ∀ (ps : ParseState) ..., AG ps ps'`.
+The indexed twin needs `(ps : ParseStateIx input)`, so `input` becomes
+a free variable in the body. The naive translation makes it implicit
+via the file-scope `variable {input : String}` — Lean then sees a
+predicate of type `{input : String} → Nat → Prop`. At every theorem
+that takes `(h_ih : ParseNodeAG n)` as a hypothesis (17 such theorems
+in the AG family + 17 in the AAR family), Lean must elaborate
+`ParseNodeAG n` to a fully-applied `Prop`. To do that it needs to
+synthesise the implicit `input`, but `ParseNodeAG` is a *definition*
+returning `Prop` — there is no place in the result type where `input`
+appears that could constrain it from the goal. **And** the
+elaboration order is "all parameter types resolved before the proof
+is processed", so a later parameter like `(ps : ParseStateIx input)`
+doesn't help: Lean cannot peek forward to take `input` from the type
+of a not-yet-introduced parameter. Result: `error: don't know how to
+synthesize implicit argument 'input'` at every hypothesis site.
+
+**How to apply**: When porting an induction-hypothesis-style predicate
+to indexed types, make the type parameter **explicit**:
+`def ParseNodeAG (input : String) (n : Nat) : Prop := …`. Hypothesis
+sites then read `(h_ih : ParseNodeAG input n)` — the explicit `input`
+fixes the value before the elaborator needs it. This is symmetric to
+how function signatures fix dependent-typed arguments: the rule
+generalises beyond predicates to any auxiliary `Prop` / `Type`
+definition that has a structural parameter (e.g., `input : String`,
+`tokens : Array …`, a state record) but whose result discards that
+parameter. *Look for it whenever you have a predicate whose definition
+takes a structural parameter that does not appear in its return type
+— that's the danger signature.* This is the third "implicit-vs-explicit
+parameter" finding in the indexed port: Reflection 61 (proof
+fields blocking `Inhabited`) and Reflection 62
+(`@[yaml_spec ...]` keyed by `declName`) were both about types and
+attributes; this one is about predicate-level induction hypotheses.
+
+#### Step 6d — Indexed WellBehaved + Wfa + Correctness + Completeness + Grammable *(planned)*
 
 **Goal**: re-prove the four top-level parser correctness theorems
 against `parseStreamIx`. This is the hardest sub-step.
@@ -4796,6 +4910,15 @@ against `parseStreamIx`. This is the hardest sub-step.
 - `Proofs/Parser/IndexedWellBehaved.lean` (~4,800 LOC revised):
   the per-rule strong-induction proof that `parseStreamIx`
   consumes its fuel correctly and returns well-formed results.
+- `Proofs/Parser/IndexedWfa.lean` (~1,692 LOC) — **moved here from
+  the original Step 6c scope**. Re-proves
+  `WellFormedAnchors`/`Scannable`/`AllAliasesResolve` preservation
+  through `parseNode`. Consumes three WellBehaved lemmas directly
+  (`parseNode_wb_all`, `parseNodeContent_wb`,
+  `parseNodeProperties_tokens`), which is why it ships in 6d
+  alongside `IndexedWellBehaved` rather than next to NodeProofs in
+  6c.1. The translation is purely mechanical once those WB
+  dependencies are in place.
 - `Proofs/Parser/IndexedCorrectness.lean` (~170 LOC): parsed
   output satisfies the grammar spec (`ValidNode` witness).
 - `Proofs/Parser/IndexedCompleteness.lean` (~230 LOC): grammable
@@ -4803,6 +4926,11 @@ against `parseStreamIx`. This is the hardest sub-step.
 - `Proofs/Parser/IndexedGrammable.lean` (~115 LOC): composes
   correctness + completeness to discharge the `h_grammable`
   obligation.
+
+**Suggested decomposition**: 6d.1 = IndexedWellBehaved (~3
+sessions, the rate-limiter); 6d.2 = IndexedWfa (~1 session,
+purely mechanical once WB lemmas exist); 6d.3 = Correctness +
+Completeness + Grammable (~1 session each, parallelisable).
 
 **Risk**: `ParserWellBehaved`'s per-rule strong-induction tactics
 may quote `Array.get?_some` / `Array.size_set` shape lemmas that
@@ -4812,7 +4940,7 @@ substrate lacks a needed lemma, it goes into `Indexed/TokenStream.lean`
 extending Phase 1's algebra, **stop and re-open Phase 1**
 (Guardrail 2).
 
-**DONE criteria**: all four files sorry-free, `lake build` green.
+**DONE criteria**: all five files sorry-free, `lake build` green.
 Estimated 3–5 sessions; 6d is the swing factor for the overall
 Phase 3 schedule.
 
