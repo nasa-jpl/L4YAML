@@ -993,4 +993,176 @@ theorem collectSingleQuotedLoopIx_linebreak {input : String}
   rw [hPeek]
   simp [hNotQuote, hLineBreak]
 
+/-! ## Layer F.4 — Plain multi-line content correctness (Step 5b.8)
+
+Carried-forward Step 4b obligation: pin each branch of
+`collectPlainScalarLoopIx` (§7.3.3 [131]–[135]) to its YAML 1.2.2 spec
+rule. The plain-scalar loop is the most branch-heavy collector in the
+scanner: 11 outcomes covering EOF, comment, mapping-value (terminating
+and continuing), flow-indicator (flow context), line-break fold (flow
+*and* block, each with its own continuation helper), whitespace, plain-
+unsafe terminators, and the plain-safe content character. Each lemma
+fixes the post-`peek?` cascade for one branch.
+
+Spec rules:
+- `ns-plain(n,c)` [131], `nb-ns-plain-in-line(c)` [132],
+  `s-ns-plain-next-line(n)` [133], `ns-plain-multi-line(n,c)` [134],
+  `ns-plain-one-line(c)` [135] — the threaded `content ++ folded`
+  composition is what `ns-plain-multi-line` describes; the in-line
+  and next-line splits are visible in the `_linebreak_flow` /
+  `_linebreak_block_some` branches.
+
+Proof shape mirrors Layer F.3 (Step 5b.7) — `rfl` for `_zero`,
+`unfold + rw + simp` for non-recursive branches, and
+`conv => lhs; unfold …` for the five recursive branches whose RHS is
+another `collectPlainScalarLoopIx` call (Reflection 57). -/
+
+theorem collectPlainScalarLoopIx_zero {input : String} (c : IxCursor input)
+    (content spaces : String) (inFlow : Bool) (contentIndent : Nat) :
+    collectPlainScalarLoopIx c content spaces inFlow contentIndent 0 =
+      (content ++ spaces, c) :=
+  rfl
+
+theorem collectPlainScalarLoopIx_eof {input : String} (c : IxCursor input)
+    (content spaces : String) (inFlow : Bool) (contentIndent : Nat) (fuel : Nat)
+    (hPeek : c.peek? = none) :
+    collectPlainScalarLoopIx c content spaces inFlow contentIndent (fuel + 1) =
+      (content ++ spaces, c) := by
+  unfold collectPlainScalarLoopIx
+  rw [hPeek]
+
+theorem collectPlainScalarLoopIx_comment {input : String} (c : IxCursor input)
+    (content spaces : String) (inFlow : Bool) (contentIndent : Nat) (fuel : Nat)
+    {ch : Char} (hPeek : c.peek? = some ch)
+    (hComment : isCommentBool ch = true)
+    (hSpaces : spaces.length > 0) :
+    collectPlainScalarLoopIx c content spaces inFlow contentIndent (fuel + 1) =
+      (content, c) := by
+  unfold collectPlainScalarLoopIx
+  rw [hPeek]
+  simp [hComment, hSpaces]
+
+theorem collectPlainScalarLoopIx_colon_terminate {input : String} (c : IxCursor input)
+    (content spaces : String) (inFlow : Bool) (contentIndent : Nat) (fuel : Nat)
+    {ch : Char} (hPeek : c.peek? = some ch)
+    (hNotComment : isCommentBool ch = false)
+    (hMapVal : isMappingValueBool ch = true)
+    (hColon : colonTerminatesPlain c inFlow = true) :
+    collectPlainScalarLoopIx c content spaces inFlow contentIndent (fuel + 1) =
+      (content, c) := by
+  unfold collectPlainScalarLoopIx
+  rw [hPeek]
+  simp [hNotComment, hMapVal, hColon]
+
+theorem collectPlainScalarLoopIx_colon_continue {input : String} (c : IxCursor input)
+    (content spaces : String) (inFlow : Bool) (contentIndent : Nat) (fuel : Nat)
+    {ch : Char} (hPeek : c.peek? = some ch)
+    (hNotComment : isCommentBool ch = false)
+    (hMapVal : isMappingValueBool ch = true)
+    (hColon : colonTerminatesPlain c inFlow = false) :
+    collectPlainScalarLoopIx c content spaces inFlow contentIndent (fuel + 1) =
+      collectPlainScalarLoopIx c.advance
+        (content ++ spaces ++ String.singleton ch) "" inFlow contentIndent fuel := by
+  conv => lhs; unfold collectPlainScalarLoopIx
+  rw [hPeek]
+  simp [hNotComment, hMapVal, hColon]
+
+theorem collectPlainScalarLoopIx_flow_indicator {input : String} (c : IxCursor input)
+    (content spaces : String) (contentIndent : Nat) (fuel : Nat)
+    {ch : Char} (hPeek : c.peek? = some ch)
+    (hNotComment : isCommentBool ch = false)
+    (hNotMapVal : isMappingValueBool ch = false)
+    (hFlowInd : isFlowIndicatorBool ch = true) :
+    collectPlainScalarLoopIx c content spaces true contentIndent (fuel + 1) =
+      (content, c) := by
+  unfold collectPlainScalarLoopIx
+  rw [hPeek]
+  simp [hNotComment, hNotMapVal, hFlowInd]
+
+theorem collectPlainScalarLoopIx_linebreak_flow {input : String} (c : IxCursor input)
+    (content spaces : String) (contentIndent : Nat) (fuel : Nat)
+    {ch : Char} (hPeek : c.peek? = some ch)
+    (hNotComment : isCommentBool ch = false)
+    (hNotMapVal : isMappingValueBool ch = false)
+    (hNotFlowInd : isFlowIndicatorBool ch = false)
+    (hLineBreak : isLineBreakBool ch = true) :
+    collectPlainScalarLoopIx c content spaces true contentIndent (fuel + 1) =
+      collectPlainScalarLoopIx (foldQuotedNewlinesIx c).2
+        (content ++ (foldQuotedNewlinesIx c).1) "" true contentIndent fuel := by
+  conv => lhs; unfold collectPlainScalarLoopIx
+  rw [hPeek]
+  simp [hNotComment, hNotMapVal, hNotFlowInd, hLineBreak]
+
+theorem collectPlainScalarLoopIx_linebreak_block_none {input : String} (c : IxCursor input)
+    (content spaces : String) (contentIndent : Nat) (fuel : Nat)
+    {ch : Char} (hPeek : c.peek? = some ch)
+    (hNotComment : isCommentBool ch = false)
+    (hNotMapVal : isMappingValueBool ch = false)
+    (hLineBreak : isLineBreakBool ch = true)
+    (hHandle : handleBlockLineBreakIx c contentIndent = none) :
+    collectPlainScalarLoopIx c content spaces false contentIndent (fuel + 1) =
+      (content, c) := by
+  unfold collectPlainScalarLoopIx
+  rw [hPeek]
+  simp [hNotComment, hNotMapVal, hLineBreak, hHandle]
+
+theorem collectPlainScalarLoopIx_linebreak_block_some {input : String} (c : IxCursor input)
+    (content spaces : String) (contentIndent : Nat) (fuel : Nat)
+    {ch : Char} (hPeek : c.peek? = some ch)
+    (hNotComment : isCommentBool ch = false)
+    (hNotMapVal : isMappingValueBool ch = false)
+    (hLineBreak : isLineBreakBool ch = true)
+    {folded : String} {cAfterFold : IxCursor input}
+    (hHandle : handleBlockLineBreakIx c contentIndent = some (folded, cAfterFold)) :
+    collectPlainScalarLoopIx c content spaces false contentIndent (fuel + 1) =
+      collectPlainScalarLoopIx cAfterFold (content ++ folded) "" false contentIndent fuel := by
+  conv => lhs; unfold collectPlainScalarLoopIx
+  rw [hPeek]
+  simp [hNotComment, hNotMapVal, hLineBreak, hHandle]
+
+theorem collectPlainScalarLoopIx_whitespace {input : String} (c : IxCursor input)
+    (content spaces : String) (inFlow : Bool) (contentIndent : Nat) (fuel : Nat)
+    {ch : Char} (hPeek : c.peek? = some ch)
+    (hNotComment : isCommentBool ch = false)
+    (hNotMapVal : isMappingValueBool ch = false)
+    (hNotFlowInd : (inFlow && isFlowIndicatorBool ch) = false)
+    (hNotLineBreak : isLineBreakBool ch = false)
+    (hWhitespace : isWhiteSpaceBool ch = true) :
+    collectPlainScalarLoopIx c content spaces inFlow contentIndent (fuel + 1) =
+      collectPlainScalarLoopIx c.advance content (spaces.push ch) inFlow contentIndent fuel := by
+  conv => lhs; unfold collectPlainScalarLoopIx
+  rw [hPeek]
+  simp [hNotComment, hNotMapVal, hNotFlowInd, hNotLineBreak, hWhitespace]
+
+theorem collectPlainScalarLoopIx_not_plain_safe {input : String} (c : IxCursor input)
+    (content spaces : String) (inFlow : Bool) (contentIndent : Nat) (fuel : Nat)
+    {ch : Char} (hPeek : c.peek? = some ch)
+    (hNotComment : isCommentBool ch = false)
+    (hNotMapVal : isMappingValueBool ch = false)
+    (hNotFlowInd : (inFlow && isFlowIndicatorBool ch) = false)
+    (hNotLineBreak : isLineBreakBool ch = false)
+    (hNotWhitespace : isWhiteSpaceBool ch = false)
+    (hNotPlainSafe : isPlainSafeBool ch inFlow = false) :
+    collectPlainScalarLoopIx c content spaces inFlow contentIndent (fuel + 1) =
+      (content, c) := by
+  unfold collectPlainScalarLoopIx
+  rw [hPeek]
+  simp [hNotComment, hNotMapVal, hNotFlowInd, hNotLineBreak, hNotWhitespace, hNotPlainSafe]
+
+theorem collectPlainScalarLoopIx_content {input : String} (c : IxCursor input)
+    (content spaces : String) (inFlow : Bool) (contentIndent : Nat) (fuel : Nat)
+    {ch : Char} (hPeek : c.peek? = some ch)
+    (hNotComment : isCommentBool ch = false)
+    (hNotMapVal : isMappingValueBool ch = false)
+    (hNotFlowInd : (inFlow && isFlowIndicatorBool ch) = false)
+    (hNotLineBreak : isLineBreakBool ch = false)
+    (hNotWhitespace : isWhiteSpaceBool ch = false)
+    (hPlainSafe : isPlainSafeBool ch inFlow = true) :
+    collectPlainScalarLoopIx c content spaces inFlow contentIndent (fuel + 1) =
+      collectPlainScalarLoopIx c.advance
+        (content ++ spaces ++ String.singleton ch) "" inFlow contentIndent fuel := by
+  conv => lhs; unfold collectPlainScalarLoopIx
+  rw [hPeek]
+  simp [hNotComment, hNotMapVal, hNotFlowInd, hNotLineBreak, hNotWhitespace, hPlainSafe]
+
 end L4YAML.Scanner.Indexed
