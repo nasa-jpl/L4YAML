@@ -1435,16 +1435,36 @@ honest preconditions), `lake build` truly 385/385 green this time.
 Reflection 68 captures the prior-session-baseline-re-verification
 lesson.
 
-**Next session**: Step 6d.1e.2 — start the per-action preservation
-chain port. First batch: §5 emit-step building blocks (deferred from
-6d.1e.1) + indent-stack preservation
-(`unwindIndentsLoopIx`/`unwindIndentsIx`/`pushSequenceIndentIx`/`pushMappingIndentIx`/`saveSimpleKeyIx`).
-~520 LOC estimated. 6d.1e.3–6d.1e.7 follow (scalar scanners; block
-dispatchers; flow dispatchers; document/directive + top-level
-dispatch composition; axiom discharge) over ~4–5 further sessions.
-Total 6d.1e.2–6d.1e.7 budget: ~3,000–5,000 LOC (Reflection 68's
-honest accounting). Then 6d.2 (IndexedWfa, ~1 session) and 6d.3
-(Correctness + Completeness + Grammable, ~1 session) close out 6d.
+**Step 6d.1e.2 landed** (Reflection 69): §5 emit-step building blocks
+(`PlainScalarsValidIx_push_non_plain`, `emit_preserves_tokens_at`,
+`emit_new_token_token`, `emit_non_plain_preserves_PlainScalarsValidIx`,
+`emit_non_flow_preserves_FlowNestingInvIx`,
+`emit_non_flow_non_plain_preserves_FlowContextPSVIx`) + §6 indent-stack
+preservation for all five indent-stack scanner ops
+(`unwindIndentsLoopIx` / `unwindIndentsIx` / `pushSequenceIndentIx` /
+`pushMappingIndentIx` / `saveSimpleKeyIx`), each with its full
+preservation suite (prefix / flowLevel / new-token / FlowNestingInvIx /
+PlainScalarsValidIx / FlowContextPSVIx). File grew from ~441 LOC to
+~1101 LOC (~660 LOC delta — over the Blueprint's ~520 LOC estimate
+because the indexed proofs needed extra `change`/`show`-based
+TokenStream↔Array bridging that legacy didn't, see Reflection 69).
+`lake build` 385/385 green. Axiom count unchanged: still 2 staged
+axioms (§7) to be discharged in Step 6d.1e.7.
+
+**Next session**: Step 6d.1e.3 — scalar-scanner preservation:
+`scanPlainScalarIx` (the only branch where the new token *can* be
+`.scalar _ .plain` — requires the `scanPlainScalarIx_content_valid`
+side condition from `Proofs/Scanner/IndexedScalar.lean` Layer F.4),
+`scanTagIx` (always `.tag _ _`), `scanBlockScalarIx`,
+`scanDoubleQuotedIx`, `scanSingleQuotedIx`, `scanAnchorOrAliasIx`.
+Estimated ~800 LOC, ~1 session.
+6d.1e.4–6d.1e.7 follow (block dispatchers; flow dispatchers;
+document/directive + top-level dispatch composition; axiom discharge)
+over ~3–4 further sessions. Total 6d.1e.3–6d.1e.7 budget: ~2,500–
+4,500 LOC remaining (Reflection 68's honest accounting, slightly
+narrowed after 6d.1e.2's actual cost data). Then 6d.2 (IndexedWfa,
+~1 session) and 6d.3 (Correctness + Completeness + Grammable, ~1
+session) close out 6d.
 The one surviving Phase-3 carry-forward is **5b.6's fold-machine
 invariant for non-empty input** (`foldBlockContentGo_preserves`),
 explicitly deferred to the load-pipeline step that will quote it
@@ -1487,7 +1507,7 @@ against canonicalised input.
 | `L4YAML/Parser/FuelIx.lean` | n/a | ~61 | 0 (staging — Guardrail 1; new in Phase 3 Step 6b: indexed twin of legacy `Parser/Fuel.lean`; `initialFuelIx : Indexed.TokenStream input → Nat := fun ts => 4 * ts.tokens.size + 4`; arithmetic byte-identical to legacy, container type swaps to `Indexed.TokenStream input`; namespace `L4YAML.TokenParser.Indexed`) |
 | `L4YAML/Parser/TokenParserIx.lean` | n/a | ~647 | 0 (staging — Guardrail 1; new in Phase 3 Step 6b: indexed twin of legacy `Parser/TokenParser.lean`; 18-function mutual block (`set_option maxHeartbeats 400000 in mutual`, structural recursion on `fuel`) — `parseNodeContent`, `parseNode`, `parseBlockSequence`, `parseBlockSequenceLoop`, `parseImplicitBlockSequence`, `parseImplicitBlockSequenceLoop`, `parseBlockMapping`, `parseBlockMappingEntryValue`, `handleBlockMappingKeyEntry`, `handleBlockMappingValueEntry`, `parseBlockMappingLoop`, `parseFlowSequence`, `parseFlowSequenceLoop`, `parseFlowMapping`, `parseFlowMappingValue`, `parseExplicitKey`, `parseFlowMappingLoop`, `parseSinglePairMapping`; stream/document layer outside the mutual block — `StreamState` + `StreamState.validNextToken`, `parseDirectives`, `prepareDocumentState`, `parseDocument`, `parseStreamLoop`, `parseStreamIx`; top-level entry `parseStreamIx {input : String} (tokens : Indexed.TokenStream input) (trackPositions : Bool := false) : Except ScanError (Array YamlDocument)` — output type plain `Array YamlDocument` since the L2 → L1 step of the four-stage pipeline erases the type-level binding to `input`; departures from legacy — every function carries `{input : String}` implicit, token accessors swap from `Positioned.val`/`Positioned.pos` to `IxToken.token`/`IxToken.start`, random-access reads in `parseBlockMappingEntryValue` use `ps.tokens.get?` + `match` rather than `[i]!` to avoid the `Inhabited (IxToken input)` constraint that proof-field-bearing `IxToken` cannot satisfy (Reflection 61); all `@[yaml_spec ...]` attributes reproduced verbatim — the env extension keys by fully-qualified `declName` so `L4YAML.TokenParser.parseNode` and `L4YAML.TokenParser.Indexed.parseNode` coexist without collision; namespace `L4YAML.TokenParser.Indexed`) |
 | `L4YAML/Proofs/Parser/IndexedWellBehaved.lean` | n/a | ~4,502 | 0 axioms locally as of Step 6d.1e.1 (the 2 §5c forward-reference axioms relocated to the sister file `Proofs/Production/IndexedScannerPlainScalarValid.lean`). Staging — Guardrail 1; namespace `L4YAML.Proofs.Indexed.WellBehaved` — at cutover renamed back to `L4YAML.Proofs.ParserWellBehaved`. Grew incrementally across five sub-steps. **6d.1a (~210 LOC, initial check-in)**: 5 supporting predicates + 4 `flowNestingIx_go_*` step lemmas (mechanical ports of legacy `flowNesting_go_*`, initially keyed on `Array (IxToken input)`). **6d.1b (~613 LOC delta → 823 LOC)**: Option B bridging settled (Reflection 65) — predicates re-targeted to `Indexed.TokenStream input` with the new `GetElem` instance in `Indexed/TokenStream.lean`. Pre-mutual-block §5 sections ported: §5 C2 Infrastructure (5 lemmas incl. `peek_some_bounded_ix`), §5a flowNesting step lemmas (6 lemmas), §5b Scannable monotonicity (2 verbatim), §5d Scannable for tag/anchor (1 verbatim), §5d′ applyNodeFinalization preservation (4 lemmas), §5e′ parseNodeProperties preservation (4 lemmas + `unfold_loop_at_ix` elaborator + file-local `advance_tokens_eq_ix` `@[simp]`). **6d.1c (~2,134 LOC delta → 2,957 LOC)**: structurally hard mid-section of the C2 chain ported (Reflection 66). §5e″ `tryConsume_*_ix` helpers (4 lemmas); §5e₂ `parseDirectives_tokens_ix` + `parseNode_tokens_preserved_ix`; §5e mutual block (`ParseNodeWBIx` + `parseNodeWBIx_apply` + 4 extractors); §5e″ sub-parser WB (`push_*` helpers + 16 `_wb_ix` theorems for the 11 mutually-recursive parser functions); `parseNode_wb_zero_ix` + `parseNodeContent_wb_ix` + `parseNode_alias_*_ix` (Pattern 4b guards) + `parseNode_wb_all_ix` strong induction; §5f parseDocument scannability chain (4 lemmas); §5g parseStream output scannability chain (4 lemmas culminating in `parseStream_output_scannable_ix`). §5c staged as 2 forward-reference axioms (Option β) — `indexed_scanner_flowAwarePSV_axiom` + `indexed_scanner_flowBracketsMatched_axiom`. **6d.1d (~1,547 LOC delta → 4,504 LOC)**: §5f position monotonicity chain (`ParseNodePosMonoIx` + `parseNodePosMonoIx_apply` + `tryConsume_pos_mono_ix` + `parseNodeProperties_pos_mono_ix` + 16 sub-parser `_pos_mono_ix` theorems + `parseNodeContent_pos_mono_ix` + `parseNode_pos_mono_all_ix` main induction + `parseNode_emitter_advances_ix`); §5d₃ Wadler `parseFlowMappingLoop_pairs_grow_ix`; emitter-bridge (`flowBracketBalanceIx` + 3 helpers, `peek_some_val_ix`, `peek_of_pos_val_ix`, `ParseNodeFlowSeqOkIx` + `.mono`, `parseFlowSequenceLoop_emitter_ok_ix`, `ParseEntryFlowMapOkIx` + `.mono`, `parseFlowMappingLoop_emitter_ok_ix`). **6d.1e.1 (~−2 LOC net: axiom block removed, replaced with shorter relocation comment; plus ~80 LOC of patches to 6d.1d proofs)**: 2 §5c axioms relocated to `Proofs/Production/IndexedScannerPlainScalarValid.lean` with tightened `(_h_scan : scanIx input = .ok tokens)` preconditions; `IndexedWellBehaved.lean` now 0 axioms locally; the previous session's unverified "lake build green" claim caught and patched (`by_contra` → `by_cases`/`exfalso`; `Option.map_eq_some'`/`_some'` → `_iff`/no-apostrophe form; pinned `k` metavar at `peek_of_pos_val_ix` callsites; `show ps.pos < ps.tokens.size` to bridge `Array.size`/`TokenStream.size` for omega). Reflections 64 + 65 + 66 + 67 + 68 document the design choices and one repeated-class-of-failure across them) |
-| `L4YAML/Proofs/Production/IndexedScannerPlainScalarValid.lean` | n/a | ~441 | 2 axioms (`scan_flow_aware_psv_ix_axiom` + `scan_flow_brackets_matched_ix_axiom`, both with real `(_h_scan : ScannerStateIx.scanIx input = .ok tokens)` preconditions) — staging — Guardrail 1; new in Phase 3 Step 6d.1e.1; namespace `L4YAML.Proofs.Indexed.ScannerPlainScalarValid` (at cutover renamed back to `L4YAML.Proofs.ScannerPlainScalarValid`). Foundation tier of the §5c discharge workstream: §1 PSV propagation primitives, §2 flowNestingIx prefix stability + push lemmas, §3 FlowContextPSVIx propagation primitives, §4 `FlowNestingInvIx` bridge invariant, §5 emit-step building blocks (deferred to 6d.1e.2 alongside their per-action consumers), §6 the 2 relocated axioms with tightened preconditions. Per-action preservation chain (deferred to Step 6d.1e.2+, ~3,000–5,000 LOC across ~4–6 future sessions per Reflection 68) will discharge the axioms |
+| `L4YAML/Proofs/Production/IndexedScannerPlainScalarValid.lean` | n/a | ~1101 | 2 axioms (`scan_flow_aware_psv_ix_axiom` + `scan_flow_brackets_matched_ix_axiom`, both with real `(_h_scan : ScannerStateIx.scanIx input = .ok tokens)` preconditions) — staging — Guardrail 1; new in Phase 3 Step 6d.1e.1; namespace `L4YAML.Proofs.Indexed.ScannerPlainScalarValid` (at cutover renamed back to `L4YAML.Proofs.ScannerPlainScalarValid`). **6d.1e.1** (~441 LOC initial): §1 PSV propagation primitives, §2 flowNestingIx prefix stability + push lemmas, §3 FlowContextPSVIx propagation primitives, §4 `FlowNestingInvIx` bridge invariant, §7 (originally §6) the 2 relocated axioms with tightened preconditions. **6d.1e.2** (~660 LOC delta → ~1101 LOC): §5 emit-step building blocks — `PlainScalarsValidIx_push_non_plain` (array-level), `emit_preserves_tokens_at`, `emit_new_token_token`, `emit_non_plain_preserves_PlainScalarsValidIx`, `emit_non_flow_preserves_FlowNestingInvIx`, `emit_non_flow_non_plain_preserves_FlowContextPSVIx`; §6 indent-stack preservation — full preservation suites (prefix/flowLevel/new-tokens-not-plain/new-tokens-not-flow/`_preserves_FlowNestingInvIx`/`_preserves_PlainScalarsValidIx`/`_preserves_FlowContextPSVIx`) for `unwindIndentsLoopIx`/`unwindIndentsIx`, condensed suites for `pushSequenceIndentIx`/`pushMappingIndentIx`, and the full suite for `saveSimpleKeyIx` (with auxiliary `saveSimpleKeyIx_tokens_cases` disjunction + `twoPlaceholderEmits_new_not_plain`/`_not_flow` helpers to avoid the if-tree unfolding trap, see Reflection 69). Per-action preservation chain remainder (deferred to Step 6d.1e.3+, ~2,500–4,500 LOC across ~3–4 future sessions per Reflection 68 narrowed by 6d.1e.2's actual cost) will discharge the axioms |
 | `L4YAML/Proofs/Parser/IndexedNodeProofs.lean` | n/a | ~1,814 | 0 (staging — Guardrail 1; new in Phase 3 Step 6c.1: indexed twin of legacy `Proofs/Parser/ParserNodeProofs.lean` (1,781 LOC); namespace `L4YAML.Proofs.Indexed.NodeProofs` — at cutover renamed back to `L4YAML.Proofs.ParserNodeProofs`. Re-proves `AG` (AnchorsGrow) propagation through `parseNode` and all 17 sub-parser helpers (`parseBlockSequenceLoop`/`parseBlockSequence`/`parseImplicitBlockSequenceLoop`/`parseImplicitBlockSequence`/`parseBlockMappingEntryValue`/`handleBlockMappingKeyEntry`/`handleBlockMappingValueEntry`/`parseBlockMappingLoop`/`parseBlockMapping`/`parseExplicitKey`/`parseFlowMappingValue`/`parseSinglePairMapping`/`parseFlowSequenceLoop`/`parseFlowSequence`/`parseFlowMappingLoop`/`parseFlowMapping`/`parseNodeProperties`/`parseNodeContent`), culminating in `parseNode_ag_all : ∀ n, ParseNodeAG input n` by strong induction on fuel; and `AAR` (AllAliasesResolve) propagation through the same family, culminating in `parseNode_aar_all : ∀ n, ParseNodeAAR input n`. Helper extractors `parseNode_anchors_grow` and `parseNode_aliases_resolve'` exposed for downstream callers. Structural changes from legacy (3, all mechanical): state-type substitution `ParseState → ParseStateIx input` with `variable {input : String}` at file scope, accessor-namespace shift `ParseState.X → ParseStateIx.X` for advance/tryConsume/addAnchor, **explicit** `input : String` parameter on the `ParseNodeAG` and `ParseNodeAAR` predicate definitions — implicit `input` causes "don't know how to synthesize implicit argument `input`" errors at `(h_ih : ParseNodeAG n)` hypothesis sites because the predicate returns `Prop` with no `input` in the result type to unify against, and hypothesis parameters are resolved before the later `(ps : ParseStateIx input)` arguments can supply context (Reflection 63). Only one heartbeat override needed adjustment — `parseSinglePairMapping_ag` bumped from 800,000 to 1,600,000 to absorb the 17-arm `split <;> first | contradiction | skip` cascade under the new `ParseStateIx input` dependent-type unification. Bridge lemma `any_name_implies_findSome_isSome'` copied into the indexed namespace to keep the cutover atomic. **Status**: Step 6c's `IndexedWfa` half **deferred to Step 6d** — `WfaProofs` consumes three WB lemmas directly that don't have indexed twins yet) |
 | `L4YAML/Parser/ParseStateIx.lean` | n/a | ~304 | 0 (staging — Guardrail 1; new in Phase 3 Step 6a: indexed twin of legacy `Parser/State.lean`, parameterised by `input : String`; structure `ParseStateIx (input : String)` carries `tokens : Indexed.TokenStream input` + `pos : Nat` cursor + auxiliary state (`anchors`, `tagHandles`, `trackPositions`, `currentPath`, `nodePositions`); explicit `Inhabited (ParseStateIx input)` instance built from `Indexed.TokenStream.empty input` since `IxToken input`'s proof fields prevent deriving; navigation API in staging namespace `L4YAML.TokenParser.Indexed` — `mk'`, `hasMore`, `peekIx?` (new — returns `Option (IxToken input)` rolling token + positions + bound proofs into one accessor), `peek?` / `peekPos?` derived via `peekIx?.map (·.token)` / `peekIx?.map (·.start)`, `advance`, `lastPos?` (rewritten around `get? (ps.pos - 1)` since `Array.get?`-based form avoids the `Inhabited (IxToken input)` constraint that `[i]!` indexing demands), `currentLine`, `expect`, `tryConsume`, `addAnchor`; node-property scaffolding ported verbatim from legacy — `NodeProperties`, `resolveTag`, `parseNodeProperties` `@[yaml_spec "6.9" 96]`, `emptyNode` `@[yaml_spec "7.2" 105/106]`, `applyNodeFinalization`, `validateNodeProps`) |
 | `L4YAML/Proofs/Scanner/IndexedDispatch.lean` | n/a | ~1620 | 0 (staging — Guardrail 1; new in Phase 3 Step 5b.1b.i: `IxCursor.advanceN_offset_monotonic`; `ScannerStateIx` cursor-preservation lemmas for `emit*`/`overwriteAtCursor`/`advance*`/`pushSequenceIndentIx`/`pushMappingIndentIx`/`unwindIndentsLoopIx`/`unwindIndentsIx`/`saveSimpleKeyIx`/`scanValuePrepareIx`; `skipSpacesS`/`skipWhitespaceS`/`skipToContentS` offset-monotonicity lifts; Step 5b.1b.ii: 10 per-dispatcher offset-monotonicity lemmas — `scanBlockEntryIx`/`scanKeyIx`/`scanValueIx`/`scanFlowEntryIx`/`scanDocumentStartIx`/`scanDocumentEndIx`/`scanFlowSequenceStartIx`/`scanFlowSequenceEndIx`/`scanFlowMappingStartIx`/`scanFlowMappingEndIx`; Step 5b.1b.iii: 5 per-dispatcher offset-monotonicity lemmas — `scanAnchorOrAliasIx`/`scanTagIx`/`scanYamlDirectiveIx`/`scanTagDirectiveIx`/`scanDirectiveIx`; Step 5b.1b.iv-pre: 6 tokens-size simp lemmas — `skipToContentS_tokens`/`skipSpacesS_tokens`/`skipWhitespaceS_tokens`/`advance_tokens`/`advanceN_tokens`/`emit_tokens_size`/`emitAt_tokens_size`/`emitAtCursor_tokens_size`/`overwriteAtCursor_tokens_size`; 6 indent/key helper `_tokens_size_le` lemmas — `unwindIndentsLoopIx`/`unwindIndentsIx`/`pushSequenceIndentIx`/`pushMappingIndentIx`/`saveSimpleKeyIx`/`scanValuePrepareIx`; 12 dispatcher `_tokens_size_le` lemmas — `scanBlockEntryIx`/`scanKeyIx`/`scanValueIx`/`scanFlowEntryIx`/`scanFlowSequenceStartIx`/`scanFlowSequenceEndIx`/`scanFlowMappingStartIx`/`scanFlowMappingEndIx`/`scanDocumentStartIx`/`scanDocumentEndIx`/`scanAnchorOrAliasIx`/`scanTagIx`/`scanYamlDirectiveIx`/`scanTagDirectiveIx`/`scanDirectiveIx`; Step 5b.1b.iv-cont: 7 top-level pairs (`_offset_monotonic` + `_tokens_size_le`) for `scanNextTokenIx_preprocess`/`scanNextTokenIx_dispatchStructural`/`scanNextTokenIx_dispatchFlowIndicators`/`scanNextTokenIx_dispatchBlockIndicators`/`scanNextTokenIx_dispatchContent`/`scanNextTokenIx` plus `scanLoopIx_tokens_size_le`; Step 5b.2: 6 `flowLevel`/`inFlow` preservation simp lemmas — `emit_flowLevel`/`advance_flowLevel`/`pushSequenceIndentIx_flowLevel`/`pushMappingIndentIx_flowLevel`/`emit_inFlow`/`advance_inFlow`/`pushMappingIndentIx_inFlow` — used to collapse the post-advance `!s.inFlow` tab-check guard against the *original* `s.inFlow`, then `scanBlockEntryIx`/`scanKeyIx` `_offset_monotonic` + `_tokens_size_le` pairs re-derived with the new throw branches; Step 5b.3: 2 new `scanValueClearKeyIx` helper lemmas (`_cursor` `@[simp]` + `_tokens_size_le`), `scanValueIx_offset_monotonic` and `_tokens_size_le` re-proved with the legacy `simp only [bind, Except.bind] at h; split at h; cases h | …` pattern; same commit fixed cache-hidden breakage in `Proofs/Scanner/IndexedScalar.lean` (quoted/parse-header-loop `split at h` shapes, `blockHeaderToBodyIx` `by_cases hp` for the `match`-inside-`if` condition) and `Proofs/Scanner/IndexedIndent.lean::skipToContent_at_content` (`'#'` literal → `isCommentBool ch`)) |
@@ -4669,7 +4689,8 @@ proof.
 | **6d.1c** ✅ | **WellBehaved §5e + §5e″ + §5e₂ + §5f + §5g port** — `IndexedWellBehaved.lean` grew from ~823 → ~2957 LOC (+2,134), covering the structurally hard mid-section of the C2 chain: §5e mutual `ParseNodeWBIx` predicate + 4 single-projection extractors + `parseNodeWBIx_apply`; §5e″ sub-parser well-behavedness — `push_all_scannable`, `push_pair_scannable`, the 4 `tryConsume_*_ix` helpers, and 16 sub-parser `_wb_ix` theorems (`parseBlockSequenceLoop`/`parseBlockSequence`, `parseBlockMappingEntryValue`/`bevWBIx`/`handleBlockMappingKeyEntry`/`handleBlockMappingValueEntry`/`mapping_recurse`/`parseBlockMappingLoop`/`parseBlockMapping`, `parseImplicitBlockSequenceLoop`/`parseImplicitBlockSequence`, `parseSinglePairMapping`, `parseFlowSequenceLoop`/`parseFlowSequence`, `parseFlowMappingValue`/`parseFlowMappingValue_tokens_preserved`, `parseExplicitKey_tokens_preserved`/`parseExplicitKey_wb`, `parseFlowMappingLoop_tokens_preserved`/`flow_mapping_recurse`/`explicitKey_val_recurse`/`implicitKey_val_recurse`/`parseFlowMappingLoop`/`parseFlowMapping`); §5e₂ `parseDirectives_tokens_ix` + `parseNode_tokens_preserved_ix`; `parseNodeContent_wb_ix` + `parseNode_alias_tokens_ix` + `parseNode_alias_flowNesting_ix` (Pattern 4b guards); `parseNode_wb_zero_ix` base case + `parseNode_wb_all_ix` strong-induction theorem; §5f `prepareDocumentState_tokens_preserved_ix`, `parseDocument_tokens_preserved_ix`, `parseDocument_value_cases_ix`, `parseDocument_scannable_ix`; §5g `expect_tokens_ix`, `parseStreamLoop_docs_from_parseDocument_ix`, `parseStream_doc_from_parseDocument_ix`, `parseStream_output_scannable_ix`. §5c (scanner-side bridge) staged as 2 forward-reference axioms (`indexed_scanner_flowAwarePSV_axiom`, `indexed_scanner_flowBracketsMatched_axiom`) — Option β chosen to keep 6d.1c focused; both must be discharged by Step 6f cutover. **Landed** in Step 6d.1c commit (sorry-free, `lake build` 385/385 green). **What's deferred to Step 6d.1d**: §5f position monotonicity chain (~1,500 LOC, 18 sub-parser pos-mono theorems + main induction); §5d₃ Wadler-style theorems for `parseFlowMappingLoop`; emitter-specific lemmas (`peek_some_val`/`ParseNodeFlowSeqOk`/`ParseEntryFlowMapOk`/`parseFlowSequenceLoop_emitter_ok`/`parseFlowMappingLoop_emitter_ok`) needed by `EmitterScannability.lean` at cutover; discharge of the 2 §5c axioms. | `Proofs/Parser/IndexedWellBehaved.lean` (extended) | ~2,134 (landed) | 1 (actual) |
 | **6d.1d** ✅ | **WellBehaved position monotonicity + §5d₃ Wadler + emitter-bridge lemmas** — `IndexedWellBehaved.lean` grew from ~2,957 → ~4,504 LOC (+1,547), still sorry-free, `lake build` 385/385 green, 2 axioms unchanged (§5c forward-reference pair). Ported: §5f position monotonicity (`ParseNodePosMonoIx` predicate + `parseNodePosMonoIx_apply` + `tryConsume_pos_mono_ix` + `parseNodeProperties_pos_mono_ix` + 16 sub-parser `_pos_mono_ix` theorems + `parseNodeContent_pos_mono_ix` + `parseNode_pos_mono_all_ix` main induction + `parseNode_emitter_advances_ix`); §5d₃ Wadler `parseFlowMappingLoop_pairs_grow_ix`; emitter-bridge lemmas (`flowBracketBalanceIx` + 3 helper theorems, `peek_some_val_ix`, `peek_of_pos_val_ix`, `ParseNodeFlowSeqOkIx` + `.mono`, `parseFlowSequenceLoop_emitter_ok_ix`, `ParseEntryFlowMapOkIx` + `.mono`, `parseFlowMappingLoop_emitter_ok_ix`). At Step 6f cutover these names drop their `_ix` suffix and `EmitterScannability.lean` consumes them as the legacy `peek_some_val`/`ParseNodeFlowSeqOk`/`ParseEntryFlowMapOk`/`parseFlowSequenceLoop_emitter_ok`/`parseFlowMappingLoop_emitter_ok` lemmas. **What's deferred to Step 6d.1e**: discharge of the 2 §5c forward-reference axioms (legacy `Proofs/Production/ScannerPlainScalarValid.lean` is 5,584 LOC of scanner-side reasoning — too large to fold into 6d.1d as initially planned at ~700 LOC; needs a session of its own). Reflection 67 documents the scope discovery. | `Proofs/Parser/IndexedWellBehaved.lean` (extended) | ~1,547 (landed) | 1 (actual) |
 | **6d.1e.1** ✅ | **Scanner-side proof file scaffolding + axiom relocation + pre-existing 6d.1d build-break fix** — A pre-existing build break was discovered when starting 6d.1e: 6d.1d's `peek_some_val_ix` / `peek_of_pos_val_ix` lemmas (and the §5d₃ Wadler / emitter-bridge proofs that depend on them) used `(ps.tokens.tokens[ps.pos]!)` bang-index access patterns that require `Inhabited (IxToken input)` — an instance Reflection 61 had previously argued against. The 6d.1d commit reported "lake build 385/385 green" but the build was actually failing on these. Resolution this session: (a) added a **proof-only `Inhabited (IxToken input)`** instance in `Indexed/TokenStream.lean` (zero-positioned `streamStart` default; type-level disjointness preserved since the default is still `IxToken input`-typed), (b) replaced `Option.map_eq_some'` / `Option.map_some'` (unknown in plain Lean) with `Option.map_eq_some_iff` / `Option.map_some`, (c) replaced `by_contra` (Mathlib-only) with `by_cases`/`exfalso`, (d) pinned `peek_of_pos_val_ix`'s `k` metavariable explicitly at the four call sites that previously relied on elaboration ordering, (e) replaced `show ps.pos < ps.tokens.tokens.size` with `show ps.pos < ps.tokens.size` to keep `omega` from seeing `Array.size` and `TokenStream.size` as separate opaque variables. **Then** Step 6d.1e.1 work proper: created `Proofs/Production/IndexedScannerPlainScalarValid.lean` (~441 LOC) holding (§1) PSV propagation primitives (`PlainScalarsValidIx_empty`, `_of_prefix_and_new`, `psv_match_ix`, `psv_match_of_ne_plain_ix`, `psv_of_not_plain_ix`), (§2) flowNestingIx prefix stability and push lemmas (`_go_prefix_stable`, `_prefix_stable`, `_go_single_push`, `_push`, `_push_non_flow`, `_go_non_flow`), (§3) FlowContextPSVIx propagation primitives (`_empty`, `_of_prefix_and_new`, `fpsv_of_not_plain_ix`), (§4) `FlowNestingInvIx` scanner-state bridge invariant, (§6) two staged axioms `scan_flow_aware_psv_ix_axiom` + `scan_flow_brackets_matched_ix_axiom` **with tightened preconditions** — `(_h_scan : ScannerStateIx.scanIx input = .ok tokens)` instead of the placeholder `(h_from_scanner : True)` from 6d.1c. Removed the 2 `indexed_scanner_*_axiom` declarations from `IndexedWellBehaved.lean` (relocated to the new file). §5 "Generic emit-step preservation building blocks" is **deferred to Step 6d.1e.2** — those lemmas are tightly coupled to the per-action consumers and landing them divorced from consumers risks `simp`-set drift. **Landed** in Step 6d.1e.1 commit (sorry-free, `lake build` **truly** 385/385 green, axiom count: **0** in `IndexedWellBehaved.lean` itself, **2** in the new sister file, **2** in Phase 3 closure). Reflection 68 documents the discovery of the 6d.1d build break and what to learn from it. | `Proofs/Production/IndexedScannerPlainScalarValid.lean` (new, ~441 LOC), `Proofs/Parser/IndexedWellBehaved.lean` (axiom block removed; pre-existing 6d.1d errors patched), `Indexed/TokenStream.lean` (proof-only `Inhabited (IxToken input)` instance) | ~470 (landed) | 1 (actual) |
-| **6d.1e.2+** | **Per-action preservation chain port** — port the ~50–80 per-action preservation lemmas that the legacy chain culminates in `scan_flow_aware_psv` + `scan_flow_brackets_matched` depend on. Each indexed scanner action (`scanPlainScalarIx`, `scanTagIx`, `scanBlockScalarIx`, `scanDoubleQuotedIx`, `scanSingleQuotedIx`, `scanBlockEntryIx`, `scanKeyIx`, `scanValueIx`, `unwindIndentsLoopIx`, `saveSimpleKeyIx`, `pushSequenceIndentIx`, `pushMappingIndentIx`, `scanDocumentStartIx`, `scanDocumentEndIx`, `scanYamlDirectiveIx`, `scanTagDirectiveIx`, `scanDirectiveIx`, `scanAnchorOrAliasIx`, `scanFlowSequenceStartIx`, `scanFlowSequenceEndIx`, `scanFlowMappingStartIx`, `scanFlowMappingEndIx`, `scanFlowEntryIx`, and the dispatchers) needs three preservation theorems (PSV, FlowContextPSVIx, FlowNestingInvIx), each ~30–100 LOC. Plus §5 emit-step building blocks (deferred from 6d.1e.1). Plus the top-level dispatch composition (`scanNextTokenIx_preserves_*`, `scanLoopIx_preserves_*`, `scanIx_preserves_*`). **Realistic budget**: ~3,000–5,000 LOC, broken into ~4–6 sub-sessions (e.g., 6d.1e.2 = block emit-step + indent stack; 6d.1e.3 = plain/tag/quoted scalars; 6d.1e.4 = block dispatchers; 6d.1e.5 = flow dispatchers; 6d.1e.6 = document/directive layers + top-level dispatch composition; 6d.1e.7 = discharge the 2 axioms). Final state at completion: **0 axioms** in the Phase 3 closure, ready for Step 6f cutover. Reflection 68 explains why the original ~1–2k LOC, 1–2 session estimate from Reflection 67 itself proved too small once the legacy chain's true dependency graph was traced. | `Proofs/Production/IndexedScannerPlainScalarValid.lean` (extensions), `IndexedWellBehaved.lean` (eventually: import + use proven theorems instead of the staged axioms) | ~3,000–5,000 | 4–6 |
+| **6d.1e.2** ✅ | **§5 emit-step building blocks + §6 indent-stack preservation** — Landed in this session. §5 (~120 LOC): `PlainScalarsValidIx_push_non_plain` (array-level twin of legacy `PlainScalarsValid_push_non_plain`), `emit_preserves_tokens_at` (token preservation at low indices through state-level emit), `emit_new_token_token` (new-token characterization at the emit position), and the three state-level emit-preservation lemmas — `emit_non_plain_preserves_PlainScalarsValidIx`, `emit_non_flow_preserves_FlowNestingInvIx`, `emit_non_flow_non_plain_preserves_FlowContextPSVIx`. §6 (~540 LOC): per-action preservation for the five indent-stack scanner ops. **`unwindIndentsLoopIx` / `unwindIndentsIx`** (~310 LOC including the auxiliary `emitBlockEndPop` abbreviation that hides the indents.pop record-update from the predicates): the full 7-lemma suite — `_preserves_prefix` (induction on fuel), `_preserves_flowLevel` (`rw [ih]; rfl` to handle the record-update unfolding), `_new_tokens_not_plain` and `_new_tokens_not_flow` (each via `emit_new_token_token` to reduce the match), `_preserves_FlowNestingInvIx`, `_preserves_PlainScalarsValidIx`, `_preserves_FlowContextPSVIx` (each composes the §1/§3 prefix-and-new lemma with the size/prefix/new-token facts above). **`pushSequenceIndentIx`/`pushMappingIndentIx`** (~70 LOC each): condensed suites — `_preserves_prefix`/`_preserves_PlainScalarsValidIx`/`_preserves_FlowNestingInvIx`/`_preserves_FlowContextPSVIx` (no separate `_new_tokens_*` needed since the single emitted `.blockSequenceStart` / `.blockMappingStart` is non-plain/non-flow by `decide`). **`saveSimpleKeyIx`** (~290 LOC): full suite — with auxiliary `saveSimpleKeyIx_tokens_cases` disjunction lemma (identity branch vs two-`.placeholder`-emit branch via `unfold + split + left/right`) to avoid the if-tree unfolding trap that broke earlier attempts, plus `twoPlaceholderEmits_new_not_plain`/`_not_flow` helpers that handle the two new-position cases. **0 new axioms** introduced; **2 axioms** remain in Phase 3 closure (the same 2 from 6d.1e.1, still in §7). **Landed** sorry-free, `lake build` 385/385 green. **Cost**: ~660 LOC (overshoot vs the Blueprint's ~520 LOC estimate — the ~140 LOC of overshoot comes from the indexed proofs needing extra `change`/`show`-based TokenStream↔Array bridging, see Reflection 69). | `Proofs/Production/IndexedScannerPlainScalarValid.lean` (extended from ~441 LOC to ~1101 LOC; §5 + §6 added; original §6 axioms renumbered to §7) | ~660 (landed) | 1 (actual) |
+| **6d.1e.3+** | **Remaining per-action preservation chain port** — scalar scanners (`scanPlainScalarIx`, `scanTagIx`, `scanBlockScalarIx`, `scanDoubleQuotedIx`, `scanSingleQuotedIx`, `scanAnchorOrAliasIx`); block-context dispatchers (`scanBlockEntryIx`, `scanKeyIx`, `scanValueIx`, `scanValuePrepareIx`, `scanValueClearKeyIx`, `scanNextTokenIx_dispatchBlockIndicators`); flow-context dispatchers (`scanFlowSequenceStartIx`/`scanFlowSequenceEndIx`/`scanFlowMappingStartIx`/`scanFlowMappingEndIx`/`scanFlowEntryIx`, `scanNextTokenIx_dispatchFlowIndicators`); document/directive layers (`scanDocumentStartIx`/`scanDocumentEndIx`/`scanYamlDirectiveIx`/`scanTagDirectiveIx`/`scanDirectiveIx`, `scanNextTokenIx_dispatchStructural`/`_preprocess`/`_dispatchContent`/`scanNextTokenIx`) + `scanLoopIx_preserves_*` top-level dispatch composition; finally discharge the 2 axioms in 6d.1e.7. Each per-action lemma needs three preservation theorems (PSV, FlowContextPSVIx, FlowNestingInvIx). **Revised budget after 6d.1e.2's actual cost data**: ~2,500–4,500 LOC, broken into ~3–4 sub-sessions (6d.1e.3 = scalar scanners ~800 LOC; 6d.1e.4 = block dispatchers ~700 LOC; 6d.1e.5 = flow dispatchers ~600 LOC; 6d.1e.6 = document/directive + top-level dispatch composition ~900 LOC; 6d.1e.7 = discharge the 2 axioms ~150 LOC). Final state at completion: **0 axioms** in the Phase 3 closure, ready for Step 6f cutover. | `Proofs/Production/IndexedScannerPlainScalarValid.lean` (extensions), `IndexedWellBehaved.lean` (eventually: import + use proven theorems instead of the staged axioms) | ~2,500–4,500 | 3–4 |
 | **6d.2** | **WfaProofs** — `Proofs/Parser/IndexedWfa.lean` (~1,692 LOC), **moved here from the original Step 6c scope**. Re-proves `WellFormedAnchors`/`Scannable`/`AllAliasesResolve` preservation through `parseNode`. Consumes three WellBehaved lemmas directly (`parseNode_wb_all`, `parseNodeContent_wb`, `parseNodeProperties_tokens`), which is why it ships here rather than next to NodeProofs in 6c.1. Mechanical once 6d.1c's WB mutual block is sorry-free. | `Proofs/Parser/IndexedWfa.lean` | ~1,692 | 1 |
 | **6d.3** | **Correctness + Completeness + Grammable** — `Proofs/Parser/{IndexedCorrectness,IndexedCompleteness,IndexedGrammable}.lean`. Composes the WB + Wfa chain to produce `parseStreamIx_output_valid_nodes`. Each file is purely a composition layer once 6d.1c + 6d.2 land. | `Proofs/Parser/IndexedCorrectness.lean`, `IndexedCompleteness.lean`, `IndexedGrammable.lean` | ~515 | 1 |
 | **6e** | `IndexedComposition` — top-level `scanAndParseIx : String → Except _ (Array YamlDocument)` chaining `scanIx` then `parseStreamIx`. Exhibit end-to-end roundtrip on the Step 5c corpus via `native_decide` (extends `IndexedRoundtrip` with a parser-level check). | `Parser/IndexedComposition.lean`, `Proofs/Parser/IndexedComposition.lean` | ~250 | 1 |
@@ -5323,6 +5344,97 @@ chain has a deep dispatching stack — the same class of estimate
 failure resurfaced in 6d.1e itself, this time documented up front in
 the 6d.1e.2+ ladder rather than discovered mid-port).
 
+##### Reflection 69 — *`TokenStream`-wrapped `Array` proofs need explicit `change`/`show` bridging to access `Array.size_push` / `Array.getElem_push_*`, and `saveSimpleKeyIx`'s nested `if`-chain breaks `unfold + split at hj ⊢` because the goal doesn't follow `hj`'s case-split.*
+
+**Why**: Step 6d.1e.2's indent-stack preservation chain repeatedly
+hit the same class of mid-proof obstacles, all rooted in the same
+underlying issue: `Indexed.TokenStream input` is a one-field wrapper
+around `Array (IxToken input)`, and although `TokenStream.size = ts.tokens.size`
+and `(ts.push t).tokens = ts.tokens.push t` hold *definitionally*,
+`omega` and `rw [Array.getElem_push_eq]` do not see these as the same
+term unless the goal is bridged via `change` or `show`.
+
+Three concrete symptoms in the session:
+
+1. **`omega` failures on size relations**: with `h : i < s.tokens.size`
+   and a goal needing `i < (s.tokens.tokens.push _).size`, omega
+   refuses because `s.tokens.size` and `s.tokens.tokens.size` are
+   separate opaque atoms in its view. Fix: `change i <
+   (s.tokens.tokens.push _).size at goal; rw [Array.size_push]; omega`
+   forces omega to see `s.tokens.tokens.size + 1` against `i <
+   s.tokens.size` (definitionally `i < s.tokens.tokens.size`).
+
+2. **`rw [Array.getElem_push_eq]` failing on a `match` target**: with
+   goal `match ((s.emit tok).tokens[s.tokens.size]).token with | …`,
+   `rw [Array.getElem_push_eq]` cannot find the pattern because the
+   bound proof and the index live inside `.[…]` syntax that the
+   rewrite engine doesn't unify naïvely. Fix: pre-compute the
+   indexed token as an `IxToken` (not its `.token` field) via
+   `have h_get : (s.emit tok).tokens[s.tokens.size]'_ = IxToken.mk' …
+   := by change (s.tokens.tokens.push _)[_]'_ = _; exact
+   Array.getElem_push_eq ..`, then `rw [h_get]; rfl`. This factored
+   out into the helper `emit_new_token_token` that §6 reuses.
+
+3. **`unfold saveSimpleKeyIx at hj ⊢; split at hj`** does **not**
+   reduce the goal to the matching case. The goal retains the full
+   nested `if (s.inFlow && …) then s else if s.simpleKeyAllowed then
+   (have idx := …; have s := s.emit .placeholder; have s := s.emit
+   .placeholder; { s with simpleKey := … }) else s` form even though
+   `hj` has been narrowed. The `split` tactic with `at hj` only
+   modifies the named hypothesis; the goal stays untouched.
+   `simp only [if_pos …, if_neg …]` based on the renamed
+   case-condition hypotheses works in principle but is fragile to
+   the `rename_i` ordering. Fix that worked: introduce a private
+   disjunction lemma
+   `saveSimpleKeyIx_tokens_cases : … = s.tokens ∨ … = (twoEmits).tokens`
+   via `unfold + split + left/right` (which is fine because we are
+   not trying to also rewrite the goal in that proof), then in the
+   consumer use `rcases` + `simp only [h_eq] at hj ⊢` to rewrite
+   both sides at once.
+
+**How to apply**:
+
+1. **Default to array-level proofs**: when a lemma is about a
+   `TokenStream` operation that lowers to a single `Array`
+   operation, prove it at the array level and `change` the goal
+   into the array view at the top of the proof. Stay in the
+   array view until the final result, then let `change` back if
+   needed. Mixing levels is what makes `omega` and `rw` confused.
+
+2. **Build helper lemmas for the `(emit tok).tokens[size].token`
+   shape early**. `emit_new_token_token` was the single most-used
+   helper in §6: every `_new_tokens_not_plain` / `_new_tokens_not_flow`
+   proof reduces to one call of it followed by `cases tok` or
+   `decide`. Without it, each of those proofs balloons by ~15 LOC.
+
+3. **For functions like `saveSimpleKeyIx` with nested if-chains,
+   factor a `tokens = X ∨ tokens = Y` disjunction lemma first**.
+   Direct `unfold + split` on the goal works *sometimes* (when the
+   `split` propagates), but `unfold + split at hj` on the
+   hypothesis-only form leaves the goal a giant if-tree that
+   can't be `show`-ed away because the underlying body uses
+   `have`-bindings, not `let`-bindings — they're irreducible to
+   `show`'s definitional-equality checker.
+
+4. **Estimate ~30% LOC overhead vs the legacy line count** for
+   indexed proofs that bridge `TokenStream` → `Array`. Step
+   6d.1e.2 came in at ~660 LOC against a legacy footprint of
+   ~500 LOC (≈30% overhead). The overhead concentrates in
+   `change`/`show` bridges and `IxToken.mk'`-unfolding `simp`
+   calls. Budget Step 6d.1e.3+ accordingly: ~30% on top of
+   each sub-step's legacy line count.
+
+**Related** to Reflection 61 (the same proof-shape gap — `[i]!` vs
+`get?` — manifested at the parser level; here the equivalent at the
+scanner-state proof level is the `(s.emit tok).tokens[size]` shape
+that `rw` can't see through); Reflection 65 (an over-eager `@[simp]`
+lemma can desync hypothesis and goal forms — this reflection's
+`change`-based bridging is the alternative that doesn't pollute the
+`simp` set); Reflection 68 (`TokenStream.size`/`Array.size` invisible
+to `omega` was first flagged there as a 6d.1d build-break root cause;
+this reflection documents the general remediation pattern for
+forward sub-steps).
+
 #### Step 6d.1a — Indexed WellBehaved supporting infrastructure *(landed)*
 
 **Goal**: stage the indexed supporting predicates and `flowNestingIx.go`
@@ -5844,35 +5956,102 @@ After the 6d.1d patches:
 `IndexedWellBehaved.lean` axiom-free locally, `lake build`
 verifiably green, pre-existing 6d.1d build failures patched. ✅
 
-#### Step 6d.1e.2+ — Per-action preservation chain port *(planned, ~3,000–5,000 LOC, 4–6 sessions)*
+#### Step 6d.1e.2 — Emit-step building blocks + indent-stack preservation *(landed)*
+
+**Goal**: lay down the first batch of the per-action preservation
+chain — the unit emit-step lemmas (§5) and the five indent-stack
+scanner ops (§6 — `unwindIndentsLoopIx`, `unwindIndentsIx`,
+`pushSequenceIndentIx`, `pushMappingIndentIx`, `saveSimpleKeyIx`).
+
+**Scope (landed, ~660 LOC delta, ~1 session)**:
+
+**§5 emit-step building blocks** (~120 LOC):
+- `PlainScalarsValidIx_push_non_plain` — indexed twin of legacy
+  `PlainScalarsValid_push_non_plain` (array-level, used by the
+  pushSequenceIndentIx / pushMappingIndentIx preservation lemmas);
+- `emit_preserves_tokens_at` — `(s.emit tok).tokens[i] = s.tokens[i]`
+  for `i < s.tokens.size`;
+- `emit_new_token_token` — `((s.emit tok).tokens[s.tokens.size]).token
+  = tok` (the helper that reduces every "new-position" match in §6 to
+  a `cases tok`);
+- `emit_non_plain_preserves_PlainScalarsValidIx`,
+  `emit_non_flow_preserves_FlowNestingInvIx`,
+  `emit_non_flow_non_plain_preserves_FlowContextPSVIx` — the three
+  state-level "non-X emit preserves invariant Y" lemmas.
+
+**§6 indent-stack preservation** (~540 LOC):
+
+- **`unwindIndentsLoopIx` / `unwindIndentsIx`** (~310 LOC including
+  the auxiliary `emitBlockEndPop` abbreviation that hides the
+  `indents.pop` record-update from the predicates): the full 7-lemma
+  suite — `_preserves_prefix`, `_preserves_flowLevel`,
+  `_new_tokens_not_plain`, `_new_tokens_not_flow`,
+  `_preserves_FlowNestingInvIx`, `_preserves_PlainScalarsValidIx`,
+  `_preserves_FlowContextPSVIx`. The `unwindIndentsIx` variants are
+  thin term-mode wrappers around the `Loop` form (passing
+  `s.indents.size` as the fuel).
+
+- **`pushSequenceIndentIx` / `pushMappingIndentIx`** (~70 LOC each):
+  condensed suites — `_preserves_prefix`,
+  `_preserves_PlainScalarsValidIx`, `_preserves_FlowNestingInvIx`,
+  `_preserves_FlowContextPSVIx` (no separate `_new_tokens_*` lemmas
+  needed since the single emitted `.blockSequenceStart` /
+  `.blockMappingStart` is non-plain/non-flow by `decide`).
+
+- **`saveSimpleKeyIx`** (~290 LOC): full suite —
+  `_preserves_prefix`, `_flowLevel`, `_new_tokens_not_plain`,
+  `_new_tokens_not_flow`, `_preserves_PlainScalarsValidIx`,
+  `_preserves_FlowNestingInvIx`, `_preserves_FlowContextPSVIx`. The
+  proof uses an auxiliary `saveSimpleKeyIx_tokens_cases` disjunction
+  lemma (identity branch vs two-`.placeholder`-emit branch via
+  `unfold + split + left/right`) to avoid the if-tree-unfolding trap
+  that broke earlier attempts (see Reflection 69), plus
+  `twoPlaceholderEmits_new_not_plain`/`_not_flow` private helpers
+  that handle the two new-position cases (`j = s.tokens.size` and
+  `j = s.tokens.size + 1`).
+
+**Why the ~140 LOC overshoot vs the Blueprint's ~520 LOC estimate**:
+the indexed proofs need explicit `change`/`show` bridging between the
+`TokenStream input`-level predicate view and the underlying
+`Array (IxToken input)` view that `Array.size_push` / `Array.getElem_push_*`
+operate on. Legacy proofs work directly at the array level. See
+Reflection 69 for the pattern.
+
+**Status**: landed sorry-free, `lake build` 385/385 green, axiom
+count unchanged (**2** in Phase 3 closure, all in §7 of the same
+file). Reflection 69 documents the TokenStream↔Array bridging
+pattern and the `saveSimpleKeyIx` if-tree-unfolding trap.
+
+#### Step 6d.1e.3+ — Remaining per-action preservation chain *(planned, ~2,500–4,500 LOC, ~3–4 sessions)*
 
 **Goal**: discharge the 2 axioms in
 `Proofs/Production/IndexedScannerPlainScalarValid.lean` by porting
-the per-action preservation chain from
+the remainder of the per-action preservation chain from
 `Proofs/Production/ScannerPlainScalarValid.lean` (5,584 LOC, plus
 dependencies in `ScannerCorrectness.lean` at 10,637 LOC,
 `ScannerPlainScalar.lean`, `ScannerFlowCollection.lean`) onto the
-indexed scanner. The realistic budget is **3,000–5,000 LOC**, broken
-into ~4–6 sub-sessions.
+indexed scanner. The revised budget (post-6d.1e.2) is **2,500–4,500
+LOC**, broken into ~3–4 sub-sessions.
 
 **Reflection 68 explains why the original ~1–2k LOC, 1–2 session
 estimate (Reflection 67) proved too small in turn**: counting
 "culminating theorems + first dispatcher layer" still undercounts
 when the dispatcher itself recurses through ~30 sub-scanner
 preservation lemmas, each with three flavors
-(PSV / FlowContextPSVIx / FlowNestingInvIx).
+(PSV / FlowContextPSVIx / FlowNestingInvIx). 6d.1e.2's actual ~660
+LOC for emit-step + 5 indent ops calibrates the remainder.
 
-**Proposed sub-step ladder** (will be refined as each session
-progresses; each must individually be `lake build` green per
-Guardrail 1):
+**Proposed sub-step ladder** (each must individually be `lake build`
+green per Guardrail 1):
 
-- **6d.1e.2** — emit-step building blocks (§5 of the new file,
-  ~120 LOC, deferred from 6d.1e.1) + indent-stack preservation
-  (`unwindIndentsLoopIx`, `unwindIndentsIx`, `pushSequenceIndentIx`,
-  `pushMappingIndentIx`, `saveSimpleKeyIx`, ~400 LOC). ~520 LOC total.
 - **6d.1e.3** — scalar scanners (`scanPlainScalarIx`, `scanTagIx`,
   `scanBlockScalarIx`, `scanDoubleQuotedIx`, `scanSingleQuotedIx`,
-  `scanAnchorOrAliasIx`). ~800 LOC.
+  `scanAnchorOrAliasIx`). ~800 LOC. **`scanPlainScalarIx` is the only
+  branch** where the new token *can* be `.scalar _ .plain` — its
+  `_preserves_PlainScalarsValidIx` will need the
+  `scanPlainScalarIx_content_valid` side condition from
+  `Proofs/Scanner/IndexedScalar.lean` Layer F.4 (8 branch-mapping
+  lemmas already in place).
 - **6d.1e.4** — block-context dispatchers (`scanBlockEntryIx`,
   `scanKeyIx`, `scanValueIx`, `scanValuePrepareIx`,
   `scanValueClearKeyIx`,
