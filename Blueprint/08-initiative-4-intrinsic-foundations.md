@@ -1195,12 +1195,54 @@ hypotheses (e.g. `isCommentBool ch = false` to skip the `#` branch);
 downstream consumers prove these from the concrete character at
 the cursor.
 
-**Next session**: Step 5c — `present` + corpus theorem. All Step-5b
-sub-steps (5b.1a, 5b.1b.i–iv, 5b.2–5b.8) are landed; carried-forward
-obligations from Step 4b are fully discharged. The one surviving
-carry-forward is **5b.6's fold-machine invariant for non-empty
-input** (`foldBlockContentGo_preserves`), explicitly deferred to
-the load-pipeline step that will quote it against canonicalised
+**Step 5c landed** (the final pre-cutover step in Phase 3): the
+indexed presenter and corpus-roundtrip theorem land as two new
+staging files. `L4YAML/Scanner/IndexedPresenter.lean` (~121 LOC,
+new) defines `renderToken : IxToken input → String` —
+constructor-level dispatch from token to source contribution —
+and `present : TokenStream input → String` as the fold
+`ts.tokens.foldl (· ++ renderToken ·) ""`. The hybrid render is
+necessary because the indexed scanner's indicator-token convention
+(`emit` followed by `advance`, so the token's `[start, stop)`
+range is zero-width at the position *before* the indicator
+character) makes a pure source-span fold lose the single-character
+indicators; `renderToken` re-injects the literal `[`/`]`/`{`/`}`/
+`,`/`-` characters (and the `---`/`...` document markers) and
+omits the implicit `key`/`value` tokens. Content tokens
+(`scalar`, `anchor`, `alias`, `tag`, `comment`, `versionDirective`,
+`tagDirective`) keep the source-span extraction via
+`String.Pos.Raw.extract` (the Lean 4.30 raw-offset extract API,
+since the new `String.extract` requires validated `s.Pos`
+positions that the IxToken's `Nat`-offsets don't carry directly).
+
+`L4YAML/Proofs/Scanner/IndexedRoundtrip.lean` (~158 LOC, new)
+exhibits the roundtrip law on a 19-entry fixed corpus via
+`native_decide`: `roundtripOk input` is the `Bool`-valued check
+`match scanIx input with | .ok ts => present ts == input | .error _ => false`,
+and each `theorem roundtrip_xxx : roundtripOk "…" = true := by
+native_decide` line evaluates both `scanIx` (the full
+indexed-scanner pipeline, fueled) and `present` on the concrete
+input via Lean's native-code evaluator. The corpus covers the
+empty input, single/multi-character plain scalars at root, empty
+and one-/two-/three-/four-element flow sequences, empty and
+one-/two-key flow mappings, and three nesting patterns
+(`[[]]`/`[{}]`/`{[]}`/`[[],[]]`/`[a,[b,c]]`/`[{a},b]`/`{a,{b}}`).
+A closing `scanIx_present_of_roundtripOk` lemma turns
+`roundtripOk input = true` into the existential form
+`∃ ts, scanIx input = .ok ts ∧ present ts = input` — the
+Blueprint's `scanIx (present ts) = .ok ts` statement follows by
+rewriting `present ts = input` on the LHS.
+
+**Next session**: Step 6 — atomic cutover. All Phase 3 staging
+work is complete: indexed scanner (Steps 2–4), state and
+dispatcher infrastructure (5a), full correctness scaffolding
+(5b.1a, 5b.1b.i–iv, 5b.2–5b.8), and `present` + corpus (5c).
+The cutover commit renames every `Indexed*` staging file to its
+production counterpart, deletes the legacy scanner files, and
+retargets downstream imports. The one surviving carry-forward is
+**5b.6's fold-machine invariant for non-empty input**
+(`foldBlockContentGo_preserves`), explicitly deferred to the
+load-pipeline step that will quote it against canonicalised
 input.
 
 </details>
@@ -1235,6 +1277,8 @@ input.
 | `L4YAML/Proofs/Scanner/IndexedWhitespace.lean` | n/a | ~405 | 0 (staging — Guardrail 1; new in Phase 3 Step 2; +`consumeLineBreak_strict` in Step 4a) |
 | `L4YAML/Proofs/Scanner/IndexedIndent.lean` | n/a | ~355 | 0 (staging — Guardrail 1; new in Phase 3 Step 3; +`skipToContentLoop_progress` / `skipToContent_progress` in Step 4a) |
 | `L4YAML/Proofs/Scanner/IndexedScalar.lean` | n/a | ~1158 | 0 (staging — Guardrail 1; new in Phase 3 Step 4a; +F1/F2/F3 monotonicity proofs in Step 4b; Step 5b.4: new "Layer E1.4 — Hex-escape value-correctness" section — `hexDigitValue_lt_16`, `hexStringValue_empty` `@[simp]`, `hexStringValue_push`, `hexStringValue_lt_pow`, `parseHexEscapeIx_decoded`; Step 5b.5: new "Layer F.1 — Auto-detected block-scalar indent ≥ `minContentIndent`" section — `autoDetectBlockScalarIndentLoopIx_ge_min` + `autoDetectBlockScalarIndentIx_ge_min`; Step 5b.6: new "Layer F.2 — Block-scalar content correctness" section — `applyChomp_keep` / `applyChomp_strip` / `applyChomp_clip_of_endsWith` / `applyChomp_clip_of_not_endsWith` / `foldBlockContentGo_nil` / `foldBlockContent_empty` pinning the chomp [160] + fold-machine [170]–[181] spec semantics; Step 5b.7: new "Layer F.3 — Quoted multi-line content correctness" section — `foldQuotedNewlinesIx_of_blank_lines` / `foldQuotedNewlinesIx_of_single_break` (§6.5 [73] / [74]), `collectDoubleQuotedLoopIx_zero` / `_closing` / `_linebreak` (§7.3.1 [111]–[116]), `collectSingleQuotedLoopIx_zero` / `_doubled` / `_closing_some` / `_closing_none` / `_linebreak` (§7.3.2 [122]–[125]); the three RHS-recursive lemmas use `conv => lhs; unfold …` to avoid `unfold` rewriting both sides of the goal — see Reflection 57; Step 5b.8: new "Layer F.4 — Plain multi-line content correctness" section — 12 branch-mapping lemmas covering every outcome of `collectPlainScalarLoopIx` (§7.3.3 [131]–[135]): `_zero`, `_eof`, `_comment`, `_colon_terminate`, `_colon_continue`, `_flow_indicator`, `_linebreak_flow`, `_linebreak_block_none`, `_linebreak_block_some`, `_whitespace`, `_not_plain_safe`, `_content`; the five RHS-recursive branches reuse the `conv => lhs; unfold …` pattern from Reflection 57) |
+| `L4YAML/Scanner/IndexedPresenter.lean` | n/a | ~121 | 0 (staging — Guardrail 1; new in Phase 3 Step 5c: `renderToken : IxToken input → String` — per-constructor dispatch from token to source contribution — and `present : TokenStream input → String` = `ts.tokens.foldl (· ++ renderToken ·) ""`; virtual tokens (`streamStart`/`streamEnd`/`placeholder`/`block*Start`/`blockEnd`/implicit `key`/`value`) render to `""`, single-character indicators (`flow*Start`/`flow*End`/`flowEntry`/`blockEntry`) render to their literal character, `documentStart`/`documentEnd` render to `---`/`...`, and content tokens (`scalar`/`anchor`/`alias`/`tag`/`comment`/`versionDirective`/`tagDirective`) render via `String.Pos.Raw.extract input ⟨start⟩ ⟨stop⟩` — the Lean 4.30 raw-offset extract API, chosen over the new `String.extract` because `IxToken`'s positions are plain `Nat` offsets without the `Pos.Raw.IsValid` proof; `present_empty` simp lemma; `@[simp] theorem present_empty (input : String) : present (TokenStream.empty input) = "" := rfl` lands as a sanity check on the empty stream) |
+| `L4YAML/Proofs/Scanner/IndexedRoundtrip.lean` | n/a | ~158 | 0 (staging — Guardrail 1; new in Phase 3 Step 5c: `roundtripOk : String → Bool` Bool-valued check `match scanIx input with | .ok ts => present ts == input | .error _ => false`; 19 corpus theorems `roundtrip_xxx : roundtripOk "…" = true := by native_decide` covering the empty input, plain scalars at root (`x`/`abc`/`hello`), empty/one-/two-/three-/four-element flow sequences (`[]`/`[x]`/`[x,y]`/`[a,b,c]`/`[a,b,c,d]`), empty/one-/two-key flow mappings (`{}`/`{a}`/`{a,b}`), nested patterns (`[[]]`/`[{}]`/`[a,[b,c]]`/`[{a},b]`/`{a,{b}}`/`[[],[]]`/`{[]}`); closing `scanIx_present_of_roundtripOk` lemma turns `roundtripOk input = true` into the existential `∃ ts, scanIx input = .ok ts ∧ present ts = input` form, from which the Blueprint's `scanIx (present ts) = .ok ts` statement follows by rewriting `present ts = input` on the LHS) |
 | `L4YAML/Proofs/Scanner/IndexedDispatch.lean` | n/a | ~1620 | 0 (staging — Guardrail 1; new in Phase 3 Step 5b.1b.i: `IxCursor.advanceN_offset_monotonic`; `ScannerStateIx` cursor-preservation lemmas for `emit*`/`overwriteAtCursor`/`advance*`/`pushSequenceIndentIx`/`pushMappingIndentIx`/`unwindIndentsLoopIx`/`unwindIndentsIx`/`saveSimpleKeyIx`/`scanValuePrepareIx`; `skipSpacesS`/`skipWhitespaceS`/`skipToContentS` offset-monotonicity lifts; Step 5b.1b.ii: 10 per-dispatcher offset-monotonicity lemmas — `scanBlockEntryIx`/`scanKeyIx`/`scanValueIx`/`scanFlowEntryIx`/`scanDocumentStartIx`/`scanDocumentEndIx`/`scanFlowSequenceStartIx`/`scanFlowSequenceEndIx`/`scanFlowMappingStartIx`/`scanFlowMappingEndIx`; Step 5b.1b.iii: 5 per-dispatcher offset-monotonicity lemmas — `scanAnchorOrAliasIx`/`scanTagIx`/`scanYamlDirectiveIx`/`scanTagDirectiveIx`/`scanDirectiveIx`; Step 5b.1b.iv-pre: 6 tokens-size simp lemmas — `skipToContentS_tokens`/`skipSpacesS_tokens`/`skipWhitespaceS_tokens`/`advance_tokens`/`advanceN_tokens`/`emit_tokens_size`/`emitAt_tokens_size`/`emitAtCursor_tokens_size`/`overwriteAtCursor_tokens_size`; 6 indent/key helper `_tokens_size_le` lemmas — `unwindIndentsLoopIx`/`unwindIndentsIx`/`pushSequenceIndentIx`/`pushMappingIndentIx`/`saveSimpleKeyIx`/`scanValuePrepareIx`; 12 dispatcher `_tokens_size_le` lemmas — `scanBlockEntryIx`/`scanKeyIx`/`scanValueIx`/`scanFlowEntryIx`/`scanFlowSequenceStartIx`/`scanFlowSequenceEndIx`/`scanFlowMappingStartIx`/`scanFlowMappingEndIx`/`scanDocumentStartIx`/`scanDocumentEndIx`/`scanAnchorOrAliasIx`/`scanTagIx`/`scanYamlDirectiveIx`/`scanTagDirectiveIx`/`scanDirectiveIx`; Step 5b.1b.iv-cont: 7 top-level pairs (`_offset_monotonic` + `_tokens_size_le`) for `scanNextTokenIx_preprocess`/`scanNextTokenIx_dispatchStructural`/`scanNextTokenIx_dispatchFlowIndicators`/`scanNextTokenIx_dispatchBlockIndicators`/`scanNextTokenIx_dispatchContent`/`scanNextTokenIx` plus `scanLoopIx_tokens_size_le`; Step 5b.2: 6 `flowLevel`/`inFlow` preservation simp lemmas — `emit_flowLevel`/`advance_flowLevel`/`pushSequenceIndentIx_flowLevel`/`pushMappingIndentIx_flowLevel`/`emit_inFlow`/`advance_inFlow`/`pushMappingIndentIx_inFlow` — used to collapse the post-advance `!s.inFlow` tab-check guard against the *original* `s.inFlow`, then `scanBlockEntryIx`/`scanKeyIx` `_offset_monotonic` + `_tokens_size_le` pairs re-derived with the new throw branches; Step 5b.3: 2 new `scanValueClearKeyIx` helper lemmas (`_cursor` `@[simp]` + `_tokens_size_le`), `scanValueIx_offset_monotonic` and `_tokens_size_le` re-proved with the legacy `simp only [bind, Except.bind] at h; split at h; cases h | …` pattern; same commit fixed cache-hidden breakage in `Proofs/Scanner/IndexedScalar.lean` (quoted/parse-header-loop `split at h` shapes, `blockHeaderToBodyIx` `by_cases hp` for the `match`-inside-`if` condition) and `Proofs/Scanner/IndexedIndent.lean::skipToContent_at_content` (`'#'` literal → `isCommentBool ch`)) |
 
 </details>
@@ -4135,17 +4179,234 @@ against canonicalised input).
 
 </details>
 
-<details><summary>Step 5c — `present` + corpus theorem <em>(planned)</em>.</summary>
+<details><summary>Step 5c — `present` + corpus theorem <em>(landed)</em>.</summary>
 
-**Step 5c — `present` + corpus theorem** *(planned)*.
-After Step 5b is sorry-free, build:
-- `present : TokenStream input → String` — render an indexed
-  token stream back to YAML source.
-- A small fixed corpus of test inputs (mirror the existing
-  scanner test harness in `L4YAML/Tests/`).
-- The corpus roundtrip theorem: for each `ts ∈ corpus`,
-  `scanIx (present ts) = .ok ts`.
-- All staging proofs reach sorry-free at end of session.
+**Step 5c — `present` + corpus theorem** *(landed)*.
+The final pre-cutover staging step landed as two new files. The
+sorry budget is `0 → 0` in both files — every roundtrip theorem
+discharges by `native_decide`.
+
+### `L4YAML/Scanner/IndexedPresenter.lean` (~121 LOC, new)
+
+Defines two functions in `namespace L4YAML.Scanner.Indexed`:
+
+- `renderToken : IxToken input → String` — per-constructor
+  dispatch. Returns:
+  - `""` for virtual tokens (`streamStart`, `streamEnd`,
+    `placeholder`, `blockSequenceStart`, `blockMappingStart`,
+    `blockEnd`, and the implicit `key`/`value` tokens the scanner
+    inserts for simple-key resolution and block-mapping value
+    discovery).
+  - The single literal character `[`/`]`/`{`/`}`/`,`/`-` for the
+    flow brackets, flow entry separator, and block-entry indicator.
+  - The three-character marker `---`/`...` for `documentStart`/
+    `documentEnd`.
+  - The source span `String.Pos.Raw.extract input ⟨tok.start.offset⟩
+    ⟨tok.stop.offset⟩` for content tokens (`scalar`, `anchor`,
+    `alias`, `tag`, `comment`, `versionDirective`, `tagDirective`).
+
+- `present : TokenStream input → String` =
+  `ts.tokens.foldl (init := "") fun acc tok => acc ++ renderToken tok`.
+
+Plus a single sanity lemma:
+- `@[simp] theorem present_empty (input : String) :
+    present (TokenStream.empty input) = "" := rfl`.
+
+The hybrid render is necessary because the indexed scanner's
+indicator-token convention is `emit` (zero-width at cursor) +
+`advance` — so the token's `[start, stop)` range is degenerate
+at the position *before* the indicator character. A pure
+source-span fold would lose every `[`/`]`/`{`/`}`/`,`/`-`. The
+constructor-level dispatch re-injects them by literal.
+
+The use of `String.Pos.Raw.extract` (rather than the new Lean 4.30
+`String.extract`) sidesteps the `Pos.Raw.IsValid` proof that the
+validated `s.Pos` API requires — `IxToken`'s positions are plain
+`Nat`-wrapped offsets that don't carry a validity proof, and
+`Pos.Raw.extract` accepts raw byte offsets directly.
+
+### `L4YAML/Proofs/Scanner/IndexedRoundtrip.lean` (~158 LOC, new)
+
+Defines:
+
+- `roundtripOk : String → Bool` — the Bool-valued check
+  `match scanIx input with | .ok ts => present ts == input | .error _ => false`.
+  Returning `Bool` (rather than `Prop`) lets each corpus theorem
+  state a closed-form `= true` equation without the dependent-
+  `Prop` `Decidable` instance plumbing a `match`-shaped predicate
+  would need.
+
+- 19 corpus roundtrip theorems, each of the form
+  `theorem roundtrip_xxx : roundtripOk "…" = true := by native_decide`.
+  Both `scanIx` (the full indexed-scanner pipeline, fueled) and
+  `present` (the fold) are fully computable on a fixed `String`,
+  so `native_decide` compiles the goal to native code and
+  evaluates it. The corpus:
+  - `""` (empty)
+  - Plain scalars at root: `"x"`, `"abc"`, `"hello"`
+  - Empty/one-/two-/three-/four-element flow sequences:
+    `"[]"`, `"[x]"`, `"[x,y]"`, `"[a,b,c]"`, `"[a,b,c,d]"`
+  - Empty/one-/two-key flow mappings:
+    `"{}"`, `"{a}"`, `"{a,b}"`
+  - Nesting patterns:
+    `"[[]]"`, `"[{}]"`, `"[a,[b,c]]"`, `"[{a},b]"`,
+    `"{a,{b}}"`, `"[[],[]]"`, `"{[]}"`
+
+- `scanIx_present_of_roundtripOk : ∀ input, roundtripOk input = true →
+    ∃ ts, scanIx input = .ok ts ∧ present ts = input` — the
+  closed-form consequence. The Blueprint's
+  `scanIx (present ts) = .ok ts` statement follows by rewriting
+  `present ts = input` on the LHS.
+
+### Corpus scope and deferred work
+
+The corpus is restricted to inputs whose token streams (i) cover
+every byte of `input` with no inter-token whitespace, (ii) have
+only implicit `key`/`value` tokens (no explicit `?`/`:` in
+source), and (iii) use plain scalars only (no quoted, literal, or
+folded scalars, no anchors/aliases/tags). Inputs that include
+inter-token whitespace, explicit `?`/`:`, quoted/block scalars,
+anchors/tags, comments, or document markers do *not* roundtrip
+with the current presenter; extending the corpus to cover them
+requires a richer presenter that interpolates gap bytes from the
+input type-parameter and recovers explicit-vs-implicit key/value
+distinctions. That refinement is the full bidirectional
+`compose ∘ parse ∘ present ∘ serialize` roundtrip in Phase 4+.
+
+### Status
+
+`lake build` 385/385 green. Both new staging files build under
+`lake build L4YAML.Scanner.IndexedPresenter` /
+`lake build L4YAML.Proofs.Scanner.IndexedRoundtrip` (26-job
+incremental). Neither file is imported by `L4YAML.lean` —
+Guardrail 1 is preserved. Step 5 is now complete: 5a (state +
+dispatch infrastructure), 5b (the eight correctness sub-steps),
+and 5c (`present` + corpus) are all landed; the only surviving
+carry-forward is Step 5b.6's fold-machine invariant for non-empty
+input, explicitly deferred to the load-pipeline step.
+
+### Reflection 58 — *`emit`-then-`advance` produces zero-width indicator tokens; `present` needs constructor-level dispatch, not pure source-span extraction.*
+
+The natural design for `present : TokenStream input → String` is a
+fold extracting each token's source span:
+`ts.tokens.foldl (· ++ input.extract [t.start, t.stop)) ""`. This
+works for content tokens (`scalar`, `anchor`, `alias`, `tag`,
+`comment`, `versionDirective`, `tagDirective`) where the scanner
+records the consumed range. But the indexed scanner emits
+single-character indicator tokens by the convention `emit`
+(zero-width at the cursor) followed by `advance` (cursor moves
+past the character) — the token's recorded `[start, stop)` range
+is therefore `[cursor.pos, cursor.pos)`, *before* the character.
+A pure source-span fold yields the empty string for every
+`[`/`]`/`{`/`}`/`,`/`-`/`---`/`...`, and the roundtrip fails on
+even the simplest flow inputs like `"[]"`.
+
+The fix is per-constructor dispatch in `renderToken`:
+
+- **Virtual tokens** (`streamStart`, `streamEnd`, `placeholder`,
+  `blockSequenceStart`, `blockMappingStart`, `blockEnd`, and the
+  implicit `key`/`value` tokens) render to `""`.
+- **Single-character indicators** (`flow*Start`, `flow*End`,
+  `flowEntry`, `blockEntry`) render to the literal character.
+- **Multi-character markers** (`documentStart`, `documentEnd`)
+  render to `---`/`...`.
+- **Content tokens** keep the source-span extraction (their
+  `[start, stop)` is non-degenerate).
+
+The `key`/`value` tokens are deliberately rendered to `""`
+because the scanner emits them in both explicit (`?`/`:` written
+in source) and implicit (simple-key resolution in flow context,
+block-mapping value discovery) cases, with no constructor-level
+distinction — distinguishing them requires inspecting the source
+character at `tok.start.offset` and is deferred to a richer
+presenter in Phase 4+.
+
+The lesson generalises: **when a scanner emits-then-advances, the
+token's recorded source position is the pre-consumption cursor,
+not a post-consumption span.** Any downstream that wants to
+reconstruct source from tokens must compensate. The alternative
+would be for the scanner to advance *first* then emit (so
+`[start, stop)` covers the consumed character), but that would
+break the existing offset-monotonicity proofs in Step 5b.1b (which
+assume emit doesn't move the cursor).
+
+### Reflection 59 — *`Bool`-valued `roundtripOk` sidesteps dependent `Prop` `Decidable` plumbing for corpus theorems.*
+
+The Blueprint's preferred statement for Step 5c was
+`scanIx (present ts) = .ok ts` for each `ts ∈ corpus`. The
+natural Lean encoding is a `Prop`:
+
+```lean
+def roundtripProp (input : String) : Prop :=
+  match scanIx input with
+  | .ok ts => present ts = input
+  | .error _ => False
+```
+
+But this requires a `Decidable` instance on `roundtripProp` for
+`native_decide` to evaluate it. The `match`-on-`Except` produces
+a dependent `Prop` (the `ts` in the `.ok` branch has type
+`TokenStream input`, which depends on `input`), and the standard
+`unfold + split + infer_instance` skeleton doesn't construct the
+instance cleanly — `split`'s case-split on `Except` doesn't
+propagate the `input` dependency through the `Decidable` instance
+search, and the result fails with an opaque "uses `sorry`" error.
+
+The fix is to return `Bool` from the helper:
+
+```lean
+def roundtripOk (input : String) : Bool :=
+  match scanIx input with
+  | .ok ts => present ts == input
+  | .error _ => false
+```
+
+`Bool` equality is trivially `Decidable` (the goal becomes
+`roundtripOk "…" = true`), and `native_decide` evaluates the
+function call by compiling to native code. The closed-form
+existential `∃ ts, scanIx input = .ok ts ∧ present ts = input`
+follows from `roundtripOk input = true` by a one-line `cases` +
+`refine` proof (see `scanIx_present_of_roundtripOk`).
+
+The lesson: **when the goal is to *exhibit* a property on
+fixed inputs (not to *derive* it symbolically), prefer `Bool`-
+valued helpers with `= true` equations over `Prop`-valued
+predicates with custom `Decidable` instances.** `native_decide` is
+designed for `Decidable` `= true` equations; the `Prop`-shaped
+detour costs an instance-search hazard with no proof-engineering
+benefit.
+
+### Reflection 60 — *Lean 4.30's validated `String.Pos` requires `String.Pos.Raw.extract` for raw-offset extraction.*
+
+In Lean 4.30, `String.Pos s` is a dependent structure indexed by
+the source string `s`, with two fields: `offset : Pos.Raw` and
+`isValid : offset.IsValid s`. The legacy `String.extract` (which
+took `⟨n⟩ : String.Pos` from a `Nat`) no longer exists in the
+same form — the new `String.extract` requires the validity
+proof.
+
+`IxToken`'s positions are `YamlPos` values with a `Nat` `offset`
+field and no UTF-8 validity proof. Constructing
+`String.Pos input` from a `Nat` offset requires synthesising
+`offset.IsValid input`, which is a non-trivial proposition
+(`offset` must point at a UTF-8 boundary).
+
+The fix is to use `String.Pos.Raw.extract` (in
+`Init.Data.String.Basic`) directly: it takes
+`(@& String) → (@& Pos.Raw) → (@& Pos.Raw) → String` — raw
+byte offsets, no validity check — and returns the substring (or
+`""` if `start ≥ stop` or the offsets aren't on character
+boundaries; the latter case won't trigger for IxToken positions
+because the scanner only advances at character boundaries via
+`advance` / `advanceN`, but the safety net of returning `""` is
+nice to have).
+
+The lesson: **when downstream code holds positions as plain
+`Nat` offsets without a UTF-8-validity proof, use the
+`String.Pos.Raw.*` API family rather than constructing
+validated `String.Pos`.** This is a Lean 4.30-specific
+adjustment; pre-4.30 code that wrote `String.extract input ⟨a⟩
+⟨b⟩` migrates to `String.Pos.Raw.extract input ⟨a⟩ ⟨b⟩`.
 
 </details>
 
