@@ -872,4 +872,125 @@ theorem foldBlockContent_empty :
     foldBlockContent "" = "" :=
   rfl
 
+/-! ## Layer F.3 — Quoted multi-line content correctness (Step 5b.7)
+
+Carried-forward Step 4b obligation: pin each branch of `foldQuotedNewlinesIx`
+(§6.5 [73] / [74]) and the multi-line fold branches of
+`collectDoubleQuotedLoopIx` (§7.3.1 [111]–[116]) and
+`collectSingleQuotedLoopIx` (§7.3.2 [122]–[125]) to its YAML 1.2.2 spec rule.
+
+`foldQuotedNewlinesIx` produces the *folded replacement* for a quoted-scalar
+line break:
+- `b-l-trimmed(n,c)` [71]: ≥1 trailing blank lines → `String.ofList
+  (List.replicate emptyCount '\n')`.
+- `b-as-space` [70]: exactly one break → `String.singleton spaceChar`.
+
+`collectDoubleQuotedLoopIx` and `collectSingleQuotedLoopIx` each consume a
+quoted body character-at-a-time; the branches matter because their
+content-composition is what the spec's `nb-double-text` /
+`nb-single-text` productions describe. The "regular character" and
+"escape" branches are routine pushes covered by the offset-monotonicity
+work in Layers E2/E3 above; the lemmas below pin the *delimiter*,
+*doubled-quote*, and *line-break-fold* branches — those are the ones
+downstream proofs will quote when reasoning about content equality. -/
+
+theorem foldQuotedNewlinesIx_of_blank_lines {input : String} (c : IxCursor input)
+    (h : (skipBlankLinesLoopIx (consumeLineBreak c) 0 input.utf8ByteSize).2 > 0) :
+    foldQuotedNewlinesIx c =
+      (String.ofList
+         (List.replicate
+           (skipBlankLinesLoopIx (consumeLineBreak c) 0 input.utf8ByteSize).2
+           lineFeedChar),
+       skipWhitespace
+         (skipBlankLinesLoopIx (consumeLineBreak c) 0 input.utf8ByteSize).1) := by
+  unfold foldQuotedNewlinesIx
+  simp [h]
+
+theorem foldQuotedNewlinesIx_of_single_break {input : String} (c : IxCursor input)
+    (h : (skipBlankLinesLoopIx (consumeLineBreak c) 0 input.utf8ByteSize).2 = 0) :
+    foldQuotedNewlinesIx c =
+      (String.singleton spaceChar,
+       skipWhitespace
+         (skipBlankLinesLoopIx (consumeLineBreak c) 0 input.utf8ByteSize).1) := by
+  unfold foldQuotedNewlinesIx
+  simp [h]
+
+theorem collectDoubleQuotedLoopIx_zero {input : String}
+    (c : IxCursor input) (content : String) :
+    collectDoubleQuotedLoopIx c content 0 = none :=
+  rfl
+
+theorem collectDoubleQuotedLoopIx_closing {input : String}
+    (c : IxCursor input) (content : String) (fuel : Nat)
+    {ch : Char} (hPeek : c.peek? = some ch)
+    (hQuote : isDoubleQuoteBool ch = true) :
+    collectDoubleQuotedLoopIx c content (fuel + 1) = some (content, c.advance) := by
+  unfold collectDoubleQuotedLoopIx
+  rw [hPeek]
+  simp [hQuote]
+
+theorem collectDoubleQuotedLoopIx_linebreak {input : String}
+    (c : IxCursor input) (content : String) (fuel : Nat)
+    {ch : Char} (hPeek : c.peek? = some ch)
+    (hNotQuote : isDoubleQuoteBool ch = false)
+    (hNotEscape : isEscapeBool ch = false)
+    (hLineBreak : isLineBreakBool ch = true) :
+    collectDoubleQuotedLoopIx c content (fuel + 1) =
+      collectDoubleQuotedLoopIx (foldQuotedNewlinesIx c).2
+        (trimTrailingWSIx content ++ (foldQuotedNewlinesIx c).1) fuel := by
+  conv => lhs; unfold collectDoubleQuotedLoopIx
+  rw [hPeek]
+  simp [hNotQuote, hNotEscape, hLineBreak]
+
+theorem collectSingleQuotedLoopIx_zero {input : String}
+    (c : IxCursor input) (content : String) :
+    collectSingleQuotedLoopIx c content 0 = none :=
+  rfl
+
+theorem collectSingleQuotedLoopIx_doubled {input : String}
+    (c : IxCursor input) (content : String) (fuel : Nat)
+    {ch : Char} (hPeek : c.peek? = some ch)
+    (hQuote : isSingleQuoteBool ch = true)
+    {next : Char} (hPeekAdv : c.advance.peek? = some next)
+    (hNext : isSingleQuoteBool next = true) :
+    collectSingleQuotedLoopIx c content (fuel + 1) =
+      collectSingleQuotedLoopIx c.advance.advance
+        (content.push singleQuoteChar) fuel := by
+  conv => lhs; unfold collectSingleQuotedLoopIx
+  rw [hPeek]
+  simp [hQuote, hPeekAdv, hNext]
+
+theorem collectSingleQuotedLoopIx_closing_some {input : String}
+    (c : IxCursor input) (content : String) (fuel : Nat)
+    {ch : Char} (hPeek : c.peek? = some ch)
+    (hQuote : isSingleQuoteBool ch = true)
+    {next : Char} (hPeekAdv : c.advance.peek? = some next)
+    (hNext : isSingleQuoteBool next = false) :
+    collectSingleQuotedLoopIx c content (fuel + 1) = some (content, c.advance) := by
+  unfold collectSingleQuotedLoopIx
+  rw [hPeek]
+  simp [hQuote, hPeekAdv, hNext]
+
+theorem collectSingleQuotedLoopIx_closing_none {input : String}
+    (c : IxCursor input) (content : String) (fuel : Nat)
+    {ch : Char} (hPeek : c.peek? = some ch)
+    (hQuote : isSingleQuoteBool ch = true)
+    (hPeekAdv : c.advance.peek? = none) :
+    collectSingleQuotedLoopIx c content (fuel + 1) = some (content, c.advance) := by
+  unfold collectSingleQuotedLoopIx
+  rw [hPeek]
+  simp [hQuote, hPeekAdv]
+
+theorem collectSingleQuotedLoopIx_linebreak {input : String}
+    (c : IxCursor input) (content : String) (fuel : Nat)
+    {ch : Char} (hPeek : c.peek? = some ch)
+    (hNotQuote : isSingleQuoteBool ch = false)
+    (hLineBreak : isLineBreakBool ch = true) :
+    collectSingleQuotedLoopIx c content (fuel + 1) =
+      collectSingleQuotedLoopIx (foldQuotedNewlinesIx c).2
+        (trimTrailingWSIx content ++ (foldQuotedNewlinesIx c).1) fuel := by
+  conv => lhs; unfold collectSingleQuotedLoopIx
+  rw [hPeek]
+  simp [hNotQuote, hLineBreak]
+
 end L4YAML.Scanner.Indexed

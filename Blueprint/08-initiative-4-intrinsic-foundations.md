@@ -1148,9 +1148,31 @@ about the block-scalar pipeline `parseBlockHeaderLoopIx →
 blockHeaderToBodyIx → autoDetectBlockScalarIndentIx →
 collectBlockScalarLoopIx → applyChomp → foldBlockContent`.
 
-**Next session**: Steps 5b.7–5b.8 work through the remaining two
-Step-5b carry-forward clusters (quoted multi-line, plain multi-line).
-**Then Step 5c**: `present` + corpus theorem.
+**Step 5b.7 landed** (Reflection 57): the quoted multi-line
+content-correctness obligation discharged as nine spec-traceability
+lemmas in `Proofs/Scanner/IndexedScalar.lean`'s new "Layer F.3 —
+Quoted multi-line content correctness" section.
+`foldQuotedNewlinesIx` (§6.5 [73] / [74]) gets two branch-mapping
+lemmas: `foldQuotedNewlinesIx_of_blank_lines` (when
+`emptyCount > 0`, the folded replacement is
+`String.ofList (List.replicate emptyCount '\n')` per `b-l-trimmed`
+[71]) and `foldQuotedNewlinesIx_of_single_break` (when
+`emptyCount = 0`, the replacement is `String.singleton spaceChar`
+per `b-as-space` [70]). `collectDoubleQuotedLoopIx` (§7.3.1
+[111]–[116]) gets three branch lemmas — `_zero`, `_closing`,
+`_linebreak`; `collectSingleQuotedLoopIx` (§7.3.2 [122]–[125])
+gets four — `_zero`, `_doubled` (the `''` quoted-quote escape
+`[123]`), `_closing_some` / `_closing_none` (single `'` followed by
+non-`'` or by EOF), and `_linebreak`. The proof shape mirrors
+Step 5b.6 — `rfl` for base cases, `unfold + rw + simp` for branches
+that don't recurse, and the **`conv => lhs;` scoped unfold** for
+the three branches whose RHS is another `collectXxxQuotedLoopIx`
+call (otherwise plain `unfold` rewrites both sides and `simp`
+expands the RHS into the full match-cascade — see Reflection 57).
+
+**Next session**: Step 5b.8 works through the final Step-5b
+carry-forward cluster (plain multi-line content correctness
+`[131]`–`[135]`). **Then Step 5c**: `present` + corpus theorem.
 
 </details>
 
@@ -1183,7 +1205,7 @@ Step-5b carry-forward clusters (quoted multi-line, plain multi-line).
 | `L4YAML/Scanner/IndexedDispatch.lean` | n/a | ~1050 | 0 (staging — Guardrail 1; new in Phase 3 Step 5a: helper recogniser loops, simple-key save/resolve, block + flow indicator scans, document markers, directives, anchor/alias, tag, dispatch family, `scanLoopIx`, `scanIx`; Step 5b.1a: 8 helper-loop `*_offset_monotonic` lemmas, 10 `emitAtSafe`→`emitAt` replacements with inline proofs, `hStart` parameter on directive helpers; Step 5b.2: `tabInIndentation` throws added to `scanBlockEntryIx` and `scanKeyIx` — the former in block context when `hasTabInPrecedingWhitespace`, the latter when the cursor sits on `'\t'` immediately after consuming `?`; Step 5b.3: `scanValueIx` split into the legacy four-stage chain — `scanValueClearKeyIx` (clear spurious simple key when explicit `?` is pending), `scanValueValidateIx` (five `throw` cases: §7.4 / §7.4.2 / §8.2.1 / T833 / §8.2.2 [197]), `scanValuePrepareIx` (Step 5b.1b.i — placeholder overwrite or push mapping indent), `scanValueTabCheckIx` (§6.1 against the *original* col + indent)) |
 | `L4YAML/Proofs/Scanner/IndexedWhitespace.lean` | n/a | ~405 | 0 (staging — Guardrail 1; new in Phase 3 Step 2; +`consumeLineBreak_strict` in Step 4a) |
 | `L4YAML/Proofs/Scanner/IndexedIndent.lean` | n/a | ~355 | 0 (staging — Guardrail 1; new in Phase 3 Step 3; +`skipToContentLoop_progress` / `skipToContent_progress` in Step 4a) |
-| `L4YAML/Proofs/Scanner/IndexedScalar.lean` | n/a | ~876 | 0 (staging — Guardrail 1; new in Phase 3 Step 4a; +F1/F2/F3 monotonicity proofs in Step 4b; Step 5b.4: new "Layer E1.4 — Hex-escape value-correctness" section — `hexDigitValue_lt_16`, `hexStringValue_empty` `@[simp]`, `hexStringValue_push`, `hexStringValue_lt_pow`, `parseHexEscapeIx_decoded`; Step 5b.5: new "Layer F.1 — Auto-detected block-scalar indent ≥ `minContentIndent`" section — `autoDetectBlockScalarIndentLoopIx_ge_min` + `autoDetectBlockScalarIndentIx_ge_min`; Step 5b.6: new "Layer F.2 — Block-scalar content correctness" section — `applyChomp_keep` / `applyChomp_strip` / `applyChomp_clip_of_endsWith` / `applyChomp_clip_of_not_endsWith` / `foldBlockContentGo_nil` / `foldBlockContent_empty` pinning the chomp [160] + fold-machine [170]–[181] spec semantics) |
+| `L4YAML/Proofs/Scanner/IndexedScalar.lean` | n/a | ~996 | 0 (staging — Guardrail 1; new in Phase 3 Step 4a; +F1/F2/F3 monotonicity proofs in Step 4b; Step 5b.4: new "Layer E1.4 — Hex-escape value-correctness" section — `hexDigitValue_lt_16`, `hexStringValue_empty` `@[simp]`, `hexStringValue_push`, `hexStringValue_lt_pow`, `parseHexEscapeIx_decoded`; Step 5b.5: new "Layer F.1 — Auto-detected block-scalar indent ≥ `minContentIndent`" section — `autoDetectBlockScalarIndentLoopIx_ge_min` + `autoDetectBlockScalarIndentIx_ge_min`; Step 5b.6: new "Layer F.2 — Block-scalar content correctness" section — `applyChomp_keep` / `applyChomp_strip` / `applyChomp_clip_of_endsWith` / `applyChomp_clip_of_not_endsWith` / `foldBlockContentGo_nil` / `foldBlockContent_empty` pinning the chomp [160] + fold-machine [170]–[181] spec semantics; Step 5b.7: new "Layer F.3 — Quoted multi-line content correctness" section — `foldQuotedNewlinesIx_of_blank_lines` / `foldQuotedNewlinesIx_of_single_break` (§6.5 [73] / [74]), `collectDoubleQuotedLoopIx_zero` / `_closing` / `_linebreak` (§7.3.1 [111]–[116]), `collectSingleQuotedLoopIx_zero` / `_doubled` / `_closing_some` / `_closing_none` / `_linebreak` (§7.3.2 [122]–[125]); the three RHS-recursive lemmas use `conv => lhs; unfold …` to avoid `unfold` rewriting both sides of the goal — see Reflection 57) |
 | `L4YAML/Proofs/Scanner/IndexedDispatch.lean` | n/a | ~1620 | 0 (staging — Guardrail 1; new in Phase 3 Step 5b.1b.i: `IxCursor.advanceN_offset_monotonic`; `ScannerStateIx` cursor-preservation lemmas for `emit*`/`overwriteAtCursor`/`advance*`/`pushSequenceIndentIx`/`pushMappingIndentIx`/`unwindIndentsLoopIx`/`unwindIndentsIx`/`saveSimpleKeyIx`/`scanValuePrepareIx`; `skipSpacesS`/`skipWhitespaceS`/`skipToContentS` offset-monotonicity lifts; Step 5b.1b.ii: 10 per-dispatcher offset-monotonicity lemmas — `scanBlockEntryIx`/`scanKeyIx`/`scanValueIx`/`scanFlowEntryIx`/`scanDocumentStartIx`/`scanDocumentEndIx`/`scanFlowSequenceStartIx`/`scanFlowSequenceEndIx`/`scanFlowMappingStartIx`/`scanFlowMappingEndIx`; Step 5b.1b.iii: 5 per-dispatcher offset-monotonicity lemmas — `scanAnchorOrAliasIx`/`scanTagIx`/`scanYamlDirectiveIx`/`scanTagDirectiveIx`/`scanDirectiveIx`; Step 5b.1b.iv-pre: 6 tokens-size simp lemmas — `skipToContentS_tokens`/`skipSpacesS_tokens`/`skipWhitespaceS_tokens`/`advance_tokens`/`advanceN_tokens`/`emit_tokens_size`/`emitAt_tokens_size`/`emitAtCursor_tokens_size`/`overwriteAtCursor_tokens_size`; 6 indent/key helper `_tokens_size_le` lemmas — `unwindIndentsLoopIx`/`unwindIndentsIx`/`pushSequenceIndentIx`/`pushMappingIndentIx`/`saveSimpleKeyIx`/`scanValuePrepareIx`; 12 dispatcher `_tokens_size_le` lemmas — `scanBlockEntryIx`/`scanKeyIx`/`scanValueIx`/`scanFlowEntryIx`/`scanFlowSequenceStartIx`/`scanFlowSequenceEndIx`/`scanFlowMappingStartIx`/`scanFlowMappingEndIx`/`scanDocumentStartIx`/`scanDocumentEndIx`/`scanAnchorOrAliasIx`/`scanTagIx`/`scanYamlDirectiveIx`/`scanTagDirectiveIx`/`scanDirectiveIx`; Step 5b.1b.iv-cont: 7 top-level pairs (`_offset_monotonic` + `_tokens_size_le`) for `scanNextTokenIx_preprocess`/`scanNextTokenIx_dispatchStructural`/`scanNextTokenIx_dispatchFlowIndicators`/`scanNextTokenIx_dispatchBlockIndicators`/`scanNextTokenIx_dispatchContent`/`scanNextTokenIx` plus `scanLoopIx_tokens_size_le`; Step 5b.2: 6 `flowLevel`/`inFlow` preservation simp lemmas — `emit_flowLevel`/`advance_flowLevel`/`pushSequenceIndentIx_flowLevel`/`pushMappingIndentIx_flowLevel`/`emit_inFlow`/`advance_inFlow`/`pushMappingIndentIx_inFlow` — used to collapse the post-advance `!s.inFlow` tab-check guard against the *original* `s.inFlow`, then `scanBlockEntryIx`/`scanKeyIx` `_offset_monotonic` + `_tokens_size_le` pairs re-derived with the new throw branches; Step 5b.3: 2 new `scanValueClearKeyIx` helper lemmas (`_cursor` `@[simp]` + `_tokens_size_le`), `scanValueIx_offset_monotonic` and `_tokens_size_le` re-proved with the legacy `simp only [bind, Except.bind] at h; split at h; cases h | …` pattern; same commit fixed cache-hidden breakage in `Proofs/Scanner/IndexedScalar.lean` (quoted/parse-header-loop `split at h` shapes, `blockHeaderToBodyIx` `by_cases hp` for the `match`-inside-`if` condition) and `Proofs/Scanner/IndexedIndent.lean::skipToContent_at_content` (`'#'` literal → `isCommentBool ch`)) |
 
 </details>
@@ -2289,6 +2311,90 @@ cutover commit. No "dual-write" interim state.
 
 </details>
 
+<details><summary>R57 — `unfold` rewrites *every* occurrence of the symbol in the goal, including the RHS; for branch-mapping lemmas whose RHS is another call of the same recursive function, use `conv => lhs; unfold …` to scope the rewrite (Phase 3 Step 5b.7).</summary>
+
+57. **A `simp` blow-up in a one-line branch-mapping proof, and the
+    `conv => lhs;` rescue.** Step 5b.7 lands nine spec-traceability
+    lemmas for the quoted multi-line fold/collect pipeline. Six
+    follow the Step 5b.6 template directly — `rfl` for the
+    `fuel = 0` base cases, and `unfold + rw [hPeek] + simp [hCond]`
+    for the closing-delimiter branches where the RHS is a literal
+    `some (content, c.advance)` value. The three *line-break-fold*
+    / *doubled-quote* branches — `collectDoubleQuotedLoopIx_linebreak`,
+    `collectSingleQuotedLoopIx_doubled`,
+    `collectSingleQuotedLoopIx_linebreak` — initially looked like
+    they'd follow the same shape:
+
+    ```lean
+    theorem collectDoubleQuotedLoopIx_linebreak ... :
+        collectDoubleQuotedLoopIx c content (fuel + 1) =
+          collectDoubleQuotedLoopIx (foldQuotedNewlinesIx c).2
+            (trimTrailingWSIx content ++ (foldQuotedNewlinesIx c).1) fuel := by
+      unfold collectDoubleQuotedLoopIx     -- ← lands a goal whose RHS
+      rw [hPeek]                            --   is *also* unfolded!
+      simp [hNotQuote, hNotEscape, hLineBreak]
+    ```
+
+    But the proof failed: `simp` left an unsolved goal where the
+    RHS had been expanded into the full match-cascade
+    (`match fuel with | 0 => none | succ => match (foldQuotedNewlinesIx c).snd.peek? with | …`).
+    The cause: `unfold collectDoubleQuotedLoopIx` rewrites **every
+    occurrence** of the symbol in the goal — including the
+    `collectDoubleQuotedLoopIx (foldQuotedNewlinesIx c).2 …` call
+    on the RHS that I wanted to keep frozen. With both sides
+    unfolded, `simp` happily reduced the LHS's match all the way
+    to the line-break branch (which itself contains another
+    `collectDoubleQuotedLoopIx` invocation), and then *also* tried
+    to reduce the RHS — but the RHS's `peek?` is on
+    `(foldQuotedNewlinesIx c).snd`, an opaque term, so simp got
+    stuck with two structurally-different presentations of "the
+    same recursive call."
+
+    **The fix is `conv => lhs; unfold …`** — a scoped `conv` block
+    that descends into the LHS of the equality and applies `unfold`
+    there only:
+
+    ```lean
+      conv => lhs; unfold collectDoubleQuotedLoopIx
+      rw [hPeek]
+      simp [hNotQuote, hNotEscape, hLineBreak]
+    ```
+
+    With the RHS untouched, `simp` proves the goal by reducing the
+    LHS down to exactly the RHS expression. The repository already
+    uses this shape elsewhere — `Proofs/Production/ScannerPlainScalarValid.lean::1537`
+    has `conv => lhs; unfold flowNesting.go` for the same reason.
+    (Note: `conv_lhs => …` is the Mathlib spelling and is *not*
+    available in this Mathlib-free codebase — `conv => lhs; …` is
+    the plain-Lean equivalent.)
+
+    **Generalisable rule**: whenever a branch-mapping lemma's RHS
+    contains another call to the function being unfolded, prefer
+    `conv => lhs; unfold …` over plain `unfold …`. This applies
+    not just to recursive functions but to any pattern where the
+    same symbol appears on both sides of the goal and only one side
+    should be reduced. The cost is one extra line; the payoff is
+    that `simp` stays well-behaved instead of expanding the RHS
+    into a syntactically distinct form that no further tactic can
+    close. Diagnostic clue: when `simp` after `unfold` leaves an
+    unsolved goal that contains a giant `match … with | …` cascade
+    on the *right* of an equation whose original RHS was a small
+    function application, the unfold scoped too widely.
+
+    **Ancillary observation — six of the nine lemmas follow the
+    Step 5b.6 template unchanged.** The `_zero` base cases are
+    `rfl`. The `_closing` / `_closing_some` / `_closing_none`
+    branches return literal `some (content, c.advance)` values that
+    `simp` reduces directly. Only the three branches whose
+    operational result is another call of the same loop need the
+    `conv` scoping — they are the ones encoding "consume some
+    delimiter, recurse on the rest" rather than "terminate with
+    this value." This pattern recurs in Step 5b.8 (plain multi-line)
+    where the loop's continuation branches will likely also need
+    `conv => lhs; unfold …`.
+
+</details>
+
 #### Phase 3 sub-plan (six sessions)
 
 <details><summary>Phase 3 is ~30× the size of the Phase 2 capstone. It is decomposed into six sessions; only the final commit must be atomic per Guardrail 1.</summary>
@@ -2892,9 +2998,28 @@ clusters become 5b.2–5b.8. Total: nine sub-steps.
   (quoted multi-line) and 5b.8 (plain multi-line) can cite by
   name when reasoning about the block-scalar pipeline. See
   Reflection 56.
-- **5b.7 — Quoted multi-line content correctness** (carried from
-  Step 4b): the concatenated `content` matches `[111]`–`[116]` /
-  `[122]`–`[125]` under the fold rules.
+- **5b.7 — Quoted multi-line content correctness** *(landed)*.
+  Carried-forward Step 4b obligation discharged as nine
+  spec-traceability lemmas in `Proofs/Scanner/IndexedScalar.lean`'s
+  new "Layer F.3 — Quoted multi-line content correctness" section.
+  `foldQuotedNewlinesIx` (§6.5 [73] / [74]) gets two branch-mapping
+  lemmas — `foldQuotedNewlinesIx_of_blank_lines` (`emptyCount > 0`
+  → `String.ofList (List.replicate emptyCount '\n')`, `b-l-trimmed`
+  [71]) and `foldQuotedNewlinesIx_of_single_break`
+  (`emptyCount = 0` → `String.singleton spaceChar`, `b-as-space`
+  [70]). `collectDoubleQuotedLoopIx` (§7.3.1 [111]–[116]) gets
+  three — `_zero` (`rfl`), `_closing` (closing `"` returns
+  `(content, c.advance)`), `_linebreak` (line-break fold composes
+  `trimTrailingWSIx content ++ folded`).
+  `collectSingleQuotedLoopIx` (§7.3.2 [122]–[125]) gets four —
+  `_zero`, `_doubled` (`''` doubled-quote escape `[123]` pushes one
+  `'`), `_closing_some` / `_closing_none` (single `'` followed by
+  non-`'` or EOF closes), `_linebreak` (same fold composition).
+  Proof shape: `rfl` for `_zero`s, `unfold + rw + simp` for the
+  non-recursive branches, **`conv => lhs; unfold …` for the three
+  branches whose RHS is another `collectXxxQuotedLoopIx` call**
+  (otherwise `unfold` rewrites both sides and `simp` expands the
+  RHS into the full match-cascade). See Reflection 57.
 - **5b.8 — Plain multi-line content correctness** (carried from
   Step 4b): the threaded `content ++ folded` matches `[131]`–
   `[135]`.
@@ -3754,6 +3879,83 @@ proof forces the obligation, the lemma will need list-induction
 simultaneously tracking `FoldState`, `pending`, and the input
 structure against a reference implementation of the spec's folded
 extraction.
+
+</details>
+
+<details><summary>Step 5b.7 — Quoted multi-line content correctness <em>(landed)</em>.</summary>
+
+**Step 5b.7 — Quoted multi-line content correctness** *(landed)*.
+
+Carried-forward Step 4b obligation discharged in
+`L4YAML/Proofs/Scanner/IndexedScalar.lean`'s new "Layer F.3 —
+Quoted multi-line content correctness" section (~120 LOC, just
+before the closing `end L4YAML.Scanner.Indexed`). Nine lemmas pin
+the three multi-line quoted-scalar helpers to their YAML 1.2.2
+spec rules:
+
+`foldQuotedNewlinesIx` (§6.5 [73] / [74]) — two branch-mapping
+lemmas, one per arm of the `emptyCount > 0` conditional:
+- `foldQuotedNewlinesIx_of_blank_lines {input : String}
+  (c : IxCursor input)
+  (h : (skipBlankLinesLoopIx (consumeLineBreak c) 0 input.utf8ByteSize).2 > 0) :
+  foldQuotedNewlinesIx c =
+    (String.ofList (List.replicate _ lineFeedChar),
+     skipWhitespace _)` — `b-l-trimmed(n,c)` [71]
+  (`unfold + simp [h]`).
+- `foldQuotedNewlinesIx_of_single_break {input : String}
+  (c : IxCursor input)
+  (h : (skipBlankLinesLoopIx (consumeLineBreak c) 0 input.utf8ByteSize).2 = 0) :
+  foldQuotedNewlinesIx c =
+    (String.singleton spaceChar, skipWhitespace _)` —
+  `b-as-space` [70] (`unfold + simp [h]`).
+
+`collectDoubleQuotedLoopIx` (§7.3.1 [111]–[116]) — three lemmas:
+- `collectDoubleQuotedLoopIx_zero (c : IxCursor input)
+  (content : String) : collectDoubleQuotedLoopIx c content 0 = none` —
+  fuel exhaustion (`rfl`).
+- `collectDoubleQuotedLoopIx_closing` — closing `"` returns
+  `some (content, c.advance)` (`unfold + rw [hPeek] + simp [hQuote]`).
+- `collectDoubleQuotedLoopIx_linebreak` — line-break branch
+  composes `trimTrailingWSIx content ++ (foldQuotedNewlinesIx c).1`
+  and recurses on `(foldQuotedNewlinesIx c).2` (uses
+  `conv => lhs; unfold …` because the RHS is another loop call).
+
+`collectSingleQuotedLoopIx` (§7.3.2 [122]–[125]) — four lemmas:
+- `collectSingleQuotedLoopIx_zero` — fuel exhaustion (`rfl`).
+- `collectSingleQuotedLoopIx_doubled` — `''` quoted-quote escape
+  [123] pushes one `'` and recurses on `c.advance.advance` (uses
+  `conv => lhs; unfold …`).
+- `collectSingleQuotedLoopIx_closing_some` — single `'` followed
+  by non-`'` returns `some (content, c.advance)`
+  (`unfold + rw [hPeek] + simp [hQuote, hPeekAdv, hNext]`).
+- `collectSingleQuotedLoopIx_closing_none` — single `'` at EOF
+  also returns `some (content, c.advance)` (same shape, with
+  `hPeekAdv : c.advance.peek? = none`).
+- `collectSingleQuotedLoopIx_linebreak` — same fold composition
+  as the double-quoted line-break branch, same `conv` scope.
+
+All nine proofs are definitional unfolds; the value of each lemma
+is the *named statement*, not the proof shape. Once these exist,
+downstream multi-line consumers and `present`/corpus proofs (Step
+5c) can cite the spec-rule mapping by name when reasoning about
+the quoted-scalar collectors. The three RHS-recursive branches
+(`_linebreak` for both loops + `_doubled` for single-quoted)
+use `conv => lhs; unfold …` instead of plain `unfold …`
+because plain `unfold` rewrites *both* sides of the equality —
+including the recursive call on the RHS — and the subsequent
+`simp` then expands that RHS into the full match-cascade,
+leaving an unsolvable goal. See Reflection 57.
+
+Sorry budget: **0 → 0** in the staging files. `lake build` passes
+all 385 targets. `L4YAML.lean` does not import any
+`Scanner.Indexed*` or `Proofs.Scanner.Indexed*` file — confirmed.
+
+**Carried forward into Step 5b.8**: the final Step-5b cluster —
+plain multi-line content correctness `[131]`–`[135]`
+(`collectPlainScalarLoopIx` with its inFlow/block context branch
+and the `foldQuotedNewlinesIx` reuse). Also still carried: the
+full fold-machine invariant for `foldBlockContent` on non-empty
+input (Step 5b.6 carry-forward, unchanged).
 
 </details>
 
