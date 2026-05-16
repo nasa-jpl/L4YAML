@@ -77,6 +77,26 @@ def mk' {input : String} (start : YamlPos) (token : YamlToken) (stop : YamlPos)
 @[inline] def byteSize {input : String} (t : IxToken input) : Nat :=
   t.stop.offset - t.start.offset
 
+/-- `Inhabited (IxToken input)` via a zero-positioned `streamStart` default.
+
+    This instance is **proof-only**: production code uses `[i]'h` explicit-
+    bounds indexing (Reflection 61), never `[i]!`. Proof-side bridging
+    lemmas (`peek_some_val_ix`, `peek_of_pos_val_ix` in
+    `Proofs/Parser/IndexedWellBehaved.lean` §5d₃ / emitter-bridge) state
+    their results in `[i]!` shape to interface with legacy proof patterns
+    keyed on `Inhabited (Positioned YamlToken)`; this instance lets those
+    statements type-check.
+
+    Type-level disjointness is unaffected: the default is still of type
+    `IxToken input`, not `IxToken input'` for `input' ≠ input`. -/
+instance (input : String) : Inhabited (IxToken input) where
+  default :=
+    { start := default
+    , token := .streamStart
+    , stop  := default
+    , startLEStop := Nat.le_refl _
+    , stopLEInput := Nat.zero_le _ }
+
 end IxToken
 
 /-- The L2 event/token stream indexed by the input string.

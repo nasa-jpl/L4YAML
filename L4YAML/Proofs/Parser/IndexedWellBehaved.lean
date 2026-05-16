@@ -3956,21 +3956,27 @@ theorem peek_some_val_ix {ps : ParseStateIx input} {tok : YamlToken}
     (h_peek : ps.peek? = some tok) :
     ps.pos < ps.tokens.size ∧ (ps.tokens.tokens[ps.pos]!).token = tok := by
   unfold ParseStateIx.peek? ParseStateIx.peekIx? at h_peek
-  simp only [Indexed.TokenStream.get?, Option.map_eq_some'] at h_peek
+  simp only [Indexed.TokenStream.get?, Option.map_eq_some_iff] at h_peek
   obtain ⟨t, h_t_eq, h_tok_eq⟩ := h_peek
   have h_lt : ps.pos < ps.tokens.tokens.size := by
-    by_contra h_ge
-    have h_ge' : ps.tokens.tokens.size ≤ ps.pos := Nat.le_of_not_lt h_ge
-    have : ps.tokens.tokens[ps.pos]? = none := Array.getElem?_eq_none h_ge'
-    rw [this] at h_t_eq
-    cases h_t_eq
+    by_cases h_lt : ps.pos < ps.tokens.tokens.size
+    · exact h_lt
+    · exfalso
+      have h_ge' : ps.tokens.tokens.size ≤ ps.pos := Nat.le_of_not_lt h_lt
+      have h_none : ps.tokens.tokens[ps.pos]? = none := Array.getElem?_eq_none h_ge'
+      rw [h_none] at h_t_eq
+      cases h_t_eq
   have h_size : ps.tokens.tokens.size = ps.tokens.size := rfl
   refine ⟨by rw [← h_size]; exact h_lt, ?_⟩
-  have h_pos := Array.getElem?_eq_getElem h_lt
+  have h_pos : ps.tokens.tokens[ps.pos]? = some ps.tokens.tokens[ps.pos] :=
+    Array.getElem?_eq_getElem h_lt
   rw [h_t_eq] at h_pos
+  have h_pos' : ps.tokens.tokens[ps.pos] = t := by
+    have := h_pos.symm
+    simpa using this
   have h_eq : ps.tokens.tokens[ps.pos]! = t := by
     rw [getElem!_pos ps.tokens.tokens ps.pos h_lt]
-    exact h_pos.symm
+    exact h_pos'
   rw [h_eq, h_tok_eq]
 
 /-- The indexed twin of `peek_of_pos_val`: if `ps.pos = k`, position
@@ -3984,7 +3990,7 @@ theorem peek_of_pos_val_ix {ps : ParseStateIx input} {k : Nat} {tok : YamlToken}
   simp only [Indexed.TokenStream.get?, h_pos]
   have h_lt : k < ps.tokens.tokens.size := h_bound
   rw [Array.getElem?_eq_getElem h_lt]
-  simp only [Option.map_some']
+  simp only [Option.map_some]
   rw [← getElem!_pos ps.tokens.tokens k h_lt]
   exact congrArg some h_val
 
@@ -4098,10 +4104,10 @@ theorem parseFlowSequenceLoop_emitter_ok_ix (fuel : Nat)
               rcases Nat.eq_or_lt_of_le h_afe.1 with heq | hlt
               · exfalso; apply h_adv_not_end
                 show ps.advance.peek? = some .flowSequenceEnd
-                apply peek_of_pos_val_ix (ps := ps.advance)
-                · simp [ParseStateIx.advance]; exact heq.symm
-                · simp [ParseStateIx.advance]; show ps.pos + 1 < ps.tokens.size; omega
-                · simp [ParseStateIx.advance]; rw [heq]; exact h_end_tok
+                apply peek_of_pos_val_ix (ps := ps.advance) (k := endPos)
+                · simp [ParseStateIx.advance]; exact heq
+                · exact h_end_pos
+                · simp [ParseStateIx.advance]; exact h_end_tok
               · exact hlt
             generalize hPsX : ({ ps.advance with
               currentPath := Array.push ps.advance.currentPath
@@ -4121,9 +4127,9 @@ theorem parseFlowSequenceLoop_emitter_ok_ix (fuel : Nat)
               have h_bound : ps.pos + 1 < ps.tokens.size := by omega
               have h_bound' : ps.pos + 1 < ps.tokens.tokens.size := h_bound
               have h_adv_peek : ps.advance.peek? = some (ps.tokens.tokens[ps.pos + 1]!).token := by
-                apply peek_of_pos_val_ix (ps := ps.advance)
+                apply peek_of_pos_val_ix (ps := ps.advance) (k := ps.pos + 1)
                 · simp [ParseStateIx.advance]
-                · simp [ParseStateIx.advance]; show ps.pos + 1 < ps.tokens.size; exact h_bound
+                · exact h_bound
                 · simp [ParseStateIx.advance]
               rcases h_afe.2 with ⟨c, s, hcs⟩ | hcs | hcs
               · exact .inl ⟨c, s, by rw [h_adv_peek, hcs]⟩
@@ -4131,12 +4137,13 @@ theorem parseFlowSequenceLoop_emitter_ok_ix (fuel : Nat)
               · exact .inr (.inr (by rw [h_adv_peek, hcs]))
             have h_depth_at_adv : flowBracketBalanceIx ps.tokens body_start (ps.pos + 1) = 0 := by
               have h_pos_bound : ps.pos < ps.tokens.tokens.toList.length := by
-                show ps.pos < ps.tokens.tokens.size; omega
+                show ps.pos < ps.tokens.size; omega
               rw [flowBracketBalanceIx_compose ps.tokens body_start ps.pos (ps.pos + 1) h_bs (by omega),
                   h_bal, flowBracketBalanceIx_single _ _ h_pos_bound]
               have h_eq : (ps.tokens.tokens.toList[ps.pos]'h_pos_bound).token = YamlToken.flowEntry := by
-                show (ps.tokens.tokens[ps.pos]'(by omega)).token = YamlToken.flowEntry
-                rw [← getElem!_pos ps.tokens.tokens ps.pos (by omega)]; exact h_fe_val
+                show (ps.tokens.tokens[ps.pos]'(show ps.pos < ps.tokens.size by omega)).token = YamlToken.flowEntry
+                rw [← getElem!_pos ps.tokens.tokens ps.pos (show ps.pos < ps.tokens.size by omega)]
+                exact h_fe_val
               rw [h_eq]; decide
             obtain ⟨val, ps_after, h_ok, h_pos_adv, h_pos_bound, h_tok_eq, h_tp_eq, h_peek_after, h_pn_bal⟩ :=
               h_pn psX n h_psX_tok (by omega) (by omega)
@@ -4171,9 +4178,10 @@ theorem parseFlowSequenceLoop_emitter_ok_ix (fuel : Nat)
                       h_psX_tok ▸ h_pn_bal
                     rw [h_psX_pos] at h_pn_bal'
                     exact flowBracketBalanceIx_compose_zero ps.tokens body_start ps.pos ps_after.pos
-                      h_bs (by show ps.pos < ps.tokens.tokens.size; omega) (by omega) h_bal
-                      (by show flowBracketDelta (ps.tokens.tokens[ps.pos]'(by omega)).token = 0
-                          rw [(getElem!_pos ps.tokens.tokens ps.pos (by omega)).symm, h_fe_val]; decide)
+                      h_bs (by show ps.pos < ps.tokens.size; omega) (by omega) h_bal
+                      (by show flowBracketDelta (ps.tokens.tokens[ps.pos]'(show ps.pos < ps.tokens.size by omega)).token = 0
+                          rw [(getElem!_pos ps.tokens.tokens ps.pos (show ps.pos < ps.tokens.size by omega)).symm, h_fe_val]
+                          decide)
                       h_pn_bal')
                 (by dsimp only []; omega)
             exact ⟨items_res, ps_res, h_loop, h_peek_res, h_pos_res, h_tok_res.trans h_tok_eq, h_tp_res.trans (h_tp_eq.trans h_psX_tp)⟩
@@ -4349,12 +4357,13 @@ theorem parseFlowMappingLoop_emitter_ok_ix (fuel : Nat)
               · exact hlt
             have h_depth_at_adv : flowBracketBalanceIx ps.tokens body_start (ps.pos + 1) = 0 := by
               have h_pos_bound : ps.pos < ps.tokens.tokens.toList.length := by
-                show ps.pos < ps.tokens.tokens.size; omega
+                show ps.pos < ps.tokens.size; omega
               rw [flowBracketBalanceIx_compose ps.tokens body_start ps.pos (ps.pos + 1) h_bs (by omega),
                   h_bal, flowBracketBalanceIx_single _ _ h_pos_bound]
               have h_eq : (ps.tokens.tokens.toList[ps.pos]'h_pos_bound).token = YamlToken.flowEntry := by
-                show (ps.tokens.tokens[ps.pos]'(by omega)).token = YamlToken.flowEntry
-                rw [← getElem!_pos ps.tokens.tokens ps.pos (by omega)]; exact h_fe_val
+                show (ps.tokens.tokens[ps.pos]'(show ps.pos < ps.tokens.size by omega)).token = YamlToken.flowEntry
+                rw [← getElem!_pos ps.tokens.tokens ps.pos (show ps.pos < ps.tokens.size by omega)]
+                exact h_fe_val
               rw [h_eq]; decide
             obtain ⟨key_val, key_ps, h_ek_ok, h_ek_adv, h_ek_bound, h_ek_tok, h_ek_tp, h_fmv_univ⟩ :=
               h_entry ps.advance n
@@ -4396,9 +4405,10 @@ theorem parseFlowMappingLoop_emitter_ok_ix (fuel : Nat)
                   (by rw [h_fmv_tok]
                       rw [show ps.advance.pos = ps.pos + 1 from h_adv_pos] at h_entry_bal
                       exact flowBracketBalanceIx_compose_zero ps.tokens body_start ps.pos val_ps.pos
-                        h_bs (by show ps.pos < ps.tokens.tokens.size; omega) (by omega) h_bal
-                        (by show flowBracketDelta (ps.tokens.tokens[ps.pos]'(by omega)).token = 0
-                            rw [(getElem!_pos ps.tokens.tokens ps.pos (by omega)).symm, h_fe_val]; decide)
+                        h_bs (by show ps.pos < ps.tokens.size; omega) (by omega) h_bal
+                        (by show flowBracketDelta (ps.tokens.tokens[ps.pos]'(show ps.pos < ps.tokens.size by omega)).token = 0
+                            rw [(getElem!_pos ps.tokens.tokens ps.pos (show ps.pos < ps.tokens.size by omega)).symm, h_fe_val]
+                            decide)
                         h_entry_bal)
                   (by omega)
               exact ⟨pairs_res, ps_res, h_loop, h_peek_res, h_pos_res, h_tok_res.trans h_fmv_tok, h_tp_res.trans h_fmv_tp⟩
@@ -4469,36 +4479,24 @@ theorem parseFlowMappingLoop_emitter_ok_ix (fuel : Nat)
           have hk := h_start h_lt h_acc_zero
           exact h_not_key hk
 
-/-! ### §5c  Scanner-side bridge — Option β axiom (forward reference)
+/-! ### §5c  Scanner-side bridge — relocated to `IndexedScannerPlainScalarValid.lean`
 
-The indexed scanner (Phase 3 Step 5) produces a `TokenStream input` from
-a source `String`. By analogy with the legacy
-`scan_flow_aware_psv` chain in
-`Proofs/Production/ScannerPlainScalarValid.lean`, the output stream is
-flow-aware PSV and has matched flow brackets.
+The §5c forward references — the indexed scanner output is flow-aware
+PSV and has matched flow brackets — were previously staged here as
+two placeholder axioms with `(h_from_scanner : True)` preconditions.
+In Step 6d.1e.1 they were relocated to
+`L4YAML/Proofs/Production/IndexedScannerPlainScalarValid.lean`
+(`scan_flow_aware_psv_ix_axiom` + `scan_flow_brackets_matched_ix_axiom`)
+with **tightened preconditions** keyed on
+`Scanner.Indexed.scanIx input = .ok tokens` instead of the placeholder
+`True`. The new file imports `IndexedWellBehaved.lean` (for the
+`FlowAwarePSVIx` / `FlowBracketsMatchedIx` predicates) and the indexed
+scanner.
 
-Discharging this axiom in indexed form is the subject of a later
-sub-step (Step 6d.1d or rolled into Step 6f cutover prep). For now,
-declaring it as an axiom lets the consumer side (`parseStream_output_scannable_ix`)
-be usable in downstream proofs without blocking on the scanner-side
-chain port.
-
-**Phase 3 close-out obligation**: every `axiom` declared in
-`IndexedWellBehaved.lean` must be discharged before Step 6f cutover. -/
-
-/-- Indexed scanner output is flow-aware PSV. To be discharged in
-    Step 6d.1d via an indexed port of the scanner-side
-    `scan_flow_aware_psv` chain (~1 session of scanner-side work). -/
-axiom indexed_scanner_flowAwarePSV_axiom
-    {input : String} (tokens : Indexed.TokenStream input)
-    (h_from_scanner : True) :
-    FlowAwarePSVIx tokens
-
-/-- Indexed scanner output has matched flow brackets. To be discharged in
-    Step 6d.1d. -/
-axiom indexed_scanner_flowBracketsMatched_axiom
-    {input : String} (tokens : Indexed.TokenStream input)
-    (h_from_scanner : True) :
-    FlowBracketsMatchedIx tokens
+**Net effect on `IndexedWellBehaved.lean`**: this file is now
+**0 axioms / 0 sorries** locally. The Phase 3 closure still has 2
+axioms (in the sister file), which the per-action preservation chain
+(Step 6d.1e.2+) will discharge. See Blueprint Step 6d.1e ladder and
+Reflection 68. -/
 
 end L4YAML.Proofs.Indexed.WellBehaved
