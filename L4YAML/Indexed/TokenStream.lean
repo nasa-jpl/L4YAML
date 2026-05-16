@@ -138,6 +138,20 @@ def singleton {input : String} (t : IxToken input) : TokenStream input where
     Option (IxToken input) :=
   ts.tokens[i]?
 
+/-- `GetElem` instance: a `TokenStream` indexes like its underlying array.
+
+    With this, `ts[i]'h` (where `h : i < ts.size`) returns `IxToken input`,
+    matching the shape parser proofs (Phase 3 Step 6d) expect when porting
+    legacy lemmas keyed on `Array (Positioned YamlToken)` to the indexed
+    `Indexed.TokenStream input` substrate. -/
+instance {input : String} :
+    GetElem (TokenStream input) Nat (IxToken input) (fun ts i => i < ts.size) where
+  getElem ts i h := ts.tokens[i]'h
+
+theorem getElem_eq_tokens_getElem {input : String}
+    (ts : TokenStream input) (i : Nat) (h : i < ts.size) :
+    ts[i]'h = ts.tokens[i]'h := rfl
+
 @[simp] theorem size_empty (input : String) :
     size (empty input) = 0 := rfl
 
