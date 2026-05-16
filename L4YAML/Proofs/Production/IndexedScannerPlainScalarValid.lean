@@ -1984,4 +1984,408 @@ axiom scan_flow_brackets_matched_ix_axiom
     (_h_scan : ScannerStateIx.scanIx input = .ok tokens) :
     FlowBracketsMatchedIx tokens
 
+/-! ## §10  Flow-context dispatcher preservation (Step 6d.1e.5)
+
+Preservation suites for the flow-bracket scanners
+`scanFlowSequenceStartIx` (`[`), `scanFlowSequenceEndIx` (`]`),
+`scanFlowMappingStartIx` (`{`), `scanFlowMappingEndIx` (`}`),
+`scanFlowEntryIx` (`,`), and the umbrella dispatcher
+`scanNextTokenIx_dispatchFlowIndicators`.
+
+Strategy. Unlike the block-context dispatchers in §8, the flow
+scanners emit *flow tokens themselves*. PSV preservation still
+follows the standard "emit non-plain" recipe (every flow bracket
+is non-plain). FCPSV preservation needs a slight relaxation of
+the §5 building block: `emit_non_flow_non_plain_preserves_FlowContextPSVIx`
+forbids the new token from being a flow bracket, but the FCPSV
+proof body never actually uses that hypothesis — the new-token
+discharge goes through `fpsv_of_not_plain_ix`, which only cares
+about non-plain. §10a adds the cleaner `emit_non_plain_preserves_FlowContextPSVIx`
+variant.
+
+FNI preservation is the genuinely new piece: the scanner's
+`flowLevel` shifts by ±1 (open / close), and `flowNestingIx` on
+the token-array side shifts in lockstep via `flowNestingIx_push`
+(§2). For `.flowSequenceEnd` / `.flowMappingEnd`, the underflow
+case (`s.flowLevel = 0`) is handled uniformly by `Nat` monus
+(`0 - 1 = 0`) — the dispatcher's runtime check prevents this case
+in practice, but the FNI lemma holds unconditionally.
+
+§10a sets up the FCPSV emit building block; §10b–§10e cover the
+four bracket scanners (each 3 lemmas: PSV / FCPSV / FNI); §10f
+wraps `scanFlowEntryIx` on top of §8e (depends on the two §8e
+axioms for FCPSV / FNI but produces a real theorem statement);
+§10g case-splits the dispatcher into its five `.ok (some _)` arms. -/
+
+/-! ### §10a  Generic emit-step preservation for flow brackets
+
+`emit_non_flow_non_plain_preserves_FlowContextPSVIx` requires the
+emitted token to *not* be a flow bracket — useful for block-context
+scanners, useless for flow-bracket scanners. The proof body of that
+lemma never consumes the non-flow hypotheses (they sit in
+underscored arguments), so the FCPSV preservation is really a
+non-plain-only fact. The variant below records that. -/
+
+/-- Emitting a non-plain token preserves `FlowContextPSVIx`.
+    Companion to `emit_non_flow_non_plain_preserves_FlowContextPSVIx`
+    (§5) — drops the four non-flow hypotheses, which the proof body
+    does not consume. Used by the flow-bracket scanner preservation
+    suites in §10b–§10e. -/
+theorem emit_non_plain_preserves_FlowContextPSVIx {input : String}
+    (s : ScannerStateIx input) (tok : YamlToken)
+    (h_old : FlowContextPSVIx s.tokens)
+    (h_np : match tok with | .scalar _ .plain => False | _ => True) :
+    FlowContextPSVIx (s.emit tok).tokens := by
+  refine FlowContextPSVIx_of_prefix_and_new s.tokens (s.emit tok).tokens h_old ?_ ?_ ?_
+  · change s.tokens.tokens.size ≤ (s.tokens.tokens.push _).size
+    rw [Array.size_push]; omega
+  · intro i hi
+    change (s.tokens.tokens.push _)[i]'(by
+        rw [Array.size_push]; exact Nat.lt_succ_of_lt hi) = s.tokens.tokens[i]'hi
+    exact Array.getElem_push_lt ..
+  · intro j hj hge _h_flow
+    have hj_arr : j < (s.tokens.tokens.push (IxToken.mk' s.cursor.pos tok s.cursor.pos
+        (Nat.le_refl _) s.cursor.posBound)).size := hj
+    have h_size_eq : s.tokens.size = s.tokens.tokens.size := rfl
+    have h_eq_idx : j = s.tokens.tokens.size := by
+      rw [Array.size_push] at hj_arr
+      rw [h_size_eq] at hge
+      omega
+    subst h_eq_idx
+    have h_eq : (s.emit tok).tokens[s.tokens.tokens.size]'hj =
+        IxToken.mk' s.cursor.pos tok s.cursor.pos (Nat.le_refl _) s.cursor.posBound := by
+      change (s.tokens.tokens.push _)[s.tokens.tokens.size]'hj_arr = _
+      exact Array.getElem_push_eq ..
+    rw [h_eq]
+    exact fpsv_of_not_plain_ix _ h_np
+
+/-! ### §10b  `scanFlowSequenceStartIx` preservation
+
+`scanFlowSequenceStartIx s = { (s.emit .flowSequenceStart).advance with
+  flowLevel := _ + 1, flowStack := _, simpleKeyStack := _, simpleKey := _,
+  simpleKeyAllowed := true }`. The record-update touches `flowLevel` (the
+FNI-relevant field) and several fields invisible to our predicates;
+`.tokens` is unchanged by the record update, so `s'.tokens =
+(s.emit .flowSequenceStart).tokens` (after `advance_tokens`). -/
+
+theorem scanFlowSequenceStartIx_preserves_PlainScalarsValidIx {input : String}
+    (s : ScannerStateIx input) (h_old : PlainScalarsValidIx s.tokens) :
+    PlainScalarsValidIx (scanFlowSequenceStartIx s).tokens := by
+  unfold scanFlowSequenceStartIx
+  show PlainScalarsValidIx { (s.emit .flowSequenceStart).advance with .. }.tokens
+  simp only [advance_tokens]
+  exact emit_non_plain_preserves_PlainScalarsValidIx s .flowSequenceStart h_old (by trivial)
+
+theorem scanFlowSequenceStartIx_preserves_FlowContextPSVIx {input : String}
+    (s : ScannerStateIx input) (h_old : FlowContextPSVIx s.tokens) :
+    FlowContextPSVIx (scanFlowSequenceStartIx s).tokens := by
+  unfold scanFlowSequenceStartIx
+  show FlowContextPSVIx { (s.emit .flowSequenceStart).advance with .. }.tokens
+  simp only [advance_tokens]
+  exact emit_non_plain_preserves_FlowContextPSVIx s .flowSequenceStart h_old (by trivial)
+
+theorem scanFlowSequenceStartIx_preserves_FlowNestingInvIx {input : String}
+    (s : ScannerStateIx input) (h_fni : FlowNestingInvIx s) :
+    FlowNestingInvIx (scanFlowSequenceStartIx s) := by
+  unfold FlowNestingInvIx at h_fni ⊢
+  unfold scanFlowSequenceStartIx
+  show flowNestingIx ((s.emit .flowSequenceStart).advance).tokens
+        ((s.emit .flowSequenceStart).advance).tokens.size
+      = ((s.emit .flowSequenceStart).advance).flowLevel + 1
+  simp only [advance_tokens, advance_flowLevel, emit_flowLevel]
+  change flowNestingIx.go (s.tokens.tokens.push _) 0
+      (s.tokens.tokens.push _).size 0 = s.flowLevel + 1
+  rw [Array.size_push, flowNestingIx_push s.tokens.tokens _]
+  change flowNestingIx s.tokens s.tokens.size + 1 = s.flowLevel + 1
+  rw [h_fni]
+
+/-! ### §10c  `scanFlowSequenceEndIx` preservation
+
+Symmetric to §10b but for `]`: emits `.flowSequenceEnd`, advances,
+and sets `flowLevel := _ - 1`. Note: `scanFlowSequenceEndIx`
+itself does *not* check `s.flowLevel > 0` — that's the dispatcher's
+job in §10g. The FNI lemma holds unconditionally because Nat
+monus saturates at zero (`0 - 1 = 0`) and `flowNestingIx_push`
+mirrors that exactly. -/
+
+theorem scanFlowSequenceEndIx_preserves_PlainScalarsValidIx {input : String}
+    (s : ScannerStateIx input) (h_old : PlainScalarsValidIx s.tokens) :
+    PlainScalarsValidIx (scanFlowSequenceEndIx s).tokens := by
+  unfold scanFlowSequenceEndIx
+  show PlainScalarsValidIx { (s.emit .flowSequenceEnd).advance with .. }.tokens
+  simp only [advance_tokens]
+  exact emit_non_plain_preserves_PlainScalarsValidIx s .flowSequenceEnd h_old (by trivial)
+
+theorem scanFlowSequenceEndIx_preserves_FlowContextPSVIx {input : String}
+    (s : ScannerStateIx input) (h_old : FlowContextPSVIx s.tokens) :
+    FlowContextPSVIx (scanFlowSequenceEndIx s).tokens := by
+  unfold scanFlowSequenceEndIx
+  show FlowContextPSVIx { (s.emit .flowSequenceEnd).advance with .. }.tokens
+  simp only [advance_tokens]
+  exact emit_non_plain_preserves_FlowContextPSVIx s .flowSequenceEnd h_old (by trivial)
+
+theorem scanFlowSequenceEndIx_preserves_FlowNestingInvIx {input : String}
+    (s : ScannerStateIx input) (h_fni : FlowNestingInvIx s) :
+    FlowNestingInvIx (scanFlowSequenceEndIx s) := by
+  unfold FlowNestingInvIx at h_fni ⊢
+  unfold scanFlowSequenceEndIx
+  show flowNestingIx ((s.emit .flowSequenceEnd).advance).tokens
+        ((s.emit .flowSequenceEnd).advance).tokens.size
+      = ((s.emit .flowSequenceEnd).advance).flowLevel - 1
+  simp only [advance_tokens, advance_flowLevel, emit_flowLevel]
+  change flowNestingIx.go (s.tokens.tokens.push _) 0
+      (s.tokens.tokens.push _).size 0 = s.flowLevel - 1
+  rw [Array.size_push, flowNestingIx_push s.tokens.tokens _]
+  change (if flowNestingIx s.tokens s.tokens.size > 0
+          then flowNestingIx s.tokens s.tokens.size - 1
+          else 0) = s.flowLevel - 1
+  rw [h_fni]
+  by_cases h : s.flowLevel > 0
+  · simp [h]
+  · have h_eq : s.flowLevel = 0 := by omega
+    simp [h_eq]
+
+/-! ### §10d  `scanFlowMappingStartIx` preservation
+
+Same shape as §10b with `.flowMappingStart` in place of `.flowSequenceStart`.
+The `flowNestingIx_push` match treats them identically (both depth + 1). -/
+
+theorem scanFlowMappingStartIx_preserves_PlainScalarsValidIx {input : String}
+    (s : ScannerStateIx input) (h_old : PlainScalarsValidIx s.tokens) :
+    PlainScalarsValidIx (scanFlowMappingStartIx s).tokens := by
+  unfold scanFlowMappingStartIx
+  show PlainScalarsValidIx { (s.emit .flowMappingStart).advance with .. }.tokens
+  simp only [advance_tokens]
+  exact emit_non_plain_preserves_PlainScalarsValidIx s .flowMappingStart h_old (by trivial)
+
+theorem scanFlowMappingStartIx_preserves_FlowContextPSVIx {input : String}
+    (s : ScannerStateIx input) (h_old : FlowContextPSVIx s.tokens) :
+    FlowContextPSVIx (scanFlowMappingStartIx s).tokens := by
+  unfold scanFlowMappingStartIx
+  show FlowContextPSVIx { (s.emit .flowMappingStart).advance with .. }.tokens
+  simp only [advance_tokens]
+  exact emit_non_plain_preserves_FlowContextPSVIx s .flowMappingStart h_old (by trivial)
+
+theorem scanFlowMappingStartIx_preserves_FlowNestingInvIx {input : String}
+    (s : ScannerStateIx input) (h_fni : FlowNestingInvIx s) :
+    FlowNestingInvIx (scanFlowMappingStartIx s) := by
+  unfold FlowNestingInvIx at h_fni ⊢
+  unfold scanFlowMappingStartIx
+  show flowNestingIx ((s.emit .flowMappingStart).advance).tokens
+        ((s.emit .flowMappingStart).advance).tokens.size
+      = ((s.emit .flowMappingStart).advance).flowLevel + 1
+  simp only [advance_tokens, advance_flowLevel, emit_flowLevel]
+  change flowNestingIx.go (s.tokens.tokens.push _) 0
+      (s.tokens.tokens.push _).size 0 = s.flowLevel + 1
+  rw [Array.size_push, flowNestingIx_push s.tokens.tokens _]
+  change flowNestingIx s.tokens s.tokens.size + 1 = s.flowLevel + 1
+  rw [h_fni]
+
+/-! ### §10e  `scanFlowMappingEndIx` preservation
+
+Same shape as §10c with `.flowMappingEnd` in place of `.flowSequenceEnd`. -/
+
+theorem scanFlowMappingEndIx_preserves_PlainScalarsValidIx {input : String}
+    (s : ScannerStateIx input) (h_old : PlainScalarsValidIx s.tokens) :
+    PlainScalarsValidIx (scanFlowMappingEndIx s).tokens := by
+  unfold scanFlowMappingEndIx
+  show PlainScalarsValidIx { (s.emit .flowMappingEnd).advance with .. }.tokens
+  simp only [advance_tokens]
+  exact emit_non_plain_preserves_PlainScalarsValidIx s .flowMappingEnd h_old (by trivial)
+
+theorem scanFlowMappingEndIx_preserves_FlowContextPSVIx {input : String}
+    (s : ScannerStateIx input) (h_old : FlowContextPSVIx s.tokens) :
+    FlowContextPSVIx (scanFlowMappingEndIx s).tokens := by
+  unfold scanFlowMappingEndIx
+  show FlowContextPSVIx { (s.emit .flowMappingEnd).advance with .. }.tokens
+  simp only [advance_tokens]
+  exact emit_non_plain_preserves_FlowContextPSVIx s .flowMappingEnd h_old (by trivial)
+
+theorem scanFlowMappingEndIx_preserves_FlowNestingInvIx {input : String}
+    (s : ScannerStateIx input) (h_fni : FlowNestingInvIx s) :
+    FlowNestingInvIx (scanFlowMappingEndIx s) := by
+  unfold FlowNestingInvIx at h_fni ⊢
+  unfold scanFlowMappingEndIx
+  show flowNestingIx ((s.emit .flowMappingEnd).advance).tokens
+        ((s.emit .flowMappingEnd).advance).tokens.size
+      = ((s.emit .flowMappingEnd).advance).flowLevel - 1
+  simp only [advance_tokens, advance_flowLevel, emit_flowLevel]
+  change flowNestingIx.go (s.tokens.tokens.push _) 0
+      (s.tokens.tokens.push _).size 0 = s.flowLevel - 1
+  rw [Array.size_push, flowNestingIx_push s.tokens.tokens _]
+  change (if flowNestingIx s.tokens s.tokens.size > 0
+          then flowNestingIx s.tokens s.tokens.size - 1
+          else 0) = s.flowLevel - 1
+  rw [h_fni]
+  by_cases h : s.flowLevel > 0
+  · simp [h]
+  · have h_eq : s.flowLevel = 0 := by omega
+    simp [h_eq]
+
+/-! ### §10f  `scanFlowEntryIx` preservation
+
+`scanFlowEntryIx s = .ok { ((scanValuePrepareIx s).emit .flowEntry).advance
+  with simpleKeyAllowed := true }`. Composes §8e (`scanValuePrepareIx`,
+PSV proven + FCPSV / FNI staged) with §5 (`emit_non_*` for `.flowEntry`).
+`.flowEntry` is non-plain and non-flow-bracket, so the §5 building
+blocks apply directly. -/
+
+theorem scanFlowEntryIx_preserves_PlainScalarsValidIx {input : String}
+    (s s' : ScannerStateIx input) (h_ok : scanFlowEntryIx s = .ok s')
+    (h_old : PlainScalarsValidIx s.tokens) :
+    PlainScalarsValidIx s'.tokens := by
+  unfold scanFlowEntryIx at h_ok
+  simp only [Except.ok.injEq] at h_ok
+  subst h_ok
+  show PlainScalarsValidIx
+    { ((scanValuePrepareIx s).emit .flowEntry).advance with simpleKeyAllowed := true }.tokens
+  simp only [advance_tokens]
+  have h_prep := scanValuePrepareIx_preserves_PlainScalarsValidIx s h_old
+  exact emit_non_plain_preserves_PlainScalarsValidIx
+    (scanValuePrepareIx s) .flowEntry h_prep (by trivial)
+
+theorem scanFlowEntryIx_preserves_FlowContextPSVIx {input : String}
+    (s s' : ScannerStateIx input) (h_ok : scanFlowEntryIx s = .ok s')
+    (h_old : FlowContextPSVIx s.tokens) :
+    FlowContextPSVIx s'.tokens := by
+  unfold scanFlowEntryIx at h_ok
+  simp only [Except.ok.injEq] at h_ok
+  subst h_ok
+  show FlowContextPSVIx
+    { ((scanValuePrepareIx s).emit .flowEntry).advance with simpleKeyAllowed := true }.tokens
+  simp only [advance_tokens]
+  have h_prep := scanValuePrepareIx_preserves_FlowContextPSVIx s h_old
+  exact emit_non_flow_non_plain_preserves_FlowContextPSVIx
+    (scanValuePrepareIx s) .flowEntry h_prep
+    (by trivial) (by decide) (by decide) (by decide) (by decide)
+
+theorem scanFlowEntryIx_preserves_FlowNestingInvIx {input : String}
+    (s s' : ScannerStateIx input) (h_ok : scanFlowEntryIx s = .ok s')
+    (h_fni : FlowNestingInvIx s) :
+    FlowNestingInvIx s' := by
+  unfold scanFlowEntryIx at h_ok
+  simp only [Except.ok.injEq] at h_ok
+  subst h_ok
+  have h_prep := scanValuePrepareIx_preserves_FlowNestingInvIx s h_fni
+  have h_emit := emit_non_flow_preserves_FlowNestingInvIx
+    (scanValuePrepareIx s) .flowEntry h_prep
+    (by decide) (by decide) (by decide) (by decide)
+  unfold FlowNestingInvIx at h_emit ⊢
+  simpa using h_emit
+
+/-! ### §10g  `scanNextTokenIx_dispatchFlowIndicators` preservation
+
+The umbrella dispatcher case-splits on `c ∈ { '[', ']', '{', '}', ',' }`,
+each producing `.ok (some s')` via the corresponding §10b–§10f lemma
+(with a `flowLevel == 0` runtime guard on `]` / `}` / `,`). The `none`
+fall-through case (none of the five characters) returns `.ok none` and
+is therefore inconsistent with the `.ok (some s')` hypothesis. -/
+
+theorem scanNextTokenIx_dispatchFlowIndicators_preserves_PlainScalarsValidIx
+    {input : String} (s : ScannerStateIx input) (c : Char)
+    (s' : ScannerStateIx input)
+    (h_ok : scanNextTokenIx_dispatchFlowIndicators s c = .ok (some s'))
+    (h_old : PlainScalarsValidIx s.tokens) :
+    PlainScalarsValidIx s'.tokens := by
+  unfold scanNextTokenIx_dispatchFlowIndicators at h_ok
+  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  split at h_ok
+  · -- c == '['
+    simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
+    exact scanFlowSequenceStartIx_preserves_PlainScalarsValidIx s h_old
+  · split at h_ok
+    · -- c == ']'
+      split at h_ok
+      · cases h_ok                       -- flowLevel == 0 error
+      · simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
+        exact scanFlowSequenceEndIx_preserves_PlainScalarsValidIx s h_old
+    · split at h_ok
+      · -- c == '{'
+        simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
+        exact scanFlowMappingStartIx_preserves_PlainScalarsValidIx s h_old
+      · split at h_ok
+        · -- c == '}'
+          split at h_ok
+          · cases h_ok
+          · simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
+            exact scanFlowMappingEndIx_preserves_PlainScalarsValidIx s h_old
+        · split at h_ok
+          · -- c == ','
+            split at h_ok
+            · cases h_ok
+            · split at h_ok
+              · cases h_ok               -- scanFlowEntryIx error (cannot happen)
+              · simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
+                exact scanFlowEntryIx_preserves_PlainScalarsValidIx s _
+                  (by assumption) h_old
+          · cases h_ok                   -- fall-through .ok none
+
+theorem scanNextTokenIx_dispatchFlowIndicators_preserves_FlowContextPSVIx
+    {input : String} (s : ScannerStateIx input) (c : Char)
+    (s' : ScannerStateIx input)
+    (h_ok : scanNextTokenIx_dispatchFlowIndicators s c = .ok (some s'))
+    (h_old : FlowContextPSVIx s.tokens) :
+    FlowContextPSVIx s'.tokens := by
+  unfold scanNextTokenIx_dispatchFlowIndicators at h_ok
+  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  split at h_ok
+  · simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
+    exact scanFlowSequenceStartIx_preserves_FlowContextPSVIx s h_old
+  · split at h_ok
+    · split at h_ok
+      · cases h_ok
+      · simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
+        exact scanFlowSequenceEndIx_preserves_FlowContextPSVIx s h_old
+    · split at h_ok
+      · simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
+        exact scanFlowMappingStartIx_preserves_FlowContextPSVIx s h_old
+      · split at h_ok
+        · split at h_ok
+          · cases h_ok
+          · simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
+            exact scanFlowMappingEndIx_preserves_FlowContextPSVIx s h_old
+        · split at h_ok
+          · split at h_ok
+            · cases h_ok
+            · split at h_ok
+              · cases h_ok
+              · simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
+                exact scanFlowEntryIx_preserves_FlowContextPSVIx s _
+                  (by assumption) h_old
+          · cases h_ok
+
+theorem scanNextTokenIx_dispatchFlowIndicators_preserves_FlowNestingInvIx
+    {input : String} (s : ScannerStateIx input) (c : Char)
+    (s' : ScannerStateIx input)
+    (h_ok : scanNextTokenIx_dispatchFlowIndicators s c = .ok (some s'))
+    (h_fni : FlowNestingInvIx s) :
+    FlowNestingInvIx s' := by
+  unfold scanNextTokenIx_dispatchFlowIndicators at h_ok
+  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  split at h_ok
+  · simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
+    exact scanFlowSequenceStartIx_preserves_FlowNestingInvIx s h_fni
+  · split at h_ok
+    · split at h_ok
+      · cases h_ok
+      · simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
+        exact scanFlowSequenceEndIx_preserves_FlowNestingInvIx s h_fni
+    · split at h_ok
+      · simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
+        exact scanFlowMappingStartIx_preserves_FlowNestingInvIx s h_fni
+      · split at h_ok
+        · split at h_ok
+          · cases h_ok
+          · simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
+            exact scanFlowMappingEndIx_preserves_FlowNestingInvIx s h_fni
+        · split at h_ok
+          · split at h_ok
+            · cases h_ok
+            · split at h_ok
+              · cases h_ok
+              · simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
+                exact scanFlowEntryIx_preserves_FlowNestingInvIx s _
+                  (by assumption) h_fni
+          · cases h_ok
+
 end L4YAML.Proofs.Indexed.ScannerPlainScalarValid
