@@ -1406,7 +1406,545 @@ axiom scanTagIx_preserves_FlowNestingInvIx {input : String}
     FlowNestingInvIx s'
 
 
-/-! ## §8  Top-level theorems — staged as axioms with tightened preconditions
+/-! ## §8  Block-context dispatcher preservation (Step 6d.1e.4)
+
+Preservation suites for the block-indicator scanners
+`scanBlockEntryIx` (`-`), `scanKeyIx` (`?`), `scanValueIx` (`:`),
+their sub-stages `scanValueClearKeyIx` / `scanValuePrepareIx`, and
+the umbrella dispatcher `scanNextTokenIx_dispatchBlockIndicators`.
+
+Strategy. The block-indicator scanners compose four kinds of
+state-transforming primitives:
+1. **Pure record updates** (`scanValueClearKeyIx`, `simpleKeyAllowed`
+   tweaks, etc.) — tokens unchanged, preservation by `rfl`-style
+   reasoning;
+2. **`pushSequenceIndentIx` / `pushMappingIndentIx`** (§6d/§6e) —
+   emit a single non-plain non-flow indent-start token;
+3. **`s.emit YamlToken.{blockEntry,key,value}`** — emit a single
+   non-plain non-flow indicator token (§5 building blocks);
+4. **`s.overwriteAtCursor i sk tok`** (only in `scanValuePrepareIx`)
+   — `setIfInBounds` overwrite with `.blockMappingStart` or `.key`.
+
+§8a sets up the `setIfInBounds` infrastructure (PSV side; the
+FCPSV / FlowNestingInv side for `setIfInBounds` is staged as the
+single per-dispatcher axiom on `scanValuePrepareIx` because the
+non-flow-original requirement needs a token-stream invariant the
+indexed proof chain has not yet propagated — see §8e Reflection 71).
+
+§8b–§8d cover the per-scanner preservation suites; §8e wraps
+`scanValuePrepareIx` (PSV proven; FCPSV / FlowNestingInv staged as
+axioms); §8f composes the `scanValueIx` chain on top of §8a/§8e;
+§8g case-splits the umbrella `scanNextTokenIx_dispatchBlockIndicators`
+into its three `.ok (some _)` arms. -/
+
+/-! ### §8a  `setIfInBounds` PSV / FCPSV preservation primitives -/
+
+/-- Pushing/overwriting via `setIfInBounds` with a non-plain element
+    preserves `PlainScalarsValidIx`. The replaced slot becomes the new
+    `t`; non-plain ⇒ the PSV match at that index is vacuously `True`.
+    Indexed twin of legacy `PlainScalarsValid_setIfInBounds_non_plain`. -/
+theorem PlainScalarsValidIx_setIfInBounds_non_plain
+    (tokens : Indexed.TokenStream input) (h_old : PlainScalarsValidIx tokens)
+    (idx : Nat) (t : IxToken input)
+    (h_np : match t.token with | .scalar _ .plain => False | _ => True) :
+    PlainScalarsValidIx (tokens.setIfInBounds idx t) := by
+  intro i hi
+  have hi_arr : i < (tokens.tokens.setIfInBounds idx t).size := hi
+  have h_i_lt : i < tokens.tokens.size := by
+    rw [Array.size_setIfInBounds] at hi_arr; exact hi_arr
+  have h_eq : (tokens.setIfInBounds idx t)[i]'hi
+      = (tokens.tokens.setIfInBounds idx t)[i]'hi_arr := rfl
+  rw [h_eq, Array.getElem_setIfInBounds h_i_lt]
+  by_cases h_eq_idx : idx = i
+  · subst h_eq_idx; simp only [↓reduceIte]
+    cases t with
+    | mk start val stop hOrd hBnd =>
+      cases val <;> simp_all
+      rename_i content style; cases style <;> simp_all
+  · simp only [h_eq_idx, ↓reduceIte]; exact h_old i h_i_lt
+
+/-- `overwriteAtCursor` size invariance. The underlying `setIfInBounds`
+    is size-preserving regardless of whether `i` is in bounds. -/
+theorem overwriteAtCursor_tokens_size {input : String} (s : ScannerStateIx input)
+    (i : Nat) (sk : IxCursor input) (tok : YamlToken) :
+    (s.overwriteAtCursor i sk tok).tokens.size = s.tokens.size := by
+  show (s.tokens.tokens.setIfInBounds i _).size = s.tokens.tokens.size
+  exact Array.size_setIfInBounds ..
+
+/-- `overwriteAtCursor` with a non-plain token preserves
+    `PlainScalarsValidIx`. -/
+theorem overwriteAtCursor_non_plain_preserves_PlainScalarsValidIx
+    {input : String} (s : ScannerStateIx input) (i : Nat) (sk : IxCursor input)
+    (tok : YamlToken) (h_old : PlainScalarsValidIx s.tokens)
+    (h_np : match tok with | .scalar _ .plain => False | _ => True) :
+    PlainScalarsValidIx (s.overwriteAtCursor i sk tok).tokens := by
+  show PlainScalarsValidIx (s.tokens.setIfInBounds i _)
+  exact PlainScalarsValidIx_setIfInBounds_non_plain s.tokens h_old i _ h_np
+
+/-! ### §8b  `scanValueClearKeyIx` preservation
+
+`scanValueClearKeyIx` is a pure state-only update on the `simpleKey`
+field — tokens are completely untouched. Every preservation lemma
+reduces to `rfl` after `unfold; split`. -/
+
+/-- `scanValueClearKeyIx` leaves the token stream unchanged. -/
+@[simp] theorem scanValueClearKeyIx_tokens {input : String}
+    (s : ScannerStateIx input) :
+    (scanValueClearKeyIx s).tokens = s.tokens := by
+  unfold scanValueClearKeyIx
+  split
+  · split
+    · rfl
+    · split <;> rfl
+  · rfl
+
+/-- `scanValueClearKeyIx` preserves `flowLevel` (no flow-level update). -/
+@[simp] theorem scanValueClearKeyIx_flowLevel {input : String}
+    (s : ScannerStateIx input) :
+    (scanValueClearKeyIx s).flowLevel = s.flowLevel := by
+  unfold scanValueClearKeyIx
+  split
+  · split
+    · rfl
+    · split <;> rfl
+  · rfl
+
+theorem scanValueClearKeyIx_preserves_PlainScalarsValidIx {input : String}
+    (s : ScannerStateIx input) (h_old : PlainScalarsValidIx s.tokens) :
+    PlainScalarsValidIx (scanValueClearKeyIx s).tokens := by
+  rw [scanValueClearKeyIx_tokens]; exact h_old
+
+theorem scanValueClearKeyIx_preserves_FlowContextPSVIx {input : String}
+    (s : ScannerStateIx input) (h_old : FlowContextPSVIx s.tokens) :
+    FlowContextPSVIx (scanValueClearKeyIx s).tokens := by
+  rw [scanValueClearKeyIx_tokens]; exact h_old
+
+theorem scanValueClearKeyIx_preserves_FlowNestingInvIx {input : String}
+    (s : ScannerStateIx input) (h_fni : FlowNestingInvIx s) :
+    FlowNestingInvIx (scanValueClearKeyIx s) := by
+  unfold FlowNestingInvIx at h_fni ⊢
+  rw [scanValueClearKeyIx_tokens, scanValueClearKeyIx_flowLevel]; exact h_fni
+
+/-! ### §8c  `scanBlockEntryIx` preservation
+
+`scanBlockEntryIx s = .ok s'` iff either `s.inFlow` (no tab check
+fires) or `!s.hasTabInPrecedingWhitespace`. In both cases:
+`s'.tokens = ((pushSequenceIndentIx-or-id s).emit .blockEntry).tokens`
+(`advance` and the outer `simpleKeyAllowed := true` update do not
+touch tokens). Preservation composes §6d (`pushSequenceIndentIx`)
+with §5 (`emit_non_plain` / `emit_non_flow`). -/
+
+theorem scanBlockEntryIx_preserves_PlainScalarsValidIx {input : String}
+    (s s' : ScannerStateIx input) (h_ok : scanBlockEntryIx s = .ok s')
+    (h_old : PlainScalarsValidIx s.tokens) :
+    PlainScalarsValidIx s'.tokens := by
+  unfold scanBlockEntryIx at h_ok
+  by_cases hi : (!s.inFlow) = true
+  · rw [if_pos hi] at h_ok
+    by_cases ht : s.hasTabInPrecedingWhitespace = true
+    · rw [if_pos ht] at h_ok; simp [Bind.bind, Except.bind] at h_ok
+    · rw [if_neg ht] at h_ok
+      simp only [pure_bind] at h_ok
+      rw [if_pos hi] at h_ok
+      simp only [Except.ok.injEq] at h_ok
+      subst h_ok
+      show PlainScalarsValidIx
+        { ((pushSequenceIndentIx s s.cursor.pos.col).emit .blockEntry).advance
+            with simpleKeyAllowed := true }.tokens
+      simp only [advance_tokens]
+      have h_step1 := pushSequenceIndentIx_preserves_PlainScalarsValidIx
+        s s.cursor.pos.col h_old
+      exact emit_non_plain_preserves_PlainScalarsValidIx
+        (pushSequenceIndentIx s s.cursor.pos.col) .blockEntry h_step1 (by trivial)
+  · rw [if_neg hi] at h_ok
+    simp only [pure_bind] at h_ok
+    rw [if_neg hi] at h_ok
+    simp only [Except.ok.injEq] at h_ok
+    subst h_ok
+    show PlainScalarsValidIx { (s.emit .blockEntry).advance with simpleKeyAllowed := true }.tokens
+    simp only [advance_tokens]
+    exact emit_non_plain_preserves_PlainScalarsValidIx s .blockEntry h_old (by trivial)
+
+theorem scanBlockEntryIx_preserves_FlowContextPSVIx {input : String}
+    (s s' : ScannerStateIx input) (h_ok : scanBlockEntryIx s = .ok s')
+    (h_old : FlowContextPSVIx s.tokens) :
+    FlowContextPSVIx s'.tokens := by
+  unfold scanBlockEntryIx at h_ok
+  by_cases hi : (!s.inFlow) = true
+  · rw [if_pos hi] at h_ok
+    by_cases ht : s.hasTabInPrecedingWhitespace = true
+    · rw [if_pos ht] at h_ok; simp [Bind.bind, Except.bind] at h_ok
+    · rw [if_neg ht] at h_ok
+      simp only [pure_bind] at h_ok
+      rw [if_pos hi] at h_ok
+      simp only [Except.ok.injEq] at h_ok
+      subst h_ok
+      show FlowContextPSVIx
+        { ((pushSequenceIndentIx s s.cursor.pos.col).emit .blockEntry).advance
+            with simpleKeyAllowed := true }.tokens
+      simp only [advance_tokens]
+      have h_step1 := pushSequenceIndentIx_preserves_FlowContextPSVIx
+        s s.cursor.pos.col h_old
+      exact emit_non_flow_non_plain_preserves_FlowContextPSVIx
+        (pushSequenceIndentIx s s.cursor.pos.col) .blockEntry h_step1
+        (by trivial) (by decide) (by decide) (by decide) (by decide)
+  · rw [if_neg hi] at h_ok
+    simp only [pure_bind] at h_ok
+    rw [if_neg hi] at h_ok
+    simp only [Except.ok.injEq] at h_ok
+    subst h_ok
+    show FlowContextPSVIx { (s.emit .blockEntry).advance with simpleKeyAllowed := true }.tokens
+    simp only [advance_tokens]
+    exact emit_non_flow_non_plain_preserves_FlowContextPSVIx s .blockEntry h_old
+      (by trivial) (by decide) (by decide) (by decide) (by decide)
+
+theorem scanBlockEntryIx_preserves_FlowNestingInvIx {input : String}
+    (s s' : ScannerStateIx input) (h_ok : scanBlockEntryIx s = .ok s')
+    (h_fni : FlowNestingInvIx s) :
+    FlowNestingInvIx s' := by
+  unfold scanBlockEntryIx at h_ok
+  by_cases hi : (!s.inFlow) = true
+  · rw [if_pos hi] at h_ok
+    by_cases ht : s.hasTabInPrecedingWhitespace = true
+    · rw [if_pos ht] at h_ok; simp [Bind.bind, Except.bind] at h_ok
+    · rw [if_neg ht] at h_ok
+      simp only [pure_bind] at h_ok
+      rw [if_pos hi] at h_ok
+      simp only [Except.ok.injEq] at h_ok
+      subst h_ok
+      have h_step1 := pushSequenceIndentIx_preserves_FlowNestingInvIx
+        s s.cursor.pos.col h_fni
+      have h_step2 := emit_non_flow_preserves_FlowNestingInvIx
+        (pushSequenceIndentIx s s.cursor.pos.col) .blockEntry h_step1
+        (by decide) (by decide) (by decide) (by decide)
+      unfold FlowNestingInvIx at h_step2 ⊢
+      simpa using h_step2
+  · rw [if_neg hi] at h_ok
+    simp only [pure_bind] at h_ok
+    rw [if_neg hi] at h_ok
+    simp only [Except.ok.injEq] at h_ok
+    subst h_ok
+    have h_step1 := emit_non_flow_preserves_FlowNestingInvIx s .blockEntry h_fni
+      (by decide) (by decide) (by decide) (by decide)
+    unfold FlowNestingInvIx at h_step1 ⊢
+    simpa using h_step1
+
+/-! ### §8d  `scanKeyIx` preservation
+
+`scanKeyIx s = .ok s'` iff the inner tab-after-`?` check does not
+fire. In both context branches:
+`s'.tokens = ((pushMappingIndentIx-or-id s).emit .key).tokens` (the
+outer record-update on `simpleKeyAllowed`/`explicitKeyLine`/
+`simpleKey` does not touch tokens, and `advance` is token-transparent).
+Composes §6e (`pushMappingIndentIx`) with §5 (`emit_non_*`). -/
+
+theorem scanKeyIx_preserves_PlainScalarsValidIx {input : String}
+    (s s' : ScannerStateIx input) (h_ok : scanKeyIx s = .ok s')
+    (h_old : PlainScalarsValidIx s.tokens) :
+    PlainScalarsValidIx s'.tokens := by
+  unfold scanKeyIx at h_ok
+  by_cases hi : (!s.inFlow) = true
+  · simp only [if_pos hi, advance_inFlow, emit_inFlow,
+      pushMappingIndentIx_inFlow] at h_ok
+    split at h_ok
+    · simp [Bind.bind, Except.bind] at h_ok
+    · simp only [pure_bind, Except.ok.injEq] at h_ok
+      subst h_ok
+      show PlainScalarsValidIx
+        { ((pushMappingIndentIx s s.cursor.pos.col).emit .key).advance with .. }.tokens
+      simp only [advance_tokens]
+      have h_step1 := pushMappingIndentIx_preserves_PlainScalarsValidIx
+        s s.cursor.pos.col h_old
+      exact emit_non_plain_preserves_PlainScalarsValidIx
+        (pushMappingIndentIx s s.cursor.pos.col) .key h_step1 (by trivial)
+  · simp only [if_neg hi, advance_inFlow, emit_inFlow] at h_ok
+    simp only [pure_bind, Except.ok.injEq] at h_ok
+    subst h_ok
+    show PlainScalarsValidIx { (s.emit .key).advance with .. }.tokens
+    simp only [advance_tokens]
+    exact emit_non_plain_preserves_PlainScalarsValidIx s .key h_old (by trivial)
+
+theorem scanKeyIx_preserves_FlowContextPSVIx {input : String}
+    (s s' : ScannerStateIx input) (h_ok : scanKeyIx s = .ok s')
+    (h_old : FlowContextPSVIx s.tokens) :
+    FlowContextPSVIx s'.tokens := by
+  unfold scanKeyIx at h_ok
+  by_cases hi : (!s.inFlow) = true
+  · simp only [if_pos hi, advance_inFlow, emit_inFlow,
+      pushMappingIndentIx_inFlow] at h_ok
+    split at h_ok
+    · simp [Bind.bind, Except.bind] at h_ok
+    · simp only [pure_bind, Except.ok.injEq] at h_ok
+      subst h_ok
+      show FlowContextPSVIx
+        { ((pushMappingIndentIx s s.cursor.pos.col).emit .key).advance with .. }.tokens
+      simp only [advance_tokens]
+      have h_step1 := pushMappingIndentIx_preserves_FlowContextPSVIx
+        s s.cursor.pos.col h_old
+      exact emit_non_flow_non_plain_preserves_FlowContextPSVIx
+        (pushMappingIndentIx s s.cursor.pos.col) .key h_step1
+        (by trivial) (by decide) (by decide) (by decide) (by decide)
+  · simp only [if_neg hi, advance_inFlow, emit_inFlow] at h_ok
+    simp only [pure_bind, Except.ok.injEq] at h_ok
+    subst h_ok
+    show FlowContextPSVIx { (s.emit .key).advance with .. }.tokens
+    simp only [advance_tokens]
+    exact emit_non_flow_non_plain_preserves_FlowContextPSVIx s .key h_old
+      (by trivial) (by decide) (by decide) (by decide) (by decide)
+
+theorem scanKeyIx_preserves_FlowNestingInvIx {input : String}
+    (s s' : ScannerStateIx input) (h_ok : scanKeyIx s = .ok s')
+    (h_fni : FlowNestingInvIx s) :
+    FlowNestingInvIx s' := by
+  unfold scanKeyIx at h_ok
+  by_cases hi : (!s.inFlow) = true
+  · simp only [if_pos hi, advance_inFlow, emit_inFlow,
+      pushMappingIndentIx_inFlow] at h_ok
+    split at h_ok
+    · simp [Bind.bind, Except.bind] at h_ok
+    · simp only [pure_bind, Except.ok.injEq] at h_ok
+      subst h_ok
+      have h_step1 := pushMappingIndentIx_preserves_FlowNestingInvIx
+        s s.cursor.pos.col h_fni
+      have h_step2 := emit_non_flow_preserves_FlowNestingInvIx
+        (pushMappingIndentIx s s.cursor.pos.col) .key h_step1
+        (by decide) (by decide) (by decide) (by decide)
+      unfold FlowNestingInvIx at h_step2 ⊢
+      simpa using h_step2
+  · simp only [if_neg hi, advance_inFlow, emit_inFlow] at h_ok
+    simp only [pure_bind, Except.ok.injEq] at h_ok
+    subst h_ok
+    have h_step1 := emit_non_flow_preserves_FlowNestingInvIx s .key h_fni
+      (by decide) (by decide) (by decide) (by decide)
+    unfold FlowNestingInvIx at h_step1 ⊢
+    simpa using h_step1
+
+/-! ### §8e  `scanValuePrepareIx` preservation — PSV proven, FCPSV/FNI staged
+
+`scanValuePrepareIx s` either (a) overwrites token slots
+`simpleKey.tokenIndex` and `simpleKey.tokenIndex + 1` with non-plain
+non-flow tokens (`.blockMappingStart`, `.key`), (b) leaves tokens
+unchanged (record-only updates), or (c) delegates to
+`pushMappingIndentIx`.
+
+PSV preservation is proven via §8a (`setIfInBounds` non-plain) +
+§6e (`pushMappingIndentIx_preserves_PlainScalarsValidIx`).
+
+FCPSV / FlowNestingInv preservation needs an additional invariant
+the indexed proof chain has not yet propagated: the original token
+at `simpleKey.tokenIndex` (resp. `+1`) must be non-flow. The legacy
+chain establishes this via tracking `.placeholder` slots from
+`saveSimpleKey`; the indexed analogue would require strengthening the
+scanner-side invariant (e.g. carrying `SimpleKeyAbove`-style
+side-conditions through the dispatcher chain).
+
+Staged as **two axioms** with the eventual real signature; discharge
+moves to a dedicated session (6d.1e.7 or earlier) alongside §7b/§7c
+and §8e′. See Reflection 71 for the design analysis. -/
+
+theorem scanValuePrepareIx_preserves_PlainScalarsValidIx {input : String}
+    (s : ScannerStateIx input) (h_old : PlainScalarsValidIx s.tokens) :
+    PlainScalarsValidIx (scanValuePrepareIx s).tokens := by
+  unfold scanValuePrepareIx
+  split
+  · split
+    · split
+      · -- col > currentIndent: two overwriteAtCursor calls, then record-update
+        show PlainScalarsValidIx
+          { ((s.overwriteAtCursor s.simpleKey.tokenIndex s.simpleKey.cursor .blockMappingStart).overwriteAtCursor
+              (s.simpleKey.tokenIndex + 1) s.simpleKey.cursor .key) with .. }.tokens
+        apply overwriteAtCursor_non_plain_preserves_PlainScalarsValidIx _ _ _ _ _ (by trivial)
+        apply overwriteAtCursor_non_plain_preserves_PlainScalarsValidIx _ _ _ _ _ (by trivial)
+        exact h_old
+      · -- one overwrite with .key
+        show PlainScalarsValidIx
+          { (s.overwriteAtCursor (s.simpleKey.tokenIndex + 1) s.simpleKey.cursor .key) with .. }.tokens
+        exact overwriteAtCursor_non_plain_preserves_PlainScalarsValidIx s _ _ _ h_old (by trivial)
+    · -- inFlow: one overwrite with .key
+      show PlainScalarsValidIx
+        { (s.overwriteAtCursor (s.simpleKey.tokenIndex + 1) s.simpleKey.cursor .key) with .. }.tokens
+      exact overwriteAtCursor_non_plain_preserves_PlainScalarsValidIx s _ _ _ h_old (by trivial)
+  · split
+    · -- explicitKeyLine.isSome: record-only update
+      exact h_old
+    · split
+      · -- !inFlow: pushMappingIndentIx
+        exact pushMappingIndentIx_preserves_PlainScalarsValidIx s s.cursor.pos.col h_old
+      · -- inFlow: no change
+        exact h_old
+
+/-- `scanValuePrepareIx` preserves `FlowContextPSVIx`.
+    **Staged as axiom (Step 6d.1e.4)**: the `setIfInBounds` branches
+    need the original token at `simpleKey.tokenIndex` to be non-flow;
+    establishing this requires a placeholder-tracking invariant the
+    indexed chain has not yet propagated. See Reflection 71. -/
+axiom scanValuePrepareIx_preserves_FlowContextPSVIx {input : String}
+    (s : ScannerStateIx input) (_h_old : FlowContextPSVIx s.tokens) :
+    FlowContextPSVIx (scanValuePrepareIx s).tokens
+
+/-- `scanValuePrepareIx` preserves `FlowNestingInvIx`.
+    **Staged as axiom (Step 6d.1e.4)** — see
+    `scanValuePrepareIx_preserves_FlowContextPSVIx`. -/
+axiom scanValuePrepareIx_preserves_FlowNestingInvIx {input : String}
+    (s : ScannerStateIx input) (_h_fni : FlowNestingInvIx s) :
+    FlowNestingInvIx (scanValuePrepareIx s)
+
+/-! ### §8f  `scanValueIx` preservation
+
+`scanValueIx s = .ok s'` iff `scanValueValidateIx` and
+`scanValueTabCheckIx` both succeed. On success:
+`s'.tokens = ((scanValuePrepareIx (scanValueClearKeyIx s)).emit .value).advance.tokens`
+(modulo the outer `simpleKeyAllowed := true, explicitKeyLine := none`
+record update). PSV / FCPSV / FNI all compose §8b (`scanValueClearKeyIx`)
++ §8e (`scanValuePrepareIx`) + §5 (`emit_non_*`). -/
+
+theorem scanValueIx_preserves_PlainScalarsValidIx {input : String}
+    (s s' : ScannerStateIx input) (h_ok : scanValueIx s = .ok s')
+    (h_old : PlainScalarsValidIx s.tokens) :
+    PlainScalarsValidIx s'.tokens := by
+  unfold scanValueIx at h_ok
+  simp only [bind, Except.bind] at h_ok
+  split at h_ok
+  · cases h_ok                       -- validate threw
+  · split at h_ok
+    · cases h_ok                     -- tab-check threw
+    · simp only [Except.ok.injEq] at h_ok
+      subst h_ok
+      show PlainScalarsValidIx
+        { ((scanValuePrepareIx (scanValueClearKeyIx s)).emit .value).advance with .. }.tokens
+      simp only [advance_tokens]
+      have h_ck := scanValueClearKeyIx_preserves_PlainScalarsValidIx s h_old
+      have h_prep := scanValuePrepareIx_preserves_PlainScalarsValidIx
+        (scanValueClearKeyIx s) h_ck
+      exact emit_non_plain_preserves_PlainScalarsValidIx
+        (scanValuePrepareIx (scanValueClearKeyIx s)) .value h_prep (by trivial)
+
+theorem scanValueIx_preserves_FlowContextPSVIx {input : String}
+    (s s' : ScannerStateIx input) (h_ok : scanValueIx s = .ok s')
+    (h_old : FlowContextPSVIx s.tokens) :
+    FlowContextPSVIx s'.tokens := by
+  unfold scanValueIx at h_ok
+  simp only [bind, Except.bind] at h_ok
+  split at h_ok
+  · cases h_ok
+  · split at h_ok
+    · cases h_ok
+    · simp only [Except.ok.injEq] at h_ok
+      subst h_ok
+      show FlowContextPSVIx
+        { ((scanValuePrepareIx (scanValueClearKeyIx s)).emit .value).advance with .. }.tokens
+      simp only [advance_tokens]
+      have h_ck := scanValueClearKeyIx_preserves_FlowContextPSVIx s h_old
+      have h_prep := scanValuePrepareIx_preserves_FlowContextPSVIx
+        (scanValueClearKeyIx s) h_ck
+      exact emit_non_flow_non_plain_preserves_FlowContextPSVIx
+        (scanValuePrepareIx (scanValueClearKeyIx s)) .value h_prep
+        (by trivial) (by decide) (by decide) (by decide) (by decide)
+
+theorem scanValueIx_preserves_FlowNestingInvIx {input : String}
+    (s s' : ScannerStateIx input) (h_ok : scanValueIx s = .ok s')
+    (h_fni : FlowNestingInvIx s) :
+    FlowNestingInvIx s' := by
+  unfold scanValueIx at h_ok
+  simp only [bind, Except.bind] at h_ok
+  split at h_ok
+  · cases h_ok
+  · split at h_ok
+    · cases h_ok
+    · simp only [Except.ok.injEq] at h_ok
+      subst h_ok
+      have h_ck := scanValueClearKeyIx_preserves_FlowNestingInvIx s h_fni
+      have h_prep := scanValuePrepareIx_preserves_FlowNestingInvIx
+        (scanValueClearKeyIx s) h_ck
+      have h_emit := emit_non_flow_preserves_FlowNestingInvIx
+        (scanValuePrepareIx (scanValueClearKeyIx s)) .value h_prep
+        (by decide) (by decide) (by decide) (by decide)
+      unfold FlowNestingInvIx at h_emit ⊢
+      simpa using h_emit
+
+/-! ### §8g  `scanNextTokenIx_dispatchBlockIndicators` preservation
+
+The umbrella dispatcher returns `.ok (some s')` iff exactly one of
+`scanBlockEntryIx`, `scanKeyIx`, `scanValueIx` succeeded. Case-split
+on the dispatch arm and apply §8c / §8d / §8f. -/
+
+theorem scanNextTokenIx_dispatchBlockIndicators_preserves_PlainScalarsValidIx
+    {input : String} (s : ScannerStateIx input) (c : Char)
+    (s' : ScannerStateIx input)
+    (h_ok : scanNextTokenIx_dispatchBlockIndicators s c = .ok (some s'))
+    (h_old : PlainScalarsValidIx s.tokens) :
+    PlainScalarsValidIx s'.tokens := by
+  unfold scanNextTokenIx_dispatchBlockIndicators at h_ok
+  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  split at h_ok
+  · split at h_ok
+    · cases h_ok
+    · simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
+      exact scanBlockEntryIx_preserves_PlainScalarsValidIx s _ (by assumption) h_old
+  · split at h_ok
+    · split at h_ok
+      · cases h_ok
+      · simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
+        exact scanKeyIx_preserves_PlainScalarsValidIx s _ (by assumption) h_old
+    · split at h_ok
+      · split at h_ok
+        · cases h_ok
+        · simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
+          exact scanValueIx_preserves_PlainScalarsValidIx s _ (by assumption) h_old
+      · simp at h_ok
+
+theorem scanNextTokenIx_dispatchBlockIndicators_preserves_FlowContextPSVIx
+    {input : String} (s : ScannerStateIx input) (c : Char)
+    (s' : ScannerStateIx input)
+    (h_ok : scanNextTokenIx_dispatchBlockIndicators s c = .ok (some s'))
+    (h_old : FlowContextPSVIx s.tokens) :
+    FlowContextPSVIx s'.tokens := by
+  unfold scanNextTokenIx_dispatchBlockIndicators at h_ok
+  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  split at h_ok
+  · split at h_ok
+    · cases h_ok
+    · simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
+      exact scanBlockEntryIx_preserves_FlowContextPSVIx s _ (by assumption) h_old
+  · split at h_ok
+    · split at h_ok
+      · cases h_ok
+      · simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
+        exact scanKeyIx_preserves_FlowContextPSVIx s _ (by assumption) h_old
+    · split at h_ok
+      · split at h_ok
+        · cases h_ok
+        · simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
+          exact scanValueIx_preserves_FlowContextPSVIx s _ (by assumption) h_old
+      · simp at h_ok
+
+theorem scanNextTokenIx_dispatchBlockIndicators_preserves_FlowNestingInvIx
+    {input : String} (s : ScannerStateIx input) (c : Char)
+    (s' : ScannerStateIx input)
+    (h_ok : scanNextTokenIx_dispatchBlockIndicators s c = .ok (some s'))
+    (h_fni : FlowNestingInvIx s) :
+    FlowNestingInvIx s' := by
+  unfold scanNextTokenIx_dispatchBlockIndicators at h_ok
+  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  split at h_ok
+  · split at h_ok
+    · cases h_ok
+    · simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
+      exact scanBlockEntryIx_preserves_FlowNestingInvIx s _ (by assumption) h_fni
+  · split at h_ok
+    · split at h_ok
+      · cases h_ok
+      · simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
+        exact scanKeyIx_preserves_FlowNestingInvIx s _ (by assumption) h_fni
+    · split at h_ok
+      · split at h_ok
+        · cases h_ok
+        · simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
+          exact scanValueIx_preserves_FlowNestingInvIx s _ (by assumption) h_fni
+      · simp at h_ok
+
+
+/-! ## §9  Top-level theorems — staged as axioms with tightened preconditions
 
 These are the two top-level theorems that the per-action preservation
 chain (Step 6d.1e.3+) will eventually establish. For now, they are
@@ -1414,9 +1952,11 @@ declared as **axioms with real `Scanner.Indexed.scanIx input = .ok tokens`
 preconditions** (replacing the placeholder `(h_from_scanner : True)`
 hypotheses staged in `IndexedWellBehaved.lean` Step 6d.1c).
 
-**Phase 3 axiom budget**: these two axioms account for the entire
-Phase 3 closure axiom count after Step 6d.1e.3. They must be
-discharged before Step 6f cutover.
+**Phase 3 axiom budget**: these two top-level axioms plus the
+scanner-side axioms staged in §7b/§7c (Step 6d.1e.3) and §8c/§8e
+(Step 6d.1e.4). All scanner-side axioms must be discharged before
+the §9 top-level axioms can be promoted to theorems; Step 6f cutover
+gates on the §9 promotion.
 
 **Consumers**: `parseStream_output_grammable` (legacy:
 `Proofs/Parser/ParserGrammable.lean:71-72`; post-cutover: indexed
