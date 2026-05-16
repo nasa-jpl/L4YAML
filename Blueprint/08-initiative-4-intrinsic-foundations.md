@@ -1170,9 +1170,38 @@ the three branches whose RHS is another `collectXxxQuotedLoopIx`
 call (otherwise plain `unfold` rewrites both sides and `simp`
 expands the RHS into the full match-cascade — see Reflection 57).
 
-**Next session**: Step 5b.8 works through the final Step-5b
-carry-forward cluster (plain multi-line content correctness
-`[131]`–`[135]`). **Then Step 5c**: `present` + corpus theorem.
+**Step 5b.8 landed** (final Step-5b sub-step): the plain multi-line
+content-correctness obligation discharged as 12 spec-traceability
+lemmas in `Proofs/Scanner/IndexedScalar.lean`'s new "Layer F.4 —
+Plain multi-line content correctness" section. `collectPlainScalarLoopIx`
+(§7.3.3 [131]–[135]) is the most branch-heavy collector in the
+scanner: each of its 11 outcomes — `_zero`, `_eof`, `_comment`,
+`_colon_terminate`, `_colon_continue`, `_flow_indicator`,
+`_linebreak_flow`, `_linebreak_block_none`, `_linebreak_block_some`,
+`_whitespace`, `_not_plain_safe`, `_content` — gets a named branch
+lemma. The threaded `content ++ folded` composition (what
+`ns-plain-multi-line(n,c)` [134] describes) is visible in the two
+line-break branches: `_linebreak_flow` reuses `foldQuotedNewlinesIx`
+(Layer F1, §6.5 [73] / [74]) in flow context; `_linebreak_block_some`
+threads `handleBlockLineBreakIx`'s folded prefix in block context.
+Proof shape mirrors Step 5b.7 — `rfl` for `_zero`, `unfold + rw`
+for `_eof`, `unfold + rw + simp` for the five non-recursive
+terminator branches, and **`conv => lhs; unfold …` for the five
+RHS-recursive branches** (`_colon_continue`, `_linebreak_flow`,
+`_linebreak_block_some`, `_whitespace`, `_content` — direct
+application of Reflection 57, no new failure modes encountered).
+Each branch lemma takes the cascade-prefix predicates as explicit
+hypotheses (e.g. `isCommentBool ch = false` to skip the `#` branch);
+downstream consumers prove these from the concrete character at
+the cursor.
+
+**Next session**: Step 5c — `present` + corpus theorem. All Step-5b
+sub-steps (5b.1a, 5b.1b.i–iv, 5b.2–5b.8) are landed; carried-forward
+obligations from Step 4b are fully discharged. The one surviving
+carry-forward is **5b.6's fold-machine invariant for non-empty
+input** (`foldBlockContentGo_preserves`), explicitly deferred to
+the load-pipeline step that will quote it against canonicalised
+input.
 
 </details>
 
@@ -1205,7 +1234,7 @@ carry-forward cluster (plain multi-line content correctness
 | `L4YAML/Scanner/IndexedDispatch.lean` | n/a | ~1050 | 0 (staging — Guardrail 1; new in Phase 3 Step 5a: helper recogniser loops, simple-key save/resolve, block + flow indicator scans, document markers, directives, anchor/alias, tag, dispatch family, `scanLoopIx`, `scanIx`; Step 5b.1a: 8 helper-loop `*_offset_monotonic` lemmas, 10 `emitAtSafe`→`emitAt` replacements with inline proofs, `hStart` parameter on directive helpers; Step 5b.2: `tabInIndentation` throws added to `scanBlockEntryIx` and `scanKeyIx` — the former in block context when `hasTabInPrecedingWhitespace`, the latter when the cursor sits on `'\t'` immediately after consuming `?`; Step 5b.3: `scanValueIx` split into the legacy four-stage chain — `scanValueClearKeyIx` (clear spurious simple key when explicit `?` is pending), `scanValueValidateIx` (five `throw` cases: §7.4 / §7.4.2 / §8.2.1 / T833 / §8.2.2 [197]), `scanValuePrepareIx` (Step 5b.1b.i — placeholder overwrite or push mapping indent), `scanValueTabCheckIx` (§6.1 against the *original* col + indent)) |
 | `L4YAML/Proofs/Scanner/IndexedWhitespace.lean` | n/a | ~405 | 0 (staging — Guardrail 1; new in Phase 3 Step 2; +`consumeLineBreak_strict` in Step 4a) |
 | `L4YAML/Proofs/Scanner/IndexedIndent.lean` | n/a | ~355 | 0 (staging — Guardrail 1; new in Phase 3 Step 3; +`skipToContentLoop_progress` / `skipToContent_progress` in Step 4a) |
-| `L4YAML/Proofs/Scanner/IndexedScalar.lean` | n/a | ~996 | 0 (staging — Guardrail 1; new in Phase 3 Step 4a; +F1/F2/F3 monotonicity proofs in Step 4b; Step 5b.4: new "Layer E1.4 — Hex-escape value-correctness" section — `hexDigitValue_lt_16`, `hexStringValue_empty` `@[simp]`, `hexStringValue_push`, `hexStringValue_lt_pow`, `parseHexEscapeIx_decoded`; Step 5b.5: new "Layer F.1 — Auto-detected block-scalar indent ≥ `minContentIndent`" section — `autoDetectBlockScalarIndentLoopIx_ge_min` + `autoDetectBlockScalarIndentIx_ge_min`; Step 5b.6: new "Layer F.2 — Block-scalar content correctness" section — `applyChomp_keep` / `applyChomp_strip` / `applyChomp_clip_of_endsWith` / `applyChomp_clip_of_not_endsWith` / `foldBlockContentGo_nil` / `foldBlockContent_empty` pinning the chomp [160] + fold-machine [170]–[181] spec semantics; Step 5b.7: new "Layer F.3 — Quoted multi-line content correctness" section — `foldQuotedNewlinesIx_of_blank_lines` / `foldQuotedNewlinesIx_of_single_break` (§6.5 [73] / [74]), `collectDoubleQuotedLoopIx_zero` / `_closing` / `_linebreak` (§7.3.1 [111]–[116]), `collectSingleQuotedLoopIx_zero` / `_doubled` / `_closing_some` / `_closing_none` / `_linebreak` (§7.3.2 [122]–[125]); the three RHS-recursive lemmas use `conv => lhs; unfold …` to avoid `unfold` rewriting both sides of the goal — see Reflection 57) |
+| `L4YAML/Proofs/Scanner/IndexedScalar.lean` | n/a | ~1158 | 0 (staging — Guardrail 1; new in Phase 3 Step 4a; +F1/F2/F3 monotonicity proofs in Step 4b; Step 5b.4: new "Layer E1.4 — Hex-escape value-correctness" section — `hexDigitValue_lt_16`, `hexStringValue_empty` `@[simp]`, `hexStringValue_push`, `hexStringValue_lt_pow`, `parseHexEscapeIx_decoded`; Step 5b.5: new "Layer F.1 — Auto-detected block-scalar indent ≥ `minContentIndent`" section — `autoDetectBlockScalarIndentLoopIx_ge_min` + `autoDetectBlockScalarIndentIx_ge_min`; Step 5b.6: new "Layer F.2 — Block-scalar content correctness" section — `applyChomp_keep` / `applyChomp_strip` / `applyChomp_clip_of_endsWith` / `applyChomp_clip_of_not_endsWith` / `foldBlockContentGo_nil` / `foldBlockContent_empty` pinning the chomp [160] + fold-machine [170]–[181] spec semantics; Step 5b.7: new "Layer F.3 — Quoted multi-line content correctness" section — `foldQuotedNewlinesIx_of_blank_lines` / `foldQuotedNewlinesIx_of_single_break` (§6.5 [73] / [74]), `collectDoubleQuotedLoopIx_zero` / `_closing` / `_linebreak` (§7.3.1 [111]–[116]), `collectSingleQuotedLoopIx_zero` / `_doubled` / `_closing_some` / `_closing_none` / `_linebreak` (§7.3.2 [122]–[125]); the three RHS-recursive lemmas use `conv => lhs; unfold …` to avoid `unfold` rewriting both sides of the goal — see Reflection 57; Step 5b.8: new "Layer F.4 — Plain multi-line content correctness" section — 12 branch-mapping lemmas covering every outcome of `collectPlainScalarLoopIx` (§7.3.3 [131]–[135]): `_zero`, `_eof`, `_comment`, `_colon_terminate`, `_colon_continue`, `_flow_indicator`, `_linebreak_flow`, `_linebreak_block_none`, `_linebreak_block_some`, `_whitespace`, `_not_plain_safe`, `_content`; the five RHS-recursive branches reuse the `conv => lhs; unfold …` pattern from Reflection 57) |
 | `L4YAML/Proofs/Scanner/IndexedDispatch.lean` | n/a | ~1620 | 0 (staging — Guardrail 1; new in Phase 3 Step 5b.1b.i: `IxCursor.advanceN_offset_monotonic`; `ScannerStateIx` cursor-preservation lemmas for `emit*`/`overwriteAtCursor`/`advance*`/`pushSequenceIndentIx`/`pushMappingIndentIx`/`unwindIndentsLoopIx`/`unwindIndentsIx`/`saveSimpleKeyIx`/`scanValuePrepareIx`; `skipSpacesS`/`skipWhitespaceS`/`skipToContentS` offset-monotonicity lifts; Step 5b.1b.ii: 10 per-dispatcher offset-monotonicity lemmas — `scanBlockEntryIx`/`scanKeyIx`/`scanValueIx`/`scanFlowEntryIx`/`scanDocumentStartIx`/`scanDocumentEndIx`/`scanFlowSequenceStartIx`/`scanFlowSequenceEndIx`/`scanFlowMappingStartIx`/`scanFlowMappingEndIx`; Step 5b.1b.iii: 5 per-dispatcher offset-monotonicity lemmas — `scanAnchorOrAliasIx`/`scanTagIx`/`scanYamlDirectiveIx`/`scanTagDirectiveIx`/`scanDirectiveIx`; Step 5b.1b.iv-pre: 6 tokens-size simp lemmas — `skipToContentS_tokens`/`skipSpacesS_tokens`/`skipWhitespaceS_tokens`/`advance_tokens`/`advanceN_tokens`/`emit_tokens_size`/`emitAt_tokens_size`/`emitAtCursor_tokens_size`/`overwriteAtCursor_tokens_size`; 6 indent/key helper `_tokens_size_le` lemmas — `unwindIndentsLoopIx`/`unwindIndentsIx`/`pushSequenceIndentIx`/`pushMappingIndentIx`/`saveSimpleKeyIx`/`scanValuePrepareIx`; 12 dispatcher `_tokens_size_le` lemmas — `scanBlockEntryIx`/`scanKeyIx`/`scanValueIx`/`scanFlowEntryIx`/`scanFlowSequenceStartIx`/`scanFlowSequenceEndIx`/`scanFlowMappingStartIx`/`scanFlowMappingEndIx`/`scanDocumentStartIx`/`scanDocumentEndIx`/`scanAnchorOrAliasIx`/`scanTagIx`/`scanYamlDirectiveIx`/`scanTagDirectiveIx`/`scanDirectiveIx`; Step 5b.1b.iv-cont: 7 top-level pairs (`_offset_monotonic` + `_tokens_size_le`) for `scanNextTokenIx_preprocess`/`scanNextTokenIx_dispatchStructural`/`scanNextTokenIx_dispatchFlowIndicators`/`scanNextTokenIx_dispatchBlockIndicators`/`scanNextTokenIx_dispatchContent`/`scanNextTokenIx` plus `scanLoopIx_tokens_size_le`; Step 5b.2: 6 `flowLevel`/`inFlow` preservation simp lemmas — `emit_flowLevel`/`advance_flowLevel`/`pushSequenceIndentIx_flowLevel`/`pushMappingIndentIx_flowLevel`/`emit_inFlow`/`advance_inFlow`/`pushMappingIndentIx_inFlow` — used to collapse the post-advance `!s.inFlow` tab-check guard against the *original* `s.inFlow`, then `scanBlockEntryIx`/`scanKeyIx` `_offset_monotonic` + `_tokens_size_le` pairs re-derived with the new throw branches; Step 5b.3: 2 new `scanValueClearKeyIx` helper lemmas (`_cursor` `@[simp]` + `_tokens_size_le`), `scanValueIx_offset_monotonic` and `_tokens_size_le` re-proved with the legacy `simp only [bind, Except.bind] at h; split at h; cases h | …` pattern; same commit fixed cache-hidden breakage in `Proofs/Scanner/IndexedScalar.lean` (quoted/parse-header-loop `split at h` shapes, `blockHeaderToBodyIx` `by_cases hp` for the `match`-inside-`if` condition) and `Proofs/Scanner/IndexedIndent.lean::skipToContent_at_content` (`'#'` literal → `isCommentBool ch`)) |
 
 </details>
@@ -2389,9 +2418,12 @@ cutover commit. No "dual-write" interim state.
     operational result is another call of the same loop need the
     `conv` scoping — they are the ones encoding "consume some
     delimiter, recurse on the rest" rather than "terminate with
-    this value." This pattern recurs in Step 5b.8 (plain multi-line)
-    where the loop's continuation branches will likely also need
-    `conv => lhs; unfold …`.
+    this value." This pattern recurred in Step 5b.8 (plain multi-line)
+    exactly as predicted: five of `collectPlainScalarLoopIx`'s 11
+    post-`peek?` outcomes need `conv => lhs; unfold …`
+    (`_colon_continue`, `_linebreak_flow`, `_linebreak_block_some`,
+    `_whitespace`, `_content`); the six terminating branches use
+    plain `unfold`.
 
 </details>
 
@@ -3020,9 +3052,33 @@ clusters become 5b.2–5b.8. Total: nine sub-steps.
   branches whose RHS is another `collectXxxQuotedLoopIx` call**
   (otherwise `unfold` rewrites both sides and `simp` expands the
   RHS into the full match-cascade). See Reflection 57.
-- **5b.8 — Plain multi-line content correctness** (carried from
-  Step 4b): the threaded `content ++ folded` matches `[131]`–
-  `[135]`.
+- **5b.8 — Plain multi-line content correctness** *(landed)*.
+  Carried-forward Step 4b obligation discharged as 12
+  spec-traceability lemmas in `Proofs/Scanner/IndexedScalar.lean`'s
+  new "Layer F.4 — Plain multi-line content correctness" section.
+  `collectPlainScalarLoopIx` (§7.3.3 [131]–[135]) gets a named
+  branch lemma for each of its 11 outcomes — `_zero` (fuel = 0),
+  `_eof` (`peek? = none`), `_comment` (`#` after spaces),
+  `_colon_terminate` / `_colon_continue` (`:` terminates per
+  `colonTerminatesPlain` or continues with `content ++ spaces ++ ":"`,
+  matching the in-flow / block split in `[132]`),
+  `_flow_indicator` (flow context `,`/`]`/`}`),
+  `_linebreak_flow` (flow context reuses `foldQuotedNewlinesIx`
+  Layer F1 — §6.5 [73] / [74] — composing `content ++ folded`),
+  `_linebreak_block_none` / `_linebreak_block_some` (block context
+  consults `handleBlockLineBreakIx`: under-indent or document
+  boundary terminates, else fold + `content ++ folded` per
+  `ns-plain-multi-line(n,c)` [134]), `_whitespace` (accumulates
+  into the `spaces` parameter), `_not_plain_safe` (terminates on
+  flow-indicator/control character in plain-unsafe position), and
+  `_content` (the plain-safe character push,
+  `content ++ spaces ++ ch`). Proof shape mirrors Step 5b.7:
+  `rfl` for `_zero`, `unfold + rw` for `_eof`,
+  `unfold + rw + simp` for the five non-recursive terminators, and
+  **`conv => lhs; unfold …` for the five RHS-recursive branches**
+  (`_colon_continue`, `_linebreak_flow`, `_linebreak_block_some`,
+  `_whitespace`, `_content` — direct reuse of Reflection 57; no
+  new failure modes encountered).
 
 </details>
 
@@ -3956,6 +4012,126 @@ plain multi-line content correctness `[131]`–`[135]`
 and the `foldQuotedNewlinesIx` reuse). Also still carried: the
 full fold-machine invariant for `foldBlockContent` on non-empty
 input (Step 5b.6 carry-forward, unchanged).
+
+</details>
+
+<details><summary>Step 5b.8 — Plain multi-line content correctness <em>(landed)</em>.</summary>
+
+**Step 5b.8 — Plain multi-line content correctness** *(landed)*.
+
+Carried-forward Step 4b obligation discharged in
+`L4YAML/Proofs/Scanner/IndexedScalar.lean`'s new "Layer F.4 —
+Plain multi-line content correctness" section (~165 LOC, just
+before the closing `end L4YAML.Scanner.Indexed`). 12 lemmas pin
+every branch of `collectPlainScalarLoopIx` (§7.3.3 [131]–[135])
+to its YAML 1.2.2 spec rule. This is the most branch-heavy
+collector in the indexed scanner; each of its 11 post-`peek?`
+outcomes plus the fuel-zero base case gets a named branch lemma.
+
+Spec rules:
+- `ns-plain(n,c)` [131] — top-level plain scalar production
+- `nb-ns-plain-in-line(c)` [132] — in-line plain text (covered by
+  the `_colon_terminate` / `_colon_continue` split, which makes the
+  `colonTerminatesPlain` flow/block disambiguation visible)
+- `s-ns-plain-next-line(n)` [133] — continuation onto next line
+  (visible in the `_linebreak_*` branches' fold + indent check)
+- `ns-plain-multi-line(n,c)` [134] — the threaded
+  `content ++ folded` composition is what this rule describes;
+  visible in `_linebreak_flow` (flow context, uses
+  `foldQuotedNewlinesIx` from Layer F1) and
+  `_linebreak_block_some` (block context, uses
+  `handleBlockLineBreakIx` with `contentIndent` floor + document
+  boundary check)
+- `ns-plain-one-line(c)` [135] — single-line plain (the
+  `_linebreak_block_none` branch terminates the loop without
+  continuation when handle returns `none`)
+
+The 12 lemmas:
+
+- `collectPlainScalarLoopIx_zero (c content spaces inFlow contentIndent) :
+  collectPlainScalarLoopIx c content spaces inFlow contentIndent 0 =
+    (content ++ spaces, c)` — fuel exhaustion (`rfl`).
+- `collectPlainScalarLoopIx_eof (hPeek : c.peek? = none) :
+  collectPlainScalarLoopIx c content spaces inFlow contentIndent (fuel + 1) =
+    (content ++ spaces, c)` — `peek? = none` (`unfold + rw [hPeek]`).
+- `collectPlainScalarLoopIx_comment
+  (hPeek : c.peek? = some ch)
+  (hComment : isCommentBool ch = true)
+  (hSpaces : spaces.length > 0) :
+  ... = (content, c)` — `#` after at least one space terminates
+  (`unfold + rw + simp [hComment, hSpaces]`).
+- `collectPlainScalarLoopIx_colon_terminate
+  (hMapVal : isMappingValueBool ch = true)
+  (hColon : colonTerminatesPlain c inFlow = true) :
+  ... = (content, c)` — `:` followed by blank/EOF (block) or
+  `:` followed by flow-indicator (flow) terminates.
+- `collectPlainScalarLoopIx_colon_continue
+  (hMapVal : isMappingValueBool ch = true)
+  (hColon : colonTerminatesPlain c inFlow = false) :
+  ... = collectPlainScalarLoopIx c.advance
+        (content ++ spaces ++ String.singleton ch) "" inFlow
+        contentIndent fuel` — `:` mid-plain pushes literally and
+  recurses (uses `conv => lhs; unfold …`).
+- `collectPlainScalarLoopIx_flow_indicator (hFlowInd) :
+  ... (inFlow := true) = (content, c)` — `,`/`]`/`}` in flow
+  context terminates.
+- `collectPlainScalarLoopIx_linebreak_flow (hLineBreak) :
+  ... (inFlow := true) =
+    collectPlainScalarLoopIx (foldQuotedNewlinesIx c).2
+      (content ++ (foldQuotedNewlinesIx c).1) "" true
+      contentIndent fuel` — flow-context line break delegates to
+  `foldQuotedNewlinesIx` (Layer F1 — §6.5 [73] / [74]) and
+  composes `content ++ folded` (uses `conv => lhs; unfold …`).
+- `collectPlainScalarLoopIx_linebreak_block_none
+  (hLineBreak) (hHandle : handleBlockLineBreakIx c contentIndent = none) :
+  ... (inFlow := false) = (content, c)` — block-context line break
+  terminates the loop when the continuation line is under-indented
+  or hits a document boundary.
+- `collectPlainScalarLoopIx_linebreak_block_some
+  (hHandle : handleBlockLineBreakIx c contentIndent = some (folded, cAfterFold)) :
+  ... (inFlow := false) =
+    collectPlainScalarLoopIx cAfterFold (content ++ folded) ""
+      false contentIndent fuel` — block-context line break recurses
+  on `cAfterFold` with `content ++ folded`; this is the
+  `ns-plain-multi-line(n,c)` [134] threading (uses
+  `conv => lhs; unfold …`).
+- `collectPlainScalarLoopIx_whitespace (hWhitespace) :
+  ... = collectPlainScalarLoopIx c.advance content (spaces.push ch)
+        inFlow contentIndent fuel` — whitespace accumulates into
+  `spaces` (uses `conv => lhs; unfold …`).
+- `collectPlainScalarLoopIx_not_plain_safe (hNotPlainSafe) :
+  ... = (content, c)` — non-plain-safe character terminates.
+- `collectPlainScalarLoopIx_content (hPlainSafe) :
+  ... = collectPlainScalarLoopIx c.advance
+        (content ++ spaces ++ String.singleton ch) "" inFlow
+        contentIndent fuel` — the plain-safe content push (uses
+  `conv => lhs; unfold …`).
+
+All 12 proofs are definitional unfolds; the value of each lemma
+is the *named statement*, not the proof shape. Once these exist,
+downstream multi-line consumers and `present`/corpus proofs (Step
+5c) can cite the spec-rule mapping by name when reasoning about
+the plain-scalar collector. The five RHS-recursive branches
+(`_colon_continue`, `_linebreak_flow`, `_linebreak_block_some`,
+`_whitespace`, `_content`) use `conv => lhs; unfold …` instead
+of plain `unfold …` to scope the rewrite to the LHS — direct
+reuse of Reflection 57 from Step 5b.7; no new failure modes
+encountered, so no new reflection. Each lemma takes its cascade-
+prefix predicates as explicit hypotheses (e.g.
+`isCommentBool ch = false` to skip the `#` branch); the
+hypotheses match the structure of the `if … else if …` cascade
+so that `simp` closes the goal mechanically after `rw [hPeek]`.
+
+Sorry budget: **0 → 0** in the staging files. `lake build` passes
+all 385 targets. `L4YAML.lean` does not import any
+`Scanner.Indexed*` or `Proofs.Scanner.Indexed*` file — confirmed.
+
+**Step 5b is now complete**: all eight sub-steps (5b.1a,
+5b.1b.i–iv, 5b.2–5b.8) are landed. The only surviving carry-
+forward is the full **fold-machine invariant for
+`foldBlockContent` on non-empty input** (Step 5b.6 carry-forward,
+explicitly deferred to the load-pipeline step that will quote it
+against canonicalised input).
 
 </details>
 
