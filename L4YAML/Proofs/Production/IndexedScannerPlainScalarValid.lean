@@ -558,7 +558,7 @@ to all our predicates. This subsection isolates the lemmas about the
 single `.blockEnd` emit + pop step. -/
 
 /-- After-emit-and-pop state shape used by `unwindIndentsLoopIx`. -/
-private abbrev emitBlockEndPop {input : String} (s : ScannerStateIx input) :
+abbrev emitBlockEndPop {input : String} (s : ScannerStateIx input) :
     ScannerStateIx input :=
   { s.emit .blockEnd with indents := (s.emit .blockEnd).indents.pop }
 
@@ -905,7 +905,7 @@ preservation lemmas follow from §5. -/
 /-- Abbreviation for the post-`saveSimpleKeyIx` state in its two-emit
     branch (no `simpleKey` record update — that is invisible to
     `tokens` / `flowLevel`). -/
-private abbrev twoPlaceholderEmits {input : String} (s : ScannerStateIx input) :
+abbrev twoPlaceholderEmits {input : String} (s : ScannerStateIx input) :
     ScannerStateIx input :=
   (s.emit YamlToken.placeholder).emit YamlToken.placeholder
 
@@ -913,7 +913,7 @@ private abbrev twoPlaceholderEmits {input : String} (s : ScannerStateIx input) :
     placeholder tokens. Eliminates the if-chain in `saveSimpleKeyIx`
     so downstream proofs case-split on this disjunction rather than
     unfolding the body. -/
-private theorem saveSimpleKeyIx_tokens_cases {input : String} (s : ScannerStateIx input) :
+theorem saveSimpleKeyIx_tokens_cases {input : String} (s : ScannerStateIx input) :
     (saveSimpleKeyIx s).tokens = s.tokens ∨
     (saveSimpleKeyIx s).tokens = (twoPlaceholderEmits s).tokens := by
   unfold saveSimpleKeyIx
@@ -923,7 +923,7 @@ private theorem saveSimpleKeyIx_tokens_cases {input : String} (s : ScannerStateI
     · right; rfl
     · left; rfl
 
-private theorem saveSimpleKeyIx_flowLevel_eq {input : String} (s : ScannerStateIx input) :
+theorem saveSimpleKeyIx_flowLevel_eq {input : String} (s : ScannerStateIx input) :
     (saveSimpleKeyIx s).flowLevel = s.flowLevel := by
   unfold saveSimpleKeyIx
   split
@@ -932,7 +932,7 @@ private theorem saveSimpleKeyIx_flowLevel_eq {input : String} (s : ScannerStateI
 
 /-- Two-emit prefix preservation, factored out for the `saveSimpleKeyIx`
     two-emit branch. -/
-private theorem twoPlaceholderEmits_preserves_prefix {input : String}
+theorem twoPlaceholderEmits_preserves_prefix {input : String}
     (s : ScannerStateIx input) (i : Nat) (h_bound : i < s.tokens.size) :
     ((s.emit YamlToken.placeholder).emit YamlToken.placeholder).tokens[i]'(by
         rw [emit_tokens_size, emit_tokens_size]; omega) =
@@ -968,7 +968,7 @@ theorem saveSimpleKeyIx_preserves_prefix {input : String}
 
 /-- The new-position token after two `.placeholder` emits is non-plain
     regardless of which of the two slots is queried. -/
-private theorem twoPlaceholderEmits_new_not_plain {input : String}
+theorem twoPlaceholderEmits_new_not_plain {input : String}
     (s : ScannerStateIx input) (j : Nat)
     (hj : j < ((s.emit YamlToken.placeholder).emit YamlToken.placeholder).tokens.size)
     (hge : j ≥ s.tokens.size) :
@@ -998,7 +998,7 @@ private theorem twoPlaceholderEmits_new_not_plain {input : String}
     have h_get := emit_new_token_token (s.emit YamlToken.placeholder) .placeholder h_pop_sz
     rw [h_get]; trivial
 
-private theorem twoPlaceholderEmits_new_not_flow {input : String}
+theorem twoPlaceholderEmits_new_not_flow {input : String}
     (s : ScannerStateIx input) (j : Nat)
     (hj : j < ((s.emit YamlToken.placeholder).emit YamlToken.placeholder).tokens.size)
     (hge : j ≥ s.tokens.size) :
@@ -2646,20 +2646,20 @@ at the post-`init` state with the initial-emit invariant established,
 `scan_flow_brackets_matched_ix_axiom`, and the other two discharge
 `scan_flow_aware_psv_ix_axiom`'s two conjuncts. -/
 
-private theorem finalEmit_preserves_PlainScalarsValidIx {input : String}
+theorem finalEmit_preserves_PlainScalarsValidIx {input : String}
     (s : ScannerStateIx input) (h_old : PlainScalarsValidIx s.tokens) :
     PlainScalarsValidIx (((unwindIndentsIx s (-1)).emit YamlToken.streamEnd).tokens) :=
   emit_non_plain_preserves_PlainScalarsValidIx _ .streamEnd
     (unwindIndentsIx_preserves_PlainScalarsValidIx s (-1) h_old) (by trivial)
 
-private theorem finalEmit_preserves_FlowContextPSVIx {input : String}
+theorem finalEmit_preserves_FlowContextPSVIx {input : String}
     (s : ScannerStateIx input) (h_old : FlowContextPSVIx s.tokens) :
     FlowContextPSVIx (((unwindIndentsIx s (-1)).emit YamlToken.streamEnd).tokens) :=
   emit_non_flow_non_plain_preserves_FlowContextPSVIx _ .streamEnd
     (unwindIndentsIx_preserves_FlowContextPSVIx s (-1) h_old) (by trivial)
     (by decide) (by decide) (by decide) (by decide)
 
-private theorem finalEmit_preserves_FlowNestingInvIx {input : String}
+theorem finalEmit_preserves_FlowNestingInvIx {input : String}
     (s : ScannerStateIx input) (h_fni : FlowNestingInvIx s) :
     FlowNestingInvIx ((unwindIndentsIx s (-1)).emit YamlToken.streamEnd) :=
   emit_non_flow_preserves_FlowNestingInvIx _ .streamEnd
