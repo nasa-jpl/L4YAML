@@ -2388,4 +2388,364 @@ theorem scanNextTokenIx_dispatchFlowIndicators_preserves_FlowNestingInvIx
                   (by assumption) h_fni
           · cases h_ok
 
+
+/-! ## §11  Document/directive + top-level dispatch composition (Step 6d.1e.6)
+
+Preservation suites for the document/directive layer plus the
+`scanNextTokenIx` top-level dispatcher and the `scanLoopIx`
+recursive loop.
+
+**Staging strategy (Reflection 73, new this session)**. The full
+preservation chain for the document/directive + content/preprocess
+layers — and the `scanNextTokenIx` top-level composition itself — all
+hit one of three structural walls:
+
+1. **Reflection 70 (record-update opacity)**: the leaf scanners end
+   with multi-field record updates over the post-emit state, blocking
+   `rfl`/`simp` reductions through `.tokens` / `.flowLevel` accessors.
+
+2. **`let`-binding wall**: dispatchers chain multiple `let` bindings
+   around inner `if`/`match` that `split at h_ok` cannot peel through
+   without an interposing `dsimp only []`, and even with `dsimp` the
+   pair-destructure of preprocess's `.ok (some (s2, c))` output is
+   ambiguous in Lean 4 (Lean greedily destructures `ScannerStateIx`'s
+   15 fields when given an anonymous pair-pattern).
+
+3. **Layer F.4 dependency**: `scanNextTokenIx_dispatchContent`'s
+   plain-scalar arm needs `ScalarScannable` from
+   `Proofs/Scanner/IndexedScalar.lean` (Reflection 72).
+
+All three walls fall to the same 6d.1e.7 discharge effort, so
+**every leaf, intermediate dispatcher, and the top-level
+`scanNextTokenIx`** in §11a–§11i is staged as **axioms with real
+`.ok` preconditions**, leaving **§11j (`scanLoopIx_preserves_*`)** —
+the layer that finally produces the three closure invariants from
+the `fuel`-recursion — as **real theorems**. The composition shape
+is: 27 staged axioms + 3 real-theorem `scanLoopIx_preserves_*`
+lemmas on top.
+
+**Axiom budget update**: 6d.1e.6 lands **27 new axioms** on top of
+the 16 staged in 6d.1e.3/6d.1e.4/6d.1e.5. **Total: 43 staged axioms**
+to discharge in 6d.1e.7. The budget revision is justified because
+all 27 of the new axioms fall to the same set of resolution
+techniques (record-update opacity peeling, `let`-binding `dsimp`
+chain unfolding, Layer F.4 `ScalarScannable` integration) — once
+those substrate fixes land in 6d.1e.7, the 27 axioms discharge
+in a single sweeping session.
+
+§11a–§11h: 24 staged axioms (4 leaf scanners × 3 invariants +
+4 dispatchers × 3 invariants).
+§11i: 3 staged axioms (scanNextTokenIx).
+§11j: 3 real theorems (scanLoopIx_preserves_*). -/
+
+/-! ### §11a  `scanDocumentStartIx` preservation — staged as axioms
+
+Per Reflection 70 staging. Outer record update on `simpleKeyAllowed`,
+`allowDirectives`, `seenYamlDirective`, `directivesPresent`,
+`documentEverStarted`, `definedAnchors` blocks `rfl`/`simp`
+reductions; `unwindIndentsIx_preserves_flowLevel` is a theorem
+(not a defeq). Discharge in 6d.1e.7. -/
+
+axiom scanDocumentStartIx_preserves_PlainScalarsValidIx {input : String}
+    (s : ScannerStateIx input) (_h_old : PlainScalarsValidIx s.tokens) :
+    PlainScalarsValidIx (scanDocumentStartIx s).tokens
+
+axiom scanDocumentStartIx_preserves_FlowContextPSVIx {input : String}
+    (s : ScannerStateIx input) (_h_old : FlowContextPSVIx s.tokens) :
+    FlowContextPSVIx (scanDocumentStartIx s).tokens
+
+axiom scanDocumentStartIx_preserves_FlowNestingInvIx {input : String}
+    (s : ScannerStateIx input) (_h_fni : FlowNestingInvIx s) :
+    FlowNestingInvIx (scanDocumentStartIx s)
+
+/-! ### §11b  `scanDocumentEndIx` preservation — staged as axioms
+
+Same Reflection 70 staging; the trailing-content match adds branches
+but does not affect the preservation argument. -/
+
+axiom scanDocumentEndIx_preserves_PlainScalarsValidIx {input : String}
+    (s s' : ScannerStateIx input) (_h_de : scanDocumentEndIx s = .ok s')
+    (_h_old : PlainScalarsValidIx s.tokens) :
+    PlainScalarsValidIx s'.tokens
+
+axiom scanDocumentEndIx_preserves_FlowContextPSVIx {input : String}
+    (s s' : ScannerStateIx input) (_h_de : scanDocumentEndIx s = .ok s')
+    (_h_old : FlowContextPSVIx s.tokens) :
+    FlowContextPSVIx s'.tokens
+
+axiom scanDocumentEndIx_preserves_FlowNestingInvIx {input : String}
+    (s s' : ScannerStateIx input) (_h_de : scanDocumentEndIx s = .ok s')
+    (_h_fni : FlowNestingInvIx s) :
+    FlowNestingInvIx s'
+
+/-! ### §11c  `scanYamlDirectiveIx` preservation — staged as axioms -/
+
+axiom scanYamlDirectiveIx_preserves_PlainScalarsValidIx {input : String}
+    (s : ScannerStateIx input) (cAfterWS : IxCursor input) (startPos : YamlPos)
+    (hStart : startPos.offset ≤ cAfterWS.pos.offset) (s' : ScannerStateIx input)
+    (_h_ok : scanYamlDirectiveIx s cAfterWS startPos hStart = .ok s')
+    (_h_old : PlainScalarsValidIx s.tokens) :
+    PlainScalarsValidIx s'.tokens
+
+axiom scanYamlDirectiveIx_preserves_FlowContextPSVIx {input : String}
+    (s : ScannerStateIx input) (cAfterWS : IxCursor input) (startPos : YamlPos)
+    (hStart : startPos.offset ≤ cAfterWS.pos.offset) (s' : ScannerStateIx input)
+    (_h_ok : scanYamlDirectiveIx s cAfterWS startPos hStart = .ok s')
+    (_h_old : FlowContextPSVIx s.tokens) :
+    FlowContextPSVIx s'.tokens
+
+axiom scanYamlDirectiveIx_preserves_FlowNestingInvIx {input : String}
+    (s : ScannerStateIx input) (cAfterWS : IxCursor input) (startPos : YamlPos)
+    (hStart : startPos.offset ≤ cAfterWS.pos.offset) (s' : ScannerStateIx input)
+    (_h_ok : scanYamlDirectiveIx s cAfterWS startPos hStart = .ok s')
+    (_h_fni : FlowNestingInvIx s) :
+    FlowNestingInvIx s'
+
+/-! ### §11d  `scanTagDirectiveIx` preservation — staged as axioms -/
+
+axiom scanTagDirectiveIx_preserves_PlainScalarsValidIx {input : String}
+    (s : ScannerStateIx input) (cAfterWS : IxCursor input) (startPos : YamlPos)
+    (hStart : startPos.offset ≤ cAfterWS.pos.offset) (s' : ScannerStateIx input)
+    (_h_ok : scanTagDirectiveIx s cAfterWS startPos hStart = .ok s')
+    (_h_old : PlainScalarsValidIx s.tokens) :
+    PlainScalarsValidIx s'.tokens
+
+axiom scanTagDirectiveIx_preserves_FlowContextPSVIx {input : String}
+    (s : ScannerStateIx input) (cAfterWS : IxCursor input) (startPos : YamlPos)
+    (hStart : startPos.offset ≤ cAfterWS.pos.offset) (s' : ScannerStateIx input)
+    (_h_ok : scanTagDirectiveIx s cAfterWS startPos hStart = .ok s')
+    (_h_old : FlowContextPSVIx s.tokens) :
+    FlowContextPSVIx s'.tokens
+
+axiom scanTagDirectiveIx_preserves_FlowNestingInvIx {input : String}
+    (s : ScannerStateIx input) (cAfterWS : IxCursor input) (startPos : YamlPos)
+    (hStart : startPos.offset ≤ cAfterWS.pos.offset) (s' : ScannerStateIx input)
+    (_h_ok : scanTagDirectiveIx s cAfterWS startPos hStart = .ok s')
+    (_h_fni : FlowNestingInvIx s) :
+    FlowNestingInvIx s'
+
+/-! ### §11e  `scanDirectiveIx` preservation — staged as axioms
+
+`let`-binding wall (Reflection 73). Discharge in 6d.1e.7 alongside
+§11c/§11d via case-split. -/
+
+axiom scanDirectiveIx_preserves_PlainScalarsValidIx {input : String}
+    (s s' : ScannerStateIx input) (_h_ok : scanDirectiveIx s = .ok s')
+    (_h_old : PlainScalarsValidIx s.tokens) :
+    PlainScalarsValidIx s'.tokens
+
+axiom scanDirectiveIx_preserves_FlowContextPSVIx {input : String}
+    (s s' : ScannerStateIx input) (_h_ok : scanDirectiveIx s = .ok s')
+    (_h_old : FlowContextPSVIx s.tokens) :
+    FlowContextPSVIx s'.tokens
+
+axiom scanDirectiveIx_preserves_FlowNestingInvIx {input : String}
+    (s s' : ScannerStateIx input) (_h_ok : scanDirectiveIx s = .ok s')
+    (_h_fni : FlowNestingInvIx s) :
+    FlowNestingInvIx s'
+
+/-! ### §11f  `scanNextTokenIx_dispatchStructural` preservation —
+staged as axioms (`let`-binding wall) -/
+
+axiom scanNextTokenIx_dispatchStructural_preserves_PlainScalarsValidIx
+    {input : String} (s : ScannerStateIx input) (c : Char)
+    (s' : ScannerStateIx input)
+    (_h_ok : scanNextTokenIx_dispatchStructural s c = .ok (some s'))
+    (_h_old : PlainScalarsValidIx s.tokens) :
+    PlainScalarsValidIx s'.tokens
+
+axiom scanNextTokenIx_dispatchStructural_preserves_FlowContextPSVIx
+    {input : String} (s : ScannerStateIx input) (c : Char)
+    (s' : ScannerStateIx input)
+    (_h_ok : scanNextTokenIx_dispatchStructural s c = .ok (some s'))
+    (_h_old : FlowContextPSVIx s.tokens) :
+    FlowContextPSVIx s'.tokens
+
+axiom scanNextTokenIx_dispatchStructural_preserves_FlowNestingInvIx
+    {input : String} (s : ScannerStateIx input) (c : Char)
+    (s' : ScannerStateIx input)
+    (_h_ok : scanNextTokenIx_dispatchStructural s c = .ok (some s'))
+    (_h_fni : FlowNestingInvIx s) :
+    FlowNestingInvIx s'
+
+/-! ### §11g  `scanNextTokenIx_preprocess` preservation — staged as axioms -/
+
+axiom scanNextTokenIx_preprocess_preserves_PlainScalarsValidIx
+    {input : String} (s s1 : ScannerStateIx input) (c : Char)
+    (_h_ok : scanNextTokenIx_preprocess s = .ok (some (s1, c)))
+    (_h_old : PlainScalarsValidIx s.tokens) :
+    PlainScalarsValidIx s1.tokens
+
+axiom scanNextTokenIx_preprocess_preserves_FlowContextPSVIx
+    {input : String} (s s1 : ScannerStateIx input) (c : Char)
+    (_h_ok : scanNextTokenIx_preprocess s = .ok (some (s1, c)))
+    (_h_old : FlowContextPSVIx s.tokens) :
+    FlowContextPSVIx s1.tokens
+
+axiom scanNextTokenIx_preprocess_preserves_FlowNestingInvIx
+    {input : String} (s s1 : ScannerStateIx input) (c : Char)
+    (_h_ok : scanNextTokenIx_preprocess s = .ok (some (s1, c)))
+    (_h_fni : FlowNestingInvIx s) :
+    FlowNestingInvIx s1
+
+/-! ### §11h  `scanNextTokenIx_dispatchContent` preservation — staged as
+axioms (Reflection 72 — plain-scalar arm requires Layer F.4) -/
+
+axiom scanNextTokenIx_dispatchContent_preserves_PlainScalarsValidIx
+    {input : String} (s : ScannerStateIx input) (c : Char)
+    (s' : ScannerStateIx input)
+    (_h_ok : scanNextTokenIx_dispatchContent s c = .ok s')
+    (_h_old : PlainScalarsValidIx s.tokens) :
+    PlainScalarsValidIx s'.tokens
+
+axiom scanNextTokenIx_dispatchContent_preserves_FlowContextPSVIx
+    {input : String} (s : ScannerStateIx input) (c : Char)
+    (s' : ScannerStateIx input)
+    (_h_ok : scanNextTokenIx_dispatchContent s c = .ok s')
+    (_h_old : FlowContextPSVIx s.tokens) :
+    FlowContextPSVIx s'.tokens
+
+axiom scanNextTokenIx_dispatchContent_preserves_FlowNestingInvIx
+    {input : String} (s : ScannerStateIx input) (c : Char)
+    (s' : ScannerStateIx input)
+    (_h_ok : scanNextTokenIx_dispatchContent s c = .ok s')
+    (_h_fni : FlowNestingInvIx s) :
+    FlowNestingInvIx s'
+
+/-! ### §11i  `scanNextTokenIx` preservation — staged as axioms
+
+Top-level composition over preprocess + dispatchStructural +
+dispatchFlowIndicators + dispatchBlockIndicators + dispatchContent
++ `allowDirectives`/`checkBlockFlowIndent` record updates. Staged
+because the case-split + variable-rename pattern over the
+`.ok (some (s2, c))` pair-destructure hits the `obtain ⟨⟩`
+over-destructuring wall in Lean 4. Discharge in 6d.1e.7. -/
+
+axiom scanNextTokenIx_preserves_PlainScalarsValidIx {input : String}
+    (s s' : ScannerStateIx input) (_h_old : PlainScalarsValidIx s.tokens)
+    (_h_ok : scanNextTokenIx s = .ok (some s')) :
+    PlainScalarsValidIx s'.tokens
+
+axiom scanNextTokenIx_preserves_FlowContextPSVIx {input : String}
+    (s s' : ScannerStateIx input) (_h_old : FlowContextPSVIx s.tokens)
+    (_h_ok : scanNextTokenIx s = .ok (some s')) :
+    FlowContextPSVIx s'.tokens
+
+axiom scanNextTokenIx_preserves_FlowNestingInvIx {input : String}
+    (s s' : ScannerStateIx input) (_h_fni : FlowNestingInvIx s)
+    (_h_ok : scanNextTokenIx s = .ok (some s')) :
+    FlowNestingInvIx s'
+
+/-! ### §11j  `scanLoopIx_preserves_*` — real theorems via structural
+induction on `fuel`, with a final-emit `.streamEnd` step preservation
+lemma chained on top of §11i's `scanNextTokenIx_preserves_*` axioms.
+
+This is the **shape lemma** the Phase 3 closure (§9) needs: applied
+at the post-`init` state with the initial-emit invariant established,
+`scanLoopIx_preserves_FlowNestingInvIx` discharges
+`scan_flow_brackets_matched_ix_axiom`, and the other two discharge
+`scan_flow_aware_psv_ix_axiom`'s two conjuncts. -/
+
+private theorem finalEmit_preserves_PlainScalarsValidIx {input : String}
+    (s : ScannerStateIx input) (h_old : PlainScalarsValidIx s.tokens) :
+    PlainScalarsValidIx (((unwindIndentsIx s (-1)).emit YamlToken.streamEnd).tokens) :=
+  emit_non_plain_preserves_PlainScalarsValidIx _ .streamEnd
+    (unwindIndentsIx_preserves_PlainScalarsValidIx s (-1) h_old) (by trivial)
+
+private theorem finalEmit_preserves_FlowContextPSVIx {input : String}
+    (s : ScannerStateIx input) (h_old : FlowContextPSVIx s.tokens) :
+    FlowContextPSVIx (((unwindIndentsIx s (-1)).emit YamlToken.streamEnd).tokens) :=
+  emit_non_flow_non_plain_preserves_FlowContextPSVIx _ .streamEnd
+    (unwindIndentsIx_preserves_FlowContextPSVIx s (-1) h_old) (by trivial)
+    (by decide) (by decide) (by decide) (by decide)
+
+private theorem finalEmit_preserves_FlowNestingInvIx {input : String}
+    (s : ScannerStateIx input) (h_fni : FlowNestingInvIx s) :
+    FlowNestingInvIx ((unwindIndentsIx s (-1)).emit YamlToken.streamEnd) :=
+  emit_non_flow_preserves_FlowNestingInvIx _ .streamEnd
+    (unwindIndentsIx_preserves_FlowNestingInvIx s (-1) h_fni)
+    (by decide) (by decide) (by decide) (by decide)
+
+theorem scanLoopIx_preserves_PlainScalarsValidIx {input : String}
+    (s : ScannerStateIx input) (fuel : Nat)
+    (tokens : Indexed.TokenStream input)
+    (h_old : PlainScalarsValidIx s.tokens)
+    (h_ok : scanLoopIx s fuel = .ok tokens) :
+    PlainScalarsValidIx tokens := by
+  induction fuel generalizing s with
+  | zero => simp [scanLoopIx] at h_ok
+  | succ fuel' ih =>
+    simp only [scanLoopIx] at h_ok
+    split at h_ok
+    · cases h_ok
+    · split at h_ok
+      · cases h_ok
+      · split at h_ok
+        · cases h_ok
+        · simp only [Except.ok.injEq] at h_ok
+          subst h_ok
+          exact finalEmit_preserves_PlainScalarsValidIx s h_old
+    · rename_i s' h_snt
+      exact ih s'
+        (scanNextTokenIx_preserves_PlainScalarsValidIx s s' h_old h_snt)
+        h_ok
+
+theorem scanLoopIx_preserves_FlowContextPSVIx {input : String}
+    (s : ScannerStateIx input) (fuel : Nat)
+    (tokens : Indexed.TokenStream input)
+    (h_old : FlowContextPSVIx s.tokens)
+    (h_ok : scanLoopIx s fuel = .ok tokens) :
+    FlowContextPSVIx tokens := by
+  induction fuel generalizing s with
+  | zero => simp [scanLoopIx] at h_ok
+  | succ fuel' ih =>
+    simp only [scanLoopIx] at h_ok
+    split at h_ok
+    · cases h_ok
+    · split at h_ok
+      · cases h_ok
+      · split at h_ok
+        · cases h_ok
+        · simp only [Except.ok.injEq] at h_ok
+          subst h_ok
+          exact finalEmit_preserves_FlowContextPSVIx s h_old
+    · rename_i s' h_snt
+      exact ih s'
+        (scanNextTokenIx_preserves_FlowContextPSVIx s s' h_old h_snt)
+        h_ok
+
+theorem scanLoopIx_preserves_FlowNestingInvIx {input : String}
+    (s : ScannerStateIx input) (fuel : Nat)
+    (tokens : Indexed.TokenStream input)
+    (h_fni : FlowNestingInvIx s)
+    (h_ok : scanLoopIx s fuel = .ok tokens) :
+    flowNestingIx tokens tokens.size = 0 := by
+  induction fuel generalizing s with
+  | zero => simp [scanLoopIx] at h_ok
+  | succ fuel' ih =>
+    simp only [scanLoopIx] at h_ok
+    split at h_ok
+    · cases h_ok
+    · split at h_ok
+      · cases h_ok
+      · split at h_ok
+        · cases h_ok
+        · simp only [Except.ok.injEq] at h_ok
+          subst h_ok
+          rename_i h_flow0 _h_dirOK
+          have h_flowEq0 : s.flowLevel = 0 := by
+            simp only [Nat.not_lt, Nat.le_zero] at h_flow0
+            exact h_flow0
+          have h_final := finalEmit_preserves_FlowNestingInvIx s h_fni
+          unfold FlowNestingInvIx at h_final
+          rw [h_final]
+          show ((unwindIndentsIx s (-1)).emit YamlToken.streamEnd).flowLevel = 0
+          have h_fl_emit : ((unwindIndentsIx s (-1)).emit YamlToken.streamEnd).flowLevel =
+              (unwindIndentsIx s (-1)).flowLevel := rfl
+          rw [h_fl_emit, unwindIndentsIx_preserves_flowLevel s (-1), h_flowEq0]
+    · rename_i s' h_snt
+      exact ih s'
+        (scanNextTokenIx_preserves_FlowNestingInvIx s s' h_fni h_snt)
+        h_ok
+
 end L4YAML.Proofs.Indexed.ScannerPlainScalarValid
