@@ -1261,13 +1261,21 @@ theorem scanAnchorOrAliasIx_adds_one_token {input : String}
   · simp at h_ok
   · simp only [Except.ok.injEq] at h_ok; subst h_ok; simp
 
-axiom scanAnchorOrAliasIx_preserves_prefix {input : String}
+theorem scanAnchorOrAliasIx_preserves_prefix {input : String}
     (s : ScannerStateIx input) (isAnchor : Bool) (s' : ScannerStateIx input)
     (h_ok : scanAnchorOrAliasIx s isAnchor = .ok s')
     (i : Nat) (hi : i < s.tokens.size) :
     s'.tokens[i]'(by
       rw [scanAnchorOrAliasIx_adds_one_token s isAnchor s' h_ok]
-      exact Nat.lt_succ_of_lt hi) = s.tokens[i]'hi
+      exact Nat.lt_succ_of_lt hi) = s.tokens[i]'hi := by
+  unfold scanAnchorOrAliasIx at h_ok
+  dsimp only [] at h_ok
+  split at h_ok
+  · simp at h_ok
+  · simp only [Except.ok.injEq] at h_ok
+    subst h_ok
+    show (s.tokens.tokens.push _)[i]'_ = s.tokens.tokens[i]'hi
+    exact Array.getElem_push_lt ..
 
 theorem scanAnchorOrAliasIx_preserves_flowLevel {input : String}
     (s : ScannerStateIx input) (isAnchor : Bool) (s' : ScannerStateIx input)
@@ -1279,22 +1287,50 @@ theorem scanAnchorOrAliasIx_preserves_flowLevel {input : String}
   · simp at h_ok
   · simp only [Except.ok.injEq] at h_ok; subst h_ok; rfl
 
-axiom scanAnchorOrAliasIx_new_token_not_plain {input : String}
+theorem scanAnchorOrAliasIx_new_token_not_plain {input : String}
     (s : ScannerStateIx input) (isAnchor : Bool) (s' : ScannerStateIx input)
-    (_h_ok : scanAnchorOrAliasIx s isAnchor = .ok s')
+    (h_ok : scanAnchorOrAliasIx s isAnchor = .ok s')
     (hj : s.tokens.size < s'.tokens.size) :
     match (s'.tokens[s.tokens.size]'hj).token with
     | .scalar _ .plain => False
-    | _ => True
+    | _ => True := by
+  unfold scanAnchorOrAliasIx at h_ok
+  dsimp only [] at h_ok
+  split at h_ok
+  · simp at h_ok
+  · simp only [Except.ok.injEq] at h_ok
+    subst h_ok
+    show (match ((s.tokens.tokens.push (IxToken.mk' s.cursor.pos
+              (if isAnchor then YamlToken.anchor (collectAnchorNameLoopIx
+                  s.advance.cursor "" (input.utf8ByteSize - s.advance.cursor.pos.offset)).fst
+               else YamlToken.alias (collectAnchorNameLoopIx s.advance.cursor ""
+                  (input.utf8ByteSize - s.advance.cursor.pos.offset)).fst)
+              _ _ _))[s.tokens.tokens.size]'_).token with
+          | .scalar _ .plain => False | _ => True)
+    simp only [Array.getElem_push_eq, IxToken.mk']
+    split
+    · rename_i heq; split at heq <;> cases heq
+    · trivial
 
-axiom scanAnchorOrAliasIx_new_token_not_flow {input : String}
+theorem scanAnchorOrAliasIx_new_token_not_flow {input : String}
     (s : ScannerStateIx input) (isAnchor : Bool) (s' : ScannerStateIx input)
-    (_h_ok : scanAnchorOrAliasIx s isAnchor = .ok s')
+    (h_ok : scanAnchorOrAliasIx s isAnchor = .ok s')
     (hj : s.tokens.size < s'.tokens.size) :
     (s'.tokens[s.tokens.size]'hj).token ≠ .flowSequenceStart ∧
     (s'.tokens[s.tokens.size]'hj).token ≠ .flowMappingStart ∧
     (s'.tokens[s.tokens.size]'hj).token ≠ .flowSequenceEnd ∧
-    (s'.tokens[s.tokens.size]'hj).token ≠ .flowMappingEnd
+    (s'.tokens[s.tokens.size]'hj).token ≠ .flowMappingEnd := by
+  unfold scanAnchorOrAliasIx at h_ok
+  dsimp only [] at h_ok
+  split at h_ok
+  · simp at h_ok
+  · simp only [Except.ok.injEq] at h_ok
+    subst h_ok
+    refine ⟨?_, ?_, ?_, ?_⟩ <;> (
+      show (((s.tokens.tokens.push _)[s.tokens.tokens.size]'(by
+        rw [Array.size_push]; omega)) : IxToken input).token ≠ _
+      simp only [Array.getElem_push_eq, IxToken.mk']
+      split <;> (intro h; cases h))
 
 /-- `scanAnchorOrAliasIx` preserves `PlainScalarsValidIx` — proven
     using the (staged-as-axiom) prefix + new-token-not-plain lemmas,
@@ -1376,13 +1412,32 @@ theorem scanTagIx_adds_one_token {input : String}
   · -- default branch
     simp only [Except.ok.injEq] at h_ok; subst h_ok; simp
 
-axiom scanTagIx_preserves_prefix {input : String}
+theorem scanTagIx_preserves_prefix {input : String}
     (s : ScannerStateIx input) (s' : ScannerStateIx input)
     (h_ok : scanTagIx s = .ok s')
     (i : Nat) (hi : i < s.tokens.size) :
     s'.tokens[i]'(by
       rw [scanTagIx_adds_one_token s s' h_ok]
-      exact Nat.lt_succ_of_lt hi) = s.tokens[i]'hi
+      exact Nat.lt_succ_of_lt hi) = s.tokens[i]'hi := by
+  unfold scanTagIx at h_ok
+  dsimp only [] at h_ok
+  split at h_ok
+  · -- some '<' (verbatim tag)
+    split at h_ok
+    · simp at h_ok
+    · split at h_ok
+      · simp at h_ok
+      · simp only [Except.ok.injEq] at h_ok; subst h_ok
+        show (s.tokens.tokens.push _)[i]'_ = s.tokens.tokens[i]'hi
+        exact Array.getElem_push_lt ..
+  · -- some '!' (secondary tag)
+    simp only [Except.ok.injEq] at h_ok; subst h_ok
+    show (s.tokens.tokens.push _)[i]'_ = s.tokens.tokens[i]'hi
+    exact Array.getElem_push_lt ..
+  · -- default (named/primary tag)
+    simp only [Except.ok.injEq] at h_ok; subst h_ok
+    show (s.tokens.tokens.push _)[i]'_ = s.tokens.tokens[i]'hi
+    exact Array.getElem_push_lt ..
 
 theorem scanTagIx_preserves_flowLevel {input : String}
     (s : ScannerStateIx input) (s' : ScannerStateIx input)
@@ -1399,22 +1454,69 @@ theorem scanTagIx_preserves_flowLevel {input : String}
   · simp only [Except.ok.injEq] at h_ok; subst h_ok; rfl
   · simp only [Except.ok.injEq] at h_ok; subst h_ok; rfl
 
-axiom scanTagIx_new_token_not_plain {input : String}
+theorem scanTagIx_new_token_not_plain {input : String}
     (s : ScannerStateIx input) (s' : ScannerStateIx input)
-    (_h_ok : scanTagIx s = .ok s')
+    (h_ok : scanTagIx s = .ok s')
     (hj : s.tokens.size < s'.tokens.size) :
     match (s'.tokens[s.tokens.size]'hj).token with
     | .scalar _ .plain => False
-    | _ => True
+    | _ => True := by
+  unfold scanTagIx at h_ok
+  dsimp only [] at h_ok
+  split at h_ok
+  · split at h_ok
+    · simp at h_ok
+    · split at h_ok
+      · simp at h_ok
+      · simp only [Except.ok.injEq] at h_ok; subst h_ok
+        show (match ((((s.tokens.tokens.push _)[s.tokens.tokens.size]'(by
+                rw [Array.size_push]; omega)) : IxToken input).token) with
+              | .scalar _ .plain => False | _ => True)
+        simp only [Array.getElem_push_eq, IxToken.mk']
+  · simp only [Except.ok.injEq] at h_ok; subst h_ok
+    show (match ((((s.tokens.tokens.push _)[s.tokens.tokens.size]'(by
+            rw [Array.size_push]; omega)) : IxToken input).token) with
+          | .scalar _ .plain => False | _ => True)
+    simp only [Array.getElem_push_eq, IxToken.mk']
+  · simp only [Except.ok.injEq] at h_ok; subst h_ok
+    show (match ((((s.tokens.tokens.push _)[s.tokens.tokens.size]'(by
+            rw [Array.size_push]; omega)) : IxToken input).token) with
+          | .scalar _ .plain => False | _ => True)
+    simp only [Array.getElem_push_eq, IxToken.mk']
 
-axiom scanTagIx_new_token_not_flow {input : String}
+theorem scanTagIx_new_token_not_flow {input : String}
     (s : ScannerStateIx input) (s' : ScannerStateIx input)
-    (_h_ok : scanTagIx s = .ok s')
+    (h_ok : scanTagIx s = .ok s')
     (hj : s.tokens.size < s'.tokens.size) :
     (s'.tokens[s.tokens.size]'hj).token ≠ .flowSequenceStart ∧
     (s'.tokens[s.tokens.size]'hj).token ≠ .flowMappingStart ∧
     (s'.tokens[s.tokens.size]'hj).token ≠ .flowSequenceEnd ∧
-    (s'.tokens[s.tokens.size]'hj).token ≠ .flowMappingEnd
+    (s'.tokens[s.tokens.size]'hj).token ≠ .flowMappingEnd := by
+  unfold scanTagIx at h_ok
+  dsimp only [] at h_ok
+  split at h_ok
+  · split at h_ok
+    · simp at h_ok
+    · split at h_ok
+      · simp at h_ok
+      · simp only [Except.ok.injEq] at h_ok; subst h_ok
+        refine ⟨?_, ?_, ?_, ?_⟩ <;> (
+          show (((s.tokens.tokens.push _)[s.tokens.tokens.size]'(by
+            rw [Array.size_push]; omega)) : IxToken input).token ≠ _
+          simp only [Array.getElem_push_eq, IxToken.mk']
+          intro h; cases h)
+  · simp only [Except.ok.injEq] at h_ok; subst h_ok
+    refine ⟨?_, ?_, ?_, ?_⟩ <;> (
+      show (((s.tokens.tokens.push _)[s.tokens.tokens.size]'(by
+        rw [Array.size_push]; omega)) : IxToken input).token ≠ _
+      simp only [Array.getElem_push_eq, IxToken.mk']
+      intro h; cases h)
+  · simp only [Except.ok.injEq] at h_ok; subst h_ok
+    refine ⟨?_, ?_, ?_, ?_⟩ <;> (
+      show (((s.tokens.tokens.push _)[s.tokens.tokens.size]'(by
+        rw [Array.size_push]; omega)) : IxToken input).token ≠ _
+      simp only [Array.getElem_push_eq, IxToken.mk']
+      intro h; cases h)
 
 theorem scanTagIx_preserves_PlainScalarsValidIx {input : String}
     (s : ScannerStateIx input) (s' : ScannerStateIx input)
@@ -2821,23 +2923,83 @@ hypothesis position. Staged for substrate-fix in a follow-up step
 (`extract_lets at h_ok` or equivalent). The dispatcher chain (§11i)
 takes these as axiomatic inputs. -/
 
-axiom scanNextTokenIx_preprocess_preserves_PlainScalarsValidIx
-    {input : String} (s s1 : ScannerStateIx input) (c : Char)
-    (_h_ok : scanNextTokenIx_preprocess s = .ok (some (s1, c)))
-    (_h_old : PlainScalarsValidIx s.tokens) :
-    PlainScalarsValidIx s1.tokens
+/-- `skipToContentS` preserves `FlowNestingInvIx`: tokens and flowLevel are
+    unchanged (the function only updates the cursor). -/
+private theorem skipToContentS_preserves_FlowNestingInvIx {input : String}
+    (s : ScannerStateIx input) (h_fni : FlowNestingInvIx s) :
+    FlowNestingInvIx s.skipToContentS := by
+  unfold FlowNestingInvIx at h_fni ⊢
+  rw [skipToContentS_tokens]
+  show flowNestingIx s.tokens s.tokens.size = s.skipToContentS.flowLevel
+  -- skipToContentS doesn't change flowLevel
+  have : s.skipToContentS.flowLevel = s.flowLevel := by
+    unfold ScannerStateIx.skipToContentS; rfl
+  rw [this]; exact h_fni
 
-axiom scanNextTokenIx_preprocess_preserves_FlowContextPSVIx
+theorem scanNextTokenIx_preprocess_preserves_PlainScalarsValidIx
     {input : String} (s s1 : ScannerStateIx input) (c : Char)
-    (_h_ok : scanNextTokenIx_preprocess s = .ok (some (s1, c)))
-    (_h_old : FlowContextPSVIx s.tokens) :
-    FlowContextPSVIx s1.tokens
+    (h_ok : scanNextTokenIx_preprocess s = .ok (some (s1, c)))
+    (h_old : PlainScalarsValidIx s.tokens) :
+    PlainScalarsValidIx s1.tokens := by
+  unfold scanNextTokenIx_preprocess at h_ok
+  have h_psv_skip : PlainScalarsValidIx s.skipToContentS.tokens := by
+    rw [skipToContentS_tokens]; exact h_old
+  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  repeat (any_goals (split at h_ok))
+  all_goals (try (simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq,
+                              reduceCtorEq] at h_ok))
+  all_goals (try (obtain ⟨hs, _⟩ := h_ok; subst hs))
+  all_goals (
+    apply saveSimpleKeyIx_preserves_PlainScalarsValidIx
+    first
+    | exact unwindIndentsIx_preserves_PlainScalarsValidIx _ _ h_psv_skip
+    | exact h_psv_skip)
 
-axiom scanNextTokenIx_preprocess_preserves_FlowNestingInvIx
+theorem scanNextTokenIx_preprocess_preserves_FlowContextPSVIx
     {input : String} (s s1 : ScannerStateIx input) (c : Char)
-    (_h_ok : scanNextTokenIx_preprocess s = .ok (some (s1, c)))
-    (_h_fni : FlowNestingInvIx s) :
-    FlowNestingInvIx s1
+    (h_ok : scanNextTokenIx_preprocess s = .ok (some (s1, c)))
+    (h_old : FlowContextPSVIx s.tokens) :
+    FlowContextPSVIx s1.tokens := by
+  unfold scanNextTokenIx_preprocess at h_ok
+  have h_fpsv_skip : FlowContextPSVIx s.skipToContentS.tokens := by
+    rw [skipToContentS_tokens]; exact h_old
+  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  repeat (any_goals (split at h_ok))
+  all_goals (try (simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq,
+                              reduceCtorEq] at h_ok))
+  all_goals (try (obtain ⟨hs, _⟩ := h_ok; subst hs))
+  all_goals (
+    apply saveSimpleKeyIx_preserves_FlowContextPSVIx
+    first
+    | exact unwindIndentsIx_preserves_FlowContextPSVIx _ _ h_fpsv_skip
+    | exact h_fpsv_skip)
+
+theorem scanNextTokenIx_preprocess_preserves_FlowNestingInvIx
+    {input : String} (s s1 : ScannerStateIx input) (c : Char)
+    (h_ok : scanNextTokenIx_preprocess s = .ok (some (s1, c)))
+    (h_fni : FlowNestingInvIx s) :
+    FlowNestingInvIx s1 := by
+  unfold scanNextTokenIx_preprocess at h_ok
+  have h_fni_skip : FlowNestingInvIx s.skipToContentS :=
+    skipToContentS_preserves_FlowNestingInvIx s h_fni
+  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  repeat (any_goals (split at h_ok))
+  all_goals (try (simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq,
+                              reduceCtorEq] at h_ok))
+  all_goals (try (obtain ⟨hs, _⟩ := h_ok; subst hs))
+  all_goals (
+    apply saveSimpleKeyIx_preserves_FlowNestingInvIx
+    first
+    | (-- needIndentCheck branch: unwind + needIndentCheck := false
+       show FlowNestingInvIx
+         { unwindIndentsIx s.skipToContentS s.skipToContentS.cursor.pos.col with
+             needIndentCheck := false }
+       unfold FlowNestingInvIx
+       show flowNestingIx (unwindIndentsIx s.skipToContentS s.skipToContentS.cursor.pos.col).tokens
+              (unwindIndentsIx s.skipToContentS s.skipToContentS.cursor.pos.col).tokens.size
+            = (unwindIndentsIx s.skipToContentS s.skipToContentS.cursor.pos.col).flowLevel
+       exact unwindIndentsIx_preserves_FlowNestingInvIx _ _ h_fni_skip)
+    | exact h_fni_skip)
 
 /-! ### §11h  `scanNextTokenIx_dispatchContent` preservation — staged as
 axioms (Reflection 72 — plain-scalar arm requires Layer F.4) -/
