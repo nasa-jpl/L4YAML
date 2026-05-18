@@ -2925,7 +2925,7 @@ takes these as axiomatic inputs. -/
 
 /-- `skipToContentS` preserves `FlowNestingInvIx`: tokens and flowLevel are
     unchanged (the function only updates the cursor). -/
-private theorem skipToContentS_preserves_FlowNestingInvIx {input : String}
+theorem skipToContentS_preserves_FlowNestingInvIx {input : String}
     (s : ScannerStateIx input) (h_fni : FlowNestingInvIx s) :
     FlowNestingInvIx s.skipToContentS := by
   unfold FlowNestingInvIx at h_fni ⊢
