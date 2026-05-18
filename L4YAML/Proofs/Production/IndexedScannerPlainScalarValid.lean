@@ -3011,11 +3011,11 @@ The §9 top-level axioms (`scan_flow_aware_psv_ix_axiom` /
 discharge via §11j composition once we establish the
 post-`emit .streamStart` + post-BOM-advance invariants. -/
 
-private theorem mk'_PlainScalarsValidIx (input : String) :
+theorem mk'_PlainScalarsValidIx (input : String) :
     PlainScalarsValidIx (ScannerStateIx.mk' input).tokens :=
   PlainScalarsValidIx_empty
 
-private theorem mk'_FlowContextPSVIx (input : String) :
+theorem mk'_FlowContextPSVIx (input : String) :
     FlowContextPSVIx (ScannerStateIx.mk' input).tokens := by
   intro i hi
   have : (ScannerStateIx.mk' input).tokens.size = 0 := by
@@ -3023,7 +3023,7 @@ private theorem mk'_FlowContextPSVIx (input : String) :
     rfl
   omega
 
-private theorem mk'_FlowNestingInvIx (input : String) :
+theorem mk'_FlowNestingInvIx (input : String) :
     FlowNestingInvIx (ScannerStateIx.mk' input) := by
   unfold FlowNestingInvIx
   show flowNestingIx (Indexed.TokenStream.empty input)
