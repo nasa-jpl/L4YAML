@@ -3025,34 +3025,268 @@ axiom scanNextTokenIx_dispatchContent_preserves_FlowNestingInvIx
     (_h_fni : FlowNestingInvIx s) :
     FlowNestingInvIx s'
 
-/-! ### §11i  `scanNextTokenIx` preservation — staged as axioms
+/-! ### §11i  `scanNextTokenIx` preservation — proven (Step 6d.1e.9)
 
 Top-level composition over preprocess + dispatchStructural +
 dispatchFlowIndicators + dispatchBlockIndicators + dispatchContent
-+ `allowDirectives`/`checkBlockFlowIndent` record updates. Staged
-because the `match ← scanNextTokenIx_preprocess s with | none | some (s, c) => ...`
-nested-Option destructure interacts with `split + rename_i` in a
-way that doesn't expose the inner pair components as separate
-variables (the `rename_i` after the outer Except `split` captures
-the entire `Option (ScannerStateIx × Char)` as one variable, and
-subsequent Option `split` doesn't auto-decompose the pair). The
-clean discharge requires a `match h : ... with` pattern at the
-proof level — deferred to the substrate-fix follow-up. -/
++ `allowDirectives`/`checkBlockFlowIndent` record updates.
 
-axiom scanNextTokenIx_preserves_PlainScalarsValidIx {input : String}
-    (s s' : ScannerStateIx input) (_h_old : PlainScalarsValidIx s.tokens)
-    (_h_ok : scanNextTokenIx s = .ok (some s')) :
-    PlainScalarsValidIx s'.tokens
+**Discharge strategy** (Step 6d.1e.9, Reflection 77): chain
+`generalize h_layer : f_layer s = res at h_ok` + `cases res with
+| error => simp at h_ok | ok inner => cases inner with ...` per
+dispatcher layer (preprocess → dispatchStructural → checkBlockFlowIndent →
+dispatchFlowIndicators → dispatchBlockIndicators → dispatchContent).
+`cases pair with | mk s_pp c` cleanly extracts pair components without
+hitting Reflection 73's `ScannerStateIx` over-destructure. The
+`if s_pp.allowDirectives then ... else s_pp` record update is
+abstracted via a separate `generalize h_dir_def : ... = s_dir at h_ok`
+because Lean 4 core lacks Mathlib's `set` tactic. The two helper
+lemmas `allowDirectives_update_tokens` / `_flowLevel` then close the
+preservation obligation for `s_dir`. Each step's error branch is
+closed by `simp at h_ok` (iota-reduces the match then closes via
+`reduceCtorEq`); each step's success branch carries the named
+equation hypothesis into the corresponding §11e–§11h dispatcher
+preservation lemma. -/
 
-axiom scanNextTokenIx_preserves_FlowContextPSVIx {input : String}
-    (s s' : ScannerStateIx input) (_h_old : FlowContextPSVIx s.tokens)
-    (_h_ok : scanNextTokenIx s = .ok (some s')) :
-    FlowContextPSVIx s'.tokens
+/-- Helper: the `if s.allowDirectives then ... else s` record update
+    preserves `.tokens`. -/
+private theorem allowDirectives_update_tokens {input : String}
+    (s : ScannerStateIx input) :
+    (if s.allowDirectives then
+        { s with allowDirectives := false, documentEverStarted := true }
+      else s).tokens = s.tokens := by
+  split <;> rfl
 
-axiom scanNextTokenIx_preserves_FlowNestingInvIx {input : String}
-    (s s' : ScannerStateIx input) (_h_fni : FlowNestingInvIx s)
-    (_h_ok : scanNextTokenIx s = .ok (some s')) :
-    FlowNestingInvIx s'
+/-- Helper: the `if s.allowDirectives then ... else s` record update
+    preserves `flowLevel`. -/
+private theorem allowDirectives_update_flowLevel {input : String}
+    (s : ScannerStateIx input) :
+    (if s.allowDirectives then
+        { s with allowDirectives := false, documentEverStarted := true }
+      else s).flowLevel = s.flowLevel := by
+  split <;> rfl
+
+theorem scanNextTokenIx_preserves_PlainScalarsValidIx {input : String}
+    (s s' : ScannerStateIx input) (h_old : PlainScalarsValidIx s.tokens)
+    (h_ok : scanNextTokenIx s = .ok (some s')) :
+    PlainScalarsValidIx s'.tokens := by
+  unfold scanNextTokenIx at h_ok
+  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  generalize h_pp : scanNextTokenIx_preprocess s = pp_res at h_ok
+  cases pp_res with
+  | error e => simp at h_ok
+  | ok pp_inner =>
+    cases pp_inner with
+    | none => simp at h_ok
+    | some pair =>
+      cases pair with
+      | mk s_pp c =>
+        have h_psv_pp : PlainScalarsValidIx s_pp.tokens :=
+          scanNextTokenIx_preprocess_preserves_PlainScalarsValidIx s s_pp c h_pp h_old
+        dsimp only [] at h_ok
+        generalize h_ds : scanNextTokenIx_dispatchStructural s_pp c = ds_res at h_ok
+        cases ds_res with
+        | error e => simp at h_ok
+        | ok ds_inner =>
+          cases ds_inner with
+          | some s_str =>
+            simp only [Except.ok.injEq, Option.some.injEq] at h_ok
+            subst h_ok
+            exact scanNextTokenIx_dispatchStructural_preserves_PlainScalarsValidIx
+              s_pp c s_str h_ds h_psv_pp
+          | none =>
+            dsimp only [] at h_ok
+            generalize h_dir_def : (if s_pp.allowDirectives = true then
+                { s_pp with allowDirectives := false, documentEverStarted := true }
+              else s_pp) = s_dir at h_ok
+            have h_psv_dir : PlainScalarsValidIx s_dir.tokens := by
+              rw [← h_dir_def, allowDirectives_update_tokens]; exact h_psv_pp
+            generalize h_ck : scanNextTokenIx_checkBlockFlowIndent s_dir c = ck_res at h_ok
+            cases ck_res with
+            | error e => simp at h_ok
+            | ok _ =>
+              dsimp only [] at h_ok
+              generalize h_df : scanNextTokenIx_dispatchFlowIndicators s_dir c = df_res at h_ok
+              cases df_res with
+              | error e => simp at h_ok
+              | ok df_inner =>
+                cases df_inner with
+                | some s_flow =>
+                  simp only [Except.ok.injEq, Option.some.injEq] at h_ok
+                  subst h_ok
+                  exact scanNextTokenIx_dispatchFlowIndicators_preserves_PlainScalarsValidIx
+                    s_dir c s_flow h_df h_psv_dir
+                | none =>
+                  dsimp only [] at h_ok
+                  generalize h_db : scanNextTokenIx_dispatchBlockIndicators s_dir c = db_res at h_ok
+                  cases db_res with
+                  | error e => simp at h_ok
+                  | ok db_inner =>
+                    cases db_inner with
+                    | some s_blk =>
+                      simp only [Except.ok.injEq, Option.some.injEq] at h_ok
+                      subst h_ok
+                      exact scanNextTokenIx_dispatchBlockIndicators_preserves_PlainScalarsValidIx
+                        s_dir c s_blk h_db h_psv_dir
+                    | none =>
+                      dsimp only [] at h_ok
+                      generalize h_dc : scanNextTokenIx_dispatchContent s_dir c = dc_res at h_ok
+                      cases dc_res with
+                      | error e => simp at h_ok
+                      | ok s_ct =>
+                        simp only [Except.ok.injEq, Option.some.injEq] at h_ok
+                        subst h_ok
+                        exact scanNextTokenIx_dispatchContent_preserves_PlainScalarsValidIx
+                          s_dir c s_ct h_dc h_psv_dir
+
+theorem scanNextTokenIx_preserves_FlowContextPSVIx {input : String}
+    (s s' : ScannerStateIx input) (h_old : FlowContextPSVIx s.tokens)
+    (h_ok : scanNextTokenIx s = .ok (some s')) :
+    FlowContextPSVIx s'.tokens := by
+  unfold scanNextTokenIx at h_ok
+  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  generalize h_pp : scanNextTokenIx_preprocess s = pp_res at h_ok
+  cases pp_res with
+  | error e => simp at h_ok
+  | ok pp_inner =>
+    cases pp_inner with
+    | none => simp at h_ok
+    | some pair =>
+      cases pair with
+      | mk s_pp c =>
+        have h_old_pp : FlowContextPSVIx s_pp.tokens :=
+          scanNextTokenIx_preprocess_preserves_FlowContextPSVIx s s_pp c h_pp h_old
+        dsimp only [] at h_ok
+        generalize h_ds : scanNextTokenIx_dispatchStructural s_pp c = ds_res at h_ok
+        cases ds_res with
+        | error e => simp at h_ok
+        | ok ds_inner =>
+          cases ds_inner with
+          | some s_str =>
+            simp only [Except.ok.injEq, Option.some.injEq] at h_ok
+            subst h_ok
+            exact scanNextTokenIx_dispatchStructural_preserves_FlowContextPSVIx
+              s_pp c s_str h_ds h_old_pp
+          | none =>
+            dsimp only [] at h_ok
+            generalize h_dir_def : (if s_pp.allowDirectives = true then
+                { s_pp with allowDirectives := false, documentEverStarted := true }
+              else s_pp) = s_dir at h_ok
+            have h_old_dir : FlowContextPSVIx s_dir.tokens := by
+              rw [← h_dir_def, allowDirectives_update_tokens]; exact h_old_pp
+            generalize h_ck : scanNextTokenIx_checkBlockFlowIndent s_dir c = ck_res at h_ok
+            cases ck_res with
+            | error e => simp at h_ok
+            | ok _ =>
+              dsimp only [] at h_ok
+              generalize h_df : scanNextTokenIx_dispatchFlowIndicators s_dir c = df_res at h_ok
+              cases df_res with
+              | error e => simp at h_ok
+              | ok df_inner =>
+                cases df_inner with
+                | some s_flow =>
+                  simp only [Except.ok.injEq, Option.some.injEq] at h_ok
+                  subst h_ok
+                  exact scanNextTokenIx_dispatchFlowIndicators_preserves_FlowContextPSVIx
+                    s_dir c s_flow h_df h_old_dir
+                | none =>
+                  dsimp only [] at h_ok
+                  generalize h_db : scanNextTokenIx_dispatchBlockIndicators s_dir c = db_res at h_ok
+                  cases db_res with
+                  | error e => simp at h_ok
+                  | ok db_inner =>
+                    cases db_inner with
+                    | some s_blk =>
+                      simp only [Except.ok.injEq, Option.some.injEq] at h_ok
+                      subst h_ok
+                      exact scanNextTokenIx_dispatchBlockIndicators_preserves_FlowContextPSVIx
+                        s_dir c s_blk h_db h_old_dir
+                    | none =>
+                      dsimp only [] at h_ok
+                      generalize h_dc : scanNextTokenIx_dispatchContent s_dir c = dc_res at h_ok
+                      cases dc_res with
+                      | error e => simp at h_ok
+                      | ok s_ct =>
+                        simp only [Except.ok.injEq, Option.some.injEq] at h_ok
+                        subst h_ok
+                        exact scanNextTokenIx_dispatchContent_preserves_FlowContextPSVIx
+                          s_dir c s_ct h_dc h_old_dir
+
+theorem scanNextTokenIx_preserves_FlowNestingInvIx {input : String}
+    (s s' : ScannerStateIx input) (h_fni : FlowNestingInvIx s)
+    (h_ok : scanNextTokenIx s = .ok (some s')) :
+    FlowNestingInvIx s' := by
+  unfold scanNextTokenIx at h_ok
+  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  generalize h_pp : scanNextTokenIx_preprocess s = pp_res at h_ok
+  cases pp_res with
+  | error e => simp at h_ok
+  | ok pp_inner =>
+    cases pp_inner with
+    | none => simp at h_ok
+    | some pair =>
+      cases pair with
+      | mk s_pp c =>
+        have h_fni_pp : FlowNestingInvIx s_pp :=
+          scanNextTokenIx_preprocess_preserves_FlowNestingInvIx s s_pp c h_pp h_fni
+        dsimp only [] at h_ok
+        generalize h_ds : scanNextTokenIx_dispatchStructural s_pp c = ds_res at h_ok
+        cases ds_res with
+        | error e => simp at h_ok
+        | ok ds_inner =>
+          cases ds_inner with
+          | some s_str =>
+            simp only [Except.ok.injEq, Option.some.injEq] at h_ok
+            subst h_ok
+            exact scanNextTokenIx_dispatchStructural_preserves_FlowNestingInvIx
+              s_pp c s_str h_ds h_fni_pp
+          | none =>
+            dsimp only [] at h_ok
+            generalize h_dir_def : (if s_pp.allowDirectives = true then
+                { s_pp with allowDirectives := false, documentEverStarted := true }
+              else s_pp) = s_dir at h_ok
+            have h_fni_dir : FlowNestingInvIx s_dir := by
+              rw [← h_dir_def]
+              unfold FlowNestingInvIx at h_fni_pp ⊢
+              rw [allowDirectives_update_tokens, allowDirectives_update_flowLevel]
+              exact h_fni_pp
+            generalize h_ck : scanNextTokenIx_checkBlockFlowIndent s_dir c = ck_res at h_ok
+            cases ck_res with
+            | error e => simp at h_ok
+            | ok _ =>
+              dsimp only [] at h_ok
+              generalize h_df : scanNextTokenIx_dispatchFlowIndicators s_dir c = df_res at h_ok
+              cases df_res with
+              | error e => simp at h_ok
+              | ok df_inner =>
+                cases df_inner with
+                | some s_flow =>
+                  simp only [Except.ok.injEq, Option.some.injEq] at h_ok
+                  subst h_ok
+                  exact scanNextTokenIx_dispatchFlowIndicators_preserves_FlowNestingInvIx
+                    s_dir c s_flow h_df h_fni_dir
+                | none =>
+                  dsimp only [] at h_ok
+                  generalize h_db : scanNextTokenIx_dispatchBlockIndicators s_dir c = db_res at h_ok
+                  cases db_res with
+                  | error e => simp at h_ok
+                  | ok db_inner =>
+                    cases db_inner with
+                    | some s_blk =>
+                      simp only [Except.ok.injEq, Option.some.injEq] at h_ok
+                      subst h_ok
+                      exact scanNextTokenIx_dispatchBlockIndicators_preserves_FlowNestingInvIx
+                        s_dir c s_blk h_db h_fni_dir
+                    | none =>
+                      dsimp only [] at h_ok
+                      generalize h_dc : scanNextTokenIx_dispatchContent s_dir c = dc_res at h_ok
+                      cases dc_res with
+                      | error e => simp at h_ok
+                      | ok s_ct =>
+                        simp only [Except.ok.injEq, Option.some.injEq] at h_ok
+                        subst h_ok
+                        exact scanNextTokenIx_dispatchContent_preserves_FlowNestingInvIx
+                          s_dir c s_ct h_dc h_fni_dir
 
 /-! ### §11j  `scanLoopIx_preserves_*` — real theorems via structural
 induction on `fuel`, with a final-emit `.streamEnd` step preservation
