@@ -3,6 +3,9 @@ Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
 import L4YAML.Proofs.Scanner.IndexedIndent
+import L4YAML.Proofs.Scanner.ScannerPlainContent
+import L4YAML.Proofs.Scanner.ScannerPlainScalar
+import L4YAML.Proofs.Foundation.StringProperties
 
 /-! # `IndexedScalar` — Phase 3 Step 4a scalar-layer proofs (staging)
 
@@ -461,17 +464,21 @@ theorem collectPlainScalarLoopIx_offset_monotonic {input : String} (c : IxCursor
       split
       · exact Nat.le_refl _                                -- flow indicator in flow
       split
-      · -- line break: either flow fold or block fold
+      · -- line break: either flow fold or block fold (each guarded by `#`-after-fold check)
         split
-        · -- inFlow: foldQuotedNewlinesIx
-          exact Nat.le_trans (foldQuotedNewlinesIx_offset_monotonic c) (ih _ _ _)
-        · -- block: handleBlockLineBreakIx
+        · -- inFlow: foldQuotedNewlinesIx + post-fold `#` check
+          split
+          · exact Nat.le_refl _                            -- post-fold peek = some '#'
+          · exact Nat.le_trans (foldQuotedNewlinesIx_offset_monotonic c) (ih _ _ _)
+        · -- block: handleBlockLineBreakIx + post-fold `#` check
           split
           · exact Nat.le_refl _                            -- handleBlockLineBreakIx = none
-          · rename_i _ _ _ folded cAfterFold hHandle
+          · rename_i folded cAfterFold hHandle
             have hHandleMono : c.pos.offset ≤ cAfterFold.pos.offset :=
               handleBlockLineBreakIx_offset_monotonic c contentIndent hHandle
-            exact Nat.le_trans hHandleMono (ih _ _ _)
+            split
+            · exact Nat.le_refl _                          -- post-fold peek = some '#'
+            · exact Nat.le_trans hHandleMono (ih _ _ _)
       split
       · exact Nat.le_trans (IxCursor.advance_offset_monotonic c) (ih _ _ _)  -- whitespace
       split
@@ -1079,19 +1086,44 @@ theorem collectPlainScalarLoopIx_flow_indicator {input : String} (c : IxCursor i
   rw [hPeek]
   simp [hNotComment, hNotMapVal, hFlowInd]
 
-theorem collectPlainScalarLoopIx_linebreak_flow {input : String} (c : IxCursor input)
+/-- `_linebreak_flow_continue`: flow-context line break where the
+    post-fold cursor does NOT peek `#` (continues into the next line).
+    With the `#`-after-fold termination added in Phase 3 Step 6d.1e.11,
+    this requires the precondition `cAfterFold.peek? ≠ some '#'`. -/
+theorem collectPlainScalarLoopIx_linebreak_flow_continue {input : String} (c : IxCursor input)
     (content spaces : String) (contentIndent : Nat) (fuel : Nat)
     {ch : Char} (hPeek : c.peek? = some ch)
     (hNotComment : isCommentBool ch = false)
     (hNotMapVal : isMappingValueBool ch = false)
     (hNotFlowInd : isFlowIndicatorBool ch = false)
-    (hLineBreak : isLineBreakBool ch = true) :
+    (hLineBreak : isLineBreakBool ch = true)
+    (hNotHash : (foldQuotedNewlinesIx c).2.peek? ≠ some '#') :
     collectPlainScalarLoopIx c content spaces true contentIndent (fuel + 1) =
       collectPlainScalarLoopIx (foldQuotedNewlinesIx c).2
         (content ++ (foldQuotedNewlinesIx c).1) "" true contentIndent fuel := by
   conv => lhs; unfold collectPlainScalarLoopIx
   rw [hPeek]
-  simp [hNotComment, hNotMapVal, hNotFlowInd, hLineBreak]
+  cases hp : (foldQuotedNewlinesIx c).2.peek? with
+  | none => simp [hNotComment, hNotMapVal, hNotFlowInd, hLineBreak, hp]
+  | some ch' =>
+    have h_ne : ch' ≠ '#' := by intro he; subst he; exact hNotHash hp
+    simp [hNotComment, hNotMapVal, hNotFlowInd, hLineBreak, hp, h_ne]
+
+/-- `_linebreak_flow_hash`: flow-context line break where the post-fold
+    cursor peeks `#` — plain scalar terminates at the pre-fold cursor. -/
+theorem collectPlainScalarLoopIx_linebreak_flow_hash {input : String} (c : IxCursor input)
+    (content spaces : String) (contentIndent : Nat) (fuel : Nat)
+    {ch : Char} (hPeek : c.peek? = some ch)
+    (hNotComment : isCommentBool ch = false)
+    (hNotMapVal : isMappingValueBool ch = false)
+    (hNotFlowInd : isFlowIndicatorBool ch = false)
+    (hLineBreak : isLineBreakBool ch = true)
+    (hHash : (foldQuotedNewlinesIx c).2.peek? = some '#') :
+    collectPlainScalarLoopIx c content spaces true contentIndent (fuel + 1) =
+      (content, c) := by
+  conv => lhs; unfold collectPlainScalarLoopIx
+  rw [hPeek]
+  simp [hNotComment, hNotMapVal, hNotFlowInd, hLineBreak, hHash]
 
 theorem collectPlainScalarLoopIx_linebreak_block_none {input : String} (c : IxCursor input)
     (content spaces : String) (contentIndent : Nat) (fuel : Nat)
@@ -1106,19 +1138,44 @@ theorem collectPlainScalarLoopIx_linebreak_block_none {input : String} (c : IxCu
   rw [hPeek]
   simp [hNotComment, hNotMapVal, hLineBreak, hHandle]
 
-theorem collectPlainScalarLoopIx_linebreak_block_some {input : String} (c : IxCursor input)
+/-- `_linebreak_block_some_continue`: block-context line break where the
+    post-fold cursor does NOT peek `#`. -/
+theorem collectPlainScalarLoopIx_linebreak_block_some_continue {input : String} (c : IxCursor input)
     (content spaces : String) (contentIndent : Nat) (fuel : Nat)
     {ch : Char} (hPeek : c.peek? = some ch)
     (hNotComment : isCommentBool ch = false)
     (hNotMapVal : isMappingValueBool ch = false)
     (hLineBreak : isLineBreakBool ch = true)
     {folded : String} {cAfterFold : IxCursor input}
-    (hHandle : handleBlockLineBreakIx c contentIndent = some (folded, cAfterFold)) :
+    (hHandle : handleBlockLineBreakIx c contentIndent = some (folded, cAfterFold))
+    (hNotHash : cAfterFold.peek? ≠ some '#') :
     collectPlainScalarLoopIx c content spaces false contentIndent (fuel + 1) =
       collectPlainScalarLoopIx cAfterFold (content ++ folded) "" false contentIndent fuel := by
   conv => lhs; unfold collectPlainScalarLoopIx
   rw [hPeek]
-  simp [hNotComment, hNotMapVal, hLineBreak, hHandle]
+  cases hp : cAfterFold.peek? with
+  | none => simp [hNotComment, hNotMapVal, hLineBreak, hHandle]
+  | some ch' =>
+    have h_ne : ch' ≠ '#' := by intro he; subst he; exact hNotHash hp
+    simp [hNotComment, hNotMapVal, hLineBreak, hHandle, h_ne]
+
+/-- `_linebreak_block_some_hash`: block-context line break where the
+    post-fold cursor peeks `#` — plain scalar terminates at the pre-fold
+    cursor. -/
+theorem collectPlainScalarLoopIx_linebreak_block_some_hash {input : String} (c : IxCursor input)
+    (content spaces : String) (contentIndent : Nat) (fuel : Nat)
+    {ch : Char} (hPeek : c.peek? = some ch)
+    (hNotComment : isCommentBool ch = false)
+    (hNotMapVal : isMappingValueBool ch = false)
+    (hLineBreak : isLineBreakBool ch = true)
+    {folded : String} {cAfterFold : IxCursor input}
+    (hHandle : handleBlockLineBreakIx c contentIndent = some (folded, cAfterFold))
+    (hHash : cAfterFold.peek? = some '#') :
+    collectPlainScalarLoopIx c content spaces false contentIndent (fuel + 1) =
+      (content, c) := by
+  conv => lhs; unfold collectPlainScalarLoopIx
+  rw [hPeek]
+  simp [hNotComment, hNotMapVal, hLineBreak, hHandle, hHash]
 
 theorem collectPlainScalarLoopIx_whitespace {input : String} (c : IxCursor input)
     (content spaces : String) (inFlow : Bool) (contentIndent : Nat) (fuel : Nat)
@@ -1164,5 +1221,229 @@ theorem collectPlainScalarLoopIx_content {input : String} (c : IxCursor input)
   conv => lhs; unfold collectPlainScalarLoopIx
   rw [hPeek]
   simp [hNotComment, hNotMapVal, hNotFlowInd, hNotLineBreak, hNotWhitespace, hPlainSafe]
+
+/-! ## Layer F.5 — Plain-scalar content validity (Step 6d.1e.11)
+
+Carried-forward Step 4b obligation, addressing the §11h
+`scanNextTokenIx_dispatchContent_preserves_*` discharge in
+`Proofs/Production/IndexedScannerPlainScalarValid.lean`. The legacy
+file `Proofs/Scanner/ScannerPlainScalar.lean` (B3.4) proves an
+analogous content-validity theorem for the legacy plain-scalar
+recogniser; the port mirrors that proof's structure but adapts to
+the indexed substrate (`IxCursor input` instead of `ScannerState`,
+direct branch analysis instead of the legacy `_terminates?` helper).
+
+### Adaptations from the legacy proof
+
+The indexed `collectPlainScalarLoopIx` does not use a separate
+`_terminates?` helper — termination cases are inlined as direct
+branches of the loop body. Three structural differences from the
+legacy:
+
+1. **No `_terminates?` helper**. Termination via `:`-terminator,
+   `'#'`, flow-indicator, EOF, and line-break-block-none are direct
+   branches with their own `Loop_*` lemmas (Layer F.4). The legacy
+   `terminates_preserves_all` / `terminates_none_colon_peekAt_nonblank`
+   become direct case-splits via the existing branch lemmas.
+
+2. **EOF returns `(content ++ spaces, c)`, not `(content, c)`**.
+   The indexed loop merges trailing whitespace into the raw output
+   at EOF; the wrapping `scanPlainScalarIx` then trims via
+   `trimTrailingWSIx`. Since the invariant ensures `spaces` is all
+   `isWhiteSpaceBool`-true, `trimTrailingWSIx (content ++ spaces) =
+   trimTrailingWSIx content`. The content's last character (when
+   non-empty) is always non-whitespace by structural invariant, so
+   `trimTrailingWSIx content = content` in that case.
+
+3. **`IxCursor` peek primitives** replace `ScannerState.peek?` /
+   `peekAt?`. Boundary conditions threading through
+   `colonTerminatesPlain c inFlow = false` give us
+   `c.peekAt? 1 = some n ∧ ¬isBlank n`, mirroring the legacy
+   `terminates_none_colon_peekAt_nonblank` fact. -/
+
+open L4YAML.Grammar
+open L4YAML.Proofs.StringProperties
+open L4YAML.Proofs.ScannerPlainScalar
+open L4YAML.Proofs.ScannerPlainContent
+
+/-! ### Branch shape facts: `colonTerminatesPlain` and `handleBlockLineBreakIx`/`foldQuotedNewlinesIx` -/
+
+/-- When `colonTerminatesPlain c inFlow = false`, the character at
+    `peekAt? 1` exists, is not blank, and (in flow context) is not a
+    flow indicator. This is the indexed analog of legacy
+    `terminates_none_colon_peekAt_nonblank`. -/
+theorem colonTerminatesPlain_false_iff {input : String} (c : IxCursor input)
+    (inFlow : Bool) (h : colonTerminatesPlain c inFlow = false) :
+    ∃ n, c.peekAt? 1 = some n ∧ isBlankBool n = false ∧
+      (inFlow && isFlowIndicatorBool n) = false := by
+  unfold colonTerminatesPlain at h
+  match hpa : c.peekAt? 1 with
+  | none => rw [hpa] at h; simp at h
+  | some n =>
+    rw [hpa] at h
+    simp only [Bool.or_eq_false_iff] at h
+    exact ⟨n, rfl, h.1, h.2⟩
+
+/-- `handleBlockLineBreakIx` returns either `" "` or
+    `replicate '\n'` when it succeeds. Indexed twin of legacy
+    `handleBlockLineBreak_content_form`. -/
+theorem handleBlockLineBreakIx_content_form {input : String} (c : IxCursor input)
+    (contentIndent : Nat) {folded : String} {c' : IxCursor input}
+    (h : handleBlockLineBreakIx c contentIndent = some (folded, c')) :
+    folded = " " ∨ (∃ n, n > 0 ∧ folded = String.ofList (List.replicate n '\n')) := by
+  unfold handleBlockLineBreakIx at h
+  split at h
+  · contradiction
+  · split at h
+    · contradiction
+    · split at h
+      · rename_i hgt
+        have := Option.some.inj h
+        simp only [Prod.mk.injEq] at this
+        right; exact ⟨_, hgt, this.1.symm⟩
+      · have := Option.some.inj h
+        simp only [Prod.mk.injEq] at this
+        left
+        -- folded = String.singleton spaceChar; unfold spaceChar to ' '
+        show folded = " "
+        rw [← this.1]
+        show String.singleton ' ' = " "
+        rfl
+
+/-- `foldQuotedNewlinesIx` returns either `" "` or
+    `replicate '\n'`. Indexed twin of legacy
+    `foldQuotedNewlines_result_form`. -/
+theorem foldQuotedNewlinesIx_result_form {input : String} (c : IxCursor input) :
+    (foldQuotedNewlinesIx c).1 = " " ∨
+    (∃ n, n > 0 ∧ (foldQuotedNewlinesIx c).1 = String.ofList (List.replicate n '\n')) := by
+  unfold foldQuotedNewlinesIx
+  split
+  · rename_i hgt; right; exact ⟨_, hgt, rfl⟩
+  · left; rfl
+
+/-! ### `PlainContentInvIx` — content/spaces loop invariant -/
+
+/-- Loop invariant for `collectPlainScalarLoopIx` content correctness.
+    Couples to the cursor `c` for boundary safety. Indexed twin of
+    legacy `PlainContentInv`. -/
+structure PlainContentInvIx {input : String} (content : String) (spaces : String)
+    (inFlow : Bool) (c : IxCursor input) : Prop where
+  /-- Content has no `: ` (colon-space) pattern. -/
+  content_noColonSpace : noColonSpaceProp content
+  /-- Content has no ` #` (space-hash) pattern. -/
+  content_noSpaceHash : noSpaceHashProp content
+  /-- In flow context, content has no flow indicators. -/
+  content_noFlowIndicators : inFlow = true → noFlowIndicatorsProp content
+  /-- Spaces buffer contains only whitespace characters. -/
+  spaces_whitespace : ∀ x ∈ spaces.toList, isWhiteSpaceProp x
+  /-- Boundary safety: if content ends with `:`, spaces is empty and
+      the next cursor char is non-blank. -/
+  boundary_colon : content.toList.getLast? = some ':' →
+      spaces = "" ∧ (∀ n, c.peek? = some n → ¬isBlankProp n)
+
+/-- The invariant holds trivially for empty content and empty spaces. -/
+theorem PlainContentInvIx.empty {input : String} (inFlow : Bool) (c : IxCursor input) :
+    PlainContentInvIx (input := input) "" "" inFlow c where
+  content_noColonSpace := noColonSpaceProp_empty
+  content_noSpaceHash := noSpaceHashProp_empty
+  content_noFlowIndicators := fun _ => noFlowIndicatorsProp_empty
+  spaces_whitespace := fun _ hc => by simp [String.toList] at hc
+  boundary_colon := fun h => by simp [String.toList, List.getLast?] at h
+
+/-- Boundary invariant for the `#` case: if content ends with `' '` and
+    spaces is empty, the cursor's next char is not `'#'`. Indexed twin of
+    legacy `BoundaryHash`. -/
+def BoundaryHashIx {input : String} (content spaces : String) (c : IxCursor input) : Prop :=
+  content.toList.getLast? = some ' ' → spaces = "" → ∀ n, c.peek? = some n → n ≠ '#'
+
+/-- `BoundaryHashIx` holds trivially for empty content. -/
+theorem BoundaryHashIx.empty {input : String} (c : IxCursor input) :
+    BoundaryHashIx (input := input) "" "" c :=
+  fun h => by simp [String.toList, List.getLast?] at h
+
+/-- Transfer `PlainContentInvIx` to a new cursor where `peek?` is non-blank. -/
+theorem PlainContentInvIx.transfer_nonblank_peek {input : String}
+    {content spaces : String} {inFlow : Bool} {c : IxCursor input}
+    (inv : PlainContentInvIx content spaces inFlow c)
+    (c' : IxCursor input) (ch : Char)
+    (hpeek : c'.peek? = some ch) (hnotblank : ¬isBlankProp ch) :
+    PlainContentInvIx content spaces inFlow c' where
+  content_noColonSpace := inv.content_noColonSpace
+  content_noSpaceHash := inv.content_noSpaceHash
+  content_noFlowIndicators := inv.content_noFlowIndicators
+  spaces_whitespace := inv.spaces_whitespace
+  boundary_colon hcolon :=
+    ⟨(inv.boundary_colon hcolon).1,
+     fun n hp => by rw [hpeek] at hp; injection hp with hne; subst hne; exact hnotblank⟩
+
+/-- Build `PlainContentInvIx` for `content ++ fold` where `fold` is `" "`
+    or replicate newlines. Used by both flow and block line-break
+    recursion cases. Indexed twin of legacy `PlainContentInv.of_fold`. -/
+theorem PlainContentInvIx.of_fold {input : String}
+    {content spaces : String} {inFlow : Bool} {c c' : IxCursor input}
+    (inv : PlainContentInvIx content spaces inFlow c)
+    (ch : Char) (hpeek : c.peek? = some ch) (hc_lb : isLineBreakProp ch)
+    (fold : String)
+    (hfold : fold = " " ∨ (∃ n, n > 0 ∧ fold = String.ofList (List.replicate n '\n')))
+    (_hpeek' : ∀ n, c'.peek? = some n → n ≠ '#') :
+    PlainContentInvIx (content ++ fold) "" inFlow c' where
+  content_noColonSpace := by
+    rcases hfold with rfl | ⟨n, hn, rfl⟩
+    · apply noColonSpaceProp_append content " " inv.content_noColonSpace
+        noColonSpaceProp_space
+      intro ⟨hcl, _⟩
+      exact (inv.boundary_colon hcl).2 ch hpeek (Or.inr hc_lb)
+    · apply noColonSpaceProp_append content _ inv.content_noColonSpace
+        (noColonSpaceProp_replicate_newline n)
+      intro ⟨hcl, hh⟩
+      rw [head_replicate_newline n hn] at hh; contradiction
+  content_noSpaceHash := by
+    rcases hfold with rfl | ⟨n, hn, rfl⟩
+    · apply noSpaceHashProp_append content " " inv.content_noSpaceHash
+        noSpaceHashProp_space
+      intro ⟨_, hh⟩; rw [head_space] at hh; contradiction
+    · apply noSpaceHashProp_append content _ inv.content_noSpaceHash
+        (noSpaceHashProp_replicate_newline n)
+      intro ⟨_, hh⟩; rw [head_replicate_newline n hn] at hh; contradiction
+  content_noFlowIndicators := fun hflow => by
+    rcases hfold with rfl | ⟨n, _, rfl⟩
+    · exact noFlowIndicatorsProp_append content " "
+        (inv.content_noFlowIndicators hflow) noFlowIndicatorsProp_space
+    · exact noFlowIndicatorsProp_append content _
+        (inv.content_noFlowIndicators hflow) (noFlowIndicatorsProp_replicate_newline n)
+  spaces_whitespace := fun _ hc => by simp [String.toList] at hc
+  boundary_colon := by
+    intro hcolon
+    rcases hfold with rfl | ⟨n, hn, rfl⟩
+    · rw [getLast_append_space] at hcolon; contradiction
+    · rw [getLast_append_replicate_newline content n hn] at hcolon; contradiction
+
+/-! ### `scanPlainScalarIx_content_valid` (B3.4 indexed analog) — staged as axiom
+
+The culminating theorem about plain-scalar content validity. With
+the `#`-after-fold scanner fix landed in 6d.1e.11, the proof shape
+mirrors legacy `scanPlainScalar_content_valid` (~390 LOC across the
+B3.3 loop-invariant preservation, the validFirst-and-head property,
+and the trim-step transfer). The full discharge is deferred to a
+follow-up step (~400 LOC) — the infrastructure shipped in this step
+(`PlainContentInvIx`, `BoundaryHashIx`, `PlainContentInvIx.of_fold`,
+`PlainContentInvIx.transfer_nonblank_peek`,
+`advance_peek_eq_peekAt_one`, `colonTerminatesPlain_false_iff`,
+`handleBlockLineBreakIx_content_form`,
+`foldQuotedNewlinesIx_result_form`, and the updated branch lemmas
+for the `#`-after-fold split) is the foundation tier.
+
+The axiom statement carries the same precondition shape as the
+legacy theorem: a non-empty result and a `canStart` witness at the
+entry cursor. -/
+
+axiom scanPlainScalarIx_content_valid {input : String} (c : IxCursor input)
+    (inFlow : Bool) (contentIndent : Nat)
+    (h_canStart : ∃ ch, c.peek? = some ch ∧
+        canStartPlainScalarBool ch (c.peekAt? 1) inFlow = true)
+    (h_ne : (scanPlainScalarIx c inFlow contentIndent).1 ≠ "") :
+    ScalarScannable
+      ⟨(scanPlainScalarIx c inFlow contentIndent).1, .plain, none, none, none⟩
+      inFlow
 
 end L4YAML.Scanner.Indexed

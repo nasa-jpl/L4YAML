@@ -3360,7 +3360,23 @@ theorem scanNextTokenIx_preprocess_preserves_FlowNestingInvIx
     | exact h_fni_skip)
 
 /-! ### §11h  `scanNextTokenIx_dispatchContent` preservation — staged as
-axioms (Reflection 72 — plain-scalar arm requires Layer F.4) -/
+axioms (Reflection 72 — plain-scalar arm requires Layer F.4)
+
+**Step 6d.1e.11 progress** (Reflection 80): the indexed scanner has
+been fixed to mirror the legacy `#`-after-fold termination
+(`Scanner/IndexedScanner.lean::collectPlainScalarLoopIx`); the
+Layer F.4 branch lemmas (`Proofs/Scanner/IndexedScalar.lean`) split
+into `_continue` / `_hash` variants; and the `PlainContentInvIx` /
+`BoundaryHashIx` invariants + supporting lemmas
+(`PlainContentInvIx.empty`, `_.transfer_nonblank_peek`, `_.of_fold`,
+`IxCursor.advance_peek_eq_peekAt_one`, `colonTerminatesPlain_false_iff`,
+`handleBlockLineBreakIx_content_form`, `foldQuotedNewlinesIx_result_form`)
+are landed in `IndexedScalar.lean` Layer F.5. The culminating
+`scanPlainScalarIx_content_valid` is staged as an axiom there
+pending the B3.3 loop-preservation + B3.4 trim-transfer port. The 3
+§11h dispatcher axioms remain here, awaiting both
+`scanPlainScalarIx_content_valid` discharge AND an `h_peek` plumbing
+through the §11i call sites so the plain arm can apply it. -/
 
 axiom scanNextTokenIx_dispatchContent_preserves_PlainScalarsValidIx
     {input : String} (s : ScannerStateIx input) (c : Char)

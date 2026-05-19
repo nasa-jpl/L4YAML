@@ -243,6 +243,63 @@ theorem advance_offset_monotonic {input : String} (c : IxCursor input) :
   · exact Nat.le_of_lt (advance_offset_lt_of_hasMore c h)
   · rw [advance_atEnd c h]; exact Nat.le_refl _
 
+/-- The post-`advance` byte offset is `min next.byteIdx utf8` when the
+    cursor has more input. Helper exposing the `Nat.min` clamp of
+    `nextOffsetClamped`. -/
+theorem advance_offset_eq_min_next {input : String} (c : IxCursor input)
+    (h : c.pos.offset < input.utf8ByteSize) :
+    c.advance.pos.offset =
+      Nat.min (String.Pos.Raw.next input ⟨c.pos.offset⟩).byteIdx input.utf8ByteSize := by
+  unfold advance nextOffsetClamped
+  simp [dif_pos h]
+
+/-- When the cursor has a current character, `peekAt? 1` (one ahead)
+    agrees with the post-`advance` `peek?`. Foundation for the plain-
+    scalar boundary-colon invariant: a `:`-continue at the cursor
+    ensures the lookahead character at `peekAt? 1` is the same one
+    seen as `c.advance.peek?` after consuming the `:`.
+
+    The proof case-splits on whether `(next).byteIdx ≤ utf8ByteSize`:
+    - **`(next) ≤ utf8`**: `c.advance.pos.offset = (next).byteIdx` and
+      both sides read the same character (or both are `none`).
+    - **`(next) > utf8`**: `c.advance.pos.offset = utf8` (clamped), so
+      `c.advance.peek?` is `none`; the `peekAt?Loop` recursion also
+      yields `none` because the next position's `byteIdx` exceeds
+      `utf8ByteSize`. -/
+theorem advance_peek_eq_peekAt_one {input : String} (c : IxCursor input)
+    {ch : Char} (h : c.peek? = some ch) :
+    c.advance.peek? = c.peekAt? 1 := by
+  have hlt : c.pos.offset < input.utf8ByteSize := by
+    unfold peek? at h
+    split at h
+    · assumption
+    · contradiction
+  have hoff_min : c.advance.pos.offset =
+      Nat.min (String.Pos.Raw.next input ⟨c.pos.offset⟩).byteIdx input.utf8ByteSize :=
+    advance_offset_eq_min_next c hlt
+  show (if c.advance.pos.offset < input.utf8ByteSize then
+          some (String.Pos.Raw.get input ⟨c.advance.pos.offset⟩) else none) =
+       peekAt?Loop input ⟨c.pos.offset⟩ 1
+  show _ = (if c.pos.offset < input.utf8ByteSize then
+              peekAt?Loop input (String.Pos.Raw.next input ⟨c.pos.offset⟩) 0
+            else none)
+  rw [if_pos hlt]
+  show _ = (if (String.Pos.Raw.next input ⟨c.pos.offset⟩).byteIdx < input.utf8ByteSize then
+              some (String.Pos.Raw.get input (String.Pos.Raw.next input ⟨c.pos.offset⟩))
+            else none)
+  by_cases hnxt : (String.Pos.Raw.next input ⟨c.pos.offset⟩).byteIdx ≤ input.utf8ByteSize
+  · have h_adv_off : c.advance.pos.offset =
+        (String.Pos.Raw.next input ⟨c.pos.offset⟩).byteIdx := by
+      rw [hoff_min]; exact Nat.min_eq_left hnxt
+    rw [h_adv_off]
+  · have hgt : input.utf8ByteSize < (String.Pos.Raw.next input ⟨c.pos.offset⟩).byteIdx :=
+      Nat.lt_of_not_le hnxt
+    have h_adv_off : c.advance.pos.offset = input.utf8ByteSize := by
+      rw [hoff_min]; exact Nat.min_eq_right (Nat.le_of_lt hgt)
+    have h1 : ¬ c.advance.pos.offset < input.utf8ByteSize := by rw [h_adv_off]; omega
+    have h2 : ¬ (String.Pos.Raw.next input ⟨c.pos.offset⟩).byteIdx < input.utf8ByteSize := by omega
+    rw [if_neg h1, if_neg h2]
+
 end IxCursor
 
 end L4YAML.Indexed

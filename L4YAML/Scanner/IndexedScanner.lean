@@ -644,7 +644,17 @@ def handleBlockLineBreakIx {input : String} (c : IxCursor input)
     breaks into the content string. When folding in either context
     yields an empty continuation (no further non-terminator content),
     the loop terminates at the pre-fold cursor so the caller can
-    decide what to do with the partially-collected content. -/
+    decide what to do with the partially-collected content.
+
+    **`#`-after-fold termination** (YAML 1.2.2 §6.7 + §7.3.3): if the
+    post-fold cursor sits at `#`, the continuation line is a comment,
+    so the plain scalar terminates *at the pre-fold cursor* (the line
+    break is left in the input so the comment is properly scanned).
+    Without this check the loop would append `' '` (from the fold)
+    followed by `'#'`, producing a `' '`-then-`'#'` sequence in
+    content that violates `noSpaceHashProp`. Mirrors the legacy
+    `Scanner/Scalar.lean::collectPlainScalarLoop`'s explicit
+    `some '#' => terminate` arm. -/
 def collectPlainScalarLoopIx {input : String} (c : IxCursor input)
     (content : String) (spaces : String) (inFlow : Bool)
     (contentIndent : Nat) : Nat → String × IxCursor input
@@ -664,13 +674,19 @@ def collectPlainScalarLoopIx {input : String} (c : IxCursor input)
         (content, c)
       else if isLineBreakBool ch then
         if inFlow then
-          collectPlainScalarLoopIx (foldQuotedNewlinesIx c).2
-            (content ++ (foldQuotedNewlinesIx c).1) "" inFlow contentIndent fuel
+          match (foldQuotedNewlinesIx c).2.peek? with
+          | some '#' => (content, c)
+          | _ =>
+            collectPlainScalarLoopIx (foldQuotedNewlinesIx c).2
+              (content ++ (foldQuotedNewlinesIx c).1) "" inFlow contentIndent fuel
         else
           match handleBlockLineBreakIx c contentIndent with
           | none => (content, c)
           | some (folded, cAfterFold) =>
-            collectPlainScalarLoopIx cAfterFold (content ++ folded) "" inFlow contentIndent fuel
+            match cAfterFold.peek? with
+            | some '#' => (content, c)
+            | _ =>
+              collectPlainScalarLoopIx cAfterFold (content ++ folded) "" inFlow contentIndent fuel
       else if isWhiteSpaceBool ch then
         collectPlainScalarLoopIx c.advance content (spaces.push ch) inFlow contentIndent fuel
       else if !isPlainSafeBool ch inFlow then
