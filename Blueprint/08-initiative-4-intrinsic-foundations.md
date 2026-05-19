@@ -2914,6 +2914,8 @@ namespace that the production build does **not** import. Step 6
 performs the atomic cutover: rename, delete legacy, retarget every
 downstream proof file in one push.
 
+##### Phase 3 Step 1 — Indexed-type extensions (landed)
+
 <details><summary>Step 1 — Indexed-type extensions <em>(landed)</em>.</summary>
 
 **Step 1 — Indexed-type extensions** *(landed)*.
@@ -2930,6 +2932,8 @@ touched. **Sorry budget: 0 → 0**; full `lake build` passes 385
 targets (up from 383 at Phase 2 close).
 
 </details>
+
+##### Phase 3 Step 2 — New scanner, character/whitespace layer (landed)
 
 <details><summary>Step 2 — New scanner, character/whitespace layer <em>(landed)</em>.</summary>
 
@@ -2987,6 +2991,8 @@ passes (385 jobs total; lake-mode auto-discovers and builds the
 staging files even though `L4YAML.lean` does not import them).
 
 </details>
+
+##### Phase 3 Step 3 — New scanner, indentation/line-break layer (landed)
 
 <details><summary>Step 3 — New scanner, indentation/line-break layer <em>(landed)</em>.</summary>
 
@@ -3062,6 +3068,8 @@ lemma. It is deferred to Step 4 where the dispatch-loop's fuel
 measure is the natural carrier. See Reflection 38.
 
 </details>
+
+##### Phase 3 Step 4a — New scanner, single-line scalar lexing + `skipToContent` progress closure (landed)
 
 <details><summary>Step 4a — New scanner, single-line scalar lexing + `skipToContent` progress closure <em>(landed)</em>.</summary>
 
@@ -3162,6 +3170,8 @@ extraction).
 
 </details>
 
+##### Phase 3 Step 4b — New scanner, multi-line + block scalars (landed)
+
 <details><summary>Step 4b — New scanner, multi-line + block scalars <em>(landed)</em>.</summary>
 
 **Step 4b — New scanner, multi-line + block scalars**
@@ -3258,6 +3268,8 @@ passes 385 targets; the staging files remain unimported from
 
 </details>
 
+##### Phase 3 Step 5a — Top-level dispatcher + scanner state (landed)
+
 <details><summary>Step 5a — Top-level dispatcher + scanner state <em>(landed)</em>.</summary>
 
 **Step 5a — Top-level dispatcher + scanner state** *(landed)*.
@@ -3346,6 +3358,8 @@ dispatcher-and-state slice; 5b is the monotonicity-and-content
 slice; 5c is the present-plus-corpus slice. (Reflection 45.)
 
 </details>
+
+##### Phase 3 Step 5b — Monotonicity proofs + content correctness (landed)
 
 <details><summary>Step 5b sub-step plan (nine sub-steps; per R46).</summary>
 
@@ -3553,6 +3567,8 @@ clusters become 5b.2–5b.8. Total: nine sub-steps.
 
 </details>
 
+##### Phase 3 Step 5b.1a — Helper-loop monotonicity + `emitAtSafe`→`emitAt` (landed)
+
 <details><summary>Step 5b.1a — Helper-loop monotonicity + `emitAtSafe`→`emitAt` <em>(landed)</em>.</summary>
 
 **Step 5b.1a — Helper-loop monotonicity + `emitAtSafe`→`emitAt`**
@@ -3618,6 +3634,8 @@ chain, hex-escape value, `autoDetectBlockScalarIndentLoopIx`,
 block-scalar fold/chomp, quoted multi-line, plain multi-line).
 
 </details>
+
+##### Phase 3 Step 5b.1b.i — Preservation infrastructure (landed)
 
 <details><summary>Step 5b.1b.i — Preservation infrastructure <em>(landed)</em>.</summary>
 
@@ -3687,6 +3705,8 @@ cases where no `advance` happens before the result is assembled
 
 </details>
 
+##### Phase 3 Step 5b.1b.ii — Simple-shape dispatcher monotonicity (landed)
+
 <details><summary>Step 5b.1b.ii — Simple-shape dispatcher monotonicity <em>(landed)</em>.</summary>
 
 **Step 5b.1b.ii — Simple-shape dispatcher monotonicity** *(landed)*.
@@ -3743,6 +3763,8 @@ but the chains thread through `collectAnchorNameLoopIx` /
 `skipWhitespace` (the 5b.1a helper-loop monotonicity lemmas).
 
 </details>
+
+##### Phase 3 Step 5b.1b.iii — Node-property + directive dispatcher monotonicity (landed)
 
 <details><summary>Step 5b.1b.iii — Node-property + directive dispatcher monotonicity <em>(landed)</em>.</summary>
 
@@ -3824,6 +3846,8 @@ offset"* — proven by induction on fuel, using the per-step
 
 </details>
 
+##### Phase 3 Step 5b.1b.iv-pre — Tokens-size growth leaf helpers (landed)
+
 <details><summary>Step 5b.1b.iv-pre — Tokens-size growth leaf helpers <em>(landed)</em>.</summary>
 
 **Step 5b.1b.iv-pre — Tokens-size growth leaf helpers** *(landed)*.
@@ -3896,6 +3920,8 @@ two fix candidates in hand, the next session should fit in scope.
 
 </details>
 
+##### Phase 3 Step 5b.1b.iv-cont — Top-level dispatcher monotonicity (landed)
+
 <details><summary>Step 5b.1b.iv-cont — Top-level dispatcher monotonicity <em>(landed)</em>.</summary>
 
 **Step 5b.1b.iv-cont — Top-level dispatcher monotonicity** *(landed)*.
@@ -3949,6 +3975,8 @@ hex-escape value, `autoDetectBlockScalarIndentLoopIx`, block-scalar
 fold/chomp, quoted multi-line, plain multi-line).
 
 </details>
+
+##### Phase 3 Step 5b.2 — Tab-in-indentation hardening (landed)
 
 <details><summary>Step 5b.2 — Tab-in-indentation hardening <em>(landed)</em>.</summary>
 
@@ -4088,6 +4116,8 @@ quoted multi-line, plain multi-line).
 
 </details>
 
+##### Phase 3 Step 5b.3 — `scanValueIx` validation chain (landed)
+
 <details><summary>Step 5b.3 — <code>scanValueIx</code> validation chain <em>(landed)</em>.</summary>
 
 **Step 5b.3 — `scanValueIx` validation chain** *(landed)*.
@@ -4209,6 +4239,8 @@ quoted multi-line, plain multi-line).
 
 </details>
 
+##### Phase 3 Step 5b.4 — Hex-escape value-correctness (landed)
+
 <details><summary>Step 5b.4 — Hex-escape value-correctness <em>(landed)</em>.</summary>
 
 **Step 5b.4 — Hex-escape value-correctness** *(landed)*.
@@ -4281,6 +4313,8 @@ block-scalar fold/chomp, quoted multi-line, plain multi-line).
 
 </details>
 
+##### Phase 3 Step 5b.5 — `autoDetectBlockScalarIndentLoopIx` correctness (landed)
+
 <details><summary>Step 5b.5 — `autoDetectBlockScalarIndentLoopIx` correctness <em>(landed)</em>.</summary>
 
 **Step 5b.5 — `autoDetectBlockScalarIndentLoopIx` correctness**
@@ -4346,6 +4380,8 @@ plain multi-line).
 
 </details>
 
+##### Phase 3 Step 5b.6 — Block-scalar content correctness (landed)
+
 <details><summary>Step 5b.6 — Block-scalar content correctness <em>(landed)</em>.</summary>
 
 **Step 5b.6 — Block-scalar content correctness** *(landed)*.
@@ -4408,6 +4444,8 @@ structure against a reference implementation of the spec's folded
 extraction.
 
 </details>
+
+##### Phase 3 Step 5b.7 — Quoted multi-line content correctness (landed)
 
 <details><summary>Step 5b.7 — Quoted multi-line content correctness <em>(landed)</em>.</summary>
 
@@ -4485,6 +4523,8 @@ full fold-machine invariant for `foldBlockContent` on non-empty
 input (Step 5b.6 carry-forward, unchanged).
 
 </details>
+
+##### Phase 3 Step 5b.8 — Plain multi-line content correctness (landed)
 
 <details><summary>Step 5b.8 — Plain multi-line content correctness <em>(landed)</em>.</summary>
 
@@ -4606,6 +4646,8 @@ against canonicalised input).
 
 </details>
 
+##### Phase 3 Step 5c — `present` + corpus theorem (landed)
+
 <details><summary>Step 5c — `present` + corpus theorem <em>(landed)</em>.</summary>
 
 **Step 5c — `present` + corpus theorem** *(landed)*.
@@ -4613,7 +4655,7 @@ The final pre-cutover staging step landed as two new files. The
 sorry budget is `0 → 0` in both files — every roundtrip theorem
 discharges by `native_decide`.
 
-### `L4YAML/Scanner/IndexedPresenter.lean` (~121 LOC, new)
+##### `L4YAML/Scanner/IndexedPresenter.lean` (~121 LOC, new)
 
 Defines two functions in `namespace L4YAML.Scanner.Indexed`:
 
@@ -4652,7 +4694,7 @@ validated `s.Pos` API requires — `IxToken`'s positions are plain
 `Nat`-wrapped offsets that don't carry a validity proof, and
 `Pos.Raw.extract` accepts raw byte offsets directly.
 
-### `L4YAML/Proofs/Scanner/IndexedRoundtrip.lean` (~158 LOC, new)
+##### `L4YAML/Proofs/Scanner/IndexedRoundtrip.lean` (~158 LOC, new)
 
 Defines:
 
@@ -4685,7 +4727,7 @@ Defines:
   `scanIx (present ts) = .ok ts` statement follows by rewriting
   `present ts = input` on the LHS.
 
-### Corpus scope and deferred work
+##### Corpus scope and deferred work
 
 The corpus is restricted to inputs whose token streams (i) cover
 every byte of `input` with no inter-token whitespace, (ii) have
@@ -4700,7 +4742,7 @@ input type-parameter and recovers explicit-vs-implicit key/value
 distinctions. That refinement is the full bidirectional
 `compose ∘ parse ∘ present ∘ serialize` roundtrip in Phase 4+.
 
-### Status
+##### Status
 
 `lake build` 385/385 green. Both new staging files build under
 `lake build L4YAML.Scanner.IndexedPresenter` /
@@ -4712,7 +4754,7 @@ and 5c (`present` + corpus) are all landed; the only surviving
 carry-forward is Step 5b.6's fold-machine invariant for non-empty
 input, explicitly deferred to the load-pipeline step.
 
-### Reflection 58 — *`emit`-then-`advance` produces zero-width indicator tokens; `present` needs constructor-level dispatch, not pure source-span extraction.*
+##### Reflection 58 — *`emit`-then-`advance` produces zero-width indicator tokens; `present` needs constructor-level dispatch, not pure source-span extraction.*
 
 The natural design for `present : TokenStream input → String` is a
 fold extracting each token's source span:
@@ -4757,7 +4799,7 @@ would be for the scanner to advance *first* then emit (so
 break the existing offset-monotonicity proofs in Step 5b.1b (which
 assume emit doesn't move the cursor).
 
-### Reflection 59 — *`Bool`-valued `roundtripOk` sidesteps dependent `Prop` `Decidable` plumbing for corpus theorems.*
+##### Reflection 59 — *`Bool`-valued `roundtripOk` sidesteps dependent `Prop` `Decidable` plumbing for corpus theorems.*
 
 The Blueprint's preferred statement for Step 5c was
 `scanIx (present ts) = .ok ts` for each `ts ∈ corpus`. The
@@ -4803,7 +4845,7 @@ designed for `Decidable` `= true` equations; the `Prop`-shaped
 detour costs an instance-search hazard with no proof-engineering
 benefit.
 
-### Reflection 60 — *Lean 4.30's validated `String.Pos` requires `String.Pos.Raw.extract` for raw-offset extraction.*
+##### Reflection 60 — *Lean 4.30's validated `String.Pos` requires `String.Pos.Raw.extract` for raw-offset extraction.*
 
 In Lean 4.30, `String.Pos s` is a dependent structure indexed by
 the source string `s`, with two fields: `offset : Pos.Raw` and
@@ -4917,7 +4959,7 @@ arguments), those sub-steps run faster.
   (`IndexedDispatch`, `IndexedPresenter`, `IndexedRoundtrip` all
   landed via the same discipline).
 
-#### Step 6a — `ParseStateIx` staging *(landed)*
+##### Step 6a — `ParseStateIx` staging *(landed)*
 
 **Goal**: stand up the indexed parser state record and its
 navigation primitives in a new staging file
@@ -5037,7 +5079,7 @@ load-bearing for the indexed substrate's disjointness guardrail
 passed off as positions of another); introducing a "synthetic
 zero" inhabitant would undermine the type-level discipline.
 
-#### Step 6b — `TokenParserIx` + `FuelIx` staging *(landed)*
+##### Step 6b — `TokenParserIx` + `FuelIx` staging *(landed)*
 
 **Goal**: clone the mutually-recursive parser functions over
 `ParseStateIx`. Output type is `Except ScanError (Array
@@ -5137,7 +5179,7 @@ duplicate the *attribute definition* across namespaces — the
 extension is a single environment-wide table keyed by
 declaration name.
 
-#### Step 6c.1 — Indexed NodeProofs *(landed)*
+##### Step 6c.1 — Indexed NodeProofs *(landed)*
 
 **Goal**: re-prove the `AG` (AnchorsGrow) and `AAR`
 (AllAliasesResolve) propagation lemmas — every sub-parser preserves
@@ -5214,7 +5256,7 @@ naturally live (sub-plan ladder updated, see 6d row).
 - Sorry budget: 0 → 0 in the new staging file; legacy `EmitterScannability`
   carries 7 pre-existing sorries (untouched).
 
-##### Reflection 63 — *Induction-hypothesis predicates with `input : String` must take it explicitly, not implicitly: the predicate returns `Prop` so there's no result-type slot for Lean to unify `input` against at hypothesis sites.*
+##### Reflection 63 — *Induction-hypothesis predicates with `input : String` must take it explicitly, not implicitly:* the predicate returns `Prop` so there's no result-type slot for Lean to unify `input` against at hypothesis sites.
 
 **Why**: The legacy `ParseNodeAG` predicate is
 `def ParseNodeAG (n : Nat) : Prop := ∀ (ps : ParseState) ..., AG ps ps'`.
@@ -6231,7 +6273,7 @@ hypotheses through); Reflection 73 (the
 `ScannerStateIx`-over-destructure on `obtain ⟨⟩` is reliably
 avoided by `cases pair with | mk`).
 
-#### Step 6d.1a — Indexed WellBehaved supporting infrastructure *(landed)*
+##### Step 6d.1a — Indexed WellBehaved supporting infrastructure *(landed)*
 
 **Goal**: stage the indexed supporting predicates and `flowNestingIx.go`
 step lemmas that the full `IndexedWellBehaved` port (6d.1b) will
@@ -6304,7 +6346,7 @@ substitution like Step 6c.1's `IndexedNodeProofs`:
 
 **Status**: `lake build` 385/385 green, sorry budget 0 → 0.
 
-#### Step 6d.1b — Indexed WellBehaved §5-§5e′ pre-mutual-block port *(landed)*
+##### Step 6d.1b — Indexed WellBehaved §5-§5e′ pre-mutual-block port *(landed)*
 
 **Goal**: settle the TokenStream-vs-Array bridging strategy
 (Reflection 64), then port the loosely-coupled, pre-mutual-block
@@ -6414,7 +6456,7 @@ line per site was cleaner.
 
 **Status**: `lake build` 385/385 green, sorry budget 0 → 0.
 
-#### Step 6d.1c — Indexed WellBehaved §5e mutual block + §5e″ + §5e₂ + §5f + §5g port *(landed)*
+##### Step 6d.1c — Indexed WellBehaved §5e mutual block + §5e″ + §5e₂ + §5f + §5g port *(landed)*
 
 **What landed (this session)**: the structurally hard mid-section of
 the C2 chain. `IndexedWellBehaved.lean` grew from ~823 → ~2,957 LOC
@@ -6529,7 +6571,7 @@ extra `Option.match` layers in the body — the proof needed ~18
   + a wire-up in `IndexedWellBehaved.lean` that replaces the axioms
   with proven theorems.
 
-#### Step 6d.1d — Position monotonicity + §5d₃ Wadler + emitter-bridge lemmas *(landed)*
+##### Step 6d.1d — Position monotonicity + §5d₃ Wadler + emitter-bridge lemmas *(landed)*
 
 **Goal (as landed)**: port the §5f position monotonicity chain, the
 §5d₃ Wadler `_pairs_grow_ix` guard, and the emitter-bridge lemmas
@@ -6616,7 +6658,7 @@ green per Guardrail 1.
   `Proofs/Production/IndexedScannerPlainScalarValid.lean` (selective
   port — only the chain culminating in the two top-level theorems).
 
-#### Step 6d.1e.1 — Scanner-side scaffolding + axiom relocation + 6d.1d build-break fix *(landed)*
+##### Step 6d.1e.1 — Scanner-side scaffolding + axiom relocation + 6d.1d build-break fix *(landed)*
 
 **Goal**: open the §5c axiom discharge workstream by (a) creating
 the new sister proof file, (b) relocating the 2 §5c forward-reference
@@ -6752,7 +6794,7 @@ After the 6d.1d patches:
 `IndexedWellBehaved.lean` axiom-free locally, `lake build`
 verifiably green, pre-existing 6d.1d build failures patched. ✅
 
-#### Step 6d.1e.2 — Emit-step building blocks + indent-stack preservation *(landed)*
+##### Step 6d.1e.2 — Emit-step building blocks + indent-stack preservation *(landed)*
 
 **Goal**: lay down the first batch of the per-action preservation
 chain — the unit emit-step lemmas (§5) and the five indent-stack
@@ -6818,7 +6860,7 @@ count unchanged (**2** in Phase 3 closure, all in §7 of the same
 file). Reflection 69 documents the TokenStream↔Array bridging
 pattern and the `saveSimpleKeyIx` if-tree-unfolding trap.
 
-#### Step 6d.1e.3 — Scalar scanners *(landed)*
+##### Step 6d.1e.3 — Scalar scanners *(landed)*
 
 **Goal as planned**: port the per-action preservation chain for the
 six scalar scanners (`scanPlainScalarIx`, `scanTagIx`,
@@ -6888,7 +6930,7 @@ top-level axioms (originally numbered §8; renumbered after Step
 LOC ~1101 → ~1427 (+326). Reflection 70 documents the
 record-update-opacity wall and the staging decision.
 
-#### Step 6d.1e.4 — Block-context dispatchers *(landed)*
+##### Step 6d.1e.4 — Block-context dispatchers *(landed)*
 
 **Goal**: port preservation for `scanBlockEntryIx`, `scanKeyIx`,
 `scanValueIx`, `scanValuePrepareIx`, `scanValueClearKeyIx`, and
@@ -6963,7 +7005,7 @@ from §8e — `scanValuePrepareIx_preserves_FlowContextPSVIx` +
 LOC ~1427 → ~1987 (+540). Reflection 71 documents the §8e
 `setIfInBounds` opacity wall and the staging decision.
 
-#### Step 6d.1e.5 — Flow-context dispatchers *(landed)*
+##### Step 6d.1e.5 — Flow-context dispatchers *(landed)*
 
 **Goal**: port preservation for `scanFlowSequenceStartIx`,
 `scanFlowSequenceEndIx`, `scanFlowMappingStartIx`,
@@ -7039,7 +7081,7 @@ LOC ~1987 → ~2391 (+404 LOC delta; under the Blueprint's
 emit lemmas composed cleanly — no Reflection 70/71-class wall
 hit).
 
-#### Step 6d.1e.6 — Document/directive + top-level dispatch composition *(landed, ~360 LOC, 1 session)*
+##### Step 6d.1e.6 — Document/directive + top-level dispatch composition *(landed, ~360 LOC, 1 session)*
 
 **Goal**: port preservation for the document/directive layer
 (`scanDocumentStartIx`, `scanDocumentEndIx`,
@@ -7076,7 +7118,7 @@ LOC ~2391 → ~2751 (+360 LOC delta; under the Blueprint's ~900 LOC
 estimate because the axiom-heavy staging saves the proof
 scaffolding LOC).
 
-#### Step 6d.1e.7 — Partial axiom discharge *(landed, ~327 LOC, 1 session)*
+##### Step 6d.1e.7 — Partial axiom discharge *(landed, ~327 LOC, 1 session)*
 
 **Result**: 26 of 43 staged axioms discharged; **Phase 3 closure
 axiom count: 43 → 17**.
@@ -7135,7 +7177,7 @@ pattern and the §11e `dsimp only []` let-peeling trick made
 Walls #1 and #2 cheap to break, leaving the residual 17 axioms for
 a follow-up session with four targeted substrate fixes).
 
-#### Step 6d.1e.8 — Partial axiom discharge *(landed, ~162 LOC, 1 session)*
+##### Step 6d.1e.8 — Partial axiom discharge *(landed, ~162 LOC, 1 session)*
 
 **Landed**: 9 of 17 axioms discharged. **Phase 3 closure axiom
 count: 17 → 8.** `lake build` 385/385 green; file LOC ~3078 →
@@ -7199,7 +7241,7 @@ Step 6d.1e.9):
 **Status**: landed sorry-free, `lake build` 385/385 green, file
 LOC ~3078 → ~3240 (+162 LOC delta).
 
-#### Step 6d.1e.9 — Partial axiom discharge: §11i (3 of 8) *(landed)*
+##### Step 6d.1e.9 — Partial axiom discharge: §11i (3 of 8) *(landed)*
 
 **Goal (as landed)**: discharge §11i's 3 axioms
 (`scanNextTokenIx_preserves_PlainScalarsValidIx` /
@@ -7246,7 +7288,7 @@ LOC ~3240 → ~3474 (+234 LOC delta). **5 axioms remain**: 2 §8e
 (Reflection 71 placeholder, deferred to 6d.1e.10); 3 §11h
 (Reflection 72 Layer F.4, deferred to 6d.1e.11).
 
-#### Step 6d.1e.10 — Discharge §8e: `SimpleKeyPlaceholderInvIx` (2 axioms) *(planned, ~250 LOC, 1 session)*
+##### Step 6d.1e.10 — Discharge §8e: `SimpleKeyPlaceholderInvIx` (2 axioms) *(planned, ~250 LOC, 1 session)*
 
 **Goal**: discharge `scanValuePrepareIx_preserves_FlowContextPSVIx`
 and `_preserves_FlowNestingInvIx` (the 2 §8e axioms) via a new
@@ -7294,7 +7336,7 @@ establishes.
 **DONE criteria**: 2 §8e axioms promoted to theorems; `lake build`
 green. Estimated 1 session (budget ~250 LOC).
 
-#### Step 6d.1e.11 — Discharge §11h: Layer F.4 port (3 axioms) *(planned, ~300 LOC, 1 session)*
+##### Step 6d.1e.11 — Discharge §11h: Layer F.4 port (3 axioms) *(planned, ~300 LOC, 1 session)*
 
 **Goal**: discharge `scanNextTokenIx_dispatchContent_preserves_*`
 (the 3 §11h axioms) by porting `scanPlainScalar_content_valid`
@@ -7349,7 +7391,7 @@ with three flavors (PSV / FlowContextPSVIx / FlowNestingInvIx).
 6d.1e.2's actual ~660 LOC for emit-step + 5 indent ops calibrates
 the remainder.
 
-#### Step 6d.2 — Indexed Wfa *(planned)*
+##### Step 6d.2 — Indexed Wfa *(planned)*
 
 **Scope**: `Proofs/Parser/IndexedWfa.lean` (~1,692 LOC) — **moved
 here from the original Step 6c scope**. Re-proves
@@ -7363,7 +7405,7 @@ alongside `IndexedWellBehaved` rather than next to NodeProofs in
 **DONE criteria**: sorry-free, `lake build` green. Estimated 1
 session.
 
-#### Step 6d.3 — Indexed Correctness + Completeness + Grammable *(planned)*
+##### Step 6d.3 — Indexed Correctness + Completeness + Grammable *(planned)*
 
 **Scope**:
 - `Proofs/Parser/IndexedCorrectness.lean` (~170 LOC): parsed
@@ -7385,7 +7427,7 @@ missing lemma cannot be stated without extending Phase 1's algebra,
 **DONE criteria**: all three files sorry-free, `lake build` green.
 Estimated 1 session.
 
-#### Step 6e — `IndexedComposition` + end-to-end roundtrip *(planned)*
+##### Step 6e — `IndexedComposition` + end-to-end roundtrip *(planned)*
 
 **Goal**: wire the indexed scanner and indexed parser into a
 top-level `scanAndParseIx : String → Except ScanError (Array
@@ -7413,7 +7455,7 @@ corpus.
 **DONE criteria**: both files sorry-free, `lake build` green,
 corpus covers at least 5 parser-relevant inputs end-to-end.
 
-#### Step 6f — Atomic cutover commit *(planned)*
+##### Step 6f — Atomic cutover commit *(planned)*
 
 **Goal**: in a single commit, promote every staging `*Ix.lean`
 file to its production name, delete the legacy scanner and parser
