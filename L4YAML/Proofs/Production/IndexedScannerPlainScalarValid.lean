@@ -341,6 +341,76 @@ theorem flowNestingIx_go_non_flow
       exact ih (pos + 1) depth (fun j _ hlt hj => h_nf j (by omega) hlt hj) (by omega)
     · exact flowNestingIx_go_oob tokens pos target depth (by omega)
 
+/-- Replacing a non-flow slot with another non-flow token preserves
+    `flowNestingIx.go`. Indexed twin of legacy
+    `flowNesting_go_setIfInBounds_non_flow`. -/
+theorem flowNestingIx_go_setIfInBounds_non_flow
+    (tokens : Array (IxToken input))
+    (idx : Nat) (val : IxToken input)
+    (h_val_nf : val.token ≠ .flowSequenceStart ∧ val.token ≠ .flowMappingStart ∧
+                val.token ≠ .flowSequenceEnd ∧ val.token ≠ .flowMappingEnd)
+    (h_orig_nf : ∀ (h : idx < tokens.size),
+      (tokens[idx]'h).token ≠ .flowSequenceStart ∧
+      (tokens[idx]'h).token ≠ .flowMappingStart ∧
+      (tokens[idx]'h).token ≠ .flowSequenceEnd ∧
+      (tokens[idx]'h).token ≠ .flowMappingEnd)
+    (pos target depth : Nat) :
+    flowNestingIx.go (tokens.setIfInBounds idx val) pos target depth =
+    flowNestingIx.go tokens pos target depth := by
+  generalize hn : target - pos = n
+  induction n generalizing pos depth with
+  | zero =>
+    rw [flowNestingIx_go_ge_target _ _ _ _ (by omega),
+        flowNestingIx_go_ge_target _ _ _ _ (by omega)]
+  | succ n ih =>
+    by_cases h_pos : pos < tokens.size
+    · have h_pos' : pos < (tokens.setIfInBounds idx val).size := by
+        rw [Array.size_setIfInBounds]; exact h_pos
+      rw [flowNestingIx_go_step _ _ _ _ h_pos' (by omega),
+          flowNestingIx_go_step _ _ _ _ h_pos (by omega)]
+      by_cases h_eq : idx = pos
+      · subst h_eq
+        rcases h_val_nf with ⟨hv1, hv2, hv3, hv4⟩
+        rcases h_orig_nf h_pos with ⟨ho1, ho2, ho3, ho4⟩
+        have h_val_depth : (match val.token with
+            | .flowSequenceStart | .flowMappingStart => depth + 1
+            | .flowSequenceEnd | .flowMappingEnd => if depth > 0 then depth - 1 else 0
+            | _ => depth) = depth := by
+          generalize val.token = v at hv1 hv2 hv3 hv4
+          cases v <;> first | contradiction | rfl
+        have h_orig_depth : (match (tokens[idx]'h_pos).token with
+            | .flowSequenceStart | .flowMappingStart => depth + 1
+            | .flowSequenceEnd | .flowMappingEnd => if depth > 0 then depth - 1 else 0
+            | _ => depth) = depth := by
+          generalize (tokens[idx]'h_pos).token = w at ho1 ho2 ho3 ho4
+          cases w <;> first | contradiction | rfl
+        simp only [Array.getElem_setIfInBounds h_pos, ↓reduceIte,
+          h_val_depth, h_orig_depth]
+        exact ih (idx + 1) _ (by omega)
+      · simp only [Array.getElem_setIfInBounds h_pos, if_neg h_eq]
+        exact ih (pos + 1) _ (by omega)
+    · rw [flowNestingIx_go_oob (tokens.setIfInBounds idx val) pos target depth
+            (by rw [Array.size_setIfInBounds]; omega),
+          flowNestingIx_go_oob tokens pos target depth (by omega)]
+
+/-- Replacing a non-flow token at `idx` with another non-flow token
+    preserves `flowNestingIx`. Indexed twin of legacy
+    `flowNesting_setIfInBounds_non_flow`. -/
+theorem flowNestingIx_setIfInBounds_non_flow
+    (tokens : Indexed.TokenStream input)
+    (idx : Nat) (val : IxToken input)
+    (h_val_nf : val.token ≠ .flowSequenceStart ∧ val.token ≠ .flowMappingStart ∧
+                val.token ≠ .flowSequenceEnd ∧ val.token ≠ .flowMappingEnd)
+    (h_orig_nf : ∀ (h : idx < tokens.size),
+      (tokens[idx]'h).token ≠ .flowSequenceStart ∧
+      (tokens[idx]'h).token ≠ .flowMappingStart ∧
+      (tokens[idx]'h).token ≠ .flowSequenceEnd ∧
+      (tokens[idx]'h).token ≠ .flowMappingEnd)
+    (target : Nat) :
+    flowNestingIx (tokens.setIfInBounds idx val) target = flowNestingIx tokens target := by
+  unfold flowNestingIx
+  exact flowNestingIx_go_setIfInBounds_non_flow tokens.tokens idx val h_val_nf h_orig_nf 0 target 0
+
 /-! ## §3  FlowContextPSVIx propagation primitives -/
 
 /-- An empty token stream trivially satisfies `FlowContextPSVIx`.
@@ -1647,6 +1717,86 @@ theorem overwriteAtCursor_non_plain_preserves_PlainScalarsValidIx
   show PlainScalarsValidIx (s.tokens.setIfInBounds i _)
   exact PlainScalarsValidIx_setIfInBounds_non_plain s.tokens h_old i _ h_np
 
+/-- `setIfInBounds` with a non-plain, non-flow replacement preserves
+    `FlowContextPSVIx`, provided the original token at the modified
+    position is also non-flow. Indexed twin of legacy
+    `FlowContextPSV_setIfInBounds`. -/
+theorem FlowContextPSVIx_setIfInBounds_non_flow
+    (tokens : Indexed.TokenStream input) (h_old : FlowContextPSVIx tokens)
+    (idx : Nat) (val : IxToken input)
+    (h_np : match val.token with | .scalar _ .plain => False | _ => True)
+    (h_val_nf : val.token ≠ .flowSequenceStart ∧ val.token ≠ .flowMappingStart ∧
+                val.token ≠ .flowSequenceEnd ∧ val.token ≠ .flowMappingEnd)
+    (h_orig_nf : ∀ (h : idx < tokens.size),
+      (tokens[idx]'h).token ≠ .flowSequenceStart ∧
+      (tokens[idx]'h).token ≠ .flowMappingStart ∧
+      (tokens[idx]'h).token ≠ .flowSequenceEnd ∧
+      (tokens[idx]'h).token ≠ .flowMappingEnd) :
+    FlowContextPSVIx (tokens.setIfInBounds idx val) := by
+  by_cases h_idx : idx < tokens.size
+  · intro i hi h_flow
+    have hi_arr : i < (tokens.tokens.setIfInBounds idx val).size := hi
+    have h_i_lt : i < tokens.size := by
+      rw [Array.size_setIfInBounds] at hi_arr; exact hi_arr
+    have h_flow_eq :=
+      flowNestingIx_setIfInBounds_non_flow tokens idx val h_val_nf h_orig_nf i
+    rw [h_flow_eq] at h_flow
+    have h_eq : (tokens.setIfInBounds idx val)[i]'hi
+        = (tokens.tokens.setIfInBounds idx val)[i]'hi_arr := rfl
+    rw [h_eq, Array.getElem_setIfInBounds h_i_lt]
+    by_cases h_eq_idx : idx = i
+    · subst h_eq_idx; simp only [↓reduceIte]
+      exact fpsv_of_not_plain_ix val h_np
+    · simp only [h_eq_idx, ↓reduceIte]; exact h_old i h_i_lt h_flow
+  · have h_arr_eq : tokens.tokens.setIfInBounds idx val = tokens.tokens := by
+      unfold Array.setIfInBounds
+      simp [show ¬(idx < tokens.tokens.size) from h_idx]
+    have h_eq : tokens.setIfInBounds idx val = tokens := by
+      show ({ tokens := tokens.tokens.setIfInBounds idx val } : Indexed.TokenStream input) = tokens
+      rw [h_arr_eq]
+    rw [h_eq]; exact h_old
+
+/-- `overwriteAtCursor` with a non-plain, non-flow token preserves
+    `FlowContextPSVIx`, provided the original token at the modified
+    position is non-flow. -/
+theorem overwriteAtCursor_non_plain_non_flow_preserves_FlowContextPSVIx
+    {input : String} (s : ScannerStateIx input) (i : Nat) (sk : IxCursor input)
+    (tok : YamlToken) (h_old : FlowContextPSVIx s.tokens)
+    (h_np : match tok with | .scalar _ .plain => False | _ => True)
+    (h_val_nf : tok ≠ .flowSequenceStart ∧ tok ≠ .flowMappingStart ∧
+                tok ≠ .flowSequenceEnd ∧ tok ≠ .flowMappingEnd)
+    (h_orig_nf : ∀ (h : i < s.tokens.size),
+      (s.tokens[i]'h).token ≠ .flowSequenceStart ∧
+      (s.tokens[i]'h).token ≠ .flowMappingStart ∧
+      (s.tokens[i]'h).token ≠ .flowSequenceEnd ∧
+      (s.tokens[i]'h).token ≠ .flowMappingEnd) :
+    FlowContextPSVIx (s.overwriteAtCursor i sk tok).tokens := by
+  show FlowContextPSVIx (s.tokens.setIfInBounds i _)
+  exact FlowContextPSVIx_setIfInBounds_non_flow s.tokens h_old i _ h_np h_val_nf h_orig_nf
+
+/-- `overwriteAtCursor` with a non-flow token preserves `FlowNestingInvIx`,
+    provided the original token at the modified position is non-flow. -/
+theorem overwriteAtCursor_non_flow_preserves_FlowNestingInvIx
+    {input : String} (s : ScannerStateIx input) (i : Nat) (sk : IxCursor input)
+    (tok : YamlToken) (h_fni : FlowNestingInvIx s)
+    (h_val_nf : tok ≠ .flowSequenceStart ∧ tok ≠ .flowMappingStart ∧
+                tok ≠ .flowSequenceEnd ∧ tok ≠ .flowMappingEnd)
+    (h_orig_nf : ∀ (h : i < s.tokens.size),
+      (s.tokens[i]'h).token ≠ .flowSequenceStart ∧
+      (s.tokens[i]'h).token ≠ .flowMappingStart ∧
+      (s.tokens[i]'h).token ≠ .flowSequenceEnd ∧
+      (s.tokens[i]'h).token ≠ .flowMappingEnd) :
+    FlowNestingInvIx (s.overwriteAtCursor i sk tok) := by
+  unfold FlowNestingInvIx at h_fni ⊢
+  have h_fl : (s.overwriteAtCursor i sk tok).flowLevel = s.flowLevel := rfl
+  have h_sz : (s.overwriteAtCursor i sk tok).tokens.size = s.tokens.size := by
+    show (s.tokens.tokens.setIfInBounds i _).size = s.tokens.tokens.size
+    exact Array.size_setIfInBounds ..
+  rw [h_fl, h_sz]
+  show flowNestingIx (s.tokens.setIfInBounds i _) s.tokens.size = s.flowLevel
+  rw [flowNestingIx_setIfInBounds_non_flow s.tokens i _ h_val_nf h_orig_nf s.tokens.size]
+  exact h_fni
+
 /-! ### §8b  `scanValueClearKeyIx` preservation
 
 `scanValueClearKeyIx` is a pure state-only update on the `simpleKey`
@@ -1885,7 +2035,7 @@ theorem scanKeyIx_preserves_FlowNestingInvIx {input : String}
     unfold FlowNestingInvIx at h_step1 ⊢
     simpa using h_step1
 
-/-! ### §8e  `scanValuePrepareIx` preservation — PSV proven, FCPSV/FNI staged
+/-! ### §8e  `scanValuePrepareIx` preservation — all three landed (6d.1e.10)
 
 `scanValuePrepareIx s` either (a) overwrites token slots
 `simpleKey.tokenIndex` and `simpleKey.tokenIndex + 1` with non-plain
@@ -1896,17 +2046,77 @@ unchanged (record-only updates), or (c) delegates to
 PSV preservation is proven via §8a (`setIfInBounds` non-plain) +
 §6e (`pushMappingIndentIx_preserves_PlainScalarsValidIx`).
 
-FCPSV / FlowNestingInv preservation needs an additional invariant
-the indexed proof chain has not yet propagated: the original token
-at `simpleKey.tokenIndex` (resp. `+1`) must be non-flow. The legacy
-chain establishes this via tracking `.placeholder` slots from
-`saveSimpleKey`; the indexed analogue would require strengthening the
-scanner-side invariant (e.g. carrying `SimpleKeyAbove`-style
-side-conditions through the dispatcher chain).
+FCPSV / FlowNestingInv preservation also threads
+`SimpleKeyPlaceholderInvIx` (defined just below): the
+`overwriteAtCursor` branches need the original tokens at
+`simpleKey.tokenIndex` (and `+1`) to be `.placeholder`, which is
+non-flow, so `setIfInBounds_non_flow` discharges via §8a's
+`overwriteAtCursor_non_plain_non_flow_preserves_FlowContextPSVIx`
+and `overwriteAtCursor_non_flow_preserves_FlowNestingInvIx`. The
+invariant is established by `saveSimpleKeyIx` (§6f, two placeholder
+emits at `simpleKey.tokenIndex`/`+1`) and threaded through the
+dispatcher chain by the §11i↑ `scanNextTokenIx_preserves_*`
+plumbing landed in 6d.1e.10. -/
 
-Staged as **two axioms** with the eventual real signature; discharge
-moves to a dedicated session (6d.1e.7 or earlier) alongside §7b/§7c
-and §8e′. See Reflection 71 for the design analysis. -/
+/-- `SimpleKeyPlaceholderInvIx s` says: whenever `s.simpleKey.possible`
+    is set, the token slots at `s.simpleKey.tokenIndex` and
+    `s.simpleKey.tokenIndex + 1` exist (are in-bounds) and hold
+    `.placeholder` — the markers `saveSimpleKeyIx` reserved. Threaded
+    through the dispatcher chain; consumed by `scanValuePrepareIx` to
+    discharge the `setIfInBounds_non_flow` original-token obligation.
+    Indexed twin of legacy `SimpleKeyPlaceholderInv`. -/
+def SimpleKeyPlaceholderInvIx {input : String} (s : ScannerStateIx input) : Prop :=
+  s.simpleKey.possible = true →
+    s.simpleKey.tokenIndex < s.tokens.size ∧
+    s.simpleKey.tokenIndex + 1 < s.tokens.size ∧
+    (∀ (h : s.simpleKey.tokenIndex < s.tokens.size),
+      (s.tokens[s.simpleKey.tokenIndex]'h).token = YamlToken.placeholder) ∧
+    (∀ (h : s.simpleKey.tokenIndex + 1 < s.tokens.size),
+      (s.tokens[s.simpleKey.tokenIndex + 1]'h).token = YamlToken.placeholder)
+
+/-- Vacuous when `possible = false`. -/
+theorem SimpleKeyPlaceholderInvIx_of_not_possible {input : String}
+    (s : ScannerStateIx input) (h : s.simpleKey.possible = false) :
+    SimpleKeyPlaceholderInvIx s :=
+  fun h_poss => absurd h_poss (by simp [h])
+
+/-- Initial state satisfies the invariant — `mk'` sets
+    `simpleKey.possible := false` (its default). -/
+theorem mk'_SimpleKeyPlaceholderInvIx (input : String) :
+    SimpleKeyPlaceholderInvIx (ScannerStateIx.mk' input) :=
+  SimpleKeyPlaceholderInvIx_of_not_possible _ rfl
+
+/-- `emit tok` preserves `SimpleKeyPlaceholderInvIx`: it grows the
+    token stream by one and leaves `simpleKey` unchanged, so the
+    placeholders at `simpleKey.tokenIndex`/`+1` remain in place. -/
+theorem emit_preserves_SimpleKeyPlaceholderInvIx {input : String}
+    (s : ScannerStateIx input) (tok : YamlToken)
+    (h_inv : SimpleKeyPlaceholderInvIx s) :
+    SimpleKeyPlaceholderInvIx (s.emit tok) := by
+  intro h_poss
+  have h_poss_s : s.simpleKey.possible = true := h_poss
+  have ⟨hb1, hb2, hp1, hp2⟩ := h_inv h_poss_s
+  have h_sz : (s.emit tok).tokens.size = s.tokens.size + 1 := emit_tokens_size s tok
+  have h_sk_idx : (s.emit tok).simpleKey.tokenIndex = s.simpleKey.tokenIndex := rfl
+  refine ⟨?_, ?_, ?_, ?_⟩
+  · show s.simpleKey.tokenIndex < (s.emit tok).tokens.size
+    rw [h_sz]; omega
+  · show s.simpleKey.tokenIndex + 1 < (s.emit tok).tokens.size
+    rw [h_sz]; omega
+  · intro h_lt
+    have h_lt_s : s.simpleKey.tokenIndex < s.tokens.size := hb1
+    have h_get : ((s.emit tok).tokens[s.simpleKey.tokenIndex]'h_lt) =
+        (s.tokens[s.simpleKey.tokenIndex]'h_lt_s) :=
+      emit_preserves_tokens_at s tok s.simpleKey.tokenIndex h_lt_s
+    show ((s.emit tok).tokens[s.simpleKey.tokenIndex]'h_lt).token = YamlToken.placeholder
+    rw [h_get]; exact hp1 h_lt_s
+  · intro h_lt
+    have h_lt_s : s.simpleKey.tokenIndex + 1 < s.tokens.size := hb2
+    have h_get : ((s.emit tok).tokens[s.simpleKey.tokenIndex + 1]'h_lt) =
+        (s.tokens[s.simpleKey.tokenIndex + 1]'h_lt_s) :=
+      emit_preserves_tokens_at s tok (s.simpleKey.tokenIndex + 1) h_lt_s
+    show ((s.emit tok).tokens[s.simpleKey.tokenIndex + 1]'h_lt).token = YamlToken.placeholder
+    rw [h_get]; exact hp2 h_lt_s
 
 theorem scanValuePrepareIx_preserves_PlainScalarsValidIx {input : String}
     (s : ScannerStateIx input) (h_old : PlainScalarsValidIx s.tokens) :
@@ -1939,21 +2149,151 @@ theorem scanValuePrepareIx_preserves_PlainScalarsValidIx {input : String}
       · -- inFlow: no change
         exact h_old
 
-/-- `scanValuePrepareIx` preserves `FlowContextPSVIx`.
-    **Staged as axiom (Step 6d.1e.4)**: the `setIfInBounds` branches
-    need the original token at `simpleKey.tokenIndex` to be non-flow;
-    establishing this requires a placeholder-tracking invariant the
-    indexed chain has not yet propagated. See Reflection 71. -/
-axiom scanValuePrepareIx_preserves_FlowContextPSVIx {input : String}
-    (s : ScannerStateIx input) (_h_old : FlowContextPSVIx s.tokens) :
-    FlowContextPSVIx (scanValuePrepareIx s).tokens
+/-- `scanValuePrepareIx` preserves `FlowContextPSVIx` when the simple-key
+    placeholder invariant holds. Discharged in 6d.1e.10 via the
+    `overwriteAtCursor_non_plain_non_flow_preserves_FlowContextPSVIx`
+    helper from §8a, with the original-token-non-flow obligation
+    discharged by `h_pl` (the placeholders are non-flow). -/
+theorem scanValuePrepareIx_preserves_FlowContextPSVIx {input : String}
+    (s : ScannerStateIx input) (h_old : FlowContextPSVIx s.tokens)
+    (h_pl : SimpleKeyPlaceholderInvIx s) :
+    FlowContextPSVIx (scanValuePrepareIx s).tokens := by
+  unfold scanValuePrepareIx
+  split
+  · rename_i h_poss
+    have ⟨hb1, hb2, hp1, hp2⟩ := h_pl h_poss
+    split
+    · split
+      · -- col > currentIndent: two overwriteAtCursor calls, then record-update
+        show FlowContextPSVIx
+          { ((s.overwriteAtCursor s.simpleKey.tokenIndex s.simpleKey.cursor .blockMappingStart).overwriteAtCursor
+              (s.simpleKey.tokenIndex + 1) s.simpleKey.cursor .key) with .. }.tokens
+        -- Outer overwriteAtCursor at (tokenIndex + 1) with .key
+        apply overwriteAtCursor_non_plain_non_flow_preserves_FlowContextPSVIx _ _ _ _ _ (by trivial)
+          ⟨by nofun, by nofun, by nofun, by nofun⟩
+        · intro h_lt
+          -- After the first overwriteAtCursor, the size is unchanged so
+          -- (tokenIndex + 1) is still in-bounds in s.tokens.
+          have h_sz : (s.overwriteAtCursor s.simpleKey.tokenIndex s.simpleKey.cursor
+              YamlToken.blockMappingStart).tokens.size = s.tokens.size :=
+            overwriteAtCursor_tokens_size s _ _ _
+          have h_lt' : s.simpleKey.tokenIndex + 1 < s.tokens.size := h_sz ▸ h_lt
+          show ((s.overwriteAtCursor s.simpleKey.tokenIndex s.simpleKey.cursor
+              YamlToken.blockMappingStart).tokens[s.simpleKey.tokenIndex + 1]'h_lt).token ≠
+                .flowSequenceStart ∧ _ ∧ _ ∧ _
+          -- The slot (tokenIndex + 1) is not the modified slot (tokenIndex),
+          -- so it still holds the original token from s, which is a placeholder.
+          have h_get : (s.overwriteAtCursor s.simpleKey.tokenIndex s.simpleKey.cursor
+              YamlToken.blockMappingStart).tokens[s.simpleKey.tokenIndex + 1]'h_lt =
+              s.tokens[s.simpleKey.tokenIndex + 1]'h_lt' :=
+            Array.getElem_setIfInBounds_ne (xs := s.tokens.tokens)
+              (i := s.simpleKey.tokenIndex)
+              (j := s.simpleKey.tokenIndex + 1) h_lt' (by omega)
+          rw [h_get, hp2 h_lt']
+          exact ⟨by nofun, by nofun, by nofun, by nofun⟩
+        · -- Inner overwriteAtCursor at tokenIndex with .blockMappingStart
+          apply overwriteAtCursor_non_plain_non_flow_preserves_FlowContextPSVIx
+            _ _ _ _ h_old (by trivial) ⟨by nofun, by nofun, by nofun, by nofun⟩
+          intro h_lt
+          rw [hp1 hb1]
+          exact ⟨by nofun, by nofun, by nofun, by nofun⟩
+      · -- col ≤ currentIndent: one overwriteAtCursor at (tokenIndex + 1) with .key
+        show FlowContextPSVIx
+          { (s.overwriteAtCursor (s.simpleKey.tokenIndex + 1) s.simpleKey.cursor .key) with .. }.tokens
+        apply overwriteAtCursor_non_plain_non_flow_preserves_FlowContextPSVIx
+          _ _ _ _ h_old (by trivial) ⟨by nofun, by nofun, by nofun, by nofun⟩
+        intro h_lt
+        rw [hp2 hb2]
+        exact ⟨by nofun, by nofun, by nofun, by nofun⟩
+    · -- inFlow: one overwriteAtCursor at (tokenIndex + 1) with .key
+      show FlowContextPSVIx
+        { (s.overwriteAtCursor (s.simpleKey.tokenIndex + 1) s.simpleKey.cursor .key) with .. }.tokens
+      apply overwriteAtCursor_non_plain_non_flow_preserves_FlowContextPSVIx
+        _ _ _ _ h_old (by trivial) ⟨by nofun, by nofun, by nofun, by nofun⟩
+      intro h_lt
+      rw [hp2 hb2]
+      exact ⟨by nofun, by nofun, by nofun, by nofun⟩
+  · split
+    · -- explicitKeyLine.isSome: record-only update
+      exact h_old
+    · split
+      · -- !inFlow: pushMappingIndentIx
+        exact pushMappingIndentIx_preserves_FlowContextPSVIx s s.cursor.pos.col h_old
+      · -- inFlow: no change
+        exact h_old
 
-/-- `scanValuePrepareIx` preserves `FlowNestingInvIx`.
-    **Staged as axiom (Step 6d.1e.4)** — see
+/-- `scanValuePrepareIx` preserves `FlowNestingInvIx` when the simple-key
+    placeholder invariant holds. Companion of
     `scanValuePrepareIx_preserves_FlowContextPSVIx`. -/
-axiom scanValuePrepareIx_preserves_FlowNestingInvIx {input : String}
-    (s : ScannerStateIx input) (_h_fni : FlowNestingInvIx s) :
-    FlowNestingInvIx (scanValuePrepareIx s)
+theorem scanValuePrepareIx_preserves_FlowNestingInvIx {input : String}
+    (s : ScannerStateIx input) (h_fni : FlowNestingInvIx s)
+    (h_pl : SimpleKeyPlaceholderInvIx s) :
+    FlowNestingInvIx (scanValuePrepareIx s) := by
+  unfold scanValuePrepareIx
+  split
+  · rename_i h_poss
+    have ⟨hb1, hb2, hp1, hp2⟩ := h_pl h_poss
+    split
+    · split
+      · -- col > currentIndent
+        unfold FlowNestingInvIx at h_fni ⊢
+        show flowNestingIx
+          { ((s.overwriteAtCursor s.simpleKey.tokenIndex s.simpleKey.cursor .blockMappingStart).overwriteAtCursor
+              (s.simpleKey.tokenIndex + 1) s.simpleKey.cursor .key) with .. }.tokens
+          _ = s.flowLevel
+        have h_step1 := overwriteAtCursor_non_flow_preserves_FlowNestingInvIx
+          s s.simpleKey.tokenIndex s.simpleKey.cursor .blockMappingStart h_fni
+          ⟨by nofun, by nofun, by nofun, by nofun⟩
+          (fun h_lt => by rw [hp1 hb1]; exact ⟨by nofun, by nofun, by nofun, by nofun⟩)
+        have h_step2 := overwriteAtCursor_non_flow_preserves_FlowNestingInvIx
+          (s.overwriteAtCursor s.simpleKey.tokenIndex s.simpleKey.cursor .blockMappingStart)
+          (s.simpleKey.tokenIndex + 1) s.simpleKey.cursor .key h_step1
+          ⟨by nofun, by nofun, by nofun, by nofun⟩
+          (fun h_lt => by
+            have h_sz : (s.overwriteAtCursor s.simpleKey.tokenIndex s.simpleKey.cursor
+                YamlToken.blockMappingStart).tokens.size = s.tokens.size :=
+              overwriteAtCursor_tokens_size s _ _ _
+            have h_lt' : s.simpleKey.tokenIndex + 1 < s.tokens.size := h_sz ▸ h_lt
+            have h_get : (s.overwriteAtCursor s.simpleKey.tokenIndex s.simpleKey.cursor
+                YamlToken.blockMappingStart).tokens[s.simpleKey.tokenIndex + 1]'h_lt =
+                s.tokens[s.simpleKey.tokenIndex + 1]'h_lt' :=
+              Array.getElem_setIfInBounds_ne (xs := s.tokens.tokens)
+                (i := s.simpleKey.tokenIndex)
+                (j := s.simpleKey.tokenIndex + 1) h_lt' (by omega)
+            rw [h_get, hp2 h_lt']
+            exact ⟨by nofun, by nofun, by nofun, by nofun⟩)
+        unfold FlowNestingInvIx at h_step2
+        simpa using h_step2
+      · -- col ≤ currentIndent: one overwriteAtCursor at (tokenIndex + 1) with .key
+        unfold FlowNestingInvIx at h_fni ⊢
+        show flowNestingIx
+          { (s.overwriteAtCursor (s.simpleKey.tokenIndex + 1) s.simpleKey.cursor .key) with .. }.tokens
+          _ = s.flowLevel
+        have h_step := overwriteAtCursor_non_flow_preserves_FlowNestingInvIx
+          s (s.simpleKey.tokenIndex + 1) s.simpleKey.cursor .key h_fni
+          ⟨by nofun, by nofun, by nofun, by nofun⟩
+          (fun h_lt => by rw [hp2 hb2]; exact ⟨by nofun, by nofun, by nofun, by nofun⟩)
+        unfold FlowNestingInvIx at h_step
+        simpa using h_step
+    · -- inFlow: one overwriteAtCursor
+      unfold FlowNestingInvIx at h_fni ⊢
+      show flowNestingIx
+        { (s.overwriteAtCursor (s.simpleKey.tokenIndex + 1) s.simpleKey.cursor .key) with .. }.tokens
+        _ = s.flowLevel
+      have h_step := overwriteAtCursor_non_flow_preserves_FlowNestingInvIx
+        s (s.simpleKey.tokenIndex + 1) s.simpleKey.cursor .key h_fni
+        ⟨by nofun, by nofun, by nofun, by nofun⟩
+        (fun h_lt => by rw [hp2 hb2]; exact ⟨by nofun, by nofun, by nofun, by nofun⟩)
+      unfold FlowNestingInvIx at h_step
+      simpa using h_step
+  · split
+    · -- explicitKeyLine.isSome: record-only update
+      exact h_fni
+    · split
+      · -- !inFlow: pushMappingIndentIx
+        exact pushMappingIndentIx_preserves_FlowNestingInvIx s s.cursor.pos.col h_fni
+      · -- inFlow: no change
+        exact h_fni
 
 /-! ### §8f  `scanValueIx` preservation
 
@@ -1985,9 +2325,25 @@ theorem scanValueIx_preserves_PlainScalarsValidIx {input : String}
       exact emit_non_plain_preserves_PlainScalarsValidIx
         (scanValuePrepareIx (scanValueClearKeyIx s)) .value h_prep (by trivial)
 
+/-- `scanValueClearKeyIx` preserves `SimpleKeyPlaceholderInvIx`: it
+    either leaves the state unchanged or clears `simpleKey` to its
+    default (`possible := false`), so the invariant either holds
+    transparently or is vacuously satisfied. -/
+theorem scanValueClearKeyIx_preserves_SimpleKeyPlaceholderInvIx {input : String}
+    (s : ScannerStateIx input) (h_inv : SimpleKeyPlaceholderInvIx s) :
+    SimpleKeyPlaceholderInvIx (scanValueClearKeyIx s) := by
+  unfold scanValueClearKeyIx
+  split
+  · split
+    · exact SimpleKeyPlaceholderInvIx_of_not_possible _ rfl
+    · split
+      · exact SimpleKeyPlaceholderInvIx_of_not_possible _ rfl
+      · exact h_inv
+  · exact h_inv
+
 theorem scanValueIx_preserves_FlowContextPSVIx {input : String}
     (s s' : ScannerStateIx input) (h_ok : scanValueIx s = .ok s')
-    (h_old : FlowContextPSVIx s.tokens) :
+    (h_old : FlowContextPSVIx s.tokens) (h_pl : SimpleKeyPlaceholderInvIx s) :
     FlowContextPSVIx s'.tokens := by
   unfold scanValueIx at h_ok
   simp only [bind, Except.bind] at h_ok
@@ -2001,15 +2357,16 @@ theorem scanValueIx_preserves_FlowContextPSVIx {input : String}
         { ((scanValuePrepareIx (scanValueClearKeyIx s)).emit .value).advance with .. }.tokens
       simp only [advance_tokens]
       have h_ck := scanValueClearKeyIx_preserves_FlowContextPSVIx s h_old
+      have h_pl_ck := scanValueClearKeyIx_preserves_SimpleKeyPlaceholderInvIx s h_pl
       have h_prep := scanValuePrepareIx_preserves_FlowContextPSVIx
-        (scanValueClearKeyIx s) h_ck
+        (scanValueClearKeyIx s) h_ck h_pl_ck
       exact emit_non_flow_non_plain_preserves_FlowContextPSVIx
         (scanValuePrepareIx (scanValueClearKeyIx s)) .value h_prep
         (by trivial) (by decide) (by decide) (by decide) (by decide)
 
 theorem scanValueIx_preserves_FlowNestingInvIx {input : String}
     (s s' : ScannerStateIx input) (h_ok : scanValueIx s = .ok s')
-    (h_fni : FlowNestingInvIx s) :
+    (h_fni : FlowNestingInvIx s) (h_pl : SimpleKeyPlaceholderInvIx s) :
     FlowNestingInvIx s' := by
   unfold scanValueIx at h_ok
   simp only [bind, Except.bind] at h_ok
@@ -2020,8 +2377,9 @@ theorem scanValueIx_preserves_FlowNestingInvIx {input : String}
     · simp only [Except.ok.injEq] at h_ok
       subst h_ok
       have h_ck := scanValueClearKeyIx_preserves_FlowNestingInvIx s h_fni
+      have h_pl_ck := scanValueClearKeyIx_preserves_SimpleKeyPlaceholderInvIx s h_pl
       have h_prep := scanValuePrepareIx_preserves_FlowNestingInvIx
-        (scanValueClearKeyIx s) h_ck
+        (scanValueClearKeyIx s) h_ck h_pl_ck
       have h_emit := emit_non_flow_preserves_FlowNestingInvIx
         (scanValuePrepareIx (scanValueClearKeyIx s)) .value h_prep
         (by decide) (by decide) (by decide) (by decide)
@@ -2063,7 +2421,7 @@ theorem scanNextTokenIx_dispatchBlockIndicators_preserves_FlowContextPSVIx
     {input : String} (s : ScannerStateIx input) (c : Char)
     (s' : ScannerStateIx input)
     (h_ok : scanNextTokenIx_dispatchBlockIndicators s c = .ok (some s'))
-    (h_old : FlowContextPSVIx s.tokens) :
+    (h_old : FlowContextPSVIx s.tokens) (h_pl : SimpleKeyPlaceholderInvIx s) :
     FlowContextPSVIx s'.tokens := by
   unfold scanNextTokenIx_dispatchBlockIndicators at h_ok
   simp only [bind, Except.bind, pure, Except.pure] at h_ok
@@ -2081,14 +2439,14 @@ theorem scanNextTokenIx_dispatchBlockIndicators_preserves_FlowContextPSVIx
       · split at h_ok
         · cases h_ok
         · simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
-          exact scanValueIx_preserves_FlowContextPSVIx s _ (by assumption) h_old
+          exact scanValueIx_preserves_FlowContextPSVIx s _ (by assumption) h_old h_pl
       · simp at h_ok
 
 theorem scanNextTokenIx_dispatchBlockIndicators_preserves_FlowNestingInvIx
     {input : String} (s : ScannerStateIx input) (c : Char)
     (s' : ScannerStateIx input)
     (h_ok : scanNextTokenIx_dispatchBlockIndicators s c = .ok (some s'))
-    (h_fni : FlowNestingInvIx s) :
+    (h_fni : FlowNestingInvIx s) (h_pl : SimpleKeyPlaceholderInvIx s) :
     FlowNestingInvIx s' := by
   unfold scanNextTokenIx_dispatchBlockIndicators at h_ok
   simp only [bind, Except.bind, pure, Except.pure] at h_ok
@@ -2106,7 +2464,7 @@ theorem scanNextTokenIx_dispatchBlockIndicators_preserves_FlowNestingInvIx
       · split at h_ok
         · cases h_ok
         · simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
-          exact scanValueIx_preserves_FlowNestingInvIx s _ (by assumption) h_fni
+          exact scanValueIx_preserves_FlowNestingInvIx s _ (by assumption) h_fni h_pl
       · simp at h_ok
 
 
@@ -2397,7 +2755,7 @@ theorem scanFlowEntryIx_preserves_PlainScalarsValidIx {input : String}
 
 theorem scanFlowEntryIx_preserves_FlowContextPSVIx {input : String}
     (s s' : ScannerStateIx input) (h_ok : scanFlowEntryIx s = .ok s')
-    (h_old : FlowContextPSVIx s.tokens) :
+    (h_old : FlowContextPSVIx s.tokens) (h_pl : SimpleKeyPlaceholderInvIx s) :
     FlowContextPSVIx s'.tokens := by
   unfold scanFlowEntryIx at h_ok
   simp only [Except.ok.injEq] at h_ok
@@ -2405,19 +2763,19 @@ theorem scanFlowEntryIx_preserves_FlowContextPSVIx {input : String}
   show FlowContextPSVIx
     { ((scanValuePrepareIx s).emit .flowEntry).advance with simpleKeyAllowed := true }.tokens
   simp only [advance_tokens]
-  have h_prep := scanValuePrepareIx_preserves_FlowContextPSVIx s h_old
+  have h_prep := scanValuePrepareIx_preserves_FlowContextPSVIx s h_old h_pl
   exact emit_non_flow_non_plain_preserves_FlowContextPSVIx
     (scanValuePrepareIx s) .flowEntry h_prep
     (by trivial) (by decide) (by decide) (by decide) (by decide)
 
 theorem scanFlowEntryIx_preserves_FlowNestingInvIx {input : String}
     (s s' : ScannerStateIx input) (h_ok : scanFlowEntryIx s = .ok s')
-    (h_fni : FlowNestingInvIx s) :
+    (h_fni : FlowNestingInvIx s) (h_pl : SimpleKeyPlaceholderInvIx s) :
     FlowNestingInvIx s' := by
   unfold scanFlowEntryIx at h_ok
   simp only [Except.ok.injEq] at h_ok
   subst h_ok
-  have h_prep := scanValuePrepareIx_preserves_FlowNestingInvIx s h_fni
+  have h_prep := scanValuePrepareIx_preserves_FlowNestingInvIx s h_fni h_pl
   have h_emit := emit_non_flow_preserves_FlowNestingInvIx
     (scanValuePrepareIx s) .flowEntry h_prep
     (by decide) (by decide) (by decide) (by decide)
@@ -2475,7 +2833,7 @@ theorem scanNextTokenIx_dispatchFlowIndicators_preserves_FlowContextPSVIx
     {input : String} (s : ScannerStateIx input) (c : Char)
     (s' : ScannerStateIx input)
     (h_ok : scanNextTokenIx_dispatchFlowIndicators s c = .ok (some s'))
-    (h_old : FlowContextPSVIx s.tokens) :
+    (h_old : FlowContextPSVIx s.tokens) (h_pl : SimpleKeyPlaceholderInvIx s) :
     FlowContextPSVIx s'.tokens := by
   unfold scanNextTokenIx_dispatchFlowIndicators at h_ok
   simp only [bind, Except.bind, pure, Except.pure] at h_ok
@@ -2502,14 +2860,14 @@ theorem scanNextTokenIx_dispatchFlowIndicators_preserves_FlowContextPSVIx
               · cases h_ok
               · simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
                 exact scanFlowEntryIx_preserves_FlowContextPSVIx s _
-                  (by assumption) h_old
+                  (by assumption) h_old h_pl
           · cases h_ok
 
 theorem scanNextTokenIx_dispatchFlowIndicators_preserves_FlowNestingInvIx
     {input : String} (s : ScannerStateIx input) (c : Char)
     (s' : ScannerStateIx input)
     (h_ok : scanNextTokenIx_dispatchFlowIndicators s c = .ok (some s'))
-    (h_fni : FlowNestingInvIx s) :
+    (h_fni : FlowNestingInvIx s) (h_pl : SimpleKeyPlaceholderInvIx s) :
     FlowNestingInvIx s' := by
   unfold scanNextTokenIx_dispatchFlowIndicators at h_ok
   simp only [bind, Except.bind, pure, Except.pure] at h_ok
@@ -2536,7 +2894,7 @@ theorem scanNextTokenIx_dispatchFlowIndicators_preserves_FlowNestingInvIx
               · cases h_ok
               · simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
                 exact scanFlowEntryIx_preserves_FlowNestingInvIx s _
-                  (by assumption) h_fni
+                  (by assumption) h_fni h_pl
           · cases h_ok
 
 
@@ -3066,6 +3424,65 @@ private theorem allowDirectives_update_flowLevel {input : String}
       else s).flowLevel = s.flowLevel := by
   split <;> rfl
 
+/-- Helper: the `if s.allowDirectives then ... else s` record update
+    preserves `simpleKey`. -/
+private theorem allowDirectives_update_simpleKey {input : String}
+    (s : ScannerStateIx input) :
+    (if s.allowDirectives then
+        { s with allowDirectives := false, documentEverStarted := true }
+      else s).simpleKey = s.simpleKey := by
+  split <;> rfl
+
+/-- Helper: the `if s.allowDirectives then ... else s` record update
+    preserves `SimpleKeyPlaceholderInvIx` (tokens and simpleKey are
+    both unchanged). -/
+private theorem allowDirectives_update_SimpleKeyPlaceholderInvIx {input : String}
+    (s : ScannerStateIx input) (h_inv : SimpleKeyPlaceholderInvIx s) :
+    SimpleKeyPlaceholderInvIx
+      (if s.allowDirectives then
+          { s with allowDirectives := false, documentEverStarted := true }
+        else s) := by
+  unfold SimpleKeyPlaceholderInvIx
+  rw [allowDirectives_update_simpleKey, allowDirectives_update_tokens]
+  exact h_inv
+
+/-- `scanNextTokenIx_preprocess` preserves `SimpleKeyPlaceholderInvIx`.
+
+    **Staged as axiom (Step 6d.1e.10)**. Preprocess composes
+    `skipToContentS` (cursor-only update) and `unwindIndentsIx` (emits
+    `.blockEnd` non-plain non-flow tokens, leaves `simpleKey`
+    untouched), so the invariant transfers by `emit`-style monotonicity
+    on the placeholders. Discharge proof is mechanical but requires
+    porting the legacy `preprocess_preserves_AllKeysPlaceholderInv`
+    chain (~200 LOC); deferred to a follow-up step that prioritises
+    closing this remaining axiom in tandem with the §11h Layer F.4
+    plain-scalar arm (Step 6d.1e.11). -/
+axiom scanNextTokenIx_preprocess_preserves_SimpleKeyPlaceholderInvIx {input : String}
+    (s s1 : ScannerStateIx input) (c : Char)
+    (_h_ok : scanNextTokenIx_preprocess s = .ok (some (s1, c)))
+    (_h_inv : SimpleKeyPlaceholderInvIx s) :
+    SimpleKeyPlaceholderInvIx s1
+
+/-- `scanNextTokenIx` preserves `SimpleKeyPlaceholderInvIx`.
+
+    **Staged as axiom (Step 6d.1e.10)**. The induction step in
+    `scanLoopIx_preserves_*` needs to maintain the placeholder
+    invariant across each call to `scanNextTokenIx`. Discharging this
+    requires preservation lemmas for every leaf scanner — most clear
+    `simpleKey.possible := false` (vacuous) or leave `simpleKey`
+    untouched while pushing past the placeholder slots (mono); the
+    one establishing arm (`saveSimpleKeyIx`) reserves the placeholders
+    correctly. The chain mirrors the legacy
+    `scanNextToken_preserves_AllKeysPlaceholderInv` (~150 LOC across
+    leaf scanners + ~100 LOC for dispatcher composition). Deferred to
+    Step 6d.1e.11 alongside the §11h Layer F.4 plain-scalar arm and
+    the preprocess preservation. -/
+axiom scanNextTokenIx_preserves_SimpleKeyPlaceholderInvIx {input : String}
+    (s s' : ScannerStateIx input)
+    (_h_inv : SimpleKeyPlaceholderInvIx s)
+    (_h_ok : scanNextTokenIx s = .ok (some s')) :
+    SimpleKeyPlaceholderInvIx s'
+
 theorem scanNextTokenIx_preserves_PlainScalarsValidIx {input : String}
     (s s' : ScannerStateIx input) (h_old : PlainScalarsValidIx s.tokens)
     (h_ok : scanNextTokenIx s = .ok (some s')) :
@@ -3141,6 +3558,7 @@ theorem scanNextTokenIx_preserves_PlainScalarsValidIx {input : String}
 
 theorem scanNextTokenIx_preserves_FlowContextPSVIx {input : String}
     (s s' : ScannerStateIx input) (h_old : FlowContextPSVIx s.tokens)
+    (h_pl : SimpleKeyPlaceholderInvIx s)
     (h_ok : scanNextTokenIx s = .ok (some s')) :
     FlowContextPSVIx s'.tokens := by
   unfold scanNextTokenIx at h_ok
@@ -3156,6 +3574,8 @@ theorem scanNextTokenIx_preserves_FlowContextPSVIx {input : String}
       | mk s_pp c =>
         have h_old_pp : FlowContextPSVIx s_pp.tokens :=
           scanNextTokenIx_preprocess_preserves_FlowContextPSVIx s s_pp c h_pp h_old
+        have h_pl_pp : SimpleKeyPlaceholderInvIx s_pp :=
+          scanNextTokenIx_preprocess_preserves_SimpleKeyPlaceholderInvIx s s_pp c h_pp h_pl
         dsimp only [] at h_ok
         generalize h_ds : scanNextTokenIx_dispatchStructural s_pp c = ds_res at h_ok
         cases ds_res with
@@ -3174,6 +3594,9 @@ theorem scanNextTokenIx_preserves_FlowContextPSVIx {input : String}
               else s_pp) = s_dir at h_ok
             have h_old_dir : FlowContextPSVIx s_dir.tokens := by
               rw [← h_dir_def, allowDirectives_update_tokens]; exact h_old_pp
+            have h_pl_dir : SimpleKeyPlaceholderInvIx s_dir := by
+              rw [← h_dir_def]
+              exact allowDirectives_update_SimpleKeyPlaceholderInvIx s_pp h_pl_pp
             generalize h_ck : scanNextTokenIx_checkBlockFlowIndent s_dir c = ck_res at h_ok
             cases ck_res with
             | error e => simp at h_ok
@@ -3188,7 +3611,7 @@ theorem scanNextTokenIx_preserves_FlowContextPSVIx {input : String}
                   simp only [Except.ok.injEq, Option.some.injEq] at h_ok
                   subst h_ok
                   exact scanNextTokenIx_dispatchFlowIndicators_preserves_FlowContextPSVIx
-                    s_dir c s_flow h_df h_old_dir
+                    s_dir c s_flow h_df h_old_dir h_pl_dir
                 | none =>
                   dsimp only [] at h_ok
                   generalize h_db : scanNextTokenIx_dispatchBlockIndicators s_dir c = db_res at h_ok
@@ -3200,7 +3623,7 @@ theorem scanNextTokenIx_preserves_FlowContextPSVIx {input : String}
                       simp only [Except.ok.injEq, Option.some.injEq] at h_ok
                       subst h_ok
                       exact scanNextTokenIx_dispatchBlockIndicators_preserves_FlowContextPSVIx
-                        s_dir c s_blk h_db h_old_dir
+                        s_dir c s_blk h_db h_old_dir h_pl_dir
                     | none =>
                       dsimp only [] at h_ok
                       generalize h_dc : scanNextTokenIx_dispatchContent s_dir c = dc_res at h_ok
@@ -3214,6 +3637,7 @@ theorem scanNextTokenIx_preserves_FlowContextPSVIx {input : String}
 
 theorem scanNextTokenIx_preserves_FlowNestingInvIx {input : String}
     (s s' : ScannerStateIx input) (h_fni : FlowNestingInvIx s)
+    (h_pl : SimpleKeyPlaceholderInvIx s)
     (h_ok : scanNextTokenIx s = .ok (some s')) :
     FlowNestingInvIx s' := by
   unfold scanNextTokenIx at h_ok
@@ -3229,6 +3653,8 @@ theorem scanNextTokenIx_preserves_FlowNestingInvIx {input : String}
       | mk s_pp c =>
         have h_fni_pp : FlowNestingInvIx s_pp :=
           scanNextTokenIx_preprocess_preserves_FlowNestingInvIx s s_pp c h_pp h_fni
+        have h_pl_pp : SimpleKeyPlaceholderInvIx s_pp :=
+          scanNextTokenIx_preprocess_preserves_SimpleKeyPlaceholderInvIx s s_pp c h_pp h_pl
         dsimp only [] at h_ok
         generalize h_ds : scanNextTokenIx_dispatchStructural s_pp c = ds_res at h_ok
         cases ds_res with
@@ -3250,6 +3676,9 @@ theorem scanNextTokenIx_preserves_FlowNestingInvIx {input : String}
               unfold FlowNestingInvIx at h_fni_pp ⊢
               rw [allowDirectives_update_tokens, allowDirectives_update_flowLevel]
               exact h_fni_pp
+            have h_pl_dir : SimpleKeyPlaceholderInvIx s_dir := by
+              rw [← h_dir_def]
+              exact allowDirectives_update_SimpleKeyPlaceholderInvIx s_pp h_pl_pp
             generalize h_ck : scanNextTokenIx_checkBlockFlowIndent s_dir c = ck_res at h_ok
             cases ck_res with
             | error e => simp at h_ok
@@ -3264,7 +3693,7 @@ theorem scanNextTokenIx_preserves_FlowNestingInvIx {input : String}
                   simp only [Except.ok.injEq, Option.some.injEq] at h_ok
                   subst h_ok
                   exact scanNextTokenIx_dispatchFlowIndicators_preserves_FlowNestingInvIx
-                    s_dir c s_flow h_df h_fni_dir
+                    s_dir c s_flow h_df h_fni_dir h_pl_dir
                 | none =>
                   dsimp only [] at h_ok
                   generalize h_db : scanNextTokenIx_dispatchBlockIndicators s_dir c = db_res at h_ok
@@ -3276,7 +3705,7 @@ theorem scanNextTokenIx_preserves_FlowNestingInvIx {input : String}
                       simp only [Except.ok.injEq, Option.some.injEq] at h_ok
                       subst h_ok
                       exact scanNextTokenIx_dispatchBlockIndicators_preserves_FlowNestingInvIx
-                        s_dir c s_blk h_db h_fni_dir
+                        s_dir c s_blk h_db h_fni_dir h_pl_dir
                     | none =>
                       dsimp only [] at h_ok
                       generalize h_dc : scanNextTokenIx_dispatchContent s_dir c = dc_res at h_ok
@@ -3346,6 +3775,7 @@ theorem scanLoopIx_preserves_FlowContextPSVIx {input : String}
     (s : ScannerStateIx input) (fuel : Nat)
     (tokens : Indexed.TokenStream input)
     (h_old : FlowContextPSVIx s.tokens)
+    (h_pl : SimpleKeyPlaceholderInvIx s)
     (h_ok : scanLoopIx s fuel = .ok tokens) :
     FlowContextPSVIx tokens := by
   induction fuel generalizing s with
@@ -3363,13 +3793,15 @@ theorem scanLoopIx_preserves_FlowContextPSVIx {input : String}
           exact finalEmit_preserves_FlowContextPSVIx s h_old
     · rename_i s' h_snt
       exact ih s'
-        (scanNextTokenIx_preserves_FlowContextPSVIx s s' h_old h_snt)
+        (scanNextTokenIx_preserves_FlowContextPSVIx s s' h_old h_pl h_snt)
+        (scanNextTokenIx_preserves_SimpleKeyPlaceholderInvIx s s' h_pl h_snt)
         h_ok
 
 theorem scanLoopIx_preserves_FlowNestingInvIx {input : String}
     (s : ScannerStateIx input) (fuel : Nat)
     (tokens : Indexed.TokenStream input)
     (h_fni : FlowNestingInvIx s)
+    (h_pl : SimpleKeyPlaceholderInvIx s)
     (h_ok : scanLoopIx s fuel = .ok tokens) :
     flowNestingIx tokens tokens.size = 0 := by
   induction fuel generalizing s with
@@ -3397,7 +3829,8 @@ theorem scanLoopIx_preserves_FlowNestingInvIx {input : String}
           rw [h_fl_emit, unwindIndentsIx_preserves_flowLevel s (-1), h_flowEq0]
     · rename_i s' h_snt
       exact ih s'
-        (scanNextTokenIx_preserves_FlowNestingInvIx s s' h_fni h_snt)
+        (scanNextTokenIx_preserves_FlowNestingInvIx s s' h_fni h_pl h_snt)
+        (scanNextTokenIx_preserves_SimpleKeyPlaceholderInvIx s s' h_pl h_snt)
         h_ok
 
 /-! ## §11k  Initial-state invariants + §9 axiom discharge
@@ -3429,6 +3862,14 @@ theorem mk'_FlowNestingInvIx (input : String) :
   unfold flowNestingIx.go
   rfl
 
+/-- The initial state after `.streamStart` emit satisfies
+    `SimpleKeyPlaceholderInvIx` — `simpleKey.possible` is still false
+    (default), so the invariant is vacuously true. -/
+theorem streamStart_SimpleKeyPlaceholderInvIx (input : String) :
+    SimpleKeyPlaceholderInvIx ((ScannerStateIx.mk' input).emit YamlToken.streamStart) :=
+  emit_preserves_SimpleKeyPlaceholderInvIx
+    (ScannerStateIx.mk' input) .streamStart (mk'_SimpleKeyPlaceholderInvIx input)
+
 /-- The indexed scanner output satisfies `FlowAwarePSVIx`. Discharged
     in Step 6d.1e.7 via §11j composition with the initial-state
     invariants (`mk'_*` lemmas + `.streamStart` emit + BOM advance). -/
@@ -3447,11 +3888,15 @@ theorem scan_flow_aware_psv_ix_axiom
       (mk'_FlowContextPSVIx input) (by trivial)
       (by intro h; cases h) (by intro h; cases h)
       (by intro h; cases h) (by intro h; cases h)
+  have h_pl_after_emit : SimpleKeyPlaceholderInvIx
+      ((ScannerStateIx.mk' input).emit YamlToken.streamStart) :=
+    streamStart_SimpleKeyPlaceholderInvIx input
   refine ⟨?_, ?_⟩
   · exact scanLoopIx_preserves_PlainScalarsValidIx _ _ tokens
       (by split <;> exact h_psv_after_emit) h_scan
   · exact scanLoopIx_preserves_FlowContextPSVIx _ _ tokens
-      (by split <;> exact h_fpsv_after_emit) h_scan
+      (by split <;> exact h_fpsv_after_emit)
+      (by split <;> exact h_pl_after_emit) h_scan
 
 /-- The indexed scanner output has matched flow brackets. Discharged
     in Step 6d.1e.7 via §11j `scanLoopIx_preserves_FlowNestingInvIx`
@@ -3467,8 +3912,12 @@ theorem scan_flow_brackets_matched_ix_axiom
       (mk'_FlowNestingInvIx input)
       (by intro h; cases h) (by intro h; cases h)
       (by intro h; cases h) (by intro h; cases h)
+  have h_pl_after_emit : SimpleKeyPlaceholderInvIx
+      ((ScannerStateIx.mk' input).emit YamlToken.streamStart) :=
+    streamStart_SimpleKeyPlaceholderInvIx input
   unfold FlowBracketsMatchedIx
   exact scanLoopIx_preserves_FlowNestingInvIx _ _ tokens
-    (by split <;> exact h_fni_after_emit) h_scan
+    (by split <;> exact h_fni_after_emit)
+    (by split <;> exact h_pl_after_emit) h_scan
 
 end L4YAML.Proofs.Indexed.ScannerPlainScalarValid
