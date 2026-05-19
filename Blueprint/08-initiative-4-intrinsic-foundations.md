@@ -1646,18 +1646,37 @@ axioms remaining after 6d.1e.8 promoted to theorems via a per-layer
 axioms — 2 §8e + 3 §11h — each individually exceed a single-session
 budget and split into 6d.1e.10 / 6d.1e.11 respectively.
 
-**Next session**: Step 6d.1e.10 — discharge §8e (2 axioms) via the
-`SimpleKeyPlaceholderInvIx` invariant. Reflection 71 lays out the
-design; the threading is invasive (~6 caller theorems) but
-mechanical once the invariant + its preservation suite lands.
+**6d.1e.10 landed** (Reflections 78 + 79): §8e discharged (the 2
+axioms promoted to theorems carrying the strengthened
+`(h_pl : SimpleKeyPlaceholderInvIx s)` precondition). New §2/§8a
+`setIfInBounds_non_flow` primitives + the `SimpleKeyPlaceholderInvIx`
+predicate + its preservation infrastructure landed; the precondition
+flows through §8f / §10f / §8g / §10g / §11i / §11j all the way to
+the §11k closure proofs, which discharge it at the initial state via
+`streamStart_SimpleKeyPlaceholderInvIx`. Two new staging axioms
+emerged as a planned consequence — `scanNextTokenIx_preprocess_preserves_SimpleKeyPlaceholderInvIx`
+and `scanNextTokenIx_preserves_SimpleKeyPlaceholderInvIx` — absorbing
+the leaf-scanner preservation obligation; deferred to 6d.1e.12.
+**Net axiom count unchanged at 5** (3 §11h + 2 SimpleKeyPlaceholderInvIx-preservation;
+the 2 deprecated §8e axioms had statements that were false in
+general without the placeholder hypothesis).
 
-**Session after**: Step 6d.1e.11 — discharge §11h (3 axioms) by
+**Next session**: Step 6d.1e.11 — discharge §11h (3 axioms) by
 porting `scanPlainScalar_content_valid` + supporting Layer F.4
 helpers from `Proofs/Scanner/ScannerPlainScalar.lean` to
 `Proofs/Scanner/IndexedScalar.lean`. Reflection 72 lays out the
 design; the cost is dominated by porting ~10 helper lemmas
 (`trimTrailingWS_*` / `validPlainFirst*` / etc.) that are themselves
 state-type-tied to legacy `ScannerState`.
+
+**Session after**: Step 6d.1e.12 — discharge the 2 new staging
+axioms from 6d.1e.10. The chain mirrors the legacy
+`scanNextToken_preserves_AllKeysPlaceholderInv` (~250 LOC across 13
+leaf scanners + 5 dispatchers); each leaf either clears
+`simpleKey.possible := false` (vacuous) or leaves `simpleKey`
+untouched while pushing tokens (mono via the
+`emit_preserves_SimpleKeyPlaceholderInvIx` recipe already proven in
+6d.1e.10).
 
 Then 6d.2 (IndexedWfa, ~1 session) and 6d.3
 (Correctness + Completeness + Grammable, ~1 session) close out 6d.
@@ -1703,7 +1722,7 @@ against canonicalised input.
 | `L4YAML/Parser/FuelIx.lean` | n/a | ~61 | 0 (staging — Guardrail 1; new in Phase 3 Step 6b: indexed twin of legacy `Parser/Fuel.lean`; `initialFuelIx : Indexed.TokenStream input → Nat := fun ts => 4 * ts.tokens.size + 4`; arithmetic byte-identical to legacy, container type swaps to `Indexed.TokenStream input`; namespace `L4YAML.TokenParser.Indexed`) |
 | `L4YAML/Parser/TokenParserIx.lean` | n/a | ~647 | 0 (staging — Guardrail 1; new in Phase 3 Step 6b: indexed twin of legacy `Parser/TokenParser.lean`; 18-function mutual block (`set_option maxHeartbeats 400000 in mutual`, structural recursion on `fuel`) — `parseNodeContent`, `parseNode`, `parseBlockSequence`, `parseBlockSequenceLoop`, `parseImplicitBlockSequence`, `parseImplicitBlockSequenceLoop`, `parseBlockMapping`, `parseBlockMappingEntryValue`, `handleBlockMappingKeyEntry`, `handleBlockMappingValueEntry`, `parseBlockMappingLoop`, `parseFlowSequence`, `parseFlowSequenceLoop`, `parseFlowMapping`, `parseFlowMappingValue`, `parseExplicitKey`, `parseFlowMappingLoop`, `parseSinglePairMapping`; stream/document layer outside the mutual block — `StreamState` + `StreamState.validNextToken`, `parseDirectives`, `prepareDocumentState`, `parseDocument`, `parseStreamLoop`, `parseStreamIx`; top-level entry `parseStreamIx {input : String} (tokens : Indexed.TokenStream input) (trackPositions : Bool := false) : Except ScanError (Array YamlDocument)` — output type plain `Array YamlDocument` since the L2 → L1 step of the four-stage pipeline erases the type-level binding to `input`; departures from legacy — every function carries `{input : String}` implicit, token accessors swap from `Positioned.val`/`Positioned.pos` to `IxToken.token`/`IxToken.start`, random-access reads in `parseBlockMappingEntryValue` use `ps.tokens.get?` + `match` rather than `[i]!` to avoid the `Inhabited (IxToken input)` constraint that proof-field-bearing `IxToken` cannot satisfy (Reflection 61); all `@[yaml_spec ...]` attributes reproduced verbatim — the env extension keys by fully-qualified `declName` so `L4YAML.TokenParser.parseNode` and `L4YAML.TokenParser.Indexed.parseNode` coexist without collision; namespace `L4YAML.TokenParser.Indexed`) |
 | `L4YAML/Proofs/Parser/IndexedWellBehaved.lean` | n/a | ~4,502 | 0 axioms locally as of Step 6d.1e.1 (the 2 §5c forward-reference axioms relocated to the sister file `Proofs/Production/IndexedScannerPlainScalarValid.lean`). Staging — Guardrail 1; namespace `L4YAML.Proofs.Indexed.WellBehaved` — at cutover renamed back to `L4YAML.Proofs.ParserWellBehaved`. Grew incrementally across five sub-steps. **6d.1a (~210 LOC, initial check-in)**: 5 supporting predicates + 4 `flowNestingIx_go_*` step lemmas (mechanical ports of legacy `flowNesting_go_*`, initially keyed on `Array (IxToken input)`). **6d.1b (~613 LOC delta → 823 LOC)**: Option B bridging settled (Reflection 65) — predicates re-targeted to `Indexed.TokenStream input` with the new `GetElem` instance in `Indexed/TokenStream.lean`. Pre-mutual-block §5 sections ported: §5 C2 Infrastructure (5 lemmas incl. `peek_some_bounded_ix`), §5a flowNesting step lemmas (6 lemmas), §5b Scannable monotonicity (2 verbatim), §5d Scannable for tag/anchor (1 verbatim), §5d′ applyNodeFinalization preservation (4 lemmas), §5e′ parseNodeProperties preservation (4 lemmas + `unfold_loop_at_ix` elaborator + file-local `advance_tokens_eq_ix` `@[simp]`). **6d.1c (~2,134 LOC delta → 2,957 LOC)**: structurally hard mid-section of the C2 chain ported (Reflection 66). §5e″ `tryConsume_*_ix` helpers (4 lemmas); §5e₂ `parseDirectives_tokens_ix` + `parseNode_tokens_preserved_ix`; §5e mutual block (`ParseNodeWBIx` + `parseNodeWBIx_apply` + 4 extractors); §5e″ sub-parser WB (`push_*` helpers + 16 `_wb_ix` theorems for the 11 mutually-recursive parser functions); `parseNode_wb_zero_ix` + `parseNodeContent_wb_ix` + `parseNode_alias_*_ix` (Pattern 4b guards) + `parseNode_wb_all_ix` strong induction; §5f parseDocument scannability chain (4 lemmas); §5g parseStream output scannability chain (4 lemmas culminating in `parseStream_output_scannable_ix`). §5c staged as 2 forward-reference axioms (Option β) — `indexed_scanner_flowAwarePSV_axiom` + `indexed_scanner_flowBracketsMatched_axiom`. **6d.1d (~1,547 LOC delta → 4,504 LOC)**: §5f position monotonicity chain (`ParseNodePosMonoIx` + `parseNodePosMonoIx_apply` + `tryConsume_pos_mono_ix` + `parseNodeProperties_pos_mono_ix` + 16 sub-parser `_pos_mono_ix` theorems + `parseNodeContent_pos_mono_ix` + `parseNode_pos_mono_all_ix` main induction + `parseNode_emitter_advances_ix`); §5d₃ Wadler `parseFlowMappingLoop_pairs_grow_ix`; emitter-bridge (`flowBracketBalanceIx` + 3 helpers, `peek_some_val_ix`, `peek_of_pos_val_ix`, `ParseNodeFlowSeqOkIx` + `.mono`, `parseFlowSequenceLoop_emitter_ok_ix`, `ParseEntryFlowMapOkIx` + `.mono`, `parseFlowMappingLoop_emitter_ok_ix`). **6d.1e.1 (~−2 LOC net: axiom block removed, replaced with shorter relocation comment; plus ~80 LOC of patches to 6d.1d proofs)**: 2 §5c axioms relocated to `Proofs/Production/IndexedScannerPlainScalarValid.lean` with tightened `(_h_scan : scanIx input = .ok tokens)` preconditions; `IndexedWellBehaved.lean` now 0 axioms locally; the previous session's unverified "lake build green" claim caught and patched (`by_contra` → `by_cases`/`exfalso`; `Option.map_eq_some'`/`_some'` → `_iff`/no-apostrophe form; pinned `k` metavar at `peek_of_pos_val_ix` callsites; `show ps.pos < ps.tokens.size` to bridge `Array.size`/`TokenStream.size` for omega). Reflections 64 + 65 + 66 + 67 + 68 document the design choices and one repeated-class-of-failure across them) |
-| `L4YAML/Proofs/Production/IndexedScannerPlainScalarValid.lean` | n/a | ~3474 | **5 axioms** (2 from §8e — placeholder invariant, deferred to 6d.1e.10; 3 from §11h — Layer F.4 dispatchContent, deferred to 6d.1e.11). All staged axioms carry real preconditions; §11i's 3 axioms discharged in 6d.1e.9. Staging — Guardrail 1; new in Phase 3 Step 6d.1e.1; namespace `L4YAML.Proofs.Indexed.ScannerPlainScalarValid` (at cutover renamed back to `L4YAML.Proofs.ScannerPlainScalarValid`). **6d.1e.1** (~441 LOC initial): §1 PSV propagation primitives, §2 flowNestingIx prefix stability + push lemmas, §3 FlowContextPSVIx propagation primitives, §4 `FlowNestingInvIx` bridge invariant, §7 (originally §6) the 2 relocated axioms with tightened preconditions. **6d.1e.2** (~660 LOC delta → ~1101 LOC): §5 emit-step building blocks — `PlainScalarsValidIx_push_non_plain` (array-level), `emit_preserves_tokens_at`, `emit_new_token_token`, `emit_non_plain_preserves_PlainScalarsValidIx`, `emit_non_flow_preserves_FlowNestingInvIx`, `emit_non_flow_non_plain_preserves_FlowContextPSVIx`; §6 indent-stack preservation — full preservation suites (prefix/flowLevel/new-tokens-not-plain/new-tokens-not-flow/`_preserves_FlowNestingInvIx`/`_preserves_PlainScalarsValidIx`/`_preserves_FlowContextPSVIx`) for `unwindIndentsLoopIx`/`unwindIndentsIx`, condensed suites for `pushSequenceIndentIx`/`pushMappingIndentIx`, and the full suite for `saveSimpleKeyIx` (with auxiliary `saveSimpleKeyIx_tokens_cases` disjunction + `twoPlaceholderEmits_new_not_plain`/`_not_flow` helpers to avoid the if-tree unfolding trap, see Reflection 69). **6d.1e.3** (~326 LOC delta → ~1427 LOC): §7a `emitAt` building blocks (~120 LOC, proven — `emitAt_tokens_size`, `emitAt_preserves_tokens_at`, `emitAt_new_token_token`, `emitAt_non_plain_preserves_PlainScalarsValidIx`, `emitAt_non_flow_preserves_FlowNestingInvIx`, `emitAt_non_flow_non_plain_preserves_FlowContextPSVIx`); §7b/§7c scalar-scanner preservation for `scanAnchorOrAliasIx` and `scanTagIx` (~206 LOC) — 8 lemmas per scanner = 16 total; of which 12 are staged as axioms and 4 are proven theorems (composing the staged primitives with §1/§3 prefix-and-new combinators). Reflection 70 explains the record-update-opacity wall that blocked direct proofs. **6d.1e.4** (~540 LOC delta → ~1987 LOC): §8 block-context dispatcher preservation — §8a `setIfInBounds` infrastructure (`PlainScalarsValidIx_setIfInBounds_non_plain`, `overwriteAtCursor_tokens_size`, `overwriteAtCursor_non_plain_preserves_PlainScalarsValidIx`); §8b `scanValueClearKeyIx` preservation suite (4 lemmas, all proven — pure tokens-unchanged path); §8c `scanBlockEntryIx` preservation suite (3 lemmas: PSV, FCPSV, FNI — all proven via §6d composition); §8d `scanKeyIx` preservation suite (3 lemmas — all proven via §6e composition); §8e `scanValuePrepareIx` (PSV proven via §8a + §6e; **FCPSV and FNI staged as 2 axioms** — `setIfInBounds`-based FCPSV preservation requires the original token at `simpleKey.tokenIndex` to be non-flow, an invariant the indexed chain has not yet propagated, see Reflection 71); §8f `scanValueIx` preservation suite (3 lemmas — all proven via §8b/§8e composition + emit `.value`); §8g `scanNextTokenIx_dispatchBlockIndicators` preservation suite (3 lemmas — all proven via case-split + §8c/§8d/§8f). Pre-existing §8 renumbered to §9. **6d.1e.5** (~404 LOC delta → ~2391 LOC): §10 flow-context dispatcher preservation — §10a `emit_non_plain_preserves_FlowContextPSVIx` (1 helper proven — drops the four non-flow hypotheses from §5's `_non_flow_non_plain` variant, needed because flow-bracket scanners emit flow tokens themselves); §10b–§10e (`scanFlowSequenceStartIx` / `scanFlowSequenceEndIx` / `scanFlowMappingStartIx` / `scanFlowMappingEndIx`, each 3 lemmas proven via §5 + §10a + `flowNestingIx_push` from §2 — the bracket-end FNI lemma holds unconditionally because Nat-monus saturates at zero, aligning with the unguarded scanner def); §10f `scanFlowEntryIx` preservation suite (3 lemmas — composes §8e `scanValuePrepareIx` with §5 emit `.flowEntry`; FCPSV / FNI ride on the §8e axioms from 6d.1e.4 but the §10f theorems themselves are real `theorem`s); §10g `scanNextTokenIx_dispatchFlowIndicators` preservation suite (3 lemmas — case-split on the five `.ok (some _)` arms + §10b–§10f). **Phase 3 closure axiom count unchanged at 16**: §10 introduces no new axioms. **6d.1e.6** (~360 LOC delta → ~2751 LOC): §11 document/directive + top-level dispatch composition — §11a–§11d 12 staged axioms (4 leaf scanners × 3 invariants for `scanDocumentStartIx` / `scanDocumentEndIx` / `scanYamlDirectiveIx` / `scanTagDirectiveIx`, Reflection 70 record-update opacity); §11e–§11g 9 staged axioms (3 dispatchers × 3 invariants for `scanDirectiveIx` / `scanNextTokenIx_dispatchStructural` / `scanNextTokenIx_preprocess`, Reflection 73 `let`-binding wall); §11h 3 staged axioms (`scanNextTokenIx_dispatchContent`, Reflection 72 — plain-scalar arm requires Layer F.4 `ScalarScannable`); §11i 3 staged axioms (`scanNextTokenIx` top-level composition, blocked by anonymous-pattern over-destructure in `obtain ⟨s2, c⟩`); §11j **3 real theorems** for `scanLoopIx_preserves_PlainScalarsValidIx` / `_FlowContextPSVIx` / `_FlowNestingInvIx` (structural induction on `fuel` with a `finalEmit-streamEnd` step preservation lemma composing §6c + §5 building blocks). **Phase 3 closure axiom count: 43** (was 16; +27 new from §11). **6d.1e.7** (~327 LOC delta → ~3078 LOC): partial axiom discharge — 26 of 43 axioms promoted to theorems. **§9 (2 discharged)**: `scan_flow_aware_psv_ix_axiom` + `scan_flow_brackets_matched_ix_axiom` promoted via §11k initial-state invariants (`mk'_PlainScalarsValidIx` / `_FlowContextPSVIx` / `_FlowNestingInvIx`) composed with §11j `scanLoopIx_preserves_*` and the post-`.streamStart`-emit / post-BOM-advance bridges. **§11a–§11d (12 discharged)**: leaf scanner preservation suites (`scanDocumentStartIx` / `scanDocumentEndIx` / `scanYamlDirectiveIx` / `scanTagDirectiveIx`) via `unfold` + `emit_*_preserves_*` (§5) or `emitAt_*_preserves_*` (§7a) composed with `unwindIndentsIx_preserves_*` (§6c); the outer record-update wraps are defeq for `.tokens` / `.flowLevel` projections, contrary to Reflection 70's prediction. **§11e (3 discharged)**: `scanDirectiveIx_preserves_*` via `unfold` + outer `split` + `dsimp only []` to peel inner let-chain + 3-way branch composition (§11c/§11d/identity) — partial discharge of Reflection 73's `let`-binding wall. **§11f (3 discharged)**: `scanNextTokenIx_dispatchStructural_preserves_*` via legacy `repeat (any_goals (split at h_ok))` + composition. **§7b/§7c (6 of 12 discharged)**: for each of `scanAnchorOrAliasIx` / `scanTagIx`, the `_adds_one_token` / `_preserves_flowLevel` / `_preserves_FlowNestingInvIx` lemmas proven via `unfold` + `dsimp only []` + `Except.ok.injEq` + `subst` + `simp` / `rfl` / `emitAt_non_flow_preserves_FlowNestingInvIx`. **§11j (already theorems from 6d.1e.6)**: unchanged. **§11k (new, ~80 LOC)**: initial-state invariant lemmas (`mk'_*`) + the two §9 discharge proofs. **6d.1e.8** (~162 LOC delta → ~3240 LOC): partial axiom discharge — 9 of 17 axioms promoted to theorems. **§7b/§7c (6 discharged)**: `_preserves_prefix` via `show (s.tokens.tokens.push _)[i]'_ = s.tokens.tokens[i]'hi` + `Array.getElem_push_lt ..`; `_new_token_not_plain` and `_new_token_not_flow` via `show` to bridge `TokenStream.size` → `Array.size` + `simp only [Array.getElem_push_eq, IxToken.mk']` + handling the impossible scalar/flow constructor branches by `cases` on the resulting equation. The outer record-update wrap projects to `.tokens` defeq, so the bridge is purely a syntactic reshape. **§11g (3 discharged)**: `scanNextTokenIx_preprocess_preserves_*` via `unfold` + `simp only [bind, Except.bind]` + `repeat (any_goals (split at h_ok))` + `try simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq, reduceCtorEq] at h_ok` + `try (obtain ⟨hs, _⟩ := h_ok; subst hs)` then composition over `saveSimpleKeyIx_preserves_*` (§6f) + `unwindIndentsIx_preserves_*` (§6c). The `reduceCtorEq` simp lemma + `try` combinator handles the mix of contradiction branches and success branches uniformly. Reflection 74's letFun wall didn't materialize — `bind, Except.bind` unfolds let-encoded ifs cleanly under `repeat (any_goals split)`. **Helper added**: `skipToContentS_preserves_FlowNestingInvIx` (~6 LOC). **8 axioms remain**: 2 §8e (Reflection 71 placeholder), 3 §11h (Reflection 72 Layer F.4), 3 §11i (composition wall — Reflection 75 + new Reflection 76 below). Discharge: **Step 6d.1e.9** (~810 LOC). **6d.1e.9** (~234 LOC delta → ~3474 LOC): partial axiom discharge — 3 of 8 axioms promoted to theorems. **§11i (3 discharged)**: `scanNextTokenIx_preserves_PlainScalarsValidIx` / `_FlowContextPSVIx` / `_FlowNestingInvIx` proven via per-layer `generalize h_layer : f_layer s = res at h_ok` + `cases res with | error => simp at h_ok | ok inner => cases inner with ...` chain. Five dispatcher layers (preprocess → dispatchStructural → checkBlockFlowIndent → dispatchFlowIndicators → dispatchBlockIndicators → dispatchContent) plus the `if s_pp.allowDirectives then ... else s_pp` record-update abstracted via a separate `generalize h_dir_def : ... = s_dir at h_ok`. Pair extraction inside `some (s_pp, c)` arm via `cases pair with | mk s_pp c` (Reflection 77 — triggers iota substitution cleanly without `obtain`'s over-destructure or `rename_i`'s under-destructure). Two private helpers added: `allowDirectives_update_tokens` / `_flowLevel` (2 lines each via `split <;> rfl`). **5 axioms remain**: 2 §8e (Reflection 71 — deferred to 6d.1e.10); 3 §11h (Reflection 72 — deferred to 6d.1e.11). **Phase 3 closure axiom count**: **5** (was 8; -3 net). |
+| `L4YAML/Proofs/Production/IndexedScannerPlainScalarValid.lean` | n/a | ~3904 | **5 axioms** (3 from §11h — Layer F.4 dispatchContent, deferred to 6d.1e.11; 2 new SimpleKeyPlaceholderInvIx-preservation introduced in 6d.1e.10 as planned staging for the leaf-scanner preservation chain, deferred to 6d.1e.12). All staged axioms carry real preconditions; §11i's 3 axioms discharged in 6d.1e.9. Staging — Guardrail 1; new in Phase 3 Step 6d.1e.1; namespace `L4YAML.Proofs.Indexed.ScannerPlainScalarValid` (at cutover renamed back to `L4YAML.Proofs.ScannerPlainScalarValid`). **6d.1e.1** (~441 LOC initial): §1 PSV propagation primitives, §2 flowNestingIx prefix stability + push lemmas, §3 FlowContextPSVIx propagation primitives, §4 `FlowNestingInvIx` bridge invariant, §7 (originally §6) the 2 relocated axioms with tightened preconditions. **6d.1e.2** (~660 LOC delta → ~1101 LOC): §5 emit-step building blocks — `PlainScalarsValidIx_push_non_plain` (array-level), `emit_preserves_tokens_at`, `emit_new_token_token`, `emit_non_plain_preserves_PlainScalarsValidIx`, `emit_non_flow_preserves_FlowNestingInvIx`, `emit_non_flow_non_plain_preserves_FlowContextPSVIx`; §6 indent-stack preservation — full preservation suites (prefix/flowLevel/new-tokens-not-plain/new-tokens-not-flow/`_preserves_FlowNestingInvIx`/`_preserves_PlainScalarsValidIx`/`_preserves_FlowContextPSVIx`) for `unwindIndentsLoopIx`/`unwindIndentsIx`, condensed suites for `pushSequenceIndentIx`/`pushMappingIndentIx`, and the full suite for `saveSimpleKeyIx` (with auxiliary `saveSimpleKeyIx_tokens_cases` disjunction + `twoPlaceholderEmits_new_not_plain`/`_not_flow` helpers to avoid the if-tree unfolding trap, see Reflection 69). **6d.1e.3** (~326 LOC delta → ~1427 LOC): §7a `emitAt` building blocks (~120 LOC, proven — `emitAt_tokens_size`, `emitAt_preserves_tokens_at`, `emitAt_new_token_token`, `emitAt_non_plain_preserves_PlainScalarsValidIx`, `emitAt_non_flow_preserves_FlowNestingInvIx`, `emitAt_non_flow_non_plain_preserves_FlowContextPSVIx`); §7b/§7c scalar-scanner preservation for `scanAnchorOrAliasIx` and `scanTagIx` (~206 LOC) — 8 lemmas per scanner = 16 total; of which 12 are staged as axioms and 4 are proven theorems (composing the staged primitives with §1/§3 prefix-and-new combinators). Reflection 70 explains the record-update-opacity wall that blocked direct proofs. **6d.1e.4** (~540 LOC delta → ~1987 LOC): §8 block-context dispatcher preservation — §8a `setIfInBounds` infrastructure (`PlainScalarsValidIx_setIfInBounds_non_plain`, `overwriteAtCursor_tokens_size`, `overwriteAtCursor_non_plain_preserves_PlainScalarsValidIx`); §8b `scanValueClearKeyIx` preservation suite (4 lemmas, all proven — pure tokens-unchanged path); §8c `scanBlockEntryIx` preservation suite (3 lemmas: PSV, FCPSV, FNI — all proven via §6d composition); §8d `scanKeyIx` preservation suite (3 lemmas — all proven via §6e composition); §8e `scanValuePrepareIx` (PSV proven via §8a + §6e; **FCPSV and FNI staged as 2 axioms** — `setIfInBounds`-based FCPSV preservation requires the original token at `simpleKey.tokenIndex` to be non-flow, an invariant the indexed chain has not yet propagated, see Reflection 71); §8f `scanValueIx` preservation suite (3 lemmas — all proven via §8b/§8e composition + emit `.value`); §8g `scanNextTokenIx_dispatchBlockIndicators` preservation suite (3 lemmas — all proven via case-split + §8c/§8d/§8f). Pre-existing §8 renumbered to §9. **6d.1e.5** (~404 LOC delta → ~2391 LOC): §10 flow-context dispatcher preservation — §10a `emit_non_plain_preserves_FlowContextPSVIx` (1 helper proven — drops the four non-flow hypotheses from §5's `_non_flow_non_plain` variant, needed because flow-bracket scanners emit flow tokens themselves); §10b–§10e (`scanFlowSequenceStartIx` / `scanFlowSequenceEndIx` / `scanFlowMappingStartIx` / `scanFlowMappingEndIx`, each 3 lemmas proven via §5 + §10a + `flowNestingIx_push` from §2 — the bracket-end FNI lemma holds unconditionally because Nat-monus saturates at zero, aligning with the unguarded scanner def); §10f `scanFlowEntryIx` preservation suite (3 lemmas — composes §8e `scanValuePrepareIx` with §5 emit `.flowEntry`; FCPSV / FNI ride on the §8e axioms from 6d.1e.4 but the §10f theorems themselves are real `theorem`s); §10g `scanNextTokenIx_dispatchFlowIndicators` preservation suite (3 lemmas — case-split on the five `.ok (some _)` arms + §10b–§10f). **Phase 3 closure axiom count unchanged at 16**: §10 introduces no new axioms. **6d.1e.6** (~360 LOC delta → ~2751 LOC): §11 document/directive + top-level dispatch composition — §11a–§11d 12 staged axioms (4 leaf scanners × 3 invariants for `scanDocumentStartIx` / `scanDocumentEndIx` / `scanYamlDirectiveIx` / `scanTagDirectiveIx`, Reflection 70 record-update opacity); §11e–§11g 9 staged axioms (3 dispatchers × 3 invariants for `scanDirectiveIx` / `scanNextTokenIx_dispatchStructural` / `scanNextTokenIx_preprocess`, Reflection 73 `let`-binding wall); §11h 3 staged axioms (`scanNextTokenIx_dispatchContent`, Reflection 72 — plain-scalar arm requires Layer F.4 `ScalarScannable`); §11i 3 staged axioms (`scanNextTokenIx` top-level composition, blocked by anonymous-pattern over-destructure in `obtain ⟨s2, c⟩`); §11j **3 real theorems** for `scanLoopIx_preserves_PlainScalarsValidIx` / `_FlowContextPSVIx` / `_FlowNestingInvIx` (structural induction on `fuel` with a `finalEmit-streamEnd` step preservation lemma composing §6c + §5 building blocks). **Phase 3 closure axiom count: 43** (was 16; +27 new from §11). **6d.1e.7** (~327 LOC delta → ~3078 LOC): partial axiom discharge — 26 of 43 axioms promoted to theorems. **§9 (2 discharged)**: `scan_flow_aware_psv_ix_axiom` + `scan_flow_brackets_matched_ix_axiom` promoted via §11k initial-state invariants (`mk'_PlainScalarsValidIx` / `_FlowContextPSVIx` / `_FlowNestingInvIx`) composed with §11j `scanLoopIx_preserves_*` and the post-`.streamStart`-emit / post-BOM-advance bridges. **§11a–§11d (12 discharged)**: leaf scanner preservation suites (`scanDocumentStartIx` / `scanDocumentEndIx` / `scanYamlDirectiveIx` / `scanTagDirectiveIx`) via `unfold` + `emit_*_preserves_*` (§5) or `emitAt_*_preserves_*` (§7a) composed with `unwindIndentsIx_preserves_*` (§6c); the outer record-update wraps are defeq for `.tokens` / `.flowLevel` projections, contrary to Reflection 70's prediction. **§11e (3 discharged)**: `scanDirectiveIx_preserves_*` via `unfold` + outer `split` + `dsimp only []` to peel inner let-chain + 3-way branch composition (§11c/§11d/identity) — partial discharge of Reflection 73's `let`-binding wall. **§11f (3 discharged)**: `scanNextTokenIx_dispatchStructural_preserves_*` via legacy `repeat (any_goals (split at h_ok))` + composition. **§7b/§7c (6 of 12 discharged)**: for each of `scanAnchorOrAliasIx` / `scanTagIx`, the `_adds_one_token` / `_preserves_flowLevel` / `_preserves_FlowNestingInvIx` lemmas proven via `unfold` + `dsimp only []` + `Except.ok.injEq` + `subst` + `simp` / `rfl` / `emitAt_non_flow_preserves_FlowNestingInvIx`. **§11j (already theorems from 6d.1e.6)**: unchanged. **§11k (new, ~80 LOC)**: initial-state invariant lemmas (`mk'_*`) + the two §9 discharge proofs. **6d.1e.8** (~162 LOC delta → ~3240 LOC): partial axiom discharge — 9 of 17 axioms promoted to theorems. **§7b/§7c (6 discharged)**: `_preserves_prefix` via `show (s.tokens.tokens.push _)[i]'_ = s.tokens.tokens[i]'hi` + `Array.getElem_push_lt ..`; `_new_token_not_plain` and `_new_token_not_flow` via `show` to bridge `TokenStream.size` → `Array.size` + `simp only [Array.getElem_push_eq, IxToken.mk']` + handling the impossible scalar/flow constructor branches by `cases` on the resulting equation. The outer record-update wrap projects to `.tokens` defeq, so the bridge is purely a syntactic reshape. **§11g (3 discharged)**: `scanNextTokenIx_preprocess_preserves_*` via `unfold` + `simp only [bind, Except.bind]` + `repeat (any_goals (split at h_ok))` + `try simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq, reduceCtorEq] at h_ok` + `try (obtain ⟨hs, _⟩ := h_ok; subst hs)` then composition over `saveSimpleKeyIx_preserves_*` (§6f) + `unwindIndentsIx_preserves_*` (§6c). The `reduceCtorEq` simp lemma + `try` combinator handles the mix of contradiction branches and success branches uniformly. Reflection 74's letFun wall didn't materialize — `bind, Except.bind` unfolds let-encoded ifs cleanly under `repeat (any_goals split)`. **Helper added**: `skipToContentS_preserves_FlowNestingInvIx` (~6 LOC). **8 axioms remain**: 2 §8e (Reflection 71 placeholder), 3 §11h (Reflection 72 Layer F.4), 3 §11i (composition wall — Reflection 75 + new Reflection 76 below). Discharge: **Step 6d.1e.9** (~810 LOC). **6d.1e.9** (~234 LOC delta → ~3474 LOC): partial axiom discharge — 3 of 8 axioms promoted to theorems. **§11i (3 discharged)**: `scanNextTokenIx_preserves_PlainScalarsValidIx` / `_FlowContextPSVIx` / `_FlowNestingInvIx` proven via per-layer `generalize h_layer : f_layer s = res at h_ok` + `cases res with | error => simp at h_ok | ok inner => cases inner with ...` chain. Five dispatcher layers (preprocess → dispatchStructural → checkBlockFlowIndent → dispatchFlowIndicators → dispatchBlockIndicators → dispatchContent) plus the `if s_pp.allowDirectives then ... else s_pp` record-update abstracted via a separate `generalize h_dir_def : ... = s_dir at h_ok`. Pair extraction inside `some (s_pp, c)` arm via `cases pair with | mk s_pp c` (Reflection 77 — triggers iota substitution cleanly without `obtain`'s over-destructure or `rename_i`'s under-destructure). Two private helpers added: `allowDirectives_update_tokens` / `_flowLevel` (2 lines each via `split <;> rfl`). **5 axioms remain**: 2 §8e (Reflection 71 — deferred to 6d.1e.10); 3 §11h (Reflection 72 — deferred to 6d.1e.11). **Phase 3 closure axiom count**: **5** (was 8; -3 net). **6d.1e.10** (~430 LOC delta → ~3904 LOC): **§8e (2 discharged)** — the long-standing 2 `scanValuePrepareIx_preserves_FlowContextPSVIx` / `_FlowNestingInvIx` axioms promoted to real theorems carrying the strengthened precondition `(h_pl : SimpleKeyPlaceholderInvIx s)`. Five new §2/§8a `setIfInBounds_non_flow` primitives added (~110 LOC): `flowNestingIx_go_setIfInBounds_non_flow`, `flowNestingIx_setIfInBounds_non_flow`, `FlowContextPSVIx_setIfInBounds_non_flow`, `overwriteAtCursor_non_plain_non_flow_preserves_FlowContextPSVIx`, `overwriteAtCursor_non_flow_preserves_FlowNestingInvIx` — indexed twins of the legacy `flowNesting_*_setIfInBounds_non_flow` chain. **New §8e infrastructure**: `SimpleKeyPlaceholderInvIx` predicate (with bounds conjuncts — Reflection 78), `_of_not_possible`, `mk'_SimpleKeyPlaceholderInvIx`, `emit_preserves_SimpleKeyPlaceholderInvIx`, `scanValueClearKeyIx_preserves_SimpleKeyPlaceholderInvIx`, `allowDirectives_update_simpleKey` / `_SimpleKeyPlaceholderInvIx`, `streamStart_SimpleKeyPlaceholderInvIx`. **Threading** through §8f / §10f / §8g / §10g / §11i / §11j: each FCPSV/FNI signature in the 6 caller layers grew `(h_pl : SimpleKeyPlaceholderInvIx s)` as a new hypothesis; §11j induction discharges via `scanNextTokenIx_preserves_SimpleKeyPlaceholderInvIx`; §11i dispatcher composition propagates h_pl via `scanNextTokenIx_preprocess_preserves_SimpleKeyPlaceholderInvIx` + `allowDirectives_update_SimpleKeyPlaceholderInvIx`. **§11k closure** (`scan_flow_aware_psv_ix_axiom` / `scan_flow_brackets_matched_ix_axiom`): the new precondition discharges at the initial state via `streamStart_SimpleKeyPlaceholderInvIx input`. **Two new staging axioms emerged** as planned consequence: `scanNextTokenIx_preprocess_preserves_SimpleKeyPlaceholderInvIx` + `scanNextTokenIx_preserves_SimpleKeyPlaceholderInvIx` — absorb the leaf-scanner preservation obligation (each leaf either clears `simpleKey.possible := false` — vacuous — or leaves `simpleKey` untouched while pushing tokens — `emit_preserves_SimpleKeyPlaceholderInvIx` recipe). **5 axioms remain**: 3 §11h (Reflection 72 — deferred to 6d.1e.11); 2 SimpleKeyPlaceholderInvIx-preservation (new, deferred to 6d.1e.12). **Reflections 78 & 79 (new this session)** document the bounds-conjuncts requirement and the indexed `subst h_eq` pattern. **Phase 3 closure axiom count**: **5** (unchanged net — the 2 known-incorrect-as-stated §8e axioms swap for 2 mechanically-tractable placeholder-preservation axioms). |
 | `L4YAML/Proofs/Parser/IndexedNodeProofs.lean` | n/a | ~1,814 | 0 (staging — Guardrail 1; new in Phase 3 Step 6c.1: indexed twin of legacy `Proofs/Parser/ParserNodeProofs.lean` (1,781 LOC); namespace `L4YAML.Proofs.Indexed.NodeProofs` — at cutover renamed back to `L4YAML.Proofs.ParserNodeProofs`. Re-proves `AG` (AnchorsGrow) propagation through `parseNode` and all 17 sub-parser helpers (`parseBlockSequenceLoop`/`parseBlockSequence`/`parseImplicitBlockSequenceLoop`/`parseImplicitBlockSequence`/`parseBlockMappingEntryValue`/`handleBlockMappingKeyEntry`/`handleBlockMappingValueEntry`/`parseBlockMappingLoop`/`parseBlockMapping`/`parseExplicitKey`/`parseFlowMappingValue`/`parseSinglePairMapping`/`parseFlowSequenceLoop`/`parseFlowSequence`/`parseFlowMappingLoop`/`parseFlowMapping`/`parseNodeProperties`/`parseNodeContent`), culminating in `parseNode_ag_all : ∀ n, ParseNodeAG input n` by strong induction on fuel; and `AAR` (AllAliasesResolve) propagation through the same family, culminating in `parseNode_aar_all : ∀ n, ParseNodeAAR input n`. Helper extractors `parseNode_anchors_grow` and `parseNode_aliases_resolve'` exposed for downstream callers. Structural changes from legacy (3, all mechanical): state-type substitution `ParseState → ParseStateIx input` with `variable {input : String}` at file scope, accessor-namespace shift `ParseState.X → ParseStateIx.X` for advance/tryConsume/addAnchor, **explicit** `input : String` parameter on the `ParseNodeAG` and `ParseNodeAAR` predicate definitions — implicit `input` causes "don't know how to synthesize implicit argument `input`" errors at `(h_ih : ParseNodeAG n)` hypothesis sites because the predicate returns `Prop` with no `input` in the result type to unify against, and hypothesis parameters are resolved before the later `(ps : ParseStateIx input)` arguments can supply context (Reflection 63). Only one heartbeat override needed adjustment — `parseSinglePairMapping_ag` bumped from 800,000 to 1,600,000 to absorb the 17-arm `split <;> first | contradiction | skip` cascade under the new `ParseStateIx input` dependent-type unification. Bridge lemma `any_name_implies_findSome_isSome'` copied into the indexed namespace to keep the cutover atomic. **Status**: Step 6c's `IndexedWfa` half **deferred to Step 6d** — `WfaProofs` consumes three WB lemmas directly that don't have indexed twins yet) |
 | `L4YAML/Parser/ParseStateIx.lean` | n/a | ~304 | 0 (staging — Guardrail 1; new in Phase 3 Step 6a: indexed twin of legacy `Parser/State.lean`, parameterised by `input : String`; structure `ParseStateIx (input : String)` carries `tokens : Indexed.TokenStream input` + `pos : Nat` cursor + auxiliary state (`anchors`, `tagHandles`, `trackPositions`, `currentPath`, `nodePositions`); explicit `Inhabited (ParseStateIx input)` instance built from `Indexed.TokenStream.empty input` since `IxToken input`'s proof fields prevent deriving; navigation API in staging namespace `L4YAML.TokenParser.Indexed` — `mk'`, `hasMore`, `peekIx?` (new — returns `Option (IxToken input)` rolling token + positions + bound proofs into one accessor), `peek?` / `peekPos?` derived via `peekIx?.map (·.token)` / `peekIx?.map (·.start)`, `advance`, `lastPos?` (rewritten around `get? (ps.pos - 1)` since `Array.get?`-based form avoids the `Inhabited (IxToken input)` constraint that `[i]!` indexing demands), `currentLine`, `expect`, `tryConsume`, `addAnchor`; node-property scaffolding ported verbatim from legacy — `NodeProperties`, `resolveTag`, `parseNodeProperties` `@[yaml_spec "6.9" 96]`, `emptyNode` `@[yaml_spec "7.2" 105/106]`, `applyNodeFinalization`, `validateNodeProps`) |
 | `L4YAML/Proofs/Scanner/IndexedDispatch.lean` | n/a | ~1620 | 0 (staging — Guardrail 1; new in Phase 3 Step 5b.1b.i: `IxCursor.advanceN_offset_monotonic`; `ScannerStateIx` cursor-preservation lemmas for `emit*`/`overwriteAtCursor`/`advance*`/`pushSequenceIndentIx`/`pushMappingIndentIx`/`unwindIndentsLoopIx`/`unwindIndentsIx`/`saveSimpleKeyIx`/`scanValuePrepareIx`; `skipSpacesS`/`skipWhitespaceS`/`skipToContentS` offset-monotonicity lifts; Step 5b.1b.ii: 10 per-dispatcher offset-monotonicity lemmas — `scanBlockEntryIx`/`scanKeyIx`/`scanValueIx`/`scanFlowEntryIx`/`scanDocumentStartIx`/`scanDocumentEndIx`/`scanFlowSequenceStartIx`/`scanFlowSequenceEndIx`/`scanFlowMappingStartIx`/`scanFlowMappingEndIx`; Step 5b.1b.iii: 5 per-dispatcher offset-monotonicity lemmas — `scanAnchorOrAliasIx`/`scanTagIx`/`scanYamlDirectiveIx`/`scanTagDirectiveIx`/`scanDirectiveIx`; Step 5b.1b.iv-pre: 6 tokens-size simp lemmas — `skipToContentS_tokens`/`skipSpacesS_tokens`/`skipWhitespaceS_tokens`/`advance_tokens`/`advanceN_tokens`/`emit_tokens_size`/`emitAt_tokens_size`/`emitAtCursor_tokens_size`/`overwriteAtCursor_tokens_size`; 6 indent/key helper `_tokens_size_le` lemmas — `unwindIndentsLoopIx`/`unwindIndentsIx`/`pushSequenceIndentIx`/`pushMappingIndentIx`/`saveSimpleKeyIx`/`scanValuePrepareIx`; 12 dispatcher `_tokens_size_le` lemmas — `scanBlockEntryIx`/`scanKeyIx`/`scanValueIx`/`scanFlowEntryIx`/`scanFlowSequenceStartIx`/`scanFlowSequenceEndIx`/`scanFlowMappingStartIx`/`scanFlowMappingEndIx`/`scanDocumentStartIx`/`scanDocumentEndIx`/`scanAnchorOrAliasIx`/`scanTagIx`/`scanYamlDirectiveIx`/`scanTagDirectiveIx`/`scanDirectiveIx`; Step 5b.1b.iv-cont: 7 top-level pairs (`_offset_monotonic` + `_tokens_size_le`) for `scanNextTokenIx_preprocess`/`scanNextTokenIx_dispatchStructural`/`scanNextTokenIx_dispatchFlowIndicators`/`scanNextTokenIx_dispatchBlockIndicators`/`scanNextTokenIx_dispatchContent`/`scanNextTokenIx` plus `scanLoopIx_tokens_size_le`; Step 5b.2: 6 `flowLevel`/`inFlow` preservation simp lemmas — `emit_flowLevel`/`advance_flowLevel`/`pushSequenceIndentIx_flowLevel`/`pushMappingIndentIx_flowLevel`/`emit_inFlow`/`advance_inFlow`/`pushMappingIndentIx_inFlow` — used to collapse the post-advance `!s.inFlow` tab-check guard against the *original* `s.inFlow`, then `scanBlockEntryIx`/`scanKeyIx` `_offset_monotonic` + `_tokens_size_le` pairs re-derived with the new throw branches; Step 5b.3: 2 new `scanValueClearKeyIx` helper lemmas (`_cursor` `@[simp]` + `_tokens_size_le`), `scanValueIx_offset_monotonic` and `_tokens_size_le` re-proved with the legacy `simp only [bind, Except.bind] at h; split at h; cases h | …` pattern; same commit fixed cache-hidden breakage in `Proofs/Scanner/IndexedScalar.lean` (quoted/parse-header-loop `split at h` shapes, `blockHeaderToBodyIx` `by_cases hp` for the `match`-inside-`if` condition) and `Proofs/Scanner/IndexedIndent.lean::skipToContent_at_content` (`'#'` literal → `isCommentBool ch`)) |
@@ -4935,8 +4954,9 @@ proof.
 | **6d.1e.7** ✅ | **Partial axiom discharge — 26 of 43 axioms promoted to theorems** — Landed in this session. **§9 (2 discharged)** via §11k composition: `scan_flow_aware_psv_ix_axiom` + `scan_flow_brackets_matched_ix_axiom` proven by chaining §11j `scanLoopIx_preserves_*` with the initial-state invariants `mk'_*` + the post-`.streamStart`-emit / post-BOM-advance preservation bridges. **§11a–§11d (12 discharged)** via Wall #1 break-through: leaf scanners (`scanDocumentStartIx` / `scanDocumentEndIx` / `scanYamlDirectiveIx` / `scanTagDirectiveIx`) proven by `unfold` + composition of `emit_*_preserves_*` (§5) or `emitAt_*_preserves_*` (§7a) with `unwindIndentsIx_preserves_*` (§6c) — outer record updates on non-tokens/non-flowLevel fields are defeq for both projections (contradicting Reflection 70's initial diagnosis). **§11e (3 discharged)** via Wall #2 break-through: `scanDirectiveIx_preserves_*` proven by `unfold` + outer `split` + `dsimp only []` to peel the inner let-chain. **§11f (3 discharged)**: `scanNextTokenIx_dispatchStructural_preserves_*` proven via legacy `repeat (any_goals (split at h_ok))` + branch-wise composition over §11a/§11b/§11e. **§7b/§7c (6 of 12 discharged)**: for each of `scanAnchorOrAliasIx` / `scanTagIx`, the `_adds_one_token` / `_preserves_flowLevel` / `_preserves_FlowNestingInvIx` lemmas proven via `unfold` + `dsimp` + `Except.ok.injEq` + `subst` + `simp` / `rfl` / `emitAt_non_flow_preserves_FlowNestingInvIx`. **§11k (new, ~80 LOC)**: initial-state invariant lemmas (`mk'_PlainScalarsValidIx` / `_FlowContextPSVIx` / `_FlowNestingInvIx`) + the two §9 discharge proofs. **17 axioms remain**: 6 §7b/§7c (`_preserves_prefix` + `_new_token_*` — outer record-update wrap blocks `exact emitAt_preserves_tokens_at` / `rw [emitAt_new_token_token]`); 2 §8e (Reflection 71 placeholder); 3 §11g (new Reflection 74 — `have x := e; body` letFun blocks `dsimp only []`); 3 §11h (Reflection 72 Layer F.4); 3 §11i (new Reflection 75 — Option-then-pair destructure mismatch with `rename_i`). **Phase 3 closure axiom count**: **17** (was 43; -26 net). **Cost**: ~327 LOC (well under the Blueprint's ~1,500 LOC budget — the legacy `repeat (any_goals (split at h_ok))` pattern and the `dsimp only []` let-peeling trick from §11e made Walls #1 and #2 cheap to break). **Landed** sorry-free, `lake build` 385/385 green. | `Proofs/Production/IndexedScannerPlainScalarValid.lean` (extended from ~2751 LOC to ~3078 LOC; §11k added at end; §11a–§11f converted to theorems; §11g/§11h/§11i kept as axioms with updated comments; §7b/§7c partial conversion) | ~327 (landed) | 1 (actual) |
 | **6d.1e.8** ✅ | **Partial axiom discharge — 9 of 17 axioms promoted to theorems** — Landed in this session. **§7b/§7c (6 discharged)**: 6 `_preserves_prefix` / `_new_token_not_plain` / `_new_token_not_flow` lemmas for `scanAnchorOrAliasIx` / `scanTagIx` — Wall #3 (record-update opacity for indexed array access) broke with `show (s.tokens.tokens.push _)[i]'_ = s.tokens.tokens[i]'hi` (bridges `TokenStream.size` to `Array.size`) + `exact Array.getElem_push_lt ..` for prefix; `simp only [Array.getElem_push_eq, IxToken.mk']` + handling impossible scalar/flow constructor cases by `cases` on the resulting equation for new-token-*. **§11g (3 discharged)**: `scanNextTokenIx_preprocess_preserves_*` via `unfold` + `simp only [bind, Except.bind]` + `repeat (any_goals (split at h_ok))` + `try simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq, reduceCtorEq] at h_ok` + `try (obtain ⟨hs, _⟩ := h_ok; subst hs)`, then composition over `saveSimpleKeyIx_preserves_*` (§6f) + `unwindIndentsIx_preserves_*` (§6c). Reflection 74's letFun wall didn't materialize — `bind, Except.bind` simp unfolds let-encoded ifs cleanly under `repeat (any_goals split)`. **Helper added**: `skipToContentS_preserves_FlowNestingInvIx` (~6 LOC). **8 axioms remain**: 2 §8e (Reflection 71 — placeholder-tracking invariant requires ~5 callers updated, deferred for threading cost); 3 §11h (Reflection 72 — Layer F.4 `scanPlainScalarIx_content_valid` port needed, ~250 LOC); 3 §11i (composition wall — proof shape is well-understood via `generalize h_f : f s = result at h_ok` + `cases result` but ~120 LOC per flavor × 3 = ~360 LOC). **Phase 3 closure axiom count**: **8** (was 17; -9 net). **Cost**: ~162 LOC delta. **Landed** sorry-free, `lake build` 385/385 green. **Reason for partial**: the three remaining walls (§8e threading, §11h Layer F.4 port, §11i composition LOC) all individually exceed a single-session budget; the 9 discharged here are the "cheap wins" via reshape tactics. | `Proofs/Production/IndexedScannerPlainScalarValid.lean` (extended from ~3078 LOC to ~3240 LOC; §7b/§7c full theorem conversion; §11g theorem conversion; §8e / §11h / §11i kept as axioms with updated comments) | ~162 (landed) | 1 (actual) |
 | **6d.1e.9** ✅ | **Partial axiom discharge — §11i (3 of 8 axioms promoted to theorems)** — Landed in this session. **§11i (3 discharged)**: `scanNextTokenIx_preserves_PlainScalarsValidIx` / `_FlowContextPSVIx` / `_FlowNestingInvIx` proven via per-layer `generalize h_layer : f_layer s = res at h_ok` + `cases res with | error => simp at h_ok | ok inner => cases inner with ...` chain. Five dispatcher layers (preprocess → dispatchStructural → checkBlockFlowIndent → dispatchFlowIndicators → dispatchBlockIndicators → dispatchContent) plus the pre-dispatchers `if s_pp.allowDirectives then ... else s_pp` record-update abstracted via a separate `generalize h_dir_def : ... = s_dir at h_ok`. Pair extraction inside `some (s_pp, c)` arm via `cases pair with | mk s_pp c` (which triggers iota substitution cleanly, sidestepping both Reflection 73's `obtain ⟨⟩` over-destructure on `ScannerStateIx` and Reflection 75's `rename_i` under-destructure). Two private helpers added — `allowDirectives_update_tokens` / `_flowLevel` — handle the if-expression preservation in 2 lines each. **Reflection 77 (new this session)** documents the `generalize ... at h_ok + cases inner` pattern; Reflection 75 superseded for the `scanNextTokenIx` family (the `match h : ... with` workaround turned out to be unnecessary). **5 axioms remain**: 2 §8e (Reflection 71 placeholder invariant — requires defining `SimpleKeyPlaceholderInvIx` + proving preservation by every action that touches `simpleKey`/`tokens` + threading through callers — invasive); 3 §11h (Reflection 72 Layer F.4 — requires porting `scanPlainScalar_content_valid` + ~10 supporting `collectPlainScalarLoopIx_*`/`trimTrailingWS_*`/`validPlainFirst*` helpers — ~250 LOC chain). **Phase 3 closure axiom count**: **5** (was 8; -3 net). **Cost**: ~234 LOC delta. **Landed** sorry-free, `lake build` 385/385 green. **Reason for partial**: §8e and §11h each individually exceed a single-session budget; the 3 discharged here are §11i's "tactic improvement" wins (no signature changes, no new helpers, no legacy ports). Discharge of §8e / §11h split into 6d.1e.10 / 6d.1e.11 below. | `Proofs/Production/IndexedScannerPlainScalarValid.lean` (extended from ~3240 LOC to ~3474 LOC; §11i three axiom blocks → theorem blocks; §8e / §11h kept as axioms with updated cross-reference comments) | ~234 (landed) | 1 (actual) |
-| **6d.1e.10** | **Discharge §8e — `SimpleKeyPlaceholderInvIx` threading (2 axioms)** — Define `SimpleKeyPlaceholderInvIx s : Prop := s.simpleKey.possible = true → ∃ h₁ : s.simpleKey.tokenIndex < s.tokens.size, ∃ h₂ : s.simpleKey.tokenIndex + 1 < s.tokens.size, (s.tokens[s.simpleKey.tokenIndex]'h₁).token = YamlToken.placeholder ∧ (s.tokens[s.simpleKey.tokenIndex + 1]'h₂).token = YamlToken.placeholder`. Prove preservation by `saveSimpleKeyIx` (which both emits the two placeholders and sets `simpleKey.possible := true`); prove preservation by every action that touches `simpleKey` (mostly: it clears `simpleKey.possible` so the implication becomes vacuous) and every action that touches `tokens` (must preserve the placeholder slots — most actions push past them, the few that overwrite are limited to `scanValuePrepareIx`'s own `overwriteAtCursor` calls). Then add the invariant as a precondition on the §8e FCPSV/FNI theorems and thread through ~5 callers (`scanValueIx_preserves_*`, `scanFlowEntryIx_preserves_*`, `scanNextTokenIx_dispatchBlockIndicators_preserves_*`, `scanNextTokenIx_dispatchFlowIndicators_preserves_*`, `scanLoopIx_preserves_*`, `scanNextTokenIx_preserves_*` from §11i landed in 6d.1e.9). Reflection 71. ~250 LOC. | `Proofs/Production/IndexedScannerPlainScalarValid.lean` (new `SimpleKeyPlaceholderInvIx` predicate + preservation suite + signature changes to ~6 caller theorems) | ~250 | 1 |
+| **6d.1e.10** ✅ | **Discharge §8e — `SimpleKeyPlaceholderInvIx` threading (2 axioms → theorems, +2 new staging axioms)** — Landed in this session. **§8e (2 discharged)**: `scanValuePrepareIx_preserves_FlowContextPSVIx` / `_FlowNestingInvIx` proven as real theorems carrying the strengthened precondition `(h_pl : SimpleKeyPlaceholderInvIx s)`. The placeholder invariant flows through 6 caller layers (§8f / §10f / §8g / §10g / §11i / §11j) all the way up to §11k's `scan_flow_aware_psv_ix_axiom` / `scan_flow_brackets_matched_ix_axiom`, which discharge it at the initial state via `streamStart_SimpleKeyPlaceholderInvIx`. **New §2/§8a primitives** (~110 LOC): `flowNestingIx_go_setIfInBounds_non_flow` (array-level induction — replacing a non-flow slot with a non-flow token leaves the flow-nesting computation unchanged), `flowNestingIx_setIfInBounds_non_flow` (TokenStream wrapper), `FlowContextPSVIx_setIfInBounds_non_flow`, `overwriteAtCursor_non_plain_non_flow_preserves_FlowContextPSVIx`, `overwriteAtCursor_non_flow_preserves_FlowNestingInvIx` — indexed twins of the legacy `flowNesting_*_setIfInBounds_non_flow` chain. **New §8e infrastructure** (~30 LOC): `SimpleKeyPlaceholderInvIx_of_not_possible`, `mk'_SimpleKeyPlaceholderInvIx`, `emit_preserves_SimpleKeyPlaceholderInvIx`, `scanValueClearKeyIx_preserves_SimpleKeyPlaceholderInvIx`, `allowDirectives_update_simpleKey` / `_SimpleKeyPlaceholderInvIx`, `streamStart_SimpleKeyPlaceholderInvIx`. **Two new staging axioms** introduced: `scanNextTokenIx_preprocess_preserves_SimpleKeyPlaceholderInvIx` and `scanNextTokenIx_preserves_SimpleKeyPlaceholderInvIx` — these absorb the remaining mechanical-but-bulky obligation of proving leaf-scanner preservation of the invariant (each leaf either clears `simpleKey.possible := false` — vacuous — or leaves `simpleKey` untouched while pushing past the placeholder slots — `emit_preserves_*` recipe). Deferred to 6d.1e.12. **Reflection 78 (new)** documents the bounds-conjuncts requirement (the invariant definition must assert in-bounds, not just "if in-bounds then placeholder"); **Reflection 79 (new)** documents the indexed `subst h_eq` pattern for the `flowNestingIx_go_setIfInBounds_non_flow` proof. **Axiom count unchanged at 5** (was 5: 3 §11h + 2 §8e; now 5: 3 §11h + 2 SimpleKeyPlaceholderInvIx-preservation). **Structural improvement**: the 2 deprecated §8e axioms had statements that were *false in general without the placeholder hypothesis* (known-incorrect-as-stated); the 2 new placeholder-preservation axioms are *mechanically-tractable* — they just need leaf-scanner preservation lemmas. **Cost**: ~430 LOC delta (over the ~250 LOC budget; Reflections 78 & 79 explain why). **Landed** sorry-free, `lake build` 385/385 green. | `Proofs/Production/IndexedScannerPlainScalarValid.lean` (extended from ~3474 LOC to ~3904 LOC; §8e axiom blocks → theorem blocks with strengthened preconditions; §8f / §10f / §8g / §10g / §11i / §11j signatures extended; §11k discharges via initial-state invariant; 2 new SimpleKeyPlaceholderInvIx-preservation axioms staged) | ~430 (landed) | 1 (actual) |
 | **6d.1e.11** | **Discharge §11h — Layer F.4 `scanPlainScalar_content_valid` port (3 axioms)** — Port `scanPlainScalar_content_valid` (legacy `Proofs/Scanner/ScannerPlainScalar.lean:389`, ~70 LOC) to the indexed setting as `scanPlainScalarIx_content_valid` in `Proofs/Scanner/IndexedScalar.lean`. Pre-requisite: port the supporting helpers — `collectPlainScalarLoopIx_preserves_contentInv` (B3.3), `collectPlainScalarLoopIx_validFirst_and_head` (B3.4), `collectPlainScalarLoopIx_preserves_tokens` (B3.1), `collectPlainScalarLoopIx_content_isPrefix` (B3.2), `PlainContentInv`/`BoundaryHash` predicates, `trimTrailingWS_*` family (5 lemmas: `_eq`, `_preserves_head`, `_noColonSpace`, `_noSpaceHash`, `_noFlowIndicators`), `validPlainFirstProp`/`validPlainFirst_singleton_exception`, `trim_preserves_validPlainFirst`, `canStart_nonException_to_prop`. Once `scanPlainScalarIx_content_valid` lands, compose with the §1 `PlainScalarsValidIx_of_prefix_and_new` combinator to discharge the plain-scalar arm of `scanNextTokenIx_dispatchContent_preserves_*`; the 6 non-plain arms (anchor/alias/tag/double/single/block) reduce via §7b/§7c (already theorems from 6d.1e.7/6d.1e.8) + §7a `emitAt_non_plain` building blocks. Reflection 72. ~300 LOC (250 LOC helper port + 50 LOC dispatcher composition). | `Proofs/Scanner/IndexedScalar.lean` (extended with `collectPlainScalarLoopIx_*` + `trimTrailingWS_*` + plain-first helpers); `Proofs/Production/IndexedScannerPlainScalarValid.lean` (3 axiom blocks → theorem blocks) | ~300 | 1 |
+| **6d.1e.12** | **Discharge SimpleKeyPlaceholderInvIx preservation (2 staging axioms from 6d.1e.10)** — Discharge the 2 staging axioms introduced in 6d.1e.10: `scanNextTokenIx_preprocess_preserves_SimpleKeyPlaceholderInvIx` and `scanNextTokenIx_preserves_SimpleKeyPlaceholderInvIx`. The chain mirrors the legacy `scanNextToken_preserves_AllKeysPlaceholderInv` (~250 LOC across 13 leaf scanners + 5 dispatchers). For preprocess: composes `skipToContentS_preserves_SimpleKeyPlaceholderInvIx` (cursor-only — trivial) + `saveSimpleKeyIx_preserves_SimpleKeyPlaceholderInvIx` (the establishing arm — `saveSimpleKeyIx` reserves the two placeholders correctly at `simpleKey.tokenIndex = tokens.size`) + `unwindIndentsIx_preserves_SimpleKeyPlaceholderInvIx` (mono — pushes `.blockEnd` past placeholder slots). For the top-level: case-split over each leaf scanner — most clear `simpleKey.possible := false` (vacuous via `SimpleKeyPlaceholderInvIx_of_not_possible`) or leave `simpleKey` untouched while pushing tokens (mono via `emit_preserves_SimpleKeyPlaceholderInvIx`-style recipe). Per-scanner LOC: ~10–15 LOC × 13 leaf scanners = ~150–200 LOC + ~50 LOC dispatcher composition. **DONE criteria**: both staging axioms promoted to theorems; `lake build` green; **Phase 3 closure has 3 remaining axioms (the §11h Layer F.4 trio)**. Estimated 1 session (budget ~250 LOC). | `Proofs/Production/IndexedScannerPlainScalarValid.lean` (~13 new leaf-scanner preservation lemmas + dispatcher composition) | ~250 | 1 |
 | **6d.2** | **WfaProofs** — `Proofs/Parser/IndexedWfa.lean` (~1,692 LOC), **moved here from the original Step 6c scope**. Re-proves `WellFormedAnchors`/`Scannable`/`AllAliasesResolve` preservation through `parseNode`. Consumes three WellBehaved lemmas directly (`parseNode_wb_all`, `parseNodeContent_wb`, `parseNodeProperties_tokens`), which is why it ships here rather than next to NodeProofs in 6c.1. Mechanical once 6d.1c's WB mutual block is sorry-free. | `Proofs/Parser/IndexedWfa.lean` | ~1,692 | 1 |
 | **6d.3** | **Correctness + Completeness + Grammable** — `Proofs/Parser/{IndexedCorrectness,IndexedCompleteness,IndexedGrammable}.lean`. Composes the WB + Wfa chain to produce `parseStreamIx_output_valid_nodes`. Each file is purely a composition layer once 6d.1c + 6d.2 land. | `Proofs/Parser/IndexedCorrectness.lean`, `IndexedCompleteness.lean`, `IndexedGrammable.lean` | ~515 | 1 |
 | **6e** | `IndexedComposition` — top-level `scanAndParseIx : String → Except _ (Array YamlDocument)` chaining `scanIx` then `parseStreamIx`. Exhibit end-to-end roundtrip on the Step 5c corpus via `native_decide` (extends `IndexedRoundtrip` with a parser-level check). | `Parser/IndexedComposition.lean`, `Proofs/Parser/IndexedComposition.lean` | ~250 | 1 |
@@ -6273,6 +6293,81 @@ hypotheses through); Reflection 73 (the
 `ScannerStateIx`-over-destructure on `obtain ⟨⟩` is reliably
 avoided by `cases pair with | mk`).
 
+##### Reflection 78 — *A placeholder-marker invariant of the form `s.simpleKey.possible = true → P(tokens, tokenIndex)` must include the bounds conjuncts `tokenIndex < tokens.size ∧ tokenIndex + 1 < tokens.size`, not just "if-in-bounds-then-marker". Without the bounds, the invariant fails preservation by `emit` in the edge case where `tokenIndex = tokens.size`: the new state has the slot in bounds but holds the just-emitted token (which is not the marker).*
+
+**Why**: Step 6d.1e.10's first cut defined `SimpleKeyPlaceholderInvIx s` as
+```lean
+s.simpleKey.possible = true →
+  (∀ (h : s.simpleKey.tokenIndex < s.tokens.size),
+    (s.tokens[s.simpleKey.tokenIndex]'h).token = YamlToken.placeholder) ∧
+  (∀ (h : s.simpleKey.tokenIndex + 1 < s.tokens.size),
+    (s.tokens[s.simpleKey.tokenIndex + 1]'h).token = YamlToken.placeholder)
+```
+i.e., "if `possible` then *if* the slots are in-bounds *then* they hold `.placeholder`". This looks weak (vacuously satisfied when the slots are out of bounds) but is in fact *too weak* to be preserved by `emit`. Consider a state `s` with `simpleKey.possible = true` and `simpleKey.tokenIndex = s.tokens.size`. In `s` the inner ∀ is vacuously true (its premise `s.tokens.size < s.tokens.size` is false). After `emit tok` with `tok = .anchor "x"`, the new state has `simpleKey.possible = true` (unchanged), `simpleKey.tokenIndex = s.tokens.size`, and `(emit tok).tokens.size = s.tokens.size + 1`. Now `simpleKey.tokenIndex < (emit tok).tokens.size` holds (`s.tokens.size < s.tokens.size + 1`), and the inner ∀ demands the token at that slot be `.placeholder`. But the slot holds the just-emitted `tok = .anchor "x"`. The invariant breaks.
+
+The fix: assert the bounds in the invariant statement itself. The legacy `SimpleKeyPlaceholderInv` (in `Proofs/Production/ScannerPlainScalarValid.lean:4284`) carries the bounds conjuncts; my port omitted them and got `omega could not prove the goal` on the `emit` preservation proof. The corrected definition is:
+```lean
+def SimpleKeyPlaceholderInvIx (s : ScannerStateIx input) : Prop :=
+  s.simpleKey.possible = true →
+    s.simpleKey.tokenIndex < s.tokens.size ∧
+    s.simpleKey.tokenIndex + 1 < s.tokens.size ∧
+    (∀ (h : s.simpleKey.tokenIndex < s.tokens.size),
+      (s.tokens[s.simpleKey.tokenIndex]'h).token = YamlToken.placeholder) ∧
+    (∀ (h : s.simpleKey.tokenIndex + 1 < s.tokens.size),
+      (s.tokens[s.simpleKey.tokenIndex + 1]'h).token = YamlToken.placeholder)
+```
+
+**How to apply**:
+
+1. **For any "if-condition-then-property-on-array-slot" invariant**, ask: "is the array slot still the same slot in the *next* state?" If the next state grows the array (e.g., via `emit`), the slot index becomes valid for slots that were previously out of bounds. The invariant must either pin the index to in-bounds (so growth doesn't add new in-bounds slots covered by the invariant) or carry the property unconditionally (so all slots, old and new, are covered).
+
+2. **The "vacuous when out of bounds" framing is a red flag**: it means the invariant is silent on a regime that the next state will turn into a non-vacuous regime. The bounds-conjunct framing forecloses this by establishing that the slots are real *now*, so growth doesn't change which slots are covered.
+
+3. **Compare against the legacy** when porting an invariant — the legacy authors likely already discovered this and pinned the bounds in their definition. Take their bounds verbatim.
+
+**Related** to Reflection 71 (the legacy threading-the-invariant pattern that 6d.1e.10 ported — the bounds are part of the threading); Reflection 79 (the `flowNestingIx_go_setIfInBounds_non_flow` proof technique that consumes the bounds at `hp1`/`hp2` use sites).
+
+##### Reflection 79 — *For the array-level `flowNestingIx_go_setIfInBounds_non_flow` proof (indexed substrate, no Mathlib), the legacy two-step `rw [hd1, hd2]` pattern fails. The robust replacement is `subst h_eq` first (substitutes `pos := idx`), then build a single equation `h_depth_eq : match (if idx = idx then val else tokens[idx]).token = match (tokens[idx]).token` (proven by `rw [if_pos rfl]` + nested `cases val.token <;> cases tokens[idx].token`).*
+
+**Why**: Step 6d.1e.10 ported the legacy `flowNesting_go_setIfInBounds_non_flow` (`Proofs/Production/ScannerPlainScalarValid.lean:3947`) to the indexed setting. The legacy proof uses:
+```lean
+simp only [Array.getElem_setIfInBounds h_pos]
+by_cases h_eq : idx = pos
+· subst h_eq; rw [if_pos rfl]
+  ...
+  rw [hd1, hd2]
+  exact ih (idx + 1) _ (by omega)
+```
+where `hd1` rewrites the `match val.token` to `depth` and `hd2` rewrites the `match tokens[idx].token` to `depth`. In the indexed setting, this pattern fails with `Tactic 'rewrite' failed: Did not find an occurrence of the pattern` — the `simp only` step normalises the goal in a way that the `rw` targets are no longer literally present (possibly because indexed `IxToken`'s `.token` projection elaborates differently from `Positioned.val`).
+
+The robust replacement bundles both rewrites into a single `h_depth_eq` equation:
+```lean
+by_cases h_eq : idx = pos
+· subst h_eq
+  rcases h_val_nf with ⟨hv1, hv2, hv3, hv4⟩
+  rcases h_orig_nf h_pos with ⟨ho1, ho2, ho3, ho4⟩
+  have h_val_depth : (match val.token with ...) = depth := by
+    generalize val.token = v at hv1 hv2 hv3 hv4
+    cases v <;> first | contradiction | rfl
+  have h_orig_depth : (match (tokens[idx]'h_pos).token with ...) = depth := by
+    generalize (tokens[idx]'h_pos).token = w at ho1 ho2 ho3 ho4
+    cases w <;> first | contradiction | rfl
+  simp only [Array.getElem_setIfInBounds h_pos, ↓reduceIte,
+    h_val_depth, h_orig_depth]
+  exact ih (idx + 1) _ (by omega)
+```
+The trick is `simp only [..., h_val_depth, h_orig_depth]` — folding both match-collapses into a single `simp only` step, which handles the indexed-substrate normalisation that `rw` couldn't.
+
+**How to apply**:
+
+1. **When porting a legacy `simp only [...] + by_cases + subst + rw [hd1, hd2]` pattern to indexed**, expect the inner `rw` to fail. Pre-compute the `hd*` equations as `have` blocks and feed them into the final `simp only` instead — `simp` handles the normalised form that `rw` can't match.
+
+2. **For `by_cases h_eq : idx = pos`, prefer `subst h_eq` first** (it substitutes `pos := idx` in subsequent context, making `tokens[idx]` and `tokens[pos]` unify) before introducing the depth equations. Doing the `subst` afterward leaves orphaned `pos`-references in the depth equations and the goal that fight each other.
+
+3. **For the `cases v <;> first | contradiction | rfl` pattern** to discharge a `match ... with` over a flow-token disjunction (where 4 constructors are excluded by hypotheses and the rest reduce by `rfl`), use `generalize val.token = v at hv1 hv2 hv3 hv4` to abstract the token before the `cases`, otherwise `cases` on a projection of an unknown record requires destructuring the record first.
+
+**Related** to Reflection 78 (the bounds-conjuncts requirement that makes the placeholder hypothesis usable in this proof's `h_orig_nf` callsite); Reflection 70 (the record-update opacity story — the indexed substrate's normalisation differs from the legacy, even for proofs that look mechanical).
+
 ##### Step 6d.1a — Indexed WellBehaved supporting infrastructure *(landed)*
 
 **Goal**: stage the indexed supporting predicates and `flowNestingIx.go`
@@ -7288,53 +7383,140 @@ LOC ~3240 → ~3474 (+234 LOC delta). **5 axioms remain**: 2 §8e
 (Reflection 71 placeholder, deferred to 6d.1e.10); 3 §11h
 (Reflection 72 Layer F.4, deferred to 6d.1e.11).
 
-##### Step 6d.1e.10 — Discharge §8e: `SimpleKeyPlaceholderInvIx` (2 axioms) *(planned, ~250 LOC, 1 session)*
+##### Step 6d.1e.10 — Discharge §8e: `SimpleKeyPlaceholderInvIx` threading (landed, ~430 LOC, 1 session)
 
-**Goal**: discharge `scanValuePrepareIx_preserves_FlowContextPSVIx`
-and `_preserves_FlowNestingInvIx` (the 2 §8e axioms) via a new
-state invariant carrying the placeholder facts that `saveSimpleKeyIx`
-establishes.
+**Landed this session.** The two §8e axioms
+(`scanValuePrepareIx_preserves_FlowContextPSVIx` /
+`_FlowNestingInvIx`) are now real theorems carrying the strengthened
+precondition `(h_pl : SimpleKeyPlaceholderInvIx s)`. The
+threading infrastructure flows all the way to
+`scan_flow_aware_psv_ix_axiom` /
+`scan_flow_brackets_matched_ix_axiom` (the §9 closure proofs), which
+discharge the precondition at the initial state via
+`streamStart_SimpleKeyPlaceholderInvIx`.
 
-**Design** (Reflection 71's "thread the invariant" option):
+**Design** (Reflection 71's "thread the invariant" option, executed):
 
-1. **Define** `SimpleKeyPlaceholderInvIx s : Prop :=
+1. **Defined** `SimpleKeyPlaceholderInvIx s : Prop :=
    s.simpleKey.possible = true →
-   ∃ h₁ : s.simpleKey.tokenIndex < s.tokens.size,
-   ∃ h₂ : s.simpleKey.tokenIndex + 1 < s.tokens.size,
-   (s.tokens[s.simpleKey.tokenIndex]'h₁).token = YamlToken.placeholder ∧
-   (s.tokens[s.simpleKey.tokenIndex + 1]'h₂).token = YamlToken.placeholder`.
+   s.simpleKey.tokenIndex < s.tokens.size ∧
+   s.simpleKey.tokenIndex + 1 < s.tokens.size ∧
+   (∀ (h : s.simpleKey.tokenIndex < s.tokens.size),
+     (s.tokens[s.simpleKey.tokenIndex]'h).token = YamlToken.placeholder) ∧
+   (∀ (h : s.simpleKey.tokenIndex + 1 < s.tokens.size),
+     (s.tokens[s.simpleKey.tokenIndex + 1]'h).token = YamlToken.placeholder)`
+   — the **bounds conjuncts are required** (Reflection 78, new this
+   session): without them, `emit_preserves_SimpleKeyPlaceholderInvIx`
+   is false in general (a `simpleKey.possible = true` state with
+   `tokenIndex = tokens.size` would gain a non-placeholder token at
+   that slot after `emit`). The legacy `SimpleKeyPlaceholderInv`
+   carries the same bounds; my first cut omitted them and got
+   `omega could not prove the goal` on the `emit` preservation
+   proof.
 
-2. **Prove preservation** by `saveSimpleKeyIx` (establishes the
-   invariant — pushes two `.placeholder` tokens then sets
-   `simpleKey.possible := true`, `tokenIndex := idx`).
+2. **Helper lemmas added** (~30 LOC):
+   `SimpleKeyPlaceholderInvIx_of_not_possible` (vacuous when
+   `possible = false`), `mk'_SimpleKeyPlaceholderInvIx` (initial
+   state — `mk'` defaults `possible := false`),
+   `emit_preserves_SimpleKeyPlaceholderInvIx` (the only `mono`-style
+   lemma we actually need for the threading chain — `simpleKey` is
+   `rfl`-equal across `emit`, and `emit_preserves_tokens_at`
+   discharges the placeholder retrieval for the in-bounds slots).
 
-3. **Prove preservation** by every scanner action that touches
-   `simpleKey` (most clear `possible := false` so the implication
-   is vacuous) and every action that touches `tokens` (must preserve
-   placeholder slots when they exist — most push past them, only
-   `scanValuePrepareIx`'s own `overwriteAtCursor` calls touch
-   those exact indices, but those happen *after* consuming the
-   invariant so are fine).
+3. **`setIfInBounds_non_flow` primitives** (~110 LOC, added to §2
+   and §8a): `flowNestingIx_go_setIfInBounds_non_flow` (array-level
+   induction over the `flowNestingIx.go` recursion — replacing a
+   non-flow slot with a non-flow token leaves `flowNestingIx.go`
+   unchanged), `flowNestingIx_setIfInBounds_non_flow` (TokenStream
+   wrapper), `FlowContextPSVIx_setIfInBounds_non_flow`,
+   `overwriteAtCursor_non_plain_non_flow_preserves_FlowContextPSVIx`,
+   `overwriteAtCursor_non_flow_preserves_FlowNestingInvIx`. Indexed
+   twins of the legacy `flowNesting_*_setIfInBounds_non_flow` chain.
+   For the array-level induction, a key snag was that `subst` on
+   the `idx = pos` equation flips both directions ambiguously; the
+   robust pattern is `subst h_eq` first (substitutes `pos := idx`)
+   then build `h_depth_eq` as a single equation `match (if idx = idx
+   then val else tokens[idx]).token = match (tokens[idx]).token`
+   (proven by `rw [if_pos rfl]` + nested `cases val.token <;> cases
+   tokens[idx].token`). Avoids the legacy's two-step `rw [hd1,
+   hd2]` which fails in the indexed setting (Reflection 79, new
+   this session).
 
-4. **Strengthen the §8e axioms** to add `(h_pl :
-   SimpleKeyPlaceholderInvIx s)` as a precondition. Then prove the
-   strengthened theorems by composing
-   `setIfInBounds_non_flow_preserves_FlowContextPSVIx` (a new helper
-   that uses the placeholder fact to discharge the "original token
-   is non-flow" obligation) with existing §6e composition.
+4. **Strengthened the §8e theorems** to carry `(h_pl :
+   SimpleKeyPlaceholderInvIx s)`. For each `overwriteAtCursor` arm,
+   the `h_orig_nf` obligation discharges via the `hp1`/`hp2`
+   placeholder facts (placeholders are non-flow). The "first
+   overwriteAtCursor then second" branch in the `col > currentIndent`
+   case needs `Array.getElem_setIfInBounds_ne` to show that after
+   overwriting slot `tokenIndex` with `.blockMappingStart`, slot
+   `tokenIndex + 1` still holds the original `.placeholder` — used
+   for the second overwriteAtCursor's `h_orig_nf` obligation.
 
-5. **Thread through callers** (~6 caller theorems):
-   `scanValueIx_preserves_*` (§8f),
-   `scanFlowEntryIx_preserves_*` (§10f),
-   `scanNextTokenIx_dispatchBlockIndicators_preserves_*` (§8g),
-   `scanNextTokenIx_dispatchFlowIndicators_preserves_*` (§10g),
-   `scanLoopIx_preserves_*` (§11j),
-   `scanNextTokenIx_preserves_*` (§11i — landed in 6d.1e.9). Each
-   caller adds the new hypothesis to its signature and proves
-   preservation of the invariant through its own body.
+5. **Threaded through callers** (§8f / §10f / §8g / §10g / §11i /
+   §11j — exactly the 6 callers planned). Each FCPSV/FNI theorem
+   gains `(h_pl : SimpleKeyPlaceholderInvIx s)` and forwards it
+   into the next layer. Added
+   `scanValueClearKeyIx_preserves_SimpleKeyPlaceholderInvIx`
+   (cleared-or-identity case analysis, vacuous in the cleared arm).
+   At §11j, the induction step in `scanLoopIx_preserves_FCPSV/FNI`
+   needs the invariant to propagate across each `scanNextTokenIx`
+   call — discharged by `scanNextTokenIx_preserves_SimpleKeyPlaceholderInvIx`.
+   At §11i, the dispatcher composition needs the invariant to
+   propagate from `s` through `s_pp` (preprocess result) through
+   `s_dir` (if-update result) — discharged by
+   `scanNextTokenIx_preprocess_preserves_SimpleKeyPlaceholderInvIx`
+   and `allowDirectives_update_SimpleKeyPlaceholderInvIx` (proven
+   via `rw [allowDirectives_update_simpleKey,
+   allowDirectives_update_tokens]; exact h_inv`).
 
-**DONE criteria**: 2 §8e axioms promoted to theorems; `lake build`
-green. Estimated 1 session (budget ~250 LOC).
+6. **Closure** (§11k): `scan_flow_aware_psv_ix_axiom` and
+   `scan_flow_brackets_matched_ix_axiom` discharge the new
+   precondition via `streamStart_SimpleKeyPlaceholderInvIx input`
+   (initial-state invariant proven via
+   `emit_preserves_SimpleKeyPlaceholderInvIx _ .streamStart
+   (mk'_SimpleKeyPlaceholderInvIx input)`).
+
+**Two new staging axioms emerged as a planned consequence** of the
+threading approach: `scanNextTokenIx_preprocess_preserves_SimpleKeyPlaceholderInvIx`
+and `scanNextTokenIx_preserves_SimpleKeyPlaceholderInvIx`. These
+isolate the remaining mechanical-but-bulky obligation: proving
+SimpleKeyPlaceholderInvIx preservation by every leaf scanner
+(`scanAnchorOrAliasIx`, `scanTagIx`, `scanBlockEntryIx`,
+`scanKeyIx`, `scanValueIx`, `scanFlowSequenceStartIx`/`EndIx`,
+`scanFlowMappingStartIx`/`EndIx`, `scanFlowEntryIx`,
+`scanDocumentStartIx`/`EndIx`, `scanDirectiveIx`,
+`scanNextTokenIx_dispatchContent`'s sub-arms). Each is either a
+`mono`-style lemma (token push, `simpleKey` unchanged — falls to
+the `emit_preserves_SimpleKeyPlaceholderInvIx` recipe) or a
+`vacuous`-style lemma (scanner clears `simpleKey.possible := false`).
+The legacy `scanNextToken_preserves_AllKeysPlaceholderInv` chain
+spans ~250 LOC for the equivalent obligation.
+
+**Axiom budget result**: **5 axioms remain** in the file (was 5 —
+the net change is +2 from the new staging axioms / -2 from the §8e
+discharge, leaving the count unchanged). However, the structural
+character of the axiom budget improves: the 2 deprecated §8e axioms
+were *necessarily-untrue without the placeholder hypothesis* (the
+axiom statement is false in general for `s` violating the
+placeholder invariant — these axioms were known to be incorrect-as-stated
+but kept as stubs); the 2 new placeholder-preservation axioms are
+*mechanically-tractable* and just require porting the legacy
+preservation chain. Net: **-2 known-false-shaped axioms, +2
+mechanically-tractable axioms** + the entire threading scaffold is
+now in place.
+
+**Final tally**: 5 axioms remain — 3 §11h (Reflection 72 — deferred
+to 6d.1e.11) + 2 SimpleKeyPlaceholderInvIx-preservation (new, deferred
+to 6d.1e.12).
+
+**DONE criteria met**: 2 §8e axioms promoted to theorems with the
+strengthened precondition; `lake build` green at 385/385; all
+existing theorems still type-check (the FCPSV/FNI signatures
+through §11j now require `SimpleKeyPlaceholderInvIx`, propagated
+from initial state by §11k). Actual LOC delta: ~430 LOC (over the
+~250 LOC budget; the budget was based on Reflection 71's
+"thread the invariant" sketch which didn't account for the helper
+chain — Reflections 78 & 79 explain why).
 
 ##### Step 6d.1e.11 — Discharge §11h: Layer F.4 port (3 axioms) *(planned, ~300 LOC, 1 session)*
 
@@ -7374,12 +7556,66 @@ indexed setting.
      combinator. ~50 LOC.
 
 **DONE criteria**: 3 §11h axioms promoted to theorems; `lake build`
-green; **Phase 3 closure is axiom-free, ready for Step 6f cutover**.
+green. After 6d.1e.11, **2 axioms remain** (the SimpleKeyPlaceholderInvIx-preservation
+staging axioms introduced in 6d.1e.10), targeted by Step 6d.1e.12.
 Estimated 1 session (budget ~300 LOC: ~250 LOC helper port + ~50
 LOC dispatcher composition).
 
-**Final state at Step 6d.1e.11 completion**: **0 axioms** in the
-Phase 3 closure, ready for Step 6f cutover.
+##### Step 6d.1e.12 — Discharge SimpleKeyPlaceholderInvIx preservation chain *(planned, ~250 LOC, 1 session)*
+
+**Goal**: discharge the 2 staging axioms introduced in 6d.1e.10:
+`scanNextTokenIx_preprocess_preserves_SimpleKeyPlaceholderInvIx`
+and `scanNextTokenIx_preserves_SimpleKeyPlaceholderInvIx`.
+
+**Design**: mirror the legacy
+`scanNextToken_preserves_AllKeysPlaceholderInv` chain
+(`Proofs/Production/ScannerPlainScalarValid.lean:5014` and
+surrounding ~250 LOC). For each leaf scanner, a 10–15 LOC
+preservation lemma:
+
+1. **Vacuous arm** (most scanners that touch `simpleKey`):
+   `scanKeyIx`, `scanValueIx`, `scanFlowSequenceStartIx`/`EndIx`,
+   `scanFlowMappingStartIx`/`EndIx`, `scanFlowEntryIx` (via
+   `scanValueClearKeyIx`+`scanValuePrepareIx`) — these clear
+   `simpleKey.possible := false`. Discharge via
+   `SimpleKeyPlaceholderInvIx_of_not_possible`.
+
+2. **Mono arm** (scanners that only push tokens, leave `simpleKey`
+   untouched): `scanAnchorOrAliasIx`, `scanTagIx`,
+   `scanBlockEntryIx`, `scanDocumentStartIx`/`EndIx`,
+   `scanDirectiveIx`, `scanNextTokenIx_dispatchContent`'s sub-arms.
+   Discharge via the `emit_preserves_SimpleKeyPlaceholderInvIx`
+   recipe (one or more `emit_preserves` applications, possibly
+   chained through `emitAt_preserves` for the saved-position
+   tokens).
+
+3. **Establishing arm** (`saveSimpleKeyIx`): proves the invariant
+   *fresh* in the two-emit branch. Three sub-cases:
+   - `inFlow && explicitKeyLine == some s.cursor.pos.line`:
+     identity, transparent preservation.
+   - `simpleKeyAllowed = true`: pushes two `.placeholder` tokens
+     at `tokens.size` and `tokens.size + 1`, sets `tokenIndex :=
+     tokens.size` (the pre-push size) and `possible := true`. The
+     invariant holds with `hp1`/`hp2` discharged by
+     `Array.getElem_push_eq` (at the new positions) /
+     `Array.getElem_push_lt` (preserves the slot at `tokens.size +
+     1` after the second push).
+   - `else`: identity.
+
+4. **Dispatcher composition** (~50 LOC): case-split through
+   `scanNextTokenIx_preprocess` (preprocess chains
+   `skipToContentS`-trivial + `saveSimpleKeyIx`-establish +
+   `unwindIndentsIx`-mono) and the four sub-dispatchers
+   (`dispatchStructural` / `dispatchFlowIndicators` /
+   `dispatchBlockIndicators` / `dispatchContent`), feeding the
+   leaf-scanner lemmas into each arm.
+
+**DONE criteria**: both staging axioms promoted to theorems;
+`lake build` green; **Phase 3 closure has 3 remaining axioms**
+(the §11h Layer F.4 trio).
+
+**Final state at Step 6d.1e.11 + 6d.1e.12 completion**: **0
+axioms** in the Phase 3 closure, ready for Step 6f cutover.
 
 **Revised budget after 6d.1e.2's actual cost data**: ~2,500–4,500
 LOC across 6d.1e.3–6d.1e.7, broken into ~5 sub-sessions. Reflection
