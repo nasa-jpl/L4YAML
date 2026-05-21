@@ -3378,26 +3378,43 @@ pending the B3.3 loop-preservation + B3.4 trim-transfer port. The 3
 `scanPlainScalarIx_content_valid` discharge AND an `h_peek` plumbing
 through the §11i call sites so the plain arm can apply it. -/
 
-axiom scanNextTokenIx_dispatchContent_preserves_PlainScalarsValidIx
+/-- Dispatch-content preservation for `PlainScalarsValidIx`.
+    Step 6d.1e.11b: structurally a theorem; full discharge requires
+    case-splitting on dispatchContent's 7 arms — 6 non-plain arms
+    (anchor/alias, tag, block-scalar, double-quoted, single-quoted,
+    error) via `emitAt_non_plain_preserves_PlainScalarsValidIx`; 1
+    plain arm via `scanPlainScalarIx_content_valid` composed with
+    `PlainScalarsValidIx_of_prefix_and_new`. The plain arm uses
+    `h_peek` (threaded through §11i in this step) to discharge the
+    `canStart` witness for the indexed scalar. Full proof deferred to
+    follow-up. -/
+theorem scanNextTokenIx_dispatchContent_preserves_PlainScalarsValidIx
     {input : String} (s : ScannerStateIx input) (c : Char)
     (s' : ScannerStateIx input)
     (_h_ok : scanNextTokenIx_dispatchContent s c = .ok s')
     (_h_old : PlainScalarsValidIx s.tokens) :
-    PlainScalarsValidIx s'.tokens
+    PlainScalarsValidIx s'.tokens := by
+  sorry
 
-axiom scanNextTokenIx_dispatchContent_preserves_FlowContextPSVIx
+/-- Dispatch-content preservation for `FlowContextPSVIx`. Same shape
+    as the PSV variant. Deferred to follow-up. -/
+theorem scanNextTokenIx_dispatchContent_preserves_FlowContextPSVIx
     {input : String} (s : ScannerStateIx input) (c : Char)
     (s' : ScannerStateIx input)
     (_h_ok : scanNextTokenIx_dispatchContent s c = .ok s')
     (_h_old : FlowContextPSVIx s.tokens) :
-    FlowContextPSVIx s'.tokens
+    FlowContextPSVIx s'.tokens := by
+  sorry
 
-axiom scanNextTokenIx_dispatchContent_preserves_FlowNestingInvIx
+/-- Dispatch-content preservation for `FlowNestingInvIx`. Same shape
+    as the PSV variant. Deferred to follow-up. -/
+theorem scanNextTokenIx_dispatchContent_preserves_FlowNestingInvIx
     {input : String} (s : ScannerStateIx input) (c : Char)
     (s' : ScannerStateIx input)
     (_h_ok : scanNextTokenIx_dispatchContent s c = .ok s')
     (_h_fni : FlowNestingInvIx s) :
-    FlowNestingInvIx s'
+    FlowNestingInvIx s' := by
+  sorry
 
 /-! ### §11i  `scanNextTokenIx` preservation — proven (Step 6d.1e.9)
 
