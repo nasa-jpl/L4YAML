@@ -1676,11 +1676,19 @@ content_valid discharge and `h_peek` plumbing through §11i). The
 +1 is a temporary regression that turns 3 dispatcher-level axioms
 into 1 scalar-level axiom — net reduction happens in 6d.1e.11b.
 
-**Next session**: Step 6d.1e.11b — discharge `scanPlainScalarIx_content_valid`
-(the heavy port — ~300 LOC for the B3.3 loop-preservation +
-B3.4 validFirst-and-head + trim-transfer) and the §11h trio (via
-case-splitting on the 7 dispatcher arms + `h_peek` plumbing through
-§11i). Realistic budget: ~580 LOC across 1-2 sessions.
+**Next session**: Step 6d.1e.11d (planned) — discharge the 3 §11h
+dispatcher sorries that remain after Step 6d.1e.11c's partial
+landing (2026-05-21). Step 6d.1e.11c discharged the 3 loop-side
+sorries in `IndexedScalar.lean`
+(`collectPlainScalarLoopIx_content_isPrefix`,
+`_preserves_contentInv`, `_validFirst_and_head`, ~500 LOC); the 3
+dispatcher sorries
+(`scanNextTokenIx_dispatchContent_preserves_PlainScalarsValidIx`,
+`_FlowContextPSVIx`, `_FlowNestingInvIx`) need both `h_peek` and
+`FlowNestingInvIx` threaded through `scanNextTokenIx_preserves_*`
+and `scanLoopIx_preserves_*` — a deeper signature change than the
+original plan accounted for (see Reflections 86 + 87). Realistic
+budget for 11d: ~400–600 LOC.
 
 **Session after**: Step 6d.1e.12 — discharge the 2 new staging
 axioms from 6d.1e.10. The chain mirrors the legacy
@@ -4970,6 +4978,8 @@ proof.
 | **6d.1e.10** ✅ | **Discharge §8e — `SimpleKeyPlaceholderInvIx` threading (2 axioms → theorems, +2 new staging axioms)** — Landed in this session. **§8e (2 discharged)**: `scanValuePrepareIx_preserves_FlowContextPSVIx` / `_FlowNestingInvIx` proven as real theorems carrying the strengthened precondition `(h_pl : SimpleKeyPlaceholderInvIx s)`. The placeholder invariant flows through 6 caller layers (§8f / §10f / §8g / §10g / §11i / §11j) all the way up to §11k's `scan_flow_aware_psv_ix_axiom` / `scan_flow_brackets_matched_ix_axiom`, which discharge it at the initial state via `streamStart_SimpleKeyPlaceholderInvIx`. **New §2/§8a primitives** (~110 LOC): `flowNestingIx_go_setIfInBounds_non_flow` (array-level induction — replacing a non-flow slot with a non-flow token leaves the flow-nesting computation unchanged), `flowNestingIx_setIfInBounds_non_flow` (TokenStream wrapper), `FlowContextPSVIx_setIfInBounds_non_flow`, `overwriteAtCursor_non_plain_non_flow_preserves_FlowContextPSVIx`, `overwriteAtCursor_non_flow_preserves_FlowNestingInvIx` — indexed twins of the legacy `flowNesting_*_setIfInBounds_non_flow` chain. **New §8e infrastructure** (~30 LOC): `SimpleKeyPlaceholderInvIx_of_not_possible`, `mk'_SimpleKeyPlaceholderInvIx`, `emit_preserves_SimpleKeyPlaceholderInvIx`, `scanValueClearKeyIx_preserves_SimpleKeyPlaceholderInvIx`, `allowDirectives_update_simpleKey` / `_SimpleKeyPlaceholderInvIx`, `streamStart_SimpleKeyPlaceholderInvIx`. **Two new staging axioms** introduced: `scanNextTokenIx_preprocess_preserves_SimpleKeyPlaceholderInvIx` and `scanNextTokenIx_preserves_SimpleKeyPlaceholderInvIx` — these absorb the remaining mechanical-but-bulky obligation of proving leaf-scanner preservation of the invariant (each leaf either clears `simpleKey.possible := false` — vacuous — or leaves `simpleKey` untouched while pushing past the placeholder slots — `emit_preserves_*` recipe). Deferred to 6d.1e.12. **Reflection 78 (new)** documents the bounds-conjuncts requirement (the invariant definition must assert in-bounds, not just "if in-bounds then placeholder"); **Reflection 79 (new)** documents the indexed `subst h_eq` pattern for the `flowNestingIx_go_setIfInBounds_non_flow` proof. **Axiom count unchanged at 5** (was 5: 3 §11h + 2 §8e; now 5: 3 §11h + 2 SimpleKeyPlaceholderInvIx-preservation). **Structural improvement**: the 2 deprecated §8e axioms had statements that were *false in general without the placeholder hypothesis* (known-incorrect-as-stated); the 2 new placeholder-preservation axioms are *mechanically-tractable* — they just need leaf-scanner preservation lemmas. **Cost**: ~430 LOC delta (over the ~250 LOC budget; Reflections 78 & 79 explain why). **Landed** sorry-free, `lake build` 385/385 green. | `Proofs/Production/IndexedScannerPlainScalarValid.lean` (extended from ~3474 LOC to ~3904 LOC; §8e axiom blocks → theorem blocks with strengthened preconditions; §8f / §10f / §8g / §10g / §11i / §11j signatures extended; §11k discharges via initial-state invariant; 2 new SimpleKeyPlaceholderInvIx-preservation axioms staged) | ~430 (landed) | 1 (actual) |
 | **6d.1e.11a** ✅ | **Scanner fix + Layer F.5 infrastructure + `scanPlainScalarIx_content_valid` staged as axiom (+1 axiom; §11h trio remains)** — Landed in this session. **Scanner bug fix**: added `#`-after-fold termination check to `collectPlainScalarLoopIx` in `Scanner/IndexedScanner.lean` (mirrors legacy `Scanner/Scalar.lean:495`). Without this check, `noSpaceHashProp` is provably violated when a continuation line starts with `#` after a single-line fold (the loop would inject the fold's `' '` then the next char `'#'` into content, producing a forbidden `' '`-then-`'#'` sequence). **Layer F.4 branch lemmas split**: `collectPlainScalarLoopIx_linebreak_flow` → `_continue` / `_hash` variants; same for `_linebreak_block_some`. `collectPlainScalarLoopIx_offset_monotonic` proof updated for the new branch structure. **Layer F.5 infrastructure** (~250 LOC in `Proofs/Scanner/IndexedScalar.lean`): `PlainContentInvIx` / `BoundaryHashIx` (the loop content invariant + the boundary-hash side condition, indexed twins of legacy `PlainContentInv` / `BoundaryHash` from `ScannerPlainContent.lean`); `PlainContentInvIx.empty`, `.transfer_nonblank_peek`, `.of_fold` (the fold-step invariant transfer); `IxCursor.advance_peek_eq_peekAt_one` (new in `Indexed/CharStream.lean`) with helper `advance_offset_eq_min_next`; `colonTerminatesPlain_false_iff`, `handleBlockLineBreakIx_content_form`, `foldQuotedNewlinesIx_result_form`. **`scanPlainScalarIx_content_valid` staged as a single axiom** in IndexedScalar.lean Layer F.5 — the foundation infrastructure is in place but the loop-invariant preservation proof (`collectPlainScalarLoopIx_preserves_contentInv`, ~200 LOC) and the validFirst-and-head transfer (~100 LOC) are deferred to 6d.1e.11b. **§11h axioms unchanged** (3 axioms still present, with updated cross-reference comments pointing to the new content_valid axiom + the `h_peek` plumbing requirement). **Reflection 80 (new this session)** documents the scanner bug discovery (legacy explicitly terminates on `#` after fold via `s_after_fold.peek?` check; indexed had lost this) and the 4x LOC underestimate (original ~300 LOC budget vs. actual ~1200 LOC needed for full discharge). **Axiom count: 6** (was 5; +1 for `scanPlainScalarIx_content_valid` — a *temporary* regression that consolidates the 3 §11h discharge target into a single content-correctness obligation). **Cost**: ~280 LOC delta (scanner fix + Layer F.4 split + Layer F.5 infrastructure + new axiom). **Landed** sorry-free, `lake build` 385/385 green. **Reason for partial**: scope discovery during this session (scanner bug + 4x LOC underestimate) made full 6d.1e.11 discharge infeasible in one session. The infrastructure tier in this commit unblocks the discharge work; 6d.1e.11b will land the full proof. | `Scanner/IndexedScanner.lean` (1 scanner fix); `Indexed/CharStream.lean` (+2 helpers); `Proofs/Scanner/IndexedScalar.lean` (extended with Layer F.5 — `PlainContentInvIx` + helpers + `scanPlainScalarIx_content_valid` axiom; Layer F.4 branch lemmas split into `_continue`/`_hash`); `Proofs/Production/IndexedScannerPlainScalarValid.lean` (§11h axiom block comments updated) | ~280 (landed) | 1 (actual) |
 | **6d.1e.11b** | **Discharge `scanPlainScalarIx_content_valid` + §11h trio (4 axioms → theorems)** — Build on 6d.1e.11a's Layer F.5 foundation to (a) prove `scanPlainScalarIx_content_valid` by porting the legacy B3.3 loop-invariant preservation (`collectPlainScalarLoopIx_preserves_contentInv`, ~200 LOC) + B3.4 `_validFirst_and_head` + trim-transfer (~100 LOC); (b) thread `h_peek : s.cursor.peek? = some c` through the 3 §11h dispatchContent preservation theorems (~80 LOC for the precondition + `scanNextTokenIx_preprocess_peek` helper + updates to the 3 §11i callers); (c) discharge the §11h trio by case-splitting on the 7 dispatcher arms — 6 non-plain via §7b/§7c + §7a `emitAt_non_plain`, 1 plain via `scanPlainScalarIx_content_valid` (~200 LOC). **DONE criteria**: `scanPlainScalarIx_content_valid` + 3 §11h axioms all promoted to theorems; `lake build` green; **net axiom count: 6 → 2** (the 2 SimpleKeyPlaceholderInvIx-preservation axioms from 6d.1e.10 remain, targeted by 6d.1e.12). **Cost** budget: ~580 LOC (the realistic estimate from 6d.1e.11a's scope discovery, vs. the original Reflection 72 ~300 LOC under-estimate). Estimated 1-2 sessions. | `Proofs/Scanner/IndexedScalar.lean` (Layer F.5 extended with `collectPlainScalarLoopIx_preserves_contentInv` + `_validFirst_and_head` + trim helpers + `scanPlainScalarIx_content_valid` theorem); `Proofs/Production/IndexedScannerPlainScalarValid.lean` (3 §11h axioms → theorems with `h_peek` precondition; 3 §11i callers updated to provide `h_peek` via new preprocess_peek helper) | ~580 | 1-2 |
+| **6d.1e.11c** ⚠️ partial (2026-05-21) | **Discharge 3 of 6 sorries from 6d.1e.11b's partial landing — loop preservation tier complete; dispatcher tier deferred to 6d.1e.11d.** **Discharged (3 of 6 sorries → real theorems)**: `collectPlainScalarLoopIx_content_isPrefix` (~50 LOC), `collectPlainScalarLoopIx_preserves_contentInv` (~280 LOC mirroring legacy `ScannerPlainContent.lean:319`), `collectPlainScalarLoopIx_validFirst_and_head` (~170 LOC with two-level fuel inspection for exception-c0 case). **Deferred (3 sorries remain)**: the §11h dispatcher trio (`scanNextTokenIx_dispatchContent_preserves_PlainScalarsValidIx`/`_FlowContextPSVIx`/`_FlowNestingInvIx`) hit two structural issues (Reflections 86 + 87): (i) FCPSV preservation needs `FlowNestingInvIx` threaded through `scanNextTokenIx_preserves_FCPSVIx` and `scanLoopIx_preserves_FCPSVIx` (a deeper signature change than 11b's plan); (ii) `generalize` on `scanBlockScalarIx s.cursor parentIndent` fails due to dependent `hBound` proof, and `split + rename_i` is confused by the `match h : X with` annotation. Resolution paths for both are documented in Reflections 86 + 87 + Step 6d.1e.11d below. **Reflections 85 (`cases hf : inFlow` doesn't substitute), 86 (FCPSV needs FNI), 87 (`generalize` blocked / `rename_i` confusion) added. Axiom count unchanged at 2** (the 2 SimpleKeyPlaceholderInvIx-preservation axioms from 6d.1e.10 remain, targeted by Step 6d.1e.12); sorry count net change: 6 → 3 (3 in IndexedScalar.lean discharged; 3 dispatcher sorries remain in IndexedScannerPlainScalarValid.lean). `lake build` green at 385/385. | `Proofs/Scanner/IndexedScalar.lean` (3 sorries → real theorems, ~500 LOC); `Blueprint/08-initiative-4-intrinsic-foundations.md` (status update + Reflections 85/86/87 + Step 6d.1e.11d added) | ~500 (landed) | 1 (actual) |
+| **6d.1e.11d** | **Discharge the 3 §11h dispatcher sorries (remainder from 6d.1e.11c)** — (a) Thread `FlowNestingInvIx s` through `scanNextTokenIx_dispatchContent_preserves_FCPSVIx` (and update `scanNextTokenIx_preserves_FCPSVIx` and `scanLoopIx_preserves_FCPSVIx` signatures + their §11k caller in `scan_flow_aware_psv_ix_axiom`). (b) Add `h_peek : s.cursor.peek? = some c` to PSV + FCPSV signatures; derive at §11i call sites via new helper `scanNextTokenIx_preprocess_peek_eq`. (c) Per-arm preservation proofs: anchor/alias via `scanAnchorOrAliasIx_preserves_*`, tag via `scanTagIx_preserves_*`, block-scalar / double-quoted / single-quoted via inline `scan*Ix_offset_monotonic` + `emitAt_non_plain_preserves_*` + record-update transparency lemmas (`emit_skf_tokens`, `emit_skf_flowLevel` — rfl-provable), plain arm via `scanPlainScalarIx_content_valid` + `*_of_prefix_and_new`. The block-scalar arm needs `scanBlockScalarIx_style_not_plain` (~10 LOC). **DONE criteria**: 3 dispatcher sorries → theorems; `lake build` green; axiom count still 2. Budget: ~400–600 LOC. | `Proofs/Production/IndexedScannerPlainScalarValid.lean` (3 §11h sorries → theorems; helpers `emit_skf_*`, `scanBlockScalarIx_style_not_plain`, `scanNextTokenIx_preprocess_peek_eq`; FCPSV signature threading) | ~500 | 1 |
 | **6d.1e.12** | **Discharge SimpleKeyPlaceholderInvIx preservation (2 staging axioms from 6d.1e.10)** — Discharge the 2 staging axioms introduced in 6d.1e.10: `scanNextTokenIx_preprocess_preserves_SimpleKeyPlaceholderInvIx` and `scanNextTokenIx_preserves_SimpleKeyPlaceholderInvIx`. The chain mirrors the legacy `scanNextToken_preserves_AllKeysPlaceholderInv` (~250 LOC across 13 leaf scanners + 5 dispatchers). For preprocess: composes `skipToContentS_preserves_SimpleKeyPlaceholderInvIx` (cursor-only — trivial) + `saveSimpleKeyIx_preserves_SimpleKeyPlaceholderInvIx` (the establishing arm — `saveSimpleKeyIx` reserves the two placeholders correctly at `simpleKey.tokenIndex = tokens.size`) + `unwindIndentsIx_preserves_SimpleKeyPlaceholderInvIx` (mono — pushes `.blockEnd` past placeholder slots). For the top-level: case-split over each leaf scanner — most clear `simpleKey.possible := false` (vacuous via `SimpleKeyPlaceholderInvIx_of_not_possible`) or leave `simpleKey` untouched while pushing tokens (mono via `emit_preserves_SimpleKeyPlaceholderInvIx`-style recipe). Per-scanner LOC: ~10–15 LOC × 13 leaf scanners = ~150–200 LOC + ~50 LOC dispatcher composition. **DONE criteria**: both staging axioms promoted to theorems; `lake build` green; **Phase 3 closure has 3 remaining axioms (the §11h Layer F.4 trio)**. Estimated 1 session (budget ~250 LOC). | `Proofs/Production/IndexedScannerPlainScalarValid.lean` (~13 new leaf-scanner preservation lemmas + dispatcher composition) | ~250 | 1 |
 | **6d.2** | **WfaProofs** — `Proofs/Parser/IndexedWfa.lean` (~1,692 LOC), **moved here from the original Step 6c scope**. Re-proves `WellFormedAnchors`/`Scannable`/`AllAliasesResolve` preservation through `parseNode`. Consumes three WellBehaved lemmas directly (`parseNode_wb_all`, `parseNodeContent_wb`, `parseNodeProperties_tokens`), which is why it ships here rather than next to NodeProofs in 6c.1. Mechanical once 6d.1c's WB mutual block is sorry-free. | `Proofs/Parser/IndexedWfa.lean` | ~1,692 | 1 |
 | **6d.3** | **Correctness + Completeness + Grammable** — `Proofs/Parser/{IndexedCorrectness,IndexedCompleteness,IndexedGrammable}.lean`. Composes the WB + Wfa chain to produce `parseStreamIx_output_valid_nodes`. Each file is purely a composition layer once 6d.1c + 6d.2 land. | `Proofs/Parser/IndexedCorrectness.lean`, `IndexedCompleteness.lean`, `IndexedGrammable.lean` | ~515 | 1 |
@@ -7741,6 +7751,82 @@ c.peek? with | none => ... | some ch => ...` upfront, which names
 branch-lemma rewrites (e.g., `collectPlainScalarLoopIx_comment`) to
 make progress.
 
+**Reflection 85 — `cases hf : inFlow` doesn't substitute in
+dependent hypotheses** *(new in 6d.1e.11c, 2026-05-21)*:
+
+For the `_validFirst_and_head` proof, the helper
+`canStart_isPlainSafe` returns `isPlainSafeBool c0 inFlow = true`.
+To unfold this via `(isPlainSafe_iff c0 true).mp h_ps`, we need
+`inFlow = true` substituted in `h_ps`. The natural pattern
+`cases inFlow with | false => ... | true => ...` substitutes
+`inFlow` globally, but using the named-equation form
+`cases hf : inFlow with` (which adds `hf : inFlow = ctor` as a
+hypothesis) does **not** substitute `inFlow` in `h_ps` — the
+hypothesis stays as `isPlainSafeBool c0 inFlow = true`. Workaround:
+explicit `rw [hf] at h_ps` after the case-split. The `match hf :
+e, h with` term-form fares no better in tactic mode (`match` isn't
+a tactic in this form). Same issue affects the
+`(inFlow && isFlowIndicatorBool c0) = false` derivation inside the
+plain arm of the dispatcher proofs.
+
+**Reflection 86 — `FlowContextPSVIx` preservation needs
+`FlowNestingInvIx`** *(new in 6d.1e.11c, 2026-05-21)*:
+
+The §11h dispatcher's plain arm produces a `.scalar content .plain`
+token whose `ScalarScannable _ true` constraint is required only at
+flow positions (where `flowNestingIx s.tokens s.tokens.size > 0`).
+The scanner produces content satisfying `ScalarScannable _ s.inFlow`,
+which matches `true` only when `s.inFlow = true`. To establish
+`flowNestingIx > 0 → s.inFlow = true`, we need `FlowNestingInvIx s`
+as a hypothesis — without it, the inconsistent state where tokens
+have unmatched flow brackets but `s.flowLevel = 0` can't be ruled
+out, and content scanned with `s.inFlow = false` may not satisfy
+`ScalarScannable _ true`. The legacy
+`dispatchContent_preserves_FlowInv`
+(`ScannerPlainScalarValid.lean:3546`) **bundles** `FlowContextPSV`
+and `FlowNestingInv` precisely for this reason. The indexed
+counterpart was staged as three independent theorems (PSV, FCPSV,
+FNI) per the §11h structure, and the FCPSV-only signature lacks the
+FNI hypothesis. **Resolution**: add `FlowNestingInvIx s` to
+`dispatchContent_preserves_FCPSVIx`, and thread it through
+`scanNextTokenIx_preserves_FCPSVIx` and
+`scanLoopIx_preserves_FCPSVIx` (the §11k top-level
+`scan_flow_aware_psv_ix_axiom` already has the initial-state FNI
+in scope via `streamStart`-emit preservation).
+
+**Reflection 87 — `generalize` blocked by dependent-type hBound; `match h : X with` confuses `rename_i`** *(new in 6d.1e.11c, 2026-05-21)*:
+
+The indexed `dispatchContent`'s block-scalar / double-quoted /
+single-quoted arms use
+`match hBS : scanBlockScalarIx ... with | some r => ...emitAt
+... hBound ...` where `hBound :
+startPos.offset ≤ sAfter.cursor.pos.offset` is constructed inline
+via `scanBlockScalarIx_offset_monotonic s.cursor parentIndent hBS`
+— a proof that **depends on `hBS`**. Two approaches both fail:
+
+1. `generalize h_bs : scanBlockScalarIx ... = bs_res at h_ok` —
+   Lean reports "Tactic `generalize` failed: result is not type
+   correct" because `hBound` references the generalized expression.
+   Workaround would require restructuring the dispatchContent
+   definition to compute `hBound` outside the match (or via a
+   wrapping `have` that survives generalization).
+2. `split at h_ok` — works, but the `match h : X with` annotation
+   introduces a hypothesis named `hBS` (not anonymous) that `rename_i`
+   skips, while the bound-pattern variable `r` (named in the match)
+   may or may not be anonymous after split, depending on the
+   `match`'s elaboration. `rename_i r h_bs` thus picks up the wrong
+   slots: if both `r` and `hBS` are non-anonymous, rename_i grabs
+   different hypotheses (in our case, an Eq-typed one, causing
+   `cases r with | mk … =>` to fail with "Invalid alternative name
+   `mk`: Expected `refl`").
+
+Resolution: either (a) inline `scanBlockScalarIx_offset_monotonic`
+explicitly in the proof via
+`have hBound := scanBlockScalarIx_offset_monotonic s.cursor _ h_bs`
+plus a manual destructure on the Option, or (b) refactor
+dispatchContent to use a `let-and-bind` form that exposes the
+discriminant for later naming. Deferred to Step 6d.1e.11d.
+
 **Follow-up work (Step 6d.1e.11c — planned)**:
 
 Discharge the 6 sorries left in this session:
@@ -7817,66 +7903,133 @@ Discharge the 6 sorries left in this session:
   remain, targeted by Step 6d.1e.12).
 - ⚠ 6 sorries introduced — to be discharged in Step 6d.1e.11c.
 
-##### Step 6d.1e.12 — Discharge SimpleKeyPlaceholderInvIx preservation chain *(planned, ~250 LOC, 1 session)*
+##### Step 6d.1e.11c — Discharge 6d.1e.11b's 6 sorries *(partially landed 2026-05-21 — 3 of 6 sorries discharged, ~500 LOC; 3 dispatcher sorries deferred to Step 6d.1e.11d)*
 
-**Goal**: discharge the 2 staging axioms introduced in 6d.1e.10:
-`scanNextTokenIx_preprocess_preserves_SimpleKeyPlaceholderInvIx`
-and `scanNextTokenIx_preserves_SimpleKeyPlaceholderInvIx`.
+**Status (2026-05-21 session)**: The 3 loop-preservation sorries in
+`Proofs/Scanner/IndexedScalar.lean` are discharged as real theorems
+(`collectPlainScalarLoopIx_content_isPrefix`,
+`_preserves_contentInv`, `_validFirst_and_head` — total ~500 LOC).
+`lake build` green at 385/385 with no new sorries; axiom count
+unchanged (still 2, the §11h preprocess+next preservation axioms
+for SimpleKeyPlaceholderInvIx, targeted by Step 6d.1e.12).
+**Remaining**: the 3 §11h dispatcher sorries
+(`scanNextTokenIx_dispatchContent_preserves_PlainScalarsValidIx`,
+`_FlowContextPSVIx`, `_FlowNestingInvIx`) in
+`Proofs/Production/IndexedScannerPlainScalarValid.lean` are
+deferred to Step 6d.1e.11d (new substep below) — initial attempts
+in this session hit two structural issues:
 
-**Design**: mirror the legacy
-`scanNextToken_preserves_AllKeysPlaceholderInv` chain
-(`Proofs/Production/ScannerPlainScalarValid.lean:5014` and
-surrounding ~250 LOC). For each leaf scanner, a 10–15 LOC
-preservation lemma:
+1. **FlowContextPSVIx needs FlowNestingInvIx** as a hypothesis to
+   relate `flowNestingIx s.tokens s.tokens.size > 0` to
+   `s.inFlow = true` for the plain arm. Without it, the inconsistent
+   state where tokens have unmatched flow brackets but
+   `s.flowLevel = 0` cannot be ruled out, and the new plain scalar
+   may not satisfy `ScalarScannable _ true`. The legacy
+   `dispatchContent_preserves_FlowInv` (`ScannerPlainScalarValid.lean:3546`)
+   bundles `FlowContextPSV` and `FlowNestingInv` and takes both as
+   hypotheses — the indexed version needs the same threading
+   through `scanNextTokenIx_preserves_FCPSVIx` and
+   `scanLoopIx_preserves_FCPSVIx`. This is a deeper signature change
+   than the original plan accounted for. (Reflection 86.)
 
-1. **Vacuous arm** (most scanners that touch `simpleKey`):
-   `scanKeyIx`, `scanValueIx`, `scanFlowSequenceStartIx`/`EndIx`,
-   `scanFlowMappingStartIx`/`EndIx`, `scanFlowEntryIx` (via
-   `scanValueClearKeyIx`+`scanValuePrepareIx`) — these clear
-   `simpleKey.possible := false`. Discharge via
-   `SimpleKeyPlaceholderInvIx_of_not_possible`.
+2. **`generalize` blocked by dependent `hBound`**: the dispatchContent
+   block-scalar / double-quoted / single-quoted arms use
+   `match hBS : scanBlockScalarIx ... with | some r => ...emitAt...
+   hBound...` where `hBound` is constructed from `hBS` via
+   `scanBlockScalarIx_offset_monotonic`. Attempting
+   `generalize h_bs : scanBlockScalarIx ... = bs_res` fails with
+   "result is not type correct" because the `hBound` proof binds to
+   the original (now-replaced) expression. Workaround is to use
+   `split at h_ok` with `rename_i`, but the `match h : X with`
+   annotation introduces a non-anonymous hypothesis that confuses
+   `rename_i`'s ordering (Reflection 87). Resolution requires either
+   inlining the `hBound` derivation per-arm (passing
+   `scanBlockScalarIx_offset_monotonic s.cursor _ h_bs` explicitly)
+   or restructuring the dispatchContent definition to not use the
+   `match h :` form.
 
-2. **Mono arm** (scanners that only push tokens, leave `simpleKey`
-   untouched): `scanAnchorOrAliasIx`, `scanTagIx`,
-   `scanBlockEntryIx`, `scanDocumentStartIx`/`EndIx`,
-   `scanDirectiveIx`, `scanNextTokenIx_dispatchContent`'s sub-arms.
-   Discharge via the `emit_preserves_SimpleKeyPlaceholderInvIx`
-   recipe (one or more `emit_preserves` applications, possibly
-   chained through `emitAt_preserves` for the saved-position
-   tokens).
+**Recovered (this session)**:
 
-3. **Establishing arm** (`saveSimpleKeyIx`): proves the invariant
-   *fresh* in the two-emit branch. Three sub-cases:
-   - `inFlow && explicitKeyLine == some s.cursor.pos.line`:
-     identity, transparent preservation.
-   - `simpleKeyAllowed = true`: pushes two `.placeholder` tokens
-     at `tokens.size` and `tokens.size + 1`, sets `tokenIndex :=
-     tokens.size` (the pre-push size) and `possible := true`. The
-     invariant holds with `hp1`/`hp2` discharged by
-     `Array.getElem_push_eq` (at the new positions) /
-     `Array.getElem_push_lt` (preserves the slot at `tokens.size +
-     1` after the second push).
-   - `else`: identity.
+1. `collectPlainScalarLoopIx_content_isPrefix` (~50 LOC) — proven by
+   induction on fuel + `unfold + split` cascade over the 7+
+   sub-arms of the loop body. Termination arms close via
+   `List.prefix_rfl` and `prefix_of_append_string`; recursive arms
+   compose via `List.IsPrefix.trans` and the IH. Layered match
+   structure on `c.peek?` / linebreak / inFlow handled via nested
+   `split`. ✅
+2. `collectPlainScalarLoopIx_preserves_contentInv` (~280 LOC) —
+   mirrors the legacy `ScannerPlainContent.lean:319` structure with
+   the existential decomposition. The termination-arm witness
+   helper `term inv = ⟨content, "", String.append_empty.symm,
+   inv.drop_spaces⟩` factored upfront. Each recursive arm builds
+   the next-iteration `PlainContentInvIx` inline (colon-continue,
+   plain-safe content, whitespace, two line-break flavors). The
+   plain-safe content arm's `bh` (BoundaryHashIx) hypothesis is
+   essential for the `ch = '#'` boundary — `_bh` underscored in the
+   original sorry signature was promoted to `bh`. The helper
+   `IxCursor.advance_peek_eq_peekAt_one` needed namespace
+   qualification (legacy
+   `ScannerPlainContent.advance_peek_eq_peekAt_one` was being picked
+   up by name resolution). ✅
+3. `collectPlainScalarLoopIx_validFirst_and_head` (~170 LOC) —
+   two-level fuel inspection for the exception-c0 case (c0 ∈
+   {'-', '?', ':'}). Uses
+   `IxCursor.advance_peek_eq_peekAt_one` to thread the second-char
+   witness from `canStart_exception_next` into the next iteration.
+   The c0 = ':' branch routes through `_colon_continue`; c0 ≠ ':'
+   uses `_content_gen` (allowing `ch = '#'` when spaces is empty).
+   The `cases hf : inFlow` pattern that doesn't substitute `inFlow`
+   in dependent hypotheses required follow-up `rw [hf] at h_ps`. ✅
 
-4. **Dispatcher composition** (~50 LOC): case-split through
-   `scanNextTokenIx_preprocess` (preprocess chains
-   `skipToContentS`-trivial + `saveSimpleKeyIx`-establish +
-   `unwindIndentsIx`-mono) and the four sub-dispatchers
-   (`dispatchStructural` / `dispatchFlowIndicators` /
-   `dispatchBlockIndicators` / `dispatchContent`), feeding the
-   leaf-scanner lemmas into each arm.
+**Strategy notes (recovered)**:
 
-**DONE criteria**: both staging axioms promoted to theorems;
-`lake build` green; **Phase 3 closure has 3 remaining axioms**
-(the §11h Layer F.4 trio).
+- `String.append_empty` exists in Lean 4 core
+  (`Init/Data/String/Basic.lean:200`). Use
+  `String.append_empty.symm : content = content ++ ""` for
+  termination-arm witnesses.
+- `bool_eq_false_of_not_eq_true` (defined in `IndexedScalar.lean`)
+  converts `¬(b = true)` from `split` else-branches to `b = false`
+  for the `if-then-else` Bool conditions. The default `split`
+  hypothesis form is `¬(... = true)`, not `... = false`.
+- For the dispatcher chain, the 6-rename_i in arm R5 must include
+  an unused `_hNotMV_colt` to account for the T2 (`isMapVal &&
+  colonTerminates`) split's else hypothesis. Counting `rename_i`s
+  is order-dependent: the chain T1 → T2 → R1 → T3 → LB → W → T7
+  produces 7 hypotheses, in declaration order, and `rename_i` names
+  them oldest-first.
 
-**Final state at Step 6d.1e.11 + 6d.1e.12 completion**: **0
-axioms** in the Phase 3 closure, ready for Step 6f cutover. (As of
-the partial-landing of 6d.1e.11b: 2 axioms remain + 6 sorries; the
-sorries are pure mechanical port targets and are scheduled for Step
-6d.1e.11c.)
+**Next session — Step 6d.1e.11d** (planned, ~400-600 LOC): discharge
+the 3 §11h dispatcher sorries. Plan:
 
-##### Step 6d.1e.11c — Discharge 6d.1e.11b's 6 sorries *(planned, ~700 LOC, 1-2 sessions)*
+(a) Thread `FlowNestingInvIx s` through `dispatchContent_preserves_FCPSVIx`,
+    `scanNextTokenIx_preserves_FCPSVIx`, and
+    `scanLoopIx_preserves_FCPSVIx` signatures. Update §11k top-level
+    (`scan_flow_aware_psv_ix_axiom`) to provide the initial FNI from
+    `mk'_*` lemmas + `streamStart`-emit preservation.
+(b) Add `h_peek : s.cursor.peek? = some c` to
+    `dispatchContent_preserves_PSVIx` and `_FCPSVIx` signatures.
+    Derive at the §11i call sites via a new helper
+    `scanNextTokenIx_preprocess_peek_eq` (extracts
+    `s_pp.cursor.peek? = some c` from
+    `scanNextTokenIx_preprocess s = .ok (some (s_pp, c))` by tracing
+    through preprocess's final `match s.peek? with`).
+(c) For each of the 7 dispatcher arms, write the per-arm preservation
+    proof inline. Non-plain arms (anchor/alias, tag, block-scalar,
+    double-quoted, single-quoted) use the existing
+    `scanAnchorOrAliasIx_preserves_*` / `scanTagIx_preserves_*`
+    lemmas or `emitAt_non_plain_preserves_*` + record-update
+    transparency lemmas (`emit_skf_tokens`, `emit_skf_flowLevel` —
+    `rfl`-provable). The block-scalar arm needs
+    `scanBlockScalarIx_style_not_plain` (already prototyped this
+    session, ~5 LOC: unfolds the definition and case-splits the
+    `if isLiteralBool ch then .literal else .folded` to show ≠
+    `.plain`). Plain arm uses `scanPlainScalarIx_content_valid`
+    (Layer F.5 culminating theorem) composed with
+    `*_of_prefix_and_new`; the empty-content case discharges
+    `ScalarScannable` vacuously. For PSV's `false`-inFlow goal,
+    `ScalarScannable_any_implies_false` provides the weakening.
+
+##### Step 6d.1e.11d (original plan, superseded by partial landing above)
 
 **Goal**: discharge the 6 `sorry`s introduced in Step 6d.1e.11b's
 partial landing:
@@ -7936,6 +8089,65 @@ itself recurses through ~30 sub-scanner preservation lemmas, each
 with three flavors (PSV / FlowContextPSVIx / FlowNestingInvIx).
 6d.1e.2's actual ~660 LOC for emit-step + 5 indent ops calibrates
 the remainder.
+
+##### Step 6d.1e.12 — Discharge SimpleKeyPlaceholderInvIx preservation chain *(planned, ~250 LOC, 1 session)*
+
+**Goal**: discharge the 2 staging axioms introduced in 6d.1e.10:
+`scanNextTokenIx_preprocess_preserves_SimpleKeyPlaceholderInvIx`
+and `scanNextTokenIx_preserves_SimpleKeyPlaceholderInvIx`.
+
+**Design**: mirror the legacy
+`scanNextToken_preserves_AllKeysPlaceholderInv` chain
+(`Proofs/Production/ScannerPlainScalarValid.lean:5014` and
+surrounding ~250 LOC). For each leaf scanner, a 10–15 LOC
+preservation lemma:
+
+1. **Vacuous arm** (most scanners that touch `simpleKey`):
+   `scanKeyIx`, `scanValueIx`, `scanFlowSequenceStartIx`/`EndIx`,
+   `scanFlowMappingStartIx`/`EndIx`, `scanFlowEntryIx` (via
+   `scanValueClearKeyIx`+`scanValuePrepareIx`) — these clear
+   `simpleKey.possible := false`. Discharge via
+   `SimpleKeyPlaceholderInvIx_of_not_possible`.
+
+2. **Mono arm** (scanners that only push tokens, leave `simpleKey`
+   untouched): `scanAnchorOrAliasIx`, `scanTagIx`,
+   `scanBlockEntryIx`, `scanDocumentStartIx`/`EndIx`,
+   `scanDirectiveIx`, `scanNextTokenIx_dispatchContent`'s sub-arms.
+   Discharge via the `emit_preserves_SimpleKeyPlaceholderInvIx`
+   recipe (one or more `emit_preserves` applications, possibly
+   chained through `emitAt_preserves` for the saved-position
+   tokens).
+
+3. **Establishing arm** (`saveSimpleKeyIx`): proves the invariant
+   *fresh* in the two-emit branch. Three sub-cases:
+   - `inFlow && explicitKeyLine == some s.cursor.pos.line`:
+     identity, transparent preservation.
+   - `simpleKeyAllowed = true`: pushes two `.placeholder` tokens
+     at `tokens.size` and `tokens.size + 1`, sets `tokenIndex :=
+     tokens.size` (the pre-push size) and `possible := true`. The
+     invariant holds with `hp1`/`hp2` discharged by
+     `Array.getElem_push_eq` (at the new positions) /
+     `Array.getElem_push_lt` (preserves the slot at `tokens.size +
+     1` after the second push).
+   - `else`: identity.
+
+4. **Dispatcher composition** (~50 LOC): case-split through
+   `scanNextTokenIx_preprocess` (preprocess chains
+   `skipToContentS`-trivial + `saveSimpleKeyIx`-establish +
+   `unwindIndentsIx`-mono) and the four sub-dispatchers
+   (`dispatchStructural` / `dispatchFlowIndicators` /
+   `dispatchBlockIndicators` / `dispatchContent`), feeding the
+   leaf-scanner lemmas into each arm.
+
+**DONE criteria**: both staging axioms promoted to theorems;
+`lake build` green; **Phase 3 closure has 3 remaining axioms**
+(the §11h Layer F.4 trio).
+
+**Final state at Step 6d.1e.11 + 6d.1e.12 completion**: **0
+axioms** in the Phase 3 closure, ready for Step 6f cutover. (As of
+the partial-landing of 6d.1e.11b: 2 axioms remain + 6 sorries; the
+sorries are pure mechanical port targets and are scheduled for Step
+6d.1e.11c.)
 
 ##### Step 6d.2 — Indexed Wfa *(planned)*
 
