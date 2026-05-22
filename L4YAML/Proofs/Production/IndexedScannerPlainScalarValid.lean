@@ -4578,4 +4578,493 @@ theorem scan_flow_brackets_matched_ix_axiom
     (by split <;> exact h_fni_after_emit)
     (by split <;> exact h_pl_after_emit) h_scan
 
+/-! ## §12  Per-scanner `simpleKey` / `simpleKeyStack` facts (Step 6d.1e.12b)
+
+Indexed mirrors of the legacy `_preserves_simpleKey` /
+`_preserves_simpleKeyStack` / `_clears_simpleKey` /
+`_simpleKey_cleared` / `_simpleKey_restored` / `_stack_pushed` /
+`_stack_popped` chain (legacy lives in `Proofs/Scanner/
+ScannerCorrectness.lean` lines 2924–5870). These are pure
+state-projection facts: most reduce to `rfl` because the indexed
+operations `advance` / `emit` / `emitAt` / `advanceN` /
+`overwriteAtCursor` / `skipToContentS` use record-update syntax
+that preserves all non-mentioned fields definitionally. The
+remaining helpers (`unwindIndentsLoopIx`, `saveSimpleKeyIx`, the
+per-scanner facts) compose these primitives. Step 12c (next) uses
+the per-scanner facts plus the `_mono` helpers from §6e+ to thread
+`AllKeysPlaceholderInvIx` across the dispatcher composition. -/
+
+/-! ### §12a  State-level primitives -/
+
+@[simp] theorem advance_preserves_simpleKey {input : String}
+    (s : ScannerStateIx input) : s.advance.simpleKey = s.simpleKey := rfl
+
+@[simp] theorem advance_preserves_simpleKeyStack {input : String}
+    (s : ScannerStateIx input) : s.advance.simpleKeyStack = s.simpleKeyStack := rfl
+
+@[simp] theorem advanceN_preserves_simpleKey {input : String}
+    (s : ScannerStateIx input) (n : Nat) : (s.advanceN n).simpleKey = s.simpleKey := rfl
+
+@[simp] theorem advanceN_preserves_simpleKeyStack {input : String}
+    (s : ScannerStateIx input) (n : Nat) :
+    (s.advanceN n).simpleKeyStack = s.simpleKeyStack := rfl
+
+@[simp] theorem emit_preserves_simpleKey {input : String}
+    (s : ScannerStateIx input) (tok : YamlToken) :
+    (s.emit tok).simpleKey = s.simpleKey := rfl
+
+@[simp] theorem emit_preserves_simpleKeyStack {input : String}
+    (s : ScannerStateIx input) (tok : YamlToken) :
+    (s.emit tok).simpleKeyStack = s.simpleKeyStack := rfl
+
+@[simp] theorem emitAt_preserves_simpleKey {input : String}
+    (s : ScannerStateIx input) (startPos : YamlPos) (tok : YamlToken)
+    (h : startPos.offset ≤ s.cursor.pos.offset) :
+    (s.emitAt startPos tok h).simpleKey = s.simpleKey := rfl
+
+@[simp] theorem emitAt_preserves_simpleKeyStack {input : String}
+    (s : ScannerStateIx input) (startPos : YamlPos) (tok : YamlToken)
+    (h : startPos.offset ≤ s.cursor.pos.offset) :
+    (s.emitAt startPos tok h).simpleKeyStack = s.simpleKeyStack := rfl
+
+@[simp] theorem overwriteAtCursor_preserves_simpleKey {input : String}
+    (s : ScannerStateIx input) (i : Nat) (sk : IxCursor input) (tok : YamlToken) :
+    (s.overwriteAtCursor i sk tok).simpleKey = s.simpleKey := rfl
+
+@[simp] theorem overwriteAtCursor_preserves_simpleKeyStack {input : String}
+    (s : ScannerStateIx input) (i : Nat) (sk : IxCursor input) (tok : YamlToken) :
+    (s.overwriteAtCursor i sk tok).simpleKeyStack = s.simpleKeyStack := rfl
+
+@[simp] theorem skipToContentS_preserves_simpleKey {input : String}
+    (s : ScannerStateIx input) : s.skipToContentS.simpleKey = s.simpleKey := rfl
+
+@[simp] theorem skipToContentS_preserves_simpleKeyStack {input : String}
+    (s : ScannerStateIx input) :
+    s.skipToContentS.simpleKeyStack = s.simpleKeyStack := rfl
+
+/-! ### §12b  Indent-stack helpers
+
+`unwindIndentsLoopIx` recurses on fuel, emitting `blockEnd` and
+popping `indents` — neither touches `simpleKey` / `simpleKeyStack`.
+`pushSequenceIndentIx` / `pushMappingIndentIx` likewise only emit
+and push to `indents`. -/
+
+theorem unwindIndentsLoopIx_preserves_simpleKey {input : String}
+    (s : ScannerStateIx input) (col : Int) (fuel : Nat) :
+    (unwindIndentsLoopIx s col fuel).simpleKey = s.simpleKey := by
+  induction fuel generalizing s with
+  | zero => rfl
+  | succ n ih =>
+    unfold unwindIndentsLoopIx
+    split
+    · exact ih _
+    · rfl
+
+theorem unwindIndentsLoopIx_preserves_simpleKeyStack {input : String}
+    (s : ScannerStateIx input) (col : Int) (fuel : Nat) :
+    (unwindIndentsLoopIx s col fuel).simpleKeyStack = s.simpleKeyStack := by
+  induction fuel generalizing s with
+  | zero => rfl
+  | succ n ih =>
+    unfold unwindIndentsLoopIx
+    split
+    · exact ih _
+    · rfl
+
+theorem unwindIndentsIx_preserves_simpleKey {input : String}
+    (s : ScannerStateIx input) (col : Int) :
+    (unwindIndentsIx s col).simpleKey = s.simpleKey :=
+  unwindIndentsLoopIx_preserves_simpleKey s col _
+
+theorem unwindIndentsIx_preserves_simpleKeyStack {input : String}
+    (s : ScannerStateIx input) (col : Int) :
+    (unwindIndentsIx s col).simpleKeyStack = s.simpleKeyStack :=
+  unwindIndentsLoopIx_preserves_simpleKeyStack s col _
+
+theorem pushSequenceIndentIx_preserves_simpleKey {input : String}
+    (s : ScannerStateIx input) (col : Int) :
+    (pushSequenceIndentIx s col).simpleKey = s.simpleKey := by
+  unfold pushSequenceIndentIx; split <;> rfl
+
+theorem pushSequenceIndentIx_preserves_simpleKeyStack {input : String}
+    (s : ScannerStateIx input) (col : Int) :
+    (pushSequenceIndentIx s col).simpleKeyStack = s.simpleKeyStack := by
+  unfold pushSequenceIndentIx; split <;> rfl
+
+theorem pushMappingIndentIx_preserves_simpleKey {input : String}
+    (s : ScannerStateIx input) (col : Int) :
+    (pushMappingIndentIx s col).simpleKey = s.simpleKey := by
+  unfold pushMappingIndentIx; split <;> rfl
+
+theorem pushMappingIndentIx_preserves_simpleKeyStack {input : String}
+    (s : ScannerStateIx input) (col : Int) :
+    (pushMappingIndentIx s col).simpleKeyStack = s.simpleKeyStack := by
+  unfold pushMappingIndentIx; split <;> rfl
+
+/-! ### §12c  `saveSimpleKeyIx` helpers
+
+`saveSimpleKeyIx` either no-ops or emits two placeholders and sets
+`simpleKey` with `possible := true`. In all branches `simpleKeyStack`
+is unchanged. -/
+
+theorem saveSimpleKeyIx_preserves_simpleKeyStack {input : String}
+    (s : ScannerStateIx input) :
+    (saveSimpleKeyIx s).simpleKeyStack = s.simpleKeyStack := by
+  unfold saveSimpleKeyIx
+  split
+  · rfl
+  · split
+    · rfl
+    · rfl
+
+/-! ### §12d  Block-context scanner facts
+
+`scanDocumentStartIx`, `scanDocumentEndIx`, `scanDirectiveIx`,
+`scanBlockEntryIx`, `scanKeyIx`, `scanValueClearKeyIx`,
+`scanValuePrepareIx`, `scanValueIx`, `scanAnchorOrAliasIx`, `scanTagIx`. -/
+
+theorem scanDocumentStartIx_clears_simpleKey {input : String}
+    (s : ScannerStateIx input) :
+    (scanDocumentStartIx s).simpleKey.possible = false := by
+  unfold scanDocumentStartIx; rfl
+
+theorem scanDocumentStartIx_preserves_simpleKeyStack {input : String}
+    (s : ScannerStateIx input) :
+    (scanDocumentStartIx s).simpleKeyStack = s.simpleKeyStack := by
+  unfold scanDocumentStartIx
+  show (unwindIndentsIx s (-1)).simpleKeyStack = s.simpleKeyStack
+  exact unwindIndentsIx_preserves_simpleKeyStack s (-1)
+
+theorem scanDocumentEndIx_clears_simpleKey {input : String}
+    (s s' : ScannerStateIx input) (h : scanDocumentEndIx s = .ok s') :
+    s'.simpleKey.possible = false := by
+  unfold scanDocumentEndIx at h
+  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h
+  repeat (any_goals (split at h))
+  all_goals (try contradiction)
+  all_goals (simp only [Except.ok.injEq] at h; subst h; rfl)
+
+theorem scanDocumentEndIx_preserves_simpleKeyStack {input : String}
+    (s s' : ScannerStateIx input) (h : scanDocumentEndIx s = .ok s') :
+    s'.simpleKeyStack = s.simpleKeyStack := by
+  unfold scanDocumentEndIx at h
+  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h
+  repeat (any_goals (split at h))
+  all_goals (try contradiction)
+  all_goals (simp only [Except.ok.injEq] at h; subst h)
+  all_goals
+    show (unwindIndentsIx s (-1)).simpleKeyStack = s.simpleKeyStack
+  all_goals exact unwindIndentsIx_preserves_simpleKeyStack s (-1)
+
+theorem scanYamlDirectiveIx_preserves_simpleKey {input : String}
+    (s : ScannerStateIx input) (cAfterWS : IxCursor input)
+    (startPos : YamlPos) (hStart : startPos.offset ≤ cAfterWS.pos.offset)
+    (s' : ScannerStateIx input)
+    (h : scanYamlDirectiveIx s cAfterWS startPos hStart = .ok s') :
+    s'.simpleKey = s.simpleKey := by
+  unfold scanYamlDirectiveIx at h
+  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h
+  repeat (any_goals (split at h))
+  all_goals (try contradiction)
+  all_goals (simp only [Except.ok.injEq] at h; subst h; rfl)
+
+theorem scanYamlDirectiveIx_preserves_simpleKeyStack {input : String}
+    (s : ScannerStateIx input) (cAfterWS : IxCursor input)
+    (startPos : YamlPos) (hStart : startPos.offset ≤ cAfterWS.pos.offset)
+    (s' : ScannerStateIx input)
+    (h : scanYamlDirectiveIx s cAfterWS startPos hStart = .ok s') :
+    s'.simpleKeyStack = s.simpleKeyStack := by
+  unfold scanYamlDirectiveIx at h
+  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h
+  repeat (any_goals (split at h))
+  all_goals (try contradiction)
+  all_goals (simp only [Except.ok.injEq] at h; subst h; rfl)
+
+theorem scanTagDirectiveIx_preserves_simpleKey {input : String}
+    (s : ScannerStateIx input) (cAfterWS : IxCursor input)
+    (startPos : YamlPos) (hStart : startPos.offset ≤ cAfterWS.pos.offset)
+    (s' : ScannerStateIx input)
+    (h : scanTagDirectiveIx s cAfterWS startPos hStart = .ok s') :
+    s'.simpleKey = s.simpleKey := by
+  unfold scanTagDirectiveIx at h
+  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h
+  simp only [Except.ok.injEq] at h; subst h; rfl
+
+theorem scanTagDirectiveIx_preserves_simpleKeyStack {input : String}
+    (s : ScannerStateIx input) (cAfterWS : IxCursor input)
+    (startPos : YamlPos) (hStart : startPos.offset ≤ cAfterWS.pos.offset)
+    (s' : ScannerStateIx input)
+    (h : scanTagDirectiveIx s cAfterWS startPos hStart = .ok s') :
+    s'.simpleKeyStack = s.simpleKeyStack := by
+  unfold scanTagDirectiveIx at h
+  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h
+  simp only [Except.ok.injEq] at h; subst h; rfl
+
+theorem scanDirectiveIx_preserves_simpleKey {input : String}
+    (s s' : ScannerStateIx input) (h : scanDirectiveIx s = .ok s') :
+    s'.simpleKey = s.simpleKey := by
+  unfold scanDirectiveIx at h
+  split at h
+  · simp at h
+  · dsimp only [] at h
+    split at h
+    · exact (scanYamlDirectiveIx_preserves_simpleKey _ _ _ _ _ h).trans rfl
+    · split at h
+      · exact (scanTagDirectiveIx_preserves_simpleKey _ _ _ _ _ h).trans rfl
+      · simp only [Except.ok.injEq] at h; subst h; rfl
+
+theorem scanDirectiveIx_preserves_simpleKeyStack {input : String}
+    (s s' : ScannerStateIx input) (h : scanDirectiveIx s = .ok s') :
+    s'.simpleKeyStack = s.simpleKeyStack := by
+  unfold scanDirectiveIx at h
+  split at h
+  · simp at h
+  · dsimp only [] at h
+    split at h
+    · exact (scanYamlDirectiveIx_preserves_simpleKeyStack _ _ _ _ _ h).trans rfl
+    · split at h
+      · exact (scanTagDirectiveIx_preserves_simpleKeyStack _ _ _ _ _ h).trans rfl
+      · simp only [Except.ok.injEq] at h; subst h; rfl
+
+theorem scanBlockEntryIx_preserves_simpleKey {input : String}
+    (s s' : ScannerStateIx input) (h : scanBlockEntryIx s = .ok s') :
+    s'.simpleKey = s.simpleKey := by
+  unfold scanBlockEntryIx at h
+  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h
+  repeat (any_goals (split at h))
+  all_goals (try contradiction)
+  all_goals (simp only [Except.ok.injEq] at h; subst h)
+  all_goals
+    first
+    | exact pushSequenceIndentIx_preserves_simpleKey s s.cursor.pos.col
+    | rfl
+
+theorem scanBlockEntryIx_preserves_simpleKeyStack {input : String}
+    (s s' : ScannerStateIx input) (h : scanBlockEntryIx s = .ok s') :
+    s'.simpleKeyStack = s.simpleKeyStack := by
+  unfold scanBlockEntryIx at h
+  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h
+  repeat (any_goals (split at h))
+  all_goals (try contradiction)
+  all_goals (simp only [Except.ok.injEq] at h; subst h)
+  all_goals
+    first
+    | exact pushSequenceIndentIx_preserves_simpleKeyStack s s.cursor.pos.col
+    | rfl
+
+theorem scanKeyIx_clears_simpleKey {input : String}
+    (s s' : ScannerStateIx input) (h : scanKeyIx s = .ok s') :
+    s'.simpleKey.possible = false := by
+  unfold scanKeyIx at h
+  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h
+  repeat (any_goals (split at h))
+  all_goals (try contradiction)
+  all_goals (simp only [Except.ok.injEq] at h; subst h; rfl)
+
+theorem scanKeyIx_preserves_simpleKeyStack {input : String}
+    (s s' : ScannerStateIx input) (h : scanKeyIx s = .ok s') :
+    s'.simpleKeyStack = s.simpleKeyStack := by
+  unfold scanKeyIx at h
+  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h
+  repeat (any_goals (split at h))
+  all_goals (try contradiction)
+  all_goals (simp only [Except.ok.injEq] at h; subst h)
+  all_goals
+    first
+    | exact pushMappingIndentIx_preserves_simpleKeyStack s s.cursor.pos.col
+    | rfl
+
+theorem scanValueClearKeyIx_preserves_simpleKeyStack {input : String}
+    (s : ScannerStateIx input) :
+    (scanValueClearKeyIx s).simpleKeyStack = s.simpleKeyStack := by
+  unfold scanValueClearKeyIx
+  split
+  · split
+    · rfl
+    · split <;> rfl
+  · rfl
+
+theorem scanValuePrepareIx_clears_simpleKey {input : String}
+    (s : ScannerStateIx input) :
+    (scanValuePrepareIx s).simpleKey.possible = false := by
+  unfold scanValuePrepareIx
+  split
+  · split
+    · split <;> rfl
+    · rfl
+  · split
+    · rfl
+    · split
+      · rw [pushMappingIndentIx_preserves_simpleKey]
+        rename_i h_not_possible _ _; simp at h_not_possible; exact h_not_possible
+      · rename_i h_not_possible _ _; simp at h_not_possible; exact h_not_possible
+
+theorem scanValuePrepareIx_preserves_simpleKeyStack {input : String}
+    (s : ScannerStateIx input) :
+    (scanValuePrepareIx s).simpleKeyStack = s.simpleKeyStack := by
+  unfold scanValuePrepareIx
+  split
+  · split
+    · split <;> rfl
+    · rfl
+  · split
+    · rfl
+    · split
+      · exact pushMappingIndentIx_preserves_simpleKeyStack s s.cursor.pos.col
+      · rfl
+
+theorem scanValueIx_clears_simpleKey {input : String}
+    (s s' : ScannerStateIx input) (h : scanValueIx s = .ok s') :
+    s'.simpleKey.possible = false := by
+  unfold scanValueIx at h
+  simp only [bind, Except.bind] at h
+  split at h <;> try contradiction
+  split at h <;> try contradiction
+  simp only [Except.ok.injEq] at h; subst h
+  show ((scanValuePrepareIx (scanValueClearKeyIx s)).emit
+        YamlToken.value).advance.simpleKey.possible = false
+  rw [advance_preserves_simpleKey, emit_preserves_simpleKey]
+  exact scanValuePrepareIx_clears_simpleKey _
+
+theorem scanValueIx_preserves_simpleKeyStack {input : String}
+    (s s' : ScannerStateIx input) (h : scanValueIx s = .ok s') :
+    s'.simpleKeyStack = s.simpleKeyStack := by
+  unfold scanValueIx at h
+  simp only [bind, Except.bind] at h
+  split at h <;> try contradiction
+  split at h <;> try contradiction
+  simp only [Except.ok.injEq] at h; subst h
+  show ((scanValuePrepareIx (scanValueClearKeyIx s)).emit
+        YamlToken.value).advance.simpleKeyStack = s.simpleKeyStack
+  rw [advance_preserves_simpleKeyStack, emit_preserves_simpleKeyStack,
+      scanValuePrepareIx_preserves_simpleKeyStack,
+      scanValueClearKeyIx_preserves_simpleKeyStack]
+
+theorem scanAnchorOrAliasIx_preserves_simpleKey {input : String}
+    (s : ScannerStateIx input) (isAnchor : Bool) (s' : ScannerStateIx input)
+    (h : scanAnchorOrAliasIx s isAnchor = .ok s') :
+    s'.simpleKey = s.simpleKey := by
+  unfold scanAnchorOrAliasIx at h
+  dsimp only [] at h
+  split at h
+  · simp at h
+  · simp only [Except.ok.injEq] at h; subst h; rfl
+
+theorem scanAnchorOrAliasIx_preserves_simpleKeyStack {input : String}
+    (s : ScannerStateIx input) (isAnchor : Bool) (s' : ScannerStateIx input)
+    (h : scanAnchorOrAliasIx s isAnchor = .ok s') :
+    s'.simpleKeyStack = s.simpleKeyStack := by
+  unfold scanAnchorOrAliasIx at h
+  dsimp only [] at h
+  split at h
+  · simp at h
+  · simp only [Except.ok.injEq] at h; subst h; rfl
+
+theorem scanTagIx_preserves_simpleKey {input : String}
+    (s s' : ScannerStateIx input) (h : scanTagIx s = .ok s') :
+    s'.simpleKey = s.simpleKey := by
+  unfold scanTagIx at h
+  dsimp only [] at h
+  split at h
+  · -- '<' verbatim tag branch
+    split at h
+    · simp at h
+    · split at h
+      · simp at h
+      · simp only [Except.ok.injEq] at h; subst h; rfl
+  · -- '!' secondary tag branch
+    simp only [Except.ok.injEq] at h; subst h; rfl
+  · -- default branch (named tag / primary handle)
+    simp only [Except.ok.injEq] at h; subst h; rfl
+
+theorem scanTagIx_preserves_simpleKeyStack {input : String}
+    (s s' : ScannerStateIx input) (h : scanTagIx s = .ok s') :
+    s'.simpleKeyStack = s.simpleKeyStack := by
+  unfold scanTagIx at h
+  dsimp only [] at h
+  split at h
+  · -- '<' verbatim tag branch
+    split at h
+    · simp at h
+    · split at h
+      · simp at h
+      · simp only [Except.ok.injEq] at h; subst h; rfl
+  · -- '!' secondary tag branch
+    simp only [Except.ok.injEq] at h; subst h; rfl
+  · -- default branch
+    simp only [Except.ok.injEq] at h; subst h; rfl
+
+/-! ### §12e  Flow-context start/end facts
+
+`scanFlowSequenceStartIx` / `scanFlowMappingStartIx` clear the
+current `simpleKey` and push the old one onto `simpleKeyStack`.
+`scanFlowSequenceEndIx` / `scanFlowMappingEndIx` restore the top
+of the stack into `simpleKey` and pop. `scanFlowEntryIx` calls
+`scanValuePrepareIx` (clears) + `emit` + `advance`. -/
+
+theorem scanFlowSequenceStartIx_simpleKey_cleared {input : String}
+    (s : ScannerStateIx input) :
+    (scanFlowSequenceStartIx s).simpleKey.possible = false := by
+  unfold scanFlowSequenceStartIx; rfl
+
+theorem scanFlowSequenceStartIx_stack_pushed {input : String}
+    (s : ScannerStateIx input) :
+    (scanFlowSequenceStartIx s).simpleKeyStack = s.simpleKeyStack.push s.simpleKey := by
+  unfold scanFlowSequenceStartIx; rfl
+
+theorem scanFlowMappingStartIx_simpleKey_cleared {input : String}
+    (s : ScannerStateIx input) :
+    (scanFlowMappingStartIx s).simpleKey.possible = false := by
+  unfold scanFlowMappingStartIx; rfl
+
+theorem scanFlowMappingStartIx_stack_pushed {input : String}
+    (s : ScannerStateIx input) :
+    (scanFlowMappingStartIx s).simpleKeyStack = s.simpleKeyStack.push s.simpleKey := by
+  unfold scanFlowMappingStartIx; rfl
+
+theorem scanFlowSequenceEndIx_simpleKey_restored {input : String}
+    (s : ScannerStateIx input) :
+    (scanFlowSequenceEndIx s).simpleKey =
+      s.simpleKeyStack.back?.getD { cursor := IxCursor.start input } := by
+  unfold scanFlowSequenceEndIx; rfl
+
+theorem scanFlowSequenceEndIx_stack_popped {input : String}
+    (s : ScannerStateIx input) :
+    (scanFlowSequenceEndIx s).simpleKeyStack = s.simpleKeyStack.pop := by
+  unfold scanFlowSequenceEndIx; rfl
+
+theorem scanFlowMappingEndIx_simpleKey_restored {input : String}
+    (s : ScannerStateIx input) :
+    (scanFlowMappingEndIx s).simpleKey =
+      s.simpleKeyStack.back?.getD { cursor := IxCursor.start input } := by
+  unfold scanFlowMappingEndIx; rfl
+
+theorem scanFlowMappingEndIx_stack_popped {input : String}
+    (s : ScannerStateIx input) :
+    (scanFlowMappingEndIx s).simpleKeyStack = s.simpleKeyStack.pop := by
+  unfold scanFlowMappingEndIx; rfl
+
+theorem scanFlowEntryIx_clears_simpleKey {input : String}
+    (s s' : ScannerStateIx input) (h : scanFlowEntryIx s = .ok s') :
+    s'.simpleKey.possible = false := by
+  unfold scanFlowEntryIx at h
+  simp only [bind, Except.bind, pure, Pure.pure, Except.pure,
+             Except.ok.injEq] at h
+  subst h
+  show ((scanValuePrepareIx s).emit YamlToken.flowEntry).advance.simpleKey.possible = false
+  rw [advance_preserves_simpleKey, emit_preserves_simpleKey]
+  exact scanValuePrepareIx_clears_simpleKey s
+
+theorem scanFlowEntryIx_preserves_simpleKeyStack {input : String}
+    (s s' : ScannerStateIx input) (h : scanFlowEntryIx s = .ok s') :
+    s'.simpleKeyStack = s.simpleKeyStack := by
+  unfold scanFlowEntryIx at h
+  simp only [bind, Except.bind, pure, Pure.pure, Except.pure,
+             Except.ok.injEq] at h
+  subst h
+  show ((scanValuePrepareIx s).emit YamlToken.flowEntry).advance.simpleKeyStack =
+        s.simpleKeyStack
+  rw [advance_preserves_simpleKeyStack, emit_preserves_simpleKeyStack,
+      scanValuePrepareIx_preserves_simpleKeyStack]
+
 end L4YAML.Proofs.Indexed.ScannerPlainScalarValid
