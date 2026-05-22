@@ -1517,7 +1517,7 @@ theorem trimTrailingWSIx_preserves_head (content : String) (c : Char)
 
 /-- Helper: `List.dropWhile p` on `(xs ++ ys)` with all-`p` `xs`
     skips through `xs` and recurses on `ys`. -/
-private theorem dropWhile_append_all (p : Char → Bool) (xs ys : List Char)
+theorem dropWhile_append_all (p : Char → Bool) (xs ys : List Char)
     (hxs : ∀ x ∈ xs, p x = true) :
     List.dropWhile p (xs ++ ys) = List.dropWhile p ys := by
   induction xs with
@@ -1549,16 +1549,16 @@ theorem trimTrailingWSIx_append_whitespace (a b : String)
 The loop only appends to `content` (never shrinks it). Indexed twin of
 legacy `collectPlainScalarLoop_content_isPrefix`. -/
 
-private theorem prefix_of_append_string (a b : String) :
+theorem prefix_of_append_string (a b : String) :
     a.toList <+: (a ++ b).toList := by
   rw [String.toList_append]; exact ⟨b.toList, rfl⟩
 
-private theorem prefix_of_append_string_3 (a b c : String) :
+theorem prefix_of_append_string_3 (a b c : String) :
     a.toList <+: (a ++ b ++ c).toList := by
   rw [String.toList_append, String.toList_append]
   exact ⟨b.toList ++ c.toList, by rw [List.append_assoc]⟩
 
-private theorem bool_eq_false_of_not_eq_true {b : Bool} (h : ¬ b = true) : b = false := by
+theorem bool_eq_false_of_not_eq_true {b : Bool} (h : ¬ b = true) : b = false := by
   cases b
   · rfl
   · exact absurd rfl h
