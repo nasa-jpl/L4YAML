@@ -5067,4 +5067,53 @@ theorem scanFlowEntryIx_preserves_simpleKeyStack {input : String}
   rw [advance_preserves_simpleKeyStack, emit_preserves_simpleKeyStack,
       scanValuePrepareIx_preserves_simpleKeyStack]
 
+/-! ## §12f  Per-scanner `_tokens_eq` rfl-bridges (Step 6d.1e.12c-scout)
+
+Indexed twins of legacy `scan*_preserves_prefix` infrastructure.
+The full per-scanner `_preserves_prefix` Ix family encounters a
+recurring **motive-not-type-correct** wall when Lean's
+record-update notation (`{ unwindIndentsIx s c with simpleKey :=
+… }`) elaborates as `let __src := …; { __src with … }` and the
+`(stateExpr).tokens[i]'_` access carries the dependent bound
+proof through the rewrite motive — `rw [scanX_tokens_eq]` and
+`rw [emit_preserves_tokens_at …]` both fail with motive errors,
+and `change` over the same patterns fails to unify across the
+`__src` let-zeta.
+
+The `_tokens_eq` rfl-bridges below establish that each scanner's
+`.tokens` field equals a clean `(... .emit tok).tokens` form
+modulo record-update opacity — these compile (verified) and are
+the right primitives for §12c-dispatchers. The full
+`_preserves_prefix` lemmas that turn these into indexed accesses
+are deferred to a substrate-fix follow-up step (12c.1: prefix
+infrastructure; 12c.2: dispatcher composition; 12c.3: discharge
+the 2 staging axioms).
+
+See Reflection 91 in the Blueprint for the substrate-fix detail. -/
+
+theorem scanFlowSequenceStartIx_tokens_eq {input : String}
+    (s : ScannerStateIx input) :
+    (scanFlowSequenceStartIx s).tokens =
+      (s.emit YamlToken.flowSequenceStart).tokens := rfl
+
+theorem scanFlowSequenceEndIx_tokens_eq {input : String}
+    (s : ScannerStateIx input) :
+    (scanFlowSequenceEndIx s).tokens =
+      (s.emit YamlToken.flowSequenceEnd).tokens := rfl
+
+theorem scanFlowMappingStartIx_tokens_eq {input : String}
+    (s : ScannerStateIx input) :
+    (scanFlowMappingStartIx s).tokens =
+      (s.emit YamlToken.flowMappingStart).tokens := rfl
+
+theorem scanFlowMappingEndIx_tokens_eq {input : String}
+    (s : ScannerStateIx input) :
+    (scanFlowMappingEndIx s).tokens =
+      (s.emit YamlToken.flowMappingEnd).tokens := rfl
+
+theorem scanDocumentStartIx_tokens_eq {input : String}
+    (s : ScannerStateIx input) :
+    (scanDocumentStartIx s).tokens =
+      ((unwindIndentsIx s (-1)).emit YamlToken.documentStart).tokens := rfl
+
 end L4YAML.Proofs.Indexed.ScannerPlainScalarValid
