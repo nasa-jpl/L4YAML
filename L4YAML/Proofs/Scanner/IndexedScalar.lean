@@ -1568,12 +1568,54 @@ theorem collectPlainScalarLoopIx_content_isPrefix {input : String}
     (contentIndent fuel : Nat) :
     content.toList <+:
       (collectPlainScalarLoopIx c content spaces inFlow contentIndent fuel).1.toList := by
-  -- The proof is by induction on fuel + case analysis on `c.peek?` and
-  -- the cascade of branch conditions. Termination/EOF arms yield the
-  -- prefix trivially; recursive arms compose the structural prefix
-  -- fact with the IH. Mechanical but lengthy; deferred to follow-up
-  -- (see Step 6d.1e.11b reflection in Blueprint).
-  sorry
+  induction fuel generalizing c content spaces with
+  | zero =>
+    unfold collectPlainScalarLoopIx
+    exact prefix_of_append_string content spaces
+  | succ fuel' ih =>
+    unfold collectPlainScalarLoopIx
+    split
+    · exact prefix_of_append_string content spaces        -- peek? = none
+    · rename_i ch _                                       -- peek? = some ch
+      split
+      · exact List.prefix_rfl                              -- isComment && spaces > 0
+      split
+      · exact List.prefix_rfl                              -- ':' terminates
+      split
+      · -- ':' continues
+        exact List.IsPrefix.trans
+          (prefix_of_append_string_3 content spaces (String.singleton ch))
+          (ih c.advance (content ++ spaces ++ String.singleton ch) "")
+      split
+      · exact List.prefix_rfl                              -- flow indicator
+      split
+      · -- isLineBreak
+        split
+        · -- inFlow: flow line break
+          split
+          · exact List.prefix_rfl                          -- post-fold peek = some '#'
+          · -- recurse with content ++ folded
+            exact List.IsPrefix.trans
+              (prefix_of_append_string content (foldQuotedNewlinesIx c).1)
+              (ih _ _ _)
+        · -- !inFlow: block line break
+          split
+          · exact List.prefix_rfl                          -- handleBlock = none
+          · rename_i folded cAfterFold _
+            split
+            · exact List.prefix_rfl                        -- post-fold peek = some '#'
+            · -- recurse with content ++ folded
+              exact List.IsPrefix.trans
+                (prefix_of_append_string content folded)
+                (ih cAfterFold (content ++ folded) "")
+      split
+      · exact ih c.advance content (spaces.push ch)        -- whitespace
+      split
+      · exact List.prefix_rfl                              -- !isPlainSafe
+      · -- plain-safe content
+        exact List.IsPrefix.trans
+          (prefix_of_append_string_3 content spaces (String.singleton ch))
+          (ih c.advance (content ++ spaces ++ String.singleton ch) "")
 
 /-! ### B3.3 indexed analog — `collectPlainScalarLoopIx_preserves_contentInv`
 
@@ -1586,20 +1628,314 @@ theorem collectPlainScalarLoopIx_preserves_contentInv {input : String}
     (c : IxCursor input) (content spaces : String) (inFlow : Bool)
     (contentIndent fuel : Nat)
     (inv : PlainContentInvIx content spaces inFlow c)
-    (_bh : BoundaryHashIx content spaces c) :
+    (bh : BoundaryHashIx content spaces c) :
     ∃ content' spaces',
       (collectPlainScalarLoopIx c content spaces inFlow contentIndent fuel).1 =
         content' ++ spaces' ∧
       PlainContentInvIx content' spaces' inFlow
         (collectPlainScalarLoopIx c content spaces inFlow contentIndent fuel).2 := by
-  -- Mirrors the legacy B3.3 preservation by induction on fuel with the
-  -- 7-arm cascade. Termination arms yield `⟨content, "", _, inv.drop_spaces⟩`;
-  -- EOF/zero yield `⟨content, spaces, rfl, inv⟩`. Recursive arms construct
-  -- the post-step invariant via `PlainContentInvIx.of_fold` (linebreak
-  -- arms) or direct `noColonSpaceProp_append` / `noSpaceHashProp_append`
-  -- (colon-continue / content arms) and apply the IH. Deferred to
-  -- follow-up.
-  sorry
+  -- Helper: termination-arm witness `⟨content, "", _, inv.drop_spaces⟩`.
+  have term : ∀ {input' : String} {c' : IxCursor input'} {content' spaces' : String} {inFlow' : Bool},
+      PlainContentInvIx content' spaces' inFlow' c' →
+      ∃ content'' spaces'',
+        ((content', c') : String × IxCursor input').1 = content'' ++ spaces'' ∧
+        PlainContentInvIx content'' spaces'' inFlow' ((content', c') : String × IxCursor input').2 :=
+    fun {_ _ _ _ _} inv' => ⟨_, "", String.append_empty.symm, inv'.drop_spaces⟩
+  induction fuel generalizing c content spaces with
+  | zero =>
+    unfold collectPlainScalarLoopIx
+    exact ⟨content, spaces, rfl, inv⟩
+  | succ fuel' ih =>
+    unfold collectPlainScalarLoopIx
+    split
+    · -- peek? = none
+      exact ⟨content, spaces, rfl, inv⟩
+    · rename_i ch hpeek
+      have hch_lb_to_prop : isLineBreakBool ch = true → isLineBreakProp ch :=
+        fun h => (isLineBreak_iff ch).mp h
+      split
+      · -- (T1) isComment && spaces > 0 → terminate
+        exact term inv
+      split
+      · -- (T2) ':' && colonTerminates → terminate
+        exact term inv
+      split
+      · -- (R1) ':' && !colonTerminates → recurse with content ++ spaces ++ ":"
+        rename_i h_mv
+        rename_i h_not_mv_colt
+        -- ch = ':'
+        have h_ch_eq : ch = ':' := by
+          simp [isMappingValueBool] at h_mv; exact h_mv
+        subst h_ch_eq
+        -- The condition is `!(isMapVal && colonTerm)`, with isMapVal=true:
+        have h_colt_false : colonTerminatesPlain c inFlow = false := by
+          simp [h_mv] at h_not_mv_colt
+          exact h_not_mv_colt
+        obtain ⟨n, h_pa1, h_n_notblank, _⟩ :=
+          colonTerminatesPlain_false_iff c inFlow h_colt_false
+        have h_adv_peek : c.advance.peek? = some n := by
+          rw [IxCursor.advance_peek_eq_peekAt_one c hpeek, h_pa1]
+        have hNotBlank_n : ¬ isBlankProp n := by
+          intro hb
+          have := (isBlank_iff n).mpr hb
+          rw [h_n_notblank] at this; exact Bool.noConfusion this
+        -- Build next-iter invariant.
+        refine ih c.advance (content ++ spaces ++ String.singleton ':') "" ?_ ?_
+        · -- PlainContentInvIx
+          refine {
+            content_noColonSpace := ?_
+            content_noSpaceHash := ?_
+            content_noFlowIndicators := ?_
+            spaces_whitespace := fun _ hc => by simp [String.toList] at hc
+            boundary_colon := ?_
+          }
+          · -- noColonSpaceProp (content ++ spaces ++ ":")
+            apply noColonSpaceProp_append
+            · apply noColonSpaceProp_append content spaces
+                  inv.content_noColonSpace
+                  (noColonSpaceProp_of_whitespace spaces inv.spaces_whitespace)
+              intro ⟨hcl, hsh⟩
+              have := (inv.boundary_colon hcl).1
+              rw [this] at hsh; simp [String.toList] at hsh
+            · -- noColonSpaceProp (singleton ':')
+              intro ⟨i, h1, h2⟩
+              simp at h2
+            · -- boundary: ¬((content++spaces).getLast? = ':' ∧ (singleton ':').head? = some ' ')
+              intro ⟨_, h2⟩
+              simp at h2
+          · -- noSpaceHashProp (content ++ spaces ++ ":")
+            apply noSpaceHashProp_append
+            · apply noSpaceHashProp_append content spaces
+                  inv.content_noSpaceHash
+                  (noSpaceHashProp_of_whitespace spaces inv.spaces_whitespace)
+              intro ⟨_, hh⟩
+              cases hl : spaces.toList with
+              | nil => simp [hl] at hh
+              | cons x xs =>
+                simp [hl] at hh; rw [hh] at hl
+                exact absurd (inv.spaces_whitespace '#' (hl ▸ List.Mem.head _))
+                  (by simp [isWhiteSpaceProp, isSpaceProp, isTabProp])
+            · -- noSpaceHashProp (singleton ':')
+              intro ⟨i, h1, h2⟩
+              simp at h2
+            · intro ⟨_, hh⟩
+              simp at hh
+          · -- noFlowIndicators
+            intro hflow
+            apply noFlowIndicatorsProp_append
+            · apply noFlowIndicatorsProp_append _ _
+                  (inv.content_noFlowIndicators hflow)
+                  (noFlowIndicatorsProp_of_whitespace spaces inv.spaces_whitespace)
+            · intro x hx
+              simp at hx
+              subst hx
+              simp [isFlowIndicatorProp]
+          · -- boundary_colon for next iter: content ends with ':' (yes, ch = ':'); spaces' = ""; peek nonblank
+            intro hcolon
+            refine ⟨rfl, ?_⟩
+            intro n' hn'
+            have : n = n' := by rw [h_adv_peek] at hn'; exact Option.some.inj hn'
+            subst this
+            exact hNotBlank_n
+        · -- BoundaryHashIx for next iter: spaces' = "" but content ends with ':' not ' '
+          intro hcolon _
+          exfalso
+          have h_singleton : (String.singleton ':').toList = [':'] := String.toList_singleton ':'
+          have hLast : (content ++ spaces ++ String.singleton ':').toList.getLast? = some ':' := by
+            rw [String.toList_append, h_singleton]
+            simp [List.getLast?_append]
+          rw [hLast] at hcolon
+          exact absurd hcolon (by decide)
+      split
+      · -- (T3) inFlow && flow indicator → terminate
+        exact term inv
+      split
+      · -- isLineBreak
+        rename_i hLB_b
+        have hLB : isLineBreakProp ch := hch_lb_to_prop hLB_b
+        split
+        · -- inFlow
+          split
+          · -- (T4) foldPeek = some '#' → terminate
+            exact term inv
+          · -- (R2) recurse with content ++ folded
+            rename_i h_foldPeek
+            have h_notHash : ∀ n, (foldQuotedNewlinesIx c).2.peek? = some n → n ≠ '#' := by
+              intro n hn heq
+              subst heq
+              -- h_foldPeek is the catchall; need to extract that foldPeek ≠ some '#'
+              -- but h_foldPeek may just say `(foldQuotedNewlinesIx c).2.peek? = ?x` for the wildcard
+              -- Recover: since we're in the `_` arm, the `some '#'` arm doesn't fire.
+              -- We need to rule out `peek? = some '#'`. The h_foldPeek hypothesis from
+              -- `split` on `match ... | some '#' => _ | _ => _` should say peek? ≠ some '#'
+              -- via the match equation hypotheses.
+              exact h_foldPeek hn
+            have hfold := foldQuotedNewlinesIx_result_form c
+            refine ih (foldQuotedNewlinesIx c).2 (content ++ (foldQuotedNewlinesIx c).1) "" ?_ ?_
+            · exact PlainContentInvIx.of_fold inv ch hpeek hLB _ hfold h_notHash
+            · -- BH next iter
+              intro hcolon _
+              rcases hfold with hsp | ⟨n, hn, hreplic⟩
+              · -- folded = " ": getLast = ' '
+                rw [hsp] at hcolon
+                intro n' hn'
+                exact h_notHash n' hn'
+              · -- folded = "\n+": getLast = '\n' ≠ ' '
+                exfalso
+                rw [hreplic] at hcolon
+                rw [getLast_append_replicate_newline content n hn] at hcolon
+                exact absurd hcolon (by decide)
+        · -- !inFlow
+          split
+          · -- (T5) handleBlock = none → terminate
+            exact term inv
+          · rename_i folded cAfterFold h_handle
+            split
+            · -- (T6) cAfterFold.peek? = some '#' → terminate
+              exact term inv
+            · -- (R3) recurse with content ++ folded
+              rename_i h_blockPeek
+              have h_notHash : ∀ n, cAfterFold.peek? = some n → n ≠ '#' := by
+                intro n hn heq
+                subst heq
+                exact h_blockPeek hn
+              have hfold := handleBlockLineBreakIx_content_form c contentIndent h_handle
+              refine ih cAfterFold (content ++ folded) "" ?_ ?_
+              · exact PlainContentInvIx.of_fold inv ch hpeek hLB folded hfold h_notHash
+              · intro hcolon _
+                rcases hfold with hsp | ⟨n, hn, hreplic⟩
+                · rw [hsp] at hcolon
+                  intro n' hn'
+                  exact h_notHash n' hn'
+                · exfalso
+                  rw [hreplic] at hcolon
+                  rw [getLast_append_replicate_newline content n hn] at hcolon
+                  exact absurd hcolon (by decide)
+      split
+      · -- (R4) isWhitespace → recurse with same content, spaces.push ch
+        rename_i hWS_b
+        have hWS : isWhiteSpaceProp ch := (isWhiteSpace_iff ch).mp hWS_b
+        refine ih c.advance content (spaces.push ch) ?_ ?_
+        · -- inv next iter
+          refine {
+            content_noColonSpace := inv.content_noColonSpace
+            content_noSpaceHash := inv.content_noSpaceHash
+            content_noFlowIndicators := inv.content_noFlowIndicators
+            spaces_whitespace := ?_
+            boundary_colon := ?_
+          }
+          · intro x hx
+            rw [String.toList_push] at hx
+            rcases List.mem_append.mp hx with hx' | hx'
+            · exact inv.spaces_whitespace x hx'
+            · simp at hx'; subst hx'; exact hWS
+          · intro hcolon
+            exfalso
+            exact (inv.boundary_colon hcolon).2 ch hpeek (Or.inl hWS)
+        · -- BH next iter: spaces' = spaces.push ch, which is non-empty
+          intro _ habs
+          exfalso
+          have hne : (spaces.push ch).toList ≠ [] := by
+            rw [String.toList_push]; simp
+          apply hne
+          rw [habs]; rfl
+      split
+      · -- (T7) !isPlainSafe → terminate
+        exact term inv
+      · -- (R5) plain-safe content → recurse with content ++ spaces ++ singleton ch
+        rename_i hPS_b
+        rename_i hNotWS
+        rename_i hNotLB
+        rename_i hNotFlowInd
+        rename_i hNotMV
+        rename_i _hNotMV_colt
+        rename_i hNotComm
+        -- hPS_b might be `!isPlainSafeBool ch inFlow = false` from the !isPlainSafe split's else
+        have hPS : isPlainSafeBool ch inFlow = true := by
+          simp at hPS_b; exact hPS_b
+        have hPSp : isPlainSafeProp ch inFlow := (isPlainSafe_iff ch inFlow).mp hPS
+        have hNotSpace : ch ≠ ' ' := not_space_of_plainSafe ch inFlow hPSp
+        have hNotMVp : isMappingValueBool ch = false :=
+          bool_eq_false_of_not_eq_true hNotMV
+        have hch_neq_colon : ch ≠ ':' := by
+          intro h; rw [h] at hNotMVp
+          simp [isMappingValueBool] at hNotMVp
+        refine ih c.advance (content ++ spaces ++ String.singleton ch) "" ?_ ?_
+        · refine {
+            content_noColonSpace := ?_
+            content_noSpaceHash := ?_
+            content_noFlowIndicators := ?_
+            spaces_whitespace := fun _ hc => by simp [String.toList] at hc
+            boundary_colon := ?_
+          }
+          · apply noColonSpaceProp_append
+            · apply noColonSpaceProp_append content spaces
+                  inv.content_noColonSpace
+                  (noColonSpaceProp_of_whitespace spaces inv.spaces_whitespace)
+              intro ⟨hcl, hsh⟩
+              have := (inv.boundary_colon hcl).1
+              rw [this] at hsh; simp [String.toList] at hsh
+            · intro ⟨_, h2⟩; simp [String.toList_singleton] at h2
+            · intro ⟨_, hh⟩
+              simp [String.toList_singleton] at hh
+              exact absurd hh hNotSpace
+          · apply noSpaceHashProp_append
+            · apply noSpaceHashProp_append content spaces
+                  inv.content_noSpaceHash
+                  (noSpaceHashProp_of_whitespace spaces inv.spaces_whitespace)
+              intro ⟨_, hh⟩
+              cases hl : spaces.toList with
+              | nil => simp [hl] at hh
+              | cons x xs =>
+                simp [hl] at hh; rw [hh] at hl
+                exact absurd (inv.spaces_whitespace '#' (hl ▸ List.Mem.head _))
+                  (by simp [isWhiteSpaceProp, isSpaceProp, isTabProp])
+            · intro ⟨_, h2⟩; simp [String.toList_singleton] at h2
+            · intro ⟨hgl, hch_eq⟩
+              simp [String.toList_singleton] at hch_eq
+              subst hch_eq
+              cases hl : spaces.toList with
+              | nil =>
+                simp [String.toList_append, hl] at hgl
+                have hse : spaces = "" := by
+                  rw [← String.toList_inj]; rw [hl]; rfl
+                -- bh: content ends with ' ', spaces = "", c.peek? = some '#' → contradiction
+                -- (We have ch = '#' from subst above; hpeek : c.peek? = some '#'.)
+                exact absurd rfl (bh hgl hse '#' hpeek)
+              | cons _ _ =>
+                -- spaces is non-empty; the loop's isComment && spaces.length > 0 check would have fired.
+                have hlen : spaces.length > 0 := by
+                  rw [← String.length_toList]; simp [hl]
+                have hIsComm : isCommentBool '#' = true := by
+                  simp [isCommentBool]
+                apply hNotComm
+                simp [hIsComm, hlen]
+          · intro hflow
+            have hNotFI : ¬isFlowIndicatorProp ch := by
+              have hp := hPSp; rw [hflow] at hp
+              simp [isPlainSafeProp] at hp; exact hp.2.2
+            apply noFlowIndicatorsProp_append
+            · apply noFlowIndicatorsProp_append _ _
+                  (inv.content_noFlowIndicators hflow)
+                  (noFlowIndicatorsProp_of_whitespace spaces inv.spaces_whitespace)
+            · intro x hx; simp [String.toList_singleton] at hx; subst hx; exact hNotFI
+          · intro hcolon
+            exfalso
+            have h_singleton : (String.singleton ch).toList = [ch] := String.toList_singleton ch
+            have h_last_ch : (content ++ spaces ++ String.singleton ch).toList.getLast? = some ch := by
+              rw [String.toList_append, h_singleton]
+              simp [List.getLast?_append]
+            rw [h_last_ch] at hcolon
+            exact hch_neq_colon (Option.some.inj hcolon)
+        · -- BH next iter: spaces' = "", need content ++ spaces ++ singleton ch ends with ' '
+          intro hlast _
+          exfalso
+          have h_singleton : (String.singleton ch).toList = [ch] := String.toList_singleton ch
+          have h_last_ch : (content ++ spaces ++ String.singleton ch).toList.getLast? = some ch := by
+            rw [String.toList_append, h_singleton]
+            simp [List.getLast?_append]
+          rw [h_last_ch] at hlast
+          exact absurd (Option.some.inj hlast) hNotSpace
 
 /-! ### B3.4 indexed analog — `_validFirst_and_head`
 
@@ -1610,20 +1946,331 @@ twin of legacy `collectPlainScalarLoop_validFirst_and_head`. -/
 
 theorem collectPlainScalarLoopIx_validFirst_and_head {input : String}
     (c : IxCursor input) (inFlow : Bool) (contentIndent fuel : Nat)
-    (c0 : Char) (_hpeek : c.peek? = some c0)
-    (_hcs : canStartPlainScalarBool c0 (c.peekAt? 1) inFlow = true)
-    (_hne : (collectPlainScalarLoopIx c "" "" inFlow contentIndent fuel).1 ≠ "") :
+    (c0 : Char) (hpeek : c.peek? = some c0)
+    (hcs : canStartPlainScalarBool c0 (c.peekAt? 1) inFlow = true)
+    (hne : (collectPlainScalarLoopIx c "" "" inFlow contentIndent fuel).1 ≠ "") :
     validPlainFirstProp
       (collectPlainScalarLoopIx c "" "" inFlow contentIndent fuel).1 inFlow ∧
     (collectPlainScalarLoopIx c "" "" inFlow contentIndent fuel).1.toList.head? =
       some c0 := by
-  -- Two-level fuel inspection for exception c0: after the first step the
-  -- content becomes `singleton c0`; for the second step (when exception
-  -- c0 + result has ≥ 2 chars), the second char must be `c.peekAt? 1`
-  -- by `canStart_exception_next` + `advance_peek_eq_peekAt_one`. For
-  -- non-exception c0, validPlainFirst follows from
-  -- `canStart_nonException_to_prop`. Deferred to follow-up.
-  sorry
+  have h_nws := canStart_not_whitespace c0 (c.peekAt? 1) inFlow hcs
+  have h_nlb := canStart_not_linebreak c0 (c.peekAt? 1) inFlow hcs
+  have h_ps := canStart_isPlainSafe c0 (c.peekAt? 1) inFlow hcs
+  -- Helper: in the first iteration with content = "" and spaces = "",
+  -- the comment arm doesn't fire (spaces.length = 0).
+  have hNotCommArm : (isCommentBool c0 && decide (("" : String).length > 0)) = false := by simp
+  -- Helper: the flowInd arm doesn't fire (canStart implies plain-safe ⇒ not flow-ind in flow).
+  have hNotFI : (inFlow && isFlowIndicatorBool c0) = false := by
+    cases hf : inFlow with
+    | false => simp [hf]
+    | true =>
+      simp only [hf, Bool.true_and]
+      rw [hf] at h_ps
+      have hpsp : isPlainSafeProp c0 true := (isPlainSafe_iff c0 true).mp h_ps
+      simp only [isPlainSafeProp, ↓reduceIte] at hpsp
+      have hnf : ¬ isFlowIndicatorProp c0 := hpsp.2.2
+      cases hfi : isFlowIndicatorBool c0 with
+      | false => rfl
+      | true => exfalso; exact hnf ((isFlowIndicator_iff c0).mp hfi)
+  cases fuel with
+  | zero =>
+    exfalso; apply hne
+    show ("" ++ "" : String) = ""
+    rfl
+  | succ fuel' =>
+    -- Case on c0 = ':' (determines whether we hit the colon-continue or content arm)
+    by_cases hcolon : c0 = ':'
+    · -- c0 = ':'
+      have hmv : isMappingValueBool c0 = true := by subst hcolon; simp [isMappingValueBool]
+      by_cases hct : colonTerminatesPlain c inFlow = true
+      · -- terminate: result = ("", c). hne contradicts.
+        exfalso; apply hne
+        have hNotComm : isCommentBool c0 = false := by subst hcolon; simp [isCommentBool]
+        rw [collectPlainScalarLoopIx_colon_terminate c "" "" inFlow contentIndent fuel' hpeek
+              hNotComm hmv hct]
+      · -- continue
+        have hct_f : colonTerminatesPlain c inFlow = false :=
+          bool_eq_false_of_not_eq_true hct
+        have hNotComm : isCommentBool c0 = false := by subst hcolon; simp [isCommentBool]
+        have h_reduce :
+            collectPlainScalarLoopIx c "" "" inFlow contentIndent (fuel' + 1) =
+            collectPlainScalarLoopIx c.advance (String.singleton c0) "" inFlow contentIndent fuel' := by
+          rw [collectPlainScalarLoopIx_colon_continue c "" "" inFlow contentIndent fuel' hpeek
+                hNotComm hmv hct_f]
+          show collectPlainScalarLoopIx c.advance ("" ++ "" ++ String.singleton c0) ""
+                  inFlow contentIndent fuel' = _
+          rw [String.empty_append, String.empty_append]
+        rw [h_reduce]
+        -- Apply _content_isPrefix
+        have hpfx := collectPlainScalarLoopIx_content_isPrefix
+          c.advance (String.singleton c0) "" inFlow contentIndent fuel'
+        obtain ⟨sfx, hsfx⟩ := hpfx
+        simp only [String.toList_singleton, List.singleton_append] at hsfx
+        have h_head :
+            (collectPlainScalarLoopIx c.advance (String.singleton c0) ""
+                inFlow contentIndent fuel').1.toList.head? = some c0 := by
+          rw [← hsfx]; simp
+        refine ⟨?_, h_head⟩
+        -- validPlainFirst — c0 = ':' is an exception. Two-level fuel inspection.
+        -- result.1.toList = c0 :: sfx
+        -- If sfx = [], result.1 = singleton ':'. validPlainFirst singleton exception is True.
+        -- If sfx = c1 :: rest, inspect second-level loop iteration.
+        have hexc : c0 = '-' ∨ c0 = '?' ∨ c0 = ':' := Or.inr (Or.inr hcolon)
+        obtain ⟨n, hnext, hps_n, h_nws_n, h_nlb_n⟩ :=
+          canStart_exception_next c0 (c.peekAt? 1) inFlow hexc hcs
+        cases hsfx_cases : sfx with
+        | nil =>
+          rw [hsfx_cases] at hsfx
+          have h_res_eq :
+              (collectPlainScalarLoopIx c.advance (String.singleton c0) ""
+                  inFlow contentIndent fuel').1 = String.singleton c0 := by
+            rw [← String.toList_inj, String.toList_singleton, ← hsfx]
+          rw [h_res_eq]
+          exact validPlainFirst_singleton_exception c0 inFlow hexc
+        | cons c1 rest =>
+          -- result.1.toList = c0 :: c1 :: rest, with c1 = n (the second char from canStart_exception_next).
+          -- Second-level fuel inspection.
+          cases fuel' with
+          | zero =>
+            -- Inner loop: collectPlainScalarLoopIx c.advance (singleton c0) "" inFlow contentIndent 0 = (singleton c0, c.advance)
+            -- So result.1 = singleton c0, which has toList = [c0]. But hsfx says result.1.toList = c0 :: c1 :: rest. Contradiction.
+            exfalso
+            have h_inner : (collectPlainScalarLoopIx c.advance (String.singleton c0) "" inFlow contentIndent 0).1
+                = String.singleton c0 ++ "" := by
+              rfl
+            rw [hsfx_cases] at hsfx
+            rw [h_inner, String.append_empty] at hsfx
+            simp [String.toList_singleton] at hsfx
+          | succ fuel'' =>
+            -- Now inspect c.advance.peek?.
+            have h_adv_peek : c.advance.peek? = some n := by
+              rw [IxCursor.advance_peek_eq_peekAt_one c hpeek, hnext]
+            -- Reduce the inner loop. n is plain-safe, ¬WS, ¬LB.
+            -- Case on whether n = ':' (different arm).
+            by_cases hn_colon : n = ':'
+            · -- n = ':' → second iter takes ':' continue or terminate.
+              have hmv_n : isMappingValueBool n = true := by subst hn_colon; simp [isMappingValueBool]
+              by_cases hct_n : colonTerminatesPlain c.advance inFlow = true
+              · -- terminate: inner-inner = (singleton c0, c.advance)
+                have h_inner :
+                    (collectPlainScalarLoopIx c.advance (String.singleton c0) "" inFlow contentIndent (fuel'' + 1)).1
+                      = String.singleton c0 := by
+                  have hNotComm_n : isCommentBool n = false := by subst hn_colon; simp [isCommentBool]
+                  rw [collectPlainScalarLoopIx_colon_terminate c.advance (String.singleton c0) "" inFlow contentIndent fuel''
+                        h_adv_peek hNotComm_n hmv_n hct_n]
+                exfalso
+                rw [hsfx_cases] at hsfx
+                rw [h_inner] at hsfx
+                simp [String.toList_singleton] at hsfx
+              · -- continue: inner becomes singleton c0 ++ "" ++ singleton ':' = "c0:"
+                have hct_n_f : colonTerminatesPlain c.advance inFlow = false :=
+                  bool_eq_false_of_not_eq_true hct_n
+                have hNotComm_n : isCommentBool n = false := by subst hn_colon; simp [isCommentBool]
+                have h_inner_reduce :
+                    collectPlainScalarLoopIx c.advance (String.singleton c0) "" inFlow contentIndent (fuel'' + 1) =
+                    collectPlainScalarLoopIx c.advance.advance (String.singleton c0 ++ String.singleton n) ""
+                      inFlow contentIndent fuel'' := by
+                  rw [collectPlainScalarLoopIx_colon_continue c.advance (String.singleton c0) "" inFlow contentIndent fuel''
+                        h_adv_peek hNotComm_n hmv_n hct_n_f]
+                  show collectPlainScalarLoopIx _ (String.singleton c0 ++ "" ++ String.singleton n) "" _ _ _ = _
+                  rw [String.append_empty]
+                -- Apply prefix fact on inner.
+                have hpfx2 := collectPlainScalarLoopIx_content_isPrefix
+                  c.advance.advance (String.singleton c0 ++ String.singleton n) "" inFlow contentIndent fuel''
+                obtain ⟨sfx2, hsfx2⟩ := hpfx2
+                have h_combined : (String.singleton c0 ++ String.singleton n).toList ++ sfx2 = c0 :: n :: sfx2 := by
+                  simp [String.toList_singleton, String.toList_append]
+                rw [h_combined] at hsfx2
+                rw [h_inner_reduce]
+                have h_res_form :
+                    (collectPlainScalarLoopIx c.advance.advance (String.singleton c0 ++ String.singleton n) "" inFlow contentIndent fuel'').1 =
+                    String.ofList (c0 :: n :: sfx2) := by
+                  rw [← String.toList_inj, String.toList_ofList]
+                  exact hsfx2.symm
+                rw [h_res_form]
+                simp only [validPlainFirstProp, String.toList_ofList]
+                rw [hnext] at hcs
+                exact (canStartPlainScalar_iff c0 (some n) inFlow).mp hcs
+            · -- n ≠ ':' → second iter takes plain-safe content arm or one of the impossible arms.
+              -- n is plain-safe, ¬WS, ¬LB, so the inner loop takes the plain-safe content arm
+              -- with content = singleton c0, spaces = "". Result content becomes singleton c0 ++ singleton n.
+              have hmv_n_f : isMappingValueBool n = false := by
+                simp [isMappingValueBool]; intro h; exact hn_colon h
+              -- hNotCommArm for inner: (isComment n && decide (("":String).length > 0)) = false
+              have hNotCommArm_n : (isCommentBool n && decide ((""  : String).length > 0)) = false := by simp
+              have hNotFI_n : (inFlow && isFlowIndicatorBool n) = false := by
+                cases hf : inFlow with
+                | false => simp [hf]
+                | true =>
+                  simp only [hf, Bool.true_and]
+                  rw [hf] at hps_n
+                  have hpsp_n : isPlainSafeProp n true := (isPlainSafe_iff n true).mp hps_n
+                  simp only [isPlainSafeProp, ↓reduceIte] at hpsp_n
+                  have hnf : ¬ isFlowIndicatorProp n := hpsp_n.2.2
+                  cases hfi : isFlowIndicatorBool n with
+                  | false => rfl
+                  | true => exfalso; exact hnf ((isFlowIndicator_iff n).mp hfi)
+              have h_inner_reduce :
+                  collectPlainScalarLoopIx c.advance (String.singleton c0) "" inFlow contentIndent (fuel'' + 1) =
+                  collectPlainScalarLoopIx c.advance.advance (String.singleton c0 ++ String.singleton n) ""
+                    inFlow contentIndent fuel'' := by
+                rw [collectPlainScalarLoopIx_content_gen c.advance (String.singleton c0) "" inFlow contentIndent fuel''
+                      h_adv_peek hNotCommArm_n hmv_n_f hNotFI_n h_nlb_n h_nws_n hps_n]
+                show collectPlainScalarLoopIx _ (String.singleton c0 ++ "" ++ String.singleton n) "" _ _ _ = _
+                rw [String.append_empty]
+              -- Same conclusion as above branch.
+              have hpfx2 := collectPlainScalarLoopIx_content_isPrefix
+                c.advance.advance (String.singleton c0 ++ String.singleton n) "" inFlow contentIndent fuel''
+              obtain ⟨sfx2, hsfx2⟩ := hpfx2
+              have h_combined : (String.singleton c0 ++ String.singleton n).toList ++ sfx2 = c0 :: n :: sfx2 := by
+                simp [String.toList_singleton, String.toList_append]
+              rw [h_combined] at hsfx2
+              rw [h_inner_reduce]
+              have h_res_form :
+                  (collectPlainScalarLoopIx c.advance.advance (String.singleton c0 ++ String.singleton n) "" inFlow contentIndent fuel'').1 =
+                  String.ofList (c0 :: n :: sfx2) := by
+                rw [← String.toList_inj, String.toList_ofList]
+                exact hsfx2.symm
+              rw [h_res_form]
+              simp only [validPlainFirstProp, String.toList_ofList]
+              rw [hnext] at hcs
+              exact (canStartPlainScalar_iff c0 (some n) inFlow).mp hcs
+    · -- c0 ≠ ':' → plain-safe content arm
+      have hmv_f : isMappingValueBool c0 = false := by
+        simp [isMappingValueBool]; intro h; exact hcolon h
+      have h_reduce :
+          collectPlainScalarLoopIx c "" "" inFlow contentIndent (fuel' + 1) =
+          collectPlainScalarLoopIx c.advance (String.singleton c0) "" inFlow contentIndent fuel' := by
+        rw [collectPlainScalarLoopIx_content_gen c "" "" inFlow contentIndent fuel' hpeek
+              hNotCommArm hmv_f hNotFI h_nlb h_nws h_ps]
+        show collectPlainScalarLoopIx c.advance ("" ++ "" ++ String.singleton c0) ""
+                inFlow contentIndent fuel' = _
+        rw [String.empty_append, String.empty_append]
+      rw [h_reduce]
+      have hpfx := collectPlainScalarLoopIx_content_isPrefix
+        c.advance (String.singleton c0) "" inFlow contentIndent fuel'
+      obtain ⟨sfx, hsfx⟩ := hpfx
+      simp only [String.toList_singleton, List.singleton_append] at hsfx
+      have h_head :
+          (collectPlainScalarLoopIx c.advance (String.singleton c0) ""
+              inFlow contentIndent fuel').1.toList.head? = some c0 := by
+        rw [← hsfx]; simp
+      refine ⟨?_, h_head⟩
+      -- validPlainFirst — c0 ≠ ':'. Is c0 an exception ('-' or '?')?
+      by_cases hexc : c0 = '-' ∨ c0 = '?' ∨ c0 = ':'
+      · -- Exception (but c0 ≠ ':' so it's '-' or '?')
+        obtain ⟨n, hnext, hps_n, h_nws_n, h_nlb_n⟩ :=
+          canStart_exception_next c0 (c.peekAt? 1) inFlow hexc hcs
+        cases hsfx_cases : sfx with
+        | nil =>
+          rw [hsfx_cases] at hsfx
+          have h_res_eq :
+              (collectPlainScalarLoopIx c.advance (String.singleton c0) ""
+                  inFlow contentIndent fuel').1 = String.singleton c0 := by
+            rw [← String.toList_inj, String.toList_singleton, ← hsfx]
+          rw [h_res_eq]
+          exact validPlainFirst_singleton_exception c0 inFlow hexc
+        | cons c1 rest =>
+          cases fuel' with
+          | zero =>
+            exfalso
+            have h_inner : (collectPlainScalarLoopIx c.advance (String.singleton c0) "" inFlow contentIndent 0).1
+                = String.singleton c0 ++ "" := by
+              rfl
+            rw [hsfx_cases] at hsfx
+            rw [h_inner, String.append_empty] at hsfx
+            simp [String.toList_singleton] at hsfx
+          | succ fuel'' =>
+            have h_adv_peek : c.advance.peek? = some n := by
+              rw [IxCursor.advance_peek_eq_peekAt_one c hpeek, hnext]
+            by_cases hn_colon : n = ':'
+            · -- second iter colon arm
+              have hmv_n : isMappingValueBool n = true := by subst hn_colon; simp [isMappingValueBool]
+              by_cases hct_n : colonTerminatesPlain c.advance inFlow = true
+              · have h_inner :
+                    (collectPlainScalarLoopIx c.advance (String.singleton c0) "" inFlow contentIndent (fuel'' + 1)).1
+                      = String.singleton c0 := by
+                  have hNotComm_n : isCommentBool n = false := by subst hn_colon; simp [isCommentBool]
+                  rw [collectPlainScalarLoopIx_colon_terminate c.advance (String.singleton c0) "" inFlow contentIndent fuel''
+                        h_adv_peek hNotComm_n hmv_n hct_n]
+                exfalso
+                rw [hsfx_cases] at hsfx
+                rw [h_inner] at hsfx
+                simp [String.toList_singleton] at hsfx
+              · have hct_n_f : colonTerminatesPlain c.advance inFlow = false :=
+                  bool_eq_false_of_not_eq_true hct_n
+                have hNotComm_n : isCommentBool n = false := by subst hn_colon; simp [isCommentBool]
+                have h_inner_reduce :
+                    collectPlainScalarLoopIx c.advance (String.singleton c0) "" inFlow contentIndent (fuel'' + 1) =
+                    collectPlainScalarLoopIx c.advance.advance (String.singleton c0 ++ String.singleton n) ""
+                      inFlow contentIndent fuel'' := by
+                  rw [collectPlainScalarLoopIx_colon_continue c.advance (String.singleton c0) "" inFlow contentIndent fuel''
+                        h_adv_peek hNotComm_n hmv_n hct_n_f]
+                  show collectPlainScalarLoopIx _ (String.singleton c0 ++ "" ++ String.singleton n) "" _ _ _ = _
+                  rw [String.append_empty]
+                have hpfx2 := collectPlainScalarLoopIx_content_isPrefix
+                  c.advance.advance (String.singleton c0 ++ String.singleton n) "" inFlow contentIndent fuel''
+                obtain ⟨sfx2, hsfx2⟩ := hpfx2
+                have h_combined : (String.singleton c0 ++ String.singleton n).toList ++ sfx2 = c0 :: n :: sfx2 := by
+                  simp [String.toList_singleton, String.toList_append]
+                rw [h_combined] at hsfx2
+                rw [h_inner_reduce]
+                have h_res_form :
+                    (collectPlainScalarLoopIx c.advance.advance (String.singleton c0 ++ String.singleton n) "" inFlow contentIndent fuel'').1 =
+                    String.ofList (c0 :: n :: sfx2) := by
+                  rw [← String.toList_inj, String.toList_ofList]
+                  exact hsfx2.symm
+                rw [h_res_form]
+                simp only [validPlainFirstProp, String.toList_ofList]
+                rw [hnext] at hcs
+                exact (canStartPlainScalar_iff c0 (some n) inFlow).mp hcs
+            · have hmv_n_f : isMappingValueBool n = false := by
+                simp [isMappingValueBool]; intro h; exact hn_colon h
+              have hNotCommArm_n : (isCommentBool n && decide ((""  : String).length > 0)) = false := by simp
+              have hNotFI_n : (inFlow && isFlowIndicatorBool n) = false := by
+                cases hf : inFlow with
+                | false => simp [hf]
+                | true =>
+                  simp only [hf, Bool.true_and]
+                  rw [hf] at hps_n
+                  have hpsp_n : isPlainSafeProp n true := (isPlainSafe_iff n true).mp hps_n
+                  simp only [isPlainSafeProp, ↓reduceIte] at hpsp_n
+                  have hnf : ¬ isFlowIndicatorProp n := hpsp_n.2.2
+                  cases hfi : isFlowIndicatorBool n with
+                  | false => rfl
+                  | true => exfalso; exact hnf ((isFlowIndicator_iff n).mp hfi)
+              have h_inner_reduce :
+                  collectPlainScalarLoopIx c.advance (String.singleton c0) "" inFlow contentIndent (fuel'' + 1) =
+                  collectPlainScalarLoopIx c.advance.advance (String.singleton c0 ++ String.singleton n) ""
+                    inFlow contentIndent fuel'' := by
+                rw [collectPlainScalarLoopIx_content_gen c.advance (String.singleton c0) "" inFlow contentIndent fuel''
+                      h_adv_peek hNotCommArm_n hmv_n_f hNotFI_n h_nlb_n h_nws_n hps_n]
+                show collectPlainScalarLoopIx _ (String.singleton c0 ++ "" ++ String.singleton n) "" _ _ _ = _
+                rw [String.append_empty]
+              have hpfx2 := collectPlainScalarLoopIx_content_isPrefix
+                c.advance.advance (String.singleton c0 ++ String.singleton n) "" inFlow contentIndent fuel''
+              obtain ⟨sfx2, hsfx2⟩ := hpfx2
+              have h_combined : (String.singleton c0 ++ String.singleton n).toList ++ sfx2 = c0 :: n :: sfx2 := by
+                simp [String.toList_singleton, String.toList_append]
+              rw [h_combined] at hsfx2
+              rw [h_inner_reduce]
+              have h_res_form :
+                  (collectPlainScalarLoopIx c.advance.advance (String.singleton c0 ++ String.singleton n) "" inFlow contentIndent fuel'').1 =
+                  String.ofList (c0 :: n :: sfx2) := by
+                rw [← String.toList_inj, String.toList_ofList]
+                exact hsfx2.symm
+              rw [h_res_form]
+              simp only [validPlainFirstProp, String.toList_ofList]
+              rw [hnext] at hcs
+              exact (canStartPlainScalar_iff c0 (some n) inFlow).mp hcs
+      · -- non-exception c0 → validPlainFirst directly
+        have h_csp := canStart_nonException_to_prop c0 (c.peekAt? 1) inFlow hexc hcs
+        have h_res_eq :
+            (collectPlainScalarLoopIx c.advance (String.singleton c0) "" inFlow contentIndent fuel').1 =
+              String.ofList (c0 :: sfx) := by
+          rw [← String.toList_inj, String.toList_ofList, hsfx]
+        rw [h_res_eq]
+        exact validPlainFirst_of_nonException c0 sfx inFlow hexc h_csp
 
 /-! ### `scanPlainScalarIx_content_valid` — the culminating theorem -/
 
