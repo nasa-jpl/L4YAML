@@ -2086,6 +2086,199 @@ theorem mk'_SimpleKeyPlaceholderInvIx (input : String) :
     SimpleKeyPlaceholderInvIx (ScannerStateIx.mk' input) :=
   SimpleKeyPlaceholderInvIx_of_not_possible _ rfl
 
+/-! ### §6e+  AllKeysPlaceholderInvIx — full 4-tuple invariant
+
+Indexed mirror of legacy `AllKeysPlaceholderInv` (lines 4264-4326 in
+`Proofs/Production/ScannerPlainScalarValid.lean`). The current-key
+`SimpleKeyPlaceholderInvIx` (defined above) is just the first conjunct;
+to thread the invariant through flow-start/flow-end scanners (which
+push the current key to a stack and later restore it) we additionally
+need:
+
+- `SimpleKeyStackPlaceholderInvIx` — every stacked key with `possible
+  = true` still has `.placeholder` at its `tokenIndex` and `+1`.
+- `SimpleKeyTokenDisjointIx` — the current key's `tokenIndex` pair is
+  strictly above every stacked key's pair, so `setIfInBounds` at the
+  current key (in `scanValuePrepareIx`) cannot corrupt stacked
+  placeholders.
+- `SimpleKeyStackOrderingIx` — stacked keys are themselves ordered by
+  `tokenIndex`, so popping the top preserves disjointness for the new
+  top.
+
+The combined `AllKeysPlaceholderInvIx` is what `scanLoopIx_preserves_*`
+threads; `SimpleKeyPlaceholderInvIx` is `.1` of it and remains the
+direct dependency of `scanValuePrepareIx_preserves_*`. -/
+
+/-- Every stacked key with `possible = true` is in bounds and its
+    `tokenIndex`/`+1` slots hold `.placeholder`. Indexed twin of legacy
+    `SimpleKeyStackPlaceholderInv`. -/
+def SimpleKeyStackPlaceholderInvIx {input : String} (s : ScannerStateIx input) : Prop :=
+  ∀ j (hj : j < s.simpleKeyStack.size),
+    (s.simpleKeyStack[j]'hj).possible = true →
+    (s.simpleKeyStack[j]'hj).tokenIndex < s.tokens.size ∧
+    (s.simpleKeyStack[j]'hj).tokenIndex + 1 < s.tokens.size ∧
+    (∀ (h1 : (s.simpleKeyStack[j]'hj).tokenIndex < s.tokens.size),
+      (s.tokens[(s.simpleKeyStack[j]'hj).tokenIndex]'h1).token = YamlToken.placeholder) ∧
+    (∀ (h2 : (s.simpleKeyStack[j]'hj).tokenIndex + 1 < s.tokens.size),
+      (s.tokens[(s.simpleKeyStack[j]'hj).tokenIndex + 1]'h2).token = YamlToken.placeholder)
+
+/-- Stacked key token-index pairs are strictly below the current key
+    pair. Indexed twin of legacy `SimpleKeyTokenDisjoint`. -/
+def SimpleKeyTokenDisjointIx {input : String} (s : ScannerStateIx input) : Prop :=
+  s.simpleKey.possible = true →
+    ∀ j (hj : j < s.simpleKeyStack.size),
+      (s.simpleKeyStack[j]'hj).possible = true →
+      (s.simpleKeyStack[j]'hj).tokenIndex + 1 < s.simpleKey.tokenIndex
+
+/-- Stacked keys are ordered by `tokenIndex`. Indexed twin of legacy
+    `SimpleKeyStackOrdering`. -/
+def SimpleKeyStackOrderingIx {input : String} (s : ScannerStateIx input) : Prop :=
+  ∀ j (hj : j < s.simpleKeyStack.size),
+    (s.simpleKeyStack[j]'hj).possible = true →
+    ∀ k (hk : k < j),
+      (s.simpleKeyStack[k]'(by omega)).possible = true →
+      (s.simpleKeyStack[k]'(by omega)).tokenIndex + 1 <
+        (s.simpleKeyStack[j]'hj).tokenIndex
+
+/-- Combined invariant for the simple-key placeholder chain. Indexed
+    twin of legacy `AllKeysPlaceholderInv`. -/
+def AllKeysPlaceholderInvIx {input : String} (s : ScannerStateIx input) : Prop :=
+  SimpleKeyPlaceholderInvIx s ∧
+  SimpleKeyStackPlaceholderInvIx s ∧
+  SimpleKeyTokenDisjointIx s ∧
+  SimpleKeyStackOrderingIx s
+
+/-- `SimpleKeyPlaceholderInvIx` mono: preserved when `simpleKey` is
+    unchanged, tokens grow, and the existing prefix is preserved. -/
+theorem SimpleKeyPlaceholderInvIx_mono {input : String} (s s' : ScannerStateIx input)
+    (h_phi : SimpleKeyPlaceholderInvIx s)
+    (h_sk : s'.simpleKey = s.simpleKey)
+    (h_mono : s'.tokens.size ≥ s.tokens.size)
+    (h_pref : ∀ i (h : i < s.tokens.size),
+      (s'.tokens[i]'(by omega)) = s.tokens[i]) :
+    SimpleKeyPlaceholderInvIx s' := by
+  intro h_poss
+  rw [h_sk] at h_poss ⊢
+  have ⟨hb1, hb2, hp1, hp2⟩ := h_phi h_poss
+  refine ⟨by omega, by omega, ?_, ?_⟩
+  · intro _h1; rw [h_pref _ hb1]; exact hp1 hb1
+  · intro _h2; rw [h_pref _ hb2]; exact hp2 hb2
+
+/-- `SimpleKeyStackPlaceholderInvIx` mono: preserved when stack is
+    unchanged, tokens grow, prefix preserved. -/
+theorem SimpleKeyStackPlaceholderInvIx_mono {input : String}
+    (s s' : ScannerStateIx input)
+    (h_ssphi : SimpleKeyStackPlaceholderInvIx s)
+    (h_stack : s'.simpleKeyStack = s.simpleKeyStack)
+    (h_mono : s'.tokens.size ≥ s.tokens.size)
+    (h_pref : ∀ i (h : i < s.tokens.size),
+      (s'.tokens[i]'(by omega)) = s.tokens[i]) :
+    SimpleKeyStackPlaceholderInvIx s' := by
+  intro j hj h_poss
+  have hj_s : j < s.simpleKeyStack.size := by rw [← h_stack]; exact hj
+  have h_get : (s'.simpleKeyStack[j]'hj) = (s.simpleKeyStack[j]'hj_s) := by
+    simp [h_stack]
+  rw [h_get] at h_poss ⊢
+  have ⟨hb1, hb2, hp1, hp2⟩ := h_ssphi j hj_s h_poss
+  refine ⟨by omega, by omega, ?_, ?_⟩
+  · intro _h1; rw [h_pref _ hb1]; exact hp1 hb1
+  · intro _h2; rw [h_pref _ hb2]; exact hp2 hb2
+
+/-- `SimpleKeyStackPlaceholderInvIx` vacuous when stack is empty. -/
+theorem SimpleKeyStackPlaceholderInvIx_of_empty {input : String}
+    (s : ScannerStateIx input) (h : s.simpleKeyStack.size = 0) :
+    SimpleKeyStackPlaceholderInvIx s := by
+  intro j hj
+  exfalso; omega
+
+/-- Disjoint is vacuous when current `possible = false`. -/
+theorem SimpleKeyTokenDisjointIx_of_not_possible {input : String}
+    (s : ScannerStateIx input) (h : s.simpleKey.possible = false) :
+    SimpleKeyTokenDisjointIx s :=
+  fun h_poss => absurd h_poss (by simp [h])
+
+/-- Disjoint preserved when `simpleKey` and stack are both unchanged. -/
+theorem SimpleKeyTokenDisjointIx_mono {input : String}
+    (s s' : ScannerStateIx input)
+    (h_d : SimpleKeyTokenDisjointIx s)
+    (h_sk : s'.simpleKey = s.simpleKey)
+    (h_stack : s'.simpleKeyStack = s.simpleKeyStack) :
+    SimpleKeyTokenDisjointIx s' := by
+  intro h_poss j hj h_poss_j
+  have hj' : j < s.simpleKeyStack.size := by rw [← h_stack]; exact hj
+  rw [h_sk] at h_poss ⊢
+  have h_get : (s'.simpleKeyStack[j]'hj) = (s.simpleKeyStack[j]'hj') := by
+    simp [h_stack]
+  rw [h_get] at h_poss_j ⊢
+  exact h_d h_poss j hj' h_poss_j
+
+/-- Stack ordering preserved when stack is unchanged. -/
+theorem SimpleKeyStackOrderingIx_mono {input : String}
+    (s s' : ScannerStateIx input)
+    (h_o : SimpleKeyStackOrderingIx s)
+    (h_stack : s'.simpleKeyStack = s.simpleKeyStack) :
+    SimpleKeyStackOrderingIx s' := by
+  intro j hj h_poss_j k hk h_poss_k
+  have hj' : j < s.simpleKeyStack.size := by rw [← h_stack]; exact hj
+  have hk' : k < s.simpleKeyStack.size := by omega
+  have hg_j : (s'.simpleKeyStack[j]'hj) = (s.simpleKeyStack[j]'hj') := by
+    simp [h_stack]
+  have hg_k : (s'.simpleKeyStack[k]'(by omega)) = (s.simpleKeyStack[k]'hk') := by
+    simp [h_stack]
+  rw [hg_j] at h_poss_j ⊢; rw [hg_k] at h_poss_k ⊢
+  exact h_o j hj' h_poss_j k hk h_poss_k
+
+/-- Combined `AllKeysPlaceholderInvIx` mono. -/
+theorem AllKeysPlaceholderInvIx_mono {input : String} (s s' : ScannerStateIx input)
+    (h_akpi : AllKeysPlaceholderInvIx s)
+    (h_sk : s'.simpleKey = s.simpleKey)
+    (h_stack : s'.simpleKeyStack = s.simpleKeyStack)
+    (h_mono : s'.tokens.size ≥ s.tokens.size)
+    (h_pref : ∀ i (h : i < s.tokens.size),
+      (s'.tokens[i]'(by omega)) = s.tokens[i]) :
+    AllKeysPlaceholderInvIx s' :=
+  ⟨SimpleKeyPlaceholderInvIx_mono s s' h_akpi.1 h_sk h_mono h_pref,
+   SimpleKeyStackPlaceholderInvIx_mono s s' h_akpi.2.1 h_stack h_mono h_pref,
+   SimpleKeyTokenDisjointIx_mono s s' h_akpi.2.2.1 h_sk h_stack,
+   SimpleKeyStackOrderingIx_mono s s' h_akpi.2.2.2 h_stack⟩
+
+/-- Cleared current + supplied stack invariants. -/
+theorem AllKeysPlaceholderInvIx_of_cleared_current {input : String}
+    (s' : ScannerStateIx input)
+    (h_poss : s'.simpleKey.possible = false)
+    (h_ssphi : SimpleKeyStackPlaceholderInvIx s')
+    (h_disjoint : SimpleKeyTokenDisjointIx s')
+    (h_ordering : SimpleKeyStackOrderingIx s') :
+    AllKeysPlaceholderInvIx s' :=
+  ⟨SimpleKeyPlaceholderInvIx_of_not_possible s' h_poss, h_ssphi,
+   h_disjoint, h_ordering⟩
+
+/-- Combined: cleared current + stack preserved via mono. -/
+theorem AllKeysPlaceholderInvIx_of_cleared_mono {input : String}
+    (s s' : ScannerStateIx input)
+    (h_akpi : AllKeysPlaceholderInvIx s)
+    (h_clears : s'.simpleKey.possible = false)
+    (h_stack : s'.simpleKeyStack = s.simpleKeyStack)
+    (h_mono : s'.tokens.size ≥ s.tokens.size)
+    (h_pref : ∀ i (h : i < s.tokens.size),
+      (s'.tokens[i]'(by omega)) = s.tokens[i]) :
+    AllKeysPlaceholderInvIx s' :=
+  ⟨SimpleKeyPlaceholderInvIx_of_not_possible s' h_clears,
+   SimpleKeyStackPlaceholderInvIx_mono s s' h_akpi.2.1 h_stack h_mono h_pref,
+   SimpleKeyTokenDisjointIx_of_not_possible s' h_clears,
+   SimpleKeyStackOrderingIx_mono s s' h_akpi.2.2.2 h_stack⟩
+
+/-- Initial state satisfies `AllKeysPlaceholderInvIx`: current key has
+    `possible = false`, stack is empty. -/
+theorem mk'_AllKeysPlaceholderInvIx (input : String) :
+    AllKeysPlaceholderInvIx (ScannerStateIx.mk' input) :=
+  ⟨mk'_SimpleKeyPlaceholderInvIx input,
+   SimpleKeyStackPlaceholderInvIx_of_empty _ rfl,
+   SimpleKeyTokenDisjointIx_of_not_possible _ rfl,
+   fun j hj _ _ _ _ => by
+     have h_sz : (ScannerStateIx.mk' input).simpleKeyStack.size = 0 := rfl
+     omega⟩
+
 /-- `emit tok` preserves `SimpleKeyPlaceholderInvIx`: it grows the
     token stream by one and leaves `simpleKey` unchanged, so the
     placeholders at `simpleKey.tokenIndex`/`+1` remain in place. -/
