@@ -8942,7 +8942,7 @@ and `parseNode_wfa` shows only Lean meta-axioms (`propext`,
 **DONE criteria**: sorry-free, `lake build` green. **Met**.
 Estimated 1 session; delivered in 1 session.
 
-**Reflection 95** (below) documents what surprised me about the
+##### **Reflection 95** (below) documents what surprised me about the
 port: when the legacy file's structural choices (helper-lemma
 naming, fuel-bound off-by-one conventions, set_option
 overrides) all transfer 1:1 to the indexed side **without any
