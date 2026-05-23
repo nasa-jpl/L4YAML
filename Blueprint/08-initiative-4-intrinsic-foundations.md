@@ -7783,7 +7783,7 @@ in 6d.1e.11b.
 consolidated content-correctness obligation staged in 6d.1e.11a)
 + the 3 §11h dispatcher axioms.
 
-**Status (this session — Reflection 81)**:
+##### Reflection 81 — Status (this session):
 
 - ✅ **Axiom-count goal met**: 6 → 2. All four target axioms
   (`scanPlainScalarIx_content_valid`, 3 §11h dispatcher axioms) have
@@ -7858,7 +7858,7 @@ This session's net effect: **6 axioms → 2 axioms + 6 sorries**. The
 and translate ~1:1), unlike the 2 remaining axioms which require
 new threading work (Step 6d.1e.12).
 
-**Reflection 82 — `set` vs `let` in Lean 4 core**:
+##### **Reflection 82 — `set` vs `let` in Lean 4 core**:
 
 Lean 4 core (without Mathlib) lacks the `set` tactic. The
 `scanPlainScalarIx_content_valid` proof initially tried `set raw :=
@@ -7868,7 +7868,7 @@ loop-call expression at each use site, or use `let raw := ...` which
 binds the value but does not auto-fold subsequent occurrences in
 hypotheses (defeating the abbreviation purpose).
 
-**Reflection 83 — `whnf` heartbeat exhaustion on existential
+##### **Reflection 83 — `whnf` heartbeat exhaustion on existential
 decompositions**:
 
 The `scanPlainScalarIx_content_valid` proof produces a goal of the
@@ -7882,7 +7882,7 @@ abstract `loop_call` via a non-reducible definition or to use
 `change` to rewrite the goal to a form where the loop call is
 opaque.
 
-**Reflection 84 — `rename_i` direction confusion with nested
+##### **Reflection 84 — `rename_i` direction confusion with nested
 `split`**:
 
 Initial attempts to port the B3.3 preservation used the
@@ -7904,7 +7904,7 @@ c.peek? with | none => ... | some ch => ...` upfront, which names
 branch-lemma rewrites (e.g., `collectPlainScalarLoopIx_comment`) to
 make progress.
 
-**Reflection 85 — `cases hf : inFlow` doesn't substitute in
+##### **Reflection 85 — `cases hf : inFlow` doesn't substitute in
 dependent hypotheses** *(new in 6d.1e.11c, 2026-05-21)*:
 
 For the `_validFirst_and_head` proof, the helper
@@ -7922,7 +7922,7 @@ a tactic in this form). Same issue affects the
 `(inFlow && isFlowIndicatorBool c0) = false` derivation inside the
 plain arm of the dispatcher proofs.
 
-**Reflection 86 — `FlowContextPSVIx` preservation needs
+##### **Reflection 86 — `FlowContextPSVIx` preservation needs
 `FlowNestingInvIx`** *(new in 6d.1e.11c, 2026-05-21)*:
 
 The §11h dispatcher's plain arm produces a `.scalar content .plain`
@@ -7947,7 +7947,7 @@ FNI hypothesis. **Resolution**: add `FlowNestingInvIx s` to
 `scan_flow_aware_psv_ix_axiom` already has the initial-state FNI
 in scope via `streamStart`-emit preservation).
 
-**Reflection 87 — `generalize` blocked by dependent-type hBound; `match h : X with` confuses `rename_i`** *(new in 6d.1e.11c, 2026-05-21)*:
+##### **Reflection 87 — `generalize` blocked by dependent-type hBound; `match h : X with` confuses `rename_i`** *(new in 6d.1e.11c, 2026-05-21)*:
 
 The indexed `dispatchContent`'s block-scalar / double-quoted /
 single-quoted arms use
@@ -7990,7 +7990,7 @@ etc.) apply via `exact ... _ _ _ _ h_old ...` with placeholder args
 auto-inferred. The `subst h_ok` substitution handles the
 record-update wrap transparently.
 
-**Reflection 88 — Heartbeat budget for `▸` substitution through
+##### **Reflection 88 — Heartbeat budget for `▸` substitution through
 dispatcher's `if s.inFlow then ... else ...` `contentIndent`** *(new
 in 6d.1e.11d, 2026-05-21)*:
 
@@ -8396,7 +8396,7 @@ Verifying the discharge requires the full legacy
 
 **Revised plan** (split into 4 sub-steps):
 
-- **12a** ✅ (2026-05-21, ~250 LOC) — Add the 3 missing invariants
+##### **12a** ✅ (2026-05-21, ~250 LOC) — Add the 3 missing invariants
   + combined `AllKeysPlaceholderInvIx` + 4 mono helpers + 2 cleared
   helpers + `mk'_AllKeysPlaceholderInvIx`. Landed sorry-free with
   `lake build` green; axiom count unchanged (still 2).
@@ -8404,7 +8404,7 @@ Verifying the discharge requires the full legacy
   `SimpleKeyPlaceholderInvIx` in §6e+ of
   `Proofs/Production/IndexedScannerPlainScalarValid.lean`.
 
-- **12b** ✅ (2026-05-22, ~489 LOC) — Per-scanner facts landed.
+##### **12b** ✅ (2026-05-22, ~489 LOC) — Per-scanner facts landed.
   New §12 section in `IndexedScannerPlainScalarValid.lean` with 42
   new theorems: §12a primitive `@[simp] rfl` lemmas for
   `advance` / `advanceN` / `emit` / `emitAt` /
@@ -8429,7 +8429,8 @@ Verifying the discharge requires the full legacy
   parameter is `{ sAdv with cursor := cAfterName }`, whose
   `.simpleKey` projection reduces to `s.simpleKey` by rfl chain.
   Build green at 385/385; axiom count unchanged at 2.
-  **Reflection 90 (new)** documents the two-pattern split for
+  
+##### **Reflection 90 (new)** documents the two-pattern split for
   Except-return vs cursor-only scanners.
 
   Skipped per audit re-scoping: the `_adds_tokens` / `_preserves_prefix`
@@ -8440,7 +8441,7 @@ Verifying the discharge requires the full legacy
   primitives (already proven in §6) plus inline arguments at
   each branch.
 
-- **12c-scout** ✅ (2026-05-22, ~49 LOC) — Per-scanner
+##### **12c-scout** ✅ (2026-05-22, ~49 LOC) — Per-scanner
   `_tokens_eq` rfl-bridges (`scanFlowSequenceStartIx_tokens_eq`,
   `scanFlowSequenceEndIx_tokens_eq`,
   `scanFlowMappingStartIx_tokens_eq`,
@@ -8474,7 +8475,7 @@ Verifying the discharge requires the full legacy
   form that match Lean's elaborated patterns, or (b) thread
   the prefix arguments through a non-dependent shape.
 
-- **12c.1** ✅ (2026-05-22, ~375 LOC) — Substrate fix landed.
+##### **12c.1** ✅ (2026-05-22, ~375 LOC) — Substrate fix landed.
   16 per-scanner `_preserves_prefix` Ix lemmas across new
   §12g–§12k subsections, all written in the legacy
   `unwindIndentsLoopIx_preserves_prefix` shape with both bound
@@ -8505,7 +8506,7 @@ Verifying the discharge requires the full legacy
   motive wall and are otherwise inert.) Build green at
   385/385; axiom count unchanged at 2.
 
-- **12c.2** ✅ *(2026-05-22, landed)* — Dispatcher composition
+##### **12c.2** ✅ *(2026-05-22, landed)* — Dispatcher composition
   chain ported from legacy lines 4430–4958: 8
   `_preserves_AllKeysPlaceholderInvIx` theorems landed
   sorry-free in §12l of `IndexedScannerPlainScalarValid.lean`.
@@ -8572,7 +8573,7 @@ Verifying the discharge requires the full legacy
   preprocess proof. Build green at 385/385; axiom count
   unchanged at 2. **Cost**: ~606 LOC delta (5494 → 6100).
 
-- **12d** *(landed 2026-05-23, ~134 LOC net delta)* — Both staging
+##### **12d** *(landed 2026-05-23, ~134 LOC net delta)* — Both staging
   axioms eliminated by removing them along with their §11i/§11j/§11k
   consumer chain and adding a new §13 section (~500 LOC) that threads
   the full 4-tuple `AllKeysPlaceholderInvIx`. New §13 contents:
@@ -8629,7 +8630,7 @@ preservation through `parseNode`.
 `lake build` green at 385/385; **Phase 3 closure has 0 user-defined
 axioms**, ready for Step 6f cutover.
 
-**Reflection 89 (new, 2026-05-21)**: the blueprint plan's "vacuous
+##### **Reflection 89 (new, 2026-05-21)**: the blueprint plan's "vacuous
 arm" classification for flow-end scanners was wrong. Flow-end
 scanners restore `simpleKey` from the stack top via
 `simpleKeyStack.back?.getD ...`, so the restored key can have
@@ -8647,7 +8648,7 @@ confirm the invariant is preserved with the planned hypothesis
 set; if not, the indexed invariant must carry the same auxiliary
 conjuncts as legacy.
 
-**Reflection 90 (new, 2026-05-22)**: porting `_preserves_simpleKey`
+##### **Reflection 90 (new, 2026-05-22)**: porting `_preserves_simpleKey`
 / `_preserves_simpleKeyStack` from legacy `ScannerCorrectness.lean`
 to the indexed side has two distinct patterns depending on the
 return type. (1) **Cursor-only scanners** (`scanDocumentStartIx`,
@@ -8682,7 +8683,7 @@ bindings); split at h <;> ...; try (simp only [Except.ok.injEq] at
 h; subst h; rfl)`. For cross-call delegation, use `.trans rfl` to
 bridge any record-update opacity.
 
-**Reflection 91 (new, 2026-05-22)**: the indexed-side
+##### **Reflection 91 (new, 2026-05-22)**: the indexed-side
 `_preserves_prefix` family for per-scanner output token arrays
 hits a substrate wall not present in legacy `ScannerCorrectness`.
 Two compounding factors: (1) the Ix-scanner defs use record-update
@@ -8722,7 +8723,7 @@ proofs explicit, the conclusion uses `Array.getElem_push_lt` or
 `.tokens.tokens.push _` form, **not** through a separate
 `_tokens_eq` rfl bridge that `rw` would try to traverse.
 
-**Reflection 92 (new, 2026-05-22)**: the canonical proof pattern
+##### **Reflection 92 (new, 2026-05-22)**: the canonical proof pattern
 for Ix `_preserves_prefix` lemmas using `Array.setIfInBounds`
 (overwriteAtCursor-touching scanners) is **`exact (... .trans
 ...)` over `change`-reshape**, *not* `rw` or
@@ -8768,7 +8769,7 @@ bounds. **How to apply**: when porting a legacy
 ...)`. The trick generalises to any dependent-bracket equality
 goal where the lemma's bound proof can be supplied positionally.
 
-**Reflection 93 (new, 2026-05-22)**: Lean's `apply` reorders
+##### **Reflection 93 (new, 2026-05-22)**: Lean's `apply` reorders
 dependent obligations, breaking bullet-based proofs. **Symptom**:
 when applying a multi-hypothesis helper where some hypotheses
 depend on others (e.g. `h_pref` whose type contains `by omega`
@@ -8807,7 +8808,7 @@ count.) Same root cause as Reflection 92 in the prefix substrate
 — Lean's tactic mode handles dependent metavariables in
 implementation-dependent order.
 
-**Reflection 94 (new, 2026-05-23)**: when discharging an axiom whose
+##### **Reflection 94 (new, 2026-05-23)**: when discharging an axiom whose
 signature is too weak to be proven directly, the textbook
 "axiom → theorem by projecting `.1` of a stronger lemma" approach
 breaks down — you can't project `.1` from a hypothesis you don't
