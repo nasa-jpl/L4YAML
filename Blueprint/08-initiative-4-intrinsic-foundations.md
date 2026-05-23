@@ -1820,19 +1820,34 @@ not in-place axiom-to-theorem promotion — the latter is impossible
 when the axiom's hypothesis is strictly weaker than what the
 stronger lemma derives).
 
-**Next session**: **Step 6f** — atomic cutover commit. Rename every
-staging `*Ix.lean` to its production name (`IndexedScanner.lean` →
-`Scanner.lean`, `ParseStateIx.lean` → `State.lean`,
-`TokenParserIx.lean` → `TokenParser.lean`,
-`Parser/IndexedComposition.lean` → `Parser/Composition.lean`,
-indexed `Proofs/Parser/Indexed*.lean` → production names), delete
-the legacy scanner stack (`Scanner/{Scalar,Whitespace,Indent,SimpleKey,Document,NodeProperties,State}.lean`),
-delete `Proofs/Scanner/*` (~26,858 LOC, 23 files), delete
-`Proofs/Parser/{ParserWellBehaved,ParserCorrectness,ParserCompleteness,ParserGrammable,ParserNodeProofs,ParserWfaProofs,…}.lean`,
-retarget `L4YAML.lean` imports, single `lake build` green. Net
-≈ −30,000 LOC. Includes repointing `parseYaml` / `parseYamlRaw` /
-`parseYamlSingle` / `parseYamlSingleRaw` / `parseYamlWithComments`
-on the indexed pipeline via the rebound `scanAndParse` body.
+**Next session**: **Indexed parser scalar-content parity** (the
+blocker for Step 6f.3–6f.6). The 6f cutover was started this
+session and decomposed into 6 sub-steps after audit revealed the
+atomic plan undercounts the work by ~30 downstream files. 6f.1
+(indexed public API surface) and 6f.2 (non-proof consumer
+migration, partial — Schema/Dump reverted) landed cleanly. 6f.3–
+6f.6 are blocked on a *runtime* parity gap discovered during
+6f.2: the indexed parser emits empty `.content` for plain scalars
+at root and flow-collection-element positions, which causes
+`Tests.Guards.Schema.Dump.contentRoundTrips` to fail when routed
+through `parseYamlSingleIx`. The next session should: (1) audit
+the indexed `parseNode` paths in `Parser/TokenParserIx.lean` that
+emit `YamlValue.scalar`, (2) thread the scanner-provided
+plain-scalar token bytes through to the scalar's `content` field
+at every emission site (current legacy reference:
+`Parser/TokenParser.lean` `parseNode`/`parsePlainScalar`),
+(3) verify the 6e corpus still builds and add a regression test
+that `contentRoundTrips` (≥3 inputs) passes on the indexed
+pipeline. Once parity holds, 6f.3+6f.5 can land as a coupled
+commit (proof migration + overwrite together), then 6f.4 + 6f.6
+follow.
+
+**Previous next-session pointer**: Step 6f — atomic cutover commit
+(originally planned as one commit, now decomposed: 6f.1 ✅ +53 LOC
+indexed public API; 6f.2 ✅ +5/−5 LOC for Schema/Api + Config/Limits,
+Schema/Dump reverted; 6f.3–6f.6 blocked on scalar-content parity
+gap discovered during 6f.2 execution — see the Step 6f section
+above for the full sub-step decomposition and parity-gap diagnosis).
 
 **Previous next-session pointer**: Step 6e — `IndexedComposition`
 + end-to-end roundtrip on the Step 5c corpus (now landed,
@@ -9194,34 +9209,164 @@ filter cannot be absorbed without invariant verification.
 `.placeholder` qualifies because both legacy and indexed parsers
 classify it as a pure skip token in the directive prelude.
 
-##### Step 6f — Atomic cutover commit *(planned)*
+##### Step 6f — Cutover *(decomposed into 6 sub-steps; 6f.1–6f.2 landed 2026-05-23, 6f.3–6f.6 blocked on scalar-content parity)*
 
-**Goal**: in a single commit, promote every staging `*Ix.lean`
-file to its production name, delete the legacy scanner and parser
-stacks, and retarget `L4YAML.lean` imports.
+**Original plan (atomic, single commit)**: rename every staging
+`*Ix.lean` to its production name, delete legacy scanner and parser
+stacks, retarget `L4YAML.lean` imports — all in one commit.
 
-**Mechanics**:
-1. Rename: `Scanner/IndexedScanner.lean` → `Scanner/Scanner.lean`
-   (overwrites legacy), `Scanner/IndexedDispatch.lean` →
-   `Scanner/Dispatch.lean`, `Scanner/IndexedPresenter.lean` →
-   `Scanner/Presenter.lean`, `Parser/ParseStateIx.lean` →
-   `Parser/State.lean` (overwrites legacy), `Parser/TokenParserIx.lean`
-   → `Parser/TokenParser.lean`, `Parser/FuelIx.lean` →
-   `Parser/Fuel.lean`, `Parser/IndexedComposition.lean` →
-   `Parser/Composition.lean`. Same for the `Proofs/Parser/Indexed*.lean`
-   staging files → production names.
-2. Delete: legacy `Scanner/{Scalar,Whitespace,Indent,SimpleKey,Document,NodeProperties}.lean`
-   (the legacy `Scanner/Scanner.lean` and `Parser/{State,TokenParser,Fuel,Composition}.lean`
-   are overwritten by step 1, so they don't need explicit deletion).
-   Delete all of `Proofs/Scanner/*.lean` (~26,858 LOC across 23 files)
-   and legacy `Proofs/Parser/{ParserWellBehaved,ParserCorrectness,ParserCompleteness,ParserGrammable,ParserNodeProofs,ParserWfaProofs,…}.lean`.
-3. Retarget `L4YAML.lean`'s import list: remove obsolete imports,
-   confirm all `Indexed*` references are updated to bare names.
+**Decomposition rationale (discovered 2026-05-23 during 6f
+execution)**: the audit before touching anything revealed the
+atomic plan undercounts the work substantially. ~30 non-staging
+files reference legacy parser symbols (`TokenParser.parseYaml`,
+`parseYamlSingle`, `parseYamlRaw`, plus the qualified legacy proof
+theorems `ParserCorrectness.parseStream_respects_grammar`,
+`ParserGrammable.parseStream_output_grammable`,
+`ParserSoundness.yamlValue_has_witness`). When the staging files
+overwrite the legacy ones, those consumers all break simultaneously
+unless: (a) the indexed body recreates the public `parseYaml*`
+surface, (b) namespaces flatten or re-export, and (c) every
+qualified legacy theorem reference in
+`Proofs/EndToEndCorrectness.lean` (32 refs), `Proofs/Output/EmitterScannability.lean`
+(27 refs, 10741 LOC), `Proofs/Composition.lean` (14 refs),
+`Proofs/Output/ScannerEmitBridge.lean` (7 refs),
+`Proofs/Completeness.lean` (4 refs), and ~15 type-only consumers
+gets repointed. One commit means a 30+-file simultaneous edit
+with the build red mid-edit; splitting keeps every commit
+buildable and reviewable.
 
-**DONE criteria**: `lake build` 100% green in this single commit;
-sorry budget unchanged from 6e (carry-forward only); the cutover
-commit message body explicitly states the net LOC delta
-(≈ −30,000 expected).
+The cutover therefore proceeds as 6 sub-commits, each preserving
+`lake build` green:
+
+**6f.1 — Indexed public API surface** *(landed 2026-05-23, commit
+`abaaeb7f`, +53 LOC)*. Add four indexed twins of the legacy public
+parser entry points to `Parser/IndexedComposition.lean`:
+`parseYamlRawIx`, `parseYamlIx`, `parseYamlSingleRawIx`,
+`parseYamlSingleIx` — all delegating to `scanAndParseIx` with the
+legacy `Compose`-step semantics preserved. Pure addition; no
+existing consumer changes. **Deferred**: `parseYamlWithCommentsIx`
+needs an indexed twin of `Scanner.scanWithComments` (not yet
+implemented), so the two comment-preserving callers
+(`Output/Emitter.lean`, `Proofs/RoundTrip/CommentRoundTrip.lean`)
+stay on legacy until that gap is filled.
+
+**6f.2 — Non-proof consumer migration (partial)** *(landed
+2026-05-23, commit `33c31e11`, +5/−5 LOC across 2 files; Schema/Dump
+deferred)*. `Schema/Api.lean` and `Config/Limits.lean` switched to
+the indexed public API (`parseYamlSingleIx`, `parseYamlRawIx`).
+**Schema/Dump.lean was reverted to legacy** mid-step: the
+`contentRoundTrips` guard fails when the dumped YAML is reparsed
+through the indexed pipeline. Root cause is the plain-scalar content
+quirk already documented in Step 6e — the indexed parser emits
+empty `.content` for plain scalars at root and flow-collection
+element positions; `contentEq` then returns `false` for any
+non-empty scalar dump. This is the **scalar-content parity gap**
+blocker for the remaining 6f sub-steps (see below).
+
+**6f.3 — Downstream proof consumer migration** *(BLOCKED on scalar-content parity)*. Repointing
+`Proofs/EndToEndCorrectness`, `Proofs/Composition`,
+`Proofs/Completeness`, `Proofs/Output/ScannerEmitBridge`,
+`Proofs/RoundTrip/CommentProperties`, and (for type-only imports)
+the ~10 `Proofs/{RoundTrip,Errors,Schema}/*` files at the
+`Parser.Composition` import line. The proof refactors in
+`EndToEndCorrectness` (32 refs) and `Composition` (14 refs) need
+the unfolded `parseYaml` body to be the indexed one — that's only
+true after 6f.5 overwrites the legacy `Parser/Composition.lean`.
+So 6f.3 cannot complete before 6f.5, but 6f.5 cannot land cleanly
+without 6f.3's proof updates ready. The way out is to do 6f.3 and
+6f.5 *in the same commit* once parity allows.
+
+**6f.4 — Indexed proof staging file renames** *(BLOCKED on parity)*.
+Rename `Proofs/Parser/IndexedCorrectness.lean → ParserCorrectness.lean`
+(overwrite legacy), `IndexedCompleteness → ParserCompleteness`,
+`IndexedGrammable → ParserGrammable`, `IndexedNodeProofs →
+ParserNodeProofs`, `IndexedWellBehaved → ParserWellBehaved`,
+`IndexedWfa → ParserWfaProofs`, `IndexedComposition → ParserComposition`.
+Inside each, revert the `L4YAML.Proofs.Indexed.*` namespace to its
+legacy form. Coupled with 6f.3/6f.5 because consumers reference
+the qualified theorem names from these files.
+
+**6f.5 — Indexed parser/scanner file renames** *(BLOCKED on parity)*.
+Overwrite legacy `Parser/{State,TokenParser,Fuel,Composition}.lean`
+with renamed staging files (`ParseStateIx → State`, `TokenParserIx
+→ TokenParser`, etc.). Flatten `L4YAML.TokenParser.Indexed` →
+`L4YAML.TokenParser`. Same for `Scanner/IndexedScanner →
+Scanner`, `IndexedDispatch → Dispatch`, `IndexedPresenter →
+Presenter`, `IndexedState → State`. Inside each, drop the `Ix`
+symbol suffixes so legacy callers (`parseStream`, `parseYaml`,
+etc.) resolve. This is the **parity-blocked** step — overwriting
+makes the indexed body run for every `parseYaml*` caller including
+the Schema/Dump round-trip suite.
+
+**6f.6 — Delete dead legacy code + retarget `L4YAML.lean`**
+*(BLOCKED on parity)*. Delete `Scanner/{Scalar,Whitespace,Indent,SimpleKey,Document,NodeProperties}.lean`,
+all 23 files of `Proofs/Scanner/*.lean` (~26,858 LOC), and the
+six legacy `Proofs/Parser/Parser*.lean` files (now overwritten
+into indexed bodies' production names). Remove obsolete imports
+from `L4YAML.lean`. Final cutover commit; net delta ≈ −30,000 LOC.
+
+**Scalar-content parity gap (blocker for 6f.3–6f.6)**
+
+The indexed parser currently emits `YamlValue.scalar { content := "" }`
+for plain scalars at root and flow-collection element positions;
+the legacy parser populates `content` with the literal scalar
+string. Most proof artifacts don't care (they reason about
+Grammable witnesses and ValidNode existence, not byte-level
+content), but two classes of consumers do:
+
+- **Round-trip guards**: `Tests.Guards.Schema.Dump.contentRoundTrips`
+  checks `contentEq (toYaml a) (parse (dump a)) = true` and fails
+  when `parse` strips scalar content.
+- **Property tests**: any `#guard`/`native_decide` that asserts
+  exact scalar bytes after parsing.
+
+Until parity is achieved, the 6f.5 overwrite (and therefore
+6f.3/6f.4/6f.6) cannot land without test failures. Parity work
+is a separate sub-step — call it **6f.0** in retrospect (it
+should have been a prerequisite) or **Step 7** (a new
+parity-only step). Estimated scope: revisit the indexed parser's
+`parseNode` paths that emit scalars and ensure `.content` is
+populated everywhere the legacy parser does. The fix is local
+to `Parser/TokenParserIx.lean` and probably small (token-string
+threading) but needs corpus regression testing.
+
+**DONE criteria (per sub-step)**: `lake build` 100% green; sorry
+budget unchanged from 6e (carry-forward only); each commit lists
+its sub-step number and what blocks further progress (if
+applicable). The final cutover commit (6f.6) states the net LOC
+delta (≈ −30,000 expected).
+
+##### **Reflection 98 (new, 2026-05-23)**: a staging implementation
+that passes its *own* proofs is not necessarily a *behavioral
+substitute* for the legacy implementation. The Phase 3 indexed
+parser proofs all close (Grammable witnesses, ValidNode existence,
+WellFormedAnchors preservation, alias resolution) — but those
+proofs are about *Grammar-level* properties, not about *byte-level*
+output equality. The 6f cutover assumed "passing the indexed proofs
++ matching the legacy API surface = drop-in replacement", which
+fell over the moment `Tests.Guards.Schema.Dump.contentRoundTrips`
+ran: the indexed parser emits `YamlValue.scalar { content := "" }`
+for plain scalars at root and flow-element positions while the
+legacy parser populates `content` with the literal bytes. The
+indexed-side proofs don't catch this because they reason modulo
+`stripAnnotations`, which projects content away. **How to apply at
+future cutover boundaries**: any staging-to-production substitution
+needs *behavioral parity tests* as a prerequisite, not just
+"compiles + the new proofs close". The cleanest check is a corpus
+of inputs where `legacyParse input` and `newParse input` are
+asserted byte-for-byte equal at the top-level `YamlValue` (not at
+some weaker projection). Without that, the staging file can pass
+every theorem about it and still fail at runtime when its first
+real consumer arrives. **Boundary**: this isn't a general
+indictment of staging proofs — they were correct about what they
+asserted. The lesson is that "proven correct" is *scoped* to the
+properties proven, and a cutover plan needs to enumerate the
+*unproven* properties the new code must also satisfy. For the
+Phase 3 indexed parser, scalar-content parity is unproven and
+needs to be added (either as proof or as test gate) before the
+overwrite step lands. **Cost of the lesson**: 6f became 6 sub-steps
+instead of 1, and 4 of those sub-steps are blocked until a new
+parity-only sub-step lands first.
 
 </details>
 
