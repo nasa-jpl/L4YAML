@@ -3494,7 +3494,7 @@ theorem scanNextTokenIx_preprocess_preserves_PlainScalarsValidIx
   unfold scanNextTokenIx_preprocess at h_ok
   have h_psv_skip : PlainScalarsValidIx s.skipToContentS.tokens := by
     rw [skipToContentS_tokens]; exact h_old
-  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  simp at h_ok
   repeat (any_goals (split at h_ok))
   all_goals (try (simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq,
                               reduceCtorEq] at h_ok))
@@ -3513,7 +3513,7 @@ theorem scanNextTokenIx_preprocess_preserves_FlowContextPSVIx
   unfold scanNextTokenIx_preprocess at h_ok
   have h_fpsv_skip : FlowContextPSVIx s.skipToContentS.tokens := by
     rw [skipToContentS_tokens]; exact h_old
-  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  simp at h_ok
   repeat (any_goals (split at h_ok))
   all_goals (try (simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq,
                               reduceCtorEq] at h_ok))
@@ -3532,7 +3532,7 @@ theorem scanNextTokenIx_preprocess_preserves_FlowNestingInvIx
   unfold scanNextTokenIx_preprocess at h_ok
   have h_fni_skip : FlowNestingInvIx s.skipToContentS :=
     skipToContentS_preserves_FlowNestingInvIx s h_fni
-  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  simp at h_ok
   repeat (any_goals (split at h_ok))
   all_goals (try (simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq,
                               reduceCtorEq] at h_ok))
@@ -3594,7 +3594,7 @@ theorem scanNextTokenIx_preprocess_peek_eq
     (h_ok : scanNextTokenIx_preprocess s = .ok (some (s1, c))) :
     s1.cursor.peek? = some c := by
   unfold scanNextTokenIx_preprocess at h_ok
-  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  simp at h_ok
   repeat (any_goals (split at h_ok))
   all_goals (try (simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq,
                               reduceCtorEq] at h_ok))
