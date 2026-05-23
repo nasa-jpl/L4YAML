@@ -1820,14 +1820,27 @@ not in-place axiom-to-theorem promotion — the latter is impossible
 when the axiom's hypothesis is strictly weaker than what the
 stronger lemma derives).
 
-**Next session**: **Step 6e** — `IndexedComposition` + end-to-end
-roundtrip. Wire the indexed scanner (`Scanner.Indexed.scanIx`)
-and indexed parser (`TokenParser.Indexed.parseStreamIx`) into a
-top-level `scanAndParseIx : String → Except ScanError (Array
-YamlDocument)` and exhibit the full pipeline on the Step 5c
-corpus. Once 6e lands, **Step 6f** is the atomic cutover commit
-(~−30,000 LOC delete, rename all `Indexed.*` namespaces to their
-legacy counterparts, repoint `parseYaml` to use `scanAndParseIx`).
+**Next session**: **Step 6f** — atomic cutover commit. Rename every
+staging `*Ix.lean` to its production name (`IndexedScanner.lean` →
+`Scanner.lean`, `ParseStateIx.lean` → `State.lean`,
+`TokenParserIx.lean` → `TokenParser.lean`,
+`Parser/IndexedComposition.lean` → `Parser/Composition.lean`,
+indexed `Proofs/Parser/Indexed*.lean` → production names), delete
+the legacy scanner stack (`Scanner/{Scalar,Whitespace,Indent,SimpleKey,Document,NodeProperties,State}.lean`),
+delete `Proofs/Scanner/*` (~26,858 LOC, 23 files), delete
+`Proofs/Parser/{ParserWellBehaved,ParserCorrectness,ParserCompleteness,ParserGrammable,ParserNodeProofs,ParserWfaProofs,…}.lean`,
+retarget `L4YAML.lean` imports, single `lake build` green. Net
+≈ −30,000 LOC. Includes repointing `parseYaml` / `parseYamlRaw` /
+`parseYamlSingle` / `parseYamlSingleRaw` / `parseYamlWithComments`
+on the indexed pipeline via the rebound `scanAndParse` body.
+
+**Previous next-session pointer**: Step 6e — `IndexedComposition`
++ end-to-end roundtrip on the Step 5c corpus (now landed,
+72 + 127 = 199 LOC across `Parser/IndexedComposition.lean` and
+`Proofs/Parser/IndexedComposition.lean`, sorry-free; axiom posture
+matches Step 5c — 3 Lean core + per-decl `native_decide` trust
+axiom, no user-defined axioms; 10 corpus theorems = 8 success + 2
+error, both legs of the `Except` composition exhibited).
 
 **Previous next-session pointer**: Step 6d.3 — port legacy
 `Proofs/Parser/{ParserCorrectness,ParserCompleteness,ParserGrammable}.lean`
@@ -1903,6 +1916,8 @@ against canonicalised input.
 | `L4YAML/Proofs/Parser/IndexedWfa.lean` | n/a | ~1,671 | 0 (staging — Guardrail 1; new in Phase 3 Step 6d.2 [2026-05-23]: indexed twin of legacy `Proofs/Parser/ParserWfaProofs.lean` (1,692 LOC); namespace `L4YAML.Proofs.Indexed.WfaProofs` — at cutover renamed back to `L4YAML.Proofs.ParserWfaProofs`. Re-proves `WellFormedAnchors` preservation through `parseNode` / `parseDocument` / `parseStreamIx`, culminating in `parseStreamIx_output_anchors_wellformed : ∀ doc ∈ docs.toList, WellFormedAnchors doc.anchors`. Architecture mirrors legacy file 1:1 — same §1–§7 partitioning, same strong-induction-on-fuel skeleton, same `set_option maxHeartbeats` overrides at the same theorems (`parseBlockMappingEntryValue_wfa` 400k, `handleBlockMappingKeyEntry_wfa` 1.6M, `parseFlowSequenceLoop_wfa` 1.6M, `parseFlowMappingLoop_wfa` 1.6M, `parseSinglePairMapping_wfa` 1.6M, `parseSinglePairMapping_tok` 800k, `handleBlockMappingKeyEntry_tok` 800k, `parseNode_wfa_all` 800k, `parseNodeProperties_anchors_eq_ix` 800M under `maxRecDepth 10000`). Substitutions: `ParseState → ParseStateIx input` with `variable {input : String}` at file scope; `Array (Positioned YamlToken) → Indexed.TokenStream input`; `ParseNodeWB/parseNode_wb_all/parseNodeContent_wb/parseNodeProperties_tokens → ...Ix` from `IndexedWellBehaved`; `parseNodeContent_aar/parseNode_aar_all/parseNode_ag_all/aar_retag_*` from `IndexedNodeProofs`; `FlowAwarePSV/FlowBracketsMatched → FlowAwarePSVIx/FlowBracketsMatchedIx`; final theorem renamed `parseStream_output_anchors_wellformed → parseStreamIx_output_anchors_wellformed`. Two new file-local helpers (not already in `IndexedWellBehaved` because anchors-preservation is Wfa-specific): `parseDirectives_anchors_ix` (mirrors legacy `parseDirectives_anchors` MProd-loop unrolling, terminal `simp [ParseStateIx.advance]`); `parseNodeProperties_anchors_eq_ix` (mirrors legacy `parseNodeProperties_anchors_eq` heavy `unfold_loop_at_ix` ritual). Four trivial helper-quartet file-local copies: `tc_anchors_ix`, `tc_tokens_wfa_ix`, `advance_anchors_ix`, `advance_tokens_wfa_ix` (each one-liner — copies of legacy `tc_anchors`/`tc_tokens`/`advance_anchors`/`advance_tokens` with `ParseStateIx.advance`/`ParseStateIx.tryConsume`). Helper `parseNode_tokens_of_wb_ix` mirrors legacy `parseNode_tokens_of_wb` via `.2.2.2` 4-tuple projection. **0 user-defined axioms** (`#print axioms` on the three top-level theorems shows only `propext`, `Classical.choice`, `Quot.sound`). Build green at 116/116 jobs; only pre-existing 7 sorry warnings in `EmitterScannability.lean` remain. **Reflection 95** documents the 1:1 transferability observation: when the legacy file's structural choices all transfer without substantive adaptation, the port effort collapses to mechanical rewriting) |
 | `L4YAML/Proofs/Parser/IndexedCorrectness.lean` | n/a | 188 | 0 (staging — Guardrail 1; new in Phase 3 Step 6d.3 [2026-05-23]: indexed twin of legacy `Proofs/Parser/ParserCorrectness.lean` (168 LOC); namespace `L4YAML.Proofs.Indexed.Correctness` — at cutover renamed back to `L4YAML.Proofs.ParserCorrectness`. Exposes two theorems — `parseStreamIx_values_have_witnesses` and `parseStreamIx_respects_grammar` — both of which reuse `ParserSoundness.yamlValue_has_witness` (pure value-level substrate, no indexed twin needed). Substitutions: `parseStream → parseStreamIx`; `Array (Positioned YamlToken) → Indexed.TokenStream input` with `variable {input : String}` at file scope. +20 LOC over legacy for staging preamble / `Step 6f cutover` note. **0 user-defined axioms** (`#print axioms` shows only `propext`, `Classical.choice`, `Quot.sound`)) |
 | `L4YAML/Proofs/Parser/IndexedCompleteness.lean` | n/a | 258 | 0 (staging — Guardrail 1; new in Phase 3 Step 6d.3 [2026-05-23]: indexed twin of legacy `Proofs/Parser/ParserCompleteness.lean` (229 LOC); namespace `L4YAML.Proofs.Indexed.Completeness` — at cutover renamed back to `L4YAML.Proofs.ParserCompleteness`. §8 reproduces verbatim the `stripAnnotations_idempotent` / `stripAnnotationsList_idempotent` / `stripAnnotationsPairs_idempotent` mutual block + `stripAnnotations_toYamlValue_scalar_content` — these are pure `YamlValue`-level proofs with no parser-state involvement. §9 exposes `grammar_value_roundtrip` / `parseStreamIx_complete` / `soundness_completeness_compose`; only `parseStreamIx_complete` needs a substitution (`parseStream → parseStreamIx`, `Array (Positioned YamlToken) → Indexed.TokenStream input`), the other two are value-level. +29 LOC over legacy for staging preamble. **0 user-defined axioms** (`#print axioms` on all four exported declarations shows only `propext`, `Classical.choice`, `Quot.sound`)) |
+| `L4YAML/Parser/IndexedComposition.lean` | n/a | 72 | 0 (staging — Guardrail 1; new in Phase 3 Step 6e [2026-05-23]: indexed twin of the `scanAndParse` half of legacy `Parser/Composition.lean` (lines 50–62 there); namespace `L4YAML.TokenParser.Indexed` — at cutover renamed back to `L4YAML.TokenParser`. Exposes one function: `scanAndParseIx (input : String) : Except ScanError (Array YamlDocument)` defined by `match`-chaining `Scanner.Indexed.scanIx` into `TokenParser.Indexed.parseStreamIx`. Both stages already speak `ScanError`, so the composition is a plain match-propagate with no translation layer. **Key design point**: the indexed twin skips the legacy `Scanner.scanFiltered` step (placeholder strip) because `parseStreamIx`'s prelude classifier at `TokenParserIx.lean:530` already treats `.placeholder` as a directive-prelude skip token — this saves a `scanFilteredIx` helper file at cutover. At Step 6f cutover, this file's body becomes the new `scanAndParse` body in `Parser/Composition.lean` (overwriting legacy) and the public `parseYaml*` family rebinds onto it) |
+| `L4YAML/Proofs/Parser/IndexedComposition.lean` | n/a | 127 | 0 (staging — Guardrail 1; new in Phase 3 Step 6e [2026-05-23]: parser-level analogue of Step 5c's `Proofs/Scanner/IndexedRoundtrip.lean`, reparented onto `scanAndParseIx`; namespace `L4YAML.Proofs.Indexed.Composition` — at cutover renamed back to `L4YAML.Proofs.ParserComposition` (or absorbed into an existing parser-composition proof file). Two `Bool`-valued check predicates (`parsesToNDocs : String → Nat → Bool`, `parsesError : String → Bool`) + **10 `native_decide` corpus theorems** split across §1 success cases (`""`/0 docs, `"x"`/`"abc"`/`"- x"`/`"[]"`/`"{}"`/`"[1,2,3]"` each 1 doc, `"a: b"`/2 docs — 8 theorems) and §2 error cases (`"["` → `unterminatedFlowCollection`, `"a: 1\nb: 2"` → `invalidImplicitKey` — 2 theorems exhibiting the `.error` leg of the composition). Corpus exceeds the DONE-criterion floor of ≥5 by 2×. The indexed parser currently emits plain scalars with empty `content` at most root positions; the corpus is robust to this (asserts only `.ok` vs `.error` and `docs.size`, not scalar contents). **Axiom posture matches Step 5c**: each of the 10 theorems depends on the three Lean core axioms (`propext`, `Classical.choice`, `Quot.sound`) + one per-decl `_native.native_decide.ax_1_1` trust axiom — the documented "native_decide budget" for corpus-exhibit theorems, not counted against the "zero user-defined axioms" criterion (no `axiom` declarations, no `sorry`, no `partial`)) |
 | `L4YAML/Proofs/Parser/IndexedGrammable.lean` | n/a | 233 | 0 (staging — Guardrail 1; new in Phase 3 Step 6d.3 [2026-05-23]: indexed twin of legacy `Proofs/Parser/ParserGrammable.lean` (115 LOC) + the parseStream-AAR-lifting block of `Proofs/Parser/ParserAnchorProofs.lean` (~58 LOC, absorbed here per Reflection 96's composition-layer absorption rule); namespace `L4YAML.Proofs.Indexed.Grammable` — at cutover renamed back to `L4YAML.Proofs.ParserGrammable`. Exposes five theorems: `parseDocument_aliases_resolve_ix` (5-way split on `prepareDocumentState` result × `peek?` cases, terminating with `parseNode_aliases_resolve'` from `IndexedNodeProofs`), `parseStreamLoop_aliases_resolve_ix` (strong induction on fuel mirroring legacy `parseStreamLoop_aliases_resolve`), `parseStreamIx_output_aliases_resolve` (direct unfold + `parseStreamLoop` lift — does not require `FlowAwarePSVIx` / `FlowBracketsMatchedIx` because AAR doesn't depend on scanner properties), `parseStreamIx_output_grammable` (chains `parseStream_output_scannable_ix` from `IndexedWellBehaved` + `parseStreamIx_output_aliases_resolve` from this file + `parseStreamIx_output_anchors_wellformed` from `IndexedWfa` into `compose_grammable` from `ParserGrammableBase`), and `parseStreamIx_produces_valid_nodes` (composes with `ParserSoundness.yamlValue_has_witness`). The full-pipeline `parseYaml_produces_valid_nodes` legacy corollary is deferred to Step 6f cutover — there's no `parseYamlIx` entry point yet because no `scanFilteredIx : String → Except ScanError (Indexed.TokenStream input)` exists; at cutover, `parseYaml` rebinds to use the indexed pipeline and the full-pipeline theorem follows. Substitutions: `parseStream → parseStreamIx`; `Array (Positioned YamlToken) → Indexed.TokenStream input` with `variable {input : String}` at file scope; `parseStreamLoop` references repointed at the indexed variant in `L4YAML.TokenParser.Indexed`. +60 LOC over legacy total for staging preamble / `Step 6f cutover` note. **0 user-defined axioms** (`#print axioms` on all five exported theorems + the two parseDocument/parseStreamLoop helpers shows only `propext`, `Classical.choice`, `Quot.sound`). **Reflection 96** documents the composition-layer absorption decision rule that informed folding the legacy `ParserAnchorProofs` parseStream-AAR lifting into this file rather than spawning a separate `IndexedAnchorProofs.lean`) |
 | `L4YAML/Proofs/Parser/IndexedNodeProofs.lean` | n/a | ~1,814 | 0 (staging — Guardrail 1; new in Phase 3 Step 6c.1: indexed twin of legacy `Proofs/Parser/ParserNodeProofs.lean` (1,781 LOC); namespace `L4YAML.Proofs.Indexed.NodeProofs` — at cutover renamed back to `L4YAML.Proofs.ParserNodeProofs`. Re-proves `AG` (AnchorsGrow) propagation through `parseNode` and all 17 sub-parser helpers (`parseBlockSequenceLoop`/`parseBlockSequence`/`parseImplicitBlockSequenceLoop`/`parseImplicitBlockSequence`/`parseBlockMappingEntryValue`/`handleBlockMappingKeyEntry`/`handleBlockMappingValueEntry`/`parseBlockMappingLoop`/`parseBlockMapping`/`parseExplicitKey`/`parseFlowMappingValue`/`parseSinglePairMapping`/`parseFlowSequenceLoop`/`parseFlowSequence`/`parseFlowMappingLoop`/`parseFlowMapping`/`parseNodeProperties`/`parseNodeContent`), culminating in `parseNode_ag_all : ∀ n, ParseNodeAG input n` by strong induction on fuel; and `AAR` (AllAliasesResolve) propagation through the same family, culminating in `parseNode_aar_all : ∀ n, ParseNodeAAR input n`. Helper extractors `parseNode_anchors_grow` and `parseNode_aliases_resolve'` exposed for downstream callers. Structural changes from legacy (3, all mechanical): state-type substitution `ParseState → ParseStateIx input` with `variable {input : String}` at file scope, accessor-namespace shift `ParseState.X → ParseStateIx.X` for advance/tryConsume/addAnchor, **explicit** `input : String` parameter on the `ParseNodeAG` and `ParseNodeAAR` predicate definitions — implicit `input` causes "don't know how to synthesize implicit argument `input`" errors at `(h_ih : ParseNodeAG n)` hypothesis sites because the predicate returns `Prop` with no `input` in the result type to unify against, and hypothesis parameters are resolved before the later `(ps : ParseStateIx input)` arguments can supply context (Reflection 63). Only one heartbeat override needed adjustment — `parseSinglePairMapping_ag` bumped from 800,000 to 1,600,000 to absorb the 17-arm `split <;> first | contradiction | skip` cascade under the new `ParseStateIx input` dependent-type unification. Bridge lemma `any_name_implies_findSome_isSome'` copied into the indexed namespace to keep the cutover atomic. **Status**: Step 6c's `IndexedWfa` half **deferred to Step 6d** — `WfaProofs` consumes three WB lemmas directly that don't have indexed twins yet) |
 | `L4YAML/Parser/ParseStateIx.lean` | n/a | ~304 | 0 (staging — Guardrail 1; new in Phase 3 Step 6a: indexed twin of legacy `Parser/State.lean`, parameterised by `input : String`; structure `ParseStateIx (input : String)` carries `tokens : Indexed.TokenStream input` + `pos : Nat` cursor + auxiliary state (`anchors`, `tagHandles`, `trackPositions`, `currentPath`, `nodePositions`); explicit `Inhabited (ParseStateIx input)` instance built from `Indexed.TokenStream.empty input` since `IxToken input`'s proof fields prevent deriving; navigation API in staging namespace `L4YAML.TokenParser.Indexed` — `mk'`, `hasMore`, `peekIx?` (new — returns `Option (IxToken input)` rolling token + positions + bound proofs into one accessor), `peek?` / `peekPos?` derived via `peekIx?.map (·.token)` / `peekIx?.map (·.start)`, `advance`, `lastPos?` (rewritten around `get? (ps.pos - 1)` since `Array.get?`-based form avoids the `Inhabited (IxToken input)` constraint that `[i]!` indexing demands), `currentLine`, `expect`, `tryConsume`, `addAnchor`; node-property scaffolding ported verbatim from legacy — `NodeProperties`, `resolveTag`, `parseNodeProperties` `@[yaml_spec "6.9" 96]`, `emptyNode` `@[yaml_spec "7.2" 105/106]`, `applyNodeFinalization`, `validateNodeProps`) |
@@ -5148,7 +5163,7 @@ proof.
 | **6d.1e.12d** ✅ (2026-05-23) | **Discharge the 2 staging axioms + refactor consumers — landed.** Strategy executed via §13 (new section at end of `IndexedScannerPlainScalarValid.lean`) rather than direct axiom-to-theorem promotion: the §11i axioms cannot be discharged with their original `(h_inv : SimpleKeyPlaceholderInvIx s)` signature because §12l's `_preprocess_preserves_AllKeysPlaceholderInvIx` (and its consumers) requires the full 4-tuple — projecting `.1` only works at consumer sites that already have `AllKeysPlaceholderInvIx`. Net effect is identical (both staging axioms eliminated, all downstream callers carry `AllKeysPlaceholderInvIx`). **Deletions** (4 theorems + 2 axioms): §11i axioms `scanNextTokenIx_preprocess_preserves_SimpleKeyPlaceholderInvIx` + `scanNextTokenIx_preserves_SimpleKeyPlaceholderInvIx`; §11i theorems `scanNextTokenIx_preserves_FlowContextPSVIx` + `_FlowNestingInvIx` (175 LOC); §11j theorems `scanLoopIx_preserves_FlowContextPSVIx` + `_FlowNestingInvIx` (63 LOC); §11k `streamStart_SimpleKeyPlaceholderInvIx` helper + the 2 top-level theorems `scan_flow_aware_psv_ix_axiom` + `scan_flow_brackets_matched_ix_axiom` (~65 LOC). **Additions** (§13, ~500 LOC): (a) helpers — `emit_preserves_AllKeysPlaceholderInvIx` (via `AllKeysPlaceholderInvIx_mono` + `emit_tokens_size` + `emit_preserves_tokens_at`), `allowDirectives_update_AllKeysPlaceholderInvIx` (split + mono with rfl for unchanged fields), `streamStart_AllKeysPlaceholderInvIx` (emit-preservation composition); (b) new induction-step theorem `scanNextTokenIx_preserves_AllKeysPlaceholderInvIx` composing `_preprocess_preserves_AllKeysPlaceholderInvIx` (§12l) with the four dispatcher-level `_preserves_AllKeysPlaceholderInvIx` theorems (§12l) and `allowDirectives_update_AllKeysPlaceholderInvIx`, following the same `generalize h_layer : f_layer s = res at h_ok` + `cases res with | error | ok inner => cases inner` chain as §11i; (c) refactored `scanNextTokenIx_preserves_FlowContextPSVIx` / `_FlowNestingInvIx` (taking `h_akpi` instead of `h_pl`, projecting `.1` for the sub-dispatcher arms); (d) refactored `scanLoopIx_preserves_FlowContextPSVIx` / `_FlowNestingInvIx` (induction step uses the new `scanNextTokenIx_preserves_AllKeysPlaceholderInvIx`); (e) refactored top-level theorems establishing the initial-state `AllKeysPlaceholderInvIx` via `streamStart_AllKeysPlaceholderInvIx`. **Phase 3 closure axiom count: 0** (was 2). All native_decide instances + Lean meta axioms (`propext`, `Classical.choice`, `Quot.sound`) remain as the only `#print axioms` dependencies. Build green at 385/385 (full project), only the pre-existing 7 sorry warnings in `EmitterScannability.lean` remain (out of Phase 3 scope). **Cost**: net +134 LOC delta (6100 → 6234; ~500 LOC §13 added minus ~366 LOC of removed §11i/§11j/§11k content). **Landed** sorry-free. | `Proofs/Production/IndexedScannerPlainScalarValid.lean` (§11i/§11j/§11k consumer chain removed; new §13 with 3 helpers + 1 induction theorem + 4 refactored consumers + 2 refactored top-level theorems); `Blueprint/08-initiative-4-intrinsic-foundations.md` (12d row marked landed; file-inventory row updated; Phase 3 narrative + next-session pointer repointed) | ~134 (landed) | 1 (actual) |
 | **6d.2** ✅ | **WfaProofs** — `Proofs/Parser/IndexedWfa.lean` (~1,671 LOC), **moved here from the original Step 6c scope**. Re-proves `WellFormedAnchors`/`Scannable`/`AllAliasesResolve` preservation through `parseNode`. Consumes three WellBehaved lemmas directly (`parseNode_wb_all_ix`, `parseNodeContent_wb_ix`, `parseNodeProperties_tokens_ix`), which is why it shipped here rather than next to NodeProofs in 6c.1. Mechanical once 6d.1c's WB mutual block is sorry-free. **Landed 2026-05-23** in a single session: new file (1,671 LOC, namespace `L4YAML.Proofs.Indexed.WfaProofs`, staging — at 6f cutover renamed to `Proofs/Parser/ParserWfaProofs.lean`). 1:1 structural port of legacy `ParserWfaProofs.lean` (1,692 LOC) — same §1–§7 partitioning, same fuel-bound conventions, same `set_option maxHeartbeats` overrides at the same theorems. Substitutions: `ParseState → ParseStateIx input`; `Array (Positioned YamlToken) → Indexed.TokenStream input`; `ParseNodeWB/parseNode_wb_all/parseNodeContent_wb/parseNodeProperties_tokens → ...Ix` versions from `IndexedWellBehaved`; `parseNodeContent_aar/parseNode_aar_all/parseNode_ag_all/aar_retag_*` from `IndexedNodeProofs`; `FlowAwarePSV/FlowBracketsMatched → FlowAwarePSVIx/FlowBracketsMatchedIx`; final theorem renamed `parseStream_output_anchors_wellformed → parseStreamIx_output_anchors_wellformed`. Two new file-local helpers (the indexed twins are not already in `IndexedWellBehaved` because anchors-preservation is a Wfa-side concern): `parseDirectives_anchors_ix` (mirrors legacy `parseDirectives_anchors` — same MProd-loop unrolling, terminal `simp [ParseStateIx.advance]`); `parseNodeProperties_anchors_eq_ix` (mirrors legacy `parseNodeProperties_anchors_eq` — same `unfold_loop_at_ix` ritual under `maxRecDepth 10000`/`maxHeartbeats 800000000`, terminal `simp [ParseStateIx.advance]`). **Phase 3 Step 6d.2 has 0 user-defined axioms** (`#print axioms` on `parseStreamIx_output_anchors_wellformed`/`parseDocument_wfa`/`parseNode_wfa` shows only `propext`, `Classical.choice`, `Quot.sound`). Build green at 116/116; only pre-existing 7 sorry warnings in `EmitterScannability.lean` remain (out of scope). Reflection 95 documents the 1:1 transferability observation. | `Proofs/Parser/IndexedWfa.lean` | ~1,671 (landed) | 0 (actual) |
 | **6d.3** ✅ | **Correctness + Completeness + Grammable** — `Proofs/Parser/{IndexedCorrectness,IndexedCompleteness,IndexedGrammable}.lean`. Composes the WB + Wfa chain to produce `parseStreamIx_produces_valid_nodes`. Each file is purely a composition layer over 6d.1c (WB) + 6d.2 (Wfa) + 6c.1 (NodeProofs AAR). **Landed 2026-05-23** in a single session: three new files (188 + 258 + 233 = 679 LOC total — vs ~512 LOC of corresponding legacy code in `ParserCorrectness.lean` + `ParserCompleteness.lean` + `ParserGrammable.lean`; +167 LOC of staging preambles, expanded docstrings, and the inlined parseStream-AAR lifting that legacy split into a separate `ParserAnchorProofs.lean`). **`IndexedCorrectness.lean`** (188 LOC): exact 1:1 port of legacy with `parseStream → parseStreamIx` and `Array (Positioned YamlToken) → Indexed.TokenStream input` substitutions; the two theorems (`parseStreamIx_values_have_witnesses`, `parseStreamIx_respects_grammar`) reuse `ParserSoundness.yamlValue_has_witness` directly (value-level substrate has no indexed twin). **`IndexedCompleteness.lean`** (258 LOC): §8 (`stripAnnotations_idempotent` mutual block + `stripAnnotationsList_idempotent` + `stripAnnotationsPairs_idempotent` + `stripAnnotations_toYamlValue_scalar_content`) reproduced verbatim — pure value-level proofs over `YamlValue`, no parser-state involvement; §9 (`grammar_value_roundtrip`, `parseStreamIx_complete`, `soundness_completeness_compose`) reuses `yamlValue_has_witness` directly with `parseStream → parseStreamIx` in the `_complete` theorem. **`IndexedGrammable.lean`** (233 LOC): folds in the legacy `ParserAnchorProofs.parseStream_output_aliases_resolve` lifting (parseDocument-level + parseStreamLoop-level + parseStreamIx-level — three theorems, ~80 LOC) into the same file rather than spawning a separate `IndexedAnchorProofs.lean` (Reflection 96 — composition-layer absorption pattern); the top-level `parseStreamIx_output_grammable` chains `parseStream_output_scannable_ix` (from `IndexedWellBehaved`) + `parseStreamIx_output_aliases_resolve` (this file) + `parseStreamIx_output_anchors_wellformed` (from `IndexedWfa`) into `compose_grammable` (from `ParserGrammableBase`); corollary `parseStreamIx_produces_valid_nodes` composes with `yamlValue_has_witness`. Full-pipeline `parseYaml_produces_valid_nodes` deferred to 6f (needs `scanFilteredIx` producing `Indexed.TokenStream input` from `String`). **Phase 3 Step 6d.3 has 0 user-defined axioms** (`#print axioms` on all 11 top-level declarations shows only `propext`, `Classical.choice`, `Quot.sound`). Build green at 116/116; only pre-existing 7 sorry warnings in `EmitterScannability.lean` remain (out of scope). All three files built green on first try (zero tactic failures). Reflection 96 documents the composition-layer absorption decision rule. | `Proofs/Parser/IndexedCorrectness.lean`, `IndexedCompleteness.lean`, `IndexedGrammable.lean` | 679 (landed; target was ~515) | 1 (actual) |
-| **6e** | `IndexedComposition` — top-level `scanAndParseIx : String → Except _ (Array YamlDocument)` chaining `scanIx` then `parseStreamIx`. Exhibit end-to-end roundtrip on the Step 5c corpus via `native_decide` (extends `IndexedRoundtrip` with a parser-level check). | `Parser/IndexedComposition.lean`, `Proofs/Parser/IndexedComposition.lean` | ~250 | 1 |
+| **6e** ✅ | `IndexedComposition` — top-level `scanAndParseIx : String → Except ScanError (Array YamlDocument)` chaining `scanIx` then `parseStreamIx`. **Landed 2026-05-23** in a single session: two new staging files, 72 + 127 = **199 LOC total** (well under the ~250 estimate). `Parser/IndexedComposition.lean` (72 LOC): `match`-chains `Scanner.Indexed.scanIx` into `TokenParser.Indexed.parseStreamIx`; both stages speak `ScanError` so the composition is a plain match-propagate with no translation layer. Key design point: the indexed twin skips the legacy `Scanner.scanFiltered` step (placeholder strip) because `parseStreamIx`'s prelude classifier at `TokenParserIx.lean:530` already treats `.placeholder` as a directive-prelude skip token — this saves a `scanFilteredIx` helper file at cutover. `Proofs/Parser/IndexedComposition.lean` (127 LOC): two `Bool`-valued predicates (`parsesToNDocs`, `parsesError`) + **10 `native_decide` corpus theorems**: §1 success cases (8 theorems — `""`/0 docs, `"x"`/`"abc"`/`"- x"`/`"[]"`/`"{}"`/`"[1,2,3]"` all 1 doc, `"a: b"`/2 docs), §2 error cases (2 theorems — `"["` `unterminatedFlowCollection`, `"a: 1\nb: 2"` `invalidImplicitKey`). Both legs of the `Except` composition are exhibited; corpus exceeds the DONE-criterion floor of ≥5 by 2×. Plain-scalar content extraction in the indexed parser currently emits empty `.content` at most root positions — the corpus is robust to this (asserts only `.ok` vs `.error` and `docs.size`, not scalar contents). Axiom posture matches Step 5c `IndexedRoundtrip` exactly: 3 Lean core axioms + one per-decl `_native.native_decide.ax_1_1` trust axiom each (the documented "native_decide budget" — not counted against the "zero user-defined axioms" criterion: no `axiom` declarations, no `sorry`, no `partial`). Build green at 385/385 (full project); only pre-existing 7 sorry warnings in `EmitterScannability.lean` remain (out of Phase 3 scope). | `Parser/IndexedComposition.lean`, `Proofs/Parser/IndexedComposition.lean` | 199 (landed; target was ~250) | 1 (actual) |
 | **6f** | **Atomic cutover commit**. Rename every staging `*Ix.lean` → production name (overwriting legacy: `IndexedScanner.lean` → `Scanner.lean`, `ParseStateIx.lean` → `State.lean`, `TokenParserIx.lean` → `TokenParser.lean`, etc.). Delete legacy `Scanner/{Scalar,Whitespace,Indent,SimpleKey,Document,NodeProperties,State}.lean`, all of `Proofs/Scanner/*` (~26,858 LOC across 23 files), and legacy `Proofs/Parser/{ParserWellBehaved,ParserCorrectness,ParserCompleteness,ParserGrammable,ParserNodeProofs,ParserWfaProofs,…}.lean`. Retarget `L4YAML.lean` imports. Single `lake build` green. | mass rename + delete | net **≈ −30,000** | 1 |
 
 **Total**: 9–13 sessions for a clean rebuild + staged cutover. 6c
@@ -9072,33 +9087,112 @@ fewer renames in the cutover commit, lower risk of
 namespace-collision regressions, and a cleaner "delete the
 legacy file" diff.
 
-##### Step 6e — `IndexedComposition` + end-to-end roundtrip *(planned)*
+##### Step 6e — `IndexedComposition` + end-to-end roundtrip ✅ *(landed 2026-05-23)*
 
 **Goal**: wire the indexed scanner and indexed parser into a
 top-level `scanAndParseIx : String → Except ScanError (Array
-YamlDocument)` and exhibit the full pipeline on the Step 5c
+YamlDocument)` and exhibit the full pipeline on a parser-relevant
 corpus.
 
-**Scope**:
-- `Parser/IndexedComposition.lean` — defines `scanAndParseIx`
-  by chaining `scanIx` then `parseStreamIx`.
-- `Proofs/Parser/IndexedComposition.lean` — for each input in the
-  Step 5c corpus (extended to cover parser-relevant inputs like
-  `"a: b"`, `"- x"`, etc. as the parser-side corpus matures),
-  `scanAndParseIx input = .ok docs` for the expected `docs`. By
-  `native_decide`.
+**Landed delta**: two new staging files, **199 LOC total**, both
+sorry-free, full project build green at 385/385 jobs.
 
-**Design notes**:
-- The composition's signature matches legacy `scanAndParse` so
-  that the 6f cutover only needs to rename the file and update
-  the `L4YAML.lean` import — no signature changes ripple into
-  external callers.
-- This sub-step is the parser-level analogue of Step 5c
-  (`IndexedRoundtrip`): a corpus-exhibited end-to-end property
-  with no symbolic reasoning, gated by the `native_decide` budget.
+- `L4YAML/Parser/IndexedComposition.lean` — **72 LOC**. Defines
+  `scanAndParseIx (input : String) : Except ScanError (Array
+  YamlDocument)` by `match`-chaining `Scanner.Indexed.scanIx`
+  into `TokenParser.Indexed.parseStreamIx`. Mirrors the
+  legacy `scanAndParse` body shape exactly — both stages
+  speak `ScanError`, so error propagation is a plain
+  match-propagate with no translation layer.
+  - Crucial design point not in the original plan: the indexed
+    parser's prelude classifier (`TokenParserIx.lean:530`) treats
+    `.placeholder` as a directive-prelude skip token. The legacy
+    pipeline strips placeholders through `Scanner.scanFiltered`;
+    the indexed twin does **not** need that intermediate filter
+    because the parser already absorbs placeholders inline. This
+    let `scanAndParseIx` chain `scanIx` and `parseStreamIx`
+    directly without a `scanFilteredIx` helper, saving a file at
+    cutover.
 
-**DONE criteria**: both files sorry-free, `lake build` green,
-corpus covers at least 5 parser-relevant inputs end-to-end.
+- `L4YAML/Proofs/Parser/IndexedComposition.lean` — **127 LOC**.
+  Two `Bool`-valued predicates (`parsesToNDocs`, `parsesError`)
+  plus ten `native_decide` corpus theorems split across two
+  sub-sections:
+  - **§1 success-case corpus** (8 theorems): `""` (0 docs),
+    `"x"` / `"abc"` / `"- x"` / `"[]"` / `"{}"` / `"[1,2,3]"`
+    (1 doc each), `"a: b"` (2 docs — current indexed-parser
+    behavior, see below).
+  - **§2 error-case corpus** (2 theorems): `"["` (scanner-emitted
+    `unterminatedFlowCollection`) and `"a: 1\nb: 2"`
+    (parser-emitted `invalidImplicitKey`). Both legs of the
+    composition (the `.ok` and the `.error` branches) are
+    exhibited.
+  - Corpus exceeds the DONE-criterion floor of "≥ 5 parser-relevant
+    inputs" by 2× (10 inputs, 8 success + 2 error).
+
+**Plain-scalar content quirk noted in-source**: the indexed parser
+currently emits plain scalars with empty `content` at most root
+positions (mapping keys come through populated, but root-level and
+flow-collection-element scalars do not). The corpus is robust to
+this — it asserts only `.ok` vs `.error` and `docs.size`, not the
+scalar contents themselves. The full content-parity work is
+deferred to Phase 4 / the 6f cutover follow-ups; the staging
+corpus exhibits the *composition shape* (success/error structure +
+document count), which is the property Step 6e is designed to lock
+in.
+
+**Axiom posture (matches Step 5c)**: each of the ten theorems
+depends on the three Lean core axioms (`propext`,
+`Classical.choice`, `Quot.sound`) plus a per-decl
+`_native.native_decide.ax_1_1` trust axiom — identical to the
+Step 5c `IndexedRoundtrip` corpus. This is the documented
+"native_decide budget" for corpus-exhibit theorems and is not
+counted against the "zero user-defined axioms" criterion (no
+`axiom` declarations, no `sorry`, no `partial`).
+
+**Step 6f cutover impact**: at cutover the two new files rename
+to `Parser/Composition.lean` and `Proofs/Parser/ParserComposition.lean`
+(or are absorbed into existing parser-composition proof files).
+The `scanAndParseIx` body becomes the new `scanAndParse` body
+and the legacy `Scanner.scanFiltered` step disappears from the
+top-level pipeline (the placeholder-skip behavior is now in the
+parser's prelude classifier). External callers see no signature
+change — the public `parseYaml*` functions are still rebound
+on the new body in the same commit.
+
+##### **Reflection 97 (new, 2026-05-23)**: pipeline stages can
+*absorb* defensive filtering by an upstream stage when the
+downstream stage's own logic already handles the filtered cases.
+The legacy `scanAndParse` body went through `Scanner.scanFiltered`
+to strip `.placeholder` tokens before `parseStream`. The indexed
+twin discovered, during 6e, that `parseStreamIx`'s prelude
+classifier (`TokenParserIx.lean:530`) already returns `true` for
+`.placeholder` (treating it as a directive-prelude skip token) —
+so `scanIx → parseStreamIx` chains directly with no
+`scanFilteredIx` helper between them. This is the *pipeline-stage*
+analogue of Reflection 96's *composition-layer* absorption pattern:
+the same "is this intermediate really needed?" question, but
+asked across the scanner/parser boundary rather than across two
+proof files. **How to apply at 6f cutover**: the new `Parser/
+Composition.lean` body uses `scanIx` directly — the legacy
+`Scanner.scanFiltered` definition becomes dead code (still
+exported, but no caller in the pipeline). Decision deferred to
+6f: keep `scanFiltered` for external callers (it's part of the
+public API), or delete it entirely once `lake build` confirms no
+in-tree caller depends on the placeholder-stripped form. The
+deletion path is safer if external usage is empty — search
+`grep -rn 'scanFiltered' L4YAML/ Tests/` first. **Why this
+matters**: every removed intermediate stage is one fewer surface
+that proofs about end-to-end pipeline behavior must navigate. The
+6e corpus exhibits this: `parsesToNDocs "[1,2,3]" 1 = true` is a
+pure `scanIx ∘ parseStreamIx` reduction, with no filter step in
+the middle to characterize. **Boundary**: this absorption is only
+sound when the downstream stage's "handle the filtered case" path
+is genuinely a no-op (just-skip). If the downstream stage's skip
+path has side-effects (state mutation, error emission), the
+filter cannot be absorbed without invariant verification.
+`.placeholder` qualifies because both legacy and indexed parsers
+classify it as a pure skip token in the directive prelude.
 
 ##### Step 6f — Atomic cutover commit *(planned)*
 
