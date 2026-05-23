@@ -1820,25 +1820,40 @@ not in-place axiom-to-theorem promotion — the latter is impossible
 when the axiom's hypothesis is strictly weaker than what the
 stronger lemma derives).
 
-**Next session**: **Step 6f.3 — Proof-stack migration to indexed
-parser symbols**. With 6f.0 landed (parity gap closed; 40-input
-parity harness green; Schema/Dump migrated; Reflection 97
-retracted; Reflection 99 added), the remaining cutover work
-unblocks. 6f.3 retargets the qualified legacy proof references in
-`Proofs/EndToEndCorrectness.lean` (32 refs),
-`Proofs/Output/EmitterScannability.lean` (27 refs, 10741 LOC),
-`Proofs/Composition.lean` (14 refs),
-`Proofs/Output/ScannerEmitBridge.lean` (7 refs), and
-`Proofs/Completeness.lean` (4 refs) to their indexed twins
-(`ParserCorrectness.* → IndexedCorrectness.*`,
-`ParserGrammable.* → IndexedGrammable.*`,
-`ParserSoundness.* → IndexedSoundness.*` where applicable). 6f.3 +
-6f.5 may land as a coupled commit (proof migration + cutover
-overwrite together) since the proofs and the cutover symbol
-overwrite must be atomic to keep `lake build` green; 6f.4 + 6f.6
-follow.
+**Next session**: **Step 6f.3b — Downstream proof consumer
+repointing**. With 6f.3a landed (commit `39e33216`: indexed
+comment-preserving scan path; `parseYamlWithCommentsIx` now in
+`Parser/IndexedComposition.lean`; `CommentRoundTrip.lean` migrated;
++267 LOC across 5 files; build 405/405 green), the third deferred
+gap (no indexed `scanWithComments` twin) is now closed and 6f.5's
+prerequisite list is complete. 6f.3b can now proceed: migrate the
+~5 large proof consumers (`Proofs/EndToEndCorrectness.lean` 32
+refs, `Proofs/Output/EmitterScannability.lean` 27 refs,
+`Proofs/Composition.lean` 14 refs, `Proofs/Output/ScannerEmitBridge.lean`
+7 refs, `Proofs/Completeness.lean` 4 refs) to call `parseYamlIx` /
+`parseStreamIx` / `scanFilteredIx` and reference indexed theorems
+(`Indexed.Correctness.*`, `Indexed.Grammable.*`, etc.). Preserve
+the `Ix` suffix on symbols throughout — the Ix-drop happens in
+6f.3c. Per-tactic-site work: `simp [parseYaml]` becomes
+`simp [parseYamlIx]`; `parseStream tokens` becomes `parseStreamIx
+tokens` (and `tokens` retypes from `Array (Positioned YamlToken)`
+to `Indexed.TokenStream input`). After 6f.3b lands and the legacy
+proof files (`Proofs/Parser/Parser*.lean`) are orphaned, 6f.3c
+(coupled 6f.4 + 6f.5 atomic cutover) can rename staging files,
+flatten namespaces, drop Ix suffixes.
 
-**Previous next-session pointer**: **Step 6f.0 — indexed parser
+**Previous next-session pointer**: **Step 6f.3 — Downstream proof
+consumer migration** (partially landed as 6f.3a in commit
+`39e33216`; 6f.3b/6f.3c deferred to follow-up sessions). The
+execution surfaced a *third* deferred gap (no indexed
+`scanWithComments`) that the Blueprint's "6f.3↔6f.5 coupling"
+framing didn't enumerate; Reflection 100 captures the
+planning-hygiene lesson (write the coupling lemma after a complete
+public-API entry-point inventory, not before). The original
+"6f.3+6f.5 atomic commit" guidance still applies to the
+**post-6f.3a** scope.
+
+**Previous-previous next-session pointer**: **Step 6f.0 — indexed parser
 parity** (now landed, +~150 LOC across 4 files + a 40-input parity
 harness at `Tests/Guards/Parity/IndexedScanAndParse.lean`).
 Initial hypothesis ("missing placeholder filter") was confirmed;
@@ -9366,18 +9381,86 @@ Schema/Dump.lean was migrated as part of 6f.0 once parity held;
 its round-trip guards (`Tests.Guards.Schema.Dump`,
 `Proofs.Schema.SchemaDump`) pass on the indexed parser.
 
-##### **6f.3 — Downstream proof consumer migration** *(unblocked by 6f.0; ready to land coupled with 6f.5)*. Repointing
-`Proofs/EndToEndCorrectness`, `Proofs/Composition`,
-`Proofs/Completeness`, `Proofs/Output/ScannerEmitBridge`,
-`Proofs/RoundTrip/CommentProperties`, and (for type-only imports)
-the ~10 `Proofs/{RoundTrip,Errors,Schema}/*` files at the
-`Parser.Composition` import line. The proof refactors in
-`EndToEndCorrectness` (32 refs) and `Composition` (14 refs) need
-the unfolded `parseYaml` body to be the indexed one — that's only
-true after 6f.5 overwrites the legacy `Parser/Composition.lean`.
-So 6f.3 cannot complete before 6f.5, but 6f.5 cannot land cleanly
-without 6f.3's proof updates ready. The way out is to do 6f.3 and
-6f.5 *in the same commit* once parity allows.
+##### **6f.3 — Downstream proof consumer migration** *(in progress; comment-preservation gap closed 2026-05-23 in commit `39e33216`; consumer migration proper deferred to follow-up session)*. Decomposed into three sub-steps during execution after the comment-preservation gap surfaced:
+
+- **6f.3a — Indexed comment-preserving scan path** *(landed
+  2026-05-23, commit `39e33216`, +267 LOC across 5 files)*. The
+  Phase 1 scope-question (during 6f.3 execution) revealed that
+  `Proofs/RoundTrip/CommentRoundTrip.lean` calls legacy
+  `parseYamlWithComments`, which depends on
+  `Scanner.scanWithComments` returning `Array (Positioned
+  YamlToken)`. The 6f.5 overwrite would have destroyed that
+  pipeline without an indexed replacement, so 6f.5 was secretly
+  blocked on more than 6f.0 closed. 6f.3a ports the chain:
+  - `Scanner/IndexedScanner.lean` adds cursor-level
+    `collectCommentText` and `skipToContentLoopWithComments` /
+    `skipToContentWithComments` variants that capture each
+    `#`-introduced comment's `(position, text)` pair alongside
+    the cursor walk.
+  - `Scanner/IndexedState.lean` adds `comments` field to
+    `ScannerStateIx` (default `#[]`) plus
+    `skipToContentSWithComments` state-level wrapper. Existing
+    `skipToContentS` is unchanged so rfl-shaped proofs about its
+    cursor / token invariants stay green.
+  - `Scanner/IndexedDispatch.lean` adds the parallel
+    `scanNextTokenIx_preprocessWC` / `scanNextTokenIxWC` /
+    `scanLoopIxWC` / `scanWithCommentsIx` chain. The loop
+    re-runs `skipToContentSWithComments` on EOF (legacy
+    `scanLoopFull`'s trailing-comment trick at
+    `Scanner.lean:558-563`) so comments after the last token
+    aren't dropped.
+  - `Parser/IndexedComposition.lean` retracts the "deferred
+    `parseYamlWithCommentsIx`" note; ports
+    `classifyCommentPosition`, `classifyDocumentComments`,
+    `partitionCommentsByDocument`, and adds
+    `parseYamlWithCommentsIx` (uses `scanWithCommentsIx` +
+    `parseStreamIx` with `trackPositions := true`).
+  - `Proofs/RoundTrip/CommentRoundTrip.lean` repoints the only
+    real caller (`parseYamlWithComments → parseYamlWithCommentsIx`).
+  Parity verified ad-hoc on 5 comment-bearing inputs
+  (leading, inline trailing, top+bottom, flow-trailing,
+  multi-doc split-comment). After the EOF re-run fix the
+  legacy/indexed results agree on all five. Build 405/405
+  green; sorry budget unchanged. **This unblocks 6f.5
+  (the prerequisite that the Blueprint had silently deferred);
+  it does not by itself migrate consumers**.
+
+- **6f.3b — Downstream proof consumer repointing** *(deferred to
+  follow-up session, ~5 large files + ~10 type-only files)*. The
+  Blueprint scope (32 refs in `EndToEndCorrectness`, 27 in
+  `EmitterScannability`, 14 in `Composition`, 7 in
+  `ScannerEmitBridge`, 4 in `Completeness`) stands. The path:
+  migrate each consumer to call `parseYamlIx`/`parseStreamIx`/
+  `scanFilteredIx` and reference theorems via
+  `Proofs.Parser.IndexedCorrectness.*`, etc. — preserving the
+  `Ix` suffix on symbols. The proof tactics that `simp [parseYaml]`
+  need to re-target to `simp [parseYamlIx]` (one-name-substitution
+  per tactic site). Tractable but ~500+ LOC of mechanical edits
+  across the proofs.
+
+- **6f.3c — Coupled cutover (6f.4 + 6f.5)** *(deferred to follow-up
+  session)*. The Blueprint's original "land 6f.3+6f.5 in the same
+  commit" guidance still applies: after 6f.3b's consumer migration
+  has shipped (so legacy proof files are no longer imported by
+  consumers), 6f.4 + 6f.5 can rename staging files to legacy
+  production names, flatten the `.Indexed` namespaces, and drop
+  the `Ix` symbol suffixes. The parity harness at
+  `Tests/Guards/Parity/IndexedScanAndParse.lean` (40 inputs)
+  remains the regression gate.
+
+**Why the decomposition** (Reflection 100, below): the comment-
+preservation path is a *third* deferred gap that the Blueprint's
+"6f.3 cannot complete before 6f.5, but 6f.5 cannot land cleanly
+without 6f.3" framing didn't surface. Until 6f.3a, attempting
+6f.5 would have type-failed inside
+`Proofs/RoundTrip/CommentRoundTrip.lean` once
+`Scanner.scanWithComments` ceased to exist. The
+"staging-to-production substitution needs behavioral parity tests
+as a prerequisite" lesson from Reflection 98 applies to *every*
+distinct entry point, not just the canonical
+`parseYaml`/`parseStream` chain. Each gap surfaced needs its own
+substep; the coupling lemma now reads "6f.5 cannot complete before
+6f.3a + 6f.3b are both landed".
 
 ##### **6f.4 — Indexed proof staging file renames** *(unblocked by 6f.0)*.
 Rename `Proofs/Parser/IndexedCorrectness.lean → ParserCorrectness.lean`
@@ -9524,6 +9607,49 @@ self-evident from "the downstream layer's classifier says
 This is the *pipeline-stage* analogue of Reflection 96's
 *composition-layer* absorption pattern, with the corrected
 boundary criterion attached.
+
+##### **Reflection 100 (new, 2026-05-23)**: a planned coupling
+*lemma* is itself only as complete as the entry-point inventory
+behind it. 6f.3's Blueprint scope read "6f.3 cannot complete before
+6f.5; 6f.5 cannot land cleanly without 6f.3's proof updates ready"
+— a two-direction coupling that captured the
+`parseYaml`/`parseStream` interface. What it *missed* was that the
+indexed parser/scanner staging files lacked an
+indexed twin of `Scanner.scanWithComments`. The legacy
+`parseYamlWithComments` was a third entry point that would have
+type-failed at the moment 6f.5 overwrote `Parser/Composition.lean`
+and `Scanner/Scanner.lean`. The coupling lemma was *underwritten*:
+true for the canonical entry pair, silently false for the
+comment-preserving pair.
+
+The lesson rhymes with Reflection 98 ("staging proofs are scoped to
+the properties proven, not behavioral parity"): a *coupling claim*
+is scoped to the entry points it enumerates, not to the full public
+API. Before signing off on a multi-step plan that depends on
+"X cannot land before Y", run a complete-entry-point audit: list
+every legacy public function that consumers (proof *or* runtime)
+call; check each has a staging twin; trace the staging twin's
+dependencies to confirm they survive the cutover. The 6f.0 work
+filled a *predicate-vs-consumer* gap (Reflection 99); 6f.3a fills a
+*third deferred gap* (no indexed `scanWithComments`) that emerged
+the same way: the staging build green + the canonical parity
+harness green did not imply that *every* consumer's call would
+succeed against the new code.
+
+**How to apply at future cutover boundaries**: maintain a separate
+"public-API inventory" checklist alongside the parity harness. Each
+checklist item lists `(legacy symbol, indexed twin, consumers using
+it)`. The cutover-readiness condition is *every row is non-empty
+on the indexed-twin column*. The 6f.3 coupling diagnosis would have
+flagged the `scanWithComments`/`parseYamlWithComments` row as
+missing its indexed twin, surfacing the prerequisite before the
+"land 6f.3+6f.5 atomically" guidance set false expectations.
+
+**Cost of the lesson**: 6f.3 became three sub-steps (6f.3a/b/c)
+instead of one atomic commit. The decomposition is the right shape
+(comment-preservation is genuinely independent of consumer
+migration), so the lesson is principally for *planning hygiene*:
+write the coupling lemma after the inventory, not before.
 
 </details>
 
