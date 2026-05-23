@@ -69,4 +69,57 @@ def scanAndParseIx (input : String) : Except ScanError (Array YamlDocument) :=
   | .ok tokens => parseStreamIx tokens
   | .error e => .error e
 
+/-! ## Public API — indexed twins of `L4YAML.TokenParser.parseYaml*`
+
+These are the externally-visible entry points that consumers
+(`L4YAML/Schema/*`, `L4YAML/Config/Limits.lean`, the production
+proof stack) call. The legacy versions live in `Parser/Composition.lean`
+under namespace `L4YAML.TokenParser`. At Step 6f cutover, the indexed
+namespace flattens and these functions become the production
+`parseYaml*` symbols on the rebound body.
+
+`parseYamlWithCommentsIx` is **not** provided here: it needs an
+indexed twin of `Scanner.scanWithComments` which is not yet
+implemented. Comment-preserving callers
+(`Output/Emitter.lean`, `Proofs/RoundTrip/CommentRoundTrip.lean`)
+keep importing legacy `Parser/Composition.lean` until that gap is
+filled.
+-/
+
+/-- Indexed twin of `L4YAML.TokenParser.parseYamlRaw`. Returns
+    serialization-tree documents (aliases preserved, anchor fields
+    populated). Behaviourally identical to `scanAndParseIx`. -/
+def parseYamlRawIx (input : String) : Except ScanError (Array YamlDocument) :=
+  scanAndParseIx input
+
+/-- Indexed twin of `L4YAML.TokenParser.parseYaml`. Applies the
+    §3.1 *Compose* step (`YamlDocument.compose`) to each document
+    from `parseYamlRawIx`. -/
+def parseYamlIx (input : String) : Except ScanError (Array YamlDocument) :=
+  match parseYamlRawIx input with
+  | .ok docs => .ok (docs.map YamlDocument.compose)
+  | .error e => .error e
+
+/-- Indexed twin of `L4YAML.TokenParser.parseYamlSingleRaw`.
+    Errors with `multipleDocuments` if the input has more than one. -/
+def parseYamlSingleRawIx (input : String) : Except ScanError YamlDocument :=
+  match parseYamlRawIx input with
+  | .ok docs =>
+    if docs.size == 0 then .ok { value := YamlValue.null }
+    else if docs.size == 1 then .ok docs[0]!
+    else .error (.multipleDocuments docs.size)
+  | .error e => .error e
+
+/-- Indexed twin of `L4YAML.TokenParser.parseYamlSingle`.
+    Returns just the composed `YamlValue` of a single-document
+    stream. Errors with `multipleDocuments` if the input has more
+    than one. -/
+def parseYamlSingleIx (input : String) : Except ScanError YamlValue :=
+  match parseYamlIx input with
+  | .ok docs =>
+    if docs.size == 0 then .ok YamlValue.null
+    else if docs.size == 1 then .ok docs[0]!.value
+    else .error (.multipleDocuments docs.size)
+  | .error e => .error e
+
 end L4YAML.TokenParser.Indexed
