@@ -839,13 +839,48 @@ def scanFlowMappingEndIx {input : String} (s : ScannerStateIx input) :
       simpleKey := restored,
       simpleKeyAllowed := false }
 
-/-- Scan `,` flow entry separator. -/
+/-- Look back through trailing `.placeholder` reservation slots to find
+    the last real token value (indexed twin of
+    `L4YAML.Scanner.lastRealTokenVal?`). Returns `none` if the stream
+    contains no real token yet. -/
+def lastRealTokenValIx? {input : String} (ts : Indexed.TokenStream input) :
+    Option YamlToken :=
+  let arr := ts.tokens
+  if arr.size > 0 then
+    let lastIdx := arr.size - 1
+    let tok1 := arr[lastIdx]!.token
+    if tok1 == YamlToken.placeholder && lastIdx > 0 then
+      let tok2 := arr[lastIdx - 1]!.token
+      if tok2 == YamlToken.placeholder && lastIdx > 1 then
+        some arr[lastIdx - 2]!.token
+      else some tok2
+    else some tok1
+  else none
+
+/-- Scan `,` flow entry separator. Mirrors `L4YAML.Scanner.scanFlowEntry`:
+    emits `.flowEntry` and sets `simpleKeyAllowed := true` so the next
+    item can start a fresh implicit key.
+
+    Does **not** call `scanValuePrepareIx` — that is the `:` (value)
+    boundary's job. A `,` does not retroactively confirm the pending
+    simple key; any pending reservation slots stay as `.placeholder`
+    and are stripped by `scanFilteredIx`. (Step 6f.0 removed an
+    accidental `scanValuePrepareIx` call here that was overwriting
+    `placeholder` slots with `.key` tokens after `[` / `,`, producing
+    spurious `key` tokens in flow sequences with multiple entries.)
+
+    §7.4: a leading comma after a flow-open indicator (`[`, `{`) or a
+    consecutive comma is invalid; this raises `invalidFlowEntry`. -/
 def scanFlowEntryIx {input : String} (s : ScannerStateIx input) :
-    Except ScanError (ScannerStateIx input) :=
-  let s := scanValuePrepareIx s
-  let s := s.emit YamlToken.flowEntry
-  let s := s.advance
-  .ok { s with simpleKeyAllowed := true }
+    Except ScanError (ScannerStateIx input) := do
+  if let some lastTok := lastRealTokenValIx? s.tokens then
+    if lastTok == YamlToken.flowSequenceStart
+        || lastTok == YamlToken.flowMappingStart
+        || lastTok == YamlToken.flowEntry then
+      throw (.invalidFlowEntry s.cursor.pos.line s.cursor.pos.col)
+  let s_with_token := s.emit YamlToken.flowEntry
+  let s_after_advance := s_with_token.advance
+  .ok { s_after_advance with simpleKeyAllowed := true }
 
 /-! ## Dispatcher
 
@@ -1073,6 +1108,29 @@ def scanIx (input : String) : Except ScanError (Indexed.TokenStream input) :=
     | _ => s
   let fuel := input.utf8ByteSize + 1
   scanLoopIx s (fuel * 4)
+
+/-- Like `scanIx` but drops internal `.placeholder` tokens from the
+    emitted stream. Indexed twin of `L4YAML.Scanner.scanFiltered`.
+
+    `.placeholder` tokens are emitted by simple-key reservation
+    (`saveSimpleKey`) and remain in the stream when a candidate
+    simple key is rejected. Downstream consumers (parser, presenter,
+    user-facing inspection) never need to see them; this helper
+    strips them in a single pass after the main scan completes.
+
+    The indexed parser (`TokenParser.Indexed.parseStreamIx`) does
+    *not* skip `.placeholder` internally — its `validNextToken`
+    predicate at the directive-prelude boundary returns `true` on
+    `.placeholder`, but the parser never *consumes* (advances past)
+    such a token, so an unfiltered stream stalls or mis-routes
+    through the `_` fallback in `parseNodeContent`. The legacy
+    `scanFiltered` was the boundary that stripped placeholders before
+    the parser saw them; `scanFilteredIx` restores that boundary for
+    the indexed pipeline. -/
+def scanFilteredIx (input : String) : Except ScanError (Indexed.TokenStream input) :=
+  match scanIx input with
+  | .ok ts => .ok { tokens := ts.tokens.filter fun t => t.token != YamlToken.placeholder }
+  | .error e => .error e
 
 end ScannerStateIx
 

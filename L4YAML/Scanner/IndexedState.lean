@@ -278,10 +278,36 @@ def skipSpacesS {input : String} (s : ScannerStateIx input) :
   { s with cursor := L4YAML.Scanner.Indexed.skipWhitespace s.cursor }
 
 /-- Skip the composite `s-l-comments` (whitespace + `#`-comment + line
-    break, recursing). -/
+    break, recursing).
+
+    Mirrors `L4YAML.Scanner.skipToContentLoop`'s side effects: whenever a
+    line break is crossed, the legacy
+    (`Scanner.consumeNewline` → `Scanner.skipToContentLoop`) sets
+    `needIndentCheck := true` so the next `scanNextToken_preprocess`
+    will run `unwindIndents` for block-context outdents, and (outside a
+    flow sequence) sets `simpleKeyAllowed := true` so the next item on
+    the new line can open an implicit key.
+
+    The indexed `Indexed.skipToContent` operates purely on the cursor,
+    so we re-apply both state-level effects here by detecting whether
+    the line number changed.
+
+    Step 6f.0: these newline-crossing resets were missing prior to the
+    placeholder-filter restoration commit. Symptoms:
+    - `a: 1\nb: 2` errored with `invalidImplicitKey` (missing
+      `simpleKeyAllowed := true` reset).
+    - Nested block sequences (`-\n  - a\n  - b\n-\n  - c`) failed to
+      emit the closing `blockEnd` on outdent (missing
+      `needIndentCheck := true` reset). -/
 @[inline] def skipToContentS {input : String} (s : ScannerStateIx input) :
     ScannerStateIx input :=
-  { s with cursor := L4YAML.Scanner.Indexed.skipToContent s.cursor }
+  let newCursor := L4YAML.Scanner.Indexed.skipToContent s.cursor
+  if newCursor.pos.line != s.cursor.pos.line then
+    { s with cursor := newCursor,
+              needIndentCheck := true,
+              simpleKeyAllowed := if s.isInFlowSequence then s.simpleKeyAllowed else true }
+  else
+    { s with cursor := newCursor }
 
 /-! ## Tab-in-indentation backward scan (§6.1)
 

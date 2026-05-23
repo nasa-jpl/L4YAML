@@ -13,24 +13,32 @@ Phase 3 Step 6f cutover commit.
 ## Role
 
 Indexed twin of the `scanAndParse` half of
-`L4YAML/Parser/Composition.lean`: chains `Scanner.Indexed.scanIx`
-into `TokenParser.Indexed.parseStreamIx` to expose a single
+`L4YAML/Parser/Composition.lean`: chains
+`Scanner.Indexed.scanFilteredIx` into
+`TokenParser.Indexed.parseStreamIx` to expose a single
 `scanAndParseIx : String → Except ScanError (Array YamlDocument)`
 entry point.
 
 Mirrors the match-based shape of the legacy `scanAndParse`. Both
 stages already speak `ScanError`, so no error translation is
-required. The indexed pipeline does **not** strip
-`.placeholder` tokens between scan and parse — both the legacy
-and indexed token parsers classify `.placeholder` as a
-directive-prelude skip token, so the unfiltered stream is
-accepted directly.
+required. The indexed pipeline strips `.placeholder` tokens
+between scan and parse via `scanFilteredIx`, matching legacy's
+`scanFiltered` boundary.
 
-The legacy `scanAndParse` (via `scanFiltered`) keeps the
-placeholder-strip step, but the indexed parser already handles
-the residual placeholders inline, which lets `scanAndParseIx`
-chain `scanIx` and `parseStreamIx` directly without an
-intermediate filter pass.
+## Step 6f.0 — placeholder filter restoration
+
+Step 6e wired `scanIx` directly into `parseStreamIx`, on the
+hypothesis that `parseStreamIx`'s `validNextToken` classifier
+would absorb the placeholder-skip step (Reflection 97). That
+hypothesis was wrong: `validNextToken` *permits* but does not
+*consume* placeholders, so unfiltered streams either stall or
+mis-route through `parseNodeContent`'s `_` fallback (emitting an
+empty scalar). Step 6f.0 reintroduces the filter via
+`scanFilteredIx` and retracts Reflection 97. The architectural
+symmetry with legacy is now restored:
+`parseStreamIx`-level proofs reason about an arbitrary
+`TokenStream input`, leaving the filter as a `scanAndParseIx`-
+level concern (zero proof impact).
 
 ## Phase 3 Step 6f cutover
 
@@ -51,21 +59,22 @@ open L4YAML.TokenParser.Indexed
 
 /-! ## Convenience: Full Indexed Pipeline -/
 
-/-- **Indexed Load pipeline**: scan an input `String` with `scanIx`
-    and parse the resulting indexed token stream with
-    `parseStreamIx`.
+/-- **Indexed Load pipeline**: scan an input `String` with
+    `scanFilteredIx` (which drops `.placeholder` tokens) and parse
+    the resulting indexed token stream with `parseStreamIx`.
 
     Both stages return `Except ScanError ...` so the composition is
     a plain match-propagate: scanner errors bubble out unchanged,
     parser errors bubble out unchanged.
 
-    Indexed twin of `L4YAML.TokenParser.scanAndParse` (legacy). The
-    legacy variant goes through `Scanner.scanFiltered` (which strips
-    `.placeholder` tokens); the indexed twin does not need that step
-    because `parseStreamIx`'s prelude classifier already treats
-    `.placeholder` as a skip token. -/
+    Indexed twin of `L4YAML.TokenParser.scanAndParse` (legacy).
+    Step 6f.0 restored the placeholder filter (`scanFilteredIx`)
+    after Step 6e's direct `scanIx` wiring produced empty-scalar
+    parses for plain root scalars (`validNextToken` permits but
+    does not consume `.placeholder`; the parser fell through to
+    `parseNodeContent`'s `_` fallback). -/
 def scanAndParseIx (input : String) : Except ScanError (Array YamlDocument) :=
-  match scanIx input with
+  match scanFilteredIx input with
   | .ok tokens => parseStreamIx tokens
   | .error e => .error e
 

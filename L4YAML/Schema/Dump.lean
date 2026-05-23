@@ -4,7 +4,7 @@ import L4YAML.Schema.FromToYaml
 import L4YAML.Schema.Struct
 import L4YAML.Output.Dump
 import L4YAML.Output.Emitter
-import L4YAML.Parser.Composition
+import L4YAML.Parser.IndexedComposition
 
 /-
 Copyright (c) 2026. All rights reserved.
@@ -53,7 +53,8 @@ namespace L4YAML.Schema.Dump
 open L4YAML
 open L4YAML.Dump
 open L4YAML.Emit
-open L4YAML.TokenParser
+open L4YAML.TokenParser.Indexed renaming
+  parseYamlSingleIx → parseYamlSingle
 
 /-! ## Core Serialization Pipeline -/
 
