@@ -1820,27 +1820,34 @@ not in-place axiom-to-theorem promotion — the latter is impossible
 when the axiom's hypothesis is strictly weaker than what the
 stronger lemma derives).
 
-**Next session**: **Indexed parser scalar-content parity** (the
-blocker for Step 6f.3–6f.6). The 6f cutover was started this
-session and decomposed into 6 sub-steps after audit revealed the
-atomic plan undercounts the work by ~30 downstream files. 6f.1
-(indexed public API surface) and 6f.2 (non-proof consumer
-migration, partial — Schema/Dump reverted) landed cleanly. 6f.3–
-6f.6 are blocked on a *runtime* parity gap discovered during
-6f.2: the indexed parser emits empty `.content` for plain scalars
-at root and flow-collection-element positions, which causes
-`Tests.Guards.Schema.Dump.contentRoundTrips` to fail when routed
-through `parseYamlSingleIx`. The next session should: (1) audit
-the indexed `parseNode` paths in `Parser/TokenParserIx.lean` that
-emit `YamlValue.scalar`, (2) thread the scanner-provided
-plain-scalar token bytes through to the scalar's `content` field
-at every emission site (current legacy reference:
-`Parser/TokenParser.lean` `parseNode`/`parsePlainScalar`),
-(3) verify the 6e corpus still builds and add a regression test
-that `contentRoundTrips` (≥3 inputs) passes on the indexed
-pipeline. Once parity holds, 6f.3+6f.5 can land as a coupled
-commit (proof migration + overwrite together), then 6f.4 + 6f.6
-follow.
+**Next session**: **Step 6f.0 — indexed parser parity**. After
+6f.2's Schema/Dump revert exposed the parity gap, this session's
+diagnosis re-scoped the work. The original "scalar-content
+threading" hypothesis is wrong: a reproducer confirmed that the
+indexed scanner *correctly* populates `YamlToken.scalar content`
+at every emission site, and the indexed parser *correctly*
+destructures `content` at `TokenParserIx.lean:88` — but in
+between, the parser never advances past the `.placeholder`
+tokens the scanner interleaves. The legacy pipeline strips them
+via `Scanner.scanFiltered` before `parseStream`; the indexed
+pipeline (per Step 6e Reflection 97) skipped that filter. The
+reflection was wrong — `validNextToken` *permits* placeholders
+but doesn't *consume* them, so `parseNodeContent` reaches the
+placeholder, falls into its `_` arm, and emits an empty scalar.
+Next session: (1) port `Scanner.scanFiltered` to indexed as
+`Scanner.Indexed.scanFilteredIx` (~30 LOC); (2) re-wire
+`scanAndParseIx` to call it; (3) retract Reflection 97 (with
+self-correcting replacement Reflection 99 about the
+classifier-vs-consumer distinction); (4) add a parity test
+harness at `Tests/Parity/IndexedParity.lean` with ≥30 inputs
+asserting byte-equality between legacy and indexed
+`parseYaml`/`parseYamlSingle`; (5) fix any residual gaps the
+harness surfaces. Proof impact is bounded to zero —
+`Proofs/Parser/Indexed*.lean` reason about `parseStreamIx` on an
+arbitrary `Indexed.TokenStream input`; filtering produces a valid
+stream of the same type. Once 6f.0 lands, 6f.3+6f.5 can land as
+a coupled commit (proof migration + overwrite together), then
+6f.4 + 6f.6 follow.
 
 **Previous next-session pointer**: Step 6f — atomic cutover commit
 (originally planned as one commit, now decomposed: 6f.1 ✅ +53 LOC
@@ -9238,6 +9245,113 @@ buildable and reviewable.
 The cutover therefore proceeds as 6 sub-commits, each preserving
 `lake build` green:
 
+**6f.0 — Indexed parser parity** *(planned, prerequisite for 6f.3–6f.6)*.
+After 6f.2's Schema/Dump revert exposed the parity gap, a focused
+reproducer (`#eval TokenParser.parseYamlSingle X` vs
+`TokenParser.Indexed.parseYamlSingleIx X` for ten representative
+inputs) localised the root cause more precisely than "scalar-content
+quirk":
+
+**Diagnosed root cause** (verified 2026-05-23): the indexed scanner
+*correctly* emits `YamlToken.scalar content style` with populated
+`content` for every scalar token at every position (verified by
+projecting `(scanIx input).tokens.map (·.token)` on the corpus).
+The bug is that the indexed parser does **not** skip the
+`.placeholder` tokens the scanner interleaves through the stream.
+
+The legacy pipeline strips `.placeholder` tokens via
+`Scanner.scanFiltered` before `parseStream` ever sees them. The
+indexed pipeline (per Step 6e's "pipeline-stage absorption"
+decision) skips this filter — Reflection 97 claimed the indexed
+parser's `validNextToken` classifier at `TokenParserIx.lean:530`
+already treats `.placeholder` as a directive-prelude skip token,
+making `scanFilteredIx` unnecessary. That claim is **wrong**:
+`validNextToken` is a *predicate* (returns `true`/`false` for
+"is this a valid token at this state"), not a *consumer*. It
+does not advance past the placeholder; it just permits it.
+
+The downstream effect: for input `"abc"` the indexed scanner emits
+`[streamStart, placeholder, placeholder, scalar "abc" plain,
+streamEnd]`. `parseStreamIx`'s `expect .streamStart` consumes the
+streamStart. `parseStreamLoop` sees `.placeholder`, asks
+`validNextToken` ("yes, valid"), and calls `parseDocument`.
+`parseDocument` → `prepareDocumentState` → `parseDirectives`: only
+matches `versionDirective`/`tagDirective`, breaks. `parseDocument`
+then `match ps.peek?` — `.placeholder` matches none of the
+documentEnd/streamEnd/none arms, so falls through to `parseNode`.
+`parseNode` → `parseNodeProperties`: only matches `anchor`/`tag`,
+breaks. → `parseNodeContent`: matches `ps.peek? = some
+.placeholder`, falls into the `_` arm at line 100, emits
+`YamlValue.scalar { content := "", style := .plain }`. The real
+scalar token is never consumed. The empty scalar bubbles back up
+to `parseStreamSingleIx` as the document's value.
+
+The same mis-routing explains the other reproducer surprises:
+`"- a\n- b\n"` returns an empty scalar instead of a block
+sequence (the parser falls off into the `_` arm before the
+`blockSequenceStart` token), and `"a: b"` parses as two documents
+(the placeholder is consumed as one document's empty body before
+the mapping starts). The "plain-scalar content quirk" footnote
+in Step 6e was *one symptom*; the cause is general parser
+mis-handling of placeholder tokens.
+
+**Mechanics (planned)**:
+
+1. **Port `Scanner.scanFiltered` to indexed**. Add
+   `Scanner.Indexed.scanFilteredIx : String → Except ScanError
+   (Indexed.TokenStream input)` mirroring the legacy filter step:
+   run `scanIx`, then drop every `IxToken` whose `.token =
+   .placeholder` from the resulting token stream. ~30 LOC,
+   self-contained, no proof impact.
+2. **Re-wire `scanAndParseIx`** in
+   `Parser/IndexedComposition.lean` to call `scanFilteredIx`
+   instead of `scanIx`. ~2 LOC.
+3. **Retract Reflection 97**. Replace its body with a
+   self-correcting "Reflection 97 (retracted, 2026-05-23)" entry
+   explaining the diagnostic error (classifier ≠ consumer). Move
+   the "absorption pattern" lesson to Reflection 99 with the
+   *correct* boundary: a downstream stage can absorb a filter
+   only when it *consumes* (advances past) the filtered token,
+   not merely *permits* it.
+4. **Add a parity test harness** at
+   `L4YAML/Tests/Parity/IndexedParity.lean` (or fold into an
+   existing `Tests/Guards/` file). Corpus of ~30 inputs covering
+   every parser path; for each, assert
+   `parseYaml input = parseYamlIx input` and
+   `parseYamlSingle input = parseYamlSingleIx input` as
+   `native_decide`-style byte-equality checks. Failing test ⇒
+   parity gap unresolved. Seed corpus: empty stream; plain root
+   scalars (`x`, `abc`); quoted scalars (`"a"`, `'a'`); block
+   sequence with/without trailing newline; block mapping
+   single/multi-key; flow sequence with/without spaces; flow
+   mapping; nested collections; anchors and aliases; tags;
+   document markers (`---`, `...`); multi-document streams;
+   block literal (`|`) and folded (`>`) scalars.
+5. **Run the harness; fix any residual gaps** (each in its own
+   targeted commit, each adding a regression input to the
+   harness). Suspected to be small (placeholder-skipping is
+   ~80% of the symptom surface), but the harness is the truth.
+
+**Proof impact**: bounded to zero by construction.
+`Proofs/Parser/Indexed*.lean` all reason about `parseStreamIx`
+applied to an arbitrary `Indexed.TokenStream input`. Filtering
+placeholders before `parseStreamIx` produces a valid token stream
+of the same type — the proofs accept it unchanged. This mirrors
+legacy's split: `parseStream`-level proofs were unaware of
+`scanFiltered`; the filter was a `scanAndParse`-level concern.
+6f.0 restores that architectural symmetry.
+
+**DONE criteria**: parity harness ≥ 30 inputs, all passing;
+`lake build` 100% green; sorry budget unchanged; Reflection 97
+retracted with replacement (Reflection 99); the 6e Blueprint's
+"plain-scalar content quirk" footnote in the file-inventory
+entries retracted.
+
+**Estimated scope**: ~50–200 LOC of code + harness + retracted
+reflection; one session if no residual gaps surface beyond
+placeholders. Schema/Dump's `contentRoundTrips` test should pass
+unchanged on `parseYamlSingleIx` once placeholder-skipping is in.
+
 **6f.1 — Indexed public API surface** *(landed 2026-05-23, commit
 `abaaeb7f`, +53 LOC)*. Add four indexed twins of the legacy public
 parser entry points to `Parser/IndexedComposition.lean`:
@@ -9250,7 +9364,7 @@ implemented), so the two comment-preserving callers
 (`Output/Emitter.lean`, `Proofs/RoundTrip/CommentRoundTrip.lean`)
 stay on legacy until that gap is filled.
 
-**6f.2 — Non-proof consumer migration (partial)** *(landed
+##### **6f.2 — Non-proof consumer migration (partial)** *(landed
 2026-05-23, commit `33c31e11`, +5/−5 LOC across 2 files; Schema/Dump
 deferred)*. `Schema/Api.lean` and `Config/Limits.lean` switched to
 the indexed public API (`parseYamlSingleIx`, `parseYamlRawIx`).
@@ -9263,7 +9377,7 @@ element positions; `contentEq` then returns `false` for any
 non-empty scalar dump. This is the **scalar-content parity gap**
 blocker for the remaining 6f sub-steps (see below).
 
-**6f.3 — Downstream proof consumer migration** *(BLOCKED on scalar-content parity)*. Repointing
+##### **6f.3 — Downstream proof consumer migration** *(BLOCKED on scalar-content parity)*. Repointing
 `Proofs/EndToEndCorrectness`, `Proofs/Composition`,
 `Proofs/Completeness`, `Proofs/Output/ScannerEmitBridge`,
 `Proofs/RoundTrip/CommentProperties`, and (for type-only imports)
@@ -9276,7 +9390,7 @@ So 6f.3 cannot complete before 6f.5, but 6f.5 cannot land cleanly
 without 6f.3's proof updates ready. The way out is to do 6f.3 and
 6f.5 *in the same commit* once parity allows.
 
-**6f.4 — Indexed proof staging file renames** *(BLOCKED on parity)*.
+##### **6f.4 — Indexed proof staging file renames** *(BLOCKED on parity)*.
 Rename `Proofs/Parser/IndexedCorrectness.lean → ParserCorrectness.lean`
 (overwrite legacy), `IndexedCompleteness → ParserCompleteness`,
 `IndexedGrammable → ParserGrammable`, `IndexedNodeProofs →
@@ -9286,7 +9400,7 @@ Inside each, revert the `L4YAML.Proofs.Indexed.*` namespace to its
 legacy form. Coupled with 6f.3/6f.5 because consumers reference
 the qualified theorem names from these files.
 
-**6f.5 — Indexed parser/scanner file renames** *(BLOCKED on parity)*.
+##### **6f.5 — Indexed parser/scanner file renames** *(BLOCKED on parity)*.
 Overwrite legacy `Parser/{State,TokenParser,Fuel,Composition}.lean`
 with renamed staging files (`ParseStateIx → State`, `TokenParserIx
 → TokenParser`, etc.). Flatten `L4YAML.TokenParser.Indexed` →
@@ -9298,7 +9412,7 @@ etc.) resolve. This is the **parity-blocked** step — overwriting
 makes the indexed body run for every `parseYaml*` caller including
 the Schema/Dump round-trip suite.
 
-**6f.6 — Delete dead legacy code + retarget `L4YAML.lean`**
+##### **6f.6 — Delete dead legacy code + retarget `L4YAML.lean`**
 *(BLOCKED on parity)*. Delete `Scanner/{Scalar,Whitespace,Indent,SimpleKey,Document,NodeProperties}.lean`,
 all 23 files of `Proofs/Scanner/*.lean` (~26,858 LOC), and the
 six legacy `Proofs/Parser/Parser*.lean` files (now overwritten
@@ -9322,13 +9436,15 @@ content), but two classes of consumers do:
 
 Until parity is achieved, the 6f.5 overwrite (and therefore
 6f.3/6f.4/6f.6) cannot land without test failures. Parity work
-is a separate sub-step — call it **6f.0** in retrospect (it
-should have been a prerequisite) or **Step 7** (a new
-parity-only step). Estimated scope: revisit the indexed parser's
-`parseNode` paths that emit scalars and ensure `.content` is
-populated everywhere the legacy parser does. The fix is local
-to `Parser/TokenParserIx.lean` and probably small (token-string
-threading) but needs corpus regression testing.
+is now scoped as **Step 6f.0** above — a placeholder-skip filter
+ported from legacy `Scanner.scanFiltered`, plus a parity test
+harness; see the 6f.0 section for the diagnosed root cause and
+the mechanics. Earlier scope guess ("scalar-content
+threading in `Parser/TokenParserIx.lean`") was *wrong*: the
+indexed scanner correctly emits scalar content, but the indexed
+parser doesn't skip the `.placeholder` tokens the scanner
+interleaves, so the real scalar token is never consumed — every
+"empty content" symptom traces back to that.
 
 **DONE criteria (per sub-step)**: `lake build` 100% green; sorry
 budget unchanged from 6e (carry-forward only); each commit lists
