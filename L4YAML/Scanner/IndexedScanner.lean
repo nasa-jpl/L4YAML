@@ -165,6 +165,26 @@ def skipCommentTextLoop {input : String} (c : IxCursor input) :
 @[inline] def skipCommentText {input : String} (c : IxCursor input) : IxCursor input :=
   skipCommentTextLoop c input.utf8ByteSize
 
+/-- Collect-variant of `skipCommentTextLoop`: advances the cursor past a
+    comment body while accumulating its text characters. Indexed twin of
+    `L4YAML.Scanner.collectCommentTextLoop`. Used by `scanWithCommentsIx`
+    to preserve comment text for round-tripping. -/
+def collectCommentTextLoop {input : String} (c : IxCursor input) (text : String) :
+    Nat → String × IxCursor input
+  | 0          => (text, c)
+  | fuel + 1 =>
+    if peekIsLineBreak c then (text, c)
+    else
+      match c.peek? with
+      | none    => (text, c)
+      | some ch => collectCommentTextLoop c.advance (text.push ch) fuel
+
+/-- Collect a comment body (`nb-char*`) starting after the `'#'`. Returns
+    the text plus the cursor at the terminating line-break (or EOF). -/
+@[inline] def collectCommentText {input : String} (c : IxCursor input) :
+    String × IxCursor input :=
+  collectCommentTextLoop c "" input.utf8ByteSize
+
 /-! ## Layer C — line-break consumption -/
 
 /-- Consume one `[28] b-break`. Three cases:
@@ -259,6 +279,45 @@ def skipToContentLoop {input : String} (c : IxCursor input) :
     counterpart that handles §6.1 tab violations. -/
 @[inline] def skipToContent {input : String} (c : IxCursor input) : IxCursor input :=
   skipToContentLoop c (input.utf8ByteSize + 1)
+
+/-- Comment-collecting variant of `skipToContentLoop`. Mirrors its
+    structure but captures each comment's `(position, text)` pair as
+    it scans. The position is the cursor at the `'#'`; the text is the
+    body up to (but not including) the terminating line break.
+
+    Indexed twin of legacy `Scanner.skipToContentLoop` +
+    `skipToContentComment` (which thread a side-channel `comments`
+    array through `ScannerState`). -/
+def skipToContentLoopWithComments {input : String} (c : IxCursor input)
+    (acc : Array (YamlPos × String)) :
+    Nat → IxCursor input × Array (YamlPos × String)
+  | 0          => (c, acc)
+  | fuel + 1 =>
+    let cAfterWs := skipWhitespace c
+    match cAfterWs.peek? with
+    | none    => (cAfterWs, acc)
+    | some ch =>
+      if isCommentBool ch then
+        let commentPos := cAfterWs.pos
+        let cAfterHash := cAfterWs.advance
+        let (text, cAfterText) := collectCommentText cAfterHash
+        let acc' := acc.push (commentPos, text)
+        skipToContentLoopWithComments (consumeLineBreak cAfterText) acc' fuel
+      else if isLineBreakBool ch then
+        skipToContentLoopWithComments (consumeLineBreak cAfterWs) acc fuel
+      else
+        (cAfterWs, acc)
+
+/-- Comment-collecting variant of `skipToContent`. Consumes skippable
+    inter-token content (whitespace, comments, line breaks) while
+    capturing each `'#'`-introduced comment's `(position, text)` pair.
+
+    Used by `scanWithCommentsIx` to preserve comments for the
+    comment-preserving public entry point `parseYamlWithComments`. -/
+@[inline] def skipToContentWithComments {input : String} (c : IxCursor input)
+    (acc : Array (YamlPos × String)) :
+    IxCursor input × Array (YamlPos × String) :=
+  skipToContentLoopWithComments c acc (input.utf8ByteSize + 1)
 
 /-! ## Layer E — scalar recognisers (§7.3, single-line subset)
 

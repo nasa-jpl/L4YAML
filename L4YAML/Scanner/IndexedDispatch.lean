@@ -1132,6 +1132,112 @@ def scanFilteredIx (input : String) : Except ScanError (Indexed.TokenStream inpu
   | .ok ts => .ok { tokens := ts.tokens.filter fun t => t.token != YamlToken.placeholder }
   | .error e => .error e
 
+/-! ## Comment-preserving scan path
+
+Parallel scan path that uses `skipToContentSWithComments` (capturing
+each `#`-introduced comment's `(position, text)` pair into the state's
+`comments` field) and returns the final state — both tokens and
+captured comments — to support `parseYamlWithCommentsIx`.
+
+The non-comment-preserving entry point `scanIx`/`scanFilteredIx` is
+unchanged; existing proofs about it remain valid. -/
+
+/-- Comment-preserving preprocessing: same as
+    `scanNextTokenIx_preprocess`, but uses `skipToContentSWithComments`
+    so any `#`-introduced comment text encountered between tokens is
+    appended to `s.comments`. -/
+def scanNextTokenIx_preprocessWC {input : String} (s : ScannerStateIx input) :
+    Except ScanError (Option (ScannerStateIx input × Char)) :=
+  let s := s.skipToContentSWithComments
+  if !s.hasMore then .ok none
+  else
+    let savedIndentSize := s.indents.size
+    let s := if !s.inFlow && s.needIndentCheck then
+      let s' := unwindIndentsIx s s.cursor.pos.col
+      { s' with needIndentCheck := false }
+    else s
+    if s.indents.size < savedIndentSize && (s.cursor.pos.col : Int) > s.currentIndent then
+      .error (.trailingContent s.cursor.pos.line s.cursor.pos.col)
+    else
+      let s := saveSimpleKeyIx s
+      match s.peek? with
+      | none => .ok none
+      | some c => .ok (some (s, c))
+
+/-- Comment-preserving per-iteration dispatcher. Identical to
+    `scanNextTokenIx` except it routes through `_preprocessWC`. -/
+def scanNextTokenIxWC {input : String} (s : ScannerStateIx input) :
+    Except ScanError (Option (ScannerStateIx input)) := do
+  match ← scanNextTokenIx_preprocessWC s with
+  | none => return none
+  | some (s, c) =>
+    match ← scanNextTokenIx_dispatchStructural s c with
+    | some s' => return some s'
+    | none =>
+      let s := if s.allowDirectives then
+        { s with allowDirectives := false, documentEverStarted := true }
+      else s
+      scanNextTokenIx_checkBlockFlowIndent s c
+      match ← scanNextTokenIx_dispatchFlowIndicators s c with
+      | some s' => return some s'
+      | none =>
+        match ← scanNextTokenIx_dispatchBlockIndicators s c with
+        | some s' => return some s'
+        | none =>
+          let s' ← scanNextTokenIx_dispatchContent s c
+          return some s'
+
+/-- Comment-preserving scan loop. Returns the final state (not just
+    the token stream) so callers can extract both `tokens` and
+    `comments`.
+
+    On EOF, re-runs `skipToContentSWithComments` to capture any
+    trailing comments that `scanNextTokenIx_preprocessWC` consumed
+    just before returning `none` (the updated state is discarded by
+    the `.ok none` path of `_preprocess`). Mirrors the legacy
+    `Scanner.scanLoopFull`'s re-run trick (Scanner.lean:558-563). -/
+def scanLoopIxWC {input : String} (s : ScannerStateIx input) (fuel : Nat) :
+    Except ScanError (ScannerStateIx input) :=
+  match fuel with
+  | 0 => .error (.fuelExhausted s.cursor.pos.line s.cursor.pos.col)
+  | fuel' + 1 =>
+    match scanNextTokenIxWC s with
+    | .error e => .error e
+    | .ok none =>
+      if s.flowLevel > 0 then
+        .error (.unterminatedFlowCollection '[' s.cursor.pos.line)
+      else if s.directivesPresent && !s.documentEverStarted then
+        .error (.directiveWithoutDocument s.cursor.pos.line)
+      else
+        let s := s.skipToContentSWithComments
+        let s := unwindIndentsIx s (-1)
+        let s := s.emit YamlToken.streamEnd
+        .ok s
+    | .ok (some s') => scanLoopIxWC s' fuel'
+termination_by fuel
+
+/-- Comment-preserving scan entry point: produces both the filtered
+    token stream (`.placeholder` stripped, matching `scanFilteredIx`)
+    and the collected side-channel comments. Indexed twin of
+    `L4YAML.Scanner.scanWithComments`.
+
+    Used by `parseYamlWithCommentsIx` to support comment-preserving
+    round-trip (`emitWithComments → parseYamlWithComments`). -/
+def scanWithCommentsIx (input : String) :
+    Except ScanError (Indexed.TokenStream input × Array (YamlPos × String)) :=
+  let s := ScannerStateIx.mk' input
+  let s := s.emit YamlToken.streamStart
+  let s := match s.peek? with
+    | some '﻿' => s.advance
+    | _ => s
+  let fuel := input.utf8ByteSize + 1
+  match scanLoopIxWC s (fuel * 4) with
+  | .ok final =>
+    let filtered : Indexed.TokenStream input :=
+      { tokens := final.tokens.tokens.filter fun t => t.token != YamlToken.placeholder }
+    .ok (filtered, final.comments)
+  | .error e => .error e
+
 end ScannerStateIx
 
 end L4YAML.Scanner.Indexed

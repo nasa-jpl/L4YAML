@@ -87,12 +87,12 @@ under namespace `L4YAML.TokenParser`. At Step 6f cutover, the indexed
 namespace flattens and these functions become the production
 `parseYaml*` symbols on the rebound body.
 
-`parseYamlWithCommentsIx` is **not** provided here: it needs an
-indexed twin of `Scanner.scanWithComments` which is not yet
-implemented. Comment-preserving callers
-(`Output/Emitter.lean`, `Proofs/RoundTrip/CommentRoundTrip.lean`)
-keep importing legacy `Parser/Composition.lean` until that gap is
-filled.
+`parseYamlWithCommentsIx` is provided here (Step 6f.3): it uses the
+parallel comment-preserving scan path `scanWithCommentsIx` and the
+existing indexed `parseStreamIx` to produce comment-attached
+documents. This unblocks the migration of
+`Proofs/RoundTrip/CommentRoundTrip.lean` away from legacy
+`parseYamlWithComments`.
 -/
 
 /-- Indexed twin of `L4YAML.TokenParser.parseYamlRaw`. Returns
@@ -129,6 +129,72 @@ def parseYamlSingleIx (input : String) : Except ScanError YamlValue :=
     if docs.size == 0 then .ok YamlValue.null
     else if docs.size == 1 then .ok docs[0]!.value
     else .error (.multipleDocuments docs.size)
+  | .error e => .error e
+
+/-! ## Comment attachment
+
+Helpers ported from legacy `Parser/Composition.lean`. They are pure
+on `YamlDocument` and `YamlPos`, so they don't change between the
+legacy and indexed pipelines.
+-/
+
+/-- Classify a comment's position relative to its nearest node.
+    See `L4YAML.TokenParser.classifyCommentPosition` for the legacy
+    docstring; the algorithm is unchanged. -/
+def classifyCommentPosition (cPos : YamlPos)
+    (nodePositions : Array (YamlPath × YamlPos × YamlPos)) : CommentPosition :=
+  if nodePositions.any fun (_, startPos, _) => startPos.line == cPos.line then
+    .inline
+  else if nodePositions.any fun (_, startPos, _) => cPos.line < startPos.line then
+    .before
+  else
+    .after
+
+/-- Replace each comment's `.inline` placeholder with the
+    `.before`/`.inline`/`.after` classification derived from the
+    document's `nodePositions`. -/
+def classifyDocumentComments (doc : YamlDocument) : YamlDocument :=
+  { doc with comments := doc.comments.map fun (pos, c) =>
+      (pos, { c with position := classifyCommentPosition pos doc.nodePositions }) }
+
+/-- Partition raw comments by document span (multi-document streams).
+    For single-document streams, all comments go to the single
+    document. -/
+def partitionCommentsByDocument (rawComments : Array (YamlPos × String))
+    (docs : Array YamlDocument) : Array (Array (YamlPos × String)) :=
+  if docs.size ≤ 1 then
+    #[rawComments]
+  else
+    let spans : Array (Nat × Nat) := docs.map fun doc =>
+      match doc.nodePositions.find? (fun (p, _, _) => p == #[]) with
+      | some (_, startPos, endPos) => (startPos.offset, endPos.offset)
+      | none => (0, 0)
+    docs.mapIdx fun i _ =>
+      let (startOff, endOff) := spans[i]!
+      rawComments.filter fun (cPos, _) =>
+        if i == 0 then cPos.offset ≤ endOff
+        else if i == docs.size - 1 then cPos.offset ≥ startOff
+        else startOff ≤ cPos.offset && cPos.offset ≤ endOff
+
+/-- Indexed twin of `L4YAML.TokenParser.parseYamlWithComments`.
+    Uses the comment-preserving scan entry point `scanWithCommentsIx`
+    and the indexed `parseStreamIx` (with `trackPositions := true`)
+    to produce composed documents carrying their attached comments. -/
+def parseYamlWithCommentsIx (input : String) : Except ScanError (Array YamlDocument) :=
+  match scanWithCommentsIx input with
+  | .ok (tokens, rawComments) =>
+    match parseStreamIx tokens (trackPositions := true) with
+    | .ok docs =>
+      let partitioned := partitionCommentsByDocument rawComments docs
+      .ok (docs.mapIdx fun i doc =>
+        let docComments := partitioned[i]!
+        let comments : Array (YamlPos × Comment) :=
+          docComments.map fun (pos, text) => (pos, ⟨text, .inline⟩)
+        let composed := { doc.compose with
+          comments := comments
+          nodePositions := doc.nodePositions }
+        classifyDocumentComments composed)
+    | .error e => .error e
   | .error e => .error e
 
 end L4YAML.TokenParser.Indexed

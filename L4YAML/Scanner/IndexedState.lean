@@ -105,6 +105,11 @@ structure ScannerStateIx (input : String) where
   explicitKeyLine : Option Nat := none
   /-- Anchor names defined in the current document. -/
   definedAnchors : Array String := #[]
+  /-- Collected comments (position × text). Populated by
+      `skipToContentSWithComments` (used by the comment-preserving
+      scan entry point `scanWithCommentsIx`); stays empty for the
+      ordinary `scanIx` / `scanFilteredIx` pipelines. -/
+  comments : Array (YamlPos × String) := #[]
 
 namespace ScannerStateIx
 
@@ -308,6 +313,27 @@ def skipSpacesS {input : String} (s : ScannerStateIx input) :
               simpleKeyAllowed := if s.isInFlowSequence then s.simpleKeyAllowed else true }
   else
     { s with cursor := newCursor }
+
+/-- Comment-preserving variant of `skipToContentS`. Advances the cursor
+    past whitespace, comments, and line breaks while accumulating each
+    comment's `(position, text)` pair into `s.comments`. Mirrors the
+    legacy `Scanner.skipToContentLoop` + `skipToContentComment` pair
+    that thread the side-channel `comments` array through
+    `ScannerState` during `scanWithComments`.
+
+    Used by the comment-preserving scan entry point
+    (`scanWithCommentsIx` in `IndexedDispatch`). The ordinary scan
+    pipeline calls `skipToContentS`, which discards comment text. -/
+@[inline] def skipToContentSWithComments {input : String} (s : ScannerStateIx input) :
+    ScannerStateIx input :=
+  let (newCursor, newComments) :=
+    L4YAML.Scanner.Indexed.skipToContentWithComments s.cursor s.comments
+  if newCursor.pos.line != s.cursor.pos.line then
+    { s with cursor := newCursor, comments := newComments,
+              needIndentCheck := true,
+              simpleKeyAllowed := if s.isInFlowSequence then s.simpleKeyAllowed else true }
+  else
+    { s with cursor := newCursor, comments := newComments }
 
 /-! ## Tab-in-indentation backward scan (§6.1)
 

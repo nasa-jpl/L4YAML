@@ -4,6 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 -/
 import L4YAML.Output.Emitter
 import L4YAML.Parser.Composition
+import L4YAML.Parser.IndexedComposition
 import L4YAML.Output.Dump
 
 /-!
@@ -48,6 +49,7 @@ namespace L4YAML.Proofs.CommentRoundTrip
 open L4YAML
 open L4YAML.Emit
 open L4YAML.TokenParser
+open L4YAML.TokenParser.Indexed
 
 /-! ## §1: Emitter Structural Properties
 
@@ -90,7 +92,7 @@ and checks that the comment texts match.
 /-- Helper: check that a document's comment texts survive the round-trip
     through emitWithComments → parseYamlWithComments. -/
 def commentRoundTrips (doc : YamlDocument) : Bool :=
-  match parseYamlWithComments (emitWithComments doc) with
+  match parseYamlWithCommentsIx (emitWithComments doc) with
   | .ok docs =>
     if h : docs.size = 1 then
       let doc' := docs[0]'(by omega)
@@ -101,7 +103,7 @@ def commentRoundTrips (doc : YamlDocument) : Bool :=
 /-- Helper: check that a document's value content survives the round-trip
     through emitWithComments → parseYamlWithComments. -/
 def valueRoundTrips (doc : YamlDocument) : Bool :=
-  match parseYamlWithComments (emitWithComments doc) with
+  match parseYamlWithCommentsIx (emitWithComments doc) with
   | .ok docs =>
     if h : docs.size = 1 then
       let doc' := docs[0]'(by omega)
