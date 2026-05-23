@@ -5116,4 +5116,379 @@ theorem scanDocumentStartIx_tokens_eq {input : String}
     (scanDocumentStartIx s).tokens =
       ((unwindIndentsIx s (-1)).emit YamlToken.documentStart).tokens := rfl
 
+/-! ## §12g  Per-scanner `_preserves_prefix` — flow indicators
+    (Step 6d.1e.12c.1)
+
+The substrate fix for the `_preserves_prefix` family. Each lemma
+mirrors the legacy `unwindIndentsLoopIx_preserves_prefix` /
+`pushSequenceIndentIx_preserves_prefix` shape with both bound
+proofs explicit, deriving the LHS bound from the matching
+`_tokens_size_le` lemma (from `Proofs/Scanner/IndexedDispatch.lean`)
+and closing the conclusion via `show` reshaping + the §5/§6 primitives
+(`emit_preserves_tokens_at`, `emitAt_preserves_tokens_at`).
+
+This deliberately avoids the `_tokens_eq` rfl-bridges from §12f and
+the `rw [scanX_tokens_eq]` rewrite pattern that triggered the
+motive-not-type-correct wall (Reflection 91). The `show` tactic
+reshapes through definitional equality only — record-update
+opacity and `let __src` zeta-reduction succeed silently. -/
+
+theorem scanFlowSequenceStartIx_preserves_prefix {input : String}
+    (s : ScannerStateIx input) (i : Nat) (h_bound : i < s.tokens.size) :
+    (scanFlowSequenceStartIx s).tokens[i]'(by
+        have := scanFlowSequenceStartIx_tokens_size_le s; omega) =
+    s.tokens[i]'h_bound := by
+  show (s.emit YamlToken.flowSequenceStart).tokens[i]'_ = s.tokens[i]'h_bound
+  exact emit_preserves_tokens_at s YamlToken.flowSequenceStart i h_bound
+
+theorem scanFlowSequenceEndIx_preserves_prefix {input : String}
+    (s : ScannerStateIx input) (i : Nat) (h_bound : i < s.tokens.size) :
+    (scanFlowSequenceEndIx s).tokens[i]'(by
+        have := scanFlowSequenceEndIx_tokens_size_le s; omega) =
+    s.tokens[i]'h_bound := by
+  show (s.emit YamlToken.flowSequenceEnd).tokens[i]'_ = s.tokens[i]'h_bound
+  exact emit_preserves_tokens_at s YamlToken.flowSequenceEnd i h_bound
+
+theorem scanFlowMappingStartIx_preserves_prefix {input : String}
+    (s : ScannerStateIx input) (i : Nat) (h_bound : i < s.tokens.size) :
+    (scanFlowMappingStartIx s).tokens[i]'(by
+        have := scanFlowMappingStartIx_tokens_size_le s; omega) =
+    s.tokens[i]'h_bound := by
+  show (s.emit YamlToken.flowMappingStart).tokens[i]'_ = s.tokens[i]'h_bound
+  exact emit_preserves_tokens_at s YamlToken.flowMappingStart i h_bound
+
+theorem scanFlowMappingEndIx_preserves_prefix {input : String}
+    (s : ScannerStateIx input) (i : Nat) (h_bound : i < s.tokens.size) :
+    (scanFlowMappingEndIx s).tokens[i]'(by
+        have := scanFlowMappingEndIx_tokens_size_le s; omega) =
+    s.tokens[i]'h_bound := by
+  show (s.emit YamlToken.flowMappingEnd).tokens[i]'_ = s.tokens[i]'h_bound
+  exact emit_preserves_tokens_at s YamlToken.flowMappingEnd i h_bound
+
+/-! ## §12h  Per-scanner `_preserves_prefix` — block content scanners
+    (Step 6d.1e.12c.1)
+
+`scanBlockEntryIx` and `scanKeyIx` emit `.blockEntry` / `.key`
+tokens, optionally after `pushSequenceIndentIx` / `pushMappingIndentIx`
+in block context. Both `pushXIndentIx` already have
+`_preserves_prefix` lemmas (§6d/§6e). -/
+
+theorem scanBlockEntryIx_preserves_prefix {input : String}
+    (s : ScannerStateIx input) (s' : ScannerStateIx input)
+    (h_ok : scanBlockEntryIx s = .ok s')
+    (i : Nat) (h_bound : i < s.tokens.size) :
+    s'.tokens[i]'(by
+      have := scanBlockEntryIx_tokens_size_le h_ok; omega) =
+    s.tokens[i]'h_bound := by
+  unfold scanBlockEntryIx at h_ok
+  by_cases hi : (!s.inFlow) = true
+  · rw [if_pos hi] at h_ok
+    by_cases ht : s.hasTabInPrecedingWhitespace = true
+    · rw [if_pos ht] at h_ok
+      simp [Bind.bind, Except.bind] at h_ok
+    · rw [if_neg ht] at h_ok
+      simp only [pure_bind] at h_ok
+      rw [if_pos hi] at h_ok
+      simp only [Except.ok.injEq] at h_ok
+      subst h_ok
+      show ((pushSequenceIndentIx s s.cursor.pos.col).emit YamlToken.blockEntry).tokens[i]'_ =
+        s.tokens[i]'h_bound
+      have h_push_sz := pushSequenceIndentIx_tokens_size_le s s.cursor.pos.col
+      have h_i_lt : i < (pushSequenceIndentIx s s.cursor.pos.col).tokens.size := by omega
+      exact (emit_preserves_tokens_at (pushSequenceIndentIx s s.cursor.pos.col)
+              YamlToken.blockEntry i h_i_lt).trans
+            (pushSequenceIndentIx_preserves_prefix s s.cursor.pos.col i h_bound)
+  · rw [if_neg hi] at h_ok
+    simp only [pure_bind] at h_ok
+    rw [if_neg hi] at h_ok
+    simp only [Except.ok.injEq] at h_ok
+    subst h_ok
+    show (s.emit YamlToken.blockEntry).tokens[i]'_ = s.tokens[i]'h_bound
+    exact emit_preserves_tokens_at s YamlToken.blockEntry i h_bound
+
+theorem scanKeyIx_preserves_prefix {input : String}
+    (s : ScannerStateIx input) (s' : ScannerStateIx input)
+    (h_ok : scanKeyIx s = .ok s')
+    (i : Nat) (h_bound : i < s.tokens.size) :
+    s'.tokens[i]'(by
+      have := scanKeyIx_tokens_size_le h_ok; omega) =
+    s.tokens[i]'h_bound := by
+  unfold scanKeyIx at h_ok
+  by_cases hi : (!s.inFlow) = true
+  · simp only [if_pos hi, advance_inFlow, emit_inFlow,
+      pushMappingIndentIx_inFlow] at h_ok
+    split at h_ok
+    · simp [Bind.bind, Except.bind] at h_ok
+    · simp only [pure_bind, Except.ok.injEq] at h_ok
+      subst h_ok
+      show ((pushMappingIndentIx s s.cursor.pos.col).emit YamlToken.key).tokens[i]'_ =
+        s.tokens[i]'h_bound
+      have h_push_sz := pushMappingIndentIx_tokens_size_le s s.cursor.pos.col
+      have h_i_lt : i < (pushMappingIndentIx s s.cursor.pos.col).tokens.size := by omega
+      exact (emit_preserves_tokens_at (pushMappingIndentIx s s.cursor.pos.col)
+              YamlToken.key i h_i_lt).trans
+            (pushMappingIndentIx_preserves_prefix s s.cursor.pos.col i h_bound)
+  · simp only [if_neg hi, advance_inFlow, emit_inFlow] at h_ok
+    simp only [pure_bind, Except.ok.injEq] at h_ok
+    subst h_ok
+    show (s.emit YamlToken.key).tokens[i]'_ = s.tokens[i]'h_bound
+    exact emit_preserves_tokens_at s YamlToken.key i h_bound
+
+/-! ## §12i  Per-scanner `_preserves_prefix` — directive scanners
+    (Step 6d.1e.12c.1)
+
+`scanYamlDirectiveIx`, `scanTagDirectiveIx` emit at `startPos` via
+`emitAt`, then update non-tokens fields. `scanDirectiveIx` delegates
+to one of the above (or emits nothing in the reserved-directive
+default arm). -/
+
+theorem scanYamlDirectiveIx_preserves_prefix {input : String}
+    (s : ScannerStateIx input) (cAfterWS : IxCursor input) (startPos : YamlPos)
+    (hStart : startPos.offset ≤ cAfterWS.pos.offset)
+    (s' : ScannerStateIx input)
+    (h_ok : scanYamlDirectiveIx s cAfterWS startPos hStart = .ok s')
+    (i : Nat) (h_bound : i < s.tokens.size) :
+    s'.tokens[i]'(by have := scanYamlDirectiveIx_tokens_size_le h_ok; omega) =
+    s.tokens[i]'h_bound := by
+  unfold scanYamlDirectiveIx at h_ok
+  by_cases hd : s.seenYamlDirective = true
+  · rw [if_pos hd] at h_ok
+    simp [Bind.bind, Except.bind] at h_ok
+  · rw [if_neg hd] at h_ok
+    simp only [pure_bind] at h_ok
+    split at h_ok
+    · simp only [Except.ok.injEq] at h_ok
+      subst h_ok
+      apply emitAt_preserves_tokens_at
+    · simp at h_ok
+
+theorem scanTagDirectiveIx_preserves_prefix {input : String}
+    (s : ScannerStateIx input) (cAfterWS : IxCursor input) (startPos : YamlPos)
+    (hStart : startPos.offset ≤ cAfterWS.pos.offset)
+    (s' : ScannerStateIx input)
+    (h_ok : scanTagDirectiveIx s cAfterWS startPos hStart = .ok s')
+    (i : Nat) (h_bound : i < s.tokens.size) :
+    s'.tokens[i]'(by have := scanTagDirectiveIx_tokens_size_le h_ok; omega) =
+    s.tokens[i]'h_bound := by
+  unfold scanTagDirectiveIx at h_ok
+  simp only [Except.ok.injEq] at h_ok
+  subst h_ok
+  apply emitAt_preserves_tokens_at
+
+theorem scanDirectiveIx_preserves_prefix {input : String}
+    (s : ScannerStateIx input) (s' : ScannerStateIx input)
+    (h_ok : scanDirectiveIx s = .ok s')
+    (i : Nat) (h_bound : i < s.tokens.size) :
+    s'.tokens[i]'(by have := scanDirectiveIx_tokens_size_le h_ok; omega) =
+    s.tokens[i]'h_bound := by
+  unfold scanDirectiveIx at h_ok
+  split at h_ok
+  · simp at h_ok
+  · simp only at h_ok
+    split at h_ok
+    · -- YAML branch: delegate to scanYamlDirectiveIx
+      exact scanYamlDirectiveIx_preserves_prefix _ _ _ _ _ h_ok i h_bound
+    · split at h_ok
+      · -- TAG branch: delegate to scanTagDirectiveIx
+        exact scanTagDirectiveIx_preserves_prefix _ _ _ _ _ h_ok i h_bound
+      · -- reserved-directive default: `.ok { sAdv with cursor := cAfterWS }` — tokens unchanged
+        simp only [Except.ok.injEq] at h_ok
+        subst h_ok
+        rfl
+
+/-! ## §12j  Per-scanner `_preserves_prefix` — document markers
+    (Step 6d.1e.12c.1)
+
+`scanDocumentStartIx` and `scanDocumentEndIx` unwind indents, then
+emit `.documentStart` / `.documentEnd`. Both compose through
+`unwindIndentsIx_preserves_prefix` (§6c) + `emit_preserves_tokens_at`
+(§5). -/
+
+theorem scanDocumentStartIx_preserves_prefix {input : String}
+    (s : ScannerStateIx input) (i : Nat) (h_bound : i < s.tokens.size) :
+    (scanDocumentStartIx s).tokens[i]'(by
+        have := scanDocumentStartIx_tokens_size_le s; omega) =
+    s.tokens[i]'h_bound := by
+  show ((unwindIndentsIx s (-1)).emit YamlToken.documentStart).tokens[i]'_ =
+    s.tokens[i]'h_bound
+  have h_unwind_sz := unwindIndentsIx_tokens_size_le s (-1)
+  have h_i_lt : i < (unwindIndentsIx s (-1)).tokens.size := by omega
+  exact (emit_preserves_tokens_at (unwindIndentsIx s (-1)) YamlToken.documentStart i h_i_lt).trans
+        (unwindIndentsIx_preserves_prefix s (-1) i h_bound)
+
+theorem scanDocumentEndIx_preserves_prefix {input : String}
+    (s : ScannerStateIx input) (s' : ScannerStateIx input)
+    (h_ok : scanDocumentEndIx s = .ok s')
+    (i : Nat) (h_bound : i < s.tokens.size) :
+    s'.tokens[i]'(by have := scanDocumentEndIx_tokens_size_le h_ok; omega) =
+    s.tokens[i]'h_bound := by
+  unfold scanDocumentEndIx at h_ok
+  by_cases hd : (s.directivesPresent && !s.documentEverStarted) = true
+  · rw [if_pos hd] at h_ok
+    simp [Bind.bind, Except.bind] at h_ok
+  · rw [if_neg hd] at h_ok
+    simp only [pure_bind] at h_ok
+    -- The post-emit state's `.tokens` is `((unwindIndentsIx s (-1)).emit .documentEnd).tokens`
+    -- regardless of the probe-match arm (probe only affects the unit early-return chain;
+    -- the eventual `.ok s` carries the post-emit state).
+    have h_unwind_sz := unwindIndentsIx_tokens_size_le s (-1)
+    have h_i_lt : i < (unwindIndentsIx s (-1)).tokens.size := by omega
+    have h_step :
+        ((unwindIndentsIx s (-1)).emit YamlToken.documentEnd).tokens[i]'(by
+            have := emit_tokens_size (unwindIndentsIx s (-1)) YamlToken.documentEnd
+            omega) = s.tokens[i]'h_bound :=
+      (emit_preserves_tokens_at (unwindIndentsIx s (-1)) YamlToken.documentEnd i h_i_lt).trans
+      (unwindIndentsIx_preserves_prefix s (-1) i h_bound)
+    split at h_ok
+    all_goals first
+      | (simp only [Except.ok.injEq] at h_ok
+         subst h_ok
+         exact h_step)
+      | (split at h_ok
+         all_goals first
+           | (simp only [Except.ok.injEq] at h_ok
+              subst h_ok
+              exact h_step)
+           | (simp [Bind.bind, Except.bind] at h_ok))
+
+/-! ## §12k  Per-scanner `_preserves_prefix` — bounded scanners
+    (Step 6d.1e.12c.1)
+
+`scanValueClearKeyIx` leaves tokens unchanged (no setIfInBounds).
+`scanValuePrepareIx` / `scanValueIx` / `scanFlowEntryIx` overwrite
+positions at `simpleKey.tokenIndex` and `simpleKey.tokenIndex + 1`
+when `simpleKey.possible` is true — so they preserve a prefix of
+length `n` only when `n ≤ simpleKey.tokenIndex` (the `h_inv`
+hypothesis). This bounded signature mirrors the legacy
+`scanValuePrepare_preserves_prefix`. -/
+
+theorem scanValueClearKeyIx_preserves_prefix {input : String}
+    (s : ScannerStateIx input) (i : Nat) (h_bound : i < s.tokens.size) :
+    (scanValueClearKeyIx s).tokens[i]'(by
+        have := scanValueClearKeyIx_tokens_size_le s; omega) =
+    s.tokens[i]'h_bound := by
+  simp only [scanValueClearKeyIx_tokens]
+
+theorem scanValuePrepareIx_preserves_prefix {input : String}
+    (s : ScannerStateIx input)
+    (n : Nat) (h_n : n ≤ s.tokens.size)
+    (h_inv : s.simpleKey.possible = true → n ≤ s.simpleKey.tokenIndex)
+    (i : Nat) (h_bound : i < n) :
+    (scanValuePrepareIx s).tokens[i]'(by
+        have := scanValuePrepareIx_tokens_size_le s; omega) =
+    s.tokens[i]'(by omega) := by
+  have h_sz : s.tokens.size = s.tokens.tokens.size := rfl
+  unfold scanValuePrepareIx
+  split
+  · rename_i h_poss
+    have h_idx := h_inv h_poss
+    split
+    · split
+      · -- col > currentIndent: two overwriteAtCursor at idx, idx+1
+        have h_i_lt : i < s.tokens.tokens.size := by omega
+        have h_i_lt1 : i < (s.tokens.tokens.setIfInBounds s.simpleKey.tokenIndex
+            (IxToken.mk' s.simpleKey.cursor.pos YamlToken.blockMappingStart
+              s.simpleKey.cursor.pos (Nat.le_refl _) s.simpleKey.cursor.posBound)).size := by
+          rw [Array.size_setIfInBounds]; exact h_i_lt
+        change (((s.overwriteAtCursor s.simpleKey.tokenIndex s.simpleKey.cursor
+                YamlToken.blockMappingStart).overwriteAtCursor
+              (s.simpleKey.tokenIndex + 1) s.simpleKey.cursor YamlToken.key).tokens)[i]'_ =
+          s.tokens[i]'(by omega)
+        change (((s.tokens.tokens.setIfInBounds s.simpleKey.tokenIndex _).setIfInBounds
+              (s.simpleKey.tokenIndex + 1) _))[i]'_ = s.tokens.tokens[i]'h_i_lt
+        exact (Array.getElem_setIfInBounds_ne h_i_lt1
+                (show s.simpleKey.tokenIndex + 1 ≠ i from by omega)).trans
+              (Array.getElem_setIfInBounds_ne h_i_lt
+                (show s.simpleKey.tokenIndex ≠ i from by omega))
+      · -- col ≤ currentIndent: one overwriteAtCursor at idx+1
+        have h_i_lt : i < s.tokens.tokens.size := by omega
+        change (s.overwriteAtCursor (s.simpleKey.tokenIndex + 1) s.simpleKey.cursor
+                YamlToken.key).tokens[i]'_ = s.tokens[i]'(by omega)
+        change (s.tokens.tokens.setIfInBounds (s.simpleKey.tokenIndex + 1) _)[i]'_ =
+          s.tokens.tokens[i]'h_i_lt
+        exact Array.getElem_setIfInBounds_ne h_i_lt
+              (show s.simpleKey.tokenIndex + 1 ≠ i from by omega)
+    · -- inFlow: one overwriteAtCursor at idx+1
+      have h_i_lt : i < s.tokens.tokens.size := by omega
+      change (s.overwriteAtCursor (s.simpleKey.tokenIndex + 1) s.simpleKey.cursor
+              YamlToken.key).tokens[i]'_ = s.tokens[i]'(by omega)
+      change (s.tokens.tokens.setIfInBounds (s.simpleKey.tokenIndex + 1) _)[i]'_ =
+        s.tokens.tokens[i]'h_i_lt
+      exact Array.getElem_setIfInBounds_ne h_i_lt
+            (show s.simpleKey.tokenIndex + 1 ≠ i from by omega)
+  · split
+    · -- explicitKeyLine.isSome: record-update on simpleKey only
+      rfl
+    · split
+      · -- !inFlow: pushMappingIndentIx
+        exact pushMappingIndentIx_preserves_prefix s s.cursor.pos.col i (by omega)
+      · -- inFlow: identity
+        rfl
+
+theorem scanValueIx_preserves_prefix {input : String}
+    (s : ScannerStateIx input) (s' : ScannerStateIx input)
+    (h_ok : scanValueIx s = .ok s')
+    (n : Nat) (h_n : n ≤ s.tokens.size)
+    (h_inv : s.simpleKey.possible = true → n ≤ s.simpleKey.tokenIndex)
+    (i : Nat) (h_bound : i < n) :
+    s'.tokens[i]'(by have := scanValueIx_tokens_size_le h_ok; omega) =
+    s.tokens[i]'(by omega) := by
+  unfold scanValueIx at h_ok
+  simp only [bind, Except.bind] at h_ok
+  split at h_ok
+  · cases h_ok
+  · split at h_ok
+    · cases h_ok
+    · simp only [Except.ok.injEq] at h_ok
+      subst h_ok
+      -- s' = ((scanValuePrepareIx (scanValueClearKeyIx s)).emit YamlToken.value).advance
+      --        with simpleKeyAllowed := true, explicitKeyLine := none
+      -- Chain: clearKey preserves (rfl), prepare preserves at idx+1, emit preserves, advance preserves.
+      have h_ck := scanValueClearKeyIx_tokens s
+      -- After scanValueClearKeyIx, simpleKey.possible / tokenIndex may shift; bridge via h_inv.
+      have h_inv' : (scanValueClearKeyIx s).simpleKey.possible = true →
+          n ≤ (scanValueClearKeyIx s).simpleKey.tokenIndex := by
+        unfold scanValueClearKeyIx
+        split
+        · split
+          · simp
+          · split
+            · simp
+            · exact h_inv
+        · exact h_inv
+      have h_n' : n ≤ (scanValueClearKeyIx s).tokens.size := by
+        rw [h_ck]; exact h_n
+      have h_prep := scanValuePrepareIx_preserves_prefix (scanValueClearKeyIx s) n h_n' h_inv'
+        i h_bound
+      have h_prep_sz := scanValuePrepareIx_tokens_size_le (scanValueClearKeyIx s)
+      have h_i_lt_prep : i < (scanValuePrepareIx (scanValueClearKeyIx s)).tokens.size := by
+        rw [h_ck] at h_prep_sz; omega
+      have h_emit := emit_preserves_tokens_at
+        (scanValuePrepareIx (scanValueClearKeyIx s)) YamlToken.value i h_i_lt_prep
+      show ((scanValuePrepareIx (scanValueClearKeyIx s)).emit YamlToken.value).tokens[i]'_ =
+        s.tokens[i]'(by omega)
+      calc ((scanValuePrepareIx (scanValueClearKeyIx s)).emit YamlToken.value).tokens[i]'_
+          = (scanValuePrepareIx (scanValueClearKeyIx s)).tokens[i]'h_i_lt_prep := h_emit
+        _ = (scanValueClearKeyIx s).tokens[i]'(by rw [h_ck]; omega) := h_prep
+        _ = s.tokens[i]'(by omega) := by simp
+
+theorem scanFlowEntryIx_preserves_prefix {input : String}
+    (s : ScannerStateIx input) (s' : ScannerStateIx input)
+    (h_ok : scanFlowEntryIx s = .ok s')
+    (n : Nat) (h_n : n ≤ s.tokens.size)
+    (h_inv : s.simpleKey.possible = true → n ≤ s.simpleKey.tokenIndex)
+    (i : Nat) (h_bound : i < n) :
+    s'.tokens[i]'(by have := scanFlowEntryIx_tokens_size_le h_ok; omega) =
+    s.tokens[i]'(by omega) := by
+  unfold scanFlowEntryIx at h_ok
+  simp only [Except.ok.injEq] at h_ok
+  subst h_ok
+  -- s' = ((scanValuePrepareIx s).emit YamlToken.flowEntry).advance with simpleKeyAllowed := true
+  have h_prep := scanValuePrepareIx_preserves_prefix s n h_n h_inv i h_bound
+  have h_prep_sz := scanValuePrepareIx_tokens_size_le s
+  have h_i_lt_prep : i < (scanValuePrepareIx s).tokens.size := by omega
+  have h_emit := emit_preserves_tokens_at (scanValuePrepareIx s) YamlToken.flowEntry i h_i_lt_prep
+  show ((scanValuePrepareIx s).emit YamlToken.flowEntry).tokens[i]'_ = s.tokens[i]'(by omega)
+  exact h_emit.trans h_prep
+
 end L4YAML.Proofs.Indexed.ScannerPlainScalarValid
