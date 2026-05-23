@@ -1104,10 +1104,10 @@ theorem collectPlainScalarLoopIx_linebreak_flow_continue {input : String} (c : I
   conv => lhs; unfold collectPlainScalarLoopIx
   rw [hPeek]
   cases hp : (foldQuotedNewlinesIx c).2.peek? with
-  | none => simp [hNotComment, hNotMapVal, hNotFlowInd, hLineBreak, hp]
+  | none => simp [hNotComment, hNotMapVal, hNotFlowInd, hLineBreak]
   | some ch' =>
     have h_ne : ch' ≠ '#' := by intro he; subst he; exact hNotHash hp
-    simp [hNotComment, hNotMapVal, hNotFlowInd, hLineBreak, hp, h_ne]
+    simp [hNotComment, hNotMapVal, hNotFlowInd, hLineBreak, h_ne]
 
 /-- `_linebreak_flow_hash`: flow-context line break where the post-fold
     cursor peeks `#` — plain scalar terminates at the pre-fold cursor. -/
@@ -1157,7 +1157,7 @@ theorem collectPlainScalarLoopIx_linebreak_block_some_continue {input : String} 
   | none => simp [hNotComment, hNotMapVal, hLineBreak, hHandle]
   | some ch' =>
     have h_ne : ch' ≠ '#' := by intro he; subst he; exact hNotHash hp
-    simp [hNotComment, hNotMapVal, hLineBreak, hHandle, h_ne]
+    simp [hNotComment, hNotMapVal, hLineBreak, hHandle]
 
 /-- `_linebreak_block_some_hash`: block-context line break where the
     post-fold cursor peeks `#` — plain scalar terminates at the pre-fold
@@ -1962,9 +1962,9 @@ theorem collectPlainScalarLoopIx_validFirst_and_head {input : String}
   -- Helper: the flowInd arm doesn't fire (canStart implies plain-safe ⇒ not flow-ind in flow).
   have hNotFI : (inFlow && isFlowIndicatorBool c0) = false := by
     cases hf : inFlow with
-    | false => simp [hf]
+    | false => simp
     | true =>
-      simp only [hf, Bool.true_and]
+      simp only [Bool.true_and]
       rw [hf] at h_ps
       have hpsp : isPlainSafeProp c0 true := (isPlainSafe_iff c0 true).mp h_ps
       simp only [isPlainSafeProp, ↓reduceIte] at hpsp
@@ -2079,7 +2079,7 @@ theorem collectPlainScalarLoopIx_validFirst_and_head {input : String}
                   c.advance.advance (String.singleton c0 ++ String.singleton n) "" inFlow contentIndent fuel''
                 obtain ⟨sfx2, hsfx2⟩ := hpfx2
                 have h_combined : (String.singleton c0 ++ String.singleton n).toList ++ sfx2 = c0 :: n :: sfx2 := by
-                  simp [String.toList_singleton, String.toList_append]
+                  simp [String.toList_singleton]
                 rw [h_combined] at hsfx2
                 rw [h_inner_reduce]
                 have h_res_form :
@@ -2100,9 +2100,9 @@ theorem collectPlainScalarLoopIx_validFirst_and_head {input : String}
               have hNotCommArm_n : (isCommentBool n && decide ((""  : String).length > 0)) = false := by simp
               have hNotFI_n : (inFlow && isFlowIndicatorBool n) = false := by
                 cases hf : inFlow with
-                | false => simp [hf]
+                | false => simp
                 | true =>
-                  simp only [hf, Bool.true_and]
+                  simp only [Bool.true_and]
                   rw [hf] at hps_n
                   have hpsp_n : isPlainSafeProp n true := (isPlainSafe_iff n true).mp hps_n
                   simp only [isPlainSafeProp, ↓reduceIte] at hpsp_n
@@ -2123,7 +2123,7 @@ theorem collectPlainScalarLoopIx_validFirst_and_head {input : String}
                 c.advance.advance (String.singleton c0 ++ String.singleton n) "" inFlow contentIndent fuel''
               obtain ⟨sfx2, hsfx2⟩ := hpfx2
               have h_combined : (String.singleton c0 ++ String.singleton n).toList ++ sfx2 = c0 :: n :: sfx2 := by
-                simp [String.toList_singleton, String.toList_append]
+                simp [String.toList_singleton]
               rw [h_combined] at hsfx2
               rw [h_inner_reduce]
               have h_res_form :
@@ -2212,7 +2212,7 @@ theorem collectPlainScalarLoopIx_validFirst_and_head {input : String}
                   c.advance.advance (String.singleton c0 ++ String.singleton n) "" inFlow contentIndent fuel''
                 obtain ⟨sfx2, hsfx2⟩ := hpfx2
                 have h_combined : (String.singleton c0 ++ String.singleton n).toList ++ sfx2 = c0 :: n :: sfx2 := by
-                  simp [String.toList_singleton, String.toList_append]
+                  simp [String.toList_singleton]
                 rw [h_combined] at hsfx2
                 rw [h_inner_reduce]
                 have h_res_form :
@@ -2229,9 +2229,9 @@ theorem collectPlainScalarLoopIx_validFirst_and_head {input : String}
               have hNotCommArm_n : (isCommentBool n && decide ((""  : String).length > 0)) = false := by simp
               have hNotFI_n : (inFlow && isFlowIndicatorBool n) = false := by
                 cases hf : inFlow with
-                | false => simp [hf]
+                | false => simp
                 | true =>
-                  simp only [hf, Bool.true_and]
+                  simp only [Bool.true_and]
                   rw [hf] at hps_n
                   have hpsp_n : isPlainSafeProp n true := (isPlainSafe_iff n true).mp hps_n
                   simp only [isPlainSafeProp, ↓reduceIte] at hpsp_n
@@ -2251,7 +2251,7 @@ theorem collectPlainScalarLoopIx_validFirst_and_head {input : String}
                 c.advance.advance (String.singleton c0 ++ String.singleton n) "" inFlow contentIndent fuel''
               obtain ⟨sfx2, hsfx2⟩ := hpfx2
               have h_combined : (String.singleton c0 ++ String.singleton n).toList ++ sfx2 = c0 :: n :: sfx2 := by
-                simp [String.toList_singleton, String.toList_append]
+                simp [String.toList_singleton]
               rw [h_combined] at hsfx2
               rw [h_inner_reduce]
               have h_res_form :

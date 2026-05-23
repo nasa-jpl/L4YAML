@@ -384,8 +384,7 @@ theorem flowNestingIx_go_setIfInBounds_non_flow
             | _ => depth) = depth := by
           generalize (tokens[idx]'h_pos).token = w at ho1 ho2 ho3 ho4
           cases w <;> first | contradiction | rfl
-        simp only [Array.getElem_setIfInBounds h_pos, ↓reduceIte,
-          h_val_depth, h_orig_depth]
+        simp only [Array.getElem_setIfInBounds h_pos, ↓reduceIte]
         exact ih (idx + 1) _ (by omega)
       · simp only [Array.getElem_setIfInBounds h_pos, if_neg h_eq]
         exact ih (pos + 1) _ (by omega)
@@ -4787,7 +4786,6 @@ theorem scanTagDirectiveIx_preserves_simpleKey {input : String}
     (h : scanTagDirectiveIx s cAfterWS startPos hStart = .ok s') :
     s'.simpleKey = s.simpleKey := by
   unfold scanTagDirectiveIx at h
-  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h
   simp only [Except.ok.injEq] at h; subst h; rfl
 
 theorem scanTagDirectiveIx_preserves_simpleKeyStack {input : String}
@@ -4797,7 +4795,6 @@ theorem scanTagDirectiveIx_preserves_simpleKeyStack {input : String}
     (h : scanTagDirectiveIx s cAfterWS startPos hStart = .ok s') :
     s'.simpleKeyStack = s.simpleKeyStack := by
   unfold scanTagDirectiveIx at h
-  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h
   simp only [Except.ok.injEq] at h; subst h; rfl
 
 theorem scanDirectiveIx_preserves_simpleKey {input : String}
@@ -5048,8 +5045,7 @@ theorem scanFlowEntryIx_clears_simpleKey {input : String}
     (s s' : ScannerStateIx input) (h : scanFlowEntryIx s = .ok s') :
     s'.simpleKey.possible = false := by
   unfold scanFlowEntryIx at h
-  simp only [bind, Except.bind, pure, Pure.pure, Except.pure,
-             Except.ok.injEq] at h
+  simp only [Except.ok.injEq] at h
   subst h
   show ((scanValuePrepareIx s).emit YamlToken.flowEntry).advance.simpleKey.possible = false
   rw [advance_preserves_simpleKey, emit_preserves_simpleKey]
@@ -5059,8 +5055,7 @@ theorem scanFlowEntryIx_preserves_simpleKeyStack {input : String}
     (s s' : ScannerStateIx input) (h : scanFlowEntryIx s = .ok s') :
     s'.simpleKeyStack = s.simpleKeyStack := by
   unfold scanFlowEntryIx at h
-  simp only [bind, Except.bind, pure, Pure.pure, Except.pure,
-             Except.ok.injEq] at h
+  simp only [Except.ok.injEq] at h
   subst h
   show ((scanValuePrepareIx s).emit YamlToken.flowEntry).advance.simpleKeyStack =
         s.simpleKeyStack
@@ -5490,5 +5485,616 @@ theorem scanFlowEntryIx_preserves_prefix {input : String}
   have h_emit := emit_preserves_tokens_at (scanValuePrepareIx s) YamlToken.flowEntry i h_i_lt_prep
   show ((scanValuePrepareIx s).emit YamlToken.flowEntry).tokens[i]'_ = s.tokens[i]'(by omega)
   exact h_emit.trans h_prep
+
+/-! ## §12l  Dispatcher composition for `AllKeysPlaceholderInvIx` (Step 6d.1e.12c.2)
+
+Indexed twin of legacy `saveSimpleKey_preserves_AllKeysPlaceholderInv`
+through `dispatchContent_preserves_AllKeysPlaceholderInv` (lines
+4430–4958 of `Proofs/Production/ScannerPlainScalarValid.lean`).
+Composes the §12g–12k `_preserves_prefix` substrate (Step 6d.1e.12c.1)
+with the §12c–12e `_preserves_simpleKey`/`_preserves_simpleKeyStack`/
+`_clears_simpleKey`/`_simpleKey_cleared`/`_simpleKey_restored`/
+`_stack_pushed`/`_stack_popped` facts and the per-scanner
+`_tokens_size_le` library to derive eight dispatcher-level
+`_preserves_AllKeysPlaceholderInvIx` theorems.
+
+Branch shape:
+- Mono scanners: `AllKeysPlaceholderInvIx_mono`.
+- Cleared scanners: `AllKeysPlaceholderInvIx_of_cleared_mono`.
+- Flow start/end: `flowStart`/`flowEnd_preserves_AllKeysPlaceholderInvIx`
+  helpers (this section) packaged with `_simpleKey_cleared` /
+  `_simpleKey_restored` / `_stack_pushed` / `_stack_popped`.
+- `scanValueIx` arm: `AllKeysPlaceholderInvIx_of_cleared_current`
+  with the bounded §12k `scanValueIx_preserves_prefix`. -/
+
+/-- Full state-equation case enumeration of `saveSimpleKeyIx`: either
+    identity (no-op branches) or push 2 placeholders + set `simpleKey`.
+    Routes proofs around the let-bound state form that
+    `unfold + split` produces (which `omega`/`simp` cannot reduce
+    through). -/
+theorem saveSimpleKeyIx_state_cases {input : String} (s : ScannerStateIx input) :
+    saveSimpleKeyIx s = s ∨
+    saveSimpleKeyIx s =
+      { (s.emit YamlToken.placeholder).emit YamlToken.placeholder with
+          simpleKey := { possible := true, tokenIndex := s.tokens.size,
+                         cursor := ((s.emit YamlToken.placeholder).emit YamlToken.placeholder).cursor,
+                         endLine := ((s.emit YamlToken.placeholder).emit YamlToken.placeholder).cursor.pos.line } } := by
+  unfold saveSimpleKeyIx
+  split
+  · left; rfl
+  · split
+    · right; rfl
+    · left; rfl
+
+theorem saveSimpleKeyIx_preserves_AllKeysPlaceholderInvIx {input : String}
+    (s : ScannerStateIx input) (h_akpi : AllKeysPlaceholderInvIx s) :
+    AllKeysPlaceholderInvIx (saveSimpleKeyIx s) := by
+  rcases saveSimpleKeyIx_state_cases s with h_eq | h_eq
+  · rw [h_eq]; exact h_akpi
+  · rw [h_eq]
+    -- Bridging equalities for ((s.emit ph).emit ph).
+    have h_size : ((s.emit YamlToken.placeholder).emit YamlToken.placeholder).tokens.size =
+        s.tokens.size + 2 := by rw [emit_tokens_size, emit_tokens_size]
+    have h_stack_eq :
+        ((s.emit YamlToken.placeholder).emit YamlToken.placeholder).simpleKeyStack = s.simpleKeyStack := by
+      rw [emit_preserves_simpleKeyStack, emit_preserves_simpleKeyStack]
+    have h1_lt' : s.tokens.size <
+        ((s.emit YamlToken.placeholder).emit YamlToken.placeholder).tokens.size := by
+      rw [h_size]; omega
+    have h2_lt : s.tokens.size + 1 <
+        ((s.emit YamlToken.placeholder).emit YamlToken.placeholder).tokens.size := by
+      rw [h_size]; omega
+    -- First placeholder slot.
+    have h_tok1 : (((s.emit YamlToken.placeholder).emit YamlToken.placeholder).tokens[s.tokens.size]'h1_lt').token =
+        YamlToken.placeholder := by
+      have h_size1 : (s.emit YamlToken.placeholder).tokens.size = s.tokens.size + 1 :=
+        emit_tokens_size s .placeholder
+      have h_first_lt : s.tokens.size < (s.emit YamlToken.placeholder).tokens.size := by
+        rw [h_size1]; omega
+      have h_step :
+          ((s.emit YamlToken.placeholder).emit YamlToken.placeholder).tokens[s.tokens.size]'h1_lt' =
+          (s.emit YamlToken.placeholder).tokens[s.tokens.size]'h_first_lt :=
+        emit_preserves_tokens_at (s.emit YamlToken.placeholder) .placeholder s.tokens.size h_first_lt
+      rw [h_step, emit_new_token_token s .placeholder h_first_lt]
+    -- Second placeholder slot.
+    have h_tok2 : (((s.emit YamlToken.placeholder).emit YamlToken.placeholder).tokens[s.tokens.size + 1]'h2_lt).token =
+        YamlToken.placeholder := by
+      have h_size1 : (s.emit YamlToken.placeholder).tokens.size = s.tokens.size + 1 :=
+        emit_tokens_size s .placeholder
+      have h_at : ∀ (j : Nat) (hj : j < ((s.emit YamlToken.placeholder).emit YamlToken.placeholder).tokens.size)
+          (_hge : j = (s.emit YamlToken.placeholder).tokens.size),
+          (((s.emit YamlToken.placeholder).emit YamlToken.placeholder).tokens[j]'hj).token = YamlToken.placeholder := by
+        intro j hj hge
+        subst hge
+        exact emit_new_token_token (s.emit YamlToken.placeholder) .placeholder hj
+      exact h_at (s.tokens.size + 1) h2_lt h_size1.symm
+    refine ⟨?_, ?_, ?_, ?_⟩
+    · -- SimpleKeyPlaceholderInvIx — new simpleKey has possible := true, tokenIndex := s.tokens.size.
+      intro _h_poss
+      change s.tokens.size < ((s.emit YamlToken.placeholder).emit YamlToken.placeholder).tokens.size ∧
+             s.tokens.size + 1 < ((s.emit YamlToken.placeholder).emit YamlToken.placeholder).tokens.size ∧ _
+      refine ⟨h1_lt', h2_lt, ?_, ?_⟩
+      · intro _h; exact h_tok1
+      · intro _h; exact h_tok2
+    · -- SimpleKeyStackPlaceholderInvIx — stack unchanged; existing prefix preserved.
+      intro j hj h_poss_j
+      change j < ((s.emit YamlToken.placeholder).emit YamlToken.placeholder).simpleKeyStack.size at hj
+      change (((s.emit YamlToken.placeholder).emit YamlToken.placeholder).simpleKeyStack[j]'hj).possible = true at h_poss_j
+      have hj_s : j < s.simpleKeyStack.size := by rw [h_stack_eq] at hj; exact hj
+      have h_get :
+          ((s.emit YamlToken.placeholder).emit YamlToken.placeholder).simpleKeyStack[j]'hj =
+          s.simpleKeyStack[j]'hj_s := by simp
+      rw [h_get] at h_poss_j
+      have ⟨hb1, hb2, hp1, hp2⟩ := h_akpi.2.1 j hj_s h_poss_j
+      change (((s.emit YamlToken.placeholder).emit YamlToken.placeholder).simpleKeyStack[j]'hj).tokenIndex < _ ∧
+             (((s.emit YamlToken.placeholder).emit YamlToken.placeholder).simpleKeyStack[j]'hj).tokenIndex + 1 < _ ∧ _
+      rw [h_get]
+      refine ⟨by rw [h_size]; omega, by rw [h_size]; omega, ?_, ?_⟩
+      · intro _h1
+        change (((s.emit YamlToken.placeholder).emit YamlToken.placeholder).tokens[
+                  (s.simpleKeyStack[j]'hj_s).tokenIndex]'_).token = _
+        rw [twoPlaceholderEmits_preserves_prefix s _ hb1]; exact hp1 hb1
+      · intro _h2
+        change (((s.emit YamlToken.placeholder).emit YamlToken.placeholder).tokens[
+                  (s.simpleKeyStack[j]'hj_s).tokenIndex + 1]'_).token = _
+        rw [twoPlaceholderEmits_preserves_prefix s _ hb2]; exact hp2 hb2
+    · -- SimpleKeyTokenDisjointIx — new simpleKey.tokenIndex = s.tokens.size; stacked + 1 < s.tokens.size.
+      intro _h_poss j hj h_poss_j
+      change j < ((s.emit YamlToken.placeholder).emit YamlToken.placeholder).simpleKeyStack.size at hj
+      change (((s.emit YamlToken.placeholder).emit YamlToken.placeholder).simpleKeyStack[j]'hj).possible = true at h_poss_j
+      have hj_s : j < s.simpleKeyStack.size := by rw [h_stack_eq] at hj; exact hj
+      have h_get :
+          ((s.emit YamlToken.placeholder).emit YamlToken.placeholder).simpleKeyStack[j]'hj =
+          s.simpleKeyStack[j]'hj_s := by simp
+      rw [h_get] at h_poss_j
+      change (((s.emit YamlToken.placeholder).emit YamlToken.placeholder).simpleKeyStack[j]'hj).tokenIndex + 1 < s.tokens.size
+      rw [h_get]
+      have ⟨_, hb2, _, _⟩ := h_akpi.2.1 j hj_s h_poss_j
+      exact hb2
+    · -- SimpleKeyStackOrderingIx — stack unchanged.
+      intro j hj h_poss_j k hk h_poss_k
+      change j < ((s.emit YamlToken.placeholder).emit YamlToken.placeholder).simpleKeyStack.size at hj
+      change (((s.emit YamlToken.placeholder).emit YamlToken.placeholder).simpleKeyStack[j]'hj).possible = true at h_poss_j
+      change (((s.emit YamlToken.placeholder).emit YamlToken.placeholder).simpleKeyStack[k]'(by omega)).possible = true at h_poss_k
+      have hj_s : j < s.simpleKeyStack.size := by rw [h_stack_eq] at hj; exact hj
+      have hk_s : k < s.simpleKeyStack.size := by omega
+      have h_get_j :
+          ((s.emit YamlToken.placeholder).emit YamlToken.placeholder).simpleKeyStack[j]'hj =
+          s.simpleKeyStack[j]'hj_s := by simp
+      have h_get_k :
+          (((s.emit YamlToken.placeholder).emit YamlToken.placeholder).simpleKeyStack[k]'(by omega)) =
+          s.simpleKeyStack[k]'hk_s := by simp
+      rw [h_get_j] at h_poss_j
+      rw [h_get_k] at h_poss_k
+      change (((s.emit YamlToken.placeholder).emit YamlToken.placeholder).simpleKeyStack[k]'(by omega)).tokenIndex + 1 <
+             (((s.emit YamlToken.placeholder).emit YamlToken.placeholder).simpleKeyStack[j]'hj).tokenIndex
+      rw [h_get_j, h_get_k]
+      exact h_akpi.2.2.2 j hj_s h_poss_j k hk h_poss_k
+
+/-- `scanNextTokenIx_preprocess` preserves `AllKeysPlaceholderInvIx`.
+    Composes `skipToContentS` (cursor-only update) with the conditional
+    `unwindIndentsIx` and the final `saveSimpleKeyIx`. -/
+theorem scanNextTokenIx_preprocess_preserves_AllKeysPlaceholderInvIx {input : String}
+    (s s' : ScannerStateIx input) (c : Char)
+    (h_pre : scanNextTokenIx_preprocess s = .ok (some (s', c)))
+    (h_akpi : AllKeysPlaceholderInvIx s) :
+    AllKeysPlaceholderInvIx s' := by
+  have h_skip_sk : s.skipToContentS.simpleKey = s.simpleKey := skipToContentS_preserves_simpleKey s
+  have h_skip_stack : s.skipToContentS.simpleKeyStack = s.simpleKeyStack :=
+    skipToContentS_preserves_simpleKeyStack s
+  have h_skip_mono : s.skipToContentS.tokens.size ≥ s.tokens.size := by
+    simp [skipToContentS_tokens]
+  have h_skip_pref : ∀ i (h : i < s.tokens.size),
+      s.skipToContentS.tokens[i]'(by omega) = s.tokens[i] := by
+    intro i hi; simp [skipToContentS_tokens]
+  have h_akpi_skip : AllKeysPlaceholderInvIx s.skipToContentS :=
+    AllKeysPlaceholderInvIx_mono s s.skipToContentS h_akpi
+      h_skip_sk h_skip_stack h_skip_mono h_skip_pref
+  unfold scanNextTokenIx_preprocess at h_pre
+  simp only at h_pre
+  split at h_pre
+  · simp at h_pre
+  · split at h_pre
+    · -- with indent check: s1 = { unwindIndentsIx s.skipToContentS _ with needIndentCheck := false }
+      have h_unwind_sk :
+          (unwindIndentsIx s.skipToContentS s.skipToContentS.cursor.pos.col).simpleKey =
+          s.skipToContentS.simpleKey := unwindIndentsIx_preserves_simpleKey _ _
+      have h_unwind_stack :
+          (unwindIndentsIx s.skipToContentS s.skipToContentS.cursor.pos.col).simpleKeyStack =
+          s.skipToContentS.simpleKeyStack := unwindIndentsIx_preserves_simpleKeyStack _ _
+      have h_unwind_mono : s.skipToContentS.tokens.size ≤
+          (unwindIndentsIx s.skipToContentS s.skipToContentS.cursor.pos.col).tokens.size :=
+        unwindIndentsIx_tokens_size_le _ _
+      have h_unwind_pref : ∀ i (h : i < s.skipToContentS.tokens.size),
+          (unwindIndentsIx s.skipToContentS s.skipToContentS.cursor.pos.col).tokens[i]'(by omega) =
+          s.skipToContentS.tokens[i] := fun i hi =>
+        unwindIndentsIx_preserves_prefix _ _ i hi
+      have h_akpi_unwind : AllKeysPlaceholderInvIx
+          { unwindIndentsIx s.skipToContentS s.skipToContentS.cursor.pos.col with
+              needIndentCheck := false } :=
+        AllKeysPlaceholderInvIx_mono s.skipToContentS _ h_akpi_skip
+          h_unwind_sk h_unwind_stack h_unwind_mono h_unwind_pref
+      split at h_pre
+      · simp at h_pre
+      · split at h_pre
+        · simp at h_pre
+        · simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq] at h_pre
+          obtain ⟨hs, _⟩ := h_pre
+          subst hs
+          exact saveSimpleKeyIx_preserves_AllKeysPlaceholderInvIx _ h_akpi_unwind
+    · -- without indent check: s1 = s.skipToContentS
+      split at h_pre
+      · simp at h_pre
+      · split at h_pre
+        · simp at h_pre
+        · simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq] at h_pre
+          obtain ⟨hs, _⟩ := h_pre
+          subst hs
+          exact saveSimpleKeyIx_preserves_AllKeysPlaceholderInvIx _ h_akpi_skip
+
+/-- `scanNextTokenIx_dispatchStructural` preserves `AllKeysPlaceholderInvIx`.
+    Each of the three productions (`scanDocumentStartIx`,
+    `scanDocumentEndIx`, `scanDirectiveIx`) either clears `possible`
+    (vacuous) or preserves `simpleKey`+`simpleKeyStack`+prefix. -/
+theorem scanNextTokenIx_dispatchStructural_preserves_AllKeysPlaceholderInvIx {input : String}
+    (s s' : ScannerStateIx input) (c : Char)
+    (h_akpi : AllKeysPlaceholderInvIx s)
+    (h_ok : scanNextTokenIx_dispatchStructural s c = .ok (some s')) :
+    AllKeysPlaceholderInvIx s' := by
+  rcases scanNextTokenIx_dispatchStructural_ok_some_cases h_ok with heq | hOk | hOk
+  · subst heq
+    exact AllKeysPlaceholderInvIx_of_cleared_mono s _ h_akpi
+      (scanDocumentStartIx_clears_simpleKey s)
+      (scanDocumentStartIx_preserves_simpleKeyStack s)
+      (scanDocumentStartIx_tokens_size_le s)
+      (fun i hi => scanDocumentStartIx_preserves_prefix s i hi)
+  · exact AllKeysPlaceholderInvIx_of_cleared_mono s _ h_akpi
+      (scanDocumentEndIx_clears_simpleKey s s' hOk)
+      (scanDocumentEndIx_preserves_simpleKeyStack s s' hOk)
+      (scanDocumentEndIx_tokens_size_le hOk)
+      (fun i hi => scanDocumentEndIx_preserves_prefix s s' hOk i hi)
+  · exact AllKeysPlaceholderInvIx_mono s _ h_akpi
+      (scanDirectiveIx_preserves_simpleKey s s' hOk)
+      (scanDirectiveIx_preserves_simpleKeyStack s s' hOk)
+      (scanDirectiveIx_tokens_size_le hOk)
+      (fun i hi => scanDirectiveIx_preserves_prefix s s' hOk i hi)
+
+/-- Flow start preserves `AllKeysPlaceholderInvIx`. Pushes current key
+    to stack, clears current. Indexed twin of legacy
+    `flowStart_preserves_AllKeysPlaceholderInv`. -/
+theorem flowStart_preserves_AllKeysPlaceholderInvIx {input : String}
+    (s s' : ScannerStateIx input)
+    (h_akpi : AllKeysPlaceholderInvIx s)
+    (h_cleared : s'.simpleKey.possible = false)
+    (h_pushed : s'.simpleKeyStack = s.simpleKeyStack.push s.simpleKey)
+    (h_mono : s.tokens.size ≤ s'.tokens.size)
+    (h_pref : ∀ i (hi : i < s.tokens.size), s'.tokens[i]'(by omega) = s.tokens[i]) :
+    AllKeysPlaceholderInvIx s' := by
+  refine ⟨SimpleKeyPlaceholderInvIx_of_not_possible _ h_cleared, ?_,
+          SimpleKeyTokenDisjointIx_of_not_possible _ h_cleared, ?_⟩
+  · -- SimpleKeyStackPlaceholderInvIx: old stack + pushed current
+    intro j hj h_poss_j
+    have hj_sz : j < s.simpleKeyStack.size + 1 := by
+      rw [h_pushed, Array.size_push] at hj; exact hj
+    have hg_j : s'.simpleKeyStack[j]'hj =
+        (s.simpleKeyStack.push s.simpleKey)[j]'(by rw [Array.size_push]; exact hj_sz) := by
+      simp [h_pushed]
+    rw [hg_j] at h_poss_j ⊢
+    by_cases hlt : j < s.simpleKeyStack.size
+    · rw [Array.getElem_push_lt hlt] at h_poss_j ⊢
+      have ⟨hb1, hb2, hp1, hp2⟩ := h_akpi.2.1 j hlt h_poss_j
+      refine ⟨by omega, by omega, ?_, ?_⟩
+      · intro _h1; rw [h_pref _ hb1]; exact hp1 hb1
+      · intro _h2; rw [h_pref _ hb2]; exact hp2 hb2
+    · have hj_eq : j = s.simpleKeyStack.size := by omega
+      subst hj_eq
+      rw [Array.getElem_push_eq] at h_poss_j ⊢
+      have ⟨hb1, hb2, hp1, hp2⟩ := h_akpi.1 h_poss_j
+      refine ⟨by omega, by omega, ?_, ?_⟩
+      · intro _h1; rw [h_pref _ hb1]; exact hp1 hb1
+      · intro _h2; rw [h_pref _ hb2]; exact hp2 hb2
+  · -- SimpleKeyStackOrderingIx: old ordering + pushed top
+    intro j hj h_poss_j k hk h_poss_k
+    have hj_sz : j < s.simpleKeyStack.size + 1 := by
+      rw [h_pushed, Array.size_push] at hj; exact hj
+    have hk_sz : k < s.simpleKeyStack.size + 1 := by omega
+    have hg_j : s'.simpleKeyStack[j]'hj =
+        (s.simpleKeyStack.push s.simpleKey)[j]'(by rw [Array.size_push]; exact hj_sz) := by
+      simp [h_pushed]
+    have hg_k : s'.simpleKeyStack[k]'(by omega) =
+        (s.simpleKeyStack.push s.simpleKey)[k]'(by rw [Array.size_push]; exact hk_sz) := by
+      simp [h_pushed]
+    rw [hg_j] at h_poss_j ⊢
+    rw [hg_k] at h_poss_k ⊢
+    by_cases hlt_j : j < s.simpleKeyStack.size
+    · rw [Array.getElem_push_lt hlt_j] at h_poss_j ⊢
+      have hlt_k : k < s.simpleKeyStack.size := by omega
+      rw [Array.getElem_push_lt hlt_k] at h_poss_k ⊢
+      exact h_akpi.2.2.2 j hlt_j h_poss_j k hk h_poss_k
+    · have hj_eq : j = s.simpleKeyStack.size := by omega
+      subst hj_eq
+      rw [Array.getElem_push_eq] at h_poss_j ⊢
+      have hlt_k : k < s.simpleKeyStack.size := by omega
+      rw [Array.getElem_push_lt hlt_k] at h_poss_k ⊢
+      exact h_akpi.2.2.1 h_poss_j k hlt_k h_poss_k
+
+/-- Flow end preserves `AllKeysPlaceholderInvIx`. Restores current key
+    from stack top, pops stack. Indexed twin of legacy
+    `flowEnd_preserves_AllKeysPlaceholderInv`. -/
+theorem flowEnd_preserves_AllKeysPlaceholderInvIx {input : String}
+    (s s' : ScannerStateIx input)
+    (h_akpi : AllKeysPlaceholderInvIx s)
+    (h_restored : s'.simpleKey =
+      s.simpleKeyStack.back?.getD { cursor := IxCursor.start input })
+    (h_popped : s'.simpleKeyStack = s.simpleKeyStack.pop)
+    (h_mono : s.tokens.size ≤ s'.tokens.size)
+    (h_pref : ∀ i (hi : i < s.tokens.size), s'.tokens[i]'(by omega) = s.tokens[i]) :
+    AllKeysPlaceholderInvIx s' := by
+  refine ⟨?_, ?_, ?_, ?_⟩
+  · -- SimpleKeyPlaceholderInvIx: restored from stack top
+    intro h_poss
+    rw [h_restored] at h_poss ⊢
+    by_cases h_size : s.simpleKeyStack.size > 0
+    · have h_bound : s.simpleKeyStack.size - 1 < s.simpleKeyStack.size := by omega
+      have h_get_back :
+          (s.simpleKeyStack.back?.getD { cursor := IxCursor.start input }) =
+          s.simpleKeyStack[s.simpleKeyStack.size - 1]'h_bound := by
+        simp [Array.back?, h_bound]
+      rw [h_get_back] at h_poss ⊢
+      have ⟨hb1, hb2, hp1, hp2⟩ := h_akpi.2.1 (s.simpleKeyStack.size - 1) h_bound h_poss
+      refine ⟨by omega, by omega, ?_, ?_⟩
+      · intro _h1; rw [h_pref _ hb1]; exact hp1 hb1
+      · intro _h2; rw [h_pref _ hb2]; exact hp2 hb2
+    · have h_empty : s.simpleKeyStack.size = 0 := by omega
+      simp [Array.back?, h_empty] at h_poss
+  · -- SimpleKeyStackPlaceholderInvIx: popped stack
+    intro j hj h_poss
+    have hj' : j < s.simpleKeyStack.size := by
+      simp [h_popped, Array.size_pop] at hj; omega
+    have hg_j : s'.simpleKeyStack[j]'hj = s.simpleKeyStack[j]'hj' := by
+      simp [h_popped, Array.getElem_pop]
+    rw [hg_j] at h_poss ⊢
+    have ⟨hb1, hb2, hp1, hp2⟩ := h_akpi.2.1 j hj' h_poss
+    refine ⟨by omega, by omega, ?_, ?_⟩
+    · intro _h1; rw [h_pref _ hb1]; exact hp1 hb1
+    · intro _h2; rw [h_pref _ hb2]; exact hp2 hb2
+  · -- SimpleKeyTokenDisjointIx: restored key vs popped stack
+    intro h_poss j hj h_poss_j
+    rw [h_restored] at h_poss ⊢
+    by_cases h_size : s.simpleKeyStack.size > 0
+    · have h_bound : s.simpleKeyStack.size - 1 < s.simpleKeyStack.size := by omega
+      have h_get_back :
+          (s.simpleKeyStack.back?.getD { cursor := IxCursor.start input }) =
+          s.simpleKeyStack[s.simpleKeyStack.size - 1]'h_bound := by
+        simp [Array.back?, h_bound]
+      rw [h_get_back] at h_poss ⊢
+      have hj' : j < s.simpleKeyStack.size := by
+        simp [h_popped, Array.size_pop] at hj; omega
+      have hj_lt_top : j < s.simpleKeyStack.size - 1 := by
+        simp [h_popped, Array.size_pop] at hj; omega
+      have hg_j : s'.simpleKeyStack[j]'hj = s.simpleKeyStack[j]'hj' := by
+        simp [h_popped, Array.getElem_pop]
+      rw [hg_j] at h_poss_j ⊢
+      exact h_akpi.2.2.2 (s.simpleKeyStack.size - 1) h_bound h_poss j hj_lt_top h_poss_j
+    · have h_empty : s.simpleKeyStack.size = 0 := by omega
+      simp [Array.back?, h_empty] at h_poss
+  · -- SimpleKeyStackOrderingIx: popped stack is a prefix of old stack
+    intro j hj h_poss_j k hk h_poss_k
+    have hj' : j < s.simpleKeyStack.size := by
+      simp [h_popped, Array.size_pop] at hj; omega
+    have hk' : k < s.simpleKeyStack.size := by omega
+    have hg_j : s'.simpleKeyStack[j]'hj = s.simpleKeyStack[j]'hj' := by
+      simp [h_popped, Array.getElem_pop]
+    have hg_k : s'.simpleKeyStack[k]'(by omega) = s.simpleKeyStack[k]'hk' := by
+      simp [h_popped, Array.getElem_pop]
+    rw [hg_j] at h_poss_j ⊢
+    rw [hg_k] at h_poss_k ⊢
+    exact h_akpi.2.2.2 j hj' h_poss_j k hk h_poss_k
+
+/-- `scanNextTokenIx_dispatchFlowIndicators` preserves `AllKeysPlaceholderInvIx`.
+    Flow start (`[`, `{`) pushes current key + clears; flow end (`]`, `}`)
+    restores from top + pops; `,` (flow entry) clears + preserves stack. -/
+theorem scanNextTokenIx_dispatchFlowIndicators_preserves_AllKeysPlaceholderInvIx {input : String}
+    (s s' : ScannerStateIx input) (c : Char)
+    (h_akpi : AllKeysPlaceholderInvIx s)
+    (h_ok : scanNextTokenIx_dispatchFlowIndicators s c = .ok (some s')) :
+    AllKeysPlaceholderInvIx s' := by
+  rcases scanNextTokenIx_dispatchFlowIndicators_ok_some_cases h_ok with
+    heq | heq | heq | heq | hOk
+  · subst heq
+    exact flowStart_preserves_AllKeysPlaceholderInvIx s _ h_akpi
+      (scanFlowSequenceStartIx_simpleKey_cleared s)
+      (scanFlowSequenceStartIx_stack_pushed s)
+      (scanFlowSequenceStartIx_tokens_size_le s)
+      (fun i hi => scanFlowSequenceStartIx_preserves_prefix s i hi)
+  · subst heq
+    exact flowEnd_preserves_AllKeysPlaceholderInvIx s _ h_akpi
+      (scanFlowSequenceEndIx_simpleKey_restored s)
+      (scanFlowSequenceEndIx_stack_popped s)
+      (scanFlowSequenceEndIx_tokens_size_le s)
+      (fun i hi => scanFlowSequenceEndIx_preserves_prefix s i hi)
+  · subst heq
+    exact flowStart_preserves_AllKeysPlaceholderInvIx s _ h_akpi
+      (scanFlowMappingStartIx_simpleKey_cleared s)
+      (scanFlowMappingStartIx_stack_pushed s)
+      (scanFlowMappingStartIx_tokens_size_le s)
+      (fun i hi => scanFlowMappingStartIx_preserves_prefix s i hi)
+  · subst heq
+    exact flowEnd_preserves_AllKeysPlaceholderInvIx s _ h_akpi
+      (scanFlowMappingEndIx_simpleKey_restored s)
+      (scanFlowMappingEndIx_stack_popped s)
+      (scanFlowMappingEndIx_tokens_size_le s)
+      (fun i hi => scanFlowMappingEndIx_preserves_prefix s i hi)
+  · -- scanFlowEntryIx: clears simpleKey, preserves stack, but overwrites at sk positions
+    -- (via scanValuePrepareIx). Use _of_cleared_current with bounded prefix lemma.
+    have h_clears := scanFlowEntryIx_clears_simpleKey s s' hOk
+    have h_stack := scanFlowEntryIx_preserves_simpleKeyStack s s' hOk
+    have h_mono := scanFlowEntryIx_tokens_size_le hOk
+    refine AllKeysPlaceholderInvIx_of_cleared_current s' h_clears ?_ ?_ ?_
+    · -- SimpleKeyStackPlaceholderInvIx: stacked keys' tokens preserved via bounded prefix.
+      intro j hj h_poss_j
+      have hj_s : j < s.simpleKeyStack.size := by rw [← h_stack]; exact hj
+      have h_get : s'.simpleKeyStack[j]'hj = s.simpleKeyStack[j]'hj_s := by simp [h_stack]
+      rw [h_get] at h_poss_j ⊢
+      have ⟨hb1, hb2, hp1, hp2⟩ := h_akpi.2.1 j hj_s h_poss_j
+      refine ⟨by omega, by omega, ?_, ?_⟩
+      · intro _h1
+        rw [scanFlowEntryIx_preserves_prefix s s' hOk
+              ((s.simpleKeyStack[j]'hj_s).tokenIndex + 2) (by omega)
+              (fun hp => by have := h_akpi.2.2.1 hp j hj_s h_poss_j; omega)
+              (s.simpleKeyStack[j]'hj_s).tokenIndex (by omega)]
+        exact hp1 hb1
+      · intro _h2
+        rw [scanFlowEntryIx_preserves_prefix s s' hOk
+              ((s.simpleKeyStack[j]'hj_s).tokenIndex + 2) (by omega)
+              (fun hp => by have := h_akpi.2.2.1 hp j hj_s h_poss_j; omega)
+              ((s.simpleKeyStack[j]'hj_s).tokenIndex + 1) (by omega)]
+        exact hp2 hb2
+    · exact SimpleKeyTokenDisjointIx_of_not_possible _ h_clears
+    · intro j hj h_poss_j k hk h_poss_k
+      have hj_s : j < s.simpleKeyStack.size := by rw [← h_stack]; exact hj
+      have hk_s : k < s.simpleKeyStack.size := by omega
+      have h_get_j : s'.simpleKeyStack[j]'hj = s.simpleKeyStack[j]'hj_s := by simp [h_stack]
+      have h_get_k : (s'.simpleKeyStack[k]'(by omega)) =
+          s.simpleKeyStack[k]'hk_s := by simp [h_stack]
+      rw [h_get_j] at h_poss_j ⊢
+      rw [h_get_k] at h_poss_k ⊢
+      exact h_akpi.2.2.2 j hj_s h_poss_j k hk h_poss_k
+
+/-- `scanNextTokenIx_dispatchBlockIndicators` preserves `AllKeysPlaceholderInvIx`.
+    `scanBlockEntryIx` is mono; `scanKeyIx` clears + preserves stack;
+    `scanValueIx` clears + preserves stack but overwrites at sk positions
+    (use bounded `scanValueIx_preserves_prefix` from §12k). -/
+theorem scanNextTokenIx_dispatchBlockIndicators_preserves_AllKeysPlaceholderInvIx {input : String}
+    (s s' : ScannerStateIx input) (c : Char)
+    (h_akpi : AllKeysPlaceholderInvIx s)
+    (h_ok : scanNextTokenIx_dispatchBlockIndicators s c = .ok (some s')) :
+    AllKeysPlaceholderInvIx s' := by
+  rcases scanNextTokenIx_dispatchBlockIndicators_ok_some_cases h_ok with hOk | hOk | hOk
+  · -- scanBlockEntryIx: preserves simpleKey + stack + prefix.
+    exact AllKeysPlaceholderInvIx_mono s _ h_akpi
+      (scanBlockEntryIx_preserves_simpleKey s s' hOk)
+      (scanBlockEntryIx_preserves_simpleKeyStack s s' hOk)
+      (scanBlockEntryIx_tokens_size_le hOk)
+      (fun i hi => scanBlockEntryIx_preserves_prefix s s' hOk i hi)
+  · -- scanKeyIx: clears + preserves stack + prefix.
+    exact AllKeysPlaceholderInvIx_of_cleared_mono s _ h_akpi
+      (scanKeyIx_clears_simpleKey s s' hOk)
+      (scanKeyIx_preserves_simpleKeyStack s s' hOk)
+      (scanKeyIx_tokens_size_le hOk)
+      (fun i hi => scanKeyIx_preserves_prefix s s' hOk i hi)
+  · -- scanValueIx: clears + preserves stack + overwrites at sk positions.
+    have h_clears := scanValueIx_clears_simpleKey s s' hOk
+    have h_stack := scanValueIx_preserves_simpleKeyStack s s' hOk
+    have h_mono := scanValueIx_tokens_size_le hOk
+    refine AllKeysPlaceholderInvIx_of_cleared_current s' h_clears ?_ ?_ ?_
+    · intro j hj h_poss_j
+      have hj_s : j < s.simpleKeyStack.size := by rw [← h_stack]; exact hj
+      have h_get : s'.simpleKeyStack[j]'hj = s.simpleKeyStack[j]'hj_s := by simp [h_stack]
+      rw [h_get] at h_poss_j ⊢
+      have ⟨hb1, hb2, hp1, hp2⟩ := h_akpi.2.1 j hj_s h_poss_j
+      refine ⟨by omega, by omega, ?_, ?_⟩
+      · intro _h1
+        rw [scanValueIx_preserves_prefix s s' hOk
+              ((s.simpleKeyStack[j]'hj_s).tokenIndex + 2) (by omega)
+              (fun hp => by have := h_akpi.2.2.1 hp j hj_s h_poss_j; omega)
+              (s.simpleKeyStack[j]'hj_s).tokenIndex (by omega)]
+        exact hp1 hb1
+      · intro _h2
+        rw [scanValueIx_preserves_prefix s s' hOk
+              ((s.simpleKeyStack[j]'hj_s).tokenIndex + 2) (by omega)
+              (fun hp => by have := h_akpi.2.2.1 hp j hj_s h_poss_j; omega)
+              ((s.simpleKeyStack[j]'hj_s).tokenIndex + 1) (by omega)]
+        exact hp2 hb2
+    · exact SimpleKeyTokenDisjointIx_of_not_possible _ h_clears
+    · intro j hj h_poss_j k hk h_poss_k
+      have hj_s : j < s.simpleKeyStack.size := by rw [← h_stack]; exact hj
+      have hk_s : k < s.simpleKeyStack.size := by omega
+      have h_get_j : s'.simpleKeyStack[j]'hj = s.simpleKeyStack[j]'hj_s := by simp [h_stack]
+      have h_get_k : (s'.simpleKeyStack[k]'(by omega)) =
+          s.simpleKeyStack[k]'hk_s := by simp [h_stack]
+      rw [h_get_j] at h_poss_j ⊢
+      rw [h_get_k] at h_poss_k ⊢
+      exact h_akpi.2.2.2 j hj_s h_poss_j k hk h_poss_k
+
+/-- Helper for the inline-scalar arms of `scanNextTokenIx_dispatchContent`.
+    The post-state is `{ ({ s with cursor := cAfter }).emitAt startPos
+    tok hBound with simpleKeyAllowed := false }` — only `cursor`,
+    `tokens`, and `simpleKeyAllowed` change; `simpleKey`/`simpleKeyStack`
+    are preserved. -/
+private theorem _inline_scalar_preserves_AllKeysPlaceholderInvIx {input : String}
+    (s : ScannerStateIx input) (cAfter : IxCursor input)
+    (startPos : YamlPos) (tok : YamlToken)
+    (hBound : startPos.offset ≤ cAfter.pos.offset)
+    (h_akpi : AllKeysPlaceholderInvIx s) :
+    AllKeysPlaceholderInvIx
+      { ({ s with cursor := cAfter } : ScannerStateIx input).emitAt startPos tok hBound with
+          simpleKeyAllowed := false } := by
+  have h_sk :
+      ({ ({ s with cursor := cAfter } : ScannerStateIx input).emitAt startPos tok hBound with
+          simpleKeyAllowed := false } : ScannerStateIx input).simpleKey = s.simpleKey := by simp
+  have h_stack :
+      ({ ({ s with cursor := cAfter } : ScannerStateIx input).emitAt startPos tok hBound with
+          simpleKeyAllowed := false } : ScannerStateIx input).simpleKeyStack = s.simpleKeyStack := by
+    simp
+  have h_mono : s.tokens.size ≤
+      ({ ({ s with cursor := cAfter } : ScannerStateIx input).emitAt startPos tok hBound with
+          simpleKeyAllowed := false } : ScannerStateIx input).tokens.size := by
+    show s.tokens.size ≤
+      (({ s with cursor := cAfter } : ScannerStateIx input).emitAt startPos tok hBound).tokens.size
+    rw [emitAt_tokens_size]
+    have h_eq : ({ s with cursor := cAfter } : ScannerStateIx input).tokens.size = s.tokens.size := rfl
+    omega
+  have h_pref : ∀ i (h : i < s.tokens.size),
+      ({ ({ s with cursor := cAfter } : ScannerStateIx input).emitAt startPos tok hBound with
+          simpleKeyAllowed := false } : ScannerStateIx input).tokens[i]'(by omega) = s.tokens[i] := by
+    intro i hi
+    show (({ s with cursor := cAfter } : ScannerStateIx input).emitAt startPos tok hBound).tokens[i]'_ =
+      s.tokens[i]'hi
+    exact emitAt_preserves_tokens_at ({ s with cursor := cAfter } : ScannerStateIx input)
+      startPos tok hBound i hi
+  exact AllKeysPlaceholderInvIx_mono s _ h_akpi h_sk h_stack h_mono h_pref
+
+/-- `scanNextTokenIx_dispatchContent` preserves `AllKeysPlaceholderInvIx`.
+    7 productions: `&`/`*` (anchor/alias via `scanAnchorOrAliasIx`),
+    `!` (tag), `|`/`>` (block scalar), `"` (double-quoted),
+    `'` (single-quoted), plain scalar. All preserve `simpleKey`+
+    `simpleKeyStack` and add one token. -/
+theorem scanNextTokenIx_dispatchContent_preserves_AllKeysPlaceholderInvIx {input : String}
+    (s s' : ScannerStateIx input) (c : Char)
+    (h_akpi : AllKeysPlaceholderInvIx s)
+    (h_ok : scanNextTokenIx_dispatchContent s c = .ok s') :
+    AllKeysPlaceholderInvIx s' := by
+  unfold scanNextTokenIx_dispatchContent at h_ok
+  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h_ok
+  split at h_ok
+  · -- c == '&': anchor
+    generalize h_anch : scanAnchorOrAliasIx s true = anch_result at h_ok
+    cases anch_result with
+    | error e => simp at h_ok
+    | ok s_anch =>
+      dsimp only [] at h_ok
+      simp only [Except.ok.injEq] at h_ok
+      subst h_ok
+      exact AllKeysPlaceholderInvIx_mono s s_anch h_akpi
+        (scanAnchorOrAliasIx_preserves_simpleKey s true s_anch h_anch)
+        (scanAnchorOrAliasIx_preserves_simpleKeyStack s true s_anch h_anch)
+        (scanAnchorOrAliasIx_tokens_size_le h_anch)
+        (fun i hi => scanAnchorOrAliasIx_preserves_prefix s true s_anch h_anch i hi)
+  · split at h_ok
+    · -- c == '*': alias
+      generalize h_anch : scanAnchorOrAliasIx s false = anch_result at h_ok
+      cases anch_result with
+      | error e => simp at h_ok
+      | ok s_anch =>
+        dsimp only [] at h_ok
+        simp only [Except.ok.injEq] at h_ok
+        subst h_ok
+        exact AllKeysPlaceholderInvIx_mono s s_anch h_akpi
+          (scanAnchorOrAliasIx_preserves_simpleKey s false s_anch h_anch)
+          (scanAnchorOrAliasIx_preserves_simpleKeyStack s false s_anch h_anch)
+          (scanAnchorOrAliasIx_tokens_size_le h_anch)
+          (fun i hi => scanAnchorOrAliasIx_preserves_prefix s false s_anch h_anch i hi)
+    · split at h_ok
+      · -- c == '!': tag
+        generalize h_tag : scanTagIx s = tag_result at h_ok
+        cases tag_result with
+        | error e => simp at h_ok
+        | ok s_tag =>
+          dsimp only [] at h_ok
+          simp only [Except.ok.injEq] at h_ok
+          subst h_ok
+          exact AllKeysPlaceholderInvIx_mono s s_tag h_akpi
+            (scanTagIx_preserves_simpleKey s s_tag h_tag)
+            (scanTagIx_preserves_simpleKeyStack s s_tag h_tag)
+            (scanTagIx_tokens_size_le h_tag)
+            (fun i hi => scanTagIx_preserves_prefix s s_tag h_tag i hi)
+      · split at h_ok
+        · -- c == '|' || c == '>': block scalar (inline match)
+          split at h_ok
+          · simp only [Except.ok.injEq] at h_ok
+            subst h_ok
+            exact _inline_scalar_preserves_AllKeysPlaceholderInvIx s _ _ _ _ h_akpi
+          · simp at h_ok
+        · split at h_ok
+          · -- c == '"': double quoted
+            split at h_ok
+            · simp only [Except.ok.injEq] at h_ok
+              subst h_ok
+              exact _inline_scalar_preserves_AllKeysPlaceholderInvIx s _ _ _ _ h_akpi
+            · simp at h_ok
+          · split at h_ok
+            · -- c == '\'': single quoted
+              split at h_ok
+              · simp only [Except.ok.injEq] at h_ok
+                subst h_ok
+                exact _inline_scalar_preserves_AllKeysPlaceholderInvIx s _ _ _ _ h_akpi
+              · simp at h_ok
+            · split at h_ok
+              · -- plain scalar (always succeeds)
+                simp only [Except.ok.injEq] at h_ok
+                subst h_ok
+                exact _inline_scalar_preserves_AllKeysPlaceholderInvIx s _ _ _ _ h_akpi
+              · simp at h_ok
 
 end L4YAML.Proofs.Indexed.ScannerPlainScalarValid
