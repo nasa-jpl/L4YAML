@@ -4079,42 +4079,14 @@ theorem allowDirectives_update_SimpleKeyPlaceholderInvIx {input : String}
   rw [allowDirectives_update_simpleKey, allowDirectives_update_tokens]
   exact h_inv
 
-/-- `scanNextTokenIx_preprocess` preserves `SimpleKeyPlaceholderInvIx`.
-
-    **Staged as axiom (Step 6d.1e.10)**. Preprocess composes
-    `skipToContentS` (cursor-only update) and `unwindIndentsIx` (emits
-    `.blockEnd` non-plain non-flow tokens, leaves `simpleKey`
-    untouched), so the invariant transfers by `emit`-style monotonicity
-    on the placeholders. Discharge proof is mechanical but requires
-    porting the legacy `preprocess_preserves_AllKeysPlaceholderInv`
-    chain (~200 LOC); deferred to a follow-up step that prioritises
-    closing this remaining axiom in tandem with the §11h Layer F.4
-    plain-scalar arm (Step 6d.1e.11). -/
-axiom scanNextTokenIx_preprocess_preserves_SimpleKeyPlaceholderInvIx {input : String}
-    (s s1 : ScannerStateIx input) (c : Char)
-    (_h_ok : scanNextTokenIx_preprocess s = .ok (some (s1, c)))
-    (_h_inv : SimpleKeyPlaceholderInvIx s) :
-    SimpleKeyPlaceholderInvIx s1
-
-/-- `scanNextTokenIx` preserves `SimpleKeyPlaceholderInvIx`.
-
-    **Staged as axiom (Step 6d.1e.10)**. The induction step in
-    `scanLoopIx_preserves_*` needs to maintain the placeholder
-    invariant across each call to `scanNextTokenIx`. Discharging this
-    requires preservation lemmas for every leaf scanner — most clear
-    `simpleKey.possible := false` (vacuous) or leave `simpleKey`
-    untouched while pushing past the placeholder slots (mono); the
-    one establishing arm (`saveSimpleKeyIx`) reserves the placeholders
-    correctly. The chain mirrors the legacy
-    `scanNextToken_preserves_AllKeysPlaceholderInv` (~150 LOC across
-    leaf scanners + ~100 LOC for dispatcher composition). Deferred to
-    Step 6d.1e.11 alongside the §11h Layer F.4 plain-scalar arm and
-    the preprocess preservation. -/
-axiom scanNextTokenIx_preserves_SimpleKeyPlaceholderInvIx {input : String}
-    (s s' : ScannerStateIx input)
-    (_h_inv : SimpleKeyPlaceholderInvIx s)
-    (_h_ok : scanNextTokenIx s = .ok (some s')) :
-    SimpleKeyPlaceholderInvIx s'
+/-! **Note (Step 6d.1e.12d)**: the two `SimpleKeyPlaceholderInvIx`-
+    preservation axioms previously declared here (`_preprocess_preserves_*`
+    and `scanNextTokenIx_preserves_*`) were discharged by routing
+    the consumer chain (§11i `_FlowContextPSVIx`/`_FlowNestingInvIx`,
+    §11j `scanLoopIx_preserves_*`, §11k top-level theorems) through
+    the §12l `AllKeysPlaceholderInvIx` dispatcher composition. The
+    refactored consumers live in §13 (after §12l, which they depend
+    on); §11i below retains only `_PlainScalarsValidIx`. -/
 
 theorem scanNextTokenIx_preserves_PlainScalarsValidIx {input : String}
     (s s' : ScannerStateIx input) (h_old : PlainScalarsValidIx s.tokens)
@@ -4193,182 +4165,15 @@ theorem scanNextTokenIx_preserves_PlainScalarsValidIx {input : String}
                         exact scanNextTokenIx_dispatchContent_preserves_PlainScalarsValidIx
                           s_dir c s_ct h_dc h_peek_dir h_psv_dir
 
-theorem scanNextTokenIx_preserves_FlowContextPSVIx {input : String}
-    (s s' : ScannerStateIx input) (h_old : FlowContextPSVIx s.tokens)
-    (h_fni : FlowNestingInvIx s)
-    (h_pl : SimpleKeyPlaceholderInvIx s)
-    (h_ok : scanNextTokenIx s = .ok (some s')) :
-    FlowContextPSVIx s'.tokens := by
-  unfold scanNextTokenIx at h_ok
-  simp only [bind, Except.bind, pure, Except.pure] at h_ok
-  generalize h_pp : scanNextTokenIx_preprocess s = pp_res at h_ok
-  cases pp_res with
-  | error e => simp at h_ok
-  | ok pp_inner =>
-    cases pp_inner with
-    | none => simp at h_ok
-    | some pair =>
-      cases pair with
-      | mk s_pp c =>
-        have h_old_pp : FlowContextPSVIx s_pp.tokens :=
-          scanNextTokenIx_preprocess_preserves_FlowContextPSVIx s s_pp c h_pp h_old
-        have h_fni_pp : FlowNestingInvIx s_pp :=
-          scanNextTokenIx_preprocess_preserves_FlowNestingInvIx s s_pp c h_pp h_fni
-        have h_pl_pp : SimpleKeyPlaceholderInvIx s_pp :=
-          scanNextTokenIx_preprocess_preserves_SimpleKeyPlaceholderInvIx s s_pp c h_pp h_pl
-        dsimp only [] at h_ok
-        generalize h_ds : scanNextTokenIx_dispatchStructural s_pp c = ds_res at h_ok
-        cases ds_res with
-        | error e => simp at h_ok
-        | ok ds_inner =>
-          cases ds_inner with
-          | some s_str =>
-            simp only [Except.ok.injEq, Option.some.injEq] at h_ok
-            subst h_ok
-            exact scanNextTokenIx_dispatchStructural_preserves_FlowContextPSVIx
-              s_pp c s_str h_ds h_old_pp
-          | none =>
-            dsimp only [] at h_ok
-            generalize h_dir_def : (if s_pp.allowDirectives = true then
-                { s_pp with allowDirectives := false, documentEverStarted := true }
-              else s_pp) = s_dir at h_ok
-            have h_old_dir : FlowContextPSVIx s_dir.tokens := by
-              rw [← h_dir_def, allowDirectives_update_tokens]; exact h_old_pp
-            have h_fni_dir : FlowNestingInvIx s_dir := by
-              rw [← h_dir_def]
-              unfold FlowNestingInvIx at h_fni_pp ⊢
-              rw [allowDirectives_update_tokens, allowDirectives_update_flowLevel]
-              exact h_fni_pp
-            have h_pl_dir : SimpleKeyPlaceholderInvIx s_dir := by
-              rw [← h_dir_def]
-              exact allowDirectives_update_SimpleKeyPlaceholderInvIx s_pp h_pl_pp
-            generalize h_ck : scanNextTokenIx_checkBlockFlowIndent s_dir c = ck_res at h_ok
-            cases ck_res with
-            | error e => simp at h_ok
-            | ok _ =>
-              dsimp only [] at h_ok
-              generalize h_df : scanNextTokenIx_dispatchFlowIndicators s_dir c = df_res at h_ok
-              cases df_res with
-              | error e => simp at h_ok
-              | ok df_inner =>
-                cases df_inner with
-                | some s_flow =>
-                  simp only [Except.ok.injEq, Option.some.injEq] at h_ok
-                  subst h_ok
-                  exact scanNextTokenIx_dispatchFlowIndicators_preserves_FlowContextPSVIx
-                    s_dir c s_flow h_df h_old_dir h_pl_dir
-                | none =>
-                  dsimp only [] at h_ok
-                  generalize h_db : scanNextTokenIx_dispatchBlockIndicators s_dir c = db_res at h_ok
-                  cases db_res with
-                  | error e => simp at h_ok
-                  | ok db_inner =>
-                    cases db_inner with
-                    | some s_blk =>
-                      simp only [Except.ok.injEq, Option.some.injEq] at h_ok
-                      subst h_ok
-                      exact scanNextTokenIx_dispatchBlockIndicators_preserves_FlowContextPSVIx
-                        s_dir c s_blk h_db h_old_dir h_pl_dir
-                    | none =>
-                      dsimp only [] at h_ok
-                      generalize h_dc : scanNextTokenIx_dispatchContent s_dir c = dc_res at h_ok
-                      cases dc_res with
-                      | error e => simp at h_ok
-                      | ok s_ct =>
-                        simp only [Except.ok.injEq, Option.some.injEq] at h_ok
-                        subst h_ok
-                        have h_peek_pp : s_pp.cursor.peek? = some c :=
-                          scanNextTokenIx_preprocess_peek_eq h_pp
-                        have h_peek_dir : s_dir.cursor.peek? = some c := by
-                          rw [← h_dir_def, allowDirectives_update_cursor]; exact h_peek_pp
-                        exact scanNextTokenIx_dispatchContent_preserves_FlowContextPSVIx
-                          s_dir c s_ct h_dc h_peek_dir h_fni_dir h_old_dir
-
-theorem scanNextTokenIx_preserves_FlowNestingInvIx {input : String}
-    (s s' : ScannerStateIx input) (h_fni : FlowNestingInvIx s)
-    (h_pl : SimpleKeyPlaceholderInvIx s)
-    (h_ok : scanNextTokenIx s = .ok (some s')) :
-    FlowNestingInvIx s' := by
-  unfold scanNextTokenIx at h_ok
-  simp only [bind, Except.bind, pure, Except.pure] at h_ok
-  generalize h_pp : scanNextTokenIx_preprocess s = pp_res at h_ok
-  cases pp_res with
-  | error e => simp at h_ok
-  | ok pp_inner =>
-    cases pp_inner with
-    | none => simp at h_ok
-    | some pair =>
-      cases pair with
-      | mk s_pp c =>
-        have h_fni_pp : FlowNestingInvIx s_pp :=
-          scanNextTokenIx_preprocess_preserves_FlowNestingInvIx s s_pp c h_pp h_fni
-        have h_pl_pp : SimpleKeyPlaceholderInvIx s_pp :=
-          scanNextTokenIx_preprocess_preserves_SimpleKeyPlaceholderInvIx s s_pp c h_pp h_pl
-        dsimp only [] at h_ok
-        generalize h_ds : scanNextTokenIx_dispatchStructural s_pp c = ds_res at h_ok
-        cases ds_res with
-        | error e => simp at h_ok
-        | ok ds_inner =>
-          cases ds_inner with
-          | some s_str =>
-            simp only [Except.ok.injEq, Option.some.injEq] at h_ok
-            subst h_ok
-            exact scanNextTokenIx_dispatchStructural_preserves_FlowNestingInvIx
-              s_pp c s_str h_ds h_fni_pp
-          | none =>
-            dsimp only [] at h_ok
-            generalize h_dir_def : (if s_pp.allowDirectives = true then
-                { s_pp with allowDirectives := false, documentEverStarted := true }
-              else s_pp) = s_dir at h_ok
-            have h_fni_dir : FlowNestingInvIx s_dir := by
-              rw [← h_dir_def]
-              unfold FlowNestingInvIx at h_fni_pp ⊢
-              rw [allowDirectives_update_tokens, allowDirectives_update_flowLevel]
-              exact h_fni_pp
-            have h_pl_dir : SimpleKeyPlaceholderInvIx s_dir := by
-              rw [← h_dir_def]
-              exact allowDirectives_update_SimpleKeyPlaceholderInvIx s_pp h_pl_pp
-            generalize h_ck : scanNextTokenIx_checkBlockFlowIndent s_dir c = ck_res at h_ok
-            cases ck_res with
-            | error e => simp at h_ok
-            | ok _ =>
-              dsimp only [] at h_ok
-              generalize h_df : scanNextTokenIx_dispatchFlowIndicators s_dir c = df_res at h_ok
-              cases df_res with
-              | error e => simp at h_ok
-              | ok df_inner =>
-                cases df_inner with
-                | some s_flow =>
-                  simp only [Except.ok.injEq, Option.some.injEq] at h_ok
-                  subst h_ok
-                  exact scanNextTokenIx_dispatchFlowIndicators_preserves_FlowNestingInvIx
-                    s_dir c s_flow h_df h_fni_dir h_pl_dir
-                | none =>
-                  dsimp only [] at h_ok
-                  generalize h_db : scanNextTokenIx_dispatchBlockIndicators s_dir c = db_res at h_ok
-                  cases db_res with
-                  | error e => simp at h_ok
-                  | ok db_inner =>
-                    cases db_inner with
-                    | some s_blk =>
-                      simp only [Except.ok.injEq, Option.some.injEq] at h_ok
-                      subst h_ok
-                      exact scanNextTokenIx_dispatchBlockIndicators_preserves_FlowNestingInvIx
-                        s_dir c s_blk h_db h_fni_dir h_pl_dir
-                    | none =>
-                      dsimp only [] at h_ok
-                      generalize h_dc : scanNextTokenIx_dispatchContent s_dir c = dc_res at h_ok
-                      cases dc_res with
-                      | error e => simp at h_ok
-                      | ok s_ct =>
-                        simp only [Except.ok.injEq, Option.some.injEq] at h_ok
-                        subst h_ok
-                        exact scanNextTokenIx_dispatchContent_preserves_FlowNestingInvIx
-                          s_dir c s_ct h_dc h_fni_dir
+/-! **Note (Step 6d.1e.12d)**: `scanNextTokenIx_preserves_FlowContextPSVIx`
+    and `_FlowNestingInvIx` previously lived here as theorems taking
+    `h_pl : SimpleKeyPlaceholderInvIx s`. They were refactored in 12d to
+    take `h_akpi : AllKeysPlaceholderInvIx s` (the 4-tuple from §6e+,
+    composed across the dispatcher chain in §12l) and moved to §13. -/
 
 /-! ### §11j  `scanLoopIx_preserves_*` — real theorems via structural
 induction on `fuel`, with a final-emit `.streamEnd` step preservation
-lemma chained on top of §11i's `scanNextTokenIx_preserves_*` axioms.
+lemma chained on top of §11i's `scanNextTokenIx_preserves_*`.
 
 This is the **shape lemma** the Phase 3 closure (§9) needs: applied
 at the post-`init` state with the initial-emit invariant established,
@@ -4420,76 +4225,18 @@ theorem scanLoopIx_preserves_PlainScalarsValidIx {input : String}
         (scanNextTokenIx_preserves_PlainScalarsValidIx s s' h_old h_snt)
         h_ok
 
-theorem scanLoopIx_preserves_FlowContextPSVIx {input : String}
-    (s : ScannerStateIx input) (fuel : Nat)
-    (tokens : Indexed.TokenStream input)
-    (h_old : FlowContextPSVIx s.tokens)
-    (h_fni : FlowNestingInvIx s)
-    (h_pl : SimpleKeyPlaceholderInvIx s)
-    (h_ok : scanLoopIx s fuel = .ok tokens) :
-    FlowContextPSVIx tokens := by
-  induction fuel generalizing s with
-  | zero => simp [scanLoopIx] at h_ok
-  | succ fuel' ih =>
-    simp only [scanLoopIx] at h_ok
-    split at h_ok
-    · cases h_ok
-    · split at h_ok
-      · cases h_ok
-      · split at h_ok
-        · cases h_ok
-        · simp only [Except.ok.injEq] at h_ok
-          subst h_ok
-          exact finalEmit_preserves_FlowContextPSVIx s h_old
-    · rename_i s' h_snt
-      exact ih s'
-        (scanNextTokenIx_preserves_FlowContextPSVIx s s' h_old h_fni h_pl h_snt)
-        (scanNextTokenIx_preserves_FlowNestingInvIx s s' h_fni h_pl h_snt)
-        (scanNextTokenIx_preserves_SimpleKeyPlaceholderInvIx s s' h_pl h_snt)
-        h_ok
-
-theorem scanLoopIx_preserves_FlowNestingInvIx {input : String}
-    (s : ScannerStateIx input) (fuel : Nat)
-    (tokens : Indexed.TokenStream input)
-    (h_fni : FlowNestingInvIx s)
-    (h_pl : SimpleKeyPlaceholderInvIx s)
-    (h_ok : scanLoopIx s fuel = .ok tokens) :
-    flowNestingIx tokens tokens.size = 0 := by
-  induction fuel generalizing s with
-  | zero => simp [scanLoopIx] at h_ok
-  | succ fuel' ih =>
-    simp only [scanLoopIx] at h_ok
-    split at h_ok
-    · cases h_ok
-    · split at h_ok
-      · cases h_ok
-      · split at h_ok
-        · cases h_ok
-        · simp only [Except.ok.injEq] at h_ok
-          subst h_ok
-          rename_i h_flow0 _h_dirOK
-          have h_flowEq0 : s.flowLevel = 0 := by
-            simp only [Nat.not_lt, Nat.le_zero] at h_flow0
-            exact h_flow0
-          have h_final := finalEmit_preserves_FlowNestingInvIx s h_fni
-          unfold FlowNestingInvIx at h_final
-          rw [h_final]
-          show ((unwindIndentsIx s (-1)).emit YamlToken.streamEnd).flowLevel = 0
-          have h_fl_emit : ((unwindIndentsIx s (-1)).emit YamlToken.streamEnd).flowLevel =
-              (unwindIndentsIx s (-1)).flowLevel := rfl
-          rw [h_fl_emit, unwindIndentsIx_preserves_flowLevel s (-1), h_flowEq0]
-    · rename_i s' h_snt
-      exact ih s'
-        (scanNextTokenIx_preserves_FlowNestingInvIx s s' h_fni h_pl h_snt)
-        (scanNextTokenIx_preserves_SimpleKeyPlaceholderInvIx s s' h_pl h_snt)
-        h_ok
+/-! **Note (Step 6d.1e.12d)**: `scanLoopIx_preserves_FlowContextPSVIx`
+    and `_FlowNestingInvIx` were refactored to take
+    `h_akpi : AllKeysPlaceholderInvIx s` (instead of `h_pl`) and moved
+    to §13 (they depend on §12l's dispatcher composition). -/
 
 /-! ## §11k  Initial-state invariants + §9 axiom discharge
 
-The §9 top-level axioms (`scan_flow_aware_psv_ix_axiom` /
-`scan_flow_brackets_matched_ix_axiom`) declared earlier in this file
-discharge via §11j composition once we establish the
-post-`emit .streamStart` + post-BOM-advance invariants. -/
+Initial-state `mk'_*` lemmas live here; the top-level theorems
+(`scan_flow_aware_psv_ix_axiom` / `scan_flow_brackets_matched_ix_axiom`)
+were moved to §13 in Step 6d.1e.12d (they now establish
+`AllKeysPlaceholderInvIx` at the initial state and thread it through
+the refactored `scanLoopIx_preserves_*` chain). -/
 
 theorem mk'_PlainScalarsValidIx (input : String) :
     PlainScalarsValidIx (ScannerStateIx.mk' input).tokens :=
@@ -4513,69 +4260,10 @@ theorem mk'_FlowNestingInvIx (input : String) :
   unfold flowNestingIx.go
   rfl
 
-/-- The initial state after `.streamStart` emit satisfies
-    `SimpleKeyPlaceholderInvIx` — `simpleKey.possible` is still false
-    (default), so the invariant is vacuously true. -/
-theorem streamStart_SimpleKeyPlaceholderInvIx (input : String) :
-    SimpleKeyPlaceholderInvIx ((ScannerStateIx.mk' input).emit YamlToken.streamStart) :=
-  emit_preserves_SimpleKeyPlaceholderInvIx
-    (ScannerStateIx.mk' input) .streamStart (mk'_SimpleKeyPlaceholderInvIx input)
-
-/-- The indexed scanner output satisfies `FlowAwarePSVIx`. Discharged
-    in Step 6d.1e.7 via §11j composition with the initial-state
-    invariants (`mk'_*` lemmas + `.streamStart` emit + BOM advance). -/
-theorem scan_flow_aware_psv_ix_axiom
-    {input : String} (tokens : Indexed.TokenStream input)
-    (h_scan : ScannerStateIx.scanIx input = .ok tokens) :
-    FlowAwarePSVIx tokens := by
-  unfold ScannerStateIx.scanIx at h_scan
-  have h_psv_after_emit : PlainScalarsValidIx
-      ((ScannerStateIx.mk' input).emit YamlToken.streamStart).tokens :=
-    emit_non_plain_preserves_PlainScalarsValidIx _ .streamStart
-      (mk'_PlainScalarsValidIx input) (by trivial)
-  have h_fpsv_after_emit : FlowContextPSVIx
-      ((ScannerStateIx.mk' input).emit YamlToken.streamStart).tokens :=
-    emit_non_flow_non_plain_preserves_FlowContextPSVIx _ .streamStart
-      (mk'_FlowContextPSVIx input) (by trivial)
-      (by intro h; cases h) (by intro h; cases h)
-      (by intro h; cases h) (by intro h; cases h)
-  have h_pl_after_emit : SimpleKeyPlaceholderInvIx
-      ((ScannerStateIx.mk' input).emit YamlToken.streamStart) :=
-    streamStart_SimpleKeyPlaceholderInvIx input
-  have h_fni_after_emit : FlowNestingInvIx
-      ((ScannerStateIx.mk' input).emit YamlToken.streamStart) :=
-    emit_non_flow_preserves_FlowNestingInvIx _ .streamStart
-      (mk'_FlowNestingInvIx input)
-      (by decide) (by decide) (by decide) (by decide)
-  refine ⟨?_, ?_⟩
-  · exact scanLoopIx_preserves_PlainScalarsValidIx _ _ tokens
-      (by split <;> exact h_psv_after_emit) h_scan
-  · exact scanLoopIx_preserves_FlowContextPSVIx _ _ tokens
-      (by split <;> exact h_fpsv_after_emit)
-      (by split <;> exact h_fni_after_emit)
-      (by split <;> exact h_pl_after_emit) h_scan
-
-/-- The indexed scanner output has matched flow brackets. Discharged
-    in Step 6d.1e.7 via §11j `scanLoopIx_preserves_FlowNestingInvIx`
-    which returns `flowNestingIx tokens tokens.size = 0` directly. -/
-theorem scan_flow_brackets_matched_ix_axiom
-    {input : String} (tokens : Indexed.TokenStream input)
-    (h_scan : ScannerStateIx.scanIx input = .ok tokens) :
-    FlowBracketsMatchedIx tokens := by
-  unfold ScannerStateIx.scanIx at h_scan
-  have h_fni_after_emit : FlowNestingInvIx
-      ((ScannerStateIx.mk' input).emit YamlToken.streamStart) :=
-    emit_non_flow_preserves_FlowNestingInvIx _ .streamStart
-      (mk'_FlowNestingInvIx input)
-      (by intro h; cases h) (by intro h; cases h)
-      (by intro h; cases h) (by intro h; cases h)
-  have h_pl_after_emit : SimpleKeyPlaceholderInvIx
-      ((ScannerStateIx.mk' input).emit YamlToken.streamStart) :=
-    streamStart_SimpleKeyPlaceholderInvIx input
-  unfold FlowBracketsMatchedIx
-  exact scanLoopIx_preserves_FlowNestingInvIx _ _ tokens
-    (by split <;> exact h_fni_after_emit)
-    (by split <;> exact h_pl_after_emit) h_scan
+/-! **Note (Step 6d.1e.12d)**: `streamStart_SimpleKeyPlaceholderInvIx`
+    is subsumed by `streamStart_AllKeysPlaceholderInvIx` in §13, which
+    powers the refactored top-level theorems `scan_flow_aware_psv_ix_axiom`
+    and `scan_flow_brackets_matched_ix_axiom` (also moved to §13). -/
 
 /-! ## §12  Per-scanner `simpleKey` / `simpleKeyStack` facts (Step 6d.1e.12b)
 
@@ -5982,7 +5670,7 @@ theorem scanNextTokenIx_dispatchBlockIndicators_preserves_AllKeysPlaceholderInvI
     tok hBound with simpleKeyAllowed := false }` — only `cursor`,
     `tokens`, and `simpleKeyAllowed` change; `simpleKey`/`simpleKeyStack`
     are preserved. -/
-private theorem _inline_scalar_preserves_AllKeysPlaceholderInvIx {input : String}
+theorem _inline_scalar_preserves_AllKeysPlaceholderInvIx {input : String}
     (s : ScannerStateIx input) (cAfter : IxCursor input)
     (startPos : YamlPos) (tok : YamlToken)
     (hBound : startPos.offset ≤ cAfter.pos.offset)
@@ -6096,5 +5784,451 @@ theorem scanNextTokenIx_dispatchContent_preserves_AllKeysPlaceholderInvIx {input
                 subst h_ok
                 exact _inline_scalar_preserves_AllKeysPlaceholderInvIx s _ _ _ _ h_akpi
               · simp at h_ok
+
+/-! ## §13  `AllKeysPlaceholderInvIx`-threaded consumers (Step 6d.1e.12d)
+
+This section discharges the two §11i staging axioms
+(`scanNextTokenIx_preprocess_preserves_SimpleKeyPlaceholderInvIx` and
+`scanNextTokenIx_preserves_SimpleKeyPlaceholderInvIx`) by refactoring
+the §11i/§11j/§11k consumer chain to thread the **full 4-tuple**
+`AllKeysPlaceholderInvIx` instead of just `SimpleKeyPlaceholderInvIx`.
+
+The §12l dispatcher composition gives us
+`scanNextTokenIx_preprocess_preserves_AllKeysPlaceholderInvIx` and four
+dispatcher-level `_preserves_AllKeysPlaceholderInvIx` theorems. Using
+these, we compose `scanNextTokenIx_preserves_AllKeysPlaceholderInvIx`
+(the new induction-step lemma for `scanLoopIx`), then re-derive the
+PSV / FlowNesting consumer theorems and the top-level theorems. Sites
+that only need the current-key conjunct project `.1` of the 4-tuple.
+
+**Phase 3 closure after 12d**: **0 staged axioms** in
+`IndexedScannerPlainScalarValid.lean` (the two §11i axioms are
+discharged; the §7b/§7c/§8c/§8d/§8e scanner-side axioms remain on the
+ladder but are out of scope for 12d). -/
+
+/-- `emit tok` preserves `AllKeysPlaceholderInvIx` — `emit` leaves
+    `simpleKey`/`simpleKeyStack` unchanged and grows `tokens` by one
+    appended cell, so all four conjuncts transfer via
+    `AllKeysPlaceholderInvIx_mono`. -/
+theorem emit_preserves_AllKeysPlaceholderInvIx {input : String}
+    (s : ScannerStateIx input) (tok : YamlToken)
+    (h_akpi : AllKeysPlaceholderInvIx s) :
+    AllKeysPlaceholderInvIx (s.emit tok) := by
+  refine AllKeysPlaceholderInvIx_mono s (s.emit tok) h_akpi rfl rfl ?_ ?_
+  · rw [emit_tokens_size]; omega
+  · intro i hi
+    exact emit_preserves_tokens_at s tok i hi
+
+/-- The `if s.allowDirectives then ... else s` record update preserves
+    `AllKeysPlaceholderInvIx`. In both branches `simpleKey`,
+    `simpleKeyStack`, and `tokens` are unchanged. -/
+theorem allowDirectives_update_AllKeysPlaceholderInvIx {input : String}
+    (s : ScannerStateIx input) (h_akpi : AllKeysPlaceholderInvIx s) :
+    AllKeysPlaceholderInvIx
+      (if s.allowDirectives then
+          { s with allowDirectives := false, documentEverStarted := true }
+        else s) := by
+  split
+  · refine AllKeysPlaceholderInvIx_mono s _ h_akpi rfl rfl ?_ ?_
+    · exact Nat.le.refl
+    · intros; rfl
+  · exact h_akpi
+
+/-- The initial state after `.streamStart` emit satisfies
+    `AllKeysPlaceholderInvIx`: starts vacuous (`simpleKey.possible
+    = false`, empty stack) and emit-preservation propagates through
+    the streamStart token. -/
+theorem streamStart_AllKeysPlaceholderInvIx (input : String) :
+    AllKeysPlaceholderInvIx ((ScannerStateIx.mk' input).emit YamlToken.streamStart) :=
+  emit_preserves_AllKeysPlaceholderInvIx
+    (ScannerStateIx.mk' input) .streamStart (mk'_AllKeysPlaceholderInvIx input)
+
+/-- `scanNextTokenIx` preserves `AllKeysPlaceholderInvIx`. Composes
+    `_preprocess_preserves_AllKeysPlaceholderInvIx` (§12l) with
+    `allowDirectives_update_AllKeysPlaceholderInvIx` and the four
+    dispatcher-level `_preserves_AllKeysPlaceholderInvIx` theorems
+    (§12l). Replaces the §11i staging axiom
+    `scanNextTokenIx_preserves_SimpleKeyPlaceholderInvIx` (whose
+    consumers now thread the full 4-tuple). -/
+theorem scanNextTokenIx_preserves_AllKeysPlaceholderInvIx {input : String}
+    (s s' : ScannerStateIx input)
+    (h_akpi : AllKeysPlaceholderInvIx s)
+    (h_ok : scanNextTokenIx s = .ok (some s')) :
+    AllKeysPlaceholderInvIx s' := by
+  unfold scanNextTokenIx at h_ok
+  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  generalize h_pp : scanNextTokenIx_preprocess s = pp_res at h_ok
+  cases pp_res with
+  | error e => simp at h_ok
+  | ok pp_inner =>
+    cases pp_inner with
+    | none => simp at h_ok
+    | some pair =>
+      cases pair with
+      | mk s_pp c =>
+        have h_akpi_pp : AllKeysPlaceholderInvIx s_pp :=
+          scanNextTokenIx_preprocess_preserves_AllKeysPlaceholderInvIx s s_pp c h_pp h_akpi
+        dsimp only [] at h_ok
+        generalize h_ds : scanNextTokenIx_dispatchStructural s_pp c = ds_res at h_ok
+        cases ds_res with
+        | error e => simp at h_ok
+        | ok ds_inner =>
+          cases ds_inner with
+          | some s_str =>
+            simp only [Except.ok.injEq, Option.some.injEq] at h_ok
+            subst h_ok
+            exact scanNextTokenIx_dispatchStructural_preserves_AllKeysPlaceholderInvIx
+              s_pp s_str c h_akpi_pp h_ds
+          | none =>
+            dsimp only [] at h_ok
+            generalize h_dir_def : (if s_pp.allowDirectives = true then
+                { s_pp with allowDirectives := false, documentEverStarted := true }
+              else s_pp) = s_dir at h_ok
+            have h_akpi_dir : AllKeysPlaceholderInvIx s_dir := by
+              rw [← h_dir_def]
+              exact allowDirectives_update_AllKeysPlaceholderInvIx s_pp h_akpi_pp
+            generalize h_ck : scanNextTokenIx_checkBlockFlowIndent s_dir c = ck_res at h_ok
+            cases ck_res with
+            | error e => simp at h_ok
+            | ok _ =>
+              dsimp only [] at h_ok
+              generalize h_df : scanNextTokenIx_dispatchFlowIndicators s_dir c = df_res at h_ok
+              cases df_res with
+              | error e => simp at h_ok
+              | ok df_inner =>
+                cases df_inner with
+                | some s_flow =>
+                  simp only [Except.ok.injEq, Option.some.injEq] at h_ok
+                  subst h_ok
+                  exact scanNextTokenIx_dispatchFlowIndicators_preserves_AllKeysPlaceholderInvIx
+                    s_dir s_flow c h_akpi_dir h_df
+                | none =>
+                  dsimp only [] at h_ok
+                  generalize h_db : scanNextTokenIx_dispatchBlockIndicators s_dir c = db_res at h_ok
+                  cases db_res with
+                  | error e => simp at h_ok
+                  | ok db_inner =>
+                    cases db_inner with
+                    | some s_blk =>
+                      simp only [Except.ok.injEq, Option.some.injEq] at h_ok
+                      subst h_ok
+                      exact scanNextTokenIx_dispatchBlockIndicators_preserves_AllKeysPlaceholderInvIx
+                        s_dir s_blk c h_akpi_dir h_db
+                    | none =>
+                      dsimp only [] at h_ok
+                      generalize h_dc : scanNextTokenIx_dispatchContent s_dir c = dc_res at h_ok
+                      cases dc_res with
+                      | error e => simp at h_ok
+                      | ok s_ct =>
+                        simp only [Except.ok.injEq, Option.some.injEq] at h_ok
+                        subst h_ok
+                        exact scanNextTokenIx_dispatchContent_preserves_AllKeysPlaceholderInvIx
+                          s_dir s_ct c h_akpi_dir h_dc
+
+/-- Refactored §11i theorem (Step 6d.1e.12d): now threads
+    `AllKeysPlaceholderInvIx` and projects `.1` for the sub-dispatcher
+    arms that still consume `SimpleKeyPlaceholderInvIx`. -/
+theorem scanNextTokenIx_preserves_FlowContextPSVIx {input : String}
+    (s s' : ScannerStateIx input) (h_old : FlowContextPSVIx s.tokens)
+    (h_fni : FlowNestingInvIx s)
+    (h_akpi : AllKeysPlaceholderInvIx s)
+    (h_ok : scanNextTokenIx s = .ok (some s')) :
+    FlowContextPSVIx s'.tokens := by
+  unfold scanNextTokenIx at h_ok
+  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  generalize h_pp : scanNextTokenIx_preprocess s = pp_res at h_ok
+  cases pp_res with
+  | error e => simp at h_ok
+  | ok pp_inner =>
+    cases pp_inner with
+    | none => simp at h_ok
+    | some pair =>
+      cases pair with
+      | mk s_pp c =>
+        have h_old_pp : FlowContextPSVIx s_pp.tokens :=
+          scanNextTokenIx_preprocess_preserves_FlowContextPSVIx s s_pp c h_pp h_old
+        have h_fni_pp : FlowNestingInvIx s_pp :=
+          scanNextTokenIx_preprocess_preserves_FlowNestingInvIx s s_pp c h_pp h_fni
+        have h_akpi_pp : AllKeysPlaceholderInvIx s_pp :=
+          scanNextTokenIx_preprocess_preserves_AllKeysPlaceholderInvIx s s_pp c h_pp h_akpi
+        have h_pl_pp : SimpleKeyPlaceholderInvIx s_pp := h_akpi_pp.1
+        dsimp only [] at h_ok
+        generalize h_ds : scanNextTokenIx_dispatchStructural s_pp c = ds_res at h_ok
+        cases ds_res with
+        | error e => simp at h_ok
+        | ok ds_inner =>
+          cases ds_inner with
+          | some s_str =>
+            simp only [Except.ok.injEq, Option.some.injEq] at h_ok
+            subst h_ok
+            exact scanNextTokenIx_dispatchStructural_preserves_FlowContextPSVIx
+              s_pp c s_str h_ds h_old_pp
+          | none =>
+            dsimp only [] at h_ok
+            generalize h_dir_def : (if s_pp.allowDirectives = true then
+                { s_pp with allowDirectives := false, documentEverStarted := true }
+              else s_pp) = s_dir at h_ok
+            have h_old_dir : FlowContextPSVIx s_dir.tokens := by
+              rw [← h_dir_def, allowDirectives_update_tokens]; exact h_old_pp
+            have h_fni_dir : FlowNestingInvIx s_dir := by
+              rw [← h_dir_def]
+              unfold FlowNestingInvIx at h_fni_pp ⊢
+              rw [allowDirectives_update_tokens, allowDirectives_update_flowLevel]
+              exact h_fni_pp
+            have h_pl_dir : SimpleKeyPlaceholderInvIx s_dir := by
+              rw [← h_dir_def]
+              exact allowDirectives_update_SimpleKeyPlaceholderInvIx s_pp h_pl_pp
+            generalize h_ck : scanNextTokenIx_checkBlockFlowIndent s_dir c = ck_res at h_ok
+            cases ck_res with
+            | error e => simp at h_ok
+            | ok _ =>
+              dsimp only [] at h_ok
+              generalize h_df : scanNextTokenIx_dispatchFlowIndicators s_dir c = df_res at h_ok
+              cases df_res with
+              | error e => simp at h_ok
+              | ok df_inner =>
+                cases df_inner with
+                | some s_flow =>
+                  simp only [Except.ok.injEq, Option.some.injEq] at h_ok
+                  subst h_ok
+                  exact scanNextTokenIx_dispatchFlowIndicators_preserves_FlowContextPSVIx
+                    s_dir c s_flow h_df h_old_dir h_pl_dir
+                | none =>
+                  dsimp only [] at h_ok
+                  generalize h_db : scanNextTokenIx_dispatchBlockIndicators s_dir c = db_res at h_ok
+                  cases db_res with
+                  | error e => simp at h_ok
+                  | ok db_inner =>
+                    cases db_inner with
+                    | some s_blk =>
+                      simp only [Except.ok.injEq, Option.some.injEq] at h_ok
+                      subst h_ok
+                      exact scanNextTokenIx_dispatchBlockIndicators_preserves_FlowContextPSVIx
+                        s_dir c s_blk h_db h_old_dir h_pl_dir
+                    | none =>
+                      dsimp only [] at h_ok
+                      generalize h_dc : scanNextTokenIx_dispatchContent s_dir c = dc_res at h_ok
+                      cases dc_res with
+                      | error e => simp at h_ok
+                      | ok s_ct =>
+                        simp only [Except.ok.injEq, Option.some.injEq] at h_ok
+                        subst h_ok
+                        have h_peek_pp : s_pp.cursor.peek? = some c :=
+                          scanNextTokenIx_preprocess_peek_eq h_pp
+                        have h_peek_dir : s_dir.cursor.peek? = some c := by
+                          rw [← h_dir_def, allowDirectives_update_cursor]; exact h_peek_pp
+                        exact scanNextTokenIx_dispatchContent_preserves_FlowContextPSVIx
+                          s_dir c s_ct h_dc h_peek_dir h_fni_dir h_old_dir
+
+/-- Refactored §11i theorem (Step 6d.1e.12d): mirrors
+    `_FlowContextPSVIx` above. -/
+theorem scanNextTokenIx_preserves_FlowNestingInvIx {input : String}
+    (s s' : ScannerStateIx input) (h_fni : FlowNestingInvIx s)
+    (h_akpi : AllKeysPlaceholderInvIx s)
+    (h_ok : scanNextTokenIx s = .ok (some s')) :
+    FlowNestingInvIx s' := by
+  unfold scanNextTokenIx at h_ok
+  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  generalize h_pp : scanNextTokenIx_preprocess s = pp_res at h_ok
+  cases pp_res with
+  | error e => simp at h_ok
+  | ok pp_inner =>
+    cases pp_inner with
+    | none => simp at h_ok
+    | some pair =>
+      cases pair with
+      | mk s_pp c =>
+        have h_fni_pp : FlowNestingInvIx s_pp :=
+          scanNextTokenIx_preprocess_preserves_FlowNestingInvIx s s_pp c h_pp h_fni
+        have h_akpi_pp : AllKeysPlaceholderInvIx s_pp :=
+          scanNextTokenIx_preprocess_preserves_AllKeysPlaceholderInvIx s s_pp c h_pp h_akpi
+        have h_pl_pp : SimpleKeyPlaceholderInvIx s_pp := h_akpi_pp.1
+        dsimp only [] at h_ok
+        generalize h_ds : scanNextTokenIx_dispatchStructural s_pp c = ds_res at h_ok
+        cases ds_res with
+        | error e => simp at h_ok
+        | ok ds_inner =>
+          cases ds_inner with
+          | some s_str =>
+            simp only [Except.ok.injEq, Option.some.injEq] at h_ok
+            subst h_ok
+            exact scanNextTokenIx_dispatchStructural_preserves_FlowNestingInvIx
+              s_pp c s_str h_ds h_fni_pp
+          | none =>
+            dsimp only [] at h_ok
+            generalize h_dir_def : (if s_pp.allowDirectives = true then
+                { s_pp with allowDirectives := false, documentEverStarted := true }
+              else s_pp) = s_dir at h_ok
+            have h_fni_dir : FlowNestingInvIx s_dir := by
+              rw [← h_dir_def]
+              unfold FlowNestingInvIx at h_fni_pp ⊢
+              rw [allowDirectives_update_tokens, allowDirectives_update_flowLevel]
+              exact h_fni_pp
+            have h_pl_dir : SimpleKeyPlaceholderInvIx s_dir := by
+              rw [← h_dir_def]
+              exact allowDirectives_update_SimpleKeyPlaceholderInvIx s_pp h_pl_pp
+            generalize h_ck : scanNextTokenIx_checkBlockFlowIndent s_dir c = ck_res at h_ok
+            cases ck_res with
+            | error e => simp at h_ok
+            | ok _ =>
+              dsimp only [] at h_ok
+              generalize h_df : scanNextTokenIx_dispatchFlowIndicators s_dir c = df_res at h_ok
+              cases df_res with
+              | error e => simp at h_ok
+              | ok df_inner =>
+                cases df_inner with
+                | some s_flow =>
+                  simp only [Except.ok.injEq, Option.some.injEq] at h_ok
+                  subst h_ok
+                  exact scanNextTokenIx_dispatchFlowIndicators_preserves_FlowNestingInvIx
+                    s_dir c s_flow h_df h_fni_dir h_pl_dir
+                | none =>
+                  dsimp only [] at h_ok
+                  generalize h_db : scanNextTokenIx_dispatchBlockIndicators s_dir c = db_res at h_ok
+                  cases db_res with
+                  | error e => simp at h_ok
+                  | ok db_inner =>
+                    cases db_inner with
+                    | some s_blk =>
+                      simp only [Except.ok.injEq, Option.some.injEq] at h_ok
+                      subst h_ok
+                      exact scanNextTokenIx_dispatchBlockIndicators_preserves_FlowNestingInvIx
+                        s_dir c s_blk h_db h_fni_dir h_pl_dir
+                    | none =>
+                      dsimp only [] at h_ok
+                      generalize h_dc : scanNextTokenIx_dispatchContent s_dir c = dc_res at h_ok
+                      cases dc_res with
+                      | error e => simp at h_ok
+                      | ok s_ct =>
+                        simp only [Except.ok.injEq, Option.some.injEq] at h_ok
+                        subst h_ok
+                        exact scanNextTokenIx_dispatchContent_preserves_FlowNestingInvIx
+                          s_dir c s_ct h_dc h_fni_dir
+
+/-- Refactored §11j theorem (Step 6d.1e.12d): threads
+    `AllKeysPlaceholderInvIx` through the induction step. The recursive
+    call uses `scanNextTokenIx_preserves_AllKeysPlaceholderInvIx`
+    (defined above) to maintain the invariant. -/
+theorem scanLoopIx_preserves_FlowContextPSVIx {input : String}
+    (s : ScannerStateIx input) (fuel : Nat)
+    (tokens : Indexed.TokenStream input)
+    (h_old : FlowContextPSVIx s.tokens)
+    (h_fni : FlowNestingInvIx s)
+    (h_akpi : AllKeysPlaceholderInvIx s)
+    (h_ok : scanLoopIx s fuel = .ok tokens) :
+    FlowContextPSVIx tokens := by
+  induction fuel generalizing s with
+  | zero => simp [scanLoopIx] at h_ok
+  | succ fuel' ih =>
+    simp only [scanLoopIx] at h_ok
+    split at h_ok
+    · cases h_ok
+    · split at h_ok
+      · cases h_ok
+      · split at h_ok
+        · cases h_ok
+        · simp only [Except.ok.injEq] at h_ok
+          subst h_ok
+          exact finalEmit_preserves_FlowContextPSVIx s h_old
+    · rename_i s' h_snt
+      exact ih s'
+        (scanNextTokenIx_preserves_FlowContextPSVIx s s' h_old h_fni h_akpi h_snt)
+        (scanNextTokenIx_preserves_FlowNestingInvIx s s' h_fni h_akpi h_snt)
+        (scanNextTokenIx_preserves_AllKeysPlaceholderInvIx s s' h_akpi h_snt)
+        h_ok
+
+/-- Refactored §11j theorem (Step 6d.1e.12d): mirrors the
+    `_FlowContextPSVIx` form above. -/
+theorem scanLoopIx_preserves_FlowNestingInvIx {input : String}
+    (s : ScannerStateIx input) (fuel : Nat)
+    (tokens : Indexed.TokenStream input)
+    (h_fni : FlowNestingInvIx s)
+    (h_akpi : AllKeysPlaceholderInvIx s)
+    (h_ok : scanLoopIx s fuel = .ok tokens) :
+    flowNestingIx tokens tokens.size = 0 := by
+  induction fuel generalizing s with
+  | zero => simp [scanLoopIx] at h_ok
+  | succ fuel' ih =>
+    simp only [scanLoopIx] at h_ok
+    split at h_ok
+    · cases h_ok
+    · split at h_ok
+      · cases h_ok
+      · split at h_ok
+        · cases h_ok
+        · simp only [Except.ok.injEq] at h_ok
+          subst h_ok
+          rename_i h_flow0 _h_dirOK
+          have h_flowEq0 : s.flowLevel = 0 := by
+            simp only [Nat.not_lt, Nat.le_zero] at h_flow0
+            exact h_flow0
+          have h_final := finalEmit_preserves_FlowNestingInvIx s h_fni
+          unfold FlowNestingInvIx at h_final
+          rw [h_final]
+          show ((unwindIndentsIx s (-1)).emit YamlToken.streamEnd).flowLevel = 0
+          have h_fl_emit : ((unwindIndentsIx s (-1)).emit YamlToken.streamEnd).flowLevel =
+              (unwindIndentsIx s (-1)).flowLevel := rfl
+          rw [h_fl_emit, unwindIndentsIx_preserves_flowLevel s (-1), h_flowEq0]
+    · rename_i s' h_snt
+      exact ih s'
+        (scanNextTokenIx_preserves_FlowNestingInvIx s s' h_fni h_akpi h_snt)
+        (scanNextTokenIx_preserves_AllKeysPlaceholderInvIx s s' h_akpi h_snt)
+        h_ok
+
+/-- Refactored §11k top-level theorem (Step 6d.1e.12d): establishes
+    `AllKeysPlaceholderInvIx` at the initial post-`streamStart` state
+    via `streamStart_AllKeysPlaceholderInvIx`, then threads it through
+    the refactored `scanLoopIx_preserves_*` chain. -/
+theorem scan_flow_aware_psv_ix_axiom
+    {input : String} (tokens : Indexed.TokenStream input)
+    (h_scan : ScannerStateIx.scanIx input = .ok tokens) :
+    FlowAwarePSVIx tokens := by
+  unfold ScannerStateIx.scanIx at h_scan
+  have h_psv_after_emit : PlainScalarsValidIx
+      ((ScannerStateIx.mk' input).emit YamlToken.streamStart).tokens :=
+    emit_non_plain_preserves_PlainScalarsValidIx _ .streamStart
+      (mk'_PlainScalarsValidIx input) (by trivial)
+  have h_fpsv_after_emit : FlowContextPSVIx
+      ((ScannerStateIx.mk' input).emit YamlToken.streamStart).tokens :=
+    emit_non_flow_non_plain_preserves_FlowContextPSVIx _ .streamStart
+      (mk'_FlowContextPSVIx input) (by trivial)
+      (by intro h; cases h) (by intro h; cases h)
+      (by intro h; cases h) (by intro h; cases h)
+  have h_akpi_after_emit : AllKeysPlaceholderInvIx
+      ((ScannerStateIx.mk' input).emit YamlToken.streamStart) :=
+    streamStart_AllKeysPlaceholderInvIx input
+  have h_fni_after_emit : FlowNestingInvIx
+      ((ScannerStateIx.mk' input).emit YamlToken.streamStart) :=
+    emit_non_flow_preserves_FlowNestingInvIx _ .streamStart
+      (mk'_FlowNestingInvIx input)
+      (by decide) (by decide) (by decide) (by decide)
+  refine ⟨?_, ?_⟩
+  · exact scanLoopIx_preserves_PlainScalarsValidIx _ _ tokens
+      (by split <;> exact h_psv_after_emit) h_scan
+  · exact scanLoopIx_preserves_FlowContextPSVIx _ _ tokens
+      (by split <;> exact h_fpsv_after_emit)
+      (by split <;> exact h_fni_after_emit)
+      (by split <;> exact h_akpi_after_emit) h_scan
+
+/-- Refactored §11k top-level theorem (Step 6d.1e.12d): companion to
+    `scan_flow_aware_psv_ix_axiom`. -/
+theorem scan_flow_brackets_matched_ix_axiom
+    {input : String} (tokens : Indexed.TokenStream input)
+    (h_scan : ScannerStateIx.scanIx input = .ok tokens) :
+    FlowBracketsMatchedIx tokens := by
+  unfold ScannerStateIx.scanIx at h_scan
+  have h_fni_after_emit : FlowNestingInvIx
+      ((ScannerStateIx.mk' input).emit YamlToken.streamStart) :=
+    emit_non_flow_preserves_FlowNestingInvIx _ .streamStart
+      (mk'_FlowNestingInvIx input)
+      (by intro h; cases h) (by intro h; cases h)
+      (by intro h; cases h) (by intro h; cases h)
+  have h_akpi_after_emit : AllKeysPlaceholderInvIx
+      ((ScannerStateIx.mk' input).emit YamlToken.streamStart) :=
+    streamStart_AllKeysPlaceholderInvIx input
+  unfold FlowBracketsMatchedIx
+  exact scanLoopIx_preserves_FlowNestingInvIx _ _ tokens
+    (by split <;> exact h_fni_after_emit)
+    (by split <;> exact h_akpi_after_emit) h_scan
 
 end L4YAML.Proofs.Indexed.ScannerPlainScalarValid
