@@ -9245,7 +9245,7 @@ buildable and reviewable.
 The cutover therefore proceeds as 6 sub-commits, each preserving
 `lake build` green:
 
-**6f.0 — Indexed parser parity** *(planned, prerequisite for 6f.3–6f.6)*.
+##### **6f.0 — Indexed parser parity** *(planned, prerequisite for 6f.3–6f.6)*.
 After 6f.2's Schema/Dump revert exposed the parity gap, a focused
 reproducer (`#eval TokenParser.parseYamlSingle X` vs
 `TokenParser.Indexed.parseYamlSingleIx X` for ten representative
@@ -9352,7 +9352,7 @@ reflection; one session if no residual gaps surface beyond
 placeholders. Schema/Dump's `contentRoundTrips` test should pass
 unchanged on `parseYamlSingleIx` once placeholder-skipping is in.
 
-**6f.1 — Indexed public API surface** *(landed 2026-05-23, commit
+##### **6f.1 — Indexed public API surface** *(landed 2026-05-23, commit
 `abaaeb7f`, +53 LOC)*. Add four indexed twins of the legacy public
 parser entry points to `Parser/IndexedComposition.lean`:
 `parseYamlRawIx`, `parseYamlIx`, `parseYamlSingleRawIx`,
