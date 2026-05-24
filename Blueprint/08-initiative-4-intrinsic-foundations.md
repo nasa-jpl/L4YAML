@@ -9827,11 +9827,79 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
     still standing is `scanIx_positions_ordered_axiom`. Build green
     at 439/439 jobs. Reflection 109 below.
 
-  ▸ **6f.3b3.primitives.ordered** *(next session)*. Port
-    `ScanInvIx` + `AllKeysValidIx` (indexed twins of
-    `ScanInv`/`AllKeysValid`, `ScannerCorrectness.lean:8745` / `:8983`)
-    + `scanLoopIx_ordered`, and discharge
-    `scanIx_positions_ordered_axiom`. Estimated ~400–600 LOC.
+  ▸ **6f.3b3.primitives.ordered.foundations** ✅ *(LANDED 2026-05-24)*.
+    Landed the *invariant definitions* + *primitive preservation lemmas*
+    + *initial helper preservation* for `ScanInvIx` / `AllKeysValidIx`
+    in a new §8 of `Proofs/Scanner/IndexedScannerCorrectness.lean`
+    (~500 LOC). Specifically:
+      • §8.1 — `ScanInv'Ix`, `ScanInvIx`, `SimpleKeyValidIx`,
+        `SimpleKeyStackValidIx`, `AllKeysValidIx` definitions.
+      • §8.2 — Monotonicity helpers (`SimpleKeyValidIx_mono`,
+        `AllKeysValidIx_mono`, `AllKeysValidIx_of_cleared`) +
+        `ScanInvIx_of_field_update` / `ScanInvIx_of_offset_ge`.
+      • §8.3 — Primitive preservation: `emit_preserves_ScanInvIx`,
+        `emitAt_preserves_ScanInvIx` (+ `_eq` specialisation),
+        `advance_preserves_ScanInvIx`, `advanceN_preserves_ScanInvIx`,
+        `overwriteAtCursor_preserves_ScanInvIx` (the slot-position-match
+        condition for the simple-key overwrite path).
+      • §8.4 — `skipToContentS_preserves_ScanInvIx`,
+        `unwindIndentsLoopIx_preserves_ScanInvIx`,
+        `unwindIndentsIx_preserves_ScanInvIx`,
+        `pushSequenceIndentIx_preserves_ScanInvIx`,
+        `pushMappingIndentIx_preserves_ScanInvIx`,
+        `saveSimpleKeyIx_preserves_ScanInvIx`.
+      • §8.5 — Initial `AllKeysValidIx` preservation:
+        `skipToContentS_preserves_AllKeysValidIx`,
+        `unwindIndentsIx_preserves_AllKeysValidIx`.
+
+    `scanIx_positions_ordered_axiom` remains in §6.4 (still pointing
+    to the composite consumer `scanIx_valid_token_stream` §7.10).
+    Build green at 143/143 jobs (no new sorries, no new axioms beyond
+    the existing `[propext, Classical.choice, Quot.sound,
+    scanIx_positions_ordered_axiom]`).
+
+    Net delta: ~500 LOC over a ~1000 LOC budget (≈ half the work). The
+    remaining half is the per-helper / per-dispatcher composition into
+    `scanLoopIx_ordered` — see `6f.3b3.primitives.ordered.compose`
+    below. Reflection 110 below documents the budget-revision pattern
+    (3rd consecutive 2–3× over-run on the EmitterScannability primitives
+    discharge ladder; pivot rationale).
+
+  ▸ **6f.3b3.primitives.ordered.compose** *(next session)*. Complete
+    the discharge of `scanIx_positions_ordered_axiom` by adding to §8:
+      • §8.6 — `saveSimpleKeyIx_preserves_AllKeysValidIx` (the
+        push-2-placeholders branch needs `IxToken.start = s.cursor.pos`
+        propagation through the two-emit sequence; see legacy
+        `ScannerCorrectness.lean:8662`/`:8855` for the template plus
+        the existing `saveSimpleKeyIx_state_cases` /
+        `twoPlaceholderEmits_preserves_prefix` bricks in
+        `Proofs/Production/IndexedScannerPlainScalarValid.lean §11`).
+      • §8.7 — per-helper `_preserves_ScanInvIx` /
+        `_preserves_AllKeysValidIx` bricks for `scanDocumentStartIx`,
+        `scanDocumentEndIx`, `scanDirectiveIx`, `scanFlowSequenceStartIx`
+        / `End`, `scanFlowMappingStartIx` / `End`, `scanFlowEntryIx`,
+        `scanBlockEntryIx`, `scanKeyIx`, `scanValueIx`,
+        `scanAnchorOrAliasIx`, `scanTagIx`, `scanPlainScalarIx`,
+        `scanDoubleQuotedScalarIx`, `scanSingleQuotedScalarIx`,
+        `scanLiteralScalarIx`, `scanFoldedScalarIx` (each ~30–60 LOC).
+      • §8.8 — Per-dispatcher: `preprocess_preserves_ScanInvIx` /
+        `_AllKeysValidIx` + `dispatchStructural` / `dispatchFlow` /
+        `dispatchBlock` / `dispatchContent` (each composes the relevant
+        helper bricks).
+      • §8.9 — `scanNextTokenIx_preserves_ScanInvIx` /
+        `_AllKeysValidIx` (top-level composition).
+      • §8.10 — `scanLoopIx_ordered` (fuel induction).
+      • §8.11 — `scanIx_positions_ordered` (post-BOM initial state +
+        replace `scanIx_positions_ordered_axiom` reference in §7.10).
+
+    Estimated **~1500–2000 LOC** (revised from ~600 LOC after Reflection
+    110's diagnosis). The work is mechanical — `_preserves_prefix` /
+    `_preserves_simpleKey` / `_preserves_simpleKeyStack` /
+    `_offset_monotonic` bricks for every helper already exist in
+    `Proofs/Production/IndexedScannerPlainScalarValid` +
+    `Proofs/Scanner/IndexedDispatch`; the new work is threading them
+    through `AllKeysValidIx_mono` + the new `_preserves_ScanInvIx`
+    primitives from §8.3.
 
   ▸ **6f.3b3.internals** *(deferred, multi-session)*. Port the ~50
     per-step scanner-internal preservation lemmas needed by
@@ -10670,6 +10738,83 @@ translates to ~800–1200 LOC of actual delta. Budget accordingly;
 the work is structurally parallel to this session's, but with
 `ScanInvIx` / `AllKeysValidIx` replacing `SimpleKeyAboveIx` and
 `scanLoopIx_ordered` replacing `scanLoopIx_preserves_tokens`.
+
+</details>
+
+##### **Reflection 110 (new, 2026-05-24)**: when a port's "primitives"
+phase is itself ~1× the legacy LOC, the discharge phase is ~2× more —
+*splitting the sub-step into "foundations" (primitives + initial
+helpers) and "compose" (per-helper + per-dispatcher + loop induction)*
+preserves the same incremental milestone cadence at lower per-commit
+risk.
+
+The 6f.3b3.primitives.ordered estimate was revised to ~1000 LOC after
+Reflection 109. The actual delta for this session was ~500 LOC and
+the work is only ~50% complete (foundations landed; compose still
+open). Root causes:
+
+1. **`ScanInvIx` compounds with `AllKeysValidIx` at every helper**.
+   Unlike `SimpleKeyAboveIx` (a single bound on `tokenIndex`),
+   `ScanInvIx` requires *both* ordering and a `cursor.pos.offset`
+   bound *and* `AllKeysValidIx` to preserve through helpers that
+   call `overwriteAtCursor` (`scanKeyIx`, `scanValueIx`). The
+   per-helper proof obligation count effectively *doubles* —
+   every helper now needs an `ScanInvIx` preservation proof
+   *and* an `AllKeysValidIx` preservation proof, plus interactions
+   between them in `scanValueIx` / `scanKeyIx`.
+
+2. **Fin-vs-Nat indexing forks the proof**. `ScanInv'Ix`'s ordering
+   conjunct quantifies over `Fin tokens.size`, but the underlying
+   `Array.getElem_push_eq` / `Array.getElem_setIfInBounds_*` lemmas
+   are stated in Nat-with-bound form. Each preservation proof
+   needs an explicit `show ((s.emit tok).tokens.tokens[i]'hi).start.offset ≤ ...`
+   to convert from the `Fin ⟨i, hi⟩` form the destructured
+   quantifier produces. (`rw` won't fire across the form mismatch.)
+
+3. **`overwriteAtCursor` preservation needs a fresh primitive**.
+   The slot-position-match condition (`sk.pos.offset = old_slot.start.offset`)
+   isn't directly available from existing bricks — it has to be
+   reconstructed from `SimpleKeyValidIx` at each call site. The
+   legacy `setIfInBounds_preserves_ScanInv'` had the same shape,
+   but the indexed version requires re-stating the relationship in
+   the `IxToken` substrate (`.start.offset` rather than legacy
+   `.pos.offset`).
+
+4. **`Array.getElem_setIfInBounds_self` and `_ne` have non-trivial
+   bound proofs**. The simp-lemma forms (`{xs i a} (h : i < (xs.setIfInBounds i a).size)`)
+   use `simpa using h` to bridge the bound — but `rw` can't see
+   through this bridging, so the proof has to manually thread the
+   bound via `show` or by-cases on `i < xs.size`. The cleaner
+   path is to use `Array.setIfInBounds` unfolded directly to
+   `Array.set` (when in-bounds) or the identity (when out).
+
+**Why split the work**: the §8.1–§8.5 foundations are *useful in
+isolation* — they're imported by `Proofs/Output/IndexedEmitterScannability/*`
+for the per-step preservation lemmas needed by the EmitterScannability
+indexed twin (Reflection 107's "amortization with internals" pattern).
+Landing them as a milestone before the per-dispatcher composition lets
+the EmitterScannability work proceed in parallel rather than blocking
+on the full `scanLoopIx_ordered` discharge.
+
+**Sequencing implication for 6f.3b3.primitives.ordered.compose**:
+the remaining ~1500–2000 LOC is largely *mechanical* — each helper
+brick follows the §8.4 template (e.g., `unwindIndentsIx_preserves_AllKeysValidIx`
+is exactly the pattern, just instantiated per-helper). The per-
+dispatcher composition is the case-split skeleton already
+established in §6.4 / §7.4 of this file (for `_maintains_SimpleKeyAboveIx`).
+The fuel induction for `scanLoopIx_ordered` is a 2-line modification
+of `scanLoopIx_preserves_tokens` from §7.8. Budget accordingly: the
+work is *parallel* to §7, *not* novel.
+
+**How to apply at future ladder estimates**: when an indexed-twin port's
+"primitives" phase exceeds ~50% of the named-LOC estimate within the first
+~30% of the session's time, **stop and split** the sub-step into
+`{name}.foundations` + `{name}.compose`. The foundations milestone
+should land *all primitive preservation lemmas + the first ~3 helper
+preservation lemmas* — enough to validate the chosen invariant shape
+on real helpers, but not so much that the session over-runs. The
+compose milestone then becomes pure mechanical iteration following
+the established template.
 
 </details>
 
