@@ -4,12 +4,12 @@ Released under Apache 2.0 license as described in the file LICENSE.
 -/
 import L4YAML.Output.Emitter
 import L4YAML.Spec.Grammar
-import L4YAML.Parser.Composition
-import L4YAML.Scanner.Scanner
-import L4YAML.Proofs.Parser.ParserCompleteness
+import L4YAML.Parser.IndexedComposition
+import L4YAML.Scanner.IndexedDispatch
+import L4YAML.Proofs.Parser.IndexedCompleteness
+import L4YAML.Proofs.Parser.IndexedComposition
 import L4YAML.Proofs.Parser.ParserSoundness
 import L4YAML.Proofs.RoundTrip.RoundTrip
-import L4YAML.Proofs.Composition
 
 /-!
 # Scanner–Emitter Bridge (P10.8f.4)
@@ -67,7 +67,8 @@ namespace L4YAML.Proofs.ScannerEmitBridge
 open L4YAML
 open L4YAML.Emit
 open L4YAML.Grammar
-open L4YAML.TokenParser
+open L4YAML.TokenParser.Indexed
+open L4YAML.Scanner.Indexed.ScannerStateIx
 
 /-! ## §1: Emitter Annotation Independence
 
@@ -324,16 +325,18 @@ don't affect the emitter output.
 -/
 
 /--
-**Pipeline decomposition for emitter output**: if `parseYamlRaw (emit v)`
-succeeds, then both `Scanner.scan` and `parseStream` succeeded on the
+**Pipeline decomposition for emitter output**: if `parseYamlRawIx (emit v)`
+succeeds, then both `scanFilteredIx` and `parseStreamIx` succeeded on the
 emitter output.
+
+Step 6f.3b1 migration: reparented onto the indexed pipeline.
 -/
-theorem emit_pipeline_decompose (v : YamlValue) (docs : Array YamlDocument)
-    (h : parseYamlRaw (emit v) = .ok docs) :
-    ∃ tokens : Array (Positioned YamlToken),
-      Scanner.scanFiltered (emit v) = .ok tokens ∧
-      parseStream tokens = .ok docs :=
-  Composition.parseYamlRaw_ok_decompose (emit v) docs h
+theorem emit_pipeline_decompose_ix (v : YamlValue) (docs : Array YamlDocument)
+    (h : parseYamlRawIx (emit v) = .ok docs) :
+    ∃ tokens : Indexed.TokenStream (emit v),
+      scanFilteredIx (emit v) = .ok tokens ∧
+      parseStreamIx tokens = .ok docs :=
+  L4YAML.Proofs.Indexed.Composition.parseYamlRawIx_ok_decompose (emit v) docs h
 
 /--
 **Emitter output is emittable after stripping**: for any value, stripping
@@ -349,12 +352,12 @@ theorem emit_stripped_eq (v : YamlValue) :
 **Grammable values have canonical witnesses**: for any grammable value,
 there exists a `ValidNode` whose `toYamlValue` is annotation-equivalent.
 
-Re-export of `soundness_completeness_compose` from `ParserCompleteness`.
+Re-export of `soundness_completeness_compose` from `Indexed.Completeness`.
 -/
 noncomputable def grammable_has_witness (v : YamlValue) (hg : Grammable v false) :
     ∃ n : ValidNode,
       stripAnnotations (toYamlValue n) = stripAnnotations v :=
-  ParserCompleteness.soundness_completeness_compose v hg
+  L4YAML.Proofs.Indexed.Completeness.soundness_completeness_compose v hg
 
 /--
 **Emitter preserves content across annotation stripping**: the emitter
@@ -369,28 +372,28 @@ theorem emit_content_invariant (v₁ v₂ : YamlValue)
   contentEq_implies_emit_eq v₁ v₂ h
 
 /--
-**Conditional canonical roundtrip**: if `parseYamlRaw (emit (toYamlValue n))`
+**Conditional canonical roundtrip**: if `parseYamlRawIx (emit (toYamlValue n))`
 succeeds and the output is grammable, then there exists a `ValidNode`
 witness that matches the original up to annotation stripping.
 
 This is the conditional form of the target `canonical_roundtrip` theorem.
-The condition "`parseYamlRaw` succeeds" is verified by `#guard` on
+The condition "`parseYamlRawIx` succeeds" is verified by `#guard` on
 concrete instances in §4.
 -/
 noncomputable def canonical_roundtrip_conditional (n : ValidNode)
     (docs : Array YamlDocument)
-    (h_parse : parseYamlRaw (emit (toYamlValue n)) = .ok docs)
+    (h_parse : parseYamlRawIx (emit (toYamlValue n)) = .ok docs)
     (h_grammable : ∀ i : Fin docs.size, Grammable docs[i].value false) :
     ∀ i : Fin docs.size,
       ∃ m : ValidNode,
         stripAnnotations (toYamlValue m) = stripAnnotations docs[i].value := by
   intro i
-  obtain ⟨tokens, h_scan, h_pstream⟩ := emit_pipeline_decompose _ docs h_parse
-  exact ParserCompleteness.parseStream_complete tokens docs h_pstream h_grammable i
+  obtain ⟨tokens, _h_scan, h_pstream⟩ := emit_pipeline_decompose_ix _ docs h_parse
+  exact L4YAML.Proofs.Indexed.Completeness.parseStreamIx_complete tokens docs h_pstream h_grammable i
 
 /--
 **Emit–parse content preservation**: for any grammable value, a
-successful `parseYamlRaw (emit v)` produces a content-equivalent result.
+successful `parseYamlRawIx (emit v)` produces a content-equivalent result.
 
 This follows because:
 1. The emitter only uses `Scalar.content` (`emit_stripAnnotations`)
@@ -402,14 +405,14 @@ This follows because:
 noncomputable def emit_parse_has_witness (v : YamlValue)
     (_hg : Grammable v false)
     (docs : Array YamlDocument)
-    (h_parse : parseYamlRaw (emit v) = .ok docs)
+    (h_parse : parseYamlRawIx (emit v) = .ok docs)
     (h_grammable : ∀ i : Fin docs.size, Grammable docs[i].value false) :
     ∀ i : Fin docs.size,
       ∃ m : ValidNode,
         stripAnnotations (toYamlValue m) = stripAnnotations docs[i].value := by
   intro i
-  obtain ⟨tokens, _, h_pstream⟩ := emit_pipeline_decompose _ docs h_parse
-  exact ParserCompleteness.parseStream_complete tokens docs h_pstream h_grammable i
+  obtain ⟨tokens, _, h_pstream⟩ := emit_pipeline_decompose_ix _ docs h_parse
+  exact L4YAML.Proofs.Indexed.Completeness.parseStreamIx_complete tokens docs h_pstream h_grammable i
 
 /-! ## §4: Canonical Roundtrip `#guard` Checks
 
@@ -421,10 +424,10 @@ these are build-time invariants, not runtime tests.
 -/
 
 /-- Verify the full canonical roundtrip: emit a `ValidNode`, parse it
-    back via `parseYamlRaw`, and check content equivalence. -/
+    back via `parseYamlRawIx`, and check content equivalence. -/
 def canonicalRoundTrips (n : ValidNode) : Bool :=
   let v := toYamlValue n
-  match parseYamlRaw (emit v) with
+  match parseYamlRawIx (emit v) with
   | .ok docs =>
     match docs.toList with
     | d :: _ => contentEq v d.value

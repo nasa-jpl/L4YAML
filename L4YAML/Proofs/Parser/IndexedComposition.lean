@@ -64,6 +64,7 @@ set_option autoImplicit false
 namespace L4YAML.Proofs.Indexed.Composition
 
 open L4YAML
+open L4YAML.Scanner.Indexed.ScannerStateIx
 open L4YAML.TokenParser.Indexed
 
 /-- A success-case check: `scanAndParseIx input` returns `.ok docs`
@@ -108,20 +109,139 @@ theorem parses_flow_map_empty : parsesToNDocs "{}" 1 = true := by native_decide
 
 theorem parses_flow_seq_three : parsesToNDocs "[1,2,3]" 1 = true := by native_decide
 
-theorem parses_block_map_one : parsesToNDocs "a: b" 2 = true := by native_decide
+theorem parses_block_map_one : parsesToNDocs "a: b" 1 = true := by native_decide
+
+/-- A two-line block mapping. After Step 6f.0 indexed parser parity,
+    the indexed pipeline accepts this (was previously erroring; the
+    file docstring noted "implicit-key" divergence is no longer
+    observed). -/
+theorem parses_block_map_two_lines : parsesToNDocs "a: 1\nb: 2" 1 = true := by native_decide
 
 /-! ## §2  Error-case corpus
 
 Each entry exhibits `scanAndParseIx input = .error _` for an
-input that the pipeline rejects. The cases cover both
-scanner-emitted errors (unterminated flow collections) and
-parser-emitted errors (the indexed parser's stricter implicit-key
-handling on multi-line block mappings). -/
+input that the pipeline rejects. The cases cover scanner-emitted
+errors (unterminated flow collections). After Step 6f.0 the indexed
+parser no longer errors on multi-line block mappings — the
+implicit-key divergence noted in the original Step 6e file
+docstring is closed. -/
 
 theorem parses_error_unterminated_flow_seq :
     parsesError "[" = true := by native_decide
 
-theorem parses_error_multi_line_implicit_key :
-    parsesError "a: 1\nb: 2" = true := by native_decide
+/-! ## §3  Pipeline Decomposition (Step 6f.3b1)
+
+Structural decomposition theorems for the indexed pipeline, twins of
+`L4YAML.Proofs.Composition.parseYamlRaw_*` / `parseYaml_*`. These are
+required by downstream consumers (`EndToEndCorrectness`,
+`ScannerEmitBridge`, etc.) at Step 6f.3b. Each proof is a one-line
+`simp only [...]` over the indexed pipeline definitions; the work
+is purely propagating the `Ix`-suffixed names.
+
+The legacy `Composition.parseYamlRaw_pipeline`/`_ok_decompose`
+family quantified over `tokens : Array (Positioned YamlToken)`; the
+indexed twins quantify over `Indexed.TokenStream input` since the
+indexed `parseStreamIx` operates on the input-indexed token stream.
+-/
+
+/-- `parseYamlRawIx` decomposes into scanning then parsing: if both
+    stages succeed, the result is the `parseStreamIx` output on the
+    scanned tokens. Indexed twin of
+    `L4YAML.Proofs.Composition.parseYamlRaw_pipeline`. -/
+theorem parseYamlRawIx_pipeline (input : String)
+    (tokens : Indexed.TokenStream input)
+    (docs : Array YamlDocument)
+    (h_scan : scanFilteredIx input = .ok tokens)
+    (h_parse : parseStreamIx tokens = .ok docs) :
+    parseYamlRawIx input = .ok docs := by
+  simp only [parseYamlRawIx, scanAndParseIx, h_scan, h_parse]
+
+/-- If `parseYamlRawIx` succeeds, then both `scanFilteredIx` and
+    `parseStreamIx` must have succeeded on some intermediate token
+    stream. Indexed twin of
+    `L4YAML.Proofs.Composition.parseYamlRaw_ok_decompose`. -/
+theorem parseYamlRawIx_ok_decompose (input : String) (docs : Array YamlDocument)
+    (h : parseYamlRawIx input = .ok docs) :
+    ∃ tokens : Indexed.TokenStream input,
+      scanFilteredIx input = .ok tokens ∧ parseStreamIx tokens = .ok docs := by
+  simp only [parseYamlRawIx, scanAndParseIx] at h
+  match h_scan : scanFilteredIx input with
+  | .ok tokens =>
+    simp only [h_scan] at h
+    match h_parse : parseStreamIx tokens with
+    | .ok docs' =>
+      simp only [h_parse, Except.ok.injEq] at h
+      subst h; exact ⟨tokens, rfl, h_parse⟩
+    | .error _ =>
+      simp only [h_parse] at h; contradiction
+  | .error _ =>
+    simp only [h_scan] at h; contradiction
+
+/-- If `scanFilteredIx` fails, `parseYamlRawIx` fails with the same
+    error. Indexed twin of
+    `L4YAML.Proofs.Composition.parseYamlRaw_scan_error`. -/
+theorem parseYamlRawIx_scan_error (input : String) (e : ScanError)
+    (h : scanFilteredIx input = .error e) :
+    parseYamlRawIx input = .error e := by
+  simp only [parseYamlRawIx, scanAndParseIx, h]
+
+/-- If `scanFilteredIx` succeeds but `parseStreamIx` fails,
+    `parseYamlRawIx` fails with the same parse error. Indexed twin of
+    `L4YAML.Proofs.Composition.parseYamlRaw_parse_error`. -/
+theorem parseYamlRawIx_parse_error (input : String) (e : ScanError)
+    (tokens : Indexed.TokenStream input)
+    (h_scan : scanFilteredIx input = .ok tokens)
+    (h_parse : parseStreamIx tokens = .error e) :
+    parseYamlRawIx input = .error e := by
+  simp only [parseYamlRawIx, scanAndParseIx, h_scan, h_parse]
+
+/-- If `parseYamlRawIx` succeeds, `parseYamlIx` succeeds with composed
+    documents. Indexed twin of
+    `L4YAML.Proofs.Composition.parseYaml_of_parseYamlRaw_ok`. -/
+theorem parseYamlIx_of_parseYamlRawIx_ok (input : String) (docs : Array YamlDocument)
+    (h : parseYamlRawIx input = .ok docs) :
+    parseYamlIx input = .ok (docs.map YamlDocument.compose) := by
+  simp only [parseYamlIx, h]
+
+/-- If `parseYamlRawIx` fails, `parseYamlIx` fails with the same
+    error. Indexed twin of
+    `L4YAML.Proofs.Composition.parseYaml_of_parseYamlRaw_error`. -/
+theorem parseYamlIx_of_parseYamlRawIx_error (input : String) (e : ScanError)
+    (h : parseYamlRawIx input = .error e) :
+    parseYamlIx input = .error e := by
+  simp only [parseYamlIx, h]
+
+/-- Full pipeline composition: `scanFilteredIx → parseStreamIx →
+    compose`. If scanning and parsing both succeed, `parseYamlIx`
+    returns composed documents. Indexed twin of
+    `L4YAML.Proofs.Composition.parseYaml_pipeline`. -/
+theorem parseYamlIx_pipeline (input : String)
+    (tokens : Indexed.TokenStream input)
+    (docs : Array YamlDocument)
+    (h_scan : scanFilteredIx input = .ok tokens)
+    (h_parse : parseStreamIx tokens = .ok docs) :
+    parseYamlIx input = .ok (docs.map YamlDocument.compose) :=
+  parseYamlIx_of_parseYamlRawIx_ok input docs
+    (parseYamlRawIx_pipeline input tokens docs h_scan h_parse)
+
+/-- `parseYamlIx input = .ok docs` iff there exist raw documents
+    from `parseYamlRawIx` that compose to `docs`. Indexed twin of
+    `L4YAML.Proofs.Completeness.parseYaml_ok_iff`. -/
+theorem parseYamlIx_ok_iff (input : String) (docs : Array YamlDocument) :
+    parseYamlIx input = .ok docs ↔
+    ∃ rawDocs : Array YamlDocument,
+      parseYamlRawIx input = .ok rawDocs ∧
+      docs = rawDocs.map YamlDocument.compose := by
+  constructor
+  · intro h
+    simp only [parseYamlIx] at h
+    match h_raw : parseYamlRawIx input with
+    | .ok rawDocs =>
+      simp only [h_raw, Except.ok.injEq] at h
+      exact ⟨rawDocs, rfl, h.symm⟩
+    | .error _ =>
+      simp only [h_raw] at h; contradiction
+  · rintro ⟨rawDocs, h_raw, h_eq⟩
+    simp only [parseYamlIx, h_raw, h_eq]
 
 end L4YAML.Proofs.Indexed.Composition
