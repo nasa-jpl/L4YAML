@@ -1820,38 +1820,53 @@ not in-place axiom-to-theorem promotion — the latter is impossible
 when the axiom's hypothesis is strictly weaker than what the
 stronger lemma derives).
 
-**Next session**: **Step 6f.3b — Downstream proof consumer
-repointing**. With 6f.3a landed (commit `39e33216`: indexed
-comment-preserving scan path; `parseYamlWithCommentsIx` now in
-`Parser/IndexedComposition.lean`; `CommentRoundTrip.lean` migrated;
-+267 LOC across 5 files; build 405/405 green), the third deferred
-gap (no indexed `scanWithComments` twin) is now closed and 6f.5's
-prerequisite list is complete. 6f.3b can now proceed: migrate the
-~5 large proof consumers (`Proofs/EndToEndCorrectness.lean` 32
-refs, `Proofs/Output/EmitterScannability.lean` 27 refs,
-`Proofs/Composition.lean` 14 refs, `Proofs/Output/ScannerEmitBridge.lean`
-7 refs, `Proofs/Completeness.lean` 4 refs) to call `parseYamlIx` /
-`parseStreamIx` / `scanFilteredIx` and reference indexed theorems
-(`Indexed.Correctness.*`, `Indexed.Grammable.*`, etc.). Preserve
-the `Ix` suffix on symbols throughout — the Ix-drop happens in
-6f.3c. Per-tactic-site work: `simp [parseYaml]` becomes
-`simp [parseYamlIx]`; `parseStream tokens` becomes `parseStreamIx
-tokens` (and `tokens` retypes from `Array (Positioned YamlToken)`
-to `Indexed.TokenStream input`). After 6f.3b lands and the legacy
-proof files (`Proofs/Parser/Parser*.lean`) are orphaned, 6f.3c
-(coupled 6f.4 + 6f.5 atomic cutover) can rename staging files,
-flatten namespaces, drop Ix suffixes.
+**Next session**: **Step 6f.3b2 — Indexed scanner-correctness prereq +
+deferred consumer migration**. With 6f.3b1 landed (the value-level
+consumer subset — `Proofs/Completeness.lean` and
+`Proofs/Output/ScannerEmitBridge.lean` reparented onto
+`parseYamlIx`/`parseYamlRawIx`/`parseStreamIx`; structural
+composition twins added to `Proofs/Parser/IndexedComposition.lean`
+§3; 409/409 green; 7 pre-existing sorries unchanged), three
+consumers remain blocked on the prerequisite that wasn't on the
+Blueprint's original critical path: a new `IndexedScannerCorrectness.lean`
+file with indexed twins of scanner-internal preservation properties.
+The order of operations for 6f.3b2 is:
+  1. Build `IndexedScannerCorrectness.lean` — minimum subset covers
+     `scanFilteredIx_valid_token_stream` (unblocks
+     `parseYaml_implies_valid_token_stream` in `EndToEndCorrectness`),
+     `scanFilteredIx_FlowAwarePSVIx` + `scanFilteredIx_FlowBracketsMatchedIx`
+     (unblock unconditional `parseYamlIx_produces_valid_nodes`), and
+     the ~50 step-lemma family that `EmitterScannability.lean` builds
+     its scan chains over.
+  2. Add an unconditional indexed `parseYamlIx_produces_valid_nodes`
+     (chains 6f.3b2 step 1 outputs through `parseStreamIx_produces_valid_nodes`).
+  3. Migrate `Proofs/EndToEndCorrectness.lean` (~half the theorems
+     transitively need step 2's output; the other half is straight
+     entry-point repointing).
+  4. Migrate `Proofs/Output/EmitterScannability.lean` (298
+     `ScannerCorrectness.*` refs — mechanical once step 1 is in place).
+  5. Migrate `Proofs/Composition.lean` + cascade to
+     `Production/DocumentProduction.lean` + `IndexedWellBehaved.lean` /
+     `ParserGrammable.lean` / etc. (or fold this into 6f.3c's
+     namespace flatten — preferred).
 
-**Previous next-session pointer**: **Step 6f.3 — Downstream proof
-consumer migration** (partially landed as 6f.3a in commit
-`39e33216`; 6f.3b/6f.3c deferred to follow-up sessions). The
-execution surfaced a *third* deferred gap (no indexed
-`scanWithComments`) that the Blueprint's "6f.3↔6f.5 coupling"
-framing didn't enumerate; Reflection 100 captures the
-planning-hygiene lesson (write the coupling lemma after a complete
-public-API entry-point inventory, not before). The original
-"6f.3+6f.5 atomic commit" guidance still applies to the
-**post-6f.3a** scope.
+After 6f.3b2 lands, 6f.3c (coupled 6f.4 + 6f.5 atomic cutover) can
+finally rename staging files, flatten `.Indexed` namespaces, and
+drop `Ix` suffixes. Reflection 101 explains why the Blueprint's
+"~500 LOC mechanical edits" estimate was off by 10× for the consumer
+migration: it counted entry-point name swaps, not the closure of
+proof-internal theorem dependencies.
+
+**Previous next-session pointer**: **Step 6f.3b — Downstream proof
+consumer repointing** (partially landed as 6f.3b1; 6f.3b2 deferred
+after scope-discovery decomposition). 6f.3a landed in commit
+`39e33216` (indexed comment-preserving scan path). 6f.3b1 closed
+the two value-level consumers (`Completeness`, `ScannerEmitBridge`)
+plus the structural composition twins. The 6f.3b2 split surfaced
+two reflections: 101 (estimate-for-the-closure, not the surface) and
+102 (`.olean` cache replay can hide stale `native_decide` failures
+across multiple commits if the elaborated file's content hash and
+import-interface signatures are both unchanged).
 
 **Previous-previous next-session pointer**: **Step 6f.0 — indexed parser
 parity** (now landed, +~150 LOC across 4 files + a 40-input parity
@@ -9383,7 +9398,7 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
 
 ##### **6f.3 — Downstream proof consumer migration** *(in progress; comment-preservation gap closed 2026-05-23 in commit `39e33216`; consumer migration proper deferred to follow-up session)*. Decomposed into three sub-steps during execution after the comment-preservation gap surfaced:
 
-- **6f.3a — Indexed comment-preserving scan path** *(landed
+##### **6f.3a — Indexed comment-preserving scan path** *(landed
   2026-05-23, commit `39e33216`, +267 LOC across 5 files)*. The
   Phase 1 scope-question (during 6f.3 execution) revealed that
   `Proofs/RoundTrip/CommentRoundTrip.lean` calls legacy
@@ -9425,20 +9440,87 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
   (the prerequisite that the Blueprint had silently deferred);
   it does not by itself migrate consumers**.
 
-- **6f.3b — Downstream proof consumer repointing** *(deferred to
-  follow-up session, ~5 large files + ~10 type-only files)*. The
-  Blueprint scope (32 refs in `EndToEndCorrectness`, 27 in
-  `EmitterScannability`, 14 in `Composition`, 7 in
-  `ScannerEmitBridge`, 4 in `Completeness`) stands. The path:
-  migrate each consumer to call `parseYamlIx`/`parseStreamIx`/
-  `scanFilteredIx` and reference theorems via
-  `Proofs.Parser.IndexedCorrectness.*`, etc. — preserving the
-  `Ix` suffix on symbols. The proof tactics that `simp [parseYaml]`
-  need to re-target to `simp [parseYamlIx]` (one-name-substitution
-  per tactic site). Tractable but ~500+ LOC of mechanical edits
-  across the proofs.
+##### **6f.3b — Downstream proof consumer repointing** *(partially
+  landed 2026-05-23; further decomposed into 6f.3b1/6f.3b2 during
+  execution after a 10× scope underestimate surfaced)*. The
+  Blueprint's original "~500 LOC of mechanical edits" estimate
+  assumed indexed twins of every legacy proof-internal theorem
+  already existed. In reality only the **value-level** indexed
+  twins exist (`parseStreamIx_complete`, `soundness_completeness_compose`,
+  `parseStreamIx_output_grammable`, etc., all of which reuse
+  pipeline-agnostic `ParserSoundness.*` theorems verbatim); the
+  **structural** twins (composition decomposition, unconditional
+  grammar, scanner correctness) do not, and `EmitterScannability.lean`
+  alone has 298 references to `ScannerCorrectness.*` legacy
+  scanner-internal lemmas (see Reflection 101).
 
-- **6f.3c — Coupled cutover (6f.4 + 6f.5)** *(deferred to follow-up
+###### **6f.3b1 — Tractable consumer subset** *(landed 2026-05-23,
+  +149/-48 LOC across 4 files)*. Scope: consumers whose only legacy
+  references are value-level (composition decomposition + completeness/
+  soundness — no `ScannerCorrectness.*` and no unconditional grammar
+  chain). The work delivered:
+  - **`Proofs/Parser/IndexedComposition.lean`** (+101 LOC): §3 added
+    indexed-pipeline structural decomposition twins of
+    `L4YAML.Proofs.Composition.*` (seven theorems —
+    `parseYamlRawIx_pipeline`, `parseYamlRawIx_ok_decompose`,
+    `parseYamlRawIx_scan_error`, `parseYamlRawIx_parse_error`,
+    `parseYamlIx_of_parseYamlRawIx_ok`,
+    `parseYamlIx_of_parseYamlRawIx_error`,
+    `parseYamlIx_pipeline`) plus `parseYamlIx_ok_iff`. Same one-line
+    `simp only [parseYamlRawIx, scanAndParseIx, ...]` shape as legacy.
+    Also fixed pre-existing latent `native_decide` failure in the
+    corpus (Step 6f.0 changed indexed parser behavior on `a: b` and
+    `a: 1\nb: 2`; the `.olean` cache had been silently replaying stale
+    results — see Reflection 102).
+  - **`Proofs/Completeness.lean`**: reparented onto `parseYamlIx`/
+    `parseYamlRawIx`. The single non-trivial theorem
+    (`parseYaml_ok_iff` → `parseYamlIx_ok_iff`) now re-exports the
+    indexed twin. All §3 concrete-completeness `native_decide` checks
+    repoint to `parseYamlIx`. The pipeline-agnostic §1 `DecidableEq`
+    instances are unchanged (used by `Algebra/LawfulBEq.lean`).
+  - **`Proofs/Output/ScannerEmitBridge.lean`**: imports/opens switched
+    to indexed; `emit_pipeline_decompose` → `emit_pipeline_decompose_ix`
+    (return type `Indexed.TokenStream (emit v)`); §3
+    `canonical_roundtrip_conditional` and `emit_parse_has_witness`
+    now chain through `Indexed.Completeness.parseStreamIx_complete`;
+    `grammable_has_witness` now uses
+    `Indexed.Completeness.soundness_completeness_compose`; the
+    `canonicalRoundTrips` helper repoints to `parseYamlRawIx`. The
+    universal `emit_stripAnnotations`/`contentEq_implies_emit_eq`
+    theorems in §1–§2 are pipeline-agnostic and unchanged.
+
+###### **6f.3b2 — Files requiring `IndexedScannerCorrectness.lean` prereq**
+  *(deferred to follow-up session)*. Three files whose migration is
+  blocked on indexed twins that do not yet exist:
+  - **`Proofs/Composition.lean`** (legacy): rewriting it to call
+    indexed pipeline cascades into rewriting its consumers
+    (`DocumentProduction.lean`, `IndexedWellBehaved.lean`,
+    `ParserGrammable.lean`, etc.) — at least seven additional files,
+    none of which were in the 6f.3b scope. Better executed at 6f.3c
+    cutover, when the namespace flatten naturally folds
+    `Proofs/Composition.lean` into the canonical composition layer.
+  - **`Proofs/EndToEndCorrectness.lean`**: roughly half its theorems
+    transitively depend on `ParserGrammable.parseYaml_produces_valid_nodes`
+    (unconditional grammar — no indexed twin; `parseStreamIx_produces_valid_nodes`
+    requires explicit `FlowAwarePSVIx` + `FlowBracketsMatchedIx`
+    hypotheses that no indexed lemma discharges from `scanFilteredIx`
+    yet); one theorem uses `ScannerCorrectness.scan_valid_token_stream`
+    (no indexed twin). Prerequisites: indexed unconditional
+    `parseYamlIx_produces_valid_nodes` + indexed
+    `scanFilteredIx_valid_token_stream` + indexed
+    `scanFilteredIx_FlowAwarePSVIx` (each ~50–100 LOC).
+  - **`Proofs/Output/EmitterScannability.lean`** (10741 LOC, 298
+    `ScannerCorrectness.*` refs): builds emitter-scannability via
+    step-by-step scan chains over legacy scanner internals. Migration
+    requires ~50 indexed twin lemmas of scanner-internal preservation
+    properties — effectively a new `IndexedScannerCorrectness.lean`
+    file (multi-session work).
+
+  The 6f.3b2 critical-path artifact is **`IndexedScannerCorrectness.lean`**:
+  once that lands, all three files become tractable in roughly the
+  scope the Blueprint originally estimated.
+
+##### **6f.3c — Coupled cutover (6f.4 + 6f.5)** *(deferred to follow-up
   session)*. The Blueprint's original "land 6f.3+6f.5 in the same
   commit" guidance still applies: after 6f.3b's consumer migration
   has shipped (so legacy proof files are no longer imported by
@@ -9448,7 +9530,7 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
   `Tests/Guards/Parity/IndexedScanAndParse.lean` (40 inputs)
   remains the regression gate.
 
-**Why the decomposition** (Reflection 100, below): the comment-
+**Why the decomposition** (Reflections 100–102, below): the comment-
 preservation path is a *third* deferred gap that the Blueprint's
 "6f.3 cannot complete before 6f.5, but 6f.5 cannot land cleanly
 without 6f.3" framing didn't surface. Until 6f.3a, attempting
@@ -9460,7 +9542,9 @@ as a prerequisite" lesson from Reflection 98 applies to *every*
 distinct entry point, not just the canonical
 `parseYaml`/`parseStream` chain. Each gap surfaced needs its own
 substep; the coupling lemma now reads "6f.5 cannot complete before
-6f.3a + 6f.3b are both landed".
+6f.3a + 6f.3b1 + 6f.3b2 are all landed" — with 6f.3b2 blocked on
+the prerequisite `IndexedScannerCorrectness.lean` that wasn't on
+the Blueprint's original critical path.
 
 ##### **6f.4 — Indexed proof staging file renames** *(unblocked by 6f.0)*.
 Rename `Proofs/Parser/IndexedCorrectness.lean → ParserCorrectness.lean`
@@ -9650,6 +9734,98 @@ instead of one atomic commit. The decomposition is the right shape
 (comment-preservation is genuinely independent of consumer
 migration), so the lesson is principally for *planning hygiene*:
 write the coupling lemma after the inventory, not before.
+
+##### **Reflection 101 (new, 2026-05-23)**: a migration's effort
+scales with the **closure of theorem dependencies**, not the surface
+count of entry-point references. 6f.3b's Blueprint scope counted
+references to `parseYaml`/`parseStream`/`scanFiltered` in 5 consumer
+files (32 + 27 + 14 + 7 + 4 = 84 refs) and estimated "~500+ LOC of
+mechanical edits". Execution discovered:
+- Two files (`Completeness`, `ScannerEmitBridge`) really were
+  ~mechanical: the consumers use *value-level* indexed twins
+  (`parseStreamIx_complete`, `soundness_completeness_compose`) that
+  already exist because they reuse pipeline-agnostic
+  `ParserSoundness.*` theorems verbatim. Combined edit: +149 LOC.
+- Three files (`Composition`, `EndToEndCorrectness`,
+  `EmitterScannability`) require *structural* indexed twins that
+  don't exist:
+  - `EmitterScannability` calls 298 `ScannerCorrectness.*` theorems
+    (step-by-step scan-chain over legacy scanner internals); no
+    indexed `ScannerCorrectness` file exists at all.
+  - `EndToEndCorrectness` transitively depends on
+    `ParserGrammable.parseYaml_produces_valid_nodes` (unconditional
+    chain) and `ScannerCorrectness.scan_valid_token_stream` (no
+    indexed twin).
+  - `Proofs/Composition.lean` cascades to ~7 other proof files via
+    `DocumentProduction.lean`, `IndexedWellBehaved.lean`,
+    `ParserGrammable.lean`, etc., none of which were in the
+    Blueprint scope.
+
+The 84-reference surface concealed a ~50-theorem prerequisite layer
+that itself needed building. Net: 2/5 files migrated this session,
+3/5 deferred to 6f.3b2 (which itself blocks on the new
+`IndexedScannerCorrectness.lean` prereq).
+
+**How to apply at future migration-scoping decisions**: when
+estimating consumer-migration effort, do not count entry-point
+references in isolation. For each consumer file, also count the
+*proof-internal* theorem references and check that the
+corresponding indexed twins exist. A single 1-line `ScannerCorrectness.X`
+reference can hide multi-session work to build the indexed twin
+infrastructure. The right unit is "closure of `Indexed.X` twins that
+must exist before the file builds", not "surface count of `X` to
+rename to `Xix`".
+
+**Connection to Reflection 100**: this is the same shape — the
+*scope* of a migration claim is itself only as complete as the
+proof-dependency closure behind it. Reflection 100 framed the
+problem as entry-point enumeration; Reflection 101 sharpens it to
+theorem-closure enumeration. Together they say: write the migration
+plan after the closure audit, not before.
+
+##### **Reflection 102 (new, 2026-05-23)**: Lean's `.olean` cache
+replay can hide stale `native_decide` failures across multiple
+commits when the elaborated file's content hash and its imports'
+*interface signatures* are both unchanged. Encountered while
+adding §3 to `Proofs/Parser/IndexedComposition.lean`: a fresh `lake
+build` reported 405/405 green, but touching
+`Proofs/Parser/IndexedComposition.lean` triggered a rebuild that
+exposed two pre-existing `native_decide` failures
+(`parses_block_map_one "a: b" 2 = true` and
+`parses_error_multi_line_implicit_key "a: 1\nb: 2"`). Those
+theorems became false at Step 6f.0 (indexed parser parity now
+returns 1 doc for `a: b` and accepts `a: 1\nb: 2`), but the
+elaboration result was cached in the `.olean` and replayed for
+multiple commits without re-checking. Lake's replay considers
+content hashes and import-interface signatures (not behavioral
+parity with the import's compiled body), so a function whose
+*signature* didn't change while its *behavior* did can flip
+`native_decide` evaluation without triggering rebuild.
+
+**Concrete consequence**: corpus-style proof files using
+`native_decide` are *parity assertions* in disguise. When a
+pipeline change updates behavior on a corpus input, the
+corresponding theorem assertion must be re-evaluated even if the
+proof file's content hash is unchanged. Lake doesn't catch this.
+
+**How to apply at future cutover boundaries**: whenever a behavior-
+affecting change lands (e.g., Step 6f.0's `scanFlowEntryIx` /
+`skipToContentS` fix), pair it with a `touch` of every
+`native_decide`-corpus proof file that imports the changed module,
+OR add a CI step that runs `lake build` with the cache cleared on
+PRs touching the implementation tree. The parity harness at
+`Tests/Guards/Parity/IndexedScanAndParse.lean` is a regression
+witness for the canonical inputs but is not a replacement for
+corpus re-elaboration, since it tests a different (smaller) input
+set and doesn't catch every `native_decide` regression.
+
+**Cost of the lesson this session**: two stale assertions in
+`Proofs/Parser/IndexedComposition.lean` corpus (lines 111 and 125
+pre-fix) — caught only because §3's addition touched the file. The
+fixes update the corpus to reflect the indexed parser's *current*
+behavior (1 doc for `a: b`, 1 doc for the two-line block mapping)
+and add a new `parses_block_map_two_lines` theorem documenting the
+post-6f.0 implicit-key acceptance.
 
 </details>
 
