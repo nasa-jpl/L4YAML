@@ -1820,73 +1820,101 @@ not in-place axiom-to-theorem promotion — the latter is impossible
 when the axiom's hypothesis is strictly weaker than what the
 stronger lemma derives).
 
-**Next session**: **Step 6f.3b3 — Migrate
-`Proofs/Output/EmitterScannability.lean`** (multi-session, 298
-`ScannerCorrectness.*` refs over 10741 LOC). 6f.3b2.consume landed
-this session: `Proofs/EndToEndCorrectness.lean` retargeted to the
-indexed pipeline (`parseYamlIx`, `parseYamlRawIx`, `parseStreamIx`,
-`scanFilteredIx`, `scanIx`); witness type changed from
-`Array (Positioned YamlToken)` to `Indexed.TokenStream input`.
-Top-level theorem names preserved (`parse_sound_shallow`,
-`parse_complete`, `parse_produces_valid_yaml`,
-`parse_produces_valid_documents`, `parse_produces_valid_stream`,
-`parseStream_respects_grammar_unconditional`); the four
-`parseYaml_implies_*` theorems renamed to `parseYamlIx_implies_*`.
-Added `ValidTokenStreamPropIx` + **staging axiom**
-`scanIx_valid_token_stream_axiom` to
-`Proofs/Scanner/IndexedScannerCorrectness.lean` §6; added
-`parseYamlIx_implies_valid_token_stream` to
-`Proofs/Parser/IndexedGrammable.lean`. See Reflection 107 for the
-staging-axiom-vs-weaken-spec-vs-port-now trade-off lesson.
+**Next session**: **Step 6f.3b3.primitives.streamStart — Port
+`SimpleKeyAboveIx` + `scanLoopIx_preserves_tokens` + discharge
+`scanIx_first_is_streamStart_axiom`**. 6f.3b3.primitives.tractable
+landed this session: the two tractable primitives
+(`scanIx_produces_at_least_two`, `scanIx_last_is_streamEnd`) were
+ported to `Proofs/Scanner/IndexedScannerCorrectness.lean` §6.3–§6.4,
+each composed from lightweight helpers
+(`scanLoopIx_success_emits_streamEnd` §6.1,
+`scanLoopIx_increases_tokens` §6.2). The prior session's
+monolithic `scanIx_valid_token_stream_axiom` was refactored into a
+*theorem* `scanIx_valid_token_stream` (§6.5) composed of 2
+discharged primitives + 2 **narrower** staging axioms
+(`scanIx_first_is_streamStart_axiom`,
+`scanIx_positions_ordered_axiom`, §6.4 — each scoped to a single
+conjunct of `ValidTokenStreamPropIx`). The 6f.3b3 migration's
+multi-file decomposition was established: a 7-file directory
+`Proofs/Output/IndexedEmitterScannability/` with skeleton files
+keyed to architectural concern (`Basic`, `ScanChain`,
+`FlowMonoChain`, `FilteredGrowth`, `EmitScans`, `ParseStream`,
+`RoundTrip`) plus an aggregator
+`Proofs/Output/IndexedEmitterScannability.lean`. Build green at
+439/439 jobs (+16 from 423); sorry budget unchanged (7 pre-existing
+in `EmitterScannability.lean`); axiom count: 2 narrower staging
+axioms (was 1 coarse) — net qualitative reduction in staging-axiom
+surface. Reflection 108 captures the multi-file decomposition +
+narrower-axiom refactoring trade-off.
 
-For **6f.3b3**, the EmitterScannability migration's primary cost
-is porting the ~50 scanner-internal preservation lemmas (per-step
-`ScalarSourceCovers`, `NoTrailingWhitespace`, `ValidScanState`,
-etc.) and the four `ValidTokenStreamPropIx` primitives
-(`scanIx_produces_at_least_two`, `scanIx_first_is_streamStart`,
-`scanIx_last_is_streamEnd`, `scanIx_positions_ordered`) that
-discharge the staging axiom from 6f.3b2.consume. Both 6f.3b3's
-internal-preservation needs and the staging-axiom discharge share
-the same scanner-state-invariant infrastructure (induction on
-fuel, `SimpleKeyAbove`, `scanLoop_preserves_tokens`,
-`scanLoop_success_emits_streamEnd`), so the work is
-*amortized* — porting them once at 6f.3b3 handles both
-consumer classes. Sub-step plan:
-  1. **6f.3b3.primitives** — Port the four `scanIx_*` primitives
-     above (each ~150–300 LOC); discharge
-     `scanIx_valid_token_stream_axiom` from 6f.3b2.consume by
-     `unfold` + composition of the four primitives (mirrors
-     legacy `scan_produces_valid_tokens` at
-     `ScannerCorrectness.lean:9499`). Sorry policy holds: zero
-     net new sorries.
-  2. **6f.3b3.internals** — Port the per-step internal
-     preservation lemmas needed by EmitterScannability (~50,
-     scoped to the legacy file's `ScannerCorrectness.*` call
-     surface).
-  3. **6f.3b3.consume** — Retarget `EmitterScannability.lean`
-     to call the indexed primitives; rebuild on the indexed
-     substrate. Migration scope hint: the legacy file has 7
-     pre-existing sorries to carry over (or discharge if they
-     turn out to be cheap on the indexed substrate).
+For **6f.3b3.primitives.streamStart**, the work is:
+
+  1. Port `SimpleKeyAboveIx` (indexed twin of legacy
+     `SimpleKeyAbove`, `Proofs/Scanner/ScannerCorrectness.lean:6175`).
+     Predicate parametric in `n : Nat` (the "safe prefix" floor):
+     simpleKey indices in the saved-key stack are all ≥ `n`, and
+     `simpleKey.possible = false` implies safe. ~50–100 LOC.
+
+  2. Port `scanLoopIx_preserves_tokens` (indexed twin of legacy
+     `scanLoop_preserves_tokens`,
+     `Proofs/Scanner/ScannerCorrectness.lean:6197`). Under
+     `SimpleKeyAboveIx s n` invariant, every successful `scanLoopIx`
+     run preserves the first `n` tokens of `s.tokens`. Strong-
+     induction-on-fuel proof, chains
+     `scanNextTokenIx_preserves_SimpleKeyAboveIx` (a new induction-
+     step lemma) with the IH. ~150–250 LOC.
+
+  3. Discharge `scanIx_first_is_streamStart_axiom` by composing (1)
+     and (2): after `mk' |> emit streamStart |> (BOM advance?)`, the
+     state has `SimpleKeyAboveIx 1` (vacuous — simpleKey.possible =
+     false, stack empty), so `scanLoopIx_preserves_tokens` gives
+     `tokens[0] = (post-BOM state).tokens[0] = streamStart`. ~30 LOC.
+
+  Total estimate: ~250–400 LOC into
+  `Proofs/Scanner/IndexedScannerCorrectness.lean` §7 (new section).
+  Mirrors the legacy proof at `ScannerCorrectness.lean:6329–6402`.
+
+Then **6f.3b3.primitives.ordered** (follow-up session): port
+`ScanInvIx` + `AllKeysValidIx` + `scanLoopIx_ordered`, discharge
+`scanIx_positions_ordered_axiom`. ~400–600 LOC. After both narrower
+axioms discharge, `scanIx_valid_token_stream` becomes axiom-free
+(modulo Lean meta-axioms). Both `_axiom`s amortize with the
+EmitterScannability migration's `_internals` since the same scanner-
+state-invariant infrastructure powers per-step preservation
+(Reflection 107). Then **6f.3b3.internals** (~50 scanner-internal
+preservation lemmas) followed by per-file `.basic`, `.scanchain`,
+`.flowmono`, `.filteredgrowth`, `.emitscans`, `.parsestream`,
+`.roundtrip` sub-sessions populating each
+`Proofs/Output/IndexedEmitterScannability/*.lean` skeleton.
 
 Then **6f.3c**: coupled 6f.4 + 6f.5 atomic cutover (rename
-staging files, flatten `.Indexed` namespaces, drop `Ix` suffixes).
-Reflections 103, 105, 106, 107 captured the meta-lessons of the
-6f.3b2.{pre, main, consume} sub-steps: behavior-affecting
-production-code changes can leave staging proofs *structurally*
-broken (R103) or *semantically* inverted (R105) if the staging
-files are not on the default-build path; indexed-substrate ports
-of legacy theorems whose definition collapses scan-with-filter
-into one function need an explicit bridge layer (R106); and
-when a next-session pointer's claimed prerequisite lemma turns
-out to be strictly weaker than required, prefer a staging axiom
-with a concrete discharge plan to silent contract weakening or
-out-of-scope primitive porting (R107).
+staging files, flatten `.Indexed` namespaces, drop `Ix` suffixes;
+also rename `Proofs/Output/IndexedEmitterScannability.lean` →
+`Proofs/Output/EmitterScannability.lean` overwriting the legacy
+monolith, and the sub-directory similarly).
+
+Reflections 103, 105, 106, 107, 108 captured the meta-lessons of
+the 6f.3b2.{pre, main, consume} and 6f.3b3.primitives.tractable
+sub-steps: behavior-affecting production-code changes can leave
+staging proofs *structurally* broken (R103) or *semantically*
+inverted (R105) if the staging files are not on the default-build
+path; indexed-substrate ports of legacy theorems whose definition
+collapses scan-with-filter into one function need an explicit bridge
+layer (R106); when a next-session pointer's claimed prerequisite
+lemma turns out to be strictly weaker than required, prefer a
+staging axiom with a concrete discharge plan to silent contract
+weakening or out-of-scope primitive porting (R107); large-file
+migrations benefit from organizing the indexed twin across multiple
+files keyed to architectural concern, and coarse staging axioms
+should be refactored into composite-theorem + narrower-axiom form
+as soon as a partial discharge is possible (R108).
 
 **Previous next-session pointer**: **Step 6f.3b2.consume — Migrate
 `Proofs/EndToEndCorrectness.lean`** (now landed). Retargeted the
 file to indexed entry points, added `ValidTokenStreamPropIx` +
-staging axiom `scanIx_valid_token_stream_axiom`, added
+staging axiom `scanIx_valid_token_stream_axiom` (since refactored
+into a composite theorem + 2 narrower axioms in
+6f.3b3.primitives.tractable), added
 `parseYamlIx_implies_valid_token_stream` to IndexedGrammable.
 Reflection 107 captures the staging-axiom decision trade-off
 (prior pointer's claim that `scanLoopIx_offset_monotonic` would
@@ -9690,20 +9718,26 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
     closure via `EndToEndCorrectness`); sorry count unchanged (7
     pre-existing in `EmitterScannability.lean`); **1 staging
     axiom added** (`scanIx_valid_token_stream_axiom`, scheduled
-    for discharge at 6f.3b3). Reflection 107 below.
+    for discharge at 6f.3b3). Reflection 107 below. **(Update
+    2026-05-23, 6f.3b3.primitives.tractable)**: the monolithic
+    axiom has been refactored into the composite *theorem*
+    `scanIx_valid_token_stream` + 2 **narrower** staging axioms
+    (`scanIx_first_is_streamStart_axiom`,
+    `scanIx_positions_ordered_axiom`) — see Reflection 108.
   - Cascade: `Proofs/Composition.lean` migration still deferred
     to **6f.3c** cutover (same rationale as in the 6f.3b1 landed
     notes).
 
 ###### **6f.3b3 — Migrate `Proofs/Output/EmitterScannability.lean`**
-  *(deferred, multi-session)*. The 10741-LOC emitter-scannability
-  proof file with 298 `ScannerCorrectness.*` references. Builds
-  emitter-scannability via step-by-step scan chains over legacy
-  scanner internals. Migration requires ~50 indexed twin lemmas
-  of scanner-internal preservation properties — effectively the
-  bulk of an `IndexedScannerCorrectness.lean` that goes far
-  beyond the 6f.3b2.main core (which only needs the top-level
-  flow-aware / brackets-matched filter-lift family).
+  *(multi-session; first session 2026-05-23 landed `.primitives.tractable`
+  and the multi-file decomposition skeleton)*. The 10741-LOC
+  emitter-scannability proof file with 298 `ScannerCorrectness.*`
+  references. Builds emitter-scannability via step-by-step scan chains
+  over legacy scanner internals. Migration requires ~50 indexed twin
+  lemmas of scanner-internal preservation properties — effectively the
+  bulk of an `IndexedScannerCorrectness.lean` that goes far beyond the
+  6f.3b2.main core (which only needs the top-level flow-aware /
+  brackets-matched filter-lift family).
 
   **Why split out from 6f.3b2**: the 6f.3b2 core's
   `IndexedScannerCorrectness.lean` ports the *user-facing*
@@ -9716,6 +9750,92 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
   legacy file accumulated across many proof commits. Reusing the
   6f.3b2.main core file as the home for these would conflate
   two distinct architectural layers.
+
+  **Multi-file decomposition** *(Reflection 108, this session)*. The
+  indexed twin is **not** organized as a single replacement file
+  mirroring the legacy monolith. Instead the migration target is a
+  seven-file directory `Proofs/Output/IndexedEmitterScannability/`
+  with the legacy line ranges split by *architectural concern*:
+
+  | Sub-file              | Legacy lines | LOC est. | Concern                                              |
+  |-----------------------|--------------|----------|------------------------------------------------------|
+  | `Basic.lean`          |    76–841    |   ~700   | Escape character/string properties (value-level)     |
+  | `ScanChain.lean`      |   842–1300   |   ~460   | `ScanChain` inductive + scanner-state helpers        |
+  | `FlowMonoChain.lean`  |  1714–5586   |  ~3800   | `FlowMonoChain` + `SimpleKeyAboveFloor` (biggest)    |
+  | `FilteredGrowth.lean` |  5587–6908   |  ~1320   | Per-stage `_filtered_grows` lemmas                   |
+  | `EmitScans.lean`      |  6909–8399   |  ~1490   | `ScanChainGrew` + `EmitScansInFlow` main thread      |
+  | `ParseStream.lean`    |  8400–8874   |   ~440   | Emit → Scan → Parse pipeline + scalar content        |
+  | `RoundTrip.lean`      |  8875–10741  |  ~1870   | Content fidelity + `universal_roundtrip`             |
+
+  Each sub-file is a chain link (`Basic → ScanChain → FlowMonoChain →
+  FilteredGrowth → EmitScans → ParseStream → RoundTrip`) and is
+  populated in its own sub-session once the upstream prerequisites
+  land. An aggregator
+  `Proofs/Output/IndexedEmitterScannability.lean` imports all seven
+  and is the single file that `L4YAML.lean` references. At 6f.3c
+  cutover, the aggregator is renamed to overwrite
+  `Proofs/Output/EmitterScannability.lean` and the sub-directory is
+  renamed to `Proofs/Output/EmitterScannability/`.
+
+  **Sub-step ladder** (revised after `.primitives.tractable` landed):
+
+  ▸ **6f.3b3.primitives.tractable** ✅ *(LANDED 2026-05-23)*. Ported
+    the two tractable scanner primitives —
+    `scanIx_produces_at_least_two` and `scanIx_last_is_streamEnd` —
+    to `Proofs/Scanner/IndexedScannerCorrectness.lean` §6.3–§6.4 (each
+    via a lightweight helper: `scanLoopIx_success_emits_streamEnd`
+    §6.1 and `scanLoopIx_increases_tokens` §6.2). Refactored the prior
+    session's monolithic `scanIx_valid_token_stream_axiom` into a
+    *theorem* `scanIx_valid_token_stream` (§6.5) composed of the two
+    discharged primitives plus two **narrower staging axioms**
+    (`scanIx_first_is_streamStart_axiom`,
+    `scanIx_positions_ordered_axiom`, §6.4) — each axiom now describes
+    a *single conjunct* of `ValidTokenStreamPropIx` rather than the
+    coarse composite. `#print axioms scanIx_valid_token_stream` shows
+    `[propext, Classical.choice, Quot.sound,
+    scanIx_first_is_streamStart_axiom,
+    scanIx_positions_ordered_axiom]` (zero non-Lean user-defined
+    axioms beyond the two narrower ones). Created the seven-file
+    skeleton under `Proofs/Output/IndexedEmitterScannability/` with
+    file-level docstrings mapping each to its legacy line range; build
+    green at 439/439 jobs (+16 from 423: 7 skeleton sub-files + 1
+    aggregator + 8 dependent-rebuild jobs). Sorry budget unchanged
+    (7 pre-existing in `EmitterScannability.lean`). Reflection 108
+    below.
+
+  ▸ **6f.3b3.primitives.streamStart** *(next session)*. Port
+    `SimpleKeyAboveIx` (indexed twin of legacy `SimpleKeyAbove`,
+    `ScannerCorrectness.lean:6175`), `scanLoopIx_preserves_tokens`
+    (preservation of first `n` tokens under the simple-key-stack
+    invariant), and discharge `scanIx_first_is_streamStart_axiom`.
+    Estimated ~250–450 LOC into
+    `Proofs/Scanner/IndexedScannerCorrectness.lean` §7 (new section)
+    or a sibling file
+    `Proofs/Scanner/IndexedScannerInternals/SimpleKeyAbove.lean` if
+    the §6 file grows too large.
+
+  ▸ **6f.3b3.primitives.ordered** *(follow-up session)*. Port
+    `ScanInvIx` + `AllKeysValidIx` (indexed twins of
+    `ScanInv`/`AllKeysValid`, `ScannerCorrectness.lean:8745` / `:8983`)
+    + `scanLoopIx_ordered`, and discharge
+    `scanIx_positions_ordered_axiom`. Estimated ~400–600 LOC.
+
+  ▸ **6f.3b3.internals** *(deferred, multi-session)*. Port the ~50
+    per-step scanner-internal preservation lemmas needed by
+    EmitterScannability (`ScalarSourceCovers`, `NoTrailingWhitespace`,
+    `ValidScanState`, etc.). These are amortized with the `.primitives`
+    work: the same `SimpleKeyAboveIx` / `ScanInvIx` /
+    `AllKeysValidIx` infrastructure powers both classes (Reflection
+    107). Populate the relevant
+    `Proofs/Output/IndexedEmitterScannability/*.lean` skeleton files
+    section by section.
+
+  ▸ **6f.3b3.{basic,scanchain,flowmono,filteredgrowth,emitscans,parsestream,roundtrip}**
+    *(sub-sessions, one per file)*. Migrate each section of the legacy
+    `Proofs/Output/EmitterScannability.lean` into its corresponding
+    skeleton file under `Proofs/Output/IndexedEmitterScannability/`,
+    consuming the indexed primitives from `.primitives.*` and the
+    indexed scanner internals from `.internals`.
 
 ##### **6f.3c — Coupled cutover (6f.4 + 6f.5)** *(deferred to follow-up
   session)*. The Blueprint's original "land 6f.3+6f.5 in the same
@@ -10321,6 +10441,117 @@ write the discharge plan into the doc comment, point at the
 follow-up step in the Blueprint, and proceed. The migration
 contract stays intact; the discharge is sequenced with its
 natural downstream consumer.
+
+</details>
+
+##### **Reflection 108 (new, 2026-05-23)**: a large-file migration's
+target shape need not mirror the source shape — for a 10K+ LOC
+monolith, **organize the indexed twin across multiple files** keyed
+to *architectural concern* (escape primitives, chain inductives,
+flow-monotonic chain reasoning, filter-growth lemmas, emit-scan
+acceptance, emit-parse pipeline, round-trip), not legacy line
+ordering. And when discharging a coarse staging axiom incrementally,
+**replace it with a composite theorem that depends on narrower
+staging axioms** (one per residual conjunct), so each sub-session's
+discharge work has precisely-scoped scope.
+
+The 6f.3b3.primitives.tractable work surfaced both lessons:
+
+**Multi-file decomposition of EmitterScannability**. Reflection 107
+established that 6f.3b3 ports the indexed twins of `~50` scanner-
+internal preservation lemmas + the four `scan_*` primitives.
+Together these lemmas plus the ~10741-LOC legacy
+`Proofs/Output/EmitterScannability.lean` would, if mirrored 1:1,
+produce a single file of ~12000+ LOC that is *worse* for navigation,
+incremental rebuild times, and parallel sub-session work than the
+legacy starting point. The legacy file is a monolith only because it
+grew incrementally over many proof commits — no architectural choice
+favors that shape, and the 6f cutover is a natural moment to
+restructure.
+
+Decomposition by *architectural concern* (not line count):
+
+  | Sub-file              | Legacy lines | LOC est. | Concern                                              |
+  |-----------------------|--------------|----------|------------------------------------------------------|
+  | `Basic.lean`          |    76–841    |   ~700   | Escape character/string properties (value-level)     |
+  | `ScanChain.lean`      |   842–1300   |   ~460   | `ScanChain` inductive + scanner-state helpers        |
+  | `FlowMonoChain.lean`  |  1714–5586   |  ~3800   | `FlowMonoChain` + `SimpleKeyAboveFloor` (biggest)    |
+  | `FilteredGrowth.lean` |  5587–6908   |  ~1320   | Per-stage `_filtered_grows` lemmas                   |
+  | `EmitScans.lean`      |  6909–8399   |  ~1490   | `ScanChainGrew` + `EmitScansInFlow` main thread      |
+  | `ParseStream.lean`    |  8400–8874   |   ~440   | Emit → Scan → Parse pipeline + scalar content        |
+  | `RoundTrip.lean`      |  8875–10741  |  ~1870   | Content fidelity + `universal_roundtrip`             |
+
+Each sub-file forms a chain link
+(`Basic → ScanChain → FlowMonoChain → FilteredGrowth → EmitScans →
+ParseStream → RoundTrip`), so each can be developed against the
+already-landed infrastructure of the previous file in its own sub-
+session. The biggest residual file (`FlowMonoChain.lean` at ~3800
+LOC) is still substantial but ~3× more navigable than the legacy
+monolith and *may* sub-divide further once the indexed twin's
+structure is concrete. An aggregator
+`Proofs/Output/IndexedEmitterScannability.lean` imports all seven
+and is the single file `L4YAML.lean` references — preserving the
+cutover-rename ergonomics of the legacy structure.
+
+**Why split rather than mirror**: the legacy file's *line count* is
+1:1 with no architectural meaning — sections are interleaved with
+proof-commit timestamps, not concerns. The migration is the natural
+moment to surface the concerns into the file structure. Future
+maintainers see the seven file names and know exactly where to look
+for (e.g.) a `_filtered_grows` lemma without a 10K-line scroll.
+Faster incremental rebuild as a side-benefit: a `Basic.lean` edit
+no longer recompiles the whole emitter-scannability proof closure.
+
+**Narrower staging axioms for incremental discharge**. The prior
+session (6f.3b2.consume, Reflection 107) added a single coarse
+`scanIx_valid_token_stream_axiom` covering all four conjuncts of
+`ValidTokenStreamPropIx`. Discharging *any* subset of conjuncts
+without the others required deleting the whole axiom — high
+threshold for progress. This session ported the two tractable
+primitives (`scanIx_produces_at_least_two`,
+`scanIx_last_is_streamEnd`) and refactored the axiom posture:
+
+  - **Before**: 1 monolithic axiom
+    (`scanIx_valid_token_stream_axiom`, 4 conjuncts together).
+  - **After**: 1 composite *theorem* (`scanIx_valid_token_stream`,
+    §6.5) composed of 2 discharged primitives (§6.3 + §6.4) and
+    2 narrower staging axioms (§6.4 —
+    `scanIx_first_is_streamStart_axiom`,
+    `scanIx_positions_ordered_axiom`).
+
+`#print axioms scanIx_valid_token_stream` shows `[propext,
+Classical.choice, Quot.sound, scanIx_first_is_streamStart_axiom,
+scanIx_positions_ordered_axiom]` — net reduction in staging-axiom
+surface from a single coarse axiom to two precisely-scoped ones.
+Each remaining axiom now describes a *single conjunct*, so:
+
+  1. The discharge plan is granular — 6f.3b3.primitives.streamStart
+     can discharge one without waiting for the other to be
+     discharge-ready.
+  2. The downstream consumer (`scanIx_valid_token_stream`) keeps the
+     full 4-conjunct shape (no silent contract weakening — see
+     Reflection 107's stance against silent contract changes).
+  3. Each axiom's `_axiom` suffix keeps staging status visible at
+     every call site (zero call sites today, but a future grep
+     `axiom scan` immediately surfaces both).
+
+**How to apply at future incremental axiom-discharge**: when a coarse
+staging axiom covers N conjuncts and a session can discharge K < N
+of them, **don't** leave the coarse axiom in place ("we'll fix it
+later"). Refactor immediately: extract the K discharged conjuncts as
+theorems, narrow the residual axiom(s) to one per remaining
+conjunct, and recompose as a theorem. The downstream API stays
+identical; the staging-axiom surface shrinks measurably; the next
+discharge session has a tighter scope.
+
+**Why this is *not* axiom-proliferation**: the count of axioms went
+1 → 2, but the *aggregate logical strength* of the staging-axiom
+surface strictly decreased (2 narrower axioms together imply the 1
+coarse one, but not vice-versa — the discharge of the two tractable
+primitives is a strict gain). Counting axioms by file or by
+declaration is the wrong metric; the right metric is the size of the
+"trust me, this is true" surface area, which shrank from a 4-
+conjunct claim to a 2-conjunct claim.
 
 </details>
 
