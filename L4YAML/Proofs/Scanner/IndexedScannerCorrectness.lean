@@ -1681,4 +1681,519 @@ theorem scanIx_valid_token_stream
   · intro _; exact scanIx_last_is_streamEnd tokens h h_pos
   · exact scanIx_positions_ordered_axiom tokens h
 
+/-! ## §8  `ScanInvIx` + `AllKeysValidIx` infrastructure
+(partial — `scanIx_positions_ordered_axiom` discharge scheduled for
+`6f.3b3.primitives.ordered.compose`)
+
+Lays the foundation for porting the legacy `ScanInv` / `AllKeysValid`
+compound-invariant chain (`ScannerCorrectness.lean:6520` / `:8781`)
+and the loop induction `scanLoop_ordered`
+(`ScannerCorrectness.lean:9405`). This session lands the *invariant
+definitions* (§8.1) + the *primitive preservation lemmas* (§8.2–§8.3) +
+*helper preservation lemmas* (§8.4–§8.5: skipToContent / unwindIndents
+ScanInvIx & AllKeysValidIx, saveSimpleKeyIx ScanInvIx,
+push*IndentIx ScanInvIx). The composition through `saveSimpleKeyIx`
+AllKeysValidIx, the per-helper bricks for `scanDocumentStartIx` /
+`scanFlowSequenceStartIx` / etc., the per-dispatcher compositions, and
+the final `scanLoopIx_ordered` discharge are scheduled for the next
+sub-step (`6f.3b3.primitives.ordered.compose`).
+
+The Reflection 110 budget revision documents the ~3× over-run pattern
+observed across `6f.3b3.primitives.tractable` /
+`6f.3b3.primitives.streamStart` / this session — porting per-dispatcher
+preservation chains into the indexed substrate takes ~3× the LOC
+estimate of corresponding legacy proofs (each helper now requires a
+cursor/offset-bound proof IN ADDITION TO the prefix preservation that
+the legacy proofs already had).
+
+**Architecture** mirrors the legacy proof:
+
+  1. `ScanInv'Ix tokens off` = positions ordered ∧ all start.offsets ≤ off.
+     `ScanInvIx s := ScanInv'Ix s.tokens s.cursor.pos.offset`.
+  2. `SimpleKeyValidIx` / `SimpleKeyStackValidIx` / `AllKeysValidIx`:
+     when `simpleKey.possible = true`, the saved tokenIndex points at a
+     pair of slots whose `.start = simpleKey.pos`. Required to handle
+     `overwriteAtCursor` calls in `scanKeyIx` / `scanValueIx` (those
+     overwrites only preserve `ScanInvIx` because the slot already had
+     `.start = sk.pos`).
+  3. Primitive preservation of these invariants under `emit`, `emitAt`,
+     `advance`, field updates, and `setIfInBounds`.
+  4. Per-helper preservation (delegating to the existing per-helper
+     `_preserves_prefix` / `_offset_monotonic` bricks from
+     `IndexedScannerPlainScalarValid` + `IndexedDispatch`).
+  5. Per-dispatcher preservation (structural / flow / block / content).
+  6. `scanNextTokenIx_preserves_ScanInvIx` and
+     `scanNextTokenIx_preserves_AllKeysValidIx` (top-level composition).
+  7. `scanLoopIx_ordered` by induction on fuel; `scanIx_positions_ordered`
+     applied to the post-BOM initial state.
+
+The invariants are propagated **as a pair** (ScanInv + AllKeysValid)
+since `scanValueIx_preserves_ScanInvIx` depends on `SimpleKeyValidIx`
+to bound the `overwriteAtCursor` slot's `.start` (legacy structure;
+`ScannerCorrectness.lean:9364`). -/
+
+/-! ### §8.1  Definitions: `ScanInv'Ix`, `ScanInvIx`, `SimpleKeyValidIx`,
+`SimpleKeyStackValidIx`, `AllKeysValidIx`.
+
+Indexed twins of legacy `ScanInv'` (`ScannerCorrectness.lean:6520`),
+`ScanInv` (`:6525`), `SimpleKeyValid` (`:8627`), `SimpleKeyStackValid`
+(`:8770`), `AllKeysValid` (`:8781`). Re-stated in terms of
+`IxToken.start` rather than legacy `Positioned.pos`. -/
+
+/-- Compound positional invariant on a token stream: positions are
+    ordered AND all start offsets are ≤ `off`. Phrased over a raw
+    `Indexed.TokenStream input` so that we can `rw` tokens/offset
+    fields independently in preservation proofs. -/
+def ScanInv'Ix {input : String} (tokens : Indexed.TokenStream input) (off : Nat) : Prop :=
+  (∀ i j : Fin tokens.tokens.size, i.val < j.val →
+    (tokens.tokens[i]).start.offset ≤ (tokens.tokens[j]).start.offset) ∧
+  (∀ i : Fin tokens.tokens.size, (tokens.tokens[i]).start.offset ≤ off)
+
+/-- State-level scanner positional invariant: tokens ordered, all bounded
+    by the cursor's byte offset. Indexed twin of legacy `ScanInv`
+    (`ScannerCorrectness.lean:6525`). -/
+def ScanInvIx {input : String} (s : ScannerStateIx input) : Prop :=
+  ScanInv'Ix s.tokens s.cursor.pos.offset
+
+/-- Simple-key validity: when the simpleKey is `possible`, the saved
+    `tokenIndex` and `tokenIndex+1` are in-bounds and the tokens at
+    those positions carry `.start = simpleKey.pos`. Indexed twin of
+    legacy `SimpleKeyValid` (`ScannerCorrectness.lean:8627`). -/
+def SimpleKeyValidIx {input : String} (s : ScannerStateIx input) : Prop :=
+  s.simpleKey.possible = true →
+    s.simpleKey.tokenIndex < s.tokens.tokens.size ∧
+    s.simpleKey.tokenIndex + 1 < s.tokens.tokens.size ∧
+    (∀ (h1 : s.simpleKey.tokenIndex < s.tokens.tokens.size),
+      (s.tokens.tokens[s.simpleKey.tokenIndex]).start = s.simpleKey.pos) ∧
+    (∀ (h2 : s.simpleKey.tokenIndex + 1 < s.tokens.tokens.size),
+      (s.tokens.tokens[s.simpleKey.tokenIndex + 1]).start = s.simpleKey.pos)
+
+/-- Stack-side simple-key validity: every entry of `simpleKeyStack`
+    that is `possible` has in-bounds `tokenIndex` and the saved tokens
+    carry `.start = stackEntry.pos`. Indexed twin of legacy
+    `SimpleKeyStackValid` (`ScannerCorrectness.lean:8770`). -/
+def SimpleKeyStackValidIx {input : String} (s : ScannerStateIx input) : Prop :=
+  ∀ j (h : j < s.simpleKeyStack.size),
+    (s.simpleKeyStack[j]'h).possible = true →
+    (s.simpleKeyStack[j]'h).tokenIndex < s.tokens.tokens.size ∧
+    (s.simpleKeyStack[j]'h).tokenIndex + 1 < s.tokens.tokens.size ∧
+    (∀ (h1 : (s.simpleKeyStack[j]'h).tokenIndex < s.tokens.tokens.size),
+      (s.tokens.tokens[(s.simpleKeyStack[j]'h).tokenIndex]).start = (s.simpleKeyStack[j]'h).pos) ∧
+    (∀ (h2 : (s.simpleKeyStack[j]'h).tokenIndex + 1 < s.tokens.tokens.size),
+      (s.tokens.tokens[(s.simpleKeyStack[j]'h).tokenIndex + 1]).start = (s.simpleKeyStack[j]'h).pos)
+
+/-- Combined simple-key validity for both current and stacked keys.
+    Indexed twin of legacy `AllKeysValid`
+    (`ScannerCorrectness.lean:8781`). -/
+def AllKeysValidIx {input : String} (s : ScannerStateIx input) : Prop :=
+  SimpleKeyValidIx s ∧ SimpleKeyStackValidIx s
+
+/-! ### §8.2  Monotonicity helpers and trivial preservation lemmas
+
+Indexed twins of legacy `SimpleKeyValid_mono` / `SimpleKeyStackValid_mono`
+/ `AllKeysValid_mono` / `AllKeysValid_of_cleared_current` and the
+`ScanInv` "cleared/identity" companions. -/
+
+theorem SimpleKeyValidIx_of_not_possible {input : String}
+    (s : ScannerStateIx input)
+    (h : s.simpleKey.possible = false) : SimpleKeyValidIx s :=
+  fun h_poss => absurd h_poss (by simp [h])
+
+theorem SimpleKeyValidIx_mono {input : String} (s s' : ScannerStateIx input)
+    (h_skv : SimpleKeyValidIx s)
+    (h_sk : s'.simpleKey = s.simpleKey)
+    (h_mono : s'.tokens.tokens.size ≥ s.tokens.tokens.size)
+    (h_pref : ∀ i (h : i < s.tokens.tokens.size),
+      s'.tokens.tokens[i]'(by omega) = s.tokens.tokens[i]) :
+    SimpleKeyValidIx s' := by
+  intro h_poss
+  rw [h_sk] at h_poss ⊢
+  have ⟨hb1, hb2, hp1, hp2⟩ := h_skv h_poss
+  refine ⟨by omega, by omega, ?_, ?_⟩
+  · intro h1; rw [h_pref _ hb1]; exact hp1 hb1
+  · intro h2; rw [h_pref _ hb2]; exact hp2 hb2
+
+theorem SimpleKeyStackValidIx_mono {input : String} (s s' : ScannerStateIx input)
+    (h_ssv : SimpleKeyStackValidIx s)
+    (h_stack : s'.simpleKeyStack = s.simpleKeyStack)
+    (h_mono : s'.tokens.tokens.size ≥ s.tokens.tokens.size)
+    (h_pref : ∀ i (h : i < s.tokens.tokens.size),
+      s'.tokens.tokens[i]'(by omega) = s.tokens.tokens[i]) :
+    SimpleKeyStackValidIx s' := by
+  intro j hj h_poss
+  have hj_s : j < s.simpleKeyStack.size := by rw [← h_stack]; exact hj
+  have h_get : (s'.simpleKeyStack[j]'hj) = (s.simpleKeyStack[j]'hj_s) := by
+    simp [h_stack]
+  rw [h_get] at h_poss ⊢
+  have ⟨hb1, hb2, hp1, hp2⟩ := h_ssv j hj_s h_poss
+  refine ⟨by omega, by omega, ?_, ?_⟩
+  · intro h1; rw [h_pref _ hb1]; exact hp1 hb1
+  · intro h2; rw [h_pref _ hb2]; exact hp2 hb2
+
+theorem AllKeysValidIx_mono {input : String} (s s' : ScannerStateIx input)
+    (h_akv : AllKeysValidIx s)
+    (h_sk : s'.simpleKey = s.simpleKey)
+    (h_stack : s'.simpleKeyStack = s.simpleKeyStack)
+    (h_mono : s'.tokens.tokens.size ≥ s.tokens.tokens.size)
+    (h_pref : ∀ i (h : i < s.tokens.tokens.size),
+      s'.tokens.tokens[i]'(by omega) = s.tokens.tokens[i]) :
+    AllKeysValidIx s' :=
+  ⟨SimpleKeyValidIx_mono s s' h_akv.1 h_sk h_mono h_pref,
+   SimpleKeyStackValidIx_mono s s' h_akv.2 h_stack h_mono h_pref⟩
+
+theorem AllKeysValidIx_of_cleared {input : String} (s' : ScannerStateIx input)
+    (h_poss : s'.simpleKey.possible = false)
+    (h_ssv : SimpleKeyStackValidIx s')
+    : AllKeysValidIx s' :=
+  ⟨SimpleKeyValidIx_of_not_possible s' h_poss, h_ssv⟩
+
+/-- `ScanInvIx` is preserved by field updates that touch neither tokens
+    nor the cursor offset. -/
+theorem ScanInvIx_of_field_update {input : String} (s s' : ScannerStateIx input)
+    (h : ScanInvIx s)
+    (h_tok : s'.tokens = s.tokens)
+    (h_off : s'.cursor.pos.offset = s.cursor.pos.offset) :
+    ScanInvIx s' := by
+  unfold ScanInvIx ScanInv'Ix
+  rw [h_tok, h_off]; exact h
+
+/-- `ScanInvIx` is preserved by field updates that only INCREASE
+    `cursor.pos.offset` (and leave tokens unchanged). -/
+theorem ScanInvIx_of_offset_ge {input : String} (s s' : ScannerStateIx input)
+    (h : ScanInvIx s)
+    (h_tok : s'.tokens = s.tokens)
+    (h_off : s.cursor.pos.offset ≤ s'.cursor.pos.offset) :
+    ScanInvIx s' := by
+  obtain ⟨h_ord, h_bnd⟩ := h
+  unfold ScanInvIx ScanInv'Ix; rw [h_tok]
+  refine ⟨h_ord, ?_⟩
+  intro ⟨i, hi⟩
+  exact Nat.le_trans (h_bnd ⟨i, hi⟩) h_off
+
+/-! ### §8.3  Primitive preservation: `emit`, `emitAt`, `advance`,
+`overwriteAtCursor`, `setIfInBounds`.
+
+Each primitive carries the bound from the cursor's current offset to
+the new state's cursor offset (which is the same for `emit`/`emitAt`/
+`overwriteAtCursor` and ≥ for `advance`). -/
+
+/-- The key positional fact for a single `Array.push`: positions of new
+    array's indices equal the push value at the new slot, and old slot's
+    value below. -/
+private theorem push_start_offset_eq {input : String}
+    (arr : Array (IxToken input)) (t : IxToken input)
+    (k : Nat) (hk : k < (arr.push t).size) :
+    ((arr.push t)[k]'hk).start.offset =
+      if h : k < arr.size then (arr[k]'h).start.offset else t.start.offset := by
+  by_cases hlt : k < arr.size
+  · rw [Array.getElem_push_lt hlt]; simp [hlt]
+  · have heq : k = arr.size := by
+      have : k < arr.size + 1 := by rw [← Array.size_push]; exact hk
+      omega
+    subst heq
+    rw [Array.getElem_push_eq]; simp [hlt]
+
+/-- `emit tok` preserves `ScanInvIx`: the new token's start is
+    `s.cursor.pos`, equal to all-old-bounds; cursor offset unchanged. -/
+theorem emit_preserves_ScanInvIx {input : String} (s : ScannerStateIx input)
+    (tok : YamlToken) (h : ScanInvIx s) : ScanInvIx (s.emit tok) := by
+  obtain ⟨h_ord, h_bnd⟩ := h
+  unfold ScanInvIx ScanInv'Ix
+  have h_off : (s.emit tok).cursor.pos.offset = s.cursor.pos.offset := by
+    rw [emit_cursor]
+  rw [h_off]
+  -- We reason via the underlying push.
+  have h_get : ∀ k (hk : k < (s.emit tok).tokens.tokens.size),
+      ((s.emit tok).tokens.tokens[k]'hk).start.offset =
+        if h : k < s.tokens.tokens.size then (s.tokens.tokens[k]'h).start.offset
+                                         else s.cursor.pos.offset := by
+    intro k hk
+    show ((s.tokens.tokens.push _)[k]'hk).start.offset = _
+    rw [push_start_offset_eq]
+    split <;> rfl
+  have h_sz : (s.emit tok).tokens.tokens.size = s.tokens.tokens.size + 1 := by
+    show (s.tokens.tokens.push _).size = _; exact Array.size_push ..
+  refine ⟨?_, ?_⟩
+  · intro ⟨i, hi⟩ ⟨j, hj⟩ hij
+    -- Reduce Fin.val
+    have hij' : i < j := hij
+    show ((s.emit tok).tokens.tokens[i]'hi).start.offset ≤
+         ((s.emit tok).tokens.tokens[j]'hj).start.offset
+    rw [h_get i hi, h_get j hj]
+    split <;> rename_i hi_lt
+    · split <;> rename_i hj_lt
+      · exact h_ord ⟨i, hi_lt⟩ ⟨j, hj_lt⟩ hij'
+      · exact h_bnd ⟨i, hi_lt⟩
+    · split <;> rename_i hj_lt
+      · -- impossible: i ≥ size, j < size, i < j
+        rw [h_sz] at hi
+        omega
+      · -- both ≥ size; from sizes, i = j = size, contradicts i < j
+        rw [h_sz] at hi hj
+        omega
+  · intro ⟨i, hi⟩
+    show ((s.emit tok).tokens.tokens[i]'hi).start.offset ≤ s.cursor.pos.offset
+    rw [h_get i hi]
+    split <;> rename_i hi_lt
+    · exact h_bnd ⟨i, hi_lt⟩
+    · exact Nat.le_refl _
+
+/-- `emitAt startPos tok hOrder` preserves `ScanInvIx` provided that
+    `startPos.offset ≥` all existing tokens' starts (the new token
+    inserts at a position ≥ all current tokens). The hypothesis is
+    typically discharged by `startPos = s.cursor.pos` at some earlier
+    state composed with `ScanInvIx`. -/
+theorem emitAt_preserves_ScanInvIx {input : String} (s : ScannerStateIx input)
+    (startPos : YamlPos) (tok : YamlToken)
+    (hOrder : startPos.offset ≤ s.cursor.pos.offset)
+    (h : ScanInvIx s)
+    (h_ge : ∀ i : Fin s.tokens.tokens.size,
+      (s.tokens.tokens[i]).start.offset ≤ startPos.offset) :
+    ScanInvIx (s.emitAt startPos tok hOrder) := by
+  obtain ⟨h_ord, h_bnd⟩ := h
+  unfold ScanInvIx ScanInv'Ix
+  have h_off : (s.emitAt startPos tok hOrder).cursor.pos.offset =
+      s.cursor.pos.offset := by rw [emitAt_cursor]
+  rw [h_off]
+  have h_sz : (s.emitAt startPos tok hOrder).tokens.tokens.size =
+      s.tokens.tokens.size + 1 := by
+    show (s.tokens.tokens.push _).size = _; exact Array.size_push ..
+  have h_get : ∀ k (hk : k < (s.emitAt startPos tok hOrder).tokens.tokens.size),
+      ((s.emitAt startPos tok hOrder).tokens.tokens[k]'hk).start.offset =
+        if h : k < s.tokens.tokens.size then (s.tokens.tokens[k]'h).start.offset
+                                         else startPos.offset := by
+    intro k hk
+    show ((s.tokens.tokens.push _)[k]'hk).start.offset = _
+    rw [push_start_offset_eq]
+    split <;> rfl
+  refine ⟨?_, ?_⟩
+  · intro ⟨i, hi⟩ ⟨j, hj⟩ hij
+    have hij' : i < j := hij
+    show ((s.emitAt startPos tok hOrder).tokens.tokens[i]'hi).start.offset ≤
+         ((s.emitAt startPos tok hOrder).tokens.tokens[j]'hj).start.offset
+    rw [h_get i hi, h_get j hj]
+    split <;> rename_i hi_lt
+    · split <;> rename_i hj_lt
+      · exact h_ord ⟨i, hi_lt⟩ ⟨j, hj_lt⟩ hij'
+      · exact h_ge ⟨i, hi_lt⟩
+    · split <;> rename_i hj_lt
+      · rw [h_sz] at hi; omega
+      · rw [h_sz] at hi hj; omega
+  · intro ⟨i, hi⟩
+    show ((s.emitAt startPos tok hOrder).tokens.tokens[i]'hi).start.offset ≤ s.cursor.pos.offset
+    rw [h_get i hi]
+    split <;> rename_i hi_lt
+    · exact h_bnd ⟨i, hi_lt⟩
+    · exact hOrder
+
+/-- Specialised `emitAt` preservation: when `startPos.offset =
+    s.cursor.pos.offset`, the `h_ge` precondition follows from
+    `ScanInvIx`'s bound. -/
+theorem emitAt_preserves_ScanInvIx_eq {input : String} (s : ScannerStateIx input)
+    (startPos : YamlPos) (tok : YamlToken)
+    (hOrder : startPos.offset ≤ s.cursor.pos.offset)
+    (h_eq : startPos.offset = s.cursor.pos.offset)
+    (h : ScanInvIx s) :
+    ScanInvIx (s.emitAt startPos tok hOrder) :=
+  emitAt_preserves_ScanInvIx s startPos tok hOrder h
+    (fun i => by rw [h_eq]; exact h.2 i)
+
+/-- `advance` preserves `ScanInvIx`: tokens unchanged, cursor advances. -/
+theorem advance_preserves_ScanInvIx {input : String} (s : ScannerStateIx input)
+    (h : ScanInvIx s) : ScanInvIx s.advance := by
+  apply ScanInvIx_of_offset_ge s s.advance h (by rfl) (advance_offset_monotonic s)
+
+/-- `advanceN` preserves `ScanInvIx`. -/
+theorem advanceN_preserves_ScanInvIx {input : String} (s : ScannerStateIx input)
+    (n : Nat) (h : ScanInvIx s) : ScanInvIx (s.advanceN n) := by
+  apply ScanInvIx_of_offset_ge s (s.advanceN n) h (by rfl) (advanceN_offset_monotonic s n)
+
+/-- `overwriteAtCursor i sk tok` preserves `ScanInvIx` provided that
+    `sk.pos.offset` matches the existing slot's `.start.offset`. -/
+theorem overwriteAtCursor_preserves_ScanInvIx {input : String} (s : ScannerStateIx input)
+    (i : Nat) (sk : IxCursor input) (tok : YamlToken)
+    (h : ScanInvIx s)
+    (h_match : ∀ (h_i : i < s.tokens.tokens.size),
+      sk.pos.offset = (s.tokens.tokens[i]'h_i).start.offset) :
+    ScanInvIx (s.overwriteAtCursor i sk tok) := by
+  obtain ⟨h_ord, h_bnd⟩ := h
+  unfold ScanInvIx ScanInv'Ix
+  -- cursor unchanged
+  have h_off : (s.overwriteAtCursor i sk tok).cursor.pos.offset =
+      s.cursor.pos.offset := by
+    show (s.cursor).pos.offset = _; rfl
+  rw [h_off]
+  -- size unchanged
+  have h_sz : (s.overwriteAtCursor i sk tok).tokens.tokens.size =
+      s.tokens.tokens.size := by
+    show (s.tokens.tokens.setIfInBounds i _).size = _; exact Array.size_setIfInBounds ..
+  -- The overwriting token's `.start.offset = sk.pos.offset` (definitionally
+  -- from `IxToken.mk'`). Reduce via `setIfInBounds` definition + `Array.set`.
+  have h_get : ∀ k (hk : k < (s.overwriteAtCursor i sk tok).tokens.tokens.size),
+      ((s.overwriteAtCursor i sk tok).tokens.tokens[k]'hk).start.offset =
+        if i = k then sk.pos.offset
+                 else (s.tokens.tokens[k]'(by rw [h_sz] at hk; exact hk)).start.offset := by
+    intro k hk
+    have hk' : k < s.tokens.tokens.size := by rw [h_sz] at hk; exact hk
+    show ((s.tokens.tokens.setIfInBounds i
+        (IxToken.mk' (input := input) sk.pos tok sk.pos (Nat.le_refl _) sk.posBound))[k]'hk
+      ).start.offset = _
+    unfold Array.setIfInBounds
+    by_cases hi : i < s.tokens.tokens.size
+    · -- in-bounds: setIfInBounds = .set i v
+      simp only [hi, dite_true]
+      by_cases h_ik : i = k
+      · subst h_ik
+        rw [Array.getElem_set_self]
+        simp [IxToken.mk']
+      · rw [Array.getElem_set_ne (h := h_ik), if_neg h_ik]
+    · -- out-of-bounds: setIfInBounds = id; i ≠ k since k < size and i ≥ size.
+      simp only [hi, dite_false]
+      have h_ne : i ≠ k := fun h => by subst h; exact hi hk'
+      rw [if_neg h_ne]
+  refine ⟨?_, ?_⟩
+  · intro ⟨a, ha⟩ ⟨b, hb⟩ hab
+    have hab' : a < b := hab
+    have ha' : a < s.tokens.tokens.size := by rw [h_sz] at ha; exact ha
+    have hb' : b < s.tokens.tokens.size := by rw [h_sz] at hb; exact hb
+    show ((s.overwriteAtCursor i sk tok).tokens.tokens[a]'ha).start.offset ≤
+         ((s.overwriteAtCursor i sk tok).tokens.tokens[b]'hb).start.offset
+    rw [h_get a ha, h_get b hb]
+    split <;> rename_i h_eq_a
+    · split <;> rename_i h_eq_b
+      · omega
+      · show sk.pos.offset ≤ _
+        subst h_eq_a; rw [h_match ha']
+        exact h_ord ⟨i, ha'⟩ ⟨b, hb'⟩ hab'
+    · split <;> rename_i h_eq_b
+      · show _ ≤ sk.pos.offset
+        subst h_eq_b; rw [h_match hb']
+        exact h_ord ⟨a, ha'⟩ ⟨i, hb'⟩ hab'
+      · exact h_ord ⟨a, ha'⟩ ⟨b, hb'⟩ hab'
+  · intro ⟨k, hk⟩
+    have hk' : k < s.tokens.tokens.size := by rw [h_sz] at hk; exact hk
+    show ((s.overwriteAtCursor i sk tok).tokens.tokens[k]'hk).start.offset ≤ s.cursor.pos.offset
+    rw [h_get k hk]
+    split <;> rename_i h_eq
+    · -- i = k: show sk.pos.offset ≤ s.cursor.pos.offset
+      show sk.pos.offset ≤ _
+      have hi_lt : i < s.tokens.tokens.size := h_eq ▸ hk'
+      rw [h_match hi_lt]
+      exact h_bnd ⟨i, hi_lt⟩
+    · exact h_bnd ⟨k, hk'⟩
+
+/-! ### §8.4  Helper preservation: `skipToContentS`, `unwindIndentsIx`,
+`saveSimpleKeyIx`, `pushSequenceIndentIx`, `pushMappingIndentIx`.
+
+These build on the §8.3 primitives via mono / offset_ge / emit-based
+composition. -/
+
+/-- `skipToContentS` preserves `ScanInvIx`: cursor advances, tokens
+    unchanged. -/
+theorem skipToContentS_preserves_ScanInvIx {input : String}
+    (s : ScannerStateIx input) (h : ScanInvIx s) :
+    ScanInvIx s.skipToContentS := by
+  apply ScanInvIx_of_offset_ge s s.skipToContentS h
+  · exact skipToContentS_tokens s
+  · exact skipToContentS_offset_monotonic s
+
+/-- `unwindIndentsLoopIx` preserves `ScanInvIx`: emits `blockEnd` at
+    cursor.pos in each iteration. -/
+theorem unwindIndentsLoopIx_preserves_ScanInvIx {input : String}
+    (s : ScannerStateIx input) (col : Int) (fuel : Nat)
+    (h : ScanInvIx s) : ScanInvIx (unwindIndentsLoopIx s col fuel) := by
+  induction fuel generalizing s with
+  | zero => unfold unwindIndentsLoopIx; exact h
+  | succ fuel' ih =>
+    unfold unwindIndentsLoopIx
+    split
+    · -- emit blockEnd + pop indents + recurse
+      have h_emit : ScanInvIx (s.emit YamlToken.blockEnd) := emit_preserves_ScanInvIx s _ h
+      have h_pop : ScanInvIx { s.emit YamlToken.blockEnd with
+          indents := (s.emit YamlToken.blockEnd).indents.pop } := by
+        apply ScanInvIx_of_field_update _ _ h_emit rfl rfl
+      exact ih _ h_pop
+    · exact h
+
+theorem unwindIndentsIx_preserves_ScanInvIx {input : String}
+    (s : ScannerStateIx input) (col : Int)
+    (h : ScanInvIx s) : ScanInvIx (unwindIndentsIx s col) := by
+  unfold unwindIndentsIx
+  exact unwindIndentsLoopIx_preserves_ScanInvIx s col s.indents.size h
+
+theorem pushSequenceIndentIx_preserves_ScanInvIx {input : String}
+    (s : ScannerStateIx input) (col : Int)
+    (h : ScanInvIx s) : ScanInvIx (pushSequenceIndentIx s col) := by
+  unfold pushSequenceIndentIx
+  split
+  · apply ScanInvIx_of_field_update _ _ (emit_preserves_ScanInvIx s _ h) rfl rfl
+  · exact h
+
+theorem pushMappingIndentIx_preserves_ScanInvIx {input : String}
+    (s : ScannerStateIx input) (col : Int)
+    (h : ScanInvIx s) : ScanInvIx (pushMappingIndentIx s col) := by
+  unfold pushMappingIndentIx
+  split
+  · apply ScanInvIx_of_field_update _ _ (emit_preserves_ScanInvIx s _ h) rfl rfl
+  · exact h
+
+theorem saveSimpleKeyIx_preserves_ScanInvIx {input : String}
+    (s : ScannerStateIx input) (h : ScanInvIx s) :
+    ScanInvIx (saveSimpleKeyIx s) := by
+  unfold saveSimpleKeyIx
+  split
+  · exact h
+  · split
+    · -- push 2 placeholders + update simpleKey/simpleKeyStack fields
+      have h1 : ScanInvIx (s.emit YamlToken.placeholder) :=
+        emit_preserves_ScanInvIx s _ h
+      have h2 : ScanInvIx ((s.emit YamlToken.placeholder).emit YamlToken.placeholder) :=
+        emit_preserves_ScanInvIx _ _ h1
+      apply ScanInvIx_of_field_update _ _ h2 rfl rfl
+    · exact h
+
+/-! ### §8.5  Helper preservation for `AllKeysValidIx`.
+
+The simpleKey/simpleKeyStack preservation lemmas
+(`unwindIndentsIx_preserves_simpleKey`, etc.) from
+`IndexedScannerPlainScalarValid` give us monotonicity inputs; combined
+with the `_preserves_prefix` lemmas for full-token equality, we close
+`AllKeysValidIx` preservation via `AllKeysValidIx_mono`. -/
+
+theorem skipToContentS_preserves_AllKeysValidIx {input : String}
+    (s : ScannerStateIx input) (h : AllKeysValidIx s) :
+    AllKeysValidIx s.skipToContentS := by
+  apply AllKeysValidIx_mono s s.skipToContentS h
+    (skipToContentS_preserves_simpleKey s)
+    (skipToContentS_preserves_simpleKeyStack s)
+    (by simp [skipToContentS_tokens])
+    (fun i hi => by simp [skipToContentS_tokens])
+
+theorem unwindIndentsIx_preserves_AllKeysValidIx {input : String}
+    (s : ScannerStateIx input) (col : Int)
+    (h : AllKeysValidIx s) : AllKeysValidIx (unwindIndentsIx s col) := by
+  apply AllKeysValidIx_mono s _ h
+    (unwindIndentsIx_preserves_simpleKey s col)
+    (unwindIndentsIx_preserves_simpleKeyStack s col)
+    (unwindIndentsIx_tokens_size_le s col)
+    (fun i hi => unwindIndentsIx_preserves_prefix s col i hi)
+
+/-! ### §8.6  Status note on `saveSimpleKeyIx_preserves_AllKeysValidIx`
+and the per-dispatcher composition
+
+The `SimpleKeyValidIx` / `SimpleKeyStackValidIx` preservation lemmas for
+`saveSimpleKeyIx` plus the per-helper `ScanInvIx` / `AllKeysValidIx`
+bricks for `scanDocumentStartIx`, `scanFlowSequenceStartIx`, etc., plus
+the per-dispatcher composition `scanNextTokenIx_preserves_ScanInvIx` +
+`scanNextTokenIx_preserves_AllKeysValidIx`, plus `scanLoopIx_ordered` +
+`scanIx_positions_ordered` are scheduled as the next sub-step
+(`6f.3b3.primitives.ordered.compose`). The infrastructure landed in
+§8.1–§8.5 (definitions + primitives + helpers for skipToContent /
+unwindIndents / saveSimpleKey ScanInvIx + skipToContent / unwindIndents
+AllKeysValidIx) is the foundation; the remaining ~1500–2000 LOC are
+mechanical compositions following the legacy template
+(`ScannerCorrectness.lean:6520`–`:9478`).
+
+See Reflection 110 for the budget revision. -/
+
 end L4YAML.Proofs.Indexed.ScannerCorrectness
