@@ -1820,67 +1820,71 @@ not in-place axiom-to-theorem promotion — the latter is impossible
 when the axiom's hypothesis is strictly weaker than what the
 stronger lemma derives).
 
-**Next session**: **Step 6f.3b3.primitives.streamStart — Port
-`SimpleKeyAboveIx` + `scanLoopIx_preserves_tokens` + discharge
-`scanIx_first_is_streamStart_axiom`**. 6f.3b3.primitives.tractable
-landed this session: the two tractable primitives
-(`scanIx_produces_at_least_two`, `scanIx_last_is_streamEnd`) were
-ported to `Proofs/Scanner/IndexedScannerCorrectness.lean` §6.3–§6.4,
-each composed from lightweight helpers
-(`scanLoopIx_success_emits_streamEnd` §6.1,
-`scanLoopIx_increases_tokens` §6.2). The prior session's
-monolithic `scanIx_valid_token_stream_axiom` was refactored into a
-*theorem* `scanIx_valid_token_stream` (§6.5) composed of 2
-discharged primitives + 2 **narrower** staging axioms
-(`scanIx_first_is_streamStart_axiom`,
-`scanIx_positions_ordered_axiom`, §6.4 — each scoped to a single
-conjunct of `ValidTokenStreamPropIx`). The 6f.3b3 migration's
-multi-file decomposition was established: a 7-file directory
-`Proofs/Output/IndexedEmitterScannability/` with skeleton files
-keyed to architectural concern (`Basic`, `ScanChain`,
-`FlowMonoChain`, `FilteredGrowth`, `EmitScans`, `ParseStream`,
-`RoundTrip`) plus an aggregator
-`Proofs/Output/IndexedEmitterScannability.lean`. Build green at
-439/439 jobs (+16 from 423); sorry budget unchanged (7 pre-existing
-in `EmitterScannability.lean`); axiom count: 2 narrower staging
-axioms (was 1 coarse) — net qualitative reduction in staging-axiom
-surface. Reflection 108 captures the multi-file decomposition +
-narrower-axiom refactoring trade-off.
+**Next session**: **Step 6f.3b3.primitives.ordered — Port
+`ScanInvIx` + `AllKeysValidIx` + `scanLoopIx_ordered` + discharge
+`scanIx_positions_ordered_axiom`**.
 
-For **6f.3b3.primitives.streamStart**, the work is:
+**6f.3b3.primitives.streamStart LANDED 2026-05-24.** Ported
+`SimpleKeyAboveIx` (indexed twin of legacy `SimpleKeyAbove`,
+`Proofs/Scanner/ScannerCorrectness.lean:6175`) plus the full
+`scanNextTokenIx_maintains_SimpleKeyAboveIx` /
+`scanNextTokenIx_preserves_prefix` / `scanLoopIx_preserves_tokens`
+chain into a new §7 of
+`Proofs/Scanner/IndexedScannerCorrectness.lean` (sections §7.1
+through §7.9, ~1000 LOC). Discharged `scanIx_first_is_streamStart`
+as a theorem (§7.9); relocated `scanIx_valid_token_stream` to §7.10
+referencing the theorem. **`#print axioms scanIx_first_is_streamStart`
+shows `[propext, Classical.choice, Quot.sound]`** (zero user-defined
+axioms beyond the Lean foundational triple). `scanIx_valid_token_stream`
+now depends only on the remaining `scanIx_positions_ordered_axiom`.
+Build green at 439/439 jobs; sorry count unchanged (7 pre-existing
+in `EmitterScannability.lean`); **net delta: −1 staging axiom**
+(`scanIx_first_is_streamStart_axiom` discharged).
 
-  1. Port `SimpleKeyAboveIx` (indexed twin of legacy
-     `SimpleKeyAbove`, `Proofs/Scanner/ScannerCorrectness.lean:6175`).
-     Predicate parametric in `n : Nat` (the "safe prefix" floor):
-     simpleKey indices in the saved-key stack are all ≥ `n`, and
-     `simpleKey.possible = false` implies safe. ~50–100 LOC.
+The §7 chain mirrors the §12l `AllKeysPlaceholderInvIx` dispatcher
+composition in `IndexedScannerPlainScalarValid.lean`: per-helper
+`_preserves_simpleKey` / `_clears_simpleKey` / `_simpleKey_restored` /
+`_stack_pushed` / `_stack_popped` facts compose with the per-helper
+`_preserves_prefix` lemmas (mostly already proven in
+`IndexedScannerPlainScalarValid.lean` §12g–§12k) under
+`SimpleKeyAboveIx_mono` / `_of_cleared_mono` / `_flowStart` /
+`_flowEnd`. The 5-dispatcher composition (preprocess → structural →
+flow → block → content) is written by case-splitting through each
+dispatcher's `_ok_some_cases` enumerator. Reflection 109 below
+captures the LOC over-run (~3× over the planning estimate) and its
+amortization rationale.
 
-  2. Port `scanLoopIx_preserves_tokens` (indexed twin of legacy
-     `scanLoop_preserves_tokens`,
-     `Proofs/Scanner/ScannerCorrectness.lean:6197`). Under
-     `SimpleKeyAboveIx s n` invariant, every successful `scanLoopIx`
-     run preserves the first `n` tokens of `s.tokens`. Strong-
-     induction-on-fuel proof, chains
-     `scanNextTokenIx_preserves_SimpleKeyAboveIx` (a new induction-
-     step lemma) with the IH. ~150–250 LOC.
+For **6f.3b3.primitives.ordered**, the work is:
 
-  3. Discharge `scanIx_first_is_streamStart_axiom` by composing (1)
+  1. Port `ScanInvIx` (indexed twin of legacy `ScanInv`,
+     `Proofs/Scanner/ScannerCorrectness.lean:8745`) and
+     `AllKeysValidIx` (indexed twin of `AllKeysValid`, `:8983`).
+     The combined invariant tracks position-monotonicity through
+     simple-key stack frames. ~150–250 LOC.
+
+  2. Port `scanLoopIx_ordered` (indexed twin of legacy
+     `scanLoop_ordered`). Under `ScanInvIx + AllKeysValidIx`, every
+     successful `scanLoopIx` run produces a position-monotone token
+     stream. ~250–400 LOC dispatcher composition + ~50 LOC fuel
+     induction. **Plumbing-cost estimate**: ~1000 LOC (Reflection
+     109 argued the named-surface ~400–600 LOC undercounts the
+     dispatcher fan-out × invariant-threading multiplier).
+
+  3. Discharge `scanIx_positions_ordered_axiom` by composing (1)
      and (2): after `mk' |> emit streamStart |> (BOM advance?)`, the
-     state has `SimpleKeyAboveIx 1` (vacuous — simpleKey.possible =
-     false, stack empty), so `scanLoopIx_preserves_tokens` gives
-     `tokens[0] = (post-BOM state).tokens[0] = streamStart`. ~30 LOC.
+     state satisfies `ScanInvIx ∧ AllKeysValidIx` vacuously
+     (simpleKey.possible = false, stack empty); `scanLoopIx_ordered`
+     gives the conclusion. ~30 LOC.
 
-  Total estimate: ~250–400 LOC into
-  `Proofs/Scanner/IndexedScannerCorrectness.lean` §7 (new section).
-  Mirrors the legacy proof at `ScannerCorrectness.lean:6329–6402`.
+  Mirrors the legacy proof structure of
+  `ScannerCorrectness.lean:scan_positions_ordered`. Total budget
+  ~1000 LOC plumbing, ~500 LOC named-surface — Reflection 109
+  documents the multiplier rationale.
 
-Then **6f.3b3.primitives.ordered** (follow-up session): port
-`ScanInvIx` + `AllKeysValidIx` + `scanLoopIx_ordered`, discharge
-`scanIx_positions_ordered_axiom`. ~400–600 LOC. After both narrower
-axioms discharge, `scanIx_valid_token_stream` becomes axiom-free
-(modulo Lean meta-axioms). Both `_axiom`s amortize with the
-EmitterScannability migration's `_internals` since the same scanner-
-state-invariant infrastructure powers per-step preservation
+After 6f.3b3.primitives.ordered, `scanIx_valid_token_stream` becomes
+axiom-free (modulo Lean meta-axioms). Both `_axiom`s amortize with
+the EmitterScannability migration's `_internals` since the same
+scanner-state-invariant infrastructure powers per-step preservation
 (Reflection 107). Then **6f.3b3.internals** (~50 scanner-internal
 preservation lemmas) followed by per-file `.basic`, `.scanchain`,
 `.flowmono`, `.filteredgrowth`, `.emitscans`, `.parsestream`,
@@ -9803,18 +9807,27 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
     (7 pre-existing in `EmitterScannability.lean`). Reflection 108
     below.
 
-  ▸ **6f.3b3.primitives.streamStart** *(next session)*. Port
+  ▸ **6f.3b3.primitives.streamStart** ✅ *(LANDED 2026-05-24)*. Ported
     `SimpleKeyAboveIx` (indexed twin of legacy `SimpleKeyAbove`,
-    `ScannerCorrectness.lean:6175`), `scanLoopIx_preserves_tokens`
-    (preservation of first `n` tokens under the simple-key-stack
-    invariant), and discharge `scanIx_first_is_streamStart_axiom`.
-    Estimated ~250–450 LOC into
-    `Proofs/Scanner/IndexedScannerCorrectness.lean` §7 (new section)
-    or a sibling file
-    `Proofs/Scanner/IndexedScannerInternals/SimpleKeyAbove.lean` if
-    the §6 file grows too large.
+    `ScannerCorrectness.lean:6175`) plus the
+    `scanNextTokenIx_maintains_SimpleKeyAboveIx` /
+    `scanNextTokenIx_preserves_prefix` /
+    `scanLoopIx_preserves_tokens` chain into a new §7 of
+    `Proofs/Scanner/IndexedScannerCorrectness.lean` and discharged
+    `scanIx_first_is_streamStart_axiom` as a theorem (§7.9).
+    `#print axioms scanIx_first_is_streamStart` shows
+    `[propext, Classical.choice, Quot.sound]` (zero user-defined
+    axioms). The composite `scanIx_valid_token_stream` (relocated to
+    §7.10) now depends only on the remaining `scanIx_positions_ordered_axiom`.
 
-  ▸ **6f.3b3.primitives.ordered** *(follow-up session)*. Port
+    Net delta: ~1000 LOC (vs. ~250–450 LOC estimated — see Reflection 109
+    for the cost driver). **Sorry count unchanged** (7 pre-existing in
+    `EmitterScannability.lean`); **1 staging axiom discharged**
+    (`scanIx_first_is_streamStart_axiom`) — the only axiom of §6.4
+    still standing is `scanIx_positions_ordered_axiom`. Build green
+    at 439/439 jobs. Reflection 109 below.
+
+  ▸ **6f.3b3.primitives.ordered** *(next session)*. Port
     `ScanInvIx` + `AllKeysValidIx` (indexed twins of
     `ScanInv`/`AllKeysValid`, `ScannerCorrectness.lean:8745` / `:8983`)
     + `scanLoopIx_ordered`, and discharge
@@ -10552,6 +10565,111 @@ primitives is a strict gain). Counting axioms by file or by
 declaration is the wrong metric; the right metric is the size of the
 "trust me, this is true" surface area, which shrank from a 4-
 conjunct claim to a 2-conjunct claim.
+
+</details>
+
+##### **Reflection 109 (new, 2026-05-24)**: a Blueprint LOC estimate
+for an indexed-twin port can undershoot by **3×** when the legacy
+chain it mirrors is wider than its API surface suggests — but the
+underestimate isn't a planning failure if the *amortized* infrastructure
+serves multiple discharges.
+
+The 6f.3b3.primitives.streamStart estimate was ~250–450 LOC. The
+actual delta was ~1000 LOC — a 2–4× over-run. The cost drivers,
+in order of impact:
+
+1. **Per-helper case-splits compound through the dispatcher**.
+   Discharging `scanIx_first_is_streamStart_axiom` needs
+   `scanLoopIx_preserves_tokens` (a fuel induction), which calls
+   `scanNextTokenIx_preserves_prefix` (a 5-layer sub-dispatcher
+   composition), which itself splits across the 6/3/5/3/7 productions
+   of preprocess / structural / flow / block / content. Each
+   production needs to land on a per-helper `_preserves_prefix` term
+   *and* a `_tokens_size_le` term. The existing infrastructure
+   provided ~80% of the leaves for free — the residual ~20% was the
+   composition glue, but at 5 dispatcher levels × ~3 lines per arm
+   = ~75 lines just for the dispatch case-splits.
+
+2. **Two intertwined invariants (maintains + preserves) compose at
+   every step**. `SimpleKeyAboveIx` is preserved through every
+   `scanNextTokenIx` step; `scanLoopIx_preserves_tokens` requires
+   *both* the prefix preservation *and* the simple-key bound to
+   re-establish itself for the inductive hypothesis. Each of the
+   five sub-dispatchers thus needs *two* lemma applications, doubling
+   the LOC. The legacy `scanLoop_preserves_tokens` had the same
+   shape but the legacy `SimpleKeyAbove` chain was already proven
+   — for the indexed twin we ported both.
+
+3. **`.size` vs `.tokens.size` defeq is not omega-visible**.
+   `Indexed.TokenStream.size` is `@[inline] def size := ts.tokens.size`
+   — definitionally equal, but `omega` does not see through this
+   reduction. Every `(by omega)` proving `i < s.tokens.size` from
+   `i < n ∧ n ≤ s.tokens.size` works fine, but `(by omega)` proving
+   `i < s.tokens.tokens.size` (the underlying array's size) requires
+   either a `have h_eq : s.tokens.size = s.tokens.tokens.size := rfl`
+   or, more cleanly, an explicit `Nat.lt_of_lt_of_le h_i h_n` term.
+   Using TokenStream's `GetElem` instance (`s.tokens[i]'h`) keeps
+   the bound on the `.size` side and avoids the issue — but the
+   underlying-array form (`s.tokens.tokens[i]'h`) leaks through
+   `tokens.tokens[0]'h_size` in the final theorem signature (forced
+   by the staging-axiom shape the theorem must replace).
+
+4. **No Mathlib means no `set` tactic**. The natural way to name a
+   nested record-update state (`set s_mid := { unwindIndentsIx ... with
+   needIndentCheck := false }`) doesn't compile because `set` is a
+   Mathlib tactic. The workaround — inline every reference to the
+   long state expression — multiplies state-naming sites by 3–5×.
+   `let s_mid := ...` would also work but only locally in tactic
+   mode; the file's style stays consistent without it.
+
+5. **Generalization in fuel induction strips term-level bounds**. The
+   `induction fuel generalizing s with` for `scanLoopIx_preserves_tokens`
+   generalizes `s`, `h_n`, `h_inv`, and `h`. The existential's body
+   contains `s.tokens[i]'(Nat.lt_of_lt_of_le h_i h_n)`. After
+   generalization, this term's `h_n` no longer references the
+   outer fixed `s`, so Lean re-introduces it as an extra binder
+   in the IH. The fix is a one-liner (`have h_orig_step :
+   i < s''.tokens.size := Nat.lt_of_lt_of_le h_i h_n_step` and
+   pass to the IH explicitly), but the diagnostic message
+   ("rcases: function type") is opaque enough that this cost ~10
+   min of debugging.
+
+**Why the over-run is acceptable**: the ~1000 LOC of §7 is
+*amortized* infrastructure that benefits future discharges:
+
+  - `SimpleKeyAboveIx` and its `_mono` / `_of_cleared_mono` /
+    `_flowStart` / `_flowEnd` helpers transfer directly to the
+    EmitterScannability `_filtered_grows` proofs (Reflection 107's
+    "amortization with internals" pattern).
+  - `scanNextTokenIx_preserves_prefix` (a top-level prefix-
+    preservation under a simple-key bound) is exactly the shape
+    needed by the `scanLoopIx_ordered` discharge in
+    `6f.3b3.primitives.ordered` (next session).
+  - The per-dispatcher `_preserves_prefix` plumbing is now a
+    proven recipe — the `.ordered` discharge can copy the same
+    case-split skeleton with `ScanInvIx` substituting for
+    `SimpleKeyAboveIx`.
+
+**How to apply at future indexed-substrate scope estimates**: when
+the legacy chain you're mirroring is *deep but narrow* (one named
+top-level lemma, many auxiliary helpers), the LOC estimate should
+be against the *full* per-helper chain depth, not the named-lemma
+count. Multiply the API-surface count by the dispatcher fan-out
+(5–7 for `scanNextTokenIx`'s sub-dispatchers, 2–3 for invariant
+threading). The 250–450 LOC ladder estimate was right for the
+*named* surface (`SimpleKeyAboveIx` + `scanLoopIx_preserves_tokens`
++ 1 discharge) but wrong for the *plumbing* required to land them.
+Use the API-surface estimate to gate session-fit decisions; use the
+plumbing estimate to size the actual edit budget.
+
+**Sequencing implication**: `6f.3b3.primitives.ordered` (next
+session) has the same dispatcher fan-out and the same invariant-
+threading shape as `.streamStart`, so its plumbing cost is
+~similar. The named-surface estimate (~400–600 LOC) likely
+translates to ~800–1200 LOC of actual delta. Budget accordingly;
+the work is structurally parallel to this session's, but with
+`ScanInvIx` / `AllKeysValidIx` replacing `SimpleKeyAboveIx` and
+`scanLoopIx_ordered` replacing `scanLoopIx_preserves_tokens`.
 
 </details>
 
