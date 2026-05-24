@@ -2925,54 +2925,87 @@ theorem scanFlowMappingEndIx_preserves_FlowNestingInvIx {input : String}
 
 /-! ### §10f  `scanFlowEntryIx` preservation
 
-`scanFlowEntryIx s = .ok { ((scanValuePrepareIx s).emit .flowEntry).advance
-  with simpleKeyAllowed := true }`. Composes §8e (`scanValuePrepareIx`,
-PSV proven + FCPSV / FNI staged) with §5 (`emit_non_*` for `.flowEntry`).
-`.flowEntry` is non-plain and non-flow-bracket, so the §5 building
-blocks apply directly. -/
+After Step 6f.0, `scanFlowEntryIx s` is a `do`-block: it first checks
+`lastRealTokenValIx? s.tokens` and throws `invalidFlowEntry` on a
+leading or consecutive `,`; otherwise it succeeds with
+`s' = { (s.emit .flowEntry).advance with simpleKeyAllowed := true }`.
+The earlier accidental `scanValuePrepareIx s` call was removed (the
+`,` boundary does not retroactively confirm the pending simple key).
+
+`.flowEntry` is non-plain and non-flow-bracket, so the §5 `emit_non_*`
+building blocks apply directly to `s` itself — no `scanValuePrepareIx`
+composition needed. -/
 
 theorem scanFlowEntryIx_preserves_PlainScalarsValidIx {input : String}
     (s s' : ScannerStateIx input) (h_ok : scanFlowEntryIx s = .ok s')
     (h_old : PlainScalarsValidIx s.tokens) :
     PlainScalarsValidIx s'.tokens := by
   unfold scanFlowEntryIx at h_ok
-  simp only [Except.ok.injEq] at h_ok
-  subst h_ok
-  show PlainScalarsValidIx
-    { ((scanValuePrepareIx s).emit .flowEntry).advance with simpleKeyAllowed := true }.tokens
-  simp only [advance_tokens]
-  have h_prep := scanValuePrepareIx_preserves_PlainScalarsValidIx s h_old
-  exact emit_non_plain_preserves_PlainScalarsValidIx
-    (scanValuePrepareIx s) .flowEntry h_prep (by trivial)
+  simp only [bind, Except.bind] at h_ok
+  -- The success state when no error is thrown.
+  have h_psv_emit : PlainScalarsValidIx (s.emit YamlToken.flowEntry).tokens :=
+    emit_non_plain_preserves_PlainScalarsValidIx s .flowEntry h_old (by trivial)
+  split at h_ok
+  · split at h_ok
+    · simp at h_ok
+    · injection h_ok with h_ok
+      subst h_ok
+      show PlainScalarsValidIx
+        { (s.emit YamlToken.flowEntry).advance with simpleKeyAllowed := true }.tokens
+      simp only [advance_tokens]
+      exact h_psv_emit
+  · injection h_ok with h_ok
+    subst h_ok
+    show PlainScalarsValidIx
+      { (s.emit YamlToken.flowEntry).advance with simpleKeyAllowed := true }.tokens
+    simp only [advance_tokens]
+    exact h_psv_emit
 
 theorem scanFlowEntryIx_preserves_FlowContextPSVIx {input : String}
     (s s' : ScannerStateIx input) (h_ok : scanFlowEntryIx s = .ok s')
-    (h_old : FlowContextPSVIx s.tokens) (h_pl : SimpleKeyPlaceholderInvIx s) :
+    (h_old : FlowContextPSVIx s.tokens) (_h_pl : SimpleKeyPlaceholderInvIx s) :
     FlowContextPSVIx s'.tokens := by
   unfold scanFlowEntryIx at h_ok
-  simp only [Except.ok.injEq] at h_ok
-  subst h_ok
-  show FlowContextPSVIx
-    { ((scanValuePrepareIx s).emit .flowEntry).advance with simpleKeyAllowed := true }.tokens
-  simp only [advance_tokens]
-  have h_prep := scanValuePrepareIx_preserves_FlowContextPSVIx s h_old h_pl
-  exact emit_non_flow_non_plain_preserves_FlowContextPSVIx
-    (scanValuePrepareIx s) .flowEntry h_prep
-    (by trivial) (by decide) (by decide) (by decide) (by decide)
+  simp only [bind, Except.bind] at h_ok
+  have h_fcpsv_emit : FlowContextPSVIx (s.emit YamlToken.flowEntry).tokens :=
+    emit_non_flow_non_plain_preserves_FlowContextPSVIx
+      s .flowEntry h_old (by trivial) (by decide) (by decide) (by decide) (by decide)
+  split at h_ok
+  · split at h_ok
+    · simp at h_ok
+    · injection h_ok with h_ok
+      subst h_ok
+      show FlowContextPSVIx
+        { (s.emit YamlToken.flowEntry).advance with simpleKeyAllowed := true }.tokens
+      simp only [advance_tokens]
+      exact h_fcpsv_emit
+  · injection h_ok with h_ok
+    subst h_ok
+    show FlowContextPSVIx
+      { (s.emit YamlToken.flowEntry).advance with simpleKeyAllowed := true }.tokens
+    simp only [advance_tokens]
+    exact h_fcpsv_emit
 
 theorem scanFlowEntryIx_preserves_FlowNestingInvIx {input : String}
     (s s' : ScannerStateIx input) (h_ok : scanFlowEntryIx s = .ok s')
-    (h_fni : FlowNestingInvIx s) (h_pl : SimpleKeyPlaceholderInvIx s) :
+    (h_fni : FlowNestingInvIx s) (_h_pl : SimpleKeyPlaceholderInvIx s) :
     FlowNestingInvIx s' := by
   unfold scanFlowEntryIx at h_ok
-  simp only [Except.ok.injEq] at h_ok
-  subst h_ok
-  have h_prep := scanValuePrepareIx_preserves_FlowNestingInvIx s h_fni h_pl
-  have h_emit := emit_non_flow_preserves_FlowNestingInvIx
-    (scanValuePrepareIx s) .flowEntry h_prep
-    (by decide) (by decide) (by decide) (by decide)
-  unfold FlowNestingInvIx at h_emit ⊢
-  simpa using h_emit
+  simp only [bind, Except.bind] at h_ok
+  have h_emit : FlowNestingInvIx (s.emit YamlToken.flowEntry) :=
+    emit_non_flow_preserves_FlowNestingInvIx s .flowEntry h_fni
+      (by decide) (by decide) (by decide) (by decide)
+  split at h_ok
+  · split at h_ok
+    · simp at h_ok
+    · injection h_ok with h_ok
+      subst h_ok
+      unfold FlowNestingInvIx at h_emit ⊢
+      simpa using h_emit
+  · injection h_ok with h_ok
+    subst h_ok
+    unfold FlowNestingInvIx at h_emit ⊢
+    simpa using h_emit
 
 /-! ### §10g  `scanNextTokenIx_dispatchFlowIndicators` preservation
 
@@ -3483,7 +3516,9 @@ theorem skipToContentS_preserves_FlowNestingInvIx {input : String}
   show flowNestingIx s.tokens s.tokens.size = s.skipToContentS.flowLevel
   -- skipToContentS doesn't change flowLevel
   have : s.skipToContentS.flowLevel = s.flowLevel := by
-    unfold ScannerStateIx.skipToContentS; rfl
+    unfold ScannerStateIx.skipToContentS
+    dsimp only
+    split <;> rfl
   rw [this]; exact h_fni
 
 theorem scanNextTokenIx_preprocess_preserves_PlainScalarsValidIx
@@ -3524,6 +3559,15 @@ theorem scanNextTokenIx_preprocess_preserves_FlowContextPSVIx
     | exact unwindIndentsIx_preserves_FlowContextPSVIx _ _ h_fpsv_skip
     | exact h_fpsv_skip)
 
+/-- `FlowNestingInvIx` is preserved by the `needIndentCheck := false`
+    setter (the record update doesn't change `tokens` or `flowLevel`).
+    Added 6f.3b2.pre to bridge the `scanNextTokenIx_preprocess` unwind
+    branch, where Step 6f.0's reshape now wraps the unwound state in
+    `{ ... with needIndentCheck := false }`. -/
+theorem FlowNestingInvIx_setNeedIndentCheck_false {input : String}
+    {s : ScannerStateIx input} (h : FlowNestingInvIx s) :
+    FlowNestingInvIx { s with needIndentCheck := false } := h
+
 theorem scanNextTokenIx_preprocess_preserves_FlowNestingInvIx
     {input : String} (s s1 : ScannerStateIx input) (c : Char)
     (h_ok : scanNextTokenIx_preprocess s = .ok (some (s1, c)))
@@ -3540,15 +3584,8 @@ theorem scanNextTokenIx_preprocess_preserves_FlowNestingInvIx
   all_goals (
     apply saveSimpleKeyIx_preserves_FlowNestingInvIx
     first
-    | (-- needIndentCheck branch: unwind + needIndentCheck := false
-       show FlowNestingInvIx
-         { unwindIndentsIx s.skipToContentS s.skipToContentS.cursor.pos.col with
-             needIndentCheck := false }
-       unfold FlowNestingInvIx
-       show flowNestingIx (unwindIndentsIx s.skipToContentS s.skipToContentS.cursor.pos.col).tokens
-              (unwindIndentsIx s.skipToContentS s.skipToContentS.cursor.pos.col).tokens.size
-            = (unwindIndentsIx s.skipToContentS s.skipToContentS.cursor.pos.col).flowLevel
-       exact unwindIndentsIx_preserves_FlowNestingInvIx _ _ h_fni_skip)
+    | exact FlowNestingInvIx_setNeedIndentCheck_false
+              (unwindIndentsIx_preserves_FlowNestingInvIx _ _ h_fni_skip)
     | exact h_fni_skip)
 
 /-! ### §11h  `scanNextTokenIx_dispatchContent` preservation — proven
@@ -4323,11 +4360,17 @@ the per-scanner facts plus the `_mono` helpers from §6e+ to thread
     (s.overwriteAtCursor i sk tok).simpleKeyStack = s.simpleKeyStack := rfl
 
 @[simp] theorem skipToContentS_preserves_simpleKey {input : String}
-    (s : ScannerStateIx input) : s.skipToContentS.simpleKey = s.simpleKey := rfl
+    (s : ScannerStateIx input) : s.skipToContentS.simpleKey = s.simpleKey := by
+  unfold ScannerStateIx.skipToContentS
+  dsimp only
+  split <;> rfl
 
 @[simp] theorem skipToContentS_preserves_simpleKeyStack {input : String}
     (s : ScannerStateIx input) :
-    s.skipToContentS.simpleKeyStack = s.simpleKeyStack := rfl
+    s.skipToContentS.simpleKeyStack = s.simpleKeyStack := by
+  unfold ScannerStateIx.skipToContentS
+  dsimp only
+  split <;> rfl
 
 /-! ### §12b  Indent-stack helpers
 
@@ -4729,26 +4772,29 @@ theorem scanFlowMappingEndIx_stack_popped {input : String}
     (scanFlowMappingEndIx s).simpleKeyStack = s.simpleKeyStack.pop := by
   unfold scanFlowMappingEndIx; rfl
 
-theorem scanFlowEntryIx_clears_simpleKey {input : String}
+/-- After Step 6f.0, `scanFlowEntryIx` preserves (does NOT clear)
+    `simpleKey`: the `,` boundary doesn't retroactively confirm the
+    pending simple key. Indexed twin of legacy
+    `scanFlowEntry_preserves_simpleKey`. -/
+theorem scanFlowEntryIx_preserves_simpleKey {input : String}
     (s s' : ScannerStateIx input) (h : scanFlowEntryIx s = .ok s') :
-    s'.simpleKey.possible = false := by
+    s'.simpleKey = s.simpleKey := by
   unfold scanFlowEntryIx at h
-  simp only [Except.ok.injEq] at h
-  subst h
-  show ((scanValuePrepareIx s).emit YamlToken.flowEntry).advance.simpleKey.possible = false
-  rw [advance_preserves_simpleKey, emit_preserves_simpleKey]
-  exact scanValuePrepareIx_clears_simpleKey s
+  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h
+  repeat (any_goals (split at h))
+  all_goals (try contradiction)
+  all_goals (simp only [Except.ok.injEq] at h; subst h)
+  all_goals simp [advance_preserves_simpleKey, emit_preserves_simpleKey]
 
 theorem scanFlowEntryIx_preserves_simpleKeyStack {input : String}
     (s s' : ScannerStateIx input) (h : scanFlowEntryIx s = .ok s') :
     s'.simpleKeyStack = s.simpleKeyStack := by
   unfold scanFlowEntryIx at h
-  simp only [Except.ok.injEq] at h
-  subst h
-  show ((scanValuePrepareIx s).emit YamlToken.flowEntry).advance.simpleKeyStack =
-        s.simpleKeyStack
-  rw [advance_preserves_simpleKeyStack, emit_preserves_simpleKeyStack,
-      scanValuePrepareIx_preserves_simpleKeyStack]
+  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h
+  repeat (any_goals (split at h))
+  all_goals (try contradiction)
+  all_goals (simp only [Except.ok.injEq] at h; subst h)
+  all_goals simp [advance_preserves_simpleKeyStack, emit_preserves_simpleKeyStack]
 
 /-! ## §12f  Per-scanner `_tokens_eq` rfl-bridges (Step 6d.1e.12c-scout)
 
@@ -5155,24 +5201,26 @@ theorem scanValueIx_preserves_prefix {input : String}
         _ = (scanValueClearKeyIx s).tokens[i]'(by rw [h_ck]; omega) := h_prep
         _ = s.tokens[i]'(by omega) := by simp
 
+/-- After Step 6f.0, `scanFlowEntryIx` no longer calls
+    `scanValuePrepareIx`, so the prefix is preserved unconditionally
+    (no `h_inv` simple-key boundary hypothesis needed). -/
 theorem scanFlowEntryIx_preserves_prefix {input : String}
     (s : ScannerStateIx input) (s' : ScannerStateIx input)
     (h_ok : scanFlowEntryIx s = .ok s')
-    (n : Nat) (h_n : n ≤ s.tokens.size)
-    (h_inv : s.simpleKey.possible = true → n ≤ s.simpleKey.tokenIndex)
-    (i : Nat) (h_bound : i < n) :
+    (i : Nat) (h_bound : i < s.tokens.size) :
     s'.tokens[i]'(by have := scanFlowEntryIx_tokens_size_le h_ok; omega) =
-    s.tokens[i]'(by omega) := by
+    s.tokens[i]'h_bound := by
   unfold scanFlowEntryIx at h_ok
-  simp only [Except.ok.injEq] at h_ok
-  subst h_ok
-  -- s' = ((scanValuePrepareIx s).emit YamlToken.flowEntry).advance with simpleKeyAllowed := true
-  have h_prep := scanValuePrepareIx_preserves_prefix s n h_n h_inv i h_bound
-  have h_prep_sz := scanValuePrepareIx_tokens_size_le s
-  have h_i_lt_prep : i < (scanValuePrepareIx s).tokens.size := by omega
-  have h_emit := emit_preserves_tokens_at (scanValuePrepareIx s) YamlToken.flowEntry i h_i_lt_prep
-  show ((scanValuePrepareIx s).emit YamlToken.flowEntry).tokens[i]'_ = s.tokens[i]'(by omega)
-  exact h_emit.trans h_prep
+  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h_ok
+  have h_emit := emit_preserves_tokens_at s YamlToken.flowEntry i h_bound
+  repeat (any_goals (split at h_ok))
+  all_goals (try contradiction)
+  all_goals (simp only [Except.ok.injEq] at h_ok; subst h_ok)
+  all_goals (
+    show ({ (s.emit YamlToken.flowEntry).advance with simpleKeyAllowed := true }).tokens[i]'_ =
+      s.tokens[i]'h_bound
+    simp only [advance_tokens]
+    exact h_emit)
 
 /-! ## §12l  Dispatcher composition for `AllKeysPlaceholderInvIx` (Step 6d.1e.12c.2)
 
@@ -5573,41 +5621,15 @@ theorem scanNextTokenIx_dispatchFlowIndicators_preserves_AllKeysPlaceholderInvIx
       (scanFlowMappingEndIx_stack_popped s)
       (scanFlowMappingEndIx_tokens_size_le s)
       (fun i hi => scanFlowMappingEndIx_preserves_prefix s i hi)
-  · -- scanFlowEntryIx: clears simpleKey, preserves stack, but overwrites at sk positions
-    -- (via scanValuePrepareIx). Use _of_cleared_current with bounded prefix lemma.
-    have h_clears := scanFlowEntryIx_clears_simpleKey s s' hOk
-    have h_stack := scanFlowEntryIx_preserves_simpleKeyStack s s' hOk
-    have h_mono := scanFlowEntryIx_tokens_size_le hOk
-    refine AllKeysPlaceholderInvIx_of_cleared_current s' h_clears ?_ ?_ ?_
-    · -- SimpleKeyStackPlaceholderInvIx: stacked keys' tokens preserved via bounded prefix.
-      intro j hj h_poss_j
-      have hj_s : j < s.simpleKeyStack.size := by rw [← h_stack]; exact hj
-      have h_get : s'.simpleKeyStack[j]'hj = s.simpleKeyStack[j]'hj_s := by simp [h_stack]
-      rw [h_get] at h_poss_j ⊢
-      have ⟨hb1, hb2, hp1, hp2⟩ := h_akpi.2.1 j hj_s h_poss_j
-      refine ⟨by omega, by omega, ?_, ?_⟩
-      · intro _h1
-        rw [scanFlowEntryIx_preserves_prefix s s' hOk
-              ((s.simpleKeyStack[j]'hj_s).tokenIndex + 2) (by omega)
-              (fun hp => by have := h_akpi.2.2.1 hp j hj_s h_poss_j; omega)
-              (s.simpleKeyStack[j]'hj_s).tokenIndex (by omega)]
-        exact hp1 hb1
-      · intro _h2
-        rw [scanFlowEntryIx_preserves_prefix s s' hOk
-              ((s.simpleKeyStack[j]'hj_s).tokenIndex + 2) (by omega)
-              (fun hp => by have := h_akpi.2.2.1 hp j hj_s h_poss_j; omega)
-              ((s.simpleKeyStack[j]'hj_s).tokenIndex + 1) (by omega)]
-        exact hp2 hb2
-    · exact SimpleKeyTokenDisjointIx_of_not_possible _ h_clears
-    · intro j hj h_poss_j k hk h_poss_k
-      have hj_s : j < s.simpleKeyStack.size := by rw [← h_stack]; exact hj
-      have hk_s : k < s.simpleKeyStack.size := by omega
-      have h_get_j : s'.simpleKeyStack[j]'hj = s.simpleKeyStack[j]'hj_s := by simp [h_stack]
-      have h_get_k : (s'.simpleKeyStack[k]'(by omega)) =
-          s.simpleKeyStack[k]'hk_s := by simp [h_stack]
-      rw [h_get_j] at h_poss_j ⊢
-      rw [h_get_k] at h_poss_k ⊢
-      exact h_akpi.2.2.2 j hj_s h_poss_j k hk h_poss_k
+  · -- scanFlowEntryIx (after Step 6f.0): mono — preserves simpleKey,
+    -- simpleKeyStack, and adds one token (`.flowEntry`), so prefix is
+    -- preserved by `emit_preserves_tokens_at`. The `,` boundary no
+    -- longer calls `scanValuePrepareIx`, matching the legacy.
+    exact AllKeysPlaceholderInvIx_mono s s' h_akpi
+      (scanFlowEntryIx_preserves_simpleKey s s' hOk)
+      (scanFlowEntryIx_preserves_simpleKeyStack s s' hOk)
+      (scanFlowEntryIx_tokens_size_le hOk)
+      (fun i hi => scanFlowEntryIx_preserves_prefix s s' hOk i hi)
 
 /-- `scanNextTokenIx_dispatchBlockIndicators` preserves `AllKeysPlaceholderInvIx`.
     `scanBlockEntryIx` is mono; `scanKeyIx` clears + preserves stack;
