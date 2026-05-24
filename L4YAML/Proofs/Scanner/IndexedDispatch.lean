@@ -246,7 +246,10 @@ theorem skipWhitespaceS_offset_monotonic {input : String} (s : ScannerStateIx in
   exact skipWhitespace_offset_monotonic s.cursor
 
 @[simp] theorem skipToContentS_cursor {input : String} (s : ScannerStateIx input) :
-    s.skipToContentS.cursor = L4YAML.Scanner.Indexed.skipToContent s.cursor := rfl
+    s.skipToContentS.cursor = L4YAML.Scanner.Indexed.skipToContent s.cursor := by
+  unfold ScannerStateIx.skipToContentS
+  dsimp only
+  split <;> rfl
 
 theorem skipToContentS_offset_monotonic {input : String} (s : ScannerStateIx input) :
     s.cursor.pos.offset ≤ s.skipToContentS.cursor.pos.offset := by
@@ -345,11 +348,22 @@ theorem scanFlowEntryIx_offset_monotonic {input : String}
     {s s' : ScannerStateIx input} (h : scanFlowEntryIx s = .ok s') :
     s.cursor.pos.offset ≤ s'.cursor.pos.offset := by
   unfold scanFlowEntryIx at h
-  simp only [Except.ok.injEq] at h
-  subst h
-  show s.cursor.pos.offset ≤ _
-  simp only [advance_cursor, emit_cursor, scanValuePrepareIx_cursor]
-  exact IxCursor.advance_offset_monotonic _
+  simp only [bind, Except.bind] at h
+  split at h
+  · -- if let some lastTok := lastRealTokenValIx? s.tokens
+    split at h
+    · -- invalidFlowEntry throw — contradicts .ok
+      simp at h
+    · injection h with h
+      subst h
+      show s.cursor.pos.offset ≤ _
+      simp only [advance_cursor, emit_cursor]
+      exact IxCursor.advance_offset_monotonic _
+  · injection h with h
+    subst h
+    show s.cursor.pos.offset ≤ _
+    simp only [advance_cursor, emit_cursor]
+    exact IxCursor.advance_offset_monotonic _
 
 /-! ### Pattern B — state-returning dispatchers -/
 
@@ -624,7 +638,10 @@ The `_tokens` simp lemmas establish that the state's `tokens` field is
 whitespace skips), and the `_tokens_size` lemmas count emits. -/
 
 @[simp] theorem skipToContentS_tokens {input : String} (s : ScannerStateIx input) :
-    s.skipToContentS.tokens = s.tokens := rfl
+    s.skipToContentS.tokens = s.tokens := by
+  unfold ScannerStateIx.skipToContentS
+  dsimp only
+  split <;> rfl
 
 @[simp] theorem skipSpacesS_tokens {input : String} (s : ScannerStateIx input) :
     s.skipSpacesS.1.tokens = s.tokens := rfl
@@ -806,11 +823,20 @@ theorem scanFlowEntryIx_tokens_size_le {input : String}
     {s s' : ScannerStateIx input} (h : scanFlowEntryIx s = .ok s') :
     s.tokens.size ≤ s'.tokens.size := by
   unfold scanFlowEntryIx at h
-  simp only [Except.ok.injEq] at h
-  subst h
-  refine Nat.le_trans (scanValuePrepareIx_tokens_size_le s) ?_
-  show _ ≤ _
-  simp
+  simp only [bind, Except.bind] at h
+  split at h
+  · split at h
+    · simp at h
+    · injection h with h
+      subst h
+      show s.tokens.size ≤ _
+      simp only [advance_tokens, emit_tokens_size]
+      omega
+  · injection h with h
+    subst h
+    show s.tokens.size ≤ _
+    simp only [advance_tokens, emit_tokens_size]
+    omega
 
 theorem scanFlowSequenceStartIx_tokens_size_le {input : String}
     (s : ScannerStateIx input) :
@@ -1040,7 +1066,7 @@ theorem scanNextTokenIx_preprocess_tokens_size_le {input : String}
           obtain ⟨hs, _⟩ := h
           subst hs
           show s.tokens.size ≤ _
-          rw [show s.tokens.size = s.skipToContentS.tokens.size from rfl]
+          rw [← skipToContentS_tokens s]
           refine Nat.le_trans ?_ (saveSimpleKeyIx_tokens_size_le _)
           first
             | exact Nat.le_refl _
