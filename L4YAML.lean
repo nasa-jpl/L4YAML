@@ -15,6 +15,7 @@ import L4YAML.Proofs.Contracts.DocumentContracts
 import L4YAML.Proofs.Production.DocumentProduction
 import L4YAML.Proofs.Output.DumpRoundTrip
 import L4YAML.Proofs.Output.EmitterScannability
+import L4YAML.Proofs.Output.IndexedEmitterScannability
 import L4YAML.Proofs.EndToEndCorrectness
 import L4YAML.Proofs.Errors.ErrorProperties
 import L4YAML.Proofs.Errors.EscapeResolution

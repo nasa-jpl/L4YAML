@@ -280,8 +280,9 @@ theorem parseYamlIx_produces_valid_nodes
 
     Mirrors the legacy chain: decompose `parseYamlIx` → `scanFilteredIx`,
     unfold `scanFilteredIx` to recover the unfiltered `scanIx` witness,
-    then apply `scanIx_valid_token_stream_axiom` (staging axiom from
-    6f.3b2.consume, scheduled for discharge in 6f.3b3). -/
+    then apply `scanIx_valid_token_stream` (Step 6f.3b3.primitives.tractable
+    composed theorem replacing the prior 6f.3b2.consume monolithic
+    staging axiom — see Reflection 108). -/
 theorem parseYamlIx_implies_valid_token_stream
     (input : String) (docs : Array YamlDocument)
     (h : parseYamlIx input = .ok docs) :
@@ -295,7 +296,7 @@ theorem parseYamlIx_implies_valid_token_stream
   split at h_scanf
   · rename_i all_tokens h_scan_raw
     exact ⟨all_tokens, h_scan_raw,
-      scanIx_valid_token_stream_axiom all_tokens h_scan_raw⟩
+      scanIx_valid_token_stream all_tokens h_scan_raw⟩
   · contradiction
 
 end L4YAML.Proofs.Indexed.Grammable

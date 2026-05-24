@@ -437,7 +437,7 @@ theorem scanFilteredIx_FlowBracketsMatchedIx
       (scan_flow_brackets_matched_ix_axiom all_tokens h_scan_raw)
   · contradiction
 
-/-! ## §6  `ValidTokenStreamPropIx` and `scanIx_valid_token_stream_axiom`
+/-! ## §6  `ValidTokenStreamPropIx` and the four `scanIx_*` primitives
 
 Indexed twin of legacy `ValidTokenStreamProp` (`Spec/Grammar.lean:419`)
 and `scan_valid_token_stream` (`Proofs/Scanner/ScannerCorrectness.lean:9652`).
@@ -449,15 +449,26 @@ input.utf8ByteSize`) — that bound costs zero proof work. The four
 `ValidTokenStreamProp` invariants (sizeGe2, streamStart, streamEnd,
 positionsOrdered) still need explicit proofs.
 
-Step 6f.3b2.consume introduces `scanIx_valid_token_stream_axiom` as a
-**staging axiom** scheduled for discharge in 6f.3b3 (alongside the
-EmitterScannability migration's ~50 indexed scanner-internal twins).
-This is the first axiom added to the project since the 6d.1e axiom
-discharge cycle — see Reflection 107 for the rationale (the four
-primitive lemmas each carry ~300 LOC of scanner-state invariant
-machinery; porting all four here would balloon 6f.3b2.consume past its
-EndToEndCorrectness-migration scope, and the same primitives are
-prerequisites for 6f.3b3 anyway). -/
+**6f.3b3.primitives.tractable (this session)** discharges the two
+*tractable* primitives — `scanIx_produces_at_least_two` and
+`scanIx_last_is_streamEnd` — both proven directly from
+`scanLoopIx_success_emits_streamEnd` (a new lightweight helper) plus
+the existing `scanLoopIx_tokens_size_le` /
+`unwindIndentsIx_tokens_size_le`. The two *intricate* primitives
+(`scanIx_first_is_streamStart` and `scanIx_positions_ordered`) remain
+as **narrower staging axioms** because each requires porting a
+substantial scanner-state-invariant infrastructure
+(`SimpleKeyAboveIx` + `scanLoopIx_preserves_tokens` for the first;
+`ScanInvIx` + `AllKeysValidIx` + `scanLoopIx_ordered` for the second)
+that is shared with the EmitterScannability migration's
+`6f.3b3.internals` sub-step.
+
+The composite theorem `scanIx_valid_token_stream` (replacing the
+prior session's monolithic `scanIx_valid_token_stream_axiom` staging
+axiom) is now a *theorem* composed of two discharged primitives plus
+two narrower axioms — net reduction in staging-axiom surface from a
+single coarse axiom to two precisely-scoped ones, mirroring the
+6d.1e refactoring posture (Reflection 108). -/
 
 /-- Indexed twin of `Spec/Grammar.lean:ValidTokenStreamProp`. The
     `input` parameter is implicit since `Indexed.TokenStream` carries
@@ -474,36 +485,215 @@ def ValidTokenStreamPropIx {input : String} (tokens : Indexed.TokenStream input)
   ∀ (i j : Fin tokens.tokens.size), i.val < j.val →
     (tokens.tokens[i]).start.offset ≤ (tokens.tokens[j]).start.offset
 
-/-- **Staging axiom** (Step 6f.3b2.consume): the unfiltered indexed
-    scanner `ScannerStateIx.scanIx` produces a stream satisfying the
-    four `ValidTokenStreamPropIx` invariants.
+/-! ### §6.1  Helper: `scanLoopIx_success_emits_streamEnd`
 
-    **Discharge plan**: scheduled for Step 6f.3b3 (the
-    `Proofs/Output/EmitterScannability.lean` migration), which builds
-    indexed twins of the per-scanner-internal preservation lemmas
-    including
-    - `scanIx_produces_at_least_two`   (indexed twin of
-      `scan_produces_at_least_two`, `ScannerCorrectness.lean:6304`),
-    - `scanIx_first_is_streamStart`    (indexed twin of
-      `scan_first_is_streamStart`, `:6329`),
-    - `scanIx_last_is_streamEnd`       (indexed twin of
-      `scan_last_is_streamEnd`, `:6413`),
-    - `scanIx_positions_ordered`       (indexed twin of
-      `scan_positions_ordered`, `:9436`).
+Indexed twin of legacy `scanLoop_success_emits_streamEnd`
+(`Proofs/Scanner/ScannerCorrectness.lean:316`). Every successful
+`scanLoopIx` call returns a token stream of the form
+`(s'.emit streamEnd).tokens` for some terminal state `s'` — because
+the *only* success-returning arm of `scanLoopIx` is the terminal
+`unwindIndentsIx + emit streamEnd` branch. -/
 
-    Composing the four primitives (analogous to legacy
-    `scan_produces_valid_tokens`, `:9499`) discharges this axiom at
-    that point. The legacy four-lemma chain spans ~300 LOC of
-    scanner-state invariants (`SimpleKeyAbove`,
-    `scanLoop_preserves_tokens`, `scanLoop_success_emits_streamEnd`,
-    etc.); porting them here would extend 6f.3b2.consume well past its
-    EndToEndCorrectness-migration scope.
+theorem scanLoopIx_success_emits_streamEnd {input : String} :
+    ∀ (s : ScannerStateIx input) (fuel : Nat) (ts : Indexed.TokenStream input),
+      scanLoopIx s fuel = .ok ts →
+      ∃ (s' : ScannerStateIx input), ts = (s'.emit YamlToken.streamEnd).tokens := by
+  intro s fuel
+  induction fuel generalizing s with
+  | zero =>
+    intro ts h; unfold scanLoopIx at h; cases h
+  | succ fuel' ih =>
+    intro ts h
+    unfold scanLoopIx at h
+    cases hSc : scanNextTokenIx s with
+    | error e => rw [hSc] at h; cases h
+    | ok scRes =>
+      rw [hSc] at h
+      cases scRes with
+      | none =>
+        by_cases hFL : s.flowLevel > 0
+        · rw [if_pos hFL] at h; cases h
+        · rw [if_neg hFL] at h
+          by_cases hDS : (s.directivesPresent && !s.documentEverStarted) = true
+          · rw [if_pos hDS] at h; cases h
+          · rw [if_neg hDS] at h
+            cases h
+            exact ⟨unwindIndentsIx s (-1), rfl⟩
+      | some s'' => exact ih s'' ts h
 
-    See Reflection 107 in the Blueprint for the rationale on staging
-    this axiom now versus inlining the discharge at 6f.3b2.consume. -/
-axiom scanIx_valid_token_stream_axiom
+/-! ### §6.2  Helper: `scanLoopIx_increases_tokens`
+
+Strengthens `scanLoopIx_tokens_size_le` (`s.tokens.size ≤ ts.size`) to
+`s.tokens.size + 1 ≤ ts.size`: the loop terminates with
+`unwindIndentsIx + emit streamEnd`, and the `emit streamEnd` is
+unconditional in the success arm — so at minimum +1 token is added,
+regardless of how the recursive arms grew the stream. Indexed twin of
+legacy `scanLoop_increases_tokens`
+(`Proofs/Scanner/ScannerCorrectness.lean:6257`). -/
+
+theorem scanLoopIx_increases_tokens {input : String}
+    {s : ScannerStateIx input} {fuel : Nat} {ts : Indexed.TokenStream input}
+    (h : scanLoopIx s fuel = .ok ts) :
+    s.tokens.size + 1 ≤ ts.size := by
+  induction fuel generalizing s with
+  | zero => unfold scanLoopIx at h; cases h
+  | succ fuel' ih =>
+    unfold scanLoopIx at h
+    cases hSc : scanNextTokenIx s with
+    | error e => rw [hSc] at h; cases h
+    | ok scRes =>
+      rw [hSc] at h
+      cases scRes with
+      | none =>
+        by_cases hFL : s.flowLevel > 0
+        · rw [if_pos hFL] at h; cases h
+        · rw [if_neg hFL] at h
+          by_cases hDS : (s.directivesPresent && !s.documentEverStarted) = true
+          · rw [if_pos hDS] at h; cases h
+          · rw [if_neg hDS] at h
+            cases h
+            -- ts = ((unwindIndentsIx s (-1)).emit streamEnd).tokens
+            show s.tokens.size + 1 ≤ _
+            have h_unwind := unwindIndentsIx_tokens_size_le s (-1)
+            -- (unwindIndentsIx s (-1)).emit streamEnd : push +1
+            simp only [Indexed.TokenStream.size]
+            show s.tokens.tokens.size + 1 ≤ ((unwindIndentsIx s (-1)).tokens.tokens.push _).size
+            rw [Array.size_push]
+            change _ ≤ _ at h_unwind
+            simp only [Indexed.TokenStream.size] at h_unwind
+            omega
+      | some s'' =>
+        have hStep := scanNextTokenIx_tokens_size_le hSc
+        have hIH := ih h
+        omega
+
+/-! ### §6.3  Discharged primitive: `scanIx_produces_at_least_two`
+
+Indexed twin of legacy `scan_produces_at_least_two`
+(`Proofs/Scanner/ScannerCorrectness.lean:6304`). Composes
+`scanLoopIx_increases_tokens` (the post-BOM state's `tokens.size + 1 ≤
+tokens.size`) with the observation that the initial state after
+`mk' |> emit streamStart` has `tokens.size = 1`. -/
+
+theorem scanIx_produces_at_least_two {input : String}
+    (tokens : Indexed.TokenStream input)
+    (h : scanIx input = .ok tokens) :
+    tokens.tokens.size ≥ 2 := by
+  unfold scanIx at h
+  have h_inc := scanLoopIx_increases_tokens h
+  -- Mirrors the legacy proof structure (`scan_produces_at_least_two`,
+  -- `ScannerCorrectness.lean:6304`): `split` on the BOM match inside
+  -- `h_inc`, then reduce each arm via `advance_tokens` + `emit_tokens_size`.
+  show 2 ≤ tokens.tokens.size
+  change _ ≤ tokens.size
+  split at h_inc
+  · -- some BOM arm: advance preserves tokens
+    simp only [advance_tokens, emit_tokens_size] at h_inc
+    exact h_inc
+  · -- _ arm: tokens.size = ((mk').emit streamStart).tokens.size
+    simp only [emit_tokens_size] at h_inc
+    exact h_inc
+
+/-! ### §6.3  Discharged primitive: `scanIx_last_is_streamEnd`
+
+Indexed twin of legacy `scan_last_is_streamEnd`
+(`Proofs/Scanner/ScannerCorrectness.lean:6413`). Composes
+`scanLoopIx_success_emits_streamEnd` with `Array.getElem_push_eq`
+(retrieving the last element of a pushed array). -/
+
+theorem scanIx_last_is_streamEnd {input : String}
+    (tokens : Indexed.TokenStream input)
+    (h : scanIx input = .ok tokens)
+    (h_size : 0 < tokens.tokens.size) :
+    (tokens.tokens[tokens.tokens.size - 1]'(by omega)).token = YamlToken.streamEnd := by
+  unfold scanIx at h
+  obtain ⟨s', h_tokens⟩ := scanLoopIx_success_emits_streamEnd _ _ _ h
+  -- `subst` (not `rw`) so the dependent proof `h_size` is re-elaborated
+  -- against `(s'.emit streamEnd).tokens.tokens.size` rather than left
+  -- stranded with a stale `tokens` reference.
+  subst h_tokens
+  -- Mirrors legacy `scan_last_is_streamEnd` proof structure
+  -- (`ScannerCorrectness.lean:6413`): `unfold emit`, then index = `size - 1`
+  -- reduces via `Array.size_push`, then `Array.getElem_push` retrieves the
+  -- pushed element whose `.token` is `streamEnd` by construction.
+  -- Note: the indexed substrate inserts an extra `Indexed.TokenStream.push`
+  -- between `emit` and the raw `Array.push`; unfolding `emit` alone leaves
+  -- `(ts.push t).tokens.size` rather than `(ts.tokens.push t).size`. The
+  -- first step is `rfl` (structural projection), so `show` (definitional)
+  -- forces the goal into Array-level form before `Array.size_push` applies.
+  unfold ScannerStateIx.emit
+  show (((s'.tokens.tokens).push
+          (IxToken.mk' (input := input) s'.cursor.pos YamlToken.streamEnd
+            s'.cursor.pos (Nat.le_refl _) s'.cursor.posBound))[
+        ((s'.tokens.tokens).push _).size - 1]'(by
+          simp only [Array.size_push]; omega)).token = YamlToken.streamEnd
+  simp only [Array.size_push]
+  have h_idx : s'.tokens.tokens.size + 1 - 1 = s'.tokens.tokens.size := by omega
+  simp [Array.getElem_push, h_idx]
+  -- Remaining goal: the pushed `IxToken.mk' _ streamEnd _ _ _`'s `.token = streamEnd`.
+  -- This is `rfl` since `IxToken.mk'` takes the second argument as the `.token` field.
+  rfl
+
+/-! ### §6.4  Staging axioms for the two intricate primitives
+
+These two axioms scope precisely the work deferred to
+`6f.3b3.primitives.streamStart` and `6f.3b3.primitives.ordered`
+(see Blueprint). They replace the prior session's single coarse
+`scanIx_valid_token_stream_axiom` with two precisely-scoped axioms
+that each describe a *specific* conjunct of `ValidTokenStreamPropIx`.
+
+The infrastructure each requires:
+
+  - `scanIx_first_is_streamStart_axiom`: needs `SimpleKeyAboveIx`
+    (indexed twin of legacy `SimpleKeyAbove`,
+    `ScannerCorrectness.lean:6175`) and `scanLoopIx_preserves_tokens`
+    (preservation of the first `n` tokens under simple-key-stack
+    invariant).
+
+  - `scanIx_positions_ordered_axiom`: needs `ScanInvIx` and
+    `AllKeysValidIx` (indexed twins of legacy `ScanInv` /
+    `AllKeysValid`, `ScannerCorrectness.lean:8745` / `:8983`) plus
+    `scanLoopIx_ordered` (induction on fuel proving positionsOrdered
+    through the loop).
+
+Both infrastructures are also prerequisites for the EmitterScannability
+indexed twin's per-step preservation lemmas — so the work is *amortized*
+when ported at 6f.3b3.internals. See Reflection 108. -/
+
+/-- **Staging axiom** for the first-token-is-streamStart conjunct.
+    Scheduled for discharge at `6f.3b3.primitives.streamStart`. -/
+axiom scanIx_first_is_streamStart_axiom
     {input : String} (tokens : Indexed.TokenStream input)
-    (h : ScannerStateIx.scanIx input = .ok tokens) :
-    ValidTokenStreamPropIx tokens
+    (h : scanIx input = .ok tokens)
+    (h_size : 0 < tokens.tokens.size) :
+    (tokens.tokens[0]'h_size).token = YamlToken.streamStart
+
+/-- **Staging axiom** for the positions-monotonic-on-start.offset
+    conjunct. Scheduled for discharge at
+    `6f.3b3.primitives.ordered`. -/
+axiom scanIx_positions_ordered_axiom
+    {input : String} (tokens : Indexed.TokenStream input)
+    (h : scanIx input = .ok tokens) :
+    ∀ (i j : Fin tokens.tokens.size), i.val < j.val →
+      (tokens.tokens[i]).start.offset ≤ (tokens.tokens[j]).start.offset
+
+/-! ### §6.5  Composite theorem `scanIx_valid_token_stream`
+
+Replaces the prior session's monolithic `scanIx_valid_token_stream_axiom`
+with a *theorem* that composes two discharged primitives
+(§6.2 + §6.3) with two narrower staging axioms (§6.4). The downstream
+consumer in `IndexedGrammable.parseYamlIx_implies_valid_token_stream`
+now references this theorem instead of the deleted composite axiom. -/
+
+theorem scanIx_valid_token_stream
+    {input : String} (tokens : Indexed.TokenStream input)
+    (h : scanIx input = .ok tokens) :
+    ValidTokenStreamPropIx tokens := by
+  have h_size : tokens.tokens.size ≥ 2 := scanIx_produces_at_least_two tokens h
+  have h_pos : 0 < tokens.tokens.size := by omega
+  refine ⟨h_size, ?_, ?_, ?_⟩
+  · intro _; exact scanIx_first_is_streamStart_axiom tokens h h_pos
+  · intro _; exact scanIx_last_is_streamEnd tokens h h_pos
+  · exact scanIx_positions_ordered_axiom tokens h
 
 end L4YAML.Proofs.Indexed.ScannerCorrectness

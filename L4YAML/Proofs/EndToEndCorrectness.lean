@@ -74,13 +74,20 @@ String --[scanIx]--> Indexed.TokenStream --[filter]--> Indexed.TokenStream --[pa
 
 ## Axioms
 
-The only staging axiom involved is `scanIx_valid_token_stream_axiom`
-(`Proofs/Scanner/IndexedScannerCorrectness.lean` §6, added at Step
-6f.3b2.consume). Its discharge is scheduled for Step 6f.3b3, alongside
-the indexed twin port of `Proofs/Output/EmitterScannability.lean`'s
-~50 scanner-internal preservation lemmas — the same primitive family
-that powers the legacy `scan_produces_valid_tokens` discharge. See
-Reflection 107 in the Blueprint.
+The composite proof `scanIx_valid_token_stream`
+(`Proofs/Scanner/IndexedScannerCorrectness.lean` §6.5) is now a
+*theorem*, composed of two **discharged** primitives
+(`scanIx_produces_at_least_two` §6.3, `scanIx_last_is_streamEnd` §6.4)
+and two **narrower staging axioms**
+(`scanIx_first_is_streamStart_axiom`,
+`scanIx_positions_ordered_axiom`, both §6.4) — a refactor from the
+prior session's monolithic `scanIx_valid_token_stream_axiom`. Their
+discharge is scheduled for Step 6f.3b3.primitives.streamStart and
+6f.3b3.primitives.ordered, alongside the indexed-twin port of
+`Proofs/Output/EmitterScannability.lean`'s ~50 scanner-internal
+preservation lemmas — the same primitive family that powers the
+legacy `scan_produces_valid_tokens` discharge. See Reflections 107
+and 108 in the Blueprint.
 -/
 
 namespace L4YAML.Proofs.EndToEndCorrectness
@@ -300,8 +307,11 @@ property, making `ValidTokenStreamPropIx` visible from the end-to-end level.
 Re-export of `L4YAML.Proofs.Indexed.Grammable.parseYamlIx_implies_valid_token_stream`
 into the `EndToEndCorrectness` namespace for doc-verification-bridge visibility.
 
-Uses the staging axiom `scanIx_valid_token_stream_axiom`
-(`IndexedScannerCorrectness.lean` §6); discharge scheduled for 6f.3b3.
+Uses the composite theorem `scanIx_valid_token_stream`
+(`IndexedScannerCorrectness.lean` §6.5), which depends on two narrower
+staging axioms (`scanIx_first_is_streamStart_axiom`,
+`scanIx_positions_ordered_axiom`); both axioms' discharge is scheduled
+for Steps 6f.3b3.primitives.streamStart and 6f.3b3.primitives.ordered.
 -/
 theorem parseYamlIx_implies_valid_token_stream (input : String)
     (docs : Array YamlDocument)
