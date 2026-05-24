@@ -1820,66 +1820,40 @@ not in-place axiom-to-theorem promotion — the latter is impossible
 when the axiom's hypothesis is strictly weaker than what the
 stronger lemma derives).
 
-**Next session**: **Step 6f.3b2.pre — Discharge 6f.0 staging-proof
-regressions** (cascade-prereq for the rest of 6f.3b2). With
-6f.3b2's first execution attempt (this session) surfacing pre-
-existing 6f.0 staging-proof regressions in two foundation files
-(see Reflection 103), the cascade-fix order is:
-  1. **`Proofs/Scanner/IndexedDispatch.lean`** — DONE this session
-     (4 fixes landed): `skipToContentS_cursor` /
-     `skipToContentS_tokens` (replace `rfl` with `dsimp only;
-     split <;> rfl` for the post-6f.0 `if-then-else` shape),
-     `scanFlowEntryIx_offset_monotonic` /
-     `scanFlowEntryIx_tokens_size_le` (replace `unfold + simp +
-     subst` with full `do`-block guard fold-in:
-     `simp only [bind, Except.bind] at h; split at h; …;
-     injection h with h; subst h`).
-  2. **`Proofs/Production/IndexedScannerPlainScalarValid.lean`**
-     — 12 errors remaining. Fix pattern:
-     - 2 rfl failures on `skipToContentS_preserves_simpleKey` /
-       `_simpleKeyStack`: `dsimp only; split <;> rfl` (same as
-       step 1).
-     - 1 nested-rfl in `skipToContentS_preserves_FlowNestingInvIx`:
-       same pattern on the `flowLevel` projection.
-     - 1 type-mismatch in
-       `scanNextTokenIx_preprocess_preserves_FlowNestingInvIx`'s
-       second `first | … | …` arm: needs a new helper
-       `setIfFlag_preserves_FlowNestingInvIx` (or use the post-
-       unwind branch's `unwindIndentsIx_preserves_FlowNestingInvIx`
-       composed with a `needIndentCheck := false` field-setter
-       preservation lemma).
-     - 3 rewrites in `scanFlowEntryIx_preserves_PlainScalarsValidIx`
-       / `_FlowContextPSVIx` / `_FlowNestingInvIx`: the legacy proof
-       referenced `scanValuePrepareIx s`, but 6f.0 removed that
-       call. Each proof body needs rewriting to compose
-       `emit_non_*_preserves_*` directly on `s` instead of
-       `scanValuePrepareIx s` — the surface contract still holds
-       (`.flowEntry` is non-plain, non-flow-bracket).
-     - 2 `subst` failures at the same theorems' shapes:
-       `scanFlowEntryIx_clears_simpleKey` /
-       `_preserves_simpleKeyStack` need `simp only [bind,
-       Except.bind]; split + injection + subst` (matching the
-       6f.3b2.pre step 1 IndexedDispatch pattern).
-     - 1 `subst` failure at `scanFlowSequenceStartIx` /
-       `_End` related (line 5174 — same family).
-  3. After step 2 builds clean: `lake build
-     L4YAML.Proofs.Production.IndexedScannerPlainScalarValid`
-     must show 0 errors, 0 warnings beyond pre-existing
-     unused-simp-arg notes.
+**Next session**: **Step 6f.3b2.main — Build
+`IndexedScannerCorrectness.lean`**. 6f.3b2.pre (parts 1+2) landed
+this session in commits `9454c139` (`IndexedDispatch.lean`,
+4 fixes) and `40d751ae` (`IndexedScannerPlainScalarValid.lean`,
+12 fixes including one `clears`→`preserves` rename; see
+Reflection 105). The `scan_flow_aware_psv_ix_axiom` /
+`scan_flow_brackets_matched_ix_axiom` consumers can now link.
 
-Then **6f.3b2.main** can proceed: build
-`Proofs/Scanner/IndexedScannerCorrectness.lean` with the indexed
-filter-preservation chain (port `flowNesting_go_filter_equiv` /
-`filter_preserves_FlowContextPSV` / `filter_preserves_FlowBracketsMatched`
-from legacy `ScannerPlainScalarValid.lean:5197–5567` to the
-indexed `IxToken input` substrate; ~300 LOC). Chain with
-`scan_flow_aware_psv_ix_axiom` + `scan_flow_brackets_matched_ix_axiom`
-(from 6f.3b2.pre) to obtain `scanFilteredIx_FlowAwarePSVIx` and
-`scanFilteredIx_FlowBracketsMatchedIx`. Add an unconditional
-`parseStreamIx_produces_valid_nodes_unconditional` /
-`parseYamlIx_produces_valid_nodes` by chaining these with the
-existing hypothesis-taking `parseStreamIx_produces_valid_nodes`
-in `Proofs/Parser/IndexedGrammable.lean`.
+For 6f.3b2.main, port the legacy filter-preservation chain in
+`Proofs/Production/ScannerPlainScalarValid.lean:5197–5567` to the
+indexed `IxToken input` substrate (~300 LOC):
+  1. **`array_filter_getElem_correspondence`** (indexed twin) —
+     bridges `Array.filter` indexing between the filtered and
+     pre-filtered streams. Substrate-level lemma.
+  2. **`flowNesting_go_filter_equiv`** (indexed twin) — the
+     `flowNestingIx.go` accumulator is invariant under
+     `.placeholder` filtering. Uses the correspondence lemma to
+     re-index each step.
+  3. **`filter_preserves_FlowContextPSVIx`** /
+     **`filter_preserves_FlowBracketsMatchedIx`** — lift through
+     `Array.filter (· ≠ .placeholder)`.
+  4. **`scanFilteredIx_FlowAwarePSVIx`** /
+     **`scanFilteredIx_FlowBracketsMatchedIx`** — compose
+     `scanFiltered = filter ∘ scan` with
+     `scan_flow_aware_psv_ix_axiom` /
+     `scan_flow_brackets_matched_ix_axiom` and the filter-preservation
+     lemmas above.
+  5. **`parseStreamIx_produces_valid_nodes_unconditional`** /
+     **`parseYamlIx_produces_valid_nodes`** — chain the
+     `scanFilteredIx_*` facts with the existing
+     hypothesis-taking `parseStreamIx_produces_valid_nodes` in
+     `Proofs/Parser/IndexedGrammable.lean`. The unconditional
+     versions take only the `String` input and discharge both
+     hypotheses internally.
 
 Then **6f.3b2.consume**: migrate `Proofs/EndToEndCorrectness.lean`
 to call indexed entry points + indexed scanner-correctness bridge
@@ -1895,14 +1869,23 @@ requiring ~50 indexed scanner-internal twins).
 
 Then **6f.3c**: coupled 6f.4 + 6f.5 atomic cutover (rename
 staging files, flatten `.Indexed` namespaces, drop `Ix` suffixes).
-Reflection 103 captures the *meta*-lesson of this session:
-behavior-affecting production-code changes can leave staging
-proofs broken indefinitely if the staging files are not on the
-default-build path; the cutover commit will discover all such
-breakage in one shot. To avoid that, 6f.3b2.pre is the canonical
-"force every staging file to elaborate" hardening pass.
+Reflections 103 + 105 captured the meta-lessons of the
+6f.3b2.pre sub-step: behavior-affecting production-code changes
+can leave staging proofs *structurally* broken (R103) or
+*semantically* inverted (R105) if the staging files are not on
+the default-build path; the cutover commit would discover all
+such breakage in one shot. 6f.3b2.pre is the canonical "force
+every staging file to elaborate" hardening pass.
 
-**Previous next-session pointer**: **Step 6f.3b2 — Indexed
+**Previous next-session pointer**: **Step 6f.3b2.pre — Discharge
+6f.0 staging-proof regressions** (now landed across two commits).
+Part 1 (`IndexedDispatch.lean`, 4 fixes) and part 2
+(`IndexedScannerPlainScalarValid.lean`, 12 fixes). Part 2
+surfaced Reflection 105 (production reshape can flip a downstream
+theorem's truth, not just its proof shape — `_clears` →
+`_preserves` rename).
+
+**Previous-previous next-session pointer**: **Step 6f.3b2 — Indexed
 scanner-correctness prereq + deferred consumer migration**.
 Initial 5-step plan (build `IndexedScannerCorrectness.lean` →
 add unconditional `parseYamlIx_produces_valid_nodes` → migrate
@@ -9602,15 +9585,19 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
     arm now needs an additional `needIndentCheck := false`
     setter-preservation lemma). **Deferred to 6f.3b2.pre**.
 
-  **Sub-step ladder (2026-05-23 refinement)**:
-  - **6f.3b2.pre** — Discharge 6f.0 staging-proof regressions in
-    `Proofs/Scanner/IndexedDispatch.lean` (done) +
-    `Proofs/Production/IndexedScannerPlainScalarValid.lean` (12
-    errors remaining). Without this, the
-    `scan_flow_aware_psv_ix_axiom` /
-    `scan_flow_brackets_matched_ix_axiom` consumers can't link.
-    Reflection 103 below.
-  - **6f.3b2.main** — Build `IndexedScannerCorrectness.lean`:
+  **Sub-step ladder (2026-05-23 refinement)**
+
+###### **6f.3b2.pre** — Discharge 6f.0 staging-proof regressions in
+    `Proofs/Scanner/IndexedDispatch.lean` (done, part 1, commit
+    `9454c139`) + `Proofs/Production/IndexedScannerPlainScalarValid.lean`
+    (done, part 2, commit `40d751ae`). All 12 staging-proof
+    regressions discharged; build green 409/409 jobs; sorry count
+    unchanged (7 pre-existing in `EmitterScannability.lean`).
+    `scan_flow_aware_psv_ix_axiom` / `scan_flow_brackets_matched_ix_axiom`
+    consumers can now link. **6f.3b2.pre LANDED 2026-05-23.**
+    Reflections 103, 105 below.
+
+###### **6f.3b2.main** — Build `IndexedScannerCorrectness.lean`:
     indexed twins of legacy `filter_preserves_FlowAwarePSV` /
     `filter_preserves_FlowBracketsMatched` /
     `flowNesting_go_filter_equiv` /
@@ -9626,7 +9613,8 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
     `scanFilteredIx_FlowBracketsMatchedIx` with the existing
     hypothesis-taking `parseStreamIx_produces_valid_nodes` in
     `Proofs/Parser/IndexedGrammable.lean`.
-  - **6f.3b2.consume** — Migrate `Proofs/EndToEndCorrectness.lean`
+
+###### **6f.3b2.consume** — Migrate `Proofs/EndToEndCorrectness.lean`
     to call indexed entry points + indexed scanner-correctness
     bridge. Add `ValidTokenStreamPropIx` over `Indexed.TokenStream
     input` and prove `scanFilteredIx_valid_token_stream` so
@@ -10060,6 +10048,63 @@ sufficient; `lake build` then revealed `rfl` failures requiring
 the full `dsimp + split <;> rfl` shape). Resolution: trust the
 `lake build` output as primary signal during staging-file
 regression fixes.
+
+##### **Reflection 105 (new, 2026-05-23)**: a behavior-affecting
+production-code reshape can invert the *meaning* of a downstream
+staging theorem, not just break its proof structurally. The
+clearest example from 6f.3b2.pre (part 2): legacy
+`scanFlowEntryIx` carried an accidental `scanValuePrepareIx s`
+call that confirmed pending simple keys at `,` boundaries; the
+indexed staging proof captured this as
+`scanFlowEntryIx_clears_simpleKey : s'.simpleKey.possible = false`.
+Step 6f.0 deleted the accidental call (matching the legacy
+`scanFlowEntry`, which never confirmed at `,`). The downstream
+indexed theorem's *signature* was now false — the new
+`scanFlowEntryIx` preserves rather than clears `simpleKey`.
+
+**What this looks like in build output**: a `subst` failure on
+the hypothesis decomposition of `scanFlowEntryIx s = .ok s'`,
+where the new production state shape `{ (s.emit .flowEntry).advance
+with simpleKeyAllowed := true }` doesn't reduce to the body
+expected by a proof that started with `unfold; simp [Except.ok.injEq];
+subst h` and expected `subst` to land in `((scanValuePrepareIx
+s).emit .flowEntry).advance` form.
+
+**Why this differs from Reflection 103's "staging-off-import-
+path" failures**: Reflection 103 covers cases where the proof
+shape breaks but the theorem statement still holds. Reflection
+105 covers the strictly worse case where the theorem statement
+becomes *false* — the previous staging name (`_clears_simpleKey`)
+must be renamed (`_preserves_simpleKey`) and its consumers'
+recipes must change (here:
+`AllKeysPlaceholderInvIx_of_cleared_current` →
+`AllKeysPlaceholderInvIx_mono`, matching the legacy
+`scanFlowEntry` consumer recipe at
+`Proofs/Production/ScannerPlainScalarValid.lean:4775–4779`).
+Catching this requires cross-checking the indexed staging
+theorem against its legacy twin's name; the indexed twin's name
+is a *claim* about the indexed production, which a 6f.0-style
+reshape can falsify.
+
+**How to apply at future cutover-style reshape commits**: when
+the production code's behavior is brought into alignment with a
+legacy reference (the "remove accidental call" / "add missing
+guard" shape of 6f.0), enumerate the indexed staging theorems
+that reference the changed function and **compare their names to
+their legacy twins**. A mismatch (`_clears_X` vs `_preserves_X`,
+`_keeps_Y_below_N` vs `_preserves_Y`) is the signal that the
+indexed theorem was capturing a transient quirk rather than the
+intended contract. Rename and re-prove following the legacy.
+
+**Cost saved by Reflection 105 vs not having it**: the 7
+`scanFlowEntryIx_*` proof rewrites in this session (6f.3b2.pre
+part 2) involved exactly one such inversion (`_clears` →
+`_preserves`); the dispatcher consumer in
+`dispatchFlowIndicators_preserves_AllKeysPlaceholderInvIx` then
+also flipped (`_of_cleared_current` → `_mono`), but the recipe
+came straight from the legacy `Scanner.lean`-pattern dispatcher.
+Future cutover-style reshapes should look up the legacy proof
+recipe *before* rewriting from scratch.
 
 </details>
 
