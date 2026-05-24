@@ -1820,53 +1820,109 @@ not in-place axiom-to-theorem promotion — the latter is impossible
 when the axiom's hypothesis is strictly weaker than what the
 stronger lemma derives).
 
-**Next session**: **Step 6f.3b2 — Indexed scanner-correctness prereq +
-deferred consumer migration**. With 6f.3b1 landed (the value-level
-consumer subset — `Proofs/Completeness.lean` and
-`Proofs/Output/ScannerEmitBridge.lean` reparented onto
-`parseYamlIx`/`parseYamlRawIx`/`parseStreamIx`; structural
-composition twins added to `Proofs/Parser/IndexedComposition.lean`
-§3; 409/409 green; 7 pre-existing sorries unchanged), three
-consumers remain blocked on the prerequisite that wasn't on the
-Blueprint's original critical path: a new `IndexedScannerCorrectness.lean`
-file with indexed twins of scanner-internal preservation properties.
-The order of operations for 6f.3b2 is:
-  1. Build `IndexedScannerCorrectness.lean` — minimum subset covers
-     `scanFilteredIx_valid_token_stream` (unblocks
-     `parseYaml_implies_valid_token_stream` in `EndToEndCorrectness`),
-     `scanFilteredIx_FlowAwarePSVIx` + `scanFilteredIx_FlowBracketsMatchedIx`
-     (unblock unconditional `parseYamlIx_produces_valid_nodes`), and
-     the ~50 step-lemma family that `EmitterScannability.lean` builds
-     its scan chains over.
-  2. Add an unconditional indexed `parseYamlIx_produces_valid_nodes`
-     (chains 6f.3b2 step 1 outputs through `parseStreamIx_produces_valid_nodes`).
-  3. Migrate `Proofs/EndToEndCorrectness.lean` (~half the theorems
-     transitively need step 2's output; the other half is straight
-     entry-point repointing).
-  4. Migrate `Proofs/Output/EmitterScannability.lean` (298
-     `ScannerCorrectness.*` refs — mechanical once step 1 is in place).
-  5. Migrate `Proofs/Composition.lean` + cascade to
-     `Production/DocumentProduction.lean` + `IndexedWellBehaved.lean` /
-     `ParserGrammable.lean` / etc. (or fold this into 6f.3c's
-     namespace flatten — preferred).
+**Next session**: **Step 6f.3b2.pre — Discharge 6f.0 staging-proof
+regressions** (cascade-prereq for the rest of 6f.3b2). With
+6f.3b2's first execution attempt (this session) surfacing pre-
+existing 6f.0 staging-proof regressions in two foundation files
+(see Reflection 103), the cascade-fix order is:
+  1. **`Proofs/Scanner/IndexedDispatch.lean`** — DONE this session
+     (4 fixes landed): `skipToContentS_cursor` /
+     `skipToContentS_tokens` (replace `rfl` with `dsimp only;
+     split <;> rfl` for the post-6f.0 `if-then-else` shape),
+     `scanFlowEntryIx_offset_monotonic` /
+     `scanFlowEntryIx_tokens_size_le` (replace `unfold + simp +
+     subst` with full `do`-block guard fold-in:
+     `simp only [bind, Except.bind] at h; split at h; …;
+     injection h with h; subst h`).
+  2. **`Proofs/Production/IndexedScannerPlainScalarValid.lean`**
+     — 12 errors remaining. Fix pattern:
+     - 2 rfl failures on `skipToContentS_preserves_simpleKey` /
+       `_simpleKeyStack`: `dsimp only; split <;> rfl` (same as
+       step 1).
+     - 1 nested-rfl in `skipToContentS_preserves_FlowNestingInvIx`:
+       same pattern on the `flowLevel` projection.
+     - 1 type-mismatch in
+       `scanNextTokenIx_preprocess_preserves_FlowNestingInvIx`'s
+       second `first | … | …` arm: needs a new helper
+       `setIfFlag_preserves_FlowNestingInvIx` (or use the post-
+       unwind branch's `unwindIndentsIx_preserves_FlowNestingInvIx`
+       composed with a `needIndentCheck := false` field-setter
+       preservation lemma).
+     - 3 rewrites in `scanFlowEntryIx_preserves_PlainScalarsValidIx`
+       / `_FlowContextPSVIx` / `_FlowNestingInvIx`: the legacy proof
+       referenced `scanValuePrepareIx s`, but 6f.0 removed that
+       call. Each proof body needs rewriting to compose
+       `emit_non_*_preserves_*` directly on `s` instead of
+       `scanValuePrepareIx s` — the surface contract still holds
+       (`.flowEntry` is non-plain, non-flow-bracket).
+     - 2 `subst` failures at the same theorems' shapes:
+       `scanFlowEntryIx_clears_simpleKey` /
+       `_preserves_simpleKeyStack` need `simp only [bind,
+       Except.bind]; split + injection + subst` (matching the
+       6f.3b2.pre step 1 IndexedDispatch pattern).
+     - 1 `subst` failure at `scanFlowSequenceStartIx` /
+       `_End` related (line 5174 — same family).
+  3. After step 2 builds clean: `lake build
+     L4YAML.Proofs.Production.IndexedScannerPlainScalarValid`
+     must show 0 errors, 0 warnings beyond pre-existing
+     unused-simp-arg notes.
 
-After 6f.3b2 lands, 6f.3c (coupled 6f.4 + 6f.5 atomic cutover) can
-finally rename staging files, flatten `.Indexed` namespaces, and
-drop `Ix` suffixes. Reflection 101 explains why the Blueprint's
-"~500 LOC mechanical edits" estimate was off by 10× for the consumer
-migration: it counted entry-point name swaps, not the closure of
-proof-internal theorem dependencies.
+Then **6f.3b2.main** can proceed: build
+`Proofs/Scanner/IndexedScannerCorrectness.lean` with the indexed
+filter-preservation chain (port `flowNesting_go_filter_equiv` /
+`filter_preserves_FlowContextPSV` / `filter_preserves_FlowBracketsMatched`
+from legacy `ScannerPlainScalarValid.lean:5197–5567` to the
+indexed `IxToken input` substrate; ~300 LOC). Chain with
+`scan_flow_aware_psv_ix_axiom` + `scan_flow_brackets_matched_ix_axiom`
+(from 6f.3b2.pre) to obtain `scanFilteredIx_FlowAwarePSVIx` and
+`scanFilteredIx_FlowBracketsMatchedIx`. Add an unconditional
+`parseStreamIx_produces_valid_nodes_unconditional` /
+`parseYamlIx_produces_valid_nodes` by chaining these with the
+existing hypothesis-taking `parseStreamIx_produces_valid_nodes`
+in `Proofs/Parser/IndexedGrammable.lean`.
 
-**Previous next-session pointer**: **Step 6f.3b — Downstream proof
-consumer repointing** (partially landed as 6f.3b1; 6f.3b2 deferred
-after scope-discovery decomposition). 6f.3a landed in commit
-`39e33216` (indexed comment-preserving scan path). 6f.3b1 closed
-the two value-level consumers (`Completeness`, `ScannerEmitBridge`)
-plus the structural composition twins. The 6f.3b2 split surfaced
-two reflections: 101 (estimate-for-the-closure, not the surface) and
-102 (`.olean` cache replay can hide stale `native_decide` failures
-across multiple commits if the elaborated file's content hash and
-import-interface signatures are both unchanged).
+Then **6f.3b2.consume**: migrate `Proofs/EndToEndCorrectness.lean`
+to call indexed entry points + indexed scanner-correctness bridge
++ the new unconditional `parseYamlIx_produces_valid_nodes`. Define
+`ValidTokenStreamPropIx` over `Indexed.TokenStream input` and prove
+`scanFilteredIx_valid_token_stream` so `parseYamlIx_implies_valid_token_stream`
+(replacing legacy `parseYaml_implies_valid_token_stream`) is
+stateable.
+
+Then **6f.3b3**: migrate `Proofs/Output/EmitterScannability.lean`
+(multi-session — 298 `ScannerCorrectness.*` refs over 10741 LOC,
+requiring ~50 indexed scanner-internal twins).
+
+Then **6f.3c**: coupled 6f.4 + 6f.5 atomic cutover (rename
+staging files, flatten `.Indexed` namespaces, drop `Ix` suffixes).
+Reflection 103 captures the *meta*-lesson of this session:
+behavior-affecting production-code changes can leave staging
+proofs broken indefinitely if the staging files are not on the
+default-build path; the cutover commit will discover all such
+breakage in one shot. To avoid that, 6f.3b2.pre is the canonical
+"force every staging file to elaborate" hardening pass.
+
+**Previous next-session pointer**: **Step 6f.3b2 — Indexed
+scanner-correctness prereq + deferred consumer migration**.
+Initial 5-step plan (build `IndexedScannerCorrectness.lean` →
+add unconditional `parseYamlIx_produces_valid_nodes` → migrate
+EndToEndCorrectness → migrate EmitterScannability → migrate
+Composition or fold into 6f.3c) was correct in *shape* but
+discovered the 6f.0 staging-proof regressions (Reflection 103)
+during execution; that gap is now 6f.3b2.pre, executed before
+the main `IndexedScannerCorrectness.lean` build.
+
+**Previous-previous next-session pointer**: **Step 6f.3b — Downstream
+proof consumer repointing** (partially landed as 6f.3b1; 6f.3b2
+deferred after scope-discovery decomposition). 6f.3a landed in
+commit `39e33216` (indexed comment-preserving scan path). 6f.3b1
+closed the two value-level consumers (`Completeness`,
+`ScannerEmitBridge`) plus the structural composition twins. The
+6f.3b2 split surfaced two reflections: 101 (estimate-for-the-
+closure, not the surface) and 102 (`.olean` cache replay can hide
+stale `native_decide` failures across multiple commits if the
+elaborated file's content hash and import-interface signatures
+are both unchanged).
 
 **Previous-previous next-session pointer**: **Step 6f.0 — indexed parser
 parity** (now landed, +~150 LOC across 4 files + a 40-input parity
@@ -9490,8 +9546,10 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
     theorems in §1–§2 are pipeline-agnostic and unchanged.
 
 ###### **6f.3b2 — Files requiring `IndexedScannerCorrectness.lean` prereq**
-  *(deferred to follow-up session)*. Three files whose migration is
-  blocked on indexed twins that do not yet exist:
+  *(partially landed 2026-05-23, scope discovery — re-decomposed
+  into 6f.3b2.pre + 6f.3b2.main + 6f.3b2.consume + 6f.3b3; multi-
+  session)*. Three files whose migration is blocked on indexed
+  twins that do not yet exist:
   - **`Proofs/Composition.lean`** (legacy): rewriting it to call
     indexed pipeline cascades into rewriting its consumers
     (`DocumentProduction.lean`, `IndexedWellBehaved.lean`,
@@ -9510,15 +9568,95 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
     `scanFilteredIx_valid_token_stream` + indexed
     `scanFilteredIx_FlowAwarePSVIx` (each ~50–100 LOC).
   - **`Proofs/Output/EmitterScannability.lean`** (10741 LOC, 298
-    `ScannerCorrectness.*` refs): builds emitter-scannability via
-    step-by-step scan chains over legacy scanner internals. Migration
-    requires ~50 indexed twin lemmas of scanner-internal preservation
-    properties — effectively a new `IndexedScannerCorrectness.lean`
-    file (multi-session work).
+    `ScannerCorrectness.*` refs): split out to its own sub-step
+    **6f.3b3** below — multi-session work.
 
   The 6f.3b2 critical-path artifact is **`IndexedScannerCorrectness.lean`**:
-  once that lands, all three files become tractable in roughly the
-  scope the Blueprint originally estimated.
+  once that lands, the remaining two files become tractable in
+  roughly the scope the Blueprint originally estimated.
+
+  **Scope-discovery decomposition (2026-05-23)**. Attempting to
+  consume `scan_flow_aware_psv_ix_axiom` /
+  `scan_flow_brackets_matched_ix_axiom` from
+  `Proofs/Production/IndexedScannerPlainScalarValid.lean` revealed
+  a deeper prerequisite: Step 6f.0's reshape of
+  `Scanner.IndexedState.skipToContentS` (added an `if-then-else`
+  branching on newline-crossing) and Step 6f.0's reshape of
+  `Scanner.IndexedDispatch.scanFlowEntryIx` (added an `if let
+  some lastTok` guard) broke ~18 staging proofs across two
+  files that were never on the `L4YAML.lean` import path:
+  - **`Proofs/Scanner/IndexedDispatch.lean`**: 6 errors
+    (`skipToContentS_cursor`, `skipToContentS_tokens`,
+    `scanFlowEntryIx_offset_monotonic`,
+    `scanFlowEntryIx_tokens_size_le`); **landed 2026-05-23**.
+    Each fix follows the pattern: replace `rfl` with
+    `dsimp only; split <;> rfl` for the if-folded post-state, and
+    replace `unfold + simp + subst` with `unfold + simp [bind,
+    Except.bind] + split at h + injection + subst` for the
+    `do`-block guard fold-in.
+  - **`Proofs/Production/IndexedScannerPlainScalarValid.lean`**:
+    12 errors remaining (3 `scanFlowEntryIx_preserves_*` need
+    proof-body rewrites because the production code no longer
+    calls `scanValuePrepareIx`; `skipToContentS_preserves_*` rfl
+    failures; one `unwindIndentsIx_preserves_FlowNestingInvIx`
+    arm now needs an additional `needIndentCheck := false`
+    setter-preservation lemma). **Deferred to 6f.3b2.pre**.
+
+  **Sub-step ladder (2026-05-23 refinement)**:
+  - **6f.3b2.pre** — Discharge 6f.0 staging-proof regressions in
+    `Proofs/Scanner/IndexedDispatch.lean` (done) +
+    `Proofs/Production/IndexedScannerPlainScalarValid.lean` (12
+    errors remaining). Without this, the
+    `scan_flow_aware_psv_ix_axiom` /
+    `scan_flow_brackets_matched_ix_axiom` consumers can't link.
+    Reflection 103 below.
+  - **6f.3b2.main** — Build `IndexedScannerCorrectness.lean`:
+    indexed twins of legacy `filter_preserves_FlowAwarePSV` /
+    `filter_preserves_FlowBracketsMatched` /
+    `flowNesting_go_filter_equiv` /
+    `array_filter_getElem_correspondence` (port from
+    `ScannerPlainScalarValid.lean:5197–5567`, ~300 LOC), then chain
+    with `scan_flow_aware_psv_ix_axiom` /
+    `scan_flow_brackets_matched_ix_axiom` (from 6f.3b2.pre) to
+    produce `scanFilteredIx_FlowAwarePSVIx` and
+    `scanFilteredIx_FlowBracketsMatchedIx`. Add an unconditional
+    `parseStreamIx_produces_valid_nodes_unconditional` and
+    `parseYamlIx_produces_valid_nodes` by chaining
+    `scanFilteredIx_FlowAwarePSVIx` +
+    `scanFilteredIx_FlowBracketsMatchedIx` with the existing
+    hypothesis-taking `parseStreamIx_produces_valid_nodes` in
+    `Proofs/Parser/IndexedGrammable.lean`.
+  - **6f.3b2.consume** — Migrate `Proofs/EndToEndCorrectness.lean`
+    to call indexed entry points + indexed scanner-correctness
+    bridge. Add `ValidTokenStreamPropIx` over `Indexed.TokenStream
+    input` and prove `scanFilteredIx_valid_token_stream` so
+    `parseYamlIx_implies_valid_token_stream` (replacing legacy
+    `parseYaml_implies_valid_token_stream`) is stateable.
+  - Cascade: `Proofs/Composition.lean` migration still deferred
+    to **6f.3c** cutover (same rationale as in the 6f.3b1 landed
+    notes).
+
+###### **6f.3b3 — Migrate `Proofs/Output/EmitterScannability.lean`**
+  *(deferred, multi-session)*. The 10741-LOC emitter-scannability
+  proof file with 298 `ScannerCorrectness.*` references. Builds
+  emitter-scannability via step-by-step scan chains over legacy
+  scanner internals. Migration requires ~50 indexed twin lemmas
+  of scanner-internal preservation properties — effectively the
+  bulk of an `IndexedScannerCorrectness.lean` that goes far
+  beyond the 6f.3b2.main core (which only needs the top-level
+  flow-aware / brackets-matched filter-lift family).
+
+  **Why split out from 6f.3b2**: the 6f.3b2 core's
+  `IndexedScannerCorrectness.lean` ports the *user-facing*
+  scanner-correctness contract (`FlowAwarePSVIx`,
+  `FlowBracketsMatchedIx`, optional `ValidTokenStreamPropIx`).
+  EmitterScannability consumes *internal* preservation
+  properties (per-step scanner-state lemmas covering
+  `ScalarSourceCovers`, `NoTrailingWhitespace`,
+  `ValidScanState`, etc.) — a much larger surface that the
+  legacy file accumulated across many proof commits. Reusing the
+  6f.3b2.main core file as the home for these would conflate
+  two distinct architectural layers.
 
 ##### **6f.3c — Coupled cutover (6f.4 + 6f.5)** *(deferred to follow-up
   session)*. The Blueprint's original "land 6f.3+6f.5 in the same
@@ -9542,9 +9680,12 @@ as a prerequisite" lesson from Reflection 98 applies to *every*
 distinct entry point, not just the canonical
 `parseYaml`/`parseStream` chain. Each gap surfaced needs its own
 substep; the coupling lemma now reads "6f.5 cannot complete before
-6f.3a + 6f.3b1 + 6f.3b2 are all landed" — with 6f.3b2 blocked on
-the prerequisite `IndexedScannerCorrectness.lean` that wasn't on
-the Blueprint's original critical path.
+6f.3a + 6f.3b1 + 6f.3b2 (.pre + .main + .consume) + 6f.3b3 are all
+landed" — with 6f.3b2 blocked on the prerequisite
+`IndexedScannerCorrectness.lean` that wasn't on the Blueprint's
+original critical path, and itself blocked on 6f.3b2.pre — fixing
+6f.0 staging-proof regressions that surface only when the staging
+files are pulled into the build (Reflection 103).
 
 ##### **6f.4 — Indexed proof staging file renames** *(unblocked by 6f.0)*.
 Rename `Proofs/Parser/IndexedCorrectness.lean → ParserCorrectness.lean`
@@ -9826,6 +9967,99 @@ fixes update the corpus to reflect the indexed parser's *current*
 behavior (1 doc for `a: b`, 1 doc for the two-line block mapping)
 and add a new `parses_block_map_two_lines` theorem documenting the
 post-6f.0 implicit-key acceptance.
+
+##### **Reflection 103 (new, 2026-05-23)**: behavior-affecting
+production-code changes can leave staging *proof* files broken
+indefinitely when the staging files are not on the `L4YAML.lean`
+import path. Discovered during 6f.3b2 execution: Step 6f.0's
+reshape of `Scanner.IndexedState.skipToContentS` (single record
+update → `if-then-else` over newline-crossing) and
+`Scanner.IndexedDispatch.scanFlowEntryIx` (plain chain → `do`-
+block with `if let some lastTok` guard, no longer composes
+`scanValuePrepareIx`) silently broke 6 proofs in
+`Proofs/Scanner/IndexedDispatch.lean` and 12+ proofs in
+`Proofs/Production/IndexedScannerPlainScalarValid.lean` — neither
+file is imported by `L4YAML.lean`, so `lake build` reports green
+and the regressions only surface when a consumer attempts to
+include them.
+
+**Concrete consequence at 6f.3b2**: the planned
+`IndexedScannerCorrectness.lean` for 6f.3b2.main depends on
+`scan_flow_aware_psv_ix_axiom` /
+`scan_flow_brackets_matched_ix_axiom` from
+`Proofs/Production/IndexedScannerPlainScalarValid.lean`, which
+itself depends on `Proofs/Scanner/IndexedDispatch.lean`. Both
+files needed regression fixes before the consumer chain could
+link, expanding 6f.3b2's surface from "build one new file" to
+"build one new file *after* discharging ~18 pre-existing
+staging-proof errors in two foundation files".
+
+**How to apply at future production-code changes that touch
+post-6f staging files**: when changing the *body* of a function
+that has staging proofs (especially `Scanner.IndexedState.*` /
+`Scanner.IndexedDispatch.*`), audit the *complete* list of
+staging proof files via `grep -rln <funcName> L4YAML/Proofs/`.
+If any matches are found, run `lake build <staging-target>`
+explicitly — not just `lake build` — before declaring the change
+landed. The `lake build` default target is necessary but not
+sufficient validation for changes that affect non-default-path
+files.
+
+**Cost of the lesson this session**: 6 errors fixed in
+`Proofs/Scanner/IndexedDispatch.lean` (landed); 12+ errors
+identified but not yet fixed in
+`Proofs/Production/IndexedScannerPlainScalarValid.lean`
+(deferred to 6f.3b2.pre). The 6f.3b2 sub-step has been
+re-decomposed into a 4-tier ladder (`.pre`, `.main`, `.consume`,
+plus 6f.3b3 for EmitterScannability) reflecting this scope.
+
+**Connection to Reflections 100–101**: Reflection 100 framed
+hidden dependencies as missing entry points; Reflection 101
+sharpened to theorem-closure scope; Reflection 103 extends to
+"the closure may include latent breakage in files outside the
+build graph". The Blueprint's coupling diagram should list
+*every* staging file the cutover transitively depends on, even
+ones that don't appear in any `import` statement yet — because
+6f.3c will fold them into the build path and discover all
+deferred regressions in one shot.
+
+##### **Reflection 104 (new, 2026-05-23)**: the IDE's elaboration
+state and `lake build`'s elaboration state can diverge in ways
+that mislead interactive proof development on stale-`.olean`
+files. Observed while debugging
+`Proofs/Production/IndexedScannerPlainScalarValid.lean`: the
+IDE's diagnostic panel reported "No goals to be solved" on a
+proof step where `lake build` reported "Tactic `rfl` failed".
+Investigating the IDE-side goal showed a struct missing the
+post-6f.3 `comments` field and using a pre-6f.0
+`scanValuePrepareIx`-based definition of `scanFlowEntryIx` —
+i.e., the IDE was elaborating against the cached `.olean` from
+before the production-code reshape, while `lake build` was
+re-elaborating from source.
+
+**Concrete consequence**: edits that the IDE flags as successful
+("No goals to be solved") may still produce build errors. When
+the discrepancy arises on a staging-proof file, the IDE's signal
+is the misleading one: it's evaluating against an obsolete
+compiled body that diverges from the current source. Trust
+`lake build`'s output, not the IDE's, for these files.
+
+**How to apply at future debugging sessions on staging files**:
+before relying on IDE diagnostics for proofs on
+`Proofs/Production/Indexed*.lean` /
+`Proofs/Scanner/Indexed*.lean` files, run `lake clean` (or at
+least delete the specific `.olean`s under
+`.lake/build/lib/lean/L4YAML/Proofs/...`) to force the IDE to
+re-elaborate from source. Otherwise an IDE "green" claim can
+mask a `lake build` failure.
+
+**Cost of the lesson this session**: several wasted iterations
+on `skipToContentS_preserves_simpleKey` /
+`_simpleKeyStack` (the IDE claimed `unfold + dsimp only` was
+sufficient; `lake build` then revealed `rfl` failures requiring
+the full `dsimp + split <;> rfl` shape). Resolution: trust the
+`lake build` output as primary signal during staging-file
+regression fixes.
 
 </details>
 
