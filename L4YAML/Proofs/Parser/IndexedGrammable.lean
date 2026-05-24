@@ -273,4 +273,29 @@ theorem parseYamlIx_produces_valid_nodes
   exact parseStreamIx_produces_valid_nodes_unconditional tokens raw_docs h_scan h_parse
     raw_doc h_raw_mem
 
+/-- **Indexed twin** of legacy `parseYaml_implies_valid_token_stream`
+    (`Proofs/EndToEndCorrectness.lean:302`): successful `parseYamlIx`
+    implies the underlying *unfiltered* `scanIx` token stream satisfies
+    `ValidTokenStreamPropIx`.
+
+    Mirrors the legacy chain: decompose `parseYamlIx` → `scanFilteredIx`,
+    unfold `scanFilteredIx` to recover the unfiltered `scanIx` witness,
+    then apply `scanIx_valid_token_stream_axiom` (staging axiom from
+    6f.3b2.consume, scheduled for discharge in 6f.3b3). -/
+theorem parseYamlIx_implies_valid_token_stream
+    (input : String) (docs : Array YamlDocument)
+    (h : parseYamlIx input = .ok docs) :
+    ∃ (tokens : Indexed.TokenStream input),
+      scanIx input = .ok tokens ∧
+      ValidTokenStreamPropIx tokens := by
+  rw [parseYamlIx_ok_iff] at h
+  obtain ⟨raw_docs, h_raw, _⟩ := h
+  obtain ⟨_, h_scanf, _⟩ := parseYamlRawIx_ok_decompose input raw_docs h_raw
+  unfold scanFilteredIx at h_scanf
+  split at h_scanf
+  · rename_i all_tokens h_scan_raw
+    exact ⟨all_tokens, h_scan_raw,
+      scanIx_valid_token_stream_axiom all_tokens h_scan_raw⟩
+  · contradiction
+
 end L4YAML.Proofs.Indexed.Grammable

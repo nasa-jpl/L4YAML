@@ -437,4 +437,73 @@ theorem scanFilteredIx_FlowBracketsMatchedIx
       (scan_flow_brackets_matched_ix_axiom all_tokens h_scan_raw)
   · contradiction
 
+/-! ## §6  `ValidTokenStreamPropIx` and `scanIx_valid_token_stream_axiom`
+
+Indexed twin of legacy `ValidTokenStreamProp` (`Spec/Grammar.lean:419`)
+and `scan_valid_token_stream` (`Proofs/Scanner/ScannerCorrectness.lean:9652`).
+
+The four-conjunct shape is preserved verbatim. The legacy bound on token
+positions (`pos.offset ≤ input.utf8ByteSize`) is implicit in the indexed
+substrate via `IxToken.stopLEInput` (`start.offset ≤ stop.offset ≤
+input.utf8ByteSize`) — that bound costs zero proof work. The four
+`ValidTokenStreamProp` invariants (sizeGe2, streamStart, streamEnd,
+positionsOrdered) still need explicit proofs.
+
+Step 6f.3b2.consume introduces `scanIx_valid_token_stream_axiom` as a
+**staging axiom** scheduled for discharge in 6f.3b3 (alongside the
+EmitterScannability migration's ~50 indexed scanner-internal twins).
+This is the first axiom added to the project since the 6d.1e axiom
+discharge cycle — see Reflection 107 for the rationale (the four
+primitive lemmas each carry ~300 LOC of scanner-state invariant
+machinery; porting all four here would balloon 6f.3b2.consume past its
+EndToEndCorrectness-migration scope, and the same primitives are
+prerequisites for 6f.3b3 anyway). -/
+
+/-- Indexed twin of `Spec/Grammar.lean:ValidTokenStreamProp`. The
+    `input` parameter is implicit since `Indexed.TokenStream` carries
+    it as a type-level dependency. The four conjuncts:
+      1. `≥ 2` tokens (envelope: `streamStart` + `streamEnd`),
+      2. First token is `streamStart`,
+      3. Last token is `streamEnd`,
+      4. Token start positions are monotonically non-decreasing. -/
+def ValidTokenStreamPropIx {input : String} (tokens : Indexed.TokenStream input) : Prop :=
+  tokens.tokens.size ≥ 2 ∧
+  (∀ (h : 0 < tokens.tokens.size), (tokens.tokens[0]'h).token = YamlToken.streamStart) ∧
+  (∀ (h : tokens.tokens.size - 1 < tokens.tokens.size),
+      (tokens.tokens[tokens.tokens.size - 1]'h).token = YamlToken.streamEnd) ∧
+  ∀ (i j : Fin tokens.tokens.size), i.val < j.val →
+    (tokens.tokens[i]).start.offset ≤ (tokens.tokens[j]).start.offset
+
+/-- **Staging axiom** (Step 6f.3b2.consume): the unfiltered indexed
+    scanner `ScannerStateIx.scanIx` produces a stream satisfying the
+    four `ValidTokenStreamPropIx` invariants.
+
+    **Discharge plan**: scheduled for Step 6f.3b3 (the
+    `Proofs/Output/EmitterScannability.lean` migration), which builds
+    indexed twins of the per-scanner-internal preservation lemmas
+    including
+    - `scanIx_produces_at_least_two`   (indexed twin of
+      `scan_produces_at_least_two`, `ScannerCorrectness.lean:6304`),
+    - `scanIx_first_is_streamStart`    (indexed twin of
+      `scan_first_is_streamStart`, `:6329`),
+    - `scanIx_last_is_streamEnd`       (indexed twin of
+      `scan_last_is_streamEnd`, `:6413`),
+    - `scanIx_positions_ordered`       (indexed twin of
+      `scan_positions_ordered`, `:9436`).
+
+    Composing the four primitives (analogous to legacy
+    `scan_produces_valid_tokens`, `:9499`) discharges this axiom at
+    that point. The legacy four-lemma chain spans ~300 LOC of
+    scanner-state invariants (`SimpleKeyAbove`,
+    `scanLoop_preserves_tokens`, `scanLoop_success_emits_streamEnd`,
+    etc.); porting them here would extend 6f.3b2.consume well past its
+    EndToEndCorrectness-migration scope.
+
+    See Reflection 107 in the Blueprint for the rationale on staging
+    this axiom now versus inlining the discharge at 6f.3b2.consume. -/
+axiom scanIx_valid_token_stream_axiom
+    {input : String} (tokens : Indexed.TokenStream input)
+    (h : ScannerStateIx.scanIx input = .ok tokens) :
+    ValidTokenStreamPropIx tokens
+
 end L4YAML.Proofs.Indexed.ScannerCorrectness
