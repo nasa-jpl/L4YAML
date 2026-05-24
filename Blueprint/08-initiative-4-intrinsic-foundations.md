@@ -1820,63 +1820,80 @@ not in-place axiom-to-theorem promotion — the latter is impossible
 when the axiom's hypothesis is strictly weaker than what the
 stronger lemma derives).
 
-**Next session**: **Step 6f.3b2.consume — Migrate
-`Proofs/EndToEndCorrectness.lean`** to the indexed pipeline.
-6f.3b2.main landed this session: new file
-`Proofs/Scanner/IndexedScannerCorrectness.lean` (~470 LOC)
-ports the legacy filter-preservation chain (`list_filter_origIdx`,
-`list_filter_getElem_by_count`, `array_filter_getElem_correspondence`,
-`flowNestingIx_go_filter_equiv`,
-`filter_preserves_PlainScalarsValidIx` / `_FlowContextPSVIx` /
-`_FlowAwarePSVIx` / `_FlowBracketsMatchedIx`,
-`scanFilteredIx_FlowAwarePSVIx`,
-`scanFilteredIx_FlowBracketsMatchedIx`); two unconditional
-theorems (`parseStreamIx_produces_valid_nodes_unconditional`,
-`parseYamlIx_produces_valid_nodes`) added to
-`Proofs/Parser/IndexedGrammable.lean`. See Reflection 106 for
-the split-responsibility design lesson.
+**Next session**: **Step 6f.3b3 — Migrate
+`Proofs/Output/EmitterScannability.lean`** (multi-session, 298
+`ScannerCorrectness.*` refs over 10741 LOC). 6f.3b2.consume landed
+this session: `Proofs/EndToEndCorrectness.lean` retargeted to the
+indexed pipeline (`parseYamlIx`, `parseYamlRawIx`, `parseStreamIx`,
+`scanFilteredIx`, `scanIx`); witness type changed from
+`Array (Positioned YamlToken)` to `Indexed.TokenStream input`.
+Top-level theorem names preserved (`parse_sound_shallow`,
+`parse_complete`, `parse_produces_valid_yaml`,
+`parse_produces_valid_documents`, `parse_produces_valid_stream`,
+`parseStream_respects_grammar_unconditional`); the four
+`parseYaml_implies_*` theorems renamed to `parseYamlIx_implies_*`.
+Added `ValidTokenStreamPropIx` + **staging axiom**
+`scanIx_valid_token_stream_axiom` to
+`Proofs/Scanner/IndexedScannerCorrectness.lean` §6; added
+`parseYamlIx_implies_valid_token_stream` to
+`Proofs/Parser/IndexedGrammable.lean`. See Reflection 107 for the
+staging-axiom-vs-weaken-spec-vs-port-now trade-off lesson.
 
-For 6f.3b2.consume, retarget `Proofs/EndToEndCorrectness.lean`:
-  1. **`ValidTokenStreamPropIx`** — port `ValidTokenStreamProp` to
-     `Indexed.TokenStream input`. Generic shape: each token's
-     start position lies within `input.utf8ByteSize` and tokens
-     are sorted by start offset. The `IxToken input` type-level
-     bound (`stopLEInput`) already guarantees half of this; the
-     monotonicity half ports as-is from the legacy proof.
-  2. **`scanFilteredIx_valid_token_stream`** — analogue of
-     legacy `scanFiltered_valid_token_stream`. Uses `scanIx`
-     monotonicity (already proven as `scanLoopIx_offset_monotonic`
-     in `Proofs/Scanner/IndexedDispatch.lean`) + the
-     `IxToken.stopLEInput` field for the bound. Filtering
-     preserves monotonicity trivially.
-  3. **`parseYamlIx_implies_valid_token_stream`** — chain (1)+(2)
-     to replace legacy `parseYaml_implies_valid_token_stream`.
-  4. **Repointing**: swap `Scanner.scanFiltered` →
-     `scanFilteredIx`, `parseYaml` → `parseYamlIx`,
-     `parseYaml_produces_valid_nodes` →
-     `parseYamlIx_produces_valid_nodes` (new unconditional
-     theorem from 6f.3b2.main), `parseYaml_implies_valid_token_stream`
-     → `parseYamlIx_implies_valid_token_stream` (from step 3).
-  5. **Validate**: existing top-level `endToEndCorrectness`
-     theorem statement is unchanged; its proof body now flows
-     through the indexed substrate. `Proofs/Composition.lean`
-     migration is still deferred to 6f.3c.
-
-Then **6f.3b3**: migrate `Proofs/Output/EmitterScannability.lean`
-(multi-session — 298 `ScannerCorrectness.*` refs over 10741 LOC,
-requiring ~50 indexed scanner-internal twins).
+For **6f.3b3**, the EmitterScannability migration's primary cost
+is porting the ~50 scanner-internal preservation lemmas (per-step
+`ScalarSourceCovers`, `NoTrailingWhitespace`, `ValidScanState`,
+etc.) and the four `ValidTokenStreamPropIx` primitives
+(`scanIx_produces_at_least_two`, `scanIx_first_is_streamStart`,
+`scanIx_last_is_streamEnd`, `scanIx_positions_ordered`) that
+discharge the staging axiom from 6f.3b2.consume. Both 6f.3b3's
+internal-preservation needs and the staging-axiom discharge share
+the same scanner-state-invariant infrastructure (induction on
+fuel, `SimpleKeyAbove`, `scanLoop_preserves_tokens`,
+`scanLoop_success_emits_streamEnd`), so the work is
+*amortized* — porting them once at 6f.3b3 handles both
+consumer classes. Sub-step plan:
+  1. **6f.3b3.primitives** — Port the four `scanIx_*` primitives
+     above (each ~150–300 LOC); discharge
+     `scanIx_valid_token_stream_axiom` from 6f.3b2.consume by
+     `unfold` + composition of the four primitives (mirrors
+     legacy `scan_produces_valid_tokens` at
+     `ScannerCorrectness.lean:9499`). Sorry policy holds: zero
+     net new sorries.
+  2. **6f.3b3.internals** — Port the per-step internal
+     preservation lemmas needed by EmitterScannability (~50,
+     scoped to the legacy file's `ScannerCorrectness.*` call
+     surface).
+  3. **6f.3b3.consume** — Retarget `EmitterScannability.lean`
+     to call the indexed primitives; rebuild on the indexed
+     substrate. Migration scope hint: the legacy file has 7
+     pre-existing sorries to carry over (or discharge if they
+     turn out to be cheap on the indexed substrate).
 
 Then **6f.3c**: coupled 6f.4 + 6f.5 atomic cutover (rename
 staging files, flatten `.Indexed` namespaces, drop `Ix` suffixes).
-Reflections 103, 105, 106 captured the meta-lessons of the
-6f.3b2.{pre, main} sub-steps: behavior-affecting production-code
-changes can leave staging proofs *structurally* broken (R103) or
-*semantically* inverted (R105) if the staging files are not on
-the default-build path; and indexed-substrate ports of legacy
-theorems whose definition collapses scan-with-filter into one
-function need an explicit bridge layer (R106).
+Reflections 103, 105, 106, 107 captured the meta-lessons of the
+6f.3b2.{pre, main, consume} sub-steps: behavior-affecting
+production-code changes can leave staging proofs *structurally*
+broken (R103) or *semantically* inverted (R105) if the staging
+files are not on the default-build path; indexed-substrate ports
+of legacy theorems whose definition collapses scan-with-filter
+into one function need an explicit bridge layer (R106); and
+when a next-session pointer's claimed prerequisite lemma turns
+out to be strictly weaker than required, prefer a staging axiom
+with a concrete discharge plan to silent contract weakening or
+out-of-scope primitive porting (R107).
 
-**Previous next-session pointer**: **Step 6f.3b2.main — Build
+**Previous next-session pointer**: **Step 6f.3b2.consume — Migrate
+`Proofs/EndToEndCorrectness.lean`** (now landed). Retargeted the
+file to indexed entry points, added `ValidTokenStreamPropIx` +
+staging axiom `scanIx_valid_token_stream_axiom`, added
+`parseYamlIx_implies_valid_token_stream` to IndexedGrammable.
+Reflection 107 captures the staging-axiom decision trade-off
+(prior pointer's claim that `scanLoopIx_offset_monotonic` would
+suffice was wrong — it covers token-array size monotonicity, not
+emitted-token offset monotonicity).
+
+**Previous-previous next-session pointer**: **Step 6f.3b2.main — Build
 `IndexedScannerCorrectness.lean`** (now landed). Ported the
 legacy filter-preservation chain to the indexed `IxToken input`
 substrate; added `parseStreamIx_produces_valid_nodes_unconditional`
@@ -9637,11 +9654,43 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
     those two responsibilities and so needs an explicit bridge.
 
 ###### **6f.3b2.consume** — Migrate `Proofs/EndToEndCorrectness.lean`
-    to call indexed entry points + indexed scanner-correctness
-    bridge. Add `ValidTokenStreamPropIx` over `Indexed.TokenStream
-    input` and prove `scanFilteredIx_valid_token_stream` so
-    `parseYamlIx_implies_valid_token_stream` (replacing legacy
-    `parseYaml_implies_valid_token_stream`) is stateable.
+    *(done)*. Retargeted the file to call indexed entry points
+    (`parseYamlIx`, `parseYamlRawIx`, `parseStreamIx`,
+    `scanFilteredIx`, `scanIx`) and indexed proof bridges
+    (`parseYamlIx_produces_valid_nodes`,
+    `parseYamlIx_implies_valid_token_stream`,
+    `parseStreamIx_produces_valid_nodes_unconditional`,
+    `parseYamlRawIx_ok_decompose`, `parseYamlIx_ok_iff`,
+    `parseYamlIx_pipeline`). Token-stream witness type swapped
+    from `Array (Positioned YamlToken)` to
+    `Indexed.TokenStream input`. Top-level theorem statements
+    (`parse_sound_shallow`, `parse_complete`,
+    `parse_produces_valid_yaml`, `parse_produces_valid_documents`,
+    `parse_produces_valid_stream`,
+    `parseStream_respects_grammar_unconditional`) retained their
+    shape modulo the indexed type substitution; legacy theorems
+    that named `parseYaml` explicitly were renamed with `Ix`
+    suffix (`parseYamlIx_implies_validYaml`,
+    `parseYamlIx_implies_valid_token_stream`,
+    `parseYamlIx_implies_valid_document`,
+    `parseYamlIx_implies_valid_stream`). Added
+    `ValidTokenStreamPropIx` (def) and **staging axiom**
+    `scanIx_valid_token_stream_axiom` to
+    `Proofs/Scanner/IndexedScannerCorrectness.lean` (§6);
+    discharge of the axiom is scheduled for 6f.3b3 (port of the
+    four legacy scanner-internal preservation primitives —
+    `scan_produces_at_least_two`, `scan_first_is_streamStart`,
+    `scan_last_is_streamEnd`, `scan_positions_ordered` —
+    alongside the EmitterScannability indexed twin work). Added
+    `parseYamlIx_implies_valid_token_stream` to
+    `Proofs/Parser/IndexedGrammable.lean`. **6f.3b2.consume
+    LANDED 2026-05-23.** Build green 423/423 jobs (+14 jobs as
+    `IndexedScannerCorrectness`, `IndexedGrammable`,
+    `IndexedComposition` etc. enter the `L4YAML.lean` import
+    closure via `EndToEndCorrectness`); sorry count unchanged (7
+    pre-existing in `EmitterScannability.lean`); **1 staging
+    axiom added** (`scanIx_valid_token_stream_axiom`, scheduled
+    for discharge at 6f.3b3). Reflection 107 below.
   - Cascade: `Proofs/Composition.lean` migration still deferred
     to **6f.3c** cutover (same rationale as in the 6f.3b1 landed
     notes).
@@ -10181,6 +10230,97 @@ proof. The cost is one extra LOC layer; the benefit is that
 `scanIx`-keyed scanner-internal proofs (emitter-scannability)
 and `scanFilteredIx`-keyed parser-facing proofs both compose
 against their natural entry point, with no double-substrate.
+
+##### **Reflection 107 (new, 2026-05-23)**: when the
+next-session pointer says "use lemma X" but X turns out to be a
+weaker form of what's actually needed, prefer **staging axioms
+with explicit discharge plans** over (a) silently weakening the
+target theorem statement or (b) ballooning the current substep
+to port the missing primitives in full. The 6f.3b2.consume work
+surfaced this: the prior pointer claimed `scanFilteredIx_valid_token_stream`
+could be proved from `scanLoopIx_offset_monotonic` + the
+`IxToken.stopLEInput` type-level bound, "with filtering
+preserving monotonicity trivially." Inspection revealed that
+`scanLoopIx_offset_monotonic` is about *token-array size*
+monotonicity (proved by induction on fuel, chaining
+`scanNextTokenIx_tokens_size_le`), not about the *emitted
+tokens' `start.offset`* monotonicity that `ValidTokenStreamProp`
+requires. The actual prerequisite is the indexed twin of the
+legacy four-lemma `scan_produces_valid_tokens` family —
+`scan_produces_at_least_two`, `scan_first_is_streamStart`,
+`scan_last_is_streamEnd`, `scan_positions_ordered` — none of
+which exist yet on the indexed substrate, and each of which has
+~300 LOC of scanner-state invariant scaffolding (`SimpleKeyAbove`,
+`scanLoop_preserves_tokens`, `scanLoop_success_emits_streamEnd`,
+etc.) behind it.
+
+**Three plausible responses**, with trade-offs:
+
+1. **Port all four primitives now** (full discharge): ~1200 LOC
+   of induction proofs on indexed scanner state, dragging
+   6f.3b2.consume well past its EndToEndCorrectness-migration
+   scope and into 6f.3b3 territory.
+
+2. **Weaken the indexed `ValidTokenStreamPropIx`** to drop
+   `sizeGe2` / `firstIsStreamStart` / `lastIsStreamEnd` and
+   only require positions-ordered (which we *can* derive from
+   the type-level `IxToken.stopLEInput`). Free of axiom debt,
+   but the indexed version is then a *strict weakening* of
+   the legacy spec — the doc-verification-bridge would see a
+   different `ValidTokenStreamProp` API after the cutover. A
+   silent contract change.
+
+3. **Stage as an axiom with explicit discharge plan** (chosen):
+   add `scanIx_valid_token_stream_axiom` in
+   `IndexedScannerCorrectness.lean` §6, with a doc comment
+   listing the four primitive lemmas whose port would
+   discharge it and naming 6f.3b3 as the scheduled discharge
+   step. The migration of `EndToEndCorrectness.lean` proceeds
+   in its original scope, and the contract shape matches
+   legacy verbatim.
+
+**Why (3) over (1)**: 6f.3b3 (the EmitterScannability migration)
+needs the same four primitives anyway (legacy
+`EmitterScannability.lean` consumes
+`scan_produces_at_least_two` and `scan_first_is_streamStart`
+directly — see `:9285–:9287`). Discharging at 6f.3b3 is *not*
+extra work — it's work that was already on the critical path.
+Discharging here would be the same work, done before its
+natural consumer materializes, which violates the
+"build what's needed by the next step, not what *might* be
+needed later" principle that earlier 6f sub-steps have
+followed.
+
+**Why (3) over (2)**: silent contract changes during
+migrations are the worst kind of regression — they don't break
+the build, they don't trip tests, but they make the post-
+migration codebase *strictly less specified* than the pre-
+migration codebase. The doc-verification-bridge would silently
+drop coverage of the three weakened invariants. Better to
+honestly declare the axiom and schedule its discharge.
+
+**Why this is *not* axiom-policy backsliding**: the project's
+"zero axiom" state was reached by historical discharge work
+(notably 6d.1e, which closed out 14 staged axioms). Adding a
+new staging axiom here, with a *concrete* discharge plan
+naming the file (`Proofs/Output/EmitterScannability.lean`),
+the step (`6f.3b3`), and the four primitives that would
+constitute the discharge proof, is consistent with that
+pattern: axioms are temporary scaffolding for cross-substep
+dependencies, not permanent trust posits. The `_axiom` suffix
+keeps the staging status visible at every call site.
+
+**How to apply at future indexed-substrate migrations**: when a
+prior session's next-session pointer claims an existing lemma
+suffices but the lemma turns out to be a strictly weaker form,
+*don't* try to retrofit the weaker lemma to do more (it won't),
+*don't* silently drop the missing invariants from the indexed
+statement (a stealth regression), and *don't* port the full
+primitive chain inline (scope creep). Add the staging axiom,
+write the discharge plan into the doc comment, point at the
+follow-up step in the Blueprint, and proceed. The migration
+contract stays intact; the discharge is sequenced with its
+natural downstream consumer.
 
 </details>
 
