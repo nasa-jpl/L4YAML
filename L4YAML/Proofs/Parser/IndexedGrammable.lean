@@ -11,6 +11,8 @@ import L4YAML.Proofs.Parser.ParserGrammableBase
 import L4YAML.Proofs.Parser.IndexedNodeProofs
 import L4YAML.Proofs.Parser.IndexedWellBehaved
 import L4YAML.Proofs.Parser.IndexedWfa
+import L4YAML.Proofs.Parser.IndexedComposition
+import L4YAML.Proofs.Scanner.IndexedScannerCorrectness
 
 /-! # `IndexedGrammable` — Phase 3 Step 6d.3 indexed grammability (staging)
 
@@ -68,6 +70,9 @@ open L4YAML.Proofs.Composition
 open L4YAML.Proofs.Indexed.WellBehaved
 open L4YAML.Proofs.Indexed.NodeProofs
 open L4YAML.Proofs.Indexed.WfaProofs
+open L4YAML.Proofs.Indexed.Composition
+open L4YAML.Proofs.Indexed.ScannerCorrectness
+open L4YAML.Scanner.Indexed.ScannerStateIx
 
 variable {input : String}
 
@@ -229,5 +234,43 @@ theorem parseStreamIx_produces_valid_nodes
   have h_g :=
     parseStreamIx_output_grammable tokens docs h_fpsv h_matched h_parse doc hdoc
   exact ParserSoundness.yamlValue_has_witness doc.compose.value false h_g
+
+/-- **Unconditional correctness (indexed, parseStreamIx-level, no
+    hypotheses)**: given that `tokens` came from `scanFilteredIx`,
+    every document produced by `parseStreamIx` has a `ValidNode`
+    witness. The `FlowAwarePSVIx` / `FlowBracketsMatchedIx`
+    hypotheses are discharged via
+    `scanFilteredIx_FlowAwarePSVIx` /
+    `scanFilteredIx_FlowBracketsMatchedIx`. -/
+theorem parseStreamIx_produces_valid_nodes_unconditional
+    {input : String} (tokens : Indexed.TokenStream input)
+    (docs : Array YamlDocument)
+    (h_scan : scanFilteredIx input = .ok tokens)
+    (h_parse : parseStreamIx tokens = .ok docs) :
+    ∀ doc ∈ docs.toList, ∃ node : ValidNode,
+      stripAnnotations (toYamlValue node) = stripAnnotations doc.compose.value := by
+  have h_fpsv := scanFilteredIx_FlowAwarePSVIx input tokens h_scan
+  have h_matched := scanFilteredIx_FlowBracketsMatchedIx input tokens h_scan
+  exact parseStreamIx_produces_valid_nodes tokens docs h_fpsv h_matched h_parse
+
+/-- **Unconditional correctness (indexed, parseYamlIx-level)**: the
+    full `parseYamlIx` pipeline (scan → parse → compose) produces
+    documents whose values have `ValidNode` witnesses. Indexed twin
+    of `parseYaml_produces_valid_nodes` in
+    `Proofs/Parser/ParserGrammable.lean`. -/
+theorem parseYamlIx_produces_valid_nodes
+    (input : String) (docs : Array YamlDocument)
+    (h : parseYamlIx input = .ok docs) :
+    ∀ doc ∈ docs.toList, ∃ node : ValidNode,
+      stripAnnotations (toYamlValue node) = stripAnnotations doc.value := by
+  rw [parseYamlIx_ok_iff] at h
+  obtain ⟨raw_docs, h_raw, h_eq⟩ := h
+  obtain ⟨tokens, h_scan, h_parse⟩ := parseYamlRawIx_ok_decompose input raw_docs h_raw
+  intro doc hdoc
+  rw [h_eq, Array.toList_map] at hdoc
+  obtain ⟨raw_doc, h_raw_mem, h_compose_eq⟩ := List.mem_map.mp hdoc
+  subst h_compose_eq
+  exact parseStreamIx_produces_valid_nodes_unconditional tokens raw_docs h_scan h_parse
+    raw_doc h_raw_mem
 
 end L4YAML.Proofs.Indexed.Grammable
