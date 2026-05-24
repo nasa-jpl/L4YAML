@@ -1820,48 +1820,47 @@ not in-place axiom-to-theorem promotion — the latter is impossible
 when the axiom's hypothesis is strictly weaker than what the
 stronger lemma derives).
 
-**Next session**: **Step 6f.3b2.main — Build
-`IndexedScannerCorrectness.lean`**. 6f.3b2.pre (parts 1+2) landed
-this session in commits `9454c139` (`IndexedDispatch.lean`,
-4 fixes) and `40d751ae` (`IndexedScannerPlainScalarValid.lean`,
-12 fixes including one `clears`→`preserves` rename; see
-Reflection 105). The `scan_flow_aware_psv_ix_axiom` /
-`scan_flow_brackets_matched_ix_axiom` consumers can now link.
+**Next session**: **Step 6f.3b2.consume — Migrate
+`Proofs/EndToEndCorrectness.lean`** to the indexed pipeline.
+6f.3b2.main landed this session: new file
+`Proofs/Scanner/IndexedScannerCorrectness.lean` (~470 LOC)
+ports the legacy filter-preservation chain (`list_filter_origIdx`,
+`list_filter_getElem_by_count`, `array_filter_getElem_correspondence`,
+`flowNestingIx_go_filter_equiv`,
+`filter_preserves_PlainScalarsValidIx` / `_FlowContextPSVIx` /
+`_FlowAwarePSVIx` / `_FlowBracketsMatchedIx`,
+`scanFilteredIx_FlowAwarePSVIx`,
+`scanFilteredIx_FlowBracketsMatchedIx`); two unconditional
+theorems (`parseStreamIx_produces_valid_nodes_unconditional`,
+`parseYamlIx_produces_valid_nodes`) added to
+`Proofs/Parser/IndexedGrammable.lean`. See Reflection 106 for
+the split-responsibility design lesson.
 
-For 6f.3b2.main, port the legacy filter-preservation chain in
-`Proofs/Production/ScannerPlainScalarValid.lean:5197–5567` to the
-indexed `IxToken input` substrate (~300 LOC):
-  1. **`array_filter_getElem_correspondence`** (indexed twin) —
-     bridges `Array.filter` indexing between the filtered and
-     pre-filtered streams. Substrate-level lemma.
-  2. **`flowNesting_go_filter_equiv`** (indexed twin) — the
-     `flowNestingIx.go` accumulator is invariant under
-     `.placeholder` filtering. Uses the correspondence lemma to
-     re-index each step.
-  3. **`filter_preserves_FlowContextPSVIx`** /
-     **`filter_preserves_FlowBracketsMatchedIx`** — lift through
-     `Array.filter (· ≠ .placeholder)`.
-  4. **`scanFilteredIx_FlowAwarePSVIx`** /
-     **`scanFilteredIx_FlowBracketsMatchedIx`** — compose
-     `scanFiltered = filter ∘ scan` with
-     `scan_flow_aware_psv_ix_axiom` /
-     `scan_flow_brackets_matched_ix_axiom` and the filter-preservation
-     lemmas above.
-  5. **`parseStreamIx_produces_valid_nodes_unconditional`** /
-     **`parseYamlIx_produces_valid_nodes`** — chain the
-     `scanFilteredIx_*` facts with the existing
-     hypothesis-taking `parseStreamIx_produces_valid_nodes` in
-     `Proofs/Parser/IndexedGrammable.lean`. The unconditional
-     versions take only the `String` input and discharge both
-     hypotheses internally.
-
-Then **6f.3b2.consume**: migrate `Proofs/EndToEndCorrectness.lean`
-to call indexed entry points + indexed scanner-correctness bridge
-+ the new unconditional `parseYamlIx_produces_valid_nodes`. Define
-`ValidTokenStreamPropIx` over `Indexed.TokenStream input` and prove
-`scanFilteredIx_valid_token_stream` so `parseYamlIx_implies_valid_token_stream`
-(replacing legacy `parseYaml_implies_valid_token_stream`) is
-stateable.
+For 6f.3b2.consume, retarget `Proofs/EndToEndCorrectness.lean`:
+  1. **`ValidTokenStreamPropIx`** — port `ValidTokenStreamProp` to
+     `Indexed.TokenStream input`. Generic shape: each token's
+     start position lies within `input.utf8ByteSize` and tokens
+     are sorted by start offset. The `IxToken input` type-level
+     bound (`stopLEInput`) already guarantees half of this; the
+     monotonicity half ports as-is from the legacy proof.
+  2. **`scanFilteredIx_valid_token_stream`** — analogue of
+     legacy `scanFiltered_valid_token_stream`. Uses `scanIx`
+     monotonicity (already proven as `scanLoopIx_offset_monotonic`
+     in `Proofs/Scanner/IndexedDispatch.lean`) + the
+     `IxToken.stopLEInput` field for the bound. Filtering
+     preserves monotonicity trivially.
+  3. **`parseYamlIx_implies_valid_token_stream`** — chain (1)+(2)
+     to replace legacy `parseYaml_implies_valid_token_stream`.
+  4. **Repointing**: swap `Scanner.scanFiltered` →
+     `scanFilteredIx`, `parseYaml` → `parseYamlIx`,
+     `parseYaml_produces_valid_nodes` →
+     `parseYamlIx_produces_valid_nodes` (new unconditional
+     theorem from 6f.3b2.main), `parseYaml_implies_valid_token_stream`
+     → `parseYamlIx_implies_valid_token_stream` (from step 3).
+  5. **Validate**: existing top-level `endToEndCorrectness`
+     theorem statement is unchanged; its proof body now flows
+     through the indexed substrate. `Proofs/Composition.lean`
+     migration is still deferred to 6f.3c.
 
 Then **6f.3b3**: migrate `Proofs/Output/EmitterScannability.lean`
 (multi-session — 298 `ScannerCorrectness.*` refs over 10741 LOC,
@@ -1869,15 +1868,27 @@ requiring ~50 indexed scanner-internal twins).
 
 Then **6f.3c**: coupled 6f.4 + 6f.5 atomic cutover (rename
 staging files, flatten `.Indexed` namespaces, drop `Ix` suffixes).
-Reflections 103 + 105 captured the meta-lessons of the
-6f.3b2.pre sub-step: behavior-affecting production-code changes
-can leave staging proofs *structurally* broken (R103) or
+Reflections 103, 105, 106 captured the meta-lessons of the
+6f.3b2.{pre, main} sub-steps: behavior-affecting production-code
+changes can leave staging proofs *structurally* broken (R103) or
 *semantically* inverted (R105) if the staging files are not on
-the default-build path; the cutover commit would discover all
-such breakage in one shot. 6f.3b2.pre is the canonical "force
-every staging file to elaborate" hardening pass.
+the default-build path; and indexed-substrate ports of legacy
+theorems whose definition collapses scan-with-filter into one
+function need an explicit bridge layer (R106).
 
-**Previous next-session pointer**: **Step 6f.3b2.pre — Discharge
+**Previous next-session pointer**: **Step 6f.3b2.main — Build
+`IndexedScannerCorrectness.lean`** (now landed). Ported the
+legacy filter-preservation chain to the indexed `IxToken input`
+substrate; added `parseStreamIx_produces_valid_nodes_unconditional`
+and `parseYamlIx_produces_valid_nodes` to
+`Proofs/Parser/IndexedGrammable.lean`. Reflection 106 captures
+the split-responsibility design lesson (legacy
+`scan_flow_aware_psv` collapses scan+filter into one; the
+indexed substrate distributes them across `scanIx`-keyed scanner
+proofs and `scanFilteredIx`-keyed parser-facing proofs, needing
+an explicit bridge).
+
+**Previous-previous next-session pointer**: **Step 6f.3b2.pre — Discharge
 6f.0 staging-proof regressions** (now landed across two commits).
 Part 1 (`IndexedDispatch.lean`, 4 fixes) and part 2
 (`IndexedScannerPlainScalarValid.lean`, 12 fixes). Part 2
@@ -9597,22 +9608,33 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
     consumers can now link. **6f.3b2.pre LANDED 2026-05-23.**
     Reflections 103, 105 below.
 
-###### **6f.3b2.main** — Build `IndexedScannerCorrectness.lean`:
-    indexed twins of legacy `filter_preserves_FlowAwarePSV` /
+###### **6f.3b2.main** — Build `IndexedScannerCorrectness.lean`
+    *(done)*: indexed twins of legacy `filter_preserves_FlowAwarePSV` /
     `filter_preserves_FlowBracketsMatched` /
     `flowNesting_go_filter_equiv` /
-    `array_filter_getElem_correspondence` (port from
-    `ScannerPlainScalarValid.lean:5197–5567`, ~300 LOC), then chain
+    `array_filter_getElem_correspondence` (ported from
+    `ScannerPlainScalarValid.lean:5197–5567`, ~470 LOC), chained
     with `scan_flow_aware_psv_ix_axiom` /
     `scan_flow_brackets_matched_ix_axiom` (from 6f.3b2.pre) to
     produce `scanFilteredIx_FlowAwarePSVIx` and
-    `scanFilteredIx_FlowBracketsMatchedIx`. Add an unconditional
+    `scanFilteredIx_FlowBracketsMatchedIx`. Unconditional
     `parseStreamIx_produces_valid_nodes_unconditional` and
-    `parseYamlIx_produces_valid_nodes` by chaining
+    `parseYamlIx_produces_valid_nodes` added to
+    `Proofs/Parser/IndexedGrammable.lean` by chaining
     `scanFilteredIx_FlowAwarePSVIx` +
     `scanFilteredIx_FlowBracketsMatchedIx` with the existing
-    hypothesis-taking `parseStreamIx_produces_valid_nodes` in
-    `Proofs/Parser/IndexedGrammable.lean`.
+    hypothesis-taking `parseStreamIx_produces_valid_nodes`.
+    **6f.3b2.main LANDED 2026-05-23.** New file `Proofs/Scanner/IndexedScannerCorrectness.lean`;
+    +2 imports + 2 opens + 2 theorems in `IndexedGrammable.lean`;
+    build green 409/409 jobs; sorry count unchanged (7
+    pre-existing in `EmitterScannability.lean`).
+    Reflection 106 below: filter-preservation bridges are a
+    *separate* indexed-substrate layer between the staging
+    `scan_*_ix_axiom` theorems and the user-facing
+    `scanFilteredIx`-keyed consumers; the legacy version collapsed
+    this layer because legacy `scan_flow_aware_psv` *already*
+    operated on `scanFiltered`, but the indexed pipeline split
+    those two responsibilities and so needs an explicit bridge.
 
 ###### **6f.3b2.consume** — Migrate `Proofs/EndToEndCorrectness.lean`
     to call indexed entry points + indexed scanner-correctness
@@ -10105,6 +10127,60 @@ also flipped (`_of_cleared_current` → `_mono`), but the recipe
 came straight from the legacy `Scanner.lean`-pattern dispatcher.
 Future cutover-style reshapes should look up the legacy proof
 recipe *before* rewriting from scratch.
+
+##### **Reflection 106 (new, 2026-05-23)**: when a legacy
+production-side theorem collapses two responsibilities — "the
+scanner output satisfies P" and "the *filtered* scanner output
+satisfies P" — the indexed twin may need to *split* them apart
+because the indexed pipeline distributes those responsibilities
+across two files. The 6f.3b2.main port surfaced exactly this:
+legacy `scan_flow_aware_psv` is keyed on `Scanner.scanFiltered`
+because legacy `scanFiltered` is the *only* user-facing scanner
+entry point that producer/consumer proofs reference. The
+indexed pipeline (post-6f.0) preserves an *unfiltered* indexed
+scanner entry point (`ScannerStateIx.scanIx`, which retains
+`.placeholder` tokens) — both because emitter-scannability
+proofs reference scanner-internal predicates that are easier
+to state on the unfiltered stream, and because the existing
+`scan_flow_aware_psv_ix_axiom` /
+`scan_flow_brackets_matched_ix_axiom` in
+`Proofs/Production/IndexedScannerPlainScalarValid.lean` were
+already keyed on `scanIx` rather than `scanFilteredIx`.
+
+**Bridge layer**: `filter_preserves_FlowAwarePSVIx` (a fresh
+top-level theorem with no direct legacy counterpart) plus
+`filter_preserves_FlowContextPSVIx` /
+`filter_preserves_FlowBracketsMatchedIx` /
+`filter_preserves_PlainScalarsValidIx` (indexed twins of the
+legacy `filter_preserves_*` family from
+`ScannerPlainScalarValid.lean:5379` and `:5546`). Composed via
+`scanFilteredIx_FlowAwarePSVIx` /
+`scanFilteredIx_FlowBracketsMatchedIx` (the user-facing entry
+points for `IndexedGrammable.lean` to consume).
+
+**Why this matters in design space**: at the 6f.6 cutover when
+`Scanner/Scanner.lean` and its proof family are deleted, the
+combined-shape legacy theorem `scan_flow_aware_psv` will
+disappear; the indexed bridge layer (this file) is what survives
+and what `ParserGrammable.lean` (post-cutover) calls. The
+extra layer is a one-time cost paid once at 6f.3b2.main;
+subsequent staging proofs that need filter preservation
+(EmitterScannability port at 6f.3b3) compose against this
+single bridge rather than re-deriving from `scanIx`.
+
+**How to apply at future indexed-substrate ports**: when porting
+a legacy theorem that consumes a function with a "side-effect-
+free preprocessing wrapper" (like `scanFiltered = filter ∘ scan`,
+`parseYaml = compose ∘ parseYamlRaw`, `validNextToken =
+classify ∘ skipPlaceholders`), check whether the indexed
+pipeline preserves the wrapper as a separate function or
+inlines it. If preserved (as `scanFilteredIx` is), the indexed
+twin needs a `wrapper_preserves_P` bridge between the
+inner-function predicate proof and the wrapper-keyed consumer
+proof. The cost is one extra LOC layer; the benefit is that
+`scanIx`-keyed scanner-internal proofs (emitter-scannability)
+and `scanFilteredIx`-keyed parser-facing proofs both compose
+against their natural entry point, with no double-substrate.
 
 </details>
 
