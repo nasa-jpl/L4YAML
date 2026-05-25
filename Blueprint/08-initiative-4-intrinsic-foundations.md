@@ -1820,24 +1820,51 @@ not in-place axiom-to-theorem promotion — the latter is impossible
 when the axiom's hypothesis is strictly weaker than what the
 stronger lemma derives).
 
-**Next session**: **Step 6f.3b3.internals.progress.capstone — Discharge
-`scanPlainScalarIx_offset_lt_axiom` and port the strict-progress
-capstone `scanNextTokenIx_progress` (indexed twin of legacy
-`ScannerCorrectness.scanNextToken_progress`, ~500 LOC + `maxHeartbeats
-800000`); then discharge `ScanChainIx.bound_invariant` (strict form,
-`offset ≥ s₀.offset + n`) and `ScanChainIx.fuel_bound`
-(`n + 1 ≤ (input.utf8ByteSize + 1) * 4`) in ScanChain.lean §3**.
+**Next session**: **Step 6f.3b3.basic — Port the indexed twin of legacy
+`Proofs/Output/EmitterScannability.lean` §0–§2 (escape character /
+string properties, value-level)**, into
+`Proofs/Output/IndexedEmitterScannability/Basic.lean`. Legacy lines
+76–841 (~700 LOC est.). This is the first of seven sub-files keyed
+to architectural concern (Reflection 108):
+`Basic → ScanChain → FlowMonoChain → FilteredGrowth → EmitScans →
+ParseStream → RoundTrip`. With `6f.3b3.internals.{utility, chain,
+progress}` now fully landed, the `ScanChain.lean` substrate is ready
+to be the consumer of `Basic.lean`'s escape-string lemmas.
+
+**Step 6f.3b3.internals.progress.capstone LANDED 2026-05-25** (~200 LOC
+total across two files). Discharged the strict-progress capstone:
+ported `canStart_*` helper chain + `colonTerminatesPlain_false_of_canStart`
+(~60 LOC) into `Proofs/Scanner/IndexedScannerProgress.lean` §4;
+discharged `scanPlainScalarIx_offset_lt` directly (~70 LOC) by
+case-split on the first iteration of `collectPlainScalarLoopIx`,
+replacing the `.leaf` slice's `_axiom`; added §6 preprocess upstream
+lemmas (`scanNextTokenIx_preprocess_peek_eq` /
+`scanNextTokenIx_preprocess_hasMore`, ~30 LOC); proved the §7
+capstone `scanNextTokenIx_progress` (~85 LOC with `maxHeartbeats
+800000`); lifted into `ScanChain.lean` §3 with `ScanChainIx.bound_invariant`
+(strict form, ~10 LOC) and `ScanChainIx.fuel_bound` (~15 LOC).
+Build green at 453/453 jobs. `#print axioms` on each of the 8 new
+declarations shows the foundational triple `[propext, Classical.choice,
+Quot.sound]` — no scanner-internal axioms remain. **Reflection 117**
+(new) documents the substrate refinement: the indexed
+`collectPlainScalarLoopIx` omits the legacy `atDocumentBoundary`
+check, eliminating the `h_noDoc` precondition the legacy
+`scanPlainScalar_offset_lt` carried — and cascading through to
+`dispatchContent_offset_gt` (no `h_noDoc` parameter) and
+`scanNextTokenIx_progress` (no `dispatchStructural_none_noDoc`
+derivation), saving ~30 LOC. The legacy boundary check is preserved
+in `handleBlockLineBreakIx` (continuation-line `atDocumentBoundaryIx`)
+where it still semantically belongs.
+
 **Step 6f.3b3.internals.progress.leaf LANDED 2026-05-25** (~650 LOC;
 new file `Proofs/Scanner/IndexedScannerProgress.lean`) — populated
 §0–§5: 3 helpers + 14 leaf strict-progress theorems
 (`scanFlowSequenceStartIx_offset_lt` … `scanBlockScalarIx_offset_lt`)
-+ 1 staging axiom (`scanPlainScalarIx_offset_lt_axiom`) + 4
-per-dispatcher strict-progress theorems
++ 1 staging axiom (`scanPlainScalarIx_offset_lt_axiom`, since
+discharged in `.capstone`) + 4 per-dispatcher strict-progress
+theorems
 (`scanNextTokenIx_dispatch{Structural,FlowIndicators,BlockIndicators,Content}_offset_gt`).
-Build green at 451/451 jobs. `#print axioms` on each of the 17 new
-theorems shows the foundational triple `[propext, Classical.choice,
-Quot.sound]` (plus `scanPlainScalarIx_offset_lt_axiom` for
-`dispatchContent_offset_gt`). **Reflection 116** documents the
+Build green at 451/451 jobs. **Reflection 116** documents the
 sub-decomposition into `.leaf` + `.capstone` and the staging-axiom
 decision for plain-scalar strict progress (Reflection 107's pattern
 applied to a multi-session port).
@@ -10137,11 +10164,13 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
       declarations (1 inductive + 6 theorems) shows the foundational
       triple `[propext, Classical.choice, Quot.sound]`.
 
-    ▸ **6f.3b3.internals.progress** *(in progress, sub-decomposed
-      into `.leaf` + `.capstone`)*. Port the strict-progress capstone
-      for the indexed scanner and use it to discharge the strict
-      forms. Reflection 116 documents the multi-slice decomposition
-      and the staging-axiom decision for `scanPlainScalarIx_offset_lt`.
+    ▸ **6f.3b3.internals.progress** ✅ **LANDED 2026-05-25** (~850 LOC
+      total, sub-decomposed into `.leaf` + `.capstone`). Ported the
+      strict-progress capstone for the indexed scanner and used it
+      to discharge the `ScanChainIx` strict-form bound and
+      `fuel_bound`. Reflections 116 (sub-decomposition) and 117
+      (document-boundary substrate simplification) document the
+      structural choices.
 
       ▸ **6f.3b3.internals.progress.leaf** ✅ **LANDED 2026-05-25**
         (~650 LOC; new file
@@ -10187,37 +10216,70 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
         and the canStartPlainScalarBool helper-port deferral
         rationale.
 
-      ▸ **6f.3b3.internals.progress.capstone** *(deferred, next
-        session)*. Discharge the strict-progress capstone and the
-        ScanChain.lean §3 bound:
-          • Port `canStart_*` helper chain (legacy
-            `Proofs/Scanner/ScannerCorrectness.lean:10228–10298`,
-            ~70 LOC of boolean algebra on
-            `canStartPlainScalarBool`).
-          • Discharge `scanPlainScalarIx_offset_lt_axiom` as a
-            theorem (~20 LOC core + `maxHeartbeats` if needed).
-          • `scanNextTokenIx_progress` capstone — indexed twin of
-            legacy `ScannerCorrectness.scanNextToken_progress`
-            (`Proofs/Scanner/ScannerCorrectness.lean:10549`,
-            ~500 LOC + `maxHeartbeats 800000`):
+      ▸ **6f.3b3.internals.progress.capstone** ✅ **LANDED 2026-05-25**
+        (~200 LOC across two files). Discharged the strict-progress
+        capstone and the ScanChain.lean §3 bound:
+          • §4-prelude `canStart_*` helpers ported into
+            `Proofs/Scanner/IndexedScannerProgress.lean` §4:
+            `flowIndicator_isIndicator'`, `canStart_not_lb`,
+            `canStart_not_ws`, `canStart_plainSafe`,
+            `canStart_not_flowIndicator`,
+            `colonTerminatesPlain_false_of_canStart`. The legacy
+            `canStart_terminates_none` indirection collapses to
+            direct case-splits on the `colonTerminatesPlain`
+            helper — the indexed `collectPlainScalarLoopIx` does
+            not perform a document-boundary check (legacy
+            `collectPlainScalar_terminates?` did at
+            `Scanner/Scalar.lean:442`), so `h_noDoc` is
+            unused in the indexed proof (**Reflection 117**).
+          • `scanPlainScalarIx_offset_lt` discharged as a theorem
+            (~70 LOC) by direct case-split on the first iteration
+            of `collectPlainScalarLoopIx` (mirrors the existing
+            weak `_offset_monotonic` proof structure in
+            `Proofs/Scanner/IndexedScalar.lean:447`). Replaces the
+            `_axiom` staging item from the `.leaf` slice.
+          • `scanNextTokenIx_preprocess_peek_eq` and
+            `scanNextTokenIx_preprocess_hasMore` (§6, ~30 LOC) —
+            indexed twins of legacy `preprocess_peek_eq` /
+            `preprocess_hasMore`. Used to feed `h_peek` / `h_hm`
+            into the per-dispatcher strict-progress lemmas.
+          • `scanNextTokenIx_progress` capstone (§7, ~85 LOC with
+            `maxHeartbeats 800000`) — indexed twin of legacy
+            `ScannerCorrectness.scanNextToken_progress`:
             `scanNextTokenIx s = .ok (some s') →
-            s.cursor.pos.offset < s'.cursor.pos.offset`.
-            Composes §5 with preprocess strict progress
-            (`scanNextTokenIx_preprocess_offset_lt` — a small new
-            lemma upstream of the dispatch chain).
+            s.cursor.pos.offset < s'.cursor.pos.offset`. Composes
+            §5 (per-dispatcher `_offset_gt`) with §6 (preprocess
+            upstream lemmas). One substrate simplification over
+            legacy: `dispatchContent_offset_gt` does not consume
+            `h_noDoc` (indexed plain-scalar loop omits the
+            document-boundary check), so legacy
+            `dispatchStructural_none_noDoc` (10493) has no indexed
+            twin — saving ~20 LOC.
           • `ScanChainIx.bound_invariant` (strict form) — using
-            `scanNextTokenIx_progress`, derive
-            `s_final.cursor.pos.offset ≥ s₀.cursor.pos.offset + n`.
-            The other two legacy conjuncts (`offset ≤ inputEnd`,
-            `inputEnd = input.utf8ByteSize`) are already discharged
-            in `.chain` via `posBound`.
-          • `ScanChainIx.fuel_bound` — combine `bound_invariant`
-            (strict) with `posBound` to get
-            `n + 1 ≤ (input.utf8ByteSize + 1) * 4`.
+            `scanNextTokenIx_progress`, induct over the chain to
+            get `s_final.cursor.pos.offset ≥ s₀.cursor.pos.offset + n`.
+            ~10 LOC.
+          • `ScanChainIx.fuel_bound` — combines `bound_invariant`
+            (strict) with `offset_bounded` (§2.3 via `posBound`) to
+            get `n + 1 ≤ (input.utf8ByteSize + 1) * 4`. ~15 LOC.
+            The indexed version drops legacy's `h_le`, `h_ie`,
+            `h_iv` preconditions — all four legacy invariants are
+            either structural in the substrate (`input` type
+            parameter, `posBound`) or follow from `posBound`.
 
-        Both `.bound_invariant` (strict form) and `.fuel_bound`
-        land in `ScanChain.lean` §3. Estimated effort: 1 session
-        (~400–600 LOC).
+        Build green at 453/453 jobs (the `ScanChain.lean` file is
+        now reachable via the default targets through its
+        downstream imports). `#print axioms` on each of the new 8
+        declarations shows the foundational triple
+        `[propext, Classical.choice, Quot.sound]` — the staging
+        axiom `scanPlainScalarIx_offset_lt_axiom` is now removed
+        entirely, so no scanner-internal axioms remain.
+
+        **Cost**: ~200 LOC (capstone proof + §3 bound) + minor
+        edits to the §5 `dispatchContent_offset_gt` signature
+        (removed unused `h_noDoc`). Total session delta on
+        `IndexedScannerProgress.lean`: 648 → ~860 LOC; new content
+        in `ScanChain.lean`: +70 LOC.
 
   ▸ **6f.3b3.{basic,scanchain,flowmono,filteredgrowth,emitscans,parsestream,roundtrip}**
     *(sub-sessions, one per file)*. Migrate each section of the legacy
@@ -11539,6 +11601,57 @@ exception here was identified up front via the legacy LOC count
 (`scanPlainScalar_offset_lt`'s ~90 LOC vs. ~10 LOC for the next-
 biggest leaf); staging it as an axiom is cheaper than letting it
 absorb the leaf slice's complexity budget.
+
+</details>
+
+##### **Reflection 117 (new, 2026-05-25)**: a substrate refinement
+that eliminates a check from the loop body silently retires the
+*precondition that legacy callers carried for that check*. The
+indexed `collectPlainScalarLoopIx` does not perform an
+`atDocumentBoundary` check — legacy `collectPlainScalar_terminates?`
+did at `Scanner/Scalar.lean:442`. Consequence: legacy
+`scanPlainScalar_offset_lt` needs `hnoDoc :
+(s.col == 0 && atDocumentBoundary s) = false` to rule out the
+boundary-terminates branch; the indexed twin needs no such
+precondition. The simplification cascades upward: legacy
+`dispatchContent_offset_gt` takes `hnoDoc`, and to feed it the
+legacy `scanNextToken_progress` capstone derives `hnoDoc` from
+"`dispatchStructural` returned `.ok none`" via a dedicated
+`dispatchStructural_none_noDoc` lemma (~20 LOC). The indexed
+pipeline omits all three: no precondition on the leaf, no
+parameter on the dispatcher, no `_none_noDoc` derivation. Total
+indexed-side savings: ~30 LOC and one tactic chain that legacy
+needed `maxHeartbeats 800000` to type-check.
+
+<details><summary>Why this saving is "structural", not "incidental".</summary>
+
+The legacy plain-scalar loop's document-boundary check exists
+because legacy `collectPlainScalarLoop`'s caller `scanPlainScalar`
+runs *after* the dispatcher's document-marker gate but *during*
+the scalar's continuation-line processing — and at continuation
+lines, the cursor can wander back to column 0 where a `---`
+might appear. The indexed pipeline handles that case differently:
+`handleBlockLineBreakIx` (called by `collectPlainScalarLoopIx`
+during the `isLineBreakBool ch` arm) does its own
+`atDocumentBoundaryIx` check on the *post-fold* cursor. So the
+document-boundary guard is *preserved* in the indexed substrate
+— just relocated from "first character of the plain scalar" to
+"continuation line of the plain scalar", which is the only place
+where column-0 + `---` can legitimately appear *during* the
+scalar. The first-character check was always redundant with the
+dispatcher's gate; the indexed substrate's reshape made the
+redundancy explicit.
+
+</details>
+
+<details><summary>How to apply at future substrate-refinement audits.</summary>
+
+When an indexed-substrate refactor removes a check from a loop or
+helper, audit the callers' preconditions: a precondition that
+existed *only* to satisfy the now-removed check is dead weight in
+the new substrate. Keep the precondition only if the caller's
+*own* code paths still need it. The substrate refinement should
+ripple through the proof obligations, not silently remain.
 
 </details>
 
