@@ -75,21 +75,23 @@ String --[scanIx]--> Indexed.TokenStream --[filter]--> Indexed.TokenStream --[pa
 ## Axioms
 
 The composite proof `scanIx_valid_token_stream`
-(`Proofs/Scanner/IndexedScannerCorrectness.lean` §7.10) is a *theorem*
-composed of three **discharged** primitives
-(`scanIx_produces_at_least_two` §6.3, `scanIx_last_is_streamEnd` §6.3,
-`scanIx_first_is_streamStart` §7.9 — landed 2026-05-24 in
-6f.3b3.primitives.streamStart) plus one **residual staging axiom**:
+(`Proofs/Scanner/IndexedScannerCorrectness/OrderedLoop.lean` §8.12) is
+now a *theorem* composed of three **discharged** primitives:
 
-  - `scanIx_positions_ordered_axiom` (§6.4) — discharge scheduled for
-    Step 6f.3b3.primitives.ordered, which will port the indexed twins
-    of `ScanInv` / `AllKeysValid` (`ScannerCorrectness.lean:8745` /
-    `:8983`) and `scanLoop_ordered`, alongside the indexed-twin port
-    of `Proofs/Output/EmitterScannability.lean`'s ~50 scanner-internal
-    preservation lemmas — the same primitive family that powers the
-    legacy `scan_produces_valid_tokens` discharge.
+  - `scanIx_produces_at_least_two` (Basic §6.3) — discharged.
+  - `scanIx_last_is_streamEnd` (Basic §6.3) — discharged.
+  - `scanIx_first_is_streamStart` (StreamStart §7.9) — discharged
+    2026-05-24 in 6f.3b3.primitives.streamStart.
+  - `scanIx_positions_ordered` (OrderedLoop §8.11) — discharged
+    2026-05-24 in 6f.3b3.primitives.ordered.compose.value.tail. Ports
+    indexed twins of `ScanInv` / `AllKeysValid`
+    (`ScannerCorrectness.lean:8745` / `:8983`) and `scanLoop_ordered`.
 
-See Reflections 107, 108, and 109 in the Blueprint.
+**No staging axioms remain in the `scanIx` chain.**
+`#print axioms scanIx_valid_token_stream` shows only the Lean
+foundational triple (`[propext, Classical.choice, Quot.sound]`).
+
+See Reflections 107, 108, 109, 110, 111, 112, 113 in the Blueprint.
 -/
 
 namespace L4YAML.Proofs.EndToEndCorrectness
@@ -310,12 +312,11 @@ Re-export of `L4YAML.Proofs.Indexed.Grammable.parseYamlIx_implies_valid_token_st
 into the `EndToEndCorrectness` namespace for doc-verification-bridge visibility.
 
 Uses the composite theorem `scanIx_valid_token_stream`
-(`IndexedScannerCorrectness.lean` §7.10), which now depends on a
-single residual staging axiom (`scanIx_positions_ordered_axiom`,
-§6.4) after 6f.3b3.primitives.streamStart landed
-`scanIx_first_is_streamStart` as a theorem (§7.9, 2026-05-24).
-Discharge of the positions-ordered axiom is scheduled for
-6f.3b3.primitives.ordered.
+(`IndexedScannerCorrectness/OrderedLoop.lean` §8.12), which depends
+on zero staging axioms: `scanIx_first_is_streamStart` (§7.9,
+2026-05-24) and `scanIx_positions_ordered` (§8.11, 2026-05-24)
+are both *theorems* now. `#print axioms` shows only the Lean
+foundational triple.
 -/
 theorem parseYamlIx_implies_valid_token_stream (input : String)
     (docs : Array YamlDocument)

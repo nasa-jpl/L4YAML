@@ -628,25 +628,622 @@ theorem scanDirectiveIx_preserves_AllKeysValidIx {input : String}
     (scanDirectiveIx_tokens_size_le h_ok)
     (fun i hi => scanDirectiveIx_preserves_prefix s s' h_ok i hi)
 
-/-! ### §8.7.10'  Status note — ScanInvIx for emit-at-prior-cursor helpers
-deferred to `OrderedLoop.lean`.
+/-! #### §8.7.10'  `_new_token_start` bricks per emit-at-prior-cursor helper.
 
-`scanAnchorOrAliasIx_preserves_ScanInvIx`,
-`scanTagIx_preserves_ScanInvIx`, and
-`scanDirectiveIx_preserves_ScanInvIx` use `emitAt startPos` where
-`startPos = s.cursor.pos` (the *original* cursor, before the loop scans
-the name). The `h_ge` precondition of `emitAt_preserves_ScanInvIx`
-requires `∀ i, s_intermediate.tokens.tokens[i].start.offset ≤
-startPos.offset`, where `s_intermediate` is a cursor-updated form
-`{ s.advance with cursor := cAfterLoop }`. The structure update folds
-to a `let __src := s.advance; { cursor := cAfterLoop, ... }` form
-internally, which trips up `rw` (the Fin-indexed `getElem` form in the
-goal differs from the Nat-indexed `getElem'` form produced by helpers).
+For each helper that emits one token via `emitAt startPos` where
+`startPos = s.cursor.pos` (anchor/alias, tag, YAML directive, TAG
+directive), we prove that the pushed slot at `s.tokens.size` carries
+`.start = startPos`. Each brick follows the legacy
+`scanAnchorOrAliasIx_new_token_not_plain`
+(`Proofs/Production/IndexedScannerPlainScalarValid:1359`) template:
+unfold the helper, kill error branches, then `show` the goal in
+`(arr.push (IxToken.mk' startPos ...))[arr.size]'_` form and close
+with `Array.getElem_push_eq` + `rfl`. The `.start` field of `IxToken.mk'`
+is the first argument by definitional unfolding. -/
 
-The fix requires either (a) per-helper `_new_token_start_eq_cursor`
-bricks plus a generic `ScanInvIx_of_one_emit_at_cursor` helper, or
-(b) the legacy `let __src` zeta workaround. Deferred to the
-`6f.3b3.primitives.ordered.compose.value.tail` next-session sub-step
-(see Reflection 112). -/
+theorem scanAnchorOrAliasIx_new_token_start {input : String}
+    (s : ScannerStateIx input) (isAnchor : Bool) (s' : ScannerStateIx input)
+    (h_ok : scanAnchorOrAliasIx s isAnchor = .ok s')
+    (hj : s.tokens.size < s'.tokens.size) :
+    (s'.tokens[s.tokens.size]'hj).start = s.cursor.pos := by
+  unfold scanAnchorOrAliasIx at h_ok
+  dsimp only [] at h_ok
+  split at h_ok
+  · simp at h_ok
+  · simp only [Except.ok.injEq] at h_ok
+    subst h_ok
+    show ((s.tokens.tokens.push (IxToken.mk' s.cursor.pos
+        (if isAnchor then YamlToken.anchor (collectAnchorNameLoopIx
+            s.advance.cursor "" (input.utf8ByteSize - s.advance.cursor.pos.offset)).fst
+         else YamlToken.alias (collectAnchorNameLoopIx s.advance.cursor ""
+            (input.utf8ByteSize - s.advance.cursor.pos.offset)).fst)
+        _ _ _))[s.tokens.tokens.size]'_).start = s.cursor.pos
+    simp only [Array.getElem_push_eq, IxToken.mk']
+
+theorem scanTagIx_new_token_start {input : String}
+    (s s' : ScannerStateIx input) (h_ok : scanTagIx s = .ok s')
+    (hj : s.tokens.size < s'.tokens.size) :
+    (s'.tokens[s.tokens.size]'hj).start = s.cursor.pos := by
+  unfold scanTagIx at h_ok
+  dsimp only [] at h_ok
+  split at h_ok
+  · -- '<' verbatim tag branch: nested guards on foundClose / uri.isEmpty
+    split at h_ok
+    · simp at h_ok
+    · split at h_ok
+      · simp at h_ok
+      · simp only [Except.ok.injEq] at h_ok
+        subst h_ok
+        show ((s.tokens.tokens.push (IxToken.mk' s.cursor.pos _
+            _ _ _))[s.tokens.tokens.size]'_).start = s.cursor.pos
+        simp only [Array.getElem_push_eq, IxToken.mk']
+  · -- '!' secondary tag branch
+    simp only [Except.ok.injEq] at h_ok
+    subst h_ok
+    show ((s.tokens.tokens.push (IxToken.mk' s.cursor.pos _
+        _ _ _))[s.tokens.tokens.size]'_).start = s.cursor.pos
+    simp only [Array.getElem_push_eq, IxToken.mk']
+  · -- default branch (named tag / primary handle)
+    simp only [Except.ok.injEq] at h_ok
+    subst h_ok
+    show ((s.tokens.tokens.push (IxToken.mk' s.cursor.pos _
+        _ _ _))[s.tokens.tokens.size]'_).start = s.cursor.pos
+    simp only [Array.getElem_push_eq, IxToken.mk']
+
+theorem scanYamlDirectiveIx_new_token_start {input : String}
+    (s : ScannerStateIx input) (cAfterWS : IxCursor input) (startPos : YamlPos)
+    (hStart : startPos.offset ≤ cAfterWS.pos.offset)
+    (s' : ScannerStateIx input)
+    (h_ok : scanYamlDirectiveIx s cAfterWS startPos hStart = .ok s')
+    (hj : s.tokens.size < s'.tokens.size) :
+    (s'.tokens[s.tokens.size]'hj).start = startPos := by
+  unfold scanYamlDirectiveIx at h_ok
+  by_cases hd : s.seenYamlDirective = true
+  · rw [if_pos hd] at h_ok; simp [Bind.bind, Except.bind] at h_ok
+  · rw [if_neg hd] at h_ok
+    simp only [pure_bind] at h_ok
+    split at h_ok
+    · simp only [Except.ok.injEq] at h_ok
+      subst h_ok
+      show ((s.tokens.tokens.push (IxToken.mk' startPos _
+          _ _ _))[s.tokens.tokens.size]'_).start = startPos
+      simp only [Array.getElem_push_eq, IxToken.mk']
+    · simp at h_ok
+
+theorem scanTagDirectiveIx_new_token_start {input : String}
+    (s : ScannerStateIx input) (cAfterWS : IxCursor input) (startPos : YamlPos)
+    (hStart : startPos.offset ≤ cAfterWS.pos.offset)
+    (s' : ScannerStateIx input)
+    (h_ok : scanTagDirectiveIx s cAfterWS startPos hStart = .ok s')
+    (hj : s.tokens.size < s'.tokens.size) :
+    (s'.tokens[s.tokens.size]'hj).start = startPos := by
+  unfold scanTagDirectiveIx at h_ok
+  simp only [Except.ok.injEq] at h_ok
+  subst h_ok
+  show ((s.tokens.tokens.push (IxToken.mk' startPos _
+      _ _ _))[s.tokens.tokens.size]'_).start = startPos
+  simp only [Array.getElem_push_eq, IxToken.mk']
+
+/-! #### §8.7.10''  ScanInvIx for emit-at-prior-cursor helpers.
+
+The closer is `ScanInvIx_of_one_emit_at_pre_cursor` (OrderedPrims §8.6'').
+For `scanAnchorOrAliasIx` / `scanTagIx`, exactly one token is added at
+`s.tokens.size` with `.start = s.cursor.pos` (per the bricks above).
+For `scanDirectiveIx`, the YAML and TAG branches each add one token
+with the same `startPos = s.cursor.pos`; the reserved-directive
+default branch adds *no* token (tokens preserved by field update),
+so the `h_new` precondition is satisfied vacuously. -/
+
+theorem scanAnchorOrAliasIx_preserves_ScanInvIx {input : String}
+    (s s' : ScannerStateIx input) (isAnchor : Bool) (h : ScanInvIx s)
+    (h_ok : scanAnchorOrAliasIx s isAnchor = .ok s') : ScanInvIx s' := by
+  apply ScanInvIx_of_one_emit_at_pre_cursor s s' h
+    (scanAnchorOrAliasIx_offset_monotonic h_ok)
+    (scanAnchorOrAliasIx_tokens_size_le h_ok)
+  · intro i hi
+    -- The lemma gives s'.tokens[i] = s.tokens[i] (TokenStream form, def-eq to .tokens.tokens).
+    have h_eq : s'.tokens.tokens[i]'(Nat.lt_of_lt_of_le hi (scanAnchorOrAliasIx_tokens_size_le h_ok)) =
+        s.tokens.tokens[i]'hi :=
+      scanAnchorOrAliasIx_preserves_prefix s isAnchor s' h_ok i hi
+    exact congrArg (fun t => t.start.offset) h_eq
+  · intro k h_lo h_hi
+    have h_size := scanAnchorOrAliasIx_adds_one_token s isAnchor s' h_ok
+    -- h_size : s'.tokens.size = s.tokens.size + 1.  h_lo / h_hi are in tokens.tokens.size form.
+    have h_lo' : s.tokens.size ≤ k := h_lo
+    have h_hi' : k < s.tokens.size + 1 := h_size ▸ h_hi
+    have h_keq : k = s.tokens.size := by omega
+    subst h_keq
+    have h_hj : s.tokens.size < s'.tokens.size := h_hi
+    have h_brick := scanAnchorOrAliasIx_new_token_start s isAnchor s' h_ok h_hj
+    exact congrArg YamlPos.offset h_brick
+
+theorem scanTagIx_preserves_ScanInvIx {input : String}
+    (s s' : ScannerStateIx input) (h : ScanInvIx s)
+    (h_ok : scanTagIx s = .ok s') : ScanInvIx s' := by
+  apply ScanInvIx_of_one_emit_at_pre_cursor s s' h
+    (scanTagIx_offset_monotonic h_ok)
+    (scanTagIx_tokens_size_le h_ok)
+  · intro i hi
+    have h_eq : s'.tokens.tokens[i]'(Nat.lt_of_lt_of_le hi (scanTagIx_tokens_size_le h_ok)) =
+        s.tokens.tokens[i]'hi :=
+      scanTagIx_preserves_prefix s s' h_ok i hi
+    exact congrArg (fun t => t.start.offset) h_eq
+  · intro k h_lo h_hi
+    have h_size := scanTagIx_adds_one_token s s' h_ok
+    have h_lo' : s.tokens.size ≤ k := h_lo
+    have h_hi' : k < s.tokens.size + 1 := h_size ▸ h_hi
+    have h_keq : k = s.tokens.size := by omega
+    subst h_keq
+    have h_hj : s.tokens.size < s'.tokens.size := h_hi
+    have h_brick := scanTagIx_new_token_start s s' h_ok h_hj
+    exact congrArg YamlPos.offset h_brick
+
+/-- Upper bound: `scanYamlDirectiveIx` adds at most one token. -/
+theorem scanYamlDirectiveIx_tokens_size_le_succ {input : String}
+    {s s' : ScannerStateIx input} {cAfterWS : IxCursor input} {startPos : YamlPos}
+    {hStart : startPos.offset ≤ cAfterWS.pos.offset}
+    (h : scanYamlDirectiveIx s cAfterWS startPos hStart = .ok s') :
+    s'.tokens.size ≤ s.tokens.size + 1 := by
+  unfold scanYamlDirectiveIx at h
+  by_cases hd : s.seenYamlDirective = true
+  · rw [if_pos hd] at h; simp [Bind.bind, Except.bind] at h
+  · rw [if_neg hd] at h
+    simp only [pure_bind] at h
+    split at h
+    · simp only [Except.ok.injEq] at h; subst h; simp
+    · simp at h
+
+/-- Upper bound: `scanTagDirectiveIx` adds at most one token. -/
+theorem scanTagDirectiveIx_tokens_size_le_succ {input : String}
+    {s s' : ScannerStateIx input} {cAfterWS : IxCursor input} {startPos : YamlPos}
+    {hStart : startPos.offset ≤ cAfterWS.pos.offset}
+    (h : scanTagDirectiveIx s cAfterWS startPos hStart = .ok s') :
+    s'.tokens.size ≤ s.tokens.size + 1 := by
+  unfold scanTagDirectiveIx at h
+  simp only [Except.ok.injEq] at h; subst h; simp
+
+/-- Upper bound: `scanDirectiveIx` adds at most one token across all
+    three branches (YAML, TAG, reserved). -/
+theorem scanDirectiveIx_tokens_size_le_succ {input : String}
+    {s s' : ScannerStateIx input} (h_ok : scanDirectiveIx s = .ok s') :
+    s'.tokens.size ≤ s.tokens.size + 1 := by
+  unfold scanDirectiveIx at h_ok
+  split at h_ok
+  · simp at h_ok
+  · simp only at h_ok
+    split at h_ok
+    · -- YAML branch delegate.
+      have := scanYamlDirectiveIx_tokens_size_le_succ h_ok
+      show s'.tokens.size ≤ s.tokens.size + 1
+      exact this
+    · split at h_ok
+      · -- TAG branch delegate.
+        have := scanTagDirectiveIx_tokens_size_le_succ h_ok
+        show s'.tokens.size ≤ s.tokens.size + 1
+        exact this
+      · -- Reserved: no token added.
+        simp only [Except.ok.injEq] at h_ok; subst h_ok
+        show s.tokens.size ≤ s.tokens.size + 1; omega
+
+/-- New-token start for the composite `scanDirectiveIx`. Composes the
+    `scanYamlDirectiveIx_new_token_start` / `scanTagDirectiveIx_new_token_start`
+    bricks per branch; the reserved-directive default branch adds no
+    token, making the `hj` precondition impossible. -/
+theorem scanDirectiveIx_new_token_start {input : String}
+    (s s' : ScannerStateIx input) (h_ok : scanDirectiveIx s = .ok s')
+    (hj : s.tokens.size < s'.tokens.size) :
+    (s'.tokens[s.tokens.size]'hj).start = s.cursor.pos := by
+  unfold scanDirectiveIx at h_ok
+  split at h_ok
+  · simp at h_ok
+  · simp only at h_ok
+    split at h_ok
+    · -- YAML branch: the inner state's tokens.size = s.tokens.size def-eq, so
+      -- the brick's conclusion matches.
+      exact scanYamlDirectiveIx_new_token_start _ _ s.cursor.pos _ s' h_ok hj
+    · split at h_ok
+      · -- TAG branch
+        exact scanTagDirectiveIx_new_token_start _ _ s.cursor.pos _ s' h_ok hj
+      · -- Reserved-directive default: tokens unchanged → `hj` is impossible.
+        simp only [Except.ok.injEq] at h_ok
+        subst h_ok
+        exact absurd hj (Nat.lt_irrefl _)
+
+theorem scanDirectiveIx_preserves_ScanInvIx {input : String}
+    (s s' : ScannerStateIx input) (h : ScanInvIx s)
+    (h_ok : scanDirectiveIx s = .ok s') : ScanInvIx s' := by
+  apply ScanInvIx_of_one_emit_at_pre_cursor s s' h
+    (scanDirectiveIx_offset_monotonic h_ok)
+    (scanDirectiveIx_tokens_size_le h_ok)
+  · intro i hi
+    have h_eq : s'.tokens.tokens[i]'(Nat.lt_of_lt_of_le hi (scanDirectiveIx_tokens_size_le h_ok)) =
+        s.tokens.tokens[i]'hi :=
+      scanDirectiveIx_preserves_prefix s s' h_ok i hi
+    exact congrArg (fun t => t.start.offset) h_eq
+  · intro k h_lo h_hi
+    -- Establish k = s.tokens.size when there *is* a new token, else hit the
+    -- vacuous reserved branch via scanDirectiveIx_new_token_start.
+    -- Strategy: bound s'.tokens.size by s.tokens.size + 1 (true for all three
+    -- branches), then close via `omega` + the brick.
+    -- We do not have a tight `_adds_at_most_one_token` lemma; instead we
+    -- delegate per-branch from inside the brick (which already discharges the
+    -- contradiction in the no-new-token case).
+    -- For the closer's `h_new` we need exactly k = s.tokens.size, which we
+    -- prove by ruling out k > s.tokens.size:
+    by_cases h_eq : k = s.tokens.size
+    · subst h_eq
+      have h_hj : s.tokens.size < s'.tokens.size := h_hi
+      have h_brick := scanDirectiveIx_new_token_start s s' h_ok h_hj
+      exact congrArg YamlPos.offset h_brick
+    · -- k ≠ s.tokens.size, but s.tokens.size ≤ k. So k > s.tokens.size.
+      -- Use `scanDirectiveIx_tokens_size_le_succ` to bound s'.tokens.size,
+      -- giving k < s.tokens.size + 1 ⇒ k = s.tokens.size, contradicting h_eq.
+      exfalso
+      have h_at_most_one := scanDirectiveIx_tokens_size_le_succ h_ok
+      have h_lo' : s.tokens.size ≤ k := h_lo
+      have h_hi_ts : k < s'.tokens.size := h_hi
+      omega
+
+/-! ### §8.8  Per-dispatcher preservation: preprocess + four dispatchers.
+
+Each sub-dispatcher of `scanNextTokenIx` composes the §8.7 per-helper
+bricks. The `_ok_some_cases` / `_ok_monotonic` enumeration lemmas
+from `Proofs/Scanner/IndexedDispatch.lean` reduce each dispatcher to a
+finite case-split on its productions, after which we just apply the
+matching per-helper preservation lemma.
+
+`dispatchBlockIndicators` is the only dispatcher requiring
+`SimpleKeyValidIx` (for the `scanValueIx` production); it is supplied
+via `h_akv.1` from the paired invariant.
+
+`dispatchContent` has four inline-scalar branches (block scalar,
+double-quoted, single-quoted, plain) that compute the result via
+`{ sAfter.emitAt s.cursor.pos token hBound with simpleKeyAllowed := false }`.
+These do *not* have packaged per-helper bricks; we discharge them via
+a private `_scalar_emitAt_preserves_*` helper that captures the
+shared pattern using `ScanInvIx_of_one_emit_at_pre_cursor` /
+`AllKeysValidIx_mono`. -/
+
+/-! #### §8.8.0  Inline-scalar helper (shared by dispatchContent's four
+scalar branches).
+
+Each scalar branch produces `{ sAfter.emitAt s.cursor.pos tok hBound
+with simpleKeyAllowed := false }` where `sAfter := { s with cursor :=
+cAfter }`. The `simpleKey`, `simpleKeyStack`, `flowStack`, etc. fields
+are inherited from `sAfter` (= those of `s`), so monotonicity-based
+preservation closes both invariants. -/
+
+/-- The fully-folded resulting state has `.tokens` = `s.tokens.push (new token)`,
+    `.cursor = cAfter`, `.simpleKey = s.simpleKey`, etc. This lemma packages
+    those projections by structural rfl (the `let __src := emitAt; { src with
+    simpleKeyAllowed := false }` form unfolds projection-by-projection
+    definitionally). -/
+private theorem _scalar_emitAt_tokens_size_eq {input : String}
+    (s : ScannerStateIx input) (cAfter : IxCursor input) (tok : YamlToken)
+    (hBound : s.cursor.pos.offset ≤ cAfter.pos.offset) :
+    (({ ({ s with cursor := cAfter } : ScannerStateIx input).emitAt
+        s.cursor.pos tok hBound with simpleKeyAllowed := false }
+        : ScannerStateIx input)).tokens.tokens.size = s.tokens.tokens.size + 1 := by
+  show (s.tokens.tokens.push _).size = _
+  exact Array.size_push ..
+
+private theorem _scalar_emitAt_preserves_ScanInvIx {input : String}
+    (s : ScannerStateIx input) (cAfter : IxCursor input) (tok : YamlToken)
+    (hBound : s.cursor.pos.offset ≤ cAfter.pos.offset) (h : ScanInvIx s) :
+    ScanInvIx ({ ({ s with cursor := cAfter } : ScannerStateIx input).emitAt
+        s.cursor.pos tok hBound with simpleKeyAllowed := false }
+        : ScannerStateIx input) := by
+  have h_size_eq := _scalar_emitAt_tokens_size_eq s cAfter tok hBound
+  refine ScanInvIx_of_one_emit_at_pre_cursor s _ h ?_ ?_ ?_ ?_
+  · -- h_off: cursor.pos.offset folds to cAfter.pos.offset
+    exact hBound
+  · -- h_size
+    rw [h_size_eq]; omega
+  · -- h_pref
+    intro i hi
+    have h_eq :
+        ({ ({ s with cursor := cAfter } : ScannerStateIx input).emitAt
+            s.cursor.pos tok hBound with simpleKeyAllowed := false }
+            : ScannerStateIx input).tokens.tokens[i]'(by
+          rw [h_size_eq]; omega) =
+        s.tokens.tokens[i]'hi := by
+      show (s.tokens.tokens.push _)[i]'_ = _
+      exact Array.getElem_push_lt hi
+    exact congrArg (fun t => t.start.offset) h_eq
+  · -- h_new
+    intro k h_lo h_hi
+    have h_hi' : k < s.tokens.tokens.size + 1 := h_size_eq ▸ h_hi
+    have h_keq : k = s.tokens.tokens.size := by omega
+    subst h_keq
+    have h_get : ({ ({ s with cursor := cAfter } : ScannerStateIx input).emitAt
+        s.cursor.pos tok hBound with simpleKeyAllowed := false }
+        : ScannerStateIx input).tokens.tokens[s.tokens.tokens.size]'h_hi =
+        IxToken.mk' s.cursor.pos tok cAfter.pos hBound cAfter.posBound := by
+      show (s.tokens.tokens.push _)[s.tokens.tokens.size]'h_hi = _
+      exact Array.getElem_push_eq ..
+    rw [h_get]; rfl
+
+private theorem _scalar_emitAt_preserves_AllKeysValidIx {input : String}
+    (s : ScannerStateIx input) (cAfter : IxCursor input) (tok : YamlToken)
+    (hBound : s.cursor.pos.offset ≤ cAfter.pos.offset) (h_akv : AllKeysValidIx s) :
+    AllKeysValidIx ({ ({ s with cursor := cAfter } : ScannerStateIx input).emitAt
+        s.cursor.pos tok hBound with simpleKeyAllowed := false }
+        : ScannerStateIx input) := by
+  have h_size_eq := _scalar_emitAt_tokens_size_eq s cAfter tok hBound
+  refine AllKeysValidIx_mono s _ h_akv ?_ ?_ ?_ ?_
+  · rfl
+  · rfl
+  · rw [h_size_eq]; omega
+  · intro i hi
+    show (s.tokens.tokens.push _)[i]'_ = s.tokens.tokens[i]'hi
+    exact Array.getElem_push_lt hi
+
+/-! #### §8.8.1  `scanNextTokenIx_preprocess` preservation.
+
+`preprocess` chains: `skipToContentS` (cursor-only) → optional
+`unwindIndentsIx` (emits blockEnd tokens) → optional field update on
+`needIndentCheck` → `saveSimpleKeyIx` (may emit two placeholders) →
+peek. We follow the same scaffold as `_preprocess_preserves_prefix`
+(StreamStart.lean §7.7') but for the §8 invariants. -/
+
+theorem scanNextTokenIx_preprocess_preserves_ScanInvIx {input : String}
+    {s s' : ScannerStateIx input} {c : Char} (h : ScanInvIx s)
+    (h_pre : scanNextTokenIx_preprocess s = .ok (some (s', c))) : ScanInvIx s' := by
+  have h_skip := skipToContentS_preserves_ScanInvIx s h
+  unfold scanNextTokenIx_preprocess at h_pre
+  simp only at h_pre
+  split at h_pre
+  · simp at h_pre
+  · split at h_pre
+    · -- with indent check
+      split at h_pre
+      · simp at h_pre
+      · split at h_pre
+        · simp at h_pre
+        · simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq] at h_pre
+          obtain ⟨hs, _⟩ := h_pre
+          subst hs
+          have h_unwind := unwindIndentsIx_preserves_ScanInvIx s.skipToContentS
+            (s.skipToContentS.cursor.pos.col : Int) h_skip
+          have h_fld : ScanInvIx ({ unwindIndentsIx s.skipToContentS
+              (s.skipToContentS.cursor.pos.col : Int) with needIndentCheck := false }
+              : ScannerStateIx input) :=
+            ScanInvIx_of_field_update _ _ h_unwind rfl rfl
+          exact saveSimpleKeyIx_preserves_ScanInvIx _ h_fld
+    · -- without indent check
+      split at h_pre
+      · simp at h_pre
+      · split at h_pre
+        · simp at h_pre
+        · simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq] at h_pre
+          obtain ⟨hs, _⟩ := h_pre
+          subst hs
+          exact saveSimpleKeyIx_preserves_ScanInvIx _ h_skip
+
+theorem scanNextTokenIx_preprocess_preserves_AllKeysValidIx {input : String}
+    {s s' : ScannerStateIx input} {c : Char} (h_akv : AllKeysValidIx s)
+    (h_pre : scanNextTokenIx_preprocess s = .ok (some (s', c))) : AllKeysValidIx s' := by
+  have h_skip := skipToContentS_preserves_AllKeysValidIx s h_akv
+  unfold scanNextTokenIx_preprocess at h_pre
+  simp only at h_pre
+  split at h_pre
+  · simp at h_pre
+  · split at h_pre
+    · -- with indent check
+      split at h_pre
+      · simp at h_pre
+      · split at h_pre
+        · simp at h_pre
+        · simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq] at h_pre
+          obtain ⟨hs, _⟩ := h_pre
+          subst hs
+          have h_unwind := unwindIndentsIx_preserves_AllKeysValidIx s.skipToContentS
+            (s.skipToContentS.cursor.pos.col : Int) h_skip
+          have h_fld : AllKeysValidIx ({ unwindIndentsIx s.skipToContentS
+              (s.skipToContentS.cursor.pos.col : Int) with needIndentCheck := false }
+              : ScannerStateIx input) := by
+            refine AllKeysValidIx_mono _ _ h_unwind rfl rfl ?_ ?_
+            · exact Nat.le_refl _
+            · intro i hi; rfl
+          exact saveSimpleKeyIx_preserves_AllKeysValidIx _ h_fld
+    · -- without indent check
+      split at h_pre
+      · simp at h_pre
+      · split at h_pre
+        · simp at h_pre
+        · simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq] at h_pre
+          obtain ⟨hs, _⟩ := h_pre
+          subst hs
+          exact saveSimpleKeyIx_preserves_AllKeysValidIx _ h_skip
+
+/-! #### §8.8.2  `scanNextTokenIx_dispatchStructural` preservation. -/
+
+theorem scanNextTokenIx_dispatchStructural_preserves_ScanInvIx {input : String}
+    {s s' : ScannerStateIx input} {c : Char} (h : ScanInvIx s)
+    (h_ok : scanNextTokenIx_dispatchStructural s c = .ok (some s')) : ScanInvIx s' := by
+  rcases scanNextTokenIx_dispatchStructural_ok_some_cases h_ok with heq | hOk | hOk
+  · subst heq; exact scanDocumentStartIx_preserves_ScanInvIx s h
+  · exact scanDocumentEndIx_preserves_ScanInvIx s s' h hOk
+  · exact scanDirectiveIx_preserves_ScanInvIx s s' h hOk
+
+theorem scanNextTokenIx_dispatchStructural_preserves_AllKeysValidIx {input : String}
+    {s s' : ScannerStateIx input} {c : Char} (h_akv : AllKeysValidIx s)
+    (h_ok : scanNextTokenIx_dispatchStructural s c = .ok (some s')) : AllKeysValidIx s' := by
+  rcases scanNextTokenIx_dispatchStructural_ok_some_cases h_ok with heq | hOk | hOk
+  · subst heq; exact scanDocumentStartIx_preserves_AllKeysValidIx s h_akv
+  · exact scanDocumentEndIx_preserves_AllKeysValidIx s s' h_akv hOk
+  · exact scanDirectiveIx_preserves_AllKeysValidIx s s' h_akv hOk
+
+/-! #### §8.8.3  `scanNextTokenIx_dispatchFlowIndicators` preservation. -/
+
+theorem scanNextTokenIx_dispatchFlowIndicators_preserves_ScanInvIx {input : String}
+    {s s' : ScannerStateIx input} {c : Char} (h : ScanInvIx s)
+    (h_ok : scanNextTokenIx_dispatchFlowIndicators s c = .ok (some s')) : ScanInvIx s' := by
+  rcases scanNextTokenIx_dispatchFlowIndicators_ok_some_cases h_ok with
+    heq | heq | heq | heq | hOk
+  · subst heq; exact scanFlowSequenceStartIx_preserves_ScanInvIx s h
+  · subst heq; exact scanFlowSequenceEndIx_preserves_ScanInvIx s h
+  · subst heq; exact scanFlowMappingStartIx_preserves_ScanInvIx s h
+  · subst heq; exact scanFlowMappingEndIx_preserves_ScanInvIx s h
+  · exact scanFlowEntryIx_preserves_ScanInvIx s s' h hOk
+
+theorem scanNextTokenIx_dispatchFlowIndicators_preserves_AllKeysValidIx {input : String}
+    {s s' : ScannerStateIx input} {c : Char} (h_akv : AllKeysValidIx s)
+    (h_ok : scanNextTokenIx_dispatchFlowIndicators s c = .ok (some s')) : AllKeysValidIx s' := by
+  rcases scanNextTokenIx_dispatchFlowIndicators_ok_some_cases h_ok with
+    heq | heq | heq | heq | hOk
+  · subst heq; exact scanFlowSequenceStartIx_preserves_AllKeysValidIx s h_akv
+  · subst heq; exact scanFlowSequenceEndIx_preserves_AllKeysValidIx s h_akv
+  · subst heq; exact scanFlowMappingStartIx_preserves_AllKeysValidIx s h_akv
+  · subst heq; exact scanFlowMappingEndIx_preserves_AllKeysValidIx s h_akv
+  · exact scanFlowEntryIx_preserves_AllKeysValidIx s s' h_akv hOk
+
+/-! #### §8.8.4  `scanNextTokenIx_dispatchBlockIndicators` preservation.
+
+Note: the `scanValueIx` production requires `SimpleKeyValidIx`, so
+the ScanInvIx-side proof needs the paired `AllKeysValidIx` to
+extract `h_akv.1`. -/
+
+theorem scanNextTokenIx_dispatchBlockIndicators_preserves_ScanInvIx {input : String}
+    {s s' : ScannerStateIx input} {c : Char} (h : ScanInvIx s) (h_akv : AllKeysValidIx s)
+    (h_ok : scanNextTokenIx_dispatchBlockIndicators s c = .ok (some s')) : ScanInvIx s' := by
+  rcases scanNextTokenIx_dispatchBlockIndicators_ok_some_cases h_ok with hOk | hOk | hOk
+  · exact scanBlockEntryIx_preserves_ScanInvIx s s' h hOk
+  · exact scanKeyIx_preserves_ScanInvIx s s' h hOk
+  · exact scanValueIx_preserves_ScanInvIx s s' h h_akv.1 hOk
+
+theorem scanNextTokenIx_dispatchBlockIndicators_preserves_AllKeysValidIx {input : String}
+    {s s' : ScannerStateIx input} {c : Char} (h_akv : AllKeysValidIx s)
+    (h_ok : scanNextTokenIx_dispatchBlockIndicators s c = .ok (some s')) : AllKeysValidIx s' := by
+  rcases scanNextTokenIx_dispatchBlockIndicators_ok_some_cases h_ok with hOk | hOk | hOk
+  · exact scanBlockEntryIx_preserves_AllKeysValidIx s s' h_akv hOk
+  · exact scanKeyIx_preserves_AllKeysValidIx s s' h_akv hOk
+  · exact scanValueIx_preserves_AllKeysValidIx s s' h_akv hOk
+
+/-! #### §8.8.5  `scanNextTokenIx_dispatchContent` preservation.
+
+Six productions: anchor/alias (`&`/`*`), tag (`!`), block scalar
+(`|`/`>`), double-quoted (`"`), single-quoted (`'`), plain scalar.
+The four scalar productions use the `_scalar_emitAt_preserves_*`
+helper above. -/
+
+theorem scanNextTokenIx_dispatchContent_preserves_ScanInvIx {input : String}
+    {s s' : ScannerStateIx input} {c : Char} (h : ScanInvIx s)
+    (h_ok : scanNextTokenIx_dispatchContent s c = .ok s') : ScanInvIx s' := by
+  unfold scanNextTokenIx_dispatchContent at h_ok
+  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h_ok
+  split at h_ok
+  · -- '&' anchor
+    generalize h_anch : scanAnchorOrAliasIx s true = anch_result at h_ok
+    cases anch_result with
+    | error e => simp at h_ok
+    | ok s_anch =>
+      dsimp only [] at h_ok
+      simp only [Except.ok.injEq] at h_ok; subst h_ok
+      exact scanAnchorOrAliasIx_preserves_ScanInvIx s s_anch true h h_anch
+  · split at h_ok
+    · -- '*' alias
+      generalize h_anch : scanAnchorOrAliasIx s false = anch_result at h_ok
+      cases anch_result with
+      | error e => simp at h_ok
+      | ok s_anch =>
+        dsimp only [] at h_ok
+        simp only [Except.ok.injEq] at h_ok; subst h_ok
+        exact scanAnchorOrAliasIx_preserves_ScanInvIx s s_anch false h h_anch
+    · split at h_ok
+      · -- '!' tag
+        generalize h_tag : scanTagIx s = tag_result at h_ok
+        cases tag_result with
+        | error e => simp at h_ok
+        | ok s_tag =>
+          dsimp only [] at h_ok
+          simp only [Except.ok.injEq] at h_ok; subst h_ok
+          exact scanTagIx_preserves_ScanInvIx s s_tag h h_tag
+      · split at h_ok
+        · -- block scalar
+          split at h_ok
+          · rename_i r hBS
+            simp only [Except.ok.injEq] at h_ok; subst h_ok
+            exact _scalar_emitAt_preserves_ScanInvIx s _ _
+              (scanBlockScalarIx_offset_monotonic s.cursor _ hBS) h
+          · simp at h_ok
+        · split at h_ok
+          · -- double-quoted
+            split at h_ok
+            · rename_i r hDQ
+              simp only [Except.ok.injEq] at h_ok; subst h_ok
+              exact _scalar_emitAt_preserves_ScanInvIx s _ _
+                (Nat.le_of_lt (scanDoubleQuotedIx_offset_lt s.cursor hDQ)) h
+            · simp at h_ok
+          · split at h_ok
+            · -- single-quoted
+              split at h_ok
+              · rename_i r hSQ
+                simp only [Except.ok.injEq] at h_ok; subst h_ok
+                exact _scalar_emitAt_preserves_ScanInvIx s _ _
+                  (Nat.le_of_lt (scanSingleQuotedIx_offset_lt s.cursor hSQ)) h
+              · simp at h_ok
+            · split at h_ok
+              · -- plain scalar
+                simp only [Except.ok.injEq] at h_ok; subst h_ok
+                exact _scalar_emitAt_preserves_ScanInvIx s _ _
+                  (scanPlainScalarIx_offset_monotonic s.cursor _ _) h
+              · simp at h_ok
+
+theorem scanNextTokenIx_dispatchContent_preserves_AllKeysValidIx {input : String}
+    {s s' : ScannerStateIx input} {c : Char} (h_akv : AllKeysValidIx s)
+    (h_ok : scanNextTokenIx_dispatchContent s c = .ok s') : AllKeysValidIx s' := by
+  unfold scanNextTokenIx_dispatchContent at h_ok
+  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h_ok
+  split at h_ok
+  · generalize h_anch : scanAnchorOrAliasIx s true = anch_result at h_ok
+    cases anch_result with
+    | error e => simp at h_ok
+    | ok s_anch =>
+      dsimp only [] at h_ok
+      simp only [Except.ok.injEq] at h_ok; subst h_ok
+      exact scanAnchorOrAliasIx_preserves_AllKeysValidIx s s_anch true h_akv h_anch
+  · split at h_ok
+    · generalize h_anch : scanAnchorOrAliasIx s false = anch_result at h_ok
+      cases anch_result with
+      | error e => simp at h_ok
+      | ok s_anch =>
+        dsimp only [] at h_ok
+        simp only [Except.ok.injEq] at h_ok; subst h_ok
+        exact scanAnchorOrAliasIx_preserves_AllKeysValidIx s s_anch false h_akv h_anch
+    · split at h_ok
+      · generalize h_tag : scanTagIx s = tag_result at h_ok
+        cases tag_result with
+        | error e => simp at h_ok
+        | ok s_tag =>
+          dsimp only [] at h_ok
+          simp only [Except.ok.injEq] at h_ok; subst h_ok
+          exact scanTagIx_preserves_AllKeysValidIx s s_tag h_akv h_tag
+      · split at h_ok
+        · split at h_ok
+          · rename_i r hBS
+            simp only [Except.ok.injEq] at h_ok; subst h_ok
+            exact _scalar_emitAt_preserves_AllKeysValidIx s _ _
+              (scanBlockScalarIx_offset_monotonic s.cursor _ hBS) h_akv
+          · simp at h_ok
+        · split at h_ok
+          · split at h_ok
+            · rename_i r hDQ
+              simp only [Except.ok.injEq] at h_ok; subst h_ok
+              exact _scalar_emitAt_preserves_AllKeysValidIx s _ _
+                (Nat.le_of_lt (scanDoubleQuotedIx_offset_lt s.cursor hDQ)) h_akv
+            · simp at h_ok
+          · split at h_ok
+            · split at h_ok
+              · rename_i r hSQ
+                simp only [Except.ok.injEq] at h_ok; subst h_ok
+                exact _scalar_emitAt_preserves_AllKeysValidIx s _ _
+                  (Nat.le_of_lt (scanSingleQuotedIx_offset_lt s.cursor hSQ)) h_akv
+              · simp at h_ok
+            · split at h_ok
+              · simp only [Except.ok.injEq] at h_ok; subst h_ok
+                exact _scalar_emitAt_preserves_AllKeysValidIx s _ _
+                  (scanPlainScalarIx_offset_monotonic s.cursor _ _) h_akv
+              · simp at h_ok
 
 end L4YAML.Proofs.Indexed.ScannerCorrectness

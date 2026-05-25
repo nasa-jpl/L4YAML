@@ -1012,19 +1012,16 @@ theorem scanIx_first_is_streamStart {input : String}
   rw [h_link']
   exact h_s0_tok
 
-/-! ### §7.10  Final composite `scanIx_valid_token_stream` (theorem)
+/-! ### §7.10  Final composite `scanIx_valid_token_stream` (moved to
+`OrderedLoop.lean` §8.12 after `scanIx_positions_ordered` is discharged).
 
-Replaces the old composite using the discharged `scanIx_first_is_streamStart`. -/
-
-theorem scanIx_valid_token_stream
-    {input : String} (tokens : Indexed.TokenStream input)
-    (h : scanIx input = .ok tokens) :
-    ValidTokenStreamPropIx tokens := by
-  have h_size : tokens.tokens.size ≥ 2 := scanIx_produces_at_least_two tokens h
-  have h_pos : 0 < tokens.tokens.size := by omega
-  refine ⟨h_size, ?_, ?_, ?_⟩
-  · intro _; exact scanIx_first_is_streamStart tokens h h_pos
-  · intro _; exact scanIx_last_is_streamEnd tokens h h_pos
-  · exact scanIx_positions_ordered_axiom tokens h
+This file used to host the composite `scanIx_valid_token_stream`
+theorem, which assembled `scanIx_first_is_streamStart` (§7.9 above) +
+`scanIx_last_is_streamEnd` (§5) + `scanIx_positions_ordered_axiom`
+(Basic §6.4). The axiom is now *discharged* (Step
+`6f.3b3.primitives.ordered.compose.value.tail`), so the composite
+moved to `OrderedLoop.lean` (which imports through the entire ordered
+chain) where it can reference the proven
+`scanIx_positions_ordered` theorem directly. -/
 
 end L4YAML.Proofs.Indexed.ScannerCorrectness

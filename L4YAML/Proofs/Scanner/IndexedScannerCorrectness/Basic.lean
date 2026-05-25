@@ -633,25 +633,19 @@ indexed twin's per-step preservation lemmas — so the work is *amortized*
 when ported at 6f.3b3.internals. See Reflection 108. -/
 
 -- Note: the former `scanIx_first_is_streamStart_axiom` is now
--- *discharged* as a theorem in §7.9 below. The composite
--- `scanIx_valid_token_stream` (now in §7.10) references that theorem
--- directly. Only the positions-ordered axiom remains in §6.4.
+-- *discharged* as a theorem in §7.9 (StreamStart.lean). The former
+-- `scanIx_positions_ordered_axiom` is now *discharged* as a theorem
+-- in §8.11 (OrderedLoop.lean) as part of Step
+-- `6f.3b3.primitives.ordered.compose.value.tail`. The composite
+-- `scanIx_valid_token_stream` lives in §8.12 (OrderedLoop.lean).
+-- This file no longer exposes any staging axiom for `scanIx`.
 
-/-- **Staging axiom** for the positions-monotonic-on-start.offset
-    conjunct. Scheduled for discharge at
-    `6f.3b3.primitives.ordered`. -/
-axiom scanIx_positions_ordered_axiom
-    {input : String} (tokens : Indexed.TokenStream input)
-    (h : scanIx input = .ok tokens) :
-    ∀ (i j : Fin tokens.tokens.size), i.val < j.val →
-      (tokens.tokens[i]).start.offset ≤ (tokens.tokens[j]).start.offset
+/-! ### §6.5  Composite theorem `scanIx_valid_token_stream` (moved to §8.12)
 
-/-! ### §6.5  Composite theorem `scanIx_valid_token_stream` (moved to §7.10)
-
-The composite `scanIx_valid_token_stream` is defined in §7.10 below
-(after `scanIx_first_is_streamStart` is discharged as a theorem in
-§7.9). The downstream consumer in
+The composite `scanIx_valid_token_stream` is defined in
+`OrderedLoop.lean` §8.12 (after `scanIx_positions_ordered` is
+discharged as a theorem in §8.11). The downstream consumer in
 `IndexedGrammable.parseYamlIx_implies_valid_token_stream` references
-the §7.10 theorem. -/
+the §8.12 theorem. -/
 
 end L4YAML.Proofs.Indexed.ScannerCorrectness

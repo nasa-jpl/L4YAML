@@ -406,6 +406,19 @@ theorem emit_new_token_start {input : String} (s : ScannerStateIx input)
     exact Array.getElem_push_eq ..
   rw [h_get]; rfl
 
+/-- The new token's `.start` field after `emitAt` equals `startPos`.
+    Sister lemma to `emitAt_new_token_token` (which projects `.token`). -/
+theorem emitAt_new_token_start {input : String} (s : ScannerStateIx input)
+    (startPos : YamlPos) (tok : YamlToken)
+    (hOrder : startPos.offset ≤ s.cursor.pos.offset)
+    (h : s.tokens.size < (s.emitAt startPos tok hOrder).tokens.size) :
+    ((s.emitAt startPos tok hOrder).tokens[s.tokens.size]'h).start = startPos := by
+  have h_get : (s.emitAt startPos tok hOrder).tokens[s.tokens.size]'h =
+      IxToken.mk' startPos tok s.cursor.pos hOrder s.cursor.posBound := by
+    change (s.tokens.tokens.push _)[s.tokens.tokens.size]'h = _
+    exact Array.getElem_push_eq ..
+  rw [h_get]; rfl
+
 /-- `saveSimpleKeyIx` preserves `SimpleKeyValidIx`: on the two-emit
     branch the new simpleKey has `tokenIndex = s.tokens.size`, and the
     two pushed slots carry `.start = s.cursor.pos = new simpleKey.pos`. -/
