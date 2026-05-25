@@ -1820,22 +1820,29 @@ not in-place axiom-to-theorem promotion — the latter is impossible
 when the axiom's hypothesis is strictly weaker than what the
 stronger lemma derives).
 
-**Next session**: **Step 6f.3b3.primitives.ordered.compose.value —
-Complete the per-helper / per-dispatcher / fuel-induction chain and
-discharge `scanIx_positions_ordered_axiom`**. The
-`.ordered.foundations` (definitions + primitives + skipToContent /
+**Next session**: **Step 6f.3b3.primitives.ordered.compose.value.tail —
+Complete the per-helper ScanInvIx (anchor/tag/directive) + per-dispatcher
++ fuel-induction chain and discharge `scanIx_positions_ordered_axiom`**.
+The `.ordered.foundations` (definitions + primitives + skipToContent /
 unwindIndents helpers) landed 2026-05-24. The `.ordered.compose.flow`
 (saveSimpleKey AllKeysValid + flow indicators + block entry/key +
-value-clear + document AllKeysValid) landed 2026-05-24. Remaining:
-`scanValuePrepareIx` / `scanValueIx` ScanInvIx + AllKeysValidIx (needs
-new `SimpleKeyStackValidIx_mono_pos` helper); `scanDocumentStartIx` /
-`scanDocumentEndIx` ScanInvIx (use explicit `have`-chain to avoid
-`@[inline] advanceN` apply unification failure); `scanDirectiveIx` /
-`scanAnchorOrAliasIx` / `scanTagIx` per-helper bricks; 5 dispatchers;
-top-level `scanNextTokenIx_preserves_*`; `scanLoopIx_ordered` fuel
-induction; `scanIx_positions_ordered` discharge.
-Reflection 111 below documents the cause of the third consecutive
-2-3× over-run and the further split rationale.
+value-clear + document AllKeysValid) landed 2026-05-24. The
+`.ordered.compose.value.head` landed 2026-05-24: modularized
+`IndexedScannerCorrectness.lean` into 6 sub-files (Reflection 112) +
+discharged §8.7.6 (`scanValuePrepareIx_preserves_ScanInvIx`), §8.7.7
+(`scanValuePrepareIx_preserves_AllKeysValidIx`), §8.7.8
+(`scanValueIx_preserves_*`), §8.7.9 (`scanDocument*Ix_preserves_ScanInvIx`),
+§8.7.10 AllKeysValidIx side (anchor/tag/directive) + added
+`_mono_pos` family + `overwriteAtCursor_preserves_other_start` +
+`ScanInvIx_of_one_emit_at_pre_cursor` infrastructure. Remaining for
+`.compose.value.tail`: per-helper `_new_token_start_at_cursor` bricks
+for anchor/tag/directive (template: `_new_token_not_plain` from
+`Proofs/Production/IndexedScannerPlainScalarValid:1359`); their
+ScanInvIx side via `ScanInvIx_of_one_emit_at_pre_cursor`; the 5
+dispatcher compositions (preprocess / dispatchStructural /
+dispatchFlow / dispatchBlock / dispatchContent); top-level
+`scanNextTokenIx_preserves_*`; `scanLoopIx_ordered` fuel induction;
+`scanIx_positions_ordered` discharge.
 
 **6f.3b3.primitives.streamStart LANDED 2026-05-24.** Ported
 `SimpleKeyAboveIx` (indexed twin of legacy `SimpleKeyAbove`,
@@ -9908,32 +9915,64 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
     documents the cause of the remaining over-run (the `setIfInBounds`
     + `let __src` zeta-reduction wall on `scanValuePrepareIx`).
 
-  ▸ **6f.3b3.primitives.ordered.compose.value** *(next session)*.
-    Complete the remaining §8.7 + §8.8–§8.11 chain:
-      • §8.7.6 — `scanValuePrepareIx_preserves_ScanInvIx`
-        (with `SimpleKeyValidIx` precondition; uses
-        `overwriteAtCursor` twice in the `block-mapping-start` branch,
-        needs `setIfInBounds`-other-slot reasoning bridged through the
-        `let __src` zeta of the structure update).
-      • §8.7.7 — `scanValuePrepareIx_preserves_AllKeysValidIx` (needs a
-        new `SimpleKeyStackValidIx_mono_pos` helper — legacy
-        `ScannerCorrectness.lean:8803`, the position-preserving variant
-        of mono since `overwriteAtCursor` only preserves `.start`, not
-        full token equality).
+  ▸ **6f.3b3.primitives.ordered.compose.value.head** ✅ **LANDED 2026-05-24**
+    (~900 LOC; split `IndexedScannerCorrectness.lean` into 6 sub-files +
+    discharged §8.6–§8.7.9 + §8.7.10 AllKeysValidIx side; ScanInvIx side
+    of §8.7.10 + §8.8/§8.9/§8.10/§8.11 deferred to `.compose.value.tail`).
+    Concretely, this session:
+      • Modularization (Reflection 112): split monolithic 2672-LOC
+        `Proofs/Scanner/IndexedScannerCorrectness.lean` into aggregator +
+        6 sub-files: `Basic` (§1–§6), `StreamStart` (§7), `OrderedDefs`
+        (§8.1–§8.2), `OrderedPrims` (§8.3–§8.6'), `OrderedDispatch`
+        (§8.7), `OrderedLoop` (§8.9–§8.11, currently empty).
+      • §8.2' position-preserving mono helpers added:
+        `SimpleKeyValidIx_mono_pos`, `SimpleKeyStackValidIx_mono_pos`,
+        `AllKeysValidIx_mono_pos` (only require `.start` equality on
+        the prefix, not full token equality).
+      • §8.3' overwriteAtCursor `.start` lemmas added:
+        `overwriteAtCursor_start_at_idx`,
+        `overwriteAtCursor_preserves_other_start`,
+        `overwriteAtCursor_preserves_start_if_match`.
+      • §8.6' `emit_preserves_AllKeysValidIx` + `advance_preserves_AllKeysValidIx`.
+      • §8.6'' Generic closer `ScanInvIx_of_one_emit_at_pre_cursor` for
+        chains that emit one token at the pre-loop cursor (helps tackle
+        anchor/tag/directive ScanInvIx in `.compose.value.tail`).
+      • §8.7.6 — `scanValuePrepareIx_preserves_ScanInvIx` discharged
+        (with `SimpleKeyValidIx` precondition; uses the new
+        `overwriteAtCursor_preserves_other_start` for the two-overwrite
+        block-mapping-start chain).
+      • §8.7.7 — `scanValuePrepareIx_preserves_AllKeysValidIx`
+        discharged via `_mono_pos` + a private
+        `scanValuePrepareIx_preserves_start` helper.
       • §8.7.8 — `scanValueIx_preserves_ScanInvIx` /
-        `_preserves_AllKeysValidIx` (chains `scanValueClearKeyIx` →
-        `scanValuePrepareIx` → emit `.value` → advance → field update).
+        `_preserves_AllKeysValidIx` discharged via composition of the
+        new value-chain bricks.
       • §8.7.9 — `scanDocumentStartIx_preserves_ScanInvIx` /
-        `scanDocumentEndIx_preserves_ScanInvIx` (worked around the
-        `apply`-chain `@[inline] advanceN` unification failure with
-        explicit `have h₁; have h₂; … exact ScanInvIx_of_field_update`
-        chain).
-      • §8.7.10 — `scanDirectiveIx`, `scanAnchorOrAliasIx`,
-        `scanTagIx` per-helper bricks (the cursor-only subroutine
-        helpers — directives use `advanceN` only, anchor/tag use
-        `emitAt` after `collect*LoopIx`; use
-        `ScanInvIx_of_offset_ge` + the existing `_offset_monotonic` /
-        `_preserves_tokens` bricks).
+        `scanDocumentEndIx_preserves_ScanInvIx` discharged
+        (worked around the `apply`-chain `@[inline] advanceN`
+        unification failure with the explicit `have h₁ ; have h₂ ; …
+        ; exact ScanInvIx_of_field_update` chain anticipated by
+        Reflection 111).
+      • §8.7.10 — `scanAnchorOrAliasIx`, `scanTagIx`, `scanDirectiveIx`
+        AllKeysValidIx side discharged (via `AllKeysValidIx_mono`
+        composed with the existing `_preserves_simpleKey` /
+        `_preserves_simpleKeyStack` / `_tokens_size_le` /
+        `_preserves_prefix` bricks).
+
+  ▸ **6f.3b3.primitives.ordered.compose.value.tail** *(next session)*.
+    Complete the remaining §8.7.10 ScanInvIx + §8.8 + §8.9 + §8.10 +
+    §8.11 chain:
+      • §8.7.10 ScanInvIx side — `scanAnchorOrAliasIx_preserves_ScanInvIx`,
+        `scanTagIx_preserves_ScanInvIx`,
+        `scanDirectiveIx_preserves_ScanInvIx` (which delegates to
+        `scanYamlDirectiveIx` / `scanTagDirectiveIx`). Use the new
+        `ScanInvIx_of_one_emit_at_pre_cursor` closer from
+        OrderedPrims, plus a per-helper `_new_token_start_at_cursor`
+        brick (template: `scanAnchorOrAliasIx_new_token_not_plain`
+        from `Proofs/Production/IndexedScannerPlainScalarValid:1359`
+        — same `show (s.tokens.tokens.push (IxToken.mk' s.cursor.pos
+        ...))[s.tokens.tokens.size]'_` unfold pattern, but project
+        `.start` instead of `.token`).
       • §8.8 — Per-dispatcher: `preprocess_preserves_*` +
         `dispatchStructural` / `dispatchFlow` / `dispatchBlock` /
         `dispatchContent` (each composes the relevant helper bricks).
@@ -9943,13 +9982,13 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
       • §8.11 — `scanIx_positions_ordered` (post-BOM initial state +
         replace `scanIx_positions_ordered_axiom` reference in §7.10).
 
-    Estimated **~1500 LOC** (the remaining ~75% of the revised budget).
-    The work is mechanical — `_preserves_prefix` / `_preserves_simpleKey`
-    / `_preserves_simpleKeyStack` / `_offset_monotonic` bricks for every
-    helper already exist in `Proofs/Production/IndexedScannerPlainScalarValid`
-    + `Proofs/Scanner/IndexedDispatch`; the new work is threading them
-    through `AllKeysValidIx_mono` + `SimpleKeyStackValidIx_mono_pos`
-    (to be added) + the new `_preserves_ScanInvIx` primitives from §8.3.
+    Estimated **~800 LOC** (the remaining ~40% of the revised budget).
+    The per-helper `_new_token_start_at_cursor` bricks + the four
+    dispatchers + the top-level composition + fuel induction +
+    final discharge.
+
+    Lives in `OrderedDispatch.lean` (per-helper ScanInvIx + dispatchers)
+    and `OrderedLoop.lean` (§8.9–§8.11).
 
   ▸ **6f.3b3.internals** *(deferred, multi-session)*. Port the ~50
     per-step scanner-internal preservation lemmas needed by
@@ -10929,6 +10968,52 @@ variant that depends on *which fields* of the token are preserved
 `.compose.{plain-mono}` + `.compose.{pos-mono}` — the plain-mono
 work uses the existing `_mono` directly; the pos-mono work needs the
 new helper plus per-helper `_preserves_all_pos` lemmas.
+
+</details>
+
+##### **Reflection 112 (new, 2026-05-24)**: when a single proof file
+crosses ~2500 LOC, modularize *before* adding the next major chunk.
+The split is cheap if architectural boundaries are already in the
+sectioning (`§N` headers); it pays back immediately by keeping
+incremental builds fast and isolating elaboration failures.
+
+<details><summary>Concrete case: <code>IndexedScannerCorrectness.lean</code> at 2672 LOC.</summary>
+
+The file's contents were already organized along three architectural
+concerns: §1–§6 (validTokenStream foundation), §7 (streamStart
+discharge), §8 (ordered-positions discharge). The §8 work was about
+to grow by ~1500 LOC for `.compose.value`. Two options:
+
+1. **Defer split**: land .compose.value into the monolith (4200 LOC),
+   then split. Cost: ~1 monolithic landing + a refactor commit.
+2. **Split now**: refactor to aggregator + 5 sub-files first, then
+   land .compose.value into a dedicated `OrderedDispatch.lean`.
+   Cost: ~30 min refactor + 1 green-build commit; the .compose.value
+   work then lands cleanly.
+
+Chose option 2. Net: 6 files (aggregator + Basic / StreamStart /
+OrderedDefs / OrderedPrims / OrderedDispatch / OrderedLoop). Each
+sub-file imports the previous (chain: `Basic → StreamStart →
+OrderedDefs → OrderedPrims → OrderedDispatch → OrderedLoop`); the
+aggregator re-exports the whole thing under the original name so
+downstream consumers (`IndexedGrammable`, `EndToEndCorrectness`,
+`IndexedEmitterScannability`) need no changes.
+
+**Pattern**: mirrors the `Proofs/Output/IndexedEmitterScannability/`
+split (Reflection 108) — same architectural-concern boundary, same
+linear import chain, same aggregator pattern.
+
+**Cost amortization**: the 6f.3b3.primitives.ordered.compose.value
+work was estimated at ~1500 LOC. Splitting first cost ~30 minutes of
+refactor + a green build; this paid back immediately when the
+`.compose.value.head` work landed into a fresh ~1000-LOC
+`OrderedDispatch.lean` instead of a 4200-LOC monolith.
+
+**How to apply**: at the **next** sub-step of any non-trivial port,
+check the current file's LOC. If it's near or past 2500, split first.
+Don't wait until the next big chunk lands — the split itself becomes
+expensive after that point (more cross-file imports to rewrite, more
+risk of breaking incremental dependencies).
 
 </details>
 
