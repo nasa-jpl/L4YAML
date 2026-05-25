@@ -1820,29 +1820,24 @@ not in-place axiom-to-theorem promotion — the latter is impossible
 when the axiom's hypothesis is strictly weaker than what the
 stronger lemma derives).
 
-**Next session**: **Step 6f.3b3.primitives.ordered.compose.value.tail —
-Complete the per-helper ScanInvIx (anchor/tag/directive) + per-dispatcher
-+ fuel-induction chain and discharge `scanIx_positions_ordered_axiom`**.
-The `.ordered.foundations` (definitions + primitives + skipToContent /
-unwindIndents helpers) landed 2026-05-24. The `.ordered.compose.flow`
-(saveSimpleKey AllKeysValid + flow indicators + block entry/key +
-value-clear + document AllKeysValid) landed 2026-05-24. The
-`.ordered.compose.value.head` landed 2026-05-24: modularized
-`IndexedScannerCorrectness.lean` into 6 sub-files (Reflection 112) +
-discharged §8.7.6 (`scanValuePrepareIx_preserves_ScanInvIx`), §8.7.7
-(`scanValuePrepareIx_preserves_AllKeysValidIx`), §8.7.8
-(`scanValueIx_preserves_*`), §8.7.9 (`scanDocument*Ix_preserves_ScanInvIx`),
-§8.7.10 AllKeysValidIx side (anchor/tag/directive) + added
-`_mono_pos` family + `overwriteAtCursor_preserves_other_start` +
-`ScanInvIx_of_one_emit_at_pre_cursor` infrastructure. Remaining for
-`.compose.value.tail`: per-helper `_new_token_start_at_cursor` bricks
-for anchor/tag/directive (template: `_new_token_not_plain` from
-`Proofs/Production/IndexedScannerPlainScalarValid:1359`); their
-ScanInvIx side via `ScanInvIx_of_one_emit_at_pre_cursor`; the 5
-dispatcher compositions (preprocess / dispatchStructural /
-dispatchFlow / dispatchBlock / dispatchContent); top-level
-`scanNextTokenIx_preserves_*`; `scanLoopIx_ordered` fuel induction;
-`scanIx_positions_ordered` discharge.
+**Next session**: **Step 6f.3b3.internals — Port the ~50 per-step
+scanner-internal preservation lemmas needed by EmitterScannability**.
+The `6f.3b3.primitives` chain is **fully complete** as of 2026-05-24:
+`.tractable` (1 axiom discharged: `scanIx_valid_token_stream_axiom`
+refactored into two narrower axioms), `.streamStart` (1 axiom
+discharged: `scanIx_first_is_streamStart_axiom`), `.ordered.foundations`
+(definitions + primitives + skipToContent / unwindIndents helpers),
+`.ordered.compose.flow` (saveSimpleKey AllKeysValid + flow indicators
++ block entry/key + value-clear + document AllKeysValid),
+`.ordered.compose.value.head` (modularization to 6 sub-files +
+§8.6–§8.7.9 + §8.7.10 AllKeysValidIx side), and
+`.ordered.compose.value.tail` (§8.7.10 ScanInvIx + §8.8 dispatchers
++ §8.9 scanNextTokenIx + §8.10 scanLoopIx_ordered + §8.11
+scanIx_positions_ordered + §8.12 composite) — discharging the
+final staging axiom `scanIx_positions_ordered_axiom`. After this
+session, `#print axioms scanIx_valid_token_stream` shows only the
+Lean foundational triple `[propext, Classical.choice, Quot.sound]`.
+Build green at 451/451 jobs across all `.compose.value.tail` substeps.
 
 **6f.3b3.primitives.streamStart LANDED 2026-05-24.** Ported
 `SimpleKeyAboveIx` (indexed twin of legacy `SimpleKeyAbove`,
@@ -9959,36 +9954,60 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
         `_preserves_simpleKeyStack` / `_tokens_size_le` /
         `_preserves_prefix` bricks).
 
-  ▸ **6f.3b3.primitives.ordered.compose.value.tail** *(next session)*.
-    Complete the remaining §8.7.10 ScanInvIx + §8.8 + §8.9 + §8.10 +
-    §8.11 chain:
-      • §8.7.10 ScanInvIx side — `scanAnchorOrAliasIx_preserves_ScanInvIx`,
-        `scanTagIx_preserves_ScanInvIx`,
-        `scanDirectiveIx_preserves_ScanInvIx` (which delegates to
-        `scanYamlDirectiveIx` / `scanTagDirectiveIx`). Use the new
-        `ScanInvIx_of_one_emit_at_pre_cursor` closer from
-        OrderedPrims, plus a per-helper `_new_token_start_at_cursor`
-        brick (template: `scanAnchorOrAliasIx_new_token_not_plain`
-        from `Proofs/Production/IndexedScannerPlainScalarValid:1359`
-        — same `show (s.tokens.tokens.push (IxToken.mk' s.cursor.pos
-        ...))[s.tokens.tokens.size]'_` unfold pattern, but project
-        `.start` instead of `.token`).
-      • §8.8 — Per-dispatcher: `preprocess_preserves_*` +
-        `dispatchStructural` / `dispatchFlow` / `dispatchBlock` /
-        `dispatchContent` (each composes the relevant helper bricks).
+  ▸ **6f.3b3.primitives.ordered.compose.value.tail** ✅ **LANDED 2026-05-24**
+    (~900 LOC; discharged §8.7.10 ScanInvIx side + §8.8 per-dispatcher
+    + §8.9 scanNextTokenIx_preserves_* + §8.10 scanLoopIx_ordered +
+    §8.11 scanIx_positions_ordered + §8.12 composite — net delta:
+    **−1 staging axiom** (`scanIx_positions_ordered_axiom`)).
+    Concretely, this session:
+      • §8.7.10 ScanInvIx side discharged for `scanAnchorOrAliasIx`,
+        `scanTagIx`, `scanDirectiveIx`. Pattern: per-helper
+        `_new_token_start` brick (showing `.start = startPos` via
+        `show (s.tokens.tokens.push (IxToken.mk' startPos ...))[size]'_
+        .start = startPos` + `simp only [Array.getElem_push_eq,
+        IxToken.mk']`), plus `_tokens_size_le_succ` upper bounds
+        for each of YAML/TAG/reserved-directive branches, then
+        `ScanInvIx_of_one_emit_at_pre_cursor` closer to package.
+      • §8.8 — Five dispatchers preserved both invariants:
+        `preprocess` (chain through skipToContentS → optional
+        unwindIndentsIx + field update → saveSimpleKeyIx),
+        `dispatchStructural` / `dispatchFlow` / `dispatchBlock`
+        (per-helper composition via the `_ok_some_cases`
+        enumerators from `Proofs/Scanner/IndexedDispatch.lean`),
+        `dispatchContent` (anchor/tag/directive + four inline-scalar
+        productions via the new private helper
+        `_scalar_emitAt_preserves_*`).
       • §8.9 — `scanNextTokenIx_preserves_ScanInvIx` /
-        `_AllKeysValidIx` (top-level composition).
-      • §8.10 — `scanLoopIx_ordered` (fuel induction).
-      • §8.11 — `scanIx_positions_ordered` (post-BOM initial state +
-        replace `scanIx_positions_ordered_axiom` reference in §7.10).
+        `_preserves_AllKeysValidIx` top-level composition through
+        preprocess + optional allowDirectives field update +
+        `scanNextTokenIx_checkBlockFlowIndent` Unit-throw +
+        dispatchers.
+      • §8.10 — `scanLoopIx_ordered` fuel induction (mirrors
+        `scanLoopIx_tokens_size_le`): terminal arm uses
+        `unwindIndentsIx → emit streamEnd`, recursive arm chains
+        `scanNextTokenIx_preserves_*` with the induction hypothesis.
+      • §8.11 — `scanIx_positions_ordered` discharges the §6.4
+        axiom: applies `scanLoopIx_ordered` to the post-BOM
+        initial state (`mk' input |> emit streamStart |> optional
+        advance`), with vacuous `ScanInvIx_mk'` / `AllKeysValidIx_mk'`
+        base cases.
+      • §8.12 — `scanIx_valid_token_stream` composite **moved**
+        from StreamStart §7.10 to OrderedLoop §8.12 (so it can
+        reference `scanIx_positions_ordered` as a real theorem).
+        StreamStart §7.10 becomes a status-note section pointing to
+        §8.12; Basic §6.4 / §6.5 lose the axiom declaration.
+      • Downstream updates: `Proofs/EndToEndCorrectness.lean` doc
+        comment updated to reflect zero remaining staging axioms.
+        `Proofs/Parser/IndexedGrammable.lean`'s call site is
+        unchanged (`scanIx_valid_token_stream` still resolves via
+        namespace).
 
-    Estimated **~800 LOC** (the remaining ~40% of the revised budget).
-    The per-helper `_new_token_start_at_cursor` bricks + the four
-    dispatchers + the top-level composition + fuel induction +
-    final discharge.
-
-    Lives in `OrderedDispatch.lean` (per-helper ScanInvIx + dispatchers)
-    and `OrderedLoop.lean` (§8.9–§8.11).
+    Build green at 451/451 jobs.
+    `#print axioms scanIx_valid_token_stream` ⇒
+    `[propext, Classical.choice, Quot.sound]` (zero user-defined
+    axioms beyond the Lean foundational triple). **Reflection 113**
+    documents the `let __src` zeta-reduction wall workaround
+    + the multi-section budget revision.
 
   ▸ **6f.3b3.internals** *(deferred, multi-session)*. Port the ~50
     per-step scanner-internal preservation lemmas needed by
@@ -10968,6 +10987,76 @@ variant that depends on *which fields* of the token are preserved
 `.compose.{plain-mono}` + `.compose.{pos-mono}` — the plain-mono
 work uses the existing `_mono` directly; the pos-mono work needs the
 new helper plus per-helper `_preserves_all_pos` lemmas.
+
+</details>
+
+##### **Reflection 113 (new, 2026-05-24)**: when discharging the *final*
+staging axiom of a chain whose composite lives in a non-tail file,
+move the composite *with* the discharge — don't try to leave the
+composite where it was. The composite's reference to the
+soon-to-be-discharged axiom is what makes the move necessary; once
+the axiom is gone, the composite needs to be in (or below) the file
+that proves the new theorem.
+
+<details><summary>Concrete case: <code>scanIx_valid_token_stream</code> moved from <code>StreamStart.lean §7.10</code> to <code>OrderedLoop.lean §8.12</code>.</summary>
+
+The composite `scanIx_valid_token_stream` was defined in
+`StreamStart.lean §7.10` to assemble `scanIx_first_is_streamStart`
+(§7.9, proven) + `scanIx_last_is_streamEnd` (§5, proven) +
+`scanIx_positions_ordered_axiom` (Basic §6.4, axiomatized). Until
+the axiom was discharged, the composite *had* to live in StreamStart
+(or any file that imports Basic) because it referenced the axiom.
+
+Once `scanIx_positions_ordered` was discharged as a real theorem in
+`OrderedLoop.lean §8.11` — a file far below StreamStart in the
+import chain — the composite needed to follow the theorem down to a
+file that imports it. Options:
+
+1. **Forward-declare in StreamStart**, then refine in OrderedLoop:
+   convoluted; the type signature of `ValidTokenStreamPropIx` would
+   need to expose the now-discharged conjunct.
+2. **Move composite to OrderedLoop**: clean; StreamStart §7.10
+   becomes a status-note section, Basic §6.4 loses the axiom, the
+   downstream consumer's reference to `scanIx_valid_token_stream`
+   resolves via namespace lookup unchanged.
+
+Chose option 2. The downstream consumer `IndexedGrammable.lean`
+references `scanIx_valid_token_stream` by its fully-qualified name
+(`L4YAML.Proofs.Indexed.ScannerCorrectness.scanIx_valid_token_stream`),
+so the move is transparent. `EndToEndCorrectness.lean`'s doc comment
+needed updating (was pointing at §7.10 + the axiom), but no code
+referenced the file path.
+
+**Other manifestations of the same pattern** (anticipate):
+- `_internals.scanFiltered_emit_scans_axiom` (when discharged at
+  6f.3b3.internals or later), the composite
+  `parseYamlIx_implies_emitter_scannability` in
+  `IndexedEmitterScannability.lean` will likely need similar
+  re-homing.
+- Any composite that today references a `_axiom` in a Basic-level
+  file is a candidate for "move to discharge file" when the axiom
+  is discharged.
+
+**Cost**: ~5 minutes (delete composite from StreamStart, paste +
+adjust into OrderedLoop, update both files' doc comments). No
+downstream rewrites required if the composite's name + namespace
+stay the same.
+
+**Avoid**: leaving the composite in StreamStart with a dangling
+reference to a now-deleted axiom. Lean would silently fail to
+compile until somebody noticed the broken reference; the symptom
+would be vague ("unknown identifier `scanIx_positions_ordered_axiom`")
+rather than a clean error pointing to the move-needed work.
+
+</details>
+
+<details><summary>Companion guidance — when *not* to move.</summary>
+
+If the composite has *multiple* axiom references and only *some* are
+discharged this session, don't move yet. Keep it where it is (with
+the remaining axioms still referenced); only move when the *last*
+axiom in the composite's conjunction is discharged. Otherwise you
+end up moving the composite once per discharge.
 
 </details>
 
