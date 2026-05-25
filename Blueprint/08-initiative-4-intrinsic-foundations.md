@@ -1820,19 +1820,33 @@ not in-place axiom-to-theorem promotion — the latter is impossible
 when the axiom's hypothesis is strictly weaker than what the
 stronger lemma derives).
 
-**Next session**: **Step 6f.3b3.internals.chain — Port the legacy
-`ScanChain` inductive + helpers (~120 LOC) into
-`Proofs/Output/IndexedEmitterScannability/ScanChain.lean` §2**.
+**Next session**: **Step 6f.3b3.internals.progress — Port the strict-
+progress capstone `scanNextTokenIx_progress` (indexed twin of legacy
+`ScannerCorrectness.scanNextToken_progress`, ~500 LOC + `maxHeartbeats
+800000`) and discharge `ScanChainIx.bound_invariant` (strict form,
+`offset ≥ s₀.offset + n`) and `ScanChainIx.fuel_bound`
+(`n + 1 ≤ (input.utf8ByteSize + 1) * 4`) in ScanChain.lean §3**.
+**Step 6f.3b3.internals.chain LANDED 2026-05-24** (~120 LOC; legacy
+lines 1185–1280) — ScanChain.lean §2.0–§2.3: `ScanChainIx` inductive
+(`.zero` / `.step`), combinators (`.trans`, `.single`), `scanLoopIx`
+connection (`.to_scanLoopIx`, `.to_scanLoopIx_exists`), and weak
+offset/bound invariants (`.offset_monotonic_weak`, `.offset_bounded`).
+Build green at 451/451 jobs. The legacy `scanNextToken_preserves_bound`
+(line 1251) needs no indexed twin — `IxCursor.posBound` subsumes
+`inputEnd`/`input`/`IsValid` bookkeeping (Reflection 115).
 **Step 6f.3b3.internals.utility LANDED 2026-05-24** (~330 LOC; legacy §3
 prelude utility lemmas, lines 842–1184) — ScanChain.lean §1.0–§1.5:
 `skipToContentS_atEnd`, `scanNextTokenIx_eof`, `scanLoopIx`
 compositionality (`_step[_eq]`, `_fuel_mono`, `_two_iter[_eq]`,
 `_eof[_eq]`), `ScannerSurfCorrIx` + bridges, `dispatchContentIx_quote`,
-`emitScalar_toList[_utf8ByteSize_ge]`. Build green at 451/451 jobs.
+`emitScalar_toList[_utf8ByteSize_ge]`.
 **Reflection 114** documents the simp-pattern selection for the
 `scanLoopIx_two_iter` family (`simp only [scanLoopIx, h_snt]` avoids
 the `unfold` / `conv_lhs` failure mode where both sides of an equality
-get unfolded).
+get unfolded). **Reflection 115** (new) documents that the indexed
+substrate's type-level `input` parameter and `IxCursor.posBound`
+field make `scanNextToken_preserves_bound` vacuous — a quiet win
+from the carriage-return work back in 6f.0.
 
 The `6f.3b3.primitives` chain is **fully complete** as of 2026-05-24:
 `.tractable` (1 axiom discharged: `scanIx_valid_token_stream_axiom`
@@ -10027,13 +10041,14 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
     (`ScalarSourceCovers`, `NoTrailingWhitespace`, `ValidScanState`)
     are *descriptive* — they do not appear as identifiers in the
     legacy file. The actual ports map to §3 prelude
-    (`Proofs/Output/EmitterScannability.lean:842–1300`, ~460 LOC),
+    (`Proofs/Output/EmitterScannability.lean:842–1303`, ~460 LOC),
     populating `Proofs/Output/IndexedEmitterScannability/ScanChain.lean`
     section by section. This step is *amortized* with `.primitives`
     work: the same `SimpleKeyAboveIx` / `ScanInvIx` /
     `AllKeysValidIx` infrastructure powers both classes
-    (Reflection 107). Subdivided into `.utility` and `.chain` slices
-    (Reflection 114, this session).
+    (Reflection 107). Subdivided into `.utility` (Reflection 114),
+    `.chain` (this session, Reflection 115), and `.progress`
+    (deferred — strict-progress capstone) slices.
 
     ▸ **6f.3b3.internals.utility** ✅ **LANDED 2026-05-24** (~330 LOC;
       legacy §3 prelude lines 842–1184). Populated
@@ -10076,14 +10091,62 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
       `conv_lhs` failure mode where both sides of the equality get
       unfolded).
 
-    ▸ **6f.3b3.internals.chain** *(deferred, next session)*. Port
-      legacy `ScanChain` inductive + helpers (lines 1185–1306, ~120
-      LOC): inductive type with `zero` / `step` constructors, `.trans`,
-      `.single`, `.to_scanLoop[_exists]`, `scanNextToken_preserves_bound`,
-      `.bound_invariant`, `.fuel_bound`. Lands in ScanChain.lean as §2.
-      Prerequisites: §1.2 `scanLoopIx_step` (`.to_scanLoop`) and
-      `scanLoopIx_fuel_mono` (`.fuel_bound`) — already landed by
-      `.utility`.
+    ▸ **6f.3b3.internals.chain** ✅ **LANDED 2026-05-24** (~120 LOC;
+      legacy lines 1185–1280, with lines 1281–1303 carved out into
+      `.progress`). Populated `ScanChain.lean` §2.0–§2.3:
+        • §2.0 — `ScanChainIx` inductive (`.zero` / `.step`) — `n`
+          consecutive successful `scanNextTokenIx` steps. `input` is
+          type-level, so legacy's `s.input = s'.input` conclusion is
+          structural and the inductive is parameterized cleanly over
+          `ScannerStateIx input`.
+        • §2.1 — Combinators: `.trans`, `.single`.
+        • §2.2 — `scanLoopIx` connection: `.to_scanLoopIx`,
+          `.to_scanLoopIx_exists`. Consume §1.2's `scanLoopIx_step_eq`
+          (prerequisite, already landed) verbatim.
+        • §2.3 — Weak offset/bound invariants:
+          `.offset_monotonic_weak` (uses
+          `scanNextTokenIx_offset_monotonic` from
+          `IndexedDispatch.lean:1608`) and `.offset_bounded` (direct
+          `IxCursor.posBound` projection — replaces legacy's
+          `scanNextToken_preserves_bound` chain entirely).
+
+      The legacy `scanNextToken_preserves_bound` (line 1251) needs
+      *no indexed twin*: `input` is type-level, `inputEnd` does not
+      exist, and `pos.offset ≤ input.utf8ByteSize` is a structural
+      field (`IxCursor.posBound`). The legacy theorem's four
+      conclusions (`offset ≤ inputEnd`, `inputEnd = input.utf8ByteSize`,
+      `input = input`, `IsValid`) all become vacuous or structural
+      (**Reflection 115**).
+
+      Build green at 451/451. `#print axioms` on each of the new 7
+      declarations (1 inductive + 6 theorems) shows the foundational
+      triple `[propext, Classical.choice, Quot.sound]`.
+
+    ▸ **6f.3b3.internals.progress** *(deferred, next session)*. Port
+      the strict-progress capstone for the indexed scanner and use it
+      to discharge the strict forms:
+        • `scanNextTokenIx_progress` — indexed twin of legacy
+          `ScannerCorrectness.scanNextToken_progress`
+          (`Proofs/Scanner/ScannerCorrectness.lean:10549`,
+          ~500 LOC + `maxHeartbeats 800000`): `scanNextTokenIx s
+          = .ok (some s') → s.cursor.pos.offset < s'.cursor.pos.offset`.
+          Indexed substrate currently provides only the weak form
+          `scanNextTokenIx_offset_monotonic` (≤) in
+          `IndexedDispatch.lean:1608`.
+        • `ScanChainIx.bound_invariant` (strict form) — using
+          strict progress, derive `s_final.cursor.pos.offset ≥
+          s₀.cursor.pos.offset + n`. The other two legacy conjuncts
+          (`offset ≤ inputEnd`, `inputEnd = input.utf8ByteSize`)
+          are already discharged in `.chain` via `posBound`.
+        • `ScanChainIx.fuel_bound` — combine `bound_invariant`
+          (strict) with `posBound` to get `n + 1 ≤
+          (input.utf8ByteSize + 1) * 4`.
+
+      Lands in ScanChain.lean as §3, alongside a likely dedicated
+      `Proofs/Scanner/IndexedScannerProgress.lean` (indexed twin of
+      legacy `Proofs/Scanner/ScannerProgress.lean`, ~400 LOC) for
+      the per-dispatch strict-progress facts. Estimated effort:
+      multi-session, comparable to legacy's full Progress module.
 
   ▸ **6f.3b3.{basic,scanchain,flowmono,filteredgrowth,emitscans,parsestream,roundtrip}**
     *(sub-sessions, one per file)*. Migrate each section of the legacy
@@ -11192,6 +11255,92 @@ opaque `unsolved goals` showing two match-expressions that the user
 has to mentally evaluate to see they're equal. The `simp only`
 approach front-loads the work and surfaces failures as "no
 progress" rather than "different normal forms."
+
+</details>
+
+##### **Reflection 115 (new, 2026-05-24)**: a type-level index (here,
+the `input : String` parameter lifted into `ScannerStateIx input` and
+`IxCursor input`) plus a structural proof field (`IxCursor.posBound :
+pos.offset ≤ input.utf8ByteSize`) can collapse an entire legacy
+preservation theorem to *zero* code in the indexed substrate. When
+porting, look for legacy theorems whose conclusions are exactly the
+invariants now carried structurally by the type — those are vacuous
+twins, not work items.
+
+<details><summary>Concrete case: <code>scanNextToken_preserves_bound</code> has no indexed twin.</summary>
+
+The legacy `scanNextToken_preserves_bound`
+(`Proofs/Output/EmitterScannability.lean:1251`) is a 7-line theorem
+that delegates to `ScannerBound.scanNextToken_preserves_bound` and
+returns a four-conjunct conclusion:
+
+1. `s'.offset ≤ s'.inputEnd`
+2. `s'.inputEnd = s.inputEnd`
+3. `s'.input = s.input`
+4. `String.Pos.Raw.IsValid s'.input ⟨s'.offset⟩`
+
+In the indexed substrate (`ScannerStateIx input`), each of these
+collapses:
+
+1. **`offset ≤ inputEnd`** — there is no `inputEnd` field. The cursor's
+   `posBound : pos.offset ≤ input.utf8ByteSize` (a struct field, not
+   a derived theorem) gives the indexed analog *for free*, and it's
+   the *same proof obligation* — already discharged by every operation
+   that constructs an `IxCursor`.
+2. **`inputEnd = input.utf8ByteSize`** — vacuous. `inputEnd` doesn't
+   exist; `input.utf8ByteSize` is the *only* bound.
+3. **`input = input`** — structural. Both `s` and `s'` have type
+   `ScannerStateIx input` for the *same* `input` parameter. The
+   conclusion is `rfl` by elaboration.
+4. **`IsValid`** — folded into `posBound`'s definition (cursor
+   construction requires valid UTF-8 boundaries).
+
+So the indexed twin of `scanNextToken_preserves_bound` is *no theorem
+at all*. In `ScanChain.lean §2.3`, what would have been the body of
+that theorem is replaced by:
+
+```lean
+theorem ScanChainIx.offset_bounded {s₀ s_final : ScannerStateIx input}
+    {n : Nat} (_h_chain : ScanChainIx s₀ n s_final) :
+    s_final.cursor.pos.offset ≤ input.utf8ByteSize :=
+  s_final.cursor.posBound
+```
+
+The `_h_chain` argument is unused — the conclusion follows from the
+cursor type alone, not from the chain. The chain is kept in the
+signature for compositional clarity (consumers can still invoke
+`.offset_bounded` on a `ScanChainIx`), but the *proof* is a field
+projection.
+
+</details>
+
+<details><summary>How to apply.</summary>
+
+When porting a legacy preservation theorem, before writing the indexed
+twin, audit each conclusion against the indexed substrate's structural
+invariants:
+
+- **Equality between same-input fields** → structural (the type
+  parameter enforces it).
+- **`field ≤ bound`** where `bound` is `input.something` → likely
+  carried by an existing `*Bound` field on the cursor/state.
+- **`IsValid`-like predicates** → likely folded into the substrate's
+  construction discipline.
+
+If *all* conclusions are structural or carried by existing fields,
+the legacy theorem has no indexed twin. Document the gap with a
+sentence in the section header so future readers don't waste time
+looking for the missing port. (This is the *opposite* failure mode
+from Reflection 109's underestimate — here the legacy LOC count
+*overestimates* the indexed work.)
+
+**Why this matters**: this is a quiet structural win from earlier
+substrate work (the `input`-as-type-parameter + `posBound`
+refactor back in 6f.0). It's invisible until you try to port a
+preservation theorem and realize the work is already done. The
+*right* response is to land the empty twin's *consumers* (here,
+`ScanChainIx.offset_bounded` as a projection) — not to invent a
+no-op theorem just to keep the port symmetric.
 
 </details>
 
