@@ -1820,8 +1820,20 @@ not in-place axiom-to-theorem promotion — the latter is impossible
 when the axiom's hypothesis is strictly weaker than what the
 stronger lemma derives).
 
-**Next session**: **Step 6f.3b3.internals — Port the ~50 per-step
-scanner-internal preservation lemmas needed by EmitterScannability**.
+**Next session**: **Step 6f.3b3.internals.chain — Port the legacy
+`ScanChain` inductive + helpers (~120 LOC) into
+`Proofs/Output/IndexedEmitterScannability/ScanChain.lean` §2**.
+**Step 6f.3b3.internals.utility LANDED 2026-05-24** (~330 LOC; legacy §3
+prelude utility lemmas, lines 842–1184) — ScanChain.lean §1.0–§1.5:
+`skipToContentS_atEnd`, `scanNextTokenIx_eof`, `scanLoopIx`
+compositionality (`_step[_eq]`, `_fuel_mono`, `_two_iter[_eq]`,
+`_eof[_eq]`), `ScannerSurfCorrIx` + bridges, `dispatchContentIx_quote`,
+`emitScalar_toList[_utf8ByteSize_ge]`. Build green at 451/451 jobs.
+**Reflection 114** documents the simp-pattern selection for the
+`scanLoopIx_two_iter` family (`simp only [scanLoopIx, h_snt]` avoids
+the `unfold` / `conv_lhs` failure mode where both sides of an equality
+get unfolded).
+
 The `6f.3b3.primitives` chain is **fully complete** as of 2026-05-24:
 `.tractable` (1 axiom discharged: `scanIx_valid_token_stream_axiom`
 refactored into two narrower axioms), `.streamStart` (1 axiom
@@ -10009,15 +10021,69 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
     documents the `let __src` zeta-reduction wall workaround
     + the multi-section budget revision.
 
-  ▸ **6f.3b3.internals** *(deferred, multi-session)*. Port the ~50
+  ▸ **6f.3b3.internals** *(in progress, multi-session)*. Port the
     per-step scanner-internal preservation lemmas needed by
-    EmitterScannability (`ScalarSourceCovers`, `NoTrailingWhitespace`,
-    `ValidScanState`, etc.). These are amortized with the `.primitives`
+    EmitterScannability. The category names used informally
+    (`ScalarSourceCovers`, `NoTrailingWhitespace`, `ValidScanState`)
+    are *descriptive* — they do not appear as identifiers in the
+    legacy file. The actual ports map to §3 prelude
+    (`Proofs/Output/EmitterScannability.lean:842–1300`, ~460 LOC),
+    populating `Proofs/Output/IndexedEmitterScannability/ScanChain.lean`
+    section by section. This step is *amortized* with `.primitives`
     work: the same `SimpleKeyAboveIx` / `ScanInvIx` /
-    `AllKeysValidIx` infrastructure powers both classes (Reflection
-    107). Populate the relevant
-    `Proofs/Output/IndexedEmitterScannability/*.lean` skeleton files
-    section by section.
+    `AllKeysValidIx` infrastructure powers both classes
+    (Reflection 107). Subdivided into `.utility` and `.chain` slices
+    (Reflection 114, this session).
+
+    ▸ **6f.3b3.internals.utility** ✅ **LANDED 2026-05-24** (~330 LOC;
+      legacy §3 prelude lines 842–1184). Populated
+      `Proofs/Output/IndexedEmitterScannability/ScanChain.lean` §1.0–§1.5:
+        • §1.0 — `skipToContentS_atEnd`: state-level EOF no-op
+          (cursor-level `skipToContent_atEnd` already in
+          `IndexedIndent.lean:193`).
+        • §1.1 — `scanNextTokenIx_preprocess_eof`,
+          `scanNextTokenIx_eof`: dispatch returns `.ok none` at EOF
+          via the `!s.hasMore` short-circuit.
+        • §1.2 — `scanLoopIx` compositionality: `_step_eq` / `_step` /
+          `_fuel_mono` / `_two_iter[_eq]` / `_eof[_eq]`. The indexed
+          variants take *two* EOF preconditions (`flowLevel = 0` and
+          `directivesPresent = false`) rather than legacy's one, since
+          `scanLoopIx`'s EOF branch has two hard-error guards instead
+          of one.
+        • §1.3 — `ScannerSurfCorrIx` (structure) +
+          `peek_none_of_empty_surfIx` + `ScannerSurfCorrIx_transfer`.
+          The structure drops legacy `end_eq` (now in
+          `IxCursor.posBound`); `input` is type-level, so transfer
+          needs only `cursor.pos.offset` / `cursor.pos.col` / `indents`
+          to match. Pre-emptive sibling for any downstream surface-
+          correspondence proofs without committing to a full
+          `CharsFromOffsetIx` re-statement (`CharsFromOffset` is
+          input-as-value, so the legacy version composes directly).
+        • §1.4 — `dispatchContentIx_quote`: four-conjunct fact that
+          the dispatch chain on `'"'` (stream prefix) falls through
+          to `dispatchContent`.
+        • §1.5 — `emitScalar_toList`, `emitScalar_utf8ByteSize_ge`:
+          value-level facts about `L4YAML.Emit.emitScalar` (ported
+          verbatim from legacy lines 1058–1070).
+
+      Build green at 451/451. `#print axioms` on each of the 14 new
+      lemmas shows the foundational triple
+      `[propext, Classical.choice, Quot.sound]` (plus two
+      `native_decide` axioms used by the `emitScalar` byte-size
+      lemmas — same as legacy). **Reflection 114** documents the
+      `simp only [scanLoopIx, h_snt]` pattern for the
+      `scanLoopIx_two_iter` family (avoids the `unfold` /
+      `conv_lhs` failure mode where both sides of the equality get
+      unfolded).
+
+    ▸ **6f.3b3.internals.chain** *(deferred, next session)*. Port
+      legacy `ScanChain` inductive + helpers (lines 1185–1306, ~120
+      LOC): inductive type with `zero` / `step` constructors, `.trans`,
+      `.single`, `.to_scanLoop[_exists]`, `scanNextToken_preserves_bound`,
+      `.bound_invariant`, `.fuel_bound`. Lands in ScanChain.lean as §2.
+      Prerequisites: §1.2 `scanLoopIx_step` (`.to_scanLoop`) and
+      `scanLoopIx_fuel_mono` (`.fuel_bound`) — already landed by
+      `.utility`.
 
   ▸ **6f.3b3.{basic,scanchain,flowmono,filteredgrowth,emitscans,parsestream,roundtrip}**
     *(sub-sessions, one per file)*. Migrate each section of the legacy
@@ -11057,6 +11123,75 @@ discharged this session, don't move yet. Keep it where it is (with
 the remaining axioms still referenced); only move when the *last*
 axiom in the composite's conjunction is discharged. Otherwise you
 end up moving the composite once per discharge.
+
+</details>
+
+##### **Reflection 114 (new, 2026-05-24)**: when unfolding a recursive
+function definition (`scanLoopIx`) in an equality where the **same
+function name** appears on *both* sides at *different* arguments,
+prefer `simp only [funcName, ...rewrite_hyps]` over `unfold` +
+explicit rewriting. `unfold` rewrites *all* occurrences in the goal,
+which collapses both sides into the reduced match form — but the
+LHS's match needs the rewrite hypothesis to reduce further, while
+the RHS's match needs no further work. The two sides then *look*
+different even though they're equal up to evaluation, and `rfl`
+won't close it because the discriminants differ syntactically.
+
+<details><summary>Concrete case: <code>scanLoopIx_two_iter</code>'s one-step lemma.</summary>
+
+The intermediate step `scanLoopIx s₀ (f + 2) = scanLoopIx s₁ (f + 1)`
+arose in proving `scanLoopIx_two_iter` (legacy two-iteration EOF
+case). First attempt:
+
+```lean
+have h1 : scanLoopIx s₀ (f + 2) = scanLoopIx s₁ (f + 1) := by
+  unfold scanLoopIx        -- unfolds BOTH sides
+  rw [h_snt0]              -- rewrites s₀.scanNextTokenIx on LHS
+  -- LHS reduces match Except.ok (some s₁); RHS is now
+  -- `match scanNextTokenIx s₁ with ...` (not the original
+  --  unfolded form). They disagree syntactically.
+```
+
+Second attempt — `conv_lhs => unfold scanLoopIx` — failed with
+"unknown tactic" (`conv_lhs` is a Mathlib idiom; in plain core Lean
+the equivalent is `conv => lhs; unfold scanLoopIx; done` but the
+parsing is brittle).
+
+Working pattern:
+
+```lean
+have h1 : scanLoopIx s₀ (f + 2) = scanLoopIx s₁ (f + 1) := by
+  simp only [scanLoopIx, h_snt0]
+```
+
+`simp only` unfolds *and* rewrites in one pass; the RHS's
+`scanLoopIx s₁ (f + 1)` either reduces all the way (if `simp only`
+can match on `f + 1`) or stays as the closed form, and both sides
+end up in the same normal form. **Net cost**: one `simp only` line
+replacing four lines of explicit `unfold` + `rw` machinations.
+
+</details>
+
+<details><summary>How to apply.</summary>
+
+When an intermediate equality has the form `f x = f y` where `f` is
+a definition (recursive or not) and a hypothesis `h : g x' = ...`
+needs to rewrite the LHS only:
+
+1. Try `simp only [f, h]` first.
+2. If that fails (most often because `simp only` over-rewrites the
+   RHS), fall back to constructing the goal via `show` with the
+   explicit match form — verbose but always works.
+3. `conv => lhs; unfold f; rw [h]` works in modern Lean but the
+   tactic combinator parsing is finicky (semicolons vs newlines vs
+   `done`); test interactively before committing.
+
+**Why this matters**: the cost of getting the unfold pattern wrong
+is *not* a clear "unfolded but didn't reduce" error — it's an
+opaque `unsolved goals` showing two match-expressions that the user
+has to mentally evaluate to see they're equal. The `simp only`
+approach front-loads the work and surfaces failures as "no
+progress" rather than "different normal forms."
 
 </details>
 
