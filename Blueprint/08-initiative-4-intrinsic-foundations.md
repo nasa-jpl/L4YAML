@@ -1820,12 +1820,27 @@ not in-place axiom-to-theorem promotion — the latter is impossible
 when the axiom's hypothesis is strictly weaker than what the
 stronger lemma derives).
 
-**Next session**: **Step 6f.3b3.internals.progress — Port the strict-
-progress capstone `scanNextTokenIx_progress` (indexed twin of legacy
+**Next session**: **Step 6f.3b3.internals.progress.capstone — Discharge
+`scanPlainScalarIx_offset_lt_axiom` and port the strict-progress
+capstone `scanNextTokenIx_progress` (indexed twin of legacy
 `ScannerCorrectness.scanNextToken_progress`, ~500 LOC + `maxHeartbeats
-800000`) and discharge `ScanChainIx.bound_invariant` (strict form,
+800000`); then discharge `ScanChainIx.bound_invariant` (strict form,
 `offset ≥ s₀.offset + n`) and `ScanChainIx.fuel_bound`
 (`n + 1 ≤ (input.utf8ByteSize + 1) * 4`) in ScanChain.lean §3**.
+**Step 6f.3b3.internals.progress.leaf LANDED 2026-05-25** (~650 LOC;
+new file `Proofs/Scanner/IndexedScannerProgress.lean`) — populated
+§0–§5: 3 helpers + 14 leaf strict-progress theorems
+(`scanFlowSequenceStartIx_offset_lt` … `scanBlockScalarIx_offset_lt`)
++ 1 staging axiom (`scanPlainScalarIx_offset_lt_axiom`) + 4
+per-dispatcher strict-progress theorems
+(`scanNextTokenIx_dispatch{Structural,FlowIndicators,BlockIndicators,Content}_offset_gt`).
+Build green at 451/451 jobs. `#print axioms` on each of the 17 new
+theorems shows the foundational triple `[propext, Classical.choice,
+Quot.sound]` (plus `scanPlainScalarIx_offset_lt_axiom` for
+`dispatchContent_offset_gt`). **Reflection 116** documents the
+sub-decomposition into `.leaf` + `.capstone` and the staging-axiom
+decision for plain-scalar strict progress (Reflection 107's pattern
+applied to a multi-session port).
 **Step 6f.3b3.internals.chain LANDED 2026-05-24** (~120 LOC; legacy
 lines 1185–1280) — ScanChain.lean §2.0–§2.3: `ScanChainIx` inductive
 (`.zero` / `.step`), combinators (`.trans`, `.single`), `scanLoopIx`
@@ -10122,31 +10137,87 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
       declarations (1 inductive + 6 theorems) shows the foundational
       triple `[propext, Classical.choice, Quot.sound]`.
 
-    ▸ **6f.3b3.internals.progress** *(deferred, next session)*. Port
-      the strict-progress capstone for the indexed scanner and use it
-      to discharge the strict forms:
-        • `scanNextTokenIx_progress` — indexed twin of legacy
-          `ScannerCorrectness.scanNextToken_progress`
-          (`Proofs/Scanner/ScannerCorrectness.lean:10549`,
-          ~500 LOC + `maxHeartbeats 800000`): `scanNextTokenIx s
-          = .ok (some s') → s.cursor.pos.offset < s'.cursor.pos.offset`.
-          Indexed substrate currently provides only the weak form
-          `scanNextTokenIx_offset_monotonic` (≤) in
-          `IndexedDispatch.lean:1608`.
-        • `ScanChainIx.bound_invariant` (strict form) — using
-          strict progress, derive `s_final.cursor.pos.offset ≥
-          s₀.cursor.pos.offset + n`. The other two legacy conjuncts
-          (`offset ≤ inputEnd`, `inputEnd = input.utf8ByteSize`)
-          are already discharged in `.chain` via `posBound`.
-        • `ScanChainIx.fuel_bound` — combine `bound_invariant`
-          (strict) with `posBound` to get `n + 1 ≤
-          (input.utf8ByteSize + 1) * 4`.
+    ▸ **6f.3b3.internals.progress** *(in progress, sub-decomposed
+      into `.leaf` + `.capstone`)*. Port the strict-progress capstone
+      for the indexed scanner and use it to discharge the strict
+      forms. Reflection 116 documents the multi-slice decomposition
+      and the staging-axiom decision for `scanPlainScalarIx_offset_lt`.
 
-      Lands in ScanChain.lean as §3, alongside a likely dedicated
-      `Proofs/Scanner/IndexedScannerProgress.lean` (indexed twin of
-      legacy `Proofs/Scanner/ScannerProgress.lean`, ~400 LOC) for
-      the per-dispatch strict-progress facts. Estimated effort:
-      multi-session, comparable to legacy's full Progress module.
+      ▸ **6f.3b3.internals.progress.leaf** ✅ **LANDED 2026-05-25**
+        (~650 LOC; new file
+        `Proofs/Scanner/IndexedScannerProgress.lean`). Populated
+        §0–§5:
+          • §0 — Helpers: `IxCursor.advanceN_succ_offset_lt` +
+            `ScannerStateIx.advance_offset_lt_of_hasMore` +
+            `ScannerStateIx.advanceN_succ_offset_lt_of_hasMore`.
+          • §1 — Flow-bracket leaves: `scanFlowSequenceStartIx_offset_lt`,
+            `scanFlowSequenceEndIx_offset_lt`,
+            `scanFlowMappingStartIx_offset_lt`,
+            `scanFlowMappingEndIx_offset_lt`.
+          • §2 — Block / mapping leaves: `scanBlockEntryIx_offset_lt`,
+            `scanKeyIx_offset_lt`, `scanValueIx_offset_lt`,
+            `scanFlowEntryIx_offset_lt`.
+          • §3 — Document / directive leaves:
+            `scanDocumentStartIx_offset_lt`,
+            `scanDocumentEndIx_offset_lt`,
+            `scanDirectiveIx_offset_lt`.
+          • §4 — Node-property / scalar leaves:
+            `scanAnchorOrAliasIx_offset_lt`, `scanTagIx_offset_lt`,
+            `scanBlockScalarIx_offset_lt`. `scanDoubleQuotedIx_offset_lt`
+            / `scanSingleQuotedIx_offset_lt` already in
+            `Proofs/Scanner/IndexedScalar.lean`.
+            `scanPlainScalarIx_offset_lt_axiom` introduced as a
+            **staging axiom** (deferred to `.capstone`; discharge
+            plan in the file's doc-comment + Reflection 116).
+          • §5 — Per-dispatcher strict progress:
+            `scanNextTokenIx_dispatchStructural_offset_gt`,
+            `_dispatchFlowIndicators_offset_gt`,
+            `_dispatchBlockIndicators_offset_gt`,
+            `_dispatchContent_offset_gt`. The first three depend
+            only on the foundational triple; the fourth uses
+            `scanPlainScalarIx_offset_lt_axiom`.
+
+        Build green at 451/451 jobs (the staging file is unimported
+        from default targets per Guardrail 1). `#print axioms` on
+        each of the 17 new theorems shows the foundational triple
+        `[propext, Classical.choice, Quot.sound]` (plus
+        `scanPlainScalarIx_offset_lt_axiom` for the
+        `dispatchContent_offset_gt` consumer). Reflection 116
+        captures the dispatcher-enumerator-reuse cost amortization
+        and the canStartPlainScalarBool helper-port deferral
+        rationale.
+
+      ▸ **6f.3b3.internals.progress.capstone** *(deferred, next
+        session)*. Discharge the strict-progress capstone and the
+        ScanChain.lean §3 bound:
+          • Port `canStart_*` helper chain (legacy
+            `Proofs/Scanner/ScannerCorrectness.lean:10228–10298`,
+            ~70 LOC of boolean algebra on
+            `canStartPlainScalarBool`).
+          • Discharge `scanPlainScalarIx_offset_lt_axiom` as a
+            theorem (~20 LOC core + `maxHeartbeats` if needed).
+          • `scanNextTokenIx_progress` capstone — indexed twin of
+            legacy `ScannerCorrectness.scanNextToken_progress`
+            (`Proofs/Scanner/ScannerCorrectness.lean:10549`,
+            ~500 LOC + `maxHeartbeats 800000`):
+            `scanNextTokenIx s = .ok (some s') →
+            s.cursor.pos.offset < s'.cursor.pos.offset`.
+            Composes §5 with preprocess strict progress
+            (`scanNextTokenIx_preprocess_offset_lt` — a small new
+            lemma upstream of the dispatch chain).
+          • `ScanChainIx.bound_invariant` (strict form) — using
+            `scanNextTokenIx_progress`, derive
+            `s_final.cursor.pos.offset ≥ s₀.cursor.pos.offset + n`.
+            The other two legacy conjuncts (`offset ≤ inputEnd`,
+            `inputEnd = input.utf8ByteSize`) are already discharged
+            in `.chain` via `posBound`.
+          • `ScanChainIx.fuel_bound` — combine `bound_invariant`
+            (strict) with `posBound` to get
+            `n + 1 ≤ (input.utf8ByteSize + 1) * 4`.
+
+        Both `.bound_invariant` (strict form) and `.fuel_bound`
+        land in `ScanChain.lean` §3. Estimated effort: 1 session
+        (~400–600 LOC).
 
   ▸ **6f.3b3.{basic,scanchain,flowmono,filteredgrowth,emitscans,parsestream,roundtrip}**
     *(sub-sessions, one per file)*. Migrate each section of the legacy
@@ -11387,6 +11458,87 @@ check the current file's LOC. If it's near or past 2500, split first.
 Don't wait until the next big chunk lands — the split itself becomes
 expensive after that point (more cross-file imports to rewrite, more
 risk of breaking incremental dependencies).
+
+</details>
+
+##### **Reflection 116 (new, 2026-05-25)**: a multi-session port can
+land cleanly as a single-session `.leaf` slice + staging axiom even
+when the strict-progress capstone needs a separate slice. The
+discriminating question is whether the *dispatcher* enumerators
+(already proved for weak monotonicity) already partition the work
+into independent leaf-call cases — if so, each leaf strict-progress
+lemma composes through the same enumerator without needing the
+capstone, and the dispatcher's strict-progress can ship before the
+top-level `_progress` proof exists.
+
+<details><summary>Concrete case: <code>6f.3b3.internals.progress.leaf</code> shipped 17 named theorems (14 leaf + 4 dispatcher) + 1 staging axiom in one session, deferring only the top-level capstone.</summary>
+
+The Blueprint's original `.progress` slice listed three deliverables:
+
+1. `scanNextTokenIx_progress` capstone (legacy ~500 LOC + maxHeartbeats
+   800000 — composes ~15 leaf strict-progress facts + 4 dispatcher
+   strict-progress facts + preprocess strict progress).
+2. `ScanChainIx.bound_invariant` strict form (chains `_progress`
+   across an n-step `ScanChainIx`).
+3. `ScanChainIx.fuel_bound` (uses the chain bound + `posBound`).
+
+The initial estimate ("multi-session, comparable to legacy's full
+Progress module") was driven by the *capstone*'s LOC + heartbeat
+budget. But (1) the *leaf* strict-progress lemmas were each 3–15 LOC,
+and (2) the dispatcher strict-progress *composed* through the existing
+`_ok_some_cases` enumerators (proved alongside the weak monotonicity
+chain in 5b.1b — `scanNextTokenIx_dispatchStructural_ok_some_cases`
+etc.). So the dispatcher strict-progress for structural / flow / block
+lifted to one-line `rcases ... | exact scanXIx_offset_lt h_hm h_X`
+proofs.
+
+The plain-scalar arm was the singular complication: the legacy proof
+(`scanPlainScalar_offset_lt`) needs ~70 LOC of `canStart_*` boolean
+helpers + ~20 LOC of loop-unfold + `maxHeartbeats 3200000`. Porting
+*it* dominates the leaf slice's complexity by an order of magnitude.
+
+**Decision**: stage `scanPlainScalarIx_offset_lt_axiom` with a concrete
+discharge plan, land everything else as `.leaf`, and defer the
+canStart helper port + capstone to `.capstone`. The staging axiom
+appears as a transitive dep on exactly one consumer
+(`scanNextTokenIx_dispatchContent_offset_gt`); the other 16 new
+theorems show only the foundational triple in `#print axioms`. This
+is *exactly* Reflection 107's "composite-theorem + narrower-axiom"
+pattern, applied at the leaf vs. capstone granularity rather than at
+the axiom-refactor granularity.
+
+</details>
+
+<details><summary>How to apply.</summary>
+
+When a port's capstone estimate is multi-session but the per-leaf
+work is small and uniform, look for an **enumerator-based
+decomposition**: if there's an existing `_ok_some_cases`-style
+lemma that partitions the dispatcher's success branches, the
+strict-progress dispatcher lemma is a one-line composition over
+the enumerator. The capstone is the only piece that genuinely
+needs its own session.
+
+The sub-step name should reflect the decomposition:
+`.progress.leaf` (per-leaf + per-dispatcher) vs. `.progress.capstone`
+(top-level + ScanChain bound). The split is *cheap* to plan because
+the dispatcher signature reveals what the capstone will eventually
+need (`h_hm : offset < utf8ByteSize`, plus `h_peek` / `h_noDoc` for
+the content arm). The capstone's `preprocess_*_lt` upstream lemma
+is a separate small port that doesn't blow the budget.
+
+**Why this matters**: it converts a "multi-session, blocked on
+capstone" task into a "one-session leaf landing + scoped capstone
+follow-up". The leaf landing is a real unblock: the dispatcher
+strict-progress lemmas are usable by downstream proofs immediately,
+even before the top-level `scanNextTokenIx_progress` ships.
+
+**Boundary**: the decomposition only works when the leaf-level work
+is uniform (no single leaf dominates the budget). The plain-scalar
+exception here was identified up front via the legacy LOC count
+(`scanPlainScalar_offset_lt`'s ~90 LOC vs. ~10 LOC for the next-
+biggest leaf); staging it as an axiom is cheaper than letting it
+absorb the leaf slice's complexity budget.
 
 </details>
 
