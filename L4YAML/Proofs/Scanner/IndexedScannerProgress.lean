@@ -5,24 +5,22 @@ Released under Apache 2.0 license as described in the file LICENSE.
 import L4YAML.Proofs.Scanner.IndexedDispatch
 import L4YAML.Proofs.Scanner.IndexedScalar
 
-/-! # `IndexedScannerProgress` — Phase 3 Step 6f.3b3.internals.progress.leaf
+/-! # `IndexedScannerProgress` — Phase 3 Step 6f.3b3.internals.progress
 
 **Status**: staging file. Not imported by `L4YAML.lean` until the
 Phase 3 cutover commit (Step 6f).
 
-## Scope (`.progress.leaf`)
+## Scope (`.progress.leaf` + `.progress.capstone`)
 
-Indexed twin of `Proofs/Scanner/ScannerProgress.lean` + the per-leaf
-and per-dispatcher `_offset_lt` / `_offset_gt` block at the bottom of
-legacy `Proofs/Scanner/ScannerCorrectness.lean`. Provides *strict*
-offset-progress (`<`) for every leaf scanner reachable from
-`scanNextTokenIx`, and lifts those facts to the four sub-dispatchers
+Indexed twin of `Proofs/Scanner/ScannerProgress.lean` + the per-leaf,
+per-dispatcher, and capstone `_offset_lt` / `_offset_gt` block at the
+bottom of legacy `Proofs/Scanner/ScannerCorrectness.lean`. Provides
+*strict* offset-progress (`<`) for every leaf scanner reachable from
+`scanNextTokenIx`, lifts those facts to the four sub-dispatchers
 (`dispatchStructural`, `dispatchFlowIndicators`, `dispatchBlockIndicators`,
-`dispatchContent`).
-
-The capstone `scanNextTokenIx_progress` is deferred to a follow-up
-`.capstone` slice that composes these per-helper facts with
-`scanNextTokenIx_preprocess` strict progress.
+`dispatchContent`), and composes them into the top-level
+`scanNextTokenIx_progress` capstone (the indexed twin of legacy
+`ScannerCorrectness.scanNextToken_progress`).
 
 ## Layout
 
@@ -48,9 +46,9 @@ The capstone `scanNextTokenIx_progress` is deferred to a follow-up
 ### §4 Node-property / scalar leaf strict progress
   - `scanAnchorOrAliasIx_offset_lt`, `scanTagIx_offset_lt`,
     `scanBlockScalarIx_offset_lt`.
-  - `scanPlainScalarIx_offset_lt_axiom` (staging axiom; discharge
-    plan documented inline — port legacy `canStart_terminates_none` /
-    `scanPlainScalar_offset_lt` chain).
+  - **`scanPlainScalarIx_offset_lt`** — discharged from the
+    `canStart_*` boolean helpers (§4 prelude) by direct
+    case-split on the first iteration of `collectPlainScalarLoopIx`.
 
   (`scanDoubleQuotedIx_offset_lt` / `scanSingleQuotedIx_offset_lt`
   already live in `Proofs/Scanner/IndexedScalar.lean`.)
@@ -61,18 +59,28 @@ The capstone `scanNextTokenIx_progress` is deferred to a follow-up
     `scanNextTokenIx_dispatchBlockIndicators_offset_gt`,
     `scanNextTokenIx_dispatchContent_offset_gt`.
 
-## What's deferred (`.capstone`)
+### §6 Preprocess upstream lemmas (capstone prerequisites)
+  - `scanNextTokenIx_preprocess_peek_eq`: the `c` returned by
+    `preprocess` matches `s'.peek?`.
+  - `scanNextTokenIx_preprocess_hasMore`: under
+    `preprocess = .ok (some _)`, the post-state has more input.
 
-  - `scanNextTokenIx_progress` (capstone — composes §5 with
-    `preprocess` strict progress).
-  - `ScanChainIx.bound_invariant` strict form (`offset ≥ s₀.offset + n`)
-    and `ScanChainIx.fuel_bound` (`n + 1 ≤ (input.utf8ByteSize + 1) * 4`),
-    both landing in `Proofs/Output/IndexedEmitterScannability/ScanChain.lean`
-    §3.
-  - `scanPlainScalarIx_offset_lt_axiom` discharge: requires porting
-    the legacy `canStart_terminates_none` chain (~150 LOC) from
-    `Proofs/Scanner/ScannerCorrectness.lean:10228–10325`. See the
-    inline axiom for the precondition shape.
+### §7 Capstone — `scanNextTokenIx_progress`
+  Composes preprocess + the four sub-dispatcher `_offset_gt` lemmas
+  into the top-level strict-progress fact. Indexed twin of legacy
+  `scanNextToken_progress` (`ScannerCorrectness.lean:10549`,
+  `maxHeartbeats 800000`).
+
+## Note on the unused `h_noDoc` precondition
+
+Legacy `scanPlainScalar_offset_lt` takes `hnoDoc : (s.col == 0 &&
+atDocumentBoundary s) = false` because legacy
+`collectPlainScalar_terminates?` (`Scanner/Scalar.lean:427`) checks
+`atDocumentBoundary s` inline as a termination guard. The indexed
+`collectPlainScalarLoopIx` does NOT replicate that guard — document-
+boundary handling is delegated upstream to the dispatchers
+(`dispatchStructural`'s `atDocumentStartIx` / `atDocumentEndIx`
+checks). So `scanPlainScalarIx_offset_lt` does not need `h_noDoc`.
 -/
 
 set_option autoImplicit false
@@ -474,48 +482,198 @@ theorem scanBlockScalarIx_offset_lt {input : String} (c : IxCursor input)
     · contradiction
   · contradiction
 
-/-! ### Plain-scalar strict progress (staging axiom)
+/-! ### Plain-scalar strict progress
 
 `scanPlainScalarIx_offset_lt` requires unfolding the first iteration of
 `collectPlainScalarLoopIx` and ruling out every terminating branch in
-favor of the "regular char advance + recurse" branch. The
-legacy proof (`Proofs/Scanner/ScannerCorrectness.lean:10304`) needs
-the helper chain `flowIndicator_isIndicator'` / `canStart_not_lb` /
-`canStart_not_ws` / `canStart_plainSafe` / `canStart_terminates_none`
-(lines 10228–10298, ~70 LOC of supporting lemmas + ~20 LOC of the
-main proof + `maxHeartbeats 3200000`). Porting them is mechanically
-straightforward but voluminous; we stage it as an axiom here and
-discharge in `.capstone`.
+favor of the "regular char advance + recurse" branch.
 
-**Discharge plan**: port `canStart_*` helpers (already pure boolean
-algebra over `canStartPlainScalarBool`), then port the loop's
-first-iteration unfold + advance-fires conclusion. The legacy
-`collectPlainScalar_terminates?` indirection collapses to direct
-case splits in the indexed substrate. -/
+The proof uses four character-level helper facts (mirroring legacy
+`canStart_*` at `ScannerCorrectness.lean:10228–10260`):
+  - `canStart_not_lb` — `canStart … = true → isLineBreakBool ch = false`
+  - `canStart_not_ws` — `canStart … = true → isWhiteSpaceBool ch = false`
+  - `canStart_plainSafe` — `canStart … = true → isPlainSafeBool ch = true`
+  - `canStart_not_flowIndicator` — `canStart … = true → isFlowIndicatorBool ch = false`
+
+Plus a `colonTerminatesPlain_false_of_canStart` step for the `ch = ':'`
+branch (deriving `colonTerminatesPlain c inFlow = false` from `canStart`'s
+`peekAt? 1`-side conditions).
+
+The indexed `collectPlainScalarLoopIx` does *not* check
+`atDocumentBoundary` (the legacy `collectPlainScalar_terminates?` did),
+so we don't need the `h_noDoc` precondition the legacy carried — see
+the file header for details. -/
+
+/-! #### Boolean helpers (ports of `ScannerCorrectness.lean:10228–10260`) -/
+
+/-- Flow indicators are indicators. -/
+theorem flowIndicator_isIndicator' (c : Char) (h : isFlowIndicatorBool c = true) :
+    isIndicatorBool c = true := by
+  simp [isFlowIndicatorBool, List.mem_cons] at h
+  rcases h with rfl | rfl | rfl | rfl | rfl; all_goals decide
+
+/-- `canStart` implies not a line break. -/
+theorem canStart_not_lb (c : Char) (next : Option Char) (inFlow : Bool)
+    (hcan : canStartPlainScalarBool c next inFlow = true) :
+    isLineBreakBool c = false := by
+  unfold canStartPlainScalarBool at hcan; split at hcan
+  · rename_i hc; rcases hc with rfl | rfl | rfl <;> decide
+  · simp only [Bool.and_eq_true, Bool.not_eq_true'] at hcan; exact hcan.2
+
+/-- `canStart` implies not whitespace. -/
+theorem canStart_not_ws (c : Char) (next : Option Char) (inFlow : Bool)
+    (hcan : canStartPlainScalarBool c next inFlow = true) :
+    isWhiteSpaceBool c = false := by
+  unfold canStartPlainScalarBool at hcan; split at hcan
+  · rename_i hc; rcases hc with rfl | rfl | rfl <;> decide
+  · simp only [Bool.and_eq_true, Bool.not_eq_true'] at hcan; exact hcan.1.2
+
+/-- `canStart` implies plain-safe. -/
+theorem canStart_plainSafe (c : Char) (next : Option Char) (inFlow : Bool)
+    (hcan : canStartPlainScalarBool c next inFlow = true) :
+    isPlainSafeBool c inFlow = true := by
+  have hws := canStart_not_ws c next inFlow hcan
+  have hlb := canStart_not_lb c next inFlow hcan
+  simp only [isPlainSafeBool]; split
+  · simp [hws, hlb]; cases h_fi : isFlowIndicatorBool c
+    · rfl
+    · unfold canStartPlainScalarBool at hcan; split at hcan
+      · rename_i hc; rcases hc with rfl | rfl | rfl <;> simp [isFlowIndicatorBool] at h_fi
+      · simp only [Bool.and_eq_true, Bool.not_eq_true'] at hcan
+        exact absurd (flowIndicator_isIndicator' c h_fi) (by simp [hcan.1.1])
+  · simp [hws, hlb]
+
+/-- `canStart` implies not a flow indicator. -/
+theorem canStart_not_flowIndicator (c : Char) (next : Option Char) (inFlow : Bool)
+    (hcan : canStartPlainScalarBool c next inFlow = true) :
+    isFlowIndicatorBool c = false := by
+  cases h_fi : isFlowIndicatorBool c with
+  | false => rfl
+  | true =>
+    exfalso
+    have hind : isIndicatorBool c = true := flowIndicator_isIndicator' c h_fi
+    unfold canStartPlainScalarBool at hcan; split at hcan
+    · rename_i hc
+      rcases hc with rfl | rfl | rfl <;> simp [isFlowIndicatorBool] at h_fi
+    · simp only [Bool.and_eq_true, Bool.not_eq_true'] at hcan
+      exact absurd hind (by simp [hcan.1.1])
+
+/-- When `canStart` holds on `':'`, `colonTerminatesPlain c inFlow = false`. -/
+theorem colonTerminatesPlain_false_of_canStart {input : String} (c : IxCursor input)
+    (inFlow : Bool)
+    (h_can : canStartPlainScalarBool ':' (c.peekAt? 1) inFlow = true) :
+    colonTerminatesPlain c inFlow = false := by
+  unfold colonTerminatesPlain
+  -- Use `split` rather than `cases` because the match body contains nested `&&`s.
+  split
+  · -- some n: derive blank/flowIndicator facts from canStart
+    rename_i n h_p1
+    rw [h_p1] at h_can
+    unfold canStartPlainScalarBool at h_can
+    -- Manually reduce the `if`: ':' satisfies the `-`/`?`/`:` disjunction.
+    rw [if_pos (Or.inr (Or.inr rfl))] at h_can
+    -- After `match (some n) with | some n => P n | none => false`, body reduces to `P n`.
+    dsimp only at h_can
+    simp only [Bool.and_eq_true, Bool.not_eq_true'] at h_can
+    obtain ⟨⟨hws, hlb⟩, hfi⟩ := h_can
+    -- Goal: (isBlankBool n || (inFlow && isFlowIndicatorBool n)) = false
+    simp [isBlankBool, hws, hlb, hfi]
+  · -- none: canStart on ':' with no next char returns false; contradicts h_can = true
+    rename_i h_p1
+    rw [h_p1] at h_can
+    unfold canStartPlainScalarBool at h_can
+    rw [if_pos (Or.inr (Or.inr rfl))] at h_can
+    -- After `match none with | some _ => _ | none => false`, body reduces to `false`.
+    dsimp only at h_can
+    exact absurd h_can (by decide)
 
 /-- Strict progress for `scanPlainScalarIx` when the initial character
-    can start a plain scalar (and no document boundary suppresses
-    scanning). **Staging axiom** — discharged in `.capstone`.
+    can start a plain scalar. Indexed twin of legacy
+    `scanPlainScalar_offset_lt` (`ScannerCorrectness.lean:10304`).
 
-    Preconditions (mirroring legacy `scanPlainScalar_offset_lt`):
+    Preconditions:
     - `c.pos.offset < input.utf8ByteSize` (the cursor has more input)
     - `c.peek? = some ch` (the first character is `ch`)
     - `canStartPlainScalarBool ch (c.peekAt? 1) inFlow = true` (the
-      character can begin a plain scalar)
-    - `¬ (c.pos.col = 0 ∧ (atDocumentStartIx c ∨ atDocumentEndIx c))`
-      (no document boundary at column 0)
-
-    The conclusion is `c.pos.offset < (scanPlainScalarIx c inFlow
-    contentIndent).2.pos.offset` — the post-scan cursor has advanced
-    by at least one byte. -/
-axiom scanPlainScalarIx_offset_lt_axiom {input : String} (c : IxCursor input)
+      character can begin a plain scalar) -/
+theorem scanPlainScalarIx_offset_lt {input : String} (c : IxCursor input)
     (ch : Char) (inFlow : Bool) (contentIndent : Nat)
     (h_hm : c.pos.offset < input.utf8ByteSize)
     (h_peek : c.peek? = some ch)
-    (h_can : canStartPlainScalarBool ch (c.peekAt? 1) inFlow = true)
-    (h_noDoc : ¬ ((c.pos.col : Nat) = 0 ∧
-                  (atDocumentStartIx c = true ∨ atDocumentEndIx c = true))) :
-    c.pos.offset < (scanPlainScalarIx c inFlow contentIndent).2.pos.offset
+    (h_can : canStartPlainScalarBool ch (c.peekAt? 1) inFlow = true) :
+    c.pos.offset < (scanPlainScalarIx c inFlow contentIndent).2.pos.offset := by
+  unfold scanPlainScalarIx
+  show c.pos.offset <
+    (collectPlainScalarLoopIx c "" "" inFlow contentIndent input.utf8ByteSize).2.pos.offset
+  -- Strict step: c.pos.offset < c.advance.pos.offset
+  have h_adv : c.pos.offset < c.advance.pos.offset :=
+    L4YAML.Indexed.IxCursor.advance_offset_lt_of_hasMore c h_hm
+  -- Decompose fuel as m + 1 (since input.utf8ByteSize ≥ 1)
+  obtain ⟨m, hm⟩ : ∃ m, input.utf8ByteSize = m + 1 :=
+    ⟨input.utf8ByteSize - 1, by omega⟩
+  rw [hm]
+  refine Nat.lt_of_lt_of_le h_adv ?_
+  -- canStart facts gathered up front
+  have h_not_lb : isLineBreakBool ch = false := canStart_not_lb ch _ inFlow h_can
+  have h_not_ws : isWhiteSpaceBool ch = false := canStart_not_ws ch _ inFlow h_can
+  have h_ps : isPlainSafeBool ch inFlow = true := canStart_plainSafe ch _ inFlow h_can
+  have h_not_fi : isFlowIndicatorBool ch = false :=
+    canStart_not_flowIndicator ch _ inFlow h_can
+  -- Open the loop body via repeated `split` (mirrors the existing
+  -- `collectPlainScalarLoopIx_offset_monotonic` proof structure).
+  unfold collectPlainScalarLoopIx
+  split
+  · -- peek? = none: contradicts h_peek
+    rename_i h_pn
+    rw [h_peek] at h_pn; cases h_pn
+  · -- peek? = some ch'
+    rename_i ch' h_ps_some
+    -- Replace ch' with ch in the goal using h_peek
+    have h_eq : ch' = ch := by
+      rw [h_ps_some] at h_peek
+      exact Option.some.inj h_peek
+    rw [h_eq]
+    -- Guard 1: isCommentBool ch && spaces.length > 0 (spaces = "")
+    split
+    · rename_i h_c; exfalso; simp at h_c
+    -- Guard 2: isMappingValueBool ch && colonTerminatesPlain c inFlow
+    split
+    · rename_i h_ct
+      exfalso
+      by_cases h_isMV : isMappingValueBool ch = true
+      · have h_ceq : ch = ':' := by
+          unfold isMappingValueBool at h_isMV; exact eq_of_beq h_isMV
+        subst h_ceq
+        have h_ct_false : colonTerminatesPlain c inFlow = false :=
+          colonTerminatesPlain_false_of_canStart c inFlow h_can
+        simp [h_ct_false] at h_ct
+      · simp [h_isMV] at h_ct
+    -- Guard 3: isMappingValueBool ch (ch = ':' here — advance + recurse)
+    split
+    · -- collectPlainScalarLoopIx c.advance ... m
+      exact collectPlainScalarLoopIx_offset_monotonic c.advance _ _ _ _ _
+    -- Guard 4: inFlow && isFlowIndicatorBool ch — ruled out by canStart
+    split
+    · rename_i h_fi
+      exfalso
+      have : isFlowIndicatorBool ch = true := (Bool.and_eq_true _ _).mp h_fi |>.2
+      rw [h_not_fi] at this; cases this
+    -- Guard 5: isLineBreakBool ch — ruled out
+    split
+    · rename_i h_lb
+      exfalso; rw [h_not_lb] at h_lb; cases h_lb
+    -- Guard 6: isWhiteSpaceBool ch — ruled out
+    split
+    · rename_i h_ws
+      exfalso; rw [h_not_ws] at h_ws; cases h_ws
+    -- Guard 7: !isPlainSafeBool ch inFlow — ruled out
+    split
+    · rename_i h_nps
+      exfalso
+      simp only [Bool.not_eq_true'] at h_nps
+      rw [h_ps] at h_nps; cases h_nps
+    -- Else: recurse via c.advance
+    exact collectPlainScalarLoopIx_offset_monotonic c.advance _ _ _ _ _
 
 /-! ## §5  Per-dispatcher strict progress
 
@@ -558,18 +716,18 @@ theorem scanNextTokenIx_dispatchBlockIndicators_offset_gt {s s' : ScannerStateIx
   · exact scanKeyIx_offset_lt h_hm h_k
   · exact scanValueIx_offset_lt h_hm h_v
 
-/-- `scanNextTokenIx_dispatchContent` strict progress on `.ok s'`. The
-    plain-scalar arm uses `scanPlainScalarIx_offset_lt_axiom`; all other
-    productions chain through their respective `_offset_lt` lemmas.
-
-    Mirrors legacy `ScannerCorrectness.dispatchContent_offset_gt`
-    (`Proofs/Scanner/ScannerCorrectness.lean:10435`). -/
+/-- `scanNextTokenIx_dispatchContent` strict progress on `.ok s'`. All
+    productions (including plain scalar) chain through their respective
+    `_offset_lt` lemmas. Unlike the legacy
+    `ScannerCorrectness.dispatchContent_offset_gt`
+    (`Proofs/Scanner/ScannerCorrectness.lean:10435`), no `h_noDoc`
+    precondition is needed — the indexed `collectPlainScalarLoopIx`
+    does not perform an `atDocumentBoundary` check (legacy
+    `collectPlainScalar_terminates?` did at
+    `Scanner/Scalar.lean:442`). -/
 theorem scanNextTokenIx_dispatchContent_offset_gt {s s' : ScannerStateIx input} {c : Char}
     (h_hm : s.cursor.pos.offset < input.utf8ByteSize)
     (h_peek : s.peek? = some c)
-    (h_noDoc : ¬ ((s.cursor.pos.col : Nat) = 0 ∧
-                  (atDocumentStartIx s.cursor = true ∨
-                   atDocumentEndIx s.cursor = true)))
     (h : scanNextTokenIx_dispatchContent s c = .ok s') :
     s.cursor.pos.offset < s'.cursor.pos.offset := by
   unfold scanNextTokenIx_dispatchContent at h
@@ -637,12 +795,194 @@ theorem scanNextTokenIx_dispatchContent_offset_gt {s s' : ScannerStateIx input} 
                 cases h
                 show s.cursor.pos.offset < _
                 simp only [emitAt_cursor]
-                -- Plain-scalar arm — staging axiom.
-                -- The peek? value `c` is supplied by the caller and matches
-                -- `s.peek? = some c` via h_peek.
-                exact scanPlainScalarIx_offset_lt_axiom s.cursor c s.inFlow _
-                  h_hm h_peek hg7 h_noDoc
+                -- Plain-scalar arm — discharged via §4 proof. The indexed
+                -- `collectPlainScalarLoopIx` doesn't check document boundaries,
+                -- so `h_noDoc` is unused here (unlike the legacy proof).
+                exact scanPlainScalarIx_offset_lt s.cursor c s.inFlow _
+                  h_hm h_peek hg7
               · rw [if_neg hg7] at h
                 cases h
+
+/-! ## §6  Preprocess upstream lemmas
+
+`scanNextTokenIx_progress` needs two facts about the `(s', c)` returned
+by a successful `scanNextTokenIx_preprocess` call:
+
+  - **`_peek_eq`**: `s'.peek? = some c` — the character `c` that
+    preprocess emits is the one that `s'.peek?` will reveal. Used to
+    feed `h_peek` into `dispatchContent_offset_gt`.
+  - **`_hasMore`**: `s'.cursor.pos.offset < input.utf8ByteSize` — the
+    post-preprocess cursor sits strictly inside the input, so all
+    leaf strict-progress lemmas (which take `h_hm` as a precondition)
+    are applicable. -/
+
+/-- The `c` returned by a successful preprocess matches `s'.peek?`. -/
+theorem scanNextTokenIx_preprocess_peek_eq {input : String}
+    {s s' : ScannerStateIx input} {c : Char}
+    (h : scanNextTokenIx_preprocess s = .ok (some (s', c))) :
+    s'.peek? = some c := by
+  unfold scanNextTokenIx_preprocess at h
+  simp only at h
+  split at h
+  · simp at h                                                -- !hasMore arm
+  · split at h
+    all_goals
+      split at h
+      · simp at h                                            -- trailingContent error
+      · split at h
+        · simp at h                                          -- peek? = none arm
+        · rename_i h_pk
+          simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq] at h
+          obtain ⟨hs, hc⟩ := h
+          subst hs; subst hc
+          exact h_pk
+
+/-- A successful preprocess leaves the cursor strictly inside the
+    input (witnessed by the `some c` peek). -/
+theorem scanNextTokenIx_preprocess_hasMore {input : String}
+    {s s' : ScannerStateIx input} {c : Char}
+    (h : scanNextTokenIx_preprocess s = .ok (some (s', c))) :
+    s'.cursor.pos.offset < input.utf8ByteSize := by
+  have h_peek := scanNextTokenIx_preprocess_peek_eq h
+  by_cases h_lt : s'.cursor.pos.offset < input.utf8ByteSize
+  · exact h_lt
+  · exfalso
+    have h_ge : input.utf8ByteSize ≤ s'.cursor.pos.offset := Nat.le_of_not_lt h_lt
+    have h_none : s'.cursor.peek? = none :=
+      (L4YAML.Indexed.IxCursor.peek?_eq_none_iff s'.cursor).mpr h_ge
+    -- s'.peek? unfolds to s'.cursor.peek?, so they collide
+    have h_pn : s'.peek? = none := h_none
+    rw [h_pn] at h_peek
+    cases h_peek
+
+/-! ## §7  Capstone — `scanNextTokenIx_progress`
+
+Composes preprocess monotonicity (`_offset_monotonic`) with one of the
+four sub-dispatchers' strict progress (`_offset_gt`). The shape mirrors
+legacy `ScannerCorrectness.scanNextToken_progress`
+(`Proofs/Scanner/ScannerCorrectness.lean:10549`, ~85 LOC with
+`maxHeartbeats 800000`), but the indexed substrate eliminates one
+helper: legacy `dispatchStructural_none_noDoc` (10493) is unneeded
+because indexed `dispatchContent_offset_gt` does not consume
+`h_noDoc` — see the §5 doc-comment for the substrate explanation. -/
+
+set_option maxHeartbeats 800000 in
+/-- **Scanner progress (indexed)**: every successful
+    `scanNextTokenIx s = .ok (some s')` call has
+    `s.cursor.pos.offset < s'.cursor.pos.offset`. The capstone
+    termination argument for `ScanChainIx.fuel_bound`. -/
+theorem scanNextTokenIx_progress {input : String}
+    {s s' : ScannerStateIx input}
+    (h : scanNextTokenIx s = .ok (some s')) :
+    s.cursor.pos.offset < s'.cursor.pos.offset := by
+  unfold scanNextTokenIx at h
+  simp only [Bind.bind, Except.bind] at h
+  cases hPre : scanNextTokenIx_preprocess s with
+  | error e => rw [hPre] at h; cases h
+  | ok preRes =>
+    rw [hPre] at h
+    cases preRes with
+    | none => cases h
+    | some sc =>
+      obtain ⟨sp, c⟩ := sc
+      have hPpO : s.cursor.pos.offset ≤ sp.cursor.pos.offset :=
+        scanNextTokenIx_preprocess_offset_monotonic hPre
+      have hHm : sp.cursor.pos.offset < input.utf8ByteSize :=
+        scanNextTokenIx_preprocess_hasMore hPre
+      have hPk : sp.peek? = some c :=
+        scanNextTokenIx_preprocess_peek_eq hPre
+      simp only at h
+      cases hStr : scanNextTokenIx_dispatchStructural sp c with
+      | error e => rw [hStr] at h; cases h
+      | ok structRes =>
+        rw [hStr] at h
+        cases structRes with
+        | some s'' =>
+          cases h
+          exact Nat.lt_of_le_of_lt hPpO
+            (scanNextTokenIx_dispatchStructural_offset_gt hHm hStr)
+        | none =>
+          -- Reduce to: sp.cursor.pos.offset < s'.cursor.pos.offset.
+          suffices hChain : sp.cursor.pos.offset < s'.cursor.pos.offset by
+            exact Nat.lt_of_le_of_lt hPpO hChain
+          by_cases hAD : sp.allowDirectives = true
+          · -- Positive case: `{ sp with allowDirectives := false,
+            -- documentEverStarted := true }` has cursor = sp.cursor (defeq), so
+            -- the per-dispatcher strict-progress facts about it transfer to
+            -- `sp` via the defeq. We re-state `hHm` and `hPk` in the `sadj`
+            -- shape so Lean can infer the dispatcher's implicit `s` from
+            -- them directly.
+            rw [if_pos hAD] at h
+            have h_sadj_hm :
+                ({ sp with allowDirectives := false, documentEverStarted := true } :
+                    ScannerStateIx input).cursor.pos.offset < input.utf8ByteSize := hHm
+            have h_sadj_pk :
+                ({ sp with allowDirectives := false, documentEverStarted := true } :
+                    ScannerStateIx input).peek? = some c := hPk
+            -- Reshape the goal so the dispatcher's conclusion lands on it.
+            show ({ sp with allowDirectives := false, documentEverStarted := true } :
+                    ScannerStateIx input).cursor.pos.offset < s'.cursor.pos.offset
+            cases hChk : scanNextTokenIx_checkBlockFlowIndent
+                { sp with allowDirectives := false, documentEverStarted := true } c with
+            | error e => rw [hChk] at h; cases h
+            | ok _ =>
+              rw [hChk] at h
+              cases hFlow : scanNextTokenIx_dispatchFlowIndicators
+                  { sp with allowDirectives := false, documentEverStarted := true } c with
+              | error e => rw [hFlow] at h; cases h
+              | ok flowRes =>
+                rw [hFlow] at h
+                cases flowRes with
+                | some _ =>
+                  cases h
+                  exact scanNextTokenIx_dispatchFlowIndicators_offset_gt h_sadj_hm hFlow
+                | none =>
+                  cases hBlk : scanNextTokenIx_dispatchBlockIndicators
+                      { sp with allowDirectives := false, documentEverStarted := true } c with
+                  | error e => rw [hBlk] at h; cases h
+                  | ok blkRes =>
+                    rw [hBlk] at h
+                    cases blkRes with
+                    | some _ =>
+                      cases h
+                      exact scanNextTokenIx_dispatchBlockIndicators_offset_gt h_sadj_hm hBlk
+                    | none =>
+                      cases hCon : scanNextTokenIx_dispatchContent
+                          { sp with allowDirectives := false, documentEverStarted := true } c with
+                      | error e => rw [hCon] at h; cases h
+                      | ok _ =>
+                        rw [hCon] at h
+                        cases h
+                        exact scanNextTokenIx_dispatchContent_offset_gt h_sadj_hm h_sadj_pk hCon
+          · -- Negative case: dispatchers receive `sp` directly.
+            rw [if_neg hAD] at h
+            cases hChk : scanNextTokenIx_checkBlockFlowIndent sp c with
+            | error e => rw [hChk] at h; cases h
+            | ok _ =>
+              rw [hChk] at h
+              cases hFlow : scanNextTokenIx_dispatchFlowIndicators sp c with
+              | error e => rw [hFlow] at h; cases h
+              | ok flowRes =>
+                rw [hFlow] at h
+                cases flowRes with
+                | some _ =>
+                  cases h
+                  exact scanNextTokenIx_dispatchFlowIndicators_offset_gt hHm hFlow
+                | none =>
+                  cases hBlk : scanNextTokenIx_dispatchBlockIndicators sp c with
+                  | error e => rw [hBlk] at h; cases h
+                  | ok blkRes =>
+                    rw [hBlk] at h
+                    cases blkRes with
+                    | some _ =>
+                      cases h
+                      exact scanNextTokenIx_dispatchBlockIndicators_offset_gt hHm hBlk
+                    | none =>
+                      cases hCon : scanNextTokenIx_dispatchContent sp c with
+                      | error e => rw [hCon] at h; cases h
+                      | ok _ =>
+                        rw [hCon] at h
+                        cases h
+                        exact scanNextTokenIx_dispatchContent_offset_gt hHm hPk hCon
 
 end L4YAML.Proofs.Indexed.ScannerProgress

@@ -471,7 +471,7 @@ slots already carry `.start = sk.pos`); in the
 `pushMappingIndentIx` branch via the existing
 `pushMappingIndentIx_preserves_prefix`. -/
 
-private theorem scanValuePrepareIx_preserves_start {input : String}
+theorem scanValuePrepareIx_preserves_start {input : String}
     (s : ScannerStateIx input) (h_skv : SimpleKeyValidIx s)
     (k : Nat) (hk : k < s.tokens.tokens.size) :
     ((scanValuePrepareIx s).tokens.tokens[k]'(by
@@ -918,7 +918,7 @@ preservation closes both invariants. -/
     those projections by structural rfl (the `let __src := emitAt; { src with
     simpleKeyAllowed := false }` form unfolds projection-by-projection
     definitionally). -/
-private theorem _scalar_emitAt_tokens_size_eq {input : String}
+theorem _scalar_emitAt_tokens_size_eq {input : String}
     (s : ScannerStateIx input) (cAfter : IxCursor input) (tok : YamlToken)
     (hBound : s.cursor.pos.offset ≤ cAfter.pos.offset) :
     (({ ({ s with cursor := cAfter } : ScannerStateIx input).emitAt
@@ -927,7 +927,7 @@ private theorem _scalar_emitAt_tokens_size_eq {input : String}
   show (s.tokens.tokens.push _).size = _
   exact Array.size_push ..
 
-private theorem _scalar_emitAt_preserves_ScanInvIx {input : String}
+theorem _scalar_emitAt_preserves_ScanInvIx {input : String}
     (s : ScannerStateIx input) (cAfter : IxCursor input) (tok : YamlToken)
     (hBound : s.cursor.pos.offset ≤ cAfter.pos.offset) (h : ScanInvIx s) :
     ScanInvIx ({ ({ s with cursor := cAfter } : ScannerStateIx input).emitAt
@@ -963,7 +963,7 @@ private theorem _scalar_emitAt_preserves_ScanInvIx {input : String}
       exact Array.getElem_push_eq ..
     rw [h_get]; rfl
 
-private theorem _scalar_emitAt_preserves_AllKeysValidIx {input : String}
+theorem _scalar_emitAt_preserves_AllKeysValidIx {input : String}
     (s : ScannerStateIx input) (cAfter : IxCursor input) (tok : YamlToken)
     (hBound : s.cursor.pos.offset ≤ cAfter.pos.offset) (h_akv : AllKeysValidIx s) :
     AllKeysValidIx ({ ({ s with cursor := cAfter } : ScannerStateIx input).emitAt

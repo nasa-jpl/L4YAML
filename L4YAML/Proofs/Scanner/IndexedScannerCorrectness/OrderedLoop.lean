@@ -279,7 +279,7 @@ advance for BOM) satisfies both `ScanInvIx` and `AllKeysValidIx`
 vacuously (no simpleKey saved yet, simpleKeyStack empty, one token
 with `.start = 0`). -/
 
-private theorem ScanInvIx_mk' (input : String) :
+theorem ScanInvIx_mk' (input : String) :
     ScanInvIx (ScannerStateIx.mk' input) := by
   refine ⟨?_, ?_⟩
   · -- tokens is empty
@@ -288,7 +288,7 @@ private theorem ScanInvIx_mk' (input : String) :
   · intro ⟨i, hi⟩
     exact absurd hi (Nat.not_lt_zero i)
 
-private theorem AllKeysValidIx_mk' (input : String) :
+theorem AllKeysValidIx_mk' (input : String) :
     AllKeysValidIx (ScannerStateIx.mk' input) := by
   refine ⟨?_, ?_⟩
   · intro h_poss

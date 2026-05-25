@@ -4,18 +4,20 @@ Released under Apache 2.0 license as described in the file LICENSE.
 -/
 import L4YAML.Proofs.Output.IndexedEmitterScannability.Basic
 import L4YAML.Proofs.Scanner.IndexedScannerCorrectness
+import L4YAML.Proofs.Scanner.IndexedScannerProgress
 import L4YAML.Proofs.Coupling.CouplingBridge
 import L4YAML.Output.Emitter
 
 /-! # `IndexedEmitterScannability.ScanChain` — Phase 3 Step 6f.3b3 staging
 
-**Status**: staging file, partially populated. §1 ports the legacy
-§3 prelude *utility lemmas* (lines 842–1184 of
+**Status**: staging file, fully populated through §3. §1 ports the
+legacy §3 prelude *utility lemmas* (lines 842–1184 of
 `Proofs/Output/EmitterScannability.lean`); §2 ports the `ScanChain`
-inductive + helpers (legacy lines 1185–1232 + 1261–1280). The
-`fuel_bound` capstone (legacy lines 1281–1303) is deferred to a
-follow-up `.internals.progress` slice that first ports the
-indexed strict-progress theorem (`scanNextTokenIx_progress`).
+inductive + helpers (legacy lines 1185–1232 + 1261–1280). §3 lifts
+the strict-progress capstone (`scanNextTokenIx_progress` from
+`Proofs/Scanner/IndexedScannerProgress.lean` §7) into the
+`ScanChainIx.bound_invariant` strict form and `ScanChainIx.fuel_bound`
+(legacy lines 1281–1303).
 
 ## Scope of §1 (utility slice, landed 2026-05-24)
 
@@ -54,18 +56,20 @@ indexed strict-progress theorem (`scanNextTokenIx_progress`).
     `posBound` projection. `.offset_monotonic_weak` gives the
     `s_final.offset ≥ s₀.offset` form (no strict-progress needed).
 
-**Deferred to `.internals.progress` slice** (legacy lines 1281–1303):
+## Scope of §3 (strict-progress + fuel bound, this session)
 
-  - `ScanChainIx.bound_invariant` strict form (`offset ≥ s₀.offset + n`)
-  - `ScanChainIx.fuel_bound` (`n ≤ (input.utf8ByteSize + 1) * 4`)
-
-  Both depend on a not-yet-ported strict-progress theorem
-  `scanNextTokenIx_progress : ... → s.cursor.pos.offset <
-  s'.cursor.pos.offset`. The indexed substrate currently provides
-  only the weak form `scanNextTokenIx_offset_monotonic` (≤). The
-  legacy `scanNextToken_progress` is a 500+ LOC capstone (full
-  per-dispatch case-split, `maxHeartbeats 800000`) and warrants
-  a dedicated multi-section session.
+  - **§3.0** — `ScanChainIx.bound_invariant` strict form: combine
+    `ScanChainIx.offset_bounded` (§2.3) with the strict-progress
+    capstone (`Proofs/Scanner/IndexedScannerProgress.lean` §7) to
+    derive `s_final.offset ≥ s₀.offset + n`.
+  - **§3.1** — `ScanChainIx.fuel_bound`: chain the strict bound
+    with the cursor's `posBound` to derive
+    `n + 1 ≤ (input.utf8ByteSize + 1) * 4`. The indexed version
+    drops the legacy `h_le`/`h_ie`/`h_iv` preconditions: all four
+    legacy invariants (`offset ≤ inputEnd`, `inputEnd = utf8ByteSize`,
+    `IsValid s.input ⟨offset⟩`, `s_final.input = s₀.input`) are
+    either structural in the indexed substrate or carried by
+    `IxCursor.posBound`.
 
 ## Phase 3 Step 6f cutover
 
@@ -500,5 +504,59 @@ theorem ScanChainIx.offset_bounded {s₀ s_final : ScannerStateIx input}
     {n : Nat} (_h_chain : ScanChainIx s₀ n s_final) :
     s_final.cursor.pos.offset ≤ input.utf8ByteSize :=
   s_final.cursor.posBound
+
+/-! ## §3  Strict-progress bound invariant + fuel bound
+
+Lifts `scanNextTokenIx_progress` (strict form, from
+`Proofs/Scanner/IndexedScannerProgress.lean` §7) inductively along a
+`ScanChainIx`, then derives `n + 1 ≤ (input.utf8ByteSize + 1) * 4`
+which is the fuel `scanIx` provides to `scanLoopIx`. -/
+
+/-- **Strict bound invariant**: an n-step `ScanChainIx` advances the
+    cursor by at least `n` bytes. Indexed twin of legacy
+    `ScanChain.bound_invariant`'s first conjunct
+    (`Proofs/Output/EmitterScannability.lean:1261`). The legacy
+    second/third conjuncts (`offset ≤ inputEnd`,
+    `inputEnd = s₀.inputEnd`) are split off as
+    `ScanChainIx.offset_bounded` (§2.3): in the indexed substrate the
+    `inputEnd` field doesn't exist and `posBound` is structural. -/
+theorem ScanChainIx.bound_invariant {s₀ s_final : ScannerStateIx input}
+    {n : Nat} (h_chain : ScanChainIx s₀ n s_final) :
+    s_final.cursor.pos.offset ≥ s₀.cursor.pos.offset + n := by
+  induction h_chain with
+  | zero => exact Nat.le_refl _
+  | @step s s_mid s_final k h_snt _h_rest ih =>
+    have h_prog := L4YAML.Proofs.Indexed.ScannerProgress.scanNextTokenIx_progress h_snt
+    -- ih: s_final.cursor.pos.offset ≥ s_mid.cursor.pos.offset + k
+    -- h_prog: s.cursor.pos.offset < s_mid.cursor.pos.offset
+    omega
+
+/-- **Fuel bound**: an n-step `ScanChainIx` from the initial state
+    `s₀ = ScannerStateIx.mk' input |>.emit streamStart` followed by
+    EOF satisfies `n + 1 ≤ (input.utf8ByteSize + 1) * 4`. This is the
+    termination argument for `scanIx`'s fuel choice
+    (`Scanner/IndexedDispatch.lean:1109`,
+    `fuel := input.utf8ByteSize + 1; scanLoopIx s (fuel * 4)`).
+
+    Indexed twin of legacy `ScanChain.fuel_bound`
+    (`Proofs/Output/EmitterScannability.lean:1281`). The legacy version
+    needs `h_le` / `h_ie` / `h_iv` preconditions that are all
+    structural in the indexed substrate; only the `s₀ = mk'.emit ...`
+    starting-shape and the chain itself are needed. -/
+theorem ScanChainIx.fuel_bound (s₀ s_final : ScannerStateIx input)
+    (n : Nat) (h_s0 : s₀ = (ScannerStateIx.mk' input).emit YamlToken.streamStart)
+    (h_chain : ScanChainIx s₀ n s_final)
+    (_h_eof : scanNextTokenIx s_final = .ok none) :
+    n + 1 ≤ (input.utf8ByteSize + 1) * 4 := by
+  have h_s0_off : s₀.cursor.pos.offset = 0 := by subst h_s0; rfl
+  have h_ge : s_final.cursor.pos.offset ≥ s₀.cursor.pos.offset + n :=
+    h_chain.bound_invariant
+  have h_le : s_final.cursor.pos.offset ≤ input.utf8ByteSize :=
+    h_chain.offset_bounded
+  rw [h_s0_off] at h_ge
+  -- h_ge : s_final.cursor.pos.offset ≥ n
+  -- h_le : s_final.cursor.pos.offset ≤ input.utf8ByteSize
+  -- ⟹  n ≤ input.utf8ByteSize ⟹  n + 1 ≤ (input.utf8ByteSize + 1) * 4
+  omega
 
 end L4YAML.Proofs.Indexed.EmitterScannability.ScanChain
