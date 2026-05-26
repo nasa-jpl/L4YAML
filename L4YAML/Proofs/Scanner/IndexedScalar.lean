@@ -1341,23 +1341,72 @@ theorem foldQuotedNewlinesIx_result_form {input : String} (c : IxCursor input) :
   · rename_i hgt; right; exact ⟨_, hgt, rfl⟩
   · left; rfl
 
-/-! ### `PlainContentInvIx` — content/spaces loop invariant -/
+/-! ### `PlainContentInvIx` — content/spaces loop invariant
+
+This structure looks superficially like an Initiative-4 "ghost
+predicate" (a `Prop` bundle on the side of the loop's return type),
+but it is **not** one — see the rationale below. It is preserved
+intentionally as a *proof-local* invariant that bundles two
+qualitatively different obligations into one carrier:
+
+1. **Pure string properties** (`content_noColonSpace`,
+   `content_noSpaceHash`, `content_noFlowIndicators`,
+   `spaces_whitespace`). These are decidable predicates on the
+   accumulator strings alone; they have no dependency on the cursor
+   or the source input. Bundling them is a *theorem-API* convenience
+   (one hypothesis instead of four at every call site of
+   `collectPlainScalarLoopIx_preserves_contentInv`), not a ghost
+   predicate in the Initiative-3 sense — Initiative 4's P1 target was
+   API-surface bundles like `EmitScansInFlow` threaded through every
+   downstream consumer. `PlainContentInvIx` is purely internal to the
+   proof of `scanPlainScalarIx_content_valid`; the *external*
+   postcondition published to callers is `ScalarScannable` on the
+   trimmed result, with no `PlainContentInvIx` leaking out.
+
+2. **A state-coupling obligation** (`boundary_colon`). This is the
+   field that genuinely couples the loop accumulator to the cursor:
+   *if* `content` ends in `':'`, *then* the cursor's next character
+   (in the *original* input) is non-blank. That is not a property of
+   any single value — it ties `content.toList.getLast?` to `c.peek?`.
+   Pushing this into an intrinsic refinement would require either
+   keeping the cursor mentioned in the refinement type (cosmetic
+   rename, no structural win) or restructuring
+   `collectPlainScalarLoopIx` so each appended chunk carries its own
+   "valid here" proof (a deep redesign, not a localized refactor).
+   This field is the reason `PlainContentInvIx` takes `c` as a
+   parameter and is *not* a candidate for the indexed-type promotion
+   pattern used elsewhere in Initiative 4.
+
+In short: this is an internal proof helper that bundles cheap
+string-shape facts with one genuine coupling fact for ergonomic
+reasons. It does not violate the Initiative-4 ghost-predicate
+discipline because (a) it does not leak into the published API and
+(b) its coupling component is intrinsically a relation between two
+loop outputs, not a property of either alone. -/
 
 /-- Loop invariant for `collectPlainScalarLoopIx` content correctness.
     Couples to the cursor `c` for boundary safety. Indexed twin of
-    legacy `PlainContentInv`. -/
+    legacy `PlainContentInv`. See the section docstring above for
+    why this is *not* an Initiative-4 ghost predicate. -/
 structure PlainContentInvIx {input : String} (content : String) (spaces : String)
     (inFlow : Bool) (c : IxCursor input) : Prop where
-  /-- Content has no `: ` (colon-space) pattern. -/
+  /-- Content has no `: ` (colon-space) pattern.
+      Decidable on `content` alone — a pure string-shape fact. -/
   content_noColonSpace : noColonSpaceProp content
-  /-- Content has no ` #` (space-hash) pattern. -/
+  /-- Content has no ` #` (space-hash) pattern.
+      Decidable on `content` alone — a pure string-shape fact. -/
   content_noSpaceHash : noSpaceHashProp content
-  /-- In flow context, content has no flow indicators. -/
+  /-- In flow context, content has no flow indicators.
+      Decidable on `content` alone — a pure string-shape fact. -/
   content_noFlowIndicators : inFlow = true → noFlowIndicatorsProp content
-  /-- Spaces buffer contains only whitespace characters. -/
+  /-- Spaces buffer contains only whitespace characters.
+      Decidable on `spaces` alone — a pure string-shape fact. -/
   spaces_whitespace : ∀ x ∈ spaces.toList, isWhiteSpaceProp x
   /-- Boundary safety: if content ends with `:`, spaces is empty and
-      the next cursor char is non-blank. -/
+      the next cursor char is non-blank. **This is the coupling
+      field** — it relates `content.toList.getLast?` to `c.peek?` and
+      is the reason the whole structure is parameterised by `c`. It
+      is not reducible to a property of any single loop output. -/
   boundary_colon : content.toList.getLast? = some ':' →
       spaces = "" ∧ (∀ n, c.peek? = some n → ¬isBlankProp n)
 
