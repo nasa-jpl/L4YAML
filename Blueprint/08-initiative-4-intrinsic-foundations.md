@@ -1820,21 +1820,24 @@ not in-place axiom-to-theorem promotion — the latter is impossible
 when the axiom's hypothesis is strictly weaker than what the
 stronger lemma derives).
 
-**Next session**: **Step 6f.3b3.flowmono.preserve — Port the
-`FlowMonoChain` prefix preservation infrastructure** into
-`Proofs/Output/IndexedEmitterScannability/FlowMonoChain.lean` (~1500
-LOC target, legacy lines 1806–~3300 of
-`Proofs/Output/EmitterScannability.lean`). Specifically:
-per-stage `_preserves_dp` / `_preserves_indents` proofs, sync proofs
-(`dispatchFlowIndicators_preserves_sync`,
-`scanNextToken_preserves_sync`), and the Step-4 prefix-preservation
-chain (`scanNextToken_preserves_prefix_of_SKAF`,
-`scanNextToken_prefix_and_SKAF_inv`,
-`FlowMonoChain_preserves_raw_prefix`). This is the third of 5
-sub-sessions targeting `FlowMonoChain.lean` (the single largest
-indexed-port file at ~3870 LOC total). The `.inductive` and `.skaf`
-slices landed 2026-05-25; `.basic` umbrella + `ScanChain` are fully
-landed from prior sessions.
+**Next session**: **Step 6f.3b3.flowmono.preserve.dpinv — Port the
+per-stage `_preserves_dp` / `_preserves_indents` / `_preserves_ek`
+triplet** into a new sibling file
+`Proofs/Output/IndexedEmitterScannability/FlowMonoChain/Preserve/DpInv.lean`
+(~580 LOC target, legacy lines 2166–2745 of
+`Proofs/Output/EmitterScannability.lean`). Three near-identical mirror
+blocks: `advance` / `consumeNewline` / `skipSpaces` / `skipWhitespace`
+/ `emitAt` / `collectHexDigitsLoop` / `parseHexEscape` /
+`processEscape` / `foldQuotedNewlinesLoop` / `foldQuotedNewlines` /
+`collectDoubleQuotedLoop` / `scanDoubleQuoted` preserves of
+`directivesPresent` (`_dp`), `indents`, and `explicitKeyLine` (`_ek`).
+Second of 3 `.preserve` sub-sessions; `.preserve.step` landed
+2026-05-25, `.preserve.helpers` is the third (~550 LOC). The
+`FlowMonoChain.lean` modularization (Reflection 123) is now in place —
+`.dpinv` adds `Preserve/DpInv.lean` as a sibling of `Preserve/Step.lean`
+without further structural change. The `.inductive`, `.skaf`, and
+`.preserve.step` slices landed 2026-05-25; `.basic` umbrella +
+`ScanChain` are fully landed from prior sessions.
 
 After `.flowmono` closes, sub-sessions follow in dependency order:
 `FilteredGrowth (~1320 LOC)` → `EmitScans (~1490 LOC)` →
@@ -1921,6 +1924,84 @@ axioms, no `sorry`, build green at 453/453 jobs, full test suite
 Second of 5 `.flowmono` sub-sessions; the next session `.preserve`
 ports the largest chunk (~1500 LOC) — per-stage `_preserves_dp` /
 `_preserves_indents` + sync proofs + Step-4 prefix preservation.
+
+**Step 6f.3b3.flowmono.preserve.step LANDED 2026-05-25** (~860 LOC;
+new file `Proofs/Output/IndexedEmitterScannability/FlowMonoChain/Preserve/Step.lean`
++ modularization). First of 3 `.preserve` sub-sessions, mapping legacy
+`EmitterScannability.lean` lines 1806–2165 (~360 LOC legacy) into the
+indexed substrate. Contents:
+
+  - **§3.0** Inner-stage `_preserves_flowLevel` Ix twins —
+    `scanDocumentStartIx`, `scanDocumentEndIx`, `scanYamlDirectiveIx`,
+    `scanTagDirectiveIx`, `scanDirectiveIx`, `scanBlockEntryIx`,
+    `scanKeyIx`, `scanValueIx`, `scanFlowEntryIx`, plus the
+    `pushSequenceIndentIx` / `pushMappingIndentIx` /
+    `scanValueClearKeyIx` / `scanValuePrepareIx` helpers (kept local;
+    consumed only by the §3.2 sync chain).
+  - **§3.1** Per-dispatcher `_preserves_flowLevel` /
+    `_preserves_simpleKeyStack` for the non-flow arms
+    (`dispatchStructural`, `dispatchBlockIndicators`, `dispatchContent`).
+  - **§3.2** `scanNextTokenIx_dispatchFlowIndicators_preserves_sync`
+    (the joint-inequality preservation through flow open/close/entry).
+  - **§3.3** `scanNextTokenIx_preserves_sync` — chains preprocess +
+    structural + allowDirectives no-op + flow/block/content sync.
+  - **§3.4** `scanNextTokenIx_preserves_prefix_of_simpleKey` (per-step
+    prefix preservation under only the SKAF `.1` simpleKey conjunct)
+    + bundle `scanNextTokenIx_prefix_and_SKAFIx_inv`.
+  - **§3.5** `FlowMonoChainIx_preserves_raw_prefix` — chain induction
+    threading SKAFIx + sync invariants.
+  - **§3.6** `scanFilteredIx_of_chain` / `_eq` — top-level connection
+    of a `ScanChainIx` ending at EOF to `scanFilteredIx`.
+  - **§3.7** Algebraic compositions: `scanNextTokenIx_eq_of_preprocess`,
+    `ScanChainIx_of_scanNextTokenIx_eq`,
+    `FlowMonoChainIx_of_scanNextTokenIx_eq`.
+  - **§3.8** Pipeline factoring: `scanNextTokenIx_via_flow_dispatch`.
+
+No axioms, no `sorry`, build green at **457/457 jobs**, full test
+suite **869/1020 passing** (0 failures, 151 skipped expected).
+
+**Modularization decision**: this session split the original 853-LOC
+`FlowMonoChain.lean` monolith — anticipated by the Blueprint
+commentary at the file's docstring (L49–61) — into a re-export shim
+plus a subdirectory:
+
+  - `FlowMonoChain.lean` (19 LOC re-export shim, original namespace
+    preserved so existing importers don't need to change).
+  - `FlowMonoChain/Basic.lean` (840 LOC) — §1 `FlowMonoChainIx`
+    inductive + §2 `SimpleKeyAboveFloorIx` predicate and maintenance
+    (content unchanged from the pre-split file).
+  - `FlowMonoChain/Preserve/Step.lean` (860 LOC) — this session.
+  - `FlowMonoChain/Preserve/DpInv.lean` (queued) — sub-session B.
+  - `FlowMonoChain/Preserve/Helpers.lean` (queued) — sub-session C.
+
+The split maps 1:1 to sub-session boundaries (different proof
+techniques per file: prefix/sync chain vs. per-stage dp/indents/ek
+invariants vs. `AllTokensOnLine` auxiliary), keeps each file ≤ ~1000
+LOC, and prepares clean import boundaries for the remaining `.preserve`
+sub-sessions. See **Reflection 123** for the cost-benefit accounting.
+
+**Indexed-substrate observations** carried over from `.skaf`
+(Reflection 122) and confirmed in `.preserve.step`:
+
+  - The straight-line indexed flow open/close (no internal `if`)
+    makes `scanNextTokenIx_dispatchFlowIndicators_preserves_sync` a
+    one-shot `omega` per branch instead of legacy's five-way nested
+    case-split — the proof is ~50 LOC vs. legacy's ~70.
+  - The cursor-keyed scalar dispatchers contribute trivially (`rfl`)
+    to per-dispatcher `_preserves_flowLevel` / `_preserves_simpleKeyStack`
+    — the indexed `dispatchContent_preserves_*` is structurally a
+    `first` combinator that picks `rfl` for 4 out of 7 branches.
+  - The bundled `_prefix_and_SKAFIx_inv` theorem composes the per-step
+    prefix lemma with the already-landed `_maintains_SKAFIx` capstone
+    — no shared proof body to maintain.
+
+Sub-session ordering chosen because `.step` produces the core
+`FlowMonoChainIx_preserves_raw_prefix` keystone that downstream
+consumers reference; the `.dpinv` triplet (~580 LOC of mechanical
+`_preserves_dp/indents/ek` proofs) and `.helpers`
+(`AllTokensOnLine`-family auxiliaries) feed into `FilteredGrowth` and
+`EmitScans` sub-steps later. First of 3 `.preserve` sub-sessions; the
+remaining 2 follow in dependency order (`.dpinv` then `.helpers`).
 
 **Step 6f.3b3.basic.closure LANDED 2026-05-25** (~538 LOC closure;
 file now 988 LOC total). Discharged the state-dependent §3 of
@@ -10565,12 +10646,46 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
             falls out of `omega` from straight-line subtraction
             (legacy had an internal `if` requiring case-split).
           ▸ **6f.3b3.flowmono.preserve** *(~1500 LOC; legacy lines
-            1806–~3300)*. Per-stage `_preserves_dp`,
-            `_preserves_indents`, prefix-preservation core:
-            `scanNextTokenIx_preserves_prefix_of_SKAFIx`,
-            `scanNextTokenIx_prefix_and_SKAF_inv`. **Likely needs
-            further sub-split at port time** (target: 2–3 sub-sessions
-            keyed to dispatcher layers).
+            1806–~3300)*. Step-4 per-step + chain prefix preservation
+            chain, per-stage `_preserves_dp` / `_preserves_indents`
+            triplet, and the `AllTokensOnLine` family. Split into
+            three sub-sessions at port time (each lives under
+            `IndexedEmitterScannability/FlowMonoChain/Preserve/`):
+            ▸ **6f.3b3.flowmono.preserve.step** ✅ **LANDED 2026-05-25**
+              *(~860 LOC; legacy lines 1806–2165)*. Step-4 per-step
+              + chain prefix preservation core: inner-stage
+              `_preserves_flowLevel` / `_preserves_simpleKeyStack`
+              twins, per-dispatcher sync helpers,
+              `scanNextTokenIx_dispatchFlowIndicators_preserves_sync`,
+              `scanNextTokenIx_preserves_sync` (chain sync invariant),
+              `scanNextTokenIx_preserves_prefix_of_simpleKey`,
+              `scanNextTokenIx_prefix_and_SKAFIx_inv` (bundle),
+              `FlowMonoChainIx_preserves_raw_prefix` (chain induction),
+              `scanFilteredIx_of_chain[_eq]`, algebraic helpers, and
+              the pipeline-factoring `_via_flow_dispatch`. Modularization
+              decision (Reflection 123): the original `FlowMonoChain.lean`
+              monolith is now a re-export shim atop `FlowMonoChain/Basic.lean`
+              (§1 + §2) + `FlowMonoChain/Preserve/Step.lean` (this
+              session); future `.dpinv` / `.helpers` sub-sessions will
+              add siblings under `Preserve/`. Single session. No axioms,
+              no `sorry`, build green at 457/457 jobs.
+            ▸ **6f.3b3.flowmono.preserve.dpinv** *(~580 LOC; legacy
+              lines 2166–2745; target file
+              `FlowMonoChain/Preserve/DpInv.lean`)*. Per-stage
+              `_preserves_dp` / `_preserves_indents` / `_preserves_ek`
+              triplet for `advance`, `consumeNewline`, `skipSpaces`,
+              `skipWhitespace`, `emitAt`, `collectHexDigitsLoop`,
+              `parseHexEscape`, `processEscape`, `foldQuotedNewlinesLoop`,
+              `foldQuotedNewlines`, `collectDoubleQuotedLoop`,
+              `scanDoubleQuoted` (three near-identical mirror blocks).
+            ▸ **6f.3b3.flowmono.preserve.helpers** *(~550 LOC; legacy
+              lines 2747–~3300; target file
+              `FlowMonoChain/Preserve/Helpers.lean`)*. `AllTokensOnLine`
+              / `EndLineOnLine` / `StackEndLineOnLine` definitions plus
+              ~20 supporting lemmas; `scanValueValidate_ok_of_flow_allTokensOnLine`,
+              `saveSimpleKey_filter_placeholder`,
+              `scanDoubleQuoted_preserves_simpleKey`,
+              `scanNextToken_preprocess_init_state`.
           ▸ **6f.3b3.flowmono.maintenance** *(~1100 LOC; legacy lines
             ~3300–~4400)*. Per-dispatcher SKAF maintenance + state-
             field preservation lemmas. **Likely needs further sub-
@@ -12483,6 +12598,91 @@ constraints (well-formedness on cursors, etc.), it can introduce
 typically positive because the new obligations are *one-shot*
 discharges, while the eliminated case-splits would have appeared in
 every consumer.
+
+</details>
+
+##### **Reflection 123 (new, 2026-05-25)**: modularize at sub-session boundaries, not at "monolith vs. directory" boundaries.
+
+The `.flowmono.preserve` sub-step was originally projected as ~1500
+LOC within `FlowMonoChain.lean` (which would have grown from 853 LOC
+post-`.skaf` to ~2400 LOC after all `.preserve.*` sub-sessions
+landed). The original file's docstring even *anticipated* the split
+("the indexed port may sub-divide once the structure is concrete —
+e.g. `FlowMonoChain/Preserve.lean` …"). At `.preserve.step` execution
+time we acted on this: split `FlowMonoChain.lean` into a 19-LOC
+re-export shim plus `FlowMonoChain/Basic.lean` (§1 + §2) and a
+`FlowMonoChain/Preserve/` subdirectory (one file per sub-session of
+`.preserve`).
+
+The key choice was **modularize at sub-session boundaries**, not
+"create a directory now and fill it later" or "wait until the file
+becomes unwieldy". Sub-session boundaries align with proof technique
+boundaries — `.preserve.step` is prefix/sync chain proofs (one
+proof technique: nested splits + dispatcher-prefix lemma calls),
+`.preserve.dpinv` will be per-stage `_preserves_dp/indents/ek`
+triplet proofs (a second technique: pure `simp`-rewriting on
+record-update operations), and `.preserve.helpers` will be
+`AllTokensOnLine`-family auxiliary lemmas (a third technique:
+inductive predicates over token-stream state). Putting them in
+separate files makes the proof-technique boundaries visible.
+
+<details><summary>Cost-benefit accounting for this kind of split.</summary>
+
+**Costs**:
+- One new directory (`FlowMonoChain/`).
+- One new file per sub-session (3 files vs. 1 section-divided file).
+- Each file needs its own copyright header, imports, namespace,
+  doc-comment.
+- Cross-file references need explicit imports (although `open`-ing
+  the same namespace makes name resolution unchanged).
+- The original file becomes a re-export shim (~20 LOC); this is
+  almost zero overhead but does mean future `lake` errors point at
+  the shim's import line, not at the offending sub-file directly.
+
+**Benefits**:
+- Each file stays ≤ ~1000 LOC. The most recent VSCode/Lean Server
+  responsiveness benchmark we ran (Reflection 71) noted that
+  expansive `unfold`/`simp_all` proofs in 2000+ LOC files exhibit
+  noticeable goal-display lag; 800–1000 LOC files don't.
+- Sub-sessions can be re-ordered (e.g., land `.helpers` before
+  `.dpinv` if a downstream consumer surfaces an unexpected dependency)
+  without touching the other files.
+- The Blueprint commentary already projected the split — landing it
+  now (rather than during `.dpinv` after it's already too big)
+  avoids a later "monolith-split refactor" session.
+- The re-export shim's namespace identity means existing importers
+  (e.g., `IndexedEmitterScannability.lean`, `FilteredGrowth.lean`)
+  don't need to change.
+
+**The deciding question** wasn't "is this split worth the overhead
+*now*?" but "will the same split need to happen *eventually*, and is
+it cheaper to do it before adding the next 1500 LOC or after?". The
+file's original docstring had already answered "eventually". Doing
+it at the natural sub-session boundary cost ~10 minutes (move
+content, write shim, update Blueprint) — at end-of-`.helpers` it
+would have cost a session's worth of re-baselining downstream
+imports.
+
+</details>
+
+<details><summary>How to apply: when a Blueprint commentary
+anticipates a future split, execute it at the next sub-session
+boundary that touches the file — not when the file becomes
+"unwieldy".</summary>
+
+The "unwieldy" threshold is a lagging indicator: by the time you
+notice the file is too big, you've already paid the navigation cost
+for several sessions. Sub-session boundaries are leading indicators:
+they mark *natural* cut points in the proof structure. If the
+Blueprint already projects a future split, the next sub-session that
+adds content to the file is the right moment to enact it.
+
+The corollary: don't pre-split. A directory created in anticipation
+of future content is technical debt until the content arrives.
+Speculative organization invites stub files, empty namespaces, and
+import cycles. The right rule is: split when the third sibling file
+becomes inevitable (more than one sibling at the same boundary), not
+when the first is "looking lonely".
 
 </details>
 
