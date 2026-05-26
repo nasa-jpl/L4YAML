@@ -1820,27 +1820,30 @@ not in-place axiom-to-theorem promotion — the latter is impossible
 when the axiom's hypothesis is strictly weaker than what the
 stronger lemma derives).
 
-**Next session**: **Step 6f.3b3.flowmono.maintenance — Port the
-per-dispatcher SKAF maintenance + state-field preservation lemmas**
-(legacy `Proofs/Output/EmitterScannability.lean` lines ~3330–~4400,
-~1100 LOC). Likely needs a sub-split at port time (target: two
-sub-sessions keyed to structural vs content dispatchers). The
-preceding `.preserve.helpers` slice (legacy 2747–~3300) landed
-2026-05-26 — the third and final `.preserve` sub-session — shipping
-`AllTokensOnLineIx` / `EndLineOnLineIx` / `StackEndLineOnLineIx`
-predicates + 9 `saveSimpleKeyIx` field-preservation `@[simp]`s
-+ the key `scanValueValidateIx_ok_of_flow_allTokensOnLine`
-consumer + 5 transfer lemmas + 5 per-flow-dispatcher
-`AllTokensOnLineIx` lemmas (508 LOC actual vs ~580 LOC legacy
-target). The `scanNextToken_preprocess_init_state` lemma
-specifically was *deferred* to `.sync`, where the indexed
-surface-correspondence bridge (`peek?_of_input_toList_cons`,
-`skipToContentS_of_content_char`, etc.) will be built alongside
-the consumers that need it. `.flowmono` now has only `.maintenance`
-and `.sync` sub-sessions remaining; `.basic`, `.inductive`,
-`.skaf`, `.preserve.step`, `.preserve.dpinv`, and
-`.preserve.helpers` are all landed. After `.flowmono` closes, the
-next sub-step is `.filteredgrowth` (~1320 LOC across 4 sub-sessions).
+**Next session**: **Step 6f.3b3.flowmono.maintenance.pipeline — Port
+the per-character dispatch return-value lemmas + pipeline composition**
+(legacy `Proofs/Output/EmitterScannability.lean` lines 3735–3789,
+3852–3901, 4066–4095, 4354–4395, ~250 LOC effective contribution).
+Target file `Proofs/Output/IndexedEmitterScannability/FlowMonoChain/
+Maintenance/Pipeline.lean`. Ships the per-character dispatch return-
+value lemmas (`dispatchStructural_none_*`, `checkBlockFlowIndent_ok_*`,
+`dispatchFlowIndicators_*`, `dispatchBlockIndicators_none_*`) plus
+pipeline composition (`scanNextTokenIx_via_{content,block}_dispatch
+[_error]`) that thread `preprocess → struct → allowDirectives →
+checkBlockFlowIndent → flow → block → content` for specific
+scenarios. `.maintenance.flowdispatch` (sub-session 1 of 2) landed
+2026-05-26 — shipping per-flow-dispatcher state-field preservation
+(25 `@[simp]` `rfl`-shape lemmas: `directivesPresent`, `indents`,
+`explicitKeyLine`, `allowDirectives`, `needIndentCheck` × 5
+dispatchers) + 2 Start-variant `flowLevel_eq` lemmas + 5 `Except`-
+form `scanFlowEntryIx_preserves_*` field lemmas + `lastRealTokenValIx`
+push helpers (`_push_non_ph`, `_push_two_ph`) +
+`saveSimpleKeyIx_preserves_lastRealTokenValIx_ne_flow`. After
+`.maintenance.pipeline` closes, the remaining `.flowmono` work is
+`.sync` (~1200 LOC; legacy lines ~4400–5586; sub-split likely).
+`.basic`, `.inductive`, `.skaf`, `.preserve.{step,dpinv,helpers}`,
+`.maintenance.flowdispatch` all landed. After `.flowmono` closes,
+the next sub-step is `.filteredgrowth` (~1320 LOC across 4 sub-sessions).
 
 After `.flowmono` closes, sub-sessions follow in dependency order:
 `FilteredGrowth (~1320 LOC)` → `EmitScans (~1490 LOC)` →
@@ -2127,6 +2130,55 @@ pattern: when a predicate's body is `∀ i, (h : i < container.size) →
 Q container i h`, threading record-update branches through a
 `_of_tokens_eq`-style helper dodges Lean's dependent-index rewrite
 friction. The forall-bound proof slot makes `rw` clean.
+
+**Step 6f.3b3.flowmono.maintenance.flowdispatch LANDED 2026-05-26**
+(~430 LOC actual vs. legacy ~700 LOC contribution; new file
+`Proofs/Output/IndexedEmitterScannability/FlowMonoChain/Maintenance/
+FlowDispatch.lean` + one-line addition to the `FlowMonoChain.lean`
+re-export shim). First of two `.maintenance` sub-sessions. Per-flow-
+dispatcher state-field preservation + `flowLevel` change lemmas +
+`lastRealTokenValIx?` push helpers. Contents:
+
+  - **§§1–4** Per-flow-dispatcher field preservation for
+    `scanFlowSequenceStartIx`, `scanFlowMappingStartIx`,
+    `scanFlowSequenceEndIx`, `scanFlowMappingEndIx`. Five fields ×
+    four dispatchers = 20 `@[simp] rfl` lemmas: `directivesPresent`,
+    `indents`, `explicitKeyLine`, `allowDirectives`,
+    `needIndentCheck`. Plus `scanFlow{Sequence,Mapping}StartIx_
+    flowLevel_eq` (`= s.flowLevel + 1`) for the Start dispatchers
+    (End variants `_flowLevel_eq` already in `Basic.lean`).
+  - **§5** `scanFlowEntryIx_preserves_*` (5 fields, `Except`-form)
+    via the `repeat split` peel pattern.
+  - **§6** `lastRealTokenValIx_push_non_ph` and `_push_two_ph`:
+    push-of-non-placeholder reports the pushed token's value;
+    push-of-two-placeholders either reports the pre-push last real
+    token (when the stream was non-empty) or reports `.placeholder`
+    (when the stream had 0 or 1 slots).
+  - **§7** `saveSimpleKeyIx_preserves_lastRealTokenValIx_ne_flow`
+    via the `saveSimpleKeyIx_tokens_cases` disjunction
+    (identity branch + `twoPlaceholderEmits` branch, factored
+    through §6's `_push_two_ph`).
+
+No axioms, no `sorry`, build green at **463/463 jobs**. Phase 3
+closure axiom count unchanged at **0**. The legacy contribution
+was ~700 LOC across two source ranges (3793–3815 + 4689–5115);
+the indexed collapse to 25 `rfl` field lemmas + 2 `flowLevel_eq`
++ 5 Except-form lemmas + 2 push helpers + 1 transfer is the
+continuation of the *substrate elimination* pattern (Reflections
+122/124): when a flow dispatcher's body reduces to
+`s.emit tok |>.advance |> { _ with f₁ := v₁, …, fₖ := vₖ }` where
+the target field is *not* among `f₁…fₖ`, preservation is `rfl`.
+
+**Reflection 126 (new)** documents the *flow-dispatcher field-
+preservation collapse*: the 20-lemma cluster legacy 3793–3815 +
+4689–5115 reduces to 20 one-line `rfl` lemmas on the indexed side
+because each `scanFlow{Sequence,Mapping}{Start,End}Ix` is a single
+`emit + advance + record-update` triple whose record update never
+touches the preserved field. Generalizable to any "state-machine
+transition that only mutates a known list of fields" — the
+target-field preservation is a `rfl` once `emit_*` / `advance_*`
+`@[simp]` lemmas establish that emit/advance leave the target
+field unchanged.
 
 **Step 6f.3b3.basic.closure LANDED 2026-05-25** (~538 LOC closure;
 file now 988 LOC total). Discharged the state-dependent §3 of
@@ -10864,11 +10916,56 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
               No axioms, no `sorry`, build green at 461/461 jobs.
               See **Reflection 125** for the dependent-index
               `_of_tokens_eq` helper pattern.
-          ▸ **6f.3b3.flowmono.maintenance** *(~1100 LOC; legacy lines
-            ~3300–~4400)*. Per-dispatcher SKAF maintenance + state-
-            field preservation lemmas. **Likely needs further sub-
-            split at port time** (target: 2 sub-sessions keyed to
-            structural vs content dispatchers).
+          ▸ **6f.3b3.flowmono.maintenance** *(~1100 LOC legacy
+            contribution; new sub-directory `IndexedEmitterScannability/
+            FlowMonoChain/Maintenance/`)*. Per-dispatcher SKAF
+            maintenance + state-field preservation lemmas. The
+            substrate elimination (cursor-only scalar scanners,
+            uniform `emit + advance + record-update` flow dispatchers)
+            collapses heavily; the *pipeline-composition* layer
+            (`scanNextTokenIx_via_*_dispatch`) stays at full size
+            but separates cleanly. Sub-split into 2 sub-sessions —
+            **flow-dispatcher field preservation** vs.
+            **per-character dispatch + pipeline composition** —
+            mirroring the `.preserve/{Step,DpInv,Helpers}` modularization.
+            ▸ **6f.3b3.flowmono.maintenance.flowdispatch** ✅ **LANDED 2026-05-26**
+              *(~430 LOC; new file `FlowMonoChain/Maintenance/
+              FlowDispatch.lean`)*. Per-flow-dispatcher state-field
+              preservation: 5 fields (`directivesPresent`, `indents`,
+              `explicitKeyLine`, `allowDirectives`, `needIndentCheck`)
+              × 4 dispatchers (`scanFlowSequenceStartIx`,
+              `scanFlowMappingStartIx`, `scanFlowSequenceEndIx`,
+              `scanFlowMappingEndIx`) = 20 `@[simp] rfl` lemmas
+              (§§1–4). Plus `scanFlow{Sequence,Mapping}StartIx_
+              flowLevel_eq` (`= s.flowLevel + 1`); End variants
+              `_flowLevel_eq` already in `Basic.lean`. Plus 5
+              `Except`-form `scanFlowEntryIx_preserves_*` field
+              lemmas (§5). Plus `lastRealTokenValIx_push_non_ph`
+              and `_push_two_ph` helpers (§6) and
+              `saveSimpleKeyIx_preserves_lastRealTokenValIx_ne_flow`
+              (§7, via `saveSimpleKeyIx_tokens_cases` disjunction +
+              §6's `_push_two_ph`). Single session. No axioms, no
+              `sorry`, build green at 463/463 jobs. See **Reflection
+              126** for the flow-dispatcher field-preservation
+              collapse pattern.
+            ▸ **6f.3b3.flowmono.maintenance.pipeline** *(~250 LOC
+              effective contribution; new file `FlowMonoChain/
+              Maintenance/Pipeline.lean`)*. Per-character dispatch
+              return-value lemmas (`dispatchStructural_none_flow`,
+              `_none_bracket_init`; `checkBlockFlowIndent_ok_flow`,
+              `_bracket_init`, `_ok_comma`, `_ok_close_bracket`,
+              `_ok_close_brace`; `dispatchFlowIndicators_none`,
+              `_bracket`, `_brace`, `_close_bracket_*`,
+              `_close_brace_*`, `_comma`; `dispatchBlockIndicators_
+              none_quote`, `_none_comma`, `_none_close_bracket`,
+              `_none_close_brace`). Plus pipeline composition:
+              `scanNextTokenIx_via_content_dispatch[_error]`,
+              `_via_block_dispatch` (`_via_flow_dispatch` already
+              lives in `Preserve/Step.lean`). **`scanFlow{Sequence,
+              Mapping}{Start,End}_detail`, `scanFlowEntry_ok`,
+              `scanFlowEntry_detail` defer to `.sync`** (depend on
+              the not-yet-built indexed `ScannerSurfCorr`).
+              Single session.
           ▸ **6f.3b3.flowmono.sync** *(~1200 LOC; legacy lines
             ~4400–5586)*. Sync proofs:
             `dispatchFlowIndicators_preserves_sync`,
@@ -13042,6 +13139,77 @@ invariants over `tokens` (per-dispatcher single-line, per-step
 prefix-preservation under `simpleKey` floor, etc.). Each should
 follow the same pattern: one `_of_tokens_eq` helper per invariant,
 then transfer lemmas as one-liners.
+
+</details>
+
+##### **Reflection 126 (new, 2026-05-26)**: per-flow-dispatcher field-preservation collapses to one-line `rfl` lemmas when (a) the dispatcher body is a single `emit + advance + record-update` triple, and (b) the record update touches only fields disjoint from the target. Legacy 20-theorem cluster (4 dispatchers × 5 fields each, requiring `unfold; simp` chains over `advance_preserves_*` / `ScannerState.emit`) collapses to 20 one-line `rfl` lemmas on the indexed substrate.
+
+<details><summary>The pattern: per-dispatcher field preservation is `rfl` once you've established `emit_*` / `advance_*` `@[simp]` lemmas for the target field.</summary>
+
+The `.flowmono.maintenance.flowdispatch` port (legacy
+`EmitterScannability.lean` lines 3793–3815 + 4689–5115, ~700 LOC
+contribution) ships 25 `@[simp] rfl` field-preservation lemmas for
+`scanFlow{Sequence,Mapping}{Start,End}Ix`. The proof body of each
+is a single `unfold; rfl`:
+
+```lean
+@[simp] theorem scanFlowSequenceStartIx_directivesPresent
+    (s : ScannerStateIx input) :
+    (scanFlowSequenceStartIx s).directivesPresent = s.directivesPresent := by
+  unfold scanFlowSequenceStartIx; rfl
+```
+
+**Why `rfl` works.** Each indexed flow dispatcher has this shape:
+
+```lean
+def scanFlowSequenceStartIx (s : ScannerStateIx input) : ScannerStateIx input :=
+  let s := s.emit YamlToken.flowSequenceStart
+  let s := s.advance
+  { s with flowLevel := s.flowLevel + 1,
+           flowStack := s.flowStack.push true, … }
+```
+
+The outer record update touches *only* `flowLevel`, `flowStack`,
+`simpleKeyStack`, `simpleKey`, `simpleKeyAllowed`. The five
+preservation targets (`directivesPresent`, `indents`,
+`explicitKeyLine`, `allowDirectives`, `needIndentCheck`) are *not*
+in this list, so the outer record update is transparent on them.
+`emit` and `advance` are themselves single record updates that
+don't touch these five fields either. The whole chain reduces by
+record-update unfolding, and `rfl` closes the goal.
+
+**Legacy contrast.** The legacy `scanFlowSequenceStart_preserves_dp`
+needs `unfold scanFlowSequenceStart; simp only [advance_preserves_dp,
+ScannerState.emit]` (and analogs for `_preserves_indents`,
+`_preserves_ek`, `_line_eq`, `_flowLevel_eq`). Five proofs, five
+`simp` invocations, ~10 lines per dispatcher. The indexed substrate
+collapses the structural reasoning into the unfolding step itself.
+
+**Generalizes.** The pattern applies to any "state-machine
+transition" whose function body is `s.emit t |>.advance |> { _ with f₁
+:= v₁, …, fₖ := vₖ }`. Target-field preservation is `rfl` when the
+target is *not* in `{f₁, …, fₖ}` *and* there are `@[simp]` lemmas for
+`emit_<target>` / `advance_<target>` (or the target survives unfolding
+without them, as in the cases above). The legacy version needed those
+`simp` lemmas explicitly because legacy `emit` had a richer body
+(line/col mutation, etc.); indexed `emit` is `{ s with tokens :=
+s.tokens.push t }` — minimal mutation, maximum `rfl`-shape.
+
+**Limits of the pattern.** It applies to scope-1 transitions
+(single dispatcher → single record update). For `Except`-form
+transitions like `scanFlowEntryIx` (which has a guard branch + the
+emit chain), the proof needs `repeat (any_goals (split at h))` to
+peel the guard before each branch closes by `rfl`. Still mechanical,
+but not single-line. See `scanFlowEntryIx_preserves_*` in
+`FlowMonoChain/Maintenance/FlowDispatch.lean` §5 for the template.
+
+Together with Reflection 124 (substrate-elimination for vacuous
+lemmas) and Reflection 122 (cursor-keyed scalar scanners eliminating
+per-scanner SK lemmas), this completes the "what does indexing
+buy us, lemma-by-lemma" account for `.flowmono`: vacuous on
+cursor-only entries (124), `rfl` on single-record-update dispatchers
+(126), and `rfl`-shape via cursor-keyed wrapping for content
+dispatchers (122).
 
 </details>
 
