@@ -1820,16 +1820,49 @@ not in-place axiom-to-theorem promotion — the latter is impossible
 when the axiom's hypothesis is strictly weaker than what the
 stronger lemma derives).
 
-**Next session**: **Step 6f.3b3.basic — Port the indexed twin of legacy
-`Proofs/Output/EmitterScannability.lean` §0–§2 (escape character /
-string properties, value-level)**, into
-`Proofs/Output/IndexedEmitterScannability/Basic.lean`. Legacy lines
-76–841 (~700 LOC est.). This is the first of seven sub-files keyed
-to architectural concern (Reflection 108):
-`Basic → ScanChain → FlowMonoChain → FilteredGrowth → EmitScans →
-ParseStream → RoundTrip`. With `6f.3b3.internals.{utility, chain,
-progress}` now fully landed, the `ScanChain.lean` substrate is ready
-to be the consumer of `Basic.lean`'s escape-string lemmas.
+**Next session**: **Step 6f.3b3.basic closure — Port the deferred
+state-dependent §2.4 of legacy
+`Proofs/Output/EmitterScannability.lean`** into
+`Proofs/Output/IndexedEmitterScannability/Basic.lean` (~270 LOC).
+Specifically: (a) port indexed correspondence helpers from
+`Proofs/Coupling/CouplingBridge.lean` — `peek_corrIx`, `eof_corrIx`,
+`advance_non_newline_corrIx`, `advance_line_non_newline_ix` (~80 LOC);
+(b) port §2.4 state-dependent helpers — `peek_of_chars_consIx`,
+`processEscapeIx_named_ok`, `processEscapeIx_named_content`,
+`advance_line_of_peekIx`, `processEscapeIx_hex_ok` (~70 LOC);
+(c) port the heavyweight core loop lemma
+`collectDoubleQuotedLoopIx_escapeString_succeeds` (~120 LOC, mirrors
+legacy lines 577–840). Shape adjustments for indexed substrate:
+`Option` (indexed) vs `Except` (legacy) for `collectDoubleQuotedLoopIx`
+/ `processEscapeIx` return types; `ScannerStateIx input` + `IxCursor input`
+substrate. With Basic.lean's value-level slice now landed (450 LOC,
+2026-05-25), the remaining work is structurally well-scoped.
+
+After `.basic` closes, sub-sessions follow in dependency order:
+`FlowMonoChain (~3800 LOC)` → `FilteredGrowth (~1320 LOC)` →
+`EmitScans (~1490 LOC)` → `ParseStream (~440 LOC)` →
+`RoundTrip (~1870 LOC)`. The `ScanChain` sub-step is **effectively
+done** from prior `.utility` / `.chain` / `.capstone` sessions
+(see 6f.3b3.scanchain row above).
+
+**Step 6f.3b3.basic (value-level slice) LANDED 2026-05-25** (~450 LOC;
+new file `Proofs/Output/IndexedEmitterScannability/Basic.lean`). Ported
+§1 (escape character properties, 2 theorems), §2.1 (escapeString
+decomposition, 5 lemmas), §2.2 (first-character properties, 4 lemmas),
+§2.3 (escapeString character properties, 4 lemmas), and §2.4
+value-level helpers (~210 LOC): `escapeTag_not_linebreak`,
+`escapeChar_passthrough_toList`, `escapeChar_named_toList`,
+`scannerHexCheck` + `hexNibble_is_hex` + `hexNibble_lt128`,
+`hex_two_foldl_bound`, `escapeChar_hex_structure`,
+`push_append_ofList_eq`, `append_ofList_nil`, `hex_foldl_roundtrip`.
+All ports are verbatim from legacy (namespace adjustments only); no
+substrate-specific reasoning required since these are pure value-level
+facts. Build green at 453/453 jobs. `#print axioms` on each landed
+declaration shows the foundational triple
+`[propext, Classical.choice, Quot.sound]` (plus expected `native_decide`
+kernel decisions on `Fin n` enumerations). The state-dependent §2.4
+closure (~270 LOC: 3 sub-categories above) is deferred — discharge
+plan in the file's doc-comment.
 
 **Step 6f.3b3.internals.progress.capstone LANDED 2026-05-25** (~200 LOC
 total across two files). Discharged the strict-progress capstone:
@@ -10288,6 +10321,72 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
     consuming the indexed primitives from `.primitives.*` and the
     indexed scanner internals from `.internals`.
 
+      ▸ **6f.3b3.basic** ⏳ **PARTIAL LANDING 2026-05-25** (~450 LOC of
+        ~700 LOC target; value-level slice complete, state-dependent
+        §2.4 closure deferred to follow-up).
+
+        **Landed (450 LOC)**:
+          • §1 Escape Character Properties (~50 LOC): pure value-level
+            `escapeChar_passthrough_is_valid`, `escapeChar_output_nbJson`.
+          • §2.1 escapeString Decomposition (~50 LOC):
+            `emit_nonempty`, `string_foldl_toList`,
+            `escapeString_foldl_shift`, `escapeString_nil`,
+            `escapeString_cons`.
+          • §2.2 First-Character Properties (~80 LOC):
+            `escapeChar_head_not_quote`, `escapeChar_head_not_linebreak`,
+            `escapeChar_output_no_linebreak`, `escapeChar_nonempty`.
+          • §2.3 escapeString Character Properties (~60 LOC):
+            `foldl_append_toList_eq_flatMap`, `escapeString_mem_iff`,
+            `escapeString_all_nbJson`, `escapeString_no_linebreak`.
+          • §2.4 value-level helpers (~210 LOC):
+            `escapeTag_not_linebreak`, `escapeChar_passthrough_toList`,
+            `escapeChar_named_toList`, `scannerHexCheck`,
+            `hexNibble_is_hex`, `hexNibble_lt128`, `hex_two_foldl_bound`,
+            `escapeChar_hex_structure`, `push_append_ofList_eq`,
+            `append_ofList_nil`, `hex_foldl_roundtrip`.
+
+        All landed declarations are pure value-level (no scanner state
+        involved); each ports verbatim from legacy with namespace
+        adjustments only. `#print axioms` shows the foundational triple
+        `[propext, Classical.choice, Quot.sound]` (plus expected
+        `native_decide` kernel decisions on the `Fin n` enumerations).
+        Build green at 453/453 jobs.
+
+        **Deferred (~270 LOC, follow-up sub-session)** — staged in the
+        file's doc-comment under "Discharge plan for staged axioms":
+          • Indexed correspondence helpers (~80 LOC): `peek_corrIx`,
+            `eof_corrIx`, `advance_non_newline_corrIx`,
+            `advance_line_non_newline_ix`. Currently only the legacy
+            `ScannerState`-based versions exist in
+            `Proofs/Coupling/CouplingBridge.lean`.
+          • §2.4 state-dependent helpers (~70 LOC):
+            `peek_of_chars_consIx`, `processEscapeIx_named_ok`,
+            `processEscapeIx_named_content`, `advance_line_of_peekIx`,
+            `processEscapeIx_hex_ok`.
+          • §2.4 core loop lemma (~120 LOC):
+            `collectDoubleQuotedLoopIx_escapeString_succeeds`.
+            Legacy proof structure (induction on `content_rest` with
+            passthrough / named-escape / hex-escape sub-cases) ports
+            directly once the correspondence helpers exist. Shape
+            adjustment needed: `Option` (indexed) vs `Except` (legacy)
+            for `collectDoubleQuotedLoopIx` / `processEscapeIx`
+            return types.
+
+        **Cost**: ~450 LOC landed this session. Estimated ~270 LOC
+        remaining for the `.basic` closure follow-up.
+
+      ▸ **6f.3b3.scanchain** ✅ **EFFECTIVELY DONE 2026-05-24/25**
+        (~560 LOC across prior `.utility` + `.chain` + `.capstone`
+        sub-sessions). The legacy ScanChain section
+        (`Proofs/Output/EmitterScannability.lean` lines 842–1300) is
+        fully ported in
+        `Proofs/Output/IndexedEmitterScannability/ScanChain.lean`:
+        §1 utility lemmas (`.utility` slice), §2 `ScanChainIx`
+        inductive + helpers (`.chain` slice), §3
+        `ScanChainIx.bound_invariant` strict + `fuel_bound`
+        (`.capstone` slice). No further work required for the
+        `.scanchain` sub-step.
+
 ##### **6f.3c — Coupled cutover (6f.4 + 6f.5)** *(deferred to follow-up
   session)*. The Blueprint's original "land 6f.3+6f.5 in the same
   commit" guidance still applies: after 6f.3b's consumer migration
@@ -11601,6 +11700,57 @@ exception here was identified up front via the legacy LOC count
 (`scanPlainScalar_offset_lt`'s ~90 LOC vs. ~10 LOC for the next-
 biggest leaf); staging it as an axiom is cheaper than letting it
 absorb the leaf slice's complexity budget.
+
+</details>
+
+##### **Reflection 118 (new, 2026-05-25)**: when a port-sized sub-step
+divides cleanly between *pure value-level* lemmas and *state-dependent*
+lemmas, the value-level slice can land **before** the substrate-
+adaptation infrastructure exists — the two halves don't share a proof-
+obligation chain even when they share a file. The legacy
+`EmitterScannability.lean` §1 + §2 (lines 76–841) is a textbook case:
+21 of 32 declarations are pure value-level (no `ScannerState`
+dependency), 11 depend on `ScannerSurfCorr` + advance lemmas. The
+value-level 21 port verbatim to the indexed substrate (namespace
+adjustments only); the state-dependent 11 require indexed twins of
+legacy `peek_corr` / `eof_corr` / `advance_non_newline_corr` /
+`advance_line_non_newline`. Landing the value-level slice first
+(450 LOC) lets downstream sub-files consume `escapeString_no_linebreak`,
+`escapeChar_hex_structure`, etc. *now*, while the state-dependent
+closure (~270 LOC including correspondence-helper prep) gets its own
+focused sub-session. The split mirrors Reflection 116's `.leaf`-vs-
+`.capstone` decomposition pattern, applied at a finer grain within a
+single sub-file.
+
+<details><summary>How to apply: when porting a large legacy proof file.</summary>
+
+Before estimating LOC for the full port, audit the legacy file for
+"pure value-level" declarations — those whose statement and proof
+never reference `ScannerState`, `IxCursor`, or any substrate type.
+These ports are mechanical: namespace rename + import update. If
+they form a self-contained section (e.g. §1 + §2.1 + §2.2 + §2.3 in
+`EmitterScannability.lean`), commit them as a separable
+"`.value-level`" slice — the build can absorb them without the
+substrate-adaptation work being complete. The remaining "state-
+dependent" portion needs the indexed correspondence helpers
+(`peek_corrIx`, `advance_*_corrIx`) ported first, which is typically
+the gating dependency for the larger proofs.
+
+</details>
+
+<details><summary>Why this matters for downstream consumers.</summary>
+
+In `IndexedEmitterScannability`, the value-level lemmas of `Basic.lean`
+are consumed by all six downstream sub-files (`ScanChain`,
+`FlowMonoChain`, `FilteredGrowth`, `EmitScans`, `ParseStream`,
+`RoundTrip`). Landing them first removes a transitive blocker on
+those downstream ports — even if the state-dependent §2.4 closure
+(`collectDoubleQuotedLoopIx_escapeString_succeeds`) is not yet
+discharged, downstream files that *only* need
+`escapeString_no_linebreak` or `escapeChar_hex_structure` can already
+type-check against `Basic.lean`. The state-dependent closure becomes
+the gating item only for sub-files that need the loop acceptance
+result (primarily `EmitScans.lean` and `ParseStream.lean`).
 
 </details>
 
