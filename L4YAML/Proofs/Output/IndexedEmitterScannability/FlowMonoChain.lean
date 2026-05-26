@@ -8,6 +8,8 @@ import L4YAML.Proofs.Output.IndexedEmitterScannability.FlowMonoChain.Preserve.Dp
 import L4YAML.Proofs.Output.IndexedEmitterScannability.FlowMonoChain.Preserve.Helpers
 import L4YAML.Proofs.Output.IndexedEmitterScannability.FlowMonoChain.Maintenance.FlowDispatch
 import L4YAML.Proofs.Output.IndexedEmitterScannability.FlowMonoChain.Maintenance.Pipeline
+import L4YAML.Proofs.Output.IndexedEmitterScannability.FlowMonoChain.Sync.Invariant
+import L4YAML.Proofs.Output.IndexedEmitterScannability.FlowMonoChain.Sync.Detail
 
 /-! # `IndexedEmitterScannability.FlowMonoChain` — re-export shim
 
