@@ -1820,24 +1820,27 @@ not in-place axiom-to-theorem promotion — the latter is impossible
 when the axiom's hypothesis is strictly weaker than what the
 stronger lemma derives).
 
-**Next session**: **Step 6f.3b3.flowmono.preserve.helpers — Port the
-`AllTokensOnLine` / `EndLineOnLine` / `StackEndLineOnLine` family
-plus supporting lemmas** into a new sibling file
-`Proofs/Output/IndexedEmitterScannability/FlowMonoChain/Preserve/Helpers.lean`
-(~550 LOC target, legacy lines 2747–~3300 of
-`Proofs/Output/EmitterScannability.lean`). Includes the
-`AllTokensOnLine` inductive predicate + ~20 supporting lemmas,
-`scanValueValidate_ok_of_flow_allTokensOnLine`,
-`saveSimpleKey_filter_placeholder`,
-`scanDoubleQuoted_preserves_simpleKey`, and
-`scanNextToken_preprocess_init_state`. Third (and final) of 3
-`.preserve` sub-sessions; `.preserve.step` landed 2026-05-25 and
-`.preserve.dpinv` landed 2026-05-26 (Reflection 124 — the indexed
-substrate collapsed the legacy 580 LOC × 36-theorem triplet into 18
-one-line `rfl`s in ~145 LOC). After this session, `.flowmono` is
-fully closed and the next sub-step is `.filteredgrowth` (~1320 LOC
-across 4 sub-sessions). The `.basic`, `.inductive`, `.skaf`,
-`.preserve.step`, and `.preserve.dpinv` slices are all landed.
+**Next session**: **Step 6f.3b3.flowmono.maintenance — Port the
+per-dispatcher SKAF maintenance + state-field preservation lemmas**
+(legacy `Proofs/Output/EmitterScannability.lean` lines ~3330–~4400,
+~1100 LOC). Likely needs a sub-split at port time (target: two
+sub-sessions keyed to structural vs content dispatchers). The
+preceding `.preserve.helpers` slice (legacy 2747–~3300) landed
+2026-05-26 — the third and final `.preserve` sub-session — shipping
+`AllTokensOnLineIx` / `EndLineOnLineIx` / `StackEndLineOnLineIx`
+predicates + 9 `saveSimpleKeyIx` field-preservation `@[simp]`s
++ the key `scanValueValidateIx_ok_of_flow_allTokensOnLine`
+consumer + 5 transfer lemmas + 5 per-flow-dispatcher
+`AllTokensOnLineIx` lemmas (508 LOC actual vs ~580 LOC legacy
+target). The `scanNextToken_preprocess_init_state` lemma
+specifically was *deferred* to `.sync`, where the indexed
+surface-correspondence bridge (`peek?_of_input_toList_cons`,
+`skipToContentS_of_content_char`, etc.) will be built alongside
+the consumers that need it. `.flowmono` now has only `.maintenance`
+and `.sync` sub-sessions remaining; `.basic`, `.inductive`,
+`.skaf`, `.preserve.step`, `.preserve.dpinv`, and
+`.preserve.helpers` are all landed. After `.flowmono` closes, the
+next sub-step is `.filteredgrowth` (~1320 LOC across 4 sub-sessions).
 
 After `.flowmono` closes, sub-sessions follow in dependency order:
 `FilteredGrowth (~1320 LOC)` → `EmitScans (~1490 LOC)` →
@@ -2052,6 +2055,78 @@ generalized in Reflection 124 to "when *all* arguments of a legacy
 lemma become cursor-typed on the indexed side, the lemma is vacuous;
 when *the function's body* reduces to a single record update on
 non-target fields, the lemma reduces to `rfl`".
+
+**Step 6f.3b3.flowmono.preserve.helpers LANDED 2026-05-26** (508 LOC;
+new file
+`Proofs/Output/IndexedEmitterScannability/FlowMonoChain/Preserve/Helpers.lean`
++ one-line addition to the `FlowMonoChain.lean` re-export shim).
+Third (and final) of 3 `.preserve` sub-sessions, mapping legacy
+`EmitterScannability.lean` lines 2747–~3300 (~580 LOC target).
+Contents:
+
+  - **§1** `AllTokensOnLineIx`, `EndLineOnLineIx`,
+    `StackEndLineOnLineIx` — per-line invariants that thread through
+    flow-context scan operations. `s.line` (legacy field) becomes
+    `s.cursor.pos.line` (indexed projection).
+  - **§2** 9 `@[simp]` `saveSimpleKeyIx_*` field-preservation lemmas:
+    `indents`, `flowLevel`, `inFlow`, `explicitKeyLine`,
+    `directivesPresent`, `allowDirectives`, `flowStack`,
+    `needIndentCheck`, `peek?`.
+  - **§3** `saveSimpleKeyIx_id_of_flow_ska_false_ek_none` — identity
+    in the flow-emitter common case.
+  - **§4** `scanValueValidateIx_ok_of_not_possible_ek_none` +
+    `_ok_of_flow_allTokensOnLine` — the key downstream consumers
+    (the latter shows the flow-mapping missing-comma guard
+    discharges from `AllTokensOnLineIx`).
+  - **§5** `saveSimpleKeyIx_filter_placeholder` — the two-emit
+    branch only pushes `.placeholder` tokens that the filter discards.
+  - **§6** `AllTokensOnLineIx_of_tokens_eq` helper +
+    `AllTokensOnLineIx_emit`, `_advance`, `_emitAt`,
+    `_saveSimpleKeyIx`, `_allowDirectives` transfer lemmas.
+  - **§7** `EndLineOnLineIx_saveSimpleKeyIx` — chains the simple-key
+    endLine invariant through `saveSimpleKeyIx`.
+  - **§8** Per-flow-dispatcher `AllTokensOnLineIx` for
+    `scanFlowSequenceStartIx`, `scanFlowMappingStartIx`,
+    `scanFlowSequenceEndIx`, `scanFlowMappingEndIx`,
+    `scanFlowEntry`-expression, and a `dispatchContent`-quote-arm
+    wrapper that captures the `scanDoubleQuotedIx` transfer at the
+    state-level wrapping (no per-scanner SK lemma needed).
+  - **§9** `scanFlow{Sequence,Mapping}StartIx_simpleKey_not_possible`.
+
+No axioms, no `sorry`, build green at **461/461 jobs** (full project
+including all consumers); Phase 3 closure axiom count unchanged at
+**0**. Two substrate observations surfaced:
+
+(1) *Cursor-only `scanDoubleQuotedIx` collapses
+`scanDoubleQuoted_preserves_simpleKey`.* The legacy proof is needed
+because `scanDoubleQuoted` operates on full state and might in
+principle touch `simpleKey`. The indexed `scanDoubleQuotedIx`
+operates on `IxCursor input` (which has no `simpleKey`), and its
+state-level wrapping in `scanNextTokenIx_dispatchContent`'s `"`-arm
+is an explicit
+`{ { s with cursor := cAfter }.emitAt … with simpleKeyAllowed := false }`
+that preserves `simpleKey` by `rfl`. No per-scanner SK lemma is
+needed; §8 captures the transfer for `AllTokensOnLineIx` at the
+dispatcher-wrapper level instead.
+
+(2) *`scanNextToken_preprocess_init_state` deferred to `.sync`.*
+The legacy proof depends on `ScannerSurfCorr` infrastructure
+(`initial_corr`, `peek_of_chars_cons`,
+`skipToContent_of_content_char`, explicit `unwindIndents`
+unfolding) for which no indexed twin exists yet. Building the
+surface-correspondence layer is `.sync`'s job (its consumers,
+`scanNextTokenIx_emit*_init`, live there too). `.helpers` ships
+the invariant carriers + transfer lemmas that `.maintenance`
+consumes; `.sync` will build the bridge and port the init-state
+lemma simultaneously. This is a *scope reduction*, not a deferred
+proof obligation — the lemma's downstream surface is in
+`.sync` regardless.
+
+**Reflection 125 (new)** documents the `_of_tokens_eq` helper
+pattern: when a predicate's body is `∀ i, (h : i < container.size) →
+Q container i h`, threading record-update branches through a
+`_of_tokens_eq`-style helper dodges Lean's dependent-index rewrite
+friction. The forall-bound proof slot makes `rw` clean.
 
 **Step 6f.3b3.basic.closure LANDED 2026-05-25** (~538 LOC closure;
 file now 988 LOC total). Discharged the state-dependent §3 of
@@ -10744,14 +10819,51 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
               cursor-only set. Single session. No axioms, no `sorry`,
               build green at 459/459 jobs. See **Reflection 124** for
               the substrate-elimination generalization.
-            ▸ **6f.3b3.flowmono.preserve.helpers** *(~550 LOC; legacy
-              lines 2747–~3300; target file
-              `FlowMonoChain/Preserve/Helpers.lean`)*. `AllTokensOnLine`
-              / `EndLineOnLine` / `StackEndLineOnLine` definitions plus
-              ~20 supporting lemmas; `scanValueValidate_ok_of_flow_allTokensOnLine`,
-              `saveSimpleKey_filter_placeholder`,
-              `scanDoubleQuoted_preserves_simpleKey`,
-              `scanNextToken_preprocess_init_state`.
+            ▸ **6f.3b3.flowmono.preserve.helpers** ✅ **LANDED 2026-05-26**
+              *(508 LOC actual vs. ~550 LOC legacy target; new file
+              `FlowMonoChain/Preserve/Helpers.lean`)*. Ships the
+              invariant carriers and per-flow-dispatcher transfer
+              lemmas: `AllTokensOnLineIx` / `EndLineOnLineIx` /
+              `StackEndLineOnLineIx` definitions (§1); 9
+              `saveSimpleKeyIx` field-preservation `@[simp]` lemmas
+              (§2) — `indents`, `flowLevel`, `inFlow`,
+              `explicitKeyLine`, `directivesPresent`,
+              `allowDirectives`, `flowStack`, `needIndentCheck`,
+              `peek?`; `saveSimpleKeyIx_id_of_flow_ska_false_ek_none`
+              (§3); `scanValueValidateIx_ok_of_not_possible_ek_none`
+              + `_ok_of_flow_allTokensOnLine` (§4 — the key
+              downstream consumer); `saveSimpleKeyIx_filter_placeholder`
+              (§5); `AllTokensOnLineIx` transfer lemmas for `emit`,
+              `advance`, `emitAt`, `saveSimpleKeyIx`, and the
+              `allowDirectives`-update record-modification (§6) —
+              factored through a single `_of_tokens_eq` helper that
+              side-steps dependent-index rewrite friction;
+              `EndLineOnLineIx_saveSimpleKeyIx` (§7); per-flow-
+              dispatcher `AllTokensOnLineIx` for
+              `scanFlowSequenceStartIx`, `scanFlowMappingStartIx`,
+              `scanFlowSequenceEndIx`, `scanFlowMappingEndIx`,
+              `scanFlowEntry`-expression, and a
+              `dispatchContent`-quote-arm wrapper for
+              `scanDoubleQuotedIx` (§8); `scanFlow{Sequence,Mapping}
+              StartIx_simpleKey_not_possible` (§9).
+              **`scanDoubleQuoted_preserves_simpleKey` collapses
+              vacuously**: `scanDoubleQuotedIx` is cursor-only (no
+              `simpleKey` field), and the `dispatchContent`-quote-arm
+              wraps it with an explicit
+              `{ s with cursor := cAfter }.emitAt … with simpleKeyAllowed
+              := false`, which preserves `simpleKey` by `rfl`; no
+              per-scanner SK-preservation theorem is needed.
+              **`scanNextToken_preprocess_init_state` was deferred to
+              `.sync`**: the legacy proof depends on
+              `ScannerSurfCorr` (`initial_corr`, `peek_of_chars_cons`,
+              `skipToContent_of_content_char`, explicit
+              `unwindIndents` unfolding) for which no indexed twin
+              exists yet — building the surface-correspondence layer
+              is `.sync`'s job, where the lemma's consumers
+              (`scanNextTokenIx_emit*_init`) live. Single session.
+              No axioms, no `sorry`, build green at 461/461 jobs.
+              See **Reflection 125** for the dependent-index
+              `_of_tokens_eq` helper pattern.
           ▸ **6f.3b3.flowmono.maintenance** *(~1100 LOC; legacy lines
             ~3300–~4400)*. Per-dispatcher SKAF maintenance + state-
             field preservation lemmas. **Likely needs further sub-
@@ -12861,6 +12973,75 @@ threaded through, or a state-level helper invoked under-the-hood),
 the apparent `rfl` will fail and the substrate has a bug to fix
 before the port resumes. The `rfl` check is a fast sanity test on
 the substrate's invariants.
+
+</details>
+
+##### **Reflection 125 (new, 2026-05-26)**: when a predicate's body is `∀ i, (h : i < s.tokens.size) → P s.tokens i h`, route record-update branches through a `_of_tokens_eq` helper. The forall-bound proof slot dodges the dependent-index rewrite friction that breaks `rw` on the elaborated body.
+
+The `.flowmono.preserve.helpers` port (legacy `EmitterScannability.lean`
+lines 2747–~3300, ~580 LOC) ships `AllTokensOnLineIx s l :=
+∀ i, (h : i < s.tokens.size) → (s.tokens.tokens[i]'h).start.line = l`
+and ~12 transfer lemmas (one per primitive: `emit`, `advance`,
+`emitAt`, `saveSimpleKeyIx`, per-flow-dispatcher, etc.). The
+naïve proof of each transfer lemma involves rewriting
+`(post.tokens.tokens[i]'h_bound).start.line` using a known
+`post.tokens = something.tokens` — but Lean's elaborator refuses,
+because the dependent proof `h_bound : i < post.tokens.size` makes the
+rewrite motive ill-typed (`fun _a => _a.tokens[i].start.line = l`
+abstracts over `_a` whose type the bound depends on).
+
+<details><summary>The pattern: prove a `_of_tokens_eq` lemma where the
+proof slot is bound by the forall, then thread record updates and
+multi-step transfers through that single helper.</summary>
+
+The fix is to introduce a single helper:
+
+```lean
+theorem AllTokensOnLineIx_of_tokens_eq {s s' : ScannerStateIx input}
+    {l : Nat} (h_eq : s'.tokens = s.tokens)
+    (h_atol : AllTokensOnLineIx s l) : AllTokensOnLineIx s' l := by
+  unfold AllTokensOnLineIx at *
+  rw [h_eq]
+  exact h_atol
+```
+
+The `rw [h_eq]` works here because the proof slot is *bound*
+by the forall — `∀ i, (h : i < s'.tokens.size) → …` becomes
+`∀ i, (h : i < s.tokens.size) → …` cleanly. No free `h_bound` to
+trip the motive check.
+
+With the helper in hand, transfer lemmas for primitives that *only*
+change `tokens` by a single `.push` reduce to one `change` to expose
+the underlying `Array.push`, then `Array.getElem_push` + `h_atol` on
+the prefix half. Transfer lemmas for primitives that *don't* change
+`tokens` (e.g., `s.advance` is `{ s with cursor := ... }`) reduce to
+`AllTokensOnLineIx_of_tokens_eq rfl h_atol`. And multi-step
+compositions (e.g., `saveSimpleKeyIx`'s two-emit branch) prove the
+emit-emit transfer first, then close with
+`AllTokensOnLineIx_of_tokens_eq` against the cases-lemma equality.
+
+**Why the friction in the first place.** The dependent index
+problem with `Array α` is well-known: `Array.getElem` takes
+`(a : Array α) (i : Nat) (h : i < a.size)`, so substituting one
+array for another requires also substituting the proof — but `rw`
+can't update a proof that has already been pulled out of the binder.
+The standard workarounds — `Array.getElem_congr_idx`,
+`Array.getElem_of_eq`, `cast`, `Eq.mpr` — all require manual
+plumbing. The `_of_tokens_eq` helper sidesteps the whole thing by
+keeping the proof bound.
+
+**Generalizes.** Any predicate of shape
+`∀ i, (h : i < container.size) → Q container i h` admits the same
+trick: prove `_of_container_eq` once, then phrase every transfer
+lemma as either (a) a direct construction (for primitives that
+genuinely grow the container), or (b) `_of_container_eq` (for
+record updates that leave the container alone).
+
+Looking ahead, `.maintenance` will introduce several more `∀ i`-style
+invariants over `tokens` (per-dispatcher single-line, per-step
+prefix-preservation under `simpleKey` floor, etc.). Each should
+follow the same pattern: one `_of_tokens_eq` helper per invariant,
+then transfer lemmas as one-liners.
 
 </details>
 
