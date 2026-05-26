@@ -1820,30 +1820,41 @@ not in-place axiom-to-theorem promotion — the latter is impossible
 when the axiom's hypothesis is strictly weaker than what the
 stronger lemma derives).
 
-**Next session**: **Step 6f.3b3.basic.closure — Port the deferred
-state-dependent §2.4 of legacy
-`Proofs/Output/EmitterScannability.lean`** into
-`Proofs/Output/IndexedEmitterScannability/Basic.lean` (~270 LOC).
-Specifically: (a) port indexed correspondence helpers from
-`Proofs/Coupling/CouplingBridge.lean` — `peek_corrIx`, `eof_corrIx`,
-`advance_non_newline_corrIx`, `advance_line_non_newline_ix` (~80 LOC);
-(b) port §2.4 state-dependent helpers — `peek_of_chars_consIx`,
-`processEscapeIx_named_ok`, `processEscapeIx_named_content`,
-`advance_line_of_peekIx`, `processEscapeIx_hex_ok` (~70 LOC);
-(c) port the heavyweight core loop lemma
-`collectDoubleQuotedLoopIx_escapeString_succeeds` (~120 LOC, mirrors
-legacy lines 577–840). Shape adjustments for indexed substrate:
-`Option` (indexed) vs `Except` (legacy) for `collectDoubleQuotedLoopIx`
-/ `processEscapeIx` return types; `ScannerStateIx input` + `IxCursor input`
-substrate. With Basic.lean's value-level slice now landed (450 LOC,
-2026-05-25), the remaining work is structurally well-scoped.
+**Next session**: **Step 6f.3b3.flowmono.inductive — Port the
+`FlowMonoChainIx` inductive + immediate helpers** into a new file
+`Proofs/Output/IndexedEmitterScannability/FlowMonoChain.lean` (~70
+LOC, legacy lines 1301–1388). Specifically: `FlowMonoChainIx`
+inductive (twin of legacy `FlowMonoChain`), plus the immediate
+helpers `.toScanChainIx`, `.flowLevel_ge_start`, `.flowLevel_ge_end`,
+`.single`, `.trans`, `.weaken`, `.tokens_mono`. This is the first
+of 5 sub-sessions targeting `FlowMonoChain.lean` (the single largest
+indexed-port file at ~3870 LOC total). The `.basic` umbrella is now
+**fully landed** (value-level 2026-05-25 morning, closure 2026-05-25
+afternoon); `ScanChain` was effectively done from prior `.utility` /
+`.chain` / `.capstone` sessions.
 
-After `.basic` closes, sub-sessions follow in dependency order:
-`FlowMonoChain (~3800 LOC)` → `FilteredGrowth (~1320 LOC)` →
-`EmitScans (~1490 LOC)` → `ParseStream (~440 LOC)` →
-`RoundTrip (~1870 LOC)`. The `ScanChain` sub-step is **effectively
-done** from prior `.utility` / `.chain` / `.capstone` sessions
-(see 6f.3b3.scanchain row above).
+After `.flowmono` closes, sub-sessions follow in dependency order:
+`FilteredGrowth (~1320 LOC)` → `EmitScans (~1490 LOC)` →
+`ParseStream (~440 LOC)` → `RoundTrip (~1870 LOC)`.
+
+**Step 6f.3b3.basic.closure LANDED 2026-05-25** (~538 LOC closure;
+file now 988 LOC total). Discharged the state-dependent §3 of
+`Proofs/Output/IndexedEmitterScannability/Basic.lean`:
+(a) cursor-level surface correspondence (`CursorSurfCorrIx` — a
+3-field cursor-centric "lite" of state-level `ScannerSurfCorrIx`);
+(b) indexed correspondence advance helpers (`peek_corrIx`,
+`eof_corrIx`, `peek_of_chars_consIx`,
+`advance_line_non_newline_ix`, `advance_col_non_newline_ix`,
+`advance_non_newline_corrIx`); (c) indexed hex-foldl helpers
+(`hex_two_foldl_boundIx`, `hex_foldl_roundtripIx`,
+`scannerHexCheck_eq_isHexDigitBool`); (d) state-dependent escape
+helpers (`simpleEscapeChar_of_escapeTag`,
+`processEscapeIx_named_content`, `processEscapeIx_named_ok`,
+`advance_line_of_peekIx`, `processEscapeIx_hex_ok`); (e) the
+heavyweight core loop lemma
+`collectDoubleQuotedLoopIx_escapeString_succeeds`. No axioms, no
+`sorry`, build green at 453/453 jobs. Shape adjustments from legacy
+documented in **Reflection 119**.
 
 **Step 6f.3b3.basic (value-level slice) LANDED 2026-05-25** (~450 LOC;
 new file `Proofs/Output/IndexedEmitterScannability/Basic.lean`). Ported
@@ -10368,30 +10379,60 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
             Quot.sound]` (plus expected `native_decide` kernel
             decisions on `Fin n` enumerations).
 
-          ▸ **6f.3b3.basic.closure** *(next session; ~270 LOC; legacy
-            lines 355–841 state-dependent portion)*. Discharge the
-            state-dependent §2.4 closure of `Basic.lean`.
+          ▸ **6f.3b3.basic.closure** ✅ **LANDED 2026-05-25** (~538 LOC;
+            legacy lines 355–841 state-dependent portion). Discharged
+            the state-dependent §3 closure of `Basic.lean`. File now
+            988 LOC total (450 LOC value-level + 538 LOC closure), no
+            axioms, no `sorry`, build green at 453/453 jobs.
 
-            Deliverables:
-              • **Indexed correspondence helpers** (~80 LOC) — twins
-                of `Proofs/Coupling/CouplingBridge.lean` for the
-                `ScannerStateIx input` + `IxCursor input` substrate:
-                `peek_corrIx`, `eof_corrIx`,
-                `advance_non_newline_corrIx`,
-                `advance_line_non_newline_ix`. May be placed in
-                `Basic.lean` §2.4-prep or hoisted into a shared
-                `CouplingBridgeIx.lean` if downstream sub-files reuse.
-              • **§2.4 state-dependent helpers** (~70 LOC):
-                `peek_of_chars_consIx`, `processEscapeIx_named_ok`,
-                `processEscapeIx_named_content`,
-                `advance_line_of_peekIx`, `processEscapeIx_hex_ok`.
-              • **§2.4 core loop lemma** (~120 LOC):
+            Delivered:
+              • **§3.0 Cursor-level surface correspondence**:
+                `CursorSurfCorrIx` structure (3-field) — a "lite"
+                version of state-level `ScannerSurfCorrIx` without the
+                indent-cols-nonneg field. Cursor-centric to match
+                `collectDoubleQuotedLoopIx`'s `IxCursor input`
+                signature; the state-level extension lives in
+                `ScanChain.lean` §1.3.
+              • **§3.1 Indexed correspondence advance helpers** (~75
+                LOC): `peek_corrIx`, `eof_corrIx`,
+                `peek_of_chars_consIx`, `advance_line_non_newline_ix`,
+                `advance_col_non_newline_ix`,
+                `advance_non_newline_corrIx`. Twins of legacy
+                `Proofs/Coupling/CouplingBridge.lean` adapted to
+                `IxCursor input`. The `advance_non_newline_corrIx`
+                proof derives the `(next).byteIdx ≤ utf8ByteSize`
+                bound from the `input_prefix` field (no stdlib
+                `next`-bound lemma needed).
+              • **§3.2 Indexed hex-foldl helpers** (~25 LOC):
+                `hex_two_foldl_boundIx` and `hex_foldl_roundtripIx`
+                using the indexed scanner's `hexStringValue` /
+                `hexDigitValue`; plus the bridge
+                `scannerHexCheck_eq_isHexDigitBool` (decided by
+                `native_decide` on `Fin 128`).
+              • **§3.3 State-dependent escape helpers** (~110 LOC):
+                `simpleEscapeChar_of_escapeTag` (the named-escape
+                inverse), `processEscapeIx_named_content`,
+                `processEscapeIx_named_ok`, `advance_line_of_peekIx`,
+                `processEscapeIx_hex_ok`.
+              • **§3.4 Core loop lemma** (~210 LOC):
                 `collectDoubleQuotedLoopIx_escapeString_succeeds`.
-                Mirrors legacy lines 577–840; structure ports directly
-                once correspondence helpers exist. Shape adjustment:
-                `Option` (indexed) vs `Except` (legacy) for
-                `collectDoubleQuotedLoopIx` / `processEscapeIx` return
-                types.
+                Twin of legacy `collectDoubleQuotedLoop_escapeString_succeeds`
+                (legacy lines 577–840). Three branches: passthrough,
+                named escape, hex escape — all driven by structural
+                induction on `content_rest`. Shape adjustments from
+                legacy:
+                  - `IxCursor` substitutes for `ScannerState`.
+                  - `Option` substitutes for `Except`
+                    (`collectDoubleQuotedLoopIx` /
+                    `processEscapeIx` return types).
+                  - `isNbJsonBool` check is **dropped** — the indexed
+                    loop accepts any non-`"`/non-`\\`/non-linebreak
+                    character. Simpler passthrough proof.
+                  - `processEscapeIx` factors through
+                    `simpleEscapeChar` (named) and
+                    `isNsEsc{8,16,32}BitBool` (hex) rather than a
+                    21-arm direct match — adds a single `dsimp only []`
+                    step after `rw [peek]` in proofs that unfold it.
 
             Prerequisites: 6f.3b3.basic.value (landed).
             Consumers: `EmitScans.lean` and `ParseStream.lean` for the
@@ -12017,6 +12058,87 @@ existed *only* to satisfy the now-removed check is dead weight in
 the new substrate. Keep the precondition only if the caller's
 *own* code paths still need it. The substrate refinement should
 ripple through the proof obligations, not silently remain.
+
+</details>
+
+##### **Reflection 119 (new, 2026-05-25)**: the right *level* for a
+new correspondence structure is the level the *consumer function*
+operates on — not the level the *legacy proof* used. Legacy
+`ScannerSurfCorr` lives on `ScannerState` because legacy
+`collectDoubleQuotedLoop` is a `ScannerState`-to-`ScannerState`
+function. The indexed twin `collectDoubleQuotedLoopIx` is an
+`IxCursor`-to-`IxCursor` function — so the correspondence the
+closure proof needs is *cursor-level*, not *state-level*. Forcing
+the proof to thread `ScannerStateIx` through (with the
+`indent_cols_nonneg` field structurally invariant under cursor
+advancement) is busy-work. The right shape is a 3-field
+`CursorSurfCorrIx` structure (chars_from, col_eq, input_prefix);
+state-level extensions (the `indent_cols_nonneg` field) live where
+the dispatchers do.
+
+<details><summary>How to apply: when porting a legacy proof tied to
+a richer state type.</summary>
+
+Audit the legacy proof's *function under test*. If it consumes /
+produces a strict subset of the legacy state's fields (e.g. only
+the cursor's offset / line / col, not the indent stack), the
+correspondence structure for the port should be at *that subset's
+level*. The legacy correspondence's "extra" fields are a witness
+of the dispatcher's invariant, not of the loop's invariant; they
+belong at the dispatcher level.
+
+Concretely for `IndexedEmitterScannability.Basic.lean`:
+`CursorSurfCorrIx` is the 3-field cursor-level correspondence
+(`chars_from`, `col_eq`, `input_prefix`); `ScannerSurfCorrIx` in
+`ScanChain.lean` §1.3 adds the 4th `indent_cols_nonneg` field.
+Decomposition is `ScannerSurfCorrIx sc sp = CursorSurfCorrIx
+sc.cursor sp ∧ ind_inv`. Lemmas like
+`collectDoubleQuotedLoopIx_escapeString_succeeds` need only
+`CursorSurfCorrIx`; lemmas like
+`scanNextTokenIx_preserves_correspondence` (a dispatcher-level
+fact, in a downstream sub-file) need the full `ScannerSurfCorrIx`.
+
+</details>
+
+<details><summary>Three indexed-substrate "shape adjustments" that
+arose in the closure port.</summary>
+
+The legacy `collectDoubleQuotedLoop_escapeString_succeeds` and the
+indexed `collectDoubleQuotedLoopIx_escapeString_succeeds` are
+structurally the same proof — three branches (passthrough, named
+escape, hex escape), induction on `content_rest`. Three adjustments
+emerged from the substrate refactor:
+
+1. **`Option` vs `Except`**: `collectDoubleQuotedLoopIx` returns
+   `Option` (no error reasons), legacy returns `Except ScanError`.
+   The proof obligations on the `some` / `.ok` side are identical;
+   the inversion lemma changes from `Except.ok.inj` to
+   `Option.some.inj`. No proof-structure change.
+2. **`isNbJsonBool` check absent**: the indexed loop does not
+   validate `nb-json` on regular characters (any non-`"` /
+   non-`\\` / non-linebreak char passes). The passthrough branch
+   of the legacy proof spends ~30 LOC establishing
+   `isNbJsonBool ch = true`; the indexed branch skips it
+   entirely. This is the same kind of caller-side simplification
+   as Reflection 117 (legacy `hnoDoc` precondition retired by
+   indexed `collectPlainScalarLoopIx`).
+3. **`processEscapeIx` factored**: legacy `processEscape` has a
+   21-arm direct match (`'0' → ...`, `'a' → ...`, …, `'x' →
+   parseHexEscape`); indexed `processEscapeIx` factors through
+   `simpleEscapeChar` (Option) and three boolean checks
+   (`isNsEsc{8,16,32}BitBool`). Proofs that unfold
+   `processEscapeIx` need one extra `dsimp only []` step after
+   `rw [peek]` to reduce the `match some tag with | some ch => …`
+   redex before the next `rw` fires. ~3 extra LOC per call site;
+   no structural change.
+
+The total LOC delta for the closure (538 LOC) versus the original
+estimate (~270 LOC) reflects the cursor-level rewriting overhead
+(item 1 of "How to apply"): cursor-level `peek?` / `advance` /
+correspondence threading verbosely re-states what legacy did via
+`ScannerState`'s implicit threading. Some of this could be elided
+with a `CursorSurfCorrIx.toAdvance` combinator, but the inlined
+form is more explicit about what each step contributes.
 
 </details>
 
