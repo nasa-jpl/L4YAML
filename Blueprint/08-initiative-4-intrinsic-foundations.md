@@ -1820,24 +1820,29 @@ not in-place axiom-to-theorem promotion — the latter is impossible
 when the axiom's hypothesis is strictly weaker than what the
 stronger lemma derives).
 
-**Next session**: **Step 6f.3b3.flowmono.sync.scenarios — Port the
-`scanNextToken_flow_*` scenario chains** (legacy
-`Proofs/Output/EmitterScannability.lean` lines 3258–3329 + 3561–3585
-+ 4572–4685 + 4793–5005 + 5141–5326 + 5329–5423 + 5445–5586, ~700
-LOC). Third and final `.sync` sub-session. Ships:
-preprocessing helpers (`scanNextTokenIx_preprocess_flow`,
-`_init_state`) and the seven scenario chains
-(`scanNextTokenIx_flow_comma`,
-`_close_seq_{nested,outermost}`,
-`_close_mapping_{nested,outermost}`,
-`_open_mapping_nested`, `_open_mapping_init`).
-File: `Proofs/Output/IndexedEmitterScannability/FlowMonoChain/Sync/
-Scenarios.lean`. With `.sync.scenarios` closed, `.flowmono` (the
-entire `FlowMonoChain.lean` family) is done.
+**Next session**: **Step 6f.3b3.flowmono.sync.scenarios.flowclose —
+Port the 3 remaining mid-chain scenario chains** (legacy
+`Proofs/Output/EmitterScannability.lean` lines 4793–5005 + 5141–5326
++ 5329–5423, ~400 LOC). Second sub-session of `.sync.scenarios`
+(`.preflow` landed 2026-05-26; see the LANDED block below). Ships
+the three mid-chain scenarios consumed by `.emitscans.flowpair` /
+`.flowvalue`:
+`scanNextTokenIx_flow_close_seq_nested`,
+`_close_mapping_nested`,
+`_open_mapping_nested`. File:
+`Proofs/Output/IndexedEmitterScannability/FlowMonoChain/Sync/
+Scenarios/FlowClose.lean`. Each follows the same skeleton as
+`_flow_comma` from `.preflow` but with a different
+dispatcher / `_detail` consumer. After `.flowclose` lands, the
+remaining `.endpoint` sub-session covers the EOF outermost-close
+and init-state chains (~320 LOC, including the new
+`initial_corrIx`-style infrastructure). With those three landed,
+`.flowmono` (the entire `FlowMonoChain.lean` family) closes:
 `.basic`, `.inductive`, `.skaf`, `.preserve.{step,dpinv,helpers}`,
-`.maintenance.{flowdispatch,pipeline}`, `.sync.{invariant,detail}`
-all landed. After `.flowmono` closes, the next sub-step is
-`.filteredgrowth` (~1320 LOC across 4 sub-sessions).
+`.maintenance.{flowdispatch,pipeline}`,
+`.sync.{invariant,detail,scenarios.preflow}` all landed. After
+`.flowmono` closes, the next sub-step is `.filteredgrowth` (~1320
+LOC across 4 sub-sessions).
 
 After `.flowmono` closes, sub-sessions follow in dependency order:
 `FilteredGrowth (~1320 LOC)` → `EmitScans (~1490 LOC)` →
@@ -2280,6 +2285,69 @@ file's name is a historical artifact. Generalizable: when the
 sub-session organization clarifies (e.g., during a late-cycle
 sub-split discovery), do the relocation in the same commit cycle
 as the new content — don't accumulate misalignment debt.
+
+**Step 6f.3b3.flowmono.sync.scenarios.preflow LANDED 2026-05-26**
+(~327 LOC actual; new file
+`Proofs/Output/IndexedEmitterScannability/FlowMonoChain/Sync/
+Scenarios/Preflow.lean` + one-line addition to the
+`FlowMonoChain.lean` re-export shim; new directory `Sync/
+Scenarios/` created at this session). First of three newly-split
+`.sync.scenarios` sub-sessions (the legacy plan was a single
+~700 LOC file; following the modularisation pattern of Reflection
+129 we split into three sibling files matched to the auxiliary
+precondition pattern each scenario uses). Ships:
+
+  - **§1 `skipToContentS_id_of_content`** — state-level wrapper
+    for `IndexedIndent.skipToContent_at_content`. When the cursor
+    sits at a content character (non-ws / non-lb / non-`#`), the
+    cursor doesn't advance; the line doesn't change; so the
+    `skipToContentS` else-branch returns `s` verbatim.
+  - **§1 `scanNextTokenIx_preprocess_flow`** — the cornerstone
+    preprocessing reduction in flow context: `scanNextTokenIx_
+    preprocess s = .ok (some (saveSimpleKeyIx s, c))`. Consumed
+    by every mid-chain scenario. Indexed twin of legacy
+    `scanNextToken_preprocess_flow` (line 3561).
+  - **§2 `scanNextTokenIx_flow_comma`** — the first full
+    scenario chain (the `,` case). Threads preprocess → struct
+    dispatch (`dispatchStructural_none_flow`) → allowDirectives
+    update → `checkBlockFlowIndent_ok_comma` →
+    `dispatchFlowIndicators_comma`, then extracts the result-
+    state properties. All legacy conclusions preserved:
+    `ScannerSurfCorrIx`, field preservation
+    (`flowLevel`/`directivesPresent`/`indents`/`explicitKeyLine`),
+    `cursor.pos.col + 1`, line preservation, `AllTokensOnLineIx`,
+    `EndLineOnLineIx`, `simpleKeyStack` equality. Indexed twin of
+    legacy `scanNextToken_flow_comma` (line 4575).
+
+No axioms, no `sorry`, build green at **471/471 jobs**. Phase 3
+closure axiom count unchanged at **0** (only the standard
+`propext`, `Classical.choice`, `Quot.sound`).
+
+**Reflection 130 (new)** documents two patterns surfaced by this
+sub-session:
+
+  * **Sub-split-on-arrival**: when a planned single sub-session
+    turns out to mix multiple distinct precondition patterns —
+    here, mid-chain scenarios (each calling the shared
+    `_preprocess_flow` helper) vs. EOF scenarios (needing
+    `peek_none_of_empty_surfIx`) vs. init-state scenarios
+    (needing `initial_corrIx`-style infrastructure that hasn't
+    been ported yet) — split at the *start* of the session, not
+    halfway through after writing the file. The auxiliary-
+    precondition shape is the natural decomposition axis. The
+    cost of a wrong split is one blueprint edit; the cost of a
+    monolithic implementation is unbounded debugging when the
+    least-common-denominator infrastructure (here `initial_corrIx`)
+    blocks all 9 theorems at once.
+  * **Mathlib-free `set` workaround**: this Phase 3 substrate
+    doesn't import Mathlib, so the convenient `set x := ... with
+    h_x_def` tactic is unavailable. The substitute is
+    `obtain ⟨x, h_x_def⟩ : ∃ x, x = <expr> := ⟨_, rfl⟩` — gives
+    an opaque variable `x` plus an equation `h_x_def : x = <expr>`
+    that `rw` can use to unfold-on-demand. Cleaner than the
+    `let x := <expr>; have h := rfl` alternative because the
+    let-binding may unfold opportunistically and frustrate later
+    `rw [h_x_def]` calls.
 
 **Step 6f.3b3.flowmono.sync.detail LANDED 2026-05-26**
 (~340 LOC actual vs. legacy ~400 LOC contribution; new file
@@ -11204,23 +11272,25 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 indexed `ScannerSurfCorrIx` has no `end_eq` field (it
                 folds into `IxCursor`'s `posBound`), so the bridge is
                 direct.
-              ▸ **6f.3b3.flowmono.sync.scenarios** *(~700 LOC; legacy
-                lines 3258–3329 + 3561–3585 + 4572–4685 + 4793–5005 +
-                5141–5326 + 5329–5423 + 5445–5586)*. Full
+              ▸ **6f.3b3.flowmono.sync.scenarios** *(file-level;
+                ~1000 LOC total across 3 sub-sessions)*. Full
                 `scanNextToken_flow_*` scenario chains for the 7
-                cases used by `.emitscans` / `.roundtrip`. Target file:
-                `Proofs/Output/IndexedEmitterScannability/FlowMonoChain/
-                Sync/Scenarios.lean`. Ships:
-                  * Preprocessing helpers:
-                    `scanNextTokenIx_preprocess_flow`,
-                    `scanNextTokenIx_preprocess_init_state`.
-                  * Scenario chains:
-                    `scanNextTokenIx_flow_comma`,
-                    `scanNextTokenIx_flow_close_seq_{nested,outermost}`,
-                    `scanNextTokenIx_flow_close_mapping_{nested,
-                    outermost}`,
-                    `scanNextTokenIx_flow_open_mapping_nested`,
-                    `scanNextTokenIx_flow_open_mapping_init`.
+                cases used by `.emitscans` / `.roundtrip`. Maps to
+                legacy lines 3258–3329 + 3561–3585 + 4572–4685 +
+                4793–5005 + 5141–5326 + 5329–5423 + 5445–5586.
+                Per the modularisation pattern of Reflection 129,
+                split into three sibling files under
+                `Proofs/Output/IndexedEmitterScannability/
+                FlowMonoChain/Sync/Scenarios/` (the directory is
+                created at this session). Each sub-session matches
+                one auxiliary precondition pattern:
+                  * `.preflow` / `.flowclose` share the same
+                    `saveSimpleKeyIx + s_ad + checkBlockFlowIndent_
+                    ok_*` mid-chain skeleton.
+                  * `.endpoint` mixes EOF-variant lemmas
+                    (`peek_none_of_empty_surfIx`) with init-state
+                    `initial_corrIx`-style infrastructure not yet
+                    ported.
                 **Indexed simplification at dispatcher-level** (per
                 Reflection 127): the dispatcher `_close_bracket` /
                 `_close_brace` are single lemmas (no `validateFlowClose`
@@ -11228,6 +11298,68 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 survives because callers' preconditions differ (the
                 outermost variant requires EOF + `flowLevel = 1` and
                 yields different result properties).
+
+                  ▸ **6f.3b3.flowmono.sync.scenarios.preflow** *(~280
+                    LOC; legacy lines 3561–3585 + 4572–4684)*. Target
+                    file: `Sync/Scenarios/Preflow.lean`. Ships:
+                      * `skipToContentS_id_of_content` — state-level
+                        wrapper for `IndexedIndent.skipToContent_at_
+                        content`; the line is unchanged so the
+                        `skipToContentS` else-branch returns `s`
+                        verbatim.
+                      * `scanNextTokenIx_preprocess_flow` — the
+                        cornerstone preprocessing reduction in flow
+                        context, consumed by every mid-chain
+                        scenario. Indexed twin of `scanNextToken_
+                        preprocess_flow` (legacy 3561).
+                      * `scanNextTokenIx_flow_comma` — the first full
+                        scenario chain. Indexed twin of legacy
+                        `scanNextToken_flow_comma` (4575). All legacy
+                        conclusions preserved: `ScannerSurfCorrIx`,
+                        field preservation
+                        (`flowLevel`/`directivesPresent`/`indents`/
+                        `explicitKeyLine`), line/col, `AllTokensOnLineIx`,
+                        `EndLineOnLineIx`, `simpleKeyStack` equality.
+                  ▸ **6f.3b3.flowmono.sync.scenarios.flowclose**
+                    *(~400 LOC; legacy lines 4793–5005 + 5141–5326 +
+                    5329–5423)*. Target file:
+                    `Sync/Scenarios/FlowClose.lean`. Ships the three
+                    remaining mid-chain scenarios consumed by
+                    `.emitscans.flowpair` / `.flowvalue`:
+                      * `scanNextTokenIx_flow_close_seq_nested`
+                        (`]` at flowLevel ≥ 2).
+                      * `scanNextTokenIx_flow_close_mapping_nested`
+                        (`}` at flowLevel ≥ 2).
+                      * `scanNextTokenIx_flow_open_mapping_nested`
+                        (`{` inside an existing flow context).
+                    Each follows the same skeleton as `_flow_comma`
+                    but with different dispatcher (`dispatchFlow
+                    Indicators_close_bracket` / `_close_brace` /
+                    `_brace`) and different `_detail` consumer
+                    (`scanFlowSequenceEndIx_detail` /
+                    `scanFlowMappingEndIx_detail` /
+                    `scanFlowMappingStartIx_detail`). Stack effects
+                    differ: close-variants `pop` the simple-key
+                    stack; open-variants push and yield
+                    `StackEndLineOnLineIx`.
+                  ▸ **6f.3b3.flowmono.sync.scenarios.endpoint**
+                    *(~320 LOC; legacy lines 3258–3329 + 4910–5005 +
+                    5274–5326 + 5445–5586)*. Target file:
+                    `Sync/Scenarios/Endpoint.lean`. Ships the EOF
+                    outermost-close scenarios and the init-state
+                    chains:
+                      * `scanNextTokenIx_preprocess_init_state` —
+                        legacy 3258. Needs new `initial_corrIx`
+                        infrastructure.
+                      * `scanNextTokenIx_flow_close_seq_outermost` —
+                        `]` at flowLevel = 1, EOF. Uses
+                        `peek_none_of_empty_surfIx`.
+                      * `scanNextTokenIx_flow_close_mapping_outermost`
+                        — `}` at flowLevel = 1, EOF.
+                      * `scanNextTokenIx_flow_open_mapping_init` —
+                        `{` at the initial scanner state for a
+                        top-level mapping emit. Consumed by
+                        `.emitscans.toplevel`.
 
       ▸ **6f.3b3.filteredgrowth** *(file-level; ~1320 LOC total across
         4 sub-sessions)*. Maps to legacy lines 5587–6908. Target file:
