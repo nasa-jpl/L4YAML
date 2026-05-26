@@ -4,6 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 -/
 import L4YAML.Proofs.Output.IndexedEmitterScannability.FlowMonoChain.Basic
 import L4YAML.Proofs.Output.IndexedEmitterScannability.FlowMonoChain.Preserve.Step
+import L4YAML.Proofs.Output.IndexedEmitterScannability.FlowMonoChain.Preserve.DpInv
 
 /-! # `IndexedEmitterScannability.FlowMonoChain` — re-export shim
 
