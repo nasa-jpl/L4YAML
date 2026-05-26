@@ -1820,24 +1820,24 @@ not in-place axiom-to-theorem promotion — the latter is impossible
 when the axiom's hypothesis is strictly weaker than what the
 stronger lemma derives).
 
-**Next session**: **Step 6f.3b3.flowmono.preserve.dpinv — Port the
-per-stage `_preserves_dp` / `_preserves_indents` / `_preserves_ek`
-triplet** into a new sibling file
-`Proofs/Output/IndexedEmitterScannability/FlowMonoChain/Preserve/DpInv.lean`
-(~580 LOC target, legacy lines 2166–2745 of
-`Proofs/Output/EmitterScannability.lean`). Three near-identical mirror
-blocks: `advance` / `consumeNewline` / `skipSpaces` / `skipWhitespace`
-/ `emitAt` / `collectHexDigitsLoop` / `parseHexEscape` /
-`processEscape` / `foldQuotedNewlinesLoop` / `foldQuotedNewlines` /
-`collectDoubleQuotedLoop` / `scanDoubleQuoted` preserves of
-`directivesPresent` (`_dp`), `indents`, and `explicitKeyLine` (`_ek`).
-Second of 3 `.preserve` sub-sessions; `.preserve.step` landed
-2026-05-25, `.preserve.helpers` is the third (~550 LOC). The
-`FlowMonoChain.lean` modularization (Reflection 123) is now in place —
-`.dpinv` adds `Preserve/DpInv.lean` as a sibling of `Preserve/Step.lean`
-without further structural change. The `.inductive`, `.skaf`, and
-`.preserve.step` slices landed 2026-05-25; `.basic` umbrella +
-`ScanChain` are fully landed from prior sessions.
+**Next session**: **Step 6f.3b3.flowmono.preserve.helpers — Port the
+`AllTokensOnLine` / `EndLineOnLine` / `StackEndLineOnLine` family
+plus supporting lemmas** into a new sibling file
+`Proofs/Output/IndexedEmitterScannability/FlowMonoChain/Preserve/Helpers.lean`
+(~550 LOC target, legacy lines 2747–~3300 of
+`Proofs/Output/EmitterScannability.lean`). Includes the
+`AllTokensOnLine` inductive predicate + ~20 supporting lemmas,
+`scanValueValidate_ok_of_flow_allTokensOnLine`,
+`saveSimpleKey_filter_placeholder`,
+`scanDoubleQuoted_preserves_simpleKey`, and
+`scanNextToken_preprocess_init_state`. Third (and final) of 3
+`.preserve` sub-sessions; `.preserve.step` landed 2026-05-25 and
+`.preserve.dpinv` landed 2026-05-26 (Reflection 124 — the indexed
+substrate collapsed the legacy 580 LOC × 36-theorem triplet into 18
+one-line `rfl`s in ~145 LOC). After this session, `.flowmono` is
+fully closed and the next sub-step is `.filteredgrowth` (~1320 LOC
+across 4 sub-sessions). The `.basic`, `.inductive`, `.skaf`,
+`.preserve.step`, and `.preserve.dpinv` slices are all landed.
 
 After `.flowmono` closes, sub-sessions follow in dependency order:
 `FilteredGrowth (~1320 LOC)` → `EmitScans (~1490 LOC)` →
@@ -2002,6 +2002,56 @@ consumers reference; the `.dpinv` triplet (~580 LOC of mechanical
 (`AllTokensOnLine`-family auxiliaries) feed into `FilteredGrowth` and
 `EmitScans` sub-steps later. First of 3 `.preserve` sub-sessions; the
 remaining 2 follow in dependency order (`.dpinv` then `.helpers`).
+
+**Step 6f.3b3.flowmono.preserve.dpinv LANDED 2026-05-26** (~145 LOC;
+new file
+`Proofs/Output/IndexedEmitterScannability/FlowMonoChain/Preserve/DpInv.lean`
++ one-line addition to the `FlowMonoChain.lean` re-export shim).
+Second of 3 `.preserve` sub-sessions, mapping legacy
+`EmitterScannability.lean` lines 2166–2745 (~580 LOC, **36 theorems**
+— 12 functions × 3 fields). Contents (each a one-line `@[simp]`
+theorem proven by `rfl`):
+
+  - **§1** `directivesPresent` preservation: `advance_directivesPresent`,
+    `advanceN_directivesPresent`, `emit_directivesPresent`,
+    `emitAt_directivesPresent`, `skipSpacesS_directivesPresent`,
+    `skipWhitespaceS_directivesPresent`.
+  - **§2** `indents` preservation: same six primitives, `_indents` variant.
+  - **§3** `explicitKeyLine` preservation: same six primitives,
+    `_explicitKeyLine` variant.
+
+No axioms, no `sorry`, build green at **459/459 jobs** (full project
+including all consumers); Phase 3 closure axiom count unchanged at
+**0**. The session's central observation is captured in
+**Reflection 124 (new)**: the legacy substrate's per-function
+preservation lemmas (`advance_preserves_dp` through
+`scanDoubleQuoted_preserves_ek`) split cleanly on the indexed side
+into two kinds — *cursor-level functions* (10 of 12 legacy entries:
+`consumeLineBreak`, `skipSpaces`, `skipWhitespace`,
+`collectHexDigitsLoopIx`, `parseHexEscapeIx`, `processEscapeIx`,
+`skipBlankLinesLoopIx`, `foldQuotedNewlinesIx`,
+`collectDoubleQuotedLoopIx`, `scanDoubleQuotedIx`), which operate on
+`IxCursor input` and thus carry no `directivesPresent`/`indents`/
+`explicitKeyLine` fields at all — preservation is *vacuous*, threaded
+through the dispatcher's `{ s with cursor := cAfter }.emitAt ...`
+record-update wrapping — and *state-level primitives* (the 2 of 12
+direct entries plus `skipSpacesS`/`skipWhitespaceS` wrappers:
+`ScannerStateIx.advance`, `_.advanceN`, `_.emit`, `_.emitAt`,
+`ScannerStateIx.skipSpacesS`, `_.skipWhitespaceS`), each defined by a
+single record update touching only `cursor` and/or `tokens`. The
+state-level set collapses to 18 `rfl`s; the cursor-level set
+contributes nothing (the documentation note in `DpInv.lean` records
+this for downstream consumers). The result is a ~4× LOC reduction
+(580 → 145) and a ~36× theorem reduction (36 → 18 trivial `rfl`s
+discharged by `simp` at every downstream call site). This is the
+third instance of the *substrate elimination* pattern documented in
+Reflection 122 (cursor-keyed scalar scanners eliminating per-scanner
+`_preserves_simpleKey` lemmas) and Reflection 117 (the indexed
+cursor's bound carrier eliminating `hnoDoc` preconditions) —
+generalized in Reflection 124 to "when *all* arguments of a legacy
+lemma become cursor-typed on the indexed side, the lemma is vacuous;
+when *the function's body* reduces to a single record update on
+non-target fields, the lemma reduces to `rfl`".
 
 **Step 6f.3b3.basic.closure LANDED 2026-05-25** (~538 LOC closure;
 file now 988 LOC total). Discharged the state-dependent §3 of
@@ -10669,15 +10719,31 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
               session); future `.dpinv` / `.helpers` sub-sessions will
               add siblings under `Preserve/`. Single session. No axioms,
               no `sorry`, build green at 457/457 jobs.
-            ▸ **6f.3b3.flowmono.preserve.dpinv** *(~580 LOC; legacy
-              lines 2166–2745; target file
-              `FlowMonoChain/Preserve/DpInv.lean`)*. Per-stage
-              `_preserves_dp` / `_preserves_indents` / `_preserves_ek`
-              triplet for `advance`, `consumeNewline`, `skipSpaces`,
-              `skipWhitespace`, `emitAt`, `collectHexDigitsLoop`,
-              `parseHexEscape`, `processEscape`, `foldQuotedNewlinesLoop`,
+            ▸ **6f.3b3.flowmono.preserve.dpinv** ✅ **LANDED 2026-05-26**
+              *(~145 LOC actual vs. ~580 LOC legacy target; new file
+              `FlowMonoChain/Preserve/DpInv.lean`)*. The legacy
+              triplet was per-stage `_preserves_dp` /
+              `_preserves_indents` / `_preserves_ek` for `advance`,
+              `consumeNewline`, `skipSpaces`, `skipWhitespace`,
+              `emitAt`, `collectHexDigitsLoop`, `parseHexEscape`,
+              `processEscape`, `foldQuotedNewlinesLoop`,
               `foldQuotedNewlines`, `collectDoubleQuotedLoop`,
-              `scanDoubleQuoted` (three near-identical mirror blocks).
+              `scanDoubleQuoted` (12 functions × 3 fields = 36
+              theorems, each a non-trivial induction over fuel /
+              case-split over `Except` injections). On the indexed
+              substrate, 10 of the 12 functions are *cursor-only*
+              (operate on `IxCursor input`, which carries no
+              `directivesPresent`/`indents`/`explicitKeyLine` fields)
+              and the remaining 2 (`ScannerStateIx.advance`,
+              `_.emitAt`) plus the state-level wrappers
+              (`advanceN`, `emit`, `skipSpacesS`, `skipWhitespaceS`)
+              are single record updates touching only `cursor` and/or
+              `tokens`. The 36 legacy theorems collapse to 18
+              one-line `@[simp] rfl` lemmas (6 primitives × 3 fields)
+              plus a doc note explaining the elimination for the
+              cursor-only set. Single session. No axioms, no `sorry`,
+              build green at 459/459 jobs. See **Reflection 124** for
+              the substrate-elimination generalization.
             ▸ **6f.3b3.flowmono.preserve.helpers** *(~550 LOC; legacy
               lines 2747–~3300; target file
               `FlowMonoChain/Preserve/Helpers.lean`)*. `AllTokensOnLine`
@@ -12683,6 +12749,118 @@ Speculative organization invites stub files, empty namespaces, and
 import cycles. The right rule is: split when the third sibling file
 becomes inevitable (more than one sibling at the same boundary), not
 when the first is "looking lonely".
+
+</details>
+
+##### **Reflection 124 (new, 2026-05-26)**: when *all* arguments of a legacy lemma become cursor-typed on the indexed side, the lemma is vacuous; when *the function's body* reduces to a single record update on non-target fields, the lemma reduces to `rfl`. A 36-theorem block collapsed to 18 trivial `rfl` lines and 10 vacuous entries.
+
+The `.flowmono.preserve.dpinv` port (legacy `EmitterScannability.lean`
+lines 2166–2745, ~580 LOC, **36 theorems**) was projected as the
+heaviest sub-session of `.flowmono.preserve` because the legacy
+proofs each involve fuel induction + `Except`-injection case splits.
+What actually landed was a **~145 LOC** file with **18 one-line
+`@[simp] rfl` lemmas** and a documentation note covering the
+remaining 18 legacy theorems. The substrate-driven elimination
+generalizes the patterns from Reflection 117 (`hnoDoc` precondition
+retired by the indexed cursor's bound carrier) and Reflection 122
+(cursor-keyed scalar scanners eliminate per-scanner
+`_preserves_simpleKey` lemmas) into a single principle.
+
+<details><summary>The two elimination kinds — vacuous (cursor-only
+function) and `rfl` (state-level single record update).</summary>
+
+**Kind 1 — vacuous (10 of 12 legacy entries).** The legacy
+`consumeNewline_preserves_dp`, `skipSpaces_preserves_indents`,
+`scanDoubleQuoted_preserves_ek`, etc. all take a
+`s : ScannerState` and assert that some field is unchanged after
+running a function on `s`. On the indexed side, the analogs
+(`consumeLineBreak`, `skipSpaces`, `skipWhitespace`,
+`collectHexDigitsLoopIx`, `parseHexEscapeIx`, `processEscapeIx`,
+`skipBlankLinesLoopIx`, `foldQuotedNewlinesIx`,
+`collectDoubleQuotedLoopIx`, `scanDoubleQuotedIx`) operate on
+`IxCursor input` — a 2-field record with no `directivesPresent` /
+`indents` / `explicitKeyLine`. The "preservation" question is
+**type-theoretically meaningless**: there are no fields to preserve.
+The dispatcher's wrapping (`{ s with cursor := cAfter }.emitAt
+startPos tok hBound` in `IndexedDispatch.scanContentDispatchIx`'s
+`"`-branch) is the only way these can affect a `ScannerStateIx`, and
+that wrapping preserves all unmentioned fields by Lean's
+record-update semantics.
+
+**Kind 2 — `rfl` (the remaining 2 of 12 + 4 wrappers).** The legacy
+`advance_preserves_dp` and `emitAt_preserves_dp` have direct
+indexed analogs at the state level. Each is defined as a single
+record update touching only `cursor` (advance) or `tokens` (emitAt) —
+preservation of any other field is `rfl`. The same is true for the
+state-level wrappers `advanceN`, `emit`, `skipSpacesS`,
+`skipWhitespaceS` (the last two thread their cursor-level functions
+through `{ s with cursor := ... }`). 6 primitives × 3 fields = 18
+`@[simp] rfl` lemmas, every one closed by `rfl`.
+
+</details>
+
+<details><summary>Why this is a substrate-level win, not a
+proof-tactic refinement.</summary>
+
+The legacy 36-theorem block exists because `ScannerState` is a single
+"everything-in-one-record" type and `consumeNewline` / `skipSpaces` /
+`scanDoubleQuoted` etc. are typed as
+`ScannerState → ... ScannerState`. To prove preservation, the legacy
+must (a) unfold the function, (b) induct over the internal fuel
+counter, (c) case-split on every `Except`-injection branch, and
+(d) chain transitivity through the recursive call. The structural
+shape of the function dictates the proof shape.
+
+The indexed substrate's *separation of concerns* — cursors carry
+position+bound, `ScannerStateIx` carries the rest — means that a
+function that only needs position can be typed as
+`IxCursor → ... IxCursor`. The function never touches the rest of
+the state because *it never sees it*. The preservation property is
+then about how the *caller* (the dispatcher) wraps the cursor result
+back into a state, not about the function's internal recursion. The
+caller's wrapping is always a `{ s with cursor := ..., tokens := ...
+}` record update — exactly the shape that record-update preservation
+discharges by `rfl`.
+
+This is the same substrate insight as Reflection 117 (bound carrier
+makes preconditions structural) and Reflection 122 (cursor-keyed
+scalars make `_preserves_simpleKey` unnecessary), generalized: **type
+the function by its data dependencies, not by its host context, and
+preservation theorems collapse to a doc-note plus a handful of
+`rfl`s on the host's record updates**. The four substrate
+simplifications (Reflections 117, 119 retiring `noDoc`, 122 retiring
+per-scanner SK lemmas, 124 retiring the 36-theorem dpinv block) all
+exemplify this principle in different parts of the indexed port.
+
+</details>
+
+<details><summary>How to apply: before porting an N-function ×
+M-field preservation table, audit which of the N indexed analogs are
+cursor-typed. Each one drops to a doc note.</summary>
+
+The audit takes a few minutes per legacy lemma block — grep for the
+indexed function name, check its signature. If the signature returns
+`Option (X × IxCursor input)` or `Except E (X × IxCursor input)`
+(cursor-only), the preservation lemma is *vacuous* on the indexed
+side. If it returns `ScannerStateIx input` and the definition is a
+single `{ s with cursor := ..., tokens := ... }` record update, the
+preservation lemma is `rfl`. Only the residue — functions that
+genuinely mutate the target field — needs a real proof.
+
+The corollary for porting prediction: a planned LOC budget based on
+the legacy line count is an *upper bound*. For preservation-heavy
+sub-sessions (dpinv-style "everything stays the same except cursor
+and tokens"), the actual budget can be 4× to 10× smaller. Don't
+front-load the schedule with the legacy LOC count; check the
+substrate first.
+
+The cost-side warning: this elimination only works when the
+substrate has been *correctly* refined. If a cursor-typed function
+secretly carries hidden state via a side-channel (a `let` binding
+threaded through, or a state-level helper invoked under-the-hood),
+the apparent `rfl` will fail and the substrate has a bug to fix
+before the port resumes. The `rfl` check is a fast sanity test on
+the substrate's invariants.
 
 </details>
 
