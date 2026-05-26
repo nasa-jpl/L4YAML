@@ -6,6 +6,7 @@ import L4YAML.Proofs.Output.IndexedEmitterScannability.FlowMonoChain.Basic
 import L4YAML.Proofs.Output.IndexedEmitterScannability.FlowMonoChain.Preserve.Step
 import L4YAML.Proofs.Output.IndexedEmitterScannability.FlowMonoChain.Preserve.DpInv
 import L4YAML.Proofs.Output.IndexedEmitterScannability.FlowMonoChain.Preserve.Helpers
+import L4YAML.Proofs.Output.IndexedEmitterScannability.FlowMonoChain.Maintenance.FlowDispatch
 
 /-! # `IndexedEmitterScannability.FlowMonoChain` — re-export shim
 
