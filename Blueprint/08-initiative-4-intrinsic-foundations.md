@@ -1820,7 +1820,7 @@ not in-place axiom-to-theorem promotion — the latter is impossible
 when the axiom's hypothesis is strictly weaker than what the
 stronger lemma derives).
 
-**Next session**: **Step 6f.3b3.basic closure — Port the deferred
+**Next session**: **Step 6f.3b3.basic.closure — Port the deferred
 state-dependent §2.4 of legacy
 `Proofs/Output/EmitterScannability.lean`** into
 `Proofs/Output/IndexedEmitterScannability/Basic.lean` (~270 LOC).
@@ -10315,65 +10315,88 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
         in `ScanChain.lean`: +70 LOC.
 
   ▸ **6f.3b3.{basic,scanchain,flowmono,filteredgrowth,emitscans,parsestream,roundtrip}**
-    *(sub-sessions, one per file)*. Migrate each section of the legacy
+    *(sub-sessions, one per file — further split into per-section
+    slices for clean session scope; see sub-step decomposition below)*.
+    Migrate each section of the legacy
     `Proofs/Output/EmitterScannability.lean` into its corresponding
     skeleton file under `Proofs/Output/IndexedEmitterScannability/`,
     consuming the indexed primitives from `.primitives.*` and the
-    indexed scanner internals from `.internals`.
+    indexed scanner internals from `.internals`. Each *file-level*
+    sub-step is further decomposed into *section-level* sub-sessions
+    keyed to legacy line ranges, so each session has an unambiguous
+    scope (target legacy lines, deliverable LOC estimate, expected
+    consumers). The decomposition follows the same pattern as
+    `6f.3b3.internals.{utility,chain,progress.{leaf,capstone}}` —
+    multi-session sub-steps for any slice estimated >800 LOC.
 
-      ▸ **6f.3b3.basic** ⏳ **PARTIAL LANDING 2026-05-25** (~450 LOC of
-        ~700 LOC target; value-level slice complete, state-dependent
-        §2.4 closure deferred to follow-up).
+      ▸ **6f.3b3.basic** *(file-level; ~720 LOC total across 2
+        sub-sessions)*. Maps to legacy lines 76–841.
 
-        **Landed (450 LOC)**:
-          • §1 Escape Character Properties (~50 LOC): pure value-level
-            `escapeChar_passthrough_is_valid`, `escapeChar_output_nbJson`.
-          • §2.1 escapeString Decomposition (~50 LOC):
-            `emit_nonempty`, `string_foldl_toList`,
-            `escapeString_foldl_shift`, `escapeString_nil`,
-            `escapeString_cons`.
-          • §2.2 First-Character Properties (~80 LOC):
-            `escapeChar_head_not_quote`, `escapeChar_head_not_linebreak`,
-            `escapeChar_output_no_linebreak`, `escapeChar_nonempty`.
-          • §2.3 escapeString Character Properties (~60 LOC):
-            `foldl_append_toList_eq_flatMap`, `escapeString_mem_iff`,
-            `escapeString_all_nbJson`, `escapeString_no_linebreak`.
-          • §2.4 value-level helpers (~210 LOC):
-            `escapeTag_not_linebreak`, `escapeChar_passthrough_toList`,
-            `escapeChar_named_toList`, `scannerHexCheck`,
-            `hexNibble_is_hex`, `hexNibble_lt128`, `hex_two_foldl_bound`,
-            `escapeChar_hex_structure`, `push_append_ofList_eq`,
-            `append_ofList_nil`, `hex_foldl_roundtrip`.
+          ▸ **6f.3b3.basic.value** ✅ **LANDED 2026-05-25**
+            (~450 LOC; legacy lines 76–576 + value-level helpers from
+            lines 577–841). Pure value-level lemmas (no scanner state
+            dependency) — port verbatim with namespace adjustments.
 
-        All landed declarations are pure value-level (no scanner state
-        involved); each ports verbatim from legacy with namespace
-        adjustments only. `#print axioms` shows the foundational triple
-        `[propext, Classical.choice, Quot.sound]` (plus expected
-        `native_decide` kernel decisions on the `Fin n` enumerations).
-        Build green at 453/453 jobs.
+            Deliverables (21 declarations):
+              • §1 Escape Character Properties (~50 LOC):
+                `escapeChar_passthrough_is_valid`,
+                `escapeChar_output_nbJson`.
+              • §2.1 escapeString Decomposition (~50 LOC):
+                `emit_nonempty`, `string_foldl_toList`,
+                `escapeString_foldl_shift`, `escapeString_nil`,
+                `escapeString_cons`.
+              • §2.2 First-Character Properties (~80 LOC):
+                `escapeChar_head_not_quote`,
+                `escapeChar_head_not_linebreak`,
+                `escapeChar_output_no_linebreak`,
+                `escapeChar_nonempty`.
+              • §2.3 escapeString Character Properties (~60 LOC):
+                `foldl_append_toList_eq_flatMap`,
+                `escapeString_mem_iff`, `escapeString_all_nbJson`,
+                `escapeString_no_linebreak`.
+              • §2.4 value-level helpers (~210 LOC):
+                `escapeTag_not_linebreak`,
+                `escapeChar_passthrough_toList`,
+                `escapeChar_named_toList`, `scannerHexCheck`,
+                `hexNibble_is_hex`, `hexNibble_lt128`,
+                `hex_two_foldl_bound`, `escapeChar_hex_structure`,
+                `push_append_ofList_eq`, `append_ofList_nil`,
+                `hex_foldl_roundtrip`.
 
-        **Deferred (~270 LOC, follow-up sub-session)** — staged in the
-        file's doc-comment under "Discharge plan for staged axioms":
-          • Indexed correspondence helpers (~80 LOC): `peek_corrIx`,
-            `eof_corrIx`, `advance_non_newline_corrIx`,
-            `advance_line_non_newline_ix`. Currently only the legacy
-            `ScannerState`-based versions exist in
-            `Proofs/Coupling/CouplingBridge.lean`.
-          • §2.4 state-dependent helpers (~70 LOC):
-            `peek_of_chars_consIx`, `processEscapeIx_named_ok`,
-            `processEscapeIx_named_content`, `advance_line_of_peekIx`,
-            `processEscapeIx_hex_ok`.
-          • §2.4 core loop lemma (~120 LOC):
-            `collectDoubleQuotedLoopIx_escapeString_succeeds`.
-            Legacy proof structure (induction on `content_rest` with
-            passthrough / named-escape / hex-escape sub-cases) ports
-            directly once the correspondence helpers exist. Shape
-            adjustment needed: `Option` (indexed) vs `Except` (legacy)
-            for `collectDoubleQuotedLoopIx` / `processEscapeIx`
-            return types.
+            Build green at 453/453 jobs. `#print axioms` on each shows
+            the foundational triple `[propext, Classical.choice,
+            Quot.sound]` (plus expected `native_decide` kernel
+            decisions on `Fin n` enumerations).
 
-        **Cost**: ~450 LOC landed this session. Estimated ~270 LOC
-        remaining for the `.basic` closure follow-up.
+          ▸ **6f.3b3.basic.closure** *(next session; ~270 LOC; legacy
+            lines 355–841 state-dependent portion)*. Discharge the
+            state-dependent §2.4 closure of `Basic.lean`.
+
+            Deliverables:
+              • **Indexed correspondence helpers** (~80 LOC) — twins
+                of `Proofs/Coupling/CouplingBridge.lean` for the
+                `ScannerStateIx input` + `IxCursor input` substrate:
+                `peek_corrIx`, `eof_corrIx`,
+                `advance_non_newline_corrIx`,
+                `advance_line_non_newline_ix`. May be placed in
+                `Basic.lean` §2.4-prep or hoisted into a shared
+                `CouplingBridgeIx.lean` if downstream sub-files reuse.
+              • **§2.4 state-dependent helpers** (~70 LOC):
+                `peek_of_chars_consIx`, `processEscapeIx_named_ok`,
+                `processEscapeIx_named_content`,
+                `advance_line_of_peekIx`, `processEscapeIx_hex_ok`.
+              • **§2.4 core loop lemma** (~120 LOC):
+                `collectDoubleQuotedLoopIx_escapeString_succeeds`.
+                Mirrors legacy lines 577–840; structure ports directly
+                once correspondence helpers exist. Shape adjustment:
+                `Option` (indexed) vs `Except` (legacy) for
+                `collectDoubleQuotedLoopIx` / `processEscapeIx` return
+                types.
+
+            Prerequisites: 6f.3b3.basic.value (landed).
+            Consumers: `EmitScans.lean` and `ParseStream.lean` for the
+            full pipeline acceptance result; `RoundTrip.lean` for the
+            content-fidelity layer.
 
       ▸ **6f.3b3.scanchain** ✅ **EFFECTIVELY DONE 2026-05-24/25**
         (~560 LOC across prior `.utility` + `.chain` + `.capstone`
@@ -10386,6 +10409,198 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
         `ScanChainIx.bound_invariant` strict + `fuel_bound`
         (`.capstone` slice). No further work required for the
         `.scanchain` sub-step.
+
+      ▸ **6f.3b3.flowmono** *(file-level; ~3870 LOC total across 5
+        sub-sessions; the single largest indexed-port file in the
+        Initiative)*. Maps to legacy lines 1301–5586. Target file:
+        `Proofs/Output/IndexedEmitterScannability/FlowMonoChain.lean`.
+        Sub-decomposition is keyed to legacy section boundaries; the
+        three "preservation" sub-sessions may further sub-split once
+        the structure is concrete at port time.
+
+          ▸ **6f.3b3.flowmono.inductive** *(~70 LOC; legacy lines
+            1301–1388)*. `FlowMonoChainIx` inductive + immediate
+            helpers: `.toScanChainIx`, `.flowLevel_ge_start` /
+            `_end`, `.single`, `.trans`, `.weaken`, `.tokens_mono`.
+            Single session.
+          ▸ **6f.3b3.flowmono.skaf** *(~420 LOC; legacy lines
+            1388–1805)*. `SimpleKeyAboveFloorIx` predicate +
+            maintenance machinery: 5 constructors, preprocess +
+            4 dispatcher maintenance lemmas, top-level
+            `scanNextTokenIx_maintains_SKAFIx`. Single session.
+          ▸ **6f.3b3.flowmono.preserve** *(~1500 LOC; legacy lines
+            1806–~3300)*. Per-stage `_preserves_dp`,
+            `_preserves_indents`, prefix-preservation core:
+            `scanNextTokenIx_preserves_prefix_of_SKAFIx`,
+            `scanNextTokenIx_prefix_and_SKAF_inv`. **Likely needs
+            further sub-split at port time** (target: 2–3 sub-sessions
+            keyed to dispatcher layers).
+          ▸ **6f.3b3.flowmono.maintenance** *(~1100 LOC; legacy lines
+            ~3300–~4400)*. Per-dispatcher SKAF maintenance + state-
+            field preservation lemmas. **Likely needs further sub-
+            split at port time** (target: 2 sub-sessions keyed to
+            structural vs content dispatchers).
+          ▸ **6f.3b3.flowmono.sync** *(~1200 LOC; legacy lines
+            ~4400–5586)*. Sync proofs:
+            `dispatchFlowIndicators_preserves_sync`,
+            `scanNextToken_preserves_sync`,
+            `FlowMonoChain_preserves_raw_prefix`, `scanFiltered_of_chain`,
+            `scanFiltered_of_chain_eq`. **Likely needs further
+            sub-split at port time** (target: 2 sub-sessions).
+
+      ▸ **6f.3b3.filteredgrowth** *(file-level; ~1320 LOC total across
+        4 sub-sessions)*. Maps to legacy lines 5587–6908. Target file:
+        `Proofs/Output/IndexedEmitterScannability/FilteredGrowth.lean`.
+
+          ▸ **6f.3b3.filteredgrowth.firstfiltered** *(~313 LOC; legacy
+            lines 5587–5899)*. First-filtered-token lemmas for flow-
+            content scanners (Tier-2-Turn-1 lemmas). Single session.
+          ▸ **6f.3b3.filteredgrowth.infra** *(~170 LOC; legacy lines
+            5900–6070)*. Filtered token array growth infrastructure:
+            `Array_setIfInBounds_filter_monoIx`,
+            `preprocess_filtered_monoIx`, `allowDir_ite_filter_monoIx`,
+            `List_filter_length_ge_oneIx`,
+            `filtered_grows_of_extended_prefixIx`,
+            `filtered_grows_of_any_newIx`. Single session.
+          ▸ **6f.3b3.filteredgrowth.perdispatch** *(~688 LOC; legacy
+            lines 6071–6758)*. Per-dispatch-layer filtered growth:
+            `scanDocumentStart_filtered_growsIx`,
+            `scanDocumentEnd_filtered_growsIx`,
+            `scanYamlDirective_new_token_eqIx`,
+            `scanTagDirective_new_token_eqIx`,
+            `scanDirective_filtered_growsIx`,
+            `dispatchStructural_filtered_monoIx`,
+            `dispatchFlowIndicators_filtered_growsIx`,
+            `scanBlockEntry_filtered_growsIx`,
+            `scanKey_filtered_growsIx`, `scanValue_filtered_growsIx`,
+            `dispatchBlockIndicators_filtered_growsIx`,
+            `dispatchContent_new_not_placeholderIx`,
+            `dispatchContent_filtered_growsIx`. **May sub-split** at
+            port time (target: 2 sub-sessions for structural+flow vs
+            block+content dispatchers).
+          ▸ **6f.3b3.filteredgrowth.turn3** *(~150 LOC; legacy lines
+            6759–6908)*. Dispatch-level filtered growth (Turn 3):
+            `scanNextToken_via_flow_dispatch_filtered_growsIx`,
+            `scanNextToken_via_block_dispatch_filtered_growsIx`,
+            `scanNextToken_via_content_dispatch_filtered_growsIx`,
+            `scanNextToken_filtered_grows_in_flowIx`. Single session.
+
+      ▸ **6f.3b3.emitscans** *(file-level; ~1490 LOC total across 4
+        sub-sessions)*. Maps to legacy lines 6909–8399. Target file:
+        `Proofs/Output/IndexedEmitterScannability/EmitScans.lean`.
+
+          ▸ **6f.3b3.emitscans.chaingrew** *(~95 LOC; legacy lines
+            6909–7002)*. `ScanChainGrewIx` inductive (a `ScanChainIx`
+            plus a witness that *at least one* `p`-satisfying token
+            was added); helpers: `.toScanChainIx`, `.single`, `.trans`,
+            `ScanChainGrewIx_filtered_grows`,
+            `ScanChainGrewIx_of_scanNextTokenIx_eq`. Single session.
+          ▸ **6f.3b3.emitscans.flowvalue** *(~623 LOC; legacy lines
+            7003–7625)*. `EmitScansInFlowIx` predicate + per-value-
+            form lemmas: `emit_list_scans_in_flowIx` family,
+            `emitList_scans_emptyIx`, `emitList_scans_nonemptyIx`,
+            `emitPairList_first_charIx`,
+            `isValueCandidate_of_peekAt_blankIx`,
+            `scanNextToken_flow_valueIx`. **May sub-split** at port
+            time (target: 2 sub-sessions for predicate+helpers vs
+            per-value-form bodies).
+          ▸ **6f.3b3.emitscans.flowpair** *(~388 LOC; legacy lines
+            7626–8013)*. `EmitPairListScansInFlowIx` + main proof
+            `emit_scans_in_flowIx` (induction over `Grammable v
+            inFlow`). Single session.
+          ▸ **6f.3b3.emitscans.toplevel** *(~120 LOC; legacy lines
+            8281–8399)*. Top-level composition
+            `emit_produces_valid_yamlIx`: `scanFiltered (emit v)`
+            succeeds and produces a valid token stream. Single
+            session.
+
+      ▸ **6f.3b3.parsestream** *(file-level; ~440 LOC; single
+        session)*. Maps to legacy lines 8400–8874. Target file:
+        `Proofs/Output/IndexedEmitterScannability/ParseStream.lean`.
+
+        Deliverables:
+          • **§4 Full Pipeline: Emit → Scan → Parse** (~90 LOC; legacy
+            lines 8400–8489): `scanFiltered_exists_of_isOkIx`,
+            `parseStreamLoop_single_docIx`, `emit_parsed_grammableIx`.
+          • **§5.2 Scanner content preservation** (~344 LOC; legacy
+            lines 8531–8874): `scanFiltered_emitScalar_contentIx`,
+            `scanFiltered_emitScalar_valsIx`, `parseDirectives_skipIx`,
+            `parseStream_three_tokens_scalarIx`,
+            `parseYamlRaw_emitScalar_valueIx`.
+
+      ▸ **6f.3b3.roundtrip** *(file-level; ~1870 LOC total across 4
+        sub-sessions; **carries forward the 7 pre-existing `sorry`
+        warnings** from the legacy file — per-`sorry` discharge
+        decisions made at port time)*. Maps to legacy lines 8490–8530
+        + 8875–10741. Target file:
+        `Proofs/Output/IndexedEmitterScannability/RoundTrip.lean`.
+
+          ▸ **6f.3b3.roundtrip.fidelity** *(~230 LOC; legacy lines
+            8490–8530 + 8875–9062)*. §5 Content Fidelity
+            Infrastructure: `resolveAliases_scalarIx`,
+            `stripAnchors_scalarIx`, `compose_scalar_contentIx`,
+            `contentEq_scalar_contentIx`, `contentEq_scalar_composeIx`,
+            `unwindIndents_noop_short_stackIx`,
+            `scanFiltered_tokens_eq_of_chain_short_stackIx`,
+            `ScanChainIx_tokens_mono`,
+            `scanNextTokenIx_prefix_and_sk_inv`,
+            `ScanChainIx_preserves_raw_prefix`. Single session.
+          ▸ **6f.3b3.roundtrip.filterinfra** *(~94 LOC; legacy lines
+            8875–8968)*. §5.4.G filtered token tracking:
+            `emitPairList_toList_ne_nilIx`,
+            `scanFlowSequenceEnd_tokens_eqIx`,
+            `scanFlowMappingEnd_tokens_eqIx`,
+            `scanNextToken_flow_close_seq_outermost_extIx`,
+            `scanNextToken_flow_close_mapping_outermost_extIx`. Single
+            session.
+          ▸ **6f.3b3.roundtrip.maintheorem** *(~1500 LOC; legacy lines
+            8969–10500)*. Main theorem: filtered growth through
+            `scanNextTokenIx`. Includes
+            `scanNextToken_filtered_growsIx`,
+            `ScanChain_filtered_growsIx`,
+            `ScanChain_filtered_prefixIx`,
+            `scanFiltered_boundary_tokensIx`,
+            `scanFlowSequenceStart_filteredIx`,
+            `scanFlowMappingStart_filteredIx`,
+            `scanFlowEntry_filteredIx`, `ScanChain_deterministicIx`,
+            `ScanChainIx.split`, the body characterizations
+            (`emitList_body_filtered_characterizationIx`,
+            `emitPairList_body_filtered_characterizationIx`), and the
+            non-empty structure theorems
+            (`scanFiltered_emitSeq_nonempty_structureIx`,
+            `scanFiltered_emitMap_nonempty_structureIx`,
+            `parseStream_emitSequenceIx`, `parseStream_emitMappingIx`,
+            `parseStream_accepts_emit_tokensIx`,
+            `emit_produces_single_documentIx`,
+            `emit_parse_succeedsIx`,
+            `emit_parseYaml_succeedsIx`). **Almost certainly needs
+            further sub-split at port time** (target: 3 sub-sessions
+            keyed to growth-chain vs body-characterization vs
+            structure-proof phases).
+          ▸ **6f.3b3.roundtrip.universal** *(~280 LOC; legacy lines
+            10501–10741)*. Universal round-trip:
+            `contentEq_sequence_itemsIx`,
+            `contentEq_mapping_pairsIx`,
+            `contentEq_seq_style_irrelIx`,
+            `contentEq_map_style_irrelIx`,
+            `emit_roundtrip_sequence_content_eqIx`,
+            `emit_roundtrip_mapping_content_eqIx`,
+            `emit_roundtrip_content_eqIx`, and the top-level
+            **`universal_roundtripIx`**:
+            `∀ v, GrammableIx v false → parseYaml (emit v) = .ok
+            [stripAnnotations-recovered v]`. Single session.
+
+      **Cumulative scope summary**: 5 file-level sub-steps (`.flowmono`
+      through `.roundtrip`) decompose into 16 section-level sub-
+      sessions for a total of **17 future sessions** to complete 6f.3b3
+      (excluding `.basic.value` already landed and `.scanchain`
+      already done). The 5 sub-sessions marked "may sub-split at port
+      time" may expand the count to ~22 sessions if needed for clean
+      scope. Each sub-session is sized for a single focused multi-hour
+      Claude Code session: target ~200–700 LOC of indexed proof port
+      per session, with the largest single-session targets (~1500 LOC
+      `.flowmono.preserve`, `.roundtrip.maintheorem`) flagged for
+      further sub-splitting at port time once the structure surfaces.
 
 ##### **6f.3c — Coupled cutover (6f.4 + 6f.5)** *(deferred to follow-up
   session)*. The Blueprint's original "land 6f.3+6f.5 in the same
