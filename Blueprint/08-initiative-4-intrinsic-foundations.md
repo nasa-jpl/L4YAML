@@ -1837,6 +1837,17 @@ After `.flowmono` closes, sub-sessions follow in dependency order:
 `FilteredGrowth (~1320 LOC)` → `EmitScans (~1490 LOC)` →
 `ParseStream (~440 LOC)` → `RoundTrip (~1870 LOC)`.
 
+**Queued after 6f.3b3 closes**: **Step 6g — `IndentEntryIx`
+sum-type refactor** (~1000 LOC, multi-session). Promotes the
+indent-entry type so the sentinel/real distinction is structural,
+eliminating `ScannerSurfCorrIx`'s `indent_cols_nonneg` field
+(the one genuinely ghost-shaped piece of that structure — see
+Reflection 120). Must precede 6f.4 cutover so the refactor lands
+against the staging file names. **Do not start mid-6f.3b3**:
+Lesson 3 ("discharge before strengthening") — touching the
+indent-stack type mid-port re-baselines every in-flight chain
+proof.
+
 **Step 6f.3b3.basic.closure LANDED 2026-05-25** (~538 LOC closure;
 file now 988 LOC total). Discharged the state-dependent §3 of
 `Proofs/Output/IndexedEmitterScannability/Basic.lean`:
@@ -12142,6 +12153,85 @@ form is more explicit about what each step contributes.
 
 </details>
 
+##### **Reflection 120 (new, 2026-05-25)**: not every `Prop`-valued
+auxiliary structure is a "ghost predicate" — coupling/simulation
+relations between two parallel formalizations are a distinct
+construct that the indexed-types story does not eliminate. The
+flagship Initiative-3 ghost predicate `EmitScansInFlow v` was a
+free-standing `Prop` attached to a single value (`v : Value`) to
+make up for missing type information. By contrast,
+`ScannerSurfCorrIx sc sp` (`ScanChain.lean` §1.3) relates two
+different data structures living in two different worlds:
+`sc : ScannerStateIx input` (byte-driven scanner state) and
+`sp : SurfPos` (grammar surface position, `⟨chars, col⟩`). Three
+of its four fields (`chars_from`, `col_eq`, `input_prefix`) are
+genuine coupling — they tie one side to the other and have no
+single-value home. The Initiative-4 P1 goal targets ghost
+predicates threaded *next to a single value* in existential
+bundles; it does not target two-world simulation relations.
+
+<details><summary>How to apply: distinguishing coupling from
+ghost.</summary>
+
+The Initiative-4 ghost-predicate critique applies to a `Prop` that
+lives in `Σ x, P x` (or `∃ x, P x` carried along with a value).
+Test: can the predicate be eliminated by enriching the
+*single* value's type? If yes, it's a candidate ghost. If no —
+because the predicate inherently relates *two distinct values*
+that come from different formalizations — it's a coupling
+relation, and the right response is to document the two-world
+nature, not to push for elimination.
+
+`ScannerSurfCorrIx` fails the test: enriching only `sc` or only
+`sp` does not capture the relation between them. The two values
+come from genuinely different sources (the imperative scanner vs.
+the declarative grammar combinator stack), and the simulation
+between them is foundational, not incidental. This is the same
+shape as bisimulation in operational semantics, logical relations
+in type theory, and refinement in program calculation — a
+well-known artifact, not an Initiative-3 mistake.
+
+</details>
+
+<details><summary>The one genuinely ghost-shaped field, and the
+intrinsic promotion path (deferred to Step 6g).</summary>
+
+`ScannerSurfCorrIx` has one field that *does* fail the test:
+`indent_cols_nonneg : ∀ i (hi : i < sc.indents.size), i > 0 →
+sc.indents[i].column ≥ 0` mentions only `sc`, not `sp`. It was
+bundled into the correspondence for ergonomic threading. The
+intrinsic-promotion path: refine `IndentEntryIx` from the current
+flat record `{ column : Int; isSequence : Bool }` to a sum type
+`inductive IndentEntryIx | sentinel | real (column : Nat)
+(isSequence : Bool)`. The "non-negative at non-sentinel positions"
+property becomes a *constructor distinction* — `column : Nat` on
+`.real`, no column at all on `.sentinel`. No separate `Prop`
+needed; `indent_cols_nonneg` drops out of `ScannerSurfCorrIx`
+entirely.
+
+**Blast radius (measured 2026-05-25)**:
+- 354 `currentIndent` references (returns `Int`, used in
+  arithmetic comparisons across every scanner function).
+- 290 `indents.{back?,push,pop,size}` operations.
+- 30 direct `indents[…]` accesses.
+- 17 `.column` projections.
+- Sentinel `-1` is currently used as an `Int`-typed value in
+  arithmetic (`col > s.currentIndent` etc.), so every comparison
+  site needs the sentinel arm explicit.
+
+**Realistic LOC delta**: 1000+ across the indexed substrate plus
+indent-stack-aware proofs (notably the §11/§12/§13 chains of
+`IndexedScannerPlainScalarValid.lean`, ~6234 LOC, heavily indent-
+stack invariant-laden).
+
+**Timing**: deferred until 6f.3b3 closes. Lesson 3 ("discharge
+before strengthening") applies: mid-port retrofits of the indent-
+stack type would re-baseline every in-flight proof in the
+FlowMonoChain / FilteredGrowth / EmitScans / ParseStream /
+RoundTrip chain. The refactor is laid out as **Step 6g** below.
+
+</details>
+
 <details><summary>Sub-plan guardrails.</summary>
 
 **Sub-plan guardrails**:
@@ -12156,6 +12246,114 @@ form is more explicit about what each step contributes.
   Phase 1** (Guardrail 2). Do not quietly add a 24th item.
 
 </details>
+
+</details>
+
+##### Step 6g — Intrinsic invariant promotion: `IndentEntryIx` sum-type refactor *(planned; deferred until 6f.3b3 closes; precedes 6f.4 cutover)*
+
+<details><summary>Promote `IndentEntryIx` from `{ column : Int; isSequence : Bool }` to a sum type with structural sentinel/real distinction, eliminating the `indent_cols_nonneg` field from `ScannerSurfCorrIx`.</summary>
+
+**Motivation**: see Reflection 120. `ScannerSurfCorrIx`'s
+`indent_cols_nonneg` field is the one genuinely ghost-shaped
+piece — it asserts a property of `sc` alone (not the
+correspondence) and was bundled in for ergonomic threading.
+Refining the indent-entry type so the invariant becomes
+structural eliminates the `Prop` entirely.
+
+**Refactor target**:
+
+```lean
+-- Current (L4YAML/Scanner/IndexedState.lean:45)
+structure IndentEntryIx where
+  column : Int
+  isSequence : Bool
+
+-- Proposed
+inductive IndentEntryIx where
+  | sentinel
+  | real (column : Nat) (isSequence : Bool)
+```
+
+The `column = -1` sentinel becomes the `.sentinel` constructor;
+non-sentinel entries carry `column : Nat` so the non-negativity
+property is structural and decidable on the constructor.
+`ScannerSurfCorrIx`'s `indent_cols_nonneg` field is deleted —
+there is no `Prop` left to assert.
+
+**Effect on `currentIndent`**: the function currently returns
+`Int` with `-1` for the sentinel arm. It can either (a) keep the
+`Int` return type with the sentinel arm pattern-matching to
+`-1`, preserving every call site verbatim, or (b) return
+`Option Nat` and refactor every comparison site. Option (a) is
+the minimal-diff path; option (b) is the cleaner type but
+~1000 LOC of comparison-site edits. **Recommend option (a)** for
+Step 6g; option (b) becomes a separate follow-up if desired.
+
+**Blast radius** (measured 2026-05-25, see Reflection 120):
+- 354 `currentIndent` references
+- 290 `indents.{back?,push,pop,size}` operations
+- 30 `indents[…]` accesses
+- 17 `.column` projections
+- Touches `L4YAML/Scanner/IndexedState.lean` (definitions),
+  every `Scanner/IndexedXxx.lean` function that consults the
+  indent stack, and every proof file that threads indent-stack
+  invariants (notably `IndexedScannerPlainScalarValid.lean`
+  §11/§12/§13 chains, ~6234 LOC).
+
+**Realistic LOC delta**: 1000+ across the indexed substrate
+plus indent-stack-aware proofs. Plan as a multi-session refactor
+with sub-steps:
+- **6g.1 — Type refactor + scanner-side cutover** (~500 LOC).
+  Replace the structure definition, update every indent-stack
+  operation in `Scanner/IndexedState.lean`,
+  `Scanner/IndexedDispatch.lean`, and other indexed scanner
+  files. Pick option (a) `currentIndent : Int` for minimal-diff.
+  `lake build` green at end of session.
+- **6g.2 — Proof-side cutover** (~500 LOC). Update every proof
+  that uses `indents[i].column` to pattern-match on the
+  constructor instead. Drop `indent_cols_nonneg` field from
+  `ScannerSurfCorrIx` and all consumers (the field is now
+  vacuously true by type structure). `lake build` green at end
+  of session.
+- **6g.3 — Optional**: if cleanup uncovers other ghost-shaped
+  fields on `ScannerStateIx`, capture them as sub-issues; do
+  not include in 6g unless they fall out trivially from the
+  type refactor.
+
+**Sub-step DONE criterion**: `#print axioms` on
+`scanNextTokenIx_*` shows the foundational triple
+`[propext, Classical.choice, Quot.sound]` only (plus expected
+`native_decide` axioms). `ScannerSurfCorrIx` definition has
+exactly 3 fields. Build green at full project count.
+
+**Timing constraint**: must land *after* `6f.3b3` closes (all
+five sub-files of `Proofs/Output/IndexedEmitterScannability/`
+complete: `Basic` ✅, `ScanChain` ✅, `FlowMonoChain`,
+`FilteredGrowth`, `EmitScans`, `ParseStream`, `RoundTrip`) and
+*before* `6f.4` (proof staging file renames). Rationale: the
+6f.3b3 chain proofs are heavy `ScannerSurfCorrIx` consumers and
+will produce a much cleaner refactor if completed against the
+current type, then migrated as a single mechanical pass in 6g.
+Doing 6g mid-6f.3b3 means every in-flight session has to
+re-baseline; doing 6g after 6f.4 means refactoring across the
+renamed/flattened production files, which complicates the diff
+against `feature/intrinsic-foundations`. Step 6g sits cleanly
+between them.
+
+**Lesson 3 cite**: "Discharge before strengthening". Current
+phase is discharge (6f.3b3 chain proofs); 6g is structural
+strengthening of an already-discharged piece. Sequence
+preserves the lesson.
+
+**Why not pursue the cursor-side coupling fields**: see
+Reflection 120 for full reasoning. The other three
+`ScannerSurfCorrIx` fields (`chars_from`, `col_eq`,
+`input_prefix`) are genuine two-world coupling and not in scope
+for Step 6g. Eliminating them would require redesigning
+`IxCursor input` to carry the prefix-byte-size witness
+intrinsically (a deep redesign of `Indexed/CharStream.lean`).
+That work, if pursued, would be a separate Step 6h — not part
+of 6g.
 
 </details>
 
