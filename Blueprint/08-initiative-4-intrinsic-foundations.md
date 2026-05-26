@@ -1820,22 +1820,21 @@ not in-place axiom-to-theorem promotion — the latter is impossible
 when the axiom's hypothesis is strictly weaker than what the
 stronger lemma derives).
 
-**Next session**: **Step 6f.3b3.flowmono.skaf — Port the
-`SimpleKeyAboveFloorIx` predicate + maintenance lemmas** into
-`Proofs/Output/IndexedEmitterScannability/FlowMonoChain.lean` (~420
-LOC target, legacy lines 1388–1805). Specifically:
-`SimpleKeyAboveFloor` predicate + its 5 constructors
-(`_of_cleared_preserved`, `_of_preserved`, `_of_endLine_update`,
-`_of_flow_open`, `_of_flow_close`); the preprocess + per-dispatch
-maintenance proofs (`preprocess_preserves_flowLevel`,
-`preprocess_maintains_SKAF`, `dispatchStructural_maintains_SKAF`,
-`dispatchFlowIndicators_maintains_SKAF`,
-`dispatchBlockIndicators_maintains_SKAF`,
-`dispatchContent_maintains_SKAF`); and the capstone
-`scanNextToken_maintains_SKAF`. This is the second of 5 sub-sessions
-targeting `FlowMonoChain.lean` (the single largest indexed-port file
-at ~3870 LOC total). The `.inductive` slice landed 2026-05-25;
-`.basic` umbrella + `ScanChain` are fully landed from prior sessions.
+**Next session**: **Step 6f.3b3.flowmono.preserve — Port the
+`FlowMonoChain` prefix preservation infrastructure** into
+`Proofs/Output/IndexedEmitterScannability/FlowMonoChain.lean` (~1500
+LOC target, legacy lines 1806–~3300 of
+`Proofs/Output/EmitterScannability.lean`). Specifically:
+per-stage `_preserves_dp` / `_preserves_indents` proofs, sync proofs
+(`dispatchFlowIndicators_preserves_sync`,
+`scanNextToken_preserves_sync`), and the Step-4 prefix-preservation
+chain (`scanNextToken_preserves_prefix_of_SKAF`,
+`scanNextToken_prefix_and_SKAF_inv`,
+`FlowMonoChain_preserves_raw_prefix`). This is the third of 5
+sub-sessions targeting `FlowMonoChain.lean` (the single largest
+indexed-port file at ~3870 LOC total). The `.inductive` and `.skaf`
+slices landed 2026-05-25; `.basic` umbrella + `ScanChain` are fully
+landed from prior sessions.
 
 After `.flowmono` closes, sub-sessions follow in dependency order:
 `FilteredGrowth (~1320 LOC)` → `EmitScans (~1490 LOC)` →
@@ -1871,6 +1870,57 @@ targeting `FlowMonoChain.lean` (~3870 LOC total). Reflection 121
 captures the *predicate-vs-inductive* observation: the port was easy
 *because* the legacy version is a structural inductive, not a
 24-conjunct `Prop`-bundle — exactly the Initiative-3-vs-4 contrast.
+
+**Step 6f.3b3.flowmono.skaf LANDED 2026-05-25** (~644 LOC; file
+`FlowMonoChain.lean` grew from ~200 to 850 LOC). Ported §2 of legacy
+`EmitterScannability.lean` (lines 1388–1805): `SimpleKeyAboveFloorIx`
+predicate (3-conjunct flow-level-aware simple-key invariant) plus its
+five transport constructors (`_of_cleared_preserved`, `_of_preserved`,
+`_of_endLine_update`, `_of_flow_open`, `_of_flow_close`); preprocess
+maintenance (`scanNextTokenIx_preprocess_preserves_flowLevel`,
+`_preserves_simpleKeyStack`, `_tokens_size_le`, `_simpleKey_inv`,
+`_maintains_SKAFIx`) with the private `saveSimpleKeyIx_simpleKey_inv`
+helper; four per-dispatcher SKAF maintenance proofs
+(`dispatchStructural`, `dispatchFlowIndicators`, `dispatchBlockIndicators`,
+`dispatchContent`); and the capstone `scanNextTokenIx_maintains_SKAFIx`
+(reuses legacy's `set_option maxHeartbeats 400000` annotation). No
+axioms, no `sorry`, build green at 453/453 jobs, full test suite
+869/1020 passing.
+
+**Two indexed-substrate simplifications surfaced during the port**:
+
+1. *Content dispatcher.* The legacy `dispatchContent` needed
+   per-scanner `_preserves_simpleKey` / `_preserves_simpleKeyStack`
+   lemmas for `scanBlockScalar`, `scanPlainScalar`, `scanDoubleQuoted`,
+   `scanSingleQuoted` (the scalar functions operate on full state and
+   may touch `simpleKey.endLine`). In the indexed substrate, the same
+   scalar scanners are *cursor-keyed* (`scanBlockScalarIx : IxCursor
+   input → Nat → Option (...)`), and the post-scalar state is
+   reconstructed via `{ s with cursor := cAfter }.emitAt ... ` followed
+   by `{ ... with simpleKeyAllowed := false }`. The only fields
+   mutated are `cursor`, `tokens`, and `simpleKeyAllowed`, so
+   `simpleKey` and `simpleKeyStack` are preserved by `rfl` — all four
+   scalar arms close with `SimpleKeyAboveFloorIx_of_preserved _ s _ _
+   rfl rfl h_inv`. No per-scanner SK lemma is needed for the indexed
+   port. The legacy `_of_endLine_update` constructor is ported for
+   parity but is not actually invoked by `dispatchContent_maintains_SKAFIx`.
+
+2. *Flow-close stack disjunction.* The legacy
+   `dispatchFlowIndicators_maintains_SimpleKeyAboveFloor` derived
+   `s.simpleKeyStack.size > fl₀ ∨ fl₀ = 0` by unfolding
+   `scanFlowSequenceEnd` / `scanFlowMappingEnd` and case-splitting on
+   an internal `if`. The indexed versions
+   (`scanFlowSequenceEndIx` / `scanFlowMappingEndIx`) are
+   straight-line: `flowLevel := s.flowLevel - 1` directly with no
+   guard. The disjunction now falls out of `omega` given
+   `s'.flowLevel = s.flowLevel - 1` (private
+   `scanFlowSequenceEndIx_flowLevel_eq` /
+   `scanFlowMappingEndIx_flowLevel_eq`), `s'.flowLevel ≥ fl₀`, and
+   the sync invariant `s.simpleKeyStack.size ≥ s.flowLevel`.
+
+Second of 5 `.flowmono` sub-sessions; the next session `.preserve`
+ports the largest chunk (~1500 LOC) — per-stage `_preserves_dp` /
+`_preserves_indents` + sync proofs + Step-4 prefix preservation.
 
 **Step 6f.3b3.basic.closure LANDED 2026-05-25** (~538 LOC closure;
 file now 988 LOC total). Discharged the state-dependent §3 of
@@ -10501,11 +10551,19 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
             `.weaken`, `.tokens_mono`. Single session. No axioms, no
             `sorry`, build green at 453/453 jobs. See Reflection 121
             for the *predicate-vs-inductive* observation.
-          ▸ **6f.3b3.flowmono.skaf** *(~420 LOC; legacy lines
-            1388–1805)*. `SimpleKeyAboveFloorIx` predicate +
-            maintenance machinery: 5 constructors, preprocess +
-            4 dispatcher maintenance lemmas, top-level
-            `scanNextTokenIx_maintains_SKAFIx`. Single session.
+          ▸ **6f.3b3.flowmono.skaf** ✅ **LANDED 2026-05-25**
+            *(~644 LOC; legacy lines 1388–1805)*.
+            `SimpleKeyAboveFloorIx` predicate + maintenance machinery:
+            5 constructors, preprocess + 4 dispatcher maintenance
+            lemmas, top-level `scanNextTokenIx_maintains_SKAFIx`.
+            Single session. No axioms, no `sorry`, build green at
+            453/453 jobs. Two indexed-substrate simplifications
+            surfaced: (1) `dispatchContent` scalar branches preserve
+            `simpleKey` / `simpleKeyStack` by `rfl` (cursor-keyed
+            scanners + `emitAt` only mutate `cursor` / `tokens` /
+            `simpleKeyAllowed`); (2) flow-close stack disjunction
+            falls out of `omega` from straight-line subtraction
+            (legacy had an internal `if` requiring case-split).
           ▸ **6f.3b3.flowmono.preserve** *(~1500 LOC; legacy lines
             1806–~3300)*. Per-stage `_preserves_dp`,
             `_preserves_indents`, prefix-preservation core:
@@ -12327,6 +12385,104 @@ recursions. Together they form a two-axis taxonomy: pick the
 invariant is on `flowLevel : Nat`, a state field) AND inductive
 (because the invariant must hold at every visited state through
 the recursion).
+
+</details>
+
+##### **Reflection 122 (new, 2026-05-25)**: the indexed substrate's structural choices retire whole *classes* of legacy preservation lemmas.
+
+The `.flowmono.skaf` port (legacy ~420 LOC, ported ~644 LOC including
+docstrings + ported scaffolding) surfaced two places where the
+indexed substrate is *structurally* easier to prove maintenance over
+— not because the property is weaker, but because the indexed
+definitions chose a shape that obviates a whole class of helper
+lemmas the legacy proofs depended on.
+
+<details><summary>Indexed-substrate simplification #1: cursor-keyed
+scalar scanners eliminate per-scalar `_preserves_simpleKey` lemmas.</summary>
+
+The legacy `dispatchContent_maintains_SimpleKeyAboveFloor` uses
+8 helper lemmas (`scanBlockScalar_preserves_simpleKey` /
+`_preserves_simpleKeyStack`, ditto for `scanPlainScalar`,
+`scanDoubleQuoted`, `scanSingleQuoted`) to thread the simple-key
+invariant through the scalar branches. These exist because legacy
+`scanBlockScalar : ScannerState → Except ScanError (Option ScannerState)`
+operates on full state and may touch `simpleKey.endLine` on
+multi-line scalars — hence the legacy `_of_endLine_update`
+constructor.
+
+The indexed twin `scanBlockScalarIx : IxCursor input → Nat → Option
+(String × ScalarStyle × IxCursor input)` is cursor-keyed: it returns
+content + new cursor without ever building a `ScannerStateIx`. The
+post-scalar state is reconstructed by the dispatcher itself as
+`{ s with cursor := cAfter }.emitAt startPos tok hBound` followed by
+`{ sEmit with simpleKeyAllowed := false }`. Three explicit field
+mutations: `cursor`, `tokens` (via `emitAt`), `simpleKeyAllowed`.
+The `simpleKey` and `simpleKeyStack` fields are preserved by `rfl` —
+no lemma needed, and all four scalar arms close with the same
+`SimpleKeyAboveFloorIx_of_preserved _ s _ _ rfl rfl h_inv` invocation.
+
+The legacy `_of_endLine_update` constructor is ported to
+`SimpleKeyAboveFloorIx_of_endLine_update` for parity but is not
+actually invoked by `dispatchContent_maintains_SKAFIx` in the
+indexed proof. This is not an oversight — it's the indexed
+substrate eliminating an *entire constructor's worth* of
+maintenance flexibility because the cursor-keyed split makes the
+"endLine may change" case structurally impossible at the dispatch
+boundary.
+
+</details>
+
+<details><summary>Indexed-substrate simplification #2: straight-line
+flow-close eliminates an internal `if` case-split.</summary>
+
+The legacy `scanFlowSequenceEnd` / `scanFlowMappingEnd` contain an
+internal `if (size > 0)` guard before decrementing `flowLevel`. To
+derive `s.simpleKeyStack.size > fl₀ ∨ fl₀ = 0` (needed for
+`SimpleKeyAboveFloor_of_flow_close`), the legacy proof unfolds the
+function, simp-rewrites `advance_preserves_flowLevel` and
+`emit_preserves_flowLevel`, *case-splits on the internal `if`*, and
+discharges each branch with `left; omega` or `right; omega`.
+
+The indexed `scanFlowSequenceEndIx` is straight-line:
+`{ s.advance.emit with flowLevel := s.flowLevel - 1, ... }` (Nat
+subtraction, truncating at 0). The proof
+`scanFlowSequenceEndIx_flowLevel_eq` is now `simp only
+[advance_flowLevel, emit_flowLevel]` — one rfl-step. The
+`size > fl₀ ∨ fl₀ = 0` disjunction falls out of `omega` given:
+- `s'.flowLevel = s.flowLevel - 1` (the new rfl-step lemma),
+- `s'.flowLevel ≥ fl₀` (from `FlowMonoChainIx` continuation), and
+- `s.simpleKeyStack.size ≥ s.flowLevel` (the sync invariant).
+
+The proof shrank from ~10 lines (unfold + simp + split + branched
+omega) to 3 lines (rfl-step lemma + omega). The structural
+simplicity of the indexed definition is the substrate-level
+investment that pays out across every consumer.
+
+</details>
+
+<details><summary>How to apply: when the legacy substrate forces
+case-splits, look for an indexed alternative that linearizes the
+structure.</summary>
+
+The pattern: legacy operations often pile on guards (`if !empty
+then ... else default-action`) to maintain partial-function safety.
+The indexed substrate, by indexing on `input : String` and using
+bound-carrying cursors, can frequently *eliminate* the guard by
+making the underflow case syntactically a no-op (Nat truncation,
+`Array.pop` on empty array returning empty, `back?.getD default`
+returning a sentinel). When the indexed twin is straight-line, every
+downstream proof that case-split on the guard collapses to one
+linear branch. Look for these opportunities during substrate refactors;
+they pay back disproportionately in proof maintenance.
+
+The complement also holds: when the indexed substrate adds new
+constraints (well-formedness on cursors, etc.), it can introduce
+*new* proof obligations that the legacy didn't have. The
+`scanPlainScalarIx_content_valid` proof in
+`IndexedScannerPlainScalarValid` is an example. The net effect is
+typically positive because the new obligations are *one-shot*
+discharges, while the eliminated case-splits would have appeared in
+every consumer.
 
 </details>
 

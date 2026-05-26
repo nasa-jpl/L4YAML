@@ -8,11 +8,14 @@ import L4YAML.Proofs.Output.IndexedEmitterScannability.ScanChain
 
 **Status**: partially populated. §1 (`FlowMonoChainIx` inductive +
 immediate helpers — landed 2026-05-25, sub-session
-`.flowmono.inductive`) ports the legacy `FlowMonoChain` core (lines
-1304–1387 of `Proofs/Output/EmitterScannability.lean`). §2 onwards
-(`SimpleKeyAboveFloor`, prefix preservation) remain to be ported in
-the subsequent `.flowmono.{skaf, preserve, maintenance, sync}`
-sub-sessions.
+`.flowmono.inductive`) and §2 (`SimpleKeyAboveFloorIx` predicate +
+five constructors + preprocess maintenance + four dispatcher
+maintenance proofs + `scanNextTokenIx_maintains_SKAFIx` capstone —
+landed 2026-05-25, sub-session `.flowmono.skaf`) ports the legacy
+`FlowMonoChain` core + `SimpleKeyAboveFloor` machinery (lines
+1304–1805 of `Proofs/Output/EmitterScannability.lean`). §3 onwards
+(prefix preservation) remains to be ported in the subsequent
+`.flowmono.{preserve, maintenance, sync}` sub-sessions.
 
 ## Scope (mapping to legacy `EmitterScannability.lean`)
 
