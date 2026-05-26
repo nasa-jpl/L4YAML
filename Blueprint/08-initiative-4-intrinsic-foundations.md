@@ -1820,30 +1820,23 @@ not in-place axiom-to-theorem promotion — the latter is impossible
 when the axiom's hypothesis is strictly weaker than what the
 stronger lemma derives).
 
-**Next session**: **Step 6f.3b3.flowmono.maintenance.pipeline — Port
-the per-character dispatch return-value lemmas + pipeline composition**
-(legacy `Proofs/Output/EmitterScannability.lean` lines 3735–3789,
-3852–3901, 4066–4095, 4354–4395, ~250 LOC effective contribution).
-Target file `Proofs/Output/IndexedEmitterScannability/FlowMonoChain/
-Maintenance/Pipeline.lean`. Ships the per-character dispatch return-
-value lemmas (`dispatchStructural_none_*`, `checkBlockFlowIndent_ok_*`,
-`dispatchFlowIndicators_*`, `dispatchBlockIndicators_none_*`) plus
-pipeline composition (`scanNextTokenIx_via_{content,block}_dispatch
-[_error]`) that thread `preprocess → struct → allowDirectives →
-checkBlockFlowIndent → flow → block → content` for specific
-scenarios. `.maintenance.flowdispatch` (sub-session 1 of 2) landed
-2026-05-26 — shipping per-flow-dispatcher state-field preservation
-(25 `@[simp]` `rfl`-shape lemmas: `directivesPresent`, `indents`,
-`explicitKeyLine`, `allowDirectives`, `needIndentCheck` × 5
-dispatchers) + 2 Start-variant `flowLevel_eq` lemmas + 5 `Except`-
-form `scanFlowEntryIx_preserves_*` field lemmas + `lastRealTokenValIx`
-push helpers (`_push_non_ph`, `_push_two_ph`) +
-`saveSimpleKeyIx_preserves_lastRealTokenValIx_ne_flow`. After
-`.maintenance.pipeline` closes, the remaining `.flowmono` work is
-`.sync` (~1200 LOC; legacy lines ~4400–5586; sub-split likely).
+**Next session**: **Step 6f.3b3.flowmono.sync — Port the sync proofs
+linking `FlowMonoChainIx` to `scanFiltered`** (legacy
+`Proofs/Output/EmitterScannability.lean` lines ~4400–5586, ~1200 LOC;
+sub-split likely at port time). Ships
+`dispatchFlowIndicators_preserves_sync`,
+`scanNextToken_preserves_sync`,
+`FlowMonoChain_preserves_raw_prefix`, `scanFiltered_of_chain`,
+`scanFiltered_of_chain_eq` and the `scanNextToken_flow_*` /
+`scanFlow{Sequence,Mapping}{Start,End}_detail` /
+`scanFlowEntry_detail` lemmas that were deferred from
+`.maintenance.{flowdispatch,pipeline}` (they all depend on the
+indexed `ScannerSurfCorr` bridge built here). With `.sync` closed,
+`.flowmono` (the entire `FlowMonoChain.lean` family) is done.
 `.basic`, `.inductive`, `.skaf`, `.preserve.{step,dpinv,helpers}`,
-`.maintenance.flowdispatch` all landed. After `.flowmono` closes,
-the next sub-step is `.filteredgrowth` (~1320 LOC across 4 sub-sessions).
+`.maintenance.{flowdispatch,pipeline}` all landed. After `.flowmono`
+closes, the next sub-step is `.filteredgrowth` (~1320 LOC across
+4 sub-sessions).
 
 After `.flowmono` closes, sub-sessions follow in dependency order:
 `FilteredGrowth (~1320 LOC)` → `EmitScans (~1490 LOC)` →
@@ -2179,6 +2172,58 @@ transition that only mutates a known list of fields" — the
 target-field preservation is a `rfl` once `emit_*` / `advance_*`
 `@[simp]` lemmas establish that emit/advance leave the target
 field unchanged.
+
+**Step 6f.3b3.flowmono.maintenance.pipeline LANDED 2026-05-26**
+(~420 LOC actual vs. legacy ~400 LOC contribution; new file
+`Proofs/Output/IndexedEmitterScannability/FlowMonoChain/Maintenance/
+Pipeline.lean` + one-line addition to the `FlowMonoChain.lean`
+re-export shim). Second of two `.maintenance` sub-sessions. Per-
+character dispatch return-value lemmas + pipeline composition
+lemmas. Contents:
+
+  - **§1** `dispatchStructural` return-value lemmas:
+    `_none_flow` (in-flow / underindent skip),
+    `_none_non_directive` (general initial-state case) +
+    `_bracket_init` / `_brace_init` thin specialisations.
+  - **§2** `checkBlockFlowIndent` return-value lemmas:
+    `_ok_flow`, `_bracket_init`, `_brace_init`, `_ok_comma`,
+    `_ok_close_bracket`, `_ok_close_brace`.
+  - **§3** `dispatchFlowIndicators` return-value lemmas:
+    `_none` (non-flow-indicator), `_bracket`, `_brace`,
+    `_close_bracket` (`flowLevel > 0`),
+    `_close_brace` (`flowLevel > 0`),
+    `_comma` (`flowLevel > 0`, last token not flow delimiter).
+  - **§4** `dispatchBlockIndicators` return-value lemmas:
+    `_none_quote`, `_none_comma`, `_none_close_bracket`,
+    `_none_close_brace`.
+  - **§5** `scanFlowEntryIx_ok` (precondition lemma used by `_comma`).
+  - **§6** Pipeline composition:
+    `scanNextTokenIx_via_content_dispatch[_error]`,
+    `scanNextTokenIx_via_block_dispatch`. (`_via_flow_dispatch`
+    already lives in `Preserve/Step.lean`.)
+
+No axioms, no `sorry`, build green at **465/465 jobs**. Phase 3
+closure axiom count unchanged at **0**. With this session, the
+entire `.maintenance` sub-step is closed; `.flowmono` has one
+remaining sub-step (`.sync`).
+
+**Reflection 127 (new)** documents the *validate-tail collapse*:
+the legacy split `dispatchFlowIndicators_close_bracket_nested`
+(`flowLevel ≥ 2`) vs. `_close_bracket_outermost` (`flowLevel = 1`
++ EOF, requires `ScannerSurfCorr`) — and symmetric for `_brace_*` —
+collapses on the indexed side to a single `_close_bracket` /
+`_close_brace` lemma with the strictly weaker `flowLevel > 0`
+hypothesis. Reason: the indexed `scanNextTokenIx_dispatchFlow
+Indicators` has no `validateFlowClose` step (no EOF check after
+flow close; that responsibility moves to `scanLoopIx`'s
+`unterminatedFlowCollection` final check). One axis of legacy
+case-split dissolves entirely. Generalizable to any "tail-
+validation that the indexed pipeline relocates out of the per-
+step dispatcher": legacy preconditions that exist *because of* the
+extra tail step disappear with the tail step itself. The deferred
+`_detail` variants and `scanNextToken_flow_*` scenario chains,
+which legacy proved alongside, ship in `.sync` instead because
+they still require `ScannerSurfCorr` for their post-condition.
 
 **Step 6f.3b3.basic.closure LANDED 2026-05-25** (~538 LOC closure;
 file now 988 LOC total). Discharged the state-dependent §3 of
@@ -10916,16 +10961,17 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
               No axioms, no `sorry`, build green at 461/461 jobs.
               See **Reflection 125** for the dependent-index
               `_of_tokens_eq` helper pattern.
-          ▸ **6f.3b3.flowmono.maintenance** *(~1100 LOC legacy
-            contribution; new sub-directory `IndexedEmitterScannability/
-            FlowMonoChain/Maintenance/`)*. Per-dispatcher SKAF
-            maintenance + state-field preservation lemmas. The
-            substrate elimination (cursor-only scalar scanners,
-            uniform `emit + advance + record-update` flow dispatchers)
-            collapses heavily; the *pipeline-composition* layer
-            (`scanNextTokenIx_via_*_dispatch`) stays at full size
-            but separates cleanly. Sub-split into 2 sub-sessions —
-            **flow-dispatcher field preservation** vs.
+          ▸ **6f.3b3.flowmono.maintenance** ✅ **LANDED 2026-05-26**
+            *(~850 LOC total across 2 sub-sessions vs. ~1100 LOC
+            legacy contribution; new sub-directory
+            `IndexedEmitterScannability/FlowMonoChain/Maintenance/`)*.
+            Per-dispatcher SKAF maintenance + state-field preservation
+            lemmas. The substrate elimination (cursor-only scalar
+            scanners, uniform `emit + advance + record-update` flow
+            dispatchers) collapses heavily; the *pipeline-composition*
+            layer (`scanNextTokenIx_via_*_dispatch`) stays at full
+            size but separates cleanly. Sub-split into 2 sub-sessions
+            — **flow-dispatcher field preservation** vs.
             **per-character dispatch + pipeline composition** —
             mirroring the `.preserve/{Step,DpInv,Helpers}` modularization.
             ▸ **6f.3b3.flowmono.maintenance.flowdispatch** ✅ **LANDED 2026-05-26**
@@ -10948,24 +10994,35 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
               `sorry`, build green at 463/463 jobs. See **Reflection
               126** for the flow-dispatcher field-preservation
               collapse pattern.
-            ▸ **6f.3b3.flowmono.maintenance.pipeline** *(~250 LOC
-              effective contribution; new file `FlowMonoChain/
-              Maintenance/Pipeline.lean`)*. Per-character dispatch
-              return-value lemmas (`dispatchStructural_none_flow`,
-              `_none_bracket_init`; `checkBlockFlowIndent_ok_flow`,
-              `_bracket_init`, `_ok_comma`, `_ok_close_bracket`,
-              `_ok_close_brace`; `dispatchFlowIndicators_none`,
-              `_bracket`, `_brace`, `_close_bracket_*`,
-              `_close_brace_*`, `_comma`; `dispatchBlockIndicators_
-              none_quote`, `_none_comma`, `_none_close_bracket`,
-              `_none_close_brace`). Plus pipeline composition:
-              `scanNextTokenIx_via_content_dispatch[_error]`,
-              `_via_block_dispatch` (`_via_flow_dispatch` already
-              lives in `Preserve/Step.lean`). **`scanFlow{Sequence,
-              Mapping}{Start,End}_detail`, `scanFlowEntry_ok`,
-              `scanFlowEntry_detail` defer to `.sync`** (depend on
-              the not-yet-built indexed `ScannerSurfCorr`).
-              Single session.
+            ▸ **6f.3b3.flowmono.maintenance.pipeline** ✅ **LANDED 2026-05-26**
+              *(~420 LOC; new file `FlowMonoChain/Maintenance/
+              Pipeline.lean`)*. Per-character dispatch return-value
+              lemmas: `dispatchStructural_none_flow`,
+              `_none_non_directive` + `_bracket_init` / `_brace_init`
+              specialisations; `checkBlockFlowIndent_ok_flow`,
+              `_bracket_init`, `_brace_init`, `_ok_comma`,
+              `_ok_close_bracket`, `_ok_close_brace`;
+              `dispatchFlowIndicators_none`, `_bracket`, `_brace`,
+              `_close_bracket`, `_close_brace`, `_comma` (+
+              `scanFlowEntryIx_ok` helper);
+              `dispatchBlockIndicators_none_quote`, `_none_comma`,
+              `_none_close_bracket`, `_none_close_brace`. Plus
+              pipeline composition: `scanNextTokenIx_via_content_
+              dispatch[_error]`, `_via_block_dispatch`
+              (`_via_flow_dispatch` already in `Preserve/Step.lean`).
+              **Indexed simplification**: legacy
+              `_close_{bracket,brace}_nested` (`flowLevel ≥ 2`) vs.
+              `_close_{bracket,brace}_outermost` (`flowLevel = 1`, EOF)
+              split collapses to single `_close_bracket` /
+              `_close_brace` lemmas because the indexed pipeline has no
+              `validateFlowClose` tail-validation. Single
+              `flowLevel > 0` guard suffices. **`scanFlow{Sequence,
+              Mapping}{Start,End}_detail`, `scanFlowEntry_detail`, and
+              `scanNextToken_flow_*` scenario chains defer to `.sync`**
+              (depend on the not-yet-built indexed `ScannerSurfCorr`).
+              No axioms, no `sorry`, build green at 465/465 jobs.
+              See **Reflection 127** for the *validate-tail collapse*
+              pattern.
           ▸ **6f.3b3.flowmono.sync** *(~1200 LOC; legacy lines
             ~4400–5586)*. Sync proofs:
             `dispatchFlowIndicators_preserves_sync`,
@@ -13210,6 +13267,75 @@ buy us, lemma-by-lemma" account for `.flowmono`: vacuous on
 cursor-only entries (124), `rfl` on single-record-update dispatchers
 (126), and `rfl`-shape via cursor-keyed wrapping for content
 dispatchers (122).
+
+</details>
+
+##### **Reflection 127 (new, 2026-05-26)**: when the indexed pipeline relocates a tail-validation step that the legacy pipeline embedded mid-dispatcher, the legacy case-split on the tail-validation's preconditions collapses entirely. A two-variant cluster (nested + outermost) becomes one lemma with the strictly weaker hypothesis.
+
+<details><summary>The pattern: any legacy case-split that exists *because of* a now-relocated tail step disappears with the tail step itself.</summary>
+
+The `.flowmono.maintenance.pipeline` port (legacy
+`EmitterScannability.lean` lines 4777–4789, 4918–4943, 5125–5139,
+5247–5272 — four legacy theorems) ships **two** indexed lemmas:
+
+```lean
+theorem dispatchFlowIndicators_close_bracket (s : ScannerStateIx input)
+    (h_fl : s.flowLevel > 0) :
+    scanNextTokenIx_dispatchFlowIndicators s ']' =
+      .ok (some (scanFlowSequenceEndIx s)) := by
+  …
+
+theorem dispatchFlowIndicators_close_brace (s : ScannerStateIx input)
+    (h_fl : s.flowLevel > 0) :
+    scanNextTokenIx_dispatchFlowIndicators s '}' =
+      .ok (some (scanFlowMappingEndIx s)) := by
+  …
+```
+
+The legacy split was:
+
+  - `dispatchFlowIndicators_close_bracket_nested` requires `flowLevel ≥ 2`
+    (so after `scanFlowSequenceEnd` the result still has `flowLevel > 0`,
+    and `validateFlowClose` is a no-op on the nested branch).
+  - `dispatchFlowIndicators_close_bracket_outermost` requires `flowLevel = 1`
+    plus `ScannerSurfCorr s ⟨[']'], s.col⟩` (so after
+    `scanFlowSequenceEnd` we're at EOF and `validateFlowClose_pass_eof`
+    fires).
+
+Both legacy lemmas exist because the legacy
+`scanNextToken_dispatchFlowIndicators` body inlines a call to
+`validateFlowClose` after `scanFlowSequenceEnd`. That call must
+succeed for the dispatcher to return `.ok`, so the precondition
+must be strong enough to discharge it. Two different success paths
+through `validateFlowClose` → two legacy preconditions → two
+legacy lemmas.
+
+**Why the indexed side has one lemma.** The indexed
+`scanNextTokenIx_dispatchFlowIndicators` body has *no*
+`validateFlowClose` call. The "flow collection must be terminated
+before stream-end" check moved one layer out, to `scanLoopIx`'s
+final `if s.flowLevel > 0 then .error (.unterminatedFlowCollection
+…)` after EOF is detected. The per-step dispatcher no longer
+cares whether the flow close is nested or outermost; it just emits
+the close token and decrements `flowLevel`. One axis of legacy
+case-split dissolves.
+
+**Generalizes** to any "tail-validation that the indexed pipeline
+relocates out of the per-step dispatcher." Legacy preconditions that
+exist *because of* the tail step disappear with the tail step itself.
+Watch for: any indexed dispatcher whose legacy twin had a final
+`validate*` / `check*` / `assert*` call that has since moved to a
+loop or framing layer. The associated legacy case-split on the
+validation precondition (nested-vs-outermost, EOF-vs-mid-stream,
+deferred-vs-immediate) typically collapses to a single lemma with
+the *weakest* of the legacy preconditions.
+
+**Limits.** The collapse only buys you the dispatcher-level lemma.
+The legacy `_outermost` variants also produced *full* post-conditions
+(ScannerSurfCorr at the post-state, `flowLevel = 0`, EOF reached)
+that the deferred `.sync` sub-session will need to re-prove using the
+indexed `ScannerSurfCorr` bridge. The collapse is in the
+dispatcher-return-value layer, not the scenario-chain layer.
 
 </details>
 
