@@ -1820,18 +1820,22 @@ not in-place axiom-to-theorem promotion — the latter is impossible
 when the axiom's hypothesis is strictly weaker than what the
 stronger lemma derives).
 
-**Next session**: **Step 6f.3b3.flowmono.inductive — Port the
-`FlowMonoChainIx` inductive + immediate helpers** into a new file
-`Proofs/Output/IndexedEmitterScannability/FlowMonoChain.lean` (~70
-LOC, legacy lines 1301–1388). Specifically: `FlowMonoChainIx`
-inductive (twin of legacy `FlowMonoChain`), plus the immediate
-helpers `.toScanChainIx`, `.flowLevel_ge_start`, `.flowLevel_ge_end`,
-`.single`, `.trans`, `.weaken`, `.tokens_mono`. This is the first
-of 5 sub-sessions targeting `FlowMonoChain.lean` (the single largest
-indexed-port file at ~3870 LOC total). The `.basic` umbrella is now
-**fully landed** (value-level 2026-05-25 morning, closure 2026-05-25
-afternoon); `ScanChain` was effectively done from prior `.utility` /
-`.chain` / `.capstone` sessions.
+**Next session**: **Step 6f.3b3.flowmono.skaf — Port the
+`SimpleKeyAboveFloorIx` predicate + maintenance lemmas** into
+`Proofs/Output/IndexedEmitterScannability/FlowMonoChain.lean` (~420
+LOC target, legacy lines 1388–1805). Specifically:
+`SimpleKeyAboveFloor` predicate + its 5 constructors
+(`_of_cleared_preserved`, `_of_preserved`, `_of_endLine_update`,
+`_of_flow_open`, `_of_flow_close`); the preprocess + per-dispatch
+maintenance proofs (`preprocess_preserves_flowLevel`,
+`preprocess_maintains_SKAF`, `dispatchStructural_maintains_SKAF`,
+`dispatchFlowIndicators_maintains_SKAF`,
+`dispatchBlockIndicators_maintains_SKAF`,
+`dispatchContent_maintains_SKAF`); and the capstone
+`scanNextToken_maintains_SKAF`. This is the second of 5 sub-sessions
+targeting `FlowMonoChain.lean` (the single largest indexed-port file
+at ~3870 LOC total). The `.inductive` slice landed 2026-05-25;
+`.basic` umbrella + `ScanChain` are fully landed from prior sessions.
 
 After `.flowmono` closes, sub-sessions follow in dependency order:
 `FilteredGrowth (~1320 LOC)` → `EmitScans (~1490 LOC)` →
@@ -1847,6 +1851,26 @@ against the staging file names. **Do not start mid-6f.3b3**:
 Lesson 3 ("discharge before strengthening") — touching the
 indent-stack type mid-port re-baselines every in-flight chain
 proof.
+
+**Step 6f.3b3.flowmono.inductive LANDED 2026-05-25** (~125 LOC;
+file `Proofs/Output/IndexedEmitterScannability/FlowMonoChain.lean`
+grew from 67-line skeleton to 200 LOC). Ported §1 of legacy
+`Proofs/Output/EmitterScannability.lean` (lines 1304–1387):
+`FlowMonoChainIx` inductive (twin of `FlowMonoChain`) plus the seven
+immediate helpers — `.toScanChainIx`, `.flowLevel_ge_start`,
+`.flowLevel_ge_end`, `.single`, `.trans`, `.weaken`, `.tokens_mono`.
+The port is structurally identical to legacy (the `flowLevel : Nat`
+floor is on a field that exists in both substrates); `scanNextToken
+→ scanNextTokenIx`, `ScanChain → ScanChainIx`. Token monotonicity
+delegates to `scanNextTokenIx_tokens_size_le`
+(`IndexedDispatch.lean:1614`) rather than the legacy
+`ScannerCorrectness.scanNextToken_adds_tokens`. No axioms, no
+`sorry`, build green at 453/453 jobs, full test suite 869/1020 passing
+(0 failures, 151 skipped). First of 5 `.flowmono` sub-sessions
+targeting `FlowMonoChain.lean` (~3870 LOC total). Reflection 121
+captures the *predicate-vs-inductive* observation: the port was easy
+*because* the legacy version is a structural inductive, not a
+24-conjunct `Prop`-bundle — exactly the Initiative-3-vs-4 contrast.
 
 **Step 6f.3b3.basic.closure LANDED 2026-05-25** (~538 LOC closure;
 file now 988 LOC total). Discharged the state-dependent §3 of
@@ -10470,11 +10494,13 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
         three "preservation" sub-sessions may further sub-split once
         the structure is concrete at port time.
 
-          ▸ **6f.3b3.flowmono.inductive** *(~70 LOC; legacy lines
-            1301–1388)*. `FlowMonoChainIx` inductive + immediate
-            helpers: `.toScanChainIx`, `.flowLevel_ge_start` /
-            `_end`, `.single`, `.trans`, `.weaken`, `.tokens_mono`.
-            Single session.
+          ▸ **6f.3b3.flowmono.inductive** ✅ **LANDED 2026-05-25**
+            *(~125 LOC; legacy lines 1304–1387)*. `FlowMonoChainIx`
+            inductive + immediate helpers: `.toScanChainIx`,
+            `.flowLevel_ge_start` / `_end`, `.single`, `.trans`,
+            `.weaken`, `.tokens_mono`. Single session. No axioms, no
+            `sorry`, build green at 453/453 jobs. See Reflection 121
+            for the *predicate-vs-inductive* observation.
           ▸ **6f.3b3.flowmono.skaf** *(~420 LOC; legacy lines
             1388–1805)*. `SimpleKeyAboveFloorIx` predicate +
             maintenance machinery: 5 constructors, preprocess +
@@ -12246,6 +12272,61 @@ RoundTrip chain. The refactor is laid out as **Step 6g** below.
   Phase 1** (Guardrail 2). Do not quietly add a 24th item.
 
 </details>
+
+</details>
+
+##### **Reflection 121 (new, 2026-05-25)**: structural inductives
+port faster than `Prop`-bundles. The `.flowmono.inductive` slice
+landed in ~125 LOC across 7 helpers in a single session with no
+shape friction, while the structurally analogous Initiative-3
+`EmitScansInFlow` rewrite would have been a multi-day refactor.
+The contrast is informative: legacy `FlowMonoChain` is an inductive
+data type (`zero`/`step` constructors carrying `flowLevel ≥ fl₀`
+hypotheses on the *visited* state), not a 24-conjunct `Prop`-bundle.
+Each helper is a *recursion* on the inductive — `cases h`, `induction
+h`, or `.step _ _ _` directly — and recursion on inductives is what
+Lean's elaborator is fastest at. By contrast, Initiative-3-style
+ghost predicates require unpacking N conjuncts on the *outside* of
+the proof skeleton, with each conjunct contributing its own
+substitution/rewrite chain. The lesson: **prefer inductives over
+predicate bundles** even for "structurally trivial" properties when
+the property is going to be threaded inductively through multiple
+proofs.
+
+<details><summary>How to apply: pick the shape that matches the
+proof's recursion structure.</summary>
+
+If the property is consumed by a *single* lemma, a `Prop`-bundle is
+fine — there's no recursion, just a one-shot destructure. But if the
+property must be propagated step-by-step through a recursion or
+induction (as `FlowMonoChain` does for `n` consecutive
+`scanNextToken` calls), an inductive carrying the per-step
+hypothesis is dramatically simpler than a bundle of universally-
+quantified `Prop`s. Each step of the recursion is *literally* the
+inductive's recursor, not a bespoke unpacking-and-repackaging
+sequence.
+
+The Initiative-3 mistake was choosing a 24-conjunct `Prop`-bundle
+for a property that needed step-by-step threading. The same property
+expressed as an inductive ("zero/step with per-step witnesses on
+the visited state") would have rendered the helpers trivial — and
+that's exactly what `FlowMonoChain` already is in the legacy
+substrate (which is why the indexed port was a one-session job).
+
+</details>
+
+<details><summary>The lesson stacks with Reflection 119.</summary>
+
+Reflection 119 was about choosing the right *level* of formalization
+(cursor-only vs. cursor+state) for derived/local invariants;
+Reflection 121 is about choosing the right *shape* (inductive vs.
+predicate bundle) for invariants that must be threaded through
+recursions. Together they form a two-axis taxonomy: pick the
+*minimal level* AND the *recursion-shaped shape*. The
+`FlowMonoChainIx` port exemplifies both — state-level (because the
+invariant is on `flowLevel : Nat`, a state field) AND inductive
+(because the invariant must hold at every visited state through
+the recursion).
 
 </details>
 
