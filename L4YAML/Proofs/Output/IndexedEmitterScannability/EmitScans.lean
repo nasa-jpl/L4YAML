@@ -21,10 +21,16 @@ theorem family are ported to the indexed substrate.
     `scanNextTokenIx_preprocess_flow_ws1` (the one-leading-space
     preprocess-equality lemma), landed alongside in `FlowMonoChain/Sync/
     Scenarios/Preflow.lean` §1b.
-  - ⏳ `scanNextToken_flow_valueIx` (`.flowvalue` sub-session 2b): the
-    value-indicator (`:`) flow dispatcher (legacy 7256–7621, ~360 LOC;
-    needs the missing twins `scanNextTokenIx_via_block_dispatch`,
-    `scanValueTabCheckIx`, `AllTokensOnLine_scanValuePrepare_flowIx`, …).
+  - ✅ **`scanNextToken_flow_valueIx`** — landed (`.flowvalue` sub-session
+    2b, see §2b below): the value-indicator (`:`) flow dispatcher
+    (legacy 7256–7621). Almost all of legacy's field-tracking collapsed
+    onto the indexed `@[simp]` cursor lemmas; the only new twins needed
+    were `scanValuePrepareIx_{indents,directivesPresent}_of_inFlow`,
+    `AllTokensOnLineIx_{overwriteAtCursor,scanValuePrepare_flow}` (the
+    pipeline lemmas `scanNextTokenIx_via_block_dispatch`,
+    `scanValueTabCheckIx`, `dispatchStructural_none_flow`, … already
+    existed). The legacy `h_sv` (scanValueValidate) precondition was
+    *dropped* — derived internally from `AllTokensOnLineIx`/`EndLineOnLineIx`.
   - ⏳ `EmitPairListScansInFlowIx` + `emit_scans_in_flowIx`.
   - ⏳ `emit_produces_valid_yamlIx` top-level composition.
 
@@ -74,7 +80,6 @@ open L4YAML.CharPredicates
 open L4YAML.Indexed
 open L4YAML.Scanner.Indexed
 open L4YAML.Scanner.Indexed.ScannerStateIx
-open L4YAML.Proofs.CouplingBridge
 open L4YAML.Proofs.Indexed.EmitterScannability.ScanChain
 open L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain
 open L4YAML.Proofs.Indexed.EmitterScannability.FilteredGrowth
@@ -360,7 +365,7 @@ theorem emitList_scans_nonemptyIx (items : List YamlValue) (h_ne : items ≠ [])
         match n₃, h_chain₃ with
         | 0, .zero =>
           exfalso
-          have h_chars_eq := CharsFromOffset_unique h_corr₃'.chars_from h_corr_end.chars_from
+          have h_chars_eq := CouplingBridge.CharsFromOffset_unique h_corr₃'.chars_from h_corr_end.chars_from
           have h_len := congrArg List.length h_chars_eq
           simp only [List.length_append] at h_len
           have h_nil : (L4YAML.Emit.emit.emitList (v' :: vs)).toList = [] := by
@@ -453,5 +458,319 @@ theorem isValueCandidate_of_peekAt_blankIx (s : ScannerStateIx input)
   unfold isValueCandidateIx
   rw [h]
   simp only [show isBlankBool ' ' = true from by decide, Bool.true_or, ite_self]
+
+/-! ### §2b  `scanNextToken_flow_valueIx` (the `:` value dispatcher)
+
+The remaining heavy body of the `EmitScansInFlow` family (legacy
+7256–7621). It threads preprocessing → structural dispatch (none) →
+`checkBlockFlowIndent` (ok in flow) → flow dispatch (none) → block
+dispatch (`:` → `scanValueIx`). The supporting twins below all exploit
+the indexed substrate's `@[simp]` cursor/field lemmas: `scanValuePrepareIx`
+preserves the cursor outright, and `overwriteAtCursor`/`emit`/`advance`
+are pure record updates, so the legacy proof's ~15 field-tracking
+`have`s collapse to a handful of `rw`s. -/
+
+/-- `scanValuePrepareIx` preserves `indents` in flow context: the two
+    indent-pushing branches (`col > currentIndent` and the
+    `pushMappingIndentIx` fall-through) both require `!s.inFlow`. -/
+theorem scanValuePrepareIx_indents_of_inFlow (s : ScannerStateIx input)
+    (h_flow : s.inFlow = true) :
+    (scanValuePrepareIx s).indents = s.indents := by
+  unfold scanValuePrepareIx
+  simp only [h_flow, Bool.not_true, Bool.false_eq_true, ↓reduceIte]
+  split
+  · rfl
+  · split <;> rfl
+
+/-- `scanValuePrepareIx` preserves `directivesPresent` in flow context
+    (`overwriteAtCursor` and the simple-key record update are both
+    `directivesPresent`-invariant). -/
+theorem scanValuePrepareIx_directivesPresent_of_inFlow (s : ScannerStateIx input)
+    (h_flow : s.inFlow = true) :
+    (scanValuePrepareIx s).directivesPresent = s.directivesPresent := by
+  unfold scanValuePrepareIx
+  simp only [h_flow, Bool.not_true, Bool.false_eq_true, ↓reduceIte]
+  split
+  · rfl
+  · split <;> rfl
+
+/-- Overwriting the token at index `i` with a zero-width token whose
+    saved cursor sits on line `l` preserves `AllTokensOnLineIx`. -/
+theorem AllTokensOnLineIx_overwriteAtCursor (s : ScannerStateIx input)
+    (i : Nat) (sk : IxCursor input) (tok : YamlToken) (l : Nat)
+    (h_atol : AllTokensOnLineIx s l) (h_sk_line : sk.pos.line = l) :
+    AllTokensOnLineIx (s.overwriteAtCursor i sk tok) l := by
+  intro j h_bound
+  have h_bound' : j < s.tokens.tokens.size := by
+    have h_sz : (s.overwriteAtCursor i sk tok).tokens.size = s.tokens.tokens.size := by
+      rw [show (s.overwriteAtCursor i sk tok).tokens.size
+            = (s.overwriteAtCursor i sk tok).tokens.tokens.size from rfl,
+          overwriteAtCursor_tokens_tokens, Array.size_setIfInBounds]
+    rwa [h_sz] at h_bound
+  change ((s.tokens.tokens.setIfInBounds i
+      (IxToken.mk' sk.pos tok sk.pos (Nat.le_refl _) sk.posBound))[j]'
+        (by rw [Array.size_setIfInBounds]; exact h_bound')).start.line = l
+  rw [Array.getElem_setIfInBounds h_bound']
+  by_cases h_eq : i = j
+  · simp only [h_eq, ↓reduceIte]; exact h_sk_line
+  · simp only [h_eq, ↓reduceIte]; exact h_atol j h_bound'
+
+/-- `scanValuePrepareIx` preserves `AllTokensOnLineIx` in flow context.
+    In the `simpleKey.possible` branch it overwrites the placeholder at
+    `tokenIndex + 1` with a `.key` token saved at `simpleKey.cursor`,
+    whose line is `s.cursor.pos.line` by `EndLineOnLineIx`. Indexed twin
+    of legacy `AllTokensOnLine_scanValuePrepare_flow` (lines 3189–3213). -/
+theorem AllTokensOnLineIx_scanValuePrepare_flow (s : ScannerStateIx input) (l : Nat)
+    (h_atol : AllTokensOnLineIx s l) (h_line : s.cursor.pos.line = l)
+    (h_flow : s.inFlow = true)
+    (h_ek : s.explicitKeyLine = none)
+    (h_endline : EndLineOnLineIx s) :
+    AllTokensOnLineIx (scanValuePrepareIx s) l := by
+  unfold scanValuePrepareIx
+  cases h_poss : s.simpleKey.possible
+  · -- possible = false: `explicitKeyLine = none` + in flow → identity.
+    simp only [h_ek, Option.isSome_none, h_flow, Bool.not_true, Bool.false_eq_true,
+               ↓reduceIte]
+    exact h_atol
+  · -- possible = true, flow branch: overwrite the key placeholder.
+    have h_sk_line : s.simpleKey.cursor.pos.line = l := by
+      have ⟨_, h_pl⟩ := h_endline h_poss
+      show s.simpleKey.pos.line = l
+      rw [h_pl]; exact h_line
+    simp only [h_flow, Bool.not_true, Bool.false_eq_true, ↓reduceIte]
+    intro j h_bound
+    exact AllTokensOnLineIx_overwriteAtCursor s (s.simpleKey.tokenIndex + 1)
+      s.simpleKey.cursor YamlToken.key l h_atol h_sk_line j h_bound
+
+/-- Value indicator `:` scanning in flow context. After a key, the `:`
+    dispatches through `isValueCandidateIx → scanValueIx`, emitting a
+    `.value` token and advancing past `:`. The space after `:` (the
+    emitter always produces `": "`) makes `isValueCandidateIx` hold via
+    the `peekAt? 1` blank fallback. The result state sits at `' ' :: rest'`
+    (the space is not yet consumed). Indexed twin of legacy
+    `scanNextToken_flow_value` (lines 7256–7621). Unlike legacy, the
+    `scanValueValidate` precondition is *derived* internally from the
+    `AllTokensOnLineIx`/`EndLineOnLineIx` invariants (via
+    `scanValueValidateIx_ok_of_flow_allTokensOnLine`), so no `h_sv`
+    hypothesis is needed. -/
+theorem scanNextToken_flow_valueIx (s : ScannerStateIx input)
+    (rest' : List Char)
+    (hcorr : ScannerSurfCorrIx s ⟨':' :: ' ' :: rest', s.cursor.pos.col⟩)
+    (h_flow : s.inFlow = true)
+    (h_indent : s.currentIndent < 0)
+    (h_col_pos : s.cursor.pos.col > 0)
+    (h_ek : s.explicitKeyLine = none)
+    (h_atol : AllTokensOnLineIx s s.cursor.pos.line)
+    (h_endline : EndLineOnLineIx s) :
+    ∃ s', scanNextTokenIx s = .ok (some s')
+      ∧ ScannerSurfCorrIx s' ⟨' ' :: rest', s'.cursor.pos.col⟩
+      ∧ s'.flowLevel = s.flowLevel
+      ∧ s'.directivesPresent = s.directivesPresent
+      ∧ s'.indents = s.indents
+      ∧ s'.cursor.pos.col = s.cursor.pos.col + 1
+      ∧ s'.inFlow = true
+      ∧ s'.currentIndent < 0
+      ∧ s'.explicitKeyLine = none
+      ∧ s'.cursor.pos.line = s.cursor.pos.line
+      ∧ AllTokensOnLineIx s' s'.cursor.pos.line
+      ∧ EndLineOnLineIx s'
+      ∧ s'.simpleKeyStack = s.simpleKeyStack := by
+  -- Surface facts at `s` and at the post-`:` state `s.advance`.
+  have ⟨h_pk_colon, h_lt_colon⟩ :=
+    peek_of_chars_consIx_state s ':' (' ' :: rest') s.cursor.pos.col hcorr
+  have h_pk_colon' : s.cursor.peek? = some ':' := h_pk_colon
+  have h_corr_adv : ScannerSurfCorrIx s.advance ⟨' ' :: rest', s.cursor.pos.col + 1⟩ :=
+    advance_non_newline_corrIx_state s s.advance ':' (' ' :: rest') hcorr rfl rfl
+      h_lt_colon (by decide) (by decide)
+  have ⟨h_pk_space, _⟩ :=
+    peek_of_chars_consIx_state s.advance ' ' rest' (s.cursor.pos.col + 1) h_corr_adv
+  -- Step 1: preprocessing.
+  have h_pp : scanNextTokenIx_preprocess s = .ok (some (saveSimpleKeyIx s, ':')) :=
+    scanNextTokenIx_preprocess_flow s ':' (' ' :: rest') s.cursor.pos.col hcorr h_flow
+      (by decide) (by decide) (by decide)
+  -- Step 2: structural dispatch → none.
+  have h_sk_flow : (saveSimpleKeyIx s).inFlow = s.inFlow := saveSimpleKeyIx_inFlow s
+  have h_sk_indent : (saveSimpleKeyIx s).currentIndent = s.currentIndent := by
+    unfold ScannerStateIx.currentIndent; rw [saveSimpleKeyIx_indents]
+  have h_sk_col : (saveSimpleKeyIx s).cursor.pos.col = s.cursor.pos.col := by
+    rw [saveSimpleKeyIx_cursor]
+  have h_struct : scanNextTokenIx_dispatchStructural (saveSimpleKeyIx s) ':' = .ok none :=
+    dispatchStructural_none_flow _ _
+      (h_sk_flow ▸ h_flow) (h_sk_indent ▸ h_indent) (h_sk_col ▸ h_col_pos)
+  -- Step 3: introduce `s_ad` opaquely + derive its field equalities.
+  obtain ⟨s_ad, h_s_ad_def⟩ : ∃ s_ad : ScannerStateIx input,
+      s_ad = if (saveSimpleKeyIx s).allowDirectives then
+        { saveSimpleKeyIx s with allowDirectives := false, documentEverStarted := true }
+      else saveSimpleKeyIx s := ⟨_, rfl⟩
+  have h_ad_fl : s_ad.flowLevel = s.flowLevel := by
+    rw [h_s_ad_def]; split <;> exact saveSimpleKeyIx_flowLevel s
+  have h_ad_dp : s_ad.directivesPresent = s.directivesPresent := by
+    rw [h_s_ad_def]; split <;> exact saveSimpleKeyIx_directivesPresent s
+  have h_ad_ids : s_ad.indents = s.indents := by
+    rw [h_s_ad_def]; split <;> exact saveSimpleKeyIx_indents s
+  have h_ad_ek : s_ad.explicitKeyLine = s.explicitKeyLine := by
+    rw [h_s_ad_def]; split <;> exact saveSimpleKeyIx_explicitKeyLine s
+  have h_ad_cursor : s_ad.cursor = s.cursor := by
+    rw [h_s_ad_def]; split <;> exact saveSimpleKeyIx_cursor s
+  have h_ad_tokens : s_ad.tokens = (saveSimpleKeyIx s).tokens := by
+    rw [h_s_ad_def]; split <;> rfl
+  have h_ad_simpleKey : s_ad.simpleKey = (saveSimpleKeyIx s).simpleKey := by
+    rw [h_s_ad_def]; split <;> rfl
+  have h_ad_stack : s_ad.simpleKeyStack = s.simpleKeyStack := by
+    have h1 : (saveSimpleKeyIx s).simpleKeyStack = s.simpleKeyStack :=
+      ScannerPlainScalarValid.saveSimpleKeyIx_preserves_simpleKeyStack s
+    rw [h_s_ad_def]; split <;> exact h1
+  have h_ad_flow : s_ad.inFlow = true := by
+    unfold ScannerStateIx.inFlow; rw [h_ad_fl]; exact h_flow
+  have h_ad_ek_none : s_ad.explicitKeyLine = none := by rw [h_ad_ek]; exact h_ek
+  have h_ad_line : s_ad.cursor.pos.line = s.cursor.pos.line := by rw [h_ad_cursor]
+  -- Step 4: checkBlockFlowIndent (vacuous in flow) + flow dispatch → none.
+  have h_check : scanNextTokenIx_checkBlockFlowIndent s_ad ':' = .ok () :=
+    checkBlockFlowIndent_ok_flow s_ad ':' h_ad_flow
+  have h_flow_none : scanNextTokenIx_dispatchFlowIndicators s_ad ':' = .ok none :=
+    dispatchFlowIndicators_none s_ad ':'
+      (by decide) (by decide) (by decide) (by decide) (by decide)
+  -- Step 5: `isValueCandidateIx s_ad = true` via the `peekAt? 1 = ' '` fallback.
+  have h_vc : isValueCandidateIx s_ad = true := by
+    apply isValueCandidate_of_peekAt_blankIx
+    show s_ad.cursor.peekAt? 1 = some ' '
+    rw [h_ad_cursor, ← IxCursor.advance_peek_eq_peekAt_one s.cursor h_pk_colon']
+    exact h_pk_space
+  -- Step 6: the scanValue pipeline reduces to a single result state.
+  have h_clearKey : scanValueClearKeyIx s_ad = s_ad := by
+    unfold scanValueClearKeyIx; rw [h_ad_ek_none]
+  have h_atol_sk : AllTokensOnLineIx (saveSimpleKeyIx s) s.cursor.pos.line :=
+    AllTokensOnLineIx_saveSimpleKeyIx s s.cursor.pos.line h_atol rfl
+  have h_atol_ad : AllTokensOnLineIx s_ad s.cursor.pos.line :=
+    AllTokensOnLineIx_of_tokens_eq h_ad_tokens h_atol_sk
+  have h_endline_sk : EndLineOnLineIx (saveSimpleKeyIx s) :=
+    EndLineOnLineIx_saveSimpleKeyIx s h_endline
+  have h_endline_ad : EndLineOnLineIx s_ad := by
+    intro h_poss
+    rw [h_ad_simpleKey] at h_poss
+    obtain ⟨h1, h2⟩ := h_endline_sk h_poss
+    rw [saveSimpleKeyIx_cursor] at h1 h2
+    rw [h_ad_simpleKey, h_ad_cursor]; exact ⟨h1, h2⟩
+  have h_validate : scanValueValidateIx s_ad = .ok () :=
+    scanValueValidateIx_ok_of_flow_allTokensOnLine s_ad h_ad_flow h_ad_ek_none
+      (by rw [h_ad_line]; exact h_atol_ad) h_endline_ad
+  have h_adv_inflow :
+      (((scanValuePrepareIx s_ad).emit YamlToken.value).advance).inFlow = true := by
+    rw [advance_inFlow, emit_inFlow]
+    unfold ScannerStateIx.inFlow
+    rw [scanValuePrepareIx_preserves_flowLevel]; exact h_ad_flow
+  have h_tabCheck : scanValueTabCheckIx (s_ad.cursor.pos.col : Int) s_ad.currentIndent
+      (((scanValuePrepareIx s_ad).emit YamlToken.value).advance) = .ok () := by
+    unfold scanValueTabCheckIx
+    simp only [h_adv_inflow, Bool.not_true, Bool.and_false, Bool.false_eq_true, ↓reduceIte]
+  have h_scanValue_ok : scanValueIx s_ad =
+      .ok { (((scanValuePrepareIx s_ad).emit YamlToken.value).advance) with
+            simpleKeyAllowed := true, explicitKeyLine := none } := by
+    unfold scanValueIx
+    simp only [h_clearKey, h_validate, h_tabCheck, bind, Except.bind]
+  -- Step 7: block dispatch produces the result; compose the pipeline.
+  have h_block : scanNextTokenIx_dispatchBlockIndicators s_ad ':' =
+      .ok (some { (((scanValuePrepareIx s_ad).emit YamlToken.value).advance) with
+                  simpleKeyAllowed := true, explicitKeyLine := none }) := by
+    unfold scanNextTokenIx_dispatchBlockIndicators
+    simp only [show (':' == '-') = false from by decide, Bool.false_and,
+      show (':' == '?') = false from by decide,
+      show (':' == ':') = true from by decide, Bool.true_and, h_vc, ↓reduceIte]
+    rw [h_scanValue_ok]; rfl
+  have h_snt : scanNextTokenIx s =
+      .ok (some { (((scanValuePrepareIx s_ad).emit YamlToken.value).advance) with
+                  simpleKeyAllowed := true, explicitKeyLine := none }) :=
+    scanNextTokenIx_via_block_dispatch s (saveSimpleKeyIx s) s_ad _ ':'
+      h_pp h_struct h_s_ad_def h_check h_flow_none h_block
+  -- Step 8: result-state field equalities (all via `@[simp]` cursor lemmas).
+  have h_R_cursor :
+      ({ (((scanValuePrepareIx s_ad).emit YamlToken.value).advance) with
+         simpleKeyAllowed := true, explicitKeyLine := none } : ScannerStateIx input).cursor
+        = s.cursor.advance := by
+    show ((scanValuePrepareIx s_ad).emit YamlToken.value).advance.cursor = s.cursor.advance
+    rw [advance_cursor, emit_cursor, scanValuePrepareIx_cursor, h_ad_cursor]
+  have h_R_indents :
+      ({ (((scanValuePrepareIx s_ad).emit YamlToken.value).advance) with
+         simpleKeyAllowed := true, explicitKeyLine := none } : ScannerStateIx input).indents
+        = s.indents := by
+    show ((scanValuePrepareIx s_ad).emit YamlToken.value).advance.indents = s.indents
+    rw [advance_indents, emit_indents, scanValuePrepareIx_indents_of_inFlow s_ad h_ad_flow,
+        h_ad_ids]
+  have h_R_corr : ScannerSurfCorrIx
+      ({ (((scanValuePrepareIx s_ad).emit YamlToken.value).advance) with
+         simpleKeyAllowed := true, explicitKeyLine := none } : ScannerStateIx input)
+      ⟨' ' :: rest', s.cursor.pos.col + 1⟩ :=
+    advance_non_newline_corrIx_state s _ ':' (' ' :: rest') hcorr h_R_cursor h_R_indents
+      h_lt_colon (by decide) (by decide)
+  have h_R_col :
+      ({ (((scanValuePrepareIx s_ad).emit YamlToken.value).advance) with
+         simpleKeyAllowed := true, explicitKeyLine := none } : ScannerStateIx input).cursor.pos.col
+        = s.cursor.pos.col + 1 := h_R_corr.col_eq.symm
+  have h_R_fl :
+      ({ (((scanValuePrepareIx s_ad).emit YamlToken.value).advance) with
+         simpleKeyAllowed := true, explicitKeyLine := none } : ScannerStateIx input).flowLevel
+        = s.flowLevel := by
+    show ((scanValuePrepareIx s_ad).emit YamlToken.value).advance.flowLevel = s.flowLevel
+    rw [advance_flowLevel, emit_flowLevel, scanValuePrepareIx_preserves_flowLevel, h_ad_fl]
+  have h_R_dp :
+      ({ (((scanValuePrepareIx s_ad).emit YamlToken.value).advance) with
+         simpleKeyAllowed := true, explicitKeyLine := none } : ScannerStateIx input).directivesPresent
+        = s.directivesPresent := by
+    show ((scanValuePrepareIx s_ad).emit YamlToken.value).advance.directivesPresent
+        = s.directivesPresent
+    rw [advance_directivesPresent, emit_directivesPresent,
+        scanValuePrepareIx_directivesPresent_of_inFlow s_ad h_ad_flow, h_ad_dp]
+  have h_R_flow :
+      ({ (((scanValuePrepareIx s_ad).emit YamlToken.value).advance) with
+         simpleKeyAllowed := true, explicitKeyLine := none } : ScannerStateIx input).inFlow
+        = true := by
+    unfold ScannerStateIx.inFlow; rw [h_R_fl]; exact h_flow
+  have h_R_indent :
+      ({ (((scanValuePrepareIx s_ad).emit YamlToken.value).advance) with
+         simpleKeyAllowed := true, explicitKeyLine := none } : ScannerStateIx input).currentIndent
+        < 0 := by
+    unfold ScannerStateIx.currentIndent; rw [h_R_indents]; exact h_indent
+  have h_R_line :
+      ({ (((scanValuePrepareIx s_ad).emit YamlToken.value).advance) with
+         simpleKeyAllowed := true, explicitKeyLine := none } : ScannerStateIx input).cursor.pos.line
+        = s.cursor.pos.line := by
+    rw [h_R_cursor]
+    exact advance_line_of_peekIx_state s ':' h_lt_colon h_pk_colon (by decide) (by decide)
+  have h_R_stack :
+      ({ (((scanValuePrepareIx s_ad).emit YamlToken.value).advance) with
+         simpleKeyAllowed := true, explicitKeyLine := none } : ScannerStateIx input).simpleKeyStack
+        = s.simpleKeyStack := by
+    show (scanValuePrepareIx s_ad).simpleKeyStack = s.simpleKeyStack
+    rw [ScannerPlainScalarValid.scanValuePrepareIx_preserves_simpleKeyStack, h_ad_stack]
+  have h_prep_line : (scanValuePrepareIx s_ad).cursor.pos.line = s.cursor.pos.line := by
+    rw [scanValuePrepareIx_cursor, h_ad_cursor]
+  have h_R_atol : AllTokensOnLineIx
+      ({ (((scanValuePrepareIx s_ad).emit YamlToken.value).advance) with
+         simpleKeyAllowed := true, explicitKeyLine := none } : ScannerStateIx input)
+      ({ (((scanValuePrepareIx s_ad).emit YamlToken.value).advance) with
+         simpleKeyAllowed := true, explicitKeyLine := none } : ScannerStateIx input).cursor.pos.line := by
+    rw [h_R_line]
+    have step1 : AllTokensOnLineIx (scanValuePrepareIx s_ad) s.cursor.pos.line :=
+      AllTokensOnLineIx_scanValuePrepare_flow s_ad s.cursor.pos.line h_atol_ad h_ad_line
+        h_ad_flow h_ad_ek_none h_endline_ad
+    have step2 : AllTokensOnLineIx ((scanValuePrepareIx s_ad).emit YamlToken.value)
+        s.cursor.pos.line :=
+      AllTokensOnLineIx_emit (scanValuePrepareIx s_ad) YamlToken.value s.cursor.pos.line
+        step1 h_prep_line
+    exact AllTokensOnLineIx_advance ((scanValuePrepareIx s_ad).emit YamlToken.value)
+      s.cursor.pos.line step2
+  have h_R_endline : EndLineOnLineIx
+      ({ (((scanValuePrepareIx s_ad).emit YamlToken.value).advance) with
+         simpleKeyAllowed := true, explicitKeyLine := none } : ScannerStateIx input) := by
+    intro h_poss
+    rw [show ({ (((scanValuePrepareIx s_ad).emit YamlToken.value).advance) with
+               simpleKeyAllowed := true, explicitKeyLine := none }
+              : ScannerStateIx input).simpleKey.possible
+            = (scanValuePrepareIx s_ad).simpleKey.possible from rfl,
+        ScannerPlainScalarValid.scanValuePrepareIx_clears_simpleKey] at h_poss
+    exact absurd h_poss (by decide)
+  refine ⟨_, h_snt, ?_, h_R_fl, h_R_dp, h_R_indents, h_R_col, h_R_flow, h_R_indent, rfl,
+    h_R_line, h_R_atol, h_R_endline, h_R_stack⟩
+  rw [h_R_col]; exact h_R_corr
 
 end L4YAML.Proofs.Indexed.EmitterScannability.EmitScans
