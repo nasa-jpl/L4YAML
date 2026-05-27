@@ -1820,19 +1820,29 @@ not in-place axiom-to-theorem promotion — the latter is impossible
 when the axiom's hypothesis is strictly weaker than what the
 stronger lemma derives).
 
-**Next session**: **Step 6f.3b3.filteredgrowth.infra —
-Filtered token array growth infrastructure** (legacy
-`Proofs/Output/EmitterScannability.lean` lines 5900–6070, ~170 LOC).
-Second of (up to) 4 sub-sessions in the file-level `.filteredgrowth`
+**Next session**: **Step 6f.3b3.filteredgrowth.perdispatch —
+Per-dispatch-layer filtered growth lemmas** (legacy
+`Proofs/Output/EmitterScannability.lean` lines 6071–6758, ~688 LOC).
+Third of (up to) 4 sub-sessions in the file-level `.filteredgrowth`
 (~1320 LOC total). Target file:
-`Proofs/Output/IndexedEmitterScannability/FilteredGrowth/Infra.lean`
-(following the same one-file-per-sub-session pattern established by
-`.firstfiltered`). Ships the array-growth primitives that downstream
-`.perdispatch` lemmas compose: `Array_setIfInBounds_filter_monoIx`,
-`preprocess_filtered_monoIx`, `allowDir_ite_filter_monoIx`,
-`List_filter_length_ge_oneIx`, `filtered_grows_of_extended_prefixIx`,
-`filtered_grows_of_any_newIx`. Smaller and more self-contained than
-`.firstfiltered`; the LOC-budget closer to plan is likely.
+`Proofs/Output/IndexedEmitterScannability/FilteredGrowth/PerDispatch.lean`
+(may sub-split at port time into 2 sub-sessions for structural+flow
+vs. block+content dispatchers). Composes the array-growth primitives
+from `.infra` (§2/§3/§6/§7) with the per-scanner `_tokens_size_le` /
+`_adds_tokens` shape lemmas already in `FlowMonoChain.Basic` to ship:
+`scanDocumentStart_filtered_growsIx`,
+`scanDocumentEnd_filtered_growsIx`,
+`scanYamlDirective_new_token_eqIx`,
+`scanTagDirective_new_token_eqIx`, `scanDirective_filtered_growsIx`,
+`dispatchStructural_filtered_monoIx`,
+`dispatchFlowIndicators_filtered_growsIx`,
+`scanBlockEntry_filtered_growsIx`, `scanKey_filtered_growsIx`,
+`scanValue_filtered_growsIx`, `dispatchBlockIndicators_filtered_
+growsIx`, `dispatchContent_new_not_placeholderIx`,
+`dispatchContent_filtered_growsIx`. Largest sub-session of
+`.filteredgrowth`; expect the cursor-level-scanner pattern from
+`.firstfiltered` §3 (Reflection 132) to recur for every quoted /
+plain / block scanner inside `dispatchContent`.
 
 **`.flowmono` is complete** — see the status index table below
 for the 13-row recap (all ✅ LANDED). The parent's file split into
@@ -1846,6 +1856,18 @@ theorems (`scanFlowSequenceStartIx_first_filtered_token`,
 `scanFlowMappingStartIx_first_filtered_token`,
 `scanDoubleQuotedIx_first_filtered_token`) plus emitter shape
 helpers and the generic `Array_filter_prefix_of_raw_prefix` lemma.
+
+**`.filteredgrowth.infra` LANDED 2026-05-26** — see status index
+below; ships the array-growth primitives that downstream
+`.perdispatch` / `.turn3` lemmas compose:
+`List_filter_set_length_monoIx`, `Array_setIfInBounds_filter_monoIx`,
+`preprocess_filtered_monoIx`, `allowDir_ite_filter_monoIx`,
+`List_filter_length_ge_oneIx`, `filtered_grows_of_extended_prefixIx`,
+`filtered_grows_of_any_newIx`. Five of the seven lemmas were generic
+`Array α` / `List α` and ported verbatim; only §3
+`preprocess_filtered_monoIx` is true indexed-substrate work, and the
+`TokenStream` defeq with `Array (IxToken)` made the bridge invisible
+(see new Reflection 133).
 
 After `.filteredgrowth.infra`, the remaining sub-sessions follow
 (`.perdispatch`, `.turn3`); then file-level sessions
@@ -1893,7 +1915,7 @@ one-file-per-sub-session pattern under
 | Sub-session | Status | Date | LOC actual / plan | File |
 |---|---|---|---|---|
 | `.firstfiltered` | ✅ LANDED | 2026-05-26 | ~456 / ~313 | `FilteredGrowth/FirstFiltered.lean` |
-| `.infra` | ⏳ PLANNED | — | — / ~170 | `FilteredGrowth/Infra.lean` |
+| `.infra` | ✅ LANDED | 2026-05-26 | ~275 / ~170 | `FilteredGrowth/Infra.lean` |
 | `.perdispatch` | ⏳ PLANNED | — | — / ~688 | `FilteredGrowth/PerDispatch.lean` (may sub-split) |
 | `.turn3` | ⏳ PLANNED | — | — / ~150 | `FilteredGrowth/Turn3.lean` |
 
@@ -2567,6 +2589,98 @@ absorbed without rework because the per-conjunct discharge is
 mechanical — but the plan should reflect this for analogous future
 init-state scenarios (the `.emitscans.toplevel` chain that consumes
 this sub-session's output will face the same pattern).
+
+**Step 6f.3b3.filteredgrowth.infra LANDED 2026-05-26**
+(~275 LOC actual vs. ~170 LOC plan; new file
+`Proofs/Output/IndexedEmitterScannability/FilteredGrowth/Infra.lean`
++ one-line addition to the `FilteredGrowth.lean` re-export shim).
+Second of 4 sub-sessions in `.filteredgrowth` (2/4 landed). Ships
+the array-growth primitives that downstream `.perdispatch` /
+`.turn3` lemmas compose:
+
+  - **§1 `List_filter_set_length_monoIx`** — list helper: replacing
+    an element of a list with a value that passes the filter does not
+    decrease the filtered length. Verbatim port of legacy
+    `List_filter_set_length_mono` (line 5912).
+  - **§2 `Array_setIfInBounds_filter_monoIx`** —
+    `Array.setIfInBounds` with a filter-passing replacement preserves
+    or grows the filtered array size. Used by `scanValuePrepareIx`'s
+    placeholder-to-real-token overwrite. Verbatim port of legacy
+    `Array_setIfInBounds_filter_mono` (line 5929).
+  - **§3 `preprocess_filtered_monoIx`** — **the only true indexed
+    lemma in this sub-session**: the filtered token count doesn't
+    decrease through `scanNextTokenIx_preprocess`. Composes
+    `_preprocess_preserves_prefix` (`StreamStart/§7.7'`) with
+    `scanNextTokenIx_preprocess_tokens_size_le` (`FlowMonoChain.
+    Basic` §3) via `Array_filter_prefix_of_raw_prefix`
+    (`FirstFiltered` §6). The `TokenStream`'s `GetElem` instance
+    unfolds to `.tokens[i]` definitionally, so the raw-array
+    hypothesis demanded by `Array_filter_prefix_of_raw_prefix`
+    follows from the `TokenStream`-level equality returned by
+    `_preprocess_preserves_prefix` without any explicit
+    `getElem_eq_tokens_getElem` rewrites. Indexed twin of legacy
+    `preprocess_filtered_mono` (line 5945).
+  - **§4 `allowDir_ite_filter_monoIx`** — the `allowDirectives = true`
+    if-then-else (which sets `allowDirectives := false` and
+    `documentEverStarted := true`) preserves filtered token count;
+    both fields are non-token. Discharge: `split <;> rfl`. Verbatim
+    port of legacy `allowDir_ite_filter` (line 5958).
+  - **§5 `List_filter_length_ge_oneIx`** — if a non-empty list's
+    first element passes filter `p`, the filtered list has length ≥
+    1. Verbatim port of legacy `List_filter_length_ge_one` (line 5968).
+  - **§6 `filtered_grows_of_extended_prefixIx`** — extending an
+    array `a` with at least one more element where `b[a.size]` passes
+    `p` grows `(filter p).size` by ≥ 1. Verbatim port of legacy
+    `filtered_grows_of_extended_prefix` (line 5980).
+  - **§7 `filtered_grows_of_any_newIx`** — variant of §6 where the
+    `p`-passing element is at some `j ≥ a.size`, not necessarily
+    `a.size` itself. Used when we know a specific NEW element (e.g.
+    the last) is non-`.placeholder` but don't know the exact value
+    at the first new position. Verbatim port of legacy
+    `filtered_grows_of_any_new` (line 6025).
+
+No axioms, no `sorry`, build green at **479/479 jobs**. Phase 3
+closure axiom count unchanged at **0** (only the standard `propext`,
+`Classical.choice`, `Quot.sound`).
+
+**Indexed simplification** — 5 of 7 lemmas (§1, §2, §5, §6, §7) are
+generic `Array α` / `List α` lemmas: pure port-with-`Ix`-suffix from
+legacy. §4 is a one-line split-rfl. Only §3 is true indexed-substrate
+work, and the new Reflection 133 documents how the `TokenStream`
+↔ `Array (IxToken)` defeq made the bridge invisible.
+
+**LOC budget overshoot decomposition** (~275 actual vs. ~170 plan;
+overshoot ~105 LOC): (1) ~70 LOC of file-wide section-header
+doc-comments (`/-! ## §N ...`) — the legacy file relied on flat
+line-numbered prose comments, while the indexed file follows the
+`.flowmono` per-section docstring convention; (2) ~25 LOC for §3's
+docstring + the `h_pres` intermediate hypothesis (`∀ i (hi : i <
+s.tokens.tokens.size), s_pp.tokens.tokens[i] = s.tokens.tokens[i]`)
+that's extracted as a top-level `have` to feed
+`Array_filter_prefix_of_raw_prefix` cleanly; (3) ~10 LOC for the
+module header and per-§ pre-prose. **Pure-proof LOC tracks the
+legacy within ±5%** (~165 LOC of proof body vs. ~170 LOC legacy).
+
+**Reflection 133 (new)** documents the **TokenStream↔Array defeq
+invisibility**: the `Indexed.TokenStream input` type, defined as
+`structure TokenStream where tokens : Array (IxToken input)`, has
+its `GetElem` instance set to `getElem ts i h := ts.tokens[i]'h`.
+This means `s.tokens[i]` and `s.tokens.tokens[i]` are *definitionally*
+equal — Lean's elaborator unfolds the structure projection
+automatically. So a hypothesis of shape `s_pp.tokens[i] = s.tokens[i]`
+(returned by `_preprocess_preserves_prefix`, which works at
+`TokenStream` level) can be fed directly to a goal of shape
+`s_pp.tokens.tokens[i] = s.tokens.tokens[i]` (demanded by
+`Array_filter_prefix_of_raw_prefix`, which works at `Array` level).
+**No explicit `congr`, `show`, or `getElem_eq_tokens_getElem`
+rewrite is needed**. The operational lesson is that introducing a
+thin `structure ... where field : InnerType` wrapper with a `GetElem`
+instance that reduces to the underlying field's `GetElem` is a
+*zero-cost abstraction* for proofs — the wrapper buys typing benefits
+(here: input-string indexing) without imposing rewrite overhead.
+Confirmed pattern for future Phase 4 substrate wrappers (e.g. when
+`ParseTree input` lands as a structured wrapper around
+`Array (TreeNode input)`).
 
 **Step 6f.3b3.filteredgrowth.firstfiltered LANDED 2026-05-26**
 (~456 LOC actual vs. ~313 LOC plan; new file
@@ -11720,13 +11834,30 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
             is unneeded because indexed `scanDoubleQuotedIx` is
             cursor-level; the `emitAt` for the scalar token happens
             inside `scanNextTokenIx_dispatchContent` itself.
-          ▸ **6f.3b3.filteredgrowth.infra** *(~170 LOC; legacy lines
-            5900–6070)*. Filtered token array growth infrastructure:
+          ▸ **6f.3b3.filteredgrowth.infra** ✅ **LANDED 2026-05-26**
+            *(~275 LOC actual vs. ~170 LOC plan; legacy lines
+            5900–6070)*. Target file:
+            `FilteredGrowth/Infra.lean`. Filtered token array growth
+            infrastructure: `List_filter_set_length_monoIx`,
             `Array_setIfInBounds_filter_monoIx`,
             `preprocess_filtered_monoIx`, `allowDir_ite_filter_monoIx`,
             `List_filter_length_ge_oneIx`,
             `filtered_grows_of_extended_prefixIx`,
-            `filtered_grows_of_any_newIx`. Single session.
+            `filtered_grows_of_any_newIx`. Five of seven lemmas are
+            generic `Array α` / `List α` and ported verbatim from
+            legacy; §4 is a split-rfl; only §3
+            `preprocess_filtered_monoIx` is true indexed-substrate
+            work, composing `_preprocess_preserves_prefix` (StreamStart
+            §7.7) with `scanNextTokenIx_preprocess_tokens_size_le`
+            (FlowMonoChain `Basic.lean`) via
+            `Array_filter_prefix_of_raw_prefix` (FirstFiltered §6).
+            The `TokenStream` defeq with `Array (IxToken)` makes the
+            bridge invisible — no explicit `getElem_eq_tokens_getElem`
+            rewrites needed. **LOC overshoot** (~275 actual vs. ~170
+            plan, ~105 LOC): ~70 LOC of file-wide section-header
+            doc-comments and the ~25 LOC §3 docstring + auxiliary
+            `h_pres` shape lemma; pure-proof LOC tracks the legacy
+            within ±5%.
           ▸ **6f.3b3.filteredgrowth.perdispatch** *(~688 LOC; legacy
             lines 6071–6758)*. Per-dispatch-layer filtered growth:
             `scanDocumentStart_filtered_growsIx`,
