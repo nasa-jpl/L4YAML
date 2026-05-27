@@ -12,7 +12,13 @@ theorem family are ported to the indexed substrate.
 
   - ✅ **`ScanChainGrewIx` (strict-variant track)** — landed
     (Step `6f.3b3.emitscans.chaingrew`, see §1 below).
-  - ⏳ `EmitScansInFlowIx` predicate + per-value-form lemmas.
+  - ✅ **`EmitScansInFlowIx`/`EmitListScansInFlowIx` predicates + light
+    helpers** — landed (Step `6f.3b3.emitscans.flowvalue` sub-session 1,
+    see §2 below): `emitList_scans_emptyIx`, `emitPairList_first_charIx`,
+    `isValueCandidate_of_peekAt_blankIx`.
+  - ⏳ Per-value-form bodies (`.flowvalue` sub-session 2):
+    `emitList_scans_nonemptyIx`, `scanNextToken_flow_valueIx` (+ the
+    missing twin `scanNextTokenIx_preprocess_flow_ws1`).
   - ⏳ `EmitPairListScansInFlowIx` + `emit_scans_in_flowIx`.
   - ⏳ `emit_produces_valid_yamlIx` top-level composition.
 
@@ -58,10 +64,13 @@ set_option autoImplicit false
 namespace L4YAML.Proofs.Indexed.EmitterScannability.EmitScans
 
 open L4YAML
+open L4YAML.CharPredicates
 open L4YAML.Indexed
 open L4YAML.Scanner.Indexed
 open L4YAML.Scanner.Indexed.ScannerStateIx
 open L4YAML.Proofs.Indexed.EmitterScannability.ScanChain
+open L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain
+open L4YAML.Proofs.Indexed.EmitterScannability.FilteredGrowth
 
 variable {input : String}
 
@@ -162,5 +171,132 @@ theorem ScanChainGrewIx_of_scanNextTokenIx_eq {p : IxToken input → Bool}
   | step h_snt h_grew h_rest =>
     refine .step (by rw [h_eq]; exact h_snt) ?_ h_rest
     omega
+
+/-! ## §2  In-flow emit-scannability predicates + light helpers
+
+Step `6f.3b3.emitscans.flowvalue`, **sub-session 1** (predicate + light
+helpers). Ports the predicate layer and three small helpers; the two
+heavy per-value-form bodies (`emitList_scans_nonemptyIx`,
+`scanNextToken_flow_valueIx`) and the one missing supporting twin
+(`scanNextTokenIx_preprocess_flow_ws1`) land in sub-session 2.
+
+Indexed twin of legacy `Proofs/Output/EmitterScannability.lean`
+lines 7003–7254. Substrate bridge: `ScannerState` → `ScannerStateIx input`;
+`s.col`/`s.line` → `s.cursor.pos.col`/`s.cursor.pos.line`;
+`ScannerSurfCorr` → `ScannerSurfCorrIx`; `AllTokensOnLine`/`EndLineOnLine`
+→ `…Ix`; `ScanChainGrew`/`FlowMonoChain` → `…Ix`; the token predicate's
+`t.val` → `t.token`; `lastRealTokenVal?` → `lastRealTokenValIx?`;
+`isValueCandidate` → `isValueCandidateIx`. -/
+
+/-- `EmitScansInFlowIx v`: scanning `emit v` inside a flow context (from a
+    state surface-corresponding to `(emit v).toList ++ rest`) produces a
+    non-empty `ScanChainGrewIx`, preserves the flow invariants, and leaves
+    the cursor at `rest`. Indexed twin of legacy `EmitScansInFlow`
+    (lines 7003–7029); note the two conjuncts absent from
+    `EmitListScansInFlowIx`: `simpleKeyAllowed = false` and the
+    `lastRealTokenValIx?` non-flow-opener clause. -/
+def EmitScansInFlowIx (v : YamlValue) : Prop :=
+  ∀ (s : ScannerStateIx input) (rest : List Char),
+    ScannerSurfCorrIx s ⟨(L4YAML.Emit.emit v).toList ++ rest, s.cursor.pos.col⟩ →
+    s.inFlow = true →
+    s.flowLevel > 0 →
+    s.currentIndent < 0 →
+    s.cursor.pos.col > 0 →
+    s.explicitKeyLine = none →
+    AllTokensOnLineIx s s.cursor.pos.line →
+    EndLineOnLineIx s →
+    ∃ n s', ScanChainGrewIx (fun t => t.token != .placeholder) s n s'
+      ∧ ScannerSurfCorrIx s' ⟨rest, s'.cursor.pos.col⟩
+      ∧ s'.flowLevel = s.flowLevel
+      ∧ s'.directivesPresent = s.directivesPresent
+      ∧ s'.indents = s.indents
+      ∧ s'.explicitKeyLine = s.explicitKeyLine
+      ∧ s'.cursor.pos.col > 0
+      ∧ s'.inFlow = true
+      ∧ s'.currentIndent < 0
+      ∧ s'.cursor.pos.line = s.cursor.pos.line
+      ∧ s'.simpleKeyAllowed = false
+      ∧ (∀ t, lastRealTokenValIx? s'.tokens = some t →
+          t ≠ .flowSequenceStart ∧ t ≠ .flowMappingStart ∧ t ≠ .flowEntry)
+      ∧ AllTokensOnLineIx s' s'.cursor.pos.line
+      ∧ EndLineOnLineIx s'
+      ∧ s'.simpleKeyStack = s.simpleKeyStack
+      ∧ FlowMonoChainIx s.flowLevel s n s'
+
+/-- `EmitListScansInFlowIx items`: scanning the comma-separated `emitList`
+    output (the body between `[` and `]` in a flow sequence) succeeds in
+    flow context, preserving invariants. Indexed twin of legacy
+    `EmitListScansInFlow` (lines 7031–7057). -/
+def EmitListScansInFlowIx (items : List YamlValue) : Prop :=
+  ∀ (s : ScannerStateIx input) (rest : List Char),
+    ScannerSurfCorrIx s ⟨(L4YAML.Emit.emit.emitList items).toList ++ rest, s.cursor.pos.col⟩ →
+    s.inFlow = true →
+    s.flowLevel > 0 →
+    s.currentIndent < 0 →
+    s.cursor.pos.col > 0 →
+    s.explicitKeyLine = none →
+    AllTokensOnLineIx s s.cursor.pos.line →
+    EndLineOnLineIx s →
+    ∃ n s', ScanChainGrewIx (fun t => t.token != .placeholder) s n s'
+      ∧ ScannerSurfCorrIx s' ⟨rest, s'.cursor.pos.col⟩
+      ∧ s'.flowLevel = s.flowLevel
+      ∧ s'.directivesPresent = s.directivesPresent
+      ∧ s'.indents = s.indents
+      ∧ s'.explicitKeyLine = s.explicitKeyLine
+      ∧ s'.cursor.pos.col > 0
+      ∧ s'.inFlow = true
+      ∧ s'.currentIndent < 0
+      ∧ s'.cursor.pos.line = s.cursor.pos.line
+      ∧ AllTokensOnLineIx s' s'.cursor.pos.line
+      ∧ EndLineOnLineIx s'
+      ∧ s'.simpleKeyStack = s.simpleKeyStack
+      ∧ FlowMonoChainIx s.flowLevel s n s'
+
+/-- Empty list body is trivially scanned (0-step chain). Indexed twin of
+    legacy `emitList_scans_empty` (lines 7059–7066). -/
+theorem emitList_scans_emptyIx : EmitListScansInFlowIx (input := input) [] := by
+  intro s rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline
+  have h_eq : (L4YAML.Emit.emit.emitList ([] : List YamlValue)).toList ++ rest = rest := by
+    simp only [L4YAML.Emit.emit.emitList]; rfl
+  rw [h_eq] at hcorr
+  exact ⟨0, s, .zero, hcorr, rfl, rfl, rfl, rfl, h_col, h_flow, h_indent, rfl,
+         h_atol, h_endline, rfl, .zero (Nat.le_refl _)⟩
+
+/-- The first char of `emitPairList (p :: ps)` is the first char of the key
+    `emit p.1` — a non-whitespace, non-`#` content char. Indexed twin of
+    legacy `emitPairList_first_char` (lines 7211–7229). -/
+theorem emitPairList_first_charIx (p : YamlValue × YamlValue)
+    (ps : List (YamlValue × YamlValue)) :
+    ∃ c rest', (L4YAML.Emit.emit.emitPairList (p :: ps)).toList = c :: rest' ∧
+      isWhiteSpaceBool c = false ∧ isLineBreakBool c = false ∧ c ≠ '#' := by
+  obtain ⟨c, ev_rest, h_emit_eq, h_nws, h_nlb, h_nc⟩ := emit_first_char p.1
+  match ps with
+  | [] =>
+    simp only [L4YAML.Emit.emit.emitPairList]
+    rw [show (L4YAML.Emit.emit p.1 ++ ": " ++ L4YAML.Emit.emit p.2).toList =
+        (L4YAML.Emit.emit p.1).toList ++ (": " ++ L4YAML.Emit.emit p.2).toList from by
+      simp [String.toList_append]]
+    rw [h_emit_eq]
+    exact ⟨c, ev_rest ++ (": " ++ L4YAML.Emit.emit p.2).toList, by simp, h_nws, h_nlb, h_nc⟩
+  | p' :: ps' =>
+    have h_ep : (L4YAML.Emit.emit.emitPairList (p :: p' :: ps')).toList =
+        (L4YAML.Emit.emit p.1).toList ++
+          (": " ++ L4YAML.Emit.emit p.2 ++ ", " ++ L4YAML.Emit.emit.emitPairList (p' :: ps')).toList := by
+      simp [L4YAML.Emit.emit.emitPairList, String.toList_append, List.append_assoc]
+    rw [h_ep, h_emit_eq]
+    exact ⟨c, ev_rest ++ (": " ++ L4YAML.Emit.emit p.2 ++ ", " ++ L4YAML.Emit.emit.emitPairList (p' :: ps')).toList,
+      by simp, h_nws, h_nlb, h_nc⟩
+
+/-- `isValueCandidateIx` returns true when `peekAt? 1` is a space (blank):
+    every branch of `isValueCandidateIx` has a `peekAt? 1` fallback whose
+    blank-acceptance (`isBlankBool ' ' = true`) collapses the result to
+    `true`. Indexed twin of legacy `isValueCandidate_of_peekAt_blank`
+    (lines 7234–7254). -/
+theorem isValueCandidate_of_peekAt_blankIx (s : ScannerStateIx input)
+    (h : s.peekAt? 1 = some ' ') :
+    isValueCandidateIx s = true := by
+  unfold isValueCandidateIx
+  rw [h]
+  simp only [show isBlankBool ' ' = true from by decide, Bool.true_or, ite_self]
 
 end L4YAML.Proofs.Indexed.EmitterScannability.EmitScans
