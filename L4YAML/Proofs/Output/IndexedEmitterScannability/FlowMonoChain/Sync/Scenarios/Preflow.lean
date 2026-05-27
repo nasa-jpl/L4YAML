@@ -129,6 +129,146 @@ theorem scanNextTokenIx_preprocess_flow (s : ScannerStateIx input) (c : Char)
   -- saveSimpleKeyIx s.peek? = s.peek? = some c
   rw [saveSimpleKeyIx_peek?, h_pk]
 
+/-! ## §1b  `scanNextTokenIx_preprocess_flow_ws1`
+
+Variant of §1 with a single leading space: preprocessing of
+`' ' :: c :: rest` yields the same result as preprocessing of the
+post-space state `s.advance`. Key idea: `skipToContentS` absorbs the
+one space (advancing the cursor by one within the same line), reaching
+the same content cursor as `skipToContentS` on `s.advance` (which is
+the identity there). Used by `emitList_scans_nonemptyIx` to step over
+the space after a flow `,`. Indexed twin of legacy
+`scanNextToken_preprocess_flow_ws1` (legacy 3590).
+
+The indexed skip machinery is simpler than legacy: there is no
+`needIndentCheck`/`skipToContentWs`/`skipSpaces` split — `skipToContent`
+does `skipWhitespace` then a single peek-case. So the cursor-level
+absorb lemma `skipToContent_one_space` is short. -/
+
+/-- Cursor-level: `skipToContent` absorbs exactly one leading space when
+    the following character is content (non-ws, non-lb, non-`#`).
+    `skipWhitespace` advances past the lone space; the peek-case then
+    stops at the content character. -/
+theorem skipToContent_one_space (c : IxCursor input) {ch : Char}
+    (h_sp : c.peek? = some ' ')
+    (h_next : c.advance.peek? = some ch)
+    (h_nws : isWhiteSpaceBool ch = false)
+    (h_nlb : isLineBreakBool ch = false)
+    (h_nc : ch ≠ '#') :
+    L4YAML.Scanner.Indexed.skipToContent c = c.advance := by
+  -- offset bound: peek = some ' ' ⟹ in range
+  have h_lt : c.pos.offset < input.utf8ByteSize := by
+    by_cases h : c.pos.offset < input.utf8ByteSize
+    · exact h
+    · rw [(IxCursor.peek?_eq_none_iff c).mpr (Nat.le_of_not_lt h)] at h_sp
+      simp at h_sp
+  -- `skipWhitespace c = c.advance`: one whitespace step, then stop at content.
+  have hSW : L4YAML.Scanner.Indexed.skipWhitespace c = c.advance := by
+    unfold L4YAML.Scanner.Indexed.skipWhitespace
+    obtain ⟨n, hn⟩ : ∃ n, input.utf8ByteSize = n + 1 :=
+      ⟨input.utf8ByteSize - 1, by omega⟩
+    rw [hn]
+    unfold L4YAML.Scanner.Indexed.skipWhitespaceLoop
+    have hpw_c : peekIsWhiteSpace c = true := by
+      unfold peekIsWhiteSpace; rw [h_sp]; decide
+    simp only [hpw_c, if_true]
+    have hpw_adv : peekIsWhiteSpace c.advance = false := by
+      unfold peekIsWhiteSpace; rw [h_next]; exact h_nws
+    cases n with
+    | zero => rfl
+    | succ m => simp [L4YAML.Scanner.Indexed.skipWhitespaceLoop, hpw_adv]
+  -- `skipToContent c` settles at `c.advance` (content, not `#`, not line break).
+  unfold L4YAML.Scanner.Indexed.skipToContent L4YAML.Scanner.Indexed.skipToContentLoop
+  simp only [hSW, h_next,
+    show isCommentBool ch = false from by unfold isCommentBool; simp [h_nc],
+    h_nlb, Bool.false_eq_true, if_false]
+
+/-- State-level: `skipToContentS` absorbs one leading space, yielding
+    `s.advance`. The line is unchanged (advance past a space), so the
+    `skipToContentS` newline-reset branch is not taken. -/
+theorem skipToContentS_ws1 (s : ScannerStateIx input) {c : Char}
+    (h_sp : s.peek? = some ' ')
+    (h_next : s.advance.peek? = some c)
+    (h_nws : isWhiteSpaceBool c = false)
+    (h_nlb : isLineBreakBool c = false)
+    (h_nc : c ≠ '#')
+    (h_lt : s.cursor.pos.offset < input.utf8ByteSize) :
+    s.skipToContentS = s.advance := by
+  have h_cur : L4YAML.Scanner.Indexed.skipToContent s.cursor = s.cursor.advance :=
+    skipToContent_one_space s.cursor h_sp h_next h_nws h_nlb h_nc
+  have h_line : s.cursor.advance.pos.line = s.cursor.pos.line :=
+    advance_line_of_peekIx s.cursor ' ' h_lt h_sp (by decide) (by decide)
+  unfold ScannerStateIx.skipToContentS ScannerStateIx.advance
+  rw [h_cur]
+  simp only [h_line, bne_self_eq_false, Bool.false_eq_true, ↓reduceIte]
+
+/-- Preprocessing of `' ' :: c :: rest` in flow context equals
+    preprocessing of the post-space state `s.advance`, with that state's
+    invariants exposed. Indexed twin of `scanNextToken_preprocess_flow_ws1`
+    (legacy 3590). -/
+theorem scanNextTokenIx_preprocess_flow_ws1 (s : ScannerStateIx input) (c : Char)
+    (rest : List Char)
+    (hcorr : ScannerSurfCorrIx s ⟨' ' :: c :: rest, s.cursor.pos.col⟩)
+    (h_flow : s.inFlow = true)
+    (h_nws : isWhiteSpaceBool c = false)
+    (h_nlb : isLineBreakBool c = false)
+    (h_nc : c ≠ '#')
+    (_h_indent : s.currentIndent < 0) :
+    ∃ s₁, ScannerSurfCorrIx s₁ ⟨c :: rest, s₁.cursor.pos.col⟩
+      ∧ s₁.inFlow = true
+      ∧ s₁.flowLevel = s.flowLevel
+      ∧ s₁.currentIndent = s.currentIndent
+      ∧ s₁.cursor.pos.col = s.cursor.pos.col + 1
+      ∧ s₁.directivesPresent = s.directivesPresent
+      ∧ s₁.indents = s.indents
+      ∧ s₁.explicitKeyLine = s.explicitKeyLine
+      ∧ s₁.cursor.pos.line = s.cursor.pos.line
+      ∧ scanNextTokenIx_preprocess s = scanNextTokenIx_preprocess s₁
+      ∧ (AllTokensOnLineIx s s.cursor.pos.line →
+          AllTokensOnLineIx s₁ s₁.cursor.pos.line)
+      ∧ (EndLineOnLineIx s → EndLineOnLineIx s₁)
+      ∧ s₁.simpleKeyStack = s.simpleKeyStack
+      ∧ s₁.tokens = s.tokens := by
+  -- The post-space state is `s.advance` (advance only moves the cursor).
+  have ⟨h_sp, h_lt⟩ := peek_of_chars_consIx_state s ' ' (c :: rest) _ hcorr
+  -- Surface correspondence at `c :: rest` after the space.
+  have h_corr_adv : ScannerSurfCorrIx s.advance ⟨c :: rest, s.cursor.pos.col + 1⟩ :=
+    advance_non_newline_corrIx_state s s.advance ' ' (c :: rest) hcorr rfl rfl
+      h_lt (by decide) (by decide)
+  have ⟨h_next, h_lt_adv⟩ := peek_of_chars_consIx_state s.advance c rest _ h_corr_adv
+  -- Field facts for `s.advance` (advance preserves everything but the cursor).
+  have h_col_adv : s.advance.cursor.pos.col = s.cursor.pos.col + 1 := h_corr_adv.col_eq.symm
+  have h_line_adv : s.advance.cursor.pos.line = s.cursor.pos.line :=
+    advance_line_of_peekIx_state s ' ' h_lt h_sp (by decide) (by decide)
+  have h_flow_adv : s.advance.inFlow = true := h_flow
+  have h_hm_adv : s.advance.hasMore = true := by
+    unfold ScannerStateIx.hasMore IxCursor.hasMore; exact decide_eq_true h_lt_adv
+  have h_stc_ws : s.skipToContentS = s.advance :=
+    skipToContentS_ws1 s h_sp h_next h_nws h_nlb h_nc h_lt
+  -- `ScannerSurfCorrIx` restated at the witness column.
+  have h_corr₁ : ScannerSurfCorrIx s.advance ⟨c :: rest, s.advance.cursor.pos.col⟩ := by
+    rw [h_col_adv]; exact h_corr_adv
+  -- Both preprocess paths reduce to `.ok (some (saveSimpleKeyIx s.advance, c))`.
+  have h_pp_s : scanNextTokenIx_preprocess s = .ok (some (saveSimpleKeyIx s.advance, c)) := by
+    unfold scanNextTokenIx_preprocess
+    simp only [h_stc_ws, h_hm_adv, Bool.not_true, Bool.false_eq_true, ↓reduceIte]
+    simp only [h_flow_adv, Bool.not_true, Bool.false_and, Bool.false_eq_true, ↓reduceIte]
+    simp only [show ¬(s.advance.indents.size < s.advance.indents.size) from by omega,
+      decide_false, Bool.false_and, Bool.false_eq_true, ↓reduceIte]
+    rw [saveSimpleKeyIx_peek?, h_next]
+  have h_pp_adv : scanNextTokenIx_preprocess s.advance =
+      .ok (some (saveSimpleKeyIx s.advance, c)) :=
+    scanNextTokenIx_preprocess_flow s.advance c rest (s.cursor.pos.col + 1)
+      h_corr_adv h_flow_adv h_nws h_nlb h_nc
+  refine ⟨s.advance, h_corr₁, h_flow_adv, rfl, rfl, h_col_adv, rfl, rfl, rfl, h_line_adv,
+    h_pp_s.trans h_pp_adv.symm, ?_, ?_, rfl, rfl⟩
+  · -- AllTokensOnLineIx transfers: same tokens (defeq), same line.
+    intro h_a i hi
+    rw [h_line_adv]; exact h_a i hi
+  · -- EndLineOnLineIx transfers: same simpleKey (defeq), same line.
+    intro h_e h_poss
+    rw [h_line_adv]; exact h_e h_poss
+
 /-! ## §2  `scanNextTokenIx_flow_comma`
 
 Full `scanNextTokenIx` for `','` in flow context. Threads

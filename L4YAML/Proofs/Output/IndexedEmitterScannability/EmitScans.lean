@@ -16,9 +16,15 @@ theorem family are ported to the indexed substrate.
     helpers** — landed (Step `6f.3b3.emitscans.flowvalue` sub-session 1,
     see §2 below): `emitList_scans_emptyIx`, `emitPairList_first_charIx`,
     `isValueCandidate_of_peekAt_blankIx`.
-  - ⏳ Per-value-form bodies (`.flowvalue` sub-session 2):
-    `emitList_scans_nonemptyIx`, `scanNextToken_flow_valueIx` (+ the
-    missing twin `scanNextTokenIx_preprocess_flow_ws1`).
+  - ✅ **`emitList_scans_nonemptyIx`** — landed (`.flowvalue` sub-session
+    2a, see §2 below). Its one missing supporting twin,
+    `scanNextTokenIx_preprocess_flow_ws1` (the one-leading-space
+    preprocess-equality lemma), landed alongside in `FlowMonoChain/Sync/
+    Scenarios/Preflow.lean` §1b.
+  - ⏳ `scanNextToken_flow_valueIx` (`.flowvalue` sub-session 2b): the
+    value-indicator (`:`) flow dispatcher (legacy 7256–7621, ~360 LOC;
+    needs the missing twins `scanNextTokenIx_via_block_dispatch`,
+    `scanValueTabCheckIx`, `AllTokensOnLine_scanValuePrepare_flowIx`, …).
   - ⏳ `EmitPairListScansInFlowIx` + `emit_scans_in_flowIx`.
   - ⏳ `emit_produces_valid_yamlIx` top-level composition.
 
@@ -68,6 +74,7 @@ open L4YAML.CharPredicates
 open L4YAML.Indexed
 open L4YAML.Scanner.Indexed
 open L4YAML.Scanner.Indexed.ScannerStateIx
+open L4YAML.Proofs.CouplingBridge
 open L4YAML.Proofs.Indexed.EmitterScannability.ScanChain
 open L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain
 open L4YAML.Proofs.Indexed.EmitterScannability.FilteredGrowth
@@ -172,16 +179,20 @@ theorem ScanChainGrewIx_of_scanNextTokenIx_eq {p : IxToken input → Bool}
     refine .step (by rw [h_eq]; exact h_snt) ?_ h_rest
     omega
 
-/-! ## §2  In-flow emit-scannability predicates + light helpers
+/-! ## §2  In-flow emit-scannability predicates + light helpers + list body
 
-Step `6f.3b3.emitscans.flowvalue`, **sub-session 1** (predicate + light
-helpers). Ports the predicate layer and three small helpers; the two
-heavy per-value-form bodies (`emitList_scans_nonemptyIx`,
-`scanNextToken_flow_valueIx`) and the one missing supporting twin
-(`scanNextTokenIx_preprocess_flow_ws1`) land in sub-session 2.
+Step `6f.3b3.emitscans.flowvalue`, **sub-sessions 1 and 2a**. SS1 ported
+the predicate layer and three small helpers (`emitList_scans_emptyIx`,
+`emitPairList_first_charIx`, `isValueCandidate_of_peekAt_blankIx`); SS2a
+ported the comma-path list body `emitList_scans_nonemptyIx` (legacy
+7068–7207), after building its one missing supporting twin
+`scanNextTokenIx_preprocess_flow_ws1` (in `Preflow.lean` §1b). The
+remaining heavy body `scanNextToken_flow_valueIx` (the `:` value-indicator
+dispatcher, legacy 7256–7621) lands in sub-session 2b.
 
 Indexed twin of legacy `Proofs/Output/EmitterScannability.lean`
-lines 7003–7254. Substrate bridge: `ScannerState` → `ScannerStateIx input`;
+lines 7003–7254 (SS1) and 7068–7207 (SS2a). Substrate bridge:
+`ScannerState` → `ScannerStateIx input`;
 `s.col`/`s.line` → `s.cursor.pos.col`/`s.cursor.pos.line`;
 `ScannerSurfCorr` → `ScannerSurfCorrIx`; `AllTokensOnLine`/`EndLineOnLine`
 → `…Ix`; `ScanChainGrew`/`FlowMonoChain` → `…Ix`; the token predicate's
@@ -261,6 +272,150 @@ theorem emitList_scans_emptyIx : EmitListScansInFlowIx (input := input) [] := by
   rw [h_eq] at hcorr
   exact ⟨0, s, .zero, hcorr, rfl, rfl, rfl, rfl, h_col, h_flow, h_indent, rfl,
          h_atol, h_endline, rfl, .zero (Nat.le_refl _)⟩
+
+/-- Non-empty list scanning via induction on the item list. Singleton case
+    uses `EmitScansInFlowIx` directly; the multi-item case chains
+    `emit v` + `", "` + recursive `emitList`. Indexed twin of legacy
+    `emitList_scans_nonempty` (lines 7068–7207). -/
+theorem emitList_scans_nonemptyIx (items : List YamlValue) (h_ne : items ≠ [])
+    (h_all : ∀ v ∈ items, EmitScansInFlowIx (input := input) v) :
+    EmitListScansInFlowIx (input := input) items := by
+  induction items with
+  | nil => contradiction
+  | cons v tail ih =>
+    intro s rest_chars hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline
+    match tail, ih with
+    | [], _ =>
+      -- Singleton [v]: emitList [v] = emit v
+      have h_eq : (L4YAML.Emit.emit.emitList [v]).toList = (L4YAML.Emit.emit v).toList := by
+        simp only [L4YAML.Emit.emit.emitList]
+      rw [h_eq] at hcorr
+      obtain ⟨n, s', h_chain, h_corr, h_fl', h_dp, h_ids, h_ek', h_col', h_flow', h_indent',
+              h_line_v, _, _, h_atol', h_endline', h_stack', h_fmc'⟩ :=
+        h_all v (.head _) s rest_chars hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline
+      exact ⟨n, s', h_chain, h_corr, h_fl', h_dp, h_ids, h_ek', h_col', h_flow', h_indent',
+             h_line_v, h_atol', h_endline', h_stack', h_fmc'⟩
+    | v' :: vs, ih =>
+      -- Multi-item: emitList (v :: v' :: vs) = emit v ++ ", " ++ emitList (v' :: vs)
+      have h_eq : (L4YAML.Emit.emit.emitList (v :: v' :: vs)).toList ++ rest_chars =
+          (L4YAML.Emit.emit v).toList ++
+            ([',', ' '] ++ (L4YAML.Emit.emit.emitList (v' :: vs)).toList ++ rest_chars) := by
+        simp [L4YAML.Emit.emit.emitList, String.toList_append, List.append_assoc]
+      rw [h_eq] at hcorr
+      -- Step 1: scan emit v via EmitScansInFlowIx
+      have h_ev : EmitScansInFlowIx (input := input) v := h_all v (.head _)
+      obtain ⟨n₁, s₁, h_chain₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_ek₁, h_col₁, h_flow₁,
+              h_indent₁, _h_line₁, _, h_last₁, h_atol₁, h_endline₁, h_stack₁, h_fmc₁⟩ :=
+        h_ev s ([',', ' '] ++ (L4YAML.Emit.emit.emitList (v' :: vs)).toList ++ rest_chars)
+          hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline
+      -- Step 2: scan ',' via scanNextTokenIx_flow_comma
+      obtain ⟨s₂, h_snt₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, h_ek₂, h_col₂, _h_line₂,
+              h_atol₂, h_endline₂, h_stack₂⟩ :=
+        scanNextTokenIx_flow_comma s₁
+          (' ' :: (L4YAML.Emit.emit.emitList (v' :: vs)).toList ++ rest_chars)
+          h_corr₁ h_flow₁ h_indent₁ h_col₁ h_last₁ h_atol₁ h_endline₁
+      -- Step 3: handle the leading space via the preprocessing-equality twin
+      obtain ⟨c, rest', h_first, h_nws, h_nlb, h_nc⟩ := emitList_first_char v' vs
+      have h_corr₂_ws : ScannerSurfCorrIx s₂
+          ⟨' ' :: c :: (rest' ++ rest_chars), s₂.cursor.pos.col⟩ := by
+        have : ' ' :: (L4YAML.Emit.emit.emitList (v' :: vs)).toList ++ rest_chars =
+            ' ' :: c :: (rest' ++ rest_chars) := by
+          rw [h_first]; simp only [List.cons_append]
+        rwa [this] at h_corr₂
+      have h_s2_flow : s₂.inFlow = true := by
+        unfold ScannerStateIx.inFlow; exact decide_eq_true (by rw [h_fl₂, h_fl₁]; exact h_fl)
+      have h_s2_indent : s₂.currentIndent < 0 := by
+        unfold ScannerStateIx.currentIndent; rw [h_ids₂]; exact h_indent₁
+      obtain ⟨s₃, h_corr₃, h_flow₃, h_fl₃, h_indent₃, h_col₃, h_dp₃, h_ids₃, h_ek₃,
+              _h_line₃, h_pp_eq, h_atol_transfer₃, h_endline_transfer₃, h_stack_pp₃, h_toks_pp₃⟩ :=
+        scanNextTokenIx_preprocess_flow_ws1 s₂ c (rest' ++ rest_chars) h_corr₂_ws
+          h_s2_flow h_nws h_nlb h_nc h_s2_indent
+      -- s₃ at c :: rest' ++ rest_chars = (emitList (v' :: vs)).toList ++ rest_chars
+      have h_corr₃' : ScannerSurfCorrIx s₃
+          ⟨(L4YAML.Emit.emit.emitList (v' :: vs)).toList ++ rest_chars, s₃.cursor.pos.col⟩ := by
+        have : c :: (rest' ++ rest_chars) =
+            (L4YAML.Emit.emit.emitList (v' :: vs)).toList ++ rest_chars := by
+          rw [h_first]; simp only [List.cons_append]
+        rwa [this] at h_corr₃
+      -- Step 4: recursive scan of emitList (v' :: vs) from s₃
+      have h_tail_all : ∀ w ∈ v' :: vs, EmitScansInFlowIx (input := input) w :=
+        fun w hw => h_all w (.tail _ hw)
+      have h_ih_list : EmitListScansInFlowIx (input := input) (v' :: vs) :=
+        ih (by simp) h_tail_all
+      obtain ⟨n₃, s_end, h_chain₃, h_corr_end, h_fl_end, h_dp_end, h_ids_end,
+              h_ek_end, h_col_end, h_flow_end, h_indent_end, h_line_end, h_atol_end,
+              h_endline_end, h_stack_end, h_fmc₃⟩ :=
+        h_ih_list s₃ rest_chars h_corr₃'
+          h_flow₃ (by rw [h_fl₃, h_fl₂, h_fl₁]; exact h_fl)
+          (by rw [h_indent₃]; exact h_s2_indent)
+          (by rw [h_col₃]; omega)
+          (by rw [h_ek₃, h_ek₂, h_ek₁]; exact h_ek)
+          (h_atol_transfer₃ h_atol₂)
+          (h_endline_transfer₃ h_endline₂)
+      -- Step 5: lift chain for s₂ via the preprocessing equality
+      have h_snt_eq : scanNextTokenIx s₂ = scanNextTokenIx s₃ :=
+        scanNextTokenIx_eq_of_preprocess s₂ s₃ h_pp_eq
+      -- The recursive chain has n₃ ≥ 1 (emitList is non-empty)
+      have h_n₃_pos : n₃ ≥ 1 := by
+        match n₃, h_chain₃ with
+        | 0, .zero =>
+          exfalso
+          have h_chars_eq := CharsFromOffset_unique h_corr₃'.chars_from h_corr_end.chars_from
+          have h_len := congrArg List.length h_chars_eq
+          simp only [List.length_append] at h_len
+          have h_nil : (L4YAML.Emit.emit.emitList (v' :: vs)).toList = [] := by
+            match h_list : (L4YAML.Emit.emit.emitList (v' :: vs)).toList with
+            | [] => rfl
+            | _ :: _ => simp [h_list] at h_len
+          exact absurd h_nil (emitList_toList_ne_nil v' vs)
+        | _ + 1, _ => omega
+      obtain ⟨n₃', rfl⟩ : ∃ k, n₃ = k + 1 := ⟨n₃ - 1, by omega⟩
+      -- Lift the recursive ScanChainGrewIx through the preprocess equality.
+      -- preprocess_flow_ws1 preserves tokens (h_toks_pp₃ : s₃.tokens = s₂.tokens),
+      -- so the per-step witness from h_chain₃ at s₃ remains valid at s₂.
+      have h_filt_le :
+          (s₂.tokens.tokens.filter (fun t => t.token != .placeholder)).size ≤
+          (s₃.tokens.tokens.filter (fun t => t.token != .placeholder)).size := by
+        rw [h_toks_pp₃]; exact Nat.le_refl _
+      have h_chain_ws : ScanChainGrewIx (fun t => t.token != .placeholder)
+            s₂ (n₃' + 1) s_end :=
+        ScanChainGrewIx_of_scanNextTokenIx_eq h_snt_eq h_filt_le h_chain₃
+      -- Per-step witness for the comma step (s₁ → s₂): the next char is ','.
+      have h_grew₂ :
+          (s₂.tokens.tokens.filter (fun t => t.token != .placeholder)).size >
+          (s₁.tokens.tokens.filter (fun t => t.token != .placeholder)).size := by
+        have h_corr₁_cons : ScannerSurfCorrIx s₁
+            ⟨',' :: (' ' :: (L4YAML.Emit.emit.emitList (v' :: vs)).toList ++ rest_chars),
+              s₁.cursor.pos.col⟩ := by
+          have : [',', ' '] ++ (L4YAML.Emit.emit.emitList (v' :: vs)).toList ++ rest_chars =
+              ',' :: (' ' :: (L4YAML.Emit.emit.emitList (v' :: vs)).toList ++ rest_chars) := by
+            simp only [List.cons_append, List.nil_append]
+          rwa [this] at h_corr₁
+        exact scanNextTokenIx_filtered_grows_in_flow s₁ s₂ ','
+          (' ' :: (L4YAML.Emit.emit.emitList (v' :: vs)).toList ++ rest_chars)
+          h_corr₁_cons h_flow₁ h_indent₁ h_col₁
+          (by decide) (by decide) (by decide) h_snt₂
+      -- FlowMonoChainIx: lift recursive chain through preprocessing, then compose
+      have h_fmc₃' : FlowMonoChainIx s.flowLevel s₃ (n₃' + 1) s_end :=
+        (show s.flowLevel = s₃.flowLevel from by
+          rw [h_fl₃, h_fl₂, h_fl₁]) ▸ h_fmc₃
+      have h_fmc_ws : FlowMonoChainIx s.flowLevel s₂ (n₃' + 1) s_end :=
+        FlowMonoChainIx_of_scanNextTokenIx_eq h_snt_eq (by omega) h_fmc₃'
+      have h_fmc_all := h_fmc₁.trans
+        ((FlowMonoChainIx.single h_snt₂ (by omega) (by omega)).trans h_fmc_ws)
+      -- Compose strict chains: emit v (n₁) + comma (1) + space+rest (n₃'+1)
+      have h_chain_all := h_chain₁.trans
+        ((ScanChainGrewIx.single h_snt₂ h_grew₂).trans h_chain_ws)
+      have h_arith : n₁ + (1 + (n₃' + 1)) = n₁ + 1 + (n₃' + 1) := by omega
+      refine ⟨n₁ + 1 + (n₃' + 1), s_end, h_arith ▸ h_chain_all,
+        h_corr_end, ?_, ?_, ?_, ?_, h_col_end, h_flow_end, h_indent_end, ?_,
+        h_atol_end, h_endline_end, ?_, h_arith ▸ h_fmc_all⟩
+      · rw [h_fl_end, h_fl₃, h_fl₂, h_fl₁]
+      · rw [h_dp_end, h_dp₃, h_dp₂, h_dp₁]
+      · rw [h_ids_end, h_ids₃, h_ids₂, h_ids₁]
+      · rw [h_ek_end, h_ek₃, h_ek₂, h_ek₁]
+      · rw [h_line_end, _h_line₃, _h_line₂, _h_line₁]
+      · rw [h_stack_end, h_stack_pp₃, h_stack₂, h_stack₁]
 
 /-- The first char of `emitPairList (p :: ps)` is the first char of the key
     `emit p.1` — a non-whitespace, non-`#` content char. Indexed twin of

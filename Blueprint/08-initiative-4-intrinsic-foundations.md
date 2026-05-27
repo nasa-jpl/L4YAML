@@ -1820,29 +1820,49 @@ not in-place axiom-to-theorem promotion — the latter is impossible
 when the axiom's hypothesis is strictly weaker than what the
 stronger lemma derives).
 
-**Next session**: **Step 6f.3b3.emitscans.flowvalue SS2 —
-per-value-form bodies** (legacy
-`Proofs/Output/EmitterScannability.lean`: `emitList_scans_nonempty`
-7068–7207 + `scanNextToken_flow_value` 7256–7621, ~470 LOC). Second
-sub-session of the now-split `.flowvalue` step; same target file §2
-(appended below the SS1 predicates+helpers). Ships
-`emitList_scans_nonemptyIx` (induction over the item list — chains
-`emit v` + `, ` separator + recursive tail, lifted through the
-preprocessing equality) and `scanNextToken_flow_valueIx` (the `:`
-value-indicator scanner: preprocess → structural/flow `none` →
-`scanValueIx` decomposition, ~365 LOC of field-preservation
-plumbing). **Build the one missing supporting twin first:**
-`scanNextTokenIx_preprocess_flow_ws1` (consumed by
-`emitList_scans_nonemptyIx`; legacy `scanNextToken_preprocess_flow_ws1`
-has no indexed twin yet). `scanNextToken_flow_valueIx` additionally
-needs twins (or `rfl`/simp discharges) for `advance_peek_eq_peekAt_one`,
-`scanNextToken_via_block_dispatch`, `AllTokensOnLine_scanValuePrepare_flow`,
-and the `advance_*`/`emit_*` field lemmas the Explore map flagged as
-MISSING — re-verify each at port time, several may be `rfl` in the
-indexed substrate. SS2 itself **may sub-split** (nonempty vs flow_value)
-if the missing-twin work proves heavy. Consumes the SS1 §2 predicates,
-the §1 `ScanChainGrewIx` combinators, `scanNextTokenIx_filtered_grows_in_flow`
-(`.turn3`), and `isValueCandidate_of_peekAt_blankIx` (SS1).
+**Next session**: **Step 6f.3b3.emitscans.flowvalue SS2b —
+`scanNextToken_flow_valueIx`** (legacy
+`Proofs/Output/EmitterScannability.lean` 7256–7621, ~365 LOC). The
+`:` value-indicator scanner in flow context: preprocess → structural
+dispatch `none` → allowDirectives update → checkBlockFlowIndent →
+flow dispatch `none` → `isValueCandidateIx` (space-after-`:`
+fallback) → block dispatch yields `scanValueIx` → decompose
+`scanValuePrepare`/`emit`/`advance` and discharge ~20 field-preservation
+goals. **Build the missing twins first** (Explore GROUP B map, this
+session): `scanNextTokenIx_via_block_dispatch` (the pipeline-composition
+lemma — analogous to the existing `scanNextTokenIx_via_flow_dispatch`),
+`scanValueTabCheckIx` (identity in flow), `advance_inFlowIx`,
+`advance_offset_of_eqIx`, and `AllTokensOnLine_scanValuePrepare_flowIx`;
+re-verify the `advance_*`/`emit_*`/`scanValuePrepare_*` field lemmas
+(several reduce to `rfl`/`simp` in the indexed substrate, where `advance`
+only updates the cursor and field projections are definitional). Same
+target file §2 (append below `emitList_scans_nonemptyIx`). Consumes the
+SS1 predicates, `isValueCandidate_of_peekAt_blankIx` (SS1),
+`scanNextTokenIx_preprocess_flow` (`.preflow` §1),
+`dispatchStructural_none_flow`/`checkBlockFlowIndent_ok_flow`/
+`dispatchFlowIndicators_none` (`.maintenance.pipeline`). SS2b **may
+itself sub-split** (missing-twins infra vs the body) if the
+pipeline-composition twin proves heavy. **`.flowpair` comes after.**
+
+**`.emitscans.flowvalue` SS2a LANDED 2026-05-27** — second sub-session
+of the port-time-split `.flowvalue` step (the comma-path list body).
+Ships `emitList_scans_nonemptyIx` (legacy 7068–7207): induction over the
+item list — the singleton case delegates to `EmitScansInFlowIx`; the
+multi-item case chains `emit v` (via the predicate) + the flow `,` (via
+`scanNextTokenIx_flow_comma`) + the `", "` space (via the new
+preprocess-equality twin) + the recursive tail, composing both the
+strict `ScanChainGrewIx` and the `FlowMonoChainIx`. **The one missing
+supporting twin landed alongside in `Preflow.lean` §1b:**
+`scanNextTokenIx_preprocess_flow_ws1` (preprocessing of `' ' :: c :: rest`
+equals preprocessing of the post-space state `s.advance`), built on two
+new cursor/state lemmas `skipToContent_one_space` + `skipToContentS_ws1`.
+The `CharsFromOffset_unique` step (legacy used it for the `n₃ ≥ 1`
+non-empty-tail argument) ported **as-is** — `CharsFromOffset` is the
+shared coupling type used by `ScannerSurfCorrIx.chars_from`, so the
+legacy lemma applies directly (one new `open L4YAML.Proofs.CouplingBridge`).
+Built clean at **89/89 jobs** (Preflow 78/78), sorry-free, axiom count
+unchanged at 0. See the status index, Reflection 139, and the detailed
+LANDED block below.
 
 **`.emitscans.flowvalue` SS1 LANDED 2026-05-27** — first sub-session of
 the port-time-split `.flowvalue` step; populates §2 of `EmitScans.lean`
@@ -2038,33 +2058,43 @@ section by section.
 |---|---|---|---|---|
 | `.chaingrew` | ✅ LANDED | 2026-05-27 | ~75 / ~95 | §1 (`ScanChainGrewIx` + 5 helpers) |
 | `.flowvalue` SS1 | ✅ LANDED | 2026-05-27 | ~125 / ~155 | §2 (predicates `EmitScansInFlowIx`/`EmitListScansInFlowIx` + 3 light helpers) |
-| `.flowvalue` SS2 | ⏳ planned | — | — / ~470 | §2 (per-value-form bodies: `emitList_scans_nonemptyIx`, `scanNextToken_flow_valueIx`, + missing twin `scanNextTokenIx_preprocess_flow_ws1`) |
+| `.flowvalue` SS2a | ✅ LANDED | 2026-05-27 | ~145 / ~140 | §2 (`emitList_scans_nonemptyIx` + missing twin `scanNextTokenIx_preprocess_flow_ws1` in `Preflow.lean` §1b) |
+| `.flowvalue` SS2b | ⏳ planned | — | — / ~365 | §2 (`scanNextToken_flow_valueIx` — `:` value-indicator dispatcher; + missing twins `scanNextTokenIx_via_block_dispatch` et al.) |
 | `.flowpair` | ⏳ planned | — | — / ~388 | §3 (`EmitPairListScansInFlowIx` + `emit_scans_in_flowIx`) |
 | `.toplevel` | ⏳ planned | — | — / ~120 | §4 (`emit_produces_valid_yamlIx`) |
 
-**`.emitscans` progress**: `.chaingrew` (§1) landed and `.flowvalue`
-split into 2 sub-sessions at port time — **SS1 (predicate layer + light
-helpers) landed**, SS2 (per-value-form bodies) queued. So 2 of 5
-`.emitscans` work-units landed (§1 + §2-SS1). The §1 strict-variant
-track (`ScanChainGrewIx`) is the substrate-agnostic plumbing; the §2
-predicates define the in-flow scannability contract every downstream
-body and the `.flowpair` main theorem consume. (The plan's ~1490 LOC
-total spans 6909–8399 with a gap at 8014–8280, which is RoundTrip-
-adjacent and not part of `.emitscans` bodies.)
+**`.emitscans` progress**: `.chaingrew` (§1) landed; `.flowvalue` split
+into SS1 + SS2 at port time, and SS2 further sub-split into SS2a/SS2b
+during execution (see rationale below). **SS1 (predicate layer + light
+helpers) and SS2a (comma-path list body) landed**; SS2b
+(`scanNextToken_flow_valueIx`) queued. So 3 of (now 6) `.emitscans`
+work-units landed (§1 + §2-SS1 + §2-SS2a). The §1 strict-variant track
+(`ScanChainGrewIx`) is the substrate-agnostic plumbing; the §2 predicates
+define the in-flow scannability contract every downstream body and the
+`.flowpair` main theorem consume. (The plan's ~1490 LOC total spans
+6909–8399 with a gap at 8014–8280, which is RoundTrip-adjacent and not
+part of `.emitscans` bodies.)
 
-**`.flowvalue` sub-split rationale** (recorded at port time): a
-dependency map of the two heavy theorems showed `emitList_scans_nonempty`
-has every supporting twin already landed *except*
-`scanNextTokenIx_preprocess_flow_ws1`, while `scanNextToken_flow_value`
-(the ~365-LOC value-indicator scanner) has several missing twins
-(`advance_peek_eq_peekAt_one`, `scanNextToken_via_block_dispatch`,
-`AllTokensOnLine_scanValuePrepare_flow`, the `advance_*`/`emit_*` field
-lemmas). Both bodies are independent of each other and both depend only
-on the §2 predicates. So SS1 lands the zero-missing-infra predicate
-layer + 3 light helpers (front-loading the contract everything else
-consumes), and SS2 lands both bodies plus builds the missing twins.
-`isValueCandidate_of_peekAt_blankIx` is placed in SS1 because
-`scanNextToken_flow_valueIx` (SS2) consumes it.
+**`.flowvalue` sub-split rationale** (recorded at port time, refined
+during execution): a dependency map of the two heavy theorems showed
+`emitList_scans_nonempty` has every supporting twin already landed
+*except* `scanNextTokenIx_preprocess_flow_ws1`, while
+`scanNextToken_flow_value` (the ~365-LOC value-indicator scanner) has
+several missing twins (`scanNextTokenIx_via_block_dispatch`,
+`scanValueTabCheckIx`, `advance_inFlowIx`, `advance_offset_of_eqIx`,
+`AllTokensOnLine_scanValuePrepare_flowIx`). Both bodies are independent
+of each other and both depend only on the §2 predicates. So SS1 landed
+the zero-missing-infra predicate layer + 3 light helpers (front-loading
+the contract everything else consumes). **SS2 then split again at
+execution time** into SS2a (the lighter comma-path `emitList_scans_nonempty`
++ its single missing twin `..._preprocess_flow_ws1`) and SS2b (the heavy
+`scanNextToken_flow_value` + its ~5 missing twins), since the two are
+independent and bundling them would mix two unrelated missing-twin builds
+in one session (Reflection 139). `isValueCandidate_of_peekAt_blankIx` is
+placed in SS1 because `scanNextToken_flow_valueIx` (SS2b) consumes it.
+The earlier Explore-flagged `advance_peek_eq_peekAt_one` /
+`AllTokensOnLine_scanValuePrepare_flow` are SS2b concerns; SS2a needed
+none of them.
 
 **Queued after 6f.3b3 closes**: **Step 6g — `IndentEntryIx`
 sum-type refactor** (~1000 LOC, multi-session). Promotes the
@@ -2824,6 +2854,99 @@ instance that reduces to the underlying field's `GetElem` is a
 Confirmed pattern for future Phase 4 substrate wrappers (e.g. when
 `ParseTree input` lands as a structured wrapper around
 `Array (TreeNode input)`).
+
+**Step 6f.3b3.emitscans.flowvalue SS2a LANDED 2026-05-27**
+(~145 LOC actual vs. ~140 LOC plan for the comma-path body; appended to
+§2 of `Proofs/Output/IndexedEmitterScannability/EmitScans.lean`, plus
+~75 LOC of supporting twins in
+`FlowMonoChain/Sync/Scenarios/Preflow.lean` §1b). Second sub-session of
+the port-time-split `.flowvalue` step — the **comma-path list body**.
+Ports legacy `EmitterScannability.lean` lines 7068–7207. SS2 was further
+sub-split at execution time (SS2a = `emitList_scans_nonempty`; SS2b =
+`scanNextToken_flow_value`) because the two bodies are independent and
+carry disjoint missing-twin sets (Reflection 139).
+
+  - **`emitList_scans_nonemptyIx items h_ne h_all`** — scanning the
+    comma-separated `emitList` body succeeds in flow context. Induction
+    over the item list: the singleton `[v]` case delegates straight to
+    `EmitScansInFlowIx v` (unpacking its 15-conjunct conclusion and
+    re-packing 13 for the list contract, dropping the two
+    `simpleKeyAllowed`/`lastRealTokenValIx?` conjuncts the list variant
+    omits); the multi-item `v :: v' :: vs` case chains four scans —
+    `emit v` (via the `EmitScansInFlowIx` hypothesis), the flow `,` (via
+    `scanNextTokenIx_flow_comma`), the `", "` space (via the new
+    `scanNextTokenIx_preprocess_flow_ws1` lifted through the
+    preprocessing equality), and the recursive tail — composing both the
+    strict `ScanChainGrewIx` (witnessing the comma step's count bump via
+    `scanNextTokenIx_filtered_grows_in_flow`) and the `FlowMonoChainIx`
+    (via `…_of_scanNextTokenIx_eq` + `.single`/`.trans`). The `n₃ ≥ 1`
+    non-empty-tail argument uses `CharsFromOffset_unique` directly (see
+    below). Twin of legacy 7071.
+  - **`scanNextTokenIx_preprocess_flow_ws1`** (in `Preflow.lean` §1b,
+    the one missing supporting twin) — preprocessing of `' ' :: c :: rest`
+    in flow context equals preprocessing of the post-space state
+    `s.advance`, with that state's invariants exposed. Built on two new
+    helpers: cursor-level **`skipToContent_one_space`** (`skipToContent`
+    absorbs exactly one leading space when the next char is content —
+    `skipWhitespace` advances past the space, the peek-case stops at the
+    content char) and state-level **`skipToContentS_ws1`**
+    (`skipToContentS = s.advance`; the line is unchanged so the
+    newline-reset branch is not taken). Both `scanNextTokenIx_preprocess s`
+    and `scanNextTokenIx_preprocess s.advance` reduce to
+    `.ok (some (saveSimpleKeyIx s.advance, c))` — the latter via the
+    existing `scanNextTokenIx_preprocess_flow`. Twin of legacy 3590.
+
+No axioms, no `sorry`, build green at **89/89 jobs** (EmitScans), Preflow
+at **78/78**. `#print axioms` on `emitList_scans_nonemptyIx`,
+`scanNextTokenIx_preprocess_flow_ws1`, `skipToContent_one_space`,
+`skipToContentS_ws1` returns only the standard `propext` /
+`Classical.choice` / `Quot.sound`. Phase 3 closure axiom count unchanged
+at **0**. **Axiom-discharge plan: no applicable change** — this step
+neither adds nor discharges a project axiom.
+
+**Indexed simplification — `skipToContent` is structurally simpler.**
+The legacy `scanNextToken_preprocess_flow_ws1` (~140 LOC) traces through
+a `needIndentCheck` / `skipToContentWs` / `skipSpaces` split with two
+branches to discharge. The indexed `skipToContent` has **no such split** —
+it is `skipWhitespace` followed by a single peek-case — so the cursor-level
+absorb lemma `skipToContent_one_space` is ~20 lines, and the whole twin
+is ~75 LOC. The `CharsFromOffset_unique` step is the noteworthy
+"don't-re-port" win: the Explore map listed it as "not used in indexed
+proofs", but `CharsFromOffset` is the **shared** coupling-bridge inductive
+that the indexed `ScannerSurfCorrIx.chars_from` field ranges over — so the
+legacy `L4YAML.Proofs.CouplingBridge.CharsFromOffset_unique` applies to
+indexed surface-corr proofs *unchanged* (one new `open`). The
+`emitList_scans_nonemptyIx` body itself transferred near-verbatim from
+legacy modulo the field-bridge (`s.col`→`s.cursor.pos.col`,
+`.tokens.filter`→`.tokens.tokens.filter`, `t.val`→`t.token`) — the
+conjunct count and combinator shapes (`ScanChainGrewIx.single/.trans`,
+`FlowMonoChainIx.single/.trans`) matched the legacy 1:1.
+
+**Reflection 139 (new): the "independent-twin-set" sub-split test, and
+two cheap-twin patterns.** SS2's planned scope was two ~independent heavy
+theorems. The decision to split SS2 → SS2a/SS2b at *execution* time (not
+just plan time) rested on a sharp test: **do the two deliverables share
+their missing twins?** They did not — `emitList_scans_nonempty` needed
+exactly one missing twin (`…_preprocess_flow_ws1`), and
+`scanNextToken_flow_value` needs a disjoint set of ~5
+(`…_via_block_dispatch`, `scanValueTabCheckIx`, `advance_inFlowIx`, …).
+When the missing-twin sets are disjoint, bundling forces one session to
+carry two unrelated infra builds, inflating the blast radius of any single
+failure; splitting lets each body land against a focused twin build. The
+test generalizes the Reflection-129 modularisation pattern with a concrete
+trigger (disjoint prerequisite sets), not just LOC. Two reusable
+cheap-twin patterns also surfaced: (1) **simpler-substrate twins** — where
+the indexed control flow drops a legacy bookkeeping branch
+(`needIndentCheck`/`skipSpaces`), the twin is *shorter* than legacy, so a
+"~140 LOC legacy" line item can be a ~75 LOC port; estimate twins against
+the *indexed* function shape, not the legacy LOC. (2) **shared-coupling
+lemmas need no twin** — a lemma stated over a coupling-bridge type that
+both substrates share (`CharsFromOffset`, here) is reused directly; before
+porting any "MISSING" supporting lemma, check whether it is substrate-
+agnostic (ranges only over shared `Surface`/`CouplingBridge` types) and if
+so just `open` its namespace. This refines 138's "plumbing/contract tiers
+first": the value-form bodies are landing **one independent twin-set at a
+time**, each de-risking the next.
 
 **Step 6f.3b3.emitscans.flowvalue SS1 LANDED 2026-05-27**
 (~125 LOC actual vs. ~155 LOC plan; populates §2 of
@@ -12593,7 +12716,7 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
             Reflection 136. Single session.
 
       ▸ **6f.3b3.emitscans** *(file-level; ~1490 LOC total across 4
-        sub-sessions; **`.chaingrew` ✅ + `.flowvalue` SS1 ✅
+        sub-sessions; **`.chaingrew` ✅ + `.flowvalue` SS1 ✅ + SS2a ✅
         2026-05-27**)*. Maps to legacy lines 6909–8399. Target file:
         `Proofs/Output/IndexedEmitterScannability/EmitScans.lean`.
 
@@ -12612,7 +12735,8 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
             Built clean first try at 89/89 jobs; sorry-free; axiom
             count 0. See Reflection 137. Single session.
           ▸ **6f.3b3.emitscans.flowvalue** *(~623 LOC; legacy lines
-            7003–7625)* — **sub-split at port time into 2 sessions**:
+            7003–7625)* — **sub-split at port time into SS1 + SS2, then
+            SS2 sub-split again at execution into SS2a + SS2b**:
               ▸ **SS1** ✅ **LANDED 2026-05-27** *(~125 LOC actual vs.
                 ~155 plan; legacy 7003–7254)*. Target: `EmitScans.lean`
                 §2. Predicate layer + light helpers: `EmitScansInFlowIx`
@@ -12623,16 +12747,29 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `isValueCandidate_of_peekAt_blankIx`. Zero missing infra;
                 built clean 89/89, sorry-free, axiom count 0. See
                 Reflection 138.
-              ▸ **SS2** ⏳ *(~470 LOC; legacy `emitList_scans_nonempty`
-                7068–7207 + `scanNextToken_flow_value` 7256–7621)*.
-                Per-value-form bodies: `emitList_scans_nonemptyIx`,
-                `scanNextToken_flow_valueIx`. **Build the missing twin
-                `scanNextTokenIx_preprocess_flow_ws1` first**; re-verify
-                the other Explore-flagged MISSING twins
-                (`advance_peek_eq_peekAt_one`,
-                `scanNextToken_via_block_dispatch`,
-                `AllTokensOnLine_scanValuePrepare_flow`, the
-                `advance_*`/`emit_*` field lemmas). May itself sub-split.
+              ▸ **SS2a** ✅ **LANDED 2026-05-27** *(~145 LOC body +
+                ~75 LOC twins; legacy `emitList_scans_nonempty`
+                7068–7207)*. Target: `EmitScans.lean` §2 +
+                `Preflow.lean` §1b. The comma-path list body
+                `emitList_scans_nonemptyIx` (induction over the item
+                list: singleton via the predicate; multi-item chains
+                `emit v` + flow `,` + `", "` space + recursive tail).
+                Built the one missing twin
+                `scanNextTokenIx_preprocess_flow_ws1` (+ cursor/state
+                helpers `skipToContent_one_space`/`skipToContentS_ws1`);
+                `CharsFromOffset_unique` reused as-is (shared coupling
+                type). Built clean 89/89 (Preflow 78/78), sorry-free,
+                axiom count 0. See Reflection 139.
+              ▸ **SS2b** ⏳ *(~365 LOC; legacy `scanNextToken_flow_value`
+                7256–7621)*. The `:` value-indicator flow dispatcher
+                `scanNextToken_flow_valueIx`. **Build the missing twins
+                first**: `scanNextTokenIx_via_block_dispatch`,
+                `scanValueTabCheckIx`, `advance_inFlowIx`,
+                `advance_offset_of_eqIx`,
+                `AllTokensOnLine_scanValuePrepare_flowIx`; re-verify the
+                `advance_*`/`emit_*`/`scanValuePrepare_*` field lemmas
+                (several are `rfl`/`simp` in the indexed substrate). May
+                itself sub-split (twins-infra vs body).
           ▸ **6f.3b3.emitscans.flowpair** *(~388 LOC; legacy lines
             7626–8013)*. `EmitPairListScansInFlowIx` + main proof
             `emit_scans_in_flowIx` (induction over `Grammable v
