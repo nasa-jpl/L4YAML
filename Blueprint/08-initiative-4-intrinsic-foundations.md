@@ -1820,19 +1820,37 @@ not in-place axiom-to-theorem promotion — the latter is impossible
 when the axiom's hypothesis is strictly weaker than what the
 stronger lemma derives).
 
-**Next session**: **Step 6f.3b3.emitscans.chaingrew — `ScanChainGrewIx`
-inductive** (legacy `Proofs/Output/EmitterScannability.lean` lines
-6909–7002, ~95 LOC). First of four `.emitscans` sub-sessions; target
-file `Proofs/Output/IndexedEmitterScannability/EmitScans.lean`.
-Defines the `ScanChainGrewIx` inductive (a `ScanChainIx` plus a
-witness that *at least one* `p`-satisfying token was added) with
-helpers `.toScanChainIx`, `.single`, `.trans`,
-`ScanChainGrewIx_filtered_grows`,
-`ScanChainGrewIx_of_scanNextTokenIx_eq` — the last consumes
-`scanNextTokenIx_filtered_grows_in_flow` (just landed in `.turn3`).
-With `.turn3` landed, `.filteredgrowth` is **closed (4/4)**; remaining
-Phase 3 work is `.emitscans (~1490 LOC)` → `.parsestream (~440 LOC)`
-→ `.roundtrip (~1870 LOC)`.
+**Next session**: **Step 6f.3b3.emitscans.flowvalue —
+`EmitScansInFlowIx` predicate + per-value-form lemmas** (legacy
+`Proofs/Output/EmitterScannability.lean` lines 7003–7625, ~623 LOC).
+Second of four `.emitscans` sub-sessions; same target file
+`Proofs/Output/IndexedEmitterScannability/EmitScans.lean` (appended
+below §1). Defines `EmitScansInFlowIx v` (scanning `emit v` in flow
+context produces a non-empty `ScanChainGrewIx`) and the
+`emit_list_scans_in_flowIx` family
+(`emitList_scans_emptyIx`/`_nonemptyIx`, `emitPairList_first_charIx`,
+`isValueCandidate_of_peekAt_blankIx`, `scanNextToken_flow_valueIx`).
+**May sub-split** at port time (predicate+helpers vs per-value-form
+bodies). This is the first construction site that consumes both the
+§1 `ScanChainGrewIx` combinators (`.single`/`.trans`/
+`_of_scanNextTokenIx_eq`) and `scanNextTokenIx_filtered_grows_in_flow`
+(landed in `.turn3`).
+
+**`.emitscans.chaingrew` LANDED 2026-05-27** — first of four
+`.emitscans` sub-sessions; populates §1 of the previously-skeleton
+`EmitScans.lean`. Ships the `ScanChainGrewIx` inductive (a
+`ScanChainIx` plus a per-step witness that the filtered count strictly
+increases) and its five helpers `.toScanChainIx`, `.single`, `.trans`,
+`ScanChainGrewIx_filtered_grows`, `ScanChainGrewIx_of_scanNextTokenIx_eq`.
+**Pure plumbing** — verbatim transfer of legacy `ScanChainGrew`
+(6909–7002) with only the substrate bridge (predicate over
+`IxToken input`; filtered count `(_.tokens.tokens.filter p).size`;
+`input` type-level). Built clean first try at **89/89 jobs**,
+sorry-free, axiom count unchanged at 0. See the status index and the
+detailed LANDED block below. With `.chaingrew` landed,
+`.filteredgrowth` remains **closed (5/5)** and Phase 3 continues:
+`.emitscans` 1/4 done (~1395 LOC of ~1490 remain) → `.parsestream
+(~440 LOC)` → `.roundtrip (~1870 LOC)`.
 
 **`.filteredgrowth.turn3` LANDED 2026-05-27** — final `.filteredgrowth`
 sub-session (4/4), **closing `.filteredgrowth`**. Ships the three
@@ -1981,6 +1999,28 @@ one-file-per-sub-session pattern under
 After `.filteredgrowth` closes, sub-sessions follow in dependency
 order: `EmitScans (~1490 LOC)` → `ParseStream (~440 LOC)` →
 `RoundTrip (~1870 LOC)`.
+
+### Initiative 4 — `.emitscans` sub-session status index
+
+The `.emitscans` family ports legacy `EmitterScannability.lean` lines
+6909–8399 (~1490 LOC) — the heart of the emitter-scannability proof
+(the canonical emitter's output is exactly what the scanner accepts) —
+into the single target file
+`Proofs/Output/IndexedEmitterScannability/EmitScans.lean`, populated
+section by section.
+
+| Sub-session | Status | Date | LOC actual / plan | EmitScans.lean § |
+|---|---|---|---|---|
+| `.chaingrew` | ✅ LANDED | 2026-05-27 | ~75 / ~95 | §1 (`ScanChainGrewIx` + 5 helpers) |
+| `.flowvalue` | ⏳ planned | — | — / ~623 | §2 (`EmitScansInFlowIx` + value-form lemmas) |
+| `.flowpair` | ⏳ planned | — | — / ~388 | §3 (`EmitPairListScansInFlowIx` + `emit_scans_in_flowIx`) |
+| `.toplevel` | ⏳ planned | — | — / ~120 | §4 (`emit_produces_valid_yamlIx`) |
+
+**`.emitscans` progress**: 1/4 sub-sessions landed. The §1 strict-
+variant track (`ScanChainGrewIx`) is the substrate-agnostic plumbing
+the remaining three build on. (The plan's ~1490 LOC total spans
+6909–8399 with a gap at 8014–8280, which is RoundTrip-adjacent and not
+part of `.emitscans` bodies.)
 
 **Queued after 6f.3b3 closes**: **Step 6g — `IndentEntryIx`
 sum-type refactor** (~1000 LOC, multi-session). Promotes the
@@ -2740,6 +2780,82 @@ instance that reduces to the underlying field's `GetElem` is a
 Confirmed pattern for future Phase 4 substrate wrappers (e.g. when
 `ParseTree input` lands as a structured wrapper around
 `Array (TreeNode input)`).
+
+**Step 6f.3b3.emitscans.chaingrew LANDED 2026-05-27**
+(~75 LOC actual vs. ~95 LOC plan; populates §1 of the
+previously-skeleton file
+`Proofs/Output/IndexedEmitterScannability/EmitScans.lean`). First of
+four `.emitscans` sub-sessions. Ports legacy
+`EmitterScannability.lean` lines 6909–7002. Ships the `ScanChainGrewIx`
+inductive + five helpers:
+
+  - **`ScanChainGrewIx p s n s'`** — `ScanChainIx` augmented with a
+    per-step witness that the `p`-filtered token count strictly
+    increases (`>`) at each `scanNextTokenIx` step. Built
+    constructively at call sites so it never routes through a loose
+    `scanNextTokenIx_filtered_grows`. Indexed twin of legacy
+    `ScanChainGrew` (6921).
+  - **`.toScanChainIx`** — forgetful map to `ScanChainIx` (`induction`,
+    re-emit `.zero`/`.step`). The expected-type-driven `.zero`/`.step`
+    resolve to the `ScanChainIx` constructors (from the opened
+    `…EmitterScannability.ScanChain` namespace). Twin of legacy
+    `.toScanChain` (6931).
+  - **`.single`** (`.step h h_grew .zero`) and **`.trans`**
+    (`induction` + `n₁ + n₂` reassociation) — the chain combinators.
+    Twins of legacy 6939 / 6947.
+  - **`ScanChainGrewIx_filtered_grows`** — through an `n`-step strict
+    chain the filtered array grows by `≥ n` (`induction`, both cases
+    `omega`). Direct from the per-step witness — does not depend on any
+    `sorry`. Twin of legacy 6964.
+  - **`ScanChainGrewIx_of_scanNextTokenIx_eq`** — lift a strict chain
+    through a `scanNextTokenIx` equality (the preprocess-whitespace
+    bridge): `cases` the non-empty chain, rewrite the first step via
+    `h_eq`, weaken its witness by `omega` against `h_le`. Twin of
+    legacy 6979.
+
+No axioms, no `sorry`, build green at **89/89 jobs**. `#print axioms`
+on all five returns only the standard `propext` / `Classical.choice` /
+`Quot.sound`. Phase 3 closure axiom count unchanged at **0**.
+**Axiom-discharge plan: no applicable change** — this step neither
+adds nor discharges a project axiom.
+
+**Indexed simplification** — this is **pure plumbing**: the legacy
+`ScanChainGrew` block depends on nothing but `scanNextTokenIx`'s
+existence and the filtered-count expression, so the transfer is
+verbatim modulo the three mechanical substrate substitutions —
+predicate type `IxToken input → Bool` (was `Positioned YamlToken →
+Bool`), filtered count `(_.tokens.tokens.filter p).size` (the
+`TokenStream`-wraps-`Array` `.tokens` indirection, invisible by defeq,
+Reflection 133), and `input` lifted to a type-level parameter (so the
+inductive's index discipline matches `ScanChainIx {input}` and no
+`s.input = s'.input` side-condition is ever needed). The `>`/`≥`
+arithmetic and all five `induction`/`cases`/`omega` skeletons are
+unchanged from legacy.
+
+**LOC came in under plan** (~75 vs. ~95): the indexed `ScanChainGrewIx`
+needs no `input`-equality bookkeeping that the legacy `ScanChainGrew`
+helpers occasionally thread, and the per-theorem prose is terse since
+each is a one-line twin of an already-documented legacy lemma.
+
+**Reflection 137 (new)** documents the **"inductive-plumbing tier"
+porting pattern**. The `.emitscans.chaingrew` step is the cleanest
+possible port: an inductive predicate whose constructors mention only
+(a) the operational function being chained (`scanNextTokenIx`) and (b)
+a numeric measure on the state (`(_.tokens.tokens.filter p).size`),
+plus combinators proven by `induction`/`cases` + `omega`. Such a tier
+carries **zero substrate-specific proof obligations** — the only edits
+are the type-signature substitutions, which Lean's elaborator checks
+mechanically. This is the dual of Reflection 136's "composition layer
+is substrate-agnostic": there the *shape* of `scanNextTokenIx`
+transferred; here the *measure-chaining scaffold over* `scanNextTokenIx`
+transfers. The operational consequence for sequencing: **plumbing
+tiers (inductive + combinators) should be ported first within a file**,
+before the value-form bodies that consume them, because they are
+risk-free and they unblock the genuinely substrate-sensitive work
+(`.flowvalue`) without themselves needing review. `ScanChainGrewIx` now
+gives `.flowvalue` the `.single`/`.trans`/`_of_scanNextTokenIx_eq`
+constructors it needs to assemble per-value-form chains from the
+`scanNextTokenIx_filtered_grows_in_flow` per-step witness (`.turn3`).
 
 **Step 6f.3b3.filteredgrowth.turn3 LANDED 2026-05-27**
 (~209 LOC actual vs. ~150 LOC plan; new file
@@ -12354,15 +12470,24 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
             Reflection 136. Single session.
 
       ▸ **6f.3b3.emitscans** *(file-level; ~1490 LOC total across 4
-        sub-sessions)*. Maps to legacy lines 6909–8399. Target file:
+        sub-sessions; **1/4 landed** — `.chaingrew` ✅ 2026-05-27)*.
+        Maps to legacy lines 6909–8399. Target file:
         `Proofs/Output/IndexedEmitterScannability/EmitScans.lean`.
 
-          ▸ **6f.3b3.emitscans.chaingrew** *(~95 LOC; legacy lines
-            6909–7002)*. `ScanChainGrewIx` inductive (a `ScanChainIx`
-            plus a witness that *at least one* `p`-satisfying token
-            was added); helpers: `.toScanChainIx`, `.single`, `.trans`,
+          ▸ **6f.3b3.emitscans.chaingrew** ✅ **LANDED 2026-05-27**
+            *(~75 LOC actual vs. ~95 LOC plan; legacy lines
+            6909–7002)*. Target: `EmitScans.lean` §1. `ScanChainGrewIx`
+            inductive (a `ScanChainIx` plus a witness that *at least
+            one* `p`-satisfying token was added) + helpers
+            `.toScanChainIx`, `.single`, `.trans`,
             `ScanChainGrewIx_filtered_grows`,
-            `ScanChainGrewIx_of_scanNextTokenIx_eq`. Single session.
+            `ScanChainGrewIx_of_scanNextTokenIx_eq`. **Pure plumbing** —
+            verbatim transfer of legacy `ScanChainGrew` modulo the
+            three substrate substitutions (predicate over
+            `IxToken input`; filtered count
+            `(_.tokens.tokens.filter p).size`; `input` type-level).
+            Built clean first try at 89/89 jobs; sorry-free; axiom
+            count 0. See Reflection 137. Single session.
           ▸ **6f.3b3.emitscans.flowvalue** *(~623 LOC; legacy lines
             7003–7625)*. `EmitScansInFlowIx` predicate + per-value-
             form lemmas: `emit_list_scans_in_flowIx` family,
