@@ -4,6 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 -/
 import L4YAML.Proofs.Output.IndexedEmitterScannability.FilteredGrowth.FirstFiltered
 import L4YAML.Proofs.Output.IndexedEmitterScannability.FilteredGrowth.Infra
+import L4YAML.Proofs.Output.IndexedEmitterScannability.FilteredGrowth.PerDispatch
 
 /-! # `IndexedEmitterScannability.FilteredGrowth` — re-export shim
 
@@ -29,13 +30,29 @@ preserved.
     `preprocess_filtered_monoIx`, `allowDir_ite_filter_monoIx`,
     `List_filter_length_ge_oneIx`,
     `filtered_grows_of_extended_prefixIx`, `filtered_grows_of_any_newIx`.
+  - `FilteredGrowth/PerDispatch.lean` — re-export shim for per-
+    dispatch-layer filtered growth, sub-split under
+    `FilteredGrowth/PerDispatch/` (Step 6f.3b3.filteredgrowth.perdispatch).
+    Currently ships:
+      * `PerDispatch/StructFlow.lean` *(legacy 6071–6362)* —
+        structural + flow-indicator dispatch lemmas
+        (`scanDocumentStart_filtered_growsIx`,
+        `scanDocumentEnd_filtered_growsIx`,
+        `scanYamlDirective_new_token_eqIx`,
+        `scanTagDirective_new_token_eqIx`,
+        `scanDirective_filtered_growsIx`,
+        `dispatchStructural_filtered_monoIx`,
+        `dispatchFlowIndicators_filtered_growsIx`).
 
 Remaining sub-sessions (to be added incrementally):
 
-  - **`.perdispatch`** *(legacy 6071–6758, ~688 LOC)* — per-dispatch-
-    layer filtered growth lemmas (scanDocumentStart, scanYamlDirective,
-    dispatchStructural / FlowIndicators / BlockIndicators / Content).
-    May sub-split at port time.
+  - **`.perdispatch.blockcontent`** *(legacy 6364–6757, ~395 LOC)* —
+    block-indicator + content per-dispatch filtered growth
+    (`scanBlockEntry_filtered_growsIx`, `scanKey_filtered_growsIx`,
+    `scanValue_filtered_growsIx`,
+    `dispatchBlockIndicators_filtered_growsIx`,
+    `dispatchContent_new_not_placeholderIx`,
+    `dispatchContent_filtered_growsIx`).
   - **`.turn3`** *(legacy 6759–6908, ~150 LOC)* — dispatch-level
     filtered growth: `scanNextToken_via_flow_dispatch_filtered_growsIx`
     and three siblings.
