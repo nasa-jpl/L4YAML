@@ -1820,30 +1820,46 @@ not in-place axiom-to-theorem promotion — the latter is impossible
 when the axiom's hypothesis is strictly weaker than what the
 stronger lemma derives).
 
-**Next session**: **Step 6f.3b3.filteredgrowth.perdispatch.blockcontent —
-Block-indicator + content per-dispatch filtered growth** (legacy
-`Proofs/Output/EmitterScannability.lean` lines 6364–6757, ~395 LOC).
-Second of the 2-way port-time split of `.perdispatch` (the
-structural + flow-indicator half has landed as
-`.filteredgrowth.perdispatch.structflow`; see the status index
-below). Target file:
-`Proofs/Output/IndexedEmitterScannability/FilteredGrowth/PerDispatch/BlockContent.lean`.
-Ships: `scanBlockEntry_filtered_growsIx`, `scanKey_filtered_growsIx`,
-`scanValue_filtered_growsIx` (uses
-`Array_setIfInBounds_filter_monoIx` from `.infra` §2 — the
-`scanValuePrepareIx` placeholder-to-real overwrite path),
+**Next session**: **Step 6f.3b3.filteredgrowth.turn3 — Dispatch-level
+filtered growth (Turn 3)** (legacy
+`Proofs/Output/EmitterScannability.lean` lines 6759–6908, ~150 LOC).
+The final `.filteredgrowth` sub-session (4/4). Target file:
+`Proofs/Output/IndexedEmitterScannability/FilteredGrowth/Turn3.lean`.
+Composes `preprocess_filtered_monoIx` (`.infra` §3),
+`allowDir_ite_filter_monoIx` (`.infra` §4), and the
+`dispatch*_filtered_growsIx` lemmas (`.perdispatch`) into the
+per-step `scanNextToken` growth witnesses:
+`scanNextToken_via_flow_dispatch_filtered_growsIx`,
+`scanNextToken_via_block_dispatch_filtered_growsIx`,
+`scanNextToken_via_content_dispatch_filtered_growsIx`,
+`scanNextToken_filtered_grows_in_flowIx`. Expect the
+`scanNextTokenIx_via_{flow,block,content}_dispatch` composition
+lemmas (already in `Scanner/IndexedDispatch.lean` /
+`IndexedScannerCorrectness`) to supply the dispatch-chain
+reconstruction that `.firstfiltered` §3 used. With `.turn3`,
+`.filteredgrowth` closes (4/4); then `.emitscans (~1490 LOC)` →
+`.parsestream (~440 LOC)` → `.roundtrip (~1870 LOC)` close Phase 3.
+
+**`.filteredgrowth.perdispatch.blockcontent` LANDED 2026-05-27** —
+sub-split sub-session 2/2 of `.perdispatch` (the block-indicator +
+content half), closing `.perdispatch` (2/2). Ships
+`scanBlockEntry_filtered_growsIx`, `scanKey_filtered_growsIx`,
+`scanValue_filtered_growsIx`,
 `dispatchBlockIndicators_filtered_growsIx`,
-`dispatchContent_new_not_placeholderIx` (the heavy lifter, ~180
-LOC in legacy — the new content token at index `s.tokens.size` is
-non-`.placeholder`, by pattern-match on `dispatchContent`'s arm —
-`.anchor` / `.alias` / `.tag` / `.scalar`),
-`dispatchContent_filtered_growsIx`. Expect the cursor-level-scanner
-pattern from `.firstfiltered` §3 (Reflection 132) to recur for every
-quoted / plain / block scanner inside `dispatchContent`. The
-new-token claim's pattern is `intro h_pl + simp [ScannerStateIx.
-emitAt, IxToken.mk', Indexed.TokenStream.push, Array.getElem_push_eq]
-at h_pl + contradiction` (see Reflection 134 from `.structflow`),
-which should generalize directly.
+`dispatchContent_new_not_placeholderIx`,
+`dispatchContent_filtered_growsIx`, plus the §0 shape helpers
+`scanBlockEntryIx_tokens_eq` / `scanKeyIx_tokens_eq` and the private
+`overwriteAtCursor_tokens_tokens` / `scanValuePrepareIx_filtered_monoIx`
+/ `dispatchContent_adds_one_tokenIx` workhorses. The
+`scanValuePrepareIx` placeholder-to-real overwrite path uses
+`Array_setIfInBounds_filter_monoIx` (`.infra` §2) — the only
+`_filtered_growsIx` consumer. The new Reflection 135 confirms
+Reflection 134's simp-normalization pattern generalized to the four
+inline scalar arms and records two new wrinkles (`decide` rejecting
+free-variable positions in the `setIfInBounds` replacement-token
+side condition; the `if`-shaped `_tokens_eq` closers needing
+`simp only [if_pos/neg hi, advance_tokens]` rather than bare `rw`).
+See the status index below.
 
 **`.flowmono` is complete** — see the status index table below
 for the 13-row recap (all ✅ LANDED). The parent's file split into
@@ -1941,7 +1957,7 @@ one-file-per-sub-session pattern under
 | `.firstfiltered` | ✅ LANDED | 2026-05-26 | ~456 / ~313 | `FilteredGrowth/FirstFiltered.lean` |
 | `.infra` | ✅ LANDED | 2026-05-26 | ~275 / ~170 | `FilteredGrowth/Infra.lean` |
 | `.perdispatch.structflow` | ✅ LANDED | 2026-05-26 | ~397 / ~292 | `FilteredGrowth/PerDispatch/StructFlow.lean` |
-| `.perdispatch.blockcontent` | ⏳ PLANNED | — | — / ~395 | `FilteredGrowth/PerDispatch/BlockContent.lean` |
+| `.perdispatch.blockcontent` | ✅ LANDED | 2026-05-27 | ~524 / ~395 | `FilteredGrowth/PerDispatch/BlockContent.lean` |
 | `.turn3` | ⏳ PLANNED | — | — / ~150 | `FilteredGrowth/Turn3.lean` |
 
 After `.filteredgrowth` closes, sub-sessions follow in dependency
@@ -2706,6 +2722,119 @@ instance that reduces to the underlying field's `GetElem` is a
 Confirmed pattern for future Phase 4 substrate wrappers (e.g. when
 `ParseTree input` lands as a structured wrapper around
 `Array (TreeNode input)`).
+
+**Step 6f.3b3.filteredgrowth.perdispatch.blockcontent LANDED 2026-05-27**
+(~524 LOC actual vs. ~395 LOC plan; new file
+`Proofs/Output/IndexedEmitterScannability/FilteredGrowth/PerDispatch/
+BlockContent.lean` + two-line addition to the `FilteredGrowth/
+PerDispatch.lean` re-export shim). Sub-split sub-session 2/2 of
+`.perdispatch` (the block-indicator + content half), **closing
+`.perdispatch` (2/2 sub-sessions)**. Ports legacy
+`EmitterScannability.lean` lines 6364–6757. Ships six per-dispatch
+theorems plus five private / shape helpers:
+
+  - **§0 Shape helpers** — `scanBlockEntryIx_tokens_eq` /
+    `scanKeyIx_tokens_eq` (post-state `tokens` = `((if !inFlow then
+    pushSequenceIndentIx/pushMappingIndentIx else id).emit
+    .blockEntry/.key).tokens`); `overwriteAtCursor_tokens_tokens`
+    (pure `rfl`: the `overwriteAtCursor` token array is
+    `Array.setIfInBounds` of a zero-width token, through the
+    `TokenStream.setIfInBounds` def); `scanValuePrepareIx_filtered_
+    monoIx` (filter-monotone across all 5 prepare branches).
+  - **§1 `scanBlockEntry_filtered_growsIx`** — `≥ +1` for `-`.
+    `scanBlockEntryIx_tokens_eq` + `emit_tokens_pushIx` +
+    `filtered_grows_of_any_newIx` with `j := base.tokens.size`
+    (`pushSequenceIndentIx_tokens_size_le` lower-bounds the new slot).
+    Indexed twin of legacy `scanBlockEntry_filtered_grows` (6368).
+  - **§2 `scanKey_filtered_growsIx`** — same skeleton for `?` /
+    `.key` / `pushMappingIndentIx`. Indexed twin of legacy 6389.
+  - **§3 `scanValue_filtered_growsIx`** — `≥ +1` for `:`; the only
+    `_filtered_growsIx` consumer of `Array_setIfInBounds_filter_
+    monoIx` (`.infra` §2). `scanValueClearKeyIx` preserves tokens
+    (`scanValueClearKeyIx_tokens`); `scanValuePrepareIx` is
+    filter-monotone (§0 helper: each `overwriteAtCursor` overwrites a
+    placeholder with a `.blockMappingStart`/`.key`, and the deferred-
+    mapping-start `pushMappingIndentIx` branch emits via
+    `filtered_grows_of_extended_prefixIx`); the `.value` emit then
+    adds `+1` via `filtered_grows_of_extended_prefixIx`. Indexed twin
+    of legacy `scanValue_filtered_grows` (6432).
+  - **§4 `dispatchBlockIndicators_filtered_growsIx`** — `≥ +1`;
+    `rcases scanNextTokenIx_dispatchBlockIndicators_ok_some_cases`
+    delegates to §1/§2/§3 (one line each). Indexed twin of legacy
+    `dispatchBlockIndicators_filtered_grows` (6515) — the legacy
+    `repeat split; first | ...` cascade collapses to `rcases`.
+  - **§5 `dispatchContent_new_not_placeholderIx`** — the new content
+    token at index `s.tokens.size` is non-`.placeholder` (legacy's
+    ~180-LOC heavy lifter, 6539). Seven-arm `by_cases` mirroring
+    `scanNextTokenIx_dispatchContent_ok_monotonic`: `&`/`*`/`!`
+    delegate to private `scanAnchorOrAliasIx_new_not_placeholderIx`
+    / `scanTagIx_new_not_placeholderIx` (twins of the upstream
+    `_new_token_not_plain` / `_not_flow` lemmas); the four scalar
+    arms (`|`/`>`/`"`/`'`/plain) reduce the dispatch-level `emitAt`
+    in-place (cursor-level scanners, Reflection 132) via
+    `intro hpl + simp only [ScannerStateIx.emitAt, IxToken.mk',
+    Indexed.TokenStream.push, Array.getElem_push_eq] at hpl +
+    contradiction` (Reflection 134).
+  - **§6 `dispatchContent_filtered_growsIx`** — `≥ +1`; the private
+    `dispatchContent_adds_one_tokenIx` (exact `+1` raw growth, same
+    seven-arm split using `scanAnchorOrAliasIx_adds_one_token` /
+    `scanTagIx_adds_one_token` / `emitAt_tokens_size`) feeds
+    `h_strict`, then `filtered_grows_of_any_newIx` with `j :=
+    s.tokens.size`, `scanNextTokenIx_dispatchContent_preserves_prefix`
+    for the prefix, and §5 for the new token. Indexed twin of legacy
+    `dispatchContent_filtered_grows` (6725).
+
+No axioms, no `sorry`, build green at **84/84 jobs** (target module).
+Phase 3 closure axiom count unchanged at **0** (only the standard
+`propext`, `Classical.choice`, `Quot.sound`).
+
+**Indexed simplification** — the three structflow forces recur
+(`_ok_some_cases` enumerators collapse the dispatch cascades; shape
+helpers via `rfl`/`simp`; constructor-disjointness via the input-
+polymorphic simp-normalization, Reflection 134), plus the indexed
+`scanValuePrepareIx` overwrite path benefits from
+`overwriteAtCursor_tokens_tokens` reducing the placeholder overwrite
+to a single `Array.setIfInBounds` so the two/one-overwrite branches
+chain `Array_setIfInBounds_filter_monoIx` directly.
+
+**LOC budget overshoot decomposition** (~524 actual vs. ~395 plan;
+overshoot ~129 LOC): (1) ~85 LOC of file-wide doc-comments + module
+header (the per-section docstring convention); (2) ~25 LOC for the
+two §0 `_tokens_eq` shape helpers (legacy inlined the push-shape
+reasoning into each `_filtered_grows` body); (3) ~20 LOC for the
+private `dispatchContent_adds_one_tokenIx` (legacy proved raw `+1`
+growth inline inside `dispatchContent_filtered_grows`). Pure-proof
+LOC tracks the legacy within ±5% once the helper structure is
+amortized.
+
+**Reflection 135 (new)** documents the **inline-scalar generalization
+of the simp-normalization pattern plus two indexed-substrate
+wrinkles**. (a) Reflection 134's `intro h_pl + simp only [emitAt,
+mk', push, getElem_push_eq] + contradiction` generalized verbatim to
+all four scalar arms of `dispatchContent_new_not_placeholderIx` — the
+dispatch-level `emitAt` (cursor-level scanners, Reflection 132) means
+the new-token push shape is read directly off the reduced branch with
+no per-scanner helper, exactly as `.firstfiltered §3` predicted. (b)
+**`decide` rejects free-variable positions even when only the token
+*value* matters.** `Array_setIfInBounds_filter_monoIx`'s side
+condition `(fun t => t.token != .placeholder) (IxToken.mk' sk.pos
+.blockMappingStart sk.pos _ _) = true` depends only on the value
+field (`.blockMappingStart`), but `decide` refuses because `sk.pos`
+(/`input`) is a free variable ("Expected type must not contain free
+variables") — the fix is `by simp [IxToken.mk']`, which reduces the
+projection and evaluates the `bne` without kernel-reducing the
+positions. (c) **`if`-shaped `_tokens_eq` closers need
+`simp only [if_pos/neg hi, advance_tokens]`, not bare `rw`.** When
+the post-state is `{ (base.emit tok).advance with <fields> }` and the
+goal RHS carries an `if !s.inFlow then ... else ...`, `rw [if_pos
+hi]` resolves the `if` but its trailing `rfl` runs at reducible
+transparency and cannot unfold `advance`/the record-update projection
+— so the goal is left unsolved. `simp only [if_pos hi, advance_tokens]`
+resolves the `if`, reduces `.advance.tokens` (an `@[simp]` lemma), and
+the structure-update projection, closing the goal. The operational
+lesson: prefer `simp only [<the if-resolver>, advance_tokens]` over
+`rw` whenever a `_tokens_eq` post-state threads an `advance` or
+record-update before the projection.
 
 **Step 6f.3b3.filteredgrowth.perdispatch.structflow LANDED 2026-05-26**
 (~397 LOC actual vs. ~292 LOC plan; new file
@@ -12041,8 +12170,9 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
             doc-comments and the ~25 LOC §3 docstring + auxiliary
             `h_pres` shape lemma; pure-proof LOC tracks the legacy
             within ±5%.
-          ▸ **6f.3b3.filteredgrowth.perdispatch** *(~683 LOC across 2
-            sub-sessions)*. Per-dispatch-layer filtered growth.
+          ▸ **6f.3b3.filteredgrowth.perdispatch** ✅ **CLOSED 2026-05-27
+            (2/2 sub-sessions)** *(~921 LOC actual vs. ~683 LOC plan,
+            across 2 sub-sessions)*. Per-dispatch-layer filtered growth.
             Sub-split at port time into structural+flow vs
             block+content dispatchers under
             `FilteredGrowth/PerDispatch/`. Re-export shim at
@@ -12071,7 +12201,8 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 indexed substrate due to `input : String` free
                 variables) — see Reflection 134.
               ▸ **6f.3b3.filteredgrowth.perdispatch.blockcontent**
-                *(~395 LOC; legacy 6364–6757)*. Target file
+                ✅ **LANDED 2026-05-27** *(~524 LOC actual vs.
+                ~395 LOC plan; legacy 6364–6757)*. Target file
                 `FilteredGrowth/PerDispatch/BlockContent.lean`.
                 Block-indicator + content filtered growth:
                 `scanBlockEntry_filtered_growsIx`,
@@ -12080,14 +12211,24 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 growsIx` consumer of `Array_setIfInBounds_filter_
                 monoIx` from `.infra` §2 — the `scanValuePrepareIx`
                 placeholder-to-real overwrite path is monotonic
-                ≥ +0, then the `.value` emit adds +1),
+                ≥ +0 via the §0 `scanValuePrepareIx_filtered_monoIx`
+                helper, then the `.value` emit adds +1),
                 `dispatchBlockIndicators_filtered_growsIx`,
                 `dispatchContent_new_not_placeholderIx` *(the heavy
-                one — pattern-match on dispatchContent's 4 arms:
-                `.anchor`/`.alias`/`.tag`/`.scalar`; uses
-                cursor-level helper from `.firstfiltered` §3 for
-                each scalar sub-case)*,
-                `dispatchContent_filtered_growsIx`. Single session.
+                one — seven-arm `by_cases` on dispatchContent:
+                `.anchor`/`.alias`/`.tag` delegate to private
+                `_new_not_placeholderIx` scanner helpers, the four
+                `.scalar` arms reduce the dispatch-level `emitAt`
+                in-place per `.firstfiltered` §3 / Reflection 132)*,
+                `dispatchContent_filtered_growsIx`. Plus §0 shape
+                helpers `scanBlockEntryIx_tokens_eq` /
+                `scanKeyIx_tokens_eq` and private
+                `overwriteAtCursor_tokens_tokens` /
+                `dispatchContent_adds_one_tokenIx`. The new-token
+                simp-normalization pattern (Reflection 134) generalized
+                to all four scalar arms; see Reflection 135 for the
+                `decide`-rejects-free-variable-positions and
+                `if`-shaped-`_tokens_eq`-closer wrinkles. Single session.
           ▸ **6f.3b3.filteredgrowth.turn3** *(~150 LOC; legacy lines
             6759–6908)*. Dispatch-level filtered growth (Turn 3):
             `scanNextToken_via_flow_dispatch_filtered_growsIx`,

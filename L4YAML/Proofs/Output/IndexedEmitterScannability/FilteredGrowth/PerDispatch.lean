@@ -3,6 +3,7 @@ Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
 import L4YAML.Proofs.Output.IndexedEmitterScannability.FilteredGrowth.PerDispatch.StructFlow
+import L4YAML.Proofs.Output.IndexedEmitterScannability.FilteredGrowth.PerDispatch.BlockContent
 
 /-! # `FilteredGrowth.PerDispatch` — re-export shim
 
@@ -23,18 +24,16 @@ is preserved.
     `scanDirective_filtered_growsIx`,
     `dispatchStructural_filtered_monoIx`,
     `dispatchFlowIndicators_filtered_growsIx`.
-
-Remaining sub-sessions (to be added incrementally):
-
-  - **`PerDispatch/BlockContent.lean`** *(legacy 6364–6757, ~395 LOC)* —
-    block-indicator + content per-dispatch filtered growth:
+  - `PerDispatch/BlockContent.lean` — block-indicator + content
+    per-dispatch filtered growth (legacy lines 6364–6757). Ships
     `scanBlockEntry_filtered_growsIx`, `scanKey_filtered_growsIx`,
     `scanValue_filtered_growsIx`,
     `dispatchBlockIndicators_filtered_growsIx`,
     `dispatchContent_new_not_placeholderIx`,
-    `dispatchContent_filtered_growsIx`. The
-    `dispatchContent_new_not_placeholderIx` is the heavy one (~180
-    LOC in legacy) — large pattern-match on content scanner.
+    `dispatchContent_filtered_growsIx` (plus the §0 shape helpers
+    `scanBlockEntryIx_tokens_eq` / `scanKeyIx_tokens_eq`).
+
+With both sub-files landed, `.perdispatch` closes: 2/2 sub-sessions.
 
 See `Basic.lean` for the directory-wide cutover plan.
 -/
