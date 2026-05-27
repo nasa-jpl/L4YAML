@@ -3,6 +3,7 @@ Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
 import L4YAML.Proofs.Output.IndexedEmitterScannability.FilteredGrowth.FirstFiltered
+import L4YAML.Proofs.Output.IndexedEmitterScannability.FilteredGrowth.Infra
 
 /-! # `IndexedEmitterScannability.FilteredGrowth` — re-export shim
 
@@ -22,14 +23,15 @@ preserved.
     helpers (`emit_first_char`, `emitList_first_char`,
     `emitList_toList_ne_nil`), `emit_tokens_pushIx`, and the generic
     `Array_filter_prefix_of_raw_prefix` array lemma.
+  - `FilteredGrowth/Infra.lean` — filtered token array growth
+    infrastructure (legacy lines 5900–6070). Ships
+    `List_filter_set_length_monoIx`, `Array_setIfInBounds_filter_monoIx`,
+    `preprocess_filtered_monoIx`, `allowDir_ite_filter_monoIx`,
+    `List_filter_length_ge_oneIx`,
+    `filtered_grows_of_extended_prefixIx`, `filtered_grows_of_any_newIx`.
 
 Remaining sub-sessions (to be added incrementally):
 
-  - **`.infra`** *(legacy 5900–6070, ~170 LOC)* — filtered token array
-    growth infrastructure: `Array_setIfInBounds_filter_monoIx`,
-    `preprocess_filtered_monoIx`, `allowDir_ite_filter_monoIx`,
-    `List_filter_length_ge_oneIx`, `filtered_grows_of_extended_prefixIx`,
-    `filtered_grows_of_any_newIx`.
   - **`.perdispatch`** *(legacy 6071–6758, ~688 LOC)* — per-dispatch-
     layer filtered growth lemmas (scanDocumentStart, scanYamlDirective,
     dispatchStructural / FlowIndicators / BlockIndicators / Content).
