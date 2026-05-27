@@ -5,6 +5,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 import L4YAML.Proofs.Output.IndexedEmitterScannability.FilteredGrowth.FirstFiltered
 import L4YAML.Proofs.Output.IndexedEmitterScannability.FilteredGrowth.Infra
 import L4YAML.Proofs.Output.IndexedEmitterScannability.FilteredGrowth.PerDispatch
+import L4YAML.Proofs.Output.IndexedEmitterScannability.FilteredGrowth.Turn3
 
 /-! # `IndexedEmitterScannability.FilteredGrowth` — re-export shim
 
@@ -32,8 +33,8 @@ preserved.
     `filtered_grows_of_extended_prefixIx`, `filtered_grows_of_any_newIx`.
   - `FilteredGrowth/PerDispatch.lean` — re-export shim for per-
     dispatch-layer filtered growth, sub-split under
-    `FilteredGrowth/PerDispatch/` (Step 6f.3b3.filteredgrowth.perdispatch).
-    Currently ships:
+    `FilteredGrowth/PerDispatch/` (Step 6f.3b3.filteredgrowth.perdispatch,
+    both sub-sessions landed). Ships:
       * `PerDispatch/StructFlow.lean` *(legacy 6071–6362)* —
         structural + flow-indicator dispatch lemmas
         (`scanDocumentStart_filtered_growsIx`,
@@ -43,19 +44,22 @@ preserved.
         `scanDirective_filtered_growsIx`,
         `dispatchStructural_filtered_monoIx`,
         `dispatchFlowIndicators_filtered_growsIx`).
+      * `PerDispatch/BlockContent.lean` *(legacy 6364–6757)* —
+        block-indicator + content dispatch lemmas
+        (`scanBlockEntry_filtered_growsIx`, `scanKey_filtered_growsIx`,
+        `scanValue_filtered_growsIx`,
+        `dispatchBlockIndicators_filtered_growsIx`,
+        `dispatchContent_new_not_placeholderIx`,
+        `dispatchContent_filtered_growsIx`).
+  - `FilteredGrowth/Turn3.lean` *(legacy 6759–6908)* — dispatch-level
+    filtered growth (Step 6f.3b3.filteredgrowth.turn3). Ships
+    `scanNextTokenIx_via_flow_dispatch_filtered_grows`,
+    `scanNextTokenIx_via_block_dispatch_filtered_grows`,
+    `scanNextTokenIx_via_content_dispatch_filtered_grows`, and the
+    in-flow corollary `scanNextTokenIx_filtered_grows_in_flow`.
 
-Remaining sub-sessions (to be added incrementally):
-
-  - **`.perdispatch.blockcontent`** *(legacy 6364–6757, ~395 LOC)* —
-    block-indicator + content per-dispatch filtered growth
-    (`scanBlockEntry_filtered_growsIx`, `scanKey_filtered_growsIx`,
-    `scanValue_filtered_growsIx`,
-    `dispatchBlockIndicators_filtered_growsIx`,
-    `dispatchContent_new_not_placeholderIx`,
-    `dispatchContent_filtered_growsIx`).
-  - **`.turn3`** *(legacy 6759–6908, ~150 LOC)* — dispatch-level
-    filtered growth: `scanNextToken_via_flow_dispatch_filtered_growsIx`
-    and three siblings.
+With Turn3 landed, the `.filteredgrowth` file-level step closes:
+FirstFiltered + Infra + PerDispatch (2/2) + Turn3 all ported.
 
 See `Basic.lean` for the directory-wide cutover plan.
 -/

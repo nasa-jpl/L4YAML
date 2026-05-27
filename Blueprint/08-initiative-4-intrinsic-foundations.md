@@ -1820,25 +1820,38 @@ not in-place axiom-to-theorem promotion — the latter is impossible
 when the axiom's hypothesis is strictly weaker than what the
 stronger lemma derives).
 
-**Next session**: **Step 6f.3b3.filteredgrowth.turn3 — Dispatch-level
-filtered growth (Turn 3)** (legacy
-`Proofs/Output/EmitterScannability.lean` lines 6759–6908, ~150 LOC).
-The final `.filteredgrowth` sub-session (4/4). Target file:
-`Proofs/Output/IndexedEmitterScannability/FilteredGrowth/Turn3.lean`.
-Composes `preprocess_filtered_monoIx` (`.infra` §3),
-`allowDir_ite_filter_monoIx` (`.infra` §4), and the
-`dispatch*_filtered_growsIx` lemmas (`.perdispatch`) into the
-per-step `scanNextToken` growth witnesses:
-`scanNextToken_via_flow_dispatch_filtered_growsIx`,
-`scanNextToken_via_block_dispatch_filtered_growsIx`,
-`scanNextToken_via_content_dispatch_filtered_growsIx`,
-`scanNextToken_filtered_grows_in_flowIx`. Expect the
-`scanNextTokenIx_via_{flow,block,content}_dispatch` composition
-lemmas (already in `Scanner/IndexedDispatch.lean` /
-`IndexedScannerCorrectness`) to supply the dispatch-chain
-reconstruction that `.firstfiltered` §3 used. With `.turn3`,
-`.filteredgrowth` closes (4/4); then `.emitscans (~1490 LOC)` →
-`.parsestream (~440 LOC)` → `.roundtrip (~1870 LOC)` close Phase 3.
+**Next session**: **Step 6f.3b3.emitscans.chaingrew — `ScanChainGrewIx`
+inductive** (legacy `Proofs/Output/EmitterScannability.lean` lines
+6909–7002, ~95 LOC). First of four `.emitscans` sub-sessions; target
+file `Proofs/Output/IndexedEmitterScannability/EmitScans.lean`.
+Defines the `ScanChainGrewIx` inductive (a `ScanChainIx` plus a
+witness that *at least one* `p`-satisfying token was added) with
+helpers `.toScanChainIx`, `.single`, `.trans`,
+`ScanChainGrewIx_filtered_grows`,
+`ScanChainGrewIx_of_scanNextTokenIx_eq` — the last consumes
+`scanNextTokenIx_filtered_grows_in_flow` (just landed in `.turn3`).
+With `.turn3` landed, `.filteredgrowth` is **closed (4/4)**; remaining
+Phase 3 work is `.emitscans (~1490 LOC)` → `.parsestream (~440 LOC)`
+→ `.roundtrip (~1870 LOC)`.
+
+**`.filteredgrowth.turn3` LANDED 2026-05-27** — final `.filteredgrowth`
+sub-session (4/4), **closing `.filteredgrowth`**. Ships the three
+dispatch-composition lemmas
+`scanNextTokenIx_via_flow_dispatch_filtered_grows`,
+`scanNextTokenIx_via_block_dispatch_filtered_grows`,
+`scanNextTokenIx_via_content_dispatch_filtered_grows`, and the in-flow
+corollary `scanNextTokenIx_filtered_grows_in_flow`. Each `via_*` lemma
+chains `preprocess_filtered_monoIx` (`.infra` §3, ≥), the
+`allowDirectives` `if`-split (=, `split <;> rfl` since the record
+update preserves `.tokens` definitionally — the `.infra` §4
+`allowDir_ite_filter_monoIx` was not even needed, `rfl` sufficed), and
+the matching `dispatch*_filtered_growsIx` (`.perdispatch`, ≥ +1). The
+in-flow corollary reuses the already-ported FlowMonoChain pipeline
+lemmas (`scanNextTokenIx_preprocess_flow`, `dispatchStructural_none_flow`,
+`checkBlockFlowIndent_ok_flow`) and the `saveSimpleKeyIx` preservation
+simp set. Built clean on the first attempt (209 LOC vs. ~150 plan).
+The new Reflection 136 documents the **verbatim-transfer of the
+composition layer**. See the status index below.
 
 **`.filteredgrowth.perdispatch.blockcontent` LANDED 2026-05-27** —
 sub-split sub-session 2/2 of `.perdispatch` (the block-indicator +
@@ -1958,7 +1971,12 @@ one-file-per-sub-session pattern under
 | `.infra` | ✅ LANDED | 2026-05-26 | ~275 / ~170 | `FilteredGrowth/Infra.lean` |
 | `.perdispatch.structflow` | ✅ LANDED | 2026-05-26 | ~397 / ~292 | `FilteredGrowth/PerDispatch/StructFlow.lean` |
 | `.perdispatch.blockcontent` | ✅ LANDED | 2026-05-27 | ~524 / ~395 | `FilteredGrowth/PerDispatch/BlockContent.lean` |
-| `.turn3` | ⏳ PLANNED | — | — / ~150 | `FilteredGrowth/Turn3.lean` |
+| `.turn3` | ✅ LANDED | 2026-05-27 | ~209 / ~150 | `FilteredGrowth/Turn3.lean` |
+
+**`.filteredgrowth` complete**: 5/5 sub-sessions (counting the two
+`.perdispatch` sub-files) across 5 files
+(`FirstFiltered`, `Infra`, `PerDispatch/{StructFlow,BlockContent}`,
+`Turn3`). The aggregator `FilteredGrowth.lean` re-exports all.
 
 After `.filteredgrowth` closes, sub-sessions follow in dependency
 order: `EmitScans (~1490 LOC)` → `ParseStream (~440 LOC)` →
@@ -2722,6 +2740,92 @@ instance that reduces to the underlying field's `GetElem` is a
 Confirmed pattern for future Phase 4 substrate wrappers (e.g. when
 `ParseTree input` lands as a structured wrapper around
 `Array (TreeNode input)`).
+
+**Step 6f.3b3.filteredgrowth.turn3 LANDED 2026-05-27**
+(~209 LOC actual vs. ~150 LOC plan; new file
+`Proofs/Output/IndexedEmitterScannability/FilteredGrowth/Turn3.lean`
++ one-line import added to the `FilteredGrowth.lean` aggregator).
+Final sub-session of `.filteredgrowth` (4/4), **closing the
+`.filteredgrowth` file-level step**. Ports legacy
+`EmitterScannability.lean` lines 6759–6908. Ships four theorems:
+
+  - **§1–§3 `scanNextTokenIx_via_{flow,block,content}_dispatch_filtered_grows`**
+    — given a SUCCESSFUL non-structural dispatch path, `scanNextTokenIx`
+    grows the filtered token count by `≥ +1`. Each is three `have`s +
+    `omega`: `preprocess_filtered_monoIx` (`.infra` §3, ≥) chains the
+    pre-dispatch growth, the `allowDirectives` `if`-split discharges by
+    `rw [h_ad_eq]; split <;> rfl` (the record update preserves `.tokens`
+    *definitionally*, so the `.infra` §4 `allowDir_ite_filter_monoIx`
+    was unnecessary), and the matching
+    `dispatch{Flow,Block,Content}Indicators_filtered_growsIx`
+    (`.perdispatch`, ≥ +1) supplies the dispatch step. Indexed twins of
+    legacy 6769 / 6787 / 6806.
+  - **§4 `scanNextTokenIx_filtered_grows_in_flow`** — in flow context
+    (`inFlow = true`, `currentIndent < 0`, `cursor.pos.col > 0`,
+    non-whitespace / non-`#` next char), every successful
+    `scanNextTokenIx` step strictly grows the filtered token count
+    (`>`). Pins preprocess via `scanNextTokenIx_preprocess_flow`, rules
+    out the directive branch via `dispatchStructural_none_flow`, passes
+    `checkBlockFlowIndent_ok_flow`, then nests `match h_*_eq : …` on the
+    three dispatchers, delegating each to the §1–§3 `via_*` lemma.
+    `saveSimpleKeyIx` preservation handled by `saveSimpleKeyIx_inFlow` /
+    `saveSimpleKeyIx_indents` (for `currentIndent` via `unfold
+    ScannerStateIx.currentIndent; rw […]`) and `simp` (for
+    `cursor.pos.col`, since there is no separate `col` field — the
+    `@[simp] saveSimpleKeyIx_cursor` closes it). **Sorry-free** — the
+    legacy loose `scanNextToken_filtered_grows` carries a `sorry` on the
+    RESERVED-directive branch, but the in-flow precondition eliminates
+    that branch entirely, so the indexed in-flow corollary is honest.
+    Indexed twin of legacy 6837.
+
+No axioms, no `sorry`, build green at **87/87 jobs** (target module),
+**88/88** with the aggregator. Phase 3 closure axiom count unchanged at
+**0** (only the standard `propext`, `Classical.choice`, `Quot.sound`).
+**Axiom-discharge plan: no applicable change** — this step neither
+adds nor discharges a project axiom; the 7 pre-existing legacy
+`sorry` warnings in `EmitterScannability.lean` are out of Phase 3
+scope and untouched.
+
+**Indexed simplification** — the composition layer transferred
+*verbatim* from legacy. The `scanNextTokenIx` body is structurally
+identical to legacy `scanNextToken` (same `do`-block desugaring), so
+the `unfold scanNextTokenIx at h_snt; simp only [bind, …, ← hs_ad,
+h_check] at h_snt` reduction and the nested dispatch `match` analysis
+carried over without modification. Every supporting lemma
+(`preprocess_filtered_monoIx`, the three `dispatch*_filtered_growsIx`,
+and the FlowMonoChain pipeline `_flow` lemmas) was already ported by
+earlier sub-sessions, so no new infrastructure was required.
+
+**LOC budget overshoot decomposition** (~209 actual vs. ~150 plan;
+overshoot ~59 LOC): (1) ~50 LOC of file-wide doc-comments + module
+header (per-section docstring convention) + per-theorem section
+prose; (2) the four proof bodies track the legacy near 1:1 (~115 LOC
+of proof vs. ~120 legacy — slightly *under*, because the indexed
+`saveSimpleKeyIx_cursor` `simp` is shorter than legacy's explicit
+`saveSimpleKey_preserves_col`). Pure-proof LOC tracks the legacy
+within ±5%.
+
+**Reflection 136 (new)** documents the **verbatim transfer of the
+dispatch-composition layer**. Once (a) the per-dispatch growth lemmas
+(`dispatch*_filtered_growsIx`, `.perdispatch`) and (b) the
+preprocess/structural/checkBlockFlowIndent pipeline `_flow` lemmas
+(FlowMonoChain) are independently ported, the Turn-3 composition layer
+that stitches them into a per-`scanNextTokenIx`-step witness is
+*substrate-agnostic*: it depends only on the **shape** of
+`scanNextTokenIx` (a `do`-block sequencing preprocess →
+dispatchStructural → allowDir-`if` → checkBlockFlowIndent →
+flow/block/content dispatch), which the indexed substrate preserves
+byte-for-byte from legacy. The only divergences are mechanical: the
+`.tokens` → `.tokens.tokens` Array bridge (invisible by defeq,
+Reflection 133) and the absence of a standalone `col` field (folded
+into `cursor.pos.col`, closed by the `@[simp] saveSimpleKeyIx_cursor`).
+The operational lesson — building clean on the first attempt confirms
+it — is that **bottom-up porting order pays off at the top**: porting
+the per-dispatch and pipeline layers first makes the composition layer
+nearly free. This validates the dependency ordering for the analogous
+`.emitscans` composition lemmas (`ScanChainGrewIx_of_scanNextTokenIx_eq`
+consumes exactly the `scanNextTokenIx_filtered_grows_in_flow` landed
+here).
 
 **Step 6f.3b3.filteredgrowth.perdispatch.blockcontent LANDED 2026-05-27**
 (~524 LOC actual vs. ~395 LOC plan; new file
@@ -12121,9 +12225,12 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                         `.flowmono` closes: 13/13 sub-sessions across
                         9 files.**
 
-      ▸ **6f.3b3.filteredgrowth** *(file-level; ~1320 LOC total across
-        4 sub-sessions)*. Maps to legacy lines 5587–6908. Target file:
-        `Proofs/Output/IndexedEmitterScannability/FilteredGrowth.lean`.
+      ▸ **6f.3b3.filteredgrowth** ✅ **CLOSED 2026-05-27**
+        *(file-level; ~1861 LOC actual across 5 files vs. ~1320 LOC
+        plan)*. Maps to legacy lines 5587–6908. Target file:
+        `Proofs/Output/IndexedEmitterScannability/FilteredGrowth.lean`
+        (aggregator re-exporting `FirstFiltered`, `Infra`,
+        `PerDispatch/{StructFlow,BlockContent}`, `Turn3`).
 
           ▸ **6f.3b3.filteredgrowth.firstfiltered** ✅ **LANDED 2026-05-26**
             *(~456 LOC actual vs. ~313 LOC plan; legacy lines
@@ -12229,12 +12336,22 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 to all four scalar arms; see Reflection 135 for the
                 `decide`-rejects-free-variable-positions and
                 `if`-shaped-`_tokens_eq`-closer wrinkles. Single session.
-          ▸ **6f.3b3.filteredgrowth.turn3** *(~150 LOC; legacy lines
-            6759–6908)*. Dispatch-level filtered growth (Turn 3):
-            `scanNextToken_via_flow_dispatch_filtered_growsIx`,
-            `scanNextToken_via_block_dispatch_filtered_growsIx`,
-            `scanNextToken_via_content_dispatch_filtered_growsIx`,
-            `scanNextToken_filtered_grows_in_flowIx`. Single session.
+          ▸ **6f.3b3.filteredgrowth.turn3** ✅ **LANDED 2026-05-27**
+            *(~209 LOC actual vs. ~150 LOC plan; legacy lines
+            6759–6908)*. Target file: `FilteredGrowth/Turn3.lean`.
+            Dispatch-level filtered growth (Turn 3):
+            `scanNextTokenIx_via_flow_dispatch_filtered_grows`,
+            `scanNextTokenIx_via_block_dispatch_filtered_grows`,
+            `scanNextTokenIx_via_content_dispatch_filtered_grows`,
+            `scanNextTokenIx_filtered_grows_in_flow`. Each `via_*` is
+            three `have`s + `omega` (`preprocess_filtered_monoIx` ≥, the
+            `allowDirectives` `if`-split by `split <;> rfl`, the matching
+            `dispatch*_filtered_growsIx` ≥ +1); the in-flow corollary
+            reuses the FlowMonoChain pipeline `_flow` lemmas and is
+            sorry-free (the directive branch is ruled out by
+            `dispatchStructural_none_flow`). Built clean first try; the
+            composition layer transferred verbatim from legacy — see
+            Reflection 136. Single session.
 
       ▸ **6f.3b3.emitscans** *(file-level; ~1490 LOC total across 4
         sub-sessions)*. Maps to legacy lines 6909–8399. Target file:
