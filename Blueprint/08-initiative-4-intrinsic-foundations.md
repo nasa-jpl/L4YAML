@@ -11892,9 +11892,9 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 indexed `ScannerSurfCorrIx` has no `end_eq` field (it
                 folds into `IxCursor`'s `posBound`), so the bridge is
                 direct.
-              ▸ **6f.3b3.flowmono.sync.scenarios** 🚧 *(2/3 sub-sessions
+              ▸ **6f.3b3.flowmono.sync.scenarios** ✅ *(3/3 sub-sessions
                 landed; file-level;
-                ~1000 LOC total across 3 sub-sessions)*. Full
+                ~1377 LOC total across 3 sub-sessions)*. Full
                 `scanNextToken_flow_*` scenario chains for the 7
                 cases used by `.emitscans` / `.roundtrip`. Maps to
                 legacy lines 3258–3329 + 3561–3585 + 4572–4685 +
@@ -11902,9 +11902,8 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 Per the modularisation pattern of Reflection 129,
                 split into three sibling files under
                 `Proofs/Output/IndexedEmitterScannability/
-                FlowMonoChain/Sync/Scenarios/` (the directory is
-                created at this session). Each sub-session matches
-                one auxiliary precondition pattern:
+                FlowMonoChain/Sync/Scenarios/`. Each sub-session
+                matches one auxiliary precondition pattern:
                   * `.preflow` / `.flowclose` share the same
                     `saveSimpleKeyIx + s_ad + checkBlockFlowIndent_
                     ok_*` mid-chain skeleton.
