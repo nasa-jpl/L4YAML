@@ -1820,16 +1820,43 @@ not in-place axiom-to-theorem promotion — the latter is impossible
 when the axiom's hypothesis is strictly weaker than what the
 stronger lemma derives).
 
-**Next session**: **Step 6f.3b3.emitscans.flowpair —
-`EmitPairListScansInFlowIx` + `emit_scans_in_flowIx`** (legacy
-`Proofs/Output/EmitterScannability.lean` 7626–8013, ~388 LOC). The
-key-value-pair dual of the list body plus the main induction over
-`Grammable v inFlow`. The `:`-handling within a pair now rests on the
-just-landed `scanNextToken_flow_valueIx` (SS2b). Single session; with
-`.flowvalue` fully closed (`.chaingrew` + SS1 + SS2a + SS2b), the only
-remaining `.emitscans` sub-steps are `.flowpair` then `.toplevel`
-(`emit_produces_valid_yamlIx`, ~120 LOC). **`.parsestream` /
+**Next session**: **Step 6f.3b3.emitscans.flowpair SS2 —
+`scanNextTokenIx_flow_scanDoubleQuoted` + `scanNextTokenIx_flow_open_seq_nested`**
+(legacy `Proofs/Output/EmitterScannability.lean` 3910–4065 + 4251–4353,
+~257 LOC). These two scanner-scenario twins are the **prerequisites** for
+the SS3 induction `emit_scans_in_flowIx` (its scalar and `[`-sequence
+cases). They were *not* covered by `.flowmono.sync.scenarios` — that step
+landed `{`-open + both closes + comma only — so SS1 surfaced them as a
+genuine gap (see the SS1 LANDED block and Reflection 141 below). Target
+files: the scanner-scenario layer under
+`IndexedEmitterScannability/FlowMonoChain/Sync/Scenarios/` (likely a new
+`FlowScalar.lean` for the double-quoted entry + an extension of
+`FlowClose.lean` / `Endpoint.lean` for the `[` opener). After SS2, **SS3**
+ships `emit_scans_in_flowIx` (the `Grammable v inFlow` induction, legacy
+8014–8255, ~241 LOC); then the file-level `.emitscans` closes with
+`.toplevel` (`emit_produces_valid_yamlIx`, ~120 LOC). **`.parsestream` /
 `.roundtrip` come after `.emitscans` closes.**
+
+**`.emitscans.flowpair` SS1 (pair-list track) LANDED 2026-05-27** —
+first sub-session of the port-time-replanned `.flowpair` step; populates
+§2c of `EmitScans.lean` with the key-value-pair dual of the `emitList`
+track (legacy 7626–8011). Ships `EmitPairListScansInFlowIx` (same
+conclusion shape as `EmitListScansInFlowIx`), `emitPairList_scans_emptyIx`
+(trivial 0-step chain), and `emitPairList_scans_nonemptyIx` (induction
+over the pair list: the singleton chains key + `:` + value; the multi-pair
+tail adds a `,` + recursive scan). **Zero new infra** — every twin already
+existed: `scanNextToken_flow_valueIx` (§2b) for the `:` step,
+`scanNextTokenIx_flow_comma` for the `,`, `scanNextTokenIx_preprocess_flow_ws1`
+(§2a) for the leading space after `:`/`,`, `emitPairList_first_charIx`
+(§2 SS1) + `emit_first_char` for the non-empty-tail arguments, and the
+`ScanChainGrewIx`/`FlowMonoChainIx` combinators. **Replan trigger**: SS1
+also *discovered* that the originally-bundled main theorem
+`emit_scans_in_flowIx` is blocked on two un-ported scanner-scenario twins
+(`scanNextTokenIx_flow_scanDoubleQuoted`, `scanNextTokenIx_flow_open_seq_nested`),
+so the single-session `.flowpair` was replanned into three sub-sessions
+(this pair-list track + the two-twin prerequisite SS2 + the induction SS3).
+Built clean **89/89**, sorry-free, axiom count unchanged at **0**. See the
+status index, Reflection 141, and the detailed LANDED block below.
 
 **`.emitscans.flowvalue` SS2b LANDED 2026-05-27** — third (final)
 sub-session of the `.flowvalue` step (the `:` value-indicator flow
@@ -2064,21 +2091,25 @@ section by section.
 | `.flowvalue` SS1 | ✅ LANDED | 2026-05-27 | ~125 / ~155 | §2 (predicates `EmitScansInFlowIx`/`EmitListScansInFlowIx` + 3 light helpers) |
 | `.flowvalue` SS2a | ✅ LANDED | 2026-05-27 | ~145 / ~140 | §2 (`emitList_scans_nonemptyIx` + missing twin `scanNextTokenIx_preprocess_flow_ws1` in `Preflow.lean` §1b) |
 | `.flowvalue` SS2b | ✅ LANDED | 2026-05-27 | ~265 / ~365 | §2b (`scanNextToken_flow_valueIx` — `:` value-indicator dispatcher; + 4 small twins `scanValuePrepareIx_{indents,directivesPresent}_of_inFlow`, `AllTokensOnLineIx_{overwriteAtCursor,scanValuePrepare_flow}`) |
-| `.flowpair` | ⏳ planned | — | — / ~388 | §3 (`EmitPairListScansInFlowIx` + `emit_scans_in_flowIx`) |
-| `.toplevel` | ⏳ planned | — | — / ~120 | §4 (`emit_produces_valid_yamlIx`) |
+| `.flowpair` SS1 (pair-list) | ✅ LANDED | 2026-05-27 | ~290 / ~210 | §2c (`EmitPairListScansInFlowIx` + `emitPairList_scans_{empty,nonempty}Ix`; zero new infra) |
+| `.flowpair` SS2 (scenario prereqs) | ⏳ planned | — | — / ~257 | `Scenarios/` (`scanNextTokenIx_flow_scanDoubleQuoted` + `scanNextTokenIx_flow_open_seq_nested`) |
+| `.flowpair` SS3 (induction) | ⏳ planned | — | — / ~241 | §2d (`emit_scans_in_flowIx`, `Grammable` induction; blocked on SS2) |
+| `.toplevel` | ⏳ planned | — | — / ~120 | §3 (`emit_produces_valid_yamlIx`) |
 
-**`.emitscans` progress**: `.chaingrew` (§1) landed; `.flowvalue` split
-into SS1 + SS2 at port time, and SS2 further sub-split into SS2a/SS2b
-during execution (see rationale below). **`.flowvalue` is now fully
-landed** — SS1 (predicate layer + light helpers), SS2a (comma-path list
-body), and SS2b (`scanNextToken_flow_valueIx`) all in. So 4 of (now 6)
-`.emitscans` work-units landed (§1 + §2-SS1 + §2-SS2a + §2b); only
-`.flowpair` and `.toplevel` remain. The §1 strict-variant track
-(`ScanChainGrewIx`) is the substrate-agnostic plumbing; the §2 predicates
-define the in-flow scannability contract every downstream body and the
-`.flowpair` main theorem consume. (The plan's ~1490 LOC total spans
-6909–8399 with a gap at 8014–8280, which is RoundTrip-adjacent and not
-part of `.emitscans` bodies.)
+**`.emitscans` progress**: `.chaingrew` (§1) landed; `.flowvalue` fully
+landed (SS1 predicate layer + SS2a comma-path list body + SS2b
+`scanNextToken_flow_valueIx`); **`.flowpair` SS1 (the pair-list track, §2c)
+landed** this session with zero new infra. `.flowpair` was **replanned
+into 3 sub-sessions** when SS1 surfaced that the originally-bundled main
+theorem `emit_scans_in_flowIx` is blocked on two un-ported scanner-scenario
+twins (`scanNextTokenIx_flow_scanDoubleQuoted`,
+`scanNextTokenIx_flow_open_seq_nested`) — see Reflection 141. So 5 of (now
+8) `.emitscans` work-units landed (§1 + §2-SS1 + §2-SS2a + §2b + §2c);
+`.flowpair` SS2 (the two scenario twins), `.flowpair` SS3 (the induction),
+and `.toplevel` remain. The §1 strict-variant track (`ScanChainGrewIx`) is
+the substrate-agnostic plumbing; the §2 predicates define the in-flow
+scannability contract every downstream body and the `emit_scans_in_flowIx`
+induction consume.
 
 **`.flowvalue` sub-split rationale** (recorded at port time, refined
 during execution): a dependency map of the two heavy theorems showed
@@ -2866,6 +2897,88 @@ instance that reduces to the underlying field's `GetElem` is a
 Confirmed pattern for future Phase 4 substrate wrappers (e.g. when
 `ParseTree input` lands as a structured wrapper around
 `Array (TreeNode input)`).
+
+**Step 6f.3b3.emitscans.flowpair SS1 (pair-list track) LANDED 2026-05-27**
+(~290 LOC actual vs. ~210 LOC for the pair-list portion of the ~388 LOC
+`.flowpair` plan; appended as §2c of
+`Proofs/Output/IndexedEmitterScannability/EmitScans.lean`). First
+sub-session of the **replanned** `.flowpair` step (see Reflection 141 for
+the replan). Ports legacy `EmitterScannability.lean` lines 7626–8011 (the
+`EmitPairListScansInFlow` predicate + empty/non-empty pair-list bodies);
+the originally-bundled main theorem `emit_scans_in_flowIx` is deferred to
+SS2/SS3.
+
+  - **`EmitPairListScansInFlowIx pairs`** — the key-value-pair dual of
+    `EmitListScansInFlowIx`, **identical conclusion shape** (it does *not*
+    carry `EmitScansInFlowIx`'s extra `simpleKeyAllowed = false` /
+    `lastRealTokenValIx?` clauses — those are produced by individual scan
+    steps, not required of the list-body contract). Indexed twin of legacy
+    `EmitPairListScansInFlow` (7626–7649).
+  - **`emitPairList_scans_emptyIx`** — `emitPairList [] = ""`, so the
+    0-step `.zero` chain closes it (mirror of `emitList_scans_emptyIx`).
+  - **`emitPairList_scans_nonemptyIx`** — induction over the pair list.
+    *Singleton* `[(k,v)]` (`emit k ++ ": " ++ emit v`): key
+    (`EmitScansInFlowIx`) → `:` (`scanNextToken_flow_valueIx`, §2b) →
+    leading-space preprocess (`scanNextTokenIx_preprocess_flow_ws1`, §2a)
+    → value (`EmitScansInFlowIx`). *Multi-pair* additionally threads a `,`
+    (`scanNextTokenIx_flow_comma`) + a second leading-space preprocess +
+    the recursive `EmitPairListScansInFlowIx`. Both the strict
+    `ScanChainGrewIx` and the `FlowMonoChainIx` are composed via the
+    `.single`/`.trans` combinators and lifted across the two preprocess
+    boundaries by `ScanChainGrewIx_of_scanNextTokenIx_eq` /
+    `FlowMonoChainIx_of_scanNextTokenIx_eq`. The per-step strict witnesses
+    for the `:` and `,` steps come from `scanNextTokenIx_filtered_grows_in_flow`;
+    the non-empty-tail `n ≥ 1` arguments reuse `CouplingBridge.CharsFromOffset_unique`.
+
+**Zero new infrastructure.** Every twin pre-existed (the whole point of
+the `.flowvalue` SS2a/SS2b ordering was to land `scanNextToken_flow_valueIx`
+and `scanNextTokenIx_preprocess_flow_ws1` first). The legacy proof's
+**Step 2** — deriving `saveSimpleKey`-identity + the `scanValueValidate`
+precondition `h_sv` for the `:` step — is *gone*: `scanNextToken_flow_valueIx`
+derives validate-success internally from the `AllTokensOnLineIx`/`EndLineOnLineIx`
+invariants (the §2b contract simplification), so the pair-list body never
+mentions `h_sv` or `saveSimpleKey_id_of_flow_ska_false_ek_none`.
+
+Two small porting wrinkles (no reflection — routine substrate friction):
+(1) the `h_corr₂` returned by `scanNextToken_flow_valueIx` has shape
+`' ' :: rest'` where the space is consed onto the *whole* `rest'`, so the
+leading-space rewrite needs the legacy `congr 1; … ; exact h_eq_chars ▸ h_corr₂`
+pattern (peel the cons, then a defeq-flexible `▸`) rather than a syntactic
+`rwa` — `rwa` fails on the `(' ' :: A) ++ B` vs `' ' :: (A ++ B)`
+associativity mismatch. (2) The `explicitKeyLine` arguments to the value /
+recursive scans close by `rw` alone: the rewrite chain ends at
+`s₂.explicitKeyLine = none` (from `scanNextToken_flow_valueIx`), so the goal
+reduces to `none = none` and `rw`'s trailing `rfl` discharges it — the
+trailing `exact h_ek` the `emitList` sibling needed (its chain ended at a
+hypothesis, not `= none`) is a "No goals" error here.
+
+Built clean **89/89**, sorry-free; `#print axioms` on both
+`emitPairList_scans_{empty,nonempty}Ix` shows `[propext, Classical.choice,
+Quot.sound]` only (Phase 3 closure axiom count unchanged at **0**).
+
+**Reflection 141 (new): a consumer can surface a prerequisite gap that
+the producer's "closed" step quietly left open.** The `.flowmono.sync.scenarios`
+step declared itself "closed (13/13 sub-sessions)" after `.preflow` +
+`.flowclose` + `.endpoint`. But that 13 covered only the scanner scenarios
+*those* sessions chose: `{`-open-nested, both closes (nested + outermost),
+`{`-open-init, comma, and the preprocess helpers. The two scenarios needed
+by `emit_scans_in_flowIx` — `scanNextTokenIx_flow_scanDoubleQuoted` (the
+double-quoted-scalar flow entry) and `scanNextTokenIx_flow_open_seq_nested`
+(the `[` opener) — were never in scope (the `.flowclose` docstring even
+lists its three deliverables explicitly as `{`-open + 2 closes, no `[`).
+The gap was invisible until `.flowpair` SS1 went to *consume* them. **Lesson**:
+"step closed, N/N" is a claim about the step's *declared* deliverables, not
+about downstream sufficiency — when planning a consumer step, enumerate the
+twins it calls and grep each one in the target substrate *before* estimating
+"single session", rather than trusting that an upstream "closed" scenario
+layer is complete for your needs. This is the dual of Reflection 140 (which
+warned against *over*-reporting missing twins): here an Explore sweep
+correctly reported two genuinely-missing twins, and direct `grep`
+verification (both exist only in legacy) confirmed the gap was real, not an
+`Ix`-naming artifact. The cheap split — land the fully-unblocked pair-list
+track now, schedule the two scenario twins as an explicit prerequisite
+sub-session — keeps each session's scope honest and the build green
+throughout. (Dual of Reflection 140, above.)
 
 **Step 6f.3b3.emitscans.flowvalue SS2b LANDED 2026-05-27**
 (~265 LOC actual vs. ~365 LOC plan; appended to §2b of
@@ -12813,10 +12926,12 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
             composition layer transferred verbatim from legacy — see
             Reflection 136. Single session.
 
-      ▸ **6f.3b3.emitscans** *(file-level; ~1490 LOC total across 4
-        sub-sessions; **`.chaingrew` ✅ + `.flowvalue` SS1 ✅ + SS2a ✅ +
-        SS2b ✅ 2026-05-27** — the `.flowvalue` step is now fully
-        landed)*. Maps to legacy lines 6909–8399. Target file:
+      ▸ **6f.3b3.emitscans** *(file-level; ~1490 LOC total; **`.chaingrew` ✅
+        + `.flowvalue` (SS1+SS2a+SS2b) ✅ + `.flowpair` SS1 ✅ 2026-05-27**.
+        `.flowvalue` fully landed; `.flowpair` replanned into 3 sub-sessions
+        — pair-list track ✅, the two scanner-scenario prerequisite twins
+        (SS2) ⏳, the `emit_scans_in_flowIx` induction (SS3) ⏳)*. Maps to
+        legacy lines 6909–8399. Target file:
         `Proofs/Output/IndexedEmitterScannability/EmitScans.lean`.
 
           ▸ **6f.3b3.emitscans.chaingrew** ✅ **LANDED 2026-05-27**
@@ -12886,10 +13001,39 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 invariants via the pre-existing
                 `scanValueValidateIx_ok_of_flow_allTokensOnLine`. Built
                 clean 89/89, sorry-free, axiom count 0. See Reflection 140.
-          ▸ **6f.3b3.emitscans.flowpair** *(~388 LOC; legacy lines
-            7626–8013)*. `EmitPairListScansInFlowIx` + main proof
-            `emit_scans_in_flowIx` (induction over `Grammable v
-            inFlow`). Single session.
+          ▸ **6f.3b3.emitscans.flowpair** *(~629 LOC; legacy lines
+            7626–8255)* — **replanned at port time into 3 sub-sessions**
+            (SS1 discovered the main theorem is blocked on two un-ported
+            scanner-scenario twins; see Reflection 141):
+              ▸ **SS1 (pair-list track)** ✅ **LANDED 2026-05-27**
+                *(~290 LOC actual; legacy 7626–8011)*. Target:
+                `EmitScans.lean` §2c. `EmitPairListScansInFlowIx` (same
+                conclusion shape as `EmitListScansInFlowIx`),
+                `emitPairList_scans_emptyIx`,
+                `emitPairList_scans_nonemptyIx` (induction over the pair
+                list: singleton chains key + `:` + value; multi-pair adds
+                `,` + recursive scan). **Zero new infra** — all twins
+                pre-existed (`scanNextToken_flow_valueIx` §2b for `:`,
+                `scanNextTokenIx_flow_comma`,
+                `scanNextTokenIx_preprocess_flow_ws1` §2a,
+                `emitPairList_first_charIx`); the legacy Step-2 `h_sv`
+                plumbing is dropped (validate derived internally, per §2b).
+                Built clean 89/89, sorry-free, axiom count 0.
+              ▸ **SS2 (scenario prerequisites)** ⏳ *(~257 LOC; legacy
+                3910–4065 + 4251–4353)*. The two scanner-scenario twins the
+                SS3 induction consumes but that `.flowmono.sync.scenarios`
+                never ported: `scanNextTokenIx_flow_scanDoubleQuoted` (the
+                double-quoted scalar flow entry, scalar case) and
+                `scanNextTokenIx_flow_open_seq_nested` (the `[` opener,
+                sequence case). Target: the scenario layer under
+                `FlowMonoChain/Sync/Scenarios/` (likely a new `FlowScalar.lean`
+                + an `[`-opener extension). May sub-split further at port time.
+              ▸ **SS3 (the induction)** ⏳ *(~241 LOC; legacy 8014–8255)*.
+                `emit_scans_in_flowIx`: induction over `Grammable v inFlow`
+                (scalar → `scanNextTokenIx_flow_scanDoubleQuoted`; sequence →
+                `[`-open + `emitList` body + `]`-close; mapping → `{`-open +
+                `emitPairList` body (SS1) + `}`-close). Unblocked once SS2
+                lands.
           ▸ **6f.3b3.emitscans.toplevel** *(~120 LOC; legacy lines
             8281–8399)*. Top-level composition
             `emit_produces_valid_yamlIx`: `scanFiltered (emit v)`
