@@ -1820,34 +1820,37 @@ not in-place axiom-to-theorem promotion — the latter is impossible
 when the axiom's hypothesis is strictly weaker than what the
 stronger lemma derives).
 
-**Next session**: **Step 6f.3b3.filteredgrowth.firstfiltered —
-First-filtered-token lemmas for flow-content scanners (Tier-2-Turn-1)**
-(legacy `Proofs/Output/EmitterScannability.lean` lines 5587–5899,
-~313 LOC). First of (up to) 4 sub-sessions in the file-level
-`.filteredgrowth` (~1320 LOC total). Target file:
-`Proofs/Output/IndexedEmitterScannability/FilteredGrowth/FirstFiltered.lean`
-(or directly under `.../IndexedEmitterScannability/FilteredGrowth.lean`
-— sub-file split TBD per the legacy file's shape; the parent
-file-level session description suggests a single-file layout is
-viable for this opener). Ships per-flow-content scanner
-"first new filtered token is determined by the leading char"
-lemmas (`scanFlowSequenceStart_first_filtered_token`,
-`scanFlowMappingStart_first_filtered_token`,
-`scanDoubleQuoted_first_filtered_token` analogues for the indexed
-substrate). These are building blocks for body-token
-characterization in the `.emitscans.flowvalue` and
-`.emitscans.flowpair` chain proofs.
+**Next session**: **Step 6f.3b3.filteredgrowth.infra —
+Filtered token array growth infrastructure** (legacy
+`Proofs/Output/EmitterScannability.lean` lines 5900–6070, ~170 LOC).
+Second of (up to) 4 sub-sessions in the file-level `.filteredgrowth`
+(~1320 LOC total). Target file:
+`Proofs/Output/IndexedEmitterScannability/FilteredGrowth/Infra.lean`
+(following the same one-file-per-sub-session pattern established by
+`.firstfiltered`). Ships the array-growth primitives that downstream
+`.perdispatch` lemmas compose: `Array_setIfInBounds_filter_monoIx`,
+`preprocess_filtered_monoIx`, `allowDir_ite_filter_monoIx`,
+`List_filter_length_ge_oneIx`, `filtered_grows_of_extended_prefixIx`,
+`filtered_grows_of_any_newIx`. Smaller and more self-contained than
+`.firstfiltered`; the LOC-budget closer to plan is likely.
 
-**`.flowmono` is now complete** — see the status index table below
+**`.flowmono` is complete** — see the status index table below
 for the 13-row recap (all ✅ LANDED). The parent's file split into
 `{Basic, Preserve/{Step,DpInv,Helpers},
 Maintenance/{FlowDispatch,Pipeline}, Sync/{Invariant,Detail,
 Scenarios/{Preflow,FlowClose,Endpoint}}}` is final.
 
-After `.filteredgrowth.firstfiltered`, the remaining
-`.filteredgrowth` sub-sessions follow (`.infra`, `.perdispatch`,
-`.turn3`); then file-level sessions `.emitscans (~1490 LOC)` →
-`.parsestream (~440 LOC)` → `.roundtrip (~1870 LOC)` close Phase 3.
+**`.filteredgrowth.firstfiltered` LANDED 2026-05-26** — see
+status index below; ships three Tier-2-Turn-1 first-filtered-token
+theorems (`scanFlowSequenceStartIx_first_filtered_token`,
+`scanFlowMappingStartIx_first_filtered_token`,
+`scanDoubleQuotedIx_first_filtered_token`) plus emitter shape
+helpers and the generic `Array_filter_prefix_of_raw_prefix` lemma.
+
+After `.filteredgrowth.infra`, the remaining sub-sessions follow
+(`.perdispatch`, `.turn3`); then file-level sessions
+`.emitscans (~1490 LOC)` → `.parsestream (~440 LOC)` →
+`.roundtrip (~1870 LOC)` close Phase 3.
 
 ### Initiative 4 — `.flowmono` sub-session status index
 
@@ -1879,9 +1882,24 @@ layout: `{Basic, Preserve/{Step,DpInv,Helpers},
 Maintenance/{FlowDispatch,Pipeline}, Sync/{Invariant,Detail,
 Scenarios/{Preflow,FlowClose,Endpoint}}}`.
 
-After `.flowmono` closes, sub-sessions follow in dependency order:
-`FilteredGrowth (~1320 LOC)` → `EmitScans (~1490 LOC)` →
-`ParseStream (~440 LOC)` → `RoundTrip (~1870 LOC)`.
+### Initiative 4 — `.filteredgrowth` sub-session status index
+
+The `.filteredgrowth` family ports legacy `EmitterScannability.lean`
+lines 5587–6908 (~1320 LOC) to the indexed substrate via per-stage
+filtered-token-growth lemmas. The layout mirrors `.flowmono`'s
+one-file-per-sub-session pattern under
+`Proofs/Output/IndexedEmitterScannability/FilteredGrowth/`.
+
+| Sub-session | Status | Date | LOC actual / plan | File |
+|---|---|---|---|---|
+| `.firstfiltered` | ✅ LANDED | 2026-05-26 | ~456 / ~313 | `FilteredGrowth/FirstFiltered.lean` |
+| `.infra` | ⏳ PLANNED | — | — / ~170 | `FilteredGrowth/Infra.lean` |
+| `.perdispatch` | ⏳ PLANNED | — | — / ~688 | `FilteredGrowth/PerDispatch.lean` (may sub-split) |
+| `.turn3` | ⏳ PLANNED | — | — / ~150 | `FilteredGrowth/Turn3.lean` |
+
+After `.filteredgrowth` closes, sub-sessions follow in dependency
+order: `EmitScans (~1490 LOC)` → `ParseStream (~440 LOC)` →
+`RoundTrip (~1870 LOC)`.
 
 **Queued after 6f.3b3 closes**: **Step 6g — `IndentEntryIx`
 sum-type refactor** (~1000 LOC, multi-session). Promotes the
@@ -2549,6 +2567,102 @@ absorbed without rework because the per-conjunct discharge is
 mechanical — but the plan should reflect this for analogous future
 init-state scenarios (the `.emitscans.toplevel` chain that consumes
 this sub-session's output will face the same pattern).
+
+**Step 6f.3b3.filteredgrowth.firstfiltered LANDED 2026-05-26**
+(~456 LOC actual vs. ~313 LOC plan; new file
+`Proofs/Output/IndexedEmitterScannability/FilteredGrowth/
+FirstFiltered.lean` + reshape of `FilteredGrowth.lean` from staging
+skeleton into re-export shim — mirroring the `.flowmono`
+one-file-per-sub-session layout). Opens the `.filteredgrowth`
+file-level session (1/4 sub-sessions) by porting the three
+Tier-2-Turn-1 first-filtered-token theorems for flow-content
+scanners. Each theorem characterises the *first* new
+non-`.placeholder` token in `s'.tokens.tokens.filter` after a
+successful `scanNextTokenIx` with a leading `[`, `{`, or `"` in
+flow context. Ships:
+
+  - **§1 `scanFlowSequenceStartIx_first_filtered_token`** — `[`
+    in flow context (with `currentIndent < 0`, `col > 0`) ↦ first
+    new filtered token is `.flowSequenceStart`. Indexed twin of
+    legacy `scanFlowSequenceStart_first_filtered_token` (line 5598).
+    Proof skeleton: re-derive dispatch (preprocess → structural
+    `none` → allowDirectives update → `checkBlockFlowIndent_ok_flow`
+    → `dispatchFlowIndicators_bracket`), conclude
+    `s' = scanFlowSequenceStartIx s_ad`, then `Array.filter_push`
+    + the placeholder-filter identity from
+    `saveSimpleKeyIx_filter_placeholder`.
+  - **§2 `scanFlowMappingStartIx_first_filtered_token`** — mirror
+    of §1 for `{` and `.flowMappingStart`. Indexed twin of legacy
+    `scanFlowMappingStart_first_filtered_token` (line 5657).
+  - **§3 `scanDoubleQuotedIx_first_filtered_token`** — `"` in flow
+    context ↦ first new filtered token is some
+    `.scalar c .doubleQuoted` (content existentially quantified).
+    Indexed twin of legacy `scanDoubleQuoted_first_filtered_token`
+    (line 5746). Proof reduces `scanNextTokenIx_dispatchContent`
+    in-place via `unfold + simp only [..., ↓reduceIte] + split` on
+    the `match h : scanDoubleQuotedIx _ with ...` inside the body,
+    extracting the `(content, cAfter)` pair on the `some` arm.
+  - **§4 Emitter shape helpers** — `emit_first_char`,
+    `emitList_first_char`, `emitList_toList_ne_nil` ported verbatim
+    from legacy 5833–5871 (pure `String`-level facts about
+    `L4YAML.Emit.emit`; no indexed scanner content).
+  - **§5 `emit_tokens_pushIx`** — indexed twin of `emit_tokens_push`
+    (legacy 5877). Identifies the single-token push performed by
+    `ScannerStateIx.emit`.
+  - **§6 `Array_filter_prefix_of_raw_prefix`** — generic `Array α`
+    lemma (legacy 5883). Consumed by later `.perdispatch` / `.turn3`.
+
+No axioms, no `sorry`, build green at **477/477 jobs**. Phase 3
+closure axiom count unchanged at **0** (only the standard `propext`,
+`Classical.choice`, `Quot.sound`).
+
+**Indexed simplification** — the legacy
+`scanDoubleQuoted_first_filtered_token` proof needed a separate
+`scanDoubleQuoted_tokens_push` lemma (legacy 5716–5740, ~25 LOC)
+because the legacy state-level `scanDoubleQuoted` was responsible
+for emitting the scalar token itself (via `emitAt`). The indexed
+`scanDoubleQuotedIx` is **cursor-level only** (signature `IxCursor
+input → Option (String × IxCursor input)`); the actual `emitAt`
+for the scalar token lives inside
+`scanNextTokenIx_dispatchContent` (`Scanner/IndexedDispatch.lean`
+lines 1002–1014). So the indexed proof reduces the dispatch branch
+directly via `unfold + simp + split`, reading the push shape off
+the `emitAt`-then-record-update body — no separate `_tokens_push`
+lemma needed. The LOC saved is partially absorbed by the larger
+`IxToken.mk' ... |>.token = ...` rfl plumbing (start/stop/posBound
+discharge per pushed token).
+
+**LOC budget overshoot decomposition** (~456 actual vs. ~313 plan;
+overshoot ~143 LOC): (1) ~50 LOC for the indexed-specific
+`Array.filter_push` discharge with `IxToken.mk'` constructors
+explicit (each pushed-token literal has 5 arguments vs. legacy
+`Positioned`'s 3); (2) ~40 LOC for the explicit
+`split` + `injection` + `rename_i heq; rw [h_dq] at heq; exact
+absurd heq (by simp)` patterns to handle `match h : scanDoubleQuotedIx
+_ with ...` reduction in §3 (simp can't substitute under the
+match-with-equation binder, so manual `split` is needed); (3) ~30
+LOC for the `obtain ⟨s_ad, h_s_ad_def⟩` opaque-equation style for
+`s_ad` (used here for consistency with the `.flowmono` mid-chain
+pattern); (4) ~20 LOC of file-wide doc-comments and section
+headings.
+
+**Reflection 132 (new)** documents the **cursor-level-scanner
+simplification**: any indexed scanner refactored from a state-level
+legacy to a cursor-level indexed (return type `Option (... × IxCursor
+input)` instead of `ScannerState`) eliminates the need for a
+companion `_tokens_push` lemma at the consumer site, because the
+emit happens at the dispatcher level (`scanNextTokenIx_dispatch
+Content`) where the `emitAt` shape is direct. Examples: indexed
+`scanDoubleQuotedIx`, `scanSingleQuotedIx`, `scanPlainScalarIx`,
+`scanBlockScalarIx` all share this pattern. The trade-off is that
+the consumer proof grows the `unfold + simp + split` machinery
+(~30 LOC per call site), but saves the per-scanner `_tokens_push`
+helper (~25 LOC each). For 4 quoted/plain/block scanners that's
+~100 LOC saved and ~120 LOC added to consumers — net neutral, but
+**the consumers cluster at the body characterization layer**
+(`.emitscans.flowvalue` / `.flowpair`), so the LOC is spent once
+per scanner-character (`"`, `'`, plain, `|`/`>`) rather than once
+per *consumer* of `_tokens_push`. Net win for the indexed substrate.
 
 **Step 6f.3b3.flowmono.sync.detail LANDED 2026-05-26**
 (~340 LOC actual vs. legacy ~400 LOC contribution; new file
@@ -11585,9 +11699,27 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
         4 sub-sessions)*. Maps to legacy lines 5587–6908. Target file:
         `Proofs/Output/IndexedEmitterScannability/FilteredGrowth.lean`.
 
-          ▸ **6f.3b3.filteredgrowth.firstfiltered** *(~313 LOC; legacy
-            lines 5587–5899)*. First-filtered-token lemmas for flow-
-            content scanners (Tier-2-Turn-1 lemmas). Single session.
+          ▸ **6f.3b3.filteredgrowth.firstfiltered** ✅ **LANDED 2026-05-26**
+            *(~456 LOC actual vs. ~313 LOC plan; legacy lines
+            5587–5899)*. Target file:
+            `FilteredGrowth/FirstFiltered.lean`. First-filtered-token
+            lemmas for flow-content scanners (Tier-2-Turn-1):
+              * `scanFlowSequenceStartIx_first_filtered_token` (`[` ↦
+                `.flowSequenceStart`).
+              * `scanFlowMappingStartIx_first_filtered_token` (`{` ↦
+                `.flowMappingStart`).
+              * `scanDoubleQuotedIx_first_filtered_token` (`"` ↦ some
+                `.scalar _ .doubleQuoted`; content/subType existentially
+                quantified).
+              * Emitter shape helpers: `emit_first_char`,
+                `emitList_first_char`, `emitList_toList_ne_nil`.
+              * `emit_tokens_pushIx` and generic
+                `Array_filter_prefix_of_raw_prefix` (consumed by later
+                `.perdispatch` / `.turn3`).
+            Indexed simplification: legacy `scanDoubleQuoted_tokens_push`
+            is unneeded because indexed `scanDoubleQuotedIx` is
+            cursor-level; the `emitAt` for the scalar token happens
+            inside `scanNextTokenIx_dispatchContent` itself.
           ▸ **6f.3b3.filteredgrowth.infra** *(~170 LOC; legacy lines
             5900–6070)*. Filtered token array growth infrastructure:
             `Array_setIfInBounds_filter_monoIx`,
