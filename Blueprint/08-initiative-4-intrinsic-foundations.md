@@ -1820,19 +1820,33 @@ not in-place axiom-to-theorem promotion — the latter is impossible
 when the axiom's hypothesis is strictly weaker than what the
 stronger lemma derives).
 
-**Next session**: **Step 6f.3b3.parsestream**
-(`Proofs/Output/IndexedEmitterScannability/ParseStream.lean`; legacy
-lines 8400–8874, ~440 LOC, currently planned as a single session).
-**§4 Full Pipeline: Emit → Scan → Parse** (~90 LOC; legacy 8400–8489):
-`scanFiltered_exists_of_isOkIx`, `parseStreamLoop_single_docIx`,
-`emit_parsed_grammableIx`. **§5.2 Scanner content preservation**
-(~344 LOC; legacy 8531–8874): `scanFiltered_emitScalar_contentIx`,
-`scanFiltered_emitScalar_valsIx`, `parseDirectives_skipIx`,
-`parseStream_three_tokens_scalarIx`, `parseYamlRaw_emitScalar_valueIx`.
-With `.emitscans` closed, `emit_produces_valid_yamlIx` now serves as
-the standing acceptance pre-condition the parse pipeline composes
-onto. `.roundtrip` (~1870 LOC across 4 sub-sessions) follows
-`.parsestream`.
+**Next session**: **Step 6f.3b3.roundtrip.fidelity**
+(`Proofs/Output/IndexedEmitterScannability/RoundTrip.lean`; legacy
+lines 8490–8530 + 8875–9062, ~230 LOC, single session). §5 Content
+Fidelity Infrastructure: `resolveAliases_scalarIx`,
+`stripAnchors_scalarIx`, `compose_scalar_contentIx`,
+`contentEq_scalar_contentIx`, `contentEq_scalar_composeIx`,
+`unwindIndents_noop_short_stackIx`,
+`scanFiltered_tokens_eq_of_chain_short_stackIx`,
+`ScanChainIx_tokens_mono`, `scanNextTokenIx_prefix_and_sk_inv`,
+`ScanChainIx_preserves_raw_prefix`. With `.parsestream` closed,
+`parseYamlRawIx_emitScalar_value` is the bridging fact the `.roundtrip`
+fidelity layer composes the `compose`-step content invariants over.
+
+**`.parsestream` LANDED 2026-05-28** — file-level step now closed.
+Ships §4 Full Pipeline (`parseStreamLoop_single_docIx`,
+`emit_parsed_grammableIx`) and §5.2 Scanner content preservation
+(`scanFilteredIx_emitScalar_eq` bundling the three IxToken witnesses;
+`scanFilteredIx_emitScalar_content` and `_vals` projecting from the
+bundle; `parseDirectives_skipIx`, `parseNodeProperties_skipIx`,
+`parseStream_three_tokens_scalarIx`, `parseYamlRawIx_emitScalar_value`).
+Two new conjuncts added to SS2's `scanNextTokenIx_emitScalar_init`
+(filtered-tokens-equality + indent-stack singleton) to enable
+`scanFilteredIx_of_chain_eq`-based explicit token characterization —
+see Reflection 147. Pure triple on parser-side theorems; SS2 inherited
+~46 native_decide axioms on scanFiltered-emitScalar family; zero new
+user-defined or `native_decide` axioms. Built clean 98/98 (full
+project 169/169), sorry/axiom/partial-free.
 
 **`.emitscans.toplevel` SS2 (scalar prereq) LANDED 2026-05-27** —
 second sub-session of the port-time-replanned `.toplevel` step.
@@ -3255,6 +3269,69 @@ either, but worked there because the legacy `scanFiltered` returns
 a non-dependent `Array (Positioned YamlToken)` rather than the
 indexed `Indexed.TokenStream input`.
 
+**Reflection 147 (new): when a "thin delegation" helper trims a
+conclusion to the minimal sufficient API for one downstream use, a
+*later* downstream use can need the trimmed shape back — discipline
+is to enrich the source helper with the extra conjuncts (don't
+duplicate the helper) and update the one or two consumers to
+destructure `_` for the new fields.** SS2's
+`scanNextTokenIx_emitScalar_init` (`.toplevel` SS2, Reflection 145)
+intentionally trimmed the legacy filtered-token equality from its
+conclusion — only the downstream `scan_accepts_emitScalarIx` wrapper
+needed `peek? = none ∧ flowLevel = 0 ∧ directivesPresent = false`,
+saving ~80 LOC of bookkeeping. But `.parsestream`'s §5.2 lemmas
+`scanFilteredIx_emitScalar_content` / `_vals` need *exactly* that
+trimmed equality (and the indent-stack singleton fact) to characterize
+the explicit 3-token filtered output via `scanFilteredIx_of_chain_eq`.
+**Two enrichment options**: (a) add new lemma
+`..._init_filt` that re-derives the equality — ~100 LOC duplication;
+(b) enrich the existing SS2 helper with two new conjuncts and update
+the one consumer (`scan_accepts_emitScalarIx`'s destructure) to
+absorb them as `_`. **Chose (b)**: ~30 LOC of new proof in the SS2
+helper (one new `refine` arm computing
+`s_final.tokens.tokens.filter (·.token != .placeholder)
+   = (s₀.tokens.tokens.filter …).push tok_scalar` via
+`h_ad_tokens` + `Array.filter_push` + the existing `_h_filt_pp`
+preprocess-prefix equality + the SS2-helper's own `s_final` shape;
+a second arm computing `s_final.indents = #[{column := -1,
+isSequence := false}]` via `h_ad_ids ▸ h_ids_pp`) + one-character
+fix at the consumer (`_, _` for the two new fields). **Subsequent
+benefit**: the §5.2 derivation chains `scanFilteredIx_of_chain_eq`
+(Invariant §5) → `unwindIndentsIx s₁ (-1) = s₁` (via the new
+indent-stack conjunct + an explicit `unwindIndentsLoopIx` reduction:
+`decide ((1:Nat) > 1) = false` + `Bool.and_false`) → `Array.filter_push`
+(the streamEnd ≠ placeholder branch) → substitute the new
+filtered-tokens conjunct → `((mk' input).emit streamStart).tokens.tokens.filter
+   = #[<ss_ix>]` by `rfl` → the explicit 3-element array literal
+`#[ss_ix, tok_scalar, se_ix]`. From there
+`scanFilteredIx_emitScalar_content` / `_vals` follow by projection
+(`congrArg Indexed.TokenStream.tokens` + the IxToken-bundle's
+`.token` projections). **Existential restructure note**: the
+`∃ tok_scalar, scanFilteredIx … = .ok ⟨literal⟩` shape we initially
+tried fails — the streamStart and streamEnd IxTokens carry positions
+from the cursor state, not `default`. The clean shape is a
+3-existential `∃ ss_ix tok_scalar se_ix, ss_ix.token = .streamStart
+   ∧ tok_scalar.token = .scalar content .doubleQuoted ∧ se_ix.token
+   = .streamEnd ∧ scanFilteredIx … = .ok ⟨#[ss_ix, tok_scalar, se_ix]⟩`,
+with `ss_ix` and `se_ix` opaque witnesses (their positions are
+implementation details). **Concrete cost**: ~530 LOC actual vs. ~440
+LOC plan, **20% over** — the overrun is split roughly 60/40 between
+(i) the enriched SS2 helper proof additions + the 3-existential
+restructure on the scanFilteredIx-emitScalar family, and (ii) the
+parser-trace lemma adapting `tokens[i]!.val` ↔ `tokens.tokens[i]!.token`
++ `peek?` projection through `peekIx?.map (·.token)` (zero conceptual
+work — just type-shape adaptation). **Lesson for `.roundtrip`**:
+before assuming a previously-trimmed conclusion suffices for new
+consumers, audit the new consumer's actual ask first — if the trimmed
+API misses a field, enrich the source rather than write a parallel
+helper. Single-source-of-truth keeps the axiom budget unified (no
+risk of two helpers acquiring different `native_decide` sets) and
+keeps the proof spine consistent under future refactors. The
+"existential over the three IxTokens" pattern also generalizes
+directly to the `.roundtrip.fidelity` `unwindIndents_noop_short_stackIx`
+and `scanFiltered_tokens_eq_of_chain_short_stackIx` ports —
+expect the same shape there.
+
 **Step 6f.3b3.emitscans.toplevel SS1 (easy prereqs) LANDED 2026-05-27**
 (~225 LOC across two files: `Endpoint.lean` §6 ~200 LOC +
 `EmitScans.lean` §3 ~25 LOC). First sub-session of the **replanned**
@@ -3349,6 +3426,46 @@ discharge-plan ledger):
     scannability theorem (including `emit_produces_valid_yamlIx`)
     would collapse back to pure triple + only the two SS3-introduced
     empty-collection axioms.
+
+**`.parsestream` axiom summary** (recorded 2026-05-28 — closes the
+file-level step's axiom ledger):
+
+  - `parseStreamLoop_single_docIx`: **pure triple** (no inherited
+    native_decide; the entire proof is `parseStream`-shape-driven
+    case-split + composition).
+  - `emit_parsed_grammableIx`: pure triple + **16 inherited
+    `native_decide` axioms** from `ScannerPlainContent` /
+    `ScannerPlainScalar` / `ScannerProofs` clusters (via
+    `parseStreamIx_output_grammable` → `parseStream_output_scannable_ix`
+    → ScannerCorrectness chain). No new axioms.
+  - `parseDirectives_skipIx`, `parseNodeProperties_skipIx`: **pure
+    triple** each (parser-state shape-driven proofs only).
+  - `scanFilteredIx_emitScalar_eq` and the derivative
+    `scanFilteredIx_emitScalar_content` / `scanFilteredIx_emitScalar_vals`:
+    pure triple + **~46 inherited `native_decide` axioms** — the same
+    SS2 `scanDoubleQuotedIx`-cluster budget (Reflection 142) propagated
+    through the enriched `scanNextTokenIx_emitScalar_init` chain plus
+    `scanFilteredIx_of_chain_eq`. Identical to `scan_accepts_emitScalarIx`
+    + zero new axiom names.
+  - `parseStream_three_tokens_scalarIx`: **pure triple** (parser trace
+    only; depends on the parser-side skip lemmas but those carry no
+    `native_decide`).
+  - `parseYamlRawIx_emitScalar_value`: pure triple + the same SS2-
+    inherited ~46 axiom set (chains
+    `parseYamlRawIx_ok_decompose` + `scanFilteredIx_emitScalar_vals` +
+    `parseStream_three_tokens_scalarIx`; the scanner-side cluster
+    dominates).
+  - **Zero new user-defined or `native_decide` axiom names** introduced
+    in this session. The SS2 helper enrichment (two new conjuncts in
+    `scanNextTokenIx_emitScalar_init`) is fully discharged via existing
+    `_h_filt_pp` / `h_ad_ids` / `h_ids_pp` plumbing already in scope.
+  - **Phase-3 closure axiom count unchanged at 0 user-defined
+    axioms** (`axiom`/`sorry`/`partial`-free); the inherited
+    `native_decide` budget remains within documented policy. The
+    standing de-`native_decide` option on hex-classification, if
+    exercised, would collapse every `.parsestream` theorem either to
+    pure triple (parser-side lemmas) or to pure triple + the two
+    SS3-introduced empty-collection axioms via the emit-scalar chain.
 
 **Step 6f.3b3.emitscans.flowpair SS1 (pair-list track) LANDED 2026-05-27**
 (~290 LOC actual vs. ~210 LOC for the pair-list portion of the ~388 LOC
@@ -13774,19 +13891,56 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 sub-sessions** — Phase-3 emitter-scannability cluster
                 COMPLETE.
 
-      ▸ **6f.3b3.parsestream** *(file-level; ~440 LOC; single
-        session)*. Maps to legacy lines 8400–8874. Target file:
+      ▸ **6f.3b3.parsestream** ✅ **LANDED 2026-05-28** *(file-level;
+        ~530/~440 LOC, ~20% over due to enriched SS2 helper + 3-token
+        existential restructure — see Reflection 147; single session)*.
+        Maps to legacy lines 8400–8874. Target file:
         `Proofs/Output/IndexedEmitterScannability/ParseStream.lean`.
 
-        Deliverables:
-          • **§4 Full Pipeline: Emit → Scan → Parse** (~90 LOC; legacy
-            lines 8400–8489): `scanFiltered_exists_of_isOkIx`,
-            `parseStreamLoop_single_docIx`, `emit_parsed_grammableIx`.
-          • **§5.2 Scanner content preservation** (~344 LOC; legacy
-            lines 8531–8874): `scanFiltered_emitScalar_contentIx`,
-            `scanFiltered_emitScalar_valsIx`, `parseDirectives_skipIx`,
-            `parseStream_three_tokens_scalarIx`,
-            `parseYamlRaw_emitScalar_valueIx`.
+        **Delivered**:
+          • **§4 Full Pipeline: Emit → Scan → Parse** (~70 LOC; legacy
+            lines 8400–8489): `parseStreamLoop_single_docIx` (verbatim
+            from legacy, with `ParseStateIx`-shaped post-document state
+            literal) and `emit_parsed_grammableIx` (decomposes
+            `parseYamlIx` → `parseYamlRawIx_ok_decompose` →
+            `parseStreamIx_output_grammable` discharged via
+            `scanFilteredIx_{FlowAwarePSVIx,FlowBracketsMatchedIx}`).
+            `scanFilteredIx_exists_of_isOk` was already landed by
+            `.toplevel` SS1 (EmitScans.lean §3.1), so the §4 deliverable
+            shipped two theorems instead of three.
+          • **§5.2 Scanner content preservation** (~460 LOC; legacy
+            lines 8531–8874): an enriched SS2 helper exposes the
+            filtered-tokens equality + indent-stack singleton (two new
+            conjuncts added to `scanNextTokenIx_emitScalar_init`); the
+            new `scanFilteredIx_emitScalar_eq` then bundles the three
+            IxToken witnesses (`ss_ix`, `tok_scalar`, `se_ix`) plus
+            their `.token` projections, computed via
+            `scanFilteredIx_of_chain_eq` (Invariant §5) +
+            `unwindIndentsIx s₁ (-1) = s₁` (the singleton-indent
+            reduction) + `Array.filter_push` cascades. From the bundle
+            both `scanFilteredIx_emitScalar_content` and
+            `scanFilteredIx_emitScalar_vals` follow by projection. The
+            parser-trace lemmas `parseDirectives_skipIx`,
+            `parseNodeProperties_skipIx` (light port-time add — needed
+            because legacy `parseNodeProperties_skip` lives in
+            `ParserWellBehaved.lean` outside the `.parsestream` scope),
+            and `parseStream_three_tokens_scalarIx` port verbatim with
+            `ParseStateIx` token access via `(tokens.get? i).map (·.token)`
+            and the `peek?` projection. Capstone
+            `parseYamlRawIx_emitScalar_value` is direct composition.
+        **Axiom posture**: `[propext, Classical.choice, Quot.sound]` +
+        the inherited SS2 `scanDoubleQuotedIx`-cluster `native_decide`
+        budget (~46 axioms — same as `.toplevel` SS2/SS3 per
+        Reflection 142/146) on the scanFiltered-emitScalar family +
+        16 inherited Scanner* `native_decide` axioms on
+        `emit_parsed_grammableIx` (from
+        `parseStreamIx_output_grammable`'s downstream Scanner correctness
+        chain). **Zero new user-defined or `native_decide` axioms**
+        introduced this session. **`§4` clean theorems** (`parseStreamLoop_
+        single_docIx`, `parseDirectives_skipIx`,
+        `parseNodeProperties_skipIx`,
+        `parseStream_three_tokens_scalarIx`) all reduce to **pure triple**.
+        Built clean 98/98, sorry/axiom/partial-free.
 
       ▸ **6f.3b3.roundtrip** *(file-level; ~1870 LOC total across 4
         sub-sessions; **carries forward the 7 pre-existing `sorry`

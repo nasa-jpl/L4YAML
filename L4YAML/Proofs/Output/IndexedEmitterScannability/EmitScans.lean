@@ -1561,7 +1561,14 @@ theorem scanNextTokenIx_emitScalar_init (content : String) :
         = .ok (some s₁)
       ∧ s₁.peek? = none
       ∧ s₁.flowLevel = 0
-      ∧ s₁.directivesPresent = false := by
+      ∧ s₁.directivesPresent = false
+      ∧ s₁.indents = #[{ column := -1, isSequence := false }]
+      ∧ ∃ tok_scalar : L4YAML.Indexed.IxToken (L4YAML.Emit.emitScalar content),
+          tok_scalar.token = YamlToken.scalar content ScalarStyle.doubleQuoted
+          ∧ s₁.tokens.tokens.filter (fun t => t.token != YamlToken.placeholder)
+            = (((ScannerStateIx.mk' (L4YAML.Emit.emitScalar content)).emit
+                  YamlToken.streamStart).tokens.tokens.filter
+                  (fun t => t.token != YamlToken.placeholder)).push tok_scalar := by
   -- Lift the input/s₀ abbreviations into opaque locals via `let` —
   -- this prevents Lean from repeatedly whnf-reducing
   -- `L4YAML.Emit.emitScalar content` during downstream elaboration of
@@ -1572,6 +1579,12 @@ theorem scanNextTokenIx_emitScalar_init (content : String) :
   let s₀ : ScannerStateIx input := (ScannerStateIx.mk' input).emit YamlToken.streamStart
   show ∃ s₁, scanNextTokenIx s₀ = .ok (some s₁)
     ∧ s₁.peek? = none ∧ s₁.flowLevel = 0 ∧ s₁.directivesPresent = false
+    ∧ s₁.indents = #[{ column := -1, isSequence := false }]
+    ∧ ∃ tok_scalar : L4YAML.Indexed.IxToken input,
+        tok_scalar.token = YamlToken.scalar content ScalarStyle.doubleQuoted
+        ∧ s₁.tokens.tokens.filter (fun t => t.token != YamlToken.placeholder)
+          = (s₀.tokens.tokens.filter
+                (fun t => t.token != YamlToken.placeholder)).push tok_scalar
   -- ── Step 1: input.toList = '"' :: (escapeString content).toList ++ ['"']
   have h_toList : input.toList = '"' :: ((L4YAML.Emit.escapeString content).toList ++ ['"']) := by
     show (L4YAML.Emit.emitScalar content).toList = _
@@ -1722,7 +1735,7 @@ theorem scanNextTokenIx_emitScalar_init (content : String) :
     scanNextTokenIx_via_content_dispatch s₀ s_pp s_ad s_final '"'
       h_pp_eq h_struct h_s_ad_def h_check_ad h_flow_ad h_block_ad h_dc
   -- ── Step 13: extract conclusions
-  refine ⟨s_final, h_snt, ?_, ?_, ?_⟩
+  refine ⟨s_final, h_snt, ?_, ?_, ?_, ?_, ?_⟩
   · -- peek? = none: post-quote surface has empty chars
     have h_sf_corr : ScannerSurfCorrIx s_final ⟨[], s_final.cursor.pos.col⟩ := by
       refine ⟨?_, rfl, ?_, ?_⟩
@@ -1737,6 +1750,50 @@ theorem scanNextTokenIx_emitScalar_init (content : String) :
     exact peek_none_of_empty_surfIx s_final s_final.cursor.pos.col h_sf_corr
   · rw [h_sf_fl]; exact h_ad_fl
   · rw [h_sf_dp]; exact h_ad_dp
+  · -- s_final.indents = s_ad.indents (record updates leave indents untouched)
+    -- = s_pp.indents (h_ad_ids) = #[{ column := -1, isSequence := false }] (h_ids_pp).
+    show s_ad.indents = #[{ column := -1, isSequence := false }]
+    rw [h_ad_ids, h_ids_pp]
+  · -- filtered-tokens equality: s_final.tokens.tokens (excluding placeholders) =
+    -- ((mk' input).emit streamStart).tokens.tokens filtered, pushed with the new scalar IxToken.
+    -- Witness IxToken: span [s_ad.cursor.pos, cAfter.pos) carrying .scalar content .doubleQuoted.
+    refine ⟨L4YAML.Indexed.IxToken.mk' (input := input)
+              s_ad.cursor.pos (YamlToken.scalar content ScalarStyle.doubleQuoted)
+              cAfter.pos h_bound cAfter.posBound, rfl, ?_⟩
+    -- s_ad.tokens = s_pp.tokens: the allowDirectives if-branch only touches the
+    -- allowDirectives / documentEverStarted fields.
+    have h_ad_tokens : s_ad.tokens = s_pp.tokens := by
+      rw [h_s_ad_def]; split <;> rfl
+    -- s_final.tokens.tokens unfolds to s_ad.tokens.tokens.push <scalar IxToken> via emitAt.
+    -- Both `emitAt` and the trailing `with simpleKeyAllowed := false` preserve all token
+    -- structure modulo the single push, so this is definitional.
+    show s_final.tokens.tokens.filter _ = _
+    -- Compute s_final.tokens.tokens explicitly via rfl-defs of emitAt + record update.
+    have h_sf_tokens : s_final.tokens.tokens
+        = s_ad.tokens.tokens.push
+            (L4YAML.Indexed.IxToken.mk' (input := input)
+              s_ad.cursor.pos (YamlToken.scalar content ScalarStyle.doubleQuoted)
+              cAfter.pos h_bound cAfter.posBound) := by
+      show (s_ad.tokens.push _).tokens = s_ad.tokens.tokens.push _
+      rfl
+    -- Rewriting strategy: collapse to a single equality
+    --   s_final.tokens.tokens.filter = (s_pp.tokens.tokens.filter).push <scalar>
+    -- then substitute via _h_filt_pp.
+    -- Step a: s_pp.tokens.tokens.filter = s₀.tokens.tokens.filter (by _h_filt_pp).
+    have h_pp_tokens_eq : s_pp.tokens.tokens.filter (fun t => t.token != YamlToken.placeholder)
+        = s₀.tokens.tokens.filter (fun t => t.token != YamlToken.placeholder) := _h_filt_pp
+    -- Step b: s_ad.tokens.tokens = s_pp.tokens.tokens (via h_ad_tokens).
+    have h_ad_tokens_arr : s_ad.tokens.tokens = s_pp.tokens.tokens :=
+      congrArg L4YAML.Indexed.TokenStream.tokens h_ad_tokens
+    -- Conclude.
+    rw [h_sf_tokens, Array.filter_push]
+    -- The IxToken's `.token` projects to `.scalar content .doubleQuoted` definitionally;
+    -- comparison to `.placeholder` is `true` by `rfl`. Reduce the if to its `then` branch.
+    have h_keep : ((L4YAML.Indexed.IxToken.mk' (input := input) s_ad.cursor.pos
+                      (YamlToken.scalar content ScalarStyle.doubleQuoted)
+                      cAfter.pos h_bound cAfter.posBound).token !=
+                    YamlToken.placeholder) = true := rfl
+    rw [if_pos h_keep, h_ad_tokens_arr, h_pp_tokens_eq]
 
 /-! ### §3.3  `scan_accepts_emitScalarIx` (SS2 wrapper)
 
@@ -1756,7 +1813,7 @@ theorem scan_accepts_emitScalarIx (content : String) :
     refine ⟨{ tokens := toks.tokens.filter fun t => t.token != YamlToken.placeholder }, ?_⟩
     unfold scanFilteredIx; rw [h]
   -- ── First iteration: scanNextTokenIx s₀ = .ok (some s₁) via SS2 helper
-  obtain ⟨s₁, h_snt1, h_peek1, h_flow1, h_dp1⟩ :=
+  obtain ⟨s₁, h_snt1, h_peek1, h_flow1, h_dp1, _, _⟩ :=
     scanNextTokenIx_emitScalar_init content
   -- ── Second iteration: scanNextTokenIx s₁ = .ok none (EOF)
   have h_snt2 : scanNextTokenIx s₁ = .ok none := scanNextTokenIx_eof s₁ h_peek1
