@@ -1820,27 +1820,38 @@ not in-place axiom-to-theorem promotion — the latter is impossible
 when the axiom's hypothesis is strictly weaker than what the
 stronger lemma derives).
 
-**Next session**: **Step 6f.3b3.roundtrip.maintheorem.body1.tokenshape.list**
-(both `.substrate.a` and `.substrate.b` LANDED 2026-05-28 — see ledger
-below and Reflections 153 and 154). Discharges legacy sorry 9550
-(emitList first new filtered token is a content-start: `.flowSequenceStart`,
-`.flowMappingStart`, or a scalar form, depending on `(emit v).toList`'s
-first char). Strategy: `cases h_fmc` on the chain to extract `s_first`
-after one `scanNextTokenIx` step; case-analyze on `emit_first_char` to
-identify the first-step scanner (`scanFlowSequenceStartIx` /
-`scanFlowMappingStartIx` / `scanDoubleQuotedIx` / etc.); use the
-matching first-filtered-token lemma from `FilteredGrowth/FirstFiltered.
-lean §1–§3` to characterize the token at filtered position `old_sz`
-at `s_first`; bridge via `.substrate.b`'s
-`FlowMonoChainIx_filtered_prefix_no_overwrite_list` (with consumer-
-chosen floor `n₀` and a discharged SKAF instance for that floor) to
-transport the claim from `s_first` to `s'`. Estimated ~80-150 LOC
-(slightly widened from the original 50-80 because the SKAF discharge
-at `s_first` requires per-first-step case analysis).
-**Target**: discharge sorry 9550. Following session
-`.body1.tokenshape.pair` discharges sorries 9638 (now ~10-20 LOC
-via `.substrate.a`'s strong predicate) and 9644 (via `.substrate.b`'s
-`scanValuePrepareIx_flow_pointwise`).
+**Next session**: **Step 6f.3b3.roundtrip.maintheorem.body1.tokenshape.substrate.c**
+(retargeted from `.body1.tokenshape.list` after Reflection 155's
+discovery on 2026-05-28: substrate.b's SKAF-input wrapper alone is
+insufficient to discharge sorry 9550 — the consumer scenario has
+`s.simpleKeyAllowed = true` after `[`, so step 1's `saveSimpleKey`
+creates a stack entry with `tokenIndex = m_first - 2`, making SKAF
+at any floor `≥ m_first - 1` fail; per-position no-overwrite
+preservation is needed instead). **Closes zero legacy sorries**;
+pure enablement for `.tokenshape.list` and `.tokenshape.pair`.
+Ships:
+  (i) `scanNextTokenIx_preserves_position_specific` — step-level
+      dispatcher case-analysis mirroring
+      `scanNextTokenIx_preserves_prefix_of_simpleKey`
+      (`FlowMonoChain/Sync/Invariant.lean §3`) but with the
+      "≠ m" hypothesis form instead of "≥ n" (~150-200 LOC).
+  (ii) `FlowMonoChainIx_preserves_position_specific` — chain-
+       induction wrapper (~30 LOC).
+  (iii) Maintenance lemmas for "no-overwrite-at-m" propagation
+        through `scanNextTokenIx` (~20-50 LOC), parallel to
+        `scanNextTokenIx_maintains_SKAFIx`.
+Estimated ~200-280 LOC. After `.substrate.c` lands,
+`.body1.tokenshape.list` discharges sorry 9550 in ~50-80 LOC
+(case-analyzes on `emit_first_char v` for the head item `v`,
+applies the matching `_first_filtered_token` lemma from
+`FilteredGrowth/FirstFiltered.lean §1–§3` to identify
+`s_first.tokens[m_first]`, and bridges via `.substrate.c`'s
+`FlowMonoChainIx_preserves_position_specific` from `s_first` to
+`s'` at protected position `m_first`).
+Following sessions: `.body1.tokenshape.pair` discharges sorries
+9638 (now ~10-20 LOC via `.substrate.a`'s strong predicate)
+and 9644 (via `.substrate.b`'s `scanValuePrepareIx_flow_pointwise`
++ `.substrate.c`'s position preservation).
 
 **`.body1.tokenshape.substrate.a` LANDED 2026-05-28** — partial
 substrate (Phase 3 Step 6f.3b3.roundtrip.maintheorem.body1.tokenshape.substrate.a)
@@ -4179,6 +4190,120 @@ discretised the design space.
 primitive substrate that absorbs THE COMMON DENOMINATOR of (a)
 and (b), with the discrimination pushed to consumers. If yes,
 ship the primitive; if no, the (a)/(b) choice is real.
+
+##### Reflection 155 (new): The "consumer-side chain induction" in Reflection 154 was a 5× LOC underestimate — the protected position requires a substrate-level step-level lemma, not 30-60 LOC of inline argument
+
+**Triggering event**: during `.body1.tokenshape.list` design
+(2026-05-28, the session immediately following `.substrate.b`),
+a ~45-minute design pass on actually writing the chain-induction
+sketched in Reflection 154 ("(c) prove the rest-chain
+preservation at position `m₀+2` directly by chain induction
+(bespoke, ~30-60 LOC of inline argument)") revealed the
+underestimate.
+
+**The concrete obstruction analysis** (done line-by-line on
+the proof state after `cases h_fmc` to extract `s_first`):
+
+  1. **First-step state characterization** is fine: applying
+     `scanFlowSequenceStartIx_first_filtered_token` (or the `{`
+     / `"` variants) to identify the token at filtered position
+     `old_sz` in `s_first` is ~10-30 LOC of mechanical case
+     analysis on `emit_first_char v` for the head item `v`.
+
+  2. **Rest-chain preservation at raw position `m_first = m₀+2`**
+     is the wall: `FlowMonoChainIx_filtered_prefix_no_overwrite`
+     (substrate.b §4) requires `SimpleKeyAboveFloorIx s_first
+     n₀ fl₀` with `n₀ ≥ m_first + 1`. The new stack entry pushed
+     by `scanFlowSequenceStartIx` at step 1 (when
+     `s.simpleKeyAllowed = true`, which is the consumer
+     scenario after the outer `[`) has `tokenIndex = m₀ <
+     m_first - 1`. So SKAF.2 at any floor `≥ m₀ + 1` fails.
+
+  3. **The "doesn't reactivate" safety argument requires
+     emitList-shape-aware reasoning**: in the rest chain,
+     position `m_first` is safe because the only active
+     simpleKey with `tokenIndex ≤ m_first - 1` is the
+     outer entry (tokenIndex = `m₀ = m_first - 2`), and it
+     either (i) stays on the stack until popped at a flow-
+     close, (ii) gets popped and becomes current, but then
+     the NEXT char is `,` or end (never `:`) within
+     `emit.emitList items`, and (iii) any subsequent
+     `saveSimpleKey` REPLACES the outer entry before `:` could
+     fire. Steps (ii) and (iii) require reasoning about the
+     specific char sequence at the OUTER level of
+     `emit.emitList items`.
+
+  4. **What "30-60 LOC of inline argument" would have needed**:
+     a bespoke chain-induction with a custom invariant
+     (preservation of position `m_first` PLUS
+     "no active simpleKey targets `m_first`") tracked through
+     `scanNextTokenIx`. The step-level case analysis mirrors
+     `scanNextTokenIx_preserves_prefix_of_simpleKey`
+     (`FlowMonoChain/Sync/Invariant.lean §3`) which is ~150
+     LOC in the existing codebase. The chain-induction wrapper
+     adds ~30 LOC.
+
+  5. **Re-estimate for the bespoke proof**: ~150-200 LOC for
+     the step-level lemma + ~30 LOC chain induction + ~50-100
+     LOC consumer integration (per-case dispatch on
+     `emit_first_char` + filtered-prefix lifting). Total
+     ~230-330 LOC. The Reflection 154 "30-60 LOC" was a 5-7×
+     underestimate.
+
+**Strategic decision (refined from Reflection 154)**: split
+`.body1.tokenshape.list` into substrate + consumer halves.
+Ship the substrate as **`.body1.tokenshape.substrate.c`** —
+a new sub-session for the step-level lemma
+`scanNextTokenIx_preserves_position_specific` + chain
+wrapper `FlowMonoChainIx_preserves_position_specific`. Then
+`.body1.tokenshape.list` (the consumer) becomes a ~50-80 LOC
+session that case-analyzes on `emit_first_char v`, applies
+the matching `_first_filtered_token` lemma to identify
+`s_first.tokens[m_first]`, and bridges via the new
+`.substrate.c` chain wrapper to `s'`.
+
+**What "consumer-side chain induction" actually means**: not
+"inline `induction h_fmc` of ~30-60 LOC", but rather "consumer
+selects floor `n₀` and invariant flavor (e.g., 'no overwrite at
+position `m_first`' rather than 'preservation up to floor `n₀`')
+at SUBSTRATE call site". The substrate must SHIP both forms;
+consumers don't write their own chain inductions.
+
+**Updated `.body` plan-tree**:
+
+  - `.scaffold` (LANDED, 206 LOC).
+  - `.tokenshape.substrate.a` (LANDED, 470 LOC).
+  - `.tokenshape.substrate.b` (LANDED, 226 LOC).
+  - **`.tokenshape.substrate.c`** (NEW, ~200-280 LOC) — step-
+    level no-overwrite-at-position lemma + chain wrapper.
+  - `.tokenshape.list` (~50-80 LOC after `.substrate.c`).
+  - `.tokenshape.pair` (~100-150 LOC after `.substrate.c`).
+  - `.body2` (~300-500 LOC).
+
+**Cumulative `.body` underestimate factor**: from Reflection 154's
+~2.3-2.9× to **~2.7-3.4×** (re-widened by the new substrate sub-
+session). Total `.body` estimate: ~1100-1900 LOC across 7 sub-
+sessions, vs. Blueprint-original 400-700 LOC in 1.
+
+**What this teaches** (refines Reflection 154):
+**"consumer-side chain induction" is a misleading frame when the
+proof requires step-level dispatcher analysis** — that analysis
+parallels existing step-level lemma families (here,
+`scanNextTokenIx_preserves_prefix_of_simpleKey`'s 150-LOC
+dispatcher case-analysis), and duplicating it inline in each
+consumer would be wasteful. The right substrate decomposition
+ships the step-level form (a "preservation predicate over
+positions" rather than "preservation of prefix up to floor")
+as a substrate primitive, and consumers compose at the
+already-step-aware-substrate level.
+
+**Strategy update for future similar substrates**: when
+`.substrate.X` lands a per-position-floor primitive, the IMMEDIATE
+next question is "does the consumer's protected position satisfy
+the floor constraint?". If NOT (as here: `m_first > simpleKey.
+tokenIndex`), the consumer needs a different substrate primitive
+(not "do it inline"). Plan for BOTH primitives at substrate
+survey time.
 
 **Step 6f.3b3.emitscans.toplevel SS1 (easy prereqs) LANDED 2026-05-27**
 (~225 LOC across two files: `Endpoint.lean` §6 ~200 LOC +
@@ -15175,23 +15300,51 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 enablement.
 
                 **What `.substrate.b` does NOT yet ship** (deferred
-                further — see Reflection 154):
+                to `.substrate.c` per Reflection 155):
 
                   - `EmitListScansInFlowIx_strong` exposing first-step
                     boundary. Not strictly required if `.tokenshape.list`
                     does its own `cases h_fmc` decomposition.
-                  - Fully-automated "SCALAR-LIST no-overwrite" chain
-                    invariant that maintains "active
-                    `simpleKey.tokenIndex+1 ∉ {protected positions}`"
-                    through `scanNextTokenIx_maintains_SKAFIx`-style
-                    induction (~200 LOC of new step-level lemmas).
-                    `.substrate.b`'s §4 wrapper SUFFICES whenever the
-                    consumer can pick a floor `n₀ ≤ s_first.simpleKey.tokenIndex`
-                    that's still useful for the filtered prefix claim
-                    (likely doable for both `.tokenshape.list` and
-                    `.tokenshape.pair` after `cases h_fmc`).
+                  - Per-position no-overwrite preservation through
+                    `FlowMonoChainIx`: a new substrate primitive that
+                    takes a single protected position `m` (not a
+                    floor `n₀`) and a "no active simpleKey targets
+                    `m`" invariant on the chain start. Required because
+                    the consumer scenario after `[` has `s.simpleKeyAllowed
+                    = true`, so step 1's saveSimpleKey creates a stack
+                    entry with `tokenIndex = m_first - 2`, making any
+                    SKAF floor `≥ m_first - 1` fail (see Reflection 155
+                    for the line-by-line analysis). `.substrate.b`'s
+                    §4 wrapper alone is INSUFFICIENT for `.tokenshape.list`
+                    and `.tokenshape.pair` — both need `.substrate.c`.
 
-                ▹▹▹ **.body1.tokenshape.list** *(estimated ~50–80 LOC)*.
+                ▹▹▹▹ **.body1.tokenshape.substrate.c** *(NEW — Reflection
+                155; estimated ~200-280 LOC)*. **Ships the step-level
+                no-overwrite-at-position primitive**: per
+                Reflection 155, the "consumer-side chain induction"
+                envisioned in Reflection 154 was a 5-7× LOC
+                underestimate because the protected position
+                `m_first = m₀ + 2` (the first new filtered token's
+                raw position when `s.simpleKeyAllowed = true` at the
+                chain start) is ABOVE the simpleKey reservation
+                `m₀ = s.tokens.size`, so substrate.b's SKAF-input
+                wrapper can't be discharged at that floor. **Ships**:
+                (i) `scanNextTokenIx_preserves_position_specific`
+                — step-level dispatcher case-analysis mirroring
+                `scanNextTokenIx_preserves_prefix_of_simpleKey`
+                (FlowMonoChain/Sync/Invariant.lean §3, ~150 LOC),
+                but with hypothesis `s.simpleKey.possible = true
+                → s.simpleKey.tokenIndex + 1 ≠ m` instead of
+                `tokenIndex ≥ n` (~150-200 LOC); (ii)
+                `FlowMonoChainIx_preserves_position_specific` —
+                chain-induction wrapper (~30 LOC); (iii) maintenance
+                lemmas for the "no overwrite" hypothesis through
+                steps (~20-50 LOC). **Zero legacy sorries closed**;
+                pure enablement for `.tokenshape.list` +
+                `.tokenshape.pair`.
+
+                ▹▹▹ **.body1.tokenshape.list** *(estimated ~50–80 LOC
+                after `.substrate.c` lands)*.
                 **Discharges 1 of 5 legacy sorries: 9550** (emitList
                 first new filtered token is content-start). Decomposes
                 `FlowMonoChainIx s.flowLevel s n s'` via `.step` to
@@ -15200,19 +15353,23 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 (`emit_first_char` → `'['` / `'{'` / `'"'`), applies
                 the matching first-filtered-token lemma from
                 `FilteredGrowth/FirstFiltered.lean §1–§3`, then bridges
-                via the new `.substrate` no-overwrite prefix preservation
-                from `s_first` to `s'`. Requires the `.substrate` work.
+                via `.substrate.c`'s
+                `FlowMonoChainIx_preserves_position_specific` from
+                `s_first` to `s'` at position `m_first`. Requires the
+                `.substrate.c` work.
 
-                ▹▹▹ **.body1.tokenshape.pair** *(estimated ~100–150 LOC)*.
+                ▹▹▹ **.body1.tokenshape.pair** *(estimated ~100–150 LOC
+                after `.substrate.c` lands)*.
                 **Discharges 2 of 5 legacy sorries: 9638** (emitPairList
                 `n ≥ 3`) **and 9644** (emitPairList first new filtered
                 token is `.key`). Uses
-                `EmitPairListScansInFlowIx_strong` (from `.substrate`)
+                `EmitPairListScansInFlowIx_strong` (from `.substrate.a`)
                 to expose `s_first → s_colon → s_value_start` boundaries,
-                applies `scanValuePrepareIx_key_filter_growth_flowIx`
-                at the colon-step to show position `old_sz` becomes
-                `.key`, derives `n ≥ 3` from chain composition. Requires
-                the `.substrate` work.
+                applies `scanValuePrepareIx_flow_pointwise` (from
+                `.substrate.b`) at the colon-step to show position
+                `old_sz + 1` becomes `.key`, derives `n ≥ 3` from
+                chain composition, and bridges via `.substrate.c` for
+                position preservation. Requires `.substrate.{a,b,c}` work.
 
                 ▹▹ **.body2** *(estimated ~300–500 LOC)*.
                 **Outer-level flowEntry next-token claims** — closes
@@ -15226,38 +15383,45 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
-                **Total .body scope re-estimate (third revision —
-                after `.substrate` split into `.a` + `.b` LANDED)**:
-                ~900–1600 LOC across **6 sub-sessions** (`.scaffold`
+                **Total .body scope re-estimate (fourth revision —
+                after `.substrate.{a,b}` LANDED and `.substrate.c`
+                identified per Reflection 155)**:
+                ~1100–1900 LOC across **7 sub-sessions** (`.scaffold`
                 [LANDED 206] + `.tokenshape.substrate.a` [LANDED 470]
                 + `.tokenshape.substrate.b` [LANDED 226]
+                + `.tokenshape.substrate.c` [PLANNED ~200-280]
                 + `.tokenshape.list` + `.tokenshape.pair` + `.body2`),
                 vs. Blueprint-original 400–700 LOC in 1. Cumulative
-                underestimate factor: ~2.3–2.9× (down from Reflection
-                153's ~2.7-3.4× because `.substrate.b` landed at ~226
-                LOC vs. the previously-allocated ~350-500). The
-                tighter `.substrate.b` reflects: (i) shipping
-                §3 + §4 only (not the full speculative no-overwrite
-                chain invariant — see Reflection 154), and (ii) the
-                §4 wrapper being structurally just a re-export of
-                `FlowMonoChainIx_preserves_raw_prefix` with semantic
-                renaming, plus a list-prefix companion. The four
-                scope discoveries: `.scaffold` (Reflection 151)
-                revealed the substrate-cost-of-sorry-discharge
-                problem in principle; `.tokenshape.substrate`
-                (Reflection 152) revealed the specific blocker —
-                `FlowMonoChainIx_filtered_prefix` needs
-                `simpleKey.possible = false` which the post-
+                underestimate factor: ~2.7–3.4× (re-widened from
+                Reflection 154's ~2.3-2.9× because `.substrate.c` was
+                identified during the `.tokenshape.list` design pass
+                as a missing substrate primitive — `.substrate.b`'s
+                SKAF-input wrapper alone is insufficient when the
+                protected position `m_first = m₀ + 2` sits ABOVE the
+                step-1 saveSimpleKey reservation, which is the
+                consumer scenario after `[`). The five scope
+                discoveries:
+                `.scaffold` (Reflection 151) revealed the substrate-
+                cost-of-sorry-discharge problem in principle;
+                `.tokenshape.substrate` (Reflection 152) revealed the
+                specific blocker — `FlowMonoChainIx_filtered_prefix`
+                needs `simpleKey.possible = false` which the post-
                 first-step state's `saveSimpleKey` violates;
-                `.tokenshape.substrate.a` (Reflection 153) refined
-                the no-overwrite argument with discoveries that (i)
+                `.tokenshape.substrate.a` (Reflection 153) refined the
+                no-overwrite argument with discoveries that (i)
                 `scanFlowEntryIx` does NOT clear `simpleKey.possible`
-                and (ii) `scanValuePrepareIx` in flow overwrites `idx
-                + 1` (not `idx`); `.tokenshape.substrate.b`
+                and (ii) `scanValuePrepareIx` in flow overwrites
+                `idx + 1` (not `idx`); `.tokenshape.substrate.b`
                 (Reflection 154) re-scoped the no-overwrite primitive
                 from a chain-induction invariant to a SKAF-input
-                wrapper, deferring the chain-invariant maintenance
-                to consumer-side. See Reflections 151, 152, 153, and 154.
+                wrapper, deferring the chain-invariant maintenance to
+                consumer-side; **`.tokenshape.list` design pass
+                (Reflection 155, 2026-05-28) discovered that the
+                "consumer-side chain induction" framing of Reflection
+                154 was a 5-7× LOC underestimate, requiring a new
+                substrate primitive `.substrate.c` for per-position
+                no-overwrite preservation**.
+                See Reflections 151, 152, 153, 154, and 155.
 
               ▹ **.maintheorem.nonempty** *(~410 legacy LOC; legacy
                 9653–10062; **2 legacy `sorry`s to discharge**)*.

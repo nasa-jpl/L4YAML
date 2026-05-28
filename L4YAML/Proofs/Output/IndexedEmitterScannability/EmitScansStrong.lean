@@ -47,21 +47,34 @@ Ships ONE new strong predicate and ONE strong inductive theorem:
     here as: the "protected" raw prefix is positions `i < n₀`,
     where `n₀` is consumer-chosen and SKAF-justified.
 
-**What `.substrate.b` does NOT yet ship** (deferred further):
+**What `.substrate.b` does NOT yet ship** (deferred to
+`.substrate.c` per Reflection 155):
 
   - `EmitListScansInFlowIx_strong` exposing the first-step boundary
     state. Not strictly required by `.tokenshape.list` if that
     sub-sub-session does its own `cases h_fmc` decomposition.
-  - The fully-automated SCALAR-LIST no-overwrite invariant
-    (preserving positions ABOVE `simpleKey.tokenIndex + 1` through
-    the chain). Analysis (Reflection 154, this session) showed
-    this requires a per-step invariant of the form "active
-    `simpleKey.tokenIndex+1 ∉ {protected positions}`", maintained
-    through `scanNextTokenIx_maintains_SKAFIx`-style induction —
-    workable but ~200 LOC of new step-level lemmas. The
-    consumer-side (`.tokenshape.list` / `.tokenshape.pair`) can
-    instead provide its own consumer-targeted SKAF instance to
-    apply §4's lemma at an appropriate floor.
+  - Per-position no-overwrite preservation. Reflection 155
+    (2026-05-28) discovered during `.tokenshape.list` design that
+    §4's SKAF-input wrapper is INSUFFICIENT for the consumer
+    scenario after `[`: with `s.simpleKeyAllowed = true`, step 1's
+    `saveSimpleKey` creates a stack entry with `tokenIndex = m₀ =
+    s.tokens.size`, so SKAF at any floor `≥ m₀ + 1` fails (the new
+    entry's `tokenIndex < n₀`). The first new filtered token sits
+    at raw position `m_first = m₀ + 2` (above the simpleKey
+    reservation), and `_no_overwrite_list` with `n₀ ≤ s.tokens.size`
+    only preserves positions strictly below `m_first`. Required
+    primitive: `scanNextTokenIx_preserves_position_specific` (step-
+    level) + `FlowMonoChainIx_preserves_position_specific` (chain-
+    induction wrapper), with hypothesis `simpleKey.possible = true
+    → simpleKey.tokenIndex + 1 ≠ m` instead of SKAF's `tokenIndex
+    ≥ n₀`. Planned for `.body1.tokenshape.substrate.c`
+    (~200-280 LOC). Reflection 154's
+    "consumer-side ~30-60 LOC inline chain induction" estimate
+    was a 5-7× underestimate — the proof requires step-level
+    dispatcher case-analysis (parallel to
+    `scanNextTokenIx_preserves_prefix_of_simpleKey`'s ~150 LOC
+    in `FlowMonoChain/Sync/Invariant.lean §3`), which is substrate
+    work, not consumer work.
 
 **Axiom posture**: pure triple `[propext, Classical.choice, Quot.sound]`.
 No new axioms introduced.
