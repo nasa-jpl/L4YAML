@@ -1820,27 +1820,70 @@ not in-place axiom-to-theorem promotion — the latter is impossible
 when the axiom's hypothesis is strictly weaker than what the
 stronger lemma derives).
 
-**Next session**: **Step 6f.3b3.roundtrip.maintheorem**
+**Next session**: **Step 6f.3b3.roundtrip.maintheorem.body**
 (`Proofs/Output/IndexedEmitterScannability/RoundTrip.lean`, append
-to `.fidelity` + `.filterinfra`'s landed blocks; legacy lines
-8969–10500, ~1500 LOC plan, **almost certainly needs further
-sub-split at port time** — target 3 sub-sessions keyed to
-growth-chain vs body-characterization vs structure-proof phases).
-Main theorem: filtered growth through `scanNextTokenIx` —
-`scanNextToken_filtered_growsIx`, `ScanChain_filtered_growsIx`,
-`ScanChain_filtered_prefixIx`, `scanFiltered_boundary_tokensIx`,
-the body characterizations (`emitList_body_filtered_characterizationIx`,
-`emitPairList_body_filtered_characterizationIx`), and the non-empty
-structure theorems
-(`scanFiltered_emitSeq_nonempty_structureIx`,
-`scanFiltered_emitMap_nonempty_structureIx`,
-`parseStream_emitSequenceIx`, `parseStream_emitMappingIx`,
-`parseStream_accepts_emit_tokensIx`,
-`emit_produces_single_documentIx`, `emit_parse_succeedsIx`,
-`emit_parseYaml_succeedsIx`). The 7-arm `scanNextTokenIx`
-dispatch case-split on `scanNextToken_filtered_growsIx` is the
-key new primitive (expected to carry its own `native_decide`
-flares).
+to `.fidelity` + `.filterinfra` + `.growth`'s landed blocks; legacy
+lines 9474–9652, ~179 legacy LOC, ~400–700 indexed LOC expected).
+**Second of 4 sub-sessions** for the elaborated `.maintheorem`
+split. **Body characterizations**:
+`emitList_body_filtered_characterizationIx` (legacy 9474–9569, ~96
+LOC; **3 legacy sorries to discharge** at lines 9519, 9550, 9552),
+`emitPairList_body_filtered_characterizationIx` (legacy 9570–9652,
+~83 LOC; **3 legacy sorries to discharge** at lines 9638, 9644,
+9646). Both characterize the filtered token emissions of
+`emit.emitList` / `emit.emitPairList` body loops in flow context:
+(1) the first new filtered token (at the previous tokens-array
+size index) is a content start (`flowSequenceStart` /
+`flowMappingStart` / scalar token); (2) after every outer-level
+`.flowEntry`, the next filtered token is again a content start.
+Legacy sorries pertain to bracket-balance and terminator
+preservation across body iterations and **must be closed** at port
+time — likely by composing `.growth` chain combinators with
+`ScanChainGrewIx_filtered_grows` and the new
+`scanFlow{Sequence,Mapping}StartIx_filtered` /
+`scanFlowEntryIx_filtered` equations from §5.4.G.5.1.
+**Substrate posture**: §5.4.G.5 (just landed) provides the
+foundation; `ScanChainGrewIx_filtered_grows`,
+`scanFlowSequenceStartIx_first_filtered_token` and twin
+(`FilteredGrowth/FirstFiltered.lean` §1–§3) already landed and
+should bridge the sorries. New primitive expectation: minimal —
+this sub-session is primarily composition.
+
+**`.roundtrip.maintheorem.growth` LANDED 2026-05-28** — first of 4
+`.maintheorem` sub-sessions (and third of 4 `.roundtrip`
+file-level sub-sessions counting `.fidelity` + `.filterinfra` +
+`.maintheorem.*`). Ships §5.4.G.5.1 flow-context filtered emission
+equations (`scanFlowSequenceStartIx_filtered`,
+`scanFlowMappingStartIx_filtered`, `scanFlowEntryIx_filtered`) +
+§5.4.G.5.2 chain combinators (`ScanChainIx_deterministic`,
+`ScanChainIx.split` — pure inductions) + §5.4.G.5.3 prefix
+preservation through FlowMonoChainIx
+(`FlowMonoChainIx_filtered_prefix` — name corrected: legacy
+`ScanChain_filtered_prefix` is a misnomer, actually keyed on
+`FlowMonoChain` not `ScanChain`) + §5.4.G.5.4 scanner boundary
+tokens (`scanFilteredIx_boundary_tokens` — the 99-LOC theorem
+characterizing `streamStart`/`streamEnd` flanks of filtered scan
+output, ported via list/filter `head_filter`/`getLast_filter`
+chain). **Axiom posture**: pure triple
+`[propext, Classical.choice, Quot.sound]` on all 7 theorems;
+**zero new user-defined or `native_decide` axiom names**.
+**LOC pattern**: ~327 actual vs. ~290 plan, +13% over (vs.
+`.filterinfra`'s +245%) — confirms Reflection 149's "use-site
+verbosity penalty" but at the **low end**. The 3 §5.4.G.5.1
+flow-filter equations ship at 3-line `intro p` + 3-step rewrite
+chain each; chain combinators ship at near-verbatim parity
+(~12-15 LOC each); `FlowMonoChainIx_filtered_prefix` ships at
+parity (~14 LOC). **Only `scanFilteredIx_boundary_tokens` pays
+use-site verbosity** (~110 LOC vs. legacy ~99) — the
+`TokenStream.tokens` projection plumbing through the list
+manipulation chain. **Skipped (per design)**:
+`ScanChain_filtered_grows` (legacy 9016–9024) — the loose form
+depends on `scanNextToken_filtered_grows` whose legacy proof
+carries a `sorry` on the directive case; downstream `.body`,
+`.nonempty`, `.parsewrap` must consume the no-sorry
+`ScanChainGrewIx_filtered_grows` strict-variant track instead.
+Built clean 99/99, full project 491/491,
+sorry/axiom/partial-free. See Reflection 150.
 
 **`.roundtrip.filterinfra` LANDED 2026-05-28** — second of 4
 `.roundtrip` sub-sessions. Ships §5.4.G.2 emit-string structure
@@ -3549,6 +3592,86 @@ mostly aggregations, but the structure-proof half
 several `.flow_close_*_outermost_extIx`-shaped compositions and
 should be budgeted at the higher verbosity rate.
 
+**Reflection 150 (new): the "use-site verbosity penalty" is not uniform
+across sub-step types — separate aggregations from compositions to
+get a per-segment LOC estimate that actually tracks.**
+`.roundtrip.maintheorem.growth` shipped at ~327 LOC vs. ~290 plan
+(**+13% over**, on the cleanest possible axiom posture: pure triple,
+zero new axioms). This is a **second data point** on Reflection 149's
+"use-site verbosity penalty" — but at the **opposite end of the
+spectrum** (`.filterinfra` was +245%, `.growth` is +13%). The
+arithmetic refines Reflection 149's "50-80% over legacy" estimate:
+
+  - **Flow-context filter equations (§5.4.G.5.1)**: 3 theorems × ~13
+    LOC each (legacy ~9-22 LOC each). The pattern `intro p; have h_eq;
+    rw [h_eq, emit_tokens_pushIx, Array.filter_push]; rfl` is
+    structurally a 3-step rewrite chain regardless of which
+    `scanFlow*Ix_tokens_eq` feeds it. **+10-30% over legacy** —
+    minimal verbosity penalty because the indexed substrate (PlainScalarValid
+    §12f + FilteredGrowth/PerDispatch/StructFlow.lean §0) already
+    provides `scanFlow*Ix_tokens_eq` as `rfl` lemmas; the wrapper
+    just chains them.
+  - **Chain combinators (§5.4.G.5.2)**: `ScanChainIx_deterministic`
+    ports at 11 LOC (legacy 11), `ScanChainIx.split` ports at 13 LOC
+    (legacy 13). **Verbatim parity** — pure inductions over the chain
+    shape have no indexed plumbing because they don't touch tokens.
+  - **FlowMonoChainIx prefix preservation (§5.4.G.5.3)**:
+    `FlowMonoChainIx_filtered_prefix` ports at ~15 LOC (legacy 14).
+    **+7% over** — the SimpleKeyAboveFloorIx bundle is 3 conjuncts
+    in both legacy and indexed; the only delta is destructuring the
+    existential return type of `FlowMonoChainIx_preserves_raw_prefix`
+    (`∃ h_size, s'.tokens[i] = s.tokens[i]`) vs. legacy's plain
+    equality return.
+  - **Scanner boundary tokens (§5.4.G.5.4)**:
+    `scanFilteredIx_boundary_tokens` ports at ~110 LOC (legacy 99).
+    **+11% over** — only the `TokenStream.tokens` projection plumbing
+    through the `getElem!_pos` rewrite chain at the two structural
+    conjuncts costs additional lines.
+
+**The pattern that fell out**: theorems whose substrate is fully
+provisioned as `rfl`/`simp`-level lemmas (`scanFlow*Ix_tokens_eq`,
+`emit_tokens_pushIx`, `getElem_eq_tokens_getElem`) ship at
+near-verbatim parity. Theorems whose proof structure is **pure
+induction over an indexed type** (chain combinators) ship at exact
+parity. Theorems whose proof structure does **list/array manipulation
+under filtering** (boundary_tokens) ship at +10-15% over due to the
+`TokenStream` wrapper indirection. **Only theorems that compose 7+
+flow-context primitives with cursor + IxToken plumbing** (Reflection
+149's §5.4.G.4 compositions, 13 primitives each) pay the +245%
+verbosity penalty.
+
+**Refined lesson for `.maintheorem.{body, nonempty, parsewrap}`**:
+
+  - **`.body`**: 2 body characterization theorems. Both legacy proofs
+    do `Array.filter` manipulation under flow chains with a
+    case-split on outer-vs-inner flow brackets. Expect **+50-80%
+    over** per the boundary_tokens analogue (~400-700 LOC indexed
+    vs. ~179 legacy). The 6 legacy sorries must be closed.
+  - **`.nonempty`**: 2 non-empty structure theorems. Both legacy proofs
+    are extended emit-shape induction over the sequence/mapping body.
+    Expect **+50-80% over** but with `ScanChainGrewIx_filtered_grows`
+    available as a clean substrate (~700-1300 LOC indexed vs. ~410
+    legacy). The 2 legacy sorries (fuel bounds) must be closed.
+  - **`.parsewrap`**: 4 `parseStream_emit*` + 3 wrapper theorems. Both
+    `parseStream_emit*` theorems are compositions of `.nonempty`
+    structure theorems with `TokenParserIx` invariants; expect
+    **+20-40% over** because the wrapper structure is cleaner than
+    the deep `Array.filter` manipulation (~600-900 LOC indexed vs.
+    ~484 legacy). The 4 wrapper theorems should ship at near-parity.
+
+**Methodology lesson**: the substrate survey before sub-split
+elaboration (this session) correctly predicted that 7 of 19
+`.maintheorem` theorems were already provisioned or trivially
+portable; the **decision to skip `ScanChain_filtered_grows` in favor
+of `ScanChainGrewIx_filtered_grows`** (which the prior session's
+`EmitScans.lean §1` had already landed as a sorry-free alternative)
+avoided porting a loose lemma whose legacy proof carries a sorry. The
+substrate survey + survey-driven design decisions consistently turn
+"port a legacy lemma" into "either use an already-landed
+better-shaped indexed twin OR port verbatim with a clean axiom
+posture" — both outcomes preferable to a verbatim port that drags a
+sorry into the indexed tree.
+
 **Step 6f.3b3.emitscans.toplevel SS1 (easy prereqs) LANDED 2026-05-27**
 (~225 LOC across two files: `Endpoint.lean` §6 ~200 LOC +
 `EmitScans.lean` §3 ~25 LOC). First sub-session of the **replanned**
@@ -3753,12 +3876,62 @@ of 4 `.roundtrip` sub-session axiom ledgers):
     the `.emitscans.flowpair` / `.flowvalue` consumers).
   - **Phase-3 closure axiom count unchanged at 0 user-defined
     axioms**. `.filterinfra` matches `.fidelity`'s clean posture.
-    The next sub-step `.maintheorem` will likely break this streak:
-    `scanNextToken_filtered_growsIx` has the 7-arm `scanNextToken`
-    dispatch that legacy discharges via heavy `native_decide`
-    machinery (legacy `set_option maxHeartbeats 3200000`); the indexed
-    twin will need either the same `native_decide` budget or a per-arm
-    refactor.
+    The next sub-step `.maintheorem` *may* break this streak when
+    it reaches the body-characterizations or non-empty-structure
+    phases (3 + 1 = 4 legacy sorries to discharge across
+    `.body`/`.nonempty`); the directive-case sorry in
+    `scanNextToken_filtered_grows` is **sidestepped per design** by
+    consuming the already-landed `ScanChainGrewIx_filtered_grows`
+    strict-variant track instead.
+
+**`.roundtrip.maintheorem.growth` axiom summary** (recorded 2026-05-28
+— third of 4 `.roundtrip` sub-session axiom ledgers, **first of 4
+`.maintheorem` sub-session ledgers**):
+
+  - `scanFlowSequenceStartIx_filtered`,
+    `scanFlowMappingStartIx_filtered`, `scanFlowEntryIx_filtered`:
+    **pure triple** `[propext, Classical.choice, Quot.sound]`. Each
+    is a 3-step rewrite chain (`intro p` + `rw [scanFlow*Ix_tokens_eq,
+    emit_tokens_pushIx, Array.filter_push]` + `rfl`). The triple is
+    inherited from the substrate (`scanFlow*Ix_tokens_eq` in
+    PlainScalarValid §12f, FilteredGrowth/PerDispatch/StructFlow.lean
+    §0; `emit_tokens_pushIx` in FilteredGrowth/FirstFiltered.lean
+    §6; `Array.filter_push` is a Lean core lemma).
+  - `ScanChainIx_deterministic`, `ScanChainIx.split`: **pure triple**.
+    Pure inductions over the `ScanChainIx` shape with
+    `Option.some.inj` + `Except.ok.inj` at the chain-step joining
+    points. No substrate dependency beyond the `ScanChainIx`
+    inductive itself.
+  - `FlowMonoChainIx_filtered_prefix`: **pure triple**. Composes
+    `FlowMonoChainIx_preserves_raw_prefix` (FlowMonoChain/Sync/
+    Invariant.lean §4) + `Array_filter_prefix_of_raw_prefix`
+    (FilteredGrowth/FirstFiltered.lean §6) +
+    `FlowMonoChainIx.tokens_mono` + `FlowMonoChainIx.flowLevel_ge_start`
+    (FlowMonoChain/Basic.lean §1.4 + §1.2). All inherited triple.
+  - `scanFilteredIx_boundary_tokens`: **pure triple**. Composes
+    `scanIx_produces_at_least_two` (ScannerCorrectness/Basic.lean
+    §...), `scanIx_first_is_streamStart` (StreamStart.lean §...),
+    `scanIx_last_is_streamEnd` (Basic.lean §...) +
+    `List.head_filter` / `List.getLast_filter` /
+    `List.length_eq_one_iff` (Lean core). The 4-step list/filter
+    manipulation inherits triple from each primitive; **no
+    `native_decide` flares** at this layer because the `streamStart`
+    / `streamEnd` token-equality witnesses are propositional and
+    decided by `decide` (not `native_decide`).
+  - **Zero new user-defined or `native_decide` axiom names** introduced
+    in this session. The 4-substrate-primitive cone for
+    `scanFilteredIx_boundary_tokens` (the heaviest theorem) inherits
+    cleanly because every primitive was already exercised by upstream
+    `.maintheorem.maintheorem` consumers
+    (scanFilteredIx_of_chain, FilteredGrowth Turn3, EmitScans §1).
+  - **Phase-3 closure axiom count unchanged at 0 user-defined
+    axioms**. `.growth` matches `.fidelity`'s + `.filterinfra`'s clean
+    posture. The remaining `.maintheorem` sub-sessions face 6 + 2 = 8
+    legacy `sorry`s spread across the 4 body / non-empty
+    characterization theorems; whether any of these need
+    `native_decide` (vs. a structural discharge using
+    `ScanChainGrewIx_filtered_grows` + the §5.4.G.5 foundation
+    lemmas just landed) is a port-time decision.
 
 **Step 6f.3b3.emitscans.flowpair SS1 (pair-list track) LANDED 2026-05-27**
 (~290 LOC actual vs. ~210 LOC for the pair-list portion of the ~388 LOC
@@ -14304,30 +14477,139 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
             plumbing through saveSimpleKeyIx + allowDirectives update).
             Built clean 99/99, full project 491/491,
             sorry/axiom/partial-free. See Reflection 149.
-          ▸ **6f.3b3.roundtrip.maintheorem** *(~1500 LOC; legacy lines
-            8969–10500)*. Main theorem: filtered growth through
-            `scanNextTokenIx`. Includes
-            `scanNextToken_filtered_growsIx`,
-            `ScanChain_filtered_growsIx`,
-            `ScanChain_filtered_prefixIx`,
-            `scanFiltered_boundary_tokensIx`,
-            `scanFlowSequenceStart_filteredIx`,
-            `scanFlowMappingStart_filteredIx`,
-            `scanFlowEntry_filteredIx`, `ScanChain_deterministicIx`,
-            `ScanChainIx.split`, the body characterizations
-            (`emitList_body_filtered_characterizationIx`,
-            `emitPairList_body_filtered_characterizationIx`), and the
-            non-empty structure theorems
-            (`scanFiltered_emitSeq_nonempty_structureIx`,
-            `scanFiltered_emitMap_nonempty_structureIx`,
-            `parseStream_emitSequenceIx`, `parseStream_emitMappingIx`,
-            `parseStream_accepts_emit_tokensIx`,
-            `emit_produces_single_documentIx`,
-            `emit_parse_succeedsIx`,
-            `emit_parseYaml_succeedsIx`). **Almost certainly needs
-            further sub-split at port time** (target: 3 sub-sessions
-            keyed to growth-chain vs body-characterization vs
-            structure-proof phases).
+          ▸ **6f.3b3.roundtrip.maintheorem** *(~1361 legacy LOC across
+            19 theorems; 9 legacy `sorry`s to discharge at port time;
+            legacy lines 8977–10546)*. **Sub-split elaboration**
+            (2026-05-28; substrate survey reveals
+            `scanNextTokenIx_filtered_grows_in_flow` already landed in
+            `FilteredGrowth/Turn3.lean:137` along with all 7
+            per-dispatch lemmas, `ScanChainGrewIx_filtered_grows`
+            already landed in `EmitScans.lean:173`, and the
+            `FlowMonoChainIx_preserves_raw_prefix` /
+            `Array_filter_prefix_of_raw_prefix` substrate already
+            in `FlowMonoChain/Sync/Invariant.lean:419` and
+            `FilteredGrowth/FirstFiltered.lean:439` respectively):
+            **target 4 sub-sessions** (was Blueprint-original 3):
+
+              ▹ **.maintheorem.growth** ✅ **LANDED 2026-05-28**
+                *(~327 LOC actual / ~290 legacy LOC plan; **+13% over
+                budget**; legacy 8977–9057 + 9267–9473 —
+                `.filterinfra` already covered 9058–9266; **5 of the
+                anticipated 8 legacy LOC theorems ported** —
+                `scanNextToken_filtered_grows` skipped per design;
+                `ScanChain_filtered_grows` skipped per design — see
+                "Skipped" below)*. **Foundation lemmas for filtered
+                chain reasoning**: `scanFilteredIx_boundary_tokens`
+                (legacy 9267–9365, ~99 LOC; splits `scanFilteredIx`
+                output into `streamStart`-prefixed /
+                `streamEnd`-suffixed bounds),
+                `FlowMonoChainIx_filtered_prefix` (legacy 9043–9056,
+                ~14 LOC; was mis-named `ScanChain_filtered_prefix` in
+                legacy — actually keyed on `FlowMonoChain`, not
+                `ScanChain`; ports via
+                `FlowMonoChainIx_preserves_raw_prefix` +
+                `Array_filter_prefix_of_raw_prefix`),
+                `scanFlowSequenceStartIx_filtered`,
+                `scanFlowMappingStartIx_filtered`,
+                `scanFlowEntryIx_filtered` (legacy 9378–9422; small
+                3-step rewrite chains via `scanFlow*Ix_tokens_eq` +
+                `emit_tokens_pushIx` + `Array.filter_push`),
+                `ScanChainIx_deterministic` (legacy 9426–9436, ~11
+                LOC; pure induction), `ScanChainIx.split` (legacy
+                9438–9473, ~36 LOC; pure induction). **Skipped (per
+                design)**: `ScanChain_filtered_grows` (legacy
+                9016–9024) — the loose form depends on
+                `scanNextToken_filtered_grows` whose legacy proof
+                carries a `sorry` on the directive case (line 9013);
+                downstream consumers (`.body`, `.nonempty`,
+                `.parsewrap`) must build `ScanChainGrewIx` strict
+                chains instead, then apply the already-landed
+                `ScanChainGrewIx_filtered_grows`
+                (`EmitScans.lean:173`). **Axiom posture**: pure triple
+                `[propext, Classical.choice, Quot.sound]` on all 7
+                theorems. **Zero new user-defined or `native_decide`
+                axiom names**; the substrate cone (PlainScalarValid
+                §12f, FilteredGrowth/PerDispatch/StructFlow.lean §0,
+                FilteredGrowth/FirstFiltered.lean §6,
+                FlowMonoChain/Sync/Invariant.lean §4, ScannerCorrectness/
+                Basic + StreamStart) was fully provisioned by prior
+                phases. **LOC pattern**: confirms Reflection 149's
+                "use-site verbosity penalty" but at the **low end**
+                (+13% vs. `.filterinfra`'s +245%) — the §5.4.G.5.1
+                flow-filter equations ship at 3-line rewrite chains,
+                and the chain combinators / FlowMonoChainIx prefix
+                lemma ship at near-verbatim parity (12-15 LOC each).
+                **Only the `scanFilteredIx_boundary_tokens` port pays
+                use-site verbosity** (~110 LOC vs. legacy ~99) due to
+                `TokenStream.tokens` projection plumbing through the
+                list manipulation chain. Built clean 99/99,
+                full project 491/491, sorry/axiom/partial-free. See
+                Reflection 150.
+
+              ▹ **.maintheorem.body** *(~179 legacy LOC; legacy
+                9474–9652; **6 legacy `sorry`s to discharge**)*. **Body
+                characterizations**:
+                `emitList_body_filtered_characterizationIx` (legacy
+                9474–9569, ~96 LOC; 3 sorries at lines 9519, 9550,
+                9552), `emitPairList_body_filtered_characterizationIx`
+                (legacy 9570–9652, ~83 LOC; 3 sorries at lines 9638,
+                9644, 9646). Both characterize the filtered token
+                emissions of `emit.emitList` / `emit.emitPairList` body
+                loops. Legacy sorries pertain to bracket-balance and
+                terminator preservation across body iterations and
+                **must be closed** at port time. Estimated indexed LOC:
+                ~400–700.
+
+              ▹ **.maintheorem.nonempty** *(~410 legacy LOC; legacy
+                9653–10062; **2 legacy `sorry`s to discharge**)*.
+                **Non-empty structure theorems**:
+                `scanFiltered_emitSeq_nonempty_structureIx` (legacy
+                9653–9870, ~218 LOC; sorry at line 9865 — fuel bound
+                `4*tokens.size+4`),
+                `scanFiltered_emitMap_nonempty_structureIx` (legacy
+                9871–10062, ~192 LOC; sorry at line 10050 — same fuel
+                bound). Both prove the scanned filtered-token array
+                structurally matches `parseStream`'s expected sequence
+                shape (`flowSequenceStart` + body + `flowSequenceEnd`
+                or block flow shape). The two sorries pertain to
+                position monotonicity preservation through the chain
+                — closure depends on substrate landed by `.growth`
+                plus existing `scanNextTokenIx_offset_monotonic`.
+                **Almost certainly needs further sub-split at port
+                time** (target: split twin theorems across two
+                sessions, or split seq into emit-shape vs. fuel-bound
+                phases). Estimated indexed LOC: ~700–1300.
+
+              ▹ **.maintheorem.parsewrap** *(~484 legacy LOC; legacy
+                10063–10546; **0 legacy `sorry`s**)*. **parseStream
+                witnesses + emit wrappers**: `parseStream_emitSequenceIx`
+                (legacy 10063–10267, ~205 LOC),
+                `parseStream_emitMappingIx` (legacy 10268–10465, ~198
+                LOC), `parseStream_accepts_emit_tokensIx` (legacy
+                10466–10492, ~27 LOC),
+                `emit_produces_single_documentIx` (legacy 10493–10526,
+                ~34 LOC), `emit_parse_succeedsIx` (legacy 10527–10538,
+                ~12 LOC), `emit_parseYaml_succeedsIx` (legacy
+                10539–10546, ~8 LOC). The two big `parseStream_emit*`
+                theorems are pure compositions of the `.nonempty`
+                structure theorems with `TokenParserIx` invariants;
+                the 4 wrapper theorems chain them up to
+                `emit_parseYaml_succeedsIx` (the entry point for
+                `.universal`). Estimated indexed LOC: ~600–900.
+
+            **Why the 4-way split (instead of Blueprint-original
+            3-way)**: the substrate survey shows
+            `scanFiltered_boundary_tokens` is a 99-LOC theorem with
+            non-trivial list/filter manipulation independent of the
+            two body characterizations, and the two body
+            characterizations themselves carry 6 sorries that need
+            substrate-side discharge — these are different problems
+            that should land in different commits. Phase D
+            (`.parsewrap`) is sorry-free and a clean composition layer,
+            but its 484 LOC legacy is large enough to warrant its own
+            session at the projected ~1.5–2× indexed inflation rate.
+            **Reduces "may further sub-split" risk** to only
+            `.nonempty` (the structurally-deepest phase).
           ▸ **6f.3b3.roundtrip.universal** *(~280 LOC; legacy lines
             10501–10741)*. Universal round-trip:
             `contentEq_sequence_itemsIx`,

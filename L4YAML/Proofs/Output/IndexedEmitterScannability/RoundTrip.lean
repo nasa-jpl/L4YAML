@@ -4,13 +4,16 @@ Released under Apache 2.0 license as described in the file LICENSE.
 -/
 import L4YAML.Proofs.Output.IndexedEmitterScannability.ParseStream
 
-/-! # `IndexedEmitterScannability.RoundTrip` — Phase 3 Step 6f.3b3.roundtrip.{fidelity, filterinfra}
+/-! # `IndexedEmitterScannability.RoundTrip` — Phase 3 Step 6f.3b3.roundtrip.{fidelity, filterinfra, maintheorem.growth}
 
 **Status**: §5.1 (compose invariance for scalars) + §5.4.G prefix-and-tokens
 infrastructure + §5.4.G filtered-token tracking (emit-string structure,
-flow-close tokens equation, outermost-close existential extensions) landed.
-Indexed twins of legacy `EmitterScannability.lean` lines 8490–8530 (§5.1) and
-8875–9262 (§5.4.G).
+flow-close tokens equation, outermost-close existential extensions) +
+§5.4.G.5 foundation lemmas for filtered chain reasoning (flow-context
+emission equations, chain combinators, prefix preservation, scanner
+boundary tokens) landed.
+Indexed twins of legacy `EmitterScannability.lean` lines 8490–8530 (§5.1),
+8875–9262 (§5.4.G.1–4), 9016–9056 + 9267–9473 (§5.4.G.5).
 
 ## Scope (mapping to legacy `EmitterScannability.lean`)
 
@@ -75,6 +78,7 @@ open L4YAML.Scanner.Indexed.ScannerStateIx
 open L4YAML.TokenParser.Indexed
 open L4YAML.Proofs.Indexed.EmitterScannability.EmitScans
 open L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain
+open L4YAML.Proofs.Indexed.EmitterScannability.FilteredGrowth
 open L4YAML.Proofs.Indexed.EmitterScannability.ScanChain
 open L4YAML.Proofs.Indexed.Composition
 open L4YAML.Proofs.Indexed.Grammable
@@ -548,5 +552,328 @@ theorem scanNextToken_flow_close_mapping_outermost_extIx {input : String}
     rw [if_pos h_keep, h_ad_tokens_filter]
   exact ⟨scanFlowMappingEndIx s_ad, h_snt, h_result_fl, h_result_dp,
          h_result_eof, h_result_indents, h_result_tokens⟩
+
+/-! ## §5.4.G.5  Foundation lemmas for filtered chain reasoning
+
+Step `6f.3b3.roundtrip.maintheorem.growth` — **first of 4 sub-sessions**
+for the elaborated `.maintheorem` sub-split (the Blueprint's original
+3-way `growth-chain / body-characterization / structure-proof` was
+bumped to 4-way after a substrate survey revealed
+`scanFiltered_boundary_tokens` as a 99-LOC theorem with non-trivial
+list/filter manipulation independent of the body characterizations;
+see plan-tree in Blueprint).
+
+This section ships:
+
+  - **§5.4.G.5.1** (legacy 9378–9422): flow-context filtered emission
+    equations for `scanFlowSequenceStartIx`, `scanFlowMappingStartIx`,
+    `scanFlowEntryIx`.
+  - **§5.4.G.5.2** (legacy 9426–9473): chain combinators
+    `ScanChainIx_deterministic` and `ScanChainIx.split`.
+  - **§5.4.G.5.3** (legacy 9043–9056): prefix preservation through
+    `FlowMonoChainIx`, namely `FlowMonoChainIx_filtered_prefix`
+    (name corrected: the legacy `ScanChain_filtered_prefix` is a
+    misnomer since it's actually keyed on `FlowMonoChain`, not
+    `ScanChain`).
+  - **§5.4.G.5.4** (legacy 9267–9365): scanner boundary tokens,
+    `scanFilteredIx_boundary_tokens`.
+
+**Skipped**: `ScanChain_filtered_grows` (legacy 9016–9024). Its proof
+depends on the loose `scanNextToken_filtered_grows` which carries a
+`sorry` on the directive case (line 9013); downstream sub-sessions
+should consume `ScanChainGrewIx_filtered_grows` (already landed at
+`EmitScans.lean:173`) by building strict-variant `ScanChainGrewIx`
+chains — sidesteps the directive sorry entirely.
+
+**Substrate** (all already landed):
+  - `scanFlowSequenceStartIx_tokens_eq`,
+    `scanFlowMappingStartIx_tokens_eq` (PlainScalarValid §12f);
+    `scanFlowEntryIx_tokens_eq`
+    (FilteredGrowth/PerDispatch/StructFlow.lean §0).
+  - `emit_tokens_pushIx` (FilteredGrowth/FirstFiltered.lean:424).
+  - `Array_filter_prefix_of_raw_prefix`
+    (FilteredGrowth/FirstFiltered.lean:439).
+  - `FlowMonoChainIx_preserves_raw_prefix`
+    (FlowMonoChain/Sync/Invariant.lean:419) +
+    `FlowMonoChainIx.tokens_mono` (FlowMonoChain/Basic.lean:190) +
+    `FlowMonoChainIx.flowLevel_ge_start`
+    (FlowMonoChain/Basic.lean:130).
+  - `scanIx_produces_at_least_two`
+    (ScannerCorrectness/Basic.lean:550) +
+    `scanIx_first_is_streamStart`
+    (ScannerCorrectness/StreamStart.lean:910) +
+    `scanIx_last_is_streamEnd`
+    (ScannerCorrectness/Basic.lean:576).
+-/
+
+/-! ### §5.4.G.5.1  Flow-context filtered emission equations
+
+Three small `Array.filter`-shape equations for the three flow-context
+scanner steps that each push exactly one non-`.placeholder` token:
+`flowSequenceStart`, `flowMappingStart`, `flowEntry`. Each is a 4-step
+rewrite chain (`scanFlow*Ix_tokens_eq` → `emit_tokens_pushIx` →
+`Array.filter_push` → `decide`). Indexed twins of legacy
+`scanFlowSequenceStart_filtered`, `scanFlowMappingStart_filtered`,
+`scanFlowEntry_filtered` (lines 9378–9422). -/
+
+/-- `scanFlowSequenceStartIx` filtered token equation: adds exactly one
+    `.flowSequenceStart` non-placeholder token. Indexed twin of legacy
+    `scanFlowSequenceStart_filtered` (line 9378). -/
+theorem scanFlowSequenceStartIx_filtered {input : String}
+    (s : ScannerStateIx input) :
+    let p := fun (t : Indexed.IxToken input) => t.token != YamlToken.placeholder
+    (scanFlowSequenceStartIx s).tokens.tokens.filter p =
+    (s.tokens.tokens.filter p).push (Indexed.IxToken.mk' (input := input)
+      s.cursor.pos YamlToken.flowSequenceStart s.cursor.pos
+      (Nat.le_refl _) s.cursor.posBound) := by
+  intro p
+  have h_eq : (scanFlowSequenceStartIx s).tokens.tokens =
+      (s.emit YamlToken.flowSequenceStart).tokens.tokens := by
+    rw [scanFlowSequenceStartIx_tokens_eq]
+  rw [h_eq, emit_tokens_pushIx, Array.filter_push]
+  rfl
+
+/-- `scanFlowMappingStartIx` filtered token equation: adds exactly one
+    `.flowMappingStart` non-placeholder token. Indexed twin of legacy
+    `scanFlowMappingStart_filtered` (line 9389). -/
+theorem scanFlowMappingStartIx_filtered {input : String}
+    (s : ScannerStateIx input) :
+    let p := fun (t : Indexed.IxToken input) => t.token != YamlToken.placeholder
+    (scanFlowMappingStartIx s).tokens.tokens.filter p =
+    (s.tokens.tokens.filter p).push (Indexed.IxToken.mk' (input := input)
+      s.cursor.pos YamlToken.flowMappingStart s.cursor.pos
+      (Nat.le_refl _) s.cursor.posBound) := by
+  intro p
+  have h_eq : (scanFlowMappingStartIx s).tokens.tokens =
+      (s.emit YamlToken.flowMappingStart).tokens.tokens := by
+    rw [scanFlowMappingStartIx_tokens_eq]
+  rw [h_eq, emit_tokens_pushIx, Array.filter_push]
+  rfl
+
+/-- `scanFlowEntryIx` filtered token equation (when it succeeds): adds
+    exactly one `.flowEntry` non-placeholder token. Indexed twin of
+    legacy `scanFlowEntry_filtered` (line 9401). -/
+theorem scanFlowEntryIx_filtered {input : String}
+    {s s' : ScannerStateIx input}
+    (h : scanFlowEntryIx s = .ok s') :
+    let p := fun (t : Indexed.IxToken input) => t.token != YamlToken.placeholder
+    s'.tokens.tokens.filter p =
+    (s.tokens.tokens.filter p).push (Indexed.IxToken.mk' (input := input)
+      s.cursor.pos YamlToken.flowEntry s.cursor.pos
+      (Nat.le_refl _) s.cursor.posBound) := by
+  intro p
+  have h_eq : s'.tokens.tokens = (s.emit YamlToken.flowEntry).tokens.tokens := by
+    rw [scanFlowEntryIx_tokens_eq h]
+  rw [h_eq, emit_tokens_pushIx, Array.filter_push]
+  rfl
+
+/-! ### §5.4.G.5.2  Chain combinators
+
+`ScanChainIx_deterministic` (two chains from the same start with the
+same step count reach the same end, by chain induction + functional
+agreement of `scanNextTokenIx`) and `ScanChainIx.split` (split a chain
+of `n₁ + n₂` steps at the `n₁`-th boundary). Indexed twins of legacy
+`ScanChain_deterministic` (line 9426) and `ScanChain.split` (line 9438).
+Pure inductions on the chain shape — no substrate dependency beyond
+`Option.some.inj` + `Except.ok.inj`. -/
+
+/-- Two `ScanChainIx`s from the same start state with the same step
+    count reach the same end state. Indexed twin of legacy
+    `ScanChain_deterministic` (line 9426). -/
+theorem ScanChainIx_deterministic {input : String}
+    {s s₁ s₂ : ScannerStateIx input} {n : Nat}
+    (h₁ : ScanChainIx s n s₁) (h₂ : ScanChainIx s n s₂) : s₁ = s₂ := by
+  induction h₁ generalizing s₂ with
+  | zero => cases h₂; rfl
+  | @step s s_mid₁ s₁ k h_snt₁ _ ih =>
+    match h₂ with
+    | .step h_snt₂ h_rest₂ =>
+      have : s_mid₁ = _ := Option.some.inj (Except.ok.inj (h_snt₁.symm.trans h_snt₂))
+      subst this
+      exact ih h_rest₂
+
+/-- Split a `ScanChainIx` of length `n₁ + n₂` at the `n₁`-th boundary:
+    if `s` reaches `s₁` in `n₁` steps and `s₂` in `n₁ + n₂` steps, then
+    `s₁` reaches `s₂` in `n₂` steps. Indexed twin of legacy
+    `ScanChain.split` (line 9438). -/
+theorem ScanChainIx.split {input : String}
+    {s s₁ s₂ : ScannerStateIx input} {n₁ n₂ : Nat}
+    (h₁ : ScanChainIx s n₁ s₁) (h_total : ScanChainIx s (n₁ + n₂) s₂) :
+    ScanChainIx s₁ n₂ s₂ := by
+  induction h₁ generalizing s₂ with
+  | zero => simpa using h_total
+  | @step s s_mid s₁ k h_snt₁ _ ih =>
+    have h_rw : k + 1 + n₂ = (k + n₂) + 1 := by omega
+    rw [h_rw] at h_total
+    match h_total with
+    | .step h_snt₂ h_rest₂ =>
+      have : s_mid = _ := Option.some.inj (Except.ok.inj (h_snt₁.symm.trans h_snt₂))
+      subst this
+      exact ih h_rest₂
+
+/-! ### §5.4.G.5.3  Prefix preservation through FlowMonoChainIx
+
+Through a `FlowMonoChainIx`, the filtered token array of the final
+state has the filtered array of the initial state as a prefix. Lifts
+the raw-index prefix preservation
+(`FlowMonoChainIx_preserves_raw_prefix`) to filtered-array prefix
+preservation via `Array_filter_prefix_of_raw_prefix`.
+
+**Name correction from legacy**: the legacy theorem is named
+`ScanChain_filtered_prefix` but its hypothesis is `FlowMonoChain`, not
+`ScanChain`. The indexed port renames to `FlowMonoChainIx_filtered_prefix`
+to match the actual hypothesis shape.
+
+**Hypothesis structure** (matching legacy line 9043):
+  - `h_fmc`: `FlowMonoChainIx fl₀ s n s'`.
+  - `h_sk`: `s.simpleKey.possible = false` (no in-flight reservation).
+  - `h_sync`: `s.simpleKeyStack.size ≥ s.flowLevel`.
+  - `h_stack_floor`: stack entries at index ≥ `fl₀` with
+    `possible = true` have `tokenIndex ≥ s.tokens.size`.
+
+Both call sites (in downstream `parseStream_emit*` theorems) have
+`fl₀ = s₁.flowLevel = 1` with `s₁.simpleKeyStack.size = 1`, making
+`h_stack_floor` vacuously true. Indexed twin of legacy
+`ScanChain_filtered_prefix` (line 9043). -/
+
+theorem FlowMonoChainIx_filtered_prefix {input : String}
+    {s s' : ScannerStateIx input} {n fl₀ : Nat}
+    (h_fmc : FlowMonoChainIx fl₀ s n s')
+    (h_sk : s.simpleKey.possible = false)
+    (h_sync : s.simpleKeyStack.size ≥ s.flowLevel)
+    (h_stack_floor : ∀ j, fl₀ ≤ j → (hj : j < s.simpleKeyStack.size) →
+      s.simpleKeyStack[j].possible = true →
+      s.simpleKeyStack[j].tokenIndex ≥ s.tokens.size) :
+    let p := fun (t : Indexed.IxToken input) => t.token != YamlToken.placeholder
+    ∃ suffix, (s'.tokens.tokens.filter p).toList =
+              (s.tokens.tokens.filter p).toList ++ suffix := by
+  have h_inv : SimpleKeyAboveFloorIx s s.tokens.size fl₀ :=
+    ⟨fun hp => absurd hp (by simp [h_sk]),
+     h_stack_floor,
+     by have := h_fmc.flowLevel_ge_start; omega⟩
+  refine Array_filter_prefix_of_raw_prefix s.tokens.tokens s'.tokens.tokens _
+    (FlowMonoChainIx.tokens_mono h_fmc) (fun i hi => ?_)
+  obtain ⟨_, h_eq⟩ := FlowMonoChainIx_preserves_raw_prefix h_fmc s.tokens.size
+    (Nat.le_refl _) h_inv h_sync i hi
+  exact h_eq
+
+/-! ### §5.4.G.5.4  Scanner boundary tokens
+
+`scanFilteredIx_boundary_tokens` characterizes the structural flanks of
+`scanFilteredIx`'s output: at least two tokens, leading `.streamStart`,
+trailing `.streamEnd`. Lifts the raw-scan boundary facts
+(`scanIx_produces_at_least_two`, `scanIx_first_is_streamStart`,
+`scanIx_last_is_streamEnd`) through the placeholder-stripping filter
+via the observation that `.streamStart` and `.streamEnd` are themselves
+non-`.placeholder` and so survive the filter (`List.head_filter` /
+`List.getLast_filter` chain).
+
+Indexed twin of legacy `scanFiltered_boundary_tokens` (line 9267). -/
+
+theorem scanFilteredIx_boundary_tokens (input : String)
+    (tokens : Indexed.TokenStream input)
+    (h : scanFilteredIx input = .ok tokens) :
+    tokens.tokens.size ≥ 2 ∧
+    tokens.tokens[0]!.token = YamlToken.streamStart ∧
+    tokens.tokens[tokens.tokens.size - 1]!.token = YamlToken.streamEnd := by
+  unfold scanFilteredIx at h
+  -- Case split on the underlying scan result.
+  generalize h_scan : scanIx input = result at h
+  match result with
+  | .error _ => simp at h
+  | .ok raw =>
+  -- h : .ok { tokens := raw.tokens.filter ... } = .ok tokens
+  injection h with h_eq
+  -- h_eq : { tokens := raw.tokens.filter ... } = tokens — destructure to underlying array.
+  have h_tokens_eq : tokens.tokens = raw.tokens.filter
+      (fun t => t.token != YamlToken.placeholder) := by
+    rw [← h_eq]
+  -- Raw scan boundary properties.
+  have h_raw_sz : raw.tokens.size ≥ 2 := scanIx_produces_at_least_two raw h_scan
+  have h_raw_first : (raw.tokens[0]'(by omega)).token = YamlToken.streamStart :=
+    scanIx_first_is_streamStart raw h_scan (by omega)
+  have h_raw_last : (raw.tokens[raw.tokens.size - 1]'(by omega)).token = YamlToken.streamEnd :=
+    scanIx_last_is_streamEnd raw h_scan (by omega)
+  -- List-level reasoning: head/last pass filter, preserved in filtered list.
+  let p : Indexed.IxToken input → Bool := fun t => t.token != YamlToken.placeholder
+  let l := raw.tokens.toList
+  have h_l_ne : l ≠ [] := by
+    intro h0
+    have : raw.tokens.size = 0 := by show l.length = 0; simp [h0]
+    omega
+  have h_p_first : p (l.head h_l_ne) = true := by
+    show ((l.head h_l_ne).token != YamlToken.placeholder) = true
+    have : (l.head h_l_ne).token = YamlToken.streamStart := by
+      rw [List.head_eq_getElem]; exact h_raw_first
+    rw [this]; decide
+  have h_p_last : p (l.getLast h_l_ne) = true := by
+    show ((l.getLast h_l_ne).token != YamlToken.placeholder) = true
+    have : (l.getLast h_l_ne).token = YamlToken.streamEnd := by
+      rw [List.getLast_eq_getElem]; exact h_raw_last
+    rw [this]; decide
+  have h_flt_ne : l.filter p ≠ [] := by
+    rw [show l = l.head h_l_ne :: l.tail from (List.cons_head_tail h_l_ne).symm,
+        List.filter_cons_of_pos h_p_first]
+    exact List.cons_ne_nil _ _
+  have h_find : l.find? p = some (l.head h_l_ne) := by
+    conv => lhs; rw [show l = l.head h_l_ne :: l.tail from (List.cons_head_tail h_l_ne).symm]
+    exact List.find?_cons_of_pos h_p_first
+  have h_head_filt : (l.filter p).head h_flt_ne = l.head h_l_ne := by
+    rw [List.head_filter]; simp [h_find]
+  have h_rev_ne : l.reverse ≠ [] := by simp [h_l_ne]
+  have h_rfind : l.reverse.find? p = some (l.getLast h_l_ne) := by
+    conv => lhs; rw [show l.reverse = l.reverse.head h_rev_ne :: l.reverse.tail
+                        from (List.cons_head_tail h_rev_ne).symm,
+                      show l.reverse.head h_rev_ne = l.getLast h_l_ne
+                        from List.head_reverse ..]
+    exact List.find?_cons_of_pos h_p_last
+  have h_last_filt : (l.filter p).getLast h_flt_ne = l.getLast h_l_ne := by
+    rw [List.getLast_filter]; simp [h_rfind]
+  -- Filtered size ≥ 2.
+  have h_filt_sz_list : (l.filter p).length ≥ 2 := by
+    have h_pos : (l.filter p).length > 0 := List.length_pos_iff.mpr h_flt_ne
+    have h_ne_1 : (l.filter p).length ≠ 1 := by
+      intro h1
+      obtain ⟨a, h_eq'⟩ := List.length_eq_one_iff.mp h1
+      have : l.head h_l_ne = l.getLast h_l_ne := by
+        rw [← h_head_filt, ← h_last_filt]; simp [h_eq']
+      have := congrArg Indexed.IxToken.token this
+      rw [show (l.head h_l_ne).token = YamlToken.streamStart
+            from by rw [List.head_eq_getElem]; exact h_raw_first,
+          show (l.getLast h_l_ne).token = YamlToken.streamEnd
+            from by rw [List.getLast_eq_getElem]; exact h_raw_last] at this
+      cases this
+    omega
+  have h_filt_sz : (raw.tokens.filter p).size ≥ 2 := by
+    show (raw.tokens.filter p).toList.length ≥ 2
+    rw [Array.toList_filter]; exact h_filt_sz_list
+  -- Transport to tokens via h_tokens_eq.
+  have h_tsz : tokens.tokens.size ≥ 2 := h_tokens_eq ▸ h_filt_sz
+  refine ⟨h_tsz, ?_, ?_⟩
+  · -- tokens[0]!.token = .streamStart
+    suffices h : (raw.tokens.filter p)[0]!.token = YamlToken.streamStart by
+      rw [h_tokens_eq]; exact h
+    rw [getElem!_pos _ 0 (by omega)]
+    have h_first_val : ((l.filter p).head h_flt_ne).token = YamlToken.streamStart := by
+      rw [h_head_filt, List.head_eq_getElem]; exact h_raw_first
+    rw [List.head_eq_getElem] at h_first_val
+    show ((raw.tokens.filter p).toList[0]'(show 0 < (raw.tokens.filter p).size from by omega)).token
+      = YamlToken.streamStart
+    simp only [Array.toList_filter]; exact h_first_val
+  · -- tokens[N-1]!.token = .streamEnd
+    suffices h : (raw.tokens.filter p)[(raw.tokens.filter p).size - 1]!.token
+                  = YamlToken.streamEnd by
+      rw [h_tokens_eq]; exact h
+    rw [getElem!_pos _ _ (by omega)]
+    have h_last_val : ((l.filter p).getLast h_flt_ne).token = YamlToken.streamEnd := by
+      rw [h_last_filt, List.getLast_eq_getElem]; exact h_raw_last
+    rw [List.getLast_eq_getElem] at h_last_val
+    have h_sz_eq : (raw.tokens.filter p).size = (l.filter p).length := by
+      have : (raw.tokens.filter p).toList = l.filter p := Array.toList_filter
+      show (raw.tokens.filter p).toList.length = (l.filter p).length; rw [this]
+    show ((raw.tokens.filter p).toList[(raw.tokens.filter p).size - 1]'(by
+            show (raw.tokens.filter p).size - 1 < (raw.tokens.filter p).size; omega)).token
+      = YamlToken.streamEnd
+    simp only [Array.toList_filter, h_sz_eq]; exact h_last_val
 
 end L4YAML.Proofs.Indexed.EmitterScannability.RoundTrip
