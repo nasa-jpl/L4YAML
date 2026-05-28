@@ -1820,26 +1820,51 @@ not in-place axiom-to-theorem promotion — the latter is impossible
 when the axiom's hypothesis is strictly weaker than what the
 stronger lemma derives).
 
-**Next session**: **Step 6f.3b3.roundtrip.maintheorem.body1.tokenshape.substrate**
-(target file likely a new section in
-`Proofs/Output/IndexedEmitterScannability/RoundTrip.lean` §5.4.G.7,
-or split across `FilteredGrowth/` for the prefix-preservation
-lemma + `EmitScans.lean` for the strengthened predicate variants;
-~400–600 indexed LOC expected). **Second-of-3 sub-sub-sessions**
-for `.body1.tokenshape` after the **second** scope discovery
-(see Reflection 152 — original Blueprint `.body1.tokenshape`
-1-sub-session estimate is now infeasible without prior substrate
-work; the sub-survey performed at session start identified only
-~115-175 LOC of substrate cost, but deeper inspection during the
-session revealed an SKAF-floor convention mismatch between
-`FlowMonoChainIx_filtered_prefix` and the post-first-step state's
-`saveSimpleKeyIx`-set `simpleKey.tokenIndex` that requires
-substantially more substrate). **Target**: build the substrate
-to UNBLOCK `.body1.tokenshape.list` (next-next session) and
-`.body1.tokenshape.pair` (next-next-next). **Closes zero legacy
-sorries** in this sub-session — pure enablement.
+**Next session**: **Step 6f.3b3.roundtrip.maintheorem.body1.tokenshape.substrate.b**
+(partial substrate `.substrate.a` LANDED 2026-05-28 — see ledger below
+and Reflection 153). Remaining substrate primitives are
+`FlowMonoChainIx_filtered_prefix_no_overwrite`,
+`EmitListScansInFlowIx_strong` (boundary exposure form),
+`scanValuePrepareIx_key_filter_growth_flowIx`, plus a possible
+extension to `EmitPairListScansInFlowIx_strong` that additionally
+exposes the colon-step boundary `s_colon`. Estimated ~350–500 LOC
+remaining (down from original `.substrate` 400–600 LOC estimate
+after `.substrate.a` consumed ~470 LOC for the `n ≥ 3` track).
+**Target**: complete the substrate to UNBLOCK
+`.body1.tokenshape.list` (next-next session) and the `.key`/
+content-start conjuncts of `.body1.tokenshape.pair` (next-next-next).
 
-**Substrate to build**:
+**`.body1.tokenshape.substrate.a` LANDED 2026-05-28** — partial
+substrate (Phase 3 Step 6f.3b3.roundtrip.maintheorem.body1.tokenshape.substrate.a)
+shipping the `n ≥ 3` track for `.body1.tokenshape.pair`'s legacy
+sorry 9638. **Closes zero legacy sorries**; pure enablement.
+Ships in new file `EmitterScannability/EmitScansStrong.lean`
+(~470 LOC):
+
+  - **`EmitPairListScansInFlowIx_strong`** (predicate) — the
+    `EmitPairListScansInFlowIx` predicate (`EmitScans.lean §3`)
+    augmented with the `n ≥ 3` chain-length lower bound. Direct
+    consumer enabler for `emitPairList_body_filtered_
+    characterization` sorry 9638 (`n ≥ 3`).
+  - **`EmitPairListScansInFlowIx_strong.toWeak`** (~10 LOC) —
+    degradation back to the weak predicate (drops the `n ≥ 3`
+    conjunct).
+  - **`emitPairList_scans_nonemptyIx_strong`** — proof of the
+    strong predicate for non-empty pairs by induction. Mirrors
+    the weak `emitPairList_scans_nonemptyIx` structure
+    singleton/multi-pair split; the `n ≥ 3` bound emerges from
+    the chain composition `n₁(key) + 1(colon) + (n_v' + 1)(value)`
+    via the per-sub-chain positivity argument (each `emit` of a
+    non-empty `String` produces a chain of length ≥ 1, by the
+    same `CharsFromOffset_unique` argument the weak proof uses
+    for `h_n_v_pos` / `h_n_r_pos`; the new positivity for the
+    key chain `h_n₁_pos` follows identically).
+
+**Axiom posture**: pure triple `[propext, Classical.choice, Quot.sound]`
+on all three new declarations. Built clean: per-module 92/92,
+full project 491/491.
+
+**Substrate still to build in `.substrate.b`** (3 primitives):
 
   - **`FlowMonoChainIx_filtered_prefix_no_overwrite`** (working
     name) — a variant of `FlowMonoChainIx_filtered_prefix` that
@@ -1847,16 +1872,20 @@ sorries** in this sub-session — pure enablement.
     s.simpleKey.tokenIndex < s.tokens.size` (i.e., a "pending
     placeholder" below the current token-floor) by requiring an
     additional hypothesis that no chain step calls
-    `scanValuePrepareIx` on this position. The hypothesis can be
+    `scanValuePrepareIx` on this position. **Hypothesis form
+    refined by Reflection 153**: the no-overwrite argument relies
+    on the NEXT preprocessing step's `saveSimpleKey` overwriting
+    `simpleKey.tokenIndex` to a position ≥ current `tokens.size`
+    (not on `scanFlowEntryIx` clearing `simpleKey.possible`, which
+    it does NOT do — see Reflection 153). The hypothesis can be
     expressed as either: (a) a structural input bound — the
     remaining input characters contain no `:` that would dispatch
     to the value indicator (cleanest for `emitList`, where the
     body has no `:`); or (b) a chain-step invariant — every
-    intermediate state has `simpleKey.possible = false` OR the
-    `simpleKey.tokenIndex` is never below the original
-    `s.tokens.size` (decouples from input shape). **Choice
-    between (a) and (b) is part of this session's design
-    decision**. Estimated ~150-250 LOC.
+    intermediate state has `simpleKey.tokenIndex ≥ s_first.tokens.size`
+    OR `simpleKey.possible = false` (decouples from input shape).
+    **Choice between (a) and (b) is part of `.substrate.b`'s
+    design decision**. Estimated ~150-250 LOC.
 
   - **`EmitListScansInFlowIx_strong`** (working name) — a
     strengthening of `EmitListScansInFlowIx` (EmitScans.lean §2)
@@ -1864,21 +1893,20 @@ sorries** in this sub-session — pure enablement.
     step's boundary state `s_first`, along with the per-step
     witnesses needed to reconstruct the chain head. Re-proves
     `emitList_scans_nonemptyIx` to produce the strong variant.
-    Estimated ~100-150 LOC.
-
-  - **`EmitPairListScansInFlowIx_strong`** (working name) — same
-    pattern for pairs, additionally exposing the 3-block chain
-    composition `n₁(key emit) + 1(colon) + n_v(value emit)` and
-    the colon-step boundary state `s_colon` (post-
-    `scanNextTokenIx_flow_valueIx`). Estimated ~150-200 LOC.
+    Estimated ~100-150 LOC. (May be deferred entirely if
+    `.tokenshape.list` does its own `cases h_fmc` decomposition.)
 
   - **`scanValuePrepareIx_key_filter_growth_flowIx`** — the
     small characterization lemma: in flow context with
     `simpleKey.possible = true`, `scanValuePrepareIx` overwrites
-    position `simpleKey.tokenIndex` with `.key` and emits
-    `.value`, growing the filtered count by exactly 2 and
-    leaving the first new filtered token (at position
-    `(s.filter p).size_before`) as `.key`. Estimated ~20-30 LOC.
+    position **`simpleKey.tokenIndex + 1`** (NOT `tokenIndex` —
+    Reflection 153 documents this discovery: `saveSimpleKey`
+    pushes TWO placeholders at `m₀` and `m₀+1`, and the flow-
+    branch of `scanValuePrepareIx` only overwrites the SECOND
+    placeholder at `idx+1` to `.key`; position `idx` stays
+    `.placeholder`). Then emits `.value` (a token push), growing
+    the filtered count by exactly 2 (the `.key` newly passes
+    filter, and the `.value` is newly pushed). Estimated ~20-30 LOC.
 
 **Substrate already in place** (no work needed):
 `scanNextTokenIx_maintains_SKAFIx` (FlowMonoChain/Basic.lean:733),
@@ -1886,11 +1914,16 @@ sorries** in this sub-session — pure enablement.
 IndexedScannerPlainScalarValid.lean:4733/4743),
 `FlowMonoChainIx_preserves_raw_prefix` (Sync/Invariant.lean:419),
 the 3 first-filtered-token lemmas (FilteredGrowth/FirstFiltered.
-lean §1-§3), `emit_first_char` (FirstFiltered.lean:373).
+lean §1-§3), `emit_first_char` (FirstFiltered.lean:373), and the
+new `EmitPairListScansInFlowIx_strong` track from `.substrate.a`.
 
 **Discharge sub-sessions deferred to subsequent sessions**:
 `.body1.tokenshape.list` (1 sorry: 9550, ~50-80 LOC) +
 `.body1.tokenshape.pair` (2 sorries: 9638 + 9644, ~100-150 LOC).
+Note: 9638 (`n ≥ 3`) is now directly dischargeable from
+`emitPairList_scans_nonemptyIx_strong` (just unfold the strong
+predicate; pure rewriting, ~10-20 LOC). 9644 still needs
+`scanValuePrepareIx_key_filter_growth_flowIx` from `.substrate.b`.
 
 **`.roundtrip.maintheorem.body1.scaffold` LANDED 2026-05-28** —
 second of 4 `.maintheorem` sub-sessions; first half of `.body`
@@ -3888,12 +3921,17 @@ table):
 
   - `.body1.scaffold` (LANDED 2026-05-28): 206 LOC. **0 sorries
     closed**.
-  - `.body1.tokenshape.substrate` (next): ~400-600 LOC. **0 sorries
-    closed directly** (pure enablement of `.list` + `.pair`).
+  - `.body1.tokenshape.substrate` (split into `.a` + `.b`): see
+    Reflection 153 for the split rationale. `.a` LANDED 2026-05-28
+    (~470 LOC, `n ≥ 3` track only). `.b` pending (~350-500 LOC,
+    no-overwrite + key-overwrite primitives). **0 sorries closed
+    directly** (pure enablement of `.list` + `.pair`).
   - `.body1.tokenshape.list` (after): ~50-80 LOC. **1 sorry closed**
     (9550).
   - `.body1.tokenshape.pair` (after): ~100-150 LOC. **2 sorries
-    closed** (9638 + 9644).
+    closed** (9638 + 9644). Note: 9638 is now ~10-20 LOC standalone
+    via `.substrate.a` (just unfold the strong predicate); the
+    `.tokenshape.pair` cost is still dominated by the `.key` claim.
   - `.body2` (last): ~300-500 LOC. **2 sorries closed** (9552 +
     9646; may itself need a sub-survey).
   - **`.body` total** (third revision): ~1100-1840 LOC across
@@ -3909,6 +3947,124 @@ judgment about substrate cost; a substantially lower sub-survey
 estimate may indicate the surveyor has missed a primitive class.
 Treat such cases with **execution-deferred Blueprint update** —
 re-scope first, execute after re-survey.
+
+##### Reflection 153 (new): `scanFlowEntryIx` and `scanValuePrepareIx` micro-discoveries — refined no-overwrite design, partial-substrate landing
+
+**Triggering event**: during `.body1.tokenshape.substrate` execution
+(2026-05-28), inspection of `Scanner/IndexedDispatch.lean` revealed
+TWO micro-facts that re-shape Reflection 152's no-overwrite
+substrate design:
+
+**Discovery (i) — `scanFlowEntryIx` does NOT clear `simpleKey.possible`.**
+Reflection 152's argument informally relied on the `,` (comma) step
+clearing `simpleKey.possible := false`, justifying why the
+placeholder pushed by the first item's `saveSimpleKey` would be
+safe from later `scanValuePrepareIx` overwrites. Inspection shows
+that `scanFlowEntryIx` only emits `.flowEntry` and sets
+`simpleKeyAllowed := true` — it does NOT touch `simpleKey` at all
+(IndexedDispatch.lean:860-883, with the explicit comment "A `,`
+does not retroactively confirm the pending simple key; any pending
+reservation slots stay as `.placeholder` and are stripped by
+`scanFilteredIx`"). So after a `,` in flow context, the prior
+state's `simpleKey.possible = true` and `simpleKey.tokenIndex =
+m₀` PERSIST.
+
+**The actual no-overwrite argument** (refined): what saves the
+placeholder is the NEXT step's preprocessing's `saveSimpleKey`,
+which (a) runs unconditionally on every flow-context first-char
+non-whitespace, and (b) re-sets `simpleKey.tokenIndex :=
+s_current.tokens.size`, where `s_current.tokens.size > m₀` because
+the chain has pushed tokens (`,` adds `.flowEntry`, item-scan adds
+content). So the OVERWRITTEN `simpleKey.tokenIndex` is at a fresh
+position above `m₀+1`, and any later `scanValuePrepareIx` overwrite
+targets a NEW position, not the original `m₀+1`.
+
+This is a more delicate argument than Reflection 152 sketched. It
+requires tracking that EVERY chain step's preprocessing happens at
+a state with `tokens.size > m₀+1`. This is true by induction from
+step 1 onwards (step 1's dispatch pushes content, growing tokens
+by ≥ 1; subsequent steps also grow tokens).
+
+**Discovery (ii) — `scanValuePrepareIx` in flow overwrites position
+`idx + 1`, NOT `idx`.** The original Blueprint and Reflection 152
+framed the overwrite as "at position `simpleKey.tokenIndex`". The
+code (IndexedDispatch.lean:484-506) shows the FLOW branch only
+overwrites position `idx + 1` (one slot ABOVE `tokenIndex`); the
+position `idx` itself is NEVER overwritten in flow. This matters
+because `saveSimpleKeyIx` pushes TWO `.placeholder`s at positions
+`m₀` and `m₀+1`, sets `simpleKey.tokenIndex := m₀`. The flow
+`scanValuePrepareIx` then overwrites position `m₀+1` (the SECOND
+placeholder) with `.key`, leaving position `m₀` as `.placeholder`
+permanently.
+
+**Implications for the substrate design**:
+
+  1. **For `.tokenshape.list` (no `:` in body)**: positions `m₀`,
+     `m₀+1` BOTH stay as `.placeholder` throughout the chain. The
+     first NEW non-`.placeholder` token in the filter is the
+     CONTENT token at raw position `m₀+2` (e.g., `.scalar`,
+     `.flowSequenceStart`, `.flowMappingStart`). The no-overwrite
+     lemma needs to PRESERVE `s_first.tokens.tokens[m₀+2]`'s value
+     through the rest of the chain. Subsequent `saveSimpleKey`s
+     push placeholders at NEW positions (≥ m₀+3), so `m₀+2`
+     stays unchanged.
+
+  2. **For `.tokenshape.pair` (one `:` per pair)**: the `:` step's
+     `scanValuePrepareIx` overwrites position `m₀+1` (the second
+     placeholder) with `.key`. After the overwrite:
+     - Position `m₀`: still `.placeholder` (filtered out).
+     - Position `m₀+1`: now `.key` (passes filter).
+     - Position `m₀+2`: still `.scalar` from key content (passes filter).
+     So `(s'.tokens.tokens.filter p)[old_sz] = .key`. The
+     `scanValuePrepareIx_key_filter_growth_flowIx` substrate lemma
+     should be parameterized on the `idx + 1` position (NOT `idx`).
+
+  3. **The `.substrate.b` no-overwrite hypothesis** can be cleanly
+     formulated as: through the chain, every state has
+     `simpleKey.tokenIndex ≥ s_first.tokens.size` (after the first
+     step). This is implied by the structural argument that all
+     subsequent `saveSimpleKey`s set `tokenIndex` to the then-current
+     `tokens.size > s_first.tokens.size`.
+
+**Partial-substrate strategy** (adopted for this session): rather
+than attempt the full `.substrate` (4 primitives, ~400-600 LOC)
+under the time pressure of in-session discovery, this session
+ships **`.substrate.a`** — JUST the `EmitPairListScansInFlowIx_strong`
+predicate + proof (the `n ≥ 3` track, ~470 LOC, low risk because
+it's a pure inductive extension of the existing weak-predicate
+proof). The remaining 3 primitives (the no-overwrite lemma,
+the `scanValuePrepareIx_key_filter_growth_flowIx` characterization,
+and optionally `EmitListScansInFlowIx_strong`) land in
+`.substrate.b`, with the design constraints sharpened by
+Discoveries (i) and (ii) above.
+
+**What this teaches** (extends Reflection 152's methodology
+lesson): **a substrate's design hypotheses can be invalidated
+mid-execution by discovering the underlying scanner code does
+not have the property the design assumed**. The fix is not to
+retreat to Blueprint-only re-scope (this session's predecessor
+already did that), but to:
+  (1) SHIP the easier-to-defend partial substrate piece (here,
+      the `n ≥ 3` track), which makes verifiable progress;
+  (2) DOCUMENT the discovery as a Blueprint refinement to the
+      remaining substrate (here, this Reflection 153);
+  (3) RE-SCOPE the remaining substrate with the discovery-
+      informed design;
+  (4) Carry forward to the next sub-session.
+
+This **partial-substrate landing** pattern is a generalization
+of `.scaffold` (shipping the wrapper conjunct only). The risk
+is fragmenting the substrate into too many sub-sub-sessions;
+the benefit is making concrete progress under uncertainty without
+either (a) attempting and failing under wrong assumptions, or
+(b) repeatedly stopping at "re-scope only".
+
+**Cumulative `.body` underestimate factor** (no change from
+Reflection 152's ~2.6–3.4×, since the partial-substrate landing
+falls within the original estimate range — `.substrate.a` 470 LOC
+plus `.substrate.b` projected 350-500 LOC sums to ~820-970 LOC,
+within the original 400-600 LOC estimate × 1.5-2 contingency
+that Reflection 152 already documented).
 
 **Step 6f.3b3.emitscans.toplevel SS1 (easy prereqs) LANDED 2026-05-27**
 (~225 LOC across two files: `Endpoint.lean` §6 ~200 LOC +
@@ -14852,25 +15008,56 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 "no-overwrite prefix preservation" variant that handles
                 this case. Splits into:
 
-                ▹▹▹ **.body1.tokenshape.substrate** *(estimated
-                ~400–600 LOC)*. **Build the missing substrate.**
-                Three new primitives needed: (i) a relaxed prefix-
-                preservation lemma `FlowMonoChainIx_filtered_prefix_
-                with_pending_placeholder` that handles the saveSimpleKey-
-                then-no-`:` case (i.e., the input contains no `:` that
-                would trigger `scanValuePrepareIx`, so the placeholder
-                stays placeholder — requires either a chain-structure
-                inspection lemma or a stronger SKAF-with-pending-
-                placeholder variant); (ii) `EmitListScansInFlowIx_strong`
-                exposing the FIRST scanNextTokenIx step's boundary state
-                (currently the predicate output is opaque on the chain
-                head); (iii) `EmitPairListScansInFlowIx_strong` exposing
-                the 3-block chain composition `n₁(key) + 1(colon) +
-                n_v(value)` for the pair `n ≥ 3` lower bound. Plus
-                `scanValuePrepareIx_key_filter_growth_flowIx`
-                (~20–30 LOC) characterizing the placeholder→`.key`
-                retroactive rewrite. **No legacy sorries closed**
-                directly — pure substrate enablement.
+                ▹▹▹ **.body1.tokenshape.substrate** — **split
+                further into `.a` + `.b`** after in-session micro-
+                discoveries (Reflection 153). Splits into:
+
+                ▹▹▹▹ **.body1.tokenshape.substrate.a** ✅ **LANDED
+                2026-05-28** *(~513 LOC actual / ~150-200 LOC
+                originally allocated within `.substrate`; new file
+                `Proofs/Output/IndexedEmitterScannability/
+                EmitScansStrong.lean`)*. **Ships the `n ≥ 3` track**:
+                `EmitPairListScansInFlowIx_strong` predicate (adds
+                `n ≥ 3` conjunct to `EmitPairListScansInFlowIx`),
+                `EmitPairListScansInFlowIx_strong.toWeak`
+                degradation, and `emitPairList_scans_nonemptyIx_strong`
+                inductive proof (singleton + multi-pair branches,
+                same shape as the weak proof with one additional
+                `h_n₁_pos` extraction for the key chain via the
+                `CharsFromOffset_unique` non-empty-emit argument).
+                **Directly enables sorry 9638 discharge in
+                `.tokenshape.pair`** (just unfold the strong
+                predicate; estimated ~10-20 LOC). **Axiom posture**:
+                pure triple on all 3 new declarations. Built clean:
+                per-module 92/92, full project 491/491. **0 legacy
+                sorries closed**; pure enablement.
+
+                ▹▹▹▹ **.body1.tokenshape.substrate.b** *(estimated
+                ~350–500 LOC remaining)*. **Build the remaining
+                substrate primitives**:
+                (i) `FlowMonoChainIx_filtered_prefix_no_overwrite` —
+                the relaxed prefix-preservation lemma. Design
+                refined by Reflection 153's discovery that
+                `scanFlowEntryIx` does NOT clear `simpleKey.possible`;
+                the no-overwrite argument is instead "every chain
+                step's saveSimpleKey overwrites `simpleKey.tokenIndex`
+                to a fresh position ≥ s_first.tokens.size, so the
+                original `m₀+1` is never re-targeted by
+                `scanValuePrepareIx`". Hypothesis choice (a) input
+                bound vs. (b) chain-step invariant remains the
+                design decision. Estimated ~150-250 LOC.
+                (ii) `scanValuePrepareIx_key_filter_growth_flowIx` —
+                the small characterization lemma. Per Reflection
+                153 discovery, the flow branch of
+                `scanValuePrepareIx` overwrites `idx + 1` (NOT
+                `idx`), so the lemma must be parameterized
+                accordingly. Estimated ~20-30 LOC.
+                (iii) optionally `EmitListScansInFlowIx_strong`
+                with first-step boundary exposure (~100-150 LOC),
+                if `.tokenshape.list` doesn't do its own `cases
+                h_fmc` decomposition.
+                **0 legacy sorries closed directly** — pure
+                enablement.
 
                 ▹▹▹ **.body1.tokenshape.list** *(estimated ~50–80 LOC)*.
                 **Discharges 1 of 5 legacy sorries: 9550** (emitList
@@ -14907,19 +15094,31 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
-                **Total .body scope re-estimate (second revision)**:
-                ~1100–1840 LOC across **5 sub-sessions**
-                (`.scaffold` [LANDED 206] + `.tokenshape.substrate`
-                + `.tokenshape.list` + `.tokenshape.pair` + `.body2`),
-                vs. Blueprint-original 400–700 LOC in 1. Cumulative
-                underestimate factor: ~2.6–3.4×. The two scope
-                discoveries: `.scaffold` (Reflection 151) revealed the
-                substrate-cost-of-sorry-discharge problem in principle;
-                `.tokenshape.substrate` (Reflection 152) revealed the
-                specific blocker — `FlowMonoChainIx_filtered_prefix`
-                needs `simpleKey.possible = false` which the post-
-                first-step state's `saveSimpleKey` violates. See
-                Reflections 151 and 152.
+                **Total .body scope re-estimate (third revision —
+                after `.substrate` split into `.a` + `.b`)**:
+                ~1100–1860 LOC across **6 sub-sessions** (`.scaffold`
+                [LANDED 206] + `.tokenshape.substrate.a` [LANDED 470]
+                + `.tokenshape.substrate.b` + `.tokenshape.list`
+                + `.tokenshape.pair` + `.body2`), vs. Blueprint-
+                original 400–700 LOC in 1. Cumulative underestimate
+                factor: ~2.7–3.4× (modest widening over Reflection
+                152's ~2.6-3.4× due to `.substrate.a`'s 470 LOC
+                slightly exceeding the 400-LOC-low-end allocation,
+                offset by `.tokenshape.pair`'s 9638 portion now
+                being ~10-20 LOC instead of ~50). The three scope
+                discoveries: `.scaffold` (Reflection 151) revealed
+                the substrate-cost-of-sorry-discharge problem in
+                principle; `.tokenshape.substrate` (Reflection 152)
+                revealed the specific blocker — `FlowMonoChainIx_
+                filtered_prefix` needs `simpleKey.possible = false`
+                which the post-first-step state's `saveSimpleKey`
+                violates; `.tokenshape.substrate.a` (Reflection 153)
+                refined the no-overwrite argument with discoveries
+                that (i) `scanFlowEntryIx` does NOT clear
+                `simpleKey.possible` and (ii) `scanValuePrepareIx`
+                in flow overwrites `idx + 1` (not `idx`), informing
+                the design of `.substrate.b`'s remaining primitives.
+                See Reflections 151, 152, and 153.
 
               ▹ **.maintheorem.nonempty** *(~410 legacy LOC; legacy
                 9653–10062; **2 legacy `sorry`s to discharge**)*.
