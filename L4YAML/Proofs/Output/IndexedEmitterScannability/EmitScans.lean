@@ -1471,15 +1471,20 @@ Sub-step `6f.3b3.emitscans.toplevel`. Replanned at port time into
 the composition theorem alone; the indexed substrate is missing three
 prerequisite twins that the legacy version inlines):
 
-  - **SS1** (this section): the easy prerequisites — the decidability
+  - **SS1** ✅ landed: the easy prerequisites — the decidability
     bridge `scanFilteredIx_exists_of_isOk` (this §3) and the `[`-opener
     init twin `scanNextTokenIx_flow_open_seq_init` (Endpoint.lean §6,
     the sequence analog of §5's `_open_mapping_init`).
-  - **SS2**: `scan_accepts_emitScalarIx` and its helper
-    `scanNextTokenIx_emitScalar_init` (the top-level scalar init twin,
-    legacy ~200 LOC of preprocess + dispatch + `scanDoubleQuotedIx`
-    composition; not yet ported because the indexed scenario family so
-    far has been flow-only).
+  - **SS2** ✅ landed: the scalar init twin
+    `scanNextTokenIx_emitScalar_init` and its thin wrapper
+    `scan_accepts_emitScalarIx`. Indexed twins of legacy lines
+    3333–3499 and 3500–3532. Both live in this §3 rather than
+    Endpoint.lean §7 as originally planned: the helper is only
+    consumed by the wrapper (no `FlowMonoChain` scenario chain
+    needs it), and placing both here keeps the SS2 deliverable
+    file-local. SS2 inherits the same 43 `native_decide` axioms
+    from `scanDoubleQuotedIx`-cluster reductions as `.flowpair`
+    SS2b/SS3 (Reflection 142) — no new user-defined axioms.
   - **SS3**: the main `emit_produces_valid_yamlIx` composition theorem
     itself (legacy 8281–8398, ~120 LOC, induction over `Grammable v
     false` with the three cases delegating to SS1/SS2 + the just-landed
@@ -1504,5 +1509,297 @@ theorem scanFilteredIx_exists_of_isOk {s : String}
     exfalso; rw [h_eq] at h
     -- (Except.error _).toBool = false reduces by unfolding
     exact absurd h (by simp [Except.toBool])
+
+/-! ### §3.2  `scanNextTokenIx_emitScalar_init` (SS2 helper)
+
+The first scan iteration on `emitScalar content` is the only non-EOF
+step the wrapper `scan_accepts_emitScalarIx` needs to reason about.
+It threads the full `scanNextTokenIx` pipeline:
+
+  1. `scanNextTokenIx_preprocess_init_state` (Endpoint §2) on the
+     content character `'"'`.
+  2. `atDocumentStartIx`/`atDocumentEndIx = false` (first char is
+     `'"'`, not `'-'`/`'.'`), so `dispatchContentIx_quote`
+     (ScanChain §1.4) bundles the four no-op dispatcher facts.
+  3. The opaque `s_ad` (post-`allowDirectives` if-branch) inherits
+     every relevant field from `s_pp` through the if-split.
+  4. `scanDoubleQuotedIx_escapeString_corr` (FlowScalar §2) on
+     `s_ad.cursor` with `rest = []` yields the post-quote cursor
+     `cAfter` whose remaining chars are empty.
+  5. The explicit result state `s_final` (cursor at `cAfter`, emitted
+     scalar token, `simpleKeyAllowed := false`) matches what
+     `scanNextTokenIx_dispatchContent s_ad '"'` produces — same
+     reduction pattern as `FlowScalar.lean` §3.
+  6. `scanNextTokenIx_via_content_dispatch` (Pipeline §6) composes
+     the pipeline.
+  7. `peek_none_of_empty_surfIx` (ScanChain §1.3) on the post-quote
+     surface (empty chars) gives `s_final.peek? = none`.
+
+Indexed twin of `scanNextToken_emitScalar_init` (legacy 3333–3499).
+The legacy `(s₁.tokens.filter ...).map (·.val) = #[…]` token-array
+equality is *not* exposed — `scan_accepts_emitScalarIx` (and
+ultimately `emit_produces_valid_yamlIx`) only needs existential
+success, not the explicit token-stream shape. Trimming the conclusion
+to `peek? = none ∧ flowLevel = 0 ∧ directivesPresent = false`
+(the exact wiring `scanLoopIx_two_iter` consumes) cuts ~80 LOC of
+filtered-token bookkeeping out of the port. -/
+
+set_option maxHeartbeats 800000 in
+/-- First-iteration analysis of `scanNextTokenIx` on
+    `(ScannerStateIx.mk' (emitScalar content)).emit YamlToken.streamStart`:
+    the scanner consumes the entire `'"' :: escapeString content :: '"'`
+    in a single step (via `scanDoubleQuotedIx`), landing at EOF with
+    `flowLevel = 0` and `directivesPresent = false`. Indexed twin of
+    `scanNextToken_emitScalar_init` (legacy 3333). The `input` / `s₀`
+    abbreviations are introduced as locals after the `show` so the
+    body re-elaborates with them as opaque names rather than as
+    `let`-bound projections — avoids whnf-elaboration thrashing on
+    `L4YAML.Emit.emitScalar content`. -/
+theorem scanNextTokenIx_emitScalar_init (content : String) :
+    ∃ s₁, scanNextTokenIx
+        ((ScannerStateIx.mk' (L4YAML.Emit.emitScalar content)).emit YamlToken.streamStart)
+        = .ok (some s₁)
+      ∧ s₁.peek? = none
+      ∧ s₁.flowLevel = 0
+      ∧ s₁.directivesPresent = false := by
+  -- Lift the input/s₀ abbreviations into opaque locals via `let` —
+  -- this prevents Lean from repeatedly whnf-reducing
+  -- `L4YAML.Emit.emitScalar content` during downstream elaboration of
+  -- `scanNextTokenIx_dispatchContent` / `scanDoubleQuotedIx`. The
+  -- elevated heartbeat budget (4×) covers the dispatchContent
+  -- reduction's `simp only` + `split` over the 7-arm `'"'` match.
+  let input := L4YAML.Emit.emitScalar content
+  let s₀ : ScannerStateIx input := (ScannerStateIx.mk' input).emit YamlToken.streamStart
+  show ∃ s₁, scanNextTokenIx s₀ = .ok (some s₁)
+    ∧ s₁.peek? = none ∧ s₁.flowLevel = 0 ∧ s₁.directivesPresent = false
+  -- ── Step 1: input.toList = '"' :: (escapeString content).toList ++ ['"']
+  have h_toList : input.toList = '"' :: ((L4YAML.Emit.escapeString content).toList ++ ['"']) := by
+    show (L4YAML.Emit.emitScalar content).toList = _
+    rw [emitScalar_toList]; rfl
+  -- ── Step 2: preprocess via the init-state lemma
+  obtain ⟨s_pp, h_pp_eq, h_fl_pp, _h_inflow_pp, h_ci_pp, h_col_pp,
+          _h_ad_pp, h_dp_pp, h_ids_pp, _h_off_pp, _h_ek_pp,
+          _h_line_pp, _h_atol_pp, _h_filt_pp⟩ :=
+    scanNextTokenIx_preprocess_init_state input '"'
+      ((L4YAML.Emit.escapeString content).toList ++ ['"']) h_toList
+      (by decide) (by decide) (by decide)
+  -- ── Step 3: ScannerSurfCorrIx for s_pp over '"' :: (escapeString content).toList ++ ['"']
+  have h_corr₀ : ScannerSurfCorrIx (input := input) (ScannerStateIx.mk' input)
+      ⟨'"' :: ((L4YAML.Emit.escapeString content).toList ++ ['"']), 0⟩ := by
+    have h := initial_corrIx input
+    rw [h_toList] at h
+    exact h
+  have h_corr_s₀ : ScannerSurfCorrIx s₀
+      ⟨'"' :: ((L4YAML.Emit.escapeString content).toList ++ ['"']), 0⟩ :=
+    ScannerSurfCorrIx_transfer h_corr₀ rfl rfl rfl
+  have h_corr_pp : ScannerSurfCorrIx s_pp
+      ⟨'"' :: ((L4YAML.Emit.escapeString content).toList ++ ['"']), s_pp.cursor.pos.col⟩ := by
+    refine ⟨?_, rfl, ?_, ?_⟩
+    · rw [_h_off_pp]; exact h_corr_s₀.chars_from
+    · obtain ⟨pre, hpre, hsize⟩ := h_corr_s₀.input_prefix
+      exact ⟨pre, hpre, by rw [_h_off_pp]; exact hsize⟩
+    · intro i hi _h0
+      have h_sz : s_pp.indents.size = 1 := by rw [h_ids_pp]; rfl
+      rw [h_sz] at hi
+      omega
+  have ⟨h_pk_pp, _h_lt_pp⟩ :=
+    peek_of_chars_consIx_state s_pp '"'
+      ((L4YAML.Emit.escapeString content).toList ++ ['"']) _ h_corr_pp
+  -- ── Step 4: atDocumentStart/End = false (first char is '"', not '-' / '.')
+  have h_pat0 : s_pp.cursor.peekAt? 0 = s_pp.peek? := by
+    unfold IxCursor.peekAt? IxCursor.peekAt?Loop
+    show s_pp.cursor.peek? = s_pp.cursor.peek?
+    rfl
+  have h_ds : atDocumentStartIx s_pp.cursor = false := by
+    unfold atDocumentStartIx
+    rw [h_pat0]
+    show (s_pp.cursor.pos.col == 0 &&
+      (match s_pp.peek? with | some d => isSequenceEntryBool d | none => false) &&
+      (match s_pp.cursor.peekAt? 1 with | some d => isSequenceEntryBool d | none => false) &&
+      (match s_pp.cursor.peekAt? 2 with | some d => isSequenceEntryBool d | none => false) &&
+      (match s_pp.cursor.peekAt? 3 with | none => true | some d => isBlankBool d)) = false
+    rw [h_pk_pp]
+    simp [isSequenceEntryBool]
+  have h_de : atDocumentEndIx s_pp.cursor = false := by
+    unfold atDocumentEndIx
+    rw [h_pat0]
+    show (s_pp.cursor.pos.col == 0 &&
+      (match s_pp.peek? with | some d => isDocEndDotBool d | none => false) &&
+      (match s_pp.cursor.peekAt? 1 with | some d => isDocEndDotBool d | none => false) &&
+      (match s_pp.cursor.peekAt? 2 with | some d => isDocEndDotBool d | none => false) &&
+      (match s_pp.cursor.peekAt? 3 with | none => true | some d => isBlankBool d)) = false
+    rw [h_pk_pp]
+    simp [isDocEndDotBool]
+  -- ── Step 5: s_ad opaquely
+  obtain ⟨s_ad, h_s_ad_def⟩ : ∃ s_ad : ScannerStateIx input,
+      s_ad = if s_pp.allowDirectives then
+        { s_pp with allowDirectives := false, documentEverStarted := true }
+      else s_pp := ⟨_, rfl⟩
+  -- ── Step 6: s_ad field equalities (preserved through the if)
+  have h_ad_fl : s_ad.flowLevel = 0 := by
+    rw [h_s_ad_def]; split <;> exact h_fl_pp
+  have h_ad_dp : s_ad.directivesPresent = false := by
+    rw [h_s_ad_def]; split <;> exact h_dp_pp
+  have h_ad_ids : s_ad.indents = s_pp.indents := by
+    rw [h_s_ad_def]; split <;> rfl
+  have h_ad_cursor : s_ad.cursor = s_pp.cursor := by
+    rw [h_s_ad_def]; split <;> rfl
+  have h_ad_ci : s_ad.currentIndent = -1 := by
+    unfold ScannerStateIx.currentIndent
+    rw [h_ad_ids]
+    show (match s_pp.indents.back? with | some e => e.column | none => -1) = -1
+    have : s_pp.indents.back? = some { column := -1, isSequence := false } := by
+      rw [h_ids_pp]; rfl
+    rw [this]
+  have h_ad_ds : atDocumentStartIx s_ad.cursor = false := by
+    rw [h_ad_cursor]; exact h_ds
+  have h_ad_de : atDocumentEndIx s_ad.cursor = false := by
+    rw [h_ad_cursor]; exact h_de
+  -- ── Step 7: the four no-op dispatchers at s_pp (bundled) and at s_ad
+  have ⟨h_struct, _h_check_pp, _h_flow_pp, _h_block_pp⟩ :=
+    dispatchContentIx_quote s_pp '"' rfl h_fl_pp h_ci_pp h_ds h_de
+  have ⟨_h_struct_ad, h_check_ad, h_flow_ad, h_block_ad⟩ :=
+    dispatchContentIx_quote s_ad '"' rfl h_ad_fl h_ad_ci h_ad_ds h_ad_de
+  -- ── Step 8: surface correspondence at s_ad (cursor unchanged from s_pp)
+  have h_ad_corr : ScannerSurfCorrIx s_ad
+      ⟨'"' :: ((L4YAML.Emit.escapeString content).toList ++ ['"']), s_ad.cursor.pos.col⟩ := by
+    refine ⟨?_, rfl, ?_, ?_⟩
+    · rw [h_ad_cursor]; exact h_corr_pp.chars_from
+    · obtain ⟨pre, hpre, hsize⟩ := h_corr_pp.input_prefix
+      exact ⟨pre, hpre, by rw [h_ad_cursor]; exact hsize⟩
+    · intro i hi h0
+      have hi' : i < s_pp.indents.size := h_ad_ids ▸ hi
+      have heq : s_ad.indents[i]'hi = s_pp.indents[i]'hi' := by congr 1
+      rw [heq]; exact h_corr_pp.indent_cols_nonneg i hi' h0
+  have h_ad_cursor_corr :
+      L4YAML.Proofs.Indexed.EmitterScannability.Basic.CursorSurfCorrIx s_ad.cursor
+      ⟨'"' :: ((L4YAML.Emit.escapeString content).toList ++ ['"']), s_ad.cursor.pos.col⟩ :=
+    ⟨h_ad_corr.chars_from, h_ad_corr.col_eq, h_ad_corr.input_prefix⟩
+  -- ── Step 9: scanDoubleQuotedIx with rest = []
+  -- Reshape the surface chars to match `scanDoubleQuotedIx_escapeString_corr`'s
+  -- expected form `'"' :: (escapeString content).toList ++ ['"'] ++ rest`.
+  have h_corr_reshape :
+      L4YAML.Proofs.Indexed.EmitterScannability.Basic.CursorSurfCorrIx s_ad.cursor
+      ⟨'"' :: ((L4YAML.Emit.escapeString content).toList ++ ['"'] ++ []),
+        s_ad.cursor.pos.col⟩ := by
+    have h_eq : (L4YAML.Emit.escapeString content).toList ++ ['"'] ++ ([] : List Char) =
+        (L4YAML.Emit.escapeString content).toList ++ ['"'] := by
+      simp
+    rw [h_eq]; exact h_ad_cursor_corr
+  obtain ⟨cAfter, h_dq, h_corr_cAfter, h_col_cAfter, _h_line_cAfter⟩ :=
+    L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.scanDoubleQuotedIx_escapeString_corr
+      s_ad.cursor content [] h_corr_reshape
+  have h_bound : s_ad.cursor.pos.offset ≤ cAfter.pos.offset :=
+    Nat.le_of_lt (scanDoubleQuotedIx_offset_lt s_ad.cursor h_dq)
+  -- ── Step 10: explicit result state (analog of FlowScalar §3's `s'`)
+  let s_final : ScannerStateIx input :=
+    { ({ s_ad with cursor := cAfter }.emitAt s_ad.cursor.pos
+        (YamlToken.scalar content ScalarStyle.doubleQuoted) h_bound)
+      with simpleKeyAllowed := false }
+  have h_sf_cursor : s_final.cursor = cAfter := rfl
+  have h_sf_fl : s_final.flowLevel = s_ad.flowLevel := rfl
+  have h_sf_dp : s_final.directivesPresent = s_ad.directivesPresent := rfl
+  -- ── Step 11: dispatchContent reduces to s_final (same pattern as FlowScalar §3)
+  have h_dc : scanNextTokenIx_dispatchContent s_ad '"' = .ok s_final := by
+    unfold scanNextTokenIx_dispatchContent
+    simp only [bind, Except.bind, pure, Pure.pure, Except.pure,
+      show ('"' == '&') = false from by decide,
+      show ('"' == '*') = false from by decide,
+      show ('"' == '!') = false from by decide,
+      show ('"' == '|') = false from by decide,
+      show ('"' == '>') = false from by decide,
+      show ('"' == '"') = true from by decide,
+      Bool.or_self, Bool.false_eq_true, ↓reduceIte]
+    split
+    · rename_i r heq
+      rw [h_dq] at heq
+      injection heq with heq'
+      subst heq'
+      rfl
+    · rename_i heq; rw [h_dq] at heq; exact absurd heq (by simp)
+  -- ── Step 12: compose via the pipeline
+  have h_snt : scanNextTokenIx s₀ = .ok (some s_final) :=
+    scanNextTokenIx_via_content_dispatch s₀ s_pp s_ad s_final '"'
+      h_pp_eq h_struct h_s_ad_def h_check_ad h_flow_ad h_block_ad h_dc
+  -- ── Step 13: extract conclusions
+  refine ⟨s_final, h_snt, ?_, ?_, ?_⟩
+  · -- peek? = none: post-quote surface has empty chars
+    have h_sf_corr : ScannerSurfCorrIx s_final ⟨[], s_final.cursor.pos.col⟩ := by
+      refine ⟨?_, rfl, ?_, ?_⟩
+      · rw [h_sf_cursor]; exact h_corr_cAfter.chars_from
+      · rw [h_sf_cursor]; exact h_corr_cAfter.input_prefix
+      · intro i hi h0
+        -- s_final.indents = s_ad.indents = s_pp.indents
+        have h_sf_ids : s_final.indents = s_ad.indents := rfl
+        have hi' : i < s_pp.indents.size := h_ad_ids ▸ h_sf_ids ▸ hi
+        have heq : s_final.indents[i]'hi = s_pp.indents[i]'hi' := by congr 1
+        rw [heq]; exact h_corr_pp.indent_cols_nonneg i hi' h0
+    exact peek_none_of_empty_surfIx s_final s_final.cursor.pos.col h_sf_corr
+  · rw [h_sf_fl]; exact h_ad_fl
+  · rw [h_sf_dp]; exact h_ad_dp
+
+/-! ### §3.3  `scan_accepts_emitScalarIx` (SS2 wrapper)
+
+Thin wrapper composing `scanNextTokenIx_emitScalar_init` (first
+iteration: `'"'` → scalar token) with `scanNextTokenIx_eof`
+(second iteration: EOF → `.ok none`) via `scanLoopIx_two_iter`,
+plus the BOM-check no-op (first char is `'"'`, not `'﻿'`).
+Indexed twin of `scan_accepts_emitScalar` (legacy 3500–3532). -/
+
+/-- The scanner accepts any double-quoted scalar produced by the
+    emitter: `scanFilteredIx (emitScalar content)` succeeds. -/
+theorem scan_accepts_emitScalarIx (content : String) :
+    ∃ tokens, scanFilteredIx (L4YAML.Emit.emitScalar content) = .ok tokens := by
+  -- Reduce to: ∃ toks, scanIx (emitScalar content) = .ok toks
+  suffices h : ∃ toks, scanIx (L4YAML.Emit.emitScalar content) = .ok toks by
+    obtain ⟨toks, h⟩ := h
+    refine ⟨{ tokens := toks.tokens.filter fun t => t.token != YamlToken.placeholder }, ?_⟩
+    unfold scanFilteredIx; rw [h]
+  -- ── First iteration: scanNextTokenIx s₀ = .ok (some s₁) via SS2 helper
+  obtain ⟨s₁, h_snt1, h_peek1, h_flow1, h_dp1⟩ :=
+    scanNextTokenIx_emitScalar_init content
+  -- ── Second iteration: scanNextTokenIx s₁ = .ok none (EOF)
+  have h_snt2 : scanNextTokenIx s₁ = .ok none := scanNextTokenIx_eof s₁ h_peek1
+  -- ── BOM check: first char is '"', not '﻿', so the match falls through
+  have h_size := emitScalar_utf8ByteSize_ge content
+  have h_fuel : ((L4YAML.Emit.emitScalar content).utf8ByteSize + 1) * 4 ≥ 2 := by omega
+  -- Build ScannerSurfCorrIx at the BOM-check entry state, derive peek? = some '"'
+  have h_toList : (L4YAML.Emit.emitScalar content).toList =
+      '"' :: ((L4YAML.Emit.escapeString content).toList ++ ['"']) := by
+    rw [emitScalar_toList]; rfl
+  have h_corr₀ : ScannerSurfCorrIx
+      (input := L4YAML.Emit.emitScalar content)
+      (ScannerStateIx.mk' (L4YAML.Emit.emitScalar content))
+      ⟨'"' :: ((L4YAML.Emit.escapeString content).toList ++ ['"']), 0⟩ := by
+    have h := initial_corrIx (L4YAML.Emit.emitScalar content)
+    rw [h_toList] at h
+    exact h
+  have h_corr_s₀ : ScannerSurfCorrIx
+      ((ScannerStateIx.mk' (L4YAML.Emit.emitScalar content)).emit YamlToken.streamStart)
+      ⟨'"' :: ((L4YAML.Emit.escapeString content).toList ++ ['"']), 0⟩ :=
+    ScannerSurfCorrIx_transfer h_corr₀ rfl rfl rfl
+  have ⟨h_pk₀, _⟩ := peek_of_chars_consIx_state
+    ((ScannerStateIx.mk' (L4YAML.Emit.emitScalar content)).emit YamlToken.streamStart)
+    '"' ((L4YAML.Emit.escapeString content).toList ++ ['"']) 0 h_corr_s₀
+  -- ── Reduce scanIx to scanLoopIx (BOM match falls through on '"')
+  have h_scan_eq : scanIx (L4YAML.Emit.emitScalar content)
+      = scanLoopIx
+          ((ScannerStateIx.mk' (L4YAML.Emit.emitScalar content)).emit YamlToken.streamStart)
+          (((L4YAML.Emit.emitScalar content).utf8ByteSize + 1) * 4) := by
+    unfold scanIx
+    dsimp only []
+    -- Reduce peek? to some '"' and the match arm
+    have h_pk_emit :
+        ((ScannerStateIx.mk' (L4YAML.Emit.emitScalar content)).emit YamlToken.streamStart).peek?
+          = ((ScannerStateIx.mk' (L4YAML.Emit.emitScalar content))).peek? := rfl
+    rw [h_pk_emit]
+    show scanLoopIx
+      (match (ScannerStateIx.mk' (L4YAML.Emit.emitScalar content)).peek? with
+        | some '﻿' => _ | _ => _) _ = _
+    rw [show (ScannerStateIx.mk' (L4YAML.Emit.emitScalar content)).peek? = some '"' from h_pk₀]
+    -- The match on `some '"'` reduces to the fall-through branch (`_ => s`).
+    rfl
+  rw [h_scan_eq]
+  exact scanLoopIx_two_iter h_fuel h_snt1 h_snt2 h_flow1 h_dp1
 
 end L4YAML.Proofs.Indexed.EmitterScannability.EmitScans

@@ -1820,28 +1820,50 @@ not in-place axiom-to-theorem promotion — the latter is impossible
 when the axiom's hypothesis is strictly weaker than what the
 stronger lemma derives).
 
-**Next session**: **Step 6f.3b3.emitscans.toplevel SS2 —
-`scan_accepts_emitScalarIx` + `scanNextTokenIx_emitScalar_init`** (legacy
-`Proofs/Output/EmitterScannability.lean` 3333–3532, ~200 LOC). The scalar
-prerequisite twin for the SS3 composition theorem. `.toplevel` was
-**replanned at port time into 3 sub-sessions** (see Reflection 144) when
-SS1 surfaced that the legacy ~120-LOC `emit_produces_valid_yamlIx` has
-three prerequisite twins the indexed substrate lacks. SS1 (easy prereqs:
-`scanNextTokenIx_flow_open_seq_init` in Endpoint.lean §6 +
-`scanFilteredIx_exists_of_isOk` in EmitScans.lean §3) **landed 2026-05-27**
-at 91/91, pure-triple. SS2 targets the top-level scalar init twin: the
-preprocess (§2 `scanNextTokenIx_preprocess_init_state` is already done)
-+ structural-dispatch + `dispatchContent` quote-arm + `scanDoubleQuotedIx`
-composition at `inFlow = false` (rather than the in-flow variant
-`scanNextTokenIx_flow_scanDoubleQuoted` SS3 of `.flowpair` shipped).
-**Axiom inheritance**: SS2 will pick up the inherited native_decide budget
-(per Reflection 142) the same way the SS3-induction's scalar arm did.
-Target file: Endpoint.lean §7 (the scalar init helper) + EmitScans.lean §3
-(thin wrapper). After SS2, **SS3** ships the actual composition theorem
-(`emit_produces_valid_yamlIx`, ~120 LOC). After SS3, file-level
-`.emitscans` closes (10 of 10 sub-sessions landed; the 7-→-10 jump is
-the SS1/SS2/SS3 split of the original `.toplevel` work-unit).
+**Next session**: **Step 6f.3b3.emitscans.toplevel SS3 —
+`emit_produces_valid_yamlIx`** (legacy
+`Proofs/Output/EmitterScannability.lean` 8281–8398, ~120 LOC). The
+top-level composition theorem itself: induction over `Grammable v false`
+with the scalar case delegating to SS2's `scan_accepts_emitScalarIx`, the
+sequence case sandwiching `emit_scans_in_flowIx`'s `[`-body between
+`scanNextTokenIx_flow_open_seq_init` (SS1) and `_flow_close_seq_outermost`,
+the mapping case the same with `{`/`}` (`_open_mapping_init` from
+Endpoint.lean §5 + `_close_mapping_outermost` from §4), plus the empty
+`[]`/`{}` cases discharged by the SS1 decidability bridge
+`scanFilteredIx_exists_of_isOk` over a `(by native_decide)`. After SS3,
+file-level `.emitscans` closes (10 of 10 sub-sessions landed; the 7-→-10
+jump is the SS1/SS2/SS3 split of the original `.toplevel` work-unit).
 **`.parsestream` / `.roundtrip` come after `.emitscans` closes.**
+
+**`.emitscans.toplevel` SS2 (scalar prereq) LANDED 2026-05-27** —
+second sub-session of the port-time-replanned `.toplevel` step.
+Ships `scanNextTokenIx_emitScalar_init` (legacy 3333–3499) and its
+thin wrapper `scan_accepts_emitScalarIx` (legacy 3500–3532) in
+EmitScans.lean §3 (revised landing location from the Blueprint's
+original "Endpoint.lean §7"; both go together since the helper is
+only consumed by the wrapper — file-local SS2 deliverable). Threads
+the full `scanNextTokenIx` pipeline at the initial scanner state:
+preprocess (§2 `scanNextTokenIx_preprocess_init_state`) → four no-op
+dispatchers via the bundled `dispatchContentIx_quote` (ScanChain.lean
+§1.4) → `scanDoubleQuotedIx_escapeString_corr` (FlowScalar.lean §2)
+with `rest = []` → composition via `scanNextTokenIx_via_content_dispatch`
+→ `peek_none_of_empty_surfIx`. The thin wrapper composes that first
+iteration with `scanNextTokenIx_eof` via `scanLoopIx_two_iter`, the
+BOM-check no-op (first char is `'"'` ≠ `'﻿'`), and the filter to
+`scanFilteredIx`. **Two ports of legacy-pattern wisdom** (Reflection 145):
+(i) the `let input := ... ` / `let s₀ := ...` in the theorem signature
+caused whnf-elaboration thrashing on `emitScalar content`; lifted into
+the tactic body via post-`show` `let` bindings, with a 4× heartbeat
+bump on the `dispatchContent` reduction's 7-arm `simp only`/`split`;
+(ii) the legacy `(s₁.tokens.filter ...).map (·.val)` token-array
+equality was *trimmed* from the conclusion — only `peek? = none ∧
+flowLevel = 0 ∧ directivesPresent = false` is needed by
+`scanLoopIx_two_iter`, cutting ~80 LOC of filtered-token bookkeeping.
+**Axiom posture**: pure triple + the inherited `native_decide` budget
+from `scanDoubleQuotedIx`-cluster reductions (~45 axioms — same SS2b
+budget per Reflection 142, +2 from `emitScalar_toList` and
+`emitScalar_utf8ByteSize_ge`'s native_decide); zero new user-defined
+axioms. Built clean **91/91**, sorry/axiom/partial-free.
 
 **`.emitscans.flowpair` SS3 (the induction) LANDED 2026-05-27** —
 final sub-session of the `.flowpair` step, ports legacy 8014–8255 as §2d
@@ -2135,7 +2157,7 @@ section by section.
 | `.flowpair` SS2 (scenario prereqs) | ✅ LANDED | 2026-05-27 | ~420 / ~257 | `Scenarios/FlowSeqOpen.lean` (SS2a: `scanNextTokenIx_flow_open_seq_nested`, pure triple) + `Scenarios/FlowScalar.lean` (SS2b: `scanNextTokenIx_flow_scanDoubleQuoted` + cursor wrapper `scanDoubleQuotedIx_escapeString_corr`; triple + inherited native_decide budget) |
 | `.flowpair` SS3 (induction) | ✅ LANDED | 2026-05-27 | ~220 / ~241 | §2d (`emit_scans_in_flowIx`, `Grammable` induction; **zero new infra**, pure plumbing over SS1/SS2/§2c twins; pure triple + inherited native_decide budget — see Reflection 143) |
 | `.toplevel` SS1 (easy prereqs) | ✅ LANDED | 2026-05-27 | ~225 / ~210 | Endpoint.lean §6 (`scanNextTokenIx_flow_open_seq_init`, mechanical `[` analog of §5's `_open_mapping_init`) + EmitScans.lean §3 (`scanFilteredIx_exists_of_isOk`, decidability bridge); **zero new infra**, both pure-triple — see Reflection 144 |
-| `.toplevel` SS2 (scalar prereq) | ⏳ planned | — | — / ~200 | `scan_accepts_emitScalarIx` + its `scanNextTokenIx_emitScalar_init` helper (the top-level scalar init twin; preprocess + dispatch + `scanDoubleQuotedIx` composition at `inFlow = false`). Will inherit the same native_decide budget the indexed `scanDoubleQuotedIx` chain carries (Reflection 142). |
+| `.toplevel` SS2 (scalar prereq) | ✅ LANDED | 2026-05-27 | ~280 / ~200 | EmitScans.lean §3 (`scanNextTokenIx_emitScalar_init` + `scan_accepts_emitScalarIx`; threaded preprocess → 4 no-op dispatchers via `dispatchContentIx_quote` → `scanDoubleQuotedIx_escapeString_corr` with `rest = []` → `scanLoopIx_two_iter` wrapper; pure triple + 45 inherited native_decide axioms per Reflection 142, +2 from `emitScalar_toList`/`emitScalar_utf8ByteSize_ge`; trimmed legacy's filtered-token equality from conclusion — see Reflection 145) |
 | `.toplevel` SS3 (composition) | ⏳ planned | — | — / ~120 | §3 (`emit_produces_valid_yamlIx`, induction over `Grammable v false`; the three cases delegate to SS2 (scalar) + SS1 seq init (`[`) + Endpoint.lean §5 map init (`{`) + the just-landed §2d `emit_scans_in_flowIx`). |
 
 **`.emitscans` progress**: `.chaingrew` (§1) landed; `.flowvalue` fully
@@ -2159,12 +2181,23 @@ exists_of_isOk` (EmitScans.lean §3, the decidability bridge for empty
 `[]`/`{}` cases). `.toplevel` was **replanned into 3 sub-sessions** when
 SS1 surfaced that the legacy ~120-LOC composition theorem has three
 prerequisite twins the indexed substrate lacks (the seq init twin shipped
-now; `scan_accepts_emitScalarIx` + its top-level scalar init helper
-deferred to SS2; the composition itself to SS3) — see Reflection 144.
-So 8 of (now 10) `.emitscans` work-units landed (§1 + §2-SS1
-+ §2-SS2a + §2b + §2c + both SS2 scenario files + SS3 the induction +
-.toplevel SS1); `.toplevel` SS2 (scalar prereq) and SS3 (composition)
-remain. The §1 strict-variant track (`ScanChainGrewIx`) is
+in SS1; the scalar init twin + wrapper shipped in SS2; the composition
+itself in SS3) — see Reflection 144. **`.toplevel` SS2 (scalar prereq) also
+landed 2026-05-27** — `scanNextTokenIx_emitScalar_init` (legacy 3333–3499)
++ `scan_accepts_emitScalarIx` (legacy 3500–3532), both in EmitScans.lean §3
+(co-located with the wrapper rather than the originally-planned
+Endpoint.lean §7 since the helper is only consumed by the wrapper); the
+inflow → dispatchContent quote-arm → `scanDoubleQuotedIx` pipeline composes
+through `scanLoopIx_two_iter`. Two ports of legacy-pattern wisdom
+(Reflection 145): the `let input := ...` in the theorem signature caused
+whnf-elaboration thrashing — lifted into the tactic body via post-`show`
+`let` + a 4× heartbeat bump on the dispatchContent reduction; and the
+legacy filtered-token-array equality was *trimmed* from the conclusion
+(only `peek? = none ∧ flowLevel = 0 ∧ directivesPresent = false` is
+needed by `scanLoopIx_two_iter`, cutting ~80 LOC). So **9 of 10**
+`.emitscans` work-units landed (§1 + §2-SS1 + §2-SS2a + §2b + §2c
++ both SS2 scenario files + SS3 induction + .toplevel SS1 + .toplevel
+SS2); only `.toplevel` SS3 (the composition theorem) remains. The §1 strict-variant track (`ScanChainGrewIx`) is
 the substrate-agnostic plumbing; the §2 predicates define the in-flow
 scannability contract every downstream body and the now-landed
 `emit_scans_in_flowIx` induction consumed.
@@ -3094,6 +3127,67 @@ fixed by switching to `(by simp [Except.toBool])` after the free-variable
 `decide` failure) — but at ~10 LOC of total surface, those were one-line
 diagnostics, not architectural rethinks.
 
+**Reflection 145 (new): two elaboration-time pitfalls when the goal
+type contains an emitter call (`L4YAML.Emit.emitScalar content`), and
+the corresponding port-time disciplines.** SS2's
+`scanNextTokenIx_emitScalar_init` exposed two non-obvious elaboration
+costs that aren't visible in either the legacy proof or the existing
+indexed twins — both worth recording as port-time disciplines because
+they recur for every `inFlow = false` top-level twin downstream
+(`.parsestream`'s `parseStream_three_tokens_scalarIx` and
+`.roundtrip`'s `parseYamlRaw_emitScalar_valueIx` will face the same).
+
+(i) **`let` in the theorem signature is a whnf trap when the bound
+expression is an emitter call.** The natural form
+`theorem _ : let input := L4YAML.Emit.emitScalar content; let s₀ := … ;
+∃ s₁, scanNextTokenIx s₀ = …` reads cleanly, but every downstream
+elaboration step that mentions `s₀`'s type drags Lean into trying to
+`whnf` `L4YAML.Emit.emitScalar content` — which is an `escapeString` fold
+over `content.toList`, opaque without a concrete `content`. In SS2 this
+produced three concurrent `whnf` timeouts at 200k heartbeats: the theorem
+signature itself, the `dispatchContent` `simp only`/`split` reduction, and
+even the pre-existing `scanFilteredIx_exists_of_isOk` (which sits in the
+same file and shares the elaboration context). **Discipline**: keep the
+emitter call *inline* in the theorem signature
+(`(ScannerStateIx.mk' (L4YAML.Emit.emitScalar content)).emit YamlToken.streamStart`),
+then introduce `input` / `s₀` as tactic-body `let`s after a `show` that
+restates the goal — the locals shadow the inline term cleanly without
+poisoning the signature's elaboration context. (Note: `set` with
+introduced hypotheses isn't available in core Lean — only Mathlib.)
+
+(ii) **The dispatchContent `'"'` reduction's `simp only`/`split` is heavy
+in non-flow contexts even when it's lightweight in flow.** The same
+6-`show ('"' == 'X') = false from by decide`-lemmas-plus-`split` pattern
+that FlowScalar.lean §3 ports cleanly for `scanNextTokenIx_flow_
+scanDoubleQuoted` (inFlow path) trips the 200k heartbeat limit in
+EmitScans §3.2 for the analogous `inFlow = false` path — even with the
+inline-signature fix from (i). The cause: the dispatchContent function's
+chain of `if c == 'X' then ... if c == 'Y' then ...` wraps a heavy match
+arm; combined with whatever residual elaboration context the let-bound
+input still carries, the `simp only`/`split` work explodes. **Discipline**:
+bump `set_option maxHeartbeats 800000` on this single theorem (4×
+default; FlowScalar didn't need it because flow context preconditions
+short-circuit some `simp` rewrites). The bump is *one theorem only*,
+not file-level — a per-theorem `set_option ... in` placed *before* the
+docstring (placing `set_option` between docstring and `theorem` is a
+syntax error: the docstring must directly precede `theorem`).
+
+(iii) **Bonus disciplinary corollary**: legacy `(s₁.tokens.filter
+...).map (·.val) = #[...]` shape full-token-array equalities can be
+*trimmed* at port time when the downstream consumer (here
+`scan_accepts_emitScalarIx`'s `scanLoopIx_two_iter`) only needs the
+existential success + a few field equalities (`peek?`, `flowLevel`,
+`directivesPresent`). SS2 cut ~80 LOC of filtered-token bookkeeping
+from the legacy ~200-LOC helper, ending up at ~280 LOC actual vs
+~200 LOC planned — the 40% overrun is *not* heavyweight (the heavy
+parts are the inline pipeline composition pattern, which is verbatim
+from FlowScalar.lean §3); it's the discipline (i)+(ii) overhead plus
+the BOM-check reduction in the wrapper. **Lesson for `.parsestream`/
+`.roundtrip`**: when porting a legacy top-level helper that exposes a
+heavy token-array conclusion, look at the *callers* before assuming
+the conclusion shape must transfer — the minimal sufficient API
+trims often.
+
 **Step 6f.3b3.emitscans.toplevel SS1 (easy prereqs) LANDED 2026-05-27**
 (~225 LOC across two files: `Endpoint.lean` §6 ~200 LOC +
 `EmitScans.lean` §3 ~25 LOC). First sub-session of the **replanned**
@@ -3133,15 +3227,33 @@ Quot.sound]`, *zero* `native_decide` axioms. The previously-landed
 `native_decide` budget — SS1 does not widen the axiom set.
 
 **Axiom-discharge plan update**: `.toplevel` SS1 introduces zero new
-axiom debt. SS2 (`scan_accepts_emitScalarIx`) will inherit
-`scanDoubleQuotedIx`'s `native_decide` budget (the same 43 axioms
-inherited by `.flowpair` SS3 / SS2b — see Reflection 142). SS3 (the
-composition theorem) is pure plumbing and will not introduce new
-native_decide axioms beyond what its delegatees carry (per
-Reflection 143's "induction propagates but does not introduce
-native_decide" finding). **Phase 3 closure axiom count remains 0
-user-defined axioms** (`axiom`/`sorry`/`partial`-free); the
-native_decide budget remains within documented policy.
+axiom debt. **SS2 LANDED 2026-05-27** with the predicted
+`scanDoubleQuotedIx` `native_decide` budget — concretely
+`scanNextTokenIx_emitScalar_init` carries pure triple + 45 native_decide
+axioms and `scan_accepts_emitScalarIx` 46 (the +2 vs SS2b's 43 are
+`emitScalar_toList._native.*` and `emitScalar_utf8ByteSize_ge._native.*`,
+both ported from legacy and within the same per-decl trust ceiling
+documented in Reflection 142). SS3 (the composition theorem) is pure
+plumbing and will not introduce new native_decide axioms beyond what
+its delegatees carry (per Reflection 143's "induction propagates but
+does not introduce native_decide" finding). **Phase 3 closure axiom
+count remains 0 user-defined axioms** (`axiom`/`sorry`/`partial`-free);
+the native_decide budget remains within documented policy.
+
+**`.toplevel` SS2 axiom summary** (recorded 2026-05-27 for the
+discharge-plan ledger):
+
+  - `scanNextTokenIx_emitScalar_init`: `[propext, Classical.choice,
+    Quot.sound]` + 45 native_decide axioms (43 from
+    `scanDoubleQuotedIx`-cluster reductions per Reflection 142;
+    +2 from `emitScalar_toList` + `emitScalar_utf8ByteSize_ge`).
+  - `scan_accepts_emitScalarIx`: pure triple + 46 native_decide axioms
+    (the +1 vs the helper comes from the wrapper's path through
+    `Except.toBool` reduction in `scanFilteredIx_exists_of_isOk` —
+    expected, on-policy).
+  - All native_decide axioms are inherited from already-budgeted
+    cluster sources; **no new per-decl native_decide axiom names**
+    are introduced by SS2 itself.
 
 **Step 6f.3b3.emitscans.flowpair SS1 (pair-list track) LANDED 2026-05-27**
 (~290 LOC actual vs. ~210 LOC for the pair-list portion of the ~388 LOC
@@ -13476,16 +13588,41 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                     discharge back to the existential SS3 expects).
                 Aggregator 91/91, sorry/axiom/partial-free,
                 `#print axioms` pure triple for both. **Zero new infra**.
-              ▸ **SS2 (scalar prereq)** ⏳ planned *(~200 LOC)*.
-                `scan_accepts_emitScalarIx` + `scanNextTokenIx_emitScalar_
-                init` — the top-level scalar init twin (preprocess +
-                structural-none + dispatchContent quote-arm +
-                `scanDoubleQuotedIx` at `inFlow = false`; distinct from
-                the in-flow variant `scanNextTokenIx_flow_
-                scanDoubleQuoted` `.flowpair` SS2b shipped). Target
-                file: Endpoint.lean §7 (the helper) + EmitScans.lean §3
-                (the thin wrapper). Will inherit the indexed-double-quoted
-                `native_decide` budget (Reflection 142).
+              ▸ **SS2 (scalar prereq)** ✅ **LANDED** *(~280 LOC)*.
+                `scanNextTokenIx_emitScalar_init` (legacy 3333–3499) +
+                `scan_accepts_emitScalarIx` (legacy 3500–3532), both in
+                EmitScans.lean §3 (revised landing location from the
+                originally-planned Endpoint.lean §7 — the helper is only
+                consumed by the wrapper, so co-locating both in §3 keeps
+                the SS2 deliverable file-local). Threads the full
+                `scanNextTokenIx` pipeline at the initial scanner state:
+                preprocess (§2 `scanNextTokenIx_preprocess_init_state`)
+                → four no-op dispatchers via the bundled
+                `dispatchContentIx_quote` (ScanChain.lean §1.4)
+                → `scanDoubleQuotedIx_escapeString_corr` (FlowScalar.lean
+                §2) with `rest = []`
+                → composition via `scanNextTokenIx_via_content_dispatch`
+                → `peek_none_of_empty_surfIx`. The thin wrapper composes
+                that first iteration with `scanNextTokenIx_eof` via
+                `scanLoopIx_two_iter`, plus the BOM-check no-op (first
+                char is `'"'` ≠ `'﻿'`) and the placeholder-filter step.
+                **Reflection 145** records two port-time refinements:
+                (i) the `let input := L4YAML.Emit.emitScalar content`
+                lifted from the theorem signature into the tactic body
+                (post-`show`) to dodge whnf-elaboration thrashing on the
+                input string, with a 4× `maxHeartbeats` bump on the
+                dispatchContent `simp only`/`split`; (ii) the legacy
+                `(s₁.tokens.filter ...).map (·.val)` token-array
+                equality was *trimmed* from the conclusion (only
+                `peek? = none ∧ flowLevel = 0 ∧ directivesPresent = false`
+                is needed by `scanLoopIx_two_iter`, cutting ~80 LOC of
+                filtered-token bookkeeping). Aggregator **91/91**,
+                sorry/axiom/partial-free, `#print axioms` pure triple +
+                **45/46** inherited native_decide axioms per Reflection 142
+                + 2 from `emitScalar_toList`/`_utf8ByteSize_ge`. **Zero
+                new infra** (uses `dispatchContentIx_quote` already in
+                ScanChain.lean §1.4; `scanDoubleQuotedIx_escapeString_corr`
+                already in FlowScalar.lean §2).
               ▸ **SS3 (composition)** ⏳ planned *(~120 LOC)*. The actual
                 main theorem `emit_produces_valid_yamlIx (v : YamlValue)`
                 `(hg : Grammable v false)`: `∃ tokens, scanFilteredIx
