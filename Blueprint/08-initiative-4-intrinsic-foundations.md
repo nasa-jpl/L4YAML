@@ -1820,18 +1820,57 @@ not in-place axiom-to-theorem promotion — the latter is impossible
 when the axiom's hypothesis is strictly weaker than what the
 stronger lemma derives).
 
-**Next session**: **Step 6f.3b3.roundtrip.filterinfra**
+**Next session**: **Step 6f.3b3.roundtrip.maintheorem**
 (`Proofs/Output/IndexedEmitterScannability/RoundTrip.lean`, append
-to `.fidelity`'s landed block; legacy lines 8875–8968, ~94 LOC,
-single session). §5.4.G filtered-token tracking:
-`emitPairList_toList_ne_nilIx`, `scanFlowSequenceEnd_tokens_eqIx`,
-`scanFlowMappingEnd_tokens_eqIx`,
-`scanNextToken_flow_close_seq_outermost_extIx`,
-`scanNextToken_flow_close_mapping_outermost_extIx`. Mostly value-level
-(`emitPairList`) + indexed-emit equational unfoldings — the latter two
-"flow close outermost ext" facts may carry inherited per-arm
-`native_decide` from the scanner-side flow-close dispatch (parallel
-to legacy `scanFlowSequenceEnd_tokens_eq`/`scanFlowMappingEnd_tokens_eq`).
+to `.fidelity` + `.filterinfra`'s landed blocks; legacy lines
+8969–10500, ~1500 LOC plan, **almost certainly needs further
+sub-split at port time** — target 3 sub-sessions keyed to
+growth-chain vs body-characterization vs structure-proof phases).
+Main theorem: filtered growth through `scanNextTokenIx` —
+`scanNextToken_filtered_growsIx`, `ScanChain_filtered_growsIx`,
+`ScanChain_filtered_prefixIx`, `scanFiltered_boundary_tokensIx`,
+the body characterizations (`emitList_body_filtered_characterizationIx`,
+`emitPairList_body_filtered_characterizationIx`), and the non-empty
+structure theorems
+(`scanFiltered_emitSeq_nonempty_structureIx`,
+`scanFiltered_emitMap_nonempty_structureIx`,
+`parseStream_emitSequenceIx`, `parseStream_emitMappingIx`,
+`parseStream_accepts_emit_tokensIx`,
+`emit_produces_single_documentIx`, `emit_parse_succeedsIx`,
+`emit_parseYaml_succeedsIx`). The 7-arm `scanNextTokenIx`
+dispatch case-split on `scanNextToken_filtered_growsIx` is the
+key new primitive (expected to carry its own `native_decide`
+flares).
+
+**`.roundtrip.filterinfra` LANDED 2026-05-28** — second of 4
+`.roundtrip` sub-sessions. Ships §5.4.G.2 emit-string structure
+(`emitPairList_toList_ne_nilIx`, verbatim value-level port via
+`emitPairList_first_charIx`) + §5.4.G.3 flow-close tokens equation
+(`scanFlowSequenceEnd_tokens_eqIx`, `scanFlowMappingEnd_tokens_eqIx`
+— sharper `Array.push` form on top of the existing
+`scanFlowSequenceEndIx_tokens_eq` / `scanFlowMappingEndIx_tokens_eq`
+in `IndexedScannerPlainScalarValid.lean` §12f) + §5.4.G.4 flow-close
+outermost extensions (`scanNextToken_flow_close_seq_outermost_extIx`,
+`scanNextToken_flow_close_mapping_outermost_extIx` — the two
+heavy lemmas: from `flowLevel = 1` + `peek? = ']'/'}'` only, one
+`scanNextTokenIx` step yields a result state whose filtered token
+array gains exactly the appropriate flow-end token). **Axiom posture**:
+pure triple on all 5 theorems; **zero new user-defined or
+`native_decide` axiom names**. The two outermost-ext theorems
+compose 7 indexed-substrate primitives each (`scanNextTokenIx_
+preprocess_flow`, `saveSimpleKeyIx_*` simp lemmas + `_cursor` +
+`_filter_placeholder`, `dispatchStructural_none_flow`,
+`checkBlockFlowIndent_ok_close_{bracket,brace}`,
+`dispatchFlowIndicators_close_{bracket,brace}`,
+`scanNextTokenIx_via_flow_dispatch`, `scanFlow{Sequence,Mapping}EndIx_
+detail`, `ScannerSurfCorrIx_transfer`, `peek_none_of_empty_surfIx`,
+`Array.filter_push`) — all already provisioned by FlowMonoChain
+(Preserve.Helpers / Sync.Detail / Sync.Scenarios.Preflow /
+Sync.Invariant / Maintenance.Pipeline), so this step shipped as
+**~3.4× over LOC plan** but on the cleanest possible axiom
+posture (~324 LOC actual vs. ~94 LOC budgeted — the indexed
+substrate's cursor/IxToken plumbing is verbose at the use site
+even when the underlying primitives are clean). See Reflection 149.
 
 **`.roundtrip.fidelity` LANDED 2026-05-28** — first of 4
 `.roundtrip` sub-sessions. Ships §5.1 compose invariance for scalars
@@ -3420,6 +3459,96 @@ growsIx` is a fresh 7-arm dispatch case-split with its own
 `native_decide` flares), keep the pre-port rate — the substrate
 won't yet have provisioned the underlying fact.
 
+**Reflection 149 (new): the "use-site verbosity penalty" — even when
+every needed primitive is provisioned and the proof structure ports
+verbatim, the indexed substrate's cursor + IxToken plumbing can
+inflate LOC by 3-5× at the use site.** `.roundtrip.filterinfra` shipped
+at ~324 LOC vs. ~94 plan (~3.4× over) with pure-triple axioms on all 5
+theorems and zero new axioms. The under-budget axiom side and the
+over-budget LOC side are *independent signals* — both can happen on
+the same sub-step. The arithmetic decomposes cleanly:
+
+  - **§5.4.G.2 (`emitPairList_toList_ne_nilIx`)**: 5 LOC. Value-level
+    verbatim port. Tracks plan.
+  - **§5.4.G.3 (`scanFlow{Sequence,Mapping}End_tokens_eqIx`)**: ~25
+    LOC combined. Each 3-line `rw [scanFlow*EndIx_tokens_eq]; rfl`
+    on top of the existing `_tokens_eq` lemma in PlainScalarValid
+    §12f. The signature itself takes 8 lines because the explicit
+    `IxToken.mk' (input := input) s.cursor.pos … s.cursor.pos
+    (Nat.le_refl _) s.cursor.posBound` is more verbose than legacy's
+    `{ pos := s.currentPos, val := … }`. Tracks plan.
+  - **§5.4.G.4 (`scanNextToken_flow_close_{seq,mapping}_outermost_
+    extIx`)**: ~290 LOC combined (~140 each). The legacy proofs are
+    ~80 LOC each (`scanNextToken_flow_close_seq_outermost_ext` at
+    legacy 8086, `_close_mapping_outermost_ext` at 9176). The
+    indexed twin runs **~75% longer per theorem** because:
+
+    - Each `simp only [s_ad]; split <;> exact <preservation>`
+      branch for the `allowDirectives` ite-let needs 6 invocations:
+      `_flowLevel` (fully-qualified to disambiguate
+      `ScannerPlainScalarValid` vs. `FlowMonoChain` exports — see
+      below), `_directivesPresent`, `_cursor` (used twice — for
+      both col and offset projection), `_indents`,
+      `_filter_placeholder`. Legacy uses single-line field accessors
+      (`saveSimpleKey_preserves_inFlow` etc.).
+    - `ScannerSurfCorrIx_transfer` takes 3 hypotheses (offset, col,
+      indents) vs. legacy `ScannerSurfCorr_transfer`'s 5 (input,
+      offset, inputEnd, col, indents) — saves 2 lines but needs
+      the offset-derivation chain through `h_ad_cur` /
+      `saveSimpleKeyIx_cursor`.
+    - The IxToken construction at the filter-push site:
+      ```
+      let new_ixtok : Indexed.IxToken input :=
+        Indexed.IxToken.mk' (input := input) s_ad.cursor.pos
+          YamlToken.flowSequenceEnd s_ad.cursor.pos
+          (Nat.le_refl _) s_ad.cursor.posBound
+      ```
+      is a 4-line let-binding vs. legacy's 1-line
+      `{ pos := s_ad.currentPos, val := .flowSequenceEnd }`.
+    - The `_tokens_eq` chain needs both the dedicated `_tokens_eqIx`
+      sharper variant (§5.4.G.3) AND the underlying `_tokens_eq`
+      from PlainScalarValid §12f — two `rw`s where legacy fuses into
+      one.
+
+  - **Ambiguity gotcha** (cost: 4 lines, 2 namespaces fully-qualified):
+    `saveSimpleKeyIx_flowLevel` is exported from *both*
+    `L4YAML.Proofs.Indexed.ScannerPlainScalarValid` AND
+    `L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain` (the
+    latter file lives at `FlowMonoChain/Preserve/Helpers.lean`).
+    Because RoundTrip.lean opens both, the bare name triggers
+    "Ambiguous term"; must write `FlowMonoChain.saveSimpleKeyIx_
+    flowLevel` explicitly. The other 8 `saveSimpleKeyIx_*` simp
+    lemmas (`_indents`, `_inFlow`, `_directivesPresent`,
+    `_allowDirectives`, `_flowStack`, `_needIndentCheck`,
+    `_explicitKeyLine`, `_cursor`) are unique to one namespace and
+    can be referred to unqualified. **Lesson**: when porting a
+    multi-primitive composition, do a `grep -rn "namespace ...
+    " | head` on the open list to identify any
+    double-exports *before* writing the proof; surface the
+    qualifiers in the first draft to avoid mid-build clarification
+    edits.
+
+The combined `.fidelity` (~165 LOC, -28%) + `.filterinfra` (~324 LOC,
++245%) is ~489 LOC actual vs. ~324 LOC plan (+51% over).
+*Reflection 148's claim that "wrappers ship at 3-5 lines each"* held
+for §5.4.G.1 (prefix/tokens primitives) and §5.4.G.2-3 (emit-string +
+flow-close-tokens-eq) but **breaks for §5.4.G.4** (close-bracket
+outermost-ext), where the wrapper is itself a 13-primitive
+composition with cursor-plumbing throughout. **Lesson for
+`.maintheorem`**: when a sub-step contains *both* aggregation lemmas
+*and* a multi-primitive composition wrapper, partition the LOC
+estimate accordingly — aggregations at 3-5 lines/theorem, compositions
+at the use-site verbosity rate (50-80% over legacy at the indexed
+substrate). `.maintheorem`'s `scanNextToken_filtered_growsIx` is a
+*new primitive* (Reflection 148's "exception" case), so it doesn't
+fit either pattern — keep the pre-port rate there. The
+remaining `.maintheorem` lemmas (`ScanChain_filtered_growsIx`,
+`scanFiltered_boundary_tokensIx`, the body characterizations) are
+mostly aggregations, but the structure-proof half
+(`scanFiltered_emitSeq_nonempty_structureIx`, ...) likely contains
+several `.flow_close_*_outermost_extIx`-shaped compositions and
+should be budgeted at the higher verbosity rate.
+
 **Step 6f.3b3.emitscans.toplevel SS1 (easy prereqs) LANDED 2026-05-27**
 (~225 LOC across two files: `Endpoint.lean` §6 ~200 LOC +
 `EmitScans.lean` §3 ~25 LOC). First sub-session of the **replanned**
@@ -3584,10 +3713,52 @@ of 4 `.roundtrip` sub-session axiom ledgers):
   - **Phase-3 closure axiom count unchanged at 0 user-defined
     axioms** (`axiom`/`sorry`/`partial`-free). The `.roundtrip.fidelity`
     sub-step represents the cleanest axiom outcome of any `.roundtrip`
-    sub-step (`.filterinfra` may add minor `native_decide` inherited
-    from flow-close arm dispatch; `.maintheorem` is expected to
-    introduce a fresh `native_decide` budget on
+    sub-step (`.filterinfra` also pure triple — see below; `.maintheorem`
+    is expected to introduce a fresh `native_decide` budget on
     `scanNextToken_filtered_growsIx`'s 7-arm structural dispatch).
+
+**`.roundtrip.filterinfra` axiom summary** (recorded 2026-05-28 — second
+of 4 `.roundtrip` sub-session axiom ledgers):
+
+  - `emitPairList_toList_ne_nilIx`: **pure triple**
+    `[propext, Classical.choice, Quot.sound]`. Inherits triple from
+    `emitPairList_first_charIx` (`EmitScans.lean` §...); the
+    existential unpacking + `rw` + `List.cons_ne_nil` contributes
+    nothing beyond.
+  - `scanFlowSequenceEnd_tokens_eqIx`, `scanFlowMappingEnd_tokens_eqIx`:
+    **pure triple**. The `rw [scanFlow*EndIx_tokens_eq]` then `rfl`
+    proofs inherit the triple from `scanFlow{Sequence,Mapping}EndIx_
+    tokens_eq` in PlainScalarValid §12f; the final `rfl` step exposes
+    `(s.emit T).tokens.tokens = s.tokens.tokens.push (IxToken.mk' …)`
+    which is structural by definition of `ScannerStateIx.emit` and
+    `TokenStream.push`.
+  - `scanNextToken_flow_close_seq_outermost_extIx`,
+    `scanNextToken_flow_close_mapping_outermost_extIx`: **pure triple**.
+    Composes 13 indexed-substrate primitives across 5 FlowMonoChain
+    sub-modules (`Preserve.Helpers` §2 + §5, `Sync.Detail` §4–§5,
+    `Sync.Scenarios.Preflow`, `Sync.Invariant` §7,
+    `Maintenance.Pipeline` §1–§3) plus PlainScalarValid §12f. **The
+    inherited axiom budget is the union of those primitives' cones**,
+    which collectively stay on the pure triple — *no* `native_decide`
+    flares surface at this layer because the close-bracket / close-brace
+    dispatch arms are reduced via `simp only [show … from by decide]`
+    inline-evaluation (in `dispatchFlowIndicators_close_{bracket,brace}`'s
+    own proof) rather than via `native_decide` at the top-level
+    propositional bound.
+  - **Zero new user-defined or `native_decide` axiom names** introduced
+    in this session. The 7-substrate-primitive composition for each
+    outermost-ext theorem doesn't surface any new axioms because every
+    primitive was already exercised by upstream FlowMonoChain Sync
+    consumers (the SS2 scalar prereq, the SS3 emit-scalar chain, and
+    the `.emitscans.flowpair` / `.flowvalue` consumers).
+  - **Phase-3 closure axiom count unchanged at 0 user-defined
+    axioms**. `.filterinfra` matches `.fidelity`'s clean posture.
+    The next sub-step `.maintheorem` will likely break this streak:
+    `scanNextToken_filtered_growsIx` has the 7-arm `scanNextToken`
+    dispatch that legacy discharges via heavy `native_decide`
+    machinery (legacy `set_option maxHeartbeats 3200000`); the indexed
+    twin will need either the same `native_decide` budget or a per-arm
+    refactor.
 
 **Step 6f.3b3.emitscans.flowpair SS1 (pair-list track) LANDED 2026-05-27**
 (~290 LOC actual vs. ~210 LOC for the pair-list portion of the ~388 LOC
@@ -14098,14 +14269,41 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
             FlowMonoChain Sync Invariant §5). Built clean 99/99,
             full project 491/491, sorry/axiom/partial-free. See
             Reflection 148.
-          ▸ **6f.3b3.roundtrip.filterinfra** *(~94 LOC; legacy lines
-            8875–8968)*. §5.4.G filtered token tracking:
-            `emitPairList_toList_ne_nilIx`,
+          ▸ **6f.3b3.roundtrip.filterinfra** ✅ **LANDED 2026-05-28**
+            *(~324 LOC actual / ~94 LOC plan; **~3.4× over budget**;
+            legacy lines 8875–9262)*. §5.4.G filtered token tracking:
+            `emitPairList_toList_ne_nilIx` (verbatim value-level),
             `scanFlowSequenceEnd_tokens_eqIx`,
-            `scanFlowMappingEnd_tokens_eqIx`,
+            `scanFlowMappingEnd_tokens_eqIx` (sharper `Array.push`
+            forms; both 3-line `rw`/`rfl` chains on top of the existing
+            `scanFlow*EndIx_tokens_eq` in
+            `IndexedScannerPlainScalarValid.lean` §12f),
             `scanNextToken_flow_close_seq_outermost_extIx`,
-            `scanNextToken_flow_close_mapping_outermost_extIx`. Single
-            session.
+            `scanNextToken_flow_close_mapping_outermost_extIx` (the two
+            heavy lemmas — ~140 LOC each — composing
+            `scanNextTokenIx_preprocess_flow`,
+            `saveSimpleKeyIx_*` simp lemmas + `_cursor` +
+            `_filter_placeholder`, `dispatchStructural_none_flow`,
+            `checkBlockFlowIndent_ok_close_{bracket,brace}`,
+            `dispatchFlowIndicators_close_{bracket,brace}`,
+            `scanNextTokenIx_via_flow_dispatch`,
+            `scanFlow{Sequence,Mapping}EndIx_detail`,
+            `ScannerSurfCorrIx_transfer`, `peek_none_of_empty_surfIx`,
+            `Array.filter_push`). **Axiom posture**: pure triple
+            `[propext, Classical.choice, Quot.sound]` on all 5 theorems.
+            **Zero new user-defined or `native_decide` axiom names**;
+            the substrate cone was fully provisioned by FlowMonoChain
+            (`Preserve.Helpers` §2 + §5; `Sync.Detail` §4–§5;
+            `Sync.Scenarios.Preflow`; `Sync.Invariant` §7;
+            `Maintenance.Pipeline` §1–§3) and PlainScalarValid §12f.
+            **LOC overshoot is cursor/IxToken plumbing verbosity at
+            the use site** (legacy uses `s.col` / `{ pos := s.currentPos,
+            val := … }`; indexed needs `s.cursor.pos.col` /
+            `IxToken.mk' s.cursor.pos … s.cursor.pos (Nat.le_refl _)
+            s.cursor.posBound` with the matching field-preservation
+            plumbing through saveSimpleKeyIx + allowDirectives update).
+            Built clean 99/99, full project 491/491,
+            sorry/axiom/partial-free. See Reflection 149.
           ▸ **6f.3b3.roundtrip.maintheorem** *(~1500 LOC; legacy lines
             8969–10500)*. Main theorem: filtered growth through
             `scanNextTokenIx`. Includes

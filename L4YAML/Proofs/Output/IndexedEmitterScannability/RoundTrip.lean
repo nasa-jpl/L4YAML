@@ -4,11 +4,13 @@ Released under Apache 2.0 license as described in the file LICENSE.
 -/
 import L4YAML.Proofs.Output.IndexedEmitterScannability.ParseStream
 
-/-! # `IndexedEmitterScannability.RoundTrip` — Phase 3 Step 6f.3b3.roundtrip.fidelity
+/-! # `IndexedEmitterScannability.RoundTrip` — Phase 3 Step 6f.3b3.roundtrip.{fidelity, filterinfra}
 
 **Status**: §5.1 (compose invariance for scalars) + §5.4.G prefix-and-tokens
-infrastructure landed. Indexed twins of legacy `EmitterScannability.lean`
-lines 8490–8530 (§5.1) and 8875–8968 (§5.4.G prefix/tokens fragment).
+infrastructure + §5.4.G filtered-token tracking (emit-string structure,
+flow-close tokens equation, outermost-close existential extensions) landed.
+Indexed twins of legacy `EmitterScannability.lean` lines 8490–8530 (§5.1) and
+8875–9262 (§5.4.G).
 
 ## Scope (mapping to legacy `EmitterScannability.lean`)
 
@@ -19,8 +21,8 @@ lines 8490–8530 (§5.1) and 8875–8968 (§5.4.G prefix/tokens fragment).
     operate on `YamlValue`, `Scalar`, `YamlDocument` and don't
     depend on the indexed scanner state; they port verbatim.
 
-  - **§5.4.G  Filtered-tokens / prefix-preservation tracking** (legacy
-    lines 8875–8967): `unwindIndents_noop_short_stackIx`,
+  - **§5.4.G.1  Prefix and tokens primitives** (legacy lines 8875–8967):
+    `unwindIndents_noop_short_stackIx`,
     `scanFiltered_tokens_eq_of_chain_short_stackIx`,
     `ScanChainIx_tokens_mono`, `scanNextTokenIx_prefix_and_sk_inv`,
     `ScanChainIx_preserves_raw_prefix`. **Indexed-substrate**.
@@ -28,9 +30,28 @@ lines 8490–8530 (§5.1) and 8875–8968 (§5.4.G prefix/tokens fragment).
     Invariant) into the emitter-state setting where the indent
     stack is at most a singleton sentinel.
 
-Subsequent sub-steps populate §5.4.G's filtered-token tracking
-(`filterinfra`), the main filtered-growth theorem (`maintheorem`),
-and the universal round-trip capstone (`universal`).
+  - **§5.4.G.2  Emit-string structure** (legacy line 9057):
+    `emitPairList_toList_ne_nilIx`. Value-level fact about the
+    emitter output string shape.
+
+  - **§5.4.G.3  Flow-close tokens equation** (legacy lines 9064–9078):
+    `scanFlowSequenceEnd_tokens_eqIx`, `scanFlowMappingEnd_tokens_eqIx`.
+    Sharper variants of the existing `scanFlow*EndIx_tokens_eq`
+    (`IndexedScannerPlainScalarValid.lean` §12f) that expose the
+    underlying `Array.push` shape with the explicit `IxToken`.
+
+  - **§5.4.G.4  Flow-close outermost extensions** (legacy lines
+    9080–9262): `scanNextToken_flow_close_seq_outermost_extIx`,
+    `scanNextToken_flow_close_mapping_outermost_extIx`. The
+    close-bracket / close-brace existential extension lemmas: from
+    a state with `flowLevel = 1` and `peek? = ']'`/`'}'` only, one
+    `scanNextTokenIx` step produces a result state whose filtered
+    token array is the input filtered array with `.flowSequenceEnd`
+    / `.flowMappingEnd` appended (and `flowLevel = 0`,
+    `directivesPresent = false`, `peek? = none`, indents preserved).
+
+Subsequent sub-steps populate the main filtered-growth theorem
+(`maintheorem`), and the universal round-trip capstone (`universal`).
 
 ## Phase 3 Step 6f cutover
 
@@ -58,6 +79,7 @@ open L4YAML.Proofs.Indexed.EmitterScannability.ScanChain
 open L4YAML.Proofs.Indexed.Composition
 open L4YAML.Proofs.Indexed.Grammable
 open L4YAML.Proofs.Indexed.ScannerCorrectness
+open L4YAML.Proofs.Indexed.ScannerPlainScalarValid
 
 /-! ## §5  Content Fidelity Infrastructure
 
@@ -232,5 +254,299 @@ theorem ScanChainIx_preserves_raw_prefix {input : String}
     have h_adds := scanNextTokenIx_tokens_size_le h_snt
     have ⟨h_pres, h_inv'⟩ := scanNextTokenIx_prefix_and_sk_inv _ _ h_snt n₀ h_n₀ h_inv
     exact (ih (Nat.le_trans h_n₀ h_adds) h_inv').trans (h_pres i hi)
+
+/-! ### §5.4.G.2  Emit-string structure (verbatim from legacy)
+
+`emit.emitPairList` produces a non-empty string when the input has at
+least one pair. This is a pure value-level lemma — no indexed substrate
+involvement; the same `emitPairList` function is shared between the
+legacy and indexed pipelines. Ports verbatim from legacy line 9058. -/
+
+/-- `emitPairList` for non-empty pairs produces a non-empty string. -/
+theorem emitPairList_toList_ne_nilIx (p : YamlValue × YamlValue)
+    (ps : List (YamlValue × YamlValue)) :
+    (L4YAML.Emit.emit.emitPairList (p :: ps)).toList ≠ [] := by
+  obtain ⟨c, rest', h_eq, _, _, _⟩ := emitPairList_first_charIx p ps
+  rw [h_eq]; exact List.cons_ne_nil _ _
+
+/-! ### §5.4.G.3  Flow-close tokens equation
+
+Sharper variants of `scanFlowSequenceEndIx_tokens_eq` /
+`scanFlowMappingEndIx_tokens_eq` (`IndexedScannerPlainScalarValid.lean`
+§12f) that expose the underlying `Array.push` shape with the explicit
+`IxToken`. The existing `_tokens_eq` lemmas reduce
+`(scanFlow*EndIx s).tokens` to `(s.emit _).tokens`; here we go one
+step further to `s.tokens.tokens.push (IxToken.mk' …)`, which is the
+shape the close-bracket outermost-extension theorems consume below.
+
+**Verbatim port** from legacy `scanFlowSequenceEnd_tokens_eq` /
+`scanFlowMappingEnd_tokens_eq` (lines 9065, 9073) — the indexed shape
+differs only by the `IxToken.mk'` construction (vs. legacy
+`{ pos := s.currentPos, val := … }`); structurally `rfl` discharges
+both. -/
+
+/-- `scanFlowSequenceEndIx` pushes exactly one `.flowSequenceEnd`
+    `IxToken` onto the underlying token array. -/
+theorem scanFlowSequenceEnd_tokens_eqIx {input : String}
+    (s : ScannerStateIx input) :
+    (scanFlowSequenceEndIx s).tokens.tokens =
+      s.tokens.tokens.push (Indexed.IxToken.mk' (input := input)
+        s.cursor.pos YamlToken.flowSequenceEnd s.cursor.pos
+        (Nat.le_refl _) s.cursor.posBound) := by
+  rw [scanFlowSequenceEndIx_tokens_eq]
+  rfl
+
+/-- `scanFlowMappingEndIx` pushes exactly one `.flowMappingEnd`
+    `IxToken` onto the underlying token array. -/
+theorem scanFlowMappingEnd_tokens_eqIx {input : String}
+    (s : ScannerStateIx input) :
+    (scanFlowMappingEndIx s).tokens.tokens =
+      s.tokens.tokens.push (Indexed.IxToken.mk' (input := input)
+        s.cursor.pos YamlToken.flowMappingEnd s.cursor.pos
+        (Nat.le_refl _) s.cursor.posBound) := by
+  rw [scanFlowMappingEndIx_tokens_eq]
+  rfl
+
+/-! ### §5.4.G.4  Flow-close outermost extensions
+
+The close-bracket / close-brace existential extension lemmas: from a
+state with `flowLevel = 1`, `peek? = ']'` / `'}'` (and nothing after),
+one `scanNextTokenIx` step produces a result state whose filtered
+token array is the input filtered array with `.flowSequenceEnd` /
+`.flowMappingEnd` appended. These compose the §1 (`preprocess_flow` →
+`saveSimpleKeyIx`), §2 (`checkBlockFlowIndent_ok_close_*`), §3
+(`dispatchFlowIndicators_close_*`), and §7
+(`scanNextTokenIx_via_flow_dispatch`) pipeline lemmas from
+`FlowMonoChain.Maintenance.Pipeline` / `.Sync.{Scenarios.Preflow,
+Invariant}`, with `scanFlow*EndIx_detail` (`.Sync.Detail`) handling
+the result-state field equations.
+
+**Adaptation notes from legacy**:
+
+  - Legacy `s.col` / `s.col_pos > 0` → indexed `s.cursor.pos.col` /
+    `s.cursor.pos.col > 0`.
+  - Legacy `Positioned YamlToken` with `{ pos := s.currentPos, val :=
+    .flowSequenceEnd }` → indexed `IxToken.mk' s.cursor.pos
+    .flowSequenceEnd s.cursor.pos (Nat.le_refl _) s.cursor.posBound`.
+  - Legacy splits `dispatchFlowIndicators_close_bracket_nested` /
+    `_outermost`; indexed has the single
+    `dispatchFlowIndicators_close_bracket` (Pipeline §3) which
+    handles both via `s.flowLevel > 0`.
+  - Legacy `saveSimpleKey_preserves_{inFlow, col, indents, flowLevel,
+    directivesPresent}` → indexed `@[simp]` field projections
+    `saveSimpleKeyIx_{inFlow, cursor, indents, flowLevel,
+    directivesPresent}` (Preserve.Helpers §2).
+  - Legacy `scanFlowSequenceEnd_{flowLevel, _preserves_dp,
+    _preserves_indents}` separate lemmas → indexed
+    `scanFlowSequenceEndIx_detail` (Sync.Detail §4) bundles
+    SurfCorr + flowLevel + dp + indents + col into one fact,
+    yielding a tighter proof.
+  - Legacy `saveSimpleKey_filter_placeholder` → indexed
+    `saveSimpleKeyIx_filter_placeholder` (Preserve.Helpers §5);
+    same statement modulo `.tokens.tokens` projection chain. -/
+
+/-- Close-bracket step for outermost `]`: filtered token array is the
+    input filtered array with `.flowSequenceEnd` appended.
+
+    Traces through `saveSimpleKeyIx` (adds only placeholders, filtered
+    out by `saveSimpleKeyIx_filter_placeholder`) → `allowDirectives`
+    update (no token change) → `scanFlowSequenceEndIx` (appends
+    `.flowSequenceEnd` which passes the placeholder filter). Indexed
+    twin of legacy `scanNextToken_flow_close_seq_outermost_ext` (line
+    8086). -/
+theorem scanNextToken_flow_close_seq_outermost_extIx {input : String}
+    (s : ScannerStateIx input)
+    (hcorr : ScannerSurfCorrIx s ⟨[']'], s.cursor.pos.col⟩)
+    (h_flow : s.inFlow = true)
+    (h_indent : s.currentIndent < 0)
+    (h_col_pos : s.cursor.pos.col > 0)
+    (h_fl : s.flowLevel = 1)
+    (h_dp : s.directivesPresent = false) :
+    ∃ s' : ScannerStateIx input,
+      scanNextTokenIx s = .ok (some s')
+      ∧ s'.flowLevel = 0
+      ∧ s'.directivesPresent = false
+      ∧ s'.peek? = none
+      ∧ s'.indents = s.indents
+      ∧ (∃ tok : Indexed.IxToken input, tok.token = YamlToken.flowSequenceEnd ∧
+          s'.tokens.tokens.filter (fun t => t.token != YamlToken.placeholder) =
+          (s.tokens.tokens.filter (fun t => t.token != YamlToken.placeholder)).push tok) := by
+  -- §1: preprocess on flow context produces `saveSimpleKeyIx s` + `']'`.
+  have h_pp : scanNextTokenIx_preprocess s = .ok (some (saveSimpleKeyIx s, ']')) :=
+    scanNextTokenIx_preprocess_flow s ']' [] s.cursor.pos.col hcorr h_flow
+      (by decide) (by decide) (by decide)
+  -- saveSimpleKeyIx preserves inFlow / cursor (and hence col, offset).
+  have h_sk_flow : (saveSimpleKeyIx s).inFlow = s.inFlow := saveSimpleKeyIx_inFlow s
+  have h_sk_cur : (saveSimpleKeyIx s).cursor = s.cursor := saveSimpleKeyIx_cursor s
+  have h_sk_col : (saveSimpleKeyIx s).cursor.pos.col = s.cursor.pos.col := by
+    rw [h_sk_cur]
+  have h_sk_indent : (saveSimpleKeyIx s).currentIndent = s.currentIndent := by
+    unfold ScannerStateIx.currentIndent
+    rw [saveSimpleKeyIx_indents]
+  -- §2: structural dispatch returns none.
+  have h_struct : scanNextTokenIx_dispatchStructural (saveSimpleKeyIx s) ']' = .ok none :=
+    dispatchStructural_none_flow _ _ (h_sk_flow ▸ h_flow)
+      (h_sk_indent ▸ h_indent) (h_sk_col ▸ h_col_pos)
+  -- §3: the allowDirectives-update intermediate state.
+  let s_ad : ScannerStateIx input :=
+    if (saveSimpleKeyIx s).allowDirectives then
+      { saveSimpleKeyIx s with allowDirectives := false, documentEverStarted := true }
+    else saveSimpleKeyIx s
+  have h_check : scanNextTokenIx_checkBlockFlowIndent s_ad ']' = .ok () :=
+    checkBlockFlowIndent_ok_close_bracket s_ad
+  -- s_ad preserves flowLevel / directivesPresent / cursor / indents from s.
+  have h_ad_fl : s_ad.flowLevel = s.flowLevel := by
+    simp only [s_ad]; split <;> exact FlowMonoChain.saveSimpleKeyIx_flowLevel s
+  have h_ad_dp : s_ad.directivesPresent = s.directivesPresent := by
+    simp only [s_ad]; split <;> exact saveSimpleKeyIx_directivesPresent s
+  have h_ad_cur : s_ad.cursor = s.cursor := by
+    simp only [s_ad]; split <;> exact h_sk_cur
+  have h_ad_col : s_ad.cursor.pos.col = s.cursor.pos.col := by
+    rw [h_ad_cur]
+  have h_ad_indents : s_ad.indents = s.indents := by
+    simp only [s_ad]; split <;> exact saveSimpleKeyIx_indents s
+  -- Transfer ScannerSurfCorrIx through saveSimpleKeyIx + allowDirectives update.
+  have h_ad_corr : ScannerSurfCorrIx s_ad ⟨[']'], s_ad.cursor.pos.col⟩ := by
+    rw [h_ad_col]
+    refine ScannerSurfCorrIx_transfer hcorr ?_ h_ad_col h_ad_indents
+    rw [h_ad_cur]
+  -- §3: flow dispatch on `']'` with flowLevel = 1 > 0 returns `scanFlowSequenceEndIx s_ad`.
+  have h_ad_fl_pos : s_ad.flowLevel > 0 := by
+    rw [h_ad_fl, h_fl]; decide
+  have h_flow_disp : scanNextTokenIx_dispatchFlowIndicators s_ad ']' =
+      .ok (some (scanFlowSequenceEndIx s_ad)) :=
+    dispatchFlowIndicators_close_bracket s_ad h_ad_fl_pos
+  -- §4: factoring lemma assembles the full `scanNextTokenIx s`.
+  have h_snt : scanNextTokenIx s = .ok (some (scanFlowSequenceEndIx s_ad)) :=
+    scanNextTokenIx_via_flow_dispatch s (saveSimpleKeyIx s) s_ad
+      (scanFlowSequenceEndIx s_ad) ']' h_pp h_struct rfl h_check h_flow_disp
+  -- §5: `scanFlowSequenceEndIx_detail` bundles SurfCorr / flowLevel / dp / indents / col.
+  obtain ⟨h_corr_final, h_fl_final, h_dp_final, h_ind_final, _⟩ :=
+    scanFlowSequenceEndIx_detail s_ad [] h_ad_corr
+  -- Result fields (refer directly to `scanFlowSequenceEndIx s_ad`).
+  have h_result_fl : (scanFlowSequenceEndIx s_ad).flowLevel = 0 := by
+    rw [h_fl_final, h_ad_fl, h_fl]
+  have h_result_dp : (scanFlowSequenceEndIx s_ad).directivesPresent = false := by
+    rw [h_dp_final, h_ad_dp]; exact h_dp
+  have h_result_eof : (scanFlowSequenceEndIx s_ad).peek? = none :=
+    peek_none_of_empty_surfIx _ _ h_corr_final
+  have h_result_indents : (scanFlowSequenceEndIx s_ad).indents = s.indents := by
+    rw [h_ind_final]; exact h_ad_indents
+  -- §6: filtered tokens. saveSimpleKeyIx_filter_placeholder discharges the
+  --      saveSimpleKey step; the allowDirectives update doesn't touch tokens.
+  have h_ad_tokens_filter :
+      s_ad.tokens.tokens.filter (fun t => t.token != YamlToken.placeholder) =
+      s.tokens.tokens.filter (fun t => t.token != YamlToken.placeholder) := by
+    simp only [s_ad]
+    split <;> exact saveSimpleKeyIx_filter_placeholder s
+  -- `scanFlowSequenceEnd_tokens_eqIx s_ad` then gives the push form;
+  -- `.flowSequenceEnd ≠ .placeholder` so `Array.filter_push` keeps the token.
+  let new_ixtok : Indexed.IxToken input :=
+    Indexed.IxToken.mk' (input := input) s_ad.cursor.pos YamlToken.flowSequenceEnd
+      s_ad.cursor.pos (Nat.le_refl _) s_ad.cursor.posBound
+  have h_result_tokens : ∃ tok : Indexed.IxToken input,
+      tok.token = YamlToken.flowSequenceEnd ∧
+      (scanFlowSequenceEndIx s_ad).tokens.tokens.filter
+          (fun t => t.token != YamlToken.placeholder) =
+      (s.tokens.tokens.filter (fun t => t.token != YamlToken.placeholder)).push tok := by
+    refine ⟨new_ixtok, rfl, ?_⟩
+    rw [scanFlowSequenceEnd_tokens_eqIx s_ad, Array.filter_push]
+    have h_keep : (new_ixtok.token != YamlToken.placeholder) = true := rfl
+    rw [if_pos h_keep, h_ad_tokens_filter]
+  exact ⟨scanFlowSequenceEndIx s_ad, h_snt, h_result_fl, h_result_dp,
+         h_result_eof, h_result_indents, h_result_tokens⟩
+
+/-- Close-brace step for outermost `}`: filtered token array is the
+    input filtered array with `.flowMappingEnd` appended. Indexed twin
+    of legacy `scanNextToken_flow_close_mapping_outermost_ext` (line
+    9176). Structurally identical to the close-bracket case modulo
+    the bracket / brace / sequenceEnd / mappingEnd substitutions. -/
+theorem scanNextToken_flow_close_mapping_outermost_extIx {input : String}
+    (s : ScannerStateIx input)
+    (hcorr : ScannerSurfCorrIx s ⟨['}'], s.cursor.pos.col⟩)
+    (h_flow : s.inFlow = true)
+    (h_indent : s.currentIndent < 0)
+    (h_col_pos : s.cursor.pos.col > 0)
+    (h_fl : s.flowLevel = 1)
+    (h_dp : s.directivesPresent = false) :
+    ∃ s' : ScannerStateIx input,
+      scanNextTokenIx s = .ok (some s')
+      ∧ s'.flowLevel = 0
+      ∧ s'.directivesPresent = false
+      ∧ s'.peek? = none
+      ∧ s'.indents = s.indents
+      ∧ (∃ tok : Indexed.IxToken input, tok.token = YamlToken.flowMappingEnd ∧
+          s'.tokens.tokens.filter (fun t => t.token != YamlToken.placeholder) =
+          (s.tokens.tokens.filter (fun t => t.token != YamlToken.placeholder)).push tok) := by
+  have h_pp : scanNextTokenIx_preprocess s = .ok (some (saveSimpleKeyIx s, '}')) :=
+    scanNextTokenIx_preprocess_flow s '}' [] s.cursor.pos.col hcorr h_flow
+      (by decide) (by decide) (by decide)
+  have h_sk_flow : (saveSimpleKeyIx s).inFlow = s.inFlow := saveSimpleKeyIx_inFlow s
+  have h_sk_cur : (saveSimpleKeyIx s).cursor = s.cursor := saveSimpleKeyIx_cursor s
+  have h_sk_col : (saveSimpleKeyIx s).cursor.pos.col = s.cursor.pos.col := by
+    rw [h_sk_cur]
+  have h_sk_indent : (saveSimpleKeyIx s).currentIndent = s.currentIndent := by
+    unfold ScannerStateIx.currentIndent
+    rw [saveSimpleKeyIx_indents]
+  have h_struct : scanNextTokenIx_dispatchStructural (saveSimpleKeyIx s) '}' = .ok none :=
+    dispatchStructural_none_flow _ _ (h_sk_flow ▸ h_flow)
+      (h_sk_indent ▸ h_indent) (h_sk_col ▸ h_col_pos)
+  let s_ad : ScannerStateIx input :=
+    if (saveSimpleKeyIx s).allowDirectives then
+      { saveSimpleKeyIx s with allowDirectives := false, documentEverStarted := true }
+    else saveSimpleKeyIx s
+  have h_check : scanNextTokenIx_checkBlockFlowIndent s_ad '}' = .ok () :=
+    checkBlockFlowIndent_ok_close_brace s_ad
+  have h_ad_fl : s_ad.flowLevel = s.flowLevel := by
+    simp only [s_ad]; split <;> exact FlowMonoChain.saveSimpleKeyIx_flowLevel s
+  have h_ad_dp : s_ad.directivesPresent = s.directivesPresent := by
+    simp only [s_ad]; split <;> exact saveSimpleKeyIx_directivesPresent s
+  have h_ad_cur : s_ad.cursor = s.cursor := by
+    simp only [s_ad]; split <;> exact h_sk_cur
+  have h_ad_col : s_ad.cursor.pos.col = s.cursor.pos.col := by
+    rw [h_ad_cur]
+  have h_ad_indents : s_ad.indents = s.indents := by
+    simp only [s_ad]; split <;> exact saveSimpleKeyIx_indents s
+  have h_ad_corr : ScannerSurfCorrIx s_ad ⟨['}'], s_ad.cursor.pos.col⟩ := by
+    rw [h_ad_col]
+    refine ScannerSurfCorrIx_transfer hcorr ?_ h_ad_col h_ad_indents
+    rw [h_ad_cur]
+  have h_ad_fl_pos : s_ad.flowLevel > 0 := by
+    rw [h_ad_fl, h_fl]; decide
+  have h_flow_disp : scanNextTokenIx_dispatchFlowIndicators s_ad '}' =
+      .ok (some (scanFlowMappingEndIx s_ad)) :=
+    dispatchFlowIndicators_close_brace s_ad h_ad_fl_pos
+  have h_snt : scanNextTokenIx s = .ok (some (scanFlowMappingEndIx s_ad)) :=
+    scanNextTokenIx_via_flow_dispatch s (saveSimpleKeyIx s) s_ad
+      (scanFlowMappingEndIx s_ad) '}' h_pp h_struct rfl h_check h_flow_disp
+  obtain ⟨h_corr_final, h_fl_final, h_dp_final, h_ind_final, _⟩ :=
+    scanFlowMappingEndIx_detail s_ad [] h_ad_corr
+  have h_result_fl : (scanFlowMappingEndIx s_ad).flowLevel = 0 := by
+    rw [h_fl_final, h_ad_fl, h_fl]
+  have h_result_dp : (scanFlowMappingEndIx s_ad).directivesPresent = false := by
+    rw [h_dp_final, h_ad_dp]; exact h_dp
+  have h_result_eof : (scanFlowMappingEndIx s_ad).peek? = none :=
+    peek_none_of_empty_surfIx _ _ h_corr_final
+  have h_result_indents : (scanFlowMappingEndIx s_ad).indents = s.indents := by
+    rw [h_ind_final]; exact h_ad_indents
+  have h_ad_tokens_filter :
+      s_ad.tokens.tokens.filter (fun t => t.token != YamlToken.placeholder) =
+      s.tokens.tokens.filter (fun t => t.token != YamlToken.placeholder) := by
+    simp only [s_ad]
+    split <;> exact saveSimpleKeyIx_filter_placeholder s
+  let new_ixtok : Indexed.IxToken input :=
+    Indexed.IxToken.mk' (input := input) s_ad.cursor.pos YamlToken.flowMappingEnd
+      s_ad.cursor.pos (Nat.le_refl _) s_ad.cursor.posBound
+  have h_result_tokens : ∃ tok : Indexed.IxToken input,
+      tok.token = YamlToken.flowMappingEnd ∧
+      (scanFlowMappingEndIx s_ad).tokens.tokens.filter
+          (fun t => t.token != YamlToken.placeholder) =
+      (s.tokens.tokens.filter (fun t => t.token != YamlToken.placeholder)).push tok := by
+    refine ⟨new_ixtok, rfl, ?_⟩
+    rw [scanFlowMappingEnd_tokens_eqIx s_ad, Array.filter_push]
+    have h_keep : (new_ixtok.token != YamlToken.placeholder) = true := rfl
+    rw [if_pos h_keep, h_ad_tokens_filter]
+  exact ⟨scanFlowMappingEndIx s_ad, h_snt, h_result_fl, h_result_dp,
+         h_result_eof, h_result_indents, h_result_tokens⟩
 
 end L4YAML.Proofs.Indexed.EmitterScannability.RoundTrip
