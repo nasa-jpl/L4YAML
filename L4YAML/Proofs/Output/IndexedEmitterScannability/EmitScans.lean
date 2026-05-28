@@ -39,11 +39,11 @@ theorem family are ported to the indexed substrate.
     `emitPairList_first_charIx`); the legacy `h_sv` plumbing is dropped
     (see §2b). Zero new infra; built clean 89/89, sorry-free, axioms OK.
   - ⏳ `emit_scans_in_flowIx` (`Grammable` induction, legacy 8014–8255) —
-    **blocked**: its scalar case needs `scanNextTokenIx_flow_scanDoubleQuoted`
-    and its sequence case needs `scanNextTokenIx_flow_open_seq_nested` (the
-    `[` opener), neither yet ported (the `.flowmono.sync.scenarios` work
-    landed only `{`-open + both closes + comma). Deferred to `.flowpair`
-    sub-sessions 2 (the two missing scenario twins) and 3 (the induction).
+    **now unblocked** (`.flowpair` SS2 landed both scenario prerequisites:
+    `scanNextTokenIx_flow_open_seq_nested` in `Scenarios/FlowSeqOpen.lean`
+    and `scanNextTokenIx_flow_scanDoubleQuoted` in `Scenarios/FlowScalar.lean`).
+    Deferred to `.flowpair` sub-session 3 (the induction, §2d). NB: its scalar
+    case inherits SS2b's `native_decide` budget (Reflection 142).
   - ⏳ `emit_produces_valid_yamlIx` top-level composition.
 
 ## Scope (mapping to legacy `EmitterScannability.lean`)
@@ -803,9 +803,11 @@ the `scanValueValidate` precondition `h_sv`) is **dropped** — `scanNextToken_f
 derives validate-success internally, so the `:` step needs no `h_sv`.
 
 The dependent main theorem `emit_scans_in_flowIx` (legacy 8014–8255) is
-deferred to a later sub-session: its scalar/sequence cases need the
-not-yet-ported scanner-scenario twins `scanNextTokenIx_flow_scanDoubleQuoted`
-and `scanNextTokenIx_flow_open_seq_nested` (the `[` opener). -/
+deferred to sub-session 3 (§2d). Its scanner-scenario prerequisites
+`scanNextTokenIx_flow_scanDoubleQuoted` and `scanNextTokenIx_flow_open_seq_nested`
+(the `[` opener) **landed in SS2** under
+`FlowMonoChain/Sync/Scenarios/{FlowScalar,FlowSeqOpen}.lean`, so SS3 is now
+unblocked. -/
 
 /-- `EmitPairListScansInFlowIx pairs`: scanning the comma-separated
     `emitPairList` output (the body between `{` and `}` in a flow mapping)
