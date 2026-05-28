@@ -1802,4 +1802,181 @@ theorem scan_accepts_emitScalarIx (content : String) :
   rw [h_scan_eq]
   exact scanLoopIx_two_iter h_fuel h_snt1 h_snt2 h_flow1 h_dp1
 
+/-! ## §4  `emit_produces_valid_yamlIx` — top-level composition (SS3)
+
+The Phase 3 capstone: every `Grammable` value emits a byte sequence the
+indexed scanner accepts. Induction over `Grammable v inFlow` with three
+cases:
+
+  - **Scalar** (`emit (.scalar s) = emitScalar s.content`): one-liner
+    delegating to §3.3's `scan_accepts_emitScalarIx`.
+  - **Sequence** (`emit (.sequence ...) = "[" ++ emitList items.toList ++ "]"`):
+    empty subcase via §3.1's `scanFilteredIx_exists_of_isOk (by native_decide)`;
+    non-empty subcase composes the §6 `[`-init opener + §2 SS1/SS2a body
+    + Endpoint §3 outermost `]` closer + `scanNextTokenIx_eof`, then
+    bridges to `scanFilteredIx` via `scanFilteredIx_of_chain` (Invariant
+    §5).
+  - **Mapping** (`emit (.mapping ...) = "{" ++ emitPairList pairs.toList ++ "}"`):
+    structurally identical to sequence with `{`/`}`, `emitPairList`,
+    Endpoint §5 opener, Endpoint §4 closer.
+
+Indexed twin of `emit_produces_valid_yaml` (legacy lines 8281–8398).
+Closes `6f.3b3.emitscans` at 10/10 sub-sessions.
+
+**Axiom posture** (Reflection 142 + 145): `[propext, Classical.choice,
+Quot.sound]` + the inherited `native_decide` cluster from SS2's
+`scanDoubleQuotedIx` reductions + the two new closed-input axioms
+`scanFilteredIx "[]" / "{}"` from the empty-collection subcases. Within
+the documented budget; no new user-defined axioms. -/
+
+/-- **Top-level emitter-scannability**: for any `Grammable` YAML value
+    `v`, the byte stream `L4YAML.Emit.emit v` is accepted by the
+    indexed scanner (`scanFilteredIx` returns `.ok`). Indexed twin of
+    legacy `emit_produces_valid_yaml` (line 8281). -/
+theorem emit_produces_valid_yamlIx (v : YamlValue) {inFlow : Bool}
+    (hg : L4YAML.Grammar.Grammable v inFlow) :
+    ∃ tokens, scanFilteredIx (L4YAML.Emit.emit v) = .ok tokens := by
+  induction hg with
+  | scalar s _ _ =>
+    -- emit (.scalar s) = emitScalar s.content; delegate to SS2's wrapper.
+    exact scan_accepts_emitScalarIx s.content
+  | sequence _style items _tag _anchor _inFlow h _ih =>
+    -- emit (.sequence ...) = "[" ++ emitList items.toList ++ "]"
+    show ∃ tokens,
+        scanFilteredIx ("[" ++ L4YAML.Emit.emit.emitList items.toList ++ "]")
+          = .ok tokens
+    match h_items : items.toList with
+    | [] =>
+      -- Empty []: the `match` substituted `items.toList ↦ []` in the goal already.
+      -- Reduce `emit.emitList []` to `""`, then discharge via decidability bridge.
+      simp only [L4YAML.Emit.emit.emitList]
+      exact scanFilteredIx_exists_of_isOk (by native_decide)
+    | head :: tail =>
+      -- The `match` substituted `items.toList ↦ head :: tail` in the goal type.
+      -- Work in `(head :: tail)` form throughout; use h_items only to bridge the
+      -- per-item closure back to `items[i]` for grammability witnesses.
+      -- Step 1: input.toList structure
+      have h_toList : ("[" ++ L4YAML.Emit.emit.emitList (head :: tail) ++ "]").toList
+          = '[' :: ((L4YAML.Emit.emit.emitList (head :: tail)).toList ++ [']']) := by
+        simp only [String.toList_append]; rfl
+      -- Step 2: scan '[' from initial state via SS1's _open_seq_init
+      obtain ⟨s₁, h_snt₁, h_corr₁, h_fl₁, h_dp₁, _h_ids₁, h_col₁, h_inflow₁,
+              h_indent₁, h_ek₁, h_line₁, h_atol₁, h_endline₁, _h_sk₁, _h_stack₁⟩ :=
+        scanNextTokenIx_flow_open_seq_init
+          ("[" ++ L4YAML.Emit.emit.emitList (head :: tail) ++ "]")
+          ((L4YAML.Emit.emit.emitList (head :: tail)).toList ++ [']'])
+          h_toList
+      -- Step 3: Build EmitListScansInFlowIx for the non-empty item list
+      have h_list_scan :
+          EmitListScansInFlowIx
+            (input := "[" ++ L4YAML.Emit.emit.emitList (head :: tail) ++ "]")
+            (head :: tail) :=
+        emitList_scans_nonemptyIx _ (by simp) (fun w hw => by
+          have hw' : w ∈ items.toList := h_items ▸ hw
+          have ⟨i, hi, h_eq⟩ := List.getElem_of_mem hw'
+          have h_sz : i < items.size := by rwa [Array.length_toList] at hi
+          exact h_eq ▸ emit_scans_in_flowIx items[i] (h ⟨i, h_sz⟩))
+      -- Step 4: Apply body scanning (rest = [']'])
+      obtain ⟨n₂, s₂, h_chain₂, h_corr₂, h_fl₂, h_dp₂, _h_ids₂, _h_ek₂, h_col₂,
+              h_inflow₂, h_indent₂, _h_line₂, _h_atol₂, _h_endline₂, _h_stack₂,
+              _h_fmc₂⟩ :=
+        h_list_scan s₁ [']'] h_corr₁ h_inflow₁ (by rw [h_fl₁]; omega)
+          h_indent₁ (by rw [h_col₁]; omega) h_ek₁
+          (h_line₁ ▸ h_atol₁) h_endline₁
+      -- Step 5: Scan ']' (outermost, flowLevel 1 → 0)
+      obtain ⟨s₃, h_snt₃, h_fl₃, h_dp₃, h_peek₃⟩ :=
+        scanNextTokenIx_flow_close_seq_outermost s₂ h_corr₂ h_inflow₂ h_indent₂
+          h_col₂ (by rw [h_fl₂, h_fl₁]) (by rw [h_dp₂, h_dp₁])
+      -- Step 6: EOF
+      have h_eof : scanNextTokenIx s₃ = .ok none := scanNextTokenIx_eof s₃ h_peek₃
+      -- Step 7: BOM check — first char is '[', not '﻿'
+      have h_corr_init : ScannerSurfCorrIx
+          (input := "[" ++ L4YAML.Emit.emit.emitList (head :: tail) ++ "]")
+          (ScannerStateIx.mk' ("[" ++ L4YAML.Emit.emit.emitList (head :: tail) ++ "]"))
+          ⟨'[' :: ((L4YAML.Emit.emit.emitList (head :: tail)).toList ++ [']']), 0⟩ := by
+        have h := initial_corrIx ("[" ++ L4YAML.Emit.emit.emitList (head :: tail) ++ "]")
+        rw [h_toList] at h; exact h
+      have ⟨h_pk_init, _⟩ := peek_of_chars_consIx_state
+        (ScannerStateIx.mk' ("[" ++ L4YAML.Emit.emit.emitList (head :: tail) ++ "]"))
+        '[' ((L4YAML.Emit.emit.emitList (head :: tail)).toList ++ [']']) 0 h_corr_init
+      have h_no_bom :
+          (ScannerStateIx.mk'
+            ("[" ++ L4YAML.Emit.emit.emitList (head :: tail) ++ "]")).peek?
+            ≠ some '﻿' := by
+        rw [h_pk_init]; decide
+      -- Step 8: Compose '[' (1) + body (n₂) + ']' (1); bridge to scanFilteredIx
+      have h_chain_all := (ScanChainIx.single h_snt₁).trans
+        (h_chain₂.toScanChainIx.trans (ScanChainIx.single h_snt₃))
+      have h_fuel := ScanChainIx.fuel_bound _ _ _ rfl h_chain_all h_eof
+      exact scanFilteredIx_of_chain
+        ("[" ++ L4YAML.Emit.emit.emitList (head :: tail) ++ "]")
+        _ s₃ _ rfl h_no_bom h_chain_all h_eof h_fl₃ h_dp₃ h_fuel
+  | mapping _style pairs _tag _anchor _inFlow hk hv _ihk _ihv =>
+    -- emit (.mapping ...) = "{" ++ emitPairList pairs.toList ++ "}"
+    show ∃ tokens,
+        scanFilteredIx ("{" ++ L4YAML.Emit.emit.emitPairList pairs.toList ++ "}")
+          = .ok tokens
+    match h_pairs : pairs.toList with
+    | [] =>
+      -- Empty {}: symmetric to empty [] above.
+      simp only [L4YAML.Emit.emit.emitPairList]
+      exact scanFilteredIx_exists_of_isOk (by native_decide)
+    | phead :: ptail =>
+      -- The `match` substituted `pairs.toList ↦ phead :: ptail` in the goal.
+      have h_toList : ("{" ++ L4YAML.Emit.emit.emitPairList (phead :: ptail) ++ "}").toList
+          = '{' :: ((L4YAML.Emit.emit.emitPairList (phead :: ptail)).toList ++ ['}']) := by
+        simp only [String.toList_append]; rfl
+      obtain ⟨s₁, h_snt₁, h_corr₁, h_fl₁, h_dp₁, _h_ids₁, h_col₁, h_inflow₁,
+              h_indent₁, h_ek₁, h_line₁, h_atol₁, h_endline₁, _h_sk₁, _h_stack₁⟩ :=
+        scanNextTokenIx_flow_open_mapping_init
+          ("{" ++ L4YAML.Emit.emit.emitPairList (phead :: ptail) ++ "}")
+          ((L4YAML.Emit.emit.emitPairList (phead :: ptail)).toList ++ ['}'])
+          h_toList
+      have h_pair_scan :
+          EmitPairListScansInFlowIx
+            (input := "{" ++ L4YAML.Emit.emit.emitPairList (phead :: ptail) ++ "}")
+            (phead :: ptail) :=
+        emitPairList_scans_nonemptyIx _ (by simp)
+          (fun p hp => by
+            have hp' : p ∈ pairs.toList := h_pairs ▸ hp
+            have ⟨i, hi, h_eq⟩ := List.getElem_of_mem hp'
+            have h_sz : i < pairs.size := by rwa [Array.length_toList] at hi
+            exact h_eq ▸ emit_scans_in_flowIx pairs[i].1 (hk ⟨i, h_sz⟩))
+          (fun p hp => by
+            have hp' : p ∈ pairs.toList := h_pairs ▸ hp
+            have ⟨i, hi, h_eq⟩ := List.getElem_of_mem hp'
+            have h_sz : i < pairs.size := by rwa [Array.length_toList] at hi
+            exact h_eq ▸ emit_scans_in_flowIx pairs[i].2 (hv ⟨i, h_sz⟩))
+      obtain ⟨n₂, s₂, h_chain₂, h_corr₂, h_fl₂, h_dp₂, _h_ids₂, _h_ek₂, h_col₂,
+              h_inflow₂, h_indent₂, _h_line₂, _h_atol₂, _h_endline₂, _h_stack₂,
+              _h_fmc₂⟩ :=
+        h_pair_scan s₁ ['}'] h_corr₁ h_inflow₁ (by rw [h_fl₁]; omega)
+          h_indent₁ (by rw [h_col₁]; omega) h_ek₁
+          (h_line₁ ▸ h_atol₁) h_endline₁
+      obtain ⟨s₃, h_snt₃, h_fl₃, h_dp₃, h_peek₃⟩ :=
+        scanNextTokenIx_flow_close_mapping_outermost s₂ h_corr₂ h_inflow₂ h_indent₂
+          h_col₂ (by rw [h_fl₂, h_fl₁]) (by rw [h_dp₂, h_dp₁])
+      have h_eof : scanNextTokenIx s₃ = .ok none := scanNextTokenIx_eof s₃ h_peek₃
+      have h_corr_init : ScannerSurfCorrIx
+          (input := "{" ++ L4YAML.Emit.emit.emitPairList (phead :: ptail) ++ "}")
+          (ScannerStateIx.mk' ("{" ++ L4YAML.Emit.emit.emitPairList (phead :: ptail) ++ "}"))
+          ⟨'{' :: ((L4YAML.Emit.emit.emitPairList (phead :: ptail)).toList ++ ['}']), 0⟩ := by
+        have h := initial_corrIx
+          ("{" ++ L4YAML.Emit.emit.emitPairList (phead :: ptail) ++ "}")
+        rw [h_toList] at h; exact h
+      have ⟨h_pk_init, _⟩ := peek_of_chars_consIx_state
+        (ScannerStateIx.mk' ("{" ++ L4YAML.Emit.emit.emitPairList (phead :: ptail) ++ "}"))
+        '{' ((L4YAML.Emit.emit.emitPairList (phead :: ptail)).toList ++ ['}']) 0 h_corr_init
+      have h_no_bom :
+          (ScannerStateIx.mk'
+            ("{" ++ L4YAML.Emit.emit.emitPairList (phead :: ptail) ++ "}")).peek?
+            ≠ some '﻿' := by
+        rw [h_pk_init]; decide
+      have h_chain_all := (ScanChainIx.single h_snt₁).trans
+        (h_chain₂.toScanChainIx.trans (ScanChainIx.single h_snt₃))
+      have h_fuel := ScanChainIx.fuel_bound _ _ _ rfl h_chain_all h_eof
+      exact scanFilteredIx_of_chain
+        ("{" ++ L4YAML.Emit.emit.emitPairList (phead :: ptail) ++ "}")
+        _ s₃ _ rfl h_no_bom h_chain_all h_eof h_fl₃ h_dp₃ h_fuel
+
 end L4YAML.Proofs.Indexed.EmitterScannability.EmitScans

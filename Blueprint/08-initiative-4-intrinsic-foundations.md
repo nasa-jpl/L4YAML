@@ -1820,20 +1820,19 @@ not in-place axiom-to-theorem promotion — the latter is impossible
 when the axiom's hypothesis is strictly weaker than what the
 stronger lemma derives).
 
-**Next session**: **Step 6f.3b3.emitscans.toplevel SS3 —
-`emit_produces_valid_yamlIx`** (legacy
-`Proofs/Output/EmitterScannability.lean` 8281–8398, ~120 LOC). The
-top-level composition theorem itself: induction over `Grammable v false`
-with the scalar case delegating to SS2's `scan_accepts_emitScalarIx`, the
-sequence case sandwiching `emit_scans_in_flowIx`'s `[`-body between
-`scanNextTokenIx_flow_open_seq_init` (SS1) and `_flow_close_seq_outermost`,
-the mapping case the same with `{`/`}` (`_open_mapping_init` from
-Endpoint.lean §5 + `_close_mapping_outermost` from §4), plus the empty
-`[]`/`{}` cases discharged by the SS1 decidability bridge
-`scanFilteredIx_exists_of_isOk` over a `(by native_decide)`. After SS3,
-file-level `.emitscans` closes (10 of 10 sub-sessions landed; the 7-→-10
-jump is the SS1/SS2/SS3 split of the original `.toplevel` work-unit).
-**`.parsestream` / `.roundtrip` come after `.emitscans` closes.**
+**Next session**: **Step 6f.3b3.parsestream**
+(`Proofs/Output/IndexedEmitterScannability/ParseStream.lean`; legacy
+lines 8400–8874, ~440 LOC, currently planned as a single session).
+**§4 Full Pipeline: Emit → Scan → Parse** (~90 LOC; legacy 8400–8489):
+`scanFiltered_exists_of_isOkIx`, `parseStreamLoop_single_docIx`,
+`emit_parsed_grammableIx`. **§5.2 Scanner content preservation**
+(~344 LOC; legacy 8531–8874): `scanFiltered_emitScalar_contentIx`,
+`scanFiltered_emitScalar_valsIx`, `parseDirectives_skipIx`,
+`parseStream_three_tokens_scalarIx`, `parseYamlRaw_emitScalar_valueIx`.
+With `.emitscans` closed, `emit_produces_valid_yamlIx` now serves as
+the standing acceptance pre-condition the parse pipeline composes
+onto. `.roundtrip` (~1870 LOC across 4 sub-sessions) follows
+`.parsestream`.
 
 **`.emitscans.toplevel` SS2 (scalar prereq) LANDED 2026-05-27** —
 second sub-session of the port-time-replanned `.toplevel` step.
@@ -2158,7 +2157,7 @@ section by section.
 | `.flowpair` SS3 (induction) | ✅ LANDED | 2026-05-27 | ~220 / ~241 | §2d (`emit_scans_in_flowIx`, `Grammable` induction; **zero new infra**, pure plumbing over SS1/SS2/§2c twins; pure triple + inherited native_decide budget — see Reflection 143) |
 | `.toplevel` SS1 (easy prereqs) | ✅ LANDED | 2026-05-27 | ~225 / ~210 | Endpoint.lean §6 (`scanNextTokenIx_flow_open_seq_init`, mechanical `[` analog of §5's `_open_mapping_init`) + EmitScans.lean §3 (`scanFilteredIx_exists_of_isOk`, decidability bridge); **zero new infra**, both pure-triple — see Reflection 144 |
 | `.toplevel` SS2 (scalar prereq) | ✅ LANDED | 2026-05-27 | ~280 / ~200 | EmitScans.lean §3 (`scanNextTokenIx_emitScalar_init` + `scan_accepts_emitScalarIx`; threaded preprocess → 4 no-op dispatchers via `dispatchContentIx_quote` → `scanDoubleQuotedIx_escapeString_corr` with `rest = []` → `scanLoopIx_two_iter` wrapper; pure triple + 45 inherited native_decide axioms per Reflection 142, +2 from `emitScalar_toList`/`emitScalar_utf8ByteSize_ge`; trimmed legacy's filtered-token equality from conclusion — see Reflection 145) |
-| `.toplevel` SS3 (composition) | ⏳ planned | — | — / ~120 | §3 (`emit_produces_valid_yamlIx`, induction over `Grammable v false`; the three cases delegate to SS2 (scalar) + SS1 seq init (`[`) + Endpoint.lean §5 map init (`{`) + the just-landed §2d `emit_scans_in_flowIx`). |
+| `.toplevel` SS3 (composition) | ✅ LANDED | 2026-05-28 | ~165 / ~120 | §4 (`emit_produces_valid_yamlIx`, `Grammable` induction; scalar → SS2 wrapper; sequence/mapping sandwich §2d `emit_scans_in_flowIx` between §6/§5 openers and §3/§4 closers + `scanNextTokenIx_eof`, bridged via `scanFilteredIx_of_chain`; empty `[]`/`{}` via SS1 decidability bridge + `(by native_decide)`); pure triple + 47 inherited native_decide axioms + 2 NEW from empty-collection discharge (`emit_produces_valid_yamlIx._native.ax_1_{3,15}`); **closes `.emitscans` 10/10** — see Reflection 146 |
 
 **`.emitscans` progress**: `.chaingrew` (§1) landed; `.flowvalue` fully
 landed (SS1 predicate layer + SS2a comma-path list body + SS2b
@@ -2194,10 +2193,25 @@ whnf-elaboration thrashing — lifted into the tactic body via post-`show`
 `let` + a 4× heartbeat bump on the dispatchContent reduction; and the
 legacy filtered-token-array equality was *trimmed* from the conclusion
 (only `peek? = none ∧ flowLevel = 0 ∧ directivesPresent = false` is
-needed by `scanLoopIx_two_iter`, cutting ~80 LOC). So **9 of 10**
-`.emitscans` work-units landed (§1 + §2-SS1 + §2-SS2a + §2b + §2c
-+ both SS2 scenario files + SS3 induction + .toplevel SS1 + .toplevel
-SS2); only `.toplevel` SS3 (the composition theorem) remains. The §1 strict-variant track (`ScanChainGrewIx`) is
+needed by `scanLoopIx_two_iter`, cutting ~80 LOC). **`.toplevel` SS3
+(composition) LANDED 2026-05-28** as predicted in Reflection 143/Reflection
+144 — pure plumbing in EmitScans.lean §4 (~165 LOC actual vs. ~120 plan):
+`Grammable` induction with scalar arm delegating to SS2's
+`scan_accepts_emitScalarIx`, sequence/mapping arms sandwiching §2d
+`emit_scans_in_flowIx` between Endpoint §6/§5 openers and §3/§4 outermost
+closers + `scanNextTokenIx_eof`, bridged to `scanFilteredIx` via
+Invariant §5's `scanFilteredIx_of_chain`; empty `[]`/`{}` subcases via
+SS1's `scanFilteredIx_exists_of_isOk (by native_decide)`. **One port-time
+pitfall** (Reflection 146): in Lean 4.30, tactic-mode `match` *does*
+substitute its scrutinee into the goal type, so `simp only [← h_items]`
+to "undo" the substitution made-no-progress (the simp lemma's RHS lives
+under a dependent binder); fix is to bind the match patterns by name
+(`head :: tail`) and propagate them through the proof body, with
+`h_items ▸` bridging the per-item closure back to `items[i]`. So
+**10 of 10** `.emitscans` work-units landed (§1 + §2-SS1 + §2-SS2a + §2b
++ §2c + both SS2 scenario files + SS3 induction + .toplevel SS1 + .toplevel
+SS2 + .toplevel SS3). **`.emitscans` cluster CLOSED** —
+`.parsestream` is the next file-level step. The §1 strict-variant track (`ScanChainGrewIx`) is
 the substrate-agnostic plumbing; the §2 predicates define the in-flow
 scannability contract every downstream body and the now-landed
 `emit_scans_in_flowIx` induction consumed.
@@ -3188,6 +3202,59 @@ heavy token-array conclusion, look at the *callers* before assuming
 the conclusion shape must transfer — the minimal sufficient API
 trims often.
 
+**Reflection 146 (new): Lean-4.30 tactic-mode `match` substitutes its
+scrutinee into the goal type — the legacy "reverse-simp the match
+substitution" pattern fails under dependent token-stream binders;
+fix is to name the match patterns and propagate them through the
+proof body, using the match hypothesis only to bridge per-element
+witnesses.** SS3's `emit_produces_valid_yamlIx` ports the legacy
+8-step pipeline composition for the sequence/mapping cases nearly
+verbatim, with one elaboration delta. The legacy proof writes:
+```
+match h_items : items.toList with
+| [] => simp only [emit.emitList]; exact … (by native_decide)
+| _ :: _ =>
+  -- Rewrite goal back to use items.toList (match substituted it)
+  simp only [← h_items]
+  ...
+```
+Lean 4.30's tactic-mode `match` substitutes `items.toList ↦ _ :: _`
+into the goal (matching the legacy behavior), but the reverse
+`simp only [← h_items]` makes-no-progress: the rewrite RHS
+(`items.toList`) appears under a dependent binder in
+`∃ tokens : Indexed.TokenStream ("[" ++ emitList _ ++ "]"), …` and
+simp refuses to rewrite under a binder where the rewrite would
+re-bind a dependent type. The empty subcase doesn't fire this
+because the substitution leaves `items.toList ↦ []` which simp
+reduces away via `emit.emitList`. **Port discipline**: name the
+match patterns (`head :: tail` / `phead :: ptail` rather than
+`_ :: _`), then inline `(head :: tail)` everywhere `items.toList`
+appeared in the legacy non-empty body. The match hypothesis
+`h_items : items.toList = head :: tail` survives in scope and is
+needed exactly once per case — at the per-item closure inside
+`emitList_scans_nonemptyIx`'s grammability witness, where
+`hw : w ∈ head :: tail` must be bridged to `w ∈ items.toList`
+to access `h ⟨i, h_sz⟩` (the `Grammable` witness for `items[i]`).
+The bridge is one line: `have hw' : w ∈ items.toList := h_items ▸ hw`.
+Empty-subcase discipline: drop any preemptive `rw [h_items]` —
+the match already substituted in the goal, so the `rw` would fail
+"didn't find an occurrence of `items.toList`". **Concrete cost**:
+SS3 ported clean **first try after the binder rename + ▸-bridge**,
+no infrastructure churn (every twin pre-existed); the rename was a
+~10-keystroke fix per case, ~165 LOC final vs. ~120 LOC plan (the
+40% overrun is uniform — both sequence and mapping cases repeat
+the same 8-step skeleton with all instances of `items.toList`
+spelled out as `(head :: tail)`, inflating the line count without
+any new proof work). **Lesson for `.parsestream` / `.roundtrip`**:
+whenever a legacy proof carries the comment `-- Rewrite goal back
+to use X (match substituted it)`, replace the simp-back pattern
+with the named-binder pattern — saves one mid-port iteration. The
+match-substitution behavior is consistent across Lean 4.x; the
+simp-back pattern was likely **never strictly necessary** in legacy
+either, but worked there because the legacy `scanFiltered` returns
+a non-dependent `Array (Positioned YamlToken)` rather than the
+indexed `Indexed.TokenStream input`.
+
 **Step 6f.3b3.emitscans.toplevel SS1 (easy prereqs) LANDED 2026-05-27**
 (~225 LOC across two files: `Endpoint.lean` §6 ~200 LOC +
 `EmitScans.lean` §3 ~25 LOC). First sub-session of the **replanned**
@@ -3254,6 +3321,34 @@ discharge-plan ledger):
   - All native_decide axioms are inherited from already-budgeted
     cluster sources; **no new per-decl native_decide axiom names**
     are introduced by SS2 itself.
+
+**`.toplevel` SS3 axiom summary** (recorded 2026-05-28 — closes
+`.emitscans` axiom ledger):
+
+  - `emit_produces_valid_yamlIx`: `[propext, Classical.choice,
+    Quot.sound]` + **49 native_decide axioms total** (47 inherited
+    from SS2's cluster — same set as `scan_accepts_emitScalarIx`,
+    threaded through both the scalar arm and the sequence/mapping
+    arms' delegation to §2d `emit_scans_in_flowIx`; **+2 NEW**
+    from the empty `[]`/`{}` discharges:
+    `emit_produces_valid_yamlIx._native.native_decide.ax_1_3`
+    (witnesses `(scanFilteredIx "[]").toBool = true`) and
+    `…ax_1_15` (witnesses `(scanFilteredIx "{}").toBool = true`).
+    Both are closed-string decidability calls on `scanFilteredIx`;
+    on-policy per Reflection 142's per-decl trust ceiling.
+  - **Phase-3 emitter-scannability cluster axiom posture (closed)**:
+    every Phase-3 emitter-scannability theorem ships pure triple +
+    inherited `scanDoubleQuotedIx` cluster (the 43-axiom budget per
+    Reflection 142, +2/+3/+4 small per-helper additions in SS2/SS3 —
+    `emitScalar_{toList,utf8ByteSize_ge}` and the two SS3
+    empty-collection discharges). **No `axiom`/`sorry`/`partial`
+    anywhere in the cluster.** The standing de-`native_decide` option
+    on hex-classification (`escapeTag_roundtrip`, hex bounds in
+    `RoundTrip.lean`/`Basic.lean`) remains tracked as a *pre-existing*,
+    out-of-scope concern; if exercised, every Phase-3 emitter-
+    scannability theorem (including `emit_produces_valid_yamlIx`)
+    would collapse back to pure triple + only the two SS3-introduced
+    empty-collection axioms.
 
 **Step 6f.3b3.emitscans.flowpair SS1 (pair-list track) LANDED 2026-05-27**
 (~290 LOC actual vs. ~210 LOC for the pair-list portion of the ~388 LOC
@@ -13623,15 +13718,61 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 new infra** (uses `dispatchContentIx_quote` already in
                 ScanChain.lean §1.4; `scanDoubleQuotedIx_escapeString_corr`
                 already in FlowScalar.lean §2).
-              ▸ **SS3 (composition)** ⏳ planned *(~120 LOC)*. The actual
-                main theorem `emit_produces_valid_yamlIx (v : YamlValue)`
-                `(hg : Grammable v false)`: `∃ tokens, scanFilteredIx
-                (emit v) = .ok tokens`. Induction over `Grammable`; three
-                cases delegate to SS2 (scalar), Endpoint.lean §5 +
-                §2d/§2c (mapping), SS1 (`[` init) + §2d (sequence body)
-                + Endpoint.lean §3/§4 (outermost closer). Closes
-                `.emitscans` (10/10 sub-sessions, counting the
-                `.toplevel` split).
+              ▸ **SS3 (composition)** ✅ **LANDED 2026-05-28**
+                *(~165 LOC actual vs. ~120 LOC plan; legacy 8281–8398
+                `emit_produces_valid_yaml`)*. Target: `EmitScans.lean`
+                §4 (the new section appended after §3.3). The capstone
+                composition theorem `emit_produces_valid_yamlIx
+                (v : YamlValue) {inFlow : Bool} (hg : Grammable v inFlow)
+                : ∃ tokens, scanFilteredIx (emit v) = .ok tokens`,
+                induction over `Grammable`:
+                  · **Scalar** → one-liner `scan_accepts_emitScalarIx`
+                    (SS2 wrapper).
+                  · **Sequence** → empty `[]` via SS1 decidability
+                    bridge + `(by native_decide)`; non-empty sandwiches
+                    `EmitListScansInFlowIx items.toList` body (built
+                    from `emitList_scans_nonemptyIx` §2 + per-item
+                    `emit_scans_in_flowIx` §2d) between Endpoint.lean
+                    §6 `_open_seq_init` and §3 `_close_seq_outermost`
+                    + `scanNextTokenIx_eof`, bridged via Invariant.lean
+                    §5 `scanFilteredIx_of_chain`.
+                  · **Mapping** → structurally identical with `{`/`}`,
+                    `emitPairList`, Endpoint §5 opener, §4 closer,
+                    two-witness pair closure for `hk`/`hv`.
+                The chain composition: `(ScanChainIx.single h_snt₁).trans
+                (h_chain₂.toScanChainIx.trans (ScanChainIx.single h_snt₃))`,
+                fuel discharged via `ScanChainIx.fuel_bound`, BOM-check
+                no-op via `initial_corrIx` + `peek_of_chars_consIx_state`.
+                **Zero new infrastructure** — every twin pre-existed
+                from SS1/SS2/§2d/Endpoint §3-6/Invariant §5. **One
+                port-time pitfall** (Reflection 146): Lean-4.30 tactic
+                `match` substitutes its scrutinee into the goal type,
+                so the legacy `simp only [← h_items]` to "undo" the
+                substitution fails ("simp made no progress" — the
+                rewrite RHS lives under a dependent token-stream
+                binder); fix is to name the match patterns
+                (`head :: tail` / `phead :: ptail`) and propagate them
+                through the body, using `h_items ▸` / `h_pairs ▸` only
+                in the per-item/per-pair closure to bridge back to
+                `items[i]`/`pairs[i]` for the grammability witnesses.
+                Built clean **91/91** after the binder rename. **Axiom
+                posture**: `[propext, Classical.choice, Quot.sound]`
+                + **47 inherited** native_decide axioms (the SS2 cluster
+                — `escapeTag_roundtrip._native.*` ×22,
+                `collectDoubleQuotedLoopIx_escapeString_succeeds` ×2,
+                `escapeChar_hex_structure` ×3, `escapeChar_nonempty` ×1,
+                `escapeTag_not_linebreak` ×10, `hex{Nibble_is_hex,
+                Nibble_lt128,_foldl_roundtripIx,_two_foldl_boundIx}` ×4,
+                `scannerHexCheck_eq_isHexDigitBool` ×1, `emitScalar_
+                {toList,utf8ByteSize_ge}` ×2, +2 from SS3 itself for
+                the empty-collection discharge) +
+                **2 NEW** axioms: `emit_produces_valid_yamlIx._native.
+                native_decide.ax_1_3` (the `(scanFilteredIx "[]").toBool`
+                witness) and `…ax_1_15` (the `(scanFilteredIx "{}").toBool`
+                witness). Within the documented native_decide budget; no
+                new user-defined axioms. **Closes `.emitscans` at 10/10
+                sub-sessions** — Phase-3 emitter-scannability cluster
+                COMPLETE.
 
       ▸ **6f.3b3.parsestream** *(file-level; ~440 LOC; single
         session)*. Maps to legacy lines 8400–8874. Target file:
