@@ -876,4 +876,210 @@ theorem scanFilteredIx_boundary_tokens (input : String)
       = YamlToken.streamEnd
     simp only [Array.toList_filter, h_sz_eq]; exact h_last_val
 
+/-! ## §5.4.G.6  Body characterization (sub-session `.body1`)
+
+Sub-step `6f.3b3.roundtrip.maintheorem.body1`. Port the Part-1 (first new
+filtered token shape) of `emitList_body_filtered_characterization` and
+`emitPairList_body_filtered_characterization` (legacy 9474–9552 and
+9570–9646). The Part-2 outer-level-flowEntry claims are deferred to
+`.body2`.
+
+These body theorems lift the strict-growth chain produced by
+`emitList_scans_nonemptyIx` / `emitPairList_scans_nonemptyIx` (`EmitScans.lean`
+§2 / §3) to a token-count characterization at the first new filtered
+position (`old_sz = (s.tokens.tokens.filter p).size`): after the chain
+the filtered token array has strictly more entries than at the start,
+so `old_sz < (s'.tokens.tokens.filter p).size`.
+
+**Added hypotheses (relative to legacy `_body_filtered_characterization`)**:
+`h_sync` and `h_stack_floor` are introduced because the indexed
+`FlowMonoChainIx_filtered_prefix` (§5.4.G.5.3) requires
+`SimpleKeyAboveFloorIx`, whose stack-floor predicate is shaped as
+`s.simpleKeyStack[j].tokenIndex ≥ s.tokens.size`. The downstream
+consumer (`scanFilteredIx_emitSeq_nonempty_structure`) will discharge
+these from `scanNextTokenIx_flow_open_seq_init` (Endpoint.lean §6) which
+gives `s'.simpleKey.possible = false` and `s'.simpleKeyStack.size =
+s'.flowLevel`, making `h_stack_floor` vacuous at the call site
+(`fl₀ = 1 = simpleKeyStack.size`).
+
+**Conjunct deviation from legacy Part 1**: the legacy Part-1 has TWO
+conjuncts (`old_sz < (s'.filter).size` ∧ `token at old_sz is a content
+start`). The legacy SECOND conjunct is itself a `sorry` (line 9550),
+and porting it on the indexed substrate would require establishing the
+`SimpleKeyAboveFloorIx` invariant on the post-first-step state to
+propagate the per-character first-filtered-token lemmas
+(`FilteredGrowth/FirstFiltered.lean` §1–§3) from `s_first` through the
+rest chain via `FlowMonoChainIx_filtered_prefix`. The required SKAF
+derivation case-analyzes on the first step (`scanFlowSequenceStartIx` /
+`scanFlowMappingStartIx` / `scanDoubleQuotedIx`) and exceeds the
+sub-session LOC budget. The indexed port ships ONLY the FIRST conjunct
+(`old_sz < (s'.tokens.tokens.filter p).size`). The token-shape second
+conjunct lands in `.body1.tokenshape` (next sub-session) along with the
+matching `.body2` outer-level-flowEntry claim. -/
+
+/-! ### §5.4.G.6.1  emitList body Part 1 -/
+
+/-- Body characterization for `emitList` in flow context (Part 1 only,
+    first-conjunct only, sub-session `.body1.list`): scanning the
+    comma-separated body of a non-empty flow sequence advances at least
+    one new (non-`.placeholder`) token. The token-shape second conjunct
+    (`content start at old_sz`) and the outer-level flowEntry Part-2
+    claim are deferred to `.body1.tokenshape` / `.body2`. Indexed twin
+    of legacy `emitList_body_filtered_characterization` (lines
+    9474–9552), first-conjunct fragment of Part-1 only. -/
+theorem emitList_body_filtered_characterizationIx_part1
+    {input : String} (items : List YamlValue) (h_ne : items ≠ [])
+    (h_all : ∀ v ∈ items, EmitScansInFlowIx (input := input) v)
+    (s : ScannerStateIx input) (rest : List Char)
+    (h_corr : ScannerSurfCorrIx s
+      ⟨(L4YAML.Emit.emit.emitList items).toList ++ rest, s.cursor.pos.col⟩)
+    (h_flow : s.inFlow = true) (h_fl : s.flowLevel > 0)
+    (h_indent : s.currentIndent < 0) (h_col : s.cursor.pos.col > 0)
+    (h_ek : s.explicitKeyLine = none)
+    (h_atol : AllTokensOnLineIx s s.cursor.pos.line)
+    (h_endline : EndLineOnLineIx s)
+    (h_sk : s.simpleKey.possible = false)
+    (h_sync : s.simpleKeyStack.size ≥ s.flowLevel)
+    (h_stack_floor : ∀ j, s.flowLevel ≤ j → (hj : j < s.simpleKeyStack.size) →
+      s.simpleKeyStack[j].possible = true →
+      s.simpleKeyStack[j].tokenIndex ≥ s.tokens.size) :
+    let p := fun (t : Indexed.IxToken input) => t.token != YamlToken.placeholder
+    let old_sz := (s.tokens.tokens.filter p).size
+    ∃ n s', ScanChainIx s n s'
+    ∧ ScannerSurfCorrIx s' ⟨rest, s'.cursor.pos.col⟩
+    ∧ s'.flowLevel = s.flowLevel
+    ∧ s'.directivesPresent = s.directivesPresent
+    ∧ s'.indents = s.indents
+    ∧ s'.explicitKeyLine = s.explicitKeyLine
+    ∧ s'.cursor.pos.col > 0
+    ∧ s'.inFlow = true
+    ∧ s'.currentIndent < 0
+    ∧ s'.cursor.pos.line = s.cursor.pos.line
+    ∧ AllTokensOnLineIx s' s'.cursor.pos.line
+    ∧ EndLineOnLineIx s'
+    ∧ s'.simpleKeyStack = s.simpleKeyStack
+    ∧ FlowMonoChainIx s.flowLevel s n s'
+    ∧ old_sz < (s'.tokens.tokens.filter p).size := by
+  intro p old_sz
+  -- Construct the strict chain from EmitListScansInFlowIx.
+  have h_scan := emitList_scans_nonemptyIx items h_ne h_all
+  obtain ⟨n, s', h_chain, h_corr', h_fl', h_dp', h_ids', h_ek', h_col', h_inflow',
+          h_indent', h_line', h_atol', h_endline', h_stack', h_fmc⟩ :=
+    h_scan s rest h_corr h_flow h_fl h_indent h_col h_ek h_atol h_endline
+  -- Strict chain growth: through n steps, filtered count grows by ≥ n.
+  have h_grows := ScanChainGrewIx_filtered_grows h_chain
+  -- n ≥ 1 because emitList of a non-empty list is non-empty.
+  have h_n_pos : n ≥ 1 := by
+    match n, h_chain with
+    | 0, .zero =>
+      exfalso
+      have h_chars_eq :=
+        CouplingBridge.CharsFromOffset_unique h_corr.chars_from h_corr'.chars_from
+      have h_len := congrArg List.length h_chars_eq
+      simp only [List.length_append] at h_len
+      have h_nil : (L4YAML.Emit.emit.emitList items).toList = [] := by
+        match h_list : (L4YAML.Emit.emit.emitList items).toList with
+        | [] => rfl
+        | _ :: _ => simp [h_list] at h_len
+      cases items with
+      | nil => exact h_ne rfl
+      | cons v vs => exact absurd h_nil (emitList_toList_ne_nil v vs)
+    | _ + 1, _ => omega
+  -- old_sz < (s'.filter).size from strict growth (n ≥ 1).
+  have h_lt : old_sz < (s'.tokens.tokens.filter p).size := by
+    show (s.tokens.tokens.filter (fun t => t.token != YamlToken.placeholder)).size <
+         (s'.tokens.tokens.filter (fun t => t.token != YamlToken.placeholder)).size
+    omega
+  -- Assemble the result: forget strict chain to ScanChainIx at the public boundary.
+  exact ⟨n, s', h_chain.toScanChainIx, h_corr', h_fl', h_dp', h_ids', h_ek',
+         h_col', h_inflow', h_indent', h_line', h_atol', h_endline',
+         h_stack', h_fmc, h_lt⟩
+
+/-! ### §5.4.G.6.2  emitPairList body Part 1 -/
+
+/-- Body characterization for `emitPairList` in flow context (Part 1 only,
+    first-conjunct only, sub-session `.body1.pair`): scanning the
+    comma-separated body of a non-empty flow mapping advances at least
+    one new (non-`.placeholder`) token. The legacy Part-1 includes
+    additionally `n ≥ 3` (key + value-indicator + value) and "first new
+    filtered token is `.key`" — both deferred to `.body1.tokenshape`
+    along with the Part-2 outer-level flowEntry claim. Indexed twin of
+    legacy `emitPairList_body_filtered_characterization` (lines
+    9570–9646), first-conjunct fragment of Part-1 only.
+
+    See `§5.4.G.6.1`'s deviation note for the reasoning about why the
+    second conjunct (token shape) is deferred: the indexed
+    `FlowMonoChainIx_filtered_prefix` propagation needs `SimpleKeyAboveFloorIx`
+    on the post-first-step state, and `scanValuePrepareIx`'s
+    placeholder→.key conversion adds further intricacy for the pair case
+    (the `.key` first-filtered-token claim comes from step 2, not step 1). -/
+theorem emitPairList_body_filtered_characterizationIx_part1
+    {input : String} (pairs : List (YamlValue × YamlValue)) (h_ne : pairs ≠ [])
+    (h_all_k : ∀ p ∈ pairs, EmitScansInFlowIx (input := input) p.1)
+    (h_all_v : ∀ p ∈ pairs, EmitScansInFlowIx (input := input) p.2)
+    (s : ScannerStateIx input) (rest : List Char)
+    (h_corr : ScannerSurfCorrIx s
+      ⟨(L4YAML.Emit.emit.emitPairList pairs).toList ++ rest, s.cursor.pos.col⟩)
+    (h_flow : s.inFlow = true) (h_fl : s.flowLevel > 0)
+    (h_indent : s.currentIndent < 0) (h_col : s.cursor.pos.col > 0)
+    (h_ek : s.explicitKeyLine = none)
+    (h_atol : AllTokensOnLineIx s s.cursor.pos.line)
+    (h_endline : EndLineOnLineIx s)
+    (h_sk : s.simpleKey.possible = false)
+    (h_sync : s.simpleKeyStack.size ≥ s.flowLevel)
+    (h_stack_floor : ∀ j, s.flowLevel ≤ j → (hj : j < s.simpleKeyStack.size) →
+      s.simpleKeyStack[j].possible = true →
+      s.simpleKeyStack[j].tokenIndex ≥ s.tokens.size) :
+    let p := fun (t : Indexed.IxToken input) => t.token != YamlToken.placeholder
+    let old_sz := (s.tokens.tokens.filter p).size
+    ∃ n s', ScanChainIx s n s'
+    ∧ ScannerSurfCorrIx s' ⟨rest, s'.cursor.pos.col⟩
+    ∧ s'.flowLevel = s.flowLevel
+    ∧ s'.directivesPresent = s.directivesPresent
+    ∧ s'.indents = s.indents
+    ∧ s'.explicitKeyLine = s.explicitKeyLine
+    ∧ s'.cursor.pos.col > 0
+    ∧ s'.inFlow = true
+    ∧ s'.currentIndent < 0
+    ∧ s'.cursor.pos.line = s.cursor.pos.line
+    ∧ AllTokensOnLineIx s' s'.cursor.pos.line
+    ∧ EndLineOnLineIx s'
+    ∧ s'.simpleKeyStack = s.simpleKeyStack
+    ∧ FlowMonoChainIx s.flowLevel s n s'
+    ∧ old_sz < (s'.tokens.tokens.filter p).size := by
+  intro p old_sz
+  -- Construct the strict chain from EmitPairListScansInFlowIx.
+  have h_scan := emitPairList_scans_nonemptyIx pairs h_ne h_all_k h_all_v
+  obtain ⟨n, s', h_chain, h_corr', h_fl', h_dp', h_ids', h_ek', h_col', h_inflow',
+          h_indent', h_line', h_atol', h_endline', h_stack', h_fmc⟩ :=
+    h_scan s rest h_corr h_flow h_fl h_indent h_col h_ek h_atol h_endline
+  -- Strict chain growth: through n steps, filtered count grows by ≥ n.
+  have h_grows := ScanChainGrewIx_filtered_grows h_chain
+  -- n ≥ 1 because emitPairList of a non-empty list is non-empty.
+  have h_n_pos : n ≥ 1 := by
+    match n, h_chain with
+    | 0, .zero =>
+      exfalso
+      have h_chars_eq :=
+        CouplingBridge.CharsFromOffset_unique h_corr.chars_from h_corr'.chars_from
+      have h_len := congrArg List.length h_chars_eq
+      simp only [List.length_append] at h_len
+      have h_nil : (L4YAML.Emit.emit.emitPairList pairs).toList = [] := by
+        match h_list : (L4YAML.Emit.emit.emitPairList pairs).toList with
+        | [] => rfl
+        | _ :: _ => simp [h_list] at h_len
+      cases pairs with
+      | nil => exact h_ne rfl
+      | cons p ps => exact absurd h_nil (emitPairList_toList_ne_nilIx p ps)
+    | _ + 1, _ => omega
+  -- old_sz < (s'.filter).size from strict growth (n ≥ 1).
+  have h_lt : old_sz < (s'.tokens.tokens.filter p).size := by
+    show (s.tokens.tokens.filter (fun t => t.token != YamlToken.placeholder)).size <
+         (s'.tokens.tokens.filter (fun t => t.token != YamlToken.placeholder)).size
+    omega
+  -- Assemble the result: forget strict chain to ScanChainIx at the public boundary.
+  exact ⟨n, s', h_chain.toScanChainIx, h_corr', h_fl', h_dp', h_ids', h_ek',
+         h_col', h_inflow', h_indent', h_line', h_atol', h_endline',
+         h_stack', h_fmc, h_lt⟩
+
 end L4YAML.Proofs.Indexed.EmitterScannability.RoundTrip

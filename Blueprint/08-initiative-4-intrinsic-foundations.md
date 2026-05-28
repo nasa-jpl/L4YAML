@@ -1820,34 +1820,59 @@ not in-place axiom-to-theorem promotion — the latter is impossible
 when the axiom's hypothesis is strictly weaker than what the
 stronger lemma derives).
 
-**Next session**: **Step 6f.3b3.roundtrip.maintheorem.body**
+**Next session**: **Step 6f.3b3.roundtrip.maintheorem.body1.tokenshape**
 (`Proofs/Output/IndexedEmitterScannability/RoundTrip.lean`, append
-to `.fidelity` + `.filterinfra` + `.growth`'s landed blocks; legacy
-lines 9474–9652, ~179 legacy LOC, ~400–700 indexed LOC expected).
-**Second of 4 sub-sessions** for the elaborated `.maintheorem`
-split. **Body characterizations**:
-`emitList_body_filtered_characterizationIx` (legacy 9474–9569, ~96
-LOC; **3 legacy sorries to discharge** at lines 9519, 9550, 9552),
-`emitPairList_body_filtered_characterizationIx` (legacy 9570–9652,
-~83 LOC; **3 legacy sorries to discharge** at lines 9638, 9644,
-9646). Both characterize the filtered token emissions of
-`emit.emitList` / `emit.emitPairList` body loops in flow context:
-(1) the first new filtered token (at the previous tokens-array
-size index) is a content start (`flowSequenceStart` /
-`flowMappingStart` / scalar token); (2) after every outer-level
-`.flowEntry`, the next filtered token is again a content start.
-Legacy sorries pertain to bracket-balance and terminator
-preservation across body iterations and **must be closed** at port
-time — likely by composing `.growth` chain combinators with
-`ScanChainGrewIx_filtered_grows` and the new
-`scanFlow{Sequence,Mapping}StartIx_filtered` /
-`scanFlowEntryIx_filtered` equations from §5.4.G.5.1.
-**Substrate posture**: §5.4.G.5 (just landed) provides the
-foundation; `ScanChainGrewIx_filtered_grows`,
-`scanFlowSequenceStartIx_first_filtered_token` and twin
-(`FilteredGrowth/FirstFiltered.lean` §1–§3) already landed and
-should bridge the sorries. New primitive expectation: minimal —
-this sub-session is primarily composition.
+§5.4.G.6.3 / §5.4.G.6.4 after the just-landed §5.4.G.6.1 / §5.4.G.6.2
+scaffold; legacy lines 9474–9569 + 9570–9652, ~400–700 indexed LOC
+expected). **Second of 3 sub-sessions** for the discovered `.body`
+split (was Blueprint-original 1, then 2 — now 3 after scope
+discovery in `.body1.scaffold`; see Reflection 151).
+**Target**: close **4 of 5 legacy sorries** (9550 / 9638 / 9644;
+9552/9646 belong to `.body2`). **Theorem extensions**: strengthen
+`emitList_body_filtered_characterizationIx_part1` and
+`emitPairList_body_filtered_characterizationIx_part1` conclusions
+with first-filtered-token shape clauses
+(`(∃ c sc, .scalar c sc) ∨ .flowSequenceStart ∨ .flowMappingStart`
+for list; `n ≥ 3 ∧ .key` for pair) via case-analysis on
+`items.head` / `pairs.head`'s 4 YamlValue constructors (Reflection
+151). **Substrate posture**: `.body1.scaffold` exposes
+`h_sk`/`h_sync`/`h_stack_floor` already; need to derive
+`SimpleKeyAboveFloorIx` on the post-first-step state (use
+`saveSimpleKeyIx_*` / `scanFlow{Sequence,Mapping}StartIx_*` /
+`scanDoubleQuotedIx_*` substrate properties) to bridge first-step
+characterization through `FlowMonoChainIx_filtered_prefix`. The
+pair case additionally needs `scanValuePrepareIx` retroactive
+placeholder→`.key` conversion reasoning at step 2. **New primitive
+expectation**: SKAF post-first-step propagation lemmas
+(per-dispatch) — minor; `scanValuePrepareIx` placeholder rewrite
+characterization — moderate.
+
+**`.roundtrip.maintheorem.body1.scaffold` LANDED 2026-05-28** —
+second of 4 `.maintheorem` sub-sessions; first half of `.body`
+(now re-discovered as a 3-way split — see Reflection 151). Ships
+§5.4.G.6.1 / §5.4.G.6.2 body characterization wrappers
+(`emitList_body_filtered_characterizationIx_part1`,
+`emitPairList_body_filtered_characterizationIx_part1`) — both thin
+wrappers around `emitList_scans_nonemptyIx` /
+`emitPairList_scans_nonemptyIx` (already landed in
+`EmitScans.lean` §2 / §3) that additionally expose the
+`old_sz < (s'.tokens.tokens.filter p).size` strict size-growth
+conjunct (via `ScanChainGrewIx_filtered_grows` + non-empty-list LOC
+arithmetic). **Zero legacy sorries closed**: the legacy sorries at
+9550 / 9552 / 9638 / 9644 / 9646 are TOKEN-SHAPE and OUTER-FLOWENTRY
+claims that need substrate-side discharge (SKAF post-first-step
+derivation + `scanValuePrepareIx` reasoning) which exceeded
+sub-session budget — split into `.body1.tokenshape` (4 sorries) +
+`.body2` (2 sorries; note 9552 is Part-2, not Part-1 as initially
+mis-classified). Hypotheses pre-include `h_sk` /  `h_sync` /
+`h_stack_floor` (currently unused → linter warnings; reserved for
+the future strong-claim sub-sessions). **Axiom posture**: pure
+triple `[propext, Classical.choice, Quot.sound]` on both theorems;
+**zero new user-defined or `native_decide` axiom names**. **LOC
+pattern**: 206 LOC actual vs. 250-350 LOC planned for
+`.body1.scaffold`; came in under budget because the strong-claim
+fragment was deferred. Built clean 99/99, full project 491/491,
+sorry/axiom/partial-free. See Reflection 151.
 
 **`.roundtrip.maintheorem.growth` LANDED 2026-05-28** — first of 4
 `.maintheorem` sub-sessions (and third of 4 `.roundtrip`
@@ -3672,6 +3697,76 @@ better-shaped indexed twin OR port verbatim with a clean axiom
 posture" — both outcomes preferable to a verbatim port that drags a
 sorry into the indexed tree.
 
+**Reflection 151 (new): scope discovery — when "must close at port
+time" sorries depend on substrate-side derivations whose cost was
+hidden in the legacy `sorry`, the budget is structurally wrong
+without a substrate-cost sub-survey.**
+`.roundtrip.maintheorem.body1.scaffold` shipped at 206 LOC with
+**zero of the 5 legacy sorries closed** despite the Blueprint plan
+estimating ~400-700 LOC for the full body characterization. The
+scope discovery: the legacy sorries (9550 / 9552 / 9638 / 9644 /
+9646) require closing on the **post-first-step state's
+`SimpleKeyAboveFloorIx` (SKAF) invariant**, which the
+substrate survey identified as "available via `.body1` composition"
+but actually requires a **per-dispatch SKAF transformation
+analysis** that no current sub-session has shipped. Specifically:
+
+  - For `[` / `{` openers, `saveSimpleKeyIx` may add up to 2
+    placeholders and `scanFlow{Sequence,Mapping}StartIx` pushes the
+    old `simpleKey` onto `simpleKeyStack` — the `h_stack_floor`
+    bound (`s.simpleKeyStack[j].tokenIndex ≥ s.tokens.size`) needs
+    explicit case analysis to be re-established at `s_first.tokens.size`.
+  - For `"` (scalar / alias), `scanDoubleQuotedIx` produces a state
+    `s_first` whose `simpleKey.possible` may be `true` if
+    `s.simpleKeyAllowed = true` was satisfied — `EmitScansInFlowIx`
+    guarantees `s.simpleKeyAllowed = false` at the END of the chain,
+    but `s_first` (after just the first step) may have it true,
+    requiring `s.simpleKey.tokenIndex` propagation.
+  - For `emitPairList`, the first filtered token claim is `.key`,
+    which comes from step 2 (`scanNextTokenIx_flow_valueIx` triggers
+    `scanValuePrepareIx` retroactively converting the placeholder at
+    `s.tokens.size` to `.key`) — neither the SKAF post-step lemmas
+    NOR the placeholder→key conversion analysis exists in the
+    current substrate.
+
+**What this teaches**: the substrate survey methodology (Reflection
+142, 144) needs to be extended with a **cost-of-sorry-discharge
+survey** for sub-sessions targeting "**must close** at port time"
+sorries. The current survey identifies whether a substrate dependency
+*exists* but not whether the closure of an associated sorry
+*requires* additional substrate. The lesson: when a sub-session
+plans to discharge legacy sorries, the substrate survey should
+include an explicit "what would the proof look like in 10 lines?"
+sketch, and if the answer is "I'd need to derive X for some
+intermediate state from primitives Y and Z that may or may not
+exist", that's a signal to **separately sub-session the substrate
+derivations** before the discharge attempt.
+
+**Refined estimates for the remaining `.body` sub-sessions**
+(replaces the Reflection 150 `.body` line):
+
+  - **`.body1.scaffold`** (this session, LANDED): 206 LOC. Wrapper
+    that exposes size-growth witness; no sorries closed.
+  - **`.body1.tokenshape`** (next): close 4 of 5 legacy sorries
+    (9550, 9638, 9644 + n ≥ 3 for pair). Estimated **400–700 LOC**.
+    Needs ~150-200 LOC of substrate-side SKAF post-first-step
+    propagation lemmas (one per dispatch family: scalar / sequence
+    / mapping) PLUS ~80-120 LOC of `scanValuePrepareIx`
+    placeholder→`.key` rewrite characterization for the pair case.
+  - **`.body2`** (after): close 2 of 5 legacy sorries (9552, 9646).
+    Estimated **300-500 LOC**. List/pair-list induction tracking
+    `flowBracketBalanceIx` from `old_sz` through chain steps.
+  - **`.body` total** (revised): **~900-1400 LOC** across 3
+    sub-sessions vs. Blueprint-original 400-700 LOC in 1
+    sub-session. Underestimate factor: ~2.0–2.3×.
+
+**Methodology change**: future `.maintheorem.*` sub-sessions
+(`.nonempty`, `.parsewrap`) should be **sub-survey'd for the cost
+of each legacy sorry's discharge** before estimating LOC. The
+heuristic: "if the sorry was left because legacy author lacked an
+intermediate-state invariant, the indexed port needs to derive
+that invariant — count separately."
+
 **Step 6f.3b3.emitscans.toplevel SS1 (easy prereqs) LANDED 2026-05-27**
 (~225 LOC across two files: `Endpoint.lean` §6 ~200 LOC +
 `EmitScans.lean` §3 ~25 LOC). First sub-session of the **replanned**
@@ -3932,6 +4027,31 @@ of 4 `.roundtrip` sub-session axiom ledgers):
     `native_decide` (vs. a structural discharge using
     `ScanChainGrewIx_filtered_grows` + the §5.4.G.5 foundation
     lemmas just landed) is a port-time decision.
+
+**`.roundtrip.maintheorem.body1.scaffold` axiom summary**
+(recorded 2026-05-28 — second of 4 `.maintheorem` sub-session
+ledgers; first **non-sorry-closing** `.maintheorem` sub-session):
+
+  - `emitList_body_filtered_characterizationIx_part1`,
+    `emitPairList_body_filtered_characterizationIx_part1`:
+    **pure triple** `[propext, Classical.choice, Quot.sound]`. Both
+    are thin wrappers around `emitList_scans_nonemptyIx` /
+    `emitPairList_scans_nonemptyIx` (EmitScans.lean §2 / §3 — pure
+    triple) composed with `ScanChainGrewIx_filtered_grows`
+    (EmitScans.lean §1.1 — pure triple) plus a `match`-on-`n`
+    non-empty discharge (`CouplingBridge.CharsFromOffset_unique` +
+    `emitList_toList_ne_nil` / `emitPairList_toList_ne_nilIx` — both
+    pure triple).
+  - **Zero new user-defined or `native_decide` axiom names** introduced.
+    The full Phase-3 closure count remains **0** user-defined axioms.
+  - **5 legacy sorries (9550 / 9552 / 9638 / 9644 / 9646) remain
+    open**: these are TOKEN-SHAPE / OUTER-FLOWENTRY claims whose
+    discharge requires substrate-side derivations (SKAF
+    post-first-step propagation + `scanValuePrepareIx` placeholder
+    rewriting) deferred to `.body1.tokenshape` (4 sorries) and
+    `.body2` (2 sorries — note 9552 was initially mis-classified as
+    Part-1; it is Part-2 outer-flowEntry). See Reflection 151 for
+    the scope discovery analysis.
 
 **Step 6f.3b3.emitscans.flowpair SS1 (pair-list track) LANDED 2026-05-27**
 (~290 LOC actual vs. ~210 LOC for the pair-list portion of the ~388 LOC
@@ -14547,18 +14667,68 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 Reflection 150.
 
               ▹ **.maintheorem.body** *(~179 legacy LOC; legacy
-                9474–9652; **6 legacy `sorry`s to discharge**)*. **Body
-                characterizations**:
-                `emitList_body_filtered_characterizationIx` (legacy
-                9474–9569, ~96 LOC; 3 sorries at lines 9519, 9550,
-                9552), `emitPairList_body_filtered_characterizationIx`
-                (legacy 9570–9652, ~83 LOC; 3 sorries at lines 9638,
-                9644, 9646). Both characterize the filtered token
-                emissions of `emit.emitList` / `emit.emitPairList` body
-                loops. Legacy sorries pertain to bracket-balance and
-                terminator preservation across body iterations and
-                **must be closed** at port time. Estimated indexed LOC:
-                ~400–700.
+                9474–9652; **5 legacy `sorry`s to discharge** —
+                9550, 9552, 9638, 9644, 9646; line 9519 from earlier
+                count is a comment, not a `sorry`)*.
+                **Scope re-discovered as 3 sub-sessions** (was
+                1, then 2 via in-session split; see Reflection 151):
+
+                ▹▹ **.body1.scaffold** ✅ **LANDED 2026-05-28**
+                *(~206 LOC actual / ~250-350 planned; legacy 9474–9486
+                + 9570–9582 statement portions only)*.
+                **Body characterization wrappers** (size-growth
+                conjunct only): `emitList_body_filtered_characterizationIx_part1`,
+                `emitPairList_body_filtered_characterizationIx_part1`.
+                Both thin wrappers around `emitList_scans_nonemptyIx` /
+                `emitPairList_scans_nonemptyIx` (`EmitScans.lean`
+                §2 / §3) that additionally expose
+                `old_sz < (s'.tokens.tokens.filter p).size`
+                (size-growth witness via `ScanChainGrewIx_filtered_grows`
+                + non-empty-list LOC arithmetic). API-level scaffold for
+                future strong-claim sub-sessions; **zero legacy sorries
+                closed**. Hypotheses pre-include `h_sk`, `h_sync`,
+                `h_stack_floor` (currently unused → linter warnings)
+                so that `.body1.tokenshape` can extend the conclusion
+                without breaking the public API. **Axiom posture**:
+                pure triple on both. Built clean 99/99, full project
+                491/491.
+
+                ▹▹ **.body1.tokenshape** *(estimated ~400–700 LOC)*.
+                **First-filtered-token shape claims** — closes
+                **4 of 5 legacy sorries**: 9550 (emitList token at
+                old_sz is content start), 9552 *(WAIT — 9552 is the
+                Part 2 outer-flowEntry sorry, belongs in .body2)*,
+                9638 (emitPairList n ≥ 3), 9644 (emitPairList token
+                at old_sz is `.key`). Strategy: case-analyze on
+                `items.head` / `pairs.head`'s 4 YamlValue constructors
+                (scalar/sequence/mapping/alias) and apply the
+                appropriate first-filtered-token lemma from
+                `FilteredGrowth/FirstFiltered.lean` §1–§3. Requires
+                deriving `SimpleKeyAboveFloorIx` on the post-first-step
+                state to propagate first-filtered-token claim through
+                the rest chain via `FlowMonoChainIx_filtered_prefix`.
+                The pair case additionally needs `scanValuePrepareIx`
+                placeholder→`.key` reasoning. **Substrate present** —
+                no new primitives needed; just intricate composition.
+
+                ▹▹ **.body2** *(estimated ~300–500 LOC)*.
+                **Outer-level flowEntry next-token claims** — closes
+                **2 of 5 legacy sorries**: 9552 (emitList outer
+                flowEntry → next content start), 9646 (emitPairList
+                outer flowEntry → next `.key`). Strategy: induction on
+                the list/pair list structure tracking
+                `flowBracketBalanceIx` from `old_sz` through chain
+                steps. Each outer-level comma corresponds to a
+                between-items step in the recursive
+                `emit{List,PairList}` structure.
+
+                **Total .body scope re-estimate**: 800–1500 LOC across
+                3 sub-sessions (was Blueprint-original 400–700 LOC in
+                1 sub-session). The scope discovery in `.body1.scaffold`
+                revealed that the legacy sorries discharge requires
+                intricate SKAF derivation + first-filtered-token bridge
+                + scanValuePrepare reasoning that wasn't anticipated.
+                See Reflection 151.
 
               ▹ **.maintheorem.nonempty** *(~410 legacy LOC; legacy
                 9653–10062; **2 legacy `sorry`s to discharge**)*.
