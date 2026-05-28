@@ -891,16 +891,18 @@ position (`old_sz = (s.tokens.tokens.filter p).size`): after the chain
 the filtered token array has strictly more entries than at the start,
 so `old_sz < (s'.tokens.tokens.filter p).size`.
 
-**Added hypotheses (relative to legacy `_body_filtered_characterization`)**:
-`h_sync` and `h_stack_floor` are introduced because the indexed
-`FlowMonoChainIx_filtered_prefix` (§5.4.G.5.3) requires
-`SimpleKeyAboveFloorIx`, whose stack-floor predicate is shaped as
-`s.simpleKeyStack[j].tokenIndex ≥ s.tokens.size`. The downstream
-consumer (`scanFilteredIx_emitSeq_nonempty_structure`) will discharge
-these from `scanNextTokenIx_flow_open_seq_init` (Endpoint.lean §6) which
-gives `s'.simpleKey.possible = false` and `s'.simpleKeyStack.size =
-s'.flowLevel`, making `h_stack_floor` vacuous at the call site
-(`fl₀ = 1 = simpleKeyStack.size`).
+**SKAF-style hypotheses dropped from the Part-1 signature**: the
+original scaffold draft of these `_part1` wrappers carried `h_sk`
+(`s.simpleKey.possible = false`), `h_sync`, and `h_stack_floor`
+forward as placeholders for the eventual second-conjunct (token-
+shape) work. None of them is actually used in the Part-1 body
+(only the first conjunct `old_sz < (s'.filter).size` is proved
+here, which doesn't depend on `FlowMonoChainIx_filtered_prefix`).
+The `.body1.tokenshape.{list,pair}` sub-sessions will re-introduce
+the SKAF-style hypotheses at their own signatures when they
+extend with the token-shape conjunct. The downstream consumer
+(`scanFilteredIx_emitSeq_nonempty_structure`) will then discharge
+them from `scanNextTokenIx_flow_open_seq_init` (Endpoint.lean §6).
 
 **Conjunct deviation from legacy Part 1**: the legacy Part-1 has TWO
 conjuncts (`old_sz < (s'.filter).size` ∧ `token at old_sz is a content
@@ -937,12 +939,7 @@ theorem emitList_body_filtered_characterizationIx_part1
     (h_indent : s.currentIndent < 0) (h_col : s.cursor.pos.col > 0)
     (h_ek : s.explicitKeyLine = none)
     (h_atol : AllTokensOnLineIx s s.cursor.pos.line)
-    (h_endline : EndLineOnLineIx s)
-    (h_sk : s.simpleKey.possible = false)
-    (h_sync : s.simpleKeyStack.size ≥ s.flowLevel)
-    (h_stack_floor : ∀ j, s.flowLevel ≤ j → (hj : j < s.simpleKeyStack.size) →
-      s.simpleKeyStack[j].possible = true →
-      s.simpleKeyStack[j].tokenIndex ≥ s.tokens.size) :
+    (h_endline : EndLineOnLineIx s) :
     let p := fun (t : Indexed.IxToken input) => t.token != YamlToken.placeholder
     let old_sz := (s.tokens.tokens.filter p).size
     ∃ n s', ScanChainIx s n s'
@@ -1024,12 +1021,7 @@ theorem emitPairList_body_filtered_characterizationIx_part1
     (h_indent : s.currentIndent < 0) (h_col : s.cursor.pos.col > 0)
     (h_ek : s.explicitKeyLine = none)
     (h_atol : AllTokensOnLineIx s s.cursor.pos.line)
-    (h_endline : EndLineOnLineIx s)
-    (h_sk : s.simpleKey.possible = false)
-    (h_sync : s.simpleKeyStack.size ≥ s.flowLevel)
-    (h_stack_floor : ∀ j, s.flowLevel ≤ j → (hj : j < s.simpleKeyStack.size) →
-      s.simpleKeyStack[j].possible = true →
-      s.simpleKeyStack[j].tokenIndex ≥ s.tokens.size) :
+    (h_endline : EndLineOnLineIx s) :
     let p := fun (t : Indexed.IxToken input) => t.token != YamlToken.placeholder
     let old_sz := (s.tokens.tokens.filter p).size
     ∃ n s', ScanChainIx s n s'

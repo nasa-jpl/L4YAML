@@ -25,26 +25,43 @@ Ships ONE new strong predicate and ONE strong inductive theorem:
     non-empty-emit argument the weak proof uses to establish
     `h_n_v_pos`.
 
-**What this sub-sub-session DOES NOT yet ship** (deferred to a
-follow-on `.body1.tokenshape.substrate.b` session):
+**`.body1.tokenshape.substrate.b` additions** (§3, §4) — landed
+2026-05-28:
+
+  * **§3 `scanValuePrepareIx_flow_pointwise`** — pointwise
+    characterization of `scanValuePrepareIx` in the flow branch.
+    Per Reflection 153 discovery (`scanValuePrepareIx` overwrites
+    position `idx + 1`, NOT `idx`): exposes that the new token at
+    position `idx + 1` is `.key` and every other position is
+    preserved. Used by `.tokenshape.pair` to identify the first
+    new filtered token as `.key`.
+  * **§4 `FlowMonoChainIx_filtered_prefix_no_overwrite`** —
+    floor-parameterized filtered-prefix preservation through a
+    `FlowMonoChainIx`. Takes `SimpleKeyAboveFloorIx` as an explicit
+    input (instead of constructing it from `simpleKey.possible =
+    false`), so the lemma applies whenever the consumer can
+    establish SKAF directly. This admits the case where the chain
+    starts in a state with `simpleKey.possible = true` provided the
+    chosen floor `n₀ ≤ simpleKey.tokenIndex`. Reflection 153's
+    refinement of the no-overwrite hypothesis design materialises
+    here as: the "protected" raw prefix is positions `i < n₀`,
+    where `n₀` is consumer-chosen and SKAF-justified.
+
+**What `.substrate.b` does NOT yet ship** (deferred further):
 
   - `EmitListScansInFlowIx_strong` exposing the first-step boundary
     state. Not strictly required by `.tokenshape.list` if that
     sub-sub-session does its own `cases h_fmc` decomposition.
-  - `FlowMonoChainIx_filtered_prefix_no_overwrite` — the relaxed-floor
-    variant of `FlowMonoChainIx_filtered_prefix`. Needed for both
-    `.tokenshape.list` (content-start at `old_sz`) and `.tokenshape.pair`
-    (`.key` at `old_sz`). Reflection 153 (new) refines the design
-    constraints based on this session's discovery that
-    `scanFlowEntryIx` does NOT clear `simpleKey.possible` — the
-    "placeholder stays placeholder" argument depends instead on the
-    NEXT step's `saveSimpleKey` overwriting `simpleKey.tokenIndex` to
-    a new position (where new `tokens.size > m₀+1`). This re-shapes
-    the no-overwrite hypothesis.
-  - `scanValuePrepareIx_key_filter_growth_flowIx` — characterizes the
-    placeholder→`.key` overwrite at raw position `idx + 1` (NOT `idx`,
-    a key discovery this session — see Reflection 153). Needed for
-    `.tokenshape.pair`'s sorry 9644 (first new filtered token is `.key`).
+  - The fully-automated SCALAR-LIST no-overwrite invariant
+    (preserving positions ABOVE `simpleKey.tokenIndex + 1` through
+    the chain). Analysis (Reflection 154, this session) showed
+    this requires a per-step invariant of the form "active
+    `simpleKey.tokenIndex+1 ∉ {protected positions}`", maintained
+    through `scanNextTokenIx_maintains_SKAFIx`-style induction —
+    workable but ~200 LOC of new step-level lemmas. The
+    consumer-side (`.tokenshape.list` / `.tokenshape.pair`) can
+    instead provide its own consumer-targeted SKAF instance to
+    apply §4's lemma at an appropriate floor.
 
 **Axiom posture**: pure triple `[propext, Classical.choice, Quot.sound]`.
 No new axioms introduced.
@@ -509,5 +526,198 @@ theorem emitPairList_scans_nonemptyIx_strong (pairs : List (YamlValue × YamlVal
       · rw [h_ek_end, h_ek_pp, h_ek_c, h_ek_v, h_ek₃, h_ek₂]; exact h_ek.symm
       · rw [h_line_end, _h_line_pp, _h_line_c, _h_line_v, _h_line₃, _h_line₂, _h_line₁]
       · rw [h_stack_end, h_stack_pp, h_stack_c, h_stack_v, h_stack_pp₃, h_stack_v₂, h_stack₁]
+
+/-! ## §3  `scanValuePrepareIx_flow_pointwise` — `idx + 1` overwrite
+
+Per Reflection 153 discovery: in flow context (`s.inFlow = true`), the
+`s.simpleKey.possible = true` branch of `scanValuePrepareIx` overwrites
+position `s.simpleKey.tokenIndex + 1` (NOT `s.simpleKey.tokenIndex`)
+with `.key`, leaving every other position untouched and the array
+size unchanged.
+
+Direct consumer enabler for `.tokenshape.pair`'s sorry 9644 (first new
+filtered token is `.key`): combined with the `saveSimpleKey` placeholder
+shape at positions `m₀` and `m₀ + 1`, this lemma identifies the position
+that becomes `.key`.
+
+The non-flow branch (`!s.inFlow`) additionally writes
+`.blockMappingStart` at `idx` and updates `indents`; we don't
+characterize that branch here since `.tokenshape.{list,pair}` are flow-
+only consumers. -/
+
+/-- Token-array shape of `scanValuePrepareIx` in flow context: equals
+    the original tokens with a single `setIfInBounds` at position
+    `tokenIndex + 1` writing a `.key`-shaped token. -/
+theorem scanValuePrepareIx_flow_tokens_eq (s : ScannerStateIx input)
+    (h_sk : s.simpleKey.possible = true)
+    (h_flow : s.inFlow = true) :
+    (scanValuePrepareIx s).tokens.tokens =
+      s.tokens.tokens.setIfInBounds (s.simpleKey.tokenIndex + 1)
+        (Indexed.IxToken.mk' (input := input) s.simpleKey.cursor.pos YamlToken.key
+          s.simpleKey.cursor.pos (Nat.le_refl _) s.simpleKey.cursor.posBound) := by
+  unfold scanValuePrepareIx
+  simp only [h_sk, h_flow, Bool.not_true, Bool.false_eq_true, ↓reduceIte]
+  rw [overwriteAtCursor_tokens_tokens]
+
+/-- `scanValuePrepareIx` in flow context preserves total token array
+    size (overwriteAtCursor uses `setIfInBounds`, which is size-stable). -/
+theorem scanValuePrepareIx_flow_size_eq (s : ScannerStateIx input)
+    (h_sk : s.simpleKey.possible = true)
+    (h_flow : s.inFlow = true) :
+    (scanValuePrepareIx s).tokens.tokens.size = s.tokens.tokens.size := by
+  rw [scanValuePrepareIx_flow_tokens_eq s h_sk h_flow, Array.size_setIfInBounds]
+
+/-- Pointwise effect of `scanValuePrepareIx` in flow context with
+    `simpleKey.possible = true`: position `idx + 1` becomes `.key`,
+    every other position is preserved. Bundles together with
+    `scanValuePrepareIx_flow_size_eq` (the size statement) and
+    `scanValuePrepareIx_flow_tokens_eq` (the underlying setIfInBounds
+    equation). -/
+theorem scanValuePrepareIx_flow_pointwise (s : ScannerStateIx input)
+    (h_sk : s.simpleKey.possible = true)
+    (h_flow : s.inFlow = true) :
+    -- (key) IF position `idx + 1` is in range, the new token there is `.key`.
+    (∀ (h_lt : s.simpleKey.tokenIndex + 1 < s.tokens.tokens.size),
+      ((scanValuePrepareIx s).tokens.tokens[s.simpleKey.tokenIndex + 1]'(by
+        rw [scanValuePrepareIx_flow_size_eq s h_sk h_flow]; exact h_lt)).token =
+        YamlToken.key) ∧
+    -- (rest) all positions `i ≠ idx + 1` are preserved.
+    (∀ (i : Nat) (hi : i < s.tokens.tokens.size) (h_ne : i ≠ s.simpleKey.tokenIndex + 1),
+      ((scanValuePrepareIx s).tokens.tokens[i]'(by
+        rw [scanValuePrepareIx_flow_size_eq s h_sk h_flow]; exact hi)) =
+        s.tokens.tokens[i]'hi) := by
+  -- The h_ne hypothesis appears unused inside the bound proof of the second
+  -- conjunct's signature but IS used in the proof body via the
+  -- Array.getElem_setIfInBounds_ne call (see refine_2 branch).
+  -- Mark the signature-level scope unused via `set_option` if linter complains.
+  have h_unfold := scanValuePrepareIx_flow_tokens_eq s h_sk h_flow
+  refine ⟨?_, ?_⟩
+  · -- position idx+1 = .key.
+    intro h_lt
+    -- Rewrite both the bound and the term through h_unfold.
+    have h_lt_set : s.simpleKey.tokenIndex + 1 < (s.tokens.tokens.setIfInBounds
+        (s.simpleKey.tokenIndex + 1)
+        (Indexed.IxToken.mk' (input := input) s.simpleKey.cursor.pos YamlToken.key
+          s.simpleKey.cursor.pos (Nat.le_refl _) s.simpleKey.cursor.posBound)).size := by
+      rw [Array.size_setIfInBounds]; exact h_lt
+    have h_eq : (scanValuePrepareIx s).tokens.tokens[s.simpleKey.tokenIndex + 1]'(by
+        rw [scanValuePrepareIx_flow_size_eq s h_sk h_flow]; exact h_lt) =
+      (s.tokens.tokens.setIfInBounds (s.simpleKey.tokenIndex + 1)
+        (Indexed.IxToken.mk' (input := input) s.simpleKey.cursor.pos YamlToken.key
+          s.simpleKey.cursor.pos (Nat.le_refl _)
+          s.simpleKey.cursor.posBound))[s.simpleKey.tokenIndex + 1]'h_lt_set := by
+      congr 1
+    rw [h_eq, Array.getElem_setIfInBounds_self]
+    rfl
+  · -- other positions preserved.
+    intro i hi h_ne
+    have h_lt_set : i < (s.tokens.tokens.setIfInBounds
+        (s.simpleKey.tokenIndex + 1)
+        (Indexed.IxToken.mk' (input := input) s.simpleKey.cursor.pos YamlToken.key
+          s.simpleKey.cursor.pos (Nat.le_refl _) s.simpleKey.cursor.posBound)).size := by
+      rw [Array.size_setIfInBounds]; exact hi
+    have h_eq : (scanValuePrepareIx s).tokens.tokens[i]'(by
+        rw [scanValuePrepareIx_flow_size_eq s h_sk h_flow]; exact hi) =
+      (s.tokens.tokens.setIfInBounds (s.simpleKey.tokenIndex + 1)
+        (Indexed.IxToken.mk' (input := input) s.simpleKey.cursor.pos YamlToken.key
+          s.simpleKey.cursor.pos (Nat.le_refl _)
+          s.simpleKey.cursor.posBound))[i]'h_lt_set := by
+      congr 1
+    rw [h_eq, Array.getElem_setIfInBounds_ne hi (fun h => h_ne h.symm)]
+
+/-! ## §4  `FlowMonoChainIx_filtered_prefix_no_overwrite` — floor-parameterized
+
+Generalization of `FlowMonoChainIx_filtered_prefix` (in
+`RoundTrip.lean §5.4.G.5.3`): takes `SimpleKeyAboveFloorIx` as input
+directly rather than constructing it from `s.simpleKey.possible =
+false`. This admits the case where the chain starts in a state with
+a pending simple key, provided the consumer-chosen floor `n₀ ≤
+s.simpleKey.tokenIndex`.
+
+Reflection 153 motivation: `scanFlowEntryIx` does NOT clear
+`simpleKey.possible` — the prior `FlowMonoChainIx_filtered_prefix` is
+unusable directly when the chain enters via a `,` after a pending
+key. With this floor-parameterized variant, the consumer can pick
+`n₀ = old_tokens_size` (or `n₀ = s.simpleKey.tokenIndex`, etc.) and
+discharge SKAF appropriately for that floor.
+
+Proof: reduces to `FlowMonoChainIx_preserves_raw_prefix` (`Sync/
+Invariant.lean §4`) for per-position raw preservation, then lifts to
+filtered-prefix preservation via `Array_filter_prefix_of_raw_prefix`
+applied to `s.tokens.tokens.take n₀` and `s'.tokens.tokens`. -/
+
+/-- Raw-prefix preservation through `FlowMonoChainIx`,
+    floor-parameterized: instead of requiring `s.simpleKey.possible =
+    false` (as in `FlowMonoChainIx_filtered_prefix` of `RoundTrip.lean
+    §5.4.G.5.3`), takes the `SimpleKeyAboveFloorIx s n₀ fl₀` invariant
+    directly. This admits the case where the chain starts in a state
+    with a pending simple key, provided the consumer-chosen floor `n₀
+    ≤ s.simpleKey.tokenIndex`.
+
+    Per-position raw form: for every `i < n₀`, the token at position
+    `i` in `s'` equals the token at position `i` in `s`. Effectively a
+    semantic re-naming of `FlowMonoChainIx_preserves_raw_prefix`
+    (`Sync/Invariant.lean §4`) emphasizing the "no-overwrite" reading.
+    Consumers lift to filtered-prefix via `Array_filter_prefix_of_raw_prefix`. -/
+theorem FlowMonoChainIx_filtered_prefix_no_overwrite
+    {s s' : ScannerStateIx input} {n fl₀ n₀ : Nat}
+    (h_fmc : FlowMonoChainIx fl₀ s n s')
+    (h_n₀_le : n₀ ≤ s.tokens.size)
+    (h_inv : SimpleKeyAboveFloorIx s n₀ fl₀)
+    (h_sync : s.simpleKeyStack.size ≥ s.flowLevel)
+    (i : Nat) (hi : i < n₀) :
+    ∃ (h_size : i < s'.tokens.size),
+      s'.tokens[i]'h_size = s.tokens[i]'(Nat.lt_of_lt_of_le hi h_n₀_le) :=
+  FlowMonoChainIx_preserves_raw_prefix h_fmc n₀ h_n₀_le h_inv h_sync i hi
+
+/-- Filtered-list-prefix companion of `FlowMonoChainIx_filtered_prefix_no_overwrite`:
+    if the raw prefix of length `n₀` is preserved (per the per-position
+    wrapper above), the filtered token list at `s'` extends the
+    filtered list of the first `n₀` raw tokens at `s`. -/
+theorem FlowMonoChainIx_filtered_prefix_no_overwrite_list
+    {s s' : ScannerStateIx input} {n fl₀ n₀ : Nat}
+    (h_fmc : FlowMonoChainIx fl₀ s n s')
+    (h_n₀_le : n₀ ≤ s.tokens.size)
+    (h_inv : SimpleKeyAboveFloorIx s n₀ fl₀)
+    (h_sync : s.simpleKeyStack.size ≥ s.flowLevel) :
+    let p := fun (t : Indexed.IxToken input) => t.token != YamlToken.placeholder
+    ∃ suffix, (s'.tokens.tokens.filter p).toList =
+              ((s.tokens.tokens.toList.take n₀).filter p) ++ suffix := by
+  intro p
+  -- Raw preservation for i < n₀.
+  have h_size_le : n₀ ≤ s'.tokens.tokens.size := by
+    have h_mono : s.tokens.size ≤ s'.tokens.size := FlowMonoChainIx.tokens_mono h_fmc
+    have h_eq_s : s.tokens.tokens.size = s.tokens.size := rfl
+    have h_eq_s' : s'.tokens.tokens.size = s'.tokens.size := rfl
+    omega
+  have h_pres : ∀ i (hi : i < n₀),
+      s'.tokens.tokens[i]'(Nat.lt_of_lt_of_le hi h_size_le) =
+        s.tokens.tokens[i]'(by
+          have h_eq : s.tokens.tokens.size = s.tokens.size := rfl
+          rw [h_eq]; exact Nat.lt_of_lt_of_le hi h_n₀_le) := by
+    intro i hi
+    obtain ⟨_, h_eq⟩ := FlowMonoChainIx_preserves_raw_prefix h_fmc n₀ h_n₀_le h_inv h_sync i hi
+    exact h_eq
+  -- Convert to list-level: s'.tokens.tokens.toList agrees with s.tokens.tokens.toList on the
+  -- first n₀ positions. Construct the split.
+  have h_take : s'.tokens.tokens.toList.take n₀ = s.tokens.tokens.toList.take n₀ := by
+    apply List.ext_getElem
+    · simp only [List.length_take, Array.length_toList]
+      have h1 : n₀ ≤ s.tokens.tokens.size := by
+        show n₀ ≤ s.tokens.size; exact h_n₀_le
+      have h2 : n₀ ≤ s'.tokens.tokens.size := h_size_le
+      omega
+    · intro k hk₁ hk₂
+      simp only [List.getElem_take, Array.getElem_toList] at hk₁ hk₂ ⊢
+      have h_k_lt_n₀ : k < n₀ := by
+        rw [List.length_take] at hk₁
+        omega
+      exact h_pres k h_k_lt_n₀
+  -- Now split s'.tokens.tokens.toList = take n₀ ++ drop n₀, filter both sides.
+  have h_split : s'.tokens.tokens.toList =
+      s'.tokens.tokens.toList.take n₀ ++ s'.tokens.tokens.toList.drop n₀ := by
+    rw [List.take_append_drop]
+  rw [Array.toList_filter, h_split, List.filter_append, h_take]
+  exact ⟨(s'.tokens.tokens.toList.drop n₀).filter p, rfl⟩
 
 end L4YAML.Proofs.Indexed.EmitterScannability.EmitScans
