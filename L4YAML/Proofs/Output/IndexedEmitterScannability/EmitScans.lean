@@ -1464,4 +1464,45 @@ theorem emit_scans_in_flowIx (v : YamlValue) {inFlow : Bool}
     · exact h_endline₃
     · rw [h_stack₃, h_stack₂, h_stack_pop₁]
 
+/-! ## §3  Top-level scaffolding (`emit_produces_valid_yamlIx` setup)
+
+Sub-step `6f.3b3.emitscans.toplevel`. Replanned at port time into
+**three sub-sessions** (the original Blueprint estimate of ~120 LOC was
+the composition theorem alone; the indexed substrate is missing three
+prerequisite twins that the legacy version inlines):
+
+  - **SS1** (this section): the easy prerequisites — the decidability
+    bridge `scanFilteredIx_exists_of_isOk` (this §3) and the `[`-opener
+    init twin `scanNextTokenIx_flow_open_seq_init` (Endpoint.lean §6,
+    the sequence analog of §5's `_open_mapping_init`).
+  - **SS2**: `scan_accepts_emitScalarIx` and its helper
+    `scanNextTokenIx_emitScalar_init` (the top-level scalar init twin,
+    legacy ~200 LOC of preprocess + dispatch + `scanDoubleQuotedIx`
+    composition; not yet ported because the indexed scenario family so
+    far has been flow-only).
+  - **SS3**: the main `emit_produces_valid_yamlIx` composition theorem
+    itself (legacy 8281–8398, ~120 LOC, induction over `Grammable v
+    false` with the three cases delegating to SS1/SS2 + the just-landed
+    §2d).
+
+See the Blueprint's `.toplevel` plan tree and Reflection 144. -/
+
+/-- **Decidability bridge**: derive the `scanFilteredIx` existential
+    from a successful `Except.toBool` check. Used by the empty-`[]` /
+    empty-`{}` cases of `emit_produces_valid_yamlIx` (SS3): the body is
+    a `(by native_decide)` discharging `(scanFilteredIx "[]").toBool = true`
+    / `(scanFilteredIx "{}").toBool = true` (each closed-input scan is a
+    decidable Boolean, so `native_decide` settles it; this bridge then
+    forgets the Boolean witness back to the existential the main theorem
+    expects). Indexed twin of `scanFiltered_exists_of_isOk` (legacy 8258). -/
+theorem scanFilteredIx_exists_of_isOk {s : String}
+    (h : (scanFilteredIx s).toBool = true) :
+    ∃ tokens, scanFilteredIx s = .ok tokens := by
+  cases h_eq : scanFilteredIx s with
+  | ok tokens => exact ⟨tokens, rfl⟩
+  | error _ =>
+    exfalso; rw [h_eq] at h
+    -- (Except.error _).toBool = false reduces by unfolding
+    exact absurd h (by simp [Except.toBool])
+
 end L4YAML.Proofs.Indexed.EmitterScannability.EmitScans

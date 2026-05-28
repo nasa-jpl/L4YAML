@@ -1820,21 +1820,28 @@ not in-place axiom-to-theorem promotion — the latter is impossible
 when the axiom's hypothesis is strictly weaker than what the
 stronger lemma derives).
 
-**Next session**: **Step 6f.3b3.emitscans.toplevel —
-`emit_produces_valid_yamlIx`** (legacy `Proofs/Output/EmitterScannability.lean`
-8281–8399, ~120 LOC). Target: §3 of `EmitScans.lean` (or a new
-`Toplevel.lean` if §3 grows). Top-level composition theorem:
-`∀ v, Grammable v false → ∃ tokens, scanFiltered (emit v) = .ok tokens`.
-Should be a thin delegation to `emit_scans_in_flowIx` (just-landed §2d):
-specialize at the initial scanner state with `rest = []`, lift the
-non-empty `ScanChainGrewIx` chain to a `ScanChainIx` (the
-`.toScanChainIx` forgetful), and pipe through `scanFiltered`'s
-characterization in terms of `ScanChainIx`. **Axiom inheritance**:
-`.toplevel` inherits SS3's 43 native_decide axioms — no new ones expected
-(per Reflection 143's "induction propagates but does not introduce
-native_decide" finding). After `.toplevel`, the file-level `.emitscans`
-closes (8 of 8 sub-sessions landed). **`.parsestream` / `.roundtrip` come
-after `.emitscans` closes.**
+**Next session**: **Step 6f.3b3.emitscans.toplevel SS2 —
+`scan_accepts_emitScalarIx` + `scanNextTokenIx_emitScalar_init`** (legacy
+`Proofs/Output/EmitterScannability.lean` 3333–3532, ~200 LOC). The scalar
+prerequisite twin for the SS3 composition theorem. `.toplevel` was
+**replanned at port time into 3 sub-sessions** (see Reflection 144) when
+SS1 surfaced that the legacy ~120-LOC `emit_produces_valid_yamlIx` has
+three prerequisite twins the indexed substrate lacks. SS1 (easy prereqs:
+`scanNextTokenIx_flow_open_seq_init` in Endpoint.lean §6 +
+`scanFilteredIx_exists_of_isOk` in EmitScans.lean §3) **landed 2026-05-27**
+at 91/91, pure-triple. SS2 targets the top-level scalar init twin: the
+preprocess (§2 `scanNextTokenIx_preprocess_init_state` is already done)
++ structural-dispatch + `dispatchContent` quote-arm + `scanDoubleQuotedIx`
+composition at `inFlow = false` (rather than the in-flow variant
+`scanNextTokenIx_flow_scanDoubleQuoted` SS3 of `.flowpair` shipped).
+**Axiom inheritance**: SS2 will pick up the inherited native_decide budget
+(per Reflection 142) the same way the SS3-induction's scalar arm did.
+Target file: Endpoint.lean §7 (the scalar init helper) + EmitScans.lean §3
+(thin wrapper). After SS2, **SS3** ships the actual composition theorem
+(`emit_produces_valid_yamlIx`, ~120 LOC). After SS3, file-level
+`.emitscans` closes (10 of 10 sub-sessions landed; the 7-→-10 jump is
+the SS1/SS2/SS3 split of the original `.toplevel` work-unit).
+**`.parsestream` / `.roundtrip` come after `.emitscans` closes.**
 
 **`.emitscans.flowpair` SS3 (the induction) LANDED 2026-05-27** —
 final sub-session of the `.flowpair` step, ports legacy 8014–8255 as §2d
@@ -2127,7 +2134,9 @@ section by section.
 | `.flowpair` SS1 (pair-list) | ✅ LANDED | 2026-05-27 | ~290 / ~210 | §2c (`EmitPairListScansInFlowIx` + `emitPairList_scans_{empty,nonempty}Ix`; zero new infra) |
 | `.flowpair` SS2 (scenario prereqs) | ✅ LANDED | 2026-05-27 | ~420 / ~257 | `Scenarios/FlowSeqOpen.lean` (SS2a: `scanNextTokenIx_flow_open_seq_nested`, pure triple) + `Scenarios/FlowScalar.lean` (SS2b: `scanNextTokenIx_flow_scanDoubleQuoted` + cursor wrapper `scanDoubleQuotedIx_escapeString_corr`; triple + inherited native_decide budget) |
 | `.flowpair` SS3 (induction) | ✅ LANDED | 2026-05-27 | ~220 / ~241 | §2d (`emit_scans_in_flowIx`, `Grammable` induction; **zero new infra**, pure plumbing over SS1/SS2/§2c twins; pure triple + inherited native_decide budget — see Reflection 143) |
-| `.toplevel` | ⏳ planned | — | — / ~120 | §3 (`emit_produces_valid_yamlIx`) |
+| `.toplevel` SS1 (easy prereqs) | ✅ LANDED | 2026-05-27 | ~225 / ~210 | Endpoint.lean §6 (`scanNextTokenIx_flow_open_seq_init`, mechanical `[` analog of §5's `_open_mapping_init`) + EmitScans.lean §3 (`scanFilteredIx_exists_of_isOk`, decidability bridge); **zero new infra**, both pure-triple — see Reflection 144 |
+| `.toplevel` SS2 (scalar prereq) | ⏳ planned | — | — / ~200 | `scan_accepts_emitScalarIx` + its `scanNextTokenIx_emitScalar_init` helper (the top-level scalar init twin; preprocess + dispatch + `scanDoubleQuotedIx` composition at `inFlow = false`). Will inherit the same native_decide budget the indexed `scanDoubleQuotedIx` chain carries (Reflection 142). |
+| `.toplevel` SS3 (composition) | ⏳ planned | — | — / ~120 | §3 (`emit_produces_valid_yamlIx`, induction over `Grammable v false`; the three cases delegate to SS2 (scalar) + SS1 seq init (`[`) + Endpoint.lean §5 map init (`{`) + the just-landed §2d `emit_scans_in_flowIx`). |
 
 **`.emitscans` progress**: `.chaingrew` (§1) landed; `.flowvalue` fully
 landed (SS1 predicate layer + SS2a comma-path list body + SS2b
@@ -2143,9 +2152,19 @@ already-ported — Reflection 140 again) when the two twins proved to be
 entirely different dispatch paths (flow-indicator vs content) with different
 infra needs. SS3 then landed as **pure plumbing** over the prepared twin set
 — zero new infra, zero aggregator edits, ~9% under LOC plan; see
-Reflection 143. So 7 of (now 8) `.emitscans` work-units landed (§1 + §2-SS1
-+ §2-SS2a + §2b + §2c + both SS2 scenario files + SS3 the induction); only
-`.toplevel` remains. The §1 strict-variant track (`ScanChainGrewIx`) is
+Reflection 143. **`.toplevel` SS1 (easy prereqs)** also landed 2026-05-27 —
+`scanNextTokenIx_flow_open_seq_init` (Endpoint.lean §6, the `[` init twin,
+mechanical sequence analog of §5's `_open_mapping_init`) + `scanFilteredIx_
+exists_of_isOk` (EmitScans.lean §3, the decidability bridge for empty
+`[]`/`{}` cases). `.toplevel` was **replanned into 3 sub-sessions** when
+SS1 surfaced that the legacy ~120-LOC composition theorem has three
+prerequisite twins the indexed substrate lacks (the seq init twin shipped
+now; `scan_accepts_emitScalarIx` + its top-level scalar init helper
+deferred to SS2; the composition itself to SS3) — see Reflection 144.
+So 8 of (now 10) `.emitscans` work-units landed (§1 + §2-SS1
++ §2-SS2a + §2b + §2c + both SS2 scenario files + SS3 the induction +
+.toplevel SS1); `.toplevel` SS2 (scalar prereq) and SS3 (composition)
+remain. The §1 strict-variant track (`ScanChainGrewIx`) is
 the substrate-agnostic plumbing; the §2 predicates define the in-flow
 scannability contract every downstream body and the now-landed
 `emit_scans_in_flowIx` induction consumed.
@@ -3034,6 +3053,95 @@ twins that are pure-triple). This was implicit in Reflection 142 but
 worth recording: **the native_decide budget propagates *through* an
 induction, but the induction itself does not *introduce* new
 native_decide debt**.
+
+**Reflection 144 (new): port-time discovery of cross-substrate twin gaps —
+the "thin delegation" hint in the Blueprint can hide ~400 LOC of
+prerequisite work when the indexed substrate's scenario family was built
+for a different consumer.** Reflection 143's prediction that `.toplevel`
+would be even smaller than SS3 was wrong about the cause: the *composition
+theorem itself* (`emit_produces_valid_yamlIx`) is small — but only after
+its three top-level prerequisites exist. The indexed substrate had ported
+`scanNextTokenIx_flow_open_mapping_init` (`{` at init) for `.flowmono`'s
+chain lemmas but **not the `[` analog** (the chain family never needed a
+sequence opener); and the **top-level scalar acceptance**
+(`scan_accepts_emitScalarIx` + its `scanNextTokenIx_emitScalar_init`
+helper) had no driver at all — every prior `scanDoubleQuotedIx` consumer
+went through `inFlow = true`, so the `inFlow = false` path is fresh
+porting work. Survey hit at session start: of 12 legacy prerequisites,
+9 had indexed twins, but 3 of the 12 (the seq init twin, the scalar init
+helper, the decidability bridge) were missing. **Replan**: `.toplevel`
+splits into SS1 (easy prereqs: seq init + decidability bridge, ~225 LOC
+combined, both pure-triple) + SS2 (the scalar init twin, ~200 LOC, will
+inherit double-quoted scanner's native_decide budget per Reflection 142)
++ SS3 (the original ~120 LOC composition theorem). **Same pattern as
+`.flowpair` SS1 → SS2 → SS3**: the discovery happens *inside* the first
+sub-session when surveying the dependency map, and the split is
+documented at port time rather than retro-fitted. **Lesson for
+`.parsestream` / `.roundtrip`**: before assuming "thin delegation",
+*run the prerequisite survey first*. Look for asymmetries where the
+indexed substrate has the `{` analog but not the `[` (or `[` but not
+`{`), and look for `inFlow = false` consumers when every prior
+`*Ix` chain consumed `inFlow = true`. The cross-substrate twin gap is
+the highest-yield port-time discovery — it both surfaces hidden scope
+*and* identifies the natural sub-session boundary, since the missing
+twins are usually self-contained mechanical analogs of existing ones.
+Concrete corollary, holding SS1's data: a 200-LOC mechanical analog
+of an existing twin (here `_open_seq_init` of `_open_mapping_init`)
+builds *clean first try* — confirming Reflection 141's "structural
+symmetry transfers verbatim". The decidability bridge took two iter
+patches (`simp [h_eq]` left a `(Except.error _).toBool = false` goal,
+fixed by switching to `(by simp [Except.toBool])` after the free-variable
+`decide` failure) — but at ~10 LOC of total surface, those were one-line
+diagnostics, not architectural rethinks.
+
+**Step 6f.3b3.emitscans.toplevel SS1 (easy prereqs) LANDED 2026-05-27**
+(~225 LOC across two files: `Endpoint.lean` §6 ~200 LOC +
+`EmitScans.lean` §3 ~25 LOC). First sub-session of the **replanned**
+`.toplevel` step (see Reflection 144 for the replan). Ships the two
+pre-existing-but-missing prerequisite twins that the original Blueprint
+estimate of ~120 LOC for `emit_produces_valid_yamlIx` had inlined as
+"will compose":
+
+  - **`scanNextTokenIx_flow_open_seq_init`** (Endpoint.lean §6,
+    `Proofs/Output/IndexedEmitterScannability/FlowMonoChain/Sync/
+    Scenarios/Endpoint.lean`) — `[` at the initial scanner state, the
+    mechanical sequence analog of §5's `_open_mapping_init` (the `{`
+    version landed during `.flowmono.sync.scenarios.endpoint`). Same
+    proof spine: preprocess (§2 `scanNextTokenIx_preprocess_init_state`)
+    → `dispatchStructural_none_bracket_init` →
+    `checkBlockFlowIndent_bracket_init` → `dispatchFlowIndicators_
+    bracket` → `scanFlowSequenceStartIx_detail`. Yields the same 14-
+    conjunct postcondition with `flowLevel = 1`, `inFlow = true`,
+    `simpleKey.possible = false`, `simpleKeyStack.size = flowLevel`.
+    Built clean **80/80** first try with verbatim substitution.
+  - **`scanFilteredIx_exists_of_isOk`** (EmitScans.lean §3, the new
+    top-level scaffolding section) — the decidability bridge for SS3's
+    empty `[]` / `{}` cases: from `(scanFilteredIx s).toBool = true`,
+    extract the existential `∃ tokens, scanFilteredIx s = .ok tokens`.
+    A 5-line `cases`-on-`scanFilteredIx s` proof; only subtlety was
+    that the `.error` branch needs `(by simp [Except.toBool])`, not
+    `(by decide)` (the latter chokes on the free `a✝ : ScanError` —
+    Reflection 144 records the patch).
+
+**Zero new infrastructure.** Both twins were direct ports of existing
+patterns (the seq_init twin from `_open_mapping_init`; the decidability
+bridge from the legacy `scanFiltered_exists_of_isOk`). Built clean at
+**91/91 jobs** (full aggregator), sorry/axiom/partial-free. `#print
+axioms` for both new theorems: pure triple `[propext, Classical.choice,
+Quot.sound]`, *zero* `native_decide` axioms. The previously-landed
+`emit_scans_in_flowIx` retains its identical 43-axiom inherited
+`native_decide` budget — SS1 does not widen the axiom set.
+
+**Axiom-discharge plan update**: `.toplevel` SS1 introduces zero new
+axiom debt. SS2 (`scan_accepts_emitScalarIx`) will inherit
+`scanDoubleQuotedIx`'s `native_decide` budget (the same 43 axioms
+inherited by `.flowpair` SS3 / SS2b — see Reflection 142). SS3 (the
+composition theorem) is pure plumbing and will not introduce new
+native_decide axioms beyond what its delegatees carry (per
+Reflection 143's "induction propagates but does not introduce
+native_decide" finding). **Phase 3 closure axiom count remains 0
+user-defined axioms** (`axiom`/`sorry`/`partial`-free); the
+native_decide budget remains within documented policy.
 
 **Step 6f.3b3.emitscans.flowpair SS1 (pair-list track) LANDED 2026-05-27**
 (~290 LOC actual vs. ~210 LOC for the pair-list portion of the ~388 LOC
@@ -13342,11 +13450,51 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 No `axiom`/`sorry`/`partial`. First Phase-3 emitter-
                 scannability theorem to carry the native_decide budget — within
                 policy (see Reflection 143).
-          ▸ **6f.3b3.emitscans.toplevel** *(~120 LOC; legacy lines
-            8281–8399)*. Top-level composition
-            `emit_produces_valid_yamlIx`: `scanFiltered (emit v)`
-            succeeds and produces a valid token stream. Single
-            session.
+          ▸ **6f.3b3.emitscans.toplevel** *(~120 LOC composition theorem
+            + ~410 LOC of port-time-discovered prerequisite twins;
+            legacy lines 8281–8399 plus the 3333–3532 scalar init helper
+            and the 4095-line `flow_open_init` family the indexed
+            substrate had ported only for `{`, not `[`)*. Top-level
+            composition `emit_produces_valid_yamlIx`: `scanFiltered
+            (emit v)` succeeds and produces a valid token stream.
+            **Replanned at port time into 3 sub-sessions** (see
+            Reflection 144):
+
+              ▸ **SS1 (easy prereqs)** ✅ **LANDED** *(~225 LOC across
+                two files)*. Two pure-triple twins shipped together:
+                  · `scanNextTokenIx_flow_open_seq_init` in
+                    Endpoint.lean §6 — the `[` init twin, mechanical
+                    sequence analog of §5's `_open_mapping_init`
+                    (substitutions: `'{' ↦ '['`,
+                    `scanFlowMappingStartIx ↦ scanFlowSequenceStartIx`,
+                    `dispatchStructural_none_brace_init ↦
+                    dispatchStructural_none_bracket_init`, etc.). Built
+                    clean 80/80 first try.
+                  · `scanFilteredIx_exists_of_isOk` in EmitScans.lean §3
+                    — the decidability bridge for the empty `[]` / `{}`
+                    cases of SS3 (forgets a `(by native_decide)` Boolean
+                    discharge back to the existential SS3 expects).
+                Aggregator 91/91, sorry/axiom/partial-free,
+                `#print axioms` pure triple for both. **Zero new infra**.
+              ▸ **SS2 (scalar prereq)** ⏳ planned *(~200 LOC)*.
+                `scan_accepts_emitScalarIx` + `scanNextTokenIx_emitScalar_
+                init` — the top-level scalar init twin (preprocess +
+                structural-none + dispatchContent quote-arm +
+                `scanDoubleQuotedIx` at `inFlow = false`; distinct from
+                the in-flow variant `scanNextTokenIx_flow_
+                scanDoubleQuoted` `.flowpair` SS2b shipped). Target
+                file: Endpoint.lean §7 (the helper) + EmitScans.lean §3
+                (the thin wrapper). Will inherit the indexed-double-quoted
+                `native_decide` budget (Reflection 142).
+              ▸ **SS3 (composition)** ⏳ planned *(~120 LOC)*. The actual
+                main theorem `emit_produces_valid_yamlIx (v : YamlValue)`
+                `(hg : Grammable v false)`: `∃ tokens, scanFilteredIx
+                (emit v) = .ok tokens`. Induction over `Grammable`; three
+                cases delegate to SS2 (scalar), Endpoint.lean §5 +
+                §2d/§2c (mapping), SS1 (`[` init) + §2d (sequence body)
+                + Endpoint.lean §3/§4 (outermost closer). Closes
+                `.emitscans` (10/10 sub-sessions, counting the
+                `.toplevel` split).
 
       ▸ **6f.3b3.parsestream** *(file-level; ~440 LOC; single
         session)*. Maps to legacy lines 8400–8874. Target file:
