@@ -1820,18 +1820,36 @@ not in-place axiom-to-theorem promotion — the latter is impossible
 when the axiom's hypothesis is strictly weaker than what the
 stronger lemma derives).
 
-**Next session**: **Step 6f.3b3.roundtrip.fidelity**
-(`Proofs/Output/IndexedEmitterScannability/RoundTrip.lean`; legacy
-lines 8490–8530 + 8875–9062, ~230 LOC, single session). §5 Content
-Fidelity Infrastructure: `resolveAliases_scalarIx`,
-`stripAnchors_scalarIx`, `compose_scalar_contentIx`,
-`contentEq_scalar_contentIx`, `contentEq_scalar_composeIx`,
-`unwindIndents_noop_short_stackIx`,
-`scanFiltered_tokens_eq_of_chain_short_stackIx`,
-`ScanChainIx_tokens_mono`, `scanNextTokenIx_prefix_and_sk_inv`,
-`ScanChainIx_preserves_raw_prefix`. With `.parsestream` closed,
-`parseYamlRawIx_emitScalar_value` is the bridging fact the `.roundtrip`
-fidelity layer composes the `compose`-step content invariants over.
+**Next session**: **Step 6f.3b3.roundtrip.filterinfra**
+(`Proofs/Output/IndexedEmitterScannability/RoundTrip.lean`, append
+to `.fidelity`'s landed block; legacy lines 8875–8968, ~94 LOC,
+single session). §5.4.G filtered-token tracking:
+`emitPairList_toList_ne_nilIx`, `scanFlowSequenceEnd_tokens_eqIx`,
+`scanFlowMappingEnd_tokens_eqIx`,
+`scanNextToken_flow_close_seq_outermost_extIx`,
+`scanNextToken_flow_close_mapping_outermost_extIx`. Mostly value-level
+(`emitPairList`) + indexed-emit equational unfoldings — the latter two
+"flow close outermost ext" facts may carry inherited per-arm
+`native_decide` from the scanner-side flow-close dispatch (parallel
+to legacy `scanFlowSequenceEnd_tokens_eq`/`scanFlowMappingEnd_tokens_eq`).
+
+**`.roundtrip.fidelity` LANDED 2026-05-28** — first of 4
+`.roundtrip` sub-sessions. Ships §5.1 compose invariance for scalars
+(5 value-level lemmas, verbatim port) + §5.4.G prefix-and-tokens
+infrastructure (5 indexed-substrate wrappers repackaging
+pre-existing primitives: `scanNextTokenIx_tokens_size_le`,
+`scanNextTokenIx_preserves_prefix`,
+`scanNextTokenIx_maintains_SimpleKeyAboveIx`,
+`unwindIndentsIx_tokens_size_le`, `scanFilteredIx_of_chain_eq`).
+**Axiom posture**: pure triple on all 10 theorems
+(`stripAnchors_scalarIx` axiom-free;
+`unwindIndents_noop_short_stackIx` reduces to `[propext, Quot.sound]`);
+**zero new user-defined or `native_decide` axioms**. **LOC ~28%
+under plan** (~165 actual vs ~230 budgeted) — the substrate was
+fully provisioned by prior phases (Dispatch §1.7/§6, StreamStart
+§2.1, FlowMonoChain Sync Invariant §5), so this step shipped as
+mostly mechanical re-packaging rather than novel proof work. See
+Reflection 148.
 
 **`.parsestream` LANDED 2026-05-28** — file-level step now closed.
 Ships §4 Full Pipeline (`parseStreamLoop_single_docIx`,
@@ -3332,6 +3350,76 @@ directly to the `.roundtrip.fidelity` `unwindIndents_noop_short_stackIx`
 and `scanFiltered_tokens_eq_of_chain_short_stackIx` ports —
 expect the same shape there.
 
+**Reflection 148 (new): the "substrate-dividend" sub-step — when a
+Phase 3 port ships under budget with zero new axioms, that's the
+upstream primitives' prior investment paying out at the wrapper
+layer, and the proof discipline should match.** `.roundtrip.fidelity`
+shipped at ~165 LOC vs. ~230 plan (~28% under) with pure-triple
+axioms on all 10 theorems and zero `native_decide` flares. The
+arithmetic is mechanical: §5.1's 5 lemmas are value-level rewrites
+on `YamlValue`/`Scalar`/`YamlDocument` that don't touch the indexed
+substrate, so they port literal-character; §5.4.G's 5 lemmas reduce
+to **one-liner aggregations** of pre-existing primitives:
+
+  - `unwindIndents_noop_short_stackIx` ← reuses the *legacy proof
+    skeleton verbatim* (`unfold` + nested `split` + `exfalso` +
+    `Bool.and_eq_true` + `decide_eq_true_iff` + `omega`) because
+    `unwindIndentsIx` and `unwindIndentsLoopIx` share the legacy
+    `match (·.indents.size) with | 0 => s | _ + 1 => if ...` skeleton.
+    *Distinction from `.parsestream`'s inlined singleton-case
+    reduction*: `.parsestream` had a concrete `s.indents.size = 1`
+    hypothesis and reduced explicitly via `decide ((1:Nat) > 1) = false
+    + Bool.and_false + rfl`; here the more general `≤ 1` hypothesis
+    *requires* the legacy's `simp only [Bool.and_eq_true,
+    decide_eq_true_iff]; omega` form to handle both `= 0` and `= 1`
+    uniformly. **Lesson**: when the indexed shape mirrors the legacy
+    `match`/`if` skeleton and the hypothesis is a range (`≤`, `<`),
+    prefer the legacy proof structure verbatim; switch to explicit
+    `decide`-based reductions only when the hypothesis fixes a
+    *concrete* value.
+  - `scanFiltered_tokens_eq_of_chain_short_stackIx` ← *one-line*
+    composition of `scanFilteredIx_of_chain_eq` (FlowMonoChain Sync
+    Invariant §5) and `unwindIndents_noop_short_stackIx` via `rwa`.
+  - `ScanChainIx_tokens_mono` ← *3-line* `induction h_chain with
+     | zero => Nat.le_refl | step => Nat.le_trans (scanNextTokenIx_
+    tokens_size_le _) ih`. The primitive `scanNextTokenIx_tokens_size_le`
+    was already provisioned by Dispatch §6 for the `scanLoopIx`
+    fuel-monotonicity proof.
+  - `scanNextTokenIx_prefix_and_sk_inv` ← bundles
+    `scanNextTokenIx_preserves_prefix` (StreamStart §2.1) — extracting
+    the equality from its existential — with
+    `scanNextTokenIx_maintains_SimpleKeyAboveIx` via `refine ⟨?_,
+    _⟩`. The only port-time adaptation is that the indexed
+    `_preserves_prefix` returns `∃ (h_size : i < s'.tokens.size),
+    s'.tokens[i]'h_size = s.tokens[i]'…` while legacy returns the
+    equality with `h_size` computed externally — `obtain ⟨_, h_eq⟩`
+    discards the existential witness.
+  - `ScanChainIx_preserves_raw_prefix` ← *5-line* induction
+    discharged via the just-built `scanNextTokenIx_prefix_and_sk_inv`
+    + `Eq.trans` chaining (`ih …`.`trans (h_pres i hi)`).
+
+The `.parsestream` step ran 20% over budget (Reflection 147 enrichment
+cost). `.roundtrip.fidelity` ran 28% under. The *combined* `.parsestream`
++ `.roundtrip.fidelity` is **roughly on plan** (~695 LOC actual vs. ~670
+LOC plan). **The signal**: when prior sub-steps over-provisioned (or
+under-trimmed) infrastructure, future sub-steps recoup. `.roundtrip.
+fidelity`'s under-budget delivery is the substrate's prior investment
+in `scanNextTokenIx_preserves_prefix`, `_maintains_SimpleKeyAboveIx`,
+`unwindIndentsIx_tokens_size_le`, and `scanFilteredIx_of_chain_eq`
+showing up in the wrapper layer. *No new axioms* is the second
+signal of the same phenomenon: the wrappers don't escape the axiom
+budget of the primitives they aggregate. **Lesson for the next 3
+`.roundtrip` sub-sessions** (`.filterinfra`, `.maintheorem`,
+`.universal`): if a sub-step's structure is "aggregate
+pre-existing-primitive-A over inductive-shape-B", budget at the
+*compositional* rate (3-5 lines per theorem) rather than the
+*pre-port* rate (15-30 lines per theorem); the latter inflates the
+estimate by ~3-5×. **Exception**: when the sub-step introduces
+*new* primitives (e.g., `.maintheorem`'s `scanNextToken_filtered_
+growsIx` is a fresh 7-arm dispatch case-split with its own
+`native_decide` flares), keep the pre-port rate — the substrate
+won't yet have provisioned the underlying fact.
+
 **Step 6f.3b3.emitscans.toplevel SS1 (easy prereqs) LANDED 2026-05-27**
 (~225 LOC across two files: `Endpoint.lean` §6 ~200 LOC +
 `EmitScans.lean` §3 ~25 LOC). First sub-session of the **replanned**
@@ -3466,6 +3554,40 @@ file-level step's axiom ledger):
     exercised, would collapse every `.parsestream` theorem either to
     pure triple (parser-side lemmas) or to pure triple + the two
     SS3-introduced empty-collection axioms via the emit-scalar chain.
+
+**`.roundtrip.fidelity` axiom summary** (recorded 2026-05-28 — first
+of 4 `.roundtrip` sub-session axiom ledgers):
+
+  - `stripAnchors_scalarIx`: **axiom-free** (definitional unfold
+    `YamlValue.stripAnchors` reduces via `rfl` on the scalar
+    constructor; no `propext` needed because the conclusion is an
+    equality of `YamlValue` constructor applications).
+  - `resolveAliases_scalarIx`, `compose_scalar_contentIx`: **[propext]**
+    only (single rewrite chain with no decidability or quotient use).
+  - `unwindIndents_noop_short_stackIx`: **[propext, Quot.sound]**
+    (the `simp only [Bool.and_eq_true, decide_eq_true_iff]`
+    normalization at the `exfalso` arm pulls in `Quot.sound` via
+    `decide` instance machinery but does not engage `Classical.choice`).
+  - `contentEq_scalar_contentIx`, `contentEq_scalar_composeIx`,
+    `scanFiltered_tokens_eq_of_chain_short_stackIx`,
+    `ScanChainIx_tokens_mono`, `scanNextTokenIx_prefix_and_sk_inv`,
+    `ScanChainIx_preserves_raw_prefix`: **pure triple**
+    `[propext, Classical.choice, Quot.sound]`. The chain inherits
+    the FlowMonoChain Sync Invariant §5 / StreamStart §2.1 / Dispatch
+    §6 primitives' triple but does *not* surface any of the inherited
+    `native_decide` clusters (the prefix-and-tokens lemmas don't
+    touch `scanDoubleQuotedIx` or Scanner content-dispatch reductions).
+  - **Zero new user-defined or `native_decide` axiom names** introduced
+    in this session. The §5.4.G wrappers re-package existing primitives
+    one-for-one — no novel proof obligations escape into the axiom
+    cone.
+  - **Phase-3 closure axiom count unchanged at 0 user-defined
+    axioms** (`axiom`/`sorry`/`partial`-free). The `.roundtrip.fidelity`
+    sub-step represents the cleanest axiom outcome of any `.roundtrip`
+    sub-step (`.filterinfra` may add minor `native_decide` inherited
+    from flow-close arm dispatch; `.maintheorem` is expected to
+    introduce a fresh `native_decide` budget on
+    `scanNextToken_filtered_growsIx`'s 7-arm structural dispatch).
 
 **Step 6f.3b3.emitscans.flowpair SS1 (pair-list track) LANDED 2026-05-27**
 (~290 LOC actual vs. ~210 LOC for the pair-list portion of the ~388 LOC
@@ -13949,16 +14071,33 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
         + 8875–10741. Target file:
         `Proofs/Output/IndexedEmitterScannability/RoundTrip.lean`.
 
-          ▸ **6f.3b3.roundtrip.fidelity** *(~230 LOC; legacy lines
-            8490–8530 + 8875–9062)*. §5 Content Fidelity
-            Infrastructure: `resolveAliases_scalarIx`,
+          ▸ **6f.3b3.roundtrip.fidelity** ✅ **LANDED 2026-05-28**
+            *(~165 LOC actual / ~230 LOC plan; **~28% under
+            budget**; legacy lines 8490–8530 + 8875–8967)*. §5.1
+            Compose invariance for scalars (`resolveAliases_scalarIx`,
             `stripAnchors_scalarIx`, `compose_scalar_contentIx`,
-            `contentEq_scalar_contentIx`, `contentEq_scalar_composeIx`,
-            `unwindIndents_noop_short_stackIx`,
+            `contentEq_scalar_contentIx`, `contentEq_scalar_composeIx`
+            — value-level, verbatim port) + §5.4.G prefix-and-tokens
+            infrastructure (`unwindIndents_noop_short_stackIx`,
             `scanFiltered_tokens_eq_of_chain_short_stackIx`,
             `ScanChainIx_tokens_mono`,
             `scanNextTokenIx_prefix_and_sk_inv`,
-            `ScanChainIx_preserves_raw_prefix`. Single session.
+            `ScanChainIx_preserves_raw_prefix` — indexed substrate,
+            re-packaging of pre-existing primitives). **Axiom posture**:
+            pure triple `[propext, Classical.choice, Quot.sound]` on
+            all 10 theorems, with `stripAnchors_scalarIx`
+            axiom-free and `unwindIndents_noop_short_stackIx`
+            reducing to `[propext, Quot.sound]`. **Zero new user-defined
+            or `native_decide` axioms**. The §5.4.G primitives the
+            wrappers consume (`scanNextTokenIx_tokens_size_le`,
+            `scanNextTokenIx_preserves_prefix`,
+            `scanNextTokenIx_maintains_SimpleKeyAboveIx`,
+            `unwindIndentsIx_tokens_size_le`,
+            `scanFilteredIx_of_chain_eq`) were already landed by prior
+            Phase 3 steps (Dispatch §1.7/§6, StreamStart §2.1,
+            FlowMonoChain Sync Invariant §5). Built clean 99/99,
+            full project 491/491, sorry/axiom/partial-free. See
+            Reflection 148.
           ▸ **6f.3b3.roundtrip.filterinfra** *(~94 LOC; legacy lines
             8875–8968)*. §5.4.G filtered token tracking:
             `emitPairList_toList_ne_nilIx`,
