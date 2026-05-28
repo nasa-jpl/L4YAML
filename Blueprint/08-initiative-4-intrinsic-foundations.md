@@ -1820,20 +1820,36 @@ not in-place axiom-to-theorem promotion — the latter is impossible
 when the axiom's hypothesis is strictly weaker than what the
 stronger lemma derives).
 
-**Next session**: **Step 6f.3b3.emitscans.flowpair SS3 —
-`emit_scans_in_flowIx`** (legacy `Proofs/Output/EmitterScannability.lean`
-8014–8255, ~241 LOC). The induction over `Grammable v inFlow`, **now
-unblocked** (SS2 landed both scenario prerequisites). Target: §2d of
-`EmitScans.lean`. Cases: scalar → `scanNextTokenIx_flow_scanDoubleQuoted`
-(SS2b); sequence → `scanNextTokenIx_flow_open_seq_nested` (SS2a) + `emitList`
-body (`emitList_scans_nonemptyIx`) + `]`-close (`scanNextTokenIx_flow_close_seq_nested`);
-mapping → `{`-open (`scanNextTokenIx_flow_open_mapping_nested`) + `emitPairList`
-body (SS1, §2c) + `}`-close. **Axiom note**: this is the first emitter-scannability
-theorem to inherit SS2b's `native_decide` budget (via the scalar case) — it
-will show `[propext, Classical.choice, Quot.sound]` + native_decide, within
-budget (Reflection 142). After SS3, the file-level `.emitscans` closes with
-`.toplevel` (`emit_produces_valid_yamlIx`, ~120 LOC). **`.parsestream` /
-`.roundtrip` come after `.emitscans` closes.**
+**Next session**: **Step 6f.3b3.emitscans.toplevel —
+`emit_produces_valid_yamlIx`** (legacy `Proofs/Output/EmitterScannability.lean`
+8281–8399, ~120 LOC). Target: §3 of `EmitScans.lean` (or a new
+`Toplevel.lean` if §3 grows). Top-level composition theorem:
+`∀ v, Grammable v false → ∃ tokens, scanFiltered (emit v) = .ok tokens`.
+Should be a thin delegation to `emit_scans_in_flowIx` (just-landed §2d):
+specialize at the initial scanner state with `rest = []`, lift the
+non-empty `ScanChainGrewIx` chain to a `ScanChainIx` (the
+`.toScanChainIx` forgetful), and pipe through `scanFiltered`'s
+characterization in terms of `ScanChainIx`. **Axiom inheritance**:
+`.toplevel` inherits SS3's 43 native_decide axioms — no new ones expected
+(per Reflection 143's "induction propagates but does not introduce
+native_decide" finding). After `.toplevel`, the file-level `.emitscans`
+closes (8 of 8 sub-sessions landed). **`.parsestream` / `.roundtrip` come
+after `.emitscans` closes.**
+
+**`.emitscans.flowpair` SS3 (the induction) LANDED 2026-05-27** —
+final sub-session of the `.flowpair` step, ports legacy 8014–8255 as §2d
+of `EmitScans.lean`. `emit_scans_in_flowIx` does induction over
+`Grammable v inFlow`: scalar delegates to `scanNextTokenIx_flow_scanDoubleQuoted`
+(SS2b); sequence/mapping sandwich the just-landed list/pair-list bodies
+between opener/closer scenario twins (SS2a/FlowClose §1 for `[`/`]`;
+FlowClose §3/§2 for `{`/`}`), with `FlowMonoChainIx.weaken` lifting the
+body chain floor through the `.trans` composition. **Zero new infra** —
+SS1/SS2a/SS2b/FlowClose/§2c had pre-built every consumed twin with the
+needed conclusion shapes (see Reflection 143). Built clean **91/91**,
+sorry/axiom/partial-free; `#print axioms`: pure triple + the **same 43**
+inherited native_decide axioms SS2b carries (no new ones from the
+induction itself). With this, `.flowpair` fully landed (SS1 + SS2 + SS3).
+See the status index, Reflection 143, and the detailed LANDED block below.
 
 **`.emitscans.flowpair` SS2 (scenario prerequisites) LANDED 2026-05-27** —
 the two scanner-scenario twins SS1 flagged as the `emit_scans_in_flowIx`
@@ -2110,27 +2126,29 @@ section by section.
 | `.flowvalue` SS2b | ✅ LANDED | 2026-05-27 | ~265 / ~365 | §2b (`scanNextToken_flow_valueIx` — `:` value-indicator dispatcher; + 4 small twins `scanValuePrepareIx_{indents,directivesPresent}_of_inFlow`, `AllTokensOnLineIx_{overwriteAtCursor,scanValuePrepare_flow}`) |
 | `.flowpair` SS1 (pair-list) | ✅ LANDED | 2026-05-27 | ~290 / ~210 | §2c (`EmitPairListScansInFlowIx` + `emitPairList_scans_{empty,nonempty}Ix`; zero new infra) |
 | `.flowpair` SS2 (scenario prereqs) | ✅ LANDED | 2026-05-27 | ~420 / ~257 | `Scenarios/FlowSeqOpen.lean` (SS2a: `scanNextTokenIx_flow_open_seq_nested`, pure triple) + `Scenarios/FlowScalar.lean` (SS2b: `scanNextTokenIx_flow_scanDoubleQuoted` + cursor wrapper `scanDoubleQuotedIx_escapeString_corr`; triple + inherited native_decide budget) |
-| `.flowpair` SS3 (induction) | ⏳ planned (unblocked) | — | — / ~241 | §2d (`emit_scans_in_flowIx`, `Grammable` induction; SS2 landed) |
+| `.flowpair` SS3 (induction) | ✅ LANDED | 2026-05-27 | ~220 / ~241 | §2d (`emit_scans_in_flowIx`, `Grammable` induction; **zero new infra**, pure plumbing over SS1/SS2/§2c twins; pure triple + inherited native_decide budget — see Reflection 143) |
 | `.toplevel` | ⏳ planned | — | — / ~120 | §3 (`emit_produces_valid_yamlIx`) |
 
 **`.emitscans` progress**: `.chaingrew` (§1) landed; `.flowvalue` fully
 landed (SS1 predicate layer + SS2a comma-path list body + SS2b
-`scanNextToken_flow_valueIx`); **`.flowpair` SS1 (pair-list track, §2c)** and
-**`.flowpair` SS2 (both scenario prerequisite twins)** landed. `.flowpair` was
-**replanned into 3 sub-sessions** when SS1 surfaced that the originally-bundled
-main theorem `emit_scans_in_flowIx` is blocked on two un-ported
-scanner-scenario twins (`scanNextTokenIx_flow_scanDoubleQuoted`,
-`scanNextTokenIx_flow_open_seq_nested`) — see Reflection 141. SS2 then
-split into SS2a (`[` opener, mechanical) + SS2b (double-quoted scalar; the
-core escapeString loop lemma turned out already-ported — Reflection 140
-again) when the two twins proved to be entirely different dispatch paths
-(flow-indicator vs content) with different infra needs. So 6 of (now 8)
-`.emitscans` work-units landed (§1 + §2-SS1 + §2-SS2a + §2b + §2c + the two
-SS2 scenario files); only `.flowpair` SS3 (the induction, **now unblocked**)
-and `.toplevel` remain. The §1 strict-variant track (`ScanChainGrewIx`) is
+`scanNextToken_flow_valueIx`); **`.flowpair` fully landed** (SS1 pair-list
+track §2c + SS2 both scenario prerequisite twins + SS3 the `Grammable`
+induction `emit_scans_in_flowIx` §2d). `.flowpair` was **replanned into 3
+sub-sessions** when SS1 surfaced that the originally-bundled main theorem
+`emit_scans_in_flowIx` is blocked on two un-ported scanner-scenario twins
+(`scanNextTokenIx_flow_scanDoubleQuoted`, `scanNextTokenIx_flow_open_seq_nested`)
+— see Reflection 141. SS2 then split into SS2a (`[` opener, mechanical) +
+SS2b (double-quoted scalar; the core escapeString loop lemma turned out
+already-ported — Reflection 140 again) when the two twins proved to be
+entirely different dispatch paths (flow-indicator vs content) with different
+infra needs. SS3 then landed as **pure plumbing** over the prepared twin set
+— zero new infra, zero aggregator edits, ~9% under LOC plan; see
+Reflection 143. So 7 of (now 8) `.emitscans` work-units landed (§1 + §2-SS1
++ §2-SS2a + §2b + §2c + both SS2 scenario files + SS3 the induction); only
+`.toplevel` remains. The §1 strict-variant track (`ScanChainGrewIx`) is
 the substrate-agnostic plumbing; the §2 predicates define the in-flow
-scannability contract every downstream body and the `emit_scans_in_flowIx`
-induction consume.
+scannability contract every downstream body and the now-landed
+`emit_scans_in_flowIx` induction consumed.
 
 **`.flowvalue` sub-split rationale** (recorded at port time, refined
 during execution): a dependency map of the two heavy theorems showed
@@ -2918,6 +2936,104 @@ instance that reduces to the underlying field's `GetElem` is a
 Confirmed pattern for future Phase 4 substrate wrappers (e.g. when
 `ParseTree input` lands as a structured wrapper around
 `Array (TreeNode input)`).
+
+**Step 6f.3b3.emitscans.flowpair SS3 (the induction) LANDED 2026-05-27**
+(~220 LOC actual vs. ~241 LOC plan, ~9% under; appended as §2d of
+`Proofs/Output/IndexedEmitterScannability/EmitScans.lean`, **zero new files,
+zero aggregator changes**). Third and final sub-session of the
+`.flowpair` step — the main theorem `emit_scans_in_flowIx` whose three
+scenario prerequisites SS2 just landed. Ports legacy
+`EmitterScannability.lean` lines 8014–8255. With this, **`.flowpair` is
+fully landed** (SS1 + SS2a + SS2b + SS3); the only remaining `.emitscans`
+sub-step is `.toplevel` (~120 LOC: `emit_produces_valid_yamlIx`).
+
+  - **`emit_scans_in_flowIx (v : YamlValue) {inFlow : Bool}
+    (hg : L4YAML.Grammar.Grammable v inFlow) : EmitScansInFlowIx v`** —
+    induction over `Grammable v inFlow`. Three cases mirror legacy 1:1
+    with the indexed twins SS2 supplied:
+      · **Scalar** (`.scalar s`) → `scanNextTokenIx_flow_scanDoubleQuoted`
+        (SS2b) plus one `scanNextTokenIx_filtered_grows_in_flow` witness.
+        Single-step `ScanChainGrewIx.single` + `FlowMonoChainIx.single`.
+      · **Sequence** (`.sequence style items …`) →
+        `scanNextTokenIx_flow_open_seq_nested` (SS2a) +
+        `emitList_scans_{empty,nonempty}Ix` (§2 SS1/SS2a) +
+        `scanNextTokenIx_flow_close_seq_nested` (FlowClose §1).
+      · **Mapping** (`.mapping style pairs …`) →
+        `scanNextTokenIx_flow_open_mapping_nested` (FlowClose §3) +
+        `emitPairList_scans_{empty,nonempty}Ix` (§2c, SS1) +
+        `scanNextTokenIx_flow_close_mapping_nested` (FlowClose §2).
+    Collection cases: the body chain runs at floor `s.flowLevel + 1`,
+    weakened to `s.flowLevel` via `FlowMonoChainIx.weaken (by omega)` and
+    sandwiched between opener/closer `.single` steps via `.trans`. The
+    simpleKeyStack roundtrip — opener's `s₁.simpleKeyStack.pop = s.stack`
+    undone by closer's `s₃.simpleKeyStack = s₂.stack.pop` (with the body
+    preserving `s₂.stack = s₁.stack`) — collapses to three chained `rw`s.
+
+**Zero new infrastructure.** Every twin, helper, and predicate was
+already in place from §1 (`ScanChainGrewIx` combinators), §2 (`EmitScansInFlowIx`
++ `emitList_scans_{empty,nonempty}Ix`), §2b (`scanNextToken_flow_valueIx`,
+unused here — exercised only indirectly via `emitPairList_scans_nonemptyIx`),
+§2c (`emitPairList_scans_{empty,nonempty}Ix`), SS2 (`Scenarios/FlowSeqOpen.lean`,
+`Scenarios/FlowScalar.lean`), and `FlowClose.lean` (the `{`-open and both
+closes). No new helpers, no new edit to `FlowMonoChain.lean` aggregator
+(SS2 already wired in the scenario files). One small porting wrinkle: an
+initial `(by rw [h_fl'])` left an unsolved `s_state.flowLevel ≥
+s_state.flowLevel`; `rw` does not auto-discharge `≥` reflexivity in Lean
+4, so the patch was a one-char `omega` append. Build green at **91/91**.
+
+**Axiom posture** (`#print axioms emit_scans_in_flowIx`):
+`[propext, Classical.choice, Quot.sound]` **+ exactly 43 inherited
+`native_decide` axioms**, matching Reflection 142's prediction
+character-for-character — the union of
+`escapeTag_roundtrip._native.ax_1_{2..23}` (22 axioms in `RoundTrip`) +
+`Basic.{escapeChar_hex_structure,escapeChar_nonempty,escapeTag_not_linebreak,
+hexNibble_is_hex,hexNibble_lt128,hex_foldl_roundtripIx,
+hex_two_foldl_boundIx,scannerHexCheck_eq_isHexDigitBool,
+collectDoubleQuotedLoopIx_escapeString_succeeds}._native.*` (21
+axioms). All 43 are pre-existing trust axioms in shared
+`RoundTrip`/`Basic` machinery, reachable from the scalar case through
+the SS2b chain. **No `axiom`, no `sorry`, no `partial`**; Phase 3 closure
+axiom count unchanged at **0** (the native_decide budget is policy-
+sanctioned, not project axioms — see Step 5c/6e posture and
+Reflection 142).
+
+**Axiom-discharge plan**: SS3 introduces **no new** trust axioms. The 43
+native_decide axioms it inherits are the exact set SS2b already inherited;
+the standing option to restore the pure triple on double-quoted scalar
+correctness (de-`native_decide` the hex-classification lemmas in
+`RoundTrip.lean`/`Basic.lean`) remains tracked as a *pre-existing*,
+out-of-scope concern (see Reflection 142). `.toplevel` (next step) will
+inherit the identical 43 axioms — no widening expected.
+
+**Reflection 143 (new): a clean Phase-3 induction lands as pure plumbing
+when the substrate's per-character scenario twins are uniform and the
+predicate's conclusion-shape is fixed.** The `Grammable` induction is the
+*structurally* largest theorem of the `.emitscans` family (3 cases,
+collection cases each composing 3 sub-chains), yet SS3 was *the smallest
+porting effort of the entire `.flowpair` step*: zero new infrastructure,
+zero aggregator edits, zero new helpers, ~9% under LOC plan, one trivial
+`omega` patch. The reason is that SS1 / SS2a / SS2b / FlowClose / §2c had
+already built every consumed twin **with the conclusion-shape the
+induction needs** — every scenario theorem returns the same kind of
+13-/14-conjunct postcondition tuple, every body theorem returns the
+identical 16-conjunct `EmitListScansInFlowIx`/`EmitPairListScansInFlowIx`
+postcondition, and the `FlowMonoChainIx.{single,trans,weaken}` interface
+absorbs all the flow-level arithmetic. **Lesson for downstream
+inductions** (e.g., `emit_produces_valid_yamlIx`, `universal_roundtripIx`):
+when staging prerequisite work, optimize for *uniform conclusion shapes*
+across the bottom-up twin set. The induction then ports as a pattern
+match + a destructure + a `refine` — the work that *looks* like proof
+engineering is mostly bookkeeping over a fixed template. Concrete
+prediction: `.toplevel` will be even smaller (single non-recursive
+delegation, no per-constructor case split), assuming `parseStream` /
+`scanFiltered` adopt similar shape uniformity in their downstream sub-
+sessions. Corollary for axiom posture: the only "surprise" in SS3 was
+that *zero* new native_decide axioms appeared beyond SS2b's 43 — the
+sequence/mapping branches don't add any (they route through opener/closer
+twins that are pure-triple). This was implicit in Reflection 142 but
+worth recording: **the native_decide budget propagates *through* an
+induction, but the induction itself does not *introduce* new
+native_decide debt**.
 
 **Step 6f.3b3.emitscans.flowpair SS1 (pair-list track) LANDED 2026-05-27**
 (~290 LOC actual vs. ~210 LOC for the pair-list portion of the ~388 LOC
@@ -13192,18 +13308,40 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                     native_decide budget (no `axiom`/`sorry`/`partial`); does
                     **not** count against the "zero user-defined axioms"
                     criterion. See Reflection 142.
-              ▸ **SS3 (the induction)** ⏳ *(~241 LOC; legacy 8014–8255)* —
-                **now unblocked (SS2 landed)**. `emit_scans_in_flowIx`:
-                induction over `Grammable v inFlow` (scalar →
-                `scanNextTokenIx_flow_scanDoubleQuoted` (SS2b); sequence →
-                `scanNextTokenIx_flow_open_seq_nested` (SS2a) + `emitList` body
-                + `]`-close; mapping → `{`-open + `emitPairList` body (SS1) +
-                `}`-close). NB: the scalar case pulls in SS2b's inherited
-                `native_decide` budget, so `emit_scans_in_flowIx` (and
-                downstream `.toplevel`) will show `[propext, Classical.choice,
-                Quot.sound]` + native_decide rather than the pure triple — this
-                is the first Phase-3 emitter-scannability theorem to do so, and
-                is within budget (Reflection 142).
+              ▸ **SS3 (the induction)** ✅ **LANDED** *(legacy 8014–8255,
+                ~241 LOC; ported as `EmitScans.lean` §2d, ~220 LOC)*.
+                `emit_scans_in_flowIx (v : YamlValue) {inFlow : Bool}`
+                `(hg : Grammable v inFlow) : EmitScansInFlowIx (input := input) v`
+                — induction over `Grammable v inFlow`. Three cases:
+                  · **Scalar** → `scanNextTokenIx_flow_scanDoubleQuoted` (SS2b);
+                    single `scanNextTokenIx` step, one filtered-growth witness.
+                  · **Sequence** → `scanNextTokenIx_flow_open_seq_nested` (SS2a)
+                    + `emitList_scans_{empty,nonempty}Ix` (§2 SS1/SS2a) +
+                    `scanNextTokenIx_flow_close_seq_nested` (FlowClose §1).
+                  · **Mapping** → `scanNextTokenIx_flow_open_mapping_nested`
+                    (FlowClose §3) + `emitPairList_scans_{empty,nonempty}Ix`
+                    (§2c) + `scanNextTokenIx_flow_close_mapping_nested`
+                    (FlowClose §2).
+                FlowMonoChainIx composition: weaken body floor `fl+1` → `fl`
+                via `.weaken (by omega)`, then sandwich with opener/closer
+                `.single` steps via `.trans`/`.trans`. The simpleKeyStack
+                roundtrip (push undone by closer's `.pop`) collapses by
+                three chained `rw`s. **Zero new infra** — all twins, helpers,
+                and predicates were already in place from §1/§2/§2a/§2b/§2c/SS1
+                /SS2. Built clean 91/91 first try (one trivial unsolved
+                `s_state.flowLevel ≥ s_state.flowLevel` from a stray missing
+                `omega`, fixed in seconds). **Axiom posture** (confirms
+                Reflection 142): `[propext, Classical.choice, Quot.sound]` +
+                **43 inherited `native_decide` axioms** (the exact set SS2b
+                inherited — `escapeTag_roundtrip._native.*`,
+                `escapeChar_{hex_structure,nonempty}._native.*`,
+                `escapeTag_not_linebreak._native.*`,
+                `hex{Nibble,_two_foldl_bound,_foldl_roundtripIx}._native.*`,
+                `scannerHexCheck_eq_isHexDigitBool._native.*`,
+                `collectDoubleQuotedLoopIx_escapeString_succeeds._native.*`).
+                No `axiom`/`sorry`/`partial`. First Phase-3 emitter-
+                scannability theorem to carry the native_decide budget — within
+                policy (see Reflection 143).
           ▸ **6f.3b3.emitscans.toplevel** *(~120 LOC; legacy lines
             8281–8399)*. Top-level composition
             `emit_produces_valid_yamlIx`: `scanFiltered (emit v)`
