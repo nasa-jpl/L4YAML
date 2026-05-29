@@ -1821,20 +1821,23 @@ when the axiom's hypothesis is strictly weaker than what the
 stronger lemma derives).
 
 **Next session**: **Step 6f.3b3.roundtrip.maintheorem.body1.tokenshape.list**
-(now executable: `.substrate.c` LANDED 2026-05-29, see below).
-Discharges legacy sorry 9550 (emitList body first-new-filtered-token
-identification) in ~50-80 LOC after `.substrate.c`'s pointwise
-position preservation. Plan: `cases h_fmc` to extract `s_first`,
-case-analyzes on `emit_first_char v` for the head item `v`, applies
-the matching `_first_filtered_token` lemma from
-`FilteredGrowth/FirstFiltered.lean §1–§3` to identify
-`s_first.tokens[m_first]`, and bridges via `.substrate.c`'s
-`FlowMonoChainIx_preserves_position_specific` from `s_first` to
-`s'` at protected position `m_first = m₀ + 2`.
+(now executable: `.substrate.d` LANDED 2026-05-29 — non-indexed parallel
+to `.substrate.c`'s indexed machinery, see Reflection 157). Discharges
+legacy sorry 9550 (emitList body first-new-filtered-token identification)
+in ~80-120 LOC. Plan: `cases h_fmc` to extract `s_first` from the
+non-indexed body chain, case-analyzes on `emit_first_char v` for the head
+item `v`, applies the matching non-indexed `scanFlow{Sequence,Mapping}Start_
+first_filtered_token` / `scanDoubleQuoted_first_filtered_token` lemma to
+identify `s_first.tokens[m_first]`, and bridges via `.substrate.d`'s
+`FlowMonoChain_preserves_position_specific` from `s_first` to `s'` at
+protected position `m_first = m₀ + 2`. The non-indexed substrate path was
+required because the legacy sorry 9550 is in non-indexed `EmitterScannability.
+lean`, but `.substrate.c`'s machinery is indexed (no `ScannerStateIx ↔
+ScannerState` transport exists).
 Following sessions: `.body1.tokenshape.pair` discharges sorries
 9638 (now ~10-20 LOC via `.substrate.a`'s strong predicate)
-and 9644 (via `.substrate.b`'s `scanValuePrepareIx_flow_pointwise`
-+ `.substrate.c`'s position preservation).
+and 9644 (via `.substrate.d`'s pointwise position preservation +
+non-indexed `scanValuePrepare_*` reasoning).
 
 **`.body1.tokenshape.substrate.a` LANDED 2026-05-28** — partial
 substrate (Phase 3 Step 6f.3b3.roundtrip.maintheorem.body1.tokenshape.substrate.a)
@@ -1951,6 +1954,70 @@ Quot.sound]` on all 16 new declarations. Built clean: per-module
 LOC estimated in Reflection 155 — a ~2× underestimate. See
 Reflection 156 below for the analysis.
 
+**`.body1.tokenshape.substrate.d` LANDED 2026-05-29** — fourth
+partial substrate (Phase 3 Step
+6f.3b3.roundtrip.maintheorem.body1.tokenshape.substrate.d), the
+**non-indexed parallel** to `.substrate.c`. Discovered during
+`.body1.tokenshape.list` execution attempt: legacy sorry 9550 lives
+in non-indexed `EmitterScannability.lean`, but `.substrate.c`'s
+`NoOverwriteAtIx` machinery is indexed-only and there is no
+`ScannerStateIx ↔ ScannerState` transport in the codebase. Closes
+zero legacy sorries; pure enablement for `.body1.tokenshape.list`
+(sorry 9550) and `.body1.tokenshape.pair` (sorries 9644 etc.).
+Extends `EmitterScannability.lean` (+~430 LOC, inserted between
+the SKAF infrastructure and `FlowMonoChain_preserves_raw_prefix`):
+
+  - **§D.1 `NoOverwriteAt s m`** (def) + **5 transport constructors**
+    (`_of_cleared_preserved`, `_of_preserved`, `_of_endLine_update`,
+    `_of_flow_open`, `_of_flow_close`). Parallel to substrate.c §5.1
+    plus an `_of_endLine_update` variant needed for the
+    double-/single-quoted scalar dispatch case (which substrate.c did
+    not need because the indexed scalar dispatch maintains full
+    `simpleKey` equality through the indexed
+    `scanDoubleQuotedIx_preserves_simpleKey`).
+  - **§D.2 `saveSimpleKey_simpleKey_pointwise_inv`** +
+    **`preprocess_simpleKey_pointwise_inv`** +
+    **`preprocess_maintains_NoOverwriteAt`** — parallel to
+    substrate.c §5.2.
+  - **§D.3 four dispatcher maintenance lemmas**
+    (`dispatch{Structural, FlowIndicators, BlockIndicators, Content}_
+    maintains_NoOverwriteAt`) — parallel to substrate.c §5.3, with the
+    quoted-scalar cases using `_of_endLine_update`.
+  - **§D.4 `scanNextToken_maintains_NoOverwriteAt`** capstone —
+    parallel to substrate.c §5.4.
+  - **§D.5 `scanValuePrepare_preserves_position_specific`** +
+    **`scanValue_preserves_position_specific`** +
+    **`dispatchBlockIndicators_preserves_position_specific`** +
+    **`scanNextToken_preserves_position_specific`** — pointwise
+    (≠m) analogs of the existing prefix-form lemmas. Note that this
+    layer ships ONE EXTRA dispatcher-level helper
+    (`dispatchBlockIndicators_preserves_position_specific`) which
+    substrate.c did not extract because the indexed
+    `scanNextTokenIx_preserves_position_specific` uses explicit
+    `dispatchBlockIndicatorsIx_ok_some_cases`-style case-analysis;
+    the non-indexed monolithic dispatcher case-split style needed the
+    explicit helper to handle the `scanValue` branch.
+  - **§D.6 `FlowMonoChain_preserves_position_specific`** —
+    chain-induction wrapper parallel to substrate.c §5.6.
+
+**Axiom posture**: pure triple `[propext, Classical.choice,
+Quot.sound]` on all 18 new declarations (`#print axioms`-verified
+via `/tmp/axiom_check_substrate_d.lean`). Built clean: per-module
+70/70, full project 491/491. The 7 pre-existing legacy sorry
+warnings remain at their shifted positions (9636, 10133, 10229,
+10312, 10530, 11246, 11285); no new sorries.
+
+**LOC vs. estimate**: ~430 LOC actual (raw addition) vs.
+~300-500 LOC estimated when the scope was discovered (Reflection
+157 below). The estimate range was conservative-on-the-low-side
+because the non-indexed prefix-preservation helpers
+(`scanValuePrepare_preserves_prefix`, `dispatchBlockIndicators_
+preserves_prefix`, etc.) were already in place and could be
+mirrored pointwise without re-deriving the underlying sub-scanner
+case-analysis. Ratio to substrate.c: ~430/570 ≈ 0.75 — matches
+the "non-indexed mirrors are usually 0.7-0.85 the indexed LOC"
+heuristic that emerges from cross-world porting.
+
 **What `.substrate.b` does NOT yet ship** (deferred — see
 Reflection 154):
 
@@ -1970,22 +2037,32 @@ Reflection 154):
 `scanFlow{Sequence,Mapping}StartIx_simpleKey_cleared` (Production/
 IndexedScannerPlainScalarValid.lean:4733/4743),
 `FlowMonoChainIx_preserves_raw_prefix` (Sync/Invariant.lean:419),
-the 3 first-filtered-token lemmas (FilteredGrowth/FirstFiltered.
-lean §1-§3), `emit_first_char` (FirstFiltered.lean:373),
+the 3 indexed first-filtered-token lemmas (FilteredGrowth/
+FirstFiltered.lean §1-§3), `emit_first_char` (FirstFiltered.lean:373),
+the 3 non-indexed first-filtered-token lemmas
+(`scanFlow{Sequence,Mapping}Start_first_filtered_token`,
+`scanDoubleQuoted_first_filtered_token` at EmitterScannability.lean
+5598/5657/5746) and non-indexed `emit_first_char`/`emitList_first_char`,
 `EmitPairListScansInFlowIx_strong` from `.substrate.a`, the 5 new
-`.substrate.b` declarations, and the 16 new `.substrate.c`
-declarations (NoOverwriteAtIx + transports + maintenance +
-pointwise preservation + chain wrapper).
+`.substrate.b` declarations, the 16 new `.substrate.c` declarations
+(NoOverwriteAtIx + transports + maintenance + pointwise preservation +
+chain wrapper, indexed), and the 18 new `.substrate.d` declarations
+(non-indexed parallel to `.substrate.c`).
 
 **Discharge sub-sessions deferred to subsequent sessions**:
-`.body1.tokenshape.list` (1 sorry: 9550, ~50-80 LOC after
-`.substrate.c` LANDED) +
+`.body1.tokenshape.list` (1 sorry: 9550, ~80-120 LOC after
+`.substrate.d` LANDED) +
 `.body1.tokenshape.pair` (2 sorries: 9638 + 9644, ~100-150 LOC).
-Note: 9638 (`n ≥ 3`) is now directly dischargeable from
-`emitPairList_scans_nonemptyIx_strong` (just unfold the strong
-predicate; pure rewriting, ~10-20 LOC). 9644 is dischargeable
-from `scanValuePrepareIx_flow_pointwise` directly applied at the
-colon step.
+Note: 9638 (`n ≥ 3`) is now directly dischargeable from a
+non-indexed analog of `emitPairList_scans_nonemptyIx_strong`
+(`.substrate.a`'s indexed strong predicate) — likely needs a thin
+non-indexed mirror, ~30-50 LOC. 9644 is dischargeable from
+non-indexed pointwise reasoning analogous to
+`scanValuePrepareIx_flow_pointwise` (`.substrate.b`'s indexed
+key-position characterization). Per Reflection 157, both
+`.substrate.a` and `.substrate.b` may need non-indexed mirrors for
+the `.tokenshape.pair` consumer — the world-boundary check should be
+applied at the start of that session.
 
 **`.roundtrip.maintheorem.body1.scaffold` LANDED 2026-05-28** —
 second of 4 `.maintheorem` sub-sessions; first half of `.body`
@@ -4435,6 +4512,100 @@ plan, GREP the referenced infrastructure (e.g.
 enumerate the parallel decls expected. The enumeration informs
 the LOC estimate. Without it, "parallel to X" estimates will
 continue to underestimate.
+
+##### Reflection 157 (new, 2026-05-29): the cross-world transport assumption was illusory — substrate.c (indexed) cannot discharge legacy sorry 9550 (non-indexed); a parallel `.substrate.d` (non-indexed) was required
+
+**Triggering event**: starting `.body1.tokenshape.list` execution
+(planned ~80-150 LOC consumer of substrate.c per Reflection 154),
+the design step revealed that legacy sorry 9550 lives in non-indexed
+`EmitterScannability.lean`, but `.substrate.c`'s
+`NoOverwriteAtIx` / `FlowMonoChainIx_preserves_position_specific`
+machinery operates on `ScannerStateIx`. A `grep` for
+`ScannerStateIx.toScannerState`, `toScannerStateIx`, `fromIx`, `toIx`
+found ZERO transport mechanism between the two worlds. The
+indexed/non-indexed split is structural: `EmitterScannability.lean`
+is the legacy non-indexed pipeline still in use, while
+`IndexedEmitterScannability/*.lean` is the parallel indexed track.
+
+**The hidden cost**: the Blueprint's plan for `.body1.tokenshape.list`
+(Reflections 154-156) referenced substrate.c's
+`FlowMonoChainIx_preserves_position_specific` as the bridging lemma
+without flagging that the consumer (legacy sorry 9550) lives in the
+non-indexed world. The plan implicitly assumed a transport that does
+not exist. Each prior `.substrate.{a,b,c}` LANDED with axiom-clean
+proofs and verified builds, masking the fact that consumption-side
+bridging was assumed but never substantiated.
+
+**Resolution**: ship `.body1.tokenshape.substrate.d` — a non-indexed
+parallel to substrate.c. The non-indexed analog of every substrate.c
+declaration is independently provable using the same proof skeletons,
+adapted to:
+  - `ScannerState` instead of `ScannerStateIx`
+  - `scanNextToken` (concrete) instead of `scanNextTokenIx`
+  - The existing non-indexed `_preserves_simpleKey`,
+    `_simpleKey_cleared`, `_stack_pushed`, `_stack_popped`,
+    `_simpleKey_restored` family (in
+    `Proofs/Scanner/ScannerCorrectness.lean`)
+  - The existing non-indexed `dispatch{Structural, FlowIndicators,
+    BlockIndicators, Content}_preserves_prefix` family
+  - The non-indexed `scanValuePrepare_preserves_prefix` and
+    `scanValue_preserves_prefix` (sibling form of the indexed
+    `scanValuePrepareIx_preserves_prefix` from `IndexedScannerPlain
+    ScalarValid §12k`)
+
+**LOC outcome**: substrate.d landed at ~430 LOC across 18
+declarations. Ratio to substrate.c (570 LOC, 16 declarations):
+LOC ~0.75, decls ~1.13. The +2 declarations are:
+  - `NoOverwriteAt_of_endLine_update` — needed because the
+    non-indexed `scanDoubleQuoted` dispatch in
+    `scanNextToken_dispatchContent` updates `simpleKey.endLine`
+    (the `{ s_dq with simpleKey := { simpleKey with endLine := s.line } }`
+    record-with shape); substrate.c did not need this because the
+    indexed `dispatchContent` for `"` reads the dispatch shape
+    differently.
+  - `dispatchBlockIndicators_preserves_position_specific` — needed
+    because the non-indexed `scanNextToken_preserves_position_specific`
+    uses the monolithic `repeat (any_goals (split at h_next))` tactic
+    style (mirroring `scanNextToken_preserves_prefix_of_skFloor`)
+    rather than the indexed explicit-cases style; the monolithic
+    style cannot inline the `scanValue_preserves_position_specific`
+    branch without a precomposed block-indicator dispatcher helper.
+
+**Heuristic**: **before scheduling a "consumer of substrate" session,
+verify the substrate and the consumer live in the SAME world**.
+World boundaries (indexed vs. non-indexed; lifted vs. unlifted;
+phased vs. unphased) are silent killers of LOC budgets — the
+substrate's existence does NOT imply consumption-side reachability.
+The check is cheap: `grep` for the consumer's namespace + the
+substrate's namespace; if they differ AND no transport is in scope,
+schedule a parallel substrate session (or a transport session) first.
+
+**Cumulative `.body` underestimate factor — fifth refinement**:
+from Reflection 156's ~3.1-3.8× to **~3.4-4.1×** (`.substrate.d`
+hit at ~430 LOC vs. ~0 LOC nominally planned for this session —
+since `.tokenshape.list` was the planned target). Total `.body`
+estimate: ~1860-2660 LOC across 8 sub-sessions (substrate.a + b +
+c + d + scaffold + list + pair + body2), vs. Blueprint-original
+400-700 LOC. The factor's still-widening trajectory reflects each
+sub-session uncovering a previously-unflagged structural cost.
+
+**What this teaches** (extends Reflection 156's "enumerate the
+parallel decls" lesson): **substrate-world ≠ consumer-world is its
+own LOC multiplier**. When a substrate is described as "for use by
+consumer X", the consumer's world MUST be checked against the
+substrate's world. If they differ, the substrate's LOC is roughly
+DOUBLED by the need for a parallel substrate in the consumer's
+world. This is a structural cost, not a planning oversight — it
+applies even when the substrate's design is perfectly correct in
+its own world.
+
+**Forward-looking implication for `.tokenshape.pair`**: the same
+non-indexed substrate.d enables both `.tokenshape.list` (sorry
+9550) and `.tokenshape.pair` (sorries 9644, 9646). So substrate.d's
+cost amortizes across two consumers. No additional substrate work
+is anticipated for either consumer; both should be in their
+~80-150 LOC range per Reflection 154 (now achievable with substrate.d
+in place).
 
 **Step 6f.3b3.emitscans.toplevel SS1 (easy prereqs) LANDED 2026-05-27**
 (~225 LOC across two files: `Endpoint.lean` §6 ~200 LOC +
@@ -15508,33 +15679,89 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 + capstone + step-level helpers) was lumped into
                 "~20-50 LOC maintenance" without enumeration.
 
-                ▹▹▹ **.body1.tokenshape.list** *(next; estimated ~50–80
-                LOC after `.substrate.c` LANDED)*.
+                ▹▹▹▹ **.body1.tokenshape.substrate.d** ✅ **LANDED
+                2026-05-29** *(~430 LOC actual addition / ~300-500 LOC
+                allocated when the scope was discovered; extends
+                `EmitterScannability.lean` with 18 new declarations
+                inserted between the SKAF infrastructure and
+                `FlowMonoChain_preserves_raw_prefix`)*. **Non-indexed
+                parallel to `.substrate.c`**: per Reflection 157,
+                substrate.c's machinery is indexed-only and there is no
+                `ScannerStateIx ↔ ScannerState` transport in the
+                codebase. Legacy sorry 9550 (the planned
+                `.tokenshape.list` consumer) lives in non-indexed
+                `EmitterScannability.lean`, so a non-indexed mirror of
+                substrate.c is required. **Ships**:
+
+                §D.1 — `NoOverwriteAt s m` + 5 transport constructors
+                (`_of_{cleared_preserved, preserved, endLine_update,
+                flow_open, flow_close}`). The extra `_of_endLine_update`
+                constructor handles the non-indexed double-/single-quoted
+                scalar dispatch's `endLine`-update record-with shape
+                (substrate.c didn't need it because the indexed dispatch
+                reads the shape differently).
+
+                §D.2 — `saveSimpleKey_simpleKey_pointwise_inv`,
+                `preprocess_simpleKey_pointwise_inv`,
+                `preprocess_maintains_NoOverwriteAt`.
+
+                §D.3 — Four dispatcher maintenance lemmas
+                (`dispatch{Structural, FlowIndicators, BlockIndicators,
+                Content}_maintains_NoOverwriteAt`).
+
+                §D.4 — `scanNextToken_maintains_NoOverwriteAt` capstone.
+
+                §D.5 — `scanValuePrepare_preserves_position_specific`,
+                `scanValue_preserves_position_specific`,
+                `dispatchBlockIndicators_preserves_position_specific`
+                (extra helper needed by the non-indexed monolithic
+                dispatcher case-split style), and
+                `scanNextToken_preserves_position_specific`.
+
+                §D.6 — `FlowMonoChain_preserves_position_specific`
+                chain-induction wrapper.
+
+                **Axiom posture**: pure triple `[propext,
+                Classical.choice, Quot.sound]` on all 18 new
+                declarations (`#print axioms`-verified). Built clean:
+                per-module 70/70, full project 491/491. **0 legacy
+                sorries closed**; pure enablement for `.tokenshape.list`
+                + `.tokenshape.pair`. **LOC pattern**: ~430 LOC vs.
+                substrate.c's ~570 LOC, ratio 0.75 — matches the
+                "non-indexed mirrors are usually 0.7-0.85 the indexed
+                LOC" heuristic (the non-indexed prefix-form helpers
+                were already in place to mirror pointwise without
+                re-deriving sub-scanner case-analysis).
+
+                ▹▹▹ **.body1.tokenshape.list** *(next; estimated ~80–120
+                LOC after `.substrate.d` LANDED)*.
                 **Discharges 1 of 5 legacy sorries: 9550** (emitList
                 first new filtered token is content-start). Decomposes
-                `FlowMonoChainIx s.flowLevel s n s'` via `.step` to
-                extract `s_first`, case-analyzes on
+                the non-indexed `FlowMonoChain s.flowLevel s n s'` via
+                `.step` to extract `s_first`, case-analyzes on
                 `(L4YAML.Emit.emit.emitList items)`'s first char
                 (`emit_first_char` → `'['` / `'{'` / `'"'`), applies
-                the matching first-filtered-token lemma from
-                `FilteredGrowth/FirstFiltered.lean §1–§3`, then bridges
-                via `.substrate.c`'s
-                `FlowMonoChainIx_preserves_position_specific` from
+                the matching non-indexed first-filtered-token lemma
+                (`scanFlow{Sequence,Mapping}Start_first_filtered_token`
+                or `scanDoubleQuoted_first_filtered_token` at
+                `EmitterScannability.lean` 5598/5657/5746), then bridges
+                via `.substrate.d`'s
+                `FlowMonoChain_preserves_position_specific` from
                 `s_first` to `s'` at position `m_first`. Requires the
-                `.substrate.c` work.
+                `.substrate.d` work.
 
                 ▹▹▹ **.body1.tokenshape.pair** *(estimated ~100–150 LOC
-                after `.substrate.c` lands)*.
+                after `.substrate.d` lands)*.
                 **Discharges 2 of 5 legacy sorries: 9638** (emitPairList
                 `n ≥ 3`) **and 9644** (emitPairList first new filtered
-                token is `.key`). Uses
-                `EmitPairListScansInFlowIx_strong` (from `.substrate.a`)
-                to expose `s_first → s_colon → s_value_start` boundaries,
-                applies `scanValuePrepareIx_flow_pointwise` (from
-                `.substrate.b`) at the colon-step to show position
-                `old_sz + 1` becomes `.key`, derives `n ≥ 3` from
-                chain composition, and bridges via `.substrate.c` for
-                position preservation. Requires `.substrate.{a,b,c}` work.
+                token is `.key`). Uses the non-indexed analogs of
+                `EmitPairListScansInFlowIx_strong` and
+                `scanValuePrepareIx_flow_pointwise` reasoning, bridging
+                via `.substrate.d` for position preservation. Note:
+                analogs of substrate.a / substrate.b may need to be
+                ported to non-indexed first if not already; per the
+                Reflection 157 heuristic, world boundaries trigger
+                non-trivial substrate work for downstream consumers.
 
                 ▹▹ **.body2** *(estimated ~300–500 LOC)*.
                 **Outer-level flowEntry next-token claims** — closes
@@ -15548,18 +15775,19 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
-                **Total .body scope re-estimate (fifth revision —
-                after `.substrate.{a,b,c}` LANDED)**:
-                ~1430–2230 LOC across **7 sub-sessions** (`.scaffold`
+                **Total .body scope re-estimate (sixth revision —
+                after `.substrate.{a,b,c,d}` LANDED)**:
+                ~1860–2660 LOC across **8 sub-sessions** (`.scaffold`
                 [LANDED 206] + `.tokenshape.substrate.a` [LANDED 470]
                 + `.tokenshape.substrate.b` [LANDED 226]
                 + `.tokenshape.substrate.c` [LANDED ~570]
+                + `.tokenshape.substrate.d` [LANDED ~430]
                 + `.tokenshape.list` + `.tokenshape.pair` + `.body2`),
                 vs. Blueprint-original 400–700 LOC in 1. Cumulative
-                underestimate factor: **~3.1–3.8×** (re-widened from
-                Reflection 155's ~2.7-3.4× because `.substrate.c`
-                landed at ~570 LOC vs. planned ~240, see Reflection
-                156). The six scope discoveries:
+                underestimate factor: **~3.4–4.1×** (re-widened from
+                Reflection 156's ~3.1-3.8× because `.substrate.d` was
+                a structurally-required cross-world parallel that was
+                NOT in the prior plan — see Reflection 157). The seven scope discoveries:
                 `.scaffold` (Reflection 151) revealed the substrate-
                 cost-of-sorry-discharge problem in principle;
                 `.tokenshape.substrate` (Reflection 152) revealed the
@@ -15585,8 +15813,14 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 underestimate at ~570 LOC because the 4 constructors
                 + 4 dispatcher maintenance + capstone + step-level
                 helpers were lumped into "~20-50 LOC maintenance"
-                without enumeration**.
-                See Reflections 151, 152, 153, 154, 155, and 156.
+                without enumeration**; **`.tokenshape.list` execution
+                attempt (Reflection 157, 2026-05-29) discovered that
+                the consumer (legacy sorry 9550) lives in non-indexed
+                `EmitterScannability.lean` while `.substrate.c` is
+                indexed-only with no cross-world transport, requiring a
+                parallel non-indexed `.substrate.d` (~430 LOC, 18 decls,
+                ratio 0.75× substrate.c)**.
+                See Reflections 151, 152, 153, 154, 155, 156, and 157.
 
               ▹ **.maintheorem.nonempty** *(~410 legacy LOC; legacy
                 9653–10062; **2 legacy `sorry`s to discharge**)*.

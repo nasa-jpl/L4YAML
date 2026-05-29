@@ -2039,6 +2039,665 @@ theorem FlowMonoChain_preserves_raw_prefix {s s' : ScannerState} {n fl₀ : Nat}
       h_stack_floor.1 i hi
     exact (ih (Nat.le_trans h_n₀ h_adds) h_sk_inv h_sync').trans h_pres
 
+/-! ## `NoOverwriteAt` — pointwise no-overwrite invariant (substrate.d)
+
+Non-indexed parallel to `NoOverwriteAtIx` (`IndexedEmitterScannability/EmitScansStrong.lean`
+§5). Required by the legacy non-indexed consumers
+`emitList_body_filtered_characterization` (line 9474, sorry 9550) and
+`emitPairList_body_filtered_characterization` (sorries 9644 etc.). The non-indexed and
+indexed substrates are independent because the two worlds operate on different state
+types (`ScannerState` vs `ScannerStateIx`) with no transport.
+
+Ships in 6 sub-sections paralleling substrate.c §5.1–§5.6:
+  - §D.1 def + 4 transport constructors
+  - §D.2 saveSimpleKey + preprocess pointwise maintenance
+  - §D.3 four dispatcher maintenance lemmas
+  - §D.4 scanNextToken capstone
+  - §D.5 scanValuePrepare/scanValue/scanNextToken pointwise preservation
+  - §D.6 FlowMonoChain chain wrapper
+
+**Closes zero legacy sorries**: pure enablement for `.body1.tokenshape.list` (sorry 9550)
+and `.body1.tokenshape.pair` (sorries 9644, 9646).
+
+**Differs from SKAF**: NO sync hypothesis needed (no floor → no stack-size lower bound
+for the flow-close case). Mirrors substrate.c's same simplification. -/
+
+/-! ### §D.1  `NoOverwriteAt` and its 4 transport constructors -/
+
+/-- `NoOverwriteAt s m`: position `m` cannot be overwritten by any future simpleKey
+    promotion (current or stacked). Non-indexed twin of `NoOverwriteAtIx`
+    (`IndexedEmitterScannability/EmitScansStrong.lean §5`). -/
+def NoOverwriteAt (s : ScannerState) (m : Nat) : Prop :=
+  (s.simpleKey.possible = true →
+    m ≠ s.simpleKey.tokenIndex ∧ m ≠ s.simpleKey.tokenIndex + 1) ∧
+  (∀ (j : Nat) (h : j < s.simpleKeyStack.size),
+    s.simpleKeyStack[j].possible = true →
+    m ≠ s.simpleKeyStack[j].tokenIndex ∧ m ≠ s.simpleKeyStack[j].tokenIndex + 1)
+
+/-- If `s_out` clears the simple key and preserves the stack, then `NoOverwriteAt`
+    transports. Parallel to `NoOverwriteAtIx_of_cleared_preserved`. -/
+theorem NoOverwriteAt_of_cleared_preserved
+    (s_out s_in : ScannerState) (m : Nat)
+    (h_sk : s_out.simpleKey.possible = false)
+    (h_stack : s_out.simpleKeyStack = s_in.simpleKeyStack)
+    (h_inv : NoOverwriteAt s_in m) :
+    NoOverwriteAt s_out m :=
+  ⟨fun hp => absurd hp (by rw [h_sk]; decide),
+   fun j hj hp => by simp only [h_stack] at hj hp ⊢; exact h_inv.2 j hj hp⟩
+
+/-- If `s_out` preserves both `simpleKey` and `simpleKeyStack`, then `NoOverwriteAt`
+    transports. Parallel to `NoOverwriteAtIx_of_preserved`. -/
+theorem NoOverwriteAt_of_preserved
+    (s_out s_in : ScannerState) (m : Nat)
+    (h_sk : s_out.simpleKey = s_in.simpleKey)
+    (h_stack : s_out.simpleKeyStack = s_in.simpleKeyStack)
+    (h_inv : NoOverwriteAt s_in m) :
+    NoOverwriteAt s_out m :=
+  ⟨fun hp => by rw [h_sk] at hp ⊢; exact h_inv.1 hp,
+   fun j hj hp => by simp only [h_stack] at hj hp ⊢; exact h_inv.2 j hj hp⟩
+
+/-- Flow-open transport: `s_out` clears the current simple key and pushes the old
+    `simpleKey` onto `simpleKeyStack`. Parallel to `NoOverwriteAtIx_of_flow_open`. -/
+theorem NoOverwriteAt_of_flow_open
+    (s_out s_in : ScannerState) (m : Nat)
+    (h_sk : s_out.simpleKey.possible = false)
+    (h_stack : s_out.simpleKeyStack = s_in.simpleKeyStack.push s_in.simpleKey)
+    (h_inv : NoOverwriteAt s_in m) :
+    NoOverwriteAt s_out m := by
+  refine ⟨fun hp => absurd hp (by rw [h_sk]; decide), fun j hj hp => ?_⟩
+  simp only [h_stack, Array.size_push] at hj
+  by_cases hlt : j < s_in.simpleKeyStack.size
+  · have hp' : s_in.simpleKeyStack[j].possible = true := by
+      simp only [h_stack, Array.getElem_push, dif_pos hlt] at hp; exact hp
+    have h_orig := h_inv.2 j hlt hp'
+    show m ≠ s_out.simpleKeyStack[j].tokenIndex ∧
+         m ≠ s_out.simpleKeyStack[j].tokenIndex + 1
+    simp only [h_stack, Array.getElem_push, dif_pos hlt]; exact h_orig
+  · have hj_eq : j = s_in.simpleKeyStack.size := by omega
+    subst hj_eq
+    have hp' : s_in.simpleKey.possible = true := by
+      simp only [h_stack, Array.getElem_push, dif_neg hlt] at hp; exact hp
+    have h_orig := h_inv.1 hp'
+    show m ≠ s_out.simpleKeyStack[s_in.simpleKeyStack.size].tokenIndex ∧
+         m ≠ s_out.simpleKeyStack[s_in.simpleKeyStack.size].tokenIndex + 1
+    simp only [h_stack, Array.getElem_push, dif_neg hlt]; exact h_orig
+
+/-- endLine-update transport: `s_out`'s simpleKey shares `possible` and `tokenIndex`
+    with `s_in.simpleKey` (only the `endLine` and `pos` fields may differ) and the
+    stack is preserved. Needed for the double-quoted and single-quoted scalar
+    dispatch, which updates the simpleKey's endLine field. -/
+theorem NoOverwriteAt_of_endLine_update
+    (s_out s_in : ScannerState) (m : Nat)
+    (h_poss : s_out.simpleKey.possible = s_in.simpleKey.possible)
+    (h_idx : s_out.simpleKey.tokenIndex = s_in.simpleKey.tokenIndex)
+    (h_stack : s_out.simpleKeyStack = s_in.simpleKeyStack)
+    (h_inv : NoOverwriteAt s_in m) :
+    NoOverwriteAt s_out m :=
+  ⟨fun hp => by
+    have hp' : s_in.simpleKey.possible = true := by rw [← h_poss]; exact hp
+    have := h_inv.1 hp'; rw [h_idx]; exact this,
+   fun j hj hp => by simp only [h_stack] at hj hp ⊢; exact h_inv.2 j hj hp⟩
+
+/-- Flow-close transport: `s_out` restores `simpleKey` from `simpleKeyStack.back?`
+    and pops the stack. Parallel to `NoOverwriteAtIx_of_flow_close` — NO sync
+    hypothesis needed (NoOverwriteAt's stack-entry conjunct covers ALL slots, so
+    popping just reduces the universe of obligations). -/
+theorem NoOverwriteAt_of_flow_close
+    (s_out s_in : ScannerState) (m : Nat)
+    (h_sk : s_out.simpleKey = s_in.simpleKeyStack.back?.getD {})
+    (h_stack : s_out.simpleKeyStack = s_in.simpleKeyStack.pop)
+    (h_inv : NoOverwriteAt s_in m) :
+    NoOverwriteAt s_out m := by
+  refine ⟨fun hp => ?_, fun j hj hp => ?_⟩
+  · by_cases h_nonempty : s_in.simpleKeyStack.size > 0
+    · have h_lt : s_in.simpleKeyStack.size - 1 < s_in.simpleKeyStack.size := by omega
+      have h_back : s_in.simpleKeyStack.back?.getD {} =
+          s_in.simpleKeyStack[s_in.simpleKeyStack.size - 1]'h_lt := by
+        simp [Array.back?, h_lt]
+      rw [h_sk, h_back] at hp ⊢
+      exact h_inv.2 _ h_lt hp
+    · have h_empty : s_in.simpleKeyStack.size = 0 := by omega
+      have h_none : s_in.simpleKeyStack.back? = none := by simp [Array.back?, h_empty]
+      rw [h_sk, h_none] at hp; simp at hp
+  · simp only [h_stack, Array.size_pop] at hj
+    simp only [h_stack, Array.getElem_pop] at hp ⊢
+    exact h_inv.2 j (by omega) hp
+
+/-! ### §D.2  saveSimpleKey + preprocess pointwise maintenance -/
+
+/-- `saveSimpleKey` maintains the pointwise no-overwrite invariant on `simpleKey`:
+    if the new simpleKey is possible, its `tokenIndex` is either unchanged (no-op
+    branch) or set to `st.tokens.size` (set branch), and both satisfy `≠ m` /
+    `≠ m + 1` given `m < st.tokens.size`. Parallel to
+    `saveSimpleKeyIx_simpleKey_pointwise_inv`. -/
+theorem saveSimpleKey_simpleKey_pointwise_inv (st : ScannerState) (m : Nat)
+    (h_tok : m < st.tokens.size)
+    (h_inv : st.simpleKey.possible = true →
+      m ≠ st.simpleKey.tokenIndex ∧ m ≠ st.simpleKey.tokenIndex + 1) :
+    (saveSimpleKey st).simpleKey.possible = true →
+    m ≠ (saveSimpleKey st).simpleKey.tokenIndex ∧
+    m ≠ (saveSimpleKey st).simpleKey.tokenIndex + 1 := by
+  unfold saveSimpleKey
+  split
+  · exact h_inv
+  · split
+    · intro _; dsimp only []; exact ⟨by omega, by omega⟩
+    · exact h_inv
+
+/-- `scanNextToken_preprocess` carries the simpleKey pointwise invariant. Parallel
+    to `scanNextTokenIx_preprocess_simpleKey_pointwise_inv`. -/
+theorem preprocess_simpleKey_pointwise_inv (s s1 : ScannerState) (c : Char)
+    (h : scanNextToken_preprocess s = .ok (some (s1, c))) (m : Nat)
+    (h_m : m < s.tokens.size)
+    (h_inv : s.simpleKey.possible = true →
+      m ≠ s.simpleKey.tokenIndex ∧ m ≠ s.simpleKey.tokenIndex + 1) :
+    s1.simpleKey.possible = true →
+    m ≠ s1.simpleKey.tokenIndex ∧ m ≠ s1.simpleKey.tokenIndex + 1 := by
+  intro h_poss
+  unfold scanNextToken_preprocess at h
+  simp only [bind, ScannerCorrectness.ScanHelpers.bind_error_simp,
+    ScannerCorrectness.ScanHelpers.bind_ok_simp, pure, Pure.pure, Except.pure] at h
+  simp only [Except.bind] at h
+  split at h
+  · contradiction
+  · rename_i s_skip h_skip
+    have h_sk_skip := ScannerCorrectness.skipToContent_preserves_simpleKey s s_skip h_skip
+    have h_tok_skip := ScannerCorrectness.skipToContent_preserves_tokens s s_skip h_skip
+    split at h
+    · simp at h
+    · split at h
+      · split at h
+        · contradiction
+        · split at h
+          · simp at h
+          · simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq] at h
+            obtain ⟨rfl, _⟩ := h
+            have h_sk_u := ScannerCorrectness.unwindIndents_preserves_simpleKey s_skip s_skip.col
+            have h_tok_u := ScannerCorrectness.unwindIndents_adds_tokens s_skip s_skip.col
+            have h_tok_post : m <
+                ({ unwindIndents s_skip s_skip.col with
+                  needIndentCheck := false } : ScannerState).tokens.size := by
+              show m < (unwindIndents s_skip s_skip.col).tokens.size
+              have := congrArg Array.size h_tok_skip; omega
+            have h_sk_post :
+                ({ unwindIndents s_skip s_skip.col with
+                    needIndentCheck := false } : ScannerState).simpleKey.possible = true →
+                m ≠ ({ unwindIndents s_skip s_skip.col with
+                    needIndentCheck := false } : ScannerState).simpleKey.tokenIndex ∧
+                m ≠ ({ unwindIndents s_skip s_skip.col with
+                    needIndentCheck := false } : ScannerState).simpleKey.tokenIndex + 1 := by
+              show (unwindIndents s_skip s_skip.col).simpleKey.possible = true → _
+              simp only [h_sk_u, h_sk_skip]; exact h_inv
+            exact saveSimpleKey_simpleKey_pointwise_inv _ m h_tok_post h_sk_post h_poss
+      · split at h
+        · contradiction
+        · split at h
+          · simp at h
+          · simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq] at h
+            obtain ⟨rfl, _⟩ := h
+            have h_tok_post : m < s_skip.tokens.size := by
+              have := congrArg Array.size h_tok_skip; omega
+            have h_sk_post : s_skip.simpleKey.possible = true →
+                m ≠ s_skip.simpleKey.tokenIndex ∧
+                m ≠ s_skip.simpleKey.tokenIndex + 1 := by
+              simp only [h_sk_skip]; exact h_inv
+            exact saveSimpleKey_simpleKey_pointwise_inv s_skip m h_tok_post h_sk_post h_poss
+
+/-- `scanNextToken_preprocess` maintains the full `NoOverwriteAt` invariant.
+    Parallel to `scanNextTokenIx_preprocess_maintains_NoOverwriteAtIx`. -/
+theorem preprocess_maintains_NoOverwriteAt (s s1 : ScannerState) (c : Char)
+    (h : scanNextToken_preprocess s = .ok (some (s1, c)))
+    (m : Nat) (h_m : m < s.tokens.size) (h_inv : NoOverwriteAt s m) :
+    NoOverwriteAt s1 m := by
+  refine ⟨?_, ?_⟩
+  · exact preprocess_simpleKey_pointwise_inv s s1 c h m h_m h_inv.1
+  · intro j hj hp
+    have h_stack := ScannerCorrectness.preprocess_preserves_simpleKeyStack s s1 c h
+    simp only [h_stack] at hj hp ⊢
+    exact h_inv.2 j hj hp
+
+/-! ### §D.3  Dispatcher maintenance for NoOverwriteAt -/
+
+/-- `scanNextToken_dispatchStructural` maintains `NoOverwriteAt`. Parallel to
+    `dispatchStructural_maintains_SimpleKeyAboveFloor`. -/
+theorem dispatchStructural_maintains_NoOverwriteAt (s : ScannerState) (c : Char)
+    (s' : ScannerState)
+    (h : scanNextToken_dispatchStructural s c = .ok (some s'))
+    (m : Nat) (_h_m : m < s.tokens.size) (h_inv : NoOverwriteAt s m) :
+    NoOverwriteAt s' m := by
+  unfold scanNextToken_dispatchStructural at h
+  simp only [bind, ScannerCorrectness.ScanHelpers.bind_error_simp,
+    ScannerCorrectness.ScanHelpers.bind_ok_simp, pure, Pure.pure, Except.pure] at h
+  simp only [Except.bind] at h
+  repeat (any_goals (split at h))
+  any_goals contradiction
+  all_goals (try simp only [Except.ok.injEq, Option.some.injEq] at *)
+  any_goals contradiction
+  all_goals (try subst_vars)
+  all_goals first
+    | exact NoOverwriteAt_of_cleared_preserved _ s m
+        (ScannerCorrectness.scanDocumentStart_clears_simpleKey s)
+        (ScannerCorrectness.scanDocumentStart_preserves_simpleKeyStack s) h_inv
+    | (rename_i h_eq; exact NoOverwriteAt_of_cleared_preserved _ s m
+        (ScannerCorrectness.scanDocumentEnd_clears_simpleKey s _ h_eq)
+        (ScannerCorrectness.scanDocumentEnd_preserves_simpleKeyStack s _ h_eq) h_inv)
+    | (rename_i h_eq; exact NoOverwriteAt_of_preserved _ s m
+        (ScannerCorrectness.scanDirective_preserves_simpleKey s _ h_eq)
+        (ScannerCorrectness.scanDirective_preserves_simpleKeyStack s _ h_eq) h_inv)
+    | (simp_all; done)
+
+/-- `scanNextToken_dispatchFlowIndicators` maintains `NoOverwriteAt`. Parallel to
+    `dispatchFlowIndicators_maintains_SimpleKeyAboveFloor` but with NO sync or
+    flow-level hypotheses needed (NoOverwriteAt's stack-entry conjunct covers ALL
+    slots, so popping just reduces the universe of obligations). -/
+theorem dispatchFlowIndicators_maintains_NoOverwriteAt (s : ScannerState) (c : Char)
+    (s' : ScannerState)
+    (h : scanNextToken_dispatchFlowIndicators s c = .ok (some s'))
+    (m : Nat) (_h_m : m < s.tokens.size) (h_inv : NoOverwriteAt s m) :
+    NoOverwriteAt s' m := by
+  unfold scanNextToken_dispatchFlowIndicators at h
+  simp only [bind, ScannerCorrectness.ScanHelpers.bind_error_simp,
+    ScannerCorrectness.ScanHelpers.bind_ok_simp, pure, Pure.pure, Except.pure] at h
+  simp only [Except.bind] at h
+  repeat (any_goals (split at h))
+  any_goals contradiction
+  all_goals (try simp only [Except.ok.injEq, Option.some.injEq] at *)
+  any_goals contradiction
+  all_goals (try subst_vars)
+  all_goals first
+    | exact NoOverwriteAt_of_flow_open _ s m
+        (ScannerCorrectness.scanFlowSequenceStart_simpleKey_cleared s)
+        (ScannerCorrectness.scanFlowSequenceStart_stack_pushed s) h_inv
+    | exact NoOverwriteAt_of_flow_open _ s m
+        (ScannerCorrectness.scanFlowMappingStart_simpleKey_cleared s)
+        (ScannerCorrectness.scanFlowMappingStart_stack_pushed s) h_inv
+    | exact NoOverwriteAt_of_flow_close _ s m
+        (ScannerCorrectness.scanFlowSequenceEnd_simpleKey_restored s)
+        (ScannerCorrectness.scanFlowSequenceEnd_stack_popped s) h_inv
+    | exact NoOverwriteAt_of_flow_close _ s m
+        (ScannerCorrectness.scanFlowMappingEnd_simpleKey_restored s)
+        (ScannerCorrectness.scanFlowMappingEnd_stack_popped s) h_inv
+    | (rename_i h_eq; exact NoOverwriteAt_of_preserved _ s m
+        (ScannerCorrectness.scanFlowEntry_preserves_simpleKey s _ h_eq)
+        (ScannerCorrectness.scanFlowEntry_preserves_simpleKeyStack s _ h_eq) h_inv)
+    | (simp_all; done)
+
+/-- `scanNextToken_dispatchBlockIndicators` maintains `NoOverwriteAt`. Parallel to
+    `dispatchBlockIndicators_maintains_SimpleKeyAboveFloor`. -/
+theorem dispatchBlockIndicators_maintains_NoOverwriteAt (s : ScannerState) (c : Char)
+    (s' : ScannerState)
+    (h : scanNextToken_dispatchBlockIndicators s c = .ok (some s'))
+    (m : Nat) (_h_m : m < s.tokens.size) (h_inv : NoOverwriteAt s m) :
+    NoOverwriteAt s' m := by
+  unfold scanNextToken_dispatchBlockIndicators at h
+  simp only [bind, ScannerCorrectness.ScanHelpers.bind_ok_simp, pure, Pure.pure,
+    Except.pure] at h
+  simp only [Except.bind] at h
+  repeat (any_goals (split at h))
+  any_goals contradiction
+  all_goals (try simp only [Except.ok.injEq, Option.some.injEq] at *)
+  any_goals contradiction
+  all_goals (try subst_vars)
+  all_goals first
+    | (rename_i h_eq; exact NoOverwriteAt_of_preserved _ s m
+        (ScannerCorrectness.scanBlockEntry_preserves_simpleKey s _ h_eq)
+        (ScannerCorrectness.scanBlockEntry_preserves_simpleKeyStack s _ h_eq) h_inv)
+    | (rename_i h_eq; exact NoOverwriteAt_of_cleared_preserved _ s m
+        (ScannerCorrectness.scanKey_clears_simpleKey s _ h_eq)
+        (ScannerCorrectness.scanKey_preserves_simpleKeyStack s _ h_eq) h_inv)
+    | (rename_i h_eq; exact NoOverwriteAt_of_cleared_preserved _ s m
+        (ScannerCorrectness.scanValue_clears_simpleKey s _ h_eq)
+        (ScannerCorrectness.scanValue_preserves_simpleKeyStack s _ h_eq) h_inv)
+    | (simp_all; done)
+
+/-- `scanNextToken_dispatchContent` maintains `NoOverwriteAt`. Parallel to
+    `dispatchContent_maintains_SimpleKeyAboveFloor`. -/
+theorem dispatchContent_maintains_NoOverwriteAt (s : ScannerState) (c : Char)
+    (s' : ScannerState)
+    (h : scanNextToken_dispatchContent s c = .ok s')
+    (m : Nat) (_h_m : m < s.tokens.size) (h_inv : NoOverwriteAt s m) :
+    NoOverwriteAt s' m := by
+  unfold scanNextToken_dispatchContent at h
+  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h
+  split at h
+  · -- '&': scanAnchorOrAlias bind
+    generalize h_anch : scanAnchorOrAlias s true = result at h
+    cases result with
+    | error e => simp at h
+    | ok s_a =>
+      simp only [Except.ok.injEq] at h; subst h
+      exact NoOverwriteAt_of_preserved _ _ m rfl rfl
+        (NoOverwriteAt_of_preserved _ s m
+          (ScannerCorrectness.scanAnchorOrAlias_preserves_simpleKey s true s_a h_anch)
+          (ScannerCorrectness.scanAnchorOrAlias_preserves_simpleKeyStack s true s_a h_anch) h_inv)
+  · split at h
+    · -- '*': alias
+      split at h
+      · contradiction
+      · generalize h_anch : scanAnchorOrAlias s false = result at h
+        cases result with
+        | error e => simp at h
+        | ok s_a =>
+          simp only [Except.ok.injEq] at h; subst h
+          exact NoOverwriteAt_of_preserved _ s m
+            (ScannerCorrectness.scanAnchorOrAlias_preserves_simpleKey s false s_a h_anch)
+            (ScannerCorrectness.scanAnchorOrAlias_preserves_simpleKeyStack s false s_a h_anch)
+              h_inv
+    · split at h
+      · -- '!': tag
+        generalize h_tag : scanTag s = result at h
+        cases result with
+        | error e => simp at h
+        | ok s_t =>
+          simp only [Except.ok.injEq] at h; subst h
+          exact NoOverwriteAt_of_preserved _ s m
+            (ScannerCorrectness.scanTag_preserves_simpleKey s s_t h_tag)
+            (ScannerCorrectness.scanTag_preserves_simpleKeyStack s s_t h_tag) h_inv
+      · -- remaining: block scalar, quoted, plain
+        repeat (any_goals (split at h))
+        all_goals (try contradiction)
+        all_goals (try (simp only [Except.ok.injEq] at h; subst h))
+        all_goals (
+          first
+    | (rename_i h_eq; exact NoOverwriteAt_of_cleared_preserved _ s m
+        (ScannerCorrectness.scanBlockScalar_clears_simpleKey s _ h_eq)
+        (ScannerCorrectness.scanBlockScalar_preserves_simpleKeyStack s _ h_eq) h_inv)
+    | (rename_i h_eq; exact NoOverwriteAt_of_preserved _ s m
+        (ScannerCorrectness.scanPlainScalar_preserves_simpleKey s _ h_eq)
+        (ScannerCorrectness.scanPlainScalar_preserves_simpleKeyStack s _ h_eq) h_inv)
+    | (rename_i h_eq_dq _;
+       first
+       | (have h_sk := ScannerCorrectness.scanDoubleQuoted_preserves_simpleKey s _ h_eq_dq
+          have h_st := ScannerCorrectness.scanDoubleQuoted_preserves_simpleKeyStack s _ h_eq_dq
+          exact NoOverwriteAt_of_endLine_update _ s m
+            (by simp [h_sk]) (by simp [h_sk]) (by simp [h_st]) h_inv)
+       | (have h_sk := ScannerCorrectness.scanSingleQuoted_preserves_simpleKey s _ h_eq_dq
+          have h_st := ScannerCorrectness.scanSingleQuoted_preserves_simpleKeyStack s _ h_eq_dq
+          exact NoOverwriteAt_of_endLine_update _ s m
+            (by simp [h_sk]) (by simp [h_sk]) (by simp [h_st]) h_inv))
+    | (rename_i h_eq_dq _;
+       first
+       | (exact NoOverwriteAt_of_preserved _ s m
+            (ScannerCorrectness.scanDoubleQuoted_preserves_simpleKey s _ h_eq_dq)
+            (ScannerCorrectness.scanDoubleQuoted_preserves_simpleKeyStack s _ h_eq_dq) h_inv)
+       | (exact NoOverwriteAt_of_preserved _ s m
+            (ScannerCorrectness.scanSingleQuoted_preserves_simpleKey s _ h_eq_dq)
+            (ScannerCorrectness.scanSingleQuoted_preserves_simpleKeyStack s _ h_eq_dq) h_inv))
+    | (simp_all; done))
+
+/-! ### §D.4  scanNextToken capstone for NoOverwriteAt -/
+
+set_option maxHeartbeats 400000 in
+/-- Capstone: `scanNextToken` maintains `NoOverwriteAt`. Parallel to
+    `scanNextTokenIx_maintains_NoOverwriteAtIx` (substrate.c §5.4) — and to the
+    non-indexed `scanNextToken_maintains_SimpleKeyAboveFloor` but with the
+    pointwise (≠m) invariant and no sync/flow-level hypotheses. -/
+theorem scanNextToken_maintains_NoOverwriteAt (s s' : ScannerState)
+    (h_next : scanNextToken s = .ok (some s'))
+    (m : Nat) (h_m : m < s.tokens.size) (h_inv : NoOverwriteAt s m) :
+    NoOverwriteAt s' m := by
+  have h_allow_sk : ∀ st : ScannerState,
+      (if st.allowDirectives then
+          { st with allowDirectives := false, documentEverStarted := true }
+        else st).simpleKey = st.simpleKey := by intro st; split <;> rfl
+  have h_allow_stack : ∀ st : ScannerState,
+      (if st.allowDirectives then
+          { st with allowDirectives := false, documentEverStarted := true }
+        else st).simpleKeyStack = st.simpleKeyStack := by intro st; split <;> rfl
+  have h_allow_tok : ∀ st : ScannerState,
+      (if st.allowDirectives then
+          { st with allowDirectives := false, documentEverStarted := true }
+        else st).tokens = st.tokens := ScannerCorrectness.ScanHelpers.allowDir_ite_tokens
+  unfold scanNextToken at h_next
+  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h_next
+  split at h_next
+  · contradiction
+  · split at h_next
+    · simp at h_next
+    · rename_i s1 c1 hPre
+      have h_pre_inv := preprocess_maintains_NoOverwriteAt s _ _ hPre m h_m h_inv
+      have h_pre_mono := ScannerCorrectness.ScanHelpers.preprocess_tokens_mono s _ _ hPre
+      have h_pre_m : m < s1.tokens.size := Nat.lt_of_lt_of_le h_m h_pre_mono
+      split at h_next
+      · contradiction
+      · split at h_next
+        · rename_i s'' hStruct
+          simp only [Except.ok.injEq, Option.some.injEq] at h_next
+          subst h_next
+          exact dispatchStructural_maintains_NoOverwriteAt _ _ _ hStruct m h_pre_m h_pre_inv
+        · have h_s2_inv : NoOverwriteAt
+              (if s1.allowDirectives then
+                  { s1 with allowDirectives := false, documentEverStarted := true }
+                else s1) m :=
+            NoOverwriteAt_of_preserved _ s1 m
+              (h_allow_sk s1) (h_allow_stack s1) h_pre_inv
+          have h_s2_m : m <
+              (if s1.allowDirectives then
+                  { s1 with allowDirectives := false, documentEverStarted := true }
+                else s1).tokens.size := by
+            rw [h_allow_tok]; exact h_pre_m
+          split at h_next
+          · contradiction
+          · split at h_next
+            · contradiction
+            · split at h_next
+              · rename_i s'' hFlow
+                simp only [Except.ok.injEq, Option.some.injEq] at h_next
+                subst h_next
+                exact dispatchFlowIndicators_maintains_NoOverwriteAt _ _ _ hFlow m h_s2_m h_s2_inv
+              · split at h_next
+                · contradiction
+                · split at h_next
+                  · rename_i s'' hBlock
+                    simp only [Except.ok.injEq, Option.some.injEq] at h_next
+                    subst h_next
+                    exact dispatchBlockIndicators_maintains_NoOverwriteAt _ _ _ hBlock
+                      m h_s2_m h_s2_inv
+                  · split at h_next
+                    · contradiction
+                    · rename_i sC hContent
+                      simp only [Except.ok.injEq, Option.some.injEq] at h_next
+                      subst h_next
+                      exact dispatchContent_maintains_NoOverwriteAt _ _ _ hContent
+                        m h_s2_m h_s2_inv
+
+/-! ### §D.5  Step-level pointwise preservation -/
+
+/-- Pointwise (≠m) form of `scanValuePrepare_preserves_prefix`. Mirrors the
+    prefix-form proof but uses the pointwise hypothesis directly. -/
+theorem scanValuePrepare_preserves_position_specific (s : ScannerState)
+    (m : Nat) (h_m : m < s.tokens.size)
+    (h_inv : s.simpleKey.possible = true →
+      m ≠ s.simpleKey.tokenIndex ∧ m ≠ s.simpleKey.tokenIndex + 1) :
+    (scanValuePrepare s).tokens[m]'(by
+        have := ScannerCorrectness.scanValuePrepare_tokens_monotonic s; omega) =
+    s.tokens[m]'h_m := by
+  unfold scanValuePrepare
+  split
+  · rename_i h_poss
+    obtain ⟨h_ne_idx, h_ne_idx1⟩ := h_inv h_poss
+    split
+    · split
+      · -- !inFlow, keyCol > currentIndent: two setIfInBounds at idx, idx+1
+        dsimp only []
+        rw [Array.getElem_setIfInBounds (by simp [Array.size_setIfInBounds]; omega)]
+        simp only [show s.simpleKey.tokenIndex + 1 ≠ m from fun h => h_ne_idx1 h.symm,
+          ite_false]
+        rw [Array.getElem_setIfInBounds (by omega)]
+        simp only [show s.simpleKey.tokenIndex ≠ m from fun h => h_ne_idx h.symm, ite_false]
+      · -- !inFlow, keyCol ≤ currentIndent: one setIfInBounds at idx+1
+        dsimp only []
+        rw [Array.getElem_setIfInBounds (by omega)]
+        simp only [show s.simpleKey.tokenIndex + 1 ≠ m from fun h => h_ne_idx1 h.symm,
+          ite_false]
+    · -- inFlow: one setIfInBounds at idx+1
+      dsimp only []
+      rw [Array.getElem_setIfInBounds (by omega)]
+      simp only [show s.simpleKey.tokenIndex + 1 ≠ m from fun h => h_ne_idx1 h.symm,
+        ite_false]
+  · -- simpleKey.possible = false
+    split
+    · -- explicitKeyLine.isSome: only simpleKey field changes
+      dsimp only []
+    · split
+      · -- !inFlow: pushMappingIndent
+        exact ScannerCorrectness.ScanHelpers.pushMappingIndent_preserves_prefix s s.col m h_m
+      · -- inFlow: identity
+        rfl
+
+/-- Pointwise (≠m) form of `scanValue_preserves_prefix`. -/
+theorem scanValue_preserves_position_specific (s s' : ScannerState)
+    (h_ok : scanValue s = .ok s')
+    (m : Nat) (h_m : m < s.tokens.size)
+    (h_inv : s.simpleKey.possible = true →
+      m ≠ s.simpleKey.tokenIndex ∧ m ≠ s.simpleKey.tokenIndex + 1) :
+    s'.tokens[m]'(by have := ScannerCorrectness.scanValue_adds_tokens s s' h_ok; omega) =
+    s.tokens[m]'h_m := by
+  unfold scanValue at h_ok
+  dsimp only [] at h_ok
+  simp only [bind, Except.bind] at h_ok
+  split at h_ok
+  · contradiction
+  · split at h_ok
+    · contradiction
+    · injection h_ok with h_eq
+      subst h_eq
+      dsimp only []
+      have h_ck := ScannerCorrectness.scanValueClearKey_preserves_tokens s
+      have h_inv' : (scanValueClearKey s).simpleKey.possible = true →
+          m ≠ (scanValueClearKey s).simpleKey.tokenIndex ∧
+          m ≠ (scanValueClearKey s).simpleKey.tokenIndex + 1 := by
+        unfold scanValueClearKey
+        split
+        · split
+          · simp
+          · split
+            · simp
+            · exact h_inv
+        · exact h_inv
+      have h_m' : m < (scanValueClearKey s).tokens.size := by rw [h_ck]; exact h_m
+      have h_prep := scanValuePrepare_preserves_position_specific (scanValueClearKey s)
+        m h_m' h_inv'
+      have h_prep_sz := ScannerCorrectness.scanValuePrepare_tokens_monotonic
+        (scanValueClearKey s)
+      have h_m_lt_prep : m < (scanValuePrepare (scanValueClearKey s)).tokens.size := by
+        rw [h_ck] at h_prep_sz; omega
+      have h_emit := ScannerCorrectness.emit_preserves_tokens_at
+        (scanValuePrepare (scanValueClearKey s)) YamlToken.value m h_m_lt_prep
+      have h_adv := ScannerCorrectness.advance_preserves_tokens
+        ((scanValuePrepare (scanValueClearKey s)).emit .value)
+      simp_all
+
+/-- Pointwise (≠m) version of `dispatchBlockIndicators_preserves_prefix`. The
+    block-indicators dispatcher is the only one of the four that can call
+    `scanValue` (which overwrites via `scanValuePrepare`), hence the pointwise
+    hypothesis is needed here specifically. -/
+theorem dispatchBlockIndicators_preserves_position_specific (s : ScannerState) (c : Char)
+    (s' : ScannerState)
+    (h : scanNextToken_dispatchBlockIndicators s c = .ok (some s'))
+    (m : Nat) (h_m : m < s.tokens.size)
+    (h_inv : s.simpleKey.possible = true →
+      m ≠ s.simpleKey.tokenIndex ∧ m ≠ s.simpleKey.tokenIndex + 1) :
+    s'.tokens[m]'(by
+      have := ScannerCorrectness.ScanHelpers.dispatchBlockIndicators_tokens_mono s c s' h;
+      omega) =
+    s.tokens[m]'h_m := by
+  unfold scanNextToken_dispatchBlockIndicators at h
+  simp only [bind, ScannerCorrectness.ScanHelpers.bind_ok_simp, pure, Pure.pure,
+    Except.pure] at h
+  simp only [Except.bind] at h
+  repeat (any_goals (split at h))
+  any_goals contradiction
+  all_goals first
+    | (have := ScannerCorrectness.ScanHelpers.scanBlockEntry_preserves_prefix s _
+        (by assumption) m h_m; simp_all)
+    | (have := ScannerCorrectness.ScanHelpers.scanKey_preserves_prefix s _
+        (by assumption) m h_m; simp_all)
+    | (have := scanValue_preserves_position_specific s _ (by assumption) m h_m h_inv; simp_all)
+    | (simp_all)
+
+set_option maxHeartbeats 400000 in
+/-- Per-step pointwise preservation of position `m` through `scanNextToken`.
+    Parallel to `scanNextTokenIx_preserves_position_specific` but with the
+    monolithic dispatcher case-analysis style of the non-indexed
+    `scanNextToken_preserves_prefix_of_skFloor`. -/
+theorem scanNextToken_preserves_position_specific (s s' : ScannerState)
+    (h_next : scanNextToken s = .ok (some s'))
+    (m : Nat) (h_m : m < s.tokens.size)
+    (h_inv : s.simpleKey.possible = true →
+      m ≠ s.simpleKey.tokenIndex ∧ m ≠ s.simpleKey.tokenIndex + 1) :
+    s'.tokens[m]'(by have := ScannerCorrectness.scanNextToken_adds_tokens s s' h_next; omega) =
+    s.tokens[m]'h_m := by
+  unfold scanNextToken at h_next
+  simp only [bind, pure, Pure.pure, Except.pure] at h_next
+  simp only [Except.bind] at h_next
+  split at h_next
+  · contradiction
+  · split at h_next
+    · simp at h_next
+    · have h_pre_pref := ScannerCorrectness.ScanHelpers.preprocess_preserves_prefix s _ _
+        (by assumption) m (by omega)
+      have h_pre_mono := ScannerCorrectness.ScanHelpers.preprocess_tokens_mono s _ _
+        (by assumption)
+      have h_sk_inv := preprocess_simpleKey_pointwise_inv s _ _ (by assumption) m h_m h_inv
+      have h_allow_tok : ∀ st : ScannerState,
+        (if st.allowDirectives then
+          { st with allowDirectives := false, documentEverStarted := true }
+        else st).tokens = st.tokens := ScannerCorrectness.ScanHelpers.allowDir_ite_tokens
+      have h_allow_sk : ∀ st : ScannerState,
+        (if st.allowDirectives then
+          { st with allowDirectives := false, documentEverStarted := true }
+        else st).simpleKey = st.simpleKey := by
+        intro st; split <;> rfl
+      repeat (any_goals (split at h_next))
+      any_goals contradiction
+      any_goals (simp at h_next)
+      all_goals (try subst_vars)
+      all_goals first
+        | contradiction
+        | (simp at h_next)
+        | (have h_d := ScannerCorrectness.ScanHelpers.dispatchStructural_preserves_prefix _ _ _
+            (by assumption) m (by omega);
+           simp_all)
+        | (have h_d := ScannerCorrectness.ScanHelpers.dispatchFlowIndicators_preserves_prefix _ _ _
+            (by assumption) m
+            (by simp only [ScannerCorrectness.ScanHelpers.allowDir_ite_tokens]; omega);
+           simp only [ScannerCorrectness.ScanHelpers.allowDir_ite_tokens] at h_d; simp_all)
+        | (have h_d := dispatchBlockIndicators_preserves_position_specific _ _ _
+            (by assumption) m
+            (by simp only [ScannerCorrectness.ScanHelpers.allowDir_ite_tokens]; omega)
+            (by simp only [h_allow_sk]; exact h_sk_inv);
+           simp only [ScannerCorrectness.ScanHelpers.allowDir_ite_tokens] at h_d; simp_all)
+        | (have h_d := ScannerCorrectness.ScanHelpers.dispatchContent_preserves_prefix _ _ _
+            (by assumption) m
+            (by simp only [ScannerCorrectness.ScanHelpers.allowDir_ite_tokens]; omega);
+           simp only [ScannerCorrectness.ScanHelpers.allowDir_ite_tokens] at h_d; simp_all)
+        | (simp_all)
+
+/-! ### §D.6  Chain-induction wrapper -/
+
+/-- Chain-induction wrapper for pointwise position preservation through a
+    `FlowMonoChain`. Parallel to `FlowMonoChainIx_preserves_position_specific`
+    (substrate.c §5.6) and to `FlowMonoChain_preserves_raw_prefix` (the
+    non-indexed SKAF-form), but with `NoOverwriteAt m` instead of
+    `SimpleKeyAboveFloor`. -/
+theorem FlowMonoChain_preserves_position_specific
+    {s s' : ScannerState} {n fl₀ : Nat}
+    (h_fmc : FlowMonoChain fl₀ s n s')
+    (m : Nat) (h_m : m < s.tokens.size)
+    (h_inv : NoOverwriteAt s m) :
+    ∃ (h_size : m < s'.tokens.size),
+      s'.tokens[m]'h_size = s.tokens[m]'h_m := by
+  induction h_fmc with
+  | zero => exact ⟨h_m, rfl⟩
+  | @step s s_mid s' n _ h_snt h_rest ih =>
+    have h_inv_mid := scanNextToken_maintains_NoOverwriteAt s s_mid h_snt m h_m h_inv
+    have h_adds := ScannerCorrectness.scanNextToken_adds_tokens s s_mid h_snt
+    have h_step_size : m < s_mid.tokens.size := by omega
+    have h_step_eq := scanNextToken_preserves_position_specific s s_mid h_snt m h_m h_inv.1
+    obtain ⟨h_rest_size, h_rest_eq⟩ := ih h_step_size h_inv_mid
+    exact ⟨h_rest_size, h_rest_eq.trans h_step_eq⟩
+
 /-- Connect a ScanChain to scanFiltered: if N steps succeed
     reaching a state where scanNextToken returns none (EOF),
     then scanFiltered on the input succeeds.
