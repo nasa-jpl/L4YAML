@@ -1820,28 +1820,26 @@ not in-place axiom-to-theorem promotion — the latter is impossible
 when the axiom's hypothesis is strictly weaker than what the
 stronger lemma derives).
 
-**Next session**: **Step 6f.3b3.roundtrip.maintheorem.body1.tokenshape.substrate.e**
-(re-scoped 2026-05-29 — second `.tokenshape.list` execution attempt
-discovered a substrate gap: `.substrate.d`'s `NoOverwriteAt s m`
-two-clause bound conservatively forbids `m = tokenIndex`, but in FLOW
-context `scanValuePrepare` only writes at `tokenIndex + 1`; the
-one-clause flow relaxation closes the position-`N` half of
-`.tokenshape.list`'s bridge — see Reflection 158).
-Discharges zero legacy sorries; pure enablement. Estimated
-~400–600 LOC mirroring substrate.d §D.1–§D.6 with the relaxed
-hypothesis throughout. Plan: §E.1 def `FlowNoOverwriteAt` + 4
-transports; §E.2 saveSimpleKey + preprocess pointwise maintenance;
-§E.3 four dispatcher maintenance lemmas (the dispatcher case-split
-must be re-derived because substrate.d's API takes the full
-two-clause conjunction; this is where the bulk of substrate.e's LOC
-sits); §E.4 capstone `scanNextToken_maintains_FlowNoOverwriteAt`;
-§E.5 step-level `scanNextToken_preserves_position_specific_flow`;
-§E.6 `FlowMonoChain_preserves_position_specific_flow` chain wrapper.
-Following sessions: `.body1.tokenshape.substrate.f` (saved-key-
-doesn't-resolve invariant for position-`N+1`; ~300–500 LOC);
-`.body1.tokenshape.list` (discharges sorry 9550; ~150–250 LOC,
-consumer of `.substrate.d` + `.substrate.e` + `.substrate.f`);
-`.body1.tokenshape.pair` (discharges 9638 + 9644).
+**Next session**: **Step 6f.3b3.roundtrip.maintheorem.body1.tokenshape.substrate.f**
+(LANDED `.substrate.e` 2026-05-29 — flow-relaxed `FlowNoOverwriteAt`
+primitive shipped on schedule; see §E.1–§E.6 below and Reflection 159).
+The remaining bridge gap for `.tokenshape.list`'s sorry 9550 is
+position `N+1`, where even `FlowNoOverwriteAt` fails (stack[1]
+restored from `simpleKey` saved with `tokenIndex = N` makes
+`m = N+1 = tokenIndex + 1` collide). The saved-key entry is
+structurally safe in the body chain (no `:` follows the head item,
+so `scanValuePrepare` cannot fire on the restored stack entry), but
+this is non-local input reasoning — substrate.f provides a
+`SavedKeyDoesntResolve` predicate established via structural
+induction on `items`. **Discharges zero legacy sorries**; pure
+enablement. Estimated ~300–500 LOC: §F.1 inductive predicate +
+boilerplate transports; §F.2 maintenance through the dispatchers
+(only the `scanValue`/restore-from-stack arms matter); §F.3 step-
+level wrapper integrating `FlowMonoChain_preserves_position_
+specific_flow`. Following sessions: `.body1.tokenshape.list`
+(discharges sorry 9550; ~150–250 LOC, consumer of `.substrate.d`
++ `.substrate.e` + `.substrate.f`); `.body1.tokenshape.pair`
+(discharges 9638 + 9644).
 
 **`.body1.tokenshape.substrate.a` LANDED 2026-05-28** — partial
 substrate (Phase 3 Step 6f.3b3.roundtrip.maintheorem.body1.tokenshape.substrate.a)
@@ -4727,6 +4725,109 @@ mirroring it with one-clause relaxation is ~400-600 LOC, a
 substrate.f to follow. Each substrate ships with `0 sorry`s closed
 (pure enablement). Sorry 9550 closes only at the end of
 `.tokenshape.list`'s session, ~3 sub-sessions from now.
+
+##### Reflection 159 (new, 2026-05-29): substrate.e landed at the upper end of allocation (~580 LOC vs. ~400–600) — the cost asymmetry between two-clause and one-clause invariants is small because §E.1–§E.4 mechanically mirror substrate.d, but §E.5's `h_in_flow` threading adds a real cost the original estimate missed
+
+**Triggering event**: executing `.body1.tokenshape.substrate.e`
+landed in one pass after a single mechanical fix (the
+`s.inFlow = true → s.flowLevel > 0` direction failed `show` because
+`inFlow` returns `Bool` not `Prop` — replaced `show` with `unfold
+ScannerState.inFlow; exact decide_eq_true _`), but the actual LOC
+clocked in at ~580 vs. the allocated 400–600 — at the top of the
+range. Examining the LOC distribution refines the cost model
+articulated in Reflection 158.
+
+**The per-section ratio analysis** (substrate.e LOC ÷ substrate.d
+LOC, eyeballed by sub-section):
+
+  - **§E.1** (def + 5 transports): ~115 LOC vs. substrate.d's §D.1
+    ~120 LOC, ratio ~0.96×. The transport proofs are bit-for-bit
+    identical to substrate.d except the conjunction has one element
+    instead of two. The remaining ~5% reduction is from the simpler
+    `≠ tokenIndex + 1` form, which collapses ⟨h_ne_idx, h_ne_idx1⟩
+    to a single value.
+  - **§E.2** (saveSimpleKey + preprocess): ~100 LOC vs. ~95 LOC,
+    ratio ~1.05×. The proof structure is identical; the one
+    additional LOC is in `saveSimpleKey_simpleKey_pointwise_inv_flow`
+    where the saveSimpleKey set-branch becomes a one-line `omega`
+    (`m < tokens.size → m ≠ tokens.size + 1`) instead of substrate.d's
+    `⟨by omega, by omega⟩` 2-line product.
+  - **§E.3** (4 dispatchers): ~155 LOC vs. ~165 LOC, ratio ~0.94×.
+    All four dispatchers use the SAME structural proof shape as
+    substrate.d (`repeat (any_goals (split at h))` + `all_goals
+    first`), only the transport invocations are renamed
+    `NoOverwriteAt → FlowNoOverwriteAt`. Cost is essentially
+    copy-paste with naming refresh.
+  - **§E.4** (capstone): ~70 LOC vs. ~70 LOC, ratio ~1.0×. Identical
+    structure; same `maxHeartbeats 400000`.
+  - **§E.5** (step-level with `h_in_flow`): ~140 LOC vs.
+    substrate.d's §D.5 ~115 LOC, **ratio ~1.22×**. This is the only
+    sub-section where substrate.e is meaningfully more expensive
+    than substrate.d:
+      - `scanValueClearKey_preserves_flowLevel` is a new helper
+        substrate.d didn't need (it doesn't use `h_in_flow`).
+      - `scanValuePrepare_preserves_position_specific_flow` must
+        navigate `scanValuePrepare`'s case-split discharging the
+        `!s.inFlow` arms via `simp [h_in_flow]` rather than handling
+        them directly.
+      - `scanValue_preserves_position_specific_flow` must thread
+        `h_kc_in_flow := (scanValueClearKey _).inFlow = true` from
+        the new helper.
+      - `dispatchBlockIndicators_preserves_position_specific_flow`
+        adds an `h_in_flow` parameter that propagates to the inner
+        `scanValue_preserves_position_specific_flow` call.
+      - `scanNextToken_preserves_position_specific_flow` requires
+        a NEW pre-computation `h_s2_in_flow` (the inFlow status of
+        the post-preprocess + post-allowDirectives-if state) BEFORE
+        the splits — substrate.d's two-clause version doesn't need
+        this because its `h_inv` parameter is unconditional.
+      - The original substrate.d step-level proof uses the `repeat
+        (any_goals (split at h_next))` pattern with `(by assumption)`
+        everywhere; substrate.e requires `rename_i s1 c1 hPre` to
+        name the preprocess output so `h_s2_in_flow` can reference
+        it explicitly.
+  - **§E.6** (chain wrapper): ~25 LOC vs. ~22 LOC, ratio ~1.14×.
+    Adds the `h_fl_pos : fl₀ ≥ 1` precondition and a 3-line
+    derivation of `s.inFlow = true` at each step from the chain's
+    `flowLevel ≥ fl₀` constraint.
+
+**Summary**: §E.1–§E.4 are essentially copy-paste with mechanical
+renaming (ratio ~0.94–1.05×). §E.5 is where the genuine cost lives,
+ratio ~1.22× — the `h_in_flow` parameter threads through 5
+declarations and requires 1 new helper plus a renamed-witness
+structural change to the step-level proof. §E.6 adds a small fixed
+cost for the chain-wrapper precondition derivation.
+
+**Heuristic**: **when a flow-restricted relaxation is added to a
+substrate, count the `h_in_flow` propagation depth**. For substrate.e,
+the depth is 4 (chain wrapper → scanNextToken → dispatch{Block} →
+scanValue → scanValuePrepare). Each level pays a ~5–10 LOC cost for
+threading: the parameter, the local derivation (often from a
+`preserves_flowLevel` lemma + the chain's `flowLevel ≥ fl₀`), and
+sometimes a tactic-shape change (`rename_i` instead of `_`). The
+upper-bound estimate should be: substrate.d-LOC + depth × 10 LOC.
+For substrate.e: 430 + 4 × 10 = ~470 LOC was a tighter prediction;
+the actual 580 LOC reflects an additional 10–15 LOC per level for
+the helper `scanValueClearKey_preserves_flowLevel` and the
+`h_s2_in_flow` pre-computation.
+
+**Calibrating substrate.f**: substrate.f's `SavedKeyDoesntResolve`
+predicate is genuinely new (no substrate.d/e parallel), so the
+~300–500 LOC allocation is not LOC-relative-to-existing-substrate
+but absolute. Inductive predicate machinery + maintenance + the
+emitList-input-shape establishing lemma. The flow-relaxation
+cost-model doesn't apply directly; substrate.f's cost is dominated
+by the input-shape induction (~150–250 LOC by analogy with similar
+flow-input-shape inductions in the codebase) plus the predicate
+boilerplate (~100–200 LOC). Maintaining the 300–500 LOC bracket
+is reasonable.
+
+**Reflection 159 → roadmap**: substrate.f is now next. Expected
+to land at the high end (~450–500 LOC) given the precedent of
+substrate.e landing at ~1.4× substrate.d's allocation (when the
+mechanical-translation slack assumption was incomplete). Cumulative
+`.body` underestimate factor refines from Reflection 158's ~4.6–5.8×
+to ~4.9–5.6× (eighth revision; see plan-tree).
 
 **Step 6f.3b3.emitscans.toplevel SS1 (easy prereqs) LANDED 2026-05-27**
 (~225 LOC across two files: `Endpoint.lean` §6 ~200 LOC +
@@ -15854,15 +15955,19 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 were already in place to mirror pointwise without
                 re-deriving sub-scanner case-analysis).
 
-                ▹▹▹▹ **.body1.tokenshape.substrate.e** *(next;
-                estimated ~400–600 LOC after `.substrate.d` LANDED)*.
-                **Flow-relaxed pointwise no-overwrite primitive** — non-
-                indexed twin of an analogous future indexed substrate
-                that hasn't been articulated yet, because the indexed
-                consumer of the analogous indexed bridge is currently
-                deferred (see indexed `emitList_body_filtered_
-                characterizationIx_part1` deviation note in
-                `Proofs/Output/IndexedEmitterScannability/RoundTrip.lean
+                ▹▹▹▹ **.body1.tokenshape.substrate.e** ✅ **LANDED
+                2026-05-29** *(~580 LOC actual addition / ~400–600 LOC
+                allocated; extends `EmitterScannability.lean` with
+                **19 new declarations** + 1 new namespace section
+                inserted after `.substrate.d`'s `FlowMonoChain_
+                preserves_position_specific`)*. **Flow-relaxed
+                pointwise no-overwrite primitive** — non-indexed twin
+                of an analogous future indexed substrate that hasn't
+                been articulated yet (the indexed consumer of the
+                analogous indexed bridge is currently deferred — see
+                indexed `emitList_body_filtered_characterizationIx_
+                part1` deviation note in `Proofs/Output/
+                IndexedEmitterScannability/RoundTrip.lean
                 §5.4.G.6.1`). **Closes zero legacy sorries**: pure
                 enablement for `.body1.tokenshape.list`'s position-`N`
                 preservation.
@@ -15877,27 +15982,65 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 true ∧ tokenIndex = N`; preserving raw position `m = N`
                 via substrate.d fails because `m = N = tokenIndex`, but
                 under flow it suffices to show `m ≠ tokenIndex + 1`
-                (`N ≠ N + 1`), which holds.
-                Substrate.e ships: §E.1 def `FlowNoOverwriteAt s m`
-                (one-clause conjunction) + 4 transports (cleared/
-                preserved/flow-open/flow-close + endLine-update);
-                §E.2 saveSimpleKey + preprocess pointwise maintenance
-                (the same as substrate.d's §D.2 but restricted to the
-                `idx + 1` clause); §E.3 four dispatcher maintenance
-                lemmas (re-prove substrate.d's §D.3 with the flow-
-                relaxed hypothesis — the dispatchContent / dispatchBlock
-                / dispatchFlow / dispatchStructural arms each need their
-                `scanValuePrepare`-touching sub-arms re-derived with
-                only the `idx + 1` direction visible); §E.4
-                `scanNextToken_maintains_FlowNoOverwriteAt` capstone;
-                §E.5 step-level pointwise preservation
-                (`scanNextToken_preserves_position_specific_flow`);
-                §E.6 `FlowMonoChain_preserves_position_specific_flow`
-                chain wrapper. Mirrors substrate.d §D.1–§D.6 with the
-                one-clause relaxation throughout. LOC: ~400–600 (vs
-                substrate.d's 430 — slight increase from re-deriving
-                the dispatcher case-split with the relaxed hypothesis
-                without piggy-backing on substrate.d's two-clause API).
+                (`N ≠ N + 1`), which holds. **Ships**:
+
+                §E.1 — `FlowNoOverwriteAt s m` (one-clause conjunction:
+                `m ≠ tokenIndex + 1` on the current simpleKey AND on
+                every stack entry, no `m ≠ tokenIndex` clause) + 5
+                transport constructors (`FlowNoOverwriteAt_of_
+                {cleared_preserved, preserved, flow_open, endLine_
+                update, flow_close}`) parallel to `.substrate.d` §D.1.
+
+                §E.2 — `saveSimpleKey_simpleKey_pointwise_inv_flow`,
+                `preprocess_simpleKey_pointwise_inv_flow`,
+                `preprocess_maintains_FlowNoOverwriteAt` — one-clause
+                analogs of substrate.d's §D.2 with the `≠ tokenIndex`
+                clause stripped. The saveSimpleKey case becomes a
+                one-line `omega` (positivity of `tokenIndex + 1` is
+                trivial vs. the size-bounded `m`).
+
+                §E.3 — Four dispatcher maintenance lemmas
+                (`dispatch{Structural, FlowIndicators,
+                BlockIndicators, Content}_maintains_
+                FlowNoOverwriteAt`). The structure is **identical**
+                to substrate.d's §D.3 because the maintenance proofs
+                only delegate to the 5 transport constructors and
+                never touch the position-write — the flow-relaxation
+                changes only the predicate, not the transport story.
+
+                §E.4 — `scanNextToken_maintains_FlowNoOverwriteAt`
+                capstone, mirroring substrate.d §D.4 with the same
+                `maxHeartbeats 400000`.
+
+                §E.5 — `scanValueClearKey_preserves_flowLevel` (new
+                helper); `scanValuePrepare_preserves_position_
+                specific_flow` (takes `h_in_flow : s.inFlow = true`,
+                handles only the FLOW arm of scanValuePrepare's case-
+                split — the two `!inFlow` arms are discharged via
+                contradiction); `scanValue_preserves_position_
+                specific_flow`; `dispatchBlockIndicators_preserves_
+                position_specific_flow`;
+                `scanNextToken_preserves_position_specific_flow`
+                (takes `h_in_flow : s.inFlow = true`, propagates
+                through preprocess via `preprocess_preserves_flowLevel`
+                and through the allowDirectives if).
+
+                §E.6 — `FlowMonoChain_preserves_position_specific_flow`
+                chain-induction wrapper (takes `h_fl_pos : fl₀ ≥ 1`,
+                which combined with each step's `flowLevel ≥ fl₀`
+                yields `flowLevel ≥ 1`, hence `inFlow = true`).
+
+                **Axiom posture**: pure triple `[propext,
+                Classical.choice, Quot.sound]` on all 19 new
+                declarations (`#print axioms`-verified). Built clean:
+                per-module 91/91, full project 491/491. **0 legacy
+                sorries closed**; pure enablement.
+                **LOC pattern**: ~580 LOC vs. substrate.d's ~430 LOC,
+                ratio 1.35× — slight increase from re-deriving the
+                dispatcher case-split with the relaxed hypothesis
+                without piggy-backing on substrate.d's two-clause API
+                + the §E.5 step-level lemmas needing the `h_in_flow`
+                threading (substrate.d's two-clause version doesn't).
 
                 ▹▹▹▹ **.body1.tokenshape.substrate.f** *(after
                 `.substrate.e` LANDED; estimated ~300–500 LOC)*.
@@ -15977,25 +16120,26 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
-                **Total .body scope re-estimate (seventh revision —
-                after `.substrate.{a,b,c,d}` LANDED + scope discovery
-                for `.substrate.e` + `.substrate.f`)**:
-                ~2560–3760 LOC across **10 sub-sessions** (`.scaffold`
+                **Total .body scope re-estimate (eighth revision —
+                after `.substrate.{a,b,c,d,e}` LANDED + scope discovery
+                pending for `.substrate.f`)**:
+                ~2740–3940 LOC across **10 sub-sessions** (`.scaffold`
                 [LANDED 206] + `.tokenshape.substrate.a` [LANDED 470]
                 + `.tokenshape.substrate.b` [LANDED 226]
                 + `.tokenshape.substrate.c` [LANDED ~570]
                 + `.tokenshape.substrate.d` [LANDED ~430]
-                + `.tokenshape.substrate.e` [next, ~400–600]
-                + `.tokenshape.substrate.f` [~300–500]
+                + `.tokenshape.substrate.e` [LANDED ~580]
+                + `.tokenshape.substrate.f` [next, ~300–500]
                 + `.tokenshape.list` [~150–250]
                 + `.tokenshape.pair` [~100–150]
                 + `.body2` [~300–500]),
                 vs. Blueprint-original 400–700 LOC in 1. Cumulative
-                underestimate factor: **~4.6–5.8×** (re-widened from
-                Reflection 157's ~3.4–4.1× because `.tokenshape.list`'s
-                "consumer-of-substrate.d" framing under-modelled the
-                bridge from RAW position preservation to FILTERED
-                index preservation — see Reflection 158). The eight scope discoveries:
+                underestimate factor: **~4.9–5.6×** (marginal widening
+                from Reflection 158's ~4.6–5.8× because substrate.e
+                landed at the high end of its allocation — ~580 LOC
+                vs. ~400–600 allocated, ratio 1.35× substrate.d, see
+                Reflection 159 for the LOC-asymmetry root cause).
+                The eight scope discoveries:
                 `.scaffold` (Reflection 151) revealed the substrate-
                 cost-of-sorry-discharge problem in principle;
                 `.tokenshape.substrate` (Reflection 152) revealed the
