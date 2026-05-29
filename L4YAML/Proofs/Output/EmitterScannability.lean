@@ -3380,6 +3380,207 @@ theorem FlowMonoChain_preserves_position_specific_flow
     obtain ⟨h_rest_size, h_rest_eq⟩ := ih h_step_size h_inv_mid
     exact ⟨h_rest_size, h_rest_eq.trans h_step_eq⟩
 
+/-! ## `SavedKeyDoesntResolve` — saved-key-doesn't-resolve structural primitive (substrate.f)
+
+Per-position chain predicate that captures the residual `m = N + 1` case
+left unresolved by substrate.e's flow-relaxed `FlowNoOverwriteAt`. Required
+by `.body1.tokenshape.list` (sorry 9550) because at the chain step where
+`scanFlowEnd` restores `simpleKey` from `simpleKeyStack`, the restored
+`tokenIndex` equals `N` (the head item's slot), so even the one-clause
+relaxation's `tokenIndex + 1 ≠ N + 1` collapses to `N + 1 ≠ N + 1` — false.
+
+`FlowNoOverwriteAt N+1` cannot be a chain-stable invariant, but position
+`N + 1` is still preserved because in emitList body chains `scanValuePrepare`
+never *fires* on the restored simpleKey: the only character that triggers
+`scanValuePrepare` (via `scanValue`) is `:`, and `:` does not follow
+`[` / `{` / `"` in the emit output for a list head item. This is a
+non-local input-shape argument that cannot be cleanly expressed as a
+state-level invariant — instead, substrate.f bundles the position
+preservation INTO the chain predicate itself as a per-step witness.
+
+Ships in 3 sub-sections:
+  - §F.1 inductive predicate `SavedKeyDoesntResolve fl₀ n_target s n s'`
+        + boilerplate transports (degradation to FlowMonoChain, flow-level
+        bounds, tokens monotonicity, single-step, transitivity)
+  - §F.2 sufficient-condition step constructors:
+        * `step_of_tokenIndex_ne` — when the step-start simpleKey does NOT
+          have `tokenIndex = n_target` (folds into substrate.e's per-step
+          preservation via the FlowNoOverwriteAt first clause)
+        * `step_of_simpleKey_not_possible` — when the step-start simpleKey
+          is not possible (degenerate case of `step_of_tokenIndex_ne`)
+  - §F.3 chain wrapper `SavedKeyDoesntResolve_preserves_position_target` —
+        induction on the predicate gives `s'.tokens[n_target + 1] =
+        s.tokens[n_target + 1]`. The substrate.e wrapper handles `m ≤ N`;
+        this wrapper handles `m = N + 1`. Together they cover the raw
+        prefix `[0..N+2)` needed by `.tokenshape.list`.
+
+**Closes zero legacy sorries**: pure enablement for `.body1.tokenshape.list`'s
+position-`N + 1` half of the raw-prefix bridge. The establishing lemma
+(witnessing the predicate by induction on the emitList input items) lives
+in `.tokenshape.list` proper, where the EmitScansInFlow recursion is
+unfolded. -/
+
+/-! ### §F.1  `SavedKeyDoesntResolve` predicate + boilerplate transports -/
+
+/-- `SavedKeyDoesntResolve fl₀ n_target s n s'`: a `FlowMonoChain fl₀ s n s'`
+    augmented with a per-step witness that the token at position `n_target + 1`
+    is preserved across every step. Where `FlowMonoChain` is the bare chain,
+    `SavedKeyDoesntResolve` is the chain bundled with the position-`n_target + 1`
+    preservation evidence — so the chain wrapper degenerates to plain induction.
+
+    Used to preserve raw position `N + 1` (the slot a saved simpleKey would
+    write into if `scanValuePrepare` fired on it) through chains that do not
+    structurally invoke `:` on the simpleKey holding `tokenIndex = N`.
+
+    Parallel to `FlowMonoChain` (substrate.e §E.6's input) but parameterized
+    by a target position; the safety clause is carried by each step. -/
+inductive SavedKeyDoesntResolve (fl₀ n_target : Nat) :
+    ScannerState → Nat → ScannerState → Prop where
+  | zero {s : ScannerState} (h_fl : s.flowLevel ≥ fl₀) :
+      SavedKeyDoesntResolve fl₀ n_target s 0 s
+  | step {s s_mid s' : ScannerState} {n : Nat}
+      (h_fl : s.flowLevel ≥ fl₀)
+      (h_snt : scanNextToken s = .ok (some s_mid))
+      (h_preserved : ∀ (h : n_target + 1 < s.tokens.size),
+        ∃ (h' : n_target + 1 < s_mid.tokens.size),
+          s_mid.tokens[n_target + 1]'h' = s.tokens[n_target + 1]'h)
+      (h_rest : SavedKeyDoesntResolve fl₀ n_target s_mid n s') :
+      SavedKeyDoesntResolve fl₀ n_target s (n + 1) s'
+
+/-- Degrade a `SavedKeyDoesntResolve` to a plain `FlowMonoChain`.
+    Parallel to `FlowMonoChain.toScanChain`. -/
+theorem SavedKeyDoesntResolve.toFlowMonoChain {fl₀ n_target : Nat}
+    {s s' : ScannerState} {n : Nat}
+    (h : SavedKeyDoesntResolve fl₀ n_target s n s') : FlowMonoChain fl₀ s n s' := by
+  induction h with
+  | zero h_fl => exact .zero h_fl
+  | step h_fl h_snt _h_pres _h_rest ih => exact .step h_fl h_snt ih
+
+/-- Degrade to a plain `ScanChain` (through the FlowMonoChain). -/
+theorem SavedKeyDoesntResolve.toScanChain {fl₀ n_target : Nat}
+    {s s' : ScannerState} {n : Nat}
+    (h : SavedKeyDoesntResolve fl₀ n_target s n s') : ScanChain s n s' :=
+  h.toFlowMonoChain.toScanChain
+
+/-- The start state of a `SavedKeyDoesntResolve` has `flowLevel ≥ fl₀`. -/
+theorem SavedKeyDoesntResolve.flowLevel_ge_start {fl₀ n_target : Nat}
+    {s s' : ScannerState} {n : Nat}
+    (h : SavedKeyDoesntResolve fl₀ n_target s n s') : s.flowLevel ≥ fl₀ :=
+  h.toFlowMonoChain.flowLevel_ge_start
+
+/-- The end state of a `SavedKeyDoesntResolve` has `flowLevel ≥ fl₀`. -/
+theorem SavedKeyDoesntResolve.flowLevel_ge_end {fl₀ n_target : Nat}
+    {s s' : ScannerState} {n : Nat}
+    (h : SavedKeyDoesntResolve fl₀ n_target s n s') : s'.flowLevel ≥ fl₀ :=
+  h.toFlowMonoChain.flowLevel_ge_end
+
+/-- Token monotonicity for `SavedKeyDoesntResolve`: tokens only grow
+    through the chain (delegates to FlowMonoChain version). -/
+theorem SavedKeyDoesntResolve.tokens_mono {fl₀ n_target : Nat}
+    {s s' : ScannerState} {n : Nat}
+    (h : SavedKeyDoesntResolve fl₀ n_target s n s') : s'.tokens.size ≥ s.tokens.size :=
+  h.toFlowMonoChain.tokens_mono
+
+/-- A single `scanNextToken` step as a `SavedKeyDoesntResolve`. -/
+theorem SavedKeyDoesntResolve.single {fl₀ n_target : Nat} {s s' : ScannerState}
+    (h_snt : scanNextToken s = .ok (some s'))
+    (h_fl : s.flowLevel ≥ fl₀)
+    (h_fl' : s'.flowLevel ≥ fl₀)
+    (h_preserved : ∀ (h : n_target + 1 < s.tokens.size),
+      ∃ (h' : n_target + 1 < s'.tokens.size),
+        s'.tokens[n_target + 1]'h' = s.tokens[n_target + 1]'h) :
+    SavedKeyDoesntResolve fl₀ n_target s 1 s' :=
+  .step h_fl h_snt h_preserved (.zero h_fl')
+
+/-- Transitivity: concatenate two `SavedKeyDoesntResolve`s with the same
+    floor and target. -/
+theorem SavedKeyDoesntResolve.trans {fl₀ n_target : Nat}
+    {s₁ s₂ s₃ : ScannerState} {n₁ n₂ : Nat}
+    (h1 : SavedKeyDoesntResolve fl₀ n_target s₁ n₁ s₂)
+    (h2 : SavedKeyDoesntResolve fl₀ n_target s₂ n₂ s₃) :
+    SavedKeyDoesntResolve fl₀ n_target s₁ (n₁ + n₂) s₃ := by
+  induction h1 with
+  | zero => simpa using h2
+  | @step s s_mid s₂ k h_fl h_snt h_pres h_rest ih =>
+    have h_ih := ih h2
+    have : k + 1 + n₂ = (k + n₂) + 1 := by omega
+    rw [this]
+    exact .step h_fl h_snt h_pres h_ih
+
+/-! ### §F.2  Sufficient-condition step constructors -/
+
+/-- **Primary step constructor**: if the step-start simpleKey is either
+    not possible OR has `tokenIndex ≠ n_target`, then the step preserves
+    position `n_target + 1`. Proof folds substrate.e's per-step preservation
+    `scanNextToken_preserves_position_specific_flow` under the
+    `FlowNoOverwriteAt` first-clause specialization at `m = n_target + 1`.
+
+    Sufficient (but not necessary) structural condition for establishing
+    `SavedKeyDoesntResolve` step-by-step from input-shape reasoning. -/
+theorem SavedKeyDoesntResolve.step_of_tokenIndex_ne
+    {fl₀ n_target : Nat} {s s_mid s' : ScannerState} {n : Nat}
+    (h_fl_pos : fl₀ ≥ 1)
+    (h_fl : s.flowLevel ≥ fl₀)
+    (h_snt : scanNextToken s = .ok (some s_mid))
+    (h_not_target : s.simpleKey.possible = true → s.simpleKey.tokenIndex ≠ n_target)
+    (h_rest : SavedKeyDoesntResolve fl₀ n_target s_mid n s') :
+    SavedKeyDoesntResolve fl₀ n_target s (n + 1) s' := by
+  refine .step h_fl h_snt ?_ h_rest
+  intro h_size
+  have h_in_flow : s.inFlow = true := by
+    unfold ScannerState.inFlow
+    exact decide_eq_true (by omega)
+  have h_clause : s.simpleKey.possible = true →
+      n_target + 1 ≠ s.simpleKey.tokenIndex + 1 := by
+    intro h_pos h_eq
+    have h_tidx : s.simpleKey.tokenIndex = n_target := by omega
+    exact h_not_target h_pos h_tidx
+  have h_eq := scanNextToken_preserves_position_specific_flow s s_mid h_in_flow h_snt
+    (n_target + 1) h_size h_clause
+  have h_adds := ScannerCorrectness.scanNextToken_adds_tokens s s_mid h_snt
+  have h_size_mid : n_target + 1 < s_mid.tokens.size := by omega
+  exact ⟨h_size_mid, h_eq⟩
+
+/-- Degenerate step constructor: if the step-start simpleKey is not
+    possible, the step preserves position `n_target + 1`. Specialization
+    of `step_of_tokenIndex_ne` where the `tokenIndex ≠ n_target`
+    hypothesis is vacuous. -/
+theorem SavedKeyDoesntResolve.step_of_simpleKey_not_possible
+    {fl₀ n_target : Nat} {s s_mid s' : ScannerState} {n : Nat}
+    (h_fl_pos : fl₀ ≥ 1)
+    (h_fl : s.flowLevel ≥ fl₀)
+    (h_snt : scanNextToken s = .ok (some s_mid))
+    (h_sk : s.simpleKey.possible = false)
+    (h_rest : SavedKeyDoesntResolve fl₀ n_target s_mid n s') :
+    SavedKeyDoesntResolve fl₀ n_target s (n + 1) s' :=
+  SavedKeyDoesntResolve.step_of_tokenIndex_ne h_fl_pos h_fl h_snt
+    (fun h_pos => absurd (h_sk.symm.trans h_pos) Bool.false_ne_true) h_rest
+
+/-! ### §F.3  Chain wrapper for position `n_target + 1` preservation -/
+
+/-- **Chain wrapper**: a `SavedKeyDoesntResolve` chain preserves the token
+    at position `n_target + 1`. Direct induction on the predicate (each
+    step already carries its own preservation witness, transitively
+    composed by induction).
+
+    Parallel to `FlowMonoChain_preserves_position_specific_flow`
+    (substrate.e §E.6) but for the residual position `n_target + 1` that
+    falls outside `FlowNoOverwriteAt`'s expressivity. The two wrappers
+    together (substrate.e for `m ≤ N`, substrate.f for `m = N + 1`) cover
+    the full raw prefix `[0..N + 2)` needed by `.tokenshape.list`. -/
+theorem SavedKeyDoesntResolve_preserves_position_target
+    {fl₀ n_target : Nat} {s s' : ScannerState} {n : Nat}
+    (h_skdr : SavedKeyDoesntResolve fl₀ n_target s n s')
+    (h_m : n_target + 1 < s.tokens.size) :
+    ∃ (h_size : n_target + 1 < s'.tokens.size),
+      s'.tokens[n_target + 1]'h_size = s.tokens[n_target + 1]'h_m := by
+  induction h_skdr with
+  | zero => exact ⟨h_m, rfl⟩
+  | @step s s_mid s' n h_fl h_snt h_pres h_rest ih =>
+    obtain ⟨h_size_mid, h_eq_mid⟩ := h_pres h_m
+    obtain ⟨h_size', h_eq'⟩ := ih h_size_mid
+    exact ⟨h_size', h_eq'.trans h_eq_mid⟩
+
 /-- Connect a ScanChain to scanFiltered: if N steps succeed
     reaching a state where scanNextToken returns none (EOF),
     then scanFiltered on the input succeeds.

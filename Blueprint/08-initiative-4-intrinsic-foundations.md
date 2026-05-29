@@ -1820,26 +1820,29 @@ not in-place axiom-to-theorem promotion — the latter is impossible
 when the axiom's hypothesis is strictly weaker than what the
 stronger lemma derives).
 
-**Next session**: **Step 6f.3b3.roundtrip.maintheorem.body1.tokenshape.substrate.f**
+**Next session**: **Step 6f.3b3.roundtrip.maintheorem.body1.tokenshape.list**
 (LANDED `.substrate.e` 2026-05-29 — flow-relaxed `FlowNoOverwriteAt`
-primitive shipped on schedule; see §E.1–§E.6 below and Reflection 159).
-The remaining bridge gap for `.tokenshape.list`'s sorry 9550 is
-position `N+1`, where even `FlowNoOverwriteAt` fails (stack[1]
-restored from `simpleKey` saved with `tokenIndex = N` makes
-`m = N+1 = tokenIndex + 1` collide). The saved-key entry is
-structurally safe in the body chain (no `:` follows the head item,
-so `scanValuePrepare` cannot fire on the restored stack entry), but
-this is non-local input reasoning — substrate.f provides a
-`SavedKeyDoesntResolve` predicate established via structural
-induction on `items`. **Discharges zero legacy sorries**; pure
-enablement. Estimated ~300–500 LOC: §F.1 inductive predicate +
-boilerplate transports; §F.2 maintenance through the dispatchers
-(only the `scanValue`/restore-from-stack arms matter); §F.3 step-
-level wrapper integrating `FlowMonoChain_preserves_position_
-specific_flow`. Following sessions: `.body1.tokenshape.list`
-(discharges sorry 9550; ~150–250 LOC, consumer of `.substrate.d`
-+ `.substrate.e` + `.substrate.f`); `.body1.tokenshape.pair`
-(discharges 9638 + 9644).
+primitive shipped on schedule; see §E.1–§E.6 below and Reflection 159 —
+and LANDED `.substrate.f` 2026-05-29 — `SavedKeyDoesntResolve` predicate
+infrastructure shipped at the LOW end of estimate at ~201 LOC; see
+§F.1–§F.3 below and Reflection 160).
+**Discharges 1 of 5 legacy sorries: 9550** (emitList first new filtered
+token is content-start). The full raw-prefix bridge `[0..N+2)` is now
+covered by substrate.d (positions `< N`), substrate.e (position `N`,
+flow-relaxed), and substrate.f's `SavedKeyDoesntResolve_preserves_
+position_target` (position `N + 1`). Consumer-side plan: decompose
+`FlowMonoChain s.flowLevel s n s'` via `.step` to extract `s_first`,
+case-analyze on `(emit.emitList items)`'s first char (`'['` / `'{'` / `'"'`),
+apply the matching first-filtered-token lemma, then for each raw
+position in `[0..N+2)` apply the appropriate substrate wrapper.
+**Includes the establishing lemma** for `SavedKeyDoesntResolve` on
+emitList body chains via induction on items — substrate.f deliberately
+deferred this to consumer-side because the EmitScansInFlow recursion is
+input-shape-specific, not a reusable lemma (see Reflection 160). Estimated
+~150–250 LOC for the consumer-side decomposition; revised upper bound
+~300–450 LOC if the establishing lemma turns out to mirror the
+`scanValuePrepare`-dispatch case-analysis at full depth (subsequent
+sessions: `.body1.tokenshape.pair` discharges 9638 + 9644).
 
 **`.body1.tokenshape.substrate.a` LANDED 2026-05-28** — partial
 substrate (Phase 3 Step 6f.3b3.roundtrip.maintheorem.body1.tokenshape.substrate.a)
@@ -2019,6 +2022,111 @@ mirrored pointwise without re-deriving the underlying sub-scanner
 case-analysis. Ratio to substrate.c: ~430/570 ≈ 0.75 — matches
 the "non-indexed mirrors are usually 0.7-0.85 the indexed LOC"
 heuristic that emerges from cross-world porting.
+
+**`.body1.tokenshape.substrate.e` LANDED 2026-05-29** — fifth partial
+substrate (Phase 3 Step 6f.3b3.roundtrip.maintheorem.body1.tokenshape.substrate.e),
+the **flow-relaxed** parallel to `.substrate.d`. Discovered during
+`.body1.tokenshape.list` execution attempt #2: `.substrate.d`'s RAW-position
+preservation cannot directly close sorry 9550 — the consumer needs
+FILTER-INDEX preservation, and the bridge requires (a) flow-relaxed
+NoOverwriteAt for position N (this session, substrate.e) plus (b)
+saved-key-doesn't-resolve structural invariant for position N+1
+(substrate.f). Closes zero legacy sorries; pure enablement for
+`.body1.tokenshape.list` (sorry 9550). Extends `EmitterScannability.lean`
+(+~580 LOC, inserted between `FlowMonoChain_preserves_position_specific`
+and `scanFiltered_of_chain`):
+
+  - **§E.1 `FlowNoOverwriteAt s m`** (def) + **5 transport constructors**
+    (`_of_cleared_preserved`, `_of_preserved`, `_of_flow_open`,
+    `_of_endLine_update`, `_of_flow_close`). One-clause relaxation of
+    substrate.d §D.1: drops the `m ≠ tokenIndex` clause because in flow
+    context `scanValuePrepare` writes only at `tokenIndex + 1`.
+  - **§E.2 `saveSimpleKey_simpleKey_pointwise_inv_flow`** +
+    **`preprocess_simpleKey_pointwise_inv_flow`** +
+    **`preprocess_maintains_FlowNoOverwriteAt`** — flow-relaxed mirror of
+    substrate.d §D.2.
+  - **§E.3 four dispatcher maintenance lemmas**
+    (`dispatch{Structural, FlowIndicators, BlockIndicators, Content}_
+    maintains_FlowNoOverwriteAt`) — flow-relaxed mirror of substrate.d §D.3.
+  - **§E.4 `scanNextToken_maintains_FlowNoOverwriteAt`** capstone — mirror
+    of substrate.d §D.4.
+  - **§E.5 `scanValueClearKey_preserves_flowLevel`** +
+    **`scanValuePrepare_preserves_position_specific_flow`** +
+    **`scanValue_preserves_position_specific_flow`** +
+    **`dispatchBlockIndicators_preserves_position_specific_flow`** +
+    **`scanNextToken_preserves_position_specific_flow`** — pointwise
+    preservation lemmas with `s.inFlow = true` precondition threaded
+    through. The `h_in_flow` threading was the cost driver (~22%
+    overhead per Reflection 159's section-ratio analysis).
+  - **§E.6 `FlowMonoChain_preserves_position_specific_flow`** —
+    chain-induction wrapper with `fl₀ ≥ 1` to derive `inFlow = true`
+    per-step from `flowLevel ≥ fl₀ ≥ 1`. Mirror of substrate.d §D.6.
+
+**Axiom posture**: pure triple `[propext, Classical.choice, Quot.sound]`
+on all 19 new declarations (`#print axioms`-verified via
+`/tmp/axiom_check_substrate_e.lean`). Built clean: per-module 91/91,
+full project 491/491.
+
+**LOC vs. estimate**: ~580 LOC actual vs. ~400-600 LOC estimated. Ratio
+to substrate.d: ~580/430 ≈ 1.35 — substrate.e is heavier than
+substrate.d despite being "the same shape minus one clause" because the
+`h_in_flow` precondition has to propagate through every step-level
+helper (4 levels deep: chain → scanNextToken → dispatch → scanValue →
+scanValuePrepare). See Reflection 159 for the propagation-depth heuristic.
+
+**`.body1.tokenshape.substrate.f` LANDED 2026-05-29** — sixth partial
+substrate (Phase 3 Step 6f.3b3.roundtrip.maintheorem.body1.tokenshape.substrate.f),
+the **saved-key-doesn't-resolve** structural primitive. Discovered
+during `.substrate.e` design: even with substrate.e's flow-relaxed
+`FlowNoOverwriteAt`, position `N + 1` cannot be preserved by any
+chain-stable state invariant because `scanFlowEnd`'s stack-restore
+operation transiently makes `simpleKey.tokenIndex = N`, making the
+one-clause check `N + 1 ≠ N + 1` collapse. The structural fact is
+non-local input reasoning: in emitList body chains, `scanValuePrepare`
+never *fires* on the restored simpleKey because `:` does not follow
+the head item's `[` / `{` / `"`. Substrate.f bundles the
+position-`N + 1` preservation INTO the chain predicate itself via a
+per-step witness, sidestepping the state-invariant impossibility.
+Closes zero legacy sorries; pure enablement for `.body1.tokenshape.list`
+(sorry 9550). Extends `EmitterScannability.lean` (+~201 LOC, inserted
+between `FlowMonoChain_preserves_position_specific_flow` and
+`scanFiltered_of_chain`):
+
+  - **§F.1 `SavedKeyDoesntResolve fl₀ n_target s n s'`** (inductive
+    predicate) + **6 boilerplate transports** (`toFlowMonoChain`,
+    `toScanChain`, `flowLevel_ge_start`, `flowLevel_ge_end`,
+    `tokens_mono`, `single`, `trans`). The predicate is a
+    `FlowMonoChain` augmented with a per-step witness that position
+    `n_target + 1` is preserved.
+  - **§F.2 two sufficient-condition step constructors**
+    (`step_of_tokenIndex_ne`, `step_of_simpleKey_not_possible`).
+    The primary one folds substrate.e's per-step
+    `scanNextToken_preserves_position_specific_flow` under the
+    `FlowNoOverwriteAt`-first-clause specialization at `m = n_target + 1`.
+  - **§F.3 `SavedKeyDoesntResolve_preserves_position_target`** —
+    chain-induction wrapper. Direct induction on the predicate (each
+    step carries its own preservation witness, transitively composed).
+    Together with substrate.e §E.6, covers raw prefix `[0..N + 2)`.
+
+**Axiom posture**: pure triple `[propext, Classical.choice, Quot.sound]`
+on all 10 new declarations (`#print axioms`-verified via
+`/tmp/axiom_check_substrate_f.lean`). Built clean: per-module 91/91,
+full project 491/491.
+
+**LOC vs. estimate**: ~201 LOC actual vs. ~300-500 LOC estimated. Ratio
+to substrate.d: ~201/430 ≈ 0.47 — substrate.f is the LIGHTEST substrate
+of the `.tokenshape.*` series because (i) the predicate is a thin
+augmentation of FlowMonoChain with a per-step preservation field, not
+a separate state-invariant requiring transports through every dispatcher,
+and (ii) the chain wrapper is a 5-line direct induction. The original
+~300-500 LOC estimate anticipated an **establishing lemma for emitList
+body chains** as part of substrate.f; on execution it became clear that
+this establishing lemma is input-shape-specific (depends on
+`EmitScansInFlow`'s recursive structure, the comma-separator pattern,
+the specific dispatch arms that DON'T propagate the outer simpleKey to
+scanValue) and is properly the consumer's (`.body1.tokenshape.list`'s)
+work, not reusable infrastructure. See Reflection 160 for the
+infrastructure-vs-establishment dividing-line analysis.
 
 **What `.substrate.b` does NOT yet ship** (deferred — see
 Reflection 154):
@@ -4828,6 +4936,115 @@ substrate.e landing at ~1.4× substrate.d's allocation (when the
 mechanical-translation slack assumption was incomplete). Cumulative
 `.body` underestimate factor refines from Reflection 158's ~4.6–5.8×
 to ~4.9–5.6× (eighth revision; see plan-tree).
+
+##### Reflection 160 (new, 2026-05-29): substrate.f landed at <0.5× the lower bound (~201 LOC vs. ~300-500) — the unexpected underrun reveals an architectural dividing line: predicate-augmentation (carrying preservation evidence inside the chain inductive) is fundamentally lighter than state-invariant maintenance, and the originally-planned "establishing lemma" is consumer-side rather than substrate infrastructure
+
+**Triggering event**: executing `.body1.tokenshape.substrate.f`
+landed on first attempt with NO build errors and clocked in at
+~201 LOC — a 0.47× ratio to substrate.d and a 0.35× ratio to
+substrate.e. This is the FIRST substrate sub-session in the
+`.tokenshape` series to land BELOW the LOWER bound of its
+allocation. By comparison: substrate.a 470 / ~400 = 1.18×;
+substrate.b 226 / ~200 = 1.13×; substrate.c ~570 / ~300 = 1.9×;
+substrate.d ~430 / ~400 = 1.08×; substrate.e ~580 / ~500 = 1.16×.
+Reflection 159's "expect high end ~450–500 LOC" was wrong by
+factor ~2.
+
+**Root cause: predicate-augmentation vs. state-invariant
+maintenance**. Substrate.{c,d,e} all follow the same architectural
+shape: define a state-level invariant (`NoOverwriteAt(Ix)` /
+`FlowNoOverwriteAt`), prove maintenance through every dispatcher
+layer of `scanNextToken` (saveSimpleKey, preprocess, the 4 dispatch
+branches), then derive chain preservation by induction. The
+maintenance ladder is what dominates LOC — 4 dispatcher lemmas
+per substrate, each ~30-80 LOC, plus step-level position
+preservation helpers. Substrate.f sidesteps this entirely by
+bundling the per-step preservation evidence INTO the chain
+predicate itself: the `.step` constructor of `SavedKeyDoesntResolve`
+carries `h_preserved` directly. The chain wrapper then degenerates
+to a 5-line induction (`zero` returns reflexivity, `step` composes
+the witnesses transitively).
+
+**Why this works for substrate.f but not for c/d/e**: the property
+we need to preserve at position `N + 1` is fundamentally NOT
+chain-stable as a state predicate. At the chain step where
+`scanFlowEnd` restores `simpleKey` from the stack, the invariant
+`FlowNoOverwriteAt(N+1)` collapses (the restored `tokenIndex = N`
+makes `N + 1 ≠ N + 1` false). A state-level approach would have
+to TRUE-PROVE the invariant — which it can't. The predicate-
+augmented approach instead carries proof-of-preservation as a
+per-step burden, transferring the proof burden from maintenance
+(internal to substrate) to establishment (consumer-side). The
+substrate ships the predicate's degrade theorems and step
+constructors; the consumer establishes each step using input-shape
+reasoning.
+
+**The originally-planned establishing lemma was misclassified as
+substrate**. The Blueprint's ~300-500 LOC allocation for
+substrate.f included an "establishing lemma for emitList body
+chains via INDUCTION on items". On execution, it became clear that
+this lemma is fundamentally INPUT-SHAPE-SPECIFIC: it depends on
+the recursive structure of `EmitScansInFlow`, the
+emit-pattern-by-emit-pattern dispatch case analysis ("here's the
+`[` case, dispatcher won't go to scanValue; here's the `{` case,
+same; here's the `"` case, same"), and the comma-separator
+pattern between items. None of this is reusable: it's bespoke
+reasoning for emitList specifically. Properly classifying it puts
+it in `.tokenshape.list` rather than `.tokenshape.substrate.f`.
+The remaining substrate infrastructure (predicate + transports +
+chain wrapper) is genuinely thin at ~201 LOC.
+
+**Per-section ratio analysis** (LOC / substrate.d equivalent):
+- §F.1 predicate + 6 transports: ~85 LOC. Substrate.d §D.1 + §D.2
+  (def + 5 transports + preprocess maintenance) was ~110 LOC.
+  Ratio ~0.77×. Less than 1× because the predicate carries its
+  own preservation witness, so the transports work through the
+  underlying `FlowMonoChain` and don't need to re-derive the
+  per-state pointwise invariant.
+- §F.2 two step constructors: ~50 LOC. Substrate.d has no direct
+  parallel (its "step constructors" are the 4 dispatcher
+  maintenance lemmas at ~150 LOC). Ratio ~0.33×. Less than 1× by
+  a wide margin because substrate.f's step constructor reuses
+  substrate.e's per-step preservation as a black box, instead of
+  re-deriving step-level dispatch case-analysis.
+- §F.3 chain wrapper: ~25 LOC. Substrate.d §D.6 (chain wrapper)
+  was ~25 LOC. Ratio ~1.0×. Identical because the chain induction
+  itself is the same shape; only the per-step input changes.
+
+**Heuristic update**: for SUBSEQUENT substrate sub-sessions, the
+predicate-augmentation question is worth asking up front:
+- If the property is CHAIN-STABLE as a state invariant (every
+  state in the chain provably satisfies it), the state-invariant
+  approach with full dispatcher-maintenance ladder applies; expect
+  ~400-600 LOC per substrate.
+- If the property is NOT chain-stable (transient violations in
+  intermediate states are recoverable by subsequent steps), the
+  predicate-augmentation approach is cheaper: bundle the property
+  into the chain inductive as a per-step witness and reduce the
+  chain wrapper to direct induction. Expect ~150-250 LOC for
+  predicate + transports + chain wrapper. Pay the cost in
+  establishment (consumer-side) rather than maintenance (substrate-
+  side).
+- The dividing question: "can a state-level invariant exclude the
+  bad case via universal quantification over states in the chain?"
+  If yes → state-invariant. If no → predicate-augmentation.
+
+**Calibrating `.tokenshape.list`**: the consumer-side establishing
+lemma for `SavedKeyDoesntResolve` on emitList body chains is now
+the next session's responsibility. It requires structural induction
+on `items` with the `EmitScansInFlow` recursive structure unfolded
+at each step. Expected cost: ~150-300 LOC for the establishing
+lemma plus ~50-100 LOC for the prefix-preservation assembly (which
+applies substrate.d + substrate.e + substrate.f chain wrappers to
+the three positions [0..N), N, N+1). Total: ~200-400 LOC, revising
+the prior ~150-250 LOC bracket upward.
+
+**Reflection 160 → roadmap**: `.tokenshape.list` is now next. The
+establishing-lemma scope absorbs the ~100-299 LOC underrun from
+substrate.f's allocation, so the cumulative `.body` re-estimate
+narrows from Reflection 159's ~4.9-5.6× to ~4.7-5.3× (ninth
+revision; see plan-tree). Sorry 9550 closure is now one session
+away.
 
 **Step 6f.3b3.emitscans.toplevel SS1 (easy prereqs) LANDED 2026-05-27**
 (~225 LOC across two files: `Endpoint.lean` §6 ~200 LOC +
@@ -16042,35 +16259,46 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 + the §E.5 step-level lemmas needing the `h_in_flow`
                 threading (substrate.d's two-clause version doesn't).
 
-                ▹▹▹▹ **.body1.tokenshape.substrate.f** *(after
-                `.substrate.e` LANDED; estimated ~300–500 LOC)*.
-                **Stack-entry "no-active-resolve" structural primitive**
-                — the half that even the flow-relaxed
-                `FlowNoOverwriteAt s_first (N + 1)` fails for, because
-                stack[j_saved] has `tokenIndex = N` and the invariant
-                still asks `N + 1 ≠ N + 1`.
-                Per Reflection 158, position `N + 1` in `s'` stays as
-                placeholder if and only if `scanValuePrepare` doesn't
-                fire on the saved-key entry's `tokenIndex = N` during
-                the chain. In emitList body chains this holds
-                structurally (no `:` follows the head item — only `,`
-                or `]`), but this is non-local input reasoning that
-                state-level invariants cannot capture.
-                Substrate.f ships an inductive predicate
-                `SavedKeyDoesntResolve s_first n_target` (or similar)
-                that tracks "during this FlowMonoChain, no
-                `scanValuePrepare` step has simpleKey.tokenIndex =
-                n_target at fire time" + the propagation through
-                scanNextToken (zero-case + step-case: discharge
-                cleanly when the step doesn't dispatch `:`, accumulate
-                under nested-flow dispatches that don't propagate the
-                outer simpleKey to scanValue). Plus an establishing
-                lemma for emitList body chains via INDUCTION on items
-                (the structural argument: head item is `[`/`{`/`"`,
-                each handled by `EmitScansInFlow`'s recursive
-                structure). Estimated 300–500 LOC. **Closes zero legacy
-                sorries**: pure enablement for position-`N + 1`
-                preservation.
+                ▹▹▹▹ **.body1.tokenshape.substrate.f**
+                ✅ **LANDED 2026-05-29** (Phase 3 Step
+                6f.3b3.roundtrip.maintheorem.body1.tokenshape.substrate.f).
+                **Saved-key-doesn't-resolve structural primitive** —
+                the residual `m = N + 1` half that even the flow-relaxed
+                `FlowNoOverwriteAt` cannot capture, because at the
+                chain step where `scanFlowEnd` restores `simpleKey`
+                from the stack, the restored `tokenIndex` equals `N`
+                (the head item's slot), making the one-clause check
+                `tokenIndex + 1 ≠ N + 1` collapse to `N + 1 ≠ N + 1`.
+                Substrate.f sidesteps the state-invariant impossibility
+                by bundling per-step position preservation INTO the
+                chain predicate itself (each `.step` constructor carries
+                a witness that position `n_target + 1` is preserved
+                across THIS step). The state-invariant approach was
+                impossible at chain-level; the predicate-augmented
+                approach reduces the chain wrapper to plain induction
+                on the predicate. Ship-list (~201 LOC actual, ~400 LOC
+                allocated for §F.1–§F.3 + establishing lemma; the
+                establishing lemma was deferred to `.tokenshape.list`
+                because it is input-shape-specific rather than reusable
+                infrastructure — see Reflection 160):
+                - **§F.1**: `SavedKeyDoesntResolve fl₀ n_target s n s'`
+                  inductive predicate (FlowMonoChain + per-step
+                  preservation witness) + 6 boilerplate transports
+                  (`toFlowMonoChain`, `toScanChain`, `flowLevel_ge_
+                  {start,end}`, `tokens_mono`, `single`, `trans`).
+                - **§F.2**: two sufficient-condition step constructors
+                  (`step_of_tokenIndex_ne`, `step_of_simpleKey_not_
+                  possible`). The primary one folds substrate.e's
+                  per-step `scanNextToken_preserves_position_specific_
+                  flow` under the `FlowNoOverwriteAt`-first-clause
+                  specialization at `m = n_target + 1`.
+                - **§F.3**: `SavedKeyDoesntResolve_preserves_position_
+                  target` — chain-induction wrapper. Direct induction
+                  on the predicate, no further conditions needed.
+                **10 new declarations**, all pure-triple. **Closes
+                zero legacy sorries**: pure enablement for
+                `.tokenshape.list`'s position-`N + 1` half. Per-module
+                build 91/91, full-project 491/491.
 
                 ▹▹▹ **.body1.tokenshape.list** *(after `.substrate.e` +
                 `.substrate.f` LANDED; estimated ~150–250 LOC)*.
@@ -16120,25 +16348,30 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
-                **Total .body scope re-estimate (eighth revision —
-                after `.substrate.{a,b,c,d,e}` LANDED + scope discovery
-                pending for `.substrate.f`)**:
-                ~2740–3940 LOC across **10 sub-sessions** (`.scaffold`
+                **Total .body scope re-estimate (ninth revision —
+                after `.substrate.{a,b,c,d,e,f}` LANDED, scope
+                discovery from `.substrate.f` execution)**:
+                ~2640–3690 LOC across **10 sub-sessions** (`.scaffold`
                 [LANDED 206] + `.tokenshape.substrate.a` [LANDED 470]
                 + `.tokenshape.substrate.b` [LANDED 226]
                 + `.tokenshape.substrate.c` [LANDED ~570]
                 + `.tokenshape.substrate.d` [LANDED ~430]
                 + `.tokenshape.substrate.e` [LANDED ~580]
-                + `.tokenshape.substrate.f` [next, ~300–500]
-                + `.tokenshape.list` [~150–250]
+                + `.tokenshape.substrate.f` [LANDED ~201]
+                + `.tokenshape.list` [revised ~150–300 — with
+                  establishing lemma now inside this session]
                 + `.tokenshape.pair` [~100–150]
                 + `.body2` [~300–500]),
                 vs. Blueprint-original 400–700 LOC in 1. Cumulative
-                underestimate factor: **~4.9–5.6×** (marginal widening
-                from Reflection 158's ~4.6–5.8× because substrate.e
-                landed at the high end of its allocation — ~580 LOC
-                vs. ~400–600 allocated, ratio 1.35× substrate.d, see
-                Reflection 159 for the LOC-asymmetry root cause).
+                underestimate factor: **~4.7–5.3×** (narrowing from
+                Reflection 159's ~4.9–5.6× because substrate.f landed
+                at LESS than half its lower bound at ~201 LOC vs.
+                ~300-500 allocated, ratio 0.47× substrate.d, see
+                Reflection 160 for the infrastructure-vs-establishment
+                dividing-line analysis that explains the underrun).
+                The `.tokenshape.list` upper bound widens slightly to
+                absorb the establishing lemma that was originally
+                allocated to substrate.f.
                 The eight scope discoveries:
                 `.scaffold` (Reflection 151) revealed the substrate-
                 cost-of-sorry-discharge problem in principle;
@@ -16180,8 +16413,21 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 ~400–600 LOC) plus (b) saved-key-doesn't-resolve
                 structural invariant for position N + 1 (substrate.f,
                 ~300–500 LOC, structurally induced by emitList's input
-                shape). Total deferred substrate ~700–1100 LOC**.
-                See Reflections 151, 152, 153, 154, 155, 156, 157, and 158.
+                shape). Total deferred substrate ~700–1100 LOC**;
+                `.tokenshape.substrate.f` execution (Reflection 160,
+                2026-05-29) discovered that the predicate-augmented
+                approach (bundling per-step preservation INTO the
+                chain inductive itself) reduces the substrate.f
+                infrastructure to ~201 LOC — less than half the
+                estimated lower bound — by sidestepping the
+                state-invariant impossibility for position `N + 1`
+                and reducing the chain wrapper to a 5-line direct
+                induction. The unused 100-299 LOC of substrate.f's
+                allocation reflects the establishing lemma that was
+                originally planned in substrate.f but is properly
+                input-shape-specific (consumer-side) work.
+                See Reflections 151, 152, 153, 154, 155, 156, 157,
+                158, 159, and 160.
 
               ▹ **.maintheorem.nonempty** *(~410 legacy LOC; legacy
                 9653–10062; **2 legacy `sorry`s to discharge**)*.
