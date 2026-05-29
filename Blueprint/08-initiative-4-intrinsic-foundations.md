@@ -1820,26 +1820,37 @@ not in-place axiom-to-theorem promotion — the latter is impossible
 when the axiom's hypothesis is strictly weaker than what the
 stronger lemma derives).
 
-**Next session**: **Step 6f.3b3.roundtrip.maintheorem.body1.tokenshape.list.establishing**
-(retargeted 2026-05-29 from `.tokenshape.list` to `.tokenshape.list.
-establishing` after the `.tokenshape.list` attempt #3 execution this
-session discovered the establishing-lemma scope; see Reflection 161).
-**Closes zero legacy sorries**; pure enablement for `.tokenshape.list.
-discharge` (which closes sorry 9550). Ships
-`emitList_scans_nonempty_with_skdr` — a parallel theorem to
-`emitList_scans_nonempty` that produces the same `FlowMonoChain` witness
-PLUS a `SavedKeyDoesntResolve s.flowLevel (s.tokens.size) s n s'`
-witness, by parallel induction on items mirroring
-`emitList_scans_nonempty`'s singleton / multi-item recursion with
-SKDR-witness threading at each per-step witness construction. Estimated
-~300-500 LOC. Subsequent session (`.tokenshape.list.discharge`,
-estimated ~150-300 LOC) uses the established witness plus substrate.d/e
-plus substrate.f's preservation wrapper plus the matching
-first-filtered-token lemma to discharge sorry 9550 (the position-`N+1`
-raw-prefix bridge in the three head-character cases `'['` / `'{'` / `'"'`).
-The execution-attempt-3 pattern at `.tokenshape.list` (Reflections
-157 / 158 / 161 each discovered a sub-split) is a strong signal that
-this lemma sits at a genuine structural boundary in EmitterScannability.
+**Next session**: **Step 6f.3b3.roundtrip.maintheorem.body1.tokenshape.substrate.g**
+(retargeted 2026-05-29 from `.tokenshape.list.establishing` to
+`.tokenshape.substrate.g` after the `.tokenshape.list.establishing`
+attempt #4 execution this session discovered that Reflection 161's
+"consumer-side" approach cascades into ~1000-1500 LOC due to the
+recursive strengthening of `EmitScansInFlow` over Grammable's
+three constructors; see Reflection 162). **Closes zero legacy
+sorries**; pure enablement for `.tokenshape.list.establishing`.
+Ships `scanNextToken_at_non_colon_preserves_positions` — a per-
+character preservation primitive: for any state `s` and any
+dispatched char `c ≠ ':'`, `scanNextToken s = .ok (some s')` preserves
+all existing positions `m < s.tokens.size` in `s'.tokens`, with NO
+simpleKey hypothesis. Plus a chain wrapper
+`FlowMonoChain_preserves_position_when_no_colon_dispatch` (chain-
+level lift via per-step proof of non-`:` dispatch). Estimated
+~150-300 LOC. The proof spine is parallel to substrate.e's
+`scanNextToken_preserves_position_specific_flow` (~100-150 LOC),
+substituting the per-char hypothesis `c ≠ ':'` for the simpleKey
+hypothesis at the `dispatchBlockIndicators` case. Subsequent
+sessions: `.tokenshape.list.establishing` (~300-500 LOC, builds
+`emitList_scans_nonempty_with_skdr` using substrate.g for outer
+non-`:` steps + `step_of_tokenIndex_ne` for nested `:` steps) →
+`.tokenshape.list.discharge` (~150-300 LOC, closes sorry 9550).
+Sorry 9550 closure is now THREE sessions away (substrate.g →
+establishing → discharge). The execution-attempt-4 pattern at
+`.tokenshape.list` (Reflections 157 / 158 / 161 / 162 each
+discovered a sub-split) is a definitive signal that this lemma
+sits at a genuine structural boundary in EmitterScannability —
+substrate.g is the proper architectural primitive that should
+have been introduced when Reflection 158 first identified the
+position-`N+1` problem.
 
 **`.body1.tokenshape.substrate.a` LANDED 2026-05-28** — partial
 substrate (Phase 3 Step 6f.3b3.roundtrip.maintheorem.body1.tokenshape.substrate.a)
@@ -5219,6 +5230,284 @@ is now TWO sessions away (was one). The execution-attempt-3
 pattern in `.tokenshape.list` (Reflections 157 / 158 / 161) is a
 strong signal that this lemma sits at a genuine structural boundary
 in the EmitterScannability code organization.
+
+##### Reflection 162 (new, 2026-05-29): `.tokenshape.list.establishing` execution attempt #4 — Reflection 161's "consumer-side establishing lemma" is more deeply recursive than estimated; recommended NEW sub-split into substrate.g (per-character non-`:` preservation primitive) + slimmer `.establishing` consumer
+
+**Triggering event**: starting `.body1.tokenshape.list.establishing`
+execution this session. Reflection 161's plan was to ship
+`emitList_scans_nonempty_with_skdr` (~300-500 LOC) as a parallel
+induction to `emitList_scans_nonempty` with `SavedKeyDoesntResolve`
+threading at each per-step witness. On detailed scoping of the SKDR
+witness construction at the per-scanner-step granularity, the work
+unfolds to ~1000-1500+ LOC for a faithful execution of Reflection
+161's plan — significantly larger than the 300-500 LOC estimate.
+
+**Root cause: the recursion of `EmitScansInFlow` was elided**.
+Reflection 161 anchored its ~300-500 LOC estimate on
+`emitList_scans_nonempty`'s ~200 LOC structure (singleton + multi-
+item recursion). But `emitList_scans_nonempty` consumes
+`EmitScansInFlow v` per-item, and `EmitScansInFlow v` is
+ESTABLISHED by `emit_scans_in_flow` via induction on `Grammable v
+inFlow` over **three constructors**:
+
+  - **scalar** — single `scanNextToken` step via `scanNextToken_
+    flow_scanDoubleQuoted`.
+  - **sequence** — `[` open + `emitList items` body (recursive)
+    + `]` close, three composed sub-chains.
+  - **mapping** — `{` open + `emitPairList pairs` body (recursive
+    via `emitPairList_scans_nonempty`) + `}` close.
+
+For `emitList_scans_nonempty_with_skdr` to produce a faithful SKDR
+witness, EVERY sub-chain in this recursion must also produce SKDR
+at the same `n_target = N`. So the strengthening cascades:
+
+  - `EmitScansInFlow_with_skdr v` — parallel definition with SKDR
+    output. ~30 LOC.
+  - `emit_scans_in_flow_with_skdr (v : YamlValue) (hg : Grammable
+    v inFlow) : EmitScansInFlow_with_skdr v` — parallel induction
+    over Grammable with three constructor cases, each composing
+    SKDR witnesses across sub-chains. ~300-400 LOC for the
+    sequence + mapping cases alone (the scalar case is small).
+  - `EmitPairListScansInFlow_with_skdr` + `emitPairList_scans_
+    nonempty_with_skdr` — parallel structure for the pair list.
+    ~250-400 LOC.
+  - `emitList_scans_nonempty_with_skdr` — the original target.
+    ~250-350 LOC.
+
+Total: ~830-1150 LOC for the recursive strengthening, plus a
+direct-preservation argument for the genuinely problematic per-step
+witnesses (the comma step IMMEDIATELY following a scalar head item,
+where simpleKey.tokenIndex = N persists from saveSimpleKey at the
+step-1 scalar's first scanner invocation through scanFlowEntry's
+preservation through saveSimpleKey's "identity when already
+possible" branch). The problematic per-step witnesses themselves
+add another ~100-200 LOC of inline character-flow analysis.
+
+**Detailed per-step accounting** (the analysis that establishes
+the deeper scope):
+
+1. **Singleton case `[v_1]`**. Body chain is just emit v_1.
+   - v_1 = scalar: 1 scanner step. SKDR via `step_of_simpleKey_
+     not_possible` (chain start has `simpleKey.possible = false`).
+     Trivial. ~5 LOC.
+   - v_1 = sequence / mapping: multi-step. Need recursive SKDR
+     from `EmitScansInFlow_with_skdr v_1`. Requires the
+     strengthening cascade above.
+
+2. **Multi-item case `[v_1, v_2, ...]`**. Body chain is
+   `emit v_1 + ", " + emit v_2 + ...`.
+   - Step 1 = scan emit v_1. Chain start `simpleKey.possible =
+     false`. Use SKDR's recursive output from
+     `emit_scans_in_flow_with_skdr v_1`. End state depends on v_1:
+     * v_1 = scalar: `simpleKey.possible = true` with `tokenIndex
+       = N` (saveSimpleKey saved during step 1 because chain
+       start had `simpleKey.possible = false` AND saveSimpleKey
+       runs unconditionally when `simpleKeyAllowed = true`).
+     * v_1 = sequence/mapping: `simpleKey.possible = false`
+       (cleared by `scanFlowSequenceStart`/`scanFlowMappingStart`
+       at the head step of v_1's inner chain). Subsequent
+       comma/items handled cleanly via `step_of_simpleKey_not_
+       possible` + recursive IH chain.
+   - **Step 2 = comma step IMMEDIATELY after a scalar v_1**:
+     * At step 2 start: `simpleKey.possible = true`, `tokenIndex
+       = N`, `simpleKeyAllowed = false` (from `scanDoubleQuoted`'s
+       postcondition).
+     * Inside step 2: `saveSimpleKey` is identity (because
+       `simpleKeyAllowed = false`). `scanFlowEntry` preserves
+       `simpleKey`. End state: `simpleKey.possible = true`,
+       `tokenIndex = N` UNCHANGED, `simpleKeyAllowed = true`
+       (reset at the end of `scanFlowEntry`).
+     * **NEITHER** `step_of_tokenIndex_ne` (fails because
+       `tokenIndex = N = n_target`) **NOR**
+       `step_of_simpleKey_not_possible` (fails because
+       `possible = true`) applies. Must use
+       `SavedKeyDoesntResolve.single` with INLINE direct
+       preservation argument. ~30-50 LOC.
+   - **Step 3 = first scanner step of emit v_2 (when v_1 was
+     scalar)**:
+     * At step 3 start: `simpleKey.possible = true`, `tokenIndex
+       = N` (inherited from step 2's preservation).
+     * Inside step 3: `saveSimpleKey` (with
+       `simpleKeyAllowed = true` from step 2's reset) OVERWRITES
+       `simpleKey` to `tokenIndex = s_2.tokens.size = N + 4`.
+       The pushed placeholders go at positions [N+4, N+5], NOT
+       at position N+1. So position N+1 (target) is NOT
+       modified by saveSimpleKey at step 3.
+     * After saveSimpleKey, the rest of step 3 dispatches v_2's
+       head char (`[`, `{`, `"`) — none of which writes at
+       position N+1.
+     * **NEITHER** step constructor applies (same as step 2's
+       analysis at step start). Must use `SavedKeyDoesntResolve.
+       single` with INLINE direct preservation. ~40-60 LOC.
+   - **Step 4+ (recursive)**: after step 3's saveSimpleKey
+     overwrite, all subsequent steps have `simpleKey.tokenIndex
+     ≠ N` (either because `simpleKey.possible = false` after a
+     clear, or because the overwritten `tokenIndex >> N`). Can
+     use `step_of_tokenIndex_ne` / `step_of_simpleKey_not_
+     possible`. But the IH (recursive `emitList_scans_nonempty_
+     with_skdr`) gives SKDR at `n_target = s_3.tokens.size = N
+     + 4`, NOT at our `n_target = N`. We need a conversion:
+     `FlowMonoChain_to_SavedKeyDoesntResolve` that takes a
+     FlowMonoChain and a chain-stable invariant `s_mid.simpleKey.
+     possible = true → s_mid.simpleKey.tokenIndex ≠ N` and
+     produces SKDR. This conversion is itself a chain induction
+     (~80-150 LOC) and requires proving the invariant is chain-
+     stable, which requires understanding scanFlowSequenceStart's
+     simpleKeyStack push semantics + scanFlowSequenceEnd's pop
+     semantics (push CURRENT simpleKey before clearing; pop
+     restores the same value). The push values at step 4+ always
+     have `tokenIndex ≥ N + 4 > N`, so popped values also ≠ N.
+     This invariant analysis is ~50-100 LOC of additional proof.
+
+**Architectural alternative (recommended): introduce `.substrate.g`
+non-`:` preservation primitive**. The observation that drives this
+alternative: in flow context, `scanValuePrepare` is the SOLE writer
+at any pre-existing position (positions `< s.tokens.size`), and
+`scanValuePrepare` fires only when the dispatched char is `:`. So
+a per-character primitive:
+
+```lean
+theorem scanNextToken_at_non_colon_preserves_positions
+    (s s' : ScannerState) (c : Char)
+    (h_pp : scanNextToken_preprocess s = .ok (some (s_pp, c)))
+    (h_c : c ≠ ':')
+    (h_snt : scanNextToken s = .ok (some s'))
+    (m : Nat) (h_m : m < s.tokens.size) :
+    ∃ (h' : m < s'.tokens.size), s'.tokens[m]'h' = s.tokens[m]'h_m
+```
+
+This LEMMA carries NO simpleKey hypothesis. It directly says:
+"non-`:` dispatch preserves all existing positions." Proof spine
+is parallel to substrate.e's `scanNextToken_preserves_position_
+specific_flow` (~100-150 LOC), but with the per-char hypothesis
+substituting for the simpleKey hypothesis at the
+`dispatchBlockIndicators` case (the only dispatcher path that
+could invoke `scanValuePrepare`).
+
+**With substrate.g in hand, the establishing lemma becomes much
+smaller**: every step in the OUTER emitList body chain at the
+outer level has non-`:` dispatch (chars are `[`, `]`, `{`, `}`,
+`,`, `"`, plus scalar content). For each, substrate.g provides
+position-N+1 preservation without needing simpleKey arguments.
+For NESTED `:` steps inside mappings, the simpleKey.tokenIndex
+at that nested state is `> N` (because tokens.size > N by then),
+so `step_of_tokenIndex_ne` applies. The hybrid argument:
+
+  - Non-`:` step at any level: substrate.g.
+  - `:` step (only inside nested mappings): `step_of_tokenIndex_
+    ne` with `tokenIndex > N`.
+
+This lets `emitList_scans_nonempty_with_skdr` be written as a
+~300-500 LOC consumer (matching Reflection 161's original
+estimate), with substrate.g shouldering the per-step machinery.
+
+**Recommended sub-split (eleventh revision)**:
+
+  - **`.body1.tokenshape.substrate.g`** *(estimated ~150-300
+    LOC)*. Ships the non-`:` preservation primitive
+    `scanNextToken_at_non_colon_preserves_positions` and the
+    chain wrapper `FlowMonoChain_preserves_position_when_no_
+    colon_dispatch` (which takes a per-step proof of "the chain
+    step doesn't dispatch `:`" and gives position preservation
+    across the chain at any `m < s.tokens.size`). **Closes zero
+    legacy sorries**: pure enablement for `.establishing`.
+  - **`.body1.tokenshape.list.establishing`** *(estimated
+    ~300-500 LOC — Reflection 161's original target with
+    substrate.g taking the per-step machinery off)*. Ships
+    `emitList_scans_nonempty_with_skdr` using substrate.g to
+    cover non-`:` outer steps and `step_of_tokenIndex_ne` for
+    nested `:` steps. The recursive strengthening of
+    `EmitScansInFlow` still happens but is lighter because the
+    per-step witness construction is now uniform (substrate.g
+    for non-`:`, substrate.f's `step_of_tokenIndex_ne` for `:`).
+  - **`.body1.tokenshape.list.discharge`** *(unchanged from
+    Reflection 161, ~150-300 LOC)*. Uses the established
+    witness + substrate.d/e/f wrappers.
+
+**Why `.substrate.g` IS substrate-grade reuse** (counter to
+Reflection 161's claim that a non-`:` primitive would be
+single-consumer): the same primitive is ALSO needed for any
+future consumer that needs to preserve a position in flow context
+without the strict `simpleKey.tokenIndex + 1 ≠ m` hypothesis.
+Specifically:
+
+  - **`.body2`** (sorries 9552 + 9646) tracks outer-level
+    flowEntry next-token claims — same shape of argument as
+    `.body1`, needs the same per-character non-`:` preservation.
+  - **`.maintheorem.nonempty`** (sorries at 9865/10050) needs
+    position monotonicity preservation through the body chain —
+    candidate consumer.
+  - **`.maintheorem.parsewrap`** — similar shape.
+
+So substrate.g has ≥3 consumers in scope, qualifying it as
+genuine substrate work (counter to Reflection 161's single-
+consumer assessment that recommended Path B without further
+substrate primitives).
+
+**Cumulative `.body` re-estimate (ELEVENTH revision — after
+`.tokenshape.list.establishing` execution attempt #4 scope
+discovery)**: ~3090-4490 LOC across **12 sub-sessions**
+(`.scaffold` [LANDED 206] + `.tokenshape.substrate.a` [LANDED 470]
++ `.tokenshape.substrate.b` [LANDED 226]
++ `.tokenshape.substrate.c` [LANDED ~570]
++ `.tokenshape.substrate.d` [LANDED ~430]
++ `.tokenshape.substrate.e` [LANDED ~580]
++ `.tokenshape.substrate.f` [LANDED ~201]
++ `.tokenshape.substrate.g` [~150-300 — NEW, non-`:` per-char
+preservation primitive + chain wrapper]
++ `.tokenshape.list.establishing` [~300-500 — Reflection 161's
+target, now leverages substrate.g]
++ `.tokenshape.list.discharge` [~150-300]
++ `.tokenshape.pair` [~100-150]
++ `.body2` [~300-500]),
+vs. Blueprint-original 400-700 LOC in 1 session. Cumulative
+underestimate factor: **~5.5-6.4×** (widening modestly from
+Reflection 161's ~5.2-6.0× because the inserted substrate.g adds
+~150-300 LOC, but the establishing scope stays at ~300-500 LOC
+rather than ballooning to ~1000-1500+ LOC, so the net is roughly
+even).
+
+**The ten scope discoveries (cumulative)**:
+`.scaffold` (151), `.tokenshape.substrate` (152),
+`.tokenshape.substrate.a` (153), `.tokenshape.substrate.b` (154),
+`.tokenshape.list` design pass (155), `.tokenshape.substrate.c`
+execution (156), `.tokenshape.list` attempt #1 (157),
+`.tokenshape.list` attempt #2 (158), `.tokenshape.substrate.f`
+execution (160), `.tokenshape.list` attempt #3 (161), and
+`.tokenshape.list.establishing` attempt #4 (162 — this
+reflection). The pattern: each scope discovery either (a) finds
+that a planned consumer needs new substrate primitives, OR (b)
+finds that a planned substrate primitive has a deeper consumer
+scope than estimated. This session's discovery is type (a):
+Reflection 161's recommendation against a substrate.g was based
+on the single-consumer assessment, but the recursive
+strengthening cost of doing it consumer-side outweighs the
+substrate.g primitive cost, AND substrate.g has multiple
+downstream consumers in `.body2` / `.maintheorem.nonempty` /
+`.maintheorem.parsewrap`.
+
+**Heuristic refinement** (consumer-side vs. substrate, revisited):
+Reflection 161 observed that "consumer-side operationally
+substrate-grade" work is possible. Reflection 162 refines: when
+the "consumer-side" lemma requires PARALLEL STRENGTHENING of a
+recursive definition (here `EmitScansInFlow` over `Grammable`),
+the work CASCADES through the recursion, often ballooning beyond
+the originally-estimated scope. A substrate primitive that
+sidesteps the strengthening cascade — even if it has only one
+IMMEDIATE consumer — pays for itself in saved consumer-side LOC.
+Reuse-breadth-only heuristics under-count strengthening-cascade
+costs.
+
+**Reflection 162 → roadmap**: next session executes
+`.body1.tokenshape.substrate.g` (~150-300 LOC). Closes ZERO
+legacy sorries; pure enablement for `.establishing`. Sorry 9550
+closure is now THREE sessions away (substrate.g → establishing
+→ discharge). Trade-off: +1 session vs. Reflection 161's
+2-session path, but each session has ~300-500 LOC instead of
+~1000-1500 LOC for one big session. Smaller per-session scope is
+easier to verify and reduces re-execution risk (the
+`.tokenshape.list` execution-attempt counter is now at 4 —
+attempts #1 / #2 / #3 / #4 each discovered structural depth).
 
 **Step 6f.3b3.emitscans.toplevel SS1 (easy prereqs) LANDED 2026-05-27**
 (~225 LOC across two files: `Endpoint.lean` §6 ~200 LOC +
@@ -16474,29 +16763,59 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `.tokenshape.list`'s position-`N + 1` half. Per-module
                 build 91/91, full-project 491/491.
 
+                ▹▹▹ **.body1.tokenshape.substrate.g** *(NEW 2026-05-29
+                after Reflection 162's deeper scope discovery during
+                `.tokenshape.list.establishing` execution attempt #4;
+                estimated ~150–300 LOC)*. **Closes zero legacy sorries**:
+                pure enablement for `.tokenshape.list.establishing`.
+                Ships the per-character non-`:` preservation primitive
+                `scanNextToken_at_non_colon_preserves_positions` (no
+                simpleKey hypothesis — uses `c ≠ ':'` instead) plus a
+                chain wrapper `FlowMonoChain_preserves_position_when_
+                no_colon_dispatch` that takes a per-step proof of
+                non-`:` dispatch and gives position preservation at any
+                `m < s.tokens.size` across the chain. Proof spine
+                parallel to substrate.e's
+                `scanNextToken_preserves_position_specific_flow` (~100–
+                150 LOC), substituting the per-char hypothesis for the
+                simpleKey hypothesis at the `dispatchBlockIndicators`
+                case (the only dispatcher path that could invoke
+                `scanValuePrepare`). Multi-consumer reuse: `.tokenshape.
+                list.establishing` (immediate), `.tokenshape.list.
+                discharge`, `.body2`, `.maintheorem.nonempty`,
+                `.maintheorem.parsewrap` all need position preservation
+                without strict `simpleKey.tokenIndex + 1 ≠ m`
+                hypothesis. See Reflection 162 for the detailed cascade
+                analysis that justifies promoting this from "consumer-
+                side inline" (Reflection 161's recommendation) to a
+                proper substrate primitive.
+
                 ▹▹▹ **.body1.tokenshape.list.establishing**
                 *(retargeted from `.tokenshape.list` 2026-05-29 after
-                Reflection 161's scope discovery; estimated ~300–500
-                LOC)*. **Closes zero legacy sorries**: pure enablement
-                for `.tokenshape.list.discharge`. Ships
-                `emitList_scans_nonempty_with_skdr` (or similar name),
-                a parallel theorem to `emitList_scans_nonempty` that
-                produces the same `FlowMonoChain` witness PLUS a
-                `SavedKeyDoesntResolve s.flowLevel (s.tokens.size) s n
-                s'` witness. Proof structure mirrors
-                `emitList_scans_nonempty`'s singleton / multi-item
-                recursion with SKDR-witness threading at each per-step
-                witness construction. The witness construction at each
-                step is by inline character analysis of the underlying
-                scanner function (`scanDoubleQuoted` pushes scalar;
-                `scanFlowEntry` pushes flowEntry; `scanFlowSequenceStart`
-                + nested body + `scanFlowEnd` preserves the head-pop
-                tokenIndex without triggering `scanValuePrepare`, etc).
-                The duplicate-induction reasoning is genuinely input-
-                shape-specific (parallel to `emitList_scans_nonempty`),
-                hence consumer-side, but operationally substrate-grade
-                in LOC volume (~300-500). See Reflection 161 for the
-                detailed character-flow analysis.
+                Reflection 161's scope discovery; re-scoped 2026-05-29
+                after Reflection 162's deeper discovery to leverage
+                substrate.g; estimated ~300–500 LOC)*. **Closes zero
+                legacy sorries**: pure enablement for `.tokenshape.list.
+                discharge`. Ships `emitList_scans_nonempty_with_skdr`
+                (or similar name), a parallel theorem to
+                `emitList_scans_nonempty` that produces the same
+                `FlowMonoChain` witness PLUS a `SavedKeyDoesntResolve
+                s.flowLevel (s.tokens.size) s n s'` witness. Proof
+                structure mirrors `emitList_scans_nonempty`'s
+                singleton / multi-item recursion with SKDR-witness
+                threading. With substrate.g (introduced after Reflection
+                162) available, each non-`:` step in the outer chain
+                gets position-N+1 preservation directly from substrate.g
+                (no per-step character-specific argument); each
+                nested `:` step (inside mappings, where `tokenIndex
+                > N`) uses substrate.f's `step_of_tokenIndex_ne`. The
+                recursive strengthening of `EmitScansInFlow` over
+                Grammable's three constructors (scalar, sequence,
+                mapping) still happens, but is lighter because the
+                per-step witness construction is now uniform. See
+                Reflection 162 for the cascade analysis showing this
+                hybrid approach is ~300-500 LOC, vs. ~1000-1500+ LOC
+                for the original "consumer-side inline" approach.
 
                 ▹▹▹ **.body1.tokenshape.list.discharge** *(after
                 `.tokenshape.list.establishing` LANDS; estimated
@@ -16549,33 +16868,34 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
-                **Total .body scope re-estimate (TENTH revision —
+                **Total .body scope re-estimate (ELEVENTH revision —
                 after `.substrate.{a,b,c,d,e,f}` LANDED + scope
-                discovery from `.tokenshape.list` execution attempt #3
-                at Reflection 161)**:
-                ~2940–4190 LOC across **11 sub-sessions** (`.scaffold`
+                discovery from `.tokenshape.list.establishing` execution
+                attempt #4 at Reflection 162)**:
+                ~3090–4490 LOC across **12 sub-sessions** (`.scaffold`
                 [LANDED 206] + `.tokenshape.substrate.a` [LANDED 470]
                 + `.tokenshape.substrate.b` [LANDED 226]
                 + `.tokenshape.substrate.c` [LANDED ~570]
                 + `.tokenshape.substrate.d` [LANDED ~430]
                 + `.tokenshape.substrate.e` [LANDED ~580]
                 + `.tokenshape.substrate.f` [LANDED ~201]
-                + `.tokenshape.list.establishing` [~300–500 — parallel
-                  induction to `emitList_scans_nonempty` with SKDR
-                  witness threading]
+                + `.tokenshape.substrate.g` [~150–300 — NEW non-`:`
+                  per-char preservation primitive + chain wrapper]
+                + `.tokenshape.list.establishing` [~300–500 — Reflection
+                  161's target, now leverages substrate.g]
                 + `.tokenshape.list.discharge` [~150–300]
                 + `.tokenshape.pair` [~100–150]
                 + `.body2` [~300–500]),
                 vs. Blueprint-original 400–700 LOC in 1 session.
-                Cumulative underestimate factor: **~5.2–6.0×**
-                (widening from Reflection 160's ninth-revision ~4.7–5.3×
-                because `.tokenshape.list` splits into TWO sessions
-                instead of one — the establishing lemma turned out to
-                be substrate-grade in LOC volume even though
-                consumer-side in classification, see Reflection 161
-                for the detailed character-flow analysis that
-                determined the split was needed).
-                The NINE scope discoveries:
+                Cumulative underestimate factor: **~5.5–6.4×**
+                (widening modestly from Reflection 161's ~5.2–6.0×
+                because substrate.g adds ~150–300 LOC but keeps
+                `.tokenshape.list.establishing` at its ~300–500 LOC
+                estimate rather than ballooning to ~1000–1500+ LOC for
+                the recursive strengthening of `EmitScansInFlow` over
+                Grammable's three constructors — see Reflection 162
+                for the cascade analysis).
+                The TEN scope discoveries:
                 `.scaffold` (Reflection 151) revealed the substrate-
                 cost-of-sorry-discharge problem in principle;
                 `.tokenshape.substrate` (Reflection 152) revealed the
@@ -16645,9 +16965,32 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 induction. **Sub-split** the planned `.tokenshape.list`
                 into `.establishing` (zero-sorry enablement,
                 ~300-500 LOC) + `.discharge` (closes sorry 9550,
-                ~150-300 LOC).
+                ~150-300 LOC);
+                `.tokenshape.list.establishing` execution attempt #4
+                (Reflection 162, 2026-05-29) discovered that Reflection
+                161's "consumer-side" approach cascades through the
+                recursive `EmitScansInFlow` definition over Grammable's
+                three constructors (scalar / sequence / mapping),
+                ballooning to ~1000-1500+ LOC if executed faithfully
+                because every recursive `emit_scans_in_flow` chain must
+                ALSO produce a SKDR witness at the SAME `n_target = N`.
+                The proper architectural decomposition introduces a NEW
+                substrate primitive `.substrate.g` (per-character non-
+                `:` preservation, ~150-300 LOC) that sidesteps the
+                recursive strengthening: every non-`:` step (which is
+                ALL steps at the outer emitList body level, and most
+                steps inside nested values) is handled uniformly via
+                substrate.g, leaving only nested `:` steps (inside
+                mappings, where `tokenIndex > N`) to use substrate.f's
+                `step_of_tokenIndex_ne`. The `.establishing` lemma then
+                stays at its ~300-500 LOC estimate. **Sub-split**
+                inserted `.substrate.g` BEFORE `.establishing`. Counter
+                to Reflection 161's single-consumer assessment,
+                substrate.g has ≥3 downstream consumers (`.body2`,
+                `.maintheorem.nonempty`, `.maintheorem.parsewrap`) that
+                share the same per-character preservation need.
                 See Reflections 151, 152, 153, 154, 155, 156, 157,
-                158, 159, 160, and 161.
+                158, 159, 160, 161, and 162.
 
               ▹ **.maintheorem.nonempty** *(~410 legacy LOC; legacy
                 9653–10062; **2 legacy `sorry`s to discharge**)*.
