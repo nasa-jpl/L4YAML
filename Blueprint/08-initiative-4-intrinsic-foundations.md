@@ -1820,34 +1820,17 @@ not in-place axiom-to-theorem promotion — the latter is impossible
 when the axiom's hypothesis is strictly weaker than what the
 stronger lemma derives).
 
-**Next session**: **Step 6f.3b3.roundtrip.maintheorem.body1.tokenshape.substrate.c**
-(retargeted from `.body1.tokenshape.list` after Reflection 155's
-discovery on 2026-05-28: substrate.b's SKAF-input wrapper alone is
-insufficient to discharge sorry 9550 — the consumer scenario has
-`s.simpleKeyAllowed = true` after `[`, so step 1's `saveSimpleKey`
-creates a stack entry with `tokenIndex = m_first - 2`, making SKAF
-at any floor `≥ m_first - 1` fail; per-position no-overwrite
-preservation is needed instead). **Closes zero legacy sorries**;
-pure enablement for `.tokenshape.list` and `.tokenshape.pair`.
-Ships:
-  (i) `scanNextTokenIx_preserves_position_specific` — step-level
-      dispatcher case-analysis mirroring
-      `scanNextTokenIx_preserves_prefix_of_simpleKey`
-      (`FlowMonoChain/Sync/Invariant.lean §3`) but with the
-      "≠ m" hypothesis form instead of "≥ n" (~150-200 LOC).
-  (ii) `FlowMonoChainIx_preserves_position_specific` — chain-
-       induction wrapper (~30 LOC).
-  (iii) Maintenance lemmas for "no-overwrite-at-m" propagation
-        through `scanNextTokenIx` (~20-50 LOC), parallel to
-        `scanNextTokenIx_maintains_SKAFIx`.
-Estimated ~200-280 LOC. After `.substrate.c` lands,
-`.body1.tokenshape.list` discharges sorry 9550 in ~50-80 LOC
-(case-analyzes on `emit_first_char v` for the head item `v`,
-applies the matching `_first_filtered_token` lemma from
+**Next session**: **Step 6f.3b3.roundtrip.maintheorem.body1.tokenshape.list**
+(now executable: `.substrate.c` LANDED 2026-05-29, see below).
+Discharges legacy sorry 9550 (emitList body first-new-filtered-token
+identification) in ~50-80 LOC after `.substrate.c`'s pointwise
+position preservation. Plan: `cases h_fmc` to extract `s_first`,
+case-analyzes on `emit_first_char v` for the head item `v`, applies
+the matching `_first_filtered_token` lemma from
 `FilteredGrowth/FirstFiltered.lean §1–§3` to identify
 `s_first.tokens[m_first]`, and bridges via `.substrate.c`'s
 `FlowMonoChainIx_preserves_position_specific` from `s_first` to
-`s'` at protected position `m_first`).
+`s'` at protected position `m_first = m₀ + 2`.
 Following sessions: `.body1.tokenshape.pair` discharges sorries
 9638 (now ~10-20 LOC via `.substrate.a`'s strong predicate)
 and 9644 (via `.substrate.b`'s `scanValuePrepareIx_flow_pointwise`
@@ -1912,6 +1895,62 @@ EmitScansStrong.lean` (+226 LOC):
 **Axiom posture**: pure triple on all 5 new declarations. Built
 clean: per-module 92/92, full project 491/491.
 
+**`.body1.tokenshape.substrate.c` LANDED 2026-05-29** — third
+partial substrate (Phase 3 Step
+6f.3b3.roundtrip.maintheorem.body1.tokenshape.substrate.c)
+shipping the pointwise (`≠ m`) position-preservation infrastructure
+parallel to SKAF, per Reflection 155's discovery. **Closes zero
+legacy sorries**; pure enablement for `.tokenshape.list` and
+`.tokenshape.pair`. Extends `EmitterScannability/
+EmitScansStrong.lean` §5 (+~570 LOC raw / ~340 LOC theorem bodies,
+2 new namespace opens for `ScannerPlainScalarValid` +
+`ScannerCorrectness`):
+
+  - **§5 `NoOverwriteAtIx s m`** (def) — pointwise no-overwrite
+    invariant: current simpleKey + every stack entry with
+    `possible = true` satisfy `m ≠ tokenIndex ∧ m ≠ tokenIndex + 1`.
+  - **§5.1 four transport constructors** — `NoOverwriteAtIx_of_
+    {cleared_preserved, preserved, flow_open, flow_close}`, parallel
+    to SKAF's constructors (`FlowMonoChain/Basic.lean §2.1`).
+    Flow-close does NOT need a sync hypothesis (NoOverwriteAt's
+    stack-entry conjunct covers ALL slots, so popping just reduces
+    the universe of obligations — strict simplification over SKAF
+    which needed `stack.size > fl₀ ∨ fl₀ = 0`).
+  - **§5.2 `saveSimpleKeyIx_simpleKey_pointwise_inv`** +
+    **`scanNextTokenIx_preprocess_{simpleKey_pointwise_inv,
+    maintains_NoOverwriteAtIx}`** — preprocess carries the invariant
+    under `m < s.tokens.size` (saveSimpleKey activation sets
+    tokenIndex = (intermediate state's tokens.size) ≥ s.tokens.size
+    > m, so the new tokenIndex satisfies the ≠m condition).
+  - **§5.3 four dispatcher maintenance lemmas** —
+    `scanNextTokenIx_dispatch{Structural, FlowIndicators,
+    BlockIndicators, Content}_maintains_NoOverwriteAtIx`, parallel
+    to SKAF's `_maintains_SKAFIx` family
+    (`FlowMonoChain/Basic.lean §2.3`).
+  - **§5.4 `scanNextTokenIx_maintains_NoOverwriteAtIx`** — capstone,
+    parallel to `scanNextTokenIx_maintains_SKAFIx` (`FlowMonoChain/
+    Basic.lean §2.4`).
+  - **§5.5 `scanValuePrepareIx_preserves_position_specific`** +
+    **`scanValueIx_preserves_position_specific`** — pointwise (≠m)
+    analogs of `scanValuePrepareIx_preserves_prefix` /
+    `scanValueIx_preserves_prefix` (`IndexedScannerPlainScalarValid
+    §12k`).
+  - **§5.5 `scanNextTokenIx_preserves_position_specific`** — step-
+    level dispatcher case-analysis mirroring `scanNextTokenIx_
+    preserves_prefix_of_simpleKey` (`FlowMonoChain/Sync/Invariant.
+    lean §3`) but with the "≠m" hypothesis form instead of "≥n".
+  - **§5.6 `FlowMonoChainIx_preserves_position_specific`** — chain-
+    induction wrapper mirroring `FlowMonoChainIx_preserves_raw_
+    prefix` (`FlowMonoChain/Sync/Invariant.lean §4`).
+
+**Axiom posture**: pure triple `[propext, Classical.choice,
+Quot.sound]` on all 16 new declarations. Built clean: per-module
+92/92, full project 491/491.
+
+**LOC vs. estimate**: ~570 LOC actual (raw addition) vs. ~200-280
+LOC estimated in Reflection 155 — a ~2× underestimate. See
+Reflection 156 below for the analysis.
+
 **What `.substrate.b` does NOT yet ship** (deferred — see
 Reflection 154):
 
@@ -1933,12 +1972,14 @@ IndexedScannerPlainScalarValid.lean:4733/4743),
 `FlowMonoChainIx_preserves_raw_prefix` (Sync/Invariant.lean:419),
 the 3 first-filtered-token lemmas (FilteredGrowth/FirstFiltered.
 lean §1-§3), `emit_first_char` (FirstFiltered.lean:373),
-`EmitPairListScansInFlowIx_strong` from `.substrate.a`, and the 5
-new `.substrate.b` declarations.
+`EmitPairListScansInFlowIx_strong` from `.substrate.a`, the 5 new
+`.substrate.b` declarations, and the 16 new `.substrate.c`
+declarations (NoOverwriteAtIx + transports + maintenance +
+pointwise preservation + chain wrapper).
 
 **Discharge sub-sessions deferred to subsequent sessions**:
-`.body1.tokenshape.list` (1 sorry: 9550, ~80-150 LOC after
-broader scope per Reflection 154) +
+`.body1.tokenshape.list` (1 sorry: 9550, ~50-80 LOC after
+`.substrate.c` LANDED) +
 `.body1.tokenshape.pair` (2 sorries: 9638 + 9644, ~100-150 LOC).
 Note: 9638 (`n ≥ 3`) is now directly dischargeable from
 `emitPairList_scans_nonemptyIx_strong` (just unfold the strong
@@ -4304,6 +4345,96 @@ the floor constraint?". If NOT (as here: `m_first > simpleKey.
 tokenIndex`), the consumer needs a different substrate primitive
 (not "do it inline"). Plan for BOTH primitives at substrate
 survey time.
+
+##### Reflection 156 (new, 2026-05-29): substrate.c LANDED at ~570 LOC vs. Reflection 155's ~200-280 estimate — a ~2× underestimate driven by the "parallel SKAF infrastructure" cost being underestimated
+
+**Triggering event**: executing `.body1.tokenshape.substrate.c`
+shipped 16 new declarations (vs. Reflection 155's planned (i) + (ii)
++ (iii) — nominally 3 items). The actual ~570 LOC raw addition vs.
+the planned ~200-280 LOC was a ~2× underestimate.
+
+**The actual landing surface** (categorized by SKAF parallel):
+
+  1. **NoOverwriteAtIx definition** — 1 decl, ~10 LOC. As planned.
+  2. **Four transport constructors** (cleared+preserved, preserved,
+     flow_open, flow_close) — 4 decls, ~110 LOC. NOT explicitly
+     planned in Reflection 155 (folded into "maintenance lemmas").
+     Required as building blocks for dispatcher maintenance.
+  3. **saveSimpleKey + preprocess pointwise inv** (2 decls, ~80
+     LOC) + **preprocess full maintenance** (1 decl, ~10 LOC).
+     Reflection 155's "~20-50 LOC maintenance" badly underestimated
+     this — the preprocess case has the `unwindIndentsIx +
+     needIndentCheck` two-path structure that requires careful
+     bridging.
+  4. **Four dispatcher maintenance lemmas** (structural, flow,
+     block, content) — 4 decls, ~140 LOC. Reflection 155's
+     "~20-50 LOC" line item; actual cost includes the `first`
+     tactic chain over 3-7 sub-scanner branches per dispatcher,
+     each constructed via one of the 4 constructors.
+  5. **scanNextTokenIx capstone** — 1 decl, ~70 LOC. Mirrors
+     `scanNextTokenIx_maintains_SKAFIx`'s nested-split structure
+     (preprocess → structural → allowDirectives → flowIndicators
+     → blockIndicators → content).
+  6. **scanValuePrepareIx + scanValueIx pointwise preservation**
+     — 2 decls, ~80 LOC. Plain (≠m) analogs of the (`<n`+`≥n`)-
+     form preservation lemmas; the "change" rewrites for
+     `setIfInBounds` are verbose.
+  7. **scanNextTokenIx_preserves_position_specific** — 1 decl,
+     ~150 LOC. Matches Reflection 155's "~150-200 LOC" estimate
+     for the step-level dispatcher case-analysis.
+  8. **FlowMonoChainIx_preserves_position_specific** — 1 decl,
+     ~15 LOC. Matches Reflection 155's "~30 LOC" estimate.
+
+**Sum**: items 1+7+8 = ~175 LOC (the explicitly-named planned
+items). Items 2+3+4+5+6 = ~410 LOC of "parallel-SKAF
+infrastructure" that Reflection 155 lumped into "~20-50 LOC
+maintenance" without enumeration. Plus ~10 LOC of new namespace
+opens. Total: ~595 LOC, matching actual ~570.
+
+**Where the underestimate came from**: Reflection 155 treated the
+maintenance lemmas as "trivially parallel to SKAF" without
+enumerating them. The 4 constructors + 4 dispatcher
+maintenance lemmas + capstone are EACH SHORT (most 5-30 LOC,
+some 50-80 LOC for the preprocess and capstone cases) but TOGETHER
+~410 LOC. The "parallel infrastructure" estimate must enumerate
+the items, not just point at the parallel.
+
+**LOC-per-decl pattern that fits**: a SKAF-parallel maintenance
+infrastructure ships ~3-4× the number of declarations as the
+"headline" theorem the substrate exists for. For `.substrate.c`,
+the headline is `FlowMonoChainIx_preserves_position_specific` —
+1 chain wrapper — but its preconditions force 1 invariant def +
+4 constructors + 1 saveSimpleKey + 1 preprocess pointwise + 1
+preprocess maintenance + 4 dispatcher maintenance + 1 capstone +
+2 step-level preservation + 1 step-level dispatcher = 16 decls.
+
+**Cumulative `.body` underestimate factor — fourth refinement**:
+from Reflection 155's ~2.7-3.4× to **~3.1-3.8×** (`.substrate.c`
+hit at ~570 LOC vs. ~240 planned, so the running total widens
+by ~330 LOC). Total `.body` estimate: ~1430-2230 LOC across 7
+sub-sessions, vs. Blueprint-original 400-700 LOC.
+
+**What this teaches**: **when a substrate is described as
+"parallel to existing infrastructure X", the LOC estimate must
+enumerate the decls in X being paralleled, not just point at X**.
+SKAF's infrastructure for `FlowMonoChain/Basic.lean §2` is ~500
+LOC across ~15 declarations; the NoOverwriteAtIx parallel hits
+~410 LOC across ~12 declarations. Reflection 155 should have
+COUNTED these.
+
+**Heuristic**: **substrate-parallel infrastructure LOC ≈
+referenced-infrastructure LOC × 0.7-1.0**. For `.substrate.c`'s
+case: the referenced infrastructure (SKAF + step-level lemmas) is
+~750 LOC; substrate.c shipped ~570, ratio 0.76. Use 0.7-1.0 as a
+sanity-check on future substrate plans that reference parallel
+existing machinery.
+
+**Strategy update**: at the START of each substrate sub-session's
+plan, GREP the referenced infrastructure (e.g.
+`SimpleKeyAboveFloorIx_of_*`, `_maintains_SKAFIx`, etc.) and
+enumerate the parallel decls expected. The enumeration informs
+the LOC estimate. Without it, "parallel to X" estimates will
+continue to underestimate.
 
 **Step 6f.3b3.emitscans.toplevel SS1 (easy prereqs) LANDED 2026-05-27**
 (~225 LOC across two files: `Endpoint.lean` §6 ~200 LOC +
@@ -15318,33 +15449,67 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                     §4 wrapper alone is INSUFFICIENT for `.tokenshape.list`
                     and `.tokenshape.pair` — both need `.substrate.c`.
 
-                ▹▹▹▹ **.body1.tokenshape.substrate.c** *(NEW — Reflection
-                155; estimated ~200-280 LOC)*. **Ships the step-level
-                no-overwrite-at-position primitive**: per
-                Reflection 155, the "consumer-side chain induction"
-                envisioned in Reflection 154 was a 5-7× LOC
-                underestimate because the protected position
-                `m_first = m₀ + 2` (the first new filtered token's
-                raw position when `s.simpleKeyAllowed = true` at the
-                chain start) is ABOVE the simpleKey reservation
-                `m₀ = s.tokens.size`, so substrate.b's SKAF-input
-                wrapper can't be discharged at that floor. **Ships**:
-                (i) `scanNextTokenIx_preserves_position_specific`
-                — step-level dispatcher case-analysis mirroring
-                `scanNextTokenIx_preserves_prefix_of_simpleKey`
-                (FlowMonoChain/Sync/Invariant.lean §3, ~150 LOC),
-                but with hypothesis `s.simpleKey.possible = true
-                → s.simpleKey.tokenIndex + 1 ≠ m` instead of
-                `tokenIndex ≥ n` (~150-200 LOC); (ii)
-                `FlowMonoChainIx_preserves_position_specific` —
-                chain-induction wrapper (~30 LOC); (iii) maintenance
-                lemmas for the "no overwrite" hypothesis through
-                steps (~20-50 LOC). **Zero legacy sorries closed**;
-                pure enablement for `.tokenshape.list` +
-                `.tokenshape.pair`.
+                ▹▹▹▹ **.body1.tokenshape.substrate.c** ✅ **LANDED
+                2026-05-29** *(~570 LOC actual addition / ~200-280 LOC
+                originally allocated; extends `EmitScansStrong.lean`
+                §5 with 16 new declarations + 2 new namespace opens)*.
+                **Ships the pointwise (`≠m`) position-preservation
+                infrastructure parallel to SKAF**: per Reflection 155,
+                substrate.b's SKAF-input wrapper alone is insufficient
+                for the consumer scenario after `[` (the protected
+                position `m_first = m₀ + 2` sits above the simpleKey
+                reservation). **Ships**:
 
-                ▹▹▹ **.body1.tokenshape.list** *(estimated ~50–80 LOC
-                after `.substrate.c` lands)*.
+                §5 — `NoOverwriteAtIx s m` (pointwise no-overwrite
+                invariant on current simpleKey + every stack entry).
+
+                §5.1 — Four transport constructors
+                (`_of_{cleared_preserved, preserved, flow_open,
+                flow_close}`), parallel to SKAF (FlowMonoChain/
+                Basic.lean §2.1). Flow-close does NOT need a sync
+                hypothesis (NoOverwriteAt's stack-entry conjunct
+                covers ALL slots).
+
+                §5.2 — `saveSimpleKeyIx_simpleKey_pointwise_inv`,
+                `scanNextTokenIx_preprocess_simpleKey_pointwise_inv`,
+                `scanNextTokenIx_preprocess_maintains_NoOverwriteAtIx`.
+
+                §5.3 — Four dispatcher maintenance lemmas
+                (`scanNextTokenIx_dispatch{Structural, FlowIndicators,
+                BlockIndicators, Content}_maintains_NoOverwriteAtIx`),
+                parallel to SKAF (FlowMonoChain/Basic.lean §2.3).
+
+                §5.4 — `scanNextTokenIx_maintains_NoOverwriteAtIx`
+                capstone, parallel to `scanNextTokenIx_maintains_SKAFIx`
+                (FlowMonoChain/Basic.lean §2.4).
+
+                §5.5 — `scanValuePrepareIx_preserves_position_specific`
+                and `scanValueIx_preserves_position_specific` (pointwise
+                analogs of the prefix-form lemmas in
+                IndexedScannerPlainScalarValid §12k), plus
+                `scanNextTokenIx_preserves_position_specific` (step-
+                level dispatcher case-analysis mirroring
+                `scanNextTokenIx_preserves_prefix_of_simpleKey`,
+                FlowMonoChain/Sync/Invariant.lean §3).
+
+                §5.6 — `FlowMonoChainIx_preserves_position_specific`
+                chain-induction wrapper mirroring
+                `FlowMonoChainIx_preserves_raw_prefix`
+                (FlowMonoChain/Sync/Invariant.lean §4).
+
+                **Axiom posture**: pure triple `[propext,
+                Classical.choice, Quot.sound]` on all 16 new
+                declarations. Built clean: per-module 92/92, full
+                project 491/491. **0 legacy sorries closed**; pure
+                enablement for `.tokenshape.list` + `.tokenshape.pair`.
+                **LOC pattern**: ~2× underestimate documented as
+                Reflection 156 — the SKAF-parallel infrastructure cost
+                ~410 LOC (the 4 constructors + 4 dispatcher maintenance
+                + capstone + step-level helpers) was lumped into
+                "~20-50 LOC maintenance" without enumeration.
+
+                ▹▹▹ **.body1.tokenshape.list** *(next; estimated ~50–80
+                LOC after `.substrate.c` LANDED)*.
                 **Discharges 1 of 5 legacy sorries: 9550** (emitList
                 first new filtered token is content-start). Decomposes
                 `FlowMonoChainIx s.flowLevel s n s'` via `.step` to
@@ -15383,24 +15548,18 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
-                **Total .body scope re-estimate (fourth revision —
-                after `.substrate.{a,b}` LANDED and `.substrate.c`
-                identified per Reflection 155)**:
-                ~1100–1900 LOC across **7 sub-sessions** (`.scaffold`
+                **Total .body scope re-estimate (fifth revision —
+                after `.substrate.{a,b,c}` LANDED)**:
+                ~1430–2230 LOC across **7 sub-sessions** (`.scaffold`
                 [LANDED 206] + `.tokenshape.substrate.a` [LANDED 470]
                 + `.tokenshape.substrate.b` [LANDED 226]
-                + `.tokenshape.substrate.c` [PLANNED ~200-280]
+                + `.tokenshape.substrate.c` [LANDED ~570]
                 + `.tokenshape.list` + `.tokenshape.pair` + `.body2`),
                 vs. Blueprint-original 400–700 LOC in 1. Cumulative
-                underestimate factor: ~2.7–3.4× (re-widened from
-                Reflection 154's ~2.3-2.9× because `.substrate.c` was
-                identified during the `.tokenshape.list` design pass
-                as a missing substrate primitive — `.substrate.b`'s
-                SKAF-input wrapper alone is insufficient when the
-                protected position `m_first = m₀ + 2` sits ABOVE the
-                step-1 saveSimpleKey reservation, which is the
-                consumer scenario after `[`). The five scope
-                discoveries:
+                underestimate factor: **~3.1–3.8×** (re-widened from
+                Reflection 155's ~2.7-3.4× because `.substrate.c`
+                landed at ~570 LOC vs. planned ~240, see Reflection
+                156). The six scope discoveries:
                 `.scaffold` (Reflection 151) revealed the substrate-
                 cost-of-sorry-discharge problem in principle;
                 `.tokenshape.substrate` (Reflection 152) revealed the
@@ -15415,13 +15574,19 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 (Reflection 154) re-scoped the no-overwrite primitive
                 from a chain-induction invariant to a SKAF-input
                 wrapper, deferring the chain-invariant maintenance to
-                consumer-side; **`.tokenshape.list` design pass
+                consumer-side; `.tokenshape.list` design pass
                 (Reflection 155, 2026-05-28) discovered that the
                 "consumer-side chain induction" framing of Reflection
                 154 was a 5-7× LOC underestimate, requiring a new
                 substrate primitive `.substrate.c` for per-position
-                no-overwrite preservation**.
-                See Reflections 151, 152, 153, 154, and 155.
+                no-overwrite preservation; **`.tokenshape.substrate.c`
+                execution (Reflection 156, 2026-05-29) discovered that
+                the "parallel-SKAF infrastructure" cost was a ~2×
+                underestimate at ~570 LOC because the 4 constructors
+                + 4 dispatcher maintenance + capstone + step-level
+                helpers were lumped into "~20-50 LOC maintenance"
+                without enumeration**.
+                See Reflections 151, 152, 153, 154, 155, and 156.
 
               ▹ **.maintheorem.nonempty** *(~410 legacy LOC; legacy
                 9653–10062; **2 legacy `sorry`s to discharge**)*.

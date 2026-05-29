@@ -47,34 +47,51 @@ Ships ONE new strong predicate and ONE strong inductive theorem:
     here as: the "protected" raw prefix is positions `i < n₀`,
     where `n₀` is consumer-chosen and SKAF-justified.
 
-**What `.substrate.b` does NOT yet ship** (deferred to
-`.substrate.c` per Reflection 155):
+**`.body1.tokenshape.substrate.c` additions** (§5) — landed
+2026-05-29 per Reflection 155:
 
-  - `EmitListScansInFlowIx_strong` exposing the first-step boundary
-    state. Not strictly required by `.tokenshape.list` if that
-    sub-sub-session does its own `cases h_fmc` decomposition.
-  - Per-position no-overwrite preservation. Reflection 155
-    (2026-05-28) discovered during `.tokenshape.list` design that
-    §4's SKAF-input wrapper is INSUFFICIENT for the consumer
-    scenario after `[`: with `s.simpleKeyAllowed = true`, step 1's
-    `saveSimpleKey` creates a stack entry with `tokenIndex = m₀ =
-    s.tokens.size`, so SKAF at any floor `≥ m₀ + 1` fails (the new
-    entry's `tokenIndex < n₀`). The first new filtered token sits
+  * **§5 `NoOverwriteAtIx s m`** + the parallel infrastructure of
+    constructors / dispatcher maintenance / capstone /
+    chain-induction wrapper. Per Reflection 155 discovery during
+    `.tokenshape.list` design: §4's SKAF-input wrapper is
+    INSUFFICIENT for the consumer scenario after `[` because with
+    `s.simpleKeyAllowed = true`, step 1's `saveSimpleKey` creates a
+    stack entry with `tokenIndex = m₀ = s.tokens.size`, so SKAF at
+    any floor `≥ m₀ + 1` fails. The first new filtered token sits
     at raw position `m_first = m₀ + 2` (above the simpleKey
-    reservation), and `_no_overwrite_list` with `n₀ ≤ s.tokens.size`
-    only preserves positions strictly below `m_first`. Required
-    primitive: `scanNextTokenIx_preserves_position_specific` (step-
-    level) + `FlowMonoChainIx_preserves_position_specific` (chain-
-    induction wrapper), with hypothesis `simpleKey.possible = true
-    → simpleKey.tokenIndex + 1 ≠ m` instead of SKAF's `tokenIndex
-    ≥ n₀`. Planned for `.body1.tokenshape.substrate.c`
-    (~200-280 LOC). Reflection 154's
-    "consumer-side ~30-60 LOC inline chain induction" estimate
-    was a 5-7× underestimate — the proof requires step-level
-    dispatcher case-analysis (parallel to
-    `scanNextTokenIx_preserves_prefix_of_simpleKey`'s ~150 LOC
-    in `FlowMonoChain/Sync/Invariant.lean §3`), which is substrate
-    work, not consumer work.
+    reservation), so we need per-position no-overwrite preservation
+    rather than SKAF-floor preservation. §5 ships:
+    - `NoOverwriteAtIx s m` invariant (current simpleKey + stack
+      entries all satisfy `possible = true → m ≠ tokenIndex ∧ m
+      ≠ tokenIndex + 1`).
+    - 4 transport constructors (cleared+preserved, preserved,
+      flow_open, flow_close) — parallel to SKAF's constructors
+      (`FlowMonoChain/Basic.lean §2.1`).
+    - preprocess maintenance (`scanNextTokenIx_preprocess_maintains_
+      NoOverwriteAtIx`) tracking saveSimpleKey activation under
+      `m < tokens.size`.
+    - 4 dispatcher maintenance lemmas (structural / flow-indicators /
+      block-indicators / content) — parallel to SKAF's dispatcher
+      maintenance (`FlowMonoChain/Basic.lean §2.3`).
+    - Capstone `scanNextTokenIx_maintains_NoOverwriteAtIx` —
+      parallel to `scanNextTokenIx_maintains_SKAFIx`.
+    - `scanValuePrepareIx_preserves_position_specific` and
+      `scanValueIx_preserves_position_specific` — pointwise (≠m)
+      analogs of the (`<n` + `tokenIndex ≥ n`)-form preservation
+      lemmas in `IndexedScannerPlainScalarValid §12k`.
+    - `scanNextTokenIx_preserves_position_specific` — step-level
+      dispatcher case-analysis mirroring
+      `scanNextTokenIx_preserves_prefix_of_simpleKey`
+      (`FlowMonoChain/Sync/Invariant.lean §3`) but with the "≠m"
+      hypothesis form.
+    - `FlowMonoChainIx_preserves_position_specific` — chain-
+      induction wrapper mirroring `FlowMonoChainIx_preserves_raw_
+      prefix` (`FlowMonoChain/Sync/Invariant.lean §4`).
+
+  Differs from SKAF: NO sync hypothesis needed (no floor → no
+  stack-size lower bound for the flow-close case). Closes zero
+  legacy sorries — pure enablement for `.tokenshape.list` and
+  `.tokenshape.pair`.
 
 **Axiom posture**: pure triple `[propext, Classical.choice, Quot.sound]`.
 No new axioms introduced.
@@ -92,6 +109,8 @@ open L4YAML.Scanner.Indexed.ScannerStateIx
 open L4YAML.Proofs.Indexed.EmitterScannability.ScanChain
 open L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain
 open L4YAML.Proofs.Indexed.EmitterScannability.FilteredGrowth
+open L4YAML.Proofs.Indexed.ScannerPlainScalarValid
+open L4YAML.Proofs.Indexed.ScannerCorrectness
 
 variable {input : String}
 
@@ -732,5 +751,703 @@ theorem FlowMonoChainIx_filtered_prefix_no_overwrite_list
     rw [List.take_append_drop]
   rw [Array.toList_filter, h_split, List.filter_append, h_take]
   exact ⟨(s'.tokens.tokens.toList.drop n₀).filter p, rfl⟩
+
+/-! ## §5  `NoOverwriteAtIx` — pointwise position preservation
+    (Reflection 155, `.substrate.c`)
+
+Per Reflection 155, the consumer scenario for `.tokenshape.list`
+(chain starts in a state with `s.simpleKeyAllowed = true`) has
+`saveSimpleKey` activate at step 1, pushing 2 placeholders + creating
+a simpleKey at `tokenIndex = m₀ = original s.tokens.size`. The first
+new filtered token (flowSequenceStart) lands at raw position
+`m_first = m₀ + 2`, ABOVE the simpleKey reservation. SKAF cannot be
+discharged at any floor ≥ m₀ + 1 (the new entry's tokenIndex < n₀),
+so substrate.b's `_filtered_prefix_no_overwrite_list` only covers raw
+positions strictly below `m_first`.
+
+This section ships the parallel infrastructure for **per-position
+no-overwrite preservation**: an invariant `NoOverwriteAtIx s m` that
+quantifies over ALL simpleKey-related state (current + stack) and
+asserts no future promotion writes can land on position `m`, plus
+maintenance lemmas through `scanNextTokenIx`, plus chain-induction.
+
+Hypothesis form: `simpleKey.possible = true → m ≠ tokenIndex ∧ m ≠
+tokenIndex + 1` (and analogously for every stack entry). This rules
+out promotion-overwrite at position `m`, the ONLY way `tokens[m]`
+could be overwritten through a `scanNextTokenIx` step (`scanValueIx`
+via `scanValuePrepareIx` writes at `tokenIndex` and `tokenIndex + 1`
+of the current simpleKey).
+
+Strategically parallel to `SimpleKeyAboveFloorIx` (`FlowMonoChain/
+Basic.lean §2`) but with `≠ m` instead of `≥ n`. Differs in not
+requiring sync hypothesis (no floor → no stack-size lower bound
+needed for the flow-close case). -/
+
+/-- `NoOverwriteAtIx s m`: position `m` cannot be overwritten by any
+    future simpleKey promotion (current or stacked). -/
+def NoOverwriteAtIx (s : ScannerStateIx input) (m : Nat) : Prop :=
+  (s.simpleKey.possible = true →
+    m ≠ s.simpleKey.tokenIndex ∧ m ≠ s.simpleKey.tokenIndex + 1) ∧
+  (∀ (j : Nat) (h : j < s.simpleKeyStack.size),
+    s.simpleKeyStack[j].possible = true →
+    m ≠ s.simpleKeyStack[j].tokenIndex ∧ m ≠ s.simpleKeyStack[j].tokenIndex + 1)
+
+/-! ### §5.1  NoOverwriteAtIx constructors -/
+
+/-- If `s_out` clears the simple key and preserves the stack, then
+    `NoOverwriteAtIx` transports. Parallel to
+    `SimpleKeyAboveFloorIx_of_cleared_preserved` (`FlowMonoChain/
+    Basic.lean §2.1`). -/
+theorem NoOverwriteAtIx_of_cleared_preserved
+    (s_out s_in : ScannerStateIx input) (m : Nat)
+    (h_sk : s_out.simpleKey.possible = false)
+    (h_stack : s_out.simpleKeyStack = s_in.simpleKeyStack)
+    (h_inv : NoOverwriteAtIx s_in m) :
+    NoOverwriteAtIx s_out m :=
+  ⟨fun hp => absurd hp (by rw [h_sk]; decide),
+   fun j hj hp => by simp only [h_stack] at hj hp ⊢; exact h_inv.2 j hj hp⟩
+
+/-- If `s_out` preserves both `simpleKey` and `simpleKeyStack`, then
+    `NoOverwriteAtIx` transports. Parallel to
+    `SimpleKeyAboveFloorIx_of_preserved`. -/
+theorem NoOverwriteAtIx_of_preserved
+    (s_out s_in : ScannerStateIx input) (m : Nat)
+    (h_sk : s_out.simpleKey = s_in.simpleKey)
+    (h_stack : s_out.simpleKeyStack = s_in.simpleKeyStack)
+    (h_inv : NoOverwriteAtIx s_in m) :
+    NoOverwriteAtIx s_out m :=
+  ⟨fun hp => by rw [h_sk] at hp ⊢; exact h_inv.1 hp,
+   fun j hj hp => by simp only [h_stack] at hj hp ⊢; exact h_inv.2 j hj hp⟩
+
+/-- Flow-open transport: `s_out` clears the current simple key and
+    pushes the old `simpleKey` onto `simpleKeyStack`. Parallel to
+    `SimpleKeyAboveFloorIx_of_flow_open`. -/
+theorem NoOverwriteAtIx_of_flow_open
+    (s_out s_in : ScannerStateIx input) (m : Nat)
+    (h_sk : s_out.simpleKey.possible = false)
+    (h_stack : s_out.simpleKeyStack = s_in.simpleKeyStack.push s_in.simpleKey)
+    (h_inv : NoOverwriteAtIx s_in m) :
+    NoOverwriteAtIx s_out m := by
+  refine ⟨fun hp => absurd hp (by rw [h_sk]; decide), fun j hj hp => ?_⟩
+  simp only [h_stack, Array.size_push] at hj
+  by_cases hlt : j < s_in.simpleKeyStack.size
+  · have hp' : s_in.simpleKeyStack[j].possible = true := by
+      simp only [h_stack, Array.getElem_push, dif_pos hlt] at hp; exact hp
+    have h_orig := h_inv.2 j hlt hp'
+    show m ≠ s_out.simpleKeyStack[j].tokenIndex ∧
+         m ≠ s_out.simpleKeyStack[j].tokenIndex + 1
+    simp only [h_stack, Array.getElem_push, dif_pos hlt]; exact h_orig
+  · have hj_eq : j = s_in.simpleKeyStack.size := by omega
+    subst hj_eq
+    have hp' : s_in.simpleKey.possible = true := by
+      simp only [h_stack, Array.getElem_push, dif_neg hlt] at hp; exact hp
+    have h_orig := h_inv.1 hp'
+    show m ≠ s_out.simpleKeyStack[s_in.simpleKeyStack.size].tokenIndex ∧
+         m ≠ s_out.simpleKeyStack[s_in.simpleKeyStack.size].tokenIndex + 1
+    simp only [h_stack, Array.getElem_push, dif_neg hlt]; exact h_orig
+
+/-- Flow-close transport: `s_out` restores `simpleKey` from
+    `simpleKeyStack.back?` and pops the stack. Parallel to
+    `SimpleKeyAboveFloorIx_of_flow_close` but with no sync hypothesis
+    (NoOverwriteAt's stack-entry conjunct covers ALL slots, so popping
+    just reduces the universe of obligations). -/
+theorem NoOverwriteAtIx_of_flow_close
+    (s_out s_in : ScannerStateIx input) (m : Nat)
+    (h_sk : s_out.simpleKey =
+      s_in.simpleKeyStack.back?.getD { cursor := IxCursor.start input })
+    (h_stack : s_out.simpleKeyStack = s_in.simpleKeyStack.pop)
+    (h_inv : NoOverwriteAtIx s_in m) :
+    NoOverwriteAtIx s_out m := by
+  refine ⟨fun hp => ?_, fun j hj hp => ?_⟩
+  · by_cases h_nonempty : s_in.simpleKeyStack.size > 0
+    · have h_lt : s_in.simpleKeyStack.size - 1 < s_in.simpleKeyStack.size := by omega
+      have h_back : s_in.simpleKeyStack.back?.getD { cursor := IxCursor.start input } =
+          s_in.simpleKeyStack[s_in.simpleKeyStack.size - 1]'h_lt := by
+        simp [Array.back?, h_lt]
+      rw [h_sk, h_back] at hp ⊢
+      exact h_inv.2 _ h_lt hp
+    · have h_empty : s_in.simpleKeyStack.size = 0 := by omega
+      have h_none : s_in.simpleKeyStack.back? = none := by simp [Array.back?, h_empty]
+      rw [h_sk, h_none] at hp; simp at hp
+  · simp only [h_stack, Array.size_pop] at hj
+    simp only [h_stack, Array.getElem_pop] at hp ⊢
+    exact h_inv.2 j (by omega) hp
+
+/-! ### §5.2  saveSimpleKey + preprocess pointwise maintenance -/
+
+/-- `saveSimpleKeyIx` maintains the pointwise no-overwrite invariant
+    on `simpleKey`: if the new simpleKey is possible, its `tokenIndex`
+    is either unchanged (no-op branch) or set to `st.tokens.size`
+    (set branch), and both ≠ m / ≠ m given `m < st.tokens.size`.
+    Parallel to `saveSimpleKeyIx_simpleKey_inv` (`FlowMonoChain/
+    Basic.lean §2.2`) but with the `≠m` hypothesis form. -/
+theorem saveSimpleKeyIx_simpleKey_pointwise_inv {input : String}
+    (st : ScannerStateIx input) (m : Nat) (h_tok : m < st.tokens.size)
+    (h_inv : st.simpleKey.possible = true →
+      m ≠ st.simpleKey.tokenIndex ∧ m ≠ st.simpleKey.tokenIndex + 1) :
+    (saveSimpleKeyIx st).simpleKey.possible = true →
+    m ≠ (saveSimpleKeyIx st).simpleKey.tokenIndex ∧
+    m ≠ (saveSimpleKeyIx st).simpleKey.tokenIndex + 1 := by
+  unfold saveSimpleKeyIx
+  split
+  · exact h_inv
+  · split
+    · intro _; dsimp only []; exact ⟨by omega, by omega⟩
+    · exact h_inv
+
+/-- `scanNextTokenIx_preprocess` carries the simpleKey pointwise
+    invariant. Parallel to `scanNextTokenIx_preprocess_simpleKey_inv`
+    (`FlowMonoChain/Basic.lean §2.2`). -/
+theorem scanNextTokenIx_preprocess_simpleKey_pointwise_inv {input : String}
+    (s s1 : ScannerStateIx input) (c : Char)
+    (h : scanNextTokenIx_preprocess s = .ok (some (s1, c))) (m : Nat)
+    (h_m : m < s.tokens.size)
+    (h_inv : s.simpleKey.possible = true →
+      m ≠ s.simpleKey.tokenIndex ∧ m ≠ s.simpleKey.tokenIndex + 1) :
+    s1.simpleKey.possible = true →
+    m ≠ s1.simpleKey.tokenIndex ∧ m ≠ s1.simpleKey.tokenIndex + 1 := by
+  intro h_poss
+  unfold scanNextTokenIx_preprocess at h
+  dsimp only at h
+  have h_sk_skip : s.skipToContentS.simpleKey = s.simpleKey :=
+    skipToContentS_preserves_simpleKey s
+  have h_tok_skip : s.skipToContentS.tokens.size = s.tokens.size := by
+    rw [skipToContentS_tokens]
+  split at h
+  · simp at h
+  · split at h
+    · split at h
+      · simp at h
+      · split at h
+        · simp at h
+        · simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq] at h
+          obtain ⟨rfl, _⟩ := h
+          have h_unwind_sz :=
+            unwindIndentsIx_tokens_size_le s.skipToContentS s.skipToContentS.cursor.pos.col
+          have h_unwind_sk :=
+            unwindIndentsIx_preserves_simpleKey s.skipToContentS s.skipToContentS.cursor.pos.col
+          have h_tok_post : m <
+              ({ unwindIndentsIx s.skipToContentS s.skipToContentS.cursor.pos.col
+                  with needIndentCheck := false } : ScannerStateIx input).tokens.size := by
+            show m < (unwindIndentsIx s.skipToContentS _).tokens.size; omega
+          have h_sk_post :
+              ({ unwindIndentsIx s.skipToContentS s.skipToContentS.cursor.pos.col
+                  with needIndentCheck := false } : ScannerStateIx input).simpleKey.possible
+                = true →
+              m ≠ ({ unwindIndentsIx s.skipToContentS s.skipToContentS.cursor.pos.col
+                      with needIndentCheck := false } : ScannerStateIx input).simpleKey.tokenIndex ∧
+              m ≠ ({ unwindIndentsIx s.skipToContentS s.skipToContentS.cursor.pos.col
+                      with needIndentCheck := false } : ScannerStateIx input).simpleKey.tokenIndex
+                + 1 := by
+            show (unwindIndentsIx s.skipToContentS _).simpleKey.possible = true → _
+            rw [h_unwind_sk, h_sk_skip]; exact h_inv
+          exact saveSimpleKeyIx_simpleKey_pointwise_inv _ m h_tok_post h_sk_post h_poss
+    · split at h
+      · simp at h
+      · split at h
+        · simp at h
+        · simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq] at h
+          obtain ⟨rfl, _⟩ := h
+          have h_tok_post : m < s.skipToContentS.tokens.size := by omega
+          have h_sk_post : s.skipToContentS.simpleKey.possible = true →
+              m ≠ s.skipToContentS.simpleKey.tokenIndex ∧
+              m ≠ s.skipToContentS.simpleKey.tokenIndex + 1 := by
+            rw [h_sk_skip]; exact h_inv
+          exact saveSimpleKeyIx_simpleKey_pointwise_inv s.skipToContentS m h_tok_post h_sk_post h_poss
+
+/-- `scanNextTokenIx_preprocess` maintains the full `NoOverwriteAtIx`
+    invariant. Parallel to `scanNextTokenIx_preprocess_maintains_SKAFIx`. -/
+theorem scanNextTokenIx_preprocess_maintains_NoOverwriteAtIx {input : String}
+    (s s1 : ScannerStateIx input) (c : Char)
+    (h : scanNextTokenIx_preprocess s = .ok (some (s1, c)))
+    (m : Nat) (h_m : m < s.tokens.size)
+    (h_inv : NoOverwriteAtIx s m) :
+    NoOverwriteAtIx s1 m := by
+  refine ⟨?_, ?_⟩
+  · exact scanNextTokenIx_preprocess_simpleKey_pointwise_inv s s1 c h m h_m h_inv.1
+  · intro j hj hp
+    have h_stack := scanNextTokenIx_preprocess_preserves_simpleKeyStack s s1 c h
+    simp only [h_stack] at hj hp ⊢
+    exact h_inv.2 j hj hp
+
+/-! ### §5.3  Dispatcher maintenance for NoOverwriteAtIx -/
+
+/-- `scanNextTokenIx_dispatchStructural` maintains `NoOverwriteAtIx`.
+    Parallel to `scanNextTokenIx_dispatchStructural_maintains_SKAFIx`. -/
+theorem scanNextTokenIx_dispatchStructural_maintains_NoOverwriteAtIx {input : String}
+    (s : ScannerStateIx input) (c : Char) (s' : ScannerStateIx input)
+    (h : scanNextTokenIx_dispatchStructural s c = .ok (some s'))
+    (m : Nat) (_h_m : m < s.tokens.size)
+    (h_inv : NoOverwriteAtIx s m) :
+    NoOverwriteAtIx s' m := by
+  unfold scanNextTokenIx_dispatchStructural at h
+  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h
+  repeat (any_goals (split at h))
+  any_goals contradiction
+  all_goals (try simp only [Except.ok.injEq, Option.some.injEq] at h)
+  any_goals contradiction
+  all_goals (try subst_vars)
+  all_goals first
+    | exact NoOverwriteAtIx_of_cleared_preserved _ s m
+        (scanDocumentStartIx_clears_simpleKey s)
+        (scanDocumentStartIx_preserves_simpleKeyStack s) h_inv
+    | (rename_i h_eq; exact NoOverwriteAtIx_of_cleared_preserved _ s m
+        (scanDocumentEndIx_clears_simpleKey s _ h_eq)
+        (scanDocumentEndIx_preserves_simpleKeyStack s _ h_eq) h_inv)
+    | (rename_i h_eq; exact NoOverwriteAtIx_of_preserved _ s m
+        (scanDirectiveIx_preserves_simpleKey s _ h_eq)
+        (scanDirectiveIx_preserves_simpleKeyStack s _ h_eq) h_inv)
+    | (simp_all; done)
+
+/-- `scanNextTokenIx_dispatchFlowIndicators` maintains `NoOverwriteAtIx`.
+    Parallel to `scanNextTokenIx_dispatchFlowIndicators_maintains_SKAFIx`. -/
+theorem scanNextTokenIx_dispatchFlowIndicators_maintains_NoOverwriteAtIx {input : String}
+    (s : ScannerStateIx input) (c : Char) (s' : ScannerStateIx input)
+    (h : scanNextTokenIx_dispatchFlowIndicators s c = .ok (some s'))
+    (m : Nat) (_h_m : m < s.tokens.size)
+    (h_inv : NoOverwriteAtIx s m) :
+    NoOverwriteAtIx s' m := by
+  unfold scanNextTokenIx_dispatchFlowIndicators at h
+  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h
+  repeat (any_goals (split at h))
+  any_goals contradiction
+  all_goals (try simp only [Except.ok.injEq, Option.some.injEq] at h)
+  any_goals contradiction
+  all_goals (try subst_vars)
+  all_goals first
+    | exact NoOverwriteAtIx_of_flow_open _ s m
+        (scanFlowSequenceStartIx_simpleKey_cleared s)
+        (scanFlowSequenceStartIx_stack_pushed s) h_inv
+    | exact NoOverwriteAtIx_of_flow_open _ s m
+        (scanFlowMappingStartIx_simpleKey_cleared s)
+        (scanFlowMappingStartIx_stack_pushed s) h_inv
+    | exact NoOverwriteAtIx_of_flow_close _ s m
+        (scanFlowSequenceEndIx_simpleKey_restored s)
+        (scanFlowSequenceEndIx_stack_popped s) h_inv
+    | exact NoOverwriteAtIx_of_flow_close _ s m
+        (scanFlowMappingEndIx_simpleKey_restored s)
+        (scanFlowMappingEndIx_stack_popped s) h_inv
+    | (rename_i h_eq; exact NoOverwriteAtIx_of_preserved _ s m
+        (scanFlowEntryIx_preserves_simpleKey s _ h_eq)
+        (scanFlowEntryIx_preserves_simpleKeyStack s _ h_eq) h_inv)
+    | (simp_all; done)
+
+/-- `scanNextTokenIx_dispatchBlockIndicators` maintains `NoOverwriteAtIx`.
+    Parallel to `scanNextTokenIx_dispatchBlockIndicators_maintains_SKAFIx`. -/
+theorem scanNextTokenIx_dispatchBlockIndicators_maintains_NoOverwriteAtIx {input : String}
+    (s : ScannerStateIx input) (c : Char) (s' : ScannerStateIx input)
+    (h : scanNextTokenIx_dispatchBlockIndicators s c = .ok (some s'))
+    (m : Nat) (_h_m : m < s.tokens.size)
+    (h_inv : NoOverwriteAtIx s m) :
+    NoOverwriteAtIx s' m := by
+  unfold scanNextTokenIx_dispatchBlockIndicators at h
+  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h
+  repeat (any_goals (split at h))
+  any_goals contradiction
+  all_goals (try simp only [Except.ok.injEq, Option.some.injEq] at h)
+  any_goals contradiction
+  all_goals (try subst_vars)
+  all_goals first
+    | (rename_i h_eq; exact NoOverwriteAtIx_of_preserved _ s m
+        (scanBlockEntryIx_preserves_simpleKey s _ h_eq)
+        (scanBlockEntryIx_preserves_simpleKeyStack s _ h_eq) h_inv)
+    | (rename_i h_eq; exact NoOverwriteAtIx_of_cleared_preserved _ s m
+        (scanKeyIx_clears_simpleKey s _ h_eq)
+        (scanKeyIx_preserves_simpleKeyStack s _ h_eq) h_inv)
+    | (rename_i h_eq; exact NoOverwriteAtIx_of_cleared_preserved _ s m
+        (scanValueIx_clears_simpleKey s _ h_eq)
+        (scanValueIx_preserves_simpleKeyStack s _ h_eq) h_inv)
+    | (simp_all; done)
+
+/-- `scanNextTokenIx_dispatchContent` maintains `NoOverwriteAtIx`.
+    Parallel to `scanNextTokenIx_dispatchContent_maintains_SKAFIx`. -/
+theorem scanNextTokenIx_dispatchContent_maintains_NoOverwriteAtIx {input : String}
+    (s : ScannerStateIx input) (c : Char) (s' : ScannerStateIx input)
+    (h : scanNextTokenIx_dispatchContent s c = .ok s')
+    (m : Nat) (_h_m : m < s.tokens.size)
+    (h_inv : NoOverwriteAtIx s m) :
+    NoOverwriteAtIx s' m := by
+  unfold scanNextTokenIx_dispatchContent at h
+  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h
+  repeat (any_goals (split at h))
+  all_goals (try contradiction)
+  all_goals (try simp only [Except.ok.injEq] at h)
+  all_goals (try contradiction)
+  all_goals (try subst_vars)
+  all_goals first
+    | (rename_i h_eq; exact NoOverwriteAtIx_of_preserved _ s m
+        (scanAnchorOrAliasIx_preserves_simpleKey s true _ h_eq)
+        (scanAnchorOrAliasIx_preserves_simpleKeyStack s true _ h_eq) h_inv)
+    | (rename_i h_eq; exact NoOverwriteAtIx_of_preserved _ s m
+        (scanAnchorOrAliasIx_preserves_simpleKey s false _ h_eq)
+        (scanAnchorOrAliasIx_preserves_simpleKeyStack s false _ h_eq) h_inv)
+    | (rename_i h_eq; exact NoOverwriteAtIx_of_preserved _ s m
+        (scanTagIx_preserves_simpleKey s _ h_eq)
+        (scanTagIx_preserves_simpleKeyStack s _ h_eq) h_inv)
+    | exact NoOverwriteAtIx_of_preserved _ s m rfl rfl h_inv
+    | (simp_all; done)
+
+/-! ### §5.4  scanNextTokenIx capstone for NoOverwriteAtIx -/
+
+set_option maxHeartbeats 400000 in
+/-- Capstone: `scanNextTokenIx` maintains `NoOverwriteAtIx`. Parallel
+    to `scanNextTokenIx_maintains_SKAFIx` (`FlowMonoChain.Basic §2.4`)
+    but with the pointwise (≠m) invariant — no sync hypothesis needed. -/
+theorem scanNextTokenIx_maintains_NoOverwriteAtIx {input : String}
+    (s s' : ScannerStateIx input)
+    (h_next : scanNextTokenIx s = .ok (some s'))
+    (m : Nat) (h_m : m < s.tokens.size)
+    (h_inv : NoOverwriteAtIx s m) :
+    NoOverwriteAtIx s' m := by
+  have h_allow_sk : ∀ st : ScannerStateIx input,
+      (if st.allowDirectives then
+          { st with allowDirectives := false, documentEverStarted := true }
+        else st).simpleKey = st.simpleKey := by intro st; split <;> rfl
+  have h_allow_stack : ∀ st : ScannerStateIx input,
+      (if st.allowDirectives then
+          { st with allowDirectives := false, documentEverStarted := true }
+        else st).simpleKeyStack = st.simpleKeyStack := by intro st; split <;> rfl
+  have h_allow_tok : ∀ st : ScannerStateIx input,
+      (if st.allowDirectives then
+          { st with allowDirectives := false, documentEverStarted := true }
+        else st).tokens = st.tokens := by intro st; split <;> rfl
+  unfold scanNextTokenIx at h_next
+  simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h_next
+  split at h_next
+  · contradiction
+  · split at h_next
+    · simp [reduceCtorEq] at h_next
+    · rename_i s1 c1 hPre
+      have h_pre_inv :=
+        scanNextTokenIx_preprocess_maintains_NoOverwriteAtIx s _ _ hPre m h_m h_inv
+      have h_pre_mono := scanNextTokenIx_preprocess_tokens_size_le s _ _ hPre
+      have h_pre_m : m < s1.tokens.size := Nat.lt_of_lt_of_le h_m h_pre_mono
+      split at h_next
+      · contradiction
+      · split at h_next
+        · rename_i s'' hStruct
+          simp only [Except.ok.injEq, Option.some.injEq] at h_next
+          subst h_next
+          exact scanNextTokenIx_dispatchStructural_maintains_NoOverwriteAtIx _ _ _ hStruct
+            m h_pre_m h_pre_inv
+        · have h_s2_inv : NoOverwriteAtIx
+              (if s1.allowDirectives then
+                  { s1 with allowDirectives := false, documentEverStarted := true }
+                else s1) m :=
+            NoOverwriteAtIx_of_preserved _ s1 m
+              (h_allow_sk s1) (h_allow_stack s1) h_pre_inv
+          have h_s2_m : m <
+              (if s1.allowDirectives then
+                  { s1 with allowDirectives := false, documentEverStarted := true }
+                else s1).tokens.size := by
+            rw [h_allow_tok]; exact h_pre_m
+          split at h_next
+          · contradiction
+          · split at h_next
+            · contradiction
+            · split at h_next
+              · rename_i s'' hFlow
+                simp only [Except.ok.injEq, Option.some.injEq] at h_next
+                subst h_next
+                exact scanNextTokenIx_dispatchFlowIndicators_maintains_NoOverwriteAtIx _ _ _ hFlow
+                  m h_s2_m h_s2_inv
+              · split at h_next
+                · contradiction
+                · split at h_next
+                  · rename_i s'' hBlock
+                    simp only [Except.ok.injEq, Option.some.injEq] at h_next
+                    subst h_next
+                    exact scanNextTokenIx_dispatchBlockIndicators_maintains_NoOverwriteAtIx _ _ _ hBlock
+                      m h_s2_m h_s2_inv
+                  · split at h_next
+                    · contradiction
+                    · rename_i sC hContent
+                      simp only [Except.ok.injEq, Option.some.injEq] at h_next
+                      subst h_next
+                      exact scanNextTokenIx_dispatchContent_maintains_NoOverwriteAtIx _ _ _ hContent
+                        m h_s2_m h_s2_inv
+
+/-! ### §5.5  Step-level pointwise preservation -/
+
+/-- Pointwise (≠m) form of `scanValuePrepareIx_preserves_prefix`
+    (`IndexedScannerPlainScalarValid §12k`): preserves position `m`
+    given the simpleKey hypothesis `m ≠ tokenIndex ∧ m ≠ tokenIndex + 1`.
+    Mirrors the prefix-form proof at line 5101 but uses the pointwise
+    hypothesis directly (no need to derive `tokenIndex ≠ m` from
+    `i < n ≤ tokenIndex`). -/
+theorem scanValuePrepareIx_preserves_position_specific {input : String}
+    (s : ScannerStateIx input)
+    (m : Nat) (h_m : m < s.tokens.size)
+    (h_inv : s.simpleKey.possible = true →
+      m ≠ s.simpleKey.tokenIndex ∧ m ≠ s.simpleKey.tokenIndex + 1) :
+    (scanValuePrepareIx s).tokens[m]'(by
+        have := scanValuePrepareIx_tokens_size_le s; omega) =
+    s.tokens[m]'h_m := by
+  have h_sz : s.tokens.size = s.tokens.tokens.size := rfl
+  unfold scanValuePrepareIx
+  split
+  · rename_i h_poss
+    obtain ⟨h_ne_idx, h_ne_idx1⟩ := h_inv h_poss
+    split
+    · split
+      · -- non-flow, col > currentIndent: two overwriteAtCursor at idx, idx+1
+        have h_m_lt : m < s.tokens.tokens.size := by omega
+        have h_m_lt1 : m < (s.tokens.tokens.setIfInBounds s.simpleKey.tokenIndex
+            (IxToken.mk' s.simpleKey.cursor.pos YamlToken.blockMappingStart
+              s.simpleKey.cursor.pos (Nat.le_refl _) s.simpleKey.cursor.posBound)).size := by
+          rw [Array.size_setIfInBounds]; exact h_m_lt
+        change (((s.overwriteAtCursor s.simpleKey.tokenIndex s.simpleKey.cursor
+                YamlToken.blockMappingStart).overwriteAtCursor
+              (s.simpleKey.tokenIndex + 1) s.simpleKey.cursor YamlToken.key).tokens)[m]'_ =
+          s.tokens[m]'h_m
+        change (((s.tokens.tokens.setIfInBounds s.simpleKey.tokenIndex _).setIfInBounds
+              (s.simpleKey.tokenIndex + 1) _))[m]'_ = s.tokens.tokens[m]'h_m_lt
+        exact (Array.getElem_setIfInBounds_ne h_m_lt1
+                (show s.simpleKey.tokenIndex + 1 ≠ m from fun h => h_ne_idx1 h.symm)).trans
+              (Array.getElem_setIfInBounds_ne h_m_lt
+                (show s.simpleKey.tokenIndex ≠ m from fun h => h_ne_idx h.symm))
+      · -- non-flow, col ≤ currentIndent: one overwriteAtCursor at idx+1
+        have h_m_lt : m < s.tokens.tokens.size := by omega
+        change (s.overwriteAtCursor (s.simpleKey.tokenIndex + 1) s.simpleKey.cursor
+                YamlToken.key).tokens[m]'_ = s.tokens[m]'h_m
+        change (s.tokens.tokens.setIfInBounds (s.simpleKey.tokenIndex + 1) _)[m]'_ =
+          s.tokens.tokens[m]'h_m_lt
+        exact Array.getElem_setIfInBounds_ne h_m_lt
+              (show s.simpleKey.tokenIndex + 1 ≠ m from fun h => h_ne_idx1 h.symm)
+    · -- flow: one overwriteAtCursor at idx+1
+      have h_m_lt : m < s.tokens.tokens.size := by omega
+      change (s.overwriteAtCursor (s.simpleKey.tokenIndex + 1) s.simpleKey.cursor
+              YamlToken.key).tokens[m]'_ = s.tokens[m]'h_m
+      change (s.tokens.tokens.setIfInBounds (s.simpleKey.tokenIndex + 1) _)[m]'_ =
+        s.tokens.tokens[m]'h_m_lt
+      exact Array.getElem_setIfInBounds_ne h_m_lt
+            (show s.simpleKey.tokenIndex + 1 ≠ m from fun h => h_ne_idx1 h.symm)
+  · split
+    · rfl
+    · split
+      · exact pushMappingIndentIx_preserves_prefix s s.cursor.pos.col m h_m
+      · rfl
+
+/-- Pointwise (≠m) form of `scanValueIx_preserves_prefix`. -/
+theorem scanValueIx_preserves_position_specific {input : String}
+    (s s' : ScannerStateIx input)
+    (h_ok : scanValueIx s = .ok s')
+    (m : Nat) (h_m : m < s.tokens.size)
+    (h_inv : s.simpleKey.possible = true →
+      m ≠ s.simpleKey.tokenIndex ∧ m ≠ s.simpleKey.tokenIndex + 1) :
+    s'.tokens[m]'(by have := scanValueIx_tokens_size_le h_ok; omega) =
+    s.tokens[m]'h_m := by
+  unfold scanValueIx at h_ok
+  simp only [bind, Except.bind] at h_ok
+  split at h_ok
+  · cases h_ok
+  · split at h_ok
+    · cases h_ok
+    · simp only [Except.ok.injEq] at h_ok
+      subst h_ok
+      have h_ck := scanValueClearKeyIx_tokens s
+      have h_inv' : (scanValueClearKeyIx s).simpleKey.possible = true →
+          m ≠ (scanValueClearKeyIx s).simpleKey.tokenIndex ∧
+          m ≠ (scanValueClearKeyIx s).simpleKey.tokenIndex + 1 := by
+        unfold scanValueClearKeyIx
+        split
+        · split
+          · simp
+          · split
+            · simp
+            · exact h_inv
+        · exact h_inv
+      have h_m' : m < (scanValueClearKeyIx s).tokens.size := by rw [h_ck]; exact h_m
+      have h_prep := scanValuePrepareIx_preserves_position_specific (scanValueClearKeyIx s)
+        m h_m' h_inv'
+      have h_prep_sz := scanValuePrepareIx_tokens_size_le (scanValueClearKeyIx s)
+      have h_m_lt_prep : m < (scanValuePrepareIx (scanValueClearKeyIx s)).tokens.size := by
+        rw [h_ck] at h_prep_sz; omega
+      have h_emit := emit_preserves_tokens_at
+        (scanValuePrepareIx (scanValueClearKeyIx s)) YamlToken.value m h_m_lt_prep
+      show ((scanValuePrepareIx (scanValueClearKeyIx s)).emit YamlToken.value).tokens[m]'_ =
+        s.tokens[m]'h_m
+      calc ((scanValuePrepareIx (scanValueClearKeyIx s)).emit YamlToken.value).tokens[m]'_
+          = (scanValuePrepareIx (scanValueClearKeyIx s)).tokens[m]'h_m_lt_prep := h_emit
+        _ = (scanValueClearKeyIx s).tokens[m]'(by rw [h_ck]; omega) := h_prep
+        _ = s.tokens[m]'h_m := by simp
+
+set_option maxHeartbeats 400000 in
+/-- Per-step pointwise preservation of position `m` through
+    `scanNextTokenIx`. Parallel to `scanNextTokenIx_preserves_prefix_
+    of_simpleKey` (`FlowMonoChain/Sync/Invariant.lean §3`) but with
+    `m ≠ tokenIndex ∧ m ≠ tokenIndex + 1` hypothesis instead of
+    `tokenIndex ≥ n`.
+
+    Per Reflection 155: this is the step-level primitive needed by
+    `.tokenshape.list` and `.tokenshape.pair` consumers when the
+    protected position sits ABOVE the simpleKey reservation. -/
+theorem scanNextTokenIx_preserves_position_specific {input : String}
+    (s s' : ScannerStateIx input) (m : Nat) (h_m : m < s.tokens.size)
+    (h_inv : s.simpleKey.possible = true →
+      m ≠ s.simpleKey.tokenIndex ∧ m ≠ s.simpleKey.tokenIndex + 1)
+    (h_ok : scanNextTokenIx s = .ok (some s')) :
+    ∃ (h_size : m < s'.tokens.size),
+      s'.tokens[m]'h_size = s.tokens[m]'h_m := by
+  unfold scanNextTokenIx at h_ok
+  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  generalize h_pp : scanNextTokenIx_preprocess s = pp_res at h_ok
+  cases pp_res with
+  | error e => simp at h_ok
+  | ok pp_inner =>
+    cases pp_inner with
+    | none => simp at h_ok
+    | some pair =>
+      cases pair with
+      | mk s_pp c =>
+        have h_inv_pp : s_pp.simpleKey.possible = true →
+            m ≠ s_pp.simpleKey.tokenIndex ∧ m ≠ s_pp.simpleKey.tokenIndex + 1 :=
+          scanNextTokenIx_preprocess_simpleKey_pointwise_inv s s_pp c h_pp m h_m h_inv
+        obtain ⟨h_m_pp, h_pre_eq⟩ :=
+          _preprocess_preserves_prefix s s_pp c (m + 1) h_m h_pp m (Nat.lt_succ_self m)
+        have h_m_pp_lt : m < s_pp.tokens.size := h_m_pp
+        dsimp only [] at h_ok
+        generalize h_ds : scanNextTokenIx_dispatchStructural s_pp c = ds_res at h_ok
+        cases ds_res with
+        | error e => simp at h_ok
+        | ok ds_inner =>
+          cases ds_inner with
+          | some s_str =>
+            simp only [Except.ok.injEq, Option.some.injEq] at h_ok
+            subst h_ok
+            rcases scanNextTokenIx_dispatchStructural_ok_some_cases h_ds with heq | hOk | hOk
+            · subst heq
+              have h_pref := scanDocumentStartIx_preserves_prefix s_pp m h_m_pp_lt
+              have h_sz : m < (scanDocumentStartIx s_pp).tokens.size := by
+                have := scanDocumentStartIx_tokens_size_le s_pp; omega
+              exact ⟨h_sz, h_pref.trans h_pre_eq⟩
+            · have h_pref := scanDocumentEndIx_preserves_prefix s_pp _ hOk m h_m_pp_lt
+              have h_sz : m < s_str.tokens.size := by
+                have := scanDocumentEndIx_tokens_size_le hOk; omega
+              exact ⟨h_sz, h_pref.trans h_pre_eq⟩
+            · have h_pref := scanDirectiveIx_preserves_prefix s_pp _ hOk m h_m_pp_lt
+              have h_sz : m < s_str.tokens.size := by
+                have := scanDirectiveIx_tokens_size_le hOk; omega
+              exact ⟨h_sz, h_pref.trans h_pre_eq⟩
+          | none =>
+            dsimp only [] at h_ok
+            generalize h_dir_def : (if s_pp.allowDirectives = true then
+                { s_pp with allowDirectives := false, documentEverStarted := true }
+              else s_pp) = s_dir at h_ok
+            have h_dir_tok : s_dir.tokens = s_pp.tokens := by
+              rw [← h_dir_def]; exact _dir_update_tokens s_pp
+            have h_m_dir : m < s_dir.tokens.size := by rw [h_dir_tok]; exact h_m_pp_lt
+            have h_dir_eq : s_dir.tokens[m]'h_m_dir = s_pp.tokens[m]'h_m_pp_lt := by
+              have : ∀ (h : m < s_pp.tokens.size),
+                  s_dir.tokens[m]'(h_dir_tok ▸ h) = s_pp.tokens[m]'h := by
+                intro h; congr 1
+              exact this h_m_pp_lt
+            have h_inv_dir : s_dir.simpleKey.possible = true →
+                m ≠ s_dir.simpleKey.tokenIndex ∧ m ≠ s_dir.simpleKey.tokenIndex + 1 := by
+              rw [← h_dir_def]
+              split <;> exact h_inv_pp
+            generalize h_ck : scanNextTokenIx_checkBlockFlowIndent s_dir c = ck_res at h_ok
+            cases ck_res with
+            | error e => simp at h_ok
+            | ok _ =>
+              dsimp only [] at h_ok
+              generalize h_df : scanNextTokenIx_dispatchFlowIndicators s_dir c = df_res at h_ok
+              cases df_res with
+              | error e => simp at h_ok
+              | ok df_inner =>
+                cases df_inner with
+                | some s_flow =>
+                  simp only [Except.ok.injEq, Option.some.injEq] at h_ok
+                  subst h_ok
+                  rcases scanNextTokenIx_dispatchFlowIndicators_ok_some_cases h_df with
+                    heq | heq | heq | heq | hOk
+                  · subst heq
+                    have h_pref := scanFlowSequenceStartIx_preserves_prefix s_dir m h_m_dir
+                    have h_sz : m < (scanFlowSequenceStartIx s_dir).tokens.size := by
+                      have := scanFlowSequenceStartIx_tokens_size_le s_dir; omega
+                    exact ⟨h_sz, h_pref.trans (h_dir_eq.trans h_pre_eq)⟩
+                  · subst heq
+                    have h_pref := scanFlowSequenceEndIx_preserves_prefix s_dir m h_m_dir
+                    have h_sz : m < (scanFlowSequenceEndIx s_dir).tokens.size := by
+                      have := scanFlowSequenceEndIx_tokens_size_le s_dir; omega
+                    exact ⟨h_sz, h_pref.trans (h_dir_eq.trans h_pre_eq)⟩
+                  · subst heq
+                    have h_pref := scanFlowMappingStartIx_preserves_prefix s_dir m h_m_dir
+                    have h_sz : m < (scanFlowMappingStartIx s_dir).tokens.size := by
+                      have := scanFlowMappingStartIx_tokens_size_le s_dir; omega
+                    exact ⟨h_sz, h_pref.trans (h_dir_eq.trans h_pre_eq)⟩
+                  · subst heq
+                    have h_pref := scanFlowMappingEndIx_preserves_prefix s_dir m h_m_dir
+                    have h_sz : m < (scanFlowMappingEndIx s_dir).tokens.size := by
+                      have := scanFlowMappingEndIx_tokens_size_le s_dir; omega
+                    exact ⟨h_sz, h_pref.trans (h_dir_eq.trans h_pre_eq)⟩
+                  · have h_pref := scanFlowEntryIx_preserves_prefix s_dir s_flow hOk m h_m_dir
+                    have h_sz : m < s_flow.tokens.size := by
+                      have := scanFlowEntryIx_tokens_size_le hOk; omega
+                    exact ⟨h_sz, h_pref.trans (h_dir_eq.trans h_pre_eq)⟩
+                | none =>
+                  dsimp only [] at h_ok
+                  generalize h_db : scanNextTokenIx_dispatchBlockIndicators s_dir c = db_res at h_ok
+                  cases db_res with
+                  | error e => simp at h_ok
+                  | ok db_inner =>
+                    cases db_inner with
+                    | some s_blk =>
+                      simp only [Except.ok.injEq, Option.some.injEq] at h_ok
+                      subst h_ok
+                      rcases scanNextTokenIx_dispatchBlockIndicators_ok_some_cases h_db with
+                        hOk | hOk | hOk
+                      · have h_pref := scanBlockEntryIx_preserves_prefix s_dir s_blk hOk m h_m_dir
+                        have h_sz : m < s_blk.tokens.size := by
+                          have := scanBlockEntryIx_tokens_size_le hOk; omega
+                        exact ⟨h_sz, h_pref.trans (h_dir_eq.trans h_pre_eq)⟩
+                      · have h_pref := scanKeyIx_preserves_prefix s_dir s_blk hOk m h_m_dir
+                        have h_sz : m < s_blk.tokens.size := by
+                          have := scanKeyIx_tokens_size_le hOk; omega
+                        exact ⟨h_sz, h_pref.trans (h_dir_eq.trans h_pre_eq)⟩
+                      · have h_pref := scanValueIx_preserves_position_specific s_dir s_blk hOk
+                          m h_m_dir h_inv_dir
+                        have h_sz : m < s_blk.tokens.size := by
+                          have := scanValueIx_tokens_size_le hOk; omega
+                        exact ⟨h_sz, h_pref.trans (h_dir_eq.trans h_pre_eq)⟩
+                    | none =>
+                      dsimp only [] at h_ok
+                      generalize h_dc : scanNextTokenIx_dispatchContent s_dir c = dc_res at h_ok
+                      cases dc_res with
+                      | error e => simp at h_ok
+                      | ok s_ct =>
+                        simp only [Except.ok.injEq, Option.some.injEq] at h_ok
+                        subst h_ok
+                        have h_pref :=
+                          scanNextTokenIx_dispatchContent_preserves_prefix s_dir s_ct c h_dc m h_m_dir
+                        have h_sz : m < s_ct.tokens.size := by
+                          have := scanNextTokenIx_dispatchContent_tokens_size_le h_dc; omega
+                        exact ⟨h_sz, h_pref.trans (h_dir_eq.trans h_pre_eq)⟩
+
+/-! ### §5.6  Chain-induction wrapper -/
+
+/-- Chain-induction wrapper for pointwise position preservation
+    through a `FlowMonoChainIx`. Parallel to `FlowMonoChainIx_preserves_
+    raw_prefix` (`FlowMonoChain/Sync/Invariant.lean §4`) but with
+    `NoOverwriteAtIx m` instead of `SimpleKeyAboveFloorIx`.
+
+    Per Reflection 155: enables `.tokenshape.list` and `.tokenshape.
+    pair` consumers to preserve a specific position above the simpleKey
+    reservation through the rest of the chain. -/
+theorem FlowMonoChainIx_preserves_position_specific {input : String}
+    {s s' : ScannerStateIx input} {n fl₀ : Nat}
+    (h_fmc : FlowMonoChainIx fl₀ s n s')
+    (m : Nat) (h_m : m < s.tokens.size)
+    (h_inv : NoOverwriteAtIx s m) :
+    ∃ (h_size : m < s'.tokens.size),
+      s'.tokens[m]'h_size = s.tokens[m]'h_m := by
+  induction h_fmc with
+  | zero => exact ⟨h_m, rfl⟩
+  | step _ h_snt h_rest ih =>
+    have h_inv_mid := scanNextTokenIx_maintains_NoOverwriteAtIx _ _ h_snt m h_m h_inv
+    obtain ⟨h_step_size, h_step_eq⟩ :=
+      scanNextTokenIx_preserves_position_specific _ _ m h_m h_inv.1 h_snt
+    obtain ⟨h_rest_size, h_rest_eq⟩ := ih h_step_size h_inv_mid
+    exact ⟨h_rest_size, h_rest_eq.trans h_step_eq⟩
 
 end L4YAML.Proofs.Indexed.EmitterScannability.EmitScans
