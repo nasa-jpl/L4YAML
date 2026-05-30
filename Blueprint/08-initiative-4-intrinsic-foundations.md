@@ -1820,18 +1820,53 @@ not in-place axiom-to-theorem promotion — the latter is impossible
 when the axiom's hypothesis is strictly weaker than what the
 stronger lemma derives).
 
-**Next session**: **Step 6f.3b3.roundtrip.maintheorem.body1.tokenshape.pair.keyshape.discharge**
-(consumes the substrate landed below — see Reflection 168). **Discharges
-legacy sorry 9644** (emitPairList first new filtered token is `.key`).
-Mechanical consumption: scan the first key via `emit_scans_in_flow_saved_key`
-(→ `s₁.simpleKey = {N, true}`, `raw[N] = .placeholder`), then the colon's
-`scanValuePrepare` pins `.key` at `N+1`, and the Reflection-166 bulk-prefix +
-`Array_filter_getElem_of_raw_prefix` transfer finishes (plus substrate.d
-`NoOverwriteAt s₂ (N+1)` — vacuous since `scanValuePrepare` cleared the key —
-preserving `N`/`N+1` across the residual chain from `s₂`). Remaining cost:
-a colon-token-effect fact (`raw[N+1] = .key` after `scanNextToken_flow_value`)
-and either a `ScanChain` suffix-factoring lemma or a single-level keyshape
-producer to reach the producer's `s'`. `.body2` (9552, 9646) follows.
+**Next session**: **Step 6f.3b3.roundtrip.maintheorem.body1.tokenshape.pair.body2**
+— **discharges legacy sorries 9646** (`emitPairList` Part 3: after every
+OUTER-LEVEL `.flowEntry`, next is `.key`) and **9552** (`emitList` Part 2, the
+analogous outer-flowEntry obligation). These are the surviving sorries in
+`emitPairList_body_filtered_characterization` (Part 3, line ~13608) and
+`emitList_body_filtered_characterization` (Part 2). The `.key`-after-comma
+fact reuses the same machinery as `.keyshape.discharge`: after an outer-level
+`.flowEntry` the scanner is back at a key-allowed state, so a *second*
+saved-key scan pins `.key` at the post-comma slot. See Reflection 169 for the
+intended reuse of `emitPairList_scans_nonempty_keyshape` / the per-pair
+keyshape argument applied at each comma boundary (likely an induction over the
+pair list rather than the linear two-case split used for the head pair).
+
+**`.body1.tokenshape.pair.keyshape.discharge` LANDED 2026-05-30** — **closes
+legacy sorry 9644** (`emitPairList` first new filtered token is `.key`), full
+project 491/491, the discharged path on the pure triple `[propext,
+Classical.choice, Quot.sound]` (no `sorryAx`, no new axioms). Delivered
+sorry-free in `EmitterScannability.lean`:
+1. **`scanNextToken_flow_value` strengthened** — exposes the colon's token
+   effect: `s'.simpleKey.possible = false`, and (when `ska=false ∧
+   simpleKey.possible` this step) `raw[tokenIndex+1] = .key` with all other
+   in-bounds positions preserved (`getElem?` form, conditional conjuncts so the
+   2 producer call sites just add `, _, _`).
+2. **`keyshape_first_token_key`** — the Part-2 transfer: from the post-key
+   state `s₁` (saved key alive at `N`, `raw[N]=.placeholder`) and post-colon
+   `s₂` (`raw[N+1]=.key`), preserves `N`/`N+1` across the residual
+   `FlowMonoChain` (`FlowNoOverwriteAt` from `SimpleKeyStackValid` — stacked
+   keys pin `tokenIndex+1 < N`), preserves the bulk prefix `[0..N)`, and runs a
+   reference array `s.tokens ++ [ph, .key]` through
+   `Array_filter_getElem_of_raw_prefix`.
+3. **`emitPairList_scans_nonempty_keyshape`** — re-derives the producer bundle
+   (so the residual chain from `s₂` is *in hand*, avoiding chain factoring +
+   the UTF-8 offset-uniqueness rabbit hole) with the first key via the
+   saved-key substrate and the tail via `emitPairList_scans_nonempty`; appends
+   the `.key` Part-2 conjunct via the helper.
+4. **`scanNextToken_flow_open_mapping_init` strengthened** + 4 hypotheses
+   (`EmitScansInFlowSavedKey`, `simpleKeyAllowed`, stack sync,
+   `SimpleKeyStackValid`) threaded through
+   `emitPairList_body_filtered_characterization` →
+   `scanFiltered_emitMap_nonempty_structure` → `parseStream_emitMapping`.
+
+**The factoring approach was abandoned mid-session** (see Reflection 169): the
+`ScanChain.split` suffix-factoring needs `n_key+1 ≤ n_producer`, whose only
+robust proof is an offset comparison `s₂.offset < s'.offset`, which under UTF-8
+needs byte-exact `CharsFromOffset` lemmas (next-position-≤-end is not derivable
+from the `CharsFromOffset` *prop* alone). Re-deriving the bundle sidesteps it
+entirely. `.body2` (9646, 9552) follows.
 
 **`.body1.tokenshape.pair.keyshape.establishing` LANDED 2026-05-30** — builds
 the saved-key-survival substrate (the *new* invariant the indexed world also
@@ -6134,6 +6169,63 @@ transfer with reference array `s.tokens ++ [ph, .key]`. **No new axiom
 debt**: `emit_scans_in_flow_saved_key` is on `[propext, Classical.choice,
 Quot.sound]` plus only the pre-existing `escapeString` scalar-path
 `native_decide` axioms (same profile as `emit_scans_in_flow`).
+
+##### Reflection 169 (new, 2026-05-30): `.keyshape.discharge` closes legacy sorry 9644 by **re-deriving the producer bundle** (not factoring the opaque chain) — the `ScanChain.split` route is blocked by UTF-8 offset-uniqueness, so building the chain with the residual `FlowMonoChain` in hand is the robust path
+
+`.keyshape.discharge` LANDED sorry-free (full project 491/491; the discharged
+path is on the pure triple `[propext, Classical.choice, Quot.sound]` — `#print
+axioms emitPairList_scans_nonempty_keyshape` / `keyshape_first_token_key` show
+no `sorryAx` and no new axioms). The substrate (Reflection 168) consumed
+exactly as planned; the surprise was *how* to reach the producer's `s'`.
+
+**The factoring route is a trap.** Plan (b) offered "a `ScanChain`
+suffix-factoring lemma" to reach the producer's `s'`. `ScanChain.split` exists
+(`split (h₁ : ScanChain s n₁ s₁) (h_total : ScanChain s (n₁+n₂) s₂) : ScanChain
+s₁ n₂ s₂`), but applying it to extract the residual `s₂ → s'` requires
+`n_key+colon ≤ n_producer`. The only robust proof of that step-count bound is
+an *offset* comparison — `s₂.offset < s'.offset` because `s₂` faces strictly
+more remaining input (`emit v ++ tail`) than `s'` (just `rest`). `scanNextToken_progress`
+gives offset-monotone-along-a-chain unconditionally, but turning "more remaining
+chars ⇒ smaller offset" into a usable inequality needs `off + listByteSize chars
+= utf8ByteSize` (or a chars-prefix offset comparison), and **that is not derivable
+from the `CharsFromOffset` proposition alone**: its `cons` constructor permits a
+`next` position past `utf8ByteSize`, so the byte-exact accounting needs string
+*validity* facts the prop doesn't carry. Heuristic banked: **chain factoring by
+a known-prefix scan is blocked under UTF-8 — re-derive the bundle so the
+residual `FlowMonoChain` is in hand instead.**
+
+**Re-deriving the bundle is the move, and it's cheap because the tail reuses the
+plain producer.** `emitPairList_scans_nonempty_keyshape` does NOT recurse: it
+splits `p :: tail` into `[p]` (singleton) and `p :: p' :: ps` (multi), scans the
+first key via the saved-key substrate + the strengthened colon, and for the
+*tail* calls `emitPairList_scans_nonempty (p' :: ps)` (the plain producer). So
+the bundle re-derivation is ~two linear compositions mirroring the producer's own
+two cases — not a fresh induction. The `.key` Part-2 conjunct only concerns the
+*first* pair, so the residual `FlowMonoChain` from the post-colon `s₂` (in hand
+via `.trans`) preserves slots `N`/`N+1` with no factoring.
+
+**Two enabling strengthenings, both additive.** (i) `scanNextToken_flow_value`
+gained `s'.simpleKey.possible = false` + a *conditional* colon-token effect
+(`raw[N+1]=.key`, others preserved, in `getElem?` form) — guarded by
+`ska=false ∧ possible`, so the 2 existing call sites only add `, _, _`. (ii)
+`scanNextToken_flow_open_mapping_init` gained `simpleKeyAllowed = true` +
+`SimpleKeyStackValid` (the sequence init already had both — the proof copies its
+`AllKeysValid s₀ → scanNextToken_preserves_AllKeysValid` argument verbatim).
+Heuristic banked: **when a `_init`/open theorem is missing a field its sibling
+exposes, the sibling's proof bullet ports directly — strengthen rather than
+re-derive at the call site.**
+
+**`.body2` (9646, 9552) is now the natural reuse target**, not new substrate:
+after an outer-level `.flowEntry` the scanner is key-allowed again, so a *second*
+saved-key scan pins `.key` at the post-comma slot — the same
+`keyshape_first_token_key` machinery applied at each comma boundary (probably via
+a pair-list induction rather than the linear head-pair split).
+
+**Reflection 168 → roadmap (superseded by 169)**: plan (a) the colon-token-effect
+fact — done by strengthening `scanNextToken_flow_value`; (b) reaching `s'` — done
+by re-deriving the bundle (NOT factoring; see above); (c) the
+`Array_filter_getElem_of_raw_prefix` transfer with reference array `s.tokens ++
+[ph, .key]` — done inside `keyshape_first_token_key`.
 
 **Step 6f.3b3.emitscans.toplevel SS1 (easy prereqs) LANDED 2026-05-27**
 (~225 LOC across two files: `Endpoint.lean` §6 ~200 LOC +
@@ -17619,23 +17711,29 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 (`…characterizationIx_part1`) *also* deferred both `n ≥ 3`
                 and `.key`, so `.key` has no template. Re-scoped below.
 
-                ▹▹▹ **.body1.tokenshape.pair.keyshape** *(NEW, est.
-                ~300–500 LOC; closes legacy sorry 9644)*. Builds a new
-                `Grammable`-induction strong predicate proving that scanning
-                `emit v` in flow from `simpleKeyAllowed = true` leaves
-                `simpleKey.possible = true ∧ simpleKey.tokenIndex =
-                s.tokens.size` (saved key **survives** a node scan at its
-                reserved slot — for composite nodes via the flow-stack
-                push-on-open / restore-on-close discipline). This is a
-                *new* invariant (exact-`tokenIndex` survival), distinct from
-                SKDR's non-resolution and from `SimpleKeyAboveFloor`'s `≥ n`
-                lower bound — the same flavour of substrate as
-                `.substrate.{a–g}`. The colon's `scanValuePrepare` then pins
-                `.key` at `N+1`; the bulk-prefix + `Array_filter_getElem_of_raw_prefix`
-                transfer from Reflection 166 finishes, plus a
-                `setIfInBounds`-at-`N+1` preservation across the residual
-                `FlowMonoChain` from `s₂` (substrate.d, `NoOverwriteAt s₂
-                (N+1)` vacuous since `scanValuePrepare` cleared the key).
+                ▹▹▹ **.body1.tokenshape.pair.keyshape.establishing**
+                **LANDED 2026-05-30 (~530 net LOC)** — the saved-key-survival
+                substrate `EmitScansInFlowSavedKey` + `emit_scans_in_flow_saved_key`
+                (`Grammable` induction; composite nodes via the flow-stack
+                push-on-open / floor-preserve-body / restore-on-close
+                discipline). The *new* invariant (exact-`tokenIndex` survival)
+                the indexed world also deferred. Sorry-free; closes no legacy
+                sorry on its own (substrate only). See Reflection 168.
+
+                ▹▹▹ **.body1.tokenshape.pair.keyshape.discharge**
+                **LANDED 2026-05-30 (~590 net LOC); closes legacy sorry 9644**
+                (`emitPairList` first new filtered token is `.key`). Strengthened
+                `scanNextToken_flow_value` (colon `.key` token effect) +
+                `scanNextToken_flow_open_mapping_init` (ska/`SimpleKeyStackValid`);
+                added `keyshape_first_token_key` (filter transfer via reference
+                array `s.tokens ++ [ph, .key]`) and `emitPairList_scans_nonempty_keyshape`
+                (re-derives the bundle so the residual `FlowMonoChain` from `s₂`
+                is in hand — the chain-factoring route is blocked by UTF-8
+                offset-uniqueness). Threaded `EmitScansInFlowSavedKey` +
+                ska/sync/`SimpleKeyStackValid` through the characterization →
+                emitMap-structure → parseStream-emitMapping. Full project
+                491/491; discharged path on the pure triple, no new axioms. See
+                Reflection 169.
 
                 ▹▹ **.body2** *(estimated ~300–500 LOC)*.
                 **Outer-level flowEntry next-token claims** — closes
@@ -17649,15 +17747,16 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
-                **Total .body scope re-estimate (SEVENTEENTH revision —
+                **Total .body scope re-estimate (EIGHTEENTH revision —
                 after `.substrate.{a,b,c,d,e,f,g}` + `.establishing.
                 {converters,consumer}` + `.tokenshape.list.discharge` +
                 `.tokenshape.pair` PART 1 + `.tokenshape.pair.keyshape.
-                establishing` ALL LANDED; legacy sorries 9550 and 9638 CLOSED.
-                `.keyshape` split into `.establishing` (saved-key-survival
-                substrate — LANDED ~530) + `.keyshape.discharge` (consume to
-                close 9644 — NEW), mirroring the list's establishing/discharge
-                split — Reflection 168)**:
+                {establishing,discharge}` ALL LANDED; legacy sorries 9550, 9638
+                AND 9644 CLOSED. `.keyshape.discharge` came in at ~590 (above
+                its ~150–250 re-estimate) because the factoring route was
+                blocked by UTF-8 offset-uniqueness, forcing a full bundle
+                re-derivation + 2 scanner-theorem strengthenings — Reflection
+                169. Only `.body2` (9646, 9552) remains)**:
                 ~3760–4975 LOC across **15 sub-sessions** (`.scaffold`
                 [LANDED 206] + `.tokenshape.substrate.a` [LANDED 470]
                 + `.tokenshape.substrate.b` [LANDED 226]
@@ -17692,10 +17791,14 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                   strengthened scanner theorems exposing the restored/pushed
                   key and close-prefix; sorry-free, full project 491/491,
                   no new axioms — Reflection 168]
-                + `.tokenshape.pair.keyshape.discharge` [NEW ~150–250 —
-                  closes legacy sorry 9644 (`.key`) by consuming the substrate:
-                  colon `.key` pin + bulk-prefix `Array_filter_getElem_of_raw_prefix`
-                  transfer + reaching the producer's `s'`, Reflection 168]
+                + `.tokenshape.pair.keyshape.discharge` [LANDED ~590 —
+                  closes legacy sorry 9644 (`.key`): strengthened
+                  `scanNextToken_flow_value` (colon `.key` effect) +
+                  `scanNextToken_flow_open_mapping_init` (ska/SimpleKeyStackValid);
+                  `keyshape_first_token_key` (reference-array filter transfer) +
+                  `emitPairList_scans_nonempty_keyshape` (re-derives the bundle —
+                  factoring blocked by UTF-8 offset-uniqueness); +4 threaded
+                  hyps. Pure-triple discharged path, Reflection 169]
                 + `.body2` [~300–500]),
                 vs. Blueprint-original 400–700 LOC in 1 session.
                 Cumulative underestimate factor: **~6.4–7.2×**
