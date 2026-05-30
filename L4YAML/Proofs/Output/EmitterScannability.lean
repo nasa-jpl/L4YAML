@@ -13500,6 +13500,134 @@ theorem SafeBody_array_flowEntry {Q : YamlToken → Prop}
     omega
   rw [← h_get]; exact hQ
 
+/-! #### Well-bracketed blocks (`.body2.discharge.wbalgebra`)
+
+`WellBracketed` is the Dyck-word condition on flow brackets: total balance `0`
+with every prefix balance `≥ 0`. It is the recursive invariant a scanned
+`emit v` block satisfies — closed under concatenation (so a body of blocks +
+`.flowEntry` separators stays well-bracketed) and under wrapping a
+`WellBracketed` interior in a matching `[ ]`/`{ }` pair. The wrapping lemma
+additionally yields `EntrySafe` (the per-entry obligation `SafeBody` consumes):
+inside a bracket pair every interior `.flowEntry` sits at balance `≥ 1`.
+
+These are pure `pbalance` combinatorics. The scanner side — producing a
+`WellBracketed` filtered delta from `emit v`, which threads delta-tracking
+through `emit_scans_in_flow` and the list/pairlist producers — is
+`.body2.discharge.bridge`. -/
+
+/-- Dyck condition on flow brackets: balanced, with all prefix balances `≥ 0`. -/
+def WellBracketed (l : List (Positioned YamlToken)) : Prop :=
+  pbalance l = 0 ∧ ∀ (i : Nat), pbalance (l.take i) ≥ 0
+
+theorem WellBracketed_nil : WellBracketed [] := by
+  refine ⟨pbalance_nil, fun i => ?_⟩
+  simp [List.take_nil, pbalance_nil]
+
+/-- Prefix balance of a concatenation splits additively. -/
+theorem pbalance_take_append (a b : List (Positioned YamlToken)) (i : Nat) :
+    pbalance ((a ++ b).take i) = pbalance (a.take i) + pbalance (b.take (i - a.length)) := by
+  rw [List.take_append, pbalance_append]
+
+/-- Prefix balance of a singleton: `0` (empty prefix) or its delta. -/
+theorem pbalance_take_singleton (t : Positioned YamlToken) (j : Nat) :
+    pbalance ([t].take j) = if j = 0 then 0 else flowBracketDelta t.val := by
+  match j with
+  | 0 => simp [pbalance_nil]
+  | k + 1 => simp [List.take_succ_cons, pbalance_singleton]
+
+/-- A single token of zero delta (scalar, `:`, `.value`, …) is well-bracketed. -/
+theorem WellBracketed_singleton_delta_zero (t : Positioned YamlToken)
+    (h : flowBracketDelta t.val = 0) : WellBracketed [t] := by
+  refine ⟨by rw [pbalance_singleton, h], fun i => ?_⟩
+  rw [pbalance_take_singleton]
+  split <;> omega
+
+/-- `WellBracketed` is closed under concatenation. -/
+theorem WellBracketed_append (a b : List (Positioned YamlToken))
+    (ha : WellBracketed a) (hb : WellBracketed b) : WellBracketed (a ++ b) := by
+  refine ⟨?_, fun i => ?_⟩
+  · have := ha.1; have := hb.1; rw [pbalance_append]; omega
+  · rw [pbalance_take_append]
+    have h1 := ha.2 i; have h2 := hb.2 (i - a.length); omega
+
+/-- **Wrapping lemma.** A `WellBracketed` interior framed by a matching opener
+    (delta `+1`) and closer (delta `-1`) is both `WellBracketed` and `EntrySafe`.
+    The `EntrySafe` half is the payoff: every interior `.flowEntry` is at
+    balance `≥ 1` because the opener already contributes `+1`. -/
+theorem wrap_block (op cl : Positioned YamlToken) (body : List (Positioned YamlToken))
+    (h_op : flowBracketDelta op.val = 1) (h_cl : flowBracketDelta cl.val = -1)
+    (h_body : WellBracketed body) :
+    WellBracketed (op :: (body ++ [cl])) ∧ EntrySafe (op :: (body ++ [cl])) := by
+  -- total balance: 1 + (0 + -1) = 0
+  have h_total : pbalance (op :: (body ++ [cl])) = 0 := by
+    rw [pbalance_cons, pbalance_append, pbalance_singleton, h_op, h_cl]
+    have := h_body.1; omega
+  -- prefix balances ≥ 0
+  have h_pref : ∀ i, pbalance ((op :: (body ++ [cl])).take i) ≥ 0 := by
+    intro i
+    match i with
+    | 0 => simp [List.take_zero, pbalance_nil]
+    | m + 1 =>
+      rw [List.take_succ_cons, pbalance_cons, h_op, pbalance_take_append,
+          pbalance_take_singleton]
+      have hbody := h_body.2 m
+      split <;> omega
+  refine ⟨⟨h_total, h_pref⟩, h_total, ?_⟩
+  -- EntrySafe interior: a `.flowEntry` can only sit in `body`, at balance ≥ 1
+  intro idx h_idx h_fe
+  match idx, h_idx, h_fe with
+  | 0, h_idx, h_fe =>
+    exfalso
+    have hv : ((op :: (body ++ [cl]))[0]'h_idx).val = op.val := rfl
+    rw [hv] at h_fe
+    have hd := h_op
+    rw [h_fe, flowBracketDelta_flowEntry] at hd
+    omega
+  | m + 1, h_idx, h_fe =>
+    have h_m_lt : m < (body ++ [cl]).length := by
+      rw [List.length_cons] at h_idx; omega
+    have hv : ((op :: (body ++ [cl]))[m + 1]'h_idx).val = ((body ++ [cl])[m]'h_m_lt).val := by
+      rw [List.getElem_cons_succ]
+    rw [hv] at h_fe
+    rcases Nat.lt_or_ge m body.length with hlt | hge
+    · -- genuine interior flowEntry: balance = 1 + (body prefix ≥ 0) ≥ 1
+      rw [List.take_succ_cons, pbalance_cons, h_op, pbalance_take_append,
+          show m - body.length = 0 from by omega, List.take_zero, pbalance_nil]
+      have := h_body.2 m
+      omega
+    · -- m = body.length: the token is the closer, not a flowEntry — contradiction
+      exfalso
+      have h_m_eq : m = body.length := by
+        rw [List.length_append] at h_m_lt
+        have : ([cl]).length = 1 := rfl
+        omega
+      have hcl_v : ((body ++ [cl])[m]'h_m_lt).val = cl.val := by
+        have e : (body ++ [cl])[m]? = some cl := by
+          rw [List.getElem?_append_right (by omega), h_m_eq,
+              show body.length - body.length = 0 from by omega]
+          rfl
+        rw [List.getElem?_eq_getElem h_m_lt] at e
+        exact congrArg (·.val) (Option.some.inj e)
+      rw [hcl_v] at h_fe
+      have hd := h_cl
+      rw [h_fe, flowBracketDelta_flowEntry] at hd
+      omega
+
+/-- A scalar entry (a single non-`.flowEntry`, delta-`0` token) is `EntrySafe`.
+    The `≠ .flowEntry` premise is essential: a singleton `.flowEntry` would have
+    its sole token at prefix balance `0`, violating the `≥ 1` interior condition. -/
+theorem EntrySafe_singleton (t : Positioned YamlToken)
+    (h_delta : flowBracketDelta t.val = 0) (h_ne : t.val ≠ .flowEntry) : EntrySafe [t] := by
+  refine ⟨by rw [pbalance_singleton, h_delta], fun i h_i h_fe => ?_⟩
+  -- a singleton's only index is 0, and its value is not a flowEntry
+  match i, h_i, h_fe with
+  | 0, _, h_fe =>
+    exfalso
+    have hv : (([t])[0]'(by simp)).val = t.val := rfl
+    rw [hv] at h_fe
+    exact h_ne h_fe
+  | k + 1, h_i, _ => simp at h_i
+
 -- ═══ Filtered token lemmas for scanner handlers ═══
 
 /-- `scanFlowSequenceStart` filtered token equation: adds exactly one `.flowSequenceStart`. -/
