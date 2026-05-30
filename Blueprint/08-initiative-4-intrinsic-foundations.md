@@ -1820,18 +1820,42 @@ not in-place axiom-to-theorem promotion — the latter is impossible
 when the axiom's hypothesis is strictly weaker than what the
 stronger lemma derives).
 
-**Next session**: **Step 6f.3b3.roundtrip.maintheorem.body1.tokenshape.pair.body2**
+**Next session**: **Step 6f.3b3.roundtrip.maintheorem.body1.tokenshape.pair.body2.discharge**
 — **discharges legacy sorries 9646** (`emitPairList` Part 3: after every
 OUTER-LEVEL `.flowEntry`, next is `.key`) and **9552** (`emitList` Part 2, the
-analogous outer-flowEntry obligation). These are the surviving sorries in
-`emitPairList_body_filtered_characterization` (Part 3, line ~13608) and
-`emitList_body_filtered_characterization` (Part 2). The `.key`-after-comma
-fact reuses the same machinery as `.keyshape.discharge`: after an outer-level
-`.flowEntry` the scanner is back at a key-allowed state, so a *second*
-saved-key scan pins `.key` at the post-comma slot. See Reflection 169 for the
-intended reuse of `emitPairList_scans_nonempty_keyshape` / the per-pair
-keyshape argument applied at each comma boundary (likely an induction over the
-pair list rather than the linear two-case split used for the head pair).
+analogous outer-flowEntry obligation, next is a content-start). These are the
+surviving sorries in `emitPairList_body_filtered_characterization` (Part 3) and
+`emitList_body_filtered_characterization` (Part 2). The `.body2.establishing`
+balance-algebra substrate is now in hand (see below + Reflection 170): the
+remaining work is **scanner threading** — (1) prove each scanned `emit v` block is
+`EntrySafe` (bracket-balanced with strictly-positive interior, by `Grammable`
+induction — this is the well-bracketedness of scanner output for emitter input,
+the genuinely new substrate that both worlds deferred); (2) assemble the body's
+filtered token slice as a `SafeBody Q` (entries = per-item / per-pair blocks,
+separators = the `, ` commas, `Q` = content-start for sequences / `.key` for
+mappings — the per-entry head facts already exist via Part-1 / the keyshape
+producer); (3) apply `SafeBody_array_flowEntry` at the two sorry sites. **Do NOT
+attempt `ScanChain.split`-style factoring (Reflection 169) nor a per-comma
+keyshape reapplication (Reflection 170 corrects 169's estimate — that route
+cannot rule out inner flowEntries).** See Reflection 170 for the scope split and
+the three banked Lean-tactic heuristics.
+
+**`.body1.tokenshape.pair.body2.establishing` LANDED 2026-05-30** — the pure
+`flowBracketBalance` balance-algebra core for the outer-flowEntry
+characterizations (legacy 9646 / 9552), full project 491/491, all new lemmas on
+the pure triple `[propext, Classical.choice, Quot.sound]` (no `sorryAx`, no new
+axioms — `SafeBody.head_Q` / `flowBracketBalance_eq_pbalance` / `pbalance_append`
+need only `[propext, Quot.sound]`). Closes **zero** legacy sorries (pure
+enablement — 9646 / 9552 remain for `.discharge`). Delivered, sorry-free, in
+`EmitterScannability.lean` §G.balance (~190 LOC, before the body-characterization
+theorems): `pbalance` + `pbalance_append`/`_cons`/`_singleton`; `EntrySafe`;
+the `SafeBody Q` inductive + `SafeBody.head_Q`; the payoff
+`SafeBody_flowEntry_zero_balance` (only balance-0 flowEntries are separators, each
+followed by a `Q`-head); the bridge `flowBracketBalance_eq_pbalance`; and the
+consumer-shaped wrapper `SafeBody_array_flowEntry`. **`.body2` was split
+`.establishing` → `.discharge`** because the outer-flowEntry claims need a
+well-bracketedness substrate deferred in both worlds, not a `.keyshape` reuse
+(Reflection 170 corrects Reflection 169's estimate).
 
 **`.body1.tokenshape.pair.keyshape.discharge` LANDED 2026-05-30** — **closes
 legacy sorry 9644** (`emitPairList` first new filtered token is `.key`), full
@@ -6226,6 +6250,66 @@ fact — done by strengthening `scanNextToken_flow_value`; (b) reaching `s'` —
 by re-deriving the bundle (NOT factoring; see above); (c) the
 `Array_filter_getElem_of_raw_prefix` transfer with reference array `s.tokens ++
 [ph, .key]` — done inside `keyshape_first_token_key`.
+
+##### Reflection 170 (new, 2026-05-30): `.body2` is *not* a reuse of `.keyshape` — it needs a **well-bracketed-body substrate** (deferred in BOTH the legacy and indexed worlds), so split it `.establishing` (pure balance algebra) → `.discharge` (scanner threading), exactly as `.keyshape` was
+
+Reflection 169 predicted `.body2` (legacy sorries 9646 / 9552 — "after every
+*outer-level* `.flowEntry`, next is `.key` / content-start") would be a cheap
+reuse of `keyshape_first_token_key` "applied at each comma boundary." **That
+estimate was wrong, and the wrongness has a clear tell.** The Part-2/Part-3
+outer-flowEntry claims are `sorry` in the legacy world *and* deferred (never
+even scaffolded) in the indexed world (`RoundTrip.lean §5.4.G.6`:
+"The Part-2 outer-level-flowEntry claims are deferred to `.body2`"). **When the
+same obligation is open on both substrates, it is missing *machinery*, not a
+port — treat it as new-substrate work and scope accordingly.**
+
+**Why the reuse doesn't close it.** The claim quantifies over *every* `k` with
+`flowBracketBalance old_sz k = 0 ∧ filtered[k] = .flowEntry`. Discharging it
+needs to *rule out* inner (nested) flowEntries — which requires knowing every
+`emit v` block is bracket-balanced with **strictly positive interior** (so an
+inner flowEntry sits at balance ≥ 1, contradicting `= 0`). That positive-interior
+fact is exactly the well-bracketedness of scanner output for emitter input — a
+recursive invariant over `YamlValue` that no producer currently tracks. The
+`.keyshape` machinery gives the *first* token after a known position; it says
+nothing about balance, so it cannot enumerate which flowEntries are outer.
+
+**The split.** `.establishing` (this session, ~190 LOC, sorry-free, pure triple)
+lands the **combinatorial core as pure `flowBracketBalance` algebra**, divorced
+from the scanner: `pbalance` (list balance), `EntrySafe e` (entry balanced + every
+interior `.flowEntry` at balance ≥ 1), `SafeBody Q` (inductive: nonempty
+`EntrySafe` entries with `Q`-heads separated by single `.flowEntry` tokens), and
+the payoff `SafeBody_flowEntry_zero_balance` — *the only* balance-0 flowEntries
+are the separators, each followed by an entry head (∴ `Q`). The array/offset
+wrapper `SafeBody_array_flowEntry` restates it against `flowBracketBalance arr lo`
+(the exact shape the body characterizations consume), bridged by
+`flowBracketBalance_eq_pbalance`. `.discharge` (next) does the heavy scanner
+threading: prove each scanned `emit v` block is `EntrySafe` (positive-interior
+well-bracketedness, by `Grammable` induction) and assemble the body `SafeBody`,
+then apply the wrapper at the two sorry sites. **Landing the pure core first
+de-risks the threading: the riskiest combinatorics are proven before touching the
+giant emit-scans recursion.**
+
+**Three Lean-tactic heuristics banked (all from the `SafeBody` proofs):**
+1. **`cases h with | ctor field…` mis-binds when a constructor field IS the
+   family index.** `SafeBody.single (e) … : SafeBody Q e` — the index `e`
+   unifies with the scrutinee variable and is *not* re-introduced as a separate
+   hyp, so the pattern names shift by one and `e` reads as "unknown identifier."
+   **`induction h with | single e …` binds the index field correctly** (it did,
+   in the same file's main lemma). Use `induction`, not `cases`, to name an
+   indexed-family's index field.
+2. **`subst k = |e|+1+m` beats `rw [show k = …]` when the rewrite target is a
+   compound term that recurs inside the goal.** Rewriting `k - e.length →
+   (k-e.length-1)+1` also hits the RHS index `rest[k-e.length-1]` (which
+   contains `k-e.length`), corrupting it → "unsolved goals." Destructuring `k`
+   into `|e|+1+m` via `obtain … ; subst` makes every offset clean with no
+   self-clash.
+3. **`getElem?` + `Option.some.inj` dodges the dependent-getElem motive trap for
+   index equalities.** To prove `(e ++ fe :: rest)[i]'h = rest[j]'h'`, prove the
+   `[i]? = [j]?` equation (no bound-proof in the motive, so index `rw`s are
+   safe), then `rw [getElem?_eq_getElem h, getElem?_eq_getElem h']` and
+   `Option.some.inj`. The lemma set: `List.getElem?_append_right`,
+   `List.getElem?_cons_succ`, `List.take_append`, `List.take_succ_cons`,
+   `List.take_of_length_le`.
 
 **Step 6f.3b3.emitscans.toplevel SS1 (easy prereqs) LANDED 2026-05-27**
 (~225 LOC across two files: `Endpoint.lean` §6 ~200 LOC +
@@ -17747,17 +17831,22 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
-                **Total .body scope re-estimate (EIGHTEENTH revision —
+                **Total .body scope re-estimate (NINETEENTH revision —
                 after `.substrate.{a,b,c,d,e,f,g}` + `.establishing.
                 {converters,consumer}` + `.tokenshape.list.discharge` +
                 `.tokenshape.pair` PART 1 + `.tokenshape.pair.keyshape.
-                {establishing,discharge}` ALL LANDED; legacy sorries 9550, 9638
-                AND 9644 CLOSED. `.keyshape.discharge` came in at ~590 (above
-                its ~150–250 re-estimate) because the factoring route was
-                blocked by UTF-8 offset-uniqueness, forcing a full bundle
-                re-derivation + 2 scanner-theorem strengthenings — Reflection
-                169. Only `.body2` (9646, 9552) remains)**:
-                ~3760–4975 LOC across **15 sub-sessions** (`.scaffold`
+                {establishing,discharge}` + `.body2.establishing` ALL LANDED;
+                legacy sorries 9550, 9638 AND 9644 CLOSED. `.keyshape.discharge`
+                came in at ~590 (above its ~150–250 re-estimate) because the
+                factoring route was blocked by UTF-8 offset-uniqueness, forcing a
+                full bundle re-derivation + 2 scanner-theorem strengthenings —
+                Reflection 169. `.body2` itself SPLIT `.establishing` →
+                `.discharge` (Reflection 170): the outer-flowEntry claims need a
+                well-bracketed-body substrate deferred in BOTH worlds, not a
+                `.keyshape` reuse. `.body2.establishing` LANDED the pure
+                balance-algebra core; only `.body2.discharge` (9646, 9552)
+                remains)**:
+                ~3760–4975 LOC across **16 sub-sessions** (`.scaffold`
                 [LANDED 206] + `.tokenshape.substrate.a` [LANDED 470]
                 + `.tokenshape.substrate.b` [LANDED 226]
                 + `.tokenshape.substrate.c` [LANDED ~570]
@@ -17799,7 +17888,18 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                   `emitPairList_scans_nonempty_keyshape` (re-derives the bundle —
                   factoring blocked by UTF-8 offset-uniqueness); +4 threaded
                   hyps. Pure-triple discharged path, Reflection 169]
-                + `.body2` [~300–500]),
+                + `.body2.establishing` [LANDED ~190 —
+                  pure `flowBracketBalance` balance-algebra core for the
+                  outer-flowEntry claims: `pbalance` + `EntrySafe` + the
+                  `SafeBody Q` inductive + `SafeBody_flowEntry_zero_balance`
+                  (only balance-0 flowEntries are separators, each followed by a
+                  `Q`-head) + `flowBracketBalance_eq_pbalance` bridge +
+                  `SafeBody_array_flowEntry` consumer wrapper; sorry-free, full
+                  project 491/491, pure triple. Closes ZERO legacy sorries — the
+                  combinatorial core, divorced from the scanner. Reflection 170]
+                + `.body2.discharge` [~300–500 — closes 9646, 9552: scanner
+                  threading to produce per-block `EntrySafe` + assemble the body
+                  `SafeBody`, then apply the wrapper]),
                 vs. Blueprint-original 400–700 LOC in 1 session.
                 Cumulative underestimate factor: **~6.4–7.2×**
                 (the combined `.converters` [LANDED ~115] + `.consumer`

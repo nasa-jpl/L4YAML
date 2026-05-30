@@ -13296,6 +13296,210 @@ theorem scanFiltered_boundary_tokens (input : String)
 open L4YAML.Proofs.ParserGrammable (flowBracketDelta flowBracketBalance
   flowBracketBalance_compose flowBracketBalance_push)
 
+/-! ### §G.balance  Well-bracketed body algebra (`.body2.establishing`)
+
+Pure `flowBracketBalance`-level combinatorics underpinning the outer-level
+flowEntry characterizations (legacy sorries 9646 / 9552).
+
+An emitter *body* (the content between `[`/`]` or `{`/`}`) is a list of
+**entries** — one per sequence item or one `key: value` pair — separated by
+single `.flowEntry` tokens (the `", "` comma separators). Each entry is
+`EntrySafe`: its total bracket balance is `0` and every `.flowEntry` strictly
+inside it sits at running balance `≥ 1` (so it is an *inner* flowEntry, not an
+outer-level one). `SafeBody Q` bundles a body whose entries are all `EntrySafe`
+and whose heads all satisfy a predicate `Q` (instantiated downstream to
+"content-start" for sequences and ".key" for mappings).
+
+The main lemma `SafeBody_flowEntry_zero_balance` shows the *only* balance-0
+flowEntries in such a body are the separators, and each is immediately followed
+by an entry head (hence satisfies `Q`). The array/offset wrapper
+`SafeBody_array_flowEntry` restates this against `flowBracketBalance` on the
+filtered token array with a base offset `lo`, the exact shape the body
+characterization theorems consume.
+
+The scanner side — producing a `SafeBody` from emit output, which needs the
+per-`emit v` block to be shown bracket-balanced with positive interior — is
+`.body2.discharge`. -/
+
+/-- Cumulative flow-bracket balance of a positioned-token list. -/
+def pbalance (l : List (Positioned YamlToken)) : Int :=
+  l.foldl (fun acc t => acc + flowBracketDelta t.val) 0
+
+theorem pbalance_nil : pbalance [] = 0 := rfl
+
+theorem pbalance_append (a b : List (Positioned YamlToken)) :
+    pbalance (a ++ b) = pbalance a + pbalance b := by
+  unfold pbalance
+  rw [List.foldl_append,
+      foldl_add_shift b (fun t => flowBracketDelta t.val) (a.foldl _ 0)]
+
+theorem pbalance_singleton (t : Positioned YamlToken) :
+    pbalance [t] = flowBracketDelta t.val := by
+  simp [pbalance, List.foldl]
+
+theorem pbalance_cons (t : Positioned YamlToken) (l : List (Positioned YamlToken)) :
+    pbalance (t :: l) = flowBracketDelta t.val + pbalance l := by
+  have h : t :: l = [t] ++ l := rfl
+  rw [h, pbalance_append, pbalance_singleton]
+
+/-- `.flowEntry` contributes `0` to the bracket balance. -/
+theorem flowBracketDelta_flowEntry : flowBracketDelta .flowEntry = 0 := rfl
+
+/-- An emitter *entry* (one sequence item, or one mapping `key: value` pair):
+    bracket-balanced overall, with every interior `.flowEntry` at balance `≥ 1`. -/
+def EntrySafe (e : List (Positioned YamlToken)) : Prop :=
+  pbalance e = 0 ∧
+  ∀ (i : Nat) (h : i < e.length), (e[i]'h).val = .flowEntry → pbalance (e.take i) ≥ 1
+
+/-- A flow body: nonempty `EntrySafe` entries with `Q`-satisfying heads,
+    separated by single `.flowEntry` tokens. -/
+inductive SafeBody (Q : YamlToken → Prop) : List (Positioned YamlToken) → Prop
+  | single (e : List (Positioned YamlToken)) (h_ne : e ≠ [])
+      (h_safe : EntrySafe e) (h_head : Q (e.head h_ne).val) : SafeBody Q e
+  | cons (e : List (Positioned YamlToken)) (fe : Positioned YamlToken)
+      (rest : List (Positioned YamlToken)) (h_ne : e ≠ [])
+      (h_safe : EntrySafe e) (h_head : Q (e.head h_ne).val)
+      (h_fe : fe.val = .flowEntry) (h_rest : SafeBody Q rest) :
+      SafeBody Q (e ++ fe :: rest)
+
+/-- The head of a `SafeBody` exists and satisfies `Q`. -/
+theorem SafeBody.head_Q {Q : YamlToken → Prop} {l : List (Positioned YamlToken)}
+    (h : SafeBody Q l) : ∃ (hl : 0 < l.length), Q (l[0]'hl).val := by
+  have key : ∀ (e : List (Positioned YamlToken)) (h_ne : e ≠ []),
+      ∃ (hl : 0 < e.length), (e[0]'hl) = e.head h_ne := by
+    intro e h_ne
+    match e, h_ne with
+    | a :: as, _ => exact ⟨by simp, rfl⟩
+  induction h with
+  | single e h_ne h_safe h_head =>
+    obtain ⟨hl, he⟩ := key e h_ne
+    exact ⟨hl, he ▸ h_head⟩
+  | cons e fe rest h_ne h_safe h_head h_fe h_rest _ih =>
+    obtain ⟨hl0, he⟩ := key e h_ne
+    have hl : 0 < (e ++ fe :: rest).length := by rw [List.length_append]; omega
+    refine ⟨hl, ?_⟩
+    have hidx : (e ++ fe :: rest)[0]'hl = e[0]'hl0 := List.getElem_append_left hl0
+    rw [hidx, he]; exact h_head
+
+/-- **Main balance lemma.** In a `SafeBody`, every balance-0 `.flowEntry` is a
+    separator, immediately followed by an entry head (which satisfies `Q`). -/
+theorem SafeBody_flowEntry_zero_balance {Q : YamlToken → Prop}
+    {body : List (Positioned YamlToken)} (h : SafeBody Q body) :
+    ∀ (k : Nat) (hk : k < body.length),
+      (body[k]'hk).val = .flowEntry → pbalance (body.take k) = 0 →
+      ∃ (hk1 : k + 1 < body.length), Q (body[k+1]'hk1).val := by
+  induction h with
+  | single e h_ne h_safe h_head =>
+    intro k hk h_fe h_bal
+    have := h_safe.2 k hk h_fe
+    omega
+  | cons e fe rest h_ne h_safe h_head h_fe h_rest ih =>
+    intro k hk h_fek h_bal
+    have h_len : (e ++ fe :: rest).length = e.length + 1 + rest.length := by
+      simp [List.length_append]; omega
+    rcases Nat.lt_trichotomy k e.length with hlt | heq | hgt
+    · -- inside `e`: flowEntry there has balance ≥ 1, contradicting = 0
+      exfalso
+      have hbody_k : (e ++ fe :: rest)[k]'hk = e[k]'hlt := List.getElem_append_left hlt
+      have hek_fe : (e[k]'hlt).val = .flowEntry := by rw [← hbody_k]; exact h_fek
+      have htake : (e ++ fe :: rest).take k = e.take k := by
+        rw [List.take_append, show k - e.length = 0 from by omega,
+            List.take_zero, List.append_nil]
+      rw [htake] at h_bal
+      have := h_safe.2 k hlt hek_fe
+      omega
+    · -- the separator at `k = e.length`: next is the head of `rest`
+      subst heq
+      obtain ⟨hr0, hQ⟩ := h_rest.head_Q
+      have hk1 : e.length + 1 < (e ++ fe :: rest).length := by rw [h_len]; omega
+      refine ⟨hk1, ?_⟩
+      have hidx : (e ++ fe :: rest)[e.length + 1]'hk1 = rest[0]'hr0 := by
+        have h1 : (e ++ fe :: rest)[e.length + 1]? = rest[0]? := by
+          rw [List.getElem?_append_right (by omega),
+              show e.length + 1 - e.length = 0 + 1 from by omega, List.getElem?_cons_succ]
+        rw [List.getElem?_eq_getElem hk1, List.getElem?_eq_getElem hr0] at h1
+        exact Option.some.inj h1
+      rw [hidx]; exact hQ
+    · -- after the separator: write `k = |e| + 1 + m`, the offset `m` into `rest`
+      obtain ⟨m, hm⟩ : ∃ m, k = e.length + 1 + m := ⟨k - e.length - 1, by omega⟩
+      subst hm
+      have hk_rest : m < rest.length := by rw [h_len] at hk; omega
+      -- body[|e|+1+m] = rest[m]
+      have hbody_k : (e ++ fe :: rest)[e.length + 1 + m]'hk = rest[m]'hk_rest := by
+        have h1 : (e ++ fe :: rest)[e.length + 1 + m]? = rest[m]? := by
+          rw [List.getElem?_append_right (by omega),
+              show e.length + 1 + m - e.length = m + 1 from by omega, List.getElem?_cons_succ]
+        rw [List.getElem?_eq_getElem hk, List.getElem?_eq_getElem hk_rest] at h1
+        exact Option.some.inj h1
+      have h_rest_fe : (rest[m]'hk_rest).val = .flowEntry := by
+        rw [← hbody_k]; exact h_fek
+      -- balance(take (|e|+1+m)) = pbalance e + delta fe + pbalance (rest.take m) = pbalance (rest.take m)
+      have htake : (e ++ fe :: rest).take (e.length + 1 + m) = e ++ fe :: rest.take m := by
+        rw [List.take_append, List.take_of_length_le (show e.length ≤ e.length + 1 + m from by omega),
+            show e.length + 1 + m - e.length = m + 1 from by omega, List.take_succ_cons]
+      have h_bal' : pbalance (rest.take m) = 0 := by
+        rw [htake, pbalance_append, pbalance_cons, h_safe.1, h_fe,
+            flowBracketDelta_flowEntry] at h_bal
+        omega
+      obtain ⟨hj1, hQ⟩ := ih m hk_rest h_rest_fe h_bal'
+      have hk1 : e.length + 1 + m + 1 < (e ++ fe :: rest).length := by rw [h_len]; omega
+      refine ⟨hk1, ?_⟩
+      have hidx : (e ++ fe :: rest)[e.length + 1 + m + 1]'hk1 = rest[m + 1]'hj1 := by
+        have h1 : (e ++ fe :: rest)[e.length + 1 + m + 1]? = rest[m + 1]? := by
+          rw [List.getElem?_append_right (by omega),
+              show e.length + 1 + m + 1 - e.length = (m + 1) + 1 from by omega,
+              List.getElem?_cons_succ]
+        rw [List.getElem?_eq_getElem hk1, List.getElem?_eq_getElem hj1] at h1
+        exact Option.some.inj h1
+      rw [hidx]; exact hQ
+
+/-- Bridge: `flowBracketBalance` on an array slice equals `pbalance` of the
+    corresponding `drop`/`take` of its `toList`. -/
+theorem flowBracketBalance_eq_pbalance (arr : Array (Positioned YamlToken))
+    (lo k : Nat) (h : lo ≤ k) :
+    flowBracketBalance arr lo k = pbalance ((arr.toList.drop lo).take (k - lo)) := by
+  unfold flowBracketBalance pbalance
+  split
+  · rename_i hge
+    have : k - lo = 0 := by omega
+    rw [this, List.take_zero]; rfl
+  · rfl
+
+/-- **Array/offset wrapper.** Restates `SafeBody_flowEntry_zero_balance` against
+    `flowBracketBalance` on the filtered token array with base offset `lo`,
+    matching the body-characterization consumers. -/
+theorem SafeBody_array_flowEntry {Q : YamlToken → Prop}
+    (arr : Array (Positioned YamlToken)) (lo : Nat)
+    (h : SafeBody Q (arr.toList.drop lo)) :
+    ∀ (k : Nat), lo ≤ k → (hk : k < arr.size) →
+      (arr[k]'hk).val = .flowEntry → flowBracketBalance arr lo k = 0 →
+      ∃ (hk1 : k + 1 < arr.size), Q (arr[k+1]'hk1).val := by
+  intro k h_lo hk h_fe h_bal
+  have h_len : (arr.toList.drop lo).length = arr.size - lo := by
+    rw [List.length_drop, Array.length_toList]
+  have hj_lt : k - lo < (arr.toList.drop lo).length := by rw [h_len]; omega
+  -- body[k - lo].val = arr[k].val
+  have h_drop_get : ((arr.toList.drop lo)[k - lo]'hj_lt).val = (arr[k]'hk).val := by
+    rw [List.getElem_drop]
+    rw [Array.getElem_toList (by omega)]
+    congr 2
+    omega
+  have h_fe' : ((arr.toList.drop lo)[k - lo]'hj_lt).val = .flowEntry := by
+    rw [h_drop_get]; exact h_fe
+  -- balance(take (k - lo)) = 0
+  have h_bal' : pbalance ((arr.toList.drop lo).take (k - lo)) = 0 := by
+    rw [← flowBracketBalance_eq_pbalance arr lo k h_lo]; exact h_bal
+  obtain ⟨hj1, hQ⟩ :=
+    SafeBody_flowEntry_zero_balance h (k - lo) hj_lt h_fe' h_bal'
+  have hk1 : k + 1 < arr.size := by rw [h_len] at hj1; omega
+  refine ⟨hk1, ?_⟩
+  have h_get : ((arr.toList.drop lo)[(k - lo) + 1]'hj1).val = (arr[k+1]'hk1).val := by
+    rw [List.getElem_drop]
+    rw [Array.getElem_toList (by omega)]
+    congr 2
+    omega
+  rw [← h_get]; exact hQ
+
 -- ═══ Filtered token lemmas for scanner handlers ═══
 
 /-- `scanFlowSequenceStart` filtered token equation: adds exactly one `.flowSequenceStart`. -/
