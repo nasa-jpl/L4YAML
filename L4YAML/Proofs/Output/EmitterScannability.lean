@@ -3581,6 +3581,252 @@ theorem SavedKeyDoesntResolve_preserves_position_target
     obtain ⟨h_size', h_eq'⟩ := ih h_size_mid
     exact ⟨h_size', h_eq'.trans h_eq_mid⟩
 
+/-! ## Non-`:` dispatch position preservation (substrate.g)
+
+A per-character preservation primitive that drops substrate.e's `simpleKey`
+hypothesis entirely in favour of a structural fact about the dispatched
+character: if the character `scanNextToken` dispatches is **not** `:`, then the
+step preserves **every** position `m < s.tokens.size` unconditionally — no
+flow hypothesis, no `simpleKey.tokenIndex + 1 ≠ m` side condition.
+
+The reason is local to the dispatch tree: the *only* dispatcher branch that can
+invoke `scanValuePrepare` (via `scanValue`) is the `:` branch of
+`scanNextToken_dispatchBlockIndicators` (`Scanner.lean`, the
+`c == ':' && isValueCandidate s` guard). Every other branch — structural,
+flow-indicator, block-entry (`-`), key (`?`), and all content branches —
+preserves the full token prefix unconditionally. So gating on `c ≠ ':'`
+eliminates the one branch that could overwrite, leaving plain prefix
+preservation everywhere.
+
+Why this is needed despite substrate.e/f: substrate.e's flow-relaxed
+`FlowNoOverwriteAt` still carries the `m ≠ simpleKey.tokenIndex + 1`
+side-condition, and substrate.f's `SavedKeyDoesntResolve` only covers the single
+residual position `n_target + 1`. Consumers that walk an emitList/emitPairList
+body chain where the saved key genuinely never resolves (because the emitted
+characters are `[`/`{`/`"`/`,`/… — never a value-`:` on the saved key) want
+position preservation at *arbitrary* `m` without re-deriving a per-character
+`simpleKey` bookkeeping argument. The non-`:` route delivers exactly that.
+
+Ships in 4 sub-sections:
+  - §G.1 dispatcher-level primitive
+        `dispatchBlockIndicators_at_non_colon_preserves_positions`
+        (the `:` branch is eliminated by `c ≠ ':'`)
+  - §G.2 capstone `scanNextToken_at_non_colon_preserves_positions` — proof spine
+        parallel to substrate.e's `scanNextToken_preserves_position_specific_flow`,
+        substituting the per-char hypothesis for the simpleKey hypothesis at the
+        `dispatchBlockIndicators` case
+  - §G.3 bundled chain predicate `NoColonDispatchChain fl₀ s n s'` (a
+        `FlowMonoChain` whose every step carries the non-`:`-dispatch witness)
+        + boilerplate transports (paralleling substrate.f §F.1)
+  - §G.4 chain wrapper `NoColonDispatchChain_preserves_position` — position
+        preservation at **any** `m < s.tokens.size` across the chain. (The
+        blueprint referred to this wrapper tentatively as
+        `FlowMonoChain_preserves_position_when_no_colon_dispatch`; the as-built
+        realization splits it into the bundled predicate above plus this
+        induction wrapper.)
+
+**Closes zero legacy sorries**: pure enablement for
+`.body1.tokenshape.list.establishing`. -/
+
+/-! ### §G.1  Dispatcher-level non-`:` primitive -/
+
+/-- Non-`:` variant of `dispatchBlockIndicators_preserves_position_specific_flow`
+    (substrate.e §E.5). With `c ≠ ':'` the value-`:` branch — the one path that
+    invokes `scanValue`/`scanValuePrepare` — cannot fire, so the dispatcher
+    preserves **every** position `m < s.tokens.size` with no `simpleKey`
+    hypothesis and no flow hypothesis. The only token-mutating branches that
+    remain are `scanBlockEntry` (`-`) and `scanKey` (`?`), both of which
+    preserve the full token prefix. -/
+theorem dispatchBlockIndicators_at_non_colon_preserves_positions (s : ScannerState)
+    (c : Char) (s' : ScannerState)
+    (h_not_colon : c ≠ ':')
+    (h : scanNextToken_dispatchBlockIndicators s c = .ok (some s'))
+    (m : Nat) (h_m : m < s.tokens.size) :
+    s'.tokens[m]'(by
+      have := ScannerCorrectness.ScanHelpers.dispatchBlockIndicators_tokens_mono s c s' h;
+      omega) =
+    s.tokens[m]'h_m := by
+  have hcf : (c == ':') = false := by
+    cases hcc : c == ':' with
+    | false => rfl
+    | true => exact absurd (eq_of_beq hcc) h_not_colon
+  unfold scanNextToken_dispatchBlockIndicators at h
+  simp only [bind, ScannerCorrectness.ScanHelpers.bind_ok_simp, pure, Pure.pure,
+    Except.pure, hcf, Bool.false_and] at h
+  simp only [Except.bind] at h
+  repeat (any_goals (split at h))
+  any_goals contradiction
+  all_goals first
+    | (have := ScannerCorrectness.ScanHelpers.scanBlockEntry_preserves_prefix s _
+        (by assumption) m h_m; simp_all)
+    | (have := ScannerCorrectness.ScanHelpers.scanKey_preserves_prefix s _
+        (by assumption) m h_m; simp_all)
+    | (simp_all)
+
+/-! ### §G.2  `scanNextToken` capstone for non-`:` dispatch -/
+
+set_option maxHeartbeats 400000 in
+/-- Per-step pointwise preservation of **every** position `m` through
+    `scanNextToken`, given that the dispatched character (the one
+    `scanNextToken_preprocess` peeks) is not `:`. Proof spine parallel to
+    `scanNextToken_preserves_position_specific_flow` (substrate.e §E.5), with the
+    per-character `c ≠ ':'` hypothesis replacing the `simpleKey` side condition
+    at the `dispatchBlockIndicators` case — every other dispatcher already
+    preserves the prefix unconditionally. No flow hypothesis is required. -/
+theorem scanNextToken_at_non_colon_preserves_positions (s s' : ScannerState)
+    (h_next : scanNextToken s = .ok (some s'))
+    (h_not_colon : ∀ s1 c1, scanNextToken_preprocess s = .ok (some (s1, c1)) → c1 ≠ ':')
+    (m : Nat) (h_m : m < s.tokens.size) :
+    s'.tokens[m]'(by have := ScannerCorrectness.scanNextToken_adds_tokens s s' h_next; omega) =
+    s.tokens[m]'h_m := by
+  unfold scanNextToken at h_next
+  simp only [bind, pure, Pure.pure, Except.pure] at h_next
+  simp only [Except.bind] at h_next
+  split at h_next
+  · contradiction
+  · split at h_next
+    · simp at h_next
+    · rename_i s1 c1 hPre
+      have h_pre_pref := ScannerCorrectness.ScanHelpers.preprocess_preserves_prefix s s1 c1
+        hPre m (by omega)
+      have h_pre_mono := ScannerCorrectness.ScanHelpers.preprocess_tokens_mono s s1 c1 hPre
+      have h_c1 : c1 ≠ ':' := h_not_colon s1 c1 hPre
+      have h_allow_tok : ∀ st : ScannerState,
+        (if st.allowDirectives then
+          { st with allowDirectives := false, documentEverStarted := true }
+        else st).tokens = st.tokens := ScannerCorrectness.ScanHelpers.allowDir_ite_tokens
+      repeat (any_goals (split at h_next))
+      any_goals contradiction
+      any_goals (simp at h_next)
+      all_goals (try subst_vars)
+      all_goals first
+        | contradiction
+        | (simp at h_next)
+        | (have h_d := ScannerCorrectness.ScanHelpers.dispatchStructural_preserves_prefix _ _ _
+            (by assumption) m (by omega);
+           simp_all)
+        | (have h_d := ScannerCorrectness.ScanHelpers.dispatchFlowIndicators_preserves_prefix _ _ _
+            (by assumption) m
+            (by simp only [ScannerCorrectness.ScanHelpers.allowDir_ite_tokens]; omega);
+           simp only [ScannerCorrectness.ScanHelpers.allowDir_ite_tokens] at h_d; simp_all)
+        | (have h_d := dispatchBlockIndicators_at_non_colon_preserves_positions _ _ _
+            h_c1
+            (by assumption) m
+            (by simp only [ScannerCorrectness.ScanHelpers.allowDir_ite_tokens]; omega);
+           simp only [ScannerCorrectness.ScanHelpers.allowDir_ite_tokens] at h_d; simp_all)
+        | (have h_d := ScannerCorrectness.ScanHelpers.dispatchContent_preserves_prefix _ _ _
+            (by assumption) m
+            (by simp only [ScannerCorrectness.ScanHelpers.allowDir_ite_tokens]; omega);
+           simp only [ScannerCorrectness.ScanHelpers.allowDir_ite_tokens] at h_d; simp_all)
+        | (simp_all)
+
+/-! ### §G.3  `NoColonDispatchChain` predicate + boilerplate transports -/
+
+/-- `NoColonDispatchChain fl₀ s n s'`: a `FlowMonoChain fl₀ s n s'` augmented
+    with a per-step witness that the dispatched character is not `:`. Where
+    `FlowMonoChain` is the bare chain, `NoColonDispatchChain` is the chain
+    bundled with the evidence that no step resolves a value-`:` — so the chain
+    wrapper degenerates to plain induction applying the §G.2 capstone at each
+    step for arbitrary `m`.
+
+    Parallel to `SavedKeyDoesntResolve` (substrate.f §F.1), but the per-step
+    witness is the structural non-`:` fact rather than a position-specific
+    preservation proof; this makes the wrapper conclude for *every* `m` rather
+    than a single target position. -/
+inductive NoColonDispatchChain (fl₀ : Nat) :
+    ScannerState → Nat → ScannerState → Prop where
+  | zero {s : ScannerState} (h_fl : s.flowLevel ≥ fl₀) :
+      NoColonDispatchChain fl₀ s 0 s
+  | step {s s_mid s' : ScannerState} {n : Nat}
+      (h_fl : s.flowLevel ≥ fl₀)
+      (h_snt : scanNextToken s = .ok (some s_mid))
+      (h_no_colon : ∀ t c, scanNextToken_preprocess s = .ok (some (t, c)) → c ≠ ':')
+      (h_rest : NoColonDispatchChain fl₀ s_mid n s') :
+      NoColonDispatchChain fl₀ s (n + 1) s'
+
+/-- Degrade a `NoColonDispatchChain` to a plain `FlowMonoChain`. -/
+theorem NoColonDispatchChain.toFlowMonoChain {fl₀ : Nat}
+    {s s' : ScannerState} {n : Nat}
+    (h : NoColonDispatchChain fl₀ s n s') : FlowMonoChain fl₀ s n s' := by
+  induction h with
+  | zero h_fl => exact .zero h_fl
+  | step h_fl h_snt _h_nc _h_rest ih => exact .step h_fl h_snt ih
+
+/-- Degrade to a plain `ScanChain` (through the FlowMonoChain). -/
+theorem NoColonDispatchChain.toScanChain {fl₀ : Nat}
+    {s s' : ScannerState} {n : Nat}
+    (h : NoColonDispatchChain fl₀ s n s') : ScanChain s n s' :=
+  h.toFlowMonoChain.toScanChain
+
+/-- The start state of a `NoColonDispatchChain` has `flowLevel ≥ fl₀`. -/
+theorem NoColonDispatchChain.flowLevel_ge_start {fl₀ : Nat}
+    {s s' : ScannerState} {n : Nat}
+    (h : NoColonDispatchChain fl₀ s n s') : s.flowLevel ≥ fl₀ :=
+  h.toFlowMonoChain.flowLevel_ge_start
+
+/-- The end state of a `NoColonDispatchChain` has `flowLevel ≥ fl₀`. -/
+theorem NoColonDispatchChain.flowLevel_ge_end {fl₀ : Nat}
+    {s s' : ScannerState} {n : Nat}
+    (h : NoColonDispatchChain fl₀ s n s') : s'.flowLevel ≥ fl₀ :=
+  h.toFlowMonoChain.flowLevel_ge_end
+
+/-- Token monotonicity for `NoColonDispatchChain` (delegates to FlowMonoChain). -/
+theorem NoColonDispatchChain.tokens_mono {fl₀ : Nat}
+    {s s' : ScannerState} {n : Nat}
+    (h : NoColonDispatchChain fl₀ s n s') : s'.tokens.size ≥ s.tokens.size :=
+  h.toFlowMonoChain.tokens_mono
+
+/-- A single non-`:`-dispatch `scanNextToken` step as a `NoColonDispatchChain`. -/
+theorem NoColonDispatchChain.single {fl₀ : Nat} {s s' : ScannerState}
+    (h_snt : scanNextToken s = .ok (some s'))
+    (h_fl : s.flowLevel ≥ fl₀)
+    (h_fl' : s'.flowLevel ≥ fl₀)
+    (h_no_colon : ∀ t c, scanNextToken_preprocess s = .ok (some (t, c)) → c ≠ ':') :
+    NoColonDispatchChain fl₀ s 1 s' :=
+  .step h_fl h_snt h_no_colon (.zero h_fl')
+
+/-- Transitivity: concatenate two `NoColonDispatchChain`s with the same floor. -/
+theorem NoColonDispatchChain.trans {fl₀ : Nat}
+    {s₁ s₂ s₃ : ScannerState} {n₁ n₂ : Nat}
+    (h1 : NoColonDispatchChain fl₀ s₁ n₁ s₂)
+    (h2 : NoColonDispatchChain fl₀ s₂ n₂ s₃) :
+    NoColonDispatchChain fl₀ s₁ (n₁ + n₂) s₃ := by
+  induction h1 with
+  | zero => simpa using h2
+  | @step s s_mid s₂ k h_fl h_snt h_nc h_rest ih =>
+    have h_ih := ih h2
+    have : k + 1 + n₂ = (k + n₂) + 1 := by omega
+    rw [this]
+    exact .step h_fl h_snt h_nc h_ih
+
+/-! ### §G.4  Chain wrapper: position preservation at arbitrary `m` -/
+
+/-- **Chain wrapper**: a `NoColonDispatchChain` preserves the token at **every**
+    position `m < s.tokens.size`. Direct induction on the predicate — each step's
+    non-`:` witness feeds the §G.2 capstone
+    `scanNextToken_at_non_colon_preserves_positions`, which gives unconditional
+    per-step preservation, transitively composed.
+
+    Parallel to `FlowMonoChain_preserves_position_specific_flow` (substrate.e §E.6)
+    and `SavedKeyDoesntResolve_preserves_position_target` (substrate.f §F.3), but
+    free of both the `FlowNoOverwriteAt` side-condition and the single-target
+    restriction: it covers the *whole* live prefix at once. This is the wrapper the
+    blueprint sketched as `FlowMonoChain_preserves_position_when_no_colon_dispatch`. -/
+theorem NoColonDispatchChain_preserves_position
+    {fl₀ : Nat} {s s' : ScannerState} {n : Nat}
+    (h : NoColonDispatchChain fl₀ s n s')
+    (m : Nat) (h_m : m < s.tokens.size) :
+    ∃ (h_size : m < s'.tokens.size),
+      s'.tokens[m]'h_size = s.tokens[m]'h_m := by
+  induction h with
+  | zero => exact ⟨h_m, rfl⟩
+  | @step s s_mid s' n h_fl h_snt h_nc h_rest ih =>
+    have h_step_eq := scanNextToken_at_non_colon_preserves_positions s s_mid h_snt h_nc m h_m
+    have h_adds := ScannerCorrectness.scanNextToken_adds_tokens s s_mid h_snt
+    have h_step_size : m < s_mid.tokens.size := by omega
+    obtain ⟨h_rest_size, h_rest_eq⟩ := ih h_step_size
+    exact ⟨h_rest_size, h_rest_eq.trans h_step_eq⟩
+
 /-- Connect a ScanChain to scanFiltered: if N steps succeed
     reaching a state where scanNextToken returns none (EOF),
     then scanFiltered on the input succeeds.
