@@ -1820,19 +1820,32 @@ not in-place axiom-to-theorem promotion — the latter is impossible
 when the axiom's hypothesis is strictly weaker than what the
 stronger lemma derives).
 
-**Next session**: **Step 6f.3b3.roundtrip.maintheorem.body1.tokenshape.list.discharge**
-(unblocked 2026-05-29 now that the entire `.establishing` (both
-`.converters` and `.consumer`) has LANDED — see below and Reflections
-164/165). **Discharges 1 of 5 legacy sorries: 9550** (emitList first new
-filtered token is content-start) by feeding the
-`emitList_scans_nonempty_with_skdr` witness to
-`SavedKeyDoesntResolve_preserves_position_target` (substrate.f §F.3) for
-the residual raw position `N+1`, alongside substrate.d/e for positions
-`≤ N` and `N+2`. Estimated ~150–300 LOC. Sorry 9550 closure is now ONE
-session away. The `.tokenshape.list` execution-attempt counter is at 6 —
-attempts #1–#6 (Reflections 157/158/161/162/164/165); attempts #5–#6
-landed **establishing code** (the converter substrate then the consumer)
-rather than only re-scoping.
+**Next session**: **Step 6f.3b3.roundtrip.maintheorem.body1.tokenshape.pair**
+(unblocked 2026-05-29 now that `.body1.tokenshape.list.discharge` has LANDED
+— legacy sorry **9550 is CLOSED**; see Reflection 166). **Discharges 2 of
+5 legacy sorries: 9638** (emitPairList `n ≥ 3`) **and 9644** (emitPairList
+first new filtered token is `.key`). Per Reflection 166, re-budget toward
+~250–400 LOC (not the old ~100–150): the `.list.discharge` experience shows
+the discharge plan must include the `[0..N)` bulk prefix, the `s_first`
+saved-key characterization for the `.key` token, and the threaded
+`EmitScansInFlowSKDR`/`ExactSync`/`simpleKeyAllowed`/`SimpleKeyStackValid`
+hypotheses — none of which the original per-position plan budgeted. The
+`.tokenshape.list` arc is now COMPLETE (establishing + discharge); its
+execution-attempt counter ended at 6 (Reflections 157/158/161/162/164/165)
+plus the discharge attempt #1 (Reflection 166).
+
+**`.body1.tokenshape.list.discharge` LANDED 2026-05-29** — closes legacy
+sorry **9550** (Part 1 of `emitList_body_filtered_characterization`: first
+new filtered token is a content-start). ~470 LOC net in
+`EmitterScannability.lean`, full project 491/491, all new infrastructure on
+the **pure triple** (no `native_decide`, no new axioms). The theorem's
+Part 2 (9552) remains, owned by `.body2`. New pieces: head-step helper
+`emitList_head_step_noOverwrite` (per-dispatch `s_first` saved-key
+characterization), `saveSimpleKey_eval`, `noOverwrite_of_keys_at_or_below`,
+`Array_filter_getElem_of_raw_prefix`, `emit{,List}_first_char_bracket`, and
+an extended `scanNextToken_flow_open_init` (now exposes
+`simpleKeyAllowed = true` + `SimpleKeyStackValid s'`). See Reflection 166
+for the three glossed costs that pushed ~150–300 → ~470.
 
 **`.body1.tokenshape.list.establishing.consumer` LANDED 2026-05-29** —
 the SKDR-producing scanning theorems (Phase 3 Step
@@ -5860,6 +5873,92 @@ pure triple; `emit_scans_in_flow_with_skdr` reuses plain
 `emit_scans_in_flow`'s 43 `native_decide` axioms verbatim). The
 `.tokenshape.list` attempt counter advances to 6; attempt #6 is the
 first in the arc where the scope *contracted* on execution.
+
+##### Reflection 166 (new, 2026-05-29): `.body1.tokenshape.list.discharge` execution attempt #1 — **the first legacy sorry (9550) is CLOSED**, but the "feed the witness to substrate.{d,e,f}" plan glossed three pieces (the `[0..N)` bulk prefix, the `s_first` stack characterization, and four threaded hypotheses), so the ~150–300 estimate over-ran to ~470
+
+**Triggering event**: executing `.body1.tokenshape.list.discharge` — the
+consumer that finally *spends* the substrate built over `.substrate.{a–g}`
+and `.establishing`. It LANDED: legacy sorry **9550** (Part 1 of
+`emitList_body_filtered_characterization` — first new filtered token at
+`old_sz` is a content-start) is discharged, full project 491/491, and the
+new infrastructure is on the **pure triple** (no `native_decide`, no new
+axioms). Part 2 (9552) of the same declaration remains, owned by `.body2`,
+so the declaration still reports one `sorry`.
+
+**The planned spine was correct.** Decompose the SKDR chain via `.step` to
+`s_first`; case-split the head char `[`/`{`/`"`; apply the matching
+`scanFlow{Sequence,Mapping}Start_first_filtered_token` /
+`scanDoubleQuoted_first_filtered_token` to read the content-start value in
+`s_first` at filtered index `old_sz`; preserve the three boundary raw
+positions into the final `s'` — `N+2` via substrate.d
+(`FlowMonoChain_preserves_position_specific`, `NoOverwriteAt`), `N` via
+substrate.e (`…_specific_flow`, `FlowNoOverwriteAt`), `N+1` via substrate.f
+(`SavedKeyDoesntResolve_preserves_position_target`) fed the `.establishing`
+SKDR witness. All three bridges landed exactly as Reflection 162/the plan
+anticipated.
+
+**Three glossed pieces (the ~1.6–3× over-run).**
+
+  - **The `[0..N)` bulk prefix.** The plan enumerated only `N, N+1, N+2`;
+    but the filter at `old_sz` also depends on the *pre-existing* body
+    tokens `[0..N)` being preserved through the residual chain. These are
+    handled wholesale by `FlowMonoChain_preserves_raw_prefix`
+    (`SimpleKeyAboveFloor`-driven), which is **vacuous at body-start** —
+    current key not possible (`h_sk`), and under `ExactSync`
+    (`simpleKeyStack.size = flowLevel`) there are no stack entries at index
+    `≥ flowLevel`. A one-step bridge
+    (`scanNextToken_preserves_prefix_of_skFloor`) carries `[0..N)` across
+    the head step, and the new pointwise corollary
+    `Array_filter_getElem_of_raw_prefix` lifts raw-prefix agreement to a
+    *filtered* getElem equality at `old_sz`.
+
+  - **The `s_first` stack characterization is the real cost.** substrate.d/e
+    consume `NoOverwriteAt`/`FlowNoOverwriteAt`, whose *stack* clause must
+    hold at `s_first`. Discharging it needed a new per-dispatch head-step
+    helper, `emitList_head_step_noOverwrite`, proving — for each of `[`/`{`
+    (`scanFlowSequenceStart`/`MappingStart`, which **push** the saved key to
+    the stack and clear the current key) and `"`
+    (`scanDoubleQuoted`, which **keeps** the saved key current) — that
+    every *possible* saved key in `s_first` has `tokenIndex = N`, while
+    pre-existing stack keys stay below `N−1` by the substrate invariant
+    `SimpleKeyStackValid` (`tokenIndex+1 < tokens.size`). The exact size
+    `s_first.tokens.size = N+3` is itself a discovery: `saveSimpleKey`
+    reserves **two** placeholders (raw `N`, `N+1`) before the content token
+    (`N+2`) — and only when `simpleKeyAllowed = true`.
+
+  - **Four new threaded hypotheses.** `emitList_body_filtered_characterization`
+    gained `EmitScansInFlowSKDR` for its items (to *obtain* the SKDR witness
+    — `EmitScansInFlow` alone is too weak), `simpleKeyStack.size = flowLevel`
+    (ExactSync), `simpleKeyAllowed = true`, and `SimpleKeyStackValid s`. All
+    four are discharged at the sole call site
+    (`scanFiltered_emitSeq_nonempty_structure`) from
+    `parseStream_emitSequence`'s `Grammable` (the SKDR items via
+    `emit_scans_in_flow_with_skdr`) plus `scanNextToken_flow_open_init`,
+    which was **extended** to expose `simpleKeyAllowed = true` and
+    `SimpleKeyStackValid s'` (the latter inherited from the empty initial
+    stack via `scanNextToken_preserves_AllKeysValid`).
+
+**Heuristic (a "preserve the prefix" plan must budget the prefix, not just
+the boundary).** When a discharge plan reads "preserve positions `X, X+1,
+X+2` via the three substrate lemmas," the *implicit* obligation is the
+whole prefix `[0..X+3)`, and the bulk `[0..X)` is rarely free: it needs its
+own bulk lemma plus a step-boundary bridge, and a raw→filtered transfer.
+Worse, every `NoOverwrite`-style boundary lemma carries a **stack clause**
+that the plan's "apply substrate.d at `N+2`" hides — discharging it forces
+a per-dispatch characterization of the post-step saved-key set, which is
+where the LOC actually goes. Budget the prefix and the stack clause as
+first-class work, not as "applies the lemma."
+
+**Reflection 166 → roadmap**: with 9550 closed, the next discharge is
+`.body1.tokenshape.pair` (sorries 9638, 9644) — note it likely repeats the
+*same* three glossed costs (bulk prefix, `s_first`-style key
+characterization for the `.key` token, threaded hypotheses), so re-budget
+it toward ~250–400 LOC rather than ~100–150. `.body2` (9552, 9646) then
+closes the outer-flowEntry claims. **No new axiom debt**: every helper this
+session is on `[propext, (Classical.choice, Quot.sound)]` — no
+`native_decide`. The `.tokenshape.list` arc is now COMPLETE through
+discharge; the indexed Phase-3 axiom-discharge plan is untouched (this work
+is non-indexed).
 
 **Step 6f.3b3.emitscans.toplevel SS1 (easy prereqs) LANDED 2026-05-27**
 (~225 LOC across two files: `Endpoint.lean` §6 ~200 LOC +
@@ -17266,31 +17365,61 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 and the boundary is handled by a single threaded equality,
                 not a hand-peel.
 
-                ▹▹▹ **.body1.tokenshape.list.discharge** *(after
-                `.tokenshape.list.establishing` LANDS; estimated
-                ~150–300 LOC)*. **Discharges 1 of 5 legacy sorries:
-                9550** (emitList first new filtered token is
-                content-start). Decomposes the non-indexed
-                `FlowMonoChain s.flowLevel s n s'` via `.step` to
-                extract `s_first`, case-analyzes on
-                `(L4YAML.Emit.emit.emitList items)`'s first char
-                (`emit_first_char` → `'['` / `'{'` / `'"'`), applies
-                the matching non-indexed first-filtered-token lemma
-                (`scanFlow{Sequence,Mapping}Start_first_filtered_token`
-                or `scanDoubleQuoted_first_filtered_token` at
-                `EmitterScannability.lean` ~7140/7199/7288). Then for
-                each of the three head-item raw positions:
-                position `N + 2` (the content-start) preserved via
-                `.substrate.d`'s `FlowMonoChain_preserves_position_
-                specific`; position `N` preserved via `.substrate.e`'s
-                flow-relaxed variant; position `N + 1` preserved via
-                `.substrate.f`'s `SavedKeyDoesntResolve_preserves_
-                position_target` applied to the established witness
-                from `.tokenshape.list.establishing`. With prefix
-                [0..N+3) preserved, the filter at index `old_sz`
-                equals the content-start at raw position N+2.
-                Requires all three substrate sub-sessions plus the
-                establishing-sub-session witness.
+                ✅ **.body1.tokenshape.list.discharge LANDED 2026-05-29**
+                *(~470 LOC net in `EmitterScannability.lean`; full project
+                491/491; new infrastructure on the **pure triple** — no
+                `native_decide`, no new axioms)*. **Discharges legacy sorry
+                9550** (Part 1 of `emitList_body_filtered_characterization`:
+                the first new filtered token at `old_sz` is a content-start
+                — scalar / flowSequenceStart / flowMappingStart). The
+                theorem's Part 2 (`9552`) remains, owned by `.body2`.
+                The planned spine held — decompose the SKDR chain via
+                `.step` to `s_first`, case-split the head char `[`/`{`/`"`
+                (`emitList_first_char_bracket`), apply the matching
+                `scanFlow{Sequence,Mapping}Start_first_filtered_token` /
+                `scanDoubleQuoted_first_filtered_token`, then preserve the
+                three boundary raw positions into the final `s'`:
+                `N+2` (content) via **substrate.d**
+                `FlowMonoChain_preserves_position_specific`, `N` via
+                **substrate.e** `…_specific_flow`, `N+1` via **substrate.f**
+                `SavedKeyDoesntResolve_preserves_position_target` fed the
+                `.establishing` SKDR witness. **Three pieces the plan
+                glossed (Reflection 166):**
+                  • **The `[0..N)` bulk prefix** — the plan only enumerated
+                    `N, N+1, N+2`; the *pre-existing* body tokens also need
+                    preserving. Handled wholesale by
+                    `FlowMonoChain_preserves_raw_prefix`
+                    (`SimpleKeyAboveFloor`-driven, vacuous at body-start
+                    under `ExactSync`) on the whole chain + a one-step
+                    bridge (`scanNextToken_preserves_prefix_of_skFloor`),
+                    then lifted to the filter via the new pointwise
+                    `Array_filter_getElem_of_raw_prefix`.
+                  • **The `s_first` stack characterization** — substrate.d/e
+                    consume `NoOverwriteAt`/`FlowNoOverwriteAt`, whose *stack*
+                    clause is non-trivial at `s_first`. Discharged by the new
+                    head-step helper `emitList_head_step_noOverwrite`: per
+                    dispatch case it shows every possible saved key in
+                    `s_first` points at `N` (current key for a `"`-scalar;
+                    the pushed bracket-key for `[`/`{`) while pre-existing
+                    stack keys stay below `N−1` via the substrate invariant
+                    `SimpleKeyStackValid` (`tokenIndex+1 < tokens.size`).
+                    Exact size `s_first.tokens.size = N+3` falls out of
+                    `saveSimpleKey`'s **two** reserved placeholders (`N`,
+                    `N+1`) + the content push (`N+2`) — which requires
+                    `simpleKeyAllowed = true`.
+                  • **Four new threaded hypotheses** on
+                    `emitList_body_filtered_characterization`:
+                    `EmitScansInFlowSKDR` for the items (for the SKDR
+                    witness), `simpleKeyStack.size = flowLevel` (ExactSync),
+                    `simpleKeyAllowed = true`, and `SimpleKeyStackValid s`.
+                    All discharged at the sole call site
+                    (`scanFiltered_emitSeq_nonempty_structure`) from
+                    `parseStream_emitSequence`'s `Grammable` (via
+                    `emit_scans_in_flow_with_skdr`) plus the
+                    `scanNextToken_flow_open_init` lemma, **extended** to
+                    expose `simpleKeyAllowed = true` and `SimpleKeyStackValid`
+                    (the latter inherited from the empty initial stack via
+                    `scanNextToken_preserves_AllKeysValid`).
 
                 ▹▹▹ **.body1.tokenshape.pair** *(estimated ~100–150 LOC
                 after `.substrate.d` lands)*.
@@ -17317,12 +17446,12 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
-                **Total .body scope re-estimate (FOURTEENTH revision —
-                after `.substrate.{a,b,c,d,e,f,g}` LANDED +
-                `.establishing.{converters,consumer}` BOTH LANDED;
-                `.establishing` COMPLETE, scope *contracted* on attempt #6
-                at Reflection 165)**:
-                ~3367–4655 LOC across **13 sub-sessions** (`.scaffold`
+                **Total .body scope re-estimate (FIFTEENTH revision —
+                after `.substrate.{a,b,c,d,e,f,g}` + `.establishing.
+                {converters,consumer}` + `.tokenshape.list.discharge` ALL
+                LANDED; first legacy sorry (9550) CLOSED, scope *over*-ran
+                its re-estimate again on attempt #1 at Reflection 166)**:
+                ~3687–4825 LOC across **13 sub-sessions** (`.scaffold`
                 [LANDED 206] + `.tokenshape.substrate.a` [LANDED 470]
                 + `.tokenshape.substrate.b` [LANDED 226]
                 + `.tokenshape.substrate.c` [LANDED ~570]
@@ -17339,11 +17468,15 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                   pure triple) + lift helper + 2 open-theorem extensions;
                   the predicted 3-step peel dissolved via `ExactSync`,
                   Reflection 165]
-                + `.tokenshape.list.discharge` [~150–300]
+                + `.tokenshape.list.discharge` [LANDED ~470 —
+                  closes legacy sorry 9550; the planned 3-position bridge
+                  held but the `[0..N)` bulk prefix, the `s_first` stack
+                  characterization, and 4 threaded hypotheses were
+                  unplanned, Reflection 166]
                 + `.tokenshape.pair` [~100–150]
                 + `.body2` [~300–500]),
                 vs. Blueprint-original 400–700 LOC in 1 session.
-                Cumulative underestimate factor: **~5.9–6.7×**
+                Cumulative underestimate factor: **~6.4–7.2×**
                 (the combined `.converters` [LANDED ~115] + `.consumer`
                 [LANDED ~330] = ~445 LOC came in just below the original
                 ~300–500 `.establishing` estimate's upper bound — the
