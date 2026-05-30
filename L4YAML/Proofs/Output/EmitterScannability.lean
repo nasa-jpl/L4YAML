@@ -10042,6 +10042,153 @@ theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inF
     · -- simpleKeyStack: s₃.simpleKeyStack = s_state.simpleKeyStack
       rw [h_stack₃, h_stack₂, h_stack_pop₁]
 
+/-! ## `emitList`/`emitPairList` scanning WITH a `SavedKeyDoesntResolve` witness
+    (substrate-consuming, `.body1.tokenshape.list.establishing`)
+
+This section ships `emitList_scans_nonempty_with_skdr`: a parallel theorem to
+`emitList_scans_nonempty` that, in addition to the existing `FlowMonoChain`
+witness and scanner invariants, produces a
+`SavedKeyDoesntResolve s.flowLevel s.tokens.size s n s'` witness — i.e. evidence
+that scanning the flow-sequence body never lets a saved key resolve at raw
+position `N = s.tokens.size`, so raw position `N + 1` is preserved across the
+whole body chain. This is the witness the downstream `.discharge` session feeds
+to `SavedKeyDoesntResolve_preserves_position_target` (substrate.f §F.3).
+
+**Construction strategy (per Reflection 162's hybrid plan).** The SKDR witness is
+built step-by-step over the *same* chain structure as `emitList_scans_nonempty`,
+classifying each `scanNextToken` step:
+
+  - **non-`:` steps** — every structural / bracket / comma / scalar-head / content
+    step.  Handled uniformly by substrate.g's
+    `scanNextToken_at_non_colon_preserves_positions` (the dispatched char is not
+    `:`, so position `N + 1` is preserved *unconditionally*, even at the
+    delicate comma-after-scalar boundary where the saved key sits at `tokenIndex
+    = N`).  Packaged as `SavedKeyDoesntResolve.step_of_non_colon`.
+  - **`:` steps** — only the value-colon inside a *nested* flow mapping.  There
+    the saved key sits at `tokenIndex ≥ N + 1 > N`, so substrate.f's
+    `step_of_tokenIndex_ne` applies.  The `tokenIndex ≠ N` side-condition is
+    discharged from substrate.d's `NoOverwriteAt (N + 1)` invariant, which is
+    *re-established after each flow-open* (where the body's start size already
+    exceeds `N + 1`) and maintained across the key-scan sub-chain by
+    `scanNextToken_maintains_NoOverwriteAt`.
+
+The recursion mirrors `emit_scans_in_flow` over `Grammable`'s three constructors,
+threading the fixed protected target `n_target` (never the per-call size).
+
+**Closes zero legacy sorries**: pure enablement for `.tokenshape.list.discharge`. -/
+
+/-! ### §H.1  SKDR construction combinators -/
+
+/-- Lower the flow floor of a `SavedKeyDoesntResolve`.  Mirrors
+    `FlowMonoChain.weaken`: every `flowLevel ≥ fl₀` obligation stays valid when
+    `fl₀` shrinks. -/
+theorem SavedKeyDoesntResolve.weaken {fl₀ fl₁ n_target : Nat}
+    {s s' : ScannerState} {n : Nat}
+    (h : SavedKeyDoesntResolve fl₀ n_target s n s') (h_le : fl₁ ≤ fl₀) :
+    SavedKeyDoesntResolve fl₁ n_target s n s' := by
+  induction h with
+  | zero h_fl => exact .zero (Nat.le_trans h_le h_fl)
+  | step h_fl h_snt h_pres _h_rest ih => exact .step (Nat.le_trans h_le h_fl) h_snt h_pres ih
+
+/-- **Non-`:` step constructor.**  If the step's dispatched character is not `:`,
+    the step preserves position `n_target + 1` unconditionally (substrate.g), so
+    it extends a `SavedKeyDoesntResolve`.  This is the bridge from substrate.g's
+    per-character primitive into substrate.f's chain predicate. -/
+theorem SavedKeyDoesntResolve.step_of_non_colon
+    {fl₀ n_target : Nat} {s s_mid s' : ScannerState} {n : Nat}
+    (h_fl : s.flowLevel ≥ fl₀)
+    (h_snt : scanNextToken s = .ok (some s_mid))
+    (h_no_colon : ∀ t c, scanNextToken_preprocess s = .ok (some (t, c)) → c ≠ ':')
+    (h_rest : SavedKeyDoesntResolve fl₀ n_target s_mid n s') :
+    SavedKeyDoesntResolve fl₀ n_target s (n + 1) s' := by
+  refine .step h_fl h_snt ?_ h_rest
+  intro h_size
+  have h_adds := ScannerCorrectness.scanNextToken_adds_tokens s s_mid h_snt
+  exact ⟨by omega,
+    scanNextToken_at_non_colon_preserves_positions s s_mid h_snt h_no_colon (n_target + 1) h_size⟩
+
+/-- From a *known* flow-context dispatched character `c ≠ ':'`, derive the
+    universally-quantified non-`:` hypothesis used by
+    `SavedKeyDoesntResolve.step_of_non_colon`.  `scanNextToken_preprocess` is a
+    function, so any `(t, c')` it yields equals `(saveSimpleKey s, c)`. -/
+theorem no_colon_of_preprocess_flow (s : ScannerState) (c : Char) (rest : List Char)
+    (col : Nat) (hcorr : ScannerSurfCorr s ⟨c :: rest, col⟩)
+    (h_flow : s.inFlow = true) (h_nws : isWhiteSpaceBool c = false)
+    (h_nlb : isLineBreakBool c = false) (h_nc : c ≠ '#') (h_col : c ≠ ':') :
+    ∀ t c', scanNextToken_preprocess s = .ok (some (t, c')) → c' ≠ ':' := by
+  have h_pp := scanNextToken_preprocess_flow s c rest col hcorr h_flow h_nws h_nlb h_nc
+  intro t c' h_eq
+  rw [h_pp] at h_eq
+  simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq] at h_eq
+  rw [← h_eq.2]; exact h_col
+
+/-- Chain-level maintenance of substrate.d's `NoOverwriteAt m`: if position `m`
+    starts un-overwritable and `m < s.tokens.size`, it stays un-overwritable
+    across an entire `FlowMonoChain`.  Direct induction delegating each step to
+    `scanNextToken_maintains_NoOverwriteAt`. -/
+theorem FlowMonoChain_maintains_NoOverwriteAt {fl₀ : Nat} {s s' : ScannerState} {n : Nat}
+    (h_fmc : FlowMonoChain fl₀ s n s') (m : Nat) (h_m : m < s.tokens.size)
+    (h_inv : NoOverwriteAt s m) : NoOverwriteAt s' m := by
+  induction h_fmc with
+  | zero => exact h_inv
+  | step h_fl h_snt h_rest ih =>
+    have h_adds := ScannerCorrectness.scanNextToken_adds_tokens _ _ h_snt
+    have h_inv' := scanNextToken_maintains_NoOverwriteAt _ _ h_snt m h_m h_inv
+    exact ih (Nat.lt_of_lt_of_le h_m h_adds) h_inv'
+
+/-- **Bulk converter.**  A `FlowMonoChain` upgrades to a `SavedKeyDoesntResolve`
+    at target `n_target` as soon as `SimpleKeyAboveFloor (n_target + 1)` holds at
+    the chain start (and `n_target + 1 ≤ size`).  Every step then has
+    `simpleKey.tokenIndex ≥ n_target + 1 > n_target`, so `step_of_tokenIndex_ne`
+    fires uniformly — no per-character classification needed.  This handles every
+    *inner* emit sub-chain (where the body starts past the protected position);
+    only the top-level body boundary needs the substrate.g per-step route. -/
+theorem SavedKeyDoesntResolve_of_FlowMonoChain_skFloor
+    {fl₀ n_target : Nat} {s s' : ScannerState} {n : Nat}
+    (h_fmc : FlowMonoChain fl₀ s n s')
+    (h_fl_pos : fl₀ ≥ 1)
+    (h_le : n_target + 1 ≤ s.tokens.size)
+    (h_skf : SimpleKeyAboveFloor s (n_target + 1) fl₀)
+    (h_sync : s.simpleKeyStack.size ≥ s.flowLevel) :
+    SavedKeyDoesntResolve fl₀ n_target s n s' := by
+  induction h_fmc with
+  | zero h_fl => exact .zero h_fl
+  | @step s s_mid s' n h_fl h_snt h_rest ih =>
+    have h_fl_mid := h_rest.flowLevel_ge_start
+    have h_adds := ScannerCorrectness.scanNextToken_adds_tokens s s_mid h_snt
+    have h_skf_mid := scanNextToken_maintains_SimpleKeyAboveFloor s s_mid h_snt (n_target + 1) fl₀
+      h_le h_skf h_sync h_fl_mid
+    have h_sync_mid := scanNextToken_preserves_sync s s_mid h_snt h_sync
+    have h_not_target : s.simpleKey.possible = true → s.simpleKey.tokenIndex ≠ n_target := by
+      intro hp; have := h_skf.1 hp; omega
+    exact SavedKeyDoesntResolve.step_of_tokenIndex_ne h_fl_pos h_fl h_snt h_not_target
+      (ih (by omega) h_skf_mid h_sync_mid)
+
+/-- **Bulk converter (substrate.d flavour).**  Like
+    `SavedKeyDoesntResolve_of_FlowMonoChain_skFloor` but driven by substrate.d's
+    `NoOverwriteAt (n_target + 1)` instead of `SimpleKeyAboveFloor` — no
+    stack-floor / sync hypotheses, just `n_target + 1 < size`.  `NoOverwriteAt`'s
+    second clause (`n_target + 1 ≠ tokenIndex + 1`) gives exactly the
+    `tokenIndex ≠ n_target` that `step_of_tokenIndex_ne` needs, while tolerating
+    harmless low keys (`tokenIndex < n_target`).  Used for emit sub-bodies that
+    start strictly past the protected position. -/
+theorem SavedKeyDoesntResolve_of_FlowMonoChain_noOverwrite
+    {fl₀ n_target : Nat} {s s' : ScannerState} {n : Nat}
+    (h_fmc : FlowMonoChain fl₀ s n s')
+    (h_fl_pos : fl₀ ≥ 1)
+    (h_lt : n_target + 1 < s.tokens.size)
+    (h_inv : NoOverwriteAt s (n_target + 1)) :
+    SavedKeyDoesntResolve fl₀ n_target s n s' := by
+  induction h_fmc with
+  | zero h_fl => exact .zero h_fl
+  | @step s s_mid s' n h_fl h_snt h_rest ih =>
+    have h_adds := ScannerCorrectness.scanNextToken_adds_tokens s s_mid h_snt
+    have h_inv_mid := scanNextToken_maintains_NoOverwriteAt s s_mid h_snt (n_target + 1) h_lt h_inv
+    have h_not_target : s.simpleKey.possible = true → s.simpleKey.tokenIndex ≠ n_target := by
+      intro hp h_eq; exact (h_inv.1 hp).2 (by omega)
+    exact SavedKeyDoesntResolve.step_of_tokenIndex_ne h_fl_pos h_fl h_snt h_not_target
+      (ih (by omega) h_inv_mid)
+
 -- Helper: extract existential from isOk
 theorem scanFiltered_exists_of_isOk {s : String}
     (h : (Scanner.scanFiltered s).toBool = true) :
