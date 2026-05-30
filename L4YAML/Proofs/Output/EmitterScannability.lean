@@ -9706,6 +9706,49 @@ def EmitPairListScansInFlow (pairs : List (YamlValue × YamlValue)) : Prop :=
       ∧ s'.simpleKeyStack = s.simpleKeyStack
       ∧ FlowMonoChain s.flowLevel s n s'
 
+/-- Strong version of `EmitPairListScansInFlow`: additionally exposes the
+    chain-length lower bound `n ≥ 3` (key emit + value indicator + value emit,
+    each a positive sub-chain). Only inhabited for non-empty pair lists (the
+    empty list scans in `0` steps). Mirrors the indexed
+    `EmitPairListScansInFlowIx_strong`; directly enables Part 1 (`n ≥ 3`) of
+    `emitPairList_body_filtered_characterization`. -/
+def EmitPairListScansInFlow_strong (pairs : List (YamlValue × YamlValue)) : Prop :=
+  ∀ (s : ScannerState) (rest : List Char),
+    ScannerSurfCorr s ⟨(emit.emitPairList pairs).toList ++ rest, s.col⟩ →
+    s.inFlow = true →
+    s.flowLevel > 0 →
+    s.currentIndent < 0 →
+    s.col > 0 →
+    s.explicitKeyLine = none →
+    AllTokensOnLine s s.line →
+    EndLineOnLine s →
+    ∃ n s', ScanChainGrew (fun t => t.val != .placeholder) s n s'
+      ∧ ScannerSurfCorr s' ⟨rest, s'.col⟩
+      ∧ s'.flowLevel = s.flowLevel
+      ∧ s'.directivesPresent = s.directivesPresent
+      ∧ s'.indents = s.indents
+      ∧ s'.explicitKeyLine = s.explicitKeyLine
+      ∧ s'.col > 0
+      ∧ s'.inFlow = true
+      ∧ s'.currentIndent < 0
+      ∧ s'.line = s.line
+      ∧ AllTokensOnLine s' s'.line
+      ∧ EndLineOnLine s'
+      ∧ s'.simpleKeyStack = s.simpleKeyStack
+      ∧ FlowMonoChain s.flowLevel s n s'
+      ∧ n ≥ 3
+
+/-- `EmitPairListScansInFlow_strong` implies the weak version (drops `n ≥ 3`). -/
+theorem EmitPairListScansInFlow_strong.toWeak {pairs : List (YamlValue × YamlValue)}
+    (h_strong : EmitPairListScansInFlow_strong pairs) :
+    EmitPairListScansInFlow pairs := by
+  intro s rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline
+  obtain ⟨n, s', h_chain, h_corr', h_fl', h_dp', h_ids', h_ek', h_col', h_inflow',
+          h_indent', h_line', h_atol', h_endline', h_stack', h_fmc, _⟩ :=
+    h_strong s rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline
+  exact ⟨n, s', h_chain, h_corr', h_fl', h_dp', h_ids', h_ek', h_col', h_inflow',
+         h_indent', h_line', h_atol', h_endline', h_stack', h_fmc⟩
+
 theorem emitPairList_scans_empty : EmitPairListScansInFlow [] := by
   intro s rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline
   have h_eq : (emit.emitPairList ([] : List (YamlValue × YamlValue))).toList ++ rest = rest := by
@@ -9722,7 +9765,7 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
     (h_ne : pairs ≠ [])
     (h_all_k : ∀ p ∈ pairs, EmitScansInFlow p.1)
     (h_all_v : ∀ p ∈ pairs, EmitScansInFlow p.2) :
-    EmitPairListScansInFlow pairs := by
+    EmitPairListScansInFlow_strong pairs := by
   induction pairs with
   | nil => contradiction
   | cons p tail ih =>
@@ -9740,6 +9783,21 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
               h_flow₁, h_indent₁, _h_line₁, h_ska₁, _, h_atol₁, h_endline₁, h_stack₁, h_fmc₁⟩ :=
         h_ek_key s ([':',  ' '] ++ (emit p.2).toList ++ rest_chars)
           hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline
+      -- NEW (strong): n₁ ≥ 1 from non-empty `emit p.1` (key scan is positive).
+      have h_n₁_pos : n₁ ≥ 1 := by
+        match n₁, h_chain₁ with
+        | 0, .zero =>
+          exfalso
+          have h_chars_eq := CharsFromOffset_unique hcorr.chars_from h_corr₁.chars_from
+          have h_len := congrArg List.length h_chars_eq
+          simp only [List.length_append] at h_len
+          have h_nil : (emit p.1).toList = [] := by
+            match h_list : (emit p.1).toList with
+            | [] => rfl
+            | _ :: _ => simp [h_list] at h_len
+          obtain ⟨_, _, h_ne_nil, _, _, _⟩ := emit_first_char p.1
+          exact absurd h_nil (by rw [h_ne_nil]; exact List.cons_ne_nil _ _)
+        | _ + 1, _ => omega
       -- Step 2: Derive saveSimpleKey identity and scanValueValidate
       have h_sk_id := saveSimpleKey_id_of_flow_ska_false_ek_none s₁ h_flow₁ h_ska₁
           (by rw [h_ek₁]; exact h_ek)
@@ -9830,7 +9888,7 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
         ((ScanChainGrew.single h_snt₂ h_grew₂).trans h_chain_ws)
       have h_arith : n₁ + (1 + (n₃' + 1)) = n₁ + 1 + (n₃' + 1) := by omega
       refine ⟨n₁ + 1 + (n₃' + 1), s_end, h_arith ▸ h_chain_all,
-        h_corr_end, ?_, ?_, ?_, ?_, h_col_end, h_flow_end, h_indent_end, ?_, h_atol_end, h_endline_end, ?_, h_arith ▸ h_fmc_all⟩
+        h_corr_end, ?_, ?_, ?_, ?_, h_col_end, h_flow_end, h_indent_end, ?_, h_atol_end, h_endline_end, ?_, h_arith ▸ h_fmc_all, by omega⟩
       · rw [h_fl_end, h_fl₃, h_fl₂, h_fl₁]
       · rw [h_dp_end, h_dp₃, h_dp₂, h_dp₁]
       · rw [h_ids_end, h_ids₃, h_ids₂, h_ids₁]
@@ -9851,6 +9909,21 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
         h_ek_key s ([':',  ' '] ++ (emit p.2).toList ++
             [',',  ' '] ++ (emit.emitPairList (p' :: ps)).toList ++ rest_chars)
           hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline
+      -- NEW (strong): n₁ ≥ 1 from non-empty `emit p.1` (key scan is positive).
+      have h_n₁_pos : n₁ ≥ 1 := by
+        match n₁, h_chain₁ with
+        | 0, .zero =>
+          exfalso
+          have h_chars_eq := CharsFromOffset_unique hcorr.chars_from h_corr₁.chars_from
+          have h_len := congrArg List.length h_chars_eq
+          simp only [List.length_append] at h_len
+          have h_nil : (emit p.1).toList = [] := by
+            match h_list : (emit p.1).toList with
+            | [] => rfl
+            | _ :: _ => simp [h_list] at h_len
+          obtain ⟨_, _, h_ne_nil, _, _, _⟩ := emit_first_char p.1
+          exact absurd h_nil (by rw [h_ne_nil]; exact List.cons_ne_nil _ _)
+        | _ + 1, _ => omega
       -- Step 2: Derive saveSimpleKey identity and scanValueValidate
       have h_sk_id := saveSimpleKey_id_of_flow_ska_false_ek_none s₁ h_flow₁ h_ska₁
           (by rw [h_ek₁]; exact h_ek)
@@ -9981,7 +10054,7 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
       have h_tail_all_v : ∀ q ∈ p' :: ps, EmitScansInFlow q.2 :=
         fun q hq => h_all_v q (.tail _ hq)
       have h_ih_list : EmitPairListScansInFlow (p' :: ps) :=
-        ih (by simp) h_tail_all_k h_tail_all_v
+        (ih (by simp) h_tail_all_k h_tail_all_v).toWeak
       obtain ⟨n_r, s_end, h_chain_r, h_corr_end, h_fl_end, h_dp_end, h_ids_end,
               h_ek_end, h_col_end, h_flow_end, h_indent_end, h_line_end, h_atol_end, h_endline_end, h_stack_end, h_fmc_r⟩ :=
         h_ih_list s_pp rest_chars h_corr_pp'
@@ -10055,7 +10128,7 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
           n₁ + 1 + (n_v' + 1) + 1 + (n_r' + 1) := by omega
       refine ⟨n₁ + 1 + (n_v' + 1) + 1 + (n_r' + 1), s_end,
         h_arith ▸ h_chain_all,
-        h_corr_end, ?_, ?_, ?_, ?_, h_col_end, h_flow_end, h_indent_end, ?_, h_atol_end, h_endline_end, ?_, h_arith ▸ h_fmc_all⟩
+        h_corr_end, ?_, ?_, ?_, ?_, h_col_end, h_flow_end, h_indent_end, ?_, h_atol_end, h_endline_end, ?_, h_arith ▸ h_fmc_all, by omega⟩
       · -- flowLevel preserved
         rw [h_fl_end, h_fl_pp, h_fl_c, h_fl_v, h_fl₃, h_fl₂, h_fl₁]
       · -- directivesPresent preserved
@@ -10235,7 +10308,7 @@ theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inF
       match h_list : pairs.toList with
       | [] => exact emitPairList_scans_empty
       | _ :: _ =>
-        exact emitPairList_scans_nonempty _ (by simp) (fun p hp => by
+        exact (emitPairList_scans_nonempty _ (by simp) (fun p hp => by
           have hp' : p ∈ pairs.toList := h_list ▸ hp
           have ⟨i, hi, h_eq⟩ := List.getElem_of_mem hp'
           have h_sz : i < pairs.size := by rwa [Array.length_toList] at hi
@@ -10243,7 +10316,7 @@ theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inF
           have hp' : p ∈ pairs.toList := h_list ▸ hp
           have ⟨i, hi, h_eq⟩ := List.getElem_of_mem hp'
           have h_sz : i < pairs.size := by rwa [Array.length_toList] at hi
-          exact h_eq ▸ ihv ⟨i, h_sz⟩)
+          exact h_eq ▸ ihv ⟨i, h_sz⟩)).toWeak
     have h_corr₁_assoc : ScannerSurfCorr s₁
         ⟨(emit.emitPairList pairs.toList).toList ++ (['}'] ++ rest), s₁.col⟩ := by
       rw [List.append_assoc] at h_corr₁; exact h_corr₁
@@ -10683,7 +10756,7 @@ theorem emit_scans_in_flow_with_skdr (v : YamlValue) {inFlow : Bool}
       match h_list : pairs.toList with
       | [] => exact emitPairList_scans_empty
       | _ :: _ =>
-        exact emitPairList_scans_nonempty _ (by simp) (fun p hp => by
+        exact (emitPairList_scans_nonempty _ (by simp) (fun p hp => by
           have hp' : p ∈ pairs.toList := h_list ▸ hp
           have ⟨i, hi, h_eq⟩ := List.getElem_of_mem hp'
           have h_sz : i < pairs.size := by rwa [Array.length_toList] at hi
@@ -10691,7 +10764,7 @@ theorem emit_scans_in_flow_with_skdr (v : YamlValue) {inFlow : Bool}
           have hp' : p ∈ pairs.toList := h_list ▸ hp
           have ⟨i, hi, h_eq⟩ := List.getElem_of_mem hp'
           have h_sz : i < pairs.size := by rwa [Array.length_toList] at hi
-          exact h_eq ▸ emit_scans_in_flow _ (hv ⟨i, h_sz⟩))
+          exact h_eq ▸ emit_scans_in_flow _ (hv ⟨i, h_sz⟩))).toWeak
     have h_corr₁_assoc : ScannerSurfCorr s₁
         ⟨(emit.emitPairList pairs.toList).toList ++ (['}'] ++ rest), s₁.col⟩ := by
       rw [List.append_assoc] at h_corr₁; exact h_corr₁
@@ -11066,13 +11139,13 @@ theorem emit_produces_valid_yaml (v : YamlValue) {inFlow : Bool} (hg : Grammable
           ((emit.emitPairList pairs.toList).toList ++ ['}']) h_toList
       -- Step 3: Build EmitPairListScansInFlow for non-empty pair list
       have h_pair_scan : EmitPairListScansInFlow pairs.toList :=
-        emitPairList_scans_nonempty pairs.toList (by simp [h_pairs]) (fun p hp => by
+        (emitPairList_scans_nonempty pairs.toList (by simp [h_pairs]) (fun p hp => by
           have ⟨i, hi, h_eq⟩ := List.getElem_of_mem hp
           have h_sz : i < pairs.size := by rwa [Array.length_toList] at hi
           exact h_eq ▸ emit_scans_in_flow pairs[i].1 (hk ⟨i, h_sz⟩)) (fun p hp => by
           have ⟨i, hi, h_eq⟩ := List.getElem_of_mem hp
           have h_sz : i < pairs.size := by rwa [Array.length_toList] at hi
-          exact h_eq ▸ emit_scans_in_flow pairs[i].2 (hv ⟨i, h_sz⟩))
+          exact h_eq ▸ emit_scans_in_flow pairs[i].2 (hv ⟨i, h_sz⟩))).toWeak
       -- Step 4: Apply body scanning
       obtain ⟨n₂, s₂, h_chain₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂,
               h_ek₂, h_col₂, h_inflow₂, h_indent₂, _h_line₂, _, _, _, _⟩ :=
@@ -12390,10 +12463,10 @@ theorem emitPairList_body_filtered_characterization
       k + 1 < (s'.tokens.filter p).size ∧
       (∀ (h' : k + 1 < (s'.tokens.filter p).size),
         ((s'.tokens.filter p)[k + 1]'h').val = .key)) := by
-  -- Construct the chain from EmitPairListScansInFlow
+  -- Construct the chain from EmitPairListScansInFlow_strong (carries n ≥ 3).
   have h_scan := emitPairList_scans_nonempty pairs h_ne h_all_k h_all_v
   obtain ⟨n, s', h_chain, h_corr', h_fl', h_dp', h_ids', h_ek', h_col', h_inflow',
-          h_indent', h_line', h_atol', h_endline', h_stack', h_fmc⟩ :=
+          h_indent', h_line', h_atol', h_endline', h_stack', h_fmc, h_n_ge_3⟩ :=
     h_scan s rest h_corr h_flow h_fl h_indent h_col h_ek h_atol h_endline
   have h_n_pos : n ≥ 1 := by
     match n, h_chain with
@@ -12416,8 +12489,8 @@ theorem emitPairList_body_filtered_characterization
   refine ⟨n, s', h_chain.toScanChain, h_corr', h_fl', h_dp', h_ids', h_ek',
           h_col', h_inflow', h_indent', h_line', h_atol', h_endline',
           h_stack', h_fmc, ?_, ?_, ?_⟩
-  · -- Part 1: n ≥ 3
-    sorry
+  · -- Part 1: n ≥ 3 (from the strong producer's chain-length lower bound)
+    exact h_n_ge_3
   · -- Part 2: First new filtered token is .key
     constructor
     · -- old_sz < filtered size
