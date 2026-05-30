@@ -1820,19 +1820,37 @@ not in-place axiom-to-theorem promotion — the latter is impossible
 when the axiom's hypothesis is strictly weaker than what the
 stronger lemma derives).
 
-**Next session**: **Step 6f.3b3.roundtrip.maintheorem.body1.tokenshape.pair.keyshape**
-(NEW sub-session, split out 2026-05-30 — see Reflection 167). **Discharges
-legacy sorry 9644** (emitPairList first new filtered token is `.key`). Build
-a `Grammable`-induction strong predicate proving scanning `emit v` in flow
-from `simpleKeyAllowed = true` leaves `simpleKey.possible = true ∧
-simpleKey.tokenIndex = s.tokens.size` (saved key **survives** a node scan at
-its reserved slot; composite nodes via flow-stack push-on-open / restore-on-
-close). Then the colon's `scanValuePrepare` pins `.key` at `N+1`, and the
-Reflection-166 bulk-prefix + `Array_filter_getElem_of_raw_prefix` transfer
-finishes (plus substrate.d preserving `N+1` across the residual chain from
-`s₂`). Est. ~300–500 LOC — this is *new* substrate (exact-`tokenIndex`
-survival), not a list-discharge repeat, and the indexed world deferred it
-too. `.body2` (9552, 9646) follows.
+**Next session**: **Step 6f.3b3.roundtrip.maintheorem.body1.tokenshape.pair.keyshape.discharge**
+(consumes the substrate landed below — see Reflection 168). **Discharges
+legacy sorry 9644** (emitPairList first new filtered token is `.key`).
+Mechanical consumption: scan the first key via `emit_scans_in_flow_saved_key`
+(→ `s₁.simpleKey = {N, true}`, `raw[N] = .placeholder`), then the colon's
+`scanValuePrepare` pins `.key` at `N+1`, and the Reflection-166 bulk-prefix +
+`Array_filter_getElem_of_raw_prefix` transfer finishes (plus substrate.d
+`NoOverwriteAt s₂ (N+1)` — vacuous since `scanValuePrepare` cleared the key —
+preserving `N`/`N+1` across the residual chain from `s₂`). Remaining cost:
+a colon-token-effect fact (`raw[N+1] = .key` after `scanNextToken_flow_value`)
+and either a `ScanChain` suffix-factoring lemma or a single-level keyshape
+producer to reach the producer's `s'`. `.body2` (9552, 9646) follows.
+
+**`.body1.tokenshape.pair.keyshape.establishing` LANDED 2026-05-30** — builds
+the saved-key-survival substrate (the *new* invariant the indexed world also
+deferred), full project 491/491, no new axioms beyond the pre-existing
+`escapeString` scalar-path `native_decide`. Delivered, sorry-free, in
+`EmitterScannability.lean`: (1) `EmitScansInFlowSavedKey` + producer
+`emit_scans_in_flow_saved_key` by `Grammable` induction — scanning `emit v`
+in flow from `simpleKeyAllowed = true ∧ simpleKey.possible = false ∧
+stack.size = flowLevel` leaves `simpleKey.possible = true ∧ tokenIndex =
+s.tokens.size ∧ raw[N] = .placeholder`; scalars survive directly, composites
+via open-push / body-floor-preserve / close-restore. (2) Five strengthened
+scanner theorems enabling it: `scanNextToken_flow_close_{seq,mapping}_nested`
+now expose the restored `simpleKey = stack.back?.getD {}` and prefix
+preservation; `scanNextToken_flow_open_{nested,mapping_nested}` now expose the
+pushed key `stack = stack.push (saveSimpleKey s).simpleKey`; plus helpers
+`scanNextToken_flow_scalar_savedKey`, `scanNextToken_flow_open_{seq,mapping}_savedKey`,
+`saveSimpleKey_getElem?_size`. The `.key` discharge is now a mechanical
+consumer (the `.discharge` sub-session above) — mirrors the list's
+`.establishing` → `.discharge` split (Reflections 162/165/166). See Reflection 168.
 
 **`.body1.tokenshape.pair` PART 1 LANDED 2026-05-30** — closes legacy sorry
 **9638** (emitPairList `n ≥ 3`). ~73 net LOC in `EmitterScannability.lean`,
@@ -6050,6 +6068,72 @@ saved-key-survival predicate and closes 9644. `.body2` (9552, 9646) then
 closes the outer-flowEntry claims (and may itself need the same survival
 fact for the post-comma `.key`). **No new axiom debt**: Part 1's helpers
 are all on `[propext, Classical.choice, Quot.sound]` — no `native_decide`.
+
+##### Reflection 168 (new, 2026-05-30): `.keyshape` substrate (`emit_scans_in_flow_saved_key`) LANDS sorry-free, but the build of the saved-key-survival predicate is the *whole* sub-session — so `.keyshape` splits into `.establishing` (this session) + `.discharge` (next), mirroring the list
+
+**Triggering event**: executing `.body1.tokenshape.pair.keyshape` to close
+sorry 9644. The novel substrate Reflection 167 specified — saved-key
+survival with exact `tokenIndex = N` across a node scan — **landed
+sorry-free** (full project 491/491), but consumed the session, so the
+`filtered[old_sz] = .key` discharge itself is deferred. Mirrors the
+`.tokenshape.list` arc, which also split establishing (substrate) from
+discharge (consumer) across sub-sessions.
+
+**What landed (`.keyshape.establishing`).** `EmitScansInFlowSavedKey v` +
+its `Grammable`-induction producer `emit_scans_in_flow_saved_key`: scanning
+`emit v` in flow from `simpleKeyAllowed = true ∧ simpleKey.possible = false ∧
+stack.size = flowLevel` yields, besides the full `EmitScansInFlow` bundle,
+`simpleKey.possible = true ∧ simpleKey.tokenIndex = s.tokens.size ∧
+N+1 < s'.tokens.size ∧ raw[N] = .placeholder`. Scalars survive directly
+(`saveSimpleKey` reserves at `N`, `scanDoubleQuoted` preserves the key);
+composites push the key on `[`/`{`, the body preserves it via
+`FlowMonoChain_preserves_raw_prefix` at floor `s.flowLevel + 1` (which
+*excludes* the just-pushed key at stack index `s.flowLevel`), and the close
+restores it from the popped stack top.
+
+**The cost was in *exposing* substrate, not the induction.** Five existing
+scanner theorems had to be strengthened first, each cheap individually but
+each forcing a statement change + call-site fixups: the flow **close**
+theorems (`_seq`/`_mapping`) now expose `simpleKey = stack.back?.getD {}`
+(the restore) **and** prefix preservation `∀ i < s.tokens.size,
+s'.tokens[i]? = s.tokens[i]?` (close only appends — needed because the
+generic `NoOverwriteAt`/floor lemmas *fail at the close*: the frozen stack
+key still targets `N`, so no boundary lemma preserves `N` there); the flow
+**open** theorems now expose the pushed key `stack = stack.push
+(saveSimpleKey s).simpleKey`. Plus three new helpers
+(`scanNextToken_flow_scalar_savedKey`, `scanNextToken_flow_open_{seq,mapping}_savedKey`,
+`saveSimpleKey_getElem?_size`).
+
+**Heuristic (saved-key survival ≠ floor preservation at the boundary
+step).** The body of a composite key preserves slot `N` via the floor
+lemma *only because the floor `s.flowLevel + 1` excludes the frozen key*;
+at the **close**, the key is restored to the current level, so the floor
+trick no longer protects `N` — the close must be shown to *not write*
+`N` directly (it only appends + restores a pointer). Budget a per-endpoint
+prefix-preservation conjunct on the close, distinct from the body's floor
+argument.
+
+**Heuristic (a "build the predicate" sub-session rarely also discharges).**
+When a discharge needs a genuinely-new substrate predicate proven by
+structural induction with several enabling theorem-strengthenings, the
+substrate *is* the sub-session — the consumer (here: colon `.key` pin +
+`Array_filter_getElem_of_raw_prefix` transfer + reaching the producer's
+`s'`) is a separate, mechanical follow-on. Same shape as the list's
+`.establishing` → `.discharge` split (Reflections 162/165/166): plan them
+as two from the start.
+
+**Reflection 168 → roadmap**: `.keyshape.discharge` closes 9644 by
+consuming `emit_scans_in_flow_saved_key` — needs (a) a colon-token-effect
+fact (`raw[N+1] = .key` after `scanNextToken_flow_value`, derivable by
+strengthening that theorem with conditional conjuncts off
+`(saveSimpleKey s).simpleKey`, or a focused re-derivation), (b) reaching the
+producer's `s'` (a `ScanChain` suffix-factoring lemma, or a single-level
+keyshape producer that re-derives the bundle and reuses
+`emitPairList_scans_nonempty` for the tail), (c) the `Array_filter_getElem_of_raw_prefix`
+transfer with reference array `s.tokens ++ [ph, .key]`. **No new axiom
+debt**: `emit_scans_in_flow_saved_key` is on `[propext, Classical.choice,
+Quot.sound]` plus only the pre-existing `escapeString` scalar-path
+`native_decide` axioms (same profile as `emit_scans_in_flow`).
 
 **Step 6f.3b3.emitscans.toplevel SS1 (easy prereqs) LANDED 2026-05-27**
 (~225 LOC across two files: `Endpoint.lean` §6 ~200 LOC +
@@ -17565,15 +17649,16 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
-                **Total .body scope re-estimate (SIXTEENTH revision —
+                **Total .body scope re-estimate (SEVENTEENTH revision —
                 after `.substrate.{a,b,c,d,e,f,g}` + `.establishing.
                 {converters,consumer}` + `.tokenshape.list.discharge` +
-                `.tokenshape.pair` PART 1 ALL LANDED; legacy sorries 9550 and
-                9638 CLOSED. `.pair` Part 1 (`n ≥ 3`) *under*-ran at ~73 LOC,
-                but Part 2 (`.key`, 9644) split out as a new
-                `.tokenshape.pair.keyshape` sub-session needing saved-key-
-                survival substrate — Reflection 167)**:
-                ~3760–4975 LOC across **14 sub-sessions** (`.scaffold`
+                `.tokenshape.pair` PART 1 + `.tokenshape.pair.keyshape.
+                establishing` ALL LANDED; legacy sorries 9550 and 9638 CLOSED.
+                `.keyshape` split into `.establishing` (saved-key-survival
+                substrate — LANDED ~530) + `.keyshape.discharge` (consume to
+                close 9644 — NEW), mirroring the list's establishing/discharge
+                split — Reflection 168)**:
+                ~3760–4975 LOC across **15 sub-sessions** (`.scaffold`
                 [LANDED 206] + `.tokenshape.substrate.a` [LANDED 470]
                 + `.tokenshape.substrate.b` [LANDED 226]
                 + `.tokenshape.substrate.c` [LANDED ~570]
@@ -17599,10 +17684,18 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                   closes legacy sorry 9638 (`n ≥ 3`) by strengthening the
                   existing producer in place + `.toWeak`; Part 1 *under*-ran
                   Reflection 166's ~250–400 fear, Reflection 167]
-                + `.tokenshape.pair.keyshape` [NEW ~300–500 —
-                  closes legacy sorry 9644 (`.key`); needs a new
-                  `Grammable`-induction saved-key-survival predicate that
-                  the indexed world also deferred, Reflection 167]
+                + `.tokenshape.pair.keyshape.establishing` [LANDED ~530 —
+                  builds the saved-key-survival substrate
+                  `EmitScansInFlowSavedKey` + `emit_scans_in_flow_saved_key`
+                  (Grammable induction: scalar direct, composite via
+                  open-push / body-floor-preserve / close-restore) + 5
+                  strengthened scanner theorems exposing the restored/pushed
+                  key and close-prefix; sorry-free, full project 491/491,
+                  no new axioms — Reflection 168]
+                + `.tokenshape.pair.keyshape.discharge` [NEW ~150–250 —
+                  closes legacy sorry 9644 (`.key`) by consuming the substrate:
+                  colon `.key` pin + bulk-prefix `Array_filter_getElem_of_raw_prefix`
+                  transfer + reaching the producer's `s'`, Reflection 168]
                 + `.body2` [~300–500]),
                 vs. Blueprint-original 400–700 LOC in 1 session.
                 Cumulative underestimate factor: **~6.4–7.2×**
