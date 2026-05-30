@@ -1820,28 +1820,46 @@ not in-place axiom-to-theorem promotion — the latter is impossible
 when the axiom's hypothesis is strictly weaker than what the
 stronger lemma derives).
 
-**Next session**: **Step 6f.3b3.roundtrip.maintheorem.body1.tokenshape.list.establishing.consumer**
-(unblocked 2026-05-29 now that `.establishing.converters` LANDED — see
-below and Reflection 164). Ships `emitList_scans_nonempty_with_skdr`
-itself by **mirroring** `emitList_scans_nonempty` / `emit_scans_in_flow`
-(re-deriving the per-step structure, not reusing the opaque composed
-chains), composing per-step SKDR witnesses out of the now-landed
-converters. The converters handle every *clean* emit sub-body (those
-start strictly past the protected position `N`, so `SimpleKeyAboveFloor`
-/`NoOverwriteAt (N+1)` hold and `…_of_FlowMonoChain_skFloor` /
-`…_of_FlowMonoChain_noOverwrite` apply wholesale); the only per-step work
-left is the **top-level scalar-boundary peel** — `SavedKeyDoesntResolve.
-step_of_non_colon` applied to the scalar step, the comma step, AND the
-*next* item's first step (because `scanFlowEntry` does NOT clear the
-saved key at `tokenIndex = N`, so the polluting key survives the comma
-into the next `saveSimpleKey`). See Reflection 164 for the precise
-boundary analysis. Subsequent session: `.tokenshape.list.discharge`
-(~150–300 LOC, closes **sorry 9550**). Sorry 9550 closure is now TWO
-sessions away (establishing.consumer → discharge). The `.tokenshape.list`
-execution-attempt counter is now at 5 — attempts #1/#2/#3/#4/#5
-(Reflections 157/158/161/162/164); attempt #5 (this session) is the
-first to land **establishing code** (the converter substrate) rather
-than only re-scope.
+**Next session**: **Step 6f.3b3.roundtrip.maintheorem.body1.tokenshape.list.discharge**
+(unblocked 2026-05-29 now that the entire `.establishing` (both
+`.converters` and `.consumer`) has LANDED — see below and Reflections
+164/165). **Discharges 1 of 5 legacy sorries: 9550** (emitList first new
+filtered token is content-start) by feeding the
+`emitList_scans_nonempty_with_skdr` witness to
+`SavedKeyDoesntResolve_preserves_position_target` (substrate.f §F.3) for
+the residual raw position `N+1`, alongside substrate.d/e for positions
+`≤ N` and `N+2`. Estimated ~150–300 LOC. Sorry 9550 closure is now ONE
+session away. The `.tokenshape.list` execution-attempt counter is at 6 —
+attempts #1–#6 (Reflections 157/158/161/162/164/165); attempts #5–#6
+landed **establishing code** (the converter substrate then the consumer)
+rather than only re-scoping.
+
+**`.body1.tokenshape.list.establishing.consumer` LANDED 2026-05-29** —
+the SKDR-producing scanning theorems (Phase 3 Step
+6f.3b3.roundtrip.maintheorem.body1.tokenshape.list.establishing, part 2
+of 2). **Closes zero legacy sorries** directly; ships the witness
+consumed by `.tokenshape.list.discharge`. ~330 LOC in new section §H.2 of
+`EmitterScannability.lean`. **`emitList_scans_nonempty_with_skdr` is on
+the pure triple `[propext, Classical.choice, Quot.sound]`**;
+`emit_scans_in_flow_with_skdr` carries the *same* 43 pre-existing
+`native_decide` axioms as plain `emit_scans_in_flow` (none introduced).
+Full-project build 491/491, 0 new sorries (7 unchanged). Ships:
+(a) `EmitScansInFlowSKDR` + `emit_scans_in_flow_with_skdr` — scalar via
+one `step_of_non_colon`; sequence/mapping = `[`/`{` (non-`:`) + the WHOLE
+opaque inner body via `…_of_FlowMonoChain_skFloor` + `]`/`}` (non-`:`);
+(b) `EmitListScansInFlowSKDR` + `emitList_scans_nonempty_with_skdr` —
+top-level item-by-item walk at a fixed external `N`, commas via
+`step_of_non_colon`;
+(c) `SavedKeyDoesntResolve_lift_preprocess` — SKDR re-rooting across the
+leading-space preprocess step (token-preserving);
+(d) extended `scanNextToken_flow_open_{nested,mapping_nested}` to expose
+`s'.simpleKey.possible = false` and strict raw-token growth.
+**The predicted "3-step scalar-boundary peel" (Reflection 164) never
+materialised** — the `ExactSync` invariant (`simpleKeyStack.size =
+flowLevel`, free from existing preservation conjuncts) localises the
+polluting key below every inner floor, so the `_skFloor` converter
+swallows each inner body wholesale and no chain is walked at finest
+granularity. See Reflection 165.
 
 **`.body1.tokenshape.list.establishing.converters` LANDED 2026-05-29** —
 the SKDR-construction substrate (Phase 3 Step
@@ -5756,6 +5774,92 @@ indexed-scanner axiom-discharge plan is unaffected. The `.tokenshape.
 list` attempt counter advances to 5; attempt #5 is the first to land
 establishing code, so the trajectory is converging (substrate → tools →
 consumer) rather than re-discovering substrate.
+
+##### Reflection 165 (new, 2026-05-29): `.tokenshape.list.establishing.consumer` execution attempt #6 — the consumer LANDS (~330 LOC, `emitList_scans_nonempty_with_skdr` on the pure triple); the predicted 3-step scalar-boundary peel never materialises because the `ExactSync` invariant (`simpleKeyStack.size = flowLevel`) localises the polluting key below every inner floor
+
+**Triggering event**: executing `.body1.tokenshape.list.establishing.consumer`
+(the second half of `.establishing`, per Reflection 164's split). The
+work LANDED clean in one session — `emit_scans_in_flow_with_skdr` and
+`emitList_scans_nonempty_with_skdr` in new section §H.2, full project
+491/491, 0 new sorries, the headline `emitList` theorem on the **pure
+triple** `[propext, Classical.choice, Quot.sound]`.
+
+**The scope *shrank* (the first time in the `.tokenshape.list` arc).**
+Reflection 164 predicted an irreducible **3-step finest-granularity
+peel** — scalar item, comma, next-item-first — because the scalar's
+saved key at `tokenIndex = N` survives `scanFlowEntry` (the comma) and
+pollutes the next `saveSimpleKey`. That pollution is *real* and was
+confirmed. But it never requires per-step `:`-handling, and the
+resolution is a single threaded equality rather than a hand-peel:
+
+  - **The only `:` that could resolve the key-at-`N` is a top-level flow
+    `:`.** An `emitList` (sequence) body has *no* top-level `:` — colons
+    appear only inside nested mappings, which are entered through `{`. So
+    every top-level step of the body is non-`:` (scalar head, `[`, `{`,
+    `,`), handled uniformly by `step_of_non_colon`, and the key-at-`N`
+    never resolves at the top level. SKDR's preservation of `N+1` is thus
+    automatic across the whole top-level walk.
+
+  - **`ExactSync` (`simpleKeyStack.size = flowLevel`) makes the inner
+    bodies free.** This invariant threads for *free* through the existing
+    `simpleKeyStack`/`flowLevel` preservation conjuncts (no new scanner
+    lemma). At any flow open the polluting key (if present) is pushed to
+    stack index `flowLevel = innerFloor − 1`, strictly *below* the inner
+    floor. So `SimpleKeyAboveFloor (N+1)` at the inner-body start has
+    **all three clauses vacuous/trivial**: current key cleared by the
+    open (first clause), the stack range `[innerFloor, size)` empty
+    because `size = innerFloor` (stack clause), `size ≥ innerFloor` by
+    equality (size clause). The `…_of_FlowMonoChain_skFloor` converter
+    then swallows the *entire* opaque inner body — no inner `:`-step is
+    ever touched individually. (`_skFloor`, not `_noOverwrite`: at the
+    `≤`-boundary a first inner key sits at exactly `N+1`, which the `≥`
+    of `SimpleKeyAboveFloor` tolerates but the `≠` of `NoOverwriteAt`
+    rejects.)
+
+  - **The mirror is shallow, not deep.** `emit_scans_in_flow_with_skdr`
+    re-derives only the 1–3 *structural* steps of each value (the quote,
+    or `[`/`]`, or `{`/`}`); the body in between is a converter call on
+    the opaque `FlowMonoChain` from the plain `emitList_scans_nonempty` /
+    `emitPairList_scans_nonempty`. `emitList_scans_nonempty_with_skdr`
+    re-derives the item/comma boundaries only. Neither walks a chain
+    "at finest granularity," contradicting Reflection 164's central
+    pessimistic claim.
+
+**Heuristic (thread the conservation law, don't peel the boundary).**
+When a per-step side-condition fails at a boundary because of *pollution
+that crosses a separator*, look for a cheap **global invariant that
+relocates the pollution out of the side-condition's reach** before
+reaching for a hand-peel. Here the side-condition is "current key
+`tokenIndex ≠ N`"; the pollution is the key-at-`N`; `ExactSync` relocates
+it onto the stack *below the floor* at every open, where the
+floor-relative `SimpleKeyAboveFloor` simply doesn't see it. The peel was
+an artifact of reasoning with `NoOverwriteAt` (which constrains *all*
+stack slots) instead of `SimpleKeyAboveFloor` (which constrains only
+slots `≥ floor`). Choosing the floor-relative invariant — and proving
+the floor tracks the stack size exactly — dissolved the boundary. This
+*strengthens* Reflection 162's "uniform via substrate.g" rather than
+vindicating Reflection 164's retreat from it: the uniformity holds, and
+the boundary is one equality, not three peeled steps.
+
+**Two small enablers landed** (no axiom change): (i) extended
+`scanNextToken_flow_open_{nested,mapping_nested}` to expose
+`s'.simpleKey.possible = false` (for the vacuous first clause) and strict
+raw-token growth `s.tokens.size < s'.tokens.size` (for the converter's
+`N+1 ≤ size` precondition); (ii) `SavedKeyDoesntResolve_lift_preprocess`,
+the SKDR analogue of `…_of_scanNextToken_eq`, re-roots a SKDR chain
+across the token-preserving leading-space preprocess.
+
+**Reflection 165 → roadmap**: next session executes
+`.body1.tokenshape.list.discharge` (~150–300 LOC) — **closes sorry
+9550**, now ONE session away. Feed `emitList_scans_nonempty_with_skdr`'s
+witness to `SavedKeyDoesntResolve_preserves_position_target` for raw
+position `N+1`, substrate.d/e for `≤ N` and `N+2`; with prefix
+`[0..N+3)` preserved the filter at `old_sz` equals the content-start.
+**No new axiom debt**: the consumer added zero axioms (headline on the
+pure triple; `emit_scans_in_flow_with_skdr` reuses plain
+`emit_scans_in_flow`'s 43 `native_decide` axioms verbatim). The
+`.tokenshape.list` attempt counter advances to 6; attempt #6 is the
+first in the arc where the scope *contracted* on execution.
 
 **Step 6f.3b3.emitscans.toplevel SS1 (easy prereqs) LANDED 2026-05-27**
 (~225 LOC across two files: `Endpoint.lean` §6 ~200 LOC +
@@ -17106,28 +17210,61 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 saved keys `≥ n_target+1`, so the per-step
                 `tokenIndex ≠ n_target` side-condition is uniform).
 
-                ▹▹▹ **.establishing.consumer** *(remaining; estimated
-                ~250–400 LOC)*. Ships `emitList_scans_nonempty_with_skdr`
-                proper by **mirroring** `emitList_scans_nonempty` /
-                `emit_scans_in_flow` (re-deriving the per-step structure;
-                the existing theorems' composed chains are opaque and
-                can't be decomposed semantically). Bodies → converters;
-                the only genuine per-step work is the **top-level
-                scalar-boundary peel** (Reflection 164): a scalar first
-                item saves a key at `tokenIndex = N`, and `scanFlowEntry`
-                (the comma) does NOT clear it, so the polluting key
-                persists through the comma into the next item's first
-                `saveSimpleKey`. Those 3 steps (scalar, comma, next-first)
-                are all non-`:`, so each gets `step_of_non_colon`; only
-                *after* the next item's `saveSimpleKey` does
-                `NoOverwriteAt (N+1)` / `SimpleKeyAboveFloor (N+1)`
-                re-hold so the converter can take the tail. This refines
-                Reflection 162's "uniform via substrate.g" claim: the
-                uniformity is real for the *step witnesses* but the
-                *chain must still be walked at finest granularity* across
-                the boundary because the saved-key pollution crosses the
-                comma — the composed `emit_scans` sub-chains hide exactly
-                the steps that need individual treatment.
+                ✅ **.establishing.consumer LANDED 2026-05-29** *(~330 LOC;
+                `emitList_scans_nonempty_with_skdr` on the **pure triple**
+                `[propext, Classical.choice, Quot.sound]`, full project
+                491/491, 0 new sorries)*. Shipped two mirrored, mutually
+                non-recursive SKDR-producing theorems plus enablers — and
+                the **`ExactSync` insight (Reflection 165) collapsed the
+                predicted "3-step peel" entirely**:
+                  • `emit_scans_in_flow_with_skdr` (`EmitScansInFlowSKDR`,
+                    pure triple + the *same* 43 pre-existing `native_decide`
+                    axioms as plain `emit_scans_in_flow` — none introduced):
+                    scalar = one non-`:` step (`step_of_non_colon`);
+                    sequence/mapping = `[`/`{` (non-`:`) + the **whole**
+                    opaque inner body via the `…_of_FlowMonoChain_skFloor`
+                    converter (weakened to the outer floor) + `]`/`}`
+                    (non-`:`). **No inner `:`-step is ever handled
+                    individually** — the converter swallows the entire
+                    nested body.
+                  • `emitList_scans_nonempty_with_skdr`
+                    (`EmitListScansInFlowSKDR`, **pure triple** — takes the
+                    items' SKDR as a hypothesis, so the `native_decide` only
+                    enters when a consumer instantiates it): walks the
+                    top-level body item-by-item (each item via
+                    `emit_scans_in_flow_with_skdr` at the *fixed* external
+                    `N`), commas via `step_of_non_colon`, the leading-space
+                    preprocess re-rooted by the new
+                    `SavedKeyDoesntResolve_lift_preprocess` (SKDR analogue
+                    of `…_of_scanNextToken_eq`, transferring the position-
+                    `N+1` witness through `s₃.tokens = s₂.tokens`).
+                  • Enablers: extended `scanNextToken_flow_open_{nested,
+                    mapping_nested}` to expose `s'.simpleKey.possible = false`
+                    + strict raw-token growth `s.tokens.size < s'.tokens.size`
+                    (2 conjuncts, 2 call sites updated, no axiom change).
+
+                **Why the peel vanished (Reflection 165).** Reflection 164
+                predicted an irreducible 3-step boundary peel because the
+                scalar-first-item's polluting key at `tokenIndex = N`
+                survives the comma. That is still *true* — but it never needs
+                per-step `:`-handling, because the only place a `:` could
+                resolve that key is a top-level flow `:`, and an `emitList`
+                (sequence) body **has no top-level `:`**. The threaded
+                invariant `ExactSync : simpleKeyStack.size = flowLevel`
+                (free from the existing stack/flowLevel preservation
+                conjuncts) guarantees that at *every* flow-open the polluting
+                key is pushed to stack index `flowLevel = innerFloor − 1`,
+                *below* the inner floor — so `SimpleKeyAboveFloor (N+1)`
+                re-holds at the inner-body start with **all clauses vacuous**
+                (current key cleared, stack range above the floor empty), and
+                the `_skFloor` converter takes the inner body wholesale.
+                The top-level walk's only non-converter steps are the
+                items (recursing) and commas (non-`:`); no chain is ever
+                walked "at finest granularity." This *strengthens*
+                Reflection 162's "uniform via substrate.g" claim rather than
+                refining Reflection 164's pessimism: the uniformity is real
+                and the boundary is handled by a single threaded equality,
+                not a hand-peel.
 
                 ▹▹▹ **.body1.tokenshape.list.discharge** *(after
                 `.tokenshape.list.establishing` LANDS; estimated
@@ -17180,12 +17317,12 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
-                **Total .body scope re-estimate (THIRTEENTH revision —
+                **Total .body scope re-estimate (FOURTEENTH revision —
                 after `.substrate.{a,b,c,d,e,f,g}` LANDED +
-                `.establishing.converters` LANDED + scope discovery from
-                `.tokenshape.list.establishing` execution attempt #5 at
-                Reflection 164)**:
-                ~3252–4590 LOC across **13 sub-sessions** (`.scaffold`
+                `.establishing.{converters,consumer}` BOTH LANDED;
+                `.establishing` COMPLETE, scope *contracted* on attempt #6
+                at Reflection 165)**:
+                ~3367–4655 LOC across **13 sub-sessions** (`.scaffold`
                 [LANDED 206] + `.tokenshape.substrate.a` [LANDED 470]
                 + `.tokenshape.substrate.b` [LANDED 226]
                 + `.tokenshape.substrate.c` [LANDED ~570]
@@ -17196,25 +17333,26 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 + `.tokenshape.list.establishing.converters` [LANDED ~115
                   — SKDR-construction substrate: 2 bulk
                   FlowMonoChain→SKDR converters + 4 step/lift combinators]
-                + `.tokenshape.list.establishing.consumer` [~250–400 —
-                  mirror `emitList_scans_nonempty`, convert clean bodies,
-                  peel the 3-step scalar boundary; Reflection 164]
+                + `.tokenshape.list.establishing.consumer` [LANDED ~330 —
+                  `emit_scans_in_flow_with_skdr` +
+                  `emitList_scans_nonempty_with_skdr` (headline on the
+                  pure triple) + lift helper + 2 open-theorem extensions;
+                  the predicted 3-step peel dissolved via `ExactSync`,
+                  Reflection 165]
                 + `.tokenshape.list.discharge` [~150–300]
                 + `.tokenshape.pair` [~100–150]
                 + `.body2` [~300–500]),
                 vs. Blueprint-original 400–700 LOC in 1 session.
-                Cumulative underestimate factor: **~5.7–6.6×**
-                (up slightly from Reflection 162's ~5.5–6.4× because
-                `.establishing` SPLIT into `.converters` [LANDED ~115] +
-                `.consumer` [~250–400], adding a sub-session: the
-                converters were carved out as standalone substrate when
-                attempt #5 found the consumer needs a finest-granularity
-                boundary peel that the composed sub-chains hide — see
-                Reflection 164. The combined `.converters` + `.consumer`
-                ~365–515 LOC stays close to the original ~300–500
-                `.establishing` estimate; the underrun is in packaging,
-                not total work).
-                The ELEVEN scope discoveries:
+                Cumulative underestimate factor: **~5.9–6.7×**
+                (the combined `.converters` [LANDED ~115] + `.consumer`
+                [LANDED ~330] = ~445 LOC came in just below the original
+                ~300–500 `.establishing` estimate's upper bound — the
+                first sub-session in the arc where execution *under*-ran
+                its re-estimate: attempt #6 found the boundary peel
+                Reflection 164 predicted was an artifact of the wrong
+                invariant, dissolved by a free threaded equality
+                (`ExactSync`); see Reflection 165).
+                The TWELVE scope discoveries:
                 `.scaffold` (Reflection 151) revealed the substrate-
                 cost-of-sorry-discharge problem in principle;
                 `.tokenshape.substrate` (Reflection 152) revealed the
@@ -17323,9 +17461,24 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 count existentially hidden, so the 3 boundary steps
                 cannot be peeled off a reused chain — the consumer must
                 MIRROR the recursion. **Sub-split** `.establishing` into
-                `.converters` (LANDED ~115) + `.consumer` (~250–400).
+                `.converters` (LANDED ~115) + `.consumer` (~250–400);
+                `.tokenshape.list.establishing.consumer` execution
+                attempt #6 (Reflection 165, 2026-05-29) LANDED the
+                consumer (~330 LOC, `emitList_scans_nonempty_with_skdr`
+                on the pure triple) and discovered that the predicted
+                3-step peel **never materialised** — the first scope
+                *contraction* in the arc. The peel was an artifact of
+                reasoning with `NoOverwriteAt` (constrains all stack
+                slots); switching to the floor-relative
+                `SimpleKeyAboveFloor` plus a free threaded equality
+                `ExactSync` (`simpleKeyStack.size = flowLevel`) relocates
+                the polluting key below every inner floor, so the
+                `_skFloor` converter swallows each opaque inner body
+                wholesale and the mirror re-derives only the 1–3
+                structural steps per value — no chain walked at finest
+                granularity, the boundary handled by one equality.
                 See Reflections 151, 152, 153, 154, 155, 156, 157,
-                158, 159, 160, 161, 162, and 164.
+                158, 159, 160, 161, 162, 164, and 165.
 
               ▹ **.maintheorem.nonempty** *(~410 legacy LOC; legacy
                 9653–10062; **2 legacy `sorry`s to discharge**)*.
