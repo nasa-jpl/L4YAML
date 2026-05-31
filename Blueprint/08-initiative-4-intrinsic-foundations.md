@@ -1820,7 +1820,7 @@ not in-place axiom-to-theorem promotion — the latter is impossible
 when the axiom's hypothesis is strictly weaker than what the
 stronger lemma derives).
 
-**Next session**: **Step 6f.3b3.roundtrip.maintheorem.body1.tokenshape.pair.body2.discharge.bridge.blockwb**
+**Next session**: **Step 6f.3b3.roundtrip.maintheorem.body1.tokenshape.pair.body2.discharge.bridge.blockwb.predicate**
 — the per-`emit v` **block-EntrySafe** theorem, the genuinely-new core of the
 bridge (toward legacy sorries 9646 / 9552, still open). Goal: a parallel predicate
 `EmitScansInFlowBlock v` (a **superset** of `EmitScansInFlow` — same preconditions
@@ -1830,19 +1830,20 @@ and a content-start head on `block`), proven `emit_scans_in_flow_block` by its o
 `Grammable` induction. **Non-destructive** (a new predicate; existing
 `EmitScansInFlow` and all its `obtain ⟨…⟩` sites are untouched; the two sorries
 stay sorries until `.assemble` flips them — every intermediate build stays green).
-Per case: **scalar** → `block = [scalarTok]`, `EntrySafe` via `EntrySafe_scalar`
-(landed `.leafdelta`); **sequence** → `block = fss :: (bodyDelta ++ [fse])`,
-`EntrySafe`/`WellBracketed` via `wrap_seq_block` (landed) once `bodyDelta` is shown
-`WellBracketed`; **mapping** → `wrap_map_block`. **The hard sub-task this session**
-is the *scanNextToken-dispatch filtered-list connection*: emit_scans_in_flow calls
-the dispatch leaves (`scanNextToken_flow_scanDoubleQuoted`, `…_flow_open_nested`,
-`…_flow_close_seq_nested`, mapping analogs), which expose state postconditions but
-**NOT** the filtered-token-list delta. Need, per leaf, a filtered-LIST equation
-(`scanNextToken s = .ok (some s') → (precond) → s'.tokens.filter p =
-(s.tokens.filter p).push tok`) by tracing the dispatch down to the low-level
-handler and applying the `.leafdelta` lemmas (`scanFlowSequenceStart_filtered`,
-`scanFlowSequenceEnd_filtered`, etc.). The scalar leaf (scanDoubleQuoted, with
-escaping) is the most involved.
+Per case, the filtered delta now comes straight from the `.blockwb.dispatch`
+push lemmas (landed — see below): **scalar** → `block = [scalarTok]` from
+`scanNextToken_flow_scalar_filtered_push`, `EntrySafe` via `EntrySafe_scalar`
+(landed `.leafdelta`); **sequence** → `block = fss :: (bodyDelta ++ [fse])` with
+`fss` from `scanNextToken_flow_open_seq_filtered_push` and `fse` from
+`scanNextToken_flow_close_seq_filtered_push`, `EntrySafe`/`WellBracketed` via
+`wrap_seq_block` (landed) once `bodyDelta` (the recursive `EmitListScansInFlowBlock`
+body delta) is shown `WellBracketed`; **mapping** → `_open_map`/`_close_map` push
++ `wrap_map_block`. **The hard sub-task (the dispatch→handler filtered-list
+connection) is now DONE** — see the `.blockwb.dispatch` LANDED block below; this
+session's work is the predicate definition + the `Grammable` induction that
+*chains* those push lemmas with the recursive body delta and frames it with the
+bracket lemmas. (Note: the comma separator's filtered-LIST equation is **not** part
+of `.blockwb` — it lives in `.assemble`, where the body delta is threaded.)
 
 **Then** `.bridge.assemble` — (1) thread the `EmitScansInFlowBlock`-derived block
 through new producer variants of `emitList_scans_nonempty_with_skdr` /
@@ -1855,6 +1856,31 @@ with `lo := old_sz`, flipping 9552 / 9646. **Cost of the whole bridge remains la
 positional `obtain`); **do NOT** attempt `ScanChain.split`-style factoring
 (Reflection 169) nor a per-comma keyshape reapplication (Reflection 170 — cannot
 rule out inner flowEntries).
+
+**`.body1.tokenshape.pair.body2.discharge.bridge.blockwb.dispatch` LANDED 2026-05-30** —
+the *scanNextToken-dispatch → handler filtered-LIST connection*, the genuinely-new
+low-level core flagged by Reflection 172. Full project 491/491, all five new lemmas
+on `[propext, Classical.choice, Quot.sound]` (no `sorryAx`, no new axioms). Closes
+**zero** legacy sorries (pure enablement — 9646 / 9552 remain for
+`.blockwb.predicate`/`.assemble`). Delivered sorry-free in `EmitterScannability.lean`
+§G.balance.bridge.dispatch (right after the `.leafdelta` handler `_filtered` lemmas):
+`scanNextToken_flow_open_seq_filtered_push`, `…_open_map_…`, `…_close_seq_…`
+(nested, `flowLevel ≥ 2`), `…_close_map_…` (nested), `…_scalar_…`. Each takes the
+`scanNextToken s = .ok (some s')` fact the dispatch leaf theorems already produce,
+**re-derives the dispatch composition** (`scanNextToken_via_flow_dispatch` /
+`…_via_content_dispatch`) to pin `s'` to the *handler* applied to the
+post-`saveSimpleKey` state `s_ad`, then combines the matching `.leafdelta` handler
+`_filtered` lemma with **`saveSimpleKey_filter_placeholder`** (the two reserved
+placeholder slots filter away, so `s_ad.tokens.filter p = s.tokens.filter p` even
+though the raw arrays differ — *this* is why the filtered view is the right
+abstraction) to expose `s'.tokens.filter p = (s.tokens.filter p).push tok` with
+`tok.val` the expected indicator. **Key reuse discovery**: the existing
+`scanFlowSequenceStart_first_filtered_token` / `scanDoubleQuoted_first_filtered_token`
+proofs already contained the entire derivation internally (size + first-token only);
+the push lemmas extract the full list equation from the same pieces
+(`scanDoubleQuoted_tokens_push` supplies the scalar handler's raw-token push). The
+comma leaf is deferred to `.assemble`. **`.blockwb` split `.dispatch` → `.predicate`**
+(Reflection 173).
 
 **`.body1.tokenshape.pair.body2.discharge.bridge.leafdelta` LANDED 2026-05-30** — the
 pure leaf-token + bracket-block combinatorial layer the scanner bridge consumes,
@@ -6458,6 +6484,44 @@ proof (`unfold; dsimp only []; rw [advance_preserves_tokens, emit_tokens_push,
 Array.filter_push]; rfl`) — even when the surrounding record-update differs (the End
 handlers decrement `flowLevel`/pop stacks), because the differing fields are
 projected away by the `.tokens` access.
+
+##### Reflection 173 (new, 2026-05-30): `.blockwb` splits into `.dispatch` + `.predicate` — the "hard sub-task" (the dispatch→handler filtered-list connection) was already 90% built inside the existing `_first_filtered_token` proofs; the genuinely-new cost is *exposing* it as a reusable list equation
+
+Reflection 172 named the dispatch/handler connection as `.blockwb`'s hard core and
+budgeted it as new low-level work. Reading the substrate before writing it revealed
+that connection is **almost entirely already present**, just not in reusable form:
+
+**The connection was hiding in plain sight.** The existing
+`scanFlowSequenceStart_first_filtered_token` / `scanFlowMappingStart_first_filtered_token`
+/ `scanDoubleQuoted_first_filtered_token` lemmas (used right at the line-9550/9644
+sorry-sites for the *first* token) each already (a) re-derive the dispatch
+composition to pin `s'` to the handler on `s_ad`, (b) establish the handler's raw
+token-push, and (c) carry **`saveSimpleKey_filter_placeholder`** — they then *throw
+away* all but the size-grows + single-first-token-value facts. The five
+`.blockwb.dispatch` push lemmas are the *same derivation* concluding the full
+filtered-LIST equation `s'.tokens.filter p = (s.tokens.filter p).push tok` instead.
+Net new code: ~230 LOC of mostly-mechanical dispatch re-derivation, all
+`[propext, Classical.choice, Quot.sound]`, **zero genuinely-new difficulty** — the
+scalar leaf (feared "most involved" in Reflection 172 because of `escapeString`)
+reuses `scanDoubleQuoted_tokens_push`, which already abstracts the escaping away into
+"pushes one `.scalar` token."
+
+**Why `saveSimpleKey` doesn't break the filtered view.** The one subtlety worth
+banking: `saveSimpleKey` is *not* token-preserving — when `simpleKeyAllowed` it pushes
+**two `.placeholder` slots**. But the bridge works on `tokens.filter (·.val !=
+.placeholder)`, and `saveSimpleKey_filter_placeholder` proves those slots filter away,
+so `s_ad.tokens.filter p = s.tokens.filter p`. The whole bridge is sound *because* it
+committed to the filtered view early — a raw-token formulation would have to track the
+placeholder reservation/resolution dance through every leaf.
+
+**The split.** `.dispatch` (this session, sorry-free) lands the five filtered-push
+leaf lemmas. `.predicate` (next) defines `EmitScansInFlowBlock` and runs the
+`Grammable` induction that chains those push lemmas with the recursive body delta and
+frames it with `wrap_seq_block`/`wrap_map_block`. **Meta-lesson (refines Reflection
+172's "stack of substrate layers"):** before budgeting a flagged hard sub-task as
+*new* work, grep the proofs of the lemmas that solve the *adjacent* easier problem
+(here: first-token vs. whole-list) — the hard derivation is often already inside them,
+needing only a *different conclusion*, not a different proof.
 
 **Step 6f.3b3.emitscans.toplevel SS1 (easy prereqs) LANDED 2026-05-27**
 (~225 LOC across two files: `Endpoint.lean` §6 ~200 LOC +
@@ -17979,12 +18043,13 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
-                **Total .body scope re-estimate (TWENTY-FIRST revision —
+                **Total .body scope re-estimate (TWENTY-SECOND revision —
                 after `.substrate.{a,b,c,d,e,f,g}` + `.establishing.
                 {converters,consumer}` + `.tokenshape.list.discharge` +
                 `.tokenshape.pair` PART 1 + `.tokenshape.pair.keyshape.
                 {establishing,discharge}` + `.body2.establishing` +
                 `.body2.discharge.wbalgebra` + `.body2.discharge.bridge.leafdelta`
+                + `.body2.discharge.bridge.blockwb.dispatch`
                 ALL LANDED;
                 legacy sorries 9550, 9638 AND 9644 CLOSED. `.keyshape.discharge`
                 came in at ~590 (above its ~150–250 re-estimate) because the
@@ -17997,11 +18062,19 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 the per-block `EntrySafe` fact needs a filtered-token *delta* the
                 scanner exposes only at the low-level handler, not the
                 `scanNextToken` dispatch the recursion uses — a definition-rippling
-                ~1000-LOC threading job. `.body2.establishing` +
-                `.body2.discharge.wbalgebra` + `.body2.discharge.bridge.leafdelta`
-                LANDED the pure balance/well-bracketedness/leaf-token algebra; only
-                `.body2.discharge.bridge.{blockwb,assemble}` (9646, 9552) remain)**:
-                ~4070–5685 LOC across **18 sub-sessions** (`.scaffold`
+                ~1000-LOC threading job. `.blockwb` itself then SPLIT
+                `.dispatch` → `.predicate` (Reflection 173): the dispatch→handler
+                filtered-list connection turned out ~90% pre-built inside the
+                existing `_first_filtered_token` proofs, so it lands as its own
+                mechanical increment ahead of the predicate + induction.
+                `.body2.establishing` + `.body2.discharge.wbalgebra` +
+                `.body2.discharge.bridge.leafdelta` +
+                `.body2.discharge.bridge.blockwb.dispatch`
+                LANDED the pure balance/well-bracketedness/leaf-token algebra +
+                the dispatch→handler connection; only
+                `.body2.discharge.bridge.blockwb.predicate` + `.assemble`
+                (9646, 9552) remain)**:
+                ~4300–6085 LOC across **19 sub-sessions** (`.scaffold`
                 [LANDED 206] + `.tokenshape.substrate.a` [LANDED 470]
                 + `.tokenshape.substrate.b` [LANDED 226]
                 + `.tokenshape.substrate.c` [LANDED ~570]
@@ -18070,11 +18143,23 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                   `EntrySafe_scalar`; sorry-free, full project 491/491,
                   `[propext, Quot.sound]`/`[propext]`. Closes ZERO legacy sorries.
                   Reflection 172]
-                + `.body2.discharge.bridge.blockwb` [~400–600 — the per-`emit v`
+                + `.body2.discharge.bridge.blockwb.dispatch` [LANDED ~230 —
+                  the scanNextToken-dispatch → handler filtered-LIST connection:
+                  five `scanNextToken_flow_*_filtered_push` lemmas (open/close seq,
+                  open/close map, scalar) each re-derive the dispatch composition to
+                  pin `s'` to the handler on `s_ad`, then combine the `.leafdelta`
+                  handler `_filtered` lemma with `saveSimpleKey_filter_placeholder`
+                  (reserved placeholders filter away) to expose
+                  `s'.tokens.filter p = (s.tokens.filter p).push tok`. The
+                  derivation was ~90% pre-built inside the existing
+                  `_first_filtered_token` proofs (which discard all but
+                  size+first-token); sorry-free, full project 491/491, pure triple.
+                  Closes ZERO legacy sorries. Reflection 173]
+                + `.body2.discharge.bridge.blockwb.predicate` [~250–450 — the per-`emit v`
                   block `EntrySafe` theorem via a non-destructive parallel predicate
                   `EmitScansInFlowBlock` (superset of `EmitScansInFlow`) by its own
-                  `Grammable` induction; builds the scanNextToken-dispatch →
-                  handler filtered-LIST connection and applies `wrap_seq_block` /
+                  `Grammable` induction; chains the `.dispatch` push lemmas with the
+                  recursive body delta and applies `wrap_seq_block` /
                   `wrap_map_block` / `EntrySafe_scalar`]
                 + `.body2.discharge.bridge.assemble` [~200–400 — closes 9646, 9552:
                   thread the `EmitScansInFlowBlock` block through new producer
@@ -18091,7 +18176,7 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 Reflection 164 predicted was an artifact of the wrong
                 invariant, dissolved by a free threaded equality
                 (`ExactSync`); see Reflection 165).
-                The FOURTEEN scope discoveries:
+                The FIFTEEN scope discoveries:
                 `.scaffold` (Reflection 151) revealed the substrate-
                 cost-of-sorry-discharge problem in principle;
                 `.tokenshape.substrate` (Reflection 152) revealed the
@@ -18250,7 +18335,24 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `SafeBody` producer threading + the two `SafeBody_array_flowEntry`
                 applications). Compounding lesson: when an obligation is deferred on
                 BOTH substrates, budget for a *stack* of substrate layers — each
-                de-risking pass tends to reveal the next.
+                de-risking pass tends to reveal the next; and `.blockwb`
+                infrastructure-mapping (Reflection 173, 2026-05-30) discovered the
+                *opposite* of the prior layers' surprises — the flagged "hard
+                sub-task" (the dispatch→handler filtered-list connection) was already
+                ~90% built inside the existing `_first_filtered_token` proofs (which
+                re-derive the dispatch, establish the handler push, and carry
+                `saveSimpleKey_filter_placeholder`, then discard all but size +
+                first-token). Net new work was ~230 LOC of mechanical re-derivation
+                concluding the full list equation, with the feared scalar leaf
+                (`escapeString`) dissolved by the pre-existing
+                `scanDoubleQuoted_tokens_push`. **Sub-split** `.blockwb` into
+                `.dispatch` (LANDED ~230, the five `scanNextToken_flow_*_filtered_push`
+                lemmas) + `.predicate` (the `EmitScansInFlowBlock` predicate +
+                `Grammable` induction). Meta-lesson (refines 172's "stack of
+                substrate layers"): before budgeting a flagged hard sub-task as *new*
+                work, grep the proofs of the lemmas solving the *adjacent* easier
+                problem — the hard derivation is often already inside them, needing
+                only a *different conclusion*.
 
               ▹ **.maintheorem.nonempty** *(~410 legacy LOC; legacy
                 9653–10062; **2 legacy `sorry`s to discharge**)*.
