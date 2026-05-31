@@ -10641,6 +10641,20 @@ theorem saveSimpleKey_getElem?_size (s : ScannerState)
   simp only [h_guard, Bool.false_eq_true, ↓reduceIte, h_ska]
   simp [Array.getElem?_push, Array.size_push]
 
+/-- `saveSimpleKey` reserves a *second* `.placeholder` at `N + 1` (the spare slot)
+    when a simple key is allowed and no explicit key is pending.  Companion to
+    `saveSimpleKey_getElem?_size`: both slots `N`, `N + 1` are placeholders, which
+    is what the colon's retroactive `.set` of `.key` at `tokenIndex + 1 = N + 1`
+    relies on to be a clean filtered-list insertion. -/
+theorem saveSimpleKey_getElem?_size_succ (s : ScannerState)
+    (h_ek : s.explicitKeyLine = none) (h_ska : s.simpleKeyAllowed = true) :
+    (saveSimpleKey s).tokens[s.tokens.size + 1]? = some ⟨s.currentPos, .placeholder, s.currentPos⟩ := by
+  unfold saveSimpleKey
+  have h_guard : (s.inFlow && s.explicitKeyLine == some s.line) = false := by rw [h_ek]; simp
+  simp only [h_guard, Bool.false_eq_true, ↓reduceIte, h_ska]
+  -- index N+1 is exactly the size of the inner push, so the outer push hits it
+  rw [Array.getElem?_push, if_pos (by rw [Array.size_push])]
+
 /-- Scalar key head facts: scanning a double-quoted scalar in flow from
     `simpleKeyAllowed = true` leaves the saved key alive at slot `N`. -/
 theorem scanNextToken_flow_scalar_savedKey (s : ScannerState)
@@ -10653,7 +10667,9 @@ theorem scanNextToken_flow_scalar_savedKey (s : ScannerState)
       ∧ s'.simpleKey.tokenIndex = s.tokens.size
       ∧ s.tokens.size + 1 < s'.tokens.size
       ∧ (∀ (h : s.tokens.size < s'.tokens.size),
-          (s'.tokens[s.tokens.size]'h).val = .placeholder) := by
+          (s'.tokens[s.tokens.size]'h).val = .placeholder)
+      ∧ (∀ (h : s.tokens.size + 1 < s'.tokens.size),
+          (s'.tokens[s.tokens.size + 1]'h).val = .placeholder) := by
   obtain ⟨h_skp, h_skt, _h_sks, h_skz⟩ := saveSimpleKey_eval s h_ek h_ska
   have h_sk_flow : (saveSimpleKey s).inFlow = s.inFlow := saveSimpleKey_preserves_inFlow s
   have h_sk_col : (saveSimpleKey s).col = s.col := saveSimpleKey_preserves_col s
@@ -10705,7 +10721,7 @@ theorem scanNextToken_flow_scalar_savedKey (s : ScannerState)
       { s_dq with simpleKey := { s_dq.simpleKey with endLine := s_dq.line } }) :=
     scanNextToken_via_content_dispatch _ _ _ _ _ h_pp h_struct rfl h_check
       h_flow_none h_block_none h_dc
-  refine ⟨_, h_snt, ?_, ?_, ?_, ?_⟩
+  refine ⟨_, h_snt, ?_, ?_, ?_, ?_, ?_⟩
   · show s_dq.simpleKey.possible = true
     exact h_sdq_poss
   · show s_dq.simpleKey.tokenIndex = s.tokens.size
@@ -10723,6 +10739,17 @@ theorem scanNextToken_flow_scalar_savedKey (s : ScannerState)
     have := Option.some.inj (h_some.symm.trans h_get?)
     show (s_dq.tokens[s.tokens.size]'h).val = .placeholder
     rw [this]
+  · intro h
+    have h_ad_lt : s.tokens.size + 1 < s_ad.tokens.size := by rw [h_ad_tokens, h_skz]; omega
+    -- raw[N+1] = placeholder (the spare slot), same getElem? routing as raw[N]
+    have h_get? : s_dq.tokens[s.tokens.size + 1]? = some ⟨s.currentPos, .placeholder, s.currentPos⟩ := by
+      rw [h_dq_tok, Array.getElem?_push, if_neg (by omega : s.tokens.size + 1 ≠ s_ad.tokens.size), h_ad_tokens]
+      exact saveSimpleKey_getElem?_size_succ s h_ek h_ska
+    have h_some : s_dq.tokens[s.tokens.size + 1]? = some (s_dq.tokens[s.tokens.size + 1]'h) :=
+      Array.getElem?_eq_getElem h
+    have := Option.some.inj (h_some.symm.trans h_get?)
+    show (s_dq.tokens[s.tokens.size + 1]'h).val = .placeholder
+    rw [this]
 
 /-- Flow `[` open with a saved key: reserves the key placeholder at slot `N`
     and emits `.flowSequenceStart` at `N + 2`, so `tokens[N] = .placeholder`. -/
@@ -10732,7 +10759,8 @@ theorem scanNextToken_flow_open_seq_savedKey (s s' : ScannerState) (rest : List 
     (h_ek : s.explicitKeyLine = none) (h_ska : s.simpleKeyAllowed = true)
     (h_snt : scanNextToken s = .ok (some s')) :
     s'.tokens.size = s.tokens.size + 3 ∧
-    s'.tokens[s.tokens.size]? = some ⟨s.currentPos, .placeholder, s.currentPos⟩ := by
+    s'.tokens[s.tokens.size]? = some ⟨s.currentPos, .placeholder, s.currentPos⟩ ∧
+    s'.tokens[s.tokens.size + 1]? = some ⟨s.currentPos, .placeholder, s.currentPos⟩ := by
   obtain ⟨_, _h_skt, _, h_skz⟩ := saveSimpleKey_eval s h_ek h_ska
   have h_sk_flow : (saveSimpleKey s).inFlow = s.inFlow := saveSimpleKey_preserves_inFlow s
   have h_sk_col : (saveSimpleKey s).col = s.col := saveSimpleKey_preserves_col s
@@ -10754,11 +10782,14 @@ theorem scanNextToken_flow_open_seq_savedKey (s s' : ScannerState) (rest : List 
     Option.some.inj (Except.ok.inj (h_snt.symm.trans h_snt_eq))
   obtain ⟨tok, h_tok⟩ : ∃ tok, (scanFlowSequenceStart s_ad).tokens = s_ad.tokens.push tok :=
     ⟨_, by unfold scanFlowSequenceStart ScannerState.emit; rw [ScannerCorrectness.advance_preserves_tokens]⟩
-  refine ⟨?_, ?_⟩
+  refine ⟨?_, ?_, ?_⟩
   · rw [h_s', ScannerCorrectness.scanFlowSequenceStart_adds_one_token, h_ad_tokens, h_skz]
   · rw [h_s', h_tok, Array.getElem?_push,
         if_neg (by rw [h_ad_tokens, h_skz]; omega : s.tokens.size ≠ s_ad.tokens.size), h_ad_tokens]
     exact saveSimpleKey_getElem?_size s h_ek h_ska
+  · rw [h_s', h_tok, Array.getElem?_push,
+        if_neg (by rw [h_ad_tokens, h_skz]; omega : s.tokens.size + 1 ≠ s_ad.tokens.size), h_ad_tokens]
+    exact saveSimpleKey_getElem?_size_succ s h_ek h_ska
 
 /-- Flow `{` open with a saved key (mapping analogue of the above). -/
 theorem scanNextToken_flow_open_mapping_savedKey (s s' : ScannerState) (rest : List Char)
@@ -10767,7 +10798,8 @@ theorem scanNextToken_flow_open_mapping_savedKey (s s' : ScannerState) (rest : L
     (h_ek : s.explicitKeyLine = none) (h_ska : s.simpleKeyAllowed = true)
     (h_snt : scanNextToken s = .ok (some s')) :
     s'.tokens.size = s.tokens.size + 3 ∧
-    s'.tokens[s.tokens.size]? = some ⟨s.currentPos, .placeholder, s.currentPos⟩ := by
+    s'.tokens[s.tokens.size]? = some ⟨s.currentPos, .placeholder, s.currentPos⟩ ∧
+    s'.tokens[s.tokens.size + 1]? = some ⟨s.currentPos, .placeholder, s.currentPos⟩ := by
   obtain ⟨_, _h_skt, _, h_skz⟩ := saveSimpleKey_eval s h_ek h_ska
   have h_sk_flow : (saveSimpleKey s).inFlow = s.inFlow := saveSimpleKey_preserves_inFlow s
   have h_sk_col : (saveSimpleKey s).col = s.col := saveSimpleKey_preserves_col s
@@ -10789,11 +10821,14 @@ theorem scanNextToken_flow_open_mapping_savedKey (s s' : ScannerState) (rest : L
     Option.some.inj (Except.ok.inj (h_snt.symm.trans h_snt_eq))
   obtain ⟨tok, h_tok⟩ : ∃ tok, (scanFlowMappingStart s_ad).tokens = s_ad.tokens.push tok :=
     ⟨_, by unfold scanFlowMappingStart ScannerState.emit; rw [ScannerCorrectness.advance_preserves_tokens]⟩
-  refine ⟨?_, ?_⟩
+  refine ⟨?_, ?_, ?_⟩
   · rw [h_s', ScannerCorrectness.scanFlowMappingStart_adds_one_token, h_ad_tokens, h_skz]
   · rw [h_s', h_tok, Array.getElem?_push,
         if_neg (by rw [h_ad_tokens, h_skz]; omega : s.tokens.size ≠ s_ad.tokens.size), h_ad_tokens]
     exact saveSimpleKey_getElem?_size s h_ek h_ska
+  · rw [h_s', h_tok, Array.getElem?_push,
+        if_neg (by rw [h_ad_tokens, h_skz]; omega : s.tokens.size + 1 ≠ s_ad.tokens.size), h_ad_tokens]
+    exact saveSimpleKey_getElem?_size_succ s h_ek h_ska
 
 /-- `EmitScansInFlowSavedKey v`: scanning `emit v` in flow from a state where a
     simple key is allowed leaves the saved key alive at its reserved slot `N`. -/
@@ -10830,6 +10865,8 @@ def EmitScansInFlowSavedKey (v : YamlValue) : Prop :=
       ∧ s.tokens.size + 1 < s'.tokens.size
       ∧ (∀ (h : s.tokens.size < s'.tokens.size),
           (s'.tokens[s.tokens.size]'h).val = .placeholder)
+      ∧ (∀ (h : s.tokens.size + 1 < s'.tokens.size),
+          (s'.tokens[s.tokens.size + 1]'h).val = .placeholder)
 
 /-- Producer for `EmitScansInFlowSavedKey` by induction on `Grammable v inFlow`.
     Scalars survive directly; composites push the saved key on `[`/`{`, preserve
@@ -10848,7 +10885,7 @@ theorem emit_scans_in_flow_saved_key (v : YamlValue) {inFlow : Bool} (hg : Gramm
     obtain ⟨s', h_snt, h_corr', h_fl', h_dp', h_ids', h_ek', h_col', h_tok', h_ska', _h_line', h_atol', h_endline', h_stack'⟩ :=
       scanNextToken_flow_scanDoubleQuoted s_state sc.content rest hcorr' h_flow h_indent h_col
         h_atol (by intro h_poss; exact h_endline h_poss)
-    obtain ⟨s'', h_snt'', h_poss'', h_tidx'', h_size'', h_ph''⟩ :=
+    obtain ⟨s'', h_snt'', h_poss'', h_tidx'', h_size'', h_ph'', h_ph1''⟩ :=
       scanNextToken_flow_scalar_savedKey s_state sc.content rest hcorr' h_flow h_indent h_col h_ek h_ska
     have h_eq : s'' = s' := Option.some.inj (Except.ok.inj (h_snt''.symm.trans h_snt))
     subst h_eq
@@ -10864,7 +10901,7 @@ theorem emit_scans_in_flow_saved_key (v : YamlValue) {inFlow : Bool} (hg : Gramm
     refine ⟨1, s'', ScanChainGrew.single h_snt'' h_grew, h_corr', h_fl', h_dp', h_ids', h_ek',
       h_col', ?_, ?_, _h_line', h_atol', h_endline', h_stack',
       FlowMonoChain.single h_snt'' (Nat.le.refl) (by omega),
-      h_ska', h_poss'', h_tidx'', h_size'', h_ph''⟩
+      h_ska', h_poss'', h_tidx'', h_size'', h_ph'', h_ph1''⟩
     · unfold ScannerState.inFlow; rw [h_fl']
       unfold ScannerState.inFlow at h_flow; exact h_flow
     · unfold ScannerState.currentIndent; rw [h_ids']; exact h_indent
@@ -10886,7 +10923,7 @@ theorem emit_scans_in_flow_saved_key (v : YamlValue) {inFlow : Bool} (hg : Gramm
       scanNextToken_flow_open_nested s_state
         ((emit.emitList items.toList).toList ++ [']'] ++ rest) hcorr₀ h_flow h_indent h_col
         h_atol h_endline
-    obtain ⟨h_s1_size, h_s1_rawN⟩ :=
+    obtain ⟨h_s1_size, h_s1_rawN, h_s1_rawN1⟩ :=
       scanNextToken_flow_open_seq_savedKey s_state s₁ ((emit.emitList items.toList).toList ++ [']'] ++ rest)
         h_corr_state_cons h_flow h_indent h_col h_ek h_ska h_snt₁
     have h_fl₁_ge2 : s₁.flowLevel ≥ 2 := by rw [h_fl₁]; omega
@@ -10920,6 +10957,15 @@ theorem emit_scans_in_flow_saved_key (v : YamlValue) {inFlow : Bool} (hg : Gramm
     have h_body_rawN : s₂.tokens[s_state.tokens.size]? = s₁.tokens[s_state.tokens.size]? := by
       have h_eq := FlowMonoChain_preserves_raw_prefix h_fmc₂ (s_state.tokens.size + 1)
         (by omega) h_skaf₁ (by omega) s_state.tokens.size (by omega)
+      rw [Array.getElem?_eq_getElem (by have := h_fmc₂.tokens_mono; omega),
+          Array.getElem?_eq_getElem (by omega), h_eq]
+    -- raw[N+1] preserved across the body (same floor argument, both key clauses vacuous)
+    have h_skaf₁' : SimpleKeyAboveFloor s₁ (s_state.tokens.size + 2) s₁.flowLevel := by
+      refine ⟨fun hp => by rw [h_sk_poss₁] at hp; exact absurd hp (by decide),
+        fun j hj hjb _ => by exfalso; omega, by omega⟩
+    have h_body_rawN1 : s₂.tokens[s_state.tokens.size + 1]? = s₁.tokens[s_state.tokens.size + 1]? := by
+      have h_eq := FlowMonoChain_preserves_raw_prefix h_fmc₂ (s_state.tokens.size + 2)
+        (by omega) h_skaf₁' (by omega) (s_state.tokens.size + 1) (by omega)
       rw [Array.getElem?_eq_getElem (by have := h_fmc₂.tokens_mono; omega),
           Array.getElem?_eq_getElem (by omega), h_eq]
     -- Step 3: close ']'
@@ -10956,11 +11002,13 @@ theorem emit_scans_in_flow_saved_key (v : YamlValue) {inFlow : Bool} (hg : Gramm
     -- raw[N] = placeholder at s₃
     have h_s3_rawN? : s₃.tokens[s_state.tokens.size]? = some ⟨s_state.currentPos, .placeholder, s_state.currentPos⟩ := by
       rw [h_prefix₃ s_state.tokens.size (by omega), h_body_rawN, h_s1_rawN]
+    have h_s3_rawN1? : s₃.tokens[s_state.tokens.size + 1]? = some ⟨s_state.currentPos, .placeholder, s_state.currentPos⟩ := by
+      rw [h_prefix₃ (s_state.tokens.size + 1) (by omega), h_body_rawN1, h_s1_rawN1]
     refine ⟨(1 + n₂) + 1, s₃,
       (ScanChainGrew.single h_snt₁ h_grew₁).trans
         (h_chain₂.trans (ScanChainGrew.single h_snt₃ h_grew₃)),
       h_corr₃, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, h_atol₃, h_endline₃, ?_, h_fmc_all,
-      h_ska₃, ?_, ?_, ?_, ?_⟩
+      h_ska₃, ?_, ?_, ?_, ?_, ?_⟩
     · rw [h_fl₃, h_fl₂, h_fl₁]; omega
     · rw [h_dp₃, h_dp₂, h_dp₁]
     · rw [h_ids₃, h_ids₂, h_ids₁]
@@ -10982,6 +11030,12 @@ theorem emit_scans_in_flow_saved_key (v : YamlValue) {inFlow : Bool} (hg : Gramm
         Array.getElem?_eq_getElem h
       have := Option.some.inj (h_some.symm.trans h_s3_rawN?)
       rw [this]
+    · -- raw[N+1] = placeholder
+      intro h
+      have h_some : s₃.tokens[s_state.tokens.size + 1]? = some (s₃.tokens[s_state.tokens.size + 1]'h) :=
+        Array.getElem?_eq_getElem h
+      have := Option.some.inj (h_some.symm.trans h_s3_rawN1?)
+      rw [this]
   | mapping style pairs tag anchor _ hk hv _ihk _ihv =>
     intro s_state rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_ska h_sk h_sync
     have h_chars : (emit (.mapping style pairs tag anchor)).toList ++ rest =
@@ -11000,7 +11054,7 @@ theorem emit_scans_in_flow_saved_key (v : YamlValue) {inFlow : Bool} (hg : Gramm
       scanNextToken_flow_open_mapping_nested s_state
         ((emit.emitPairList pairs.toList).toList ++ ['}'] ++ rest) hcorr₀ h_flow h_indent h_col
         h_atol h_endline
-    obtain ⟨h_s1_size, h_s1_rawN⟩ :=
+    obtain ⟨h_s1_size, h_s1_rawN, h_s1_rawN1⟩ :=
       scanNextToken_flow_open_mapping_savedKey s_state s₁ ((emit.emitPairList pairs.toList).toList ++ ['}'] ++ rest)
         h_corr_state_cons h_flow h_indent h_col h_ek h_ska h_snt₁
     have h_fl₁_ge2 : s₁.flowLevel ≥ 2 := by rw [h_fl₁]; omega
@@ -11039,6 +11093,14 @@ theorem emit_scans_in_flow_saved_key (v : YamlValue) {inFlow : Bool} (hg : Gramm
         (by omega) h_skaf₁ (by omega) s_state.tokens.size (by omega)
       rw [Array.getElem?_eq_getElem (by have := h_fmc₂.tokens_mono; omega),
           Array.getElem?_eq_getElem (by omega), h_eq]
+    have h_skaf₁' : SimpleKeyAboveFloor s₁ (s_state.tokens.size + 2) s₁.flowLevel := by
+      refine ⟨fun hp => by rw [h_sk_poss₁] at hp; exact absurd hp (by decide),
+        fun j hj hjb _ => by exfalso; omega, by omega⟩
+    have h_body_rawN1 : s₂.tokens[s_state.tokens.size + 1]? = s₁.tokens[s_state.tokens.size + 1]? := by
+      have h_eq := FlowMonoChain_preserves_raw_prefix h_fmc₂ (s_state.tokens.size + 2)
+        (by omega) h_skaf₁' (by omega) (s_state.tokens.size + 1) (by omega)
+      rw [Array.getElem?_eq_getElem (by have := h_fmc₂.tokens_mono; omega),
+          Array.getElem?_eq_getElem (by omega), h_eq]
     -- Step 3: close '}'
     have h_fl₂_ge2 : s₂.flowLevel ≥ 2 := by rw [h_fl₂, h_fl₁]; omega
     have h_stack_endline₂ : StackEndLineOnLine s₂ s₂.line := by
@@ -11070,11 +11132,13 @@ theorem emit_scans_in_flow_saved_key (v : YamlValue) {inFlow : Bool} (hg : Gramm
     have h_body_mono : s₁.tokens.size ≤ s₂.tokens.size := h_fmc₂.tokens_mono
     have h_s3_rawN? : s₃.tokens[s_state.tokens.size]? = some ⟨s_state.currentPos, .placeholder, s_state.currentPos⟩ := by
       rw [h_prefix₃ s_state.tokens.size (by omega), h_body_rawN, h_s1_rawN]
+    have h_s3_rawN1? : s₃.tokens[s_state.tokens.size + 1]? = some ⟨s_state.currentPos, .placeholder, s_state.currentPos⟩ := by
+      rw [h_prefix₃ (s_state.tokens.size + 1) (by omega), h_body_rawN1, h_s1_rawN1]
     refine ⟨(1 + n₂) + 1, s₃,
       (ScanChainGrew.single h_snt₁ h_grew₁).trans
         (h_chain₂.trans (ScanChainGrew.single h_snt₃ h_grew₃)),
       h_corr₃, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, h_atol₃, h_endline₃, ?_, h_fmc_all,
-      h_ska₃, ?_, ?_, ?_, ?_⟩
+      h_ska₃, ?_, ?_, ?_, ?_, ?_⟩
     · rw [h_fl₃, h_fl₂, h_fl₁]; omega
     · rw [h_dp₃, h_dp₂, h_dp₁]
     · rw [h_ids₃, h_ids₂, h_ids₁]
@@ -11091,6 +11155,11 @@ theorem emit_scans_in_flow_saved_key (v : YamlValue) {inFlow : Bool} (hg : Gramm
       have h_some : s₃.tokens[s_state.tokens.size]? = some (s₃.tokens[s_state.tokens.size]'h) :=
         Array.getElem?_eq_getElem h
       have := Option.some.inj (h_some.symm.trans h_s3_rawN?)
+      rw [this]
+    · intro h
+      have h_some : s₃.tokens[s_state.tokens.size + 1]? = some (s₃.tokens[s_state.tokens.size + 1]'h) :=
+        Array.getElem?_eq_getElem h
+      have := Option.some.inj (h_some.symm.trans h_s3_rawN1?)
       rw [this]
 
 /-! ## `emitList`/`emitPairList` scanning WITH a `SavedKeyDoesntResolve` witness
@@ -11318,7 +11387,7 @@ theorem emitPairList_scans_nonempty_keyshape
     -- Step 1: Scan key via the saved-key substrate.
     obtain ⟨n₁, s₁, h_chain₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_ek₁, h_col₁,
             h_flow₁, h_indent₁, _h_line₁, h_atol₁, h_endline₁, h_stack₁, h_fmc₁,
-            h_ska₁, h_sk_poss₁, h_sk_tidx₁, h_sz₁, h_ph₁⟩ :=
+            h_ska₁, h_sk_poss₁, h_sk_tidx₁, h_sz₁, h_ph₁, _⟩ :=
       (h_all_k_sk p (.head _)) s ([':',  ' '] ++ (emit p.2).toList ++ rest)
         hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_ska h_sk h_sync
     have h_n₁_pos : n₁ ≥ 1 := by
@@ -11437,7 +11506,7 @@ theorem emitPairList_scans_nonempty_keyshape
     -- Step 1: Scan key via the saved-key substrate.
     obtain ⟨n₁, s₁, h_chain₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_ek₁, h_col₁,
             h_flow₁, h_indent₁, _h_line₁, h_atol₁, h_endline₁, h_stack₁, h_fmc₁,
-            h_ska₁, h_sk_poss₁, h_sk_tidx₁, h_sz₁, h_ph₁⟩ :=
+            h_ska₁, h_sk_poss₁, h_sk_tidx₁, h_sz₁, h_ph₁, _⟩ :=
       (h_all_k_sk p (.head _)) s
         ([':',  ' '] ++ (emit p.2).toList ++
           [',',  ' '] ++ (emit.emitPairList (p' :: ps)).toList ++ rest)
