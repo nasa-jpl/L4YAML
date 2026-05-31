@@ -240,7 +240,7 @@ theorem emitList_scans_nonempty (items : List YamlValue) (h_ne : items ≠ [])
       have h_s2_indent : s₂.currentIndent < 0 := by
         unfold ScannerState.currentIndent; rw [h_ids₂]; exact h_indent₁
       have h_s2_col : s₂.col > 0 := by rw [h_col₂]; omega
-      obtain ⟨s₃, h_corr₃, h_flow₃, h_fl₃, h_indent₃, h_col₃, h_dp₃, h_ids₃, h_ek₃, _h_line₃, h_pp_eq, h_atol_transfer₃, h_endline_transfer₃, h_stack_pp₃, h_toks_pp₃⟩ :=
+      obtain ⟨s₃, h_corr₃, h_flow₃, h_fl₃, h_indent₃, h_col₃, h_dp₃, h_ids₃, h_ek₃, _h_line₃, h_pp_eq, h_atol_transfer₃, h_endline_transfer₃, h_stack_pp₃, h_toks_pp₃, _, _⟩ :=
         scanNextToken_preprocess_flow_ws1 s₂ c (rest' ++ rest_chars) h_corr₂_ws
           h_s2_flow h_nws h_nlb h_nc h_s2_indent
       -- s₃ at c :: rest' ++ rest_chars = (emitList (v' :: vs)).toList ++ rest_chars
@@ -1048,7 +1048,7 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
             (' ' :: c_v :: (rest_v ++ rest_chars)) := by
           congr 1; rw [h_first_v]; simp only [List.cons_append]
         exact h_eq_chars ▸ h_corr₂
-      obtain ⟨s₃, h_corr₃, h_flow₃, h_fl₃, h_indent₃, h_col₃, h_dp₃, h_ids₃, h_ek₃, _h_line₃, h_pp_eq, h_atol_transfer₃, h_endline_transfer₃, h_stack_pp₃, h_toks_pp₃⟩ :=
+      obtain ⟨s₃, h_corr₃, h_flow₃, h_fl₃, h_indent₃, h_col₃, h_dp₃, h_ids₃, h_ek₃, _h_line₃, h_pp_eq, h_atol_transfer₃, h_endline_transfer₃, h_stack_pp₃, h_toks_pp₃, _, _⟩ :=
         scanNextToken_preprocess_flow_ws1 s₂ c_v (rest_v ++ rest_chars) h_corr₂_ws
           h_flow₂ h_nws_v h_nlb_v h_nc_v h_indent₂
       have h_corr₃' : ScannerSurfCorr s₃
@@ -1179,7 +1179,7 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
             [',',  ' '] ++ (emit.emitPairList (p' :: ps)).toList ++ rest_chars)) := by
           congr 1; rw [h_first_v]; simp only [List.cons_append, List.append_assoc]
         exact h_eq_chars ▸ h_corr₂
-      obtain ⟨s₃, h_corr₃, h_flow₃, h_fl₃, h_indent₃, h_col₃, h_dp₃, h_ids₃, h_ek₃, _h_line₃, h_pp_eq, h_atol_transfer₃, h_endline_transfer₃, h_stack_pp₃, h_toks_pp₃⟩ :=
+      obtain ⟨s₃, h_corr₃, h_flow₃, h_fl₃, h_indent₃, h_col₃, h_dp₃, h_ids₃, h_ek₃, _h_line₃, h_pp_eq, h_atol_transfer₃, h_endline_transfer₃, h_stack_pp₃, h_toks_pp₃, _, _⟩ :=
         scanNextToken_preprocess_flow_ws1 s₂ c_v
           (rest_v ++ [',',  ' '] ++ (emit.emitPairList (p' :: ps)).toList ++ rest_chars)
           h_corr₂_ws h_flow₂ h_nws_v h_nlb_v h_nc_v h_indent₂
@@ -1268,7 +1268,7 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
       have h_sc_indent : s_c.currentIndent < 0 := by
         unfold ScannerState.currentIndent; rw [h_ids_c]; exact h_indent_v
       obtain ⟨s_pp, h_corr_pp, h_flow_pp, h_fl_pp, h_indent_pp, h_col_pp,
-              h_dp_pp, h_ids_pp, h_ek_pp, _h_line_pp, h_pp_eq_r, h_atol_transfer_pp, h_endline_transfer_pp, h_stack_pp, h_toks_pp⟩ :=
+              h_dp_pp, h_ids_pp, h_ek_pp, _h_line_pp, h_pp_eq_r, h_atol_transfer_pp, h_endline_transfer_pp, h_stack_pp, h_toks_pp, _, _⟩ :=
         scanNextToken_preprocess_flow_ws1 s_c c_p (rest_p ++ rest_chars) h_corr_c_ws
           h_sc_flow h_nws_p h_nlb_p h_nc_p h_sc_indent
       have h_corr_pp' : ScannerSurfCorr s_pp
@@ -2421,7 +2421,7 @@ theorem emitPairList_scans_nonempty_keyshape
           (' ' :: c_v :: (rest_v ++ rest)) := by
         congr 1; rw [h_first_v]; simp only [List.cons_append]
       exact h_eq_chars ▸ h_corr₂
-    obtain ⟨s₃, h_corr₃, h_flow₃, h_fl₃, h_indent₃, h_col₃, h_dp₃, h_ids₃, h_ek₃, _h_line₃, h_pp_eq, h_atol_transfer₃, h_endline_transfer₃, h_stack_pp₃, h_toks_pp₃⟩ :=
+    obtain ⟨s₃, h_corr₃, h_flow₃, h_fl₃, h_indent₃, h_col₃, h_dp₃, h_ids₃, h_ek₃, _h_line₃, h_pp_eq, h_atol_transfer₃, h_endline_transfer₃, h_stack_pp₃, h_toks_pp₃, _, _⟩ :=
       scanNextToken_preprocess_flow_ws1 s₂ c_v (rest_v ++ rest) h_corr₂_ws
         h_flow₂ h_nws_v h_nlb_v h_nc_v h_indent₂
     have h_corr₃' : ScannerSurfCorr s₃
@@ -2547,7 +2547,7 @@ theorem emitPairList_scans_nonempty_keyshape
           [',',  ' '] ++ (emit.emitPairList (p' :: ps)).toList ++ rest)) := by
         congr 1; rw [h_first_v]; simp only [List.cons_append, List.append_assoc]
       exact h_eq_chars ▸ h_corr₂
-    obtain ⟨s₃, h_corr₃, h_flow₃, h_fl₃, h_indent₃, h_col₃, h_dp₃, h_ids₃, h_ek₃, _h_line₃, h_pp_eq, h_atol_transfer₃, h_endline_transfer₃, h_stack_pp₃, h_toks_pp₃⟩ :=
+    obtain ⟨s₃, h_corr₃, h_flow₃, h_fl₃, h_indent₃, h_col₃, h_dp₃, h_ids₃, h_ek₃, _h_line₃, h_pp_eq, h_atol_transfer₃, h_endline_transfer₃, h_stack_pp₃, h_toks_pp₃, _, _⟩ :=
       scanNextToken_preprocess_flow_ws1 s₂ c_v
         (rest_v ++ [',',  ' '] ++ (emit.emitPairList (p' :: ps)).toList ++ rest)
         h_corr₂_ws h_flow₂ h_nws_v h_nlb_v h_nc_v h_indent₂
@@ -2633,7 +2633,7 @@ theorem emitPairList_scans_nonempty_keyshape
     have h_sc_indent : s_c.currentIndent < 0 := by
       unfold ScannerState.currentIndent; rw [h_ids_c]; exact h_indent_v
     obtain ⟨s_pp, h_corr_pp, h_flow_pp, h_fl_pp, h_indent_pp, h_col_pp,
-            h_dp_pp, h_ids_pp, h_ek_pp, _h_line_pp, h_pp_eq_r, h_atol_transfer_pp, h_endline_transfer_pp, h_stack_pp, h_toks_pp⟩ :=
+            h_dp_pp, h_ids_pp, h_ek_pp, _h_line_pp, h_pp_eq_r, h_atol_transfer_pp, h_endline_transfer_pp, h_stack_pp, h_toks_pp, _, _⟩ :=
       scanNextToken_preprocess_flow_ws1 s_c c_p (rest_p ++ rest) h_corr_c_ws
         h_sc_flow h_nws_p h_nlb_p h_nc_p h_sc_indent
     have h_corr_pp' : ScannerSurfCorr s_pp
@@ -3253,7 +3253,7 @@ theorem emitList_scans_nonempty_with_skdr (items : List YamlValue) (h_ne : items
       have h_s2_indent : s₂.currentIndent < 0 := by
         unfold ScannerState.currentIndent; rw [h_ids₂]; exact h_indent₁
       have h_s2_col : s₂.col > 0 := by rw [h_col₂]; omega
-      obtain ⟨s₃, h_corr₃, h_flow₃, h_fl₃, h_indent₃, h_col₃, h_dp₃, h_ids₃, h_ek₃, _h_line₃, h_pp_eq, h_atol_transfer₃, h_endline_transfer₃, h_stack_pp₃, h_toks_pp₃⟩ :=
+      obtain ⟨s₃, h_corr₃, h_flow₃, h_fl₃, h_indent₃, h_col₃, h_dp₃, h_ids₃, h_ek₃, _h_line₃, h_pp_eq, h_atol_transfer₃, h_endline_transfer₃, h_stack_pp₃, h_toks_pp₃, _, _⟩ :=
         scanNextToken_preprocess_flow_ws1 s₂ c (rest' ++ rest_chars) h_corr₂_ws
           h_s2_flow h_nws h_nlb h_nc h_s2_indent
       have h_corr₃' : ScannerSurfCorr s₃

@@ -2925,6 +2925,10 @@ theorem advance_preserves_simpleKey (s : ScannerState) :
     s.advance.simpleKey = s.simpleKey := by
   unfold ScannerState.advance; dsimp only []; split <;> (try split) <;> (try split) <;> rfl
 
+theorem advance_preserves_simpleKeyAllowed (s : ScannerState) :
+    s.advance.simpleKeyAllowed = s.simpleKeyAllowed := by
+  unfold ScannerState.advance; dsimp only []; split <;> (try split) <;> (try split) <;> rfl
+
 theorem emit_preserves_simpleKey (s : ScannerState) (tok : YamlToken) :
     (s.emit tok).simpleKey = s.simpleKey := by
   unfold ScannerState.emit; rfl

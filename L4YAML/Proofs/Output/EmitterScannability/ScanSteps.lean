@@ -1626,7 +1626,9 @@ theorem scanNextToken_preprocess_flow_ws1 (s : ScannerState) (c : Char)
       ∧ (AllTokensOnLine s s.line → AllTokensOnLine s₁ s₁.line)
       ∧ (EndLineOnLine s → EndLineOnLine s₁)
       ∧ s₁.simpleKeyStack = s.simpleKeyStack
-      ∧ s₁.tokens = s.tokens := by
+      ∧ s₁.tokens = s.tokens
+      ∧ s₁.simpleKey = s.simpleKey
+      ∧ s₁.simpleKeyAllowed = s.simpleKeyAllowed := by
   -- Key: skipToContent absorbs the single space. We decompose the proof:
   -- (a) skipToContent s = .ok s₁ for some s₁ at c :: rest with field preservation
   -- (b) skipToContent s₁ = .ok s₁ (identity, via skipToContent_of_content_char)
@@ -1644,7 +1646,8 @@ theorem scanNextToken_preprocess_flow_ws1 (s : ScannerState) (c : Char)
       ∧ s₁.line = s.line
       ∧ s₁.tokens = s.tokens
       ∧ s₁.simpleKey = s.simpleKey
-      ∧ s₁.simpleKeyStack = s.simpleKeyStack := by
+      ∧ s₁.simpleKeyStack = s.simpleKeyStack
+      ∧ s₁.simpleKeyAllowed = s.simpleKeyAllowed := by
     -- Both needIndentCheck branches yield s.advance. Proof via advance lemmas.
     have ⟨h_pk_space, h_lt⟩ := peek_of_chars_cons s ' ' (c :: rest) s.col hcorr
     -- s.advance is at c :: rest with col + 1
@@ -1704,7 +1707,8 @@ theorem scanNextToken_preprocess_flow_ws1 (s : ScannerState) (c : Char)
       advance_line_of_peek s ' ' h_lt h_pk_space (by decide) (by decide),
       ScannerCorrectness.advance_preserves_tokens s,
       ScannerCorrectness.advance_preserves_simpleKey s,
-      ScannerCorrectness.advance_preserves_simpleKeyStack s⟩
+      ScannerCorrectness.advance_preserves_simpleKeyStack s,
+      ScannerCorrectness.advance_preserves_simpleKeyAllowed s⟩
     -- skipToContent s = .ok s.advance
     unfold skipToContent
     obtain ⟨m, hm⟩ : ∃ m, s.inputEnd - s.offset + 1 = m + 1 :=
@@ -1713,7 +1717,7 @@ theorem scanNextToken_preprocess_flow_ws1 (s : ScannerState) (c : Char)
     simp only [h_ws]
     -- skipToContentComment s.advance: c ≠ '#' → identity
     unfold skipToContentComment; rw [h_pk_adv]; simp [h_nc, h_pk_adv, h_nlb]
-  obtain ⟨s₁, h_stc_ok, h_corr₁, h_fl₁, h_ids₁, h_dp₁, h_ek₁, h_col₁, h_line₁, h_toks₁, h_sk₁, h_stack₁⟩ := h_stc_exists
+  obtain ⟨s₁, h_stc_ok, h_corr₁, h_fl₁, h_ids₁, h_dp₁, h_ek₁, h_col₁, h_line₁, h_toks₁, h_sk₁, h_stack₁, h_ska₁⟩ := h_stc_exists
   -- Part (b): derive further properties of s₁
   have h_flow₁ : s₁.inFlow = true := by
     unfold ScannerState.inFlow
@@ -1744,7 +1748,7 @@ theorem scanNextToken_preprocess_flow_ws1 (s : ScannerState) (c : Char)
     by rw [h_pp_s, h_pp_s₁],
     fun h_a => by unfold AllTokensOnLine at h_a ⊢; simp only [h_line₁, h_toks₁]; exact h_a,
     fun h_e => by unfold EndLineOnLine at h_e ⊢; rw [h_sk₁, h_line₁]; exact h_e,
-    h_stack₁, h_toks₁⟩
+    h_stack₁, h_toks₁, h_sk₁, h_ska₁⟩
 
 -- ═══ Flow-context dispatch lemmas ═══
 

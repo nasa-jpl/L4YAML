@@ -794,6 +794,57 @@ theorem scanNextToken_flow_comma_filtered_push (s : ScannerState) (rest : List C
   have hf := scanFlowEntry_filtered s_ad s' h_sfe
   rw [hf, h_ad_filter]
 
+/-- **Comma simple-key add-on** (companion to `scanNextToken_flow_comma`): the flow
+    `,` separator leaves `simpleKeyAllowed = true` (literally set by `scanFlowEntry`)
+    and threads the simple key through unchanged from `saveSimpleKey s`.  Combined with
+    `saveSimpleKey_id_of_flow_ska_false_ek_none` (when the pre-comma `simpleKeyAllowed`
+    is `false`, as it is right after a value scan), the caller recovers
+    `s'.simpleKey = s.simpleKey` — hence `simpleKey.possible` preservation.  The
+    mapping-body producer needs both to re-establish the per-pair preconditions
+    (`simpleKeyAllowed = true`, `simpleKey.possible = false`) before the recursive
+    `EmitPairListScansInFlowBlock` call. -/
+theorem scanNextToken_flow_comma_simpleKey (s : ScannerState) (rest : List Char)
+    (hcorr : ScannerSurfCorr s ⟨',' :: rest, s.col⟩)
+    (h_flow : s.inFlow = true) (h_indent : s.currentIndent < 0) (h_col : s.col > 0)
+    (h_last : ∀ t, lastRealTokenVal? s.tokens = some t →
+      t ≠ .flowSequenceStart ∧ t ≠ .flowMappingStart ∧ t ≠ .flowEntry)
+    {s' : ScannerState} (h_snt : scanNextToken s = .ok (some s')) :
+    s'.simpleKeyAllowed = true ∧ s'.simpleKey = (saveSimpleKey s).simpleKey := by
+  have h_pp : scanNextToken_preprocess s = .ok (some (saveSimpleKey s, ',')) :=
+    scanNextToken_preprocess_flow s ',' rest s.col hcorr h_flow (by decide) (by decide) (by decide)
+  have h_sk_flow : (saveSimpleKey s).inFlow = s.inFlow := saveSimpleKey_preserves_inFlow s
+  have h_sk_col : (saveSimpleKey s).col = s.col := saveSimpleKey_preserves_col s
+  have h_sk_indent : (saveSimpleKey s).currentIndent = s.currentIndent := by
+    unfold ScannerState.currentIndent; rw [saveSimpleKey_preserves_indents]
+  have h_struct : scanNextToken_dispatchStructural (saveSimpleKey s) ',' = .ok none :=
+    dispatchStructural_none_flow _ _ (h_sk_flow ▸ h_flow) (h_sk_indent ▸ h_indent) (h_sk_col ▸ h_col)
+  let s_ad := if (saveSimpleKey s).allowDirectives then
+    { saveSimpleKey s with allowDirectives := false, documentEverStarted := true }
+  else saveSimpleKey s
+  have h_check := checkBlockFlowIndent_ok_comma s_ad
+  have h_ad_fl : s_ad.flowLevel = s.flowLevel := by
+    simp only [s_ad]; split <;> exact saveSimpleKey_preserves_flowLevel s
+  have h_fl_pos : s_ad.flowLevel > 0 := by
+    rw [h_ad_fl]; unfold ScannerState.inFlow at h_flow; exact of_decide_eq_true h_flow
+  have h_ad_last : ∀ t, lastRealTokenVal? s_ad.tokens = some t →
+      t ≠ .flowSequenceStart ∧ t ≠ .flowMappingStart ∧ t ≠ .flowEntry := by
+    intro t ht
+    have h_ad_toks : s_ad.tokens = (saveSimpleKey s).tokens := by
+      simp only [s_ad]; split <;> rfl
+    rw [h_ad_toks] at ht
+    exact saveSimpleKey_preserves_lastRealTokenVal_ne_flow s h_last t ht
+  have h_flow_disp := dispatchFlowIndicators_comma s_ad h_fl_pos h_ad_last
+  have h_snt_eq : scanNextToken s =
+      .ok (some { (s_ad.emit .flowEntry).advance with simpleKeyAllowed := true }) :=
+    scanNextToken_via_flow_dispatch _ _ _ _ _ h_pp h_struct rfl h_check h_flow_disp
+  have h_s' : s' = { (s_ad.emit .flowEntry).advance with simpleKeyAllowed := true } :=
+    Option.some.inj (Except.ok.inj (h_snt.symm.trans h_snt_eq))
+  rw [h_s']
+  refine ⟨rfl, ?_⟩
+  dsimp only []
+  rw [ScannerCorrectness.advance_preserves_simpleKey, ScannerCorrectness.emit_preserves_simpleKey]
+  simp only [s_ad]; split <;> rfl
+
 /-- `ScanChain_deterministic`: two chains with the same start state and step count
     reach the same final state (since `scanNextToken` is a function). -/
 theorem ScanChain_deterministic {s s₁ s₂ : ScannerState} {n : Nat}
