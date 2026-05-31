@@ -8126,6 +8126,25 @@ theorem Array_filter_setIfInBounds_of_not_pass {α : Type} (a : Array α) (i : N
   rw [Array.setIfInBounds, dif_pos hi, Array.toList_filter, Array.toList_set]
   exact List_filter_set_of_not_pass a.toList i v p hi' h_old' h_new
 
+/-- **Colon block-suffix identity.** If the filtered prefix `(l.take k).filter p`
+    equals `baseFilt` and the whole filtered list is `baseFilt ++ block_k`, and slot
+    `k` is filtered out, then the filtered suffix *after* the filtered-out slot equals
+    exactly `block_k`.  This is the algebraic core the mapping-body producer uses to
+    re-anchor `scanNextToken_flow_value_block`'s mid-key insertion to the pair start:
+    the colon writes `.key` at the rank of slot `N+1` (a placeholder), and this lemma
+    pins the *content after* that slot to the key block `block_k`, so the colon delta
+    becomes a clean front-insert `.key :: block_k` relative to the pair-start prefix
+    (toward sorries 9646/9552). -/
+theorem List_filter_drop_succ_of_take {α : Type} (l : List α) (k : Nat) (p : α → Bool)
+    (hk : k < l.length) (h_old : p (l[k]'hk) = false)
+    (baseFilt block_k : List α)
+    (h_take : (l.take k).filter p = baseFilt)
+    (h_full : l.filter p = baseFilt ++ block_k) :
+    (l.drop (k + 1)).filter p = block_k := by
+  have h_split := List_filter_eq_of_not_pass l k p hk h_old
+  rw [h_take, h_full] at h_split
+  exact (List.append_cancel_left h_split).symm
+
 -- Preprocessing monotonicity: the filtered token count doesn't decrease
 -- through `scanNextToken_preprocess`.
 theorem preprocess_filtered_mono (s : ScannerState) (s₁ : ScannerState) (c : Char)
@@ -14555,6 +14574,61 @@ theorem emitList_scans_block_nonempty (items : List YamlValue) (h_ne : items ≠
           (WellBracketed_append _ _ h_wb₁
             (WellBracketed_singleton_delta_zero feTok (by rw [h_feTok_val]; exact flowBracketDelta_flowEntry)))
           h_wb_rest
+
+/-- Block-tracking superset of `EmitPairListScansInFlow`: the comma-separated
+    `key: value` body between `{` and `}` in a flow mapping.  Its filtered-LIST delta
+    `block` is `WellBracketed` — exactly the interior `wrap_map_block` frames into a
+    flow-mapping block.
+
+    Unlike the sequence-side `EmitListScansInFlowBlock`, this predicate carries the
+    four **simple-key** preconditions (`simpleKey.possible = false`,
+    `simpleKeyAllowed = true`, `simpleKeyStack.size = flowLevel`, and
+    `SimpleKeyStackValid`): the per-pair colon step retroactively converts a reserved
+    placeholder to `.key`, and these invariants (the same ones
+    `emitPairList_scans_nonempty_keyshape` requires) are what let the producer pin that
+    `.key` at the pair-start rank.  A `{`-opener establishes them, so the monolithic
+    mapping producer can supply them. -/
+def EmitPairListScansInFlowBlock (pairs : List (YamlValue × YamlValue)) : Prop :=
+  ∀ (s : ScannerState) (rest : List Char),
+    ScannerSurfCorr s ⟨(emit.emitPairList pairs).toList ++ rest, s.col⟩ →
+    s.inFlow = true →
+    s.flowLevel > 0 →
+    s.currentIndent < 0 →
+    s.col > 0 →
+    s.explicitKeyLine = none →
+    AllTokensOnLine s s.line →
+    EndLineOnLine s →
+    s.simpleKey.possible = false →
+    s.simpleKeyAllowed = true →
+    s.simpleKeyStack.size = s.flowLevel →
+    ScannerCorrectness.SimpleKeyStackValid s →
+    ∃ n s' block,
+      ScanChainGrew (fun t => t.val != .placeholder) s n s'
+      ∧ ScannerSurfCorr s' ⟨rest, s'.col⟩
+      ∧ s'.flowLevel = s.flowLevel
+      ∧ s'.directivesPresent = s.directivesPresent
+      ∧ s'.indents = s.indents
+      ∧ s'.explicitKeyLine = s.explicitKeyLine
+      ∧ s'.col > 0
+      ∧ s'.inFlow = true
+      ∧ s'.currentIndent < 0
+      ∧ s'.line = s.line
+      ∧ AllTokensOnLine s' s'.line
+      ∧ EndLineOnLine s'
+      ∧ s'.simpleKeyStack = s.simpleKeyStack
+      ∧ FlowMonoChain s.flowLevel s n s'
+      ∧ (s'.tokens.filter (fun t => t.val != .placeholder)).toList
+          = (s.tokens.filter (fun t => t.val != .placeholder)).toList ++ block
+      ∧ WellBracketed block
+
+/-- Empty pair-list body: 0-step chain, empty (`WellBracketed`) block. -/
+theorem emitPairList_scans_block_empty : EmitPairListScansInFlowBlock [] := by
+  intro s rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_sk h_ska h_sync h_ssv
+  have h_eq : (emit.emitPairList ([] : List (YamlValue × YamlValue))).toList ++ rest = rest := by
+    simp [emit.emitPairList]
+  rw [h_eq] at hcorr
+  exact ⟨0, s, [], .zero, hcorr, rfl, rfl, rfl, rfl, h_col, h_flow, h_indent, rfl,
+    h_atol, h_endline, rfl, .zero (Nat.le.refl), by simp, WellBracketed_nil⟩
 
 /-- `ScanChain_deterministic`: two chains with the same start state and step count
     reach the same final state (since `scanNextToken` is a function). -/
