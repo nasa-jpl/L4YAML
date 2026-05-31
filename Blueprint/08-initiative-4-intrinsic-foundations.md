@@ -1947,11 +1947,50 @@ also landed: the comma simple-key add-on **`scanNextToken_flow_comma_simpleKey`*
 green (**511 jobs**, 7 sorries unchanged: 2 base + 1 `FilteredTracking` + 4 `NonemptyStructure`).
 See **Reflection 185**.
 
-**Next session**: the monolithic **`emit_scans_in_flow_block` + `emit_scans_in_flow_saved_key_block`
-`Grammable` producers** (in `EmitterScannability/Block.lean`) — by `Grammable` induction, feeding
-the now-landed `emitList_scans_block_nonempty` / `emitPairList_scans_block_nonempty` in the
-sequence/mapping cases (scalar → `scanNextToken_flow_scalar_filtered_push` + `EntrySafe_scalar`;
-the saved-key producer feeds the mapping case via the key IH — no forward reference).  **Then**
+**Predicate correction (LANDED 2026-05-31, commit `619d4615`)** — *the `simpleKey.possible`
+bug.*  Attempting the producer (below) surfaced that the block-predicate family carried a
+`simpleKey.possible = false` requirement that is **provably false** for flow values, making
+`EmitScansInFlowBlock` **uninhabitable for scalars** and the producer *impossible*:
+in flow context every node is scanned with `simpleKeyAllowed = true` (set by the preceding
+`[`/`{`/`,`/`:`), so `saveSimpleKey` saves a key and the scan leaves `possible = true` (a flow
+scalar item `["a"]` ends with a *pending* simple key, so that `["a": b]` could confirm it).
+The conjunct was added in prior sessions as the value's output (`EmitScansInFlowBlock` conjunct)
+and as the per-pair entry precondition (`EmitScansInFlowSavedKeyBlock` /
+`EmitPairListScansInFlowBlock`); it compiled only because the two consumers *consumed* it (GIGO),
+leaving the producer side to expose it.  It is also **not load-bearing**: the saved-key layout
+lemmas (`scanNextToken_flow_scalar_savedKey` etc.) need only `simpleKeyAllowed = true`
+(`saveSimpleKey` overwrites any *stale* key — the dangling reservation placeholders sit at an
+earlier index and stay filtered out), and `.bridge.assemble` consumes only
+`WellBracketed`/`EntrySafe`/`ContentStartTok`.  Fix = a **local simplification of `Block.lean`**:
+drop the output conjunct from `EmitScansInFlowBlock`, drop the entry precondition from the two
+key/pair predicates (3 → 2 simple-key preconditions), and thin the three producers (the value's
+possible is no longer threaded into the next pair-start; the comma's `simpleKey` add-on and
+`saveSimpleKey`-identity haves became dead and were removed).  The **key OUTPUT
+`possible = true` is retained** (the colon's `scanValuePrepare` needs it).  Build green
+(**511 jobs**, 7 sorries unchanged), both consumers on the pure triple.  See **Reflection 186**.
+
+**Next session — now UNBLOCKED**: the monolithic **`emit_scans_in_flow_block` +
+`emit_scans_in_flow_saved_key_block` `Grammable` producers** (in `EmitterScannability/Block.lean`).
+Prove them as **one combined induction** `EmitScansInFlowBlock v ∧ EmitScansInFlowSavedKeyBlock v`
+(the mapping case of the block producer needs the saved-key-block of the *keys* while the
+saved-key producer's body needs the block of *items/values* — genuinely mutual, so the
+conjunction is the clean structural-recursion shape; the IH yields both projections for every
+sub-value, and two thin `.1`/`.2` wrappers expose the public names).  Per case, mirror the
+already-proven non-block templates **`emit_scans_in_flow`** (ScanChainGrowth 1374, the shared
+non-block conjuncts) and **`emit_scans_in_flow_saved_key`** (ScanChainGrowth 1879, the layout),
+adding the block conjuncts: **scalar** → `scanNextToken_flow_scalar_filtered_push` (block =
+`[scalarTok]`) + `WellBracketed_singleton_delta_zero` + `EntrySafe_scalar` + `ContentStartTok`
+scalar-disjunct; **sequence** → `scanNextToken_flow_open_seq_filtered_push` /
+`_close_seq_filtered_push` framing `emitList_scans_block_nonempty`'s body via `wrap_seq_block`;
+**mapping** → `_open_map`/`_close_map` framing `emitPairList_scans_block_nonempty` via
+`wrap_map_block`.  **The one genuinely novel sub-proof is the saved-key-block `take`-side
+equation** `(s'.tokens.toList.take (N+1)).filter p = s.tokens.filter p` (`N = s.tokens.size`):
+needs the first-`N` prefix `= s.tokens` (scalar: 3 explicit pushes; seq/map: prefix preservation
+through open+body+close, cf. `FlowMonoChain_preserves_raw_prefix` + `h_prefix₃` as in
+`emit_scans_in_flow_saved_key`'s `raw[N]?`/`raw[N+1]?` derivation, lines 2008–2011) plus
+`s'.tokens[N] = placeholder`, then `List.take_succ` + `List.filter_append`.  Worth a pure helper
+`take_succ_filter_of_prefix_placeholder`.  **Then** `.bridge.assemble` threads the resulting
+`EmitScansInFlowBlock` block into a `SafeBody` at the
 `.bridge.assemble` threads the resulting `EmitScansInFlowBlock` block into a `SafeBody` at the
 flow-body characterization sorry sites (now the **4 sorries in `NonemptyStructure.lean`**,
 `scanFiltered_emit{Seq,Map}_nonempty_structure` + the two body-token characterizations).
@@ -7334,6 +7373,48 @@ each `..., h_toks, _, _⟩`). Pick by caller count: a companion duplicates a der
 but edits N sites. Both are mechanical once you grep the callers; neither is the bottleneck. The bottleneck is the
 40 lines of genuinely new mathematics (the colon re-anchor), and isolating it behind green prereqs is what made it
 the *only* thing that could go wrong.
+
+##### Reflection 186 (new, 2026-05-31): a green build is not an inhabited predicate — the producer flushed out a `simpleKey.possible = false` conjunct that *compiled for two sessions* yet was provably false, because consumers launder false hypotheses (GIGO) and only the producer pays
+
+Going to write the deferred `emit_scans_in_flow_block` producer, I found its target predicate
+`EmitScansInFlowBlock` was **uninhabitable for scalars**. The culprit: a `simpleKey.possible = false`
+output conjunct (and a matching per-pair entry precondition on the saved-key / pair-list predicates),
+added across R180/R185 on the intuition "after a value, no key is pending." That intuition is **wrong in
+flow**: the scanner sets `simpleKeyAllowed := true` after *every* `[`/`{`/`,`/`:`, so the *next* node —
+key OR value, scalar OR collection — is scanned with `ska = true`, `saveSimpleKey` fires, and the node
+ends with `possible = true` (a flow scalar is *always* a pending simple key, because `["a": b]` and
+`{a: b: c}`-shaped adjacencies are syntactically reachable and the scanner is permissive; validation is
+elsewhere). So the conjunct is false for `[scalarTok]`, and `emit_scans_in_flow_block` could never
+discharge it.
+
+Three things worth banking:
+
+(1) **A predicate can be both well-typed, green, *and* uninhabited — and the build will not tell you.**
+`emitList_scans_block_nonempty` and `emitPairList_scans_block_nonempty` both `obtain` the bogus conjunct
+and either discard it (`_h_poss`) or *use* it to discharge a downstream precondition (`h_poss_v →
+h_sk_c_poss → recursion`). A theorem `(h : Uninhabitable) → Q` compiles fine; the falsehood is *consumed*,
+never *produced*. The lie only surfaces at the producer — the unique site that must *supply* the hypothesis.
+**Lesson:** "it built green, sorry-free, pure triple" certifies the *implications*, not that the antecedents
+are satisfiable. When a predicate is only ever consumed, its inhabitation is unverified until you write its
+producer. Write the producer (or at least one concrete witness) *early*, before piling consumers on top.
+
+(2) **The fix was a deletion, and that is the tell.** The unprovable conjunct was *also not load-bearing*:
+the saved-key layout lemmas need only `ska = true` (because `saveSimpleKey` overwrites any stale key — the
+prior value's dangling reservation placeholders sit at an earlier index and stay filtered out of the block),
+and `.bridge.assemble` wants only `WellBracketed`/`EntrySafe`/`ContentStartTok`. So a precondition I thought
+was protecting an invariant was protecting *nothing* — removing it (3 → 2 simple-key preconditions, drop one
+output conjunct) made the producer *possible* and made two consumers *shorter* (the comma `simpleKey` add-on
+and a `saveSimpleKey`-identity `have` went dead). When the repair for "I can't prove X" is "X was never
+needed," X was scope creep — the model of the scanner's `simpleKey` discipline was richer than any client
+required, and the extra richness was the part that happened to be wrong.
+
+(3) **Cross-check a new invariant against the proven non-block sibling before adopting it.** `EmitScansInFlow`
+(the non-block value predicate, long since proven *with a producer*) tracks **no** `simpleKey.possible` at
+all, and `emitPairList_scans_nonempty` uses plain `EmitScansInFlow` for keys *and* values — it never asserts
+per-pair `possible = false`. That asymmetry (block version strictly stronger on `simpleKey` than the proven
+non-block version) was the visible smell, present since R180, that a producer-first habit would have caught
+two sessions earlier. The non-block chain is the oracle: where the block predicate claims more than its
+non-block twin, justify the delta against a *witness*, not against intuition.
 
 **Step 6f.3b3.emitscans.toplevel SS1 (easy prereqs) LANDED 2026-05-27**
 (~225 LOC across two files: `Endpoint.lean` §6 ~200 LOC +
@@ -18855,7 +18936,7 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
-                **Total .body scope re-estimate (THIRTY-FOURTH revision —
+                **Total .body scope re-estimate (THIRTY-FIFTH revision —
                 after `.substrate.{a,b,c,d,e,f,g}` + `.establishing.
                 {converters,consumer}` + `.tokenshape.list.discharge` +
                 `.tokenshape.pair` PART 1 + `.tokenshape.pair.keyshape.
@@ -18894,6 +18975,15 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `scanNextToken_flow_comma_simpleKey`; `scanNextToken_preprocess_flow_ws1`
                 simple-key-preservation extension + `advance_preserves_simpleKeyAllowed`); build
                 511 jobs, 7 sorries unchanged; Reflection 185)
+                + `.body2.discharge.bridge.blockwb.predicate-fix` (the `simpleKey.possible`
+                bug → `EmitterScannability/Block.lean`) — **LANDED 2026-05-31, commit `619d4615`**:
+                attempting the producer surfaced that the block predicates' `simpleKey.possible = false`
+                requirement is *provably false* for flow values (every flow node scans at `ska = true`),
+                making `EmitScansInFlowBlock` uninhabitable for scalars; it compiled for two sessions only
+                because consumers laundered the false hypothesis (GIGO). Local fix = drop the unprovable,
+                non-load-bearing conjunct/preconditions (3 → 2 simple-key preconditions) and thin the three
+                producers; key OUTPUT `possible = true` retained. Build 511 jobs, 7 sorries unchanged;
+                Reflection 186)
                 ALL LANDED;
                 legacy sorries 9550, 9638 AND 9644 CLOSED. `.keyshape.discharge`
                 came in at ~590 (above its ~150–250 re-estimate) because the
@@ -19185,14 +19275,38 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                   `advance_preserves_simpleKeyAllowed` in `ScannerCorrectness.lean`; 9 positional `obtain`
                   callers updated `..., _, _⟩`). Build 511 jobs, 7 sorries unchanged. Closes ZERO legacy
                   sorries (a producer; feeds `.assemble`). Reflection 185]
+                + `.body2.discharge.bridge.blockwb.predicate-fix` (the `simpleKey.possible` bug)
+                  **— in `EmitterScannability/Block.lean`** [**LANDED 2026-05-31, commit `619d4615`** —
+                  attempting the producer (below) surfaced that the block predicates carried a
+                  `simpleKey.possible = false` requirement that is **provably false** for flow values
+                  (every flow node is scanned at `ska = true`, so `saveSimpleKey` fires and the scan ends
+                  `possible = true`), making `EmitScansInFlowBlock` **uninhabitable for scalars** and the
+                  producer *impossible* — it compiled for two sessions only because the consumers
+                  *consumed* the bogus conjunct (GIGO). It is also not load-bearing (the saved-key layout
+                  lemmas need only `ska = true`; `.assemble` wants only `WellBracketed`/`EntrySafe`/
+                  `ContentStartTok`). Fix = local simplification: drop the output conjunct from
+                  `EmitScansInFlowBlock`, drop the entry precondition from `EmitScansInFlowSavedKeyBlock` /
+                  `EmitPairListScansInFlowBlock` (3 → 2 simple-key preconditions), thin the three producers
+                  (dead comma-`simpleKey`/`saveSimpleKey`-identity haves removed); **key OUTPUT
+                  `possible = true` retained** (the colon needs it). Build 511 jobs, 7 sorries unchanged,
+                  consumers on the pure triple. Closes ZERO legacy sorries (unblocks the producer).
+                  Reflection 186]
                 + `.body2.discharge.bridge.blockwb.producers` (monolithic `Grammable` producers)
-                  **— in `EmitterScannability/Block.lean`** [NEXT, ~150–300 — the monolithic
-                  `emit_scans_in_flow_block` + `emit_scans_in_flow_saved_key_block` `Grammable` producers
-                  by induction on `Grammable v inFlow`, feeding the now-landed
-                  `emitList_scans_block_nonempty` / `emitPairList_scans_block_nonempty` in the
-                  sequence/mapping cases (scalar → `scanNextToken_flow_scalar_filtered_push` +
-                  `EntrySafe_scalar`; the saved-key producer feeds the mapping case via the key IH — no
-                  forward reference), framing via `wrap_seq_block` / `wrap_map_block`]
+                  **— in `EmitterScannability/Block.lean`** [NEXT (now UNBLOCKED), ~400–600 — the monolithic
+                  `emit_scans_in_flow_block` + `emit_scans_in_flow_saved_key_block` `Grammable` producers,
+                  proven as **one combined induction** `EmitScansInFlowBlock v ∧ EmitScansInFlowSavedKeyBlock v`
+                  (genuinely mutual — block-mapping needs saved-key of keys, saved-key-body needs block of
+                  items/values — so the IH must yield both projections; two thin `.1`/`.2` wrappers). Mirror
+                  the proven non-block templates `emit_scans_in_flow` (1374) + `emit_scans_in_flow_saved_key`
+                  (1879), adding block conjuncts: scalar → `scanNextToken_flow_scalar_filtered_push` +
+                  `WellBracketed_singleton_delta_zero` + `EntrySafe_scalar` + `ContentStartTok`; sequence →
+                  `_open_seq`/`_close_seq_filtered_push` + `wrap_seq_block` over `emitList_scans_block_nonempty`;
+                  mapping → `_open_map`/`_close_map` + `wrap_map_block` over `emitPairList_scans_block_nonempty`.
+                  **The one novel sub-proof** is the saved-key-block `take`-side
+                  `(s'.tokens.toList.take (N+1)).filter p = s.tokens.filter p` — needs first-`N` prefix
+                  `= s.tokens` (scalar: 3 explicit pushes; seq/map: prefix preservation through open+body+close
+                  à la `emit_scans_in_flow_saved_key`'s `raw[N]?` derivation) + slot-`N` placeholder, then
+                  `List.take_succ` + filter-append; worth a pure helper `take_succ_filter_of_prefix_placeholder`]
                 + `.body2.discharge.bridge.assemble` [~200–400 — closes 9646, 9552:
                   thread the `EmitScansInFlowBlock` block through new producer
                   variants to build the body `SafeBody`, then apply
