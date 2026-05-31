@@ -14,6 +14,7 @@ import L4YAML.Proofs.Coupling.CouplingBridge
 import L4YAML.Proofs.Contracts.DocumentContracts
 import L4YAML.Proofs.Production.DocumentProduction
 import L4YAML.Proofs.Output.DumpRoundTrip
+import L4YAML.Proofs.Output.EmitterScannability.EscapeProperties
 import L4YAML.Proofs.Output.EmitterScannability
 import L4YAML.Proofs.Output.EmitterScannability.Block
 import L4YAML.Proofs.Output.IndexedEmitterScannability
