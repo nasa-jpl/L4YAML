@@ -1860,17 +1860,52 @@ in the base, moved decls' axiom profiles are unchanged (pure triple where it hel
 reproduces proof terms byte-for-byte, so this is not a new dependency).  Base:
 15710 → 14944 lines.  See **Reflection 182**.
 
-**Remaining modularization seams** (for whenever file size again outweighs the
-functional next step — each a candidate green increment): foundation-direction
-runner-ups are the substrate predicate layers **`NoOverwriteAt` (substrate.d, ~659 LOC)**,
-**`FlowNoOverwriteAt` (substrate.e, ~682 LOC)**, **`SavedKeyDoesntResolve` (substrate.f)**
-and **the non-`:` dispatch preservation (substrate.g)** — all reported with no forward
-references in the seam survey, though d/e are mutually interdependent so they may need to
-move together.  Leaf-direction candidates remain the §G.balance algebra and the
-characterization/round-trip theorems near the file tail.  None block the producer work;
-they are *alternatives* to it when the base file is the binding constraint.
+**Modularization — bulk foundation peel (LANDED 2026-05-31, commit `6e16833c`)**:
+the decisive move.  Rather than peel substrate clusters one at a time, the entire
+**sorry-free prefix** (former lines 77–11897, ~11.8k lines) was carved out in a single
+increment into a **four-module foundation chain** under `EmitterScannability/`, dropping
+the base from **14944 → 3128 lines**.  The enabling insight (**Reflection 183**): because
+Lean enforces *define-before-use*, **any contiguous prefix of the file is automatically
+forward-reference-free** — so a foundation extraction of a prefix is *always* safe; the
+only thing to locate is the largest prefix that leaves all 7 legacy sorries behind (they
+all sit in §5 + §G.balance at the tail, ≥ former line 12421).  The four layers, each
+reopening the `L4YAML.Proofs.EmitterScannability` namespace and importing the previous
+layer (base imports the last; no circular edges):
+- **`ScannerAcceptance.lean`** (former 77–3036, ~3.0k) — §3 acceptance, `SimpleKeyAboveFloor`,
+  `FlowMonoChain` prefix preservation, and the substrate predicates `NoOverwriteAt` (d),
+  `FlowNoOverwriteAt` (e), `SavedKeyDoesntResolve` (f), non-`:` dispatch (g);
+- **`ScanSteps.lean`** (former 3037–6712, ~3.7k) — §G.4 `NoColonDispatchChain` chain wrapper
+  + the core per-step scanning machinery;
+- **`FilteredGrowth.lean`** (former 6713–8348, ~1.7k) — first-filtered-token lemmas + the
+  filtered-array growth infrastructure;
+- **`ScanChainGrowth.lean`** (former 8349–11897, ~3.6k) — the strict `ScanChainGrew` track,
+  saved-key survival, the emitList/emitPairList SKDR theorems (§H), and §4 full pipeline.
+
+Behaviour-preserving: full build green (**503 jobs**, was 495: +4 modules ×2 artifacts);
+the four modules carry **0 sorries**, all **7 legacy sorries remain in the base** (now at
+lines 568/1791/1963/2026/2245/2974/3013); capstone axiom profile unchanged on
+`emit_produces_valid_yaml` / `emit_scans_in_flow` / `emit_parsed_grammable` (pure triple
+`[propext, Classical.choice, Quot.sound]` + pre-existing upstream `native_decide` axioms;
+**no `sorryAx`, no new axioms**).  The base is now exactly the *remaining proof work*: §5
+Content Fidelity + §G.balance well-bracketed-body algebra (where the 7 sorries live).
+
+**Remaining modularization seams** (now mostly *spent* by the bulk peel): the former
+foundation runner-ups (substrate d/e/f/g) all moved into `ScannerAcceptance.lean`.  What
+remains in the base is sorry-bearing — §5 Content Fidelity (1 sorry) and §G.balance/WB
+(6 sorries) — and is best left intact so the active proof work stays together in one
+navigable ~3.1k-line file; splitting a sorry-bearing section is *not* worth it.  If the
+base ever needs further shrinking, the only sorry-free island left is §4-adjacent glue,
+which is tiny.  Net: modularization has done its job; the binding constraint is now the
+proof work itself, not file size.
 
 **Next session**: **Step 6f.3b3.roundtrip.maintheorem.body1.tokenshape.pair.body2.discharge.bridge.blockwb.predicate.pairbody** (`_nonempty` producer + maintheorem, **in `EmitterScannability/Block.lean`**)
+— *(orientation after the 2026-05-31 bulk foundation peel, commit `6e16833c`: the line
+references in this pointer point into the **former monolith**; that content now lives in the
+foundation chain — the comma lemma's `EndLineOnLine` branch (former ~6492–6507) is in
+`ScanSteps.lean`; the `scanNextToken_preprocess` simpleKey-invariant (former ~2187) is in
+`ScannerAcceptance.lean`; `scanNextToken_flow_value` (former ~9474–9501) is in
+`ScanChainGrowth.lean`. All names still resolve for `Block.lean`, which imports the base and
+thus transitively the whole chain — the producer work is functionally unchanged.)*
 — the colon step's filtered-LIST characterization is LANDED
 (`scanNextToken_flow_value_block`, the (colonshape a1) block below); the
 mapping-body **predicate `EmitPairListScansInFlowBlock` + its `_empty` producer + the pure
@@ -7150,6 +7185,33 @@ clusters leave as leaves (no-inbound-edges test); top-of-order foundations leave
 axioms unchanged + sorry count unchanged," and both preserve names via namespace-reopen — so a large file
 can be peeled from *both ends* across successive green increments without ever touching the proof content
 in the middle.
+
+##### Reflection 183 (new, 2026-05-31): a contiguous *prefix* is always a valid foundation — so don't peel substrate clusters one at a time, peel the whole sorry-free prefix in one cut and let the build verify it
+
+Reflection 182 framed the foundation seam test as "no forward references," and the catalogued runner-ups
+(substrate d/e/f/g) were each going to be a separate green increment. That was over-cautious. The deeper
+fact: **Lean enforces define-before-use, so *any contiguous prefix* `[start, N]` of a file is automatically
+forward-reference-free** — a later declaration physically cannot be named by an earlier one, or the
+monolith wouldn't have compiled. The "no forward references" test is therefore *free* for any prefix cut;
+the only real choice is *where* to cut. With the 7 legacy sorries all clustered at the tail (≥ former line
+12421, in §5 + §G.balance), the largest safe prefix was obvious: everything up to §5. One cut, ~11.8k lines,
+four foundation layers (each importing the previous so the moved code is itself modular, not one 11.8k-line
+slab), base 14944 → 3128.
+
+What made the *one-shot* peel safe rather than reckless: (1) the prefix-is-foundation theorem above means
+no manual forward-reference audit is needed — `lake build` *is* the proof, and it names the offending
+module/line if a `mutual` block or `set_option … in` straddles a cut (none did here); (2) the namespace-reopen
+trick from R181/R182 keeps every fully-qualified name identical, so the four-layer chain is invisible to the
+~30 downstream files and to the base's own §5/WB; (3) cutting at `/-!`-header boundaries guarantees each slice
+starts and ends between declarations. The axiom check on the three capstones (`emit_produces_valid_yaml`,
+`emit_scans_in_flow`, `emit_parsed_grammable`) came back identical (pure triple + pre-existing upstream
+`native_decide`, no `sorryAx`) — as it must, since a move reproduces proof terms byte-for-byte.
+
+**Meta-lesson:** when shrinking a monolith with a known "must-stay" set (here: the sorries = the live proof
+work), don't enumerate movable clusters — find the largest *contiguous* region with no must-stay member and
+move it wholesale. Prefix moves need no dependency graph at all; the compiler's define-before-use rule has
+already done the analysis for you. Modularization is now *done* for this file — the binding constraint is the
+proof work in the residual ~3.1k-line base, not its size.
 
 **Step 6f.3b3.emitscans.toplevel SS1 (easy prereqs) LANDED 2026-05-27**
 (~225 LOC across two files: `Endpoint.lean` §6 ~200 LOC +
@@ -18671,7 +18733,7 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
-                **Total .body scope re-estimate (THIRTY-FIRST revision —
+                **Total .body scope re-estimate (THIRTY-SECOND revision —
                 after `.substrate.{a,b,c,d,e,f,g}` + `.establishing.
                 {converters,consumer}` + `.tokenshape.list.discharge` +
                 `.tokenshape.pair` PART 1 + `.tokenshape.pair.keyshape.
@@ -18689,6 +18751,10 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 + **(foundation modularization → `EmitterScannability/EscapeProperties.lean`** — orthogonal
                 to the blockwb chain: the §1+§2 escape/output cluster peeled off the *top* of the base via
                 the foundation direction, base 15710 → 14944, Reflection 182)
+                + **(bulk foundation modularization → `EmitterScannability/{ScannerAcceptance,ScanSteps,FilteredGrowth,ScanChainGrowth}.lean`**
+                — also orthogonal: the *entire sorry-free prefix* (former 77–11897, ~11.8k lines) peeled off
+                the top in ONE cut into a four-layer foundation chain, base 14944 → 3128, build 503 jobs, all
+                7 legacy sorries left in the residual base; Reflection 183)
                 ALL LANDED;
                 legacy sorries 9550, 9638 AND 9644 CLOSED. `.keyshape.discharge`
                 came in at ~590 (above its ~150–250 re-estimate) because the
