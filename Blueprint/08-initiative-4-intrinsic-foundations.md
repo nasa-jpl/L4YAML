@@ -1969,31 +1969,44 @@ possible is no longer threaded into the next pair-start; the comma's `simpleKey`
 `possible = true` is retained** (the colon's `scanValuePrepare` needs it).  Build green
 (**511 jobs**, 7 sorries unchanged), both consumers on the pure triple.  See **Reflection 186**.
 
-**Next session — now UNBLOCKED**: the monolithic **`emit_scans_in_flow_block` +
-`emit_scans_in_flow_saved_key_block` `Grammable` producers** (in `EmitterScannability/Block.lean`).
-Prove them as **one combined induction** `EmitScansInFlowBlock v ∧ EmitScansInFlowSavedKeyBlock v`
-(the mapping case of the block producer needs the saved-key-block of the *keys* while the
-saved-key producer's body needs the block of *items/values* — genuinely mutual, so the
-conjunction is the clean structural-recursion shape; the IH yields both projections for every
-sub-value, and two thin `.1`/`.2` wrappers expose the public names).  Per case, mirror the
-already-proven non-block templates **`emit_scans_in_flow`** (ScanChainGrowth 1374, the shared
-non-block conjuncts) and **`emit_scans_in_flow_saved_key`** (ScanChainGrowth 1879, the layout),
-adding the block conjuncts: **scalar** → `scanNextToken_flow_scalar_filtered_push` (block =
-`[scalarTok]`) + `WellBracketed_singleton_delta_zero` + `EntrySafe_scalar` + `ContentStartTok`
-scalar-disjunct; **sequence** → `scanNextToken_flow_open_seq_filtered_push` /
-`_close_seq_filtered_push` framing `emitList_scans_block_nonempty`'s body via `wrap_seq_block`;
-**mapping** → `_open_map`/`_close_map` framing `emitPairList_scans_block_nonempty` via
-`wrap_map_block`.  **The one genuinely novel sub-proof is the saved-key-block `take`-side
-equation** `(s'.tokens.toList.take (N+1)).filter p = s.tokens.filter p` (`N = s.tokens.size`):
-needs the first-`N` prefix `= s.tokens` (scalar: 3 explicit pushes; seq/map: prefix preservation
-through open+body+close, cf. `FlowMonoChain_preserves_raw_prefix` + `h_prefix₃` as in
-`emit_scans_in_flow_saved_key`'s `raw[N]?`/`raw[N+1]?` derivation, lines 2008–2011) plus
-`s'.tokens[N] = placeholder`, then `List.take_succ` + `List.filter_append`.  Worth a pure helper
-`take_succ_filter_of_prefix_placeholder`.  **Then** `.bridge.assemble` threads the resulting
-`EmitScansInFlowBlock` block into a `SafeBody` at the
-`.bridge.assemble` threads the resulting `EmitScansInFlowBlock` block into a `SafeBody` at the
-flow-body characterization sorry sites (now the **4 sorries in `NonemptyStructure.lean`**,
-`scanFiltered_emit{Seq,Map}_nonempty_structure` + the two body-token characterizations).
+**Monolithic `Grammable` producers (LANDED 2026-05-31, commit `9685eda6`)** — *the next step,
+now closed.*  The two block producers **`emit_scans_in_flow_block`** /
+**`emit_scans_in_flow_saved_key_block`** land in the new submodule
+`EmitterScannability/BlockProducers.lean`, both as `.1`/`.2` wrappers around one combined
+induction **`emit_scans_block_combined : Grammable v inFlow → EmitScansInFlowBlock v ∧
+EmitScansInFlowSavedKeyBlock v`** (genuinely mutual — the block-mapping case feeds the body
+producer with the saved-key-block of the *keys* `(ihk i).2` and the block of *values* `(ihv i).1`;
+the saved-key producer's sequence/mapping body feeds the block of *items* `(ih i).1`; one IH
+yields both projections).  Per case mirrors the proven non-block templates `emit_scans_in_flow`
+and `emit_scans_in_flow_saved_key` (`ScanChainGrowth`), adding the block conjuncts via the dispatch
+push lemmas, the body producers (`emitList_scans_block_nonempty` /
+`emitPairList_scans_block_nonempty`), and `wrap_seq_block`/`wrap_map_block`.  The novel sub-proof
+— the saved-key-block **take-side** `(s'.tokens.toList.take (N+1)).filter p = s.tokens.filter p` —
+is the pure helper **`block_take_eq_of_getElem?`**: the first-`N` raw prefix `= s.tokens` (scalar:
+one non-`:` step via `scanNextToken_at_non_colon_preserves_positions`; seq/map: open(non-`:`) +
+body (`FlowMonoChain_preserves_raw_prefix` at the body floor) + close(non-`:`)), slot `N` is a
+placeholder, then `List.take_add_one` + `List.filter_append`.
+
+*Predicate refinement (discovered executing the producer — the dual of the `simpleKey.possible`
+bug, Reflection 186/187)*: the **mapping** case needs sync (`simpleKeyStack.size = flowLevel`) at
+the open state, which `emitPairList_scans_block_nonempty` requires but `EmitScansInFlowBlock` /
+`EmitListScansInFlowBlock` did *not* carry — so the predicate's preconditions were too *weak* for
+mappings (where Reflection 186's bug was a too-*strong* output conjunct).  Fix = add the sync
+precondition to both (matching `EmitPairListScansInFlowBlock`) and thread it through the body
+producers.  New companion **`scanNextToken_flow_open_mapping_ska`** exposes that `{` leaves
+`simpleKeyAllowed = true`.  Build green (**513 jobs**, 7 sorries unchanged: 2 base + 1
+`FilteredTracking` + 4 `NonemptyStructure`); both producers on the pure triple `[propext,
+Classical.choice, Quot.sound]` + the pre-existing scalar-path `native_decide` escapeString axioms
+(same budget as `emit_scans_in_flow`; no `sorryAx`, no new axioms).  See **Reflection 187**.
+
+**Next session — `.bridge.assemble`** (closes the **4 sorries in `NonemptyStructure.lean`**,
+`scanFiltered_emit{Seq,Map}_nonempty_structure` + the two body-token characterizations — and the
+2 base round-trip-content sorries that consume them).  Thread the `EmitScansInFlowBlock` block
+(from `emit_scans_in_flow_block`) into a `SafeBody Q` of the full filtered delta — each item block
++ the comma's single `.flowEntry` (the comma filtered-LIST equation
+`scanNextToken_flow_comma_filtered_push` is landed) — then apply `SafeBody_array_flowEntry` at the
+characterization sites with `lo := old_sz`.  The producer's `block` carries `WellBracketed` +
+`EntrySafe` + a `ContentStartTok` head, exactly the `SafeBody.cons`/`.single` input.
 — *(orientation after the 2026-05-31 bulk foundation peel, commit `6e16833c`: the line
 references in this pointer point into the **former monolith**; that content now lives in the
 foundation chain — the comma lemma's `EndLineOnLine` branch (former ~6492–6507) is in
@@ -7415,6 +7428,16 @@ per-pair `possible = false`. That asymmetry (block version strictly stronger on 
 non-block version) was the visible smell, present since R180, that a producer-first habit would have caught
 two sessions earlier. The non-block chain is the oracle: where the block predicate claims more than its
 non-block twin, justify the delta against a *witness*, not against intuition.
+
+##### Reflection 187 (new, 2026-05-31): a predicate's *preconditions* can be too weak in exactly the dual way its *outputs* can be too strong — the producer is the oracle for both, and the take-side prefix was less novel than billed because the non-`:` machinery already existed
+
+Writing `emit_scans_block_combined` (the combined `Grammable` producer) surfaced a precondition gap that is the **dual** of Reflection 186's output-conjunct bug, and it surfaced the same way: at the producer, not the consumer.
+
+**The gap.** `EmitScansInFlowBlock (.mapping …)`'s body scans the flow-mapping body via `emitPairList_scans_block_nonempty`, which requires `simpleKeyStack.size = flowLevel` (sync) at the open state `s₁` — and `s₁` sync needs the *start* state's sync (`s₁.stack = s.stack.push key`, `s₁.flowLevel = s.flowLevel + 1`). But `EmitScansInFlowBlock` / `EmitListScansInFlowBlock` carried *no* sync precondition (only `EmitPairListScansInFlowBlock` did, added in R180 for the colon's placeholder pinning). So the predicate as written was **unprovable for mappings**: its preconditions were too *weak* to discharge the body's needs. Reflection 186 was the mirror image — a too-*strong* output conjunct (`simpleKey.possible = false`) that no scan could supply. Both compiled green for sessions because the only existing consumers were the body producers (which take `EmitScansInFlowBlock` as a *hypothesis*, never producing it) — and again, **only the producer pays**. The fix is symmetric to 186's: 186 *dropped* an unprovable output; here I *add* a needed precondition (`simpleKeyStack.size = flowLevel`) to `EmitScansInFlowBlock` + `EmitListScansInFlowBlock`, matching `EmitPairListScansInFlowBlock`, then thread it through the two body producers. Net: the three block predicates now carry a *consistent* simple-key contract, and every consumer (body producers, future `.assemble`, the producer's own recursion) supplies sync from the flow invariant it already maintains.
+
+**Lesson (sharpens R186's "write the producer early").** When you add a precondition to *one* member of a predicate family for a local need (R180 added sync to the pair-list predicate for the colon), check whether the *producer* of the sibling predicates can still discharge that member's preconditions — if a sibling feeds the strengthened member (here `EmitScansInFlowBlock (.mapping)` feeds `emitPairList_scans_block_nonempty`), the sibling silently inherits the obligation and must carry the precondition too. A family with asymmetric preconditions is a producer-trap the same way an asymmetric *output* (R186) is. Grep the call graph for "who feeds whom" the moment you strengthen one member.
+
+**Corollary — the "novel sub-proof" was less novel than the pointer billed.** The next-session pointer flagged the take-side equation as "the one genuinely novel sub-proof," anticipating bespoke raw-prefix work. In practice the first-`N` prefix preservation fell straight out of *already-landed* substrate: `scanNextToken_at_non_colon_preserves_positions` (substrate.g) for the open/close `[`/`]`/`{`/`}` steps (all non-`:`), and `FlowMonoChain_preserves_raw_prefix` (substrate.b/the savedKey template) for the body — the exact lemmas the saved-key template already used for slots `N`/`N+1`, just applied across the *whole* `[0..N)` prefix instead of two points. The genuinely new content was ~15 lines of pure list combinatorics (`block_take_eq_of_getElem?`: `List.take_add_one` + `List.filter_append` + a placeholder-filters-away step). When a pointer says "the one novel sub-proof," re-survey the substrate before budgeting — the de-risking passes (substrate.b/d/e/f/g) that *seemed* like detours had already built the prefix machinery the producer needed.
 
 **Step 6f.3b3.emitscans.toplevel SS1 (easy prereqs) LANDED 2026-05-27**
 (~225 LOC across two files: `Endpoint.lean` §6 ~200 LOC +
@@ -18936,8 +18959,13 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
-                **Total .body scope re-estimate (THIRTY-FIFTH revision —
-                after `.substrate.{a,b,c,d,e,f,g}` + `.establishing.
+                **Total .body scope re-estimate (THIRTY-SIXTH revision —
+                after the **monolithic `Grammable` producers** landed
+                (`emit_scans_in_flow_block` + `emit_scans_in_flow_saved_key_block`
+                via `emit_scans_block_combined`, in the new module
+                `EmitterScannability/BlockProducers.lean`, commit `9685eda6`;
+                + the dual-of-186 sync predicate refinement to `Block.lean`,
+                Reflection 187), on top of `.substrate.{a,b,c,d,e,f,g}` + `.establishing.
                 {converters,consumer}` + `.tokenshape.list.discharge` +
                 `.tokenshape.pair` PART 1 + `.tokenshape.pair.keyshape.
                 {establishing,discharge}` + `.body2.establishing` +
@@ -19292,22 +19320,29 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                   consumers on the pure triple. Closes ZERO legacy sorries (unblocks the producer).
                   Reflection 186]
                 + `.body2.discharge.bridge.blockwb.producers` (monolithic `Grammable` producers)
-                  **— in `EmitterScannability/Block.lean`** [NEXT (now UNBLOCKED), ~400–600 — the monolithic
-                  `emit_scans_in_flow_block` + `emit_scans_in_flow_saved_key_block` `Grammable` producers,
-                  proven as **one combined induction** `EmitScansInFlowBlock v ∧ EmitScansInFlowSavedKeyBlock v`
-                  (genuinely mutual — block-mapping needs saved-key of keys, saved-key-body needs block of
-                  items/values — so the IH must yield both projections; two thin `.1`/`.2` wrappers). Mirror
-                  the proven non-block templates `emit_scans_in_flow` (1374) + `emit_scans_in_flow_saved_key`
-                  (1879), adding block conjuncts: scalar → `scanNextToken_flow_scalar_filtered_push` +
-                  `WellBracketed_singleton_delta_zero` + `EntrySafe_scalar` + `ContentStartTok`; sequence →
-                  `_open_seq`/`_close_seq_filtered_push` + `wrap_seq_block` over `emitList_scans_block_nonempty`;
-                  mapping → `_open_map`/`_close_map` + `wrap_map_block` over `emitPairList_scans_block_nonempty`.
-                  **The one novel sub-proof** is the saved-key-block `take`-side
-                  `(s'.tokens.toList.take (N+1)).filter p = s.tokens.filter p` — needs first-`N` prefix
-                  `= s.tokens` (scalar: 3 explicit pushes; seq/map: prefix preservation through open+body+close
-                  à la `emit_scans_in_flow_saved_key`'s `raw[N]?` derivation) + slot-`N` placeholder, then
-                  `List.take_succ` + filter-append; worth a pure helper `take_succ_filter_of_prefix_placeholder`]
-                + `.body2.discharge.bridge.assemble` [~200–400 — closes 9646, 9552:
+                  **— in `EmitterScannability/BlockProducers.lean`** [**LANDED 2026-05-31, commit `9685eda6`**,
+                  ~880 net LOC (new module) + a predicate refinement to `Block.lean` — the monolithic
+                  `emit_scans_in_flow_block` + `emit_scans_in_flow_saved_key_block`, both `.1`/`.2` wrappers
+                  around one combined induction `emit_scans_block_combined : Grammable v inFlow →
+                  EmitScansInFlowBlock v ∧ EmitScansInFlowSavedKeyBlock v` (genuinely mutual — block-mapping
+                  feeds the body producer the saved-key-block of keys `(ihk i).2` + block of values `(ihv i).1`;
+                  the saved-key seq/map body feeds the block of items `(ih i).1`). Per case mirrors the proven
+                  non-block templates + adds block conjuncts via the dispatch push lemmas, body producers, and
+                  `wrap_seq_block`/`wrap_map_block`. The novel sub-proof — the saved-key-block `take`-side — is
+                  the pure helper `block_take_eq_of_getElem?`: first-`N` raw prefix `= s.tokens` (scalar: one
+                  non-`:` step via `scanNextToken_at_non_colon_preserves_positions`; seq/map: open(non-`:`) +
+                  body (`FlowMonoChain_preserves_raw_prefix` at the body floor) + close(non-`:`)) + slot-`N`
+                  placeholder, then `List.take_add_one` + `List.filter_append`. **Predicate refinement** (the
+                  dual of the `simpleKey.possible` bug — Reflection 187): the mapping case needs sync
+                  (`simpleKeyStack.size = flowLevel`) at the open state, which `EmitScansInFlowBlock` /
+                  `EmitListScansInFlowBlock` did NOT carry (only `EmitPairListScansInFlowBlock` did) — so the
+                  preconditions were too *weak* for mappings; added the sync precondition to both + threaded it
+                  through the body producers, plus new companion `scanNextToken_flow_open_mapping_ska` exposing
+                  that `{` leaves `simpleKeyAllowed = true`. Build green (**513 jobs**, 7 sorries unchanged: 2
+                  base + 1 `FilteredTracking` + 4 `NonemptyStructure`); both producers on the pure triple +
+                  pre-existing scalar-path `native_decide` (no `sorryAx`, no new axioms). Closes ZERO legacy
+                  sorries (the producer; feeds `.assemble`). Reflection 187]
+                + `.body2.discharge.bridge.assemble` [NEXT, ~200–400 — closes 9646, 9552:
                   thread the `EmitScansInFlowBlock` block through new producer
                   variants to build the body `SafeBody`, then apply
                   `SafeBody_array_flowEntry` at the two sorry sites with
