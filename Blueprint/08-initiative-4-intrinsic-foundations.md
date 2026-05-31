@@ -1820,10 +1820,12 @@ not in-place axiom-to-theorem promotion — the latter is impossible
 when the axiom's hypothesis is strictly weaker than what the
 stronger lemma derives).
 
-**Next session**: **Step 6f.3b3.roundtrip.maintheorem.body1.tokenshape.pair.body2.discharge.bridge.blockwb.predicate.pairbody.colonshape**
-— the colon step's filtered-LIST characterization, then the mapping-body predicate
-`EmitPairListScansInFlowBlock` + its producers (toward legacy sorries 9646 / 9552,
-still open). The **sequence-side** substrate is LANDED (see the `.blockwb.predicate`
+**Next session**: **Step 6f.3b3.roundtrip.maintheorem.body1.tokenshape.pair.body2.discharge.bridge.blockwb.predicate.pairbody** (producers + maintheorem)
+— the colon step's filtered-LIST characterization is now LANDED
+(`scanNextToken_flow_value_block`, the (colonshape a1) block below); what remains is the
+mapping-body predicate `EmitPairListScansInFlowBlock` + its `_empty`/`_nonempty` producers
+and the monolithic `emit_scans_in_flow_block` `Grammable` producer (toward legacy sorries
+9646 / 9552, still open). The **sequence-side** substrate is LANDED (see the `.blockwb.predicate`
 (seq-side) block below): the per-value predicate `EmitScansInFlowBlock`, the list-body
 predicate `EmitListScansInFlowBlock`, the comma push lemma
 `scanNextToken_flow_comma_filtered_push`, and the `WellBracketed`-body producer
@@ -1842,9 +1844,16 @@ special first-token fact, lifted to the *entire* block).
 The **`N+1`-placeholder key-scan layout** (a2) is now also LANDED (see the `.blockwb.predicate`
 (colonshape a2) block below): `EmitScansInFlowSavedKey` (and its scalar / open-seq /
 open-mapping helpers) now additionally expose that raw slot `N+1` — the *spare* of the two
-placeholders `saveSimpleKey` reserves — is a `.placeholder`, not just slot `N`. So **all
-three** inputs to the colon filtered-LIST lemma `scanNextToken_flow_value_block` are now in
-hand; (a1) is a pure mechanical ASSEMBLE.
+placeholders `saveSimpleKey` reserves — is a `.placeholder`, not just slot `N`.
+The **colon filtered-LIST lemma `scanNextToken_flow_value_block`** (a1) is now also LANDED
+(see the `.blockwb.predicate` (colonshape a1) block below): the pure ASSEMBLE consuming all
+three inputs — it reconstructs the colon's structural token equation
+`s'.tokens = (s.tokens.setIfInBounds (N+1) keyTok).push valueTok` pointwise (`Array.ext_getElem?`)
+from the `.key`-write + `.value`-push exposures, then turns it into the filtered-list
+equation via `Array_filter_setIfInBounds_of_not_pass` + `Array.filter_push`. So the colon's
+filtered delta — *insert one delta-0 `.key` at the rank of slot `N+1`, then append one
+delta-0 `.value`* — is now a banked, reusable lemma. **All of the colon substrate is done**;
+what remains for `.predicate` is the *block-predicate scaffolding* (a)/(b) below.
 Discovered colon mechanics (read off `scanNextToken_flow_value`, lines 9499–9501): the
 colon `scanValuePrepare`s — a **retroactive `.set` of `.key` at `simpleKey.tokenIndex+1`**
 (a *placeholder*→`.key` conversion, NOT a push) — then `.emit .value` **pushes** a
@@ -1856,16 +1865,15 @@ Remaining for `.predicate`:
 (a) **`EmitPairListScansInFlowBlock`** + its `_empty`/`_nonempty` producers — the
 `{…}` body. The `block` append-equation `(s'.filter).toList = (s.filter).toList ++ block`
 holds because the `.key` `.set` lands *within* the current pair's freshly-added tokens
-(after `old_sz`). Two pieces still needed before the producer:
-(a1) **ASSEMBLE** the **colon filtered-LIST lemma** `scanNextToken_flow_value_block` giving
-`s₂.filter.toList = s₁.filter.toList`-with-`.key`-inserted `++ [.value]` — **all three** inputs
-are now exposed: the `.key`-at-`N+1` write (via `h_key2`/`h_pres2`), the `.value` push (the
-`ska=false` conjunct), and the `N+1`-placeholder layout (a2, now landed on
-`EmitScansInFlowSavedKey`). The pure `Array_filter_setIfInBounds_of_not_pass`
-+ `Array.filter_push` turn them into the filtered-list equation — **no remaining scanner
-exposure**, just the mechanical glue. Then `WellBracketed block` follows by
-`WellBracketed_cons_delta_zero` (`.key`) + `WellBracketed_append` (key/value blocks) +
-`WellBracketed_singleton_delta_zero` (`.value`, comma `.flowEntry`).
+(after `old_sz`).
+(a1) **LANDED** — the **colon filtered-LIST lemma** `scanNextToken_flow_value_block`
+gives `s'.filter.toList = ((take (N+1)).filter ++ .key :: (drop (N+2)).filter) ++ [.value]`
+(`.key` inserted at the rank of slot `N+1`, then `.value` appended). With it in hand,
+`WellBracketed block` follows by `WellBracketed_cons_delta_zero` (`.key`) +
+`WellBracketed_append` (key/value blocks) + `WellBracketed_singleton_delta_zero` (`.value`,
+comma `.flowEntry`). The *block* append-form (relative to `old_sz`) is what the producer (a)
+still has to assemble: thread `scanNextToken_flow_value_block`'s mid-key insertion through
+the pair's `old_sz`-anchored prefix so the `.key`/`.value` land as a delta-0 tail.
 (b) **`emit_scans_in_flow_block`** — the monolithic `Grammable` producer (cannot be
 partial; needs all three cases). **scalar** → `block = [scalarTok]` from
 `scanNextToken_flow_scalar_filtered_push`, `EntrySafe` via `EntrySafe_scalar`,
@@ -1948,6 +1956,34 @@ step's prefix-preservation carries `N+1` to the final state. The two `EmitScansI
 unblocks (a1)**: the colon `.set`s `.key` at `tokenIndex + 1 = N + 1`; `N+1` being a placeholder is
 exactly the `h_old : p (l[i]) = false` hypothesis of `Array_filter_setIfInBounds_of_not_pass`, making
 the `.set` a clean filtered-rank insertion (Reflection 177).
+
+**`.body1.tokenshape.pair.body2.discharge.bridge.blockwb.predicate` (colonshape a1) LANDED 2026-05-31** —
+the **colon filtered-LIST lemma** `scanNextToken_flow_value_block`, the pure ASSEMBLE that
+consumes all three colon inputs (the `.key`-write, the `.value`-push, and the (a2)
+`N+1`-placeholder layout). Full project 491/491; the new lemma rests on
+`[propext, Classical.choice, Quot.sound]` — and notably **not** on the `native_decide`
+escapeString axioms, since the colon path does not touch `scanDoubleQuoted` (it scans `:`,
+not the key's quoted content). No `sorryAx`, no new axioms. Closes **zero** legacy sorries
+(pure enablement — 9646 / 9552 remain). Delivered as a single **additive** lemma in
+`EmitterScannability.lean` (no change to `scanNextToken_flow_value` or any positional
+`obtain` site). Statement: from a saved-key state (`ska = false`, `possible = true`) with
+`N+1 = tokenIndex + 1 < tokens.size` and `tokens[N+1].val = .placeholder`,
+```
+(s'.tokens.filter p).toList
+  = ((tokens.toList.take (N+1)).filter p ++ .key :: (tokens.toList.drop (N+2)).filter p)
+    ++ [.value]
+```
+Proof in two moves: **(i)** reconstruct the colon's *structural* token equation
+`s'.tokens = (tokens.setIfInBounds (N+1) keyTok).push valueTok` pointwise via
+`Array.ext_getElem?` — every index matches one of the existing exposures (`.value` at slot
+`N` = `size`; `.key` at `N+1`; `h_pres` below `size`; both `none` above) — the getElem?
+exposures are *complete* enough to pin the array up to extensionality, so no new scanner
+conjunct was needed; **(ii)** push it through the insert-at-rank filter lemma
+`Array_filter_setIfInBounds_of_not_pass` (the `N+1`-placeholder is its `h_old`) +
+`Array.filter_push` for the trailing `.value` (Reflection 178). The two Bool facts
+`p valueTok`/`p keyTok` are `rfl`, **not** `decide` — `decide` rejects the open terms
+`pos_v`/`s.simpleKey.pos` ("expected type must not contain free variables") even though the
+`.val` projection discards them; the BEq match reduces definitionally regardless.
 
 **`.body1.tokenshape.pair.body2.discharge.bridge.blockwb.predicate` (pairbody substrate) LANDED 2026-05-31** —
 the *pure* keystone the mapping-body block needs. Full project 491/491, both new
@@ -6806,6 +6842,33 @@ Meta-lesson: before assuming a wider invariant costs more, check whether the *cu
 *uses* the parameter you're widening. A bound that is established only through vacuous cases is free to
 loosen. (This is why a2, pre-scoped as "real scanner-internal work" in Reflection 175, collapsed to a
 mechanical strengthening: the hard preservation machinery was already general enough.)
+
+##### Reflection 178 (new, 2026-05-31): the a1 ASSEMBLE needed no new conjunct — the *getElem? exposures already pin the array up to extensionality*, so reconstruct the structural equation rather than expose it
+
+Reflection 176 split a1 into "expose three inputs, then compute," and the plan-tree carried the
+ASSEMBLE as "from the now-landed exposures." When I sat down to it, the question was *which form* of
+the colon's token effect to feed the pure insert-at-rank lemma `Array_filter_setIfInBounds_of_not_pass`:
+that lemma is stated structurally (`(a.setIfInBounds i v).filter ...`), but `scanNextToken_flow_value`
+exposes only **pointwise getElem? facts** (`.key` at `N+1`; all other in-bounds slots unchanged; size
+`+1`; `.value` at the old end). The tempting move was a *fourth* trailing conjunct on
+`scanNextToken_flow_value` exposing the structural equation
+`s'.tokens = (tokens.setIfInBounds (N+1) keyTok).push valueTok` directly (cheap inside that proof —
+`h_final_tok`/`h_prep_eq'` already sit there) — at the cost of touching the 450-line proof's `refine`
+arity and patching its 4 positional consumers.
+
+**The cheaper, fully-additive move: don't expose it, reconstruct it.** `Array.ext_getElem?` reduces
+array equality to `∀ i, a[i]? = b[i]?`, and the four exposed getElem? facts are jointly *complete* —
+every index `i` of `s'.tokens` falls into exactly one exposed case: `i = size` (the `.value` push),
+`i = N+1` (the `.key` write), `i < size ∧ i ≠ N+1` (the `h_pres` "unchanged" clause), or `i > size`
+(both sides `none`, by `getElem?_eq_none`). So the structural equation is *derivable* from the
+exposures, not just *implied* by them — meaning no new conjunct, no consumer churn, zero risk to the
+big proof. **Meta-lesson:** when a producer already exposes pointwise getElem?/size facts, an
+extensionality lemma (`Array.ext_getElem?`) lets a downstream consumer rebuild any structural shape it
+needs *locally*; prefer that over widening the producer's interface. Expose the *observations*; let
+consumers assemble the *forms*. (Corollary gotcha, banked: the `p tok = true` Bool side-goals here are
+`rfl`, not `decide` — `decide` refuses to elaborate a goal whose type still mentions free term
+variables like `pos_v`, even when the `.val` projection makes them irrelevant; the derived-BEq match
+reduces definitionally, so `rfl` discharges it.)
 
 **Step 6f.3b3.emitscans.toplevel SS1 (easy prereqs) LANDED 2026-05-27**
 (~225 LOC across two files: `Endpoint.lean` §6 ~200 LOC +
@@ -18327,7 +18390,7 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
-                **Total .body scope re-estimate (TWENTY-SIXTH revision —
+                **Total .body scope re-estimate (TWENTY-SEVENTH revision —
                 after `.substrate.{a,b,c,d,e,f,g}` + `.establishing.
                 {converters,consumer}` + `.tokenshape.list.discharge` +
                 `.tokenshape.pair` PART 1 + `.tokenshape.pair.keyshape.
@@ -18338,6 +18401,7 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 + `.body2.discharge.bridge.blockwb.predicate` (pairbody substrate)
                 + `.body2.discharge.bridge.blockwb.predicate` (colonshape substrate)
                 + `.body2.discharge.bridge.blockwb.predicate` (colonshape a2)
+                + `.body2.discharge.bridge.blockwb.predicate` (colonshape a1)
                 ALL LANDED;
                 legacy sorries 9550, 9638 AND 9644 CLOSED. `.keyshape.discharge`
                 came in at ~590 (above its ~150–250 re-estimate) because the
@@ -18376,24 +18440,30 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 strengthening (`EmitScansInFlowSavedKey` + its 3 head helpers expose slot `N+1` as
                 a placeholder, the sibling of the already-exposed `N`); the body-preservation floor
                 widened `N+1 → N+2` for free because both `SimpleKeyAboveFloor` clauses were already
-                vacuous (Reflection 177) — so all three a1 inputs are now in hand and (a1) is a pure
-                ASSEMBLE.
+                vacuous (Reflection 177). With all three inputs in hand, the a1 ASSEMBLE
+                (`scanNextToken_flow_value_block`) then landed *fully additively* — the getElem?
+                exposures already pin `s'.tokens` up to extensionality, so `Array.ext_getElem?`
+                reconstructs the structural `setIfInBounds`/`push` equation locally and the pure
+                insert-at-rank lemma + `Array.filter_push` finish it; no new conjunct, no consumer
+                churn (Reflection 178).
                 `.body2.establishing` + `.body2.discharge.wbalgebra` +
                 `.body2.discharge.bridge.leafdelta` +
                 `.body2.discharge.bridge.blockwb.dispatch` +
                 `.body2.discharge.bridge.blockwb.predicate` (seq-side) +
                 `.body2.discharge.bridge.blockwb.predicate` (pairbody substrate) +
                 `.body2.discharge.bridge.blockwb.predicate` (colonshape substrate) +
-                `.body2.discharge.bridge.blockwb.predicate` (colonshape a2)
+                `.body2.discharge.bridge.blockwb.predicate` (colonshape a2) +
+                `.body2.discharge.bridge.blockwb.predicate` (colonshape a1)
                 LANDED the pure balance/well-bracketedness/leaf-token algebra +
                 the dispatch→handler connection + the sequence-side block
                 substrate + the pure mid-list insertion keystone + the colon's
                 value-push exposure and the pure insert-at-rank filter lemmas +
-                the `N+1`-placeholder key-scan layout (the last a1 input); only
+                the `N+1`-placeholder key-scan layout + the assembled colon
+                filtered-LIST lemma `scanNextToken_flow_value_block`; only
                 `.body2.discharge.bridge.blockwb.predicate`
-                (pairbody.colonshape assembly + producers + maintheorem) + `.assemble`
+                (pairbody.colonshape producers + maintheorem) + `.assemble`
                 (9646, 9552) remain)**:
-                ~4490–6390 LOC across **23 sub-sessions** (`.scaffold`
+                ~4490–6390 LOC across **24 sub-sessions** (`.scaffold`
                 [LANDED 206] + `.tokenshape.substrate.a` [LANDED 470]
                 + `.tokenshape.substrate.b` [LANDED 226]
                 + `.tokenshape.substrate.c` [LANDED ~570]
@@ -18519,13 +18589,24 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                   `obtain` sites each +1 `_`. sorry-free, full project 491/491, helper on
                   `[propext]`, producer unchanged on pre-existing axioms. Closes ZERO legacy
                   sorries. Reflection 177]
-                + `.body2.discharge.bridge.blockwb.predicate` (pairbody.colonshape assembly +
+                + `.body2.discharge.bridge.blockwb.predicate` (colonshape a1)
+                  [LANDED ~55 — the **assembled** colon filtered-LIST lemma
+                  `scanNextToken_flow_value_block`: from a saved-key state with the spare
+                  slot `N+1` a placeholder, `s'.filter.toList = ((take (N+1)).filter ++
+                  .key :: (drop (N+2)).filter) ++ [.value]`. Fully **additive** (no change to
+                  `scanNextToken_flow_value` or any positional `obtain`): reconstructs the
+                  colon's structural token equation `s'.tokens = (tokens.setIfInBounds (N+1)
+                  keyTok).push valueTok` pointwise via `Array.ext_getElem?` from the existing
+                  `.key`-write + `.value`-push exposures (they pin the array up to
+                  extensionality), then `Array_filter_setIfInBounds_of_not_pass` +
+                  `Array.filter_push`. sorry-free, full project 491/491, on
+                  `[propext, Classical.choice, Quot.sound]` — and **not** on the escapeString
+                  axioms (the colon path never touches `scanDoubleQuoted`). Closes ZERO legacy
+                  sorries. Reflection 178]
+                + `.body2.discharge.bridge.blockwb.predicate` (pairbody.colonshape
                   producers + maintheorem)
-                  [~150–350 — (a1) ASSEMBLE the colon filtered-LIST lemma
-                  `scanNextToken_flow_value_block` from the now-landed value-push exposure
-                  + `Array_filter_setIfInBounds_of_not_pass` + `Array.filter_push` + the
-                  (a2) `N+1`-placeholder layout (all three inputs now landed — pure glue, no
-                  remaining scanner exposure); then `EmitPairListScansInFlowBlock` +
+                  [~120–300 — with (a1) `scanNextToken_flow_value_block` now landed:
+                  `EmitPairListScansInFlowBlock` +
                   producers (`WellBracketed` via the insertion lemmas + `WellBracketed_append`),
                   then the monolithic `emit_scans_in_flow_block` `Grammable` producer chaining
                   the `.dispatch` push lemmas with the recursive body delta and framing via
