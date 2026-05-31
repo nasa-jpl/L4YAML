@@ -14382,7 +14382,8 @@ def EmitScansInFlowBlock (v : YamlValue) : Prop :=
           = (s.tokens.filter (fun t => t.val != .placeholder)).toList ++ block
       ∧ WellBracketed block
       ∧ EntrySafe block
-      ∧ ∃ (h : block ≠ []), ContentStartTok (block.head h).val
+      ∧ (∃ (h : block ≠ []), ContentStartTok (block.head h).val)
+      ∧ s'.simpleKey.possible = false
 
 /-- Block-tracking superset of `EmitListScansInFlow`: the comma-separated body
     between `[` and `]`.  Its filtered-LIST delta `block` is `WellBracketed` —
@@ -14444,7 +14445,7 @@ theorem emitList_scans_block_nonempty (items : List YamlValue) (h_ne : items ≠
       rw [h_eq] at hcorr
       obtain ⟨n, s', block, h_chain, h_corr, h_fl', h_dp, h_ids, h_ek', h_col', h_flow',
               h_indent', h_line_v, _h_ska, _h_last, h_atol', h_endline', h_stack', h_fmc',
-              h_block_eq, h_wb, _h_es, _h_cs⟩ :=
+              h_block_eq, h_wb, _h_es, _h_cs, _h_poss⟩ :=
         h_all v (.head _) s rest_chars hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline
       exact ⟨n, s', block, h_chain, h_corr, h_fl', h_dp, h_ids, h_ek', h_col', h_flow',
         h_indent', h_line_v, h_atol', h_endline', h_stack', h_fmc', h_block_eq, h_wb⟩
@@ -14457,7 +14458,7 @@ theorem emitList_scans_block_nonempty (items : List YamlValue) (h_ne : items ≠
       have h_ev : EmitScansInFlowBlock v := h_all v (.head _)
       obtain ⟨n₁, s₁, block₁, h_chain₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_ek₁, h_col₁, h_flow₁,
               h_indent₁, _h_line₁, _h_ska₁, h_last₁, h_atol₁, h_endline₁, h_stack₁, h_fmc₁,
-              h_block_eq₁, h_wb₁, _h_es₁, _h_cs₁⟩ :=
+              h_block_eq₁, h_wb₁, _h_es₁, _h_cs₁, _h_poss₁⟩ :=
         h_ev s ([',', ' '] ++ (emit.emitList (v' :: vs)).toList ++ rest_chars)
           hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline
       -- Step 2: Scan ',' via scanNextToken_flow_comma (state) + push lemma (block)
@@ -14575,19 +14576,83 @@ theorem emitList_scans_block_nonempty (items : List YamlValue) (h_ne : items ≠
             (WellBracketed_singleton_delta_zero feTok (by rw [h_feTok_val]; exact flowBracketDelta_flowEntry)))
           h_wb_rest
 
+/-- **Combined per-key substrate** for the mapping-body producer: the saved-key
+    layout (`EmitScansInFlowSavedKey`) *and* the `WellBracketed` filtered block
+    (`EmitScansInFlowBlock`) of scanning the key `emit v` in flow, produced together by
+    one chain so the mapping-body producer never has to *reconcile* two separate scans
+    of the same key.
+
+    Reconciling a `EmitScansInFlowBlock` run and a `EmitScansInFlowSavedKey` run of the
+    same key would require a `scanNextToken` strict-offset-progress capstone (to force
+    the two chains' step counts equal so `ScanChain_deterministic` applies) — the
+    non-indexed §11 capstone is unproved (only the indexed `scanNextTokenIx_offset_gt`
+    exists).  Bundling both effects into one predicate sidesteps that entirely.
+
+    The block conjuncts mirror `EmitScansInFlowBlock` (append-equation + `WellBracketed`),
+    plus a **take-side filter equation** `(s'.tokens.take (N+1)).filter = s.tokens.filter`
+    (`N = s.tokens.size`): with the layout's slot-`N+1` placeholder, this lets the colon's
+    mid-key insertion (`scanNextToken_flow_value_block`) re-anchor to the pair-start prefix
+    as the clean front-insert `.key :: block_k` via `List_filter_drop_succ_of_take`.
+    The producer (`emit_scans_in_flow_saved_key_block`, by `Grammable` induction — deferred)
+    proves it; its mapping case feeds `emitPairList_scans_block_nonempty` with the key IH. -/
+def EmitScansInFlowSavedKeyBlock (v : YamlValue) : Prop :=
+  ∀ (s : ScannerState) (rest : List Char),
+    ScannerSurfCorr s ⟨(emit v).toList ++ rest, s.col⟩ →
+    s.inFlow = true →
+    s.flowLevel > 0 →
+    s.currentIndent < 0 →
+    s.col > 0 →
+    s.explicitKeyLine = none →
+    AllTokensOnLine s s.line →
+    EndLineOnLine s →
+    s.simpleKeyAllowed = true →
+    s.simpleKey.possible = false →
+    s.simpleKeyStack.size = s.flowLevel →
+    ∃ n s' block,
+      ScanChainGrew (fun t => t.val != .placeholder) s n s'
+      ∧ ScannerSurfCorr s' ⟨rest, s'.col⟩
+      ∧ s'.flowLevel = s.flowLevel
+      ∧ s'.directivesPresent = s.directivesPresent
+      ∧ s'.indents = s.indents
+      ∧ s'.explicitKeyLine = s.explicitKeyLine
+      ∧ s'.col > 0
+      ∧ s'.inFlow = true
+      ∧ s'.currentIndent < 0
+      ∧ s'.line = s.line
+      ∧ AllTokensOnLine s' s'.line
+      ∧ EndLineOnLine s'
+      ∧ s'.simpleKeyStack = s.simpleKeyStack
+      ∧ FlowMonoChain s.flowLevel s n s'
+      ∧ s'.simpleKeyAllowed = false
+      ∧ s'.simpleKey.possible = true
+      ∧ s'.simpleKey.tokenIndex = s.tokens.size
+      ∧ s.tokens.size + 1 < s'.tokens.size
+      ∧ (∀ (h : s.tokens.size < s'.tokens.size),
+          (s'.tokens[s.tokens.size]'h).val = .placeholder)
+      ∧ (∀ (h : s.tokens.size + 1 < s'.tokens.size),
+          (s'.tokens[s.tokens.size + 1]'h).val = .placeholder)
+      ∧ (s'.tokens.filter (fun t => t.val != .placeholder)).toList
+          = (s.tokens.filter (fun t => t.val != .placeholder)).toList ++ block
+      ∧ (s'.tokens.toList.take (s.tokens.size + 1)).filter (fun t => t.val != .placeholder)
+          = (s.tokens.filter (fun t => t.val != .placeholder)).toList
+      ∧ WellBracketed block
+
 /-- Block-tracking superset of `EmitPairListScansInFlow`: the comma-separated
     `key: value` body between `{` and `}` in a flow mapping.  Its filtered-LIST delta
     `block` is `WellBracketed` — exactly the interior `wrap_map_block` frames into a
     flow-mapping block.
 
     Unlike the sequence-side `EmitListScansInFlowBlock`, this predicate carries the
-    four **simple-key** preconditions (`simpleKey.possible = false`,
-    `simpleKeyAllowed = true`, `simpleKeyStack.size = flowLevel`, and
-    `SimpleKeyStackValid`): the per-pair colon step retroactively converts a reserved
-    placeholder to `.key`, and these invariants (the same ones
-    `emitPairList_scans_nonempty_keyshape` requires) are what let the producer pin that
-    `.key` at the pair-start rank.  A `{`-opener establishes them, so the monolithic
-    mapping producer can supply them. -/
+    three **simple-key** preconditions (`simpleKey.possible = false`,
+    `simpleKeyAllowed = true`, `simpleKeyStack.size = flowLevel`): the per-pair colon step
+    retroactively converts a reserved placeholder to `.key`, and these invariants (the
+    same ones `EmitScansInFlowSavedKeyBlock` — the per-key combined substrate — requires)
+    are what let the producer pin that `.key` at the pair-start rank.  A `{`-opener
+    establishes them, and the comma re-establishes them for each subsequent pair
+    (`scanNextToken_flow_comma` sets `simpleKeyAllowed := true` and preserves the
+    stack; the value's `EmitScansInFlowBlock` leaves `simpleKey.possible = false`).
+    `SimpleKeyStackValid` is *not* needed — the combined key substrate derives the
+    colon's placeholder layout without it. -/
 def EmitPairListScansInFlowBlock (pairs : List (YamlValue × YamlValue)) : Prop :=
   ∀ (s : ScannerState) (rest : List Char),
     ScannerSurfCorr s ⟨(emit.emitPairList pairs).toList ++ rest, s.col⟩ →
@@ -14601,7 +14666,6 @@ def EmitPairListScansInFlowBlock (pairs : List (YamlValue × YamlValue)) : Prop 
     s.simpleKey.possible = false →
     s.simpleKeyAllowed = true →
     s.simpleKeyStack.size = s.flowLevel →
-    ScannerCorrectness.SimpleKeyStackValid s →
     ∃ n s' block,
       ScanChainGrew (fun t => t.val != .placeholder) s n s'
       ∧ ScannerSurfCorr s' ⟨rest, s'.col⟩
@@ -14623,7 +14687,7 @@ def EmitPairListScansInFlowBlock (pairs : List (YamlValue × YamlValue)) : Prop 
 
 /-- Empty pair-list body: 0-step chain, empty (`WellBracketed`) block. -/
 theorem emitPairList_scans_block_empty : EmitPairListScansInFlowBlock [] := by
-  intro s rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_sk h_ska h_sync h_ssv
+  intro s rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_sk h_ska h_sync
   have h_eq : (emit.emitPairList ([] : List (YamlValue × YamlValue))).toList ++ rest = rest := by
     simp [emit.emitPairList]
   rw [h_eq] at hcorr
