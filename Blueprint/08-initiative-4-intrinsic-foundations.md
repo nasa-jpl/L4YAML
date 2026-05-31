@@ -1820,35 +1820,58 @@ not in-place axiom-to-theorem promotion — the latter is impossible
 when the axiom's hypothesis is strictly weaker than what the
 stronger lemma derives).
 
-**Next session**: **Step 6f.3b3.roundtrip.maintheorem.body1.tokenshape.pair.body2.discharge.bridge**
-— **discharges legacy sorries 9646** (`emitPairList` Part 3: after every
-OUTER-LEVEL `.flowEntry`, next is `.key`) and **9552** (`emitList` Part 2, the
-analogous outer-flowEntry obligation, next is a content-start). These are the
-surviving sorries in `emitPairList_body_filtered_characterization` (Part 3) and
-`emitList_body_filtered_characterization` (Part 2). Both the `.body2.establishing`
-balance algebra **and** the `.body2.discharge.wbalgebra` well-bracketedness
-algebra are now in hand (see below + Reflections 170, 171). The remaining work is
-the **scanner bridge** — the genuinely-new well-bracketedness-of-scanner-output
-invariant deferred in BOTH worlds — namely: thread a *filtered-token delta* fact
-through the producers so each scanned `emit v` block's delta is exposed as a
-concrete list and proven `WellBracketed` (∴ `EntrySafe` via `wrap_block` for
-collections, `EntrySafe_singleton` for scalars). Concretely (Reflection 171):
-(1) augment `EmitScansInFlow` / `EmitScansInFlowSKDR` (or carry a parallel
-`BlockSafe` property) with `(s'.tokens.filter p).toList = (s.tokens.filter p).toList ++ block`
-and `WellBracketed block` + content-start head, re-proving `emit_scans_in_flow`'s
-three `Grammable` cases by composing the leaf filtered-delta lemmas
-(`scanFlowSequenceStart_filtered` push `+1`, `…End` push `-1`, `scanFlowEntry_filtered`
-push `0`, scalar/colon pushes) — the collection case wraps the body delta via
-`wrap_block`; (2) thread the same delta-as-`SafeBody` assembly through
-`emitList_scans_nonempty_with_skdr` / `emitPairList_scans_nonempty_keyshape` (each
-recursive step: `SafeBody.cons` with the item block + the comma's single
-`.flowEntry`; base: `SafeBody.single`); (3) apply `SafeBody_array_flowEntry` at the
-two sorry sites with `lo := old_sz`. **Cost is large (~600–1000 LOC, definition-
-rippling): every positional `obtain ⟨…⟩` on `EmitScansInFlow`'s conclusion breaks
-if a conjunct is added — prefer a parallel `BlockSafe` proven by its own `Grammable`
-induction, OR add the conjunct at the very end and sweep call sites.** **Do NOT
-attempt `ScanChain.split`-style factoring (Reflection 169) nor a per-comma keyshape
-reapplication (Reflection 170 — that route cannot rule out inner flowEntries).**
+**Next session**: **Step 6f.3b3.roundtrip.maintheorem.body1.tokenshape.pair.body2.discharge.bridge.blockwb**
+— the per-`emit v` **block-EntrySafe** theorem, the genuinely-new core of the
+bridge (toward legacy sorries 9646 / 9552, still open). Goal: a parallel predicate
+`EmitScansInFlowBlock v` (a **superset** of `EmitScansInFlow` — same preconditions
+and all the same state postconditions, PLUS two new conjuncts:
+`(s'.tokens.filter p).toList = (s.tokens.filter p).toList ++ block`, `EntrySafe block`,
+and a content-start head on `block`), proven `emit_scans_in_flow_block` by its own
+`Grammable` induction. **Non-destructive** (a new predicate; existing
+`EmitScansInFlow` and all its `obtain ⟨…⟩` sites are untouched; the two sorries
+stay sorries until `.assemble` flips them — every intermediate build stays green).
+Per case: **scalar** → `block = [scalarTok]`, `EntrySafe` via `EntrySafe_scalar`
+(landed `.leafdelta`); **sequence** → `block = fss :: (bodyDelta ++ [fse])`,
+`EntrySafe`/`WellBracketed` via `wrap_seq_block` (landed) once `bodyDelta` is shown
+`WellBracketed`; **mapping** → `wrap_map_block`. **The hard sub-task this session**
+is the *scanNextToken-dispatch filtered-list connection*: emit_scans_in_flow calls
+the dispatch leaves (`scanNextToken_flow_scanDoubleQuoted`, `…_flow_open_nested`,
+`…_flow_close_seq_nested`, mapping analogs), which expose state postconditions but
+**NOT** the filtered-token-list delta. Need, per leaf, a filtered-LIST equation
+(`scanNextToken s = .ok (some s') → (precond) → s'.tokens.filter p =
+(s.tokens.filter p).push tok`) by tracing the dispatch down to the low-level
+handler and applying the `.leafdelta` lemmas (`scanFlowSequenceStart_filtered`,
+`scanFlowSequenceEnd_filtered`, etc.). The scalar leaf (scanDoubleQuoted, with
+escaping) is the most involved.
+
+**Then** `.bridge.assemble` — (1) thread the `EmitScansInFlowBlock`-derived block
+through new producer variants of `emitList_scans_nonempty_with_skdr` /
+`emitPairList_scans_nonempty_keyshape`, building a `SafeBody Q` of the full filtered
+delta (each recursive step `SafeBody.cons` with the item block + the comma's single
+`.flowEntry` — comma needs a `scanNextToken_flow_comma` filtered-LIST equation too;
+base `SafeBody.single`); (2) apply `SafeBody_array_flowEntry` at the two sorry sites
+with `lo := old_sz`, flipping 9552 / 9646. **Cost of the whole bridge remains large
+(~600–1000 LOC).** **Do NOT** augment `EmitScansInFlow` in place (breaks every
+positional `obtain`); **do NOT** attempt `ScanChain.split`-style factoring
+(Reflection 169) nor a per-comma keyshape reapplication (Reflection 170 — cannot
+rule out inner flowEntries).
+
+**`.body1.tokenshape.pair.body2.discharge.bridge.leafdelta` LANDED 2026-05-30** — the
+pure leaf-token + bracket-block combinatorial layer the scanner bridge consumes,
+full project 491/491, all new lemmas on `[propext, Quot.sound]` / `[propext]`
+(subset of the pure triple — no `Classical`, no `sorryAx`, no new axioms). Closes
+**zero** legacy sorries (pure enablement — 9646 / 9552 remain). Delivered sorry-free
+in `EmitterScannability.lean` §G.balance: `flowBracketDelta` value lemmas
+(`_flowSequenceStart`/`_flowSequenceEnd`/`_flowMappingStart`/`_flowMappingEnd` =
+`±1`, `_scalar`/`_key` = `0` — the deltas `wrap_block` requires);
+`scanFlowSequenceEnd_filtered` / `scanFlowMappingEnd_filtered` (closing-bracket
+filtered-token equations mirroring the existing start lemmas — emit token → advance
+→ record-update leaves `.tokens` untouched); `wrap_seq_block` / `wrap_map_block`
+(`wrap_block` specialized to concrete `[ ]` / `{ }` pairs, supplying the delta
+proofs from the value lemmas); `EntrySafe_scalar` (a single `.scalar` token is
+`EntrySafe`). **`.bridge` was split `.leafdelta` → `.blockwb` → `.assemble`**, again
+landing the pure substrate first to de-risk the definition-rippling scanner-delta
+threading (Reflection 172).
 
 **`.body1.tokenshape.pair.body2.discharge.wbalgebra` LANDED 2026-05-30** — the pure
 `WellBracketed` (Dyck-word) algebra the scanner bridge will consume, full project
@@ -6388,6 +6411,53 @@ sub-session, and the pure algebra of P lands first to de-risk it.**
 (`pbalance_take_singleton`), `split <;> omega` with the delta equation in scope
 beats hand-casing the `Decidable` instance (which trips "expected type must not
 contain metavariables" under `simp only [if_neg (by decide)]`).
+
+##### Reflection 172 (new, 2026-05-30): `.bridge` splits a *third* time — the scanner exposes per-block deltas only at the low-level handler, not at the `scanNextToken` dispatch the recursion uses, so the pure leaf+block combinatorics (`.leafdelta`) land first
+
+`.bridge` was scoped (Reflection 171) as "scanner-delta threading + `SafeBody`
+assembly." Mapping the call graph confirmed the threading is genuinely ~600–1000
+LOC and surfaced *where* the cost concentrates — and it is not where the producers
+recurse, but one layer below.
+
+**The dispatch/handler gap.** `emit_scans_in_flow`'s three `Grammable` cases call
+the **dispatch** leaves — `scanNextToken_flow_scanDoubleQuoted`,
+`scanNextToken_flow_open_nested`, `…_flow_close_seq_nested`, mapping analogs — each
+of which proves `scanNextToken s = .ok (some s')` and a bundle of *state*
+postconditions but **exposes no filtered-token-LIST delta** (`scanNextToken_flow_comma`
+likewise). The `.leafdelta`/existing `_filtered` lemmas (`scanFlowSequenceStart_filtered`
+etc.) are about the **low-level handlers** (`scanFlowSequenceStart`), one dispatch
+hop below. So the genuinely-new low-level work of `.bridge` is *connecting* the two:
+for each dispatch leaf, a filtered-LIST equation proved by tracing the dispatch down
+to its handler. The scalar leaf (scanDoubleQuoted, with `escapeString`) is the most
+involved; commas and brackets are mechanical once the dispatch trace is in hand.
+
+**The (third) split.** `.leafdelta` (this session, sorry-free, `[propext, Quot.sound]`/
+`[propext]`) lands the **pure leaf-token + bracket-block combinatorics** the bridge
+consumes, divorced from the scanner-dispatch trace: the `flowBracketDelta` value
+lemmas (the `±1`/`0` deltas `wrap_block` demands), the missing closing-bracket
+filtered lemmas (`scanFlowSequenceEnd_filtered`/`scanFlowMappingEnd_filtered`,
+mirroring the start lemmas — the end handlers emit-then-advance with a record-update
+that leaves `.tokens` untouched, so the proof is verbatim), and the application-shaped
+wrappers `wrap_seq_block`/`wrap_map_block` (`wrap_block` with the concrete `[ ]`/`{ }`
+deltas pre-supplied) + `EntrySafe_scalar`. `.blockwb` (next) proves the per-`emit v`
+block `EntrySafe` via a *non-destructive* parallel predicate `EmitScansInFlowBlock`
+(superset of `EmitScansInFlow`) by its own `Grammable` induction — this is where the
+dispatch/handler connection gets built and `wrap_seq_block`/`wrap_map_block` get
+applied. `.assemble` (after) threads the block through new producer variants to build
+the body `SafeBody` and flips 9552/9646. **This is the *third* time the
+`.establishing`/`.wbalgebra`/`.leafdelta` "land the pure substrate first" move has
+applied to one obligation (9552/9646): each layer of de-risking revealed the next.
+The compounding lesson — when an obligation is deferred on BOTH substrates
+(Reflection 170), budget not just for "new machinery" but for a *stack* of substrate
+layers, because the machinery's prerequisites are themselves often unbuilt.**
+
+**Lean heuristic banked:** a symmetric pair of scanner handlers (`scanFlowSequenceEnd`
+vs `scanFlowSequenceStart`) whose token effect is identical (`emit tok → advance →
+record-update not touching `.tokens`) admits a **verbatim-mirrored** filtered-token
+proof (`unfold; dsimp only []; rw [advance_preserves_tokens, emit_tokens_push,
+Array.filter_push]; rfl`) — even when the surrounding record-update differs (the End
+handlers decrement `flowLevel`/pop stacks), because the differing fields are
+projected away by the `.tokens` access.
 
 **Step 6f.3b3.emitscans.toplevel SS1 (easy prereqs) LANDED 2026-05-27**
 (~225 LOC across two files: `Endpoint.lean` §6 ~200 LOC +
@@ -17909,25 +17979,29 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
-                **Total .body scope re-estimate (TWENTIETH revision —
+                **Total .body scope re-estimate (TWENTY-FIRST revision —
                 after `.substrate.{a,b,c,d,e,f,g}` + `.establishing.
                 {converters,consumer}` + `.tokenshape.list.discharge` +
                 `.tokenshape.pair` PART 1 + `.tokenshape.pair.keyshape.
                 {establishing,discharge}` + `.body2.establishing` +
-                `.body2.discharge.wbalgebra` ALL LANDED;
+                `.body2.discharge.wbalgebra` + `.body2.discharge.bridge.leafdelta`
+                ALL LANDED;
                 legacy sorries 9550, 9638 AND 9644 CLOSED. `.keyshape.discharge`
                 came in at ~590 (above its ~150–250 re-estimate) because the
                 factoring route was blocked by UTF-8 offset-uniqueness, forcing a
                 full bundle re-derivation + 2 scanner-theorem strengthenings —
                 Reflection 169. `.body2` itself SPLIT `.establishing` →
-                `.discharge` (Reflection 170), and `.discharge` then split AGAIN
-                `.wbalgebra` → `.bridge` (Reflection 171): the per-block `EntrySafe`
-                fact needs a filtered-token *delta* the scanner does not expose, a
-                definition-rippling ~1000-LOC threading job. `.body2.establishing`
-                + `.body2.discharge.wbalgebra` LANDED the pure
-                balance/well-bracketedness algebra; only `.body2.discharge.bridge`
-                (9646, 9552) remains)**:
-                ~4070–5685 LOC across **17 sub-sessions** (`.scaffold`
+                `.discharge` (Reflection 170), `.discharge` then split AGAIN
+                `.wbalgebra` → `.bridge` (Reflection 171), and `.bridge` split a
+                THIRD time `.leafdelta` → `.blockwb` → `.assemble` (Reflection 172):
+                the per-block `EntrySafe` fact needs a filtered-token *delta* the
+                scanner exposes only at the low-level handler, not the
+                `scanNextToken` dispatch the recursion uses — a definition-rippling
+                ~1000-LOC threading job. `.body2.establishing` +
+                `.body2.discharge.wbalgebra` + `.body2.discharge.bridge.leafdelta`
+                LANDED the pure balance/well-bracketedness/leaf-token algebra; only
+                `.body2.discharge.bridge.{blockwb,assemble}` (9646, 9552) remain)**:
+                ~4070–5685 LOC across **18 sub-sessions** (`.scaffold`
                 [LANDED 206] + `.tokenshape.substrate.a` [LANDED 470]
                 + `.tokenshape.substrate.b` [LANDED 226]
                 + `.tokenshape.substrate.c` [LANDED ~570]
@@ -17987,13 +18061,26 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                   `EntrySafe_singleton` (non-`.flowEntry` scalar entry); sorry-free,
                   full project 491/491, `[propext, Quot.sound]`. Closes ZERO legacy
                   sorries. Reflection 171]
-                + `.body2.discharge.bridge` [~600–1000 — closes 9646, 9552: thread
-                  a filtered-token delta through `emit_scans_in_flow` + the
-                  list/pairlist producers (each `emit v` block's delta proven
-                  `WellBracketed` ∴ `EntrySafe` via `wrap_block`), assemble the body
-                  `SafeBody`, then apply `SafeBody_array_flowEntry`. Definition-
-                  rippling — prefer a parallel `BlockSafe` over augmenting
-                  `EmitScansInFlow` in place]),
+                + `.body2.discharge.bridge.leafdelta` [LANDED ~68 —
+                  pure leaf-token + bracket-block combinatorics: `flowBracketDelta`
+                  value lemmas (`±1`/`0`), `scanFlowSequenceEnd_filtered` /
+                  `scanFlowMappingEnd_filtered` (closing-bracket filtered equations,
+                  verbatim mirror of the start lemmas), `wrap_seq_block` /
+                  `wrap_map_block` (`wrap_block` with concrete `[ ]`/`{ }` deltas) +
+                  `EntrySafe_scalar`; sorry-free, full project 491/491,
+                  `[propext, Quot.sound]`/`[propext]`. Closes ZERO legacy sorries.
+                  Reflection 172]
+                + `.body2.discharge.bridge.blockwb` [~400–600 — the per-`emit v`
+                  block `EntrySafe` theorem via a non-destructive parallel predicate
+                  `EmitScansInFlowBlock` (superset of `EmitScansInFlow`) by its own
+                  `Grammable` induction; builds the scanNextToken-dispatch →
+                  handler filtered-LIST connection and applies `wrap_seq_block` /
+                  `wrap_map_block` / `EntrySafe_scalar`]
+                + `.body2.discharge.bridge.assemble` [~200–400 — closes 9646, 9552:
+                  thread the `EmitScansInFlowBlock` block through new producer
+                  variants to build the body `SafeBody`, then apply
+                  `SafeBody_array_flowEntry` at the two sorry sites with
+                  `lo := old_sz`]),
                 vs. Blueprint-original 400–700 LOC in 1 session.
                 Cumulative underestimate factor: **~6.9–8.1×**
                 (the combined `.converters` [LANDED ~115] + `.consumer`
@@ -18004,7 +18091,7 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 Reflection 164 predicted was an artifact of the wrong
                 invariant, dissolved by a free threaded equality
                 (`ExactSync`); see Reflection 165).
-                The THIRTEEN scope discoveries:
+                The FOURTEEN scope discoveries:
                 `.scaffold` (Reflection 151) revealed the substrate-
                 cost-of-sorry-discharge problem in principle;
                 `.tokenshape.substrate` (Reflection 152) revealed the
@@ -18146,7 +18233,24 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 threading). Heuristic: when a `.discharge` is "prove each scanned
                 block has property P", first ask whether the scanner exposes the
                 per-block artifact P quantifies over — if not, that exposure is its
-                own sub-session and P's pure algebra lands first.
+                own sub-session and P's pure algebra lands first; and `.bridge`
+                infrastructure-mapping (Reflection 172, 2026-05-30) discovered — for
+                the THIRD time on this one obligation — a further substrate layer:
+                the scanner exposes per-block filtered deltas only at the *low-level
+                handler* (`scanFlowSequenceStart_filtered` etc.), NOT at the
+                `scanNextToken` *dispatch* leaves (`scanNextToken_flow_open_nested`,
+                `…_scanDoubleQuoted`, `scanNextToken_flow_comma`) that
+                `emit_scans_in_flow` actually calls, which expose state
+                postconditions but no token-list delta. **Sub-split** `.bridge` into
+                `.leafdelta` (LANDED ~68, the pure leaf-token/bracket-block
+                combinatorics — value lemmas, end-bracket filtered lemmas,
+                `wrap_seq/map_block`) + `.blockwb` (the dispatch→handler filtered-LIST
+                connection + per-block `EntrySafe` `Grammable` induction via a
+                non-destructive parallel `EmitScansInFlowBlock`) + `.assemble` (the
+                `SafeBody` producer threading + the two `SafeBody_array_flowEntry`
+                applications). Compounding lesson: when an obligation is deferred on
+                BOTH substrates, budget for a *stack* of substrate layers — each
+                de-risking pass tends to reveal the next.
 
               ▹ **.maintheorem.nonempty** *(~410 legacy LOC; legacy
                 9653–10062; **2 legacy `sorry`s to discharge**)*.
