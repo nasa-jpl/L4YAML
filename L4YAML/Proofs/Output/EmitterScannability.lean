@@ -13745,6 +13745,231 @@ theorem scanFlowMappingEnd_filtered (s : ScannerState) :
   rw [emit_tokens_push]
   rw [Array.filter_push]; rfl
 
+/-! ### §G.balance.bridge.dispatch — dispatch→handler filtered-LIST connection
+
+    The `.leafdelta` lemmas (above) state the filtered-token effect of the
+    low-level *handlers* (`scanFlowSequenceStart`, …).  `emit_scans_in_flow`'s
+    `Grammable` recursion, however, calls `scanNextToken` (the *dispatch*), which
+    is one hop above the handler.  These five lemmas bridge the gap: given the
+    `scanNextToken s = .ok (some s')` fact already produced by the dispatch leaf
+    theorems (`scanNextToken_flow_open_nested`, …), each re-derives the dispatch
+    composition to pin `s'` to the handler applied to the post-`saveSimpleKey`
+    state `s_ad`, then combines the handler `.leafdelta` lemma with
+    `saveSimpleKey_filter_placeholder` (the two reserved placeholders filter away)
+    to expose the full filtered-LIST delta `s'.tokens.filter p =
+    (s.tokens.filter p).push tok`.  These are the per-leaf inputs the
+    `EmitScansInFlowBlock` `Grammable` induction (`.blockwb.predicate`, next)
+    consumes.  No consumers yet — pure enablement, mirroring `.leafdelta`. -/
+
+/-- `[` dispatch: the new filtered token is exactly one `.flowSequenceStart`. -/
+theorem scanNextToken_flow_open_seq_filtered_push (s : ScannerState) (rest : List Char)
+    (hcorr : ScannerSurfCorr s ⟨'[' :: rest, s.col⟩)
+    (h_flow : s.inFlow = true) (h_indent : s.currentIndent < 0) (h_col : s.col > 0)
+    {s' : ScannerState} (h_snt : scanNextToken s = .ok (some s')) :
+    ∃ tok : Positioned YamlToken, tok.val = .flowSequenceStart ∧
+      s'.tokens.filter (fun t => t.val != .placeholder)
+        = (s.tokens.filter (fun t => t.val != .placeholder)).push tok := by
+  have h_pp : scanNextToken_preprocess s = .ok (some (saveSimpleKey s, '[')) :=
+    scanNextToken_preprocess_flow s '[' rest s.col hcorr h_flow (by decide) (by decide) (by decide)
+  have h_sk_flow : (saveSimpleKey s).inFlow = s.inFlow := saveSimpleKey_preserves_inFlow s
+  have h_sk_col : (saveSimpleKey s).col = s.col := saveSimpleKey_preserves_col s
+  have h_sk_indent : (saveSimpleKey s).currentIndent = s.currentIndent := by
+    unfold ScannerState.currentIndent; rw [saveSimpleKey_preserves_indents]
+  have h_struct : scanNextToken_dispatchStructural (saveSimpleKey s) '[' = .ok none :=
+    dispatchStructural_none_flow _ _ (h_sk_flow ▸ h_flow) (h_sk_indent ▸ h_indent) (h_sk_col ▸ h_col)
+  let s_ad := if (saveSimpleKey s).allowDirectives then
+    { saveSimpleKey s with allowDirectives := false, documentEverStarted := true }
+  else saveSimpleKey s
+  have h_ad_flow : s_ad.inFlow = s.inFlow := by simp only [s_ad]; split <;> exact h_sk_flow
+  have h_check := checkBlockFlowIndent_ok_flow s_ad '[' (h_ad_flow ▸ h_flow)
+  have h_flow_disp := dispatchFlowIndicators_bracket s_ad
+  have h_snt_eq : scanNextToken s = .ok (some (scanFlowSequenceStart s_ad)) :=
+    scanNextToken_via_flow_dispatch _ _ _ _ _ h_pp h_struct rfl h_check h_flow_disp
+  have h_s' : s' = scanFlowSequenceStart s_ad :=
+    Option.some.inj (Except.ok.inj (h_snt.symm.trans h_snt_eq))
+  have h_ad_filter : s_ad.tokens.filter (fun t => t.val != .placeholder)
+      = s.tokens.filter (fun t => t.val != .placeholder) := by
+    simp only [s_ad]; split <;> exact saveSimpleKey_filter_placeholder s
+  refine ⟨⟨s_ad.currentPos, .flowSequenceStart, s_ad.currentPos⟩, rfl, ?_⟩
+  have hf := scanFlowSequenceStart_filtered s_ad
+  rw [h_s', hf, h_ad_filter]
+
+/-- `{` dispatch: the new filtered token is exactly one `.flowMappingStart`. -/
+theorem scanNextToken_flow_open_map_filtered_push (s : ScannerState) (rest : List Char)
+    (hcorr : ScannerSurfCorr s ⟨'{' :: rest, s.col⟩)
+    (h_flow : s.inFlow = true) (h_indent : s.currentIndent < 0) (h_col : s.col > 0)
+    {s' : ScannerState} (h_snt : scanNextToken s = .ok (some s')) :
+    ∃ tok : Positioned YamlToken, tok.val = .flowMappingStart ∧
+      s'.tokens.filter (fun t => t.val != .placeholder)
+        = (s.tokens.filter (fun t => t.val != .placeholder)).push tok := by
+  have h_pp : scanNextToken_preprocess s = .ok (some (saveSimpleKey s, '{')) :=
+    scanNextToken_preprocess_flow s '{' rest s.col hcorr h_flow (by decide) (by decide) (by decide)
+  have h_sk_flow : (saveSimpleKey s).inFlow = s.inFlow := saveSimpleKey_preserves_inFlow s
+  have h_sk_col : (saveSimpleKey s).col = s.col := saveSimpleKey_preserves_col s
+  have h_sk_indent : (saveSimpleKey s).currentIndent = s.currentIndent := by
+    unfold ScannerState.currentIndent; rw [saveSimpleKey_preserves_indents]
+  have h_struct : scanNextToken_dispatchStructural (saveSimpleKey s) '{' = .ok none :=
+    dispatchStructural_none_flow _ _ (h_sk_flow ▸ h_flow) (h_sk_indent ▸ h_indent) (h_sk_col ▸ h_col)
+  let s_ad := if (saveSimpleKey s).allowDirectives then
+    { saveSimpleKey s with allowDirectives := false, documentEverStarted := true }
+  else saveSimpleKey s
+  have h_ad_flow : s_ad.inFlow = s.inFlow := by simp only [s_ad]; split <;> exact h_sk_flow
+  have h_check := checkBlockFlowIndent_ok_flow s_ad '{' (h_ad_flow ▸ h_flow)
+  have h_flow_disp := dispatchFlowIndicators_brace s_ad
+  have h_snt_eq : scanNextToken s = .ok (some (scanFlowMappingStart s_ad)) :=
+    scanNextToken_via_flow_dispatch _ _ _ _ _ h_pp h_struct rfl h_check h_flow_disp
+  have h_s' : s' = scanFlowMappingStart s_ad :=
+    Option.some.inj (Except.ok.inj (h_snt.symm.trans h_snt_eq))
+  have h_ad_filter : s_ad.tokens.filter (fun t => t.val != .placeholder)
+      = s.tokens.filter (fun t => t.val != .placeholder) := by
+    simp only [s_ad]; split <;> exact saveSimpleKey_filter_placeholder s
+  refine ⟨⟨s_ad.currentPos, .flowMappingStart, s_ad.currentPos⟩, rfl, ?_⟩
+  have hf := scanFlowMappingStart_filtered s_ad
+  rw [h_s', hf, h_ad_filter]
+
+/-- `]` dispatch (nested, `flowLevel ≥ 2`): the new filtered token is exactly
+    one `.flowSequenceEnd`. -/
+theorem scanNextToken_flow_close_seq_filtered_push (s : ScannerState) (rest : List Char)
+    (hcorr : ScannerSurfCorr s ⟨']' :: rest, s.col⟩)
+    (h_flow : s.inFlow = true) (h_indent : s.currentIndent < 0) (h_col : s.col > 0)
+    (h_fl_ge2 : s.flowLevel ≥ 2)
+    {s' : ScannerState} (h_snt : scanNextToken s = .ok (some s')) :
+    ∃ tok : Positioned YamlToken, tok.val = .flowSequenceEnd ∧
+      s'.tokens.filter (fun t => t.val != .placeholder)
+        = (s.tokens.filter (fun t => t.val != .placeholder)).push tok := by
+  have h_pp : scanNextToken_preprocess s = .ok (some (saveSimpleKey s, ']')) :=
+    scanNextToken_preprocess_flow s ']' rest s.col hcorr h_flow (by decide) (by decide) (by decide)
+  have h_sk_flow : (saveSimpleKey s).inFlow = s.inFlow := saveSimpleKey_preserves_inFlow s
+  have h_sk_col : (saveSimpleKey s).col = s.col := saveSimpleKey_preserves_col s
+  have h_sk_indent : (saveSimpleKey s).currentIndent = s.currentIndent := by
+    unfold ScannerState.currentIndent; rw [saveSimpleKey_preserves_indents]
+  have h_struct : scanNextToken_dispatchStructural (saveSimpleKey s) ']' = .ok none :=
+    dispatchStructural_none_flow _ _ (h_sk_flow ▸ h_flow) (h_sk_indent ▸ h_indent) (h_sk_col ▸ h_col)
+  let s_ad := if (saveSimpleKey s).allowDirectives then
+    { saveSimpleKey s with allowDirectives := false, documentEverStarted := true }
+  else saveSimpleKey s
+  have h_check := checkBlockFlowIndent_ok_close_bracket s_ad
+  have h_ad_fl : s_ad.flowLevel = s.flowLevel := by
+    simp only [s_ad]; split <;> exact saveSimpleKey_preserves_flowLevel s
+  have h_ad_fl_ge2 : s_ad.flowLevel ≥ 2 := by rw [h_ad_fl]; exact h_fl_ge2
+  have h_flow_disp := dispatchFlowIndicators_close_bracket_nested s_ad h_ad_fl_ge2
+  have h_snt_eq : scanNextToken s = .ok (some (scanFlowSequenceEnd s_ad)) :=
+    scanNextToken_via_flow_dispatch _ _ _ _ _ h_pp h_struct rfl h_check h_flow_disp
+  have h_s' : s' = scanFlowSequenceEnd s_ad :=
+    Option.some.inj (Except.ok.inj (h_snt.symm.trans h_snt_eq))
+  have h_ad_filter : s_ad.tokens.filter (fun t => t.val != .placeholder)
+      = s.tokens.filter (fun t => t.val != .placeholder) := by
+    simp only [s_ad]; split <;> exact saveSimpleKey_filter_placeholder s
+  refine ⟨⟨s_ad.currentPos, .flowSequenceEnd, s_ad.currentPos⟩, rfl, ?_⟩
+  have hf := scanFlowSequenceEnd_filtered s_ad
+  rw [h_s', hf, h_ad_filter]
+
+/-- `}` dispatch (nested, `flowLevel ≥ 2`): the new filtered token is exactly
+    one `.flowMappingEnd`. -/
+theorem scanNextToken_flow_close_map_filtered_push (s : ScannerState) (rest : List Char)
+    (hcorr : ScannerSurfCorr s ⟨'}' :: rest, s.col⟩)
+    (h_flow : s.inFlow = true) (h_indent : s.currentIndent < 0) (h_col : s.col > 0)
+    (h_fl_ge2 : s.flowLevel ≥ 2)
+    {s' : ScannerState} (h_snt : scanNextToken s = .ok (some s')) :
+    ∃ tok : Positioned YamlToken, tok.val = .flowMappingEnd ∧
+      s'.tokens.filter (fun t => t.val != .placeholder)
+        = (s.tokens.filter (fun t => t.val != .placeholder)).push tok := by
+  have h_pp : scanNextToken_preprocess s = .ok (some (saveSimpleKey s, '}')) :=
+    scanNextToken_preprocess_flow s '}' rest s.col hcorr h_flow (by decide) (by decide) (by decide)
+  have h_sk_flow : (saveSimpleKey s).inFlow = s.inFlow := saveSimpleKey_preserves_inFlow s
+  have h_sk_col : (saveSimpleKey s).col = s.col := saveSimpleKey_preserves_col s
+  have h_sk_indent : (saveSimpleKey s).currentIndent = s.currentIndent := by
+    unfold ScannerState.currentIndent; rw [saveSimpleKey_preserves_indents]
+  have h_struct : scanNextToken_dispatchStructural (saveSimpleKey s) '}' = .ok none :=
+    dispatchStructural_none_flow _ _ (h_sk_flow ▸ h_flow) (h_sk_indent ▸ h_indent) (h_sk_col ▸ h_col)
+  let s_ad := if (saveSimpleKey s).allowDirectives then
+    { saveSimpleKey s with allowDirectives := false, documentEverStarted := true }
+  else saveSimpleKey s
+  have h_check := checkBlockFlowIndent_ok_close_brace s_ad
+  have h_ad_fl : s_ad.flowLevel = s.flowLevel := by
+    simp only [s_ad]; split <;> exact saveSimpleKey_preserves_flowLevel s
+  have h_ad_fl_ge2 : s_ad.flowLevel ≥ 2 := by rw [h_ad_fl]; exact h_fl_ge2
+  have h_flow_disp := dispatchFlowIndicators_close_brace_nested s_ad h_ad_fl_ge2
+  have h_snt_eq : scanNextToken s = .ok (some (scanFlowMappingEnd s_ad)) :=
+    scanNextToken_via_flow_dispatch _ _ _ _ _ h_pp h_struct rfl h_check h_flow_disp
+  have h_s' : s' = scanFlowMappingEnd s_ad :=
+    Option.some.inj (Except.ok.inj (h_snt.symm.trans h_snt_eq))
+  have h_ad_filter : s_ad.tokens.filter (fun t => t.val != .placeholder)
+      = s.tokens.filter (fun t => t.val != .placeholder) := by
+    simp only [s_ad]; split <;> exact saveSimpleKey_filter_placeholder s
+  refine ⟨⟨s_ad.currentPos, .flowMappingEnd, s_ad.currentPos⟩, rfl, ?_⟩
+  have hf := scanFlowMappingEnd_filtered s_ad
+  rw [h_s', hf, h_ad_filter]
+
+/-- `"` dispatch: the new filtered token is exactly one `.scalar _ .doubleQuoted`. -/
+theorem scanNextToken_flow_scalar_filtered_push (s : ScannerState) (rest : List Char)
+    (hcorr : ScannerSurfCorr s ⟨'"' :: rest, s.col⟩)
+    (h_flow : s.inFlow = true) (h_indent : s.currentIndent < 0) (h_col : s.col > 0)
+    {s' : ScannerState} (h_snt : scanNextToken s = .ok (some s')) :
+    ∃ (tok : Positioned YamlToken) (str : String) (st : ScalarStyle),
+      tok.val = .scalar str st ∧
+      s'.tokens.filter (fun t => t.val != .placeholder)
+        = (s.tokens.filter (fun t => t.val != .placeholder)).push tok := by
+  have h_pp : scanNextToken_preprocess s = .ok (some (saveSimpleKey s, '"')) :=
+    scanNextToken_preprocess_flow s '"' rest s.col hcorr h_flow (by decide) (by decide) (by decide)
+  have h_sk_flow : (saveSimpleKey s).inFlow = s.inFlow := saveSimpleKey_preserves_inFlow s
+  have h_sk_col : (saveSimpleKey s).col = s.col := saveSimpleKey_preserves_col s
+  have h_sk_indent : (saveSimpleKey s).currentIndent = s.currentIndent := by
+    unfold ScannerState.currentIndent; rw [saveSimpleKey_preserves_indents]
+  have h_struct : scanNextToken_dispatchStructural (saveSimpleKey s) '"' = .ok none :=
+    dispatchStructural_none_flow _ _ (h_sk_flow ▸ h_flow) (h_sk_indent ▸ h_indent) (h_sk_col ▸ h_col)
+  let s_ad := if (saveSimpleKey s).allowDirectives then
+    { saveSimpleKey s with allowDirectives := false, documentEverStarted := true }
+  else saveSimpleKey s
+  have h_ad_flow : s_ad.inFlow = s.inFlow := by simp only [s_ad]; split <;> exact h_sk_flow
+  have h_ad_flow_true : s_ad.inFlow = true := h_ad_flow ▸ h_flow
+  have h_check := checkBlockFlowIndent_ok_flow s_ad '"' h_ad_flow_true
+  have h_flow_none : scanNextToken_dispatchFlowIndicators s_ad '"' = .ok none :=
+    dispatchFlowIndicators_none _ _ (by decide) (by decide) (by decide) (by decide) (by decide)
+  have h_block_none : scanNextToken_dispatchBlockIndicators s_ad '"' = .ok none :=
+    dispatchBlockIndicators_none_quote _
+  have h_dc : scanNextToken_dispatchContent s_ad '"' = Except.ok s' := by
+    cases h_dc_eq : scanNextToken_dispatchContent s_ad '"' with
+    | error e =>
+      exfalso
+      have h_snt_err := scanNextToken_via_content_dispatch_error
+        _ _ _ _ _ h_pp h_struct rfl h_check h_flow_none h_block_none h_dc_eq
+      rw [h_snt_err] at h_snt; exact absurd h_snt (by simp)
+    | ok s_dc =>
+      have h_snt_eq : scanNextToken s = Except.ok (some s_dc) :=
+        scanNextToken_via_content_dispatch _ _ _ _ _ h_pp h_struct rfl h_check
+          h_flow_none h_block_none h_dc_eq
+      have h_eq2 : s' = s_dc := Option.some.inj (Except.ok.inj (h_snt.symm.trans h_snt_eq))
+      subst h_eq2; rfl
+  have h_tokens_push : ∃ c, s'.tokens
+      = s_ad.tokens.push ⟨s_ad.currentPos, .scalar c .doubleQuoted, s_ad.currentPos⟩ := by
+    cases h_dq_eq : scanDoubleQuoted s_ad with
+    | error e =>
+      exfalso
+      have h_dc_err : scanNextToken_dispatchContent s_ad '"' = Except.error e := by
+        unfold scanNextToken_dispatchContent
+        simp [bind, Except.bind, pure, Except.pure, h_dq_eq]
+      rw [h_dc_err] at h_dc; exact absurd h_dc (by simp)
+    | ok s_dq =>
+      obtain ⟨c, h_tok⟩ := scanDoubleQuoted_tokens_push h_dq_eq
+      refine ⟨c, ?_⟩
+      have h_s'_tokens : s'.tokens = s_dq.tokens := by
+        unfold scanNextToken_dispatchContent at h_dc
+        simp [bind, Except.bind, pure, Except.pure, h_dq_eq] at h_dc
+        split at h_dc
+        · rw [← h_dc]
+        · rw [← h_dc]
+      rw [h_s'_tokens, h_tok]
+  obtain ⟨c, h_s'_tokens⟩ := h_tokens_push
+  have h_ad_filter : s_ad.tokens.filter (fun t => t.val != .placeholder)
+      = s.tokens.filter (fun t => t.val != .placeholder) := by
+    simp only [s_ad]; split <;> exact saveSimpleKey_filter_placeholder s
+  refine ⟨⟨s_ad.currentPos, .scalar c .doubleQuoted, s_ad.currentPos⟩, c, .doubleQuoted, rfl, ?_⟩
+  rw [h_s'_tokens, Array.filter_push]
+  simp only [show ((⟨s_ad.currentPos, .scalar c .doubleQuoted, s_ad.currentPos⟩ : Positioned YamlToken).val
+                   != YamlToken.placeholder) = true from rfl, ite_true]
+  rw [h_ad_filter]
+
 /-- `ScanChain_deterministic`: two chains with the same start state and step count
     reach the same final state (since `scanNextToken` is a function). -/
 theorem ScanChain_deterministic {s s₁ s₂ : ScannerState} {n : Nat}
