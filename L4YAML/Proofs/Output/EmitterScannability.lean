@@ -9902,6 +9902,73 @@ theorem scanNextToken_flow_value (s : ScannerState)
       rw [h_prep_size_gen, h_adtok]
     rw [h_final_tok, h_idx_eq, Array.getElem?_push, if_pos rfl]
 
+/-- **Colon filtered-LIST characterization** (the `(a1)` ASSEMBLE step toward
+    legacy sorries 9646 / 9552). When the colon scans from a saved-key state
+    (`ska = false`, `possible = true`) whose reserved *spare* slot `N+1`
+    (`= tokenIndex + 1`) is still a `.placeholder` (the `(a2)` layout exposed by
+    `EmitScansInFlowSavedKey`), the colon's filtered token list grows by exactly:
+    *insert one delta-0 `.key` at the filtered rank of slot `N+1`*, then *append
+    one delta-0 `.value`*.
+
+    Pure glue: it reconstructs the colon's structural token equation
+    `s'.tokens = (s.tokens.setIfInBounds (N+1) keyTok).push valueTok` pointwise from
+    `scanNextToken_flow_value`'s `.key`-write + `.value`-push exposures (via
+    `Array.ext_getElem?`), then turns it into the filtered-list equation with the
+    insert-at-rank lemma `Array_filter_setIfInBounds_of_not_pass` + `Array.filter_push`.
+    No remaining scanner exposure. -/
+theorem scanNextToken_flow_value_block (s : ScannerState)
+    (rest' : List Char)
+    (hcorr : ScannerSurfCorr s ⟨':' :: ' ' :: rest', s.col⟩)
+    (h_flow : s.inFlow = true)
+    (h_indent : s.currentIndent < 0)
+    (h_col_pos : s.col > 0)
+    (h_ek : s.explicitKeyLine = none)
+    (h_sv : scanValueValidate (saveSimpleKey s) = .ok ())
+    (h_atol : AllTokensOnLine s s.line)
+    (h_endline : EndLineOnLine s)
+    (h_ska : s.simpleKeyAllowed = false)
+    (h_poss : s.simpleKey.possible = true)
+    (h_lt : s.simpleKey.tokenIndex + 1 < s.tokens.size)
+    (h_ph : (s.tokens[s.simpleKey.tokenIndex + 1]'h_lt).val = .placeholder) :
+    ∃ s' pos_v, scanNextToken s = .ok (some s')
+      ∧ (s'.tokens.filter (fun t => t.val != .placeholder)).toList =
+          ((s.tokens.toList.take (s.simpleKey.tokenIndex + 1)).filter
+              (fun t => t.val != .placeholder)
+            ++ (⟨s.simpleKey.pos, .key, s.simpleKey.pos⟩ : Positioned YamlToken) ::
+               (s.tokens.toList.drop (s.simpleKey.tokenIndex + 2)).filter
+                 (fun t => t.val != .placeholder))
+          ++ [(⟨pos_v, .value, pos_v⟩ : Positioned YamlToken)] := by
+  obtain ⟨s', h_snt, _, _, _, _, _, _, _, _, _, _, _, _, _, h_keyw, h_valpush⟩ :=
+    scanNextToken_flow_value s rest' hcorr h_flow h_indent h_col_pos h_ek h_sv h_atol h_endline
+  obtain ⟨h_key_at, h_pres⟩ := h_keyw h_ska h_poss h_lt
+  obtain ⟨h_size, pos_v, h_val_at⟩ := h_valpush h_ska
+  refine ⟨s', pos_v, h_snt, ?_⟩
+  -- Structural token equation, reconstructed pointwise from the two exposures.
+  have h_struct : s'.tokens =
+      (s.tokens.setIfInBounds (s.simpleKey.tokenIndex + 1)
+        ⟨s.simpleKey.pos, .key, s.simpleKey.pos⟩).push ⟨pos_v, .value, pos_v⟩ := by
+    apply Array.ext_getElem?
+    intro i
+    rw [Array.getElem?_push, Array.size_setIfInBounds, Array.getElem?_setIfInBounds]
+    by_cases hi_sz : i = s.tokens.size
+    · rw [if_pos hi_sz, hi_sz]; exact h_val_at
+    · rw [if_neg hi_sz]
+      by_cases hi_key : s.simpleKey.tokenIndex + 1 = i
+      · rw [if_pos hi_key, if_pos h_lt, ← hi_key]; exact h_key_at
+      · rw [if_neg hi_key]
+        by_cases hi_lt : i < s.tokens.size
+        · exact h_pres i hi_lt (fun h => hi_key h.symm)
+        · rw [Array.getElem?_eq_none (show s'.tokens.size ≤ i by omega),
+              Array.getElem?_eq_none (show s.tokens.size ≤ i by omega)]
+  rw [h_struct, Array.filter_push,
+      if_pos (show (fun t : Positioned YamlToken => t.val != .placeholder)
+                ⟨pos_v, .value, pos_v⟩ = true from rfl),
+      Array.toList_push]
+  congr 1
+  exact Array_filter_setIfInBounds_of_not_pass s.tokens (s.simpleKey.tokenIndex + 1)
+    ⟨s.simpleKey.pos, .key, s.simpleKey.pos⟩ (fun t => t.val != .placeholder) h_lt
+    (by simp [h_ph]) rfl
+
 /-- `EmitPairListScansInFlow pairs` asserts that scanning the
     emitPairList output succeeds in flow context, preserving invariants.
     This is the body between `{` and `}` in a flow mapping. -/
