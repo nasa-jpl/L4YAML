@@ -1820,12 +1820,16 @@ not in-place axiom-to-theorem promotion — the latter is impossible
 when the axiom's hypothesis is strictly weaker than what the
 stronger lemma derives).
 
-**Next session**: **Step 6f.3b3.roundtrip.maintheorem.body1.tokenshape.pair.body2.discharge.bridge.blockwb.predicate.pairbody** (producers + maintheorem)
-— the colon step's filtered-LIST characterization is now LANDED
-(`scanNextToken_flow_value_block`, the (colonshape a1) block below); what remains is the
-mapping-body predicate `EmitPairListScansInFlowBlock` + its `_empty`/`_nonempty` producers
-and the monolithic `emit_scans_in_flow_block` `Grammable` producer (toward legacy sorries
-9646 / 9552, still open). The **sequence-side** substrate is LANDED (see the `.blockwb.predicate`
+**Next session**: **Step 6f.3b3.roundtrip.maintheorem.body1.tokenshape.pair.body2.discharge.bridge.blockwb.predicate.pairbody** (`_nonempty` producer + maintheorem)
+— the colon step's filtered-LIST characterization is LANDED
+(`scanNextToken_flow_value_block`, the (colonshape a1) block below), and the
+mapping-body **predicate `EmitPairListScansInFlowBlock` + its `_empty` producer + the pure
+colon-suffix substrate `List_filter_drop_succ_of_take`** are now also LANDED (see the
+`.blockwb.predicate` (pairbody scaffold) block below). What remains is the hard
+**`emitPairList_scans_block_nonempty`** producer (the per-pair `WellBracketed`-block
+assembly threading the colon's mid-key insertion) and the monolithic
+`emit_scans_in_flow_block` `Grammable` producer (toward legacy sorries 9646 / 9552, still
+open). The **sequence-side** substrate is LANDED (see the `.blockwb.predicate`
 (seq-side) block below): the per-value predicate `EmitScansInFlowBlock`, the list-body
 predicate `EmitListScansInFlowBlock`, the comma push lemma
 `scanNextToken_flow_comma_filtered_push`, and the `WellBracketed`-body producer
@@ -1865,7 +1869,9 @@ Remaining for `.predicate`:
 (a) **`EmitPairListScansInFlowBlock`** + its `_empty`/`_nonempty` producers — the
 `{…}` body. The `block` append-equation `(s'.filter).toList = (s.filter).toList ++ block`
 holds because the `.key` `.set` lands *within* the current pair's freshly-added tokens
-(after `old_sz`).
+(after `old_sz`). **The predicate def + `_empty` producer + the pure colon-suffix
+re-anchoring lemma `List_filter_drop_succ_of_take` are LANDED** (2026-05-31, the (pairbody
+scaffold) block below); only the hard `_nonempty` producer remains.
 (a1) **LANDED** — the **colon filtered-LIST lemma** `scanNextToken_flow_value_block`
 gives `s'.filter.toList = ((take (N+1)).filter ++ .key :: (drop (N+2)).filter) ++ [.value]`
 (`.key` inserted at the rank of slot `N+1`, then `.value` appended). With it in hand,
@@ -1984,6 +1990,38 @@ conjunct was needed; **(ii)** push it through the insert-at-rank filter lemma
 `p valueTok`/`p keyTok` are `rfl`, **not** `decide` — `decide` rejects the open terms
 `pos_v`/`s.simpleKey.pos` ("expected type must not contain free variables") even though the
 `.val` projection discards them; the BEq match reduces definitionally regardless.
+
+**`.body1.tokenshape.pair.body2.discharge.bridge.blockwb.predicate` (pairbody scaffold) LANDED 2026-05-31** —
+the mapping-body block predicate, its trivial producer, and the pure suffix substrate the
+hard producer will consume — banked green before the `_nonempty` assembly. Full project
+491/491; `emitPairList_scans_block_empty` on `[propext, Classical.choice, Quot.sound]`, the
+pure `List_filter_drop_succ_of_take` on `[propext]` alone (no `sorryAx`, no new axioms).
+Closes **zero** legacy sorries (pure enablement — 9646 / 9552 remain). Three additive pieces
+in `EmitterScannability.lean`:
+(1) **`EmitPairListScansInFlowBlock`** — the block-tracking superset of
+`EmitPairListScansInFlow`, exactly mirroring the seq-side `EmitListScansInFlowBlock`
+(filtered-LIST delta `block` with `WellBracketed block` — what `wrap_map_block` frames) but
+**additionally carrying the four simple-key preconditions** (`simpleKey.possible = false`,
+`simpleKeyAllowed = true`, `simpleKeyStack.size = flowLevel`, `SimpleKeyStackValid`) — the
+same set `emitPairList_scans_nonempty_keyshape` requires, since the per-pair colon converts a
+reserved placeholder to `.key` and needs the stack invariants to pin it at the pair-start
+rank. A `{`-opener establishes them, so the monolithic mapping producer can supply them.
+(2) **`emitPairList_scans_block_empty`** — the 0-step producer (empty block, `WellBracketed_nil`).
+(3) **`List_filter_drop_succ_of_take`** — the pure re-anchoring keystone: given the filtered
+prefix `(l.take k).filter p = baseFilt` and the whole `l.filter p = baseFilt ++ block_k` with
+slot `k` filtered out, the filtered *suffix after* `k`, `(l.drop (k+1)).filter p`, equals
+exactly `block_k` (one-line proof off `List_filter_eq_of_not_pass` + `List.append_cancel_left`).
+**Why this is the crux the `_nonempty` producer needs**: `scanNextToken_flow_value_block`
+gives the colon delta as a *mid-key* insertion `(take (N+1)).filter ++ .key :: (drop (N+2)).filter ++ [.value]`,
+expressed relative to the *post-key-scan* state `s₁`. To re-anchor it to the *pair-start*
+prefix as a clean front-insert `.key :: block_k ++ [.value]`, the producer takes
+`baseFilt := s_pairstart.filter` and `block_k :=` the key's `EmitScansInFlowBlock` block,
+establishes `(s₁.take (N+1)).filter = baseFilt` from `FlowMonoChain` prefix-preservation +
+the slot-`N` placeholder, and this lemma turns `(s₁.drop (N+2)).filter` into `block_k` — so
+the colon delta collapses to `s_pairstart.filter ++ (.key :: block_k ++ [.value])`, whose
+`WellBracketed`-ness then follows by `WellBracketed_cons_delta_zero` (`.key`) +
+`WellBracketed_append` + `WellBracketed_singleton_delta_zero` (`.value`). De-risks the
+hardest piece (the colon algebra) before the chain-threading skeleton (Reflection 179).
 
 **`.body1.tokenshape.pair.body2.discharge.bridge.blockwb.predicate` (pairbody substrate) LANDED 2026-05-31** —
 the *pure* keystone the mapping-body block needs. Full project 491/491, both new
@@ -6869,6 +6907,39 @@ consumers assemble the *forms*. (Corollary gotcha, banked: the `p tok = true` Bo
 `rfl`, not `decide` — `decide` refuses to elaborate a goal whose type still mentions free term
 variables like `pos_v`, even when the `.val` projection makes them irrelevant; the derived-BEq match
 reduces definitionally, so `rfl` discharges it.)
+
+##### Reflection 179 (new, 2026-05-31): the pairbody producer's crux is *re-anchoring* the colon's mid-key insertion, not the chain skeleton — extract it as a one-line pure suffix lemma and land it (plus the predicate + empty producer) before the skeleton
+
+`scanNextToken_flow_value_block` (a1) gives the colon delta as a *mid-key insertion*:
+`(take (N+1)).filter ++ .key :: (drop (N+2)).filter ++ [.value]`, with the take/drop taken over
+the **post-key-scan** state `s₁`, anchored at `N = s₁.simpleKey.tokenIndex`. But the block predicate
+`EmitPairListScansInFlowBlock` wants the delta as a clean *append* relative to the **pair-start**
+state — `s_pairstart.filter ++ pair_block`. The gap between those two anchors looked like it would
+need bespoke per-pair array surgery inside the (already large) `_nonempty` producer.
+
+**The realization: the gap is one algebraic identity, and it's pure.** The key block from
+`EmitScansInFlowBlock p.1` gives `s₁.filter = s_pairstart.filter ++ block_k`. The colon writes `.key`
+at the rank of slot `N+1` — a placeholder, hence filtered out — and `EmitScansInFlowSavedKey` pins
+`N = s_pairstart.tokens.size` with slot `N` also a placeholder. So `(s₁.take (N+1)).filter` collapses
+to `s_pairstart.filter` (the first `N` raw tokens are preserved by `FlowMonoChain`, and slot `N` is a
+placeholder that filters away). All that remains is to show the *suffix after* the inserted slot,
+`(s₁.drop (N+2)).filter`, equals exactly `block_k` — and that is a **content-free** consequence of the
+prefix collapse and the whole-list append, with no scanner state in sight:
+`List_filter_drop_succ_of_take` (off `List_filter_eq_of_not_pass` + `List.append_cancel_left`, on
+`[propext]` alone). With both halves rewritten, the colon delta becomes
+`s_pairstart.filter ++ (.key :: block_k ++ [.value])` — a front-insert whose `WellBracketed`-ness is
+the already-landed `WellBracketed_cons_delta_zero`/`_append`/`_singleton_delta_zero` chain.
+
+**Meta-lesson (a recurrence of the de-risk-the-crux rhythm, cf. Reflections 175/178):** when a big
+producer's novelty concentrates in a single algebraic re-anchoring, *name that identity, prove it pure
+and standalone, and land it together with the predicate def + trivial producer* — leaving the next
+session a pure-mechanical "thread the chain through the established skeleton" task (the keyshape
+producer is a near-exact template) with the conceptual risk already retired. The predicate also had to
+**carry the four simple-key preconditions** (`possible=false`/`allowed=true`/`stack.size=flowLevel`/
+`SimpleKeyStackValid`) that the seq-side block predicate omits — because the colon's placeholder→`.key`
+conversion (and the prefix-preservation that re-anchors it) only holds under those stack invariants;
+the `{`-opener establishes them, so the design stays consistent with how the monolithic producer will
+call it.
 
 **Step 6f.3b3.emitscans.toplevel SS1 (easy prereqs) LANDED 2026-05-27**
 (~225 LOC across two files: `Endpoint.lean` §6 ~200 LOC +
@@ -18390,7 +18461,7 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
-                **Total .body scope re-estimate (TWENTY-SEVENTH revision —
+                **Total .body scope re-estimate (TWENTY-EIGHTH revision —
                 after `.substrate.{a,b,c,d,e,f,g}` + `.establishing.
                 {converters,consumer}` + `.tokenshape.list.discharge` +
                 `.tokenshape.pair` PART 1 + `.tokenshape.pair.keyshape.
@@ -18402,6 +18473,7 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 + `.body2.discharge.bridge.blockwb.predicate` (colonshape substrate)
                 + `.body2.discharge.bridge.blockwb.predicate` (colonshape a2)
                 + `.body2.discharge.bridge.blockwb.predicate` (colonshape a1)
+                + `.body2.discharge.bridge.blockwb.predicate` (pairbody scaffold)
                 ALL LANDED;
                 legacy sorries 9550, 9638 AND 9644 CLOSED. `.keyshape.discharge`
                 came in at ~590 (above its ~150–250 re-estimate) because the
@@ -18445,7 +18517,15 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 exposures already pin `s'.tokens` up to extensionality, so `Array.ext_getElem?`
                 reconstructs the structural `setIfInBounds`/`push` equation locally and the pure
                 insert-at-rank lemma + `Array.filter_push` finish it; no new conjunct, no consumer
-                churn (Reflection 178).
+                churn (Reflection 178). (pairbody.colonshape producers + maintheorem) then SPLIT
+                → (pairbody scaffold) + (pairbody.colonshape `_nonempty` + maintheorem)
+                (Reflection 179): the `_nonempty` producer's only novelty is *re-anchoring* the
+                colon's mid-key insertion (from a1, anchored at the post-key-scan state) to the
+                pair-start prefix; that gap is one pure suffix identity
+                (`List_filter_drop_succ_of_take`), landed together with the predicate def
+                (`EmitPairListScansInFlowBlock`, carrying the 4 simple-key preconditions) and the
+                trivial `_empty` producer — leaving the chain-threading skeleton (a near-exact
+                clone of `emitPairList_scans_nonempty_keyshape`) as the de-risked next step.
                 `.body2.establishing` + `.body2.discharge.wbalgebra` +
                 `.body2.discharge.bridge.leafdelta` +
                 `.body2.discharge.bridge.blockwb.dispatch` +
@@ -18453,17 +18533,21 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `.body2.discharge.bridge.blockwb.predicate` (pairbody substrate) +
                 `.body2.discharge.bridge.blockwb.predicate` (colonshape substrate) +
                 `.body2.discharge.bridge.blockwb.predicate` (colonshape a2) +
-                `.body2.discharge.bridge.blockwb.predicate` (colonshape a1)
+                `.body2.discharge.bridge.blockwb.predicate` (colonshape a1) +
+                `.body2.discharge.bridge.blockwb.predicate` (pairbody scaffold)
                 LANDED the pure balance/well-bracketedness/leaf-token algebra +
                 the dispatch→handler connection + the sequence-side block
                 substrate + the pure mid-list insertion keystone + the colon's
                 value-push exposure and the pure insert-at-rank filter lemmas +
                 the `N+1`-placeholder key-scan layout + the assembled colon
-                filtered-LIST lemma `scanNextToken_flow_value_block`; only
+                filtered-LIST lemma `scanNextToken_flow_value_block` + the
+                mapping-body block predicate `EmitPairListScansInFlowBlock`, its
+                `_empty` producer, and the pure colon-suffix re-anchoring lemma
+                `List_filter_drop_succ_of_take`; only
                 `.body2.discharge.bridge.blockwb.predicate`
-                (pairbody.colonshape producers + maintheorem) + `.assemble`
+                (pairbody.colonshape `_nonempty` producer + maintheorem) + `.assemble`
                 (9646, 9552) remain)**:
-                ~4490–6390 LOC across **24 sub-sessions** (`.scaffold`
+                ~4490–6390 LOC across **25 sub-sessions** (`.scaffold`
                 [LANDED 206] + `.tokenshape.substrate.a` [LANDED 470]
                 + `.tokenshape.substrate.b` [LANDED 226]
                 + `.tokenshape.substrate.c` [LANDED ~570]
@@ -18603,11 +18687,30 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                   `[propext, Classical.choice, Quot.sound]` — and **not** on the escapeString
                   axioms (the colon path never touches `scanDoubleQuoted`). Closes ZERO legacy
                   sorries. Reflection 178]
+                + `.body2.discharge.bridge.blockwb.predicate` (pairbody scaffold)
+                  [LANDED ~90 — the mapping-body block predicate + empty producer +
+                  the pure colon-suffix re-anchoring keystone. `EmitPairListScansInFlowBlock`
+                  (block-tracking superset of `EmitPairListScansInFlow`, mirroring the seq-side
+                  `EmitListScansInFlowBlock` but **carrying the 4 simple-key preconditions** the
+                  colon's placeholder→`.key` needs); `emitPairList_scans_block_empty` (0-step);
+                  and `List_filter_drop_succ_of_take` — given `(l.take k).filter = baseFilt`,
+                  `l.filter = baseFilt ++ block_k`, and slot `k` filtered out, the suffix
+                  `(l.drop (k+1)).filter = block_k` (off `List_filter_eq_of_not_pass` +
+                  `List.append_cancel_left`). This re-anchors a1's mid-key insertion to the
+                  pair-start prefix as a clean front-insert `.key :: block_k ++ [.value]`.
+                  sorry-free, full project 491/491; empty producer on
+                  `[propext, Classical.choice, Quot.sound]`, the pure lemma on `[propext]`.
+                  Closes ZERO legacy sorries. Reflection 179]
                 + `.body2.discharge.bridge.blockwb.predicate` (pairbody.colonshape
-                  producers + maintheorem)
-                  [~120–300 — with (a1) `scanNextToken_flow_value_block` now landed:
-                  `EmitPairListScansInFlowBlock` +
-                  producers (`WellBracketed` via the insertion lemmas + `WellBracketed_append`),
+                  `_nonempty` producer + maintheorem)
+                  [~120–300 — with (a1) `scanNextToken_flow_value_block` + the (pairbody scaffold)
+                  predicate/empty/suffix-lemma now landed: the hard `emitPairList_scans_block_nonempty`
+                  producer (clone the `emitPairList_scans_nonempty_keyshape` scanning skeleton —
+                  key via `EmitScansInFlowBlock` + `EmitScansInFlowSavedKey`, colon via
+                  `scanNextToken_flow_value_block`, value via `EmitScansInFlowBlock`, comma via
+                  `scanNextToken_flow_comma_filtered_push`; per-pair block re-anchored via
+                  `List_filter_drop_succ_of_take` + `FlowMonoChain` prefix-preservation, then
+                  `WellBracketed` via the insertion lemmas + `WellBracketed_append`),
                   then the monolithic `emit_scans_in_flow_block` `Grammable` producer chaining
                   the `.dispatch` push lemmas with the recursive body delta and framing via
                   `wrap_seq_block` / `wrap_map_block` / `EntrySafe_scalar`]
