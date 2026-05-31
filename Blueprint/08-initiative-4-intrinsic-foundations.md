@@ -1820,42 +1820,80 @@ not in-place axiom-to-theorem promotion — the latter is impossible
 when the axiom's hypothesis is strictly weaker than what the
 stronger lemma derives).
 
-**Next session**: **Step 6f.3b3.roundtrip.maintheorem.body1.tokenshape.pair.body2.discharge.bridge.blockwb.predicate**
-— the per-`emit v` **block-EntrySafe** theorem, the genuinely-new core of the
-bridge (toward legacy sorries 9646 / 9552, still open). Goal: a parallel predicate
-`EmitScansInFlowBlock v` (a **superset** of `EmitScansInFlow` — same preconditions
-and all the same state postconditions, PLUS two new conjuncts:
-`(s'.tokens.filter p).toList = (s.tokens.filter p).toList ++ block`, `EntrySafe block`,
-and a content-start head on `block`), proven `emit_scans_in_flow_block` by its own
-`Grammable` induction. **Non-destructive** (a new predicate; existing
-`EmitScansInFlow` and all its `obtain ⟨…⟩` sites are untouched; the two sorries
-stay sorries until `.assemble` flips them — every intermediate build stays green).
-Per case, the filtered delta now comes straight from the `.blockwb.dispatch`
-push lemmas (landed — see below): **scalar** → `block = [scalarTok]` from
-`scanNextToken_flow_scalar_filtered_push`, `EntrySafe` via `EntrySafe_scalar`
-(landed `.leafdelta`); **sequence** → `block = fss :: (bodyDelta ++ [fse])` with
-`fss` from `scanNextToken_flow_open_seq_filtered_push` and `fse` from
-`scanNextToken_flow_close_seq_filtered_push`, `EntrySafe`/`WellBracketed` via
-`wrap_seq_block` (landed) once `bodyDelta` (the recursive `EmitListScansInFlowBlock`
-body delta) is shown `WellBracketed`; **mapping** → `_open_map`/`_close_map` push
-+ `wrap_map_block`. **The hard sub-task (the dispatch→handler filtered-list
-connection) is now DONE** — see the `.blockwb.dispatch` LANDED block below; this
-session's work is the predicate definition + the `Grammable` induction that
-*chains* those push lemmas with the recursive body delta and frames it with the
-bracket lemmas. (Note: the comma separator's filtered-LIST equation is **not** part
-of `.blockwb` — it lives in `.assemble`, where the body delta is threaded.)
+**Next session**: **Step 6f.3b3.roundtrip.maintheorem.body1.tokenshape.pair.body2.discharge.bridge.blockwb.predicate.pairbody+maintheorem**
+— the *mapping-body* block predicate and the monolithic `Grammable` producer
+(toward legacy sorries 9646 / 9552, still open). The **sequence-side** substrate
+is now LANDED (see the `.blockwb.predicate` (seq-side) block below): the per-value
+predicate `EmitScansInFlowBlock` (full superset of `EmitScansInFlow` + `block` with
+`WellBracketed block`, `EntrySafe block`, `ContentStartTok` head), the list-body
+predicate `EmitListScansInFlowBlock` (+ `WellBracketed block`), the comma push lemma
+`scanNextToken_flow_comma_filtered_push`, and the `WellBracketed`-body producer
+`emitList_scans_block_nonempty`. Remaining for `.predicate`:
+(a) **`EmitPairListScansInFlowBlock`** + its `_empty`/`_nonempty` producers — the
+`{…}` body, whose `WellBracketed`-ness must thread the colon's *retroactive
+placeholder→`.key` insertion* (`scanNextToken_flow_value`) — the **list form of the
+discharged 9644 machinery**. The insertion lands at `simpleKey.tokenIndex + 1`, which
+is *within* the current pair's freshly-added tokens (after `old_sz`), so the
+`(s'.filter).toList = (s.filter).toList ++ block` append still holds; the subtlety is
+the *internal* structure of `block`. Since `pbalance` counts **only** brackets
+(`.key`/`.value`/`.scalar`/`.flowEntry` are all delta-0), the body decomposes into
+`WellBracketed` nested sub-value blocks glued by delta-0 filler — `WellBracketed_append`
+again — but pinning the colon step's filtered-LIST delta as a clean `++` is the work.
+(b) **`emit_scans_in_flow_block`** — the monolithic `Grammable` producer (cannot be
+partial; needs all three cases). **scalar** → `block = [scalarTok]` from
+`scanNextToken_flow_scalar_filtered_push`, `EntrySafe` via `EntrySafe_scalar`,
+`WellBracketed` via `WellBracketed_singleton_delta_zero`, head via the scalar disjunct;
+**sequence** → `block = fss :: (bodyDelta ++ [fse])` with `fss`/`fse` from
+`_open_seq`/`_close_seq` push lemmas, `bodyDelta` `WellBracketed` from
+`emitList_scans_block_nonempty` (landed), framed by `wrap_seq_block`; **mapping** →
+`_open_map`/`_close_map` + `wrap_map_block` over `EmitPairListScansInFlowBlock`'s body.
+**Non-destructive** (new predicates; existing `EmitScansInFlow` and all its
+`obtain ⟨…⟩` sites untouched; the two sorries stay sorries until `.assemble` flips
+them — every intermediate build stays green). **The hard dispatch→handler
+filtered-list connection is DONE** (`.blockwb.dispatch`); the comma separator's
+filtered-LIST equation is **also DONE** (the seq-side `scanNextToken_flow_comma_filtered_push`,
+reusable by `.assemble`).
 
 **Then** `.bridge.assemble` — (1) thread the `EmitScansInFlowBlock`-derived block
 through new producer variants of `emitList_scans_nonempty_with_skdr` /
 `emitPairList_scans_nonempty_keyshape`, building a `SafeBody Q` of the full filtered
 delta (each recursive step `SafeBody.cons` with the item block + the comma's single
-`.flowEntry` — comma needs a `scanNextToken_flow_comma` filtered-LIST equation too;
-base `SafeBody.single`); (2) apply `SafeBody_array_flowEntry` at the two sorry sites
-with `lo := old_sz`, flipping 9552 / 9646. **Cost of the whole bridge remains large
-(~600–1000 LOC).** **Do NOT** augment `EmitScansInFlow` in place (breaks every
+`.flowEntry` — the comma filtered-LIST equation `scanNextToken_flow_comma_filtered_push`
+is **already landed** by `.predicate` (seq-side); base `SafeBody.single`); (2) apply
+`SafeBody_array_flowEntry` at the two sorry sites with `lo := old_sz`, flipping
+9552 / 9646. **Cost of the whole bridge remains large (~600–1000 LOC).** **Do NOT** augment `EmitScansInFlow` in place (breaks every
 positional `obtain`); **do NOT** attempt `ScanChain.split`-style factoring
 (Reflection 169) nor a per-comma keyshape reapplication (Reflection 170 — cannot
 rule out inner flowEntries).
+
+**`.body1.tokenshape.pair.body2.discharge.bridge.blockwb.predicate` (seq-side) LANDED 2026-05-30** —
+the *sequence-side* block-EntrySafe substrate. Full project 491/491, all three new
+declarations on `[propext, Classical.choice, Quot.sound]` (no `sorryAx`, no new
+axioms). Closes **zero** legacy sorries (pure enablement — 9646 / 9552 remain).
+Delivered sorry-free in `EmitterScannability.lean` §G.balance.bridge.blockwb.predicate
+(right after the `.blockwb.dispatch` push lemmas): `scanNextToken_flow_comma_filtered_push`
+(the **sixth** dispatch push lemma — `,` dispatch → single `.flowEntry`, via
+`scanFlowEntry_ok` + `scanFlowEntry_filtered` + `saveSimpleKey_filter_placeholder`,
+requiring the `lastRealToken ≠ flow*` premise every preceding `emit v` block supplies);
+`ContentStartTok` (`scalar | flowSequenceStart | flowMappingStart` head predicate, the
+`SafeBody` `Q`); `EmitScansInFlowBlock` (**full superset** of `EmitScansInFlow` — the
+verbatim postcondition bundle, kept verbatim for definitional stability so the same def
+serves both list and pair producers — PLUS `block` with
+`(s'.filter).toList = (s.filter).toList ++ block`, `WellBracketed block`,
+`EntrySafe block`, `ContentStartTok` head); `EmitListScansInFlowBlock` (the `[…]` body
+superset of `EmitListScansInFlow` + `WellBracketed block`); and the
+`WellBracketed`-body producer `emitList_scans_block_empty`/`_nonempty` (parallel to
+`emitList_scans_nonempty`, **consuming the per-item `EmitScansInFlowBlock` as
+hypothesis** — *not* circular, the eventual `Grammable` producer supplies it via the IH,
+exactly as `emit_scans_in_flow` feeds `emitList_scans_nonempty`). The block accumulates
+as `block₁ ++ [feTok] ++ block_rest`: each item block `WellBracketed` (from the item),
+each `", "` separator a single delta-0 `.flowEntry` (comma push + space preprocessing
+preserves tokens), tail block `WellBracketed` (IH) — `WellBracketed_append` ×2 glues
+them. **`.blockwb.predicate` split (seq-side) → (pairbody + maintheorem)** because the
+mapping body's `WellBracketed`-ness hinges on the colon's retroactive
+placeholder→`.key` insertion — the list form of the discharged 9644 machinery, a
+separate harder sub-task; and the monolithic `Grammable` producer cannot land partial
+(Reflection 174).
 
 **`.body1.tokenshape.pair.body2.discharge.bridge.blockwb.dispatch` LANDED 2026-05-30** —
 the *scanNextToken-dispatch → handler filtered-LIST connection*, the genuinely-new
@@ -6522,6 +6560,48 @@ frames it with `wrap_seq_block`/`wrap_map_block`. **Meta-lesson (refines Reflect
 *new* work, grep the proofs of the lemmas that solve the *adjacent* easier problem
 (here: first-token vs. whole-list) — the hard derivation is often already inside them,
 needing only a *different conclusion*, not a different proof.
+
+##### Reflection 174 (new, 2026-05-30): `.blockwb.predicate` splits (seq-side) → (pairbody + maintheorem) — the sequence body is clean `WellBracketed_append`, but the *mapping* body inherits the colon's retroactive `.key` insertion, and the `Grammable` producer can't land partial
+
+Reflection 173 framed `.predicate` as "define `EmitScansInFlowBlock` + run the
+`Grammable` induction." Building it surfaced that the per-case difficulty is **wildly
+uneven**, and the monolithic induction can't be landed piecewise — so the de-risking
+move was to land everything the *sequence* case needs (and the comma separator) as
+self-contained substrate, deferring the mapping body and the one theorem that ties all
+three cases together.
+
+**The sequence body is clean; the mapping body is not.** A flow-sequence body is
+item-blocks separated by `", "`. Each item block is `WellBracketed` (from the item's
+`EmitScansInFlowBlock`), each separator is a single delta-0 `.flowEntry`, and
+`WellBracketed_append` glues them — `emitList_scans_block_nonempty` is `emitList_scans_nonempty`
+with a `block₁ ++ [feTok] ++ block_rest` accumulator bolted on, no new hard step. The
+mapping body, by contrast, threads `scanNextToken_flow_value`'s **retroactive
+placeholder→`.key` insertion** at `simpleKey.tokenIndex + 1` — the list form of the
+just-discharged 9644 machinery. The insertion lands *within* the current pair's
+post-`old_sz` tokens, so the outer `(s'.filter).toList = (s.filter).toList ++ block`
+append survives; but pinning the colon step's *internal* filtered-LIST delta as a clean
+concatenation (so `WellBracketed_append` applies) is a genuine separate problem. The
+saving grace, banked for next session: `pbalance` counts **only** brackets
+(`.key`/`.value`/`.scalar`/`.flowEntry` are all delta-0), so once the colon delta is
+pinned, the body is still just `WellBracketed` nested-value blocks glued by delta-0
+filler.
+
+**The comma equation moved earlier (revises Reflection 172/the pointer).** Both prior
+notes parked the comma's filtered-LIST equation in `.assemble`. But the *inner*
+sequence body needs it *here* to show each separator is a single `.flowEntry` — so
+`scanNextToken_flow_comma_filtered_push` landed in `.predicate` (seq-side) as the sixth
+dispatch push lemma, and `.assemble` now *reuses* it rather than deriving it. A planned
+"lives later" boundary dissolved once the consumer that needs it showed up earlier.
+
+**The split.** (seq-side, this session, sorry-free): `EmitScansInFlowBlock`,
+`EmitListScansInFlowBlock`, `ContentStartTok`, the comma push lemma, and
+`emitList_scans_block_*`. (pairbody + maintheorem, next): `EmitPairListScansInFlowBlock`
++ producers, then the monolithic `emit_scans_in_flow_block`. **Meta-lesson:** when a
+predicate's producer is a single `Grammable` induction (can't land case-by-case), still
+de-risk by landing every *case-independent* consumer the easy cases need as standalone
+substrate first — the list/pairlist body producers take the per-item block as a
+*hypothesis*, so they compile and bank green long before the IH that discharges that
+hypothesis exists (exactly how `emitList_scans_nonempty` predated `emit_scans_in_flow`).
 
 **Step 6f.3b3.emitscans.toplevel SS1 (easy prereqs) LANDED 2026-05-27**
 (~225 LOC across two files: `Endpoint.lean` §6 ~200 LOC +
@@ -18043,13 +18123,14 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
-                **Total .body scope re-estimate (TWENTY-SECOND revision —
+                **Total .body scope re-estimate (TWENTY-THIRD revision —
                 after `.substrate.{a,b,c,d,e,f,g}` + `.establishing.
                 {converters,consumer}` + `.tokenshape.list.discharge` +
                 `.tokenshape.pair` PART 1 + `.tokenshape.pair.keyshape.
                 {establishing,discharge}` + `.body2.establishing` +
                 `.body2.discharge.wbalgebra` + `.body2.discharge.bridge.leafdelta`
                 + `.body2.discharge.bridge.blockwb.dispatch`
+                + `.body2.discharge.bridge.blockwb.predicate` (seq-side)
                 ALL LANDED;
                 legacy sorries 9550, 9638 AND 9644 CLOSED. `.keyshape.discharge`
                 came in at ~590 (above its ~150–250 re-estimate) because the
@@ -18067,14 +18148,23 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 filtered-list connection turned out ~90% pre-built inside the
                 existing `_first_filtered_token` proofs, so it lands as its own
                 mechanical increment ahead of the predicate + induction.
+                `.blockwb.predicate` itself then SPLIT (seq-side) into
+                (pairbody + maintheorem) (Reflection 174): the sequence body is
+                clean `WellBracketed_append`, but the mapping body inherits the
+                colon's retroactive `.key` insertion (list form of the 9644
+                machinery) and the `Grammable` producer can't land partial — so the
+                sequence-side substrate (per-value + list predicates, comma push
+                lemma, `WellBracketed`-body producer) lands first.
                 `.body2.establishing` + `.body2.discharge.wbalgebra` +
                 `.body2.discharge.bridge.leafdelta` +
-                `.body2.discharge.bridge.blockwb.dispatch`
+                `.body2.discharge.bridge.blockwb.dispatch` +
+                `.body2.discharge.bridge.blockwb.predicate` (seq-side)
                 LANDED the pure balance/well-bracketedness/leaf-token algebra +
-                the dispatch→handler connection; only
-                `.body2.discharge.bridge.blockwb.predicate` + `.assemble`
+                the dispatch→handler connection + the sequence-side block
+                substrate; only `.body2.discharge.bridge.blockwb.predicate`
+                (pairbody + maintheorem) + `.assemble`
                 (9646, 9552) remain)**:
-                ~4300–6085 LOC across **19 sub-sessions** (`.scaffold`
+                ~4400–6285 LOC across **20 sub-sessions** (`.scaffold`
                 [LANDED 206] + `.tokenshape.substrate.a` [LANDED 470]
                 + `.tokenshape.substrate.b` [LANDED 226]
                 + `.tokenshape.substrate.c` [LANDED ~570]
@@ -18155,12 +18245,24 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                   `_first_filtered_token` proofs (which discard all but
                   size+first-token); sorry-free, full project 491/491, pure triple.
                   Closes ZERO legacy sorries. Reflection 173]
-                + `.body2.discharge.bridge.blockwb.predicate` [~250–450 — the per-`emit v`
-                  block `EntrySafe` theorem via a non-destructive parallel predicate
-                  `EmitScansInFlowBlock` (superset of `EmitScansInFlow`) by its own
-                  `Grammable` induction; chains the `.dispatch` push lemmas with the
-                  recursive body delta and applies `wrap_seq_block` /
-                  `wrap_map_block` / `EntrySafe_scalar`]
+                + `.body2.discharge.bridge.blockwb.predicate` (seq-side) [LANDED ~210 —
+                  the sequence-side block substrate: `EmitScansInFlowBlock` (full
+                  superset of `EmitScansInFlow` + `WellBracketed`/`EntrySafe`/
+                  `ContentStartTok`-head block), `EmitListScansInFlowBlock`
+                  (+ `WellBracketed` block), `scanNextToken_flow_comma_filtered_push`
+                  (sixth dispatch push lemma, `,` → single `.flowEntry`, reused by
+                  `.assemble`), and `emitList_scans_block_empty`/`_nonempty`
+                  (`WellBracketed`-body producer, block accumulated as
+                  `block₁ ++ [feTok] ++ block_rest` via `WellBracketed_append`);
+                  sorry-free, full project 491/491, pure triple. Closes ZERO legacy
+                  sorries. Reflection 174]
+                + `.body2.discharge.bridge.blockwb.predicate` (pairbody + maintheorem)
+                  [~200–400 — `EmitPairListScansInFlowBlock` + producers (the `{…}`
+                  body's `WellBracketed`-ness threading the colon's retroactive
+                  placeholder→`.key` insertion, list form of the 9644 machinery), then
+                  the monolithic `emit_scans_in_flow_block` `Grammable` producer
+                  chaining the `.dispatch` push lemmas with the recursive body delta and
+                  framing via `wrap_seq_block` / `wrap_map_block` / `EntrySafe_scalar`]
                 + `.body2.discharge.bridge.assemble` [~200–400 — closes 9646, 9552:
                   thread the `EmitScansInFlowBlock` block through new producer
                   variants to build the body `SafeBody`, then apply
@@ -18352,7 +18454,25 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 substrate layers"): before budgeting a flagged hard sub-task as *new*
                 work, grep the proofs of the lemmas solving the *adjacent* easier
                 problem — the hard derivation is often already inside them, needing
-                only a *different conclusion*.
+                only a *different conclusion*; and `.blockwb.predicate`
+                infrastructure-mapping (Reflection 174, 2026-05-30) discovered the
+                per-case difficulty is **wildly uneven** and the `Grammable` producer
+                can't land partial: the *sequence* body is clean `WellBracketed_append`
+                of item blocks + delta-0 `.flowEntry` separators
+                (`emitList_scans_block_nonempty` = `emitList_scans_nonempty` + a block
+                accumulator), but the *mapping* body threads the colon's retroactive
+                placeholder→`.key` insertion (list form of the just-discharged 9644
+                machinery) and is a genuine separate problem. **Sub-split**
+                `.blockwb.predicate` into (seq-side) (LANDED ~210 — the per-value +
+                list predicates, the comma push lemma, the `WellBracketed`-body
+                producer) + (pairbody + maintheorem) (`EmitPairListScansInFlowBlock` +
+                the monolithic `emit_scans_in_flow_block`). The comma's filtered-LIST
+                equation, parked in `.assemble` by 172, **moved earlier** — the inner
+                sequence body needs it here, so `.assemble` now reuses it. Meta-lesson:
+                even when a producer is a single monolithic `Grammable` induction,
+                de-risk by landing every *case-independent* consumer the easy cases
+                need (the list/pairlist body producers take the per-item block as a
+                hypothesis, so they bank green before the IH that discharges it exists).
 
               ▹ **.maintheorem.nonempty** *(~410 legacy LOC; legacy
                 9653–10062; **2 legacy `sorry`s to discharge**)*.
