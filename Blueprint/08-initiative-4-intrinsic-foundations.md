@@ -1838,6 +1838,38 @@ block-substrate work — the two prereqs + the `_nonempty` producer + the monoli
 `Grammable` producers — lands in `EmitterScannability/Block.lean`, not the base.**
 See **Reflection 181**.
 
+**Modularization continued (LANDED 2026-05-31, commit `56b804ec`)**: the second
+extraction, this time in the *foundation* direction (the base imports the new
+module, rather than the new module importing the base).  The entire self-contained
+**§1 (escape-character validity) + §2 (emitter output properties) cluster**
+(lines 76–840, ~766 lines, 32 decls: `escapeChar_*`, `escapeString_*`,
+`processEscape_*`, `hexNibble_*`, `collectDoubleQuotedLoop_escapeString_succeeds`,
+etc.) was **extracted to a new submodule
+`L4YAML/Proofs/Output/EmitterScannability/EscapeProperties.lean`** (module
+`L4YAML.Proofs.Output.EmitterScannability.EscapeProperties`).  It imports only the
+base's *upstream* imports (NOT the base — that would be circular) and **reopens the
+same `L4YAML.Proofs.EmitterScannability` namespace**, then the base `import`s it, so
+every fully-qualified name is unchanged and downstream uses (e.g. `peek_of_chars_cons`,
+40 uses; `advance_line_of_peek`, 11 uses) resolve transitively.  Verified pure: the
+cluster has **zero forward references** into the rest of the base (clean seam exactly
+at the §3 header), so the move is behaviour-preserving — full build green (495 jobs,
+was 493: +1 module), `EscapeProperties` has **0 sorries** so all 7 legacy sorries stay
+in the base, moved decls' axiom profiles are unchanged (pure triple where it held;
+**pre-existing `native_decide` axioms** on the finite char-enumeration lemmas
+`escapeChar_passthrough_is_valid` / `hex_two_foldl_bound` — a behaviour-preserving move
+reproduces proof terms byte-for-byte, so this is not a new dependency).  Base:
+15710 → 14944 lines.  See **Reflection 182**.
+
+**Remaining modularization seams** (for whenever file size again outweighs the
+functional next step — each a candidate green increment): foundation-direction
+runner-ups are the substrate predicate layers **`NoOverwriteAt` (substrate.d, ~659 LOC)**,
+**`FlowNoOverwriteAt` (substrate.e, ~682 LOC)**, **`SavedKeyDoesntResolve` (substrate.f)**
+and **the non-`:` dispatch preservation (substrate.g)** — all reported with no forward
+references in the seam survey, though d/e are mutually interdependent so they may need to
+move together.  Leaf-direction candidates remain the §G.balance algebra and the
+characterization/round-trip theorems near the file tail.  None block the producer work;
+they are *alternatives* to it when the base file is the binding constraint.
+
 **Next session**: **Step 6f.3b3.roundtrip.maintheorem.body1.tokenshape.pair.body2.discharge.bridge.blockwb.predicate.pairbody** (`_nonempty` producer + maintheorem, **in `EmitterScannability/Block.lean`**)
 — the colon step's filtered-LIST characterization is LANDED
 (`scanNextToken_flow_value_block`, the (colonshape a1) block below); the
@@ -7087,6 +7119,37 @@ rhythm coincide, spend the green increment on the move and let the next session 
 The chosen boundary (submodule `EmitterScannability/Block.lean`, mirroring the existing
 `IndexedEmitterScannability/` directory) keeps room for further per-cluster splits as the base file's other
 sections (the §G.balance algebra, the characterization lemmas, the round-trip theorems) each outgrow it.
+
+##### Reflection 182 (new, 2026-05-31): a file has *two* extraction directions — the leaf (new module imports base) and the foundation (base imports new module); the second is the one that shrinks the file from the *top*, and the seam test inverts from "no inbound edges" to "no forward references"
+
+Reflection 181 extracted the block-substrate as a **leaf**: the cluster sat at the *bottom* of the
+dependency order (nothing in the base used it; the new module imports the base). That direction only ever
+removes material the rest of the file doesn't depend on. But the base's biggest cold mass was at the
+*top* — §1 (escape-char validity) + §2 (emitter output properties), ~766 lines of foundation lemmas that
+*everything below* leans on. A leaf extraction can't touch those: they have many inbound edges.
+
+The fix is the **foundation** direction — the mirror image. The new module imports only the base's
+*upstream* imports (not the base — that would be circular), and the **base imports the new module**.
+Downstream uses (`peek_of_chars_cons`, 40 refs; `advance_line_of_peek`, 11) keep resolving because Lean
+import is transitive: importing the base transitively imports its dependencies, and reopening the same
+`L4YAML.Proofs.EmitterScannability` namespace keeps every fully-qualified name identical. So the same
+"namespace-reopen → names invisible-ly unchanged" trick from Reflection 181 carries over verbatim.
+
+What *inverts* is the seam test. For a leaf, safety = "**no inbound** code edges" (nothing references it).
+For a foundation, safety = "**no forward references**" (it references nothing defined later in the file) —
+because the new module compiles *before* the base, so it cannot mention any later base declaration. The
+§1+§2 cluster passed: all 32 of its names are defined within it or upstream, and its boundary is exactly
+the §3 header (a clean single cut at line 842). One honest wrinkle surfaced in verification: two of the
+moved lemmas carry `native_decide` axioms (finite char-enumeration). That is *not* a regression — a
+behaviour-preserving move reproduces proof terms byte-for-byte, so the axiom set is identical to before;
+the pure-triple invariant was only ever claimed for the *end-goal* theorems, not these foundation facts.
+
+**Meta-lesson:** when a monolith needs shrinking, ask which *end* the cold mass is at. Bottom-of-order
+clusters leave as leaves (no-inbound-edges test); top-of-order foundations leave as foundations
+(no-forward-references test, base-imports-new wiring). Both are pure moves verified by "build green +
+axioms unchanged + sorry count unchanged," and both preserve names via namespace-reopen — so a large file
+can be peeled from *both ends* across successive green increments without ever touching the proof content
+in the middle.
 
 **Step 6f.3b3.emitscans.toplevel SS1 (easy prereqs) LANDED 2026-05-27**
 (~225 LOC across two files: `Endpoint.lean` §6 ~200 LOC +
@@ -18608,7 +18671,7 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
-                **Total .body scope re-estimate (THIRTIETH revision —
+                **Total .body scope re-estimate (THIRTY-FIRST revision —
                 after `.substrate.{a,b,c,d,e,f,g}` + `.establishing.
                 {converters,consumer}` + `.tokenshape.list.discharge` +
                 `.tokenshape.pair` PART 1 + `.tokenshape.pair.keyshape.
@@ -18623,6 +18686,9 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 + `.body2.discharge.bridge.blockwb.predicate` (pairbody scaffold)
                 + `.body2.discharge.bridge.blockwb.predicate` (pairbody combined-substrate)
                 + `.body2.discharge.bridge.blockwb.predicate` (modularization → `EmitterScannability/Block.lean`)
+                + **(foundation modularization → `EmitterScannability/EscapeProperties.lean`** — orthogonal
+                to the blockwb chain: the §1+§2 escape/output cluster peeled off the *top* of the base via
+                the foundation direction, base 15710 → 14944, Reflection 182)
                 ALL LANDED;
                 legacy sorries 9550, 9638 AND 9644 CLOSED. `.keyshape.discharge`
                 came in at ~590 (above its ~150–250 re-estimate) because the
