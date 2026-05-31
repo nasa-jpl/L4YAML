@@ -13345,6 +13345,25 @@ theorem pbalance_cons (t : Positioned YamlToken) (l : List (Positioned YamlToken
 /-- `.flowEntry` contributes `0` to the bracket balance. -/
 theorem flowBracketDelta_flowEntry : flowBracketDelta .flowEntry = 0 := rfl
 
+/-- A flow-sequence opener `[` contributes `+1`. -/
+theorem flowBracketDelta_flowSequenceStart : flowBracketDelta .flowSequenceStart = 1 := rfl
+
+/-- A flow-sequence closer `]` contributes `-1`. -/
+theorem flowBracketDelta_flowSequenceEnd : flowBracketDelta .flowSequenceEnd = -1 := rfl
+
+/-- A flow-mapping opener `{` contributes `+1`. -/
+theorem flowBracketDelta_flowMappingStart : flowBracketDelta .flowMappingStart = 1 := rfl
+
+/-- A flow-mapping closer `}` contributes `-1`. -/
+theorem flowBracketDelta_flowMappingEnd : flowBracketDelta .flowMappingEnd = -1 := rfl
+
+/-- A scalar token contributes `0`. -/
+theorem flowBracketDelta_scalar (value : String) (style : ScalarStyle) :
+    flowBracketDelta (.scalar value style) = 0 := rfl
+
+/-- A `.key` token contributes `0`. -/
+theorem flowBracketDelta_key : flowBracketDelta .key = 0 := rfl
+
 /-- An emitter *entry* (one sequence item, or one mapping `key: value` pair):
     bracket-balanced overall, with every interior `.flowEntry` at balance `≥ 1`. -/
 def EntrySafe (e : List (Positioned YamlToken)) : Prop :=
@@ -13628,6 +13647,33 @@ theorem EntrySafe_singleton (t : Positioned YamlToken)
     exact h_ne h_fe
   | k + 1, h_i, _ => simp at h_i
 
+/-- A flow-sequence block `[ body ]` with `WellBracketed` interior is both
+    `WellBracketed` and `EntrySafe` — the shape a scanned `emit (.sequence …)`
+    block takes. Specializes `wrap_block` with the concrete bracket deltas. -/
+theorem wrap_seq_block (op cl : Positioned YamlToken)
+    (body : List (Positioned YamlToken))
+    (h_op : op.val = .flowSequenceStart) (h_cl : cl.val = .flowSequenceEnd)
+    (h_body : WellBracketed body) :
+    WellBracketed (op :: (body ++ [cl])) ∧ EntrySafe (op :: (body ++ [cl])) :=
+  wrap_block op cl body (h_op ▸ flowBracketDelta_flowSequenceStart)
+    (h_cl ▸ flowBracketDelta_flowSequenceEnd) h_body
+
+/-- A flow-mapping block `{ body }` with `WellBracketed` interior is both
+    `WellBracketed` and `EntrySafe` — the shape a scanned `emit (.mapping …)`
+    block takes. Specializes `wrap_block` with the concrete bracket deltas. -/
+theorem wrap_map_block (op cl : Positioned YamlToken)
+    (body : List (Positioned YamlToken))
+    (h_op : op.val = .flowMappingStart) (h_cl : cl.val = .flowMappingEnd)
+    (h_body : WellBracketed body) :
+    WellBracketed (op :: (body ++ [cl])) ∧ EntrySafe (op :: (body ++ [cl])) :=
+  wrap_block op cl body (h_op ▸ flowBracketDelta_flowMappingStart)
+    (h_cl ▸ flowBracketDelta_flowMappingEnd) h_body
+
+/-- A scalar entry — a single `.scalar` token — is `EntrySafe`. -/
+theorem EntrySafe_scalar (t : Positioned YamlToken) (value : String) (style : ScalarStyle)
+    (h : t.val = .scalar value style) : EntrySafe [t] :=
+  EntrySafe_singleton t (h ▸ flowBracketDelta_scalar value style) (by rw [h]; simp)
+
 -- ═══ Filtered token lemmas for scanner handlers ═══
 
 /-- `scanFlowSequenceStart` filtered token equation: adds exactly one `.flowSequenceStart`. -/
@@ -13676,6 +13722,28 @@ theorem scanFlowEntry_filtered (s s' : ScannerState)
     rw [ScannerCorrectness.advance_preserves_tokens]
     rw [emit_tokens_push]
     rw [Array.filter_push]; rfl
+
+/-- `scanFlowSequenceEnd` filtered token equation: adds exactly one `.flowSequenceEnd`. -/
+theorem scanFlowSequenceEnd_filtered (s : ScannerState) :
+    let p := fun (t : Positioned YamlToken) => t.val != .placeholder
+    (scanFlowSequenceEnd s).tokens.filter p =
+    (s.tokens.filter p).push { pos := s.currentPos, val := .flowSequenceEnd } := by
+  unfold scanFlowSequenceEnd
+  dsimp only []
+  rw [ScannerCorrectness.advance_preserves_tokens]
+  rw [emit_tokens_push]
+  rw [Array.filter_push]; rfl
+
+/-- `scanFlowMappingEnd` filtered token equation: adds exactly one `.flowMappingEnd`. -/
+theorem scanFlowMappingEnd_filtered (s : ScannerState) :
+    let p := fun (t : Positioned YamlToken) => t.val != .placeholder
+    (scanFlowMappingEnd s).tokens.filter p =
+    (s.tokens.filter p).push { pos := s.currentPos, val := .flowMappingEnd } := by
+  unfold scanFlowMappingEnd
+  dsimp only []
+  rw [ScannerCorrectness.advance_preserves_tokens]
+  rw [emit_tokens_push]
+  rw [Array.filter_push]; rfl
 
 /-- `ScanChain_deterministic`: two chains with the same start state and step count
     reach the same final state (since `scanNextToken` is a function). -/
