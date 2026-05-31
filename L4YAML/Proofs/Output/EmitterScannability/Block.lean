@@ -71,6 +71,7 @@ def EmitScansInFlowBlock (v : YamlValue) : Prop :=
     s.explicitKeyLine = none →
     AllTokensOnLine s s.line →
     EndLineOnLine s →
+    s.simpleKeyStack.size = s.flowLevel →
     ∃ n s' block,
       ScanChainGrew (fun t => t.val != .placeholder) s n s'
       ∧ ScannerSurfCorr s' ⟨rest, s'.col⟩
@@ -108,6 +109,7 @@ def EmitListScansInFlowBlock (items : List YamlValue) : Prop :=
     s.explicitKeyLine = none →
     AllTokensOnLine s s.line →
     EndLineOnLine s →
+    s.simpleKeyStack.size = s.flowLevel →
     ∃ n s' block,
       ScanChainGrew (fun t => t.val != .placeholder) s n s'
       ∧ ScannerSurfCorr s' ⟨rest, s'.col⟩
@@ -129,7 +131,7 @@ def EmitListScansInFlowBlock (items : List YamlValue) : Prop :=
 
 /-- Empty list body: 0-step chain, empty (`WellBracketed`) block. -/
 theorem emitList_scans_block_empty : EmitListScansInFlowBlock [] := by
-  intro s rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline
+  intro s rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline _h_sync
   have h_eq : (emit.emitList ([] : List YamlValue)).toList ++ rest = rest := by
     simp only [emit.emitList]; rfl
   rw [h_eq] at hcorr
@@ -147,7 +149,7 @@ theorem emitList_scans_block_nonempty (items : List YamlValue) (h_ne : items ≠
   induction items with
   | nil => contradiction
   | cons v tail ih =>
-    intro s rest_chars hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline
+    intro s rest_chars hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_sync
     match tail, ih with
     | [], _ =>
       have h_eq : (emit.emitList [v]).toList = (emit v).toList := by
@@ -156,7 +158,7 @@ theorem emitList_scans_block_nonempty (items : List YamlValue) (h_ne : items ≠
       obtain ⟨n, s', block, h_chain, h_corr, h_fl', h_dp, h_ids, h_ek', h_col', h_flow',
               h_indent', h_line_v, _h_ska, _h_last, h_atol', h_endline', h_stack', h_fmc',
               h_block_eq, h_wb, _h_es, _h_cs⟩ :=
-        h_all v (.head _) s rest_chars hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline
+        h_all v (.head _) s rest_chars hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_sync
       exact ⟨n, s', block, h_chain, h_corr, h_fl', h_dp, h_ids, h_ek', h_col', h_flow',
         h_indent', h_line_v, h_atol', h_endline', h_stack', h_fmc', h_block_eq, h_wb⟩
     | v' :: vs, ih =>
@@ -170,7 +172,7 @@ theorem emitList_scans_block_nonempty (items : List YamlValue) (h_ne : items ≠
               h_indent₁, _h_line₁, _h_ska₁, h_last₁, h_atol₁, h_endline₁, h_stack₁, h_fmc₁,
               h_block_eq₁, h_wb₁, _h_es₁, _h_cs₁⟩ :=
         h_ev s ([',', ' '] ++ (emit.emitList (v' :: vs)).toList ++ rest_chars)
-          hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline
+          hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_sync
       -- Step 2: Scan ',' via scanNextToken_flow_comma (state) + push lemma (block)
       obtain ⟨s₂, h_snt₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, h_ek₂, h_col₂, _h_line₂, h_atol₂, h_endline₂, h_stack₂⟩ :=
         scanNextToken_flow_comma s₁
@@ -216,6 +218,7 @@ theorem emitList_scans_block_nonempty (items : List YamlValue) (h_ne : items ≠
           (by rw [h_ek₃, h_ek₂, h_ek₁]; exact h_ek)
           (h_atol_transfer₃ h_atol₂)
           (h_endline_transfer₃ h_endline₂)
+          (by rw [h_stack_pp₃, h_stack₂, h_stack₁, h_fl₃, h_fl₂, h_fl₁]; exact h_sync)
       -- Step 5: Lift chain for s₂ via preprocessing equality
       have h_snt_eq : scanNextToken s₂ = scanNextToken s₃ :=
         scanNextToken_eq_of_preprocess s₂ s₃ h_pp_eq
@@ -510,6 +513,7 @@ theorem emitPairList_scans_block_nonempty (pairs : List (YamlValue × YamlValue)
           (by rw [h_ek₃]; exact h_ek₂)
           (h_atol_transfer₃ h_atol₂)
           (h_endline_transfer₃ h_endline₂)
+          (by rw [h_stack_pp₃, h_stack_v₂, h_stack₁, h_fl₃, h_fl₂, h_fl₁]; exact h_sync)
       -- Step 6: Lift chain for s₂ via preprocessing equality
       have h_snt_eq : scanNextToken s₂ = scanNextToken s₃ :=
         scanNextToken_eq_of_preprocess s₂ s₃ h_pp_eq
@@ -680,6 +684,7 @@ theorem emitPairList_scans_block_nonempty (pairs : List (YamlValue × YamlValue)
           (by rw [h_ek₃]; exact h_ek₂)
           (h_atol_transfer₃ h_atol₂)
           (h_endline_transfer₃ h_endline₂)
+          (by rw [h_stack_pp₃, h_stack_v₂, h_stack₁, h_fl₃, h_fl₂, h_fl₁]; exact h_sync)
       have h_snt_eq_v : scanNextToken s₂ = scanNextToken s₃ :=
         scanNextToken_eq_of_preprocess s₂ s₃ h_pp_eq
       have h_n_v_pos : n_v ≥ 1 := by
