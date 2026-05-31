@@ -8066,6 +8066,66 @@ theorem Array_setIfInBounds_filter_mono {α : Type} (a : Array α) (i : Nat) (v 
   · -- i ≥ a.size: identity
     omega
 
+/-- **Filtered-set, dropping a filtered-out slot.** When `l[i]` fails the filter
+    `p`, dropping it (splitting around index `i`) leaves `l.filter p` intact.  The
+    list-level fact behind "a placeholder slot is invisible to the filtered view". -/
+theorem List_filter_eq_of_not_pass {α : Type} (l : List α) (i : Nat) (p : α → Bool)
+    (hi : i < l.length) (h_old : p (l[i]'hi) = false) :
+    l.filter p = (l.take i).filter p ++ (l.drop (i + 1)).filter p := by
+  induction l generalizing i with
+  | nil => simp at hi
+  | cons a as ih =>
+    cases i with
+    | zero =>
+      have h_a : p a = false := h_old
+      simp [h_a]
+    | succ j =>
+      have hj : j < as.length := by simpa using hi
+      have h_old' : p (as[j]'hj) = false := by
+        have : (a :: as)[j + 1]'hi = as[j]'hj := List.getElem_cons_succ ..
+        rwa [this] at h_old
+      simp only [List.take_succ_cons, List.drop_succ_cons, List.filter_cons]
+      rw [ih j hj h_old']
+      split <;> simp [List.cons_append]
+
+/-- **Filtered-set, inserting at a filtered-out slot.** Setting `l[i]` (which fails
+    `p`) to a `p`-passing token `v` inserts `v` into `l.filter p` exactly at the rank
+    position `((l.take i).filter p).length`.  This is the list-level characterization
+    of the colon's retroactive placeholder→`.key` write: it converts an invisible
+    slot into a visible `.key`, inserting it at its filtered rank — the general form
+    of the special "first new filtered token is `.key`" fact `keyshape_first_token_key`
+    proves, lifted to the *entire* filtered block (toward sorries 9646/9552). -/
+theorem List_filter_set_of_not_pass {α : Type} (l : List α) (i : Nat) (v : α)
+    (p : α → Bool) (hi : i < l.length) (h_old : p (l[i]'hi) = false) (h_new : p v = true) :
+    (l.set i v).filter p = (l.take i).filter p ++ v :: (l.drop (i + 1)).filter p := by
+  induction l generalizing i with
+  | nil => simp at hi
+  | cons a as ih =>
+    cases i with
+    | zero =>
+      simp [h_new]
+    | succ j =>
+      have hj : j < as.length := by simpa using hi
+      have h_old' : p (as[j]'hj) = false := by
+        have : (a :: as)[j + 1]'hi = as[j]'hj := List.getElem_cons_succ ..
+        rwa [this] at h_old
+      simp only [List.set_cons_succ, List.take_succ_cons, List.drop_succ_cons, List.filter_cons]
+      rw [ih j hj h_old']
+      split <;> simp [List.cons_append]
+
+/-- Array bridge: `setIfInBounds` at a filtered-out slot inserts the new (filtered-in)
+    token at its rank in the filtered `toList` — the form the colon producer applies
+    (`s₂.tokens = (s₁.tokens.setIfInBounds (N+1) keyTok).push valueTok`). -/
+theorem Array_filter_setIfInBounds_of_not_pass {α : Type} (a : Array α) (i : Nat) (v : α)
+    (p : α → Bool) (hi : i < a.size) (h_old : p (a[i]'hi) = false) (h_new : p v = true) :
+    ((a.setIfInBounds i v).filter p).toList =
+      (a.toList.take i).filter p ++ v :: (a.toList.drop (i + 1)).filter p := by
+  have hi' : i < a.toList.length := by simpa [Array.length_toList] using hi
+  have h_old' : p (a.toList[i]'hi') = false := by
+    rw [Array.getElem_toList]; exact h_old
+  rw [Array.setIfInBounds, dif_pos hi, Array.toList_filter, Array.toList_set]
+  exact List_filter_set_of_not_pass a.toList i v p hi' h_old' h_new
+
 -- Preprocessing monotonicity: the filtered token count doesn't decrease
 -- through `scanNextToken_preprocess`.
 theorem preprocess_filtered_mono (s : ScannerState) (s₁ : ScannerState) (c : Char)
@@ -9418,7 +9478,14 @@ theorem scanNextToken_flow_value (s : ScannerState)
           s'.tokens[s.simpleKey.tokenIndex + 1]? =
             some ⟨s.simpleKey.pos, .key, s.simpleKey.pos⟩ ∧
           (∀ i, i < s.tokens.size → i ≠ s.simpleKey.tokenIndex + 1 →
-            s'.tokens[i]? = s.tokens[i]?)) := by
+            s'.tokens[i]? = s.tokens[i]?))
+      -- The colon's `.value` push: `scanValue` always `emit .value` at the end,
+      -- so (when no key was re-reserved this step, i.e. `ska = false`) the token
+      -- array grows by exactly one `.value` token at the old end. This is the
+      -- push half of the colon's filtered-LIST delta (toward sorries 9646/9552).
+      ∧ (s.simpleKeyAllowed = false →
+          s'.tokens.size = s.tokens.size + 1 ∧
+          ∃ pos, s'.tokens[s.tokens.size]? = some ⟨pos, .value, pos⟩) := by
   -- Step 1: Preprocessing — `:` is non-ws content char
   have h_pp : scanNextToken_preprocess s = .ok (some (saveSimpleKey s, ':')) :=
     scanNextToken_preprocess_flow s ':' (' ' :: rest') s.col hcorr h_flow
@@ -9611,7 +9678,7 @@ theorem scanNextToken_flow_value (s : ScannerState)
     unfold scanValuePrepare
     simp only [h_svp_flow, Bool.not_true, Bool.false_eq_true, ite_false]
     split <;> (try (split <;> rfl)); rfl
-  refine ⟨s_final, h_snt, ?_, ?_, ?_, ?_, ?_, ?_, ?_, rfl, ?_, ?_, ?_, ?_, ?_, ?_⟩
+  refine ⟨s_final, h_snt, ?_, ?_, ?_, ?_, ?_, ?_, ?_, rfl, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
   · -- ScannerSurfCorr s_final ⟨' ' :: rest', s_final.col⟩
     exact {
       chars_from := by rw [h_final_input, h_final_offset]; exact h_adv_corr.chars_from
@@ -9807,6 +9874,33 @@ theorem scanNextToken_flow_value (s : ScannerState)
           Array.getElem?_eq_getElem (by rw [Array.size_setIfInBounds]; exact hi),
           Array.getElem?_eq_getElem hi,
           Array.getElem_setIfInBounds_ne hi (fun h => hne h.symm)]
+  · -- Colon's `.value` push: `scanValue` always emits `.value` at the end, so when
+    -- no key is re-reserved this step (`ska = false`, hence `saveSimpleKey s = s`)
+    -- the token array grows by exactly one `.value` token at the old end.
+    intro h_ska_false
+    have h_save_id : saveSimpleKey s = s :=
+      saveSimpleKey_id_of_flow_ska_false_ek_none s h_flow h_ska_false h_ek
+    have h_adtok : s_ad.tokens = s.tokens := by
+      simp only [s_ad, h_save_id]; split <;> rfl
+    -- s_final.tokens = (scanValuePrepare s_ad).tokens.push <value token>
+    have h_final_tok : s_final.tokens =
+        (scanValuePrepare s_ad).tokens.push { pos := s_prep.currentPos, val := .value } := by
+      show s_adv.tokens = _
+      rw [ScannerCorrectness.advance_preserves_tokens]; rfl
+    -- scanValuePrepare preserves token-array size in every flow branch.
+    have h_prep_size_gen : (scanValuePrepare s_ad).tokens.size = s_ad.tokens.size := by
+      unfold scanValuePrepare
+      simp only [h_ad_inFlow, Bool.not_true, Bool.false_eq_true, ite_false]
+      split
+      · rw [Array.size_setIfInBounds]
+      · split <;> rfl
+    have h_size : s_final.tokens.size = s.tokens.size + 1 := by
+      rw [h_final_tok, Array.size_push, h_prep_size_gen, h_adtok]
+    refine ⟨h_size, s_prep.currentPos, ?_⟩
+    -- the pushed token sits at index `s.tokens.size = (scanValuePrepare s_ad).tokens.size`
+    have h_idx_eq : s.tokens.size = (scanValuePrepare s_ad).tokens.size := by
+      rw [h_prep_size_gen, h_adtok]
+    rw [h_final_tok, h_idx_eq, Array.getElem?_push, if_pos rfl]
 
 /-- `EmitPairListScansInFlow pairs` asserts that scanning the
     emitPairList output succeeds in flow context, preserving invariants.
@@ -9937,7 +10031,7 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
           (by rw [h_ek₁]; exact h_ek) h_atol₁ h_endline₁
       -- Step 3: Scan ':' via scanNextToken_flow_value
       obtain ⟨s₂, h_snt₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, h_col₂,
-              h_flow₂, h_indent₂, h_ek₂, _h_line₂, h_atol₂, h_endline₂, h_stack_v₂, _, _⟩ :=
+              h_flow₂, h_indent₂, h_ek₂, _h_line₂, h_atol₂, h_endline₂, h_stack_v₂, _, _, _⟩ :=
         scanNextToken_flow_value s₁ ((emit p.2).toList ++ rest_chars)
           h_corr₁ h_flow₁ h_indent₁ h_col₁ (by rw [h_ek₁]; exact h_ek) h_sv
           h_atol₁ h_endline₁
@@ -10063,7 +10157,7 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
           (by rw [h_ek₁]; exact h_ek) h_atol₁ h_endline₁
       -- Step 3: Scan ':' via scanNextToken_flow_value
       obtain ⟨s₂, h_snt₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, h_col₂,
-              h_flow₂, h_indent₂, h_ek₂, _h_line₂, h_atol₂, h_endline₂, h_stack_v₂, _, _⟩ :=
+              h_flow₂, h_indent₂, h_ek₂, _h_line₂, h_atol₂, h_endline₂, h_stack_v₂, _, _, _⟩ :=
         scanNextToken_flow_value s₁
           ((emit p.2).toList ++
             [',',  ' '] ++ (emit.emitPairList (p' :: ps)).toList ++ rest_chars)
@@ -11241,7 +11335,7 @@ theorem emitPairList_scans_nonempty_keyshape
     -- Step 2: Scan ':' via the strengthened colon (exposes the `.key` token effect).
     obtain ⟨s₂, h_snt₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, h_col₂,
             h_flow₂, h_indent₂, h_ek₂, _h_line₂, h_atol₂, h_endline₂, h_stack_v₂,
-            h_sk2_poss, h_colon_key⟩ :=
+            h_sk2_poss, h_colon_key, _⟩ :=
       scanNextToken_flow_value s₁ ((emit p.2).toList ++ rest)
         h_corr₁ h_flow₁ h_indent₁ h_col₁ (by rw [h_ek₁]; exact h_ek) h_sv
         h_atol₁ h_endline₁
@@ -11362,7 +11456,7 @@ theorem emitPairList_scans_nonempty_keyshape
     -- Step 2: Scan ':' via the strengthened colon.
     obtain ⟨s₂, h_snt₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, h_col₂,
             h_flow₂, h_indent₂, h_ek₂, _h_line₂, h_atol₂, h_endline₂, h_stack_v₂,
-            h_sk2_poss, h_colon_key⟩ :=
+            h_sk2_poss, h_colon_key, _⟩ :=
       scanNextToken_flow_value s₁
         ((emit p.2).toList ++
           [',',  ' '] ++ (emit.emitPairList (p' :: ps)).toList ++ rest)
