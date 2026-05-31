@@ -94,7 +94,6 @@ def EmitScansInFlowBlock (v : YamlValue) : Prop :=
       ∧ WellBracketed block
       ∧ EntrySafe block
       ∧ (∃ (h : block ≠ []), ContentStartTok (block.head h).val)
-      ∧ s'.simpleKey.possible = false
 
 /-- Block-tracking superset of `EmitListScansInFlow`: the comma-separated body
     between `[` and `]`.  Its filtered-LIST delta `block` is `WellBracketed` —
@@ -156,7 +155,7 @@ theorem emitList_scans_block_nonempty (items : List YamlValue) (h_ne : items ≠
       rw [h_eq] at hcorr
       obtain ⟨n, s', block, h_chain, h_corr, h_fl', h_dp, h_ids, h_ek', h_col', h_flow',
               h_indent', h_line_v, _h_ska, _h_last, h_atol', h_endline', h_stack', h_fmc',
-              h_block_eq, h_wb, _h_es, _h_cs, _h_poss⟩ :=
+              h_block_eq, h_wb, _h_es, _h_cs⟩ :=
         h_all v (.head _) s rest_chars hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline
       exact ⟨n, s', block, h_chain, h_corr, h_fl', h_dp, h_ids, h_ek', h_col', h_flow',
         h_indent', h_line_v, h_atol', h_endline', h_stack', h_fmc', h_block_eq, h_wb⟩
@@ -169,7 +168,7 @@ theorem emitList_scans_block_nonempty (items : List YamlValue) (h_ne : items ≠
       have h_ev : EmitScansInFlowBlock v := h_all v (.head _)
       obtain ⟨n₁, s₁, block₁, h_chain₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_ek₁, h_col₁, h_flow₁,
               h_indent₁, _h_line₁, _h_ska₁, h_last₁, h_atol₁, h_endline₁, h_stack₁, h_fmc₁,
-              h_block_eq₁, h_wb₁, _h_es₁, _h_cs₁, _h_poss₁⟩ :=
+              h_block_eq₁, h_wb₁, _h_es₁, _h_cs₁⟩ :=
         h_ev s ([',', ' '] ++ (emit.emitList (v' :: vs)).toList ++ rest_chars)
           hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline
       -- Step 2: Scan ',' via scanNextToken_flow_comma (state) + push lemma (block)
@@ -317,7 +316,6 @@ def EmitScansInFlowSavedKeyBlock (v : YamlValue) : Prop :=
     AllTokensOnLine s s.line →
     EndLineOnLine s →
     s.simpleKeyAllowed = true →
-    s.simpleKey.possible = false →
     s.simpleKeyStack.size = s.flowLevel →
     ∃ n s' block,
       ScanChainGrew (fun t => t.val != .placeholder) s n s'
@@ -374,7 +372,6 @@ def EmitPairListScansInFlowBlock (pairs : List (YamlValue × YamlValue)) : Prop 
     s.explicitKeyLine = none →
     AllTokensOnLine s s.line →
     EndLineOnLine s →
-    s.simpleKey.possible = false →
     s.simpleKeyAllowed = true →
     s.simpleKeyStack.size = s.flowLevel →
     ∃ n s' block,
@@ -398,7 +395,7 @@ def EmitPairListScansInFlowBlock (pairs : List (YamlValue × YamlValue)) : Prop 
 
 /-- Empty pair-list body: 0-step chain, empty (`WellBracketed`) block. -/
 theorem emitPairList_scans_block_empty : EmitPairListScansInFlowBlock [] := by
-  intro s rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_sk h_ska h_sync
+  intro s rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_ska h_sync
   have h_eq : (emit.emitPairList ([] : List (YamlValue × YamlValue))).toList ++ rest = rest := by
     simp [emit.emitPairList]
   rw [h_eq] at hcorr
@@ -425,7 +422,7 @@ theorem emitPairList_scans_block_nonempty (pairs : List (YamlValue × YamlValue)
   induction pairs with
   | nil => contradiction
   | cons p tail ih =>
-    intro s rest_chars hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_sk h_ska h_sync
+    intro s rest_chars hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_ska h_sync
     match tail, ih with
     | [], _ =>
       -- ══ Singleton [(k,v)]: emitPairList [(k,v)] = emit k ++ ": " ++ emit v ══
@@ -439,7 +436,7 @@ theorem emitPairList_scans_block_nonempty (pairs : List (YamlValue × YamlValue)
               h_flow₁, h_indent₁, _h_line₁, h_atol₁, h_endline₁, h_stack₁, h_fmc₁,
               h_ska₁, h_poss₁, h_tidx₁, h_szlt₁, _h_ph0₁, h_ph1₁, h_blockeq_k, h_take_k, h_wb_k⟩ :=
         h_ek_key s ([':', ' '] ++ (emit p.2).toList ++ rest_chars)
-          hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_ska h_sk h_sync
+          hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_ska h_sync
       -- Step 2: scanValueValidate for the colon (saveSimpleKey identity, ska₁ = false)
       have h_sk_id := saveSimpleKey_id_of_flow_ska_false_ek_none s₁ h_flow₁ h_ska₁
           (by rw [h_ek₁]; exact h_ek)
@@ -505,7 +502,7 @@ theorem emitPairList_scans_block_nonempty (pairs : List (YamlValue × YamlValue)
       have h_ev : EmitScansInFlowBlock p.2 := h_all_v p (.head _)
       obtain ⟨n_v, s_end, block_v, h_chain_v, h_corr_end, h_fl_end, h_dp_end, h_ids_end,
               h_ek_end, h_col_end, h_flow_end, h_indent_end, h_line_end, _h_ska_v, _h_last_v,
-              h_atol_end, h_endline_end, h_stack_end, h_fmc_v, h_blockeq_v, h_wb_v, _h_es_v, _h_cs_v, _h_poss_v⟩ :=
+              h_atol_end, h_endline_end, h_stack_end, h_fmc_v, h_blockeq_v, h_wb_v, _h_es_v, _h_cs_v⟩ :=
         h_ev s₃ rest_chars h_corr₃'
           h_flow₃ (by rw [h_fl₃, h_fl₂, h_fl₁]; exact h_fl)
           (by rw [h_indent₃]; exact h_indent₂)
@@ -598,7 +595,7 @@ theorem emitPairList_scans_block_nonempty (pairs : List (YamlValue × YamlValue)
               h_ska₁, h_poss₁, h_tidx₁, h_szlt₁, _h_ph0₁, h_ph1₁, h_blockeq_k, h_take_k, h_wb_k⟩ :=
         h_ek_key s ([':', ' '] ++ (emit p.2).toList ++
             [',', ' '] ++ (emit.emitPairList (p' :: ps)).toList ++ rest_chars)
-          hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_ska h_sk h_sync
+          hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_ska h_sync
       -- Step 2: scanValueValidate for the colon
       have h_sk_id := saveSimpleKey_id_of_flow_ska_false_ek_none s₁ h_flow₁ h_ska₁
           (by rw [h_ek₁]; exact h_ek)
@@ -674,7 +671,7 @@ theorem emitPairList_scans_block_nonempty (pairs : List (YamlValue × YamlValue)
         simp only [List.append_assoc] at h_corr₃' ⊢; exact h_corr₃'
       obtain ⟨n_v, s_v, block_v, h_chain_v, h_corr_v, h_fl_v, h_dp_v, h_ids_v,
               h_ek_v, h_col_v, h_flow_v, h_indent_v, _h_line_v, h_ska_v, h_last_v,
-              h_atol_v, h_endline_v, h_stack_v, h_fmc_v, h_blockeq_v, h_wb_v, _h_es_v, _h_cs_v, h_poss_v⟩ :=
+              h_atol_v, h_endline_v, h_stack_v, h_fmc_v, h_blockeq_v, h_wb_v, _h_es_v, _h_cs_v⟩ :=
         h_ev s₃ ([',', ' '] ++ (emit.emitPairList (p' :: ps)).toList ++ rest_chars)
           h_corr₃_assoc
           h_flow₃ (by rw [h_fl₃, h_fl₂, h_fl₁]; exact h_fl)
@@ -731,15 +728,10 @@ theorem emitPairList_scans_block_nonempty (pairs : List (YamlValue × YamlValue)
         scanNextToken_flow_comma_filtered_push s_v
           (' ' :: (emit.emitPairList (p' :: ps)).toList ++ rest_chars)
           h_corr_v h_flow_v h_indent_v h_col_v h_last_v h_snt_c
-      obtain ⟨h_ska_c_true, h_sk_c_eq⟩ :=
+      obtain ⟨h_ska_c_true, _h_sk_c_eq⟩ :=
         scanNextToken_flow_comma_simpleKey s_v
           (' ' :: (emit.emitPairList (p' :: ps)).toList ++ rest_chars)
           h_corr_v h_flow_v h_indent_v h_col_v h_last_v h_snt_c
-      -- saveSimpleKey identity at s_v (ska_v = false) → comma preserves simpleKey
-      have h_sk_id_v := saveSimpleKey_id_of_flow_ska_false_ek_none s_v h_flow_v h_ska_v
-          (by rw [h_ek_v, h_ek₃]; exact h_ek₂)
-      have h_sk_c_poss : s_c.simpleKey.possible = false := by
-        rw [h_sk_c_eq, h_sk_id_v]; exact h_poss_v
       -- Step 7: Handle leading space before next pair
       obtain ⟨c_p, rest_p, h_first_p, h_nws_p, h_nlb_p, h_nc_p⟩ :=
         emitPairList_first_char p' ps
@@ -780,7 +772,6 @@ theorem emitPairList_scans_block_nonempty (pairs : List (YamlValue × YamlValue)
           (by rw [h_ek_pp, h_ek_c, h_ek_v, h_ek₃]; exact h_ek₂)
           (h_atol_transfer_pp h_atol_c)
           (h_endline_transfer_pp h_endline_c)
-          (by rw [h_sk_pp]; exact h_sk_c_poss)
           (by rw [h_ska_pp]; exact h_ska_c_true)
           (by rw [h_stack_pp, h_stack_c, h_stack_v, h_stack_pp₃, h_stack_v₂, h_stack₁,
               h_sync, h_fl_pp, h_fl_c, h_fl_v, h_fl₃, h_fl₂, h_fl₁])
