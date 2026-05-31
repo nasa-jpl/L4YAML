@@ -1820,7 +1820,25 @@ not in-place axiom-to-theorem promotion — the latter is impossible
 when the axiom's hypothesis is strictly weaker than what the
 stronger lemma derives).
 
-**Next session**: **Step 6f.3b3.roundtrip.maintheorem.body1.tokenshape.pair.body2.discharge.bridge.blockwb.predicate.pairbody** (`_nonempty` producer + maintheorem)
+**Modularization (LANDED 2026-05-31, commit `976fd7b1`)**: the base
+`EmitterScannability.lean` had grown to ~16k lines.  The entire self-contained
+**`§G.balance.bridge.blockwb.predicate` cluster** (the block-tracking superset
+predicates `EmitScansInFlowBlock` / `EmitListScansInFlowBlock` /
+`EmitScansInFlowSavedKeyBlock` / `EmitPairListScansInFlowBlock` and their
+`_empty`/`_nonempty` producers, ~373 lines) was **extracted to a new submodule
+`L4YAML/Proofs/Output/EmitterScannability/Block.lean`** (module
+`L4YAML.Proofs.Output.EmitterScannability.Block`), which `import`s the base and
+**reopens the same `L4YAML.Proofs.EmitterScannability` namespace** so every
+fully-qualified name is unchanged.  Verified pure: the cluster had **no code
+references from outside itself** (only two doc-comment mentions), so the move was
+behaviour-preserving — full build green (493 jobs, was 491: +1 module), moved decls
+still rest on `[propext, Classical.choice, Quot.sound]` (no `sorryAx`, no new
+axioms), all 7 legacy sorries unchanged and still in the base file.  **All future
+block-substrate work — the two prereqs + the `_nonempty` producer + the monolithic
+`Grammable` producers — lands in `EmitterScannability/Block.lean`, not the base.**
+See **Reflection 181**.
+
+**Next session**: **Step 6f.3b3.roundtrip.maintheorem.body1.tokenshape.pair.body2.discharge.bridge.blockwb.predicate.pairbody** (`_nonempty` producer + maintheorem, **in `EmitterScannability/Block.lean`**)
 — the colon step's filtered-LIST characterization is LANDED
 (`scanNextToken_flow_value_block`, the (colonshape a1) block below); the
 mapping-body **predicate `EmitPairListScansInFlowBlock` + its `_empty` producer + the pure
@@ -7040,6 +7058,35 @@ to reconcile them post-hoc (which silently imports a global determinism obligati
 single predicate that yields both** — pushing the "prove both at once" cost into a producer that has the
 induction structure to pay it. The combined-substrate def + the two predicate-layer adjustments landed
 green this session; the `_nonempty` producer is now genuinely reconciliation-free for next session.
+
+##### Reflection 181 (new, 2026-05-31): a behaviour-preserving *move* is the cheapest possible green increment — split the file at the dependency seam *before* the bulk arrives, not after
+
+The user flagged mid-task that `EmitterScannability.lean` (~16k lines) was too large and asked to
+modularize. The instinct under "execute next step" is to defer refactors and keep coding; the better
+move was to take the refactor *now*, before the ~250-line `_nonempty` producer + monolithic producers
+land — because the cost of extracting a cluster grows with the cluster, and the block-substrate cluster
+was at its *smallest* it will ever be (the producers aren't written yet). So the modularization is not a
+detour from the next step; it is the cheapest version of preparing for it.
+
+What made the move trivially safe was a **dependency-seam check**: `grep` showed the entire
+`§blockwb.predicate` cluster (predicates + producers) had **zero code references from outside itself** —
+the only outward mentions were two doc-comments, and the future consumer (`.assemble`) isn't written.
+A cluster with no inbound edges is a free-floating subgraph: it can move to any module that imports its
+dependencies, with the base losing nothing. The one subtlety — keep the decls in the **original
+namespace** by reopening `namespace L4YAML.Proofs.EmitterScannability` in the new file — means every
+fully-qualified name (and every blueprint reference, and the future `.assemble` call sites) is unchanged;
+the move is invisible to everything downstream. Verification was correspondingly cheap: a behaviour-
+preserving move needs only "build still green + axioms unchanged + sorry count unchanged," all of which
+held first try.
+
+**Meta-lesson:** modularize at the *natural seam and the natural time*. The seam is wherever a cluster
+has no inbound code edges (find it with a reference grep, not by reading); the time is the moment *before*
+a cluster is about to grow, not after it has. A pure move is the lowest-risk increment a session can
+contain — strictly weaker than any proof — so when a file-size concern and a "land substrate first"
+rhythm coincide, spend the green increment on the move and let the next session build on the clean module.
+The chosen boundary (submodule `EmitterScannability/Block.lean`, mirroring the existing
+`IndexedEmitterScannability/` directory) keeps room for further per-cluster splits as the base file's other
+sections (the §G.balance algebra, the characterization lemmas, the round-trip theorems) each outgrow it.
 
 **Step 6f.3b3.emitscans.toplevel SS1 (easy prereqs) LANDED 2026-05-27**
 (~225 LOC across two files: `Endpoint.lean` §6 ~200 LOC +
@@ -18561,7 +18608,7 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
-                **Total .body scope re-estimate (TWENTY-NINTH revision —
+                **Total .body scope re-estimate (THIRTIETH revision —
                 after `.substrate.{a,b,c,d,e,f,g}` + `.establishing.
                 {converters,consumer}` + `.tokenshape.list.discharge` +
                 `.tokenshape.pair` PART 1 + `.tokenshape.pair.keyshape.
@@ -18575,6 +18622,7 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 + `.body2.discharge.bridge.blockwb.predicate` (colonshape a1)
                 + `.body2.discharge.bridge.blockwb.predicate` (pairbody scaffold)
                 + `.body2.discharge.bridge.blockwb.predicate` (pairbody combined-substrate)
+                + `.body2.discharge.bridge.blockwb.predicate` (modularization → `EmitterScannability/Block.lean`)
                 ALL LANDED;
                 legacy sorries 9550, 9638 AND 9644 CLOSED. `.keyshape.discharge`
                 came in at ~590 (above its ~150–250 re-estimate) because the
@@ -18645,7 +18693,8 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `.body2.discharge.bridge.blockwb.predicate` (colonshape a2) +
                 `.body2.discharge.bridge.blockwb.predicate` (colonshape a1) +
                 `.body2.discharge.bridge.blockwb.predicate` (pairbody scaffold) +
-                `.body2.discharge.bridge.blockwb.predicate` (pairbody combined-substrate)
+                `.body2.discharge.bridge.blockwb.predicate` (pairbody combined-substrate) +
+                `.body2.discharge.bridge.blockwb.predicate` (modularization)
                 LANDED the pure balance/well-bracketedness/leaf-token algebra +
                 the dispatch→handler connection + the sequence-side block
                 substrate + the pure mid-list insertion keystone + the colon's
@@ -18656,11 +18705,13 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `_empty` producer, the pure colon-suffix re-anchoring lemma
                 `List_filter_drop_succ_of_take`, and the combined per-key
                 substrate predicate `EmitScansInFlowSavedKeyBlock` (the
-                reconciliation-free pivot, Reflection 180); only
+                reconciliation-free pivot, Reflection 180), and **extracted the whole
+                cluster to the new submodule `EmitterScannability/Block.lean`**
+                (behaviour-preserving move, Reflection 181); only
                 `.body2.discharge.bridge.blockwb.predicate`
                 (pairbody.colonshape `_nonempty` producer + maintheorem) + `.assemble`
                 (9646, 9552) remain)**:
-                ~4575–6475 LOC across **26 sub-sessions** (`.scaffold`
+                ~4575–6475 LOC across **27 sub-sessions** (`.scaffold`
                 [LANDED 206] + `.tokenshape.substrate.a` [LANDED 470]
                 + `.tokenshape.substrate.b` [LANDED 226]
                 + `.tokenshape.substrate.c` [LANDED ~570]
@@ -18832,8 +18883,20 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                   derives the layout without it). sorry-free, module 70/70, full project 491/491,
                   on `[propext, Classical.choice, Quot.sound]`, no `sorryAx`/new axioms. Closes ZERO
                   legacy sorries. Reflection 180]
+                + `.body2.discharge.bridge.blockwb.predicate` (modularization)
+                  [LANDED ~0 LOC net — pure behaviour-preserving **move** (commit `976fd7b1`). The base
+                  `EmitterScannability.lean` (~16k lines) was flagged too large; the self-contained
+                  `§blockwb.predicate` cluster (the 4 block-tracking superset predicates + their
+                  `_empty`/`_nonempty` producers, ~373 lines) was extracted to a new submodule
+                  `L4YAML/Proofs/Output/EmitterScannability/Block.lean` (`import`s the base, **reopens the
+                  same `L4YAML.Proofs.EmitterScannability` namespace** → all fully-qualified names
+                  unchanged). Verified pure via a dependency-seam grep (zero inbound code edges, only 2
+                  doc-comment mentions). Full build green **493 jobs** (was 491: +1 module), moved decls
+                  still on `[propext, Classical.choice, Quot.sound]` (no `sorryAx`/new axioms), all 7 legacy
+                  sorries unchanged and still in the base file. **All future block-substrate work lands in
+                  `Block.lean`, not the base.** Closes ZERO legacy sorries. Reflection 181]
                 + `.body2.discharge.bridge.blockwb.predicate` (pairbody.colonshape
-                  `_nonempty` producer + maintheorem)
+                  `_nonempty` producer + maintheorem) **— now in `EmitterScannability/Block.lean`**
                   [~150–320 — **reconciliation-free** with the combined substrate now landed: the hard
                   `emitPairList_scans_block_nonempty` producer takes
                   `∀ p ∈ pairs, EmitScansInFlowSavedKeyBlock p.1` (ONE key run → layout + block_k +
