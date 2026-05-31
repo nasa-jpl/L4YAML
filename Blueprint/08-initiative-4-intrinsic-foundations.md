@@ -1898,6 +1898,38 @@ base ever needs further shrinking, the only sorry-free island left is §4-adjace
 which is tiny.  Net: modularization has done its job; the binding constraint is now the
 proof work itself, not file size.
 
+**Modularization — keystone reduction (LANDED 2026-05-31, commit `575d1cbb`)**:
+a second, finer pass that the "not worth it" verdict above *underestimated*.  The user's
+ask was to reduce the base to **the keystone theorems and their 1st-level dependencies**,
+modularizing the rest — and the residual base *did* split cleanly once the unit of
+extraction was a **whole foundation module** rather than a lone sorry.  Keystones: the
+round-trip pipeline `universal_roundtrip` + the five steps it composes (`emit_parse_succeeds`,
+`emit_parseYaml_succeeds`, `emit_produces_single_document`, `parseStream_accepts_emit_tokens`,
+`emit_roundtrip_content_eq`).  Everything in the former lines **466–2438** (62 decls:
+filtered-token tracking, §G.balance well-bracketed algebra, dispatch bridge, nonempty-structure
+characterizations) references *no* keystone/dep name — a clean middle-slice foundation — and the
+interleaved scalar-fidelity / `check*` / `contentEq` helpers were lifted out alongside.  Four
+new modules (linear chain off `ScanChainGrowth`), dropping the base **3128 → 962 lines**:
+- **`ContentFidelity.lean`** (~230, **0 sorry**) — deep scalar-fidelity lemmas
+  (`resolveAliases_scalar`/`stripAnchors_scalar`/`contentEq_scalar_content`/`scanFiltered_emitScalar_content`/`parseDirectives_skip`),
+  the `checkFull*`/`checkContent*` `native_decide` helpers, and the `contentEq` style-irrel lemmas;
+- **`FilteredTracking.lean`** (~526, **1 sorry**) — §5.2 filtered-token tracking infra
+  (`unwindIndents_noop_short_stack` … `scanFiltered_boundary_tokens`);
+- **`WellBracketed.lean`** (~827, **0 sorry**) — §G.balance `pbalance`/`SafeBody`/`WellBracketed`/`EntrySafe`/`wrap_*`
+  + `flowBracketDelta_*` + the dispatch-bridge `scanNextToken_flow_*_filtered_push` lemmas + `ScanChain_deterministic`/`split`;
+- **`NonemptyStructure.lean`** (~684, **4 sorries**) — body-token characterizations
+  (`emitList_body_filtered_characterization`, `emitPairList_body_filtered_characterization`) and the
+  `scanFiltered_emit{Seq,Map}_nonempty_structure` scanner→parser lemmas.
+
+The base is now exactly **keystones + their 1st-level deps** (`compose_scalar_content`,
+`contentEq_scalar_compose`, `scanFiltered_emitScalar_vals`, `parseStream_three_tokens_scalar`,
+`parseYamlRaw_emitScalar_value`, `parseStream_emitSequence`, `parseStream_emitMapping`,
+`emit_roundtrip_{sequence,mapping}_content_eq`).  Behaviour-preserving: build green
+(**511 jobs**, +8); top-level decl count unchanged (**94**); the 7 legacy sorries are intact,
+now distributed **2 (base) + 1 (FilteredTracking) + 4 (NonemptyStructure)**; no new axioms
+(sorry-free moved lemmas carry no `sorryAx`; the round-trip capstones keep the prior pure-triple
++ `native_decide` + `sorryAx`-from-the-7 profile).  See **Reflection 184**.
+
 **Next session**: **Step 6f.3b3.roundtrip.maintheorem.body1.tokenshape.pair.body2.discharge.bridge.blockwb.predicate.pairbody** (`_nonempty` producer + maintheorem, **in `EmitterScannability/Block.lean`**)
 — *(orientation after the 2026-05-31 bulk foundation peel, commit `6e16833c`: the line
 references in this pointer point into the **former monolith**; that content now lives in the
@@ -1905,7 +1937,14 @@ foundation chain — the comma lemma's `EndLineOnLine` branch (former ~6492–65
 `ScanSteps.lean`; the `scanNextToken_preprocess` simpleKey-invariant (former ~2187) is in
 `ScannerAcceptance.lean`; `scanNextToken_flow_value` (former ~9474–9501) is in
 `ScanChainGrowth.lean`. All names still resolve for `Block.lean`, which imports the base and
-thus transitively the whole chain — the producer work is functionally unchanged.)*
+thus transitively the whole chain — the producer work is functionally unchanged.
+  Further, after the 2026-05-31 keystone reduction (commit `575d1cbb`), the residual base's
+  own infra moved too: the `scanFiltered_emit{Seq,Map}_nonempty_structure` + body-token
+  characterizations are in `EmitterScannability/NonemptyStructure.lean`, the §G.balance
+  well-bracketed algebra in `WellBracketed.lean`, filtered-token tracking in
+  `FilteredTracking.lean`, and the scalar-fidelity/`check*`/`contentEq` helpers in
+  `ContentFidelity.lean`; the base now holds only the round-trip keystones + 1st-level deps.
+  Same transitive-import guarantee — `Block.lean` sees everything.)*
 — the colon step's filtered-LIST characterization is LANDED
 (`scanNextToken_flow_value_block`, the (colonshape a1) block below); the
 mapping-body **predicate `EmitPairListScansInFlowBlock` + its `_empty` producer + the pure
@@ -7212,6 +7251,33 @@ work), don't enumerate movable clusters — find the largest *contiguous* region
 move it wholesale. Prefix moves need no dependency graph at all; the compiler's define-before-use rule has
 already done the analysis for you. Modularization is now *done* for this file — the binding constraint is the
 proof work in the residual ~3.1k-line base, not its size.
+
+##### Reflection 184 (new, 2026-05-31): "modularization is done" was wrong by one level — reduce-to-keystones works on a sorry-bearing file once the extraction unit is a whole foundation *module*, and the right move is to let the sorries follow their lemmas
+
+R183 closed with "modularization is now done; the residual 3.1k-line base is irreducible because it is sorry-bearing
+proof work." That was half right: it correctly saw that *splitting a single sorry-bearing section* isn't worth it, but
+wrongly concluded the base couldn't shrink further. The user reframed the goal — reduce to the **keystone theorems
+and their 1st-level dependencies**, modularize the rest — and the file split cleanly after all. Two reasons the
+"done" verdict missed it:
+
+(1) **The unit was wrong.** R183 thought in terms of "move a sorry out," which scatters the active proof work. The
+right unit is a *whole foundation module*: the former lines 466–2438 are 62 declarations of 2nd-level-or-deeper
+infrastructure that — verified by a one-line word-scan — name *no* keystone or 1st-level-dep, so they form a clean
+middle-slice foundation regardless of the 5 sorries embedded in them. A `sorry` is a *leaf warning*, not a structural
+constraint: it never creates an inbound edge, so it never blocks an extraction. Distributing the 7 sorries across
+foundation modules (2 base / 1 FilteredTracking / 4 NonemptyStructure) is sound precisely because of this.
+
+(2) **"Keep all sorries together for visibility" was a *preference*, not an invariant** — and once the user asked for
+the keystone reduction, the right call was to let each sorry travel with the lemma that owns it. The capstones'
+axiom profile is the audit that this is safe: it already carried `sorryAx` *before* the move (the round-trip pipeline
+transitively consumes the 7 open sorries), so post-move it is *unchanged* — the move relocated proof terms without
+altering the dependency cone. Meanwhile the genuinely sorry-free moved lemmas (`wrap_block`, `scanFiltered_emitScalar_content`,
+…) come back `sorryAx`-free, proving no sorry leaked across a cut.
+
+**Meta-lesson:** "is this file done being modularized?" is the wrong question; ask "what is the file *for*?" The
+keystone set is the answer, and everything not on a keystone's 1st-level frontier is by definition relocatable —
+sorries included. Reduce-to-keystones is a sharper, more durable target than reduce-to-N-lines, and it survives the
+file being mid-proof. Base 3128 → 962, one green increment, decl count and sorry count both invariant.
 
 **Step 6f.3b3.emitscans.toplevel SS1 (easy prereqs) LANDED 2026-05-27**
 (~225 LOC across two files: `Endpoint.lean` §6 ~200 LOC +
@@ -18733,7 +18799,7 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
-                **Total .body scope re-estimate (THIRTY-SECOND revision —
+                **Total .body scope re-estimate (THIRTY-THIRD revision —
                 after `.substrate.{a,b,c,d,e,f,g}` + `.establishing.
                 {converters,consumer}` + `.tokenshape.list.discharge` +
                 `.tokenshape.pair` PART 1 + `.tokenshape.pair.keyshape.
@@ -18755,6 +18821,13 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 — also orthogonal: the *entire sorry-free prefix* (former 77–11897, ~11.8k lines) peeled off
                 the top in ONE cut into a four-layer foundation chain, base 14944 → 3128, build 503 jobs, all
                 7 legacy sorries left in the residual base; Reflection 183)
+                + **(keystone reduction → `EmitterScannability/{ContentFidelity,FilteredTracking,WellBracketed,NonemptyStructure}.lean`**
+                — finer second pass: the residual base reduced to the round-trip keystones
+                (`universal_roundtrip` + its 5 pipeline steps) and their 1st-level deps; the
+                2nd-level-or-deeper infra (former 466–2438) + interleaved scalar/`check*`/`contentEq`
+                helpers moved into four foundation modules, base 3128 → 962, build 511 jobs, decl
+                count invariant (94), the 7 legacy sorries redistributed 2/1/4 across base +
+                FilteredTracking + NonemptyStructure; Reflection 184)
                 ALL LANDED;
                 legacy sorries 9550, 9638 AND 9644 CLOSED. `.keyshape.discharge`
                 came in at ~590 (above its ~150–250 re-estimate) because the
