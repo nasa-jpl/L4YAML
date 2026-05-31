@@ -13569,6 +13569,56 @@ theorem WellBracketed_append (a b : List (Positioned YamlToken))
   · rw [pbalance_take_append]
     have h1 := ha.2 i; have h2 := hb.2 (i - a.length); omega
 
+/-- Inserting a delta-`0` token (a `.key`/`.value`/`.scalar`/`.flowEntry`) at any
+    position of a `WellBracketed` list keeps it `WellBracketed`: the total balance
+    is unchanged and every prefix balance gains only the (zero) delta.  This is the
+    pure lemma the **colon step** needs — `scanValuePrepare`'s retroactive
+    placeholder→`.key` write inserts a single delta-`0` token *into the middle* of
+    the key block (breaking the per-step append decomposition the sequence-body
+    producer relied on), and `WellBracketed`-ness must survive that mid-list
+    insertion regardless of *where* it lands. -/
+theorem WellBracketed_insert_delta_zero (l : List (Positioned YamlToken))
+    (t : Positioned YamlToken) (i : Nat)
+    (h_delta : flowBracketDelta t.val = 0) (h_wb : WellBracketed l) :
+    WellBracketed (l.take i ++ t :: l.drop i) := by
+  obtain ⟨h_bal, h_pre⟩ := h_wb
+  have h_split : pbalance (l.take i) + pbalance (l.drop i) = 0 := by
+    have h := (pbalance_append (l.take i) (l.drop i)).symm
+    rw [List.take_append_drop] at h
+    omega
+  refine ⟨?_, fun j => ?_⟩
+  · -- total balance unchanged: prefix + 0 + suffix = 0
+    rw [pbalance_append, pbalance_cons, h_delta]; omega
+  · -- prefix balance ≥ 0 at every cut `j`
+    rw [pbalance_take_append]
+    rcases Nat.eq_zero_or_pos (j - (l.take i).length) with hm | hm
+    · -- cut lands inside `l.take i`: a genuine prefix of `l`
+      have hlen : (l.take i).length ≤ i := by rw [List.length_take]; omega
+      have hji : j ≤ i := by omega
+      rw [hm, List.take_zero, pbalance_nil, List.take_take]
+      simp only [Nat.min_eq_left hji]
+      have := h_pre j; omega
+    · -- cut passes the insert: prefix(l.take i) + delta t(=0) + a prefix of the suffix
+      obtain ⟨k, hk⟩ : ∃ k, j - (l.take i).length = k + 1 :=
+        ⟨_, (Nat.succ_pred_eq_of_pos hm).symm⟩
+      rw [hk, List.take_succ_cons, pbalance_cons, h_delta]
+      have hlen_le : (l.take i).length ≤ j := by omega
+      rw [List.take_of_length_le hlen_le]
+      have h2 : pbalance (l.take i) + pbalance ((l.drop i).take k) = pbalance (l.take (i + k)) := by
+        rw [List.take_add, pbalance_append]
+      have := h_pre (i + k); omega
+
+/-- The `i = 0` specialization of `WellBracketed_insert_delta_zero`: prepending a
+    delta-`0` token preserves `WellBracketed`.  The colon writes `.key` at the
+    *front* of the key block (the first new filtered token is `.key`, per
+    `keyshape_first_token_key`), so this cons form is the one the mapping-body
+    producer applies directly. -/
+theorem WellBracketed_cons_delta_zero (t : Positioned YamlToken)
+    (l : List (Positioned YamlToken))
+    (h_delta : flowBracketDelta t.val = 0) (h_wb : WellBracketed l) :
+    WellBracketed (t :: l) := by
+  simpa using WellBracketed_insert_delta_zero l t 0 h_delta h_wb
+
 /-- **Wrapping lemma.** A `WellBracketed` interior framed by a matching opener
     (delta `+1`) and closer (delta `-1`) is both `WellBracketed` and `EntrySafe`.
     The `EntrySafe` half is the payoff: every interior `.flowEntry` is at
