@@ -15469,8 +15469,6 @@ delta (≈ −30,000 expected).
 
 </details>
 
-</details>
-
 <details><summary>Concrete case: <code>scanIx_valid_token_stream</code> moved from <code>StreamStart.lean §7.10</code> to <code>OrderedLoop.lean §8.12</code>.</summary>
 
 The composite `scanIx_valid_token_stream` was defined in
@@ -15983,8 +15981,6 @@ RoundTrip chain. The refactor is laid out as **Step 6g** below.
   message body.
 - If any step surfaces a missing algebra item, **stop and re-open
   Phase 1** (Guardrail 2). Do not quietly add a 24th item.
-
-</details>
 
 </details>
 
@@ -16571,8 +16567,6 @@ of 6g.
 
 </details>
 
-</details>
-
 ### Phase 4 — Stage B (parser) on indexed types
 
 <details><summary>Re-implement parser to consume `TokenStream input` and produce `RepGraph input range`; integrate `LoadConfig` and `AnchorMap`; bidirectional verification of Stage-B rules.</summary>
@@ -16629,8 +16623,6 @@ instance + a derived-instance generator (similar to Lean's existing
 - (iii) `Blueprint/04-capstones.md` updated to point at the new
   capstone proofs.
 
-
-</details>
 
 </details>
 
