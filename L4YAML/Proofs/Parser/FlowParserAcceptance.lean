@@ -561,4 +561,120 @@ theorem parseFlowMapping_emitter_ok (ps : ParseState) (fuel j body_start : Nat)
   · show ps2.trackPositions = ps.trackPositions
     rw [h_tp2]; simp only [ParseState.advance]
 
+/-! ## §VI  Loop-precondition assembly from body structure (`.iterators.bundle`)
+
+The span strong-induction `flow_parser_ok_of_structure` descends into a depth-0
+bracket `[…]` / `{…}` at position `k = ps.pos` whose matching close is `j`.  To
+parse that bracket it calls §V (`parseFlow{Sequence,Mapping}_emitter_ok`), which
+consumes a `Loop{Seq,Map}Preconditions` bundle for the inner body `[k+1, j)`.
+
+These two theorems ASSEMBLE that bundle from exactly the two ingredients the
+induction has on hand at the bracket:
+
+* the inner body's structure — `SeqBodyProps`/`MapBodyProps tokens (k+1) j`,
+  obtained from `FlowSubrangesOk.{seq,map}` at the subrange `(k+1, j)`; and
+* the inner body's acceptance predicate — `ParseNodeFlowSeqOk`/`ParseEntryFlowMapOk
+  tokens j fuel (k+1)`, obtained from the inductive hypothesis (the inner span
+  `j - (k+1)` is strictly smaller than the outer span).
+
+`ps_adv` is `ps.advance` (positioned at `k+1`); the inner `body_start` coincides
+with `ps_adv.pos`, so the empty-prefix balance and `body_start ≤ pos` facts are
+trivial.  The interesting fields convert the structural predicates' token-value
+classifications (`isFlowContentStart`, `.key`) into the `peek?`/`.val` shapes the
+loop theorem expects. -/
+
+/-- Assemble `LoopSeqPreconditions` for the inner sequence body `[ps_adv.pos, j)`
+    from its `SeqBodyProps` and its `ParseNodeFlowSeqOk` predicate. -/
+theorem loopSeqPre_of (tokens : Array (Positioned YamlToken)) (ps_adv : ParseState)
+    (j fuel : Nat)
+    (h_tok : ps_adv.tokens = tokens)
+    (hbody : SeqBodyProps tokens ps_adv.pos j)
+    (h_pn : ParseNodeFlowSeqOk tokens j fuel ps_adv.pos)
+    (h_le : ps_adv.pos ≤ j)
+    (h_j_end : j < tokens.size)
+    (h_end_tok : tokens[j]!.val = .flowSequenceEnd)
+    (h_fuel : fuel > 2 * (j - ps_adv.pos) + 1) :
+    LoopSeqPreconditions tokens ps_adv j ps_adv.pos fuel := by
+  refine { h_pn := h_pn, h_fuel := h_fuel, h_pos := h_le, h_end_pos := ?_,
+           h_end_tok := ?_, h_at_end := ?_, h_entry := ?_, h_content_start := ?_,
+           h_after_fe := ?_, h_bal := ?_, h_bs := Nat.le_refl _ }
+  · rw [h_tok]; exact h_j_end
+  · rw [h_tok]; exact h_end_tok
+  · -- h_at_end: peek = seqEnd ⟹ at end position (else content_start gives a contradiction)
+    intro h_peek
+    obtain ⟨_, h_val⟩ := peek_some_val h_peek
+    rw [h_tok] at h_val
+    rcases Nat.eq_or_lt_of_le h_le with h_eq | h_lt
+    · exact h_eq
+    · exfalso
+      have h_cs := hbody.content_start h_lt
+      simp only [isFlowContentStart] at h_cs
+      rcases h_cs with ⟨c, s, hc⟩ | hc | hc <;> rw [h_val] at hc <;> cases hc
+  · intro h; simp at h
+  · -- h_content_start: content-start token at ps_adv.pos lifts to a peek? disjunction
+    intro h_lt _
+    have h_cs := hbody.content_start h_lt
+    simp only [isFlowContentStart] at h_cs
+    have h_bound : ps_adv.pos < ps_adv.tokens.size := by rw [h_tok]; omega
+    rcases h_cs with ⟨c, s, hc⟩ | hc | hc
+    · exact .inl ⟨c, s, peek_of_pos_val rfl h_bound (by rw [h_tok]; exact hc)⟩
+    · exact .inr (.inl (peek_of_pos_val rfl h_bound (by rw [h_tok]; exact hc)))
+    · exact .inr (.inr (peek_of_pos_val rfl h_bound (by rw [h_tok]; exact hc)))
+  · -- h_after_fe: flowEntry at depth 0 ⟹ content-start successor (S3)
+    intro k hk_lo hk_hi hk_fe hk_bal
+    rw [h_tok] at hk_fe hk_bal
+    obtain ⟨h_succ_lt, h_succ_cs⟩ := hbody.after_fe k hk_lo hk_hi hk_bal hk_fe
+    refine ⟨by omega, ?_⟩
+    rw [h_tok]
+    simp only [isFlowContentStart] at h_succ_cs
+    exact h_succ_cs
+  · rw [h_tok]; simp [flowBracketBalance]
+
+/-- Assemble `LoopMapPreconditions` for the inner mapping body `[ps_adv.pos, j)`
+    from its `MapBodyProps` and its `ParseEntryFlowMapOk` predicate. -/
+theorem loopMapPre_of (tokens : Array (Positioned YamlToken)) (ps_adv : ParseState)
+    (j fuel : Nat)
+    (h_tok : ps_adv.tokens = tokens)
+    (hbody : MapBodyProps tokens ps_adv.pos j)
+    (h_pn : ParseEntryFlowMapOk tokens j fuel ps_adv.pos)
+    (h_le : ps_adv.pos ≤ j)
+    (h_j_end : j < tokens.size)
+    (h_end_tok : tokens[j]!.val = .flowMappingEnd)
+    (h_fuel : fuel > 2 * (j - ps_adv.pos) + 1) :
+    LoopMapPreconditions tokens ps_adv j ps_adv.pos fuel := by
+  refine { h_pn := h_pn, h_fuel := h_fuel, h_pos := h_le, h_end_pos := ?_,
+           h_end_tok := ?_, h_at_end := ?_, h_entry := ?_, h_key_start := ?_,
+           h_after_fe := ?_, h_bal := ?_, h_bs := Nat.le_refl _ }
+  · rw [h_tok]; exact h_j_end
+  · rw [h_tok]; exact h_end_tok
+  · -- h_at_end: peek = mapEnd ⟹ at end position (else key_start gives `.key ≠ .mapEnd`)
+    intro h_peek
+    obtain ⟨_, h_val⟩ := peek_some_val h_peek
+    rw [h_tok] at h_val
+    rcases Nat.eq_or_lt_of_le h_le with h_eq | h_lt
+    · exact h_eq
+    · exfalso
+      have h_key := hbody.key_start h_lt
+      rw [h_val] at h_key
+      cases h_key
+  · intro h; simp at h
+  · -- h_key_start: `.key` token at ps_adv.pos lifts to a peek? = some .key
+    intro h_lt _
+    have h_key := hbody.key_start h_lt
+    have h_bound : ps_adv.pos < ps_adv.tokens.size := by rw [h_tok]; omega
+    exact peek_of_pos_val rfl h_bound (by rw [h_tok]; exact h_key)
+  · -- h_after_fe: flowEntry at depth 0 ⟹ `.key` successor, strictly before `j` (M2 + j is mapEnd)
+    intro k hk_lo hk_hi hk_fe hk_bal
+    rw [h_tok] at hk_fe hk_bal
+    obtain ⟨h_succ_le, h_succ_key⟩ := hbody.after_fe k hk_lo hk_hi hk_bal hk_fe
+    have h_succ_lt : k + 1 < j := by
+      rcases Nat.lt_or_ge (k + 1) j with h | h
+      · exact h
+      · exfalso
+        have h_eq : k + 1 = j := by omega
+        rw [h_eq, h_end_tok] at h_succ_key
+        cases h_succ_key
+    exact ⟨h_succ_lt, by rw [h_tok]; exact h_succ_key⟩
+  · rw [h_tok]; simp [flowBracketBalance]
+
 end L4YAML.Proofs.ParserWellBehaved
