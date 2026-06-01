@@ -247,4 +247,230 @@ theorem parseNode_seqScalar_ok {tokens : Array (Positioned YamlToken)}
     rw [h1, h2, h_val_tok]
     rfl
 
+/-! ## §IV  Map-entry parser acceptance — the scalar-keyed/scalar-valued entry
+
+The `ParseEntryFlowMapOk` analogue of §III's `parseNode_seqScalar_ok`.  A flow
+mapping body entry at depth 0 has the token shape
+`.key, key_content, .value, val_content, (.flowEntry | .flowMappingEnd)`.  The
+*scalar-keyed, scalar-valued* entry is the one entry case that needs **no**
+inductive hypothesis (neither key nor value has an inner body), so — exactly
+like the sequence scalar leaf — it is a standalone, non-circular brick.
+
+Two reductions stand between this brick and the §I scalar leaf, because a map
+entry runs the parser *twice* (key, then value) through two dedicated parser
+entry points:
+
+* `parseExplicitKey_scalar` — on a scalar peek, `parseExplicitKey` falls through
+  its `.value`/`.flowEntry`/`.flowMappingEnd` guard to a plain `parseNode`.
+* `parseFlowMappingValue_scalar` — the value half: it pushes the key path,
+  no-ops `tryConsume .key` (peek is `.value`), consumes the `.value` separator,
+  then `parseNode`s the scalar value and restores the path.  This is the only
+  `do`-block reduction in the file (the others are pure `match` dispatch).
+
+`parseEntry_mapScalar_ok` then reads the entry's structural successors off
+`MapBodyProps` (M4 for the `.value` after a scalar key, M7 for the
+`.flowEntry`/`.flowMappingEnd` after a scalar value) and computes the span
+bracket balance from the four depth-0 non-bracket tokens (`.key`, scalar,
+`.value`, scalar — each `flowBracketDelta = 0`). -/
+
+/-- A single depth-0 non-bracket token contributes zero bracket balance over its
+    one-token span.  The `flowBracketBalance_single` bridge specialized to a token
+    whose `flowBracketDelta` is `0` (`.key`, `.value`, `.scalar`, …). -/
+theorem flowBracketBalance_step_zero {tokens : Array (Positioned YamlToken)} {q : Nat}
+    (hq : q < tokens.size) (h0 : flowBracketDelta tokens[q]!.val = 0) :
+    flowBracketBalance tokens q (q + 1) = 0 := by
+  have hsz' : q < tokens.toList.length := by simpa using hq
+  rw [flowBracketBalance_single tokens q hsz']
+  have h1 : tokens.toList[q]'hsz' = tokens[q] := Array.getElem_toList hq
+  have h2 : tokens[q] = tokens[q]! := (getElem!_pos tokens q hq).symm
+  rw [h1, h2]; exact h0
+
+/-- **Scalar branch of `parseExplicitKey`.**  When the parse state peeks a
+    `scalar c s` token, `parseExplicitKey` dispatches past its empty-key guards
+    (`.value` / `.flowEntry` / `.flowMappingEnd`) to `parseNode`, succeeding with
+    the scalar value, advancing by one, and preserving tokens / `trackPositions`. -/
+theorem parseExplicitKey_scalar (ps : ParseState) (m : Nat) (h_m : 0 < m)
+    (c : String) (s : ScalarStyle) (h_peek : ps.peek? = some (.scalar c s)) :
+    ∃ ps', parseExplicitKey ps m =
+        .ok (YamlValue.scalar { content := c, style := s, tag := none, anchor := none }, ps') ∧
+      ps'.pos = ps.pos + 1 ∧ ps'.tokens = ps.tokens ∧ ps'.trackPositions = ps.trackPositions := by
+  obtain ⟨ps', h_node, h_pos', h_tok', h_tp'⟩ := parseNode_scalar_flow ps m h_m c s h_peek
+  refine ⟨ps', ?_, h_pos', h_tok', h_tp'⟩
+  simp only [parseExplicitKey, h_peek]
+  exact h_node
+
+/-- **Scalar branch of `parseFlowMappingValue`.**
+
+    At a state peeking the `.value` separator with a scalar value token next,
+    `parseFlowMappingValue` consumes the separator and parses the scalar:
+    `tryConsume .key` is a no-op (the peek is `.value`, not `.key`),
+    `tryConsume .value` advances past the separator, and the scalar branch of
+    `parseNode` returns the value.  The result advances by exactly two tokens
+    (separator + scalar) and preserves tokens / `trackPositions` (only
+    `currentPath` is touched, and it is restored to `savedPath`). -/
+theorem parseFlowMappingValue_scalar (ps : ParseState) (m : Nat) (h_m : 0 < m)
+    (savedPath : YamlPath) (keyContent : String)
+    (cv : String) (sv : ScalarStyle)
+    (h_peek_value : ps.peek? = some .value)
+    (h_succ_lt : ps.pos + 1 < ps.tokens.size)
+    (h_succ_scalar : ps.tokens[ps.pos + 1]!.val = .scalar cv sv) :
+    ∃ ps', parseFlowMappingValue ps m savedPath keyContent =
+        .ok (YamlValue.scalar { content := cv, style := sv, tag := none, anchor := none }, ps') ∧
+      ps'.pos = ps.pos + 2 ∧ ps'.tokens = ps.tokens ∧ ps'.trackPositions = ps.trackPositions := by
+  -- The path-pushed state `{ps with currentPath := …}`: each `ParseState.peek?`/
+  -- field projection reduces through the record update to the corresponding field
+  -- of `ps` (`set` is unavailable — core Lean only — so we work on the literal).
+  -- `peek?` reads only `pos`/`tokens`, so it is defeq to `ps.peek?`.
+  have hpk1 : ({ ps with currentPath := savedPath.push (.key keyContent) } : ParseState).peek?
+      = some YamlToken.value := h_peek_value
+  -- `tryConsume .key` is a no-op; `tryConsume .value` advances past the separator.
+  have htck : ({ ps with currentPath := savedPath.push (.key keyContent) } : ParseState).tryConsume
+      YamlToken.key = (false, { ps with currentPath := savedPath.push (.key keyContent) }) := by
+    simp [ParseState.tryConsume, hpk1]
+  have htcv : ({ ps with currentPath := savedPath.push (.key keyContent) } : ParseState).tryConsume
+      YamlToken.value
+      = (true, ({ ps with currentPath := savedPath.push (.key keyContent) } : ParseState).advance) := by
+    simp [ParseState.tryConsume, hpk1]
+  -- After consuming `.value`, the peek is the scalar value token.
+  have hpk2 : ({ ps with currentPath := savedPath.push (.key keyContent) } : ParseState).advance.peek?
+      = some (YamlToken.scalar cv sv) := by
+    have e1 : ({ ps with currentPath := savedPath.push (.key keyContent) } : ParseState).advance.pos
+        = ps.pos + 1 := rfl
+    have e2 : ({ ps with currentPath := savedPath.push (.key keyContent) } : ParseState).advance.tokens
+        = ps.tokens := rfl
+    unfold ParseState.peek?
+    rw [e1, e2, if_pos h_succ_lt, h_succ_scalar]
+  obtain ⟨ps_d, h_node, h_pos_d, h_tok_d, h_tp_d⟩ :=
+    parseNode_scalar_flow _ m h_m cv sv hpk2
+  refine ⟨{ ps_d with currentPath := savedPath }, ?_, ?_, ?_, ?_⟩
+  · -- Reduce the `do`-block: path push, two `tryConsume`s, scalar `parseNode`, path restore.
+    simp only [parseFlowMappingValue, htck, htcv, hpk2, h_node,
+      bind, Except.bind, if_true]
+  · -- pos = ps.pos + 2.
+    have e1 : ({ ps with currentPath := savedPath.push (.key keyContent) } : ParseState).advance.pos
+        = ps.pos + 1 := rfl
+    have : ps_d.pos = ps.pos + 1 + 1 := by rw [h_pos_d, e1]
+    omega
+  · -- tokens preserved.
+    show ps_d.tokens = ps.tokens
+    rw [h_tok_d]; rfl
+  · -- trackPositions preserved.
+    show ps_d.trackPositions = ps.trackPositions
+    rw [h_tp_d]; rfl
+
+/-- **Scalar-keyed/scalar-valued branch of `ParseEntryFlowMapOk`.**
+
+    At a depth-0 `.key` position inside a flow-mapping body satisfying
+    `MapBodyProps`, where both the key and the value are scalar tokens, the full
+    `parseExplicitKey` + `parseFlowMappingValue` chain succeeds: the key parse
+    (on `ps.advance`, past the loop-consumed `.key`) lands on the `.value`
+    separator, and the value parse lands on either a `.flowEntry` separator or
+    the closing `.flowMappingEnd` (at the body end); the consumed four-token span
+    has bracket balance `0`.
+
+    This is the entry-induction leaf — no inductive hypothesis (neither key nor
+    value has an inner body) — and the `ParseEntryFlowMapOk` analogue of §III's
+    `parseNode_seqScalar_ok`.  M4 (`key_scalar_value`) supplies the `.value`
+    after a scalar key; M7 (`value_scalar_succ`) supplies the landing after a
+    scalar value. -/
+theorem parseEntry_mapScalar_ok {tokens : Array (Positioned YamlToken)}
+    {endPos body_start : Nat}
+    (hbody : MapBodyProps tokens body_start endPos)
+    (h_end : endPos < tokens.size)
+    (ps : ParseState) (m : Nat) (h_m : 0 < m)
+    (h_tok : ps.tokens = tokens)
+    (h_pos_lt : ps.pos < endPos)
+    (h_bs : body_start ≤ ps.pos)
+    (h_bal : flowBracketBalance tokens body_start ps.pos = 0)
+    (h_peek : ps.peek? = some .key)
+    (ck : String) (sk : ScalarStyle)
+    (h_key_scalar : tokens[ps.pos + 1]!.val = .scalar ck sk)
+    (cv : String) (sv : ScalarStyle)
+    (h_val_scalar : tokens[ps.pos + 3]!.val = .scalar cv sv) :
+    ∃ key_val key_ps,
+      parseExplicitKey ps.advance m = .ok (key_val, key_ps) ∧
+      key_ps.pos > ps.pos ∧ key_ps.pos ≤ endPos ∧
+      key_ps.tokens = tokens ∧
+      key_ps.trackPositions = ps.trackPositions ∧
+      ∀ (savedPath : YamlPath) (keyContent : String),
+        ∃ val_val val_ps,
+          parseFlowMappingValue key_ps m savedPath keyContent = .ok (val_val, val_ps) ∧
+          val_ps.pos > ps.pos ∧ val_ps.pos ≤ endPos ∧
+          val_ps.tokens = tokens ∧
+          val_ps.trackPositions = ps.trackPositions ∧
+          (val_ps.peek? = some .flowEntry ∨
+           (val_ps.peek? = some .flowMappingEnd ∧ val_ps.pos = endPos)) ∧
+          flowBracketBalance tokens ps.pos val_ps.pos = 0 := by
+  -- The `.key` token at the entry position.
+  obtain ⟨hp_lt, h_key_tok⟩ := peek_some_val h_peek
+  rw [h_tok] at hp_lt h_key_tok
+  -- M4: after a scalar-keyed `.key`, the `.value` separator follows at `ps.pos + 2`.
+  obtain ⟨h_val_lt, h_value_tok⟩ :=
+    hbody.key_scalar_value ps.pos h_bs h_pos_lt h_bal h_key_tok ⟨ck, sk, h_key_scalar⟩
+  -- Bracket balance is `0` up to the `.value` position (two depth-0 zero-delta tokens).
+  have hd_key : flowBracketDelta tokens[ps.pos]!.val = 0 := by rw [h_key_tok]; rfl
+  have hd_keyscalar : flowBracketDelta tokens[ps.pos + 1]!.val = 0 := by rw [h_key_scalar]; rfl
+  have hs_key : flowBracketBalance tokens ps.pos (ps.pos + 1) = 0 :=
+    flowBracketBalance_step_zero hp_lt hd_key
+  have hs_keyscalar : flowBracketBalance tokens (ps.pos + 1) (ps.pos + 2) = 0 :=
+    flowBracketBalance_step_zero (by omega) hd_keyscalar
+  have hbal_value : flowBracketBalance tokens body_start (ps.pos + 2) = 0 := by
+    rw [flowBracketBalance_compose tokens body_start ps.pos (ps.pos + 2) h_bs (by omega),
+        flowBracketBalance_compose tokens ps.pos (ps.pos + 1) (ps.pos + 2) (by omega) (by omega),
+        h_bal, hs_key, hs_keyscalar]; rfl
+  -- M7: after a scalar value, the entry lands on `.flowEntry` or the closing `.flowMappingEnd`.
+  have hidx : ps.pos + 2 + 2 = ps.pos + 4 := by omega
+  have h7 := hbody.value_scalar_succ (ps.pos + 2) (by omega) h_val_lt hbal_value h_value_tok
+    ⟨cv, sv, h_val_scalar⟩
+  rw [hidx] at h7
+  obtain ⟨h_land_le, h_land_tok⟩ := h7
+  -- Key parse: `parseExplicitKey ps.advance` on a scalar peek lands on the `.value`.
+  have hadv_peek : (ps.advance).peek? = some (.scalar ck sk) := by
+    apply peek_of_pos_val (k := ps.pos + 1) (by simp [ParseState.advance]) _ _
+    · simp only [ParseState.advance]; rw [h_tok]; omega
+    · simp only [ParseState.advance]; rw [h_tok]; exact h_key_scalar
+  obtain ⟨key_ps, h_key_parse, h_key_pos, h_key_tokeq, h_key_tp⟩ :=
+    parseExplicitKey_scalar ps.advance m h_m ck sk hadv_peek
+  -- key_ps lands at `ps.pos + 2` (= the `.value` position), tokens / trackPositions preserved.
+  have hadv_pos : (ps.advance).pos = ps.pos + 1 := rfl
+  have hk_pos : key_ps.pos = ps.pos + 2 := by rw [h_key_pos, hadv_pos]
+  have hk_tok : key_ps.tokens = tokens := by rw [h_key_tokeq]; simp [ParseState.advance, h_tok]
+  have hk_tp : key_ps.trackPositions = ps.trackPositions := by
+    rw [h_key_tp]; simp [ParseState.advance]
+  refine ⟨_, key_ps, h_key_parse, by omega, by omega, hk_tok, hk_tp, ?_⟩
+  intro savedPath keyContent
+  -- Value parse: `parseFlowMappingValue key_ps` consumes `.value` and parses the scalar value.
+  have hkey_value_peek : key_ps.peek? = some YamlToken.value := by
+    apply peek_of_pos_val (k := ps.pos + 2) hk_pos
+    · rw [hk_tok]; omega
+    · rw [hk_tok]; exact h_value_tok
+  have hkey_succ_lt : key_ps.pos + 1 < key_ps.tokens.size := by rw [hk_pos, hk_tok]; omega
+  have hkey_succ_scalar : key_ps.tokens[key_ps.pos + 1]!.val = .scalar cv sv := by
+    rw [hk_tok, hk_pos]; exact h_val_scalar
+  obtain ⟨val_ps, h_val_parse, h_val_pos, h_val_tokeq, h_val_tp⟩ :=
+    parseFlowMappingValue_scalar key_ps m h_m savedPath keyContent cv sv
+      hkey_value_peek hkey_succ_lt hkey_succ_scalar
+  -- val_ps lands at `ps.pos + 4`, tokens / trackPositions back to the entry state.
+  have hv_pos : val_ps.pos = ps.pos + 4 := by rw [h_val_pos, hk_pos]
+  have hv_tok : val_ps.tokens = tokens := by rw [h_val_tokeq]; exact hk_tok
+  have hv_tp : val_ps.trackPositions = ps.trackPositions := by rw [h_val_tp]; exact hk_tp
+  refine ⟨_, val_ps, h_val_parse, by omega, by omega, hv_tok, hv_tp, ?_, ?_⟩
+  · -- Landing peek at `ps.pos + 4`.
+    rcases h_land_tok with h_fe | ⟨h_me, h_eq⟩
+    · exact Or.inl (peek_of_pos_val hv_pos (by rw [hv_tok]; omega) (by rw [hv_tok]; exact h_fe))
+    · exact Or.inr
+        ⟨peek_of_pos_val hv_pos (by rw [hv_tok]; omega) (by rw [hv_tok]; exact h_me), by omega⟩
+  · -- Span bracket balance: four depth-0 zero-delta tokens.
+    rw [hv_pos]
+    have hd_value : flowBracketDelta tokens[ps.pos + 2]!.val = 0 := by rw [h_value_tok]; rfl
+    have hd_valscalar : flowBracketDelta tokens[ps.pos + 3]!.val = 0 := by rw [h_val_scalar]; rfl
+    have hs_value : flowBracketBalance tokens (ps.pos + 2) (ps.pos + 3) = 0 :=
+      flowBracketBalance_step_zero (by omega) hd_value
+    have hs_valscalar : flowBracketBalance tokens (ps.pos + 3) (ps.pos + 4) = 0 :=
+      flowBracketBalance_step_zero (by omega) hd_valscalar
+    rw [flowBracketBalance_compose tokens ps.pos (ps.pos + 2) (ps.pos + 4) (by omega) (by omega),
+        flowBracketBalance_compose tokens ps.pos (ps.pos + 1) (ps.pos + 2) (by omega) (by omega),
+        flowBracketBalance_compose tokens (ps.pos + 2) (ps.pos + 3) (ps.pos + 4) (by omega) (by omega),
+        hs_key, hs_keyscalar, hs_value, hs_valscalar]; rfl
+
 end L4YAML.Proofs.ParserWellBehaved
