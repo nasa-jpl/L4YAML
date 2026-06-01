@@ -2075,17 +2075,36 @@ out explicitly so the witness stays folded and the `applyNodeFinalization_*` pro
 the opaque `key_ps.tokens = tokens` is *propositional* (not defeq), so each §V call over a path-pushed
 state transports its `LoopPreconditions` bundle along that equation.
 
-**Next session — `.parsenode.discharge`** (the dispatcher is built; what remains is *feeding* it).
-Produce `FlowSubrangesOk` for the emitter stream from the body-token characterization — note
-`SeqBodyProps`/`MapBodyProps`'s top-level conjuncts ARE what
-`scanFiltered_emit{Seq,Map}_nonempty_structure` already proves, but `FlowSubrangesOk` quantifies over
-ALL nested subranges, so the discharge needs the characterization recursively / a bracket-matching
-argument. Then instantiate `flow_parser_ok_of_structure` at `(lo, hi) = (2, tokens.size−2)`,
-`fuel = 4·tokens.size+4` to close the 2 structure sorries (`NonemptyStructure.lean` 473/663). Finally
-the 2 base `emit_roundtrip_{sequence,mapping}_content_eq` (`EmitterScannability.lean` ~832/872) that
-consume them → `universal_roundtrip`. Distinct from `SafeBody` — the scanner→token-shape bridge is
-closed; this is the token-shape→parser-acceptance half, with its own machinery in
-`FlowParserAcceptance.lean`.
+**`.parsenode.discharge` — first brick LANDED (commit `e550eb5f`, Reflection 201): the Dyck
+bracket-matching locator.** `flowBracketBalance_matching_close` (`ParserGrammableBase.lean`) converts
+the flat Dyck condition (`WellBracketed`: total balance 0 + all prefix balances ≥ 0) into the
+matching-bracket structure every nested-bracket conjunct of `SeqBodyProps`/`MapBodyProps` needs —
+from a depth-0 opener at `k`, the matching close `j` (`k < j < hi`, closer, balanced interior
+`(k+1, j)`). Pure-triple, sorries held at 4. This is the combinatorial core; the remaining producer
+work is the *plumbing* that feeds it.
+
+**Next session — `.parsenode.discharge` cont'd** (the dispatcher AND the matching locator are built;
+what remains is assembling `FlowSubrangesOk`). The shape of the remaining producer:
+1. **`WellBracketed` of the emitter body** — the body-characterization producers
+   (`emitList_scans_safebody` / `emitPairList_scans_safebody`) already yield `WellBracketed block`
+   (currently *discarded* as `_h_wb` at `emit{List,PairList}_body_filtered_characterization`); thread
+   it through to `scanFiltered_emit{Seq,Map}_nonempty_structure`. Via `flowBracketBalance_eq_pbalance`
+   it gives both the **outer balance** `flowBracketBalance tokens 2 (tokens.size−2) = 0` (the second
+   hypothesis the dispatcher instantiation needs) and the **Dyck prefix-nonneg** hypothesis
+   `flowBracketBalance_matching_close` consumes.
+2. **`SeqBodyProps`/`MapBodyProps` for ALL nested subranges** — the top-level conjuncts are what
+   `scanFiltered_emit{Seq,Map}_nonempty_structure` already proves; for nested `(lo, hi)` the local
+   token-shape (scalar/key/value/comma placement) still needs a *recursive* characterization over the
+   emitted value tree (the matching locator now supplies the bracket-structure half of each
+   `bracket_*` conjunct). This is the bulk of the remaining producer.
+3. Instantiate `flow_parser_ok_of_structure` at `(lo, hi) = (2, tokens.size−2)`,
+   `fuel = 4·tokens.size+4` → close the 2 structure sorries (`NonemptyStructure.lean` 473/663).
+4. The 2 base `emit_roundtrip_{sequence,mapping}_content_eq` (`EmitterScannability.lean` ~832/872) that
+   consume them → `universal_roundtrip`.
+
+Distinct from `SafeBody` — the scanner→token-shape bridge is closed; this is the
+token-shape→parser-acceptance half, with its own machinery in `FlowParserAcceptance.lean` /
+`ParserGrammableBase.lean`.
 
 **(Historical `.assemble` plan — superseded by Reflection 188 for the seq side, still the shape for
 `.map`.)**  Thread the `EmitScansInFlowBlock` block
@@ -14778,7 +14797,22 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
-                **Total .body scope re-estimate (FORTY-EIGHTH revision —
+                **Total .body scope re-estimate (FORTY-NINTH revision —
+                after **Thread A step 3's first brick landed: the Dyck bracket-matching locator**.
+                `flowBracketBalance_matching_close` in `ParserGrammableBase.lean` (commit `e550eb5f`)
+                is the pure-combinatorial keystone the recursive `FlowSubrangesOk` producer rests on:
+                in a well-bracketed flow range `[lo, hi)` (total balance 0, every prefix balance ≥ 0 —
+                the Dyck condition the emitter stream satisfies via `WellBracketed`), a depth-0 open
+                bracket at `k` has a matching close `j` with `k < j < hi`, `tokens[j]` a closer
+                (delta −1), and balanced interior `(k+1, j)`. This supplies the position + inner balance
+                EVERY nested-bracket conjunct of `SeqBodyProps`/`MapBodyProps` needs (`bracket_seq`,
+                `bracket_map`, `key_bracket_value`, `value_bracket_succ`, M9, M10); the *which* bracket
+                and successor token are emitter facts layered on top. Core-Lean mechanics: `Nat.find` is
+                Mathlib-only, so "first return to balance 0 after `k`" is an explicit fuel scan (`find`,
+                kept at depth ≥ 1); `decide` rejects free-variable goals, so the delta lower bound
+                (`flowBracketDelta_ge_neg_one`) goes via `unfold`/`split`. Pure triple, build green at
+                515 jobs, **sorries held at 4** — pure enablement. See Reflection 201, on top of the
+                **FORTY-EIGHTH revision** —
                 after **Thread A step 2's dispatcher landed — step 2 COMPLETE**. §VIII of
                 `FlowParserAcceptance.lean` (commit `b61e8b6f`) builds `flow_parser_ok_of_structure`:
                 a single `Nat.strongRecOn` on a span bound with a **conjunctive motive** producing
@@ -23068,6 +23102,15 @@ parser/value-side sorries; the scanner→token-shape bridge below them is alread
      characterization recursively / a bracket-matching argument), then instantiate at
      `(tokens.size − 2, 2)` → **closes the 2 structure sorries**
      (`EmitterScannability/NonemptyStructure.lean:465, 651`).
+     **First brick landed 2026-06-01 (commit `e550eb5f`, Reflection 201): the Dyck bracket-matching
+     locator** `flowBracketBalance_matching_close` (`ParserGrammableBase.lean`) — the pure-combinatorial
+     core the six nested-bracket conjuncts (`bracket_seq`/`bracket_map`/`key_bracket_value`/
+     `value_bracket_succ`/M9/M10) share: from a depth-0 opener in a well-bracketed range (`WellBracketed`
+     = total balance 0 + prefix balances ≥ 0), the matching close `j` (`k < j < hi`, closer, balanced
+     interior). Core-Lean: a fuel scan, not `Nat.find`. Sorries held at 4, pure triple. Remaining (next
+     sessions): (a) thread the already-produced-but-discarded `WellBracketed block` through the
+     characterizations → the outer balance + the Dyck hypothesis; (b) the recursive local-token-shape
+     characterization for nested subranges; (c) instantiate + close the 2 sorries.
   4. **The 2 base `content_eq` sorries** (`EmitterScannability.lean:832, 872`,
      `emit_roundtrip_{sequence,mapping}_content_eq`) — now consume the proven `Parse*Ok`; finish the
      content-equality argument. **This closes the keystone `universal_roundtrip`.**
@@ -23425,3 +23468,44 @@ indexed by `state.tokens` (not by an explicit token array) needs that equality t
 state with a core `let` keeps the `pos`/`tokens` projections defeq-transparent so only the propositional `.tokens`
 needs the `rw`.** With step 2 closed, the live front is step 3 — producing `FlowSubrangesOk` from the emitter stream
 to *feed* this dispatcher and close the 2 structure sorries.
+
+---
+
+### Reflection 201 (new, 2026-06-01): step 3's first brick is the *only* pure-combinatorial piece — isolate the Dyck matching argument from all emitter/scanner facts so it proves once, reusably, for all six bracket conjuncts
+
+Step 3 (`.parsenode.discharge`) feeds `FlowSubrangesOk` to the dispatcher [[Reflection 200]] built. `FlowSubrangesOk`
+quantifies `SeqBodyProps`/`MapBodyProps` over ALL nested subranges, and those structures' nested-bracket conjuncts
+(`bracket_seq`, `bracket_map`, `key_bracket_value`, `value_bracket_succ`, M9, M10 — six of them) each demand the same
+shape: *given a depth-0 open bracket, produce the matching close with a balanced interior.* That demand is **purely
+combinatorial** — it's the Dyck-word matching property, true of any well-bracketed token list, with **nothing** to do
+with the emitter, the scanner, or what the tokens mean. This session isolated exactly that piece as
+`flowBracketBalance_matching_close`: hypotheses are the flat Dyck condition (total balance 0 + every prefix balance ≥ 0)
+the emitter stream supplies through `WellBracketed`; conclusion is the matched close `j` + inner balance. The *which*
+bracket (`]` vs `}`) and the successor token stay on the emitter side, layered on later.
+
+**(1) The factoring is the design.** Six conjuncts that look like they each need a bespoke bracket argument actually
+share one lemma; the right first brick of a big producer is the sub-obligation that recurs most and couples least.
+Proving it standalone — in `ParserGrammableBase.lean`, next to `flowBracketBalance_compose`/`_single`, where both the
+dispatcher side and the producer side can see it — means the bulk of the remaining producer (the local token-shape
+recursion, item 2 of the next-pointer) never re-derives bracket matching. **Lesson: when a structural predicate has N
+conjuncts that all invoke "the brackets match here," that matching is one reusable lemma over the balance function, not
+N inline arguments; extract it before touching the predicate.**
+
+**(2) No-Mathlib forced the math into the open.** With `Nat.find` available the locator is two lines (least `m > k`
+with balance 0, then `j = m−1`). Without it, "first return to 0" became an explicit downward-fuel scan (`find`, an
+inner `induction f`, invariant "current `start` is at depth ≥ 1") — which is *more* code but makes the Dyck argument
+fully constructive and self-contained, and surfaced that the only facts needed are `flowBracketDelta ≥ −1` (so a
+single step can drop the balance by at most 1) and prefix-nonnegativity (so a non-zero balance is ≥ 1). The second
+core-Lean snag: `decide` refuses goals that still mention free variables, so the delta bound `cases t <;> decide`
+fails on `scalar value✝ style✝` — `unfold flowBracketDelta; split <;> decide` reduces the match first so each branch
+is a literal. **Lesson (recurring): the absence of Mathlib repeatedly trades a one-liner for a short hand-rolled
+induction; budget for it, and remember `decide` needs a closed goal — reduce the defining match (`unfold`/`split`)
+before deciding an inequality over an opaque function.**
+
+**(3) The locator is the combinatorial floor of step 3; the ceiling is still the recursive token-shape
+characterization.** What this brick does *not* do is establish that the emitter's nested subranges have the right
+*local* token shape (a scalar at a sequence position, a `.key` then content then `.value` at a mapping position, commas
+as separators) — that needs a recursion over the emitted value tree, and is the bulk of the remaining producer. The
+honest read: step 3 has a small hard-combinatorial core (now closed) and a large mechanical-but-broad characterization
+(open). **Lesson: when scoping a multi-session producer, separate the *deep* sub-obligation from the *broad* one — they
+have different risk profiles, and landing the deep one first tells you the broad one is "only" plumbing.**
