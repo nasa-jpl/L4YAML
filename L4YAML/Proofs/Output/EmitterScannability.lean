@@ -341,20 +341,14 @@ theorem parseStream_emitSequence (style : CollectionStyle) (items : Array YamlVa
     -- parseNode → parseFlowSequence → parseFlowSequenceLoop using loop fuel
     -- sufficiency from Sub-phase C.
     -- Flow structure from scanner characterization
-    have h_all_scan : ∀ w, w ∈ items.toList → EmitScansInFlow w := by
+    have h_all_block : ∀ w, w ∈ items.toList → EmitScansInFlowBlock w := by
       intro w hw
       have ⟨i, hi, h_eq⟩ := List.getElem_of_mem hw
       have h_sz : i < items.size := by rwa [Array.length_toList] at hi
-      exact h_eq ▸ emit_scans_in_flow _ (h_items ⟨i, h_sz⟩)
-    have h_all_skdr : ∀ w, w ∈ items.toList → EmitScansInFlowSKDR w := by
-      intro w hw
-      have ⟨i, hi, h_eq⟩ := List.getElem_of_mem hw
-      have h_sz : i < items.size := by rwa [Array.length_toList] at hi
-      exact h_eq ▸ emit_scans_in_flow_with_skdr _ (h_items ⟨i, h_sz⟩)
+      exact h_eq ▸ emit_scans_in_flow_block _ (h_items ⟨i, h_sz⟩)
     obtain ⟨h_sz5, h_t0, h_tlast, h_t1, h_tpe, h_content0, h_fe_pattern,
             h_pnok⟩ :=
-      scanFiltered_emitSeq_nonempty_structure items tokens h_scan (by simp [h_list]) h_all_scan
-        h_all_skdr
+      scanFiltered_emitSeq_nonempty_structure items tokens h_scan (by simp [h_list]) h_all_block
     -- Step 1: Unfold parseStream, dispatch expect .streamStart
     unfold parseStream
     simp only [bind, Except.bind]

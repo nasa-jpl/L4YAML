@@ -1,10 +1,15 @@
-import L4YAML.Proofs.Output.EmitterScannability
+import L4YAML.Proofs.Output.EmitterScannability.WellBracketed
 
 /-!
 # Block-tracking substrate for flow-collection emitter scannability
 
 Extracted from `L4YAML.Proofs.Output.EmitterScannability` (2026-05-31) to keep the
-base file manageable.  Contains the block-tracking *superset* predicates
+base file manageable.  **Re-parented (2026-05-31) to import `WellBracketed` directly**
+instead of the base — moving the whole block-tracking layer *upstream* of
+`NonemptyStructure` so the round-trip body characterizations can consume
+`emit_scans_in_flow_block` (the `.bridge.assemble` dependency inversion).  Block uses
+nothing from the base or `NonemptyStructure`, so the move is purely structural.
+Contains the block-tracking *superset* predicates
 (`EmitScansInFlowBlock`, `EmitListScansInFlowBlock`, `EmitScansInFlowSavedKeyBlock`,
 `EmitPairListScansInFlowBlock`) and their producers, which expose the filtered-LIST
 `WellBracketed` `block` that the round-trip bridge's `.assemble` step consumes at the

@@ -22,10 +22,10 @@ import L4YAML.Proofs.Output.EmitterScannability.ScanChainGrowth
 import L4YAML.Proofs.Output.EmitterScannability.ContentFidelity
 import L4YAML.Proofs.Output.EmitterScannability.FilteredTracking
 import L4YAML.Proofs.Output.EmitterScannability.WellBracketed
-import L4YAML.Proofs.Output.EmitterScannability.NonemptyStructure
-import L4YAML.Proofs.Output.EmitterScannability
 import L4YAML.Proofs.Output.EmitterScannability.Block
 import L4YAML.Proofs.Output.EmitterScannability.BlockProducers
+import L4YAML.Proofs.Output.EmitterScannability.NonemptyStructure
+import L4YAML.Proofs.Output.EmitterScannability
 import L4YAML.Proofs.Output.IndexedEmitterScannability
 import L4YAML.Proofs.EndToEndCorrectness
 import L4YAML.Proofs.Errors.ErrorProperties

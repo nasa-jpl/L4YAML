@@ -3,7 +3,7 @@ Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
 
-import L4YAML.Proofs.Output.EmitterScannability.WellBracketed
+import L4YAML.Proofs.Output.EmitterScannability.BlockProducers
 
 namespace L4YAML.Proofs.EmitterScannability
 
@@ -43,8 +43,7 @@ open L4YAML.Proofs.ScalarCoupling
     emit `.flowEntry` or `.key` as their first filtered token. -/
 theorem emitList_body_filtered_characterization
     (items : List YamlValue) (h_ne : items ≠ [])
-    (h_all : ∀ v ∈ items, EmitScansInFlow v)
-    (h_all_skdr : ∀ v ∈ items, EmitScansInFlowSKDR v)
+    (h_all_block : ∀ v ∈ items, EmitScansInFlowBlock v)
     (s : ScannerState) (rest : List Char)
     (h_corr : ScannerSurfCorr s ⟨(emit.emitList items).toList ++ rest, s.col⟩)
     (h_flow : s.inFlow = true) (h_fl : s.flowLevel > 0)
@@ -52,10 +51,7 @@ theorem emitList_body_filtered_characterization
     (h_ek : s.explicitKeyLine = none)
     (h_atol : AllTokensOnLine s s.line)
     (h_endline : EndLineOnLine s)
-    (h_sk : s.simpleKey.possible = false)
-    (h_ska : s.simpleKeyAllowed = true)
-    (h_sync : s.simpleKeyStack.size = s.flowLevel)
-    (h_ssv : ScannerCorrectness.SimpleKeyStackValid s) :
+    (h_sync : s.simpleKeyStack.size = s.flowLevel) :
     let p := fun (t : Positioned YamlToken) => t.val != .placeholder
     let old_sz := (s.tokens.filter p).size
     ∃ n s', ScanChain s n s'
@@ -87,115 +83,57 @@ theorem emitList_body_filtered_characterization
         ((∃ c sc, ((s'.tokens.filter p)[k + 1]'h').val = .scalar c sc) ∨
          ((s'.tokens.filter p)[k + 1]'h').val = .flowSequenceStart ∨
          ((s'.tokens.filter p)[k + 1]'h').val = .flowMappingStart))) := by
-  -- Construct the SKDR-augmented chain.  The strict ScanChainGrew variant is
-  -- what's returned; we forget to plain ScanChain only at the public boundary.
-  -- The `SavedKeyDoesntResolve` witness (at target `N := s.tokens.size`) feeds
-  -- substrate.f's position-`N+1` preservation in Part 1.
-  have h_scan := emitList_scans_nonempty_with_skdr items h_ne h_all_skdr
-  obtain ⟨n, s', h_chain, h_corr', h_fl', h_dp', h_ids', h_ek', h_col', h_inflow',
-          h_indent', h_line', h_atol', h_endline', h_stack', h_fmc, h_skdr⟩ :=
-    h_scan s rest s.tokens.size h_corr h_flow h_fl h_indent h_col h_ek h_atol h_endline
-      (Nat.le.refl) h_sync
+  -- Scan the body via the `.bridge.assemble` SafeBody producer.  The returned
+  -- `SafeBody ContentStartTok block` subsumes BOTH parts of the characterization:
+  -- `SafeBody.head_Q` gives the first-filtered-token content-start (Part 1), and
+  -- `SafeBody_array_flowEntry` gives the post-`.flowEntry` content-start (Part 2).
+  -- No `SavedKeyDoesntResolve` substrate and no two-chain reconciliation are needed.
+  obtain ⟨n, s', block, h_chain, h_corr', h_fl', h_dp', h_ids', h_ek', h_col', h_inflow',
+          h_indent', h_line', h_atol', h_endline', h_stack', h_fmc, h_block_eq, _h_wb, h_sb⟩ :=
+    emitList_scans_safebody items h_ne h_all_block s rest h_corr h_flow h_fl h_indent h_col
+      h_ek h_atol h_endline h_sync
+  -- The body block is exactly the `drop old_sz` of the final filtered token list.
+  have h_drop : (s'.tokens.filter (fun t => t.val != .placeholder)).toList.drop
+      (s.tokens.filter (fun t => t.val != .placeholder)).size = block := by
+    rw [h_block_eq,
+      show (s.tokens.filter (fun t => t.val != .placeholder)).size
+          = (s.tokens.filter (fun t => t.val != .placeholder)).toList.length
+        from Array.length_toList.symm,
+      List.drop_append_of_le_length (Nat.le_refl _), List.drop_length, List.nil_append]
   refine ⟨n, s', h_chain.toScanChain, h_corr', h_fl', h_dp', h_ids', h_ek',
           h_col', h_inflow', h_indent', h_line', h_atol', h_endline',
           h_stack', h_fmc, ?_, ?_⟩
-  · -- Part 1: First new filtered token is a content start
-    have h_grows := ScanChainGrew_filtered_grows h_chain
-    have h_n_pos : n ≥ 1 := by
-      match n, h_chain with
-      | 0, h_zero =>
-        exfalso
-        have h_eq : s = s' := by cases h_zero; rfl
-        rw [h_eq] at h_corr
-        have h_chars_eq := CharsFromOffset_unique h_corr.chars_from h_corr'.chars_from
-        have h_len := congrArg List.length h_chars_eq
-        simp only [List.length_append] at h_len
-        have h_nil : (emit.emitList items).toList = [] := by
-          match h_list : (emit.emitList items).toList with
-          | [] => rfl
-          | _ :: _ => simp [h_list] at h_len
-        match h_items : items with
-        | [] => exact absurd rfl h_ne
-        | i :: is => exact absurd h_nil (emitList_toList_ne_nil i is)
-      | _ + 1, _ => omega
+  · -- Part 1: first new filtered token is a content start (`SafeBody.head_Q`)
+    obtain ⟨hl, hQ⟩ := h_sb.head_Q
+    have h_size : (s'.tokens.filter (fun t => t.val != .placeholder)).size
+        = (s.tokens.filter (fun t => t.val != .placeholder)).size + block.length := by
+      have h := congrArg List.length h_block_eq
+      rw [List.length_append, Array.length_toList, Array.length_toList] at h
+      exact h
     refine ⟨by omega, ?_⟩
     intro h_old_lt
-    -- Leading char of the emitList body is `[` / `{` / `"`.
-    obtain ⟨v, vs, rfl⟩ : ∃ v vs, items = v :: vs := by
-      cases items with
-      | nil => exact absurd rfl h_ne
-      | cons v vs => exact ⟨v, vs, rfl⟩
-    obtain ⟨c, rest', h_first, h_c⟩ := emitList_first_char_bracket v vs
-    have h_corr_c : ScannerSurfCorr s ⟨c :: (rest' ++ rest), s.col⟩ := by
-      have h_eq : (emit.emitList (v :: vs)).toList ++ rest = c :: (rest' ++ rest) := by
-        rw [h_first]; simp
-      rwa [h_eq] at h_corr
-    -- Decompose the SKDR chain to extract the first scanned state `s_first`.
-    cases h_skdr with
-    | zero => exact (Nat.lt_irrefl _ h_old_lt).elim
-    | @step _ s_first _ _ h_fl0 h_snt h_pres h_rest =>
-      -- Head step: `s_first.tokens.size = N+3`, plus the two no-overwrite
-      -- invariants substrate.d (`N+2`) and substrate.e (`N`) consume.
-      obtain ⟨h_sf_size, h_no, h_fno⟩ :=
-        emitList_head_step_noOverwrite s s_first c (rest' ++ rest) h_corr_c h_flow h_indent
-          h_col h_ek h_ska h_ssv h_c h_snt
-      have h_resid_fmc : FlowMonoChain s.flowLevel s_first _ s' := h_rest.toFlowMonoChain
-      have h_fl_pos : s.flowLevel ≥ 1 := by omega
-      have h_skaf : SimpleKeyAboveFloor s s.tokens.size s.flowLevel :=
-        ⟨fun hp => by rw [h_sk] at hp; exact absurd hp (by decide),
-         fun j _hj_fl hj _ => by exfalso; rw [h_sync] at hj; omega,
-         (Nat.le_of_eq h_sync.symm)⟩
-      have h_sf_mono : s_first.tokens.size ≤ s'.tokens.size := by
-        have := h_resid_fmc.tokens_mono; omega
-      -- The raw prefix `[0..N+3)` of `s'` agrees with `s_first`:
-      --   `[0..N)` from the SimpleKeyAboveFloor bulk lemma (+ first-step bridge),
-      --   `N` from substrate.e, `N+1` from substrate.f, `N+2` from substrate.d.
-      have h_prefix : ∀ i (hi : i < s_first.tokens.size),
-          s'.tokens[i]'(by omega) = s_first.tokens[i] := by
-        intro i hi
-        rw [h_sf_size] at hi
-        rcases Nat.lt_or_ge i s.tokens.size with hlt | hge
-        · have h1 := FlowMonoChain_preserves_raw_prefix h_fmc s.tokens.size (Nat.le.refl)
-            h_skaf (Nat.le_of_eq h_sync.symm) i hlt
-          have h2 := scanNextToken_preserves_prefix_of_skFloor s s_first h_snt s.tokens.size
-            (Nat.le.refl) (fun hp => by rw [h_sk] at hp; exact absurd hp (by decide)) i hlt
-          rw [h2]; exact h1
-        · obtain rfl | rfl | rfl :
-              i = s.tokens.size ∨ i = s.tokens.size + 1 ∨ i = s.tokens.size + 2 := by omega
-          · obtain ⟨_, h⟩ := FlowMonoChain_preserves_position_specific_flow h_fl_pos
-              h_resid_fmc s.tokens.size (by rw [h_sf_size]; omega) h_fno
-            exact h
-          · obtain ⟨_, h⟩ := SavedKeyDoesntResolve_preserves_position_target h_rest
-              (by rw [h_sf_size]; omega)
-            exact h
-          · obtain ⟨_, h⟩ := FlowMonoChain_preserves_position_specific h_resid_fmc
-              (s.tokens.size + 2) (by rw [h_sf_size]; omega) h_no
-            exact h
-      -- Transfer the head content token from `s_first` (first-filtered lemma) to `s'`.
-      rcases h_c with rfl | rfl | rfl
-      · obtain ⟨h_ff_lt, h_ff_val⟩ :=
-          scanFlowSequenceStart_first_filtered_token s (rest' ++ rest) h_corr_c h_flow h_indent
-            h_col h_snt
-        refine Or.inr (Or.inl ?_)
-        rw [Array_filter_getElem_of_raw_prefix s_first.tokens s'.tokens
-          (fun t => t.val != .placeholder) h_sf_mono h_prefix _ h_ff_lt h_old_lt]
-        exact h_ff_val h_ff_lt
-      · obtain ⟨h_ff_lt, h_ff_val⟩ :=
-          scanFlowMappingStart_first_filtered_token s (rest' ++ rest) h_corr_c h_flow h_indent
-            h_col h_snt
-        refine Or.inr (Or.inr ?_)
-        rw [Array_filter_getElem_of_raw_prefix s_first.tokens s'.tokens
-          (fun t => t.val != .placeholder) h_sf_mono h_prefix _ h_ff_lt h_old_lt]
-        exact h_ff_val h_ff_lt
-      · obtain ⟨h_ff_lt, h_ff_val⟩ :=
-          scanDoubleQuoted_first_filtered_token s (rest' ++ rest) h_corr_c h_flow h_indent
-            h_col h_snt
-        refine Or.inl ?_
-        rw [Array_filter_getElem_of_raw_prefix s_first.tokens s'.tokens
-          (fun t => t.val != .placeholder) h_sf_mono h_prefix _ h_ff_lt h_old_lt]
-        exact h_ff_val h_ff_lt
-  · -- Part 2: After every outer-level flowEntry, next is a content start
-    sorry
+    -- the element at `old_sz` is the SafeBody head `block[0]`
+    have h0 : (0 : Nat) < ((s'.tokens.filter (fun t => t.val != .placeholder)).toList.drop
+        (s.tokens.filter (fun t => t.val != .placeholder)).size).length := by
+      rw [h_drop]; exact hl
+    have h_elem : ((s'.tokens.filter (fun t => t.val != .placeholder))[
+          (s.tokens.filter (fun t => t.val != .placeholder)).size]'h_old_lt) = block[0]'hl := by
+      have e1 : ((s'.tokens.filter (fun t => t.val != .placeholder)).toList.drop
+            (s.tokens.filter (fun t => t.val != .placeholder)).size)[0]'h0
+          = (s'.tokens.filter (fun t => t.val != .placeholder))[
+            (s.tokens.filter (fun t => t.val != .placeholder)).size]'h_old_lt := by
+        simp only [List.getElem_drop, Array.getElem_toList, Nat.add_zero]
+      rw [← e1]
+      apply Option.some.inj
+      rw [← List.getElem?_eq_getElem h0, ← List.getElem?_eq_getElem hl, h_drop]
+    rw [h_elem]; exact hQ
+  · -- Part 2: post-`.flowEntry` content start (`SafeBody_array_flowEntry`)
+    intro k h_lo h_hi h_fe h_depth
+    obtain ⟨hk1, hQ⟩ := SafeBody_array_flowEntry
+      (s'.tokens.filter (fun t => t.val != .placeholder))
+      (s.tokens.filter (fun t => t.val != .placeholder)).size
+      (by rw [h_drop]; exact h_sb) k h_lo h_hi h_fe h_depth
+    exact ⟨hk1, fun _ => hQ⟩
 
 /-- Body token characterization for `emitPairList` in flow context:
     (1) The chain has ≥ 3 steps (key handling + value indicator + value content).
@@ -280,8 +218,7 @@ theorem scanFiltered_emitSeq_nonempty_structure
     (items : Array YamlValue) (tokens : Array (Positioned YamlToken))
     (h_scan : Scanner.scanFiltered ("[" ++ emit.emitList items.toList ++ "]") = .ok tokens)
     (h_ne : items.toList ≠ [])
-    (h_all_scan : ∀ w, w ∈ items.toList → EmitScansInFlow w)
-    (h_all_skdr : ∀ w, w ∈ items.toList → EmitScansInFlowSKDR w) :
+    (h_all_block : ∀ w, w ∈ items.toList → EmitScansInFlowBlock w) :
     tokens.size ≥ 5 ∧
     tokens[0]!.val = .streamStart ∧
     tokens[tokens.size - 1]!.val = .streamEnd ∧
@@ -307,17 +244,17 @@ theorem scanFiltered_emitSeq_nonempty_structure
   -- Open bracket → s₁
   obtain ⟨s₁, h_snt₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_col₁,
           h_inflow₁, h_indent₁, h_ek₁, h_line₁, h_atol₁, h_endline₁, h_sk₁, h_filt₁,
-          h_sync₁, h_ska₁, h_ssv₁⟩ :=
+          h_sync₁, _h_ska₁, _h_ssv₁⟩ :=
     scanNextToken_flow_open_init input
       ((emit.emitList items.toList).toList ++ [']']) h_toList
-  -- Body scanning → s₂ (with filtered token characterization)
+  -- Body scanning → s₂ (with filtered token characterization, via the SafeBody producer)
   obtain ⟨n₂, s₂, h_chain₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂,
           h_ek₂, h_col₂, h_inflow₂, h_indent₂, _, _, _, h_stack₂, h_fmc₂,
           ⟨h_body_sz_raw, h_body_cs_raw⟩, h_body_fe_next_raw⟩ :=
     emitList_body_filtered_characterization items.toList h_ne
-      (fun w hw => h_all_scan w hw) (fun w hw => h_all_skdr w hw) s₁ [']']
+      (fun w hw => h_all_block w hw) s₁ [']']
       h_corr₁ h_inflow₁ (by rw [h_fl₁]; omega) h_indent₁ (by rw [h_col₁]; omega)
-      h_ek₁ (h_line₁ ▸ h_atol₁) h_endline₁ h_sk₁ h_ska₁ h_sync₁ h_ssv₁
+      h_ek₁ (h_line₁ ▸ h_atol₁) h_endline₁ h_sync₁
   -- Close bracket → s₃ (using _ext to get filtered token info + indents)
   obtain ⟨s₃, h_snt₃, h_fl₃, h_dp₃, h_peek₃, h_ids₃, ⟨tok_fse, h_tok_fse_val, h_filt₃⟩⟩ :=
     scanNextToken_flow_close_seq_outermost_ext s₂ h_corr₂ h_inflow₂ h_indent₂ h_col₂
