@@ -50,7 +50,7 @@ open L4YAML.Proofs.ParserGrammable (flowBracketDelta flowBracketBalance
     Given the first-`N` raw prefix matches `s.tokens` (`h_pref` pointwise) and slot `N` is
     filtered out (`h_ph`), the take-of-`N+1` filter is exactly `s.tokens`' filter: the first
     `N` tokens contribute `s.tokens`' filter and the placeholder at slot `N` filters away. -/
-private theorem block_take_eq_of_getElem?
+theorem block_take_eq_of_getElem?
     (arr base : Array (Positioned YamlToken)) (N : Nat)
     (p : Positioned YamlToken → Bool)
     (h_base : base.size = N)
