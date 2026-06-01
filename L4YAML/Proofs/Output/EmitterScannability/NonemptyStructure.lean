@@ -223,7 +223,15 @@ theorem emitPairList_body_filtered_characterization
     --     each strictly growing the filtered count: `.key`, value indicator, value).
     --     Carried directly from the strict-growth chain — no dependency on the
     --     loose `scanNextToken_filtered_grows`.
-    ∧ old_sz + 3 ≤ (s'.tokens.filter p).size := by
+    ∧ old_sz + 3 ≤ (s'.tokens.filter p).size
+    -- (5) [NEW] The body block is well-bracketed — outer balance is 0.  Threaded from the
+    --     `WellBracketed block` the map SafeBody producer now supplies (formerly discarded);
+    --     converted to `flowBracketBalance` via `flowBracketBalance_eq_pbalance`.
+    ∧ flowBracketBalance (s'.tokens.filter p) old_sz (s'.tokens.filter p).size = 0
+    -- (6) [NEW] … and every prefix balance from `old_sz` is ≥ 0 (the Dyck condition the
+    --     `flowBracketBalance_matching_close` locator consumes).
+    ∧ (∀ (k : Nat), old_sz ≤ k → k ≤ (s'.tokens.filter p).size →
+        flowBracketBalance (s'.tokens.filter p) old_sz k ≥ 0) := by
   -- Scan the body via the `.bridge.assemble.map` SafeBody producer.  The returned
   -- `SafeBody (· = .key) block` subsumes BOTH non-trivial parts of the characterization:
   -- `SafeBody.head_Q` gives the first-filtered-token `.key` (Part 2) and
@@ -231,7 +239,7 @@ theorem emitPairList_body_filtered_characterization
   -- `3 ≤ n` chain-length floor (Part 1) is carried alongside.  No `keyshape` producer
   -- and no two-chain reconciliation are needed.
   obtain ⟨n, s', block, h_chain, h_corr', h_fl', h_dp', h_ids', h_ek', h_col', h_inflow',
-          h_indent', h_line', h_atol', h_endline', h_stack', h_fmc, h_block_eq, h_sb, h_n_ge_3⟩ :=
+          h_indent', h_line', h_atol', h_endline', h_stack', h_fmc, h_block_eq, h_wb, h_sb, h_n_ge_3⟩ :=
     emitPairList_scans_safebody pairs h_ne h_all_k_block h_all_v_block s rest h_corr h_flow h_fl
       h_indent h_col h_ek h_atol h_endline h_ska h_sync
   -- The body block is exactly the `drop old_sz` of the final filtered token list.
@@ -244,7 +252,7 @@ theorem emitPairList_body_filtered_characterization
       List.drop_append_of_le_length (Nat.le_refl _), List.drop_length, List.nil_append]
   refine ⟨n, s', h_chain.toScanChain, h_corr', h_fl', h_dp', h_ids', h_ek',
           h_col', h_inflow', h_indent', h_line', h_atol', h_endline',
-          h_stack', h_fmc, h_n_ge_3, ?_, ?_, ?_⟩
+          h_stack', h_fmc, h_n_ge_3, ?_, ?_, ?_, ?_, ?_⟩
   · -- Part 2: first new filtered token is `.key` (`SafeBody.head_Q`)
     obtain ⟨hl, hQ⟩ := h_sb.head_Q
     have h_size : (s'.tokens.filter (fun t => t.val != .placeholder)).size
@@ -278,6 +286,24 @@ theorem emitPairList_body_filtered_characterization
   · -- Part 4: filtered growth ≥ 3, read off the strict-growth chain + `3 ≤ n`.
     have hg := ScanChainGrew_filtered_grows h_chain
     omega
+  · -- Part 5 [NEW]: outer bracket balance = 0, threaded from `WellBracketed block`.
+    have h_sizeeq : (s'.tokens.filter (fun t => t.val != .placeholder)).size
+        = (s.tokens.filter (fun t => t.val != .placeholder)).size + block.length := by
+      have h := congrArg List.length h_block_eq
+      rw [List.length_append, Array.length_toList, Array.length_toList] at h
+      exact h
+    rw [flowBracketBalance_eq_pbalance (s'.tokens.filter (fun t => t.val != .placeholder))
+        (s.tokens.filter (fun t => t.val != .placeholder)).size
+        (s'.tokens.filter (fun t => t.val != .placeholder)).size (by omega), h_drop,
+      show (s'.tokens.filter (fun t => t.val != .placeholder)).size
+          - (s.tokens.filter (fun t => t.val != .placeholder)).size = block.length from by omega,
+      List.take_length]
+    exact h_wb.1
+  · -- Part 6 [NEW]: Dyck prefix-nonneg, threaded from `WellBracketed block`.
+    intro k hk1 _hk2
+    rw [flowBracketBalance_eq_pbalance (s'.tokens.filter (fun t => t.val != .placeholder))
+        (s.tokens.filter (fun t => t.val != .placeholder)).size k hk1, h_drop]
+    exact h_wb.2 (k - (s.tokens.filter (fun t => t.val != .placeholder)).size)
 
 /-- Token structure of `scanFiltered ("[" ++ emitList items ++ "]")` for non-empty items.
     Establishes boundary tokens, body token patterns, and `parseNode` success within
@@ -543,6 +569,12 @@ theorem scanFiltered_emitMap_nonempty_structure
         tokens[k]!.val = .flowEntry →
         flowBracketBalance tokens 2 k = 0 →
         k + 1 ≤ tokens.size - 2 ∧ tokens[k + 1]!.val = .key) ∧
+    -- [NEW] Bracket structure of the body, threaded from `WellBracketed block`: the
+    -- inclusive interior `[2, tokens.size-2)` is balanced (outer balance 0) and every
+    -- prefix from 2 is ≥ 0 (Dyck) — the two hypotheses the dispatcher instantiation and
+    -- `flowBracketBalance_matching_close` consume to produce `FlowSubrangesOk`.
+    flowBracketBalance tokens 2 (tokens.size - 2) = 0 ∧
+    (∀ k, 2 ≤ k → k ≤ tokens.size - 2 → flowBracketBalance tokens 2 k ≥ 0) ∧
     L4YAML.Proofs.ParserWellBehaved.ParseEntryFlowMapOk tokens (tokens.size - 2) (4 * tokens.size + 4) 2 := by
   -- Step 1: Boundary tokens from scanFiltered_boundary_tokens
   obtain ⟨h_sz2, h_t0, h_tlast⟩ := scanFiltered_boundary_tokens _ _ h_scan
@@ -559,7 +591,8 @@ theorem scanFiltered_emitMap_nonempty_structure
   -- Body scanning → s₂ (with filtered token characterization)
   obtain ⟨n₂, s₂, h_chain₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂,
           h_ek₂, h_col₂, h_inflow₂, h_indent₂, _, _, _, h_stack₂, h_fmc₂,
-          h_n₂_ge3, ⟨h_body_sz_raw, h_body_key_raw⟩, h_body_fe_next_raw, h_body_grow⟩ :=
+          h_n₂_ge3, ⟨h_body_sz_raw, h_body_key_raw⟩, h_body_fe_next_raw, h_body_grow,
+          h_body_outer_bal_raw, h_body_dyck_raw⟩ :=
     emitPairList_body_filtered_characterization pairs.toList h_ne
       (fun p hp => h_all_k_block p hp) (fun p hp => h_all_v_block p hp)
       s₁ ['}']
@@ -676,7 +709,7 @@ theorem scanFiltered_emitMap_nonempty_structure
   -- Rename _raw variables to match expected names
   have h_body_sz := h_body_sz_raw; have h_body_key := h_body_key_raw
   have h_body_fe_next := h_body_fe_next_raw
-  rw [h_filt₁_sz] at h_body_sz h_body_key h_body_fe_next
+  rw [h_filt₁_sz] at h_body_sz h_body_key h_body_fe_next h_body_outer_bal_raw h_body_dyck_raw
   -- tokens.size - 2 = (s₂.filter p).size
   have h_tokens_sz_eq : tokens.size - 2 = (s₂.tokens.filter p).size := by
     rw [h_tokens_decomp]; simp [Array.size_push]
@@ -710,9 +743,27 @@ theorem scanFiltered_emitMap_nonempty_structure
       rw [this] at h_depth; exact h_depth
     obtain ⟨h_next_lt, h_next_key⟩ := h_body_fe_next k (by omega) h_k_lt h_fe h_depth'
     exact ⟨by omega, by rw [h_tok_body (k+1) (by omega)]; exact h_next_key (by omega)⟩
+  -- Convert the body outer-balance + Dyck (at filtered `old_sz = 2`) to the tokens level:
+  -- the trailing `tok_fme`/`streamEnd` pushes leave the `[2, k)` window untouched
+  -- (mirrors `h_depth'` above and the seq-side `scanFiltered_emitSeq_nonempty_structure`).
+  have h_conv : ∀ k, k ≤ (s₂.tokens.filter p).size →
+      flowBracketBalance tokens 2 k = flowBracketBalance (s₂.tokens.filter p) 2 k := by
+    intro k hk
+    rw [h_tokens_decomp]
+    rw [flowBracketBalance_push _ _ 2 k (by simp [Array.size_push]; omega)]
+    rw [flowBracketBalance_push _ _ 2 k (by omega)]
+  have h_outer_bal : flowBracketBalance tokens 2 (tokens.size - 2) = 0 := by
+    rw [h_tokens_sz_eq, h_conv (s₂.tokens.filter p).size (Nat.le_refl _)]
+    exact h_body_outer_bal_raw
+  have h_dyck : ∀ k, 2 ≤ k → k ≤ tokens.size - 2 → flowBracketBalance tokens 2 k ≥ 0 := by
+    intro k _hk1 hk2
+    rw [h_tokens_sz_eq] at hk2
+    rw [h_conv k hk2]
+    exact h_body_dyck_raw k _hk1 hk2
   have h_pnok : L4YAML.Proofs.ParserWellBehaved.ParseEntryFlowMapOk
       tokens (tokens.size - 2) (4 * tokens.size + 4) 2 := sorry
-  exact ⟨h_sz7, h_t0, h_tlast, h_t1, h_tpe, h_t2_key, h_fe_pattern, h_pnok⟩
+  exact ⟨h_sz7, h_t0, h_tlast, h_t1, h_tpe, h_t2_key, h_fe_pattern,
+         h_outer_bal, h_dyck, h_pnok⟩
 
 
 end L4YAML.Proofs.EmitterScannability
