@@ -34,14 +34,17 @@ open L4YAML.Proofs.ScalarCoupling
 
 `ScanChainGrew p` is `ScanChain` augmented with a per-step witness that
 the filtered count under predicate `p` strictly increases at each step.
-Built constructively at the call site, it sidesteps the loose
-`scanNextToken_filtered_grows` (which contains a sorry on the RESERVED
-directive branch — see Turn 1's `scanDirective_filtered_grows` for the
-honest precondition).
-
-Existing `ScanChain` / `ScanChain_filtered_grows` are unchanged; this
-predicate runs alongside them.  Forgetful `toScanChain` lets a strict
-chain be passed wherever a `ScanChain` was expected. -/
+Built constructively at the call site, it is the honest replacement for
+the former loose per-step lemma `scanNextToken_filtered_grows`: that lemma
+claimed a `≥ +1` filtered-growth bound for *every* successful step, which is
+false on the YAML 1.2.2 §6.8.3 RESERVED-directive branch (`%FOO …` scans to
+`skipToEndOfLine`, emitting no token), and so carried a `sorry`.  It and its
+`ScanChain` corollary `ScanChain_filtered_grows` have been **removed** (see
+`FilteredTracking.lean`); the `+ n` bound now comes from
+`ScanChainGrew_filtered_grows` below, whose per-step witnesses are produced
+where the emitter-body chains are actually built — there are no reserved
+directives there.  Forgetful `toScanChain` lets a strict chain be passed
+wherever a `ScanChain` was expected. -/
 inductive ScanChainGrew (p : Positioned YamlToken → Bool) :
     ScannerState → Nat → ScannerState → Prop where
   | zero {s : ScannerState} : ScanChainGrew p s 0 s

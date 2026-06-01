@@ -192,7 +192,12 @@ theorem emitPairList_body_filtered_characterization
       flowBracketBalance (s'.tokens.filter p) old_sz k = 0 →
       k + 1 < (s'.tokens.filter p).size ∧
       (∀ (h' : k + 1 < (s'.tokens.filter p).size),
-        ((s'.tokens.filter p)[k + 1]'h').val = .key)) := by
+        ((s'.tokens.filter p)[k + 1]'h').val = .key))
+    -- (4) The body adds at least 3 filtered tokens (one pair scans to ≥ 3 steps,
+    --     each strictly growing the filtered count: `.key`, value indicator, value).
+    --     Carried directly from the strict-growth chain — no dependency on the
+    --     loose `scanNextToken_filtered_grows`.
+    ∧ old_sz + 3 ≤ (s'.tokens.filter p).size := by
   -- Scan the body via the `.bridge.assemble.map` SafeBody producer.  The returned
   -- `SafeBody (· = .key) block` subsumes BOTH non-trivial parts of the characterization:
   -- `SafeBody.head_Q` gives the first-filtered-token `.key` (Part 2) and
@@ -213,7 +218,7 @@ theorem emitPairList_body_filtered_characterization
       List.drop_append_of_le_length (Nat.le_refl _), List.drop_length, List.nil_append]
   refine ⟨n, s', h_chain.toScanChain, h_corr', h_fl', h_dp', h_ids', h_ek',
           h_col', h_inflow', h_indent', h_line', h_atol', h_endline',
-          h_stack', h_fmc, h_n_ge_3, ?_, ?_⟩
+          h_stack', h_fmc, h_n_ge_3, ?_, ?_, ?_⟩
   · -- Part 2: first new filtered token is `.key` (`SafeBody.head_Q`)
     obtain ⟨hl, hQ⟩ := h_sb.head_Q
     have h_size : (s'.tokens.filter (fun t => t.val != .placeholder)).size
@@ -244,6 +249,9 @@ theorem emitPairList_body_filtered_characterization
       (s.tokens.filter (fun t => t.val != .placeholder)).size
       (by rw [h_drop]; exact h_sb) k h_lo h_hi h_fe h_depth
     exact ⟨hk1, fun _ => hQ⟩
+  · -- Part 4: filtered growth ≥ 3, read off the strict-growth chain + `3 ≤ n`.
+    have hg := ScanChainGrew_filtered_grows h_chain
+    omega
 
 /-- Token structure of `scanFiltered ("[" ++ emitList items ++ "]")` for non-empty items.
     Establishes boundary tokens, body token patterns, and `parseNode` success within
@@ -375,8 +383,6 @@ theorem scanFiltered_emitSeq_nonempty_structure
       (s₁.tokens.filter p).toList ++ suffix :=
     ScanChain_filtered_prefix h_fmc₂ h_sk₁ (by omega) (by
       intro j hj hjsz; rw [h_sync₁] at hjsz; rw [h_fl₁] at hj; omega)
-  have h_filt_grows : (s₂.tokens.filter p).size ≥
-      (s₁.tokens.filter p).size + n₂ := ScanChain_filtered_grows h_chain₂
   -- n₂ ≥ 1 (body is non-empty: s₁ sees body chars, s₂ sees [']'])
   have h_n₂_pos : n₂ ≥ 1 := by
     match n₂, h_chain₂ with
@@ -396,9 +402,11 @@ theorem scanFiltered_emitSeq_nonempty_structure
       | v :: vs =>
           rw [h_items] at h_nil; exact absurd h_nil (emitList_toList_ne_nil v vs)
     | _ + 1, _ => omega
-  -- (s₂.tokens.filter p).size ≥ 3
+  -- (s₂.tokens.filter p).size ≥ 3 — directly from the body's strict-growth witness
+  -- (`h_body_sz_raw : (s₁.filter).size < (s₂.filter).size`) plus `(s₁.filter).size = 2`.
   have h_s2_filt_sz : (s₂.tokens.filter p).size ≥ 3 := by
-    rw [h_filt₁_sz] at h_filt_grows; omega
+    have hb : (s₁.tokens.filter p).size < (s₂.tokens.filter p).size := h_body_sz_raw
+    rw [h_filt₁_sz] at hb; omega
   -- h_t1: peel two pushes to reach (s₂.tokens.filter p)[1], then use prefix
   have h_t1 : tokens[1]!.val = .flowSequenceStart := by
     rw [h_tokens_decomp]
@@ -500,7 +508,7 @@ theorem scanFiltered_emitMap_nonempty_structure
   -- Body scanning → s₂ (with filtered token characterization)
   obtain ⟨n₂, s₂, h_chain₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂,
           h_ek₂, h_col₂, h_inflow₂, h_indent₂, _, _, _, h_stack₂, h_fmc₂,
-          h_n₂_ge3, ⟨h_body_sz_raw, h_body_key_raw⟩, h_body_fe_next_raw⟩ :=
+          h_n₂_ge3, ⟨h_body_sz_raw, h_body_key_raw⟩, h_body_fe_next_raw, h_body_grow⟩ :=
     emitPairList_body_filtered_characterization pairs.toList h_ne
       (fun p hp => h_all_k_block p hp) (fun p hp => h_all_v_block p hp)
       s₁ ['}']
@@ -583,12 +591,16 @@ theorem scanFiltered_emitMap_nonempty_structure
       (s₁.tokens.filter p).toList ++ suffix :=
     ScanChain_filtered_prefix h_fmc₂ h_sk₁ (by omega) (by
       intro j hj hjsz; rw [h_sync₁] at hjsz; rw [h_fl₁] at hj; omega)
-  have h_filt_grows : (s₂.tokens.filter p).size ≥
-      (s₁.tokens.filter p).size + n₂ := ScanChain_filtered_grows h_chain₂
   -- n₂ ≥ 1 (from n₂ ≥ 3)
   have h_n₂_pos : n₂ ≥ 1 := by omega
-  have h_s2_filt_sz : (s₂.tokens.filter p).size ≥ 3 := by
-    rw [h_filt₁_sz] at h_filt_grows; omega
+  -- Body adds ≥ 3 filtered tokens (Part 4 of the characterization, read off the
+  -- strict-growth chain) ⟹ filtered size ≥ 5, with `(s₁.filter).size = 2`.  This
+  -- replaces the former `ScanChain_filtered_grows` route, which depended on the
+  -- (RESERVED-directive-unsound) `scanNextToken_filtered_grows`.
+  have h_body_ge5 : (s₂.tokens.filter p).size ≥ 5 := by
+    have hg : (s₁.tokens.filter p).size + 3 ≤ (s₂.tokens.filter p).size := h_body_grow
+    rw [h_filt₁_sz] at hg; omega
+  have h_s2_filt_sz : (s₂.tokens.filter p).size ≥ 3 := by omega
   have h_t1 : tokens[1]!.val = .flowMappingStart := by
     rw [h_tokens_decomp]
     rw [getElem!_pos _ _ (by simp only [Array.size_push]; omega)]
@@ -626,8 +638,8 @@ theorem scanFiltered_emitMap_nonempty_structure
     rw [Array.getElem_push_lt h_lt]
   have h_sz7 : tokens.size ≥ 7 := by
     rw [h_tokens_decomp]; simp [Array.size_push]
-    -- (s₂.filter).size ≥ (s₁.filter).size + n₂ = 2 + n₂ ≥ 2 + 3 = 5
-    rw [h_filt₁_sz] at h_filt_grows; omega
+    -- tokens.size = (s₂.filter).size + 2, and (s₂.filter).size ≥ 5 (h_body_ge5)
+    omega
   have h_t2_key : tokens[2]!.val = .key := by
     rw [h_tok_body 2 (by omega)]; exact h_body_key (by omega)
   have h_fe_pattern : ∀ k, 2 ≤ k → k < tokens.size - 2 →

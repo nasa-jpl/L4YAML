@@ -115,63 +115,25 @@ theorem ScanChain_preserves_raw_prefix {s s' : ScannerState} {k : Nat}
     have ⟨h_pres, h_inv'⟩ := scanNextToken_prefix_and_sk_inv _ _ h_snt n₀ h_n₀ h_inv
     exact (ih (Nat.le_trans h_n₀ h_adds) h_inv').trans (h_pres i hi)
 
-/-! #### Main theorem: filtered growth through scanNextToken -/
+/-! #### Filtered growth through a scan chain — see the strict-variant track
 
--- Every `scanNextToken` step adds at least one non-placeholder token to the
--- filtered token array.  Note: the structural dispatch case for unknown
--- directives (%RESERVED) adds 0 tokens but still returns `some s'`.  The
--- ≥+1 bound holds for all emitter-produced inputs (which only use %YAML/%TAG
--- directives and document markers, each emitting ≥1 non-placeholder token).
-set_option maxHeartbeats 3200000 in
-theorem scanNextToken_filtered_grows (s s' : ScannerState)
-    (h : scanNextToken s = .ok (some s')) :
-    (s'.tokens.filter (fun t => t.val != .placeholder)).size ≥
-    (s.tokens.filter (fun t => t.val != .placeholder)).size + 1 := by
-  unfold scanNextToken at h
-  simp only [bind, pure, Pure.pure, Except.pure] at h
-  simp only [Except.bind] at h
-  split at h
-  · contradiction
-  · split at h
-    · simp at h
-    · have h_pp_mono := preprocess_filtered_mono s _ _ (by assumption)
-      repeat (any_goals (split at h))
-      any_goals contradiction
-      any_goals (simp at h)
-      all_goals first
-        | contradiction
-        | (simp at h)
-        | (have h_d := dispatchFlowIndicators_filtered_grows _ _ _ (by assumption);
-           rw [allowDir_ite_filter] at h_d; simp_all <;> omega)
-        | (have h_d := dispatchBlockIndicators_filtered_grows _ _ _ (by assumption);
-           rw [allowDir_ite_filter] at h_d; simp_all <;> omega)
-        | (have h_d := dispatchContent_filtered_grows _ _ _ (by assumption);
-           rw [allowDir_ite_filter] at h_d; simp_all <;> omega)
-        | (simp_all <;> omega)
-        -- structural dispatch: case-split into docStart, docEnd, directive
-        | (-- Resolve monadic binds (docEnd/directive use do-notation)
-           try simp only [bind, Except.bind] at h
-           try (split at h <;> first | contradiction | skip)
-           -- Extract equality from .ok/.some wrappers
-           try simp only [Except.ok.injEq, Option.some.injEq] at h
-           try (injection h with h)
-           try subst h
-           first
-             | (have := scanDocumentStart_filtered_grows _; omega)
-             | (have := scanDocumentEnd_filtered_grows _ _ (by assumption); omega)
-             | sorry)
+The unconditional per-step lemma `scanNextToken_filtered_grows` (and its `ScanChain`
+corollary `ScanChain_filtered_grows`) were **removed**: they are *false as stated*.  A
+YAML 1.2.2 §6.8.3 reserved directive (`%FOO …`, not `%YAML`/`%TAG`) is scanned by
+`scanDirective` into `skipToEndOfLine` and emits **no** token, so that `scanNextToken`
+step returns `some s'` while adding zero filtered tokens — the `≥ +1` bound cannot hold
+for every input.  The old proof papered over exactly this case with a `sorry` on the
+reserved-directive branch of the structural dispatch.
 
-/-- Through a ScanChain of `n` steps, the filtered token array grows by at least `n`. -/
-theorem ScanChain_filtered_grows {s s' : ScannerState} {n : Nat}
-    (h_chain : ScanChain s n s') :
-    (s'.tokens.filter (fun t => t.val != .placeholder)).size ≥
-    (s.tokens.filter (fun t => t.val != .placeholder)).size + n := by
-  induction h_chain with
-  | zero => omega
-  | step h_snt _h_rest ih =>
-    have h_step := scanNextToken_filtered_grows _ _ h_snt
-    omega
-
+The honest replacement is the **strict-variant track** in `ScanChainGrowth.lean`:
+`ScanChainGrew p` augments a `ScanChain` with a per-step *witness* that the filtered
+count strictly grows, and `ScanChainGrew_filtered_grows` then yields the `+ n` bound with
+no sorry.  The emitter-body producers (`emitList_scans_safebody` /
+`emitPairList_scans_safebody`) construct that witnessed chain directly, so the
+non-empty-structure theorems read the growth bound off the chain they already build (the
+mapping body's `old_sz + 3 ≤ …` and the sequence body's `old_sz < …` conjuncts of the
+`*_body_filtered_characterization` lemmas) rather than re-deriving it from a (false)
+universal per-step lemma. -/
 
 /-- Through a FlowMonoChain, the filtered token array of the final state has the
     filtered array of the initial state as a prefix.
