@@ -82,4 +82,75 @@ theorem parseNode_scalar_flow (ps : ParseState) (m : Nat) (h_m : 0 < m)
   · rw [applyNodeFinalization_tokens]; rfl
   · rw [applyNodeFinalization_trackPositions]; rfl
 
+/-! ## §II  Flow-body parser acceptance — bracket reduction (`.bridge.parsenode.brackets`)
+
+The recursive cases of the node induction.  When `parseNode` peeks an
+opening flow bracket (`[` / `{`), property handling is vacuous (a flow
+collection start is *not* a block-collection start, so the §8.2.2
+same-line check does not fire, and `{}` carries no duplicate anchor), so
+the node reduces to a single call of `parseFlowSequence` / `parseFlowMapping`
+post-finalization.
+
+These reductions are *conditional on* the body parse succeeding — that is
+the consumer shape the eventual induction supplies via the already-closed
+loop theorems `parseFlow{Sequence,Mapping}Loop_emitter_ok`.  They carry no
+`FlowSubrangesOk` hypothesis: like the scalar leaf, they are pure facts
+about how `parseNode` dispatches, shared by both inductions. -/
+
+/-- `validateNodeProps` succeeds on an opening-flow-sequence peek with empty
+    `NodeProperties`: `.flowSequenceStart` is not a block-collection start, so
+    the §8.2.2 same-line check is vacuous, and `{}` skips the §6.9.2 check. -/
+theorem validateNodeProps_flowSeqStart (ps : ParseState) (prePropPos : Nat)
+    (h_peek : ps.peek? = some .flowSequenceStart) :
+    validateNodeProps ps prePropPos {} = .ok () := by
+  simp [validateNodeProps, h_peek, bind, Except.bind, pure, Except.pure]
+
+/-- `validateNodeProps` succeeds on an opening-flow-mapping peek with empty
+    `NodeProperties` (same reasoning as `validateNodeProps_flowSeqStart`). -/
+theorem validateNodeProps_flowMapStart (ps : ParseState) (prePropPos : Nat)
+    (h_peek : ps.peek? = some .flowMappingStart) :
+    validateNodeProps ps prePropPos {} = .ok () := by
+  simp [validateNodeProps, h_peek, bind, Except.bind, pure, Except.pure]
+
+/-- **Flow-sequence recursive case** for node parsing.
+
+    When the parse state peeks a `flowSequenceStart` token and the inner
+    `parseFlowSequence ps k` succeeds with result `(v, ps')`, then
+    `parseNode ps (k+1)` succeeds with the finalized value `v` (a flow
+    sequence value is unchanged by empty-property finalization) at the same
+    landing state.  This connects `parseNode` to the already-closed loop
+    theorem `parseFlowSequenceLoop_emitter_ok`. -/
+theorem parseNode_flowSeqStart_of_parse (ps ps' : ParseState) (k : Nat) (v : YamlValue)
+    (h_peek : ps.peek? = some .flowSequenceStart)
+    (h_parse : parseFlowSequence ps k = .ok (v, ps')) :
+    parseNode ps (k + 1) =
+      .ok (applyNodeFinalization v ps' {}
+        (ps.peekPos?.getD { offset := 0, line := 0, col := 0 })) := by
+  have h_props : parseNodeProperties ps = .ok ({}, ps) :=
+    parseNodeProperties_skip ps (by simp [h_peek])
+  have h_val : validateNodeProps ps ps.pos {} = .ok () :=
+    validateNodeProps_flowSeqStart ps ps.pos h_peek
+  have h_content : parseNodeContent ps k {} = .ok (v, ps') := by
+    simp only [parseNodeContent, h_peek]; exact h_parse
+  unfold parseNode
+  simp only [h_peek, bind, Except.bind, pure, Except.pure, h_props, h_val, h_content]
+
+/-- **Flow-mapping recursive case** for node parsing (mirror of
+    `parseNode_flowSeqStart_of_parse`).  Connects `parseNode` to
+    `parseFlowMappingLoop_emitter_ok`. -/
+theorem parseNode_flowMapStart_of_parse (ps ps' : ParseState) (k : Nat) (v : YamlValue)
+    (h_peek : ps.peek? = some .flowMappingStart)
+    (h_parse : parseFlowMapping ps k = .ok (v, ps')) :
+    parseNode ps (k + 1) =
+      .ok (applyNodeFinalization v ps' {}
+        (ps.peekPos?.getD { offset := 0, line := 0, col := 0 })) := by
+  have h_props : parseNodeProperties ps = .ok ({}, ps) :=
+    parseNodeProperties_skip ps (by simp [h_peek])
+  have h_val : validateNodeProps ps ps.pos {} = .ok () :=
+    validateNodeProps_flowMapStart ps ps.pos h_peek
+  have h_content : parseNodeContent ps k {} = .ok (v, ps') := by
+    simp only [parseNodeContent, h_peek]; exact h_parse
+  unfold parseNode
+  simp only [h_peek, bind, Except.bind, pure, Except.pure, h_props, h_val, h_content]
+
 end L4YAML.Proofs.ParserWellBehaved
