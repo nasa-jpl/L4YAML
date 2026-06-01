@@ -827,4 +827,507 @@ theorem parseFlowMappingValue_flowMapStart_of_parse (ps : ParseState) (m : Nat)
   · show (applyNodeFinalization v ps' {} _).2.trackPositions = ps'.trackPositions
     rw [applyNodeFinalization_trackPositions]
 
+/-! ## §VIII  The dispatcher — `flow_parser_ok_of_structure` (`.iterators.dispatch`)
+
+The mutual strong induction on span that ties §I–§VII together.  Given
+`FlowSubrangesOk tokens` (every well-formed flow body subrange has the
+structural shape §III–§VII consume), it produces BOTH `ParseNodeFlowSeqOk` and
+`ParseEntryFlowMapOk` at every body subrange, by a single `Nat.strongRecOn` on a
+span bound with a *conjunctive* motive: a node case may descend into a nested
+mapping (needs the entry predicate) and an entry case into a nested sequence
+(needs the node predicate), so the two are discharged simultaneously.
+
+Per position the proof is pure composition over landed, axiom-clean pieces:
+* scalar leaf → §III `parseNode_seqScalar_ok` / §IV `parseEntry_mapScalar_ok`;
+* depth-0 bracket → read the matching close `j` off the body structure
+  (`SeqBodyProps.bracket_*` / `MapBodyProps.{key,value}_bracket_*`), obtain the
+  inner body's acceptance predicate from the inductive hypothesis (inner span
+  `j - (k+1) < hi - lo`), assemble the loop bundle via §VI `loop{Seq,Map}Pre_of`
+  at inner fuel `m - 2`, run §V `parseFlow{Sequence,Mapping}_emitter_ok`, and
+  reduce `parseNode` / `parseExplicitKey` / `parseFlowMappingValue` to it via
+  §II / §VII.
+
+The inner fuel `m - 2` discharges each loop bundle's `2·span + 1` adequacy from
+the caller's `2·(hi - ps.pos) < m`: a bracket descent drops parser fuel by 3
+against a span drop of ≥2, so the `2·` coefficient leaves headroom 4 per nesting
+level (see `ParseNodeFlowSeqOk`).  Closing the dispatcher discharges exactly the
+`ParseNodeFlowSeqOk` / `ParseEntryFlowMapOk` assertions the two
+`NonemptyStructure.lean` sorries state; the producer of `FlowSubrangesOk` from
+emitter output is the remaining step. -/
+
+/-- Open(+1) + balanced inner(0) + close(−1) over a bracket span is 0. -/
+theorem flowBracketBalance_bracketSpan {tokens : Array (Positioned YamlToken)} {a b : Nat}
+    (h_ab : a < b) (h_b : b < tokens.size)
+    (h_open : flowBracketDelta tokens[a]!.val = 1)
+    (h_close : flowBracketDelta tokens[b]!.val = -1)
+    (h_inner : flowBracketBalance tokens (a + 1) b = 0) :
+    flowBracketBalance tokens a (b + 1) = 0 := by
+  have ha : a < tokens.size := by omega
+  have ha_list : a < tokens.toList.length := by simpa using ha
+  have hb_list : b < tokens.toList.length := by simpa using h_b
+  have e_open : flowBracketBalance tokens a (a + 1) = 1 := by
+    rw [flowBracketBalance_single tokens a ha_list]
+    have h1 : tokens.toList[a]'ha_list = tokens[a] := Array.getElem_toList ha
+    have h2 : tokens[a] = tokens[a]! := (getElem!_pos tokens a ha).symm
+    rw [h1, h2]; exact h_open
+  have e_close : flowBracketBalance tokens b (b + 1) = -1 := by
+    rw [flowBracketBalance_single tokens b hb_list]
+    have h1 : tokens.toList[b]'hb_list = tokens[b] := Array.getElem_toList h_b
+    have h2 : tokens[b] = tokens[b]! := (getElem!_pos tokens b h_b).symm
+    rw [h1, h2]; exact h_close
+  rw [flowBracketBalance_compose tokens a (a + 1) (b + 1) (by omega) (by omega),
+      flowBracketBalance_compose tokens (a + 1) b (b + 1) (by omega) (by omega),
+      e_open, h_inner, e_close]
+  omega
+
+theorem flow_parser_ok_of_structure (tokens : Array (Positioned YamlToken)) (fuel : Nat)
+    (hsub : FlowSubrangesOk tokens) :
+    (∀ lo hi, lo ≤ hi → hi < tokens.size → tokens[hi]!.val = .flowSequenceEnd →
+       flowBracketBalance tokens lo hi = 0 → ParseNodeFlowSeqOk tokens hi fuel lo) ∧
+    (∀ lo hi, lo ≤ hi → hi < tokens.size → tokens[hi]!.val = .flowMappingEnd →
+       flowBracketBalance tokens lo hi = 0 → ParseEntryFlowMapOk tokens hi fuel lo) := by
+  -- Strong induction on a span bound `n`; the conjunctive motive proves both predicates.
+  have key : ∀ n : Nat, ∀ lo hi : Nat, hi - lo ≤ n →
+      (lo ≤ hi → hi < tokens.size → tokens[hi]!.val = .flowSequenceEnd →
+        flowBracketBalance tokens lo hi = 0 → ParseNodeFlowSeqOk tokens hi fuel lo) ∧
+      (lo ≤ hi → hi < tokens.size → tokens[hi]!.val = .flowMappingEnd →
+        flowBracketBalance tokens lo hi = 0 → ParseEntryFlowMapOk tokens hi fuel lo) := by
+    intro n
+    induction n using Nat.strongRecOn with
+    | ind n IH =>
+      intro lo hi h_span
+      refine ⟨?_, ?_⟩
+      · ------------------------------------------------------------------ SEQ side
+        intro h_lo_le h_hi_sz h_hi_tok h_hi_bal
+        intro ps m h_tok h_m_pos h_m_le h_pos h_bs h_bal_ps h_fueladq h_cs
+        have hbody : SeqBodyProps tokens lo hi := hsub.seq lo hi h_lo_le h_hi_sz h_hi_tok h_hi_bal
+        have hadv_pos : ps.advance.pos = ps.pos + 1 := rfl
+        have h_pos_sz : ps.pos < ps.tokens.size := by
+          rcases h_cs with ⟨c, s, hp⟩ | hp | hp <;> exact (peek_some_val hp).1
+        have h_pos_sz' : ps.pos < tokens.size := by rw [← h_tok]; exact h_pos_sz
+        rcases h_cs with ⟨c, s, h_peek⟩ | h_peek | h_peek
+        · -- scalar leaf (§III)
+          exact parseNode_seqScalar_ok hbody h_hi_sz ps m h_m_pos h_tok h_pos h_bs h_bal_ps c s h_peek
+        · -- flowSequenceStart bracket → inner SEQ via IH.1
+          have h_val : tokens[ps.pos]!.val = .flowSequenceStart := by
+            rw [← h_tok]; exact (peek_some_val h_peek).2
+          obtain ⟨j, h_kj, h_j_hi, h_j_tok, h_inner_bal, h_j1_le, h_succ⟩ :=
+            hbody.bracket_seq ps.pos h_bs h_pos h_bal_ps h_val
+          have h_inner_span : j - (ps.pos + 1) < n := by omega
+          have hbody_inner : SeqBodyProps tokens (ps.pos + 1) j :=
+            hsub.seq (ps.pos + 1) j (by omega) (by omega) h_j_tok h_inner_bal
+          have h_pn_inner : ParseNodeFlowSeqOk tokens j fuel (ps.pos + 1) :=
+            (IH (j - (ps.pos + 1)) h_inner_span (ps.pos + 1) j (Nat.le_refl _)).1
+              (by omega) (by omega) h_j_tok h_inner_bal
+          have pre : LoopSeqPreconditions tokens ps.advance j ps.advance.pos (m - 2) :=
+            loopSeqPre_of tokens ps.advance j (m - 2)
+              (by show ps.tokens = tokens; exact h_tok)
+              hbody_inner (h_pn_inner.mono (by omega)) (by rw [hadv_pos]; omega)
+              (by omega) h_j_tok (by rw [hadv_pos]; omega)
+          have pre' : LoopSeqPreconditions ps.tokens ps.advance j ps.advance.pos (m - 2) := by
+            rw [h_tok]; exact pre
+          obtain ⟨items, ps2, h_pfs, h_pos2, h_tok2, h_tp2⟩ :=
+            parseFlowSequence_emitter_ok ps (m - 2) j ps.advance.pos pre'
+          have h_node := parseNode_flowSeqStart_of_parse ps ps2 ((m - 2) + 1)
+            (YamlValue.sequence .flow items) h_peek h_pfs
+          rw [show (m - 2) + 1 + 1 = m from by omega] at h_node
+          have hp_pos : (applyNodeFinalization (YamlValue.sequence .flow items) ps2 {}
+              (ps.peekPos?.getD { offset := 0, line := 0, col := 0 })).2.pos = j + 1 := by
+            rw [applyNodeFinalization_pos, h_pos2]
+          have hp_tok : (applyNodeFinalization (YamlValue.sequence .flow items) ps2 {}
+              (ps.peekPos?.getD { offset := 0, line := 0, col := 0 })).2.tokens = tokens := by
+            rw [applyNodeFinalization_tokens, h_tok2]; exact h_tok
+          have hp_tp : (applyNodeFinalization (YamlValue.sequence .flow items) ps2 {}
+              (ps.peekPos?.getD { offset := 0, line := 0, col := 0 })).2.trackPositions
+              = ps.trackPositions := by
+            rw [applyNodeFinalization_trackPositions, h_tp2]
+          refine ⟨_, (applyNodeFinalization (YamlValue.sequence .flow items) ps2 {}
+            (ps.peekPos?.getD { offset := 0, line := 0, col := 0 })).2,
+            h_node, ?_, ?_, hp_tok, hp_tp, ?_, ?_⟩
+          · rw [hp_pos]; omega
+          · rw [hp_pos]; omega
+          · rcases h_succ with h_fe | ⟨h_se, h_eq⟩
+            · have h_j1_lt : j + 1 < hi := by
+                rcases Nat.eq_or_lt_of_le h_j1_le with he | hl
+                · exfalso; rw [he, h_hi_tok] at h_fe; exact absurd h_fe (by decide)
+                · exact hl
+              exact Or.inl (peek_of_pos_val hp_pos (by rw [hp_tok]; omega) (by rw [hp_tok]; exact h_fe))
+            · exact Or.inr ⟨peek_of_pos_val hp_pos (by rw [hp_tok]; omega) (by rw [hp_tok]; exact h_se),
+                by rw [hp_pos]; exact h_eq⟩
+          · rw [hp_pos]
+            exact flowBracketBalance_bracketSpan h_kj (by omega) (by rw [h_val]; rfl)
+              (by rw [h_j_tok]; rfl) h_inner_bal
+        · -- flowMappingStart bracket → inner MAP via IH.2
+          have h_val : tokens[ps.pos]!.val = .flowMappingStart := by
+            rw [← h_tok]; exact (peek_some_val h_peek).2
+          obtain ⟨j, h_kj, h_j_hi, h_j_tok, h_inner_bal, h_j1_le, h_succ⟩ :=
+            hbody.bracket_map ps.pos h_bs h_pos h_bal_ps h_val
+          have h_inner_span : j - (ps.pos + 1) < n := by omega
+          have hbody_inner : MapBodyProps tokens (ps.pos + 1) j :=
+            hsub.map (ps.pos + 1) j (by omega) (by omega) h_j_tok h_inner_bal
+          have h_pn_inner : ParseEntryFlowMapOk tokens j fuel (ps.pos + 1) :=
+            (IH (j - (ps.pos + 1)) h_inner_span (ps.pos + 1) j (Nat.le_refl _)).2
+              (by omega) (by omega) h_j_tok h_inner_bal
+          have pre : LoopMapPreconditions tokens ps.advance j ps.advance.pos (m - 2) :=
+            loopMapPre_of tokens ps.advance j (m - 2)
+              (by show ps.tokens = tokens; exact h_tok)
+              hbody_inner (h_pn_inner.mono (by omega)) (by rw [hadv_pos]; omega)
+              (by omega) h_j_tok (by rw [hadv_pos]; omega)
+          have pre' : LoopMapPreconditions ps.tokens ps.advance j ps.advance.pos (m - 2) := by
+            rw [h_tok]; exact pre
+          obtain ⟨pairs, ps2, h_pfm, h_pos2, h_tok2, h_tp2⟩ :=
+            parseFlowMapping_emitter_ok ps (m - 2) j ps.advance.pos pre'
+          have h_node := parseNode_flowMapStart_of_parse ps ps2 ((m - 2) + 1)
+            (YamlValue.mapping .flow pairs) h_peek h_pfm
+          rw [show (m - 2) + 1 + 1 = m from by omega] at h_node
+          have hp_pos : (applyNodeFinalization (YamlValue.mapping .flow pairs) ps2 {}
+              (ps.peekPos?.getD { offset := 0, line := 0, col := 0 })).2.pos = j + 1 := by
+            rw [applyNodeFinalization_pos, h_pos2]
+          have hp_tok : (applyNodeFinalization (YamlValue.mapping .flow pairs) ps2 {}
+              (ps.peekPos?.getD { offset := 0, line := 0, col := 0 })).2.tokens = tokens := by
+            rw [applyNodeFinalization_tokens, h_tok2]; exact h_tok
+          have hp_tp : (applyNodeFinalization (YamlValue.mapping .flow pairs) ps2 {}
+              (ps.peekPos?.getD { offset := 0, line := 0, col := 0 })).2.trackPositions
+              = ps.trackPositions := by
+            rw [applyNodeFinalization_trackPositions, h_tp2]
+          refine ⟨_, (applyNodeFinalization (YamlValue.mapping .flow pairs) ps2 {}
+            (ps.peekPos?.getD { offset := 0, line := 0, col := 0 })).2,
+            h_node, ?_, ?_, hp_tok, hp_tp, ?_, ?_⟩
+          · rw [hp_pos]; omega
+          · rw [hp_pos]; omega
+          · rcases h_succ with h_fe | ⟨h_se, h_eq⟩
+            · have h_j1_lt : j + 1 < hi := by
+                rcases Nat.eq_or_lt_of_le h_j1_le with he | hl
+                · exfalso; rw [he, h_hi_tok] at h_fe; exact absurd h_fe (by decide)
+                · exact hl
+              exact Or.inl (peek_of_pos_val hp_pos (by rw [hp_tok]; omega) (by rw [hp_tok]; exact h_fe))
+            · exact Or.inr ⟨peek_of_pos_val hp_pos (by rw [hp_tok]; omega) (by rw [hp_tok]; exact h_se),
+                by rw [hp_pos]; exact h_eq⟩
+          · rw [hp_pos]
+            exact flowBracketBalance_bracketSpan h_kj (by omega) (by rw [h_val]; rfl)
+              (by rw [h_j_tok]; rfl) h_inner_bal
+      · ------------------------------------------------------------------ MAP side
+        intro h_lo_le h_hi_sz h_hi_tok h_hi_bal
+        intro ps m h_tok h_m_pos h_m_le h_pos h_bs h_bal_ps h_fueladq h_peek
+        have hbody : MapBodyProps tokens lo hi := hsub.map lo hi h_lo_le h_hi_sz h_hi_tok h_hi_bal
+        have hadv_pos : ps.advance.pos = ps.pos + 1 := rfl
+        obtain ⟨h_pos_sz, h_key_tok⟩ := peek_some_val h_peek
+        rw [h_tok] at h_pos_sz h_key_tok
+        obtain ⟨h_kc_lt, h_kc⟩ := hbody.key_content ps.pos h_bs h_pos h_bal_ps h_key_tok
+        -- The value half of an entry: given the key parse landed at the `.value` position `vp`,
+        -- run `parseFlowMappingValue` (scalar / bracket value) and land on FE / mapEnd.
+        have valStep : ∀ (key_ps : ParseState) (vp : Nat),
+            key_ps.pos = vp → key_ps.tokens = tokens →
+            key_ps.trackPositions = ps.trackPositions →
+            ps.pos < vp → vp < hi → tokens[vp]!.val = .value →
+            flowBracketBalance tokens ps.pos vp = 0 →
+            ∀ (savedPath : YamlPath) (keyContent : String),
+              ∃ val_val val_ps,
+                parseFlowMappingValue key_ps m savedPath keyContent = .ok (val_val, val_ps) ∧
+                val_ps.pos > ps.pos ∧ val_ps.pos ≤ hi ∧ val_ps.tokens = tokens ∧
+                val_ps.trackPositions = ps.trackPositions ∧
+                (val_ps.peek? = some .flowEntry ∨
+                 (val_ps.peek? = some .flowMappingEnd ∧ val_ps.pos = hi)) ∧
+                flowBracketBalance tokens ps.pos val_ps.pos = 0 := by
+          intro key_ps vp h_kps_pos h_kps_tok h_kps_tp h_vp_gt h_vp_lt h_vp_val h_bal_key
+            savedPath keyContent
+          have h_bal_lo_vp : flowBracketBalance tokens lo vp = 0 := by
+            rw [flowBracketBalance_compose tokens lo ps.pos vp h_bs (by omega), h_bal_ps, h_bal_key]
+            omega
+          obtain ⟨h_vc_lt, h_vc⟩ := hbody.value_content vp (by omega) h_vp_lt h_bal_lo_vp h_vp_val
+          have h_kps_val_peek : key_ps.peek? = some .value :=
+            peek_of_pos_val h_kps_pos (by rw [h_kps_tok]; omega)
+              (by rw [h_kps_tok]; exact h_vp_val)
+          simp only [isFlowContentStart] at h_vc
+          rcases h_vc with ⟨cv, sv, h_vval⟩ | h_vval | h_vval
+          · -- scalar value
+            obtain ⟨val_ps, h_vparse, h_vpos, h_vtok, h_vtp⟩ :=
+              parseFlowMappingValue_scalar key_ps m h_m_pos savedPath keyContent cv sv
+                h_kps_val_peek (by rw [h_kps_pos, h_kps_tok]; omega)
+                (by rw [h_kps_tok, h_kps_pos]; exact h_vval)
+            have hv_pos : val_ps.pos = vp + 2 := by rw [h_vpos, h_kps_pos]
+            have hv_tok : val_ps.tokens = tokens := by rw [h_vtok]; exact h_kps_tok
+            have hv_tp : val_ps.trackPositions = ps.trackPositions := by rw [h_vtp]; exact h_kps_tp
+            obtain ⟨h_land_le, h_land⟩ :=
+              hbody.value_scalar_succ vp (by omega) h_vp_lt h_bal_lo_vp h_vp_val ⟨cv, sv, h_vval⟩
+            have h_bal_full : flowBracketBalance tokens ps.pos (vp + 2) = 0 := by
+              have hd_value : flowBracketDelta tokens[vp]!.val = 0 := by rw [h_vp_val]; rfl
+              have hd_vscalar : flowBracketDelta tokens[vp + 1]!.val = 0 := by rw [h_vval]; rfl
+              have hs_value : flowBracketBalance tokens vp (vp + 1) = 0 :=
+                flowBracketBalance_step_zero (by omega) hd_value
+              have hs_vscalar : flowBracketBalance tokens (vp + 1) (vp + 2) = 0 :=
+                flowBracketBalance_step_zero (by omega) hd_vscalar
+              rw [flowBracketBalance_compose tokens ps.pos vp (vp + 2) (by omega) (by omega),
+                  flowBracketBalance_compose tokens vp (vp + 1) (vp + 2) (by omega) (by omega),
+                  h_bal_key, hs_value, hs_vscalar]; omega
+            refine ⟨_, val_ps, h_vparse, by rw [hv_pos]; omega, by rw [hv_pos]; omega, hv_tok, hv_tp,
+              ?_, by rw [hv_pos]; exact h_bal_full⟩
+            rcases h_land with h_fe | ⟨h_me, h_eq⟩
+            · exact Or.inl (peek_of_pos_val hv_pos (by rw [hv_tok]; omega) (by rw [hv_tok]; exact h_fe))
+            · exact Or.inr ⟨peek_of_pos_val hv_pos (by rw [hv_tok]; omega) (by rw [hv_tok]; exact h_me),
+                by rw [hv_pos]; exact h_eq⟩
+          · -- flowSequenceStart value → inner SEQ via IH.1
+            obtain ⟨jv, h_vp1_jv, h_jv_hi, h_jv_match, h_jv_bal, h_jv1_le, h_jv_succ⟩ :=
+              hbody.value_bracket_succ vp (by omega) h_vp_lt h_bal_lo_vp h_vp_val (Or.inl h_vval)
+            have h_jv_tok : tokens[jv]!.val = .flowSequenceEnd := by
+              rcases h_jv_match with ⟨_, h⟩ | ⟨h, _⟩
+              · exact h
+              · rw [h_vval] at h; exact absurd h (by decide)
+            have h_inner_span : jv - (vp + 2) < n := by omega
+            have hbody_inner : SeqBodyProps tokens (vp + 2) jv :=
+              hsub.seq (vp + 2) jv (by omega) (by omega) h_jv_tok h_jv_bal
+            have h_pn_inner : ParseNodeFlowSeqOk tokens jv fuel (vp + 2) :=
+              (IH (jv - (vp + 2)) h_inner_span (vp + 2) jv (Nat.le_refl _)).1
+                (by omega) (by omega) h_jv_tok h_jv_bal
+            let psKa := ({ key_ps with currentPath := savedPath.push (.key keyContent) }
+              : ParseState).advance
+            have h_psKa_tok : psKa.tokens = tokens := h_kps_tok
+            have h_psKaa_pos : psKa.advance.pos = vp + 2 := by
+              show key_ps.pos + 1 + 1 = vp + 2; rw [h_kps_pos]
+            have pre0 : LoopSeqPreconditions tokens psKa.advance jv psKa.advance.pos (m - 2) := by
+              apply loopSeqPre_of tokens psKa.advance jv (m - 2)
+              · show psKa.tokens = tokens; exact h_psKa_tok
+              · rw [h_psKaa_pos]; exact hbody_inner
+              · rw [h_psKaa_pos]; exact h_pn_inner.mono (by omega)
+              · rw [h_psKaa_pos]; omega
+              · omega
+              · exact h_jv_tok
+              · rw [h_psKaa_pos]; omega
+            have pre' : LoopSeqPreconditions psKa.tokens psKa.advance jv psKa.advance.pos (m - 2) := by
+              rw [show psKa.tokens = tokens from h_psKa_tok]; exact pre0
+            obtain ⟨items_v, ps2v, h_pfsv, h_pos2v, h_tok2v, h_tp2v⟩ :=
+              parseFlowSequence_emitter_ok psKa (m - 2) jv psKa.advance.pos pre'
+            obtain ⟨vval, val_ps, h_vparse, h_vfpos, h_vftok, h_vftp⟩ :=
+              parseFlowMappingValue_flowSeqStart_of_parse key_ps m savedPath keyContent ps2v
+                (YamlValue.sequence .flow items_v) ((m - 2) + 1) (by omega)
+                h_kps_val_peek (by rw [h_kps_pos, h_kps_tok]; omega)
+                (by rw [h_kps_tok, h_kps_pos]; exact h_vval) h_pfsv
+            have hv_pos : val_ps.pos = jv + 1 := by rw [h_vfpos, h_pos2v]
+            have hv_tok : val_ps.tokens = tokens := by rw [h_vftok, h_tok2v]; exact h_psKa_tok
+            have hv_tp : val_ps.trackPositions = ps.trackPositions := by
+              rw [h_vftp, h_tp2v]; exact h_kps_tp
+            have h_bal_full : flowBracketBalance tokens ps.pos (jv + 1) = 0 := by
+              have hd_value : flowBracketDelta tokens[vp]!.val = 0 := by rw [h_vp_val]; rfl
+              have hs_value : flowBracketBalance tokens vp (vp + 1) = 0 :=
+                flowBracketBalance_step_zero (by omega) hd_value
+              have h_bracket : flowBracketBalance tokens (vp + 1) (jv + 1) = 0 :=
+                flowBracketBalance_bracketSpan h_vp1_jv (by omega) (by rw [h_vval]; rfl)
+                  (by rw [h_jv_tok]; rfl) h_jv_bal
+              rw [flowBracketBalance_compose tokens ps.pos (vp + 1) (jv + 1) (by omega) (by omega),
+                  flowBracketBalance_compose tokens ps.pos vp (vp + 1) (by omega) (by omega),
+                  h_bal_key, hs_value, h_bracket]; omega
+            refine ⟨_, val_ps, h_vparse, by rw [hv_pos]; omega, by rw [hv_pos]; omega, hv_tok, hv_tp,
+              ?_, by rw [hv_pos]; exact h_bal_full⟩
+            rcases h_jv_succ with h_fe | ⟨h_me, h_eq⟩
+            · exact Or.inl (peek_of_pos_val hv_pos (by rw [hv_tok]; omega) (by rw [hv_tok]; exact h_fe))
+            · exact Or.inr ⟨peek_of_pos_val hv_pos (by rw [hv_tok]; omega) (by rw [hv_tok]; exact h_me),
+                by rw [hv_pos]; exact h_eq⟩
+          · -- flowMappingStart value → inner MAP via IH.2
+            obtain ⟨jv, h_vp1_jv, h_jv_hi, h_jv_match, h_jv_bal, h_jv1_le, h_jv_succ⟩ :=
+              hbody.value_bracket_succ vp (by omega) h_vp_lt h_bal_lo_vp h_vp_val (Or.inr h_vval)
+            have h_jv_tok : tokens[jv]!.val = .flowMappingEnd := by
+              rcases h_jv_match with ⟨h, _⟩ | ⟨_, h⟩
+              · rw [h_vval] at h; exact absurd h (by decide)
+              · exact h
+            have h_inner_span : jv - (vp + 2) < n := by omega
+            have hbody_inner : MapBodyProps tokens (vp + 2) jv :=
+              hsub.map (vp + 2) jv (by omega) (by omega) h_jv_tok h_jv_bal
+            have h_pn_inner : ParseEntryFlowMapOk tokens jv fuel (vp + 2) :=
+              (IH (jv - (vp + 2)) h_inner_span (vp + 2) jv (Nat.le_refl _)).2
+                (by omega) (by omega) h_jv_tok h_jv_bal
+            let psKa := ({ key_ps with currentPath := savedPath.push (.key keyContent) }
+              : ParseState).advance
+            have h_psKa_tok : psKa.tokens = tokens := h_kps_tok
+            have h_psKaa_pos : psKa.advance.pos = vp + 2 := by
+              show key_ps.pos + 1 + 1 = vp + 2; rw [h_kps_pos]
+            have pre0 : LoopMapPreconditions tokens psKa.advance jv psKa.advance.pos (m - 2) := by
+              apply loopMapPre_of tokens psKa.advance jv (m - 2)
+              · show psKa.tokens = tokens; exact h_psKa_tok
+              · rw [h_psKaa_pos]; exact hbody_inner
+              · rw [h_psKaa_pos]; exact h_pn_inner.mono (by omega)
+              · rw [h_psKaa_pos]; omega
+              · omega
+              · exact h_jv_tok
+              · rw [h_psKaa_pos]; omega
+            have pre' : LoopMapPreconditions psKa.tokens psKa.advance jv psKa.advance.pos (m - 2) := by
+              rw [show psKa.tokens = tokens from h_psKa_tok]; exact pre0
+            obtain ⟨pairs_v, ps2v, h_pfmv, h_pos2v, h_tok2v, h_tp2v⟩ :=
+              parseFlowMapping_emitter_ok psKa (m - 2) jv psKa.advance.pos pre'
+            obtain ⟨vval, val_ps, h_vparse, h_vfpos, h_vftok, h_vftp⟩ :=
+              parseFlowMappingValue_flowMapStart_of_parse key_ps m savedPath keyContent ps2v
+                (YamlValue.mapping .flow pairs_v) ((m - 2) + 1) (by omega)
+                h_kps_val_peek (by rw [h_kps_pos, h_kps_tok]; omega)
+                (by rw [h_kps_tok, h_kps_pos]; exact h_vval) h_pfmv
+            have hv_pos : val_ps.pos = jv + 1 := by rw [h_vfpos, h_pos2v]
+            have hv_tok : val_ps.tokens = tokens := by rw [h_vftok, h_tok2v]; exact h_psKa_tok
+            have hv_tp : val_ps.trackPositions = ps.trackPositions := by
+              rw [h_vftp, h_tp2v]; exact h_kps_tp
+            have h_bal_full : flowBracketBalance tokens ps.pos (jv + 1) = 0 := by
+              have hd_value : flowBracketDelta tokens[vp]!.val = 0 := by rw [h_vp_val]; rfl
+              have hs_value : flowBracketBalance tokens vp (vp + 1) = 0 :=
+                flowBracketBalance_step_zero (by omega) hd_value
+              have h_bracket : flowBracketBalance tokens (vp + 1) (jv + 1) = 0 :=
+                flowBracketBalance_bracketSpan h_vp1_jv (by omega) (by rw [h_vval]; rfl)
+                  (by rw [h_jv_tok]; rfl) h_jv_bal
+              rw [flowBracketBalance_compose tokens ps.pos (vp + 1) (jv + 1) (by omega) (by omega),
+                  flowBracketBalance_compose tokens ps.pos vp (vp + 1) (by omega) (by omega),
+                  h_bal_key, hs_value, h_bracket]; omega
+            refine ⟨_, val_ps, h_vparse, by rw [hv_pos]; omega, by rw [hv_pos]; omega, hv_tok, hv_tp,
+              ?_, by rw [hv_pos]; exact h_bal_full⟩
+            rcases h_jv_succ with h_fe | ⟨h_me, h_eq⟩
+            · exact Or.inl (peek_of_pos_val hv_pos (by rw [hv_tok]; omega) (by rw [hv_tok]; exact h_fe))
+            · exact Or.inr ⟨peek_of_pos_val hv_pos (by rw [hv_tok]; omega) (by rw [hv_tok]; exact h_me),
+                by rw [hv_pos]; exact h_eq⟩
+        -- KEY half: dispatch on the key content kind, produce `key_ps`, then call `valStep`.
+        simp only [isFlowContentStart] at h_kc
+        rcases h_kc with ⟨ck, sk, h_kval⟩ | h_kval | h_kval
+        · -- scalar key
+          obtain ⟨h_v_lt, h_value_tok⟩ :=
+            hbody.key_scalar_value ps.pos h_bs h_pos h_bal_ps h_key_tok ⟨ck, sk, h_kval⟩
+          have h_adv_peek : ps.advance.peek? = some (.scalar ck sk) :=
+            peek_of_pos_val hadv_pos (by rw [show ps.advance.tokens = ps.tokens from rfl, h_tok]; omega)
+              (by rw [show ps.advance.tokens = ps.tokens from rfl, h_tok]; exact h_kval)
+          obtain ⟨key_ps, h_key_parse, h_key_pos, h_key_tokeq, h_key_tp⟩ :=
+            parseExplicitKey_scalar ps.advance m h_m_pos ck sk h_adv_peek
+          have h_kps_pos : key_ps.pos = ps.pos + 2 := by rw [h_key_pos, hadv_pos]
+          have h_kps_tok : key_ps.tokens = tokens := by
+            rw [h_key_tokeq, show ps.advance.tokens = ps.tokens from rfl]; exact h_tok
+          have h_kps_tp : key_ps.trackPositions = ps.trackPositions := by
+            rw [h_key_tp, show ps.advance.trackPositions = ps.trackPositions from rfl]
+          have h_bal_key : flowBracketBalance tokens ps.pos (ps.pos + 2) = 0 := by
+            have hd_key : flowBracketDelta tokens[ps.pos]!.val = 0 := by rw [h_key_tok]; rfl
+            have hd_kscalar : flowBracketDelta tokens[ps.pos + 1]!.val = 0 := by rw [h_kval]; rfl
+            have hs_key : flowBracketBalance tokens ps.pos (ps.pos + 1) = 0 :=
+              flowBracketBalance_step_zero (by omega) hd_key
+            have hs_kscalar : flowBracketBalance tokens (ps.pos + 1) (ps.pos + 2) = 0 :=
+              flowBracketBalance_step_zero (by omega) hd_kscalar
+            rw [flowBracketBalance_compose tokens ps.pos (ps.pos + 1) (ps.pos + 2) (by omega) (by omega),
+                hs_key, hs_kscalar]; omega
+          exact ⟨_, key_ps, h_key_parse, by rw [h_kps_pos]; omega, by rw [h_kps_pos]; omega,
+            h_kps_tok, h_kps_tp,
+            valStep key_ps (ps.pos + 2) h_kps_pos h_kps_tok h_kps_tp (by omega) (by omega)
+              h_value_tok h_bal_key⟩
+        · -- flowSequenceStart key → inner SEQ via IH.1
+          obtain ⟨jk, h_p1_jk, h_jk_hi, h_jk_match, h_jk_bal, h_jk1_lt, h_value_tok⟩ :=
+            hbody.key_bracket_value ps.pos h_bs h_pos h_bal_ps h_key_tok (Or.inl h_kval)
+          have h_jk_tok : tokens[jk]!.val = .flowSequenceEnd := by
+            rcases h_jk_match with ⟨_, h⟩ | ⟨h, _⟩
+            · exact h
+            · rw [h_kval] at h; exact absurd h (by decide)
+          have h_inner_span : jk - (ps.pos + 2) < n := by omega
+          have hbody_inner : SeqBodyProps tokens (ps.pos + 2) jk :=
+            hsub.seq (ps.pos + 2) jk (by omega) (by omega) h_jk_tok h_jk_bal
+          have h_pn_inner : ParseNodeFlowSeqOk tokens jk fuel (ps.pos + 2) :=
+            (IH (jk - (ps.pos + 2)) h_inner_span (ps.pos + 2) jk (Nat.le_refl _)).1
+              (by omega) (by omega) h_jk_tok h_jk_bal
+          have h_adv_peek : ps.advance.peek? = some .flowSequenceStart :=
+            peek_of_pos_val hadv_pos (by rw [show ps.advance.tokens = ps.tokens from rfl, h_tok]; omega)
+              (by rw [show ps.advance.tokens = ps.tokens from rfl, h_tok]; exact h_kval)
+          have h_adva_pos : ps.advance.advance.pos = ps.pos + 2 := rfl
+          have pre0 : LoopSeqPreconditions tokens ps.advance.advance jk ps.advance.advance.pos (m - 2) := by
+            apply loopSeqPre_of tokens ps.advance.advance jk (m - 2)
+            · show ps.tokens = tokens; exact h_tok
+            · rw [h_adva_pos]; exact hbody_inner
+            · rw [h_adva_pos]; exact h_pn_inner.mono (by omega)
+            · rw [h_adva_pos]; omega
+            · omega
+            · exact h_jk_tok
+            · rw [h_adva_pos]; omega
+          have pre' : LoopSeqPreconditions ps.advance.tokens ps.advance.advance jk
+              ps.advance.advance.pos (m - 2) := by
+            rw [show ps.advance.tokens = tokens from h_tok]; exact pre0
+          obtain ⟨items_k, ps2k, h_pfsk, h_pos2k, h_tok2k, h_tp2k⟩ :=
+            parseFlowSequence_emitter_ok ps.advance (m - 2) jk ps.advance.advance.pos pre'
+          have h_key_parse := parseExplicitKey_flowSeqStart_of_parse ps.advance ps2k ((m - 2) + 1)
+            (YamlValue.sequence .flow items_k) h_adv_peek h_pfsk
+          rw [show (m - 2) + 1 + 1 = m from by omega] at h_key_parse
+          have h_kps_pos : (applyNodeFinalization (YamlValue.sequence .flow items_k) ps2k {}
+              (ps.advance.peekPos?.getD { offset := 0, line := 0, col := 0 })).2.pos = jk + 1 := by
+            rw [applyNodeFinalization_pos, h_pos2k]
+          have h_kps_tok : (applyNodeFinalization (YamlValue.sequence .flow items_k) ps2k {}
+              (ps.advance.peekPos?.getD { offset := 0, line := 0, col := 0 })).2.tokens = tokens := by
+            rw [applyNodeFinalization_tokens, h_tok2k, show ps.advance.tokens = ps.tokens from rfl]
+            exact h_tok
+          have h_kps_tp : (applyNodeFinalization (YamlValue.sequence .flow items_k) ps2k {}
+              (ps.advance.peekPos?.getD { offset := 0, line := 0, col := 0 })).2.trackPositions
+              = ps.trackPositions := by
+            rw [applyNodeFinalization_trackPositions, h_tp2k,
+              show ps.advance.trackPositions = ps.trackPositions from rfl]
+          have h_bal_key : flowBracketBalance tokens ps.pos (jk + 1) = 0 := by
+            have hd_key : flowBracketDelta tokens[ps.pos]!.val = 0 := by rw [h_key_tok]; rfl
+            have hs_key : flowBracketBalance tokens ps.pos (ps.pos + 1) = 0 :=
+              flowBracketBalance_step_zero (by omega) hd_key
+            have h_bracket : flowBracketBalance tokens (ps.pos + 1) (jk + 1) = 0 :=
+              flowBracketBalance_bracketSpan h_p1_jk (by omega) (by rw [h_kval]; rfl)
+                (by rw [h_jk_tok]; rfl) h_jk_bal
+            rw [flowBracketBalance_compose tokens ps.pos (ps.pos + 1) (jk + 1) (by omega) (by omega),
+                hs_key, h_bracket]; omega
+          exact ⟨_, (applyNodeFinalization (YamlValue.sequence .flow items_k) ps2k {}
+              (ps.advance.peekPos?.getD { offset := 0, line := 0, col := 0 })).2, h_key_parse,
+            by rw [h_kps_pos]; omega, by rw [h_kps_pos]; omega, h_kps_tok, h_kps_tp,
+            valStep _ (jk + 1) h_kps_pos h_kps_tok h_kps_tp (by omega) (by omega)
+              h_value_tok h_bal_key⟩
+        · -- flowMappingStart key → inner MAP via IH.2
+          obtain ⟨jk, h_p1_jk, h_jk_hi, h_jk_match, h_jk_bal, h_jk1_lt, h_value_tok⟩ :=
+            hbody.key_bracket_value ps.pos h_bs h_pos h_bal_ps h_key_tok (Or.inr h_kval)
+          have h_jk_tok : tokens[jk]!.val = .flowMappingEnd := by
+            rcases h_jk_match with ⟨h, _⟩ | ⟨_, h⟩
+            · rw [h_kval] at h; exact absurd h (by decide)
+            · exact h
+          have h_inner_span : jk - (ps.pos + 2) < n := by omega
+          have hbody_inner : MapBodyProps tokens (ps.pos + 2) jk :=
+            hsub.map (ps.pos + 2) jk (by omega) (by omega) h_jk_tok h_jk_bal
+          have h_pn_inner : ParseEntryFlowMapOk tokens jk fuel (ps.pos + 2) :=
+            (IH (jk - (ps.pos + 2)) h_inner_span (ps.pos + 2) jk (Nat.le_refl _)).2
+              (by omega) (by omega) h_jk_tok h_jk_bal
+          have h_adv_peek : ps.advance.peek? = some .flowMappingStart :=
+            peek_of_pos_val hadv_pos (by rw [show ps.advance.tokens = ps.tokens from rfl, h_tok]; omega)
+              (by rw [show ps.advance.tokens = ps.tokens from rfl, h_tok]; exact h_kval)
+          have h_adva_pos : ps.advance.advance.pos = ps.pos + 2 := rfl
+          have pre0 : LoopMapPreconditions tokens ps.advance.advance jk ps.advance.advance.pos (m - 2) := by
+            apply loopMapPre_of tokens ps.advance.advance jk (m - 2)
+            · show ps.tokens = tokens; exact h_tok
+            · rw [h_adva_pos]; exact hbody_inner
+            · rw [h_adva_pos]; exact h_pn_inner.mono (by omega)
+            · rw [h_adva_pos]; omega
+            · omega
+            · exact h_jk_tok
+            · rw [h_adva_pos]; omega
+          have pre' : LoopMapPreconditions ps.advance.tokens ps.advance.advance jk
+              ps.advance.advance.pos (m - 2) := by
+            rw [show ps.advance.tokens = tokens from h_tok]; exact pre0
+          obtain ⟨pairs_k, ps2k, h_pfmk, h_pos2k, h_tok2k, h_tp2k⟩ :=
+            parseFlowMapping_emitter_ok ps.advance (m - 2) jk ps.advance.advance.pos pre'
+          have h_key_parse := parseExplicitKey_flowMapStart_of_parse ps.advance ps2k ((m - 2) + 1)
+            (YamlValue.mapping .flow pairs_k) h_adv_peek h_pfmk
+          rw [show (m - 2) + 1 + 1 = m from by omega] at h_key_parse
+          have h_kps_pos : (applyNodeFinalization (YamlValue.mapping .flow pairs_k) ps2k {}
+              (ps.advance.peekPos?.getD { offset := 0, line := 0, col := 0 })).2.pos = jk + 1 := by
+            rw [applyNodeFinalization_pos, h_pos2k]
+          have h_kps_tok : (applyNodeFinalization (YamlValue.mapping .flow pairs_k) ps2k {}
+              (ps.advance.peekPos?.getD { offset := 0, line := 0, col := 0 })).2.tokens = tokens := by
+            rw [applyNodeFinalization_tokens, h_tok2k, show ps.advance.tokens = ps.tokens from rfl]
+            exact h_tok
+          have h_kps_tp : (applyNodeFinalization (YamlValue.mapping .flow pairs_k) ps2k {}
+              (ps.advance.peekPos?.getD { offset := 0, line := 0, col := 0 })).2.trackPositions
+              = ps.trackPositions := by
+            rw [applyNodeFinalization_trackPositions, h_tp2k,
+              show ps.advance.trackPositions = ps.trackPositions from rfl]
+          have h_bal_key : flowBracketBalance tokens ps.pos (jk + 1) = 0 := by
+            have hd_key : flowBracketDelta tokens[ps.pos]!.val = 0 := by rw [h_key_tok]; rfl
+            have hs_key : flowBracketBalance tokens ps.pos (ps.pos + 1) = 0 :=
+              flowBracketBalance_step_zero (by omega) hd_key
+            have h_bracket : flowBracketBalance tokens (ps.pos + 1) (jk + 1) = 0 :=
+              flowBracketBalance_bracketSpan h_p1_jk (by omega) (by rw [h_kval]; rfl)
+                (by rw [h_jk_tok]; rfl) h_jk_bal
+            rw [flowBracketBalance_compose tokens ps.pos (ps.pos + 1) (jk + 1) (by omega) (by omega),
+                hs_key, h_bracket]; omega
+          exact ⟨_, (applyNodeFinalization (YamlValue.mapping .flow pairs_k) ps2k {}
+              (ps.advance.peekPos?.getD { offset := 0, line := 0, col := 0 })).2, h_key_parse,
+            by rw [h_kps_pos]; omega, by rw [h_kps_pos]; omega, h_kps_tok, h_kps_tp,
+            valStep _ (jk + 1) h_kps_pos h_kps_tok h_kps_tp (by omega) (by omega)
+              h_value_tok h_bal_key⟩
+  exact ⟨fun lo hi h1 h2 h3 h4 => (key (hi - lo) lo hi (Nat.le_refl _)).1 h1 h2 h3 h4,
+         fun lo hi h1 h2 h3 h4 => (key (hi - lo) lo hi (Nat.le_refl _)).2 h1 h2 h3 h4⟩
+
 end L4YAML.Proofs.ParserWellBehaved
