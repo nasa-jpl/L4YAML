@@ -347,7 +347,7 @@ theorem parseStream_emitSequence (style : CollectionStyle) (items : Array YamlVa
       have h_sz : i < items.size := by rwa [Array.length_toList] at hi
       exact h_eq ▸ emit_scans_in_flow_block _ (h_items ⟨i, h_sz⟩)
     obtain ⟨h_sz5, h_t0, h_tlast, h_t1, h_tpe, h_content0, h_fe_pattern,
-            h_pnok⟩ :=
+            _h_outer_bal, _h_dyck, h_pnok⟩ :=
       scanFiltered_emitSeq_nonempty_structure items tokens h_scan (by simp [h_list]) h_all_block
     -- Step 1: Unfold parseStream, dispatch expect .streamStart
     unfold parseStream
