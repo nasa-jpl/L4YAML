@@ -473,4 +473,92 @@ theorem parseEntry_mapScalar_ok {tokens : Array (Positioned YamlToken)}
         flowBracketBalance_compose tokens (ps.pos + 2) (ps.pos + 3) (ps.pos + 4) (by omega) (by omega),
         hs_key, hs_keyscalar, hs_value, hs_valscalar]; rfl
 
+/-! ## §V  Collection-entry acceptance — lifting the loop theorems (`.bridge.parsenode.brackets`, entry half)
+
+The §III/§IV leaves discharge the *scalar* cases of the node/entry inductions
+with no inductive hypothesis.  The *bracket* cases — a node whose token is an
+opening `[`/`{`, or a map entry whose key/value is a bracket group — reduce
+(via §II's `parseNode_flow{Seq,Map}Start_of_parse`) to a single success of the
+collection parser `parseFlowSequence` / `parseFlowMapping` over the inner body.
+
+This section lifts the already-closed *loop* theorems
+(`parseFlow{Sequence,Mapping}Loop_emitter_ok`) to those collection entry points.
+`parseFlowSequence ps (fuel+1)` consumes the opening `[`, runs the loop on
+`ps.advance`, and on the loop landing at the matching `]` (which the loop
+theorem guarantees) takes the closing branch and advances past it — so the
+whole collection consumes the span `[ps.pos, j+1)` and lands at `j+1`.
+
+The preconditions are exactly the existing `Loop{Seq,Map}Preconditions` bundles
+(`ParserWellBehaved.lean`), which the eventual span induction will discharge for
+the inner body from `FlowSubrangesOk` + the inductive hypothesis.  Like the
+leaves, these carry no `FlowSubrangesOk` hypothesis themselves: they are pure
+facts about how the collection parser dispatches once the loop is known to
+succeed, shared verbatim by the sequence and mapping node cases. -/
+
+/-- **Flow-sequence collection acceptance.**  Given the loop preconditions for
+    the inner body `[ps.advance.pos, j)` (with `j` the matching `]`),
+    `parseFlowSequence ps (fuel+1)` succeeds: it consumes the opening `[`, runs
+    `parseFlowSequenceLoop` to the closing `]` at `j`, and advances past it,
+    landing at `j+1` with the token array and `trackPositions` preserved.
+
+    The bridge between the closed loop theorem `parseFlowSequenceLoop_emitter_ok`
+    and §II's `parseNode_flowSeqStart_of_parse`: the latter consumes exactly a
+    `parseFlowSequence ps k = .ok (v, ps')` success of this shape. -/
+theorem parseFlowSequence_emitter_ok (ps : ParseState) (fuel j body_start : Nat)
+    (pre : LoopSeqPreconditions ps.tokens ps.advance j body_start fuel) :
+    ∃ items ps', parseFlowSequence ps (fuel + 1) =
+        .ok (YamlValue.sequence .flow items, ps') ∧
+      ps'.pos = j + 1 ∧ ps'.tokens = ps.tokens ∧ ps'.trackPositions = ps.trackPositions := by
+  obtain ⟨items, ps2, h_loop, h_peek2, h_pos2, h_tok2, h_tp2⟩ :=
+    parseFlowSequenceLoop_emitter_ok fuel ps.advance #[] j body_start
+      pre.h_pn pre.h_fuel pre.h_pos pre.h_end_pos pre.h_end_tok pre.h_at_end
+      pre.h_entry pre.h_content_start pre.h_after_fe pre.h_bal pre.h_bs
+  refine ⟨items, ps2.advance, ?_, ?_, ?_, ?_⟩
+  · -- Consume `[`, run the loop, take the closing-`]` branch, advance past it.
+    unfold parseFlowSequence
+    simp only [bind, Except.bind]
+    rw [h_loop]; simp only [h_peek2]
+  · -- `ps2.advance.pos = ps2.pos + 1 = j + 1` (loop landed at `j`).
+    show ps2.pos + 1 = j + 1
+    rw [h_pos2]
+  · -- tokens preserved (`ps.advance.tokens` is defeq `ps.tokens`).
+    show ps2.tokens = ps.tokens
+    rw [h_tok2]; simp only [ParseState.advance]
+  · -- trackPositions preserved.
+    show ps2.trackPositions = ps.trackPositions
+    rw [h_tp2]; simp only [ParseState.advance]
+
+/-- **Flow-mapping collection acceptance** (mirror of
+    `parseFlowSequence_emitter_ok`).  Given the loop preconditions for the inner
+    body `[ps.advance.pos, j)` (with `j` the matching `}`),
+    `parseFlowMapping ps (fuel+1)` succeeds, consuming the span `[ps.pos, j+1)`
+    and landing at `j+1`.  Bridges `parseFlowMappingLoop_emitter_ok` to §II's
+    `parseNode_flowMapStart_of_parse`.
+
+    The `LoopMapPreconditions.h_after_fe` gives the strict bound `k+1 < j` for the
+    post-separator key; the loop theorem only needs `k+1 ≤ j`, so it is weakened. -/
+theorem parseFlowMapping_emitter_ok (ps : ParseState) (fuel j body_start : Nat)
+    (pre : LoopMapPreconditions ps.tokens ps.advance j body_start fuel) :
+    ∃ pairs ps', parseFlowMapping ps (fuel + 1) =
+        .ok (YamlValue.mapping .flow pairs, ps') ∧
+      ps'.pos = j + 1 ∧ ps'.tokens = ps.tokens ∧ ps'.trackPositions = ps.trackPositions := by
+  obtain ⟨pairs, ps2, h_loop, h_peek2, h_pos2, h_tok2, h_tp2⟩ :=
+    parseFlowMappingLoop_emitter_ok fuel ps.advance #[] j body_start
+      pre.h_pn pre.h_fuel pre.h_pos pre.h_end_pos pre.h_end_tok pre.h_at_end
+      pre.h_entry pre.h_key_start
+      (fun k hk1 hk2 hk3 hk4 =>
+        let ⟨h1, h2⟩ := pre.h_after_fe k hk1 hk2 hk3 hk4; ⟨Nat.le_of_lt h1, h2⟩)
+      pre.h_bal pre.h_bs
+  refine ⟨pairs, ps2.advance, ?_, ?_, ?_, ?_⟩
+  · -- Consume `{`, run the loop, take the closing-`}` branch, advance past it.
+    unfold parseFlowMapping
+    simp only [bind, Except.bind]
+    rw [h_loop]; simp only [h_peek2]
+  · show ps2.pos + 1 = j + 1
+    rw [h_pos2]
+  · show ps2.tokens = ps.tokens
+    rw [h_tok2]; simp only [ParseState.advance]
+  · show ps2.trackPositions = ps.trackPositions
+    rw [h_tp2]; simp only [ParseState.advance]
+
 end L4YAML.Proofs.ParserWellBehaved
