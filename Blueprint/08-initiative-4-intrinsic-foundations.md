@@ -14766,7 +14766,17 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
-                **Total .body scope re-estimate (FORTY-SECOND revision —
+                **Total .body scope re-estimate (FORTY-THIRD revision —
+                after **Thread A step 1 landed** (the map-entry scalar leaf, §IV of
+                `FlowParserAcceptance.lean`): `parseEntry_mapScalar_ok` — the `ParseEntryFlowMapOk`
+                analogue of the seq scalar leaf — produces the full per-entry key+value parse body for a
+                scalar-keyed/scalar-valued entry, reading successors off `MapBodyProps` M4/M7. Needed two
+                reductions the seq leaf did not: `parseExplicitKey_scalar` (scalar peek → `parseNode` past
+                the empty-key guards) and `parseFlowMappingValue_scalar` (the file's only `do`-block
+                reduction: push key path → no-op `tryConsume .key` → consume `.value` → `parseNode` →
+                restore path), plus `flowBracketBalance_step_zero` for the four-token span balance; commit
+                `942c6837`, Reflection 195; **sorries held at 4** — pure enablement, axioms pure `[propext,
+                …]`, build green at 515 jobs), on top of the **FORTY-SECOND revision** —
                 after **Thread B landed** (the lone scanner-side sorry,
                 `FilteredTracking.lean`): the per-step `scanNextToken_filtered_grows` was *false*
                 (a §6.8.3 RESERVED directive scans to `skipToEndOfLine`, zero filtered growth, yet
@@ -22872,9 +22882,15 @@ sit together:
 
 *Thread A — parser-acceptance (the 4 remaining sorries, one well-mapped dependency chain).* These are the
 parser/value-side sorries; the scanner→token-shape bridge below them is already closed.
-  1. **Map-entry node acceptance** — the `ParseEntryFlowMapOk` analogue of the landed
+  1. ~~**Map-entry node acceptance** — the `ParseEntryFlowMapOk` analogue of the landed
      `parseNode_seqScalar_ok`: a scalar-keyed/scalar-valued entry (no IH needed), discharged from
-     `MapBodyProps` (M1–M8). A clean standalone brick in `FlowParserAcceptance.lean`. *(Next session.)*
+     `MapBodyProps`.~~ **✅ LANDED 2026-06-01 (commit `942c6837`, Reflection 195).** `FlowParserAcceptance.lean`
+     §IV: `parseEntry_mapScalar_ok` produces the `ParseEntryFlowMapOk` body for a scalar-keyed/scalar-valued
+     entry, reading the successors off `MapBodyProps` M4 (`.value` after a scalar key) and M7 (landing after a
+     scalar value). Needed two `do`/dispatch reductions the seq leaf did not — `parseExplicitKey_scalar` and
+     `parseFlowMappingValue_scalar` (the file's only `do`-block reduction: push key path → no-op
+     `tryConsume .key` → consume `.value` → `parseNode` → restore path) — plus `flowBracketBalance_step_zero`
+     for the four-token span balance. Enablement (sorry count held at 4); axioms pure `[propext, …]`.
   2. **The span strong-induction** `flow_parser_ok_of_structure : FlowSubrangesOk → ParseNodeFlowSeqOk
      ∧ ParseEntryFlowMapOk` — assemble the scalar leaf (§I) + bracket reductions (§II) + the §III /
      map-entry bridges by mutual strong induction on `hi − lo`; `SeqBodyProps`/`MapBodyProps`'s
@@ -22907,7 +22923,8 @@ parser/value-side sorries; the scanner→token-shape bridge below them is alread
      is now sorry-free. *The "emitter-never-emits-a-reserved-directive angle" anticipated in the prior
      roadmap was exactly right — it just resolves the obligation away rather than discharging it.*
 
-Closure order: Thread A is now the whole critical path (1 → 2 → 3 → 4); Thread B is done.
+Closure order: Thread A is now the whole critical path; step 1 (map-entry scalar leaf) landed
+2026-06-01, so the live remainder is **2 → 3 → 4** (the span strong-induction is next).
 Each step is one green sub-increment per the standing cadence. The `FlowParserAcceptance.lean` proofs
 written along Thread A double as the indexed-port template (`ParseNodeFlowSeqOkIx` is identical), so
 finishing them is also the migration scouting that makes any future Option-1 cutover mechanical.
@@ -22966,3 +22983,57 @@ sorries); `FilteredTracking.lean` is sorry-free; `lake build` green at 515 jobs;
 The indexed track's relevance shrinks again: its one genuine selling point over non-indexed was
 "cleaner scanner-side growth proofs," and the scanner-side growth obligation is now closed on the
 non-indexed rail by deletion. See [[Reflection 193]] for the Option-2 decision this executes against.
+
+### Reflection 195 (new, 2026-06-01): the map-entry leaf is the seq leaf run twice — but the second run is a `do`-block, so the brick's cost is the *monadic reduction*, not the structure
+
+Thread A step 1 — the `ParseEntryFlowMapOk` analogue of the landed `parseNode_seqScalar_ok` — looked, on
+the roadmap, like a near-copy of the sequence scalar leaf: same `MapBodyProps`-reads-successors shape, same
+IH-free justification (a scalar key and a scalar value each have no inner body). It mostly is. But a map
+*entry* is parsed by two distinct parser entry points in sequence — `parseExplicitKey` for the key, then
+`parseFlowMappingValue` for the value — and the second is a `do`-block, where the sequence leaf only ever
+touched the pure `match ps.peek? with …` dispatch of `parseNode`. That single difference is where all the
+real work went, and it carried three transferable lessons.
+
+**(1) The leaf-times-two decomposition: one structural brick, two thin reduction lemmas.** Rather than
+inline both parser calls into `parseEntry_mapScalar_ok`, I factored the two parser-shape facts out as
+`parseExplicitKey_scalar` (on a scalar peek, `parseExplicitKey` falls through its
+`.value`/`.flowEntry`/`.flowMappingEnd` empty-key guards to a plain `parseNode` — a one-line `simp` on top
+of the §I `parseNode_scalar_flow`) and `parseFlowMappingValue_scalar` (the value half). The main brick then
+reads purely as *structure*: M4 gives the `.value` after a scalar key, M7 gives the `.flowEntry`/`.flowMappingEnd`
+landing after a scalar value, and the four depth-0 tokens (`.key`, scalar, `.value`, scalar — every
+`flowBracketDelta = 0`) give the span balance via a new `flowBracketBalance_step_zero` helper composed four
+times. **Lesson: when a leaf case runs the engine more than once, give each engine-run its own reduction
+lemma; the top brick should compose *structure* facts, never re-derive parser dispatch.**
+
+**(2) Reducing a `do`-block needs the *literal* state, the two `tryConsume` outcomes, and `if_true` — and
+`set` is not available.** `parseFlowMappingValue` is `do let ps := {ps with currentPath := …}; let (_,ps) :=
+ps.tryConsume .key; let (consumed,ps) := ps.tryConsume .value; let (val,ps) ← if consumed then … ; .ok (val,
+{ps with currentPath := savedPath})`. The clean way to drive it is to name the path-pushed state and fold the
+def's occurrences onto that name — exactly what Mathlib's `set` does. **There is no `set` in core Lean**, and
+this repo is Mathlib-free, so the first attempt failed at the tactic itself. The working pattern: state every
+intermediate fact about the *spelled-out record literal* `({ps with currentPath := …} : ParseState)` — its
+`.peek?` is *defeq* to `ps.peek?` (peek reads only `pos`/`tokens`, which project through the update), so
+`have hpk1 : (literal).peek? = some .value := h_peek_value` typechecks with no tactic at all — then
+`simp only [parseFlowMappingValue, htck, htcv, hpk2, h_node, bind, Except.bind, if_true]` rewrites the two
+`tryConsume` calls to their `(Bool × ParseState)` outcomes, the inner `parseNode` to its result, the monadic
+bind, and — the one I missed first pass — the `if consumed` whose `consumed` reduced to `True`. **Lesson: a
+`do`-block reduction over a record-update state is `def-unfold + the dispatch outcomes + monad-bind + `if_true``;
+spell the state literal (its field reads are defeq to the base), and remember the boolean guard left behind by a
+resolved `tryConsume` still needs `if_true`.**
+
+**(3) Keep span arithmetic in `+k`-from-base form and rewrite the index with an `omega` fact, not defeq luck.**
+M7's successor lands at `k + 2` with `k = ps.pos + 2`, i.e. `ps.pos + 2 + 2`, while the parse positions
+accumulate as `ps.pos + 1 + 1 + …`. These are defeq but *not syntactically equal*, and `peek_of_pos_val`
+needs the index to match the position. Proving `hidx : ps.pos + 2 + 2 = ps.pos + 4 := by omega` and
+`rw [hidx]` to normalise the M7 conclusion to `ps.pos + 4` (then carrying every downstream position as
+`ps.pos + 4`) kept the landing-peek and span-balance goals syntactically aligned, where leaning on defeq would
+have made the `rw`s brittle. **Lesson: when two index arithmetics meet (structural `+k` vs accumulated `+1`s),
+pick one normal form and `rw` the other into it with an explicit `omega` equation — don't hope the
+elaborator's defeq check papers over the mismatch.**
+
+Net: one structural brick + three reduction/helper lemmas, all sorry-free (axioms pure
+`[propext, Classical.choice, Quot.sound]`); enablement-only, so the sorry count holds at 4; `lake build`
+green at 515 jobs; commit `942c6837`. Like the seq leaf ([[Reflection 193]]'s harvest), this brick doubles as
+the indexed-port template — `parseFlowMappingValueIx` shares the `do`-block shape, so the reduction recipe in
+lesson (2) transfers verbatim. Next live step is the span strong-induction (Thread A step 2), which finally
+opens the mutual induction these leaves were harvested ahead of.
