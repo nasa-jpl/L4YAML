@@ -14766,7 +14766,19 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
-                **Total .body scope re-estimate (FORTY-THIRD revision —
+                **Total .body scope re-estimate (FORTY-FOURTH revision —
+                after **Thread A step 2's collection-entry substrate landed** (§V of
+                `FlowParserAcceptance.lean`: `parseFlowSequence_emitter_ok` / `parseFlowMapping_emitter_ok`
+                lift the closed loop theorems `parseFlow{Sequence,Mapping}Loop_emitter_ok` to the
+                *collection* entry points — consume open bracket → loop to matching close at `j` → advance
+                past it → land at `j+1`, tokens/trackPositions preserved — consuming the existing
+                `Loop{Seq,Map}Preconditions` bundles. This is the `parseFlowSequence ps k = .ok (v, ps')`
+                success that §II's `parseNode_flow{Seq,Map}Start_of_parse` consumes, i.e. the bracket-case
+                substrate of the span induction; commit `93fd63c5`, Reflection 196; **sorries held at 4** —
+                pure enablement, axioms pure `[propext, …]`, build green at 515 jobs. Live remainder of
+                step 2: the induction *skeleton* — strong recursion on the span measure dispatching
+                scalar→leaf / bracket→§II+§V and discharging the bundle for the inner body from
+                `FlowSubrangesOk` + the IH), on top of the **FORTY-THIRD revision** —
                 after **Thread A step 1 landed** (the map-entry scalar leaf, §IV of
                 `FlowParserAcceptance.lean`): `parseEntry_mapScalar_ok` — the `ParseEntryFlowMapOk`
                 analogue of the seq scalar leaf — produces the full per-entry key+value parse body for a
@@ -22895,6 +22907,18 @@ parser/value-side sorries; the scanner→token-shape bridge below them is alread
      ∧ ParseEntryFlowMapOk` — assemble the scalar leaf (§I) + bracket reductions (§II) + the §III /
      map-entry bridges by mutual strong induction on `hi − lo`; `SeqBodyProps`/`MapBodyProps`'s
      `bracket_{seq,map}` (M9/M10) feed the IH for nested bodies.
+     **Substrate landed 2026-06-01 (commit `93fd63c5`, Reflection 196):** `FlowParserAcceptance.lean`
+     §V — `parseFlowSequence_emitter_ok` / `parseFlowMapping_emitter_ok` lift the closed loop theorems
+     `parseFlow{Sequence,Mapping}Loop_emitter_ok` to the *collection* entry points (consume open bracket
+     → loop to matching close at `j` → advance past it → land at `j+1`, tokens/trackPositions preserved),
+     consuming the existing `Loop{Seq,Map}Preconditions` bundles. This is exactly the
+     `parseFlowSequence ps k = .ok (v, ps')` success that §II's `parseNode_flow{Seq,Map}Start_of_parse`
+     consumes — i.e. the bracket-case substrate of the induction. **Live remainder of step 2:** the
+     induction *skeleton* itself — strong recursion on the span measure that, per node/entry position,
+     (a) dispatches scalar → §III/§IV leaf, bracket → §II reduction + §V collection success, and
+     (b) discharges the `Loop{Seq,Map}Preconditions` bundle for the inner body `(k+1, j)` from
+     `FlowSubrangesOk.{seq,map}` + the IH (inner span `j−(k+1) < hi−lo`), then reads the post-bracket
+     landing/balance off `bracket_{seq,map}` (M9/M10).
   3. **`.parsenode.discharge`** — produce `FlowSubrangesOk` for the emitter token stream from the
      body-token characterization (`scanFiltered_emit{Seq,Map}_nonempty_structure` already proves the
      top-level conjuncts; `FlowSubrangesOk` quantifies over *all* nested subranges, so this needs the
@@ -22924,7 +22948,8 @@ parser/value-side sorries; the scanner→token-shape bridge below them is alread
      roadmap was exactly right — it just resolves the obligation away rather than discharging it.*
 
 Closure order: Thread A is now the whole critical path; step 1 (map-entry scalar leaf) landed
-2026-06-01, so the live remainder is **2 → 3 → 4** (the span strong-induction is next).
+2026-06-01, and step 2's *collection-entry substrate* (§V) landed the same day, so the live remainder
+is **2 (the induction skeleton) → 3 → 4**.
 Each step is one green sub-increment per the standing cadence. The `FlowParserAcceptance.lean` proofs
 written along Thread A double as the indexed-port template (`ParseNodeFlowSeqOkIx` is identical), so
 finishing them is also the migration scouting that makes any future Option-1 cutover mechanical.
@@ -23037,3 +23062,41 @@ green at 515 jobs; commit `942c6837`. Like the seq leaf ([[Reflection 193]]'s ha
 the indexed-port template — `parseFlowMappingValueIx` shares the `do`-block shape, so the reduction recipe in
 lesson (2) transfers verbatim. Next live step is the span strong-induction (Thread A step 2), which finally
 opens the mutual induction these leaves were harvested ahead of.
+
+### Reflection 196 (new, 2026-06-01): step 2 has two separable halves — the *collection-entry lift* (pure parser dispatch, no induction) and the *induction skeleton* (which threads the span measure); landing the first as enablement de-risks the second to a dispatcher
+
+Thread A step 2 is "the span strong-induction," and the temptation was to write it whole. Reading the
+existing scaffolding changed the plan: `ParserWellBehaved.lean` already carries the *loop*-level acceptance
+theorems (`parseFlow{Sequence,Mapping}Loop_emitter_ok`, closed) **and** the precondition bundles
+`Loop{Seq,Map}Preconditions` that were defined precisely to feed them — but nothing connected those to the
+*collection* parser `parseFlowSequence`/`parseFlowMapping` (which wrap the loop with a `consume [` … `match ]`
+… `advance` shell), and the §II reductions `parseNode_flow{Seq,Map}Start_of_parse` consume exactly a
+`parseFlowSequence ps k = .ok (v, ps')` success. So there was a clean seam: **the collection-entry lift is a
+pure fact about parser dispatch — it needs no `FlowSubrangesOk`, no inductive hypothesis, no span measure.**
+
+**(1) The seam is where the induction stops being mechanical.** Everything *below* the seam (loop theorem +
+its precondition bundle) and everything *at* the bracket dispatch (§II reductions, §V collection lift) is
+IH-free plumbing. The genuine recursion — strong induction on `hi − lo`, discharging the bundle for the inner
+body `(k+1, j)` from `FlowSubrangesOk.{seq,map}` + the IH, reading the post-bracket landing off
+`bracket_{seq,map}` (M9/M10) — lives entirely *above* the seam. Landing §V (`parseFlow{Sequence,Mapping}_emitter_ok`)
+as a standalone enablement brick means the eventual induction skeleton never has to reason about `parseFlowSequence`'s
+`do`-shell or re-derive the loop conclusion inline: it obtains a `Loop*Preconditions` bundle, calls §V, and
+plugs the result into §II. **Lesson: before writing a big induction, find the sub-lemmas that carry no
+inductive hypothesis and land them first; what remains is a dispatcher, and a dispatcher is far easier to get
+green than a monolith — and it keeps the one-green-increment-per-session cadence honest.**
+
+**(2) The lift itself is *smaller* than its statement looks, because the bundle already exists.** The proof of
+each §V lemma is four lines of plumbing: `obtain` the loop conclusion by feeding the bundle's eleven fields to
+the loop theorem, then `unfold parseFlowSequence; simp only [bind, Except.bind]; rw [h_loop]; simp only [h_peek2]`
+for the `do`-shell, and three `show … ; rw [field-eq]` closers for pos/tokens/trackPositions. The only non-obvious
+spots: the map bundle's `h_after_fe` gives the *strict* `k+1 < j` but the loop theorem wants `k+1 ≤ j`, so it is
+weakened inline with `Nat.le_of_lt`; and `ps.advance.tokens = ps.tokens` is defeq but `rw`'s trailing `rfl` will
+*not* close it (`ParseState.advance` is a plain `def`, not unfolded at the reducible transparency `rfl` uses), so
+the closers need `simp only [ParseState.advance]` to unfold the projection. **Lesson: a record-update accessor
+behind a named `def` (`ps.advance.tokens`) is defeq to the base accessor but not `rfl`-closeable post-`rw`; reach
+for `simp only [theDef]` rather than expecting the elaborator to see through the def.**
+
+Net: two sorry-free collection-entry lemmas (axioms pure `[propext, Classical.choice, Quot.sound]`);
+enablement-only, sorry count holds at 4; `lake build` green at 515 jobs; commit `93fd63c5`. The live remainder
+of step 2 is the induction skeleton itself; §I–§V are now the complete case-brick set it dispatches over.
+See [[Reflection 195]] for the leaf bricks this builds on.
