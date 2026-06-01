@@ -1999,39 +1999,34 @@ producers.  New companion **`scanNextToken_flow_open_mapping_ska`** exposes that
 Classical.choice, Quot.sound]` + the pre-existing scalar-path `native_decide` escapeString axioms
 (same budget as `emit_scans_in_flow`; no `sorryAx`, no new axioms).  See **Reflection 187**.
 
-**`.bridge.assemble.seq` LANDED 2026-05-31 (commit `916faf44`, Reflection 188)** — the
-flow-SEQUENCE body-token characterization (legacy sorry **9550**) is closed.  The blocker was an
-*import edge*, not proof difficulty: the block layer lived downstream of `NonemptyStructure`, so
-"thread the block into the characterization" was a backward import.  Fix = re-parent `Block` →
-`WellBracketed` and `NonemptyStructure` → `BlockProducers` (purely structural; 513 jobs, no cycle),
-then a new `emitList_scans_safebody` producer (clone of `emitList_scans_block_nonempty` accumulating
-a `SafeBody ContentStartTok`), and re-prove `emitList_body_filtered_characterization` directly off
-it — **one `SafeBody` discharges BOTH parts**: `SafeBody.head_Q` ⇒ Part 1, `SafeBody_array_flowEntry`
-⇒ Part 2.  The `_with_skdr`/`SavedKeyDoesntResolve` path and the `simpleKey.possible`/
-`SimpleKeyStackValid` hypotheses are *dropped*, not threaded — `SafeBody` subsumes them.  On the pure
-triple, no `native_decide`.  Sorries 7 → 6.
+**`.bridge.assemble.{seq,map}` BOTH LANDED 2026-05-31** — the flow body-token characterizations
+are **fully closed** (legacy sorries **9550** seq + **9646** map).  `.seq` (commit `916faf44`,
+Reflection 188): the blocker was an *import edge* — re-parent `Block` → `WellBracketed` and
+`NonemptyStructure` → `BlockProducers` (purely structural, no cycle), then `emitList_scans_safebody`
+(clone of `emitList_scans_block_nonempty` accumulating `SafeBody ContentStartTok`), and one
+`SafeBody` discharges both parts (`SafeBody.head_Q` ⇒ Part 1, `SafeBody_array_flowEntry` ⇒ Part 2);
+the `_with_skdr`/`SavedKeyDoesntResolve`/`simpleKey.possible`/`SimpleKeyStackValid` path is dropped.
+`.map` (commit `3e076c1a`, Reflection 189): exactly R188's banked plan — strengthen
+`EmitScansInFlowSavedKeyBlock` with `EntrySafe block` (re-proven by un-discarding `h_wrap.2` in the
+3 `savedkey` cases of `emit_scans_block_combined`), add `EntrySafe_append`/`EntrySafe_cons_delta_zero`
++ `ScanChainGrew.eq_of_zero`, write `emitPairList_scans_safebody` producing `SafeBody (· = .key)` +
+a `3 ≤ n` floor (per-pair entry `EntrySafe` via `cons_delta_zero ∘ append ∘ append`), then the same
+`head_Q`/`SafeBody_array_flowEntry`/`n≥3` rewrite.  Both on the pure triple, no `native_decide`.
+Sorries 7 → 6 → **5**.
 
-**Next session — `.bridge.assemble.map`** (closes the flow-MAPPING body-token characterization
-Part 3, legacy sorry **9646**, `emitPairList_body_filtered_characterization` line ~210).  **Not** a
-copy of `.seq`: the per-key combined substrate `EmitScansInFlowSavedKeyBlock` exposes only
-`WellBracketed block_k`, not `EntrySafe block_k`, so the pair entry
-`.key :: block_k ++ [.value] ++ block_v` cannot yet be shown `EntrySafe`.  **Step 1:** strengthen
-`EmitScansInFlowSavedKeyBlock` with an `EntrySafe block` conjunct and re-prove its producer
-`emit_scans_in_flow_saved_key_block` (the key value's block IS `EntrySafe` — it is one `emit v` block
-— so this mirrors `EmitScansInFlowBlock`'s `EntrySafe` conjunct; thread it through
-`emit_scans_block_combined`).  **Step 2:** `emitPairList_scans_safebody` producing
-`SafeBody (· = .key) block` — each pair entry is `.key` (delta-0, head) ++ `block_k` (EntrySafe) ++
-`.value` (delta-0) ++ `block_v` (EntrySafe), separated by the comma `.flowEntry`; `EntrySafe` of the
-entry follows from `block_k`/`block_v` `EntrySafe` (interior flowEntries stay ≥1 across the `.key`/
-`.value` delta-0 prefixes).  **Step 3:** re-prove `emitPairList_body_filtered_characterization` off it
-(same `head_Q` ⇒ Part 2 `.key`-first / `SafeBody_array_flowEntry` ⇒ Part 3 rewrite as `.seq`), thread
-`EmitScansInFlowSavedKeyBlock`+`EmitScansInFlowBlock` per pair through
-`scanFiltered_emitMap_nonempty_structure` + the base map caller.
-
-**Then — `.bridge.parsenode`** — the remaining 4 sorries: the 2 `ParseNodeFlowSeqOk`/
-`ParseEntryFlowMapOk` sorries in `scanFiltered_emit{Seq,Map}_nonempty_structure`, and the 2 base
-`emit_roundtrip_{sequence,mapping}_content_eq` sorries that consume them.  These are *parser*-side
-(the scanner-side body characterizations are now done for seq), a distinct concern from `SafeBody`.
+**Next session — `.bridge.parsenode`** — the remaining 4 sorries are now ALL *parser*-side (the
+scanner-side body characterizations are done for both seq and map):
+  - the 2 `ParseNodeFlowSeqOk` / `ParseEntryFlowMapOk` sorries in
+    `scanFiltered_emit{Seq,Map}_nonempty_structure` (`NonemptyStructure.lean` ~line 253 seq / ~471
+    map) — these assert the *parser* loop accepts the scanned token stream, given the body-token
+    characterization (now fully available: first-token + post-`.flowEntry` content-start/`.key` +
+    `n ≥ 3`).  Likely needs a parse-loop fuel/termination + token-shape consumption argument.
+  - the 2 base `emit_roundtrip_{sequence,mapping}_content_eq` sorries (`EmitterScannability.lean`
+    ~796 / ~835) that consume the structure theorems.
+  This is a distinct concern from `SafeBody` — the scanner→token-shape bridge is closed; what
+  remains is token-shape→parser-acceptance and parser-acceptance→content-equality.  Survey the
+  `ParseNodeFlowSeqOk`/`ParseEntryFlowMapOk` predicates and the parser loop first; this may want its
+  own substrate sub-survey (no `SafeBody` reuse — the parser side has its own machinery).
 
 **(Historical `.assemble` plan — superseded by Reflection 188 for the seq side, still the shape for
 `.map`.)**  Thread the `EmitScansInFlowBlock` block
@@ -7481,6 +7476,18 @@ Writing `emit_scans_block_combined` (the combined `Grammable` producer) surfaced
 **(2) `SafeBody` subsumes BOTH parts — the SKDR Part 1 machinery was dead weight.** The pointer treated Part 1 (first-filtered-token content-start, proven via the heavy `SavedKeyDoesntResolve` substrate + `emitList_scans_nonempty_with_skdr`) and Part 2 (the sorry) as separate problems. But `SafeBody Q block`'s *head* satisfies `Q` (`SafeBody.head_Q`) — and `Q = ContentStartTok` is exactly Part 1's claim. So once you produce `SafeBody ContentStartTok block` for the body, `head_Q` gives Part 1 and `SafeBody_array_flowEntry` gives Part 2 from **one** object. The entire `_with_skdr` path (and the `EmitScansInFlowSKDR`/`simpleKey.possible`/`SimpleKeyStackValid` hypotheses) evaporated — the rewritten characterization is ~half the LOC and on the **pure triple** (no scalar-path `native_decide`, cleaner than `emit_scans_in_flow` itself). And no two-chain reconciliation was ever needed: I didn't "thread the block through the `_with_skdr` variant," I *replaced* `_with_skdr` with a single `SafeBody` producer (`emitList_scans_safebody`, a near-verbatim clone of `emitList_scans_block_nonempty` that keeps the per-item `EntrySafe`+head conjuncts the block producer already discards as `_`). **Lesson: before threading a new fact alongside an old proof, check whether the new fact *implies* the old one — the strongest substrate (`SafeBody`) often makes a whole parallel pipeline (SKDR) redundant rather than complementary.** The arc-long `SavedKeyDoesntResolve` investment paid off elsewhere, but for the body characterization it was scaffolding the `SafeBody` made unnecessary.
 
 **Asymmetry banked for `.map`.** The sequence side was clean because `EmitScansInFlowBlock` *already* exposes `EntrySafe block` + a content-start head — exactly `SafeBody`'s entry obligations. The mapping side is **not** symmetric: `EmitScansInFlowSavedKeyBlock` (the per-key combined substrate) exposes only `WellBracketed block_k`, not `EntrySafe block_k`, so the pair entry `.key :: block_k ++ [.value] ++ block_v` can't yet be shown `EntrySafe`. `.map` therefore needs `EntrySafe` *added* to `EmitScansInFlowSavedKeyBlock` (a predicate strengthening + a re-proof of `emit_scans_in_flow_saved_key_block`) before the analogous `emitPairList_scans_safebody` — a real increment, not a copy-paste of `.seq`. Deferred deliberately rather than bundled, per one-green-increment-per-session.
+
+##### Reflection 189 (new, 2026-05-31): R188's banked asymmetry was exactly right — the predicate strengthening was the only real new content, the rest was the `.seq` shape; and the producer's *own output* (not its consumer) is where a derived obligation like `EntrySafe`/`n ≥ 3` has to be paid
+
+**The setup.** `.map` closed the last body-characterization sorry (9646, the post-outer-`.flowEntry`→`.key` fact). R188 banked the plan: strengthen `EmitScansInFlowSavedKeyBlock` with `EntrySafe block`, then clone an `emitPairList_scans_safebody` producing `SafeBody (· = .key)`, then the same `head_Q`/`SafeBody_array_flowEntry` rewrite. That prediction held verbatim — the increment was ~440 LOC but only two parts were genuinely *new*; the rest was structural reuse.
+
+**(1) The predicate strengthening was the whole game — and it was a 3-line refine change × 3 cases.** Adding `∧ EntrySafe block` to `EmitScansInFlowSavedKeyBlock` re-opened its sole producer, the 3 `savedkey` cases of `emit_scans_block_combined`. Each `savedkey` case is a near-twin of the corresponding `block` case (which *already* proves `EntrySafe`): scalar reuses `EntrySafe_scalar`, seq/map reuse the `wrap_*_block` pair's `.2` — which the `savedkey` refine had been *discarding* (`h_wrap.1`) all along. So the new conjunct was already proven and thrown away; recovering it was passing `h_wrap` instead of `h_wrap.1`. **Lesson: when the `block` and `savedkey` halves of a combined producer prove the same shape, a fact missing from one is usually already computed-and-discarded in the other — strengthen by un-discarding, not by re-proving.**
+
+**(2) Anonymous-constructor flattening: `WellBracketed` is a `def` that whnf-reduces to `And`, so `⟨…⟩` over `… ∧ WellBracketed b ∧ EntrySafe b` greedily splits `WellBracketed` into its two leaves.** Three attempts (`?_, ?_` bullets; explicit `⟨WB, ES⟩`; `h_wb_es.1, h_wb_es.2`) all mis-bound because the constructor flattened the def. The fix: make the `WellBracketed b ∧ EntrySafe b` pair the **single last element** of the refine tuple — the last element absorbs the entire remaining nested target *as-is*, no flattening. (For seq/map, `h_wrap` already *is* that pair; for scalar, a one-line `have h_wb_es`.) **Lesson: the last slot of an anonymous constructor is the only one that won't unfold a `def`-that-is-an-`And`; put the fragile composite there.**
+
+**(3) A derived output obligation is paid at the producer, not laundered to the consumer.** The map characterization's conclusion carries `n ≥ 3` (the seq one doesn't — it's what `scanFiltered_emitMap_nonempty_structure` needs for `tokens.size ≥ 7`). Rather than rederive it downstream (which would have meant reworking the structure theorem's filtered-size arithmetic), I added `3 ≤ n` as an output conjunct of `emitPairList_scans_safebody` — multipair is `≥ 4` trivially, the singleton needs `n₁ ≥ 1` for the key chain, which `ScanChainGrew.eq_of_zero` + the saved-key token-growth witness (`s.tokens.size + 1 < s₁.tokens.size`) gives in three lines. Keeping `n ≥ 3` in the *characterization's* conclusion meant `scanFiltered_emitMap_nonempty_structure` was untouched except its hypotheses. **Lesson: when a consumer needs a numeric floor on the existential witness, thread it from the producer that owns the witness — re-deriving it at the use site fights arithmetic the producer already has in hand.**
+
+**(4) The `decide`-with-free-variables trap.** `keyTok.val ≠ .flowEntry` where `keyTok = ⟨s₁.simpleKey.pos, .key, …⟩` failed `by decide` ("Expected type must not contain free variables") — `decide` tried to evaluate the irrelevant `pos` field. `by simp` reduces the `.val` projection to `.key` and discharges the constructor inequality without evaluating the whole closed term. **Lesson: for a constructor (in)equality whose subject carries free-variable payload in irrelevant fields, reach for `simp` (projection-reduction + `reduceCtorEq`), not `decide`.**
 
 **Step 6f.3b3.emitscans.toplevel SS1 (easy prereqs) LANDED 2026-05-27**
 (~225 LOC across two files: `Endpoint.lean` §6 ~200 LOC +
@@ -19002,10 +19009,15 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
-                **Total .body scope re-estimate (THIRTY-SEVENTH revision —
-                after **`.bridge.assemble.seq`** landed (the flow-SEQUENCE body-token
-                characterization, legacy sorry 9550, via the dependency inversion +
-                `emitList_scans_safebody` + the `SafeBody`-subsumes-both-parts rewrite,
+                **Total .body scope re-estimate (THIRTY-EIGHTH revision —
+                after **`.bridge.assemble.map`** landed (the flow-MAPPING body-token
+                characterization, legacy sorry 9646 — the LAST body-characterization sorry —
+                via `EmitScansInFlowSavedKeyBlock`+`EntrySafe`, `emitPairList_scans_safebody`
+                producing `SafeBody (· = .key)` + a `3 ≤ n` floor, and the same
+                `head_Q`/`SafeBody_array_flowEntry`/`n≥3` rewrite as `.seq`, commit `3e076c1a`,
+                Reflection 189; sorries 6 → 5), on top of **`.bridge.assemble.seq`** (the
+                flow-SEQUENCE body-token characterization, legacy sorry 9550, via the dependency
+                inversion + `emitList_scans_safebody` + the `SafeBody`-subsumes-both-parts rewrite,
                 commit `916faf44`, Reflection 188; sorries 7 → 6), itself on top of the
                 **monolithic `Grammable` producers**
                 (`emit_scans_in_flow_block` + `emit_scans_in_flow_saved_key_block`
@@ -19408,12 +19420,29 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                   dropped; only sync remains).  Both new sorry-free decls on the **pure triple**
                   `[propext, Classical.choice, Quot.sound]` (cleaner than `emit_scans_in_flow` —
                   no scalar-path `native_decide`).  Reflection 188]
-                + `.body2.discharge.bridge.assemble.map` [NEXT, ~200–350 — closes **9646** (the
-                  flow-MAPPING body-token characterization Part 3).  Needs `EntrySafe` added to
-                  `EmitScansInFlowSavedKeyBlock` (the per-key block must be `EntrySafe` so the
-                  pair entry `.key :: block_k ++ [.value] ++ block_v` is `EntrySafe`), then an
-                  `emitPairList_scans_safebody` producing `SafeBody (· = .key)`, then the same
-                  `head_Q`/`SafeBody_array_flowEntry` rewrite as `.seq`]
+                + `.body2.discharge.bridge.assemble.map` [**LANDED 2026-05-31, commit `3e076c1a`**,
+                  ~440 net LOC — closes **9646** (the flow-MAPPING body-token characterization
+                  Part 3, the LAST legacy body-characterization sorry).  Exactly the `.seq` shape
+                  one rung up: (1) strengthen `EmitScansInFlowSavedKeyBlock` with an `EntrySafe block`
+                  conjunct (re-proven via the 3 `savedkey` cases of `emit_scans_block_combined` —
+                  scalar uses `EntrySafe_scalar`, seq/map reuse the `wrap_*_block` pair's `.2`);
+                  (2) new combinators `EntrySafe_append` + `EntrySafe_cons_delta_zero` (in
+                  `WellBracketed`) and `ScanChainGrew.eq_of_zero` (in `ScanChainGrowth`);
+                  (3) `emitPairList_scans_safebody` (mirrors `emitPairList_scans_block_nonempty`
+                  but accumulates `SafeBody (· = .key)` — the per-pair entry `.key :: block_k ++
+                  [.value] ++ block_v` is `EntrySafe` via `cons_delta_zero ∘ append ∘ append`
+                  gluing the key block's `EntrySafe`, the `.value` singleton, and the value
+                  block's `EntrySafe` — and carries a `3 ≤ n` floor, with the singleton `n₁ ≥ 1`
+                  from `ScanChainGrew.eq_of_zero` + the saved-key token-growth witness).  Then
+                  `emitPairList_body_filtered_characterization` is re-proven directly off it:
+                  `SafeBody.head_Q` ⇒ Part 2 (first new filtered token is `.key`),
+                  `SafeBody_array_flowEntry` ⇒ Part 3 (post-outer-`.flowEntry` `.key`), `3 ≤ n` ⇒
+                  Part 1 — with **no `emitPairList_scans_nonempty_keyshape` and no two-chain
+                  reconciliation** (the `EmitScansInFlow`/`EmitScansInFlowSavedKey`/`simpleKey.possible`/
+                  `SimpleKeyStackValid` hypotheses are dropped; only `simpleKeyAllowed` + sync remain).
+                  Block substrates threaded through `scanFiltered_emitMap_nonempty_structure` + the
+                  base map caller.  Both new sorry-free decls on the **pure triple**
+                  `[propext, Classical.choice, Quot.sound]`.  Reflection 189]
                 + `.body2.discharge.bridge.parsenode` [after — the 2 `ParseNode`/`ParseEntry`
                   sorries in `scanFiltered_emit{Seq,Map}_nonempty_structure` + the 2 base
                   `emit_roundtrip_{sequence,mapping}_content_eq` sorries that consume them]),
