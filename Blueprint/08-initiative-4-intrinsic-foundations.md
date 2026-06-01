@@ -22852,3 +22852,39 @@ Writing `emit_scans_block_combined` (the combined `Grammable` producer) surfaced
 **(3) Four of the five remaining sorries are parser/value-side — exactly where indexing helps least.** Classification: the 2 `Parse*Ok` sorries (`NonemptyStructure.lean`) and the 2 `content_eq` sorries (`EmitterScannability.lean`) are parser/value-side (the parser-acceptance span induction this `.bridge.parsenode` arc is bricking out); only the 5th (`FilteredTracking.lean`, the directive branch of `scanNextToken_filtered_grows`) is the scanner-side mess indexing was meant to clean up. The non-indexed track has *already* finished the hard scanner-side characterization (the SafeBody ghost-predicate work, Reflections 188–189). The indexed track stops at `..._characterizationIx_part1` and has no `nonempty_structureIx`, no loop-emitter-ok, no `universal_roundtripIx`. **Lesson: the non-indexed keystone is one well-mapped parser induction + one scanner sorry from 0; the indexed track is a multi-month re-walk of the whole path. Finishing non-indexed is unambiguously the shortest route to a complete proof — and the parser-acceptance proofs (`FlowParserAcceptance`) are themselves the migration template, since `ParseNodeFlowSeqOkIx` is identical (empirical twin-port cost ≈ 0.75–1.1× LOC, per the substrate.c→.d datapoint).**
 
 **(4) Therefore: finish non-indexed to a 0-sorry `universal_roundtrip`, then decide the indexed track's fate from a position of a complete proof + oracle.** The indexed scanner substrate is real, sorry-free, and the genuine win for the layer that hurt — do not delete it (Option 3 is premature), but do *park* it (status: "parked parallel track, cutover deferred"; the stale staging-aggregator doc-comment was corrected to say so). The forward criterion for ever migrating: **only if a future goal actually needs intrinsic input-range correspondence — precise error spans, incremental/streaming parse, or a second large scanner-side proof effort.** If the roadmap after `universal_roundtrip` is mostly parser/value-side or schema-side, the indexed track's ergonomic win does not pay its migration + maintenance cost; keep it as a reference substrate. **Lesson: a parallel rewrite earns a cutover only when the *new* invariants it carries are needed downstream; "the old proofs are unwieldy" justifies the substrate that is already built, not re-walking the layers where the two worlds are line-for-line identical.**
+
+**Next steps — the Option-2 roadmap to a 0-sorry `universal_roundtrip`.** Five sorries remain; the
+detailed mechanics for the parser-acceptance thread are in the `.bridge.parsenode.induction`
+next-pointer above (search "Next session — `.bridge.parsenode.induction`") and the
+`.body2.discharge.bridge.parsenode` plan-tree entry. Consolidated here so the decision and the work
+sit together:
+
+*Thread A — parser-acceptance (4 of the 5 sorries, one well-mapped dependency chain).* These are the
+parser/value-side sorries; the scanner→token-shape bridge below them is already closed.
+  1. **Map-entry node acceptance** — the `ParseEntryFlowMapOk` analogue of the landed
+     `parseNode_seqScalar_ok`: a scalar-keyed/scalar-valued entry (no IH needed), discharged from
+     `MapBodyProps` (M1–M8). A clean standalone brick in `FlowParserAcceptance.lean`. *(Next session.)*
+  2. **The span strong-induction** `flow_parser_ok_of_structure : FlowSubrangesOk → ParseNodeFlowSeqOk
+     ∧ ParseEntryFlowMapOk` — assemble the scalar leaf (§I) + bracket reductions (§II) + the §III /
+     map-entry bridges by mutual strong induction on `hi − lo`; `SeqBodyProps`/`MapBodyProps`'s
+     `bracket_{seq,map}` (M9/M10) feed the IH for nested bodies.
+  3. **`.parsenode.discharge`** — produce `FlowSubrangesOk` for the emitter token stream from the
+     body-token characterization (`scanFiltered_emit{Seq,Map}_nonempty_structure` already proves the
+     top-level conjuncts; `FlowSubrangesOk` quantifies over *all* nested subranges, so this needs the
+     characterization recursively / a bracket-matching argument), then instantiate at
+     `(tokens.size − 2, 2)` → **closes the 2 structure sorries**
+     (`EmitterScannability/NonemptyStructure.lean:465, 651`).
+  4. **The 2 base `content_eq` sorries** (`EmitterScannability.lean:832, 872`,
+     `emit_roundtrip_{sequence,mapping}_content_eq`) — now consume the proven `Parse*Ok`; finish the
+     content-equality argument. **This closes the keystone `universal_roundtrip`.**
+
+*Thread B — the one scanner-side sorry (independent, can land anytime).*
+  5. **`FilteredTracking.lean:162`** — the RESERVED-directive branch of `scanNextToken_filtered_grows`
+     (the `repeat split` structural-dispatch tail). Independent of Thread A. Note the indexed track
+     already has a sorry-free *in-flow* corollary for the analogous lemma, so if this branch proves
+     stubborn the emitter-never-emits-a-reserved-directive angle is the likely shortcut.
+
+Closure order: Thread A is the critical path (1 → 2 → 3 → 4); Thread B can be slotted in opportunistically.
+Each step is one green sub-increment per the standing cadence. The `FlowParserAcceptance.lean` proofs
+written along Thread A double as the indexed-port template (`ParseNodeFlowSeqOkIx` is identical), so
+finishing them is also the migration scouting that makes any future Option-1 cutover mechanical.
