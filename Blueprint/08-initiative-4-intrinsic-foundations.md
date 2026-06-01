@@ -2100,8 +2100,25 @@ what remains is assembling `FlowSubrangesOk`). The shape of the remaining produc
 2. **`SeqBodyProps`/`MapBodyProps` for ALL nested subranges** — the top-level conjuncts are what
    `scanFiltered_emit{Seq,Map}_nonempty_structure` already proves; for nested `(lo, hi)` the local
    token-shape (scalar/key/value/comma placement) still needs a *recursive* characterization over the
-   emitted value tree (the matching locator now supplies the bracket-structure half of each
-   `bracket_*` conjunct). This is the bulk of the remaining producer.
+   emitted value tree (the matching locator supplies the bracket-*position* half of each `bracket_*`
+   conjunct, but NOT the bracket *type*). This is the bulk of the remaining producer.
+   **First brick LANDED — the typed-bracket `WellTyped` substrate** (commit `ed50d584`, Reflection 204):
+   `flowBracketBalance_matching_close` yields only `flowBracketDelta tokens[j]!.val = -1` (seqEnd *or*
+   mapEnd), but the dispatcher consumes `bracket_seq`'s `tokens[j]!.val = .flowSequenceEnd` specifically —
+   and the type-collapsing `flowBracketBalance` cannot distinguish `[…]` from `[…}` (`[ { ] }` is Dyck-
+   balanced yet mis-nested). So a typed-bracket layer is required. `WellBracketed.lean` now carries the
+   **typed twin** of the `WellBracketed` algebra: a stack fold `btStep`/`btFold` over `Option (List Bool)`
+   (`true` = `[`, `false` = `{`; `none` = mismatch/underflow), `WellTyped`, and the one-for-one closure
+   mirror `WellTyped_append`/`_singleton_delta_zero`/`_cons_delta_zero`/`wrap_{seq,map}_typed`
+   (`wrap` rests on `btFold_frame`: a `WellTyped` body never underflows its starting stack). **Remaining
+   sub-bricks**: (a) thread `WellTyped` through the emitter producer chain
+   (`emit{List,PairList}_scans_safebody` → `…_body_filtered_characterization` →
+   `scanFiltered_emit{Seq,Map}_nonempty_structure`) by mechanically mirroring the `WellBracketed` thread
+   (Reflection 203 playbook), surfacing `WellTyped tokens`-grade structure at the tokens level; (b) the
+   **typed locator** — from `WellTyped` (or a tokens-level corollary), a depth-0 `.flowSequenceStart` at
+   `k` matches a `.flowSequenceEnd` (and `{`→`}`), pinning the matching close's *type* and giving the
+   `bracket_*`/M5/M8/M9/M10 conjuncts their type half; (c) the flat per-position local-shape facts
+   (`scalar_succ`, `after_fe`, `key_content`, …) for every nested subrange, then assemble `FlowSubrangesOk`.
 3. Instantiate `flow_parser_ok_of_structure` at `(lo, hi) = (2, tokens.size−2)`,
    `fuel = 4·tokens.size+4` → close the 2 structure sorries (`NonemptyStructure.lean` 549/764 — **both**
    the seq AND map sites now have `h_outer_bal`/`h_dyck` in scope ready to feed alongside `FlowSubrangesOk`).
@@ -14803,7 +14820,29 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
-                **Total .body scope re-estimate (FIFTY-FIRST revision —
+                **Total .body scope re-estimate (FIFTY-SECOND revision —
+                after **Thread A step 3 sub-step 2's first brick landed: the typed-bracket `WellTyped`
+                substrate**. `pbalance`/`WellBracketed` collapse `[`/`{` (and `]`/`}`) to one ±1 delta,
+                so they witness the flat Dyck condition but NOT bracket-*type* matching — the untyped
+                stream `[ { ] }` is balanced yet mis-nested. But the `flow_parser_ok_of_structure`
+                dispatcher consumes `SeqBodyProps.bracket_seq`'s `tokens[j]!.val = .flowSequenceEnd`
+                (the matching close of a `[` is specifically a `]`), which `flowBracketBalance_matching_close`
+                ALONE cannot supply (it yields only `flowBracketDelta = -1` — seqEnd *or* mapEnd). So
+                `FlowSubrangesOk` needs a typed-bracket layer. `WellBracketed.lean` (commit `ed50d584`)
+                now carries the **typed twin** of the `WellBracketed` algebra: a stack fold
+                `btStep`/`btFold` over `Option (List Bool)` (`true` = `[`, `false` = `{`; `none` = type
+                mismatch / underflow) and `WellTyped l := btFold (some []) l = some []`, with closure
+                lemmas mirroring the `pbalance` family one-for-one — `WellTyped_append` (the fold
+                homomorphism, `List.foldl_append`), `_singleton_delta_zero`, `_cons_delta_zero`, and
+                `wrap_{seq,map}_typed`. The wrap payoff (the `]`/`}` pops exactly the `[`/`{` the lemma
+                pushed) rests on `btFold_frame`: a `WellTyped` body never underflows its starting stack,
+                so it returns to it (via the per-step `btStep_frame`). **Pure enablement** — the producer
+                chain that already threads `WellBracketed` can thread `WellTyped` by the same mechanical
+                substitution (Reflection 203/204), and the locator bridging `WellTyped` to the bracket
+                conjuncts is layered on top (next bricks). New lemmas on the pure triple
+                `[propext, Quot.sound]` (no sorryAx, no new axioms), build green 515 jobs,
+                **sorries held at 4**. See Reflection 204, on top of the
+                **FIFTY-FIRST revision** —
                 after **Thread A step 3's WellBracketed thread landed on the MAP side too**.
                 `emitPairList_scans_safebody` (`BlockProducers.lean`, commit `9d6d04fa`) is now taught
                 to maintain `WellBracketed` through its induction: the per-pair entry
@@ -23630,3 +23669,51 @@ insurance against a future "teach the induction" step.**
 downstream `obtain` was disturbed, isolating spec-slot mistakes to one file at a time. **Lesson: when a conjunct
 insertion ripples through a producer→characterization→structure→caller chain of positional `obtain`/`refine` tuples,
 build bottom-up one module at a time; a misplaced `?_` then fails in the module you just edited, not three layers up.**
+
+---
+
+### Reflection 204 (new, 2026-06-01): the locator's hypothesis is not the same as the locator's conclusion — a type-collapsing balance can find the matching *position* but never the matching *type*, so the next layer is a new invariant, not more plumbing
+
+The previous four bricks of step 3 ([[Reflection 200]]–[[Reflection 203]]) were all *plumbing*: the dispatcher, the Dyck
+locator, and threading a fact (`WellBracketed`) the producers already proved. The natural assumption walking into sub-step
+2 was "more of the same — surface a few more discarded binders and assemble `FlowSubrangesOk`." That assumption broke on a
+single observation: `flowBracketBalance_matching_close` concludes `flowBracketDelta tokens[j]!.val = -1`, but the
+dispatcher's `bracket_seq` case feeds `hsub.seq … h_j_tok` where `h_j_tok : tokens[j]!.val = .flowSequenceEnd` —
+*specifically* a `]`, not just *some* closer. And `flowBracketDelta` maps both `]` and `}` to `-1`, so no theorem stated
+over `flowBracketBalance` can ever distinguish them: the untyped stream `[ { ] }` is Dyck-balanced (prefix sums
+1,2,1,0 — all ≥ 0, total 0) yet mis-nested. The bracket *type* is information the existing balance algebra **threw away
+at the definition**, and no amount of plumbing recovers discarded information.
+
+**(1) When a downstream consumer needs a distinction the existing abstraction collapses, the next brick is a richer
+abstraction, not a cleverer proof over the old one.** I spent real effort hunting for a combinatorial shortcut — two
+separate per-type balances? a refined Dyck argument? — before constructing the counterexample `[ { ] }` that proves the
+untyped balance is *information-theoretically* insufficient (both per-type balances are individually Dyck there, too).
+The counterexample is what converts "this is hard" into "this is impossible *as stated*," which is what licenses building
+a new structure (the typed stack fold) rather than grinding on the old one. **Lesson: before building a hard producer over
+an existing abstraction, construct the smallest input that the abstraction maps to the same value but the consumer must
+treat differently; if one exists, stop — the abstraction is lossy for this purpose and the honest move is a refinement,
+not a harder proof.**
+
+**(2) The refinement still mirrors the lossy original one-for-one — pick the representation that makes the mirror's
+*closure lemmas* trivial, even at the cost of a harder internal lemma.** `WellTyped` is the typed twin of `WellBracketed`,
+and the producer threading (next session) wants the *same* closure surface: `_append`, `_singleton_delta_zero`,
+`_cons_delta_zero`, `wrap_{seq,map}`, so the thread is a mechanical substitution ([[Reflection 203]]). The stack-fold
+representation (`Option (List Bool)`, push-on-open / matched-pop-on-close) makes `_append` a *one-line* foldl
+homomorphism (`List.foldl_append`) and `_singleton`/`_cons` trivial — but pushes all the difficulty into one lemma,
+`btFold_frame` (a `WellTyped` body folded over an extended stack returns to it, because it never underflows). That
+concentration is the right trade: the frame lemma is proven *once*, here, in isolation; every closure lemma the producers
+will actually call is then cheap. The alternative (an inductive `Matched` relation) inverts the trade — free `wrap`, but a
+painful append and an `op :: inner ++ [cl] ++ rest` constructor that resists the inversion the *locator* will later need.
+**Lesson: when defining a refinement whose job is to be threaded through an existing producer chain, choose the
+representation by which closure lemmas the chain calls — make those trivial and quarantine the hardness in a single frame
+lemma you prove up front, rather than spreading medium difficulty across every closure lemma.**
+
+**(3) Land the substrate, defer the consumer — the locator is a separate brick with a separate risk profile.** The typed
+*algebra* (this session) is pure, self-contained, fully provable in core Lean, and axiom-clean — a guaranteed green
+increment. The typed *locator* (from `WellTyped`, a depth-0 `[` matches a `]`) requires inducting on / inverting the fold
+to *extract* the matching position's type, a strictly harder argument with its own failure modes. Bundling them would have
+risked the session landing nothing. Splitting "define the structure + its construction algebra" from "prove the
+extraction theorem over it" keeps each session's deliverable green and its risk legible. **Lesson: a new abstraction
+divides naturally into its *introduction* lemmas (how producers build it — usually mechanical) and its *elimination*
+lemmas (what consumers extract — usually the hard induction); land the introduction side first as a standalone green
+increment, because it both de-risks the session and gives the elimination side a fixed target to aim at.**
