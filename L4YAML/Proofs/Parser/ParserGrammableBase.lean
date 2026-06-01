@@ -592,6 +592,84 @@ theorem flowBracketBalance_compose_zero (tokens : Array (Positioned YamlToken))
       flowBracketBalance_compose tokens body_start pos (pos + 1) h_bs_pos (by omega),
       h_bal, h_tail, flowBracketBalance_single _ _ h_pos_bound, h_delta]; omega
 
+/-- The bracket delta of any token is at least `-1` (only the two close brackets
+    contribute `-1`; everything else is `0` or `+1`). -/
+theorem flowBracketDelta_ge_neg_one (t : YamlToken) : -1 ≤ flowBracketDelta t := by
+  unfold flowBracketDelta
+  split <;> decide
+
+/-- **Bracket-matching locator (Dyck).**  In a flow range `[lo, hi)` that is
+    *well-bracketed* — total balance `0` and every prefix balance `≥ 0` — a depth-0
+    open bracket at position `k` (balance `lo..k = 0`, `tokens[k]` an opener) has a
+    matching close at some `j` with `k < j < hi`, `tokens[j]` a closer, and the
+    enclosed body `(k+1, j)` itself balanced.
+
+    This is the pure-combinatorial core every nested-bracket conjunct of
+    `SeqBodyProps`/`MapBodyProps` rests on: it converts the flat Dyck condition the
+    emitter stream satisfies (`WellBracketed`) into the matching-bracket structure
+    `flow_parser_ok_of_structure` consumes by span induction.  The *which* bracket
+    (`]` vs `}`) and the successor token are emitter facts layered on top; this lemma
+    supplies the position `j` and the inner balance.
+
+    No Mathlib, so the "first return to balance 0 after `k`" is found by an explicit
+    fuel scan (`find`) rather than `Nat.find`. -/
+theorem flowBracketBalance_matching_close (tokens : Array (Positioned YamlToken))
+    (lo k hi : Nat) (h_lo_k : lo ≤ k) (h_k_hi : k < hi) (h_hi_sz : hi ≤ tokens.size)
+    (h_k_depth : flowBracketBalance tokens lo k = 0)
+    (h_k_open : flowBracketDelta tokens[k]!.val = 1)
+    (h_total : flowBracketBalance tokens lo hi = 0)
+    (h_dyck : ∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0) :
+    ∃ j, k < j ∧ j < hi ∧
+      flowBracketDelta tokens[j]!.val = -1 ∧
+      flowBracketBalance tokens (k+1) j = 0 := by
+  -- One-step recurrence for the running balance.
+  have step : ∀ i, lo ≤ i → i < tokens.size →
+      flowBracketBalance tokens lo (i+1) =
+        flowBracketBalance tokens lo i + flowBracketDelta tokens[i]!.val := by
+    intro i h_lo_i h_sz
+    rw [flowBracketBalance_compose tokens lo i (i+1) h_lo_i (by omega)]
+    have hlen : i < tokens.toList.length := by rw [Array.length_toList]; exact h_sz
+    rw [flowBracketBalance_single tokens i hlen]
+    have h1 : tokens.toList[i]'hlen = tokens[i] := Array.getElem_toList h_sz
+    have h2 : tokens[i] = tokens[i]! := (getElem!_pos tokens i h_sz).symm
+    rw [h1, h2]
+  -- Balance just after the opener is 1.
+  have h_f_k1 : flowBracketBalance tokens lo (k+1) = 1 := by
+    have hs := step k h_lo_k (by omega)
+    rw [h_k_depth, h_k_open] at hs; omega
+  -- Scan forward from `start` (kept at depth `≥ 1`) for the first return to 0.
+  have find : ∀ (f start : Nat), start + f = hi → k < start →
+      flowBracketBalance tokens lo start ≥ 1 →
+      ∃ j, k < j ∧ j < hi ∧
+        flowBracketDelta tokens[j]!.val = -1 ∧
+        flowBracketBalance tokens (k+1) j = 0 := by
+    intro f
+    induction f with
+    | zero =>
+      intro start h_sf h_ks h_bal
+      have h_eq : start = hi := by omega
+      rw [h_eq, h_total] at h_bal; omega
+    | succ f ih =>
+      intro start h_sf h_ks h_bal
+      have h_start_lt : start < hi := by omega
+      have h_start_sz : start < tokens.size := by omega
+      have hs := step start (by omega) h_start_sz
+      by_cases h0 : flowBracketBalance tokens lo (start+1) = 0
+      · -- `start` is the matching close.
+        rw [h0] at hs
+        have h_delta_ge := flowBracketDelta_ge_neg_one tokens[start]!.val
+        have h_bs1 : flowBracketBalance tokens lo start = 1 := by omega
+        have h_d : flowBracketDelta tokens[start]!.val = -1 := by omega
+        refine ⟨start, h_ks, h_start_lt, h_d, ?_⟩
+        have hcomp := flowBracketBalance_compose tokens lo (k+1) start (by omega) (by omega)
+        rw [h_bs1, h_f_k1] at hcomp; omega
+      · -- Still inside the bracket: recurse one step further.
+        have h_next_ge1 : flowBracketBalance tokens lo (start+1) ≥ 1 := by
+          have h_ge0 := h_dyck (start+1) (by omega) (by omega)
+          omega
+        exact ih (start+1) (by omega) (by omega) h_next_ge1
+  exact find (hi - (k+1)) (k+1) (by omega) (by omega) (by omega)
+
 /-! ### §6  Structural predicates for flow body subranges
 
 These predicates capture the token-level structural properties that
