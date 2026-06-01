@@ -489,6 +489,155 @@ theorem EntrySafe_cons_delta_zero (t : Positioned YamlToken)
     have := hl.2 j h_jl (by rw [← h_idx]; exact h_fe)
     omega
 
+/-! #### Typed bracket structure (`.body2.discharge.typedbrackets`)
+
+`pbalance`/`WellBracketed` collapse `[`/`{` (and `]`/`}`) to a single ±1 delta, so they
+witness the *flat* Dyck condition but **not** bracket-*type* matching — the untyped stream
+`[ { ] }` is balanced yet mis-nested.  The `flow_parser_ok_of_structure` dispatcher, however,
+consumes `SeqBodyProps.bracket_seq`'s `tokens[j]!.val = .flowSequenceEnd` (the matching close
+of a `[` is specifically a `]`, not a `}`), which the matching locator
+`flowBracketBalance_matching_close` alone cannot supply (it yields only `flowBracketDelta = -1`).
+
+This is the **typed twin** of the `WellBracketed` algebra: a stack-fold tracking opener *types*
+(`true` = `[`, `false` = `{`), with `none` recording a type-mismatch / underflow.  Its closure
+lemmas mirror the `pbalance` family one-for-one (`_append`, `_singleton_delta_zero`,
+`_cons_delta_zero`, `wrap_{seq,map}_typed`), so the producer chain that already threads
+`WellBracketed` can thread `WellTyped` by the same mechanical substitution (cf. Reflection 203).
+The payoff — the matching close of a depth-0 `[` is a `]` — is the *locator* layered on top
+(future), bridging `WellTyped` to the `SeqBodyProps`/`MapBodyProps` bracket conjuncts. -/
+
+/-- One step of the typed bracket stack.  `true` on the stack marks an open `[`, `false` an
+    open `{`.  A closer pops only a matching opener; a mismatch or empty-stack pop is `none`. -/
+def btStep (t : Positioned YamlToken) (s : List Bool) : Option (List Bool) :=
+  match t.val with
+  | .flowSequenceStart => some (true :: s)
+  | .flowMappingStart  => some (false :: s)
+  | .flowSequenceEnd   => match s with | true :: s' => some s' | _ => none
+  | .flowMappingEnd    => match s with | false :: s' => some s' | _ => none
+  | _                  => some s
+
+/-- Fold the typed bracket stack across a token list (`none` is absorbing via `bind`). -/
+def btFold (s0 : Option (List Bool)) (l : List (Positioned YamlToken)) : Option (List Bool) :=
+  l.foldl (fun acc t => acc.bind (btStep t)) s0
+
+/-- A token list whose brackets are correctly typed *and* balanced: the stack fold from the
+    empty stack returns to the empty stack with no mismatch. -/
+def WellTyped (l : List (Positioned YamlToken)) : Prop :=
+  btFold (some []) l = some []
+
+theorem btFold_cons (s0 : Option (List Bool)) (t : Positioned YamlToken)
+    (rest : List (Positioned YamlToken)) :
+    btFold s0 (t :: rest) = btFold (s0.bind (btStep t)) rest := by
+  simp [btFold, List.foldl_cons]
+
+theorem btFold_cons_some (s : List Bool) (t : Positioned YamlToken)
+    (rest : List (Positioned YamlToken)) :
+    btFold (some s) (t :: rest) = btFold (btStep t s) rest := by
+  simp [btFold, List.foldl_cons, Option.bind]
+
+theorem btFold_append (s0 : Option (List Bool)) (a b : List (Positioned YamlToken)) :
+    btFold s0 (a ++ b) = btFold (btFold s0 a) b := by
+  simp [btFold, List.foldl_append]
+
+theorem btFold_none (l : List (Positioned YamlToken)) : btFold none l = none := by
+  induction l with
+  | nil => rfl
+  | cons t rest ih => rw [btFold_cons]; exact ih
+
+/-- A non-bracket token (`flowBracketDelta = 0`) leaves the typed stack unchanged. -/
+theorem btStep_delta_zero (t : Positioned YamlToken) (s : List Bool)
+    (h : flowBracketDelta t.val = 0) : btStep t s = some s := by
+  unfold btStep
+  cases hv : t.val <;> simp only [hv] at h ⊢ <;>
+    first | rfl | simp [flowBracketDelta] at h
+
+/-- **Stack-frame for a single step.**  If a step is defined over stack `s`, the same step
+    over an extended stack `s ++ extra` leaves `extra` untouched. -/
+theorem btStep_frame (t : Positioned YamlToken) (s m extra : List Bool)
+    (h : btStep t s = some m) : btStep t (s ++ extra) = some (m ++ extra) := by
+  unfold btStep at h ⊢
+  cases hv : t.val <;> simp only [hv] at h ⊢ <;>
+    first
+      | (cases s with
+         | nil => simp_all
+         | cons b s' => cases b <;> simp_all)
+      | (cases h; rfl)
+      | simp_all
+
+/-- **Stack-frame for a fold.**  A fold defined over stack `s` (ending at `m`) runs identically
+    over an extended stack `s ++ extra`, ending at `m ++ extra`.  This is the inductive engine:
+    a `WellTyped` body never underflows its starting stack, so it returns to it. -/
+theorem btFold_frame (l : List (Positioned YamlToken)) :
+    ∀ (s m extra : List Bool), btFold (some s) l = some m →
+      btFold (some (s ++ extra)) l = some (m ++ extra) := by
+  induction l with
+  | nil =>
+    intro s m extra h
+    simp only [btFold, List.foldl_nil] at h ⊢
+    obtain rfl := Option.some.inj h; rfl
+  | cons t rest ih =>
+    intro s m extra h
+    rw [btFold_cons_some] at h ⊢
+    cases hb : btStep t s with
+    | none => rw [hb, btFold_none] at h; exact absurd h (by simp)
+    | some m' =>
+      rw [hb] at h
+      rw [btStep_frame t s m' extra hb]
+      exact ih m' m extra h
+
+/-- A `WellTyped` body folded over *any* prefix stack returns to that prefix. -/
+theorem WellTyped_frame (l : List (Positioned YamlToken)) (pre : List Bool)
+    (h : WellTyped l) : btFold (some pre) l = some pre := by
+  have := btFold_frame l [] [] pre h
+  simpa using this
+
+/-- A single delta-`0` token is `WellTyped`. -/
+theorem WellTyped_singleton_delta_zero (t : Positioned YamlToken)
+    (h : flowBracketDelta t.val = 0) : WellTyped [t] := by
+  unfold WellTyped
+  rw [btFold_cons_some]
+  simp only [btFold, List.foldl_nil]
+  exact btStep_delta_zero t [] h
+
+/-- `WellTyped` is closed under concatenation (stack-fold homomorphism). -/
+theorem WellTyped_append (a b : List (Positioned YamlToken))
+    (ha : WellTyped a) (hb : WellTyped b) : WellTyped (a ++ b) := by
+  unfold WellTyped at *
+  rw [btFold_append, ha]; exact hb
+
+/-- Prepending a delta-`0` token preserves `WellTyped` — the typed twin of
+    `WellBracketed_cons_delta_zero`. -/
+theorem WellTyped_cons_delta_zero (t : Positioned YamlToken)
+    (l : List (Positioned YamlToken))
+    (h_delta : flowBracketDelta t.val = 0) (h_wt : WellTyped l) : WellTyped (t :: l) := by
+  have h : t :: l = [t] ++ l := rfl
+  rw [h]
+  exact WellTyped_append [t] l (WellTyped_singleton_delta_zero t h_delta) h_wt
+
+/-- **Typed wrap (sequence).**  A `WellTyped` interior framed by `[ … ]` is `WellTyped`:
+    the matching `]` pops exactly the `[` this lemma pushed.  The typed twin of
+    `wrap_seq_block` — its payoff is that the close is provably a `]`, not a `}`. -/
+theorem wrap_seq_typed (op cl : Positioned YamlToken) (body : List (Positioned YamlToken))
+    (h_op : op.val = .flowSequenceStart) (h_cl : cl.val = .flowSequenceEnd)
+    (h_body : WellTyped body) : WellTyped (op :: (body ++ [cl])) := by
+  unfold WellTyped
+  rw [btFold_cons_some]
+  have hop : btStep op [] = some [true] := by unfold btStep; rw [h_op]
+  rw [hop, btFold_append, WellTyped_frame body [true] h_body, btFold_cons_some]
+  simp only [btFold, List.foldl_nil]
+  unfold btStep; rw [h_cl]
+
+/-- **Typed wrap (mapping).**  A `WellTyped` interior framed by `{ … }` is `WellTyped`. -/
+theorem wrap_map_typed (op cl : Positioned YamlToken) (body : List (Positioned YamlToken))
+    (h_op : op.val = .flowMappingStart) (h_cl : cl.val = .flowMappingEnd)
+    (h_body : WellTyped body) : WellTyped (op :: (body ++ [cl])) := by
+  unfold WellTyped
+  rw [btFold_cons_some]
+  have hop : btStep op [] = some [false] := by unfold btStep; rw [h_op]
+  rw [hop, btFold_append, WellTyped_frame body [false] h_body, btFold_cons_some]
+  simp only [btFold, List.foldl_nil]
+  unfold btStep; rw [h_cl]
+
 -- ═══ Filtered token lemmas for scanner handlers ═══
 
 /-- `scanFlowSequenceStart` filtered token equation: adds exactly one `.flowSequenceStart`. -/
