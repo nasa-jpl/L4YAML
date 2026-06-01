@@ -58,6 +58,7 @@ import L4YAML.Proofs.Parser.ParserGrammableBase
 import L4YAML.Proofs.Parser.ParserNodeProofs
 import L4YAML.Proofs.Parser.ParserSoundness
 import L4YAML.Proofs.Parser.ParserWellBehaved
+import L4YAML.Proofs.Parser.FlowParserAcceptance
 import L4YAML.Proofs.Parser.ParserWfaProofs
 import L4YAML.Proofs.Production.PreprocessProduction
 import L4YAML.Proofs.RoundTrip.RoundTrip
