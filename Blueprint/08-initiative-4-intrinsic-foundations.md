@@ -2014,19 +2014,34 @@ a `3 ≤ n` floor (per-pair entry `EntrySafe` via `cons_delta_zero ∘ append �
 `head_Q`/`SafeBody_array_flowEntry`/`n≥3` rewrite.  Both on the pure triple, no `native_decide`.
 Sorries 7 → 6 → **5**.
 
-**Next session — `.bridge.parsenode`** — the remaining 4 sorries are now ALL *parser*-side (the
-scanner-side body characterizations are done for both seq and map):
-  - the 2 `ParseNodeFlowSeqOk` / `ParseEntryFlowMapOk` sorries in
-    `scanFiltered_emit{Seq,Map}_nonempty_structure` (`NonemptyStructure.lean` ~line 253 seq / ~471
-    map) — these assert the *parser* loop accepts the scanned token stream, given the body-token
-    characterization (now fully available: first-token + post-`.flowEntry` content-start/`.key` +
-    `n ≥ 3`).  Likely needs a parse-loop fuel/termination + token-shape consumption argument.
-  - the 2 base `emit_roundtrip_{sequence,mapping}_content_eq` sorries (`EmitterScannability.lean`
-    ~796 / ~835) that consume the structure theorems.
-  This is a distinct concern from `SafeBody` — the scanner→token-shape bridge is closed; what
-  remains is token-shape→parser-acceptance and parser-acceptance→content-equality.  Survey the
-  `ParseNodeFlowSeqOk`/`ParseEntryFlowMapOk` predicates and the parser loop first; this may want its
-  own substrate sub-survey (no `SafeBody` reuse — the parser side has its own machinery).
+`.bridge.parsenode.scalar` (commit `d35b7e4e`, Reflection 190): the survey landed — the
+remaining 4 sorries are all parser-side, the discharge is a span strong-induction
+`flow_parser_ok_of_structure : FlowSubrangesOk → ParseNodeFlowSeqOk ∧ ParseEntryFlowMapOk` (the
+`.iterators` repo sketched it but it's ~15-sorry incomplete and on the old framing — a map, not a
+parts bin). First brick landed: new module `Proofs/Parser/FlowParserAcceptance.lean` with the
+`FlowSubrangesOk`-free scalar leaf `parseNode_scalar_flow` (+ `validateNodeProps_scalar`). Sorries
+held at **5** (pure enablement); pure-triple axioms.
+
+**Next session — `.bridge.parsenode.brackets`** — build the recursive cases of the node induction,
+on top of the scalar leaf just landed:
+  - **Reduction lemmas** (pure unfold, no induction): `parseNode` on `.flowSequenceStart` reduces to
+    `(parseFlowSequence ps fuel)` post-finalization, and `.flowMappingStart` to `parseFlowMapping` —
+    mirror `parseNode_scalar_flow`'s structure (props skip + `validateNodeProps` ok + `parseNodeContent`
+    dispatch + `applyNodeFinalization`). These connect the node to the *already-closed* loop theorems
+    `parseFlow{Sequence,Mapping}Loop_emitter_ok` (`ParserWellBehaved.lean` ~4171/4465, sorry-free).
+  - **Body-structure predicates**: port/adapt `SeqBodyProps`/`MapBodyProps`/`FlowSubrangesOk` from
+    `.iterators` (`ParserGrammableBase.lean` ~625/666/738) into the current `ParserWellBehaved`
+    namespace — the universal-over-subranges bundles the span induction needs.
+  Then `.parsenode.induction` (the span strong-induction assembling leaf + bracket cases into
+  `ParseNodeFlowSeqOk`/`ParseEntryFlowMapOk`) and `.parsenode.discharge` (produce `FlowSubrangesOk`
+  for the emitter stream from the body-token characterization — note `SeqBodyProps`/`MapBodyProps`'s
+  top-level conjuncts ARE what `scanFiltered_emit{Seq,Map}_nonempty_structure` already proves, but
+  `FlowSubrangesOk` quantifies over ALL nested subranges, so the discharge needs the characterization
+  recursively / a bracket-matching argument — then instantiate at `(tokens.size-2, 2)`, close the 2
+  structure sorries; finally the 2 base `emit_roundtrip_{sequence,mapping}_content_eq`,
+  `EmitterScannability.lean` ~832/872, that consume them).
+  Distinct from `SafeBody` — the scanner→token-shape bridge is closed; this is the
+  token-shape→parser-acceptance half, with its own machinery in `FlowParserAcceptance.lean`.
 
 **(Historical `.assemble` plan — superseded by Reflection 188 for the seq side, still the shape for
 `.map`.)**  Thread the `EmitScansInFlowBlock` block
@@ -7488,6 +7503,16 @@ Writing `emit_scans_block_combined` (the combined `Grammable` producer) surfaced
 **(3) A derived output obligation is paid at the producer, not laundered to the consumer.** The map characterization's conclusion carries `n ≥ 3` (the seq one doesn't — it's what `scanFiltered_emitMap_nonempty_structure` needs for `tokens.size ≥ 7`). Rather than rederive it downstream (which would have meant reworking the structure theorem's filtered-size arithmetic), I added `3 ≤ n` as an output conjunct of `emitPairList_scans_safebody` — multipair is `≥ 4` trivially, the singleton needs `n₁ ≥ 1` for the key chain, which `ScanChainGrew.eq_of_zero` + the saved-key token-growth witness (`s.tokens.size + 1 < s₁.tokens.size`) gives in three lines. Keeping `n ≥ 3` in the *characterization's* conclusion meant `scanFiltered_emitMap_nonempty_structure` was untouched except its hypotheses. **Lesson: when a consumer needs a numeric floor on the existential witness, thread it from the producer that owns the witness — re-deriving it at the use site fights arithmetic the producer already has in hand.**
 
 **(4) The `decide`-with-free-variables trap.** `keyTok.val ≠ .flowEntry` where `keyTok = ⟨s₁.simpleKey.pos, .key, …⟩` failed `by decide` ("Expected type must not contain free variables") — `decide` tried to evaluate the irrelevant `pos` field. `by simp` reduces the `.val` projection to `.key` and discharges the constructor inequality without evaluating the whole closed term. **Lesson: for a constructor (in)equality whose subject carries free-variable payload in irrelevant fields, reach for `simp` (projection-reduction + `reduceCtorEq`), not `decide`.**
+
+##### Reflection 190 (new, 2026-05-31): the scanner→token-shape bridge is *done*; `.bridge.parsenode` is a fresh sub-initiative on the *other* side of the parser, and the survey's payoff was discovering the abandoned `.iterators` attempt is a map of the terrain, not a usable proof
+
+**The setup.** With both body-token characterizations closed (`.assemble.{seq,map}`), the remaining 4 sorries are all parser-side. Two are the `ParseNodeFlowSeqOk`/`ParseEntryFlowMapOk` conjuncts of `scanFiltered_emit{Seq,Map}_nonempty_structure`; two are the base `emit_roundtrip_{sequence,mapping}_content_eq` that consume them. The pointer flagged "may want its own substrate sub-survey." It did — and the survey was the increment's real content.
+
+**(1) The bridge predicates assert *real parser* success, and the current project already has the loop half but not the node half.** `ParseNodeFlowSeqOk` says: for any `ps` peeking a content-start token at depth 0 in the body, `parseNode ps m` succeeds, advances, lands on `.flowEntry`/end-bracket, preserves tokens, balance 0. The current `ParserWellBehaved.lean` already proves the *loop* theorems (`parseFlow{Sequence,Mapping}Loop_emitter_ok`, sorry-free) that *consume* these predicates — what's missing is *producing* them. So the gap isn't "wire up existing machinery"; it's the genuinely hard node-acceptance induction. **Lesson: when a sorry is a hypothesis-shaped `Prop` (`Parse…Ok`), check which side of the consumer/producer seam already exists — here the consumer (loop) was done and the producer (node) was the whole job.**
+
+**(2) The abandoned `.iterators` repo is a *terrain map*, not a parts bin.** It has the right strategy — `flow_parser_ok_of_structure : FlowSubrangesOk tokens → ParseNodeFlowSeqOk ∧ ParseEntryFlowMapOk` by mutual strong induction on span, with `SeqBodyProps`/`MapBodyProps` body-structure bundles — and the `Parse…Ok` *definitions* are textually identical to the current project's (portable). But it uses the *old* `ParserGrammable` namespace and `EmitScansInFlow` predicates, and crucially it is **not complete**: ~15 sorries scattered across the helper lemmas (`parseNode_flowSeqStart_in_seq` ×3, `parseNode_flowMapStart_in_seq` ×1, `flow_parser_ok_of_structure` fuel cases, the 9 vacuity lemmas at 4673-4697, `parseEntry_in_flowMap` deps), and its own emitter side *still sorries* the exact `h_pnok`. So "port the 95%-complete proof" is a mirage — the 95% is the easy structural scaffolding; the missing 5% is the load-bearing parser reasoning. **Lesson: an abandoned parallel attempt tells you the *shape* of the proof and where the hard parts hide — read it to plan, but budget for re-proving the cores, not copying them.**
+
+**(3) The cleanest first brick is the `FlowSubrangesOk`-free leaf.** Rather than port the structure-laden `parseNode_scalar_in_seq` (which bundles a `SeqBodyProps` hypothesis it doesn't need for the *parser* fact), I stated `parseNode_scalar_flow` as a pure parser lemma: scalar-peek ⟹ `parseNode` succeeds, returns the scalar, `pos+1`, tokens/trackPositions preserved. No body-structure hypothesis — so it serves *both* the seq and map inductions verbatim, and it's the one piece that's unconditionally true and small. The proof is just the four already-extracted finalization lemmas (`parseNodeProperties_skip`, the new `validateNodeProps_scalar`, `parseNodeContent` scalar reduction, `applyNodeFinalization_{pos,tokens,trackPositions}`) glued by a monad `simp`. **Lesson: decouple the parser-internal fact from the token-stream structure — state the leaf with the *minimum* hypotheses (just the peek), and the "where it lands" obligation stays with the caller who owns the stream.** This is the same producer-owns-its-obligation discipline as R189(3), read from the consumer's end: don't import a structural precondition into a lemma that doesn't depend on it.
 
 **Step 6f.3b3.emitscans.toplevel SS1 (easy prereqs) LANDED 2026-05-27**
 (~225 LOC across two files: `Endpoint.lean` §6 ~200 LOC +
@@ -19009,7 +19034,13 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
-                **Total .body scope re-estimate (THIRTY-EIGHTH revision —
+                **Total .body scope re-estimate (THIRTY-NINTH revision —
+                after **`.bridge.parsenode.scalar`** landed (the first parser-acceptance
+                substrate brick — new module `Proofs/Parser/FlowParserAcceptance.lean`,
+                ~75 LOC: `parseNode_scalar_flow` + `validateNodeProps_scalar`, the
+                `FlowSubrangesOk`-free scalar leaf; commit `d35b7e4e`, Reflection 190;
+                sorries held at 5 — pure enablement, build 513 → 515 jobs), on top of
+                the **THIRTY-EIGHTH revision** —
                 after **`.bridge.assemble.map`** landed (the flow-MAPPING body-token
                 characterization, legacy sorry 9646 — the LAST body-characterization sorry —
                 via `EmitScansInFlowSavedKeyBlock`+`EntrySafe`, `emitPairList_scans_safebody`
@@ -19443,9 +19474,30 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                   Block substrates threaded through `scanFiltered_emitMap_nonempty_structure` + the
                   base map caller.  Both new sorry-free decls on the **pure triple**
                   `[propext, Classical.choice, Quot.sound]`.  Reflection 189]
-                + `.body2.discharge.bridge.parsenode` [after — the 2 `ParseNode`/`ParseEntry`
+                + `.body2.discharge.bridge.parsenode` [the 2 `ParseNode`/`ParseEntry`
                   sorries in `scanFiltered_emit{Seq,Map}_nonempty_structure` + the 2 base
-                  `emit_roundtrip_{sequence,mapping}_content_eq` sorries that consume them]),
+                  `emit_roundtrip_{sequence,mapping}_content_eq` sorries that consume them;
+                  a multi-session sub-initiative — the discharge is a mutual strong induction
+                  on span (`flow_parser_ok_of_structure : FlowSubrangesOk → ParseNodeFlowSeqOk
+                  ∧ ParseEntryFlowMapOk`), distinct from `SafeBody`; the `.iterators` repo
+                  sketched it (~95% but sorry-laden, old `ParserGrammable`/`EmitScansInFlow`
+                  framing). Sub-steps:
+                    - `.parsenode.scalar` [**LANDED 2026-05-31, commit `d35b7e4e`**, new module
+                      `Proofs/Parser/FlowParserAcceptance.lean`, ~75 LOC: `validateNodeProps_scalar`
+                      + `parseNode_scalar_flow` — the `FlowSubrangesOk`-free scalar leaf both
+                      inductions bottom out on (`parseNode` on a scalar-peek succeeds, returns the
+                      scalar, advances pos by 1, preserves tokens/trackPositions). Sorry count
+                      held at 5 (pure enablement); pure-triple axioms. Reflection 190]
+                    - `.parsenode.brackets` [next — the recursive cases: `parseNode` on
+                      `.flowSequenceStart`/`.flowMappingStart` reduces (pure unfold) to
+                      `parseFlowSequence`/`parseFlowMapping`, whose loops are already closed by the
+                      sorry-free `parseFlow{Sequence,Mapping}Loop_emitter_ok`; the body-structure
+                      predicates (`SeqBodyProps`/`MapBodyProps`/`FlowSubrangesOk`)]
+                    - `.parsenode.induction` [the span strong-induction assembling the leaf +
+                      bracket cases into `ParseNodeFlowSeqOk`/`ParseEntryFlowMapOk`]
+                    - `.parsenode.discharge` [produce `FlowSubrangesOk` for the emitter stream from
+                      the body-token characterization, instantiate at `(tokens.size-2, 2)`, close the
+                      2 structure sorries; then the 2 base `content_eq`]),
                 vs. Blueprint-original 400–700 LOC in 1 session.
                 Cumulative underestimate factor: **~6.9–8.1×**
                 (the combined `.converters` [LANDED ~115] + `.consumer`
