@@ -2110,15 +2110,23 @@ what remains is assembling `FlowSubrangesOk`). The shape of the remaining produc
    **typed twin** of the `WellBracketed` algebra: a stack fold `btStep`/`btFold` over `Option (List Bool)`
    (`true` = `[`, `false` = `{`; `none` = mismatch/underflow), `WellTyped`, and the one-for-one closure
    mirror `WellTyped_append`/`_singleton_delta_zero`/`_cons_delta_zero`/`wrap_{seq,map}_typed`
-   (`wrap` rests on `btFold_frame`: a `WellTyped` body never underflows its starting stack). **Remaining
-   sub-bricks**: (a) thread `WellTyped` through the emitter producer chain
-   (`emit{List,PairList}_scans_safebody` → `…_body_filtered_characterization` →
-   `scanFiltered_emit{Seq,Map}_nonempty_structure`) by mechanically mirroring the `WellBracketed` thread
-   (Reflection 203 playbook), surfacing `WellTyped tokens`-grade structure at the tokens level; (b) the
-   **typed locator** — from `WellTyped` (or a tokens-level corollary), a depth-0 `.flowSequenceStart` at
-   `k` matches a `.flowSequenceEnd` (and `{`→`}`), pinning the matching close's *type* and giving the
-   `bracket_*`/M5/M8/M9/M10 conjuncts their type half; (c) the flat per-position local-shape facts
-   (`scalar_succ`, `after_fe`, `key_content`, …) for every nested subrange, then assemble `FlowSubrangesOk`.
+   (`wrap` rests on `btFold_frame`: a `WellTyped` body never underflows its starting stack).
+   **Brick (a) — the Block-layer introduction thread — LANDED** (commit `40941d9a`, Reflection 205):
+   `WellTyped block` is now a conjunct of ALL FOUR block predicates (`EmitScansInFlowBlock`,
+   `EmitScansInFlowSavedKeyBlock`, `EmitListScansInFlowBlock`, `EmitPairListScansInFlowBlock`),
+   discharged in the `empty`/`nonempty` list/pair-list producers and in `emit_scans_block_combined`'s six
+   sub-cases (scalar → `WellTyped_singleton_delta_zero`, seq → `wrap_seq_typed`, map → `wrap_map_typed`;
+   `WellTyped_nil` added). The whole Block layer is one strongly-connected component, so it landed as a
+   single atomic brick: **every `emit v` filtered block is now provably `WellTyped`**. The substrate's
+   introduction lemmas are now all exercised. **Remaining sub-bricks**: (b) surface `WellTyped` from the
+   leaf to the **tokens level** by threading the new conjunct through `emit{List,PairList}_scans_safebody`
+   → `…_body_filtered_characterization` → `scanFiltered_emit{Seq,Map}_nonempty_structure` (those producers
+   currently absorb the new leaf field with `_`), mechanically mirroring how the `WellBracketed` thread
+   surfaced the outer balance + Dyck (Reflection 202/203 playbook); (c) the **typed locator** — from the
+   tokens-level `WellTyped`, a depth-0 `.flowSequenceStart` at `k` matches a `.flowSequenceEnd` (and
+   `{`→`}`), pinning the matching close's *type* and giving the `bracket_*`/M5/M8/M9/M10 conjuncts their
+   type half; (d) the flat per-position local-shape facts (`scalar_succ`, `after_fe`, `key_content`, …)
+   for every nested subrange, then assemble `FlowSubrangesOk`.
 3. Instantiate `flow_parser_ok_of_structure` at `(lo, hi) = (2, tokens.size−2)`,
    `fuel = 4·tokens.size+4` → close the 2 structure sorries (`NonemptyStructure.lean` 549/764 — **both**
    the seq AND map sites now have `h_outer_bal`/`h_dyck` in scope ready to feed alongside `FlowSubrangesOk`).
@@ -14820,7 +14828,29 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
-                **Total .body scope re-estimate (FIFTY-SECOND revision —
+                **Total .body scope re-estimate (FIFTY-THIRD revision —
+                after **Thread A step 3 sub-step 2's brick (a) — the introduction-side thread — landed:
+                `WellTyped` is now established across the WHOLE Block-layer mutual recursion** (commit
+                `40941d9a`, Reflection 205). The four block predicates (`EmitScansInFlowBlock`,
+                `EmitScansInFlowSavedKeyBlock`, `EmitListScansInFlowBlock`, `EmitPairListScansInFlowBlock`)
+                each now carry `∧ WellTyped block`, discharged in the `empty`/`nonempty` list/pair-list
+                producers and in `emit_scans_block_combined`'s six sub-cases — scalar via
+                `WellTyped_singleton_delta_zero`, sequence via `wrap_seq_typed`, mapping via
+                `wrap_map_typed`, each a one-line mirror of the existing `WellBracketed` discharge (plus
+                `WellTyped_nil` for the empty bodies). So **every `emit v` filtered block is provably
+                `WellTyped`** — each `]`/`}` pinned to its matching `[`/`{`, the type information the
+                untyped balance discards. The whole Block layer is one strongly-connected component (the
+                seq case of the leaf needs the list body's `WellTyped`, which needs the leaf's…), so it
+                moved as a single atomic brick. **Remaining for sub-step 2**: (b) surface `WellTyped` to
+                the tokens level by threading it through `emit{List,PairList}_scans_safebody` →
+                `…_body_filtered_characterization` → `scanFiltered_emit{Seq,Map}_nonempty_structure`
+                (those producers currently absorb the new leaf field with `_`); (c) the typed locator
+                (depth-0 `[` matches `]`) → the per-position local-shape facts → assemble `FlowSubrangesOk`.
+                Build green 515 jobs, **sorries held at 4** (pure enablement: the new conjunct is
+                established but not yet consumed), `WellTyped_nil` on `[propext]`, producers on
+                `[propext, Classical.choice, Quot.sound]` — no sorryAx, no new axioms. See Reflection 205,
+                on top of the
+                **FIFTY-SECOND revision** —
                 after **Thread A step 3 sub-step 2's first brick landed: the typed-bracket `WellTyped`
                 substrate**. `pbalance`/`WellBracketed` collapse `[`/`{` (and `]`/`}`) to one ±1 delta,
                 so they witness the flat Dyck condition but NOT bracket-*type* matching — the untyped
@@ -23717,3 +23747,50 @@ extraction theorem over it" keeps each session's deliverable green and its risk 
 divides naturally into its *introduction* lemmas (how producers build it — usually mechanical) and its *elimination*
 lemmas (what consumers extract — usually the hard induction); land the introduction side first as a standalone green
 increment, because it both de-risks the session and gives the elimination side a fixed target to aim at.**
+
+
+### Reflection 205 (new, 2026-06-01): a refinement's introduction side rides through the *exact same* producer chain as the invariant it twins — so the thread is atomic, mechanical, and predicate-shaped, not proof-shaped
+
+[[Reflection 204]] predicted that threading `WellTyped` would be "a mechanical substitution" of the `WellBracketed`
+thread. This session confirmed it at the Block layer — and made precise *what kind* of work it actually is. The brick
+added `∧ WellTyped block` to all four block predicates (`EmitScansInFlowBlock`, `EmitScansInFlowSavedKeyBlock`,
+`EmitListScansInFlowBlock`, `EmitPairListScansInFlowBlock`) and discharged it in every producer that establishes them
+(the `empty`/`nonempty` list/pair-list producers, and `emit_scans_block_combined`'s six sub-cases). Of the ~40 edit
+points, **not one was a new proof obligation requiring thought**: each `WellTyped` discharge sat one line below an
+existing `WellBracketed` discharge with the identical argument shape (`WellTyped_singleton_delta_zero` next to
+`WellBracketed_singleton_delta_zero`; `wrap_seq_typed` next to `wrap_seq_block`; `WellTyped_append` next to
+`WellBracketed_append`), and the `flowBracketDelta` side-condition each consumed was the *same term* the `WellBracketed`
+twin already discharged. The only genuinely new lemma was `WellTyped_nil` (`rfl`).
+
+**(1) When the twin invariant is established by the same producers, the thread is one atomic, strongly-connected brick —
+you cannot land "the seq half" or "the leaf only."** I went in hoping to carve a smaller slice (scalar-only? seq-only?)
+to de-risk the session. There is none. The combined induction `emit_scans_block_combined` is a *single* theorem over
+`Grammable` covering scalar+seq+map; its seq case discharges `WellTyped (fss :: body ++ [fse])` via `wrap_seq_typed`,
+which needs `WellTyped body` from `EmitListScansInFlowBlock`, whose producer needs `WellTyped block₁` from the leaf
+`EmitScansInFlowBlock`, which is established by… the same combined induction. The four predicates + four producers + one
+induction form one cycle; adding a conjunct to any one forces all of them. **Lesson: before scoping a "thread a parallel
+invariant" brick, find the strongly-connected component of predicates-and-their-producers the new conjunct touches — that
+SCC is the irreducible unit of work, and trying to split it just yields a non-building intermediate. Size the session to
+the whole SCC or not at all.**
+
+**(2) The work is predicate-shaped, not proof-shaped — and that changes how you de-risk it.** Because every discharge is
+a mechanical mirror, the risk in such a brick is NOT "will a proof go through" but "did I update every destructure site
+the new conjunct shifted." Adding `∧ WellTyped block` between `WellBracketed block` and `EntrySafe block` reshapes every
+`obtain ⟨…, h_wb, h_es, h_cs⟩` into `⟨…, h_wb, h_wt, h_es, h_cs⟩` — and a *single* missed site is a hard type error, not a
+sorry. The IDE diagnostics caught exactly these (a body destructure binding `h_body_wb : WellBracketed ∧ WellTyped` as one
+conjunction instead of two binders), and the fix was always "split the binder / add a `_`," never "find a proof." The
+right de-risking move was a *grep census of every destructure site of the four predicates* up front (8 leaf/savedkey
+sites, 4 body sites), not careful proof planning. **Lesson: for a conjunct-insertion thread, the up-front survey to do is
+mechanical — enumerate every `obtain`/anonymous-constructor that touches the predicate and budget one trivial edit each;
+the compiler, not your proof intuition, is the oracle, so build the file early and let the type errors drive the patch
+list.**
+
+**(3) "Pure enablement" is a legitimate green increment even though nothing consumes the new conjunct yet.** After this
+brick, `WellTyped block` is *established* everywhere but *consumed* nowhere — the safebody producers still absorb it with
+`_`. The sorry count is unchanged (4), and no downstream theorem is stronger today. Yet this is real, bankable progress:
+the introduction side of the substrate is now a fixed, axiom-clean fact the next two bricks (tokens-level surfacing, then
+the locator) can *assume* rather than *re-derive*. The alternative — bundling introduction + surfacing + locator into one
+session to "show a consumed result" — is exactly the all-or-nothing bundling [[Reflection 204]] (3) warned against.
+**Lesson: an increment that establishes a new invariant without yet consuming it is worth landing on its own — a green,
+axiom-clean, fully-established fact is a strictly better foundation for the next session than a half-built consumer, and
+the "held at N sorries" cadence explicitly blesses enablement-only bricks.**
