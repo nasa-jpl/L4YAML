@@ -677,4 +677,154 @@ theorem loopMapPre_of (tokens : Array (Positioned YamlToken)) (ps_adv : ParseSta
     exact ⟨h_succ_lt, by rw [h_tok]; exact h_succ_key⟩
   · rw [h_tok]; simp [flowBracketBalance]
 
+/-! ## §VII  Bracket key/value reductions for map entries (`.bridge.parsenode.brackets`, entry half)
+
+The §IV leaf `parseEntry_mapScalar_ok` discharges the scalar-keyed/scalar-valued map
+entry — the one entry shape needing no inductive hypothesis.  The remaining three
+shapes (bracket key and/or bracket value) each run the parser through a `[…]`/`{…}`
+group, so — exactly like §II for plain nodes — they reduce, *conditional on* the inner
+collection parse succeeding, to a single `parseFlowSequence`/`parseFlowMapping` success.
+These are the entry-side analogues of §II: pure facts about how `parseExplicitKey` /
+`parseFlowMappingValue` dispatch on a bracket peek, carrying no `FlowSubrangesOk`
+hypothesis.  The span induction supplies the inner parse via §V (`FlowSubrangesOk` + IH).
+
+`parseExplicitKey` on a bracket peek falls through its `.value`/`.flowEntry`/
+`.flowMappingEnd` empty-key guards straight to `parseNode`, so the *key* reductions are
+immediate corollaries of §II.  The *value* reductions run the same do-block as the scalar
+value case (`parseFlowMappingValue_scalar`: path push, no-op `tryConsume .key`, consume
+`.value`, `parseNode`, restore path), but the value `parseNode` lands on §II's bracket
+reduction instead of the §I scalar leaf — so they characterize the landing state through
+the inner parse result `ps'` (`applyNodeFinalization` preserves `pos`/`tokens`/
+`trackPositions`). -/
+
+/-- **Bracket-sequence key reduction.**  `parseExplicitKey` on a `.flowSequenceStart`
+    peek dispatches past its empty-key guards to `parseNode`; with the inner
+    `parseFlowSequence ps k` succeeding, it returns the finalized sequence value. -/
+theorem parseExplicitKey_flowSeqStart_of_parse (ps ps' : ParseState) (k : Nat) (v : YamlValue)
+    (h_peek : ps.peek? = some .flowSequenceStart)
+    (h_parse : parseFlowSequence ps k = .ok (v, ps')) :
+    parseExplicitKey ps (k + 1) =
+      .ok (applyNodeFinalization v ps' {}
+        (ps.peekPos?.getD { offset := 0, line := 0, col := 0 })) := by
+  simp only [parseExplicitKey, h_peek]
+  exact parseNode_flowSeqStart_of_parse ps ps' k v h_peek h_parse
+
+/-- **Bracket-mapping key reduction** (mirror of `parseExplicitKey_flowSeqStart_of_parse`). -/
+theorem parseExplicitKey_flowMapStart_of_parse (ps ps' : ParseState) (k : Nat) (v : YamlValue)
+    (h_peek : ps.peek? = some .flowMappingStart)
+    (h_parse : parseFlowMapping ps k = .ok (v, ps')) :
+    parseExplicitKey ps (k + 1) =
+      .ok (applyNodeFinalization v ps' {}
+        (ps.peekPos?.getD { offset := 0, line := 0, col := 0 })) := by
+  simp only [parseExplicitKey, h_peek]
+  exact parseNode_flowMapStart_of_parse ps ps' k v h_peek h_parse
+
+/-- **Bracket-sequence value reduction.**
+
+    At a `.value`-separator state whose value content is `.flowSequenceStart`,
+    `parseFlowMappingValue` consumes the separator and parses the bracket sequence.  The
+    do-block reduces (no-op `tryConsume .key`, consume `.value`, then the bracket
+    `parseNode`) to §II's `parseFlowSequence` reduction; the path is restored afterwards.
+    The landing state inherits `pos`/`tokens`/`trackPositions` from the inner parse result
+    `ps'` (finalization and the path restore touch none of them). -/
+theorem parseFlowMappingValue_flowSeqStart_of_parse (ps : ParseState) (m : Nat)
+    (savedPath : YamlPath) (keyContent : String)
+    (ps' : ParseState) (v : YamlValue) (k : Nat) (h_m : m = k + 1)
+    (h_peek_value : ps.peek? = some .value)
+    (h_succ_lt : ps.pos + 1 < ps.tokens.size)
+    (h_succ_seqStart : ps.tokens[ps.pos + 1]!.val = .flowSequenceStart)
+    (h_parse : parseFlowSequence
+        ({ ps with currentPath := savedPath.push (.key keyContent) } : ParseState).advance k
+        = .ok (v, ps')) :
+    ∃ val ps_fin, parseFlowMappingValue ps m savedPath keyContent = .ok (val, ps_fin) ∧
+      ps_fin.pos = ps'.pos ∧ ps_fin.tokens = ps'.tokens ∧
+      ps_fin.trackPositions = ps'.trackPositions := by
+  subst h_m
+  -- The path-pushed state; `peek?`/`tryConsume` read only `pos`/`tokens`, defeq to `ps`'s.
+  have hpk1 : ({ ps with currentPath := savedPath.push (.key keyContent) } : ParseState).peek?
+      = some YamlToken.value := h_peek_value
+  have htck : ({ ps with currentPath := savedPath.push (.key keyContent) } : ParseState).tryConsume
+      YamlToken.key = (false, { ps with currentPath := savedPath.push (.key keyContent) }) := by
+    simp [ParseState.tryConsume, hpk1]
+  have htcv : ({ ps with currentPath := savedPath.push (.key keyContent) } : ParseState).tryConsume
+      YamlToken.value
+      = (true, ({ ps with currentPath := savedPath.push (.key keyContent) } : ParseState).advance) := by
+    simp [ParseState.tryConsume, hpk1]
+  -- After consuming `.value`, the peek is the `.flowSequenceStart` value content.
+  have hpk2 : ({ ps with currentPath := savedPath.push (.key keyContent) } : ParseState).advance.peek?
+      = some YamlToken.flowSequenceStart := by
+    have e1 : ({ ps with currentPath := savedPath.push (.key keyContent) } : ParseState).advance.pos
+        = ps.pos + 1 := rfl
+    have e2 : ({ ps with currentPath := savedPath.push (.key keyContent) } : ParseState).advance.tokens
+        = ps.tokens := rfl
+    unfold ParseState.peek?
+    rw [e1, e2, if_pos h_succ_lt, h_succ_seqStart]
+  -- §II: the bracket `parseNode` reduces to the inner `parseFlowSequence` success.
+  have h_node := parseNode_flowSeqStart_of_parse _ ps' k v hpk2 h_parse
+  -- The do-block result: finalized value, path restored to `savedPath`.
+  have h_eq : parseFlowMappingValue ps (k + 1) savedPath keyContent =
+      .ok ((applyNodeFinalization v ps' {}
+              (({ ps with currentPath := savedPath.push (.key keyContent) } : ParseState).advance.peekPos?.getD
+                { offset := 0, line := 0, col := 0 })).1,
+           { (applyNodeFinalization v ps' {}
+              (({ ps with currentPath := savedPath.push (.key keyContent) } : ParseState).advance.peekPos?.getD
+                { offset := 0, line := 0, col := 0 })).2 with currentPath := savedPath }) := by
+    simp only [parseFlowMappingValue, htck, htcv, hpk2, h_node, bind, Except.bind, if_true]
+  refine ⟨_, _, h_eq, ?_, ?_, ?_⟩
+  · show (applyNodeFinalization v ps' {} _).2.pos = ps'.pos
+    rw [applyNodeFinalization_pos]
+  · show (applyNodeFinalization v ps' {} _).2.tokens = ps'.tokens
+    rw [applyNodeFinalization_tokens]
+  · show (applyNodeFinalization v ps' {} _).2.trackPositions = ps'.trackPositions
+    rw [applyNodeFinalization_trackPositions]
+
+/-- **Bracket-mapping value reduction** (mirror of
+    `parseFlowMappingValue_flowSeqStart_of_parse`). -/
+theorem parseFlowMappingValue_flowMapStart_of_parse (ps : ParseState) (m : Nat)
+    (savedPath : YamlPath) (keyContent : String)
+    (ps' : ParseState) (v : YamlValue) (k : Nat) (h_m : m = k + 1)
+    (h_peek_value : ps.peek? = some .value)
+    (h_succ_lt : ps.pos + 1 < ps.tokens.size)
+    (h_succ_mapStart : ps.tokens[ps.pos + 1]!.val = .flowMappingStart)
+    (h_parse : parseFlowMapping
+        ({ ps with currentPath := savedPath.push (.key keyContent) } : ParseState).advance k
+        = .ok (v, ps')) :
+    ∃ val ps_fin, parseFlowMappingValue ps m savedPath keyContent = .ok (val, ps_fin) ∧
+      ps_fin.pos = ps'.pos ∧ ps_fin.tokens = ps'.tokens ∧
+      ps_fin.trackPositions = ps'.trackPositions := by
+  subst h_m
+  have hpk1 : ({ ps with currentPath := savedPath.push (.key keyContent) } : ParseState).peek?
+      = some YamlToken.value := h_peek_value
+  have htck : ({ ps with currentPath := savedPath.push (.key keyContent) } : ParseState).tryConsume
+      YamlToken.key = (false, { ps with currentPath := savedPath.push (.key keyContent) }) := by
+    simp [ParseState.tryConsume, hpk1]
+  have htcv : ({ ps with currentPath := savedPath.push (.key keyContent) } : ParseState).tryConsume
+      YamlToken.value
+      = (true, ({ ps with currentPath := savedPath.push (.key keyContent) } : ParseState).advance) := by
+    simp [ParseState.tryConsume, hpk1]
+  have hpk2 : ({ ps with currentPath := savedPath.push (.key keyContent) } : ParseState).advance.peek?
+      = some YamlToken.flowMappingStart := by
+    have e1 : ({ ps with currentPath := savedPath.push (.key keyContent) } : ParseState).advance.pos
+        = ps.pos + 1 := rfl
+    have e2 : ({ ps with currentPath := savedPath.push (.key keyContent) } : ParseState).advance.tokens
+        = ps.tokens := rfl
+    unfold ParseState.peek?
+    rw [e1, e2, if_pos h_succ_lt, h_succ_mapStart]
+  have h_node := parseNode_flowMapStart_of_parse _ ps' k v hpk2 h_parse
+  have h_eq : parseFlowMappingValue ps (k + 1) savedPath keyContent =
+      .ok ((applyNodeFinalization v ps' {}
+              (({ ps with currentPath := savedPath.push (.key keyContent) } : ParseState).advance.peekPos?.getD
+                { offset := 0, line := 0, col := 0 })).1,
+           { (applyNodeFinalization v ps' {}
+              (({ ps with currentPath := savedPath.push (.key keyContent) } : ParseState).advance.peekPos?.getD
+                { offset := 0, line := 0, col := 0 })).2 with currentPath := savedPath }) := by
+    simp only [parseFlowMappingValue, htck, htcv, hpk2, h_node, bind, Except.bind, if_true]
+  refine ⟨_, _, h_eq, ?_, ?_, ?_⟩
+  · show (applyNodeFinalization v ps' {} _).2.pos = ps'.pos
+    rw [applyNodeFinalization_pos]
+  · show (applyNodeFinalization v ps' {} _).2.tokens = ps'.tokens
+    rw [applyNodeFinalization_tokens]
+  · show (applyNodeFinalization v ps' {} _).2.trackPositions = ps'.trackPositions
+    rw [applyNodeFinalization_trackPositions]
+
 end L4YAML.Proofs.ParserWellBehaved
