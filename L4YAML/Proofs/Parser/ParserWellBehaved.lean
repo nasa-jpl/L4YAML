@@ -4127,14 +4127,17 @@ def ParseNodeFlowSeqOk (tokens : Array (Positioned YamlToken))
     ps.pos < endPos →
     body_start ≤ ps.pos →
     flowBracketBalance tokens body_start ps.pos = 0 →
-    -- Fuel adequacy: the parser fuel `m` must exceed the remaining span
-    -- `endPos - ps.pos`.  Without this, the predicate is FALSE at small `m`
-    -- on bodies containing a depth-0 flow bracket (`parseNode ps 1` at a `[`
-    -- calls `parseFlowSequence ps 0`, which fails); the bound makes it true
-    -- and dischargeable by the span induction (`flow_parser_ok_of_structure`),
-    -- while the loop theorems only ever invoke the predicate at fuel
-    -- `≥ endPos - ps.pos` so they can supply it (see `h_fuel`).
-    endPos < ps.pos + m →
+    -- Fuel adequacy: the parser fuel `m` must exceed TWICE the remaining span
+    -- `endPos - ps.pos`.  A constant-offset bound (`endPos < ps.pos + m`) does
+    -- NOT survive the span induction: descending into a depth-0 bracket drops
+    -- the parser fuel by 3 (`parseNode m` → `parseFlowSequence (m-1)` → loop
+    -- `(m-2)` → inner `parseNode (m-3)`) while the inner span drops by only ≥2,
+    -- so a constant slack erodes by 1 per nesting level and fails on deeply
+    -- nested flow.  The `2 *` bound has headroom 4 (= 2·2) per level against the
+    -- −3 fuel drop, so it is PRESERVED under nesting and dischargeable by
+    -- `flow_parser_ok_of_structure`.  The loop theorems supply it from their
+    -- `h_fuel : fuel > 2 * (endPos - ps.pos) + 1` (see `h_fuel`).
+    2 * (endPos - ps.pos) < m →
     ((∃ c s, ps.peek? = some (.scalar c s)) ∨
      ps.peek? = some .flowSequenceStart ∨
      ps.peek? = some .flowMappingStart) →
@@ -4180,11 +4183,12 @@ theorem parseFlowSequenceLoop_emitter_ok (fuel : Nat)
     (ps : ParseState) (items_acc : Array YamlValue) (endPos : Nat)
     (body_start : Nat)
     (h_pn : ParseNodeFlowSeqOk ps.tokens endPos fuel body_start)
-    -- `+ 1` slack over the span: the loop invokes `h_pn` at parser fuel `fuel-1`,
-    -- and the worst-case nested bracket (matching close at `endPos-1`) needs
-    -- that fuel to STRICTLY exceed the remaining span — i.e. the fuel-adequacy
-    -- bound `endPos < ps.pos + (fuel-1)` of `ParseNodeFlowSeqOk`.
-    (h_fuel : fuel > endPos - ps.pos + 1)
+    -- `2 * span + 1` slack: the loop invokes `h_pn` at parser fuel `fuel-1` and
+    -- must supply its `2 * (endPos - ·) < ·` fuel-adequacy bound; the worst-case
+    -- first item (no separator, `psX.pos = ps.pos`) at fuel `fuel-1` then needs
+    -- `fuel > 2 * (endPos - ps.pos) + 1`.  The `2 *` coefficient is what makes
+    -- the bound survive nested-bracket descent (see `ParseNodeFlowSeqOk`).
+    (h_fuel : fuel > 2 * (endPos - ps.pos) + 1)
     (h_pos : ps.pos ≤ endPos)
     (h_end_pos : endPos < ps.tokens.size)
     (h_end_tok : ps.tokens[endPos]!.val = .flowSequenceEnd)
@@ -4383,7 +4387,7 @@ theorem parseFlowSequenceLoop_emitter_ok (fuel : Nat)
               (by subst hPsX; exact h_lt)
               (by subst hPsX; exact h_bs)
               (by subst hPsX; exact h_bal)
-              (by subst hPsX; show endPos < ps.pos + n; omega)
+              (by subst hPsX; show 2 * (endPos - ps.pos) < n; omega)
               (by subst hPsX; exact h_cs)
           -- Rewrite parseNode result in goal and reduce the match
           rw [h_ok]; dsimp only []
@@ -4450,12 +4454,12 @@ def ParseEntryFlowMapOk (tokens : Array (Positioned YamlToken))
     ps.pos < endPos →
     body_start ≤ ps.pos →
     flowBracketBalance tokens body_start ps.pos = 0 →
-    -- Fuel adequacy (see `ParseNodeFlowSeqOk`): the entry chain
-    -- `parseExplicitKey` + `parseFlowMappingValue` both run at fuel `m`, and a
-    -- bracket-valued entry whose close sits at `endPos-1` needs `m` to exceed
-    -- the remaining span.  False at small `m` without this; suppliable by the
-    -- loop, which only invokes the predicate at fuel `≥ endPos - ps.pos`.
-    endPos < ps.pos + m →
+    -- Fuel adequacy (see `ParseNodeFlowSeqOk` for the full rationale): the entry
+    -- chain `parseExplicitKey` + `parseFlowMappingValue` both run at fuel `m`,
+    -- and a bracket key/value descends with the same −3 fuel / ≥2 span drop, so
+    -- a constant offset erodes per nesting level.  The `2 *` bound is preserved.
+    -- Suppliable by the loop from `h_fuel : fuel > 2 * (endPos - ps.pos) + 1`.
+    2 * (endPos - ps.pos) < m →
     ps.peek? = some .key →
     ∃ key_val key_ps,
       parseExplicitKey ps.advance m = .ok (key_val, key_ps) ∧
@@ -4486,11 +4490,11 @@ theorem parseFlowMappingLoop_emitter_ok (fuel : Nat)
     (ps : ParseState) (pairs_acc : Array (YamlValue × YamlValue)) (endPos : Nat)
     (body_start : Nat)
     (h_entry : ParseEntryFlowMapOk ps.tokens endPos fuel body_start)
-    -- `+ 1` slack over the span (see `parseFlowSequenceLoop_emitter_ok`): the
-    -- worst-case bracket-valued entry needs the per-entry fuel `fuel-1` to
-    -- strictly exceed the remaining span, the fuel-adequacy bound of
-    -- `ParseEntryFlowMapOk`.
-    (h_fuel : fuel > endPos - ps.pos + 1)
+    -- `2 * span + 1` slack (see `parseFlowSequenceLoop_emitter_ok`): the loop
+    -- invokes `h_entry` at per-entry fuel `fuel-1` and must supply the
+    -- `2 * (endPos - ·) < ·` adequacy bound; the worst-case first entry then
+    -- needs `fuel > 2 * (endPos - ps.pos) + 1`.
+    (h_fuel : fuel > 2 * (endPos - ps.pos) + 1)
     (h_pos : ps.pos ≤ endPos)
     (h_end_pos : endPos < ps.tokens.size)
     (h_end_tok : ps.tokens[endPos]!.val = .flowMappingEnd)
@@ -4581,7 +4585,7 @@ theorem parseFlowMappingLoop_emitter_ok (fuel : Nat)
                 (by omega)
                 (by show flowBracketBalance ps.tokens body_start (ps.pos + 1) = 0
                     exact h_depth_at_adv)
-                (by show endPos < ps.pos + 1 + n; omega)
+                (by show 2 * (endPos - (ps.pos + 1)) < n; omega)
                 h_adv_key
             rw [h_ek_ok]; dsimp only []
             -- Split on the parseFlowMappingValue result match
@@ -4746,8 +4750,8 @@ structure LoopSeqPreconditions
     (fuel : Nat) : Prop where
   /-- ParseNodeFlowSeqOk for the inner body -/
   h_pn : ParseNodeFlowSeqOk tokens j fuel body_start
-  /-- Fuel suffices for the span (with `+1` slack — see the loop theorem's `h_fuel`) -/
-  h_fuel : fuel > j - ps_advance.pos + 1
+  /-- Fuel suffices for twice the span (with `+1` slack — see the loop theorem's `h_fuel`) -/
+  h_fuel : fuel > 2 * (j - ps_advance.pos) + 1
   /-- Current position is within the body -/
   h_pos : ps_advance.pos ≤ j
   /-- End position is in bounds -/
@@ -4790,8 +4794,8 @@ structure LoopMapPreconditions
     (fuel : Nat) : Prop where
   /-- ParseEntryFlowMapOk for the inner body -/
   h_pn : ParseEntryFlowMapOk tokens j fuel body_start
-  /-- Fuel suffices for the span (with `+1` slack — see the loop theorem's `h_fuel`) -/
-  h_fuel : fuel > j - ps_advance.pos + 1
+  /-- Fuel suffices for twice the span (with `+1` slack — see the loop theorem's `h_fuel`) -/
+  h_fuel : fuel > 2 * (j - ps_advance.pos) + 1
   /-- Current position is within the body -/
   h_pos : ps_advance.pos ≤ j
   /-- End position is in bounds -/
