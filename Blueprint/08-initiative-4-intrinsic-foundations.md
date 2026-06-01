@@ -2052,18 +2052,20 @@ combining §I's `parseNode_scalar_flow` with `SeqBodyProps.scalar_succ` (success
 at **5**; `[propext]` / pure-triple axioms.
 
 **Next session — `.bridge.parsenode.induction`** (the predicates half is done — predicates in scope,
-bridge + seq-scalar node case landed). Remaining toward the 2 structure sorries:
-  - **Map-entry node acceptance**: the `ParseEntryFlowMapOk` analogue of `parseNode_seqScalar_ok` —
-    a scalar-keyed/scalar-valued entry needs no IH either (the `parseExplicitKey` + `parseFlowMappingValue`
-    chain over scalar key/value), discharged from `MapBodyProps` (M1–M8). The bracket-valued entry
-    cases (M5/M8) are recursive → defer to the induction proper. A clean standalone brick if scoped to
-    the scalar-only entry.
-  - **The span strong-induction** (`flow_parser_ok_of_structure`): assemble the leaf + bracket node
-    cases (§II reductions + the §III/map-entry bridges) into `ParseNodeFlowSeqOk`/`ParseEntryFlowMapOk`
-    by mutual strong induction on `hi - lo`. The §II reductions are conditional on the inner parse;
-    the IH supplies that inner parse for nested bracket bodies, and `SeqBodyProps.bracket_{seq,map}`
-    / `MapBodyProps.bracket_{seq,map}` (M9/M10) give the matching-end + balanced-inner-body facts the
-    IH instantiates at.
+bridge + both scalar leaves (§III/§IV) + the §V collection-entry lift landed, and the predicate
+**contract is now correct**: the fuel-adequacy bound `endPos < ps.pos + m` was added after scoping
+exposed the predicates were false at small fuel on bracket-bearing bodies — see Reflection 197, commit
+`41b43fc3`). Remaining toward the 2 structure sorries:
+  - **The span strong-induction** (`flow_parser_ok_of_structure`): the now-unblocked live remainder of
+    step 2. Assemble the leaf (§III/§IV) + bracket node cases (§II reductions composed with §V's
+    `parseFlow{Sequence,Mapping}_emitter_ok`) into `ParseNodeFlowSeqOk`/`ParseEntryFlowMapOk` by mutual
+    strong induction on `hi − lo`. Per depth-0 position: scalar → §III/§IV leaf; bracket → use
+    `SeqBodyProps.bracket_{seq,map}` / `MapBodyProps.bracket_{seq,map}` (M9/M10) for the matching-end +
+    balanced-inner-body facts, build a `Loop{Seq,Map}Preconditions` bundle for the inner body `(k+1, j)`
+    from those + the IH (inner span `j−(k+1) < hi−lo`, fuel-adequacy `j < (k+1)+(m−2)` from
+    `j+1 ≤ endPos < ps.pos + m`), call §V, then §II to land the node. The induction is over BOTH the span
+    and the parser fuel `m` (which drops by ≥2 at each bracket descent); the fuel-adequacy bound is what
+    makes the IH's predicate true at the boundary.
   Then `.parsenode.induction` (the span strong-induction assembling leaf + bracket cases into
   `ParseNodeFlowSeqOk`/`ParseEntryFlowMapOk`) and `.parsenode.discharge` (produce `FlowSubrangesOk`
   for the emitter stream from the body-token characterization — note `SeqBodyProps`/`MapBodyProps`'s
@@ -14766,7 +14768,30 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
-                **Total .body scope re-estimate (FORTY-FOURTH revision —
+                **Total .body scope re-estimate (FORTY-FIFTH revision —
+                after **Thread A step 2's predicate-contract fix landed** — the unblock the
+                collection-entry substrate could not provide. Discovering the induction skeleton's
+                shape exposed a *defect in its target predicates*: `ParseNodeFlowSeqOk` /
+                `ParseEntryFlowMapOk` quantified over **all** parser fuel `0 < m ≤ fuel`, but are
+                **false** at small `m` on any body holding a depth-0 flow bracket — `parseNode ps 1`
+                at a `[` calls `parseFlowSequence ps 0`, which errors. The emitter nests flow
+                collections (`emit` renders every collection in flow style, recursively — confirmed
+                by `Emitter.lean` + `universal_roundtrip`'s domain `Grammable v false`, ALL values),
+                so the two `NonemptyStructure.lean` sorries asserting these predicates were
+                **unprovable as stated**. Fix: add the fuel-adequacy hypothesis `endPos < ps.pos + m`
+                to both predicates — now claimed only where fuel exceeds the remaining span, making
+                them true *and* dischargeable by the span induction. The loop theorems only invoke the
+                predicate at fuel `≥ endPos − ps.pos`, so they supply the bound; this needs **+1
+                slack** in their `h_fuel` (worst-case bracket whose close sits at `endPos−1`),
+                propagated to the `Loop{Seq,Map}Preconditions` bundles and the two outer
+                `h_loop_fuel` sites in `EmitterScannability.lean`. Contained to the predicate defs,
+                their `.mono` lemmas, the two loop-theorem proofs (one extra `omega` arg at each
+                `h_pn`/`h_entry` call site; the recursive `ih` fuel discharges absorb the strengthened
+                bound automatically), and the two bundles — §V and the sorry *statements* unchanged
+                (name/arity preserved); commit `41b43fc3`, Reflection 197; **sorries held at 4** — pure
+                enablement, the four loop/collection theorems pure `[propext, …]`, build green at 515
+                jobs. The induction skeleton is now **unblocked** (its IH produces a true predicate);
+                that skeleton is the live remainder of step 2), on top of the **FORTY-FOURTH revision** —
                 after **Thread A step 2's collection-entry substrate landed** (§V of
                 `FlowParserAcceptance.lean`: `parseFlowSequence_emitter_ok` / `parseFlowMapping_emitter_ok`
                 lift the closed loop theorems `parseFlow{Sequence,Mapping}Loop_emitter_ok` to the
@@ -22913,11 +22938,26 @@ parser/value-side sorries; the scanner→token-shape bridge below them is alread
      → loop to matching close at `j` → advance past it → land at `j+1`, tokens/trackPositions preserved),
      consuming the existing `Loop{Seq,Map}Preconditions` bundles. This is exactly the
      `parseFlowSequence ps k = .ok (v, ps')` success that §II's `parseNode_flow{Seq,Map}Start_of_parse`
-     consumes — i.e. the bracket-case substrate of the induction. **Live remainder of step 2:** the
+     consumes — i.e. the bracket-case substrate of the induction.
+     **Predicate-contract fix landed 2026-06-01 (commit `41b43fc3`, Reflection 197):** scoping the
+     skeleton exposed that its *targets were false as stated*. `ParseNodeFlowSeqOk` / `ParseEntryFlowMapOk`
+     quantified over **all** parser fuel `0 < m ≤ fuel`, but `parseNode ps 1` at a depth-0 `[` calls
+     `parseFlowSequence ps 0`, which errors — so the predicates are false at small `m` on any
+     bracket-bearing body, and the emitter **does** nest flow collections (`emit` is flow-style and
+     recursive; `universal_roundtrip` ranges over all `Grammable v false`). The two
+     `NonemptyStructure.lean` sorries asserting them were therefore unprovable. Fix: add the
+     fuel-adequacy hypothesis `endPos < ps.pos + m` to both predicates (true/dischargeable now;
+     suppliable by the loop, which only calls the predicate at fuel `≥ endPos − ps.pos`, given **+1
+     slack** added to the loop theorems' `h_fuel` and the `Loop{Seq,Map}Preconditions` bundles).
+     Contained to the predicate defs + `.mono` + the two loop-theorem proofs + the bundles + two
+     `h_loop_fuel` sites; §V and the sorry *statements* unchanged. Enablement (sorries held at 4),
+     axioms pure `[propext, …]`. **Live remainder of step 2 (now unblocked):** the
      induction *skeleton* itself — strong recursion on the span measure that, per node/entry position,
      (a) dispatches scalar → §III/§IV leaf, bracket → §II reduction + §V collection success, and
      (b) discharges the `Loop{Seq,Map}Preconditions` bundle for the inner body `(k+1, j)` from
-     `FlowSubrangesOk.{seq,map}` + the IH (inner span `j−(k+1) < hi−lo`), then reads the post-bracket
+     `FlowSubrangesOk.{seq,map}` + the IH (inner span `j−(k+1) < hi−lo`) — the IH now produces a
+     **true** predicate, with the fuel-adequacy bound `j < (k+1) + fuel_inner` met because
+     `fuel_inner = m−2` and `j+1 ≤ endPos < ps.pos + m` — then reads the post-bracket
      landing/balance off `bracket_{seq,map}` (M9/M10).
   3. **`.parsenode.discharge`** — produce `FlowSubrangesOk` for the emitter token stream from the
      body-token characterization (`scanFiltered_emit{Seq,Map}_nonempty_structure` already proves the
@@ -23100,3 +23140,49 @@ Net: two sorry-free collection-entry lemmas (axioms pure `[propext, Classical.ch
 enablement-only, sorry count holds at 4; `lake build` green at 515 jobs; commit `93fd63c5`. The live remainder
 of step 2 is the induction skeleton itself; §I–§V are now the complete case-brick set it dispatches over.
 See [[Reflection 195]] for the leaf bricks this builds on.
+
+### Reflection 197 (new, 2026-06-01): scoping the induction first exposed that its *target predicate was false* — the fuel-adequacy bound is the real remainder-of-step-2 prerequisite, and the "skeleton" couldn't have been written without it
+
+Going to write the induction skeleton ([[Reflection 196]]'s live remainder), I started by nailing the exact
+statement — and the statement didn't hold. `ParseNodeFlowSeqOk tokens endPos fuel body_start` quantifies over
+**every** parser fuel `0 < m ≤ fuel`, asserting `parseNode ps m` succeeds at each depth-0 content-start
+position. But `parseNode ps 1` at a `[` reduces to `parseFlowSequence ps 0`, which is the `fuel = 0 → error`
+case: **the predicate is false at `m = 1` on any body containing a depth-0 flow bracket.** The first instinct
+("surely the emitter output is flat") was wrong: `emit` (Emitter.lean) renders *every* collection in flow style
+and recurses into items, and `universal_roundtrip`'s domain is all `Grammable v false` — so `[[…]]` / `[{…}]`
+token streams are squarely in scope, and the two `NonemptyStructure.lean` sorries asserting the predicate were
+**unprovable as written**. (Verified by tracing the emitter + the keystone's hypothesis, not by assuming.)
+
+**(1) A `∀ fuel` predicate is a fuel-adequacy claim in disguise — bound it or it's false.** The fix is one
+hypothesis: `endPos < ps.pos + m`. With it the predicate is asserted only where the parser fuel exceeds the
+remaining span, which is exactly the regime the discharge can prove and the only regime the loop ever calls it
+in. The dual obligation — *can the consumer still supply the bound?* — is the crux: the loop invokes `h_pn` at
+`m = fuel−1`, and its `h_fuel : fuel > endPos − ps.pos` gives only `m ≥ endPos − ps.pos` (non-strict), one short
+of the strict `endPos < ps.pos + m` the worst-case bracket (close at `endPos−1`) needs. So the bound forced a
+matching **+1 of slack** into the loop theorems' `h_fuel` and the precondition bundles. Producer and consumer of
+a fuel bound have to be designed together; strengthening the predicate without strengthening `h_fuel` would just
+move the impossibility. **Lesson: when a parser-acceptance predicate ranges over all fuel, the honest statement
+carries a fuel ≥ work-remaining side-condition; design that bound and the loop's fuel hypothesis as one unit,
+because the loop is the only thing that can hand the bound back.**
+
+**(2) The blast radius of a predicate contract is its *call sites*, not its *references*.** Renaming-free
+strengthening (same name, same arity, extra internal `→`) meant §V, the `LoopPreconditions` *structures*, and
+the two `NonemptyStructure` sorry *statements* compiled untouched — only places that *eliminate* the predicate
+(`h_pn psX n …`, `h_entry ps n …`) needed the new argument, and only places that *construct* its `h_fuel`
+(loop theorems, bundles, the two outer `h_loop_fuel` haves) needed the `+1`. The recursive `ih` fuel discharges
+absorbed the strengthened target via their existing `omega` (the stronger current `h_fuel` is strictly more
+than `omega` needs). Net: four one-line `omega` arguments inserted, four hypothesis statements bumped by `+1`,
+two `.mono` lambdas forwarding one more binder — a contained edit for a defect that blocked the whole induction.
+**Lesson: a contract fix that preserves a predicate's name and arity is local to its elimination/introduction
+sites; the audit that matters is "who applies it / who proves its hypotheses," not "who mentions it."**
+
+**(3) Scoping a hard proof is itself an increment.** The session's deliverable was not the skeleton but the
+discovery that the skeleton's target was false and the contract fix that makes it true — enablement (sorries
+held at 4, four loop/collection theorems pure `[propext, …]`, build green at 515 jobs; commit `41b43fc3`). Had
+I barrelled into the induction against the original predicate, every bracket case would have hit an unprovable
+`parseNode ps m` obligation at the fuel boundary, and the session would have ended with a half-written
+`sorry`-laden induction and no diagnosis. **Lesson: when the first move on a big proof is to write down its
+exact statement and that statement won't typecheck-as-true, the fix to the statement *is* the increment — land
+it green and let the induction be next session's now-unblocked dispatcher.** The skeleton remains the live
+remainder of step 2; the IH now produces a true predicate, with `j < (k+1) + (m−2)` met from
+`j+1 ≤ endPos < ps.pos + m`. See [[Reflection 196]] for the §V substrate this unblocks.
