@@ -153,4 +153,98 @@ theorem parseNode_flowMapStart_of_parse (ps ps' : ParseState) (k : Nat) (v : Yam
   unfold parseNode
   simp only [h_peek, bind, Except.bind, pure, Except.pure, h_props, h_val, h_content]
 
+/-! ## §III  Structure → parser-state bridge (`.bridge.parsenode.brackets`, predicates half)
+
+The reduction lemmas (§I/§II) connect `parseNode` to its sub-parses but say
+nothing about *where the result lands*.  The consumers
+`ParseNodeFlowSeqOk` / `ParseEntryFlowMapOk` demand the landing conditions —
+the next `ps.peek?` is a separator (`.flowEntry`) or the closing bracket, and
+the bracket balance over the consumed span is `0`.  Those facts are exactly
+what the body-structure predicates (`SeqBodyProps` / `MapBodyProps`,
+`ParserGrammableBase.lean`) record, but stated over the *token array*
+(`tokens[k]!.val`) rather than over a `ParseState`.
+
+This section builds the glue that crosses that gap:
+
+* `peek_of_isFlowContentStart` — turns a `isFlowContentStart` fact at a token
+  position into the content-start `ps.peek?` disjunction that both node
+  inductions dispatch on.  A pure peek fact, shared verbatim by the sequence
+  and the mapping derivations.
+* `parseNode_seqScalar_ok` — the **scalar branch** of the
+  `ParseNodeFlowSeqOk` derivation, discharged directly from `SeqBodyProps`.
+  This is the one node case that needs *no* inductive hypothesis (a scalar has
+  no inner body), so it is a standalone, non-circular brick: it combines the
+  §I scalar reduction (`parseNode_scalar_flow`) with `SeqBodyProps.scalar_succ`
+  for the successor peek and `flowBracketBalance_single` for the span balance. -/
+
+/-- Translate a token-level `isFlowContentStart` fact at the current position
+    into the content-start `ps.peek?` disjunction.  Used by both flow-body node
+    inductions to dispatch `parseNodeContent`. -/
+theorem peek_of_isFlowContentStart {ps : ParseState} {k : Nat}
+    (h_pos : ps.pos = k) (h_bound : k < ps.tokens.size)
+    (h_cs : isFlowContentStart ps.tokens[k]!.val) :
+    (∃ c s, ps.peek? = some (.scalar c s)) ∨
+    ps.peek? = some .flowSequenceStart ∨
+    ps.peek? = some .flowMappingStart := by
+  simp only [isFlowContentStart] at h_cs
+  rcases h_cs with ⟨c, s, h⟩ | h | h
+  · exact Or.inl ⟨c, s, peek_of_pos_val h_pos h_bound h⟩
+  · exact Or.inr (Or.inl (peek_of_pos_val h_pos h_bound h))
+  · exact Or.inr (Or.inr (peek_of_pos_val h_pos h_bound h))
+
+/-- **Scalar branch of `ParseNodeFlowSeqOk`.**
+
+    At a depth-0 scalar position inside a flow-sequence body satisfying
+    `SeqBodyProps`, `parseNode` succeeds, advances by exactly one token, and
+    lands on either a `.flowEntry` separator or the closing `.flowSequenceEnd`
+    (at the body end); the consumed single-token span has bracket balance `0`.
+
+    This discharges the scalar disjunct of the node induction with no inductive
+    hypothesis, combining the §I reduction `parseNode_scalar_flow` with
+    `SeqBodyProps.scalar_succ` (successor peek) and `flowBracketBalance_single`
+    (span balance). -/
+theorem parseNode_seqScalar_ok {tokens : Array (Positioned YamlToken)}
+    {endPos body_start : Nat}
+    (hbody : SeqBodyProps tokens body_start endPos)
+    (h_end : endPos < tokens.size)
+    (ps : ParseState) (m : Nat) (h_m : 0 < m)
+    (h_tok : ps.tokens = tokens)
+    (h_pos_lt : ps.pos < endPos)
+    (h_bs : body_start ≤ ps.pos)
+    (h_bal : flowBracketBalance tokens body_start ps.pos = 0)
+    (c : String) (s : ScalarStyle)
+    (h_peek : ps.peek? = some (.scalar c s)) :
+    ∃ val ps', parseNode ps m = .ok (val, ps') ∧
+      ps'.pos > ps.pos ∧ ps'.pos ≤ endPos ∧
+      ps'.tokens = tokens ∧
+      ps'.trackPositions = ps.trackPositions ∧
+      (ps'.peek? = some .flowEntry ∨
+       (ps'.peek? = some .flowSequenceEnd ∧ ps'.pos = endPos)) ∧
+      flowBracketBalance tokens ps.pos ps'.pos = 0 := by
+  -- §I scalar reduction: parseNode succeeds, advancing by one token.
+  obtain ⟨ps', h_node, h_pos', h_tok', h_tp'⟩ := parseNode_scalar_flow ps m h_m c s h_peek
+  -- The token at the current position is the scalar `c s`.
+  obtain ⟨h_pos_sz, h_val_eq⟩ := peek_some_val h_peek
+  have h_val_tok : tokens[ps.pos]!.val = .scalar c s := by rw [← h_tok]; exact h_val_eq
+  have hsz : ps.pos < tokens.size := by rw [← h_tok]; exact h_pos_sz
+  -- Structural successor: after a depth-0 scalar comes `.flowEntry` or the end.
+  obtain ⟨h_k1_le, h_next⟩ :=
+    hbody.scalar_succ ps.pos h_bs h_pos_lt h_bal ⟨c, s, h_val_tok⟩
+  refine ⟨_, ps', h_node, by omega, by omega, by rw [h_tok']; exact h_tok, h_tp', ?_, ?_⟩
+  · -- Landing peek at `ps'.pos = ps.pos + 1`.
+    rcases h_next with h_fe | ⟨h_se, h_eq⟩
+    · exact Or.inl
+        (peek_of_pos_val h_pos' (by rw [h_tok', h_tok]; omega) (by rw [h_tok', h_tok]; exact h_fe))
+    · exact Or.inr
+        ⟨peek_of_pos_val h_pos' (by rw [h_tok', h_tok]; omega) (by rw [h_tok', h_tok]; exact h_se),
+         by omega⟩
+  · -- The single scalar token contributes zero bracket balance.
+    rw [h_pos']
+    have hsz' : ps.pos < tokens.toList.length := by simpa using hsz
+    rw [flowBracketBalance_single tokens ps.pos hsz']
+    have h1 : tokens.toList[ps.pos]'hsz' = tokens[ps.pos] := Array.getElem_toList hsz
+    have h2 : tokens[ps.pos] = tokens[ps.pos]! := (getElem!_pos tokens ps.pos hsz).symm
+    rw [h1, h2, h_val_tok]
+    rfl
+
 end L4YAML.Proofs.ParserWellBehaved
