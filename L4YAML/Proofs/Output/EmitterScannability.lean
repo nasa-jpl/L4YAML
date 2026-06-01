@@ -396,7 +396,7 @@ theorem parseStream_emitSequence (style : CollectionStyle) (items : Array YamlVa
     have h_ps_mid_pos : ps_mid.pos = 2 := by simp [ps_mid, ps1, ParseState.advance]
     -- Apply parseFlowSequenceLoop_emitter_ok with loop fuel = 4*N+2
     have h_endPos : tokens.size - 2 < tokens.size := by omega
-    have h_loop_fuel : 4 * tokens.size + 2 > (tokens.size - 2) - ps_mid.pos := by
+    have h_loop_fuel : 4 * tokens.size + 2 > (tokens.size - 2) - ps_mid.pos + 1 := by
       simp only [h_ps_mid_pos]; omega
     have h_loop_pos : ps_mid.pos ≤ tokens.size - 2 := by
       simp only [h_ps_mid_pos]; omega
@@ -606,7 +606,7 @@ theorem parseStream_emitMapping (style : CollectionStyle) (pairs : Array (YamlVa
     have h_ps_mid_pos : ps_mid.pos = 2 := by simp [ps_mid, ps1, ParseState.advance]
     -- Apply parseFlowMappingLoop_emitter_ok with loop fuel = 4*N+2
     have h_endPos : tokens.size - 2 < tokens.size := by omega
-    have h_loop_fuel : 4 * tokens.size + 2 > (tokens.size - 2) - ps_mid.pos := by
+    have h_loop_fuel : 4 * tokens.size + 2 > (tokens.size - 2) - ps_mid.pos + 1 := by
       simp only [h_ps_mid_pos]; omega
     have h_loop_pos : ps_mid.pos ≤ tokens.size - 2 := by
       simp only [h_ps_mid_pos]; omega
