@@ -525,6 +525,9 @@ def btFold (s0 : Option (List Bool)) (l : List (Positioned YamlToken)) : Option 
 def WellTyped (l : List (Positioned YamlToken)) : Prop :=
   btFold (some []) l = some []
 
+/-- The empty token list is `WellTyped` (the typed twin of `WellBracketed_nil`). -/
+theorem WellTyped_nil : WellTyped [] := rfl
+
 theorem btFold_cons (s0 : Option (List Bool)) (t : Positioned YamlToken)
     (rest : List (Positioned YamlToken)) :
     btFold s0 (t :: rest) = btFold (s0.bind (btStep t)) rest := by
