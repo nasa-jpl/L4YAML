@@ -2032,12 +2032,34 @@ theorems). Property handling is vacuous on a flow-bracket peek (`validateNodePro
 skips §6.9.2). Carries no `FlowSubrangesOk` hypothesis — pure dispatch facts, shared by both
 inductions. Sorries held at **5**; `[propext]` / pure-triple axioms.
 
-**Next session — `.bridge.parsenode.brackets` (predicates half) → `.induction`** — the reduction
-lemmas (parseNode→loop seam) are done; remaining for `.brackets`:
-  - **Body-structure predicates**: port/adapt `SeqBodyProps`/`MapBodyProps`/`FlowSubrangesOk` from
-    `.iterators` (`ParserGrammableBase.lean` ~625/666/738) into the current `ParserWellBehaved`
-    namespace — the universal-over-subranges bundles the span induction needs. Pure definitions
-    (no proof obligations), so a clean enablement increment.
+`.bridge.parsenode.brackets` — predicates half (commit `44d9ae41`, Reflection 192): §III of
+`FlowParserAcceptance.lean` — the **structure→parser-state bridge**. *Discovery:* the body-structure
+predicates (`SeqBodyProps`/`MapBodyProps`/`FlowSubrangesOk`, `isFlowContentStart`) already exist in
+`ParserGrammableBase.lean` (namespace `ParserGrammable`) and are already `open`ed in
+`FlowParserAcceptance.lean` — so the planned "port into `ParserWellBehaved`" was moot; they are in
+scope verbatim. The *genuine* gap is the glue between those token-array predicates (`tokens[k]!.val`)
+and the `ParseState`-level landing conditions (`ps.peek?`, span balance) the consumers
+`ParseNodeFlowSeqOk`/`ParseEntryFlowMapOk` demand. Landed two bricks: `peek_of_isFlowContentStart`
+(token-level `isFlowContentStart` → the content-start `ps.peek?` disjunction both inductions dispatch
+on; `[propext]`), and `parseNode_seqScalar_ok` — the **scalar branch of `ParseNodeFlowSeqOk`**
+discharged directly from `SeqBodyProps` with *no* inductive hypothesis (a scalar has no inner body),
+combining §I's `parseNode_scalar_flow` with `SeqBodyProps.scalar_succ` (successor peek) and
+`flowBracketBalance_single` (single-token span balance = 0 via the scalar's zero delta). Sorries held
+at **5**; `[propext]` / pure-triple axioms.
+
+**Next session — `.bridge.parsenode.induction`** (the predicates half is done — predicates in scope,
+bridge + seq-scalar node case landed). Remaining toward the 2 structure sorries:
+  - **Map-entry node acceptance**: the `ParseEntryFlowMapOk` analogue of `parseNode_seqScalar_ok` —
+    a scalar-keyed/scalar-valued entry needs no IH either (the `parseExplicitKey` + `parseFlowMappingValue`
+    chain over scalar key/value), discharged from `MapBodyProps` (M1–M8). The bracket-valued entry
+    cases (M5/M8) are recursive → defer to the induction proper. A clean standalone brick if scoped to
+    the scalar-only entry.
+  - **The span strong-induction** (`flow_parser_ok_of_structure`): assemble the leaf + bracket node
+    cases (§II reductions + the §III/map-entry bridges) into `ParseNodeFlowSeqOk`/`ParseEntryFlowMapOk`
+    by mutual strong induction on `hi - lo`. The §II reductions are conditional on the inner parse;
+    the IH supplies that inner parse for nested bracket bodies, and `SeqBodyProps.bracket_{seq,map}`
+    / `MapBodyProps.bracket_{seq,map}` (M9/M10) give the matching-end + balanced-inner-body facts the
+    IH instantiates at.
   Then `.parsenode.induction` (the span strong-induction assembling leaf + bracket cases into
   `ParseNodeFlowSeqOk`/`ParseEntryFlowMapOk`) and `.parsenode.discharge` (produce `FlowSubrangesOk`
   for the emitter stream from the body-token characterization — note `SeqBodyProps`/`MapBodyProps`'s
@@ -7529,6 +7551,16 @@ Writing `emit_scans_block_combined` (the combined `Grammable` producer) surfaced
 **(2) The flow-bracket peek makes property handling vacuous, the same way the scalar peek did — and for a sharper reason.** `validateNodeProps`'s §8.2.2 same-line check fires only on `.blockSequenceStart`/`.blockMappingStart`. A *flow* start (`[`/`{`) is not a block-collection start, so the check's `match` hits `_ => pure ()` — identical reduction to the scalar case. The proof of `validateNodeProps_flow{Seq,Map}Start` is byte-for-byte the scalar one with the peek constructor swapped. **Lesson: the block-vs-flow distinction in `validateNodeProps` means *every* non-block content-start (scalar, alias, `[`, `{`, empty) shares one trivial property-validation reduction — the §8.2.2 check is block-only, so the flow and scalar leaves have the same vacuity proof, parameterized only by the peek.**
 
 **(3) Finalization is identity-on-value for an empty-property flow collection, so the reduction's conclusion is clean.** `applyNodeFinalization` rewrites `sequence style items none none ↦ sequence style items props.tag props.anchor`; with `{}` props that's `none none ↦ none none` — value unchanged, and `ps` unchanged but for the `trackPositions` branch. So the conclusion `parseNode … = .ok (applyNodeFinalization v ps' {} …)` needs no further massaging: the same `simp only [h_peek, bind, …, h_props, h_val, h_content]` that closed the scalar `parseNode` equation closes both bracket reductions verbatim (the `applyNodeFinalization` term stays symbolic, since the induction will reason about it via `applyNodeFinalization_{pos,tokens,…}` at the use site). **Lesson: leave finalization symbolic in the reduction — don't unfold it. The reduction's job is the dispatch seam; the finalization-projection lemmas are a separate, already-extracted brick the caller applies.**
+
+##### Reflection 192 (new, 2026-05-31): the planned "port the predicates" was a phantom — they were already in scope; the real predicates-half work is the structure→`ParseState` *bridge*, and the scalar node case is the one branch that needs no induction
+
+**The setup.** The next-pointer (R191) said the `.brackets` predicates half was "port `SeqBodyProps`/`MapBodyProps`/`FlowSubrangesOk` from `.iterators` into `ParserWellBehaved`." On opening the work, that turned out moot: those predicates (and `isFlowContentStart`) already live in `ParserGrammableBase.lean` under `namespace ParserGrammable`, which `FlowParserAcceptance.lean` already `open`s — they were in scope verbatim, no port needed.
+
+**(1) When a planned "port" target already compiles in scope, the pointer was describing the *symptom*, not the work — find the actual gap.** The genuine gap between the predicates and the consumers (`ParseNodeFlowSeqOk`/`ParseEntryFlowMapOk`) is a *representation* mismatch: the structural predicates speak `tokens[k]!.val` (token array, position-indexed), the consumers speak `ps.peek?` and `flowBracketBalance tokens ps.pos ps'.pos` (a `ParseState` and its consumed span). The reduction lemmas (§I/§II) produce `parseNode … = .ok …` but say nothing about *where the result lands*; the landing conditions are exactly what `SeqBodyProps.scalar_succ` records — over the token array. So the predicates-half work is the **bridge**: `peek_of_isFlowContentStart` turns a token-level `isFlowContentStart` into the `ps.peek?` content-start disjunction (via the existing `peek_of_pos_val`), and `parseNode_seqScalar_ok` converts `SeqBodyProps.scalar_succ`'s successor fact into the consumer's `ps'.peek?` landing + span balance. **Lesson: a stale "port X into namespace Y" pointer often hides that X is already reachable; the true increment is the *adapter* between X's representation and the consumer's, which only becomes visible once you stop looking for X to be missing.**
+
+**(2) The scalar node case is the one branch of the whole induction that needs no inductive hypothesis — so it factors out as a standalone, non-circular brick.** A scalar has no inner body, so `parseNode_seqScalar_ok` discharges the scalar disjunct of `ParseNodeFlowSeqOk` outright: `parseNode_scalar_flow` (§I) gives the parse + `ps'.pos = ps.pos + 1`; `SeqBodyProps.scalar_succ` gives the next token is `.flowEntry` or end; `peek_of_pos_val` lifts that to `ps'.peek?`; and the single-token span balance is `flowBracketBalance_single` + the scalar's zero `flowBracketDelta`. The bracket branches, by contrast, are inherently recursive (the inner body parse is the IH) and cannot be a standalone lemma — they belong to the induction proper. **Lesson: in a node induction over a recursive grammar, the *leaf* node case (here: scalar) is always extractable IH-free; harvest it as its own green brick before opening the induction, so the induction skeleton only has to thread the genuinely-recursive cases.**
+
+**(3) `tokens.toList[i]` vs `tokens[i]!` — bridge once, at the single arithmetic use site.** `flowBracketBalance_single` is stated over `tokens.toList[i].val` (List indexing), but the scalar fact in hand is `tokens[ps.pos]!.val = .scalar c s` (Array `getElem!`). The two-step bridge `Array.getElem_toList hsz : tokens.toList[i]'h = tokens[i]` then `getElem!_pos tokens i hsz : tokens[i]! = tokens[i]` (used `.symm`) reconciles them, after which the scalar value rewrites in and `flowBracketDelta (.scalar _ _) = 0` closes by `rfl`. **Lesson: the toList/getElem! seam is unavoidable when a balance lemma is List-indexed and the parser facts are Array-`getElem!`-indexed — keep the conversion to a single `getElem_toList` + `getElem!_pos` pair at the one site that needs it, not threaded through the predicate statements.**
 
 **Step 6f.3b3.emitscans.toplevel SS1 (easy prereqs) LANDED 2026-05-27**
 (~225 LOC across two files: `Endpoint.lean` §6 ~200 LOC +
@@ -19050,7 +19082,14 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
-                **Total .body scope re-estimate (FORTIETH revision —
+                **Total .body scope re-estimate (FORTY-FIRST revision —
+                after **`.bridge.parsenode.brackets`** predicates half landed (§III of
+                `FlowParserAcceptance.lean`: the structure→parser-state bridge —
+                `peek_of_isFlowContentStart` + `parseNode_seqScalar_ok`, the IH-free scalar branch of
+                `ParseNodeFlowSeqOk` discharged from `SeqBodyProps`; the predicates themselves were
+                already in scope from `ParserGrammableBase`, so the planned port was moot; commit
+                `44d9ae41`, Reflection 192; sorries held at 5 — pure enablement), on top of the
+                **FORTIETH revision** —
                 after **`.bridge.parsenode.brackets`** reduction half landed (the recursive-case
                 reduction lemmas in `FlowParserAcceptance.lean`: `parseNode_flow{Seq,Map}Start_of_parse`
                 + `validateNodeProps_flow{Seq,Map}Start` — the parseNode→loop seam, conditional on the
@@ -19518,11 +19557,22 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                       `parseFlow{Sequence,Mapping}Loop_emitter_ok`; no `FlowSubrangesOk` hypothesis.
                       Sorry count held at 5 (pure enablement); `[propext]`/pure-triple axioms.
                       Reflection 191]
-                    - `.parsenode.brackets` — predicates half [next — port the body-structure
-                      predicates (`SeqBodyProps`/`MapBodyProps`/`FlowSubrangesOk`) from `.iterators`
-                      into the `ParserWellBehaved` namespace; pure definitions, clean enablement]
+                    - `.parsenode.brackets` — predicates half [**LANDED 2026-05-31, commit `44d9ae41`**,
+                      §III of `FlowParserAcceptance.lean`: the structure→parser-state bridge.
+                      *Discovery:* the body-structure predicates
+                      (`SeqBodyProps`/`MapBodyProps`/`FlowSubrangesOk`/`isFlowContentStart`) already
+                      live in `ParserGrammableBase.lean` (namespace `ParserGrammable`) and are already
+                      `open`ed here — the planned port was moot, they are in scope. The real gap was
+                      the glue between those token-array predicates and the `ParseState` landing
+                      conditions: `peek_of_isFlowContentStart` (token-level content-start → the
+                      `ps.peek?` disjunction) + `parseNode_seqScalar_ok` (the IH-free scalar branch of
+                      `ParseNodeFlowSeqOk`, discharged from `SeqBodyProps.scalar_succ` +
+                      `flowBracketBalance_single`). Sorry count held at 5 (pure enablement);
+                      `[propext]`/pure-triple axioms. Reflection 192]
                     - `.parsenode.induction` [the span strong-induction assembling the leaf +
-                      bracket cases into `ParseNodeFlowSeqOk`/`ParseEntryFlowMapOk`]
+                      bracket cases into `ParseNodeFlowSeqOk`/`ParseEntryFlowMapOk`; next immediate
+                      brick = the `MapBodyProps`-discharged scalar-entry analogue of
+                      `parseNode_seqScalar_ok` (IH-free), then the mutual induction on `hi - lo`]
                     - `.parsenode.discharge` [produce `FlowSubrangesOk` for the emitter stream from
                       the body-token characterization, instantiate at `(tokens.size-2, 2)`, close the
                       2 structure sorries; then the 2 base `content_eq`]),
