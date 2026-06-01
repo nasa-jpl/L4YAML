@@ -2085,20 +2085,26 @@ work is the *plumbing* that feeds it.
 
 **Next session — `.parsenode.discharge` cont'd** (the dispatcher AND the matching locator are built;
 what remains is assembling `FlowSubrangesOk`). The shape of the remaining producer:
-1. **`WellBracketed` of the emitter body** — the body-characterization producers
-   (`emitList_scans_safebody` / `emitPairList_scans_safebody`) already yield `WellBracketed block`
-   (currently *discarded* as `_h_wb` at `emit{List,PairList}_body_filtered_characterization`); thread
-   it through to `scanFiltered_emit{Seq,Map}_nonempty_structure`. Via `flowBracketBalance_eq_pbalance`
-   it gives both the **outer balance** `flowBracketBalance tokens 2 (tokens.size−2) = 0` (the second
-   hypothesis the dispatcher instantiation needs) and the **Dyck prefix-nonneg** hypothesis
-   `flowBracketBalance_matching_close` consumes.
+1. **`WellBracketed` of the emitter body** — **seq side LANDED** (commit `156596fb`, Reflection 202):
+   `emitList_scans_safebody` already yielded `WellBracketed block`; threaded through
+   `emitList_body_filtered_characterization` via `flowBracketBalance_eq_pbalance` and push-converted in
+   `scanFiltered_emitSeq_nonempty_structure`, which now surfaces both the **outer balance**
+   `flowBracketBalance tokens 2 (tokens.size−2) = 0` and the **bounded Dyck prefix-nonneg**
+   `∀ k, 2 ≤ k → k ≤ tokens.size−2 → flowBracketBalance tokens 2 k ≥ 0` (the EXACT two hypotheses the
+   dispatcher instantiation + `flowBracketBalance_matching_close` consume) in its conclusion. **Map side
+   STILL OWED**: `emitPairList_scans_safebody` does NOT yet return `WellBracketed` (conclusion is
+   `SafeBody (·=.key) block ∧ 3 ≤ n`) — the pairList producer's induction must first be taught to
+   maintain `WellBracketed` (the cons/append/singleton lemmas in `WellBracketed.lean` are the bricks),
+   THEN thread it through `emitPairList_body_filtered_characterization` /
+   `scanFiltered_emitMap_nonempty_structure` exactly as the seq side. This is the first map-side step.
 2. **`SeqBodyProps`/`MapBodyProps` for ALL nested subranges** — the top-level conjuncts are what
    `scanFiltered_emit{Seq,Map}_nonempty_structure` already proves; for nested `(lo, hi)` the local
    token-shape (scalar/key/value/comma placement) still needs a *recursive* characterization over the
    emitted value tree (the matching locator now supplies the bracket-structure half of each
    `bracket_*` conjunct). This is the bulk of the remaining producer.
 3. Instantiate `flow_parser_ok_of_structure` at `(lo, hi) = (2, tokens.size−2)`,
-   `fuel = 4·tokens.size+4` → close the 2 structure sorries (`NonemptyStructure.lean` 473/663).
+   `fuel = 4·tokens.size+4` → close the 2 structure sorries (`NonemptyStructure.lean` 523/714 — the
+   seq site now has `h_outer_bal`/`h_dyck` in scope ready to feed alongside `FlowSubrangesOk`).
 4. The 2 base `emit_roundtrip_{sequence,mapping}_content_eq` (`EmitterScannability.lean` ~832/872) that
    consume them → `universal_roundtrip`.
 
@@ -14797,7 +14803,27 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
-                **Total .body scope re-estimate (FORTY-NINTH revision —
+                **Total .body scope re-estimate (FIFTIETH revision —
+                after **Thread A step 3's WellBracketed thread landed: outer balance + Dyck (seq side)**.
+                The seq-side body characterization `emitList_body_filtered_characterization`
+                (`NonemptyStructure.lean`, commit `156596fb`) already obtained `WellBracketed block`
+                from `emitList_scans_safebody` but DISCARDED it (`_h_wb`); this threads it through via
+                `flowBracketBalance_eq_pbalance` to expose two new conjuncts — the **outer balance**
+                `flowBracketBalance (s'.filter p) old_sz (s'.filter p).size = 0` and the **Dyck
+                prefix-nonneg** `∀ k, old_sz ≤ k → k ≤ size → flowBracketBalance … ≥ 0`.
+                `scanFiltered_emitSeq_nonempty_structure` push-converts both to the tokens level
+                (the two trailing `tok_fse`/`streamEnd` pushes leave `[2, k)` untouched) and surfaces
+                them in its conclusion: `flowBracketBalance tokens 2 (tokens.size−2) = 0` and the
+                bounded Dyck — the EXACT two hypotheses the dispatcher instantiation and
+                `flowBracketBalance_matching_close` consume to build `FlowSubrangesOk`. **Map side still
+                owes the thread**: `emitPairList_scans_safebody` does NOT yet return `WellBracketed`
+                (its conclusion is `SafeBody (·=.key) block ∧ 3 ≤ n`), so the pairList producer's
+                induction must first be taught to maintain `WellBracketed` before the map analogue
+                (`emitPairList_body_filtered_characterization` / `scanFiltered_emitMap_nonempty_structure`)
+                can expose the same conjuncts. Body characterization axiom-clean
+                `[propext, Classical.choice, Quot.sound]`, build green 515 jobs, **sorries held at 4** —
+                pure enablement. See Reflection 202, on top of the
+                **FORTY-NINTH revision** —
                 after **Thread A step 3's first brick landed: the Dyck bracket-matching locator**.
                 `flowBracketBalance_matching_close` in `ParserGrammableBase.lean` (commit `e550eb5f`)
                 is the pure-combinatorial keystone the recursive `FlowSubrangesOk` producer rests on:
@@ -23509,3 +23535,41 @@ as separators) — that needs a recursion over the emitted value tree, and is th
 honest read: step 3 has a small hard-combinatorial core (now closed) and a large mechanical-but-broad characterization
 (open). **Lesson: when scoping a multi-session producer, separate the *deep* sub-obligation from the *broad* one — they
 have different risk profiles, and landing the deep one first tells you the broad one is "only" plumbing.**
+
+---
+
+### Reflection 202 (new, 2026-06-01): the cheapest progress is plumbing a fact you already proved — thread the discarded `WellBracketed`, and let the asymmetry between the seq and map producers set the next step
+
+Step 3's first brick [[Reflection 201]] is the Dyck *consumer*; this session built its *supplier* on the seq side. The
+discovery that made this a one-file, low-risk increment: `emitList_scans_safebody` **already returns** `WellBracketed
+block` — it had been obtained and then thrown away (`_h_wb`) at `emitList_body_filtered_characterization`, because the
+body characterization only needed the `SafeBody` head/flowEntry facts. So the entire new content is *re-exposing an
+already-proven hypothesis*: rename `_h_wb` → `h_wb`, add two conjuncts to the characterization's conclusion, and convert
+`WellBracketed` (a `pbalance` condition on `block`) to `flowBracketBalance` (the array-slice form the dispatcher speaks)
+through the existing `flowBracketBalance_eq_pbalance` bridge — `block.take (k − old_sz)` for the prefixes, `block` whole
+for the total. The consumer `scanFiltered_emitSeq_nonempty_structure` then push-converts off `old_sz = 2` to the tokens
+level using the same `flowBracketBalance_push` trick the existing `h_depth'` derivation already used (the two trailing
+`tok_fse`/`streamEnd` pushes never touch `[2, k)`).
+
+**(1) Re-export before you re-prove.** When a producer threads a fact and the consumer discards it, the fact is "free"
+to surface — the proof obligation is just the type-conversion at the boundary, not the mathematics. The signal to look
+for: a `_`-prefixed binder in an `obtain` whose underlying lemma's conclusion you now want. **Lesson: before writing a
+new producer for a hypothesis a downstream lemma needs, grep the chain for a discarded binder that already carries it —
+the cheapest brick is a rename plus a bridge lemma.**
+
+**(2) The producer asymmetry IS the roadmap.** The seq side fell out in one file; the map side did not — because
+`emitPairList_scans_safebody` *does not return* `WellBracketed` (its conclusion is `SafeBody (·=.key) block ∧ 3 ≤ n`,
+no balance fact). The two producers were written to different specs, and that asymmetry — invisible until you read both
+signatures — is exactly what scopes the next step: teach the pairList producer's induction to maintain `WellBracketed`
+(the `WellBracketed_append`/`_cons_delta_zero`/`_singleton_delta_zero` lemmas already exist for it), THEN the map thread
+is a mechanical mirror of the seq thread. **Lesson: when a "do it for both sides" task lands trivially on one side,
+don't assume symmetry — diff the two producers' conclusions; the side that's missing the output is a strictly larger
+sub-task, and naming it now keeps the next session from rediscovering the gap mid-proof.**
+
+**(3) Surface at the conclusion, not as a held binder, when the fact is genuinely a deliverable.** The tokens-level
+outer-balance + Dyck are not scaffolding internal to closing the sorry — they are a first-class characterization of the
+emitted stream's bracket structure, true independent of parser acceptance. Putting them in the theorem's conclusion (and
+updating the one caller's `obtain` with `_`-prefixed binders) costs two lines downstream but makes the facts *used* (no
+unused-`have` warning) and lands the push-conversion plumbing now, de-risking next session's `FlowSubrangesOk` assembly.
+**Lesson: a proven-but-unconsumed fact belongs in the conclusion when it characterizes the object (not the proof);
+holding it as a `_`-binder defers the conversion work and reads as incomplete.**
