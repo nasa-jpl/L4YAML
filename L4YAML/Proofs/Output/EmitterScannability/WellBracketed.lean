@@ -447,6 +447,48 @@ theorem EntrySafe_scalar (t : Positioned YamlToken) (value : String) (style : Sc
     (h : t.val = .scalar value style) : EntrySafe [t] :=
   EntrySafe_singleton t (h ▸ flowBracketDelta_scalar value style) (by rw [h]; simp)
 
+/-- Concatenation of two `EntrySafe` entries is `EntrySafe`.  Each piece is
+    bracket-balanced (`pbalance = 0`), so the prefix balance at any `.flowEntry`
+    in `a` is the same as inside `a` alone (`≥ 1`), and the prefix balance at a
+    `.flowEntry` in `b` is `pbalance a + (b-prefix balance) = 0 + (≥ 1)`. -/
+theorem EntrySafe_append (a b : List (Positioned YamlToken))
+    (ha : EntrySafe a) (hb : EntrySafe b) : EntrySafe (a ++ b) := by
+  refine ⟨by rw [pbalance_append, ha.1, hb.1]; omega, ?_⟩
+  intro i h_i h_fe
+  rcases Nat.lt_or_ge i a.length with hlt | hge
+  · -- the `.flowEntry` lives inside `a`
+    have h_idx : (a ++ b)[i]'h_i = a[i]'hlt := List.getElem_append_left hlt
+    have h_take : (a ++ b).take i = a.take i := by
+      rw [List.take_append, show i - a.length = 0 from by omega, List.take_zero, List.append_nil]
+    rw [h_take]
+    exact ha.2 i hlt (by rw [← h_idx]; exact h_fe)
+  · -- the `.flowEntry` lives inside `b` at offset `i - a.length`
+    have hb_idx : i - a.length < b.length := by rw [List.length_append] at h_i; omega
+    have h_idx : (a ++ b)[i]'h_i = b[i - a.length]'hb_idx := List.getElem_append_right hge
+    have h_take : (a ++ b).take i = a ++ b.take (i - a.length) := by
+      rw [List.take_append, List.take_of_length_le hge]
+    rw [h_take, pbalance_append, ha.1]
+    have := hb.2 (i - a.length) hb_idx (by rw [← h_idx]; exact h_fe)
+    omega
+
+/-- Prepending a delta-`0`, non-`.flowEntry` token to an `EntrySafe` entry keeps
+    it `EntrySafe`: the head contributes nothing to the balance, and any interior
+    `.flowEntry` is the tail's, whose prefix balance is unchanged by the head. -/
+theorem EntrySafe_cons_delta_zero (t : Positioned YamlToken)
+    (l : List (Positioned YamlToken))
+    (h_delta : flowBracketDelta t.val = 0) (h_ne : t.val ≠ .flowEntry)
+    (hl : EntrySafe l) : EntrySafe (t :: l) := by
+  refine ⟨by rw [pbalance_cons, h_delta, hl.1]; omega, ?_⟩
+  intro i h_i h_fe
+  match i with
+  | 0 => exact absurd (by rw [List.getElem_cons_zero] at h_fe; exact h_fe) h_ne
+  | j + 1 =>
+    have h_jl : j < l.length := by rw [List.length_cons] at h_i; omega
+    have h_idx : (t :: l)[j + 1]'h_i = l[j]'h_jl := List.getElem_cons_succ t l j h_i
+    rw [List.take_succ_cons, pbalance_cons, h_delta]
+    have := hl.2 j h_jl (by rw [← h_idx]; exact h_fe)
+    omega
+
 -- ═══ Filtered token lemmas for scanner handlers ═══
 
 /-- `scanFlowSequenceStart` filtered token equation: adds exactly one `.flowSequenceStart`. -/

@@ -59,6 +59,11 @@ theorem ScanChainGrew.toScanChain {p : Positioned YamlToken → Bool}
   | zero => exact .zero
   | step h_snt _h_grew _h_rest ih => exact .step h_snt ih
 
+/-- A zero-length `ScanChainGrew` leaves the state unchanged. -/
+theorem ScanChainGrew.eq_of_zero {p : Positioned YamlToken → Bool}
+    {s s' : ScannerState} (h : ScanChainGrew p s 0 s') : s' = s := by
+  cases h; rfl
+
 /-- Single-step constructor for `ScanChainGrew`. -/
 theorem ScanChainGrew.single {p : Positioned YamlToken → Bool}
     {s s' : ScannerState}

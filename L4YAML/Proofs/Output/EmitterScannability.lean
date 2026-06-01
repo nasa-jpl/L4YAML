@@ -546,25 +546,20 @@ theorem parseStream_emitMapping (style : CollectionStyle) (pairs : Array (YamlVa
     -- parseNode → parseFlowMapping → parseFlowMappingLoop using loop fuel
     -- sufficiency from Sub-phase D.
     -- Flow structure from scanner characterization
-    have h_all_scan_k : ∀ p, p ∈ pairs.toList → EmitScansInFlow p.1 := by
+    have h_all_k_block : ∀ p, p ∈ pairs.toList → EmitScansInFlowSavedKeyBlock p.1 := by
       intro p hp
       have ⟨i, hi, h_eq⟩ := List.getElem_of_mem hp
       have h_sz : i < pairs.size := by rwa [Array.length_toList] at hi
-      exact h_eq ▸ by exact emit_scans_in_flow _ (hk ⟨i, h_sz⟩)
-    have h_all_scan_v : ∀ p, p ∈ pairs.toList → EmitScansInFlow p.2 := by
+      exact h_eq ▸ emit_scans_in_flow_saved_key_block _ (hk ⟨i, h_sz⟩)
+    have h_all_v_block : ∀ p, p ∈ pairs.toList → EmitScansInFlowBlock p.2 := by
       intro p hp
       have ⟨i, hi, h_eq⟩ := List.getElem_of_mem hp
       have h_sz : i < pairs.size := by rwa [Array.length_toList] at hi
-      exact h_eq ▸ by exact emit_scans_in_flow _ (hv ⟨i, h_sz⟩)
-    have h_all_scan_k_sk : ∀ p, p ∈ pairs.toList → EmitScansInFlowSavedKey p.1 := by
-      intro p hp
-      have ⟨i, hi, h_eq⟩ := List.getElem_of_mem hp
-      have h_sz : i < pairs.size := by rwa [Array.length_toList] at hi
-      exact h_eq ▸ by exact emit_scans_in_flow_saved_key _ (hk ⟨i, h_sz⟩)
+      exact h_eq ▸ emit_scans_in_flow_block _ (hv ⟨i, h_sz⟩)
     obtain ⟨h_sz7, h_t0, h_tlast, h_t1, h_tpe, h_t2_key, h_fe_key_pattern,
             h_entry_ok⟩ :=
       scanFiltered_emitMap_nonempty_structure pairs tokens h_scan (by simp [h_list])
-        h_all_scan_k h_all_scan_v h_all_scan_k_sk
+        h_all_k_block h_all_v_block
     -- Step 1: Unfold parseStream, dispatch expect .streamStart
     unfold parseStream
     simp only [bind, Except.bind]

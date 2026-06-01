@@ -153,9 +153,8 @@ theorem emitList_body_filtered_characterization
     flowEntries because `parseNode` consumes entire nested bracket groups. -/
 theorem emitPairList_body_filtered_characterization
     (pairs : List (YamlValue × YamlValue)) (h_ne : pairs ≠ [])
-    (h_all_k : ∀ p ∈ pairs, EmitScansInFlow p.1)
-    (h_all_v : ∀ p ∈ pairs, EmitScansInFlow p.2)
-    (h_all_k_sk : ∀ p ∈ pairs, EmitScansInFlowSavedKey p.1)
+    (h_all_k_block : ∀ p ∈ pairs, EmitScansInFlowSavedKeyBlock p.1)
+    (h_all_v_block : ∀ p ∈ pairs, EmitScansInFlowBlock p.2)
     (s : ScannerState) (rest : List Char)
     (h_corr : ScannerSurfCorr s ⟨(emit.emitPairList pairs).toList ++ rest, s.col⟩)
     (h_flow : s.inFlow = true) (h_fl : s.flowLevel > 0)
@@ -163,10 +162,8 @@ theorem emitPairList_body_filtered_characterization
     (h_ek : s.explicitKeyLine = none)
     (h_atol : AllTokensOnLine s s.line)
     (h_endline : EndLineOnLine s)
-    (h_sk : s.simpleKey.possible = false)
     (h_ska : s.simpleKeyAllowed = true)
-    (h_sync : s.simpleKeyStack.size = s.flowLevel)
-    (h_ssv : ScannerCorrectness.SimpleKeyStackValid s) :
+    (h_sync : s.simpleKeyStack.size = s.flowLevel) :
     let p := fun (t : Positioned YamlToken) => t.val != .placeholder
     let old_sz := (s.tokens.filter p).size
     ∃ n s', ScanChain s n s'
@@ -196,18 +193,57 @@ theorem emitPairList_body_filtered_characterization
       k + 1 < (s'.tokens.filter p).size ∧
       (∀ (h' : k + 1 < (s'.tokens.filter p).size),
         ((s'.tokens.filter p)[k + 1]'h').val = .key)) := by
-  -- Construct the chain from the keyshape producer (carries n ≥ 3 AND Part 2, the
-  -- `.key` first-filtered-token fact — sorry 9644 is now discharged via the
-  -- saved-key substrate + colon token effect + filter transfer).
-  have h_scan := emitPairList_scans_nonempty_keyshape pairs h_ne h_all_k h_all_v h_all_k_sk
-  obtain ⟨n, s', h_chain, h_corr', h_fl', h_dp', h_ids', h_ek', h_col', h_inflow',
-          h_indent', h_line', h_atol', h_endline', h_stack', h_fmc, h_n_ge_3, h_part2⟩ :=
-    h_scan s rest h_corr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_sk h_ska h_sync h_ssv
+  -- Scan the body via the `.bridge.assemble.map` SafeBody producer.  The returned
+  -- `SafeBody (· = .key) block` subsumes BOTH non-trivial parts of the characterization:
+  -- `SafeBody.head_Q` gives the first-filtered-token `.key` (Part 2) and
+  -- `SafeBody_array_flowEntry` gives the post-outer-`.flowEntry` `.key` (Part 3); the
+  -- `3 ≤ n` chain-length floor (Part 1) is carried alongside.  No `keyshape` producer
+  -- and no two-chain reconciliation are needed.
+  obtain ⟨n, s', block, h_chain, h_corr', h_fl', h_dp', h_ids', h_ek', h_col', h_inflow',
+          h_indent', h_line', h_atol', h_endline', h_stack', h_fmc, h_block_eq, h_sb, h_n_ge_3⟩ :=
+    emitPairList_scans_safebody pairs h_ne h_all_k_block h_all_v_block s rest h_corr h_flow h_fl
+      h_indent h_col h_ek h_atol h_endline h_ska h_sync
+  -- The body block is exactly the `drop old_sz` of the final filtered token list.
+  have h_drop : (s'.tokens.filter (fun t => t.val != .placeholder)).toList.drop
+      (s.tokens.filter (fun t => t.val != .placeholder)).size = block := by
+    rw [h_block_eq,
+      show (s.tokens.filter (fun t => t.val != .placeholder)).size
+          = (s.tokens.filter (fun t => t.val != .placeholder)).toList.length
+        from Array.length_toList.symm,
+      List.drop_append_of_le_length (Nat.le_refl _), List.drop_length, List.nil_append]
   refine ⟨n, s', h_chain.toScanChain, h_corr', h_fl', h_dp', h_ids', h_ek',
           h_col', h_inflow', h_indent', h_line', h_atol', h_endline',
-          h_stack', h_fmc, h_n_ge_3, h_part2, ?_⟩
-  · -- Part 3: After every outer-level flowEntry, next is .key
-    sorry
+          h_stack', h_fmc, h_n_ge_3, ?_, ?_⟩
+  · -- Part 2: first new filtered token is `.key` (`SafeBody.head_Q`)
+    obtain ⟨hl, hQ⟩ := h_sb.head_Q
+    have h_size : (s'.tokens.filter (fun t => t.val != .placeholder)).size
+        = (s.tokens.filter (fun t => t.val != .placeholder)).size + block.length := by
+      have h := congrArg List.length h_block_eq
+      rw [List.length_append, Array.length_toList, Array.length_toList] at h
+      exact h
+    refine ⟨by omega, ?_⟩
+    intro h_old_lt
+    have h0 : (0 : Nat) < ((s'.tokens.filter (fun t => t.val != .placeholder)).toList.drop
+        (s.tokens.filter (fun t => t.val != .placeholder)).size).length := by
+      rw [h_drop]; exact hl
+    have h_elem : ((s'.tokens.filter (fun t => t.val != .placeholder))[
+          (s.tokens.filter (fun t => t.val != .placeholder)).size]'h_old_lt) = block[0]'hl := by
+      have e1 : ((s'.tokens.filter (fun t => t.val != .placeholder)).toList.drop
+            (s.tokens.filter (fun t => t.val != .placeholder)).size)[0]'h0
+          = (s'.tokens.filter (fun t => t.val != .placeholder))[
+            (s.tokens.filter (fun t => t.val != .placeholder)).size]'h_old_lt := by
+        simp only [List.getElem_drop, Array.getElem_toList, Nat.add_zero]
+      rw [← e1]
+      apply Option.some.inj
+      rw [← List.getElem?_eq_getElem h0, ← List.getElem?_eq_getElem hl, h_drop]
+    rw [h_elem]; exact hQ
+  · -- Part 3: post-outer-`.flowEntry` `.key` (`SafeBody_array_flowEntry`)
+    intro k h_lo h_hi h_fe h_depth
+    obtain ⟨hk1, hQ⟩ := SafeBody_array_flowEntry
+      (s'.tokens.filter (fun t => t.val != .placeholder))
+      (s.tokens.filter (fun t => t.val != .placeholder)).size
+      (by rw [h_drop]; exact h_sb) k h_lo h_hi h_fe h_depth
+    exact ⟨hk1, fun _ => hQ⟩
 
 /-- Token structure of `scanFiltered ("[" ++ emitList items ++ "]")` for non-empty items.
     Establishes boundary tokens, body token patterns, and `parseNode` success within
@@ -436,9 +472,8 @@ theorem scanFiltered_emitMap_nonempty_structure
     (pairs : Array (YamlValue × YamlValue)) (tokens : Array (Positioned YamlToken))
     (h_scan : Scanner.scanFiltered ("{" ++ emit.emitPairList pairs.toList ++ "}") = .ok tokens)
     (h_ne : pairs.toList ≠ [])
-    (h_all_scan_k : ∀ p, p ∈ pairs.toList → EmitScansInFlow p.1)
-    (h_all_scan_v : ∀ p, p ∈ pairs.toList → EmitScansInFlow p.2)
-    (h_all_scan_k_sk : ∀ p, p ∈ pairs.toList → EmitScansInFlowSavedKey p.1) :
+    (h_all_k_block : ∀ p, p ∈ pairs.toList → EmitScansInFlowSavedKeyBlock p.1)
+    (h_all_v_block : ∀ p, p ∈ pairs.toList → EmitScansInFlowBlock p.2) :
     tokens.size ≥ 7 ∧
     tokens[0]!.val = .streamStart ∧
     tokens[tokens.size - 1]!.val = .streamEnd ∧
@@ -467,10 +502,10 @@ theorem scanFiltered_emitMap_nonempty_structure
           h_ek₂, h_col₂, h_inflow₂, h_indent₂, _, _, _, h_stack₂, h_fmc₂,
           h_n₂_ge3, ⟨h_body_sz_raw, h_body_key_raw⟩, h_body_fe_next_raw⟩ :=
     emitPairList_body_filtered_characterization pairs.toList h_ne
-      (fun p hp => h_all_scan_k p hp) (fun p hp => h_all_scan_v p hp)
-      (fun p hp => h_all_scan_k_sk p hp) s₁ ['}']
+      (fun p hp => h_all_k_block p hp) (fun p hp => h_all_v_block p hp)
+      s₁ ['}']
       h_corr₁ h_inflow₁ (by rw [h_fl₁]; omega) h_indent₁ (by rw [h_col₁]; omega)
-      h_ek₁ (h_line₁ ▸ h_atol₁) h_endline₁ h_sk₁ h_ska₁ h_sync₁ h_ssv₁
+      h_ek₁ (h_line₁ ▸ h_atol₁) h_endline₁ h_ska₁ h_sync₁
   -- Close brace → s₃ (using _ext to get filtered token info + indents)
   obtain ⟨s₃, h_snt₃, h_fl₃, h_dp₃, h_peek₃, h_ids₃, ⟨tok_fme, h_tok_fme_val, h_filt₃⟩⟩ :=
     scanNextToken_flow_close_mapping_outermost_ext s₂ h_corr₂ h_inflow₂ h_indent₂ h_col₂

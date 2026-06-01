@@ -198,15 +198,17 @@ theorem emit_scans_block_combined (v : YamlValue) {inFlow : Bool}
             = (s_state.tokens.filter (fun t => t.val != .placeholder)).toList :=
         block_take_eq_of_getElem? s''.tokens s_state.tokens s_state.tokens.size
           (fun t => t.val != .placeholder) rfl h_N1 h_pref h_ph_false
+      have h_wb_es : WellBracketed [tok] ∧ EntrySafe [tok] :=
+        ⟨WellBracketed_singleton_delta_zero tok (by rw [h_tok_val]; exact flowBracketDelta_scalar str st),
+          EntrySafe_scalar tok str st h_tok_val⟩
       refine ⟨1, s'', [tok], ScanChainGrew.single h_snt'' h_grew, h_corr', h_fl', h_dp', h_ids', h_ek',
         h_col', ?_, ?_, _h_line', h_atol', h_endline', h_stack',
         FlowMonoChain.single h_snt'' (Nat.le.refl) (by omega),
-        h_ska', h_poss'', h_tidx'', h_size'', h_ph'', h_ph1'', ?_, h_take, ?_⟩
+        h_ska', h_poss'', h_tidx'', h_size'', h_ph'', h_ph1'', ?_, h_take, h_wb_es⟩
       · unfold ScannerState.inFlow; rw [h_fl']
         unfold ScannerState.inFlow at h_flow; exact h_flow
       · unfold ScannerState.currentIndent; rw [h_ids']; exact h_indent
       · rw [h_push, Array.toList_push]
-      · exact WellBracketed_singleton_delta_zero tok (by rw [h_tok_val]; exact flowBracketDelta_scalar str st)
   | sequence style items tag anchor _ h ih =>
     refine ⟨?block, ?savedkey⟩
     case block =>
@@ -445,7 +447,7 @@ theorem emit_scans_block_combined (v : YamlValue) {inFlow : Bool}
       refine ⟨(1 + n₂) + 1, s₃, fssTok :: (bodyBlock ++ [fseTok]),
         (ScanChainGrew.single h_snt₁ h_grew₁).trans (h_chain₂.trans (ScanChainGrew.single h_snt₃ h_grew₃)),
         h_corr₃, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, h_atol₃, h_endline₃, ?_, h_fmc_all,
-        h_ska₃, ?_, ?_, ?_, ?_, ?_, h_block_eq, h_take, h_wrap.1⟩
+        h_ska₃, ?_, ?_, ?_, ?_, ?_, h_block_eq, h_take, h_wrap⟩
       · rw [h_fl₃, h_fl₂, h_fl₁]; omega
       · rw [h_dp₃, h_dp₂, h_dp₁]
       · rw [h_ids₃, h_ids₂, h_ids₁]
@@ -720,7 +722,7 @@ theorem emit_scans_block_combined (v : YamlValue) {inFlow : Bool}
       refine ⟨(1 + n₂) + 1, s₃, fmsTok :: (bodyBlock ++ [fmeTok]),
         (ScanChainGrew.single h_snt₁ h_grew₁).trans (h_chain₂.trans (ScanChainGrew.single h_snt₃ h_grew₃)),
         h_corr₃, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, h_atol₃, h_endline₃, ?_, h_fmc_all,
-        h_ska₃, ?_, ?_, ?_, ?_, ?_, h_block_eq, h_take, h_wrap.1⟩
+        h_ska₃, ?_, ?_, ?_, ?_, ?_, h_block_eq, h_take, h_wrap⟩
       · rw [h_fl₃, h_fl₂, h_fl₁]; omega
       · rw [h_dp₃, h_dp₂, h_dp₁]
       · rw [h_ids₃, h_ids₂, h_ids₁]
@@ -946,5 +948,485 @@ theorem emitList_scans_safebody (items : List YamlValue) (h_ne : items ≠ [])
           rw [List.append_assoc]; rfl
         rw [h_reassoc]
         exact SafeBody.cons block₁ feTok block_rest h_cs₁_ne h_es₁ h_cs₁_val h_feTok_val h_sb_rest
+
+/-! ### §G.balance.bridge.assemble.map — mapping-body `SafeBody` producer
+
+The `.assemble` bridge for flow **mappings**: scanning `emitPairList pairs` (the
+comma-separated `key: value` body between `{` and `}`) produces a filtered-LIST `block`
+that is a full `SafeBody (· = .key)` — nonempty `EntrySafe` per-pair entries
+(`.key :: block_k ++ [.value] ++ block_v`) with `.key` heads, separated by single
+delta-`0` `.flowEntry` tokens.  `SafeBody.head_Q` then gives the first-filtered-token
+`.key` fact (Part 2 of the mapping body-token characterization) and
+`SafeBody_array_flowEntry` gives the post-outer-`.flowEntry` `.key` fact (Part 3), with
+the `3 ≤ n` chain-length floor carried alongside.
+
+The per-pair `EntrySafe` is assembled from the key block's `EntrySafe` (newly exposed by
+`EmitScansInFlowSavedKeyBlock`), the value block's `EntrySafe` (from `EmitScansInFlowBlock`),
+and the delta-`0` `.key`/`.value` glue tokens via `EntrySafe_cons_delta_zero` /
+`EntrySafe_append` / `EntrySafe_singleton`.  The proof otherwise mirrors
+`emitPairList_scans_block_nonempty` (same key / colon / value / comma / recurse
+decomposition). -/
+theorem emitPairList_scans_safebody (pairs : List (YamlValue × YamlValue))
+    (h_ne : pairs ≠ [])
+    (h_all_k : ∀ p ∈ pairs, EmitScansInFlowSavedKeyBlock p.1)
+    (h_all_v : ∀ p ∈ pairs, EmitScansInFlowBlock p.2) :
+    ∀ (s : ScannerState) (rest : List Char),
+      ScannerSurfCorr s ⟨(emit.emitPairList pairs).toList ++ rest, s.col⟩ →
+      s.inFlow = true →
+      s.flowLevel > 0 →
+      s.currentIndent < 0 →
+      s.col > 0 →
+      s.explicitKeyLine = none →
+      AllTokensOnLine s s.line →
+      EndLineOnLine s →
+      s.simpleKeyAllowed = true →
+      s.simpleKeyStack.size = s.flowLevel →
+      ∃ n s' block,
+        ScanChainGrew (fun t => t.val != .placeholder) s n s'
+        ∧ ScannerSurfCorr s' ⟨rest, s'.col⟩
+        ∧ s'.flowLevel = s.flowLevel
+        ∧ s'.directivesPresent = s.directivesPresent
+        ∧ s'.indents = s.indents
+        ∧ s'.explicitKeyLine = s.explicitKeyLine
+        ∧ s'.col > 0
+        ∧ s'.inFlow = true
+        ∧ s'.currentIndent < 0
+        ∧ s'.line = s.line
+        ∧ AllTokensOnLine s' s'.line
+        ∧ EndLineOnLine s'
+        ∧ s'.simpleKeyStack = s.simpleKeyStack
+        ∧ FlowMonoChain s.flowLevel s n s'
+        ∧ (s'.tokens.filter (fun t => t.val != .placeholder)).toList
+            = (s.tokens.filter (fun t => t.val != .placeholder)).toList ++ block
+        ∧ SafeBody (fun t => t = .key) block
+        ∧ 3 ≤ n := by
+  induction pairs with
+  | nil => contradiction
+  | cons p tail ih =>
+    intro s rest_chars hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_ska h_sync
+    match tail, ih with
+    | [], _ =>
+      have h_eq : (emit.emitPairList [p]).toList ++ rest_chars =
+          (emit p.1).toList ++ ([':', ' '] ++ (emit p.2).toList ++ rest_chars) := by
+        simp [emit.emitPairList, String.toList_append, List.append_assoc]
+      rw [h_eq] at hcorr
+      have h_ek_key : EmitScansInFlowSavedKeyBlock p.1 := h_all_k p (.head _)
+      obtain ⟨n₁, s₁, block_k, h_chain₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_ek₁, h_col₁,
+              h_flow₁, h_indent₁, _h_line₁, h_atol₁, h_endline₁, h_stack₁, h_fmc₁,
+              h_ska₁, h_poss₁, h_tidx₁, h_szlt₁, _h_ph0₁, h_ph1₁, h_blockeq_k, h_take_k, _h_wb_k, h_es_k⟩ :=
+        h_ek_key s ([':', ' '] ++ (emit p.2).toList ++ rest_chars)
+          hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_ska h_sync
+      have h_n₁_pos : 1 ≤ n₁ := by
+        rcases Nat.eq_zero_or_pos n₁ with h0 | hpos
+        · subst h0; rw [ScanChainGrew.eq_of_zero h_chain₁] at h_szlt₁; omega
+        · exact hpos
+      have h_sk_id := saveSimpleKey_id_of_flow_ska_false_ek_none s₁ h_flow₁ h_ska₁
+          (by rw [h_ek₁]; exact h_ek)
+      have h_sv : scanValueValidate (saveSimpleKey s₁) = .ok () := by
+        rw [h_sk_id]
+        exact scanValueValidate_ok_of_flow_allTokensOnLine s₁ h_flow₁
+          (by rw [h_ek₁]; exact h_ek) h_atol₁ h_endline₁
+      obtain ⟨s₂, h_snt₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, h_col₂,
+              h_flow₂, h_indent₂, h_ek₂, _h_line₂, h_atol₂, h_endline₂, h_stack_v₂, _, _, _⟩ :=
+        scanNextToken_flow_value s₁ ((emit p.2).toList ++ rest_chars)
+          h_corr₁ h_flow₁ h_indent₁ h_col₁ (by rw [h_ek₁]; exact h_ek) h_sv
+          h_atol₁ h_endline₁
+      have h_lt_k : s₁.simpleKey.tokenIndex + 1 < s₁.tokens.size := by rw [h_tidx₁]; exact h_szlt₁
+      have h_ph_k : (s₁.tokens[s₁.simpleKey.tokenIndex + 1]'h_lt_k).val = .placeholder := by
+        simp only [h_tidx₁]; exact h_ph1₁ h_szlt₁
+      obtain ⟨s₂', pos_v, h_snt₂', h_block_colon⟩ :=
+        scanNextToken_flow_value_block s₁ ((emit p.2).toList ++ rest_chars)
+          h_corr₁ h_flow₁ h_indent₁ h_col₁ (by rw [h_ek₁]; exact h_ek) h_sv
+          h_atol₁ h_endline₁ h_ska₁ h_poss₁ h_lt_k h_ph_k
+      have h_s2_eq : s₂' = s₂ := Option.some.inj (Except.ok.inj (h_snt₂'.symm.trans h_snt₂))
+      rw [h_s2_eq] at h_block_colon
+      have h_hk : s.tokens.size + 1 < s₁.tokens.toList.length := by
+        rw [Array.length_toList]; exact h_szlt₁
+      have h_old : (fun t : Positioned YamlToken => t.val != .placeholder)
+          (s₁.tokens.toList[s.tokens.size + 1]'h_hk) = false := by
+        have hph := h_ph1₁ h_szlt₁
+        simp only [Array.getElem_toList, hph]; rfl
+      have h_full : s₁.tokens.toList.filter (fun t => t.val != .placeholder)
+          = (s.tokens.filter (fun t => t.val != .placeholder)).toList ++ block_k := by
+        rw [← Array.toList_filter]; exact h_blockeq_k
+      have h_drop : (s₁.tokens.toList.drop (s.tokens.size + 2)).filter
+            (fun t => t.val != .placeholder) = block_k :=
+        List_filter_drop_succ_of_take s₁.tokens.toList (s.tokens.size + 1)
+          (fun t => t.val != .placeholder) h_hk h_old _ block_k h_take_k h_full
+      rw [h_tidx₁, h_take_k, h_drop] at h_block_colon
+      have h_block_kc : (s₂.tokens.filter (fun t => t.val != .placeholder)).toList
+          = (s.tokens.filter (fun t => t.val != .placeholder)).toList
+            ++ (⟨s₁.simpleKey.pos, .key, s₁.simpleKey.pos⟩ ::
+                (block_k ++ [⟨pos_v, .value, pos_v⟩])) := by
+        rw [h_block_colon]; simp only [List.append_assoc, List.cons_append]
+      obtain ⟨c_v, rest_v, h_first_v, h_nws_v, h_nlb_v, h_nc_v⟩ := emit_first_char p.2
+      have h_corr₂_ws : ScannerSurfCorr s₂
+          ⟨' ' :: c_v :: (rest_v ++ rest_chars), s₂.col⟩ := by
+        have h_eq_chars : (' ' :: (emit p.2).toList ++ rest_chars) =
+            (' ' :: c_v :: (rest_v ++ rest_chars)) := by
+          congr 1; rw [h_first_v]; simp only [List.cons_append]
+        exact h_eq_chars ▸ h_corr₂
+      obtain ⟨s₃, h_corr₃, h_flow₃, h_fl₃, h_indent₃, h_col₃, h_dp₃, h_ids₃, h_ek₃, _h_line₃, h_pp_eq, h_atol_transfer₃, h_endline_transfer₃, h_stack_pp₃, h_toks_pp₃, _, _⟩ :=
+        scanNextToken_preprocess_flow_ws1 s₂ c_v (rest_v ++ rest_chars) h_corr₂_ws
+          h_flow₂ h_nws_v h_nlb_v h_nc_v h_indent₂
+      have h_corr₃' : ScannerSurfCorr s₃
+          ⟨(emit p.2).toList ++ rest_chars, s₃.col⟩ := by
+        have h_eq_chars : (c_v :: (rest_v ++ rest_chars)) =
+            ((emit p.2).toList ++ rest_chars) := by
+          rw [h_first_v]; simp only [List.cons_append]
+        exact h_eq_chars ▸ h_corr₃
+      have h_ev : EmitScansInFlowBlock p.2 := h_all_v p (.head _)
+      obtain ⟨n_v, s_end, block_v, h_chain_v, h_corr_end, h_fl_end, h_dp_end, h_ids_end,
+              h_ek_end, h_col_end, h_flow_end, h_indent_end, h_line_end, _h_ska_v, _h_last_v,
+              h_atol_end, h_endline_end, h_stack_end, h_fmc_v, h_blockeq_v, _h_wb_v, h_es_v, _h_cs_v⟩ :=
+        h_ev s₃ rest_chars h_corr₃'
+          h_flow₃ (by rw [h_fl₃, h_fl₂, h_fl₁]; exact h_fl)
+          (by rw [h_indent₃]; exact h_indent₂)
+          (by rw [h_col₃]; omega)
+          (by rw [h_ek₃]; exact h_ek₂)
+          (h_atol_transfer₃ h_atol₂)
+          (h_endline_transfer₃ h_endline₂)
+          (by rw [h_stack_pp₃, h_stack_v₂, h_stack₁, h_fl₃, h_fl₂, h_fl₁]; exact h_sync)
+      have h_snt_eq : scanNextToken s₂ = scanNextToken s₃ :=
+        scanNextToken_eq_of_preprocess s₂ s₃ h_pp_eq
+      have h_n_v_pos : n_v ≥ 1 := by
+        match n_v, h_chain_v with
+        | 0, .zero =>
+          exfalso
+          have h_chars_eq := CharsFromOffset_unique h_corr₃'.chars_from h_corr_end.chars_from
+          have h_len := congrArg List.length h_chars_eq
+          simp only [List.length_append] at h_len
+          have h_nil : (emit p.2).toList = [] := by
+            match h_list : (emit p.2).toList with
+            | [] => rfl
+            | _ :: _ => simp [h_list] at h_len
+          obtain ⟨_, _, h_ne_nil, _, _, _⟩ := emit_first_char p.2
+          exact absurd h_nil (by rw [h_ne_nil]; exact List.cons_ne_nil _ _)
+        | _ + 1, _ => omega
+      obtain ⟨n_v', rfl⟩ : ∃ k, n_v = k + 1 := ⟨n_v - 1, by omega⟩
+      have h_filt_le : (s₂.tokens.filter (fun t => t.val != .placeholder)).size ≤
+                       (s₃.tokens.filter (fun t => t.val != .placeholder)).size := by
+        rw [h_toks_pp₃]; exact Nat.le_refl _
+      have h_chain_ws : ScanChainGrew (fun t => t.val != .placeholder)
+            s₂ (n_v' + 1) s_end :=
+        ScanChainGrew_of_scanNextToken_eq h_snt_eq h_filt_le h_chain_v
+      have h_grew₂ : (s₂.tokens.filter (fun t => t.val != .placeholder)).size >
+                     (s₁.tokens.filter (fun t => t.val != .placeholder)).size := by
+        have h_corr₁_cons : ScannerSurfCorr s₁
+            ⟨':' :: (' ' :: (emit p.2).toList ++ rest_chars), s₁.col⟩ := by
+          have : [':', ' '] ++ (emit p.2).toList ++ rest_chars =
+              ':' :: (' ' :: (emit p.2).toList ++ rest_chars) := by
+            simp only [List.cons_append, List.nil_append]
+          rwa [this] at h_corr₁
+        exact scanNextToken_filtered_grows_in_flow s₁ s₂ ':'
+          (' ' :: (emit p.2).toList ++ rest_chars)
+          h_corr₁_cons h_flow₁ h_indent₁ h_col₁
+          (by decide) (by decide) (by decide) h_snt₂
+      have h_fmc_v' : FlowMonoChain s.flowLevel s₃ (n_v' + 1) s_end :=
+        (show s.flowLevel = s₃.flowLevel from by omega) ▸ h_fmc_v
+      have h_fmc_ws : FlowMonoChain s.flowLevel s₂ (n_v' + 1) s_end :=
+        FlowMonoChain_of_scanNextToken_eq h_snt_eq (by omega) h_fmc_v'
+      have h_fmc_all := h_fmc₁.trans
+        ((FlowMonoChain.single h_snt₂ (by omega) (by omega)).trans h_fmc_ws)
+      have h_chain_all := h_chain₁.trans
+        ((ScanChainGrew.single h_snt₂ h_grew₂).trans h_chain_ws)
+      have h_arith : n₁ + (1 + (n_v' + 1)) = n₁ + 1 + (n_v' + 1) := by omega
+      have h_block_end : (s_end.tokens.filter (fun t => t.val != .placeholder)).toList
+          = (s.tokens.filter (fun t => t.val != .placeholder)).toList
+            ++ ((⟨s₁.simpleKey.pos, .key, s₁.simpleKey.pos⟩ ::
+                  (block_k ++ [⟨pos_v, .value, pos_v⟩])) ++ block_v) := by
+        have h_s3_s2 : (s₃.tokens.filter (fun t => t.val != .placeholder)).toList
+            = (s₂.tokens.filter (fun t => t.val != .placeholder)).toList := by
+          rw [h_toks_pp₃]
+        rw [h_blockeq_v, h_s3_s2, h_block_kc, List.append_assoc]
+      -- Per-pair entry `EntrySafe`: `.key`/`.value` glue (delta 0) around `EntrySafe` blocks.
+      have h_es_entry : EntrySafe ((⟨s₁.simpleKey.pos, .key, s₁.simpleKey.pos⟩ ::
+            (block_k ++ [⟨pos_v, .value, pos_v⟩])) ++ block_v) :=
+        EntrySafe_cons_delta_zero _ _ (by rfl) (by simp)
+          (EntrySafe_append _ _
+            (EntrySafe_append _ _ h_es_k (EntrySafe_singleton _ (by rfl) (by simp)))
+            h_es_v)
+      refine ⟨n₁ + 1 + (n_v' + 1), s_end,
+        (⟨s₁.simpleKey.pos, .key, s₁.simpleKey.pos⟩ :: (block_k ++ [⟨pos_v, .value, pos_v⟩])) ++ block_v,
+        h_arith ▸ h_chain_all, h_corr_end, ?_, ?_, ?_, ?_, h_col_end, h_flow_end, h_indent_end,
+        ?_, h_atol_end, h_endline_end, ?_, h_arith ▸ h_fmc_all, h_block_end, ?_, by omega⟩
+      · rw [h_fl_end, h_fl₃, h_fl₂, h_fl₁]
+      · rw [h_dp_end, h_dp₃, h_dp₂, h_dp₁]
+      · rw [h_ids_end, h_ids₃, h_ids₂, h_ids₁]
+      · rw [h_ek_end, h_ek₃, h_ek₂]; exact h_ek.symm
+      · rw [h_line_end, _h_line₃, _h_line₂, _h_line₁]
+      · rw [h_stack_end, h_stack_pp₃, h_stack_v₂, h_stack₁]
+      · -- SafeBody (· = .key) ((.key :: block_k ++ [.value]) ++ block_v)
+        exact SafeBody.single _ (by exact List.cons_ne_nil _ _) h_es_entry (by rfl)
+    | p' :: ps, ih =>
+      have h_eq : (emit.emitPairList (p :: p' :: ps)).toList ++ rest_chars =
+          (emit p.1).toList ++ ([':', ' '] ++ (emit p.2).toList ++
+            [',', ' '] ++ (emit.emitPairList (p' :: ps)).toList ++ rest_chars) := by
+        simp [emit.emitPairList, String.toList_append, List.append_assoc]
+      rw [h_eq] at hcorr
+      have h_ek_key : EmitScansInFlowSavedKeyBlock p.1 := h_all_k p (.head _)
+      obtain ⟨n₁, s₁, block_k, h_chain₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_ek₁, h_col₁,
+              h_flow₁, h_indent₁, _h_line₁, h_atol₁, h_endline₁, h_stack₁, h_fmc₁,
+              h_ska₁, h_poss₁, h_tidx₁, h_szlt₁, _h_ph0₁, h_ph1₁, h_blockeq_k, h_take_k, _h_wb_k, h_es_k⟩ :=
+        h_ek_key s ([':', ' '] ++ (emit p.2).toList ++
+            [',', ' '] ++ (emit.emitPairList (p' :: ps)).toList ++ rest_chars)
+          hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_ska h_sync
+      have h_sk_id := saveSimpleKey_id_of_flow_ska_false_ek_none s₁ h_flow₁ h_ska₁
+          (by rw [h_ek₁]; exact h_ek)
+      have h_sv : scanValueValidate (saveSimpleKey s₁) = .ok () := by
+        rw [h_sk_id]
+        exact scanValueValidate_ok_of_flow_allTokensOnLine s₁ h_flow₁
+          (by rw [h_ek₁]; exact h_ek) h_atol₁ h_endline₁
+      obtain ⟨s₂, h_snt₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, h_col₂,
+              h_flow₂, h_indent₂, h_ek₂, _h_line₂, h_atol₂, h_endline₂, h_stack_v₂, _, _, _⟩ :=
+        scanNextToken_flow_value s₁
+          ((emit p.2).toList ++ [',', ' '] ++ (emit.emitPairList (p' :: ps)).toList ++ rest_chars)
+          h_corr₁ h_flow₁ h_indent₁ h_col₁ (by rw [h_ek₁]; exact h_ek) h_sv
+          h_atol₁ h_endline₁
+      have h_lt_k : s₁.simpleKey.tokenIndex + 1 < s₁.tokens.size := by rw [h_tidx₁]; exact h_szlt₁
+      have h_ph_k : (s₁.tokens[s₁.simpleKey.tokenIndex + 1]'h_lt_k).val = .placeholder := by
+        simp only [h_tidx₁]; exact h_ph1₁ h_szlt₁
+      obtain ⟨s₂', pos_v, h_snt₂', h_block_colon⟩ :=
+        scanNextToken_flow_value_block s₁
+          ((emit p.2).toList ++ [',', ' '] ++ (emit.emitPairList (p' :: ps)).toList ++ rest_chars)
+          h_corr₁ h_flow₁ h_indent₁ h_col₁ (by rw [h_ek₁]; exact h_ek) h_sv
+          h_atol₁ h_endline₁ h_ska₁ h_poss₁ h_lt_k h_ph_k
+      have h_s2_eq : s₂' = s₂ := Option.some.inj (Except.ok.inj (h_snt₂'.symm.trans h_snt₂))
+      rw [h_s2_eq] at h_block_colon
+      have h_hk : s.tokens.size + 1 < s₁.tokens.toList.length := by
+        rw [Array.length_toList]; exact h_szlt₁
+      have h_old : (fun t : Positioned YamlToken => t.val != .placeholder)
+          (s₁.tokens.toList[s.tokens.size + 1]'h_hk) = false := by
+        have hph := h_ph1₁ h_szlt₁
+        simp only [Array.getElem_toList, hph]; rfl
+      have h_full : s₁.tokens.toList.filter (fun t => t.val != .placeholder)
+          = (s.tokens.filter (fun t => t.val != .placeholder)).toList ++ block_k := by
+        rw [← Array.toList_filter]; exact h_blockeq_k
+      have h_drop : (s₁.tokens.toList.drop (s.tokens.size + 2)).filter
+            (fun t => t.val != .placeholder) = block_k :=
+        List_filter_drop_succ_of_take s₁.tokens.toList (s.tokens.size + 1)
+          (fun t => t.val != .placeholder) h_hk h_old _ block_k h_take_k h_full
+      rw [h_tidx₁, h_take_k, h_drop] at h_block_colon
+      have h_block_kc : (s₂.tokens.filter (fun t => t.val != .placeholder)).toList
+          = (s.tokens.filter (fun t => t.val != .placeholder)).toList
+            ++ (⟨s₁.simpleKey.pos, .key, s₁.simpleKey.pos⟩ ::
+                (block_k ++ [⟨pos_v, .value, pos_v⟩])) := by
+        rw [h_block_colon]; simp only [List.append_assoc, List.cons_append]
+      obtain ⟨c_v, rest_v, h_first_v, h_nws_v, h_nlb_v, h_nc_v⟩ := emit_first_char p.2
+      have h_corr₂_ws : ScannerSurfCorr s₂
+          ⟨' ' :: c_v :: (rest_v ++
+            [',', ' '] ++ (emit.emitPairList (p' :: ps)).toList ++ rest_chars), s₂.col⟩ := by
+        have h_eq_chars : (' ' :: (emit p.2).toList ++
+            [',', ' '] ++ (emit.emitPairList (p' :: ps)).toList ++ rest_chars) =
+            (' ' :: c_v :: (rest_v ++
+            [',', ' '] ++ (emit.emitPairList (p' :: ps)).toList ++ rest_chars)) := by
+          congr 1; rw [h_first_v]; simp only [List.cons_append, List.append_assoc]
+        exact h_eq_chars ▸ h_corr₂
+      obtain ⟨s₃, h_corr₃, h_flow₃, h_fl₃, h_indent₃, h_col₃, h_dp₃, h_ids₃, h_ek₃, _h_line₃, h_pp_eq, h_atol_transfer₃, h_endline_transfer₃, h_stack_pp₃, h_toks_pp₃, _, _⟩ :=
+        scanNextToken_preprocess_flow_ws1 s₂ c_v
+          (rest_v ++ [',', ' '] ++ (emit.emitPairList (p' :: ps)).toList ++ rest_chars)
+          h_corr₂_ws h_flow₂ h_nws_v h_nlb_v h_nc_v h_indent₂
+      have h_corr₃' : ScannerSurfCorr s₃
+          ⟨(emit p.2).toList ++
+            [',', ' '] ++ (emit.emitPairList (p' :: ps)).toList ++ rest_chars, s₃.col⟩ := by
+        have h_eq_chars : (c_v :: (rest_v ++
+            [',', ' '] ++ (emit.emitPairList (p' :: ps)).toList ++ rest_chars)) =
+            ((emit p.2).toList ++
+            [',', ' '] ++ (emit.emitPairList (p' :: ps)).toList ++ rest_chars) := by
+          rw [h_first_v]; simp only [List.cons_append, List.append_assoc]
+        exact h_eq_chars ▸ h_corr₃
+      have h_ev : EmitScansInFlowBlock p.2 := h_all_v p (.head _)
+      have h_corr₃_assoc : ScannerSurfCorr s₃
+          ⟨(emit p.2).toList ++ ([',', ' '] ++ (emit.emitPairList (p' :: ps)).toList ++ rest_chars), s₃.col⟩ := by
+        simp only [List.append_assoc] at h_corr₃' ⊢; exact h_corr₃'
+      obtain ⟨n_v, s_v, block_v, h_chain_v, h_corr_v, h_fl_v, h_dp_v, h_ids_v,
+              h_ek_v, h_col_v, h_flow_v, h_indent_v, _h_line_v, h_ska_v, h_last_v,
+              h_atol_v, h_endline_v, h_stack_v, h_fmc_v, h_blockeq_v, _h_wb_v, h_es_v, _h_cs_v⟩ :=
+        h_ev s₃ ([',', ' '] ++ (emit.emitPairList (p' :: ps)).toList ++ rest_chars)
+          h_corr₃_assoc
+          h_flow₃ (by rw [h_fl₃, h_fl₂, h_fl₁]; exact h_fl)
+          (by rw [h_indent₃]; exact h_indent₂)
+          (by rw [h_col₃]; omega)
+          (by rw [h_ek₃]; exact h_ek₂)
+          (h_atol_transfer₃ h_atol₂)
+          (h_endline_transfer₃ h_endline₂)
+          (by rw [h_stack_pp₃, h_stack_v₂, h_stack₁, h_fl₃, h_fl₂, h_fl₁]; exact h_sync)
+      have h_snt_eq_v : scanNextToken s₂ = scanNextToken s₃ :=
+        scanNextToken_eq_of_preprocess s₂ s₃ h_pp_eq
+      have h_n_v_pos : n_v ≥ 1 := by
+        match n_v, h_chain_v with
+        | 0, .zero =>
+          exfalso
+          have h_chars_eq := CharsFromOffset_unique h_corr₃'.chars_from h_corr_v.chars_from
+          have h_len := congrArg List.length h_chars_eq
+          simp only [List.length_append] at h_len
+          have h_nil : (emit p.2).toList = [] := by
+            match h_list : (emit p.2).toList with
+            | [] => rfl
+            | _ :: _ => simp [h_list] at h_len
+          obtain ⟨_, _, h_ne_nil, _, _, _⟩ := emit_first_char p.2
+          exact absurd h_nil (by rw [h_ne_nil]; exact List.cons_ne_nil _ _)
+        | _ + 1, _ => omega
+      obtain ⟨n_v', rfl⟩ : ∃ k, n_v = k + 1 := ⟨n_v - 1, by omega⟩
+      have h_filt_le_v : (s₂.tokens.filter (fun t => t.val != .placeholder)).size ≤
+                         (s₃.tokens.filter (fun t => t.val != .placeholder)).size := by
+        rw [h_toks_pp₃]; exact Nat.le_refl _
+      have h_chain_ws_v : ScanChainGrew (fun t => t.val != .placeholder)
+            s₂ (n_v' + 1) s_v :=
+        ScanChainGrew_of_scanNextToken_eq h_snt_eq_v h_filt_le_v h_chain_v
+      have h_grew₂ : (s₂.tokens.filter (fun t => t.val != .placeholder)).size >
+                     (s₁.tokens.filter (fun t => t.val != .placeholder)).size := by
+        have h_corr₁_cons : ScannerSurfCorr s₁
+            ⟨':' :: (' ' :: (emit p.2).toList ++ [',', ' '] ++
+              (emit.emitPairList (p' :: ps)).toList ++ rest_chars), s₁.col⟩ := by
+          have : [':', ' '] ++ (emit p.2).toList ++ [',', ' '] ++
+              (emit.emitPairList (p' :: ps)).toList ++ rest_chars =
+              ':' :: (' ' :: (emit p.2).toList ++ [',', ' '] ++
+              (emit.emitPairList (p' :: ps)).toList ++ rest_chars) := by
+            simp only [List.cons_append, List.nil_append]
+          rwa [this] at h_corr₁
+        exact scanNextToken_filtered_grows_in_flow s₁ s₂ ':'
+          (' ' :: (emit p.2).toList ++ [',', ' '] ++
+              (emit.emitPairList (p' :: ps)).toList ++ rest_chars)
+          h_corr₁_cons h_flow₁ h_indent₁ h_col₁
+          (by decide) (by decide) (by decide) h_snt₂
+      obtain ⟨s_c, h_snt_c, h_corr_c, h_fl_c, h_dp_c, h_ids_c, h_ek_c, h_col_c, _h_line_c, h_atol_c, h_endline_c, h_stack_c⟩ :=
+        scanNextToken_flow_comma s_v
+          (' ' :: (emit.emitPairList (p' :: ps)).toList ++ rest_chars)
+          h_corr_v h_flow_v h_indent_v h_col_v h_last_v h_atol_v h_endline_v
+      obtain ⟨feTok, h_feTok_val, h_comma_eq⟩ :=
+        scanNextToken_flow_comma_filtered_push s_v
+          (' ' :: (emit.emitPairList (p' :: ps)).toList ++ rest_chars)
+          h_corr_v h_flow_v h_indent_v h_col_v h_last_v h_snt_c
+      obtain ⟨h_ska_c_true, _h_sk_c_eq⟩ :=
+        scanNextToken_flow_comma_simpleKey s_v
+          (' ' :: (emit.emitPairList (p' :: ps)).toList ++ rest_chars)
+          h_corr_v h_flow_v h_indent_v h_col_v h_last_v h_snt_c
+      obtain ⟨c_p, rest_p, h_first_p, h_nws_p, h_nlb_p, h_nc_p⟩ :=
+        emitPairList_first_char p' ps
+      have h_corr_c_ws : ScannerSurfCorr s_c
+          ⟨' ' :: c_p :: (rest_p ++ rest_chars), s_c.col⟩ := by
+        have : ' ' :: (emit.emitPairList (p' :: ps)).toList ++ rest_chars =
+            ' ' :: c_p :: (rest_p ++ rest_chars) := by
+          rw [h_first_p]; simp only [List.cons_append]
+        rwa [this] at h_corr_c
+      have h_sc_flow : s_c.inFlow = true := by
+        unfold ScannerState.inFlow; exact decide_eq_true (by rw [h_fl_c]; omega)
+      have h_sc_indent : s_c.currentIndent < 0 := by
+        unfold ScannerState.currentIndent; rw [h_ids_c]; exact h_indent_v
+      obtain ⟨s_pp, h_corr_pp, h_flow_pp, h_fl_pp, h_indent_pp, h_col_pp,
+              h_dp_pp, h_ids_pp, h_ek_pp, _h_line_pp, h_pp_eq_r, h_atol_transfer_pp, h_endline_transfer_pp, h_stack_pp, h_toks_pp, h_sk_pp, h_ska_pp⟩ :=
+        scanNextToken_preprocess_flow_ws1 s_c c_p (rest_p ++ rest_chars) h_corr_c_ws
+          h_sc_flow h_nws_p h_nlb_p h_nc_p h_sc_indent
+      have h_corr_pp' : ScannerSurfCorr s_pp
+          ⟨(emit.emitPairList (p' :: ps)).toList ++ rest_chars, s_pp.col⟩ := by
+        have : c_p :: (rest_p ++ rest_chars) =
+            (emit.emitPairList (p' :: ps)).toList ++ rest_chars := by
+          rw [h_first_p]; simp only [List.cons_append]
+        rwa [this] at h_corr_pp
+      have h_tail_all_k : ∀ q ∈ p' :: ps, EmitScansInFlowSavedKeyBlock q.1 :=
+        fun q hq => h_all_k q (.tail _ hq)
+      have h_tail_all_v : ∀ q ∈ p' :: ps, EmitScansInFlowBlock q.2 :=
+        fun q hq => h_all_v q (.tail _ hq)
+      obtain ⟨n_r, s_end, block_rest, h_chain_r, h_corr_end, h_fl_end, h_dp_end, h_ids_end,
+              h_ek_end, h_col_end, h_flow_end, h_indent_end, h_line_end, h_atol_end, h_endline_end, h_stack_end, h_fmc_r, h_blockeq_rest, h_sb_rest, h_n_r_ge3⟩ :=
+        ih (by simp) h_tail_all_k h_tail_all_v s_pp rest_chars h_corr_pp'
+          h_flow_pp
+          (by rw [h_fl_pp, h_fl_c]; rw [h_fl_v, h_fl₃, h_fl₂, h_fl₁]; exact h_fl)
+          (by rw [h_indent_pp]; exact h_sc_indent)
+          (by rw [h_col_pp]; omega)
+          (by rw [h_ek_pp, h_ek_c, h_ek_v, h_ek₃]; exact h_ek₂)
+          (h_atol_transfer_pp h_atol_c)
+          (h_endline_transfer_pp h_endline_c)
+          (by rw [h_ska_pp]; exact h_ska_c_true)
+          (by rw [h_stack_pp, h_stack_c, h_stack_v, h_stack_pp₃, h_stack_v₂, h_stack₁,
+              h_sync, h_fl_pp, h_fl_c, h_fl_v, h_fl₃, h_fl₂, h_fl₁])
+      have h_snt_eq_r : scanNextToken s_c = scanNextToken s_pp :=
+        scanNextToken_eq_of_preprocess s_c s_pp h_pp_eq_r
+      have h_n_r_pos : n_r ≥ 1 := by omega
+      obtain ⟨n_r', rfl⟩ : ∃ k, n_r = k + 1 := ⟨n_r - 1, by omega⟩
+      have h_filt_le_r : (s_c.tokens.filter (fun t => t.val != .placeholder)).size ≤
+                         (s_pp.tokens.filter (fun t => t.val != .placeholder)).size := by
+        rw [h_toks_pp]; exact Nat.le_refl _
+      have h_chain_ws_r : ScanChainGrew (fun t => t.val != .placeholder)
+            s_c (n_r' + 1) s_end :=
+        ScanChainGrew_of_scanNextToken_eq h_snt_eq_r h_filt_le_r h_chain_r
+      have h_grew_c : (s_c.tokens.filter (fun t => t.val != .placeholder)).size >
+                      (s_v.tokens.filter (fun t => t.val != .placeholder)).size := by
+        have h_corr_v_cons : ScannerSurfCorr s_v
+            ⟨',' :: (' ' :: (emit.emitPairList (p' :: ps)).toList ++ rest_chars), s_v.col⟩ := by
+          have : [',', ' '] ++ (emit.emitPairList (p' :: ps)).toList ++ rest_chars =
+              ',' :: (' ' :: (emit.emitPairList (p' :: ps)).toList ++ rest_chars) := by
+            simp only [List.cons_append, List.nil_append]
+          rwa [this] at h_corr_v
+        exact scanNextToken_filtered_grows_in_flow s_v s_c ','
+          (' ' :: (emit.emitPairList (p' :: ps)).toList ++ rest_chars)
+          h_corr_v_cons h_flow_v h_indent_v h_col_v
+          (by decide) (by decide) (by decide) h_snt_c
+      have h_fmc_v' : FlowMonoChain s.flowLevel s₃ (n_v' + 1) s_v :=
+        (show s.flowLevel = s₃.flowLevel from by omega) ▸ h_fmc_v
+      have h_fmc_ws_v : FlowMonoChain s.flowLevel s₂ (n_v' + 1) s_v :=
+        FlowMonoChain_of_scanNextToken_eq h_snt_eq_v (by omega) h_fmc_v'
+      have h_fmc_r' : FlowMonoChain s.flowLevel s_pp (n_r' + 1) s_end :=
+        (show s.flowLevel = s_pp.flowLevel from by omega) ▸ h_fmc_r
+      have h_fmc_ws_r : FlowMonoChain s.flowLevel s_c (n_r' + 1) s_end :=
+        FlowMonoChain_of_scanNextToken_eq h_snt_eq_r (by omega) h_fmc_r'
+      have h_fmc_all := h_fmc₁.trans
+        ((FlowMonoChain.single h_snt₂ (by omega) (by omega)).trans
+          (h_fmc_ws_v.trans
+            ((FlowMonoChain.single h_snt_c (by omega) (by omega)).trans h_fmc_ws_r)))
+      have h_chain_all := h_chain₁.trans
+        ((ScanChainGrew.single h_snt₂ h_grew₂).trans
+          (h_chain_ws_v.trans
+            ((ScanChainGrew.single h_snt_c h_grew_c).trans h_chain_ws_r)))
+      have h_arith : n₁ + (1 + ((n_v' + 1) + (1 + (n_r' + 1)))) =
+          n₁ + 1 + (n_v' + 1) + 1 + (n_r' + 1) := by omega
+      have h_block_end : (s_end.tokens.filter (fun t => t.val != .placeholder)).toList
+          = (s.tokens.filter (fun t => t.val != .placeholder)).toList
+            ++ ((((⟨s₁.simpleKey.pos, .key, s₁.simpleKey.pos⟩ ::
+                  (block_k ++ [⟨pos_v, .value, pos_v⟩])) ++ block_v) ++ [feTok]) ++ block_rest) := by
+        have h_s3_s2 : (s₃.tokens.filter (fun t => t.val != .placeholder)).toList
+            = (s₂.tokens.filter (fun t => t.val != .placeholder)).toList := by
+          rw [h_toks_pp₃]
+        have h_block_v_end : (s_v.tokens.filter (fun t => t.val != .placeholder)).toList
+            = (s.tokens.filter (fun t => t.val != .placeholder)).toList
+              ++ ((⟨s₁.simpleKey.pos, .key, s₁.simpleKey.pos⟩ ::
+                  (block_k ++ [⟨pos_v, .value, pos_v⟩])) ++ block_v) := by
+          rw [h_blockeq_v, h_s3_s2, h_block_kc, List.append_assoc]
+        have h_block_c_end : (s_c.tokens.filter (fun t => t.val != .placeholder)).toList
+            = (s.tokens.filter (fun t => t.val != .placeholder)).toList
+              ++ (((⟨s₁.simpleKey.pos, .key, s₁.simpleKey.pos⟩ ::
+                  (block_k ++ [⟨pos_v, .value, pos_v⟩])) ++ block_v) ++ [feTok]) := by
+          rw [congrArg Array.toList h_comma_eq, Array.toList_push, h_block_v_end, List.append_assoc]
+        have h_s_pp_c : (s_pp.tokens.filter (fun t => t.val != .placeholder)).toList
+            = (s_c.tokens.filter (fun t => t.val != .placeholder)).toList := by
+          rw [h_toks_pp]
+        rw [h_blockeq_rest, h_s_pp_c, h_block_c_end, List.append_assoc]
+      -- Per-pair entry `EntrySafe`, glued by delta-0 `.key`/`.value` tokens.
+      have h_es_entry : EntrySafe ((⟨s₁.simpleKey.pos, .key, s₁.simpleKey.pos⟩ ::
+            (block_k ++ [⟨pos_v, .value, pos_v⟩])) ++ block_v) :=
+        EntrySafe_cons_delta_zero _ _ (by rfl) (by simp)
+          (EntrySafe_append _ _
+            (EntrySafe_append _ _ h_es_k (EntrySafe_singleton _ (by rfl) (by simp)))
+            h_es_v)
+      refine ⟨n₁ + 1 + (n_v' + 1) + 1 + (n_r' + 1), s_end,
+        (((⟨s₁.simpleKey.pos, .key, s₁.simpleKey.pos⟩ :: (block_k ++ [⟨pos_v, .value, pos_v⟩])) ++ block_v) ++ [feTok]) ++ block_rest,
+        h_arith ▸ h_chain_all, h_corr_end, ?_, ?_, ?_, ?_, h_col_end, h_flow_end, h_indent_end,
+        ?_, h_atol_end, h_endline_end, ?_, h_arith ▸ h_fmc_all, h_block_end, ?_, by omega⟩
+      · rw [h_fl_end, h_fl_pp, h_fl_c, h_fl_v, h_fl₃, h_fl₂, h_fl₁]
+      · rw [h_dp_end, h_dp_pp, h_dp_c, h_dp_v, h_dp₃, h_dp₂, h_dp₁]
+      · rw [h_ids_end, h_ids_pp, h_ids_c, h_ids_v, h_ids₃, h_ids₂, h_ids₁]
+      · rw [h_ek_end, h_ek_pp, h_ek_c, h_ek_v, h_ek₃]; exact h_ek₂.trans h_ek.symm
+      · rw [h_line_end, _h_line_pp, _h_line_c, _h_line_v, _h_line₃, _h_line₂, _h_line₁]
+      · rw [h_stack_end, h_stack_pp, h_stack_c, h_stack_v, h_stack_pp₃, h_stack_v₂, h_stack₁]
+      · -- SafeBody (· = .key) ((entry ++ [feTok]) ++ block_rest)
+        have h_reassoc : (((⟨s₁.simpleKey.pos, .key, s₁.simpleKey.pos⟩ ::
+              (block_k ++ [⟨pos_v, .value, pos_v⟩])) ++ block_v) ++ [feTok]) ++ block_rest
+            = ((⟨s₁.simpleKey.pos, .key, s₁.simpleKey.pos⟩ ::
+              (block_k ++ [⟨pos_v, .value, pos_v⟩])) ++ block_v) ++ feTok :: block_rest := by
+          rw [List.append_assoc]; rfl
+        rw [h_reassoc]
+        exact SafeBody.cons _ feTok block_rest (by exact List.cons_ne_nil _ _)
+          h_es_entry (by rfl) h_feTok_val h_sb_rest
 
 end L4YAML.Proofs.EmitterScannability
