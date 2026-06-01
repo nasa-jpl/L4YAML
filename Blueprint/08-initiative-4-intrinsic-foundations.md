@@ -2085,26 +2085,26 @@ work is the *plumbing* that feeds it.
 
 **Next session — `.parsenode.discharge` cont'd** (the dispatcher AND the matching locator are built;
 what remains is assembling `FlowSubrangesOk`). The shape of the remaining producer:
-1. **`WellBracketed` of the emitter body** — **seq side LANDED** (commit `156596fb`, Reflection 202):
-   `emitList_scans_safebody` already yielded `WellBracketed block`; threaded through
-   `emitList_body_filtered_characterization` via `flowBracketBalance_eq_pbalance` and push-converted in
-   `scanFiltered_emitSeq_nonempty_structure`, which now surfaces both the **outer balance**
+1. **`WellBracketed` of the emitter body** — **BOTH sides LANDED** (seq: commit `156596fb`,
+   Reflection 202; map: commit `9d6d04fa`, Reflection 203). Each side surfaces, in its
+   `scanFiltered_emit{Seq,Map}_nonempty_structure` conclusion, the **outer balance**
    `flowBracketBalance tokens 2 (tokens.size−2) = 0` and the **bounded Dyck prefix-nonneg**
-   `∀ k, 2 ≤ k → k ≤ tokens.size−2 → flowBracketBalance tokens 2 k ≥ 0` (the EXACT two hypotheses the
-   dispatcher instantiation + `flowBracketBalance_matching_close` consume) in its conclusion. **Map side
-   STILL OWED**: `emitPairList_scans_safebody` does NOT yet return `WellBracketed` (conclusion is
-   `SafeBody (·=.key) block ∧ 3 ≤ n`) — the pairList producer's induction must first be taught to
-   maintain `WellBracketed` (the cons/append/singleton lemmas in `WellBracketed.lean` are the bricks),
-   THEN thread it through `emitPairList_body_filtered_characterization` /
-   `scanFiltered_emitMap_nonempty_structure` exactly as the seq side. This is the first map-side step.
+   `∀ k, 2 ≤ k → k ≤ tokens.size−2 → flowBracketBalance tokens 2 k ≥ 0` — the EXACT two hypotheses the
+   dispatcher instantiation + `flowBracketBalance_matching_close` consume. The map side first required
+   teaching `emitPairList_scans_safebody`'s induction to maintain `WellBracketed` (per-pair entry =
+   delta-`0` `.key`/`.value` glue around the key/value `WellBracketed` blocks, mirroring `h_es_entry`;
+   cons case appends a delta-`0` `.flowEntry` separator + recursive tail — the `WellBracketed_append`/
+   `_cons_delta_zero`/`_singleton_delta_zero` bricks), un-discarding the `_h_wb_k`/`_h_wb_v` binders the
+   key/value producers already supplied; then threading exactly as the seq side. **This sub-step is now
+   complete on both sides** — the bracket-structure supplier is fully built.
 2. **`SeqBodyProps`/`MapBodyProps` for ALL nested subranges** — the top-level conjuncts are what
    `scanFiltered_emit{Seq,Map}_nonempty_structure` already proves; for nested `(lo, hi)` the local
    token-shape (scalar/key/value/comma placement) still needs a *recursive* characterization over the
    emitted value tree (the matching locator now supplies the bracket-structure half of each
    `bracket_*` conjunct). This is the bulk of the remaining producer.
 3. Instantiate `flow_parser_ok_of_structure` at `(lo, hi) = (2, tokens.size−2)`,
-   `fuel = 4·tokens.size+4` → close the 2 structure sorries (`NonemptyStructure.lean` 523/714 — the
-   seq site now has `h_outer_bal`/`h_dyck` in scope ready to feed alongside `FlowSubrangesOk`).
+   `fuel = 4·tokens.size+4` → close the 2 structure sorries (`NonemptyStructure.lean` 549/764 — **both**
+   the seq AND map sites now have `h_outer_bal`/`h_dyck` in scope ready to feed alongside `FlowSubrangesOk`).
 4. The 2 base `emit_roundtrip_{sequence,mapping}_content_eq` (`EmitterScannability.lean` ~832/872) that
    consume them → `universal_roundtrip`.
 
@@ -14803,7 +14803,23 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
-                **Total .body scope re-estimate (FIFTIETH revision —
+                **Total .body scope re-estimate (FIFTY-FIRST revision —
+                after **Thread A step 3's WellBracketed thread landed on the MAP side too**.
+                `emitPairList_scans_safebody` (`BlockProducers.lean`, commit `9d6d04fa`) is now taught
+                to maintain `WellBracketed` through its induction: the per-pair entry
+                `(.key :: block_k ++ [.value]) ++ block_v` is built from the key/value `WellBracketed`
+                blocks (`_h_wb_k`/`_h_wb_v`, formerly discarded) glued by delta-`0` `.key`/`.value`
+                tokens via `WellBracketed_cons_delta_zero`/`_append`/`_singleton_delta_zero` — the EXACT
+                shape of the existing `h_es_entry` `EntrySafe` construction — and the cons case appends a
+                delta-`0` `.flowEntry` separator + the recursive tail's `WellBracketed`. Threaded through
+                `emitPairList_body_filtered_characterization` and `scanFiltered_emitMap_nonempty_structure`
+                exactly as the seq side (`flowBracketBalance_eq_pbalance` bridge + tokens-level
+                push-conversion), so the map structure now ALSO surfaces `flowBracketBalance tokens 2
+                (tokens.size−2) = 0` and the bounded Dyck. **The bracket-structure supplier is complete on
+                both sides.** Map producer + characterization axiom-clean
+                `[propext, Classical.choice, Quot.sound]`, build green 515 jobs, **sorries held at 4** —
+                pure enablement. See Reflection 203, on top of the
+                **FIFTIETH revision** —
                 after **Thread A step 3's WellBracketed thread landed: outer balance + Dyck (seq side)**.
                 The seq-side body characterization `emitList_body_filtered_characterization`
                 (`NonemptyStructure.lean`, commit `156596fb`) already obtained `WellBracketed block`
@@ -23573,3 +23589,44 @@ updating the one caller's `obtain` with `_`-prefixed binders) costs two lines do
 unused-`have` warning) and lands the push-conversion plumbing now, de-risking next session's `FlowSubrangesOk` assembly.
 **Lesson: a proven-but-unconsumed fact belongs in the conclusion when it characterizes the object (not the proof);
 holding it as a `_`-binder defers the conversion work and reads as incomplete.**
+
+---
+
+### Reflection 203 (new, 2026-06-01): the map side cost one extra brick — the producer's *output* spec, not its proof — and that brick was already cut and lying next to the one it mirrors
+
+[[Reflection 202]] named the seq/map asymmetry as the next step: `emitPairList_scans_safebody` didn't return
+`WellBracketed`, so the map thread couldn't be a pure mirror of the seq thread until the pairList producer's induction
+was taught to maintain it. This session paid exactly that one extra brick and then the mirror went through unchanged. The
+striking part is how *little* the "teach the induction" step actually was: the producer already builds, in both its base
+and cons cases, a per-pair-entry `EntrySafe` (`h_es_entry`) via `EntrySafe_cons_delta_zero`/`_append`/`_singleton` over
+the very same `.key`/`.value`/`block_k`/`block_v` decomposition. The `WellBracketed` entry is the **same expression tree
+with each `EntrySafe_*` swapped for its `WellBracketed_*` twin** — `WellBracketed_cons_delta_zero`/`_append`/
+`_singleton_delta_zero`, all of which already existed (built speculatively in the `WellBracketed.lean` substrate). The
+key/value sub-blocks' `WellBracketed` (`_h_wb_k`/`_h_wb_v`) were, again, already-proven-and-discarded binders
+([[Reflection 202]]'s "re-export before re-prove" applied one layer deeper — at the *producer's* obtains, not the
+characterization's).
+
+**(1) When a producer maintains invariant X (e.g. `EntrySafe`) and you need a parallel invariant Y (`WellBracketed`)
+with the same closure lemmas, the new accumulation is a structural copy, not new mathematics.** The cost is the *number
+of construction sites* (here: base case + cons case = two bullets), each a transcription of the existing X-construction
+with the lemma names substituted. The risk is in the *spec* lines — adding the conjunct to the conclusion and inserting
+the matching `?_` into every positional `refine` tuple, in the right slot, consistently across all cases — not in the
+proofs. **Lesson: when adding a second invariant that shares the first's algebra, locate the existing invariant's
+construction and mechanically mirror it; budget the work as "N construction sites + N+1 spec edits (conclusion + one
+`refine` slot per case + every caller's `obtain`)," and verify the spec edits by building the producer in isolation
+before touching any consumer.**
+
+**(2) Substrate built speculatively pays off precisely when its twin is already in use.** The `WellBracketed_*` closure
+lemmas were not written for this session; they predate it. Their value here is that the map thread required *zero* new
+lemmas — the entire increment was producer-spec surgery + a mechanical mirror of the seq characterization. **Lesson: a
+substrate lemma's payoff is realized at the moment its structurally-parallel sibling is already load-bearing; when you
+build one closure lemma (`EntrySafe_append`), cutting its twin (`WellBracketed_append`) in the same pass is cheap
+insurance against a future "teach the induction" step.**
+
+**(3) Build the producer in isolation before threading consumers.** The change touched four layers — producer
+(`BlockProducers.lean`), characterization + structure (`NonemptyStructure.lean`), and caller
+(`EmitterScannability.lean`) — each with positional tuples sensitive to a one-slot insertion. Building *only*
+`BlockProducers` first confirmed the new `WellBracketed` conjunct and both construction bullets typed before any
+downstream `obtain` was disturbed, isolating spec-slot mistakes to one file at a time. **Lesson: when a conjunct
+insertion ripples through a producer→characterization→structure→caller chain of positional `obtain`/`refine` tuples,
+build bottom-up one module at a time; a misplaced `?_` then fails in the module you just edited, not three layers up.**
