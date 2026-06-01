@@ -10,11 +10,32 @@ import L4YAML.Proofs.Output.IndexedEmitterScannability.EmitScans
 import L4YAML.Proofs.Output.IndexedEmitterScannability.ParseStream
 import L4YAML.Proofs.Output.IndexedEmitterScannability.RoundTrip
 
-/-! # `IndexedEmitterScannability` — Phase 3 Step 6f.3b3 staging aggregator
+/-! # `IndexedEmitterScannability` — parked parallel indexed track
 
-**Status**: staging aggregator. Imports the seven indexed-twin sub-files
-that will collectively replace the legacy 10741-LOC
-`Proofs/Output/EmitterScannability.lean` at the 6f.3c cutover commit.
+**Status (2026-05-31): PARKED parallel track — cutover deferred.** This was
+originally a staging aggregator for a "6f.3c cutover" that would rename these
+indexed-twin sub-files over the legacy `Proofs/Output/EmitterScannability.lean`.
+That plan predates two developments that make it stale:
+
+  1. The legacy file is no longer a 10741-LOC monolith — after the keystone-
+     reduction modularization it is ~950 LOC + a foundation chain under
+     `Proofs/Output/EmitterScannability/`.
+  2. The strategic decision (see Reflection 193) is **Option 2**: finish the
+     non-indexed keystone (`universal_roundtrip`, 5 remaining sorries) to a
+     0-sorry proof first. Reflection 157 established there is *no transport*
+     between `ScannerStateIx`/`ParseStateIx` (indexed) and
+     `ScannerState`/`ParseState` (concrete), so this track is a full parallel
+     universe (indexed scanner **and** parser), not a drop-in.
+
+This track is sorry-free but incomplete: it tops out at the body-token
+characterization (`..._characterizationIx_part1`) and has no
+`nonempty_structureIx` / loop-emitter-ok / `universal_roundtripIx`. It is kept
+in the build as a reference substrate. The keep/migrate/retire call is deferred
+until a concrete need for intrinsic input-range correspondence (precise error
+spans, incremental parse) justifies re-walking the keystone path on indexed
+types. See Reflection 193 in the blueprint for the full assessment.
+
+## Multi-file decomposition (Reflection 108)
 
 ## Multi-file decomposition (Reflection 108)
 
