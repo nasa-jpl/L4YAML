@@ -2051,42 +2051,41 @@ combining §I's `parseNode_scalar_flow` with `SeqBodyProps.scalar_succ` (success
 `flowBracketBalance_single` (single-token span balance = 0 via the scalar's zero delta). Sorries held
 at **5**; `[propext]` / pure-triple axioms.
 
-**Next session — `.bridge.parsenode.induction`** (ALL substrate is now landed — the dispatcher is the
-sole remaining piece). Predicates in scope; bridge + both scalar leaves (§III/§IV) + the §V
-collection-entry lift + §VI bundle assembly + §VII bracket reductions landed; the predicate
-**contract is correct, the bracket-descent substrate is built, AND the bracket key/value reductions
-are built**: the fuel-adequacy bound is `2 * (endPos − ps.pos) < m` (a *constant* offset eroded 1 per
-nesting level — fuel drops 3/level, span drops ≥2 — so corrected to `2·span`; commit `70bebb83`,
-Reflection 198); `loop{Seq,Map}Pre_of` (§VI, commit `ac1c81b3`) assemble the
-`Loop{Seq,Map}Preconditions` bundle for the inner body `(k+1, j)` from `Seq/MapBodyProps` + the IH;
-and `parse{ExplicitKey,FlowMappingValue}_flow{Seq,Map}Start_of_parse` (§VII, commit `e3e8f39d`) give
-the map-entry bracket key/value reductions (Reflection 199). Remaining toward the 2 structure sorries:
-  - **The dispatcher** `flow_parser_ok_of_structure`: mutual strong induction on `hi − lo` producing
-    **both** `ParseNodeFlowSeqOk` and `ParseEntryFlowMapOk`. Per depth-0 position: scalar → §III/§IV
-    leaf (`parseNode_seqScalar_ok` / `parseEntry_mapScalar_ok`); seq/map bracket → take `j` + the
-    post-bracket successor off `SeqBodyProps.bracket_{seq,map}` (S4/S5) / `MapBodyProps` M5/M8/M9/M10,
-    build the inner bundle with `loop{Seq,Map}Pre_of` (`fuel_inner = m−2`; the `2·span` bound delivers
-    `m−2 > 2*(j−(k+1)) + 1` from `j ≤ endPos−1`), call §V `parseFlow{Sequence,Mapping}_emitter_ok`,
-    then §II `parseNode_flow{Seq,Map}Start_of_parse` (node case) or §VII
-    `parse{ExplicitKey,FlowMappingValue}_flow{Seq,Map}Start_of_parse` (map key/value cases), finalize
-    the result state via `applyNodeFinalization_{pos,tokens,trackPositions}`, and compose the
-    `[ps.pos, j+1)` balance from `flowBracketBalance_compose` + the open/close deltas. **Both seq and
-    map sides are now pure composition over landed, axiom-clean pieces** — the only genuinely new
-    content is the strong-recursion skeleton itself: `Nat.strong_induction` on the span over the
-    `FlowSubrangesOk` subrange tree, dispatching the seq derivation into the map derivation (and
-    vice-versa) at nested brackets, hence mutual. The fuel argument `m` passed to the IH at a bracket
-    is `m−2`; the `2·span` invariant is exactly what makes the IH's fuel-adequacy hypothesis
-    dischargeable at each descent.
-  Then `.parsenode.induction` (the span strong-induction assembling leaf + bracket cases into
-  `ParseNodeFlowSeqOk`/`ParseEntryFlowMapOk`) and `.parsenode.discharge` (produce `FlowSubrangesOk`
-  for the emitter stream from the body-token characterization — note `SeqBodyProps`/`MapBodyProps`'s
-  top-level conjuncts ARE what `scanFiltered_emit{Seq,Map}_nonempty_structure` already proves, but
-  `FlowSubrangesOk` quantifies over ALL nested subranges, so the discharge needs the characterization
-  recursively / a bracket-matching argument — then instantiate at `(tokens.size-2, 2)`, close the 2
-  structure sorries; finally the 2 base `emit_roundtrip_{sequence,mapping}_content_eq`,
-  `EmitterScannability.lean` ~832/872, that consume them).
-  Distinct from `SafeBody` — the scanner→token-shape bridge is closed; this is the
-  token-shape→parser-acceptance half, with its own machinery in `FlowParserAcceptance.lean`.
+**`.bridge.parsenode.induction` LANDED (commit `b61e8b6f`, Reflection 200): the dispatcher
+`flow_parser_ok_of_structure` is built.** §VIII of `FlowParserAcceptance.lean`: a single
+`Nat.strongRecOn` on a span bound `n` with a **conjunctive motive** (`hi − lo ≤ n →
+ParseNodeFlowSeqOk ∧ ParseEntryFlowMapOk`, each side guarded by its end-token + balance) producing
+BOTH predicates for every `FlowSubrangesOk` subrange. Per depth-0 position: scalar → §III/§IV leaf
+(`parseNode_seqScalar_ok` / `parseEntry_mapScalar_ok`); bracket → matching close `j` off the body
+structure (`SeqBodyProps.bracket_{seq,map}` / `MapBodyProps.{key,value}_bracket_value` + M7/M8), inner
+acceptance predicate from the IH at inner span `j − (k+1) < hi − lo` (seq node ← motive `.1`, map
+entry ← `.2`; this cross-call is what makes the induction mutual), loop bundle via §VI
+`loop{Seq,Map}Pre_of` at `fuel_inner = m − 2`, run §V `parseFlow{Sequence,Mapping}_emitter_ok`, reduce
+`parseNode` / `parseExplicitKey` / `parseFlowMappingValue` via §II / §VII, finalize the state via
+`applyNodeFinalization_{pos,tokens,trackPositions}`, and compose the `[ps.pos, j+1)` balance via the
+new `flowBracketBalance_bracketSpan` helper (open +1, balanced inner, close −1 → 0). The `m − 2` inner
+fuel discharges each bundle's `2·span+1` adequacy from the caller's `2·(hi − ps.pos) < m` (headroom 4
+per nesting level vs. the −3 bracket-descent drop). Map entries are factored through one `valStep`
+local lemma — the value half (3 cases scalar/seq/map) — reused across all 3 key cases. Sorries held at
+**4** (pure enablement: this proves exactly the obligation the 2 structure sorries assert, not yet
+wired); full build green (515 jobs); `flow_parser_ok_of_structure` on the pure triple
+`[propext, Classical.choice, Quot.sound]`. Caveats (Reflection 200): `set` and
+`Nat.strong_induction_on` are Mathlib-only — used `Nat.strongRecOn` and wrote the finalization term
+out explicitly so the witness stays folded and the `applyNodeFinalization_*` projection lemmas fire;
+the opaque `key_ps.tokens = tokens` is *propositional* (not defeq), so each §V call over a path-pushed
+state transports its `LoopPreconditions` bundle along that equation.
+
+**Next session — `.parsenode.discharge`** (the dispatcher is built; what remains is *feeding* it).
+Produce `FlowSubrangesOk` for the emitter stream from the body-token characterization — note
+`SeqBodyProps`/`MapBodyProps`'s top-level conjuncts ARE what
+`scanFiltered_emit{Seq,Map}_nonempty_structure` already proves, but `FlowSubrangesOk` quantifies over
+ALL nested subranges, so the discharge needs the characterization recursively / a bracket-matching
+argument. Then instantiate `flow_parser_ok_of_structure` at `(lo, hi) = (2, tokens.size−2)`,
+`fuel = 4·tokens.size+4` to close the 2 structure sorries (`NonemptyStructure.lean` 473/663). Finally
+the 2 base `emit_roundtrip_{sequence,mapping}_content_eq` (`EmitterScannability.lean` ~832/872) that
+consume them → `universal_roundtrip`. Distinct from `SafeBody` — the scanner→token-shape bridge is
+closed; this is the token-shape→parser-acceptance half, with its own machinery in
+`FlowParserAcceptance.lean`.
 
 **(Historical `.assemble` plan — superseded by Reflection 188 for the seq side, still the shape for
 `.map`.)**  Thread the `EmitScansInFlowBlock` block
@@ -14779,7 +14778,25 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
-                **Total .body scope re-estimate (FORTY-SEVENTH revision —
+                **Total .body scope re-estimate (FORTY-EIGHTH revision —
+                after **Thread A step 2's dispatcher landed — step 2 COMPLETE**. §VIII of
+                `FlowParserAcceptance.lean` (commit `b61e8b6f`) builds `flow_parser_ok_of_structure`:
+                a single `Nat.strongRecOn` on a span bound with a **conjunctive motive** producing
+                **both** `ParseNodeFlowSeqOk` and `ParseEntryFlowMapOk` for every `FlowSubrangesOk`
+                subrange — mutual because a seq node descends into a nested mapping (map motive `.2`)
+                and a map entry into a nested sequence (seq motive `.1`). Per depth-0 position: scalar
+                → §III/§IV leaf; bracket → matching close off `Seq/MapBodyProps`, inner predicate from
+                the IH at the strictly-smaller inner span, loop bundle via §VI at `fuel_inner = m−2`,
+                §V → §II/§VII, finalize via `applyNodeFinalization_*`, span balance via the new
+                `flowBracketBalance_bracketSpan` helper (open +1, balanced inner, close −1 → 0). Map
+                entries factor through a `valStep` local lemma (the value half, 3 cases) shared by all
+                3 key cases. Caveats: `set` and `Nat.strong_induction_on` are Mathlib-only (used
+                `Nat.strongRecOn` + explicit folded finalization terms so the projection lemmas fire);
+                `key_ps.tokens = tokens` is propositional, so §V calls over a path-pushed state
+                transport their precondition bundle along it. Pure triple `[propext, …]`, build green
+                at 515 jobs, **sorries held at 4** — pure enablement (proves exactly what the 2
+                structure sorries assert; wiring is step 3). See Reflection 200, on top of the
+                **FORTY-SEVENTH revision** —
                 after **Thread A step 2's bracket key/value reductions landed**. §VII of
                 `FlowParserAcceptance.lean` (commit `e3e8f39d`) builds the four bracket map-entry
                 reductions — the last unbuilt brick the FORTY-SIXTH revision flagged. The two *key*
@@ -23032,16 +23049,19 @@ parser/value-side sorries; the scanner→token-shape bridge below them is alread
      and `parseFlowMappingValue_flow{Seq,Map}Start_of_parse` (the §IV scalar-value do-block with the
      value `parseNode` landing on §II's bracket reduction; result inherits `pos`/`tokens`/
      `trackPositions` via `applyNodeFinalization_*`). All four pure `[propext, …]`, green at 515 jobs,
-     sorries held at 4. **Live remainder of step 2:** *only* the mutual strong-recursion skeleton
-     `flow_parser_ok_of_structure` itself — every brick it composes (§III/§IV scalar leaves, §V
-     collection-entry, §VI bundle assembly, §VII bracket reductions) is now landed and axiom-clean.
-     Both seq and map sides are composition: at each node/entry position, dispatch on the token
-     (scalar leaf vs. bracket), pull the matching close `j` + successor off `Seq/MapBodyProps`
-     (S4/S5; M5/M8/M9/M10), build the inner bundle via `loop{Seq,Map}Pre_of` with `fuel_inner = m−2`
-     (the `2·span` bound gives `m−2 > 2*(j−(k+1)) + 1`), call §V → §II/§VII, finalize, compose the
-     span balance via `flowBracketBalance_compose`. The skeleton is `Nat.strong_induction`-on-span
-     over the FlowSubrangesOk subrange tree, producing **both** predicates simultaneously (seq bodies
-     may hold bracket-map nodes and vice versa, so the two derivations are mutually recursive).
+     sorries held at 4. **Step 2 COMPLETE — the dispatcher landed 2026-06-01 (commit `b61e8b6f`,
+     Reflection 200):** §VIII of `FlowParserAcceptance.lean` — `flow_parser_ok_of_structure` is a
+     single `Nat.strongRecOn` on a span bound with a **conjunctive motive** producing **both**
+     `ParseNodeFlowSeqOk` and `ParseEntryFlowMapOk` for every `FlowSubrangesOk` subrange (the seq
+     derivation calls the map motive `.2` at a nested `{…}` and the map derivation calls the seq motive
+     `.1` at a nested `[…]`, hence mutual). Per depth-0 position it is pure composition over the landed
+     bricks: scalar → §III/§IV; bracket → matching close off `Seq/MapBodyProps`, inner predicate from
+     the IH at the strictly-smaller inner span, bundle via §VI at `fuel_inner = m−2`, §V → §II/§VII,
+     finalize via `applyNodeFinalization_*`, balance via the new `flowBracketBalance_bracketSpan`
+     helper (open +1, balanced inner, close −1 → 0). Map entries are factored through a `valStep` local
+     lemma (the value half, 3 cases) reused across the 3 key cases. Pure triple `[propext, …]`, green
+     at 515 jobs, sorries held at **4** (proves exactly the obligation the 2 structure sorries assert —
+     wiring is step 3).
   3. **`.parsenode.discharge`** — produce `FlowSubrangesOk` for the emitter token stream from the
      body-token characterization (`scanFiltered_emit{Seq,Map}_nonempty_structure` already proves the
      top-level conjuncts; `FlowSubrangesOk` quantifies over *all* nested subranges, so this needs the
@@ -23360,3 +23380,48 @@ underlying functions — not about the induction — should be hoisted to a name
 strong-recursion skeleton is then pure dispatch-and-assemble, and the whole arc is a sequence of green increments
 rather than one monolith that compiles only at the end.** See [[Reflection 198]] for the bundle enabler this
 completes; the skeleton itself is the sole live remainder of step 2.
+
+---
+
+### Reflection 200 (new, 2026-06-01): the payoff of five sessions of standalone bricks — the dispatcher was pure dispatch-and-plumbing; the only surprises were three Lean-core mechanics, not the math
+
+The skeleton [[Reflection 199]] left as "the sole live remainder of step 2" landed this session (§VIII,
+`flow_parser_ok_of_structure`, commit `b61e8b6f`). The mathematical content was exactly as forecast — at each
+depth-0 position, dispatch on the token, pull the matching close + inner predicate, plumb fuel/balance/landing
+through §II–§VII — and the proof went green with **zero** new ideas about parsing. That validates the
+hoist-to-named-lemmas discipline at its payoff: a ~470-line proof that is *entirely* composition typechecked after
+fixing three purely-mechanical Lean issues. The lessons are about those mechanics.
+
+**(1) Mutual induction is cleanest as one strong induction on a span `Nat` with a *conjunctive* motive — not Lean's
+mutual-theorem machinery.** The two predicates are genuinely mutually recursive (a flow sequence body holds nested
+mapping nodes and vice-versa), but rather than `mutual … end` or a sum-type measure, the whole thing is
+`induction n using Nat.strongRecOn` where the goal is `∀ lo hi, hi − lo ≤ n → (SeqOk-if-seqEnd) ∧ (MapOk-if-mapEnd)`.
+The cross-calls are then just `.1`/`.2` projections of the IH at the strictly-smaller inner span. **Lesson: for
+mutually-recursive *facts* over a shared well-founded measure, a single induction with an `∧`-motive beats `mutual` —
+the recursion structure becomes ordinary projection, and there's one termination argument, not a bundle.** (Aside:
+`Nat.strong_induction_on` is Mathlib; core Lean 4 is `Nat.strongRecOn`, case `ind`, IH `∀ m, m < n → motive m`.)
+
+**(2) An existential witness that is `(someDef …).2` must be written out explicitly — leaving it `_` lets the
+elaborator WHNF-unfold the def, and projection lemmas stop matching.** The bracket cases end with `h_node : parseNode
+ps m = .ok (applyNodeFinalization v ps2 {} …)`. Writing `refine ⟨_, _, h_node, …⟩` makes Lean unify the existential's
+`?ps'` against the pair on the RHS by **eta-unfolding `applyNodeFinalization`** (a def returning a `Prod` via
+`if/then`), so the remaining goals show the *unfolded* `if … then … .pos` and
+`applyNodeFinalization_{pos,tokens,trackPositions}` — which match the *folded* `(applyNodeFinalization …).2.pos` —
+no longer fire. Fix: provide the witness explicitly as `(applyNodeFinalization v ps2 {} …).2`, keeping it folded, so
+the projection-preservation lemmas rewrite cleanly. **Lesson: when an existential witness is a projection of an
+opaque-but-reducible definition, supply it *literally* rather than as `_`; a `_` invites the unifier to reduce it to
+a shape your downstream rewrites can't see. (`set` would name it, but `set` is Mathlib — in core, write it out.)**
+
+**(3) The `.tokens` of an opaque parser-result state equals the global token array only *propositionally*, and the
+lifted lemmas are stated over `ps.tokens` — so feed them by transporting the bundle.** §V
+(`parseFlow…_emitter_ok`) takes `pre : LoopSeqPreconditions ps.tokens ps.advance …`, indexed by `ps.tokens`. For the
+original `ps` that is fine (`ps.tokens` appears syntactically, so `rw [h_tok]` converts the bundle built over
+`tokens`). But for a **map value bracket**, §V runs on a *path-pushed* state `({key_ps with currentPath := …}).advance`
+whose `.tokens` is `key_ps.tokens` — equal to `tokens` only by the hypothesis `h_kps_tok`, not definitionally (because
+`key_ps` is an opaque `parseExplicitKey` result). The bundle, built via §VI over `tokens`, must be transported:
+`have pre' : LoopSeqPreconditions psKa.tokens … := by rw [show psKa.tokens = tokens from h_kps_tok]; exact pre0`.
+**Lesson: a `ParseState` returned by the parser carries `.tokens = tokens` as a *propositional* fact; any lemma
+indexed by `state.tokens` (not by an explicit token array) needs that equality transported in, and naming the pushed
+state with a core `let` keeps the `pos`/`tokens` projections defeq-transparent so only the propositional `.tokens`
+needs the `rw`.** With step 2 closed, the live front is step 3 — producing `FlowSubrangesOk` from the emitter stream
+to *feed* this dispatcher and close the 2 structure sorries.
