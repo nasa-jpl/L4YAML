@@ -14766,7 +14766,17 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
-                **Total .body scope re-estimate (FORTY-FIRST revision —
+                **Total .body scope re-estimate (FORTY-SECOND revision —
+                after **Thread B landed** (the lone scanner-side sorry,
+                `FilteredTracking.lean`): the per-step `scanNextToken_filtered_grows` was *false*
+                (a §6.8.3 RESERVED directive scans to `skipToEndOfLine`, zero filtered growth, yet
+                returns `some s'`), so it + its sole consumer `ScanChain_filtered_grows` were deleted;
+                the `+n` bound the two `nonempty_structure` theorems needed now comes from the
+                already-built `ScanChainGrew_filtered_grows` (a new `old_sz + 3 ≤ (s'.filter).size`
+                Part-4 conjunct on `emitPairList_body_filtered_characterization`, sequence side reuses
+                the existing Part-1); commit `061f6dc1`, Reflection 194; **sorries 5 → 4**, build green
+                at 515 jobs — `FilteredTracking.lean` now sorry-free, all 4 remaining are Thread A),
+                on top of the **FORTY-FIRST revision** —
                 after **`.bridge.parsenode.brackets`** predicates half landed (§III of
                 `FlowParserAcceptance.lean`: the structure→parser-state bridge —
                 `peek_of_isFlowContentStart` + `parseNode_seqScalar_ok`, the IH-free scalar branch of
@@ -22853,13 +22863,14 @@ Writing `emit_scans_block_combined` (the combined `Grammable` producer) surfaced
 
 **(4) Therefore: finish non-indexed to a 0-sorry `universal_roundtrip`, then decide the indexed track's fate from a position of a complete proof + oracle.** The indexed scanner substrate is real, sorry-free, and the genuine win for the layer that hurt — do not delete it (Option 3 is premature), but do *park* it (status: "parked parallel track, cutover deferred"; the stale staging-aggregator doc-comment was corrected to say so). The forward criterion for ever migrating: **only if a future goal actually needs intrinsic input-range correspondence — precise error spans, incremental/streaming parse, or a second large scanner-side proof effort.** If the roadmap after `universal_roundtrip` is mostly parser/value-side or schema-side, the indexed track's ergonomic win does not pay its migration + maintenance cost; keep it as a reference substrate. **Lesson: a parallel rewrite earns a cutover only when the *new* invariants it carries are needed downstream; "the old proofs are unwieldy" justifies the substrate that is already built, not re-walking the layers where the two worlds are line-for-line identical.**
 
-**Next steps — the Option-2 roadmap to a 0-sorry `universal_roundtrip`.** Five sorries remain; the
+**Next steps — the Option-2 roadmap to a 0-sorry `universal_roundtrip`.** Four sorries remain
+(Thread B landed 2026-06-01 — see step 5 below and Reflection 194); the
 detailed mechanics for the parser-acceptance thread are in the `.bridge.parsenode.induction`
 next-pointer above (search "Next session — `.bridge.parsenode.induction`") and the
 `.body2.discharge.bridge.parsenode` plan-tree entry. Consolidated here so the decision and the work
 sit together:
 
-*Thread A — parser-acceptance (4 of the 5 sorries, one well-mapped dependency chain).* These are the
+*Thread A — parser-acceptance (the 4 remaining sorries, one well-mapped dependency chain).* These are the
 parser/value-side sorries; the scanner→token-shape bridge below them is already closed.
   1. **Map-entry node acceptance** — the `ParseEntryFlowMapOk` analogue of the landed
      `parseNode_seqScalar_ok`: a scalar-keyed/scalar-valued entry (no IH needed), discharged from
@@ -22878,13 +22889,80 @@ parser/value-side sorries; the scanner→token-shape bridge below them is alread
      `emit_roundtrip_{sequence,mapping}_content_eq`) — now consume the proven `Parse*Ok`; finish the
      content-equality argument. **This closes the keystone `universal_roundtrip`.**
 
-*Thread B — the one scanner-side sorry (independent, can land anytime).*
-  5. **`FilteredTracking.lean:162`** — the RESERVED-directive branch of `scanNextToken_filtered_grows`
-     (the `repeat split` structural-dispatch tail). Independent of Thread A. Note the indexed track
-     already has a sorry-free *in-flow* corollary for the analogous lemma, so if this branch proves
-     stubborn the emitter-never-emits-a-reserved-directive angle is the likely shortcut.
+*Thread B — the one scanner-side sorry. **✅ LANDED 2026-06-01 (commit `061f6dc1`).***
+  5. ~~**`FilteredTracking.lean:162`** — the RESERVED-directive branch of `scanNextToken_filtered_grows`.~~
+     **Resolved by deletion, not proof:** the lemma was *false as stated*. A YAML 1.2.2 §6.8.3
+     reserved directive (`%FOO …`) scans via `scanDirective → skipToEndOfLine` and emits **no** token,
+     so that `scanNextToken` step returns `some s'` with **zero** filtered growth — the unconditional
+     `≥ +1` bound cannot hold, and the old proof hid exactly that branch under the `sorry`. No honest
+     per-step universal lemma exists (a hand-built `flowLevel ≥ 1` state with `allowDirectives = true`
+     + a reserved directive defeats every variant, and the only `allowDirectives` re-enabler,
+     `scanDocumentEnd`, is excluded only *in-flow*). The `+ n` filtered-growth bound the two
+     `nonempty_structure` theorems needed already exists soundly as `ScanChainGrew_filtered_grows`
+     (per-step strict-growth *witness*, built where the emitter-body chains are assembled — no reserved
+     directives there). Fix: deleted `scanNextToken_filtered_grows` + its sole consumer
+     `ScanChain_filtered_grows`; exposed `old_sz + 3 ≤ (s'.filter).size` as a new Part-4 conjunct of
+     `emitPairList_body_filtered_characterization` (proved from the chain's `ScanChainGrew` + `3 ≤ n`);
+     the sequence side reuses the existing Part-1 `old_sz < (s'.filter).size`. `FilteredTracking.lean`
+     is now sorry-free. *The "emitter-never-emits-a-reserved-directive angle" anticipated in the prior
+     roadmap was exactly right — it just resolves the obligation away rather than discharging it.*
 
-Closure order: Thread A is the critical path (1 → 2 → 3 → 4); Thread B can be slotted in opportunistically.
+Closure order: Thread A is now the whole critical path (1 → 2 → 3 → 4); Thread B is done.
 Each step is one green sub-increment per the standing cadence. The `FlowParserAcceptance.lean` proofs
 written along Thread A double as the indexed-port template (`ParseNodeFlowSeqOkIx` is identical), so
 finishing them is also the migration scouting that makes any future Option-1 cutover mechanical.
+
+### Reflection 194 (new, 2026-06-01): the fifth sorry was not a proof debt but a *false lemma* — the honest discharge of Thread B is a deletion, and the sound `+n` bound was already sitting one `let`-binding away
+
+Executing "Thread B" (the lone scanner-side sorry, `FilteredTracking.lean:162`) surfaced that the
+obligation was mis-stated, not merely unproven. `scanNextToken_filtered_grows` claimed *every*
+successful `scanNextToken` step adds ≥ 1 non-placeholder token. That is **false**: a YAML 1.2.2 §6.8.3
+reserved directive (`%FOO …`, anything that is not `%YAML`/`%TAG`) is scanned by `scanDirective` into
+`skipToEndOfLine` and emits no token at all, so the step returns `some s'` with the filtered count
+unchanged. The original proof's `repeat split` tactic wall reduced precisely to that branch and capped
+it with `sorry` — the sorry *was* the counterexample, hiding in plain sight under a comment that even
+described the gap ("%RESERVED adds 0 tokens but still returns `some s'`").
+
+Three things made this the cleanest increment of the arc rather than the hardest:
+
+**(1) No honest universal repair exists — so don't attempt one.** I chased the obvious patches and
+killed each: (a) add `s.allowDirectives = false` (then the reserved branch errors instead of
+returning `.ok`, a genuine contradiction) — but propagating it through a chain needs a monotonicity
+lemma, and `allowDirectives` is *not* monotone: `scanDocumentEnd` (Document.lean:326) re-enables it,
+and that resetter is ruled out only *in-flow*, which a bare chain doesn't witness; (b) restrict to
+`FlowMonoChain` with floor ≥ 1 — but its constructor carries only `flowLevel ≥ fl₀` per step, not the
+`col`/`currentIndent`/`ScannerSurfCorr` facts the in-flow growth lemma consumes, and a *pathological*
+`flowLevel ≥ 1` state with `allowDirectives = true` still admits a zero-growth reserved-directive step.
+The per-step universal statement is simply not a theorem. **Lesson: when a sorry sits on a single
+dispatch branch, first ask whether the branch is a counterexample. If the lemma is false, every
+"stronger tactic" is wasted motion; the work is to find the sound statement, not the missing proof.**
+
+**(2) The sound bound was already built — on a parallel rail.** The strict-variant track
+`ScanChainGrew` (ScanChainGrowth.lean) is `ScanChain` plus a per-step *witness* of strict filtered
+growth, and `ScanChainGrew_filtered_grows` gives the same `+ n` conclusion with **no** sorry, because
+the witnesses are produced exactly where the emitter-body chains are assembled (`emit{List,PairList}_
+scans_safebody`) — and the emitter never emits `%`, so no reserved directive is ever in scope. The
+two `nonempty_structure` theorems were calling the *false* `ScanChain_filtered_grows` even though they
+already held a `ScanChainGrew` (downgraded to `ScanChain` via `.toScanChain` two lines earlier) plus a
+`3 ≤ n` floor. The fix was to read the bound off the chain they already had: the sequence side reuses
+the existing Part-1 conjunct `old_sz < (s'.filter).size`; the mapping side (which needs body ≥ 3 for
+`tokens.size ≥ 7`) gets a new Part-4 conjunct `old_sz + 3 ≤ (s'.filter).size`, proved in three lines
+from `ScanChainGrew_filtered_grows h_chain` + `3 ≤ n`. Then `scanNextToken_filtered_grows` and
+`ScanChain_filtered_grows` were *dead* and deleted. **Lesson: a sorry guarding a false lemma is often
+load-bearing only because a sound sibling exists but isn't wired in. Trace the consumers before
+proving — the honest discharge may be a rewire + deletion, net −76 lines.**
+
+**(3) A `let`-bound predicate is an `omega` atom, not a definitional convenience.** Both rewrites first
+failed: `omega` could not connect `(Array.filter (fun t => …) s₂.tokens).size` (from the producer's
+explicit lambda) with `(Array.filter p s₂.tokens).size` (the goal's `let p := …`). `omega` treats the
+two as *distinct atoms* and does not zeta-unfold the `let`. The original code had silently dodged this
+by **type-ascribing** the bound to `p`-form (`have h : (s₁.tokens.filter p).size < … := producer_fact`),
+coercing through defeq at elaboration so every atom that reaches `omega` is `p`-shaped. Restoring that
+ascription fixed both sites. **Lesson: when porting a fact across a `let`-bound abbreviation, ascribe
+it into the abbreviation's shape at the `have`; don't rely on `omega`/`simp` to see through the `let`.**
+
+Net: sorries 5 → 4 (all remaining are Thread A — the two `Parse*Ok` and the two `content_eq` keystone
+sorries); `FilteredTracking.lean` is sorry-free; `lake build` green at 515 jobs; commit `061f6dc1`.
+The indexed track's relevance shrinks again: its one genuine selling point over non-indexed was
+"cleaner scanner-side growth proofs," and the scanner-side growth obligation is now closed on the
+non-indexed rail by deletion. See [[Reflection 193]] for the Option-2 decision this executes against.
