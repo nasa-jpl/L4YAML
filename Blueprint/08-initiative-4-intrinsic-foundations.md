@@ -2051,25 +2051,32 @@ combining §I's `parseNode_scalar_flow` with `SeqBodyProps.scalar_succ` (success
 `flowBracketBalance_single` (single-token span balance = 0 via the scalar's zero delta). Sorries held
 at **5**; `[propext]` / pure-triple axioms.
 
-**Next session — `.bridge.parsenode.induction`** (the predicates half is done — predicates in scope,
-bridge + both scalar leaves (§III/§IV) + the §V collection-entry lift landed; the predicate
-**contract is now correct AND the bracket-descent substrate is built**: the fuel-adequacy bound is
-`2 * (endPos − ps.pos) < m` (a *constant* offset eroded 1 per nesting level — fuel drops 3/level,
-span drops ≥2 — so it was corrected to `2·span`; commit `70bebb83`, Reflection 198), and
-`loop{Seq,Map}Pre_of` (§VI, commit `ac1c81b3`) assemble the `Loop{Seq,Map}Preconditions` bundle for
-the inner body `(k+1, j)` from `Seq/MapBodyProps` + the IH). Remaining toward the 2 structure sorries:
+**Next session — `.bridge.parsenode.induction`** (ALL substrate is now landed — the dispatcher is the
+sole remaining piece). Predicates in scope; bridge + both scalar leaves (§III/§IV) + the §V
+collection-entry lift + §VI bundle assembly + §VII bracket reductions landed; the predicate
+**contract is correct, the bracket-descent substrate is built, AND the bracket key/value reductions
+are built**: the fuel-adequacy bound is `2 * (endPos − ps.pos) < m` (a *constant* offset eroded 1 per
+nesting level — fuel drops 3/level, span drops ≥2 — so corrected to `2·span`; commit `70bebb83`,
+Reflection 198); `loop{Seq,Map}Pre_of` (§VI, commit `ac1c81b3`) assemble the
+`Loop{Seq,Map}Preconditions` bundle for the inner body `(k+1, j)` from `Seq/MapBodyProps` + the IH;
+and `parse{ExplicitKey,FlowMappingValue}_flow{Seq,Map}Start_of_parse` (§VII, commit `e3e8f39d`) give
+the map-entry bracket key/value reductions (Reflection 199). Remaining toward the 2 structure sorries:
   - **The dispatcher** `flow_parser_ok_of_structure`: mutual strong induction on `hi − lo` producing
     **both** `ParseNodeFlowSeqOk` and `ParseEntryFlowMapOk`. Per depth-0 position: scalar → §III/§IV
     leaf (`parseNode_seqScalar_ok` / `parseEntry_mapScalar_ok`); seq/map bracket → take `j` + the
     post-bracket successor off `SeqBodyProps.bracket_{seq,map}` (S4/S5) / `MapBodyProps` M5/M8/M9/M10,
     build the inner bundle with `loop{Seq,Map}Pre_of` (`fuel_inner = m−2`; the `2·span` bound delivers
     `m−2 > 2*(j−(k+1)) + 1` from `j ≤ endPos−1`), call §V `parseFlow{Sequence,Mapping}_emitter_ok`,
-    then §II `parseNode_flow{Seq,Map}Start_of_parse`, finalize the result state via
-    `applyNodeFinalization_{pos,tokens,trackPositions}`, and compose the `[ps.pos, j+1)` balance from
-    `flowBracketBalance_compose` + the open/close deltas. **Seq side** = a 3-way dispatch over those
-    landed pieces. **Map side** additionally needs the one **unbuilt brick**: bracket key/value
-    reductions through `parseExplicitKey` / `parseFlowMappingValue` (the `tryConsume`-bookkeeping that
-    `parseEntry_mapScalar_ok` does for scalar/scalar, generalized to bracket keys and values).
+    then §II `parseNode_flow{Seq,Map}Start_of_parse` (node case) or §VII
+    `parse{ExplicitKey,FlowMappingValue}_flow{Seq,Map}Start_of_parse` (map key/value cases), finalize
+    the result state via `applyNodeFinalization_{pos,tokens,trackPositions}`, and compose the
+    `[ps.pos, j+1)` balance from `flowBracketBalance_compose` + the open/close deltas. **Both seq and
+    map sides are now pure composition over landed, axiom-clean pieces** — the only genuinely new
+    content is the strong-recursion skeleton itself: `Nat.strong_induction` on the span over the
+    `FlowSubrangesOk` subrange tree, dispatching the seq derivation into the map derivation (and
+    vice-versa) at nested brackets, hence mutual. The fuel argument `m` passed to the IH at a bracket
+    is `m−2`; the `2·span` invariant is exactly what makes the IH's fuel-adequacy hypothesis
+    dischargeable at each descent.
   Then `.parsenode.induction` (the span strong-induction assembling leaf + bracket cases into
   `ParseNodeFlowSeqOk`/`ParseEntryFlowMapOk`) and `.parsenode.discharge` (produce `FlowSubrangesOk`
   for the emitter stream from the body-token characterization — note `SeqBodyProps`/`MapBodyProps`'s
@@ -14772,9 +14779,26 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
-                **Total .body scope re-estimate (FORTY-SIXTH revision —
+                **Total .body scope re-estimate (FORTY-SEVENTH revision —
+                after **Thread A step 2's bracket key/value reductions landed**. §VII of
+                `FlowParserAcceptance.lean` (commit `e3e8f39d`) builds the four bracket map-entry
+                reductions — the last unbuilt brick the FORTY-SIXTH revision flagged. The two *key*
+                reductions (`parseExplicitKey_flow{Seq,Map}Start_of_parse`) are immediate §II
+                corollaries: `parseExplicitKey` on a `[`/`{` peek falls through its
+                `.value`/`.flowEntry`/`.flowMappingEnd` empty-key guards straight to `parseNode`. The
+                two *value* reductions (`parseFlowMappingValue_flow{Seq,Map}Start_of_parse`) run the
+                same do-block as the §IV scalar value case (path push, no-op `tryConsume .key`, consume
+                `.value`, `parseNode`, restore path) but land the value `parseNode` on §II's bracket
+                reduction; the result inherits `pos`/`tokens`/`trackPositions` from the inner parse via
+                `applyNodeFinalization_{pos,tokens,trackPositions}`. Like §II/§IV/§VI they carry no
+                `FlowSubrangesOk` hypothesis — pure parser-dispatch facts, the span induction supplies
+                the inner parse via §V. All four pure `[propext, …]`, build green at 515 jobs,
+                **sorries held at 4** — pure enablement. **The map side of the dispatcher is now
+                composition over landed pieces** (§IV scalar leaf + §VII bracket reductions, each
+                feeding the IH for the inner body via §V/§VI); only the mutual strong-recursion
+                skeleton itself remains. See Reflection 199, on top of the **FORTY-SIXTH revision** —
                 after **Thread A step 2's fuel bound corrected to 2·span + the loop-precondition
-                assembly landed**. Two findings this session. (1) The FORTY-FIFTH revision's
+                assembly landed**. Two findings that session. (1) The FORTY-FIFTH revision's
                 constant-offset fuel-adequacy bound `endPos < ps.pos + m` is **insufficient for the
                 induction**: descending a depth-0 bracket drops parser fuel by 3
                 (`parseNode m → parseFlowSequence (m−1) → loop (m−2) → inner parseNode (m−3)`) while
@@ -23001,7 +23025,23 @@ parser/value-side sorries; the scanner→token-shape bridge below them is alread
      side is then a 3-way dispatch over those pieces; the **map side additionally needs bracket
      key/value reductions** through `parseExplicitKey` / `parseFlowMappingValue` (the `tryConsume`
      bookkeeping that `parseEntry_mapScalar_ok` does for the scalar/scalar case, generalized to
-     bracket keys and values) — the one genuinely-new brick still unbuilt.
+     bracket keys and values).
+     **Bracket key/value reductions landed 2026-06-01 (commit `e3e8f39d`, Reflection 199):** §VII of
+     `FlowParserAcceptance.lean` — `parseExplicitKey_flow{Seq,Map}Start_of_parse` (immediate §II
+     corollaries: a `[`/`{` peek falls through `parseExplicitKey`'s empty-key guards to `parseNode`)
+     and `parseFlowMappingValue_flow{Seq,Map}Start_of_parse` (the §IV scalar-value do-block with the
+     value `parseNode` landing on §II's bracket reduction; result inherits `pos`/`tokens`/
+     `trackPositions` via `applyNodeFinalization_*`). All four pure `[propext, …]`, green at 515 jobs,
+     sorries held at 4. **Live remainder of step 2:** *only* the mutual strong-recursion skeleton
+     `flow_parser_ok_of_structure` itself — every brick it composes (§III/§IV scalar leaves, §V
+     collection-entry, §VI bundle assembly, §VII bracket reductions) is now landed and axiom-clean.
+     Both seq and map sides are composition: at each node/entry position, dispatch on the token
+     (scalar leaf vs. bracket), pull the matching close `j` + successor off `Seq/MapBodyProps`
+     (S4/S5; M5/M8/M9/M10), build the inner bundle via `loop{Seq,Map}Pre_of` with `fuel_inner = m−2`
+     (the `2·span` bound gives `m−2 > 2*(j−(k+1)) + 1`), call §V → §II/§VII, finalize, compose the
+     span balance via `flowBracketBalance_compose`. The skeleton is `Nat.strong_induction`-on-span
+     over the FlowSubrangesOk subrange tree, producing **both** predicates simultaneously (seq bodies
+     may hold bracket-map nodes and vice versa, so the two derivations are mutually recursive).
   3. **`.parsenode.discharge`** — produce `FlowSubrangesOk` for the emitter token stream from the
      body-token characterization (`scanFiltered_emit{Seq,Map}_nonempty_structure` already proves the
      top-level conjuncts; `FlowSubrangesOk` quantifies over *all* nested subranges, so this needs the
@@ -23278,3 +23318,45 @@ terrible place to *discover* that your invariant doesn't hold.** The dispatcher 
 is the live remainder; its seq side now composes §II + §V + `loop{Seq,Map}Pre_of` + the finalization lemmas,
 and its map side needs the one unbuilt brick — bracket key/value reductions through
 `parseExplicitKey`/`parseFlowMappingValue`. See [[Reflection 197]] for the contract fix this corrects.
+
+---
+
+### Reflection 199 (new, 2026-06-01): the "one unbuilt brick" split cleanly into a trivial half and a do-block half — and naming the dispatch fact as a *standalone parser lemma* (not an inline step) kept both off the critical path of the induction
+
+[[Reflection 198]] left the dispatcher's map side blocked on "bracket key/value reductions through
+`parseExplicitKey`/`parseFlowMappingValue`." Building them (§VII, commit `e3e8f39d`) this session, the brick was
+**two bricks of very different weight**, and seeing that early shaped the work.
+
+**(1) The key reductions were already done — they're §II wearing a different entry point.** `parseExplicitKey`'s
+*entire* body on a non-empty-key peek is `match ps.peek? with | some .value | some .flowEntry | some .flowMappingEnd
+=> emptyNode | _ => parseNode ps fuel`. A `[`/`{` peek hits the `_` arm, so `parseExplicitKey ps (k+1)` is
+**definitionally** `parseNode ps (k+1)` — and §II's `parseNode_flow{Seq,Map}Start_of_parse` already characterizes
+that. The whole proof is `simp only [parseExplicitKey, h_peek]; exact parseNode_flow…_of_parse …` (two lines, mirror
+of the existing `parseExplicitKey_scalar`). **Lesson: before budgeting a "reduction through parser entry point X,"
+check whether X's dispatch on the relevant token is just a thin wrapper over a function you've already characterized
+— a `match` that falls through to `parseNode` means the §II/§I lemma *is* the reduction, modulo one `simp`.**
+
+**(2) The value reductions were the real work, and they're the §IV scalar do-block with one arm swapped.**
+`parseFlowMappingValue`'s `do`-block (path push → no-op `tryConsume .key` → consume `.value` → `parseNode` →
+restore path) is identical for scalar and bracket values; only the final `parseNode` lands differently (§I scalar
+leaf vs. §II bracket reduction). So `parseFlowMappingValue_flow{Seq,Map}Start_of_parse` is a near-copy of
+`parseFlowMappingValue_scalar` (R195's `do`-block reduction) with the leaf swapped, and the landing-state
+projections (`pos`/`tokens`/`trackPositions`) come from the same `applyNodeFinalization_*` lemmas — the path
+restore `{ … with currentPath := savedPath }` touches none of them. The one snag: `refine ⟨_, _, ?_, …⟩` can't
+synthesize the existential witnesses before the `.ok (val, ps_fin)` equation is proved, so the witnesses must be
+*pinned* by stating the do-block result as an explicit `have h_eq : … = .ok (⟨finalization⟩, ⟨…⟩)` first, then
+`refine ⟨_, _, h_eq, …⟩`. **Lesson: when an existential's witnesses are determined only by a later conjunct
+(here the rewrite equation), prove that conjunct as a named `have` with the witness *written out*, then feed it to
+`refine` — don't leave the witnesses as `_` for the elaborator to guess from an unproven goal.**
+
+**(3) Keeping the dispatch facts as standalone lemmas (not inline `have`s in the induction) is what made the last
+five sessions composable.** §VII, like §I–§VI, carries **no** `FlowSubrangesOk` and **no** IH — it is a pure fact
+about how a parser function dispatches on a token, conditional on an inner parse the caller will supply. That
+discipline means each session lands one axiom-clean, independently-building brick, and the dispatcher becomes a
+composition whose every ingredient was verified in isolation. The map side of `flow_parser_ok_of_structure` is now
+exactly: §IV (scalar/scalar leaf) + §VII (the three bracket key×value combinations) + §V/§VI (inner-body bundle
+from `FlowSubrangesOk` + IH). **Lesson: in a long induction proof, every step that is "really" a fact about the
+underlying functions — not about the induction — should be hoisted to a named lemma; the residue left for the
+strong-recursion skeleton is then pure dispatch-and-assemble, and the whole arc is a sequence of green increments
+rather than one monolith that compiles only at the end.** See [[Reflection 198]] for the bundle enabler this
+completes; the skeleton itself is the sole live remainder of step 2.
