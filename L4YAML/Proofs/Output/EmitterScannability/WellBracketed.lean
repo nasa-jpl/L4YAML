@@ -1009,6 +1009,114 @@ theorem flowBracketBalance_matching_close_map
     h_k_depth h_k_push hinner hjdelta hpos h_wt
   exact ⟨j, hkj, hjhi, btStep_pop_eq_mapEnd _ hpop, hinner⟩
 
+/-! #### Typed locator, part 4 — balanced-factor extraction for nested subranges
+    (`.body2.discharge.typedlocator.infix`)
+
+The two `flowBracketBalance_matching_close_{seq,map}` lemmas demand `WellTyped` of the
+*subrange* interior `((tokens.toList.take hi).drop lo)`.  When assembling `FlowSubrangesOk`,
+that subrange is **nested**: only the *global* interior is known `WellTyped`, and the
+universal `FlowSubrangesOk.seq`/`.map` hand the proof no per-subrange `WellTyped` hypothesis.
+
+This part supplies the descent engine.  `btFold_unframe` is the down-direction dual of the
+existing `btFold_frame`: a fold over an extended stack `s ++ extra` that never pops into
+`extra` (a Dyck guard) runs identically over `s` alone.  `WellTyped_infix_balanced` then reads
+off the payoff — a balanced, Dyck infix of a `WellTyped` list is itself `WellTyped`, at *any*
+nesting depth — because feasibility of the infix from the empty stack is recovered by
+un-framing the (feasible-because-prefix) `pre ++ m`, and balance-`0` forces the stack back to
+`[]`.  No Dyck-tracking re-proof of type-matching is needed: the matches come for free from the
+ambient `WellTyped`. -/
+
+/-- **Step-level un-frame.**  If a step over an *extended* stack `s ++ extra` is defined, and a
+    pop never reaches into `extra` (guard: a closer requires `s` non-empty), then the same step
+    over `s` alone is defined and the result is the un-extended stack `s' ++ extra`.  The
+    converse of `btStep_frame`. -/
+theorem btStep_unframe (t : Positioned YamlToken) (s extra r : List Bool)
+    (h : btStep t (s ++ extra) = some r)
+    (hguard : flowBracketDelta t.val = -1 → s ≠ []) :
+    ∃ s', btStep t s = some s' ∧ r = s' ++ extra := by
+  unfold btStep at h ⊢
+  cases hv : t.val <;> simp only [hv] at h ⊢ <;>
+    first
+      | exact ⟨_, rfl, by obtain rfl := Option.some.inj h; rfl⟩
+      | (have hs : s ≠ [] := hguard (by rw [hv]; rfl)
+         cases s with
+         | nil => exact absurd rfl hs
+         | cons b s0 =>
+             cases b <;>
+               first
+                 | exact ⟨s0, rfl, by obtain rfl := Option.some.inj h; rfl⟩
+                 | simp_all)
+
+/-- **Fold-level un-frame.**  A fold over an extended stack `s ++ extra` that never pops into
+    `extra` (Dyck guard: every prefix keeps `s.length + pbalance ≥ 0`) runs identically over `s`
+    alone, ending one un-extended stack lower.  This is the down-direction dual of `btFold_frame`;
+    the guard is what `btFold_frame` gets for free in the up-direction. -/
+theorem btFold_unframe (m : List (Positioned YamlToken)) :
+    ∀ (s extra mfull : List Bool),
+      btFold (some (s ++ extra)) m = some mfull →
+      (∀ i, i ≤ m.length → (s.length : Int) + pbalance (m.take i) ≥ 0) →
+      ∃ m', btFold (some s) m = some m' ∧ mfull = m' ++ extra := by
+  induction m with
+  | nil =>
+    intro s extra mfull h _
+    simp only [btFold, List.foldl_nil] at h
+    obtain rfl := Option.some.inj h
+    exact ⟨s, rfl, rfl⟩
+  | cons t rest ih =>
+    intro s extra mfull h hguard
+    rw [btFold_cons_some] at h
+    cases hb : btStep t (s ++ extra) with
+    | none => rw [hb, btFold_none] at h; exact absurd h (by simp)
+    | some r =>
+      rw [hb] at h
+      have hstepguard : flowBracketDelta t.val = -1 → s ≠ [] := by
+        intro hd
+        have hg1 := hguard 1 (by simp)
+        have htake : ((t :: rest).take 1) = [t] := rfl
+        rw [htake, pbalance_singleton, hd] at hg1
+        rintro rfl
+        simp at hg1
+      obtain ⟨s', hss', hr⟩ := btStep_unframe t s extra r hb hstepguard
+      have hlen := btStep_length t s s' hss'
+      rw [btFold_cons_some, hss']
+      subst hr
+      have hguard' : ∀ i, i ≤ rest.length → (s'.length : Int) + pbalance (rest.take i) ≥ 0 := by
+        intro i hi
+        have hg := hguard (i + 1) (by simp; omega)
+        have htake : ((t :: rest).take (i + 1)) = t :: rest.take i := rfl
+        rw [htake, pbalance_cons] at hg
+        omega
+      exact ih s' extra mfull h hguard'
+
+/-- **Typed balanced-factor extraction.**  An infix `m` of a `WellTyped` list that is itself
+    balanced (`pbalance m = 0`) and Dyck (every prefix `pbalance ≥ 0`) is `WellTyped` — *at any
+    nesting depth*, because feasibility of `m` from the empty stack is recovered by un-framing the
+    (feasible) prefix `pre ++ m`, and balance-`0` forces the resulting stack back to `[]`.  This
+    discharges the `WellTyped` hypothesis that `flowBracketBalance_matching_close_{seq,map}` demand
+    for *nested* subranges, where the global `WellTyped` is all that is on hand. -/
+theorem WellTyped_infix_balanced (pre m suf : List (Positioned YamlToken))
+    (h : WellTyped (pre ++ m ++ suf))
+    (hbal : pbalance m = 0)
+    (hdyck : ∀ i, i ≤ m.length → pbalance (m.take i) ≥ 0) :
+    WellTyped m := by
+  -- feasibility of the prefix `pre` and of `pre ++ m`
+  have hA : pre ++ m ++ suf = pre ++ (m ++ suf) := by rw [List.append_assoc]
+  obtain ⟨sp, hsp⟩ := WellTyped_prefix_some pre (m ++ suf) (hA ▸ h)
+  obtain ⟨sp', hsp'⟩ := WellTyped_prefix_some (pre ++ m) suf h
+  unfold WellTyped at h ⊢
+  rw [btFold_append, hsp] at hsp'
+  -- un-frame `m` from the empty stack with frame `sp`
+  obtain ⟨m', hm', _⟩ :=
+    btFold_unframe m [] sp sp' (by simpa using hsp')
+      (by intro i hi; simpa using hdyck i hi)
+  -- balance-0 forces `m' = []`
+  have hlen := btFold_length m [] m' hm'
+  rw [hbal] at hlen
+  have hz : m'.length = 0 := by
+    have : (m'.length : Int) = 0 := by simpa using hlen
+    exact_mod_cast this
+  rw [hm', List.eq_nil_of_length_eq_zero hz]
+
 
 -- ═══ Filtered token lemmas for scanner handlers ═══
 
