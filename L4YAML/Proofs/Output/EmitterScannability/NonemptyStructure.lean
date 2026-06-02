@@ -4,6 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 -/
 
 import L4YAML.Proofs.Output.EmitterScannability.BlockProducers
+import L4YAML.Proofs.Parser.FlowParserAcceptance
 
 namespace L4YAML.Proofs.EmitterScannability
 
@@ -647,9 +648,10 @@ theorem scanFiltered_emitSeq_nonempty_structure
   --       `k+1 = hi` the token is `.flowSequenceEnd` (`h_tpe`), contradicting the content-start)
   --   • `bracket_seq`    ← `seq_bracket_seq_conjunct`  fed `h_outer_bal`/`h_dyck`/`h_wt_interior`
   --   • `bracket_map`    ← `seq_bracket_map_conjunct`  and the value-close-guarded `_h_succ_guarded`
-  -- Bound as enablement: the next sub-brick generalizes this to the universal `FlowSubrangesOk`
-  -- (every nested balanced subrange) and applies `flow_parser_ok_of_structure` at
-  -- `(2, tokens.size - 2)`, `fuel = 4·tokens.size + 4` to discharge `h_pnok`.
+  -- This outer-span `SeqBodyProps` is the `lo = 2, hi = tokens.size - 2` instance of the universal
+  -- `FlowSubrangesOk.seq` (the residual `h_subranges` below); the full producer lifts every field to
+  -- an arbitrary nested balanced subrange (Phase J).  Here it stands as the seed/witness that the
+  -- outer span itself meets the structural shape `flow_parser_ok_of_structure` consumes.
   have _h_seq_body_props : SeqBodyProps tokens 2 (tokens.size - 2) := by
     refine ⟨?_, ?_, ?_, ?_, ?_⟩
     · -- content_start
@@ -688,8 +690,22 @@ theorem scanFiltered_emitSeq_nonempty_structure
       exact seq_bracket_map_conjunct tokens 2 (tokens.size - 2) k h_lo h_hi (by omega)
         h_bal_k h_open h_outer_bal h_dyck h_wt_interior
         (fun j hkj hjhi hd hb => _h_succ_guarded j (by omega) hjhi hd hb)
+  -- ═══ [NEW] Dispatcher wiring: parser-acceptance ← structural `FlowSubrangesOk` ═══
+  -- `flow_parser_ok_of_structure` (the span strong-induction dispatcher in `FlowParserAcceptance`,
+  -- previously a verified-but-unconsumed leaf module) turns the universal structural fact
+  -- `FlowSubrangesOk tokens` — every nested balanced subrange has `SeqBodyProps`/`MapBodyProps` —
+  -- into `ParseNodeFlowSeqOk`/`ParseEntryFlowMapOk` at every subrange.  Instantiating its seq half at
+  -- the outer span `(2, tokens.size - 2)` discharges `h_pnok` directly from `h_subranges`, so the
+  -- seq sorry no longer states a parser-EXECUTION obligation: it is now the pure STRUCTURAL residual
+  -- `FlowSubrangesOk tokens` (Phase J — generalize `_h_seq_body_props` above to all subranges via the
+  -- typed-locator + `WellTyped_subrange` infrastructure).  `_h_seq_body_props` is exactly its
+  -- `(2, tokens.size - 2)` seq instance; the bridge from structure to parse is now fully proven.
+  have h_subranges : FlowSubrangesOk tokens := sorry
   have h_pnok : L4YAML.Proofs.ParserWellBehaved.ParseNodeFlowSeqOk
-      tokens (tokens.size - 2) (4 * tokens.size + 4) 2 := sorry
+      tokens (tokens.size - 2) (4 * tokens.size + 4) 2 :=
+    (L4YAML.Proofs.ParserWellBehaved.flow_parser_ok_of_structure
+        tokens (4 * tokens.size + 4) h_subranges).1
+      2 (tokens.size - 2) (by omega) (by omega) h_tpe h_outer_bal
   exact ⟨h_sz5, h_t0, h_tlast, h_t1, h_tpe, h_content0, h_fe_pattern,
          h_outer_bal, h_dyck, h_wt_interior, h_pnok⟩
 
