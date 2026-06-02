@@ -1117,6 +1117,69 @@ theorem WellTyped_infix_balanced (pre m suf : List (Positioned YamlToken))
     exact_mod_cast this
   rw [hm', List.eq_nil_of_length_eq_zero hz]
 
+/-! #### Typed locator, part 5 — subrange `WellTyped` in `flowBracketBalance` language
+    (`.body2.discharge.typedlocator.subrange`)
+
+`WellTyped_infix_balanced` speaks list infixes (`pre ++ m ++ suf`, `pbalance`); the consumers
+— `FlowSubrangesOk.seq`/`.map` and `flowBracketBalance_matching_close_{seq,map}` — speak array
+indices and `flowBracketBalance`.  This part bridges the two: a nested subrange `[lo, hi)` of a
+`WellTyped` enclosing slice `[LO, HI)`, given its balance (`flowBracketBalance lo hi = 0`) and
+its *local* Dyck (`flowBracketBalance lo p ≥ 0` for every `lo ≤ p ≤ hi`), is `WellTyped`.  The
+enclosing slice splits as `pre ++ m ++ suf` with `m` the subrange; the `flowBracketBalance_eq_pbalance`
+bridge converts both balance facts into the `pbalance` form the engine takes.  The local Dyck is
+*not* free from `FlowSubrangesOk`'s hypotheses — deriving it from the global Dyck is the remaining
+`(d-dyck)` brick; here it is a clean input so the assembly can feed it once established. -/
+
+/-- **Subrange `WellTyped` in `flowBracketBalance` language.**  A nested subrange `[lo, hi)`
+    of a `WellTyped` enclosing slice `[LO, HI)` that is itself balanced and locally Dyck
+    (every prefix balance from `lo` stays `≥ 0`) is `WellTyped`.  Packages
+    `WellTyped_infix_balanced` behind the `flowBracketBalance`/array-index interface that
+    `FlowSubrangesOk` and `flowBracketBalance_matching_close_{seq,map}` consume. -/
+theorem WellTyped_subrange (tokens : Array (Positioned YamlToken)) (LO lo hi HI : Nat)
+    (hLO : LO ≤ lo) (h_lo_hi : lo ≤ hi) (hHI : hi ≤ HI)
+    (h_HI_sz : HI ≤ tokens.size)
+    (hW : WellTyped ((tokens.toList.take HI).drop LO))
+    (h_bal : flowBracketBalance tokens lo hi = 0)
+    (h_dyck : ∀ p, lo ≤ p → p ≤ hi → flowBracketBalance tokens lo p ≥ 0) :
+    WellTyped ((tokens.toList.take hi).drop lo) := by
+  rw [List.drop_take] at hW
+  -- Split the enclosing slice into pre ++ (m ++ suf), with m the subrange.
+  have hsplit : (tokens.toList.drop LO).take (HI - LO)
+      = (tokens.toList.drop LO).take (lo - LO)
+        ++ ((tokens.toList.drop lo).take (hi - lo)
+            ++ (tokens.toList.drop hi).take (HI - hi)) := by
+    rw [show HI - LO = (lo - LO) + (HI - lo) from by omega, List.take_add,
+        List.drop_drop, show LO + (lo - LO) = lo from by omega,
+        show HI - lo = (hi - lo) + (HI - hi) from by omega, List.take_add,
+        List.drop_drop, show lo + (hi - lo) = hi from by omega]
+  rw [hsplit, ← List.append_assoc] at hW
+  -- Balance bridge: pbalance of the subrange slice = flowBracketBalance lo hi = 0.
+  have hbal : pbalance ((tokens.toList.drop lo).take (hi - lo)) = 0 := by
+    rw [← flowBracketBalance_eq_pbalance tokens lo hi h_lo_hi]; exact h_bal
+  have hlenm : ((tokens.toList.drop lo).take (hi - lo)).length = hi - lo := by
+    rw [List.length_take, List.length_drop]
+    have hsz : tokens.toList.length = tokens.size := rfl
+    omega
+  -- Local Dyck bridge: every prefix balance of the slice = flowBracketBalance lo (lo+i) ≥ 0.
+  have hdyck' : ∀ i, i ≤ ((tokens.toList.drop lo).take (hi - lo)).length →
+      pbalance (((tokens.toList.drop lo).take (hi - lo)).take i) ≥ 0 := by
+    intro i hi_le
+    rw [hlenm] at hi_le
+    rw [List.take_take, show min i (hi - lo) = i from by omega]
+    have hb : pbalance ((tokens.toList.drop lo).take i)
+        = flowBracketBalance tokens lo (lo + i) := by
+      rw [flowBracketBalance_eq_pbalance tokens lo (lo + i) (by omega),
+          show lo + i - lo = i from by omega]
+    rw [hb]
+    exact h_dyck (lo + i) (by omega) (by omega)
+  have hres := WellTyped_infix_balanced
+      ((tokens.toList.drop LO).take (lo - LO))
+      ((tokens.toList.drop lo).take (hi - lo))
+      ((tokens.toList.drop hi).take (HI - hi))
+      hW hbal hdyck'
+  rw [List.drop_take]
+  exact hres
+
 
 -- ═══ Filtered token lemmas for scanner handlers ═══
 
