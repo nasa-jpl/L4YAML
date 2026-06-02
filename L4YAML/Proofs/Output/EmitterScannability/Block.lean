@@ -65,7 +65,10 @@ def ContentStartTok (t : YamlToken) : Prop :=
 /-- Block-tracking superset of `EmitScansInFlow`: additionally exposes the
     filtered-LIST delta `block` of scanning `emit v`, with `block` `WellBracketed`
     (closes into a `WellBracketed` body) and `EntrySafe` with a content-start
-    head (serves as a `SafeBody` entry). -/
+    head (serves as a `SafeBody` entry).  `block` is moreover an `EntryUnit` — a
+    single `emit v` is one *unit* entry (a lone scalar or one matched `[…]`/`{…}`
+    pair, no interior depth-`0` split), the substrate the value-end successor
+    `SafeBodyUnit_succ` consumes (the `SafeBodyUnit` refinement of the seq body). -/
 def EmitScansInFlowBlock (v : YamlValue) : Prop :=
   ∀ (s : ScannerState) (rest : List Char),
     ScannerSurfCorr s ⟨(emit v).toList ++ rest, s.col⟩ →
@@ -100,6 +103,7 @@ def EmitScansInFlowBlock (v : YamlValue) : Prop :=
       ∧ WellBracketed block
       ∧ WellTyped block
       ∧ EntrySafe block
+      ∧ EntryUnit block
       ∧ (∃ (h : block ≠ []), ContentStartTok (block.head h).val)
 
 /-- Block-tracking superset of `EmitListScansInFlow`: the comma-separated body
@@ -164,7 +168,7 @@ theorem emitList_scans_block_nonempty (items : List YamlValue) (h_ne : items ≠
       rw [h_eq] at hcorr
       obtain ⟨n, s', block, h_chain, h_corr, h_fl', h_dp, h_ids, h_ek', h_col', h_flow',
               h_indent', h_line_v, _h_ska, _h_last, h_atol', h_endline', h_stack', h_fmc',
-              h_block_eq, h_wb, h_wt, _h_es, _h_cs⟩ :=
+              h_block_eq, h_wb, h_wt, _h_es, _h_eu, _h_cs⟩ :=
         h_all v (.head _) s rest_chars hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_sync
       exact ⟨n, s', block, h_chain, h_corr, h_fl', h_dp, h_ids, h_ek', h_col', h_flow',
         h_indent', h_line_v, h_atol', h_endline', h_stack', h_fmc', h_block_eq, h_wb, h_wt⟩
@@ -177,7 +181,7 @@ theorem emitList_scans_block_nonempty (items : List YamlValue) (h_ne : items ≠
       have h_ev : EmitScansInFlowBlock v := h_all v (.head _)
       obtain ⟨n₁, s₁, block₁, h_chain₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_ek₁, h_col₁, h_flow₁,
               h_indent₁, _h_line₁, _h_ska₁, h_last₁, h_atol₁, h_endline₁, h_stack₁, h_fmc₁,
-              h_block_eq₁, h_wb₁, h_wt₁, _h_es₁, _h_cs₁⟩ :=
+              h_block_eq₁, h_wb₁, h_wt₁, _h_es₁, _h_eu₁, _h_cs₁⟩ :=
         h_ev s ([',', ' '] ++ (emit.emitList (v' :: vs)).toList ++ rest_chars)
           hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_sync
       -- Step 2: Scan ',' via scanNextToken_flow_comma (state) + push lemma (block)
@@ -520,7 +524,7 @@ theorem emitPairList_scans_block_nonempty (pairs : List (YamlValue × YamlValue)
       have h_ev : EmitScansInFlowBlock p.2 := h_all_v p (.head _)
       obtain ⟨n_v, s_end, block_v, h_chain_v, h_corr_end, h_fl_end, h_dp_end, h_ids_end,
               h_ek_end, h_col_end, h_flow_end, h_indent_end, h_line_end, _h_ska_v, _h_last_v,
-              h_atol_end, h_endline_end, h_stack_end, h_fmc_v, h_blockeq_v, h_wb_v, h_wt_v, _h_es_v, _h_cs_v⟩ :=
+              h_atol_end, h_endline_end, h_stack_end, h_fmc_v, h_blockeq_v, h_wb_v, h_wt_v, _h_es_v, _h_eu_v, _h_cs_v⟩ :=
         h_ev s₃ rest_chars h_corr₃'
           h_flow₃ (by rw [h_fl₃, h_fl₂, h_fl₁]; exact h_fl)
           (by rw [h_indent₃]; exact h_indent₂)
@@ -696,7 +700,7 @@ theorem emitPairList_scans_block_nonempty (pairs : List (YamlValue × YamlValue)
         simp only [List.append_assoc] at h_corr₃' ⊢; exact h_corr₃'
       obtain ⟨n_v, s_v, block_v, h_chain_v, h_corr_v, h_fl_v, h_dp_v, h_ids_v,
               h_ek_v, h_col_v, h_flow_v, h_indent_v, _h_line_v, h_ska_v, h_last_v,
-              h_atol_v, h_endline_v, h_stack_v, h_fmc_v, h_blockeq_v, h_wb_v, h_wt_v, _h_es_v, _h_cs_v⟩ :=
+              h_atol_v, h_endline_v, h_stack_v, h_fmc_v, h_blockeq_v, h_wb_v, h_wt_v, _h_es_v, _h_eu_v, _h_cs_v⟩ :=
         h_ev s₃ ([',', ' '] ++ (emit.emitPairList (p' :: ps)).toList ++ rest_chars)
           h_corr₃_assoc
           h_flow₃ (by rw [h_fl₃, h_fl₂, h_fl₁]; exact h_fl)

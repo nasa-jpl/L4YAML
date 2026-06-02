@@ -102,7 +102,7 @@ theorem emitList_body_filtered_characterization
   -- `SafeBody_array_flowEntry` gives the post-`.flowEntry` content-start (Part 2).
   -- No `SavedKeyDoesntResolve` substrate and no two-chain reconciliation are needed.
   obtain ⟨n, s', block, h_chain, h_corr', h_fl', h_dp', h_ids', h_ek', h_col', h_inflow',
-          h_indent', h_line', h_atol', h_endline', h_stack', h_fmc, h_block_eq, h_wb, h_wt, h_sb⟩ :=
+          h_indent', h_line', h_atol', h_endline', h_stack', h_fmc, h_block_eq, h_wb, h_wt, h_sb, _h_sbu⟩ :=
     emitList_scans_safebody items h_ne h_all_block s rest h_corr h_flow h_fl h_indent h_col
       h_ek h_atol h_endline h_sync
   -- The body block is exactly the `drop old_sz` of the final filtered token list.
