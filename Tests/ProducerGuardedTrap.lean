@@ -72,9 +72,23 @@ def report (j : Nat) : String :=
 -- Watch index 3 (the separator): weakCond=true, producerProp=false, Goal=FALSE.
 -- That row is the trap — the weak `∀` must cover it, but `Goal` is false there.
 -- Index 2 (the close) is the legitimate witness: weakCond=true, producerProp=true, Goal=true.
+-- `#guard_msgs` pins each rendered table as checked documentation AND keeps it out of the build
+-- log: a match is swallowed silently; any drift in a row fails the build with an error.
+/-- info: ["j=0  delta=1  bal(j+1)=1  weakCond=false  producerProp=false  Goal=false",
+ "j=1  delta=0  bal(j+1)=1  weakCond=false  producerProp=false  Goal=false",
+ "j=2  delta=-1  bal(j+1)=0  weakCond=true  producerProp=true  Goal=true",
+ "j=3  delta=0  bal(j+1)=0  weakCond=true  producerProp=false  Goal=false",
+ "j=4  delta=0  bal(j+1)=0  weakCond=true  producerProp=false  Goal=true"] -/
+#guard_msgs in
 #eval (List.range ts.length).map report
-#eval report 2  -- the close      → "...weakCond=true  producerProp=true   Goal=true"
-#eval report 3  -- the separator  → "...weakCond=true  producerProp=false  Goal=false"   ← the trap
+
+/-- info: "j=2  delta=-1  bal(j+1)=0  weakCond=true  producerProp=true  Goal=true" -/
+#guard_msgs in
+#eval report 2  -- the close: the legitimate witness (producerProp=true, Goal=true)
+
+/-- info: "j=3  delta=0  bal(j+1)=0  weakCond=true  producerProp=false  Goal=false" -/
+#guard_msgs in
+#eval report 3  -- the separator: the trap (weakCond=true, yet Goal=false)
 
 /-! ## `#guard` — enforce the positives and the negative. -/
 

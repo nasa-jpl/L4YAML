@@ -112,9 +112,22 @@ def report (ts : List Tok) (j : Nat) : String :=
 
 -- In `bad`, index 0 (first scalar) is a balance-0 boundary, NOT a separator, yet the next token is a
 -- scalar — so the value-end claim is FALSE there. That row is the trap the converse never sees.
+-- `#guard_msgs` pins each rendered table as checked documentation AND keeps it out of the build log;
+-- a match is swallowed silently, any drift in a row fails the build with an error.
+/-- info: ["j=0  tok=ConverseForwardAsymmetry.Tok.scal  bal(j+1)=0  boundary=true  isSep=false",
+ "j=1  tok=ConverseForwardAsymmetry.Tok.scal  bal(j+1)=0  boundary=true  isSep=false",
+ "j=2  tok=ConverseForwardAsymmetry.Tok.sep  bal(j+1)=0  boundary=true  isSep=true",
+ "j=3  tok=ConverseForwardAsymmetry.Tok.scal  bal(j+1)=0  boundary=true  isSep=false"] -/
+#guard_msgs in
 #eval (List.range bad.length).map (report bad)
-#eval report bad 0  -- the interior split → "...boundary=true  isSep=false"   ← valEndChar fails here
-#eval report bad 2  -- the real separator → "...boundary=true  isSep=true"    ← sepChar's witness
+
+/-- info: "j=0  tok=ConverseForwardAsymmetry.Tok.scal  bal(j+1)=0  boundary=true  isSep=false" -/
+#guard_msgs in
+#eval report bad 0  -- the interior split: valEndChar fails here
+
+/-- info: "j=2  tok=ConverseForwardAsymmetry.Tok.sep  bal(j+1)=0  boundary=true  isSep=true" -/
+#guard_msgs in
+#eval report bad 2  -- the real separator: sepChar's witness
 
 /-! ## `#guard` — the asymmetry on one body, then the fix. -/
 
