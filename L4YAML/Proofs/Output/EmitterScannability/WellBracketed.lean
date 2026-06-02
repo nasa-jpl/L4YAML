@@ -641,6 +641,96 @@ theorem wrap_map_typed (op cl : Positioned YamlToken) (body : List (Positioned Y
   simp only [btFold, List.foldl_nil]
   unfold btStep; rw [h_cl]
 
+/-! #### Typed locator, part 1 — the depth–balance bridge (`.body2.discharge.typedlocator`)
+
+The numeric locator `flowBracketBalance_matching_close` finds the matching close `j` of a
+depth-0 opener at `k` purely from the `Int` balance and position index — it yields only
+`flowBracketDelta tokens[j]!.val = -1` (a closer, `]` *or* `}`).  To pin the close's
+*type* (a `[` matches a `]`, never a `}`), the typed stack `btFold` must be connected to
+those numeric indices.
+
+This bridge proves the typed stack's *length* equals the running `pbalance` (= the
+`flowBracketBalance` the locator and `SeqBodyProps` speak): so "balance `1` at `j`" becomes
+"stack `[b]` at `j`", and the lone element `b` is exactly the bracket type the close must
+match.  The two `btStep_pop_eq_*` lemmas then read off the close's token from `b`.  The
+remaining bottom-preservation step — that `b` equals the *opener* type at `k` (so the close
+of a `[` is a `]`) — is the second sub-brick, layered above this. -/
+
+/-- **One step shifts the stack length by exactly the bracket delta.**  A `[`/`{` push adds
+    one, a matching `]`/`}` pop removes one, everything else is unchanged — mirroring
+    `flowBracketDelta`.  The `none` (mismatch/underflow) cases are excluded by the hypothesis. -/
+theorem btStep_length (t : Positioned YamlToken) (s s' : List Bool)
+    (h : btStep t s = some s') :
+    (s'.length : Int) = (s.length : Int) + flowBracketDelta t.val := by
+  unfold btStep at h
+  cases hv : t.val <;> simp only [hv] at h <;> simp only [flowBracketDelta] <;>
+    first
+      | (cases s with
+         | nil => simp at h
+         | cons b s'' => cases b <;> simp_all <;> omega)
+      | (obtain rfl := Option.some.inj h; simp)
+
+/-- **A `some`-valued fold shifts length by `pbalance`.**  Whenever the typed fold from a
+    starting stack `s0` stays defined (`= some s1`), the final stack length differs from the
+    initial by the cumulative bracket balance of the list. -/
+theorem btFold_length (l : List (Positioned YamlToken)) :
+    ∀ (s0 s1 : List Bool), btFold (some s0) l = some s1 →
+      (s1.length : Int) = (s0.length : Int) + pbalance l := by
+  induction l with
+  | nil =>
+    intro s0 s1 h
+    simp only [btFold, List.foldl_nil] at h
+    obtain rfl := Option.some.inj h
+    simp [pbalance_nil]
+  | cons t rest ih =>
+    intro s0 s1 h
+    rw [btFold_cons_some] at h
+    cases hb : btStep t s0 with
+    | none => rw [hb, btFold_none] at h; exact absurd h (by simp)
+    | some m =>
+      rw [hb] at h
+      have hstep := btStep_length t s0 m hb
+      have hrest := ih m s1 h
+      rw [pbalance_cons]; omega
+
+/-- **A prefix of a `WellTyped` list never underflows** — it folds to `some` (because `none`
+    is absorbing, an underflowing prefix would force the whole fold to `none ≠ some []`). -/
+theorem WellTyped_prefix_some (a b : List (Positioned YamlToken))
+    (h : WellTyped (a ++ b)) : ∃ s, btFold (some []) a = some s := by
+  unfold WellTyped at h
+  rw [btFold_append] at h
+  cases ha : btFold (some []) a with
+  | none => rw [ha, btFold_none] at h; exact absurd h (by simp)
+  | some s => exact ⟨s, rfl⟩
+
+/-- **Depth–balance bridge.**  In a `WellTyped` list, the stack after any prefix `l.take m`
+    is `some s` with `s.length` equal to that prefix's `pbalance`.  This is the glue between
+    the typed-stack world (`WellTyped`) and the numeric `flowBracketBalance`/`pbalance` world
+    where the matching locator and `SeqBodyProps` live. -/
+theorem WellTyped_take_stack (l : List (Positioned YamlToken)) (m : Nat)
+    (h : WellTyped l) :
+    ∃ s, btFold (some []) (l.take m) = some s ∧ (s.length : Int) = pbalance (l.take m) := by
+  have hsplit : l = l.take m ++ l.drop m := (List.take_append_drop m l).symm
+  rw [hsplit] at h
+  obtain ⟨s, hs⟩ := WellTyped_prefix_some _ _ h
+  refine ⟨s, hs, ?_⟩
+  have := btFold_length _ _ _ hs; simpa using this
+
+/-- **Reading the close type (sequence).**  The only `btStep` that pops `[true]` to `[]` is a
+    `.flowSequenceEnd` — once the bridge fixes the stack at the close to `[true]`, this pins
+    the close token to a `]`. -/
+theorem btStep_pop_eq_seqEnd (t : Positioned YamlToken)
+    (h : btStep t [true] = some []) : t.val = .flowSequenceEnd := by
+  unfold btStep at h
+  cases hv : t.val <;> simp only [hv] at h <;> simp_all
+
+/-- **Reading the close type (mapping).**  The only `btStep` that pops `[false]` to `[]` is a
+    `.flowMappingEnd`. -/
+theorem btStep_pop_eq_mapEnd (t : Positioned YamlToken)
+    (h : btStep t [false] = some []) : t.val = .flowMappingEnd := by
+  unfold btStep at h
+  cases hv : t.val <;> simp only [hv] at h <;> simp_all
+
 -- ═══ Filtered token lemmas for scanner handlers ═══
 
 /-- `scanFlowSequenceStart` filtered token equation: adds exactly one `.flowSequenceStart`. -/
