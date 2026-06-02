@@ -2110,10 +2110,11 @@ from a depth-0 opener at `k`, the matching close `j` (`k < j < hi`, closer, bala
 `(k+1, j)`). Pure-triple, sorries held at 4. This is the combinatorial core; the remaining producer
 work is the *plumbing* that feeds it.
 
-**Next session — `.parsenode.discharge` cont'd** (the dispatcher AND the matching locator are built;
-what remains is assembling `FlowSubrangesOk`).
+**Next session — `.parsenode.discharge` cont'd** (the dispatcher is now built AND WIRED — consumed at
+the outer seq span, commit `79350657`; the matching locator is built; what remains is *producing*
+`FlowSubrangesOk` — the seq sorry is now exactly that structural residual at `NonemptyStructure.lean` 703).
 
-> **Frontier (post-Reflection 224, commit `7190d3d3`).** The `(d-shape)` algebra is complete
+> **Frontier (post-Reflection 225, commit `79350657`).** The `(d-shape)` algebra is complete
 > (the bracket conjuncts are correctly guarded — Reflection 218 — AND their `h_succ` substrate, the
 > value-end successor `EntryUnit` / `SafeBodyUnit_succ` / `SafeBodyUnit_array_succ`, exists —
 > Reflection 219), and the **sequence side** of threading `EntryUnit` through the producers is now
@@ -2143,14 +2144,22 @@ what remains is assembling `FlowSubrangesOk`).
 > the `_h_body_succ` guard; note scalars route through `_h_body_succ` directly, NOT `_h_succ_guarded`,
 > since a scalar carries delta `0 ≠ -1`); `after_fe` ← `h_fe_pattern` (the `≤` sharpened to `<` via
 > `h_tpe`); `bracket_seq`/`bracket_map` ← `seq_bracket_{seq,map}_conjunct` fed `h_outer_bal`/`h_dyck`/
-> `h_wt_interior` and the value-close-guarded `_h_succ_guarded`. Bound as enablement (the next sub-brick
-> consumes it). **Immediate next sub-bricks (two, in
-> order):** (1) *generalize the seq producer* — lift `_h_seq_body_props` from the single outer span
-> `(2, tokens.size−2)` to the
-> universal `FlowSubrangesOk` (every nested balanced subrange — `WellTyped_subrange` supplies the
-> per-subrange `WellTyped`; the per-subrange value-end successor / content-start is the recursive
-> bulk), apply `flow_parser_ok_of_structure` at `(2, tokens.size−2)` → **close the seq structure sorry**
-> (`NonemptyStructure.lean` 692, was 640); (2) the **map side**, which is *not* a direct `EntryUnit` thread — a map *pair* entry
+> `h_wt_interior` and the value-close-guarded `_h_succ_guarded`. **The dispatcher is now WIRED**
+> (Reflection 225, commit `79350657`): `FlowParserAcceptance.lean` — the span strong-induction
+> `flow_parser_ok_of_structure`, which had been a verified-but-UNCONSUMED leaf module (nothing in the
+> build graph imported it) — is now imported into `NonemptyStructure` and applied at the outer seq span
+> `(2, tokens.size−2)`, `fuel = 4·tokens.size+4`. This discharges `h_pnok : ParseNodeFlowSeqOk …`
+> directly from a single residual `have h_subranges : FlowSubrangesOk tokens`, so the seq frontier sorry
+> **no longer states a parser-EXECUTION obligation** — it is now the pure STRUCTURAL residual
+> `FlowSubrangesOk tokens` (`NonemptyStructure.lean` 703). The structure→parse bridge is fully proven
+> and consumed; `_h_seq_body_props` is exactly the `(2, tokens.size−2)` seq instance of the residual.
+> No import cycle: `FlowParserAcceptance` imports only `ParserWellBehaved`, on which `NonemptyStructure`
+> already depends. **Immediate next sub-bricks (two, in
+> order):** (1) *produce the seq subranges* — discharge the residual `FlowSubrangesOk.seq` by lifting
+> `_h_seq_body_props` from the single outer span `(2, tokens.size−2)` to every nested balanced subrange
+> (`WellTyped_subrange` supplies the per-subrange `WellTyped`; the per-subrange value-end successor /
+> content-start is the recursive bulk — Phase J) → **close the seq structure sorry**
+> (`NonemptyStructure.lean` 703, was 692/640); (2) the **map side**, which is *not* a direct `EntryUnit` thread — a map *pair* entry
 > `.key block_k .value block_v` has an interior depth-0 `.value`, so the whole pair is NOT an
 > `EntryUnit`; the value-end there needs a pair-level refinement (apply `EntryUnit` to each key/value
 > block, with a separate per-pair successor), to be designed before the map sorry (868) closes. Once
@@ -15137,6 +15146,26 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
+                **Total .body scope re-estimate (SEVENTY-THIRD revision —
+                after **Thread A step 3 sub-step 2's brick (d-shape) cont'd — *dispatcher wired:
+                seq parser-acceptance reduced to structural `FlowSubrangesOk`* — landed** (commit
+                `79350657`, Reflection 225). `FlowParserAcceptance.lean`'s span strong-induction
+                `flow_parser_ok_of_structure` — until now a verified-but-UNCONSUMED leaf module (nothing
+                in the build graph imported it) — is imported into `NonemptyStructure` and applied at the
+                outer seq span `(2, tokens.size−2)`, `fuel = 4·tokens.size+4`, discharging
+                `h_pnok : ParseNodeFlowSeqOk …` from a single residual `have h_subranges :
+                FlowSubrangesOk tokens`. The seq frontier sorry's TYPE thereby flips from a
+                parser-EXECUTION obligation to the pure STRUCTURAL `FlowSubrangesOk tokens`
+                (`NonemptyStructure.lean` 703); the structure→parse bridge is fully proven and consumed,
+                and `_h_seq_body_props` is exactly its `(2, tokens.size−2)` seq instance. No import cycle
+                (`FlowParserAcceptance` imports only `ParserWellBehaved`, already a `NonemptyStructure`
+                dependency). Build green 519 jobs, **sorries held at 4** (the seq sorry was *reshaped*, not
+                added — `ParseNodeFlowSeqOk` → `FlowSubrangesOk`); no new sorry. Net architectural effect:
+                the entire FlowParserAcceptance dispatcher (≈900 lines, the span induction over §I–§VII)
+                is now live in the keystone graph, leaving the residual as *pure structure production*
+                (Phase J). next sub-brick: produce `FlowSubrangesOk.seq` by lifting `_h_seq_body_props` to
+                every nested balanced subrange (`WellTyped_subrange` + per-subrange successor/content-start)
+                → close the seq sorry (703). See Reflection 225, on top of the
                 **Total .body scope re-estimate (SEVENTY-SECOND revision —
                 after **Thread A step 3 sub-step 2's brick (d-shape) cont'd — *outer `SeqBodyProps`
                 assembled from the value-end successor* — landed** (commit `7190d3d3`, Reflection 224).
@@ -25129,3 +25158,32 @@ Reflection 223's "adapter is cheapest": the *consumer-side assembly* of well-thr
 for the same reason an adapter is — you are matching shapes, not discovering facts — and the way to make it
 cheap is upstream, by landing each input as its own honest `have` rather than inlining it, so the assembly
 has named handles to wire.
+
+### Reflection 225 (new, 2026-06-02): wiring in a verified-but-unconsumed module is "reduction by import" — it does not shrink the sorry count, it changes a sorry's TYPE from an execution obligation to a structural one, and that retype is the real progress
+
+`flow_parser_ok_of_structure` (`FlowParserAcceptance.lean`, ≈900 lines: the span strong-induction tying
+§I–§VII into `ParseNodeFlowSeqOk`/`ParseEntryFlowMapOk` for every balanced subrange from `FlowSubrangesOk`)
+had been **built, axiom-clean, and imported by nothing** — a verified leaf hanging off the build graph,
+proven in isolation but never consumed. This session's brick (commit `79350657`) did not prove a new
+theorem: it *imported the module and applied it once*, at the outer seq span. The whole edit is two `have`s
+— `h_subranges : FlowSubrangesOk tokens := sorry` and `h_pnok := (flow_parser_ok_of_structure …).1 2
+(tokens.size−2) … h_tpe h_outer_bal` — plus one import line. The sorry count did not move (held at 4).
+
+So what was the progress? The seq sorry's **type changed**. Before, it was `ParseNodeFlowSeqOk tokens
+(tokens.size−2) (4·tokens.size+4) 2` — an obligation about how the *parser executes* (fuel, positions,
+`peek`, loop bundles). After, it is `FlowSubrangesOk tokens` — a pure statement about the *token array's
+structure* (every nested balanced subrange has the `SeqBodyProps`/`MapBodyProps` shape), with no parser, no
+fuel, no execution in sight. The dispatcher absorbed the entire parser-execution half of the obligation;
+what remains is structure the emitter manifestly produces. That retype is the point: a structural residual is
+attackable with the emitter-characterization + typed-locator + `WellTyped_subrange` infrastructure already in
+hand (Phase J), whereas the execution residual was not — it would have meant re-deriving the dispatcher inline.
+
+The general principle for sizing this kind of step: when a downstream consumer lemma exists, is proven, and
+"only" needs wiring, the wiring is not bookkeeping — it is the act of *handing the hard execution reasoning
+to the place that already did it*, leaving you a cleaner obligation. Such a step is correctly logged as
+progress even though `grep -c sorry` is unchanged, because the metric that moved is the *shape* of the
+frontier, not its cardinality. Symmetric to Reflection 223 (adapter) and 224 (assembly): all three are
+"matching shapes, not discovering facts," and here the shape being matched is the dispatcher's
+`FlowSubrangesOk → parse` interface — the single import that activates ≈900 lines of dormant verified proof.
+A practical tell that a leaf module is *ready* to wire: its only import is something the consumer already
+depends on (here `ParserWellBehaved`), so wiring it in cannot create a cycle and costs exactly one `import`.
