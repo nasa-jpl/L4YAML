@@ -2275,11 +2275,31 @@ what remains is assembling `FlowSubrangesOk`). The shape of the remaining produc
    `flowBracketBalance_matching_close_{seq,map}` directly. Build green 515, sorries held at 4, both on the
    pure triple. **The bracket-conjunct assembly is now complete on both sides** — what remains of `(d-shape)`
    is purely the `h_succ`-shaped emitter facts.
+   **Brick (d-shape), bracket-conjunct `h_succ` guard — LANDED** (commit `044d4bf9`, Reflection 218):
+   the four conjunct lemmas above were committed with `h_succ : ∀ j, k<j → j<hi →
+   flowBracketBalance tokens lo (j+1) = 0 → <succ>` — an **undischargeable** universal: a *separator*
+   `j` (a depth-0 `.flowEntry`) also satisfies `balance lo (j+1) = 0`, but `tokens[j+1]` there is the
+   next entry's content-start, not `.flowEntry`/close (concrete witness: in `[["a"], "b"]` the comma
+   after `["a"]` is such a `j`, with `tokens[j+1]` the scalar `"b"`). The conjuncts compiled
+   (vacuous-premise lemmas typecheck) but could never be fed at assembly. Fix: **guard `h_succ` by the
+   locator's own output** `flowBracketDelta tokens[j]!.val = -1` (a value-*close* at `j`), threading the
+   already-computed `h_close_delta` into the `*_reduce` application; the guard excludes separators
+   (delta `0`) and restricts the quantifier to the value-end positions the emitter fact is about —
+   exactly dischargeable (a witness feeding the guarded form from an abstract value-end producer
+   compiles clean). Proof bodies otherwise unchanged. Build green 515, sorries held at 4, all four on
+   the pure triple. **The conjuncts are now usable inputs to `(d-assemble)`.**
    **Remaining sub-bricks of (d)**:
    the *single* underlying "next depth-0
    token after a complete value is `.flowEntry` or the body close" emitter fact (and its
    `.key`/`.value`/content-start siblings: `scalar_succ`, `after_fe`, `key_content`, `key_start`, …) for
-   every nested subrange — i.e. the `h_succ`-shaped premises the assembly + reduction lemmas now consume.
+   every nested subrange — i.e. the (now correctly-guarded) `h_succ`-shaped premises the assembly +
+   reduction lemmas consume.  The shared fact's true key is "`j` is a value-close at depth-0" (delta
+   `-1` with `balance lo (j+1)=0`), NOT bare depth-0 — see Reflection 218.  Foundation note for the
+   producer: `SafeBody`/`EntrySafe` (the body abstraction) gives the *converse* (`after_fe`:
+   balance-0 `.flowEntry` → content-start head, via `SafeBody_array_flowEntry`) but **not** the
+   value-end successor — an abstract `EntrySafe` entry can have interior balance-0 positions (e.g.
+   `scalar scalar`), which the emitter never produces; the producer needs an entry refinement (no
+   interior depth-0, so a scalar-headed unit entry is a singleton) to pin value-ends.
    This is the genuinely emitter-output-characterizing half, recursive over the emitted value tree;
    (d-assemble) bundle the local Dyck (`flowBracketBalance_interior_dyck` → `WellTyped_subrange`, both
    LANDED) + the bracket-conjunct assembly (seq + map both LANDED) + the scalar/key/value/content-start
@@ -14985,6 +15005,26 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
+                **Total .body scope re-estimate (SIXTY-SIXTH revision —
+                after **Thread A step 3 sub-step 2's brick (d-shape) cont'd — *bracket-conjunct
+                `h_succ` guard* — landed: the four conjunct lemmas' successor hypothesis, committed
+                as an undischargeable universal, is corrected to be keyed on the value-close**
+                (commit `044d4bf9`, Reflection 218). The conjuncts took `h_succ : ∀ j, k<j → j<hi →
+                flowBracketBalance tokens lo (j+1) = 0 → <succ>` — but a *separator* `j` (a depth-0
+                `.flowEntry`) also satisfies `balance lo (j+1) = 0` while `tokens[j+1]` there is the
+                next entry's content-start, not `.flowEntry`/close (witness: in `[["a"], "b"]` the
+                comma after `["a"]`, `tokens[j+1] = "b"`), so the universal is *false* and could never
+                be fed at assembly — the conjuncts compiled only because a vacuous-premise lemma
+                typechecks. Fix: **guard `h_succ` by the locator's own output**
+                `flowBracketDelta tokens[j]!.val = -1` (a value-*close* at `j`), threading the
+                already-computed `h_close_delta` into the `*_reduce` call; the guard excludes
+                separators (delta `0`) and restricts the quantifier to the value-end positions the
+                emitter fact is about — exactly dischargeable (a witness feeding the guarded form from
+                an abstract value-end producer compiles clean). Proof bodies otherwise unchanged.
+                **The conjuncts are now usable inputs to `(d-assemble)`** — what remains of `(d-shape)`
+                is the (correctly-guarded) `h_succ` emitter facts, then `(d-assemble)`. Build green 515
+                jobs, **sorries held at 4**, all four on the pure triple. See Reflection 218, on top of
+                the
                 **Total .body scope re-estimate (SIXTY-FIFTH revision —
                 after **Thread A step 3 sub-step 2's brick (d-shape) cont'd — *bracket-conjunct
                 assembly (map side)* — landed: the map analogues complete the assembly on both
@@ -24584,3 +24624,41 @@ already sits. The general lesson: **when the consumer's shape contains a disjunc
 enter the assembly — but split only the branch-local fact it governs (here: locator choice + output tag),
 and keep every body-governed and plumbing step outside the split; if a step is being duplicated across
 branches, it didn't depend on the disjunction and belongs above it.**
+
+### Reflection 218 (new, 2026-06-02): a hypothesis that type-checks is not a hypothesis that can be supplied — an existential-output locator forces its successor premise to be *guarded by the locator's output*, or the universal is false
+
+The four bracket-conjunct lemmas ([[Reflection 216]]/[[Reflection 217]]) landed green, on the pure triple,
+with a clean dischargeability story — and were nonetheless **broken**. Each took its deferred emitter fact as
+`h_succ : ∀ j, k < j → j < hi → flowBracketBalance tokens lo (j+1) = 0 → <succ>`, applied internally at the
+locator-produced close `j`. That compiles, because *Lean checks that a lemma's body uses its hypotheses
+consistently, not that the hypotheses are inhabitable*. But the universal is false: the premise
+`balance lo (j+1) = 0` holds not only at value-closes but at every **separator** `j` — a depth-0 `.flowEntry`
+is also followed by a depth-0 position — where `tokens[j+1]` is the next entry's content-start, not
+`.flowEntry`/close. The witness is two elements deep: `[["a"], "b"]`, where the comma after `["a"]` is a `j`
+with `tokens[j+1]` the scalar `"b"`. A lemma whose hypothesis can never be produced is dead weight that *looks*
+like progress — the green build and clean axiom profile actively disguise it.
+
+The root cause is structural, and it generalizes. When a lemma **produces** its key witness internally (here
+the close `j` comes from the existential the typed locator returns), any hypothesis quantified over that
+witness must be *guarded by the very properties the producer guarantees about it* — otherwise the quantifier
+ranges over cases the producer never hits, and discharging it means proving a falsehood. The locator returns
+`tokens[j]!.val = .flowSequenceEnd` (a value-close); the fix is to thread its delta form
+`flowBracketDelta tokens[j]!.val = -1` into `h_succ`'s premises, which excludes separators (delta `0`) and
+restricts the quantifier to exactly the value-end positions the emitter fact is about. The proof body is
+unchanged — the same `h_close_delta` already computed for the `*_reduce` call is simply also handed to
+`h_succ`. The over-strength was never in the *mechanics*; it was in *forgetting to publish, into the deferred
+hypothesis, the same fact the locator publishes into the body*. The general lesson: **when you defer a premise
+behind a `∀` over an internally-produced witness, copy the witness's guarantees into the premise's
+hypotheses; a deferred premise stated more weakly than the producer's guarantee is a premise no one can
+discharge — and the build will not tell you.** This sharpens [[Reflection 215]]: stating a premise "in the
+consumer's shape" is necessary but not sufficient — it must also be in the *producer's guard*.
+
+A corollary surfaced while scoping the producer that will eventually discharge this guarded `h_succ`. The
+body abstraction `SafeBody`/`EntrySafe` already yields the *converse* successor (`after_fe`:
+`SafeBody_array_flowEntry` gives "balance-0 `.flowEntry` → content-start head"), but it **cannot** yield the
+value-end successor, because an abstract `EntrySafe` entry may contain interior balance-0 positions (e.g.
+`scalar scalar`) that the emitter never produces. So the value-end fact is genuinely emitter-specific: it needs
+an entry refinement pinning that entries are *units* (no interior depth-0 — a scalar-headed unit entry is a
+singleton; a bracketed one returns to depth-0 only at its matching close). That refinement, not `EntrySafe`
+alone, is what distinguishes a value-*end* from a value-*start* at a balance-0 position — exactly the
+distinction the guard `flowBracketDelta tokens[j]!.val = -1` encodes on the bracket side.
