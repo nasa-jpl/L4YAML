@@ -32,6 +32,7 @@ open L4YAML.Proofs.ScalarCoupling
 -- them, not a content start. The parser loop only visits outer-level flowEntries because
 -- `parseNode` consumes entire bracket groups, so this restriction is sufficient.
 
+set_option maxHeartbeats 400000 in
 /-- Body token characterization for `emitList` in flow context:
     (1) The first new filtered token (at position `old_sz`) is a content start.
     (2) After every OUTER-LEVEL `.flowEntry` (where bracket balance from `old_sz` to `k` is 0),
@@ -95,14 +96,26 @@ theorem emitList_body_filtered_characterization
     --     every `}` pops a `{`).  Threaded from the `WellTyped block` the SafeBody producer now
     --     supplies (formerly discarded); the body block is exactly `drop old_sz` of the filtered
     --     list.  This is the type half the untyped balance (Parts 3/4) discarded.
-    ∧ WellTyped ((s'.tokens.filter p).toList.drop old_sz) := by
+    ∧ WellTyped ((s'.tokens.filter p).toList.drop old_sz)
+    -- (6) [NEW] Value-end successor: a balanced-prefix end (`balance old_sz (k+1) = 0`) that is
+    --     NOT a `.flowEntry` separator is an entry END — either the body close (`k+1 = size`) or
+    --     immediately followed by a `.flowEntry`.  Threaded from the `SafeBodyUnit block` the
+    --     producer now supplies (formerly discarded) via `SafeBodyUnit_array_succ` — the value-end
+    --     DUAL of Part 2's `SafeBody_array_flowEntry`.  This is the `h_succ`/`scalar_succ` substrate
+    --     the bracket conjuncts and the scalar-successor field of `SeqBodyProps` consume.
+    ∧ (∀ (k : Nat), old_sz ≤ k → (h_hi : k < (s'.tokens.filter p).size) →
+        flowBracketBalance (s'.tokens.filter p) old_sz (k + 1) = 0 →
+        ((s'.tokens.filter p)[k]'h_hi).val ≠ .flowEntry →
+        k + 1 = (s'.tokens.filter p).size ∨
+        ∃ (h' : k + 1 < (s'.tokens.filter p).size),
+          ((s'.tokens.filter p)[k + 1]'h').val = .flowEntry) := by
   -- Scan the body via the `.bridge.assemble` SafeBody producer.  The returned
   -- `SafeBody ContentStartTok block` subsumes BOTH parts of the characterization:
   -- `SafeBody.head_Q` gives the first-filtered-token content-start (Part 1), and
   -- `SafeBody_array_flowEntry` gives the post-`.flowEntry` content-start (Part 2).
   -- No `SavedKeyDoesntResolve` substrate and no two-chain reconciliation are needed.
   obtain ⟨n, s', block, h_chain, h_corr', h_fl', h_dp', h_ids', h_ek', h_col', h_inflow',
-          h_indent', h_line', h_atol', h_endline', h_stack', h_fmc, h_block_eq, h_wb, h_wt, h_sb, _h_sbu⟩ :=
+          h_indent', h_line', h_atol', h_endline', h_stack', h_fmc, h_block_eq, h_wb, h_wt, h_sb, h_sbu⟩ :=
     emitList_scans_safebody items h_ne h_all_block s rest h_corr h_flow h_fl h_indent h_col
       h_ek h_atol h_endline h_sync
   -- The body block is exactly the `drop old_sz` of the final filtered token list.
@@ -115,7 +128,7 @@ theorem emitList_body_filtered_characterization
       List.drop_append_of_le_length (Nat.le_refl _), List.drop_length, List.nil_append]
   refine ⟨n, s', h_chain.toScanChain, h_corr', h_fl', h_dp', h_ids', h_ek',
           h_col', h_inflow', h_indent', h_line', h_atol', h_endline',
-          h_stack', h_fmc, ?_, ?_, ?_, ?_, ?_⟩
+          h_stack', h_fmc, ?_, ?_, ?_, ?_, ?_, ?_⟩
   · -- Part 1: first new filtered token is a content start (`SafeBody.head_Q`)
     obtain ⟨hl, hQ⟩ := h_sb.head_Q
     have h_size : (s'.tokens.filter (fun t => t.val != .placeholder)).size
@@ -167,6 +180,14 @@ theorem emitList_body_filtered_characterization
     exact h_wb.2 (k - (s.tokens.filter (fun t => t.val != .placeholder)).size)
   · -- Part 5 [NEW]: WellTyped, threaded from `WellTyped block` (the body block is `drop old_sz`).
     rw [h_drop]; exact h_wt
+  · -- Part 6 [NEW]: value-end successor (`SafeBodyUnit_array_succ`), the value-end DUAL of
+    -- Part 2's `SafeBody_array_flowEntry`.  Feed the producer's `SafeBodyUnit block` (re-based to
+    -- `drop old_sz` of the filtered list via `h_drop`) straight into the array wrapper.
+    intro k h_lo h_hi h_bal h_nfe
+    exact SafeBodyUnit_array_succ
+      (s'.tokens.filter (fun t => t.val != .placeholder))
+      (s.tokens.filter (fun t => t.val != .placeholder)).size
+      (by rw [h_drop]; exact h_sbu) k h_lo h_hi h_bal h_nfe
 
 /-- Body token characterization for `emitPairList` in flow context:
     (1) The chain has ≥ 3 steps (key handling + value indicator + value content).
@@ -370,7 +391,7 @@ theorem scanFiltered_emitSeq_nonempty_structure
   obtain ⟨n₂, s₂, h_chain₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂,
           h_ek₂, h_col₂, h_inflow₂, h_indent₂, _, _, _, h_stack₂, h_fmc₂,
           ⟨h_body_sz_raw, h_body_cs_raw⟩, h_body_fe_next_raw,
-          h_body_outer_bal_raw, h_body_dyck_raw, h_body_wt_raw⟩ :=
+          h_body_outer_bal_raw, h_body_dyck_raw, h_body_wt_raw, _h_body_succ_raw⟩ :=
     emitList_body_filtered_characterization items.toList h_ne
       (fun w hw => h_all_block w hw) s₁ [']']
       h_corr₁ h_inflow₁ (by rw [h_fl₁]; omega) h_indent₁ (by rw [h_col₁]; omega)
