@@ -686,6 +686,52 @@ theorem flowBracketBalance_matching_close (tokens : Array (Positioned YamlToken)
       have : flowBracketBalance tokens lo i = 1 := hi_eq ▸ h_f_k1
       omega)
 
+/-- **Dyck origin shift (local Dyck of a depth-floor subrange).**  The local Dyck of a subrange
+    `[s, hi)` whose start `s` is a *depth-floor* — the running balance from `lo` never drops below
+    its value `d` at `s` — is exactly the global Dyck re-based at `s`.  By additivity
+    (`flowBracketBalance_compose`), `balance lo p = d + balance s p`, so the floor
+    `balance lo p ≥ d` *is* the local Dyck `balance s p ≥ 0`.
+
+    This is the combinatorial core of the `(d-dyck)` brick: `WellTyped_subrange` (in
+    `WellBracketed.lean`) consumes a per-subrange local Dyck that `FlowSubrangesOk`'s hypotheses do
+    not supply; this lemma manufactures it from the global Dyck for any subrange that begins at a
+    local depth-minimum. -/
+theorem flowBracketBalance_dyck_shift (tokens : Array (Positioned YamlToken))
+    (lo s hi : Nat) (d : Int) (h_lo_s : lo ≤ s)
+    (h_s_depth : flowBracketBalance tokens lo s = d)
+    (h_floor : ∀ p, s ≤ p → p ≤ hi → flowBracketBalance tokens lo p ≥ d) :
+    ∀ p, s ≤ p → p ≤ hi → flowBracketBalance tokens s p ≥ 0 := by
+  intro p h_sp h_ph
+  have hcomp := flowBracketBalance_compose tokens lo s p h_lo_s h_sp
+  have hfloor := h_floor p h_sp h_ph
+  omega
+
+/-- **Matched-bracket interior is locally Dyck.**  The interior `(k+1, j)` of a depth-0 opener at
+    `k` (matching close at `j`) is locally Dyck: `flowBracketBalance (k+1) p ≥ 0` for every
+    `k+1 ≤ p ≤ j`.  The depth just after the opener is `1` (`flowBracketBalance_single`), and the
+    matching-close locator's interior invariant (`balance lo i ≥ 1` over `(k, j]`, the fifth
+    conjunct of `flowBracketBalance_matching_close`) is exactly the depth-`1` floor that
+    `flowBracketBalance_dyck_shift` re-bases to `0`.  This is the concrete **local Dyck input**
+    `WellTyped_subrange` consumes for a nested subrange — the `(d-dyck)` residual, ready to feed at
+    assembly alongside the typed matching close. -/
+theorem flowBracketBalance_interior_dyck (tokens : Array (Positioned YamlToken))
+    (lo k j : Nat) (h_lo_k : lo ≤ k) (h_k_sz : k < tokens.size)
+    (h_k_depth : flowBracketBalance tokens lo k = 0)
+    (h_k_open : flowBracketDelta tokens[k]!.val = 1)
+    (h_pos : ∀ i, k < i → i ≤ j → flowBracketBalance tokens lo i ≥ 1) :
+    ∀ p, k + 1 ≤ p → p ≤ j → flowBracketBalance tokens (k+1) p ≥ 0 := by
+  have h_step : flowBracketBalance tokens lo (k+1) = 1 := by
+    rw [flowBracketBalance_compose tokens lo k (k+1) h_lo_k (by omega)]
+    have hlen : k < tokens.toList.length := by rw [Array.length_toList]; exact h_k_sz
+    rw [flowBracketBalance_single tokens k hlen]
+    have h1 : tokens.toList[k]'hlen = tokens[k] := Array.getElem_toList h_k_sz
+    have h2 : tokens[k] = tokens[k]! := (getElem!_pos tokens k h_k_sz).symm
+    rw [h1, h2]
+    omega
+  refine flowBracketBalance_dyck_shift tokens lo (k+1) j 1 (by omega) h_step ?_
+  intro p h_sp h_ph
+  exact h_pos p (by omega) h_ph
+
 /-! ### §6  Structural predicates for flow body subranges
 
 These predicates capture the token-level structural properties that
