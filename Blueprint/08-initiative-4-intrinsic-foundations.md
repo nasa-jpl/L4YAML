@@ -2111,7 +2111,24 @@ from a depth-0 opener at `k`, the matching close `j` (`k < j < hi`, closer, bala
 work is the *plumbing* that feeds it.
 
 **Next session — `.parsenode.discharge` cont'd** (the dispatcher AND the matching locator are built;
-what remains is assembling `FlowSubrangesOk`). The shape of the remaining producer:
+what remains is assembling `FlowSubrangesOk`).
+
+> **Frontier (post-Reflection 219, commit `a57ae4eb`).** The `(d-shape)` algebra is now complete:
+> the bracket conjuncts are correctly guarded (Reflection 218) AND their `h_succ` substrate — the
+> value-end successor — exists as `EntryUnit` / `SafeBodyUnit_succ` / `SafeBodyUnit_array_succ`
+> (Reflection 219), the emitter-specific dual of `SafeBody_array_flowEntry`. **Immediate next
+> sub-brick:** thread `EntryUnit` through the `emit{List,PairList}` producers so the scanned filtered
+> body is a `SafeBodyUnit` (not merely a `SafeBody`) — each `emit v` block is a unit entry
+> (`EntryUnit_scalar` for a scalar leaf, `EntryUnit_wrap` for a `[…]`/`{…}` block off the existing
+> `WellBracketed block`), `.flowEntry`-separated — then `SafeBodyUnit_array_succ` discharges the
+> concrete `scalar_succ` / `value_scalar_succ` and the bracket-conjunct `h_succ` premises. Those feed
+> the bracket conjuncts + `SafeBodyProps`/`MapBodyProps` fields → `FlowSubrangesOk` →
+> `flow_parser_ok_of_structure` (`FlowParserAcceptance.lean`) at `(2, tokens.size−2)`,
+> `fuel = 4·tokens.size+4` → close the two `NonemptyStructure.lean` structure sorries (576/804) → the
+> two base `emit_roundtrip_{sequence,mapping}_content_eq` (`EmitterScannability.lean` 832/872) →
+> `universal_roundtrip`.
+
+The shape of the remaining producer:
 1. **`WellBracketed` of the emitter body** — **BOTH sides LANDED** (seq: commit `156596fb`,
    Reflection 202; map: commit `9d6d04fa`, Reflection 203). Each side surfaces, in its
    `scanFiltered_emit{Seq,Map}_nonempty_structure` conclusion, the **outer balance**
@@ -2288,6 +2305,20 @@ what remains is assembling `FlowSubrangesOk`). The shape of the remaining produc
    exactly dischargeable (a witness feeding the guarded form from an abstract value-end producer
    compiles clean). Proof bodies otherwise unchanged. Build green 515, sorries held at 4, all four on
    the pure triple. **The conjuncts are now usable inputs to `(d-assemble)`.**
+   **Brick (d-shape), entry refinement `EntryUnit` + value-end successor — LANDED** (commit
+   `a57ae4eb`, Reflection 219): the `(d-assemble)` substrate the guarded `h_succ` value-end facts are
+   built on. `EntrySafe` admits an interior balance-`0` split (`scalar scalar`, two depth-`0` tokens)
+   the emitter never emits as one entry — so it gives the `.flowEntry` *converse*
+   (`SafeBody_array_flowEntry`: depth-`0` `.flowEntry` → separator, head next) but **not** the
+   value-end *successor* a depth-`0` scalar/close needs. `EntryUnit` (`WellBracketed.lean`, after
+   `EntrySafe_append`) forbids interior depth-`0` positions (every proper nonempty prefix at balance
+   `≥ 1`) → a scalar-headed unit is a singleton, a bracket-headed one a single matched pair
+   (`EntryUnit_scalar` / `EntryUnit_wrap`); `SafeBodyUnit Q` is the body of units, and
+   `SafeBodyUnit_succ` + array wrapper `SafeBodyUnit_array_succ` are the dual of
+   `SafeBody_flowEntry_zero_balance` — a balanced-prefix end that is *not* a separator is an entry
+   end, successor `.flowEntry`-or-body-close, exactly the `flowBracketDelta tokens[j]!.val = -1`
+   discriminator the guarded `h_succ` consumes. Pure `pbalance`, axioms `[propext, Quot.sound]`, no
+   sorry; **enablement**. Build green 517, sorries held at 4.
    **Remaining sub-bricks of (d)**:
    the *single* underlying "next depth-0
    token after a complete value is `.flowEntry` or the body close" emitter fact (and its
@@ -2298,8 +2329,12 @@ what remains is assembling `FlowSubrangesOk`). The shape of the remaining produc
    producer: `SafeBody`/`EntrySafe` (the body abstraction) gives the *converse* (`after_fe`:
    balance-0 `.flowEntry` → content-start head, via `SafeBody_array_flowEntry`) but **not** the
    value-end successor — an abstract `EntrySafe` entry can have interior balance-0 positions (e.g.
-   `scalar scalar`), which the emitter never produces; the producer needs an entry refinement (no
-   interior depth-0, so a scalar-headed unit entry is a singleton) to pin value-ends.
+   `scalar scalar`), which the emitter never produces; the entry refinement that pins value-ends —
+   `EntryUnit` (no interior depth-0 ⇒ a scalar-headed unit entry is a singleton) with the forward
+   successor `SafeBodyUnit_succ` / `SafeBodyUnit_array_succ` — **is now LANDED** (Reflection 219,
+   commit `a57ae4eb`). What remains is threading `EntryUnit` through the `emit{List,PairList}`
+   producers (so the scanned filtered body is a `SafeBodyUnit`, not merely a `SafeBody`) to discharge
+   the concrete `scalar_succ`/`value_scalar_succ`/`h_succ` facts.
    This is the genuinely emitter-output-characterizing half, recursive over the emitted value tree;
    (d-assemble) bundle the local Dyck (`flowBracketBalance_interior_dyck` → `WellTyped_subrange`, both
    LANDED) + the bracket-conjunct assembly (seq + map both LANDED) + the scalar/key/value/content-start
@@ -15005,6 +15040,27 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
+                **Total .body scope re-estimate (SIXTY-SEVENTH revision —
+                after **Thread A step 3 sub-step 2's brick (d-shape) cont'd — *entry refinement
+                `EntryUnit` + value-end successor* — landed: the `(d-assemble)` substrate the
+                (now-guarded) `h_succ` value-end facts are built on** (commit `a57ae4eb`, Reflection
+                219). `EntrySafe` admits an interior balance-`0` split (`scalar scalar`, two depth-`0`
+                tokens) the emitter never emits as one entry, so it yields only the `.flowEntry`
+                *converse* (`SafeBody_array_flowEntry`: a depth-`0` `.flowEntry` is a separator, head
+                next) and **not** the value-end *successor* a depth-`0` scalar/close needs. `EntryUnit`
+                forbids interior depth-`0` positions (every proper nonempty prefix at balance `≥ 1`),
+                forcing a scalar-headed unit to a singleton and a bracket-headed one to one matched
+                pair — the per-`emit v` shape (`EntryUnit_scalar` / `EntryUnit_wrap`). `SafeBodyUnit Q`
+                is the body of such units, and `SafeBodyUnit_succ` (+ array/offset wrapper
+                `SafeBodyUnit_array_succ`) is the dual of `SafeBody_flowEntry_zero_balance`: a
+                balanced-prefix end that is *not* itself a separator is an entry end, so its successor
+                is a separating `.flowEntry` or the body close — exactly the
+                `flowBracketDelta tokens[j]!.val = -1` "value-end, not separator" discriminator the
+                guarded `h_succ` consumes (Reflection 218). Pure `pbalance` combinatorics, axioms
+                `[propext, Quot.sound]`, no sorry; **enablement only** — threading `EntryUnit` through
+                the `emit{List,PairList}` producers to emit the concrete
+                `scalar_succ`/`value_scalar_succ`/`h_succ` facts is the next sub-brick. Build green 517
+                jobs, **sorries held at 4**. See Reflection 219, on top of the
                 **Total .body scope re-estimate (SIXTY-SIXTH revision —
                 after **Thread A step 3 sub-step 2's brick (d-shape) cont'd — *bracket-conjunct
                 `h_succ` guard* — landed: the four conjunct lemmas' successor hypothesis, committed
@@ -24689,3 +24745,36 @@ an entry refinement pinning that entries are *units* (no interior depth-0 — a 
 singleton; a bracketed one returns to depth-0 only at its matching close). That refinement, not `EntrySafe`
 alone, is what distinguishes a value-*end* from a value-*start* at a balance-0 position — exactly the
 distinction the guard `flowBracketDelta tokens[j]!.val = -1` encodes on the bracket side.
+
+### Reflection 219 (new, 2026-06-02): a converse and its forward dual can demand different invariant strengths — locating a separator is cheap, locating a value-*end* needs the stronger "no interior depth-0" refinement, and that extra strength is exactly what is emitter-specific
+
+[[Reflection 218]]'s corollary forecast the entry refinement; it landed (commit `a57ae4eb`) as
+`EntryUnit` + `SafeBodyUnit_succ` (+ array wrapper) in `WellBracketed.lean` — pure `pbalance`
+combinatorics, axioms `[propext, Quot.sound]`, no sorry, enablement, build green 517. Writing it
+surfaced an asymmetry worth keeping. The body of a flow collection is the same list either way —
+unit entries `e₁ , e₂ , … , eₙ` separated by depth-0 `.flowEntry`s — and at *every* balance-0
+boundary one of two things is happening: the boundary token is a separator (a `.flowEntry`), or it is
+an entry's last token (a value-end). These are duals, and the two lemmas that read them off share one
+`SafeBody` induction skeleton. Yet they do **not** share an invariant. The separator direction
+(`SafeBody_flowEntry_zero_balance`) needs only `EntrySafe` — "every interior `.flowEntry` sits at
+balance `≥ 1`" — because to conclude a balance-0 `.flowEntry` is a *separator* you need only exclude
+it being *interior to* an entry, and `EntrySafe` already forbids interior depth-0 `.flowEntry`s. The
+forward direction (`SafeBodyUnit_succ`) needs the strictly stronger `EntryUnit` — "every proper
+nonempty prefix sits at balance `≥ 1`" — because to conclude a balance-0 *non*-separator is an entry
+*end* you must exclude it being an entry *interior split* (a depth-0 position *inside* an entry, like
+the gap in `scalar scalar`), and only the all-prefixes refinement rules that out.
+
+The lesson generalizes past this proof: **when you have a property and its converse over the same
+structure, do not assume the converse's invariant suffices for the forward direction — the forward
+direction often must exclude a larger class of "false positives," and that costs a stronger
+invariant.** Here the cost is concentrated in exactly the right place: `EntryUnit` is the *only* part
+of the value-end story that is emitter-specific. `EntrySafe` is a generic well-formed-body invariant
+that any balanced flow body satisfies; `EntryUnit` is the extra fact that *the emitter emits one
+token (scalar) or one matched pair per value* — never a `scalar scalar` interior split. So the
+refinement is not incidental bookkeeping; it is the precise formal content of "the emitter's
+per-value output is a single tight unit," and isolating it as a named definition (rather than
+smuggling it into the producer ad hoc) is what lets the value-end successor be stated and proved as
+pure algebra, leaving only the threading of `EntryUnit` through the `emit{List,PairList}` producers as
+the next, genuinely emitter-shaped, sub-brick. Sharpens [[Reflection 218]]: the guard
+`flowBracketDelta tokens[j]!.val = -1` is the *bracket-side* shadow of this same value-end/value-start
+distinction; `EntryUnit` is its *body-side* substrate.
