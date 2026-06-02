@@ -2113,18 +2113,23 @@ work is the *plumbing* that feeds it.
 **Next session — `.parsenode.discharge` cont'd** (the dispatcher AND the matching locator are built;
 what remains is assembling `FlowSubrangesOk`).
 
-> **Frontier (post-Reflection 220, commit `e6bb3ad4`).** The `(d-shape)` algebra is complete
+> **Frontier (post-Reflection 221, commit `316a9d87`).** The `(d-shape)` algebra is complete
 > (the bracket conjuncts are correctly guarded — Reflection 218 — AND their `h_succ` substrate, the
 > value-end successor `EntryUnit` / `SafeBodyUnit_succ` / `SafeBodyUnit_array_succ`, exists —
 > Reflection 219), and the **sequence side** of threading `EntryUnit` through the producers is now
 > LANDED (Reflection 220, commit `e6bb3ad4`): `EmitScansInFlowBlock` carries `EntryUnit block` (each
 > `emit v` is one unit entry — `EntryUnit_scalar` / `EntryUnit_wrap` off the existing `WellBracketed
 > block`), discharged in `emit_scans_block_combined`'s three block cases, and `emitList_scans_safebody`
-> now also concludes `SafeBodyUnit ContentStartTok block`. **Immediate next sub-bricks (two, in
-> order):** (1) *consume* the seq `SafeBodyUnit` — feed `SafeBodyUnit_array_succ` in
-> `emitList_body_filtered_characterization` / the seq structure proof to discharge the concrete
-> `scalar_succ` / bracket-conjunct `h_succ` premises, then `FlowSubrangesOk` →
-> `flow_parser_ok_of_structure` → **close the seq structure sorry** (`NonemptyStructure.lean` 576);
+> now also concludes `SafeBodyUnit ContentStartTok block`. The seq `SafeBodyUnit` is now *consumed
+> one step up* (Reflection 221, commit `316a9d87`): `emitList_body_filtered_characterization` gains
+> **Part 6**, the value-end successor — feeding `SafeBodyUnit_array_succ` yields "a balanced-prefix
+> end that is not a `.flowEntry` separator is an entry END (body close, or `.flowEntry` next)", the
+> value-end dual of Part 2's `SafeBody_array_flowEntry` and the exact `h_succ`/`scalar_succ`
+> substrate. **Immediate next sub-bricks (two, in order):** (1) *consume Part 6 at the structure
+> proof* — push the value-end successor through the `h_tok_body`/push conversions to the tokens
+> array `tokens` (mirroring how Parts 3/4/5 became `h_outer_bal`/`h_dyck`/`h_wt_interior`), feed it as
+> the bracket-conjunct `h_succ` and `SeqBodyProps.scalar_succ`, assemble `FlowSubrangesOk` →
+> `flow_parser_ok_of_structure` → **close the seq structure sorry** (`NonemptyStructure.lean` 597);
 > (2) the **map side**, which is *not* a direct `EntryUnit` thread — a map *pair* entry
 > `.key block_k .value block_v` has an interior depth-0 `.value`, so the whole pair is NOT an
 > `EntryUnit`; the value-end there needs a pair-level refinement (apply `EntryUnit` to each key/value
@@ -2343,6 +2348,21 @@ The shape of the remaining producer:
    `sorryAx`-free on the pure triple `[propext, Classical.choice, Quot.sound]`. **Enablement**: the seq
    `SafeBodyUnit` is now established, ready to feed `SafeBodyUnit_array_succ` and close the seq
    structure sorry (576) — the next sub-brick.
+   **Brick (d-shape), seq value-end successor surfaced (Part 6) — LANDED** (commit `316a9d87`,
+   Reflection 221): the seq `SafeBodyUnit` of Reflection 220 is now *consumed one step up*.
+   `emitList_body_filtered_characterization` gains a sixth conclusion — feeding `SafeBodyUnit_array_succ`
+   (re-based to `drop old_sz` of the filtered list via the existing `h_drop`, exactly as Part 2 feeds
+   `SafeBody_array_flowEntry`) yields the **value-end successor**: a balanced-prefix end
+   (`flowBracketBalance old_sz (k+1) = 0`) that is NOT a `.flowEntry` separator is an entry END — either
+   the body close (`k+1 = size`) or immediately followed by a `.flowEntry`. This is the value-end DUAL of
+   Part 2's separator characterization and the exact `h_succ`/`scalar_succ` substrate the bracket
+   conjuncts (`seq_bracket_{seq,map}_conjunct`) and `SeqBodyProps.scalar_succ` consume. The seq structure
+   consumer `scanFiltered_emitSeq_nonempty_structure` binds the new field (`_h_body_succ_raw`, unused for
+   now); `maxHeartbeats` raised to 400000 for the now-larger characterization. **Still enablement** —
+   surfaced at the characterization (body-`s'`) level, not yet pushed through the `h_tok_body`/push
+   conversions to the final `tokens` array nor assembled into `FlowSubrangesOk` (the next sub-brick →
+   closes seq sorry 597). Build green 519, sorries held at 4; `emitList_body_filtered_characterization`
+   `sorryAx`-free on the pure triple.
    **Remaining sub-bricks of (d)**:
    the *single* underlying "next depth-0
    token after a complete value is `.flowEntry` or the body close" emitter fact (and its
@@ -15068,6 +15088,23 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
+                **Total .body scope re-estimate (SIXTY-NINTH revision —
+                after **Thread A step 3 sub-step 2's brick (d-shape) cont'd — *seq value-end successor
+                surfaced (Part 6)* — landed** (commit `316a9d87`, Reflection 221). The seq
+                `SafeBodyUnit` from SIXTY-EIGHTH is now *consumed one step up*: feeding it to
+                `SafeBodyUnit_array_succ`, `emitList_body_filtered_characterization` gains a sixth
+                conclusion — the **value-end successor**: a balanced-prefix end (`balance old_sz (k+1) =
+                0`) that is NOT a `.flowEntry` separator is an entry END (the body close `k+1 = size`, or
+                a `.flowEntry` next). This is the value-end DUAL of Part 2's `SafeBody_array_flowEntry`,
+                and the exact `h_succ`/`scalar_succ` substrate the bracket conjuncts (`seq_bracket_{seq,map}_conjunct`)
+                and `SeqBodyProps.scalar_succ` consume. The seq structure consumer
+                (`scanFiltered_emitSeq_nonempty_structure`) binds the new field (`_h_body_succ_raw`, unused
+                for now). `maxHeartbeats` raised to 400000 for the now-larger characterization. **Still
+                enablement** — surfaced at the characterization level, not yet pushed through the
+                `h_tok_body`/push conversions to the tokens-array `tokens` and assembled into
+                `FlowSubrangesOk` (that is the next sub-brick → closes seq sorry 597). Build green 519
+                jobs, **sorries held at 4**; `emitList_body_filtered_characterization` `sorryAx`-free on
+                the pure triple `[propext, Classical.choice, Quot.sound]`. See Reflection 221, on top of the
                 **Total .body scope re-estimate (SIXTY-EIGHTH revision —
                 after **Thread A step 3 sub-step 2's brick (d-shape) cont'd — *`EntryUnit`/`SafeBodyUnit`
                 thread, sequence side* — landed: Reflection 219's value-end algebra is now threaded
@@ -24854,3 +24891,36 @@ emitter-specific part. The honest scope of "thread `EntryUnit` through the produ
 narrower than its own forecast — and the boundary where it stopped being mechanical is exactly the
 predicate (`EmitScansInFlowSavedKeyBlock`) I declined to touch. Build green 519, sorries held at 4,
 `emitList_scans_safebody` `sorryAx`-free on the pure triple — pure enablement, seq side only.
+
+### Reflection 221 (new, 2026-06-02): consuming a freshly-threaded invariant "one step up" is its own green increment — surface it where the next consumer already destructures, and bind-but-don't-use is honest enablement
+
+[[Reflection 220]] established `SafeBodyUnit ContentStartTok block` as a conclusion of
+`emitList_scans_safebody` but left it *unconsumed* — a refinement is only worth its weight once
+something downstream reads it. The natural temptation is to chase the whole chain in one session
+(consume → `FlowSubrangesOk` → `flow_parser_ok_of_structure` → close the seq sorry). That chain is
+long and crosses two abstraction levels (the body-scan state `s'`, and the final `tokens` array with
+`[`/`]`/`streamEnd` pushed on). The increment that actually fits one green step is the *first joint*:
+feed `SafeBodyUnit_array_succ` and surface the value-end successor as **Part 6** of
+`emitList_body_filtered_characterization`, sitting beside Parts 3/4/5 (the `WellBracketed`/Dyck/`WellTyped`
+facts that landed the same way — established, then consumed a session or two later). The proof is three
+lines because it is the *exact dual* of Part 2: Part 2 feeds `SafeBody_array_flowEntry` (a balance-0
+`.flowEntry` is a separator → content-start head); Part 6 feeds `SafeBodyUnit_array_succ` (a balance-0
+*non*-separator is a value-end → `.flowEntry`-or-close successor). Same `by rw [h_drop]; exact …`
+plumbing, same `(arr, old_sz)` array wrapper — the *only* new content is which body lemma the wrapper
+calls, because [[Reflection 219]] already isolated the value-end strength into `SafeBodyUnit`/`EntryUnit`.
+
+Three concrete lessons. (1) **Pick the joint where the next consumer already destructures.** The seq
+structure proof obtains `emitList_body_filtered_characterization`'s conjuncts positionally; adding Part 6
+there means one extra binder (`_h_body_succ_raw`) and zero new call sites — the fact is now *in scope at
+the exact place* it will be consumed, so the follow-up sub-brick is pure local plumbing (push-convert,
+not re-derive). (2) **Bind-but-don't-use is honest, not lazy** — the underscore says "established here,
+consumed next," which is precisely the Parts-3/4/5 cadence; the alternative (defer surfacing until the
+consumer is ready) hides the fact behind a producer call and makes the eventual consumer reach back two
+files. (3) **A heavier conclusion costs heartbeats** — adding one conjunct + its proof obligation tipped
+the already-large characterization past the 200000 default; `set_option maxHeartbeats 400000 in` is the
+local, declaration-scoped fix (it must precede the doc-comment, not sit between doc and `theorem` — the
+doc binds to the declaration the `in` introduces). The frontier now reads: the value-end successor
+*exists at the characterization level*; the remaining seq work is to transport it across the push
+boundary into `tokens` and assemble `FlowSubrangesOk`. Build green 519, sorries held at 4,
+`emitList_body_filtered_characterization` `sorryAx`-free on the pure triple `[propext, Classical.choice,
+Quot.sound]`.
