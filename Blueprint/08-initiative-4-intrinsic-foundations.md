@@ -2129,12 +2129,23 @@ what remains is assembling `FlowSubrangesOk`). The shape of the remaining produc
    `WellTyped (tokens.toList.take (size-2) |>.drop 2)` — the interior `[2, size-2)` slice (the two trailing
    pushes `]`/`}`, `streamEnd` dropped), shown equal to the body block via `List.take_left` + the push
    decomposition. Build green 515 jobs, **sorries held at 4** (still pure enablement: established, not yet
-   consumed), all four threaded theorems `sorryAx`-free on the pure triple. **Remaining sub-bricks**:
-   (c) the **typed locator** — from the
-   tokens-level `WellTyped`, a depth-0 `.flowSequenceStart` at `k` matches a `.flowSequenceEnd` (and
-   `{`→`}`), pinning the matching close's *type* and giving the `bracket_*`/M5/M8/M9/M10 conjuncts their
-   type half; (d) the flat per-position local-shape facts (`scalar_succ`, `after_fe`, `key_content`, …)
-   for every nested subrange, then assemble `FlowSubrangesOk`.
+   consumed), all four threaded theorems `sorryAx`-free on the pure triple.
+   **Brick (c-i) — the depth–balance bridge — LANDED** (commit `dc552e6f`, Reflection 207): the typed
+   locator is the harder *elimination* side (Reflection 204); its first half connects the `btFold` stack
+   to the numeric indices the locator and `SeqBodyProps` speak. `WellBracketed.lean` now carries
+   `btStep_length` (a step shifts stack length by exactly `flowBracketDelta`), `btFold_length` (a
+   `some`-valued fold shifts length by `pbalance`), `WellTyped_prefix_some` (a prefix of a `WellTyped`
+   list never underflows — `none` is absorbing), `WellTyped_take_stack` (the glue: stack after `l.take m`
+   is `some s` with `s.length = pbalance (l.take m)`), and `btStep_pop_eq_seqEnd`/`_mapEnd` (the only step
+   popping `[true]`/`[false]` to `[]` is a `]`/`}`). So "balance 1 at `j`" ⟹ "stack `[b]` at `j`", and `b`
+   pins the close type. Build green 515, sorries held at 4, all six lemmas `sorryAx`-free on
+   `[propext, Quot.sound]`. **Remaining sub-bricks**:
+   (c-ii) the **bottom-preservation step** — the last piece of the typed locator: that the lone stack
+   element `b` at the matching close `j` equals the *opener* type at `k` (the bottom is never popped while
+   depth stays ≥ 1 across the interior `(k, j)`), so a depth-0 `.flowSequenceStart` at `k` matches a
+   `.flowSequenceEnd` (and `{`→`}`) — giving the `bracket_*`/M5/M8/M9/M10 conjuncts their type half via
+   `btStep_pop_eq_seqEnd`/`_mapEnd`; (d) the flat per-position local-shape facts (`scalar_succ`,
+   `after_fe`, `key_content`, …) for every nested subrange, then assemble `FlowSubrangesOk`.
 3. Instantiate `flow_parser_ok_of_structure` at `(lo, hi) = (2, tokens.size−2)`,
    `fuel = 4·tokens.size+4` → close the 2 structure sorries (`NonemptyStructure.lean` 576/804 — **both**
    the seq AND map sites now have `h_outer_bal`/`h_dyck` in scope ready to feed alongside `FlowSubrangesOk`).
@@ -14836,7 +14847,23 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
-                **Total .body scope re-estimate (FIFTY-FOURTH revision —
+                **Total .body scope re-estimate (FIFTY-FIFTH revision —
+                after **Thread A step 3 sub-step 2's brick (c-i) — the depth–balance bridge — landed:
+                the typed stack is now connected to the numeric indices** (commit `dc552e6f`, Reflection 207).
+                The typed locator's harder elimination side (cf. Reflection 204) begins with the bridge from
+                the `btFold` stack to the `flowBracketBalance`/`pbalance` world the numeric locator and
+                `SeqBodyProps` live in. `WellBracketed.lean` gains: `btStep_length` (one step shifts stack
+                length by exactly `flowBracketDelta`); `btFold_length` (a `some`-valued fold shifts length by
+                `pbalance`); `WellTyped_prefix_some` (a prefix of a `WellTyped` list never underflows — folds
+                to `some`, `none` being absorbing); `WellTyped_take_stack` (the glue: in a `WellTyped` list,
+                the stack after `l.take m` is `some s` with `s.length = pbalance (l.take m)`); and
+                `btStep_pop_eq_seqEnd`/`_mapEnd` (the only step popping `[true]`/`[false]` to `[]` is a
+                `]`/`}`). So "balance 1 at `j`" becomes "stack `[b]` at `j`", and `b` is the bracket type the
+                close must match. Build green 515 jobs, **sorries held at 4** (pure enablement: established, not
+                yet consumed), all six new lemmas `sorryAx`-free on `[propext, Quot.sound]` — even cleaner than
+                the pure triple (no `Classical.choice`). The bottom-preservation step that fixes `b` = the
+                *opener* type is sub-brick (c-ii). See Reflection 207, on top of the
+                **FIFTY-FOURTH revision** —
                 after **Thread A step 3 sub-step 2's brick (b) — the tokens-level surfacing — landed:
                 `WellTyped` now reaches the tokens level** (commit `e91a5c84`, Reflection 206). The
                 conjunct established at the Block layer in brick (a) is now threaded up the SAME producer
@@ -23858,3 +23885,31 @@ conjunct into a theorem's conclusion (not just a predicate's definition), grep e
 across the WHOLE build, not just the defining module — a trailing binder will silently absorb the new conjunct into an
 `And`, and the error materializes at a field projection in a downstream file, well after the per-file IDE check looks
 green. The full build is the only reliable oracle for conclusion-shape changes.**
+
+### Reflection 207 (new, 2026-06-01): the elimination side begins by *measuring*, not by inverting — bridge the structural invariant to the numeric one the rest of the proof already speaks, and the hard inversion shrinks to one fact
+
+[[Reflection 204]] flagged the typed locator as the genuinely harder *elimination* side: a fresh invariant
+(`WellTyped`), not more plumbing, because the type-collapsing `flowBracketBalance` can find the matching *position*
+but never the matching *type*. The instinct is to attack it head-on — invert the `btFold`, prove the matched close is
+a `]` by structural induction over the stack. Brick (c-i) instead did the opposite and cheaper thing first: it
+**measured** the typed stack against the numeric balance the rest of the proof already lives in. `btStep_length` +
+`btFold_length` say the stack *length* tracks `pbalance` exactly; `WellTyped_prefix_some` says a `WellTyped` prefix
+never underflows (because `none` is absorbing, an underflow would sink the whole fold); `WellTyped_take_stack` packages
+the two into the one fact the consumer wants — "stack after `l.take m` is `some s`, `s.length = pbalance (l.take m)`."
+
+Two things made this the right first move. **(1) It is rock-solid and fast.** Six lemmas, ~70 lines, green on the
+first WellBracketed build, `sorryAx`-free on `[propext, Quot.sound]` — *cleaner* than the pure triple (no
+`Classical.choice`, because nothing here is classical: it's all `Option`/`List` computation). Contrast the looming
+bottom-preservation argument, which is a genuine induction with a non-trivial invariant. Splitting the cheap
+*measurement* off from the expensive *inversion* guarantees a green increment and de-risks the session — the cadence's
+whole point. **(2) The measurement does most of the locator's work.** Once `s.length = balance`, the numeric locator's
+output ("balance is `1` at the close `j`") translates mechanically into "the stack at `j` is a singleton `[b]`," and
+the close type is then `b` by the two one-line `btStep_pop_eq_*` lemmas (the only step popping `[true]`/`[false]` to
+`[]` is a `]`/`}`). All that remains for (c-ii) is the *single* fact that `b` is the opener type — i.e. the bottom of
+the stack is never popped while depth stays ≥ 1 across the interior. The hard inversion didn't vanish, but it shrank
+from "prove the whole matched-type structure" to "prove one element survives," because the bridge already pinned
+everything else numerically. **Lesson: when a structural invariant has to deliver a fact stated in a numeric world
+(indices, balances, lengths), the first brick is the *measurement homomorphism* — `length = balance`, `count =
+sum`, etc. — proved cheaply by induction with `none`/underflow ruled out by absorption. It converts most of the
+"hard inversion" into arithmetic the surrounding proof already does, leaving a single residual fact for the genuinely
+inductive brick. Measure before you invert.**
