@@ -678,6 +678,94 @@ theorem SafeBodyUnit_array_succ {Q : YamlToken → Prop}
       omega
     rw [← h_get]; exact hfe1
 
+/-- The balance-relevant prefix of a *windowed* body `(arr.toList.take hi).drop lo` agrees with
+    the unbounded `arr.toList.drop lo` prefix whenever the cut `k` lies within the window
+    (`k ≤ hi`): both name exactly the elements `[lo, k)`.  This lets the windowed SafeBody wrappers
+    below reuse `flowBracketBalance_eq_pbalance` (which is stated against the unbounded drop). -/
+theorem window_prefix_eq (arr : Array (Positioned YamlToken)) (lo hi k : Nat)
+    (h_k_hi : k ≤ hi) (h_hi_sz : hi ≤ arr.size) :
+    ((arr.toList.take hi).drop lo).take (k - lo) = (arr.toList.drop lo).take (k - lo) := by
+  apply List.ext_getElem
+  · simp only [List.length_take, List.length_drop, Array.length_toList]
+    omega
+  · intro n h1 h2
+    simp only [List.getElem_take, List.getElem_drop]
+
+/-- **Windowed array wrapper** for `SafeBody_flowEntry_zero_balance`, over the bounded body slice
+    `(arr.toList.take hi).drop lo` — the nested-subrange version of `SafeBody_array_flowEntry`
+    (which is `drop lo`-to-end and so only applies to the outer span).  A depth-0 `.flowEntry`
+    separator at `k ∈ [lo, hi)` is followed by a `Q`-token at `k + 1 < hi`.  This is the
+    `SeqBodyProps.after_fe` substrate at an arbitrary guarded subrange (Phase J). -/
+theorem SafeBody_array_flowEntry_window {Q : YamlToken → Prop}
+    (arr : Array (Positioned YamlToken)) (lo hi : Nat) (h_hi : hi ≤ arr.size)
+    (h : SafeBody Q ((arr.toList.take hi).drop lo)) :
+    ∀ (k : Nat) (_hk_lo : lo ≤ k) (hk_hi : k < hi),
+      (arr[k]'(Nat.lt_of_lt_of_le hk_hi h_hi)).val = .flowEntry →
+      flowBracketBalance arr lo k = 0 →
+      ∃ (hk1 : k + 1 < hi), Q (arr[k+1]'(Nat.lt_of_lt_of_le hk1 h_hi)).val := by
+  intro k hk_lo hk_hi h_fe h_bal
+  have hk_sz : k < arr.size := Nat.lt_of_lt_of_le hk_hi h_hi
+  have h_len : ((arr.toList.take hi).drop lo).length = hi - lo := by
+    rw [List.length_drop, List.length_take, Array.length_toList]; omega
+  have hj_lt : k - lo < ((arr.toList.take hi).drop lo).length := by rw [h_len]; omega
+  have h_get : (((arr.toList.take hi).drop lo)[k - lo]'hj_lt).val = (arr[k]'hk_sz).val := by
+    rw [List.getElem_drop, List.getElem_take, Array.getElem_toList]
+    congr 2; omega
+  have h_fe' : (((arr.toList.take hi).drop lo)[k - lo]'hj_lt).val = .flowEntry := by
+    rw [h_get]; exact h_fe
+  have h_bal' : pbalance (((arr.toList.take hi).drop lo).take (k - lo)) = 0 := by
+    rw [window_prefix_eq arr lo hi k (Nat.le_of_lt hk_hi) h_hi,
+        ← flowBracketBalance_eq_pbalance arr lo k hk_lo]
+    exact h_bal
+  obtain ⟨hj1, hQ⟩ := SafeBody_flowEntry_zero_balance h (k - lo) hj_lt h_fe' h_bal'
+  have hk1 : k + 1 < hi := by rw [h_len] at hj1; omega
+  refine ⟨hk1, ?_⟩
+  have hk1_sz : k + 1 < arr.size := Nat.lt_of_lt_of_le hk1 h_hi
+  have h_get1 : (((arr.toList.take hi).drop lo)[(k - lo) + 1]'hj1).val = (arr[k+1]'hk1_sz).val := by
+    rw [List.getElem_drop, List.getElem_take, Array.getElem_toList]
+    congr 2; omega
+  rw [← h_get1]; exact hQ
+
+/-- **Windowed array wrapper** for `SafeBodyUnit_succ`, over the bounded body slice
+    `(arr.toList.take hi).drop lo` — the value-end-successor dual of
+    `SafeBody_array_flowEntry_window`, and the nested-subrange version of `SafeBodyUnit_array_succ`.
+    A balanced-prefix end at `k ∈ [lo, hi)` that is not a `.flowEntry` separator is an entry END:
+    the body close (`k + 1 = hi`) or a `.flowEntry` next.  This is the `SeqBodyProps.scalar_succ` /
+    bracket-conjunct `h_succ` substrate at an arbitrary guarded subrange (Phase J). -/
+theorem SafeBodyUnit_array_succ_window {Q : YamlToken → Prop}
+    (arr : Array (Positioned YamlToken)) (lo hi : Nat) (h_hi : hi ≤ arr.size)
+    (h : SafeBodyUnit Q ((arr.toList.take hi).drop lo)) :
+    ∀ (k : Nat) (_hk_lo : lo ≤ k) (hk_hi : k < hi),
+      flowBracketBalance arr lo (k + 1) = 0 →
+      (arr[k]'(Nat.lt_of_lt_of_le hk_hi h_hi)).val ≠ .flowEntry →
+      k + 1 = hi ∨
+      ∃ (hk1 : k + 1 < hi), (arr[k+1]'(Nat.lt_of_lt_of_le hk1 h_hi)).val = .flowEntry := by
+  intro k hk_lo hk_hi h_bal h_nfe
+  have hk_sz : k < arr.size := Nat.lt_of_lt_of_le hk_hi h_hi
+  have h_len : ((arr.toList.take hi).drop lo).length = hi - lo := by
+    rw [List.length_drop, List.length_take, Array.length_toList]; omega
+  have hj_lt : k - lo < ((arr.toList.take hi).drop lo).length := by rw [h_len]; omega
+  have h_get : (((arr.toList.take hi).drop lo)[k - lo]'hj_lt).val = (arr[k]'hk_sz).val := by
+    rw [List.getElem_drop, List.getElem_take, Array.getElem_toList]
+    congr 2; omega
+  have h_nfe' : (((arr.toList.take hi).drop lo)[k - lo]'hj_lt).val ≠ .flowEntry := by
+    rw [h_get]; exact h_nfe
+  have h_bal' : pbalance (((arr.toList.take hi).drop lo).take ((k - lo) + 1)) = 0 := by
+    rw [show (k - lo) + 1 = (k + 1) - lo from by omega,
+        window_prefix_eq arr lo hi (k + 1) hk_hi h_hi,
+        ← flowBracketBalance_eq_pbalance arr lo (k + 1) (Nat.le_succ_of_le hk_lo)]
+    exact h_bal
+  rcases SafeBodyUnit_succ h (k - lo) hj_lt h_bal' h_nfe' with hend | ⟨hj1, hfe1⟩
+  · left; rw [h_len] at hend; omega
+  · right
+    have hk1 : k + 1 < hi := by rw [h_len] at hj1; omega
+    refine ⟨hk1, ?_⟩
+    have hk1_sz : k + 1 < arr.size := Nat.lt_of_lt_of_le hk1 h_hi
+    have h_get1 : (((arr.toList.take hi).drop lo)[(k - lo) + 1]'hj1).val = (arr[k+1]'hk1_sz).val := by
+      rw [List.getElem_drop, List.getElem_take, Array.getElem_toList]
+      congr 2; omega
+    rw [← h_get1]; exact hfe1
+
 /-- Prepending a delta-`0`, non-`.flowEntry` token to an `EntrySafe` entry keeps
     it `EntrySafe`: the head contributes nothing to the balance, and any interior
     `.flowEntry` is the tail's, whose prefix balance is unchanged by the head. -/
