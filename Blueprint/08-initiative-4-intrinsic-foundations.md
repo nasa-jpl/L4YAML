@@ -2116,13 +2116,21 @@ locator is built; and BOTH body-props *assemblers* are now extracted parametric 
 `seqBodyProps_assemble`, commit `45fe7417`, and `mapBodyProps_assemble`, commit `005fb9f2` — so the
 *assemble* half of producing BOTH `FlowSubrangesOk` fields is done. Both
 structure sorries are now the IDENTICAL structural residual `FlowSubrangesOk tokens` (`NonemptyStructure.lean`
-854 seq / 1095 map), so one Phase-J producer closes both. What remains is purely *producing the per-subrange
-primitives* — for the seq side the three (content-start / value-end successor / post-`.flowEntry`
-content-start), feeding `seqBodyProps_assemble` for the `.seq` field; for the map side the eight key/value
-alternation primitives (pair-level refinement), feeding `mapBodyProps_assemble` for the `.map` field — at an
-arbitrary nested subrange).
+854 seq / 1095 map), so one Phase-J producer closes both. **AND `FlowSubrangesOk` is now GUARDED so the
+producer goal is provable** (commit `02988022`, Reflection 229): the unguarded form was *false* — its fields
+quantify over every balanced subrange ending in a close, including a misaligned one starting mid-body on a
+depth-0 `.flowEntry` (for `[a, b]`, the subrange `lo=3,hi=5` passes all premises yet `tokens[3]=.flowEntry`
+is not a content-start, so `content_start` fails). Each field now carries the body-start guard
+`tokens[lo-1]!.val = .flowSequenceStart` / `.flowMappingStart`, supplied at every dispatcher projection site
+(all 8 `hsub.{seq,map}` + IH applications have `lo-1` = the matching opener) and at both NonemptyStructure
+calls via `h_t1`. What remains is purely *producing the per-subrange primitives* — for the seq side the three
+(content-start / value-end successor / post-`.flowEntry` content-start), feeding `seqBodyProps_assemble` for the
+`.seq` field; for the map side the eight key/value alternation primitives (pair-level refinement), feeding
+`mapBodyProps_assemble` for the `.map` field — at an arbitrary nested subrange, NOW with the guard
+`tokens[lo-1]` = opener as a *free input* (it pins `lo` to a genuine interior-start, exactly where the
+emitter structure holds, turning the recursive characterization tractable).
 
-> **Frontier (post-Reflection 228, commit `005fb9f2`).** The `(d-shape)` algebra is complete
+> **Frontier (post-Reflection 229, commit `02988022`).** The `(d-shape)` algebra is complete
 > (the bracket conjuncts are correctly guarded — Reflection 218 — AND their `h_succ` substrate, the
 > value-end successor `EntryUnit` / `SafeBodyUnit_succ` / `SafeBodyUnit_array_succ`, exists —
 > Reflection 219), and the **sequence side** of threading `EntryUnit` through the producers is now
@@ -2193,7 +2201,25 @@ arbitrary nested subrange).
 > from `flowBracketDelta .key = flowBracketDelta .value = 0`; `k+1 < hi` from the boundary `h_tpe` (an
 > opener at `k+1 = hi` would be `.flowMappingEnd`). Axiom-clean (`[propext, Classical.choice, Quot.sound]`,
 > no `sorryAx`). So **both** `FlowSubrangesOk` fields now have their parametric *assemble* half done; the
-> residual on both sides is purely the *produce-the-primitives* half. **Immediate next sub-bricks (two, in
+> residual on both sides is purely the *produce-the-primitives* half. **And `FlowSubrangesOk` is now
+> GUARDED — the producer goal was FALSE without it** (Reflection 229, commit `02988022`): an empirical
+> probe (emit+scan `[a, b]` → `[ "a" , "b" ]`) showed the unguarded universal ranges over *misaligned*
+> subranges. The subrange `lo=3, hi=5` (start = the depth-0 `.flowEntry`) satisfies every `FlowSubrangesOk.seq`
+> premise — `3≤5`, `5<7`, `tokens[5]=.flowSequenceEnd`, `balance 3 5 = 0` — yet `content_start` demands
+> `isFlowContentStart tokens[3]` and `tokens[3]=.flowEntry` is not one, so the field is *false*; `FlowSubrangesOk
+> tokens` was unprovable for any multi-element flow collection (the `.map` side fails symmetrically at
+> `key_start`). The fix adds a **body-start guard** to each field — `tokens[lo-1]!.val = .flowSequenceStart`
+> (seq) / `.flowMappingStart` (map) — restricting `lo` to a genuine interior-start immediately preceded by its
+> opener. It is **forced and free**: the dispatcher `flow_parser_ok_of_structure` only ever *projects* the
+> fields at body-starts (verified at all 8 `hsub.{seq,map}` sites plus the IH applications — `lo-1` is the
+> matching opener at the outer span `lo=2` via `h_t1`, at each `ps.pos+1` after a peeked opener, and at each
+> `vp+2`/`ps.pos+2` after a bracketed value/key), so the guard was available everywhere and the dispatcher
+> never needed the unguarded form. Threaded through the dispatcher's conclusion, `key` motive, both intros, the
+> eight projections + IH sites, and the closing; supplied at both `NonemptyStructure` calls via `h_t1`. The two
+> structure sorries are *retyped* from an impossible universal onto a provable guarded one (Reflection 225
+> "reduction by retyping" family), build green 525 jobs, dispatcher axiom-clean, sorries held at 4. The
+> producer (Phase J) now gets `tokens[lo-1]` = opener as a free input pinning `lo` to where the emitter
+> structure holds. **Immediate next sub-bricks (two, in
 > order):** (1) *produce the seq subrange primitives* — derive the three primitives
 > (content-start at `lo`, the value-end successor, the post-`.flowEntry` content-start) at an arbitrary
 > nested balanced subrange and feed `seqBodyProps_assemble` to assemble `SeqBodyProps tokens lo hi`, i.e. the
@@ -15188,6 +15214,27 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
+                **Total .body scope re-estimate (SEVENTY-SEVENTH revision —
+                after **Thread A step 3 sub-step 2's brick (d-shape) cont'd — *`FlowSubrangesOk` body-start
+                GUARD — Phase J goal made provable* — landed** (commit `02988022`, Reflection 229).
+                `FlowSubrangesOk` was UNPROVABLE as stated: its `seq`/`map` fields quantify over EVERY balanced
+                subrange ending in a close bracket, including misaligned ones starting mid-body on a depth-0
+                `.flowEntry`. An empirical probe (emit+scan `[a, b]` → `[ "a" , "b" ]`) refuted it: the subrange
+                `lo=3, hi=5` passes all premises (`3≤5`, `5<7`, `tokens[5]=.flowSequenceEnd`, `balance 3 5=0`)
+                yet `tokens[3]=.flowEntry` is not a content-start, so `content_start` is false — the producer
+                (Phase J) could never build it. Fix: a body-start guard `tokens[lo-1]!.val = .flowSequenceStart`
+                (seq) / `.flowMappingStart` (map) added to each field, restricting `lo` to a genuine
+                interior-start preceded by its opener. Forced and free — the dispatcher only projects the fields
+                at body-starts (all 8 `hsub.{seq,map}` sites + IH applications have `lo-1` = the matching
+                opener), so it never needed the unguarded form; supplied at both NonemptyStructure calls via
+                `h_t1`. Threaded through the dispatcher's conclusion, `key` motive, both intros, eight
+                projections + IH sites, closing. The two structure sorries are RETYPED from an impossible
+                universal onto a provable guarded goal (Reflection 225 family). Build green **525 jobs**,
+                **sorries held at 4** (854/1095 structural + base 832/872); dispatcher axiom-clean
+                (`[propext, Classical.choice, Quot.sound]`, no `sorryAx`). The producer now gets `tokens[lo-1]`
+                = opener as a free input. next sub-brick: produce the per-subrange primitives (seq three / map
+                eight) feeding the two assemblers, NOW over the provable guarded goal. See Reflection 229, on
+                top of the
                 **Total .body scope re-estimate (SEVENTY-SIXTH revision —
                 after **Thread A step 3 sub-step 2's brick (d-shape) cont'd — *parametric `MapBodyProps`
                 assembler extracted (Phase J seed, map side)* — landed** (commit `005fb9f2`,
@@ -25348,3 +25395,7 @@ residuals *coincide* — coincident residuals are closed together, divergent one
 ### Reflection 228 (new, 2026-06-02): the second, symmetric assembler is *not* a free lift like the first — but it is still cheap, because the combinatorial parts were built symmetrically; a "from-scratch" assembly whose every field is a dispatch over already-proven helpers is mechanical, and its only real content is matching field shapes to helper outputs
 
 Reflection 226 extracted `seqBodyProps_assemble` by *lifting* an inline fixed-span `have` whose constant-dependence was already in its hypotheses — a free generalization, "I proved one case → I built the assembler." This session (commit `005fb9f2`) built the map-side mirror `mapBodyProps_assemble`, and the instructive thing is how it *differs*: there was **no inline `_h_map_body_props` to lift.** The map structure proof `scanFiltered_emitMap_nonempty_structure` had reduced straight to the dispatcher (Reflection 227) without ever assembling a `MapBodyProps` at the outer span, so the assembler had to be written *from scratch* — ten fields, not a verbatim copy of anything. Yet it was still a one-shot, low-risk increment (one compile-fix: a `Nat.succ` vs `k+1` syntactic-match slip in a `rw`). Why the asymmetry-in-origin did not cost asymmetry-in-effort: the **combinatorial parts were already built, and built symmetrically.** The map typed-locator conjuncts `map_{key,value}_bracket_conjunct` (M5/M8) and the raw locators `flowBracketBalance_matching_close_{seq,map}` (M9/M10) had landed in earlier typed-locator sessions, in exact parallel to the seq conjuncts the seq assembler consumes. So `mapBodyProps_assemble`'s body is pure dispatch: six fields are *literally* their primitive hypothesis (`exact h_key_content`, …), two route through a conjunct with a depth-shift adapter, two are the bare locator output. No field contains new mathematics — the only nontrivial move is the shared `h_step` adapter (depth-0 `balance (k+1) = 0` from `flowBracketDelta .key = .value = 0`, and `k+1 < hi` from the boundary), and even that is a transcription of the seq assembler's `scalar_succ` balance-shift. The general tell: a "build the symmetric assembler" task *looks* like it doubles the work of the first one, but if the first one's hard sub-lemmas (here the bracket conjuncts) were themselves built as a symmetric pair, the second assembler is the cheap half — its content is wiring helper outputs to field shapes, and you should price it as assembly, not as proof. There is a real grammar asymmetry worth recording, though, and it lives entirely in the *interface*, not the difficulty: the map body needs **eight** primitive premises (the key/value alternation — a pair `.key block_k .value block_v` has an interior depth-0 `.value`, so it is not one `EntryUnit`) where the seq body needed **three**; and the map's M9/M10 `bracket_seq`/`bracket_map` carry **no** successor (a map subrange closes with `.flowMappingEnd`, and those fields only assert the matching close), whereas the seq's `bracket_seq`/`bracket_map` *do* carry the `.flowSequenceEnd`-or-`.flowEntry` successor. That asymmetry is exactly why the seq assembler folds its successor through one guarded `h_body_succ` while the map assembler threads two separate close-guarded successors (`h_key_bracket_succ` for "value follows a complete key", `h_value_bracket_succ` for "separator/close follows a complete value"). Sits with 224/226 in the "assembler as published interface" thread ([[ref-reduction-by-import]]): the map producer now has its typed joint too, and the residual on *both* `FlowSubrangesOk` fields is purely produce-the-primitives.
+
+### Reflection 229 (new, 2026-06-02): before producing a long-deferred residual, *probe whether it is true* — a universally-quantified target can be silently false, and an architecture can carry a false obligation for many sessions because every *consumer* of it only ever touches the true instances
+
+The whole frontier had converged onto one residual: `have h_subranges : FlowSubrangesOk tokens := sorry`, named across ~10 reflections as the sound Phase-J producer goal. The planned next step was to *produce* it. Instead of starting to produce, I asked the cheaper question first — *is it even true?* — and a five-line empirical probe (emit+scan `[a, b]`, enumerate every `(lo,hi)` with `tokens[hi]=.flowSequenceEnd ∧ balance lo hi=0`, check `content_start`) refuted it: the subrange starting on the depth-0 `.flowEntry` (the `,`) passes every premise yet `tokens[lo]=.flowEntry` is not a content-start. `FlowSubrangesOk` quantifies over **all** balanced-prefix-before-a-close subranges, but only the ones whose `lo` sits right after an opener are genuine bodies; the universal swept in *misaligned* ones and was therefore false for any multi-element collection. The reason this survived so long is the crux: **every *consumer* of `FlowSubrangesOk` only ever *projects* it at genuine body-starts** — the dispatcher `flow_parser_ok_of_structure` calls `hsub.seq lo hi` exactly where `lo-1` is the matching opener (outer span, after a peeked opener, after a bracketed key/value), never at a `.flowEntry`. So the *consumer* side type-checked, was verified, and looked complete; the falsity was invisible until someone tried to *produce* the universal. A hypothesis you only ever *eliminate* (project/apply) hides its own unsatisfiability — vacuity and falsity both type-check on the consuming side; only the *introduction* (the producer) forces the question. The fix is the dual of the bug: read the guard *off the consumers*. The fact that all 8 projection sites have `tokens[lo-1]` = opener is simultaneously (a) why the gap was invisible and (b) exactly the guard to add — `tokens[lo-1]!.val = .flowSequenceStart` / `.flowMappingStart` — which makes the target true *and* costs the consumers nothing (they already had it). This is a retype-the-residual move (Reflection 225 family: the sorry's *type* changed from an unprovable proposition to a provable one — that retype is the progress, even though the sorry count is unchanged at 4), but with a sharper lesson than 225's "wire in a consumer": **when a deferred goal is universally quantified and has lived only as a hypothesis, spend the few minutes to construct a witness/counterexample before investing in its proof.** The probe cost five lines and one `#eval`; producing the false goal would have cost an unbounded number of sessions chasing a `content_start` that cannot hold. Sits with [[ref-reduction-by-import]] (retype-not-shrink) and the [[ref-producer-guarded-quantifier]] trap (a quantifier whose guard is missing is undischargeable yet type-checks) — this is that same trap one level up: not a *premise* inside one lemma, but the *target structure* of the entire frontier.
