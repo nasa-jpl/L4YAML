@@ -10,6 +10,7 @@ defaultTargets = [
   "Tests.ConverseForwardAsymmetry",
   "Tests.ReductionByImport",
   "Tests.ConvergentReduction",
+  "Tests.ParametricAssemblerExtraction",
   "tryparse",
   "tryscan",
   "tryroundtrip",
@@ -65,6 +66,9 @@ name = "Tests.ReductionByImport"
 
 [[lean_lib]]
 name = "Tests.ConvergentReduction"
+
+[[lean_lib]]
+name = "Tests.ParametricAssemblerExtraction"
 
 [[lean_lib]]
 name = "Tests.VerifiedResult"
