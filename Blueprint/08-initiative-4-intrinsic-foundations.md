@@ -2169,10 +2169,25 @@ what remains is assembling `FlowSubrangesOk`). The shape of the remaining produc
    `drop_take` resolved to `List.drop_take`; `getElem` rewrites route through an element-level equation to
    avoid a non-type-correct motive). Build green 515, sorries held at 4, all six lemmas `sorryAx`-free on
    the pure triple. This discharges the **type half** of `bracket_seq`/`bracket_map`/M5/M8/M9/M10.
-   **Remaining sub-bricks**:
-   (d) the flat per-position local-shape facts (`scalar_succ`, `after_fe`, `key_content`, …) for every
-   nested subrange, plus the **successor half** of the bracket conjuncts (`j + 1 ≤ hi ∧ (FE | seqEnd)` —
-   an emitter fact layered on the now-typed `j`), then assemble `SeqBodyProps`/`MapBodyProps` and
+   **Brick (d) — the typed-descent engine — LANDED** (commit `d160720c`, Reflection 211): the type
+   half from (c-iii-b) is demanded *per nested subrange* — `flowBracketBalance_matching_close_{seq,map}`
+   take `WellTyped ((tokens.toList.take hi).drop lo)`, but `FlowSubrangesOk.seq`/`.map` give no
+   per-subrange `WellTyped`, only the *global* one. `WellBracketed.lean` now carries the descent engine:
+   `btStep_unframe` (step-level converse of `btStep_frame`), `btFold_unframe` (fold-level dual of
+   `btFold_frame`, with a Dyck guard `s.length + pbalance ≥ 0` that rules out popping into the frame),
+   and `WellTyped_infix_balanced` — a balanced (`pbalance = 0`) + Dyck infix of a `WellTyped` list is
+   itself `WellTyped`, at any nesting depth. Feasibility-from-`[]` of the infix is recovered for free
+   (the prefix `pre ++ m` is feasible because it is a prefix of the `WellTyped` whole; un-frame it back;
+   balance-`0` forces `[]`) — no Dyck-tracking re-proof of type-matching; the matches come from the
+   ambient `WellTyped`. Build green 515, sorries held at 4, all three on the pure triple.
+   **Remaining sub-bricks of (d)**:
+   (d-shape) the flat per-position local-shape facts (`scalar_succ`, `after_fe`, `key_content`, …) for
+   every nested subrange, plus the **successor half** of the bracket conjuncts
+   (`j + 1 ≤ hi ∧ (FE | seqEnd)` — an emitter fact layered on the now-typed `j`);
+   (d-dyck) the per-subrange **Dyck + balance** facts that `WellTyped_infix_balanced` (and the matching
+   locator) consume — NOT free from `FlowSubrangesOk`'s hypotheses; derived from the global Dyck + the
+   subrange starting at a local-depth-minimum;
+   (d-assemble) bundle (d-shape) + (d-dyck) + the typed close into `SeqBodyProps`/`MapBodyProps` and
    `FlowSubrangesOk`.
 3. Instantiate `flow_parser_ok_of_structure` at `(lo, hi) = (2, tokens.size−2)`,
    `fuel = 4·tokens.size+4` → close the 2 structure sorries (`NonemptyStructure.lean` 576/804 — **both**
@@ -14875,6 +14890,36 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
+                **Total .body scope re-estimate (FIFTY-NINTH revision —
+                after **Thread A step 3 sub-step 2's brick (d) — the typed-descent engine — landed:
+                a balanced + Dyck infix of a `WellTyped` list is itself `WellTyped`, at any nesting
+                depth** (commit `d160720c`, Reflection 211). The two
+                `flowBracketBalance_matching_close_{seq,map}` lemmas (brick c-iii-b) demand `WellTyped`
+                of the *subrange* interior `((tokens.toList.take hi).drop lo)`, but when assembling
+                `FlowSubrangesOk` that subrange is **nested**: only the *global* interior is known
+                `WellTyped`, and the universal `FlowSubrangesOk.seq`/`.map` hand the proof no per-subrange
+                `WellTyped` hypothesis. `WellBracketed.lean` now carries the descent engine — three lemmas
+                under "Typed locator, part 4": `btStep_unframe` (step-level converse of `btStep_frame` —
+                an extended-stack step un-frames to `s` alone when a pop never reaches into `extra`);
+                `btFold_unframe` (the fold-level dual of `btFold_frame`, with a Dyck guard
+                `s.length + pbalance ≥ 0` that rules out popping into the frame — proved by induction
+                threading the guard one step at a time); and `WellTyped_infix_balanced` — the payoff: an
+                infix `m` of a `WellTyped` list that is balanced (`pbalance m = 0`) and Dyck is itself
+                `WellTyped`. The key economy: **feasibility of `m` from the empty stack is recovered for
+                free** — `pre ++ m` is a *prefix* of the `WellTyped` whole, hence feasible
+                (`WellTyped_prefix_some`); un-frame it back to `m`-from-`[]`; balance-`0` (via
+                `btFold_length`) forces the stack to `[]`. No Dyck-tracking re-proof of type-matching is
+                needed — the matches come from the ambient `WellTyped`. Build green 515 jobs, **sorries
+                held at 4** (still pure enablement: the engine is produced, consumed in the assembly),
+                all three `sorryAx`-free on the pure triple `[propext, Classical.choice, Quot.sound]`.
+                **Remaining for (d)**: the flat per-position local-shape facts (`scalar_succ`, `after_fe`,
+                `key_content`, …) and the successor half of the bracket conjuncts, plus the per-subrange
+                **Dyck + balance** facts that feed this engine (NOT free — derived from the global Dyck +
+                the subrange starting at a local-depth-minimum), then assemble
+                `SeqBodyProps`/`MapBodyProps`/`FlowSubrangesOk`; then sub-step 3 (instantiate
+                `flow_parser_ok_of_structure` → close NonemptyStructure 576/804) and sub-step 4 (base
+                `emit_roundtrip_{sequence,mapping}_content_eq` 832/872 → `universal_roundtrip`). See
+                Reflection 211, on top of the
                 **Total .body scope re-estimate (FIFTY-EIGHTH revision —
                 after **Thread A step 3 sub-step 2's brick (c-iii-b) — the typed matching close — landed:
                 the matching close of a depth-0 `[` is provably a `]` (of a `{`, a `}`)**
@@ -24106,3 +24151,39 @@ equation under `.val`. **Lesson: when a `rw` over an indexed accessor reports a 
 the motive — hoist the rewrite out to an equation between the *whole accessed elements* and apply that. Proof-carrying
 accessors (`l[i]'h`, `arr[i]!`) compose badly under in-place rewriting but compose fine as opaque values once you've
 pinned their equality separately.**
+
+### Reflection 211 (new, 2026-06-01): a converse "un-frame" lemma is short when feasibility is borrowed from a prefix — don't re-prove what the ambient `WellTyped` already guarantees
+
+Brick (d) needed `WellTyped` of a *nested* balanced subrange — the hypothesis
+`flowBracketBalance_matching_close_{seq,map}` (the c-iii-b locator) demand, which `FlowSubrangesOk.seq`/`.map` hand the
+proof for free *only at the top level*. The obvious shape is a "balanced factor of a `WellTyped` word is `WellTyped`"
+lemma. The trap I nearly fell into: proving it by an inductive *un-frame* that re-establishes, step by step, that
+running the infix `m` from the empty stack never underflows **and** every pop is type-correct — a Dyck-tracking
+induction that duplicates the type-matching the ambient `WellTyped` already certifies. That would have been a
+c-iii-b-sized proof.
+
+**The economy: feasibility is borrowable, type-matching is not re-derivable — so borrow the first and never touch the
+second.** The infix sits inside `WellTyped (pre ++ m ++ suf)`. Its prefix `pre ++ m` is a *prefix* of a `WellTyped`
+word, so it is feasible (`WellTyped_prefix_some`: a prefix of a `some`-ending fold can't be `none`, since `none` is
+absorbing) — `btFold (some []) (pre ++ m) = some sp'`, i.e. `btFold (some sp) m = some sp'` where `sp` is the stack
+after `pre`. That single fact carries *all* the type-correctness of `m`'s internal matches. The only thing left to
+remove is the frame `sp` underneath. So the un-frame lemma I actually need is narrow: **given a fold from `s ++ extra`
+is `some`, and a Dyck guard `s.length + pbalance ≥ 0` rules out popping into `extra`, the fold from `s` alone is `some`
+and lands one frame lower.** Its proof never reasons about *which* opener a closer matches — `btStep_unframe` just
+observes that a pop with the guard satisfied touches only `s`, and `simp` discharges the matching because the *same*
+`btStep` already succeeded over `s ++ extra`. Then balance-`0` (`btFold_length`) collapses the un-framed stack to `[]`,
+giving `WellTyped m`. Total: two ~15-line step/fold lemmas plus a ~12-line corollary.
+
+Two things generalize. **(1) A converse of a frame/weakening lemma is cheap exactly when the "hard" content (here,
+type-correctness of matches) is independent of the thing being framed.** `btStep`'s success over `s ++ extra` and over
+`s` differ *only* in whether a pop reaches `extra`; the type check on the popped bit is identical. So the un-frame
+carries no proof obligation about types — it only needs the numeric guard that keeps the pop inside `s`. Look for this
+whenever you've proved an "extend the context" lemma and now need "restrict the context": if the restriction doesn't
+change the semantic core, its converse is a guard-checking induction, not a re-derivation. **(2) Before proving an
+infix/factor property by induction over the infix, check whether the infix is a *prefix* (or suffix) of something you
+already know the property for — a prefix inherits feasibility/definedness for free via absorption.** I almost re-ran
+the Dyck-feasibility induction from scratch; the prefix `pre ++ m` of the `WellTyped` whole already had it. **Lesson:
+the expensive half of "this sub-word is well-formed" is usually *definedness* (no underflow, no mismatch); when the
+sub-word is a prefix of a known-well-formed word, definedness is borrowed by `…_prefix_some`, and the rest is
+arithmetic. Reach for the prefix before reaching for the induction.** [[Reflection 210]] is the companion plumbing for
+the same locator; [[Reflection 209]] supplied the interior positivity these descents rely on numerically.
