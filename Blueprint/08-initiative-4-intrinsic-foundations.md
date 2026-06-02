@@ -2188,16 +2188,27 @@ what remains is assembling `FlowSubrangesOk`). The shape of the remaining produc
    (`flowBracketBalance lo hi = 0`) and its **local Dyck** (`flowBracketBalance lo p ≥ 0`, `lo ≤ p ≤ hi`),
    is `WellTyped`. The slice splits `pre ++ m ++ suf` via `take_add`/`drop_drop` + `List.drop_take`, and
    `flowBracketBalance_eq_pbalance` converts both balance facts to `pbalance` form. Build green 515,
-   sorries held at 4, pure triple. **The local Dyck is a clean input** — feeding it is the residual below.
+   sorries held at 4, pure triple. **The local Dyck is a clean input** — feeding it was the residual,
+   now LANDED below.
+   **Brick (d-dyck), residual — LANDED** (commit `58ef6ffb`, Reflection 213): the per-subrange **local
+   Dyck** `WellTyped_subrange` consumes is manufactured from the global Dyck. `ParserGrammableBase.lean`
+   now carries (right after `flowBracketBalance_matching_close`) `flowBracketBalance_dyck_shift` — the
+   general primitive: a subrange `[s, hi)` whose start `s` is a *depth-floor* (running balance from `lo`
+   never drops below its value `d` at `s`) has local Dyck `balance s p ≥ 0`, since by
+   `flowBracketBalance_compose` additivity `balance lo p = d + balance s p` so the floor `balance lo p ≥ d`
+   *is* the local Dyck — and `flowBracketBalance_interior_dyck` — the matched-bracket corollary: the
+   interior `(k+1, j)` of a depth-0 opener at `k` is locally Dyck (depth after the opener is `1` via
+   `flowBracketBalance_single`; the matching-close locator's fifth conjunct `balance lo i ≥ 1` over `(k,j]`
+   is the depth-`1` floor, re-based to `0`). The unfree input is now produced — it comes from the
+   matching-bracket structure the locator already establishes, not from `FlowSubrangesOk`'s hypotheses.
+   Build green 515, sorries held at 4, both on the pure triple.
    **Remaining sub-bricks of (d)**:
-   (d-dyck, residual) the **local Dyck** `WellTyped_subrange` consumes — NOT free from `FlowSubrangesOk`'s
-   hypotheses (only the subrange *balance* and closer-type are); derived from the global Dyck + the
-   subrange starting at a local-depth-minimum;
    (d-shape) the flat per-position local-shape facts (`scalar_succ`, `after_fe`, `key_content`, …) for
    every nested subrange, plus the **successor half** of the bracket conjuncts
    (`j + 1 ≤ hi ∧ (FE | seqEnd)` — an emitter fact layered on the now-typed `j`);
-   (d-assemble) bundle (d-dyck) + (d-shape) + the typed close (via `WellTyped_subrange` → the matching
-   locator) into `SeqBodyProps`/`MapBodyProps` and `FlowSubrangesOk`.
+   (d-assemble) bundle the local Dyck (`flowBracketBalance_interior_dyck` → `WellTyped_subrange`, both
+   LANDED) + (d-shape) + the typed close (`flowBracketBalance_matching_close_{seq,map}`) into
+   `SeqBodyProps`/`MapBodyProps` and `FlowSubrangesOk`.
 3. Instantiate `flow_parser_ok_of_structure` at `(lo, hi) = (2, tokens.size−2)`,
    `fuel = 4·tokens.size+4` → close the 2 structure sorries (`NonemptyStructure.lean` 576/804 — **both**
    the seq AND map sites now have `h_outer_bal`/`h_dyck` in scope ready to feed alongside `FlowSubrangesOk`).
@@ -14899,6 +14910,33 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
+                **Total .body scope re-estimate (SIXTY-FIRST revision —
+                after **Thread A step 3 sub-step 2's brick (d-dyck) — the *residual* (local-Dyck
+                derivation) — landed: the per-subrange local Dyck `WellTyped_subrange` consumes is
+                manufactured from the global Dyck** (commit `58ef6ffb`, Reflection 213). Two pure
+                `flowBracketBalance` lemmas in `ParserGrammableBase.lean`, right after
+                `flowBracketBalance_matching_close`: `flowBracketBalance_dyck_shift` (the general
+                primitive — a subrange `[s, hi)` whose start `s` is a *depth-floor*, i.e. the running
+                balance from `lo` never drops below its value `d` at `s`, has local Dyck
+                `balance s p ≥ 0`, since by `flowBracketBalance_compose` additivity
+                `balance lo p = d + balance s p`, so the floor `balance lo p ≥ d` *is* the local
+                Dyck), and `flowBracketBalance_interior_dyck` (the matched-bracket corollary — the
+                interior `(k+1, j)` of a depth-0 opener at `k` is locally Dyck: depth just after the
+                opener is `1` via `flowBracketBalance_single`, and the matching-close locator's fifth
+                conjunct `balance lo i ≥ 1` over `(k, j]` is exactly the depth-`1` floor, re-based to
+                `0`). **The "unfree input" that `WellTyped_subrange` surfaced is now produced** — the
+                local Dyck was never going to come from `FlowSubrangesOk`'s hypotheses (only the
+                subrange balance + closer-type are free); it comes from the *matching-bracket
+                structure* the locator already establishes. Build green 515 jobs, **sorries held at
+                4**, both lemmas `sorryAx`-free on the pure triple. **Remaining for (d)**: `(d-shape)`
+                the flat per-position local-shape facts (`scalar_succ`, `after_fe`, `key_content`, …)
+                + the successor half of the bracket conjuncts (`j + 1 ≤ hi ∧ (FE | seqEnd)`); then
+                `(d-assemble)` — bundle the local Dyck (`flowBracketBalance_interior_dyck`) + the
+                typed close (`WellTyped_subrange` → `flowBracketBalance_matching_close_{seq,map}`) +
+                (d-shape) into `SeqBodyProps`/`MapBodyProps`/`FlowSubrangesOk`; then sub-step 3
+                (instantiate `flow_parser_ok_of_structure` → close NonemptyStructure 576/804) and
+                sub-step 4 (base `emit_roundtrip_{sequence,mapping}_content_eq` 832/872 →
+                `universal_roundtrip`). See Reflection 213, on top of the
                 **Total .body scope re-estimate (SIXTIETH revision —
                 after **Thread A step 3 sub-step 2's brick (d-dyck) — the bridge/packaging half —
                 landed: a nested subrange of a `WellTyped` slice, given its balance and its local
@@ -24251,3 +24289,33 @@ preconditions in the consumer's terms is the cheapest way to discover which of t
 supply, and turns that discovery from a mid-assembly surprise into a named follow-on brick.** [[Reflection
 211]] proved the engine this packages; [[Reflection 209]] is where the global Dyck (numeric) that the
 residual will descend from was first published as a loop invariant.
+
+### Reflection 213 (new, 2026-06-01): the local Dyck is the global Dyck with its origin slid to a depth-floor — and the floor was already in the locator's hand
+
+The `(d-dyck)` residual that [[Reflection 212]] named — "derive the per-subrange local Dyck from the global
+Dyck" — sounded like it might need real combinatorics (track a running minimum, find where the depth bottoms
+out, prove that's where the subrange starts). It collapsed to one additive identity. The local Dyck of a
+subrange `[s, hi)` is `flowBracketBalance s p ≥ 0` for `s ≤ p ≤ hi`; the global Dyck gives
+`flowBracketBalance lo p ≥ 0` from the *outer* origin `lo`. By `flowBracketBalance_compose`,
+`balance lo p = balance lo s + balance s p`. So if `s` is a **depth-floor** — the running balance from `lo`
+never drops below its value `d` at `s` over `[s, hi]` — then `balance lo p ≥ d = balance lo s` rearranges to
+`balance s p ≥ 0`. That is the *entire* content of `flowBracketBalance_dyck_shift`: the local Dyck is the
+global Dyck **re-based at a floor**, and re-basing is subtraction of a constant. No minimum-finding, no scan
+— `omega` closes it once `compose` is in context.
+
+The second half was realizing the floor is already proved. `flowBracketBalance_interior_dyck` instantiates
+the shift at `s = k+1` (just past a depth-0 opener at `k`) with `d = 1`, and the depth-`1` floor it needs —
+`balance lo p ≥ 1` for `k+1 ≤ p ≤ j` — is *verbatim* the fifth conjunct the matching-close locator
+([[Reflection 209]]) already returns: `∀ i, k < i → i ≤ j → balance lo i ≥ 1`. That conjunct was added as a
+loop invariant of the forward scan for the locator's *own* proof (to know the depth never returns to 0 before
+the matching close); it turns out to be exactly the floor a *nested* subrange needs to inherit the Dyck. **The
+work that proves "this is the matching close" and the work that proves "the enclosed body is locally
+well-bracketed" are the same work** — the scan that finds the close maintains the positivity that *is* the
+inner Dyck, shifted. Two lessons generalize. **(1) When you need a property "from a different origin," check
+whether it's the same property minus a constant before proving it afresh — additive/telescoping quantities
+(balances, prefix sums, depths) re-base by arithmetic, and a "local" version of a "global" Dyck/bound is
+almost always the global one slid to a floor.** **(2) The invariant a search maintains for its own
+termination is often the exact hypothesis its *result* must satisfy downstream — publish it (cf. [[Reflection
+209]]) and the next brick is a one-liner instead of a re-derivation.** With this, every input
+`WellTyped_subrange` ([[Reflection 212]]) demands is now manufacturable; what remains for brick (d) is purely
+emitter-shape bookkeeping (`(d-shape)`) and the mechanical bundling (`(d-assemble)`).
