@@ -2075,6 +2075,33 @@ out explicitly so the witness stays folded and the `applyNodeFinalization_*` pro
 the opaque `key_ps.tokens = tokens` is *propositional* (not defeq), so each §V call over a path-pushed
 state transports its `LoopPreconditions` bundle along that equation.
 
+> **What is "Dyck"?**  A *Dyck word* (after Walther von Dyck) is the formal-language model of
+> **balanced brackets**.  Over an alphabet of one open `(` and one close `)`, a string is **Dyck**
+> iff (1) it has equally many opens and closes, and (2) **every prefix has at least as many opens as
+> closes** — you never close a bracket you haven't opened.  So `()()`, `(())`, `(()())` are Dyck;
+> `)(`, `(()`, `())(` are not.  It generalizes to several bracket kinds (`[`, `{`) that must match by
+> *type* and nest properly — exactly the language of well-formed bracket structure.
+>
+> In this project `flowBracketBalance tokens lo hi` is the running opens-minus-closes over a token
+> subrange (`+1` per `.flow*Start`, `−1` per `.flow*End`), so the two Dyck conditions become:
+> - **balance = 0** over the whole span (condition 1, equal opens/closes) — the
+>   `flowBracketBalance tokens lo hi = 0` hypothesis threaded through `FlowSubrangesOk`; and
+> - **balance ≥ 0 at every prefix** (condition 2, the *local Dyck* property) — the conclusion of
+>   `flowBracketBalance_interior_dyck` (`flowBracketBalance tokens (k+1) p ≥ 0` for `k+1 ≤ p ≤ j`).
+>
+> The bricks below are the standard Dyck toolkit spelled in `flowBracketBalance` arithmetic:
+> `flowBracketBalance_compose` is path additivity (split at any point); `flowBracketBalance_dyck_shift`
+> re-bases a sub-path that starts at a depth-floor to its own local Dyck; `flowBracketBalance_interior_dyck`
+> proves the **interior of a matched pair is itself Dyck** (depth `1` just inside the opener, never
+> dropping back below it until the matching close); and `flowBracketBalance_bracket_pair_skip` records
+> that a complete Dyck factor is **net-0** — so it is *depth-transparent* and can be skipped over as a
+> single depth-0 atom (the insight that collapses the bracket-successor obligation into the scalar one).
+> The type-aware refinement — brackets matching by kind, not just count — is the `WellTyped`/`btFold`
+> layer in `WellBracketed.lean` (a balanced `[ { ] }` is *Dyck* yet mis-typed, so balance alone cannot
+> pin `]` vs `}`; the typed stack does).  In short: "Dyck" throughout this blueprint = the
+> well-bracketed-ness invariant (balance `0` overall, never negative on any prefix) that makes a flow
+> collection's token stream a parseable, properly-nested structure rather than garbage like `]foo[`.
+
 **`.parsenode.discharge` — first brick LANDED (commit `e550eb5f`, Reflection 201): the Dyck
 bracket-matching locator.** `flowBracketBalance_matching_close` (`ParserGrammableBase.lean`) converts
 the flat Dyck condition (`WellBracketed`: total balance 0 + all prefix balances ≥ 0) into the
@@ -2214,14 +2241,28 @@ what remains is assembling `FlowSubrangesOk`). The shape of the remaining produc
    at relative depth `0`). **The bracketed value is depth-transparent**: its shape collapses to one
    depth-0 position, so `scalar_succ` and the bracket-successor are the *same* emitter fact. Build green
    515, sorries held at 4, both on the pure triple.
+   **Brick (d-shape), bracket-successor reduction — LANDED** (commit `d3721507`, Reflection 215):
+   the depth bridge is now *applied* — the successor halves of all four bracket conjuncts are stated in
+   their exact conjunct shapes and proven from the *same* "next depth-0 token after a complete value"
+   emitter fact the scalar conjuncts use. `ParserGrammableBase.lean` now carries (right after
+   `flowBracketBalance_after_bracket_pair_zero`) three pure reduction lemmas — `seq_bracket_succ_reduce`
+   (`FE ∨ (seqEnd ∧ j+1=hi)`, covers `bracket_seq` AND `bracket_map`'s successor), `map_value_bracket_succ_reduce`
+   (`FE ∨ (mapEnd ∧ j+1=hi)`, M8), `map_key_bracket_value_reduce` (`.value` at `j+1`, M5) — each a single
+   application of `flowBracketBalance_after_bracket_pair_zero`: the matched pair makes `j+1` relative-depth-0,
+   discharging the depth-0 proviso the shared emitter fact (hypothesis `h_succ`) is keyed on. **The bracket
+   conjuncts' successor work is now closed at the algebra layer**: what remains of `(d-shape)` is purely the
+   scalar/key/value/comma emitter facts (the `h_succ` premises). Build green 515, sorries held at 4, all
+   three on the pure triple.
    **Remaining sub-bricks of (d)**:
-   (d-shape) cont'd — the flat per-position local-shape facts (`scalar_succ`, `after_fe`, `key_content`,
-   …) for every nested subrange, i.e. the *single* underlying "next depth-0 token after a complete value
-   is `.flowEntry` or the body close" emitter fact that the depth bridge above now feeds both the scalar
-   and bracket cases (`bracket_pair_skip` reduces the bracket case to it);
+   (d-shape) cont'd — the *single* underlying "next depth-0 token after a complete value is `.flowEntry`
+   or the body close" emitter fact (and its `.key`/`.value`/content-start siblings: `scalar_succ`,
+   `after_fe`, `key_content`, `key_start`, …) for every nested subrange — i.e. the `h_succ`-shaped
+   premises the reduction lemmas above now consume. The bracket cases are no longer separate work
+   (`bracket_pair_skip` → `seq_bracket_succ_reduce`/`map_*_reduce` route them to the scalar fact); this
+   is the genuinely emitter-output-characterizing half, recursive over the emitted value tree;
    (d-assemble) bundle the local Dyck (`flowBracketBalance_interior_dyck` → `WellTyped_subrange`, both
-   LANDED) + (d-shape) + the typed close (`flowBracketBalance_matching_close_{seq,map}`) into
-   `SeqBodyProps`/`MapBodyProps` and `FlowSubrangesOk`.
+   LANDED) + (d-shape) + the typed close (`flowBracketBalance_matching_close_{seq,map}`) + the
+   successor-reduction lemmas (LANDED) into `SeqBodyProps`/`MapBodyProps` and `FlowSubrangesOk`.
 3. Instantiate `flow_parser_ok_of_structure` at `(lo, hi) = (2, tokens.size−2)`,
    `fuel = 4·tokens.size+4` → close the 2 structure sorries (`NonemptyStructure.lean` 576/804 — **both**
    the seq AND map sites now have `h_outer_bal`/`h_dyck` in scope ready to feed alongside `FlowSubrangesOk`).
@@ -14923,6 +14964,27 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
+                **Total .body scope re-estimate (SIXTY-THIRD revision —
+                after **Thread A step 3 sub-step 2's brick (d-shape) — the *bracket-successor
+                reduction* — landed: the depth bridge is now applied, routing all four bracket
+                conjuncts' successor halves to the one scalar emitter fact** (commit `d3721507`,
+                Reflection 215). Three pure reduction lemmas in `ParserGrammableBase.lean`, right
+                after `flowBracketBalance_after_bracket_pair_zero`, each stated in the *exact*
+                conjunct shape and each a one-line application of that corollary:
+                `seq_bracket_succ_reduce` (`j+1 ≤ hi ∧ (FE ∨ (seqEnd ∧ j+1=hi))` — covers
+                `SeqBodyProps.bracket_seq` AND `bracket_map`), `map_value_bracket_succ_reduce`
+                (`FE ∨ (mapEnd ∧ j+1=hi)` — `MapBodyProps` M8), `map_key_bracket_value_reduce`
+                (`.value` at `j+1` — M5). Each takes the matched-pair hypotheses plus the shared
+                emitter fact in conditional form `h_succ : balance lo (j+1) = 0 → ⟨conjunct⟩`; the
+                matched pair makes `j+1` relative-depth-0, discharging the proviso `h_succ` is keyed
+                on — the *same* proviso `scalar_succ`/`value_scalar_succ`/`key_scalar_value`
+                discharge. **The bracket conjuncts' successor work is now closed at the algebra
+                layer**: `(d-shape)` no longer has a separate bracket branch — what remains is purely
+                the scalar/key/value/content-start emitter facts (the `h_succ` premises), the
+                genuinely emitter-output-characterizing half. Build green 515 jobs, **sorries held at
+                4**, all three `sorryAx`-free on the pure triple `[propext, Classical.choice,
+                Quot.sound]`. **Remaining for (d)**: the `h_succ`-shaped emitter facts (one per body
+                kind) and `(d-assemble)`. See Reflection 215, on top of the
                 **Total .body scope re-estimate (SIXTY-SECOND revision —
                 after **Thread A step 3 sub-step 2's brick (d-shape) — the *bracket-successor
                 depth bridge* — landed: a matched bracket pair is depth-transparent** (commit
@@ -24387,3 +24449,27 @@ the measure you reason about, treat it as a single atom of that measure and you 
 for free — don't re-prove the composite case, collapse it.** This is why the typed close ([[Reflection 210]])
 and the depth bridge compose so cleanly: the close pins `j`'s *type*, and `bracket_pair_skip` makes
 everything after `j` behave as if the whole `[k, j]` span were a one-token scalar.
+
+### Reflection 215 (new, 2026-06-01): a reduction lemma is "done" only when it is stated in the consumer's exact shape — name the premise you are deferring, and prove the wiring around it
+
+[[Reflection 214]] established the *principle* that the bracket-successor is the scalar-successor at a
+shifted position. This brick discharges it — but the worth of the step is entirely in *how* it is stated.
+The temptation was to introduce an abstract `FlowSeqSucc`/`FlowMapSucc` predicate and prove a tidy
+`predicate → predicate` reduction. I rejected that: `SeqBodyProps`/`MapBodyProps` spell their successor
+conjuncts *inline* (`j+1 ≤ hi ∧ (tokens[j+1]!.val = .flowEntry ∨ …)`), so a new `def` would only add an
+unfold obligation at every assembly site. The three lemmas instead conclude in the **literal conjunct
+shape** the structures demand — `seq_bracket_succ_reduce`, `map_value_bracket_succ_reduce`,
+`map_key_bracket_value_reduce` — so `(d-assemble)` can plug them with no massaging.
+
+The deeper move is what the lemmas make *explicit by their type*. Each takes the deferred emitter fact as a
+**named hypothesis in conditional form**: `h_succ : flowBracketBalance lo (j+1) = 0 → ⟨the conjunct⟩`. This
+is not hand-waving — it is the precise statement that the bracket case and the scalar case consume *the same
+premise*. The scalar conjunct (`scalar_succ`) will discharge `h_succ`'s proviso from `balance lo k = 0` +
+the scalar's delta-`0`; the bracket lemma discharges the *identical* proviso from `flowBracketBalance_after_bracket_pair_zero`.
+Writing the premise as a hypothesis rather than proving it forces the unification into the *signature*, where
+it is checked, instead of leaving it as prose. The lesson: **when you reduce B to A but cannot yet prove A,
+don't stop at an informal "B follows from A" — write the lemma `A_premise → B` and prove the wiring, so the
+shared premise becomes a type the assembler must satisfy exactly once.** The remaining `(d-shape)` work is now
+sharply delimited: produce the `h_succ`-shaped emitter facts (one family per body kind), and *nothing about
+brackets* is left in it — the [[Reflection 214]] depth-transparency, once wired this way, removed an entire
+branch of the case analysis rather than merely simplifying it.
