@@ -2262,17 +2262,27 @@ what remains is assembling `FlowSubrangesOk`). The shape of the remaining produc
    Each runs `flowBracketBalance_matching_close_{seq,map}` for the close's position+type, then
    `seq_bracket_succ_reduce` for the successor, leaving the lone input `h_succ`. Build green 515,
    sorries held at 4, both on the pure triple.
+   **Brick (d-shape), bracket-conjunct assembly (map side) — LANDED** (commit `f7229833`, Reflection 217):
+   the map analogues, `WellBracketed.lean` "typed locator part 7" right after the seq conjuncts.
+   `map_key_bracket_conjunct` (M5: after a `.key` at depth-0 `k`, opener at `k+1` → matching close + `.value`
+   successor via `map_key_bracket_value_reduce`) and `map_value_bracket_conjunct` (M8: after a `.value`,
+   opener at `k+1` → matching close + `FE ∨ (mapEnd ∧ j+1=hi)` successor via `map_value_bracket_succ_reduce`).
+   Two differences from seq: the opener sits at `k+1` (the caller supplies the depth-0 at the opener as
+   `h_k1_depth`), and the opener *kind* is a genuine 2-way disjunction in the conjunct hypothesis — so the
+   kind split (`rcases`) lives *inside* each lemma, each branch calling its matching typed locator and
+   re-asserting the kind in the output disjunction. **M9/M10 (`bracket_seq`/`bracket_map`) need no wrapper —
+   they are *exactly* the typed-locator outputs**, so the assembly site invokes
+   `flowBracketBalance_matching_close_{seq,map}` directly. Build green 515, sorries held at 4, both on the
+   pure triple. **The bracket-conjunct assembly is now complete on both sides** — what remains of `(d-shape)`
+   is purely the `h_succ`-shaped emitter facts.
    **Remaining sub-bricks of (d)**:
-   (d-shape) cont'd, map side — `map_key_bracket_conjunct` / `map_value_bracket_conjunct` (M5/M8, each a
-   2-way split on the `.flowSequenceStart`/`.flowMappingStart` opener kind, routing through
-   `map_key_bracket_value_reduce` / `map_value_bracket_succ_reduce`) and M9/M10 (direct from
-   `flowBracketBalance_matching_close_{seq,map}`, no successor); then the *single* underlying "next depth-0
+   the *single* underlying "next depth-0
    token after a complete value is `.flowEntry` or the body close" emitter fact (and its
    `.key`/`.value`/content-start siblings: `scalar_succ`, `after_fe`, `key_content`, `key_start`, …) for
    every nested subrange — i.e. the `h_succ`-shaped premises the assembly + reduction lemmas now consume.
    This is the genuinely emitter-output-characterizing half, recursive over the emitted value tree;
    (d-assemble) bundle the local Dyck (`flowBracketBalance_interior_dyck` → `WellTyped_subrange`, both
-   LANDED) + the bracket-conjunct assembly (seq LANDED, map next) + the scalar/key/value/content-start
+   LANDED) + the bracket-conjunct assembly (seq + map both LANDED) + the scalar/key/value/content-start
    shape facts into `SeqBodyProps`/`MapBodyProps` and `FlowSubrangesOk`.
 3. Instantiate `flow_parser_ok_of_structure` at `(lo, hi) = (2, tokens.size−2)`,
    `fuel = 4·tokens.size+4` → close the 2 structure sorries (`NonemptyStructure.lean` 576/804 — **both**
@@ -14975,6 +14985,25 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
+                **Total .body scope re-estimate (SIXTY-FIFTH revision —
+                after **Thread A step 3 sub-step 2's brick (d-shape) cont'd — *bracket-conjunct
+                assembly (map side)* — landed: the map analogues complete the assembly on both
+                sides** (commit `f7229833`, Reflection 217). Two pure lemmas in `WellBracketed.lean`
+                (typed locator part 7, right after the seq conjuncts): `map_key_bracket_conjunct`
+                (M5: after a `.key` at depth-0 `k`, opener at `k+1` → matching close + `.value`
+                successor via `map_key_bracket_value_reduce`) and `map_value_bracket_conjunct` (M8:
+                after a `.value`, opener at `k+1` → matching close + `FE ∨ (mapEnd ∧ j+1=hi)`
+                successor via `map_value_bracket_succ_reduce`). Two differences from the seq side:
+                the opener sits at `k+1` (the caller supplies depth-0 at the opener as `h_k1_depth`),
+                and the opener *kind* is a genuine 2-way disjunction in the conjunct hypothesis — so
+                the kind split (`rcases`) lives *inside* each lemma, each branch calling its matching
+                typed locator and re-asserting the kind in the output disjunction. **M9/M10
+                (`bracket_seq`/`bracket_map`) need no wrapper — they are *exactly* the typed-locator
+                outputs**, so the assembly site invokes `flowBracketBalance_matching_close_{seq,map}`
+                directly. **The bracket-conjunct assembly is now complete on both sides** — what
+                remains of `(d-shape)` is purely the `h_succ`-shaped emitter facts, then
+                `(d-assemble)`. Build green 515 jobs, **sorries held at 4**, both lemmas `sorryAx`-free
+                on the pure triple. See Reflection 217, on top of the
                 **Total .body scope re-estimate (SIXTY-FOURTH revision —
                 after **Thread A step 3 sub-step 2's brick (d-shape) cont'd — *bracket-conjunct
                 assembly (seq side)* — landed: the typed locator and the successor reduction are
@@ -24527,3 +24556,31 @@ needing an *inner* 2-way split because there the opener kind is itself existenti
 producer and a consumer-shaped reducer as separate green increments, the lemma that joins them should be
 trivial; if it isn't, one of the two halves was stated in the wrong vocabulary and should be re-shaped, not
 patched at the join.**
+
+### Reflection 217 (new, 2026-06-02): a disjunction in the consumer's shape pulls the case split *into* the assembly — but only the one branch-local fact the split governs, never the plumbing around it
+
+[[Reflection 216]] predicted the map side would differ from the seq side by needing an *inner* 2-way split,
+because there the opener kind is existential in the conjunct hypothesis (`tokens[k+1]!.val =
+.flowSequenceStart ∨ .flowMappingStart`) rather than fixed by the lemma. The brick confirms it exactly, and
+sharpens *what* the split costs. `map_key_bracket_conjunct` / `map_value_bracket_conjunct` `rcases` the
+opener disjunction and run two near-identical branches — but each branch is still the same six-line plumbing
+(typed locator → two endpoint `rfl` deltas → landed reduce). The split doubles the *line count* without
+adding any new *idea*: the only thing that genuinely differs between branches is **which typed locator** is
+called (`..._seq` vs `..._map`) and **which half of the output disjunction** is re-asserted (`Or.inl` vs
+`Or.inr`). Everything downstream of the close position — the depth-transparency reduction, the successor — is
+branch-agnostic, because the successor is governed by the body (`.value` after a key, `mapEnd|FE` after a
+value), not by the bracket kind. The same successor-direction asymmetry [[Reflection 216]] named on the seq
+side holds on the map side, just with M5/M8's body-specific successors instead of one shared seq successor.
+
+Two further confirmations of the "state it in the consumer's shape" discipline ([[Reflection 215]]). First:
+**M9/M10 needed no lemma at all** — `bracket_seq`/`bracket_map` in `MapBodyProps` are *byte-identical* to the
+typed-locator conclusion, so the assembly site calls `flowBracketBalance_matching_close_{seq,map}` directly.
+A wrapper would have been pure ceremony; recognizing the identity is the work. Second: the opener at `k+1`
+(one past the depth-0 `.key`/`.value`) meant I had a *design choice* — fold the `.key`→`k+1`-depth bridge
+into the lemma, or take depth-0-at-the-opener as a hypothesis (`h_k1_depth`). I took the hypothesis, mirroring
+the seq side's `h_k_depth`, so that the conjunct lemmas stay *purely about the bracket pair* and the trivial
+`.key`/`.value`-is-delta-0 bridge lives once at the assembly site where the ambient well-bracketed context
+already sits. The general lesson: **when the consumer's shape contains a disjunction, let the case split
+enter the assembly — but split only the branch-local fact it governs (here: locator choice + output tag),
+and keep every body-governed and plumbing step outside the split; if a step is being duplicated across
+branches, it didn't depend on the disjunction and belongs above it.**
