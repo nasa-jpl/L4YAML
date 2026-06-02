@@ -6,6 +6,7 @@ version = "0.4.6"
 defaultTargets = [
   "L4YAML",
   "Tests.Guards",
+  "Tests.ProducerGuardedTrap",
   "tryparse",
   "tryscan",
   "tryroundtrip",
@@ -49,6 +50,9 @@ name = "L4YAML"
 
 [[lean_lib]]
 name = "Tests.Guards"
+
+[[lean_lib]]
+name = "Tests.ProducerGuardedTrap"
 
 [[lean_lib]]
 name = "Tests.VerifiedResult"
