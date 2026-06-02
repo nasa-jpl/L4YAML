@@ -2113,15 +2113,24 @@ work is the *plumbing* that feeds it.
 **Next session — `.parsenode.discharge` cont'd** (the dispatcher AND the matching locator are built;
 what remains is assembling `FlowSubrangesOk`).
 
-> **Frontier (post-Reflection 219, commit `a57ae4eb`).** The `(d-shape)` algebra is now complete:
-> the bracket conjuncts are correctly guarded (Reflection 218) AND their `h_succ` substrate — the
-> value-end successor — exists as `EntryUnit` / `SafeBodyUnit_succ` / `SafeBodyUnit_array_succ`
-> (Reflection 219), the emitter-specific dual of `SafeBody_array_flowEntry`. **Immediate next
-> sub-brick:** thread `EntryUnit` through the `emit{List,PairList}` producers so the scanned filtered
-> body is a `SafeBodyUnit` (not merely a `SafeBody`) — each `emit v` block is a unit entry
-> (`EntryUnit_scalar` for a scalar leaf, `EntryUnit_wrap` for a `[…]`/`{…}` block off the existing
-> `WellBracketed block`), `.flowEntry`-separated — then `SafeBodyUnit_array_succ` discharges the
-> concrete `scalar_succ` / `value_scalar_succ` and the bracket-conjunct `h_succ` premises. Those feed
+> **Frontier (post-Reflection 220, commit `e6bb3ad4`).** The `(d-shape)` algebra is complete
+> (the bracket conjuncts are correctly guarded — Reflection 218 — AND their `h_succ` substrate, the
+> value-end successor `EntryUnit` / `SafeBodyUnit_succ` / `SafeBodyUnit_array_succ`, exists —
+> Reflection 219), and the **sequence side** of threading `EntryUnit` through the producers is now
+> LANDED (Reflection 220, commit `e6bb3ad4`): `EmitScansInFlowBlock` carries `EntryUnit block` (each
+> `emit v` is one unit entry — `EntryUnit_scalar` / `EntryUnit_wrap` off the existing `WellBracketed
+> block`), discharged in `emit_scans_block_combined`'s three block cases, and `emitList_scans_safebody`
+> now also concludes `SafeBodyUnit ContentStartTok block`. **Immediate next sub-bricks (two, in
+> order):** (1) *consume* the seq `SafeBodyUnit` — feed `SafeBodyUnit_array_succ` in
+> `emitList_body_filtered_characterization` / the seq structure proof to discharge the concrete
+> `scalar_succ` / bracket-conjunct `h_succ` premises, then `FlowSubrangesOk` →
+> `flow_parser_ok_of_structure` → **close the seq structure sorry** (`NonemptyStructure.lean` 576);
+> (2) the **map side**, which is *not* a direct `EntryUnit` thread — a map *pair* entry
+> `.key block_k .value block_v` has an interior depth-0 `.value`, so the whole pair is NOT an
+> `EntryUnit`; the value-end there needs a pair-level refinement (apply `EntryUnit` to each key/value
+> block, with a separate per-pair successor), to be designed before the map sorry (804) closes. Once
+> the seq `h_succ` premises are discharged, `SafeBodyUnit_array_succ` feeds them as the bracket-conjunct
+> `h_succ` consumers expect. Those feed
 > the bracket conjuncts + `SafeBodyProps`/`MapBodyProps` fields → `FlowSubrangesOk` →
 > `flow_parser_ok_of_structure` (`FlowParserAcceptance.lean`) at `(2, tokens.size−2)`,
 > `fuel = 4·tokens.size+4` → close the two `NonemptyStructure.lean` structure sorries (576/804) → the
@@ -2319,6 +2328,21 @@ The shape of the remaining producer:
    end, successor `.flowEntry`-or-body-close, exactly the `flowBracketDelta tokens[j]!.val = -1`
    discriminator the guarded `h_succ` consumes. Pure `pbalance`, axioms `[propext, Quot.sound]`, no
    sorry; **enablement**. Build green 517, sorries held at 4.
+   **Brick (d-shape), `EntryUnit`/`SafeBodyUnit` thread — sequence side — LANDED** (commit
+   `e6bb3ad4`, Reflection 220): Reflection 219's `EntryUnit`/`SafeBodyUnit` algebra is now *threaded
+   through the producers* on the sequence side. `EmitScansInFlowBlock` (the per-`emit v` leaf block
+   predicate) gains a conjunct `EntryUnit block` — a single `emit v` is one unit entry, a lone scalar
+   (`EntryUnit_scalar`) or one matched `[…]`/`{…}` pair (`EntryUnit_wrap`, off the `WellBracketed
+   block` it already carries) — discharged in `emit_scans_block_combined`'s three `block` cases
+   (scalar/sequence/mapping); `emitList_scans_safebody` then also concludes `SafeBodyUnit
+   ContentStartTok block`, assembled by `SafeBodyUnit.single`/`.cons` exactly as the `SafeBody` twin
+   beside it. **The savedkey predicate is deliberately untouched**: a map *pair* entry
+   `.key block_k .value block_v` has an interior depth-0 `.value`, so the pair is NOT an `EntryUnit`
+   (the map side needs a pair-level refinement, deferred). All `EmitScansInFlowBlock` consumers thread
+   the new conjunct (ignored where unused). Build green 519, sorries held at 4; `emitList_scans_safebody`
+   `sorryAx`-free on the pure triple `[propext, Classical.choice, Quot.sound]`. **Enablement**: the seq
+   `SafeBodyUnit` is now established, ready to feed `SafeBodyUnit_array_succ` and close the seq
+   structure sorry (576) — the next sub-brick.
    **Remaining sub-bricks of (d)**:
    the *single* underlying "next depth-0
    token after a complete value is `.flowEntry` or the body close" emitter fact (and its
@@ -2332,9 +2356,13 @@ The shape of the remaining producer:
    `scalar scalar`), which the emitter never produces; the entry refinement that pins value-ends —
    `EntryUnit` (no interior depth-0 ⇒ a scalar-headed unit entry is a singleton) with the forward
    successor `SafeBodyUnit_succ` / `SafeBodyUnit_array_succ` — **is now LANDED** (Reflection 219,
-   commit `a57ae4eb`). What remains is threading `EntryUnit` through the `emit{List,PairList}`
-   producers (so the scanned filtered body is a `SafeBodyUnit`, not merely a `SafeBody`) to discharge
-   the concrete `scalar_succ`/`value_scalar_succ`/`h_succ` facts.
+   commit `a57ae4eb`), and the **sequence-side thread of it through the producer is LANDED too**
+   (Reflection 220, commit `e6bb3ad4`): `EmitScansInFlowBlock` carries `EntryUnit block` and
+   `emitList_scans_safebody` now concludes `SafeBodyUnit ContentStartTok block`. What remains is
+   (i) *consuming* that seq `SafeBodyUnit` — feeding `SafeBodyUnit_array_succ` to discharge the concrete
+   `scalar_succ`/`h_succ` facts and close the seq sorry (576); and (ii) the **map side**, where the
+   per-pair entry is not itself an `EntryUnit` (interior depth-0 `.value`), so it needs a pair-level
+   refinement before the map sorry (804) closes.
    This is the genuinely emitter-output-characterizing half, recursive over the emitted value tree;
    (d-assemble) bundle the local Dyck (`flowBracketBalance_interior_dyck` → `WellTyped_subrange`, both
    LANDED) + the bracket-conjunct assembly (seq + map both LANDED) + the scalar/key/value/content-start
@@ -15040,6 +15068,22 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
+                **Total .body scope re-estimate (SIXTY-EIGHTH revision —
+                after **Thread A step 3 sub-step 2's brick (d-shape) cont'd — *`EntryUnit`/`SafeBodyUnit`
+                thread, sequence side* — landed: Reflection 219's value-end algebra is now threaded
+                through the producers on the seq side** (commit `e6bb3ad4`, Reflection 220).
+                `EmitScansInFlowBlock` (the per-`emit v` leaf block) gains `EntryUnit block` — one
+                `emit v` is a single unit entry, a lone scalar (`EntryUnit_scalar`) or one matched
+                `[…]`/`{…}` pair (`EntryUnit_wrap`, off the existing `WellBracketed block`) — discharged
+                in `emit_scans_block_combined`'s three `block` cases; `emitList_scans_safebody` then also
+                concludes `SafeBodyUnit ContentStartTok block` (`SafeBodyUnit.single`/`.cons`, the unit
+                twin of the `SafeBody` it already builds). The savedkey predicate is *untouched* — a map
+                pair `.key block_k .value block_v` has an interior depth-0 `.value`, so the pair is not
+                an `EntryUnit`; the map side needs its own pair-level refinement, deferred. **Enablement
+                only** — the seq `SafeBodyUnit` is established, not yet consumed: feeding it to
+                `SafeBodyUnit_array_succ` (to discharge the `h_succ`/`scalar_succ` premises and close the
+                seq sorry 576) is the next sub-brick. Build green 519 jobs, **sorries held at 4**;
+                `emitList_scans_safebody` `sorryAx`-free on the pure triple. See Reflection 220, on top of the
                 **Total .body scope re-estimate (SIXTY-SEVENTH revision —
                 after **Thread A step 3 sub-step 2's brick (d-shape) cont'd — *entry refinement
                 `EntryUnit` + value-end successor* — landed: the `(d-assemble)` substrate the
@@ -24778,3 +24822,35 @@ pure algebra, leaving only the threading of `EntryUnit` through the `emit{List,P
 the next, genuinely emitter-shaped, sub-brick. Sharpens [[Reflection 218]]: the guard
 `flowBracketDelta tokens[j]!.val = -1` is the *bracket-side* shadow of this same value-end/value-start
 distinction; `EntryUnit` is its *body-side* substrate.
+
+### Reflection 220 (new, 2026-06-02): a refinement threads cleanly through the half of a structure where it is *true*, and the asymmetry surfaces precisely at the predicate boundary you decline to touch
+
+[[Reflection 219]] forecast "threading `EntryUnit` through the `emit{List,PairList}` producers" as one
+next sub-brick. Doing it surfaced that it is *two* sub-bricks, split along a line the algebra forced,
+not one I chose: the sequence side threads in a dozen mechanical edits, and the map side does not
+thread at all without new machinery. The reason is the definition of `EntryUnit` itself — every proper
+nonempty prefix at balance `≥ 1`, i.e. *no interior depth-0 position*. A sequence item `emit v` is one
+unit by construction (a lone scalar, or one matched `[…]`/`{…}` pair); the predicate is simply *true*
+of it, so `EntryUnit_scalar`/`EntryUnit_wrap` discharge it off facts (`WellBracketed block`, the token
+value) the leaf producer already had in hand. But a map *pair* entry is `.key block_k .value block_v` —
+the `.value` token sits at depth 0 *inside* the entry, a textbook interior depth-0 split. `EntryUnit`
+is **false** of a map pair. So `SafeBodyUnit (· = .key)` over the map body is not a refinement of its
+`SafeBody` twin; it is a different statement that needs a pair-level successor (apply `EntryUnit`
+per key/value block, glue with a bespoke "value-end inside a pair" lemma), still to be designed.
+
+Two lessons. First, the *practical* one: when a new invariant is genuinely true of one constructor and
+false of another, thread it through exactly the predicate where it holds and leave the other predicate
+untouched — here, `EntryUnit block` went onto `EmitScansInFlowBlock` (sequence items, map *values* —
+each a lone `emit v`) and **not** onto `EmitScansInFlowSavedKeyBlock` (whose block is a key but whose
+*entry* in the map body is the whole pair). Adding it to the savedkey predicate would have type-checked
+(the key block alone *is* a unit) yet been a trap in the [[Reflection 218]] sense — a true-but-useless
+conjunct that the map's `SafeBodyUnit` could never actually consume, because the thing that needs to be
+a unit is the pair, not the key. Second, the *structural* one, sharpening [[Reflection 219]]: that
+reflection located the converse/forward asymmetry *within* one structure (separator vs value-end on the
+same body); this one shows the *same asymmetry re-appears one level up*, between the two body predicates
+— the sequence body is a body of units, the map body is a body of pairs-each-of-which-contains-a-split.
+The refinement that was "the emitter-specific part" for sequences is, for mappings, only *part* of the
+emitter-specific part. The honest scope of "thread `EntryUnit` through the producers" was therefore
+narrower than its own forecast — and the boundary where it stopped being mechanical is exactly the
+predicate (`EmitScansInFlowSavedKeyBlock`) I declined to touch. Build green 519, sorries held at 4,
+`emitList_scans_safebody` `sorryAx`-free on the pure triple — pure enablement, seq side only.
