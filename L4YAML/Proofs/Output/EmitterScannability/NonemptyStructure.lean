@@ -615,6 +615,27 @@ theorem scanFiltered_emitSeq_nonempty_structure
     · right
       refine ⟨by rw [h_tokens_sz_eq]; exact h', ?_⟩
       rw [h_tok_body (k + 1) h']; exact h_fe
+  -- [NEW] Value-close-guarded successor: re-express `_h_body_succ` in the EXACT `h_succ` shape the
+  -- bracket-conjunct assemblers (`seq_bracket_{seq,map}_conjunct`) and `SeqBodyProps.scalar_succ`
+  -- consume.  The conjunct guard is the value-CLOSE fact `flowBracketDelta tokens[j]!.val = -1`
+  -- (a `]`/`}` pop), which is the bracket-side discriminator for "value-end, not separator"
+  -- (Reflection 218): a `.flowEntry` separator carries delta `0`, so `delta = -1 → ≠ .flowEntry`
+  -- discharges `_h_body_succ`'s guard.  The two output cases map directly: a `.flowEntry` next →
+  -- left disjunct; the body close (`j+1 = tokens.size-2`) → the boundary `.flowSequenceEnd`
+  -- (`h_tpe`) with `j+1 = hi` → right disjunct.  Bound as enablement (the producer-assembly brick
+  -- feeds it to the conjuncts).
+  have _h_succ_guarded : ∀ j, 2 ≤ j → j < tokens.size - 2 →
+      flowBracketDelta tokens[j]!.val = -1 →
+      flowBracketBalance tokens 2 (j + 1) = 0 →
+      j + 1 ≤ tokens.size - 2 ∧
+      (tokens[j + 1]!.val = .flowEntry ∨
+       (tokens[j + 1]!.val = .flowSequenceEnd ∧ j + 1 = tokens.size - 2)) := by
+    intro j h_lo h_hi h_delta h_bal
+    have h_nfe : tokens[j]!.val ≠ .flowEntry := by
+      intro h_eq; rw [h_eq] at h_delta; exact absurd h_delta (by decide)
+    rcases _h_body_succ j h_lo h_hi h_bal h_nfe with h_end | ⟨h', h_fe⟩
+    · exact ⟨Nat.le_of_eq h_end, Or.inr ⟨by rw [h_end]; exact h_tpe, h_end⟩⟩
+    · exact ⟨Nat.le_of_lt h', Or.inl h_fe⟩
   have h_pnok : L4YAML.Proofs.ParserWellBehaved.ParseNodeFlowSeqOk
       tokens (tokens.size - 2) (4 * tokens.size + 4) 2 := sorry
   exact ⟨h_sz5, h_t0, h_tlast, h_t1, h_tpe, h_content0, h_fe_pattern,
