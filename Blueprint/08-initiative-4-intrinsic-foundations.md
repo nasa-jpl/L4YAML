@@ -2110,15 +2110,17 @@ from a depth-0 opener at `k`, the matching close `j` (`k < j < hi`, closer, bala
 `(k+1, j)`). Pure-triple, sorries held at 4. This is the combinatorial core; the remaining producer
 work is the *plumbing* that feeds it.
 
-**Next session — `.parsenode.discharge` cont'd** (the dispatcher is built AND WIRED — consumed at the
-outer seq span, commit `79350657`; the matching locator is built; and the `SeqBodyProps` *assembler*
-`seqBodyProps_assemble` is now extracted parametric in `[lo, hi)`, commit `45fe7417`, so the *assemble*
-half of producing `FlowSubrangesOk.seq` is done. What remains is purely *producing the three
+**Next session — `.parsenode.discharge` cont'd** (the dispatcher is built AND WIRED on BOTH sides —
+consumed at the outer seq span, commit `79350657`, and the outer map span, commit `656b5fbd`; the matching
+locator is built; and the `SeqBodyProps` *assembler* `seqBodyProps_assemble` is now extracted parametric in
+`[lo, hi)`, commit `45fe7417`, so the *assemble* half of producing `FlowSubrangesOk.seq` is done. Both
+structure sorries are now the IDENTICAL structural residual `FlowSubrangesOk tokens` (`NonemptyStructure.lean`
+725 seq / 966 map), so one Phase-J producer closes both. What remains is purely *producing the three
 primitives* — content-start / value-end successor / post-`.flowEntry` content-start — at an arbitrary
-nested subrange, then feeding `seqBodyProps_assemble`; the seq sorry is the `FlowSubrangesOk` structural
-residual at `NonemptyStructure.lean` 725).
+nested subrange, feeding `seqBodyProps_assemble` for the `.seq` field, plus the parallel `mapBodyProps_assemble`
++ pair-level refinement for the `.map` field).
 
-> **Frontier (post-Reflection 226, commit `45fe7417`).** The `(d-shape)` algebra is complete
+> **Frontier (post-Reflection 227, commit `656b5fbd`).** The `(d-shape)` algebra is complete
 > (the bracket conjuncts are correctly guarded — Reflection 218 — AND their `h_succ` substrate, the
 > value-end successor `EntryUnit` / `SafeBodyUnit_succ` / `SafeBodyUnit_array_succ`, exists —
 > Reflection 219), and the **sequence side** of threading `EntryUnit` through the producers is now
@@ -2167,22 +2169,29 @@ residual at `NonemptyStructure.lean` 725).
 > from `h_body_succ` + `h_tpe`; the proof generalized *for free* because its only span-specific inputs were
 > already hypotheses and the conjunct helpers were already parametric in `lo hi`. The outer span now
 > discharges by a one-line call. This is the *assemble* half of producing `FlowSubrangesOk.seq`, done and
-> axiom-clean; the residual is now purely the *produce-the-primitives* half. **Immediate next sub-bricks
-> (two, in
+> axiom-clean; the residual is now purely the *produce-the-primitives* half. **And the dispatcher's `.map`
+> half is now WIRED too** (Reflection 227, commit `656b5fbd`): `scanFiltered_emitMap_nonempty_structure`
+> still carried the raw `ParseEntryFlowMapOk` parser-EXECUTION sorry (the map side never got the seq side's
+> reduction); instantiating `flow_parser_ok_of_structure`'s `.map` half at the outer span discharges it from
+> the same `have h_subranges : FlowSubrangesOk tokens`. **Both structure sorries are now the identical
+> structural residual** `FlowSubrangesOk tokens` (`NonemptyStructure.lean` 725 seq / 966 map), so a single
+> Phase-J producer of `FlowSubrangesOk` closes BOTH at once — the frontier's two structure obligations have
+> *converged onto one type*. **Immediate next sub-bricks (two, in
 > order):** (1) *produce the seq subrange primitives* — derive the three primitives
 > (content-start at `lo`, the value-end successor, the post-`.flowEntry` content-start) at an arbitrary
-> nested balanced subrange and feed `seqBodyProps_assemble` to discharge the residual `FlowSubrangesOk.seq`
-> (`WellTyped_subrange` already supplies the per-subrange `WellTyped`; the per-subrange value-end successor /
-> content-start over the nested emitted tree is the recursive bulk — Phase J) → **close the seq structure
-> sorry** (`NonemptyStructure.lean` 725, was 703/692/640); (2) the **map side**, which is *not* a direct `EntryUnit` thread — a map *pair* entry
-> `.key block_k .value block_v` has an interior depth-0 `.value`, so the whole pair is NOT an
+> nested balanced subrange and feed `seqBodyProps_assemble` to assemble `SeqBodyProps tokens lo hi`, i.e. the
+> `FlowSubrangesOk.seq` field (`WellTyped_subrange` already supplies the per-subrange `WellTyped`; the
+> per-subrange value-end successor / content-start over the nested emitted tree is the recursive bulk —
+> Phase J); (2) the **map side** `FlowSubrangesOk.map` field, which is *not* a direct `EntryUnit` thread — a
+> map *pair* entry `.key block_k .value block_v` has an interior depth-0 `.value`, so the whole pair is NOT an
 > `EntryUnit`; the value-end there needs a pair-level refinement (apply `EntryUnit` to each key/value
-> block, with a separate per-pair successor), to be designed before the map sorry (868) closes. Once
+> block, with a separate per-pair successor), and a `mapBodyProps_assemble` parallel to `seqBodyProps_assemble`.
+> Both fields together build the one `FlowSubrangesOk tokens` shared by sorries 725/966. Once
 > the seq `h_succ` premises are discharged, `SafeBodyUnit_array_succ` feeds them as the bracket-conjunct
 > `h_succ` consumers expect. Those feed
 > the bracket conjuncts + `SafeBodyProps`/`MapBodyProps` fields → `FlowSubrangesOk` →
 > `flow_parser_ok_of_structure` (`FlowParserAcceptance.lean`) at `(2, tokens.size−2)`,
-> `fuel = 4·tokens.size+4` → close the two `NonemptyStructure.lean` structure sorries (640/868) → the
+> `fuel = 4·tokens.size+4` → close the two `NonemptyStructure.lean` structure sorries (725/966) → the
 > two base `emit_roundtrip_{sequence,mapping}_content_eq` (`EmitterScannability.lean` 832/872) →
 > `universal_roundtrip`.
 
@@ -15161,6 +15170,25 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
+                **Total .body scope re-estimate (SEVENTY-FIFTH revision —
+                after **Thread A step 3 sub-step 2's brick (d-shape) cont'd — *dispatcher `.map` half
+                wired — map sorry reduced to structural `FlowSubrangesOk`* — landed** (commit `656b5fbd`,
+                Reflection 227). The map structure proof `scanFiltered_emitMap_nonempty_structure` still
+                carried the raw `ParseEntryFlowMapOk` parser-EXECUTION sorry — the seq side got its
+                reduction-by-import last week (commit `79350657`) but the map side did not. Applying
+                `flow_parser_ok_of_structure`'s `.map` half at the outer span `(2, tokens.size−2)`,
+                `fuel = 4·tokens.size+4` discharges `h_pnok : ParseEntryFlowMapOk` from a single
+                `have h_subranges : FlowSubrangesOk tokens := sorry`. The map sorry's TYPE thereby flips from
+                a parser-execution obligation to the SAME structural `FlowSubrangesOk tokens` the seq side
+                already carries — so the two remaining structure sorries (`NonemptyStructure.lean` 725 seq /
+                966 map) are now the IDENTICAL residual, closable together by one Phase-J producer of
+                `FlowSubrangesOk` (the dispatcher proves `FlowSubrangesOk → seq-acc ∧ map-acc` as one theorem;
+                both consumers now reduced through it ⟹ the open residual is likewise one theorem). Build green
+                521 jobs, **sorries held at 4** (725/966 structural + base 832/872); the map theorem is
+                `sorryAx`-only on `h_subranges`, otherwise pure triple. No new lemmas — pure wiring (one
+                `have` + one application, mirroring the seq side). next sub-brick: produce `FlowSubrangesOk`
+                (both `.seq` via `seqBodyProps_assemble` and `.map` via a parallel `mapBodyProps_assemble`).
+                See Reflection 227, on top of the
                 **Total .body scope re-estimate (SEVENTY-FOURTH revision —
                 after **Thread A step 3 sub-step 2's brick (d-shape) cont'd — *parametric `SeqBodyProps`
                 assembler extracted (Phase J seed)* — landed** (commit `45fe7417`, Reflection 226).
@@ -25254,3 +25282,26 @@ will consume at every node. The general tell: when an inline `have P[c]` proves 
 shape you ultimately need universally, check whether the proof's constant-dependence is all in its hypotheses;
 if so, the cheap, correct move is to abstract it to `∀ x, (hyps x) → P[x]` *now* — you convert "I proved one
 case" into "I built the assembler," and the remaining work sharpens to producing the hypotheses.
+
+### Reflection 227 (new, 2026-06-02): applying a reduction-by-import to the *symmetric* side does more than retype a second sorry — it *unifies* two residuals into one shared type, so the frontier collapses from two distinct obligations to a single producer that closes both
+
+Reflection 225 reduced the **seq** structure sorry from `ParseNodeFlowSeqOk` (parser execution) to the
+structural `FlowSubrangesOk tokens`, by wiring the verified dispatcher `flow_parser_ok_of_structure`. This
+session (commit `656b5fbd`) applied the *same* move to the **map** side: `scanFiltered_emitMap_nonempty_structure`
+still carried the raw `ParseEntryFlowMapOk` execution sorry; instantiating the dispatcher's `.map` half at the
+outer span discharges it from a single `have h_subranges : FlowSubrangesOk tokens := sorry`. By itself that is
+just Reflection 225 again — a per-sorry retype, count held at 4. The reflection is what the *pair* of reductions
+buys that neither buys alone: **the two structure sorries are now literally the same residual type.** Before
+this session, the frontier's two structure obligations were heterogeneous — one already-structural
+`FlowSubrangesOk` (seq, line 725) and one still-operational `ParseEntryFlowMapOk` (map, line 958). A Phase-J
+producer aimed at the seq residual would have left the map residual untouched, because they spoke different
+languages (structure vs. run). After the symmetric reduction they are *identical* — `FlowSubrangesOk tokens` at
+both 725 and 966 — so the single recursive producer that manufactures `FlowSubrangesOk` discharges **both** in
+one stroke. The dispatcher already proves `FlowSubrangesOk → (seq-acceptance ∧ map-acceptance)` as one theorem;
+the value of reducing both consumers through it is that the *remaining* obligation is now likewise one theorem,
+not two. General principle: when a verified bridge has the shape `Structure → (A ∧ B)` and you have two open
+goals `A` and `B`, reduce **both** through the bridge even though each reduction looks like mere bookkeeping —
+the payoff is not the second retype but the *convergence*, the collapse of two frontier shapes onto the one
+type your next effort already has to produce. Sits with 223–226 in the "shape, not cardinality" family
+([[ref-reduction-by-import]]), but adds a corollary: among shape-changes, prefer the ones that make the open
+residuals *coincide* — coincident residuals are closed together, divergent ones serially.
