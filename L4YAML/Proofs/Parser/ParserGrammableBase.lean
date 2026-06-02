@@ -986,17 +986,30 @@ structure MapBodyProps (tokens : Array (Positioned YamlToken)) (lo hi : Nat) : P
       tokens[j]!.val = .flowMappingEnd ∧
       flowBracketBalance tokens (k+1) j = 0
 
-/-- Universal structural properties: all valid flow body subranges
-    in the token array satisfy `SeqBodyProps` (for seq bodies) or
-    `MapBodyProps` (for map bodies). -/
+/-- Universal structural properties: every valid flow body subrange
+    in the token array satisfies `SeqBodyProps` (for seq bodies) or
+    `MapBodyProps` (for map bodies).
+
+    **Body-start guard** (`tokens[lo - 1]!.val = .flowSequenceStart` / `.flowMappingStart`):
+    without it the universal would be FALSE.  A balanced subrange `[lo, hi)` ending in a close
+    bracket need NOT be a genuine body: e.g. for `[a, b]` the subrange starting on the depth-0
+    `.flowEntry` (the `,`) is balanced and ends in `.flowSequenceEnd`, yet `tokens[lo]` is `.flowEntry`,
+    not a content-start, so `SeqBodyProps.content_start` fails.  The guard restricts `lo` to a real
+    interior-start — immediately preceded by the matching opener — which is exactly where the
+    dispatcher `flow_parser_ok_of_structure` projects these fields (every projection site has
+    `tokens[lo-1]` = the opener), and exactly where the emitter's structure (and
+    `seqBodyProps_assemble`/`mapBodyProps_assemble`'s `content_start` input) holds.  This is what
+    makes the producer obligation (Phase J) provable rather than false. -/
 structure FlowSubrangesOk (tokens : Array (Positioned YamlToken)) : Prop where
   seq : ∀ lo hi, lo ≤ hi → hi < tokens.size →
     tokens[hi]!.val = .flowSequenceEnd →
     flowBracketBalance tokens lo hi = 0 →
+    tokens[lo - 1]!.val = .flowSequenceStart →
     SeqBodyProps tokens lo hi
   map : ∀ lo hi, lo ≤ hi → hi < tokens.size →
     tokens[hi]!.val = .flowMappingEnd →
     flowBracketBalance tokens lo hi = 0 →
+    tokens[lo - 1]!.val = .flowMappingStart →
     MapBodyProps tokens lo hi
 
 end L4YAML.Proofs.ParserGrammable

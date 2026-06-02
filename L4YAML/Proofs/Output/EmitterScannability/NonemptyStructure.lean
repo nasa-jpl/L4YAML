@@ -856,7 +856,7 @@ theorem scanFiltered_emitSeq_nonempty_structure
       tokens (tokens.size - 2) (4 * tokens.size + 4) 2 :=
     (L4YAML.Proofs.ParserWellBehaved.flow_parser_ok_of_structure
         tokens (4 * tokens.size + 4) h_subranges).1
-      2 (tokens.size - 2) (by omega) (by omega) h_tpe h_outer_bal
+      2 (tokens.size - 2) (by omega) (by omega) h_tpe h_outer_bal h_t1
   exact ⟨h_sz5, h_t0, h_tlast, h_t1, h_tpe, h_content0, h_fe_pattern,
          h_outer_bal, h_dyck, h_wt_interior, h_pnok⟩
 
@@ -1097,7 +1097,7 @@ theorem scanFiltered_emitMap_nonempty_structure
       tokens (tokens.size - 2) (4 * tokens.size + 4) 2 :=
     (L4YAML.Proofs.ParserWellBehaved.flow_parser_ok_of_structure
         tokens (4 * tokens.size + 4) h_subranges).2
-      2 (tokens.size - 2) (by omega) (by omega) h_tpe h_outer_bal
+      2 (tokens.size - 2) (by omega) (by omega) h_tpe h_outer_bal h_t1
   exact ⟨h_sz7, h_t0, h_tlast, h_t1, h_tpe, h_t2_key, h_fe_pattern,
          h_outer_bal, h_dyck, h_wt_interior, h_pnok⟩
 

@@ -883,24 +883,29 @@ theorem flowBracketBalance_bracketSpan {tokens : Array (Positioned YamlToken)} {
 theorem flow_parser_ok_of_structure (tokens : Array (Positioned YamlToken)) (fuel : Nat)
     (hsub : FlowSubrangesOk tokens) :
     (∀ lo hi, lo ≤ hi → hi < tokens.size → tokens[hi]!.val = .flowSequenceEnd →
-       flowBracketBalance tokens lo hi = 0 → ParseNodeFlowSeqOk tokens hi fuel lo) ∧
+       flowBracketBalance tokens lo hi = 0 → tokens[lo - 1]!.val = .flowSequenceStart →
+       ParseNodeFlowSeqOk tokens hi fuel lo) ∧
     (∀ lo hi, lo ≤ hi → hi < tokens.size → tokens[hi]!.val = .flowMappingEnd →
-       flowBracketBalance tokens lo hi = 0 → ParseEntryFlowMapOk tokens hi fuel lo) := by
+       flowBracketBalance tokens lo hi = 0 → tokens[lo - 1]!.val = .flowMappingStart →
+       ParseEntryFlowMapOk tokens hi fuel lo) := by
   -- Strong induction on a span bound `n`; the conjunctive motive proves both predicates.
   have key : ∀ n : Nat, ∀ lo hi : Nat, hi - lo ≤ n →
       (lo ≤ hi → hi < tokens.size → tokens[hi]!.val = .flowSequenceEnd →
-        flowBracketBalance tokens lo hi = 0 → ParseNodeFlowSeqOk tokens hi fuel lo) ∧
+        flowBracketBalance tokens lo hi = 0 → tokens[lo - 1]!.val = .flowSequenceStart →
+        ParseNodeFlowSeqOk tokens hi fuel lo) ∧
       (lo ≤ hi → hi < tokens.size → tokens[hi]!.val = .flowMappingEnd →
-        flowBracketBalance tokens lo hi = 0 → ParseEntryFlowMapOk tokens hi fuel lo) := by
+        flowBracketBalance tokens lo hi = 0 → tokens[lo - 1]!.val = .flowMappingStart →
+        ParseEntryFlowMapOk tokens hi fuel lo) := by
     intro n
     induction n using Nat.strongRecOn with
     | ind n IH =>
       intro lo hi h_span
       refine ⟨?_, ?_⟩
       · ------------------------------------------------------------------ SEQ side
-        intro h_lo_le h_hi_sz h_hi_tok h_hi_bal
+        intro h_lo_le h_hi_sz h_hi_tok h_hi_bal h_lo_open
         intro ps m h_tok h_m_pos h_m_le h_pos h_bs h_bal_ps h_fueladq h_cs
-        have hbody : SeqBodyProps tokens lo hi := hsub.seq lo hi h_lo_le h_hi_sz h_hi_tok h_hi_bal
+        have hbody : SeqBodyProps tokens lo hi :=
+          hsub.seq lo hi h_lo_le h_hi_sz h_hi_tok h_hi_bal h_lo_open
         have hadv_pos : ps.advance.pos = ps.pos + 1 := rfl
         have h_pos_sz : ps.pos < ps.tokens.size := by
           rcases h_cs with ⟨c, s, hp⟩ | hp | hp <;> exact (peek_some_val hp).1
@@ -915,10 +920,10 @@ theorem flow_parser_ok_of_structure (tokens : Array (Positioned YamlToken)) (fue
             hbody.bracket_seq ps.pos h_bs h_pos h_bal_ps h_val
           have h_inner_span : j - (ps.pos + 1) < n := by omega
           have hbody_inner : SeqBodyProps tokens (ps.pos + 1) j :=
-            hsub.seq (ps.pos + 1) j (by omega) (by omega) h_j_tok h_inner_bal
+            hsub.seq (ps.pos + 1) j (by omega) (by omega) h_j_tok h_inner_bal h_val
           have h_pn_inner : ParseNodeFlowSeqOk tokens j fuel (ps.pos + 1) :=
             (IH (j - (ps.pos + 1)) h_inner_span (ps.pos + 1) j (Nat.le_refl _)).1
-              (by omega) (by omega) h_j_tok h_inner_bal
+              (by omega) (by omega) h_j_tok h_inner_bal h_val
           have pre : LoopSeqPreconditions tokens ps.advance j ps.advance.pos (m - 2) :=
             loopSeqPre_of tokens ps.advance j (m - 2)
               (by show ps.tokens = tokens; exact h_tok)
@@ -964,10 +969,10 @@ theorem flow_parser_ok_of_structure (tokens : Array (Positioned YamlToken)) (fue
             hbody.bracket_map ps.pos h_bs h_pos h_bal_ps h_val
           have h_inner_span : j - (ps.pos + 1) < n := by omega
           have hbody_inner : MapBodyProps tokens (ps.pos + 1) j :=
-            hsub.map (ps.pos + 1) j (by omega) (by omega) h_j_tok h_inner_bal
+            hsub.map (ps.pos + 1) j (by omega) (by omega) h_j_tok h_inner_bal h_val
           have h_pn_inner : ParseEntryFlowMapOk tokens j fuel (ps.pos + 1) :=
             (IH (j - (ps.pos + 1)) h_inner_span (ps.pos + 1) j (Nat.le_refl _)).2
-              (by omega) (by omega) h_j_tok h_inner_bal
+              (by omega) (by omega) h_j_tok h_inner_bal h_val
           have pre : LoopMapPreconditions tokens ps.advance j ps.advance.pos (m - 2) :=
             loopMapPre_of tokens ps.advance j (m - 2)
               (by show ps.tokens = tokens; exact h_tok)
@@ -1007,9 +1012,10 @@ theorem flow_parser_ok_of_structure (tokens : Array (Positioned YamlToken)) (fue
             exact flowBracketBalance_bracketSpan h_kj (by omega) (by rw [h_val]; rfl)
               (by rw [h_j_tok]; rfl) h_inner_bal
       · ------------------------------------------------------------------ MAP side
-        intro h_lo_le h_hi_sz h_hi_tok h_hi_bal
+        intro h_lo_le h_hi_sz h_hi_tok h_hi_bal h_lo_open
         intro ps m h_tok h_m_pos h_m_le h_pos h_bs h_bal_ps h_fueladq h_peek
-        have hbody : MapBodyProps tokens lo hi := hsub.map lo hi h_lo_le h_hi_sz h_hi_tok h_hi_bal
+        have hbody : MapBodyProps tokens lo hi :=
+          hsub.map lo hi h_lo_le h_hi_sz h_hi_tok h_hi_bal h_lo_open
         have hadv_pos : ps.advance.pos = ps.pos + 1 := rfl
         obtain ⟨h_pos_sz, h_key_tok⟩ := peek_some_val h_peek
         rw [h_tok] at h_pos_sz h_key_tok
@@ -1075,10 +1081,10 @@ theorem flow_parser_ok_of_structure (tokens : Array (Positioned YamlToken)) (fue
               · rw [h_vval] at h; exact absurd h (by decide)
             have h_inner_span : jv - (vp + 2) < n := by omega
             have hbody_inner : SeqBodyProps tokens (vp + 2) jv :=
-              hsub.seq (vp + 2) jv (by omega) (by omega) h_jv_tok h_jv_bal
+              hsub.seq (vp + 2) jv (by omega) (by omega) h_jv_tok h_jv_bal h_vval
             have h_pn_inner : ParseNodeFlowSeqOk tokens jv fuel (vp + 2) :=
               (IH (jv - (vp + 2)) h_inner_span (vp + 2) jv (Nat.le_refl _)).1
-                (by omega) (by omega) h_jv_tok h_jv_bal
+                (by omega) (by omega) h_jv_tok h_jv_bal h_vval
             let psKa := ({ key_ps with currentPath := savedPath.push (.key keyContent) }
               : ParseState).advance
             have h_psKa_tok : psKa.tokens = tokens := h_kps_tok
@@ -1131,10 +1137,10 @@ theorem flow_parser_ok_of_structure (tokens : Array (Positioned YamlToken)) (fue
               · exact h
             have h_inner_span : jv - (vp + 2) < n := by omega
             have hbody_inner : MapBodyProps tokens (vp + 2) jv :=
-              hsub.map (vp + 2) jv (by omega) (by omega) h_jv_tok h_jv_bal
+              hsub.map (vp + 2) jv (by omega) (by omega) h_jv_tok h_jv_bal h_vval
             have h_pn_inner : ParseEntryFlowMapOk tokens jv fuel (vp + 2) :=
               (IH (jv - (vp + 2)) h_inner_span (vp + 2) jv (Nat.le_refl _)).2
-                (by omega) (by omega) h_jv_tok h_jv_bal
+                (by omega) (by omega) h_jv_tok h_jv_bal h_vval
             let psKa := ({ key_ps with currentPath := savedPath.push (.key keyContent) }
               : ParseState).advance
             have h_psKa_tok : psKa.tokens = tokens := h_kps_tok
@@ -1216,10 +1222,10 @@ theorem flow_parser_ok_of_structure (tokens : Array (Positioned YamlToken)) (fue
             · rw [h_kval] at h; exact absurd h (by decide)
           have h_inner_span : jk - (ps.pos + 2) < n := by omega
           have hbody_inner : SeqBodyProps tokens (ps.pos + 2) jk :=
-            hsub.seq (ps.pos + 2) jk (by omega) (by omega) h_jk_tok h_jk_bal
+            hsub.seq (ps.pos + 2) jk (by omega) (by omega) h_jk_tok h_jk_bal h_kval
           have h_pn_inner : ParseNodeFlowSeqOk tokens jk fuel (ps.pos + 2) :=
             (IH (jk - (ps.pos + 2)) h_inner_span (ps.pos + 2) jk (Nat.le_refl _)).1
-              (by omega) (by omega) h_jk_tok h_jk_bal
+              (by omega) (by omega) h_jk_tok h_jk_bal h_kval
           have h_adv_peek : ps.advance.peek? = some .flowSequenceStart :=
             peek_of_pos_val hadv_pos (by rw [show ps.advance.tokens = ps.tokens from rfl, h_tok]; omega)
               (by rw [show ps.advance.tokens = ps.tokens from rfl, h_tok]; exact h_kval)
@@ -1276,10 +1282,10 @@ theorem flow_parser_ok_of_structure (tokens : Array (Positioned YamlToken)) (fue
             · exact h
           have h_inner_span : jk - (ps.pos + 2) < n := by omega
           have hbody_inner : MapBodyProps tokens (ps.pos + 2) jk :=
-            hsub.map (ps.pos + 2) jk (by omega) (by omega) h_jk_tok h_jk_bal
+            hsub.map (ps.pos + 2) jk (by omega) (by omega) h_jk_tok h_jk_bal h_kval
           have h_pn_inner : ParseEntryFlowMapOk tokens jk fuel (ps.pos + 2) :=
             (IH (jk - (ps.pos + 2)) h_inner_span (ps.pos + 2) jk (Nat.le_refl _)).2
-              (by omega) (by omega) h_jk_tok h_jk_bal
+              (by omega) (by omega) h_jk_tok h_jk_bal h_kval
           have h_adv_peek : ps.advance.peek? = some .flowMappingStart :=
             peek_of_pos_val hadv_pos (by rw [show ps.advance.tokens = ps.tokens from rfl, h_tok]; omega)
               (by rw [show ps.advance.tokens = ps.tokens from rfl, h_tok]; exact h_kval)
@@ -1327,7 +1333,7 @@ theorem flow_parser_ok_of_structure (tokens : Array (Positioned YamlToken)) (fue
             by rw [h_kps_pos]; omega, by rw [h_kps_pos]; omega, h_kps_tok, h_kps_tp,
             valStep _ (jk + 1) h_kps_pos h_kps_tok h_kps_tp (by omega) (by omega)
               h_value_tok h_bal_key⟩
-  exact ⟨fun lo hi h1 h2 h3 h4 => (key (hi - lo) lo hi (Nat.le_refl _)).1 h1 h2 h3 h4,
-         fun lo hi h1 h2 h3 h4 => (key (hi - lo) lo hi (Nat.le_refl _)).2 h1 h2 h3 h4⟩
+  exact ⟨fun lo hi h1 h2 h3 h4 h5 => (key (hi - lo) lo hi (Nat.le_refl _)).1 h1 h2 h3 h4 h5,
+         fun lo hi h1 h2 h3 h4 h5 => (key (hi - lo) lo hi (Nat.le_refl _)).2 h1 h2 h3 h4 h5⟩
 
 end L4YAML.Proofs.ParserWellBehaved
