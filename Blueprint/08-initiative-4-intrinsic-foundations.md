@@ -2158,16 +2158,22 @@ what remains is assembling `FlowSubrangesOk`). The shape of the remaining produc
    (`j = start`), and extends it one step per recursion (reusing the existing `h_next_ge1`). No real callers
    yet, so the added conjunct breaks nothing. Build green 515, sorries held at 4, pure triple
    `[propext, Classical.choice, Quot.sound]` (no `sorryAx`).
+   **Brick (c-iii-b) — the typed matching close — LANDED** (commit `48861ba4`, Reflection 210): the
+   typed locator is complete — `WellBracketed.lean` now carries `flowBracketBalance_matching_close_{seq,map}`,
+   which given a `WellTyped` interior produce `tokens[j]!.val = .flowSequenceEnd` (resp. `.flowMappingEnd`)
+   for the matching close of a depth-0 `[` (resp. `{`). The core `matching_close_typed_generic` feeds
+   (c-iii-a)'s interior depth-positivity into (c-ii)'s `btFold_getLast?_preserved` with `s0 = [opener-bit]`,
+   so the stack just before the close is the singleton the opener pushed ⟹ the close pops it ⟹
+   `btStep_pop_eq_{seqEnd,mapEnd}` read off the type. `B` is an explicit parameter (no Mathlib `set`); the
+   offset bridge uses `List.drop_take`/`take_take`/`take_add`/`getElem_take`/`getElem_drop` (the planned
+   `drop_take` resolved to `List.drop_take`; `getElem` rewrites route through an element-level equation to
+   avoid a non-type-correct motive). Build green 515, sorries held at 4, all six lemmas `sorryAx`-free on
+   the pure triple. This discharges the **type half** of `bracket_seq`/`bracket_map`/M5/M8/M9/M10.
    **Remaining sub-bricks**:
-   (c-iii-b) the **instantiation** — feed (c-iii-a)'s positivity into (c-ii)'s `btFold_getLast?_preserved`
-   at `(a, b) = (k+1, j)` with `s0 = [opener-type]`: the offset `take`/`drop` arithmetic
-   (`List.take_add`/`drop_take`/`take_take`) translating the prefix-positivity hypothesis from the
-   `pbalance` indices to the segment, plus `flowBracketBalance_eq_pbalance` (the depth = `s0.length + pbalance`
-   reading), so `getLast? [true] = some true` forces the close singleton to be `[true]` ⟹ `.flowSequenceEnd`
-   via `btStep_pop_eq_seqEnd` (and `{`→`}` dually) — discharging the `bracket_*`/M5/M8/M9/M10 conjuncts'
-   type half;
    (d) the flat per-position local-shape facts (`scalar_succ`, `after_fe`, `key_content`, …) for every
-   nested subrange, then assemble `FlowSubrangesOk`.
+   nested subrange, plus the **successor half** of the bracket conjuncts (`j + 1 ≤ hi ∧ (FE | seqEnd)` —
+   an emitter fact layered on the now-typed `j`), then assemble `SeqBodyProps`/`MapBodyProps` and
+   `FlowSubrangesOk`.
 3. Instantiate `flow_parser_ok_of_structure` at `(lo, hi) = (2, tokens.size−2)`,
    `fuel = 4·tokens.size+4` → close the 2 structure sorries (`NonemptyStructure.lean` 576/804 — **both**
    the seq AND map sites now have `h_outer_bal`/`h_dyck` in scope ready to feed alongside `FlowSubrangesOk`).
@@ -14869,6 +14875,35 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
+                **Total .body scope re-estimate (FIFTY-EIGHTH revision —
+                after **Thread A step 3 sub-step 2's brick (c-iii-b) — the typed matching close — landed:
+                the matching close of a depth-0 `[` is provably a `]` (of a `{`, a `}`)**
+                (commit `48861ba4`, Reflection 210). Parts 1 (depth–balance bridge, c-i) and 2
+                (bottom-preservation, c-ii) finally assemble onto the numeric locator. `WellBracketed.lean`
+                now carries six lemmas: `btStep_val_congr`/`btStep_emptypush_delta` (`btStep` reads only
+                `.val`; an empty-stack push forces `flowBracketDelta = 1`); `matching_close_typed_generic`
+                — over an *abstract* `WellTyped` body `B` bridged to the array's `flowBracketBalance`
+                (`hbal`) and values (`hval`), feed (c-iii-a)'s interior depth-positivity into
+                `btFold_getLast?_preserved` with `s0 = [opener-bit]`, so the stack just before the close is
+                the singleton the opener pushed and the close pops it (`btStep tokens[j]! [b] = some []`);
+                `matching_close_typed_core` — specializes the generic to the interior slice
+                `(tokens.toList.take hi).drop lo`, discharging the offset bridge with the *actual* core
+                lemmas `List.drop_take`/`take_take`/`take_add`/`getElem_take`/`getElem_drop` (the
+                planned `drop_take` is `List.drop_take`; `getElem` rewrites must go through an
+                element-level equation to dodge "motive not type correct"; and `set` is Mathlib-only, so
+                `B` is threaded as an explicit *parameter* of the generic lemma rather than a local
+                abbreviation); and `flowBracketBalance_matching_close_{seq,map}` — the consumer-facing
+                payoff: run the numeric locator, then `btStep_pop_eq_{seqEnd,mapEnd}` to pin
+                `tokens[j]!.val = .flowSequenceEnd` (resp. `.flowMappingEnd`). This is exactly the *type*
+                half of `SeqBodyProps.bracket_seq`/`bracket_map` and `MapBodyProps` M5/M8/M9/M10 — the
+                conjunct the type-collapsing numeric balance could never see. Build green 515 jobs,
+                **sorries held at 4** (still pure enablement: produced, not yet consumed), all new lemmas
+                `sorryAx`-free on the pure triple `[propext, Classical.choice, Quot.sound]`. **Remaining**:
+                (d) the flat per-position local-shape facts (`scalar_succ`, `after_fe`, `key_content`, …)
+                for every nested subrange, then assemble `FlowSubrangesOk`; then sub-step 3 (instantiate
+                `flow_parser_ok_of_structure` → close NonemptyStructure 576/804) and sub-step 4 (base
+                `emit_roundtrip_{sequence,mapping}_content_eq` 832/872 → `universal_roundtrip`). See
+                Reflection 210, on top of the
                 **Total .body scope re-estimate (FIFTY-SEVENTH revision —
                 after **Thread A step 3 sub-step 2's brick (c-iii-a) — interior depth-positivity — landed:
                 the numeric locator now hands back the depth invariant its scan already maintained**
@@ -24039,3 +24074,35 @@ consumer needs "property `P` held across a range" and some existing producer sca
 producer's *loop invariant* — if it maintained `P` to terminate, publish `P` in its conclusion by threading it as an
 accumulated hypothesis, rather than proving `P` again in a separate pass. The invariant is already there; you are
 only deciding to keep it.**
+
+### Reflection 210 (new, 2026-06-01): an abstract parameter is the no-Mathlib substitute for `set`; and an element-level equation dodges the dependent-`getElem` motive
+
+Brick (c-iii-b) assembled the typed matching-close locator — the payoff that the matching close of a depth-0 `[` is a
+`]` (of a `{`, a `}`), the type half the numeric balance collapses away. The mathematics was already settled by
+[[Reflection 207]] (bridge), [[Reflection 208]] (bottom-preservation), and [[Reflection 209]] (interior positivity);
+this brick was pure *plumbing* — and the two plumbing obstacles are both worth recording because they recur whenever
+a `WellTyped`-list proof has to talk to an array-with-offset.
+
+**(1) No `set`, so abstract the slice as a parameter.** The proof wants to name the interior slice
+`B := (tokens.toList.drop lo).take (hi − lo)` once and refer to it ~20 times. Mathlib's `set … with h` does exactly
+that — fold every occurrence to a fresh local and give the defining equation. But `set` is Mathlib-only; in core Lean
+it is an "unknown tactic." The clean substitute: factor the heavy proof into a *generic* lemma that takes `B` as an
+explicit `List` **parameter** together with its bridge hypotheses (`hlenB : B.length = hi − lo`,
+`hbal : ∀ t, pbalance (B.take (t−lo)) = flowBracketBalance tokens lo t`, `hval : … B[t−lo].val = tokens[t]!.val`,
+`h_wt : WellTyped B`). Inside the generic lemma `B` is opaque, so there is nothing to fold and no `set` is needed; the
+specializing wrapper instantiates `B` with the concrete slice and discharges the four bridges. **Lesson: when you
+reach for `set` to name and fold a compound subterm and it isn't available, lift the subterm to a parameter of an
+extracted lemma. A universally-quantified variable *is* a folded definition — the binder does the folding the tactic
+would have, and the hypotheses you'd have proved as side-goals become the lemma's premises. This also sharpens the
+statement: it names exactly the four facts about the slice the proof actually uses.**
+
+**(2) Rewrite `getElem` through an element-level equation, not in place.** Translating `B[t−lo].val = tokens[t]!.val`
+wants to rewrite the `getElem` chain (`getElem_take` → `getElem_drop` → `Array.getElem_toList` → `getElem!_pos`)
+*underneath* the `.val` projection. Doing so directly fails with "motive is not type correct": `getElem` carries a
+proof of the bound, and rewriting it changes a term the surrounding motive depends on dependently. The fix is to prove
+the **element** equation `B[t−lo]'hb = tokens[t]!` as a standalone `have` (a plain equation between two
+`Positioned YamlToken` values, where the bound proofs are irrelevant by proof-irrelevance), then `rw` that single
+equation under `.val`. **Lesson: when a `rw` over an indexed accessor reports a non-type-correct motive, don't fight
+the motive — hoist the rewrite out to an equation between the *whole accessed elements* and apply that. Proof-carrying
+accessors (`l[i]'h`, `arr[i]!`) compose badly under in-place rewriting but compose fine as opaque values once you've
+pinned their equality separately.**
