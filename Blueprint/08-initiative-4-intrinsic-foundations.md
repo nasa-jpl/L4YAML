@@ -2112,15 +2112,17 @@ work is the *plumbing* that feeds it.
 
 **Next session — `.parsenode.discharge` cont'd** (the dispatcher is built AND WIRED on BOTH sides —
 consumed at the outer seq span, commit `79350657`, and the outer map span, commit `656b5fbd`; the matching
-locator is built; and the `SeqBodyProps` *assembler* `seqBodyProps_assemble` is now extracted parametric in
-`[lo, hi)`, commit `45fe7417`, so the *assemble* half of producing `FlowSubrangesOk.seq` is done. Both
+locator is built; and BOTH body-props *assemblers* are now extracted parametric in `[lo, hi)` —
+`seqBodyProps_assemble`, commit `45fe7417`, and `mapBodyProps_assemble`, commit `005fb9f2` — so the
+*assemble* half of producing BOTH `FlowSubrangesOk` fields is done. Both
 structure sorries are now the IDENTICAL structural residual `FlowSubrangesOk tokens` (`NonemptyStructure.lean`
-725 seq / 966 map), so one Phase-J producer closes both. What remains is purely *producing the three
-primitives* — content-start / value-end successor / post-`.flowEntry` content-start — at an arbitrary
-nested subrange, feeding `seqBodyProps_assemble` for the `.seq` field, plus the parallel `mapBodyProps_assemble`
-+ pair-level refinement for the `.map` field).
+854 seq / 1095 map), so one Phase-J producer closes both. What remains is purely *producing the per-subrange
+primitives* — for the seq side the three (content-start / value-end successor / post-`.flowEntry`
+content-start), feeding `seqBodyProps_assemble` for the `.seq` field; for the map side the eight key/value
+alternation primitives (pair-level refinement), feeding `mapBodyProps_assemble` for the `.map` field — at an
+arbitrary nested subrange).
 
-> **Frontier (post-Reflection 227, commit `656b5fbd`).** The `(d-shape)` algebra is complete
+> **Frontier (post-Reflection 228, commit `005fb9f2`).** The `(d-shape)` algebra is complete
 > (the bracket conjuncts are correctly guarded — Reflection 218 — AND their `h_succ` substrate, the
 > value-end successor `EntryUnit` / `SafeBodyUnit_succ` / `SafeBodyUnit_array_succ`, exists —
 > Reflection 219), and the **sequence side** of threading `EntryUnit` through the producers is now
@@ -2174,24 +2176,40 @@ nested subrange, feeding `seqBodyProps_assemble` for the `.seq` field, plus the 
 > still carried the raw `ParseEntryFlowMapOk` parser-EXECUTION sorry (the map side never got the seq side's
 > reduction); instantiating `flow_parser_ok_of_structure`'s `.map` half at the outer span discharges it from
 > the same `have h_subranges : FlowSubrangesOk tokens`. **Both structure sorries are now the identical
-> structural residual** `FlowSubrangesOk tokens` (`NonemptyStructure.lean` 725 seq / 966 map), so a single
+> structural residual** `FlowSubrangesOk tokens` (`NonemptyStructure.lean` 854 seq / 1095 map), so a single
 > Phase-J producer of `FlowSubrangesOk` closes BOTH at once — the frontier's two structure obligations have
-> *converged onto one type*. **Immediate next sub-bricks (two, in
+> *converged onto one type*. **And the `MapBodyProps` ASSEMBLER is now extracted too** (Reflection 228,
+> commit `005fb9f2`): `mapBodyProps_assemble (tokens) (lo hi)` is the map-side mirror of
+> `seqBodyProps_assemble` — given the balanced-subrange facts (`h_tpe : tokens[hi]! = .flowMappingEnd` /
+> `h_outer_bal` / `h_dyck` / `h_wt_interior`) plus the per-subrange PRIMITIVES of the depth-0 key/value
+> alternation, it produces the full ten-field `MapBodyProps tokens lo hi`. Six fields are direct primitive
+> projections (M1 `key_start`, M2 `after_fe`, M3 `key_content`, M4 `key_scalar_value`, M6 `value_content`,
+> M7 `value_scalar_succ`); the two bracket-content fields M5 `key_bracket_value` / M8 `value_bracket_succ`
+> route through the already-proven typed-locator conjuncts `map_{key,value}_bracket_conjunct` fed the
+> value-CLOSE-guarded successor primitives (`h_key_bracket_succ` / `h_value_bracket_succ`); and M9
+> `bracket_seq` / M10 `bracket_map` are *exactly* the typed-locator outputs
+> `flowBracketBalance_matching_close_{seq,map}` — no successor wrapper, unlike the seq body whose close
+> carries `.flowSequenceEnd`. The depth-0 `balance (k+1) = 0` the M5/M8 conjuncts need is re-derived inline
+> from `flowBracketDelta .key = flowBracketDelta .value = 0`; `k+1 < hi` from the boundary `h_tpe` (an
+> opener at `k+1 = hi` would be `.flowMappingEnd`). Axiom-clean (`[propext, Classical.choice, Quot.sound]`,
+> no `sorryAx`). So **both** `FlowSubrangesOk` fields now have their parametric *assemble* half done; the
+> residual on both sides is purely the *produce-the-primitives* half. **Immediate next sub-bricks (two, in
 > order):** (1) *produce the seq subrange primitives* — derive the three primitives
 > (content-start at `lo`, the value-end successor, the post-`.flowEntry` content-start) at an arbitrary
 > nested balanced subrange and feed `seqBodyProps_assemble` to assemble `SeqBodyProps tokens lo hi`, i.e. the
 > `FlowSubrangesOk.seq` field (`WellTyped_subrange` already supplies the per-subrange `WellTyped`; the
 > per-subrange value-end successor / content-start over the nested emitted tree is the recursive bulk —
-> Phase J); (2) the **map side** `FlowSubrangesOk.map` field, which is *not* a direct `EntryUnit` thread — a
+> Phase J); (2) *produce the map subrange primitives* and feed `mapBodyProps_assemble` for the
+> `FlowSubrangesOk.map` field. Unlike the seq side this is *not* a single `EntryUnit` thread — a
 > map *pair* entry `.key block_k .value block_v` has an interior depth-0 `.value`, so the whole pair is NOT an
-> `EntryUnit`; the value-end there needs a pair-level refinement (apply `EntryUnit` to each key/value
-> block, with a separate per-pair successor), and a `mapBodyProps_assemble` parallel to `seqBodyProps_assemble`.
-> Both fields together build the one `FlowSubrangesOk tokens` shared by sorries 725/966. Once
+> `EntryUnit`; the key/value primitives need a pair-level refinement (apply `EntryUnit` to each key/value
+> block, with a separate per-key and per-value successor — the eight `mapBodyProps_assemble` primitive
+> premises). Both fields together build the one `FlowSubrangesOk tokens` shared by sorries 854/1095. Once
 > the seq `h_succ` premises are discharged, `SafeBodyUnit_array_succ` feeds them as the bracket-conjunct
 > `h_succ` consumers expect. Those feed
 > the bracket conjuncts + `SafeBodyProps`/`MapBodyProps` fields → `FlowSubrangesOk` →
 > `flow_parser_ok_of_structure` (`FlowParserAcceptance.lean`) at `(2, tokens.size−2)`,
-> `fuel = 4·tokens.size+4` → close the two `NonemptyStructure.lean` structure sorries (725/966) → the
+> `fuel = 4·tokens.size+4` → close the two `NonemptyStructure.lean` structure sorries (854/1095) → the
 > two base `emit_roundtrip_{sequence,mapping}_content_eq` (`EmitterScannability.lean` 832/872) →
 > `universal_roundtrip`.
 
@@ -15170,6 +15188,27 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
+                **Total .body scope re-estimate (SEVENTY-SIXTH revision —
+                after **Thread A step 3 sub-step 2's brick (d-shape) cont'd — *parametric `MapBodyProps`
+                assembler extracted (Phase J seed, map side)* — landed** (commit `005fb9f2`,
+                Reflection 228). The map-side mirror of `seqBodyProps_assemble`:
+                `mapBodyProps_assemble (tokens) (lo hi)` takes the balanced flow-MAPPING subrange facts
+                (`h_tpe : tokens[hi]! = .flowMappingEnd` / `h_outer_bal` / `h_dyck` / `h_wt_interior`) plus
+                the per-subrange PRIMITIVES of the depth-0 key/value alternation and produces the full
+                ten-field `MapBodyProps tokens lo hi`. Six fields are direct primitive projections
+                (M1–M4, M6, M7); M5 `key_bracket_value` / M8 `value_bracket_succ` route through the
+                already-proven typed-locator conjuncts `map_{key,value}_bracket_conjunct` fed the
+                value-CLOSE-guarded successor primitives; M9 `bracket_seq` / M10 `bracket_map` are *exactly*
+                the typed-locator outputs `flowBracketBalance_matching_close_{seq,map}` (no successor
+                wrapper, unlike the seq body whose close carries `.flowSequenceEnd`). The depth-0
+                `balance (k+1) = 0` the M5/M8 conjuncts need is re-derived inline from
+                `flowBracketDelta .key = flowBracketDelta .value = 0`; `k+1 < hi` from the boundary `h_tpe`.
+                Build green 523 jobs, **sorries held at 4** (854/1095 structural + base 832/872);
+                axiom-clean (`[propext, Classical.choice, Quot.sound]`, no `sorryAx`). No new infra — the
+                conjuncts were already built; this is pure assembly. Both `FlowSubrangesOk` fields now have
+                their parametric *assemble* half; the residual on both is purely *produce-the-primitives*.
+                next sub-brick: produce the per-subrange primitives (seq three / map eight) feeding the two
+                assemblers. See Reflection 228, on top of the
                 **Total .body scope re-estimate (SEVENTY-FIFTH revision —
                 after **Thread A step 3 sub-step 2's brick (d-shape) cont'd — *dispatcher `.map` half
                 wired — map sorry reduced to structural `FlowSubrangesOk`* — landed** (commit `656b5fbd`,
@@ -25305,3 +25344,7 @@ the payoff is not the second retype but the *convergence*, the collapse of two f
 type your next effort already has to produce. Sits with 223–226 in the "shape, not cardinality" family
 ([[ref-reduction-by-import]]), but adds a corollary: among shape-changes, prefer the ones that make the open
 residuals *coincide* — coincident residuals are closed together, divergent ones serially.
+
+### Reflection 228 (new, 2026-06-02): the second, symmetric assembler is *not* a free lift like the first — but it is still cheap, because the combinatorial parts were built symmetrically; a "from-scratch" assembly whose every field is a dispatch over already-proven helpers is mechanical, and its only real content is matching field shapes to helper outputs
+
+Reflection 226 extracted `seqBodyProps_assemble` by *lifting* an inline fixed-span `have` whose constant-dependence was already in its hypotheses — a free generalization, "I proved one case → I built the assembler." This session (commit `005fb9f2`) built the map-side mirror `mapBodyProps_assemble`, and the instructive thing is how it *differs*: there was **no inline `_h_map_body_props` to lift.** The map structure proof `scanFiltered_emitMap_nonempty_structure` had reduced straight to the dispatcher (Reflection 227) without ever assembling a `MapBodyProps` at the outer span, so the assembler had to be written *from scratch* — ten fields, not a verbatim copy of anything. Yet it was still a one-shot, low-risk increment (one compile-fix: a `Nat.succ` vs `k+1` syntactic-match slip in a `rw`). Why the asymmetry-in-origin did not cost asymmetry-in-effort: the **combinatorial parts were already built, and built symmetrically.** The map typed-locator conjuncts `map_{key,value}_bracket_conjunct` (M5/M8) and the raw locators `flowBracketBalance_matching_close_{seq,map}` (M9/M10) had landed in earlier typed-locator sessions, in exact parallel to the seq conjuncts the seq assembler consumes. So `mapBodyProps_assemble`'s body is pure dispatch: six fields are *literally* their primitive hypothesis (`exact h_key_content`, …), two route through a conjunct with a depth-shift adapter, two are the bare locator output. No field contains new mathematics — the only nontrivial move is the shared `h_step` adapter (depth-0 `balance (k+1) = 0` from `flowBracketDelta .key = .value = 0`, and `k+1 < hi` from the boundary), and even that is a transcription of the seq assembler's `scalar_succ` balance-shift. The general tell: a "build the symmetric assembler" task *looks* like it doubles the work of the first one, but if the first one's hard sub-lemmas (here the bracket conjuncts) were themselves built as a symmetric pair, the second assembler is the cheap half — its content is wiring helper outputs to field shapes, and you should price it as assembly, not as proof. There is a real grammar asymmetry worth recording, though, and it lives entirely in the *interface*, not the difficulty: the map body needs **eight** primitive premises (the key/value alternation — a pair `.key block_k .value block_v` has an interior depth-0 `.value`, so it is not one `EntryUnit`) where the seq body needed **three**; and the map's M9/M10 `bracket_seq`/`bracket_map` carry **no** successor (a map subrange closes with `.flowMappingEnd`, and those fields only assert the matching close), whereas the seq's `bracket_seq`/`bracket_map` *do* carry the `.flowSequenceEnd`-or-`.flowEntry` successor. That asymmetry is exactly why the seq assembler folds its successor through one guarded `h_body_succ` while the map assembler threads two separate close-guarded successors (`h_key_bracket_succ` for "value follows a complete key", `h_value_bracket_succ` for "separator/close follows a complete value"). Sits with 224/226 in the "assembler as published interface" thread ([[ref-reduction-by-import]]): the map producer now has its typed joint too, and the residual on *both* `FlowSubrangesOk` fields is purely produce-the-primitives.
