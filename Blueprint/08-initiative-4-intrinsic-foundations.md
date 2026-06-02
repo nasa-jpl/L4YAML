@@ -2113,7 +2113,7 @@ work is the *plumbing* that feeds it.
 **Next session — `.parsenode.discharge` cont'd** (the dispatcher AND the matching locator are built;
 what remains is assembling `FlowSubrangesOk`).
 
-> **Frontier (post-Reflection 223, commit `45751565`).** The `(d-shape)` algebra is complete
+> **Frontier (post-Reflection 224, commit `7190d3d3`).** The `(d-shape)` algebra is complete
 > (the bracket conjuncts are correctly guarded — Reflection 218 — AND their `h_succ` substrate, the
 > value-end successor `EntryUnit` / `SafeBodyUnit_succ` / `SafeBodyUnit_array_succ`, exists —
 > Reflection 219), and the **sequence side** of threading `EntryUnit` through the producers is now
@@ -2136,15 +2136,21 @@ what remains is assembling `FlowSubrangesOk`).
 > 218), since a `.flowEntry` separator carries delta `0`, so `delta = -1 → ≠ .flowEntry` discharges the
 > predecessor's guard and the body-close case routes through the boundary `.flowSequenceEnd` (`h_tpe`).
 > This is the EXACT shape `SeqBodyProps.scalar_succ` and `seq_bracket_{seq,map}_conjunct`'s `h_succ`
-> consume. **Immediate next sub-bricks (two, in
-> order):** (1) *assemble the seq producer* — feed `_h_succ_guarded` to `seq_bracket_{seq,map}_conjunct`
-> (with `h_outer_bal`/`h_dyck`/`h_wt_interior`) for `bracket_seq`/`bracket_map`, to `scalar_succ`, plus
-> `h_content0` → `content_start` and `h_fe_pattern` → `after_fe`, building the outer `SeqBodyProps tokens
-> 2 (tokens.size−2)`; then generalize to the
+> consume. **The outer `SeqBodyProps tokens 2 (tokens.size−2)` is now ASSEMBLED** (Reflection 224, commit
+> `7190d3d3`): inside `scanFiltered_emitSeq_nonempty_structure`, `_h_seq_body_props` projects each of the
+> five fields off a fact already in scope — `content_start` ← `h_content0`; `scalar_succ` ← `_h_body_succ`
+> (a depth-0 scalar has delta `0`, so its balance is unchanged at `k+1`, and a scalar is `≠ .flowEntry` —
+> the `_h_body_succ` guard; note scalars route through `_h_body_succ` directly, NOT `_h_succ_guarded`,
+> since a scalar carries delta `0 ≠ -1`); `after_fe` ← `h_fe_pattern` (the `≤` sharpened to `<` via
+> `h_tpe`); `bracket_seq`/`bracket_map` ← `seq_bracket_{seq,map}_conjunct` fed `h_outer_bal`/`h_dyck`/
+> `h_wt_interior` and the value-close-guarded `_h_succ_guarded`. Bound as enablement (the next sub-brick
+> consumes it). **Immediate next sub-bricks (two, in
+> order):** (1) *generalize the seq producer* — lift `_h_seq_body_props` from the single outer span
+> `(2, tokens.size−2)` to the
 > universal `FlowSubrangesOk` (every nested balanced subrange — `WellTyped_subrange` supplies the
 > per-subrange `WellTyped`; the per-subrange value-end successor / content-start is the recursive
 > bulk), apply `flow_parser_ok_of_structure` at `(2, tokens.size−2)` → **close the seq structure sorry**
-> (`NonemptyStructure.lean` 640, was 619); (2) the **map side**, which is *not* a direct `EntryUnit` thread — a map *pair* entry
+> (`NonemptyStructure.lean` 692, was 640); (2) the **map side**, which is *not* a direct `EntryUnit` thread — a map *pair* entry
 > `.key block_k .value block_v` has an interior depth-0 `.value`, so the whole pair is NOT an
 > `EntryUnit`; the value-end there needs a pair-level refinement (apply `EntryUnit` to each key/value
 > block, with a separate per-pair successor), to be designed before the map sorry (868) closes. Once
@@ -15131,6 +15137,27 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
+                **Total .body scope re-estimate (SEVENTY-SECOND revision —
+                after **Thread A step 3 sub-step 2's brick (d-shape) cont'd — *outer `SeqBodyProps`
+                assembled from the value-end successor* — landed** (commit `7190d3d3`, Reflection 224).
+                The convergence point of the Reflection 219–223 thread: inside
+                `scanFiltered_emitSeq_nonempty_structure`, `_h_seq_body_props : SeqBodyProps tokens 2
+                (tokens.size−2)` projects all five fields off facts already in scope — `content_start` ←
+                `h_content0`; `scalar_succ` ← `_h_body_succ` (scalar delta `0` ⟹ balance unchanged at
+                `k+1`, scalar `≠ .flowEntry` discharges the guard — scalars route through `_h_body_succ`,
+                NOT `_h_succ_guarded`, since delta `0 ≠ -1`); `after_fe` ← `h_fe_pattern` (`≤` sharpened to
+                `<` by `h_tpe`-against-content-start); `bracket_seq`/`bracket_map` ←
+                `seq_bracket_{seq,map}_conjunct` fed `h_outer_bal`/`h_dyck`/`h_wt_interior`/`_h_succ_guarded`.
+                No new lemma — the cost was pre-paid by the threading campaign; the brick is pure wiring,
+                with risk only at the two joints where a field wants a different guard-variant or strictness
+                than the supplier hands over (the scalar/bracket guard split; the `≤→<` sharpen). **Still
+                enablement** — `_h_seq_body_props` is the single outer span; the seq sorry (now 692, was
+                640) stays until it is lifted to the universal `FlowSubrangesOk` and fed to
+                `flow_parser_ok_of_structure`. next sub-brick: generalize `_h_seq_body_props` to all nested
+                balanced subranges (`FlowSubrangesOk`), apply `flow_parser_ok_of_structure` at
+                `(2, tokens.size−2)` → close the seq sorry. Build green 519 jobs, **sorries held at 4**; no
+                new sorry; `_h_seq_body_props` fully proven (projections + one balance-lift + one
+                `h_tpe` contradiction, no `sorry`/axiom). See Reflection 224, on top of the
                 **Total .body scope re-estimate (SEVENTY-FIRST revision —
                 after **Thread A step 3 sub-step 2's brick (d-shape) cont'd — *seq value-end successor
                 reshaped into value-close-guarded `h_succ`* — landed** (commit `45751565`, Reflection
@@ -25065,3 +25092,40 @@ infrastructure (`h_tok_body`/`h_conv`/`Array.getElem_push_*`) at all — only th
 boundary fact already in scope (`h_tpe`), and `decide`. When a proof's entire dependency set is
 "the previous fact + a closed decision", you are adapting an interface, not proving something new, and the
 green is essentially assured before you build.
+
+### Reflection 224 (new, 2026-06-02): an assembly brick at the end of a threading campaign is "enablement coming due" — every field is a projection of a `have` landed in an earlier session, and the brick's real content is the wiring, not the proof
+
+The outer `SeqBodyProps tokens 2 (tokens.size - 2)` (commit `7190d3d3`) is the convergence point of a
+five-session campaign — Reflection 219 named `EntryUnit`/`SafeBodyUnit_succ`, 220 threaded it through the
+seq producers, 221 surfaced it as the characterization's Part 6, 222 transported it to the tokens level
+(`_h_body_succ`), 223 reshaped it under the value-close guard (`_h_succ_guarded`) — and the assembly itself
+introduces **no new lemma**. Each of the five `SeqBodyProps` fields is a one-liner projecting a `have`
+already in scope: `content_start` IS `h_content0` (definitionally `isFlowContentStart`), `after_fe` IS
+`h_fe_pattern` (one sharpening, below), and the two bracket conjuncts are the Reflection-218 assemblers
+applied to facts (`h_outer_bal`/`h_dyck`/`h_wt_interior`/`_h_succ_guarded`) that *every* prior brick was
+quietly accumulating in this exact proof state. The brick's true content is the **wiring diagram** — which
+fact feeds which field — not any proof obligation.
+
+Two micro-joints carried the only real risk, and both are about a field wanting a *slightly different
+shape* than the nearest fact supplies. First, the same value-end successor is consumed under **two different
+guards in one structure**: `scalar_succ` feeds `_h_body_succ` directly (a scalar is a non-separator, so the
+`≠ .flowEntry` guard fits — but a scalar carries delta `0`, not `-1`, so the value-close `_h_succ_guarded`
+would *not* apply), while `bracket_seq`/`bracket_map` feed `_h_succ_guarded` (a bracket close carries delta
+`-1`). So Reflection 223's two guard-variants are not redundant — the assembly consumes *both*, one per
+field-kind, and picking the wrong one type-checks nowhere. The scalar case also needs a one-step balance
+lift (`flowBracketBalance_compose` + `_single`, delta `0`) to move the premise from "balance at `k`" to
+"balance at `k+1`" — the half-line of algebra a bracket close gets for free from its locator. Second,
+`after_fe` demands a *strict* `k+1 < hi` where `h_fe_pattern` returns only `≤`; the gap closes by
+contradiction with the boundary token (`k+1 = hi` ⟹ `tokens[hi] = .flowSequenceEnd` via `h_tpe`, which is
+not a content-start), the same `h_tpe`-against-content-start move that recurs at every "is this the close or
+an interior position" fork.
+
+The lesson for sizing the END of a long thread: the assembly brick looks large (a five-field structure) but
+is the cheapest in the campaign, because the cost was *pre-paid* — every input was bound, named, and
+green-checked in an earlier session precisely so this step would be projection. The residual risk lives only
+at the joints where a consumer wants a guard-variant or a strictness the supplier doesn't hand over
+verbatim; budget those (here: two of them), and treat the rest as transcription. Symmetric corollary to
+Reflection 223's "adapter is cheapest": the *consumer-side assembly* of well-threaded enablement is cheap
+for the same reason an adapter is — you are matching shapes, not discovering facts — and the way to make it
+cheap is upstream, by landing each input as its own honest `have` rather than inlining it, so the assembly
+has named handles to wire.
