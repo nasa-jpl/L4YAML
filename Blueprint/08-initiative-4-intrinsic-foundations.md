@@ -2202,10 +2202,23 @@ what remains is assembling `FlowSubrangesOk`). The shape of the remaining produc
    is the depth-`1` floor, re-based to `0`). The unfree input is now produced — it comes from the
    matching-bracket structure the locator already establishes, not from `FlowSubrangesOk`'s hypotheses.
    Build green 515, sorries held at 4, both on the pure triple.
+   **Brick (d-shape), bracket-successor depth bridge — LANDED** (commit `16c42dd4`, Reflection 214):
+   the **successor half** of the bracket conjuncts (`j + 1 ≤ hi ∧ (FE | end)`) is "an emitter fact
+   layered on the now-typed `j`" — but first `j + 1` must be shown to sit at the same relative depth as
+   a scalar item, so the bracket case reuses the *same* successor fact the scalar case does.
+   `ParserGrammableBase.lean` now carries (right after `flowBracketBalance_interior_dyck`)
+   `flowBracketBalance_bracket_pair_skip` — a matched bracket pair is net-`0`
+   (`balance lo (j+1) = balance lo k`, via `flowBracketBalance_compose` splitting `[k, j+1)` into
+   opener `+1` / interior `0` / close `-1` and `flowBracketBalance_single` reading the deltas) — and its
+   depth-0 corollary `flowBracketBalance_after_bracket_pair_zero` (opener at relative depth `0` ⟹ `j+1`
+   at relative depth `0`). **The bracketed value is depth-transparent**: its shape collapses to one
+   depth-0 position, so `scalar_succ` and the bracket-successor are the *same* emitter fact. Build green
+   515, sorries held at 4, both on the pure triple.
    **Remaining sub-bricks of (d)**:
-   (d-shape) the flat per-position local-shape facts (`scalar_succ`, `after_fe`, `key_content`, …) for
-   every nested subrange, plus the **successor half** of the bracket conjuncts
-   (`j + 1 ≤ hi ∧ (FE | seqEnd)` — an emitter fact layered on the now-typed `j`);
+   (d-shape) cont'd — the flat per-position local-shape facts (`scalar_succ`, `after_fe`, `key_content`,
+   …) for every nested subrange, i.e. the *single* underlying "next depth-0 token after a complete value
+   is `.flowEntry` or the body close" emitter fact that the depth bridge above now feeds both the scalar
+   and bracket cases (`bracket_pair_skip` reduces the bracket case to it);
    (d-assemble) bundle the local Dyck (`flowBracketBalance_interior_dyck` → `WellTyped_subrange`, both
    LANDED) + (d-shape) + the typed close (`flowBracketBalance_matching_close_{seq,map}`) into
    `SeqBodyProps`/`MapBodyProps` and `FlowSubrangesOk`.
@@ -14910,6 +14923,35 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
+                **Total .body scope re-estimate (SIXTY-SECOND revision —
+                after **Thread A step 3 sub-step 2's brick (d-shape) — the *bracket-successor
+                depth bridge* — landed: a matched bracket pair is depth-transparent** (commit
+                `16c42dd4`, Reflection 214). Two pure `flowBracketBalance` lemmas in
+                `ParserGrammableBase.lean`, right after `flowBracketBalance_interior_dyck`:
+                `flowBracketBalance_bracket_pair_skip` (a complete bracket value — opener `+1`,
+                balanced interior `(k+1, j)`, close `-1` — is net-`0`, so `balance lo (j+1) =
+                balance lo k`; `flowBracketBalance_compose` splits `[k, j+1)` into the three pieces
+                and `flowBracketBalance_single` reads the two endpoint deltas) and its depth-0
+                corollary `flowBracketBalance_after_bracket_pair_zero` (when the opener `k` sits at
+                relative depth `0`, the position `j + 1` after the matching close is again at
+                relative depth `0`). **This is the bridge for the successor half of the bracket
+                conjuncts** (`SeqBodyProps.bracket_{seq,map}` / `MapBodyProps` M5/M8: `j + 1 ≤ hi ∧
+                (FE | end)`): it puts `j + 1` at the *same relative depth* as a scalar item, so the
+                bracketed value reuses the exact same "after a complete value, the next depth-0
+                token is `.flowEntry` or the body close" successor fact `scalar_succ` uses — the
+                value's *shape* (scalar vs. bracket) is irrelevant once depth-transparency collapses
+                it to a single depth-0 position. Build green 515 jobs, **sorries held at 4**, both
+                lemmas `sorryAx`-free on the pure triple `[propext, Classical.choice, Quot.sound]`.
+                **Remaining for (d)**: the rest of `(d-shape)` — the flat per-position local-shape
+                facts (`scalar_succ`, `after_fe`, `key_content`, …) and the *one* underlying "next
+                depth-0 token after a complete value" emitter fact this bridge now feeds both the
+                scalar and bracket cases; then `(d-assemble)` — bundle the local Dyck
+                (`flowBracketBalance_interior_dyck` → `WellTyped_subrange`) + the typed close
+                (`flowBracketBalance_matching_close_{seq,map}`) + (d-shape) into
+                `SeqBodyProps`/`MapBodyProps`/`FlowSubrangesOk`; then sub-step 3 (instantiate
+                `flow_parser_ok_of_structure` → close NonemptyStructure 576/804) and sub-step 4
+                (base `emit_roundtrip_{sequence,mapping}_content_eq` 832/872 → `universal_roundtrip`).
+                See Reflection 214, on top of the
                 **Total .body scope re-estimate (SIXTY-FIRST revision —
                 after **Thread A step 3 sub-step 2's brick (d-dyck) — the *residual* (local-Dyck
                 derivation) — landed: the per-subrange local Dyck `WellTyped_subrange` consumes is
@@ -24319,3 +24361,29 @@ termination is often the exact hypothesis its *result* must satisfy downstream �
 209]]) and the next brick is a one-liner instead of a re-derivation.** With this, every input
 `WellTyped_subrange` ([[Reflection 212]]) demands is now manufacturable; what remains for brick (d) is purely
 emitter-shape bookkeeping (`(d-shape)`) and the mechanical bundling (`(d-assemble)`).
+
+### Reflection 214 (new, 2026-06-01): depth-transparency collapses two shape obligations into one — a matched bracket pair is "just another depth-0 value"
+
+Brick `(d-shape)` looked like it would need *separate* successor facts for each kind of body element:
+`scalar_succ` ("after a scalar item at depth 0, the next token is `.flowEntry` or the body close"),
+`bracket_seq`/`bracket_map`'s successor half ("after a complete `[…]`/`{…}` value, ditto"),
+`value_scalar_succ`/`value_bracket_succ` in the mapping. The bracket cases *look* harder — a bracketed
+value spans many tokens and arbitrary nesting, where a scalar is one token. But the parser's acceptance
+only ever asks "what is the relative depth at the position *just after* this value?" and the answer is
+identical: `0`. `flowBracketBalance_bracket_pair_skip` makes that precise — a complete bracket value is
+**net-`0`** (`balance lo (j+1) = balance lo k`), because `flowBracketBalance_compose` splits its span into
+opener `+1`, balanced interior `0`, close `-1`, and `flowBracketBalance_single` reads the two endpoint
+deltas. So `j + 1`, the position after the matching close, sits at the *same relative depth as the opener
+`k`* — and via the corollary `flowBracketBalance_after_bracket_pair_zero`, at depth `0` when `k` was.
+
+The payoff is structural, not arithmetic. **A bracketed value is depth-transparent: from the outside it
+occupies a single depth-0 slot, indistinguishable (to the running balance) from a scalar.** That means the
+bracket-successor obligation does not need its own emitter induction — it *reduces* to the very same "next
+depth-0 token after a complete value" fact the scalar case needs, applied at `j + 1` instead of `k + 1`.
+The remaining `(d-shape)` work is therefore *one* emitter fact per body kind (seq/map), not one per
+element kind (scalar/seq/map). The lesson generalizes the [[Reflection 213]] re-basing move from a
+*quantity* (the Dyck floor) to a *structural unit*: **when a composite object is balanced/net-neutral under
+the measure you reason about, treat it as a single atom of that measure and you inherit the atom's lemmas
+for free — don't re-prove the composite case, collapse it.** This is why the typed close ([[Reflection 210]])
+and the depth bridge compose so cleanly: the close pins `j`'s *type*, and `bracket_pair_skip` makes
+everything after `j` behave as if the whole `[k, j]` span were a one-token scalar.
