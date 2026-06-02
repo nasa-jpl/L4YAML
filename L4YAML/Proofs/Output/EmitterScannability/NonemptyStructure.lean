@@ -423,6 +423,55 @@ theorem seqBodyProps_assemble (tokens : Array (Positioned YamlToken)) (lo hi : N
       h_bal_k h_open h_outer_bal h_dyck h_wt_interior
       (fun j hkj hjhi hd hb => h_succ_guarded j (by omega) hjhi hd hb)
 
+/-- **Windowed-`SafeBody` → `SeqBodyProps` consumer joint** (Phase J, seq side).  Given a guarded
+    balanced flow-SEQUENCE subrange `[lo, hi)` (close `.flowSequenceEnd`, total balance `0`, Dyck
+    prefixes, interior `WellTyped`) together with the recursive *deliverable* of the body producer —
+    the windowed `SafeBody`/`SafeBodyUnit ContentStartTok ((tokens.toList.take hi).drop lo)` plus the
+    content-start head at `lo` — assemble the full `SeqBodyProps tokens lo hi`.
+
+    This consolidates the entire seq-side assembly into a single entry point keyed *only* on the
+    windowed SafeBody facts.  It drives last session's windowed array wrappers
+    (`SafeBody_array_flowEntry_window` → the `after_fe` primitive; `SafeBodyUnit_array_succ_window` →
+    the value-end successor) into `seqBodyProps_assemble`.  The only glue is the
+    `getElem!`↔`getElem` bridge (the wrappers speak `arr[k]'_`, the assembler primitives `tokens[k]!`)
+    and the definitional `ContentStartTok = isFlowContentStart`.  So the seq-side residual now narrows
+    to purely *producing* the windowed `SafeBody`/`SafeBodyUnit` at a nested guarded subrange (the
+    recursive characterization of the nested flow-sequence body) — the bracket facts come from the
+    typed locator + `WellTyped_subrange`, and `content_start` is `SafeBody.head_Q`. -/
+theorem seqBodyProps_of_windowed_safebody (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (h_hi_sz : hi ≤ tokens.size)
+    (h_tpe : tokens[hi]!.val = .flowSequenceEnd)
+    (h_outer_bal : flowBracketBalance tokens lo hi = 0)
+    (h_dyck : ∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0)
+    (h_wt_interior : WellTyped ((tokens.toList.take hi).drop lo))
+    (h_content_start : isFlowContentStart tokens[lo]!.val)
+    (h_safe : SafeBody ContentStartTok ((tokens.toList.take hi).drop lo))
+    (h_safe_unit : SafeBodyUnit ContentStartTok ((tokens.toList.take hi).drop lo)) :
+    SeqBodyProps tokens lo hi := by
+  refine seqBodyProps_assemble tokens lo hi h_hi_sz h_tpe h_outer_bal h_dyck h_wt_interior
+    h_content_start ?_ ?_
+  · -- h_body_succ ← `SafeBodyUnit_array_succ_window` (value-end successor)
+    intro k h_lo h_klt h_bal h_nfe
+    have hk_sz : k < tokens.size := Nat.lt_of_lt_of_le h_klt h_hi_sz
+    rw [getElem!_pos tokens k hk_sz] at h_nfe
+    rcases SafeBodyUnit_array_succ_window tokens lo hi h_hi_sz h_safe_unit k h_lo h_klt h_bal h_nfe with
+      h_end | ⟨hk1, h_fe⟩
+    · exact Or.inl h_end
+    · refine Or.inr ⟨hk1, ?_⟩
+      have hk1_sz : k + 1 < tokens.size := Nat.lt_of_lt_of_le hk1 h_hi_sz
+      rw [getElem!_pos tokens (k + 1) hk1_sz]
+      exact h_fe
+  · -- h_fe_pattern ← `SafeBody_array_flowEntry_window` (post-`.flowEntry` content-start)
+    intro k h_lo h_klt h_fe h_bal
+    have hk_sz : k < tokens.size := Nat.lt_of_lt_of_le h_klt h_hi_sz
+    rw [getElem!_pos tokens k hk_sz] at h_fe
+    obtain ⟨hk1, hQ⟩ :=
+      SafeBody_array_flowEntry_window tokens lo hi h_hi_sz h_safe k h_lo h_klt h_fe h_bal
+    have hk1_sz : k + 1 < tokens.size := Nat.lt_of_lt_of_le hk1 h_hi_sz
+    refine ⟨Nat.le_of_lt hk1, ?_⟩
+    rw [getElem!_pos tokens (k + 1) hk1_sz]
+    exact hQ
+
 /-- **Parametric `MapBodyProps` assembler** (Phase J seed, map side).  The map-side mirror of
     `seqBodyProps_assemble`: given an arbitrary balanced flow-MAPPING subrange `[lo, hi)` —
     `tokens[hi]! = .flowMappingEnd`, total balance `0`, Dyck prefixes, interior `WellTyped` — together
