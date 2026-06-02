@@ -732,6 +732,53 @@ theorem flowBracketBalance_interior_dyck (tokens : Array (Positioned YamlToken))
   intro p h_sp h_ph
   exact h_pos p (by omega) h_ph
 
+/-- **A matched bracket pair is depth-transparent.**  A complete bracket value — opener at `k`
+    (`flowBracketDelta = 1`), matching close at `j` (`flowBracketDelta = -1`), balanced interior
+    `(k+1, j)` — contributes net `0` to the running balance, so the balance just *after* the pair
+    equals the balance just *before* the opener:
+    `flowBracketBalance tokens lo (j+1) = flowBracketBalance tokens lo k`.
+    By `flowBracketBalance_compose` the span `[k, j+1)` splits as opener (`+1`) + interior (`0`) +
+    close (`-1`), and `flowBracketBalance_single` reads the two endpoint deltas. -/
+theorem flowBracketBalance_bracket_pair_skip (tokens : Array (Positioned YamlToken))
+    (lo k j : Nat) (h_lo_k : lo ≤ k) (h_k_j : k < j) (h_j_sz : j < tokens.size)
+    (h_open : flowBracketDelta tokens[k]!.val = 1)
+    (h_close : flowBracketDelta tokens[j]!.val = -1)
+    (h_inner : flowBracketBalance tokens (k+1) j = 0) :
+    flowBracketBalance tokens lo (j+1) = flowBracketBalance tokens lo k := by
+  have h_k_sz : k < tokens.size := Nat.lt_trans h_k_j h_j_sz
+  -- balance lo (j+1) = balance lo k + balance k (j+1)
+  rw [flowBracketBalance_compose tokens lo k (j+1) h_lo_k (by omega)]
+  -- balance k (j+1) = balance k (k+1) + balance (k+1) j + balance j (j+1)
+  rw [flowBracketBalance_compose tokens k (k+1) (j+1) (by omega) (by omega),
+      flowBracketBalance_compose tokens (k+1) j (j+1) (by omega) (by omega)]
+  -- endpoint deltas via `flowBracketBalance_single`
+  have hlk : k < tokens.toList.length := by rw [Array.length_toList]; exact h_k_sz
+  have hlj : j < tokens.toList.length := by rw [Array.length_toList]; exact h_j_sz
+  rw [flowBracketBalance_single tokens k hlk, flowBracketBalance_single tokens j hlj]
+  -- bridge `tokens.toList[·]` to `tokens[·]!`
+  have hk1 : tokens.toList[k]'hlk = tokens[k] := Array.getElem_toList h_k_sz
+  have hk2 : tokens[k] = tokens[k]! := (getElem!_pos tokens k h_k_sz).symm
+  have hj1 : tokens.toList[j]'hlj = tokens[j] := Array.getElem_toList h_j_sz
+  have hj2 : tokens[j] = tokens[j]! := (getElem!_pos tokens j h_j_sz).symm
+  rw [hk1, hk2, hj1, hj2, h_open, h_close, h_inner]
+  omega
+
+/-- **Depth-0 corollary.**  When the opener `k` sits at relative depth `0`
+    (`flowBracketBalance lo k = 0`), the position `j + 1` immediately after the matching close is
+    again at relative depth `0`.  This is the precondition that lets the bracket conjuncts' successor
+    half reuse the *same* "after a complete value, the next depth-0 token is `.flowEntry` or the body
+    close" fact that the scalar successor uses — the bracketed value is depth-transparent. -/
+theorem flowBracketBalance_after_bracket_pair_zero (tokens : Array (Positioned YamlToken))
+    (lo k j : Nat) (h_lo_k : lo ≤ k) (h_k_j : k < j) (h_j_sz : j < tokens.size)
+    (h_k_depth : flowBracketBalance tokens lo k = 0)
+    (h_open : flowBracketDelta tokens[k]!.val = 1)
+    (h_close : flowBracketDelta tokens[j]!.val = -1)
+    (h_inner : flowBracketBalance tokens (k+1) j = 0) :
+    flowBracketBalance tokens lo (j+1) = 0 := by
+  rw [flowBracketBalance_bracket_pair_skip tokens lo k j h_lo_k h_k_j h_j_sz
+      h_open h_close h_inner]
+  exact h_k_depth
+
 /-! ### §6  Structural predicates for flow body subranges
 
 These predicates capture the token-level structural properties that
