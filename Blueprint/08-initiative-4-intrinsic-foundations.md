@@ -2136,9 +2136,17 @@ substrate for nested subranges is now LANDED** (commit `71dd7863`, Reflection 23
 primitives (`after_fe` flowEntry pattern, value-end `h_succ`) at an arbitrary subrange ending at
 `hi < size`. So the seq-primitive residual narrows to: *produce the windowed `SafeBody`/`SafeBodyUnit`*
 (the recursive characterization of a nested flow-sequence body) plus the windowed content-start head —
-then chain through these wrappers into `seqBodyProps_assemble`.
+then chain through these wrappers into `seqBodyProps_assemble`. **And that chain is now LANDED as a single
+consumer joint** (commit `67dabbd8`, Reflection 231): `seqBodyProps_of_windowed_safebody (tokens) (lo hi)`
+takes the windowed `SafeBody`/`SafeBodyUnit ContentStartTok ((tokens.toList.take hi).drop lo)` + the
+content-start head + the balanced-subrange facts and produces the full `SeqBodyProps tokens lo hi` directly
+(driving both windowed wrappers into `seqBodyProps_assemble`). So the seq side now has a single
+typed boundary: **produce the windowed `SafeBody`/`SafeBodyUnit` + content-start head** at a nested guarded
+subrange — nothing else. THAT is the next-session target (the recursive characterization of the nested
+flow-sequence body, off the emitter structure of the nested value tree); feeding it to
+`seqBodyProps_of_windowed_safebody` yields `FlowSubrangesOk.seq`.
 
-> **Frontier (post-Reflection 230, commit `71dd7863`).** The `(d-shape)` algebra is complete
+> **Frontier (post-Reflection 231, commit `67dabbd8`).** The `(d-shape)` algebra is complete
 > (the bracket conjuncts are correctly guarded — Reflection 218 — AND their `h_succ` substrate, the
 > value-end successor `EntryUnit` / `SafeBodyUnit_succ` / `SafeBodyUnit_array_succ`, exists —
 > Reflection 219), and the **sequence side** of threading `EntryUnit` through the producers is now
@@ -2242,7 +2250,17 @@ then chain through these wrappers into `seqBodyProps_assemble`.
 > at 4. This narrows the seq-primitive residual: with the windowed wrappers in hand, the two successor
 > primitives are mechanical *given* a windowed `SafeBody`/`SafeBodyUnit`; the remaining work is to **produce
 > the windowed `SafeBody`/`SafeBodyUnit`** (the recursive characterization of a nested flow-sequence body)
-> plus the windowed content-start head. **Immediate next sub-bricks (two, in
+> plus the windowed content-start head. **And the seq-side consumer joint is now LANDED** (Reflection 231,
+> commit `67dabbd8`): `seqBodyProps_of_windowed_safebody` takes that very deliverable — the windowed
+> `SafeBody`/`SafeBodyUnit ContentStartTok ((tokens.toList.take hi).drop lo)` plus the content-start head at
+> `lo`, alongside the balanced-subrange facts — and assembles the full `SeqBodyProps tokens lo hi`, driving the
+> windowed wrappers (`SafeBody_array_flowEntry_window` → `after_fe`, `SafeBodyUnit_array_succ_window` → the
+> value-end successor) into `seqBodyProps_assemble` over the `getElem!`↔`getElem` bridge and the definitional
+> `ContentStartTok = isFlowContentStart`. So the *entire* seq-side assembly is now one entry point keyed
+> solely on the windowed SafeBody facts: the seq-side Phase-J residual is now EXACTLY *produce the windowed
+> `SafeBody`/`SafeBodyUnit` + content-start head* at a nested guarded subrange (the recursion), with the
+> bracket facts from the typed locator + `WellTyped_subrange`. Build green 525 jobs, sorries held at 4,
+> axiom-clean. **Immediate next sub-bricks (two, in
 > order):** (1) *produce the seq subrange primitives* — derive the three primitives
 > (content-start at `lo`, the value-end successor, the post-`.flowEntry` content-start) at an arbitrary
 > nested balanced subrange and feed `seqBodyProps_assemble` to assemble `SeqBodyProps tokens lo hi`, i.e. the
@@ -15237,6 +15255,25 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
+                **Total .body scope re-estimate (SEVENTY-NINTH revision —
+                after **Thread A step 3 sub-step 2's brick (d-shape) cont'd — *consumer joint: windowed
+                SafeBody → SeqBodyProps* — landed** (commit `67dabbd8`, Reflection 231).
+                `seqBodyProps_of_windowed_safebody`: given a guarded balanced flow-seq subrange `[lo,hi)`
+                (`tokens[hi]!=.flowSequenceEnd`, total balance `0`, Dyck prefixes, interior `WellTyped`)
+                plus the *recursive deliverable of the body producer* — the windowed
+                `SafeBody`/`SafeBodyUnit ContentStartTok ((tokens.toList.take hi).drop lo)` and the
+                content-start head at `lo` — it assembles the full `SeqBodyProps tokens lo hi`. It drives
+                last session's windowed wrappers (`SafeBody_array_flowEntry_window` → `after_fe`;
+                `SafeBodyUnit_array_succ_window` → the value-end successor) into `seqBodyProps_assemble`;
+                the only glue is the `getElem!`↔`getElem` bridge (the wrappers speak `arr[k]'_`, the
+                assembler primitives `tokens[k]!`) and the definitional `ContentStartTok =
+                isFlowContentStart`. This consolidates the entire seq-side assembly into ONE entry point
+                keyed *only* on the windowed SafeBody facts, so the seq-side residual narrows to purely
+                PRODUCING the windowed `SafeBody`/`SafeBodyUnit` + content-start head at a nested guarded
+                subrange (the recursive characterization) — the bracket facts come from the typed locator +
+                `WellTyped_subrange`, and `content_start` is `SafeBody.head_Q`. Build green **525 jobs**,
+                **sorries held at 4**; axiom-clean (`[propext, Classical.choice, Quot.sound]`, no `sorryAx`).
+                See Reflection 231, on top of the
                 **Total .body scope re-estimate (SEVENTY-EIGHTH revision —
                 after **Thread A step 3 sub-step 2's brick (d-shape) cont'd — *windowed SafeBody array
                 wrappers for nested subranges* — landed** (commit `71dd7863`, Reflection 230).
@@ -25444,3 +25481,9 @@ The whole frontier had converged onto one residual: `have h_subranges : FlowSubr
 ### Reflection 230 (new, 2026-06-02): an "array wrapper" lemma silently encodes its window as *to-the-array-end*; generalizing it to a bounded `[lo, hi)` window is the cheap, mechanical brick that unblocks every nested-subrange consumer — and the bound only needs a prefix-coincidence lemma, not a re-proof
 
 With `FlowSubrangesOk` guarded and provable (Reflection 229), the next step was producing the seq subrange primitives. Tracing the outer-span derivation showed it does NOT lift for free (it is entangled with the `s₂.filter p` push decomposition, not a clean `SafeBody` hypothesis), and the genuine substrate — `SafeBody_array_flowEntry` / `SafeBodyUnit_array_succ`, the array wrappers that turn a list-level `SafeBody`/`SafeBodyUnit` into the `after_fe` / value-end-successor token facts — is stated over `arr.toList.drop lo`, i.e. the body window runs *to the end of the array*. That is exactly right for the OUTER span (whose body is everything between the boundary brackets, ending two before the array end) and exactly WRONG for a nested subrange `[lo, hi)`, whose body ends at `hi < size` with more outer structure after it. The "array wrapper" had silently baked the outer-span window into its type. The fix is the bounded variant `SafeBody_array_flowEntry_window` / `SafeBodyUnit_array_succ_window` over `(arr.toList.take hi).drop lo`, and the lesson is how *cheap* it is: the entire delta between the unbounded and windowed proofs is one helper, `window_prefix_eq` — the balance-relevant prefix `[lo, k)` of the windowed body is *the same list* as the unbounded `drop lo` prefix whenever the cut `k ≤ hi` (both name elements `[lo, k)`; proved by `List.ext_getElem` + `simp [getElem_take, getElem_drop]`). Given that coincidence, the *list-level* lemmas (`SafeBody_flowEntry_zero_balance`, `SafeBodyUnit_succ`) — which never cared about the window — apply unchanged to the windowed list, `flowBracketBalance_eq_pbalance` connects the array balance to it, and the only difference in the conclusion is the close bound sharpening from `k+1 < size` to `k+1 < hi`. No combinatorics re-proved; the bound is pure list-slice algebra. Two lessons compound. (1) **Diagnostic:** when a lemma is named `_array`/`_offset`/"wrapper", suspect it has hard-coded *which* window — read its body slice (`drop lo` vs `(take hi).drop lo`) before assuming it applies to a nested instance; an outer-span wrapper is not a subrange wrapper. (2) **Method:** to generalize a window, do not re-walk the inductive proof — find the prefix/slice-coincidence that lets the *existing* (windowed-agnostic) core lemma fire, and transport. This sits with [[ref-parametric-assembler-extraction]] (lift fixed-span facts to `∀ lo hi`; the symmetric second wrapper — the `SafeBodyUnit` dual — was indeed fresh-but-cheap once the `SafeBody` one and the shared `window_prefix_eq` existed) and is the substrate half of the seq-primitive residual: the wrappers are the joint the recursive *producer* of the windowed `SafeBody`/`SafeBodyUnit` will call once it has them — which is now the narrowed Phase-J frontier.
+
+### Reflection 231 (new, 2026-06-02): build the *consumer joint* before the producer — a single lemma keyed only on the recursion's deliverable collapses an entire side's assembly to one typed boundary, so the remaining work is exactly one shape, not a scatter of primitives
+
+Last session landed the windowed array wrappers (Reflection 230); the obvious next step was "produce the windowed `SafeBody`/`SafeBodyUnit`" — the recursion. But that recursion is large and not landable green in one session, so the question was what *self-contained* brick advances it. The answer was to look in the other direction: **build the consumer joint first.** `seqBodyProps_of_windowed_safebody` is a single lemma that takes the recursion's eventual *deliverable* — the windowed `SafeBody`/`SafeBodyUnit ContentStartTok ((tokens.toList.take hi).drop lo)` plus the content-start head, as bare hypotheses — together with the balanced-subrange facts, and produces the full `SeqBodyProps tokens lo hi`. Its proof is pure plumbing already in hand: drive `SafeBody_array_flowEntry_window` and `SafeBodyUnit_array_succ_window` (Reflection 230) into `seqBodyProps_assemble` (Reflection 226), with the only glue being the `getElem!`↔`getElem` bridge (`getElem!_pos`; the wrappers conclude over `arr[k]'_` while the assembler primitives are stated over `tokens[k]!`) and the definitional `ContentStartTok = isFlowContentStart` (`exact` sees through both `def`s). Fully provable now, axiom-clean, no new sorry.
+
+**The value is what it does to the residual's *shape*, not the sorry count** (the [[ref-reduction-by-import]] family — wiring a consumer retypes the residual; the retype is the progress). Before this lemma, the seq-side residual was a scatter: produce three primitives (content-start, value-end successor, post-`.flowEntry` content-start) AND assemble them. After it, the seq-side residual is *exactly one shape*: produce the windowed `SafeBody`/`SafeBodyUnit` + content-start head at a nested guarded subrange — feed it to `seqBodyProps_of_windowed_safebody`, done. Everything between "I have the windowed SafeBody" and "I have `FlowSubrangesOk.seq`" is now a single proven call. This is the mirror discipline to building the producer: when the producer is the hard recursion, build the *consumer* of its not-yet-existing output first — it costs nothing now (the plumbing already exists), it cannot regress (it is fully proven), and it forces the recursion's interface to a single named type. The next session's target stops being "the seq primitives" (which invites re-deriving the assembly each time) and becomes one crisp deliverable: `SafeBody`/`SafeBodyUnit` over the windowed slice. Note the asymmetry with the map side — there is no `mapBodyProps_of_windowed_safebody` yet, because a map *pair* is not a single `EntryUnit` (interior depth-0 `.value`), so its consumer joint needs the pair-level alternation primitives, not one windowed `SafeBody`; that joint is a separate (fresh-but-cheap, once the seq one exists) brick. Sits with [[ref-parametric-assembler-extraction]] (the assembler was the *assemble* half; this is the *adapt-the-substrate-to-the-assembler* half) and [[ref-array-wrapper-window-generalization]] (whose wrappers this lemma is the first consumer of).
