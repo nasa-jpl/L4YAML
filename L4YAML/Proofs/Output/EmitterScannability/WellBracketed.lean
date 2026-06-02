@@ -471,6 +471,213 @@ theorem EntrySafe_append (a b : List (Positioned YamlToken))
     have := hb.2 (i - a.length) hb_idx (by rw [← h_idx]; exact h_fe)
     omega
 
+/-! #### Unit entries — the value-end successor (`.body2.discharge.entryunit`)
+
+`EntrySafe` is too weak to read a *successor* off a value-end.  It admits an entry
+with an *interior* balance-`0` split (e.g. `scalar scalar`, two depth-`0` tokens) that
+the emitter never produces — `emit v` for one value is a lone scalar token or one
+matched `[…]`/`{…}` pair.  That gap is exactly why `EntrySafe` yields the `.flowEntry`
+*converse* (`SafeBody_array_flowEntry`: a depth-`0` `.flowEntry` is a separator, an
+entry head next) but **not** the forward fact a value-end needs (a depth-`0`
+scalar/close is an *entry end*, so a separator or the body close comes next).
+
+`EntryUnit` closes the gap: a unit entry forbids interior depth-`0` positions (every
+proper nonempty prefix is at balance `≥ 1`), so a scalar-headed unit is a singleton and
+a bracket-headed one a single matched pair — the emitter's per-value shape.
+`SafeBodyUnit Q` is the body of unit entries, and `SafeBodyUnit_succ` is the dual of
+`SafeBody_flowEntry_zero_balance`: in such a body, a token that ends a balanced prefix
+and is not itself a separator is the last token of an entry, so its successor is a
+separating `.flowEntry` or the body end.  These are pure `pbalance` combinatorics — the
+enablement substrate for the `scalar_succ`/`value_scalar_succ` and bracket-conjunct
+`h_succ` shape facts.  See Reflection 218: the `h_succ` guard
+`flowBracketDelta tokens[j]!.val = -1` is precisely the "value-end, not separator"
+discriminator this lemma consumes. -/
+
+/-- A *unit* entry: bracket-balanced (`pbalance = 0`) with every proper nonempty prefix
+    at balance `≥ 1`.  Strengthens `EntrySafe` by forbidding *interior* depth-`0`
+    positions — so a scalar-headed unit is a singleton and a bracket-headed one a single
+    matched pair, matching `emit v`'s per-value output. -/
+def EntryUnit (e : List (Positioned YamlToken)) : Prop :=
+  pbalance e = 0 ∧ ∀ (i : Nat), 0 < i → i < e.length → pbalance (e.take i) ≥ 1
+
+/-- A single delta-`0` token (a `.scalar`/`.key`/`.value`) is a unit entry — vacuously,
+    it has no proper nonempty prefix. -/
+theorem EntryUnit_singleton_delta_zero (t : Positioned YamlToken)
+    (h_delta : flowBracketDelta t.val = 0) : EntryUnit [t] := by
+  refine ⟨by rw [pbalance_singleton, h_delta], fun i h_i h_lt => ?_⟩
+  exfalso
+  simp only [List.length_cons, List.length_nil] at h_lt
+  omega
+
+/-- A `.scalar` token is a unit entry. -/
+theorem EntryUnit_scalar (t : Positioned YamlToken) (value : String) (style : ScalarStyle)
+    (h : t.val = .scalar value style) : EntryUnit [t] :=
+  EntryUnit_singleton_delta_zero t (h ▸ flowBracketDelta_scalar value style)
+
+/-- A `WellBracketed` interior framed by a matching opener (delta `+1`)/closer
+    (delta `-1`) is a unit entry: the opener lifts every interior prefix to balance
+    `≥ 1`, and the closer's `-1` only lands at the final position.  The unit refinement
+    of `wrap_block`'s `EntrySafe` half. -/
+theorem EntryUnit_wrap (op cl : Positioned YamlToken) (body : List (Positioned YamlToken))
+    (h_op : flowBracketDelta op.val = 1) (h_cl : flowBracketDelta cl.val = -1)
+    (h_body : WellBracketed body) : EntryUnit (op :: (body ++ [cl])) := by
+  refine ⟨?_, fun i h_i h_lt => ?_⟩
+  · -- total balance 1 + 0 + (-1) = 0
+    rw [pbalance_cons, pbalance_append, pbalance_singleton, h_op, h_cl]
+    have := h_body.1; omega
+  · -- i = m+1; the prefix is `op :: body.take m` (the `[cl]` part is dropped, m ≤ |body|)
+    obtain ⟨m, rfl⟩ : ∃ m, i = m + 1 := ⟨i - 1, by omega⟩
+    have h_m_le : m ≤ body.length := by
+      simp only [List.length_cons, List.length_append, List.length_nil] at h_lt
+      omega
+    rw [List.take_succ_cons, pbalance_cons, h_op, pbalance_take_append,
+        show m - body.length = 0 from by omega, List.take_zero, pbalance_nil]
+    have := h_body.2 m
+    omega
+
+/-- A flow body of *unit* entries — `SafeBody` with `EntryUnit` in place of `EntrySafe`:
+    nonempty unit entries with `Q`-satisfying heads, separated by single `.flowEntry`s. -/
+inductive SafeBodyUnit (Q : YamlToken → Prop) : List (Positioned YamlToken) → Prop
+  | single (e : List (Positioned YamlToken)) (h_ne : e ≠ [])
+      (h_unit : EntryUnit e) (h_head : Q (e.head h_ne).val) : SafeBodyUnit Q e
+  | cons (e : List (Positioned YamlToken)) (fe : Positioned YamlToken)
+      (rest : List (Positioned YamlToken)) (h_ne : e ≠ [])
+      (h_unit : EntryUnit e) (h_head : Q (e.head h_ne).val)
+      (h_fe : fe.val = .flowEntry) (h_rest : SafeBodyUnit Q rest) :
+      SafeBodyUnit Q (e ++ fe :: rest)
+
+/-- **Forward value-end successor** — the dual of `SafeBody_flowEntry_zero_balance`.
+    In a body of unit entries, a token `k` that ends a balanced prefix
+    (`pbalance (take (k+1)) = 0`) and is *not* itself a separator (`≠ .flowEntry`) is
+    the last token of an entry, so either it is the body's last token (`k+1 = length`)
+    or its successor is a separating `.flowEntry`.  `EntrySafe` is too weak for this —
+    it permits an interior depth-`0` split that would make `body[k+1]` another token of
+    the *same* entry; `EntryUnit`'s `≥ 1` interior condition forbids it. -/
+theorem SafeBodyUnit_succ {Q : YamlToken → Prop}
+    {body : List (Positioned YamlToken)} (h : SafeBodyUnit Q body) :
+    ∀ (k : Nat) (hk : k < body.length),
+      pbalance (body.take (k + 1)) = 0 → (body[k]'hk).val ≠ .flowEntry →
+      k + 1 = body.length ∨
+      ∃ (hk1 : k + 1 < body.length), (body[k+1]'hk1).val = .flowEntry := by
+  induction h with
+  | single e h_ne h_unit h_head =>
+    intro k hk h_bal _h_nfe
+    rcases Nat.lt_or_ge (k + 1) e.length with hlt | _hge
+    · -- k+1 < |e|: an interior prefix sits at balance ≥ 1, contradicting = 0
+      exfalso; have := h_unit.2 (k + 1) (by omega) hlt; omega
+    · -- k < |e| and k+1 ≥ |e| force k+1 = |e|
+      left; omega
+  | cons e fe rest h_ne h_unit h_head h_fe h_rest ih =>
+    intro k hk h_bal h_nfe
+    have h_len : (e ++ fe :: rest).length = e.length + 1 + rest.length := by
+      simp [List.length_append]; omega
+    rcases Nat.lt_trichotomy k e.length with hlt | heq | hgt
+    · -- inside `e`
+      rcases Nat.lt_or_ge (k + 1) e.length with hlt1 | _hge1
+      · -- k+1 < |e|: interior prefix of `e` at balance ≥ 1 contradicts = 0
+        exfalso
+        have htake : (e ++ fe :: rest).take (k + 1) = e.take (k + 1) := by
+          rw [List.take_append, show k + 1 - e.length = 0 from by omega,
+              List.take_zero, List.append_nil]
+        rw [htake] at h_bal
+        have := h_unit.2 (k + 1) (by omega) hlt1
+        omega
+      · -- k+1 = |e|: the successor is the separator `fe`
+        have hk1eq : k + 1 = e.length := by omega
+        right
+        have hk1 : k + 1 < (e ++ fe :: rest).length := by rw [h_len]; omega
+        refine ⟨hk1, ?_⟩
+        have hidx : (e ++ fe :: rest)[k + 1]'hk1 = fe := by
+          have h1 : (e ++ fe :: rest)[k + 1]? = some fe := by
+            rw [List.getElem?_append_right (by omega), hk1eq,
+                show e.length - e.length = 0 from by omega]
+            rfl
+          rw [List.getElem?_eq_getElem hk1] at h1
+          exact Option.some.inj h1
+        rw [hidx]; exact h_fe
+    · -- k = |e|: `body[k] = fe = .flowEntry`, contradicting `h_nfe`
+      exfalso; subst heq
+      have hidx : (e ++ fe :: rest)[e.length]'hk = fe := by
+        have h1 : (e ++ fe :: rest)[e.length]? = some fe := by
+          rw [List.getElem?_append_right (by omega),
+              show e.length - e.length = 0 from by omega]
+          rfl
+        rw [List.getElem?_eq_getElem hk] at h1
+        exact Option.some.inj h1
+      rw [hidx] at h_nfe; exact h_nfe h_fe
+    · -- after the separator: `k = |e| + 1 + m`, recurse into `rest`
+      obtain ⟨m, hm⟩ : ∃ m, k = e.length + 1 + m := ⟨k - e.length - 1, by omega⟩
+      subst hm
+      have hk_rest : m < rest.length := by rw [h_len] at hk; omega
+      have hbody_k : (e ++ fe :: rest)[e.length + 1 + m]'hk = rest[m]'hk_rest := by
+        have h1 : (e ++ fe :: rest)[e.length + 1 + m]? = rest[m]? := by
+          rw [List.getElem?_append_right (by omega),
+              show e.length + 1 + m - e.length = m + 1 from by omega, List.getElem?_cons_succ]
+        rw [List.getElem?_eq_getElem hk, List.getElem?_eq_getElem hk_rest] at h1
+        exact Option.some.inj h1
+      have h_nfe' : (rest[m]'hk_rest).val ≠ .flowEntry := by rw [← hbody_k]; exact h_nfe
+      have htake : (e ++ fe :: rest).take (e.length + 1 + m + 1) =
+          e ++ fe :: rest.take (m + 1) := by
+        rw [List.take_append,
+            List.take_of_length_le (show e.length ≤ e.length + 1 + m + 1 from by omega),
+            show e.length + 1 + m + 1 - e.length = (m + 1) + 1 from by omega, List.take_succ_cons]
+      have h_bal' : pbalance (rest.take (m + 1)) = 0 := by
+        rw [htake, pbalance_append, pbalance_cons, h_unit.1, h_fe,
+            flowBracketDelta_flowEntry] at h_bal
+        omega
+      rcases ih m hk_rest h_bal' h_nfe' with hend | ⟨hm1, hfe1⟩
+      · left; rw [h_len]; omega
+      · right
+        have hk1 : e.length + 1 + m + 1 < (e ++ fe :: rest).length := by rw [h_len]; omega
+        refine ⟨hk1, ?_⟩
+        have hidx : (e ++ fe :: rest)[e.length + 1 + m + 1]'hk1 = rest[m + 1]'hm1 := by
+          have h1 : (e ++ fe :: rest)[e.length + 1 + m + 1]? = rest[m + 1]? := by
+            rw [List.getElem?_append_right (by omega),
+                show e.length + 1 + m + 1 - e.length = (m + 1) + 1 from by omega,
+                List.getElem?_cons_succ]
+          rw [List.getElem?_eq_getElem hk1, List.getElem?_eq_getElem hm1] at h1
+          exact Option.some.inj h1
+        rw [hidx]; exact hfe1
+
+/-- **Array/offset wrapper** for `SafeBodyUnit_succ`, against `flowBracketBalance` on the
+    filtered token array with base offset `lo` — the value-end successor dual of
+    `SafeBody_array_flowEntry`, in the shape the body characterizations consume. -/
+theorem SafeBodyUnit_array_succ {Q : YamlToken → Prop}
+    (arr : Array (Positioned YamlToken)) (lo : Nat)
+    (h : SafeBodyUnit Q (arr.toList.drop lo)) :
+    ∀ (k : Nat), lo ≤ k → (hk : k < arr.size) →
+      flowBracketBalance arr lo (k + 1) = 0 → (arr[k]'hk).val ≠ .flowEntry →
+      k + 1 = arr.size ∨
+      ∃ (hk1 : k + 1 < arr.size), (arr[k+1]'hk1).val = .flowEntry := by
+  intro k h_lo hk h_bal h_nfe
+  have h_len : (arr.toList.drop lo).length = arr.size - lo := by
+    rw [List.length_drop, Array.length_toList]
+  have hj_lt : k - lo < (arr.toList.drop lo).length := by rw [h_len]; omega
+  have h_drop_get : ((arr.toList.drop lo)[k - lo]'hj_lt).val = (arr[k]'hk).val := by
+    rw [List.getElem_drop]
+    rw [Array.getElem_toList (by omega)]
+    congr 2
+    omega
+  have h_nfe' : ((arr.toList.drop lo)[k - lo]'hj_lt).val ≠ .flowEntry := by
+    rw [h_drop_get]; exact h_nfe
+  have h_bal' : pbalance ((arr.toList.drop lo).take ((k - lo) + 1)) = 0 := by
+    have h_eq : flowBracketBalance arr lo (k + 1) =
+        pbalance ((arr.toList.drop lo).take ((k + 1) - lo)) :=
+      flowBracketBalance_eq_pbalance arr lo (k + 1) (by omega)
+    rw [show (k + 1) - lo = (k - lo) + 1 from by omega] at h_eq
+    rw [← h_eq]; exact h_bal
+  rcases SafeBodyUnit_succ h (k - lo) hj_lt h_bal' h_nfe' with hend | ⟨hj1, hfe1⟩
+  · left; rw [h_len] at hend; omega
+  · right
+    have hk1 : k + 1 < arr.size := by rw [h_len] at hj1; omega
+    refine ⟨hk1, ?_⟩
+    have h_get : ((arr.toList.drop lo)[(k - lo) + 1]'hj1).val = (arr[k+1]'hk1).val := by
+      rw [List.getElem_drop]
+      rw [Array.getElem_toList (by omega)]
+      congr 2
+      omega
+    rw [← h_get]; exact hfe1
+
 /-- Prepending a delta-`0`, non-`.flowEntry` token to an `EntrySafe` entry keeps
     it `EntrySafe`: the head contributes nothing to the balance, and any interior
     `.flowEntry` is the tail's, whose prefix balance is unchanged by the head. -/
