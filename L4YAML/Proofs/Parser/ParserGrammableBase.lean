@@ -621,7 +621,8 @@ theorem flowBracketBalance_matching_close (tokens : Array (Positioned YamlToken)
     (h_dyck : ∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0) :
     ∃ j, k < j ∧ j < hi ∧
       flowBracketDelta tokens[j]!.val = -1 ∧
-      flowBracketBalance tokens (k+1) j = 0 := by
+      flowBracketBalance tokens (k+1) j = 0 ∧
+      (∀ i, k < i → i ≤ j → flowBracketBalance tokens lo i ≥ 1) := by
   -- One-step recurrence for the running balance.
   have step : ∀ i, lo ≤ i → i < tokens.size →
       flowBracketBalance tokens lo (i+1) =
@@ -638,37 +639,52 @@ theorem flowBracketBalance_matching_close (tokens : Array (Positioned YamlToken)
     have hs := step k h_lo_k (by omega)
     rw [h_k_depth, h_k_open] at hs; omega
   -- Scan forward from `start` (kept at depth `≥ 1`) for the first return to 0.
+  -- `find` threads the running invariant `∀ i ∈ (k, start], balance lo i ≥ 1`
+  -- (the depth never drops below 1 anywhere strictly between the opener and the
+  -- first return to 0), and hands it back for the whole interior `(k, j]`.
   have find : ∀ (f start : Nat), start + f = hi → k < start →
       flowBracketBalance tokens lo start ≥ 1 →
+      (∀ i, k < i → i ≤ start → flowBracketBalance tokens lo i ≥ 1) →
       ∃ j, k < j ∧ j < hi ∧
         flowBracketDelta tokens[j]!.val = -1 ∧
-        flowBracketBalance tokens (k+1) j = 0 := by
+        flowBracketBalance tokens (k+1) j = 0 ∧
+        (∀ i, k < i → i ≤ j → flowBracketBalance tokens lo i ≥ 1) := by
     intro f
     induction f with
     | zero =>
-      intro start h_sf h_ks h_bal
+      intro start h_sf h_ks h_bal _
       have h_eq : start = hi := by omega
       rw [h_eq, h_total] at h_bal; omega
     | succ f ih =>
-      intro start h_sf h_ks h_bal
+      intro start h_sf h_ks h_bal hinv
       have h_start_lt : start < hi := by omega
       have h_start_sz : start < tokens.size := by omega
       have hs := step start (by omega) h_start_sz
       by_cases h0 : flowBracketBalance tokens lo (start+1) = 0
-      · -- `start` is the matching close.
+      · -- `start` is the matching close; `j = start` and `hinv` is the interior invariant.
         rw [h0] at hs
         have h_delta_ge := flowBracketDelta_ge_neg_one tokens[start]!.val
         have h_bs1 : flowBracketBalance tokens lo start = 1 := by omega
         have h_d : flowBracketDelta tokens[start]!.val = -1 := by omega
-        refine ⟨start, h_ks, h_start_lt, h_d, ?_⟩
+        refine ⟨start, h_ks, h_start_lt, h_d, ?_, hinv⟩
         have hcomp := flowBracketBalance_compose tokens lo (k+1) start (by omega) (by omega)
         rw [h_bs1, h_f_k1] at hcomp; omega
-      · -- Still inside the bracket: recurse one step further.
+      · -- Still inside the bracket: recurse one step further, extending the invariant to `start+1`.
         have h_next_ge1 : flowBracketBalance tokens lo (start+1) ≥ 1 := by
           have h_ge0 := h_dyck (start+1) (by omega) (by omega)
           omega
-        exact ih (start+1) (by omega) (by omega) h_next_ge1
+        refine ih (start+1) (by omega) (by omega) h_next_ge1 ?_
+        intro i h_ki h_i_s1
+        rcases Nat.lt_or_ge i (start+1) with h | h
+        · exact hinv i h_ki (by omega)
+        · have : i = start + 1 := by omega
+          rw [this]; exact h_next_ge1
   exact find (hi - (k+1)) (k+1) (by omega) (by omega) (by omega)
+    (by
+      intro i h_ki h_i
+      have hi_eq : i = k + 1 := by omega
+      have : flowBracketBalance tokens lo i = 1 := hi_eq ▸ h_f_k1
+      omega)
 
 /-! ### §6  Structural predicates for flow body subranges
 
