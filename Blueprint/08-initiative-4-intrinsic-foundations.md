@@ -2139,13 +2139,26 @@ what remains is assembling `FlowSubrangesOk`). The shape of the remaining produc
    is `some s` with `s.length = pbalance (l.take m)`), and `btStep_pop_eq_seqEnd`/`_mapEnd` (the only step
    popping `[true]`/`[false]` to `[]` is a `]`/`}`). So "balance 1 at `j`" ⟹ "stack `[b]` at `j`", and `b`
    pins the close type. Build green 515, sorries held at 4, all six lemmas `sorryAx`-free on
-   `[propext, Quot.sound]`. **Remaining sub-bricks**:
-   (c-ii) the **bottom-preservation step** — the last piece of the typed locator: that the lone stack
-   element `b` at the matching close `j` equals the *opener* type at `k` (the bottom is never popped while
-   depth stays ≥ 1 across the interior `(k, j)`), so a depth-0 `.flowSequenceStart` at `k` matches a
-   `.flowSequenceEnd` (and `{`→`}`) — giving the `bracket_*`/M5/M8/M9/M10 conjuncts their type half via
-   `btStep_pop_eq_seqEnd`/`_mapEnd`; (d) the flat per-position local-shape facts (`scalar_succ`,
-   `after_fe`, `key_content`, …) for every nested subrange, then assemble `FlowSubrangesOk`.
+   `[propext, Quot.sound]`.
+   **Brick (c-ii) — the bottom-preservation step — LANDED** (commit `88aa3d9d`, Reflection 208): the
+   genuinely inductive core (cf. Reflection 204) — the stack BOTTOM (the opener still waiting to be closed)
+   is never popped while depth stays ≥ 1, because a `btStep` only ever touches the *head* (push prepends,
+   pop removes head). `WellBracketed.lean` now carries `getLast?_cons_ne` (a `cons` onto a non-empty tail
+   leaves `getLast?` unchanged), `btStep_getLast?_preserved` (one step preserves the bottom when neither
+   stack is empty), and `btFold_getLast?_preserved` (the induction: across a span whose running depth
+   `s0.length + pbalance` of every prefix never drops below 1, the final stack has the same bottom as `s0`).
+   So feeding `s0 = [true]` (the stack just after a depth-0 `[`) forces the matching close's singleton to be
+   `[true]`, pinning the close type via `btStep_pop_eq_seqEnd`/`_mapEnd`. Build green 515, sorries held at 4,
+   all three lemmas `sorryAx`-free on `[propext]`/`[propext, Quot.sound]` (no `Classical.choice`).
+   **Remaining sub-bricks**:
+   (c-iii) the **wiring** — strengthen the numeric locator `flowBracketBalance_matching_close`
+   (`ParserGrammableBase.lean` 616) to *also* expose the interior depth-positivity its `find`-loop already
+   maintains as an invariant (`flowBracketBalance tokens lo i ≥ 1` for `k < i ≤ j`), then instantiate
+   `btFold_getLast?_preserved` at `(a, b) = (k+1, j)` with `s0 = [opener-type]` — the offset `take`/`drop`
+   arithmetic (`List.take_add`/`drop_take`/`take_take`) translating the prefix-positivity hypothesis from
+   the `pbalance` indices to the segment — discharging the `bracket_*`/M5/M8/M9/M10 conjuncts' type half;
+   (d) the flat per-position local-shape facts (`scalar_succ`, `after_fe`, `key_content`, …) for every
+   nested subrange, then assemble `FlowSubrangesOk`.
 3. Instantiate `flow_parser_ok_of_structure` at `(lo, hi) = (2, tokens.size−2)`,
    `fuel = 4·tokens.size+4` → close the 2 structure sorries (`NonemptyStructure.lean` 576/804 — **both**
    the seq AND map sites now have `h_outer_bal`/`h_dyck` in scope ready to feed alongside `FlowSubrangesOk`).
@@ -14847,7 +14860,32 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
-                **Total .body scope re-estimate (FIFTY-FIFTH revision —
+                **Total .body scope re-estimate (FIFTY-SIXTH revision —
+                after **Thread A step 3 sub-step 2's brick (c-ii) — bottom-preservation — landed:
+                the typed locator's inductive core is in place** (commit `88aa3d9d`, Reflection 208).
+                Part 1's bridge turned "balance 1 at the close `j`" into "the stack at `j` is a singleton
+                `[b]`"; part 2 is the genuinely inductive fact (cf. Reflection 204's harder *elimination*
+                side) that `b` is the *opener* type — the stack BOTTOM, the opener still waiting to be
+                closed, is never popped while the depth stays `≥ 1`. A `btStep` only ever touches the
+                *head* of the stack (push prepends, pop removes the head), so the last element
+                (`getLast?`, the bottom) is invariant across any positive-depth span. `WellBracketed.lean`
+                gains: `getLast?_cons_ne` (a `cons` onto a non-empty tail leaves `getLast?` unchanged);
+                `btStep_getLast?_preserved` (one step preserves the bottom when neither stack is empty);
+                and `btFold_getLast?_preserved` (the induction: across a span whose running depth
+                `s0.length + pbalance` of *every* prefix never drops below 1, the final stack has the same
+                bottom as `s0`). Feeding `s0 = [true]` — the stack just after a depth-0 `[` — then forces
+                the matching close's singleton to be `[true]`, pinning the close type via part 1's
+                `btStep_pop_eq_seqEnd`/`_mapEnd`. Build green 515 jobs, **sorries held at 4** (pure
+                enablement: the inductive core is established, not yet wired to the numeric locator), all
+                three new lemmas `sorryAx`-free on `[propext]`/`[propext, Quot.sound]` (no
+                `Classical.choice`). **Remaining**: (c-iii) the wiring — strengthen the numeric locator
+                (`flowBracketBalance_matching_close`) to also expose the interior depth-positivity its
+                `find`-loop already maintains as an invariant, then instantiate
+                `btFold_getLast?_preserved` at `(a, b) = (k+1, j)` with `s0 = [opener-type]` (the offset
+                `take`/`drop` arithmetic — `List.take_add`/`drop_take`/`take_take`) to discharge the
+                `bracket_seq`/`bracket_map`/M5/M8/M9/M10 type half; then (d) the flat per-position
+                local-shape facts, then assemble `FlowSubrangesOk`. See Reflection 208, on top of the
+                **FIFTY-FIFTH revision** —
                 after **Thread A step 3 sub-step 2's brick (c-i) — the depth–balance bridge — landed:
                 the typed stack is now connected to the numeric indices** (commit `dc552e6f`, Reflection 207).
                 The typed locator's harder elimination side (cf. Reflection 204) begins with the bridge from
@@ -23913,3 +23951,33 @@ everything else numerically. **Lesson: when a structural invariant has to delive
 sum`, etc. — proved cheaply by induction with `none`/underflow ruled out by absorption. It converts most of the
 "hard inversion" into arithmetic the surrounding proof already does, leaving a single residual fact for the genuinely
 inductive brick. Measure before you invert.**
+
+### Reflection 208 (new, 2026-06-01): the residual inductive fact is about the *bottom*, not the matched pair — track the invariant `btStep` actually preserves (the head it never touches), not the property you want to conclude
+
+[[Reflection 207]] left exactly one fact for the genuinely inductive brick: that the singleton `[b]` the bridge
+finds at the matching close is `[true]` (the *opener* type), not `[false]`. The tempting framing is "prove the
+opener and closer match" — a statement about a *pair* of distant positions, which invites a heavy two-ended
+induction over the matched-bracket structure. The brick that actually went green reframed it as a statement about
+*one* element: the **bottom** of the stack. The whole argument is then driven by what `btStep` structurally does —
+it only ever touches the *head* (push prepends, a matching pop removes the head). So the bottom (`getLast?`) is a
+*conserved quantity* of every step that keeps the stack non-empty, and "non-empty throughout" is exactly
+`depth ≥ 1`, which the bridge already states numerically (`s0.length + pbalance ≥ 1`). The hard induction collapses
+to: one-step conservation (`btStep_getLast?_preserved`, a finite case-split) lifted over a fold under a positivity
+invariant (`btFold_getLast?_preserved`, a clean `foldl` induction threading `s0.length + pbalance (take m) ≥ 1`).
+
+Three things made this the right shape. **(1) Conserve, don't match.** "Opener = closer" is a relation between two
+positions; "the bottom never changes" is an invariant of *one* position carried along — and invariants compose under
+folds while relations between endpoints do not. The pivot from a pairing statement to a conservation statement is
+what turned a two-ended induction into a one-ended one. **(2) Track what the *operation* preserves, not what the
+*goal* wants.** `btStep` is blind to depth and to matching; what it visibly preserves is "everything below the head."
+Naming that — `getLast?` — and proving the one-liner that it's conserved is the entire content; the depth bound only
+buys non-emptiness so the head-pop can't reach the bottom. **(3) The numeric invariant was already in hand.** The
+positivity `s0.length + pbalance ≥ 1` is just the bridge's `length = balance` (Reflection 207) read as "stack stays
+non-empty," so the inductive brick consumed the measurement brick directly — the split paid off exactly as planned.
+What still isn't wired is the *source* of that positivity: the numeric locator's `find`-loop maintains
+`balance ≥ 1` across the interior as its loop invariant but doesn't expose it in its conclusion (it returns only the
+endpoint `j` and inner-balance-0). Brick (c-iii) strengthens that conclusion and feeds it here. **Lesson: when the
+residual fact after a measurement bridge is "two distant things correspond," look for the conserved quantity the
+fold's step operation leaves untouched and restate the fact as *that quantity is invariant*. A conservation law over
+a fold is a one-ended induction with a local step lemma; a correspondence between endpoints is a two-ended induction.
+Find the thing the operation doesn't touch, and prove it doesn't touch it.**
