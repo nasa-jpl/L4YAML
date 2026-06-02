@@ -340,6 +340,89 @@ theorem emitPairList_body_filtered_characterization
   · -- Part 7 [NEW]: WellTyped, threaded from `WellTyped block` (the body block is `drop old_sz`).
     rw [h_drop]; exact h_wt
 
+/-- **Parametric `SeqBodyProps` assembler** (Phase J seed).  Given an arbitrary balanced
+    flow-sequence subrange `[lo, hi)` — `tokens[hi]! = .flowSequenceEnd`, total balance `0`, Dyck
+    prefixes, interior `WellTyped` — together with the three *primitive* per-subrange facts
+    (content-start at `lo`; the value-end successor `h_body_succ`; the post-`.flowEntry` content-start
+    `h_fe_pattern`), assemble the full `SeqBodyProps tokens lo hi`.
+
+    This is the outer-span assembly inside `scanFiltered_emitSeq_nonempty_structure` (the former inline
+    `_h_seq_body_props`) lifted off the fixed span `(2, tokens.size − 2)` to an arbitrary subrange:
+    every `SeqBodyProps` field is a projection off these inputs — the bracket conjuncts via
+    `seq_bracket_{seq,map}_conjunct`, and the value-close-guarded successor re-derived inline from
+    `h_body_succ` + `h_tpe` (a value-CLOSE delta `-1` discharges the `≠ .flowEntry` guard; the
+    body-close case routes through the boundary `h_tpe`).  The remaining Phase-J work is purely to
+    *produce* the three primitives at every nested subrange (`WellTyped_subrange` already supplies the
+    per-subrange `WellTyped`); this lemma is the joint the recursive producer calls once it has them. -/
+theorem seqBodyProps_assemble (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (h_hi_sz : hi ≤ tokens.size)
+    (h_tpe : tokens[hi]!.val = .flowSequenceEnd)
+    (h_outer_bal : flowBracketBalance tokens lo hi = 0)
+    (h_dyck : ∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0)
+    (h_wt_interior : WellTyped ((tokens.toList.take hi).drop lo))
+    (h_content_start : isFlowContentStart tokens[lo]!.val)
+    (h_body_succ : ∀ k, lo ≤ k → k < hi →
+      flowBracketBalance tokens lo (k + 1) = 0 →
+      tokens[k]!.val ≠ .flowEntry →
+      k + 1 = hi ∨ ∃ (_ : k + 1 < hi), tokens[k + 1]!.val = .flowEntry)
+    (h_fe_pattern : ∀ k, lo ≤ k → k < hi →
+      tokens[k]!.val = .flowEntry →
+      flowBracketBalance tokens lo k = 0 →
+      k + 1 ≤ hi ∧ isFlowContentStart tokens[k + 1]!.val) :
+    SeqBodyProps tokens lo hi := by
+  -- Value-close-guarded successor: re-express `h_body_succ` in the EXACT `h_succ` shape the bracket
+  -- conjunct assemblers consume (a value-CLOSE delta `-1` discharges the `≠ .flowEntry` guard; the
+  -- body-close case routes through the boundary `h_tpe`).
+  have h_succ_guarded : ∀ j, lo ≤ j → j < hi →
+      flowBracketDelta tokens[j]!.val = -1 →
+      flowBracketBalance tokens lo (j + 1) = 0 →
+      j + 1 ≤ hi ∧
+      (tokens[j + 1]!.val = .flowEntry ∨
+       (tokens[j + 1]!.val = .flowSequenceEnd ∧ j + 1 = hi)) := by
+    intro j h_lo h_hi h_delta h_bal
+    have h_nfe : tokens[j]!.val ≠ .flowEntry := by
+      intro h_eq; rw [h_eq] at h_delta; exact absurd h_delta (by decide)
+    rcases h_body_succ j h_lo h_hi h_bal h_nfe with h_end | ⟨h', h_fe⟩
+    · exact ⟨Nat.le_of_eq h_end, Or.inr ⟨by rw [h_end]; exact h_tpe, h_end⟩⟩
+    · exact ⟨Nat.le_of_lt h', Or.inl h_fe⟩
+  refine ⟨?_, ?_, ?_, ?_, ?_⟩
+  · -- content_start
+    intro _; exact h_content_start
+  · -- scalar_succ — derive the balance shift past the depth-0 scalar, then `h_body_succ`
+    intro k h_lo h_hi h_bal_k h_scalar
+    have h_k_sz : k < tokens.size := by omega
+    have h_k_lt_list : k < tokens.toList.length := by rw [Array.length_toList]; exact h_k_sz
+    obtain ⟨c, s, hcs⟩ := h_scalar
+    have h_delta0 : flowBracketDelta tokens.toList[k].val = 0 := by
+      have h_eq : tokens.toList[k]'h_k_lt_list = tokens[k]! := by
+        rw [getElem!_pos tokens k h_k_sz, Array.getElem_toList]
+      simp only [h_eq, hcs, flowBracketDelta]
+    have h_bal_k1 : flowBracketBalance tokens lo (k + 1) = 0 := by
+      have hc := flowBracketBalance_compose tokens lo k (k + 1) (by omega) (by omega)
+      rw [flowBracketBalance_single tokens k h_k_lt_list, h_delta0] at hc
+      omega
+    have h_nfe : tokens[k]!.val ≠ .flowEntry := by rw [hcs]; simp
+    rcases h_body_succ k h_lo h_hi h_bal_k1 h_nfe with h_end | ⟨h', h_fe⟩
+    · exact ⟨Nat.le_of_eq h_end, Or.inr ⟨by rw [h_end]; exact h_tpe, h_end⟩⟩
+    · exact ⟨Nat.le_of_lt h', Or.inl h_fe⟩
+  · -- after_fe — `h_fe_pattern` gives `k+1 ≤ hi`; sharpen to `<` via `h_tpe`
+    intro k h_lo h_hi h_bal_k h_fe
+    obtain ⟨h_le, h_cs⟩ := h_fe_pattern k h_lo h_hi h_fe h_bal_k
+    refine ⟨?_, h_cs⟩
+    rcases Nat.lt_or_eq_of_le h_le with h | h
+    · exact h
+    · exfalso; rw [h, h_tpe] at h_cs; simp [isFlowContentStart] at h_cs
+  · -- bracket_seq
+    intro k h_lo h_hi h_bal_k h_open
+    exact seq_bracket_seq_conjunct tokens lo hi k h_lo h_hi h_hi_sz
+      h_bal_k h_open h_outer_bal h_dyck h_wt_interior
+      (fun j hkj hjhi hd hb => h_succ_guarded j (by omega) hjhi hd hb)
+  · -- bracket_map (a bracketed-map item still routes through the seq successor)
+    intro k h_lo h_hi h_bal_k h_open
+    exact seq_bracket_map_conjunct tokens lo hi k h_lo h_hi h_hi_sz
+      h_bal_k h_open h_outer_bal h_dyck h_wt_interior
+      (fun j hkj hjhi hd hb => h_succ_guarded j (by omega) hjhi hd hb)
+
 /-- Token structure of `scanFiltered ("[" ++ emitList items ++ "]")` for non-empty items.
     Establishes boundary tokens, body token patterns, and `parseNode` success within
     the flow sequence body.
@@ -616,80 +699,19 @@ theorem scanFiltered_emitSeq_nonempty_structure
     · right
       refine ⟨by rw [h_tokens_sz_eq]; exact h', ?_⟩
       rw [h_tok_body (k + 1) h']; exact h_fe
-  -- [NEW] Value-close-guarded successor: re-express `_h_body_succ` in the EXACT `h_succ` shape the
-  -- bracket-conjunct assemblers (`seq_bracket_{seq,map}_conjunct`) and `SeqBodyProps.scalar_succ`
-  -- consume.  The conjunct guard is the value-CLOSE fact `flowBracketDelta tokens[j]!.val = -1`
-  -- (a `]`/`}` pop), which is the bracket-side discriminator for "value-end, not separator"
-  -- (Reflection 218): a `.flowEntry` separator carries delta `0`, so `delta = -1 → ≠ .flowEntry`
-  -- discharges `_h_body_succ`'s guard.  The two output cases map directly: a `.flowEntry` next →
-  -- left disjunct; the body close (`j+1 = tokens.size-2`) → the boundary `.flowSequenceEnd`
-  -- (`h_tpe`) with `j+1 = hi` → right disjunct.  Bound as enablement (the producer-assembly brick
-  -- feeds it to the conjuncts).
-  have _h_succ_guarded : ∀ j, 2 ≤ j → j < tokens.size - 2 →
-      flowBracketDelta tokens[j]!.val = -1 →
-      flowBracketBalance tokens 2 (j + 1) = 0 →
-      j + 1 ≤ tokens.size - 2 ∧
-      (tokens[j + 1]!.val = .flowEntry ∨
-       (tokens[j + 1]!.val = .flowSequenceEnd ∧ j + 1 = tokens.size - 2)) := by
-    intro j h_lo h_hi h_delta h_bal
-    have h_nfe : tokens[j]!.val ≠ .flowEntry := by
-      intro h_eq; rw [h_eq] at h_delta; exact absurd h_delta (by decide)
-    rcases _h_body_succ j h_lo h_hi h_bal h_nfe with h_end | ⟨h', h_fe⟩
-    · exact ⟨Nat.le_of_eq h_end, Or.inr ⟨by rw [h_end]; exact h_tpe, h_end⟩⟩
-    · exact ⟨Nat.le_of_lt h', Or.inl h_fe⟩
-  -- [NEW] Assemble the outer `SeqBodyProps tokens 2 (tokens.size - 2)` from the in-scope facts.
-  -- This is the producer-assembly joint promised by Reflection 223's next sub-brick: every
-  -- `SeqBodyProps` field is now a one-liner off a fact established above.
-  --   • `content_start`  ← `h_content0`               (definitionally `isFlowContentStart`)
-  --   • `scalar_succ`    ← `_h_body_succ`              (a scalar has delta `0`, so its balance at
-  --       `k+1` equals its balance at `k`, and a scalar is `≠ .flowEntry` — exactly `_h_body_succ`'s
-  --       guard; the body-close case routes through `h_tpe`, the FE case is direct)
-  --   • `after_fe`       ← `h_fe_pattern`              (the `≤` it returns sharpens to `<`: at
-  --       `k+1 = hi` the token is `.flowSequenceEnd` (`h_tpe`), contradicting the content-start)
-  --   • `bracket_seq`    ← `seq_bracket_seq_conjunct`  fed `h_outer_bal`/`h_dyck`/`h_wt_interior`
-  --   • `bracket_map`    ← `seq_bracket_map_conjunct`  and the value-close-guarded `_h_succ_guarded`
-  -- This outer-span `SeqBodyProps` is the `lo = 2, hi = tokens.size - 2` instance of the universal
-  -- `FlowSubrangesOk.seq` (the residual `h_subranges` below); the full producer lifts every field to
-  -- an arbitrary nested balanced subrange (Phase J).  Here it stands as the seed/witness that the
-  -- outer span itself meets the structural shape `flow_parser_ok_of_structure` consumes.
-  have _h_seq_body_props : SeqBodyProps tokens 2 (tokens.size - 2) := by
-    refine ⟨?_, ?_, ?_, ?_, ?_⟩
-    · -- content_start
-      intro _; exact h_content0
-    · -- scalar_succ — derive the balance shift past the depth-0 scalar, then `_h_body_succ`
-      intro k h_lo h_hi h_bal_k h_scalar
-      have h_k_sz : k < tokens.size := by omega
-      have h_k_lt_list : k < tokens.toList.length := by rw [Array.length_toList]; exact h_k_sz
-      obtain ⟨c, s, hcs⟩ := h_scalar
-      have h_delta0 : flowBracketDelta tokens.toList[k].val = 0 := by
-        have h_eq : tokens.toList[k]'h_k_lt_list = tokens[k]! := by
-          rw [getElem!_pos tokens k h_k_sz, Array.getElem_toList]
-        simp only [h_eq, hcs, flowBracketDelta]
-      have h_bal_k1 : flowBracketBalance tokens 2 (k + 1) = 0 := by
-        have hc := flowBracketBalance_compose tokens 2 k (k + 1) (by omega) (by omega)
-        rw [flowBracketBalance_single tokens k h_k_lt_list, h_delta0] at hc
-        omega
-      have h_nfe : tokens[k]!.val ≠ .flowEntry := by rw [hcs]; simp
-      rcases _h_body_succ k h_lo h_hi h_bal_k1 h_nfe with h_end | ⟨h', h_fe⟩
-      · exact ⟨Nat.le_of_eq h_end, Or.inr ⟨by rw [h_end]; exact h_tpe, h_end⟩⟩
-      · exact ⟨Nat.le_of_lt h', Or.inl h_fe⟩
-    · -- after_fe — `h_fe_pattern` gives `k+1 ≤ hi`; sharpen to `<` via `h_tpe`
-      intro k h_lo h_hi h_bal_k h_fe
-      obtain ⟨h_le, h_cs⟩ := h_fe_pattern k h_lo h_hi h_fe h_bal_k
-      refine ⟨?_, h_cs⟩
-      rcases Nat.lt_or_eq_of_le h_le with h | h
-      · exact h
-      · exfalso; rw [h, h_tpe] at h_cs; simp at h_cs
-    · -- bracket_seq
-      intro k h_lo h_hi h_bal_k h_open
-      exact seq_bracket_seq_conjunct tokens 2 (tokens.size - 2) k h_lo h_hi (by omega)
-        h_bal_k h_open h_outer_bal h_dyck h_wt_interior
-        (fun j hkj hjhi hd hb => _h_succ_guarded j (by omega) hjhi hd hb)
-    · -- bracket_map (a bracketed-map item still routes through the seq successor)
-      intro k h_lo h_hi h_bal_k h_open
-      exact seq_bracket_map_conjunct tokens 2 (tokens.size - 2) k h_lo h_hi (by omega)
-        h_bal_k h_open h_outer_bal h_dyck h_wt_interior
-        (fun j hkj hjhi hd hb => _h_succ_guarded j (by omega) hjhi hd hb)
+  -- [NEW] Assemble the outer `SeqBodyProps tokens 2 (tokens.size - 2)` via the parametric assembler
+  -- `seqBodyProps_assemble`: the outer span is the `lo = 2, hi = tokens.size - 2` instance of the
+  -- universal `FlowSubrangesOk.seq`.  Every field is a projection the assembler performs off the
+  -- in-scope primitives — content-start (`h_content0`, definitionally `isFlowContentStart`), the
+  -- value-end successor (`_h_body_succ`), and the post-`.flowEntry` content-start (`h_fe_pattern`) —
+  -- plus the bracket facts (`h_outer_bal`/`h_dyck`/`h_wt_interior`).  The value-close-guarded
+  -- successor the bracket conjuncts need is re-derived inside the assembler from `_h_body_succ` +
+  -- `h_tpe`.  The full Phase-J producer lifts those three primitives to every nested balanced
+  -- subrange; here they hold at the outer span, so this stands as the seed/witness that the outer
+  -- span itself meets the structural shape `flow_parser_ok_of_structure` consumes.
+  have _h_seq_body_props : SeqBodyProps tokens 2 (tokens.size - 2) :=
+    seqBodyProps_assemble tokens 2 (tokens.size - 2) (by omega) h_tpe h_outer_bal h_dyck
+      h_wt_interior h_content0 _h_body_succ h_fe_pattern
   -- ═══ [NEW] Dispatcher wiring: parser-acceptance ← structural `FlowSubrangesOk` ═══
   -- `flow_parser_ok_of_structure` (the span strong-induction dispatcher in `FlowParserAcceptance`,
   -- previously a verified-but-unconsumed leaf module) turns the universal structural fact
