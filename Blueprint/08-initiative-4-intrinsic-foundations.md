@@ -2113,7 +2113,7 @@ work is the *plumbing* that feeds it.
 **Next session — `.parsenode.discharge` cont'd** (the dispatcher AND the matching locator are built;
 what remains is assembling `FlowSubrangesOk`).
 
-> **Frontier (post-Reflection 222, commit `0adc7af2`).** The `(d-shape)` algebra is complete
+> **Frontier (post-Reflection 223, commit `45751565`).** The `(d-shape)` algebra is complete
 > (the bracket conjuncts are correctly guarded — Reflection 218 — AND their `h_succ` substrate, the
 > value-end successor `EntryUnit` / `SafeBodyUnit_succ` / `SafeBodyUnit_array_succ`, exists —
 > Reflection 219), and the **sequence side** of threading `EntryUnit` through the producers is now
@@ -2129,21 +2129,30 @@ what remains is assembling `FlowSubrangesOk`).
 > (Reflection 222, commit `0adc7af2`): `scanFiltered_emitSeq_nonempty_structure` push-converts it via
 > `h_tok_body`/`h_conv` (as Parts 3/4/5 became `h_outer_bal`/`h_dyck`/`h_wt_interior`) into the
 > tokens-level `_h_body_succ` — "a balanced-prefix end that is not a `.flowEntry` separator is an entry
-> END (body close `k+1 = tokens.size−2`, or `.flowEntry` next)". **Immediate next sub-bricks (two, in
-> order):** (1) *assemble the seq producer* — feed the transported `_h_body_succ` as the bracket-conjunct
-> `h_succ` and `SeqBodyProps.scalar_succ`, build the outer `SeqBodyProps`, generalize to the
+> END (body close `k+1 = tokens.size−2`, or `.flowEntry` next)"; and that successor is now **reshaped
+> into the value-close-guarded `h_succ`** the conjuncts expect (Reflection 223, commit `45751565`):
+> `_h_succ_guarded` re-states `_h_body_succ` under the bracket-side guard `flowBracketDelta
+> tokens[j]!.val = -1` (a `]`/`}` pop) — the discriminator for "value-end, not separator" (Reflection
+> 218), since a `.flowEntry` separator carries delta `0`, so `delta = -1 → ≠ .flowEntry` discharges the
+> predecessor's guard and the body-close case routes through the boundary `.flowSequenceEnd` (`h_tpe`).
+> This is the EXACT shape `SeqBodyProps.scalar_succ` and `seq_bracket_{seq,map}_conjunct`'s `h_succ`
+> consume. **Immediate next sub-bricks (two, in
+> order):** (1) *assemble the seq producer* — feed `_h_succ_guarded` to `seq_bracket_{seq,map}_conjunct`
+> (with `h_outer_bal`/`h_dyck`/`h_wt_interior`) for `bracket_seq`/`bracket_map`, to `scalar_succ`, plus
+> `h_content0` → `content_start` and `h_fe_pattern` → `after_fe`, building the outer `SeqBodyProps tokens
+> 2 (tokens.size−2)`; then generalize to the
 > universal `FlowSubrangesOk` (every nested balanced subrange — `WellTyped_subrange` supplies the
 > per-subrange `WellTyped`; the per-subrange value-end successor / content-start is the recursive
 > bulk), apply `flow_parser_ok_of_structure` at `(2, tokens.size−2)` → **close the seq structure sorry**
-> (`NonemptyStructure.lean` 619, was 597); (2) the **map side**, which is *not* a direct `EntryUnit` thread — a map *pair* entry
+> (`NonemptyStructure.lean` 640, was 619); (2) the **map side**, which is *not* a direct `EntryUnit` thread — a map *pair* entry
 > `.key block_k .value block_v` has an interior depth-0 `.value`, so the whole pair is NOT an
 > `EntryUnit`; the value-end there needs a pair-level refinement (apply `EntryUnit` to each key/value
-> block, with a separate per-pair successor), to be designed before the map sorry (804) closes. Once
+> block, with a separate per-pair successor), to be designed before the map sorry (868) closes. Once
 > the seq `h_succ` premises are discharged, `SafeBodyUnit_array_succ` feeds them as the bracket-conjunct
 > `h_succ` consumers expect. Those feed
 > the bracket conjuncts + `SafeBodyProps`/`MapBodyProps` fields → `FlowSubrangesOk` →
 > `flow_parser_ok_of_structure` (`FlowParserAcceptance.lean`) at `(2, tokens.size−2)`,
-> `fuel = 4·tokens.size+4` → close the two `NonemptyStructure.lean` structure sorries (619/847) → the
+> `fuel = 4·tokens.size+4` → close the two `NonemptyStructure.lean` structure sorries (640/868) → the
 > two base `emit_roundtrip_{sequence,mapping}_content_eq` (`EmitterScannability.lean` 832/872) →
 > `universal_roundtrip`.
 
@@ -2383,6 +2392,20 @@ The shape of the remaining producer:
    universal-over-subranges producer) is not yet assembled, so the seq sorry (now 619, was 597) stays.
    Build green 519, sorries held at 4; no new sorry; the transport is fully proven (push conversions +
    `h_body_succ_raw`, no `sorry`/axiom).
+   **Brick (d-shape), seq value-end successor reshaped into value-close-guarded `h_succ` — LANDED**
+   (commit `45751565`, Reflection 223): the joint between the transport and the conjunct assemblers.
+   `_h_succ_guarded` re-states the tokens-level `_h_body_succ` under the EXACT guard the conjuncts and
+   `scalar_succ` carry — the value-CLOSE fact `flowBracketDelta tokens[j]!.val = -1` (a `]`/`}` pop),
+   the bracket-side "value-end, not separator" discriminator (Reflection 218). The reshape is two
+   moves: (i) discharge `_h_body_succ`'s `≠ .flowEntry` guard from `delta = -1` (a `.flowEntry`
+   separator carries delta `0`, so `delta = -1 → ≠ .flowEntry`, closed by `decide` on the closed
+   `flowBracketDelta .flowEntry = -1`); (ii) map the two output cases — `.flowEntry` next → left
+   disjunct, body close `j+1 = tokens.size−2` → the boundary `.flowSequenceEnd` (`h_tpe`) with `j+1 = hi`
+   → right disjunct. The result is literally `seq_bracket_{seq,map}_conjunct`'s and
+   `SeqBodyProps.scalar_succ`'s `h_succ` premise. **Still enablement** — `_h_succ_guarded` is in hand
+   but the conjuncts/`SeqBodyProps`/`FlowSubrangesOk` are not yet assembled, so the seq sorry (now 640,
+   was 619) stays. Build green 519, sorries held at 4; no new sorry; fully proven (`decide` + `h_tpe` +
+   `_h_body_succ`, no `sorry`/axiom).
    **Remaining sub-bricks of (d)**:
    the *single* underlying "next depth-0
    token after a complete value is `.flowEntry` or the body close" emitter fact (and its
@@ -15108,6 +15131,25 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
+                **Total .body scope re-estimate (SEVENTY-FIRST revision —
+                after **Thread A step 3 sub-step 2's brick (d-shape) cont'd — *seq value-end successor
+                reshaped into value-close-guarded `h_succ`* — landed** (commit `45751565`, Reflection
+                223). The joint between the transport and the conjunct assemblers: `_h_succ_guarded`
+                re-states the tokens-level `_h_body_succ` under the EXACT guard the conjuncts carry — the
+                value-CLOSE fact `flowBracketDelta tokens[j]!.val = -1` (a `]`/`}` pop), the bracket-side
+                "value-end, not separator" discriminator (Reflection 218). Two moves: (i) discharge
+                `_h_body_succ`'s `≠ .flowEntry` guard from `delta = -1` (a `.flowEntry` separator carries
+                delta `0`; `decide` closes the closed `flowBracketDelta .flowEntry = -1`); (ii) map the
+                two output cases — `.flowEntry` next → left disjunct; body close `j+1 = tokens.size−2` →
+                boundary `.flowSequenceEnd` (`h_tpe`) with `j+1 = hi` → right disjunct. The result is
+                literally `seq_bracket_{seq,map}_conjunct`'s and `SeqBodyProps.scalar_succ`'s `h_succ`
+                premise. **Still enablement** — `_h_succ_guarded` is in hand but the
+                conjuncts/`SeqBodyProps`/`FlowSubrangesOk` are not yet assembled, so the seq sorry (now
+                640, was 619) stays; next sub-brick: feed `_h_succ_guarded` to the conjuncts +
+                `h_content0`/`h_fe_pattern` to build the outer `SeqBodyProps`, generalize to
+                `FlowSubrangesOk`, apply `flow_parser_ok_of_structure`. Build green 519 jobs, **sorries
+                held at 4**; no new sorry; fully proven (`decide` + `h_tpe` + `_h_body_succ`, no
+                `sorry`/axiom). See Reflection 223, on top of the
                 **Total .body scope re-estimate (SEVENTIETH revision —
                 after **Thread A step 3 sub-step 2's brick (d-shape) cont'd — *seq value-end successor
                 transported to tokens level* — landed** (commit `0adc7af2`, Reflection 222). The next
@@ -24995,3 +25037,31 @@ the outer `SeqBodyProps` from these now-tokens-level facts and generalizing to t
 `FlowSubrangesOk` over *all* nested subranges (where the per-subrange value-end successor / content-start
 becomes the recursive bulk, no longer a clone) — is the next brick. Build green 519, sorries held at 4,
 no new sorry, the transport fully proven (push conversions, no `sorry`/axiom).
+
+### Reflection 223 (new, 2026-06-02): a guard-reshaping step is a pure interface adapter — its whole content is matching one lemma's guard to the next's, and its only nontrivial move is proving the guards equivalent on the relevant domain
+
+The transport (Reflection 222) put the value-end successor `_h_body_succ` at the tokens level, guarded
+the way the *producer* naturally states it: "the boundary token is not a `.flowEntry` separator". But the
+bracket-conjunct assemblers (`seq_bracket_{seq,map}_conjunct`) and `SeqBodyProps.scalar_succ` state the
+SAME successor under a *different* guard: the value-CLOSE fact `flowBracketDelta tokens[j]!.val = -1` (a
+`]`/`}` pop). Reshaping `_h_body_succ` into that shape (`_h_succ_guarded`) is a pure **interface adapter**
+— no new mathematics about the token stream, just bending one lemma's output to fit the next's input.
+
+The lesson: such a step has exactly one load-bearing line, and it is the **guard-equivalence direction you
+actually need**. Here it is `delta = -1 → ≠ .flowEntry` — the closing-bracket guard *implies* the
+non-separator guard, because a `.flowEntry` carries delta `0 ≠ -1` (a closed `decide`). The converse
+(`≠ .flowEntry → delta = -1`) is *false* (a scalar is neither) and never needed — the adapter consumes the
+stronger guard and produces under the weaker. This is the Reflection 218 producer-guarded-quantifier
+discipline seen from the consumer side: the conjunct's quantifier ranges only over value-CLOSE positions
+(delta `-1`), a *subset* of the non-separator positions `_h_body_succ` covers, so the adapter is always a
+guard-*narrowing*, hence always a one-way implication, hence never at risk of needing the false converse.
+The corollary for sizing: an interface-adapter brick is the cheapest kind — its risk is neither naming
+(Reflection 222) nor mathematics, but only spotting *which direction* of the guard equivalence is the one
+the narrowing needs, and confirming that direction is the provable one. Everything else (the output-case
+map: `.flowEntry` → left, body-close → boundary `h_tpe` → right) is mechanical re-association.
+
+A small structural tell that this was an adapter and not a theorem: the proof mentions no array
+infrastructure (`h_tok_body`/`h_conv`/`Array.getElem_push_*`) at all — only the predecessor `have`, a
+boundary fact already in scope (`h_tpe`), and `decide`. When a proof's entire dependency set is
+"the previous fact + a closed decision", you are adapting an interface, not proving something new, and the
+green is essentially assured before you build.
