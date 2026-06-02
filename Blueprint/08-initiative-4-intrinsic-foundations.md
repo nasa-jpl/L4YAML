@@ -2150,13 +2150,22 @@ what remains is assembling `FlowSubrangesOk`). The shape of the remaining produc
    So feeding `s0 = [true]` (the stack just after a depth-0 `[`) forces the matching close's singleton to be
    `[true]`, pinning the close type via `btStep_pop_eq_seqEnd`/`_mapEnd`. Build green 515, sorries held at 4,
    all three lemmas `sorryAx`-free on `[propext]`/`[propext, Quot.sound]` (no `Classical.choice`).
+   **Brick (c-iii-a) — interior depth-positivity — LANDED** (commit `9da17a3c`, Reflection 209): the
+   numeric locator `flowBracketBalance_matching_close` (`ParserGrammableBase.lean` 616) now *also* exposes
+   the interior depth-positivity its `find`-loop already maintained as a loop invariant — its conclusion
+   carries `∀ i, k < i → i ≤ j → flowBracketBalance tokens lo i ≥ 1` as a fifth conjunct. The scan threads
+   `∀ i ∈ (k, start], balance ≥ 1` as an input invariant, returns it unchanged at the matching close
+   (`j = start`), and extends it one step per recursion (reusing the existing `h_next_ge1`). No real callers
+   yet, so the added conjunct breaks nothing. Build green 515, sorries held at 4, pure triple
+   `[propext, Classical.choice, Quot.sound]` (no `sorryAx`).
    **Remaining sub-bricks**:
-   (c-iii) the **wiring** — strengthen the numeric locator `flowBracketBalance_matching_close`
-   (`ParserGrammableBase.lean` 616) to *also* expose the interior depth-positivity its `find`-loop already
-   maintains as an invariant (`flowBracketBalance tokens lo i ≥ 1` for `k < i ≤ j`), then instantiate
-   `btFold_getLast?_preserved` at `(a, b) = (k+1, j)` with `s0 = [opener-type]` — the offset `take`/`drop`
-   arithmetic (`List.take_add`/`drop_take`/`take_take`) translating the prefix-positivity hypothesis from
-   the `pbalance` indices to the segment — discharging the `bracket_*`/M5/M8/M9/M10 conjuncts' type half;
+   (c-iii-b) the **instantiation** — feed (c-iii-a)'s positivity into (c-ii)'s `btFold_getLast?_preserved`
+   at `(a, b) = (k+1, j)` with `s0 = [opener-type]`: the offset `take`/`drop` arithmetic
+   (`List.take_add`/`drop_take`/`take_take`) translating the prefix-positivity hypothesis from the
+   `pbalance` indices to the segment, plus `flowBracketBalance_eq_pbalance` (the depth = `s0.length + pbalance`
+   reading), so `getLast? [true] = some true` forces the close singleton to be `[true]` ⟹ `.flowSequenceEnd`
+   via `btStep_pop_eq_seqEnd` (and `{`→`}` dually) — discharging the `bracket_*`/M5/M8/M9/M10 conjuncts'
+   type half;
    (d) the flat per-position local-shape facts (`scalar_succ`, `after_fe`, `key_content`, …) for every
    nested subrange, then assemble `FlowSubrangesOk`.
 3. Instantiate `flow_parser_ok_of_structure` at `(lo, hi) = (2, tokens.size−2)`,
@@ -14860,6 +14869,29 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
+                **Total .body scope re-estimate (FIFTY-SEVENTH revision —
+                after **Thread A step 3 sub-step 2's brick (c-iii-a) — interior depth-positivity — landed:
+                the numeric locator now hands back the depth invariant its scan already maintained**
+                (commit `9da17a3c`, Reflection 209). `flowBracketBalance_matching_close`
+                (`ParserGrammableBase.lean` 616) previously concluded only `flowBracketDelta tokens[j]! = -1`
+                and `flowBracketBalance tokens (k+1) j = 0` — it threw away the fact its `find`-loop kept as
+                a loop invariant: that the running depth `flowBracketBalance tokens lo i` stays `≥ 1`
+                everywhere strictly between the depth-0 opener at `k` and the first return to 0 at `j`. The
+                conclusion now carries `∀ i, k < i → i ≤ j → flowBracketBalance tokens lo i ≥ 1` as a fifth
+                conjunct. The scan threads `∀ i ∈ (k, start], balance ≥ 1` as an *input* invariant, returns
+                it unchanged at the matching close (`j = start`), and extends it one step (reusing the
+                existing `h_next_ge1`) on each recursion. This is exactly the "stack stays non-empty across
+                the interior" hypothesis that brick (c-ii)'s `btFold_getLast?_preserved` consumes — via the
+                bridge `pbalance (segment.take m) = flowBracketBalance tokens (k+1) (k+1+m) =
+                (≥1) − 1 ≥ 0`. No real callers yet (doc-comment references only), so the added conjunct
+                breaks nothing. Build green 515 jobs, **sorries held at 4** (pure enablement), pure triple
+                `[propext, Classical.choice, Quot.sound]` (no `sorryAx`). **Remaining**: (c-iii-b) the
+                instantiation — feed the new positivity into `btFold_getLast?_preserved` at
+                `(a, b) = (k+1, j)` with `s0 = [opener-type]`, the offset `take`/`drop` arithmetic
+                (`List.take_add`/`drop_take`/`take_take`) translating prefix-positivity from `pbalance`
+                indices to the segment, plus `flowBracketBalance_eq_pbalance`, to discharge the
+                `bracket_seq`/`bracket_map`/M5/M8/M9/M10 type half; then (d) the flat per-position
+                local-shape facts, then assemble `FlowSubrangesOk`. See Reflection 209, on top of the
                 **Total .body scope re-estimate (FIFTY-SIXTH revision —
                 after **Thread A step 3 sub-step 2's brick (c-ii) — bottom-preservation — landed:
                 the typed locator's inductive core is in place** (commit `88aa3d9d`, Reflection 208).
@@ -23981,3 +24013,29 @@ residual fact after a measurement bridge is "two distant things correspond," loo
 fold's step operation leaves untouched and restate the fact as *that quantity is invariant*. A conservation law over
 a fold is a one-ended induction with a local step lemma; a correspondence between endpoints is a two-ended induction.
 Find the thing the operation doesn't touch, and prove it doesn't touch it.**
+
+### Reflection 209 (new, 2026-06-01): the hypothesis the consumer needs was already a *loop invariant* of the producer — strengthen the conclusion to publish it, don't re-derive it
+
+[[Reflection 208]] closed the inductive brick (`btFold_getLast?_preserved`) but left it starving for an input: its
+positivity hypothesis `∀ prefix, depth ≥ 1` across the interior. That fact is *true* — the matching close `j` is the
+*first* return to balance 0 after the opener, so balance stays `≥ 1` strictly between — and the numeric locator's
+`find`-loop already relied on exactly it to keep scanning (`h_bal : balance ≥ 1` is the loop's running hypothesis,
+and the recursive step re-establishes it via `h_next_ge1`). But the loop *discarded* it on exit: the conclusion
+exposed only the endpoint `j` and the inner-balance-0 fact, not the depth profile across the span. The brick that
+went green this session simply **published the invariant**: thread `∀ i ∈ (k, start], balance ≥ 1` as an explicit
+input to `find`, hand it back unchanged at the matching close (`j = start`), and extend it one step per recursion
+(reusing the already-proved `h_next_ge1`). No new mathematics — the proof obligations at every node were facts the
+loop already had in hand; the work was purely *re-plumbing the conclusion* to carry what the body maintained.
+
+Two things generalize. **(1) A loop's strongest output is its invariant, not its post-condition.** A scan/fold that
+maintains property `P` to make progress can almost always *return* `P` over the whole range it covered, for free or
+nearly so — the inductive step has already proved `P` at each point; you just collect it. When a downstream consumer
+asks for "this held throughout," check whether the producer's termination argument already depended on it before
+reaching for a fresh induction. **(2) Strengthen-the-conclusion beats re-derive-from-scratch.** The alternative — a
+standalone lemma "the first-return-to-0 implies positive interior" — would re-run the same first-return induction the
+locator already contains. Folding the extra conjunct into the existing loop reused its entire control structure; the
+diff was one hypothesis on `find`, one `refine` slot, and a three-line invariant extension. **Lesson: when a
+consumer needs "property `P` held across a range" and some existing producer scanned that range, look first at the
+producer's *loop invariant* — if it maintained `P` to terminate, publish `P` in its conclusion by threading it as an
+accumulated hypothesis, rather than proving `P` again in a separate pass. The invariant is already there; you are
+only deciding to keep it.**
