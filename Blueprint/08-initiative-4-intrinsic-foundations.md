@@ -2118,17 +2118,25 @@ what remains is assembling `FlowSubrangesOk`). The shape of the remaining produc
    sub-cases (scalar → `WellTyped_singleton_delta_zero`, seq → `wrap_seq_typed`, map → `wrap_map_typed`;
    `WellTyped_nil` added). The whole Block layer is one strongly-connected component, so it landed as a
    single atomic brick: **every `emit v` filtered block is now provably `WellTyped`**. The substrate's
-   introduction lemmas are now all exercised. **Remaining sub-bricks**: (b) surface `WellTyped` from the
-   leaf to the **tokens level** by threading the new conjunct through `emit{List,PairList}_scans_safebody`
-   → `…_body_filtered_characterization` → `scanFiltered_emit{Seq,Map}_nonempty_structure` (those producers
-   currently absorb the new leaf field with `_`), mechanically mirroring how the `WellBracketed` thread
-   surfaced the outer balance + Dyck (Reflection 202/203 playbook); (c) the **typed locator** — from the
+   introduction lemmas are now all exercised.
+   **Brick (b) — the tokens-level surfacing — LANDED** (commit `e91a5c84`, Reflection 206): the conjunct
+   is now threaded up the SAME producer chain the `WellBracketed` balance + Dyck rode.
+   `emit{List,PairList}_scans_safebody` un-discard the leaf `WellTyped` field and add `WellTyped block` to
+   their conclusions (assembled by `WellTyped_append`/`_cons_delta_zero`/`_singleton_delta_zero` — typed
+   twins of the `WellBracketed` bullets sitting right next to them); `…_body_filtered_characterization`
+   surface `WellTyped (drop old_sz filtered)` off the existing `h_drop`; and
+   `scanFiltered_emit{Seq,Map}_nonempty_structure` surface
+   `WellTyped (tokens.toList.take (size-2) |>.drop 2)` — the interior `[2, size-2)` slice (the two trailing
+   pushes `]`/`}`, `streamEnd` dropped), shown equal to the body block via `List.take_left` + the push
+   decomposition. Build green 515 jobs, **sorries held at 4** (still pure enablement: established, not yet
+   consumed), all four threaded theorems `sorryAx`-free on the pure triple. **Remaining sub-bricks**:
+   (c) the **typed locator** — from the
    tokens-level `WellTyped`, a depth-0 `.flowSequenceStart` at `k` matches a `.flowSequenceEnd` (and
    `{`→`}`), pinning the matching close's *type* and giving the `bracket_*`/M5/M8/M9/M10 conjuncts their
    type half; (d) the flat per-position local-shape facts (`scalar_succ`, `after_fe`, `key_content`, …)
    for every nested subrange, then assemble `FlowSubrangesOk`.
 3. Instantiate `flow_parser_ok_of_structure` at `(lo, hi) = (2, tokens.size−2)`,
-   `fuel = 4·tokens.size+4` → close the 2 structure sorries (`NonemptyStructure.lean` 549/764 — **both**
+   `fuel = 4·tokens.size+4` → close the 2 structure sorries (`NonemptyStructure.lean` 576/804 — **both**
    the seq AND map sites now have `h_outer_bal`/`h_dyck` in scope ready to feed alongside `FlowSubrangesOk`).
 4. The 2 base `emit_roundtrip_{sequence,mapping}_content_eq` (`EmitterScannability.lean` ~832/872) that
    consume them → `universal_roundtrip`.
@@ -14828,7 +14836,24 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
-                **Total .body scope re-estimate (FIFTY-THIRD revision —
+                **Total .body scope re-estimate (FIFTY-FOURTH revision —
+                after **Thread A step 3 sub-step 2's brick (b) — the tokens-level surfacing — landed:
+                `WellTyped` now reaches the tokens level** (commit `e91a5c84`, Reflection 206). The
+                conjunct established at the Block layer in brick (a) is now threaded up the SAME producer
+                chain the `WellBracketed` balance + Dyck rode (Reflection 202/203 playbook):
+                `emit{List,PairList}_scans_safebody` un-discard the leaf `WellTyped` field and add
+                `WellTyped block` to their conclusions (assembled by `WellTyped_append`/`_cons_delta_zero`/
+                `_singleton_delta_zero` — typed twins of the `WellBracketed` bullets already sitting next to
+                them); `…_body_filtered_characterization` surface `WellTyped (drop old_sz filtered)` off
+                the existing `h_drop`; and `scanFiltered_emit{Seq,Map}_nonempty_structure` surface
+                `WellTyped (tokens.toList.take (size-2) |>.drop 2)` — the interior `[2, size-2)` slice with
+                the two trailing pushes (`]`/`}`, `streamEnd`) dropped, shown equal to the body block via
+                `List.take_left` + the push decomposition. Build green 515 jobs, **sorries held at 4** (still
+                pure enablement: the tokens-level `WellTyped` is established but not yet consumed — the typed
+                locator of brick (c) will consume it for the `bracket_seq`/`bracket_map` type half), all
+                four threaded theorems `sorryAx`-free on `[propext, Classical.choice, Quot.sound]`. See
+                Reflection 206, on top of the
+                **FIFTY-THIRD revision** —
                 after **Thread A step 3 sub-step 2's brick (a) — the introduction-side thread — landed:
                 `WellTyped` is now established across the WHOLE Block-layer mutual recursion** (commit
                 `40941d9a`, Reflection 205). The four block predicates (`EmitScansInFlowBlock`,
@@ -23794,3 +23819,42 @@ session to "show a consumed result" — is exactly the all-or-nothing bundling [
 **Lesson: an increment that establishes a new invariant without yet consuming it is worth landing on its own — a green,
 axiom-clean, fully-established fact is a strictly better foundation for the next session than a half-built consumer, and
 the "held at N sorries" cadence explicitly blesses enablement-only bricks.**
+
+
+### Reflection 206 (new, 2026-06-01): a *numeric* twin surfaces for free (push-invariance), a *structural* twin costs one slice-equality — and the conjunct-insertion risk migrates from destructures to the downstream consumer's last binder
+
+Brick (b) surfaced `WellTyped` from the Block leaf to the tokens level by threading it up the *same* three-stage
+producer chain (`…_scans_safebody` → `…_body_filtered_characterization` → `scanFiltered_emit{Seq,Map}_nonempty_structure`)
+that the `WellBracketed` balance + Dyck rode two sessions ago ([[Reflection 202]]/[[Reflection 203]]). As [[Reflection
+205]] predicted for the introduction side, almost every edit was a mechanical twin sitting one line below its
+`WellBracketed` original (`WellTyped_append` next to `WellBracketed_append`, the `flowBracketDelta_flowEntry`
+side-condition reused verbatim). But two things were *not* free, and both are worth recording because they distinguish
+"thread a list/structural invariant" from "thread a numeric one."
+
+**(1) A numeric invariant surfaces through a *push-invariance lemma*; a structural one surfaces through an *explicit
+slice equality*.** The `WellBracketed` thread surfaced as `flowBracketBalance tokens 2 (tokens.size-2) = 0` — and the
+structure theorem proved it from the body's `(s₂.filter p)` balance with `h_conv`, a push-invariance fact
+(`flowBracketBalance_push`: the two trailing `]`/`}`+`streamEnd` pushes don't change the balance on `[2, k)`). No slicing:
+balance is a *numeric function of indices*, so "the body's balance" and "the array's balance on the body window" are the
+same number, proven by a rewrite. `WellTyped`, by contrast, is a *fold over a concrete list* — there is no "WellTyped of
+an index window"; the proposition is about an actual `List`. So surfacing it forced naming the interior slice explicitly
+(`tokens.toList.take (tokens.size-2) |>.drop 2`) and proving that slice *equals* the body block
+(`(s₂.filter p).toList.drop 2`) via `List.take_left` on the push decomposition — a small but genuinely new proof obligation
+with no `WellBracketed` analogue. **Lesson: when you thread a parallel invariant, check whether it is a numeric function of
+positions or a structure over the token list. The numeric one rides push-invariance lemmas already in hand and surfaces by
+rewrite; the structural one needs an explicit slice expression in the conclusion and a slice-equality lemma to connect it
+to the producer's block — budget that one extra brick, and prefer a slice form (`take … |>.drop …`) that an existing
+append/`take_left` lemma closes.**
+
+**(2) Adding a conjunct to a theorem's *conclusion* is a destructure-cascade that strikes at the consumer's LAST binder —
+across a module boundary, where the local IDE was quiet.** Brick (a)'s risk (Reflection 205 (2)) was destructure sites of
+the *predicates*, all in `Block.lean`. Brick (b) adds the same risk one level up: inserting `WellTyped (…) ∧` *before*
+`ParseNode…Ok` in each structure theorem's conclusion silently re-binds the final `h_pnok`/`h_entry_ok` of every
+downstream `obtain ⟨…, _h_dyck, h_pnok⟩` to the *conjunction* `WellTyped ∧ ParseNode…Ok` — which only surfaces as a
+cryptic `Invalid field 'mono': … does not contain 'And.mono'` at the *use* site, in `EmitterScannability.lean`, a
+different module the editing-buffer diagnostics never flagged. The fix was trivial (`…, _h_dyck, _h_wt_interior,
+h_pnok⟩`), but it was invisible until the *full* `lake build` reached the consumer. **Lesson: when you append/insert a
+conjunct into a theorem's conclusion (not just a predicate's definition), grep every `obtain`/destructure of that theorem
+across the WHOLE build, not just the defining module — a trailing binder will silently absorb the new conjunct into an
+`And`, and the error materializes at a field projection in a downstream file, well after the per-file IDE check looks
+green. The full build is the only reliable oracle for conclusion-shape changes.**
