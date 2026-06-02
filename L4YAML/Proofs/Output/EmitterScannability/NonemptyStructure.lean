@@ -954,8 +954,21 @@ theorem scanFiltered_emitMap_nonempty_structure
       List.take_left]
   have h_wt_interior : WellTyped ((tokens.toList.take (tokens.size - 2)).drop 2) := by
     rw [h_take_eq]; exact h_body_wt_raw
+  -- ═══ [NEW] Dispatcher wiring (map side): parser-acceptance ← structural `FlowSubrangesOk` ═══
+  -- Mirror of the seq-side reduction (commit `79350657`, Reflection 225): the span strong-induction
+  -- dispatcher `flow_parser_ok_of_structure`'s `.map` half turns the universal structural fact
+  -- `FlowSubrangesOk tokens` — every nested balanced subrange has `SeqBodyProps`/`MapBodyProps` —
+  -- into `ParseEntryFlowMapOk` at every subrange.  Instantiating at the outer span `(2, tokens.size - 2)`
+  -- discharges `h_pnok` directly from `h_subranges`, so the map sorry no longer states a
+  -- parser-EXECUTION obligation: it is now the SAME pure STRUCTURAL residual `FlowSubrangesOk tokens`
+  -- the seq side already carries (Phase J — produce the per-subrange `SeqBodyProps`/`MapBodyProps`).
+  -- With both structure sorries now this single residual, one Phase-J producer closes both at once.
+  have h_subranges : FlowSubrangesOk tokens := sorry
   have h_pnok : L4YAML.Proofs.ParserWellBehaved.ParseEntryFlowMapOk
-      tokens (tokens.size - 2) (4 * tokens.size + 4) 2 := sorry
+      tokens (tokens.size - 2) (4 * tokens.size + 4) 2 :=
+    (L4YAML.Proofs.ParserWellBehaved.flow_parser_ok_of_structure
+        tokens (4 * tokens.size + 4) h_subranges).2
+      2 (tokens.size - 2) (by omega) (by omega) h_tpe h_outer_bal
   exact ⟨h_sz7, h_t0, h_tlast, h_t1, h_tpe, h_t2_key, h_fe_pattern,
          h_outer_bal, h_dyck, h_wt_interior, h_pnok⟩
 
