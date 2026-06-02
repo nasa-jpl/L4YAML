@@ -2253,16 +2253,27 @@ what remains is assembling `FlowSubrangesOk`). The shape of the remaining produc
    conjuncts' successor work is now closed at the algebra layer**: what remains of `(d-shape)` is purely the
    scalar/key/value/comma emitter facts (the `h_succ` premises). Build green 515, sorries held at 4, all
    three on the pure triple.
+   **Brick (d-shape), bracket-conjunct assembly (seq side) — LANDED** (commit `bb9fbaf1`, Reflection 216):
+   the typed locator and the successor reduction are now *bolted together* into the exact `SeqBodyProps`
+   bracket-conjunct shapes. `WellBracketed.lean` carries (typed locator part 6, right after
+   `WellTyped_subrange`) `seq_bracket_seq_conjunct` (depth-0 `[` opener → full `bracket_seq`: matching `]`
+   at `j` + balanced interior + `FE ∨ (seqEnd ∧ j+1=hi)` successor) and `seq_bracket_map_conjunct`
+   (depth-0 `{` opener → `bracket_map`, SAME seq successor — a seq body always closes `.flowSequenceEnd`).
+   Each runs `flowBracketBalance_matching_close_{seq,map}` for the close's position+type, then
+   `seq_bracket_succ_reduce` for the successor, leaving the lone input `h_succ`. Build green 515,
+   sorries held at 4, both on the pure triple.
    **Remaining sub-bricks of (d)**:
-   (d-shape) cont'd — the *single* underlying "next depth-0 token after a complete value is `.flowEntry`
-   or the body close" emitter fact (and its `.key`/`.value`/content-start siblings: `scalar_succ`,
-   `after_fe`, `key_content`, `key_start`, …) for every nested subrange — i.e. the `h_succ`-shaped
-   premises the reduction lemmas above now consume. The bracket cases are no longer separate work
-   (`bracket_pair_skip` → `seq_bracket_succ_reduce`/`map_*_reduce` route them to the scalar fact); this
-   is the genuinely emitter-output-characterizing half, recursive over the emitted value tree;
+   (d-shape) cont'd, map side — `map_key_bracket_conjunct` / `map_value_bracket_conjunct` (M5/M8, each a
+   2-way split on the `.flowSequenceStart`/`.flowMappingStart` opener kind, routing through
+   `map_key_bracket_value_reduce` / `map_value_bracket_succ_reduce`) and M9/M10 (direct from
+   `flowBracketBalance_matching_close_{seq,map}`, no successor); then the *single* underlying "next depth-0
+   token after a complete value is `.flowEntry` or the body close" emitter fact (and its
+   `.key`/`.value`/content-start siblings: `scalar_succ`, `after_fe`, `key_content`, `key_start`, …) for
+   every nested subrange — i.e. the `h_succ`-shaped premises the assembly + reduction lemmas now consume.
+   This is the genuinely emitter-output-characterizing half, recursive over the emitted value tree;
    (d-assemble) bundle the local Dyck (`flowBracketBalance_interior_dyck` → `WellTyped_subrange`, both
-   LANDED) + (d-shape) + the typed close (`flowBracketBalance_matching_close_{seq,map}`) + the
-   successor-reduction lemmas (LANDED) into `SeqBodyProps`/`MapBodyProps` and `FlowSubrangesOk`.
+   LANDED) + the bracket-conjunct assembly (seq LANDED, map next) + the scalar/key/value/content-start
+   shape facts into `SeqBodyProps`/`MapBodyProps` and `FlowSubrangesOk`.
 3. Instantiate `flow_parser_ok_of_structure` at `(lo, hi) = (2, tokens.size−2)`,
    `fuel = 4·tokens.size+4` → close the 2 structure sorries (`NonemptyStructure.lean` 576/804 — **both**
    the seq AND map sites now have `h_outer_bal`/`h_dyck` in scope ready to feed alongside `FlowSubrangesOk`).
@@ -14964,6 +14975,25 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
+                **Total .body scope re-estimate (SIXTY-FOURTH revision —
+                after **Thread A step 3 sub-step 2's brick (d-shape) cont'd — *bracket-conjunct
+                assembly (seq side)* — landed: the typed locator and the successor reduction are
+                bolted into the exact `SeqBodyProps` bracket-conjunct shapes** (commit `bb9fbaf1`,
+                Reflection 216). Two pure lemmas in `WellBracketed.lean` (typed locator part 6,
+                right after `WellTyped_subrange`): `seq_bracket_seq_conjunct` (depth-0 `[` opener →
+                full `SeqBodyProps.bracket_seq`: matching `]` at `j` + balanced interior +
+                `FE ∨ (seqEnd ∧ j+1=hi)` successor) and `seq_bracket_map_conjunct` (depth-0 `{`
+                opener → `bracket_map`, SAME seq successor since a seq body always closes
+                `.flowSequenceEnd`). Each runs the typed locator
+                `flowBracketBalance_matching_close_{seq,map}` for the close's *position and type*,
+                then `seq_bracket_succ_reduce` (the landed reduction, via the matched pair's
+                depth-transparency) for the successor — leaving the lone input `h_succ`, the shared
+                "next depth-0 token after a complete value" emitter fact quantified over the
+                locator-produced close position `j`. **The seq bracket conjuncts are now fully
+                assembled** down to that one emitter premise; only the map side (M5/M8 with their
+                2-way opener split, M9/M10 direct from the typed locator) and the `h_succ` emitter
+                facts remain before `(d-assemble)`. Build green 515 jobs, **sorries held at 4**,
+                both lemmas `sorryAx`-free on the pure triple. See Reflection 216, on top of the
                 **Total .body scope re-estimate (SIXTY-THIRD revision —
                 after **Thread A step 3 sub-step 2's brick (d-shape) — the *bracket-successor
                 reduction* — landed: the depth bridge is now applied, routing all four bracket
@@ -24473,3 +24503,27 @@ shared premise becomes a type the assembler must satisfy exactly once.** The rem
 sharply delimited: produce the `h_succ`-shaped emitter facts (one family per body kind), and *nothing about
 brackets* is left in it — the [[Reflection 214]] depth-transparency, once wired this way, removed an entire
 branch of the case analysis rather than merely simplifying it.
+
+### Reflection 216 (new, 2026-06-01): an assembly lemma is where two independently-built halves first meet — and the meeting is short precisely because each half was already stated in the consumer's shape
+
+[[Reflection 215]] deferred the emitter fact behind a named hypothesis `h_succ` and proved the reduction
+wiring; [[Reflection 213]] and the typed-locator thread ([[Reflection 207]]/[[Reflection 208]]) built the
+*other* half — the matching close's position and type. This brick is the first place the two halves are
+*combined*, and the lesson is how little combining costs: `seq_bracket_seq_conjunct` /
+`seq_bracket_map_conjunct` are six-line proofs — run the typed locator, read off two endpoint deltas
+(`rfl` from the close's `.flowSequenceEnd`/`.flowMappingEnd`), feed the landed `seq_bracket_succ_reduce`.
+No new combinatorics, no new induction. That brevity is *earned*: because the locator already concludes in
+`tokens[j]!.val = .flowSequenceEnd` (not a bare `flowBracketDelta = -1`) and the reduction already concludes
+in the literal `bracket_seq` successor shape, the assembly is pure plumbing.
+
+The structural insight the assembly *exposes* (rather than proves) is the **successor-direction asymmetry of
+a seq body**: both `bracket_seq` (a `[…]` item) and `bracket_map` (a `{…}` item) carry the *same* successor
+`FE ∨ (seqEnd ∧ j+1=hi)`, because what follows an item is governed by the *enclosing* body's close, not the
+item's own kind. So `seq_bracket_succ_reduce` covers both — the open/close *type* differs (different typed
+locator: `..._seq` vs `..._map`) but the successor does not. This is why the seq side is exactly two lemmas,
+not four: the kind-split lives only in the locator call, and the map side (M5/M8) will differ precisely by
+needing an *inner* 2-way split because there the opener kind is itself existential in the conjunct hypothesis
+(`tokens[k+1]!.val = .flowSequenceStart ∨ .flowMappingStart`). The general lesson: **when you build a
+producer and a consumer-shaped reducer as separate green increments, the lemma that joins them should be
+trivial; if it isn't, one of the two halves was stated in the wrong vocabulary and should be re-shaped, not
+patched at the join.**
