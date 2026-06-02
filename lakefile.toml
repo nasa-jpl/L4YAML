@@ -7,6 +7,7 @@ defaultTargets = [
   "L4YAML",
   "Tests.Guards",
   "Tests.ProducerGuardedTrap",
+  "Tests.ConverseForwardAsymmetry",
   "tryparse",
   "tryscan",
   "tryroundtrip",
@@ -53,6 +54,9 @@ name = "Tests.Guards"
 
 [[lean_lib]]
 name = "Tests.ProducerGuardedTrap"
+
+[[lean_lib]]
+name = "Tests.ConverseForwardAsymmetry"
 
 [[lean_lib]]
 name = "Tests.VerifiedResult"
