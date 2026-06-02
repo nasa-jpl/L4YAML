@@ -24653,6 +24653,33 @@ hypotheses; a deferred premise stated more weakly than the producer's guarantee 
 discharge — and the build will not tell you.** This sharpens [[Reflection 215]]: stating a premise "in the
 consumer's shape" is necessary but not sufficient — it must also be in the *producer's guard*.
 
+The trap is fully visible in a code-free skeleton — strip the `flowBracketBalance` machinery and the shape is
+generic to *any* locator-style lemma:
+
+```lean
+-- A lemma that PRODUCES its witness j internally (via an existential locator),
+-- then defers a premise quantified over j:
+theorem trap
+    (h_succ : ∀ j, inRange j → weakCond j → Goal j)   -- deferred premise
+    : ∃ j, producerProp j ∧ Goal j := by
+  obtain ⟨j, hProd, hRange, hWeak⟩ := locator ...      -- locator guarantees producerProp j
+  exact ⟨j, hProd, h_succ j hRange hWeak⟩              -- ✓ TYPE-CHECKS
+
+-- It compiles because the BODY only ever applies h_succ at the produced j,
+-- where producerProp/weakCond both hold. But the SIGNATURE demands Goal at
+-- EVERY j with weakCond — including j' where weakCond j' holds but producerProp j'
+-- does NOT (and Goal j' is false). The locator never returns such j'; the caller
+-- of `trap` must still prove Goal for it. Undischargeable.
+-- Fix: strengthen the deferred premise to the producer's guard —
+--   h_succ : ∀ j, inRange j → producerProp j → Goal j
+```
+
+In this instance `producerProp j = (flowBracketDelta tokens[j]!.val = -1)` (a value-close) and
+`weakCond j = (flowBracketBalance tokens lo (j+1) = 0)` (a depth-0 successor); separators satisfy `weakCond`
+but not `producerProp`, which is exactly why the witness `[["a"], "b"]` exists. The litmus test, stated to be
+remembered: *a deferred `∀`-premise over a witness you produce yourself is only as supplyable as its
+hypotheses are as strong as the producer's output; a green build and a clean axiom profile prove neither.*
+
 A corollary surfaced while scoping the producer that will eventually discharge this guarded `h_succ`. The
 body abstraction `SafeBody`/`EntrySafe` already yields the *converse* successor (`after_fe`:
 `SafeBody_array_flowEntry` gives "balance-0 `.flowEntry` → content-start head"), but it **cannot** yield the
