@@ -391,7 +391,7 @@ theorem scanFiltered_emitSeq_nonempty_structure
   obtain ⟨n₂, s₂, h_chain₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂,
           h_ek₂, h_col₂, h_inflow₂, h_indent₂, _, _, _, h_stack₂, h_fmc₂,
           ⟨h_body_sz_raw, h_body_cs_raw⟩, h_body_fe_next_raw,
-          h_body_outer_bal_raw, h_body_dyck_raw, h_body_wt_raw, _h_body_succ_raw⟩ :=
+          h_body_outer_bal_raw, h_body_dyck_raw, h_body_wt_raw, h_body_succ_raw⟩ :=
     emitList_body_filtered_characterization items.toList h_ne
       (fun w hw => h_all_block w hw) s₁ [']']
       h_corr₁ h_inflow₁ (by rw [h_fl₁]; omega) h_indent₁ (by rw [h_col₁]; omega)
@@ -529,7 +529,7 @@ theorem scanFiltered_emitSeq_nonempty_structure
   -- Rename _raw variables to match expected names
   have h_body_sz := h_body_sz_raw; have h_body_cs := h_body_cs_raw
   have h_body_fe_next := h_body_fe_next_raw
-  rw [h_filt₁_sz] at h_body_sz h_body_cs h_body_fe_next h_body_outer_bal_raw h_body_dyck_raw h_body_wt_raw
+  rw [h_filt₁_sz] at h_body_sz h_body_cs h_body_fe_next h_body_outer_bal_raw h_body_dyck_raw h_body_wt_raw h_body_succ_raw
   -- Helper: tokens[k]! for k < tokens.size - 2 equals (s₂.filter p)[k]
   have h_tokens_sz_eq : tokens.size - 2 = (s₂.tokens.filter p).size := by
     rw [h_tokens_decomp]; simp [Array.size_push]
@@ -593,6 +593,28 @@ theorem scanFiltered_emitSeq_nonempty_structure
       List.take_left]
   have h_wt_interior : WellTyped ((tokens.toList.take (tokens.size - 2)).drop 2) := by
     rw [h_take_eq]; exact h_body_wt_raw
+  -- [NEW] Tokens-level value-end successor (Part 6), push-converted from the body fact
+  -- `h_body_succ_raw` exactly as `h_dyck` was from `h_body_dyck_raw`: `h_tok_body` carries the
+  -- token values across the two trailing pushes (`tok_fse`, `streamEnd`) and `h_conv` carries the
+  -- prefix balance.  A balanced-prefix end that is NOT a `.flowEntry` separator is an entry END —
+  -- the body close (`k+1 = tokens.size - 2`) or a `.flowEntry` next.  This is the `h_succ`/
+  -- `SeqBodyProps.scalar_succ` substrate the future `h_pnok` proof feeds the bracket conjuncts and
+  -- the scalar-successor field.  Bound here as enablement (next sub-brick consumes it).
+  have _h_body_succ : ∀ k, 2 ≤ k → k < tokens.size - 2 →
+      flowBracketBalance tokens 2 (k + 1) = 0 →
+      tokens[k]!.val ≠ .flowEntry →
+      k + 1 = tokens.size - 2 ∨
+      ∃ (h' : k + 1 < tokens.size - 2), tokens[k + 1]!.val = .flowEntry := by
+    intro k h_lo h_hi h_bal h_nfe
+    have h_k_lt : k < (s₂.tokens.filter p).size := by rw [← h_tokens_sz_eq]; exact h_hi
+    rw [h_tok_body k h_k_lt] at h_nfe
+    have h_bal' : flowBracketBalance (s₂.tokens.filter p) 2 (k + 1) = 0 := by
+      rw [← h_conv (k + 1) (by omega)]; exact h_bal
+    rcases h_body_succ_raw k h_lo h_k_lt h_bal' h_nfe with h_end | ⟨h', h_fe⟩
+    · left; rw [h_tokens_sz_eq]; exact h_end
+    · right
+      refine ⟨by rw [h_tokens_sz_eq]; exact h', ?_⟩
+      rw [h_tok_body (k + 1) h']; exact h_fe
   have h_pnok : L4YAML.Proofs.ParserWellBehaved.ParseNodeFlowSeqOk
       tokens (tokens.size - 2) (4 * tokens.size + 4) 2 := sorry
   exact ⟨h_sz5, h_t0, h_tlast, h_t1, h_tpe, h_content0, h_fe_pattern,
