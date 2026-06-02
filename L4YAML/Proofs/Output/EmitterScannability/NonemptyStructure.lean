@@ -423,6 +423,135 @@ theorem seqBodyProps_assemble (tokens : Array (Positioned YamlToken)) (lo hi : N
       h_bal_k h_open h_outer_bal h_dyck h_wt_interior
       (fun j hkj hjhi hd hb => h_succ_guarded j (by omega) hjhi hd hb)
 
+/-- **Parametric `MapBodyProps` assembler** (Phase J seed, map side).  The map-side mirror of
+    `seqBodyProps_assemble`: given an arbitrary balanced flow-MAPPING subrange `[lo, hi)` —
+    `tokens[hi]! = .flowMappingEnd`, total balance `0`, Dyck prefixes, interior `WellTyped` — together
+    with the per-subrange *primitive* facts for the depth-0 key/value alternation, assemble the full
+    ten-field `MapBodyProps tokens lo hi`.
+
+    Six fields are direct projections of their primitive (M1 `key_start`, M2 `after_fe`, M3
+    `key_content`, M4 `key_scalar_value`, M6 `value_content`, M7 `value_scalar_succ`).  The two
+    bracket-content fields are assembled by the already-proven typed-locator conjuncts: M5
+    `key_bracket_value` via `map_key_bracket_conjunct` and M8 `value_bracket_succ` via
+    `map_value_bracket_conjunct`, each fed the bracket facts plus the value-CLOSE-guarded successor
+    primitive (`h_key_bracket_succ` / `h_value_bracket_succ`; the `flowBracketDelta = -1` guard ranges
+    the quantifier over bracket-close positions only).  The two raw matching fields (M9 `bracket_seq`,
+    M10 `bracket_map`) are *exactly* the typed-locator outputs `flowBracketBalance_matching_close_{seq,
+    map}` — no successor wrapper, unlike the seq body whose close carries `.flowSequenceEnd`.  The
+    depth-0 fact `balance (k+1) = 0` the M5/M8 conjuncts need is re-derived inline from `balance k = 0`
+    and `flowBracketDelta .key = flowBracketDelta .value = 0`; `k + 1 < hi` from the boundary `h_tpe`
+    (an opener at `k+1 = hi` would be `.flowMappingEnd`).  As on the seq side, the remaining Phase-J
+    work is purely to *produce* these primitives at every nested subrange — this lemma is the joint the
+    recursive producer calls once it has them.  Note a map pair `.key … .value …` has an interior
+    depth-0 `.value`, so the whole pair is NOT an `EntryUnit`: the alternation lives in the primitives,
+    not in a single per-item successor as on the seq side. -/
+theorem mapBodyProps_assemble (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (h_hi_sz : hi ≤ tokens.size)
+    (h_tpe : tokens[hi]!.val = .flowMappingEnd)
+    (h_outer_bal : flowBracketBalance tokens lo hi = 0)
+    (h_dyck : ∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0)
+    (h_wt_interior : WellTyped ((tokens.toList.take hi).drop lo))
+    (h_key_start : lo < hi → tokens[lo]!.val = .key)
+    (h_after_fe : ∀ k, lo ≤ k → k < hi →
+      flowBracketBalance tokens lo k = 0 →
+      tokens[k]!.val = .flowEntry →
+      k + 1 ≤ hi ∧ tokens[k + 1]!.val = .key)
+    (h_key_content : ∀ k, lo ≤ k → k < hi →
+      flowBracketBalance tokens lo k = 0 →
+      tokens[k]!.val = .key →
+      k + 1 < hi ∧ isFlowContentStart tokens[k + 1]!.val)
+    (h_key_scalar_value : ∀ k, lo ≤ k → k < hi →
+      flowBracketBalance tokens lo k = 0 →
+      tokens[k]!.val = .key →
+      (∃ c s, tokens[k + 1]!.val = .scalar c s) →
+      k + 2 < hi ∧ tokens[k + 2]!.val = .value)
+    (h_value_content : ∀ k, lo ≤ k → k < hi →
+      flowBracketBalance tokens lo k = 0 →
+      tokens[k]!.val = .value →
+      k + 1 < hi ∧ isFlowContentStart tokens[k + 1]!.val)
+    (h_value_scalar_succ : ∀ k, lo ≤ k → k < hi →
+      flowBracketBalance tokens lo k = 0 →
+      tokens[k]!.val = .value →
+      (∃ c s, tokens[k + 1]!.val = .scalar c s) →
+      k + 2 ≤ hi ∧
+      (tokens[k + 2]!.val = .flowEntry ∨
+       (tokens[k + 2]!.val = .flowMappingEnd ∧ k + 2 = hi)))
+    (h_key_bracket_succ : ∀ k j, lo ≤ k → k < hi →
+      flowBracketBalance tokens lo k = 0 →
+      tokens[k]!.val = .key →
+      k + 1 < j → j < hi →
+      flowBracketDelta tokens[j]!.val = -1 →
+      flowBracketBalance tokens lo (j + 1) = 0 →
+      j + 1 < hi ∧ tokens[j + 1]!.val = .value)
+    (h_value_bracket_succ : ∀ k j, lo ≤ k → k < hi →
+      flowBracketBalance tokens lo k = 0 →
+      tokens[k]!.val = .value →
+      k + 1 < j → j < hi →
+      flowBracketDelta tokens[j]!.val = -1 →
+      flowBracketBalance tokens lo (j + 1) = 0 →
+      j + 1 ≤ hi ∧
+      (tokens[j + 1]!.val = .flowEntry ∨
+       (tokens[j + 1]!.val = .flowMappingEnd ∧ j + 1 = hi))) :
+    MapBodyProps tokens lo hi := by
+  -- A depth-0 `.key`/`.value` at `k` (balance 0, delta 0) keeps balance 0 at `k+1`, and the opener
+  -- that follows cannot sit at `hi` (that slot is `.flowMappingEnd` by `h_tpe`).  Both M5 and M8
+  -- need exactly these two facts before calling their conjunct, so factor them as a local lemma.
+  have h_step : ∀ k, lo ≤ k → k < hi → flowBracketBalance tokens lo k = 0 →
+      flowBracketDelta tokens[k]!.val = 0 →
+      (tokens[k + 1]!.val = .flowSequenceStart ∨ tokens[k + 1]!.val = .flowMappingStart) →
+      flowBracketBalance tokens lo (k + 1) = 0 ∧ k + 1 < hi := by
+    intro k h_lo h_hi h_bal h_delta h_open
+    have h_k_sz : k < tokens.size := by omega
+    have h_k_lt_list : k < tokens.toList.length := by rw [Array.length_toList]; exact h_k_sz
+    have h_delta0 : flowBracketDelta tokens.toList[k].val = 0 := by
+      have h_eq : tokens.toList[k]'h_k_lt_list = tokens[k]! := by
+        rw [getElem!_pos tokens k h_k_sz, Array.getElem_toList]
+      rw [h_eq]; exact h_delta
+    have h_bal1 : flowBracketBalance tokens lo (k + 1) = 0 := by
+      have hc := flowBracketBalance_compose tokens lo k (k + 1) h_lo (by omega)
+      rw [flowBracketBalance_single tokens k h_k_lt_list, h_delta0] at hc
+      omega
+    refine ⟨h_bal1, ?_⟩
+    have h_ne : k + 1 ≠ hi := by
+      intro h; rw [h, h_tpe] at h_open
+      rcases h_open with h1 | h1 <;> exact absurd h1 (by decide)
+    omega
+  refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+  · -- M1 key_start
+    exact h_key_start
+  · -- M2 after_fe
+    exact h_after_fe
+  · -- M3 key_content
+    exact h_key_content
+  · -- M4 key_scalar_value
+    exact h_key_scalar_value
+  · -- M5 key_bracket_value — depth-shift + `map_key_bracket_conjunct`
+    intro k h_lo h_hi h_bal h_key h_open
+    have h_delta : flowBracketDelta tokens[k]!.val = 0 := by rw [h_key]; rfl
+    obtain ⟨h_k1_depth, h_k1_hi⟩ := h_step k h_lo h_hi h_bal h_delta h_open
+    exact map_key_bracket_conjunct tokens lo hi k (by omega) h_k1_hi h_hi_sz
+      h_k1_depth h_open h_outer_bal h_dyck h_wt_interior
+      (fun j hkj hjhi hd hb => h_key_bracket_succ k j h_lo h_hi h_bal h_key hkj hjhi hd hb)
+  · -- M6 value_content
+    exact h_value_content
+  · -- M7 value_scalar_succ
+    exact h_value_scalar_succ
+  · -- M8 value_bracket_succ — depth-shift + `map_value_bracket_conjunct`
+    intro k h_lo h_hi h_bal h_val h_open
+    have h_delta : flowBracketDelta tokens[k]!.val = 0 := by rw [h_val]; rfl
+    obtain ⟨h_k1_depth, h_k1_hi⟩ := h_step k h_lo h_hi h_bal h_delta h_open
+    exact map_value_bracket_conjunct tokens lo hi k (by omega) h_k1_hi h_hi_sz
+      h_k1_depth h_open h_outer_bal h_dyck h_wt_interior
+      (fun j hkj hjhi hd hb => h_value_bracket_succ k j h_lo h_hi h_bal h_val hkj hjhi hd hb)
+  · -- M9 bracket_seq — exactly the typed locator
+    intro k h_lo h_hi h_bal h_open
+    exact flowBracketBalance_matching_close_seq tokens lo k hi h_lo h_hi h_hi_sz
+      h_bal h_open h_outer_bal h_dyck h_wt_interior
+  · -- M10 bracket_map — exactly the typed locator
+    intro k h_lo h_hi h_bal h_open
+    exact flowBracketBalance_matching_close_map tokens lo k hi h_lo h_hi h_hi_sz
+      h_bal h_open h_outer_bal h_dyck h_wt_interior
+
 /-- Token structure of `scanFiltered ("[" ++ emitList items ++ "]")` for non-empty items.
     Establishes boundary tokens, body token patterns, and `parseNode` success within
     the flow sequence body.
