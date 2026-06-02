@@ -810,6 +810,206 @@ theorem btFold_getLast?_preserved (l : List (Positioned YamlToken)) :
       have hrec := ih m sf hm_ne hpos' h
       rw [hrec]; exact hstep
 
+/-! #### Typed locator, part 3 — the typed matching close (`.body2.discharge.typedlocator.instantiate`)
+
+Parts 1 (depth–balance bridge) and 2 (bottom-preservation) assemble here.  The numeric
+`flowBracketBalance_matching_close` locates the matching close `j` of a depth-0 opener at `k`
+and now (brick (c-iii-a)) also exposes the interior depth-positivity it maintained as a loop
+invariant.  Feeding that positivity into `btFold_getLast?_preserved` with `s0 = [opener-bit]`
+forces the stack just before the close to be the *same* singleton the opener pushed — so the
+close `btStep`-pops it, and `btStep_pop_eq_{seqEnd,mapEnd}` read off the close's *type*.  The
+payoff: `flowBracketBalance_matching_close_{seq,map}` — given a `WellTyped` interior, the
+matching close of a `[` is a `]` (of a `{` is a `}`), exactly the `tokens[j]!.val` the
+`SeqBodyProps`/`MapBodyProps` bracket conjuncts demand and the numeric balance cannot supply. -/
+
+theorem btStep_val_congr (t t' : Positioned YamlToken) (s : List Bool)
+    (h : t.val = t'.val) : btStep t s = btStep t' s := by
+  unfold btStep; rw [h]
+
+theorem btStep_emptypush_delta (t : Positioned YamlToken) (b : Bool)
+    (h : btStep t [] = some [b]) : flowBracketDelta t.val = 1 := by
+  unfold btStep at h
+  cases hv : t.val <;> simp only [hv] at h <;>
+    simp only [flowBracketDelta] <;>
+    first | rfl | (exact absurd h (by simp))
+
+/-- **Typed matching-close — generic core.**  Over a `WellTyped` body `B` bridged to the
+    token array's `flowBracketBalance` (`hbal`) and values (`hval`), the matching close `j`
+    of a depth-0 opener at `k` (numeric facts from `flowBracketBalance_matching_close`) pops
+    the exact singleton `[b]` the opener pushed.  `B` is abstract so this avoids re-deriving
+    the `take`/`drop` offset bridge inside `WellTyped`. -/
+theorem matching_close_typed_generic
+    (B : List (Positioned YamlToken)) (tokens : Array (Positioned YamlToken))
+    (lo k j hi : Nat) (b : Bool)
+    (hlenB : B.length = hi - lo)
+    (hbal : ∀ t, lo ≤ t → t ≤ hi → pbalance (B.take (t - lo)) = flowBracketBalance tokens lo t)
+    (hval : ∀ t, lo ≤ t → t < hi → ∀ (hb : t - lo < B.length),
+      (B[t - lo]'hb).val = tokens[t]!.val)
+    (h_wt : WellTyped B)
+    (h_lo_k : lo ≤ k) (h_kj : k < j) (h_j_hi : j < hi) (h_hi_sz : hi ≤ tokens.size)
+    (h_k_depth : flowBracketBalance tokens lo k = 0)
+    (h_k_push : btStep tokens[k]! [] = some [b])
+    (h_inner : flowBracketBalance tokens (k+1) j = 0)
+    (h_j_close : flowBracketDelta tokens[j]!.val = -1)
+    (h_pos : ∀ i, k < i → i ≤ j → flowBracketBalance tokens lo i ≥ 1) :
+    btStep tokens[j]! [b] = some [] := by
+  have hstep : ∀ t, lo ≤ t → t < tokens.size →
+      flowBracketBalance tokens lo (t+1) =
+        flowBracketBalance tokens lo t + flowBracketDelta tokens[t]!.val := by
+    intro t ht1 ht2
+    have hszL : tokens.toList.length = tokens.size := rfl
+    rw [flowBracketBalance_compose tokens lo t (t+1) ht1 (by omega),
+        flowBracketBalance_single tokens t (by rw [hszL]; exact ht2),
+        Array.getElem_toList ht2, ← getElem!_pos tokens t ht2]
+  have h_kdelta : flowBracketDelta tokens[k]!.val = 1 := btStep_emptypush_delta _ _ h_k_push
+  have h_lo_k1 : flowBracketBalance tokens lo (k+1) = 1 := by
+    have e := hstep k h_lo_k (by omega); omega
+  have h_lo_j : flowBracketBalance tokens lo j = 1 := by
+    have e := flowBracketBalance_compose tokens lo (k+1) j (by omega) (by omega); omega
+  have h_lo_j1 : flowBracketBalance tokens lo (j+1) = 0 := by
+    have e := hstep j (by omega) (by omega); omega
+  have hKlt : k - lo < B.length := by rw [hlenB]; omega
+  have hJlt : j - lo < B.length := by rw [hlenB]; omega
+  -- Stack after opener prefix is `[b]`.
+  have hopen : btFold (some []) (B.take (k - lo + 1)) = some [b] := by
+    rw [List.take_succ_eq_append_getElem hKlt, btFold_append]
+    obtain ⟨s, hs, hslen⟩ := WellTyped_take_stack B (k - lo) h_wt
+    have hsK0 : pbalance (B.take (k - lo)) = 0 := by rw [hbal k h_lo_k (by omega), h_k_depth]
+    rw [hsK0] at hslen
+    have hsnil : s = [] := List.eq_nil_of_length_eq_zero (by exact_mod_cast hslen)
+    rw [hs, hsnil]
+    have hsingle : btFold (some ([] : List Bool)) [B[k - lo]'hKlt]
+        = btStep (B[k - lo]'hKlt) [] := by simp [btFold, List.foldl]
+    rw [hsingle, btStep_val_congr (B[k - lo]'hKlt) tokens[k]! [] (hval k h_lo_k (by omega) hKlt)]
+    exact h_k_push
+  -- Stack just before the close is `[b]`.
+  have hbefore : btFold (some []) (B.take (j - lo)) = some [b] := by
+    have hsplit : B.take (j - lo)
+        = B.take (k - lo + 1) ++ (B.drop (k - lo + 1)).take ((j - lo) - (k - lo + 1)) := by
+      rw [← List.take_add]; congr 1; omega
+    obtain ⟨sf, hsf, hsflen⟩ := WellTyped_take_stack B (j - lo) h_wt
+    rw [hsplit, btFold_append, hopen] at hsf
+    have hsflen' : (sf.length : Int) = 1 := by
+      rw [hsflen, hbal j (by omega) (by omega), h_lo_j]
+    have hpos_seg : ∀ m, m ≤ ((B.drop (k - lo + 1)).take ((j - lo) - (k - lo + 1))).length →
+        1 ≤ (([b] : List Bool).length : Int)
+            + pbalance (((B.drop (k - lo + 1)).take ((j - lo) - (k - lo + 1))).take m) := by
+      intro m hm
+      rw [List.length_take] at hm
+      have hmtake : ((B.drop (k - lo + 1)).take ((j - lo) - (k - lo + 1))).take m
+          = (B.drop (k - lo + 1)).take m := by
+        rw [List.take_take]; congr 1; omega
+      rw [hmtake]
+      have hcat : B.take (k - lo + 1) ++ (B.drop (k - lo + 1)).take m = B.take (k - lo + 1 + m) := by
+        rw [← List.take_add]
+      have hk1 : pbalance (B.take (k - lo + 1)) = 1 := by
+        rw [show k - lo + 1 = (k + 1) - lo from by omega, hbal (k + 1) (by omega) (by omega), h_lo_k1]
+      have key : pbalance (B.take (k - lo + 1)) + pbalance ((B.drop (k - lo + 1)).take m)
+          = flowBracketBalance tokens lo (k + 1 + m) := by
+        rw [← pbalance_append, hcat, show k - lo + 1 + m = (k + 1 + m) - lo from by omega,
+            hbal (k + 1 + m) (by omega) (by omega)]
+      have hge := h_pos (k + 1 + m) (by omega) (by omega)
+      have hlen1 : (([b] : List Bool).length : Int) = 1 := by simp
+      rw [hlen1]; omega
+    have hbot := btFold_getLast?_preserved _ [b] sf (by simp) hpos_seg hsf
+    have hsf_eq : sf = [b] := by
+      rcases sf with _ | ⟨x, xs⟩
+      · simp at hsflen'
+      · rcases xs with _ | ⟨y, ys⟩
+        · have hxb : x = b := by simpa using hbot
+          rw [hxb]
+        · simp only [List.length_cons] at hsflen'; omega
+    rw [hsf_eq] at hsf
+    rw [hsplit, btFold_append, hopen]
+    exact hsf
+  -- The close pops `[b]`.
+  have hclose : btFold (some []) (B.take (j - lo + 1)) = btStep (B[j - lo]'hJlt) [b] := by
+    rw [List.take_succ_eq_append_getElem hJlt, btFold_append, hbefore]
+    simp [btFold, List.foldl]
+  obtain ⟨s', hs', hs'len⟩ := WellTyped_take_stack B (j - lo + 1) h_wt
+  rw [hclose] at hs'
+  have hpb' : pbalance (B.take (j - lo + 1)) = flowBracketBalance tokens lo (j + 1) := by
+    rw [show j - lo + 1 = (j + 1) - lo from by omega, hbal (j + 1) (by omega) (by omega)]
+  rw [hpb', h_lo_j1] at hs'len
+  have hs'nil : s' = [] := List.eq_nil_of_length_eq_zero (by exact_mod_cast hs'len)
+  rw [hs'nil] at hs'
+  rw [btStep_val_congr (B[j - lo]'hJlt) tokens[j]! [b] (hval j (by omega) h_j_hi hJlt)] at hs'
+  exact hs'
+
+/-- **Typed matching-close — array core.**  Specializes `matching_close_typed_generic` to the
+    interior slice `[lo, hi)` of the token array, proving the `length`/`balance`/`value`
+    bridges for that concrete `B`. -/
+theorem matching_close_typed_core
+    (tokens : Array (Positioned YamlToken)) (lo k j hi : Nat) (b : Bool)
+    (h_lo_k : lo ≤ k) (h_kj : k < j) (h_j_hi : j < hi) (h_hi_sz : hi ≤ tokens.size)
+    (h_k_depth : flowBracketBalance tokens lo k = 0)
+    (h_k_push : btStep tokens[k]! [] = some [b])
+    (h_inner : flowBracketBalance tokens (k+1) j = 0)
+    (h_j_close : flowBracketDelta tokens[j]!.val = -1)
+    (h_pos : ∀ i, k < i → i ≤ j → flowBracketBalance tokens lo i ≥ 1)
+    (h_wt : WellTyped ((tokens.toList.take hi).drop lo)) :
+    btStep tokens[j]! [b] = some [] := by
+  rw [List.drop_take] at h_wt
+  have hszL : tokens.toList.length = tokens.size := rfl
+  have hlenB : ((tokens.toList.drop lo).take (hi - lo)).length = hi - lo := by
+    rw [List.length_take, List.length_drop, hszL]; omega
+  have hbal : ∀ t, lo ≤ t → t ≤ hi →
+      pbalance (((tokens.toList.drop lo).take (hi - lo)).take (t - lo))
+        = flowBracketBalance tokens lo t := by
+    intro t ht1 ht2
+    rw [List.take_take, show min (t - lo) (hi - lo) = t - lo from by omega,
+        ← flowBracketBalance_eq_pbalance tokens lo t ht1]
+  have hval : ∀ t, lo ≤ t → t < hi → ∀ (hb : t - lo < ((tokens.toList.drop lo).take (hi - lo)).length),
+      (((tokens.toList.drop lo).take (hi - lo))[t - lo]'hb).val = tokens[t]!.val := by
+    intro t ht1 ht2 hb
+    have h1 : ((tokens.toList.drop lo).take (hi - lo))[t - lo]'hb = tokens[t]! := by
+      rw [List.getElem_take, List.getElem_drop,
+          Array.getElem_toList (show lo + (t - lo) < tokens.size from by omega),
+          ← getElem!_pos tokens (lo + (t - lo)) (by omega)]
+      congr 1; omega
+    rw [h1]
+  exact matching_close_typed_generic ((tokens.toList.drop lo).take (hi - lo)) tokens lo k j hi b
+    hlenB hbal hval h_wt h_lo_k h_kj h_j_hi h_hi_sz h_k_depth h_k_push h_inner h_j_close h_pos
+
+theorem flowBracketBalance_matching_close_seq
+    (tokens : Array (Positioned YamlToken)) (lo k hi : Nat)
+    (h_lo_k : lo ≤ k) (h_k_hi : k < hi) (h_hi_sz : hi ≤ tokens.size)
+    (h_k_depth : flowBracketBalance tokens lo k = 0)
+    (h_k_open : tokens[k]!.val = .flowSequenceStart)
+    (h_total : flowBracketBalance tokens lo hi = 0)
+    (h_dyck : ∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0)
+    (h_wt : WellTyped ((tokens.toList.take hi).drop lo)) :
+    ∃ j, k < j ∧ j < hi ∧ tokens[j]!.val = .flowSequenceEnd ∧
+      flowBracketBalance tokens (k+1) j = 0 := by
+  have h_k_open_delta : flowBracketDelta tokens[k]!.val = 1 := by rw [h_k_open]; rfl
+  obtain ⟨j, hkj, hjhi, hjdelta, hinner, hpos⟩ :=
+    flowBracketBalance_matching_close tokens lo k hi h_lo_k h_k_hi h_hi_sz
+      h_k_depth h_k_open_delta h_total h_dyck
+  have h_k_push : btStep tokens[k]! [] = some [true] := by unfold btStep; rw [h_k_open]
+  have hpop := matching_close_typed_core tokens lo k j hi true h_lo_k hkj hjhi h_hi_sz
+    h_k_depth h_k_push hinner hjdelta hpos h_wt
+  exact ⟨j, hkj, hjhi, btStep_pop_eq_seqEnd _ hpop, hinner⟩
+
+theorem flowBracketBalance_matching_close_map
+    (tokens : Array (Positioned YamlToken)) (lo k hi : Nat)
+    (h_lo_k : lo ≤ k) (h_k_hi : k < hi) (h_hi_sz : hi ≤ tokens.size)
+    (h_k_depth : flowBracketBalance tokens lo k = 0)
+    (h_k_open : tokens[k]!.val = .flowMappingStart)
+    (h_total : flowBracketBalance tokens lo hi = 0)
+    (h_dyck : ∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0)
+    (h_wt : WellTyped ((tokens.toList.take hi).drop lo)) :
+    ∃ j, k < j ∧ j < hi ∧ tokens[j]!.val = .flowMappingEnd ∧
+      flowBracketBalance tokens (k+1) j = 0 := by
+  have h_k_open_delta : flowBracketDelta tokens[k]!.val = 1 := by rw [h_k_open]; rfl
+  obtain ⟨j, hkj, hjhi, hjdelta, hinner, hpos⟩ :=
+    flowBracketBalance_matching_close tokens lo k hi h_lo_k h_k_hi h_hi_sz
+      h_k_depth h_k_open_delta h_total h_dyck
+  have h_k_push : btStep tokens[k]! [] = some [false] := by unfold btStep; rw [h_k_open]
+  have hpop := matching_close_typed_core tokens lo k j hi false h_lo_k hkj hjhi h_hi_sz
+    h_k_depth h_k_push hinner hjdelta hpos h_wt
+  exact ⟨j, hkj, hjhi, btStep_pop_eq_mapEnd _ hpop, hinner⟩
+
+
 -- ═══ Filtered token lemmas for scanner handlers ═══
 
 /-- `scanFlowSequenceStart` filtered token equation: adds exactly one `.flowSequenceStart`. -/
