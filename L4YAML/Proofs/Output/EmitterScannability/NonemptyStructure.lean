@@ -636,6 +636,58 @@ theorem scanFiltered_emitSeq_nonempty_structure
     rcases _h_body_succ j h_lo h_hi h_bal h_nfe with h_end | ⟨h', h_fe⟩
     · exact ⟨Nat.le_of_eq h_end, Or.inr ⟨by rw [h_end]; exact h_tpe, h_end⟩⟩
     · exact ⟨Nat.le_of_lt h', Or.inl h_fe⟩
+  -- [NEW] Assemble the outer `SeqBodyProps tokens 2 (tokens.size - 2)` from the in-scope facts.
+  -- This is the producer-assembly joint promised by Reflection 223's next sub-brick: every
+  -- `SeqBodyProps` field is now a one-liner off a fact established above.
+  --   • `content_start`  ← `h_content0`               (definitionally `isFlowContentStart`)
+  --   • `scalar_succ`    ← `_h_body_succ`              (a scalar has delta `0`, so its balance at
+  --       `k+1` equals its balance at `k`, and a scalar is `≠ .flowEntry` — exactly `_h_body_succ`'s
+  --       guard; the body-close case routes through `h_tpe`, the FE case is direct)
+  --   • `after_fe`       ← `h_fe_pattern`              (the `≤` it returns sharpens to `<`: at
+  --       `k+1 = hi` the token is `.flowSequenceEnd` (`h_tpe`), contradicting the content-start)
+  --   • `bracket_seq`    ← `seq_bracket_seq_conjunct`  fed `h_outer_bal`/`h_dyck`/`h_wt_interior`
+  --   • `bracket_map`    ← `seq_bracket_map_conjunct`  and the value-close-guarded `_h_succ_guarded`
+  -- Bound as enablement: the next sub-brick generalizes this to the universal `FlowSubrangesOk`
+  -- (every nested balanced subrange) and applies `flow_parser_ok_of_structure` at
+  -- `(2, tokens.size - 2)`, `fuel = 4·tokens.size + 4` to discharge `h_pnok`.
+  have _h_seq_body_props : SeqBodyProps tokens 2 (tokens.size - 2) := by
+    refine ⟨?_, ?_, ?_, ?_, ?_⟩
+    · -- content_start
+      intro _; exact h_content0
+    · -- scalar_succ — derive the balance shift past the depth-0 scalar, then `_h_body_succ`
+      intro k h_lo h_hi h_bal_k h_scalar
+      have h_k_sz : k < tokens.size := by omega
+      have h_k_lt_list : k < tokens.toList.length := by rw [Array.length_toList]; exact h_k_sz
+      obtain ⟨c, s, hcs⟩ := h_scalar
+      have h_delta0 : flowBracketDelta tokens.toList[k].val = 0 := by
+        have h_eq : tokens.toList[k]'h_k_lt_list = tokens[k]! := by
+          rw [getElem!_pos tokens k h_k_sz, Array.getElem_toList]
+        simp only [h_eq, hcs, flowBracketDelta]
+      have h_bal_k1 : flowBracketBalance tokens 2 (k + 1) = 0 := by
+        have hc := flowBracketBalance_compose tokens 2 k (k + 1) (by omega) (by omega)
+        rw [flowBracketBalance_single tokens k h_k_lt_list, h_delta0] at hc
+        omega
+      have h_nfe : tokens[k]!.val ≠ .flowEntry := by rw [hcs]; simp
+      rcases _h_body_succ k h_lo h_hi h_bal_k1 h_nfe with h_end | ⟨h', h_fe⟩
+      · exact ⟨Nat.le_of_eq h_end, Or.inr ⟨by rw [h_end]; exact h_tpe, h_end⟩⟩
+      · exact ⟨Nat.le_of_lt h', Or.inl h_fe⟩
+    · -- after_fe — `h_fe_pattern` gives `k+1 ≤ hi`; sharpen to `<` via `h_tpe`
+      intro k h_lo h_hi h_bal_k h_fe
+      obtain ⟨h_le, h_cs⟩ := h_fe_pattern k h_lo h_hi h_fe h_bal_k
+      refine ⟨?_, h_cs⟩
+      rcases Nat.lt_or_eq_of_le h_le with h | h
+      · exact h
+      · exfalso; rw [h, h_tpe] at h_cs; simp at h_cs
+    · -- bracket_seq
+      intro k h_lo h_hi h_bal_k h_open
+      exact seq_bracket_seq_conjunct tokens 2 (tokens.size - 2) k h_lo h_hi (by omega)
+        h_bal_k h_open h_outer_bal h_dyck h_wt_interior
+        (fun j hkj hjhi hd hb => _h_succ_guarded j (by omega) hjhi hd hb)
+    · -- bracket_map (a bracketed-map item still routes through the seq successor)
+      intro k h_lo h_hi h_bal_k h_open
+      exact seq_bracket_map_conjunct tokens 2 (tokens.size - 2) k h_lo h_hi (by omega)
+        h_bal_k h_open h_outer_bal h_dyck h_wt_interior
+        (fun j hkj hjhi hd hb => _h_succ_guarded j (by omega) hjhi hd hb)
   have h_pnok : L4YAML.Proofs.ParserWellBehaved.ParseNodeFlowSeqOk
       tokens (tokens.size - 2) (4 * tokens.size + 4) 2 := sorry
   exact ⟨h_sz5, h_t0, h_tlast, h_t1, h_tpe, h_content0, h_fe_pattern,
