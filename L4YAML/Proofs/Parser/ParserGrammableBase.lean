@@ -779,6 +779,73 @@ theorem flowBracketBalance_after_bracket_pair_zero (tokens : Array (Positioned Y
       h_open h_close h_inner]
   exact h_k_depth
 
+/-- **(d-shape) — the bracket-successor IS the scalar-successor (sequence body).**
+    The successor half of `SeqBodyProps.bracket_seq`/`bracket_map` — `j+1 ≤ hi ∧ (FE ∨ (seqEnd ∧
+    j+1=hi))` after a complete bracket value (opener at depth-0 `k`, matching close at `j`, balanced
+    interior) — is exactly the conclusion `scalar_succ` produces at `k+1`, only at `j+1`.  The
+    bracketed value is depth-transparent (`flowBracketBalance_after_bracket_pair_zero`: `j+1` is at
+    relative depth `0`), so the *single* "next depth-0 token after a complete value is `.flowEntry`
+    or the body close" emitter fact — here the hypothesis `h_succ`, keyed on the same depth-0 proviso
+    the scalar case discharges — supplies the conjunct.  This collapses the per-position shape work
+    for the bracket conjuncts onto the one scalar fact: `(d-shape)` reduces to a single emitter
+    obligation per body kind. -/
+theorem seq_bracket_succ_reduce (tokens : Array (Positioned YamlToken))
+    (lo hi k j : Nat) (h_lo_k : lo ≤ k) (h_k_j : k < j) (h_j_sz : j < tokens.size)
+    (h_k_depth : flowBracketBalance tokens lo k = 0)
+    (h_open : flowBracketDelta tokens[k]!.val = 1)
+    (h_close : flowBracketDelta tokens[j]!.val = -1)
+    (h_inner : flowBracketBalance tokens (k+1) j = 0)
+    (h_succ : flowBracketBalance tokens lo (j+1) = 0 →
+      j + 1 ≤ hi ∧
+      (tokens[j+1]!.val = .flowEntry ∨
+       (tokens[j+1]!.val = .flowSequenceEnd ∧ j + 1 = hi))) :
+    j + 1 ≤ hi ∧
+    (tokens[j+1]!.val = .flowEntry ∨
+     (tokens[j+1]!.val = .flowSequenceEnd ∧ j + 1 = hi)) :=
+  h_succ (flowBracketBalance_after_bracket_pair_zero tokens lo k j h_lo_k h_k_j h_j_sz
+    h_k_depth h_open h_close h_inner)
+
+/-- **(d-shape) — the value-bracket-successor IS the value-scalar-successor (mapping body, M8).**
+    Mapping-body analogue of `seq_bracket_succ_reduce`: the successor half of
+    `MapBodyProps.value_bracket_succ` (`j+1 ≤ hi ∧ (FE ∨ (mapEnd ∧ j+1=hi))`) after a complete
+    bracketed *value* equals the conclusion `value_scalar_succ` produces, only at `j+1`.  Same
+    depth-transparency reduction: the matched pair makes `j+1` depth-0, the single emitter fact
+    fires. -/
+theorem map_value_bracket_succ_reduce (tokens : Array (Positioned YamlToken))
+    (lo hi k j : Nat) (h_lo_k : lo ≤ k) (h_k_j : k < j) (h_j_sz : j < tokens.size)
+    (h_k_depth : flowBracketBalance tokens lo k = 0)
+    (h_open : flowBracketDelta tokens[k]!.val = 1)
+    (h_close : flowBracketDelta tokens[j]!.val = -1)
+    (h_inner : flowBracketBalance tokens (k+1) j = 0)
+    (h_succ : flowBracketBalance tokens lo (j+1) = 0 →
+      j + 1 ≤ hi ∧
+      (tokens[j+1]!.val = .flowEntry ∨
+       (tokens[j+1]!.val = .flowMappingEnd ∧ j + 1 = hi))) :
+    j + 1 ≤ hi ∧
+    (tokens[j+1]!.val = .flowEntry ∨
+     (tokens[j+1]!.val = .flowMappingEnd ∧ j + 1 = hi)) :=
+  h_succ (flowBracketBalance_after_bracket_pair_zero tokens lo k j h_lo_k h_k_j h_j_sz
+    h_k_depth h_open h_close h_inner)
+
+/-- **(d-shape) — after a bracketed key, `.value` follows (mapping body, M5).**
+    The successor of `MapBodyProps.key_bracket_value` (`j+1 < hi ∧ tokens[j+1] = .value`) after a
+    complete bracketed *key* — opener at depth-0 `k` (the caller passes the key's bracket start,
+    which sits at depth `0` since the preceding `.key` has delta `0`), matching close at `j` — is the
+    same `.value` the scalar-key case (`key_scalar_value`, M4) produces.  Depth-transparency again
+    bases `j+1` at relative depth `0`, so the single "what follows a complete key" emitter fact
+    fires. -/
+theorem map_key_bracket_value_reduce (tokens : Array (Positioned YamlToken))
+    (lo hi k j : Nat) (h_lo_k : lo ≤ k) (h_k_j : k < j) (h_j_sz : j < tokens.size)
+    (h_k_depth : flowBracketBalance tokens lo k = 0)
+    (h_open : flowBracketDelta tokens[k]!.val = 1)
+    (h_close : flowBracketDelta tokens[j]!.val = -1)
+    (h_inner : flowBracketBalance tokens (k+1) j = 0)
+    (h_succ : flowBracketBalance tokens lo (j+1) = 0 →
+      j + 1 < hi ∧ tokens[j+1]!.val = .value) :
+    j + 1 < hi ∧ tokens[j+1]!.val = .value :=
+  h_succ (flowBracketBalance_after_bracket_pair_zero tokens lo k j h_lo_k h_k_j h_j_sz
+    h_k_depth h_open h_close h_inner)
+
 /-! ### §6  Structural predicates for flow body subranges
 
 These predicates capture the token-level structural properties that
