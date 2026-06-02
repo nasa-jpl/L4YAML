@@ -2180,15 +2180,24 @@ what remains is assembling `FlowSubrangesOk`). The shape of the remaining produc
    (the prefix `pre ++ m` is feasible because it is a prefix of the `WellTyped` whole; un-frame it back;
    balance-`0` forces `[]`) — no Dyck-tracking re-proof of type-matching; the matches come from the
    ambient `WellTyped`. Build green 515, sorries held at 4, all three on the pure triple.
+   **Brick (d-dyck), bridge/packaging half — LANDED** (commit `d155ff68`, Reflection 212): the engine
+   `WellTyped_infix_balanced` speaks list infixes (`pre ++ m ++ suf`, `pbalance`); its consumers
+   (`FlowSubrangesOk.seq`/`.map` and `flowBracketBalance_matching_close_{seq,map}`) speak array indices
+   and `flowBracketBalance`. `WellBracketed.lean` now carries `WellTyped_subrange` ("Typed locator, part
+   5"): a nested subrange `[lo, hi)` of a `WellTyped` enclosing slice `[LO, HI)`, given its balance
+   (`flowBracketBalance lo hi = 0`) and its **local Dyck** (`flowBracketBalance lo p ≥ 0`, `lo ≤ p ≤ hi`),
+   is `WellTyped`. The slice splits `pre ++ m ++ suf` via `take_add`/`drop_drop` + `List.drop_take`, and
+   `flowBracketBalance_eq_pbalance` converts both balance facts to `pbalance` form. Build green 515,
+   sorries held at 4, pure triple. **The local Dyck is a clean input** — feeding it is the residual below.
    **Remaining sub-bricks of (d)**:
+   (d-dyck, residual) the **local Dyck** `WellTyped_subrange` consumes — NOT free from `FlowSubrangesOk`'s
+   hypotheses (only the subrange *balance* and closer-type are); derived from the global Dyck + the
+   subrange starting at a local-depth-minimum;
    (d-shape) the flat per-position local-shape facts (`scalar_succ`, `after_fe`, `key_content`, …) for
    every nested subrange, plus the **successor half** of the bracket conjuncts
    (`j + 1 ≤ hi ∧ (FE | seqEnd)` — an emitter fact layered on the now-typed `j`);
-   (d-dyck) the per-subrange **Dyck + balance** facts that `WellTyped_infix_balanced` (and the matching
-   locator) consume — NOT free from `FlowSubrangesOk`'s hypotheses; derived from the global Dyck + the
-   subrange starting at a local-depth-minimum;
-   (d-assemble) bundle (d-shape) + (d-dyck) + the typed close into `SeqBodyProps`/`MapBodyProps` and
-   `FlowSubrangesOk`.
+   (d-assemble) bundle (d-dyck) + (d-shape) + the typed close (via `WellTyped_subrange` → the matching
+   locator) into `SeqBodyProps`/`MapBodyProps` and `FlowSubrangesOk`.
 3. Instantiate `flow_parser_ok_of_structure` at `(lo, hi) = (2, tokens.size−2)`,
    `fuel = 4·tokens.size+4` → close the 2 structure sorries (`NonemptyStructure.lean` 576/804 — **both**
    the seq AND map sites now have `h_outer_bal`/`h_dyck` in scope ready to feed alongside `FlowSubrangesOk`).
@@ -14890,6 +14899,32 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
+                **Total .body scope re-estimate (SIXTIETH revision —
+                after **Thread A step 3 sub-step 2's brick (d-dyck) — the bridge/packaging half —
+                landed: a nested subrange of a `WellTyped` slice, given its balance and its local
+                Dyck, is `WellTyped`, in `flowBracketBalance`/array-index language** (commit
+                `d155ff68`, Reflection 212). The engine `WellTyped_infix_balanced` (brick (d)) speaks
+                list infixes (`pre ++ m ++ suf`, `pbalance`); its consumers — `FlowSubrangesOk.seq`/`.map`
+                and `flowBracketBalance_matching_close_{seq,map}` — speak array indices and
+                `flowBracketBalance`. `WellBracketed.lean` now carries `WellTyped_subrange` (under "Typed
+                locator, part 5"): the enclosing slice `[LO, HI)` splits as `pre ++ m ++ suf` with `m`
+                the subrange `[lo, hi)` (via `take_add`/`drop_drop` arithmetic + `List.drop_take` to swap
+                `(take HI).drop LO` ↔ `(drop LO).take (HI−LO)`), and the existing
+                `flowBracketBalance_eq_pbalance` bridge converts the subrange balance and every prefix
+                balance into the `pbalance` form the engine takes. The result is phrased entirely in the
+                consumers' vocabulary, so the assembly just calls it. **The local Dyck
+                (`flowBracketBalance lo p ≥ 0` for `lo ≤ p ≤ hi`) is a clean *input* here** — it is NOT
+                free from `FlowSubrangesOk`'s hypotheses; deriving it from the global Dyck (the subrange
+                starting at a local-depth-minimum) is the remaining `(d-dyck)` brick. Build green 515 jobs,
+                **sorries held at 4**, `WellTyped_subrange` `sorryAx`-free on the pure triple
+                `[propext, Classical.choice, Quot.sound]`. **Remaining for (d)**: the local-Dyck
+                derivation (the residual of `(d-dyck)`); the flat per-position local-shape facts
+                (`scalar_succ`, `after_fe`, `key_content`, …) and the successor half of the bracket
+                conjuncts (`(d-shape)`); then `(d-assemble)` — bundle into
+                `SeqBodyProps`/`MapBodyProps`/`FlowSubrangesOk`; then sub-step 3 (instantiate
+                `flow_parser_ok_of_structure` → close NonemptyStructure 576/804) and sub-step 4 (base
+                `emit_roundtrip_{sequence,mapping}_content_eq` 832/872 → `universal_roundtrip`). See
+                Reflection 212, on top of the
                 **Total .body scope re-estimate (FIFTY-NINTH revision —
                 after **Thread A step 3 sub-step 2's brick (d) — the typed-descent engine — landed:
                 a balanced + Dyck infix of a `WellTyped` list is itself `WellTyped`, at any nesting
@@ -24187,3 +24222,32 @@ the expensive half of "this sub-word is well-formed" is usually *definedness* (n
 sub-word is a prefix of a known-well-formed word, definedness is borrowed by `…_prefix_some`, and the rest is
 arithmetic. Reach for the prefix before reaching for the induction.** [[Reflection 210]] is the companion plumbing for
 the same locator; [[Reflection 209]] supplied the interior positivity these descents rely on numerically.
+
+### Reflection 212 (new, 2026-06-01): a packaging lemma that translates an engine into its consumers' vocabulary is its own green increment — and it makes the unfree input visible
+
+Brick (d)'s engine `WellTyped_infix_balanced` is stated in the language it was *proved* in: list infixes
+`pre ++ m ++ suf`, `pbalance`, `List.take`/`drop`. Its consumers — `FlowSubrangesOk.seq`/`.map` and the
+typed locator `flowBracketBalance_matching_close_{seq,map}` — are stated in the language the *parser* lives
+in: array indices, `flowBracketBalance tokens lo hi`, slices `(tokens.toList.take hi).drop lo`. Between a
+proved engine and its first call sits a translation layer, and that layer is substantial enough to be its
+own increment: the enclosing slice `[LO, HI)` must be re-expressed as `pre ++ m ++ suf` with `m` the
+subrange `[lo, hi)` (a three-way `take_add`/`drop_drop` decomposition, plus `List.drop_take` to reconcile
+the `(take HI).drop LO` form the locator uses with the `(drop LO).take (HI−LO)` form the arithmetic wants),
+and every `flowBracketBalance` fact converted to `pbalance` form via the existing
+`flowBracketBalance_eq_pbalance` bridge. `WellTyped_subrange` is that translation, and nothing else — no new
+mathematics, just vocabulary. It compiled on the first build once the slice arithmetic lined up.
+
+**The lesson is in what the packaging *revealed*, not just what it bridged.** Writing the lemma in the
+consumers' vocabulary forced me to name every hypothesis the consumer actually has. `FlowSubrangesOk.seq`
+hands the assembly the subrange *balance* (`flowBracketBalance lo hi = 0`) and the closer *type* — but
+**not** the subrange's *local Dyck* (`flowBracketBalance lo p ≥ 0` for `lo ≤ p ≤ hi`). The engine needs that
+Dyck. Had I tried to assemble `FlowSubrangesOk` directly against the engine, the missing Dyck would have
+surfaced mid-proof as a stuck goal deep inside a `bracket_seq` case. Instead, `WellTyped_subrange` takes the
+local Dyck as an explicit *input* parameter — so the gap is now a typed hole in a lemma signature, named and
+scheduled (the `(d-dyck)` residual: derive it from the global Dyck via the subrange's local-depth-minimum)
+rather than discovered under load. **Lesson: when an engine and its consumer speak different vocabularies,
+write the translation lemma as its own step *before* the assembly — the act of restating the engine's
+preconditions in the consumer's terms is the cheapest way to discover which of them the consumer cannot
+supply, and turns that discovery from a mid-assembly surprise into a named follow-on brick.** [[Reflection
+211]] proved the engine this packages; [[Reflection 209]] is where the global Dyck (numeric) that the
+residual will descend from was first published as a loop invariant.
