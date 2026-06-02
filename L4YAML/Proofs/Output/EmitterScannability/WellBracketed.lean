@@ -731,6 +731,85 @@ theorem btStep_pop_eq_mapEnd (t : Positioned YamlToken)
   unfold btStep at h
   cases hv : t.val <;> simp only [hv] at h <;> simp_all
 
+/-! #### Typed locator, part 2 — bottom-preservation (`.body2.discharge.typedlocator.bottom`)
+
+Part 1 (the depth–balance bridge) turns "balance `1` at the close `j`" into "the stack at `j`
+is a singleton `[b]`", and `btStep_pop_eq_*` read the close token off `b`.  What is still open
+is that `b` is the *opener* type: the close of a depth-0 `[` is a `]`, not a `}`.
+
+This is the genuinely inductive step (cf. Reflection 204): the *bottom* of the stack — the
+opener still waiting to be closed — is never popped while the depth stays `≥ 1`.  A `btStep`
+only ever touches the *head* of the stack (push prepends, pop removes the head); so as long as
+the stack stays non-empty across a span, its last element (`getLast?`, the bottom) is invariant.
+Feeding `s0 = [true]` (just after a depth-0 `[`) and the interior span up to the matching close
+then forces the close's singleton to be `[true]` as well — pinning the close type via part 1. -/
+
+/-- `getLast?` ignores a `cons` onto a non-empty tail: the bottom (last) element is unchanged. -/
+theorem getLast?_cons_ne (a : Bool) (s : List Bool) (hs : s ≠ []) :
+    (a :: s).getLast? = s.getLast? := by
+  cases s with
+  | nil => exact absurd rfl hs
+  | cons x xs => simp [List.getLast?_cons_cons]
+
+/-- **One step preserves the stack bottom** (when neither stack is empty).  A push prepends to
+    the head, a matching pop removes the head — both leave the last element untouched. -/
+theorem btStep_getLast?_preserved (t : Positioned YamlToken) (s s' : List Bool)
+    (hs : s ≠ []) (hs' : s' ≠ []) (h : btStep t s = some s') :
+    s'.getLast? = s.getLast? := by
+  unfold btStep at h
+  cases hv : t.val <;> simp only [hv] at h <;>
+    first
+      | (obtain rfl := Option.some.inj h; rfl)
+      | (obtain rfl := Option.some.inj h; exact getLast?_cons_ne _ _ hs)
+      | (cases s with
+         | nil => simp at h
+         | cons b s'' =>
+             cases b <;> simp at h <;>
+               (subst h; exact (getLast?_cons_ne _ _ hs').symm))
+
+/-- **Bottom-preservation across a positive-depth span.**  If the typed fold from a non-empty
+    stack `s0` stays defined and the running depth (`s0.length + pbalance` of every prefix) never
+    drops below `1`, the final stack has the *same bottom element* as `s0`.  The bottom opener is
+    never popped while depth stays positive — this is the structural fact the type-collapsing
+    numeric balance cannot see. -/
+theorem btFold_getLast?_preserved (l : List (Positioned YamlToken)) :
+    ∀ (s0 sf : List Bool), s0 ≠ [] →
+      (∀ m, m ≤ l.length → 1 ≤ (s0.length : Int) + pbalance (l.take m)) →
+      btFold (some s0) l = some sf →
+      sf.getLast? = s0.getLast? := by
+  induction l with
+  | nil =>
+    intro s0 sf _ _ h
+    simp only [btFold, List.foldl_nil] at h
+    obtain rfl := Option.some.inj h
+    rfl
+  | cons t rest ih =>
+    intro s0 sf hs0 hpos h
+    rw [btFold_cons_some] at h
+    cases hb : btStep t s0 with
+    | none => rw [hb, btFold_none] at h; exact absurd h (by simp)
+    | some m =>
+      rw [hb] at h
+      have hlen : (m.length : Int) = (s0.length : Int) + flowBracketDelta t.val :=
+        btStep_length t s0 m hb
+      -- depth ≥ 1 after the first token keeps `m` non-empty
+      have h1 := hpos 1 (by simp)
+      have htake1 : ((t :: rest).take 1) = [t] := by simp
+      rw [htake1, pbalance_singleton] at h1
+      have hm_ne : m ≠ [] := by
+        intro hmm
+        rw [hmm, List.length_nil] at hlen
+        omega
+      have hstep := btStep_getLast?_preserved t s0 m hs0 hm_ne hb
+      have hpos' : ∀ n, n ≤ rest.length → 1 ≤ (m.length : Int) + pbalance (rest.take n) := by
+        intro n hn
+        have hh := hpos (n + 1) (by simp only [List.length_cons]; omega)
+        have htk : ((t :: rest).take (n + 1)) = t :: rest.take n := by simp
+        rw [htk, pbalance_cons] at hh
+        omega
+      have hrec := ih m sf hm_ne hpos' h
+      rw [hrec]; exact hstep
+
 -- ═══ Filtered token lemmas for scanner handlers ═══
 
 /-- `scanFlowSequenceStart` filtered token equation: adds exactly one `.flowSequenceStart`. -/
