@@ -2113,7 +2113,7 @@ work is the *plumbing* that feeds it.
 **Next session — `.parsenode.discharge` cont'd** (the dispatcher AND the matching locator are built;
 what remains is assembling `FlowSubrangesOk`).
 
-> **Frontier (post-Reflection 221, commit `316a9d87`).** The `(d-shape)` algebra is complete
+> **Frontier (post-Reflection 222, commit `0adc7af2`).** The `(d-shape)` algebra is complete
 > (the bracket conjuncts are correctly guarded — Reflection 218 — AND their `h_succ` substrate, the
 > value-end successor `EntryUnit` / `SafeBodyUnit_succ` / `SafeBodyUnit_array_succ`, exists —
 > Reflection 219), and the **sequence side** of threading `EntryUnit` through the producers is now
@@ -2125,12 +2125,17 @@ what remains is assembling `FlowSubrangesOk`).
 > **Part 6**, the value-end successor — feeding `SafeBodyUnit_array_succ` yields "a balanced-prefix
 > end that is not a `.flowEntry` separator is an entry END (body close, or `.flowEntry` next)", the
 > value-end dual of Part 2's `SafeBody_array_flowEntry` and the exact `h_succ`/`scalar_succ`
-> substrate. **Immediate next sub-bricks (two, in order):** (1) *consume Part 6 at the structure
-> proof* — push the value-end successor through the `h_tok_body`/push conversions to the tokens
-> array `tokens` (mirroring how Parts 3/4/5 became `h_outer_bal`/`h_dyck`/`h_wt_interior`), feed it as
-> the bracket-conjunct `h_succ` and `SeqBodyProps.scalar_succ`, assemble `FlowSubrangesOk` →
-> `flow_parser_ok_of_structure` → **close the seq structure sorry** (`NonemptyStructure.lean` 597);
-> (2) the **map side**, which is *not* a direct `EntryUnit` thread — a map *pair* entry
+> substrate; and Part 6 is now **transported to the tokens level** inside the seq structure proof
+> (Reflection 222, commit `0adc7af2`): `scanFiltered_emitSeq_nonempty_structure` push-converts it via
+> `h_tok_body`/`h_conv` (as Parts 3/4/5 became `h_outer_bal`/`h_dyck`/`h_wt_interior`) into the
+> tokens-level `_h_body_succ` — "a balanced-prefix end that is not a `.flowEntry` separator is an entry
+> END (body close `k+1 = tokens.size−2`, or `.flowEntry` next)". **Immediate next sub-bricks (two, in
+> order):** (1) *assemble the seq producer* — feed the transported `_h_body_succ` as the bracket-conjunct
+> `h_succ` and `SeqBodyProps.scalar_succ`, build the outer `SeqBodyProps`, generalize to the
+> universal `FlowSubrangesOk` (every nested balanced subrange — `WellTyped_subrange` supplies the
+> per-subrange `WellTyped`; the per-subrange value-end successor / content-start is the recursive
+> bulk), apply `flow_parser_ok_of_structure` at `(2, tokens.size−2)` → **close the seq structure sorry**
+> (`NonemptyStructure.lean` 619, was 597); (2) the **map side**, which is *not* a direct `EntryUnit` thread — a map *pair* entry
 > `.key block_k .value block_v` has an interior depth-0 `.value`, so the whole pair is NOT an
 > `EntryUnit`; the value-end there needs a pair-level refinement (apply `EntryUnit` to each key/value
 > block, with a separate per-pair successor), to be designed before the map sorry (804) closes. Once
@@ -2138,7 +2143,7 @@ what remains is assembling `FlowSubrangesOk`).
 > `h_succ` consumers expect. Those feed
 > the bracket conjuncts + `SafeBodyProps`/`MapBodyProps` fields → `FlowSubrangesOk` →
 > `flow_parser_ok_of_structure` (`FlowParserAcceptance.lean`) at `(2, tokens.size−2)`,
-> `fuel = 4·tokens.size+4` → close the two `NonemptyStructure.lean` structure sorries (576/804) → the
+> `fuel = 4·tokens.size+4` → close the two `NonemptyStructure.lean` structure sorries (619/847) → the
 > two base `emit_roundtrip_{sequence,mapping}_content_eq` (`EmitterScannability.lean` 832/872) →
 > `universal_roundtrip`.
 
@@ -2363,6 +2368,21 @@ The shape of the remaining producer:
    conversions to the final `tokens` array nor assembled into `FlowSubrangesOk` (the next sub-brick →
    closes seq sorry 597). Build green 519, sorries held at 4; `emitList_body_filtered_characterization`
    `sorryAx`-free on the pure triple.
+   **Brick (d-shape), seq value-end successor transported to tokens level — LANDED** (commit
+   `0adc7af2`, Reflection 222): the next joint of brick (1) — Part 6 is now *consumed inside the seq
+   structure proof*. `scanFiltered_emitSeq_nonempty_structure` un-underscores the `h_body_succ_raw`
+   binder, adds it to the `old_sz → 2` rewrite, and push-converts it to the final `tokens` array
+   exactly as Parts 3/4/5 became `h_outer_bal`/`h_dyck`/`h_wt_interior`: `h_tok_body` carries the token
+   values across the two trailing pushes (`tok_fse`, `streamEnd`), `h_conv` carries the prefix balance.
+   The resulting tokens-level `_h_body_succ` reads "a balanced-prefix end (`flowBracketBalance tokens 2
+   (k+1) = 0`) that is NOT a `.flowEntry` separator is an entry END — body close (`k+1 = tokens.size−2`)
+   or `.flowEntry` next" — the `h_succ`/`SeqBodyProps.scalar_succ` substrate the future `h_pnok` proof
+   feeds the bracket conjuncts (`seq_bracket_{seq,map}_conjunct`) and the scalar-successor field. Bound
+   `_h_body_succ` (enablement; the next sub-brick consumes it when assembling the outer `SeqBodyProps`
+   and `FlowSubrangesOk`). **Still enablement** — the transport is in hand but `FlowSubrangesOk` (the
+   universal-over-subranges producer) is not yet assembled, so the seq sorry (now 619, was 597) stays.
+   Build green 519, sorries held at 4; no new sorry; the transport is fully proven (push conversions +
+   `h_body_succ_raw`, no `sorry`/axiom).
    **Remaining sub-bricks of (d)**:
    the *single* underlying "next depth-0
    token after a complete value is `.flowEntry` or the body close" emitter fact (and its
@@ -15088,6 +15108,22 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
+                **Total .body scope re-estimate (SEVENTIETH revision —
+                after **Thread A step 3 sub-step 2's brick (d-shape) cont'd — *seq value-end successor
+                transported to tokens level* — landed** (commit `0adc7af2`, Reflection 222). The next
+                joint of brick (1): Part 6 (surfaced at the characterization level last session) is now
+                *consumed inside the seq structure proof*. `scanFiltered_emitSeq_nonempty_structure`
+                un-underscores the `h_body_succ_raw` binder, adds it to the `old_sz → 2` rewrite, and
+                push-converts it to the final `tokens` array exactly as Parts 3/4/5 became
+                `h_outer_bal`/`h_dyck`/`h_wt_interior` (`h_tok_body` carries token values across the two
+                trailing pushes, `h_conv` carries the prefix balance). The resulting tokens-level
+                `_h_body_succ` is the `h_succ`/`SeqBodyProps.scalar_succ` substrate the future `h_pnok`
+                proof feeds the bracket conjuncts and scalar-successor field. **Still enablement** — the
+                transport is in hand but `FlowSubrangesOk` (the universal-over-subranges producer) is not
+                yet assembled, so the seq sorry (now 619, was 597) stays; next sub-brick: assemble the
+                outer `SeqBodyProps`, generalize to `FlowSubrangesOk`, apply `flow_parser_ok_of_structure`.
+                Build green 519 jobs, **sorries held at 4**; no new sorry; the transport is fully proven
+                (push conversions, no `sorry`/axiom). See Reflection 222, on top of the
                 **Total .body scope re-estimate (SIXTY-NINTH revision —
                 after **Thread A step 3 sub-step 2's brick (d-shape) cont'd — *seq value-end successor
                 surfaced (Part 6)* — landed** (commit `316a9d87`, Reflection 221). The seq
@@ -24924,3 +24960,38 @@ doc binds to the declaration the `in` introduces). The frontier now reads: the v
 boundary into `tokens` and assemble `FlowSubrangesOk`. Build green 519, sorries held at 4,
 `emitList_body_filtered_characterization` `sorryAx`-free on the pure triple `[propext, Classical.choice,
 Quot.sound]`.
+
+### Reflection 222 (new, 2026-06-02): a "transport across the push boundary" step is the predictable second joint — when prior facts blazed the trail, the new one is a mechanical clone, and its risk is naming, not mathematics
+
+[[Reflection 221]] surfaced Part 6 (the value-end successor) at the characterization level and named the
+next joint: *transport it across the push boundary into the final `tokens` array*. This session did
+exactly that, and the lesson is about how cheap a step becomes when three predecessors have already cut
+the channel. The seq structure proof had already transported Parts 3/4/5 — the `WellBracketed` outer
+balance (`h_outer_bal`), the Dyck prefix-nonneg (`h_dyck`), and the `WellTyped` interior
+(`h_wt_interior`) — each from its `_raw` body-array form to the `tokens` array across the two trailing
+pushes (`tok_fse`, `streamEnd`). Those transports built two reusable bridges as a side effect:
+`h_tok_body` (token *values* agree below `tokens.size − 2`, peeling both pushes) and `h_conv` (prefix
+*balance* agrees below `tokens.size − 2`). Part 6 mentions exactly two things — a token value
+(`tokens[k]!.val ≠ .flowEntry`, `tokens[k+1]!.val = .flowEntry`) and a prefix balance
+(`flowBracketBalance tokens 2 (k+1) = 0`) — so its transport is *nothing but* applications of those two
+bridges plus the size identity `h_tokens_sz_eq` (`tokens.size − 2 = (s₂.filter p).size`) to translate
+the body-close branch `k+1 = size` ⇄ `k+1 = tokens.size − 2`. The proof wrote itself: `intro`, one
+`h_k_lt` from the size identity, `rw [h_tok_body …]` on the hypothesis, `rw [← h_conv …]` on the balance,
+`rcases` the disjunction, and `rw [h_tokens_sz_eq]` / `rw [h_tok_body (k+1) …]` on each branch.
+
+Two concrete lessons. (1) **The cost of a step is set by how many of its mentioned objects already have
+transport lemmas.** Part 6 added *no* new kind of object versus Parts 3/4/5 (token values + prefix
+balance), so it inherited their bridges wholesale — the transport is a clone, not a derivation. When a
+fact mixes a *new* object (e.g. a per-subrange `WellTyped`, which needs `WellTyped_subrange`, not
+`h_conv`), the step is genuinely harder; recognizing which bucket a transport falls into up front tells
+you whether it's a one-session clone or a real brick. (2) **In a clone step the only real risk is binder
+hygiene.** The mathematics is settled by the predecessors; what can actually go wrong is the plumbing —
+forgetting to un-underscore the raw binder (`_h_body_succ_raw → h_body_succ_raw`) or to add it to the
+`rw [h_filt₁_sz] at …` rebase line that turns `old_sz` into the literal `2` every downstream fact speaks.
+Both were one-token edits, and both would have produced a type-mismatch (not a silent hole) if missed —
+but they are the entire surface where a clone step can fail. The transported `_h_body_succ` is bound (not
+yet consumed), continuing the Parts-3/4/5 cadence one notch further: the genuinely new work — assembling
+the outer `SeqBodyProps` from these now-tokens-level facts and generalizing to the universal
+`FlowSubrangesOk` over *all* nested subranges (where the per-subrange value-end successor / content-start
+becomes the recursive bulk, no longer a clone) — is the next brick. Build green 519, sorries held at 4,
+no new sorry, the transport fully proven (push conversions, no `sorry`/axiom).
