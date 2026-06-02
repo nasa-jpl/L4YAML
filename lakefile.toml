@@ -8,6 +8,7 @@ defaultTargets = [
   "Tests.Guards",
   "Tests.ProducerGuardedTrap",
   "Tests.ConverseForwardAsymmetry",
+  "Tests.ReductionByImport",
   "tryparse",
   "tryscan",
   "tryroundtrip",
@@ -57,6 +58,9 @@ name = "Tests.ProducerGuardedTrap"
 
 [[lean_lib]]
 name = "Tests.ConverseForwardAsymmetry"
+
+[[lean_lib]]
+name = "Tests.ReductionByImport"
 
 [[lean_lib]]
 name = "Tests.VerifiedResult"
