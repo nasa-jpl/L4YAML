@@ -2110,11 +2110,15 @@ from a depth-0 opener at `k`, the matching close `j` (`k < j < hi`, closer, bala
 `(k+1, j)`). Pure-triple, sorries held at 4. This is the combinatorial core; the remaining producer
 work is the *plumbing* that feeds it.
 
-**Next session — `.parsenode.discharge` cont'd** (the dispatcher is now built AND WIRED — consumed at
-the outer seq span, commit `79350657`; the matching locator is built; what remains is *producing*
-`FlowSubrangesOk` — the seq sorry is now exactly that structural residual at `NonemptyStructure.lean` 703).
+**Next session — `.parsenode.discharge` cont'd** (the dispatcher is built AND WIRED — consumed at the
+outer seq span, commit `79350657`; the matching locator is built; and the `SeqBodyProps` *assembler*
+`seqBodyProps_assemble` is now extracted parametric in `[lo, hi)`, commit `45fe7417`, so the *assemble*
+half of producing `FlowSubrangesOk.seq` is done. What remains is purely *producing the three
+primitives* — content-start / value-end successor / post-`.flowEntry` content-start — at an arbitrary
+nested subrange, then feeding `seqBodyProps_assemble`; the seq sorry is the `FlowSubrangesOk` structural
+residual at `NonemptyStructure.lean` 725).
 
-> **Frontier (post-Reflection 225, commit `79350657`).** The `(d-shape)` algebra is complete
+> **Frontier (post-Reflection 226, commit `45fe7417`).** The `(d-shape)` algebra is complete
 > (the bracket conjuncts are correctly guarded — Reflection 218 — AND their `h_succ` substrate, the
 > value-end successor `EntryUnit` / `SafeBodyUnit_succ` / `SafeBodyUnit_array_succ`, exists —
 > Reflection 219), and the **sequence side** of threading `EntryUnit` through the producers is now
@@ -2154,12 +2158,23 @@ the outer seq span, commit `79350657`; the matching locator is built; what remai
 > `FlowSubrangesOk tokens` (`NonemptyStructure.lean` 703). The structure→parse bridge is fully proven
 > and consumed; `_h_seq_body_props` is exactly the `(2, tokens.size−2)` seq instance of the residual.
 > No import cycle: `FlowParserAcceptance` imports only `ParserWellBehaved`, on which `NonemptyStructure`
-> already depends. **Immediate next sub-bricks (two, in
-> order):** (1) *produce the seq subranges* — discharge the residual `FlowSubrangesOk.seq` by lifting
-> `_h_seq_body_props` from the single outer span `(2, tokens.size−2)` to every nested balanced subrange
-> (`WellTyped_subrange` supplies the per-subrange `WellTyped`; the per-subrange value-end successor /
-> content-start is the recursive bulk — Phase J) → **close the seq structure sorry**
-> (`NonemptyStructure.lean` 703, was 692/640); (2) the **map side**, which is *not* a direct `EntryUnit` thread — a map *pair* entry
+> already depends. **And the `SeqBodyProps` ASSEMBLER is now extracted** (Reflection 226, commit
+> `45fe7417`): last session's outer-span `_h_seq_body_props` is lifted verbatim into the top-level
+> parametric lemma `seqBodyProps_assemble (tokens) (lo hi)` — given the balanced-subrange facts
+> (`h_tpe`/`h_outer_bal`/`h_dyck`/`h_wt_interior`) plus the three PRIMITIVE per-subrange facts
+> (content-start, value-end successor `h_body_succ`, post-`.flowEntry` content-start `h_fe_pattern`) it
+> produces the full `SeqBodyProps tokens lo hi`, with the value-close-guarded successor re-derived inside
+> from `h_body_succ` + `h_tpe`; the proof generalized *for free* because its only span-specific inputs were
+> already hypotheses and the conjunct helpers were already parametric in `lo hi`. The outer span now
+> discharges by a one-line call. This is the *assemble* half of producing `FlowSubrangesOk.seq`, done and
+> axiom-clean; the residual is now purely the *produce-the-primitives* half. **Immediate next sub-bricks
+> (two, in
+> order):** (1) *produce the seq subrange primitives* — derive the three primitives
+> (content-start at `lo`, the value-end successor, the post-`.flowEntry` content-start) at an arbitrary
+> nested balanced subrange and feed `seqBodyProps_assemble` to discharge the residual `FlowSubrangesOk.seq`
+> (`WellTyped_subrange` already supplies the per-subrange `WellTyped`; the per-subrange value-end successor /
+> content-start over the nested emitted tree is the recursive bulk — Phase J) → **close the seq structure
+> sorry** (`NonemptyStructure.lean` 725, was 703/692/640); (2) the **map side**, which is *not* a direct `EntryUnit` thread — a map *pair* entry
 > `.key block_k .value block_v` has an interior depth-0 `.value`, so the whole pair is NOT an
 > `EntryUnit`; the value-end there needs a pair-level refinement (apply `EntryUnit` to each key/value
 > block, with a separate per-pair successor), to be designed before the map sorry (868) closes. Once
@@ -15146,6 +15161,27 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
+                **Total .body scope re-estimate (SEVENTY-FOURTH revision —
+                after **Thread A step 3 sub-step 2's brick (d-shape) cont'd — *parametric `SeqBodyProps`
+                assembler extracted (Phase J seed)* — landed** (commit `45fe7417`, Reflection 226).
+                The outer-span `SeqBodyProps` assembly (last session's inline `_h_seq_body_props` at the
+                fixed span `(2, tokens.size−2)`) is lifted, verbatim, into a top-level lemma
+                `seqBodyProps_assemble (tokens) (lo hi)` quantified over an ARBITRARY balanced subrange
+                `[lo, hi)`: it takes the balanced-subrange facts (`h_tpe`/`h_outer_bal`/`h_dyck`/
+                `h_wt_interior`) plus the three PRIMITIVE per-subrange facts (content-start, value-end
+                successor `h_body_succ`, post-`.flowEntry` content-start `h_fe_pattern`) and produces the
+                full `SeqBodyProps tokens lo hi` — every field a projection (bracket conjuncts via
+                `seq_bracket_{seq,map}_conjunct`; the value-close-guarded successor re-derived inline from
+                `h_body_succ` + `h_tpe`). `scanFiltered_emitSeq_nonempty_structure` now discharges its outer
+                span by a one-line call to the assembler. This is the *assemble* half of the Phase-J lift,
+                proven and axiom-clean (pure triple); the residual `FlowSubrangesOk tokens` is now purely the
+                *produce-the-primitives* half — derive content-start / value-end successor / post-FE
+                content-start at every nested subrange (`WellTyped_subrange` already supplies the per-subrange
+                `WellTyped`). Build green 521 jobs, **sorries held at 4** (the seq sorry is the same
+                `FlowSubrangesOk tokens`, now `NonemptyStructure.lean` 725; nothing reshaped or added). next
+                sub-brick: produce the three primitives at an arbitrary nested subrange and feed
+                `seqBodyProps_assemble` → discharge `FlowSubrangesOk.seq` → close the seq sorry (725). See
+                Reflection 226, on top of the
                 **Total .body scope re-estimate (SEVENTY-THIRD revision —
                 after **Thread A step 3 sub-step 2's brick (d-shape) cont'd — *dispatcher wired:
                 seq parser-acceptance reduced to structural `FlowSubrangesOk`* — landed** (commit
@@ -25187,3 +25223,34 @@ frontier, not its cardinality. Symmetric to Reflection 223 (adapter) and 224 (as
 `FlowSubrangesOk → parse` interface — the single import that activates ≈900 lines of dormant verified proof.
 A practical tell that a leaf module is *ready* to wire: its only import is something the consumer already
 depends on (here `ParserWellBehaved`), so wiring it in cannot create a cycle and costs exactly one `import`.
+
+### Reflection 226 (new, 2026-06-02): a "for the fixed span" proof generalizes to "for any span" for free when its only span-specific inputs are hypotheses — extracting it as a parametric lemma splits the residual into an *assemble* half (done) and a *produce-the-primitives* half (the real recursion)
+
+The seq frontier residual is `FlowSubrangesOk tokens` — for **every** balanced subrange `[lo, hi)` ending in
+`.flowSequenceEnd`, a `SeqBodyProps tokens lo hi`. Last session's `_h_seq_body_props` discharged exactly this
+*at one span*, the outer `(2, tokens.size−2)`. This session (commit `45fe7417`) lifted that proof, verbatim,
+into a top-level lemma `seqBodyProps_assemble (tokens) (lo hi)` quantified over an arbitrary subrange, and
+rewired the outer span to a one-line call. The proof body did not change — `2` became `lo`, `tokens.size−2`
+became `hi`, and every step that referenced the span now references the bound variable. That it generalized
+*for free* is the content of the reflection, and it is not an accident: the proof's only span-specific inputs
+were already **hypotheses** (`h_content0`, `_h_body_succ`, `h_fe_pattern`, `h_outer_bal`, `h_dyck`,
+`h_wt_interior`, `h_tpe`), and the helpers it called (`seq_bracket_{seq,map}_conjunct`, `flowBracketBalance_
+{compose,single}`) were *already* parametric in `lo hi`. A proof whose only dependence on a constant flows
+through its hypotheses is secretly a proof schema; making the constant a parameter just reveals it.
+
+Why this is progress on a sorry it does not remove (cf. 223–225 — "shape, not cardinality"): it **partitions**
+the residual. Producing `SeqBodyProps tokens lo hi` for an arbitrary subrange is two jobs — (a) *assemble* the
+five fields from per-subrange primitives, and (b) *produce* those primitives (content-start at `lo`, the
+value-end successor, the post-`.flowEntry` content-start) at every nested subrange. Before, (a) and (b) were
+fused inside one fixed-span `have`; the fusion hid that (a) is span-agnostic and already finished. The
+extraction makes (a) a proven, reusable, axiom-clean lemma and leaves the residual `FlowSubrangesOk` as purely
+(b) — the genuinely recursive part, where the per-subrange primitives must be derived from the emitter's nested
+structure (`WellTyped_subrange` already supplies the per-subrange `WellTyped`; the value-end successor /
+content-start over nested subranges is Phase J's recursive bulk). The value of the brick is the *interface it
+fixes*: the recursive producer now has a single, typed joint to call once it has the three primitives — it
+need never re-derive the five-field assembly. This is the dual of Reflection 224 (which *consumed* an
+assembled `have` one step up): here we *publish* the assembly as a parametric service the future recursion
+will consume at every node. The general tell: when an inline `have P[c]` proves a fixed instance and `P` is the
+shape you ultimately need universally, check whether the proof's constant-dependence is all in its hypotheses;
+if so, the cheap, correct move is to abstract it to `∀ x, (hyps x) → P[x]` *now* — you convert "I proved one
+case" into "I built the assembler," and the remaining work sharpens to producing the hypotheses.
