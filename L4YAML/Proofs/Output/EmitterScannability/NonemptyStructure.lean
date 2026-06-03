@@ -423,6 +423,96 @@ theorem seqBodyProps_assemble (tokens : Array (Positioned YamlToken)) (lo hi : N
       h_bal_k h_open h_outer_bal h_dyck h_wt_interior
       (fun j hkj hjhi hd hb => h_succ_guarded j (by omega) hjhi hd hb)
 
+/-! ### Recursive flow-SEQUENCE body deliverable (Phase J, seq side)
+
+`RecSeqBody` is the recursive deliverable of the seq-side producer: a `SafeBody` over
+`ContentStartTok` that ADDITIONALLY records, at each nested flow-sequence entry, the
+recursive structure of its interior.  It is what the producer (`emitList_scans_safebody`
+applied at every nesting level) supplies in one shot, and what the descent-locator
+consumes to extract a windowed `SafeBody` at any nested guarded subrange.  The flat
+`SafeBody`/`SafeBodyUnit ContentStartTok` that `seqBodyProps_of_windowed_safebody` already
+consumes are PROJECTIONS of it (`toSafeBody`/`toSafeBodyUnit` below), so wiring `RecSeqBody`
+as the producer's output type collapses the scattered "produce a flat windowed `SafeBody` at
+every subrange" residual into the single typed boundary "produce one `RecSeqBody` of the
+outer body" — the consumer-joint-before-producer reshape, one nesting level up.
+
+A `RecSeqEntry` is one `emit v` block: a `scalar` leaf, an empty `[ ]`/`{ }` (`seqEmpty` /
+the empty case of `map`), a nested flow-sequence `[ interior ]` whose `interior` recurses
+(`seq`), or a nested flow-mapping `{ interior }` (`map`).  The mapping interior bottoms out
+at its `WellBracketed` substrate here — its key/value recursion is a separate (map-side)
+brick; the seq flat projections need only `WellBracketed` (via `wrap_{seq,map}_block`'s
+`EntrySafe` / `EntryUnit_wrap`), so they hold regardless.  Empty interiors are carried by
+`seqEmpty` (and `interior = []` in `map`), the `lo = hi` shape the empty-body leaf discharges
+positionally; the recursive occurrence cannot sit under `Or`, hence the separate constructor. -/
+mutual
+  inductive RecSeqBody : List (Positioned YamlToken) → Prop where
+    | single (e : List (Positioned YamlToken)) (h_ne : e ≠ [])
+        (h_e : RecSeqEntry e) (h_head : ContentStartTok (e.head h_ne).val) : RecSeqBody e
+    | cons (e : List (Positioned YamlToken)) (fe : Positioned YamlToken)
+        (rest : List (Positioned YamlToken)) (h_ne : e ≠ [])
+        (h_e : RecSeqEntry e) (h_head : ContentStartTok (e.head h_ne).val)
+        (h_fe : fe.val = .flowEntry) (h_rest : RecSeqBody rest) :
+        RecSeqBody (e ++ fe :: rest)
+  inductive RecSeqEntry : List (Positioned YamlToken) → Prop where
+    | scalar (t : Positioned YamlToken) (c : String) (s : ScalarStyle)
+        (h : t.val = .scalar c s) : RecSeqEntry [t]
+    | seqEmpty (op cl : Positioned YamlToken)
+        (h_op : op.val = .flowSequenceStart) (h_cl : cl.val = .flowSequenceEnd) :
+        RecSeqEntry (op :: ([] ++ [cl]))
+    | seq (op cl : Positioned YamlToken) (interior : List (Positioned YamlToken))
+        (h_op : op.val = .flowSequenceStart) (h_cl : cl.val = .flowSequenceEnd)
+        (h_wb : WellBracketed interior) (h_rec : RecSeqBody interior) :
+        RecSeqEntry (op :: (interior ++ [cl]))
+    | map (op cl : Positioned YamlToken) (interior : List (Positioned YamlToken))
+        (h_op : op.val = .flowMappingStart) (h_cl : cl.val = .flowMappingEnd)
+        (h_wb : WellBracketed interior) :
+        RecSeqEntry (op :: (interior ++ [cl]))
+end
+
+/-- A recursive seq entry is `EntrySafe` (the flat per-entry obligation `SafeBody` consumes). -/
+theorem RecSeqEntry.toEntrySafe {e : List (Positioned YamlToken)}
+    (h : RecSeqEntry e) : EntrySafe e := by
+  cases h with
+  | scalar t c s ht => exact EntrySafe_scalar t c s ht
+  | seqEmpty op cl h_op h_cl => exact (wrap_seq_block op cl [] h_op h_cl WellBracketed_nil).2
+  | seq op cl interior h_op h_cl h_wb _ => exact (wrap_seq_block op cl interior h_op h_cl h_wb).2
+  | map op cl interior h_op h_cl h_wb => exact (wrap_map_block op cl interior h_op h_cl h_wb).2
+
+/-- A recursive seq entry is `EntryUnit` (the unit refinement — one `emit v` is one unit). -/
+theorem RecSeqEntry.toEntryUnit {e : List (Positioned YamlToken)}
+    (h : RecSeqEntry e) : EntryUnit e := by
+  cases h with
+  | scalar t c s ht => exact EntryUnit_scalar t c s ht
+  | seqEmpty op cl h_op h_cl =>
+      exact EntryUnit_wrap op cl [] (h_op ▸ flowBracketDelta_flowSequenceStart)
+        (h_cl ▸ flowBracketDelta_flowSequenceEnd) WellBracketed_nil
+  | seq op cl interior h_op h_cl h_wb _ =>
+      exact EntryUnit_wrap op cl interior (h_op ▸ flowBracketDelta_flowSequenceStart)
+        (h_cl ▸ flowBracketDelta_flowSequenceEnd) h_wb
+  | map op cl interior h_op h_cl h_wb =>
+      exact EntryUnit_wrap op cl interior (h_op ▸ flowBracketDelta_flowMappingStart)
+        (h_cl ▸ flowBracketDelta_flowMappingEnd) h_wb
+
+/-- **Flat projection (seq side).**  A `RecSeqBody` is in particular a flat
+    `SafeBody ContentStartTok` — exactly the windowed deliverable
+    `seqBodyProps_of_windowed_safebody` consumes.  The recursive interiors are discarded;
+    only the per-entry `EntrySafe` and content-start head are used, so the projection is
+    robust to the map interior bottoming out. -/
+theorem RecSeqBody.toSafeBody : {l : List (Positioned YamlToken)} →
+    RecSeqBody l → SafeBody ContentStartTok l
+  | _, .single e h_ne h_e h_head => SafeBody.single e h_ne h_e.toEntrySafe h_head
+  | _, .cons e fe rest h_ne h_e h_head h_fe h_rest =>
+      SafeBody.cons e fe rest h_ne h_e.toEntrySafe h_head h_fe h_rest.toSafeBody
+
+/-- **Flat unit projection (seq side).**  A `RecSeqBody` is also a flat
+    `SafeBodyUnit ContentStartTok` (each `emit v` entry is one unit) — the second windowed
+    deliverable `seqBodyProps_of_windowed_safebody` consumes. -/
+theorem RecSeqBody.toSafeBodyUnit : {l : List (Positioned YamlToken)} →
+    RecSeqBody l → SafeBodyUnit ContentStartTok l
+  | _, .single e h_ne h_e h_head => SafeBodyUnit.single e h_ne h_e.toEntryUnit h_head
+  | _, .cons e fe rest h_ne h_e h_head h_fe h_rest =>
+      SafeBodyUnit.cons e fe rest h_ne h_e.toEntryUnit h_head h_fe h_rest.toSafeBodyUnit
+
 /-- **Empty-body leaf** (Phase J, seq side).  An empty nested flow-SEQUENCE body — `lo = hi`, the
     shape `emit (.sequence … #[]) = "[]"` scans to (`[` immediately followed by `]`, so the interior
     `[lo, hi)` is empty) — satisfies `SeqBodyProps` *vacuously*: `content_start` is guarded by
