@@ -545,6 +545,79 @@ theorem RecSeqBody.toWellBracketed : {l : List (Positioned YamlToken)} →
         (WellBracketed_cons_delta_zero fe rest (h_fe ▸ flowBracketDelta_flowEntry)
           h_rest.toWellBracketed)
 
+/-! ### Recursive deliverable — map side (`RecMapBody` / `RecMapPair`)
+
+The map-side mirror of `RecSeqBody`/`RecSeqEntry` (Reflection 234), one nesting level deeper.  A
+flow-MAPPING body's emitted+filtered block is a `.flowEntry`-separated list of **pairs**, each pair
+the filtered tokens `key :: (block_k ++ value :: block_v)` — a `.key` marker, the key's `emit`
+block, a `.value` marker, the value's `emit` block.  A key or a value is *one* `emit v` block, which
+is exactly what `RecSeqEntry` already characterizes (scalar / nested seq / nested map / empty), so a
+pair carries **two `RecSeqEntry`s** (key and value).  This is what lets the map-side descent-locator
+reach into a key's or value's nested flow-sequence interior: that interior's `RecSeqBody` is recorded
+inside the `RecSeqEntry.seq` of `block_k`/`block_v`.
+
+`RecMapPair` depends only on the already-defined `RecSeqEntry` (its key/value blocks), and `RecMapBody`
+recurses only on itself — so, unlike the seq side, **no `mutual` block is needed** (avoiding the
+`mutual`-doc-comment / `induction` / `Or`-nesting gotchas of Reflection 234 entirely): define
+`RecMapPair` first, then `RecMapBody`.  As on the seq side, the deeper key/value-of-a-nested-*mapping*
+recursion still bottoms out at the `RecSeqEntry.map` `WellBracketed` (a fully-recursive map interior is
+a later refinement); this deliverable resolves nested *sequences* inside map keys/values, which is what
+the seq locate already in hand needs. -/
+
+/-- One key/value pair of a flow-mapping body: `key :: (block_k ++ value :: block_v)`, with the key
+    and value each a recursive `emit` entry (`RecSeqEntry`). -/
+inductive RecMapPair : List (Positioned YamlToken) → Prop where
+  | mk (kt : Positioned YamlToken) (block_k : List (Positioned YamlToken))
+      (vt : Positioned YamlToken) (block_v : List (Positioned YamlToken))
+      (h_kt : kt.val = .key) (h_ke : RecSeqEntry block_k)
+      (h_vt : vt.val = .value) (h_ve : RecSeqEntry block_v) :
+      RecMapPair (kt :: (block_k ++ vt :: block_v))
+
+/-- A flow-mapping body: one or more `RecMapPair`s separated by single depth-`0` `.flowEntry`
+    tokens.  The map mirror of `RecSeqBody`; `.single`/`.cons` store the head-`.key` and non-empty
+    facts (uniformly derivable from the pair, but stored to mirror `RecSeqBody` so the flat
+    projection is a verbatim mirror — and the future producer supplies them trivially). -/
+inductive RecMapBody : List (Positioned YamlToken) → Prop where
+  | single (p : List (Positioned YamlToken)) (h_ne : p ≠ [])
+      (h_p : RecMapPair p) (h_head : (p.head h_ne).val = .key) : RecMapBody p
+  | cons (p : List (Positioned YamlToken)) (fe : Positioned YamlToken)
+      (rest : List (Positioned YamlToken)) (h_ne : p ≠ [])
+      (h_p : RecMapPair p) (h_head : (p.head h_ne).val = .key)
+      (h_fe : fe.val = .flowEntry) (h_rest : RecMapBody rest) :
+      RecMapBody (p ++ fe :: rest)
+
+/-- **Flat projection (map side, pair level).**  A `RecMapPair` is `EntrySafe`: the key block is
+    `EntrySafe` (`RecSeqEntry.toEntrySafe`), the value block is `EntrySafe`, and the delta-`0`
+    `.key`/`.value` glue tokens carry the assembly via `EntrySafe_cons_delta_zero` /
+    `EntrySafe_append` / `EntrySafe_singleton` — exactly how `emitPairList_scans_safebody` builds the
+    per-pair `EntrySafe`, here read off the recursive witness instead of the scanner chain. -/
+theorem RecMapPair.toEntrySafe {p : List (Positioned YamlToken)}
+    (h : RecMapPair p) : EntrySafe p := by
+  cases h with
+  | mk kt block_k vt block_v h_kt h_ke h_vt h_ve =>
+      refine EntrySafe_cons_delta_zero kt (block_k ++ vt :: block_v)
+        (by rw [h_kt]; rfl) (by rw [h_kt]; simp) ?_
+      have h_reassoc : (block_k ++ [vt]) ++ block_v = block_k ++ vt :: block_v := by
+        rw [List.append_assoc]; rfl
+      rw [← h_reassoc]
+      exact EntrySafe_append (block_k ++ [vt]) block_v
+        (EntrySafe_append block_k [vt] h_ke.toEntrySafe
+          (EntrySafe_singleton vt (by rw [h_vt]; rfl) (by rw [h_vt]; simp)))
+        h_ve.toEntrySafe
+
+/-- **Flat projection (map side, body level).**  A `RecMapBody` is a flat `SafeBody (· = .key)` —
+    exactly the windowed deliverable `mapBodyProps_of_windowed_safebody` consumes.  Term-mode
+    structural recursion on the `RecMapBody` argument, a verbatim mirror of `RecSeqBody.toSafeBody`
+    (per-pair `EntrySafe` via `RecMapPair.toEntrySafe`, head-`.key` and `.flowEntry` separators from
+    the constructor fields).  This is the map-side R234 projection: it validates the recursive type
+    by handing the existing map consumer joint its sole structural input, leaving the six pair-interior
+    primitives as the separate residual. -/
+theorem RecMapBody.toSafeBody : {l : List (Positioned YamlToken)} →
+    RecMapBody l → SafeBody (fun t => t = .key) l
+  | _, .single p h_ne h_p h_head => SafeBody.single p h_ne h_p.toEntrySafe h_head
+  | _, .cons p fe rest h_ne h_p h_head h_fe h_rest =>
+      SafeBody.cons p fe rest h_ne h_p.toEntrySafe h_head h_fe h_rest.toSafeBody
+
 /-- Append-singleton injectivity (core Lean, no Mathlib): from `a ++ [x] = b ++ [y]` recover both
     `a = b` and `x = y`.  Used to read a bracket entry's interior off the constructor index when the
     descent matches a `seq`/`map` entry's `op :: (interior ++ [cl])` shape against `RecSeqEntry`. -/
