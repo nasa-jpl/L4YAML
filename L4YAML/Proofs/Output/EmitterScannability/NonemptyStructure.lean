@@ -618,6 +618,39 @@ theorem RecMapBody.toSafeBody : {l : List (Positioned YamlToken)} →
   | _, .cons p fe rest h_ne h_p h_head h_fe h_rest =>
       SafeBody.cons p fe rest h_ne h_p.toEntrySafe h_head h_fe h_rest.toSafeBody
 
+/-- **Balance projection (map side, pair level).**  A `RecMapPair` is in particular
+    `WellBracketed`: the delta-`0` `.key` opener (`flowBracketDelta_key`) cons'd onto
+    `block_k ++ .value :: block_v`, whose two `RecSeqEntry` blocks are each `WellBracketed`
+    (`RecSeqEntry.toWellBracketed`) chained by `WellBracketed_append` across the delta-`0` `.value`
+    glue (`WellBracketed_cons_delta_zero`).  The balance mirror of `RecMapPair.toEntrySafe` — same
+    `.key`/`.value` delta-`0` assembly, reading each block's `WellBracketed` half instead of its
+    `EntrySafe` half.  This is the navigation invariant the map *locate* needs: matching a guarded
+    balanced subrange to a pair and descending into a key/value's nested interior both require that
+    sub-part's own `WellBracketed`, which only the deliverable's per-block structure can supply. -/
+theorem RecMapPair.toWellBracketed {p : List (Positioned YamlToken)}
+    (h : RecMapPair p) : WellBracketed p := by
+  cases h with
+  | mk kt block_k vt block_v h_kt h_ke h_vt h_ve =>
+      refine WellBracketed_cons_delta_zero kt (block_k ++ vt :: block_v)
+        (by rw [h_kt]; rfl) ?_
+      exact WellBracketed_append block_k (vt :: block_v) h_ke.toWellBracketed
+        (WellBracketed_cons_delta_zero vt block_v (by rw [h_vt]; rfl) h_ve.toWellBracketed)
+
+/-- **Balance projection (map side, body level).**  A `RecMapBody` is in particular
+    `WellBracketed`: each pair is `WellBracketed` (`RecMapPair.toWellBracketed`) and the depth-`0`
+    `.flowEntry` separators carry delta `0`, so `WellBracketed_append` + `WellBracketed_cons_delta_zero`
+    chain the segments — term-mode structural recursion on the `RecMapBody` argument, a verbatim
+    mirror of `RecSeqBody.toWellBracketed`.  Completes the map-side projection family
+    (`EntrySafe` / `SafeBody` / `WellBracketed`) so the map descent-locator can recover the
+    untyped-balance invariant at any sub-body it descends into, not just the outer one. -/
+theorem RecMapBody.toWellBracketed : {l : List (Positioned YamlToken)} →
+    RecMapBody l → WellBracketed l
+  | _, .single p _ h_p _ => h_p.toWellBracketed
+  | _, .cons p fe rest _ h_p _ h_fe h_rest =>
+      WellBracketed_append p (fe :: rest) h_p.toWellBracketed
+        (WellBracketed_cons_delta_zero fe rest (h_fe ▸ flowBracketDelta_flowEntry)
+          h_rest.toWellBracketed)
+
 /-- Append-singleton injectivity (core Lean, no Mathlib): from `a ++ [x] = b ++ [y]` recover both
     `a = b` and `x = y`.  Used to read a bracket entry's interior off the constructor index when the
     descent matches a `seq`/`map` entry's `op :: (interior ++ [cl])` shape against `RecSeqEntry`. -/
