@@ -513,6 +513,84 @@ theorem RecSeqBody.toSafeBodyUnit : {l : List (Positioned YamlToken)} →
   | _, .cons e fe rest h_ne h_e h_head h_fe h_rest =>
       SafeBodyUnit.cons e fe rest h_ne h_e.toEntryUnit h_head h_fe h_rest.toSafeBodyUnit
 
+/-- Append-singleton injectivity (core Lean, no Mathlib): from `a ++ [x] = b ++ [y]` recover both
+    `a = b` and `x = y`.  Used to read a bracket entry's interior off the constructor index when the
+    descent matches a `seq`/`map` entry's `op :: (interior ++ [cl])` shape against `RecSeqEntry`. -/
+theorem append_singleton_inj {a b : List (Positioned YamlToken)} {x y : Positioned YamlToken}
+    (h : a ++ [x] = b ++ [y]) : a = b ∧ x = y := by
+  have hr := congrArg List.reverse h
+  simp only [List.reverse_append, List.reverse_cons, List.reverse_nil, List.nil_append,
+    List.cons_append] at hr
+  injection hr with hxy har
+  exact ⟨List.reverse_inj.mp har, hxy⟩
+
+/-- **Single-level seq descent** (Phase J, seq side — descent-locator core).  A nested
+    flow-SEQUENCE entry `op :: (interior ++ [cl])` recorded inside the recursive deliverable
+    (its `op` a `.flowSequenceStart`) has an interior that is EITHER empty (`interior = []`, the
+    `lo = hi` shape `seqBodyProps_empty` discharges positionally) OR itself a `RecSeqBody` (the
+    `lo < hi` shape the consumer joint `seqBodyProps_of_windowed_safebody` consumes after
+    `RecSeqBody.toSafeBody`).  This is the irreducible "descend one nesting level" step of the
+    descent-locator: the recursive `RecSeqEntry.seq.h_rec` is recovered structurally from a
+    bracket-typed entry, and the empty/non-empty disjunction is EXACTLY the producer-contract
+    split (Reflection 233 — the empty branch the `SafeBody`-keyed joint structurally cannot cover
+    is the branch it is never asked to cover).  The `scalar` and `map` constructors are ruled out
+    by the `.flowSequenceStart` head, `seqEmpty` is the empty witness. -/
+theorem RecSeqEntry.seq_interior {e interior : List (Positioned YamlToken)}
+    {op cl : Positioned YamlToken}
+    (h : RecSeqEntry e) (h_eq : e = op :: (interior ++ [cl]))
+    (h_op : op.val = .flowSequenceStart) :
+    RecSeqBody interior ∨ interior = [] := by
+  cases h with
+  | scalar t c s ht =>
+      -- `e = [t]`: the head matches but `interior ++ [cl] = []` is impossible.
+      injection h_eq with _h1 h2; simp at h2
+  | seqEmpty op' cl' h_op' h_cl' =>
+      -- `e = op' :: ([] ++ [cl'])`: interior is forced empty.
+      right
+      injection h_eq with _h1 h2
+      simp only [List.nil_append] at h2
+      exact ((append_singleton_inj h2.symm).1)
+  | seq op' cl' interior' h_op' h_cl' h_wb h_rec =>
+      -- The recursive interior witness, transported across `interior' = interior`.
+      left
+      injection h_eq with _h1 h2
+      exact (append_singleton_inj h2).1 ▸ h_rec
+  | map op' cl' interior' h_op' h_cl' h_wb =>
+      -- `op'.val = .flowMappingStart` clashes with the `.flowSequenceStart` head.
+      exfalso
+      injection h_eq with h1 _h2
+      rw [h1, h_op] at h_op'
+      exact absurd h_op' (by decide)
+
+/-- **Single-level map descent** (Phase J, seq side — descent-locator core, map entries).  A nested
+    flow-MAPPING entry `op :: (interior ++ [cl])` recorded inside the recursive deliverable (its
+    `op` a `.flowMappingStart`) has a `WellBracketed` interior — the map interior bottoms out at its
+    `WellBracketed` substrate in `RecSeqEntry.map` (its key/value recursion is a separate, map-side
+    brick), so the descent into a nested *mapping* yields exactly the bracket fact the map consumer
+    joint needs, no recursion.  The empty interior is covered too (`WellBracketed []`).  The
+    `scalar`, `seqEmpty` and `seq` constructors are ruled out by the `.flowMappingStart` head. -/
+theorem RecSeqEntry.map_interior {e interior : List (Positioned YamlToken)}
+    {op cl : Positioned YamlToken}
+    (h : RecSeqEntry e) (h_eq : e = op :: (interior ++ [cl]))
+    (h_op : op.val = .flowMappingStart) :
+    WellBracketed interior := by
+  cases h with
+  | scalar t c s ht =>
+      injection h_eq with _h1 h2; simp at h2
+  | seqEmpty op' cl' h_op' h_cl' =>
+      exfalso
+      injection h_eq with h1 _h2
+      rw [h1, h_op] at h_op'
+      exact absurd h_op' (by decide)
+  | seq op' cl' interior' h_op' h_cl' h_wb h_rec =>
+      exfalso
+      injection h_eq with h1 _h2
+      rw [h1, h_op] at h_op'
+      exact absurd h_op' (by decide)
+  | map op' cl' interior' h_op' h_cl' h_wb =>
+      injection h_eq with _h1 h2
+      exact (append_singleton_inj h2).1 ▸ h_wb
+
 /-- **Empty-body leaf** (Phase J, seq side).  An empty nested flow-SEQUENCE body — `lo = hi`, the
     shape `emit (.sequence … #[]) = "[]"` scans to (`[` immediately followed by `]`, so the interior
     `[lo, hi)` is empty) — satisfies `SeqBodyProps` *vacuously*: `content_start` is guarded by
