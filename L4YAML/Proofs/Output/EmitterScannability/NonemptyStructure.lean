@@ -1016,6 +1016,67 @@ theorem seqBodyProps_of_located_entry (tokens : Array (Positioned YamlToken)) (l
     simp only [List.length_nil] at hl
     exact seqBodyProps_empty tokens lo hi (by omega)
 
+/-- **Located-entry assembler** (Phase J, seq side — the descent-locator's FRONT-END *producer*).
+    The constructive dual of `seqBodyProps_of_located_entry`: where that lemma *consumes* a located
+    `RecSeqEntry` of the opener-window, this one *builds* it — the locate recursion's per-level
+    final-assembly step.  Given a guarded balanced flow-SEQUENCE subrange `[lo, hi)` whose opener
+    `tokens[lo-1]` is a `.flowSequenceStart`, whose close `tokens[hi]` is a `.flowSequenceEnd`, and
+    whose interior window `(tokens.toList.take hi).drop lo` has been recursively established as a
+    `RecSeqBody` (the locate's inductive deliverable one nesting level down), package it as the
+    `RecSeqEntry` of the absolute opener-window `(tokens.toList.take (hi+1)).drop (lo-1)` — exactly
+    `SeqLocated.entry`.
+
+    It is the same positional bridge `seqBodyProps_of_located_entry` runs, now in the *constructive*
+    direction: the rest-decomposition `(take (hi+1)).drop lo = (take hi).drop lo ++ [tokens[hi]]`
+    (`List.take_add_one` + `List.drop_append_of_le_length`) and the opener peel `(take (hi+1)).drop
+    (lo-1) = tokens[lo-1] :: …` (`List.getElem_cons_drop`, using `1 ≤ lo`) put the window into the
+    `op :: (interior ++ [cl])` shape `RecSeqEntry.seq` produces; the recursive `RecSeqBody` supplies
+    both the constructor's `WellBracketed interior` (via `RecSeqBody.toWellBracketed`, redundant with
+    `h_rec` but the field demands it) and the recursive `h_rec` field.  Verified-but-unconsumed until
+    the locate lands: it references no sorry site, so the frontier sorry count is unchanged — but it
+    reduces the seq-side `SeqLocated` deliverable from "the located entry" to "the inner-window
+    `RecSeqBody`" (plus the `pos`/`dyck`/`wt` bracket fields, supplied by the guards and
+    `WellTyped_subrange`), the exact recursive obligation the locate descends on. -/
+theorem located_entry_of_recseqbody (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (h_lo : 1 ≤ lo) (h_lo_hi : lo ≤ hi) (h_hi_sz : hi < tokens.size)
+    (h_open : tokens[lo - 1]!.val = .flowSequenceStart)
+    (h_close : tokens[hi]!.val = .flowSequenceEnd)
+    (h_rec : RecSeqBody ((tokens.toList.take hi).drop lo)) :
+    RecSeqEntry ((tokens.toList.take (hi + 1)).drop (lo - 1)) := by
+  have h_hi_len : hi < tokens.toList.length := by rw [Array.length_toList]; exact h_hi_sz
+  have h_lo1_sz : lo - 1 < tokens.size := by omega
+  -- rest-decomposition: the `interior ++ [cl]` tail (mirrors `seqBodyProps_of_located_entry`).
+  have h_rest : (tokens.toList.take (hi + 1)).drop lo
+      = (tokens.toList.take hi).drop lo ++ [tokens.toList[hi]] := by
+    have h_ts : tokens.toList.take (hi + 1)
+        = tokens.toList.take hi ++ [tokens.toList[hi]] := by
+      rw [List.take_add_one, List.getElem?_eq_getElem h_hi_len]; rfl
+    rw [h_ts]
+    have h_len : lo ≤ (tokens.toList.take hi).length := by rw [List.length_take]; omega
+    rw [List.drop_append_of_le_length h_len]
+  -- peel the opener: the opener-window is `tokens[lo-1] :: rest`.
+  have h_peel : (tokens.toList.take (hi + 1)).drop (lo - 1)
+      = tokens.toList[lo - 1]'(by rw [Array.length_toList]; omega)
+        :: (tokens.toList.take (hi + 1)).drop lo := by
+    have hlen : lo - 1 < (tokens.toList.take (hi + 1)).length := by
+      rw [List.length_take]; omega
+    have h := (List.getElem_cons_drop hlen).symm
+    rw [List.getElem_take] at h
+    rw [show lo - 1 + 1 = lo from by omega] at h
+    exact h
+  -- target window now reads as `op :: (interior ++ [cl])`.
+  rw [h_peel, h_rest]
+  have h_op_val : (tokens.toList[lo - 1]'(by rw [Array.length_toList]; omega)).val
+      = .flowSequenceStart := by
+    have hb : tokens[lo - 1]! = tokens.toList[lo - 1]'(by rw [Array.length_toList]; omega) := by
+      rw [getElem!_pos tokens (lo - 1) h_lo1_sz, Array.getElem_toList]
+    rw [← hb]; exact h_open
+  have h_cl_val : (tokens.toList[hi]'h_hi_len).val = .flowSequenceEnd := by
+    have hb : tokens[hi]! = tokens.toList[hi]'h_hi_len := by
+      rw [getElem!_pos tokens hi h_hi_sz, Array.getElem_toList]
+    rw [← hb]; exact h_close
+  exact RecSeqEntry.seq _ _ _ h_op_val h_cl_val h_rec.toWellBracketed h_rec
+
 /-- **Parametric `MapBodyProps` assembler** (Phase J seed, map side).  The map-side mirror of
     `seqBodyProps_assemble`: given an arbitrary balanced flow-MAPPING subrange `[lo, hi)` —
     `tokens[hi]! = .flowMappingEnd`, total balance `0`, Dyck prefixes, interior `WellTyped` — together
