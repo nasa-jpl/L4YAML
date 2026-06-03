@@ -1171,6 +1171,78 @@ theorem mapBodyProps_of_windowed_safebody (tokens : Array (Positioned YamlToken)
     rw [getElem!_pos tokens (k + 1) hk1_sz]
     exact hQ
 
+/-- **Located-`RecMapBody` → `MapBodyProps` consumer joint** (Phase J, map side).  The map mirror of
+    `seqBodyProps_of_recseqbody_window`: given a guarded balanced flow-MAPPING subrange `[lo, hi)`
+    (close `.flowMappingEnd`, total balance `0`, Dyck prefixes, interior `WellTyped`) whose array
+    window `(tokens.toList.take (hi+1)).drop lo` is a bracket entry's `interior ++ [cl]`, AND the
+    map descent has handed back that `interior`'s recursive structure `RecMapBody interior`,
+    assemble `MapBodyProps tokens lo hi`.
+
+    The window identity `interior_window_eq` rewrites the structural `interior` into the positionally
+    windowed `(tokens.toList.take hi).drop lo`, so `RecMapBody.toSafeBody` delivers exactly the
+    windowed `SafeBody (· = .key)` that `mapBodyProps_of_windowed_safebody` consumes — closing the
+    back half of the map descent-locator.  Unlike the seq mirror there is no `SafeBodyUnit` and no
+    separate `content_start` input (M1 `key_start` comes from `SafeBody.head_Q` inside the windowed
+    joint); but the six pair-INTERIOR primitives stay as inputs, because the `.key`-headed `SafeBody`
+    only constrains the pair-BOUNDARY structure and the depth-0 `.value` alternation lives below its
+    resolution (Reflection 232).  So this collapses the map back-half's `SafeBody` input into a
+    `RecMapBody` input — the producer now only has to deliver one `RecMapBody`, exactly as the seq
+    producer delivers one `RecSeqBody` — while honestly leaving the six interior primitives as the
+    map's extra residual.  What remains upstream is the map *locate* (pair a guarded flow-mapping
+    subrange's body window to the `RecMapBody` the map producer emits) plus those six primitives. -/
+theorem mapBodyProps_of_recmapbody_window (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (interior : List (Positioned YamlToken)) (cl : Positioned YamlToken)
+    (h_lo_hi : lo ≤ hi) (h_hi_sz : hi < tokens.size)
+    (h_tpe : tokens[hi]!.val = .flowMappingEnd)
+    (h_outer_bal : flowBracketBalance tokens lo hi = 0)
+    (h_dyck : ∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0)
+    (h_wt_interior : WellTyped ((tokens.toList.take hi).drop lo))
+    (h_window : (tokens.toList.take (hi + 1)).drop lo = interior ++ [cl])
+    (h_rec : RecMapBody interior)
+    (h_key_content : ∀ k, lo ≤ k → k < hi →
+      flowBracketBalance tokens lo k = 0 →
+      tokens[k]!.val = .key →
+      k + 1 < hi ∧ isFlowContentStart tokens[k + 1]!.val)
+    (h_key_scalar_value : ∀ k, lo ≤ k → k < hi →
+      flowBracketBalance tokens lo k = 0 →
+      tokens[k]!.val = .key →
+      (∃ c s, tokens[k + 1]!.val = .scalar c s) →
+      k + 2 < hi ∧ tokens[k + 2]!.val = .value)
+    (h_value_content : ∀ k, lo ≤ k → k < hi →
+      flowBracketBalance tokens lo k = 0 →
+      tokens[k]!.val = .value →
+      k + 1 < hi ∧ isFlowContentStart tokens[k + 1]!.val)
+    (h_value_scalar_succ : ∀ k, lo ≤ k → k < hi →
+      flowBracketBalance tokens lo k = 0 →
+      tokens[k]!.val = .value →
+      (∃ c s, tokens[k + 1]!.val = .scalar c s) →
+      k + 2 ≤ hi ∧
+      (tokens[k + 2]!.val = .flowEntry ∨
+       (tokens[k + 2]!.val = .flowMappingEnd ∧ k + 2 = hi)))
+    (h_key_bracket_succ : ∀ k j, lo ≤ k → k < hi →
+      flowBracketBalance tokens lo k = 0 →
+      tokens[k]!.val = .key →
+      k + 1 < j → j < hi →
+      flowBracketDelta tokens[j]!.val = -1 →
+      flowBracketBalance tokens lo (j + 1) = 0 →
+      j + 1 < hi ∧ tokens[j + 1]!.val = .value)
+    (h_value_bracket_succ : ∀ k j, lo ≤ k → k < hi →
+      flowBracketBalance tokens lo k = 0 →
+      tokens[k]!.val = .value →
+      k + 1 < j → j < hi →
+      flowBracketDelta tokens[j]!.val = -1 →
+      flowBracketBalance tokens lo (j + 1) = 0 →
+      j + 1 ≤ hi ∧
+      (tokens[j + 1]!.val = .flowEntry ∨
+       (tokens[j + 1]!.val = .flowMappingEnd ∧ j + 1 = hi))) :
+    MapBodyProps tokens lo hi := by
+  have h_eq : interior = (tokens.toList.take hi).drop lo :=
+    interior_window_eq tokens lo hi interior cl h_lo_hi h_hi_sz h_window
+  exact mapBodyProps_of_windowed_safebody tokens lo hi (Nat.le_of_lt h_hi_sz) h_tpe
+    h_outer_bal h_dyck h_wt_interior (h_eq ▸ h_rec.toSafeBody)
+    h_key_content h_key_scalar_value h_value_content h_value_scalar_succ
+    h_key_bracket_succ h_value_bracket_succ
+
 /-- Token structure of `scanFiltered ("[" ++ emitList items ++ "]")` for non-empty items.
     Establishes boundary tokens, body token patterns, and `parseNode` success within
     the flow sequence body.
