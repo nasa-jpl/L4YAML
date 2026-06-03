@@ -2150,11 +2150,18 @@ there is no `SafeBodyUnit` (a map pair carries an interior depth-0 `.value`, so 
 the six pair-INTERIOR primitives remain inputs. So BOTH sides now have a single typed boundary, the recursive
 PRODUCER: **(seq)** produce the windowed `SafeBody`/`SafeBodyUnit` + content-start head; **(map)** produce
 the windowed `SafeBody (· = .key)` + the six interior pair primitives — both at a nested guarded subrange,
-off the emitter structure of the nested value tree. THAT is the next-session target; feeding the seq
-deliverable to `seqBodyProps_of_windowed_safebody` yields `FlowSubrangesOk.seq`, and the map deliverable to
-`mapBodyProps_of_windowed_safebody` yields `FlowSubrangesOk.map`.
+off the emitter structure of the nested value tree. **And the EMPTY case of that producer is now LANDED,
+de-risking the whole architecture** (commit `1fc23311`, Reflection 233): empty nested bodies DO arise
+(`emit (.sequence … #[]) = "[]"`, `emit (.mapping … #[]) = "{}"` → empty interior `[lo, hi)`, `lo = hi`),
+and a `SafeBody` cannot represent them (no `nil` constructor) — but `SeqBodyProps`/`MapBodyProps` at `lo = hi`
+are *vacuous* (every field guarded by `lo < hi` or `∀ k, lo ≤ k → k < hi`), so `seqBodyProps_empty`/
+`mapBodyProps_empty` close the `lo = hi` branch with no `SafeBody` at all. The consumer joints are thus
+provably only needed at `lo < hi` (exactly where `emitList_scans_safebody`'s `items ≠ []` precondition is
+met) — the architecture is SOUND. THAT recursive producer (now the `lo < hi` branch only) is the next-session
+target; feeding the seq deliverable to `seqBodyProps_of_windowed_safebody` yields `FlowSubrangesOk.seq`, and
+the map deliverable to `mapBodyProps_of_windowed_safebody` yields `FlowSubrangesOk.map`.
 
-> **Frontier (post-Reflection 232, commit `6cae8b14`).** The `(d-shape)` algebra is complete
+> **Frontier (post-Reflection 233, commit `1fc23311`).** The `(d-shape)` algebra is complete
 > (the bracket conjuncts are correctly guarded — Reflection 218 — AND their `h_succ` substrate, the
 > value-end successor `EntryUnit` / `SafeBodyUnit_succ` / `SafeBodyUnit_array_succ`, exists —
 > Reflection 219), and the **sequence side** of threading `EntryUnit` through the producers is now
@@ -2277,25 +2284,39 @@ deliverable to `seqBodyProps_of_windowed_safebody` yields `FlowSubrangesOk.seq`,
 > `SafeBody_array_flowEntry_window` at `Q := (· = .key)`; there is NO `SafeBodyUnit` analog (a map *pair*
 > carries an interior depth-0 `.value`, so the pair is not an `EntryUnit`), so the six pair-INTERIOR
 > primitives remain inputs. Both sides' assembly is now one entry point keyed on the windowed SafeBody facts.
+> **And the EMPTY-body leaf is now LANDED, with a de-risking result that makes the consumer-joint
+> architecture provably sound** (Reflection 233, commit `1fc23311`): the consumer joints both demand a
+> `SafeBody`, which has **no `nil` constructor** and so cannot represent an empty body — yet empty nested
+> bodies DO arise, since `emit (.sequence … #[]) = "[]"` and `emit (.mapping … #[]) = "{}"` scan to an
+> empty interior `[lo, hi)` with `lo = hi`, which `FlowSubrangesOk.seq`/`.map` (`lo ≤ hi`) genuinely
+> reaches. The resolution: every field of `SeqBodyProps`/`MapBodyProps` is guarded by `lo < hi` (the head,
+> `content_start`/`key_start`) or `∀ k, lo ≤ k → k < hi` (all the rest), so at `lo = hi` **all fields are
+> vacuous**. So the producer's contract splits cleanly — `seqBodyProps_empty`/`mapBodyProps_empty` discharge
+> the `lo = hi` branch with no `SafeBody` at all (vacuous, `omega`), and the `SafeBody`-keyed consumer joints
+> are only ever instantiated at `lo < hi` (where the body is genuinely a `SafeBody`). The consumer-joint
+> architecture is therefore SOUND: the case it structurally cannot cover (empty) is exactly the case it is
+> never asked to cover. Both leaf lemmas axiom-clean `[propext, Quot.sound]`.
 > **Immediate next sub-bricks (two, in
-> order):** (1) *produce the windowed `SafeBody`/`SafeBodyUnit` + content-start head* at an arbitrary nested
-> balanced subrange (the recursive characterization of the nested flow-SEQUENCE body, off the emitter
-> structure of the nested value tree) and feed `seqBodyProps_of_windowed_safebody` to yield the
+> order):** both are now the `lo < hi` branch only (the `lo = hi` branch is closed by the empty-body leaves
+> above). (1) *produce the windowed `SafeBody`/`SafeBodyUnit` + content-start head* at an arbitrary nested
+> balanced subrange WITH `lo < hi` (the recursive characterization of the nested flow-SEQUENCE body, off the
+> emitter structure of the nested value tree) and feed `seqBodyProps_of_windowed_safebody` to yield the
 > `FlowSubrangesOk.seq` field (`WellTyped_subrange` already supplies the per-subrange `WellTyped`; the
 > recursive bulk is connecting a nested guarded subrange to `emitList_scans_safebody`'s `SafeBody` output —
-> Phase J); (2) *produce the windowed `SafeBody (· = .key)` + the six interior pair primitives* at an
+> Phase J; note `emitList_scans_safebody` requires `items ≠ []`, which is exactly the `lo < hi` side of the
+> split); (2) *produce the windowed `SafeBody (· = .key)` + the six interior pair primitives* at an
 > arbitrary nested flow-MAPPING subrange and feed `mapBodyProps_of_windowed_safebody` for the
 > `FlowSubrangesOk.map` field — the windowed `SafeBody (· = .key)` comes from
 > `emitPairList_scans_safebody`; the six pair-interior primitives (key→content, key→value, value→content,
 > value→successor, and the two value-close-guarded bracket successors) need the pair-level refinement (apply
 > `EntryUnit` to each key/value block, with a separate per-key and per-value successor), as a map *pair*
 > `.key block_k .value block_v` has an interior depth-0 `.value` so the whole pair is NOT an `EntryUnit`.
-> Both fields together build the one `FlowSubrangesOk tokens` shared by sorries 991/1232. Once
+> Both fields together build the one `FlowSubrangesOk tokens` shared by sorries 1022/1263. Once
 > the seq `h_succ` premises are discharged, `SafeBodyUnit_array_succ` feeds them as the bracket-conjunct
 > `h_succ` consumers expect. Those feed
 > the bracket conjuncts + `SafeBodyProps`/`MapBodyProps` fields → `FlowSubrangesOk` →
 > `flow_parser_ok_of_structure` (`FlowParserAcceptance.lean`) at `(2, tokens.size−2)`,
-> `fuel = 4·tokens.size+4` → close the two `NonemptyStructure.lean` structure sorries (854/1095) → the
+> `fuel = 4·tokens.size+4` → close the two `NonemptyStructure.lean` structure sorries (1022/1263) → the
 > two base `emit_roundtrip_{sequence,mapping}_content_eq` (`EmitterScannability.lean` 832/872) →
 > `universal_roundtrip`.
 
@@ -15274,6 +15295,24 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
+                **Total .body scope re-estimate (EIGHTY-FIRST revision —
+                after **Thread A step 3 sub-step 2's brick (d-shape) cont'd — *empty-body leaf +
+                producer-contract de-risk* — landed** (commit `1fc23311`, Reflection 233).
+                De-risk the nested-subrange `SafeBody` producer BEFORE the large recursion (user chose
+                "de-risk first"). Finding: empty nested flow bodies DO arise — `emit (.sequence … #[]) =
+                "[]"`, `emit (.mapping … #[]) = "{}"` scan to an empty interior `[lo,hi)` with `lo = hi`,
+                which `FlowSubrangesOk.seq`/`.map` (`lo ≤ hi`) genuinely reaches — and a `SafeBody` (no
+                `nil` constructor) cannot represent one, so the `SafeBody`-keyed consumer joints
+                structurally cannot cover them. Resolution: every `SeqBodyProps`/`MapBodyProps` field is
+                guarded by `lo < hi` (the head) or `∀ k, lo ≤ k → k < hi` (the rest), so at `lo = hi` ALL
+                fields are vacuous. `seqBodyProps_empty`/`mapBodyProps_empty` (one `subst` + an anonymous
+                constructor of `omega`-closed vacuous fields) discharge the `lo = hi` branch with no
+                `SafeBody`. So the producer's contract SPLITS cleanly: `lo = hi` → empty leaves; `lo < hi`
+                → consumer joints (exactly where `emitList_scans_safebody`'s `items ≠ []` precondition
+                holds). **The consumer-joint architecture is therefore SOUND** — the one case it cannot
+                structurally cover is exactly the case it is never asked to cover. Build green **525 jobs**,
+                **sorries held at 4**; both leaves axiom-clean `[propext, Quot.sound]` (no `sorryAx`, no
+                `Classical.choice`). See Reflection 233, on top of the
                 **Total .body scope re-estimate (EIGHTIETH revision —
                 after **Thread A step 3 sub-step 2's brick (d-shape) cont'd — *consumer joint: windowed
                 SafeBody → MapBodyProps (map side)* — landed** (commit `6cae8b14`, Reflection 232).
@@ -25530,3 +25569,7 @@ Last session landed the windowed array wrappers (Reflection 230); the obvious ne
 ### Reflection 232 (new, 2026-06-02): the symmetric "mirror" joint can be asymmetric in *yield* even when symmetric in *form* — the same `SafeBody` machinery applies on both sides, but what it discharges is bounded by the grammar's depth structure, not by the lemma shape
 
 Reflection 231 predicted the map-side consumer joint as "a separate (fresh-but-cheap, once the seq one exists) brick … because a map *pair* is not a single `EntryUnit`." Building it this session (commit `6cae8b14`) confirmed the cost but sharpened the *reason* — and the sharpening is the lesson. The map producer `emitPairList_scans_safebody` does deliver a *single* windowed inductive: `SafeBody (· = .key) block` — not the eight scattered primitives I'd feared. So `mapBodyProps_of_windowed_safebody` *is* a clean mirror of the seq joint in **form**: same `refine mapBodyProps_assemble … ?_ ?_ …`, same `SafeBody.head_Q` for the head, same `SafeBody_array_flowEntry_window` (which is already generic in `Q`, so `Q := (· = .key)` fires with zero new machinery), same `getElem!`↔`getElem` glue. The lemma practically wrote itself from the seq one. **But its yield is smaller, and the gap is structural, not accidental.** The seq joint discharged the full residual (its `SafeBody`/`SafeBodyUnit` deliverable produces *every* extra `seqBodyProps_assemble` primitive); the map joint discharges only the two **body-boundary** primitives — M1 `key_start` (the body head is a `.key`) and M2 `after_fe` (after a depth-0 `.flowEntry`, a `.key`). The six **pair-interior** primitives (key→content, key→value, value→content, value→successor, the two value-close bracket successors) are *invisible to the `SafeBody`*, because `SafeBody Q` splits the body only at depth-0 `.flowEntry` separators and treats each whole pair `.key block_k .value block_v` as one `EntrySafe` entry — the interior depth-0 `.value` (the key/value boundary) lives *below* the `SafeBody`'s resolution. The same machine sees the pair boundaries and is blind to the pair internals, purely because a YAML flow-map's two depth-0 delimiters (`,` between pairs, `:` within a pair) sit at the *same* bracket depth but the inductive only branches on one of them. **General principle: when you build the symmetric counterpart of a successful brick, do not assume symmetric *payoff* — a shared abstraction (here `SafeBody Q`) discharges exactly the obligations that live at *its* granularity, and a richer grammar on the other side pushes some obligations below that granularity where the same lemma cannot reach them.** The mirror is still worth building — it is free (the seq plumbing generalizes verbatim), it cannot regress, and it collapses the *boundary* half of the map residual onto the producer's natural single deliverable, so the next session's map target is "produce the windowed `SafeBody (· = .key)` + the six interior pair primitives" rather than "produce eight scattered primitives." But the honest accounting is that the map producer must still expose pair-interior structure the seq producer never needed — the asymmetry the grammar forced (Reflection 228's "eight premises vs three") reappears here as a *coverage* gap in the otherwise-identical joint. Sits with [[ref-consumer-joint-before-producer]] (this is its map-side instance, with the caveat made precise) and [[ref-parametric-assembler-extraction]]'s "symmetric second lemma is fresh-but-cheap" — cheap to *write*, yes, but the symmetry stops at the lemma boundary; the obligations it leaves open are set by the grammar, not the proof.
+
+### Reflection 233 (new, 2026-06-02): before building a large producer, prove its *contract is satisfiable* at the boundary case the consumer abstraction structurally cannot represent — the de-risking step is to check that the case your machine can't cover is the case it is never asked to cover
+
+The frontier had converged on one large piece: produce the nested-subrange `SafeBody`/`SafeBodyUnit` that both consumer joints ([[ref-consumer-joint-before-producer]]) consume. Asked how to scope the session, the user chose **"de-risk first"** over committing to the recursion — and the de-risk paid for itself by exposing a structural gap that, left unexamined, would have surfaced as an unprovable obligation deep inside the producer. The consumer joints are keyed on `SafeBody`, an inductive with **no `nil` constructor**: it cannot represent an *empty* body. And empty bodies are not hypothetical — `emit (.sequence … #[]) = "[]"` and `emit (.mapping … #[]) = "{}"` (the emitter's literal definition: `emitList [] = ""`), so a value like `[[], "a"]` scans to a nested `[` immediately followed by `]`, i.e. an interior `[lo, hi)` with `lo = hi`, and `FlowSubrangesOk.seq`/`.map` (quantifying over `lo ≤ hi`) genuinely reaches it. So the `SafeBody`-keyed architecture has a case it *structurally cannot* handle. The question that decides whether the architecture is sound: **is that case one the producer must discharge with a `SafeBody`, or one it can discharge another way?** Reading the target contract answered it cleanly: every field of `SeqBodyProps`/`MapBodyProps` is guarded — the head fields (`content_start`/`key_start`) by `lo < hi`, all the rest by `∀ k, lo ≤ k → k < hi` — so at `lo = hi` *every field is vacuous*. The empty case needs no `SafeBody` at all; `seqBodyProps_empty`/`mapBodyProps_empty` close it with a `subst` and an anonymous constructor of `omega`-closed vacuous fields (axiom-clean `[propext, Quot.sound]`, no `Classical.choice`). So the producer's contract **splits cleanly along `lo < hi`**: the empty branch is the leaf lemmas (no `SafeBody`), the nonempty branch is the consumer joints — and crucially the nonempty branch is *exactly* where `emitList_scans_safebody`'s `items ≠ []` precondition is met, so the recursion is well-typed precisely where it is invoked. The architecture is SOUND: the one case the consumer abstraction cannot represent is the one case it is never asked to cover, and the two coincide *by the guard structure of the target*, not by luck. The general lesson, dual to [[ref-probe-deferred-universal-before-producing]] (probe whether a universal is *true* before producing it): before building a large producer onto a consumer abstraction, identify the boundary case that abstraction *cannot represent*, then check the target contract — if the contract is *vacuous* there, the abstraction is sound and you've earned a cheap green leaf lemma; if the contract demands real content there, you've found a hole *before* sinking a session into a recursion that would dead-end at it. The de-risk is not a detour from the producer — it is the producer's base case, found by asking where the chosen machine breaks and whether the spec breaks with it. Sits with [[ref-consumer-joint-before-producer]] (the joints are sound only because this leaf complements them) and [[ref-converse-forward-invariant-asymmetry]] (the empty body is the degenerate inductive the forward construction omits).
