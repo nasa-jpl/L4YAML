@@ -2116,7 +2116,7 @@ locator is built; and BOTH body-props *assemblers* are now extracted parametric 
 `seqBodyProps_assemble`, commit `45fe7417`, and `mapBodyProps_assemble`, commit `005fb9f2` — so the
 *assemble* half of producing BOTH `FlowSubrangesOk` fields is done. Both
 structure sorries are now the IDENTICAL structural residual `FlowSubrangesOk tokens` (`NonemptyStructure.lean`
-854 seq / 1095 map), so one Phase-J producer closes both. **AND `FlowSubrangesOk` is now GUARDED so the
+1190 seq / 1431 map), so one Phase-J producer closes both. **AND `FlowSubrangesOk` is now GUARDED so the
 producer goal is provable** (commit `02988022`, Reflection 229): the unguarded form was *false* — its fields
 quantify over every balanced subrange ending in a close, including a misaligned one starting mid-body on a
 depth-0 `.flowEntry` (for `[a, b]`, the subrange `lo=3,hi=5` passes all premises yet `tokens[3]=.flowEntry`
@@ -2165,13 +2165,18 @@ its interior (a flat `SafeBody` cannot: `SafeBody → WellBracketed` is false). 
 ContentStartTok` the seq consumer joint consumes (via the per-entry `RecSeqEntry.toEntrySafe`/`.toEntryUnit`),
 so `RecSeqBody` collapses the scattered "windowed `SafeBody` at every nested subrange" residual into one
 boundary: "one `RecSeqBody` of the outer body." Mapping interiors bottom out at `WellBracketed` (a `RecMapBody`
-is a later, map-side brick). The next-session targets (seq side, in order): the **descent-locator**
-(`RecSeqBody (outer body)` → windowed `SafeBody`/`SafeBodyUnit` at any nested guarded `lo < hi` subrange,
-fed to `seqBodyProps_of_windowed_safebody` → `FlowSubrangesOk.seq`) and the **emit producer**
+is a later, map-side brick). **And the descent-locator's single-level step is now LANDED** (commit `abcdcbee`,
+Reflection 235): `RecSeqEntry.seq_interior` / `map_interior` recover a nested entry's interior from the
+deliverable — `seq_interior` returns `RecSeqBody interior ∨ interior = []` (the `lo < hi` / `lo = hi`
+producer-contract split), `map_interior` returns `WellBracketed interior`. The remaining next-session targets
+(seq side, in order): the **descent-locator** finished — its **positional bridge** (guarded subrange `[lo,hi)`
+with `tokens[lo-1]` an opener ↔ which `RecSeqEntry`, with `interior = (tokens.toList.take hi).drop lo`) and
+its **outer recursion** composing the now-landed single-level steps, fed to
+`seqBodyProps_of_windowed_safebody` → `FlowSubrangesOk.seq` — and the **emit producer**
 (`emitList_scans_safebody` strengthened to deliver `RecSeqBody` — the recursive `h_rec` at each `seq` entry
 comes from the per-item `ih`). The map side mirrors with `RecMapBody`.
 
-> **Frontier (post-Reflection 234, commit `db2189d0`).** The `(d-shape)` algebra is complete
+> **Frontier (post-Reflection 235, commit `abcdcbee`).** The `(d-shape)` algebra is complete
 > (the bracket conjuncts are correctly guarded — Reflection 218 — AND their `h_succ` substrate, the
 > value-end successor `EntryUnit` / `SafeBodyUnit_succ` / `SafeBodyUnit_array_succ`, exists —
 > Reflection 219), and the **sequence side** of threading `EntryUnit` through the producers is now
@@ -2330,13 +2335,27 @@ comes from the per-item `ih`). The map side mirrors with `RecMapBody`.
 > (`RecSeqBody` → windowed `SafeBody` at any nested guarded subrange — the next brick). The recursive
 > occurrence cannot sit under `Or`, hence `seqEmpty` is a separate constructor from `seq`. Build green
 > 525 jobs, sorries held at 4, all four lemmas axiom-clean `[propext, Quot.sound]`.
+> **And the descent-locator's single-level step is now LANDED** (Reflection 235, commit `abcdcbee`):
+> `RecSeqEntry.seq_interior` / `map_interior` are the irreducible "descend one nesting level" atom — from a
+> `RecSeqEntry` recorded in the recursive deliverable, recover the nested entry's interior. `seq_interior`
+> (a `.flowSequenceStart`-headed entry) yields `RecSeqBody interior ∨ interior = []`, the disjunction chosen
+> to BE the `lo < hi` / `lo = hi` producer-contract split (Reflection 233): the non-empty branch feeds
+> `seqBodyProps_of_windowed_safebody` via `RecSeqBody.toSafeBody`, the empty branch routes to
+> `seqBodyProps_empty`; `scalar`/`map` ruled out by the head, `seqEmpty` the empty witness. `map_interior`
+> yields `WellBracketed interior` (map interior bottoms out at its bracket substrate). Glue:
+> `append_singleton_inj` (core-Lean `a ++ [x] = b ++ [y] → a = b ∧ x = y`) reads the interior off the
+> `op :: (interior ++ [cl])` constructor index. Build green 523 jobs, sorries held at 4, all three lemmas
+> axiom-clean `[propext]`.
 > **Immediate next sub-bricks (two, in
 > order):** both are now the `lo < hi` branch only (the `lo = hi` branch is closed by the empty-body leaves
 > above), and the seq side now factors through the `RecSeqBody` deliverable: (a) the **descent-locator**
 > `RecSeqBody (outer body) → ∀ nested guarded balanced subrange [lo,hi) with lo < hi, windowed
-> `SafeBody`/`SafeBodyUnit` at [lo,hi)` (locate the subrange's `tokens[lo-1]` opener as a `seq`-entry's
-> `op`, take its `interior` = the windowed sublist, project via `toSafeBody`; recurse for deeper
-> subranges) → feed `seqBodyProps_of_windowed_safebody`; and (b) the **emit producer**
+> `SafeBody`/`SafeBodyUnit` at [lo,hi)` — the single-level *step* `seq_interior`/`map_interior` is DONE
+> (above); what remains is the **positional bridge** (a guarded subrange `[lo,hi)` whose `tokens[lo-1]` is an
+> opener ↔ which `RecSeqEntry` of the windowed body, and that the entry's `interior` equals the windowed
+> sublist `(tokens.toList.take hi).drop lo`) and the **outer recursion** composing the per-level steps for
+> deeper subranges → then project via `toSafeBody`/`toSafeBodyUnit` and feed
+> `seqBodyProps_of_windowed_safebody`; and (b) the **emit producer**
 > `emitList_scans_safebody` strengthened to deliver `RecSeqBody` (it already produces the flat `SafeBody`;
 > the recursive `h_rec` at each `seq` entry comes from the per-item `ih` applied to the nested sequence's
 > own items). Together they close the seq `FlowSubrangesOk.seq` field; the map side mirrors with a
@@ -2344,9 +2363,9 @@ comes from the per-item `ih`). The map side mirrors with `RecMapBody`.
 > (key→content, key→value, value→content, value→successor, and the two value-close-guarded bracket
 > successors) need the pair-level refinement — a map *pair* `.key block_k .value block_v` has an interior
 > depth-0 `.value`, so the whole pair is NOT an `EntryUnit`. Both fields together build the one
-> `FlowSubrangesOk tokens` shared by sorries 1112/1353 → `flow_parser_ok_of_structure`
+> `FlowSubrangesOk tokens` shared by sorries 1190/1431 → `flow_parser_ok_of_structure`
 > (`FlowParserAcceptance.lean`) at `(2, tokens.size−2)`, `fuel = 4·tokens.size+4` → close the two
-> `NonemptyStructure.lean` structure sorries (1112/1353) → the two base
+> `NonemptyStructure.lean` structure sorries (1190/1431) → the two base
 > `emit_roundtrip_{sequence,mapping}_content_eq` (`EmitterScannability.lean` 832/872) →
 > `universal_roundtrip`.
 
@@ -15325,6 +15344,25 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
+                **Total .body scope re-estimate (EIGHTY-THIRD revision —
+                after **Thread A step 3 sub-step 2's brick (d-shape) cont'd — *single-level descent step
+                `RecSeqEntry.seq_interior` / `map_interior`* — landed** (commit `abcdcbee`, Reflection 235).
+                The descent-locator's irreducible "descend one nesting level" step: from a `RecSeqEntry`
+                recorded in the recursive deliverable, recover the nested entry's interior. `seq_interior`
+                (a `.flowSequenceStart`-headed entry) yields `RecSeqBody interior ∨ interior = []` — and that
+                disjunction is EXACTLY the `lo < hi` / `lo = hi` producer-contract split (Reflection 233): the
+                non-empty branch feeds `seqBodyProps_of_windowed_safebody` via `RecSeqBody.toSafeBody`, the
+                empty branch routes to `seqBodyProps_empty`; the `scalar`/`map` constructors are ruled out by
+                the `.flowSequenceStart` head, `seqEmpty` is the empty witness. `map_interior` (a
+                `.flowMappingStart`-headed entry) yields `WellBracketed interior` (the map interior bottoms out
+                at its bracket substrate — its key/value recursion is the separate map-side brick). The glue is
+                `append_singleton_inj` — a core-Lean `a ++ [x] = b ++ [y] → a = b ∧ x = y` (reverse +
+                `List.reverse_inj`) that reads an interior off the `op :: (interior ++ [cl])` constructor index.
+                What remains of the descent-locator: the POSITIONAL bridge (a guarded subrange `[lo,hi)` with
+                `tokens[lo-1]` an opener ↔ which `RecSeqEntry` of the windowed body) and the outer recursion
+                that composes these single-level steps. Build green **523 jobs**, **sorries held at 4**; all
+                three lemmas axiom-clean `[propext]` (no `sorryAx`, no new axioms). See Reflection 235, on top
+                of the
                 **Total .body scope re-estimate (EIGHTY-SECOND revision —
                 after **Thread A step 3 sub-step 2's brick (d-shape) cont'd — *recursive seq-body
                 deliverable `RecSeqBody` + flat projections* — landed** (commit `db2189d0`, Reflection 234).
@@ -25626,3 +25664,7 @@ The frontier had converged on one large piece: produce the nested-subrange `Safe
 ### Reflection 234 (new, 2026-06-02): when the consumer's flat invariant cannot carry what the descent needs, the producer's deliverable must be a *recursive* type — define it and prove it projects to the flat form FIRST, so wiring it collapses a scattered "do X at every nesting level" residual into one boundary
 
 The seq-side `lo < hi` branch needs a windowed `SafeBody`/`SafeBodyUnit` at *every* nested guarded subrange — not just the outer body (which `emitList_scans_safebody` already delivers). The instinct is to produce the flat `SafeBody` at each subrange by a token-level recursion. That instinct hits a wall the moment you check it: **`SafeBody → WellBracketed` is FALSE.** `SafeBody`'s per-entry obligation `EntrySafe` constrains the running balance *only at `.flowEntry` positions* (they must sit at depth ≥ 1); it says nothing about a non-`.flowEntry` prefix, which could dip negative. That is exactly why the emit producers carry `WellBracketed` as a *separate* conjunct rather than reading it off the `SafeBody` — the flat invariant is too weak to regenerate the bracket structure a descent into a nested entry's interior would need. So a flat deliverable cannot be the producer's output: to hand the descent-locator a nested entry's interior as a `SafeBody`, that interior's structure must already be *recorded*, not re-derived. The fix is to make the deliverable a **recursive type**: `RecSeqBody`/`RecSeqEntry` (mutual inductives) is a `SafeBody` over `ContentStartTok` that additionally carries, at each nested flow-sequence entry, its interior's own `RecSeqBody` (the `seq` constructor's `h_rec`); leaves (`scalar`), empties (`seqEmpty`), and — for now — nested mappings (`map`, bottoming out at `WellBracketed`, the map recursion deferred to a `RecMapBody` brick) close the recursion. The discipline that makes this a safe brick rather than speculative scaffolding: **prove the flat projection FIRST.** `RecSeqBody.toSafeBody`/`.toSafeBodyUnit` discharge to exactly the windowed `SafeBody`/`SafeBodyUnit ContentStartTok` the consumer joint `seqBodyProps_of_windowed_safebody` already consumes, via the per-entry `RecSeqEntry.toEntrySafe`/`.toEntryUnit` (`wrap_{seq,map}_block`'s `EntrySafe` half / `EntryUnit_wrap` for bracket entries, `EntrySafe_scalar`/`EntryUnit_scalar` for leaves) — and those projections use *only* `WellBracketed`, never the recursive `h_rec`, so they are robust to the map bottoming-out and to any later constructor tweak. Two mechanical notes that cost real minutes: (1) a doc comment `/-- … -/` cannot precede `mutual` (parser rejects it) — use a section comment `/-! … -/`; (2) `induction` is *rejected* on a mutual inductive ("does not support … mutually inductive") — write the projection as term-mode structural recursion (`| _, .single … => …  | _, .cons … h_rest => … h_rest.toSafeBody`), which the equation compiler accepts because it recurses only on the `RecSeqBody` argument (the entry is handled by the non-recursive `toEntrySafe`). (3) A recursive occurrence cannot sit under `Or` ("invalid nested inductive datatype 'Or'"), so the empty-interior case is a *separate* constructor (`seqEmpty`) rather than `interior = [] ∨ RecSeqBody interior`. The payoff is the [[ref-consumer-joint-before-producer]] reshape lifted one nesting level: defining `RecSeqBody` as the producer's output type collapses the scattered residual "produce a flat windowed `SafeBody` at *every* nested subrange" into the single typed boundary "produce *one* `RecSeqBody` of the outer body," to be split downstream by the descent-locator (`RecSeqBody` → windowed `SafeBody` at any subrange) and supplied upstream by strengthening `emitList_scans_safebody` (its per-item `ih` supplies each `seq` entry's `h_rec`). Build green 525 jobs, sorries held at 4, all four lemmas axiom-clean `[propext, Quot.sound]`. The general lesson: when a descent will need to treat sub-parts the same way it treats the whole, but the flat invariant the consumer is keyed on cannot regenerate a sub-part's structure (here `SafeBody ↛ WellBracketed`), the producer must deliver a *recursive* witness — and the way to land that safely in one increment, without committing to the producer or the descent yet, is to define the recursive type and prove it *projects to the flat form the consumer already accepts*, so the type is validated from both ends before either hard half is attempted. Sits with [[ref-consumer-joint-before-producer]] (this is its recursive generalization — the joint consumes the *projection*, the descent consumes the *recursion*) and [[ref-derisk-consumer-blindspot-vs-contract]] (there the consumer abstraction's blind spot was the empty body; here it is the *flatness* — `SafeBody` forgets the nesting, and the deliverable must remember it).
+
+### Reflection 235 (new, 2026-06-02): land the irreducible single-level step of a recursive descent FIRST, and let its conclusion type be the producer-contract split you already proved — the case analysis on the deliverable's constructors recovers the recursion witness and rules out the impossible shapes, so the step is fully provable before the positional bridge or the outer recursion exist
+
+With the recursive deliverable `RecSeqBody` defined and projected (Reflection 234), the descent-locator — "from `RecSeqBody (outer body)`, extract a windowed `SafeBody` at *any* nested guarded subrange" — is still a multi-session brick: it needs a positional bridge (a guarded subrange `[lo,hi)` with `tokens[lo-1]` an opener ↔ which `RecSeqEntry` of the windowed body) and an outer recursion composing the per-level steps. But the *irreducible atom* of that recursion — "descend one nesting level" — is fully provable now, in isolation, and is the right thing to land first. `RecSeqEntry.seq_interior` takes a `RecSeqEntry e` and the bracket-entry shape `e = op :: (interior ++ [cl])` with `op.val = .flowSequenceStart`, and `cases` on the four constructors: `scalar` (`e = [t]`) forces `interior ++ [cl] = []`, impossible; `map` has a `.flowMappingStart` head clashing with `.flowSequenceStart`; `seqEmpty` gives `interior = []`; `seq` gives the recursive `h_rec : RecSeqBody interior'` with `interior' = interior` (read off the constructor index by `append_singleton_inj`, a core-Lean `a ++ [x] = b ++ [y] → a = b ∧ x = y` proved by `reverse` + `List.reverse_inj`). The thing that makes this clean rather than a fight: **its conclusion type is chosen to be the producer-contract split you already proved.** The output is `RecSeqBody interior ∨ interior = []` — and that is *exactly* the `lo < hi` / `lo = hi` dichotomy of Reflection 233. The non-empty disjunct feeds `seqBodyProps_of_windowed_safebody` (via `RecSeqBody.toSafeBody`); the empty disjunct routes to `seqBodyProps_empty`. So the single-level step doesn't merely descend — it descends *into the shape the next stage already consumes*, both branches included, with no leftover obligation. The map mirror `RecSeqEntry.map_interior` is even tighter: a `.flowMappingStart`-headed entry yields `WellBracketed interior` (no disjunction — the map interior bottoms out at its bracket substrate, `WellBracketed []` covering the empty case too), so the descent into a nested *mapping* hands the map consumer joint exactly its bracket fact with no recursion, deferring the key/value recursion to the map-side `RecMapBody` brick. The general lesson, a sequencing rule for recursive descents: don't wait for the positional bridge and the outer recursion to be designed before proving anything — the **single-level constructor case-split is self-contained** (the deliverable's constructors *are* the case analysis: the wanted recursion witness falls out of one constructor, the impossible shapes are killed by the head/shape mismatch), so land it first, and pick its conclusion type to be the split the downstream stage already expects, so the atom plugs in with zero glue when the recursion is later assembled. Build green 523 jobs, sorries held at 4, all three lemmas (`append_singleton_inj`, `seq_interior`, `map_interior`) axiom-clean `[propext]`. Sits with [[ref-consumer-joint-before-producer]] and [[ref-derisk-consumer-blindspot-vs-contract]] (the descent step's two output disjuncts are the joint's `lo < hi` input and the de-risk's `lo = hi` leaf — the step routes each subrange to whichever was already built) and [[ref-recursive-deliverable-project-to-flat-first]] (this consumes the recursive type that reflection defined; the flat projection it proved is what the non-empty disjunct composes with).
