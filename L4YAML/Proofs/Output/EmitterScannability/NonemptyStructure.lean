@@ -1610,6 +1610,35 @@ structure MapLocated (tokens : Array (Positioned YamlToken)) (lo hi : Nat) : Pro
     (tokens[j + 1]!.val = .flowEntry ∨
      (tokens[j + 1]!.val = .flowMappingEnd ∧ j + 1 = hi))
 
+/-- **Seq-side locate bundle assembler** (Phase J — the producer-dual lifted to the bundled
+    deliverable).  Where `located_entry_of_recseqbody` (Reflection 245) builds only the single
+    recursive `entry` field, this packages the *whole* `SeqLocated tokens lo hi` bundle the locate
+    consumer joint `flowSubrangesOk_of_locators` actually demands: the `entry` field via the entry
+    assembler, and the three remaining fields `pos`/`dyck`/`wt` as direct window-guard pass-throughs.
+    It is the last mile between the producer-dual and the consumer joint — before it, the entry
+    assembler delivered one of `SeqLocated`'s four fields, leaving an arity gap between what the dual
+    produces (a `RecSeqEntry`) and what the joint's `h_seq` hypothesis demands (the four-field bundle);
+    after it, the seq locator hypothesis is reduced to producing exactly the inner-window `RecSeqBody`
+    (the recursion's deliverable one nesting level down), since the windowed Dyck floor and `WellTyped`
+    are the locate's own cheap derivables from the global bracket facts (`WellTyped_subrange`).  Every
+    field is a pass-through except `entry`, so the bundle's residual collapses to precisely the
+    recursive sub-deliverable — the producer-side mirror of `flowSubrangesOk_of_locators` reducing the
+    consumer residual to the locator hypotheses.  Verified-but-unconsumed until the locate lands: it
+    references no sorry site, so the frontier sorry count is unchanged.  (The map mirror
+    `mapLocated_of_recmapbody` additionally threads the six pair-interior primitives `MapLocated`
+    stores but `located_mapentry_of_recmapbody` does not produce — the storage asymmetry of Reflection
+    246 reappearing at the bundle level.) -/
+theorem seqLocated_of_recseqbody (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (h_lo : 1 ≤ lo) (h_lo_hi : lo ≤ hi) (h_hi_sz : hi < tokens.size)
+    (h_open : tokens[lo - 1]!.val = .flowSequenceStart)
+    (h_close : tokens[hi]!.val = .flowSequenceEnd)
+    (h_dyck : ∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0)
+    (h_wt : WellTyped ((tokens.toList.take hi).drop lo))
+    (h_rec : RecSeqBody ((tokens.toList.take hi).drop lo)) :
+    SeqLocated tokens lo hi :=
+  ⟨h_lo, h_dyck, h_wt,
+    located_entry_of_recseqbody tokens lo hi h_lo h_lo_hi h_hi_sz h_open h_close h_rec⟩
+
 /-- **`FlowSubrangesOk` assembler from locators** (Phase J — the locate consumer joint).  Packages
     the two per-window `*_of_located_entry` joints into the universal `FlowSubrangesOk tokens` the
     `scanFiltered_emit{Seq,Map}_nonempty_structure` sorry sites consume, keyed only on the not-yet-
