@@ -1639,6 +1639,70 @@ theorem seqLocated_of_recseqbody (tokens : Array (Positioned YamlToken)) (lo hi 
   ⟨h_lo, h_dyck, h_wt,
     located_entry_of_recseqbody tokens lo hi h_lo h_lo_hi h_hi_sz h_open h_close h_rec⟩
 
+/-- **Map-side locate bundle assembler** (Phase J — the symmetric mirror of `seqLocated_of_recseqbody`,
+    Reflection 247).  Packages the whole `MapLocated tokens lo hi` bundle the consumer joint
+    `flowSubrangesOk_of_locators` demands on the map side: the recursive `entry` field via the entry
+    assembler `located_mapentry_of_recmapbody`, and `pos`/`dyck`/`wt` as direct window-guard
+    pass-throughs — exactly as the seq mirror.  Where it is **not** as clean as the seq side (R246's
+    storage asymmetry, now at the bundle's field count): `MapLocated` STORES six pair-interior
+    primitives (`key_content` … `value_bracket_succ`, the depth-0 `.key`/`.value` alternation of
+    Reflection 232) that `located_mapentry_of_recmapbody` does NOT produce — the entry assembler
+    delivers only the recursive `RecMapEntry`.  So this assembler threads those six as further
+    hypotheses (the seq bundle has none), and its hypothesis count exceeds the seq bundle's by exactly
+    the bundled-type-stores-minus-entry-producer-delivers — the projected-not-produced primitives.
+    Effect: reduces the map locator hypothesis of `flowSubrangesOk_of_locators` to producing the
+    inner-window `RecMapBody` (the recursive deliverable) plus those six primitives (carried by the
+    enclosing locate from its own window guards, not regenerated here).  Verified-but-unconsumed until
+    the locate lands: references no sorry site, frontier sorry count unchanged. -/
+theorem mapLocated_of_recmapbody (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (h_lo : 1 ≤ lo) (h_lo_hi : lo ≤ hi) (h_hi_sz : hi < tokens.size)
+    (h_open : tokens[lo - 1]!.val = .flowMappingStart)
+    (h_close : tokens[hi]!.val = .flowMappingEnd)
+    (h_dyck : ∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0)
+    (h_wt : WellTyped ((tokens.toList.take hi).drop lo))
+    (h_key_content : ∀ k, lo ≤ k → k < hi →
+      flowBracketBalance tokens lo k = 0 →
+      tokens[k]!.val = .key →
+      k + 1 < hi ∧ isFlowContentStart tokens[k + 1]!.val)
+    (h_key_scalar_value : ∀ k, lo ≤ k → k < hi →
+      flowBracketBalance tokens lo k = 0 →
+      tokens[k]!.val = .key →
+      (∃ c s, tokens[k + 1]!.val = .scalar c s) →
+      k + 2 < hi ∧ tokens[k + 2]!.val = .value)
+    (h_value_content : ∀ k, lo ≤ k → k < hi →
+      flowBracketBalance tokens lo k = 0 →
+      tokens[k]!.val = .value →
+      k + 1 < hi ∧ isFlowContentStart tokens[k + 1]!.val)
+    (h_value_scalar_succ : ∀ k, lo ≤ k → k < hi →
+      flowBracketBalance tokens lo k = 0 →
+      tokens[k]!.val = .value →
+      (∃ c s, tokens[k + 1]!.val = .scalar c s) →
+      k + 2 ≤ hi ∧
+      (tokens[k + 2]!.val = .flowEntry ∨
+       (tokens[k + 2]!.val = .flowMappingEnd ∧ k + 2 = hi)))
+    (h_key_bracket_succ : ∀ k j, lo ≤ k → k < hi →
+      flowBracketBalance tokens lo k = 0 →
+      tokens[k]!.val = .key →
+      k + 1 < j → j < hi →
+      flowBracketDelta tokens[j]!.val = -1 →
+      flowBracketBalance tokens lo (j + 1) = 0 →
+      j + 1 < hi ∧ tokens[j + 1]!.val = .value)
+    (h_value_bracket_succ : ∀ k j, lo ≤ k → k < hi →
+      flowBracketBalance tokens lo k = 0 →
+      tokens[k]!.val = .value →
+      k + 1 < j → j < hi →
+      flowBracketDelta tokens[j]!.val = -1 →
+      flowBracketBalance tokens lo (j + 1) = 0 →
+      j + 1 ≤ hi ∧
+      (tokens[j + 1]!.val = .flowEntry ∨
+       (tokens[j + 1]!.val = .flowMappingEnd ∧ j + 1 = hi)))
+    (h_rec : RecMapBody ((tokens.toList.take hi).drop lo)) :
+    MapLocated tokens lo hi :=
+  ⟨h_lo, h_dyck, h_wt,
+    located_mapentry_of_recmapbody tokens lo hi h_lo h_lo_hi h_hi_sz h_open h_close h_rec,
+    h_key_content, h_key_scalar_value, h_value_content, h_value_scalar_succ,
+    h_key_bracket_succ, h_value_bracket_succ⟩
+
 /-- **`FlowSubrangesOk` assembler from locators** (Phase J — the locate consumer joint).  Packages
     the two per-window `*_of_located_entry` joints into the universal `FlowSubrangesOk tokens` the
     `scanFiltered_emit{Seq,Map}_nonempty_structure` sorry sites consume, keyed only on the not-yet-
