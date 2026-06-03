@@ -4,9 +4,9 @@ Released under Apache 2.0 license as described in the file LICENSE.
 -/
 
 /-!
-# Reflections 245 + 246 — the producer-dual of a consumer joint, and its non-verbatim symmetric mirror
+# Reflections 245 + 246 + 247 — the producer-dual of a consumer joint, its non-verbatim symmetric mirror, and the bundle assembler that lifts a field-level dual to the consumer's bundled deliverable
 
-Self-contained (core Lean, no `L4YAML` import) runnable demonstration of two paired principles.
+Self-contained (core Lean, no `L4YAML` import) runnable demonstration of three paired principles.
 
 **Reflection 245** — when the consumer-side bridge that *reads* a recursive deliverable off a
 positionally-windowed slice is already proven, its **write direction is a separate, immediately
@@ -21,6 +21,16 @@ other half of an additive parallel-type pair) transports the **positional plumbi
 its **terminal constructor call is *not* verbatim**: it sheds (or adds) exactly the fields the
 parallel type chose to *store* vs. *project*.  Read the parallel type's constructor signature first —
 its arity differs from the sibling's by precisely the stored-vs-projected split (R244).
+
+**Reflection 247** — a producer-dual reduces one *field*, but the consumer joint demands a *bundle*.
+The field-level dual (R245/R246) produces only the recursive `entry` field, yet the locate consumer
+joint consumes a whole `SeqLocated`/`MapLocated` *bundle*.  Close the arity gap with a trivial
+**bundle assembler** whose only non-pass-through field is the recursive one: the other fields are
+window-guard pass-throughs (`pos`/`dyck`/`wt`), so the bundle's residual collapses to *exactly* the
+recursive field.  It is the producer-side mirror of "universal packaging is its own joint" (R243).
+And the map mirror is *not* as clean: the bundled type stores extra primitives the entry producer
+does not supply, so the map bundle assembler threads them as further hypotheses — R246's storage
+asymmetry reappearing one level up, at the bundle's field count.
 
 The L4YAML instance.  `seqBodyProps_of_located_entry` / `mapBodyProps_of_located_entry` (the
 consumers) *read* a located `RecSeqEntry`/`RecMapEntry` off the opener-window `(take (hi+1)).drop
@@ -50,6 +60,14 @@ sequence side, `om`/`cm` = `{`/`}` for the mapping side, `a` = atom):
   **feed** the stored `WB` via `SBody.toWB h_rec` (the extra argument).
 * `buildLocatedMap`              — the PRODUCER, map side: `window_split` + `MEntry.map` — the
   constructor call is the seq one minus the `WB` argument (R246's shed field).
+* `SLocated` / `MLocated`        — the bundled deliverables (toy `SeqLocated`/`MapLocated`): the
+  recursive `entry` field PLUS cheap pass-through fields (`posF`/`wtF` = window guards).  `MLocated`
+  additionally STORES `keyF`, a pair-interior primitive the entry producer does not supply.
+* `bundleLocatedSeq`             — the BUNDLE assembler, seq side (toy `seqLocated_of_recseqbody`,
+  R247): `⟨h_lo, h_lo_hi, buildLocatedSeq …⟩` — only `entry` is non-trivial; the rest are guards.
+* `bundleLocatedMap`             — the BUNDLE assembler, map side (toy `mapLocated_of_recmapbody`):
+  the same packaging but with **one extra hypothesis** `h_key` for the stored `keyF` — R247/R246's
+  storage asymmetry made visible as a bundle-level arity bump over the seq side.
 
 Positive witnesses build an entry on each side and read the seq one back; `MEntry.toWB` recovers the
 `WB` the map constructor never stored.  The opener *kind* is load-bearing (a `{` window is not a `[`
@@ -236,6 +254,66 @@ def built_map : MEntry (([Tok.om, .a, .cm].take (2 + 1)).drop (1 - 1)) :=
     `RecMapEntry.toWellBracketed`.  This is *why* the field can be shed at construction (R244/R246). -/
 def wb_recovered : WB (([Tok.om, .a, .cm].take (2 + 1)).drop (1 - 1)) :=
   MEntry.toWB built_map
+
+/-! ## The BUNDLE assembler (R247) — lift the field-level dual to the consumer's bundled deliverable -/
+
+/-- **Toy `SeqLocated`** — the bundled deliverable the locate consumer joint actually consumes.  Three
+    fields: two cheap window-guard **pass-throughs** (`posF`/`wtF`, toy `pos`/`wt`/`dyck`) and the one
+    recursive field `entry`.  The whole point of R247 is that only `entry` is non-trivial. -/
+structure SLocated (l : List Tok) (lo hi : Nat) : Prop where
+  posF : 1 ≤ lo
+  wtF  : lo ≤ hi
+  entry : SEntry ((l.take (hi + 1)).drop (lo - 1))
+
+/-- **The bundle assembler, SEQ side** (toy `seqLocated_of_recseqbody`, R247).  Pure packaging: the
+    recursive `entry` via the field-level dual `buildLocatedSeq`, the other two fields as direct
+    window-guard pass-throughs.  Every hypothesis except `h_rec` is a guard, so the bundle's residual
+    is *exactly* the recursive sub-deliverable `SBody` — the producer-side mirror of R243. -/
+theorem bundleLocatedSeq (l : List Tok) (lo hi : Nat)
+    (h_lo : 1 ≤ lo) (h_lo_hi : lo ≤ hi) (h_hi : hi < l.length)
+    (h_op : l[lo - 1]'(by omega) = .os) (h_cl : l[hi]'h_hi = .cs)
+    (h_rec : SBody ((l.take hi).drop lo)) :
+    SLocated l lo hi :=
+  ⟨h_lo, h_lo_hi, buildLocatedSeq l lo hi h_lo h_lo_hi h_hi h_op h_cl h_rec⟩
+
+/-- **Toy `MapLocated`** — the map-side bundle, which STORES an extra pair-interior primitive `keyF`
+    the entry producer `buildLocatedMap` does **not** supply.  This is R247's named asymmetry: the
+    bundled type stores more than the entry assembler delivers, so the map bundle's arity must exceed
+    the seq bundle's by exactly the projected-not-produced primitive. -/
+structure MLocated (l : List Tok) (lo hi : Nat) : Prop where
+  posF : 1 ≤ lo
+  wtF  : lo ≤ hi
+  keyF : hi ≤ l.length
+  entry : MEntry ((l.take (hi + 1)).drop (lo - 1))
+
+/-- **The bundle assembler, MAP side** (toy `mapLocated_of_recmapbody`).  The same packaging as
+    `bundleLocatedSeq`, but it must **thread one extra hypothesis** `h_key` for the stored `keyF` — the
+    entry producer `buildLocatedMap` supplies no such field.  Compare the signatures: this lemma has
+    one more argument than `bundleLocatedSeq`, and that argument is exactly the field R247 says the
+    bundled map type stores but the entry assembler does not produce (R246's storage split, one
+    structural level up). -/
+theorem bundleLocatedMap (l : List Tok) (lo hi : Nat)
+    (h_lo : 1 ≤ lo) (h_lo_hi : lo ≤ hi) (h_hi : hi < l.length)
+    (h_op : l[lo - 1]'(by omega) = .om) (h_cl : l[hi]'h_hi = .cm)
+    (h_key : hi ≤ l.length)
+    (h_rec : MBody ((l.take hi).drop lo)) :
+    MLocated l lo hi :=
+  ⟨h_lo, h_lo_hi, h_key, buildLocatedMap l lo hi h_lo h_lo_hi h_hi h_op h_cl h_rec⟩
+
+/-- The seq BUNDLE: every cheap field is `by omega`/`by decide`, only the last argument (`sbody_a`) is
+    a real deliverable — the witness encodes "only the recursive field is non-trivial." -/
+def slocated_a : SLocated [.os, .a, .cs] 1 2 :=
+  bundleLocatedSeq [.os, .a, .cs] 1 2 (by omega) (by omega) (by decide) (by decide) (by decide) sbody_a
+
+/-- The recursive field is the meat: projecting `entry` back out recovers exactly the located entry
+    `buildLocatedSeq` produced. -/
+def slocated_entry : SEntry (([Tok.os, .a, .cs].take (2 + 1)).drop (1 - 1)) := slocated_a.entry
+
+/-- The map BUNDLE: note the **extra** `(by decide)` for `h_key` — one argument more than the seq
+    bundle, the bundle-level arity bump R247 names (the stored pair primitive the entry producer
+    doesn't supply). -/
+def mlocated_a : MLocated [.om, .a, .cm] 1 2 :=
+  bundleLocatedMap [.om, .a, .cm] 1 2 (by omega) (by omega) (by decide) (by decide) (by decide) (by decide) mbody_a
 
 /-! ## The opener-kind guard is load-bearing, and decidable balance sanity checks -/
 
