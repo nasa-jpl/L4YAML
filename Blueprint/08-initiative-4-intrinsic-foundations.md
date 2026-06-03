@@ -2116,7 +2116,7 @@ locator is built; and BOTH body-props *assemblers* are now extracted parametric 
 `seqBodyProps_assemble`, commit `45fe7417`, and `mapBodyProps_assemble`, commit `005fb9f2` — so the
 *assemble* half of producing BOTH `FlowSubrangesOk` fields is done. Both
 structure sorries are now the IDENTICAL structural residual `FlowSubrangesOk tokens` (`NonemptyStructure.lean`
-1190 seq / 1431 map), so one Phase-J producer closes both. **AND `FlowSubrangesOk` is now GUARDED so the
+1253 seq / 1494 map), so one Phase-J producer closes both. **AND `FlowSubrangesOk` is now GUARDED so the
 producer goal is provable** (commit `02988022`, Reflection 229): the unguarded form was *false* — its fields
 quantify over every balanced subrange ending in a close, including a misaligned one starting mid-body on a
 depth-0 `.flowEntry` (for `[a, b]`, the subrange `lo=3,hi=5` passes all premises yet `tokens[3]=.flowEntry`
@@ -2168,15 +2168,22 @@ boundary: "one `RecSeqBody` of the outer body." Mapping interiors bottom out at 
 is a later, map-side brick). **And the descent-locator's single-level step is now LANDED** (commit `abcdcbee`,
 Reflection 235): `RecSeqEntry.seq_interior` / `map_interior` recover a nested entry's interior from the
 deliverable — `seq_interior` returns `RecSeqBody interior ∨ interior = []` (the `lo < hi` / `lo = hi`
-producer-contract split), `map_interior` returns `WellBracketed interior`. The remaining next-session targets
-(seq side, in order): the **descent-locator** finished — its **positional bridge** (guarded subrange `[lo,hi)`
-with `tokens[lo-1]` an opener ↔ which `RecSeqEntry`, with `interior = (tokens.toList.take hi).drop lo`) and
-its **outer recursion** composing the now-landed single-level steps, fed to
-`seqBodyProps_of_windowed_safebody` → `FlowSubrangesOk.seq` — and the **emit producer**
+producer-contract split), `map_interior` returns `WellBracketed interior`. **And the descent-locator's BACK
+HALF is now LANDED** (commit `e0f70fcd`, Reflection 236): `interior_window_eq` (the positional-bridge *slice*
+half — when the array window `(tokens.toList.take (hi+1)).drop lo` is a bracket entry's `interior ++ [cl]`,
+the `interior` alone is the inner window `(tokens.toList.take hi).drop lo`; pure list slicing, no balance) +
+`seqBodyProps_of_recseqbody_window` (rewrites the structural `interior` into the windowed form so
+`RecSeqBody.toSafeBody`/`.toSafeBodyUnit` feed `seqBodyProps_of_windowed_safebody`), closing
+*"located `RecSeqBody interior` at `[lo,hi)` → `SeqBodyProps tokens lo hi`."* The remaining next-session
+targets (seq side, in order): the descent-locator's **structural FRONT end** — pairing a guarded subrange
+`[lo,hi)`'s `tokens[lo-1]` opener to *which* `RecSeqEntry` of the windowed outer body it selects (so that the
+entry's `interior` is exactly the `(take (hi+1)).drop lo` window `interior_window_eq` consumes), plus the
+**outer recursion** composing the now-landed single-level steps for deeper subranges, fed to
+`seqBodyProps_of_recseqbody_window` → `FlowSubrangesOk.seq` — and the **emit producer**
 (`emitList_scans_safebody` strengthened to deliver `RecSeqBody` — the recursive `h_rec` at each `seq` entry
 comes from the per-item `ih`). The map side mirrors with `RecMapBody`.
 
-> **Frontier (post-Reflection 235, commit `abcdcbee`).** The `(d-shape)` algebra is complete
+> **Frontier (post-Reflection 236, commit `e0f70fcd`).** The `(d-shape)` algebra is complete
 > (the bracket conjuncts are correctly guarded — Reflection 218 — AND their `h_succ` substrate, the
 > value-end successor `EntryUnit` / `SafeBodyUnit_succ` / `SafeBodyUnit_array_succ`, exists —
 > Reflection 219), and the **sequence side** of threading `EntryUnit` through the producers is now
@@ -2346,16 +2353,26 @@ comes from the per-item `ih`). The map side mirrors with `RecMapBody`.
 > `append_singleton_inj` (core-Lean `a ++ [x] = b ++ [y] → a = b ∧ x = y`) reads the interior off the
 > `op :: (interior ++ [cl])` constructor index. Build green 523 jobs, sorries held at 4, all three lemmas
 > axiom-clean `[propext]`.
+> **And the descent-locator's BACK HALF is now LANDED** (Reflection 236, commit `e0f70fcd`):
+> `interior_window_eq` is the positional-bridge *slice* half — pure list/array slicing (`List.take_add_one`
+> peels `tokens[hi]`, `List.drop_append_of_le_length` moves the `drop` inside, `append_singleton_inj` reads
+> off) turning the array window `(tokens.toList.take (hi+1)).drop lo = interior ++ [cl]` into
+> `interior = (tokens.toList.take hi).drop lo` — and `seqBodyProps_of_recseqbody_window` composes it with
+> `RecSeqBody.toSafeBody`/`.toSafeBodyUnit` + `seqBodyProps_of_windowed_safebody` to close
+> *"located `RecSeqBody interior` at `[lo,hi)` (+ the positional bracket facts) → `SeqBodyProps tokens lo hi`."*
+> So once an entry's interior is *located* as a `RecSeqBody`, its `SeqBodyProps` follows with no further
+> structural work. Build green 523 jobs, sorries held at 4, both lemmas axiom-clean (no `sorryAx`).
 > **Immediate next sub-bricks (two, in
 > order):** both are now the `lo < hi` branch only (the `lo = hi` branch is closed by the empty-body leaves
 > above), and the seq side now factors through the `RecSeqBody` deliverable: (a) the **descent-locator**
 > `RecSeqBody (outer body) → ∀ nested guarded balanced subrange [lo,hi) with lo < hi, windowed
-> `SafeBody`/`SafeBodyUnit` at [lo,hi)` — the single-level *step* `seq_interior`/`map_interior` is DONE
-> (above); what remains is the **positional bridge** (a guarded subrange `[lo,hi)` whose `tokens[lo-1]` is an
-> opener ↔ which `RecSeqEntry` of the windowed body, and that the entry's `interior` equals the windowed
-> sublist `(tokens.toList.take hi).drop lo`) and the **outer recursion** composing the per-level steps for
-> deeper subranges → then project via `toSafeBody`/`toSafeBodyUnit` and feed
-> `seqBodyProps_of_windowed_safebody`; and (b) the **emit producer**
+> `SafeBody`/`SafeBodyUnit` at [lo,hi)` — the single-level *step* `seq_interior`/`map_interior` (descend one
+> level) AND the *back half* `interior_window_eq` / `seqBodyProps_of_recseqbody_window` (located interior →
+> `SeqBodyProps`) are DONE (above); what remains is the descent-locator's **structural FRONT end** (pairing a
+> guarded subrange `[lo,hi)`'s `tokens[lo-1]` opener to *which* `RecSeqEntry` of the windowed body it selects,
+> so the entry's `interior` is exactly the `(take (hi+1)).drop lo` window) and the **outer recursion**
+> composing the per-level steps for deeper subranges → then feed `seqBodyProps_of_recseqbody_window` →
+> `FlowSubrangesOk.seq`; and (b) the **emit producer**
 > `emitList_scans_safebody` strengthened to deliver `RecSeqBody` (it already produces the flat `SafeBody`;
 > the recursive `h_rec` at each `seq` entry comes from the per-item `ih` applied to the nested sequence's
 > own items). Together they close the seq `FlowSubrangesOk.seq` field; the map side mirrors with a
@@ -2363,9 +2380,9 @@ comes from the per-item `ih`). The map side mirrors with `RecMapBody`.
 > (key→content, key→value, value→content, value→successor, and the two value-close-guarded bracket
 > successors) need the pair-level refinement — a map *pair* `.key block_k .value block_v` has an interior
 > depth-0 `.value`, so the whole pair is NOT an `EntryUnit`. Both fields together build the one
-> `FlowSubrangesOk tokens` shared by sorries 1190/1431 → `flow_parser_ok_of_structure`
+> `FlowSubrangesOk tokens` shared by sorries 1253/1494 → `flow_parser_ok_of_structure`
 > (`FlowParserAcceptance.lean`) at `(2, tokens.size−2)`, `fuel = 4·tokens.size+4` → close the two
-> `NonemptyStructure.lean` structure sorries (1190/1431) → the two base
+> `NonemptyStructure.lean` structure sorries (1253/1494) → the two base
 > `emit_roundtrip_{sequence,mapping}_content_eq` (`EmitterScannability.lean` 832/872) →
 > `universal_roundtrip`.
 
@@ -15344,6 +15361,23 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
+                **Total .body scope re-estimate (EIGHTY-FOURTH revision —
+                after **Thread A step 3 sub-step 2's brick (d-shape) cont'd — *descent-locator BACK HALF
+                `interior_window_eq` / `seqBodyProps_of_recseqbody_window`* — landed** (commit `e0f70fcd`,
+                Reflection 236). The descent-locator's positional bridge factors into a *slice* half (pure
+                list/array arithmetic) and a *locate* half (balance↔structure); this lands the slice half.
+                `interior_window_eq`: when the array window `(tokens.toList.take (hi+1)).drop lo` equals a
+                bracket entry's `interior ++ [cl]`, then `interior = (tokens.toList.take hi).drop lo` — peel
+                `tokens[hi]` via `List.take_add_one`, push `drop lo` inside via
+                `List.drop_append_of_le_length`, read off with the same `append_singleton_inj` the single-level
+                step used. `seqBodyProps_of_recseqbody_window`: composes it with `RecSeqBody.toSafeBody`/
+                `.toSafeBodyUnit` + `seqBodyProps_of_windowed_safebody`, closing *"located `RecSeqBody interior`
+                at `[lo,hi)` (+ positional bracket facts) → `SeqBodyProps tokens lo hi`."* What remains of the
+                descent-locator: only the structural FRONT end (which `RecSeqEntry` of the windowed body a
+                guarded subrange's `tokens[lo-1]` opener selects) and the outer recursion. Build green **523
+                jobs**, **sorries held at 4**; `interior_window_eq` axiom-clean `[propext, Quot.sound]`,
+                `seqBodyProps_of_recseqbody_window` `[propext, Classical.choice, Quot.sound]` (no `sorryAx`).
+                See Reflection 236, on top of the
                 **Total .body scope re-estimate (EIGHTY-THIRD revision —
                 after **Thread A step 3 sub-step 2's brick (d-shape) cont'd — *single-level descent step
                 `RecSeqEntry.seq_interior` / `map_interior`* — landed** (commit `abcdcbee`, Reflection 235).
@@ -25668,3 +25702,7 @@ The seq-side `lo < hi` branch needs a windowed `SafeBody`/`SafeBodyUnit` at *eve
 ### Reflection 235 (new, 2026-06-02): land the irreducible single-level step of a recursive descent FIRST, and let its conclusion type be the producer-contract split you already proved — the case analysis on the deliverable's constructors recovers the recursion witness and rules out the impossible shapes, so the step is fully provable before the positional bridge or the outer recursion exist
 
 With the recursive deliverable `RecSeqBody` defined and projected (Reflection 234), the descent-locator — "from `RecSeqBody (outer body)`, extract a windowed `SafeBody` at *any* nested guarded subrange" — is still a multi-session brick: it needs a positional bridge (a guarded subrange `[lo,hi)` with `tokens[lo-1]` an opener ↔ which `RecSeqEntry` of the windowed body) and an outer recursion composing the per-level steps. But the *irreducible atom* of that recursion — "descend one nesting level" — is fully provable now, in isolation, and is the right thing to land first. `RecSeqEntry.seq_interior` takes a `RecSeqEntry e` and the bracket-entry shape `e = op :: (interior ++ [cl])` with `op.val = .flowSequenceStart`, and `cases` on the four constructors: `scalar` (`e = [t]`) forces `interior ++ [cl] = []`, impossible; `map` has a `.flowMappingStart` head clashing with `.flowSequenceStart`; `seqEmpty` gives `interior = []`; `seq` gives the recursive `h_rec : RecSeqBody interior'` with `interior' = interior` (read off the constructor index by `append_singleton_inj`, a core-Lean `a ++ [x] = b ++ [y] → a = b ∧ x = y` proved by `reverse` + `List.reverse_inj`). The thing that makes this clean rather than a fight: **its conclusion type is chosen to be the producer-contract split you already proved.** The output is `RecSeqBody interior ∨ interior = []` — and that is *exactly* the `lo < hi` / `lo = hi` dichotomy of Reflection 233. The non-empty disjunct feeds `seqBodyProps_of_windowed_safebody` (via `RecSeqBody.toSafeBody`); the empty disjunct routes to `seqBodyProps_empty`. So the single-level step doesn't merely descend — it descends *into the shape the next stage already consumes*, both branches included, with no leftover obligation. The map mirror `RecSeqEntry.map_interior` is even tighter: a `.flowMappingStart`-headed entry yields `WellBracketed interior` (no disjunction — the map interior bottoms out at its bracket substrate, `WellBracketed []` covering the empty case too), so the descent into a nested *mapping* hands the map consumer joint exactly its bracket fact with no recursion, deferring the key/value recursion to the map-side `RecMapBody` brick. The general lesson, a sequencing rule for recursive descents: don't wait for the positional bridge and the outer recursion to be designed before proving anything — the **single-level constructor case-split is self-contained** (the deliverable's constructors *are* the case analysis: the wanted recursion witness falls out of one constructor, the impossible shapes are killed by the head/shape mismatch), so land it first, and pick its conclusion type to be the split the downstream stage already expects, so the atom plugs in with zero glue when the recursion is later assembled. Build green 523 jobs, sorries held at 4, all three lemmas (`append_singleton_inj`, `seq_interior`, `map_interior`) axiom-clean `[propext]`. Sits with [[ref-consumer-joint-before-producer]] and [[ref-derisk-consumer-blindspot-vs-contract]] (the descent step's two output disjuncts are the joint's `lo < hi` input and the de-risk's `lo = hi` leaf — the step routes each subrange to whichever was already built) and [[ref-recursive-deliverable-project-to-flat-first]] (this consumes the recursive type that reflection defined; the flat projection it proved is what the non-empty disjunct composes with).
+
+### Reflection 236 (new, 2026-06-02): a recursive descent's positional bridge splits into a *slice* half (pure list arithmetic) and a *locate* half (balance↔structure) — land the slice half NOW; it is self-contained, reuses the single-level step's glue, and reduces the descent to "located interior → consumer" so only the genuinely analytical locate remains
+
+The single-level descent step (Reflection 235) recovers a nested entry's interior as a `List` (`RecSeqEntry.seq.h_rec : RecSeqBody interior`). But the consumer joint `seqBodyProps_of_windowed_safebody` is keyed on the *positionally windowed* form `(tokens.toList.take hi).drop lo` — a slice of the token array, not an abstract list. Bridging the two is the descent-locator's **positional bridge**, and the temptation is to treat it as one monolith that needs balance reasoning (which entry of the body does a guarded subrange `[lo,hi)` select?). It is not a monolith — it cleanly *factors*: (a) a **slice** half — "given that the array window `(tokens.toList.take (hi+1)).drop lo` *equals* a bracket entry's `interior ++ [cl]`, conclude `interior = (tokens.toList.take hi).drop lo`" — and (b) a **locate** half — "which entry of the windowed outer body does `[lo,hi)`'s `tokens[lo-1]` opener select, and why is its `interior` exactly that window." Only (b) needs balance↔structure correspondence; (a) is pure list/array slicing. So (a) is fully provable *now*, before (b) is designed, and it is worth landing first: `interior_window_eq` peels the last element `tokens[hi]` off `take (hi+1)` (`List.take_add_one` + `List.getElem?_eq_getElem`), pushes the `drop lo` inside the resulting append (`List.drop_append_of_le_length`, discharged by `lo ≤ hi = |take hi|`), and reads `interior` off the trailing-singleton equation with the *same* `append_singleton_inj` the single-level step already used — no new machinery. Then `seqBodyProps_of_recseqbody_window` composes it with `RecSeqBody.toSafeBody`/`.toSafeBodyUnit` and `seqBodyProps_of_windowed_safebody` to close the entire back half in one lemma: *from a located `RecSeqBody interior` at the window `[lo,hi)` (plus the positional bracket facts), `SeqBodyProps tokens lo hi` follows with zero further structural work.* The general lesson: a positional/structural bridge in a token-array proof typically separates into a *coordinate* lemma (slicing arithmetic, no semantics) and a *correspondence* lemma (the analytical content), and the coordinate lemma is the cheap, certain, immediately-landable atom that shrinks the remaining bridge to exactly its analytical core — recognizing the seam is what turns a daunting "positional bridge" into one provable-today lemma plus a smaller, sharply-scoped residual. The slice lemma also reuses the prior atom's glue (`append_singleton_inj`), a sign the seam was cut in the right place. Build green 523 jobs, sorries held at 4, `interior_window_eq` axiom-clean `[propext, Quot.sound]` and `seqBodyProps_of_recseqbody_window` `[propext, Classical.choice, Quot.sound]` (no `sorryAx`). Sits with [[ref-recursive-deliverable-project-to-flat-first]] and [[ref-consumer-joint-before-producer]] (this is the wire from the recursive deliverable's interior to the consumer joint's windowed input) and [[ref-array-wrapper-window-generalization]] (both turn on getting a token-array window's `take`/`drop` coordinates exactly right; here the window is `[lo, hi)` carved out of `[lo, hi]` by peeling the close).
