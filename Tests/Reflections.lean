@@ -5,6 +5,7 @@ import Tests.Reflections.ParametricAssemblerExtraction
 import Tests.Reflections.ConvergentReduction
 import Tests.Reflections.RecursiveDeliverableProjectToFlat
 import Tests.Reflections.ConsumerJointBeforeProducer
+import Tests.Reflections.AdditiveParallelType
 
 /-!
 # Reflections — runnable proof-engineering demonstrations
@@ -24,4 +25,5 @@ Each module names the Blueprint Reflection it illustrates:
 * `ConvergentReduction`                  — Reflection 227 (convergence corollary of reduction-by-import)
 * `RecursiveDeliverableProjectToFlat`    — Reflections 234 + 235 (recursive deliverable, project-to-flat-first; single-level descent step)
 * `ConsumerJointBeforeProducer`          — Reflection 231 (+ 232 / 237 / 241) (build the consumer joint before the producer; faithful mirror)
+* `AdditiveParallelType`                 — Reflection 242 (land a forced deliverable refinement as an additive parallel type, never a shared edit; a dedicated type internalizes the guard)
 -/
