@@ -2116,7 +2116,7 @@ locator is built; and BOTH body-props *assemblers* are now extracted parametric 
 `seqBodyProps_assemble`, commit `45fe7417`, and `mapBodyProps_assemble`, commit `005fb9f2` — so the
 *assemble* half of producing BOTH `FlowSubrangesOk` fields is done. Both
 structure sorries are now the IDENTICAL structural residual `FlowSubrangesOk tokens` (`NonemptyStructure.lean`
-1367 seq / 1608 map), so one Phase-J producer closes both. **AND `FlowSubrangesOk` is now GUARDED so the
+1440 seq / 1681 map), so one Phase-J producer closes both. **AND `FlowSubrangesOk` is now GUARDED so the
 producer goal is provable** (commit `02988022`, Reflection 229): the unguarded form was *false* — its fields
 quantify over every balanced subrange ending in a close, including a misaligned one starting mid-body on a
 depth-0 `.flowEntry` (for `[a, b]`, the subrange `lo=3,hi=5` passes all premises yet `tokens[3]=.flowEntry`
@@ -2164,8 +2164,8 @@ its interior (a flat `SafeBody` cannot: `SafeBody → WellBracketed` is false). 
 `RecSeqBody.toSafeBody`/`.toSafeBodyUnit` discharge to exactly the windowed `SafeBody`/`SafeBodyUnit
 ContentStartTok` the seq consumer joint consumes (via the per-entry `RecSeqEntry.toEntrySafe`/`.toEntryUnit`),
 so `RecSeqBody` collapses the scattered "windowed `SafeBody` at every nested subrange" residual into one
-boundary: "one `RecSeqBody` of the outer body." Mapping interiors bottom out at `WellBracketed` (a `RecMapBody`
-is a later, map-side brick). **And the descent-locator's single-level step is now LANDED** (commit `abcdcbee`,
+boundary: "one `RecSeqBody` of the outer body." Mapping interiors bottom out at `WellBracketed` (the map-side
+deliverable `RecMapBody` is now defined — Reflection 239, commit `3072d876`). **And the descent-locator's single-level step is now LANDED** (commit `abcdcbee`,
 Reflection 235): `RecSeqEntry.seq_interior` / `map_interior` recover a nested entry's interior from the
 deliverable — `seq_interior` returns `RecSeqBody interior ∨ interior = []` (the `lo < hi` / `lo = hi`
 producer-contract split), `map_interior` returns `WellBracketed interior`. **And the descent-locator's BACK
@@ -2185,7 +2185,7 @@ correspondence**: the descent-locator's *front end* — pairing a guarded subran
 opener to *which* `RecSeqEntry` of the emitted body it selects (so the opener-window *is* that entry) — plus
 the **emit producer** (`emitList_scans_safebody` strengthened to deliver `RecSeqBody` — the recursive `h_rec`
 at each `seq` entry comes from the per-item `ih`). No positional plumbing remains downstream of locate. The
-map side mirrors with `RecMapBody`. **And the deliverable's BALANCE PROJECTION is now LANDED** (commit
+map side mirrors with `RecMapBody` (now DEFINED — see below). **And the deliverable's BALANCE PROJECTION is now LANDED** (commit
 `a3592b4c`, Reflection 238): `RecSeqEntry.toWellBracketed` / `RecSeqBody.toWellBracketed` complete the
 projection family — the deliverable already projects to `SafeBody` (`toSafeBody`) and `SafeBodyUnit`
 (`toSafeBodyUnit`); these add the untyped-balance form `WellBracketed`, reading `wrap_{seq,map}_block`'s
@@ -2194,9 +2194,24 @@ projection family — the deliverable already projects to `SafeBody` (`toSafeBod
 locate correspondence consumes: pairing a guarded balanced subrange to an entry is a matching-close balance
 argument, and the descent into a nested entry's interior needs *that interior's own* `WellBracketed` — which
 only the deliverable's recursive structure supplies per sub-part (a single global hypothesis cannot reach a
-sub-body). So the locate now has its balance tool in hand at every nesting level.
+sub-body). So the locate now has its balance tool in hand at every nesting level. **And the MAP-SIDE recursive
+deliverable is now DEFINED** (commit `3072d876`, Reflection 239): `RecMapBody` / `RecMapPair` — the map mirror
+of `RecSeqBody`/`RecSeqEntry`, one nesting level deeper. A flow-mapping body's emitted block is a `.flowEntry`-
+separated list of *pairs*, each pair `key :: (block_k ++ value :: block_v)`; a key or value is one `emit v`
+block = one `RecSeqEntry`, so a `RecMapPair` carries TWO `RecSeqEntry`s (its key and value blocks), which is
+what lets the map-side locate reach a nested flow-sequence interior inside a key or value (recorded in that
+block's `RecSeqEntry.seq.h_rec`). Because `RecMapPair` depends only on the already-defined `RecSeqEntry` and
+`RecMapBody` recurses only on itself, **no `mutual` block is needed** — the R234 mutual/`induction`/`Or` gotchas
+are sidestepped entirely (define `RecMapPair`, then `RecMapBody`). Its flat projection `RecMapBody.toSafeBody`
+discharges to exactly the windowed `SafeBody (· = .key)` the map consumer joint `mapBodyProps_of_windowed_safebody`
+consumes (per-pair `EntrySafe` via `RecMapPair.toEntrySafe` = `RecSeqEntry.toEntrySafe` on each block + the
+delta-`0` `.key`/`.value` glue, exactly how `emitPairList_scans_safebody` assembles it), so `RecMapBody` collapses
+the map analog of the scattered residual into "one `RecMapBody` of the outer mapping body," leaving the six
+pair-interior primitives as the separate residual. As on the seq side the nested-*mapping*-in-a-key/value
+recursion still bottoms out at `RecSeqEntry.map`'s `WellBracketed` (a fully-recursive map interior is a later
+refinement); this resolves nested *sequences* in map keys/values, what the seq locate already needs.
 
-> **Frontier (post-Reflection 238, commit `a3592b4c`).** The `(d-shape)` algebra is complete
+> **Frontier (post-Reflection 239, commit `3072d876`).** The `(d-shape)` algebra is complete
 > (the bracket conjuncts are correctly guarded — Reflection 218 — AND their `h_succ` substrate, the
 > value-end successor `EntryUnit` / `SafeBodyUnit_succ` / `SafeBodyUnit_array_succ`, exists —
 > Reflection 219), and the **sequence side** of threading `EntryUnit` through the producers is now
@@ -2401,14 +2416,19 @@ sub-body). So the locate now has its balance tool in hand at every nesting level
 > guarded subrange to an entry. And (b) the **emit producer**
 > `emitList_scans_safebody` strengthened to deliver `RecSeqBody` (it already produces the flat `SafeBody`;
 > the recursive `h_rec` at each `seq` entry comes from the per-item `ih` applied to the nested sequence's
-> own items). Together they close the seq `FlowSubrangesOk.seq` field; the map side mirrors with a
-> `RecMapBody` deliverable (key/value pair recursion). The map side's six pair-interior primitives
+> own items). Together they close the seq `FlowSubrangesOk.seq` field; the map side mirrors with the
+> `RecMapBody` deliverable — now **DEFINED and projected** (commit `3072d876`, Reflection 239):
+> `RecMapBody`/`RecMapPair` (each pair carries two `RecSeqEntry`, no `mutual` needed) with
+> `RecMapBody.toSafeBody : SafeBody (· = .key)` feeding the existing `mapBodyProps_of_windowed_safebody`
+> joint, so the map side now factors through its own recursive deliverable exactly as the seq side; the
+> remaining map residual is the map locate + the map emit producer (`emitPairList_scans_safebody`
+> strengthened to deliver `RecMapBody`) + the six pair-interior primitives
 > (key→content, key→value, value→content, value→successor, and the two value-close-guarded bracket
 > successors) need the pair-level refinement — a map *pair* `.key block_k .value block_v` has an interior
 > depth-0 `.value`, so the whole pair is NOT an `EntryUnit`. Both fields together build the one
-> `FlowSubrangesOk tokens` shared by sorries 1367/1608 → `flow_parser_ok_of_structure`
+> `FlowSubrangesOk tokens` shared by sorries 1440/1681 → `flow_parser_ok_of_structure`
 > (`FlowParserAcceptance.lean`) at `(2, tokens.size−2)`, `fuel = 4·tokens.size+4` → close the two
-> `NonemptyStructure.lean` structure sorries (1367/1608) → the two base
+> `NonemptyStructure.lean` structure sorries (1440/1681) → the two base
 > `emit_roundtrip_{sequence,mapping}_content_eq` (`EmitterScannability.lean` 832/872) →
 > `universal_roundtrip`.
 
@@ -15387,6 +15407,23 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
+                **Total .body scope re-estimate (EIGHTY-SEVENTH revision —
+                after **Thread A step 3 sub-step 2's brick (d-shape) cont'd — *MAP-SIDE recursive
+                deliverable `RecMapBody`/`RecMapPair` + `SafeBody (· = .key)` projection* — landed** (commit
+                `3072d876`, Reflection 239). The map mirror of R234, one nesting level deeper: a flow-mapping
+                body is `.flowEntry`-separated *pairs* `key :: (block_k ++ value :: block_v)`, and a key/value
+                is one `emit v` block = one `RecSeqEntry`, so a `RecMapPair` reuses TWO `RecSeqEntry`s and
+                `RecMapBody` recurses only on itself — **no `mutual` block** (the R234 mutual/`induction`/`Or`
+                gotchas sidestepped entirely). `RecMapPair.toEntrySafe` assembles per-pair `EntrySafe` from
+                `RecSeqEntry.toEntrySafe` on each block + the delta-`0` `.key`/`.value` glue
+                (`EntrySafe_cons_delta_zero`/`_append`/`_singleton`); `RecMapBody.toSafeBody` is a verbatim
+                mirror of `RecSeqBody.toSafeBody` producing the flat `SafeBody (· = .key)` that the
+                pre-existing map consumer joint `mapBodyProps_of_windowed_safebody` already consumes (no
+                `SafeBodyUnit` on the map side — a pair has interior depth-0 `.value`, so the six pair-interior
+                primitives remain a separate residual). The `.map` field is on the critical path for BOTH
+                frontier sorries (a flow-sequence's items can be mappings). Build green **523 jobs**, **sorries
+                held at 4**; both lemmas axiom-clean `[propext, Quot.sound]` (no `sorryAx`). See Reflection 239,
+                on top of the
                 **Total .body scope re-estimate (EIGHTY-SIXTH revision —
                 after **Thread A step 3 sub-step 2's brick (d-shape) cont'd — *seq deliverable BALANCE
                 PROJECTION `RecSeqEntry`/`RecSeqBody.toWellBracketed`* — landed** (commit `a3592b4c`,
@@ -25772,3 +25809,7 @@ The back half (Reflection 236) closes *"located `RecSeqBody interior` at `[lo,hi
 ### Reflection 238 (new, 2026-06-03): complete the deliverable's *projection family* before walking it — the balance projection (`Rec…→WellBracketed`) is the navigation invariant the structural locate needs at *every* nesting level, and only the recursive structure supplies it per sub-part
 
 With the seq-side positional chain proven end-to-end (Reflection 237), the sole seq residual is the *pure locate correspondence*: walk the body's `RecSeqBody`/`RecSeqEntry` structure by balance to pair each guarded balanced subrange `[lo,hi)` with the entry whose opener-window it is. Before writing that walk, ask what *tool* it consumes at each step. Pairing a guarded subrange to an entry is a **matching-close balance argument** (the matching close of a depth-0 opener is the entry's last token — the same `flowBracketBalance_matching_close` machinery, read in the structure→position direction), and crucially the walk **descends into nested interiors** (`FlowSubrangesOk.seq` quantifies over *all* subranges, including ones deep inside an entry), so at each descent it needs *that interior's own* `WellBracketed` — its untyped balance invariant. A single global hypothesis (the producer's top-level `WellBracketed block`) cannot reach a sub-body; only the deliverable's *recursive structure* can carry the invariant down to each nested part. So the certain, on-path, self-contained brick to land *before* the walk is the deliverable's **balance projection**: `RecSeqEntry.toWellBracketed` / `RecSeqBody.toWellBracketed`. It completes the projection family — the deliverable already projects to `SafeBody` (`toSafeBody`, the consumer joint's input) and `SafeBodyUnit` (`toSafeBodyUnit`, the unit refinement); these add the untyped-balance form. The entry-level lemma is the exact mirror of `RecSeqEntry.toEntrySafe` reading `wrap_{seq,map}_block`'s `.1` (the `WellBracketed` half) instead of `.2` (the `EntrySafe` half), with the `scalar` leaf the delta-`0` singleton (`WellBracketed_singleton_delta_zero`); the body-level lemma is term-mode structural recursion exactly as `RecSeqBody.toSafeBody`, chaining each entry's `WellBracketed` across the depth-`0` `.flowEntry` separators (delta `0`) via `WellBracketed_append` + `WellBracketed_cons_delta_zero`. Because both are verbatim mirrors of the existing projections, the increment is certain (build green 523 jobs, sorries held at 4, axiom-clean — `RecSeqEntry.toWellBracketed` `[propext, Quot.sound]`, `RecSeqBody.toWellBracketed` the pure triple, no `sorryAx`). The general lesson, the [[ref-recursive-deliverable-project-to-flat-first]] discipline applied a third time (R234 defined the type + its `SafeBody` projection; R235/236/237 built the descent/consume side; this completes the *project* side): when you are about to write a recursion that *consumes* a recursive deliverable, first give the deliverable a projection to every flat invariant that recursion will need at its sub-parts — the projections are cheap mirrors of each other, they validate the type from yet another end, and they hand the consuming recursion its per-sub-part tools so it never has to re-derive them or reach for an unreachable global hypothesis. The balance projection is to the locate what `toSafeBody` was to the consumer joint: the bridge from the recursive witness to the flat fact the next step is keyed on. Sits with [[ref-recursive-deliverable-project-to-flat-first]] (same project-to-flat discipline, now for the untyped-balance invariant) and [[ref-consumer-joint-before-producer]] (the locate is the producer; this equips it).
+
+### Reflection 239 (new, 2026-06-03): mirror the recursive deliverable to the *other* body kind by reusing the existing entry type — the map body is RecMapPairs of two `RecSeqEntry`s, so `RecMapBody` needs no `mutual` and its flat projection feeds the map consumer joint that was already waiting
+
+The seq side now factors entirely through `RecSeqBody`/`RecSeqEntry` (R234–238), but `FlowSubrangesOk` has TWO fields, and even a pure flow-*sequence*'s tokens contain flow-*mapping* subranges (an item can be a mapping), so the `.map` field is on the critical path for *both* frontier sorries — the map side cannot stay at its boundary-only consumer joint. The right next brick is the map mirror of R234: define the map-side recursive deliverable and project it to the flat form the map consumer joint already consumes. The design move that makes this a one-increment certainty rather than a redesign: **do not invent a new entry type — reuse `RecSeqEntry`.** A flow-mapping body is a `.flowEntry`-separated list of pairs, each pair the filtered tokens `key :: (block_k ++ value :: block_v)`; a key or a value is *one `emit v` block*, which is exactly what `RecSeqEntry` already characterizes (scalar / nested seq / nested map / empty). So a `RecMapPair` carries TWO `RecSeqEntry`s (its key and value blocks) and nothing new — and crucially that is what lets the future map locate reach a nested flow-*sequence* interior sitting inside a map key or value (it is recorded in that block's `RecSeqEntry.seq.h_rec`). Two structural payoffs fall out of the reuse. (1) **No `mutual` block.** `RecMapPair` depends only on the already-defined `RecSeqEntry`, and `RecMapBody` (`.flowEntry`-separated pairs, single/cons) recurses only on itself — so the three R234 mutual-inductive gotchas (no doc-comment before `mutual`, `induction` rejected, recursion-under-`Or` rejected) are sidestepped *entirely* by just defining `RecMapPair` then `RecMapBody` as two ordinary inductives. (2) **The projection is a verbatim mirror that lands in the existing consumer.** `RecMapBody.toSafeBody : SafeBody (· = .key)` is term-mode structural recursion identical to `RecSeqBody.toSafeBody`, with the per-pair `EntrySafe` (`RecMapPair.toEntrySafe`) assembled from `RecSeqEntry.toEntrySafe` on each block plus the delta-`0` `.key`/`.value` glue (`EntrySafe_cons_delta_zero` / `EntrySafe_append` / `EntrySafe_singleton`) — the *exact* assembly `emitPairList_scans_safebody` already does at the scanner-chain level, here read off the recursive witness instead. And the flat form it produces, `SafeBody (· = .key)`, is precisely the sole structural input `mapBodyProps_of_windowed_safebody` was *already* written to consume (R-consumer-joint, map side) — so the projection plugs into a consumer that has been waiting, validating the type from both ends before any locate or producer is attempted. Note one honest asymmetry the map side keeps: unlike the seq joint there is no `SafeBodyUnit` projection, because a pair `.key … .value …` carries an interior depth-0 `.value` and so is not an `EntryUnit` — the six pair-INTERIOR primitives (key→content, key/value→value, the value-close-guarded bracket successors) live below the `.key`-headed `SafeBody`'s granularity and remain a separate residual (the [[ref-consumer-joint-before-producer]] granularity caveat). As on the seq side the deeper nested-*mapping*-in-a-key/value recursion still bottoms out at `RecSeqEntry.map`'s `WellBracketed` (a fully-recursive map interior is a later refinement); this brick resolves nested *sequences* in keys/values, which is what the seq locate already in hand needs. Build green 523 jobs, sorries held at 4, both new lemmas axiom-clean `[propext, Quot.sound]` (no `sorryAx`). The general lesson, the [[ref-recursive-deliverable-project-to-flat-first]] discipline applied to a *parallel* structure: when a second body kind needs the same recursive-deliverable treatment, look first for whether its parts are already an existing recursive entry type — if so, the new body type is a thin wrapper (no `mutual`, no new projections of the entry), its flat projection is a verbatim mirror, and you should aim it straight at the consumer joint the symmetric side already built, so the type is born validated. Sits with [[ref-recursive-deliverable-project-to-flat-first]] (the same define-then-project discipline, now spanning the seq↔map symmetry) and [[ref-consumer-joint-before-producer]] (the projection's target is the pre-built map joint; the six pair-interior primitives are the below-granularity residual that joint left open).
