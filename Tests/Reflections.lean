@@ -7,6 +7,7 @@ import Tests.Reflections.RecursiveDeliverableProjectToFlat
 import Tests.Reflections.ConsumerJointBeforeProducer
 import Tests.Reflections.AdditiveParallelType
 import Tests.Reflections.UniversalPackagingJoint
+import Tests.Reflections.ProjectionFamilyCompletion
 
 /-!
 # Reflections — runnable proof-engineering demonstrations
@@ -28,4 +29,5 @@ Each module names the Blueprint Reflection it illustrates:
 * `ConsumerJointBeforeProducer`          — Reflection 231 (+ 232 / 237 / 241) (build the consumer joint before the producer; faithful mirror)
 * `AdditiveParallelType`                 — Reflection 242 (land a forced deliverable refinement as an additive parallel type, never a shared edit; a dedicated type internalizes the guard)
 * `UniversalPackagingJoint`              — Reflection 243 (universal packaging is its own consumer joint — the field/joint hypothesis gap IS the producer's deliverable type; build the assembler before the producer)
+* `ProjectionFamilyCompletion`           — Reflection 244 (complete a newly-added deliverable type's projection family before the producer walks it — the omitted projection is the locate's navigation invariant, a verbatim mirror of the sibling's; projections track STORED fields, not desired properties)
 -/
