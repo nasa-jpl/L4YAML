@@ -772,6 +772,25 @@ theorem RecMapEntry.map_interior {e interior : List (Positioned YamlToken)}
       injection h_eq with _h1 h2
       exact (append_singleton_inj h2).1 ▸ h_rec
 
+/-- **Balance projection (map side, recursive bracket-entry level).**  A `RecMapEntry` is in
+    particular `WellBracketed` — its bracket balance returns to `0` at the end and stays `≥ 0`
+    throughout.  This completes the `RecMapEntry` projection family (R242 added the type and its
+    single-level descent `RecMapEntry.map_interior`, but not its balance projection), the entry-level
+    map mirror of `RecSeqEntry.toWellBracketed` (R238): both `RecMapEntry` constructors are `{ … }`
+    frames, so `wrap_map_block` wraps the interior's `WellBracketed` — `WellBracketed_nil` for the
+    `mapEmpty` `{}` leaf, `RecMapBody.toWellBracketed h_rec` (R240) for the non-empty `map` interior —
+    reading its `.1` (the `WellBracketed` half) exactly as the `RecSeqEntry.map` case does.  This is
+    the navigation invariant the map *locate* needs at the entry level: matching a guarded balanced
+    flow-mapping subrange to a `RecMapEntry` is a balance argument (the matching close of a depth-0
+    `{` opener is the entry's last token), and only the deliverable's structure can supply that
+    per-entry — never a single global hypothesis. -/
+theorem RecMapEntry.toWellBracketed {e : List (Positioned YamlToken)}
+    (h : RecMapEntry e) : WellBracketed e := by
+  cases h with
+  | mapEmpty op cl h_op h_cl => exact (wrap_map_block op cl [] h_op h_cl WellBracketed_nil).1
+  | map op cl interior h_op h_cl h_rec =>
+      exact (wrap_map_block op cl interior h_op h_cl h_rec.toWellBracketed).1
+
 /-- **Empty-body leaf** (Phase J, seq side).  An empty nested flow-SEQUENCE body — `lo = hi`, the
     shape `emit (.sequence … #[]) = "[]"` scans to (`[` immediately followed by `]`, so the interior
     `[lo, hi)` is empty) — satisfies `SeqBodyProps` *vacuously*: `content_start` is guarded by
