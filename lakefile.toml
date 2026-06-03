@@ -6,11 +6,7 @@ version = "0.4.6"
 defaultTargets = [
   "L4YAML",
   "Tests.Guards",
-  "Tests.ProducerGuardedTrap",
-  "Tests.ConverseForwardAsymmetry",
-  "Tests.ReductionByImport",
-  "Tests.ConvergentReduction",
-  "Tests.ParametricAssemblerExtraction",
+  "Tests.Reflections",
   "tryparse",
   "tryscan",
   "tryroundtrip",
@@ -55,20 +51,11 @@ name = "L4YAML"
 [[lean_lib]]
 name = "Tests.Guards"
 
+# Runnable proof-engineering demonstrations (one per Blueprint Reflection) — kept
+# as a single library, separate from the behavioural L4YAML test suites. See
+# Tests/Reflections.lean for the index.
 [[lean_lib]]
-name = "Tests.ProducerGuardedTrap"
-
-[[lean_lib]]
-name = "Tests.ConverseForwardAsymmetry"
-
-[[lean_lib]]
-name = "Tests.ReductionByImport"
-
-[[lean_lib]]
-name = "Tests.ConvergentReduction"
-
-[[lean_lib]]
-name = "Tests.ParametricAssemblerExtraction"
+name = "Tests.Reflections"
 
 [[lean_lib]]
 name = "Tests.VerifiedResult"

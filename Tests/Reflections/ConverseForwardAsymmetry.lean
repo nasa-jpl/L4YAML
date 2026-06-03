@@ -25,7 +25,7 @@ which `sepChar` (converse) still holds — yet `valEndChar` (forward) is **false
 structure: the weaker invariant carries the converse but not the forward direction.
 
 Run it: open in the IDE (the `#eval`s render in the infoview) or
-`lake build Tests.ConverseForwardAsymmetry` (the `#guard`s fail the build if any expectation is wrong).
+`lake build Tests.Reflections.ConverseForwardAsymmetry` (the `#guard`s fail the build if any expectation is wrong).
 -/
 
 namespace ConverseForwardAsymmetry

@@ -29,7 +29,7 @@ obligation, but its **type** differs — `Execution` (the run) before wiring, `D
 The structural residual is the `decide`-able / generically-attackable one.
 
 Run it: open in the IDE (the `#eval`s render in the infoview) or
-`lake build Tests.ReductionByImport` (the `#guard`s fail the build if any expectation is wrong).
+`lake build Tests.Reflections.ReductionByImport` (the `#guard`s fail the build if any expectation is wrong).
 -/
 
 namespace ReductionByImport

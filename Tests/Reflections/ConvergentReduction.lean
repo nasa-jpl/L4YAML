@@ -37,7 +37,7 @@ The point is `divergent` vs `convergent` below: both conclude `ExecF ts ∧ Exec
 alone; `divergent` additionally demands the operational `good_ExecS`.
 
 Run it: open in the IDE (the `#eval`s render in the infoview) or
-`lake build Tests.ConvergentReduction` (the `#guard`s fail the build if any expectation is wrong).
+`lake build Tests.Reflections.ConvergentReduction` (the `#guard`s fail the build if any expectation is wrong).
 -/
 
 namespace ConvergentReduction

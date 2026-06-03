@@ -10,7 +10,7 @@ never hits, the premise is unsatisfiable, and *the build does not tell you*.
 The witness stream `ts` is the body of `[["a"],"b"]` with the outer brackets stripped — `[ s ] , s` —
 and the separator (index 3) is the case the locator never returns but the weak `∀` still ranges over.
 
-Run it: open in the IDE (the `#eval`s render in the infoview) or `lake build Tests.ProducerGuardedTrap`
+Run it: open in the IDE (the `#eval`s render in the infoview) or `lake build Tests.Reflections.ProducerGuardedTrap`
 (the `#guard`s fail the build if any expectation is wrong).
 -/
 

@@ -41,7 +41,7 @@ The point is `assemble` (reused at a second span for free) vs `assembleBad` (can
 `SpanPropsBad 3 8` is false): deps-in-hypotheses lifts, baked-in-constant does not.
 
 Run it: open in the IDE (the `#eval`s render in the infoview) or
-`lake build Tests.ParametricAssemblerExtraction` (the `#guard`s fail the build if any expectation is wrong).
+`lake build Tests.Reflections.ParametricAssemblerExtraction` (the `#guard`s fail the build if any expectation is wrong).
 -/
 
 namespace ParametricAssemblerExtraction
