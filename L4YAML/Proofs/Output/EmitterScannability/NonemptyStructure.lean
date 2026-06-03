@@ -671,6 +671,69 @@ theorem seqBodyProps_of_windowed_safebody (tokens : Array (Positioned YamlToken)
     rw [getElem!_pos tokens (k + 1) hk1_sz]
     exact hQ
 
+/-- **Interior-window identity** (Phase J, seq side — descent-locator positional bridge, slice half).
+    When the array window `[lo, hi]` (positions `lo … hi`, captured as the list slice
+    `(tokens.toList.take (hi+1)).drop lo`) equals a bracket entry's interior-plus-close
+    `interior ++ [cl]`, the `interior` alone is the inner window `[lo, hi)` —
+    `(tokens.toList.take hi).drop lo`.  Pure list/array slicing (no balance reasoning): peel the
+    last element `tokens[hi]` off `take (hi+1)` via `List.take_add_one`, then
+    `List.drop_append_of_le_length` (`lo ≤ hi = |take hi|`) moves the `drop` inside, leaving
+    `(take hi).drop lo ++ [tokens[hi]] = interior ++ [cl]`, and `append_singleton_inj` reads off
+    `interior = (take hi).drop lo` (and `cl = tokens[hi]`).  This is the slice half of the
+    descent-locator's positional bridge — it turns the recursive deliverable's structural `interior`
+    (a `List`, the `RecSeqEntry.seq.h_rec` argument) into the *positionally windowed* form
+    `(tokens.toList.take hi).drop lo` that `seqBodyProps_of_windowed_safebody` is keyed on; the
+    remaining half (which `RecSeqEntry` of the windowed body a guarded balanced subrange selects, via
+    its `tokens[lo-1]` opener) is the locator's structural front end. -/
+theorem interior_window_eq (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (interior : List (Positioned YamlToken)) (cl : Positioned YamlToken)
+    (h_lo_hi : lo ≤ hi) (h_hi_sz : hi < tokens.size)
+    (h_window : (tokens.toList.take (hi + 1)).drop lo = interior ++ [cl]) :
+    interior = (tokens.toList.take hi).drop lo := by
+  have h_hi_len : hi < tokens.toList.length := by rw [Array.length_toList]; exact h_hi_sz
+  have h_ts : tokens.toList.take (hi + 1)
+      = tokens.toList.take hi ++ [tokens.toList[hi]] := by
+    rw [List.take_add_one, List.getElem?_eq_getElem h_hi_len]; rfl
+  rw [h_ts] at h_window
+  have h_len : lo ≤ (tokens.toList.take hi).length := by
+    rw [List.length_take]; omega
+  rw [List.drop_append_of_le_length h_len] at h_window
+  exact ((append_singleton_inj h_window).1).symm
+
+/-- **Located-`RecSeqBody` → `SeqBodyProps` consumer joint** (Phase J, seq side).  Combines the
+    descent-locator's deliverable with the consumer joint in one step: given a guarded balanced
+    flow-SEQUENCE subrange `[lo, hi)` (the bracket facts `h_tpe`/`h_outer_bal`/`h_dyck`/
+    `h_wt_interior` + the content-start head, exactly as `seqBodyProps_of_windowed_safebody`) whose
+    array window `(tokens.toList.take (hi+1)).drop lo` is a bracket entry's `interior ++ [cl]`, AND
+    the descent has handed back that `interior`'s recursive structure `RecSeqBody interior` (the
+    `RecSeqEntry.seq_interior` non-empty disjunct), assemble `SeqBodyProps tokens lo hi`.
+
+    The window identity `interior_window_eq` rewrites the structural `interior` into the positionally
+    windowed `(tokens.toList.take hi).drop lo`, so `RecSeqBody.toSafeBody`/`.toSafeBodyUnit` deliver
+    exactly the windowed `SafeBody`/`SafeBodyUnit ContentStartTok` that
+    `seqBodyProps_of_windowed_safebody` consumes — closing the back half of the descent-locator:
+    *once an entry's interior is located as `RecSeqBody`, its `SeqBodyProps` at the absolute window
+    follows with no further structural work.*  `content_start` is taken positionally here (the front
+    end supplies it; it is also `(toSafeBody).head_Q`).  What remains upstream is purely the locate
+    itself — pairing a guarded subrange's `tokens[lo-1]` opener to its `RecSeqEntry`, then descending
+    via `seq_interior` (empty branch → `seqBodyProps_empty`, this lemma's non-empty branch otherwise). -/
+theorem seqBodyProps_of_recseqbody_window (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (interior : List (Positioned YamlToken)) (cl : Positioned YamlToken)
+    (h_lo_hi : lo ≤ hi) (h_hi_sz : hi < tokens.size)
+    (h_tpe : tokens[hi]!.val = .flowSequenceEnd)
+    (h_outer_bal : flowBracketBalance tokens lo hi = 0)
+    (h_dyck : ∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0)
+    (h_wt_interior : WellTyped ((tokens.toList.take hi).drop lo))
+    (h_content_start : isFlowContentStart tokens[lo]!.val)
+    (h_window : (tokens.toList.take (hi + 1)).drop lo = interior ++ [cl])
+    (h_rec : RecSeqBody interior) :
+    SeqBodyProps tokens lo hi := by
+  have h_eq : interior = (tokens.toList.take hi).drop lo :=
+    interior_window_eq tokens lo hi interior cl h_lo_hi h_hi_sz h_window
+  exact seqBodyProps_of_windowed_safebody tokens lo hi (Nat.le_of_lt h_hi_sz) h_tpe
+    h_outer_bal h_dyck h_wt_interior h_content_start (h_eq ▸ h_rec.toSafeBody)
+    (h_eq ▸ h_rec.toSafeBodyUnit)
+
 /-- **Parametric `MapBodyProps` assembler** (Phase J seed, map side).  The map-side mirror of
     `seqBodyProps_assemble`: given an arbitrary balanced flow-MAPPING subrange `[lo, hi)` —
     `tokens[hi]! = .flowMappingEnd`, total balance `0`, Dyck prefixes, interior `WellTyped` — together
