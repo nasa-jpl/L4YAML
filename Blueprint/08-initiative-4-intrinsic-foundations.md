@@ -2116,7 +2116,7 @@ locator is built; and BOTH body-props *assemblers* are now extracted parametric 
 `seqBodyProps_assemble`, commit `45fe7417`, and `mapBodyProps_assemble`, commit `005fb9f2` — so the
 *assemble* half of producing BOTH `FlowSubrangesOk` fields is done. Both
 structure sorries are now the IDENTICAL structural residual `FlowSubrangesOk tokens` (`NonemptyStructure.lean`
-1253 seq / 1494 map), so one Phase-J producer closes both. **AND `FlowSubrangesOk` is now GUARDED so the
+1335 seq / 1576 map), so one Phase-J producer closes both. **AND `FlowSubrangesOk` is now GUARDED so the
 producer goal is provable** (commit `02988022`, Reflection 229): the unguarded form was *false* — its fields
 quantify over every balanced subrange ending in a close, including a misaligned one starting mid-body on a
 depth-0 `.flowEntry` (for `[a, b]`, the subrange `lo=3,hi=5` passes all premises yet `tokens[3]=.flowEntry`
@@ -2174,16 +2174,20 @@ half — when the array window `(tokens.toList.take (hi+1)).drop lo` is a bracke
 the `interior` alone is the inner window `(tokens.toList.take hi).drop lo`; pure list slicing, no balance) +
 `seqBodyProps_of_recseqbody_window` (rewrites the structural `interior` into the windowed form so
 `RecSeqBody.toSafeBody`/`.toSafeBodyUnit` feed `seqBodyProps_of_windowed_safebody`), closing
-*"located `RecSeqBody interior` at `[lo,hi)` → `SeqBodyProps tokens lo hi`."* The remaining next-session
-targets (seq side, in order): the descent-locator's **structural FRONT end** — pairing a guarded subrange
-`[lo,hi)`'s `tokens[lo-1]` opener to *which* `RecSeqEntry` of the windowed outer body it selects (so that the
-entry's `interior` is exactly the `(take (hi+1)).drop lo` window `interior_window_eq` consumes), plus the
-**outer recursion** composing the now-landed single-level steps for deeper subranges, fed to
-`seqBodyProps_of_recseqbody_window` → `FlowSubrangesOk.seq` — and the **emit producer**
-(`emitList_scans_safebody` strengthened to deliver `RecSeqBody` — the recursive `h_rec` at each `seq` entry
-comes from the per-item `ih`). The map side mirrors with `RecMapBody`.
+*"located `RecSeqBody interior` at `[lo,hi)` → `SeqBodyProps tokens lo hi`."* **And the descent-locator's
+FRONT-END CONSUMER is now LANDED** (commit `abc4b829`, Reflection 237): `seqBodyProps_of_located_entry`
+consumes the locator's not-yet-produced output — `RecSeqEntry` of a guarded subrange's absolute *opener-window*
+`(tokens.toList.take (hi+1)).drop (lo-1)` — and assembles `SeqBodyProps tokens lo hi` by pure coordinate
+arithmetic (peel the opener via `List.getElem_cons_drop`; decompose the rest; descend via `seq_interior`;
+non-empty → the back half `seqBodyProps_of_recseqbody_window`, empty → `lo = hi` → `seqBodyProps_empty`),
+recovering content-start from `toSafeBody.head_Q`. The seq-side residual now collapses to the **pure locate
+correspondence**: the descent-locator's *front end* — pairing a guarded subrange `[lo,hi)`'s `tokens[lo-1]`
+opener to *which* `RecSeqEntry` of the emitted body it selects (so the opener-window *is* that entry) — plus
+the **emit producer** (`emitList_scans_safebody` strengthened to deliver `RecSeqBody` — the recursive `h_rec`
+at each `seq` entry comes from the per-item `ih`). No positional plumbing remains downstream of locate. The
+map side mirrors with `RecMapBody`.
 
-> **Frontier (post-Reflection 236, commit `e0f70fcd`).** The `(d-shape)` algebra is complete
+> **Frontier (post-Reflection 237, commit `abc4b829`).** The `(d-shape)` algebra is complete
 > (the bracket conjuncts are correctly guarded — Reflection 218 — AND their `h_succ` substrate, the
 > value-end successor `EntryUnit` / `SafeBodyUnit_succ` / `SafeBodyUnit_array_succ`, exists —
 > Reflection 219), and the **sequence side** of threading `EntryUnit` through the producers is now
@@ -2362,17 +2366,25 @@ comes from the per-item `ih`). The map side mirrors with `RecMapBody`.
 > *"located `RecSeqBody interior` at `[lo,hi)` (+ the positional bracket facts) → `SeqBodyProps tokens lo hi`."*
 > So once an entry's interior is *located* as a `RecSeqBody`, its `SeqBodyProps` follows with no further
 > structural work. Build green 523 jobs, sorries held at 4, both lemmas axiom-clean (no `sorryAx`).
+> **And the descent-locator's FRONT-END CONSUMER is now LANDED** (Reflection 237, commit `abc4b829`):
+> `seqBodyProps_of_located_entry` consumes the locator's not-yet-produced output — `RecSeqEntry` of a guarded
+> subrange's absolute *opener-window* `(take (hi+1)).drop (lo-1)` — and produces `SeqBodyProps tokens lo hi`
+> by coordinate arithmetic only (peel the opener `List.getElem_cons_drop`; decompose the rest; descend via
+> `seq_interior`; non-empty → the back half, empty → `lo = hi` → `seqBodyProps_empty`), recovering
+> content-start from `toSafeBody.head_Q`. So the whole positional chain from a located entry to `SeqBodyProps`
+> is now proven end-to-end. Build green 523 jobs, sorries held at 4, axiom-clean.
 > **Immediate next sub-bricks (two, in
 > order):** both are now the `lo < hi` branch only (the `lo = hi` branch is closed by the empty-body leaves
 > above), and the seq side now factors through the `RecSeqBody` deliverable: (a) the **descent-locator**
 > `RecSeqBody (outer body) → ∀ nested guarded balanced subrange [lo,hi) with lo < hi, windowed
 > `SafeBody`/`SafeBodyUnit` at [lo,hi)` — the single-level *step* `seq_interior`/`map_interior` (descend one
-> level) AND the *back half* `interior_window_eq` / `seqBodyProps_of_recseqbody_window` (located interior →
-> `SeqBodyProps`) are DONE (above); what remains is the descent-locator's **structural FRONT end** (pairing a
-> guarded subrange `[lo,hi)`'s `tokens[lo-1]` opener to *which* `RecSeqEntry` of the windowed body it selects,
-> so the entry's `interior` is exactly the `(take (hi+1)).drop lo` window) and the **outer recursion**
-> composing the per-level steps for deeper subranges → then feed `seqBodyProps_of_recseqbody_window` →
-> `FlowSubrangesOk.seq`; and (b) the **emit producer**
+> level), the *back half* `interior_window_eq` / `seqBodyProps_of_recseqbody_window` (located interior →
+> `SeqBodyProps`), AND the *front-end consumer* `seqBodyProps_of_located_entry` (located ENTRY → `SeqBodyProps`,
+> the whole positional chain) are DONE (above); what remains is the **pure locate correspondence** — pairing a
+> guarded subrange `[lo,hi)`'s `tokens[lo-1]` opener to *which* `RecSeqEntry` of the emitted body it selects
+> (so the opener-window `(take (hi+1)).drop (lo-1)` *is* that entry, the exact input `seqBodyProps_of_located_entry`
+> consumes), walking the body's `RecSeqBody`/`RecSeqEntry` structure by balance → then feed
+> `seqBodyProps_of_located_entry` → `FlowSubrangesOk.seq`; and (b) the **emit producer**
 > `emitList_scans_safebody` strengthened to deliver `RecSeqBody` (it already produces the flat `SafeBody`;
 > the recursive `h_rec` at each `seq` entry comes from the per-item `ih` applied to the nested sequence's
 > own items). Together they close the seq `FlowSubrangesOk.seq` field; the map side mirrors with a
@@ -2380,9 +2392,9 @@ comes from the per-item `ih`). The map side mirrors with `RecMapBody`.
 > (key→content, key→value, value→content, value→successor, and the two value-close-guarded bracket
 > successors) need the pair-level refinement — a map *pair* `.key block_k .value block_v` has an interior
 > depth-0 `.value`, so the whole pair is NOT an `EntryUnit`. Both fields together build the one
-> `FlowSubrangesOk tokens` shared by sorries 1253/1494 → `flow_parser_ok_of_structure`
+> `FlowSubrangesOk tokens` shared by sorries 1335/1576 → `flow_parser_ok_of_structure`
 > (`FlowParserAcceptance.lean`) at `(2, tokens.size−2)`, `fuel = 4·tokens.size+4` → close the two
-> `NonemptyStructure.lean` structure sorries (1253/1494) → the two base
+> `NonemptyStructure.lean` structure sorries (1335/1576) → the two base
 > `emit_roundtrip_{sequence,mapping}_content_eq` (`EmitterScannability.lean` 832/872) →
 > `universal_roundtrip`.
 
@@ -15361,6 +15373,24 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
+                **Total .body scope re-estimate (EIGHTY-FIFTH revision —
+                after **Thread A step 3 sub-step 2's brick (d-shape) cont'd — *descent-locator FRONT-END
+                CONSUMER `seqBodyProps_of_located_entry`* — landed** (commit `abc4b829`, Reflection 237).
+                The consumer-joint-before-producer reshape applied at the *locate* boundary: it consumes the
+                locator's not-yet-produced output — `RecSeqEntry` of a guarded subrange's absolute
+                *opener-window* `(tokens.toList.take (hi+1)).drop (lo-1)` — and assembles `SeqBodyProps tokens
+                lo hi` by coordinate arithmetic over already-proven atoms: peel the opener
+                (`List.getElem_cons_drop`, `1 ≤ lo`) → `op :: rest`; decompose `rest`
+                (`List.take_add_one` + `List.drop_append_of_le_length`) → interior-window `++ [closer]`;
+                descend via `RecSeqEntry.seq_interior`; non-empty → the back half
+                `seqBodyProps_of_recseqbody_window`, empty (`interior = []` ⇒ `lo = hi`) → `seqBodyProps_empty`;
+                content-start recovered for free from `RecSeqBody.toSafeBody.head_Q` (windowed head index
+                `((·).drop lo)[0] = tokens[lo]`). The whole seq-side positional chain (opener-window → entry →
+                interior → `SafeBody` → `SeqBodyProps`) is now proven end-to-end; the residual collapses to the
+                **pure locate correspondence** — "every guarded balanced flow-sequence subrange's opener-window
+                is a `RecSeqEntry` of the emitted body" — plus the emit producer strengthening. Build green
+                **523 jobs**, **sorries held at 4**; `seqBodyProps_of_located_entry` axiom-clean `[propext,
+                Classical.choice, Quot.sound]` (no `sorryAx`). See Reflection 237, on top of the
                 **Total .body scope re-estimate (EIGHTY-FOURTH revision —
                 after **Thread A step 3 sub-step 2's brick (d-shape) cont'd — *descent-locator BACK HALF
                 `interior_window_eq` / `seqBodyProps_of_recseqbody_window`* — landed** (commit `e0f70fcd`,
@@ -25706,3 +25736,7 @@ With the recursive deliverable `RecSeqBody` defined and projected (Reflection 23
 ### Reflection 236 (new, 2026-06-02): a recursive descent's positional bridge splits into a *slice* half (pure list arithmetic) and a *locate* half (balance↔structure) — land the slice half NOW; it is self-contained, reuses the single-level step's glue, and reduces the descent to "located interior → consumer" so only the genuinely analytical locate remains
 
 The single-level descent step (Reflection 235) recovers a nested entry's interior as a `List` (`RecSeqEntry.seq.h_rec : RecSeqBody interior`). But the consumer joint `seqBodyProps_of_windowed_safebody` is keyed on the *positionally windowed* form `(tokens.toList.take hi).drop lo` — a slice of the token array, not an abstract list. Bridging the two is the descent-locator's **positional bridge**, and the temptation is to treat it as one monolith that needs balance reasoning (which entry of the body does a guarded subrange `[lo,hi)` select?). It is not a monolith — it cleanly *factors*: (a) a **slice** half — "given that the array window `(tokens.toList.take (hi+1)).drop lo` *equals* a bracket entry's `interior ++ [cl]`, conclude `interior = (tokens.toList.take hi).drop lo`" — and (b) a **locate** half — "which entry of the windowed outer body does `[lo,hi)`'s `tokens[lo-1]` opener select, and why is its `interior` exactly that window." Only (b) needs balance↔structure correspondence; (a) is pure list/array slicing. So (a) is fully provable *now*, before (b) is designed, and it is worth landing first: `interior_window_eq` peels the last element `tokens[hi]` off `take (hi+1)` (`List.take_add_one` + `List.getElem?_eq_getElem`), pushes the `drop lo` inside the resulting append (`List.drop_append_of_le_length`, discharged by `lo ≤ hi = |take hi|`), and reads `interior` off the trailing-singleton equation with the *same* `append_singleton_inj` the single-level step already used — no new machinery. Then `seqBodyProps_of_recseqbody_window` composes it with `RecSeqBody.toSafeBody`/`.toSafeBodyUnit` and `seqBodyProps_of_windowed_safebody` to close the entire back half in one lemma: *from a located `RecSeqBody interior` at the window `[lo,hi)` (plus the positional bracket facts), `SeqBodyProps tokens lo hi` follows with zero further structural work.* The general lesson: a positional/structural bridge in a token-array proof typically separates into a *coordinate* lemma (slicing arithmetic, no semantics) and a *correspondence* lemma (the analytical content), and the coordinate lemma is the cheap, certain, immediately-landable atom that shrinks the remaining bridge to exactly its analytical core — recognizing the seam is what turns a daunting "positional bridge" into one provable-today lemma plus a smaller, sharply-scoped residual. The slice lemma also reuses the prior atom's glue (`append_singleton_inj`), a sign the seam was cut in the right place. Build green 523 jobs, sorries held at 4, `interior_window_eq` axiom-clean `[propext, Quot.sound]` and `seqBodyProps_of_recseqbody_window` `[propext, Classical.choice, Quot.sound]` (no `sorryAx`). Sits with [[ref-recursive-deliverable-project-to-flat-first]] and [[ref-consumer-joint-before-producer]] (this is the wire from the recursive deliverable's interior to the consumer joint's windowed input) and [[ref-array-wrapper-window-generalization]] (both turn on getting a token-array window's `take`/`drop` coordinates exactly right; here the window is `[lo, hi)` carved out of `[lo, hi]` by peeling the close).
+
+### Reflection 237 (new, 2026-06-03): build the consumer of the descent-locator's *not-yet-produced output* (a located ENTRY) before the locate itself — it costs only coordinate arithmetic over already-proven atoms, collapses the whole positional chain to ONE structural residual ("the opener-window is a `RecSeqEntry`"), and cannot regress
+
+The back half (Reflection 236) closes *"located `RecSeqBody interior` at `[lo,hi)` → `SeqBodyProps`"* — but it is keyed on the *interior* window `(take (hi+1)).drop lo` and on already knowing the interior is a `RecSeqBody`. The descent-locator's actual output, one step earlier, is coarser and more natural: it will hand back a `RecSeqEntry` of the **whole emitted body** that happens to sit at a guarded subrange — i.e. `RecSeqEntry` of the *opener*-window `(take (hi+1)).drop (lo-1)` (opener included, interior not yet extracted). The move (a [[ref-consumer-joint-before-producer]] application at the *locate* boundary): write the consumer of that not-yet-produced `RecSeqEntry` **now**, as bare hypothesis `h_entry : RecSeqEntry ((take (hi+1)).drop (lo-1))`, and prove `seqBodyProps_of_located_entry` reaches `SeqBodyProps tokens lo hi`. The crucial property — the reason this is a certain one-increment brick and not the analytical residual in disguise — is that *everything between the located entry and the goal is coordinate arithmetic over atoms that already exist*: peel the opener (`List.getElem_cons_drop`, using `1 ≤ lo` and `lo-1+1 = lo`) to expose the `op :: rest` shape; decompose `rest` with the back half's own slice (`List.take_add_one` + `List.drop_append_of_le_length`) into interior-window `++ [closer]`; feed `RecSeqEntry.seq_interior` (the opener guard gives `op.val = .flowSequenceStart` after a `getElem!_pos`/`Array.getElem_toList` bridge) to descend one level; route its two disjuncts to the two leaves *already proved* — non-empty → `seqBodyProps_of_recseqbody_window` (Reflection 236), empty (`interior = []` ⇒ `lo = hi` by `List.length_drop`/`length_take`) → `seqBodyProps_empty` (Reflection 233). Even the back half's one remaining input it did not supply — `isFlowContentStart tokens[lo]!.val` — is *recovered* here for free from the located body itself (`RecSeqBody.toSafeBody.head_Q` gives `ContentStartTok` of the head, and the windowed-slice head index `((·).drop lo)[0] = tokens[lo]` identifies it, the predicates being defeq), so the lemma demands only `FlowSubrangesOk.seq`'s genuine guards. The payoff: the entire seq-side positional chain — opener-window → entry → interior → `SafeBody` → `SeqBodyProps` — is now proven end-to-end, and the residual collapses to a *single* structural fact with no positional plumbing left in it: **"every guarded balanced flow-sequence subrange's opener-window is a `RecSeqEntry` of the emitted body."** That is the pure locate correspondence (balance↔structure), the one genuinely analytical thing remaining on the seq side, now sharply isolated. The general lesson, the consumer-joint pattern pushed one boundary further than usual: when the next producer (here the locate) is the hard analytical step, don't stop at building the consumer of its *final* deliverable — build the consumer of its *raw, earliest* output (the coarsest thing it will hand back), because the distance from that raw output to the goal is often pure plumbing over lemmas you already have, and absorbing that plumbing *now* (when it cannot regress — the build is green and fully proven) leaves the producer with the smallest, most purely-analytical contract possible. Build green 523 jobs, sorries held at 4, `seqBodyProps_of_located_entry` axiom-clean `[propext, Classical.choice, Quot.sound]` (no `sorryAx`). Sits with [[ref-consumer-joint-before-producer]] (this is that reshape applied at the locate boundary, to the locator's raw output rather than its refined one), [[ref-recursive-deliverable-project-to-flat-first]] and the Reflection 236 slice/locate factoring (this consumes the *locate* half's output, leaving locate as the sole residual).
