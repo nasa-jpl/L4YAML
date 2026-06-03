@@ -423,6 +423,37 @@ theorem seqBodyProps_assemble (tokens : Array (Positioned YamlToken)) (lo hi : N
       h_bal_k h_open h_outer_bal h_dyck h_wt_interior
       (fun j hkj hjhi hd hb => h_succ_guarded j (by omega) hjhi hd hb)
 
+/-- **Empty-body leaf** (Phase J, seq side).  An empty nested flow-SEQUENCE body — `lo = hi`, the
+    shape `emit (.sequence … #[]) = "[]"` scans to (`[` immediately followed by `]`, so the interior
+    `[lo, hi)` is empty) — satisfies `SeqBodyProps` *vacuously*: `content_start` is guarded by
+    `lo < hi` and every other field by `∀ k, lo ≤ k → k < hi`, all unsatisfiable when `lo = hi`.
+
+    This is the `lo = hi` branch of the `FlowSubrangesOk.seq` producer, the complement of the
+    `lo < hi` consumer joint `seqBodyProps_of_windowed_safebody`.  The split is essential: the
+    consumer joint needs a `SafeBody`, which has **no `nil` constructor** and so cannot represent an
+    empty body — and is correctly never required here, because an empty body's `SeqBodyProps` is
+    vacuous.  So the empty case is sound to discharge separately, and the consumer-joint architecture
+    (`SafeBody`-keyed) is sound precisely because it is only ever instantiated at `lo < hi`. -/
+theorem seqBodyProps_empty (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (h : lo = hi) : SeqBodyProps tokens lo hi := by
+  subst h
+  exact ⟨fun h => absurd h (by omega), fun k h1 h2 => (by omega : False).elim,
+    fun k h1 h2 => (by omega : False).elim, fun k h1 h2 => (by omega : False).elim,
+    fun k h1 h2 => (by omega : False).elim⟩
+
+/-- **Empty-body leaf** (Phase J, map side).  The map mirror of `seqBodyProps_empty`: an empty nested
+    flow-MAPPING body (`emit (.mapping … #[]) = "{}"`, interior `[lo, hi)` empty) satisfies
+    `MapBodyProps tokens lo hi` vacuously — `key_start` is guarded by `lo < hi`, M2–M10 by
+    `∀ k, lo ≤ k → k < hi`.  The `lo = hi` branch of `FlowSubrangesOk.map`. -/
+theorem mapBodyProps_empty (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (h : lo = hi) : MapBodyProps tokens lo hi := by
+  subst h
+  exact ⟨fun h => absurd h (by omega), fun k h1 h2 => (by omega : False).elim,
+    fun k h1 h2 => (by omega : False).elim, fun k h1 h2 => (by omega : False).elim,
+    fun k h1 h2 => (by omega : False).elim, fun k h1 h2 => (by omega : False).elim,
+    fun k h1 h2 => (by omega : False).elim, fun k h1 h2 => (by omega : False).elim,
+    fun k h1 h2 => (by omega : False).elim, fun k h1 h2 => (by omega : False).elim⟩
+
 /-- **Windowed-`SafeBody` → `SeqBodyProps` consumer joint** (Phase J, seq side).  Given a guarded
     balanced flow-SEQUENCE subrange `[lo, hi)` (close `.flowSequenceEnd`, total balance `0`, Dyck
     prefixes, interior `WellTyped`) together with the recursive *deliverable* of the body producer —
