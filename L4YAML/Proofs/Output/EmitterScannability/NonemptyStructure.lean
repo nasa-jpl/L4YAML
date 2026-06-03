@@ -1497,6 +1497,314 @@ theorem emitPairList_scans_recmapbody (pairs : List (YamlValue × YamlValue))
         exact RecMapBody.cons _ feTok block_rest (by exact List.cons_ne_nil _ _)
           h_pair (by rfl) h_feTok_val h_rec_rest
 
+/-! ### Emit-producer strengthening — value-side `RecSeqEntry` deliverable (Phase J feed)
+
+The per-value producer `emit_scans_in_flow_rec_entry : Grammable v inFlow → EmitScansInFlowRecEntry v`
+closes the value half of the emit feed: it strengthens the flat block producer `emit_scans_in_flow_block`
+to additionally deliver `RecSeqEntry block`, the per-item recursive deliverable both
+`emitList_scans_recseqbody` (every seq item) and `emitPairList_scans_recmapbody` (every map value)
+read as a bare hypothesis.  It is **self-contained** — a single `Grammable` induction:
+
+  * `scalar` → `RecSeqEntry.scalar` (the single token is the entry);
+  * `sequence` → `RecSeqEntry.seqEmpty`/`RecSeqEntry.seq`, the body block scanned by
+    `emitList_scans_recseqbody` fed by this induction's own IH (per-item `EmitScansInFlowRecEntry`);
+  * `mapping` → `RecSeqEntry.map`, which **stores only `WellBracketed interior`** (R244 — projections track
+    stored fields), already supplied by the flat mapping proof, so the value side needs **no** map-body
+    recursion and **no** saved-key dependency.  The flat conjuncts are re-derived verbatim from the flat
+    combined producer's `block` cases, with the map case's per-pair key/value sub-producers supplied by the
+    black-box flat wrappers `emit_scans_in_flow_saved_key_block`/`emit_scans_in_flow_block`.
+
+The proof is a verbatim mirror of `emit_scans_block_combined`'s three `block` cases; only the per-entry
+`RecSeqEntry` leaf is woven in (and the seq body scan swapped for its recursive twin).
+Verified-but-unconsumed: references no sorry site, frontier sorry count unchanged. -/
+set_option maxHeartbeats 1600000 in
+theorem emit_scans_in_flow_rec_entry (v : YamlValue) {inFlow : Bool}
+    (hg : Grammable v inFlow) : EmitScansInFlowRecEntry v := by
+  induction hg with
+  | scalar sc _ h =>
+      intro s_state rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline _h_sync
+      have h_chars : (emit (.scalar sc)).toList ++ rest =
+          ['"'] ++ (escapeString sc.content).toList ++ ['"'] ++ rest := by
+        simp only [emit, emitScalar, String.toList_append]; rfl
+      have hcorr' : ScannerSurfCorr s_state
+          ⟨['"'] ++ (escapeString sc.content).toList ++ ['"'] ++ rest, s_state.col⟩ := by
+        rwa [← h_chars]
+      have hcorr_q : ScannerSurfCorr s_state
+          ⟨'"' :: ((escapeString sc.content).toList ++ ['"'] ++ rest), s_state.col⟩ := by
+        have : ['"'] ++ (escapeString sc.content).toList ++ ['"'] ++ rest =
+            '"' :: ((escapeString sc.content).toList ++ ['"'] ++ rest) := by
+          simp only [List.cons_append, List.nil_append, List.append_assoc]
+        rwa [this] at hcorr'
+      obtain ⟨s', h_snt, h_corr', h_fl', h_dp', h_ids', h_ek', h_col', h_tok', h_ska', _h_line', h_atol', h_endline', h_stack'⟩ :=
+        scanNextToken_flow_scanDoubleQuoted s_state sc.content rest hcorr' h_flow h_indent h_col
+          h_atol h_endline
+      have h_grew : (s'.tokens.filter (fun t => t.val != .placeholder)).size >
+                    (s_state.tokens.filter (fun t => t.val != .placeholder)).size :=
+        scanNextToken_filtered_grows_in_flow s_state s' '"'
+          ((escapeString sc.content).toList ++ ['"'] ++ rest) hcorr_q
+          h_flow h_indent h_col (by decide) (by decide) (by decide) h_snt
+      obtain ⟨tok, str, st, h_tok_val, h_push⟩ :=
+        scanNextToken_flow_scalar_filtered_push s_state ((escapeString sc.content).toList ++ ['"'] ++ rest)
+          hcorr_q h_flow h_indent h_col h_snt
+      refine ⟨1, s', [tok], ScanChainGrew.single h_snt h_grew, h_corr', h_fl', h_dp', h_ids', h_ek',
+        h_col', ?_, ?_, _h_line', h_ska', h_tok', h_atol', h_endline', h_stack',
+        FlowMonoChain.single h_snt (Nat.le.refl) (by omega), ?_, ?_, ?_, ?_,
+        EntryUnit_scalar tok str st h_tok_val, RecSeqEntry.scalar tok str st h_tok_val, ?_⟩
+      · unfold ScannerState.inFlow; rw [h_fl']
+        unfold ScannerState.inFlow at h_flow; exact h_flow
+      · unfold ScannerState.currentIndent; rw [h_ids']; exact h_indent
+      · rw [h_push, Array.toList_push]
+      · exact WellBracketed_singleton_delta_zero tok (by rw [h_tok_val]; exact flowBracketDelta_scalar str st)
+      · exact WellTyped_singleton_delta_zero tok (by rw [h_tok_val]; exact flowBracketDelta_scalar str st)
+      · exact EntrySafe_scalar tok str st h_tok_val
+      · exact ⟨List.cons_ne_nil _ _, Or.inl ⟨str, st, by rw [List.head_cons]; exact h_tok_val⟩⟩
+  | sequence style items tag anchor _ h ih =>
+      intro s_state rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_sync
+      have h_chars : (emit (.sequence style items tag anchor)).toList ++ rest =
+          ['['] ++ (emit.emitList items.toList).toList ++ [']'] ++ rest := by
+        simp only [emit, String.toList_append]; rfl
+      have hcorr₀ := hcorr; rw [h_chars] at hcorr₀
+      have h_corr_state_cons : ScannerSurfCorr s_state
+          ⟨'[' :: ((emit.emitList items.toList).toList ++ [']'] ++ rest), s_state.col⟩ := by
+        have : ['['] ++ (emit.emitList items.toList).toList ++ [']'] ++ rest =
+            '[' :: ((emit.emitList items.toList).toList ++ [']'] ++ rest) := by
+          simp only [List.cons_append, List.nil_append, List.append_assoc]
+        rwa [this] at hcorr₀
+      obtain ⟨s₁, h_snt₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_ek₁, h_col₁, _h_line₁, h_atol₁, h_endline₁, h_stack_endline₁, h_stack_pop₁, _h_sk_poss₁, _h_toks_gt₁, h_stack_push₁⟩ :=
+        scanNextToken_flow_open_nested s_state
+          ((emit.emitList items.toList).toList ++ [']'] ++ rest) hcorr₀ h_flow h_indent h_col
+          h_atol h_endline
+      have h_fl₁_ge2 : s₁.flowLevel ≥ 2 := by rw [h_fl₁]; omega
+      have h_s1_inflow : s₁.inFlow = true := by
+        unfold ScannerState.inFlow; exact decide_eq_true (by rw [h_fl₁]; omega)
+      have h_s1_indent : s₁.currentIndent < 0 := by
+        unfold ScannerState.currentIndent; rw [h_ids₁]; exact h_indent
+      have h_s1_col : s₁.col > 0 := by rw [h_col₁]; omega
+      have h_s1_sync : s₁.simpleKeyStack.size = s₁.flowLevel := by
+        rw [h_stack_push₁, Array.size_push, h_sync, h_fl₁]
+      obtain ⟨fssTok, h_fss_val, h_open_push⟩ :=
+        scanNextToken_flow_open_seq_filtered_push s_state
+          ((emit.emitList items.toList).toList ++ [']'] ++ rest)
+          h_corr_state_cons h_flow h_indent h_col h_snt₁
+      have h_corr₁_assoc : ScannerSurfCorr s₁
+          ⟨(emit.emitList items.toList).toList ++ ([']'] ++ rest), s₁.col⟩ := by
+        rw [List.append_assoc] at h_corr₁; exact h_corr₁
+      obtain ⟨n₂, s₂, bodyBlock, h_chain₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, h_ek₂, h_col₂,
+              h_s2_inflow, h_s2_indent, _h_line₂, h_atol₂, h_endline₂, h_stack₂, h_fmc₂,
+              h_body_append, h_body_wb, h_body_wt, h_entry_builder⟩ :
+          (∃ n₂ s₂ bodyBlock,
+            ScanChainGrew (fun t => t.val != .placeholder) s₁ n₂ s₂
+            ∧ ScannerSurfCorr s₂ ⟨[']'] ++ rest, s₂.col⟩
+            ∧ s₂.flowLevel = s₁.flowLevel
+            ∧ s₂.directivesPresent = s₁.directivesPresent
+            ∧ s₂.indents = s₁.indents
+            ∧ s₂.explicitKeyLine = s₁.explicitKeyLine
+            ∧ s₂.col > 0
+            ∧ s₂.inFlow = true
+            ∧ s₂.currentIndent < 0
+            ∧ s₂.line = s₁.line
+            ∧ AllTokensOnLine s₂ s₂.line
+            ∧ EndLineOnLine s₂
+            ∧ s₂.simpleKeyStack = s₁.simpleKeyStack
+            ∧ FlowMonoChain s₁.flowLevel s₁ n₂ s₂
+            ∧ (s₂.tokens.filter (fun t => t.val != .placeholder)).toList
+                = (s₁.tokens.filter (fun t => t.val != .placeholder)).toList ++ bodyBlock
+            ∧ WellBracketed bodyBlock
+            ∧ WellTyped bodyBlock
+            ∧ (∀ (fss fse : Positioned YamlToken),
+                fss.val = .flowSequenceStart → fse.val = .flowSequenceEnd →
+                  RecSeqEntry (fss :: (bodyBlock ++ [fse])))) := by
+        match h_list : items.toList with
+        | [] =>
+          refine ⟨0, s₁, [], .zero, ?_, rfl, rfl, rfl, rfl, h_s1_col, h_s1_inflow, h_s1_indent, rfl,
+                  h_atol₁, h_endline₁, rfl, .zero (Nat.le.refl), ?_, WellBracketed_nil, WellTyped_nil,
+                  fun fss fse hf1 hf2 => RecSeqEntry.seqEmpty fss fse hf1 hf2⟩
+          · have h_e : (emit.emitList items.toList).toList ++ ([']'] ++ rest) = [']'] ++ rest := by
+              rw [h_list]; simp only [emit.emitList]; rfl
+            rw [h_e] at h_corr₁_assoc; exact h_corr₁_assoc
+          · simp
+        | w :: ws =>
+          have h_all_rec : ∀ u ∈ (w :: ws), EmitScansInFlowRecEntry u := fun u hu => by
+            have hu' : u ∈ items.toList := h_list ▸ hu
+            have ⟨i, hi, h_eq⟩ := List.getElem_of_mem hu'
+            have h_sz : i < items.size := by rwa [Array.length_toList] at hi
+            exact h_eq ▸ ih ⟨i, h_sz⟩
+          obtain ⟨n₂, s₂, bodyBlock, h_chain₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, h_ek₂, h_col₂,
+                  h_s2_inflow, h_s2_indent, _h_line₂, h_atol₂, h_endline₂, h_stack₂, h_fmc₂,
+                  h_body_append, h_body_wb, h_body_wt, h_body_rec⟩ :=
+            emitList_scans_recseqbody (w :: ws) (by simp) h_all_rec s₁ ([']'] ++ rest)
+              (h_list ▸ h_corr₁_assoc) h_s1_inflow (by rw [h_fl₁]; omega) h_s1_indent h_s1_col
+              (by rw [h_ek₁]; exact h_ek) h_atol₁ h_endline₁ h_s1_sync
+          exact ⟨n₂, s₂, bodyBlock, h_chain₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, h_ek₂, h_col₂,
+                 h_s2_inflow, h_s2_indent, _h_line₂, h_atol₂, h_endline₂, h_stack₂, h_fmc₂,
+                 h_body_append, h_body_wb, h_body_wt,
+                 fun fss fse hf1 hf2 => RecSeqEntry.seq fss fse bodyBlock hf1 hf2 h_body_wb h_body_rec⟩
+      have h_fl₂_ge2 : s₂.flowLevel ≥ 2 := by rw [h_fl₂, h_fl₁]; omega
+      have h_stack_endline₂ : StackEndLineOnLine s₂ s₂.line := by
+        unfold StackEndLineOnLine at h_stack_endline₁ ⊢
+        rw [h_stack₂, _h_line₂]; exact h_stack_endline₁
+      obtain ⟨s₃, h_snt₃, h_corr₃, h_fl₃, h_dp₃, h_ids₃, h_ek₃, h_col₃, h_tok₃, h_ska₃, _h_line₃, h_atol₃, h_endline₃, h_stack₃, _, _⟩ :=
+        scanNextToken_flow_close_seq_nested s₂ rest h_corr₂ h_s2_inflow h_s2_indent h_col₂ h_fl₂_ge2
+          h_atol₂ h_stack_endline₂
+      have h_corr₂_cons : ScannerSurfCorr s₂ ⟨']' :: rest, s₂.col⟩ := by
+        have : [']'] ++ rest = ']' :: rest := by simp
+        rwa [this] at h_corr₂
+      obtain ⟨fseTok, h_fse_val, h_close_push⟩ :=
+        scanNextToken_flow_close_seq_filtered_push s₂ rest h_corr₂_cons h_s2_inflow h_s2_indent h_col₂
+          h_fl₂_ge2 h_snt₃
+      have h_fmc₂' : FlowMonoChain s_state.flowLevel s₁ n₂ s₂ := h_fmc₂.weaken (by omega)
+      have h_fmc_all :=
+        (FlowMonoChain.single h_snt₁ (Nat.le.refl) (by omega)).trans
+          (h_fmc₂'.trans (FlowMonoChain.single h_snt₃ (by omega) (by omega)))
+      have h_grew₁ : (s₁.tokens.filter (fun t => t.val != .placeholder)).size >
+                     (s_state.tokens.filter (fun t => t.val != .placeholder)).size :=
+        scanNextToken_filtered_grows_in_flow s_state s₁ '['
+          ((emit.emitList items.toList).toList ++ [']'] ++ rest)
+          h_corr_state_cons h_flow h_indent h_col (by decide) (by decide) (by decide) h_snt₁
+      have h_grew₃ : (s₃.tokens.filter (fun t => t.val != .placeholder)).size >
+                     (s₂.tokens.filter (fun t => t.val != .placeholder)).size :=
+        scanNextToken_filtered_grows_in_flow s₂ s₃ ']' rest
+          h_corr₂_cons h_s2_inflow h_s2_indent h_col₂ (by decide) (by decide) (by decide) h_snt₃
+      have h_block_eq : (s₃.tokens.filter (fun t => t.val != .placeholder)).toList
+          = (s_state.tokens.filter (fun t => t.val != .placeholder)).toList
+            ++ (fssTok :: (bodyBlock ++ [fseTok])) := by
+        have h1 : (s₁.tokens.filter (fun t => t.val != .placeholder)).toList
+            = (s_state.tokens.filter (fun t => t.val != .placeholder)).toList ++ [fssTok] := by
+          rw [h_open_push, Array.toList_push]
+        have h3 : (s₃.tokens.filter (fun t => t.val != .placeholder)).toList
+            = (s₂.tokens.filter (fun t => t.val != .placeholder)).toList ++ [fseTok] := by
+          rw [h_close_push, Array.toList_push]
+        rw [h3, h_body_append, h1]
+        simp only [List.append_assoc, List.cons_append, List.nil_append]
+      have h_wrap := wrap_seq_block fssTok fseTok bodyBlock h_fss_val h_fse_val h_body_wb
+      have h_wrap_t := wrap_seq_typed fssTok fseTok bodyBlock h_fss_val h_fse_val h_body_wt
+      refine ⟨(1 + n₂) + 1, s₃, fssTok :: (bodyBlock ++ [fseTok]),
+        (ScanChainGrew.single h_snt₁ h_grew₁).trans (h_chain₂.trans (ScanChainGrew.single h_snt₃ h_grew₃)),
+        h_corr₃, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, h_ska₃, h_tok₃, ?_, ?_, ?_, h_fmc_all,
+        h_block_eq, h_wrap.1, h_wrap_t, h_wrap.2,
+        EntryUnit_wrap fssTok fseTok bodyBlock (h_fss_val ▸ flowBracketDelta_flowSequenceStart)
+          (h_fse_val ▸ flowBracketDelta_flowSequenceEnd) h_body_wb, h_entry_builder fssTok fseTok h_fss_val h_fse_val, ?_⟩
+      · rw [h_fl₃, h_fl₂, h_fl₁]; omega
+      · rw [h_dp₃, h_dp₂, h_dp₁]
+      · rw [h_ids₃, h_ids₂, h_ids₁]
+      · rw [h_ek₃, h_ek₂, h_ek₁]
+      · rw [h_col₃]; omega
+      · unfold ScannerState.inFlow; exact decide_eq_true (by rw [h_fl₃, h_fl₂, h_fl₁]; omega)
+      · unfold ScannerState.currentIndent; rw [h_ids₃, h_ids₂, h_ids₁]; exact h_indent
+      · rw [_h_line₃, _h_line₂, _h_line₁]
+      · exact h_atol₃
+      · exact h_endline₃
+      · rw [h_stack₃, h_stack₂, h_stack_pop₁]
+      · exact ⟨List.cons_ne_nil _ _, Or.inr (Or.inl (by rw [List.head_cons]; exact h_fss_val))⟩
+  | mapping style pairs tag anchor _ hk hv ihk ihv =>
+      intro s_state rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_sync
+      have h_chars : (emit (.mapping style pairs tag anchor)).toList ++ rest =
+          ['{'] ++ (emit.emitPairList pairs.toList).toList ++ ['}'] ++ rest := by
+        simp only [emit, String.toList_append]; rfl
+      have hcorr₀ := hcorr; rw [h_chars] at hcorr₀
+      have h_corr_state_cons : ScannerSurfCorr s_state
+          ⟨'{' :: ((emit.emitPairList pairs.toList).toList ++ ['}'] ++ rest), s_state.col⟩ := by
+        have : ['{'] ++ (emit.emitPairList pairs.toList).toList ++ ['}'] ++ rest =
+            '{' :: ((emit.emitPairList pairs.toList).toList ++ ['}'] ++ rest) := by
+          simp only [List.cons_append, List.nil_append, List.append_assoc]
+        rwa [this] at hcorr₀
+      obtain ⟨s₁, h_snt₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_ek₁, h_col₁, _h_line₁, h_atol₁, h_endline₁, h_stack_endline₁, h_stack_pop₁, _h_sk_poss₁, _h_toks_gt₁, h_stack_push₁⟩ :=
+        scanNextToken_flow_open_mapping_nested s_state
+          ((emit.emitPairList pairs.toList).toList ++ ['}'] ++ rest) hcorr₀ h_flow h_indent h_col
+          h_atol h_endline
+      have h_fl₁_ge2 : s₁.flowLevel ≥ 2 := by rw [h_fl₁]; omega
+      have h_s1_inflow : s₁.inFlow = true := by
+        unfold ScannerState.inFlow; exact decide_eq_true (by rw [h_fl₁]; omega)
+      have h_s1_indent : s₁.currentIndent < 0 := by
+        unfold ScannerState.currentIndent; rw [h_ids₁]; exact h_indent
+      have h_s1_col : s₁.col > 0 := by rw [h_col₁]; omega
+      have h_s1_ska : s₁.simpleKeyAllowed = true :=
+        scanNextToken_flow_open_mapping_ska s_state s₁
+          ((emit.emitPairList pairs.toList).toList ++ ['}'] ++ rest)
+          h_corr_state_cons h_flow h_indent h_col h_snt₁
+      have h_s1_sync : s₁.simpleKeyStack.size = s₁.flowLevel := by
+        rw [h_stack_push₁, Array.size_push, h_sync, h_fl₁]
+      obtain ⟨fmsTok, h_fms_val, h_open_push⟩ :=
+        scanNextToken_flow_open_map_filtered_push s_state
+          ((emit.emitPairList pairs.toList).toList ++ ['}'] ++ rest)
+          h_corr_state_cons h_flow h_indent h_col h_snt₁
+      have h_pair_scan : EmitPairListScansInFlowBlock pairs.toList := by
+        match h_list : pairs.toList with
+        | [] => exact emitPairList_scans_block_empty
+        | _ :: _ =>
+          exact emitPairList_scans_block_nonempty _ (by simp) (fun p hp => by
+            have hp' : p ∈ pairs.toList := h_list ▸ hp
+            have ⟨i, hi, h_eq⟩ := List.getElem_of_mem hp'
+            have h_sz : i < pairs.size := by rwa [Array.length_toList] at hi
+            exact h_eq ▸ emit_scans_in_flow_saved_key_block _ (hk ⟨i, h_sz⟩)) (fun p hp => by
+            have hp' : p ∈ pairs.toList := h_list ▸ hp
+            have ⟨i, hi, h_eq⟩ := List.getElem_of_mem hp'
+            have h_sz : i < pairs.size := by rwa [Array.length_toList] at hi
+            exact h_eq ▸ emit_scans_in_flow_block _ (hv ⟨i, h_sz⟩))
+      have h_corr₁_assoc : ScannerSurfCorr s₁
+          ⟨(emit.emitPairList pairs.toList).toList ++ (['}'] ++ rest), s₁.col⟩ := by
+        rw [List.append_assoc] at h_corr₁; exact h_corr₁
+      obtain ⟨n₂, s₂, bodyBlock, h_chain₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, h_ek₂, h_col₂, h_s2_inflow, h_s2_indent, _h_line₂, h_atol₂, h_endline₂, h_stack₂, h_fmc₂, h_body_append, h_body_wb, h_body_wt⟩ :=
+        h_pair_scan s₁ (['}'] ++ rest) h_corr₁_assoc h_s1_inflow (by rw [h_fl₁]; omega) h_s1_indent h_s1_col
+          (by rw [h_ek₁]; exact h_ek) h_atol₁ h_endline₁ h_s1_ska h_s1_sync
+      have h_fl₂_ge2 : s₂.flowLevel ≥ 2 := by rw [h_fl₂, h_fl₁]; omega
+      have h_stack_endline₂ : StackEndLineOnLine s₂ s₂.line := by
+        unfold StackEndLineOnLine at h_stack_endline₁ ⊢
+        rw [h_stack₂, _h_line₂]; exact h_stack_endline₁
+      obtain ⟨s₃, h_snt₃, h_corr₃, h_fl₃, h_dp₃, h_ids₃, h_ek₃, h_col₃, h_tok₃, h_ska₃, _h_line₃, h_atol₃, h_endline₃, h_stack₃, _, _⟩ :=
+        scanNextToken_flow_close_mapping_nested s₂ rest h_corr₂ h_s2_inflow h_s2_indent h_col₂ h_fl₂_ge2
+          h_atol₂ h_stack_endline₂
+      have h_corr₂_cons : ScannerSurfCorr s₂ ⟨'}' :: rest, s₂.col⟩ := by
+        have : ['}'] ++ rest = '}' :: rest := by simp
+        rwa [this] at h_corr₂
+      obtain ⟨fmeTok, h_fme_val, h_close_push⟩ :=
+        scanNextToken_flow_close_map_filtered_push s₂ rest h_corr₂_cons h_s2_inflow h_s2_indent h_col₂
+          h_fl₂_ge2 h_snt₃
+      have h_fmc₂' : FlowMonoChain s_state.flowLevel s₁ n₂ s₂ := h_fmc₂.weaken (by omega)
+      have h_fmc_all :=
+        (FlowMonoChain.single h_snt₁ (Nat.le.refl) (by omega)).trans
+          (h_fmc₂'.trans (FlowMonoChain.single h_snt₃ (by omega) (by omega)))
+      have h_grew₁ : (s₁.tokens.filter (fun t => t.val != .placeholder)).size >
+                     (s_state.tokens.filter (fun t => t.val != .placeholder)).size :=
+        scanNextToken_filtered_grows_in_flow s_state s₁ '{'
+          ((emit.emitPairList pairs.toList).toList ++ ['}'] ++ rest)
+          h_corr_state_cons h_flow h_indent h_col (by decide) (by decide) (by decide) h_snt₁
+      have h_grew₃ : (s₃.tokens.filter (fun t => t.val != .placeholder)).size >
+                     (s₂.tokens.filter (fun t => t.val != .placeholder)).size :=
+        scanNextToken_filtered_grows_in_flow s₂ s₃ '}' rest
+          h_corr₂_cons h_s2_inflow h_s2_indent h_col₂ (by decide) (by decide) (by decide) h_snt₃
+      have h_block_eq : (s₃.tokens.filter (fun t => t.val != .placeholder)).toList
+          = (s_state.tokens.filter (fun t => t.val != .placeholder)).toList
+            ++ (fmsTok :: (bodyBlock ++ [fmeTok])) := by
+        have h1 : (s₁.tokens.filter (fun t => t.val != .placeholder)).toList
+            = (s_state.tokens.filter (fun t => t.val != .placeholder)).toList ++ [fmsTok] := by
+          rw [h_open_push, Array.toList_push]
+        have h3 : (s₃.tokens.filter (fun t => t.val != .placeholder)).toList
+            = (s₂.tokens.filter (fun t => t.val != .placeholder)).toList ++ [fmeTok] := by
+          rw [h_close_push, Array.toList_push]
+        rw [h3, h_body_append, h1]
+        simp only [List.append_assoc, List.cons_append, List.nil_append]
+      have h_wrap := wrap_map_block fmsTok fmeTok bodyBlock h_fms_val h_fme_val h_body_wb
+      have h_wrap_t := wrap_map_typed fmsTok fmeTok bodyBlock h_fms_val h_fme_val h_body_wt
+      refine ⟨(1 + n₂) + 1, s₃, fmsTok :: (bodyBlock ++ [fmeTok]),
+        (ScanChainGrew.single h_snt₁ h_grew₁).trans (h_chain₂.trans (ScanChainGrew.single h_snt₃ h_grew₃)),
+        h_corr₃, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, h_ska₃, h_tok₃, ?_, ?_, ?_, h_fmc_all,
+        h_block_eq, h_wrap.1, h_wrap_t, h_wrap.2,
+        EntryUnit_wrap fmsTok fmeTok bodyBlock (h_fms_val ▸ flowBracketDelta_flowMappingStart)
+          (h_fme_val ▸ flowBracketDelta_flowMappingEnd) h_body_wb, RecSeqEntry.map fmsTok fmeTok bodyBlock h_fms_val h_fme_val h_body_wb, ?_⟩
+      · rw [h_fl₃, h_fl₂, h_fl₁]; omega
+      · rw [h_dp₃, h_dp₂, h_dp₁]
+      · rw [h_ids₃, h_ids₂, h_ids₁]
+      · rw [h_ek₃, h_ek₂, h_ek₁]
+      · rw [h_col₃]; omega
+      · unfold ScannerState.inFlow; exact decide_eq_true (by rw [h_fl₃, h_fl₂, h_fl₁]; omega)
+      · unfold ScannerState.currentIndent; rw [h_ids₃, h_ids₂, h_ids₁]; exact h_indent
+      · rw [_h_line₃, _h_line₂, _h_line₁]
+      · exact h_atol₃
+      · exact h_endline₃
+      · rw [h_stack₃, h_stack₂, h_stack_pop₁]
+      · exact ⟨List.cons_ne_nil _ _, Or.inr (Or.inr (by rw [List.head_cons]; exact h_fms_val))⟩
+
 /-- Append-singleton injectivity (core Lean, no Mathlib): from `a ++ [x] = b ++ [y]` recover both
     `a = b` and `x = y`.  Used to read a bracket entry's interior off the constructor index when the
     descent matches a `seq`/`map` entry's `op :: (interior ++ [cl])` shape against `RecSeqEntry`. -/
