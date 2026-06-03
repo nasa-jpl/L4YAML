@@ -68,6 +68,12 @@ sequence side, `om`/`cm` = `{`/`}` for the mapping side, `a` = atom):
 * `bundleLocatedMap`             — the BUNDLE assembler, map side (toy `mapLocated_of_recmapbody`):
   the same packaging but with **one extra hypothesis** `h_key` for the stored `keyF` — R247/R246's
   storage asymmetry made visible as a bundle-level arity bump over the seq side.
+* `mlocated_key` / `mlocated_entry` (R248) — the storage asymmetry is **scale-free**: the *same*
+  projected-vs-stored mechanism that *shrinks* the entry constructor (`MEntry.map` sheds `WB`,
+  recovered post-hoc by `wb_recovered`) *grows* the bundle assembler (`MLocated` stores `keyF`,
+  threaded in as `h_key`).  `mlocated_key` projects the grown-in `keyF` back out; opposite signs, one
+  mechanism.  (The toy cannot reproduce R248's *axiom*-ledger half — both toy builds are choice-free
+  — but the arity half is exactly these witnesses.)
 
 Positive witnesses build an entry on each side and read the seq one back; `MEntry.toWB` recovers the
 `WB` the map constructor never stored.  The opener *kind* is load-bearing (a `{` window is not a `[`
@@ -314,6 +320,31 @@ def slocated_entry : SEntry (([Tok.os, .a, .cs].take (2 + 1)).drop (1 - 1)) := s
     doesn't supply). -/
 def mlocated_a : MLocated [.om, .a, .cm] 1 2 :=
   bundleLocatedMap [.om, .a, .cm] 1 2 (by omega) (by omega) (by decide) (by decide) (by decide) (by decide) mbody_a
+
+/-! ## R248 — the storage asymmetry is *scale-free*: SHRINK at the entry constructor, GROWTH at the
+    bundle, one projected-vs-stored mechanism with opposite signs.
+
+The map family's single storage decision — `MEntry.map` PROJECTS `WB` rather than storing it — shows
+up at **two** assembly layers with **opposite signs**:
+
+* At the ENTRY constructor it is a *shrink*: `buildLocatedMap` builds `MEntry.map …` with **no** `WB`
+  argument (the seq sibling `buildLocatedSeq` feeds `SBody.toWB h_rec`), and the balance is recovered
+  *post-hoc* by the projection — witnessed by `wb_recovered` above (`(buildLocatedMap …).toWB`).
+* At the BUNDLE assembler it is a *growth*: `MLocated` STORES `keyF`, so `bundleLocatedMap` must
+  *thread it in* as the extra `h_key` hypothesis the seq bundle lacks — witnessed by the extra
+  `(by decide)` in `mlocated_a`, and recovered by projecting it back out below.
+
+Same mechanism (what the type stores vs. what the producer delivers), read at two layers, one sign
+each.  The toy cannot reproduce R248's *axiom*-ledger half (both toy builds are choice-free), but the
+arity half — shrink here, growth there — is exactly these witnesses. -/
+
+/-- GROWTH made concrete: the stored pair primitive `keyF` projects back out of the map bundle (mirror
+    of `slocated_entry`), proving it is a genuine stored field the assembler threaded in, not derived. -/
+def mlocated_key : (2 : Nat) ≤ [Tok.om, .a, .cm].length := mlocated_a.keyF
+
+/-- The recursive `entry` still projects back out too, exactly as on the seq side — the GROWTH is *only*
+    in the extra stored primitive, the recursive field behaves identically across the two bundles. -/
+def mlocated_entry : MEntry (([Tok.om, .a, .cm].take (2 + 1)).drop (1 - 1)) := mlocated_a.entry
 
 /-! ## The opener-kind guard is load-bearing, and decidable balance sanity checks -/
 
