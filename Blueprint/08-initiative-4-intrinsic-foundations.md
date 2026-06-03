@@ -2140,13 +2140,21 @@ then chain through these wrappers into `seqBodyProps_assemble`. **And that chain
 consumer joint** (commit `67dabbd8`, Reflection 231): `seqBodyProps_of_windowed_safebody (tokens) (lo hi)`
 takes the windowed `SafeBody`/`SafeBodyUnit ContentStartTok ((tokens.toList.take hi).drop lo)` + the
 content-start head + the balanced-subrange facts and produces the full `SeqBodyProps tokens lo hi` directly
-(driving both windowed wrappers into `seqBodyProps_assemble`). So the seq side now has a single
-typed boundary: **produce the windowed `SafeBody`/`SafeBodyUnit` + content-start head** at a nested guarded
-subrange — nothing else. THAT is the next-session target (the recursive characterization of the nested
-flow-sequence body, off the emitter structure of the nested value tree); feeding it to
-`seqBodyProps_of_windowed_safebody` yields `FlowSubrangesOk.seq`.
+(driving both windowed wrappers into `seqBodyProps_assemble`). **And the map-side consumer joint is now
+LANDED too** (commit `6cae8b14`, Reflection 232): `mapBodyProps_of_windowed_safebody (tokens) (lo hi)` is the
+mirror — it takes the windowed `SafeBody (· = .key) ((tokens.toList.take hi).drop lo)` (the deliverable of
+`emitPairList_scans_safebody`) + the six inner pair-level primitives and produces the full `MapBodyProps
+tokens lo hi`, discharging M1 `key_start` (via `SafeBody.head_Q`) and M2 `after_fe` (via
+`SafeBody_array_flowEntry_window` at `Q := (· = .key)`) from the single `.key`-headed windowed `SafeBody`;
+there is no `SafeBodyUnit` (a map pair carries an interior depth-0 `.value`, so it is not an `EntryUnit`), so
+the six pair-INTERIOR primitives remain inputs. So BOTH sides now have a single typed boundary, the recursive
+PRODUCER: **(seq)** produce the windowed `SafeBody`/`SafeBodyUnit` + content-start head; **(map)** produce
+the windowed `SafeBody (· = .key)` + the six interior pair primitives — both at a nested guarded subrange,
+off the emitter structure of the nested value tree. THAT is the next-session target; feeding the seq
+deliverable to `seqBodyProps_of_windowed_safebody` yields `FlowSubrangesOk.seq`, and the map deliverable to
+`mapBodyProps_of_windowed_safebody` yields `FlowSubrangesOk.map`.
 
-> **Frontier (post-Reflection 231, commit `67dabbd8`).** The `(d-shape)` algebra is complete
+> **Frontier (post-Reflection 232, commit `6cae8b14`).** The `(d-shape)` algebra is complete
 > (the bracket conjuncts are correctly guarded — Reflection 218 — AND their `h_succ` substrate, the
 > value-end successor `EntryUnit` / `SafeBodyUnit_succ` / `SafeBodyUnit_array_succ`, exists —
 > Reflection 219), and the **sequence side** of threading `EntryUnit` through the producers is now
@@ -2260,18 +2268,29 @@ flow-sequence body, off the emitter structure of the nested value tree); feeding
 > solely on the windowed SafeBody facts: the seq-side Phase-J residual is now EXACTLY *produce the windowed
 > `SafeBody`/`SafeBodyUnit` + content-start head* at a nested guarded subrange (the recursion), with the
 > bracket facts from the typed locator + `WellTyped_subrange`. Build green 525 jobs, sorries held at 4,
-> axiom-clean. **Immediate next sub-bricks (two, in
-> order):** (1) *produce the seq subrange primitives* — derive the three primitives
-> (content-start at `lo`, the value-end successor, the post-`.flowEntry` content-start) at an arbitrary
-> nested balanced subrange and feed `seqBodyProps_assemble` to assemble `SeqBodyProps tokens lo hi`, i.e. the
+> axiom-clean. **And the map-side consumer joint is now LANDED too** (Reflection 232, commit `6cae8b14`):
+> `mapBodyProps_of_windowed_safebody` is the map-side mirror — it takes the map producer's deliverable, the
+> windowed `SafeBody (· = .key) ((tokens.toList.take hi).drop lo)` that `emitPairList_scans_safebody` emits,
+> plus the six inner pair-level alternation primitives, and assembles the full `MapBodyProps tokens lo hi`
+> via `mapBodyProps_assemble`. From the single `.key`-headed windowed `SafeBody` it discharges the two
+> body-BOUNDARY primitives — M1 `key_start` via `SafeBody.head_Q` and M2 `after_fe` via
+> `SafeBody_array_flowEntry_window` at `Q := (· = .key)`; there is NO `SafeBodyUnit` analog (a map *pair*
+> carries an interior depth-0 `.value`, so the pair is not an `EntryUnit`), so the six pair-INTERIOR
+> primitives remain inputs. Both sides' assembly is now one entry point keyed on the windowed SafeBody facts.
+> **Immediate next sub-bricks (two, in
+> order):** (1) *produce the windowed `SafeBody`/`SafeBodyUnit` + content-start head* at an arbitrary nested
+> balanced subrange (the recursive characterization of the nested flow-SEQUENCE body, off the emitter
+> structure of the nested value tree) and feed `seqBodyProps_of_windowed_safebody` to yield the
 > `FlowSubrangesOk.seq` field (`WellTyped_subrange` already supplies the per-subrange `WellTyped`; the
-> per-subrange value-end successor / content-start over the nested emitted tree is the recursive bulk —
-> Phase J); (2) *produce the map subrange primitives* and feed `mapBodyProps_assemble` for the
-> `FlowSubrangesOk.map` field. Unlike the seq side this is *not* a single `EntryUnit` thread — a
-> map *pair* entry `.key block_k .value block_v` has an interior depth-0 `.value`, so the whole pair is NOT an
-> `EntryUnit`; the key/value primitives need a pair-level refinement (apply `EntryUnit` to each key/value
-> block, with a separate per-key and per-value successor — the eight `mapBodyProps_assemble` primitive
-> premises). Both fields together build the one `FlowSubrangesOk tokens` shared by sorries 854/1095. Once
+> recursive bulk is connecting a nested guarded subrange to `emitList_scans_safebody`'s `SafeBody` output —
+> Phase J); (2) *produce the windowed `SafeBody (· = .key)` + the six interior pair primitives* at an
+> arbitrary nested flow-MAPPING subrange and feed `mapBodyProps_of_windowed_safebody` for the
+> `FlowSubrangesOk.map` field — the windowed `SafeBody (· = .key)` comes from
+> `emitPairList_scans_safebody`; the six pair-interior primitives (key→content, key→value, value→content,
+> value→successor, and the two value-close-guarded bracket successors) need the pair-level refinement (apply
+> `EntryUnit` to each key/value block, with a separate per-key and per-value successor), as a map *pair*
+> `.key block_k .value block_v` has an interior depth-0 `.value` so the whole pair is NOT an `EntryUnit`.
+> Both fields together build the one `FlowSubrangesOk tokens` shared by sorries 991/1232. Once
 > the seq `h_succ` premises are discharged, `SafeBodyUnit_array_succ` feeds them as the bracket-conjunct
 > `h_succ` consumers expect. Those feed
 > the bracket conjuncts + `SafeBodyProps`/`MapBodyProps` fields → `FlowSubrangesOk` →
@@ -15255,6 +15274,26 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
+                **Total .body scope re-estimate (EIGHTIETH revision —
+                after **Thread A step 3 sub-step 2's brick (d-shape) cont'd — *consumer joint: windowed
+                SafeBody → MapBodyProps (map side)* — landed** (commit `6cae8b14`, Reflection 232).
+                `mapBodyProps_of_windowed_safebody`: the map-side mirror of last session's seq joint.
+                Given a guarded balanced flow-MAP subrange `[lo,hi)` (`tokens[hi]!=.flowMappingEnd`, total
+                balance `0`, Dyck prefixes, interior `WellTyped`) plus the map producer's *deliverable* —
+                the windowed `SafeBody (· = .key) ((tokens.toList.take hi).drop lo)` that
+                `emitPairList_scans_safebody` emits — and the six inner pair-level alternation primitives,
+                it assembles the full `MapBodyProps tokens lo hi` via `mapBodyProps_assemble`. From the
+                single `.key`-headed windowed `SafeBody` it discharges the two body-BOUNDARY primitives:
+                M1 `key_start` via `SafeBody.head_Q` and M2 `after_fe` via `SafeBody_array_flowEntry_window`
+                at `Q := (· = .key)`. There is NO `SafeBodyUnit` analog — a map *pair* `.key … .value …`
+                carries an interior depth-0 `.value`, so the pair is not an `EntryUnit` and the six
+                pair-INTERIOR primitives (M3 `key_content`, M4 `key_scalar_value`, M6 `value_content`, M7
+                `value_scalar_succ`, M5 `key_bracket_succ`, M8 `value_bracket_succ`) remain inputs. So the
+                map-side residual now narrows symmetrically to PRODUCING the windowed `SafeBody (· = .key)`
+                + the six interior pair primitives at a nested guarded subrange. Glue identical to the seq
+                joint: the `getElem!`↔`getElem` bridge and the windowed-slice head index `((·).drop lo)[0]
+                = tokens[lo]`. Build green **525 jobs**, **sorries held at 4**; axiom-clean (`[propext,
+                Classical.choice, Quot.sound]`, no `sorryAx`). See Reflection 232, on top of the
                 **Total .body scope re-estimate (SEVENTY-NINTH revision —
                 after **Thread A step 3 sub-step 2's brick (d-shape) cont'd — *consumer joint: windowed
                 SafeBody → SeqBodyProps* — landed** (commit `67dabbd8`, Reflection 231).
@@ -25487,3 +25526,7 @@ With `FlowSubrangesOk` guarded and provable (Reflection 229), the next step was 
 Last session landed the windowed array wrappers (Reflection 230); the obvious next step was "produce the windowed `SafeBody`/`SafeBodyUnit`" — the recursion. But that recursion is large and not landable green in one session, so the question was what *self-contained* brick advances it. The answer was to look in the other direction: **build the consumer joint first.** `seqBodyProps_of_windowed_safebody` is a single lemma that takes the recursion's eventual *deliverable* — the windowed `SafeBody`/`SafeBodyUnit ContentStartTok ((tokens.toList.take hi).drop lo)` plus the content-start head, as bare hypotheses — together with the balanced-subrange facts, and produces the full `SeqBodyProps tokens lo hi`. Its proof is pure plumbing already in hand: drive `SafeBody_array_flowEntry_window` and `SafeBodyUnit_array_succ_window` (Reflection 230) into `seqBodyProps_assemble` (Reflection 226), with the only glue being the `getElem!`↔`getElem` bridge (`getElem!_pos`; the wrappers conclude over `arr[k]'_` while the assembler primitives are stated over `tokens[k]!`) and the definitional `ContentStartTok = isFlowContentStart` (`exact` sees through both `def`s). Fully provable now, axiom-clean, no new sorry.
 
 **The value is what it does to the residual's *shape*, not the sorry count** (the [[ref-reduction-by-import]] family — wiring a consumer retypes the residual; the retype is the progress). Before this lemma, the seq-side residual was a scatter: produce three primitives (content-start, value-end successor, post-`.flowEntry` content-start) AND assemble them. After it, the seq-side residual is *exactly one shape*: produce the windowed `SafeBody`/`SafeBodyUnit` + content-start head at a nested guarded subrange — feed it to `seqBodyProps_of_windowed_safebody`, done. Everything between "I have the windowed SafeBody" and "I have `FlowSubrangesOk.seq`" is now a single proven call. This is the mirror discipline to building the producer: when the producer is the hard recursion, build the *consumer* of its not-yet-existing output first — it costs nothing now (the plumbing already exists), it cannot regress (it is fully proven), and it forces the recursion's interface to a single named type. The next session's target stops being "the seq primitives" (which invites re-deriving the assembly each time) and becomes one crisp deliverable: `SafeBody`/`SafeBodyUnit` over the windowed slice. Note the asymmetry with the map side — there is no `mapBodyProps_of_windowed_safebody` yet, because a map *pair* is not a single `EntryUnit` (interior depth-0 `.value`), so its consumer joint needs the pair-level alternation primitives, not one windowed `SafeBody`; that joint is a separate (fresh-but-cheap, once the seq one exists) brick. Sits with [[ref-parametric-assembler-extraction]] (the assembler was the *assemble* half; this is the *adapt-the-substrate-to-the-assembler* half) and [[ref-array-wrapper-window-generalization]] (whose wrappers this lemma is the first consumer of).
+
+### Reflection 232 (new, 2026-06-02): the symmetric "mirror" joint can be asymmetric in *yield* even when symmetric in *form* — the same `SafeBody` machinery applies on both sides, but what it discharges is bounded by the grammar's depth structure, not by the lemma shape
+
+Reflection 231 predicted the map-side consumer joint as "a separate (fresh-but-cheap, once the seq one exists) brick … because a map *pair* is not a single `EntryUnit`." Building it this session (commit `6cae8b14`) confirmed the cost but sharpened the *reason* — and the sharpening is the lesson. The map producer `emitPairList_scans_safebody` does deliver a *single* windowed inductive: `SafeBody (· = .key) block` — not the eight scattered primitives I'd feared. So `mapBodyProps_of_windowed_safebody` *is* a clean mirror of the seq joint in **form**: same `refine mapBodyProps_assemble … ?_ ?_ …`, same `SafeBody.head_Q` for the head, same `SafeBody_array_flowEntry_window` (which is already generic in `Q`, so `Q := (· = .key)` fires with zero new machinery), same `getElem!`↔`getElem` glue. The lemma practically wrote itself from the seq one. **But its yield is smaller, and the gap is structural, not accidental.** The seq joint discharged the full residual (its `SafeBody`/`SafeBodyUnit` deliverable produces *every* extra `seqBodyProps_assemble` primitive); the map joint discharges only the two **body-boundary** primitives — M1 `key_start` (the body head is a `.key`) and M2 `after_fe` (after a depth-0 `.flowEntry`, a `.key`). The six **pair-interior** primitives (key→content, key→value, value→content, value→successor, the two value-close bracket successors) are *invisible to the `SafeBody`*, because `SafeBody Q` splits the body only at depth-0 `.flowEntry` separators and treats each whole pair `.key block_k .value block_v` as one `EntrySafe` entry — the interior depth-0 `.value` (the key/value boundary) lives *below* the `SafeBody`'s resolution. The same machine sees the pair boundaries and is blind to the pair internals, purely because a YAML flow-map's two depth-0 delimiters (`,` between pairs, `:` within a pair) sit at the *same* bracket depth but the inductive only branches on one of them. **General principle: when you build the symmetric counterpart of a successful brick, do not assume symmetric *payoff* — a shared abstraction (here `SafeBody Q`) discharges exactly the obligations that live at *its* granularity, and a richer grammar on the other side pushes some obligations below that granularity where the same lemma cannot reach them.** The mirror is still worth building — it is free (the seq plumbing generalizes verbatim), it cannot regress, and it collapses the *boundary* half of the map residual onto the producer's natural single deliverable, so the next session's map target is "produce the windowed `SafeBody (· = .key)` + the six interior pair primitives" rather than "produce eight scattered primitives." But the honest accounting is that the map producer must still expose pair-interior structure the seq producer never needed — the asymmetry the grammar forced (Reflection 228's "eight premises vs three") reappears here as a *coverage* gap in the otherwise-identical joint. Sits with [[ref-consumer-joint-before-producer]] (this is its map-side instance, with the caveat made precise) and [[ref-parametric-assembler-extraction]]'s "symmetric second lemma is fresh-but-cheap" — cheap to *write*, yes, but the symmetry stops at the lemma boundary; the obligations it leaves open are set by the grammar, not the proof.
