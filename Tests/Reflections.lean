@@ -21,5 +21,5 @@ Each module names the Blueprint Reflection it illustrates:
 * `ReductionByImport`                    — Reflection 225 (reduction by import — retype, not shrink)
 * `ParametricAssemblerExtraction`        — Reflections 226 + 228 (parametric assembler extraction)
 * `ConvergentReduction`                  — Reflection 227 (convergence corollary of reduction-by-import)
-* `RecursiveDeliverableProjectToFlat`    — Reflection 234 (recursive deliverable, project-to-flat-first)
+* `RecursiveDeliverableProjectToFlat`    — Reflections 234 + 235 (recursive deliverable, project-to-flat-first; single-level descent step)
 -/

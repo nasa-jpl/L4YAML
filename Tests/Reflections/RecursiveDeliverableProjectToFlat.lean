@@ -2,9 +2,10 @@
 # Recursive deliverable, project-to-flat-first — runnable demonstration
 
 A self-contained (core Lean, no `L4YAML` import) illustration of the proof-engineering
-principle documented in `Blueprint/08-initiative-4-intrinsic-foundations.md`, Reflection 234
-— the *recursive* generalization of the consumer-joint-before-producer family
-(`ReductionByImport` / `ConvergentReduction` / `ParametricAssemblerExtraction`).
+principles documented in `Blueprint/08-initiative-4-intrinsic-foundations.md`, **Reflections 234
+and 235** — the *recursive* generalization of the consumer-joint-before-producer family
+(`ReductionByImport` / `ConvergentReduction` / `ParametricAssemblerExtraction`), plus its DRY
+continuation: the single-level descent step that CONSUMES the recursive deliverable.
 
 **The principle.** When a frontier needs "do X at every nesting level" and a *descent* must treat
 sub-parts the way the consumer treats the whole, the instinct is a token-level recursion that
@@ -158,5 +159,89 @@ theorem example_nested_flat :
   example_nested.toFlatBody
 
 #guard decide (tot [Tok.opn, Tok.leaf, Tok.sep, Tok.opn, Tok.leaf, Tok.cls, Tok.cls] = 0)
+
+/-! ## DRY continuation — the single-level DESCENT step (Reflection 235).
+
+Once the recursive deliverable + flat projection exist (above), the next atom toward CONSUMING it
+(the *descent-locator*: "from `RecBody (outer)`, extract a flat body at any nested sub-part") is the
+irreducible **"descend one nesting level"** step.  Land it FIRST, in isolation, before the positional
+bridge or the outer recursion exist, because the **single-level constructor case-split is
+self-contained**: `cases` on the deliverable's `RecEntry` constructors IS the case analysis — the
+wanted recursion witness falls out of one constructor (`brk`), the impossible shapes are killed by a
+head/shape mismatch (`leaf`), and the empty interior is its own witness (`brkEmpty`).
+
+**The key move: pick the step's conclusion type to BE the producer-contract split you already proved.**
+`RecEntry.interior` returns `RecBody interior ∨ interior = []` — exactly the non-empty / empty
+dichotomy the downstream stage already branches on (the real `lo < hi` / `lo = hi` split, Reflection
+233).  So the atom plugs in with ZERO glue (`descendRoute`): the non-empty disjunct goes to the flat
+consumer via `toFlatBody`, the empty disjunct stays empty for the vacuous leaf to handle. -/
+
+/-- Append-singleton injectivity (core Lean): `a ++ [x] = b ++ [y] → a = b ∧ x = y` (via `reverse` +
+    `List.reverse_inj`).  Reads a bracket entry's `interior` off the `op :: (interior ++ [cl])`
+    constructor index — the toy mirror of the real `append_singleton_inj`. -/
+theorem append_singleton_inj {a b : List Tok} {x y : Tok}
+    (h : a ++ [x] = b ++ [y]) : a = b ∧ x = y := by
+  have hr := congrArg List.reverse h
+  simp only [List.reverse_append, List.reverse_cons, List.reverse_nil, List.nil_append,
+    List.cons_append] at hr
+  injection hr with hxy har
+  exact ⟨List.reverse_inj.mp har, hxy⟩
+
+/-- **Single-level descent step** (toy mirror of `RecSeqEntry.seq_interior`).  A bracket entry
+    `op :: (interior ++ [cl])` recorded in the deliverable (head `op = [`) has interior EITHER a
+    `RecBody` (the `brk` recursion witness, recovered structurally) OR empty (`brkEmpty`).  The
+    `leaf` constructor is ruled out by the `[`-head guard `h_op` (head `leaf ≠ [`) — the toy's single
+    `leaf` mismatch stands in for BOTH real rule-outs: `scalar` (ruled out by shape) and `map` (ruled
+    out by head, the mechanic exercised here).  The disjunction IS the downstream split — chosen, not
+    incidental. -/
+theorem RecEntry.interior {e interior : List Tok} {op cl : Tok}
+    (h : RecEntry e) (h_eq : e = op :: (interior ++ [cl])) (h_op : op = Tok.opn) :
+    RecBody interior ∨ interior = [] := by
+  cases h with
+  | leaf =>
+      -- `e = [leaf]`: head `leaf` clashes with the `[`-head guard (the `map`-style rule-out).
+      injection h_eq with h1 _h2
+      rw [h_op] at h1
+      exact absurd h1 (by decide)
+  | brkEmpty =>
+      -- empty bracket pair `[ ]`: interior forced empty (the `lo = hi` disjunct).
+      right
+      injection h_eq with _h1 h2
+      simp only [List.nil_append] at h2
+      exact (append_singleton_inj h2.symm).1
+  | brk interior' h_wb h_rec =>
+      -- the recursive interior witness, transported across `interior' = interior`.
+      left
+      injection h_eq with _h1 h2
+      exact (append_singleton_inj h2).1 ▸ h_rec
+
+/-- **POSITIVE — recover the recursion.**  Descending into a nested bracket entry `[ x ]` recovers
+    its interior's `RecBody` (the left disjunct): the recursion witness, structurally recovered. -/
+theorem example_descend_nonempty : RecBody [Tok.leaf] := by
+  have h_brk : RecEntry [Tok.opn, Tok.leaf, Tok.cls] :=
+    RecEntry.brk [Tok.leaf] (by decide) (RecBody.single _ (by decide) RecEntry.leaf)
+  rcases RecEntry.interior (e := [Tok.opn, Tok.leaf, Tok.cls]) (interior := [Tok.leaf])
+      (op := Tok.opn) (cl := Tok.cls) h_brk rfl rfl with h | h
+  · exact h
+  · exact absurd h (by decide)   -- the empty disjunct is impossible for `[ x ]`
+
+/-- **EMPTY — route to the leaf.**  The empty bracket entry `[ ]` descends to the RIGHT disjunct
+    `interior = []` — the toy `lo = hi` case, handled with no recursion witness (the vacuous
+    empty-body leaf, never asked for a flat body). -/
+theorem example_descend_empty : RecBody [] ∨ ([] : List Tok) = [] :=
+  RecEntry.interior (e := Tok.opn :: ([] ++ [Tok.cls])) (interior := [])
+    (op := Tok.opn) (cl := Tok.cls) RecEntry.brkEmpty rfl rfl
+
+/-- **The conclusion type IS the downstream split — zero-glue routing.**  Because `RecEntry.interior`
+    returns exactly the dichotomy the next stage branches on, it plugs in with no glue: `Or.imp` sends
+    the non-empty disjunct through the flat projection `RecBody.toFlatBody` and leaves the empty
+    disjunct untouched for the vacuous leaf.  This is the whole point of choosing the conclusion type
+    to match the split rather than returning a bare `RecBody` and re-casing downstream. -/
+theorem descendRoute {e interior : List Tok} {op cl : Tok}
+    (h : RecEntry e) (h_eq : e = op :: (interior ++ [cl])) (h_op : op = Tok.opn) :
+    FlatBody interior ∨ interior = [] :=
+  (RecEntry.interior h h_eq h_op).imp RecBody.toFlatBody id
+
+#guard decide (tot [Tok.leaf] = 0)   -- the recovered nested interior is balanced
 
 end RecursiveDeliverableProjectToFlat
