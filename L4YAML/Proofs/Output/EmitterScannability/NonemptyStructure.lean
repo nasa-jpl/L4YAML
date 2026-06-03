@@ -1474,6 +1474,64 @@ theorem mapBodyProps_of_located_entry (tokens : Array (Positioned YamlToken)) (l
     simp only [List.length_nil] at hl
     exact mapBodyProps_empty tokens lo hi (by omega)
 
+/-- **Located map-entry producer** (Phase J, map side — the constructive dual of
+    `mapBodyProps_of_located_entry`, the symmetric mirror of `located_entry_of_recseqbody`).  Given
+    the inner-window `RecMapBody ((take hi).drop lo)` — the map locate's recursive deliverable one
+    nesting level down — plus the opener `tokens[lo-1] = .flowMappingStart` and closer
+    `tokens[hi] = .flowMappingEnd`, *build* the located `RecMapEntry ((take (hi+1)).drop (lo-1))` of
+    the opener-window — exactly the `MapLocated.entry` field the locate must deliver at this level.
+
+    Same positional slicing as the consumer `mapBodyProps_of_located_entry` (rest-decomposition
+    `h_rest` + opener peel `h_peel`, copied verbatim), run in the opposite direction: where the
+    consumer rewrites the located entry into `op :: (interior ++ [cl])` shape and `map_interior`-descends
+    (the eliminator), this rewrites the *target* into that shape and applies `RecMapEntry.map` (the
+    constructor).  Unlike the seq mirror `located_entry_of_recseqbody`, `RecMapEntry.map` stores **no**
+    `WellBracketed interior` field — the map entry's balance is recovered post-hoc by the projection
+    `RecMapEntry.toWellBracketed` (R242/R244), so the constructor takes only the opener/closer facts
+    and the recursive `RecMapBody`.  Effect: reduces the map-side `MapLocated.entry` obligation from
+    "produce the located entry" to "produce the inner-window `RecMapBody`", the exact recursive
+    deliverable the map locate descends on (its six pair-interior primitives and `pos`/`dyck`/`wt`
+    fields are supplied separately, not by this entry assembler).  See Reflection 245. -/
+theorem located_mapentry_of_recmapbody (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (h_lo : 1 ≤ lo) (h_lo_hi : lo ≤ hi) (h_hi_sz : hi < tokens.size)
+    (h_open : tokens[lo - 1]!.val = .flowMappingStart)
+    (h_close : tokens[hi]!.val = .flowMappingEnd)
+    (h_rec : RecMapBody ((tokens.toList.take hi).drop lo)) :
+    RecMapEntry ((tokens.toList.take (hi + 1)).drop (lo - 1)) := by
+  have h_hi_len : hi < tokens.toList.length := by rw [Array.length_toList]; exact h_hi_sz
+  have h_lo1_sz : lo - 1 < tokens.size := by omega
+  -- rest-decomposition: the `interior ++ [cl]` tail (mirrors `mapBodyProps_of_located_entry`).
+  have h_rest : (tokens.toList.take (hi + 1)).drop lo
+      = (tokens.toList.take hi).drop lo ++ [tokens.toList[hi]] := by
+    have h_ts : tokens.toList.take (hi + 1)
+        = tokens.toList.take hi ++ [tokens.toList[hi]] := by
+      rw [List.take_add_one, List.getElem?_eq_getElem h_hi_len]; rfl
+    rw [h_ts]
+    have h_len : lo ≤ (tokens.toList.take hi).length := by rw [List.length_take]; omega
+    rw [List.drop_append_of_le_length h_len]
+  -- peel the opener: the opener-window is `tokens[lo-1] :: rest`.
+  have h_peel : (tokens.toList.take (hi + 1)).drop (lo - 1)
+      = tokens.toList[lo - 1]'(by rw [Array.length_toList]; omega)
+        :: (tokens.toList.take (hi + 1)).drop lo := by
+    have hlen : lo - 1 < (tokens.toList.take (hi + 1)).length := by
+      rw [List.length_take]; omega
+    have h := (List.getElem_cons_drop hlen).symm
+    rw [List.getElem_take] at h
+    rw [show lo - 1 + 1 = lo from by omega] at h
+    exact h
+  -- target window now reads as `op :: (interior ++ [cl])`.
+  rw [h_peel, h_rest]
+  have h_op_val : (tokens.toList[lo - 1]'(by rw [Array.length_toList]; omega)).val
+      = .flowMappingStart := by
+    have hb : tokens[lo - 1]! = tokens.toList[lo - 1]'(by rw [Array.length_toList]; omega) := by
+      rw [getElem!_pos tokens (lo - 1) h_lo1_sz, Array.getElem_toList]
+    rw [← hb]; exact h_open
+  have h_cl_val : (tokens.toList[hi]'h_hi_len).val = .flowMappingEnd := by
+    have hb : tokens[hi]! = tokens.toList[hi]'h_hi_len := by
+      rw [getElem!_pos tokens hi h_hi_sz, Array.getElem_toList]
+    rw [← hb]; exact h_close
+  exact RecMapEntry.map _ _ _ h_op_val h_cl_val h_rec
+
 /-! ### Locate deliverables and the `FlowSubrangesOk` assembler (Phase J — locate consumer joint)
 
 The two `*_of_located_entry` joints above reduce, per guarded window, "produce `SeqBodyProps`/
