@@ -601,6 +601,94 @@ theorem mapBodyProps_assemble (tokens : Array (Positioned YamlToken)) (lo hi : N
     exact flowBracketBalance_matching_close_map tokens lo k hi h_lo h_hi h_hi_sz
       h_bal h_open h_outer_bal h_dyck h_wt_interior
 
+/-- **Windowed-`SafeBody` → `MapBodyProps` consumer joint** (Phase J, map side).  The map-side
+    analog of `seqBodyProps_of_windowed_safebody`.  Given a guarded balanced flow-MAPPING subrange
+    `[lo, hi)` (close `.flowMappingEnd`, total balance `0`, Dyck prefixes, interior `WellTyped`)
+    together with the map producer's *deliverable* — the windowed `SafeBody (· = .key)
+    ((tokens.toList.take hi).drop lo)` (`emitPairList_scans_safebody` emits exactly this: a body of
+    `.key`-headed pair entries separated by depth-0 `.flowEntry`) — plus the six inner pair-level
+    primitives of the depth-0 key/value alternation, assemble the full `MapBodyProps tokens lo hi`.
+
+    Unlike the seq side there is no `SafeBodyUnit`: a map *pair* `.key … .value …` carries an
+    interior depth-0 `.value`, so the whole pair is NOT an `EntryUnit` and the windowed `SafeBody`
+    constrains only the *outer* (pair-boundary) structure.  It therefore discharges exactly the two
+    boundary primitives `mapBodyProps_assemble` keys on the body shape: **M1 `key_start`** via
+    `SafeBody.head_Q` (the windowed body's head is a `.key`) and **M2 `after_fe`** via
+    `SafeBody_array_flowEntry_window` at `Q := (· = .key)` (a depth-0 `.flowEntry` separator is
+    followed by a `.key`).  The remaining six (M3 `key_content`, M4 `key_scalar_value`, M6
+    `value_content`, M7 `value_scalar_succ`, M5 `key_bracket_succ`, M8 `value_bracket_succ`) are the
+    pair-INTERIOR alternation, invisible to the `.key`-headed `SafeBody`, so they remain inputs — the
+    map-side analog of "produce the windowed `SafeBody` + content-start head" reduced to "produce the
+    windowed `SafeBody (· = .key)` + the six interior pair primitives".  The glue is the same as on
+    the seq side: the `getElem!`↔`getElem` bridge and the windowed-slice head index `((·).drop lo)[0]
+    = tokens[lo]`. -/
+theorem mapBodyProps_of_windowed_safebody (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (h_hi_sz : hi ≤ tokens.size)
+    (h_tpe : tokens[hi]!.val = .flowMappingEnd)
+    (h_outer_bal : flowBracketBalance tokens lo hi = 0)
+    (h_dyck : ∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0)
+    (h_wt_interior : WellTyped ((tokens.toList.take hi).drop lo))
+    (h_safe : SafeBody (fun t => t = .key) ((tokens.toList.take hi).drop lo))
+    (h_key_content : ∀ k, lo ≤ k → k < hi →
+      flowBracketBalance tokens lo k = 0 →
+      tokens[k]!.val = .key →
+      k + 1 < hi ∧ isFlowContentStart tokens[k + 1]!.val)
+    (h_key_scalar_value : ∀ k, lo ≤ k → k < hi →
+      flowBracketBalance tokens lo k = 0 →
+      tokens[k]!.val = .key →
+      (∃ c s, tokens[k + 1]!.val = .scalar c s) →
+      k + 2 < hi ∧ tokens[k + 2]!.val = .value)
+    (h_value_content : ∀ k, lo ≤ k → k < hi →
+      flowBracketBalance tokens lo k = 0 →
+      tokens[k]!.val = .value →
+      k + 1 < hi ∧ isFlowContentStart tokens[k + 1]!.val)
+    (h_value_scalar_succ : ∀ k, lo ≤ k → k < hi →
+      flowBracketBalance tokens lo k = 0 →
+      tokens[k]!.val = .value →
+      (∃ c s, tokens[k + 1]!.val = .scalar c s) →
+      k + 2 ≤ hi ∧
+      (tokens[k + 2]!.val = .flowEntry ∨
+       (tokens[k + 2]!.val = .flowMappingEnd ∧ k + 2 = hi)))
+    (h_key_bracket_succ : ∀ k j, lo ≤ k → k < hi →
+      flowBracketBalance tokens lo k = 0 →
+      tokens[k]!.val = .key →
+      k + 1 < j → j < hi →
+      flowBracketDelta tokens[j]!.val = -1 →
+      flowBracketBalance tokens lo (j + 1) = 0 →
+      j + 1 < hi ∧ tokens[j + 1]!.val = .value)
+    (h_value_bracket_succ : ∀ k j, lo ≤ k → k < hi →
+      flowBracketBalance tokens lo k = 0 →
+      tokens[k]!.val = .value →
+      k + 1 < j → j < hi →
+      flowBracketDelta tokens[j]!.val = -1 →
+      flowBracketBalance tokens lo (j + 1) = 0 →
+      j + 1 ≤ hi ∧
+      (tokens[j + 1]!.val = .flowEntry ∨
+       (tokens[j + 1]!.val = .flowMappingEnd ∧ j + 1 = hi))) :
+    MapBodyProps tokens lo hi := by
+  refine mapBodyProps_assemble tokens lo hi h_hi_sz h_tpe h_outer_bal h_dyck h_wt_interior
+    ?_ ?_ h_key_content h_key_scalar_value h_value_content h_value_scalar_succ
+    h_key_bracket_succ h_value_bracket_succ
+  · -- M1 `key_start` ← `SafeBody.head_Q` (the windowed body's head is a `.key`)
+    intro h_lo_hi
+    have h_lo_sz : lo < tokens.size := Nat.lt_of_lt_of_le h_lo_hi h_hi_sz
+    obtain ⟨hl, hQ⟩ := h_safe.head_Q
+    rw [getElem!_pos tokens lo h_lo_sz]
+    have h_get : (((tokens.toList.take hi).drop lo)[0]'hl).val = (tokens[lo]'h_lo_sz).val := by
+      rw [List.getElem_drop, List.getElem_take, Array.getElem_toList]
+      congr 2
+    rw [← h_get]; exact hQ
+  · -- M2 `after_fe` ← `SafeBody_array_flowEntry_window` at `Q := (· = .key)`
+    intro k h_lo h_klt h_bal h_fe
+    have hk_sz : k < tokens.size := Nat.lt_of_lt_of_le h_klt h_hi_sz
+    rw [getElem!_pos tokens k hk_sz] at h_fe
+    obtain ⟨hk1, hQ⟩ :=
+      SafeBody_array_flowEntry_window tokens lo hi h_hi_sz h_safe k h_lo h_klt h_fe h_bal
+    have hk1_sz : k + 1 < tokens.size := Nat.lt_of_lt_of_le hk1 h_hi_sz
+    refine ⟨Nat.le_of_lt hk1, ?_⟩
+    rw [getElem!_pos tokens (k + 1) hk1_sz]
+    exact hQ
+
 /-- Token structure of `scanFiltered ("[" ++ emitList items ++ "]")` for non-empty items.
     Establishes boundary tokens, body token patterns, and `parseNode` success within
     the flow sequence body.
