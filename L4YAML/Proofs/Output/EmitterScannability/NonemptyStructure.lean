@@ -1394,6 +1394,115 @@ theorem mapBodyProps_of_located_entry (tokens : Array (Positioned YamlToken)) (l
     simp only [List.length_nil] at hl
     exact mapBodyProps_empty tokens lo hi (by omega)
 
+/-! ### Locate deliverables and the `FlowSubrangesOk` assembler (Phase J — locate consumer joint)
+
+The two `*_of_located_entry` joints above reduce, per guarded window, "produce `SeqBodyProps`/
+`MapBodyProps`" to "the opener-window is a `RecSeqEntry`/`RecMapEntry`" (plus, on the map side, the
+six pair-interior primitives).  What still separates them from the `FlowSubrangesOk tokens` the two
+`scanFiltered_emit{Seq,Map}_nonempty_structure` sorry sites consume is the *universal packaging*:
+`FlowSubrangesOk` quantifies over **all** `lo hi` with the bracket guards, and each field must also
+supply the joint's `1 ≤ lo` / Dyck / `WellTyped` inputs, which the field's own hypotheses do not
+carry.
+
+`SeqLocated`/`MapLocated` name the **locate recursion's per-window deliverable** as a bundled type:
+exactly the joint inputs the field does not provide (`1 ≤ lo`, the Dyck floor, the windowed
+`WellTyped`, the located `Rec{Seq,Map}Entry`, and — map only — the six pair-interior primitives).
+These ARE the future locate's intended return types.  Building their consumer NOW — the
+`FlowSubrangesOk` assembler — is the consumer-joint-before-producer move (Reflection 231 family) at
+the final structural boundary: it costs nothing (the per-window joints already exist), cannot regress
+(fully proven, standalone, does not touch the sorry sites), and collapses the entire residual
+downstream of locate — both sorry sites, both fields — into the single typed obligation "produce the
+two locators."  After this the whole Phase-J residual is just: the locate recursion delivering
+`SeqLocated`/`MapLocated` at every guarded window (fed by the emit-producer's top-level
+`RecSeqBody`/`RecMapBody`). -/
+
+/-- **Seq-side locate deliverable.**  The per-window output the seq locate must produce at a guarded
+    balanced flow-SEQUENCE subrange `[lo, hi)` — precisely the inputs `seqBodyProps_of_located_entry`
+    needs beyond the `FlowSubrangesOk.seq` field's own bracket guards. -/
+structure SeqLocated (tokens : Array (Positioned YamlToken)) (lo hi : Nat) : Prop where
+  pos : 1 ≤ lo
+  dyck : ∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0
+  wt : WellTyped ((tokens.toList.take hi).drop lo)
+  entry : RecSeqEntry ((tokens.toList.take (hi + 1)).drop (lo - 1))
+
+/-- **Map-side locate deliverable.**  The map mirror of `SeqLocated`: the per-window output the map
+    locate must produce at a guarded balanced flow-MAPPING subrange `[lo, hi)`, bundling the located
+    `RecMapEntry` together with the six pair-interior primitives `mapBodyProps_of_located_entry`
+    threads through (the load-bearing depth-0 `.value` alternation below the `.key`-headed
+    `SafeBody`'s resolution, Reflection 232). -/
+structure MapLocated (tokens : Array (Positioned YamlToken)) (lo hi : Nat) : Prop where
+  pos : 1 ≤ lo
+  dyck : ∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0
+  wt : WellTyped ((tokens.toList.take hi).drop lo)
+  entry : RecMapEntry ((tokens.toList.take (hi + 1)).drop (lo - 1))
+  key_content : ∀ k, lo ≤ k → k < hi →
+    flowBracketBalance tokens lo k = 0 →
+    tokens[k]!.val = .key →
+    k + 1 < hi ∧ isFlowContentStart tokens[k + 1]!.val
+  key_scalar_value : ∀ k, lo ≤ k → k < hi →
+    flowBracketBalance tokens lo k = 0 →
+    tokens[k]!.val = .key →
+    (∃ c s, tokens[k + 1]!.val = .scalar c s) →
+    k + 2 < hi ∧ tokens[k + 2]!.val = .value
+  value_content : ∀ k, lo ≤ k → k < hi →
+    flowBracketBalance tokens lo k = 0 →
+    tokens[k]!.val = .value →
+    k + 1 < hi ∧ isFlowContentStart tokens[k + 1]!.val
+  value_scalar_succ : ∀ k, lo ≤ k → k < hi →
+    flowBracketBalance tokens lo k = 0 →
+    tokens[k]!.val = .value →
+    (∃ c s, tokens[k + 1]!.val = .scalar c s) →
+    k + 2 ≤ hi ∧
+    (tokens[k + 2]!.val = .flowEntry ∨
+     (tokens[k + 2]!.val = .flowMappingEnd ∧ k + 2 = hi))
+  key_bracket_succ : ∀ k j, lo ≤ k → k < hi →
+    flowBracketBalance tokens lo k = 0 →
+    tokens[k]!.val = .key →
+    k + 1 < j → j < hi →
+    flowBracketDelta tokens[j]!.val = -1 →
+    flowBracketBalance tokens lo (j + 1) = 0 →
+    j + 1 < hi ∧ tokens[j + 1]!.val = .value
+  value_bracket_succ : ∀ k j, lo ≤ k → k < hi →
+    flowBracketBalance tokens lo k = 0 →
+    tokens[k]!.val = .value →
+    k + 1 < j → j < hi →
+    flowBracketDelta tokens[j]!.val = -1 →
+    flowBracketBalance tokens lo (j + 1) = 0 →
+    j + 1 ≤ hi ∧
+    (tokens[j + 1]!.val = .flowEntry ∨
+     (tokens[j + 1]!.val = .flowMappingEnd ∧ j + 1 = hi))
+
+/-- **`FlowSubrangesOk` assembler from locators** (Phase J — the locate consumer joint).  Packages
+    the two per-window `*_of_located_entry` joints into the universal `FlowSubrangesOk tokens` the
+    `scanFiltered_emit{Seq,Map}_nonempty_structure` sorry sites consume, keyed only on the not-yet-
+    produced locate recursion's deliverables `SeqLocated`/`MapLocated` (as bare universal hypotheses).
+    Each `FlowSubrangesOk` field instantiates its locator at the guarded window, then hands the bundle
+    plus the field's own guards to the matching joint.  Verified-but-unconsumed until the locate lands:
+    it does not reference either sorry site, so the frontier sorry count is unchanged — but it retypes
+    the whole downstream-of-locate residual to the single boundary "produce `SeqLocated`/`MapLocated`
+    at every guarded window." -/
+theorem flowSubrangesOk_of_locators (tokens : Array (Positioned YamlToken))
+    (h_seq : ∀ lo hi, lo ≤ hi → hi < tokens.size →
+      tokens[hi]!.val = .flowSequenceEnd →
+      flowBracketBalance tokens lo hi = 0 →
+      tokens[lo - 1]!.val = .flowSequenceStart →
+      SeqLocated tokens lo hi)
+    (h_map : ∀ lo hi, lo ≤ hi → hi < tokens.size →
+      tokens[hi]!.val = .flowMappingEnd →
+      flowBracketBalance tokens lo hi = 0 →
+      tokens[lo - 1]!.val = .flowMappingStart →
+      MapLocated tokens lo hi) :
+    FlowSubrangesOk tokens where
+  seq := fun lo hi h_lo_hi h_hi_sz h_tpe h_bal h_open =>
+    let L := h_seq lo hi h_lo_hi h_hi_sz h_tpe h_bal h_open
+    seqBodyProps_of_located_entry tokens lo hi L.pos h_lo_hi h_hi_sz h_tpe h_bal L.dyck L.wt
+      h_open L.entry
+  map := fun lo hi h_lo_hi h_hi_sz h_tpe h_bal h_open =>
+    let L := h_map lo hi h_lo_hi h_hi_sz h_tpe h_bal h_open
+    mapBodyProps_of_located_entry tokens lo hi L.pos h_lo_hi h_hi_sz h_tpe h_bal L.dyck L.wt
+      L.entry L.key_content L.key_scalar_value L.value_content L.value_scalar_succ
+      L.key_bracket_succ L.value_bracket_succ
+
 /-- Token structure of `scanFiltered ("[" ++ emitList items ++ "]")` for non-empty items.
     Establishes boundary tokens, body token patterns, and `parseNode` success within
     the flow sequence body.
