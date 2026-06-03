@@ -2116,7 +2116,7 @@ locator is built; and BOTH body-props *assemblers* are now extracted parametric 
 `seqBodyProps_assemble`, commit `45fe7417`, and `mapBodyProps_assemble`, commit `005fb9f2` — so the
 *assemble* half of producing BOTH `FlowSubrangesOk` fields is done. Both
 structure sorries are now the IDENTICAL structural residual `FlowSubrangesOk tokens` (`NonemptyStructure.lean`
-1335 seq / 1576 map), so one Phase-J producer closes both. **AND `FlowSubrangesOk` is now GUARDED so the
+1367 seq / 1608 map), so one Phase-J producer closes both. **AND `FlowSubrangesOk` is now GUARDED so the
 producer goal is provable** (commit `02988022`, Reflection 229): the unguarded form was *false* — its fields
 quantify over every balanced subrange ending in a close, including a misaligned one starting mid-body on a
 depth-0 `.flowEntry` (for `[a, b]`, the subrange `lo=3,hi=5` passes all premises yet `tokens[3]=.flowEntry`
@@ -2185,9 +2185,18 @@ correspondence**: the descent-locator's *front end* — pairing a guarded subran
 opener to *which* `RecSeqEntry` of the emitted body it selects (so the opener-window *is* that entry) — plus
 the **emit producer** (`emitList_scans_safebody` strengthened to deliver `RecSeqBody` — the recursive `h_rec`
 at each `seq` entry comes from the per-item `ih`). No positional plumbing remains downstream of locate. The
-map side mirrors with `RecMapBody`.
+map side mirrors with `RecMapBody`. **And the deliverable's BALANCE PROJECTION is now LANDED** (commit
+`a3592b4c`, Reflection 238): `RecSeqEntry.toWellBracketed` / `RecSeqBody.toWellBracketed` complete the
+projection family — the deliverable already projects to `SafeBody` (`toSafeBody`) and `SafeBodyUnit`
+(`toSafeBodyUnit`); these add the untyped-balance form `WellBracketed`, reading `wrap_{seq,map}_block`'s
+`.1` (the entry leaf) and chaining segments across the depth-0 `.flowEntry` separators
+(`WellBracketed_append` + `WellBracketed_cons_delta_zero`). This is the *navigation* invariant the pure
+locate correspondence consumes: pairing a guarded balanced subrange to an entry is a matching-close balance
+argument, and the descent into a nested entry's interior needs *that interior's own* `WellBracketed` — which
+only the deliverable's recursive structure supplies per sub-part (a single global hypothesis cannot reach a
+sub-body). So the locate now has its balance tool in hand at every nesting level.
 
-> **Frontier (post-Reflection 237, commit `abc4b829`).** The `(d-shape)` algebra is complete
+> **Frontier (post-Reflection 238, commit `a3592b4c`).** The `(d-shape)` algebra is complete
 > (the bracket conjuncts are correctly guarded — Reflection 218 — AND their `h_succ` substrate, the
 > value-end successor `EntryUnit` / `SafeBodyUnit_succ` / `SafeBodyUnit_array_succ`, exists —
 > Reflection 219), and the **sequence side** of threading `EntryUnit` through the producers is now
@@ -2384,7 +2393,12 @@ map side mirrors with `RecMapBody`.
 > guarded subrange `[lo,hi)`'s `tokens[lo-1]` opener to *which* `RecSeqEntry` of the emitted body it selects
 > (so the opener-window `(take (hi+1)).drop (lo-1)` *is* that entry, the exact input `seqBodyProps_of_located_entry`
 > consumes), walking the body's `RecSeqBody`/`RecSeqEntry` structure by balance → then feed
-> `seqBodyProps_of_located_entry` → `FlowSubrangesOk.seq`; and (b) the **emit producer**
+> `seqBodyProps_of_located_entry` → `FlowSubrangesOk.seq`. That balance walk now has its
+> **navigation invariant in hand** (commit `a3592b4c`, Reflection 238): `RecSeqEntry.toWellBracketed` /
+> `RecSeqBody.toWellBracketed` project the deliverable to its untyped-balance form at *any* sub-body
+> (completing the projection family `SafeBody`/`SafeBodyUnit`/`WellBracketed`), so the descent can
+> recover `WellBracketed` per sub-part it descends into — the matching-close argument that pairs a
+> guarded subrange to an entry. And (b) the **emit producer**
 > `emitList_scans_safebody` strengthened to deliver `RecSeqBody` (it already produces the flat `SafeBody`;
 > the recursive `h_rec` at each `seq` entry comes from the per-item `ih` applied to the nested sequence's
 > own items). Together they close the seq `FlowSubrangesOk.seq` field; the map side mirrors with a
@@ -2392,9 +2406,9 @@ map side mirrors with `RecMapBody`.
 > (key→content, key→value, value→content, value→successor, and the two value-close-guarded bracket
 > successors) need the pair-level refinement — a map *pair* `.key block_k .value block_v` has an interior
 > depth-0 `.value`, so the whole pair is NOT an `EntryUnit`. Both fields together build the one
-> `FlowSubrangesOk tokens` shared by sorries 1335/1576 → `flow_parser_ok_of_structure`
+> `FlowSubrangesOk tokens` shared by sorries 1367/1608 → `flow_parser_ok_of_structure`
 > (`FlowParserAcceptance.lean`) at `(2, tokens.size−2)`, `fuel = 4·tokens.size+4` → close the two
-> `NonemptyStructure.lean` structure sorries (1335/1576) → the two base
+> `NonemptyStructure.lean` structure sorries (1367/1608) → the two base
 > `emit_roundtrip_{sequence,mapping}_content_eq` (`EmitterScannability.lean` 832/872) →
 > `universal_roundtrip`.
 
@@ -15373,6 +15387,20 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
+                **Total .body scope re-estimate (EIGHTY-SIXTH revision —
+                after **Thread A step 3 sub-step 2's brick (d-shape) cont'd — *seq deliverable BALANCE
+                PROJECTION `RecSeqEntry`/`RecSeqBody.toWellBracketed`* — landed** (commit `a3592b4c`,
+                Reflection 238). Completes the recursive deliverable's projection family: it already projects
+                to `SafeBody` (`toSafeBody`) and `SafeBodyUnit` (`toSafeBodyUnit`); this adds the untyped-balance
+                form `WellBracketed`. Entry level mirrors `RecSeqEntry.toEntrySafe` reading `wrap_{seq,map}_block`'s
+                `.1` (not `.2`), the `scalar` leaf a delta-`0` singleton; body level is term-mode structural
+                recursion as `RecSeqBody.toSafeBody`, chaining segments across the depth-`0` `.flowEntry`
+                separators (`WellBracketed_append` + `WellBracketed_cons_delta_zero`). This is the *navigation*
+                invariant the pure locate correspondence needs: pairing a guarded subrange to an entry is a
+                matching-close balance argument, and the descent into a nested entry's interior needs *that
+                interior's own* `WellBracketed` — which only the deliverable's recursive structure supplies per
+                sub-part (a global hypothesis cannot reach a sub-body). Build green **523 jobs**, **sorries held
+                at 4**; both lemmas axiom-clean (no `sorryAx`). See Reflection 238, on top of the
                 **Total .body scope re-estimate (EIGHTY-FIFTH revision —
                 after **Thread A step 3 sub-step 2's brick (d-shape) cont'd — *descent-locator FRONT-END
                 CONSUMER `seqBodyProps_of_located_entry`* — landed** (commit `abc4b829`, Reflection 237).
@@ -25740,3 +25768,7 @@ The single-level descent step (Reflection 235) recovers a nested entry's interio
 ### Reflection 237 (new, 2026-06-03): build the consumer of the descent-locator's *not-yet-produced output* (a located ENTRY) before the locate itself — it costs only coordinate arithmetic over already-proven atoms, collapses the whole positional chain to ONE structural residual ("the opener-window is a `RecSeqEntry`"), and cannot regress
 
 The back half (Reflection 236) closes *"located `RecSeqBody interior` at `[lo,hi)` → `SeqBodyProps`"* — but it is keyed on the *interior* window `(take (hi+1)).drop lo` and on already knowing the interior is a `RecSeqBody`. The descent-locator's actual output, one step earlier, is coarser and more natural: it will hand back a `RecSeqEntry` of the **whole emitted body** that happens to sit at a guarded subrange — i.e. `RecSeqEntry` of the *opener*-window `(take (hi+1)).drop (lo-1)` (opener included, interior not yet extracted). The move (a [[ref-consumer-joint-before-producer]] application at the *locate* boundary): write the consumer of that not-yet-produced `RecSeqEntry` **now**, as bare hypothesis `h_entry : RecSeqEntry ((take (hi+1)).drop (lo-1))`, and prove `seqBodyProps_of_located_entry` reaches `SeqBodyProps tokens lo hi`. The crucial property — the reason this is a certain one-increment brick and not the analytical residual in disguise — is that *everything between the located entry and the goal is coordinate arithmetic over atoms that already exist*: peel the opener (`List.getElem_cons_drop`, using `1 ≤ lo` and `lo-1+1 = lo`) to expose the `op :: rest` shape; decompose `rest` with the back half's own slice (`List.take_add_one` + `List.drop_append_of_le_length`) into interior-window `++ [closer]`; feed `RecSeqEntry.seq_interior` (the opener guard gives `op.val = .flowSequenceStart` after a `getElem!_pos`/`Array.getElem_toList` bridge) to descend one level; route its two disjuncts to the two leaves *already proved* — non-empty → `seqBodyProps_of_recseqbody_window` (Reflection 236), empty (`interior = []` ⇒ `lo = hi` by `List.length_drop`/`length_take`) → `seqBodyProps_empty` (Reflection 233). Even the back half's one remaining input it did not supply — `isFlowContentStart tokens[lo]!.val` — is *recovered* here for free from the located body itself (`RecSeqBody.toSafeBody.head_Q` gives `ContentStartTok` of the head, and the windowed-slice head index `((·).drop lo)[0] = tokens[lo]` identifies it, the predicates being defeq), so the lemma demands only `FlowSubrangesOk.seq`'s genuine guards. The payoff: the entire seq-side positional chain — opener-window → entry → interior → `SafeBody` → `SeqBodyProps` — is now proven end-to-end, and the residual collapses to a *single* structural fact with no positional plumbing left in it: **"every guarded balanced flow-sequence subrange's opener-window is a `RecSeqEntry` of the emitted body."** That is the pure locate correspondence (balance↔structure), the one genuinely analytical thing remaining on the seq side, now sharply isolated. The general lesson, the consumer-joint pattern pushed one boundary further than usual: when the next producer (here the locate) is the hard analytical step, don't stop at building the consumer of its *final* deliverable — build the consumer of its *raw, earliest* output (the coarsest thing it will hand back), because the distance from that raw output to the goal is often pure plumbing over lemmas you already have, and absorbing that plumbing *now* (when it cannot regress — the build is green and fully proven) leaves the producer with the smallest, most purely-analytical contract possible. Build green 523 jobs, sorries held at 4, `seqBodyProps_of_located_entry` axiom-clean `[propext, Classical.choice, Quot.sound]` (no `sorryAx`). Sits with [[ref-consumer-joint-before-producer]] (this is that reshape applied at the locate boundary, to the locator's raw output rather than its refined one), [[ref-recursive-deliverable-project-to-flat-first]] and the Reflection 236 slice/locate factoring (this consumes the *locate* half's output, leaving locate as the sole residual).
+
+### Reflection 238 (new, 2026-06-03): complete the deliverable's *projection family* before walking it — the balance projection (`Rec…→WellBracketed`) is the navigation invariant the structural locate needs at *every* nesting level, and only the recursive structure supplies it per sub-part
+
+With the seq-side positional chain proven end-to-end (Reflection 237), the sole seq residual is the *pure locate correspondence*: walk the body's `RecSeqBody`/`RecSeqEntry` structure by balance to pair each guarded balanced subrange `[lo,hi)` with the entry whose opener-window it is. Before writing that walk, ask what *tool* it consumes at each step. Pairing a guarded subrange to an entry is a **matching-close balance argument** (the matching close of a depth-0 opener is the entry's last token — the same `flowBracketBalance_matching_close` machinery, read in the structure→position direction), and crucially the walk **descends into nested interiors** (`FlowSubrangesOk.seq` quantifies over *all* subranges, including ones deep inside an entry), so at each descent it needs *that interior's own* `WellBracketed` — its untyped balance invariant. A single global hypothesis (the producer's top-level `WellBracketed block`) cannot reach a sub-body; only the deliverable's *recursive structure* can carry the invariant down to each nested part. So the certain, on-path, self-contained brick to land *before* the walk is the deliverable's **balance projection**: `RecSeqEntry.toWellBracketed` / `RecSeqBody.toWellBracketed`. It completes the projection family — the deliverable already projects to `SafeBody` (`toSafeBody`, the consumer joint's input) and `SafeBodyUnit` (`toSafeBodyUnit`, the unit refinement); these add the untyped-balance form. The entry-level lemma is the exact mirror of `RecSeqEntry.toEntrySafe` reading `wrap_{seq,map}_block`'s `.1` (the `WellBracketed` half) instead of `.2` (the `EntrySafe` half), with the `scalar` leaf the delta-`0` singleton (`WellBracketed_singleton_delta_zero`); the body-level lemma is term-mode structural recursion exactly as `RecSeqBody.toSafeBody`, chaining each entry's `WellBracketed` across the depth-`0` `.flowEntry` separators (delta `0`) via `WellBracketed_append` + `WellBracketed_cons_delta_zero`. Because both are verbatim mirrors of the existing projections, the increment is certain (build green 523 jobs, sorries held at 4, axiom-clean — `RecSeqEntry.toWellBracketed` `[propext, Quot.sound]`, `RecSeqBody.toWellBracketed` the pure triple, no `sorryAx`). The general lesson, the [[ref-recursive-deliverable-project-to-flat-first]] discipline applied a third time (R234 defined the type + its `SafeBody` projection; R235/236/237 built the descent/consume side; this completes the *project* side): when you are about to write a recursion that *consumes* a recursive deliverable, first give the deliverable a projection to every flat invariant that recursion will need at its sub-parts — the projections are cheap mirrors of each other, they validate the type from yet another end, and they hand the consuming recursion its per-sub-part tools so it never has to re-derive them or reach for an unreachable global hypothesis. The balance projection is to the locate what `toSafeBody` was to the consumer joint: the bridge from the recursive witness to the flat fact the next step is keyed on. Sits with [[ref-recursive-deliverable-project-to-flat-first]] (same project-to-flat discipline, now for the untyped-balance invariant) and [[ref-consumer-joint-before-producer]] (the locate is the producer; this equips it).
