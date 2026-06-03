@@ -729,6 +729,49 @@ theorem RecSeqEntry.map_interior {e interior : List (Positioned YamlToken)}
       injection h_eq with _h1 h2
       exact (append_singleton_inj h2).1 ▸ h_wb
 
+/-- **Recursive map bracket-entry** (Phase J, map side — the descent-locator's raw output type).
+    A `{ … }` flow-MAPPING bracket entry whose interior carries the *recursive* `RecMapBody`
+    structure, not merely its `WellBracketed` substrate.  This is the map-side refinement
+    `RecSeqEntry.map` deliberately deferred (its interior bottoms out at `WellBracketed`, with the
+    fully-recursive map interior flagged "a later refinement"): a dedicated entry type depending only
+    on the already-defined `RecMapBody`, so no `mutual` with `RecSeqEntry` is needed.  `mapEmpty` is
+    the `{}` witness (`interior = []`, which `RecMapBody` — having no `nil` constructor — cannot
+    represent); `map` carries the non-empty `RecMapBody interior`.  Unlike `RecSeqEntry`, every
+    constructor is a mapping, so the entry *internalizes* the `.flowMappingStart` opener guard the
+    seq entry needed supplied externally — the map front-end joint therefore needs no separate
+    `h_open`. -/
+inductive RecMapEntry : List (Positioned YamlToken) → Prop where
+  | mapEmpty (op cl : Positioned YamlToken)
+      (h_op : op.val = .flowMappingStart) (h_cl : cl.val = .flowMappingEnd) :
+      RecMapEntry (op :: ([] ++ [cl]))
+  | map (op cl : Positioned YamlToken) (interior : List (Positioned YamlToken))
+      (h_op : op.val = .flowMappingStart) (h_cl : cl.val = .flowMappingEnd)
+      (h_rec : RecMapBody interior) :
+      RecMapEntry (op :: (interior ++ [cl]))
+
+/-- **Single-level map descent** (Phase J, map side — the recursive analog of
+    `RecSeqEntry.seq_interior`).  A located `RecMapEntry (op :: (interior ++ [cl]))` has an interior
+    that is EITHER a `RecMapBody` (the `lo < hi` shape the back-half joint
+    `mapBodyProps_of_recmapbody_window` consumes after `RecMapBody.toSafeBody`) OR empty
+    (`interior = []`, the `lo = hi` shape `mapBodyProps_empty` discharges vacuously).  This is the
+    producer-contract split (Reflection 233 — the empty branch the `SafeBody (· = .key)`-keyed joint
+    structurally cannot cover is the branch it is never asked to cover); no opener guard is needed
+    because both `RecMapEntry` constructors are mappings. -/
+theorem RecMapEntry.map_interior {e interior : List (Positioned YamlToken)}
+    {op cl : Positioned YamlToken}
+    (h : RecMapEntry e) (h_eq : e = op :: (interior ++ [cl])) :
+    RecMapBody interior ∨ interior = [] := by
+  cases h with
+  | mapEmpty op' cl' h_op' h_cl' =>
+      right
+      injection h_eq with _h1 h2
+      simp only [List.nil_append] at h2
+      exact (append_singleton_inj h2.symm).1
+  | map op' cl' interior' h_op' h_cl' h_rec =>
+      left
+      injection h_eq with _h1 h2
+      exact (append_singleton_inj h2).1 ▸ h_rec
+
 /-- **Empty-body leaf** (Phase J, seq side).  An empty nested flow-SEQUENCE body — `lo = hi`, the
     shape `emit (.sequence … #[]) = "[]"` scans to (`[` immediately followed by `]`, so the interior
     `[lo, hi)` is empty) — satisfies `SeqBodyProps` *vacuously*: `content_start` is guarded by
@@ -1242,6 +1285,114 @@ theorem mapBodyProps_of_recmapbody_window (tokens : Array (Positioned YamlToken)
     h_outer_bal h_dyck h_wt_interior (h_eq ▸ h_rec.toSafeBody)
     h_key_content h_key_scalar_value h_value_content h_value_scalar_succ
     h_key_bracket_succ h_value_bracket_succ
+
+/-- **Located-entry → `MapBodyProps` consumer joint** (Phase J, map side — the descent-locator's
+    FRONT-END consumer).  The map mirror of `seqBodyProps_of_located_entry` (Reflection 237): it
+    consumes the descent-locator's raw, earliest output — `RecMapEntry` of the absolute opener-window
+    `(tokens.toList.take (hi+1)).drop (lo-1)` of a guarded balanced flow-MAPPING subrange `[lo, hi)`
+    — and assembles `MapBodyProps tokens lo hi`, adding no structural content beyond the same opener-
+    peel coordinate arithmetic the seq front-end does:
+
+    * **peel the opener** — `(take (hi+1)).drop (lo-1) = tokens[lo-1] :: (take (hi+1)).drop lo`
+      (`List.getElem_cons_drop`, using `1 ≤ lo`);
+    * **decompose the rest** — `(take (hi+1)).drop lo = (take hi).drop lo ++ [tokens[hi]]`
+      (`List.take_add_one` + `List.drop_append_of_le_length`), exposing the interior window
+      `(take hi).drop lo` and the closer `tokens[hi]`;
+    * **descend** via `RecMapEntry.map_interior`: the non-empty disjunct `RecMapBody` feeds the back
+      half `mapBodyProps_of_recmapbody_window`, the empty disjunct `interior = []` forces `lo = hi`
+      (`List.length_drop`/`List.length_take`) and routes to the vacuous leaf `mapBodyProps_empty`.
+
+    The two faithful-mirror asymmetries with the seq front-end (Reflections 232 / 241) reappear in
+    the *signature*, not the proof: (a) NO `content_start` recovery and NO `h_open` — the map back-half
+    recovers M1 `key_start` internally from `SafeBody.head_Q`, and the `RecMapEntry` type internalizes
+    the `.flowMappingStart` opener guard, so the seq front-end's content-start plumbing and explicit
+    opener hypothesis simply vanish; (b) the six pair-INTERIOR primitives stay as pass-through inputs,
+    because the `.key`-headed `SafeBody` constrains only the pair BOUNDARY and the depth-0 `.value`
+    alternation lives below its resolution (Reflection 232, load-bearing).  With this, the map-side
+    Phase-J residual collapses to the pure *locate correspondence* — "for every guarded balanced
+    flow-mapping subrange, its opener-window is a `RecMapEntry`" — plus those six primitives; no
+    positional plumbing remains downstream of locate.  Completes the map consumer-joint family,
+    symmetric to the seq side's back-half (R236) + front-end (R237) pair. -/
+theorem mapBodyProps_of_located_entry (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (h_lo : 1 ≤ lo) (h_lo_hi : lo ≤ hi) (h_hi_sz : hi < tokens.size)
+    (h_tpe : tokens[hi]!.val = .flowMappingEnd)
+    (h_outer_bal : flowBracketBalance tokens lo hi = 0)
+    (h_dyck : ∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0)
+    (h_wt_interior : WellTyped ((tokens.toList.take hi).drop lo))
+    (h_entry : RecMapEntry ((tokens.toList.take (hi + 1)).drop (lo - 1)))
+    (h_key_content : ∀ k, lo ≤ k → k < hi →
+      flowBracketBalance tokens lo k = 0 →
+      tokens[k]!.val = .key →
+      k + 1 < hi ∧ isFlowContentStart tokens[k + 1]!.val)
+    (h_key_scalar_value : ∀ k, lo ≤ k → k < hi →
+      flowBracketBalance tokens lo k = 0 →
+      tokens[k]!.val = .key →
+      (∃ c s, tokens[k + 1]!.val = .scalar c s) →
+      k + 2 < hi ∧ tokens[k + 2]!.val = .value)
+    (h_value_content : ∀ k, lo ≤ k → k < hi →
+      flowBracketBalance tokens lo k = 0 →
+      tokens[k]!.val = .value →
+      k + 1 < hi ∧ isFlowContentStart tokens[k + 1]!.val)
+    (h_value_scalar_succ : ∀ k, lo ≤ k → k < hi →
+      flowBracketBalance tokens lo k = 0 →
+      tokens[k]!.val = .value →
+      (∃ c s, tokens[k + 1]!.val = .scalar c s) →
+      k + 2 ≤ hi ∧
+      (tokens[k + 2]!.val = .flowEntry ∨
+       (tokens[k + 2]!.val = .flowMappingEnd ∧ k + 2 = hi)))
+    (h_key_bracket_succ : ∀ k j, lo ≤ k → k < hi →
+      flowBracketBalance tokens lo k = 0 →
+      tokens[k]!.val = .key →
+      k + 1 < j → j < hi →
+      flowBracketDelta tokens[j]!.val = -1 →
+      flowBracketBalance tokens lo (j + 1) = 0 →
+      j + 1 < hi ∧ tokens[j + 1]!.val = .value)
+    (h_value_bracket_succ : ∀ k j, lo ≤ k → k < hi →
+      flowBracketBalance tokens lo k = 0 →
+      tokens[k]!.val = .value →
+      k + 1 < j → j < hi →
+      flowBracketDelta tokens[j]!.val = -1 →
+      flowBracketBalance tokens lo (j + 1) = 0 →
+      j + 1 ≤ hi ∧
+      (tokens[j + 1]!.val = .flowEntry ∨
+       (tokens[j + 1]!.val = .flowMappingEnd ∧ j + 1 = hi))) :
+    MapBodyProps tokens lo hi := by
+  have h_hi_len : hi < tokens.toList.length := by rw [Array.length_toList]; exact h_hi_sz
+  -- rest-decomposition: the `interior ++ [cl]` slice the back half is keyed on.
+  have h_rest : (tokens.toList.take (hi + 1)).drop lo
+      = (tokens.toList.take hi).drop lo ++ [tokens.toList[hi]] := by
+    have h_ts : tokens.toList.take (hi + 1)
+        = tokens.toList.take hi ++ [tokens.toList[hi]] := by
+      rw [List.take_add_one, List.getElem?_eq_getElem h_hi_len]; rfl
+    rw [h_ts]
+    have h_len : lo ≤ (tokens.toList.take hi).length := by rw [List.length_take]; omega
+    rw [List.drop_append_of_le_length h_len]
+  -- peel the opener: the opener-window is `tokens[lo-1] :: rest`.
+  have h_peel : (tokens.toList.take (hi + 1)).drop (lo - 1)
+      = tokens.toList[lo - 1]'(by rw [Array.length_toList]; omega)
+        :: (tokens.toList.take (hi + 1)).drop lo := by
+    have hlen : lo - 1 < (tokens.toList.take (hi + 1)).length := by
+      rw [List.length_take]; omega
+    have h := (List.getElem_cons_drop hlen).symm
+    rw [List.getElem_take] at h
+    rw [show lo - 1 + 1 = lo from by omega] at h
+    exact h
+  -- the located entry now reads as `op :: (interior_w ++ [cl])`.
+  rw [h_peel, h_rest] at h_entry
+  -- descend one nesting level (no opener guard — `RecMapEntry` internalizes it).
+  rcases RecMapEntry.map_interior h_entry rfl with h_rec | h_empty
+  · -- non-empty interior: feed the back half (M1 recovered internally there).
+    exact mapBodyProps_of_recmapbody_window tokens lo hi ((tokens.toList.take hi).drop lo)
+      tokens.toList[hi] h_lo_hi h_hi_sz h_tpe h_outer_bal h_dyck h_wt_interior h_rest h_rec
+      h_key_content h_key_scalar_value h_value_content h_value_scalar_succ
+      h_key_bracket_succ h_value_bracket_succ
+  · -- empty interior: `(take hi).drop lo = []` forces `lo = hi`.
+    have hlen_take : (tokens.toList.take hi).length = hi := by rw [List.length_take]; omega
+    have hl : ((tokens.toList.take hi).drop lo).length
+        = (tokens.toList.take hi).length - lo := List.length_drop
+    rw [h_empty, hlen_take] at hl
+    simp only [List.length_nil] at hl
+    exact mapBodyProps_empty tokens lo hi (by omega)
 
 /-- Token structure of `scanFiltered ("[" ++ emitList items ++ "]")` for non-empty items.
     Establishes boundary tokens, body token patterns, and `parseNode` success within
