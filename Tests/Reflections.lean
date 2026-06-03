@@ -9,6 +9,7 @@ import Tests.Reflections.AdditiveParallelType
 import Tests.Reflections.UniversalPackagingJoint
 import Tests.Reflections.ProjectionFamilyCompletion
 import Tests.Reflections.ProducerDualOfConsumer
+import Tests.Reflections.EmitProducerStrengthening
 
 /-!
 # Reflections — runnable proof-engineering demonstrations
@@ -31,5 +32,6 @@ Each module names the Blueprint Reflection it illustrates:
 * `AdditiveParallelType`                 — Reflection 242 (land a forced deliverable refinement as an additive parallel type, never a shared edit; a dedicated type internalizes the guard)
 * `UniversalPackagingJoint`              — Reflection 243 (universal packaging is its own consumer joint — the field/joint hypothesis gap IS the producer's deliverable type; build the assembler before the producer)
 * `ProjectionFamilyCompletion`           — Reflection 244 (complete a newly-added deliverable type's projection family before the producer walks it — the omitted projection is the locate's navigation invariant, a verbatim mirror of the sibling's; projections track STORED fields, not desired properties)
+* `EmitProducerStrengthening`            — Reflection 249 (the emit-producer strengthening is itself a consumer-joint-before-producer move at the emit boundary — key the assembler on a SUPERSET per-item predicate carrying the recursive deliverable (`RecEntry`, unrecoverable from the flat `FlatEntry`, witnessed by `flatentry_aa` + `not_recentry_aa`); and the recursive producer is a verbatim mirror of the flat one over ONE shared induction, only the leaf constructor swapped — `buildRecBody` is `buildFlatBody` with `RecBody.single/.cons` for `FlatBody.single/.cons`, `recbody_to_flatbody` projecting rec ⟹ flat)
 * `ProducerDualOfConsumer`               — Reflections 245 + 246 + 247 + 248 (the producer's per-level assembler is the constructive dual of the consumer joint — same positional bridge, opposite direction, constructor vs. eliminator; its symmetric MIRROR transports the plumbing verbatim but sheds at the constructor exactly the field the additive parallel type projects instead of stores: seq `SEntry.seq` stores `WB`, map `MEntry.map` omits-and-projects it; the BUNDLE assembler `bundleLocatedSeq`/`bundleLocatedMap` lifts the field-level dual to the consumer's bundled deliverable `SLocated`/`MLocated` — only the recursive `entry` field is non-trivial, the rest are window-guard pass-throughs, and the map bundle threads one extra stored primitive `keyF` the entry producer never supplies; and R248 — that storage asymmetry is SCALE-FREE: the same projected-vs-stored mechanism SHRINKS the entry constructor and GROWS the bundle, opposite signs, witnessed by `wb_recovered` (post-hoc projection at the shrunk constructor) vs `mlocated_key` (the grown-in stored field projected back out))
 -/
