@@ -4,49 +4,65 @@ Released under Apache 2.0 license as described in the file LICENSE.
 -/
 
 /-!
-# Reflection 245 — the producer's per-level assembler is the constructive dual of the consumer joint
+# Reflections 245 + 246 — the producer-dual of a consumer joint, and its non-verbatim symmetric mirror
 
-Self-contained (core Lean, no `L4YAML` import) runnable demonstration of the principle in
-Blueprint Reflection 245: when the consumer-side bridge that *reads* a recursive deliverable off a
+Self-contained (core Lean, no `L4YAML` import) runnable demonstration of two paired principles.
+
+**Reflection 245** — when the consumer-side bridge that *reads* a recursive deliverable off a
 positionally-windowed slice is already proven, its **write direction is a separate, immediately
-landable brick** — the same positional-slicing lemma, run in the opposite direction, terminated by
-the deliverable type's *constructor* instead of its *eliminator*.  Build it before the recursion: it
-is the recursion's per-level final-assembly step, it reuses the consumer's slicing verbatim (no new
-analysis), and it peels the non-recursive packaging off the deliverable, leaving the producer's
-residual as *exactly* the recursive sub-deliverable.
+landable brick**: the same positional-slicing lemma, run in the opposite direction, terminated by
+the deliverable type's *constructor* instead of its *eliminator*.  It is the recursion's per-level
+final-assembly step, it reuses the consumer's slicing verbatim, and it peels the non-recursive
+packaging off the deliverable, leaving the producer's residual as *exactly* the recursive
+sub-deliverable.
 
-The L4YAML instance: `seqBodyProps_of_located_entry` (R236, the consumer) *reads* a located
-`RecSeqEntry` off the opener-window `(take (hi+1)).drop (lo-1)` to assemble `SeqBodyProps`;
-`located_entry_of_recseqbody` (R245, the producer) *builds* that `RecSeqEntry` from the inner-window
-`RecSeqBody ((take hi).drop lo)` — exactly the `SeqLocated.entry` the locate must deliver.  Both run
-the same positional bridge (rest-decomposition `List.take_add_one` + `List.drop_append_of_le_length`,
-opener-peel `List.getElem_cons_drop`); one descends via `seq_interior` (eliminator), the other
-applies `RecSeqEntry.seq` (constructor).
+**Reflection 246** — the *symmetric mirror* of such a producer-dual (the same construction on the
+other half of an additive parallel-type pair) transports the **positional plumbing verbatim**, but
+its **terminal constructor call is *not* verbatim**: it sheds (or adds) exactly the fields the
+parallel type chose to *store* vs. *project*.  Read the parallel type's constructor signature first —
+its arity differs from the sibling's by precisely the stored-vs-projected split (R244).
 
-This toy strips it to a skeleton over a one-kind bracket language (`os`/`cs` = `[`/`]`, `a` = atom):
+The L4YAML instance.  `seqBodyProps_of_located_entry` / `mapBodyProps_of_located_entry` (the
+consumers) *read* a located `RecSeqEntry`/`RecMapEntry` off the opener-window `(take (hi+1)).drop
+(lo-1)`; `located_entry_of_recseqbody` / `located_mapentry_of_recmapbody` (the producers, R245/R246)
+*build* them from the inner-window `RecSeqBody`/`RecMapBody`.  All four run the *same* positional
+bridge (rest-decomposition `List.take_add_one` + `List.drop_append_of_le_length`, opener-peel
+`List.getElem_cons_drop`).  The asymmetry R246 names: `RecSeqEntry.seq` **stores** a `WellBracketed
+interior` field, so the seq producer ends `RecSeqEntry.seq _ _ _ h_op h_cl h_rec.toWellBracketed
+h_rec` (the projection fed in); `RecMapEntry.map` (R242's additive type) stores only `RecMapBody`
+and **projects** its balance via `RecMapEntry.toWellBracketed` (R244), so the map producer ends
+`RecMapEntry.map _ _ _ h_op h_cl h_rec` — one argument shorter, the `WellBracketed` shed.
 
-* `RBody` / `REntry` — the recursive deliverable (toy `RecSeqBody` / `RecSeqEntry`): an entry is an
-  atom or a `[ … ]` frame over a body; a body wraps one entry.
-* `window_split`  — the shared positional bridge: the opener-window `(l.take (hi+1)).drop (lo-1)`
-  equals `l[lo-1] :: ((l.take hi).drop lo ++ [l[hi]])`.  Proved by the take/drop slicing both
-  directions run.  (Toy of `interior_window_eq`'s slice + the opener peel.)
-* `readLocated`   — the CONSUMER (eliminator): from the located `REntry` of the opener-window, recover
-  the inner-window `RBody`.  Toy `seqBodyProps_of_located_entry`'s core (`window_split` + `descent`).
-* `buildLocated`  — the PRODUCER (constructor): from the inner-window `RBody`, build the located
-  `REntry` of the opener-window.  Toy `located_entry_of_recseqbody` (`window_split` + `REntry.seq`).
+This toy strips it to a skeleton over a two-kind bracket language (`os`/`cs` = `[`/`]` for the
+sequence side, `om`/`cm` = `{`/`}` for the mapping side, `a` = atom):
 
-`buildLocated` and `readLocated` are exact duals: same `window_split`, opposite direction, the
-deliverable's constructor vs. its eliminator.  The producer reduces "produce the located entry" to
-"produce the inner-window `RBody`" — the recursive obligation.  Positive witnesses build an entry and
-read it back; the opener guard is load-bearing (a window whose `l[lo-1] ≠ .os` cannot be built).
+* `WB`                           — a shallow "matching outer frame, or atom" marker: the toy
+  `WellBracketed`, the property one family STORES and the other PROJECTS.
+* `SBody` / `SEntry`             — the seq-side deliverable (toy `RecSeqBody`/`RecSeqEntry`); the
+  `seq` constructor **stores** a `WB interior` field.
+* `MBody` / `MEntry`            — the map-side deliverable (toy `RecMapBody`/`RecMapEntry`, R242's
+  additive type); the `map` constructor stores **no** `WB` — `MEntry.toWB` recovers it post-hoc.
+* `window_split`                 — the shared, *kind-agnostic* positional bridge: the opener-window
+  `(l.take (hi+1)).drop (lo-1)` equals `l[lo-1] :: ((l.take hi).drop lo ++ [l[hi]])`.  BOTH families,
+  BOTH directions run it verbatim (R245/R246's "positional plumbing transports verbatim").
+* `readLocatedSeq`               — the CONSUMER (eliminator): `window_split` + `SEntry.descent`.
+* `buildLocatedSeq`              — the PRODUCER, seq side: `window_split` + `SEntry.seq` — and it must
+  **feed** the stored `WB` via `SBody.toWB h_rec` (the extra argument).
+* `buildLocatedMap`              — the PRODUCER, map side: `window_split` + `MEntry.map` — the
+  constructor call is the seq one minus the `WB` argument (R246's shed field).
+
+Positive witnesses build an entry on each side and read the seq one back; `MEntry.toWB` recovers the
+`WB` the map constructor never stored.  The opener *kind* is load-bearing (a `{` window is not a `[`
+window, an atom is neither); decidable `bal` checks pin the balanced/unbalanced witnesses.
 
 Build: `lake build Tests.Reflections.ProducerDualOfConsumer`.
 -/
 
 namespace ProducerDualOfConsumer
 
-/-- A tiny one-kind bracket language.  `os`/`cs` = square `[`/`]`, `a` = atom. -/
-inductive Tok | os | cs | a
+/-- A tiny two-kind bracket language.  `os`/`cs` = square `[`/`]` (sequence), `om`/`cm` = curly
+    `{`/`}` (mapping), `a` = atom. -/
+inductive Tok | os | cs | om | cm | a
   deriving DecidableEq, Repr
 
 /-- Append-singleton injectivity (core Lean, no Mathlib): from `a ++ [x] = b ++ [y]` recover both
@@ -59,26 +75,68 @@ theorem append_singleton_inj {a b : List Tok} {x y : Tok}
   injection hr with hxy har
   exact ⟨List.reverse_inj.mp har, hxy⟩
 
-/-! ## The recursive deliverable — `RBody` / `REntry` (toy `RecSeqBody` / `RecSeqEntry`) -/
+/-! ## The shared property `WB` — what one family STORES and the other PROJECTS (toy `WellBracketed`) -/
+
+/-- A shallow "matching outer frame, or atom" marker — the toy `WellBracketed`.  This is the property
+    the seq entry constructor *stores* as a field and the map entry constructor *omits and projects*;
+    R246 is about exactly this storage decision becoming visible at the constructor's arity. -/
+inductive WB : List Tok → Prop where
+  | atom : WB [.a]
+  | frame (op cl : Tok) (inner : List Tok) : WB (op :: (inner ++ [cl]))
+
+/-! ## The two recursive deliverables — seq side STORES `WB`, map side PROJECTS it -/
 
 mutual
-  /-- A body wraps one entry (toy `RecSeqBody.single`; the comma/`flowEntry` recursion is elided —
-      the nesting recursion runs through `REntry.seq`). -/
-  inductive RBody : List Tok → Prop where
-    | single (e : List Tok) (h : REntry e) : RBody e
-  /-- An entry is an atom or a `[ … ]` frame over a recursive body (toy `RecSeqEntry.scalar`/`.seq`). -/
-  inductive REntry : List Tok → Prop where
-    | atom : REntry [.a]
-    | seq (interior : List Tok) (h : RBody interior) : REntry (.os :: (interior ++ [.cs]))
+  /-- Seq-side body wraps one entry (toy `RecSeqBody.single`). -/
+  inductive SBody : List Tok → Prop where
+    | single (e : List Tok) (h : SEntry e) : SBody e
+  /-- Seq-side entry: an atom or a `[ … ]` frame.  **`seq` STORES `WB interior`** — the faithful toy
+      of `RecSeqEntry.seq`, whose `WellBracketed interior` field the seq producer must supply. -/
+  inductive SEntry : List Tok → Prop where
+    | atom : SEntry [.a]
+    | seq (interior : List Tok) (hwb : WB interior) (h : SBody interior) :
+        SEntry (.os :: (interior ++ [.cs]))
 end
 
-/-! ## The shared positional bridge — `window_split` (the slice BOTH directions run) -/
+mutual
+  /-- Map-side body wraps one entry (toy `RecMapBody.single`). -/
+  inductive MBody : List Tok → Prop where
+    | single (e : List Tok) (h : MEntry e) : MBody e
+  /-- Map-side entry: an atom or a `{ … }` frame.  **`map` STORES NO `WB`** — the faithful toy of
+      R242's `RecMapEntry.map`, which keeps only `RecMapBody` and projects its balance post-hoc. -/
+  inductive MEntry : List Tok → Prop where
+    | atom : MEntry [.a]
+    | map (interior : List Tok) (h : MBody interior) :
+        MEntry (.om :: (interior ++ [.cm]))
+end
+
+/-! ## Projections to `WB` — the seq build FEEDS one, the map build RECOVERS one -/
+
+/-- The seq entry's stored `WB` is recoverable structurally (one-liner over the shallow marker). -/
+theorem SEntry.toWB {e : List Tok} (h : SEntry e) : WB e := by
+  cases h with
+  | atom => exact WB.atom
+  | seq interior hwb h => exact WB.frame .os .cs interior
+
+/-- …hence the seq body projects to `WB` — this is what `buildLocatedSeq` feeds into the stored field. -/
+theorem SBody.toWB {e : List Tok} (h : SBody e) : WB e := by
+  cases h with
+  | single e he => exact he.toWB
+
+/-- The map entry's `WB` is recovered **post-hoc** (the toy `RecMapEntry.toWellBracketed`, R244): the
+    `map` constructor never stored it, so downstream consumers obtain it by projection, not by field. -/
+theorem MEntry.toWB {e : List Tok} (h : MEntry e) : WB e := by
+  cases h with
+  | atom => exact WB.atom
+  | map interior h => exact WB.frame .om .cm interior
+
+/-! ## The shared positional bridge — `window_split` (kind-agnostic; BOTH families, BOTH directions) -/
 
 /-- **The shared bridge.**  The opener-window `(l.take (hi+1)).drop (lo-1)` decomposes as
-    `l[lo-1] :: ((l.take hi).drop lo ++ [l[hi]])`: the opener `l[lo-1]`, the inner window
-    `(l.take hi).drop lo`, the closer `l[hi]`.  Pure take/drop slicing — the toy of the identity
-    `interior_window_eq` (slice half) plus the opener peel, exactly what both `readLocated` (read it
-    off) and `buildLocated` (assemble onto it) run, in opposite directions. -/
+    `l[lo-1] :: ((l.take hi).drop lo ++ [l[hi]])`.  Pure take/drop slicing — note it mentions **no**
+    bracket kind, so the seq and map families, and the read and build directions, all run it
+    verbatim.  Toy of `interior_window_eq`'s slice plus the opener peel: the plumbing R245/R246 say
+    transports identically across the mirror. -/
 theorem window_split (l : List Tok) (lo hi : Nat)
     (h_lo : 1 ≤ lo) (h_lo_hi : lo ≤ hi) (h_hi : hi < l.length) :
     (l.take (hi + 1)).drop (lo - 1)
@@ -101,79 +159,109 @@ theorem window_split (l : List Tok) (lo hi : Nat)
     exact h
   rw [h_peel, h_rest]
 
-/-! ## The CONSUMER (eliminator) — `readLocated` (toy `seqBodyProps_of_located_entry`'s core) -/
+/-! ## The CONSUMER (eliminator) — `readLocatedSeq` (toy `seqBodyProps_of_located_entry`'s core) -/
 
-/-- Single-level descent (toy `RecSeqEntry.seq_interior`): a located `REntry` whose shape is a `[ … ]`
-    frame has a body interior.  The `atom` constructor is ruled out by the `.os` head. -/
-theorem REntry.descent {e interior : List Tok} {cl : Tok}
-    (h : REntry e) (h_eq : e = .os :: (interior ++ [cl])) : RBody interior := by
+/-- Single-level seq descent (toy `RecSeqEntry.seq_interior`): a located `SEntry` whose shape is a
+    `[ … ]` frame has a body interior.  The `atom` constructor is ruled out by the `.os` head. -/
+theorem SEntry.descent {e interior : List Tok} {cl : Tok}
+    (h : SEntry e) (h_eq : e = .os :: (interior ++ [cl])) : SBody interior := by
   cases h with
   | atom => injection h_eq with h1 _; exact absurd h1 (by decide)
-  | seq interior' h' => injection h_eq with _h1 h2; exact (append_singleton_inj h2).1 ▸ h'
+  | seq interior' hwb h' => injection h_eq with _h1 h2; exact (append_singleton_inj h2).1 ▸ h'
 
-/-- **The consumer (eliminator direction).**  From the located `REntry` of the opener-window and the
-    opener fact `l[lo-1] = .os`, *read off* the inner-window `RBody`.  It runs `window_split` to put
-    the window in `.os :: (interior ++ [cl])` shape, then `REntry.descent` reads the interior.  Toy of
-    `seqBodyProps_of_located_entry` (which then feeds `seqBodyProps_of_recseqbody_window`). -/
-theorem readLocated (l : List Tok) (lo hi : Nat)
+/-- **The consumer (eliminator direction).**  From the located `SEntry` of the opener-window and the
+    opener fact `l[lo-1] = .os`, *read off* the inner-window `SBody`: `window_split` puts the window in
+    `.os :: (interior ++ [cl])` shape, then `SEntry.descent` reads the interior. -/
+theorem readLocatedSeq (l : List Tok) (lo hi : Nat)
     (h_lo : 1 ≤ lo) (h_lo_hi : lo ≤ hi) (h_hi : hi < l.length)
     (h_op : l[lo - 1]'(by omega) = .os)
-    (h_entry : REntry ((l.take (hi + 1)).drop (lo - 1))) :
-    RBody ((l.take hi).drop lo) := by
+    (h_entry : SEntry ((l.take (hi + 1)).drop (lo - 1))) :
+    SBody ((l.take hi).drop lo) := by
   rw [window_split l lo hi h_lo h_lo_hi h_hi, h_op] at h_entry
-  exact REntry.descent h_entry rfl
+  exact SEntry.descent h_entry rfl
 
-/-! ## The PRODUCER (constructor) — `buildLocated` (toy `located_entry_of_recseqbody`) -/
+/-! ## The PRODUCER (constructor) — the dual (R245), and its non-verbatim mirror (R246) -/
 
-/-- **The producer (constructor direction).**  The constructive *dual* of `readLocated`: from the
-    inner-window `RBody` (the locate's recursive deliverable) and the opener/closer facts, *build* the
-    located `REntry` of the opener-window — exactly the `SeqLocated.entry` field.  Same `window_split`,
-    then `REntry.seq` (the constructor) where `readLocated` ran `REntry.descent` (the eliminator).
-    Toy of `located_entry_of_recseqbody`. -/
-theorem buildLocated (l : List Tok) (lo hi : Nat)
+/-- **The producer, SEQ side** (toy `located_entry_of_recseqbody`).  The constructive *dual* of
+    `readLocatedSeq`: same `window_split`, terminated by the `SEntry.seq` *constructor*.  Because
+    `SEntry.seq` **stores** a `WB interior` field, the build must **feed** it — `SBody.toWB h_rec` is
+    the extra argument the map side will shed. -/
+theorem buildLocatedSeq (l : List Tok) (lo hi : Nat)
     (h_lo : 1 ≤ lo) (h_lo_hi : lo ≤ hi) (h_hi : hi < l.length)
     (h_op : l[lo - 1]'(by omega) = .os) (h_cl : l[hi]'h_hi = .cs)
-    (h_rec : RBody ((l.take hi).drop lo)) :
-    REntry ((l.take (hi + 1)).drop (lo - 1)) := by
+    (h_rec : SBody ((l.take hi).drop lo)) :
+    SEntry ((l.take (hi + 1)).drop (lo - 1)) := by
   rw [window_split l lo hi h_lo h_lo_hi h_hi, h_op, h_cl]
-  exact REntry.seq _ h_rec
+  exact SEntry.seq _ (SBody.toWB h_rec) h_rec
 
-/-! ## Positive witnesses — build an entry, then read it back (constructor ∘ then ∘ eliminator) -/
+/-- **The producer, MAP side** (toy `located_mapentry_of_recmapbody`).  The *symmetric mirror* of
+    `buildLocatedSeq`: the `window_split` plumbing is **verbatim** (only the kinds `.os`/`.cs` →
+    `.om`/`.cm` change), but the terminal constructor call is **one argument shorter** — `MEntry.map`
+    stores no `WB`, so there is no `SBody.toWB`-style argument to feed.  R246 in one diff: the mirror
+    sheds exactly the field the parallel type chose to project rather than store. -/
+theorem buildLocatedMap (l : List Tok) (lo hi : Nat)
+    (h_lo : 1 ≤ lo) (h_lo_hi : lo ≤ hi) (h_hi : hi < l.length)
+    (h_op : l[lo - 1]'(by omega) = .om) (h_cl : l[hi]'h_hi = .cm)
+    (h_rec : MBody ((l.take hi).drop lo)) :
+    MEntry ((l.take (hi + 1)).drop (lo - 1)) := by
+  rw [window_split l lo hi h_lo h_lo_hi h_hi, h_op, h_cl]
+  exact MEntry.map _ h_rec
 
-/-- The inner body `[a]` for the window `[ a ]` (`l = [os, a, cs]`, `lo = 1`, `hi = 2`). -/
-def rbody_a : RBody (([Tok.os, .a, .cs].take 2).drop 1) := by
-  show RBody [.a]
+/-! ## Positive witnesses — build on each side; read the seq one back; project the map one's `WB` -/
+
+/-- Seq inner body `[a]` for the window `[ a ]` (`l = [os, a, cs]`, `lo = 1`, `hi = 2`). -/
+def sbody_a : SBody (([Tok.os, .a, .cs].take 2).drop 1) := by
+  show SBody [.a]
   exact .single [.a] .atom
 
-/-- The PRODUCER builds the located entry `REntry [os, a, cs]` from the inner body. -/
-def built : REntry (([Tok.os, .a, .cs].take (2 + 1)).drop (1 - 1)) :=
-  buildLocated [.os, .a, .cs] 1 2 (by omega) (by omega) (by decide) (by decide) (by decide) rbody_a
+/-- The seq PRODUCER builds the located entry `SEntry [os, a, cs]`, **feeding** the stored `WB`. -/
+def built_seq : SEntry (([Tok.os, .a, .cs].take (2 + 1)).drop (1 - 1)) :=
+  buildLocatedSeq [.os, .a, .cs] 1 2 (by omega) (by omega) (by decide) (by decide) (by decide) sbody_a
 
-/-- ...and the CONSUMER reads the inner body back off it — the constructor/eliminator round-trip. -/
-def read_back : RBody (([Tok.os, .a, .cs].take 2).drop 1) :=
-  readLocated [.os, .a, .cs] 1 2 (by omega) (by omega) (by decide) (by decide) built
+/-- …and the seq CONSUMER reads the inner body back off it — the constructor/eliminator round-trip. -/
+def read_back_seq : SBody (([Tok.os, .a, .cs].take 2).drop 1) :=
+  readLocatedSeq [.os, .a, .cs] 1 2 (by omega) (by omega) (by decide) (by decide) built_seq
 
-/-! ## The opener guard is load-bearing, and decidable balance sanity checks -/
+/-- Map inner body `[a]` for the window `{ a }` (`l = [om, a, cm]`, `lo = 1`, `hi = 2`). -/
+def mbody_a : MBody (([Tok.om, .a, .cm].take 2).drop 1) := by
+  show MBody [.a]
+  exact .single [.a] .atom
 
-/-- Count-based bracket balance (`[` `+1`, `]` `-1`, underflow → `none`), a decidable recognizer used
-    only for the `#guard` witnesses below. -/
+/-- The map PRODUCER builds the located entry `MEntry [om, a, cm]` — the constructor call **shed** the
+    `WB` argument the seq build supplied (R246). -/
+def built_map : MEntry (([Tok.om, .a, .cm].take (2 + 1)).drop (1 - 1)) :=
+  buildLocatedMap [.om, .a, .cm] 1 2 (by omega) (by omega) (by decide) (by decide) (by decide) mbody_a
+
+/-- …yet the `WB` the `map` constructor never stored is recovered **post-hoc** by projection — exactly
+    `RecMapEntry.toWellBracketed`.  This is *why* the field can be shed at construction (R244/R246). -/
+def wb_recovered : WB (([Tok.om, .a, .cm].take (2 + 1)).drop (1 - 1)) :=
+  MEntry.toWB built_map
+
+/-! ## The opener-kind guard is load-bearing, and decidable balance sanity checks -/
+
+/-- Count-based bracket balance — every opener (`[` or `{`) `+1`, every closer (`]` or `}`) `-1`,
+    underflow → `none`.  A decidable recognizer used only for the `#guard` witnesses below. -/
 def bal (d0 : Option Nat) (l : List Tok) : Option Nat :=
   l.foldl (fun acc t => acc.bind (fun d =>
     match t with
-    | .os => some (d + 1)
-    | .cs => if d = 0 then none else some (d - 1)
-    | .a  => some d)) d0
+    | .os | .om => some (d + 1)
+    | .cs | .cm => if d = 0 then none else some (d - 1)
+    | .a        => some d)) d0
 
-/-- The producer's opener guard `l[lo-1] = .os` is not free: an atom is not an opener, so a window
-    whose front token is `.a` cannot be built into a `[ … ]` entry. -/
-theorem opener_guard_load_bearing : (Tok.a = Tok.os) = False := by simp
+/-- The seq opener `[` is not the map opener `{`: the two builds' opener guards discriminate, so a
+    `{ … }` window cannot be built by `buildLocatedSeq` nor a `[ … ]` window by `buildLocatedMap`. -/
+theorem seq_opener_ne_map : (Tok.os = Tok.om) = False := by simp
+
+/-- An atom is not an opener of either kind, so a window whose front token is `.a` builds no frame. -/
+theorem atom_not_opener : (Tok.a = Tok.os) = False := by simp
 
 -- Decidable sanity checks (fail the build if any witness drifts).
-#guard decide (Tok.a = Tok.os) = false             -- the opener guard discriminates
-#guard bal (some 0) [.os, .a, .cs] = some 0         -- the built window `[ a ]` is balanced
-#guard bal (some 0) [.os, .a] = some 1              -- ...missing closer: ends at depth 1, not 0
-#guard bal (some 0) [.a] = some 0                   -- the inner body `[a]` (an atom) is balanced
-#guard bal (some 0) [.os, .os, .a, .cs, .cs] = some 0  -- a nested window `[ [ a ] ]` is balanced
-#guard bal (some 0) [.cs, .os] = none               -- close-before-open underflows
+#guard decide (Tok.os = Tok.om) = false              -- the two openers are distinct kinds
+#guard decide (Tok.a = Tok.os) = false               -- an atom is not the seq opener
+#guard bal (some 0) [.os, .a, .cs] = some 0          -- the seq window `[ a ]` is balanced
+#guard bal (some 0) [.om, .a, .cm] = some 0          -- the map window `{ a }` is balanced
+#guard bal (some 0) [.os, .om, .a, .cm, .cs] = some 0  -- a mixed nest `[ { a } ]` is balanced
+#guard bal (some 0) [.om, .a] = some 1               -- ...missing closer: ends at depth 1, not 0
+#guard bal (some 0) [.cm, .om] = none                -- close-before-open underflows
 
 end ProducerDualOfConsumer
