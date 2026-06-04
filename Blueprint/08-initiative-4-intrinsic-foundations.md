@@ -15448,6 +15448,42 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
+                **Total .body scope re-estimate (ONE-HUNDRED-SEVENTH revision —
+                after **Thread A step 3 sub-step 3's brick cont'd (locate START) — *MAP-BODY RECURSIVE
+                SEED — THE LOCATE RECURSION'S ROOT `RecMapBody`* — landed** (commit `9635af3c`,
+                Reflection 259). **The map twin of last session's seq-body root seed — both halves of the
+                producer's base case now landed.** Added `emitPairList_body_recmapbody`, the symmetric
+                mirror of `emitList_body_recseqbody` (R258, one session after its seq twin exactly as
+                R255→R256): it packages the map emit feed `emitPairList_scans_recmapbody` (R250) into the
+                body's *recursive* deliverable restated positionally as
+                `RecMapBody ((s'.tokens.filter p).toList.drop old_sz)` — the outer-window (`[2, size-2)`,
+                the whole body interior) instance of `flowSubrangesOk_of_window_producers`'s `h_map_rec`,
+                the map-side root the locate recursion descends from. The **proof body is verbatim from the
+                seq seed** — the same `h_drop` positional restatement (`block_eq` +
+                `List.drop_append_of_le_length`); the inputs differ *exactly* where the map feed differs
+                from the seq feed, the R246 stored-vs-projected asymmetry surfacing one tier up at the
+                seed's hypothesis count: **two** per-item recursive hypotheses
+                (`EmitScansInFlowSavedKeyRecEntry` per key, `EmitScansInFlowRecEntry` per value, vs the
+                seq seed's single `EmitScansInFlowRecEntry`), the extra `simpleKeyAllowed = true`
+                precondition the seq feed has no analogue for, and the extra `3 ≤ n` destructure binder
+                (the load-bearing map floor, R250 — destructured but unused by the seed, the body block
+                being delivered regardless). **Lesson** (the seq/map seed pair completes the
+                [[ref-universal-producer-root-seed-first]] discipline across both axes): a universal
+                producer's root seed mirrors verbatim across a symmetric collection axis — the positional
+                packaging step is bracket-/collection-agnostic, and the only deltas are the per-item
+                hypotheses the *feed* reads (one tier up from a constructor's arity, R246), so the map seed
+                is a near-free mirror of the seq seed exactly as the consumer-side R255→R256 map joint
+                mirrored its seq twin. Verified-but-unconsumed (R225): references no sorry site, **sorries
+                held at 4**. Build green **534 jobs**; axiom-clean
+                **`[propext, Classical.choice, Quot.sound]`**. **Immediate next brick:** with both body
+                root seeds landed, the **navigation recursion** proper: navigate the root
+                `RecSeqBody`/`RecMapBody` down to every nested guarded subrange (seq-in-seq by the stored
+                `RecSeqEntry.seq` field; seq/map-in-map value-driven, re-deriving from the emit feed where
+                the structure projects to flat — R251/R252) — fed once into
+                `flowSubrangesOk_of_window_producers` to discharge both
+                `scanFiltered_emit{Seq,Map}_nonempty_structure` sorry sites; then the two base
+                `emit_roundtrip_{sequence,mapping}_content_eq` sorries → `universal_roundtrip`. See
+                Reflection 259, on top of the
                 **Total .body scope re-estimate (ONE-HUNDRED-SIXTH revision —
                 after **Thread A step 3 sub-step 3's brick cont'd (locate START) — *SEQ-BODY RECURSIVE
                 SEED — THE LOCATE RECURSION'S ROOT `RecSeqBody`* — landed** (commit `9f33f2bd`,
@@ -26534,3 +26570,15 @@ R257 named the locate recursion's contract as one signature; R258 lands its **ba
 **Why this is the right first producer brick, not a redundant wrapper.** The abstract `emitList_scans_recseqbody` already exists; `emitList_body_recseqbody` adds the same value-add the flat characterization adds over `emitList_scans_safebody` — `ScanChainGrew → ScanChain` and the positional `drop old_sz` restatement — so that the *positional* `RecSeqBody (window)` the universal producer is phrased in (`(take hi).drop lo`) is available at the body-interior span directly, rather than re-derived inline at the seed. It is keyed on the recursive per-item hypothesis `EmitScansInFlowRecEntry` (the R251 superset of `EmitScansInFlowBlock` carrying `RecSeqEntry`), the same input the future navigation recursion threads — so the seed and the recursive cases share one input contract.
 
 The reusable point (an instance of [[ref-consumer-joint-before-producer]] / faithful-mirror, R232/R237/R241): **a universal producer's first landable brick is the positional packaging of its one already-available instance — the root the recursion descends from — built as a faithful mirror of the existing flat-deliverable characterization, swapping the flat content payload for the recursive one.** It costs almost nothing (the flat mirror exists; only the deliverable conjunct and the `emitList_scans_recseqbody` call differ), is verified-but-unconsumed (references no sorry site, holds the count at 4), and it pins the recursion's *base case* before the navigation engine is written, so the remaining producer residual is exactly "navigate the root `RecSeqBody` to each nested guarded subrange" (seq-in-seq by the stored `RecSeqEntry.seq` field; seq/map-in-map value-driven, re-deriving from the emit feed where the structure projects to flat — R251/R252). **Immediate next brick:** the map-side seed `emitPairList_body_recmapbody` (the symmetric mirror over `emitPairList_scans_recmapbody`, R250 — born one session after its seq twin, exactly as R255→R256), then the navigation recursion proper. See [[ref-consumer-joint-before-producer]] (R231 — build-then-descend), [[ref-recursive-producer-mirrors-flat-over-shared-induction]] (R249/R251 — the emit feed this seed packages), and [[ref-fold-consumer-chain-to-producer-contract]] (R257 — the contract this seed is the base case of).
+
+### Reflection 259 (new, 2026-06-04): the root seed mirrors verbatim across the seq/map axis — the producer's base case completes on both halves, the only deltas the *feed's* per-item hypotheses (R246 one tier up)
+
+R258 landed the seq half of the locate recursion's base case; R259 lands the map half, and the pair together confirms that the root-seed discipline ([[ref-universal-producer-root-seed-first]]) mirrors verbatim across a symmetric collection axis exactly as the *consumer*-side boundary joint did (R255 seq → R256 map). `flowSubrangesOk_of_window_producers` (R257) owes a *second* per-window producer, `h_map_rec : ∀ lo hi, <guards> → RecMapBody ((take hi).drop lo)`, and its outer-window `[2, size-2)` instance is the top-level `RecMapBody` the map emit feed `emitPairList_scans_recmapbody` (R250) already produces.
+
+`emitPairList_body_recmapbody` (commit `9635af3c`, build green **534 jobs**, frontier sorries held at **4**, axiom-clean `[propext, Classical.choice, Quot.sound]`) packages it. The **proof body is verbatim from the seq seed** — the same `obtain` … `h_drop` positional restatement (`block_eq` + `List.drop_append_of_le_length` + `List.drop_length` + `List.nil_append`), the same `refine … h_chain.toScanChain …`, the same `rw [h_drop]; exact h_rec` close. What differs is *only* the boundary the map feed presents — and it differs *exactly* where the map feed's signature differs from the seq feed's, the R246 stored-vs-projected asymmetry ([[ref-mirror-constructor-arity-reads-storage]]) surfacing one tier up from a constructor's arity, now at the *seed's hypothesis count*:
+
+1. **Two** per-item recursive hypotheses, not one: `h_all_k : ∀ p ∈ pairs, EmitScansInFlowSavedKeyRecEntry p.1` (every key) **and** `h_all_v : ∀ p ∈ pairs, EmitScansInFlowRecEntry p.2` (every value), vs the seq seed's single `h_all : ∀ v ∈ items, EmitScansInFlowRecEntry v` — a map pair carries a key slot the seq item has no analogue for.
+2. **One extra precondition**, `h_ska : s.simpleKeyAllowed = true`, that the seq feed neither needs nor exposes (the map feed must save a simple key for the `:` between key and value).
+3. **One extra destructure binder**, `_h_n3 : 3 ≤ n` — the load-bearing map floor (R250; a map pair emits at least `key : value`, three tokens), destructured but *unused* by the seed, which delivers the body block regardless of its length.
+
+The reusable point, completing [[ref-universal-producer-root-seed-first]] across both axes: **a universal producer's root seed mirrors verbatim across a symmetric collection axis — the positional packaging step (`drop old_sz` → `Deliverable (window)`) is bracket-/collection-agnostic, so the map seed is a near-free copy of the seq seed; the only deltas are the per-item hypotheses and side-preconditions the *feed* reads, which are dictated by the parallel deliverable's storage choices (R246) one tier up from a constructor's arity.** This is the producer-side twin of the consumer-side observation that the boundary-anchoring joint mirrored bracket-agnostically from seq (R255) to map (R256), the extra map hypotheses being the six pair primitives there and the key/`simpleKeyAllowed` machinery here. With both body root seeds landed, the recursion's base case is complete on both halves; the entire remaining Phase-J frontier is the **navigation recursion** (navigate the root `RecSeqBody`/`RecMapBody` down to every nested guarded subrange — seq-in-seq by the stored `RecSeqEntry.seq` field, seq/map-in-map value-driven per R251/R252 — fed once into `flowSubrangesOk_of_window_producers` to discharge both `scanFiltered_emit{Seq,Map}_nonempty_structure` sorry sites) plus the two base `emit_roundtrip_{sequence,mapping}_content_eq` sorries → `universal_roundtrip`. See [[ref-universal-producer-root-seed-first]] (R258 — the seq seed this mirrors), [[ref-mirror-constructor-arity-reads-storage]] (R246 — the storage asymmetry, here at the seed's hypothesis count), [[ref-two-boundary-consumer-joint]] (R255/R256 — the consumer-side seq→map verbatim mirror this parallels), and [[ref-recursive-producer-mirrors-flat-over-shared-induction]] (R250 — the map emit feed this seed packages).
