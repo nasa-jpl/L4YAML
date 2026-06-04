@@ -3165,6 +3165,67 @@ theorem firstEntryBoundary (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
   intro k hk1 hk2
   exact hm4 k (by omega) hk2
 
+/-- **ADVANCE-step tail invariant** (Phase J — the locate recursion's *invariant-preservation*
+    certificate; seq and map share it).  The four structural moves, `firstEntryBoundary`, and the full
+    shape side give the recursion everything *except* the proof that, after it `ADVANCE`s past a
+    depth-`0` `.flowEntry` separator at `m`, the remaining tail `[m+1, hi)` is *itself* a valid
+    recursive sub-instance — and without that the driver (`Nat.strongRecOn` on the window width) cannot
+    take its recursive step.  This lemma is exactly that missing primitive.  Given a balanced
+    body-interior window `[lo, hi)` and a depth-`0` separator at `m` (`lo ≤ m < hi`, balance
+    `lo..m = 0`, `tokens[m] = .flowEntry`), it delivers the three facts the recursive call on
+    `[m+1, hi)` needs:
+
+      (a) the prefix *through* the separator is balanced (`balance lo (m+1) = 0`);
+      (b) the **tail is balanced** (`balance (m+1) hi = 0`) — the precondition `firstEntryBoundary` and
+          the shape-side classifier require to act on `[m+1, hi)` at all;
+      (c) the tail **re-bases**: every depth measured from the outer origin `lo` agrees with the one
+          measured from the new origin `m+1` (`balance lo p = balance (m+1) p` for `m+1 ≤ p ≤ hi`), so
+          any outer-origin depth-`0` fact about the tail (the *next* separator's position, the
+          classifier's no-interior-separator minimality) transports into the recursion's local frame
+          for free — the recursion threads its invariants from a moving origin without re-deriving the
+          balance from scratch each step.
+
+    All three are pure bracket-balance algebra: `flowBracketBalance_compose` (additivity split at `m`
+    and at `m+1`) and `flowBracketBalance_single` (the separator contributes
+    `flowBracketDelta .flowEntry = 0`, so crossing it neither opens nor closes a bracket).  Like
+    `firstEntryBoundary`, and unlike the four structural moves, it names **no collection-specific
+    deliverable type** — it is phrased purely over the shared token stream (bracket balance, the shared
+    `.flowEntry` separator), so it is written ONCE and feeds both the `RecSeqBody` and the `RecMapBody`
+    recursions (the seq/map mirror discriminator: a navigation brick mirrors exactly when it mentions a
+    deliverable type; a shared-token-stream balance fact does not).
+
+    Verified-but-unconsumed until the locate recursion lands: references no sorry site, frontier sorry
+    count unchanged. -/
+theorem advanceTail_invariant (tokens : Array (Positioned YamlToken)) (lo m hi : Nat)
+    (h_lo_m : lo ≤ m) (h_m_hi : m < hi) (h_hi_sz : hi ≤ tokens.size)
+    (h_m_bal : flowBracketBalance tokens lo m = 0)
+    (h_sep : tokens[m]!.val = .flowEntry)
+    (h_total : flowBracketBalance tokens lo hi = 0) :
+    flowBracketBalance tokens lo (m + 1) = 0 ∧
+    flowBracketBalance tokens (m + 1) hi = 0 ∧
+    (∀ p, m + 1 ≤ p → p ≤ hi →
+      flowBracketBalance tokens lo p = flowBracketBalance tokens (m + 1) p) := by
+  have h_m_sz : m < tokens.size := by omega
+  have h_m_len : m < tokens.toList.length := by rw [Array.length_toList]; exact h_m_sz
+  -- the separator's bracket delta is 0, so the single-token range `[m, m+1)` is balanced.
+  have h_val : (tokens.toList[m]'h_m_len).val = .flowEntry := by
+    have hb : tokens[m]! = tokens.toList[m]'h_m_len := by
+      rw [getElem!_pos tokens m h_m_sz, Array.getElem_toList]
+    rw [← hb]; exact h_sep
+  have h_single : flowBracketBalance tokens m (m + 1) = 0 := by
+    rw [flowBracketBalance_single tokens m h_m_len, h_val]; rfl
+  -- (a) prefix through the separator: `lo..(m+1) = lo..m + m..(m+1) = 0 + 0`.
+  have h_prefix : flowBracketBalance tokens lo (m + 1) = 0 := by
+    rw [flowBracketBalance_compose tokens lo m (m + 1) h_lo_m (by omega), h_m_bal]; omega
+  -- (b) tail: `lo..hi = lo..(m+1) + (m+1)..hi`, so `(m+1)..hi = total − prefix = 0`.
+  have h_tail : flowBracketBalance tokens (m + 1) hi = 0 := by
+    have hc := flowBracketBalance_compose tokens lo (m + 1) hi (by omega) (by omega)
+    rw [h_total, h_prefix] at hc; omega
+  refine ⟨h_prefix, h_tail, ?_⟩
+  -- (c) re-basing: `lo..p = lo..(m+1) + (m+1)..p = 0 + (m+1)..p`.
+  intro p hp1 hp2
+  rw [flowBracketBalance_compose tokens lo (m + 1) p (by omega) hp1, h_prefix]; omega
+
 /-- **Scalar-leaf entry window** (Phase J — the analytical entry-boundary location's *shape side*,
     seq, base case).  Once `firstEntryBoundary` (the input side) has pinned the split point `m`, the
     shape side classifies the first item `[lo, m)` into a `RecSeqEntry` — and `RecSeqEntry` has four
