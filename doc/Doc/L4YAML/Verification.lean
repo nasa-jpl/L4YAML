@@ -923,6 +923,21 @@ Several patterns emerged during the verification effort:
    that invariants are maintained from `scannerInit` through
    `scanNextToken` to stream completion.
 
+ * _Invariant-preservation certificates_ — a recursion can be
+   _structurally complete_ (every constructor of its output is
+   liftable from the available pieces) and still not be _runnable_:
+   the proof that each recursive call's input satisfies the
+   recursion's precondition is a distinct obligation from the
+   assembly lemmas, the structural analogue of a loop invariant's
+   inductive step.  In the flow-subrange locate recursion this is
+   the ADVANCE-step certificate `advanceTail_invariant` — given a
+   balanced window and a depth-`0` entry separator at index `m`,
+   the tail `[m+1, hi)` is itself a balanced window and _re-bases_
+   onto the moving origin, so the recursive call is well-posed.
+   The certificate is phrased over bracket balance alone (no
+   collection-specific deliverable type), so a single lemma serves
+   both the sequence and mapping recursions.
+
  * _Anchor monotonicity_ — the `AnchorsGrow` relation is proved
    transitively across all 14 mutually recursive parser functions,
    establishing that anchors accumulate but are never dropped.
@@ -939,9 +954,19 @@ tag := "zero-axiom"
 {index}[zero axioms]
 The project uses zero axioms beyond Lean's built-in foundations
 (`propext`, `Quot.sound`, `Classical.choice`).
-No `sorry` appears anywhere in the codebase.
 No `partial def` is used — every function has a kernel-checked
 termination proof.
 
+The released scanner, parser, and soundness layers are entirely
+`sorry`-free.  One frontier remains in progress: the emitter
+round-trip property (§Round-Trip Properties, headline 6.1
+`universal_roundtrip`) currently carries *4* `sorry` markers —
+two base content-equality steps and two flow-subrange structure
+obligations — which feed the in-progress `universal_roundtrip`
+capstone.  These are tracked explicitly and surfaced with a 🚧
+marker wherever a headline depends on them; no other theorem in
+the catalogue is `sorry`-reachable.
+
 This means the formal guarantees are as strong as the Lean kernel
-itself: if the kernel accepts the proofs, the properties hold.
+itself: for every theorem not flagged 🚧, if the kernel accepts the
+proof, the property holds with no escape hatch.
