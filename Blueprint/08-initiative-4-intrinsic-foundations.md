@@ -15448,6 +15448,45 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
+                **Total .body scope re-estimate (ONE-HUNDRED-SIXTEENTH revision —
+                after **Thread A step 3 sub-step 3's brick cont'd (locate ENTRY-BOUNDARY, SHAPE SIDE —
+                *PAIR ASSEMBLER, MAP*) — landed** (commit `937d799b`, Reflection 268). **The map mirror
+                of the now-complete seq shape-side dispatch family.** With R267 the seq shape side's
+                four-constructor dispatch is done; this turn crosses the seq/map re-split to the MAP axis.
+                Where the seq body's first item is a single bracketed/scalar item (a four-way head dispatch),
+                the map body's first item is a whole key/value **PAIR** `.key <block_k> .value <block_v>`
+                (`RecMapPair`). So the map shape side is **not a per-constructor dispatch at all** — it is
+                ONE assembler, `recmappair_window`, that **glues two already-located `RecSeqEntry` blocks**
+                with the depth-`0` `.key`/`.value` markers: given a key marker `tokens[lo] = .key`, the key
+                block over `[lo+1, kv)` as a `RecSeqEntry`, a value marker `tokens[kv] = .value`, and the
+                value block over `[kv+1, m)` as a `RecSeqEntry`, the pair window `(tokens.toList.take m).drop
+                lo` is a `RecMapPair`. **This is where the seq side's completed four-constructor dispatch is
+                _consumed_**: the key/value blocks are arbitrary `RecSeqEntry`s — scalar, empty bracket,
+                nested sequence (BUILD move), or nested mapping (`map` near-leaf) — so the map shape side
+                adds NO new per-constructor classification; the seq dispatch already covers every block
+                shape. Its only new work is the pair glue, and _that_ is a **composition of two
+                already-landed positional patterns**: the segment split at the `.value` separator
+                (`recseqbody_cons_window`'s ADVANCE plumbing — `List.take_append_drop`/`take_take`/
+                `drop_drop`, here splitting the pair interior `[lo+1, m)` at `kv`) and the opener peel of
+                `tokens[lo]` (`List.getElem_cons_drop` + `List.getElem_take`, the BUILD move's head peel),
+                terminated by `RecMapPair.mk` (whose `kt :: (block_k ++ vt :: block_v)` index is exactly the
+                peeled-and-split window). So the map shape side costs **no fresh structural insight** — it
+                reuses the seq dispatch (as its two sub-blocks) and the ADVANCE+BUILD plumbing (as its one
+                glue), the parallel-type re-split surfacing here as _composition_ rather than a new family.
+                Verified-but-unconsumed (takes the two `RecSeqEntry` blocks as hypotheses, agnostic to their
+                production): references no sorry site, **sorries held at 4**. Build green **537 jobs**;
+                axiom-clean **`[propext, Classical.choice, Quot.sound]`** (the `Classical.choice` enters via
+                the reused ADVANCE segment-split plumbing, where the simpler one-/two-token seq leaves stayed
+                at `[propext, Quot.sound]`). **Immediate next brick:** the seq locate recursion itself —
+                `Nat.strongRecOn` on the window width `hi - lo`, dispatching on the head token among the
+                now-complete four seq shape-side lifts, with `firstEntryBoundary` pinning the split point `m`
+                and `recseqbody_cons_window` ADVANCE-ing over `[m+1, hi)`; the **map** recursion now has its
+                full shape side too (this pair assembler + the map structural moves), so its mirror follows
+                the seq recursion immediately — feeding the per-window `Rec…Body` producers into
+                `flowSubrangesOk_of_window_producers` to discharge the two
+                `scanFiltered_emit{Seq,Map}_nonempty_structure` sorry sites; then the two base
+                `emit_roundtrip_{sequence,mapping}_content_eq` sorries → `universal_roundtrip`. See
+                Reflection 268, on top of the
                 **Total .body scope re-estimate (ONE-HUNDRED-FIFTEENTH revision —
                 after **Thread A step 3 sub-step 3's brick cont'd (locate ENTRY-BOUNDARY, SHAPE SIDE —
                 *NESTED-MAPPING NEAR-LEAF, SEQ*) — landed** (commit `2c1eca24`, Reflection 267). **The
@@ -26954,3 +26993,17 @@ R265 named the seq shape side as the family of per-constructor window-lifts and 
 **Near-leaf, not leaf, but still off the recursion graph.** The scalar/seqEmpty leaves (R265/R266) span a _fixed_ token count; the map member spans a _variable_ interior `[lo+1, hi)`, so it is a near-leaf — it needs `flowBracketBalance_matching_close_map` to locate `hi` and establish the interior's `WellBracketed` before this lemma can package them. But variable-width is not the same as recursive: because `.map` stores only `WellBracketed`, the enclosing seq locate does **not** descend through the mapping's key/value structure. So in the seq dispatch this member is terminal — it sits alongside the two true leaves, not alongside the recursive `.seq`. The seq shape side's four-way head dispatch is now fully in hand: `.scalar` head → `recseqentry_scalar_window`; `.flowSequenceStart` head with empty body → `recseqentry_seqempty_window`; `.flowSequenceStart` head with non-empty body → `located_entry_of_recseqbody` (recurse); `.flowMappingStart` head → `recseqentry_map_window` (this).
 
 Verified-but-unconsumed (R225): references no sorry site, frontier sorry count unchanged at **4** (build green **537 jobs**, axiom-clean **`[propext, Quot.sound]`**; commit `2c1eca24`). **Immediate next brick:** the seq locate recursion itself — `Nat.strongRecOn` on the window width `hi - lo`, dispatching on the head token among the now-complete four shape-side lifts, with `firstEntryBoundary` (R264) pinning the split point `m` and `recseqbody_cons_window` (R262) ADVANCE-ing over `[m+1, hi)` — then its map mirror (a `RecMapPair`/`RecMapBody` shape side, a key/value pair rather than a single item, so a separate leaf family per R265's re-split) — feeding the per-window `Rec…Body` producers into `flowSubrangesOk_of_window_producers` to discharge the two `scanFiltered_emit{Seq,Map}_nonempty_structure` sorry sites; then the two base `emit_roundtrip_{sequence,mapping}_content_eq` sorries → `universal_roundtrip`. See [[ref-entry-boundary-input-shape-split]] (R264/R265/R266 — the input/shape split and the per-constructor-window-lift family this completes), [[ref-mirror-constructor-arity-reads-storage]] (R246/R261/R263 — the arity-reads-storage discipline, here the BUILD-move-minus-one-field), [[ref-stored-vs-projected-severs-recursion-edge]] (the store-vs-project choice deciding whether the locate recurses or terminates at this branch), and [[ref-structural-moves-complete-recursion]] (R262/R263 — the structural moves whose recursive `.seq` constructor this near-leaf sits beside in the dispatch).
+
+### Reflection 268 (new, 2026-06-04): the map shape side is *not a dispatch* — it is one assembler that glues the complete seq dispatch (as two sub-blocks) with already-landed plumbing (as one glue); the parallel-type re-split surfaces as composition, not a new family
+
+R267 completed the seq shape side's four-constructor head dispatch. R265 already flagged that the seq/map mirror **re-splits** at the shape side (contrast `firstEntryBoundary`, written once over the shared token stream): the map body's first item is not a single bracketed/scalar item but a whole key/value **PAIR** `.key <block_k> .value <block_v>` (`RecMapPair`). This session crosses that re-split and lands the map shape side — `recmappair_window` — and the lesson is that the map side, despite being "a separate leaf family," cost **no new structural idea at all**. Three observations.
+
+**The map shape side is one assembler, not a dispatch.** The seq side classified its first item by head token into four constructors. The map side has nothing to classify: every map-body item is a `RecMapPair`, and `RecMapPair.mk` is the inductive's sole constructor. So where the seq shape side is a four-way `match`, the map shape side is a single `recmappair_window` that, given a key marker `tokens[lo] = .key`, a key block over `[lo+1, kv)` as a `RecSeqEntry`, a value marker `tokens[kv] = .value`, and a value block over `[kv+1, m)` as a `RecSeqEntry`, produces `RecMapPair ((take m).drop lo)`. The "shape" work is not *which constructor* but *how the two sub-blocks and two markers sit positionally in the window*.
+
+**It consumes the complete seq dispatch as its two sub-blocks.** The key and value blocks are arbitrary `RecSeqEntry`s — a scalar (R265), an empty bracket (R266), a nested sequence (the BUILD move), or a nested mapping (the `map` near-leaf, R267). That is *exactly* the four shapes the seq dispatch now covers. So the map shape side adds **zero** per-constructor classification: it takes the two `RecSeqEntry` blocks as hypotheses (verified-but-unconsumed, agnostic to their production — the map locate will supply them by recursing the key/value substructure) and never inspects their internal shape. The seq side being _complete_ is precisely what makes the map side a no-op on classification — a clean instance of one axis's finished work becoming the other axis's free input.
+
+**Its one new piece — the pair glue — is a composition of two already-landed plumbing patterns, not a new one.** The window identity `(take m).drop lo = tokens[lo] :: (block_k ++ tokens[kv] :: block_v)` is assembled from (i) the **segment split** at the `.value` separator — verbatim `recseqbody_cons_window` ADVANCE plumbing (`List.take_append_drop`/`take_take`/`drop_drop`), here splitting the pair interior `[lo+1, m)` at `kv` — and (ii) the **opener peel** of `tokens[lo]` — the BUILD move's head peel (`List.getElem_cons_drop` + `List.getElem_take`) — terminated by `RecMapPair.mk`. So the parallel-type re-split that R265 anticipated as "a separate brick" turns out to surface as **composition** (ADVANCE-split ∘ BUILD-peel), not as a fresh family of lemmas. The map side reuses the seq dispatch (sub-blocks) and the seq structural moves (glue); its only signature is the choice to terminate at `RecMapPair.mk` rather than a `Rec…Body` constructor.
+
+A small axiom note, recorded for honesty: this is the first shape-side brick at **`[propext, Classical.choice, Quot.sound]`** rather than `[propext, Quot.sound]` — the `Classical.choice` rides in through the reused ADVANCE segment-split plumbing (`List.take_append_drop`/`congr`), whereas the seq leaves' simpler one-/two-token `getElem_cons_drop` chains stayed choice-free. The reuse that buys the proof its brevity also imports the heavier axiom; both are within the project's sound `[propext, Classical.choice, Quot.sound]` profile.
+
+Verified-but-unconsumed: references no sorry site, frontier sorry count unchanged at **4** (build green **537 jobs**; commit `937d799b`). **Immediate next brick:** the seq locate recursion itself (`Nat.strongRecOn` on window width, dispatching among the four seq shape-side lifts with `firstEntryBoundary` pinning `m` and `recseqbody_cons_window` ADVANCE-ing the tail); the **map** recursion now has its full shape side too (this pair assembler + the map structural moves `recmapbody_{window_of_located_entry,cons_window}` + `located_mapentry_of_recmapbody`), so its mirror follows the seq recursion immediately — feeding the per-window `Rec…Body` producers into `flowSubrangesOk_of_window_producers` to discharge the two `scanFiltered_emit{Seq,Map}_nonempty_structure` sorry sites; then the two base `emit_roundtrip_{sequence,mapping}_content_eq` sorries → `universal_roundtrip`. See [[ref-entry-boundary-input-shape-split]] (R264–R267 — the input/shape split and the per-constructor-window-lift family the seq side completed; this is its map mirror), [[ref-structural-moves-complete-recursion]] (R262/R263 — the ADVANCE/BUILD structural moves whose plumbing this pair glue composes), [[ref-recursive-producer-mirrors-flat-over-shared-induction]] (the seq→map mirror discipline, here surfacing as composition rather than a fresh family), and [[ref-stored-vs-projected-severs-recursion-edge]] (the terminate-at-`RecMapPair.mk` storage choice).
