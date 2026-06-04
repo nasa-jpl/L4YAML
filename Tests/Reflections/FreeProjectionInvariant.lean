@@ -1,5 +1,5 @@
 /-!
-# Reflection 253 — a maintained invariant that is a conjunct of a projected property is a *free field*
+# Reflections 253 + 254 — a maintained invariant that is a conjunct of a projected property is a *free field*; and the one invariant with no local projection is recovered *non-locally* from the outer span
 
 Self-contained core-Lean toy (no `L4YAML` import) for the principle: **when a consumer bundle's
 field is definitionally a conjunct of a property the recursive deliverable already projects to, that
@@ -169,5 +169,56 @@ example : (∀ i, 0 ≤ balance ([Tok.os, Tok.a, Tok.cm].take i)) ∧ ¬ WT [Tok
 
 #guard wtAux [Tok.os, Tok.a, Tok.cs] [] = true   -- typed-matched
 #guard wtAux [Tok.os, Tok.a, Tok.cm] [] = false  -- type-mismatched: Rec ok, WT not
+
+/-! ## Reflection 254 — the *non-locally* recovered invariant: `WT` from the OUTER `WT`.
+
+R253 (above) showed the window's `dyck` field is free *locally* — `(Rec.toWB h).2`, off the
+window's OWN deliverable.  But `WT` has no `Rec.toWT` (the untyped `Rec` accepts `[os,a,cm]`,
+which is not `WT` — `rec_mismatched`/`not_wt_mismatched`), so it cannot be recovered locally.
+R254's point: it is recovered all the same — **non-locally**, from the *enclosing* window's `WT`,
+via a subrange lemma whose two side conditions are themselves the window's *free* balance and
+*free* Dyck.
+
+In L4YAML the subrange lemma is `WellTyped_subrange` (proved once, globally, via
+`WellTyped_infix_balanced`); the locate's per-window assembler `seqLocated_of_recseqbody_outer`
+does not re-prove it — it **calls** it, supplying the two side conditions from the window's own
+`Rec`.  We model that interface as `WTsub` and show (i) it is inhabited (non-vacuous, `decide`)
+and (ii) the outer assembler `located_of_rec_outer` recovers the window's `wt` through it while
+reading its `dyck` and the subrange's balance/Dyck side conditions **for free** off `Rec.toWB` —
+no per-window `WT` and no `dyck` hypothesis, only the structural `Rec` and ONE outer `WT`. -/
+
+/-- The subrange interface: a balanced window's `WT` recovered from the OUTER `WT` plus the
+    window's balance and Dyck.  (In L4YAML this is `WellTyped_subrange`; here it is the cited
+    interface the outer assembler calls — exactly as `seqLocated_of_recseqbody_outer` calls it,
+    not re-proving it.) -/
+abbrev WTsub (outer window : List Tok) : Prop :=
+  WT outer → balance window = 0 → (∀ i, 0 ≤ balance (window.take i)) → WT window
+
+/-- Non-vacuity: the interface holds for a concrete nested witness `{ { a } } ⊃ { a }`. -/
+theorem wtsub_concrete : WTsub [Tok.om, Tok.om, Tok.a, Tok.cm, Tok.cm] [Tok.om, Tok.a, Tok.cm] :=
+  fun _ _ _ => by unfold WT; decide
+
+/-- The inner window `{ a }` is a `Rec` (untyped) — supplies balance + Dyck for free, but NOT `WT`. -/
+theorem rec_window : Rec [Tok.om, Tok.a, Tok.cm] :=
+  Rec.wrap Tok.om Tok.cm [Tok.a] (by decide) (by decide) WB_scalar
+
+/-- **The outer locate assembler** (toy mirror of `seqLocated_of_recseqbody_outer`): threads ONE
+    outer `WT`, recovers the window's `wt` via the subrange interface, and reads the window's
+    `dyck` and the subrange's balance/Dyck side conditions FOR FREE off the window's own
+    `Rec.toWB`.  No per-window `WT` hypothesis and no `dyck` hypothesis — only the structural
+    `Rec`, the outer `WT`, and the window's (free) balance. -/
+def located_of_rec_outer (outer window : List Tok)
+    (hsub : WTsub outer window) (h_outer : WT outer) (h_rec : Rec window)
+    (h_bal : balance window = 0) : Located window :=
+  ⟨hsub h_outer h_bal (Rec.toWB h_rec).2, (Rec.toWB h_rec).2⟩
+
+/-- Concrete `Located` assembled the R254 way: the outer `WT` of `{ { a } }` recovers the inner
+    `{ a }` window's `WT`; the window's own `Rec` supplies balance + Dyck for free. -/
+theorem located_window_via_outer : Located [Tok.om, Tok.a, Tok.cm] :=
+  located_of_rec_outer [Tok.om, Tok.om, Tok.a, Tok.cm, Tok.cm] [Tok.om, Tok.a, Tok.cm]
+    wtsub_concrete (by unfold WT; decide) rec_window (by decide)
+
+#guard wtAux [Tok.om, Tok.om, Tok.a, Tok.cm, Tok.cm] [] = true  -- outer { { a } } is WT
+#guard wtAux [Tok.om, Tok.a, Tok.cm] [] = true                  -- recovered inner { a } is WT
 
 end Tests.Reflections.FreeProjectionInvariant
