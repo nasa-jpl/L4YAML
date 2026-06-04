@@ -3057,6 +3057,33 @@ theorem recmapbody_cons_window (tokens : Array (Positioned YamlToken)) (lo m hi 
     ((tokens.toList.take hi).drop (m + 1)) (RecMapPair.ne_nil h_pair) h_pair
     (RecMapPair.head_key h_pair (RecMapPair.ne_nil h_pair)) h_fe_val h_rest
 
+/-- **Body-single window assembler** (Phase J, map side — the navigation recursion's *terminate*
+    step).  The map mirror of `recseqbody_single_window` (the seq→map mirror per the R260→R261 /
+    R255→R256 rhythm), and the move that completes *constructor coverage* on the map axis: like
+    `RecSeqBody`, `RecMapBody` has **two** constructors — `cons` (pair · separator · rest) and
+    `single` (a lone pair, no trailing separator) — and `recmapbody_cons_window` lifts only `cons`,
+    so the map recursion likewise had a step (`recmapbody_cons_window` defers its tail to
+    `h_rest : RecMapBody`) but no *base*: the terminal window, where `firstEntryBoundary` returns
+    `m = hi` (no more depth-`0` separators), is exactly a `RecMapBody.single`.
+
+    As on the seq side, this terminal move needs *no* window plumbing — where `recmapbody_cons_window`
+    splits the window to expose the `p ++ fe :: rest` shape `RecMapBody.cons` demands, `RecMapBody.single`
+    takes the pair list verbatim, so the whole-window `RecMapPair` *is* the constructor's argument.  The
+    only fields are `h_ne`/`h_head`, discharged by the same `RecMapPair.ne_nil` / `RecMapPair.head_key`
+    projections the cons step uses.  It is the cheapest of the four map moves — the recursion's base
+    case, not a compositional step (R269's complexity law: a base-case lift's cost is zero because its
+    constructor's index *is* the input window verbatim).
+
+    Verified-but-unconsumed until the map locate recursion lands: references no sorry site, so the
+    frontier sorry count is unchanged.  With this, *every* `RecMapBody` constructor has a window lift on
+    both axes; the locate recursion's residual is, on seq and map alike, only the analytical
+    head-dispatch that classifies each `[lo, m)` window and selects its shape-side lift. -/
+theorem recmapbody_single_window (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (h_pair : RecMapPair ((tokens.toList.take hi).drop lo)) :
+    RecMapBody ((tokens.toList.take hi).drop lo) :=
+  RecMapBody.single ((tokens.toList.take hi).drop lo) (RecMapPair.ne_nil h_pair) h_pair
+    (RecMapPair.head_key h_pair (RecMapPair.ne_nil h_pair))
+
 /-- **Least witness of a decidable predicate in a bounded range** (Phase J — the navigation
     skeleton's combinatorial core).  Given a decidable predicate `P` that holds at the range end
     `start + gap`, there is a *least* `m` in `[start, start + gap]` satisfying `P`, together with the
