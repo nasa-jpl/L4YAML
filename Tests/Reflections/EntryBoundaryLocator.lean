@@ -83,14 +83,17 @@ theorem least_ge3 :
 /-! ## The toy token stream and the first-entry-boundary locator (toy of `firstEntryBoundary`) -/
 
 /-- A toy flow token: scalar, sequence open/close bracket `op`/`cl`, the body separator `FE`
-    (`.flowEntry`), and a *distinct* mapping open/close bracket `mo`/`mc` — the toy of the real
+    (`.flowEntry`), a *distinct* mapping open/close bracket `mo`/`mc` — the toy of the real
     `.flowSequenceStart`/`.flowSequenceEnd` vs `.flowMappingStart`/`.flowMappingEnd` distinction (so a
-    nested mapping is a different shape from a nested sequence, as in the real grammar). -/
-inductive Tok | sc | op | cl | fe | mo | mc
+    nested mapping is a different shape from a nested sequence, as in the real grammar) — and the
+    depth-`0` map *pair* markers `ky`/`vl` (toy of `.key`/`.value`), which glue a key/value pair on the
+    map shape side (Reflection 268). -/
+inductive Tok | sc | op | cl | fe | mo | mc | ky | vl
   deriving DecidableEq
 
 /-- Bracket delta — `+1` open, `-1` close, `0` otherwise.  Both bracket kinds (`op`/`cl` and
-    `mo`/`mc`) count; the separator `FE` has delta `0`, so it only marks a boundary *at depth 0*. -/
+    `mo`/`mc`) count; the separator `FE` and the pair markers `ky`/`vl` have delta `0`, so they only
+    mark a boundary *at depth 0*. -/
 def delta : Tok → Int
   | .op => 1
   | .cl => -1
@@ -419,5 +422,110 @@ theorem unbalanced_interior_not_wb : ¬ WB [Tok.mo] := by decide
     `l1 = [op, sc, cl, …]` the bracket is a sequence bracket, so the map near-leaf does not apply
     there (that is the seq side's dispatch — `seqEmpty`/`seq`/`scalar` — not `map`). -/
 theorem cl_is_not_map_close : tokAt l1 2 ≠ .mc := by decide
+
+/-! ## The map shape side — one pair assembler, not a dispatch (toy of `recmappair_window`, Reflection 268)
+
+The shape side **re-splits** across seq/map (it names a collection-specific deliverable type — here
+the `Pair` inductive — unlike the axis-agnostic `firstEntryBoundary`).  But the map shape side, unlike
+the seq side, is **not a per-constructor dispatch at all**.  A map-body item is always a whole
+key/value *pair* `ky <block_k> vl <block_v>` (`Pair`), and `Pair.mk` is the inductive's sole
+constructor — there is nothing to classify by head token.  So the map shape side is **one assembler**,
+`pair_window`, that does two things, both of which *reuse already-landed work*:
+
+  - it **consumes the complete seq dispatch as its two sub-blocks**: the key and value blocks are
+    arbitrary `Entry`s — a scalar, an empty bracket, a nested sequence, or a nested mapping — so the
+    seq side being finished (R265–R267) means the map side adds *zero* per-constructor classification.
+    `pair_window` takes the two `Entry` blocks as hypotheses and never inspects their shape;
+  - its one new piece — the **pair glue** — is a *composition of two already-landed positional
+    patterns*: the **segment split** at the `vl` separator (the ADVANCE plumbing
+    `List.take_append_drop`/`take_take`/`drop_drop`, splitting the pair interior `[lo+1, m)` at `kv`)
+    and the **opener peel** of `l[lo]` (the BUILD/leaf peel `List.getElem_cons_drop`/`List.getElem_take`),
+    terminated by `Pair.mk`.
+
+So the seq/map re-split that the prior sections anticipated as "a separate brick" surfaces here as
+**composition** (ADVANCE-split ∘ BUILD-peel), not a fresh family of lemmas. -/
+
+/-- A toy map pair (toy of `RecMapPair`): `ky :: (block_k ++ vl :: block_v)`, with the key and value
+    blocks each a recursive seq `Entry`, glued by the depth-`0` `ky`/`vl` markers.  Sole constructor —
+    the map shape side classifies nothing, it only assembles. -/
+inductive Pair : List Tok → Prop where
+  | mk (kt : Tok) (block_k : List Tok) (vt : Tok) (block_v : List Tok)
+      (h_kt : kt = .ky) (h_ke : Entry block_k) (h_vt : vt = .vl) (h_ve : Entry block_v) :
+      Pair (kt :: (block_k ++ vt :: block_v))
+
+/-- **Map-pair window assembler** (toy of `recmappair_window`).  Given a key marker `ky` at the window
+    head `lo`, a key block over `[lo+1, kv)` as an `Entry`, a value marker `vl` at `kv`, and a value
+    block over `[kv+1, m)` as an `Entry`, the pair window `(l.take m).drop lo` is a `Pair`.  The proof
+    composes two already-landed plumbing patterns: the **segment split** at the `vl` separator
+    (`recseqbody_cons_window`'s ADVANCE plumbing — `List.take_append_drop`/`take_take`/`drop_drop`,
+    splitting `[lo+1, m)` at `kv`) and the **opener peel** of `l[lo]` (`List.getElem_cons_drop` +
+    `List.getElem_take`), terminated by `Pair.mk`, with both marker values transported off `tokAt`
+    (`List.getElem_eq_getD`).  The two `Entry` sub-blocks are *hypotheses* — agnostic to how they were
+    produced (the seq dispatch covers every block shape). -/
+theorem pair_window (l : List Tok) (lo kv m : Nat)
+    (h_lo_kv : lo < kv) (h_kv_m : kv < m) (h_m : m ≤ l.length)
+    (h_key : tokAt l lo = .ky) (h_value : tokAt l kv = .vl)
+    (h_ke : Entry ((l.take kv).drop (lo + 1)))
+    (h_ve : Entry ((l.take m).drop (kv + 1))) :
+    Pair ((l.take m).drop lo) := by
+  have h_lo : lo < l.length := by omega
+  have h_kv : kv < l.length := by omega
+  -- segment split: the pair interior `[lo+1, m)` divides at the `vl` marker `kv`.
+  have hA : (l.take m).drop (lo + 1)
+      = (l.take kv).drop (lo + 1) ++ (l.take m).drop kv := by
+    rw [← List.take_append_drop (kv - (lo + 1)) ((l.take m).drop (lo + 1))]
+    congr 1
+    · rw [List.drop_take, List.drop_take, List.take_take,
+        Nat.min_eq_left (show kv - (lo + 1) ≤ m - (lo + 1) by omega)]
+    · rw [List.drop_drop, Nat.add_sub_cancel' (show lo + 1 ≤ kv by omega)]
+  -- separator peel: the `vl` marker at `kv` heads the value half `[kv, m)`.
+  have hB : (l.take m).drop kv = l[kv]'h_kv :: (l.take m).drop (kv + 1) := by
+    have hlen : kv < (l.take m).length := by rw [List.length_take]; omega
+    have h := (List.getElem_cons_drop hlen).symm
+    rw [List.getElem_take] at h
+    exact h
+  -- opener peel: the `ky` marker at `lo` heads the whole pair window `[lo, m)`.
+  have h_peel : (l.take m).drop lo = l[lo]'h_lo :: (l.take m).drop (lo + 1) := by
+    have hlen : lo < (l.take m).length := by rw [List.length_take]; omega
+    have h := (List.getElem_cons_drop hlen).symm
+    rw [List.getElem_take] at h
+    exact h
+  rw [h_peel, hA, hB]
+  have h_kt_val : l[lo]'h_lo = .ky := by rw [List.getElem_eq_getD (.sc)]; exact h_key
+  have h_vt_val : l[kv]'h_kv = .vl := by rw [List.getElem_eq_getD (.sc)]; exact h_value
+  exact Pair.mk _ _ _ _ h_kt_val h_ke h_vt_val h_ve
+
+/-! ### Positive witness — the pair assembler glues two scalar `Entry` blocks -/
+
+/-- `{a: b}` flattened to a body: `ky a vl b` — a scalar-key/scalar-value pair. -/
+def l5 : List Tok := [.ky, .sc, .vl, .sc]
+
+-- The pair occupies `[0, 4)`: key marker at `0`, key block `[sc]` over `[1, 2)`, value marker at `2`,
+-- value block `[sc]` over `[3, 4)`.  Both blocks are produced by the *seq* scalar leaf — the seq
+-- dispatch supplies the map side's sub-blocks.
+theorem pair_window_l5 : Pair ((l5.take 4).drop 0) :=
+  pair_window l5 0 2 4 (by decide) (by decide) (by decide) (by decide) (by decide)
+    (entry_scalar_window l5 1 (by decide) (by decide))
+    (entry_scalar_window l5 3 (by decide) (by decide))
+
+-- The two sub-blocks really are the singleton `[sc]`, and the whole window is the four-token pair:
+#guard (l5.take 2).drop (0 + 1) == [Tok.sc]
+#guard (l5.take 4).drop (2 + 1) == [Tok.sc]
+#guard (l5.take 4).drop 0 == [Tok.ky, Tok.sc, Tok.vl, Tok.sc]
+
+/-! ### Negative witnesses — the pair is a composite (not a single `Entry`), and needs both markers -/
+
+-- The pair window is a four-token composite, distinct from any single-`Entry` window shape (the
+-- scalar leaf's one token, the empty bracket's two): the map item is a heavier shape than a seq item.
+#guard (l5.take 4).drop 0 != [Tok.sc]
+#guard (l5.take 4).drop 0 != [Tok.ky]
+
+/-- The pair assembler needs the *key* marker `ky` at the head: in `l1` (a sequence body) the head is
+    `op`, not `ky`, so `pair_window` does not apply — a sequence body is not a mapping body. -/
+theorem seq_head_is_not_key : tokAt l1 0 ≠ .ky := by decide
+
+/-- And the *value* marker `vl` separating the two blocks is distinct from the seq separator `fe`: in
+    `l1` position `3` is `fe`, not `vl`. -/
+theorem fe_is_not_value : tokAt l1 3 ≠ .vl := by decide
 
 end Tests.Reflections.EntryBoundaryLocator
