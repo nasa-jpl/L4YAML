@@ -2960,6 +2960,76 @@ theorem recseqbody_cons_window (tokens : Array (Positioned YamlToken)) (lo m hi 
     ((tokens.toList.take hi).drop (m + 1)) (RecSeqEntry.ne_nil h_entry) h_entry
     (RecSeqEntry.head_contentStart h_entry (RecSeqEntry.ne_nil h_entry)) h_fe_val h_rest
 
+/-- **A recursive map pair is non-empty.**  The sole `RecMapPair.mk` constructor produces a `cons`
+    list (`kt :: …`), so the pair is never `[]`.  The map mirror of `RecSeqEntry.ne_nil`: the `h_ne`
+    field the body-level `RecMapBody.cons`/`.single` constructors demand, supplied as a structural
+    projection (cf. `RecMapPair.toEntrySafe`/`toWellBracketed`). -/
+theorem RecMapPair.ne_nil {p : List (Positioned YamlToken)} (h : RecMapPair p) : p ≠ [] := by
+  cases h <;> simp
+
+/-- **A recursive map pair's head is the `.key` token.**  The sole constructor's first token is the
+    key `kt` with `kt.val = .key`, exactly the `h_head : (p.head h_ne).val = .key` field the
+    `RecMapBody.cons`/`.single` constructors demand — the map mirror of `RecSeqEntry.head_contentStart`
+    (single `.key` case vs the three `ContentStartTok` cases), supplied as a structural projection so
+    the body-level assemblers need not re-derive it from the per-pair token shape.  (The `h_ne`
+    argument is threaded through to `List.head`; by proof irrelevance any `p ≠ []` witness gives the
+    same head.) -/
+theorem RecMapPair.head_key {p : List (Positioned YamlToken)}
+    (h : RecMapPair p) (h_ne : p ≠ []) : (p.head h_ne).val = .key := by
+  cases h with
+  | mk kt block_k vt block_v h_kt _ _ _ => rw [List.head_cons]; exact h_kt
+
+/-- **Body-cons window assembler** (Phase J, map side — the navigation recursion's *advance* step).
+    The map mirror of `recseqbody_cons_window`, completing the *advance* structural move on the map
+    axis as well (the seq→map mirror per the R260→R261 / R255→R256 rhythm): given the window splits at
+    a depth-`0` `.flowEntry` separator at position `m` into a leading `RecMapPair` over `[lo, m)` and a
+    trailing `RecMapBody` over `[m+1, hi)`, it produces the whole window's `RecMapBody` over `[lo, hi)`.
+
+    The positional plumbing is *verbatim* the seq side — the window identity
+    `(take hi).drop lo = (take m).drop lo ++ tokens[m] :: (take hi).drop (m+1)` and its segment-split /
+    separator-peel derivation are bracket- and collection-agnostic, depending only on `lo ≤ m < hi` and the
+    `.flowEntry` separator, not on whether the leading item is a seq entry or a map pair.  Only the
+    terminal constructor differs: `RecMapBody.cons` in place of `RecSeqBody.cons`, with the leading
+    item a `RecMapPair` and its `h_ne`/`h_head` fields discharged by the `RecMapPair.ne_nil` /
+    `RecMapPair.head_key` projections above (head is `.key`, vs the seq entry's `ContentStartTok`).
+    Verified-but-unconsumed until the map locate lands: it references no sorry site, so the frontier
+    sorry count is unchanged — with this the *advance* move is complete on both axes, and the locate
+    recursion's residual is, on both seq and map sides, only the *analytical* entry-boundary location. -/
+theorem recmapbody_cons_window (tokens : Array (Positioned YamlToken)) (lo m hi : Nat)
+    (h_lo_m : lo ≤ m) (h_m_hi : m < hi) (h_hi_sz : hi < tokens.size)
+    (h_fe : tokens[m]!.val = .flowEntry)
+    (h_pair : RecMapPair ((tokens.toList.take m).drop lo))
+    (h_rest : RecMapBody ((tokens.toList.take hi).drop (m + 1))) :
+    RecMapBody ((tokens.toList.take hi).drop lo) := by
+  have h_m_len : m < tokens.toList.length := by rw [Array.length_toList]; omega
+  have h_m_sz : m < tokens.size := by omega
+  -- Segment split: the leading pair window `[lo, m)` is a prefix of the whole window `[lo, hi)`.
+  have hA : (tokens.toList.take hi).drop lo
+      = (tokens.toList.take m).drop lo ++ (tokens.toList.take hi).drop m := by
+    rw [← List.take_append_drop (m - lo) ((tokens.toList.take hi).drop lo)]
+    congr 1
+    · rw [List.drop_take, List.drop_take, List.take_take,
+        Nat.min_eq_left (show m - lo ≤ hi - lo by omega)]
+    · rw [List.drop_drop, Nat.add_sub_cancel' h_lo_m]
+  -- Separator peel: the depth-`0` `.flowEntry` at `m` heads the trailing window `[m, hi)`.
+  have hB : (tokens.toList.take hi).drop m
+      = tokens.toList[m]'h_m_len :: (tokens.toList.take hi).drop (m + 1) := by
+    have hlen : m < (tokens.toList.take hi).length := by
+      rw [List.length_take,
+        Nat.min_eq_left (show hi ≤ tokens.toList.length by rw [Array.length_toList]; omega)]
+      exact h_m_hi
+    have h := (List.getElem_cons_drop hlen).symm
+    rw [List.getElem_take] at h
+    exact h
+  have h_fe_val : (tokens.toList[m]'h_m_len).val = .flowEntry := by
+    have hb : tokens[m]! = tokens.toList[m]'h_m_len := by
+      rw [getElem!_pos tokens m h_m_sz, Array.getElem_toList]
+    rw [← hb]; exact h_fe
+  rw [hA, hB]
+  exact RecMapBody.cons ((tokens.toList.take m).drop lo) (tokens.toList[m]'h_m_len)
+    ((tokens.toList.take hi).drop (m + 1)) (RecMapPair.ne_nil h_pair) h_pair
+    (RecMapPair.head_key h_pair (RecMapPair.ne_nil h_pair)) h_fe_val h_rest
+
 /-- **Parametric `MapBodyProps` assembler** (Phase J seed, map side).  The map-side mirror of
     `seqBodyProps_assemble`: given an arbitrary balanced flow-MAPPING subrange `[lo, hi)` —
     `tokens[hi]! = .flowMappingEnd`, total balance `0`, Dyck prefixes, interior `WellTyped` — together
