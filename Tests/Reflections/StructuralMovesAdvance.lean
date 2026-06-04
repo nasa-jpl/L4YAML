@@ -3,10 +3,13 @@
 
 (Extended by Reflection 263: the map mirror of the advance step — see the `## The MAP mirror` section.
 Extended by Reflection 269: the **TERMINATE** move — the `single` base-constructor lift the original
-descend/build/advance trio missed — see the `### Move 4 — TERMINATE` sections on both axes.)
+descend/build/advance trio missed — see the `### Move 4 — TERMINATE` sections on both axes.
+Extended by Reflection 270: the map TERMINATE move's *real-code* landing and the lesson that a
+**base-case mirror is free** — the map recursion-shape witness `mbody_PFPFP` is the structural twin of
+the seq `body_AFAFA`, same move composition, three identifiers renamed.)
 
 Self-contained, `L4YAML`-free runnable illustration of the proof-engineering principle in
-Blueprint Reflections 262 & 269 (and memory `ref-structural-moves-complete-recursion`).
+Blueprint Reflections 262, 269 & 270 (and memory `ref-structural-moves-complete-recursion`).
 
 **The principle.** A recursion that produces a *recursive-deliverable* inductive (here a toy of
 `RecSeqBody`/`RecSeqEntry`) is built from exactly **one positional window lift per CONSTRUCTOR of the
@@ -259,6 +262,19 @@ def mbodyAA : MBody [Tok.KY, Tok.A, Tok.VL, Tok.A] :=
 def mbody_two : MBody [Tok.KY, Tok.A, Tok.VL, Tok.A, Tok.FE, Tok.KY, Tok.A, Tok.VL, Tok.A] :=
   mbody_cons [Tok.KY, Tok.A, Tok.VL, Tok.A] [Tok.KY, Tok.A, Tok.VL, Tok.A] pairAA mbodyAA
 
+/-- **R270 — the base-case mirror is free, made concrete.**  The map structural twin of the seq
+    `body_AFAFA`: a *three*-pair body built **ADVANCE ∘ ADVANCE ∘ TERMINATE** — two advance steps over
+    a terminate base.  Compare line-for-line with `body_AFAFA` (the seq witness): the move composition
+    is *identical*, and this differs only by `MBody`/`MPair`/`mbody_*`/`pairAA` in place of
+    `RBody`/`REntry`/`recbody_*`/`REntry.scalar`.  That sameness is R270's point — the terminate move
+    carries no positional plumbing, so its mirror (and any recursion shape built atop it) transports
+    with zero divergence; the two axes' recursions are the same shape with the leaf types swapped. -/
+def mbody_PFPFP :
+    MBody [Tok.KY, Tok.A, Tok.VL, Tok.A, Tok.FE, Tok.KY, Tok.A, Tok.VL, Tok.A,
+           Tok.FE, Tok.KY, Tok.A, Tok.VL, Tok.A] :=
+  mbody_cons [Tok.KY, Tok.A, Tok.VL, Tok.A]
+    [Tok.KY, Tok.A, Tok.VL, Tok.A, Tok.FE, Tok.KY, Tok.A, Tok.VL, Tok.A] pairAA mbody_two
+
 /-- Negative — a pair is never empty (via `MPair.ne_nil`). -/
 theorem no_mpair_empty : ¬ MPair ([] : List Tok) := by intro h; exact MPair.ne_nil h rfl
 
@@ -267,5 +283,7 @@ theorem no_mpair_no_key : ¬ MPair [Tok.A] := by intro h; cases h
 
 #guard ([Tok.KY, Tok.A, Tok.VL, Tok.A] : List Tok).length == 4
 #guard ([Tok.KY, Tok.A, Tok.VL, Tok.A, Tok.FE, Tok.KY, Tok.A, Tok.VL, Tok.A] : List Tok).length == 9
+#guard ([Tok.KY, Tok.A, Tok.VL, Tok.A, Tok.FE, Tok.KY, Tok.A, Tok.VL, Tok.A,
+         Tok.FE, Tok.KY, Tok.A, Tok.VL, Tok.A] : List Tok).length == 14
 
 end Tests.Reflections.StructuralMovesAdvance
