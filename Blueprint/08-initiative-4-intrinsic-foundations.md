@@ -15448,6 +15448,44 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
+                **Total .body scope re-estimate (ONE-HUNDRED-TWELFTH revision —
+                after **Thread A step 3 sub-step 3's brick cont'd (locate ENTRY-BOUNDARY, SPLIT-POINT
+                LOCATOR — *FIRST DEPTH-0 BOUNDARY MARKER, SEQ+MAP SHARED*) — landed** (commit
+                `a219a6d5`, Reflection 264). **The first analytical brick of the entry-boundary location
+                — and the first piece that is _not_ a seq/map mirror but a single axis-agnostic lemma.**
+                Added a general constructive well-ordering helper `exists_least_in_range` (for a
+                decidable predicate `P` holding at a range end `start + gap`, the least witness in
+                `[start, start + gap]` with its minimality certificate; structural induction on `gap`,
+                decidability-driven upward scan via `if h : P start then …` — **no `Nat.find`, no
+                classical choice, no well-founded recursion**) and its specialization `firstEntryBoundary`:
+                for a balanced body-interior window `[lo, hi)` (`flowBracketBalance tokens lo hi = 0` —
+                the guard the per-window `Rec…Body` producer owns), it locates the **least depth-`0`
+                boundary marker** `m` in `(lo, hi]` — a position where the running balance from `lo`
+                returns to `0` and which is either the window end (`m = hi`) or a `.flowEntry` separator
+                — with the minimality clause that no earlier interior position is such a marker. **This
+                pins _where_ the first body item ends:** the first item occupies `[lo, m)` (balanced, no
+                interior depth-`0` separator) and is followed at `m` by either the `ADVANCE` move's
+                trailing separator (`tokens[m]! = .flowEntry`) or the window end (the last item, a
+                `single`). It is the **input side** of the entry-boundary analysis — locating the split
+                point — separate from the still-owed **shape side** (showing `[lo, m)` is a scalar or a
+                matched-bracket entry via `flowBracketBalance_matching_close`). **Axis-agnostic: the
+                boundary token `.flowEntry` is shared by sequences and mappings**, so this single lemma
+                feeds _both_ the `RecSeqBody` and `RecMapBody` recursions — there is no seq-versus-map
+                mirror to land (contrast the structural moves, where the terminal constructor differed).
+                Verified-but-unconsumed (R225): instantiates only `exists_least_in_range`, references no
+                sorry site, **sorries held at 4**. Build green **536 jobs**; both new declarations
+                axiom-clean **`[propext, Quot.sound]`** (no `Classical.choice` — strictly cleaner than
+                the structural moves, the locator being fully constructive). **Immediate next brick:** the
+                **shape side** of the entry-boundary location — given the located split point `m` from
+                `firstEntryBoundary`, show the first item `[lo, m)` is a well-formed `RecSeqEntry` /
+                `RecMapPair` (scalar singleton when the head is a scalar; matched-bracket window via
+                `flowBracketBalance_matching_close` when the head is an opener), then assemble the full
+                window's `Rec…Body` by `ADVANCE` over the recursive rest `[m+1, hi)` — the value-driven
+                locate recursion itself (`Nat.strongRecOn` on the window width), feeding the per-window
+                `Rec…Body` producers into `flowSubrangesOk_of_window_producers` to discharge the two
+                `scanFiltered_emit{Seq,Map}_nonempty_structure` sorry sites; then the two base
+                `emit_roundtrip_{sequence,mapping}_content_eq` sorries → `universal_roundtrip`. See
+                Reflection 264, on top of the
                 **Total .body scope re-estimate (ONE-HUNDRED-ELEVENTH revision —
                 after **Thread A step 3 sub-step 3's brick cont'd (locate ADVANCE, MAP MIRROR) —
                 *BODY-CONS WINDOW ASSEMBLER, MAP SIDE — THE MAP LOCATE RECURSION's ADVANCE STEP* —
@@ -26758,3 +26796,15 @@ The lesson sharpens R262 along the seq/map symmetry axis, and re-confirms the st
 **With this the _advance_ move is complete on both axes. On both the seq and map sides, all three structural moves — descend (`rec{seq,map}body_window_of_located_entry`, R260/R261), build (`located_entry_of_recseqbody` / its map sibling), advance (`recseqbody_cons_window` / `recmapbody_cons_window`, R262/R263) — are now landed.** The locate recursion's residual is, on both sides, only the **analytical** entry-boundary location: find, for a guarded window, the depth-`0` extent of its first entry/pair (the matching close of its opener, a bracket-balance argument) and the trailing separator. The structural scaffolding of the navigation recursion is fully in hand; what remains is the genuine analytical bulk — *not* a mechanical seq/map mirror this time.
 
 Verified-but-unconsumed (R225): references no sorry site, frontier sorry count unchanged at **4** (build green **536 jobs**, axiom-clean **`[propext, Classical.choice, Quot.sound]`** — matching the seq advance sibling `recseqbody_cons_window`; the two projections `[propext]`; commit `15b6e31a`). **Immediate next brick:** the **analytical entry-boundary location** itself — the navigation's analytical core (the genuine bulk): find, for a guarded window, the body entry/pair it occupies, feeding the now three-move-complete structural recursion's per-window `Rec…Body` producers into `flowSubrangesOk_of_window_producers` to discharge the two `scanFiltered_emit{Seq,Map}_nonempty_structure` sorry sites; then the two base `emit_roundtrip_{sequence,mapping}_content_eq` sorries → `universal_roundtrip`. See [[ref-structural-moves-complete-recursion]] (R262 — the principle this completes on both axes), [[ref-mirror-constructor-arity-reads-storage]] (R246/R248/R261 — the storage asymmetry surfacing here as the head-token side-field's shape), and [[ref-conjunct-of-projection-is-free-field]] (R253/R254 — the projection-as-free-side-field discipline the `RecMapPair.ne_nil`/`head_key` projections instantiate).
+
+### Reflection 264 (new, 2026-06-04): the entry-boundary location splits into an *input side* (locate the split point) and a *shape side* (classify the item) — the input side is a single axis-agnostic combinatorial brick, because the body-separator token is shared across seq and map
+
+With the three structural moves complete on both axes (R262/R263), the locate recursion's residual is the **analytical entry-boundary location** — and this session takes its first brick. The key structural observation: **the entry-boundary location decomposes into two independent halves.** Given a balanced body-interior window `[lo, hi)`, the recursion must (a) find _where_ the first body item ends — the split point `m` — and (b) classify _what_ the first item is — a scalar, or a matched-bracket sub-window. These are separable: (a) is a pure bracket-balance combinatorial fact, owing nothing to the item's shape; (b) is the shape analysis (`flowBracketBalance_matching_close`, the head dichotomy) that consumes the located `m`. This session lands (a) — the **input side**.
+
+`firstEntryBoundary` delivers it: for a balanced window (`flowBracketBalance tokens lo hi = 0`, the guard the per-window producer owns), there is a **least depth-`0` boundary marker** `m` in `(lo, hi]` — a position where the running balance from `lo` returns to `0` and which is either the window end (`m = hi`) or a `.flowEntry` separator — with the certificate that no earlier interior position is such a marker. That minimality pins the first item to `[lo, m)`: balanced (balance `lo m = 0`), containing no interior depth-`0` separator (so it is a _single_ item, not two), and followed at `m` by either the trailing separator the `ADVANCE` move consumes (`tokens[m]! = .flowEntry`) or the window end (the last item, a `single`).
+
+It rests on a deliberately generic well-ordering helper `exists_least_in_range`: for a decidable predicate `P` holding at a range end `start + gap`, the least witness in `[start, start + gap]` together with its minimality certificate. **Fully constructive** — structural induction on `gap`, scanning upward from `start` with the decidability instance (`if h : P start then …`), no `Nat.find` (Mathlib-forbidden), no classical choice, no well-founded recursion. The specialization instantiates it at the marker predicate `fun m => flowBracketBalance tokens lo m = 0 ∧ (m = hi ∨ tokens[m]!.val = .flowEntry)`, whose decidability Lean synthesizes from `Int`/`Nat`/`YamlToken` `DecidableEq`; `firstEntryBoundary` is then pure plumbing (one `obtain`, `omega` on the range arithmetic). Both declarations are axiom-clean **`[propext, Quot.sound]`** — strictly cleaner than the structural moves' `[propext, Classical.choice, Quot.sound]`, precisely because the locator is fully constructive.
+
+**The lesson — the input side of the entry-boundary location is a single axis-agnostic brick, not a seq/map mirror pair.** Every prior navigation brick (the consumer joints R255→R256, the structural moves R260→R261 / R262→R263, the root seeds R258→R259) came as a seq lemma plus a one-session-later map mirror, because each named a collection-specific deliverable (`RecSeqBody`/`RecMapBody`, `RecSeqEntry`/`RecMapPair`) whose constructor differed. `firstEntryBoundary` breaks that rhythm: the **body-separator token `.flowEntry` is identical for sequences and mappings**, so the boundary predicate is shared, and the single lemma feeds _both_ recursions. This is a discriminator worth carrying forward: a navigation brick mirrors across seq/map exactly when it mentions a collection-specific _deliverable type_; one phrased purely over the shared _token stream_ (balance, the `.flowEntry` separator) is written once. The remaining bulk — the **shape side**, classifying `[lo, m)` and recursing — _will_ split seq/map again (it constructs `RecSeqEntry`/`RecMapPair`), but the split-point locator does not.
+
+Verified-but-unconsumed (R225): instantiates only `exists_least_in_range`, references no sorry site, frontier sorry count unchanged at **4** (build green **536 jobs**, both declarations axiom-clean **`[propext, Quot.sound]`**; commit `a219a6d5`). **Immediate next brick:** the **shape side** of the entry-boundary location — given `firstEntryBoundary`'s split point `m`, show the first item `[lo, m)` is a well-formed `RecSeqEntry` / `RecMapPair` (scalar singleton when `tokens[lo]` is a scalar; matched-bracket window via `flowBracketBalance_matching_close` when it is an opener), then assemble the whole window's `Rec…Body` by `ADVANCE` over the recursive rest `[m+1, hi)` — the value-driven locate recursion itself (`Nat.strongRecOn` on the window width `hi - lo`), feeding the per-window `Rec…Body` producers into `flowSubrangesOk_of_window_producers` to discharge the two `scanFiltered_emit{Seq,Map}_nonempty_structure` sorry sites; then the two base `emit_roundtrip_{sequence,mapping}_content_eq` sorries → `universal_roundtrip`. See [[ref-structural-moves-complete-recursion]] (R262/R263 — the structural moves this entry-boundary brick complements; together they are the locate recursion's full apparatus), and [[ref-mirror-constructor-arity-reads-storage]] (R246/R261/R263 — the seq/map mirror discipline this brick is the _exception_ to, the exception's discriminator being deliverable-type-mention vs shared-token-stream).
