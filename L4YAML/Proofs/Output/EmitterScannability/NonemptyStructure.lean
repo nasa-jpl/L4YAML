@@ -3605,6 +3605,93 @@ theorem recseqentry_seqempty_dispatch (tokens : Array (Positioned YamlToken)) (l
   rw [h_m_eq]
   exact recseqentry_seqempty_window tokens lo h_lo1_sz h_open h_close
 
+/-- **Bracket head-dispatch resolution** (Phase J — the seq locate DRIVER's head-dispatch, the shared
+    spine of the two BRACKET branches).  The scalar/`seqEmpty` leaves above pin the split point at a
+    *fixed* arity (`lo+1`, `lo+2`); a bracket-headed entry — a nested sequence `[ … ]` or mapping
+    `{ … }` — spans a *variable* interior, so its split point `m` is wherever the matching close sits,
+    `+1`.  This lemma is that resolution, written ONCE and reused by both the `seq` (recursive) and `map`
+    (near-leaf) branches, since the minimality→split argument is shape-shared (R264): it is stated over
+    the bracket *delta* (`flowBracketDelta tokens[lo]!.val = 1`), not the specific opener token.
+
+    Its hypotheses are *exactly* the five outputs of the generic `flowBracketBalance_matching_close`
+    (taken at the depth-0 opener `k := lo`) plus the two `firstEntryBoundary` conjuncts — so it consumes
+    the locator verbatim.  `matching_close` supplies the close position `j` (`lo < j < hi`), its closer
+    delta (`-1`), the inner balance (`balance (lo+1) j = 0`), AND — crucially — the strict-positivity
+    invariant `∀ i, lo < i → i ≤ j → balance lo i ≥ 1` that the *typed* wrappers
+    `flowBracketBalance_matching_close_{seq,map}` DROP.  That invariant is what the `seqEmpty` branch had
+    hard-coded as the single fact `balance lo (lo+1) = 1`: it is the general statement that the running
+    depth never returns to `0` anywhere strictly inside the bracket, so no interior position can be a
+    boundary marker.
+
+    The resolution then runs the same two-sided squeeze the `seqEmpty` leaf ran, now at the variable
+    `j+1`.  Composing the opener (`+1`) and the closer at `j` (`-1`) around the balanced interior gives
+    `balance lo (j+1) = 0`; with the grammar substrate `h_succ` (position `j+1` ends the window or is a
+    `.flowEntry` — the completed bracket entry's successor), `j+1` is a genuine boundary marker, so
+    minimality forces `m ≤ j+1` (UPPER bound, the LEAST clause).  Conversely the positivity invariant
+    gives `balance lo i ≥ 1` for every `lo < i ≤ j`, contradicting the MARKER clause `balance lo m = 0`
+    unless `m > j` — the LOWER bound `m ≥ j+1`.  Together `m = j+1`.  This is the precise generalization
+    the dependency map flagged the bracket branches owe: the LEAST clause bounds `m` above, the MARKER
+    clause (via positivity) bounds it below, and the split lands exactly past the matching close.
+
+    Verified-but-unconsumed: references no sorry site, frontier sorry count unchanged at 4; produces only
+    the arithmetic identity `m = j+1`, agnostic to which bracket (`seq` vs `map`) — the two branches
+    layer the close-token type and the window lift on top.  Axiom-clean `[propext, Classical.choice,
+    Quot.sound]` (no `sorryAx`); the `Classical.choice` enters through `flowBracketBalance_compose`'s
+    `List.foldl` machinery, exactly as in the `seqEmpty` leaf and unlike the compose-free scalar leaf. -/
+theorem firstEntryBoundary_bracket_resolve (tokens : Array (Positioned YamlToken)) (lo hi m j : Nat)
+    (h_hi_sz : hi ≤ tokens.size)
+    (h_lo_m : lo < m) (_h_m_hi : m ≤ hi)
+    (h_m_marker : flowBracketBalance tokens lo m = 0 ∧ (m = hi ∨ tokens[m]!.val = .flowEntry))
+    (h_m_least : ∀ k, lo < k → k < m →
+      ¬ (flowBracketBalance tokens lo k = 0 ∧ (k = hi ∨ tokens[k]!.val = .flowEntry)))
+    (h_open_delta : flowBracketDelta tokens[lo]!.val = 1)
+    (h_lo_j : lo < j) (h_j_hi : j < hi)
+    (h_j_close_delta : flowBracketDelta tokens[j]!.val = -1)
+    (h_inner : flowBracketBalance tokens (lo + 1) j = 0)
+    (h_j_pos : ∀ i, lo < i → i ≤ j → flowBracketBalance tokens lo i ≥ 1)
+    (h_succ : j + 1 = hi ∨ tokens[j + 1]!.val = .flowEntry) :
+    m = j + 1 := by
+  have h_lo_sz : lo < tokens.size := by omega
+  have h_j_sz : j < tokens.size := by omega
+  have h_lo_len : lo < tokens.toList.length := by rw [Array.length_toList]; exact h_lo_sz
+  have h_j_len : j < tokens.toList.length := by rw [Array.length_toList]; exact h_j_sz
+  -- opener/closer deltas, transported from `tokens[·]!` to the `toList` indexing the balance lemmas use.
+  have h_op_delta_list : flowBracketDelta (tokens.toList[lo]'h_lo_len).val = 1 := by
+    have hb : tokens[lo]! = tokens.toList[lo]'h_lo_len := by
+      rw [getElem!_pos tokens lo h_lo_sz, Array.getElem_toList]
+    rw [← hb]; exact h_open_delta
+  have h_cl_delta_list : flowBracketDelta (tokens.toList[j]'h_j_len).val = -1 := by
+    have hb : tokens[j]! = tokens.toList[j]'h_j_len := by
+      rw [getElem!_pos tokens j h_j_sz, Array.getElem_toList]
+    rw [← hb]; exact h_j_close_delta
+  -- balance just after the opener is +1; the closer at `j` returns it to 0.
+  have h_bal_lo1 : flowBracketBalance tokens lo (lo + 1) = 1 := by
+    rw [flowBracketBalance_single tokens lo h_lo_len]; exact h_op_delta_list
+  have h_single_j : flowBracketBalance tokens j (j + 1) = -1 := by
+    rw [flowBracketBalance_single tokens j h_j_len]; exact h_cl_delta_list
+  have h_bal_lo_j : flowBracketBalance tokens lo j = 1 := by
+    rw [flowBracketBalance_compose tokens lo (lo + 1) j (by omega) (by omega), h_bal_lo1, h_inner]
+    decide
+  have h_bal_j1 : flowBracketBalance tokens lo (j + 1) = 0 := by
+    rw [flowBracketBalance_compose tokens lo j (j + 1) (by omega) (by omega), h_bal_lo_j, h_single_j]
+    decide
+  -- `j+1` is a genuine boundary marker (balanced + completes the entry, via `h_succ`).
+  have h_marker_j1 : flowBracketBalance tokens lo (j + 1) = 0 ∧
+      (j + 1 = hi ∨ tokens[j + 1]!.val = .flowEntry) := ⟨h_bal_j1, h_succ⟩
+  -- UPPER bound: minimality against the marker `j+1` (the LEAST clause).
+  have h_m_le : m ≤ j + 1 := by
+    rcases Nat.lt_or_ge (j + 1) m with hlt | hge
+    · exact absurd h_marker_j1 (h_m_least (j + 1) (by omega) hlt)
+    · exact hge
+  -- LOWER bound: positivity forbids a depth-0 marker at any `lo < m ≤ j` (the MARKER clause).
+  have h_m_ge : j + 1 ≤ m := by
+    rcases Nat.lt_or_ge j m with hjm | hmj
+    · omega
+    · have hpos := h_j_pos m h_lo_m hmj
+      rw [h_m_marker.1] at hpos
+      omega
+  omega
+
 /-- **Parametric `MapBodyProps` assembler** (Phase J seed, map side).  The map-side mirror of
     `seqBodyProps_assemble`: given an arbitrary balanced flow-MAPPING subrange `[lo, hi)` —
     `tokens[hi]! = .flowMappingEnd`, total balance `0`, Dyck prefixes, interior `WellTyped` — together
