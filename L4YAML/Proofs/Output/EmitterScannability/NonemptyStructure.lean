@@ -3278,6 +3278,88 @@ theorem recseqentry_map_window (tokens : Array (Positioned YamlToken)) (lo hi : 
     rw [← hb]; exact h_close
   exact RecSeqEntry.map _ _ _ h_op_val h_cl_val h_wb
 
+/-- **Map-pair window assembler** (Phase J — the entry-boundary location's *shape side*, MAP axis —
+    the map mirror of the now-complete seq dispatch family).  Where the seq shape side is a four-way
+    dispatch on a single head token (`recseqentry_{scalar,seqempty,map}_window` + the BUILD move for
+    the recursive `.seq`, Reflections 265–267), the map body's first item is a whole key/value PAIR
+    `.key <block_k> .value <block_v>` (`RecMapPair`).  So the map shape side is **not** a per-constructor
+    dispatch at all — it is ONE assembler that GLUES two already-located `RecSeqEntry` blocks with the
+    depth-`0` `.key`/`.value` markers.  Given a key marker `tokens[lo] = .key`, the key block over
+    `[lo+1, kv)` as a `RecSeqEntry`, a value marker `tokens[kv] = .value`, and the value block over
+    `[kv+1, m)` as a `RecSeqEntry`, the pair window `(tokens.toList.take m).drop lo` is a `RecMapPair`.
+
+    This is where the seq side's completed four-constructor dispatch is *consumed*: the key and value
+    blocks are arbitrary `RecSeqEntry`s — a scalar, an empty bracket, a nested sequence (via the seq
+    BUILD move), or a nested mapping (the `map` near-leaf) — so the map shape side adds NO new
+    per-constructor classification; the seq dispatch already covers every block shape.  Its only new
+    work is the pair glue, and *that* is itself a composition of two ALREADY-landed positional patterns:
+    the segment split at the `.value` separator (`recseqbody_cons_window`'s ADVANCE plumbing —
+    `List.take_append_drop`/`take_take`/`drop_drop`, here splitting the pair interior `[lo+1, m)` at
+    `kv`) and the opener peel of `tokens[lo]` (`List.getElem_cons_drop` + `List.getElem_take`, the BUILD
+    move's head peel).  Terminated by `RecMapPair.mk`, whose `kt :: (block_k ++ vt :: block_v)` index is
+    exactly the peeled-and-split window, with both marker values transported from `tokens[·]!` via
+    `getElem!_pos`/`Array.getElem_toList`.
+
+    So the map shape side costs no fresh structural insight — it reuses the seq dispatch (as its two
+    sub-blocks) and the ADVANCE+BUILD plumbing (as its one glue), the parallel-type re-split (the map
+    leaf is a PAIR, not a single bracketed item) surfacing here as *composition* rather than a new
+    family.  Verified-but-unconsumed: takes the two `RecSeqEntry` blocks as hypotheses (agnostic to
+    their production — the map locate supplies them by recursing the key/value substructure), references
+    no sorry site, frontier sorry count unchanged; axiom-clean `[propext, Classical.choice, Quot.sound]`
+    (the `Classical.choice` enters through the reused ADVANCE segment-split plumbing, where the simpler
+    one-token and two-token seq leaves stayed at `[propext, Quot.sound]`). -/
+theorem recmappair_window (tokens : Array (Positioned YamlToken)) (lo kv m : Nat)
+    (h_lo_kv : lo < kv) (h_kv_m : kv < m) (h_m_sz : m ≤ tokens.size)
+    (h_key : tokens[lo]!.val = .key)
+    (h_value : tokens[kv]!.val = .value)
+    (h_ke : RecSeqEntry ((tokens.toList.take kv).drop (lo + 1)))
+    (h_ve : RecSeqEntry ((tokens.toList.take m).drop (kv + 1))) :
+    RecMapPair ((tokens.toList.take m).drop lo) := by
+  have h_lo_sz : lo < tokens.size := by omega
+  have h_kv_sz : kv < tokens.size := by omega
+  have h_lo_len : lo < tokens.toList.length := by rw [Array.length_toList]; exact h_lo_sz
+  have h_kv_len : kv < tokens.toList.length := by rw [Array.length_toList]; exact h_kv_sz
+  -- segment split: the pair interior `[lo+1, m)` divides at the `.value` marker `kv`
+  -- (`recseqbody_cons_window`'s ADVANCE plumbing, with `hi := m`, `lo := lo+1`, `m := kv`).
+  have hA : (tokens.toList.take m).drop (lo + 1)
+      = (tokens.toList.take kv).drop (lo + 1) ++ (tokens.toList.take m).drop kv := by
+    rw [← List.take_append_drop (kv - (lo + 1)) ((tokens.toList.take m).drop (lo + 1))]
+    congr 1
+    · rw [List.drop_take, List.drop_take, List.take_take,
+        Nat.min_eq_left (show kv - (lo + 1) ≤ m - (lo + 1) by omega)]
+    · rw [List.drop_drop, Nat.add_sub_cancel' (show lo + 1 ≤ kv by omega)]
+  -- separator peel: the `.value` marker at `kv` heads the value half `[kv, m)`.
+  have hB : (tokens.toList.take m).drop kv
+      = tokens.toList[kv]'h_kv_len :: (tokens.toList.take m).drop (kv + 1) := by
+    have hlen : kv < (tokens.toList.take m).length := by
+      rw [List.length_take,
+        Nat.min_eq_left (show m ≤ tokens.toList.length by rw [Array.length_toList]; omega)]
+      exact h_kv_m
+    have h := (List.getElem_cons_drop hlen).symm
+    rw [List.getElem_take] at h
+    exact h
+  -- opener peel: the `.key` marker at `lo` heads the whole pair window `[lo, m)`.
+  have h_peel : (tokens.toList.take m).drop lo
+      = tokens.toList[lo]'h_lo_len :: (tokens.toList.take m).drop (lo + 1) := by
+    have hlen : lo < (tokens.toList.take m).length := by
+      rw [List.length_take,
+        Nat.min_eq_left (show m ≤ tokens.toList.length by rw [Array.length_toList]; omega)]
+      omega
+    have h := (List.getElem_cons_drop hlen).symm
+    rw [List.getElem_take] at h
+    exact h
+  -- whole window now reads as `kt :: (block_k ++ vt :: block_v)`.
+  rw [h_peel, hA, hB]
+  have h_kt_val : (tokens.toList[lo]'h_lo_len).val = .key := by
+    have hb : tokens[lo]! = tokens.toList[lo]'h_lo_len := by
+      rw [getElem!_pos tokens lo h_lo_sz, Array.getElem_toList]
+    rw [← hb]; exact h_key
+  have h_vt_val : (tokens.toList[kv]'h_kv_len).val = .value := by
+    have hb : tokens[kv]! = tokens.toList[kv]'h_kv_len := by
+      rw [getElem!_pos tokens kv h_kv_sz, Array.getElem_toList]
+    rw [← hb]; exact h_value
+  exact RecMapPair.mk _ _ _ _ h_kt_val h_ke h_vt_val h_ve
+
 /-- **Parametric `MapBodyProps` assembler** (Phase J seed, map side).  The map-side mirror of
     `seqBodyProps_assemble`: given an arbitrary balanced flow-MAPPING subrange `[lo, hi)` —
     `tokens[hi]! = .flowMappingEnd`, total balance `0`, Dyck prefixes, interior `WellTyped` — together
