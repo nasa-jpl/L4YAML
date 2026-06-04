@@ -1,5 +1,5 @@
 /-!
-# Reflection 255 — reconcile an *unbounded* consumer quantifier with a *bounded* producer by recovering the missing bounds from the enclosing context's own boundary tokens
+# Reflections 255 + 256 — reconcile an *unbounded* consumer quantifier with a *bounded* producer by recovering the missing bounds from the enclosing context's own boundary tokens (255 seq, 256 map mirror)
 
 Self-contained core-Lean toy (no `L4YAML` import) for the principle: **a
 consumer-joint-before-producer move has *two* boundaries.  When the consumer quantifies a window
@@ -45,7 +45,7 @@ Witnesses (positive *and* negative):
 
 namespace Tests.Reflections.BoundaryBoundRecovery
 
-inductive Tok | SS | OB | CB | SE | A
+inductive Tok | SS | OB | CB | SE | A | MB | ME
   deriving DecidableEq, Inhabited, Repr
 
 open Tok
@@ -129,5 +129,100 @@ def bad : List Tok := [OB, A, CB]
     precisely because the `SS` boundary hypothesis `bad[0]! = SS` is false — so `bound_lo` is
     inapplicable.  Without the boundary invariant, the unbounded quantifier is unsafe. -/
 theorem neg_no_ss : bad[0]! ≠ Tok.SS := by decide
+
+/-! ## Map mirror — Reflection 256: the same recovery, bracket-agnostic, plus the +6 R246 primitives
+
+`mapLocator_of_window_recmapbody` is the verbatim twin of `seqLocator_of_window_recseqbody` over the
+`.flowMapping{Start,End}` boundary tokens.  Two things this toy demonstrates:
+
+1. **The bound-recovery is bracket-agnostic** — `bound_lo_map`/`bound_hi_map` are `bound_lo`/`bound_hi`
+   with `OB`/`CB` swapped for the map brackets `MB`/`ME`, reading the **same** stream-frame tokens
+   `SS`/`SE`.  The recovery body is identical; only the `decide`'d distinctness changes
+   (`MB ≠ SS` / `ME ≠ SE` in place of `OB ≠ SS` / `CB ≠ SE`).  The stream frame does not know which
+   collection a window opens, so the same two frame facts forbid `lo ≤ 1` and `hi = length - 1`.
+2. **The R246 storage asymmetry surfaces as an *extra per-window hypothesis*, not at a constructor** —
+   the real map assembler threads six pair-interior primitives the seq side has no analogue of.  Here
+   that delta is modelled by one extra per-window producer hypothesis `h_prim` (toy: "the window's
+   first content token is an `A`").  The joint recovers the bounds **once** and feeds them to *both*
+   the structural producer `h_rec` and the extra `h_prim` — exactly the real joint recovering the
+   bounds once and handing them to all seven producer hypotheses. -/
+
+/-- Toy of the six R246 pair-interior primitives: one extra per-window fact the *map* producer
+    delivers that the seq producer has no analogue of (here, decidably: the window's first content
+    token is an `A`). -/
+def mapPrim (toks : List Tok) (lo hi : Nat) : Bool :=
+  ((toks.take hi).drop lo).headD Tok.SE == Tok.A
+
+/-- **Lower-bound recovery, map side** — verbatim `bound_lo` with `MB` for `OB`, the same `SS` frame
+    token.  The recovery does not depend on which bracket the window opens. -/
+theorem bound_lo_map (toks : List Tok) (lo : Nat)
+    (h_t0 : toks[0]! = Tok.SS) (h_open : toks[lo - 1]! = Tok.MB) : 2 ≤ lo := by
+  rcases Nat.lt_or_ge lo 2 with hlt | hge
+  · exfalso
+    have h0 : lo - 1 = 0 := by omega
+    rw [h0, h_t0] at h_open
+    exact absurd h_open (by decide)
+  · exact hge
+
+/-- **Upper-bound recovery, map side** — verbatim `bound_hi` with `ME` for `CB`, the same `SE`
+    frame token. -/
+theorem bound_hi_map (toks : List Tok) (hi : Nat)
+    (h_tlast : toks[toks.length - 1]! = Tok.SE) (h_hi_sz : hi < toks.length)
+    (h_close : toks[hi]! = Tok.ME) : hi ≤ toks.length - 2 := by
+  rcases Nat.lt_or_ge hi (toks.length - 1) with hlt | hge
+  · omega
+  · exfalso
+    have heq : hi = toks.length - 1 := by omega
+    rw [heq, h_tlast] at h_close
+    exact absurd h_close (by decide)
+
+/-- **The map-side boundary-anchoring locator joint** (toy of `mapLocator_of_window_recmapbody`).  The
+    only delta from the seq joint is the extra per-window producer hypothesis `h_prim` (the +6 R246
+    primitives).  The joint recovers `2 ≤ lo` / `hi ≤ length - 2` **once** per window via
+    `bound_lo_map`/`bound_hi_map` and feeds the recovered bounds to *both* `h_rec` and `h_prim` —
+    no per-primitive bound-recovery.  Verified-but-unconsumed: both `h_rec` and `h_prim` are the
+    recursion's owed deliverables, abstract exactly as in L4YAML. -/
+theorem locator_of_window_recmapbody (toks : List Tok)
+    (h_t0 : toks[0]! = Tok.SS)
+    (h_tlast : toks[toks.length - 1]! = Tok.SE)
+    (h_rec : ∀ lo hi, 2 ≤ lo → hi ≤ toks.length - 2 → lo ≤ hi → hi < toks.length →
+      toks[hi]! = Tok.ME → toks[lo - 1]! = Tok.MB → SeqProps toks lo hi)
+    (h_prim : ∀ lo hi, 2 ≤ lo → hi ≤ toks.length - 2 → lo ≤ hi → hi < toks.length →
+      toks[hi]! = Tok.ME → toks[lo - 1]! = Tok.MB → mapPrim toks lo hi = true) :
+    ∀ lo hi, lo ≤ hi → hi < toks.length →
+      toks[hi]! = Tok.ME → toks[lo - 1]! = Tok.MB →
+      SeqProps toks lo hi ∧ mapPrim toks lo hi = true := by
+  intro lo hi h_lo_hi h_hi_sz h_close h_open
+  exact ⟨h_rec lo hi (bound_lo_map toks lo h_t0 h_open)
+            (bound_hi_map toks hi h_tlast h_hi_sz h_close) h_lo_hi h_hi_sz h_close h_open,
+         h_prim lo hi (bound_lo_map toks lo h_t0 h_open)
+            (bound_hi_map toks hi h_tlast h_hi_sz h_close) h_lo_hi h_hi_sz h_close h_open⟩
+
+/-! ### Positive witnesses — `goodMap = [SS, MB, A, ME, SE]` (the seq `good`, brackets swapped) -/
+
+def goodMap : List Tok := [SS, MB, A, ME, SE]
+
+#guard goodMap[0]! == Tok.SS
+#guard goodMap[goodMap.length - 1]! == Tok.SE
+#guard goodMap[2 - 1]! == Tok.MB
+#guard goodMap[3]! == Tok.ME
+-- the bracket-agnostic recovery lands at the same window as the seq side
+theorem pos_lo_map : 2 ≤ 2 := bound_lo_map goodMap 2 (by decide) (by decide)
+theorem pos_hi_map : 3 ≤ goodMap.length - 2 :=
+  bound_hi_map goodMap 3 (by decide) (by decide) (by decide)
+-- the structural target AND the extra +6-primitive analog both hold at the window
+#guard recBody ((goodMap.take 3).drop 2)
+#guard mapPrim goodMap 2 3
+
+/-! ### Negative witnesses — the boundary token is load-bearing for the map side too
+    (`badMap = [MB, A, ME]`, no `SS` frame) -/
+
+def badMap : List Tok := [MB, A, ME]
+
+#guard (badMap[0]! == Tok.SS) == false
+#guard badMap[1 - 1]! == Tok.MB
+#guard decide (2 ≤ 1) == false
+
+theorem neg_no_ss_map : badMap[0]! ≠ Tok.SS := by decide
 
 end Tests.Reflections.BoundaryBoundRecovery
