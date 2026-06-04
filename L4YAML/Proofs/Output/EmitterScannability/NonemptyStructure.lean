@@ -1558,6 +1558,72 @@ theorem emitPairList_scans_recmapbody (pairs : List (YamlValue × YamlValue))
         exact RecMapBody.cons _ feTok block_rest (by exact List.cons_ne_nil _ _)
           h_pair (by rfl) h_feTok_val h_rec_rest
 
+/-- **Map-body recursive seed** (Phase J — the `RecMapBody` analog of
+    `emitPairList_body_filtered_characterization`, and the symmetric mirror of the seq-body seed
+    `emitList_body_recseqbody`).  Where the flat characterization packages the flat map-body content,
+    this one packages `emitPairList_scans_recmapbody` into the body's *recursive* deliverable,
+    restated positionally: the `drop old_sz` tail of the final filtered token list is one
+    `RecMapBody`.  This is the **root the locate recursion descends from** on the map side — the
+    outer-window (`lo = old_sz`) leaf of the per-window `RecMapBody` producer
+    `flowSubrangesOk_of_window_producers` consumes: at the body-interior span `[2, size-2)` the window
+    `(take (size-2)).drop 2` is exactly this `drop old_sz` tail, so this is the map-side universal
+    producer's base case; the recursion navigates this top-level structure down to every nested
+    guarded subrange.  Keyed on BOTH per-item recursive hypotheses the map feed reads —
+    `EmitScansInFlowSavedKeyRecEntry` (every key) and `EmitScansInFlowRecEntry` (every value) — plus
+    the extra `simpleKeyAllowed = true` precondition the map feed needs that the seq feed does not
+    (the R246 stored-vs-projected asymmetry surfacing one tier up, at the seed's hypothesis count).
+    Verified-but-unconsumed until the locate lands: composes only `emitPairList_scans_recmapbody` +
+    the positional `drop` (`h_drop`, verbatim from the seq seed), references no sorry site, frontier
+    sorry count unchanged. -/
+theorem emitPairList_body_recmapbody
+    (pairs : List (YamlValue × YamlValue)) (h_ne : pairs ≠ [])
+    (h_all_k : ∀ p ∈ pairs, EmitScansInFlowSavedKeyRecEntry p.1)
+    (h_all_v : ∀ p ∈ pairs, EmitScansInFlowRecEntry p.2)
+    (s : ScannerState) (rest : List Char)
+    (h_corr : ScannerSurfCorr s ⟨(emit.emitPairList pairs).toList ++ rest, s.col⟩)
+    (h_flow : s.inFlow = true) (h_fl : s.flowLevel > 0)
+    (h_indent : s.currentIndent < 0) (h_col : s.col > 0)
+    (h_ek : s.explicitKeyLine = none)
+    (h_atol : AllTokensOnLine s s.line)
+    (h_endline : EndLineOnLine s)
+    (h_ska : s.simpleKeyAllowed = true)
+    (h_sync : s.simpleKeyStack.size = s.flowLevel) :
+    let p := fun (t : Positioned YamlToken) => t.val != .placeholder
+    let old_sz := (s.tokens.filter p).size
+    ∃ n s', ScanChain s n s'
+    ∧ ScannerSurfCorr s' ⟨rest, s'.col⟩
+    ∧ s'.flowLevel = s.flowLevel
+    ∧ s'.directivesPresent = s.directivesPresent
+    ∧ s'.indents = s.indents
+    ∧ s'.explicitKeyLine = s.explicitKeyLine
+    ∧ s'.col > 0
+    ∧ s'.inFlow = true
+    ∧ s'.currentIndent < 0
+    ∧ s'.line = s.line
+    ∧ AllTokensOnLine s' s'.line
+    ∧ EndLineOnLine s'
+    ∧ s'.simpleKeyStack = s.simpleKeyStack
+    ∧ FlowMonoChain s.flowLevel s n s'
+    ∧ RecMapBody ((s'.tokens.filter p).toList.drop old_sz) := by
+  obtain ⟨n, s', block, h_chain, h_corr', h_fl', h_dp', h_ids', h_ek', h_col', h_inflow',
+          h_indent', h_line', h_atol', h_endline', h_stack', h_fmc, h_block_eq, h_wb, h_wt, h_rec, _h_n3⟩ :=
+    emitPairList_scans_recmapbody pairs h_ne h_all_k h_all_v s rest h_corr h_flow h_fl h_indent h_col
+      h_ek h_atol h_endline h_ska h_sync
+  -- The body block is exactly the `drop old_sz` of the final filtered token list (verbatim from
+  -- the seq seed `emitList_body_recseqbody`).
+  have h_drop : (s'.tokens.filter (fun t => t.val != .placeholder)).toList.drop
+      (s.tokens.filter (fun t => t.val != .placeholder)).size = block := by
+    rw [h_block_eq,
+      show (s.tokens.filter (fun t => t.val != .placeholder)).size
+          = (s.tokens.filter (fun t => t.val != .placeholder)).toList.length
+        from Array.length_toList.symm,
+      List.drop_append_of_le_length (Nat.le_refl _), List.drop_length, List.nil_append]
+  refine ⟨n, s', h_chain.toScanChain, h_corr', h_fl', h_dp', h_ids', h_ek',
+          h_col', h_inflow', h_indent', h_line', h_atol', h_endline', h_stack', h_fmc, ?_⟩
+  show RecMapBody ((s'.tokens.filter (fun t => t.val != .placeholder)).toList.drop
+      (s.tokens.filter (fun t => t.val != .placeholder)).size)
+  rw [h_drop]; exact h_rec
+
 /-! ### Emit-producer strengthening — value-side `RecSeqEntry` deliverable (Phase J feed)
 
 The per-value producer `emit_scans_in_flow_rec_entry : Grammable v inFlow → EmitScansInFlowRecEntry v`
