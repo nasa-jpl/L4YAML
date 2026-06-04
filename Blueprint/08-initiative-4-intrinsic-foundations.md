@@ -15448,6 +15448,41 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
+                **Total .body scope re-estimate (ONE-HUNDRED-EIGHTH revision —
+                after **Thread A step 3 sub-step 3's brick cont'd (locate START) — *ARRAY-WINDOW
+                SINGLE-LEVEL SEQ DESCENT — THE NAVIGATION RECURSION'S DESCEND STEP* — landed** (commit
+                `55d76508`, Reflection 260). **With both body root seeds landed (R258/R259, the
+                recursion's base case), this lands the first brick of the navigation recursion proper —
+                its mechanical *descend* half.** Added `recseqbody_window_of_located_entry`, the
+                array-window form of `RecSeqEntry.seq_interior`: given a guarded flow-sequence subrange
+                `[lo, hi)` whose opener-window `(tokens.toList.take (hi+1)).drop (lo-1)` has been matched
+                to a `RecSeqEntry` (with `tokens[lo-1] = .flowSequenceStart`), it descends one nesting
+                level to `RecSeqBody ((tokens.toList.take hi).drop lo) ∨ lo = hi` (the empty `[ ]` window
+                the no-`nil` `RecSeqBody` cannot represent — R233 producer-contract split at the array
+                level). Its non-empty disjunct is *exactly* the `flowSubrangesOk_of_window_producers`
+                `h_seq_rec` deliverable at a window that is itself a top-level nested-sequence entry, so
+                once the locate matches a window's opener to its `RecSeqEntry`, this lemma *finishes* the
+                seq producer obligation there. **Lesson** (the consumer-joint-before-producer family read
+                in reverse): a consumer joint that runs an internal positional computation then *consumes*
+                its result already contains the producer-side primitive its dual recursion needs — the
+                descend step is `seqBodyProps_of_located_entry`'s (R237) *same* opener-peel
+                (`List.getElem_cons_drop`) + rest-decomposition (`List.take_add_one` +
+                `List.drop_append_of_le_length`) + `seq_interior` descent, *truncated at the descent*
+                (returning the inner-window `RecSeqBody` as the conclusion instead of feeding it into the
+                terminal `SeqBodyProps`), because the recursion needs that inner body *as a value* for its
+                IH, not the consumed `SeqBodyProps`. Costs no new analysis (a strict sub-computation of an
+                already-proven joint). Verified-but-unconsumed (R225): references no sorry site, **sorries
+                held at 4**. Build green **534 jobs**; axiom-clean **`[propext, Quot.sound]`** (cleaner
+                than the seeds — no `Classical.choice`). **Immediate next brick:** the symmetric map
+                mirror `recmapbody_window_of_located_entry` (array-window form of
+                `RecMapEntry.map_interior` over a `.flowMappingStart` opener-window matched to a
+                `RecMapEntry`, born one session later exactly as R255→R256, R258→R259); then the
+                **upward locate-matching** itself — find, for a guarded window, the body entry it occupies
+                (the navigation's analytical core) — feeding both descend steps into
+                `flowSubrangesOk_of_window_producers` to discharge the two
+                `scanFiltered_emit{Seq,Map}_nonempty_structure` sorry sites; then the two base
+                `emit_roundtrip_{sequence,mapping}_content_eq` sorries → `universal_roundtrip`. See
+                Reflection 260, on top of the
                 **Total .body scope re-estimate (ONE-HUNDRED-SEVENTH revision —
                 after **Thread A step 3 sub-step 3's brick cont'd (locate START) — *MAP-BODY RECURSIVE
                 SEED — THE LOCATE RECURSION'S ROOT `RecMapBody`* — landed** (commit `9635af3c`,
@@ -26582,3 +26617,13 @@ R258 landed the seq half of the locate recursion's base case; R259 lands the map
 3. **One extra destructure binder**, `_h_n3 : 3 ≤ n` — the load-bearing map floor (R250; a map pair emits at least `key : value`, three tokens), destructured but *unused* by the seed, which delivers the body block regardless of its length.
 
 The reusable point, completing [[ref-universal-producer-root-seed-first]] across both axes: **a universal producer's root seed mirrors verbatim across a symmetric collection axis — the positional packaging step (`drop old_sz` → `Deliverable (window)`) is bracket-/collection-agnostic, so the map seed is a near-free copy of the seq seed; the only deltas are the per-item hypotheses and side-preconditions the *feed* reads, which are dictated by the parallel deliverable's storage choices (R246) one tier up from a constructor's arity.** This is the producer-side twin of the consumer-side observation that the boundary-anchoring joint mirrored bracket-agnostically from seq (R255) to map (R256), the extra map hypotheses being the six pair primitives there and the key/`simpleKeyAllowed` machinery here. With both body root seeds landed, the recursion's base case is complete on both halves; the entire remaining Phase-J frontier is the **navigation recursion** (navigate the root `RecSeqBody`/`RecMapBody` down to every nested guarded subrange — seq-in-seq by the stored `RecSeqEntry.seq` field, seq/map-in-map value-driven per R251/R252 — fed once into `flowSubrangesOk_of_window_producers` to discharge both `scanFiltered_emit{Seq,Map}_nonempty_structure` sorry sites) plus the two base `emit_roundtrip_{sequence,mapping}_content_eq` sorries → `universal_roundtrip`. See [[ref-universal-producer-root-seed-first]] (R258 — the seq seed this mirrors), [[ref-mirror-constructor-arity-reads-storage]] (R246 — the storage asymmetry, here at the seed's hypothesis count), [[ref-two-boundary-consumer-joint]] (R255/R256 — the consumer-side seq→map verbatim mirror this parallels), and [[ref-recursive-producer-mirrors-flat-over-shared-induction]] (R250 — the map emit feed this seed packages).
+
+### Reflection 260 (new, 2026-06-04): the navigation recursion's first brick is the *array-window single-level descent* — a consumer joint's already-proven internal peel/decompose, re-exported with the descended deliverable as the conclusion instead of consumed
+
+With both body root seeds landed (R258/R259 — the recursion's *base case*), the next brick is the **navigation recursion** proper: from the root `RecSeqBody`/`RecMapBody` of the outer window `[2, size-2)`, produce `RecSeqBody ((take hi).drop lo)` (the `flowSubrangesOk_of_window_producers` `h_seq_rec` deliverable, R257) at *every* nested guarded subrange. That recursion has two halves — the analytical **locate** (which entry of a body a window falls in: the *upward* matching, the genuine bulk) and the mechanical **descend** (once a window's opener-window is matched to a `RecSeqEntry`, step one nesting level into its interior body). This session lands the descend half as a standalone primitive, the smallest on-path green increment.
+
+`recseqbody_window_of_located_entry` (commit `55d76508`, build green **534 jobs**, frontier sorries held at **4**, axiom-clean **`[propext, Quot.sound]`** — cleaner than the seeds, no `Classical.choice`) is the **array-window form of `RecSeqEntry.seq_interior`**: given a guarded flow-sequence subrange `[lo, hi)` whose opener `tokens[lo-1]` is a `.flowSequenceStart` and whose opener-window `(tokens.toList.take (hi+1)).drop (lo-1)` has been matched to a `RecSeqEntry`, it returns `RecSeqBody ((tokens.toList.take hi).drop lo) ∨ lo = hi` — the interior window's recursive body (non-empty), or the empty `[ ]` window the no-`nil` `RecSeqBody` structurally cannot represent (the R233 producer-contract split, here at the array level).
+
+The lesson, an instance of the consumer-joint-before-producer family read in *reverse*: **a consumer joint that runs an internal positional computation and then consumes its result already contains the producer-side primitive its dual recursion needs — re-export the computation with the intermediate deliverable as the *conclusion* instead of consumed.** Concretely, `seqBodyProps_of_located_entry` (R237) takes the *same* located `RecSeqEntry`, runs the *same* opener-peel (`List.getElem_cons_drop`, `1 ≤ lo`) and rest-decomposition (`List.take_add_one` + `List.drop_append_of_le_length`), and descends via the *same* `RecSeqEntry.seq_interior` — but then immediately feeds the descended `RecSeqBody` into the terminal `SeqBodyProps` (the consumer endpoint). The navigation recursion cannot reuse that: it needs the inner-window `RecSeqBody` *as a value* to hand to its IH one nesting level down, not the consumed `SeqBodyProps`. So the descend primitive is the *same proof body truncated at the descent* — the peel/decompose verbatim, terminated by `seq_interior` (empty disjunct forced to `lo = hi` by the `List.length_drop`/`List.length_take` length argument) rather than the back-half consumer. It costs no new analysis (it is a strict sub-computation of an already-proven joint), and crucially its non-empty disjunct `RecSeqBody ((take hi).drop lo)` *is* the producer's `h_seq_rec` deliverable at a window that is itself a top-level nested-sequence entry — so once the locate matches a guarded subrange's opener-window to its `RecSeqEntry`, this lemma *finishes* the seq producer obligation at that window. The recursion's residual collapses to exactly the upward locate-matching.
+
+Verified-but-unconsumed (R225): references no sorry site, frontier sorry count unchanged at 4. **Immediate next brick:** the symmetric map mirror `recmapbody_window_of_located_entry` — the array-window form of `RecMapEntry.map_interior` over a `.flowMappingStart` opener-window matched to a `RecMapEntry`, returning `RecMapBody ((take hi).drop lo) ∨ lo = hi` (born one session later exactly as R255→R256, R258→R259); then the upward locate-matching itself (find, for a guarded window, the body entry it occupies — the navigation's analytical core). See [[ref-consumer-joint-before-producer]] (R231/R237 — the consumer joint this re-exports the descent half of), [[ref-producer-dual-of-consumer-joint]] (R245 — the producer-dual discipline of reusing a consumer's positional slicing verbatim in the opposite direction), and [[ref-universal-producer-root-seed-first]] (R258/R259 — the base case this descend step recurses down from).
