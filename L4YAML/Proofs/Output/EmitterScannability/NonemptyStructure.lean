@@ -3111,6 +3111,54 @@ theorem firstEntryBoundary (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
   intro k hk1 hk2
   exact hm4 k (by omega) hk2
 
+/-- **Scalar-leaf entry window** (Phase J — the analytical entry-boundary location's *shape side*,
+    seq, base case).  Once `firstEntryBoundary` (the input side) has pinned the split point `m`, the
+    shape side classifies the first item `[lo, m)` into a `RecSeqEntry` — and `RecSeqEntry` has four
+    constructors, three of which (`seqEmpty`/`seq`/`map`) wrap a bracketed sub-window and the fourth,
+    `scalar`, is the lone NON-recursive leaf: a single scalar token is one entry.  This lemma is that
+    leaf's positional lift — given a scalar at the window head `tokens[lo]`, the one-token window
+    `(tokens.toList.take (lo + 1)).drop lo` is a `RecSeqEntry.scalar`.  It is where the locate
+    recursion bottoms out (no matching-close, no descent, `m = lo + 1`), so it lands first among the
+    shape-side bricks.
+
+    The shape side is the *family of per-constructor window-lifts*, and the recursive `.seq`
+    constructor's lift is ALREADY supplied by the BUILD structural move `located_entry_of_recseqbody`
+    (it assembles `RecSeqEntry.seq` from the inner-window `RecSeqBody`).  So the shape side's
+    genuinely-new work is the *non-`.seq`* constructors — and of those `scalar` is the leaf, ahead of
+    `seqEmpty` (empty `[ ]`) and `map` (nested mapping, interior bottoming at `WellBracketed`).
+
+    This is where the seq/map mirror RE-SPLITS (contrast `firstEntryBoundary`, written once over the
+    shared token stream): the map body's first item is a whole key/value PAIR (`.key … .value …`, a
+    `RecMapPair`), so its leaf is the scalar-key/scalar-value pair — a four-token shape, not this
+    one-token singleton.  Hence no map mirror of *this* lemma; the map shape side is a separate brick.
+
+    Proof: the window-singleton identity `(take (lo+1)).drop lo = [tokens.toList[lo]]`
+    (`List.getElem_cons_drop` + `List.getElem_take`, the trailing `drop (lo+1)` killed by
+    `List.drop_eq_nil_of_le` on the `take`-length), then `RecSeqEntry.scalar` with the head value
+    transported from `tokens[lo]!` via `getElem!_pos`/`Array.getElem_toList`.  Verified-but-unconsumed:
+    references no sorry site, frontier sorry count unchanged; axiom-clean `[propext, Quot.sound]`. -/
+theorem recseqentry_scalar_window (tokens : Array (Positioned YamlToken)) (lo : Nat)
+    (h_lo_sz : lo < tokens.size)
+    (h_scalar : ∃ c s, tokens[lo]!.val = .scalar c s) :
+    RecSeqEntry ((tokens.toList.take (lo + 1)).drop lo) := by
+  have h_lo_len : lo < tokens.toList.length := by rw [Array.length_toList]; exact h_lo_sz
+  have hlen : lo < (tokens.toList.take (lo + 1)).length := by
+    rw [List.length_take]; omega
+  have h_drop_nil : (tokens.toList.take (lo + 1)).drop (lo + 1) = [] := by
+    apply List.drop_eq_nil_of_le
+    rw [List.length_take]; omega
+  have h_win : (tokens.toList.take (lo + 1)).drop lo = [tokens.toList[lo]'h_lo_len] := by
+    have h := (List.getElem_cons_drop hlen).symm
+    rw [List.getElem_take, h_drop_nil] at h
+    exact h
+  rw [h_win]
+  obtain ⟨c, s, hcs⟩ := h_scalar
+  have h_val : (tokens.toList[lo]'h_lo_len).val = .scalar c s := by
+    have hb : tokens[lo]! = tokens.toList[lo]'h_lo_len := by
+      rw [getElem!_pos tokens lo h_lo_sz, Array.getElem_toList]
+    rw [← hb]; exact hcs
+  exact RecSeqEntry.scalar _ c s h_val
+
 /-- **Parametric `MapBodyProps` assembler** (Phase J seed, map side).  The map-side mirror of
     `seqBodyProps_assemble`: given an arbitrary balanced flow-MAPPING subrange `[lo, hi)` —
     `tokens[hi]! = .flowMappingEnd`, total balance `0`, Dyck prefixes, interior `WellTyped` — together
