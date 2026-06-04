@@ -15448,6 +15448,42 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
+                **Total .body scope re-estimate (ONE-HUNDRED-SIXTH revision —
+                after **Thread A step 3 sub-step 3's brick cont'd (locate START) — *SEQ-BODY RECURSIVE
+                SEED — THE LOCATE RECURSION'S ROOT `RecSeqBody`* — landed** (commit `9f33f2bd`,
+                Reflection 258). **The producer's first brick: the base case of the universal the
+                consumer (R257) named.** With the consumer side folded to one lemma whose only owed
+                hypothesis is the per-window `RecSeqBody`/`RecMapBody` producer, the producer's *first*
+                landable brick is its **root seed** — the outer-window (`[2, size-2)`, the whole body
+                interior) instance of `flowSubrangesOk_of_window_producers`'s `h_seq_rec`, which is just
+                the top-level `RecSeqBody` of the body the emit feed (`emitList_scans_recseqbody`, R251)
+                already produces. Added `emitList_body_recseqbody`: the **`RecSeqBody` analog of the flat
+                `emitList_body_filtered_characterization`** — where the flat lemma packages
+                `emitList_scans_safebody` into the body's six-part content characterization, this packages
+                `emitList_scans_recseqbody` into the body's *recursive* deliverable, restated positionally
+                as `RecSeqBody ((s'.tokens.filter p).toList.drop old_sz)` via the same `h_drop`
+                (`block_eq` + `List.drop_append_of_le_length`, verbatim), threading the chain +
+                state-continuity facts a caller splices into the structure proof's replay. Keyed on the
+                recursive per-item hypothesis `EmitScansInFlowRecEntry` (the R251 superset of
+                `EmitScansInFlowBlock` carrying `RecSeqEntry`) — the same input the navigation recursion
+                will thread, so seed and recursive cases share one input contract. **Lesson** (faithful
+                mirror, R232/R237/R241; instance of [[ref-consumer-joint-before-producer]]): a universal
+                producer's first landable brick is the **positional packaging of its one already-available
+                instance** — the root the recursion descends from — built as a faithful mirror of the
+                existing flat-deliverable characterization, swapping the flat content payload for the
+                recursive one; it costs almost nothing (the flat mirror exists; only the deliverable
+                conjunct + the `emitList_scans_recseqbody` call differ) and pins the recursion's base case
+                before the navigation engine is written. Verified-but-unconsumed (R225): references no
+                sorry site, **sorries held at 4**. Build green **533 jobs**; axiom-clean
+                **`[propext, Classical.choice, Quot.sound]`**. **Immediate next brick:** the map-side seed
+                `emitPairList_body_recmapbody` (the symmetric mirror over `emitPairList_scans_recmapbody`,
+                R250 — one session after its seq twin, exactly as R255→R256), then the **navigation
+                recursion** proper: navigate the root `RecSeqBody`/`RecMapBody` down to every nested
+                guarded subrange (seq-in-seq by the stored `RecSeqEntry.seq` field; seq/map-in-map
+                value-driven, re-deriving from the emit feed where the structure projects to flat —
+                R251/R252) — fed once into `flowSubrangesOk_of_window_producers`; then the two base
+                `emit_roundtrip_{sequence,mapping}_content_eq` sorries → `universal_roundtrip`. See
+                Reflection 258, on top of the
                 **Total .body scope re-estimate (ONE-HUNDRED-FIFTH revision —
                 after **Thread A step 3 sub-step 3's brick cont'd (locate prep) — *LOCATE CONSUMER CHAIN
                 FOLDED INTO ONE PER-WINDOW-PRODUCER BOUNDARY* — landed** (commit `d965487e`, Reflection 257).
@@ -26488,3 +26524,13 @@ The three joints it folds were landed across R243/R255/R256, each at a different
 The point is not the (trivial) proof — it is **what the type now says**. Every consumer step downstream of the producer — `FlowSubrangesOk` packaging, both unbounded↔bounded boundary reconciliations, the per-window `*_of_located_entry` / `*_of_recseqbody_window` joints, the Dyck-free (R253) and WellTyped-via-outer (R254) reductions — is composed exactly once, here. What remains in the hypothesis list is *only* the value-driven locate recursion's output: deliver `RecSeqBody ((take hi).drop lo)` at every guarded seq window, `RecMapBody …` + the six primitives at every guarded map window. The two `scanFiltered_emit{Seq,Map}_nonempty_structure` sorry sites will each be discharged by a single `exact flowSubrangesOk_of_window_producers tokens h_t0 h_tlast h_wt_interior <seq recursion> <map recursion> <six primitives>` — every other argument is already in scope at those sites (the boundary tokens and the outer `WellTyped` are established facts there; only the recursion is owed).
 
 The reusable point, a corollary of [[ref-universal-packaging-is-its-own-joint]] (R243) and [[ref-reduction-by-import]] (R225): **once a consumer chain is built joint-by-joint at successive boundaries, fold it into one lemma whose hypotheses are precisely the producer's contract — before writing the producer.** The fold costs nothing (it composes only landed lemmas, references no sorry site, holds the count at 4) and cannot regress, but it converts a *scattered* residual ("thread the producer through three joints at two sorry sites") into a *single typed boundary* the recursion is written against — and it makes the recursion's exact return obligation (`{RecSeqBody}` / `{RecMapBody, +6}`, the two boundary tokens and outer `WellTyped` as free in-scope facts) legible as one signature instead of three. The consumer side is now closed end-to-end *and collapsed to one lemma*; the entire remaining Phase-J frontier is that one producer (the locate recursion) plus the two base `emit_roundtrip_{sequence,mapping}_content_eq` sorries → `universal_roundtrip`. See [[ref-universal-packaging-is-its-own-joint]] (R243 — the packaging joint this folds in), [[ref-two-boundary-consumer-joint]] (R255/R256 — the two boundary joints this folds in), [[ref-consumer-joint-before-producer]] (R231 — the build-the-consumer-first discipline, here at its terminal step), and [[ref-reduction-by-import]] (R225 — verified-but-unconsumed).
+
+### Reflection 258 (new, 2026-06-03): with the consumer folded, the producer's first brick is its *root seed* — the outer-window instance of the universal, packaged as a positional faithful-mirror of the flat body characterization
+
+R257 named the locate recursion's contract as one signature; R258 lands its **base case**. The universal producer `flowSubrangesOk_of_window_producers` demands `h_seq_rec : ∀ lo hi, <guards> → RecSeqBody ((take hi).drop lo)`. That universal's *one distinguished instance* is the **outer window** `[2, size-2)` — the whole body interior — and at that instance the deliverable is just the top-level `RecSeqBody` of the body, which the emit feed (`emitList_scans_recseqbody`, R251) already produces. The recursion's job is to navigate *down* from that root to every nested guarded subrange; so the root itself is the recursion's seed/leaf, owed regardless of how the navigation is built.
+
+`emitList_body_recseqbody` (commit `9f33f2bd`, build green **533 jobs**, frontier sorries held at **4**, axiom-clean `[propext, Classical.choice, Quot.sound]`) packages that seed. It is the **`RecSeqBody` analog of the flat `emitList_body_filtered_characterization`**: where the flat lemma packages `emitList_scans_safebody` into the body's *content* characterization (the six per-token parts the `SeqBodyProps` assembler consumes), this one packages `emitList_scans_recseqbody` into the body's *recursive* deliverable, restated positionally — converting the abstract `block` the emit feed returns into the concrete `(s'.tokens.filter p).toList.drop old_sz` tail via the same `h_drop` step (verbatim: `block_eq` + `List.drop_append_of_le_length`). The output is `RecSeqBody ((take p-filtered).drop old_sz)` together with the chain + state-continuity facts a caller needs to splice it into the structure proof's chain replay — exactly the interface the flat lemma exposes, with the single recursive conjunct in place of the six flat ones.
+
+**Why this is the right first producer brick, not a redundant wrapper.** The abstract `emitList_scans_recseqbody` already exists; `emitList_body_recseqbody` adds the same value-add the flat characterization adds over `emitList_scans_safebody` — `ScanChainGrew → ScanChain` and the positional `drop old_sz` restatement — so that the *positional* `RecSeqBody (window)` the universal producer is phrased in (`(take hi).drop lo`) is available at the body-interior span directly, rather than re-derived inline at the seed. It is keyed on the recursive per-item hypothesis `EmitScansInFlowRecEntry` (the R251 superset of `EmitScansInFlowBlock` carrying `RecSeqEntry`), the same input the future navigation recursion threads — so the seed and the recursive cases share one input contract.
+
+The reusable point (an instance of [[ref-consumer-joint-before-producer]] / faithful-mirror, R232/R237/R241): **a universal producer's first landable brick is the positional packaging of its one already-available instance — the root the recursion descends from — built as a faithful mirror of the existing flat-deliverable characterization, swapping the flat content payload for the recursive one.** It costs almost nothing (the flat mirror exists; only the deliverable conjunct and the `emitList_scans_recseqbody` call differ), is verified-but-unconsumed (references no sorry site, holds the count at 4), and it pins the recursion's *base case* before the navigation engine is written, so the remaining producer residual is exactly "navigate the root `RecSeqBody` to each nested guarded subrange" (seq-in-seq by the stored `RecSeqEntry.seq` field; seq/map-in-map value-driven, re-deriving from the emit feed where the structure projects to flat — R251/R252). **Immediate next brick:** the map-side seed `emitPairList_body_recmapbody` (the symmetric mirror over `emitPairList_scans_recmapbody`, R250 — born one session after its seq twin, exactly as R255→R256), then the navigation recursion proper. See [[ref-consumer-joint-before-producer]] (R231 — build-then-descend), [[ref-recursive-producer-mirrors-flat-over-shared-induction]] (R249/R251 — the emit feed this seed packages), and [[ref-fold-consumer-chain-to-producer-contract]] (R257 — the contract this seed is the base case of).
