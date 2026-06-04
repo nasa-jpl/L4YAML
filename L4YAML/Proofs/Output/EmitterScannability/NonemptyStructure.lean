@@ -2885,6 +2885,81 @@ theorem located_entry_of_recseqbody (tokens : Array (Positioned YamlToken)) (lo 
     rw [← hb]; exact h_close
   exact RecSeqEntry.seq _ _ _ h_op_val h_cl_val h_rec.toWellBracketed h_rec
 
+/-- **A recursive seq entry is non-empty.**  Every `RecSeqEntry` constructor produces a `cons` list
+    (`[t]` = `t :: []`, or `op :: …`), so the entry is never `[]`.  The `h_ne` field the body-level
+    `RecSeqBody.cons`/`.single` constructors demand, supplied here as a structural projection (cf.
+    `RecSeqEntry.toEntrySafe`/`toWellBracketed`). -/
+theorem RecSeqEntry.ne_nil {e : List (Positioned YamlToken)} (h : RecSeqEntry e) : e ≠ [] := by
+  cases h <;> simp
+
+/-- **A recursive seq entry's head is a content-start token.**  Each constructor's first token is a
+    scalar (`scalar`), a `.flowSequenceStart` (`seqEmpty`/`seq`), or a `.flowMappingStart` (`map`) —
+    exactly the three `ContentStartTok` cases.  The `h_head` field `RecSeqBody.cons`/`.single` demand,
+    supplied as a structural projection so the body-level assemblers need not re-derive it from the
+    per-entry token shape.  (The `h_ne` argument is threaded through to `List.head`; by proof
+    irrelevance any `e ≠ []` witness gives the same head.) -/
+theorem RecSeqEntry.head_contentStart {e : List (Positioned YamlToken)}
+    (h : RecSeqEntry e) (h_ne : e ≠ []) : ContentStartTok (e.head h_ne).val := by
+  cases h with
+  | scalar t c s ht => rw [List.head_cons]; exact Or.inl ⟨c, s, ht⟩
+  | seqEmpty op cl h_op _ => rw [List.head_cons]; exact Or.inr (Or.inl h_op)
+  | seq op cl interior h_op _ _ _ => rw [List.head_cons]; exact Or.inr (Or.inl h_op)
+  | map op cl interior h_op _ _ => rw [List.head_cons]; exact Or.inr (Or.inr h_op)
+
+/-- **Body-cons window assembler** (Phase J, seq side — the navigation recursion's *advance* step).
+    The third positional move of the locate recursion, the structural complement to the two already
+    landed: `recseqbody_window_of_located_entry` *descends* into a nested entry's interior, and
+    `located_entry_of_recseqbody` *builds* an entry from its inner-window `RecSeqBody`; this one
+    *advances* along the body — given the window splits at a depth-`0` `.flowEntry` separator at
+    position `m` into a leading `RecSeqEntry` over `[lo, m)` and a trailing `RecSeqBody` over
+    `[m+1, hi)`, it produces the whole window's `RecSeqBody` over `[lo, hi)`.
+
+    It is the positional lift of the `RecSeqBody.cons` constructor: the window identity
+    `(take hi).drop lo = (take m).drop lo ++ tokens[m] :: (take hi).drop (m+1)` is assembled from the
+    same take/drop plumbing the descent and build steps use — the segment split
+    (`List.take_append_drop` + `List.take_take` + `List.drop_append_of_le_length`, using `lo ≤ m`)
+    and the separator peel (`List.getElem_cons_drop` + `List.getElem_take`, using `m < hi`) — and the
+    constructor's `h_ne`/`h_head` fields are discharged by the `RecSeqEntry.ne_nil` /
+    `RecSeqEntry.head_contentStart` projections above, so the caller supplies only the located entry,
+    the separator token, and the recursive rest.  Verified-but-unconsumed until the locate lands: it
+    references no sorry site, so the frontier sorry count is unchanged — it completes the recursion's
+    structural moves, leaving as residual only the *analytical* entry-boundary location (find, for a
+    guarded window, the depth-`0` extent of its first entry and the matching separator). -/
+theorem recseqbody_cons_window (tokens : Array (Positioned YamlToken)) (lo m hi : Nat)
+    (h_lo_m : lo ≤ m) (h_m_hi : m < hi) (h_hi_sz : hi < tokens.size)
+    (h_fe : tokens[m]!.val = .flowEntry)
+    (h_entry : RecSeqEntry ((tokens.toList.take m).drop lo))
+    (h_rest : RecSeqBody ((tokens.toList.take hi).drop (m + 1))) :
+    RecSeqBody ((tokens.toList.take hi).drop lo) := by
+  have h_m_len : m < tokens.toList.length := by rw [Array.length_toList]; omega
+  have h_m_sz : m < tokens.size := by omega
+  -- Segment split: the leading entry window `[lo, m)` is a prefix of the whole window `[lo, hi)`.
+  have hA : (tokens.toList.take hi).drop lo
+      = (tokens.toList.take m).drop lo ++ (tokens.toList.take hi).drop m := by
+    rw [← List.take_append_drop (m - lo) ((tokens.toList.take hi).drop lo)]
+    congr 1
+    · rw [List.drop_take, List.drop_take, List.take_take,
+        Nat.min_eq_left (show m - lo ≤ hi - lo by omega)]
+    · rw [List.drop_drop, Nat.add_sub_cancel' h_lo_m]
+  -- Separator peel: the depth-`0` `.flowEntry` at `m` heads the trailing window `[m, hi)`.
+  have hB : (tokens.toList.take hi).drop m
+      = tokens.toList[m]'h_m_len :: (tokens.toList.take hi).drop (m + 1) := by
+    have hlen : m < (tokens.toList.take hi).length := by
+      rw [List.length_take,
+        Nat.min_eq_left (show hi ≤ tokens.toList.length by rw [Array.length_toList]; omega)]
+      exact h_m_hi
+    have h := (List.getElem_cons_drop hlen).symm
+    rw [List.getElem_take] at h
+    exact h
+  have h_fe_val : (tokens.toList[m]'h_m_len).val = .flowEntry := by
+    have hb : tokens[m]! = tokens.toList[m]'h_m_len := by
+      rw [getElem!_pos tokens m h_m_sz, Array.getElem_toList]
+    rw [← hb]; exact h_fe
+  rw [hA, hB]
+  exact RecSeqBody.cons ((tokens.toList.take m).drop lo) (tokens.toList[m]'h_m_len)
+    ((tokens.toList.take hi).drop (m + 1)) (RecSeqEntry.ne_nil h_entry) h_entry
+    (RecSeqEntry.head_contentStart h_entry (RecSeqEntry.ne_nil h_entry)) h_fe_val h_rest
+
 /-- **Parametric `MapBodyProps` assembler** (Phase J seed, map side).  The map-side mirror of
     `seqBodyProps_assemble`: given an arbitrary balanced flow-MAPPING subrange `[lo, hi)` —
     `tokens[hi]! = .flowMappingEnd`, total balance `0`, Dyck prefixes, interior `WellTyped` — together
