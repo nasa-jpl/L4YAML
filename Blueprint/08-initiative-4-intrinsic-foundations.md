@@ -15448,6 +15448,41 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
+                **Total .body scope re-estimate (ONE-HUNDRED-FOURTEENTH revision —
+                after **Thread A step 3 sub-step 3's brick cont'd (locate ENTRY-BOUNDARY, SHAPE SIDE —
+                *EMPTY-SEQUENCE LEAF, SEQ*) — landed** (commit `1a7941bd`, Reflection 266). **The second
+                of the shape side's two _leaf_ constructor-lifts — the empty flow-sequence `[ ]`.** After
+                `recseqentry_scalar_window` (R265, the one-token scalar leaf), the next non-recursive
+                `RecSeqEntry` constructor is `seqEmpty`, which produces `RecSeqEntry (op :: ([] ++ [cl]))`
+                — a two-token window `[op, cl]` with no interior. `recseqentry_seqempty_window` is its
+                positional lift: given an opener `tokens[lo] = .flowSequenceStart` immediately followed by
+                a closer `tokens[lo+1] = .flowSequenceEnd`, the window `[lo, lo+2)`,
+                `(tokens.toList.take (lo + 2)).drop lo`, is a `RecSeqEntry.seqEmpty` (split point
+                `m = lo + 2`: an empty bracket's depth returns to `0` one step in, so the matching close is
+                the very next token). Like the scalar leaf it is **non-recursive** — no `RecSeqBody`
+                interior to descend into, the empty interior carried positionally by the constructor. **The
+                shape side's two leaves are now both landed.** The proof is the scalar leaf's window
+                identity _scaled to two tokens_: the one-token `List.getElem_cons_drop` chain applied
+                **twice** (peel `[lo]`, then `[lo+1]`, the trailing `drop (lo+2)` killed by
+                `List.drop_eq_nil_of_le`), each index simplified through the `take` by `List.getElem_take`;
+                then `RecSeqEntry.seqEmpty` (whose `op :: ([] ++ [cl])` index is defeq to the two-element
+                list), both head values transported from `tokens[lo]!`/`tokens[lo+1]!` via
+                `getElem!_pos`/`Array.getElem_toList`. The shape side's per-constructor-window-lift family
+                now has both leaves (`scalar`, `seqEmpty`) done; what remains is the **one near-leaf**
+                `map` (its interior bottoms at `WellBracketed`, not a `RecSeqBody`, so still non-recursive
+                in the `RecSeqEntry` sense) and the recursive `.seq`, already supplied by the BUILD move
+                `located_entry_of_recseqbody`. Verified-but-unconsumed: references no sorry site, **sorries
+                held at 4**. Build green **537 jobs**; axiom-clean **`[propext, Quot.sound]`**. **Immediate
+                next brick:** the last seq shape-side constructor-lift — `recseqentry_map_window` (nested
+                mapping `{ … }` at an opener head, via `flowBracketBalance_matching_close_map`, interior at
+                `WellBracketed`) — then the seq locate recursion itself (`Nat.strongRecOn` on window width,
+                dispatching on the head token: `recseqentry_scalar_window` / `…_seqempty_window` /
+                `…_map_window` / `located_entry_of_recseqbody` for the recursive `.seq`, then
+                `recseqbody_cons_window` ADVANCE over `[m+1, hi)`), then its map mirror — feeding the
+                per-window `Rec…Body` producers into `flowSubrangesOk_of_window_producers` to discharge the
+                two `scanFiltered_emit{Seq,Map}_nonempty_structure` sorry sites; then the two base
+                `emit_roundtrip_{sequence,mapping}_content_eq` sorries → `universal_roundtrip`. See
+                Reflection 266, on top of the
                 **Total .body scope re-estimate (ONE-HUNDRED-THIRTEENTH revision —
                 after **Thread A step 3 sub-step 3's brick cont'd (locate ENTRY-BOUNDARY, SHAPE SIDE —
                 *SCALAR LEAF, SEQ*) — landed** (commit `efd16109`, Reflection 265). **The first brick of
@@ -26859,3 +26894,13 @@ With the input side landed (R264 — `firstEntryBoundary` pins the split point `
 **This is where the seq/map mirror re-splits** — exactly as R264 predicted (a brick mirrors iff it names a collection-specific deliverable type; `firstEntryBoundary`, phrased over the shared token stream, did not). `recseqentry_scalar_window` names `RecSeqEntry.scalar`, so it is seq-specific — and pointedly has **no direct map mirror**: the map body's first item is a whole key/value PAIR (`.key … .value …`, a `RecMapPair`), so the map shape side's _leaf_ is the scalar-key/scalar-value pair, a four-token shape, not this one-token singleton. The map shape side is a separate family of bricks keyed on `RecMapPair`'s single (heavier) constructor.
 
 Verified-but-unconsumed (R225): references no sorry site, frontier sorry count unchanged at **4** (build green **537 jobs**, axiom-clean **`[propext, Quot.sound]`**; commit `efd16109`). **Immediate next brick:** the remaining seq shape-side constructor-lifts — `recseqentry_seqempty_window` (empty `[ ]`) and `recseqentry_map_window` (nested mapping `{ … }`, via `flowBracketBalance_matching_close_map`, interior at `WellBracketed`) — then the seq locate recursion itself (`Nat.strongRecOn` on window width, dispatching on the head token among the four lifts, ADVANCE-ing over `[m+1, hi)` via `recseqbody_cons_window`), then its map mirror — feeding the per-window `Rec…Body` producers into `flowSubrangesOk_of_window_producers` to discharge the two `scanFiltered_emit{Seq,Map}_nonempty_structure` sorry sites; then the two base `emit_roundtrip_{sequence,mapping}_content_eq` sorries → `universal_roundtrip`. See [[ref-entry-boundary-input-shape-split]] (R264 — the input/shape split this continues, and whose seq/map-mirror discriminator predicted this re-split), [[ref-structural-moves-complete-recursion]] (R262/R263 — the structural moves the shape side overlaps at the recursive `.seq` constructor), and [[ref-producer-dual-of-consumer-joint]] (R245 — the BUILD move `located_entry_of_recseqbody` that already supplies the recursive constructor's window-lift).
+
+### Reflection 266 (new, 2026-06-04): the shape side's *leaves come as a family* — the empty-bracket leaf is the scalar leaf's window identity scaled by one token, not a new analytical idea
+
+R265 named the shape side's structure — the family of per-constructor window-lifts, the recursive constructor's lift already the BUILD move — and landed its first leaf, the one-token `scalar`. This session lands the second, `recseqentry_seqempty_window`: the empty flow-sequence `[ ]`. The point of recording it is not the lemma (it is small) but a discipline the family makes visible: **once the first leaf of a per-constructor-lift family is proven, the remaining _leaves_ are the same proof at a different arity, not fresh analysis.**
+
+**The empty-bracket leaf is the scalar leaf, scaled by one token.** `RecSeqEntry.seqEmpty` produces `RecSeqEntry (op :: ([] ++ [cl]))` — a two-token window `[op, cl]` with no interior, split point `m = lo + 2` (an empty bracket's running depth returns to `0` one step in, so the matching close is the very next token; there is nothing between to descend into). The proof is `recseqentry_scalar_window`'s window-singleton identity run **twice**: the one-token `List.getElem_cons_drop` peel applied at `lo` and again at `lo + 1`, the trailing `drop (lo + 2)` killed by the same `List.drop_eq_nil_of_le` on the `take`-length, each index simplified through the `take` by the same `List.getElem_take`; then `RecSeqEntry.seqEmpty` (whose `op :: ([] ++ [cl])` index is defeq to the two-element list), both head values transported from `tokens[lo]!`/`tokens[lo+1]!` by the same `getElem!_pos`/`Array.getElem_toList`. No new lemma, no new tactic — the arity of the window is the only thing that moved. That is the signature of a _leaf family_: the non-recursive constructors of one deliverable inductive differ only in how many tokens their fixed shape spans, and the window identity scales with the count.
+
+**Where this leaves the shape side.** `RecSeqEntry`'s four constructors are now covered as: two leaves done (`scalar`, `seqEmpty`), one near-leaf owed (`map` — a bracketed window like `.seq`, but its interior bottoms at `WellBracketed` rather than a recursive `RecSeqBody`, so it is still non-recursive in the `RecSeqEntry` sense and wants `flowBracketBalance_matching_close_map` to locate its close), and the recursive `.seq` already supplied by the BUILD move `located_entry_of_recseqbody`. So the seq shape side is one brick from complete, after which the dispatching recursion can be assembled. The map shape side remains a separate family keyed on `RecMapPair` (R265's re-split).
+
+Verified-but-unconsumed (R225): references no sorry site, frontier sorry count unchanged at **4** (build green **537 jobs**, axiom-clean **`[propext, Quot.sound]`**; commit `1a7941bd`). **Immediate next brick:** the last seq shape-side constructor-lift `recseqentry_map_window` (nested mapping `{ … }` at an opener head, via `flowBracketBalance_matching_close_map`, interior at `WellBracketed`) — then the seq locate recursion itself (`Nat.strongRecOn` on window width, dispatching on the head token among the four lifts — `recseqentry_scalar_window` / `…_seqempty_window` / `…_map_window` / `located_entry_of_recseqbody` — ADVANCE-ing over `[m+1, hi)` via `recseqbody_cons_window`), then its map mirror — feeding the per-window `Rec…Body` producers into `flowSubrangesOk_of_window_producers` to discharge the two `scanFiltered_emit{Seq,Map}_nonempty_structure` sorry sites; then the two base `emit_roundtrip_{sequence,mapping}_content_eq` sorries → `universal_roundtrip`. See [[ref-entry-boundary-input-shape-split]] (R264/R265 — the input/shape split and the per-constructor-window-lift family this leaf belongs to), [[ref-structural-moves-complete-recursion]] (R262/R263 — the structural moves whose recursive `.seq` constructor the shape-side leaves complement), and [[ref-mirror-constructor-arity-reads-storage]] (R246/R261/R263 — the arity-reads-storage discipline this leaf instances: the empty-bracket constructor's arity, two tokens, _is_ what its window identity counts).
