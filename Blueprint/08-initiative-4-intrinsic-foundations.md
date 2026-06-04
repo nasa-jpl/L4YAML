@@ -15448,6 +15448,45 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
+                **Total .body scope re-estimate (ONE-HUNDRED-THIRTEENTH revision —
+                after **Thread A step 3 sub-step 3's brick cont'd (locate ENTRY-BOUNDARY, SHAPE SIDE —
+                *SCALAR LEAF, SEQ*) — landed** (commit `efd16109`, Reflection 265). **The first brick of
+                the entry-boundary location's _shape side_ — and the point where the seq/map mirror
+                re-splits after the axis-agnostic input side.** With `firstEntryBoundary` (R264) pinning
+                _where_ the first item ends (the split point `m`), the shape side classifies _what_
+                `[lo, m)` is — a `RecSeqEntry`. `RecSeqEntry` has four constructors, and the structure of
+                the shape side falls out of them: three (`seqEmpty`/`seq`/`map`) wrap a bracketed
+                sub-window, one (`scalar`) is the **lone non-recursive leaf** — a single scalar token is
+                one entry. `recseqentry_scalar_window` is that leaf's positional lift: given a scalar at
+                the window head `tokens[lo]`, the one-token window `(tokens.toList.take (lo + 1)).drop lo`
+                is a `RecSeqEntry.scalar` (window-singleton identity via `List.getElem_cons_drop` +
+                `List.getElem_take`, trailing `drop (lo+1)` killed by `List.drop_eq_nil_of_le`, head value
+                transported by `getElem!_pos`/`Array.getElem_toList`). It bottoms out the locate recursion
+                (no matching-close, no descent, `m = lo + 1`), so it lands first among the shape-side
+                bricks. **Two structural observations.** (1) The shape side is the _family of per-constructor
+                window-lifts_ — and the recursive `.seq` constructor's lift is ALREADY supplied by the
+                BUILD structural move `located_entry_of_recseqbody` (which assembles `RecSeqEntry.seq` from
+                the inner-window `RecSeqBody`); so the shape side's genuinely-new work is the _non-`.seq`_
+                constructors — `scalar` (here, the leaf), then `seqEmpty` (empty `[ ]`) and `map` (nested
+                mapping, interior bottoming at `WellBracketed`). The BUILD move and the shape side overlap
+                _exactly_ at the recursive constructor. (2) This is where the seq/map mirror **re-splits**
+                (contrast `firstEntryBoundary`, written once over the shared token stream): the map body's
+                first item is a whole key/value PAIR (`.key … .value …`, a `RecMapPair`), so its leaf is
+                the scalar-key/scalar-value pair — a four-token shape, not this one-token singleton. No map
+                mirror of _this_ lemma; the map shape side is a separate brick. Verified-but-unconsumed:
+                references no sorry site, **sorries held at 4**. Build green **537 jobs**; axiom-clean
+                **`[propext, Quot.sound]`**. **Immediate next brick:** the remaining seq shape-side
+                constructor-lifts — `recseqentry_seqempty_window` (the empty `[ ]`, `m = lo + 2`) and
+                `recseqentry_map_window` (nested mapping `{ … }` at an opener head, via
+                `flowBracketBalance_matching_close_map`, interior at `WellBracketed`) — then the seq locate
+                recursion itself (`Nat.strongRecOn` on window width, dispatching on the head token:
+                `recseqentry_scalar_window` / `…_seqempty_window` / `…_map_window` / `located_entry_of_recseqbody`
+                for the recursive `.seq`, then `recseqbody_cons_window` ADVANCE over `[m+1, hi)`), then its
+                map mirror — feeding the per-window `Rec…Body` producers into
+                `flowSubrangesOk_of_window_producers` to discharge the two
+                `scanFiltered_emit{Seq,Map}_nonempty_structure` sorry sites; then the two base
+                `emit_roundtrip_{sequence,mapping}_content_eq` sorries → `universal_roundtrip`. See
+                Reflection 265, on top of the
                 **Total .body scope re-estimate (ONE-HUNDRED-TWELFTH revision —
                 after **Thread A step 3 sub-step 3's brick cont'd (locate ENTRY-BOUNDARY, SPLIT-POINT
                 LOCATOR — *FIRST DEPTH-0 BOUNDARY MARKER, SEQ+MAP SHARED*) — landed** (commit
@@ -26808,3 +26847,15 @@ It rests on a deliberately generic well-ordering helper `exists_least_in_range`:
 **The lesson — the input side of the entry-boundary location is a single axis-agnostic brick, not a seq/map mirror pair.** Every prior navigation brick (the consumer joints R255→R256, the structural moves R260→R261 / R262→R263, the root seeds R258→R259) came as a seq lemma plus a one-session-later map mirror, because each named a collection-specific deliverable (`RecSeqBody`/`RecMapBody`, `RecSeqEntry`/`RecMapPair`) whose constructor differed. `firstEntryBoundary` breaks that rhythm: the **body-separator token `.flowEntry` is identical for sequences and mappings**, so the boundary predicate is shared, and the single lemma feeds _both_ recursions. This is a discriminator worth carrying forward: a navigation brick mirrors across seq/map exactly when it mentions a collection-specific _deliverable type_; one phrased purely over the shared _token stream_ (balance, the `.flowEntry` separator) is written once. The remaining bulk — the **shape side**, classifying `[lo, m)` and recursing — _will_ split seq/map again (it constructs `RecSeqEntry`/`RecMapPair`), but the split-point locator does not.
 
 Verified-but-unconsumed (R225): instantiates only `exists_least_in_range`, references no sorry site, frontier sorry count unchanged at **4** (build green **536 jobs**, both declarations axiom-clean **`[propext, Quot.sound]`**; commit `a219a6d5`). **Immediate next brick:** the **shape side** of the entry-boundary location — given `firstEntryBoundary`'s split point `m`, show the first item `[lo, m)` is a well-formed `RecSeqEntry` / `RecMapPair` (scalar singleton when `tokens[lo]` is a scalar; matched-bracket window via `flowBracketBalance_matching_close` when it is an opener), then assemble the whole window's `Rec…Body` by `ADVANCE` over the recursive rest `[m+1, hi)` — the value-driven locate recursion itself (`Nat.strongRecOn` on the window width `hi - lo`), feeding the per-window `Rec…Body` producers into `flowSubrangesOk_of_window_producers` to discharge the two `scanFiltered_emit{Seq,Map}_nonempty_structure` sorry sites; then the two base `emit_roundtrip_{sequence,mapping}_content_eq` sorries → `universal_roundtrip`. See [[ref-structural-moves-complete-recursion]] (R262/R263 — the structural moves this entry-boundary brick complements; together they are the locate recursion's full apparatus), and [[ref-mirror-constructor-arity-reads-storage]] (R246/R261/R263 — the seq/map mirror discipline this brick is the _exception_ to, the exception's discriminator being deliverable-type-mention vs shared-token-stream).
+
+### Reflection 265 (new, 2026-06-04): the entry-boundary location's *shape side* is the family of per-constructor window-lifts — and the recursive constructor's lift is already supplied by the BUILD structural move, so the shape side's new work is the *non-recursive* constructors, of which the scalar leaf lands first
+
+With the input side landed (R264 — `firstEntryBoundary` pins the split point `m`), this session takes the first brick of the entry-boundary location's **shape side**: given `m`, classify _what_ the first item `[lo, m)` is — a `RecSeqEntry`. The lemma `recseqentry_scalar_window` is small (a window-singleton identity plus a constructor call), but it surfaces two structural facts worth recording, both read straight off the deliverable inductive's constructors.
+
+**The shape side is the _family of per-constructor window-lifts_.** `RecSeqEntry` has four constructors, and the shape side's job — turn a guarded window `[lo, m)` into the `RecSeqEntry` its head token names — is exactly: for each constructor, the positional lift that builds that constructor from the window. Three constructors (`seqEmpty`/`seq`/`map`) wrap a bracketed sub-window; one (`scalar`) is the **lone non-recursive leaf** — a single scalar token is one entry. The leaf lands first because it bottoms out the locate recursion: no matching-close, no descent, `m = lo + 1`, the window is literally `[tokens.toList[lo]]` (`List.getElem_cons_drop` + `List.getElem_take`, trailing `drop (lo+1)` killed by `List.drop_eq_nil_of_le`), and `RecSeqEntry.scalar` closes it. The other three lifts are the recursion's inductive steps.
+
+**The BUILD structural move and the shape side overlap _exactly_ at the recursive constructor.** Here is the sharpening of R262's "structural moves complete a recursion": the recursive `.seq` constructor's window-lift is _already landed_ — it is the BUILD move `located_entry_of_recseqbody` (R245), which assembles `RecSeqEntry.seq` from a recursively-established inner-window `RecSeqBody`. So when the shape side and the structural-moves decomposition are laid side by side, they coincide precisely on the one constructor that recurses (`.seq`), and the shape side's _genuinely-new_ work is the **non-`.seq`** constructors: `scalar` (this session, the leaf), then `seqEmpty` (empty `[ ]`, `m = lo + 2`) and `map` (nested mapping at an opener head, interior bottoming at `WellBracketed` via `flowBracketBalance_matching_close_map`). The structural moves are the recursion's _back_ (descend/build/advance over the recursive constructor); the shape side's new bricks are its _leaves and near-leaves_ (the non-recursive and bracket-but-flat constructors). Seen this way, the residual is no longer "the analytical bulk" but a short, enumerable list: three seq constructor-lifts (one done), their map mirrors, and the dispatching recursion that selects among them on the head token.
+
+**This is where the seq/map mirror re-splits** — exactly as R264 predicted (a brick mirrors iff it names a collection-specific deliverable type; `firstEntryBoundary`, phrased over the shared token stream, did not). `recseqentry_scalar_window` names `RecSeqEntry.scalar`, so it is seq-specific — and pointedly has **no direct map mirror**: the map body's first item is a whole key/value PAIR (`.key … .value …`, a `RecMapPair`), so the map shape side's _leaf_ is the scalar-key/scalar-value pair, a four-token shape, not this one-token singleton. The map shape side is a separate family of bricks keyed on `RecMapPair`'s single (heavier) constructor.
+
+Verified-but-unconsumed (R225): references no sorry site, frontier sorry count unchanged at **4** (build green **537 jobs**, axiom-clean **`[propext, Quot.sound]`**; commit `efd16109`). **Immediate next brick:** the remaining seq shape-side constructor-lifts — `recseqentry_seqempty_window` (empty `[ ]`) and `recseqentry_map_window` (nested mapping `{ … }`, via `flowBracketBalance_matching_close_map`, interior at `WellBracketed`) — then the seq locate recursion itself (`Nat.strongRecOn` on window width, dispatching on the head token among the four lifts, ADVANCE-ing over `[m+1, hi)` via `recseqbody_cons_window`), then its map mirror — feeding the per-window `Rec…Body` producers into `flowSubrangesOk_of_window_producers` to discharge the two `scanFiltered_emit{Seq,Map}_nonempty_structure` sorry sites; then the two base `emit_roundtrip_{sequence,mapping}_content_eq` sorries → `universal_roundtrip`. See [[ref-entry-boundary-input-shape-split]] (R264 — the input/shape split this continues, and whose seq/map-mirror discriminator predicted this re-split), [[ref-structural-moves-complete-recursion]] (R262/R263 — the structural moves the shape side overlaps at the recursive `.seq` constructor), and [[ref-producer-dual-of-consumer-joint]] (R245 — the BUILD move `located_entry_of_recseqbody` that already supplies the recursive constructor's window-lift).
