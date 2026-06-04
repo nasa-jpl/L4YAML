@@ -1,8 +1,8 @@
 /-
-# Reflection 258 — a universal producer's first brick is its ROOT SEED: the positional packaging of its one already-available instance, as a faithful mirror of the flat-deliverable characterization
+# Reflections 258 + 259 — a universal producer's first brick is its ROOT SEED: the positional packaging of its one already-available instance, as a faithful mirror of the flat-deliverable characterization (R258); and that seed mirrors verbatim across a symmetric collection axis, the only deltas the feed's per-item hypotheses (R259)
 
 Self-contained, `L4YAML`-free runnable illustration of the proof-engineering principle in
-Blueprint Reflection 258 (and memory `ref-universal-producer-root-seed-first`).
+Blueprint Reflections 258 + 259 (and memory `ref-universal-producer-root-seed-first`).
 
 **The principle.** Once the *consumer* of a not-yet-written universal producer is folded to one
 lemma keyed on the producer's contract (R257), the producer's **first landable brick** is not the
@@ -115,5 +115,77 @@ def empty : List Tok := []
 /-- no `Rec` at the empty block — via the `Rec ⟹ Flat` projection, so the seed never fires there. -/
 theorem not_rec_empty : ¬ Rec empty := by
   intro h; exact (rec_to_flat h) rfl
+
+/-! ### Map-side mirror (Reflection 259) — the seed mirrors verbatim; the *feed* reads more
+
+The map root seed `emitPairList_body_recmapbody` is the symmetric mirror of the seq seed across the
+seq→map collection axis (exactly as the consumer-side R255→R256 boundary joint mirrored its seq
+twin).  Its proof body is **verbatim** the seq seed — the positional packaging step (`drop` →
+`Deliverable (window)`) is bracket- and collection-agnostic.  The *only* deltas are the **feed's**
+inputs/outputs — the R246 stored-vs-projected asymmetry one tier up, at the seed's hypothesis count:
+the map feed reads a SECOND per-item (key) hypothesis and an extra `simpleKeyAllowed` precondition
+the seq feed lacks, and delivers an extra `3 ≤ n` floor (R250) the seed destructures but never uses. -/
+
+/-- The map deliverable (toy of `RecMapBody`): a parallel collection axis — structurally a copy of
+    `Rec`, a *different* collection with its own constructors. -/
+inductive RecMap : List Tok → Prop where
+  | a : RecMap [Tok.A]
+  | nest (i : List Tok) (h : RecMap i) : RecMap ([Tok.OB] ++ i ++ [Tok.CB])
+
+/-- `RecMap` projects to `Flat` (the map twin of `rec_to_flat`). -/
+theorem recmap_to_flat {l : List Tok} (h : RecMap l) : Flat l := by
+  cases h with
+  | a => simp [Flat]
+  | nest i hi => simp [Flat]
+
+/-- **The R259 map root seed** (toy of `emitPairList_body_recmapbody`): the *verbatim* mirror of
+    `charRec` — identical `subst`/`drop_pre` body, the payload `Rec` swapped for `RecMap`.  The
+    positional packaging step is collection-agnostic, so the map seed copies the seq seed exactly. -/
+theorem charMap (pre block full : List Tok) (h_eq : full = pre ++ block) (h : RecMap block) :
+    RecMap (full.drop pre.length) := by
+  subst h_eq; rw [drop_pre]; exact h
+
+/-- toy seq emit feed (of `emitList_scans_recseqbody`): from the items, deliver `Rec block`. -/
+structure SeqFeed (block : List Tok) : Prop where
+  recv : Rec block
+
+/-- toy map emit feed (of `emitPairList_scans_recmapbody`): the R246 delta — an extra precondition
+    `ska` (toy of `simpleKeyAllowed = true`) AND an extra `floor` (toy of the `3 ≤ n` map floor,
+    R250), NEITHER present on `SeqFeed`.  A pair carries a key slot the seq item has no analogue for. -/
+structure MapFeed (block : List Tok) : Prop where
+  ska : True
+  recm : RecMap block
+  floor : 3 ≤ block.length
+
+/-- the seq seed wraps `SeqFeed` positionally (toy of `emitList_body_recseqbody`). -/
+theorem seedSeq (pre block full : List Tok) (h_eq : full = pre ++ block) (f : SeqFeed block) :
+    Rec (full.drop pre.length) := charRec pre block full h_eq f.recv
+
+/-- the map seed wraps `MapFeed` by the SAME positional `charMap` — `ska`/`floor` are destructured
+    but UNUSED (toy of `emitPairList_body_recmapbody` ignoring `_h_n3`). -/
+theorem seedMap (pre block full : List Tok) (h_eq : full = pre ++ block) (f : MapFeed block) :
+    RecMap (full.drop pre.length) := charMap pre block full h_eq f.recm
+
+/-! ### Map-side witnesses -/
+
+theorem recmap_good : RecMap good := RecMap.nest [Tok.A] RecMap.a
+
+/-- the map feed is inhabited at `good` — length 3 clears the floor. -/
+def mapfeed_good : MapFeed good := ⟨trivial, recmap_good, by decide⟩
+
+/-- the map seed fires at the root window (prefix `[OB]`) — the SAME positional wrap as the seq seed. -/
+theorem seed_map_root : RecMap (([Tok.OB] ++ good).drop 1) :=
+  seedMap [Tok.OB] good _ rfl mapfeed_good
+
+-- the seq feed IS inhabited at the singleton `[A]` (no floor) …
+def seqfeed_singleton : SeqFeed [Tok.A] := ⟨Rec.a⟩
+
+-- … but the map feed is NOT — the `3 ≤ length` floor (R250) excludes it; the seq side has no floor:
+#guard ([Tok.A] : List Tok).length == 1
+theorem no_mapfeed_singleton : ¬ MapFeed [Tok.A] := fun f => absurd f.floor (by decide)
+
+/-- no `RecMap` at the empty block either — via the `RecMap ⟹ Flat` projection. -/
+theorem not_recmap_empty : ¬ RecMap empty := by
+  intro h; exact (recmap_to_flat h) rfl
 
 end Tests.Reflections.UniversalProducerRootSeed
