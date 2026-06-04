@@ -804,6 +804,67 @@ theorem emitList_scans_recseqbody (items : List YamlValue) (h_ne : items ≠ [])
         rw [h_reassoc]
         exact RecSeqBody.cons block₁ feTok block_rest h_cs₁_ne h_e₁ h_cs₁_val h_feTok_val h_rec_rest
 
+/-- **Seq-body recursive seed** (Phase J — the `RecSeqBody` analog of
+    `emitList_body_filtered_characterization`).  Where that lemma packages `emitList_scans_safebody`
+    into the body's *flat* content characterization, this one packages `emitList_scans_recseqbody`
+    into the body's *recursive* deliverable, restated positionally: the `drop old_sz` tail of the
+    final filtered token list is one `RecSeqBody`.  This is the **root the locate recursion descends
+    from** — the outer-window (`lo = old_sz`) leaf of the per-window `RecSeqBody` producer
+    `flowSubrangesOk_of_window_producers` consumes: at the body-interior span `[2, size-2)` the window
+    `(take (size-2)).drop 2` is exactly this `drop old_sz` tail, so this is the universal producer's
+    base case; the recursion navigates this top-level structure down to every nested guarded subrange.
+    Keyed on the recursive per-item hypothesis `EmitScansInFlowRecEntry` (the superset of
+    `EmitScansInFlowBlock` carrying `RecSeqEntry`, supplied per item by `emit_scans_in_flow_rec_entry`).
+    Verified-but-unconsumed until the locate lands: composes only `emitList_scans_recseqbody` + the
+    positional `drop` (`h_drop`, verbatim from the flat lemma), references no sorry site, frontier
+    sorry count unchanged. -/
+theorem emitList_body_recseqbody
+    (items : List YamlValue) (h_ne : items ≠ [])
+    (h_all : ∀ v ∈ items, EmitScansInFlowRecEntry v)
+    (s : ScannerState) (rest : List Char)
+    (h_corr : ScannerSurfCorr s ⟨(emit.emitList items).toList ++ rest, s.col⟩)
+    (h_flow : s.inFlow = true) (h_fl : s.flowLevel > 0)
+    (h_indent : s.currentIndent < 0) (h_col : s.col > 0)
+    (h_ek : s.explicitKeyLine = none)
+    (h_atol : AllTokensOnLine s s.line)
+    (h_endline : EndLineOnLine s)
+    (h_sync : s.simpleKeyStack.size = s.flowLevel) :
+    let p := fun (t : Positioned YamlToken) => t.val != .placeholder
+    let old_sz := (s.tokens.filter p).size
+    ∃ n s', ScanChain s n s'
+    ∧ ScannerSurfCorr s' ⟨rest, s'.col⟩
+    ∧ s'.flowLevel = s.flowLevel
+    ∧ s'.directivesPresent = s.directivesPresent
+    ∧ s'.indents = s.indents
+    ∧ s'.explicitKeyLine = s.explicitKeyLine
+    ∧ s'.col > 0
+    ∧ s'.inFlow = true
+    ∧ s'.currentIndent < 0
+    ∧ s'.line = s.line
+    ∧ AllTokensOnLine s' s'.line
+    ∧ EndLineOnLine s'
+    ∧ s'.simpleKeyStack = s.simpleKeyStack
+    ∧ FlowMonoChain s.flowLevel s n s'
+    ∧ RecSeqBody ((s'.tokens.filter p).toList.drop old_sz) := by
+  obtain ⟨n, s', block, h_chain, h_corr', h_fl', h_dp', h_ids', h_ek', h_col', h_inflow',
+          h_indent', h_line', h_atol', h_endline', h_stack', h_fmc, h_block_eq, h_wb, h_wt, h_rec⟩ :=
+    emitList_scans_recseqbody items h_ne h_all s rest h_corr h_flow h_fl h_indent h_col
+      h_ek h_atol h_endline h_sync
+  -- The body block is exactly the `drop old_sz` of the final filtered token list (verbatim from
+  -- `emitList_body_filtered_characterization`).
+  have h_drop : (s'.tokens.filter (fun t => t.val != .placeholder)).toList.drop
+      (s.tokens.filter (fun t => t.val != .placeholder)).size = block := by
+    rw [h_block_eq,
+      show (s.tokens.filter (fun t => t.val != .placeholder)).size
+          = (s.tokens.filter (fun t => t.val != .placeholder)).toList.length
+        from Array.length_toList.symm,
+      List.drop_append_of_le_length (Nat.le_refl _), List.drop_length, List.nil_append]
+  refine ⟨n, s', h_chain.toScanChain, h_corr', h_fl', h_dp', h_ids', h_ek',
+          h_col', h_inflow', h_indent', h_line', h_atol', h_endline', h_stack', h_fmc, ?_⟩
+  show RecSeqBody ((s'.tokens.filter (fun t => t.val != .placeholder)).toList.drop
+      (s.tokens.filter (fun t => t.val != .placeholder)).size)
+  rw [h_drop]; exact h_rec
+
 /-! ### Recursive deliverable — map side (`RecMapBody` / `RecMapPair`)
 
 The map-side mirror of `RecSeqBody`/`RecSeqEntry` (Reflection 234), one nesting level deeper.  A
