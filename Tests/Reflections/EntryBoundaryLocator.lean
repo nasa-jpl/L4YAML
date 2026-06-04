@@ -178,4 +178,71 @@ theorem not_marker_inside :
     `l1`) is not the separator. -/
 theorem cl_is_not_separator : isFE (tokAt l1 2) = false := by decide
 
+/-! ## The shape side — per-constructor window-lifts (toy of `recseqentry_scalar_window`, Reflection 265)
+
+Once the input side has located the split point `m`, the **shape side** classifies *what* the first
+item `[lo, m)` is — building the entry inductive.  The entry inductive has a non-recursive **scalar
+leaf** and a **recursive bracketed** constructor, and the shape side is the *family of
+per-constructor window-lifts* — one lemma per constructor, building that constructor from the window.
+The recursive constructor's lift is the BUILD structural move (in the real development,
+`located_entry_of_recseqbody`, already landed), so the shape side's genuinely-new work is the
+*non-recursive* leaf: modelled here by `entry_scalar_window`, the locate recursion's base case (no
+matching-close, no descent, `m = lo + 1`).
+
+This is also where the **seq/map mirror re-splits**: this lemma names the entry inductive (a
+collection-specific deliverable type, unlike the axis-agnostic `firstEntryBoundary`), so it is
+seq-specific — the map shape side's leaf is a whole key/value *pair*, a different (heavier) shape. -/
+
+/-- A toy recursive seq entry (toy of `RecSeqEntry`): a scalar leaf, or a bracketed sub-window.
+    `scalar` is the non-recursive leaf the shape side lands first; `seq` is the recursive constructor
+    whose window-lift is the BUILD structural move (so it is *not* new shape-side work). -/
+inductive Entry : List Tok → Prop where
+  | scalar (t : Tok) (h : t = .sc) : Entry [t]
+  | seq (interior : List Tok) : Entry (.op :: (interior ++ [.cl]))
+
+/-- **Scalar-leaf window-lift** (toy of `recseqentry_scalar_window`).  The one-token window at a
+    scalar head is an `Entry.scalar` — the non-recursive base case.  Same proof skeleton as the real
+    lemma: the window-singleton identity `(l.take (lo+1)).drop lo = [l[lo]]` (`List.getElem_cons_drop`
+    + `List.getElem_take`, trailing `drop (lo+1)` killed by `List.drop_eq_nil_of_le`), then the leaf
+    constructor with the head value transported off `tokAt` (`List.getElem_eq_getD`). -/
+theorem entry_scalar_window (l : List Tok) (lo : Nat)
+    (h_lo : lo < l.length) (h_sc : tokAt l lo = .sc) :
+    Entry ((l.take (lo + 1)).drop lo) := by
+  have hlen : lo < (l.take (lo + 1)).length := by rw [List.length_take]; omega
+  have h_drop_nil : (l.take (lo + 1)).drop (lo + 1) = [] := by
+    apply List.drop_eq_nil_of_le; rw [List.length_take]; omega
+  have h_win : (l.take (lo + 1)).drop lo = [l[lo]'h_lo] := by
+    have h := (List.getElem_cons_drop hlen).symm
+    rw [List.getElem_take, h_drop_nil] at h
+    exact h
+  rw [h_win]
+  have h_val : l[lo]'h_lo = .sc := by
+    rw [List.getElem_eq_getD (.sc)]; exact h_sc
+  exact Entry.scalar _ h_val
+
+/-! ### Positive witnesses — the scalar leaf fires at every scalar head -/
+
+-- In `l1 = [op, sc, cl, fe, sc]` the scalar heads are positions `1` and `4`; the leaf lift fires at
+-- each, producing an `Entry` of the one-token window `[sc]`.
+theorem scalar_window_l1_1 : Entry ((l1.take (1 + 1)).drop 1) :=
+  entry_scalar_window l1 1 (by decide) (by decide)
+
+theorem scalar_window_l1_4 : Entry ((l1.take (4 + 1)).drop 4) :=
+  entry_scalar_window l1 4 (by decide) (by decide)
+
+-- The located window really is the singleton `[sc]`:
+#guard (l1.take (1 + 1)).drop 1 == [Tok.sc]
+#guard (l1.take (4 + 1)).drop 4 == [Tok.sc]
+
+/-! ### Negative witnesses — the leaf does *not* cover the bracketed (recursive) constructor -/
+
+/-- The window head at position `0` of `l1` is `op`, not a scalar — so `entry_scalar_window` does
+    **not** apply there: an opener head is the recursive `seq` constructor's job (its window-lift is
+    the BUILD structural move), not the leaf's. -/
+theorem op_head_is_not_scalar_leaf : tokAt l1 0 ≠ .sc := by decide
+
+-- And the bracketed first item `[op, sc, cl]` is three tokens, not the one-token shape the scalar
+-- leaf produces — the recursive constructor genuinely is a different (non-leaf) window-lift.
+#guard (l1.take 3).length == 3
+
 end Tests.Reflections.EntryBoundaryLocator
