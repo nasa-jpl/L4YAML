@@ -3530,6 +3530,81 @@ theorem recseqentry_scalar_dispatch (tokens : Array (Positioned YamlToken)) (lo 
   rw [h_m_eq]
   exact recseqentry_scalar_window tokens lo h_lo_sz ⟨c, s, hcs⟩
 
+/-- **Empty-sequence head-dispatch step** (Phase J — the seq locate DRIVER's head-dispatch, second
+    branch).  The dispatch's second leaf, mirroring `recseqentry_scalar_dispatch` for the empty
+    flow-sequence `[ ]` head: given an opener `tokens[lo] = .flowSequenceStart` immediately followed by
+    a closer `tokens[lo+1] = .flowSequenceEnd`, it derives the split point `m = lo + 2` from the
+    locator's facts and fires the leaf lift `recseqentry_seqempty_window`.
+
+    Here the dispatch reveals an ASYMMETRY the scalar branch hid.  The scalar entry ends at the
+    *earliest* candidate `lo+1`, so leastness alone pinned it: `lo+1` is a marker, `m` is the least
+    marker, `lo < m` ⟹ `m = lo+1`.  The empty bracket spans TWO tokens, and crucially the intermediate
+    position `lo+1` is **not** a marker — the opener drives the running balance to `+1`
+    (`flowBracketDelta_flowSequenceStart`), so `balance lo (lo+1) = 1 ≠ 0`.  Leastness (`h_m_least`,
+    quantified over `(lo, m)`) says nothing about `m` itself and so PERMITS `m = lo+1`; minimality alone
+    cannot push the split past the un-balanced opener.  To exclude `m = lo+1` the dispatch must consume
+    the locator's OTHER output — that `m` is *itself* a boundary marker (`h_m_marker`, `balance lo m = 0`
+    ∧ completes the entry) — which `balance lo (lo+1) = 1` contradicts, forcing `m ≠ lo+1`.  Combined
+    with `m ≤ lo+2` (minimality against the genuine marker `lo+2`, where the closer returns the balance
+    to `0`: `+1` then `flowBracketDelta_flowSequenceEnd = -1`, composed) and `lo < m`, this gives
+    `m = lo+2`.
+
+    So the head-dispatch is where the *two* halves of `firstEntryBoundary`'s output split by branch: the
+    one-token scalar leaf needs only the LEAST clause, every multi-token bracket leaf needs the MARKER
+    clause too (to step over its own interior non-markers).  The marker hypothesis is exactly the
+    `firstEntryBoundary` conjunct the driver carries for free; here it is taken as a hypothesis, in the
+    verified-but-unconsumed discipline — references no sorry site, frontier sorry count unchanged at 4;
+    axiom-clean `[propext, Quot.sound]`. -/
+theorem recseqentry_seqempty_dispatch (tokens : Array (Positioned YamlToken)) (lo hi m : Nat)
+    (h_lo1_sz : lo + 1 < tokens.size)
+    (h_lo_m : lo < m) (_h_m_hi : m ≤ hi)
+    (h_m_marker : flowBracketBalance tokens lo m = 0 ∧ (m = hi ∨ tokens[m]!.val = .flowEntry))
+    (h_m_least : ∀ k, lo < k → k < m →
+      ¬ (flowBracketBalance tokens lo k = 0 ∧ (k = hi ∨ tokens[k]!.val = .flowEntry)))
+    (h_open : tokens[lo]!.val = .flowSequenceStart)
+    (h_close : tokens[lo + 1]!.val = .flowSequenceEnd)
+    (h_succ : lo + 2 = hi ∨ tokens[lo + 2]!.val = .flowEntry) :
+    m = lo + 2 ∧ RecSeqEntry ((tokens.toList.take m).drop lo) := by
+  have h_lo_sz : lo < tokens.size := by omega
+  have h_lo_len : lo < tokens.toList.length := by rw [Array.length_toList]; exact h_lo_sz
+  have h_lo1_len : lo + 1 < tokens.toList.length := by rw [Array.length_toList]; exact h_lo1_sz
+  -- head values transported from `tokens[·]!` to the `toList` indexing the balance lemmas use.
+  have h_op_val : (tokens.toList[lo]'h_lo_len).val = .flowSequenceStart := by
+    have hb : tokens[lo]! = tokens.toList[lo]'h_lo_len := by
+      rw [getElem!_pos tokens lo h_lo_sz, Array.getElem_toList]
+    rw [← hb]; exact h_open
+  have h_cl_val : (tokens.toList[lo + 1]'h_lo1_len).val = .flowSequenceEnd := by
+    have hb : tokens[lo + 1]! = tokens.toList[lo + 1]'h_lo1_len := by
+      rw [getElem!_pos tokens (lo + 1) h_lo1_sz, Array.getElem_toList]
+    rw [← hb]; exact h_close
+  -- the opener contributes +1, so `lo+1` is NOT balanced — it cannot be the marker.
+  have h_bal1 : flowBracketBalance tokens lo (lo + 1) = 1 := by
+    rw [flowBracketBalance_single tokens lo h_lo_len, h_op_val, flowBracketDelta_flowSequenceStart]
+  -- the closer returns the depth to 0 at `lo+2`: `balance lo (lo+2) = 1 + (-1) = 0`.
+  have h_single2 : flowBracketBalance tokens (lo + 1) (lo + 2) = -1 := by
+    rw [flowBracketBalance_single tokens (lo + 1) h_lo1_len, h_cl_val,
+      flowBracketDelta_flowSequenceEnd]
+  have h_bal2 : flowBracketBalance tokens lo (lo + 2) = 0 := by
+    rw [flowBracketBalance_compose tokens lo (lo + 1) (lo + 2) (by omega) (by omega),
+      h_bal1, h_single2]; decide
+  -- `lo+2` is a genuine boundary marker (balanced + completes the entry, via `h_succ`).
+  have h_marker2 : flowBracketBalance tokens lo (lo + 2) = 0 ∧
+      (lo + 2 = hi ∨ tokens[lo + 2]!.val = .flowEntry) := ⟨h_bal2, h_succ⟩
+  -- minimality ⟹ `m ≤ lo+2`; the marker clause excludes `m = lo+1` (its balance is 1, not 0).
+  have h_m_le : m ≤ lo + 2 := by
+    rcases Nat.lt_or_ge (lo + 2) m with hlt | hge
+    · exact absurd h_marker2 (h_m_least (lo + 2) (by omega) hlt)
+    · exact hge
+  have h_m_ne1 : m ≠ lo + 1 := by
+    intro h
+    have hmb := h_m_marker.1
+    rw [h, h_bal1] at hmb
+    omega
+  have h_m_eq : m = lo + 2 := by omega
+  refine ⟨h_m_eq, ?_⟩
+  rw [h_m_eq]
+  exact recseqentry_seqempty_window tokens lo h_lo1_sz h_open h_close
+
 /-- **Parametric `MapBodyProps` assembler** (Phase J seed, map side).  The map-side mirror of
     `seqBodyProps_assemble`: given an arbitrary balanced flow-MAPPING subrange `[lo, hi)` —
     `tokens[hi]! = .flowMappingEnd`, total balance `0`, Dyck prefixes, interior `WellTyped` — together
