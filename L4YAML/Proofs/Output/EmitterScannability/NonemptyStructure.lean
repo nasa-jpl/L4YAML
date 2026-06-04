@@ -3520,6 +3520,126 @@ theorem seqLocator_of_window_recseqbody (tokens : Array (Positioned YamlToken))
     h_lo2 (by omega) h_lo_hi h_hi2 (by omega) h_hi_sz h_open h_close h_wt_outer
     (h_seq_rec lo hi h_lo2 h_lo_hi h_hi2 h_hi_sz h_close h_bal h_open)
 
+/-- **Map-side boundary-anchoring locator joint** (Phase J — the verbatim mirror of
+    `seqLocator_of_window_recseqbody` over the `.flowMapping{Start,End}` boundary tokens, completing
+    the seq-before-map rhythm at the locate's *input* boundary).  `FlowSubrangesOk.map` quantifies
+    over **all** `lo hi` with the bracket guards and *no* positional bounds, whereas the outer bundle
+    assembler `mapLocated_of_recmapbody_outer` needs `2 ≤ lo`, `hi ≤ size - 2`, `1 ≤ lo`.  The
+    bound-recovery is identical to the seq side: any window with `tokens[lo-1] = .flowMappingStart`
+    cannot have `lo ≤ 1` (else `tokens[0] = .streamStart` would be `.flowMappingStart`), so `2 ≤ lo`;
+    any window with `tokens[hi] = .flowMappingEnd` cannot have `hi = size - 1` (else
+    `tokens[size-1] = .streamEnd` would be `.flowMappingEnd`), so `hi ≤ size - 2`.
+
+    The *delta* from the seq joint is the **six pair-interior primitives** (the Reflection 246 storage
+    asymmetry): `mapLocated_of_recmapbody_outer` threads them, so they surface here as six additional
+    *per-window universal* producer hypotheses — the bounded value-driven map recursion establishes
+    them as side-products of the same descent that builds the `RecMapBody`.  With the bounds recovered
+    once, the joint hands the recovered bounds to every producer hypothesis and to the outer assembler.
+    Net: the *unbounded* `FlowSubrangesOk.map` locator collapses to the *bounded* per-window
+    `{RecMapBody, +6 primitives}` producer the value-driven recursion will deliver.
+    Verified-but-unconsumed until the locate recursion lands: composes only existing lemmas, references
+    no sorry site, frontier sorry count unchanged. -/
+theorem mapLocator_of_window_recmapbody (tokens : Array (Positioned YamlToken))
+    (h_t0 : tokens[0]!.val = .streamStart)
+    (h_tlast : tokens[tokens.size - 1]!.val = .streamEnd)
+    (h_wt_outer : WellTyped ((tokens.toList.take (tokens.size - 2)).drop 2))
+    (h_map_rec : ∀ lo hi, 2 ≤ lo → lo ≤ hi → hi ≤ tokens.size - 2 → hi < tokens.size →
+      tokens[hi]!.val = .flowMappingEnd →
+      flowBracketBalance tokens lo hi = 0 →
+      tokens[lo - 1]!.val = .flowMappingStart →
+      RecMapBody ((tokens.toList.take hi).drop lo))
+    (h_key_content : ∀ lo hi, 2 ≤ lo → lo ≤ hi → hi ≤ tokens.size - 2 → hi < tokens.size →
+      tokens[hi]!.val = .flowMappingEnd →
+      flowBracketBalance tokens lo hi = 0 →
+      tokens[lo - 1]!.val = .flowMappingStart →
+      ∀ k, lo ≤ k → k < hi →
+        flowBracketBalance tokens lo k = 0 →
+        tokens[k]!.val = .key →
+        k + 1 < hi ∧ isFlowContentStart tokens[k + 1]!.val)
+    (h_key_scalar_value : ∀ lo hi, 2 ≤ lo → lo ≤ hi → hi ≤ tokens.size - 2 → hi < tokens.size →
+      tokens[hi]!.val = .flowMappingEnd →
+      flowBracketBalance tokens lo hi = 0 →
+      tokens[lo - 1]!.val = .flowMappingStart →
+      ∀ k, lo ≤ k → k < hi →
+        flowBracketBalance tokens lo k = 0 →
+        tokens[k]!.val = .key →
+        (∃ c s, tokens[k + 1]!.val = .scalar c s) →
+        k + 2 < hi ∧ tokens[k + 2]!.val = .value)
+    (h_value_content : ∀ lo hi, 2 ≤ lo → lo ≤ hi → hi ≤ tokens.size - 2 → hi < tokens.size →
+      tokens[hi]!.val = .flowMappingEnd →
+      flowBracketBalance tokens lo hi = 0 →
+      tokens[lo - 1]!.val = .flowMappingStart →
+      ∀ k, lo ≤ k → k < hi →
+        flowBracketBalance tokens lo k = 0 →
+        tokens[k]!.val = .value →
+        k + 1 < hi ∧ isFlowContentStart tokens[k + 1]!.val)
+    (h_value_scalar_succ : ∀ lo hi, 2 ≤ lo → lo ≤ hi → hi ≤ tokens.size - 2 → hi < tokens.size →
+      tokens[hi]!.val = .flowMappingEnd →
+      flowBracketBalance tokens lo hi = 0 →
+      tokens[lo - 1]!.val = .flowMappingStart →
+      ∀ k, lo ≤ k → k < hi →
+        flowBracketBalance tokens lo k = 0 →
+        tokens[k]!.val = .value →
+        (∃ c s, tokens[k + 1]!.val = .scalar c s) →
+        k + 2 ≤ hi ∧
+        (tokens[k + 2]!.val = .flowEntry ∨
+         (tokens[k + 2]!.val = .flowMappingEnd ∧ k + 2 = hi)))
+    (h_key_bracket_succ : ∀ lo hi, 2 ≤ lo → lo ≤ hi → hi ≤ tokens.size - 2 → hi < tokens.size →
+      tokens[hi]!.val = .flowMappingEnd →
+      flowBracketBalance tokens lo hi = 0 →
+      tokens[lo - 1]!.val = .flowMappingStart →
+      ∀ k j, lo ≤ k → k < hi →
+        flowBracketBalance tokens lo k = 0 →
+        tokens[k]!.val = .key →
+        k + 1 < j → j < hi →
+        flowBracketDelta tokens[j]!.val = -1 →
+        flowBracketBalance tokens lo (j + 1) = 0 →
+        j + 1 < hi ∧ tokens[j + 1]!.val = .value)
+    (h_value_bracket_succ : ∀ lo hi, 2 ≤ lo → lo ≤ hi → hi ≤ tokens.size - 2 → hi < tokens.size →
+      tokens[hi]!.val = .flowMappingEnd →
+      flowBracketBalance tokens lo hi = 0 →
+      tokens[lo - 1]!.val = .flowMappingStart →
+      ∀ k j, lo ≤ k → k < hi →
+        flowBracketBalance tokens lo k = 0 →
+        tokens[k]!.val = .value →
+        k + 1 < j → j < hi →
+        flowBracketDelta tokens[j]!.val = -1 →
+        flowBracketBalance tokens lo (j + 1) = 0 →
+        j + 1 ≤ hi ∧
+        (tokens[j + 1]!.val = .flowEntry ∨
+         (tokens[j + 1]!.val = .flowMappingEnd ∧ j + 1 = hi))) :
+    ∀ lo hi, lo ≤ hi → hi < tokens.size →
+      tokens[hi]!.val = .flowMappingEnd →
+      flowBracketBalance tokens lo hi = 0 →
+      tokens[lo - 1]!.val = .flowMappingStart →
+      MapLocated tokens lo hi := by
+  intro lo hi h_lo_hi h_hi_sz h_close h_bal h_open
+  -- Recover `2 ≤ lo` from the stream-start boundary token.
+  have h_lo2 : 2 ≤ lo := by
+    rcases Nat.lt_or_ge lo 2 with hlt | hge
+    · exfalso
+      have h0 : lo - 1 = 0 := by omega
+      rw [h0, h_t0] at h_open
+      exact absurd h_open (by decide)
+    · exact hge
+  -- Recover `hi ≤ size - 2` from the stream-end boundary token.
+  have h_hi2 : hi ≤ tokens.size - 2 := by
+    rcases Nat.lt_or_ge hi (tokens.size - 1) with hlt | hge
+    · omega
+    · exfalso
+      have heq : hi = tokens.size - 1 := by omega
+      rw [heq, h_tlast] at h_close
+      exact absurd h_close (by decide)
+  exact mapLocated_of_recmapbody_outer tokens 2 (tokens.size - 2) lo hi
+    h_lo2 (by omega) h_lo_hi h_hi2 (by omega) h_hi_sz h_open h_close h_wt_outer
+    (h_map_rec lo hi h_lo2 h_lo_hi h_hi2 h_hi_sz h_close h_bal h_open)
+    (h_key_content lo hi h_lo2 h_lo_hi h_hi2 h_hi_sz h_close h_bal h_open)
+    (h_key_scalar_value lo hi h_lo2 h_lo_hi h_hi2 h_hi_sz h_close h_bal h_open)
+    (h_value_content lo hi h_lo2 h_lo_hi h_hi2 h_hi_sz h_close h_bal h_open)
+    (h_value_scalar_succ lo hi h_lo2 h_lo_hi h_hi2 h_hi_sz h_close h_bal h_open)
+    (h_key_bracket_succ lo hi h_lo2 h_lo_hi h_hi2 h_hi_sz h_close h_bal h_open)
+    (h_value_bracket_succ lo hi h_lo2 h_lo_hi h_hi2 h_hi_sz h_close h_bal h_open)
+
 /-- Token structure of `scanFiltered ("[" ++ emitList items ++ "]")` for non-empty items.
     Establishes boundary tokens, body token patterns, and `parseNode` success within
     the flow sequence body.
