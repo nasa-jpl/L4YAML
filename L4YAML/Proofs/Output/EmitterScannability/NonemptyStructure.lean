@@ -3282,6 +3282,74 @@ theorem mapBodyProps_of_located_entry (tokens : Array (Positioned YamlToken)) (l
     simp only [List.length_nil] at hl
     exact mapBodyProps_empty tokens lo hi (by omega)
 
+/-- **Located-entry → inner-window `RecMapBody` descent** (Phase J, map side — the *navigation
+    recursion's* per-level descent step; the symmetric map mirror of `recseqbody_window_of_located_entry`,
+    R260, born one session later exactly as R255→R256 / R258→R259).  The array-window form of
+    `RecMapEntry.map_interior`: given a guarded flow-MAPPING subrange `[lo, hi)` whose opener-window
+    `(tokens.toList.take (hi+1)).drop (lo-1)` has been matched to a `RecMapEntry` (the map locate's
+    per-window deliverable), descend ONE nesting level to the interior window's recursive structure:
+    `RecMapBody ((tokens.toList.take hi).drop lo)` (the non-empty case) OR `lo = hi` (the empty `{}`
+    case the no-`nil` `RecMapBody` structurally cannot represent — the Reflection 233 producer-contract
+    split).
+
+    This is the constructive *descent* counterpart of the consumer joint `mapBodyProps_of_located_entry`:
+    that lemma runs the same opener-peel / rest-decomposition and then *consumes* the descended
+    `RecMapBody` (via `mapBodyProps_of_recmapbody_window`) straight into the terminal `MapBodyProps`;
+    this one *stops at the descended `RecMapBody`*, so the navigation recursion can take that
+    inner-window body as the IH input one nesting level down.  Its non-empty disjunct
+    `RecMapBody ((tokens.toList.take hi).drop lo)` is *exactly* the `flowSubrangesOk_of_window_producers`
+    `h_map_rec` deliverable at a window that is itself a top-level nested-mapping entry — so once the
+    locate matches a guarded subrange's opener-window to its `RecMapEntry`, this lemma finishes the
+    map producer obligation at that window with no further structural work.
+
+    The proof is the opener-peel (`List.getElem_cons_drop`, using `1 ≤ lo`) + rest-decomposition
+    (`List.take_add_one` + `List.drop_append_of_le_length`) of `mapBodyProps_of_located_entry` run
+    verbatim, terminated by `RecMapEntry.map_interior` (the empty disjunct forced to `lo = hi` by the
+    `List.length_drop`/`List.length_take` length argument) instead of the back-half consumer.  Unlike
+    its seq sibling it needs **no** `h_open` hypothesis and **no** `h_op_val` derivation — both
+    `RecMapEntry` constructors are `{ … }` frames, so the entry *internalizes* the `.flowMappingStart`
+    opener guard `RecSeqEntry.seq_interior` needed supplied externally (R244/R246 storage asymmetry,
+    here a *dropped* hypothesis: the map descend mirror is one hypothesis shorter than the seq one).
+    Verified-but-unconsumed (R225): references no sorry site, frontier sorry count unchanged. -/
+theorem recmapbody_window_of_located_entry (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (h_lo : 1 ≤ lo) (h_lo_hi : lo ≤ hi) (h_hi_sz : hi < tokens.size)
+    (h_entry : RecMapEntry ((tokens.toList.take (hi + 1)).drop (lo - 1))) :
+    RecMapBody ((tokens.toList.take hi).drop lo) ∨ lo = hi := by
+  have h_hi_len : hi < tokens.toList.length := by rw [Array.length_toList]; exact h_hi_sz
+  -- rest-decomposition: the `interior ++ [cl]` slice the descent is keyed on.
+  have h_rest : (tokens.toList.take (hi + 1)).drop lo
+      = (tokens.toList.take hi).drop lo ++ [tokens.toList[hi]] := by
+    have h_ts : tokens.toList.take (hi + 1)
+        = tokens.toList.take hi ++ [tokens.toList[hi]] := by
+      rw [List.take_add_one, List.getElem?_eq_getElem h_hi_len]; rfl
+    rw [h_ts]
+    have h_len : lo ≤ (tokens.toList.take hi).length := by rw [List.length_take]; omega
+    rw [List.drop_append_of_le_length h_len]
+  -- peel the opener: the opener-window is `tokens[lo-1] :: rest`.
+  have h_peel : (tokens.toList.take (hi + 1)).drop (lo - 1)
+      = tokens.toList[lo - 1]'(by rw [Array.length_toList]; omega)
+        :: (tokens.toList.take (hi + 1)).drop lo := by
+    have hlen : lo - 1 < (tokens.toList.take (hi + 1)).length := by
+      rw [List.length_take]; omega
+    have h := (List.getElem_cons_drop hlen).symm
+    rw [List.getElem_take] at h
+    rw [show lo - 1 + 1 = lo from by omega] at h
+    exact h
+  -- the located entry now reads as `op :: (interior_w ++ [cl])`.
+  rw [h_peel, h_rest] at h_entry
+  -- descend one nesting level via the array-window form of `map_interior` (no opener guard —
+  -- `RecMapEntry` internalizes the `.flowMappingStart` guard, so no `h_open`/`h_op_val` needed).
+  rcases RecMapEntry.map_interior h_entry rfl with h_rec | h_empty
+  · left; exact h_rec
+  · -- empty interior: `(take hi).drop lo = []` forces `lo = hi`.
+    right
+    have hlen_take : (tokens.toList.take hi).length = hi := by rw [List.length_take]; omega
+    have hl : ((tokens.toList.take hi).drop lo).length
+        = (tokens.toList.take hi).length - lo := List.length_drop
+    rw [h_empty, hlen_take] at hl
+    simp only [List.length_nil] at hl
+    omega
+
 /-- **Located map-entry producer** (Phase J, map side — the constructive dual of
     `mapBodyProps_of_located_entry`, the symmetric mirror of `located_entry_of_recseqbody`).  Given
     the inner-window `RecMapBody ((take hi).drop lo)` — the map locate's recursive deliverable one
