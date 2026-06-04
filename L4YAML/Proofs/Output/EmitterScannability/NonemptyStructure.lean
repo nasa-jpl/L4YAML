@@ -3469,6 +3469,57 @@ theorem flowSubrangesOk_of_locators (tokens : Array (Positioned YamlToken))
       L.entry L.key_content L.key_scalar_value L.value_content L.value_scalar_succ
       L.key_bracket_succ L.value_bracket_succ
 
+/-- **Seq-side boundary-anchoring locator joint** (Phase J — the locate's input boundary, the
+    consumer-joint-before-producer move at the *outer span* this time).  `FlowSubrangesOk.seq`
+    quantifies over **all** `lo hi` with the bracket guards and *no* positional bounds, whereas the
+    outer bundle assembler `seqLocated_of_recseqbody_outer` needs `2 ≤ lo`, `hi ≤ size - 2` (to use
+    `LO = 2`, `HI = size - 2` — the body-interior span the proof already has `WellTyped` for) and
+    `1 ≤ lo`.  This joint **recovers those bounds from the stream's own boundary tokens**: any window
+    with `tokens[lo-1] = .flowSequenceStart` cannot have `lo ≤ 1` (else `tokens[0] = .streamStart`
+    would have to be `.flowSequenceStart`), so `2 ≤ lo`; any window with `tokens[hi] = .flowSequenceEnd`
+    cannot have `hi = size - 1` (else `tokens[size-1] = .streamEnd` would be `.flowSequenceEnd`), so
+    `hi ≤ size - 2`.  With the bounds recovered, it threads the single outer `WellTyped` (over the
+    interior `[2, size-2)`) and the bounded per-window `RecSeqBody` producer (the locate recursion's
+    genuine deliverable, still owed) straight into `seqLocated_of_recseqbody_outer`.  Net: the
+    *unbounded* `FlowSubrangesOk.seq` locator collapses to the *bounded* per-window `RecSeqBody`
+    producer — exactly the shape a value-driven recursion over the body items will deliver.
+    Verified-but-unconsumed until the locate recursion lands: composes only existing lemmas, references
+    no sorry site, frontier sorry count unchanged. -/
+theorem seqLocator_of_window_recseqbody (tokens : Array (Positioned YamlToken))
+    (h_t0 : tokens[0]!.val = .streamStart)
+    (h_tlast : tokens[tokens.size - 1]!.val = .streamEnd)
+    (h_wt_outer : WellTyped ((tokens.toList.take (tokens.size - 2)).drop 2))
+    (h_seq_rec : ∀ lo hi, 2 ≤ lo → lo ≤ hi → hi ≤ tokens.size - 2 → hi < tokens.size →
+      tokens[hi]!.val = .flowSequenceEnd →
+      flowBracketBalance tokens lo hi = 0 →
+      tokens[lo - 1]!.val = .flowSequenceStart →
+      RecSeqBody ((tokens.toList.take hi).drop lo)) :
+    ∀ lo hi, lo ≤ hi → hi < tokens.size →
+      tokens[hi]!.val = .flowSequenceEnd →
+      flowBracketBalance tokens lo hi = 0 →
+      tokens[lo - 1]!.val = .flowSequenceStart →
+      SeqLocated tokens lo hi := by
+  intro lo hi h_lo_hi h_hi_sz h_close h_bal h_open
+  -- Recover `2 ≤ lo` from the stream-start boundary token.
+  have h_lo2 : 2 ≤ lo := by
+    rcases Nat.lt_or_ge lo 2 with hlt | hge
+    · exfalso
+      have h0 : lo - 1 = 0 := by omega
+      rw [h0, h_t0] at h_open
+      exact absurd h_open (by decide)
+    · exact hge
+  -- Recover `hi ≤ size - 2` from the stream-end boundary token.
+  have h_hi2 : hi ≤ tokens.size - 2 := by
+    rcases Nat.lt_or_ge hi (tokens.size - 1) with hlt | hge
+    · omega
+    · exfalso
+      have heq : hi = tokens.size - 1 := by omega
+      rw [heq, h_tlast] at h_close
+      exact absurd h_close (by decide)
+  exact seqLocated_of_recseqbody_outer tokens 2 (tokens.size - 2) lo hi
+    h_lo2 (by omega) h_lo_hi h_hi2 (by omega) h_hi_sz h_open h_close h_wt_outer
+    (h_seq_rec lo hi h_lo2 h_lo_hi h_hi2 h_hi_sz h_close h_bal h_open)
+
 /-- Token structure of `scanFiltered ("[" ++ emitList items ++ "]")` for non-empty items.
     Establishes boundary tokens, body token patterns, and `parseNode` success within
     the flow sequence body.
