@@ -3342,6 +3342,102 @@ theorem mapLocated_of_recmapbody (tokens : Array (Positioned YamlToken)) (lo hi 
     h_key_content, h_key_scalar_value, h_value_content, h_value_scalar_succ,
     h_key_bracket_succ, h_value_bracket_succ⟩
 
+/-- **Seq-side outer locate bundle assembler** (Phase J — Reflection 254, the WellTyped sibling of
+    Reflection 253's Dyck collapse).  Just as the per-window `dyck` field is a *free projection* of
+    the window's own `RecSeqBody` (`dyck_of_wellBracketed_window` on `h_rec.toWellBracketed`), the
+    per-window `wt` field is **recoverable from the OUTER-span `WellTyped`** via `WellTyped_subrange`
+    — fed by the window's free balance (`h_rec.toWellBracketed.1`) and free Dyck (the same R253
+    projection).  So `wt` is *not* a per-window deliverable either: the locate threads a single outer
+    `WellTyped ((take HI).drop LO)` once and recovers each window's `WellTyped` here.  This is the
+    exact per-window call shape the locate makes — supply the window's `RecSeqBody` and the
+    positional guards (`LO ≤ lo`, `1 ≤ lo`, `lo ≤ hi`, `hi ≤ HI`, openers/closers), and the bundle
+    assembles itself.  Its per-window NEW deliverable collapses to exactly `{RecSeqBody}` (pos a
+    guard, Dyck free, WellTyped recovered-from-outer).  Verified-but-unconsumed until the locate
+    lands: composes only existing lemmas, references no sorry site, frontier sorry count unchanged. -/
+theorem seqLocated_of_recseqbody_outer (tokens : Array (Positioned YamlToken))
+    (LO HI lo hi : Nat)
+    (h_LO_lo : LO ≤ lo) (h_lo : 1 ≤ lo) (h_lo_hi : lo ≤ hi) (h_hi_HI : hi ≤ HI)
+    (h_HI_sz : HI ≤ tokens.size) (h_hi_sz : hi < tokens.size)
+    (h_open : tokens[lo - 1]!.val = .flowSequenceStart)
+    (h_close : tokens[hi]!.val = .flowSequenceEnd)
+    (h_wt_outer : WellTyped ((tokens.toList.take HI).drop LO))
+    (h_rec : RecSeqBody ((tokens.toList.take hi).drop lo)) :
+    SeqLocated tokens lo hi := by
+  have h_wb := h_rec.toWellBracketed
+  have h_dyck := dyck_of_wellBracketed_window tokens lo hi h_wb
+  have h_slice : (tokens.toList.take hi).drop lo = (tokens.toList.drop lo).take (hi - lo) := by
+    rw [List.drop_take]
+  have h_bal : flowBracketBalance tokens lo hi = 0 := by
+    rw [flowBracketBalance_eq_pbalance tokens lo hi h_lo_hi, ← h_slice]; exact h_wb.1
+  have h_wt := WellTyped_subrange tokens LO lo hi HI h_LO_lo h_lo_hi h_hi_HI h_HI_sz
+    h_wt_outer h_bal h_dyck
+  exact seqLocated_of_recseqbody tokens lo hi h_lo h_lo_hi h_hi_sz h_open h_close h_wt h_rec
+
+/-- **Map-side outer locate bundle assembler** (Phase J — Reflection 254, the symmetric mirror of
+    `seqLocated_of_recseqbody_outer`).  Recovers the per-window `wt` from the outer-span `WellTyped`
+    via `WellTyped_subrange` exactly as the seq side; the six pair-interior primitives (the storage
+    asymmetry of Reflection 246) stay threaded — they are positional facts about the map body the
+    enclosing locate carries from its own window guards, not recoverable from the window's
+    `RecMapBody` alone.  So the per-window NEW deliverable is `{RecMapBody, +6}` (pos a guard, Dyck
+    free, WellTyped recovered-from-outer).  Verified-but-unconsumed: composes only existing lemmas,
+    references no sorry site, frontier sorry count unchanged. -/
+theorem mapLocated_of_recmapbody_outer (tokens : Array (Positioned YamlToken))
+    (LO HI lo hi : Nat)
+    (h_LO_lo : LO ≤ lo) (h_lo : 1 ≤ lo) (h_lo_hi : lo ≤ hi) (h_hi_HI : hi ≤ HI)
+    (h_HI_sz : HI ≤ tokens.size) (h_hi_sz : hi < tokens.size)
+    (h_open : tokens[lo - 1]!.val = .flowMappingStart)
+    (h_close : tokens[hi]!.val = .flowMappingEnd)
+    (h_wt_outer : WellTyped ((tokens.toList.take HI).drop LO))
+    (h_rec : RecMapBody ((tokens.toList.take hi).drop lo))
+    (h_key_content : ∀ k, lo ≤ k → k < hi →
+      flowBracketBalance tokens lo k = 0 →
+      tokens[k]!.val = .key →
+      k + 1 < hi ∧ isFlowContentStart tokens[k + 1]!.val)
+    (h_key_scalar_value : ∀ k, lo ≤ k → k < hi →
+      flowBracketBalance tokens lo k = 0 →
+      tokens[k]!.val = .key →
+      (∃ c s, tokens[k + 1]!.val = .scalar c s) →
+      k + 2 < hi ∧ tokens[k + 2]!.val = .value)
+    (h_value_content : ∀ k, lo ≤ k → k < hi →
+      flowBracketBalance tokens lo k = 0 →
+      tokens[k]!.val = .value →
+      k + 1 < hi ∧ isFlowContentStart tokens[k + 1]!.val)
+    (h_value_scalar_succ : ∀ k, lo ≤ k → k < hi →
+      flowBracketBalance tokens lo k = 0 →
+      tokens[k]!.val = .value →
+      (∃ c s, tokens[k + 1]!.val = .scalar c s) →
+      k + 2 ≤ hi ∧
+      (tokens[k + 2]!.val = .flowEntry ∨
+       (tokens[k + 2]!.val = .flowMappingEnd ∧ k + 2 = hi)))
+    (h_key_bracket_succ : ∀ k j, lo ≤ k → k < hi →
+      flowBracketBalance tokens lo k = 0 →
+      tokens[k]!.val = .key →
+      k + 1 < j → j < hi →
+      flowBracketDelta tokens[j]!.val = -1 →
+      flowBracketBalance tokens lo (j + 1) = 0 →
+      j + 1 < hi ∧ tokens[j + 1]!.val = .value)
+    (h_value_bracket_succ : ∀ k j, lo ≤ k → k < hi →
+      flowBracketBalance tokens lo k = 0 →
+      tokens[k]!.val = .value →
+      k + 1 < j → j < hi →
+      flowBracketDelta tokens[j]!.val = -1 →
+      flowBracketBalance tokens lo (j + 1) = 0 →
+      j + 1 ≤ hi ∧
+      (tokens[j + 1]!.val = .flowEntry ∨
+       (tokens[j + 1]!.val = .flowMappingEnd ∧ j + 1 = hi))) :
+    MapLocated tokens lo hi := by
+  have h_wb := h_rec.toWellBracketed
+  have h_dyck := dyck_of_wellBracketed_window tokens lo hi h_wb
+  have h_slice : (tokens.toList.take hi).drop lo = (tokens.toList.drop lo).take (hi - lo) := by
+    rw [List.drop_take]
+  have h_bal : flowBracketBalance tokens lo hi = 0 := by
+    rw [flowBracketBalance_eq_pbalance tokens lo hi h_lo_hi, ← h_slice]; exact h_wb.1
+  have h_wt := WellTyped_subrange tokens LO lo hi HI h_LO_lo h_lo_hi h_hi_HI h_HI_sz
+    h_wt_outer h_bal h_dyck
+  exact mapLocated_of_recmapbody tokens lo hi h_lo h_lo_hi h_hi_sz h_open h_close h_wt
+    h_key_content h_key_scalar_value h_value_content h_value_scalar_succ
+    h_key_bracket_succ h_value_bracket_succ h_rec
+
 /-- **`FlowSubrangesOk` assembler from locators** (Phase J — the locate consumer joint).  Packages
     the two per-window `*_of_located_entry` joints into the universal `FlowSubrangesOk tokens` the
     `scanFiltered_emit{Seq,Map}_nonempty_structure` sorry sites consume, keyed only on the not-yet-
