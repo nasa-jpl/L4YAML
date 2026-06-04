@@ -3222,18 +3222,46 @@ structure MapLocated (tokens : Array (Positioned YamlToken)) (lo hi : Nat) : Pro
     (tokens[j + 1]!.val = .flowEntry ∨
      (tokens[j + 1]!.val = .flowMappingEnd ∧ j + 1 = hi))
 
+/-- **The per-window Dyck floor is a free projection of the inner-window structure** (Phase J — the
+    locate's `dyck` field is not a threaded invariant but a projection of the recursive deliverable).
+    `WellBracketed l` is *definitionally* `pbalance l = 0 ∧ ∀ i, pbalance (l.take i) ≥ 0`, and its
+    second conjunct — every prefix balance of the inner-window list is `≥ 0` — is, position-for-position
+    via `flowBracketBalance_eq_pbalance`, exactly the `SeqLocated`/`MapLocated` `dyck` field
+    `∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0`.  So once the locate has produced the
+    inner-window `RecSeqBody`/`RecMapBody`, its `WellBracketed` projection
+    (`RecSeqBody.toWellBracketed` / `RecMapBody.toWellBracketed`) *hands back the windowed Dyck for
+    free*: the locate need not separately establish or thread a local Dyck floor at each window.  This
+    is the R244 stored-vs-projected split surfacing at the locate's invariant set: of the three
+    invariants the locate was thought to maintain (`1 ≤ lo`, Dyck, `WellTyped`), the Dyck one collapses
+    into the deliverable because `WellBracketed` *is* projected from `Rec…Body`, whereas `WellTyped`
+    stays a threaded hypothesis because it is *not* (only positionally recoverable via
+    `WellTyped_subrange`).  The slice identity is the same `drop_take`/`take_take`/`min` rewrite the
+    `WellTyped_subrange` Dyck bridge uses. -/
+theorem dyck_of_wellBracketed_window (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (h_wb : WellBracketed ((tokens.toList.take hi).drop lo)) :
+    ∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0 := by
+  intro i h_lo_i h_i_hi
+  rw [flowBracketBalance_eq_pbalance tokens lo i h_lo_i]
+  have h_slice : ((tokens.toList.take hi).drop lo).take (i - lo)
+      = (tokens.toList.drop lo).take (i - lo) := by
+    rw [List.drop_take, List.take_take, show min (i - lo) (hi - lo) = i - lo from by omega]
+  rw [← h_slice]
+  exact h_wb.2 (i - lo)
+
 /-- **Seq-side locate bundle assembler** (Phase J — the producer-dual lifted to the bundled
     deliverable).  Where `located_entry_of_recseqbody` (Reflection 245) builds only the single
     recursive `entry` field, this packages the *whole* `SeqLocated tokens lo hi` bundle the locate
     consumer joint `flowSubrangesOk_of_locators` actually demands: the `entry` field via the entry
-    assembler, and the three remaining fields `pos`/`dyck`/`wt` as direct window-guard pass-throughs.
-    It is the last mile between the producer-dual and the consumer joint — before it, the entry
-    assembler delivered one of `SeqLocated`'s four fields, leaving an arity gap between what the dual
-    produces (a `RecSeqEntry`) and what the joint's `h_seq` hypothesis demands (the four-field bundle);
-    after it, the seq locator hypothesis is reduced to producing exactly the inner-window `RecSeqBody`
-    (the recursion's deliverable one nesting level down), since the windowed Dyck floor and `WellTyped`
-    are the locate's own cheap derivables from the global bracket facts (`WellTyped_subrange`).  Every
-    field is a pass-through except `entry`, so the bundle's residual collapses to precisely the
+    assembler, the `dyck` field as a *free projection* of the recursive deliverable
+    (`dyck_of_wellBracketed_window` on `h_rec.toWellBracketed` — no separate Dyck hypothesis needed),
+    and the remaining `pos`/`wt` fields as direct pass-throughs.  It is the last mile between the
+    producer-dual and the consumer joint — before it, the entry assembler delivered one of
+    `SeqLocated`'s four fields, leaving an arity gap between what the dual produces (a `RecSeqEntry`) and
+    what the joint's `h_seq` hypothesis demands (the four-field bundle); after it, the seq locator
+    hypothesis is reduced to producing exactly the inner-window `RecSeqBody` (the recursion's deliverable
+    one nesting level down) plus the threaded `WellTyped` (the lone non-projectable invariant, recovered
+    positionally via `WellTyped_subrange`).  Every field is a pass-through or a structure-projection
+    except `entry`, so the bundle's residual collapses to precisely the
     recursive sub-deliverable — the producer-side mirror of `flowSubrangesOk_of_locators` reducing the
     consumer residual to the locator hypotheses.  Verified-but-unconsumed until the locate lands: it
     references no sorry site, so the frontier sorry count is unchanged.  (The map mirror
@@ -3244,18 +3272,18 @@ theorem seqLocated_of_recseqbody (tokens : Array (Positioned YamlToken)) (lo hi 
     (h_lo : 1 ≤ lo) (h_lo_hi : lo ≤ hi) (h_hi_sz : hi < tokens.size)
     (h_open : tokens[lo - 1]!.val = .flowSequenceStart)
     (h_close : tokens[hi]!.val = .flowSequenceEnd)
-    (h_dyck : ∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0)
     (h_wt : WellTyped ((tokens.toList.take hi).drop lo))
     (h_rec : RecSeqBody ((tokens.toList.take hi).drop lo)) :
     SeqLocated tokens lo hi :=
-  ⟨h_lo, h_dyck, h_wt,
+  ⟨h_lo, dyck_of_wellBracketed_window tokens lo hi h_rec.toWellBracketed, h_wt,
     located_entry_of_recseqbody tokens lo hi h_lo h_lo_hi h_hi_sz h_open h_close h_rec⟩
 
 /-- **Map-side locate bundle assembler** (Phase J — the symmetric mirror of `seqLocated_of_recseqbody`,
     Reflection 247).  Packages the whole `MapLocated tokens lo hi` bundle the consumer joint
     `flowSubrangesOk_of_locators` demands on the map side: the recursive `entry` field via the entry
-    assembler `located_mapentry_of_recmapbody`, and `pos`/`dyck`/`wt` as direct window-guard
-    pass-throughs — exactly as the seq mirror.  Where it is **not** as clean as the seq side (R246's
+    assembler `located_mapentry_of_recmapbody`, the `dyck` field as a free projection of the recursive
+    deliverable (`dyck_of_wellBracketed_window` on `h_rec.toWellBracketed`, no Dyck hypothesis), and
+    `pos`/`wt` as direct pass-throughs — exactly as the seq mirror.  Where it is **not** as clean as the seq side (R246's
     storage asymmetry, now at the bundle's field count): `MapLocated` STORES six pair-interior
     primitives (`key_content` … `value_bracket_succ`, the depth-0 `.key`/`.value` alternation of
     Reflection 232) that `located_mapentry_of_recmapbody` does NOT produce — the entry assembler
@@ -3270,7 +3298,6 @@ theorem mapLocated_of_recmapbody (tokens : Array (Positioned YamlToken)) (lo hi 
     (h_lo : 1 ≤ lo) (h_lo_hi : lo ≤ hi) (h_hi_sz : hi < tokens.size)
     (h_open : tokens[lo - 1]!.val = .flowMappingStart)
     (h_close : tokens[hi]!.val = .flowMappingEnd)
-    (h_dyck : ∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0)
     (h_wt : WellTyped ((tokens.toList.take hi).drop lo))
     (h_key_content : ∀ k, lo ≤ k → k < hi →
       flowBracketBalance tokens lo k = 0 →
@@ -3310,7 +3337,7 @@ theorem mapLocated_of_recmapbody (tokens : Array (Positioned YamlToken)) (lo hi 
        (tokens[j + 1]!.val = .flowMappingEnd ∧ j + 1 = hi)))
     (h_rec : RecMapBody ((tokens.toList.take hi).drop lo)) :
     MapLocated tokens lo hi :=
-  ⟨h_lo, h_dyck, h_wt,
+  ⟨h_lo, dyck_of_wellBracketed_window tokens lo hi h_rec.toWellBracketed, h_wt,
     located_mapentry_of_recmapbody tokens lo hi h_lo h_lo_hi h_hi_sz h_open h_close h_rec,
     h_key_content, h_key_scalar_value, h_value_content, h_value_scalar_succ,
     h_key_bracket_succ, h_value_bracket_succ⟩
