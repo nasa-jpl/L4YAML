@@ -15465,8 +15465,16 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `Rec…Body` producers into `flowSubrangesOk_of_window_producers`. **Large/risky**, sub-decomposable:
                 the head-dispatch (which shape-side lift fires) is a grammar fact the producer contract does not
                 carry — it owes a `WellTyped` substrate (per-window via `WellTyped_subrange`) and likely a
-                trailing-separator exclusion. Every locate-substrate brick R225–R271 (incl. this session's
+                trailing-separator exclusion. Every locate-substrate brick R225–R271 (incl.
                 `advanceTail_invariant`) feeds this one driver. Residual scope: the **non-empty** collection case only.
+                The **head-dispatch itself is now being built branch-by-branch**, leaf-first as the shape side was
+                (R272 `recseqentry_scalar_dispatch` — the *scalar* branch — landed `16071318`; it derives the
+                split point `m = lo+1` from `firstEntryBoundary`'s minimality + the scalar's delta-`0` and the
+                trailing-separator substrate `h_succ`, taken as a hypothesis pending `WellTyped_subrange`). Remaining
+                dispatch branches: `seqEmpty` (`m = lo+2`), the two bracket branches (`seq` recursive via the BUILD
+                move, `map` near-leaf — each owing the matching-close resolution `m = close+1` from
+                `flowBracketBalance_matching_close_{seq,map}`), then the `Nat.strongRecOn` driver that supplies the
+                recursive oracle and the per-window `WellTyped`/`h_succ` substrate.
 
                 • **Workstream B — CONTENT (independent of A; currently dormant).** The 2
                 `emit_roundtrip_{sequence,mapping}_content_eq` `exact sorry` sites (EmitterScannability.lean:832 / :872),
@@ -15492,6 +15500,45 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 Cross-refs: Reflection 271 (structural-complete ≠ runnable), and the Verification manual's
                 §Round-Trip / §Zero-Axiom sorry-budget note (reconciled 2026-06-04).
 
+                **Total .body scope re-estimate (ONE-HUNDRED-TWENTIETH revision —
+                after **Thread A step 3 sub-step 3's brick cont'd (locate recursion HEAD-DISPATCH —
+                *scalar branch*) — landed** (commit `16071318`, Reflection 272). **The first branch of the
+                seq locate driver's head-dispatch — and the move from "all the pieces are built" to "the
+                driver is being assembled, branch-by-branch."** With every structural move,
+                `firstEntryBoundary` (input/locate), `advanceTail_invariant` (input/certify-tail), and the
+                full four-constructor shape side landed, the only residual is the *driver* — and the driver's
+                core is the head-dispatch: after the locator pins the least boundary marker `m` of a balanced
+                window `[lo, hi)`, classify the first item `[lo, m)` by its head token and fire the matching
+                shape-side lift. The shape-side lifts each take their split point as a **given**
+                (`recseqentry_scalar_window` is stated at the fixed window `[lo, lo+1)`); the dispatch's job is
+                to **derive** that split point from the locator's minimality — the bridge the shape-side family
+                could not state on its own (lifts at fixed arity vs the locator's variable marker `m`).
+                `recseqentry_scalar_dispatch` is that bridge's *scalar branch*, landing leaf-first exactly as
+                the shape side was (R265 scalar leaf ahead of `seqEmpty`/`map`/`seq`): a scalar head has bracket
+                delta `0` (`flowBracketDelta_scalar`), so `balance lo (lo+1) = 0` (`flowBracketBalance_single`);
+                the grammar substrate `h_succ` (the scalar entry is *complete* — `lo+1` is the window end or a
+                `.flowEntry` separator) makes `lo+1` a boundary marker; `firstEntryBoundary` returned `m` as the
+                **least** marker in `(lo, hi]`, so `m ≤ lo+1`, and `lo < m` forces `m = lo+1` — the located
+                window `[lo, m)` *is* the one-token scalar window the leaf lift classifies. The trailing-separator
+                fact `h_succ` is the substrate the driver will recover per-window (the body's `_h_body_succ`-style
+                value-end successor, via `WellTyped_subrange`); taken here as a hypothesis in the
+                verified-but-unconsumed discipline. Like the scalar leaf and unlike the `Classical.choice`-bearing
+                bracket plumbing, it is fully constructive — axiom-clean **`[propext, Quot.sound]`**. By the R264
+                discriminator it names a collection-specific deliverable type (`RecSeqEntry`), so it re-splits the
+                map axis (the map dispatch's leaf is the scalar-key/scalar-value PAIR, `recmappair_window`), but
+                the minimality→split-point argument is shared shape the map mirror reuses. Verified-but-unconsumed:
+                references no sorry site, **sorries held at 4**. Build green **537 jobs**. **Immediate next brick:**
+                the remaining head-dispatch branches — `seqEmpty` (`m = lo+2`, the empty-bracket leaf), then the
+                two bracket branches (`seq` recursive via the BUILD move `located_entry_of_recseqbody`, `map`
+                near-leaf via `recseqentry_map_window`), each owing the *matching-close resolution* `m = close+1`
+                from `flowBracketBalance_matching_close_{seq,map}` (which needs the per-window Dyck guard +
+                `WellTyped` subrange) — then the `Nat.strongRecOn` DRIVER itself, supplying the recursive oracle
+                (the `.seq` interior's `RecSeqBody`) and the per-window `WellTyped`/`h_succ` substrate via
+                `WellTyped_subrange`, ADVANCEing over the `advanceTail_invariant`-certified tail and TERMINATEing
+                at `m = hi`; then its map mirror. Feeds the per-window `Rec…Body` producers into
+                `flowSubrangesOk_of_window_producers` → the two `scanFiltered_emit{Seq,Map}_nonempty_structure`
+                sorry sites → the two base `emit_roundtrip_{sequence,mapping}_content_eq` sorries →
+                `universal_roundtrip`. See Reflection 272, on top of the
                 **Total .body scope re-estimate (ONE-HUNDRED-NINETEENTH revision —
                 after **Thread A step 3 sub-step 3's brick cont'd (locate recursion ANALYTICAL PRIMITIVE —
                 *ADVANCE-step invariant preservation*) — landed** (commit `cc671888`, Reflection 271).
@@ -27185,3 +27232,13 @@ R270 declared the locate recursion's "entire residual is now the *single* analyt
 **The certificate is three facts, and the third — re-basing — is the one a moving-origin recursion cannot do without.** (a) prefix-through-separator balanced and (b) tail balanced are the obvious "the tail is balanced" facts. But (c) — `balance lo p = balance (m+1) p` for `m+1 ≤ p ≤ hi` — is the subtle one: the recursion's invariants (the *next* separator's depth-`0`-ness, the classifier's no-interior-separator minimality) are all phrased as bracket balances **from the window origin**, and the origin *moves* (`lo → m+1`) at each ADVANCE. Without re-basing, every recursive step would have to re-derive each tail balance from `lo` afresh; with it, the depth-`0` facts transport into the recursion's local frame for free. The recursion threads its invariants from a moving origin precisely *because* this equality lets outer-origin facts and local-origin facts be used interchangeably on the tail. All three fall straight out of `flowBracketBalance_compose` (additivity) split at `m` and `m+1`, with `flowBracketBalance_single` supplying the separator's zero delta — pure balance algebra, no structural induction.
 
 **It is an INPUT-side, axis-agnostic brick — `firstEntryBoundary`'s companion, not a structural move's mirror.** R264's discriminator ([[ref-entry-boundary-input-shape-split]]): a navigation brick mirrors seq/map iff it names a collection-specific *deliverable type*; one phrased over the *shared token stream* (bracket balance, the shared `.flowEntry` separator) is written **once**. `advanceTail_invariant` names no `Rec…` type — it is bracket-balance and the shared separator only — so, exactly like `firstEntryBoundary` and `exists_least_in_range`, it has **no seq/map mirror to land**: the single lemma feeds both recursions. This sharpens R264's input/shape split: the input side is not just *locating* the split point (`firstEntryBoundary`) but also *certifying the tail past it* (`advanceTail_invariant`) — two axis-agnostic balance facts, the shape side the collection-specific classifier between them. Verified-but-unconsumed: references no sorry site, frontier sorry count unchanged at **4** (build green **537 jobs**; axiom triple **`[propext, Classical.choice, Quot.sound]`**, the `Classical.choice` entering via `flowBracketBalance_compose`'s `List.foldl`, vs the fully-constructive `firstEntryBoundary`'s `[propext, Quot.sound]`; commit `cc671888`). **Immediate next brick:** the seq locate recursion DRIVER — `Nat.strongRecOn` on width, `firstEntryBoundary` + shape dispatch + `recseqbody_cons_window` ADVANCE over the now-certified tail (its balance + re-basing supplied here) + `recseqbody_single_window` TERMINATE; then its map mirror. The driver still owes the head-dispatch (which shape-side lift fires), a grammar fact the producer contract does not carry — it will thread a `WellTyped` substrate (per-window via `WellTyped_subrange`) and likely a trailing-separator exclusion. See [[ref-entry-boundary-input-shape-split]] (R264 — the input/shape split this extends: input = locate + certify-tail, both axis-agnostic), [[ref-structural-moves-complete-recursion]] (R262/R263/R269/R270 — the structural moves this invariant-preservation certificate complements; structural-complete ≠ runnable), and [[ref-consumer-joint-before-producer]] (the discipline of landing the recursion's substrate brick-by-brick ahead of the driver that consumes them).
+
+### Reflection 272 (new, 2026-06-04): the head-dispatch is where the shape-side lifts' FIXED split point meets the locator's VARIABLE marker — a bridge the shape-side family cannot state on its own, landed leaf-first like the shape side itself
+
+R271 closed the input side (`firstEntryBoundary` locate + `advanceTail_invariant` certify-tail) and named the driver as the residual, noting it "still owes the head-dispatch." This session begins the driver by landing that head-dispatch's first branch, `recseqentry_scalar_dispatch`, and the lesson is what the head-dispatch actually *is* — distinct from both the locator and the shape-side lifts it sits between:
+
+**The head-dispatch is a SPLIT-POINT-COINCIDENCE proof, not a classification.** Naively the dispatch "looks at the head token and calls the right shape-side lift." But the shape-side lifts ([[ref-entry-boundary-input-shape-split]], R265–R268) are each stated at a *fixed* window keyed on their own split point: `recseqentry_scalar_window` produces `RecSeqEntry ((take (lo+1)).drop lo)` — its `m` is *literally* `lo+1`, baked into the statement. The locator (`firstEntryBoundary`), by contrast, produces a *variable* marker `m` with only a minimality certificate. So the dispatch's real content is neither locating nor classifying but **proving the locator's variable `m` coincides with the lift's fixed split point** — here, `m = lo+1`. That coincidence is the bridge the shape-side family structurally *could not* state: a lift is parametrized by where it thinks the entry ends, the locator computes where it actually ends, and only a third lemma — the dispatch — proves them equal. This is why the dispatch is a *separate* brick from both, not a thin wrapper.
+
+**The coincidence proof reads off the locator's minimality, fed by a one-token-ahead grammar substrate.** For the scalar branch: the scalar head's bracket delta is `0` (`flowBracketDelta_scalar`), so `balance lo (lo+1) = 0` (`flowBracketBalance_single`) — a *positional* fact, free. The missing ingredient is **grammatical**: that `lo+1` is actually a boundary (the entry is complete there), i.e. `lo+1 = hi ∨ tokens[lo+1] = .flowEntry`. With it, `lo+1` is a *marker*; and because `firstEntryBoundary` returned `m` as the **least** marker, `m ≤ lo+1`, which with `lo < m` pins `m = lo+1`. So the dispatch consumes the locator's minimality clause as its engine and needs exactly *one* grammar fact — the trailing-separator/value-end successor `h_succ`, the same `_h_body_succ` substrate the outer-span seed already builds, recoverable per-window via `WellTyped_subrange`. Taken here as a hypothesis (verified-but-unconsumed); the driver will discharge it. The dispatch is thus the first brick to *consume* `firstEntryBoundary`'s minimality output, where every prior locate brick only *produced* substrate.
+
+**Land the dispatch leaf-first, mirroring the shape side's own construction order.** The shape side was built leaf-first (R265 scalar → R266 seqEmpty → R267 map → the recursive `.seq` already supplied by BUILD). The dispatch over it inherits the same order and the same re-split: the scalar branch is the leaf (no matching-close, `m = lo+1`), and it names a collection-specific deliverable type (`RecSeqEntry`, via the scalar lift), so by R264's discriminator it re-splits the map axis — but the *minimality → split-point* machinery is axis-shared shape the map dispatch reuses (the map leaf being the scalar-key/scalar-value PAIR). The remaining branches climb the same ladder: `seqEmpty` (`m = lo+2`, still a fixed-arity leaf, same minimality argument at the next arity), then the two bracket branches whose split point is *not* a fixed offset but `m = close+1` — there the coincidence proof must first *resolve the matching close* (`flowBracketBalance_matching_close_{seq,map}`, needing the per-window Dyck guard + `WellTyped` subrange) before pinning `m`. Fully constructive — axiom-clean **`[propext, Quot.sound]`**, matching the scalar leaf, the `Classical.choice` of the bracket plumbing not yet entering. Verified-but-unconsumed: references no sorry site, frontier sorry count unchanged at **4** (build green **537 jobs**; commit `16071318`). **Immediate next brick:** the `seqEmpty` dispatch branch (the second fixed-arity leaf), then the two bracket branches (matching-close-resolved), then the `Nat.strongRecOn` DRIVER supplying the recursive oracle and the per-window `WellTyped`/`h_succ` substrate; then the map mirror. Feeds the per-window `Rec…Body` producers into `flowSubrangesOk_of_window_producers` → the two `scanFiltered_emit{Seq,Map}_nonempty_structure` sorry sites → the two base `emit_roundtrip_{sequence,mapping}_content_eq` sorries → `universal_roundtrip`. See [[ref-entry-boundary-input-shape-split]] (R264–R268, R271 — the input/shape split this dispatch joins: it consumes the input side's minimality and fires the shape side's lifts), [[ref-structural-moves-complete-recursion]] (R262/R263/R269/R270 — the structural moves the dispatch will drive), and [[ref-consumer-joint-before-producer]] (the brick-by-brick substrate discipline, now crossing from producing substrate to consuming it).
