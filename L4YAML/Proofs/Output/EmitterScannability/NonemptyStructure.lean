@@ -3211,6 +3211,73 @@ theorem recseqentry_seqempty_window (tokens : Array (Positioned YamlToken)) (lo 
     rw [← hb]; exact h_close
   exact RecSeqEntry.seqEmpty _ _ h_op_val h_cl_val
 
+/-- **Nested-mapping entry window** (Phase J — the entry-boundary location's *shape side*, seq, the
+    NEAR-leaf — the family's last member).  The fourth `RecSeqEntry` constructor is `map`: a nested
+    flow-mapping `{ interior }` appearing as one item of the enclosing flow-SEQUENCE.  Given a window
+    `[lo, hi]` whose head `tokens[lo]` is a `.flowMappingStart`, whose `tokens[hi]` is the matching
+    `.flowMappingEnd`, and whose interior window `(tokens.toList.take hi).drop (lo + 1)` is
+    `WellBracketed`, the opener-window `(tokens.toList.take (hi + 1)).drop lo` is a `RecSeqEntry.map`.
+
+    It is a NEAR-leaf rather than a true leaf (scalar/seqEmpty span a fixed token count; this one spans
+    a *variable* interior `[lo+1, hi)`) — but, crucially, NOT a recursion edge: `RecSeqEntry.map`
+    **stores only `WellBracketed interior`** (R244), it does NOT carry a `RecSeqBody`/`RecMapBody`.  The
+    map's key/value recursion is a separate map-side substrate, severed here; the enclosing seq locate
+    does not descend through it.  So this lift is the *near-leaf* that terminates the seq dispatch on a
+    `.flowMappingStart` head — `flowBracketBalance_matching_close_map` supplies `hi` and the interior's
+    `WellBracketed`; this lemma packages them into the constructor.
+
+    It is the SAME window plumbing as the recursive `.seq` BUILD move `located_entry_of_recseqbody`,
+    transported VERBATIM — the rest-decomposition `(take (hi+1)).drop (lo+1) = (take hi).drop (lo+1) ++
+    [tokens[hi]]` (`List.take_add_one` + `List.drop_append_of_le_length`) and the opener peel
+    (`List.getElem_cons_drop` + `List.getElem_take`) put the window into `op :: (interior ++ [cl])`
+    shape — with exactly two differences, both reading the storage decision: the terminal constructor
+    is `RecSeqEntry.map` (not `.seq`), and it is fed the bare `WellBracketed interior` hypothesis (not
+    `h_rec.toWellBracketed h_rec` from a `RecSeqBody`).  That one-field arity delta between the seq
+    BUILD and this map near-leaf IS the storage decision: `.seq` recurses (stores a body), `.map`
+    projects (stores only the balance fact).  With this the seq shape side's four-constructor dispatch
+    family is COMPLETE: `scalar`/`seqEmpty` leaves, this `map` near-leaf, and `.seq` via the BUILD move.
+
+    Verified-but-unconsumed: references no sorry site, frontier sorry count unchanged; axiom-clean
+    `[propext, Quot.sound]`. -/
+theorem recseqentry_map_window (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (h_lo_hi : lo < hi) (h_hi_sz : hi < tokens.size)
+    (h_open : tokens[lo]!.val = .flowMappingStart)
+    (h_close : tokens[hi]!.val = .flowMappingEnd)
+    (h_wb : WellBracketed ((tokens.toList.take hi).drop (lo + 1))) :
+    RecSeqEntry ((tokens.toList.take (hi + 1)).drop lo) := by
+  have h_hi_len : hi < tokens.toList.length := by rw [Array.length_toList]; exact h_hi_sz
+  have h_lo_sz : lo < tokens.size := by omega
+  -- rest-decomposition: the `interior ++ [cl]` tail (mirrors `located_entry_of_recseqbody`).
+  have h_rest : (tokens.toList.take (hi + 1)).drop (lo + 1)
+      = (tokens.toList.take hi).drop (lo + 1) ++ [tokens.toList[hi]] := by
+    have h_ts : tokens.toList.take (hi + 1)
+        = tokens.toList.take hi ++ [tokens.toList[hi]] := by
+      rw [List.take_add_one, List.getElem?_eq_getElem h_hi_len]; rfl
+    rw [h_ts]
+    have h_len : lo + 1 ≤ (tokens.toList.take hi).length := by rw [List.length_take]; omega
+    rw [List.drop_append_of_le_length h_len]
+  -- peel the opener: the opener-window is `tokens[lo] :: rest`.
+  have h_peel : (tokens.toList.take (hi + 1)).drop lo
+      = tokens.toList[lo]'(by rw [Array.length_toList]; omega)
+        :: (tokens.toList.take (hi + 1)).drop (lo + 1) := by
+    have hlen : lo < (tokens.toList.take (hi + 1)).length := by
+      rw [List.length_take]; omega
+    have h := (List.getElem_cons_drop hlen).symm
+    rw [List.getElem_take] at h
+    exact h
+  -- target window now reads as `op :: (interior ++ [cl])`.
+  rw [h_peel, h_rest]
+  have h_op_val : (tokens.toList[lo]'(by rw [Array.length_toList]; omega)).val
+      = .flowMappingStart := by
+    have hb : tokens[lo]! = tokens.toList[lo]'(by rw [Array.length_toList]; omega) := by
+      rw [getElem!_pos tokens lo h_lo_sz, Array.getElem_toList]
+    rw [← hb]; exact h_open
+  have h_cl_val : (tokens.toList[hi]'h_hi_len).val = .flowMappingEnd := by
+    have hb : tokens[hi]! = tokens.toList[hi]'h_hi_len := by
+      rw [getElem!_pos tokens hi h_hi_sz, Array.getElem_toList]
+    rw [← hb]; exact h_close
+  exact RecSeqEntry.map _ _ _ h_op_val h_cl_val h_wb
+
 /-- **Parametric `MapBodyProps` assembler** (Phase J seed, map side).  The map-side mirror of
     `seqBodyProps_assemble`: given an arbitrary balanced flow-MAPPING subrange `[lo, hi)` —
     `tokens[hi]! = .flowMappingEnd`, total balance `0`, Dyck prefixes, interior `WellTyped` — together
