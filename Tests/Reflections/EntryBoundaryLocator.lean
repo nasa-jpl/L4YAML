@@ -82,15 +82,20 @@ theorem least_ge3 :
 
 /-! ## The toy token stream and the first-entry-boundary locator (toy of `firstEntryBoundary`) -/
 
-/-- A toy flow token: scalar, open/close bracket, and the body separator `FE` (`.flowEntry`). -/
-inductive Tok | sc | op | cl | fe
+/-- A toy flow token: scalar, sequence open/close bracket `op`/`cl`, the body separator `FE`
+    (`.flowEntry`), and a *distinct* mapping open/close bracket `mo`/`mc` — the toy of the real
+    `.flowSequenceStart`/`.flowSequenceEnd` vs `.flowMappingStart`/`.flowMappingEnd` distinction (so a
+    nested mapping is a different shape from a nested sequence, as in the real grammar). -/
+inductive Tok | sc | op | cl | fe | mo | mc
   deriving DecidableEq
 
-/-- Bracket delta — `+1` open, `-1` close, `0` otherwise.  The separator `FE` has delta `0`, so it
-    only marks a boundary *at depth 0*. -/
+/-- Bracket delta — `+1` open, `-1` close, `0` otherwise.  Both bracket kinds (`op`/`cl` and
+    `mo`/`mc`) count; the separator `FE` has delta `0`, so it only marks a boundary *at depth 0*. -/
 def delta : Tok → Int
   | .op => 1
   | .cl => -1
+  | .mo => 1
+  | .mc => -1
   | _   => 0
 
 /-- Is this token the body separator? -/
@@ -140,6 +145,11 @@ def l2 : List Tok := [.op, .sc, .cl]
     fires at the head: `op` immediately followed by `cl`, the matching close one step in. -/
 def l3 : List Tok := [.op, .cl, .fe, .sc]
 
+/-- `{a}` — map-open, scalar, map-close (a nested *mapping* with a one-token interior `[sc]`).  The
+    map near-leaf fires at the head: `mo` at `lo`, the matching `mc` at `hi`, interior `[sc]`
+    well-bracketed (`WB`). -/
+def l4 : List Tok := [.mo, .sc, .mc]
+
 -- The locator applies to both balanced windows (these type-check ⇒ the lemma fires).
 theorem firstMarker_l1 :
     ∃ m, 0 < m ∧ m ≤ l1.length ∧ bal l1 m = 0 ∧
@@ -182,7 +192,7 @@ theorem not_marker_inside :
     `l1`) is not the separator. -/
 theorem cl_is_not_separator : isFE (tokAt l1 2) = false := by decide
 
-/-! ## The shape side — per-constructor window-lifts (toy of `recseqentry_{scalar,seqempty}_window`, Reflections 265 & 266)
+/-! ## The shape side — per-constructor window-lifts (toy of `recseqentry_{scalar,seqempty,map}_window`, Reflections 265, 266 & 267)
 
 Once the input side has located the split point `m`, the **shape side** classifies *what* the first
 item `[lo, m)` is — building the entry inductive.  The shape side is the *family of per-constructor
@@ -190,28 +200,56 @@ window-lifts* — one lemma per constructor, building that constructor from the 
 constructor's lift is the BUILD structural move (in the real development, `located_entry_of_recseqbody`,
 already landed), so the shape side's genuinely-new work is the **non-recursive leaves**.
 
-There are two leaves, and **they come as a family** (Reflection 266): the one-token **scalar** leaf
-(`entry_scalar_window`, the recursion's base case — no matching-close, no descent, `m = lo + 1`), and
-the two-token **empty-bracket** leaf (`entry_seqempty_window` — an empty `[ ]`, `m = lo + 2`, the
+There are two true leaves, and **they come as a family** (Reflection 266): the one-token **scalar**
+leaf (`entry_scalar_window`, the recursion's base case — no matching-close, no descent, `m = lo + 1`),
+and the two-token **empty-bracket** leaf (`entry_seqempty_window` — an empty `[ ]`, `m = lo + 2`, the
 matching close one step in).  The empty-bracket lift is the scalar lift *scaled by one token*: the
 same window-singleton identity run twice (peel `[lo]`, then `[lo+1]`), the same trailing-`drop`-nil
 and `getElem_take` simplifications, the same head-value transport — only the arity of the fixed shape
 moved.  That is the signature of a *leaf family*: once the first leaf is proven, the rest are the same
 proof at a different arity, not fresh analysis.
 
+The family's **last member** (Reflection 267) is the **nested-mapping near-leaf** (`entry_map_window`):
+a nested mapping `{ … }` as one item of the enclosing sequence.  It is a *near*-leaf, not a true leaf
+— it spans a *variable* interior, not a fixed token count — but still NOT a recursion edge, because
+the `map` constructor STORES only the flat `WB interior` projection fact (not a recursive body, R244),
+so the enclosing locate does not descend through it.  Its lift is **the recursive `seq` BUILD move
+minus one field**: it transports the *same* window plumbing (rest-decomposition `(take (hi+1)).drop
+(lo+1) = (take hi).drop (lo+1) ++ [b]` via `List.take_add_one`/`List.drop_append_of_le_length`, opener
+peel via `List.getElem_cons_drop`/`List.getElem_take`, into `op :: (interior ++ [cl])` shape) and
+differs only in the terminal constructor (`Entry.map`, not `seq`) and that it is fed the bare
+`WB interior` hypothesis (not a recursive body).  That one-field arity delta *is* the store-vs-project
+decision — the same principle the constructor arity expressed in R246/R261/R263, here one tier up.
+
 This is also where the **seq/map mirror re-splits**: these lemmas name the entry inductive (a
 collection-specific deliverable type, unlike the axis-agnostic `firstEntryBoundary`), so they are
-seq-specific — the map shape side's leaf is a whole key/value *pair*, a different (heavier) shape. -/
+seq-specific — the map shape side's leaf is a whole key/value *pair*, a different (heavier) shape.
+With scalar + seqEmpty + map + the BUILD-move `seq`, the seq shape side's four-way head dispatch is
+complete. -/
 
-/-- A toy recursive seq entry (toy of `RecSeqEntry`): a scalar leaf, an empty-bracket leaf, or a
-    bracketed sub-window.  `scalar` and `seqEmpty` are the non-recursive leaves the shape side lands
-    first; `seq` is the recursive constructor whose window-lift is the BUILD structural move (so it is
-    *not* new shape-side work).  `seqEmpty` is written with parametric tokens + value hypotheses,
-    mirroring the real `RecSeqEntry.seqEmpty (op cl) (h_op …) (h_cl …)`. -/
+/-- A toy *well-bracketed* predicate (toy of `WellBracketed`): the interior's running balance returns
+    to `0` over its whole length.  This is the **flat projection fact** the `map` near-leaf STORES —
+    contrast the recursive `seq`, whose interior is a recursive body structure.  It is decidable, so
+    the witnesses below discharge it by `decide`. -/
+def WB (l : List Tok) : Prop := bal l l.length = 0
+
+instance (l : List Tok) : Decidable (WB l) := by unfold WB; infer_instance
+
+/-- A toy recursive seq entry (toy of `RecSeqEntry`): a scalar leaf, an empty-bracket leaf, a
+    bracketed sub-*sequence*, or a nested *mapping*.  `scalar` and `seqEmpty` are the non-recursive
+    leaves the shape side lands first; `seq` is the recursive constructor whose window-lift is the
+    BUILD structural move (so it is *not* new shape-side work); `map` is the **near-leaf** — a
+    bracketed window like `seq`, but it STORES only the flat `WB interior` projection fact (toy of
+    `RecSeqEntry.map` storing only `WellBracketed`, R244), NOT a recursive body, so it does not extend
+    the recursion graph.  `seqEmpty`/`map` are written with parametric tokens + value hypotheses,
+    mirroring the real `RecSeqEntry.{seqEmpty,map} (op cl) (h_op …) (h_cl …)`. -/
 inductive Entry : List Tok → Prop where
   | scalar (t : Tok) (h : t = .sc) : Entry [t]
   | seqEmpty (a b : Tok) (h_op : a = .op) (h_cl : b = .cl) : Entry (a :: ([] ++ [b]))
   | seq (interior : List Tok) : Entry (.op :: (interior ++ [.cl]))
+  | map (a b : Tok) (interior : List Tok)
+      (h_op : a = .mo) (h_cl : b = .mc) (h_wb : WB interior) :
+      Entry (a :: (interior ++ [b]))
 
 /-- **Scalar-leaf window-lift** (toy of `recseqentry_scalar_window`).  The one-token window at a
     scalar head is an `Entry.scalar` — the non-recursive base case.  Same proof skeleton as the real
@@ -309,5 +347,77 @@ theorem seqempty_window_l3_0 : Entry ((l3.take (0 + 2)).drop 0) :=
     after the opener is `sc`, not `cl` — so `entry_seqempty_window` does **not** apply at `l1`'s head:
     that is the recursive `seq` constructor's job (a non-empty interior), not the empty leaf's. -/
 theorem l1_head_is_not_empty_bracket : tokAt l1 (0 + 1) ≠ .cl := by decide
+
+/-! ### The nested-mapping near-leaf — the recursive `seq` BUILD move minus one field (toy of `recseqentry_map_window`, Reflection 267)
+
+The family's last member.  A *variable*-width interior (so a near-leaf, not a true leaf), but it
+STORES only the flat `WB interior` fact, so it terminates the dispatch rather than recursing.  The
+proof is the *same* window plumbing as the recursive `seq` BUILD move, differing only in the terminal
+constructor and the one stored field (`WB`, not a recursive body). -/
+
+/-- **Nested-mapping window-lift** (toy of `recseqentry_map_window`).  Given a map-opener `mo` at the
+    window head `lo`, its matching map-closer `mc` at `hi`, and a well-bracketed interior window
+    `(l.take hi).drop (lo+1)` (the flat `WB` projection fact), the opener-window
+    `(l.take (hi+1)).drop lo` is an `Entry.map`.  The proof transports the recursive `seq` BUILD move's
+    window plumbing verbatim: rest-decomposition `(take (hi+1)).drop (lo+1) = (take hi).drop (lo+1) ++
+    [l[hi]]` (`List.take_add_one` + `List.drop_append_of_le_length`), opener peel
+    (`List.getElem_cons_drop` + `List.getElem_take`) into `op :: (interior ++ [cl])` shape, head values
+    off `tokAt` (`List.getElem_eq_getD`) — then `Entry.map` fed the bare `h_wb`.  The *only* differences
+    from a recursive `seq` build are the constructor (`map`) and that one stored field (`WB`, not a
+    body): the one-field arity delta IS the store-vs-project decision. -/
+theorem entry_map_window (l : List Tok) (lo hi : Nat)
+    (h_lo_hi : lo < hi) (h_hi : hi < l.length)
+    (h_open : tokAt l lo = .mo) (h_close : tokAt l hi = .mc)
+    (h_wb : WB ((l.take hi).drop (lo + 1))) :
+    Entry ((l.take (hi + 1)).drop lo) := by
+  have h_lo : lo < l.length := by omega
+  -- rest-decomposition: the `interior ++ [cl]` tail.
+  have h_rest : (l.take (hi + 1)).drop (lo + 1)
+      = (l.take hi).drop (lo + 1) ++ [l[hi]'h_hi] := by
+    have h_ts : l.take (hi + 1) = l.take hi ++ [l[hi]'h_hi] := by
+      rw [List.take_add_one, List.getElem?_eq_getElem h_hi]; rfl
+    rw [h_ts]
+    have h_len : lo + 1 ≤ (l.take hi).length := by rw [List.length_take]; omega
+    rw [List.drop_append_of_le_length h_len]
+  -- peel the opener.
+  have h_peel : (l.take (hi + 1)).drop lo
+      = l[lo]'(by omega) :: (l.take (hi + 1)).drop (lo + 1) := by
+    have hlen : lo < (l.take (hi + 1)).length := by rw [List.length_take]; omega
+    have h := (List.getElem_cons_drop hlen).symm
+    rw [List.getElem_take] at h
+    exact h
+  rw [h_peel, h_rest]
+  have h_op_val : l[lo]'(by omega) = .mo := by rw [List.getElem_eq_getD (.sc)]; exact h_open
+  have h_cl_val : l[hi]'h_hi = .mc := by rw [List.getElem_eq_getD (.sc)]; exact h_close
+  exact Entry.map _ _ _ h_op_val h_cl_val h_wb
+
+/-! #### Positive witness — the map near-leaf fires at a `mo … mc` window -/
+
+-- In `l4 = [mo, sc, mc]` the nested map sits at the head (`lo = 0`, `hi = 2`); the near-leaf fires,
+-- producing an `Entry` of the window `[mo, sc, mc]` — its interior `[sc]` is well-bracketed (`WB`).
+theorem map_window_l4_0 : Entry ((l4.take (2 + 1)).drop 0) :=
+  entry_map_window l4 0 2 (by decide) (by decide) (by decide) (by decide) (by decide)
+
+-- The interior window really is `[sc]`, and it is `WB` (balance returns to 0):
+#guard (l4.take 2).drop (0 + 1) == [Tok.sc]
+theorem interior_l4_is_wb : WB ((l4.take 2).drop (0 + 1)) := by decide
+-- and the located opener-window really is the whole `[mo, sc, mc]`:
+#guard (l4.take (2 + 1)).drop 0 == [Tok.mo, Tok.sc, Tok.mc]
+
+/-! #### Negative witnesses — the near-leaf needs the matching `mc`, a balanced interior, and stores no body -/
+
+-- The map near-leaf is a (≥2)-token shape, not the scalar leaf's one-token window: it is a genuinely
+-- different family member.
+#guard (l4.take (2 + 1)).drop 0 != [Tok.mo]
+
+/-- An *unbalanced* interior is not a valid near-leaf input: `WB` is exactly the stored projection
+    fact, and it fails for `[mo]` (a lone opener, balance `1 ≠ 0`).  This is the flat fact the
+    constructor stores in place of a recursive body. -/
+theorem unbalanced_interior_not_wb : ¬ WB [Tok.mo] := by decide
+
+/-- The map near-leaf needs the *map* closer `mc`, distinct from the sequence closer `cl`: in
+    `l1 = [op, sc, cl, …]` the bracket is a sequence bracket, so the map near-leaf does not apply
+    there (that is the seq side's dispatch — `seqEmpty`/`seq`/`scalar` — not `map`). -/
+theorem cl_is_not_map_close : tokAt l1 2 ≠ .mc := by decide
 
 end Tests.Reflections.EntryBoundaryLocator
