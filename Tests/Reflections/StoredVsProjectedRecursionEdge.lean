@@ -1,10 +1,17 @@
 /-!
-# Reflection 251 — stored-vs-projected severs the producer's recursion edge
+# Reflections 251 + 252 — stored-vs-projected severs the producer's recursion edge; the dependent twin's IH is dead
 
 Self-contained core-Lean toy (no `L4YAML` import) for the principle: **a recursive-deliverable
 inductive's STORAGE choices set the shape of the PRODUCER's recursion graph.**  A member that
 *stores* its recursive sub-structure forces the producer's case to recurse; a sibling that
 *projects* a flat invariant instead severs that edge, making the producer's case a pure leaf.
+
+**R252 (the dependent twin, at the bottom of this file): in a storage-ordered producer family the
+*base* member carries the only live self-recursion, and each *dependent* member consumes the base as
+a black box and recurses on nothing of its own — so its induction hypothesis is entirely dead.**
+Modelled by a second deliverable `KeyEntry e := Entry e ∧ bal e = 0` whose producer `buildKeyEntry`
+is *non-recursive*: it routes the `Entry` part to the base `buildEntry` and the extra flat fact to
+`bal_emit`, never calling itself.
 
 Toy model:
 
@@ -181,5 +188,34 @@ def built_seq_empty : Entry [Tok.os, Tok.cs] := Entry.seqEmpty
 #guard decide (bal ([] : List Tok) = 0)         -- map's empty-interior premise holds …
 #guard decide (bal [Tok.om] ≠ 0)                -- … but an unbalanced interior is rejected
 -- (`Body []` is uninhabited — `not_body_nil` above — so the storing member has no empty interior.)
+
+/-! ### Reflection 252 — the dependent twin's induction hypothesis is dead
+
+`KeyEntry` is a *second* deliverable (the saved-key twin): the same recursive `Entry` PLUS one
+extra flat fact (`bal e = 0`).  Its producer `buildKeyEntry` is the **dependent** member of the
+storage-ordered family — and the point is that it does **not** recurse on itself.  It consumes the
+**base** producer `buildEntry` as a black box (for the `Entry` part) and supplies the extra fact
+flatly via `bal_emit`.  It is *literally non-recursive* (its body contains no `buildKeyEntry` call),
+so an `induction`/`Val.rec` framing of it would leave the induction hypothesis entirely unused — the
+"dead IH" of R252.  Contrast `buildEntry` above, whose `seq` case genuinely self-recurses through
+`buildBody`: the base carries the family's only live self-recursion. -/
+
+/-- The dependent deliverable: the recursive `Entry` plus one extra flat fact. -/
+def KeyEntry (e : List Tok) : Prop := Entry e ∧ bal e = 0
+
+/-- The dependent producer — non-recursive: `Entry` part from the BASE sibling `buildEntry`, the
+    extra fact from the flat `bal_emit`.  No `buildKeyEntry` call in its own body ⇒ its IH is dead. -/
+def buildKeyEntry (v : Val) : KeyEntry (emit v) := ⟨buildEntry v, bal_emit v⟩
+
+-- POSITIVE: the dependent twin builds for every shape, with NO self-recursion …
+def built_key_atom : KeyEntry [Tok.a]                 := buildKeyEntry Val.a
+def built_key_seq  : KeyEntry [Tok.os, Tok.a, Tok.cs] := buildKeyEntry (Val.seq [Val.a])
+def built_key_map  : KeyEntry [Tok.om, Tok.cm]        := buildKeyEntry (Val.map [])
+
+-- … and projecting it back recovers exactly the base `Entry` (the dependent stores nothing new
+-- structurally — only the extra flat fact, which holds on every emit block, fails on unbalanced).
+def key_projects_to_entry : Entry [Tok.os, Tok.a, Tok.cs] := built_key_seq.1
+#guard decide (bal (emit (Val.seq [Val.a])) = 0)   -- the extra fact holds on an emit block …
+#guard decide (bal [Tok.os, Tok.a] ≠ 0)            -- … but not on an unbalanced one ⇒ no KeyEntry
 
 end Tests.Reflections.StoredVsProjectedRecursionEdge
