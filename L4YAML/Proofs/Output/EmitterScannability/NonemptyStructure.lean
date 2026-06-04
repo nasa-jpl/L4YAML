@@ -3030,6 +3030,87 @@ theorem recmapbody_cons_window (tokens : Array (Positioned YamlToken)) (lo m hi 
     ((tokens.toList.take hi).drop (m + 1)) (RecMapPair.ne_nil h_pair) h_pair
     (RecMapPair.head_key h_pair (RecMapPair.ne_nil h_pair)) h_fe_val h_rest
 
+/-- **Least witness of a decidable predicate in a bounded range** (Phase J — the navigation
+    skeleton's combinatorial core).  Given a decidable predicate `P` that holds at the range end
+    `start + gap`, there is a *least* `m` in `[start, start + gap]` satisfying `P`, together with the
+    minimality certificate that no `k` in `[start, m)` satisfies `P`.
+
+    Fully constructive: structural induction on `gap`, scanning upward from `start` with the
+    decidability instance (`if h : P start then …`) — no `Nat.find`, no classical choice, no
+    well-founded recursion.  This is the generic well-ordering brick the entry-boundary locator
+    instantiates; it is deliberately predicate-agnostic so the *same* lemma serves both the seq and
+    the map locate recursions (the `.flowEntry` separator that marks a body split is the same token
+    for both collection kinds, so the boundary predicate is shared — no seq versus map mirror here).
+
+    Verified-but-unconsumed (R225): references no sorry site, frontier sorry count unchanged. -/
+theorem exists_least_in_range (P : Nat → Prop) [DecidablePred P] :
+    ∀ (gap start : Nat), P (start + gap) →
+      ∃ m, start ≤ m ∧ m ≤ start + gap ∧ P m ∧ ∀ k, start ≤ k → k < m → ¬ P k := by
+  intro gap
+  induction gap with
+  | zero =>
+    intro start hP
+    refine ⟨start, Nat.le_refl _, ?_, ?_, ?_⟩
+    · omega
+    · simpa using hP
+    · intro k hk1 hk2; exfalso; omega
+  | succ g ih =>
+    intro start hP
+    if h0 : P start then
+      refine ⟨start, Nat.le_refl _, ?_, h0, ?_⟩
+      · omega
+      · intro k hk1 hk2; exfalso; omega
+    else
+      have hP' : P ((start + 1) + g) := by
+        have he : (start + 1) + g = start + (g + 1) := by omega
+        rw [he]; exact hP
+      obtain ⟨m, hm1, hm2, hm3, hm4⟩ := ih (start + 1) hP'
+      refine ⟨m, by omega, by omega, hm3, ?_⟩
+      intro k hk1 hk2
+      rcases Nat.lt_or_ge k (start + 1) with hlt | hge
+      · have hk_eq : k = start := by omega
+        rw [hk_eq]; exact h0
+      · exact hm4 k hge hk2
+
+/-- **First entry-boundary locator** (Phase J — the analytical entry-boundary location, first brick;
+    seq and map share it).  Given a balanced body-interior window `[lo, hi)` (`flowBracketBalance
+    tokens lo hi = 0`, the guard the per-window `Rec…Body` producer owns), there is a least depth-`0`
+    *boundary marker* `m` in `(lo, hi]` — a position where the running balance from `lo` returns to
+    `0` and which is either the window end (`m = hi`) or a `.flowEntry` separator — such that no
+    earlier interior position is such a marker.
+
+    This pins the split point the locate recursion consumes: the *first* body item occupies `[lo, m)`
+    (balanced, containing no depth-`0` separator, by the minimality clause), followed at `m` either by
+    the trailing separator (the `ADVANCE` move's `tokens[m]! = .flowEntry`) or by the window end (the
+    last item, a `single`).  It is the input side of the entry-boundary analysis — locating *where* the
+    first item ends — separate from the still-owed shape side (showing `[lo, m)` is a scalar or a
+    matched-bracket `RecSeqEntry`/`RecMapPair`, via `flowBracketBalance_matching_close`).
+
+    Axis-agnostic: the boundary token `.flowEntry` is shared by sequences and mappings, so this single
+    lemma feeds both the `RecSeqBody` and the `RecMapBody` recursions — there is no seq versus map
+    mirror to land (contrast the structural moves, where the terminal constructor differed).
+
+    Verified-but-unconsumed (R225): instantiates only `exists_least_in_range`, references no sorry
+    site, frontier sorry count unchanged. -/
+theorem firstEntryBoundary (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (h_lo_hi : lo < hi)
+    (h_total : flowBracketBalance tokens lo hi = 0) :
+    ∃ m, lo < m ∧ m ≤ hi ∧
+      flowBracketBalance tokens lo m = 0 ∧
+      (m = hi ∨ tokens[m]!.val = .flowEntry) ∧
+      (∀ k, lo < k → k < m →
+        ¬ (flowBracketBalance tokens lo k = 0 ∧ (k = hi ∨ tokens[k]!.val = .flowEntry))) := by
+  obtain ⟨m, hm1, hm2, hm3, hm4⟩ :=
+    exists_least_in_range
+      (fun m => flowBracketBalance tokens lo m = 0 ∧ (m = hi ∨ tokens[m]!.val = .flowEntry))
+      (hi - (lo + 1)) (lo + 1)
+      (by
+        have he : (lo + 1) + (hi - (lo + 1)) = hi := by omega
+        rw [he]; exact ⟨h_total, Or.inl rfl⟩)
+  refine ⟨m, by omega, by omega, hm3.1, hm3.2, ?_⟩
+  intro k hk1 hk2
+  exact hm4 k (by omega) hk2
+
 /-- **Parametric `MapBodyProps` assembler** (Phase J seed, map side).  The map-side mirror of
     `seqBodyProps_assemble`: given an arbitrary balanced flow-MAPPING subrange `[lo, hi)` —
     `tokens[hi]! = .flowMappingEnd`, total balance `0`, Dyck prefixes, interior `WellTyped` — together
