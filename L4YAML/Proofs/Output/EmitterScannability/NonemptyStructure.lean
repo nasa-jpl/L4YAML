@@ -3640,6 +3640,109 @@ theorem mapLocator_of_window_recmapbody (tokens : Array (Positioned YamlToken))
     (h_key_bracket_succ lo hi h_lo2 h_lo_hi h_hi2 h_hi_sz h_close h_bal h_open)
     (h_value_bracket_succ lo hi h_lo2 h_lo_hi h_hi2 h_hi_sz h_close h_bal h_open)
 
+/-- **`FlowSubrangesOk` from the per-window `Rec…Body` producers** (Phase J — the locate's whole
+    consumer chain folded into one boundary).  This packages the three landed locate-consumer joints —
+    the universal assembler `flowSubrangesOk_of_locators` (R243) and the two boundary-anchoring locator
+    joints `seqLocator_of_window_recseqbody`/`mapLocator_of_window_recmapbody` (R255/R256) — into a
+    single lemma keyed *only* on the locate recursion's genuine, still-owed deliverables: the
+    bounded per-window `RecSeqBody`/`RecMapBody` producers (and, on the map side, the six pair-interior
+    primitives the R246 storage asymmetry leaves below the `Rec…Body`'s granularity), plus the two
+    stream-frame boundary tokens and the single outer `WellTyped` the proof already owns at the
+    structure site.
+
+    With this, the entire residual *downstream of the producer* is gone: every consumer step
+    (`FlowSubrangesOk` packaging, the unbounded↔bounded boundary reconciliation on both sides, the
+    per-window `*_of_located_entry`/`*_of_recseqbody_window` joints, the Dyck-free / WellTyped-via-outer
+    reductions) is composed here once.  What remains is *exactly* the value-driven locate recursion: a
+    function delivering `RecSeqBody ((take hi).drop lo)` (seq) / `RecMapBody …` + the six primitives
+    (map) at every guarded body-interior window.  The future recursion discharges the two
+    `scanFiltered_emit{Seq,Map}_nonempty_structure` sorry sites by `exact flowSubrangesOk_of_window_producers
+    tokens h_t0 h_tlast h_wt_interior <seq recursion> <map recursion> <the six primitives>`.
+
+    Verified-but-unconsumed (R225): composes only landed lemmas, references no sorry site, frontier
+    sorry count unchanged at 4 — it collapses the locate's whole consumer chain into one typed
+    boundary, the producer's contract. -/
+theorem flowSubrangesOk_of_window_producers (tokens : Array (Positioned YamlToken))
+    (h_t0 : tokens[0]!.val = .streamStart)
+    (h_tlast : tokens[tokens.size - 1]!.val = .streamEnd)
+    (h_wt_outer : WellTyped ((tokens.toList.take (tokens.size - 2)).drop 2))
+    (h_seq_rec : ∀ lo hi, 2 ≤ lo → lo ≤ hi → hi ≤ tokens.size - 2 → hi < tokens.size →
+      tokens[hi]!.val = .flowSequenceEnd →
+      flowBracketBalance tokens lo hi = 0 →
+      tokens[lo - 1]!.val = .flowSequenceStart →
+      RecSeqBody ((tokens.toList.take hi).drop lo))
+    (h_map_rec : ∀ lo hi, 2 ≤ lo → lo ≤ hi → hi ≤ tokens.size - 2 → hi < tokens.size →
+      tokens[hi]!.val = .flowMappingEnd →
+      flowBracketBalance tokens lo hi = 0 →
+      tokens[lo - 1]!.val = .flowMappingStart →
+      RecMapBody ((tokens.toList.take hi).drop lo))
+    (h_key_content : ∀ lo hi, 2 ≤ lo → lo ≤ hi → hi ≤ tokens.size - 2 → hi < tokens.size →
+      tokens[hi]!.val = .flowMappingEnd →
+      flowBracketBalance tokens lo hi = 0 →
+      tokens[lo - 1]!.val = .flowMappingStart →
+      ∀ k, lo ≤ k → k < hi →
+        flowBracketBalance tokens lo k = 0 →
+        tokens[k]!.val = .key →
+        k + 1 < hi ∧ isFlowContentStart tokens[k + 1]!.val)
+    (h_key_scalar_value : ∀ lo hi, 2 ≤ lo → lo ≤ hi → hi ≤ tokens.size - 2 → hi < tokens.size →
+      tokens[hi]!.val = .flowMappingEnd →
+      flowBracketBalance tokens lo hi = 0 →
+      tokens[lo - 1]!.val = .flowMappingStart →
+      ∀ k, lo ≤ k → k < hi →
+        flowBracketBalance tokens lo k = 0 →
+        tokens[k]!.val = .key →
+        (∃ c s, tokens[k + 1]!.val = .scalar c s) →
+        k + 2 < hi ∧ tokens[k + 2]!.val = .value)
+    (h_value_content : ∀ lo hi, 2 ≤ lo → lo ≤ hi → hi ≤ tokens.size - 2 → hi < tokens.size →
+      tokens[hi]!.val = .flowMappingEnd →
+      flowBracketBalance tokens lo hi = 0 →
+      tokens[lo - 1]!.val = .flowMappingStart →
+      ∀ k, lo ≤ k → k < hi →
+        flowBracketBalance tokens lo k = 0 →
+        tokens[k]!.val = .value →
+        k + 1 < hi ∧ isFlowContentStart tokens[k + 1]!.val)
+    (h_value_scalar_succ : ∀ lo hi, 2 ≤ lo → lo ≤ hi → hi ≤ tokens.size - 2 → hi < tokens.size →
+      tokens[hi]!.val = .flowMappingEnd →
+      flowBracketBalance tokens lo hi = 0 →
+      tokens[lo - 1]!.val = .flowMappingStart →
+      ∀ k, lo ≤ k → k < hi →
+        flowBracketBalance tokens lo k = 0 →
+        tokens[k]!.val = .value →
+        (∃ c s, tokens[k + 1]!.val = .scalar c s) →
+        k + 2 ≤ hi ∧
+        (tokens[k + 2]!.val = .flowEntry ∨
+         (tokens[k + 2]!.val = .flowMappingEnd ∧ k + 2 = hi)))
+    (h_key_bracket_succ : ∀ lo hi, 2 ≤ lo → lo ≤ hi → hi ≤ tokens.size - 2 → hi < tokens.size →
+      tokens[hi]!.val = .flowMappingEnd →
+      flowBracketBalance tokens lo hi = 0 →
+      tokens[lo - 1]!.val = .flowMappingStart →
+      ∀ k j, lo ≤ k → k < hi →
+        flowBracketBalance tokens lo k = 0 →
+        tokens[k]!.val = .key →
+        k + 1 < j → j < hi →
+        flowBracketDelta tokens[j]!.val = -1 →
+        flowBracketBalance tokens lo (j + 1) = 0 →
+        j + 1 < hi ∧ tokens[j + 1]!.val = .value)
+    (h_value_bracket_succ : ∀ lo hi, 2 ≤ lo → lo ≤ hi → hi ≤ tokens.size - 2 → hi < tokens.size →
+      tokens[hi]!.val = .flowMappingEnd →
+      flowBracketBalance tokens lo hi = 0 →
+      tokens[lo - 1]!.val = .flowMappingStart →
+      ∀ k j, lo ≤ k → k < hi →
+        flowBracketBalance tokens lo k = 0 →
+        tokens[k]!.val = .value →
+        k + 1 < j → j < hi →
+        flowBracketDelta tokens[j]!.val = -1 →
+        flowBracketBalance tokens lo (j + 1) = 0 →
+        j + 1 ≤ hi ∧
+        (tokens[j + 1]!.val = .flowEntry ∨
+         (tokens[j + 1]!.val = .flowMappingEnd ∧ j + 1 = hi))) :
+    FlowSubrangesOk tokens :=
+  flowSubrangesOk_of_locators tokens
+    (seqLocator_of_window_recseqbody tokens h_t0 h_tlast h_wt_outer h_seq_rec)
+    (mapLocator_of_window_recmapbody tokens h_t0 h_tlast h_wt_outer h_map_rec
+      h_key_content h_key_scalar_value h_value_content h_value_scalar_succ
+      h_key_bracket_succ h_value_bracket_succ)
+
 /-- Token structure of `scanFiltered ("[" ++ emitList items ++ "]")` for non-empty items.
     Establishes boundary tokens, body token patterns, and `parseNode` success within
     the flow sequence body.
