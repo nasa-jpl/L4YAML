@@ -678,4 +678,80 @@ theorem interior_sep_not_depth0 : balR l7 0 1 ≠ 0 := by decide
 -- leading bracket, origin `4` sees an empty (clamped) range.
 #guard balR l6 0 2 != balR l6 4 2
 
+/-! ## The head-dispatch — the locator's VARIABLE marker meets the lift's FIXED split point (toy of `recseqentry_scalar_dispatch`, Reflection 272)
+
+The shape-side lifts above are each stated at a *fixed* window keyed on their own split point
+(`entry_scalar_window` produces `Entry ((l.take (lo+1)).drop lo)` — its `m` is *literally* `lo+1`).
+`firstEntryBoundary` produces a *variable* marker `m` with only a minimality certificate.  The
+**head-dispatch** is the bridge that proves the two coincide: it is neither locating nor classifying
+but a SPLIT-POINT-COINCIDENCE proof.  For the scalar branch (`lo = 0` here, matching the toy
+locator), the coincidence is `m = 1`: a scalar head has delta `0` so `bal l 1 = 0`; the grammar
+substrate `h_succ` (the scalar entry is *complete* — position `1` is the window end or a separator)
+makes `1` a marker; the locator returned `m` as the **least** marker, so `m ≤ 1`, and `0 < m` forces
+`m = 1` — the located window *is* the one-token scalar window `entry_scalar_window` classifies.  The
+dispatch is the first toy to *consume* `firstEntryBoundary`'s minimality output, where every prior
+locate brick only *produced* substrate. -/
+
+/-- **Scalar head-dispatch step** (toy of `recseqentry_scalar_dispatch`).  Given the locator's outputs
+    for a window starting at `0` — the marker `m` (`0 < m ≤ l.length`) and its minimality — a scalar
+    head (`tokAt l 0 = .sc`), and the trailing-separator substrate `h_succ`, derive `m = 1` and the
+    located window's `Entry`.  The minimality clause is the engine: `1` is a marker, and `m` is the
+    least, so `m = 1`; then `entry_scalar_window` lifts the one-token window. -/
+theorem entry_scalar_dispatch (l : List Tok) (m : Nat)
+    (h_pos : 0 < l.length)
+    (h_zero_m : 0 < m) (_h_m_hi : m ≤ l.length)
+    (h_m_least : ∀ k, 0 < k → k < m →
+      ¬ (bal l k = 0 ∧ (k = l.length ∨ isFE (tokAt l k) = true)))
+    (h_sc : tokAt l 0 = .sc)
+    (h_succ : 1 = l.length ∨ isFE (tokAt l 1) = true) :
+    m = 1 ∧ Entry ((l.take m).drop 0) := by
+  -- The scalar head contributes delta `0`, so the one-token prefix `[0, 1)` is balanced.
+  have h_bal1 : bal l 1 = 0 := by
+    match l, h_pos with
+    | a :: t, _ =>
+      have ha : a = .sc := by simpa [tokAt] using h_sc
+      simp [bal, ha, delta]
+  -- `1` is a boundary marker (balanced + completes the entry); the least marker `m` is thus `≤ 1`.
+  have h_marker1 : bal l 1 = 0 ∧ (1 = l.length ∨ isFE (tokAt l 1) = true) := ⟨h_bal1, h_succ⟩
+  have h_m_eq : m = 1 := by
+    rcases Nat.lt_or_ge 1 m with hlt | hge
+    · exact absurd h_marker1 (h_m_least 1 (by omega) hlt)
+    · omega
+  refine ⟨h_m_eq, ?_⟩
+  rw [h_m_eq, List.drop_zero]
+  have := entry_scalar_window l 0 h_pos h_sc
+  rwa [List.drop_zero] at this
+
+/-! ### Positive witness — the locator's marker, fed to the dispatch, is proven to be `1` -/
+
+/-- `a,b` — scalar, separator, scalar.  A two-item seq body whose first item is the lone scalar `a`. -/
+def l8 : List Tok := [.sc, .fe, .sc]
+
+-- The faithful composition: `firstEntryBoundary` produces the *variable* marker `m`; the dispatch
+-- *proves* `m = 1` (the coincidence) and lifts the located window to an `Entry`.
+theorem dispatch_l8 : ∃ m, m = 1 ∧ Entry ((l8.take m).drop 0) := by
+  obtain ⟨m, hm_pos, hm_hi, _, _, hm_least⟩ := firstEntryBoundary l8 (by decide) (by decide)
+  exact ⟨m, entry_scalar_dispatch l8 m (by decide) hm_pos hm_hi hm_least (by decide) (by decide)⟩
+
+-- The located window really is the one-token scalar window `[sc]`:
+#guard (l8.take 1).drop 0 == [Tok.sc]
+-- `1` is a marker (balanced, and the next token is the separator), pinning the least `m` to it:
+#guard bal l8 1 == 0
+#guard isFE (tokAt l8 1) == true
+
+/-! ### Negative witnesses — the scalar branch's two preconditions are load-bearing -/
+
+-- (1) The head must be a scalar: at an `op` head (`l1` position `0`) the bracket branch fires, not the
+-- scalar dispatch.  (Same disqualifier as the scalar *leaf*, now at the dispatch level.)
+theorem op_head_is_not_scalar_dispatch : tokAt l1 0 ≠ .sc := by decide
+
+/-- `a a ,` — two adjacent scalars with no separator between.  Not a valid seq body: the first scalar
+    is *not* a complete entry, so the trailing-separator substrate `h_succ` fails (position `1` is a
+    scalar, not the separator, and not the window end).  The dispatch's scalar branch cannot fire. -/
+def l9 : List Tok := [.sc, .sc, .fe]
+
+theorem l9_scalar_not_complete : ¬ (1 = l9.length ∨ isFE (tokAt l9 1) = true) := by decide
+#guard tokAt l9 1 == Tok.sc        -- position 1 is another scalar…
+#guard l9.length == 3              -- …and the window does not end at 1, so `h_succ` is unavailable
+
 end Tests.Reflections.EntryBoundaryLocator
