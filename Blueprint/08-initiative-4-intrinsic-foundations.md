@@ -15448,6 +15448,50 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
+                ▣▣▣ **REMAINING-WORK DEPENDENCY MAP (cross-cutting synthesis, 2026-06-04 —
+                supersedes the linear "→ `FlowSubrangesOk` sorries → `content_eq` sorries →
+                `universal_roundtrip`" phrasing that every per-brick revision block below repeats).**
+                The four frontier sorries are **two logically independent workstreams**, not one
+                sequential chain; they combine *only* at `universal_roundtrip`. Verified by reading the
+                theorems: `emit_roundtrip_{sequence,mapping}_content_eq` (EmitterScannability.lean:796 / :835)
+                each take `h_raw : parseYamlRaw (emit …) = .ok raw_docs` as a **hypothesis** and `sorry`
+                only the non-empty content-structure argument — they do **not** consume
+                `parseStream_emit{Sequence,Mapping}`, so the content obligation is provable without the
+                structure obligation, and vice-versa.
+
+                • **Workstream A — STRUCTURE (critical path / the bottleneck).** The 2 `FlowSubrangesOk := sorry`
+                sites (NonemptyStructure.lean:4899 seq, :5140 map). Discharged by the locate-recursion
+                **DRIVER** — `Nat.strongRecOn` on window width, seq first then map mirror — feeding the per-window
+                `Rec…Body` producers into `flowSubrangesOk_of_window_producers`. **Large/risky**, sub-decomposable:
+                the head-dispatch (which shape-side lift fires) is a grammar fact the producer contract does not
+                carry — it owes a `WellTyped` substrate (per-window via `WellTyped_subrange`) and likely a
+                trailing-separator exclusion. Every locate-substrate brick R225–R271 (incl. this session's
+                `advanceTail_invariant`) feeds this one driver. Residual scope: the **non-empty** collection case only.
+
+                • **Workstream B — CONTENT (independent of A; currently dormant).** The 2
+                `emit_roundtrip_{sequence,mapping}_content_eq` `exact sorry` sites (EmitterScannability.lean:832 / :872),
+                each the **non-empty** branch only — the empty cases are already proven (`checkContent{Seq,Map}_true`
+                via `native_decide`). The argument: *given* parse success (`h_raw`), the recovered value is `contentEq`
+                to the original. Provable in either order relative to A (will in practice reuse the parser-trace facts
+                A also builds, but depends on none of A's sorries). No substrate brick has yet been spent here.
+
+                **Capstone mapping — which discharge unblocks which headline:**
+                — `emit_pipeline_decompose_ix` — **already clean** (pure triple; cataloged in the Verification
+                manual 2026-06-04 as the emitter analogue of `parseYamlRaw_ok_decompose`).
+                — `parseStream_accepts_emit_tokens` — needs **A only** (define-before-use rules out any `content_eq`
+                dependence — the acceptance theorem at line 717 precedes the content_eq sites at 832/872). **Graduates
+                strictly before the full round-trip** — the first emitter-side capstone to go sorry-free. Currently
+                *omitted* from the Verification manual's Key-Theorems tables because it is silently `sorryAx` (via
+                `scanFiltered_emit{Seq,Map}_nonempty_structure`) until A lands; promote it then.
+                — `universal_roundtrip` — needs **A** (acceptance + single-document supply `h_raw`) **and B** (content).
+                The join; *only this capstone requires both workstreams*.
+
+                **Net:** A is the sole bottleneck for *acceptance* and the genuine engineering risk; B is an
+                independent, lower-risk obligation attackable in parallel; the full round-trip is A ⋈ B. The per-brick
+                "Immediate next brick" pointers below all track A's frontier — B is dormant pending its own scope.
+                Cross-refs: Reflection 271 (structural-complete ≠ runnable), and the Verification manual's
+                §Round-Trip / §Zero-Axiom sorry-budget note (reconciled 2026-06-04).
+
                 **Total .body scope re-estimate (ONE-HUNDRED-NINETEENTH revision —
                 after **Thread A step 3 sub-step 3's brick cont'd (locate recursion ANALYTICAL PRIMITIVE —
                 *ADVANCE-step invariant preservation*) — landed** (commit `cc671888`, Reflection 271).
