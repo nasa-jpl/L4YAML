@@ -136,6 +136,10 @@ def l1 : List Tok := [.op, .sc, .cl, .fe, .sc]
 /-- `[a]` — open, scalar, close.  A single bracketed item, no separator. -/
 def l2 : List Tok := [.op, .sc, .cl]
 
+/-- `[],a` — open, close (an *empty* bracket `[ ]`), separator, scalar.  The empty-bracket leaf
+    fires at the head: `op` immediately followed by `cl`, the matching close one step in. -/
+def l3 : List Tok := [.op, .cl, .fe, .sc]
+
 -- The locator applies to both balanced windows (these type-check ⇒ the lemma fires).
 theorem firstMarker_l1 :
     ∃ m, 0 < m ∧ m ≤ l1.length ∧ bal l1 m = 0 ∧
@@ -178,26 +182,35 @@ theorem not_marker_inside :
     `l1`) is not the separator. -/
 theorem cl_is_not_separator : isFE (tokAt l1 2) = false := by decide
 
-/-! ## The shape side — per-constructor window-lifts (toy of `recseqentry_scalar_window`, Reflection 265)
+/-! ## The shape side — per-constructor window-lifts (toy of `recseqentry_{scalar,seqempty}_window`, Reflections 265 & 266)
 
 Once the input side has located the split point `m`, the **shape side** classifies *what* the first
-item `[lo, m)` is — building the entry inductive.  The entry inductive has a non-recursive **scalar
-leaf** and a **recursive bracketed** constructor, and the shape side is the *family of
-per-constructor window-lifts* — one lemma per constructor, building that constructor from the window.
-The recursive constructor's lift is the BUILD structural move (in the real development,
-`located_entry_of_recseqbody`, already landed), so the shape side's genuinely-new work is the
-*non-recursive* leaf: modelled here by `entry_scalar_window`, the locate recursion's base case (no
-matching-close, no descent, `m = lo + 1`).
+item `[lo, m)` is — building the entry inductive.  The shape side is the *family of per-constructor
+window-lifts* — one lemma per constructor, building that constructor from the window.  The recursive
+constructor's lift is the BUILD structural move (in the real development, `located_entry_of_recseqbody`,
+already landed), so the shape side's genuinely-new work is the **non-recursive leaves**.
 
-This is also where the **seq/map mirror re-splits**: this lemma names the entry inductive (a
-collection-specific deliverable type, unlike the axis-agnostic `firstEntryBoundary`), so it is
+There are two leaves, and **they come as a family** (Reflection 266): the one-token **scalar** leaf
+(`entry_scalar_window`, the recursion's base case — no matching-close, no descent, `m = lo + 1`), and
+the two-token **empty-bracket** leaf (`entry_seqempty_window` — an empty `[ ]`, `m = lo + 2`, the
+matching close one step in).  The empty-bracket lift is the scalar lift *scaled by one token*: the
+same window-singleton identity run twice (peel `[lo]`, then `[lo+1]`), the same trailing-`drop`-nil
+and `getElem_take` simplifications, the same head-value transport — only the arity of the fixed shape
+moved.  That is the signature of a *leaf family*: once the first leaf is proven, the rest are the same
+proof at a different arity, not fresh analysis.
+
+This is also where the **seq/map mirror re-splits**: these lemmas name the entry inductive (a
+collection-specific deliverable type, unlike the axis-agnostic `firstEntryBoundary`), so they are
 seq-specific — the map shape side's leaf is a whole key/value *pair*, a different (heavier) shape. -/
 
-/-- A toy recursive seq entry (toy of `RecSeqEntry`): a scalar leaf, or a bracketed sub-window.
-    `scalar` is the non-recursive leaf the shape side lands first; `seq` is the recursive constructor
-    whose window-lift is the BUILD structural move (so it is *not* new shape-side work). -/
+/-- A toy recursive seq entry (toy of `RecSeqEntry`): a scalar leaf, an empty-bracket leaf, or a
+    bracketed sub-window.  `scalar` and `seqEmpty` are the non-recursive leaves the shape side lands
+    first; `seq` is the recursive constructor whose window-lift is the BUILD structural move (so it is
+    *not* new shape-side work).  `seqEmpty` is written with parametric tokens + value hypotheses,
+    mirroring the real `RecSeqEntry.seqEmpty (op cl) (h_op …) (h_cl …)`. -/
 inductive Entry : List Tok → Prop where
   | scalar (t : Tok) (h : t = .sc) : Entry [t]
+  | seqEmpty (a b : Tok) (h_op : a = .op) (h_cl : b = .cl) : Entry (a :: ([] ++ [b]))
   | seq (interior : List Tok) : Entry (.op :: (interior ++ [.cl]))
 
 /-- **Scalar-leaf window-lift** (toy of `recseqentry_scalar_window`).  The one-token window at a
@@ -244,5 +257,57 @@ theorem op_head_is_not_scalar_leaf : tokAt l1 0 ≠ .sc := by decide
 -- And the bracketed first item `[op, sc, cl]` is three tokens, not the one-token shape the scalar
 -- leaf produces — the recursive constructor genuinely is a different (non-leaf) window-lift.
 #guard (l1.take 3).length == 3
+
+/-! ### The empty-bracket leaf — the scalar leaf scaled by one token (toy of `recseqentry_seqempty_window`, Reflection 266)
+
+The second non-recursive leaf: an empty bracket `[ ]`.  The proof is `entry_scalar_window`'s window
+identity run **twice** — the only thing that changed is the arity (one token → two). -/
+
+/-- **Empty-bracket window-lift** (toy of `recseqentry_seqempty_window`).  Given an opener `op` at the
+    window head immediately followed by a closer `cl`, the two-token window `(l.take (lo+2)).drop lo`
+    is an `Entry.seqEmpty` — `m = lo + 2`, non-recursive (no interior to descend into).  Same skeleton
+    as `entry_scalar_window`, the `List.getElem_cons_drop` peel applied twice (`[lo]` then `[lo+1]`,
+    trailing `drop (lo+2)` killed by `List.drop_eq_nil_of_le`), each index through the `take` by
+    `List.getElem_take`, both head values transported off `tokAt` (`List.getElem_eq_getD`). -/
+theorem entry_seqempty_window (l : List Tok) (lo : Nat)
+    (h_lo1 : lo + 1 < l.length)
+    (h_open : tokAt l lo = .op) (h_close : tokAt l (lo + 1) = .cl) :
+    Entry ((l.take (lo + 2)).drop lo) := by
+  have h_lo : lo < l.length := by omega
+  have hlen0 : lo < (l.take (lo + 2)).length := by rw [List.length_take]; omega
+  have hlen1 : lo + 1 < (l.take (lo + 2)).length := by rw [List.length_take]; omega
+  have h_drop_nil : (l.take (lo + 2)).drop (lo + 2) = [] := by
+    apply List.drop_eq_nil_of_le; rw [List.length_take]; omega
+  have h_win : (l.take (lo + 2)).drop lo = [l[lo]'h_lo, l[lo + 1]'h_lo1] := by
+    have e1 := (List.getElem_cons_drop hlen1).symm
+    rw [List.getElem_take, h_drop_nil] at e1
+    have e0 := (List.getElem_cons_drop hlen0).symm
+    rw [List.getElem_take, e1] at e0
+    exact e0
+  rw [h_win]
+  have h_op_val : l[lo]'h_lo = .op := by rw [List.getElem_eq_getD (.sc)]; exact h_open
+  have h_cl_val : l[lo + 1]'h_lo1 = .cl := by rw [List.getElem_eq_getD (.sc)]; exact h_close
+  exact Entry.seqEmpty _ _ h_op_val h_cl_val
+
+/-! #### Positive witness — the empty-bracket leaf fires at an `op`-then-`cl` head -/
+
+-- In `l3 = [op, cl, fe, sc]` the empty bracket sits at the head (`lo = 0`); the leaf lift fires,
+-- producing an `Entry` of the two-token window `[op, cl]`.
+theorem seqempty_window_l3_0 : Entry ((l3.take (0 + 2)).drop 0) :=
+  entry_seqempty_window l3 0 (by decide) (by decide) (by decide)
+
+-- The located window really is the two-token `[op, cl]`:
+#guard (l3.take (0 + 2)).drop 0 == [Tok.op, Tok.cl]
+
+/-! #### Negative witnesses — the empty-bracket leaf is *not* a one-token shape, and needs the close adjacent -/
+
+-- The empty-bracket window is two tokens, distinct from the scalar leaf's one-token shape: the two
+-- leaves are genuinely different members of the family (different arity), not the same lemma.
+#guard (l3.take (0 + 2)).drop 0 != [Tok.op]
+
+/-- The empty-bracket leaf needs `cl` *immediately* after `op`.  In `l1 = [op, sc, cl, …]` the token
+    after the opener is `sc`, not `cl` — so `entry_seqempty_window` does **not** apply at `l1`'s head:
+    that is the recursive `seq` constructor's job (a non-empty interior), not the empty leaf's. -/
+theorem l1_head_is_not_empty_bracket : tokAt l1 (0 + 1) ≠ .cl := by decide
 
 end Tests.Reflections.EntryBoundaryLocator
