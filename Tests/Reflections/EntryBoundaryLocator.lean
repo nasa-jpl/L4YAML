@@ -4,6 +4,13 @@
 Self-contained, `L4YAML`-free runnable illustration of the proof-engineering principle in
 Blueprint Reflection 264 (and memory `ref-entry-boundary-input-shape-split`).
 
+**Extended by Reflection 271** (the ADVANCE-step *invariant-preservation* certificate): the input
+side is not only *locating* the split point (`firstEntryBoundary`) but also *certifying the tail past
+it* (`advanceTail_invariant`) — two axis-agnostic balance facts, with the collection-specific shape
+side classifier between them.  A recursion can be *structurally complete* (every constructor liftable)
+yet not *runnable* (no proof the recursive call's precondition holds); the gap is this certificate.
+See the final section.
+
 **The principle.** Once a navigation recursion's *structural moves* are in hand (descend + build +
 advance, R262/R263), what remains is the **analytical entry-boundary location**, and it decomposes
 into two independent halves:
@@ -527,5 +534,148 @@ theorem seq_head_is_not_key : tokAt l1 0 ≠ .ky := by decide
 /-- And the *value* marker `vl` separating the two blocks is distinct from the seq separator `fe`: in
     `l1` position `3` is `fe`, not `vl`. -/
 theorem fe_is_not_value : tokAt l1 3 ≠ .vl := by decide
+
+/-! ## The ADVANCE-step tail invariant — invariant preservation (toy of `advanceTail_invariant`, Reflection 271)
+
+The input/shape split above gives the recursion its *moves* and its *split-point locator*, but a
+recursion is not **runnable** until one more fact is proved: after it ADVANCEs past a depth-`0`
+separator at `m`, the tail `[m+1, hi)` is **itself a valid recursive sub-instance**.  The structural
+moves are all *assembly* lemmas (given the pieces — a located entry, a recursive tail — build the
+constructor); **none of them certifies the recursive call's _precondition_** (that the tail is a
+balanced window the locator and classifier can act on).  That certificate is `advanceTail_invariant`,
+the toy's final brick: pure bracket-balance algebra, and — like `firstEntryBoundary`, unlike the
+structural moves — **axis-agnostic** (it names no entry/pair deliverable type, so it is written once
+for both the sequence and the mapping recursion).
+
+It needs a *range* balance `balR l lo hi` (toy of `flowBracketBalance`, balance over `[lo, hi)`), its
+additivity `balR_compose` (toy of `flowBracketBalance_compose`), and the single-token value
+`balR_single`.  Then, given a balanced window with a depth-`0` separator at `m`, it delivers the three
+facts the recursive call on `[m+1, hi)` needs: (a) the prefix *through* the separator is balanced;
+(b) the **tail is balanced**; (c) the tail **re-bases** — every depth from the outer origin `lo`
+equals the depth from the new origin `m+1` (`balR lo p = balR (m+1) p`), so the recursion threads its
+invariants from a *moving* origin for free.  This sharpens R264's input/shape split: the *input* side
+is locate-the-point **and** certify-the-tail, both axis-agnostic; structural-complete ≠ runnable. -/
+
+/-- Sum of bracket deltas over a token list. -/
+def sumD (l : List Tok) : Int := (l.map delta).foldl (· + ·) 0
+
+/-- Shifting the `foldl` accumulator out (toy of the real `foldl_add_shift`). -/
+theorem foldl_add_shift (l : List Int) (init : Int) :
+    l.foldl (· + ·) init = init + l.foldl (· + ·) 0 := by
+  induction l generalizing init with
+  | nil => simp
+  | cons hd tl ih => simp only [List.foldl]; rw [ih, ih (0 + hd)]; omega
+
+/-- `sumD` is additive over append — the workhorse behind `balR_compose`. -/
+theorem sumD_append (a b : List Tok) : sumD (a ++ b) = sumD a + sumD b := by
+  unfold sumD
+  rw [List.map_append, List.foldl_append]
+  exact foldl_add_shift (b.map delta) ((a.map delta).foldl (· + ·) 0)
+
+/-- **Range balance** over `[lo, hi)` (toy of `flowBracketBalance`). -/
+def balR (l : List Tok) (lo hi : Nat) : Int :=
+  if lo ≥ hi then 0 else sumD ((l.drop lo).take (hi - lo))
+
+/-- **Additivity** of the range balance: splitting `[lo, hi)` at a midpoint adds (toy of
+    `flowBracketBalance_compose`).  Same proof shape as the real lemma: the two degenerate ends by
+    `simp`, the middle by the slice decomposition `take (hi-lo) (drop lo) = take (mid-lo) (drop lo) ++
+    take (hi-mid) (drop mid)` (`List.take_add` + `List.drop_drop`) fed to `sumD_append`. -/
+theorem balR_compose (l : List Tok) (lo mid hi : Nat) (h1 : lo ≤ mid) (h2 : mid ≤ hi) :
+    balR l lo hi = balR l lo mid + balR l mid hi := by
+  by_cases hlm : lo = mid
+  · subst hlm; simp [balR]
+  · by_cases hmh : mid = hi
+    · subst hmh; simp [balR]
+    · have e1 : ¬ lo ≥ hi := by omega
+      have e2 : ¬ lo ≥ mid := by omega
+      have e3 : ¬ mid ≥ hi := by omega
+      unfold balR
+      rw [if_neg e1, if_neg e2, if_neg e3]
+      have hsplit : (l.drop lo).take (hi - lo)
+          = (l.drop lo).take (mid - lo) ++ (l.drop mid).take (hi - mid) := by
+        rw [show hi - lo = (mid - lo) + (hi - mid) from by omega, List.take_add,
+            List.drop_drop, show lo + (mid - lo) = mid from by omega]
+      rw [hsplit, sumD_append]
+
+/-- The range balance of a single token equals its bracket delta (toy of
+    `flowBracketBalance_single`). -/
+theorem balR_single (l : List Tok) (i : Nat) (h : i < l.length) :
+    balR l i (i + 1) = delta (l[i]'h) := by
+  have hslice : (l.drop i).take (i + 1 - i) = [l[i]'h] := by
+    rw [show i + 1 - i = 1 from by omega, List.drop_eq_getElem_cons h]; rfl
+  unfold balR
+  rw [if_neg (show ¬ i ≥ i + 1 from by omega), hslice]
+  simp [sumD]
+
+/-- **ADVANCE-step tail invariant** (toy of `advanceTail_invariant`).  Given a balanced window
+    `[lo, hi)` and a depth-`0` separator `fe` at `m` (`lo ≤ m < hi`, `balR l lo m = 0`,
+    `tokAt l m = .fe`), the tail `[m+1, hi)` is a valid recursive sub-instance: (a) the prefix through
+    the separator is balanced, (b) the tail is balanced, (c) every outer-origin depth on the tail
+    equals the new-origin depth.  *Verbatim* the real proof's structure: the separator's delta is `0`
+    (`balR_single`), so `balR_compose` split at `m` and at `m+1` gives all three by linear arithmetic
+    — no structural induction, axis-agnostic. -/
+theorem advanceTail_invariant (l : List Tok) (lo m hi : Nat)
+    (h_lo_m : lo ≤ m) (h_m_hi : m < hi) (h_hi : hi ≤ l.length)
+    (h_m_bal : balR l lo m = 0)
+    (h_sep : tokAt l m = .fe)
+    (h_total : balR l lo hi = 0) :
+    balR l lo (m + 1) = 0 ∧ balR l (m + 1) hi = 0 ∧
+    (∀ p, m + 1 ≤ p → p ≤ hi → balR l lo p = balR l (m + 1) p) := by
+  have h_m_len : m < l.length := by omega
+  -- the separator's delta is 0, so the single-token range `[m, m+1)` is balanced.
+  have h_val : l[m]'h_m_len = .fe := by rw [List.getElem_eq_getD (.sc)]; exact h_sep
+  have h_single : balR l m (m + 1) = 0 := by rw [balR_single l m h_m_len, h_val]; rfl
+  -- (a) prefix through the separator.
+  have h_prefix : balR l lo (m + 1) = 0 := by
+    rw [balR_compose l lo m (m + 1) h_lo_m (by omega), h_m_bal]; omega
+  -- (b) tail balanced (total − prefix).
+  have h_tail : balR l (m + 1) hi = 0 := by
+    have hc := balR_compose l lo (m + 1) hi (by omega) (by omega)
+    rw [h_total, h_prefix] at hc; omega
+  refine ⟨h_prefix, h_tail, ?_⟩
+  -- (c) re-basing: `balR lo p = balR lo (m+1) + balR (m+1) p = 0 + balR (m+1) p`.
+  intro p hp1 hp2
+  rw [balR_compose l lo (m + 1) p (by omega) hp1, h_prefix]; omega
+
+/-! ### Positive witness — the invariant fires on a depth-`0` separator -/
+
+/-- `[a],[b]` — `op sc cl fe op sc cl`.  Balanced, with the body separator `fe` at depth `0` (position
+    `3`) splitting it into two bracketed items.  A richer tail than `l1`'s lone scalar — the tail
+    `[4, 7)` is itself a bracketed item, so re-basing is exercised *mid-bracket*. -/
+def l6 : List Tok := [.op, .sc, .cl, .fe, .op, .sc, .cl]
+
+theorem advanceTail_l6 :
+    balR l6 0 (3 + 1) = 0 ∧ balR l6 (3 + 1) 7 = 0 ∧
+    (∀ p, 3 + 1 ≤ p → p ≤ 7 → balR l6 0 p = balR l6 (3 + 1) p) :=
+  advanceTail_invariant l6 0 3 7 (by decide) (by decide) (by decide)
+    (by decide) (by decide) (by decide)
+
+-- (a) the prefix `op sc cl fe` through the separator is balanced; (b) the tail `op sc cl` is balanced:
+#guard balR l6 0 4 == 0
+#guard balR l6 4 7 == 0
+-- (c) re-basing exercised *mid-bracket*: inside the tail's `[b]` the running depth is `1` from EITHER
+-- origin — the outer origin `0` and the new origin `4` agree precisely because the prefix `[0,4)` is
+-- balanced.  This is the fact that lets the recursion thread its invariants from a moving origin.
+#guard balR l6 0 5 == balR l6 4 5
+#guard balR l6 0 6 == balR l6 4 6
+#guard balR l6 0 5 == 1
+#guard balR l6 4 5 == 1
+
+/-! ### Negative witnesses — the depth-`0` hypothesis is load-bearing -/
+
+/-- `[ , ]` — an `fe` *inside* the bracket (position `1`), at depth `1` not `0`. -/
+def l7 : List Tok := [.op, .fe, .cl]
+
+/-- An **interior** separator (inside a bracket, depth ≥ 1) does **not** satisfy `balR l lo m = 0`, so
+    `advanceTail_invariant` correctly does not apply there — only a *depth-0* separator splits the body
+    into recursive sub-instances.  (The token *is* a separator; what disqualifies it is its depth.) -/
+theorem interior_sep_not_depth0 : balR l7 0 1 ≠ 0 := by decide
+#guard tokAt l7 1 == Tok.fe       -- it is an `fe`…
+#guard balR l7 0 1 == 1           -- …but at depth 1, so not a body boundary
+
+-- Re-basing is **not** a free identity: it holds on the tail *because* the prefix `[0, m+1)` is
+-- balanced.  At a position *before* the new origin the two frames disagree — origin `0` sees the
+-- leading bracket, origin `4` sees an empty (clamped) range.
+#guard balR l6 0 2 != balR l6 4 2
 
 end Tests.Reflections.EntryBoundaryLocator
