@@ -125,6 +125,10 @@ correctly into a single end-to-end pipeline.
   * `Composition`
   * Every successful `parseYamlRaw` result decomposes into a successful scan step followed by a successful parse step.
 *
+  * `emit_pipeline_decompose_ix`
+  * `ScannerEmitBridge`
+  * Emitter-side pipeline decomposition: every successful `parseYamlRawIx (emit v)` splits into a successful indexed scan (`scanFilteredIx`) and a successful indexed parse (`parseStreamIx`) of the emitter output — the emitter analogue of `parseYamlRaw_ok_decompose`.
+*
   * `parseYaml_ok_iff`
   * `Completeness`
   * `parseYaml` succeeds if and only if the input is valid YAML — the bridge between the implementation and the specification.
@@ -141,6 +145,10 @@ correctly into a single end-to-end pipeline.
 ### `parseYamlRaw_ok_decompose`
 
 ![parseYamlRaw_ok_decompose dependency graph](graphs/parseYamlRaw_ok_decompose.svg)
+
+### `emit_pipeline_decompose_ix`
+
+![emit_pipeline_decompose_ix dependency graph](graphs/emit_pipeline_decompose_ix.svg)
 
 ### `parseYaml_ok_iff`
 
