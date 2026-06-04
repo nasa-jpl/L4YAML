@@ -1,6 +1,10 @@
 /-
 # Reflection 262 — the locate recursion's three *structural moves* (descend + build + advance), the advance step being the positional lift of the body constructor
 
+(Extended by Reflection 263: the map mirror of the advance step — see the `## The MAP mirror` section
+at the bottom. The seq side establishes the mechanism; the map member transports it verbatim, the
+storage asymmetry surfacing only as the simpler head side-field `MStart`/`MPair.head_key`.)
+
 Self-contained, `L4YAML`-free runnable illustration of the proof-engineering principle in
 Blueprint Reflection 262 (and memory `ref-structural-moves-complete-recursion`).
 
@@ -40,7 +44,7 @@ hi).drop (m+1)`, the `L4YAML`-specific positional plumbing the principle is othe
 
 namespace Tests.Reflections.StructuralMovesAdvance
 
-inductive Tok | A | OB | CB | FE
+inductive Tok | A | OB | CB | FE | KY | VL
   deriving DecidableEq, Inhabited, Repr
 
 /-- toy of `ContentStartTok`: the value of an entry's first token — a scalar `A` or an opener `OB`. -/
@@ -143,5 +147,80 @@ theorem no_entry_separator : ¬ REntry [Tok.FE] := by intro h; cases h
 #guard ([Tok.A, Tok.FE, Tok.A] : List Tok).length == 3
 #guard ([Tok.OB, Tok.A, Tok.FE, Tok.A, Tok.CB] : List Tok).length == 5
 #guard ([Tok.OB, Tok.A, Tok.FE, Tok.A, Tok.CB, Tok.FE, Tok.A] : List Tok).length == 7
+
+/-! ## The MAP mirror (Reflection 263 — extends this demo one session later)
+
+The map advance step `recmapbody_cons_window` is the **verbatim seq→map mirror** of the seq advance
+step above: the positional plumbing transports character-for-character (here, the list-append
+essence `p ++ FE :: rest`), and the **only** delta is the terminal constructor's head side-field.
+
+A map *body* chains *pairs* (not entries) along `.flowEntry`; a *pair* is `KY :: (block_k ++ VL ::
+block_v)`, key and value each an `REntry` (toy of `RecMapPair.mk`'s `RecSeqEntry` blocks).  The
+storage asymmetry (R244/R246) surfaces here at the **head side-field**: a pair's head is *always*
+the key token `KY`, so the head fact is a *single equality* `(p.head h_ne) = KY` — and its projection
+`MPair.head_key` is one `cases` returning `rfl`, strictly *simpler* than the seq side's
+`REntry.head_cstart`, which `cases`es into the three-way `CStart` disjunction.  This is the same
+asymmetry that *dropped a hypothesis* in the descend mirror (R261) and *traded constructor arity* in
+R246 — here it sets the **shape (and simplicity) of the head projection**. -/
+
+/-- toy of the map head fact: a pair's head is the key token `KY` — a *single equality*, vs the seq
+    entry's three-way `CStart` disjunction (the R263/R246 storage asymmetry at the head side-field). -/
+def MStart (t : Tok) : Prop := t = Tok.KY
+
+-- toy of `RecMapBody` / `RecMapPair` (mutual).  A body chains *pairs* along `FE` (a real `cons`); a
+-- pair is `KY :: (block_k ++ VL :: block_v)`, key/value each an `REntry`.
+mutual
+  inductive MBody : List Tok → Prop where
+    | single (p : List Tok) (h_ne : p ≠ []) (h_p : MPair p) (h_head : MStart (p.head h_ne)) :
+        MBody p
+    | cons (p : List Tok) (fe : Tok) (rest : List Tok) (h_ne : p ≠ [])
+        (h_p : MPair p) (h_head : MStart (p.head h_ne)) (h_fe : fe = Tok.FE) (h_rest : MBody rest) :
+        MBody (p ++ fe :: rest)
+  inductive MPair : List Tok → Prop where
+    | mk (block_k block_v : List Tok) (h_k : REntry block_k) (h_v : REntry block_v) :
+        MPair (Tok.KY :: (block_k ++ Tok.VL :: block_v))
+end
+
+/-- **A map pair is non-empty** (toy of `RecMapPair.ne_nil`): the sole `.mk` constructor yields a
+    `cons` list (`KY :: …`). -/
+theorem MPair.ne_nil {p : List Tok} (h : MPair p) : p ≠ [] := by
+  cases h <;> simp
+
+/-- **A map pair's head is the key token** (toy of `RecMapPair.head_key`): one `cases` of the sole
+    constructor, head `= KY` by `rfl` — *single equality, one case*, vs `REntry.head_cstart`'s
+    four-case disjunction analysis.  The R263 storage asymmetry: the map deliverable's head is
+    structurally pinned, so its projection is the simpler of the two. -/
+theorem MPair.head_key {p : List Tok} (h : MPair p) (h_ne : p ≠ []) : MStart (p.head h_ne) := by
+  cases h with
+  | mk bk bv hk hv => rw [List.head_cons]; rfl
+
+/-- **ADVANCE, map side** (toy of `recmapbody_cons_window`): the verbatim mirror of `recbody_cons`,
+    only the terminal constructor (`MBody.cons` over a `MPair` leader) and its head projection
+    (`MPair.head_key`) differ from the seq side. -/
+theorem mbody_cons (p rest : List Tok) (h_p : MPair p) (h_rest : MBody rest) :
+    MBody (p ++ Tok.FE :: rest) :=
+  MBody.cons p Tok.FE rest (MPair.ne_nil h_p) h_p
+    (MPair.head_key h_p (MPair.ne_nil h_p)) rfl h_rest
+
+/-- a one-scalar-key/one-scalar-value pair `[KY, A, VL, A]` = `KY :: ([A] ++ VL :: [A])`. -/
+def pairAA : MPair [Tok.KY, Tok.A, Tok.VL, Tok.A] :=
+  MPair.mk [Tok.A] [Tok.A] REntry.scalar REntry.scalar
+
+/-- a single-pair body (the `single` leaf). -/
+def mbodyAA : MBody [Tok.KY, Tok.A, Tok.VL, Tok.A] :=
+  MBody.single [Tok.KY, Tok.A, Tok.VL, Tok.A] (by simp) pairAA (by rw [List.head_cons]; rfl)
+
+/-- ADVANCE builds the two-pair body `[KY,A,VL,A] ++ FE :: [KY,A,VL,A]`. -/
+def mbody_two : MBody [Tok.KY, Tok.A, Tok.VL, Tok.A, Tok.FE, Tok.KY, Tok.A, Tok.VL, Tok.A] :=
+  mbody_cons [Tok.KY, Tok.A, Tok.VL, Tok.A] [Tok.KY, Tok.A, Tok.VL, Tok.A] pairAA mbodyAA
+
+/-- Negative — a pair is never empty (via `MPair.ne_nil`). -/
+theorem no_mpair_empty : ¬ MPair ([] : List Tok) := by intro h; exact MPair.ne_nil h rfl
+
+/-- Negative — a pair never starts without a key (its head is pinned to `KY`). -/
+theorem no_mpair_no_key : ¬ MPair [Tok.A] := by intro h; cases h
+
+#guard ([Tok.KY, Tok.A, Tok.VL, Tok.A] : List Tok).length == 4
+#guard ([Tok.KY, Tok.A, Tok.VL, Tok.A, Tok.FE, Tok.KY, Tok.A, Tok.VL, Tok.A] : List Tok).length == 9
 
 end Tests.Reflections.StructuralMovesAdvance
