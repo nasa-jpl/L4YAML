@@ -3475,6 +3475,61 @@ theorem recmappair_window (tokens : Array (Positioned YamlToken)) (lo kv m : Nat
     rw [← hb]; exact h_value
   exact RecMapPair.mk _ _ _ _ h_kt_val h_ke h_vt_val h_ve
 
+/-- **Scalar head-dispatch step** (Phase J — the seq locate DRIVER's head-dispatch, first branch).
+    The locate recursion's driver, after `firstEntryBoundary` (the input side) pins the least boundary
+    marker `m` of a balanced body-interior window `[lo, hi)`, must classify the first item `[lo, m)` by
+    its head token and fire the matching shape-side lift.  This is that dispatch's *scalar branch*, and
+    — exactly as the shape side itself was built leaf-first (`recseqentry_scalar_window` ahead of the
+    `seqEmpty`/`map`/`seq` lifts) — it is the dispatch's leaf, landing ahead of the bracket branches.
+
+    Where the four shape-side lifts each take their split point as a *given* (`recseqentry_scalar_window`
+    is stated at the fixed window `[lo, lo+1)`), the dispatch's job is to *derive* the split point from
+    the locator's minimality.  A scalar head contributes bracket delta `0` (`flowBracketDelta_scalar`),
+    so `balance lo (lo+1) = 0` (`flowBracketBalance_single`); given the grammar substrate `h_succ` —
+    the scalar entry is *complete*, i.e. position `lo+1` is the window end or a `.flowEntry` separator —
+    `lo+1` is itself a *boundary marker*.  `firstEntryBoundary` returned `m` as the **least** marker in
+    `(lo, hi]`, so `m ≤ lo+1`; with `lo < m` that forces `m = lo+1`, and the located window `[lo, m)`
+    *is* the one-token scalar window the leaf lift `recseqentry_scalar_window` classifies.
+
+    This is the bridge the shape-side family could not state on its own: the lifts produce the entry at
+    a *fixed* arity, the locator produces a *variable* marker `m`, and the dispatch is what proves the
+    two coincide.  The grammar fact `h_succ` is the *trailing-separator* substrate the driver will
+    recover per-window (the body's `_h_body_succ`-style value-end successor, via `WellTyped_subrange`);
+    here it is taken as a hypothesis, in the verified-but-unconsumed discipline — the lemma references
+    no sorry site, so the frontier sorry count is unchanged at 4.
+
+    Axis note (R264 discriminator): it names a collection-specific deliverable type (`RecSeqEntry`,
+    through `recseqentry_scalar_window`), so it is seq-specific and re-splits across the map axis — the
+    map dispatch's leaf is the scalar-key/scalar-value PAIR (`recmappair_window`), not this one-token
+    singleton.  But the *minimality → split-point* argument is shared shape; the map mirror reuses it. -/
+theorem recseqentry_scalar_dispatch (tokens : Array (Positioned YamlToken)) (lo hi m : Nat)
+    (h_lo_sz : lo < tokens.size)
+    (h_lo_m : lo < m) (_h_m_hi : m ≤ hi)
+    (h_m_least : ∀ k, lo < k → k < m →
+      ¬ (flowBracketBalance tokens lo k = 0 ∧ (k = hi ∨ tokens[k]!.val = .flowEntry)))
+    (h_scalar : ∃ c s, tokens[lo]!.val = .scalar c s)
+    (h_succ : lo + 1 = hi ∨ tokens[lo + 1]!.val = .flowEntry) :
+    m = lo + 1 ∧ RecSeqEntry ((tokens.toList.take m).drop lo) := by
+  have h_lo_len : lo < tokens.toList.length := by rw [Array.length_toList]; exact h_lo_sz
+  obtain ⟨c, s, hcs⟩ := h_scalar
+  -- The scalar head contributes bracket delta 0, so the one-token range `[lo, lo+1)` is balanced.
+  have h_val : (tokens.toList[lo]'h_lo_len).val = .scalar c s := by
+    have hb : tokens[lo]! = tokens.toList[lo]'h_lo_len := by
+      rw [getElem!_pos tokens lo h_lo_sz, Array.getElem_toList]
+    rw [← hb]; exact hcs
+  have h_bal1 : flowBracketBalance tokens lo (lo + 1) = 0 := by
+    rw [flowBracketBalance_single tokens lo h_lo_len, h_val, flowBracketDelta_scalar]
+  -- `lo+1` is a boundary marker (balanced + completes the entry), so the least marker `m` is at most it.
+  have h_marker1 : flowBracketBalance tokens lo (lo + 1) = 0 ∧
+      (lo + 1 = hi ∨ tokens[lo + 1]!.val = .flowEntry) := ⟨h_bal1, h_succ⟩
+  have h_m_eq : m = lo + 1 := by
+    rcases Nat.lt_or_ge (lo + 1) m with hlt | hge
+    · exact absurd h_marker1 (h_m_least (lo + 1) (by omega) hlt)
+    · omega
+  refine ⟨h_m_eq, ?_⟩
+  rw [h_m_eq]
+  exact recseqentry_scalar_window tokens lo h_lo_sz ⟨c, s, hcs⟩
+
 /-- **Parametric `MapBodyProps` assembler** (Phase J seed, map side).  The map-side mirror of
     `seqBodyProps_assemble`: given an arbitrary balanced flow-MAPPING subrange `[lo, hi)` —
     `tokens[hi]! = .flowMappingEnd`, total balance `0`, Dyck prefixes, interior `WellTyped` — together
