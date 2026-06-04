@@ -754,4 +754,96 @@ theorem l9_scalar_not_complete : ¬ (1 = l9.length ∨ isFE (tokAt l9 1) = true)
 #guard tokAt l9 1 == Tok.sc        -- position 1 is another scalar…
 #guard l9.length == 3              -- …and the window does not end at 1, so `h_succ` is unavailable
 
+/-! ### The empty-bracket branch — leastness no longer suffices; the MARKER clause is now load-bearing (toy of `recseqentry_seqempty_dispatch`, Reflection 273)
+
+The scalar branch above hid an asymmetry.  A scalar entry ends at the *earliest* candidate `m = 1`,
+so `firstEntryBoundary`'s LEASTNESS clause alone pinned it — the MARKER clause (`m` is itself a
+marker) was never touched.  The empty bracket `[ ]` spans TWO tokens (`m = 2`), and its interior
+position `1` is **not** a marker: the opener drives the balance to `+1` (`bal l 1 = 1 ≠ 0`).  Now
+leastness *backfires*: it is quantified over the **open** interval `(0, m)`, so at `m = 1` it is
+vacuous (no `k` with `0 < k < 1`) and perfectly satisfiable — leastness *permits* the degenerate
+`m = 1`.  The only thing excluding it is the OTHER output of `firstEntryBoundary`: that `m` is
+*itself* a marker (`bal l m = 0`), which `bal l 1 = 1` contradicts.  So every multi-token entry must
+consume the MARKER clause; the one-token scalar leaf did not.  This is R273's accounting: the dispatch
+consumes `firstEntryBoundary`'s output in two clauses, and they split by branch (by entry arity). -/
+
+/-- **Empty-bracket head-dispatch step** (toy of `recseqentry_seqempty_dispatch`).  Mirrors
+    `entry_scalar_dispatch` for the `op`-then-`cl` head, but now takes the locator's MARKER fact
+    `h_m_marker` as well as its minimality `h_m_least` — and *needs* it: leastness alone permits
+    `m = 1` (the un-balanced opener), only `bal l m = 0` excludes it.  Derives `m = 2` (the closer
+    returns the balance to `0`: `+1` then `-1`) and lifts the two-token window via
+    `entry_seqempty_window`. -/
+theorem entry_seqempty_dispatch (l : List Tok) (m : Nat)
+    (h_lo1 : 0 + 1 < l.length)
+    (h_zero_m : 0 < m) (_h_m_hi : m ≤ l.length)
+    (h_m_marker : bal l m = 0 ∧ (m = l.length ∨ isFE (tokAt l m) = true))
+    (h_m_least : ∀ k, 0 < k → k < m →
+      ¬ (bal l k = 0 ∧ (k = l.length ∨ isFE (tokAt l k) = true)))
+    (h_open : tokAt l 0 = .op)
+    (h_close : tokAt l 1 = .cl)
+    (h_succ : 2 = l.length ∨ isFE (tokAt l 2) = true) :
+    m = 2 ∧ Entry ((l.take m).drop 0) := by
+  -- the opener contributes delta `+1`, so position `1` is NOT balanced — it cannot be the marker.
+  have h_bal1 : bal l 1 = 1 := by
+    match l, h_lo1 with
+    | a :: b :: t, _ =>
+      have ha : a = .op := by simpa [tokAt] using h_open
+      simp [bal, ha, delta]
+  -- the closer returns the balance to `0` at position `2`: `+1` then `-1`.
+  have h_bal2 : bal l 2 = 0 := by
+    match l, h_lo1 with
+    | a :: b :: t, _ =>
+      have ha : a = .op := by simpa [tokAt] using h_open
+      have hb : b = .cl := by simpa [tokAt] using h_close
+      simp [bal, ha, hb, delta]
+  -- `2` is a genuine boundary marker (balanced + completes the entry, via `h_succ`).
+  have h_marker2 : bal l 2 = 0 ∧ (2 = l.length ∨ isFE (tokAt l 2) = true) := ⟨h_bal2, h_succ⟩
+  -- minimality ⟹ `m ≤ 2`; the MARKER clause excludes `m = 1` (its balance is `1`, not `0`).
+  have h_m_le : m ≤ 2 := by
+    rcases Nat.lt_or_ge 2 m with hlt | hge
+    · exact absurd h_marker2 (h_m_least 2 (by omega) hlt)
+    · exact hge
+  have h_m_ne1 : m ≠ 1 := by
+    intro h
+    have hmb := h_m_marker.1
+    rw [h, h_bal1] at hmb
+    omega
+  have h_m_eq : m = 2 := by omega
+  refine ⟨h_m_eq, ?_⟩
+  rw [h_m_eq, List.drop_zero]
+  have := entry_seqempty_window l 0 h_lo1 h_open h_close
+  rwa [List.drop_zero] at this
+
+/-! #### Positive witness — the locator's marker, fed to the dispatch, is proven to be `2` -/
+
+-- The faithful composition: `firstEntryBoundary` produces the *variable* marker `m`; the dispatch
+-- *proves* `m = 2` (consuming the marker clause `hm_bal` to step over the interior opener at `1`).
+theorem dispatch_seqempty_l3 : ∃ m, m = 2 ∧ Entry ((l3.take m).drop 0) := by
+  obtain ⟨m, hm_pos, hm_hi, hm_bal, hm_cond, hm_least⟩ := firstEntryBoundary l3 (by decide) (by decide)
+  exact ⟨m, entry_seqempty_dispatch l3 m (by decide) hm_pos hm_hi ⟨hm_bal, hm_cond⟩ hm_least
+    (by decide) (by decide) (by decide)⟩
+
+-- The located window really is the two-token empty bracket `[op, cl]`:
+#guard (l3.take 2).drop 0 == [Tok.op, Tok.cl]
+-- `2` is a marker (balanced, next token is the separator), but `1` (the opener) is NOT:
+#guard bal l3 2 == 0
+#guard isFE (tokAt l3 2) == true
+#guard bal l3 1 == 1
+
+/-! #### Negative witnesses — why the MARKER clause is load-bearing here (and was not for scalar) -/
+
+/-- **The crux of R273.**  Position `1` (the opener) is NOT a marker — its balance is `1`, not `0`.
+    So leastness over `(0, m)` cannot by itself exclude `m = 1`; only `firstEntryBoundary`'s MARKER
+    clause (`bal l m = 0`) does, since `bal l3 1 = 1 ≠ 0`.  This is the asymmetry the one-token scalar
+    leaf hid: there, the entry ended at the earliest candidate `m = 1`, so leastness alone sufficed. -/
+theorem l3_interior_opener_not_marker :
+    ¬ (bal l3 1 = 0 ∧ (1 = l3.length ∨ isFE (tokAt l3 1) = true)) := by decide
+
+/-- Leastness at `m = 1` is **vacuous** for *any* list — there is no `k` with `0 < k < 1` — so the
+    minimality hypothesis alone can never rule out the degenerate split `m = 1`.  Only the marker
+    clause can; this is precisely the hypothesis the bracket branch adds over the scalar branch. -/
+theorem leastness_vacuous_at_one (l : List Tok) :
+    ∀ k, 0 < k → k < 1 → ¬ (bal l k = 0 ∧ (k = l.length ∨ isFE (tokAt l k) = true)) := by
+  intro k hk1 hk2; omega
+
 end Tests.Reflections.EntryBoundaryLocator
