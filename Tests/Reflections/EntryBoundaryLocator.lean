@@ -1,0 +1,181 @@
+/-
+# Reflection 264 — the entry-boundary location splits into an *input side* (locate the split point) and a *shape side* (classify the item); the input side is a single axis-agnostic combinatorial brick
+
+Self-contained, `L4YAML`-free runnable illustration of the proof-engineering principle in
+Blueprint Reflection 264 (and memory `ref-entry-boundary-input-shape-split`).
+
+**The principle.** Once a navigation recursion's *structural moves* are in hand (descend + build +
+advance, R262/R263), what remains is the **analytical entry-boundary location**, and it decomposes
+into two independent halves:
+
+  - **input side** — find *where* the first body item ends: the split point `m`, a pure
+    bracket-balance combinatorial fact owing nothing to the item's shape;
+  - **shape side** — classify *what* the first item is: a scalar, or a matched-bracket sub-window
+    (the bracket-balance matching-close analysis that *consumes* the located `m`).
+
+This file models the **input side**: a general constructive least-witness locator
+`exists_least_in_range` (no `Nat.find`, no classical choice, no well-founded recursion — structural
+induction on the search gap with the decidability instance) and its specialization
+`firstEntryBoundary`, which for a balanced window locates the least depth-`0` *boundary marker* `m`
+(balance returns to `0`, and `m` is the window end or a separator) with the minimality certificate
+that no earlier interior position is such a marker.
+
+**Why the input side is axis-agnostic — the discriminator.** Every prior navigation brick came as a
+seq lemma plus a one-session-later map mirror, because each named a collection-specific *deliverable
+type* (a sequence body vs a mapping body) whose constructor differed. The split-point locator breaks
+that rhythm: the body-separator token `FE` (the toy of `.flowEntry`) is **identical for sequences
+and mappings**, so the boundary predicate is shared and the single lemma feeds both recursions. The
+discriminator worth carrying: a navigation brick mirrors across seq/map exactly when it mentions a
+collection-specific deliverable type; one phrased purely over the shared token stream (balance, the
+shared separator) is written *once*. The shape side *will* split again (it builds the
+collection-specific entry); the input side does not.
+
+Positive witnesses: `firstMarker_l1` locates the separator after the first bracketed item in `[a],b`;
+`firstMarker_l2` locates the *window end* (the last-item branch) in the single item `[a]`. Negative
+witnesses: `not_marker_inside` — an interior position with non-zero balance is not a marker;
+`bal_l1_*` `#guard`s witness that no position earlier than the located `m` is a marker (minimality is
+concrete). The general helper is exercised by `least_ge3` on a pure-`Nat` predicate.
+-/
+
+namespace Tests.Reflections.EntryBoundaryLocator
+
+/-! ## The general constructive least-witness locator (toy of `exists_least_in_range`) -/
+
+/-- For a decidable predicate `P` holding at the range end `start + gap`, the **least** witness in
+    `[start, start + gap]`, with the minimality certificate that no `k` in `[start, m)` satisfies
+    `P`.  Fully constructive: structural induction on `gap`, decidability-driven upward scan via
+    `if h : P start then …` — no `Nat.find`, no classical choice, no well-founded recursion.  This is
+    *verbatim* the real `exists_least_in_range`. -/
+theorem exists_least_in_range (P : Nat → Prop) [DecidablePred P] :
+    ∀ (gap start : Nat), P (start + gap) →
+      ∃ m, start ≤ m ∧ m ≤ start + gap ∧ P m ∧ ∀ k, start ≤ k → k < m → ¬ P k := by
+  intro gap
+  induction gap with
+  | zero =>
+    intro start hP
+    refine ⟨start, Nat.le_refl _, ?_, ?_, ?_⟩
+    · omega
+    · simpa using hP
+    · intro k hk1 hk2; exfalso; omega
+  | succ g ih =>
+    intro start hP
+    if h0 : P start then
+      refine ⟨start, Nat.le_refl _, ?_, h0, ?_⟩
+      · omega
+      · intro k hk1 hk2; exfalso; omega
+    else
+      have hP' : P ((start + 1) + g) := by
+        have he : (start + 1) + g = start + (g + 1) := by omega
+        rw [he]; exact hP
+      obtain ⟨m, hm1, hm2, hm3, hm4⟩ := ih (start + 1) hP'
+      refine ⟨m, by omega, by omega, hm3, ?_⟩
+      intro k hk1 hk2
+      rcases Nat.lt_or_ge k (start + 1) with hlt | hge
+      · have hk_eq : k = start := by omega
+        rw [hk_eq]; exact h0
+      · exact hm4 k hge hk2
+
+/-- The helper exercised on a pure-`Nat` predicate: the least `m` in `[1, 6]` with `m ≥ 3` is `3`. -/
+theorem least_ge3 :
+    ∃ m, 1 ≤ m ∧ m ≤ 6 ∧ 3 ≤ m ∧ ∀ k, 1 ≤ k → k < m → ¬ 3 ≤ k :=
+  exists_least_in_range (fun n => 3 ≤ n) 5 1 (by omega)
+
+/-! ## The toy token stream and the first-entry-boundary locator (toy of `firstEntryBoundary`) -/
+
+/-- A toy flow token: scalar, open/close bracket, and the body separator `FE` (`.flowEntry`). -/
+inductive Tok | sc | op | cl | fe
+  deriving DecidableEq
+
+/-- Bracket delta — `+1` open, `-1` close, `0` otherwise.  The separator `FE` has delta `0`, so it
+    only marks a boundary *at depth 0*. -/
+def delta : Tok → Int
+  | .op => 1
+  | .cl => -1
+  | _   => 0
+
+/-- Is this token the body separator? -/
+def isFE : Tok → Bool
+  | .fe => true
+  | _   => false
+
+/-- Running bracket balance over the prefix `[0, n)`. -/
+def bal (l : List Tok) (n : Nat) : Int := ((l.take n).map delta).foldl (· + ·) 0
+
+/-- Total token at index `m` (scalar default out of range), so the boundary predicate is total. -/
+def tokAt (l : List Tok) (m : Nat) : Tok := l.getD m .sc
+
+/-- **First entry-boundary locator** (toy of `firstEntryBoundary`).  For a balanced window
+    (`bal l l.length = 0`), the least depth-`0` boundary marker `m` in `(0, l.length]` — a position
+    where the balance from `0` returns to `0` and which is either the window end or a separator —
+    with the certificate that no earlier interior position is such a marker.  Axis-agnostic: the
+    separator `FE` is the *same* token whatever the surrounding collection, so this single lemma is
+    the split-point locator for *both* a sequence body and a mapping body. -/
+theorem firstEntryBoundary (l : List Tok) (h_pos : 0 < l.length)
+    (h_total : bal l l.length = 0) :
+    ∃ m, 0 < m ∧ m ≤ l.length ∧
+      bal l m = 0 ∧
+      (m = l.length ∨ isFE (tokAt l m) = true) ∧
+      (∀ k, 0 < k → k < m →
+        ¬ (bal l k = 0 ∧ (k = l.length ∨ isFE (tokAt l k) = true))) := by
+  obtain ⟨m, hm1, hm2, hm3, hm4⟩ :=
+    exists_least_in_range
+      (fun m => bal l m = 0 ∧ (m = l.length ∨ isFE (tokAt l m) = true))
+      (l.length - 1) 1
+      (by
+        have he : 1 + (l.length - 1) = l.length := by omega
+        rw [he]; exact ⟨h_total, Or.inl rfl⟩)
+  refine ⟨m, by omega, by omega, hm3.1, hm3.2, ?_⟩
+  intro k hk1 hk2
+  exact hm4 k (by omega) hk2
+
+/-! ## Positive witnesses -/
+
+/-- `[a],b` — open, scalar, close, separator, scalar.  Balanced (`bal = 0`). -/
+def l1 : List Tok := [.op, .sc, .cl, .fe, .sc]
+
+/-- `[a]` — open, scalar, close.  A single bracketed item, no separator. -/
+def l2 : List Tok := [.op, .sc, .cl]
+
+-- The locator applies to both balanced windows (these type-check ⇒ the lemma fires).
+theorem firstMarker_l1 :
+    ∃ m, 0 < m ∧ m ≤ l1.length ∧ bal l1 m = 0 ∧
+      (m = l1.length ∨ isFE (tokAt l1 m) = true) ∧
+      (∀ k, 0 < k → k < m →
+        ¬ (bal l1 k = 0 ∧ (k = l1.length ∨ isFE (tokAt l1 k) = true))) :=
+  firstEntryBoundary l1 (by decide) (by decide)
+
+theorem firstMarker_l2 :
+    ∃ m, 0 < m ∧ m ≤ l2.length ∧ bal l2 m = 0 ∧
+      (m = l2.length ∨ isFE (tokAt l2 m) = true) ∧
+      (∀ k, 0 < k → k < m →
+        ¬ (bal l2 k = 0 ∧ (k = l2.length ∨ isFE (tokAt l2 k) = true))) :=
+  firstEntryBoundary l2 (by decide) (by decide)
+
+-- In `l1` the first marker is at `m = 3` (the separator after the bracketed item `[a]`):
+--   balance returns to 0 there, and the token is `FE`.
+#guard bal l1 3 == 0
+#guard isFE (tokAt l1 3) == true
+-- and nowhere earlier — positions 1, 2 have non-zero balance (inside the bracket), so the located
+-- `m = 3` is genuinely the least marker (minimality, witnessed concretely):
+#guard bal l1 1 == 1
+#guard bal l1 2 == 1
+
+-- In `l2` the first marker is the *window end* `m = 3 = length` (the last-item branch): balance is 0
+-- there and `m = length`, with no interior separator.
+#guard bal l2 3 == 0
+#guard l2.length == 3
+#guard bal l2 1 == 1
+#guard bal l2 2 == 1
+
+/-! ## Negative witnesses -/
+
+/-- An interior position with non-zero balance is **not** a marker (it lies *inside* the first
+    bracketed item, depth ≥ 1) — so the locator correctly skips it. -/
+theorem not_marker_inside :
+    ¬ (bal l1 2 = 0 ∧ (2 = l1.length ∨ isFE (tokAt l1 2) = true)) := by decide
+
+/-- The depth-`0` separator marker is the `FE`, not the close bracket: position `2` (the `cl` in
+    `l1`) is not the separator. -/
+theorem cl_is_not_separator : isFE (tokAt l1 2) = false := by decide
+
+end Tests.Reflections.EntryBoundaryLocator
