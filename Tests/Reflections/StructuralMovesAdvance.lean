@@ -1,29 +1,41 @@
 /-
-# Reflection 262 — the locate recursion's three *structural moves* (descend + build + advance), the advance step being the positional lift of the body constructor
+# Reflection 262 — the locate recursion's *structural moves* (descend + build + advance + terminate), one positional window lift per CONSTRUCTOR of the deliverable
 
-(Extended by Reflection 263: the map mirror of the advance step — see the `## The MAP mirror` section
-at the bottom. The seq side establishes the mechanism; the map member transports it verbatim, the
-storage asymmetry surfacing only as the simpler head side-field `MStart`/`MPair.head_key`.)
+(Extended by Reflection 263: the map mirror of the advance step — see the `## The MAP mirror` section.
+Extended by Reflection 269: the **TERMINATE** move — the `single` base-constructor lift the original
+descend/build/advance trio missed — see the `### Move 4 — TERMINATE` sections on both axes.)
 
 Self-contained, `L4YAML`-free runnable illustration of the proof-engineering principle in
-Blueprint Reflection 262 (and memory `ref-structural-moves-complete-recursion`).
+Blueprint Reflections 262 & 269 (and memory `ref-structural-moves-complete-recursion`).
 
 **The principle.** A recursion that produces a *recursive-deliverable* inductive (here a toy of
-`RecSeqBody`/`RecSeqEntry`) is built from exactly **one positional move per way the deliverable's
-constructors compose their argument**. For a body-of-entries deliverable there are two compositions,
-giving three moves:
+`RecSeqBody`/`RecSeqEntry`) is built from exactly **one positional window lift per CONSTRUCTOR of the
+deliverable — base case included**, not merely one per way the constructors *compose*. For a
+body-of-entries deliverable (`single`/`cons`) there are four moves:
 
   - **DESCEND** — from a located *entry* of a nested bracket window, step one nesting level *into*
     its interior body (the entry constructor's `OB :: (interior ++ [CB])`, eliminator direction).
   - **BUILD** — from a recursively-established inner-window body, package the bracket window *as* an
     entry (the *same* composition, constructor direction — descend's dual).
   - **ADVANCE** — chain entries *along* the body: from a leading entry + a separator + a trailing
-    body, produce the whole body (the body constructor's `e ++ fe :: rest`).
+    body, produce the whole body (the body's `cons` constructor `e ++ fe :: rest`).
+  - **TERMINATE** — from a single located entry, produce a one-entry body (the body's *base*
+    constructor `single e`). The move ADVANCE defers to (its `h_rest` is dischargeable only at the
+    last item) — without it the recursion is all step, no base. **The cheapest move:** `single e` is
+    indexed by the entry list *verbatim*, so there is *no* window plumbing — the entry `RBody` is the
+    constructor's argument, and the only fields are the free `h_ne`/`h_head` projections.
 
-Once every constructor-composition has its positional lift landed (each a cheap, verified brick),
-the recursion's residual collapses to the purely **analytical** part: *locating* the split points
-the moves consume (the depth-`0` extent of a window's first entry and its trailing separator). That
-analytical entry-boundary location is the genuine bulk; the structural moves are mechanical.
+**The complexity law (R269).** A move's cost = the gap between its constructor's *index* and the raw
+window. A compositional move (descend/build/advance) reshapes the window to expose its `_ ++ _ :: _`
+index — that reshaping is the take/drop plumbing. The base-case move reshapes *nothing*, so it is
+trivial; that triviality is the *diagnostic* that it is the terminal one, the only move that lets the
+recursion stop. (R262 enumerated the compositional moves and silently assumed the base was free.)
+
+Once every constructor has its positional lift landed (constructor coverage, base included — each a
+cheap, verified brick), the recursion's residual collapses to the purely **analytical** part:
+*locating* the split points the moves consume (the depth-`0` extent of a window's first entry and its
+trailing separator). That analytical entry-boundary location is the genuine bulk; the structural
+moves are mechanical.
 
 **A subsidiary point — projection-as-free-side-field.** The body constructor's `h_ne` / `h_head`
 side-fields are *not* threaded obligations: they are free structural projections of the entry
@@ -115,15 +127,38 @@ theorem recbody_cons (e rest : List Tok) (h_e : REntry e) (h_rest : RBody rest) 
   RBody.cons e Tok.FE rest (REntry.ne_nil h_e) h_e
     (REntry.head_cstart h_e (REntry.ne_nil h_e)) rfl h_rest
 
-/-! ### Positive — all three moves compose to build and descend a *multi-entry* nested body -/
+/-! ### Move 4 — TERMINATE (the base constructor `single`) — the move the trio missed (R269) -/
 
-/-- a one-scalar body `[A]` (the `single` leaf). -/
+/-- **TERMINATE** (toy of `recseqbody_single_window`): from a single located entry, produce the
+    one-entry body via `RBody.single`.  The move ADVANCE *defers to* — `recbody_cons` hands its tail
+    to `h_rest : RBody`, dischargeable only at the last item (no trailing separator), which is exactly
+    a `single`.  **Note the body has _no_ positional plumbing at all:** `RBody.single` is indexed by
+    the entry list `e` *verbatim* (`RBody e`, not `RBody (e ++ …)`), so the entry's `REntry e` *is*
+    the constructor's argument — the only fields are the free `h_ne`/`h_head` projections the cons
+    step already uses.  That zero-plumbing shape (vs `recbody_cons`'s `e ++ FE :: rest`) *is* the
+    base-case signature: the move's cost = the gap between its constructor's index and the window,
+    which for the base constructor is nil. -/
+theorem recbody_single (e : List Tok) (h_e : REntry e) : RBody e :=
+  RBody.single e (REntry.ne_nil h_e) h_e (REntry.head_cstart h_e (REntry.ne_nil h_e))
+
+/-! ### Positive — all four moves compose to build and descend a *multi-entry* nested body -/
+
+/-- a one-scalar body `[A]` (the `single` leaf), now via the TERMINATE *move* `recbody_single`
+    (rather than `RBody.single` inline) — the recursion's base case. -/
 def bodyA : RBody [Tok.A] :=
-  RBody.single [Tok.A] (by simp) REntry.scalar (by rw [List.head_cons]; exact Or.inl rfl)
+  recbody_single [Tok.A] REntry.scalar
 
-/-- ADVANCE builds the multi-entry body `[A, FE, A]` = `[A] ++ FE :: [A]` from two scalar entries. -/
+/-- ADVANCE builds the multi-entry body `[A, FE, A]` = `[A] ++ FE :: [A]` from a leading scalar entry
+    and a trailing body — and that trailing body `bodyA` is the TERMINATE move.  So this is the
+    recursion's genuine two-item shape: **one ADVANCE step over a TERMINATE base.** -/
 def body_AFA : RBody [Tok.A, Tok.FE, Tok.A] :=
   recbody_cons [Tok.A] [Tok.A] REntry.scalar bodyA
+
+/-- The full recursion shape on a three-entry body `[A,FE,A,FE,A]`: **ADVANCE ∘ ADVANCE ∘ TERMINATE**
+    — two steps, then the base case stops it.  Without `recbody_single` the innermost trailing body
+    has no constructor and the recursion cannot close. -/
+def body_AFAFA : RBody [Tok.A, Tok.FE, Tok.A, Tok.FE, Tok.A] :=
+  recbody_cons [Tok.A] [Tok.A, Tok.FE, Tok.A] REntry.scalar body_AFA
 
 /-- BUILD wraps that multi-entry body into the nested bracket entry `[OB, A, FE, A, CB]`. -/
 def entry_AFA : REntry [Tok.OB, Tok.A, Tok.FE, Tok.A, Tok.CB] :=
@@ -145,6 +180,7 @@ theorem no_entry_empty : ¬ REntry ([] : List Tok) := by intro h; exact REntry.n
 theorem no_entry_separator : ¬ REntry [Tok.FE] := by intro h; cases h
 
 #guard ([Tok.A, Tok.FE, Tok.A] : List Tok).length == 3
+#guard ([Tok.A, Tok.FE, Tok.A, Tok.FE, Tok.A] : List Tok).length == 5
 #guard ([Tok.OB, Tok.A, Tok.FE, Tok.A, Tok.CB] : List Tok).length == 5
 #guard ([Tok.OB, Tok.A, Tok.FE, Tok.A, Tok.CB, Tok.FE, Tok.A] : List Tok).length == 7
 
@@ -202,13 +238,22 @@ theorem mbody_cons (p rest : List Tok) (h_p : MPair p) (h_rest : MBody rest) :
   MBody.cons p Tok.FE rest (MPair.ne_nil h_p) h_p
     (MPair.head_key h_p (MPair.ne_nil h_p)) rfl h_rest
 
+/-- **TERMINATE, map side** (toy of `recmapbody_single_window`): the verbatim seq→map mirror of
+    `recbody_single` — from a single located pair, produce the one-pair body via `MBody.single`,
+    discharging `h_ne`/`h_head` via `MPair.ne_nil`/`MPair.head_key`.  As on the seq side it carries no
+    positional plumbing (`MBody.single` is indexed by `p` verbatim); the *only* delta from the seq
+    terminate is the head projection (`MPair.head_key`'s single equality vs `REntry.head_cstart`'s
+    disjunction) — the same R263 storage asymmetry, now at the base move. -/
+theorem mbody_single (p : List Tok) (h_p : MPair p) : MBody p :=
+  MBody.single p (MPair.ne_nil h_p) h_p (MPair.head_key h_p (MPair.ne_nil h_p))
+
 /-- a one-scalar-key/one-scalar-value pair `[KY, A, VL, A]` = `KY :: ([A] ++ VL :: [A])`. -/
 def pairAA : MPair [Tok.KY, Tok.A, Tok.VL, Tok.A] :=
   MPair.mk [Tok.A] [Tok.A] REntry.scalar REntry.scalar
 
-/-- a single-pair body (the `single` leaf). -/
+/-- a single-pair body (the `single` leaf), now via the TERMINATE *move* `mbody_single`. -/
 def mbodyAA : MBody [Tok.KY, Tok.A, Tok.VL, Tok.A] :=
-  MBody.single [Tok.KY, Tok.A, Tok.VL, Tok.A] (by simp) pairAA (by rw [List.head_cons]; rfl)
+  mbody_single [Tok.KY, Tok.A, Tok.VL, Tok.A] pairAA
 
 /-- ADVANCE builds the two-pair body `[KY,A,VL,A] ++ FE :: [KY,A,VL,A]`. -/
 def mbody_two : MBody [Tok.KY, Tok.A, Tok.VL, Tok.A, Tok.FE, Tok.KY, Tok.A, Tok.VL, Tok.A] :=
