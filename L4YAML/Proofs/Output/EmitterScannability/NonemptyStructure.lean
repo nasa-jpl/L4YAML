@@ -2755,6 +2755,75 @@ theorem seqBodyProps_of_located_entry (tokens : Array (Positioned YamlToken)) (l
     simp only [List.length_nil] at hl
     exact seqBodyProps_empty tokens lo hi (by omega)
 
+/-- **Located-entry → inner-window `RecSeqBody` descent** (Phase J, seq side — the *navigation
+    recursion's* per-level descent step).  The array-window form of `RecSeqEntry.seq_interior`: given
+    a guarded flow-SEQUENCE subrange `[lo, hi)` whose opener `tokens[lo-1]` is a `.flowSequenceStart`
+    and whose opener-window `(tokens.toList.take (hi+1)).drop (lo-1)` has been matched to a
+    `RecSeqEntry` (the locate's per-window deliverable), descend ONE nesting level to the interior
+    window's recursive structure: `RecSeqBody ((tokens.toList.take hi).drop lo)` (the non-empty case)
+    OR `lo = hi` (the empty `[ ]` case the no-`nil` `RecSeqBody` structurally cannot represent — the
+    Reflection 233 producer-contract split).
+
+    This is the constructive *descent* counterpart of the consumer joint
+    `seqBodyProps_of_located_entry`: that lemma runs the same opener-peel / rest-decomposition and
+    then *consumes* the descended `RecSeqBody` straight into the terminal `SeqBodyProps`; this one
+    *stops at the descended `RecSeqBody`*, so the navigation recursion can take that inner-window body
+    as the IH input one nesting level down.  Crucially, its non-empty disjunct
+    `RecSeqBody ((tokens.toList.take hi).drop lo)` is *exactly* the `flowSubrangesOk_of_window_producers`
+    `h_seq_rec` deliverable at a window that is itself a top-level nested-sequence entry — so once the
+    locate matches a guarded subrange's opener-window to its `RecSeqEntry`, this lemma finishes the
+    seq producer obligation at that window with no further structural work.
+
+    The proof is the opener-peel (`List.getElem_cons_drop`, using `1 ≤ lo`) + rest-decomposition
+    (`List.take_add_one` + `List.drop_append_of_le_length`) of `seqBodyProps_of_located_entry` run
+    verbatim, terminated by `RecSeqEntry.seq_interior` (the empty disjunct forced to `lo = hi` by the
+    `List.length_drop`/`List.length_take` length argument) instead of the back-half consumer.
+    Verified-but-unconsumed (R225): references no sorry site, frontier sorry count unchanged. -/
+theorem recseqbody_window_of_located_entry (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (h_lo : 1 ≤ lo) (h_lo_hi : lo ≤ hi) (h_hi_sz : hi < tokens.size)
+    (h_open : tokens[lo - 1]!.val = .flowSequenceStart)
+    (h_entry : RecSeqEntry ((tokens.toList.take (hi + 1)).drop (lo - 1))) :
+    RecSeqBody ((tokens.toList.take hi).drop lo) ∨ lo = hi := by
+  have h_hi_len : hi < tokens.toList.length := by rw [Array.length_toList]; exact h_hi_sz
+  have h_lo1_sz : lo - 1 < tokens.size := by omega
+  -- rest-decomposition: the `interior ++ [cl]` slice the descent is keyed on.
+  have h_rest : (tokens.toList.take (hi + 1)).drop lo
+      = (tokens.toList.take hi).drop lo ++ [tokens.toList[hi]] := by
+    have h_ts : tokens.toList.take (hi + 1)
+        = tokens.toList.take hi ++ [tokens.toList[hi]] := by
+      rw [List.take_add_one, List.getElem?_eq_getElem h_hi_len]; rfl
+    rw [h_ts]
+    have h_len : lo ≤ (tokens.toList.take hi).length := by rw [List.length_take]; omega
+    rw [List.drop_append_of_le_length h_len]
+  -- peel the opener: the opener-window is `tokens[lo-1] :: rest`.
+  have h_peel : (tokens.toList.take (hi + 1)).drop (lo - 1)
+      = tokens.toList[lo - 1]'(by rw [Array.length_toList]; omega)
+        :: (tokens.toList.take (hi + 1)).drop lo := by
+    have hlen : lo - 1 < (tokens.toList.take (hi + 1)).length := by
+      rw [List.length_take]; omega
+    have h := (List.getElem_cons_drop hlen).symm
+    rw [List.getElem_take] at h
+    rw [show lo - 1 + 1 = lo from by omega] at h
+    exact h
+  -- the located entry now reads as `op :: (interior_w ++ [cl])`.
+  rw [h_peel, h_rest] at h_entry
+  have h_op_val : (tokens.toList[lo - 1]'(by rw [Array.length_toList]; omega)).val
+      = .flowSequenceStart := by
+    have hb : tokens[lo - 1]! = tokens.toList[lo - 1]'(by rw [Array.length_toList]; omega) := by
+      rw [getElem!_pos tokens (lo - 1) h_lo1_sz, Array.getElem_toList]
+    rw [← hb]; exact h_open
+  -- descend one nesting level via the array-window form of `seq_interior`.
+  rcases RecSeqEntry.seq_interior h_entry rfl h_op_val with h_rec | h_empty
+  · left; exact h_rec
+  · -- empty interior: `(take hi).drop lo = []` forces `lo = hi`.
+    right
+    have hlen_take : (tokens.toList.take hi).length = hi := by rw [List.length_take]; omega
+    have hl : ((tokens.toList.take hi).drop lo).length
+        = (tokens.toList.take hi).length - lo := List.length_drop
+    rw [h_empty, hlen_take] at hl
+    simp only [List.length_nil] at hl
+    omega
+
 /-- **Located-entry assembler** (Phase J, seq side — the descent-locator's FRONT-END *producer*).
     The constructive dual of `seqBodyProps_of_located_entry`: where that lemma *consumes* a located
     `RecSeqEntry` of the opener-window, this one *builds* it — the locate recursion's per-level
