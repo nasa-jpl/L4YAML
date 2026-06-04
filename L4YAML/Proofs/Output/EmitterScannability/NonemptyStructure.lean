@@ -2960,6 +2960,33 @@ theorem recseqbody_cons_window (tokens : Array (Positioned YamlToken)) (lo m hi 
     ((tokens.toList.take hi).drop (m + 1)) (RecSeqEntry.ne_nil h_entry) h_entry
     (RecSeqEntry.head_contentStart h_entry (RecSeqEntry.ne_nil h_entry)) h_fe_val h_rest
 
+/-- **Body-single window assembler** (Phase J, seq side — the navigation recursion's *terminate* step).
+    The fourth positional move, and the one the DESCEND/BUILD/ADVANCE enumeration *missed*:
+    `RecSeqBody` has **two** constructors — `cons` (entry · separator · rest) and `single` (a lone
+    entry, no trailing separator) — and the three landed moves all lift `cons`-side structure
+    (`recseqbody_window_of_located_entry` descends, `located_entry_of_recseqbody` builds, and
+    `recseqbody_cons_window` advances via `RecSeqBody.cons`).  None lift `single`, so the recursion
+    had no way to *terminate*: `recseqbody_cons_window` defers its tail to `h_rest : RecSeqBody`, which
+    must eventually be produced by the *last* item — the window where `firstEntryBoundary` returns
+    `m = hi` (no more depth-`0` separators).  That terminal window is exactly a `RecSeqBody.single`.
+
+    Where `recseqbody_cons_window` needs the full window-identity plumbing (segment split + separator
+    peel) to expose the `e ++ fe :: rest` shape `RecSeqBody.cons` demands, this terminal move needs
+    *none*: `RecSeqBody.single` takes the entry list verbatim, so the whole-window `RecSeqEntry` *is*
+    the constructor's argument.  The only fields are `h_ne`/`h_head`, discharged by the same
+    `RecSeqEntry.ne_nil` / `RecSeqEntry.head_contentStart` projections the cons step uses.  It is the
+    simplest of the four moves — the recursion's base case, not a compositional step.
+
+    Verified-but-unconsumed until the locate recursion lands: references no sorry site, so the
+    frontier sorry count is unchanged at 4 — it completes the *constructor coverage* of the seq
+    structural moves (every `RecSeqBody` constructor now has a window lift), leaving as residual only
+    the analytical head-dispatch that selects which shape-side lift produces each `[lo, m)` entry. -/
+theorem recseqbody_single_window (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (h_entry : RecSeqEntry ((tokens.toList.take hi).drop lo)) :
+    RecSeqBody ((tokens.toList.take hi).drop lo) :=
+  RecSeqBody.single ((tokens.toList.take hi).drop lo) (RecSeqEntry.ne_nil h_entry) h_entry
+    (RecSeqEntry.head_contentStart h_entry (RecSeqEntry.ne_nil h_entry))
+
 /-- **A recursive map pair is non-empty.**  The sole `RecMapPair.mk` constructor produces a `cons`
     list (`kt :: …`), so the pair is never `[]`.  The map mirror of `RecSeqEntry.ne_nil`: the `h_ne`
     field the body-level `RecMapBody.cons`/`.single` constructors demand, supplied as a structural
