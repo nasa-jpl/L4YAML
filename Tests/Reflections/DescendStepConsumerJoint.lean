@@ -1,8 +1,12 @@
 /-
-# Reflection 260 — the navigation recursion's *descend step* IS a consumer joint's internal computation, truncated: returned as a value instead of consumed
+# Reflection 260 + 261 — the navigation recursion's *descend step* IS a consumer joint's internal computation, truncated: returned as a value instead of consumed (and its symmetric map mirror)
 
 Self-contained, `L4YAML`-free runnable illustration of the proof-engineering principle in
-Blueprint Reflection 260 (and memory `ref-descend-step-is-consumer-joint-truncated`).
+Blueprint Reflections 260 & 261 (and memory `ref-descend-step-is-consumer-joint-truncated`).
+
+**R260 (seq)** is the first part below; **R261 (map mirror)** is the `## The map mirror` section near
+the end — the *same* descent transported verbatim across the seq/map axis, the storage asymmetry
+surfacing as a *dropped* opener-guard hypothesis (the map entry type has no scalar constructor).
 
 **The principle.** A consumer joint that runs an internal positional computation (peel an opener,
 decompose the rest, **descend** one nesting level into a sub-deliverable) and then *consumes* that
@@ -151,5 +155,104 @@ theorem no_descend_scalar : ¬ ∃ interior, ([Tok.A] : List Tok) = Tok.OB :: (i
 
 #guard ([Tok.OB, Tok.A, Tok.CB] : List Tok).length == 3
 #guard ([Tok.OB, Tok.OB, Tok.A, Tok.CB, Tok.CB] : List Tok).length == 5
+
+/-! ## The map mirror (Reflection 261) — a single-level descent transports *verbatim* across the
+    seq/map axis; the storage asymmetry surfaces as a *dropped* opener-guard hypothesis
+
+The map descend step `recmapbody_window_of_located_entry` (R261) is the symmetric mirror of the seq
+one above (R260): the positional `take`/`drop` plumbing is character-for-character identical (here:
+the SAME `seq_interior`/`map_interior` shape over the SAME `app_single_inj`), and the **only** delta
+is dictated by the parallel deliverable's storage — the R244/R246 stored-vs-projected asymmetry.
+
+Here it surfaces as a **dropped hypothesis**: the real `RecMapEntry.map_interior` needs no `h_op`
+opener guard where `RecSeqEntry.seq_interior` does, because **every** `RecMapEntry` constructor is a
+`{ … }` bracket frame (`RecSeqEntry` has a non-bracket `scalar`).  In this toy: `MapEntry` has NO
+`scalar` constructor, so `map_interior`'s case split is *one branch shorter* than `seq_interior`'s
+(two cases, not three) — there is no scalar case to exclude, hence no opener-guard step.  The
+structural fact behind the dropped guard: a bare scalar `[A]` is a *valid* seq entry (`RecEntry.scalar`,
+which the seq descent must exclude — `no_descend_scalar` above) but is **not a `MapEntry` at all**
+(`no_mapentry_scalar` below). -/
+
+-- toy of `RecMapBody` / `RecMapEntry`: like the seq toy but with NO scalar constructor — every entry
+-- is a bracket frame, so the descent has no scalar case to rule out (the dropped opener guard).
+mutual
+  inductive MapBody : List Tok → Prop where
+    | single (e : List Tok) (h : MapEntry e) : MapBody e
+  inductive MapEntry : List Tok → Prop where
+    | mapEmpty : MapEntry (Tok.OB :: (([] : List Tok) ++ [Tok.CB]))
+    | nest (i : List Tok) (h : MapBody i) : MapEntry (Tok.OB :: (i ++ [Tok.CB]))
+end
+
+/-- A map body wraps exactly one entry. -/
+theorem MapBody.toEntry {l : List Tok} (h : MapBody l) : MapEntry l := by
+  cases h with | single e he => exact he
+
+/-- **Single-level map descent** (toy of `RecMapEntry.map_interior`): every constructor is a bracket
+    frame, so — unlike `seq_interior` — there is NO scalar case to exclude and hence no opener-guard
+    step.  The case split is exactly two branches (`mapEmpty`, `nest`), one shorter than
+    `seq_interior`'s three: the toy reflection of the real map mirror's *dropped `h_op` hypothesis*. -/
+theorem map_interior {e interior : List Tok} (h : MapEntry e)
+    (h_eq : e = Tok.OB :: (interior ++ [Tok.CB])) :
+    MapBody interior ∨ interior = [] := by
+  cases h with
+  | mapEmpty =>
+      right; injection h_eq with _ h2; exact (app_single_inj h2).symm
+  | nest i hi =>
+      left; injection h_eq with _ h2; exact (app_single_inj h2) ▸ hi
+
+/-- `MapBody` projects to `Flat` (toy of `RecMapBody.toSafeBody`). -/
+theorem MapBody.toFlat {l : List Tok} (h : MapBody l) : Flat l := by
+  cases h with
+  | single e he =>
+      cases he with
+      | mapEmpty => simp [Flat]
+      | nest i hi => simp [Flat]
+
+/-- **The map descend primitive** (R261, toy of `recmapbody_window_of_located_entry`) — the inner-window
+    `MapBody` *as a value*, the navigation recursion's IH input one nesting level down. -/
+theorem mapbody_of_entry {e interior : List Tok} (h : MapEntry e)
+    (h_eq : e = Tok.OB :: (interior ++ [Tok.CB])) :
+    MapBody interior ∨ interior = [] :=
+  map_interior h h_eq
+
+/-- **The map consumer joint** (toy of `mapBodyProps_of_located_entry`): the *same* descent then
+    `MapBody.toFlat` consume, defined literally as the descend primitive followed by the consume step —
+    the factoring manifest at definition time, exactly as `flat_of_entry`. -/
+theorem flat_of_map_entry {e interior : List Tok} (h : MapEntry e)
+    (h_eq : e = Tok.OB :: (interior ++ [Tok.CB])) :
+    Flat interior ∨ interior = [] :=
+  (mapbody_of_entry h h_eq).imp MapBody.toFlat id
+
+/-- The structural asymmetry behind the dropped guard: a bare scalar `[A]` is **not a `MapEntry` at
+    all** (every map entry is a bracket frame), so the map descent never confronts a scalar case and
+    needs no opener guard — whereas the seq `[A]` IS a `RecEntry.scalar` the seq descent must exclude. -/
+theorem no_mapentry_scalar : ¬ MapEntry [Tok.A] := by
+  intro h; cases h
+
+-- positive map witnesses (verbatim mirror of the seq witnesses; `{ }` = `[OB, CB]`).
+def mapEntry1 : MapEntry [Tok.OB, Tok.OB, Tok.CB, Tok.CB] :=
+  MapEntry.nest [Tok.OB, Tok.CB] (MapBody.single _ MapEntry.mapEmpty)
+
+/-- the map descend primitive hands back the inner body `MapBody [OB, CB]` (the recursion's IH input). -/
+theorem descend_map_one : MapBody [Tok.OB, Tok.CB] := by
+  rcases mapbody_of_entry (interior := [Tok.OB, Tok.CB]) mapEntry1 rfl with h | h
+  · exact h
+  · exact absurd h (by decide)
+
+-- a doubly-nested map window `{ { { } } }`.
+def mapEntry2 : MapEntry [Tok.OB, Tok.OB, Tok.OB, Tok.CB, Tok.CB, Tok.CB] :=
+  MapEntry.nest [Tok.OB, Tok.OB, Tok.CB, Tok.CB] (MapBody.single _ mapEntry1)
+
+/-- descend TWICE using only the primitive (mirror of `descend_twice`): the map descend step is
+    recursion-enabling exactly as the seq one. -/
+theorem descend_map_twice : MapBody [Tok.OB, Tok.CB] := by
+  rcases mapbody_of_entry (interior := [Tok.OB, Tok.OB, Tok.CB, Tok.CB]) mapEntry2 rfl with h1 | h1
+  · rcases mapbody_of_entry (interior := [Tok.OB, Tok.CB]) h1.toEntry rfl with h2 | h2
+    · exact h2
+    · exact absurd h2 (by decide)
+  · exact absurd h1 (by decide)
+
+#guard ([Tok.OB, Tok.OB, Tok.CB, Tok.CB] : List Tok).length == 4
+#guard ([Tok.OB, Tok.OB, Tok.OB, Tok.CB, Tok.CB, Tok.CB] : List Tok).length == 6
 
 end Tests.Reflections.DescendStepConsumerJoint
