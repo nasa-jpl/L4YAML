@@ -15467,14 +15467,20 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 carry — it owes a `WellTyped` substrate (per-window via `WellTyped_subrange`) and likely a
                 trailing-separator exclusion. Every locate-substrate brick R225–R271 (incl.
                 `advanceTail_invariant`) feeds this one driver. Residual scope: the **non-empty** collection case only.
-                The **head-dispatch itself is now being built branch-by-branch**, leaf-first as the shape side was
-                (R272 `recseqentry_scalar_dispatch` — the *scalar* branch — landed `16071318`; it derives the
-                split point `m = lo+1` from `firstEntryBoundary`'s minimality + the scalar's delta-`0` and the
-                trailing-separator substrate `h_succ`, taken as a hypothesis pending `WellTyped_subrange`). Remaining
-                dispatch branches: `seqEmpty` (`m = lo+2`), the two bracket branches (`seq` recursive via the BUILD
-                move, `map` near-leaf — each owing the matching-close resolution `m = close+1` from
-                `flowBracketBalance_matching_close_{seq,map}`), then the `Nat.strongRecOn` driver that supplies the
-                recursive oracle and the per-window `WellTyped`/`h_succ` substrate.
+                The **head-dispatch itself is now being built branch-by-branch**, leaf-first as the shape side was.
+                Both *leaf* branches have now landed: R272 `recseqentry_scalar_dispatch` — the *scalar* branch
+                (`16071318`; split point `m = lo+1` from `firstEntryBoundary`'s minimality + the scalar's delta-`0`
+                and the trailing-separator substrate `h_succ`); and R273 `recseqentry_seqempty_dispatch` — the
+                *empty-bracket* branch (`697ba9a8`; `m = lo+2`). R273 surfaced the dispatch's defining asymmetry: a
+                multi-token entry has an interior NON-marker position (the opener at `lo+1`, balance `+1`) that
+                leastness alone permits `m` to equal, so every bracket branch must additionally consume
+                `firstEntryBoundary`'s OUTPUT *marker* clause (`m` is itself a boundary marker), not just its
+                minimality — the scalar leaf needed only LEAST, the bracket leaves need MARKER too. Remaining
+                dispatch branches: the two BRACKET branches (`seq` recursive via the BUILD move
+                `located_entry_of_recseqbody`, `map` near-leaf via `recseqentry_map_window`), each owing the
+                matching-close resolution `m = close+1` from `flowBracketBalance_matching_close_{seq,map}`, then the
+                `Nat.strongRecOn` driver that supplies the recursive oracle and the per-window `WellTyped`/`h_succ`
+                substrate.
 
                 • **Workstream B — CONTENT (independent of A; currently dormant).** The 2
                 `emit_roundtrip_{sequence,mapping}_content_eq` `exact sorry` sites (EmitterScannability.lean:832 / :872),
@@ -15500,6 +15506,46 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 Cross-refs: Reflection 271 (structural-complete ≠ runnable), and the Verification manual's
                 §Round-Trip / §Zero-Axiom sorry-budget note (reconciled 2026-06-04).
 
+                **Total .body scope re-estimate (ONE-HUNDRED-TWENTY-FIRST revision —
+                after **Thread A step 3 sub-step 3's brick cont'd (locate recursion HEAD-DISPATCH —
+                *seqEmpty branch*) — landed** (commit `697ba9a8`, Reflection 273). **The second — and last *leaf* —
+                branch of the seq locate driver's head-dispatch.** Mirroring `recseqentry_scalar_dispatch` for the
+                empty flow-sequence `[ ]` head (opener `tokens[lo] = .flowSequenceStart` immediately followed by
+                closer `tokens[lo+1] = .flowSequenceEnd`), it derives the split point `m = lo+2` and fires the leaf
+                lift `recseqentry_seqempty_window`. Its lesson is an ASYMMETRY the scalar branch concealed: the
+                scalar entry ends at the *earliest* candidate `lo+1`, so `firstEntryBoundary`'s LEASTNESS clause
+                alone pinned it (`lo+1` is a marker, `m` the least marker, `lo < m` ⟹ `m = lo+1`). The empty bracket
+                spans TWO tokens, and its intermediate position `lo+1` is **not** a marker — the opener drives the
+                running balance to `+1` (`flowBracketDelta_flowSequenceStart`), so `balance lo (lo+1) = 1 ≠ 0`.
+                Leastness, quantified over the *open* interval `(lo, m)`, says nothing about `m` itself and so
+                PERMITS `m = lo+1`; minimality alone cannot push the split past the un-balanced opener. To exclude
+                `m = lo+1` the dispatch must consume `firstEntryBoundary`'s OTHER output — the MARKER clause that `m`
+                is *itself* a boundary marker (`balance lo m = 0` ∧ completes the entry) — which `balance lo (lo+1) =
+                1` contradicts, forcing `m ≠ lo+1`. Combined with `m ≤ lo+2` (minimality against the genuine marker
+                `lo+2`, where the closer returns the balance to `0`: `+1` then `flowBracketDelta_flowSequenceEnd =
+                -1`, composed via `flowBracketBalance_compose`) and `lo < m`, this gives `m = lo+2`. So the
+                head-dispatch is where `firstEntryBoundary`'s *two* output clauses split by branch: the one-token
+                scalar leaf needs only LEAST, every multi-token bracket leaf needs MARKER too (to step over its own
+                interior non-markers). The marker hypothesis is exactly the `firstEntryBoundary` conjunct the driver
+                carries for free; taken here as a hypothesis in the verified-but-unconsumed discipline. Unlike the
+                scalar branch's fully-constructive `[propext, Quot.sound]`, this branch invokes
+                `flowBracketBalance_compose` (the closer-balance composition the single-token scalar branch never
+                needed), so it picks up the standard clean triple **`[propext, Classical.choice, Quot.sound]`** — the
+                `Classical.choice` entering through `compose`'s `List.foldl` machinery, exactly as in
+                `advanceTail_invariant` (R271) and `recmappair_window`. Verified-but-unconsumed: references no sorry
+                site, **sorries held at 4**. Build green **537 jobs**. **Immediate next brick:** the two remaining
+                BRACKET dispatch branches — `seq` (recursive, via the BUILD move `located_entry_of_recseqbody`) and
+                `map` (near-leaf, via `recseqentry_map_window`) — each of which, like `seqEmpty`, consumes the MARKER
+                clause but now also owes the *matching-close resolution* `m = close+1` from
+                `flowBracketBalance_matching_close_{seq,map}` (the Dyck locator pinning where the bracket closes,
+                given the per-window Dyck guard + `WellTyped` subrange); then the `Nat.strongRecOn` DRIVER itself,
+                supplying the recursive oracle (the `.seq` interior's `RecSeqBody`) and the per-window
+                `WellTyped`/`h_succ` substrate via `WellTyped_subrange`, ADVANCEing over the
+                `advanceTail_invariant`-certified tail and TERMINATEing at `m = hi`; then its map mirror. Feeds the
+                per-window `Rec…Body` producers into `flowSubrangesOk_of_window_producers` → the two
+                `scanFiltered_emit{Seq,Map}_nonempty_structure` sorry sites → the two base
+                `emit_roundtrip_{sequence,mapping}_content_eq` sorries → `universal_roundtrip`. See Reflection 273, on
+                top of the
                 **Total .body scope re-estimate (ONE-HUNDRED-TWENTIETH revision —
                 after **Thread A step 3 sub-step 3's brick cont'd (locate recursion HEAD-DISPATCH —
                 *scalar branch*) — landed** (commit `16071318`, Reflection 272). **The first branch of the
@@ -27242,3 +27288,13 @@ R271 closed the input side (`firstEntryBoundary` locate + `advanceTail_invariant
 **The coincidence proof reads off the locator's minimality, fed by a one-token-ahead grammar substrate.** For the scalar branch: the scalar head's bracket delta is `0` (`flowBracketDelta_scalar`), so `balance lo (lo+1) = 0` (`flowBracketBalance_single`) — a *positional* fact, free. The missing ingredient is **grammatical**: that `lo+1` is actually a boundary (the entry is complete there), i.e. `lo+1 = hi ∨ tokens[lo+1] = .flowEntry`. With it, `lo+1` is a *marker*; and because `firstEntryBoundary` returned `m` as the **least** marker, `m ≤ lo+1`, which with `lo < m` pins `m = lo+1`. So the dispatch consumes the locator's minimality clause as its engine and needs exactly *one* grammar fact — the trailing-separator/value-end successor `h_succ`, the same `_h_body_succ` substrate the outer-span seed already builds, recoverable per-window via `WellTyped_subrange`. Taken here as a hypothesis (verified-but-unconsumed); the driver will discharge it. The dispatch is thus the first brick to *consume* `firstEntryBoundary`'s minimality output, where every prior locate brick only *produced* substrate.
 
 **Land the dispatch leaf-first, mirroring the shape side's own construction order.** The shape side was built leaf-first (R265 scalar → R266 seqEmpty → R267 map → the recursive `.seq` already supplied by BUILD). The dispatch over it inherits the same order and the same re-split: the scalar branch is the leaf (no matching-close, `m = lo+1`), and it names a collection-specific deliverable type (`RecSeqEntry`, via the scalar lift), so by R264's discriminator it re-splits the map axis — but the *minimality → split-point* machinery is axis-shared shape the map dispatch reuses (the map leaf being the scalar-key/scalar-value PAIR). The remaining branches climb the same ladder: `seqEmpty` (`m = lo+2`, still a fixed-arity leaf, same minimality argument at the next arity), then the two bracket branches whose split point is *not* a fixed offset but `m = close+1` — there the coincidence proof must first *resolve the matching close* (`flowBracketBalance_matching_close_{seq,map}`, needing the per-window Dyck guard + `WellTyped` subrange) before pinning `m`. Fully constructive — axiom-clean **`[propext, Quot.sound]`**, matching the scalar leaf, the `Classical.choice` of the bracket plumbing not yet entering. Verified-but-unconsumed: references no sorry site, frontier sorry count unchanged at **4** (build green **537 jobs**; commit `16071318`). **Immediate next brick:** the `seqEmpty` dispatch branch (the second fixed-arity leaf), then the two bracket branches (matching-close-resolved), then the `Nat.strongRecOn` DRIVER supplying the recursive oracle and the per-window `WellTyped`/`h_succ` substrate; then the map mirror. Feeds the per-window `Rec…Body` producers into `flowSubrangesOk_of_window_producers` → the two `scanFiltered_emit{Seq,Map}_nonempty_structure` sorry sites → the two base `emit_roundtrip_{sequence,mapping}_content_eq` sorries → `universal_roundtrip`. See [[ref-entry-boundary-input-shape-split]] (R264–R268, R271 — the input/shape split this dispatch joins: it consumes the input side's minimality and fires the shape side's lifts), [[ref-structural-moves-complete-recursion]] (R262/R263/R269/R270 — the structural moves the dispatch will drive), and [[ref-consumer-joint-before-producer]] (the brick-by-brick substrate discipline, now crossing from producing substrate to consuming it).
+
+### Reflection 273 (new, 2026-06-04): the head-dispatch consumes the locator's output in TWO clauses, and they split by branch — the one-token leaf needs only LEASTNESS, every multi-token entry needs the MARKER clause too, because it must step over its own interior non-markers
+
+R272 landed the dispatch's scalar branch and named it a split-point-coincidence proof that *consumes* `firstEntryBoundary`'s minimality. This session lands the second leaf, `recseqentry_seqempty_dispatch` (empty flow-sequence `[ ]`), and it sharpens R272's "consumes the locator's output" into a precise accounting: `firstEntryBoundary` returns `m` with **two** facts — `m` is a marker (`balance lo m = 0` ∧ completes the entry) AND `m` is the *least* marker — and the branches of the dispatch consume *different subsets* of them.
+
+**The scalar branch hid an asymmetry: its entry ends at the EARLIEST candidate, so leastness alone sufficed.** A scalar entry is one token, ending at `lo+1` — the very first position after the head. So once `lo+1` is shown to be a marker (delta-`0` ⟹ `balance lo (lo+1) = 0`, plus the grammar substrate `h_succ`), leastness gives `m ≤ lo+1`, and `lo < m` closes `m = lo+1`. The MARKER clause of `firstEntryBoundary`'s output (`m` is *itself* a marker) was never touched — leastness did all the work, because there is no position strictly between the head and the entry's end for `m` to get stuck on.
+
+**The empty bracket exposes it: a multi-token entry has an INTERIOR non-marker that leastness permits `m` to equal.** `[ ]` spans two tokens, `[lo, lo+2)`. Its interior position `lo+1` is **not** a marker: the opener drives the running balance to `+1` (`flowBracketDelta_flowSequenceStart`), so `balance lo (lo+1) = 1 ≠ 0` — the marker predicate's balance conjunct fails. Now leastness *backfires*: `h_m_least` is quantified over the **open** interval `(lo, m)`, so it constrains positions strictly below `m` but says nothing about `m` itself. If `m` were `lo+1`, the minimality hypothesis would be vacuous (no `k` with `lo < k < lo+1`) and perfectly satisfiable. Leastness alone *cannot* push the split past the un-balanced opener — it permits the degenerate `m = lo+1`. The only thing that excludes it is the OTHER clause: `m` is itself a marker, so `balance lo m = 0`, which `balance lo (lo+1) = 1` directly contradicts. So the bracket branch must consume `firstEntryBoundary`'s marker clause; the scalar branch did not.
+
+**The principle: leastness pins the split iff the entry is single-token; any multi-token entry additionally needs the marker clause to step over its own interior non-markers.** This is why the dispatch is built leaf-first by *arity*: the one-token scalar leaf (R272) is the cheapest because it consumes the smallest slice of the locator's output; the two-token `seqEmpty` leaf (here) is next, consuming the marker clause too; the variable-span bracket branches (`seq`/`map`, owed next) consume the marker clause *and* must resolve a matching close (`flowBracketBalance_matching_close_{seq,map}`) to even know where the entry ends. Each rung up the arity ladder consumes strictly more of `firstEntryBoundary`'s contract. The driver carries the full marker-and-least pair for free (it *is* `firstEntryBoundary`'s output); here both clauses are taken as hypotheses in the verified-but-unconsumed discipline. The proof also crosses an axiom boundary the scalar leaf stayed inside: closing `balance lo (lo+2) = 0` requires `flowBracketBalance_compose` (the opener `+1` and closer `-1` summed across the split), which pulls `Classical.choice` through its `List.foldl` machinery — so this branch is **`[propext, Classical.choice, Quot.sound]`** where the single-token scalar branch, never invoking compose, stayed at **`[propext, Quot.sound]`**. Verified-but-unconsumed: references no sorry site, frontier sorry count unchanged at **4** (build green **537 jobs**; commit `697ba9a8`). **Immediate next brick:** the two BRACKET dispatch branches — `seq` (recursive, BUILD move `located_entry_of_recseqbody`) and `map` (near-leaf, `recseqentry_map_window`) — each consuming the marker clause (as here) and additionally owing the matching-close resolution `m = close+1` from `flowBracketBalance_matching_close_{seq,map}` (per-window Dyck guard + `WellTyped` subrange); then the `Nat.strongRecOn` DRIVER supplying the recursive oracle and the per-window `WellTyped`/`h_succ` substrate via `WellTyped_subrange`; then the map mirror. Feeds the per-window `Rec…Body` producers into `flowSubrangesOk_of_window_producers` → the two `scanFiltered_emit{Seq,Map}_nonempty_structure` sorry sites → the two base `emit_roundtrip_{sequence,mapping}_content_eq` sorries → `universal_roundtrip`. See [[ref-entry-boundary-input-shape-split]] (R264–R272 — the input/shape split this dispatch joins; R273 refines the *input* side: its output is two clauses consumed by-arity, not one), [[ref-converse-forward-invariant-asymmetry]] (the kindred lesson that two facts over one structure can carry different strengths — here LEAST vs MARKER), and [[ref-consumer-joint-before-producer]] (the brick-by-brick substrate discipline, now consuming the locator's output one clause at a time).
