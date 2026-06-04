@@ -15448,6 +15448,43 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `emit{List,PairList}` structure. **May need its own
                 substrate sub-survey** (heuristic from Reflection 152).
 
+                **Total .body scope re-estimate (ONE-HUNDRED-FIFTH revision —
+                after **Thread A step 3 sub-step 3's brick cont'd (locate prep) — *LOCATE CONSUMER CHAIN
+                FOLDED INTO ONE PER-WINDOW-PRODUCER BOUNDARY* — landed** (commit `d965487e`, Reflection 257).
+                **The last consumer-side brick: the whole locate consumer chain collapsed to one lemma keyed
+                only on the locate recursion's still-owed deliverables.** Added
+                `flowSubrangesOk_of_window_producers`: it composes the three landed locate-consumer joints —
+                `flowSubrangesOk_of_locators` (R243, universal packaging) and the two boundary-anchoring
+                locator joints `seqLocator_of_window_recseqbody`/`mapLocator_of_window_recmapbody` (R255/R256,
+                unbounded↔bounded reconciliation) — into a single term
+                `flowSubrangesOk_of_locators tokens (seqLocator_of_window_recseqbody …) (mapLocator_of_window_recmapbody …)`,
+                so its hypothesis list is *exactly* the union of the two locators' producer inputs: the two
+                stream-frame boundary tokens (`tokens[0] = .streamStart`, `tokens[size-1] = .streamEnd`), the
+                single outer `WellTyped ((take (size-2)).drop 2)`, the bounded per-window `RecSeqBody`/`RecMapBody`
+                producers, and the six map pair-interior primitives. **What the type now says:** every consumer
+                step downstream of the producer (FlowSubrangesOk packaging, both boundary reconciliations, the
+                per-window `*_of_located_entry`/`*_of_recseqbody_window` joints, the R253 Dyck-free and R254
+                WellTyped-via-outer reductions) is composed *once*, here; the only thing left in the signature is
+                the value-driven locate recursion's output. The two `scanFiltered_emit{Seq,Map}_nonempty_structure`
+                sorry sites will each close with one
+                `exact flowSubrangesOk_of_window_producers tokens h_t0 h_tlast h_wt_interior <seq rec> <map rec> <+6>` —
+                every argument but the recursion is already an in-scope fact at those sites. **Lesson** (corollary of
+                R243 + R225): once a consumer chain is built joint-by-joint at successive boundaries, fold it into
+                one lemma whose hypotheses are precisely the producer's contract *before* writing the producer — the
+                fold costs nothing and cannot regress, but converts a scattered residual (thread the producer
+                through three joints at two sorry sites) into one typed boundary the recursion is written against,
+                and makes the recursion's exact return obligation (`{RecSeqBody}` / `{RecMapBody, +6}`) legible as
+                one signature. Verified-but-unconsumed (R225): composes only landed lemmas, references no sorry
+                site, **sorries held at 4**. Build green **532 jobs**; axiom-clean
+                **`[propext, Classical.choice, Quot.sound]`**. **Immediate next brick:** the value-driven **locate
+                recursion** itself — now the *sole* remaining consumer-or-producer obligation between the structure
+                sites and `FlowSubrangesOk`: a value-driven mutual recursion mirroring the emit feed, threading the
+                positional offset, producing the bounded per-window `RecSeqBody`/`RecMapBody` (+6 map primitives) at
+                every guarded body-interior window, re-deriving each nested `Rec…Body` from
+                `emitList_scans_recseqbody`/`emitPairList_scans_recmapbody` at the corresponding sub-value (R251/R252
+                value-driven decoupling) — fed once into `flowSubrangesOk_of_window_producers`; then the two base
+                `emit_roundtrip_{sequence,mapping}_content_eq` sorries → `universal_roundtrip`. See Reflection 257,
+                on top of the
                 **Total .body scope re-estimate (ONE-HUNDRED-FOURTH revision —
                 after **Thread A step 3 sub-step 3's brick cont'd (locate prep) — *MAP MIRROR OF THE
                 BOUNDARY-ANCHORING LOCATOR JOINT* — landed** (commit `e8bbe614`, Reflection 256). **The
@@ -26441,3 +26478,13 @@ The reusable point: **a consumer-joint-before-producer move has two boundaries, 
 The **only** structural delta is the one R246 already named: the map's outer assembler `mapLocated_of_recmapbody_outer` threads **six pair-interior primitives** (`h_key_content`, `h_key_scalar_value`, `h_value_content`, `h_value_scalar_succ`, `h_key_bracket_succ`, `h_value_bracket_succ`) that the seq assembler has no analogue of — the storage asymmetry between `RecSeqEntry.seq` (stores `RecSeqBody`) and the map's pair structure (stores `WellBracketed`, projecting the rest). At the *locator-joint* level that asymmetry surfaces as **six additional per-window universal producer hypotheses** on the joint's signature: each is the R254-shaped `∀ lo hi, 2 ≤ lo → … → tokens[lo-1] = .flowMappingStart → <primitive over lo hi>`, the bounded value-driven map recursion establishing them as side-products of the same descent that builds the `RecMapBody`. The joint recovers the bounds *once* and feeds them to all seven producer hypotheses uniformly — the bound-recovery cost does not multiply with the primitive count.
 
 The reusable point sharpens R246's "arity delta is the storage decision, visible at the last line": **the same storage asymmetry that shrinks/grows a constructor's argument list also widens a downstream joint's *hypothesis* list** — the +6 primitives are carried as six bounded universal hypotheses on `mapLocator_of_window_recmapbody`, one tier up from where they were stored/projected. The mechanism is scale-free across the seq→map axis (R248) *and* across the output→input boundary (R255→R256): wherever the map side carries more than the seq side, it is always exactly the pair-interior primitive set, threaded verbatim, never re-derived. With both locator joints landed, the locate's per-window contract is named on **both** boundaries for **both** collection kinds, reduced to exactly the bare structural recursion: `seqLocator_of_window_recseqbody` consumes `{RecSeqBody}`, `mapLocator_of_window_recmapbody` consumes `{RecMapBody, +6}`. The next brick is the value-driven **locate recursion** itself, producing those bounded per-window `Rec…Body` deliverables by mirroring the emit feed (`emitList_scans_recseqbody` / `emitPairList_scans_recmapbody`) at each sub-value. See [[ref-two-boundary-consumer-joint]] (R255 — the input-boundary technique this mirrors), [[ref-mirror-constructor-arity-reads-storage]] (R246/R248 — the storage asymmetry now surfacing at a joint's hypothesis list rather than a constructor's arity), and [[ref-reduction-by-import]] (R225 — verified-but-unconsumed).
+
+### Reflection 257 (new, 2026-06-03): the locate's whole consumer chain folds into one lemma keyed only on the per-window `Rec…Body` producers — the producer's contract, named as a single boundary before the recursion is written
+
+`flowSubrangesOk_of_window_producers` (commit `d965487e`, build green **532 jobs**, frontier sorries held at **4**, axiom-clean `[propext, Classical.choice, Quot.sound]`) is the *last consumer-side brick*: it composes the three landed locate-consumer joints into one lemma, leaving a single hypothesis bundle — the locate recursion's genuine, still-owed deliverables.
+
+The three joints it folds were landed across R243/R255/R256, each at a different boundary: `flowSubrangesOk_of_locators` (R243) packages the two per-window locators into the universal `FlowSubrangesOk tokens`; `seqLocator_of_window_recseqbody` (R255) and `mapLocator_of_window_recmapbody` (R256) reconcile the *unbounded* `FlowSubrangesOk.{seq,map}` quantifiers with the *bounded* outer assemblers by recovering the window bounds from the stream-frame tokens. Read as a chain they go `{per-window RecSeqBody / RecMapBody (+6)} → {SeqLocated / MapLocated locators} → FlowSubrangesOk`. R257 just writes that composition down as one term: `flowSubrangesOk_of_locators tokens (seqLocator_of_window_recseqbody …) (mapLocator_of_window_recmapbody …)`. Its hypothesis list is therefore *exactly* the union of the two locator joints' producer inputs: the two stream-frame boundary tokens (`tokens[0] = .streamStart`, `tokens[size-1] = .streamEnd`), the single outer `WellTyped ((take (size-2)).drop 2)`, the bounded per-window `RecSeqBody`/`RecMapBody` producers, and the six map pair-interior primitives.
+
+The point is not the (trivial) proof — it is **what the type now says**. Every consumer step downstream of the producer — `FlowSubrangesOk` packaging, both unbounded↔bounded boundary reconciliations, the per-window `*_of_located_entry` / `*_of_recseqbody_window` joints, the Dyck-free (R253) and WellTyped-via-outer (R254) reductions — is composed exactly once, here. What remains in the hypothesis list is *only* the value-driven locate recursion's output: deliver `RecSeqBody ((take hi).drop lo)` at every guarded seq window, `RecMapBody …` + the six primitives at every guarded map window. The two `scanFiltered_emit{Seq,Map}_nonempty_structure` sorry sites will each be discharged by a single `exact flowSubrangesOk_of_window_producers tokens h_t0 h_tlast h_wt_interior <seq recursion> <map recursion> <six primitives>` — every other argument is already in scope at those sites (the boundary tokens and the outer `WellTyped` are established facts there; only the recursion is owed).
+
+The reusable point, a corollary of [[ref-universal-packaging-is-its-own-joint]] (R243) and [[ref-reduction-by-import]] (R225): **once a consumer chain is built joint-by-joint at successive boundaries, fold it into one lemma whose hypotheses are precisely the producer's contract — before writing the producer.** The fold costs nothing (it composes only landed lemmas, references no sorry site, holds the count at 4) and cannot regress, but it converts a *scattered* residual ("thread the producer through three joints at two sorry sites") into a *single typed boundary* the recursion is written against — and it makes the recursion's exact return obligation (`{RecSeqBody}` / `{RecMapBody, +6}`, the two boundary tokens and outer `WellTyped` as free in-scope facts) legible as one signature instead of three. The consumer side is now closed end-to-end *and collapsed to one lemma*; the entire remaining Phase-J frontier is that one producer (the locate recursion) plus the two base `emit_roundtrip_{sequence,mapping}_content_eq` sorries → `universal_roundtrip`. See [[ref-universal-packaging-is-its-own-joint]] (R243 — the packaging joint this folds in), [[ref-two-boundary-consumer-joint]] (R255/R256 — the two boundary joints this folds in), [[ref-consumer-joint-before-producer]] (R231 — the build-the-consumer-first discipline, here at its terminal step), and [[ref-reduction-by-import]] (R225 — verified-but-unconsumed).
