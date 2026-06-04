@@ -3159,6 +3159,58 @@ theorem recseqentry_scalar_window (tokens : Array (Positioned YamlToken)) (lo : 
     rw [← hb]; exact hcs
   exact RecSeqEntry.scalar _ c s h_val
 
+/-- **Empty-sequence entry window** (Phase J — the entry-boundary location's *shape side*, seq, the
+    second leaf).  The next shape-side constructor-lift after `recseqentry_scalar_window`: the empty
+    flow-sequence `[ ]`.  `RecSeqEntry.seqEmpty` produces `RecSeqEntry (op :: ([] ++ [cl]))` — the
+    two-token window `[op, cl]` with no interior — so given an opener `tokens[lo] = .flowSequenceStart`
+    immediately followed by a closer `tokens[lo+1] = .flowSequenceEnd`, the window `[lo, lo+2)`,
+    i.e. `(tokens.toList.take (lo + 2)).drop lo`, is a `RecSeqEntry.seqEmpty`.  Here the split point is
+    `m = lo + 2` (the matching close is the very next token: an empty bracket has depth returning to `0`
+    one step in), so like the scalar leaf it is NON-recursive — no `RecSeqBody` interior to descend
+    into, the empty interior carried positionally by the constructor.  It joins `scalar` as the second
+    of the shape side's two *leaf* constructor-lifts (the non-recursive `RecSeqEntry` constructors);
+    the remaining `map` is a near-leaf (its interior bottoms at `WellBracketed`, not a `RecSeqBody`),
+    and the recursive `.seq` lift is already the BUILD move `located_entry_of_recseqbody`.
+
+    Proof: the two-token window identity `(take (lo+2)).drop lo = [tokens.toList[lo], tokens.toList[lo+1]]`
+    — the one-token `List.getElem_cons_drop` chain of `recseqentry_scalar_window` applied *twice*
+    (peel `[lo]`, then `[lo+1]`, the trailing `drop (lo+2)` killed by `List.drop_eq_nil_of_le`), each
+    index simplified through the `take` by `List.getElem_take` — then `RecSeqEntry.seqEmpty` (whose
+    `op :: ([] ++ [cl])` index is defeq to the two-element list), with both head values transported
+    from `tokens[lo]!`/`tokens[lo+1]!` via `getElem!_pos`/`Array.getElem_toList`.  Verified-but-
+    unconsumed: references no sorry site, frontier sorry count unchanged; axiom-clean
+    `[propext, Quot.sound]`. -/
+theorem recseqentry_seqempty_window (tokens : Array (Positioned YamlToken)) (lo : Nat)
+    (h_lo1_sz : lo + 1 < tokens.size)
+    (h_open : tokens[lo]!.val = .flowSequenceStart)
+    (h_close : tokens[lo + 1]!.val = .flowSequenceEnd) :
+    RecSeqEntry ((tokens.toList.take (lo + 2)).drop lo) := by
+  have h_lo_sz : lo < tokens.size := by omega
+  have h_lo_len : lo < tokens.toList.length := by rw [Array.length_toList]; exact h_lo_sz
+  have h_lo1_len : lo + 1 < tokens.toList.length := by rw [Array.length_toList]; exact h_lo1_sz
+  have hlen0 : lo < (tokens.toList.take (lo + 2)).length := by rw [List.length_take]; omega
+  have hlen1 : lo + 1 < (tokens.toList.take (lo + 2)).length := by rw [List.length_take]; omega
+  have h_drop_nil : (tokens.toList.take (lo + 2)).drop (lo + 2) = [] := by
+    apply List.drop_eq_nil_of_le
+    rw [List.length_take]; omega
+  have h_win : (tokens.toList.take (lo + 2)).drop lo
+      = [tokens.toList[lo]'h_lo_len, tokens.toList[lo + 1]'h_lo1_len] := by
+    have e1 := (List.getElem_cons_drop hlen1).symm
+    rw [List.getElem_take, h_drop_nil] at e1
+    have e0 := (List.getElem_cons_drop hlen0).symm
+    rw [List.getElem_take, e1] at e0
+    exact e0
+  rw [h_win]
+  have h_op_val : (tokens.toList[lo]'h_lo_len).val = .flowSequenceStart := by
+    have hb : tokens[lo]! = tokens.toList[lo]'h_lo_len := by
+      rw [getElem!_pos tokens lo h_lo_sz, Array.getElem_toList]
+    rw [← hb]; exact h_open
+  have h_cl_val : (tokens.toList[lo + 1]'h_lo1_len).val = .flowSequenceEnd := by
+    have hb : tokens[lo + 1]! = tokens.toList[lo + 1]'h_lo1_len := by
+      rw [getElem!_pos tokens (lo + 1) h_lo1_sz, Array.getElem_toList]
+    rw [← hb]; exact h_close
+  exact RecSeqEntry.seqEmpty _ _ h_op_val h_cl_val
+
 /-- **Parametric `MapBodyProps` assembler** (Phase J seed, map side).  The map-side mirror of
     `seqBodyProps_assemble`: given an arbitrary balanced flow-MAPPING subrange `[lo, hi)` —
     `tokens[hi]! = .flowMappingEnd`, total balance `0`, Dyck prefixes, interior `WellTyped` — together
