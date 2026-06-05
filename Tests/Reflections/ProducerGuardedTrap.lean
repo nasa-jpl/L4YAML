@@ -16,8 +16,9 @@ Run it: open in the IDE (the `#eval`s render in the infoview) or `lake build Tes
 
 namespace ProducerGuardedTrap
 
-/-- Toy tokens: opener `[`, closer `]`, separator `,`, scalar `s`. -/
-inductive Tok | opn | cls | sep | scal
+/-- Toy tokens: opener `[`, closer `]`, separator `,`, scalar `s`, plus `key`/`value` for the R284
+    map-pair section (a map pair `key K value V`). -/
+inductive Tok | opn | cls | sep | scal | key | value
 deriving DecidableEq, Repr
 
 /-- Bracket delta: +1 open, −1 close, 0 otherwise. -/
@@ -189,5 +190,65 @@ theorem nearLeaf_resid_premise_holds :
 
 /-- `nearLeaf_fixed` produces a genuine proof at the located close (idx 2). -/
 example : Resid ts 2 := nearLeaf_fixed (by decide) (by decide) nearLeaf_resid_premise_holds
+
+/-! ## R284 refinement — the fold's two halves: POSITION (mirrors only when balance-derivable) vs
+    SUB-DELIVERABLE (a producer-guarded oracle regardless).
+
+R283 folded a balance-pure locator to DERIVE the bracket's split position from the head. R284's map
+mirror cannot: a map pair `[x] : y` (outer braces stripped, tokens `key [ x ] value y`) returns
+balance to 0 at SEVERAL interior indices — after the key, at the value separator, at the trailing
+scalar, at the end — so "balance = 0" does NOT pin the value separator; only the `.value` token does.
+The position is therefore SUPPLIED (a skeleton hypothesis), not derived.  Yet the witness-dependent
+SUB-DELIVERABLE over the located window still needs the SAME producer-guarded universal as the seq
+fold.  The two facts are orthogonal: position-derivability is a property of the grammar's *balance*;
+guard-necessity is a property of the residual's *witness-dependence*.  This section makes both visible:
+`balZero` (balance-only) is true at five indices so it can't pin the separator, but the sub-deliverable
+`valBlockOk` is unsatisfiable over `balZero` and supplyable only once guarded by the supplied token. -/
+
+/-- A map-pair body `[x] : y`, outer braces stripped: `key [ x ] value y`, indices 0..5. -/
+def tsMap : List Tok := [.key, .opn, .scal, .cls, .value, .scal]
+
+/-- Balance-only predicate (the weak condition). True at EVERY depth-0 point — k = 0,1,4,5,6 — so it
+    does not pin the value separator (idx 4). This is why the map position is not balance-derivable. -/
+abbrev balZero (k : Nat) : Prop := bal tsMap k = 0
+/-- The SUPPLIED skeleton's distinguishing token — the only thing that actually pins the separator. -/
+abbrev isValueSep (k : Nat) : Prop := tsMap[k]? = some .value
+/-- A witness-dependent SUB-DELIVERABLE over the located window: a value-block head exists just past
+    `k` (models the value sub-block `[k+1, e)` the recursion produces). True at k = 0,1,4; false at the
+    later balance-0 points 5,6 where no block follows. -/
+abbrev valBlockOk (k : Nat) : Prop := (tsMap[k + 1]?).isSome = true
+
+/-- One row of the R284 table: balance, the balance-only predicate, and the supplied separator token. -/
+def reportMap (k : Nat) : String :=
+  s!"k={k}  bal={bal tsMap k}  balZero={decide (balZero k)}  isValueSep={decide (isValueSep k)}"
+
+-- The value separator (idx 4) and a NON-separator balance-0 point (idx 5): both have `balZero` true,
+-- but only idx 4 is the separator. So balance alone cannot derive the position — the token must.
+/-- info: ["k=4  bal=0  balZero=true  isValueSep=true", "k=5  bal=0  balZero=true  isValueSep=false"] -/
+#guard_msgs in
+#eval [reportMap 4, reportMap 5]
+
+-- POSITION half — NOT balance-derivable: `balZero` holds at a non-separator (idx 5), so it can't pin kv.
+#guard decide (balZero 5)
+#guard !decide (isValueSep 5)
+-- Only the supplied `.value` token pins the separator (idx 4).
+#guard decide (isValueSep 4)
+
+-- SUB-DELIVERABLE half — guarded oracle REGARDLESS: unguarded over the weak `balZero` is FALSE (idx 5
+-- breaks it — balance 0 but no value block follows).
+#guard !decide (∀ k, k < tsMap.length → balZero k → valBlockOk k)
+-- Guarding by the SUPPLIED skeleton token restores supplyability — the same producer-guarded shape as
+-- the seq fold, though here the position is supplied (`isValueSep`), not derived from balance.
+#guard decide (∀ k, k < tsMap.length → isValueSep k → balZero k → valBlockOk k)
+
+/-- The position is NOT balance-derivable: balance 0 does not imply the value separator (idx 5 refutes). -/
+theorem map_position_not_balance_derivable :
+    ¬ (∀ k, k < tsMap.length → balZero k → isValueSep k) := by decide
+/-- The sub-deliverable unguarded is unsatisfiable — exactly as on the seq side, despite the supplied position. -/
+theorem map_subdeliv_unguarded_is_false :
+    ¬ (∀ k, k < tsMap.length → balZero k → valBlockOk k) := by decide
+/-- Guarded by the supplied separator token, the sub-deliverable IS a real (sorry-free) proof. -/
+theorem map_subdeliv_guarded_holds :
+    ∀ k, k < tsMap.length → isValueSep k → balZero k → valBlockOk k := by decide
 
 end ProducerGuardedTrap
