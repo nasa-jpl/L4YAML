@@ -3692,6 +3692,70 @@ theorem firstEntryBoundary_bracket_resolve (tokens : Array (Positioned YamlToken
       omega
   omega
 
+/-- **Nested-mapping head-dispatch step** (Phase J — the seq locate DRIVER's head-dispatch, the first
+    of the two BRACKET branches, and the cheaper one — the NEAR-leaf).  After the two fixed-arity leaves
+    (`recseqentry_scalar_dispatch` at `m = lo+1`, `recseqentry_seqempty_dispatch` at `m = lo+2`), this is
+    the dispatch step for a seq item whose head `tokens[lo]` is a `.flowMappingStart` — a nested mapping
+    `{ … }` spanning a *variable* interior `[lo+1, j)` up to its matching close `j`.  It is the point at
+    which the shared resolution `firstEntryBoundary_bracket_resolve` and the near-leaf window lift
+    `recseqentry_map_window` are first composed into one dispatch step, mirroring how the scalar/`seqEmpty`
+    branches each glued their leaf-arity resolution to their leaf window lift.
+
+    Two moves, exactly the structure of the two leaf dispatches but with the split point now *variable*:
+
+      • **resolve** the split point.  The two leaf branches computed `m` from a fixed offset; the bracket
+        branch instead calls `firstEntryBoundary_bracket_resolve` — fed the locator's two conjuncts
+        (`h_m_marker`/`h_m_least`), the opener delta `+1` and closer delta `-1` (rewritten from `h_open`/
+        `h_close` through `flowBracketDelta_flowMappingStart`/`_flowMappingEnd`), the inner balance, the
+        strict-positivity invariant, and the successor `h_succ` — to pin `m = j + 1`.  The positivity
+        invariant is the generalization of the `seqEmpty` branch's hard-coded `balance lo (lo+1) = 1`:
+        here it steps the marker past the *whole* bracket interval, not one token.
+
+      • **lift** the window.  With `m = j + 1`, the window `(tokens.toList.take m).drop lo` is the
+        opener-window `[lo, j+1)`, and `recseqentry_map_window tokens lo j` (its `hi := j`) classifies it
+        as a `RecSeqEntry.map` from the head/close tokens and the interior `WellBracketed`.
+
+    This is a NEAR-leaf, not a recursion edge: `RecSeqEntry.map` stores only `WellBracketed interior`
+    (R244), so the dispatch consumes the interior balance fact directly and never calls the locate
+    recursion on the nested mapping.  That is precisely why it lands BEFORE the `seq`-bracket branch: the
+    `.flowSequenceStart` head needs the recursive oracle (the inner `RecSeqBody` via the BUILD move
+    `located_entry_of_recseqbody`), which only exists once the `Nat.strongRecOn` driver is in place; the
+    `.flowMappingStart` head terminates at `WellBracketed` and so needs no oracle.  It takes the close
+    position `j`, the interior balance/positivity, and the interior `WellBracketed` as hypotheses — the
+    driver will supply them from `flowBracketBalance_matching_close` (positions + positivity), its `_map`
+    typed wrapper (the close token), and the interior's well-bracketedness — in the verified-but-unconsumed
+    discipline: references no sorry site, frontier sorry count unchanged at 4.  Axiom-clean
+    `[propext, Classical.choice, Quot.sound]` (no `sorryAx`); the `Classical.choice` enters through
+    `firstEntryBoundary_bracket_resolve`'s `flowBracketBalance_compose` machinery, while
+    `recseqentry_map_window`'s window algebra stays at `[propext, Quot.sound]`. -/
+theorem recseqentry_map_dispatch (tokens : Array (Positioned YamlToken)) (lo hi m j : Nat)
+    (h_hi_sz : hi ≤ tokens.size)
+    (h_lo_m : lo < m) (h_m_hi : m ≤ hi)
+    (h_m_marker : flowBracketBalance tokens lo m = 0 ∧ (m = hi ∨ tokens[m]!.val = .flowEntry))
+    (h_m_least : ∀ k, lo < k → k < m →
+      ¬ (flowBracketBalance tokens lo k = 0 ∧ (k = hi ∨ tokens[k]!.val = .flowEntry)))
+    (h_open : tokens[lo]!.val = .flowMappingStart)
+    (h_lo_j : lo < j) (h_j_hi : j < hi)
+    (h_close : tokens[j]!.val = .flowMappingEnd)
+    (h_inner : flowBracketBalance tokens (lo + 1) j = 0)
+    (h_j_pos : ∀ i, lo < i → i ≤ j → flowBracketBalance tokens lo i ≥ 1)
+    (h_wb : WellBracketed ((tokens.toList.take j).drop (lo + 1)))
+    (h_succ : j + 1 = hi ∨ tokens[j + 1]!.val = .flowEntry) :
+    m = j + 1 ∧ RecSeqEntry ((tokens.toList.take m).drop lo) := by
+  -- opener/closer deltas, read off the head/close tokens.
+  have h_open_delta : flowBracketDelta tokens[lo]!.val = 1 := by
+    rw [h_open]; exact flowBracketDelta_flowMappingStart
+  have h_close_delta : flowBracketDelta tokens[j]!.val = -1 := by
+    rw [h_close]; exact flowBracketDelta_flowMappingEnd
+  -- resolve: the shared bracket spine pins the split point past the matching close.
+  have h_m_eq : m = j + 1 :=
+    firstEntryBoundary_bracket_resolve tokens lo hi m j h_hi_sz h_lo_m h_m_hi
+      h_m_marker h_m_least h_open_delta h_lo_j h_j_hi h_close_delta h_inner h_j_pos h_succ
+  refine ⟨h_m_eq, ?_⟩
+  -- lift: with `m = j+1` the window is the opener-window `[lo, j+1)`, a `RecSeqEntry.map` near-leaf.
+  rw [h_m_eq]
+  exact recseqentry_map_window tokens lo j h_lo_j (by omega) h_open h_close h_wb
+
 /-- **Parametric `MapBodyProps` assembler** (Phase J seed, map side).  The map-side mirror of
     `seqBodyProps_assemble`: given an arbitrary balanced flow-MAPPING subrange `[lo, hi)` —
     `tokens[hi]! = .flowMappingEnd`, total balance `0`, Dyck prefixes, interior `WellTyped` — together
