@@ -3127,6 +3127,46 @@ theorem recmapbody_single_window (tokens : Array (Positioned YamlToken)) (lo hi 
   RecMapBody.single ((tokens.toList.take hi).drop lo) (RecMapPair.ne_nil h_pair) h_pair
     (RecMapPair.head_key h_pair (RecMapPair.ne_nil h_pair))
 
+/-- **Body window assembler — the map locate DRIVER's grammar-free ADVANCE/TERMINATE step** (Phase J,
+    map side).  The map mirror of `recseqbody_window_assemble` (the seq→map mirror per the R260→R261 /
+    R278 rhythm), and the brick that completes the driver's grammar-free *assemble* half on **both**
+    axes.  As on the seq side, the driver's per-window work splits into a *classify* half that locates
+    the first pair's extent `m` (`firstEntryBoundary`) and lifts the window `[lo, m)` into a
+    `RecMapPair` (the map head-dispatch), and this *assemble* half that, given that located pair plus
+    the recursion's tail oracle, folds them into the whole-window `RecMapBody`.  The two structural
+    moves it bundles are already proven — `recmapbody_cons_window` (ADVANCE, lift `RecMapBody.cons`)
+    and `recmapbody_single_window` (TERMINATE, lift `RecMapBody.single`); this lemma is their
+    *selector*, dispatching on whether `firstEntryBoundary`'s split point `m` reached the window end.
+
+    The R278 lesson recurs one level up: the selector transports the seq assemble's control flow
+    *verbatim* — same `Nat.lt_or_ge m hi` split, same marker-disjunction `Or.resolve_left`, same
+    `Nat.le_antisymm` collapse on TERMINATE, same `h_eq ▸` rewrite of the located item — changing only
+    the deliverable type (`RecMapPair`/`RecMapBody` for `RecSeqEntry`/`RecSeqBody`) and the two
+    structural moves it calls.  The marker token (`.flowEntry`) and the tail-oracle guard (`m < hi`)
+    are genuinely collection-agnostic: the body separator is the same for both kinds (cf.
+    `exists_least_in_range` — *no* seq/map mirror in the boundary predicate), so the assemble half
+    names no collection-specific knob beyond the deliverable type itself.  Costing the mirror confirms
+    the assemble step is the reusable *shape*; with it the grammar-free half of the driver is complete
+    on both axes, pinning the *entire* remaining locate residual to the grammar-bearing classify half
+    (per-pair head/key substrate + the `Nat.strongRecOn` width metric) on seq and map alike.
+
+    Verified-but-unconsumed until the driver lands (R225): composes only existing lemmas, references no
+    sorry site, frontier sorry count unchanged at 4. -/
+theorem recmapbody_window_assemble (tokens : Array (Positioned YamlToken)) (lo m hi : Nat)
+    (h_lo_m : lo < m) (h_m_hi : m ≤ hi) (h_hi_sz : hi < tokens.size)
+    (h_m_marker : m = hi ∨ tokens[m]!.val = .flowEntry)
+    (h_pair : RecMapPair ((tokens.toList.take m).drop lo))
+    (h_tail : m < hi → RecMapBody ((tokens.toList.take hi).drop (m + 1))) :
+    RecMapBody ((tokens.toList.take hi).drop lo) := by
+  rcases Nat.lt_or_ge m hi with h_lt | h_ge
+  · -- ADVANCE: a depth-`0` `.flowEntry` separator at `m`; cons the located pair onto the tail oracle.
+    have h_fe : tokens[m]!.val = .flowEntry := h_m_marker.resolve_left (by omega)
+    exact recmapbody_cons_window tokens lo m hi (Nat.le_of_lt h_lo_m) h_lt h_hi_sz h_fe h_pair
+      (h_tail h_lt)
+  · -- TERMINATE: `m = hi`, so the whole window is the one located pair, no trailing separator.
+    have h_eq : m = hi := Nat.le_antisymm h_m_hi h_ge
+    exact recmapbody_single_window tokens lo hi (h_eq ▸ h_pair)
+
 /-- **Least witness of a decidable predicate in a bounded range** (Phase J — the navigation
     skeleton's combinatorial core).  Given a decidable predicate `P` that holds at the range end
     `start + gap`, there is a *least* `m` in `[start, start + gap]` satisfying `P`, together with the
