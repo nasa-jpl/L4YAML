@@ -1293,4 +1293,95 @@ theorem fused_locator_map_l4 :
 theorem map_close_is_not_seq_close : tokAt l4 2 = .mc ∧ tokAt l4 2 ≠ .cl := by
   exact ⟨by decide, by decide⟩
 
+/-! ### R279 — the driver bifurcates: a grammar-free ASSEMBLE half vs a grammar-bearing CLASSIFY half
+
+`recseqbody_window_assemble` is the driver's *assemble* half: given a *located* first entry plus the
+recursion's tail oracle, fold them into the whole-window `RecSeqBody` by selecting `cons` (ADVANCE)
+vs `single` (TERMINATE) on `firstEntryBoundary`'s marker disjunction.  Its defining property is that
+it names **no per-window grammar substrate** — all the grammar (head-shape, value-end successors)
+lives in the `RecSeqEntry` it is *handed* and in the CLASSIFY half that produces it.
+
+This toy makes the bifurcation literal.  `ToyEntry` carries the grammar (nonempty + head is a
+content-start — the two `RecSeqEntry` projections); `ToyBody` mirrors `RecSeqBody` (`single` /
+`cons`-with-separator).  The selector `toy_body_assemble` consumes only a `ToyEntry`, the marker
+disjunction, and a *guarded* tail oracle — never a grammar fact of its own; the TERMINATE branch
+never touches the oracle.  The negatives show (a) the marker disjunction is load-bearing (the two
+branches assert *different* windows), and (b) the grammar lives in CLASSIFY: a bad head can't even
+form a `ToyEntry`, so the obligation the assemble half is free of is exactly the one classify owes. -/
+
+/-- Toy content-start predicate: the three item-head tokens (scalar / seq-open / map-open). -/
+def isContentStart : Tok → Bool
+  | .sc | .op | .mo => true
+  | _ => false
+
+/-- Toy located entry — the grammar the assemble half is *handed*, mirroring `RecSeqEntry`'s
+    `ne_nil` / `head_contentStart` projections.  All content grammar lives HERE, not in assemble. -/
+structure ToyEntry (e : List Tok) : Prop where
+  ne : e ≠ []
+  head : isContentStart (e.headD .fe) = true
+
+/-- Toy body deliverable — the mirror of `RecSeqBody`: a lone entry (`single`) or an entry followed
+    by a `.fe` separator and a recursive rest (`cons`). -/
+inductive ToyBody : List Tok → Prop where
+  | single (e : List Tok) (he : ToyEntry e) : ToyBody e
+  | cons (e rest : List Tok) (he : ToyEntry e) (h_rest : ToyBody rest) :
+      ToyBody (e ++ .fe :: rest)
+
+/-- **The assemble selector** (toy of `recseqbody_window_assemble`).  Given a located entry `e`
+    (carrying its grammar), the marker disjunction `w = e ∨ w = e ++ .fe :: tail` (TERMINATE vs
+    ADVANCE — the toy of `m = hi ∨ tokens[m] = .flowEntry`), and the tail oracle *guarded* by
+    `w ≠ e`, produce `ToyBody w`.  The proof consumes NO grammar substrate: TERMINATE is
+    `ToyBody.single` (oracle untouched), ADVANCE is `ToyBody.cons` fed the guarded oracle. -/
+theorem toy_body_assemble (e tail w : List Tok)
+    (he : ToyEntry e)
+    (h_marker : w = e ∨ w = e ++ .fe :: tail)
+    (h_tail : w ≠ e → ToyBody tail) :
+    ToyBody w := by
+  rcases h_marker with h | h
+  · -- TERMINATE: the oracle is never invoked.
+    rw [h]; exact ToyBody.single e he
+  · -- ADVANCE: invoke the guarded oracle on the strictly-shorter tail.
+    subst h
+    refine ToyBody.cons e tail he (h_tail ?_)
+    intro hc
+    have hlen := congrArg List.length hc
+    simp only [List.length_append, List.length_cons] at hlen
+    omega
+
+/-- Positive — TERMINATE: a one-entry window assembles with the oracle *unused* (here vacuous,
+    `w ≠ e` is false), proving the selector's terminate branch is grammar-and-oracle-free. -/
+theorem toy_assemble_terminate : ToyBody [.sc] :=
+  toy_body_assemble [.sc] [.op, .cl] [.sc] ⟨by decide, by decide⟩ (Or.inl rfl)
+    (fun hc => absurd rfl hc)
+
+/-- Positive — ADVANCE: a two-entry window `[sc, fe, sc]` assembles by consing the head entry onto
+    the tail body, the oracle supplying `ToyBody [sc]` for the tail. -/
+theorem toy_assemble_advance : ToyBody [.sc, .fe, .sc] :=
+  toy_body_assemble [.sc] [.sc] [.sc, .fe, .sc] ⟨by decide, by decide⟩ (Or.inr rfl)
+    (fun _ => ToyBody.single [.sc] ⟨by decide, by decide⟩)
+
+/-- Positive — the assemble half is grammar-free in the *tail*: it folds in whatever `ToyBody` the
+    oracle hands back without inspecting the tail's content, exactly as `recseqbody_cons_window`
+    defers its `h_rest` verbatim. -/
+theorem toy_assemble_grammar_free_tail (tail : List Tok) (h_tail : ToyBody tail) :
+    ToyBody (.sc :: .fe :: tail) :=
+  toy_body_assemble [.sc] tail (.sc :: .fe :: tail) ⟨by decide, by decide⟩ (Or.inr rfl)
+    (fun _ => h_tail)
+
+/-- **Negative — the marker disjunction is load-bearing.**  TERMINATE and ADVANCE assert *different*
+    windows for the same entry/tail (`e` vs `e ++ .fe :: tail`), so the selector genuinely needs the
+    marker to know which `ToyBody` it produces; it cannot be dropped. -/
+theorem toy_marker_load_bearing (e tail : List Tok) : e ≠ e ++ .fe :: tail := by
+  intro hc
+  have hlen := congrArg List.length hc
+  simp only [List.length_append, List.length_cons] at hlen
+  omega
+
+/-- **Negative — the grammar lives in CLASSIFY, not ASSEMBLE.**  A window headed by a non-content-start
+    token (`.mc`, a close) cannot even form a `ToyEntry` — the very obligation the assemble half is free
+    of (it is *handed* a `ToyEntry`) is the one the classify half must discharge.  So the bifurcation is
+    real: assemble adds no grammar, classify owes all of it. -/
+theorem toy_bad_head_not_entry : ¬ ToyEntry [.mc] :=
+  fun h => absurd h.head (by decide)
+
 end Tests.Reflections.EntryBoundaryLocator
