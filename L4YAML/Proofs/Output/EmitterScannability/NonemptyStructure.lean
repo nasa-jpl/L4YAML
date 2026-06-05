@@ -3819,6 +3819,54 @@ theorem recseqentry_seq_dispatch (tokens : Array (Positioned YamlToken)) (lo hi 
   exact located_entry_of_recseqbody tokens (lo + 1) j (by omega) (by omega) (by omega)
     h_open h_close h_rec
 
+/-- **Full seq-bracket close locator** (Phase J — the seq locate DRIVER's head-dispatch *shape-INPUT*:
+    locating where a bracket-headed item ends, the input half of the bracket-head classification).
+    The four dispatch steps above each take the matching close `j` and its facts as *hypotheses*; this
+    lemma is their supplier for the `seq`-bracket head — given a depth-`0` flow-sequence opener at the
+    window head `tokens[lo]`, it locates the matching close `j` and returns the **complete** fact bundle
+    `recseqentry_seq_dispatch` consumes: position (`lo < j < hi`), the close token
+    (`tokens[j] = .flowSequenceEnd`), the inner balance (`balance (lo+1) j = 0`), and the
+    strict-positivity invariant (`∀ i, lo < i ≤ j → balance lo i ≥ 1`).
+
+    This is the R274-coda problem made concrete (cf. [[ref-array-wrapper-window-generalization]]): the
+    bundle the dispatch needs is *split across two lossy sources*.  The generic
+    `flowBracketBalance_matching_close` (at the depth-`0` opener `k := lo`) carries the positivity
+    invariant and the inner balance but *not* the close token type (only its delta `-1`, which could be
+    `]` or `}`); the typed wrappers `flowBracketBalance_matching_close_{seq,map}` carry the close token
+    but *drop* positivity.  Calling them independently yields two existentials over possibly-different
+    `j`'s.  The fix is to reach past the typed wrapper to its *core*: run the generic locator once to fix
+    the unique `j` *with* positivity, then feed that same `j`'s facts to `matching_close_typed_core`
+    (`b := true`, the seq opener pushes `[true]`) + `btStep_pop_eq_seqEnd` to read the close token off it.
+    One `j`, all five facts — the typed wrapper's positivity loss healed at the source.
+
+    It mirrors seq/map (it names the close token `.flowSequenceEnd`), so per the input/shape re-split it
+    is the seq half; the `map` mirror over `.flowMappingEnd` is the symmetric next brick.
+    Verified-but-unconsumed (R225): references no sorry site, frontier sorry count unchanged at 4.
+    Axiom-clean `[propext, Classical.choice, Quot.sound]` (no `sorryAx`); the `Classical.choice` enters
+    through `flowBracketBalance_matching_close`'s `flowBracketBalance_compose`/`List.foldl` machinery. -/
+theorem matchingClose_full_seq (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (h_lo_hi : lo < hi) (h_hi_sz : hi ≤ tokens.size)
+    (h_open : tokens[lo]!.val = .flowSequenceStart)
+    (h_total : flowBracketBalance tokens lo hi = 0)
+    (h_dyck : ∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0)
+    (h_wt : WellTyped ((tokens.toList.take hi).drop lo)) :
+    ∃ j, lo < j ∧ j < hi ∧ tokens[j]!.val = .flowSequenceEnd ∧
+      flowBracketBalance tokens (lo + 1) j = 0 ∧
+      (∀ i, lo < i → i ≤ j → flowBracketBalance tokens lo i ≥ 1) := by
+  have h_k_depth : flowBracketBalance tokens lo lo = 0 := by
+    unfold flowBracketBalance; rw [if_pos (Nat.le_refl lo)]
+  have h_open_delta : flowBracketDelta tokens[lo]!.val = 1 := by
+    rw [h_open]; exact flowBracketDelta_flowSequenceStart
+  -- generic locator (at `k := lo`): fixes the unique `j`, carries inner balance + positivity.
+  obtain ⟨j, h_lo_j, h_j_hi, _h_j_delta, h_inner, h_pos⟩ :=
+    flowBracketBalance_matching_close tokens lo lo hi (Nat.le_refl lo) h_lo_hi h_hi_sz
+      h_k_depth h_open_delta h_total h_dyck
+  -- typed core at the *same* `j`: read the close token `.flowSequenceEnd` off the `[true]` pop.
+  have h_k_push : btStep tokens[lo]! [] = some [true] := by unfold btStep; rw [h_open]
+  have h_pop := matching_close_typed_core tokens lo lo j hi true (Nat.le_refl lo) h_lo_j h_j_hi
+    h_hi_sz h_k_depth h_k_push h_inner _h_j_delta h_pos h_wt
+  exact ⟨j, h_lo_j, h_j_hi, btStep_pop_eq_seqEnd _ h_pop, h_inner, h_pos⟩
+
 /-- **Parametric `MapBodyProps` assembler** (Phase J seed, map side).  The map-side mirror of
     `seqBodyProps_assemble`: given an arbitrary balanced flow-MAPPING subrange `[lo, hi)` —
     `tokens[hi]! = .flowMappingEnd`, total balance `0`, Dyck prefixes, interior `WellTyped` — together
