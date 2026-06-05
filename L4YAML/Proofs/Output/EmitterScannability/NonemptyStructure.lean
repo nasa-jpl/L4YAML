@@ -3533,6 +3533,79 @@ theorem flowBodyContent_advance (tokens : Array (Positioned YamlToken)) (lo m hi
       rw [h_rebase k (by omega)]; exact hbal
     exact h_fe k (by omega) hk2 hfek hbal'
 
+/-- **The flow body-window DEEP content guard** (Phase J — the recursion-STABLE strengthening of
+    `FlowBodyContent`, the content guard the body recursion's `G` actually carries).  R289's
+    `FlowBodyContent` records the content facts at the *entry* level only — its `feContentStart` is gated
+    by `flowBracketBalance tokens lo k = 0` (a depth-`0` separator) and it has no opener fact at all — and
+    that is provably TOO WEAK to survive the DESCEND edge.  Descending into a nested bracket `[k .. j]` at
+    the window head needs the interior `[k+1, j)`'s head `tokens[k+1]` to be content-start, but that head
+    sits one nesting level DOWN (balance `1` relative to the outer origin), so NO depth-`0` outer fact
+    reaches it: `headContentStart` speaks of `tokens[lo]`, and `feContentStart` is keyed on a `.flowEntry`
+    at balance `0`, never an opener — exactly the "genuinely recursive, not re-basing" obstruction R289
+    flagged for this edge.  This is [[ref-converse-forward-invariant-asymmetry]] recurring on the content
+    guard: the descend edge needs a strictly-stronger invariant than advance — precisely as the bracket
+    guard's `dyck` needed the `≥ 1` floor for descend where advance used `≥ 0` (R288).
+
+    The fix carries the content facts at ALL depths (balance-condition-FREE), so the guard is a pure
+    RESTRICTION of itself on every sub-window:
+
+    * `headContentStart` — the window head `tokens[lo]` is content-start (seeded at the root, re-derived
+      at each child from the parent's `openerContentStart` / `feContentStart`).
+    * `openerContentStart` — after EVERY opener strictly inside the window, the next token is content-start
+      (the all-depth fact the descend edge reads the child head off — the field R289's guard lacked).
+    * `feContentStart` — after EVERY separator strictly inside the window, the next token is content-start
+      (the all-depth, balance-free strengthening of R289's depth-`0` field).
+
+    Because the opener/separator fields are balance-free, BOTH recursion edges are pure restrictions of
+    the quantifiers (no re-basing — contrast `flowBodyContent_advance`, whose depth-`0` field forced the
+    separator re-base): `flowBodyContentDeep_descend` (below) restricts to `[k+1, j)` and reads the child
+    head off the parent's `openerContentStart` at the opener `k`; the advance twin restricts to
+    `[m+1, hi)` and reads the child head off `feContentStart` at the separator `m`.  R289's
+    `FlowBodyContent` is the entry-level PROJECTION of this guard (its depth-`0` `feContentStart` is this
+    field specialized to `balance lo k = 0`), kept for the head-shape dispatch / assemble that consume the
+    depth-`0` shape; this deep guard is what `G` threads through the recursion so the projection is
+    available at every window.  Like its companions it names no deliverable type, so it is the SHARED deep
+    content guard for both axes.  Additive parallel guard ([[ref-additive-parallel-type-over-shared-edit]])
+    beside `FlowBodyContent` / `FlowBodyWindow`, never an edit to them. -/
+structure FlowBodyContentDeep (tokens : Array (Positioned YamlToken)) (lo hi : Nat) : Prop where
+  headContentStart : isFlowContentStart tokens[lo]!.val
+  openerContentStart : ∀ k, lo ≤ k → k + 1 < hi →
+    flowBracketDelta tokens[k]!.val = 1 →
+    isFlowContentStart tokens[k + 1]!.val
+  feContentStart : ∀ k, lo ≤ k → k + 1 < hi →
+    tokens[k]!.val = .flowEntry →
+    isFlowContentStart tokens[k + 1]!.val
+
+/-- **DESCEND deep-content-preservation** (Phase J — the genuinely-recursive content edge, the brick
+    R289 isolated and the ONE the 137th-revision map flagged next).  When the body recursion descends
+    into a nested bracket whose opener sits at `k` (depth `0`) and whose matching close is `j`, the
+    interior `[k+1, j)` must re-establish the content guard for the IH to fire there.  Unlike R289's
+    depth-`0` `FlowBodyContent` (whose descend edge is *unprovable* — the interior head sits a nesting
+    level below the outer depth-`0` facts), `FlowBodyContentDeep`'s all-depth fields make this a pure
+    RESTRICTION: the child head `tokens[k+1]` is content-start by the parent's `openerContentStart` at the
+    opener `k`, and the child's opener/separator fields are the parent's restricted to `[k+1, j)`.  No
+    balance re-basing, no grammar — the descend-strength formulation pays off as triviality, the
+    [[ref-converse-forward-invariant-asymmetry]] dividend (strengthen the invariant to the descend edge's
+    needs once, and the edge falls out).  The companion of `flowBodyWindow_descend`: that locates `j` and
+    delivers the bracket guard on `[k+1, j)`; this delivers the content guard on the same `j`, given the
+    same opener (`flowBracketDelta tokens[k] = 1`) and interior non-emptiness (`k+1 < j`, the R285 peel).
+    Names no deliverable type, so it serves both axes. -/
+theorem flowBodyContentDeep_descend (tokens : Array (Positioned YamlToken)) (lo k j hi : Nat)
+    (h_deep : FlowBodyContentDeep tokens lo hi)
+    (h_lo_k : lo ≤ k) (h_k_open : flowBracketDelta tokens[k]!.val = 1)
+    (h_kj : k + 1 < j) (h_j_hi : j ≤ hi) :
+    FlowBodyContentDeep tokens (k + 1) j := by
+  obtain ⟨_h_head, h_op, h_fe⟩ := h_deep
+  refine ⟨?_, ?_, ?_⟩
+  · -- child head `tokens[k+1]` content-start: the parent's opener fact at `k` (`k+1 < j ≤ hi`).
+    exact h_op k h_lo_k (by omega) h_k_open
+  · -- child openerContentStart: the parent's, restricted to `[k+1, j) ⊆ [lo, hi)`.
+    intro k' hk1 hk2 hopen
+    exact h_op k' (by omega) (by omega) hopen
+  · -- child feContentStart: the parent's, restricted to `[k+1, j) ⊆ [lo, hi)`.
+    intro k' hk1 hk2 hfe
+    exact h_fe k' (by omega) (by omega) hfe
+
 /-- **Scalar-leaf entry window** (Phase J — the analytical entry-boundary location's *shape side*,
     seq, base case).  Once `firstEntryBoundary` (the input side) has pinned the split point `m`, the
     shape side classifies the first item `[lo, m)` into a `RecSeqEntry` — and `RecSeqEntry` has four
