@@ -15524,11 +15524,19 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 verbatim over `RecMapBody.cons`/`.single` via `recmapbody_{cons,single}_window`, the selector's control
                 flow transported unchanged (only the deliverable type and the two structural moves differ; the marker
                 token and tail-oracle guard are collection-agnostic). **The driver's grammar-free ASSEMBLE half is now
-                complete on BOTH axes.** What remains on Workstream A's critical path is the single grammar-bearing
-                *classify* unifier (folding `firstEntryBoundary` + the four dispatches + the close-locators into one
-                "classify the first item" lemma that finally NAMES the per-window grammar substrate) and the
-                `Nat.strongRecOn` width-metric wrapper that supplies the tail oracle and closes the recursion — both seq
-                and map.
+                complete on BOTH axes.** **The grammar-bearing CLASSIFY unifier has now also landed (seq side)**, R281
+                `recseqentry_classify` (`adc5be3c`): `firstEntryBoundary` + the four `recseqentry_{scalar,seqempty,map,seq}_dispatch`
+                steps folded into ONE lemma (fold-consumer-chain-to-producer-contract) whose single new hypothesis is the
+                four-way head-shape disjunction — **the grammar substrate of a seq body item, named explicitly for the
+                first time** (a body item is a scalar / empty-seq `[ ]` / nested-map `{ … }` / nested-seq `[ … ]`, each
+                disjunct carrying its dispatch's head/close/`h_succ`/oracle facts). The conclusion STRENGTHENS
+                `firstEntryBoundary`'s five split-point facts with the `RecSeqEntry` classification — the entry-boundary
+                INPUT (where the item ends) and SHAPE (what the item is) fused into one deliverable. What remains on
+                Workstream A's critical path is now narrow: (i) the map mirror `recmapentry_classify` (the same fold over
+                the `RecMapPair`/`RecMapBody` deliverables); (ii) folding the close-locators (`matchingClose_full_{seq,map}`)
+                into the disjunction's two bracket disjuncts so the `j`-facts are derived rather than assumed; and (iii) the
+                `Nat.strongRecOn` width-metric wrapper that supplies both the bracket `RecSeqBody` oracle and the tail
+                oracle, closing the recursion — both seq and map.
 
                 • **Workstream B — CONTENT (independent of A; currently dormant).** The 2
                 `emit_roundtrip_{sequence,mapping}_content_eq` `exact sorry` sites (EmitterScannability.lean:832 / :872),
@@ -15554,6 +15562,33 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 Cross-refs: Reflection 271 (structural-complete ≠ runnable), and the Verification manual's
                 §Round-Trip / §Zero-Axiom sorry-budget note (reconciled 2026-06-04).
 
+                **Total .body scope re-estimate (ONE-HUNDRED-TWENTY-NINTH revision —
+                after **Thread A step 3 sub-step 3's brick cont'd (locate recursion DRIVER *classify half* — the
+                grammar-bearing CLASSIFY unifier, seq side) — landed** (commit `adc5be3c`, Reflection 281).
+                **The seq driver's grammar-bearing classify unifier landed: `recseqentry_classify`.** This is the brick
+                that finally *names the grammar substrate the driver threads*. The four head-dispatch steps (R272–R276)
+                each handled ONE shape with its own head/close/successor hypotheses; `firstEntryBoundary` (R262) located
+                the split point; this lemma FOLDS all five into a single signature whose one new hypothesis is the
+                four-way **head-shape disjunction** `h_head` — a scalar leaf, an empty sequence, a nested mapping, or a
+                nested sequence, each disjunct carrying exactly the facts its dispatch consumes. That disjunction *is* the
+                content grammar of a seq body item — the substrate R279/R280 flagged as the classify half's irreducible
+                difficulty, the thing neither `WellTyped` nor the producer contract `h_seq_rec` encodes — now stated
+                explicitly as a typed hypothesis. The fold is the `fold-consumer-chain-to-producer-contract` pattern: the
+                conclusion strengthens `firstEntryBoundary`'s five split-point facts (`lo < m`, `m ≤ hi`, balance
+                `lo..m = 0`, the marker disjunction, minimality) with the `RecSeqEntry ((take m).drop lo)` classification,
+                so the unifier delivers the entry-boundary **INPUT** (where the item ends) and **SHAPE** (what it is) about
+                one `m` — the input/shape split fused into a single deliverable. The proof runs `firstEntryBoundary` once,
+                then `rcases` the disjunction and hands each branch to its dispatch, threading the same `m`-facts (each
+                dispatch re-derives `m = <split>` from minimality + marker internally). Bracket branches feed the
+                pre-located `j`-bundle as hypotheses; folding the close-locators in (deriving `j` from the head token) and
+                the `Nat.strongRecOn` oracle supply remain ahead. Axiom-clean **`[propext, Classical.choice, Quot.sound]`**
+                (`Classical.choice` via the bracket dispatches' `firstEntryBoundary_bracket_resolve` compose machinery).
+                Verified-but-unconsumed (R225): references no sorry site, **sorries held at 4**. Build green **537 jobs**.
+                **Immediate next brick:** the map mirror `recmapentry_classify` (the same fold over the
+                `RecMapPair`/`RecMapBody` deliverables; it names a collection-specific type so per R264 it re-splits),
+                then folding the close-locators into the bracket disjuncts, then the `Nat.strongRecOn` width-metric wrapper
+                that supplies the bracket and tail oracles and closes the loop, on both axes. See Reflection 281, on top of
+                the
                 **Total .body scope re-estimate (ONE-HUNDRED-TWENTY-EIGHTH revision —
                 after **Thread A step 3 sub-step 3's brick cont'd (locate recursion DRIVER *assemble half* — the
                 grammar-free ADVANCE/TERMINATE step, MAP MIRROR) — landed** (commit `deb5ef07`, Reflection 280).
@@ -27633,3 +27668,17 @@ R279 split the locate driver's per-window step into a grammar-bearing *classify*
 With assemble complete on both axes, the driver's grammar-free half is finished. The *entire* remaining locate residual is now the grammar-bearing classify unifier (the brick that must finally name the per-window head/key grammar substrate) and the `Nat.strongRecOn` width-metric wrapper — on seq and map alike.
 
 Axiom-clean **`[propext, Classical.choice, Quot.sound]`** (`Classical.choice` via `recmapbody_cons_window`'s window-identity plumbing). Verified-but-unconsumed (R225): references no sorry site, frontier sorry count unchanged at **4** (build green **537 jobs**; commit `deb5ef07`). **Immediate next brick:** the grammar-substrate **classify unifier** — folding `firstEntryBoundary` + the four dispatches + the close-locators into one "classify the first item" lemma taking the per-window grammar substrate + the recursion oracle as hypotheses (this is the brick that must finally *name* the grammar substrate the driver threads, on both axes) — and finally the `Nat.strongRecOn` wrapper that supplies the tail oracle from the width metric and closes the loop. See [[ref-mirror-constructor-arity-reads-storage]] (the mirror transports plumbing, changes only the knob — here the knob count *measures* grammar-freeness, and assemble hits the one-knob floor), [[ref-entry-boundary-input-shape-split]] (the deliverable-type-naming discriminator, sharpened: knob count reads off how much grammar the step touches), and [[ref-structural-moves-complete-recursion]] (R262/R263/R269/R270 — the constructor window-lifts this selector composes; with the selector mirrored, the grammar-free composition layer is complete on both axes).
+
+### Reflection 281 (new, 2026-06-04): the classify unifier names the grammar substrate by FOLDING the four dispatches into one head-shape disjunction — the genuine difficulty of the driver, made a single typed hypothesis
+
+R279/R280 carved the locate driver into a grammar-free *assemble* half (now complete on both axes) and a grammar-bearing *classify* half, and named the classify half as the seat of the driver's real difficulty: its dispatches consume facts about the *content* of the emitted token stream — which head shape an item is, where a value ends — that neither `WellTyped` nor the producer contract encodes. R281 lands the seq classify unifier `recseqentry_classify`, and the lesson is *how naming the substrate actually looks*: it is a **fold**, and the substrate is exactly the new hypothesis the fold introduces.
+
+**The fold.** The four head-dispatch steps (R272–R276) each take ONE head shape's hypotheses and return `m = <split> ∧ RecSeqEntry`; `firstEntryBoundary` (R262) returns the split point `m` with five facts. `recseqentry_classify` runs `firstEntryBoundary` once, then `rcases` a single **four-way head-shape disjunction** `h_head` and hands each branch to its matching dispatch, threading the same `m`-facts. Five lemmas collapse to one call site. This is [[ref-fold-consumer-chain-to-producer-contract]] exactly: a joint-by-joint chain folded into one lemma whose hypotheses are precisely the producer's per-window contract.
+
+**Where the substrate went.** The thing R279/R280 kept pointing at — "the per-window head-shape / `h_succ` substrate neither `WellTyped` nor `h_seq_rec` carries" — is now a concrete typed object: the disjunction `(scalar leaf) ∨ (empty seq) ∨ (nested map) ∨ (nested seq)`, each disjunct bundling its dispatch's head token, bracket-close `j` facts, strict-positivity invariant, trailing-separator `h_succ`, and (for the recursive nested-seq branch) the `RecSeqBody` oracle. *Naming the grammar substrate* turned out to mean: write the disjunction type that the four dispatch hypotheses, unioned, amount to. The difficulty did not vanish — it is now sharply a single hypothesis whose *production* (from the emitted-token characterization) is the next layer of work — but it is localized to one named place instead of diffused across four dispatch call sites.
+
+**INPUT/SHAPE fused.** The conclusion strengthens `firstEntryBoundary`'s output rather than replacing it: it returns the same five split-point facts (`lo < m`, `m ≤ hi`, balance `lo..m = 0`, marker disjunction, minimality) *plus* `RecSeqEntry ((take m).drop lo)`. By [[ref-entry-boundary-input-shape-split]] this is the INPUT (where the item ends, from `firstEntryBoundary`) and the SHAPE (what the item is, from the dispatch) delivered about a single `m` — the split that memory describes, here fused back into one deliverable now that both halves exist. And because the unifier names `RecSeqEntry`/`RecSeqBody` (collection-specific deliverable types), the same discriminator says it RE-SPLITS seq/map: the map mirror `recmapentry_classify` over `RecMapPair`/`RecMapBody` is the symmetric next brick.
+
+**What is still deferred (honest scope).** The bracket disjuncts carry the matching-close `j` and its facts as *hypotheses*; folding the close-locators (`matchingClose_full_{seq,map}`) into them — so `j` is *derived* from the head token rather than assumed — is a deliberately separate next brick, as is the `Nat.strongRecOn` wrapper that supplies the nested-seq `RecSeqBody` oracle and the tail oracle. So `recseqentry_classify` is the *shape* of the classify step with its *inputs still named*; producing those inputs is the remaining classify work. This is the input/shape discipline applied one level down: name the substrate now (verified-but-unconsumed), produce it next.
+
+Axiom-clean **`[propext, Classical.choice, Quot.sound]`** (`Classical.choice` via the bracket dispatches' `firstEntryBoundary_bracket_resolve` compose machinery). Verified-but-unconsumed (R225): references no sorry site, frontier sorry count unchanged at **4** (build green **537 jobs**; commit `adc5be3c`). **Immediate next brick:** the map mirror `recmapentry_classify` (the same fold over the `RecMapPair`/`RecMapBody` deliverables), then folding the close-locators into the bracket disjuncts (deriving `j` from the head), then the `Nat.strongRecOn` width-metric wrapper that supplies the bracket and tail oracles and closes the loop — feeding the per-window `Rec…Body` producers into `flowSubrangesOk_of_window_producers` → the two `scanFiltered_emit{Seq,Map}_nonempty_structure` sorry sites → the two base `emit_roundtrip_{sequence,mapping}_content_eq` sorries → `universal_roundtrip`. See [[ref-fold-consumer-chain-to-producer-contract]] (the four dispatches folded into one lemma whose hypothesis IS the grammar substrate), [[ref-entry-boundary-input-shape-split]] (INPUT+SHAPE fused; the deliverable-type-naming re-split discriminator), and [[ref-structural-moves-complete-recursion]] (R262/R263/R269/R270 — the dispatch window-lifts this unifier composes; with the classify shape named, only its input production and the `strongRecOn` wrapper remain).
