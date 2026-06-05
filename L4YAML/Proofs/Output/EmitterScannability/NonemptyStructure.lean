@@ -3993,6 +3993,102 @@ theorem matchingClose_full_map (tokens : Array (Positioned YamlToken)) (lo hi : 
     h_hi_sz h_k_depth h_k_push h_inner _h_j_delta h_pos h_wt
   exact ⟨j, h_lo_j, h_j_hi, btStep_pop_eq_mapEnd _ h_pop, h_inner, h_pos⟩
 
+/-- **First-item classify unifier** (Phase J — the seq locate DRIVER's grammar-bearing CLASSIFY half,
+    folded into one lemma; the brick that finally NAMES the grammar substrate the driver threads).
+    The driver's per-window work bifurcates (R279/R280) into a grammar-free ASSEMBLE half
+    (`recseqbody_window_assemble` — fold the located entry + the tail oracle into the whole-window
+    `RecSeqBody`) and a grammar-BEARING CLASSIFY half (run `firstEntryBoundary` → pin the split `m` →
+    head-dispatch the four branches → lift `[lo, m)` into a `RecSeqEntry`).  The four dispatch steps
+    (`recseqentry_{scalar,seqempty,map,seq}_dispatch`) each handle ONE head shape, taking their own
+    head/close/successor facts as hypotheses; this lemma FOLDS all four — plus `firstEntryBoundary`
+    itself — into a single signature whose one new hypothesis is the four-way **head-shape
+    disjunction** `h_head`.  That disjunction IS the grammar substrate of a seq body item, named
+    explicitly for the first time: a body item is a *scalar*, an *empty sequence* `[ ]`, a *nested
+    mapping* `{ … }`, or a *nested sequence* `[ … ]`, each disjunct carrying exactly the facts its
+    dispatch consumes (the head token; for brackets the matching-close `j`, its inner balance, the
+    strict-positivity invariant, and the close token; for the nested sequence the recursive oracle
+    `RecSeqBody` on the interior; and in every case the entry's trailing-separator successor `h_succ`).
+
+    This is the `fold-consumer-chain-to-producer-contract` pattern (cf.
+    [[ref-fold-consumer-chain-to-producer-contract]]): the four joint-by-joint dispatch lemmas
+    collapse into one lemma whose hypotheses are *exactly* the producer's per-window contract.  The
+    conclusion STRENGTHENS `firstEntryBoundary`'s output — it returns the same five facts about the
+    split point `m` (`lo < m`, `m ≤ hi`, balance `lo..m = 0`, the marker disjunction, and the
+    minimality clause) *plus* the `RecSeqEntry ((take m).drop lo)` classification of the located
+    window.  This is the entry-boundary INPUT/SHAPE split (cf.
+    [[ref-entry-boundary-input-shape-split]]) fused into a single deliverable: `firstEntryBoundary`
+    is the INPUT (where the item ends), the dispatch is the SHAPE (what the item is), and the classify
+    unifier delivers both about one `m`.
+
+    The proof is the fold made literal: run `firstEntryBoundary` once to fix `m` and its five facts,
+    then `rcases` the head disjunction and hand each branch to its matching dispatch, threading the
+    SAME `m`-facts (the dispatch re-derives `m = <split>` internally from minimality + marker, and the
+    located `RecSeqEntry` it returns is at *this* `m`).  The bracket branches feed the dispatch the
+    pre-located `j` bundle — the genuinely-new fold of the *close-locators* (`matchingClose_full_seq`
+    /`_map`) into the disjunction's two bracket disjuncts is deferred: here the `j`-facts are
+    hypotheses, so the close-locator-folding and the `Nat.strongRecOn` oracle supply remain the two
+    bricks ahead (R280's tee-up).
+
+    Axis note (R264 discriminator): the disjunction names the `RecSeqBody` oracle and the conclusion
+    names `RecSeqEntry`, both seq-specific deliverable types, so the unifier re-splits across the map
+    axis — the map mirror folds the four `recmappair_*`-style dispatches over the `RecMapPair`/
+    `RecMapBody` deliverables and is the symmetric next brick.  Verified-but-unconsumed (R225):
+    references no sorry site, frontier sorry count unchanged at 4; axiom-clean `[propext,
+    Classical.choice, Quot.sound]` (the `Classical.choice` enters through the bracket dispatches'
+    `firstEntryBoundary_bracket_resolve` compose machinery). -/
+theorem recseqentry_classify (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (h_lo_hi : lo < hi) (h_hi_sz : hi ≤ tokens.size)
+    (h_total : flowBracketBalance tokens lo hi = 0)
+    (h_head :
+      -- scalar leaf
+      ((∃ c s, tokens[lo]!.val = .scalar c s) ∧
+        (lo + 1 = hi ∨ tokens[lo + 1]!.val = .flowEntry)) ∨
+      -- empty sequence `[ ]`
+      (lo + 1 < tokens.size ∧ tokens[lo]!.val = .flowSequenceStart ∧
+        tokens[lo + 1]!.val = .flowSequenceEnd ∧
+        (lo + 2 = hi ∨ tokens[lo + 2]!.val = .flowEntry)) ∨
+      -- nested mapping `{ … }`
+      (∃ j, tokens[lo]!.val = .flowMappingStart ∧ lo < j ∧ j < hi ∧
+        tokens[j]!.val = .flowMappingEnd ∧
+        flowBracketBalance tokens (lo + 1) j = 0 ∧
+        (∀ i, lo < i → i ≤ j → flowBracketBalance tokens lo i ≥ 1) ∧
+        WellBracketed ((tokens.toList.take j).drop (lo + 1)) ∧
+        (j + 1 = hi ∨ tokens[j + 1]!.val = .flowEntry)) ∨
+      -- nested sequence `[ … ]` (recursive — consumes the locate oracle)
+      (∃ j, tokens[lo]!.val = .flowSequenceStart ∧ lo < j ∧ j < hi ∧
+        tokens[j]!.val = .flowSequenceEnd ∧
+        flowBracketBalance tokens (lo + 1) j = 0 ∧
+        (∀ i, lo < i → i ≤ j → flowBracketBalance tokens lo i ≥ 1) ∧
+        RecSeqBody ((tokens.toList.take j).drop (lo + 1)) ∧
+        (j + 1 = hi ∨ tokens[j + 1]!.val = .flowEntry))) :
+    ∃ m, lo < m ∧ m ≤ hi ∧
+      flowBracketBalance tokens lo m = 0 ∧
+      (m = hi ∨ tokens[m]!.val = .flowEntry) ∧
+      (∀ k, lo < k → k < m →
+        ¬ (flowBracketBalance tokens lo k = 0 ∧ (k = hi ∨ tokens[k]!.val = .flowEntry))) ∧
+      RecSeqEntry ((tokens.toList.take m).drop lo) := by
+  obtain ⟨m, h_lo_m, h_m_hi, h_m_bal, h_m_marker, h_m_least⟩ :=
+    firstEntryBoundary tokens lo hi h_lo_hi h_total
+  have h_lo_sz : lo < tokens.size := by omega
+  refine ⟨m, h_lo_m, h_m_hi, h_m_bal, h_m_marker, h_m_least, ?_⟩
+  rcases h_head with
+    ⟨h_scalar, h_succ⟩ |
+    ⟨h_lo1_sz, h_open, h_close, h_succ⟩ |
+    ⟨j, h_open, h_lo_j, h_j_hi, h_close, h_inner, h_j_pos, h_wb, h_succ⟩ |
+    ⟨j, h_open, h_lo_j, h_j_hi, h_close, h_inner, h_j_pos, h_rec, h_succ⟩
+  · -- scalar: minimality alone pins `m = lo+1`.
+    exact (recseqentry_scalar_dispatch tokens lo hi m h_lo_sz h_lo_m h_m_hi h_m_least
+      h_scalar h_succ).2
+  · -- empty sequence: the marker clause excludes the unbalanced `lo+1`, pinning `m = lo+2`.
+    exact (recseqentry_seqempty_dispatch tokens lo hi m h_lo1_sz h_lo_m h_m_hi
+      ⟨h_m_bal, h_m_marker⟩ h_m_least h_open h_close h_succ).2
+  · -- nested mapping: the bracket spine pins `m = j+1`; near-leaf via `WellBracketed`.
+    exact (recseqentry_map_dispatch tokens lo hi m j h_hi_sz h_lo_m h_m_hi
+      ⟨h_m_bal, h_m_marker⟩ h_m_least h_open h_lo_j h_j_hi h_close h_inner h_j_pos h_wb h_succ).2
+  · -- nested sequence: the same bracket spine pins `m = j+1`; recursive via the `RecSeqBody` oracle.
+    exact (recseqentry_seq_dispatch tokens lo hi m j h_hi_sz h_lo_m h_m_hi
+      ⟨h_m_bal, h_m_marker⟩ h_m_least h_open h_lo_j h_j_hi h_close h_inner h_j_pos h_rec h_succ).2
+
 /-- **Parametric `MapBodyProps` assembler** (Phase J seed, map side).  The map-side mirror of
     `seqBodyProps_assemble`: given an arbitrary balanced flow-MAPPING subrange `[lo, hi)` —
     `tokens[hi]! = .flowMappingEnd`, total balance `0`, Dyck prefixes, interior `WellTyped` — together
