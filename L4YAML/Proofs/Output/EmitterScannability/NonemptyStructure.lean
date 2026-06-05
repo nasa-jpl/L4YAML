@@ -3377,6 +3377,72 @@ theorem flowBodyWindow_advance (tokens : Array (Positioned YamlToken)) (lo m hi 
   exact WellTyped_subrange tokens lo (m + 1) hi hi (by omega) (by omega) (Nat.le_refl hi)
     (Nat.le_of_lt h_hi_sz) h_wt h_tail h_dyck'
 
+/-- **DESCEND guard-preservation** (Phase J — the combinator's `G`-preservation across the locate
+    recursion's *descend* edge, the symmetric companion of `flowBodyWindow_advance`).  When the first
+    item of the body window `[lo, hi)` is itself a bracketed structure — a flow sequence `[ … ]` or
+    flow mapping `{ … }` whose opener sits at `k` (= the entry's first token, at depth `0`) — the
+    recursion must *descend* into that bracket's interior and run the IH on it.  This lemma supplies the
+    two facts the step needs at the descend edge: the matching closer's position `j`, and that the
+    interior window `[k+1, j)` STILL satisfies the guard `G = FlowBodyWindow`.
+
+    Like `flowBodyWindow_advance` it invokes its position lemma internally — here
+    `flowBracketBalance_matching_close` (which scans forward for the first return to depth `0`, yielding
+    the closer `j` with `flowBracketDelta tokens[j]!.val = -1`, the interior balance
+    `flowBracketBalance tokens (k+1) j = 0`, and the matched-bracket *depth floor*
+    `∀ i ∈ (k, j], flowBracketBalance tokens lo i ≥ 1`).  Both, like the opener premise
+    `flowBracketDelta tokens[k]!.val = 1`, are phrased over the SHARED `flowBracketDelta`/balance stream
+    — they name no collection-specific deliverable type — so this lemma, like its ADVANCE companion,
+    serves BOTH axes unchanged (`[` discharges the opener premise by `flowSequenceStart`, `{` by
+    `flowMappingStart`).
+
+    The guard-transport then mirrors ADVANCE with one genuine asymmetry ([[ref-converse-forward-invariant-asymmetry]]):
+    ADVANCE's tail re-based onto a depth-`0` prefix, so its `dyck` fell straight out of the outer `dyck`;
+    here the interior sits a level DOWN (the opener pushes the running balance to `1`), so the inner
+    `dyck` needs the strictly-stronger *floor* `≥ 1`, not the outer `≥ 0` — re-base each interior prefix
+    to the outer origin (`balance lo i = 1 + balance (k+1) i`) and close by the floor.  The `WellTyped`
+    field transports by the same `WellTyped_subrange` (the interior `[k+1, j) ⊆ [lo, hi)` is balanced and
+    Dyck).  The interior's non-emptiness `k + 1 < j` (the empty bracket `[]`/`{}`, which has no
+    `RecSeqBody`/`RecMapBody`) is DEFERRED to the caller, guarding the delivered `FlowBodyWindow` — the
+    R285 peel, exactly as ADVANCE deferred "no trailing separator".
+
+    Verified-but-unconsumed until the per-window step instantiates the combinator (R225): references no
+    sorry site, frontier sorry count unchanged at 4. -/
+theorem flowBodyWindow_descend (tokens : Array (Positioned YamlToken)) (lo k hi : Nat)
+    (h_win : FlowBodyWindow tokens lo hi)
+    (h_lo_k : lo ≤ k) (h_k_hi : k < hi)
+    (h_k_depth : flowBracketBalance tokens lo k = 0)
+    (h_k_open : flowBracketDelta tokens[k]!.val = 1) :
+    ∃ j, k < j ∧ j < hi ∧ flowBracketDelta tokens[j]!.val = -1 ∧
+      (k + 1 < j → FlowBodyWindow tokens (k + 1) j) := by
+  obtain ⟨h_lo2, h_lo_hi, h_hi_sz2, h_hi_sz, h_bal, h_dyck, h_wt⟩ := h_win
+  -- Position lemma: locate the matching closer `j` with interior balance and the depth floor.
+  obtain ⟨j, hkj, hjhi, hjdelta, hinner, hfloor⟩ :=
+    flowBracketBalance_matching_close tokens lo k hi h_lo_k h_k_hi (Nat.le_of_lt h_hi_sz)
+      h_k_depth h_k_open h_bal h_dyck
+  refine ⟨j, hkj, hjhi, hjdelta, ?_⟩
+  intro h_ne
+  -- Balance just after the opener is `1` (the descend offset that forces the stronger floor).
+  have h_k_sz : k < tokens.size := by omega
+  have h_k_len : k < tokens.toList.length := by rw [Array.length_toList]; exact h_k_sz
+  have hkval : tokens[k]! = tokens.toList[k]'h_k_len := by
+    rw [getElem!_pos tokens k h_k_sz, Array.getElem_toList]
+  have h_single : flowBracketBalance tokens k (k + 1) = flowBracketDelta tokens[k]!.val := by
+    rw [flowBracketBalance_single tokens k h_k_len, ← hkval]
+  have h_k1 : flowBracketBalance tokens lo (k + 1) = 1 := by
+    have hc := flowBracketBalance_compose tokens lo k (k + 1) h_lo_k (Nat.le_succ k)
+    rw [h_k_depth, h_single, h_k_open] at hc; omega
+  -- Inner `dyck`: re-base each interior prefix to the outer origin, then close by the floor `≥ 1`.
+  have h_dyck' : ∀ i, k + 1 ≤ i → i ≤ j → flowBracketBalance tokens (k + 1) i ≥ 0 := by
+    intro i hi1 hi2
+    have hc := flowBracketBalance_compose tokens lo (k + 1) i (by omega) hi1
+    rw [h_k1] at hc
+    have hf := hfloor i (by omega) hi2
+    omega
+  refine ⟨by omega, h_ne, by omega, by omega, hinner, h_dyck', ?_⟩
+  -- WellTyped on the interior via the balanced-subrange transporter (`[k+1, j) ⊆ [lo, hi)`).
+  exact WellTyped_subrange tokens lo (k + 1) j hi (by omega) (Nat.le_of_lt h_ne)
+    (Nat.le_of_lt hjhi) (Nat.le_of_lt h_hi_sz) h_wt hinner h_dyck'
+
 /-- **Scalar-leaf entry window** (Phase J — the analytical entry-boundary location's *shape side*,
     seq, base case).  Once `firstEntryBoundary` (the input side) has pinned the split point `m`, the
     shape side classifies the first item `[lo, m)` into a `RecSeqEntry` — and `RecSeqEntry` has four
