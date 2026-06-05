@@ -15540,11 +15540,18 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 seq classify resolves it). Because a pair's interior is not uniformly bracket-positive (balance returns to
                 `0` at the `.value` separator), the no-interior-boundary fact is supplied directly as the substrate's last
                 conjunct (the analog of the seq side's `h_j_pos`), and the split-point pin is pure trichotomy. **Both axes'
-                classify unifiers are now complete.** What remains on Workstream A's critical path is: (i) folding the
-                close-locators (`matchingClose_full_{seq,map}`) into the seq disjunction's two bracket disjuncts so the
-                `j`-facts are derived rather than assumed (and the map's two `RecSeqEntry` sub-block locators likewise);
-                and (ii) the `Nat.strongRecOn` width-metric wrapper that supplies the bracket `RecSeqBody` oracle, the tail
-                oracle, and the pair's no-interior-boundary oracle, closing the recursion — both seq and map.
+                classify unifiers are now complete.** **And the seq body's two bracket disjuncts now derive their split
+                point from the head**, R283 (`e0d49d9e`): `recseqentry_{seq,map}bracket_located` fold the close-locators
+                `matchingClose_full_{seq,map}` into `recseqentry_classify`'s nested-sequence / nested-mapping disjuncts —
+                the matching close `j` is now produced from the head opener + window facts (total / Dyck / `WellTyped`)
+                rather than assumed. The residual that depends on the located `j` (the interior oracle + the trailing
+                separator) is carried as a producer-guarded universal whose guard is exactly the locator's output predicate
+                ([[ref-producer-guarded-quantifier]]); the map sibling shows that guard is forced by the separator's
+                `j`-dependence, present on both bracket branches regardless of whether the interior is recursive. What
+                remains on Workstream A's critical path is: (i) the map-pair's two `RecSeqEntry` sub-block locators (the
+                symmetric fold deriving the pair's `kv`/interior split from the head); and (ii) the `Nat.strongRecOn`
+                width-metric wrapper that supplies the guarded bracket `RecSeqBody` oracle, the tail oracle, and the pair's
+                no-interior-boundary oracle, closing the recursion — both seq and map.
 
                 • **Workstream B — CONTENT (independent of A; currently dormant).** The 2
                 `emit_roundtrip_{sequence,mapping}_content_eq` `exact sorry` sites (EmitterScannability.lean:832 / :872),
@@ -15570,6 +15577,36 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 Cross-refs: Reflection 271 (structural-complete ≠ runnable), and the Verification manual's
                 §Round-Trip / §Zero-Axiom sorry-budget note (reconciled 2026-06-04).
 
+                **Total .body scope re-estimate (ONE-HUNDRED-THIRTY-FIRST revision —
+                after **Thread A step 3 sub-step 3's brick cont'd (locate recursion DRIVER — folding the
+                close-locators into the seq body's bracket disjuncts) — landed** (commit `e0d49d9e`, Reflection 283).
+                **The seq body's two bracket disjuncts now derive their split point from the head:**
+                `recseqentry_seqbracket_located` / `recseqentry_mapbracket_located` fold the close-locators
+                `matchingClose_full_{seq,map}` (R277) into `recseqentry_classify`'s nested-sequence and nested-mapping
+                disjuncts. Where R281's classify ASSUMED an `∃ j, …` in each bracket disjunct — the matching close and its
+                position / close-token / inner-balance / positivity facts handed in as a substrate parameter — these lemmas
+                RUN the locator to fix `j` from the head opener + window facts alone (total balance `0`, Dyck prefixes,
+                window `WellTyped`), then feed the produced bundle to the classify. The split point is now an internal
+                consequence of the head, not a parameter. **The lesson is the residual's shape.** Two facts the bracket
+                disjunct still needs — the interior oracle (`RecSeqBody` for the recursive seq branch, `WellBracketed` for
+                the near-leaf map branch) and the trailing separator `h_succ` — depend on the located `j`, which does not
+                exist until the locator runs *inside* the proof. So they cannot be plain hypotheses about a known `j`; they
+                are supplied as a **producer-guarded universal** whose guard is EXACTLY the close-locator's output predicate
+                (`lo < j`, `j < hi`, the close token, the inner balance, the strict-positivity invariant). Carrying that
+                guard makes the universal dischargeable — apply it to the located `j` and its five facts — and the guard is
+                precisely what will let the `Nat.strongRecOn` driver supply the oracle ONLY at the unique matching close,
+                where its recursion has run (cf. [[ref-producer-guarded-quantifier]]). The map sibling sharpens the point:
+                its interior is a flat-decidable `WellBracketed`, yet it STILL needs the guarded universal — because the
+                guard is forced by the *separator's* `j`-dependence, not the interior's recursiveness, present on both
+                bracket branches. So folding the close-locator is a real interface move, not book-keeping: it converts the
+                assumed-`j` substrate into a head-only substrate at the cost of guarding the residual oracle. Both
+                axiom-clean **`[propext, Classical.choice, Quot.sound]`** (`Classical.choice` via the close-locators'
+                `flowBracketBalance_matching_close` compose machinery). Verified-but-unconsumed (R225): references no sorry
+                site, **sorries held at 4**. Build green **537 jobs**. **Immediate next brick:** the map-pair's two
+                `RecSeqEntry` sub-block locators (the symmetric fold deriving the pair's `kv`/interior split from the head
+                on the map axis), then the `Nat.strongRecOn` width-metric driver that supplies the guarded bracket
+                `RecSeqBody` oracle, the tail oracle, and the pair's no-interior-boundary oracle — closing the recursion on
+                both axes. See Reflection 283, on top of the
                 **Total .body scope re-estimate (ONE-HUNDRED-THIRTIETH revision —
                 after **Thread A step 3 sub-step 3's brick cont'd (locate recursion DRIVER *classify half* — the
                 grammar-bearing CLASSIFY unifier, MAP side) — landed** (commit `afadbf31`, Reflection 282).
@@ -27733,3 +27770,13 @@ R281 landed the seq classify unifier and found that *naming the grammar substrat
 **INPUT/SHAPE fused, both axes complete.** As on the seq side the conclusion strengthens `firstEntryBoundary`'s five split-point facts with the shape classification (`RecMapPair ((take m).drop lo)`) — by [[ref-entry-boundary-input-shape-split]] the INPUT (where the pair ends) and SHAPE (that it is a pair) delivered about one `m`. With `recseqentry_classify` (R281) and `recmapentry_classify` (R282) both landed, **both axes' classify unifiers are complete.** This is again [[ref-fold-consumer-chain-to-producer-contract]] — folding `firstEntryBoundary` + `recmappair_window` + the pin into one lemma whose hypotheses are exactly the per-window contract — and confirms the R264 discriminator from the other side: the seq unifier named `RecSeqEntry`/`RecSeqBody` and so re-split; the map unifier names `RecMapPair`/`RecSeqEntry` and is that re-split, but with a *structurally different* (conjunctive) substrate, because the deliverable's constructor arity (one `mk`, not four) dictates the substrate's shape.
 
 Axiom-clean **`[propext, Classical.choice, Quot.sound]`** (`Classical.choice` via `recmappair_window`'s reused ADVANCE segment-split plumbing). Verified-but-unconsumed (R225): references no sorry site, frontier sorry count unchanged at **4** (build green **537 jobs**; commit `afadbf31`). **Immediate next brick:** folding the close-locators (`matchingClose_full_{seq,map}`) into the seq bracket disjuncts — and the map pair's two `RecSeqEntry` sub-block locators — so the split positions are derived from the head rather than assumed, then the `Nat.strongRecOn` width-metric driver that supplies the bracket `RecSeqBody` oracle, the tail oracle, and the pair's no-interior-boundary oracle, closing the recursion on both axes — feeding the per-window `Rec…Body` producers into `flowSubrangesOk_of_window_producers` → the two `scanFiltered_emit{Seq,Map}_nonempty_structure` sorry sites → the two base `emit_roundtrip_{sequence,mapping}_content_eq` sorries → `universal_roundtrip`. See [[ref-fold-consumer-chain-to-producer-contract]] (the fold whose hypothesis IS the substrate, here a conjunction), [[ref-entry-boundary-input-shape-split]] (INPUT+SHAPE fused; the deliverable-type-naming re-split discriminator, here confirmed from the map side), and [[ref-structural-moves-complete-recursion]] (R277's `recmappair_window` is the pair glue this unifier composes; with both classify shapes named, only their input production and the `strongRecOn` wrapper remain).
+
+### Reflection 283 (new, 2026-06-05): deriving the split point from the head turns the bracket disjunct's residual into a producer-guarded universal — the guard is forced by the separator's witness-dependence, not the interior's recursiveness
+
+R281/R282 named both classify substrates but left every bracket disjunct ASSUMING its matching close `j`: the disjunct carried an `∃ j, (position ∧ close-token ∧ inner-balance ∧ positivity ∧ interior-oracle ∧ separator)` bundle handed in whole. R283 lands `recseqentry_seqbracket_located` / `recseqentry_mapbracket_located` (commit `e0d49d9e`), which fold the close-locators `matchingClose_full_{seq,map}` (R277) into `recseqentry_classify`'s nested-sequence and nested-mapping disjuncts. The locator PRODUCES four of those bundle facts from the head opener + window facts alone (total balance `0`, Dyck prefixes, window `WellTyped`), so `j` becomes an internal consequence of the head rather than a substrate parameter. The lesson is what happens to the *other two* facts.
+
+**The residual is witness-dependent, so it must be a guarded universal.** Two facts the disjunct needs survive the fold — the interior oracle (`RecSeqBody` on the recursive seq branch, `WellBracketed` on the near-leaf map branch) and the trailing separator `h_succ` — and both are predicates about the located `j`, which does not exist until the locator runs *inside* the proof. They therefore cannot be plain hypotheses about a known `j` (there is none to name at the call site). They are supplied instead as a universal over `j` **guarded by exactly the locator's output predicate** (`lo < j`, `j < hi`, the close token, the inner balance, the strict-positivity invariant). This is [[ref-producer-guarded-quantifier]] used as designed: the producer (the close-locator) and the guarded universal share the same guard, so the universal discharges by applying it to the located `j` and its five facts. Carry the full guard and it works; drop a conjunct and it becomes either too strong to ever supply (an unconditional oracle for every `j`) or unpinnable. The guard is precisely what will let the `Nat.strongRecOn` driver supply the oracle ONLY at the unique matching close, where its recursion on the strictly smaller interior `[lo+1, j)` has run.
+
+**The guard is forced by the separator, not the recursion.** One expects the guarded universal on the *recursive* (seq) branch — its interior oracle `RecSeqBody` genuinely awaits the recursion. The surprise is the *near-leaf* (map) branch needs the identical guarded shape, even though its interior `WellBracketed` is flat-decidable and suppliable inline. The reason: the trailing separator `h_succ` (`j+1 = hi ∨ tokens[j+1]! = .flowEntry`) is witness-dependent on BOTH branches — it is a fact about the token just past the located close. So the guard is forced by the *separator's* `j`-dependence, present on every bracket disjunct, not by whether the interior is recursive. This separates two things the R244 storage asymmetry had previously conflated: whether the interior body is recursive (differs across branches) versus whether the fold needs a guarded universal (the same on both). Folding a close-locator is thus a structural interface move — it converts an assumed-witness substrate into a head-only substrate at the fixed cost of guarding the witness-dependent residual — independent of the deliverable's storage shape.
+
+**Why this is the right shape of progress.** The brick changes no sorry count (verified-but-unconsumed, R225) and proves nothing the classify could not already assume; what it buys is moving the `j`-existence *across the interface*, from the driver's obligation into a derived consequence of facts the driver already holds. After it, the seq driver's per-bracket-window obligation is head-only except for the one guarded oracle the recursion will discharge — exactly the seam the `Nat.strongRecOn` wrapper plugs into. Axiom-clean **`[propext, Classical.choice, Quot.sound]`** (`Classical.choice` via the close-locators' `flowBracketBalance_matching_close` compose machinery). Verified-but-unconsumed (R225): references no sorry site, frontier sorry count unchanged at **4** (build green **537 jobs**; commit `e0d49d9e`). **Immediate next brick:** the map-pair's two `RecSeqEntry` sub-block locators (the symmetric fold deriving the pair's `kv`/interior split from the head on the map axis), then the `Nat.strongRecOn` width-metric driver that supplies the guarded bracket `RecSeqBody` oracle, the tail oracle, and the pair's no-interior-boundary oracle, closing the recursion on both axes — feeding the per-window `Rec…Body` producers into `flowSubrangesOk_of_window_producers` → the two `scanFiltered_emit{Seq,Map}_nonempty_structure` sorry sites → the two base `emit_roundtrip_{sequence,mapping}_content_eq` sorries → `universal_roundtrip`. See [[ref-producer-guarded-quantifier]] (the residual-oracle shape this fold forces), [[ref-fold-consumer-chain-to-producer-contract]] (R277's close-locators folded into the disjunct so `j` is derived not assumed), and [[ref-entry-boundary-input-shape-split]] (the input/shape discipline one level down: the close-locator is the bracket disjunct's INPUT producer, the dispatch its SHAPE).
