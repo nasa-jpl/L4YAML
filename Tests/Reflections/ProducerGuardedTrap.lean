@@ -251,4 +251,48 @@ theorem map_subdeliv_unguarded_is_false :
 theorem map_subdeliv_guarded_holds :
     ∀ k, k < tsMap.length → isValueSep k → balZero k → valBlockOk k := by decide
 
+/- ═══════════════════════════════════════════════════════════════════════════════════════════════
+   R285 — empty-window peel.  The producer-guarded trap at the EMPTY-WINDOW boundary of a recursive
+   universal producer.  When the deliverable is a recursive inductive with NO empty constructor (as
+   `RecSeqBody`/`RecMapBody`), a producer hypothesis typed `lo ≤ hi → RecBody (window lo hi)` is
+   UNSATISFIABLE: at the empty window `lo = hi` the window is `[]` and `RecBody []` is uninhabited.
+   The fix is to PEEL `lo = hi` to a constructor-free leaf (a vacuous `Prop`) and strict-ify the
+   recursive hypothesis to `lo < hi`, where the deliverable's constructors actually live.
+   ═══════════════════════════════════════════════════════════════════════════════════════════════ -/
+
+/-- Toy recursive "body" deliverable: a NON-empty run of `.scal`, with NO empty constructor — the
+    structural mirror of `RecSeqBody`/`RecMapBody` (whose empty case is a leaf ENTRY, never a body). -/
+inductive RecBody : List Tok → Prop where
+  | single (t : Tok) (h : t = .scal) : RecBody [t]
+  | cons (t : Tok) (rest : List Tok) (h : t = .scal) (h_rest : RecBody rest) : RecBody (t :: rest)
+
+/-- The body stream and its window: `win lo hi` is the sub-list `[lo, hi)`, EMPTY exactly at `lo = hi`. -/
+def tsBody : List Tok := [.scal, .scal]
+abbrev win (lo hi : Nat) : List Tok := (tsBody.take hi).drop lo
+
+/-- NEGATIVE (the constructor gap): the empty window has no `RecBody` — there is no empty constructor. -/
+theorem recBody_empty_uninhabited : ¬ RecBody (win 1 1) := by
+  intro h; cases h
+
+/-- NEGATIVE (the trap): the `lo ≤ hi`-typed producer is UNSATISFIABLE — instantiating it at the empty
+    window `lo = hi = 1` demands `RecBody []`, which `recBody_empty_uninhabited` refutes.  A consumer
+    that merely *uses* this hypothesis still type-checks; that proves nothing about supplyability. -/
+theorem producer_le_unsatisfiable : ¬ (∀ lo hi, lo ≤ hi → RecBody (win lo hi)) := fun h =>
+  recBody_empty_uninhabited (h 1 1 (Nat.le_refl 1))
+
+/-- POSITIVE (peel target): the empty window IS literally `[]` — what the real fix routes to the
+    vacuous leaf `seqBodyProps_empty` (`SeqBodyProps tokens lo lo`, needing no `RecSeqBody`: an empty
+    body has no items to classify), instead of demanding a `RecBody` of it. -/
+theorem win_empty : win 1 1 = [] := rfl
+
+/-- POSITIVE (strict-ify): under the strict `lo < hi` bound the empty window imposes NO obligation
+    (there is no `lo < lo`), so the trap is gone — the hypothesis is vacuously satisfiable there. -/
+theorem strict_vacuous_at_empty : ∀ lo, lo < lo → RecBody (win lo lo) := fun lo h =>
+  absurd h (Nat.lt_irrefl lo)
+
+/-- POSITIVE (real at non-empty): where the deliverable's constructors live (`lo < hi`), it genuinely
+    exists — `win 0 2 = [.scal, .scal]` is a sorry-free `RecBody`. -/
+theorem recBody_nonempty_window : RecBody (win 0 2) :=
+  .cons .scal [.scal] rfl (.single .scal rfl)
+
 end ProducerGuardedTrap
