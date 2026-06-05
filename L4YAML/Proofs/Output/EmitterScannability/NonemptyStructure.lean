@@ -2987,6 +2987,49 @@ theorem recseqbody_single_window (tokens : Array (Positioned YamlToken)) (lo hi 
   RecSeqBody.single ((tokens.toList.take hi).drop lo) (RecSeqEntry.ne_nil h_entry) h_entry
     (RecSeqEntry.head_contentStart h_entry (RecSeqEntry.ne_nil h_entry))
 
+/-- **Body window assembler — the seq locate DRIVER's grammar-free ADVANCE/TERMINATE step** (Phase J,
+    seq side).  The driver's per-window work splits cleanly into two halves: a *classify* half that
+    locates the first entry's extent `m` (`firstEntryBoundary`) and lifts the window `[lo, m)` into a
+    `RecSeqEntry` (the four head-dispatch branches), and this *assemble* half that, given that located
+    entry plus the recursion's tail oracle, folds them into the whole-window `RecSeqBody`.  The two
+    structural moves it bundles are already proven — `recseqbody_cons_window` (ADVANCE, lift
+    `RecSeqBody.cons`) and `recseqbody_single_window` (TERMINATE, lift `RecSeqBody.single`); this lemma
+    is their *selector*, dispatching on whether `firstEntryBoundary`'s split point `m` reached the
+    window end.
+
+    The lesson the bundling isolates: the assemble half names **no per-window grammar substrate** at
+    all.  Unlike the classify half — whose dispatches consume head-shape disjunctions and value-end
+    successor facts (`h_succ`) that neither `WellTyped` nor the producer contract carries — this step
+    needs only the structural facts the locator already produces: the marker disjunction `m = hi ∨
+    tokens[m] = .flowEntry` (`firstEntryBoundary`'s MARKER clause) selects the branch, and the tail
+    oracle is supplied *guarded* by `m < hi` (so the TERMINATE branch never invokes it).  TERMINATE
+    (`m = hi`) is a pure rewrite of the located entry into `recseqbody_single_window`; ADVANCE
+    (`m < hi`, hence `tokens[m] = .flowEntry` by `Or.resolve_left`) hands the entry, the separator, and
+    the oracle's tail `RecSeqBody [m+1, hi)` to `recseqbody_cons_window`.  So landing it pins the driver's
+    remaining residual to *exactly* the grammar-bearing classify half — the per-window head-shape /
+    successor substrate (recoverable via `WellTyped_subrange` for the bracket interior, but owing the
+    content grammar `WellTyped` does not encode) and the `Nat.strongRecOn` width metric that discharges
+    the tail oracle.
+
+    By the R264 mirror discriminator it names a collection-specific deliverable type (`RecSeqEntry`/
+    `RecSeqBody`), so it re-splits the map axis: `recmapbody_window_assemble` is the symmetric next brick.
+    Verified-but-unconsumed until the driver lands (R225): composes only existing lemmas, references no
+    sorry site, frontier sorry count unchanged at 4. -/
+theorem recseqbody_window_assemble (tokens : Array (Positioned YamlToken)) (lo m hi : Nat)
+    (h_lo_m : lo < m) (h_m_hi : m ≤ hi) (h_hi_sz : hi < tokens.size)
+    (h_m_marker : m = hi ∨ tokens[m]!.val = .flowEntry)
+    (h_entry : RecSeqEntry ((tokens.toList.take m).drop lo))
+    (h_tail : m < hi → RecSeqBody ((tokens.toList.take hi).drop (m + 1))) :
+    RecSeqBody ((tokens.toList.take hi).drop lo) := by
+  rcases Nat.lt_or_ge m hi with h_lt | h_ge
+  · -- ADVANCE: a depth-`0` `.flowEntry` separator at `m`; cons the located entry onto the tail oracle.
+    have h_fe : tokens[m]!.val = .flowEntry := h_m_marker.resolve_left (by omega)
+    exact recseqbody_cons_window tokens lo m hi (Nat.le_of_lt h_lo_m) h_lt h_hi_sz h_fe h_entry
+      (h_tail h_lt)
+  · -- TERMINATE: `m = hi`, so the whole window is the one located entry, no trailing separator.
+    have h_eq : m = hi := Nat.le_antisymm h_m_hi h_ge
+    exact recseqbody_single_window tokens lo hi (h_eq ▸ h_entry)
+
 /-- **A recursive map pair is non-empty.**  The sole `RecMapPair.mk` constructor produces a `cons`
     list (`kt :: …`), so the pair is never `[]`.  The map mirror of `RecSeqEntry.ne_nil`: the `h_ne`
     field the body-level `RecMapBody.cons`/`.single` constructors demand, supplied as a structural
