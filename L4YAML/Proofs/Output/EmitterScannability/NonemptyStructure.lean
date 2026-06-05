@@ -3691,6 +3691,43 @@ theorem flowBodyContent_of_deep (tokens : Array (Positioned YamlToken)) (lo hi :
   · -- boundary separator `k + 1 = hi`: the no-trailing-comma residual.
     exact h_noTrailingSep k hk1 (by omega) hfe hbal
 
+/-- **`bodySucc` ROOT-SEED bridge** (Phase J — sub-brick (i'-b), the CERTAIN half of the seq separator
+    facts at the root window, and the producer's first landable brick per
+    [[ref-universal-producer-root-seed-first]]).  `emitList_body_filtered_characterization` Part 6
+    delivers EXACTLY the `bodySucc` separator fact — "a depth-`0` non-`.flowEntry` balanced-prefix end is
+    an entry END (window close, or immediately followed by a `.flowEntry`)" — over the body window
+    `[lo, T.size)` of the filtered token array `T`, but stated with bounds-checked indexing (`T[k]'h`,
+    `T[k+1]'h'`).  `flowBodyContent_of_deep`'s `h_bodySucc` parameter wants the SAME fact with panic
+    indexing (`T[k]!`, `T[k+1]!`).  This is the pure index-notation bridge between the two (`getElem!_pos`
+    on the hypothesis and the existential witness), so the root assembly can feed Part 6 straight into the
+    `FlowBodyContent` assembler with no re-derivation.
+
+    This pins the BASE case only.  The genuinely-open part of (i'-b) is provenance at DESCENDED windows,
+    which this does NOT touch and which — per R296 — does NOT factor through any LOCAL separator carrier:
+    `bodySucc` has no all-depth, balance-free form (contrast `FlowBodyContentDeep`'s
+    `openerContentStart` / `feContentStart`, whose balance-freedom makes both recursion edges pure subset
+    restrictions), because a child window's depth-`0` is the parent's depth-`1`, where the parent's
+    `bodySucc` is silent — and inside a nested `{ … }` the fact is outright FALSE (a key is followed by
+    `.value`, not a separator).  So the descended facts need a bracket-TYPE context the current guards
+    lack; they are not derivable by restriction from a parent `bodySucc`.  Names no deliverable type, so
+    it serves both axes' root seeds. -/
+theorem flowBodyContent_bodySucc_of_part6 (T : Array (Positioned YamlToken)) (lo : Nat)
+    (h_part6 : ∀ (k : Nat), lo ≤ k → (h_hi : k < T.size) →
+        flowBracketBalance T lo (k + 1) = 0 →
+        (T[k]'h_hi).val ≠ .flowEntry →
+        k + 1 = T.size ∨ ∃ (h' : k + 1 < T.size), (T[k + 1]'h').val = .flowEntry) :
+    ∀ (k : Nat), lo ≤ k → k < T.size →
+        flowBracketBalance T lo (k + 1) = 0 →
+        T[k]!.val ≠ .flowEntry →
+        k + 1 = T.size ∨ ∃ (_ : k + 1 < T.size), T[k + 1]!.val = .flowEntry := by
+  intro k hk1 hk2 hbal hnfe
+  rw [getElem!_pos T k hk2] at hnfe
+  rcases h_part6 k hk1 hk2 hbal hnfe with h | ⟨h', heq⟩
+  · exact Or.inl h
+  · refine Or.inr ⟨h', ?_⟩
+    rw [getElem!_pos T (k + 1) h']
+    exact heq
+
 /-- **Nested-sequence head-dispatch oracle from the IH** (Phase J — the head-shape dispatch's recursive
     crux, the first GRAMMAR brick after the guard-threading skeleton closed: the producer-guarded
     `RecSeqBody` oracle for the nested `[ … ]` branch, built from the `windowWidth_strongRecOn`
