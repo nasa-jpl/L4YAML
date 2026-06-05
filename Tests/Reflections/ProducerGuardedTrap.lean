@@ -121,4 +121,73 @@ example : Goal ts 2 :=
 theorem trap_premise_is_false :
     ¬ (∀ j, j < ts.length → weakCond ts j → Goal ts j) := by decide
 
+/-! ## R283 refinement — the guard is forced by ANY witness-dependent residual, not the recursive one.
+
+Reflection 283 folds the close-locators into the bracket disjuncts, deriving the matching close `j`
+from the head.  Two residual facts survive past the located `j`: an **interior oracle** and the
+**trailing separator**.  On the *recursive* (nested-sequence) branch both await the witness (the
+interior oracle is a `RecSeqBody` from the recursion); on the *near-leaf* (nested-mapping) branch the
+interior oracle is flat-decidable and suppliable inline — yet the fold STILL needs the guarded
+universal.  Why: the separator is witness-dependent on BOTH branches.  The lesson sharpens the
+principle above: scan ALL residual conjuncts; a single witness-dependent one forces the guard, even if
+its companion is benign everywhere.  Modeled below: `interiorOk` holds at every index (the inline
+near-leaf oracle), but the full residual `Resid = interiorOk ∧ Goal` still needs the guard because of
+`Goal` (the separator). -/
+
+/-- A flat interior oracle that holds at EVERY index (models the near-leaf `WellBracketed`, suppliable
+    inline): the balance never goes negative.  True for all `j` of `ts`. -/
+abbrev interiorOk (ts : List Tok) (j : Nat) : Prop := 0 ≤ bal ts (j+1)
+
+/-- The full residual a bracket disjunct needs past the located close: interior oracle AND separator. -/
+abbrev Resid (ts : List Tok) (j : Nat) : Prop := interiorOk ts j ∧ Goal ts j
+
+/-- One row of the R283 table: the interior oracle, the separator `Goal`, and their conjunction. -/
+def reportR283 (j : Nat) : String :=
+  s!"j={j}  interiorOk={decide (interiorOk ts j)}  Goal={decide (Goal ts j)}  Resid={decide (Resid ts j)}"
+
+-- The close (idx 2) is the legitimate witness; the separator (idx 3) is the trap. Note `interiorOk`
+-- is TRUE on both rows — the residual fails at idx 3 purely because `Goal` (the separator) fails there.
+/-- info: ["j=2  interiorOk=true  Goal=true  Resid=true", "j=3  interiorOk=true  Goal=false  Resid=false"] -/
+#guard_msgs in
+#eval [reportR283 2, reportR283 3]
+
+/-- NEAR-LEAF TRAP. The interior oracle is suppliable inline (holds everywhere), so one is tempted to
+    guard the residual loosely — but it also carries the witness-dependent separator. Unguarded `∀`
+    over `weakCond` type-checks, yet its premise is unsatisfiable. -/
+theorem nearLeaf_trap {ts : List Tok} {j : Nat} (h_jlt : j < ts.length)
+    (h_loc : producerProp ts j ∧ weakCond ts j)
+    (h_resid : ∀ j, j < ts.length → weakCond ts j → Resid ts j) :
+    Resid ts j :=
+  h_resid j h_jlt h_loc.2
+
+/-- NEAR-LEAF FIXED. Same body, residual premise guarded by the producer's property — forced by the
+    separator conjunct even though the interior conjunct alone would not need it. -/
+theorem nearLeaf_fixed {ts : List Tok} {j : Nat} (h_jlt : j < ts.length)
+    (h_loc : producerProp ts j ∧ weakCond ts j)
+    (h_resid : ∀ j, j < ts.length → producerProp ts j → weakCond ts j → Resid ts j) :
+    Resid ts j :=
+  h_resid j h_jlt h_loc.1 h_loc.2
+
+-- The interior oracle ALONE needs no guard — supplyable over the weak condition (holds everywhere).
+#guard decide (∀ j, j < ts.length → weakCond ts j → interiorOk ts j)
+-- Yet the FULL residual unguarded is FALSE — the separator (idx 3) breaks it even though interiorOk holds.
+#guard !decide (∀ j, j < ts.length → weakCond ts j → Resid ts j)
+-- Guarding by `producerProp` (the close-locator's output) restores supplyability — excludes the separator.
+#guard decide (∀ j, j < ts.length → producerProp ts j → weakCond ts j → Resid ts j)
+
+/-- The interior oracle alone is supplyable UNGUARDED — so the recursion is not what forces the guard. -/
+theorem interior_alone_needs_no_guard :
+    ∀ j, j < ts.length → weakCond ts j → interiorOk ts j := by decide
+
+/-- The full residual unguarded is unsatisfiable — the witness-dependent SEPARATOR forces the guard. -/
+theorem nearLeaf_resid_unguarded_is_false :
+    ¬ (∀ j, j < ts.length → weakCond ts j → Resid ts j) := by decide
+
+/-- The guarded residual premise IS a real (sorry-free) proof. -/
+theorem nearLeaf_resid_premise_holds :
+    ∀ j, j < ts.length → producerProp ts j → weakCond ts j → Resid ts j := by decide
+
+/-- `nearLeaf_fixed` produces a genuine proof at the located close (idx 2). -/
+example : Resid ts 2 := nearLeaf_fixed (by decide) (by decide) nearLeaf_resid_premise_holds
+
 end ProducerGuardedTrap
