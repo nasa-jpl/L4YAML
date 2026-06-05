@@ -4162,6 +4162,98 @@ theorem recmapentry_classify (tokens : Array (Positioned YamlToken)) (lo hi : Na
   rw [h_m_e]
   exact recmappair_window tokens lo kv e h_lo_kv h_kv_e (by omega) h_key h_value h_ke h_ve
 
+/-- **Head-derived nested-sequence bracket classify** (Phase J — the seq locate DRIVER's bracket
+    disjunct with its split point `j` DERIVED from the head, no longer assumed).  `recseqentry_classify`
+    (R281) folds the four head-dispatches but still ASSUMES, in each of its two bracket disjuncts, an
+    `∃ j, …` carrying the matching close `j` and its position / close-token / inner-balance / positivity
+    facts.  Those facts are exactly what the close-locator `matchingClose_full_seq` (R277) PRODUCES from
+    the head alone — opener `tokens[lo]! = .flowSequenceStart`, total balance `0`, Dyck prefixes, and the
+    window `WellTyped`.  This lemma folds that locator INTO the nested-sequence disjunct: it runs the
+    locator to fix `j` *with* its full fact bundle, then hands that to `recseqentry_classify`'s fourth
+    disjunct.  The split point is now an internal consequence of the head, not a substrate parameter.
+
+    The genuinely new shape is the *oracle* hypothesis `h_oracle`, and it is a textbook instance of the
+    producer-guarded quantifier (cf. [[ref-producer-guarded-quantifier]]).  Two facts the bracket
+    disjunct needs — the recursive interior body `RecSeqBody ((take j).drop (lo+1))` and the trailing
+    separator `h_succ` — depend on the located `j`, which does not exist until the locator runs *inside*
+    this proof.  So they cannot be plain hypotheses about a known `j`; they must be a universal over `j`
+    **guarded by exactly the locator's output predicate** (`lo < j`, `j < hi`, the close token, the inner
+    balance, the strict-positivity invariant).  Carry that guard and the universal is dischargeable —
+    apply it to the located `j` and its five facts.  Drop any guard conjunct and it becomes either too
+    strong to supply (an unconditional `RecSeqBody` for every `j`) or unpinnable: the guard is what lets
+    the driver supply the oracle ONLY at the unique matching close, where its recursion has run.  This is
+    why folding the close-locator is not free book-keeping but a real interface move — it converts the
+    assumed-`j` substrate into a head-only substrate at the cost of guarding the residual oracle.
+
+    With this, the seq DRIVER's per-bracket-window obligation is head-only except for the guarded oracle,
+    which the `Nat.strongRecOn` width-metric driver discharges from its recursive call on the strictly
+    smaller interior `[lo+1, j)`.  Verified-but-unconsumed (R225): references no sorry site, frontier
+    sorry count unchanged at 4; axiom-clean `[propext, Classical.choice, Quot.sound]` (`Classical.choice`
+    enters through `matchingClose_full_seq`'s `flowBracketBalance_matching_close` and the bracket
+    dispatch's `firstEntryBoundary_bracket_resolve` compose machinery). -/
+theorem recseqentry_seqbracket_located (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (h_lo_hi : lo < hi) (h_hi_sz : hi ≤ tokens.size)
+    (h_open : tokens[lo]!.val = .flowSequenceStart)
+    (h_total : flowBracketBalance tokens lo hi = 0)
+    (h_dyck : ∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0)
+    (h_wt : WellTyped ((tokens.toList.take hi).drop lo))
+    (h_oracle : ∀ j, lo < j → j < hi → tokens[j]!.val = .flowSequenceEnd →
+        flowBracketBalance tokens (lo + 1) j = 0 →
+        (∀ i, lo < i → i ≤ j → flowBracketBalance tokens lo i ≥ 1) →
+        RecSeqBody ((tokens.toList.take j).drop (lo + 1)) ∧
+        (j + 1 = hi ∨ tokens[j + 1]!.val = .flowEntry)) :
+    ∃ m, lo < m ∧ m ≤ hi ∧
+      flowBracketBalance tokens lo m = 0 ∧
+      (m = hi ∨ tokens[m]!.val = .flowEntry) ∧
+      (∀ k, lo < k → k < m →
+        ¬ (flowBracketBalance tokens lo k = 0 ∧ (k = hi ∨ tokens[k]!.val = .flowEntry))) ∧
+      RecSeqEntry ((tokens.toList.take m).drop lo) := by
+  obtain ⟨j, h_lo_j, h_j_hi, h_close, h_inner, h_pos⟩ :=
+    matchingClose_full_seq tokens lo hi h_lo_hi h_hi_sz h_open h_total h_dyck h_wt
+  obtain ⟨h_rec, h_succ⟩ := h_oracle j h_lo_j h_j_hi h_close h_inner h_pos
+  exact recseqentry_classify tokens lo hi h_lo_hi h_hi_sz h_total
+    (Or.inr (Or.inr (Or.inr ⟨j, h_open, h_lo_j, h_j_hi, h_close, h_inner, h_pos, h_rec, h_succ⟩)))
+
+/-- **Head-derived nested-mapping bracket classify** (Phase J — the seq locate DRIVER's *near-leaf*
+    bracket disjunct, the `{ … }` mirror of `recseqentry_seqbracket_located`).  Verbatim sibling over the
+    `.flowMapping{Start,End}` close token: folds the map close-locator `matchingClose_full_map` (R277)
+    into `recseqentry_classify`'s THIRD disjunct, deriving the matching close `j` from the head opener
+    `tokens[lo]! = .flowMappingStart` + window facts, then handing the full bundle to the classify.
+
+    The lone structural difference from the seq sibling is the R244 storage fact surfacing in the guarded
+    oracle: a nested mapping is a NEAR-leaf (`RecSeqEntry.map` stores only the interior `WellBracketed`,
+    not a recursive body), so `h_oracle` returns `WellBracketed ((take j).drop (lo+1))` rather than the
+    recursive `RecSeqBody`.  The producer-guarded-quantifier shape is identical (cf.
+    [[ref-producer-guarded-quantifier]]): the trailing separator `h_succ` still depends on the located
+    `j`, so the oracle must be guarded by the locator's output predicate even though the body fact is
+    flat-decidable.  This confirms the close-locator fold is a structural interface move independent of
+    whether the interior is recursive — the guard is forced by the *separator's* `j`-dependence, present
+    on both bracket branches.  Verified-but-unconsumed (R225): references no sorry site, frontier sorry
+    count unchanged at 4; axiom-clean `[propext, Classical.choice, Quot.sound]` (`Classical.choice` via
+    `matchingClose_full_map` / the map dispatch's resolve machinery). -/
+theorem recseqentry_mapbracket_located (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (h_lo_hi : lo < hi) (h_hi_sz : hi ≤ tokens.size)
+    (h_open : tokens[lo]!.val = .flowMappingStart)
+    (h_total : flowBracketBalance tokens lo hi = 0)
+    (h_dyck : ∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0)
+    (h_wt : WellTyped ((tokens.toList.take hi).drop lo))
+    (h_oracle : ∀ j, lo < j → j < hi → tokens[j]!.val = .flowMappingEnd →
+        flowBracketBalance tokens (lo + 1) j = 0 →
+        (∀ i, lo < i → i ≤ j → flowBracketBalance tokens lo i ≥ 1) →
+        WellBracketed ((tokens.toList.take j).drop (lo + 1)) ∧
+        (j + 1 = hi ∨ tokens[j + 1]!.val = .flowEntry)) :
+    ∃ m, lo < m ∧ m ≤ hi ∧
+      flowBracketBalance tokens lo m = 0 ∧
+      (m = hi ∨ tokens[m]!.val = .flowEntry) ∧
+      (∀ k, lo < k → k < m →
+        ¬ (flowBracketBalance tokens lo k = 0 ∧ (k = hi ∨ tokens[k]!.val = .flowEntry))) ∧
+      RecSeqEntry ((tokens.toList.take m).drop lo) := by
+  obtain ⟨j, h_lo_j, h_j_hi, h_close, h_inner, h_pos⟩ :=
+    matchingClose_full_map tokens lo hi h_lo_hi h_hi_sz h_open h_total h_dyck h_wt
+  obtain ⟨h_wb, h_succ⟩ := h_oracle j h_lo_j h_j_hi h_close h_inner h_pos
+  exact recseqentry_classify tokens lo hi h_lo_hi h_hi_sz h_total
+    (Or.inr (Or.inr (Or.inl ⟨j, h_open, h_lo_j, h_j_hi, h_close, h_inner, h_pos, h_wb, h_succ⟩)))
+
 /-- **Parametric `MapBodyProps` assembler** (Phase J seed, map side).  The map-side mirror of
     `seqBodyProps_assemble`: given an arbitrary balanced flow-MAPPING subrange `[lo, hi)` —
     `tokens[hi]! = .flowMappingEnd`, total balance `0`, Dyck prefixes, interior `WellTyped` — together
