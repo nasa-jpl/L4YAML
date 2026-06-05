@@ -1182,4 +1182,54 @@ theorem seq_dispatch_consumes_oracle (h_rec : SeqBody [Tok.sc]) :
     rw [h]
     exact h_rec
 
+/-! ### The dispatch INPUT — the fused close locator, and the two-existential witness-identity trap (toy of `matchingClose_full_seq`, Reflection 277)
+
+R272–R276 built the dispatch *shapes*; every bracket dispatch above takes the matching close `j` and its
+facts as *hypotheses*.  This section is the toy of the first *input* supplier, `matchingClose_full_seq` —
+the lemma that LOCATES `j` and hands the dispatch the complete `j`-bundle.  The lesson is *how* to combine
+the two lossy sources R274 identified (the generic locator keeps positivity but only the close *delta*;
+the typed wrapper keeps the close *token* but drops positivity) when **each is an `∃ j`**.
+
+**Positive — fix the witness ONCE via the positivity-bearing source, then re-derive the token at THAT `j`
+from the shared core.**  The generic locator is a single `∃ j, …positivity…`; the "typed core" is a
+`∀ j, …facts at j… → token at j` (the sub-component the typed wrapper itself wraps — in L4YAML,
+`matching_close_typed_core`).  Threading the generic's witness `j` through the core yields one witness
+carrying BOTH facts.  No uniqueness lemma, no second existential. -/
+
+/-- **The fused locator.**  One `∃` in (the positivity-bearing generic source), one `∀`-core
+    (`h_core`, the token reader), one `∃` out carrying *all* the facts about a *single* witness `j`.
+    This is `matchingClose_full_seq`'s exact shape: run the generic locator once, apply the typed core
+    at the same `j`.  The typed *wrapper* (its own `∃ j`) is never invoked. -/
+theorem fused_locator_one_witness (l : List Tok)
+    (h_generic : ∃ j, 0 < j ∧ bal l (j + 1) = 0 ∧ (∀ i, 0 < i → i ≤ j → bal l i ≥ 1))
+    (h_core : ∀ j, (0 < j ∧ bal l (j + 1) = 0 ∧ (∀ i, 0 < i → i ≤ j → bal l i ≥ 1)) →
+      tokAt l j = .cl) :
+    ∃ j, (0 < j ∧ bal l (j + 1) = 0 ∧ (∀ i, 0 < i → i ≤ j → bal l i ≥ 1)) ∧ tokAt l j = .cl := by
+  obtain ⟨j, hj⟩ := h_generic
+  exact ⟨j, hj, h_core j hj⟩
+
+/-- Positive instance on `l1`'s bracket: the fused bundle holds at the single witness `j = 2` — the
+    positivity-bearing facts (close-just-past at `bal l1 3 = 0`, depth `≥ 1` over the interior `{1,2}`)
+    AND the close token `.cl`, all about the *same* `j`.  One witness, both facts — the dispatch can now
+    consume the full `j`-bundle (cf. `dispatch_bracket_l1`, which used only the positivity half). -/
+theorem fused_locator_l1 :
+    ∃ j, (0 < j ∧ bal l1 (j + 1) = 0 ∧ (∀ i, 0 < i → i ≤ j → bal l1 i ≥ 1)) ∧ tokAt l1 j = .cl := by
+  refine ⟨2, ⟨by decide, by decide, ?_⟩, by decide⟩
+  intro i h1 h2
+  rcases (show i = 1 ∨ i = 2 by omega) with rfl | rfl
+  · decide
+  · decide
+
+/-- **Negative — the witness-identity trap.**  Obtaining the two sources as *independent* existentials
+    `(∃ j, P j) ∧ (∃ j, Q j)` does NOT give `∃ j, P j ∧ Q j`: the two witnesses can differ, and without a
+    uniqueness lemma the conjunction-under-one-witness is unprovable.  Modelled at its logical core: both
+    `∃ j, j = 0` and `∃ j, j = 1` hold, yet `∃ j, j = 0 ∧ j = 1` is FALSE.  This is exactly why
+    `matchingClose_full_seq` must NOT `obtain` both the generic locator and the typed *wrapper* and try to
+    reconcile their `j`'s — it threads one witness through the shared core instead. -/
+theorem naive_two_existentials_lose_identity :
+    ((∃ j : Nat, j = 0) ∧ (∃ j : Nat, j = 1)) ∧ ¬ (∃ j : Nat, j = 0 ∧ j = 1) := by
+  refine ⟨⟨⟨0, rfl⟩, ⟨1, rfl⟩⟩, ?_⟩
+  rintro ⟨j, h0, h1⟩
+  omega
+
 end Tests.Reflections.EntryBoundaryLocator
