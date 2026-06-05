@@ -5149,26 +5149,37 @@ theorem mapLocated_of_recmapbody_outer (tokens : Array (Positioned YamlToken))
     the whole downstream-of-locate residual to the single boundary "produce `SeqLocated`/`MapLocated`
     at every guarded window." -/
 theorem flowSubrangesOk_of_locators (tokens : Array (Positioned YamlToken))
-    (h_seq : ∀ lo hi, lo ≤ hi → hi < tokens.size →
+    (h_seq : ∀ lo hi, lo < hi → hi < tokens.size →
       tokens[hi]!.val = .flowSequenceEnd →
       flowBracketBalance tokens lo hi = 0 →
       tokens[lo - 1]!.val = .flowSequenceStart →
       SeqLocated tokens lo hi)
-    (h_map : ∀ lo hi, lo ≤ hi → hi < tokens.size →
+    (h_map : ∀ lo hi, lo < hi → hi < tokens.size →
       tokens[hi]!.val = .flowMappingEnd →
       flowBracketBalance tokens lo hi = 0 →
       tokens[lo - 1]!.val = .flowMappingStart →
       MapLocated tokens lo hi) :
     FlowSubrangesOk tokens where
+  -- The empty window (`lo = hi`, a nested `[]`/`{}`) is peeled to the vacuous body leaf
+  -- (`seqBodyProps_empty`/`mapBodyProps_empty`), so the locators — and the recursive `Rec…Body`
+  -- producers behind them — are only ever asked for the strictly non-empty window `lo < hi`.  This
+  -- is what makes those producer hypotheses *satisfiable*: `RecSeqBody`/`RecMapBody` has no empty
+  -- constructor, so a `lo ≤ hi`-typed producer would demand `RecSeqBody []` at the empty window.
   seq := fun lo hi h_lo_hi h_hi_sz h_tpe h_bal h_open =>
-    let L := h_seq lo hi h_lo_hi h_hi_sz h_tpe h_bal h_open
-    seqBodyProps_of_located_entry tokens lo hi L.pos h_lo_hi h_hi_sz h_tpe h_bal L.dyck L.wt
-      h_open L.entry
+    (Nat.eq_or_lt_of_le h_lo_hi).elim
+      (fun h_eq => seqBodyProps_empty tokens lo hi h_eq)
+      (fun h_lt =>
+        let L := h_seq lo hi h_lt h_hi_sz h_tpe h_bal h_open
+        seqBodyProps_of_located_entry tokens lo hi L.pos h_lo_hi h_hi_sz h_tpe h_bal L.dyck L.wt
+          h_open L.entry)
   map := fun lo hi h_lo_hi h_hi_sz h_tpe h_bal h_open =>
-    let L := h_map lo hi h_lo_hi h_hi_sz h_tpe h_bal h_open
-    mapBodyProps_of_located_entry tokens lo hi L.pos h_lo_hi h_hi_sz h_tpe h_bal L.dyck L.wt
-      L.entry L.key_content L.key_scalar_value L.value_content L.value_scalar_succ
-      L.key_bracket_succ L.value_bracket_succ
+    (Nat.eq_or_lt_of_le h_lo_hi).elim
+      (fun h_eq => mapBodyProps_empty tokens lo hi h_eq)
+      (fun h_lt =>
+        let L := h_map lo hi h_lt h_hi_sz h_tpe h_bal h_open
+        mapBodyProps_of_located_entry tokens lo hi L.pos h_lo_hi h_hi_sz h_tpe h_bal L.dyck L.wt
+          L.entry L.key_content L.key_scalar_value L.value_content L.value_scalar_succ
+          L.key_bracket_succ L.value_bracket_succ)
 
 /-- **Seq-side boundary-anchoring locator joint** (Phase J — the locate's input boundary, the
     consumer-joint-before-producer move at the *outer span* this time).  `FlowSubrangesOk.seq`
@@ -5190,17 +5201,21 @@ theorem seqLocator_of_window_recseqbody (tokens : Array (Positioned YamlToken))
     (h_t0 : tokens[0]!.val = .streamStart)
     (h_tlast : tokens[tokens.size - 1]!.val = .streamEnd)
     (h_wt_outer : WellTyped ((tokens.toList.take (tokens.size - 2)).drop 2))
-    (h_seq_rec : ∀ lo hi, 2 ≤ lo → lo ≤ hi → hi ≤ tokens.size - 2 → hi < tokens.size →
+    (h_seq_rec : ∀ lo hi, 2 ≤ lo → lo < hi → hi ≤ tokens.size - 2 → hi < tokens.size →
       tokens[hi]!.val = .flowSequenceEnd →
       flowBracketBalance tokens lo hi = 0 →
       tokens[lo - 1]!.val = .flowSequenceStart →
       RecSeqBody ((tokens.toList.take hi).drop lo)) :
-    ∀ lo hi, lo ≤ hi → hi < tokens.size →
+    ∀ lo hi, lo < hi → hi < tokens.size →
       tokens[hi]!.val = .flowSequenceEnd →
       flowBracketBalance tokens lo hi = 0 →
       tokens[lo - 1]!.val = .flowSequenceStart →
       SeqLocated tokens lo hi := by
-  intro lo hi h_lo_hi h_hi_sz h_close h_bal h_open
+  intro lo hi h_lo_lt h_hi_sz h_close h_bal h_open
+  -- `h_seq_rec` is now keyed on the strict `lo < hi`; the empty window (`lo = hi`, a nested `[]`)
+  -- is peeled at `flowSubrangesOk_of_locators` via `seqBodyProps_empty`, so it never reaches here.
+  -- Everything downstream of this point consumes the `≤` form, recovered once.
+  have h_lo_hi : lo ≤ hi := Nat.le_of_lt h_lo_lt
   -- Recover `2 ≤ lo` from the stream-start boundary token.
   have h_lo2 : 2 ≤ lo := by
     rcases Nat.lt_or_ge lo 2 with hlt | hge
@@ -5219,7 +5234,7 @@ theorem seqLocator_of_window_recseqbody (tokens : Array (Positioned YamlToken))
       exact absurd h_close (by decide)
   exact seqLocated_of_recseqbody_outer tokens 2 (tokens.size - 2) lo hi
     h_lo2 (by omega) h_lo_hi h_hi2 (by omega) h_hi_sz h_open h_close h_wt_outer
-    (h_seq_rec lo hi h_lo2 h_lo_hi h_hi2 h_hi_sz h_close h_bal h_open)
+    (h_seq_rec lo hi h_lo2 h_lo_lt h_hi2 h_hi_sz h_close h_bal h_open)
 
 /-- **Map-side boundary-anchoring locator joint** (Phase J — the verbatim mirror of
     `seqLocator_of_window_recseqbody` over the `.flowMapping{Start,End}` boundary tokens, completing
@@ -5244,7 +5259,7 @@ theorem mapLocator_of_window_recmapbody (tokens : Array (Positioned YamlToken))
     (h_t0 : tokens[0]!.val = .streamStart)
     (h_tlast : tokens[tokens.size - 1]!.val = .streamEnd)
     (h_wt_outer : WellTyped ((tokens.toList.take (tokens.size - 2)).drop 2))
-    (h_map_rec : ∀ lo hi, 2 ≤ lo → lo ≤ hi → hi ≤ tokens.size - 2 → hi < tokens.size →
+    (h_map_rec : ∀ lo hi, 2 ≤ lo → lo < hi → hi ≤ tokens.size - 2 → hi < tokens.size →
       tokens[hi]!.val = .flowMappingEnd →
       flowBracketBalance tokens lo hi = 0 →
       tokens[lo - 1]!.val = .flowMappingStart →
@@ -5309,12 +5324,15 @@ theorem mapLocator_of_window_recmapbody (tokens : Array (Positioned YamlToken))
         j + 1 ≤ hi ∧
         (tokens[j + 1]!.val = .flowEntry ∨
          (tokens[j + 1]!.val = .flowMappingEnd ∧ j + 1 = hi))) :
-    ∀ lo hi, lo ≤ hi → hi < tokens.size →
+    ∀ lo hi, lo < hi → hi < tokens.size →
       tokens[hi]!.val = .flowMappingEnd →
       flowBracketBalance tokens lo hi = 0 →
       tokens[lo - 1]!.val = .flowMappingStart →
       MapLocated tokens lo hi := by
-  intro lo hi h_lo_hi h_hi_sz h_close h_bal h_open
+  intro lo hi h_lo_lt h_hi_sz h_close h_bal h_open
+  -- `h_map_rec` is now keyed on the strict `lo < hi`; the empty window (`lo = hi`, a nested `{}`)
+  -- is peeled at `flowSubrangesOk_of_locators` via `mapBodyProps_empty`, so it never reaches here.
+  have h_lo_hi : lo ≤ hi := Nat.le_of_lt h_lo_lt
   -- Recover `2 ≤ lo` from the stream-start boundary token.
   have h_lo2 : 2 ≤ lo := by
     rcases Nat.lt_or_ge lo 2 with hlt | hge
@@ -5333,7 +5351,7 @@ theorem mapLocator_of_window_recmapbody (tokens : Array (Positioned YamlToken))
       exact absurd h_close (by decide)
   exact mapLocated_of_recmapbody_outer tokens 2 (tokens.size - 2) lo hi
     h_lo2 (by omega) h_lo_hi h_hi2 (by omega) h_hi_sz h_open h_close h_wt_outer
-    (h_map_rec lo hi h_lo2 h_lo_hi h_hi2 h_hi_sz h_close h_bal h_open)
+    (h_map_rec lo hi h_lo2 h_lo_lt h_hi2 h_hi_sz h_close h_bal h_open)
     (h_key_content lo hi h_lo2 h_lo_hi h_hi2 h_hi_sz h_close h_bal h_open)
     (h_key_scalar_value lo hi h_lo2 h_lo_hi h_hi2 h_hi_sz h_close h_bal h_open)
     (h_value_content lo hi h_lo2 h_lo_hi h_hi2 h_hi_sz h_close h_bal h_open)
@@ -5367,12 +5385,12 @@ theorem flowSubrangesOk_of_window_producers (tokens : Array (Positioned YamlToke
     (h_t0 : tokens[0]!.val = .streamStart)
     (h_tlast : tokens[tokens.size - 1]!.val = .streamEnd)
     (h_wt_outer : WellTyped ((tokens.toList.take (tokens.size - 2)).drop 2))
-    (h_seq_rec : ∀ lo hi, 2 ≤ lo → lo ≤ hi → hi ≤ tokens.size - 2 → hi < tokens.size →
+    (h_seq_rec : ∀ lo hi, 2 ≤ lo → lo < hi → hi ≤ tokens.size - 2 → hi < tokens.size →
       tokens[hi]!.val = .flowSequenceEnd →
       flowBracketBalance tokens lo hi = 0 →
       tokens[lo - 1]!.val = .flowSequenceStart →
       RecSeqBody ((tokens.toList.take hi).drop lo))
-    (h_map_rec : ∀ lo hi, 2 ≤ lo → lo ≤ hi → hi ≤ tokens.size - 2 → hi < tokens.size →
+    (h_map_rec : ∀ lo hi, 2 ≤ lo → lo < hi → hi ≤ tokens.size - 2 → hi < tokens.size →
       tokens[hi]!.val = .flowMappingEnd →
       flowBracketBalance tokens lo hi = 0 →
       tokens[lo - 1]!.val = .flowMappingStart →
