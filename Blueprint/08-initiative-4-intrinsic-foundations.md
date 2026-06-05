@@ -15499,18 +15499,19 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 outside the recursion (map: yes, inline; seq: no, only by the oracle). **All four `RecSeqEntry`
                 constructors (scalar, seqEmpty, map, seq) now have a head-dispatch step — the dispatch family is
                 COMPLETE.** With the dispatch *shapes* done, the next sub-bricks are the dispatch *inputs* the driver
-                must SUPPLY each window. The first has now landed: R277 `matchingClose_full_seq` (`f519fcc3`) — the
-                seq-bracket head's **shape-INPUT** (where a bracket-headed item ends). The four dispatch steps each take
-                the matching close `j` and its facts as hypotheses; this lemma supplies them for the `seq` head, fusing
-                the *two lossy sources* (R274 coda): the generic `flowBracketBalance_matching_close` carries positivity +
-                inner balance but only the close DELTA; the typed wrappers carry the close TOKEN but DROP positivity.
-                The fix reaches past the typed wrapper to its core `matching_close_typed_core`, feeding it the generic
-                locator's unique `j`, so one `j` carries all five facts `recseqentry_seq_dispatch` consumes. It mirrors
-                seq/map (names `.flowSequenceEnd`); the `map` mirror over `.flowMappingEnd` is the symmetric next brick.
-                Remaining dispatch work: the `map` close-locator mirror, then the `Nat.strongRecOn` DRIVER that threads
-                the four branches and supplies the `seq` branch's `h_rec` oracle (its recursive call on the
-                strictly-smaller interior window) plus the per-window `WellTyped`/`h_succ` substrate via
-                `WellTyped_subrange`, then the map mirror (the `RecMapBody` driver).
+                must SUPPLY each window. **Both close-locators have now landed: R277 `matchingClose_full_seq`
+                (`f519fcc3`) and R278 `matchingClose_full_map` (`f2e1afbf`) — the bracket heads' **shape-INPUT** (where a
+                bracket-headed item ends).** The four dispatch steps each take the matching close `j` and its facts as
+                hypotheses; these two lemmas supply them for the `seq`/`map` heads, each fusing the *two lossy sources*
+                (R274 coda): the generic `flowBracketBalance_matching_close` carries positivity + inner balance but only
+                the close DELTA; the typed wrappers carry the close TOKEN but DROP positivity. The fix reaches past the
+                typed wrapper to its core `matching_close_typed_core`, feeding it the generic locator's unique `j`, so one
+                `j` carries all five facts `recseqentry_{seq,map}_dispatch` consume (`b := true`/`[true]`/`.flowSequenceEnd`
+                for seq; `b := false`/`[false]`/`.flowMappingEnd` for map — the map mirror is otherwise verbatim).
+                **The dispatch SHAPE family AND its two INPUTS are now both complete.** Remaining dispatch work: the
+                `Nat.strongRecOn` DRIVER that threads the four branches and supplies the `seq` branch's `h_rec` oracle
+                (its recursive call on the strictly-smaller interior window) plus the per-window `WellTyped`/`h_succ`
+                substrate via `WellTyped_subrange`, then the map mirror (the `RecMapBody` driver).
 
                 • **Workstream B — CONTENT (independent of A; currently dormant).** The 2
                 `emit_roundtrip_{sequence,mapping}_content_eq` `exact sorry` sites (EmitterScannability.lean:832 / :872),
@@ -15536,6 +15537,28 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 Cross-refs: Reflection 271 (structural-complete ≠ runnable), and the Verification manual's
                 §Round-Trip / §Zero-Axiom sorry-budget note (reconciled 2026-06-04).
 
+                **Total .body scope re-estimate (ONE-HUNDRED-TWENTY-SIXTH revision —
+                after **Thread A step 3 sub-step 3's brick cont'd (locate recursion head-dispatch *shape-INPUT* —
+                the MAP-bracket close locator, mirror of the seq one) — landed** (commit `f2e1afbf`, Reflection 278).
+                **The second and last dispatch INPUT landed: `matchingClose_full_map`.** Verbatim sibling of
+                `matchingClose_full_seq` (R277) over the map head/close tokens: given a depth-`0`
+                `tokens[lo] = .flowMappingStart`, it locates the matching close `j` and returns the **complete** fact
+                bundle `recseqentry_map_dispatch` consumes — position (`lo < j < hi`), close token
+                (`tokens[j] = .flowMappingEnd`), inner balance (`balance (lo+1) j = 0`), and strict-positivity
+                (`∀ i, lo < i ≤ j → balance lo i ≥ 1`). Same R274-coda fusion: run the generic
+                `flowBracketBalance_matching_close` once at `k := lo` to fix the unique `j` *with* positivity, then feed
+                that same `j` to `matching_close_typed_core` (`b := false`, the map opener pushes `[false]`) +
+                `btStep_pop_eq_mapEnd` to read `.flowMappingEnd` off it — never the typed wrapper, only its core. The four
+                collection-specific deltas vs the seq locator: the head token `.flowMappingStart`, the pushed bottom
+                `false`, the close-reader `btStep_pop_eq_mapEnd`, the returned token `.flowMappingEnd`. **With both
+                INPUTS done, the entire dispatch substrate the driver consumes — four SHAPE branches (R272–R276) + two
+                INPUTS (R277–R278) — is complete; the only Thread-A brick left is the `Nat.strongRecOn` DRIVER itself.**
+                Axiom-clean **`[propext, Classical.choice, Quot.sound]`** (no `sorryAx`). Verified-but-unconsumed (R225):
+                references no sorry site, **sorries held at 4**. Build green **537 jobs**. **Immediate next brick:** the
+                `Nat.strongRecOn` DRIVER on window width, threading `firstEntryBoundary` → these two close-locators → the
+                four-branch head-dispatch (feeding the `seq` branch its `h_rec` from the recursive call on `[lo+1, j)`) →
+                `RecSeqBody.single`/`.cons`, discharging `flowSubrangesOk_of_window_producers`'s seq producer, then the
+                map driver. See Reflection 278, on top of the
                 **Total .body scope re-estimate (ONE-HUNDRED-TWENTY-FIFTH revision —
                 after **Thread A step 3 sub-step 3's brick cont'd (locate recursion head-dispatch *shape-INPUT* —
                 the seq-bracket close locator) — landed** (commit `f519fcc3`, Reflection 277).
@@ -27504,3 +27527,13 @@ R272–R276 completed the dispatch *shape* family — all four `RecSeqEntry` hea
 **Why a fused locator is its own brick rather than an inline step of the driver.** It would be tempting to inline this `j`-location into the eventual `Nat.strongRecOn` driver. Pulling it out as a named lemma does three things: (i) it isolates the one place the two locators must be reconciled to a single `j`, so the driver sees a clean five-fact bundle and never juggles two existentials; (ii) it is the natural seq/map mirror seam — it names `.flowSequenceEnd`, a collection-specific token, so by [[ref-entry-boundary-input-shape-split]]'s discriminator it RE-SPLITS (the `map` mirror over `.flowMappingEnd`, `b := false`, `btStep_pop_eq_mapEnd` is the symmetric next brick), whereas the axis-agnostic `firstEntryBoundary_bracket_resolve` did not; (iii) it keeps this session's increment a single small, fully-proven, axiom-clean brick (`[propext, Classical.choice, Quot.sound]`, `Classical.choice` via the generic locator's `flowBracketBalance_compose`) rather than folding risk into the large driver. The driver stays large/risky precisely so its prerequisites can be de-risked one named lemma at a time.
 
 Verified-but-unconsumed (R225): references no sorry site, frontier sorry count unchanged at **4** (build green **537 jobs**; commit `f519fcc3`). **Immediate next brick:** the `map` close-locator mirror `matchingClose_full_map` (verbatim sibling over `.flowMappingStart`/`.flowMappingEnd`); then the `Nat.strongRecOn` DRIVER itself, threading `firstEntryBoundary` → these close-locators → the four-branch head-dispatch (feeding the `seq` branch its `h_rec` from the recursive call on `[lo+1, j)`) → `RecSeqBody.single`/`.cons`, discharging `flowSubrangesOk_of_window_producers`'s seq producer, then the map driver. Feeds the per-window `Rec…Body` producers into `flowSubrangesOk_of_window_producers` → the two `scanFiltered_emit{Seq,Map}_nonempty_structure` sorry sites → the two base `emit_roundtrip_{sequence,mapping}_content_eq` sorries → `universal_roundtrip`. See [[ref-array-wrapper-window-generalization]] (R230/R274 — the coda this brick resolves: a typed/convenience wrapper drops the invariant its reuse site needs, so reach past it to the generic core), [[ref-entry-boundary-input-shape-split]] (R264–R276 — the input/shape split this deepens one level into the bracket-head dispatch), and [[ref-converse-forward-invariant-asymmetry]] (two facts over one structure carrying different strengths — the generic locator's kept positivity vs the typed wrapper's dropped one).
+
+### Reflection 278 (new, 2026-06-04): the map close-locator mirror lands the second and last dispatch INPUT — and confirms the R277 fusion is the *reusable shape*, not a one-off: the seq/map re-split costs exactly four collection-specific knobs, with the entire two-existential fusion transported verbatim
+
+R277 landed `matchingClose_full_seq` and named the fusion: the dispatch's five-fact `j`-bundle is split across two lossy sources, healed by reaching past the typed wrapper to its core. This session lands the symmetric `matchingClose_full_map` — the **second and last** dispatch INPUT. With it, **the entire substrate the locate driver consumes is complete: four SHAPE branches (R272–R276) and both INPUTS (R277–R278). The only Thread-A brick left is the `Nat.strongRecOn` DRIVER itself.**
+
+**The lesson is a confirmation, and confirmation is information: the R277 fusion is the reusable shape, and the seq/map seam costs exactly four collection-specific knobs.** The seq locator's proof transported to map *verbatim* — same generic locator at `k := lo`, same `matching_close_typed_core`, same one-witness threading, same axiom profile. The four — and only four — things that changed are exactly the collection discriminators [[ref-entry-boundary-input-shape-split]] predicts a re-splitting brick must name: (i) the head token `.flowMappingStart` (vs `.flowSequenceStart`); (ii) the pushed stack bottom `false` (vs `true`) — the map opener's `btStep [] = some [false]`; (iii) the close-reader `btStep_pop_eq_mapEnd` (vs `btStep_pop_eq_seqEnd`); (iv) the returned close token `.flowMappingEnd` (vs `.flowSequenceEnd`). Everything between the head and the close — the positivity invariant, the inner balance, the witness-identity fix, the Dyck-prefix plumbing — is genuinely axis-agnostic and travels untouched. This is the mirror-constructor-arity principle ([[ref-mirror-constructor-arity-reads-storage]]) in its simplest form: a producer-dual's symmetric mirror transports plumbing verbatim and changes only the leaf tokens; here the "storage decision" is just *which bracket kind*, encoded as the single Bool `b` threaded through `matching_close_typed_core`.
+
+**Why the mirror is its own brick even though it is verbatim.** Three reasons, the same three R277 gave for pulling the fused locator out at all, now applied to the seq/map seam itself: (i) it keeps each increment a single small fully-proven axiom-clean brick rather than folding the map case as an untested `<;>`-branch of a combined lemma — a verbatim mirror is cheap to *write* but still must be *built green* and *axiom-checked* independently, and bundling it would have doubled this session's risk surface for no structural gain; (ii) the driver will dispatch on the head token to the matching locator, so having `matchingClose_full_{seq,map}` as two named lemmas matches the driver's own branch structure (one locator per `recseqentry_{seq,map}_dispatch`); (iii) it confirms — by *costing* the mirror — that the fusion abstraction is sound at both bracket kinds, which a single combined lemma would have hidden. The cost of the mirror *is* the evidence that R277 found the right seam: four knobs, nothing else.
+
+Axiom-clean **`[propext, Classical.choice, Quot.sound]`** (no `sorryAx`; `Classical.choice` via the generic locator's `flowBracketBalance_compose`, identically to the seq case). Verified-but-unconsumed (R225): references no sorry site, frontier sorry count unchanged at **4** (build green **537 jobs**; commit `f2e1afbf`). **Immediate next brick:** the `Nat.strongRecOn` DRIVER on the body-interval width — a value-driven recursion that at each guarded window runs `firstEntryBoundary` to find the entry end, branches on the head token to the matching dispatch lemma (`recseqentry_{scalar,seqEmpty,map,seq}_dispatch`), fed by these two close-locators for the bracket heads, and feeds the `seq` branch its `h_rec` from the recursive call on the strictly-smaller inner window `[lo+1, j)`, assembling the per-window `RecSeqBody` via `.single`/`.cons`. It discharges `flowSubrangesOk_of_window_producers`'s seq producer hypothesis; the map driver discharges the map one. Feeds the per-window `Rec…Body` producers into `flowSubrangesOk_of_window_producers` → the two `scanFiltered_emit{Seq,Map}_nonempty_structure` sorry sites → the two base `emit_roundtrip_{sequence,mapping}_content_eq` sorries → `universal_roundtrip`. See [[ref-mirror-constructor-arity-reads-storage]] (the mirror transports plumbing verbatim, changing only the leaf tokens — here the four collection knobs), [[ref-entry-boundary-input-shape-split]] (the seq/map re-split discriminator a collection-token-naming brick triggers — confirmed here at exactly four knobs), and [[ref-array-wrapper-window-generalization]] (R230/R274/R277 — the two-existential fusion this mirror transports verbatim, evidence the fusion is the reusable shape not a one-off).
