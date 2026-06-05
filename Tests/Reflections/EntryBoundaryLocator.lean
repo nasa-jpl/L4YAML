@@ -1618,4 +1618,104 @@ theorem classify_substrate_load_bearing :
          (j + 1 = lBad.length ∨ isFE (tokAt lBad (j + 1)) = true))) := by
   rintro (⟨h, _⟩ | ⟨_, h, _⟩ | ⟨j, h, _⟩) <;> exact absurd h (by decide)
 
+/-! ### R282 — the MAP classify unifier names a substrate that is a CONJUNCTION, not a disjunction:
+    a map body item has ONE shape, and the four-way head variety lives one level down.
+
+R281 (above) folded the seq dispatches into one lemma whose substrate `h_head` is a four-way head-shape
+**disjunction**.  R282 lands the symmetric map mirror `mapentry_classify` (toy of `recmapentry_classify`),
+and the mirror's substrate is differently *shaped* — and that is the lesson.  A seq body item is one of
+four head shapes, so its substrate is a disjunction (one disjunct per dispatch).  A *map* body item has
+exactly ONE shape: a key/value PAIR `ky <block_k> vl <block_v>` (`Pair`, whose sole `Pair.mk` is the
+inductive's only constructor).  So the map substrate is a single **conjunction**: a `ky` head, a depth-`0`
+`vl` separator at `kv`, and the two interior blocks as arbitrary `Entry`s.  The four-way head variety has
+not vanished — it lives one level DOWN, inside the pair's two `Entry` sub-blocks (each itself a scalar /
+`[ ]` / `{ … }`, resolved by the *seq* classify `entry_classify` above).  So the map level adds no fresh
+head-shape classification, only the pair glue `pair_window` and the same split-point pin.
+
+The pin needs a *different* invariant than the seq side.  The seq bracket dispatch pinned `m = j+1` from a
+*local* positivity invariant (`h_j_pos`: balance `≥ 1` strictly inside the bracket), which rules out every
+interior boundary for free.  A pair's interior is NOT uniformly positive: balance returns to `0` at the
+depth-`0` `vl` separator `kv` (here every `ky`/`vl`/`sc` token has delta `0`, so the whole pair sits at
+balance `0` throughout), saved from being a boundary only because those tokens are never `FE`.  No single
+balance invariant captures that, so the no-interior-boundary fact is supplied DIRECTLY as the substrate's
+last conjunct (`h_e_least`), in the same verified-but-unconsumed discipline by which `entry_classify` took
+its bracket `j`-bundle.  Given it, the pin is pure trichotomy: `firstEntryBoundary`'s least boundary `m`
+and the substrate's pair end `e` are each `≤` the other, so `m = e`, and `pair_window` lifts `[0, e)` to a
+`Pair`.
+
+Positive (`classify_l5_map`): the unifier classifies `l5 = [ky, sc, vl, sc]`'s first item as a scalar-key/
+scalar-value `Pair` (`m = e = 4`, the located window the whole list).  Negative
+(`classify_map_substrate_load_bearing`): a sequence body `l1 = [op, …]` has head `op ≠ ky`, so the
+conjunction's FIRST conjunct already fails — the map substrate is unsatisfiable on a non-mapping body, even
+though `firstEntryBoundary` would still locate a marker.  The substrate (its `ky`-head conjunct), not the
+bare marker, is what says "this is a pair." -/
+
+/-- **The map classify unifier** (toy of `recmapentry_classify`).  Folds `firstEntryBoundary` + the pair
+    glue `pair_window` + the split-point pin into one lemma whose one new hypothesis is the pair
+    **conjunction** substrate, and whose conclusion fuses `firstEntryBoundary`'s split-point INPUT with the
+    `Pair` SHAPE.  Proof: run `firstEntryBoundary` once, pin its `m` to the substrate's pair end `e` by
+    trichotomy (each is a boundary the other's minimality forbids strictly inside), then `pair_window`. -/
+theorem mapentry_classify (l : List Tok) (h_pos : 0 < l.length) (h_total : bal l l.length = 0)
+    (h_head :
+      tokAt l 0 = .ky ∧
+      ∃ kv e, 0 < kv ∧ kv < e ∧ e ≤ l.length ∧
+        tokAt l kv = .vl ∧
+        Entry ((l.take kv).drop (0 + 1)) ∧
+        Entry ((l.take e).drop (kv + 1)) ∧
+        bal l e = 0 ∧
+        (e = l.length ∨ isFE (tokAt l e) = true) ∧
+        (∀ k, 0 < k → k < e →
+          ¬ (bal l k = 0 ∧ (k = l.length ∨ isFE (tokAt l k) = true)))) :
+    ∃ m, 0 < m ∧ m ≤ l.length ∧ bal l m = 0 ∧
+      (m = l.length ∨ isFE (tokAt l m) = true) ∧
+      (∀ k, 0 < k → k < m →
+        ¬ (bal l k = 0 ∧ (k = l.length ∨ isFE (tokAt l k) = true))) ∧
+      Pair ((l.take m).drop 0) := by
+  obtain ⟨m, h_zero_m, h_m_hi, h_m_bal, h_m_marker, h_m_least⟩ := firstEntryBoundary l h_pos h_total
+  obtain ⟨h_key, kv, e, h_zero_kv, h_kv_e, h_e_len, h_value, h_ke, h_ve, h_e_bal, h_e_marker, h_e_least⟩ :=
+    h_head
+  have h_m_e : m = e := by
+    rcases Nat.lt_trichotomy m e with h | h | h
+    · exact absurd ⟨h_m_bal, h_m_marker⟩ (h_e_least m h_zero_m h)
+    · exact h
+    · exact absurd ⟨h_e_bal, h_e_marker⟩ (h_m_least e (by omega) h)
+  refine ⟨m, h_zero_m, h_m_hi, h_m_bal, h_m_marker, h_m_least, ?_⟩
+  rw [h_m_e]
+  exact pair_window l 0 kv e h_zero_kv h_kv_e (by omega) h_key h_value h_ke h_ve
+
+/-- Positive — the map unifier classifies `l5 = [ky, sc, vl, sc]`'s first item as a scalar/scalar `Pair`
+    (`m = e = 4`).  The two `Entry` sub-blocks are produced by the *seq* scalar leaf (`entry_scalar_window`)
+    — the seq classify supplies the map level's sub-blocks.  The lone non-`decide` field is the
+    no-interior-boundary conjunct, discharged by case-splitting the bounded `k ∈ {1, 2, 3}`. -/
+theorem classify_l5_map : ∃ m, Pair ((l5.take m).drop 0) := by
+  have h_e_least : ∀ k, 0 < k → k < 4 →
+      ¬ (bal l5 k = 0 ∧ (k = l5.length ∨ isFE (tokAt l5 k) = true)) := by
+    intro k h1 h2
+    rcases (show k = 1 ∨ k = 2 ∨ k = 3 by omega) with rfl | rfl | rfl <;> decide
+  obtain ⟨m, _, _, _, _, _, h⟩ :=
+    mapentry_classify l5 (by decide) (by decide)
+      ⟨by decide, 2, 4, by decide, by decide, by decide, by decide,
+        entry_scalar_window l5 1 (by decide) (by decide),
+        entry_scalar_window l5 3 (by decide) (by decide),
+        by decide, Or.inl (by decide), h_e_least⟩
+  exact ⟨m, h⟩
+
+/-- **Negative — the map substrate's `ky`-head conjunct is load-bearing.**  A sequence body
+    `l1 = [op, sc, cl, fe, sc]` has head `op ≠ ky`, so the FIRST conjunct of the map substrate already
+    fails — the whole conjunction is unsatisfiable, and `mapentry_classify` cannot be invoked on a
+    non-mapping body.  Unlike the seq substrate (a disjunction, refuted only by ruling out ALL branches),
+    the map substrate is a conjunction, refuted by its single head conjunct alone: one shape, one head. -/
+theorem classify_map_substrate_load_bearing :
+    ¬ (tokAt l1 0 = .ky ∧
+       ∃ kv e, 0 < kv ∧ kv < e ∧ e ≤ l1.length ∧
+         tokAt l1 kv = .vl ∧
+         Entry ((l1.take kv).drop (0 + 1)) ∧
+         Entry ((l1.take e).drop (kv + 1)) ∧
+         bal l1 e = 0 ∧
+         (e = l1.length ∨ isFE (tokAt l1 e) = true) ∧
+         (∀ k, 0 < k → k < e →
+           ¬ (bal l1 k = 0 ∧ (k = l1.length ∨ isFE (tokAt l1 k) = true)))) := by
+  rintro ⟨h, _⟩
+  exact absurd h (by decide)
+
 end Tests.Reflections.EntryBoundaryLocator
