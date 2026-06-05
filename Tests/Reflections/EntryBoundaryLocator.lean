@@ -959,4 +959,99 @@ theorem interior_balance_pos_excludes_marker :
 theorem typed_keeps_token_drops_positivity :
     tokAt l1 2 = .cl ∧ (bal l1 1 ≥ 1 ∧ bal l1 2 ≥ 1) := by decide
 
+/-! ### The first bracket dispatch branch — resolution ∘ window-lift, and STORAGE orders the branches (toy of `recseqentry_map_dispatch`, Reflection 275)
+
+R274's `bracket_resolve_dispatch` pins `m = j+1`; this section composes it with the near-leaf window
+lift `entry_map_window` into one dispatch step, `entry_map_dispatch` — the FIRST point at which the
+input-side resolution and a shape-side lift meet on the bracket axis.  Two moves, the same shape as the
+two leaf dispatches but with the split point now *variable*: **resolve** the variable split point (the
+shared spine), then **lift** the opener-window.  No new arithmetic over R274 — pure composition.
+
+**Which bracket branch lands first is a STORAGE fact, not a token fact.**  Both bracket branches share
+the resolution *verbatim* (it is balance-stated, axis-agnostic, R264); the deciding difference is
+downstream, in what the deliverable constructor STORES.  `Entry.map` stores only the flat `WB interior`
+projection — a DECIDABLE fact, so the dispatch supplies it inline (`by decide`) and the branch closes
+STANDALONE, a near-leaf with no descent.  The recursive `seq`, by contrast, stores a recursive body
+(`SeqBody` below) the locate recursion must assemble — its *oracle* — which is NOT a decidable flat
+fact, so its branch cannot land until the driver exists.  The near-leaf lands first; the recursive
+branch rides in with the driver.  (Same storage-severs-recursion principle as R268, here reaching up
+from the shape side into the dispatch layer.) -/
+
+/-- **Nested-mapping head-dispatch step** (toy of `recseqentry_map_dispatch`).  Composes the shared
+    resolution `bracket_resolve_dispatch` (pins `m = j+1`) with the near-leaf lift `entry_map_window`
+    (`Entry.map` from the head/close tokens + the flat interior `WB`).  A NEAR-leaf, not a recursion
+    edge: it consumes the interior `WB` directly as a hypothesis and never recurses — which is exactly
+    why it lands standalone, before the recursive `seq` branch. -/
+theorem entry_map_dispatch (l : List Tok) (m j : Nat)
+    (h_zero_m : 0 < m) (h_m_hi : m ≤ l.length)
+    (h_m_marker : bal l m = 0 ∧ (m = l.length ∨ isFE (tokAt l m) = true))
+    (h_m_least : ∀ k, 0 < k → k < m →
+      ¬ (bal l k = 0 ∧ (k = l.length ∨ isFE (tokAt l k) = true)))
+    (h_zero_j : 0 < j) (h_j_len : j < l.length)
+    (h_open : tokAt l 0 = .mo) (h_close : tokAt l j = .mc)
+    (h_bal_j1 : bal l (j + 1) = 0)
+    (h_j_pos : ∀ i, 0 < i → i ≤ j → bal l i ≥ 1)
+    (h_wb : WB ((l.take j).drop (0 + 1)))
+    (h_succ : j + 1 = l.length ∨ isFE (tokAt l (j + 1)) = true) :
+    m = j + 1 ∧ Entry ((l.take m).drop 0) := by
+  -- resolve: the shared bracket spine pins the split point past the matching close.
+  have h_m_eq : m = j + 1 :=
+    bracket_resolve_dispatch l m j h_zero_m h_m_hi h_m_marker h_m_least h_zero_j h_bal_j1 h_j_pos h_succ
+  refine ⟨h_m_eq, ?_⟩
+  -- lift: with `m = j+1` the window is the opener-window `[0, j+1)`, an `Entry.map` near-leaf.
+  rw [h_m_eq]
+  exact entry_map_window l 0 j h_zero_j h_j_len h_open h_close h_wb
+
+/-! #### Positive witness — a nested mapping as a sequence item: the map branch fires standalone -/
+
+/-- `{a},b` — a nested mapping `{a}` then a separator then a scalar.  Balanced; its first item is the
+    map `[mo, sc, mc]` closing at `j = 2`, with the separator marker at `m = 3 = j + 1`. -/
+def l10 : List Tok := [.mo, .sc, .mc, .fe, .sc]
+
+-- The faithful composition: `firstEntryBoundary` produces the *variable* marker `m`, and
+-- `entry_map_dispatch` both *proves* `m = 2 + 1` (resolution) and *lifts* the opener-window into an
+-- `Entry` (the `map` near-leaf) — all from the flat interior `WB`, no recursion.
+theorem dispatch_map_l10 : ∃ m, m = 2 + 1 ∧ Entry ((l10.take m).drop 0) := by
+  obtain ⟨m, hm_pos, hm_hi, hm_bal, hm_cond, hm_least⟩ := firstEntryBoundary l10 (by decide) (by decide)
+  refine ⟨m, entry_map_dispatch l10 m 2 hm_pos hm_hi ⟨hm_bal, hm_cond⟩ hm_least
+    (by decide) (by decide) (by decide) (by decide) (by decide) ?_ (by decide) (by decide)⟩
+  -- positivity over `(0, 2]` = `{1, 2}`: both interior positions stay at depth `≥ 1`.
+  intro i h1 h2
+  rcases (show i = 1 ∨ i = 2 by omega) with rfl | rfl
+  · decide
+  · decide
+
+-- The located map-window really is the three-token `[mo, sc, mc]`, marker at `m = 3` (the `fe`):
+#guard (l10.take 3).drop 0 == [Tok.mo, Tok.sc, Tok.mc]
+#guard bal l10 3 == 0
+#guard isFE (tokAt l10 3) == true
+#guard tokAt l10 2 == Tok.mc
+
+/-! #### Crux witnesses — the storage contrast: map's store is a decidable flat fact, seq's is a recursive structure -/
+
+/-- A toy *recursive* sequence body (toy of `RecSeqBody`): `nil`, or an `Entry` followed by a body.
+    Unlike `WB` (a flat, decidable balance fact) this is a recursive STRUCTURE — it has no `Decidable`
+    instance and cannot be produced by `decide`; the locate recursion must *assemble* it from
+    sub-`Entry`s.  This is the storage the recursive `seq` branch carries and the near-leaf `map`
+    branch does not — and the reason the `seq` branch needs the driver's oracle while `map` does not. -/
+inductive SeqBody : List Tok → Prop where
+  | nil : SeqBody []
+  | cons (e rest : List Tok) (h : Entry e) (ht : SeqBody rest) : SeqBody (e ++ rest)
+
+/-- **The crux of R275, positive half.**  The `map` near-leaf's stored obligation is the flat `WB`
+    projection — DECIDABLE, hence supplied inline by `decide`.  For `l10`'s nested mapping the interior
+    window is `[sc]` and `WB [sc]` holds by `decide`.  This is exactly why `entry_map_dispatch` closes
+    standalone: its only interior obligation is a flat fact, needing no recursion. -/
+theorem map_store_is_decidable_flat :
+    WB ((l10.take 2).drop (0 + 1)) ∧ (l10.take 2).drop (0 + 1) = [Tok.sc] := by decide
+
+/-- **The crux of R275, negative half.**  The recursive `seq` branch's store is a `SeqBody` — a
+    recursive structure, NOT a decidable flat fact: it is proved by its *constructors*, bottoming out in
+    a sub-`Entry` (`Entry.scalar`), not by `decide`.  That sub-`Entry` is the recursion's *oracle*: the
+    locate driver supplies it.  Contrast `map_store_is_decidable_flat` above (closed by `decide`) — the
+    two stored facts differ in kind, and that difference is what orders the branches: the flat-store
+    `map` branch lands now, the recursive-store `seq` branch lands with the driver. -/
+theorem seq_store_is_recursive_structure : SeqBody [Tok.sc] :=
+  SeqBody.cons [Tok.sc] [] (Entry.scalar Tok.sc rfl) SeqBody.nil
+
 end Tests.Reflections.EntryBoundaryLocator
