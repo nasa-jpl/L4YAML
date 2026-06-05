@@ -5462,6 +5462,60 @@ theorem flowSubrangesOk_of_window_producers (tokens : Array (Positioned YamlToke
       h_key_content h_key_scalar_value h_value_content h_value_scalar_succ
       h_key_bracket_succ h_value_bracket_succ)
 
+/-- **The window-width strong-recursion combinator** (Phase J — the `Nat.strongRecOn` width-metric
+    DRIVER's loop-closing skeleton, abstracted to its grammar-free core).  Every reflection since R272
+    has named "the `Nat.strongRecOn` width-metric driver" as the single remaining brick on
+    Workstream A's critical path, and named it as ONE thing.  It is in fact TWO, entangled, and this
+    brick is the separating cut: the *recursion plumbing* (well-founded descent on the window width
+    `hi - lo`, threading the inductive hypothesis to strictly-narrower sub-windows) and the *per-window
+    grammar step* (read the head shape off `WellTyped`, classify the first item, assemble the body).
+    The plumbing is generic — it knows nothing about tokens, `RecSeqBody`, or YAML; it is pure
+    strong recursion on a `Nat` metric.  The grammar step is where the genuine remaining difficulty
+    lives (the content substrate `WellTyped` does not encode).  Carving the plumbing off as this
+    combinator pins the per-window step's *exact* inductive-hypothesis interface
+    (`hi' - lo' < hi - lo → G lo' hi' → P lo' hi'`) and removes all well-founded-recursion risk from
+    that step's future authoring: the step becomes a *non-recursive* lemma that simply *consumes* an
+    oracle for narrower windows.
+
+    This is the producer-side mirror of `flow_parser_ok_of_structure`'s span-bound strong induction
+    (`∀ n, ∀ lo hi, hi - lo ≤ n → …`, `induction n using Nat.strongRecOn`): the parser recurses on the
+    same window-width metric to *consume* `FlowSubrangesOk`; this combinator recurses on it to *produce*
+    the structure those subranges describe.  The metric and the descent are identical; only the motive
+    differs — so the wrapper is written once, abstractly, over arbitrary `P` (the per-window
+    deliverable) and `G` (the per-window guard).
+
+    Because it names **no collection-specific deliverable type** — `P` and `G` are abstract — the
+    seq/map mirror discriminator ([[ref-entry-boundary-input-shape-split]]) says it does NOT re-split:
+    unlike the structural moves and the classify unifiers (which mirror, because they mention
+    `RecSeqBody`/`RecMapBody`), this single combinator drives *both* axes.  The seq driver instantiates
+    `P := fun lo hi => RecSeqBody ((tokens.toList.take hi).drop lo)`; the map driver
+    `P := … RecMapBody …`; both reuse this proof verbatim.  It is [[ref-consumer-joint-before-producer]]
+    at the recursion layer (build the wrapper that consumes the per-window step before the step
+    exists) and [[ref-fold-consumer-chain-to-producer-contract]] applied to the driver itself (the
+    residual downstream collapses to the single typed boundary `step` — the per-window producer's
+    contract, with its IH interface now fixed by this signature).
+
+    Verified-but-unconsumed (R225): references no sorry site, frontier sorry count unchanged at 4;
+    axiom-clean (pure `Nat.strongRecOn`, no `Classical.choice`). -/
+theorem windowWidth_strongRecOn {P : Nat → Nat → Prop} (G : Nat → Nat → Prop)
+    (step : ∀ lo hi, G lo hi →
+      (∀ lo' hi', hi' - lo' < hi - lo → G lo' hi' → P lo' hi') →
+      P lo hi) :
+    ∀ lo hi, G lo hi → P lo hi := by
+  -- Span-bound strong induction (the codebase idiom, cf. `flow_parser_ok_of_structure`): generalize
+  -- the window width to a bound `n` so the IH ranges over every strictly-narrower span at once.
+  have key : ∀ n : Nat, ∀ lo hi : Nat, hi - lo ≤ n → G lo hi → P lo hi := by
+    intro n
+    induction n using Nat.strongRecOn with
+    | ind n IH =>
+      intro lo hi h_span h_g
+      -- Hand the per-window step its oracle: any sub-window of strictly smaller width has width `< n`
+      -- (since `hi - lo ≤ n`), so the strong-recursion IH discharges it.
+      exact step lo hi h_g (fun lo' hi' h_lt h_g' =>
+        IH (hi' - lo') (by omega) lo' hi' (Nat.le_refl _) h_g')
+  intro lo hi h_g
+  exact key (hi - lo) lo hi (Nat.le_refl _) h_g
+
 /-- Token structure of `scanFiltered ("[" ++ emitList items ++ "]")` for non-empty items.
     Establishes boundary tokens, body token patterns, and `parseNode` success within
     the flow sequence body.
