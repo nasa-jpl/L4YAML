@@ -3867,6 +3867,49 @@ theorem matchingClose_full_seq (tokens : Array (Positioned YamlToken)) (lo hi : 
     h_hi_sz h_k_depth h_k_push h_inner _h_j_delta h_pos h_wt
   exact ⟨j, h_lo_j, h_j_hi, btStep_pop_eq_seqEnd _ h_pop, h_inner, h_pos⟩
 
+/-- **Full map-bracket close locator** (Phase J — the seq locate DRIVER's head-dispatch *shape-INPUT*,
+    the `map` mirror of `matchingClose_full_seq`).  Given a depth-`0` flow-MAPPING opener at the window
+    head `tokens[lo]`, it locates the matching close `j` and returns the **complete** fact bundle
+    `recseqentry_map_dispatch` consumes: position (`lo < j < hi`), the close token
+    (`tokens[j] = .flowMappingEnd`), the inner balance (`balance (lo+1) j = 0`), and the
+    strict-positivity invariant (`∀ i, lo < i ≤ j → balance lo i ≥ 1`).
+
+    Verbatim sibling of the seq locator (cf. [[ref-array-wrapper-window-generalization]] R277 coda): the
+    bundle is split across the same two lossy sources, and the same fix applies — run the generic
+    `flowBracketBalance_matching_close` once at the depth-`0` opener `k := lo` to fix the unique `j`
+    *with* positivity + inner balance, then feed that same `j`'s facts to `matching_close_typed_core`
+    (`b := false`, the map opener pushes `[false]`) + `btStep_pop_eq_mapEnd` to read the close token
+    `.flowMappingEnd` off it.  The typed wrapper `flowBracketBalance_matching_close_map` is never called;
+    only its core is.  The lone collection-specific deltas vs the seq locator: the head token
+    `.flowMappingStart`, the pushed stack bottom `false`, the close-reader `btStep_pop_eq_mapEnd`, and the
+    returned token `.flowMappingEnd`.
+
+    Verified-but-unconsumed (R225): references no sorry site, frontier sorry count unchanged at 4.
+    Axiom-clean `[propext, Classical.choice, Quot.sound]` (no `sorryAx`); `Classical.choice` enters
+    through `flowBracketBalance_matching_close`'s `flowBracketBalance_compose`/`List.foldl` machinery. -/
+theorem matchingClose_full_map (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (h_lo_hi : lo < hi) (h_hi_sz : hi ≤ tokens.size)
+    (h_open : tokens[lo]!.val = .flowMappingStart)
+    (h_total : flowBracketBalance tokens lo hi = 0)
+    (h_dyck : ∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0)
+    (h_wt : WellTyped ((tokens.toList.take hi).drop lo)) :
+    ∃ j, lo < j ∧ j < hi ∧ tokens[j]!.val = .flowMappingEnd ∧
+      flowBracketBalance tokens (lo + 1) j = 0 ∧
+      (∀ i, lo < i → i ≤ j → flowBracketBalance tokens lo i ≥ 1) := by
+  have h_k_depth : flowBracketBalance tokens lo lo = 0 := by
+    unfold flowBracketBalance; rw [if_pos (Nat.le_refl lo)]
+  have h_open_delta : flowBracketDelta tokens[lo]!.val = 1 := by
+    rw [h_open]; exact flowBracketDelta_flowMappingStart
+  -- generic locator (at `k := lo`): fixes the unique `j`, carries inner balance + positivity.
+  obtain ⟨j, h_lo_j, h_j_hi, _h_j_delta, h_inner, h_pos⟩ :=
+    flowBracketBalance_matching_close tokens lo lo hi (Nat.le_refl lo) h_lo_hi h_hi_sz
+      h_k_depth h_open_delta h_total h_dyck
+  -- typed core at the *same* `j`: read the close token `.flowMappingEnd` off the `[false]` pop.
+  have h_k_push : btStep tokens[lo]! [] = some [false] := by unfold btStep; rw [h_open]
+  have h_pop := matching_close_typed_core tokens lo lo j hi false (Nat.le_refl lo) h_lo_j h_j_hi
+    h_hi_sz h_k_depth h_k_push h_inner _h_j_delta h_pos h_wt
+  exact ⟨j, h_lo_j, h_j_hi, btStep_pop_eq_mapEnd _ h_pop, h_inner, h_pos⟩
+
 /-- **Parametric `MapBodyProps` assembler** (Phase J seed, map side).  The map-side mirror of
     `seqBodyProps_assemble`: given an arbitrary balanced flow-MAPPING subrange `[lo, hi)` —
     `tokens[hi]! = .flowMappingEnd`, total balance `0`, Dyck prefixes, interior `WellTyped` — together
