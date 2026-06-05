@@ -4254,6 +4254,74 @@ theorem recseqentry_mapbracket_located (tokens : Array (Positioned YamlToken)) (
   exact recseqentry_classify tokens lo hi h_lo_hi h_hi_sz h_total
     (Or.inr (Or.inr (Or.inl ⟨j, h_open, h_lo_j, h_j_hi, h_close, h_inner, h_pos, h_wb, h_succ⟩)))
 
+/-- **Head-derived map-pair classify** (Phase J — the map locate DRIVER's pair classify with its two
+    `RecSeqEntry` sub-blocks DERIVED from per-sub-window oracles rather than assumed whole).  The map
+    mirror of `recseqentry_seqbracket_located` (R283), and the mirror is *asymmetric* in a way that
+    sharpens the producer-guarded-quantifier lesson.
+
+    On the seq side R283 folded the close-locator `matchingClose_full_seq` (R277) so the bracket's
+    matching close `j` is DERIVED from the head opener + window facts — a balance-pure locator runs
+    *inside* the proof, and the only residual is a guarded oracle for the witness-dependent interior +
+    separator.  The map pair has no such derivable position.  A pair `.key K .value V` returns balance
+    to `0` at the depth-0 `.value` separator `kv` — but ALSO at every nested-entry end inside `K` and
+    `V`; only the *token* at `kv` being `.value` distinguishes it (R282).  So there is no balance-pure
+    `.value`-locator to run, and the `kv`/`e` skeleton (the depth-0 value separator and the pair end,
+    with their balance / marker / minimality facts) must be SUPPLIED as a hypothesis `h_skeleton`,
+    exactly the directly-supplied conjunct R282 named.
+
+    What still moves across the interface is the heavy half: the pair's two `RecSeqEntry` sub-blocks —
+    the key block `[lo+1, kv)` and the value block `[kv+1, e)`.  Each is delivered by a guarded oracle
+    (`h_key_oracle` / `h_val_oracle` — the "two sub-block locators"), a universal over `kv`/`e`
+    **guarded by exactly the skeleton's located-position predicate**, discharged by the `Nat.strongRecOn`
+    driver's recursive call on the strictly-smaller sub-window.  This is [[ref-producer-guarded-quantifier]]
+    on the map axis: the two `RecSeqEntry`s are witness-dependent on `kv`/`e`, which are not named at the
+    call site (they live under `h_skeleton`'s `∃`), so they cannot be plain hypotheses — they must be
+    guarded universals the proof instantiates at the obtained `kv`/`e`.
+
+    The lesson (R284): the close-locator fold has TWO separable halves — the POSITION half (where the
+    sub-blocks split) and the SUB-DELIVERABLE half (the `RecSeqEntry`s themselves).  The position half is
+    balance-derivable on the seq axis (run the locator) but only SUPPLIABLE on the map axis (R282 — the
+    `.value` separator is balance-invisible); the sub-deliverable half is a producer-guarded oracle on
+    BOTH axes.  So the producer-guarded-quantifier pattern governs the witness-dependent sub-deliverable
+    regardless of whether its split position is derivable — the map fold derives strictly less than the
+    seq fold (positions stay assumed) yet guards its residual identically.  Verified-but-unconsumed
+    (R225): references no sorry site, frontier sorry count unchanged at 4; axiom-clean
+    `[propext, Classical.choice, Quot.sound]` (via `recmapentry_classify`'s `recmappair_window` /
+    `firstEntryBoundary` machinery). -/
+theorem recmapentry_pair_located (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (h_lo_hi : lo < hi) (h_hi_sz : hi ≤ tokens.size)
+    (h_key : tokens[lo]!.val = .key)
+    (h_total : flowBracketBalance tokens lo hi = 0)
+    (h_skeleton : ∃ kv e, lo < kv ∧ kv < e ∧ e ≤ hi ∧
+      tokens[kv]!.val = .value ∧
+      flowBracketBalance tokens lo e = 0 ∧
+      (e = hi ∨ tokens[e]!.val = .flowEntry) ∧
+      (∀ k, lo < k → k < e →
+        ¬ (flowBracketBalance tokens lo k = 0 ∧ (k = hi ∨ tokens[k]!.val = .flowEntry))))
+    (h_key_oracle : ∀ kv e, lo < kv → kv < e → e ≤ hi → tokens[kv]!.val = .value →
+      flowBracketBalance tokens lo e = 0 →
+      (e = hi ∨ tokens[e]!.val = .flowEntry) →
+      (∀ k, lo < k → k < e →
+        ¬ (flowBracketBalance tokens lo k = 0 ∧ (k = hi ∨ tokens[k]!.val = .flowEntry))) →
+      RecSeqEntry ((tokens.toList.take kv).drop (lo + 1)))
+    (h_val_oracle : ∀ kv e, lo < kv → kv < e → e ≤ hi → tokens[kv]!.val = .value →
+      flowBracketBalance tokens lo e = 0 →
+      (e = hi ∨ tokens[e]!.val = .flowEntry) →
+      (∀ k, lo < k → k < e →
+        ¬ (flowBracketBalance tokens lo k = 0 ∧ (k = hi ∨ tokens[k]!.val = .flowEntry))) →
+      RecSeqEntry ((tokens.toList.take e).drop (kv + 1))) :
+    ∃ m, lo < m ∧ m ≤ hi ∧
+      flowBracketBalance tokens lo m = 0 ∧
+      (m = hi ∨ tokens[m]!.val = .flowEntry) ∧
+      (∀ k, lo < k → k < m →
+        ¬ (flowBracketBalance tokens lo k = 0 ∧ (k = hi ∨ tokens[k]!.val = .flowEntry))) ∧
+      RecMapPair ((tokens.toList.take m).drop lo) := by
+  obtain ⟨kv, e, h_lo_kv, h_kv_e, h_e_hi, h_value, h_e_bal, h_e_marker, h_e_least⟩ := h_skeleton
+  have h_ke := h_key_oracle kv e h_lo_kv h_kv_e h_e_hi h_value h_e_bal h_e_marker h_e_least
+  have h_ve := h_val_oracle kv e h_lo_kv h_kv_e h_e_hi h_value h_e_bal h_e_marker h_e_least
+  exact recmapentry_classify tokens lo hi h_lo_hi h_hi_sz h_total
+    ⟨h_key, kv, e, h_lo_kv, h_kv_e, h_e_hi, h_value, h_ke, h_ve, h_e_bal, h_e_marker, h_e_least⟩
+
 /-- **Parametric `MapBodyProps` assembler** (Phase J seed, map side).  The map-side mirror of
     `seqBodyProps_assemble`: given an arbitrary balanced flow-MAPPING subrange `[lo, hi)` —
     `tokens[hi]! = .flowMappingEnd`, total balance `0`, Dyck prefixes, interior `WellTyped` — together
