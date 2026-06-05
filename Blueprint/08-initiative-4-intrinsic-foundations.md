@@ -15520,8 +15520,15 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 to exactly: (i) the grammar-bearing classify half (the per-window head-shape / `h_succ` successor
                 substrate — recoverable for the bracket interior via `WellTyped_subrange`, but still owing the content
                 grammar `WellTyped` does not encode), and (ii) the `Nat.strongRecOn` width metric that discharges the
-                tail oracle. Then the map mirror `recmapbody_window_assemble` (the `RecMapBody` assemble step), and the
-                `RecMapBody` driver.
+                tail oracle. **The map mirror `recmapbody_window_assemble` has now also landed** (R280, `deb5ef07`):
+                verbatim over `RecMapBody.cons`/`.single` via `recmapbody_{cons,single}_window`, the selector's control
+                flow transported unchanged (only the deliverable type and the two structural moves differ; the marker
+                token and tail-oracle guard are collection-agnostic). **The driver's grammar-free ASSEMBLE half is now
+                complete on BOTH axes.** What remains on Workstream A's critical path is the single grammar-bearing
+                *classify* unifier (folding `firstEntryBoundary` + the four dispatches + the close-locators into one
+                "classify the first item" lemma that finally NAMES the per-window grammar substrate) and the
+                `Nat.strongRecOn` width-metric wrapper that supplies the tail oracle and closes the recursion — both seq
+                and map.
 
                 • **Workstream B — CONTENT (independent of A; currently dormant).** The 2
                 `emit_roundtrip_{sequence,mapping}_content_eq` `exact sorry` sites (EmitterScannability.lean:832 / :872),
@@ -15547,6 +15554,31 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 Cross-refs: Reflection 271 (structural-complete ≠ runnable), and the Verification manual's
                 §Round-Trip / §Zero-Axiom sorry-budget note (reconciled 2026-06-04).
 
+                **Total .body scope re-estimate (ONE-HUNDRED-TWENTY-EIGHTH revision —
+                after **Thread A step 3 sub-step 3's brick cont'd (locate recursion DRIVER *assemble half* — the
+                grammar-free ADVANCE/TERMINATE step, MAP MIRROR) — landed** (commit `deb5ef07`, Reflection 280).
+                **The map driver's grammar-free assemble half landed: `recmapbody_window_assemble`.** The seq→map
+                mirror of `recseqbody_window_assemble` (R279), and the brick that completes the driver's grammar-free
+                *assemble* half on **both** axes. It transports the seq assemble's *selector control flow verbatim* —
+                same `Nat.lt_or_ge m hi` split, same marker-disjunction `Or.resolve_left` (`m < hi` excludes `m = hi`
+                so the `.flowEntry` reads off), same `Nat.le_antisymm` collapse on TERMINATE, same `h_eq ▸` rewrite of
+                the located item — changing only the deliverable type (`RecMapPair`/`RecMapBody` for
+                `RecSeqEntry`/`RecSeqBody`) and the two structural moves it calls (`recmapbody_cons_window` /
+                `recmapbody_single_window` for the seq pair). **The R278 lesson recurs one layer up:** the marker token
+                (`.flowEntry`) and the tail-oracle guard (`m < hi`) are genuinely collection-agnostic — the body
+                separator is the same for both kinds (cf. `exists_least_in_range`, which has *no* seq/map mirror in its
+                boundary predicate) — so the assemble half names no collection-specific knob beyond the deliverable type
+                itself. *Costing* the mirror confirms the assemble step is the reusable shape, not a one-off; with it the
+                grammar-free half of the driver is complete on seq and map alike, pinning the **entire** remaining locate
+                residual to the grammar-bearing classify half (the per-pair head/key substrate + the `Nat.strongRecOn`
+                width metric). Axiom-clean **`[propext, Classical.choice, Quot.sound]`** (`Classical.choice` via
+                `recmapbody_cons_window`'s window-identity plumbing). Verified-but-unconsumed (R225): references no sorry
+                site, **sorries held at 4**. Build green **537 jobs**. **Immediate next brick:** the grammar-substrate
+                *classify* unifier — folding `firstEntryBoundary` + the four dispatches + the close-locators into one
+                "classify the first item" lemma taking the per-window grammar substrate + the recursion oracle as
+                hypotheses (the brick that must finally *name* the grammar substrate the driver threads) — and finally
+                the `Nat.strongRecOn` wrapper that supplies the tail oracle from the width metric and closes the loop, on
+                both axes. See Reflection 280, on top of the
                 **Total .body scope re-estimate (ONE-HUNDRED-TWENTY-SEVENTH revision —
                 after **Thread A step 3 sub-step 3's brick cont'd (locate recursion DRIVER *assemble half* —
                 the grammar-free ADVANCE/TERMINATE step, seq side) — landed** (commit `a0be380c`, Reflection 279).
@@ -27587,3 +27619,17 @@ R272–R278 completed everything the locate driver *consumes* — the four dispa
 **Why a separable brick, not an inline `match` in the driver.** Same discipline as R277/R278's locators: pulling the assemble step out (a) keeps this increment a single small fully-proven axiom-clean brick rather than folding it into the large driver's risk surface; (b) names the seq/map seam — it mentions `RecSeqEntry`/`RecSeqBody`, collection-specific deliverable types, so by [[ref-entry-boundary-input-shape-split]]'s discriminator it RE-SPLITS, with `recmapbody_window_assemble` (verbatim over `RecMapBody.cons`/`.single`) the symmetric next brick; (c) it is the [[ref-fold-consumer-chain-to-producer-contract]] move applied to the assembly chain — fold the two structural moves into one lemma whose hypotheses are exactly what the driver's locate step hands it (a located entry + a marker + a guarded tail oracle), so the driver reads off the assembly as a single call. And it is [[ref-structural-moves-complete-recursion]] at the next layer: those R262/R263/R269/R270 moves *built the constructors' window-lifts*; this brick *composes the lifts into the recursion's per-window step*, the layer between the moves and the `strongRecOn` wrapper.
 
 Axiom-clean **`[propext, Classical.choice, Quot.sound]`** (`Classical.choice` via `recseqbody_cons_window`'s `List.take_append_drop`/`flowBracketBalance` plumbing). Verified-but-unconsumed (R225): references no sorry site, frontier sorry count unchanged at **4** (build green **537 jobs**; commit `a0be380c`). **Immediate next brick:** the map mirror `recmapbody_window_assemble` (the `RecMapBody` assemble step, verbatim over the map constructors), then the grammar-substrate **classify unifier** — folding `firstEntryBoundary` + the four dispatches + the close-locators into one "classify the first item" lemma taking the per-window grammar substrate + the recursion oracle as hypotheses (this is the brick that must finally *name* the grammar substrate the driver threads) — and finally the `Nat.strongRecOn` wrapper that supplies the tail oracle from the width metric and closes the loop. Feeds the per-window `Rec…Body` producers into `flowSubrangesOk_of_window_producers` → the two `scanFiltered_emit{Seq,Map}_nonempty_structure` sorry sites → the two base `emit_roundtrip_{sequence,mapping}_content_eq` sorries → `universal_roundtrip`. See [[ref-structural-moves-complete-recursion]] (R262/R263/R269/R270 — the constructor window-lifts this brick composes into the recursion's per-window step), [[ref-fold-consumer-chain-to-producer-contract]] (the assembly chain folded into one step keyed on the locate step's output), and [[ref-entry-boundary-input-shape-split]] (the classify/assemble bifurcation as the input/shape split surfacing inside the driver — and the seq/map re-split discriminator the deliverable-type-naming triggers).
+
+### Reflection 280 (new, 2026-06-04): the assemble selector mirrors seq→map by transporting its whole control flow verbatim — the seq/map seam in a *grammar-free* step is exactly the deliverable type, nothing else, so the mirror confirms assemble is the reusable shape
+
+R279 split the locate driver's per-window step into a grammar-bearing *classify* half and a grammar-free *assemble* half, landing the seq assemble `recseqbody_window_assemble`. R280 lands its map mirror `recmapbody_window_assemble` — and the mirror is the cheapest kind: it transports the seq selector's *entire control flow* with **zero** structural change, isolating exactly where a grammar-free step can differ across the seq/map axis.
+
+**What transports verbatim.** The seq assemble is a six-line selector — `rcases Nat.lt_or_ge m hi`, then ADVANCE (`Or.resolve_left` reads `.flowEntry` off the marker disjunction once `m < hi` excludes `m = hi`; hand entry + separator + guarded tail oracle to `recseqbody_cons_window`) and TERMINATE (`Nat.le_antisymm` collapses `m ≤ hi` ∧ `m ≥ hi` to `m = hi`; `h_eq ▸` rewrites the located item into `recseqbody_single_window`). The map mirror is the *same six lines*: same `Nat.lt_or_ge` split, same `Or.resolve_left`, same `Nat.le_antisymm`, same `h_eq ▸`. Not "analogous" — character-identical control flow.
+
+**What the seam costs.** Exactly two knobs, both forced by the deliverable type: the hypothesis/goal types (`RecMapPair`/`RecMapBody` for `RecSeqEntry`/`RecSeqBody`), and the two structural moves called (`recmapbody_{cons,single}_window` for `recseqbody_{cons,single}_window`). Crucially the things that *could* have re-split — the marker token and the tail-oracle guard — do **not**: `.flowEntry` is the body separator for both collection kinds, and the `m < hi` guard is collection-agnostic. This is visible at the substrate: `exists_least_in_range` (the boundary-predicate well-ordering brick both locators share) has *no* seq/map mirror, precisely because the separator is shared. So a *grammar-free* step's seq/map seam is **only** the deliverable type — unlike the grammar-bearing dispatches (R272–R278), whose seam also costs collection-specific close tokens (`.flowSequenceEnd`/`.flowMappingEnd`), pushed-stack bottoms, and close-readers.
+
+**The discriminator sharpened.** [[ref-mirror-constructor-arity-reads-storage]] says a mirror "transports plumbing, changes only the leaf knob"; [[ref-entry-boundary-input-shape-split]]'s discriminator says a brick re-splits seq/map *iff* it names a collection-specific deliverable type. R280 refines the conjunction of both: the *number* of knobs a mirror costs measures how much grammar the step touches. A grammar-bearing input (R278's close-locators) cost four knobs; this grammar-free assemble step costs one (the deliverable type, with its two associated moves following mechanically). **Costing a mirror is a measurement, not just duplication** — the knob count reads off how grammar-free the brick actually is, and one knob is the floor. That the assemble mirror hit the floor confirms R279's claim that assemble names no grammar substrate: had it secretly depended on per-item grammar, the mirror would have cost more than the type.
+
+With assemble complete on both axes, the driver's grammar-free half is finished. The *entire* remaining locate residual is now the grammar-bearing classify unifier (the brick that must finally name the per-window head/key grammar substrate) and the `Nat.strongRecOn` width-metric wrapper — on seq and map alike.
+
+Axiom-clean **`[propext, Classical.choice, Quot.sound]`** (`Classical.choice` via `recmapbody_cons_window`'s window-identity plumbing). Verified-but-unconsumed (R225): references no sorry site, frontier sorry count unchanged at **4** (build green **537 jobs**; commit `deb5ef07`). **Immediate next brick:** the grammar-substrate **classify unifier** — folding `firstEntryBoundary` + the four dispatches + the close-locators into one "classify the first item" lemma taking the per-window grammar substrate + the recursion oracle as hypotheses (this is the brick that must finally *name* the grammar substrate the driver threads, on both axes) — and finally the `Nat.strongRecOn` wrapper that supplies the tail oracle from the width metric and closes the loop. See [[ref-mirror-constructor-arity-reads-storage]] (the mirror transports plumbing, changes only the knob — here the knob count *measures* grammar-freeness, and assemble hits the one-knob floor), [[ref-entry-boundary-input-shape-split]] (the deliverable-type-naming discriminator, sharpened: knob count reads off how much grammar the step touches), and [[ref-structural-moves-complete-recursion]] (R262/R263/R269/R270 — the constructor window-lifts this selector composes; with the selector mirrored, the grammar-free composition layer is complete on both axes).
