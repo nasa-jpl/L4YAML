@@ -1384,4 +1384,124 @@ theorem toy_marker_load_bearing (e tail : List Tok) : e ≠ e ++ .fe :: tail := 
 theorem toy_bad_head_not_entry : ¬ ToyEntry [.mc] :=
   fun h => absurd h.head (by decide)
 
+/-! ### R280 — the grammar-free assemble selector mirrors seq→map by transporting its WHOLE control
+flow verbatim; the seam is exactly the deliverable type (one knob), so the mirror confirms assemble
+is the reusable shape
+
+R279 (above) split the driver's per-window step into grammar-free *assemble* and grammar-bearing
+*classify*, and landed the seq assemble.  R280 lands its map mirror.  The lesson R280 isolates: a
+*grammar-free* step's seq/map seam costs exactly **one** knob — the deliverable type — and nothing
+else.  Unlike the grammar-bearing dispatch inputs (R278), whose mirror cost four collection-specific
+knobs (close token, stack bottom, close-reader, returned token), the assemble selector's mirror
+changes only the entry/body types and the two constructors that follow from them.  The marker token
+(`.fe`) and the guard are shared across kinds.
+
+The toy below makes "one knob" literal three ways: (1) `toy_map_body_assemble` is the map mirror,
+its proof *character-identical* to `toy_body_assemble`; (2) `toy_assemble_generic` abstracts the
+selector over an ARBITRARY entry predicate `P` and body relation `B` with their two constructors —
+it typechecks, proving the control flow names no collection-specific token, so seq and map are mere
+instances (`toy_seq_via_generic` / `toy_map_via_generic`); (3) the negatives show the head-grammar
+IS that one knob and it genuinely differs per kind (key vs content-start), the thing assemble is
+handed but never inspects. -/
+
+/-- Toy key-head predicate — the map deliverable's grammar: the head is a `.ky` key token (vs the
+    seq entry's three content-start tokens).  This single-token difference IS the seq/map knob. -/
+def isKeyHead : Tok → Bool
+  | .ky => true
+  | _ => false
+
+/-- Toy located map pair — the map mirror of `ToyEntry`, carrying `RecMapPair`'s `ne_nil` /
+    `head_key` projections. -/
+structure ToyMapPair (p : List Tok) : Prop where
+  ne : p ≠ []
+  head : isKeyHead (p.headD .fe) = true
+
+/-- Toy map body deliverable — the mirror of `ToyBody` / `RecMapBody`: a lone pair (`single`) or a
+    pair followed by a `.fe` separator and a recursive rest (`cons`). -/
+inductive ToyMapBody : List Tok → Prop where
+  | single (p : List Tok) (hp : ToyMapPair p) : ToyMapBody p
+  | cons (p rest : List Tok) (hp : ToyMapPair p) (h_rest : ToyMapBody rest) :
+      ToyMapBody (p ++ .fe :: rest)
+
+/-- **The map assemble selector** (toy of `recmapbody_window_assemble`).  Its proof is
+    *character-identical* to `toy_body_assemble`: same marker split, same `rw`/`subst`, same guarded
+    oracle, same length-contradiction discharging the guard.  Only the deliverable type changed —
+    `ToyMapPair`/`ToyMapBody` for `ToyEntry`/`ToyBody`.  Costing this mirror measures the seam: one
+    knob, the deliverable type. -/
+theorem toy_map_body_assemble (p tail w : List Tok)
+    (hp : ToyMapPair p)
+    (h_marker : w = p ∨ w = p ++ .fe :: tail)
+    (h_tail : w ≠ p → ToyMapBody tail) :
+    ToyMapBody w := by
+  rcases h_marker with h | h
+  · rw [h]; exact ToyMapBody.single p hp
+  · subst h
+    refine ToyMapBody.cons p tail hp (h_tail ?_)
+    intro hc
+    have hlen := congrArg List.length hc
+    simp only [List.length_append, List.length_cons] at hlen
+    omega
+
+/-- **The seam is exactly the deliverable type — one knob, made literal.**  The assemble selector
+    abstracted over an ARBITRARY entry predicate `P` and body relation `B` with their two
+    constructors (`Bsingle`/`Bcons`) supplied as hypotheses.  The control flow references the
+    collection only through those two constructors; the marker token `.fe` is baked in (it is NOT a
+    knob — it is shared across kinds).  That this generic version typechecks proves the assemble step
+    touches no grammar beyond the deliverable type: seq and map are both instances, differing only in
+    the `(P, B, Bsingle, Bcons)` 4-tuple the deliverable type determines. -/
+theorem toy_assemble_generic
+    (P : List Tok → Prop) (B : List Tok → Prop)
+    (Bsingle : ∀ e, P e → B e)
+    (Bcons : ∀ e rest, P e → B rest → B (e ++ .fe :: rest))
+    (e tail w : List Tok)
+    (he : P e)
+    (h_marker : w = e ∨ w = e ++ .fe :: tail)
+    (h_tail : w ≠ e → B tail) :
+    B w := by
+  rcases h_marker with h | h
+  · rw [h]; exact Bsingle e he
+  · subst h
+    refine Bcons e tail he (h_tail ?_)
+    intro hc
+    have hlen := congrArg List.length hc
+    simp only [List.length_append, List.length_cons] at hlen
+    omega
+
+/-- Positive — the seq assemble is the generic selector at the seq 4-tuple (no new proof). -/
+theorem toy_seq_via_generic (e tail w : List Tok) (he : ToyEntry e)
+    (h_marker : w = e ∨ w = e ++ .fe :: tail) (h_tail : w ≠ e → ToyBody tail) :
+    ToyBody w :=
+  toy_assemble_generic ToyEntry ToyBody ToyBody.single ToyBody.cons e tail w he h_marker h_tail
+
+/-- Positive — the map assemble is the *same* generic selector at the map 4-tuple; the ONLY change
+    from `toy_seq_via_generic` is the deliverable type, confirming the one-knob seam. -/
+theorem toy_map_via_generic (p tail w : List Tok) (hp : ToyMapPair p)
+    (h_marker : w = p ∨ w = p ++ .fe :: tail) (h_tail : w ≠ p → ToyMapBody tail) :
+    ToyMapBody w :=
+  toy_assemble_generic ToyMapPair ToyMapBody ToyMapBody.single ToyMapBody.cons p tail w hp h_marker
+    h_tail
+
+/-- Positive — map TERMINATE: a one-pair window assembles with the oracle unused. -/
+theorem toy_map_assemble_terminate : ToyMapBody [.ky] :=
+  toy_map_body_assemble [.ky] [.op, .cl] [.ky] ⟨by decide, by decide⟩ (Or.inl rfl)
+    (fun hc => absurd rfl hc)
+
+/-- Positive — map ADVANCE: a two-pair window `[ky, fe, ky]` conses the head pair onto the tail. -/
+theorem toy_map_assemble_advance : ToyMapBody [.ky, .fe, .ky] :=
+  toy_map_body_assemble [.ky] [.ky] [.ky, .fe, .ky] ⟨by decide, by decide⟩ (Or.inr rfl)
+    (fun _ => ToyMapBody.single [.ky] ⟨by decide, by decide⟩)
+
+/-- **Negative — the head-grammar IS the one knob, and it is map-specific.**  A content-start head
+    (`.sc`) cannot form a `ToyMapPair` — the map deliverable demands a `.ky` key head.  This is the
+    single thing the seq→map mirror changed; assemble is *handed* the pair and never inspects it. -/
+theorem toy_map_head_is_the_knob : ¬ ToyMapPair [.sc] :=
+  fun h => absurd h.head (by decide)
+
+/-- **Negative — the knob is genuinely seq/map-distinct.**  Dually, a key head (`.ky`) cannot form a
+    `ToyEntry` (the seq deliverable wants a content-start), so the knob is not a shared token that
+    happens to coincide — swapping it mis-classifies the collection.  Knob count = 1 and the knob is
+    real: the precise measure R280 reads off the mirror's cost. -/
+theorem toy_seq_head_not_map : ¬ ToyEntry [.ky] :=
+  fun h => absurd h.head (by decide)
+
 end Tests.Reflections.EntryBoundaryLocator
