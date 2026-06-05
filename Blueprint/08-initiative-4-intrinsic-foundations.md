@@ -15487,10 +15487,21 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 the resolution (pins `m = j+1`) with the near-leaf window lift `recseqentry_map_window`
                 (`RecSeqEntry.map` from head/close tokens + interior `WellBracketed`). It is a near-leaf, NOT a
                 recursion edge — `RecSeqEntry.map` stores only `WellBracketed interior` (R244), so it needs no
-                recursive oracle and lands BEFORE the `seq`-bracket branch. Remaining dispatch work: the `seq`-bracket
-                branch (recursive, via the BUILD move `located_entry_of_recseqbody`, feeding an inner `RecSeqBody` —
-                available only once the driver exists) — then the `Nat.strongRecOn` driver that supplies the
-                recursive oracle and the per-window `WellTyped`/`h_succ` substrate, then the map mirror.
+                recursive oracle and lands BEFORE the `seq`-bracket branch. The **second BRACKET branch — the
+                `seq`-bracket recursive one — has now also landed**, R276 `recseqentry_seq_dispatch` (`7184f541`):
+                verbatim sibling of the map branch over `.flowSequence{Start,End}`, composing the SAME shared
+                resolution with the recursive BUILD lift `located_entry_of_recseqbody` (`lo:=lo+1`, `hi:=j`). The
+                R244/R275 storage asymmetry reduces to a single hypothesis swap — the map branch consumed the interior
+                `WellBracketed`, this one consumes the interior `RecSeqBody` (the recursion's oracle) — but the
+                dispatch LEMMA is still standalone (it takes the inner body as a parameter); only its INSTANTIATION
+                inside the driver waits for the recursion to supply that body. This **refines R275**: BOTH bracket
+                dispatch lemmas land standalone; the asymmetry is purely whether the body-hypothesis is dischargeable
+                outside the recursion (map: yes, inline; seq: no, only by the oracle). **All four `RecSeqEntry`
+                constructors (scalar, seqEmpty, map, seq) now have a head-dispatch step — the dispatch family is
+                COMPLETE.** Remaining dispatch work: the `Nat.strongRecOn` DRIVER that threads the four branches and
+                supplies the `seq` branch's `h_rec` oracle (its recursive call on the strictly-smaller interior window)
+                plus the per-window `WellTyped`/`h_succ` substrate via `WellTyped_subrange`, then the map mirror (the
+                `RecMapBody` driver).
 
                 • **Workstream B — CONTENT (independent of A; currently dormant).** The 2
                 `emit_roundtrip_{sequence,mapping}_content_eq` `exact sorry` sites (EmitterScannability.lean:832 / :872),
@@ -15516,6 +15527,40 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 Cross-refs: Reflection 271 (structural-complete ≠ runnable), and the Verification manual's
                 §Round-Trip / §Zero-Axiom sorry-budget note (reconciled 2026-06-04).
 
+                **Total .body scope re-estimate (ONE-HUNDRED-TWENTY-FOURTH revision —
+                after **Thread A step 3 sub-step 3's brick cont'd (locate recursion HEAD-DISPATCH —
+                *second bracket branch, the recursive flow-sequence*) — landed** (commit `7184f541`, Reflection 276).
+                **The second of the two BRACKET dispatch branches, and the recursive one — completing the dispatch
+                family.** Verbatim sibling of `recseqentry_map_dispatch` (R275) over the `.flowSequence{Start,End}`
+                head/close tokens: the dispatch step for a seq item whose head `tokens[lo]` is a `.flowSequenceStart`
+                — a nested flow-sequence `[ … ]` spanning a variable interior `[lo+1, j)` up to its matching close
+                `j`. Identical two-move shape: **resolve** — the SAME axis-agnostic
+                `firstEntryBoundary_bracket_resolve` (R264/R274) pins `m = j+1` (opener delta `+1`/closer delta `-1`
+                now through `flowBracketDelta_flowSequence{Start,End}`); **lift** — with `m = j+1` the opener-window
+                `[lo, j+1)` is classified by the BUILD move `located_entry_of_recseqbody` (its `lo:=lo+1`, `hi:=j`, so
+                its opener index `(lo+1)-1` reduces to `lo`) into a `RecSeqEntry.seq` from head/close tokens and the
+                *recursive* inner `RecSeqBody`. The R244/R275 storage asymmetry surfaces as a single hypothesis swap:
+                where the map branch consumed the interior `WellBracketed` (flat, inline-suppliable), this branch
+                consumes the interior `RecSeqBody` (`h_rec`) — the locate recursion's own oracle. **Refines R275:** the
+                dispatch *lemma* is nonetheless standalone — it takes the inner body as a parameter, exactly as the map
+                branch takes `WellBracketed`; only its eventual *instantiation inside the driver* waits for the
+                `Nat.strongRecOn` recursion (the driver supplies `h_rec` from its recursive call on the
+                strictly-smaller interior window). So BOTH bracket dispatch lemmas land standalone; the storage
+                asymmetry is purely in whether the body-hypothesis is dischargeable OUTSIDE the recursion (map: yes,
+                inline; seq: no, only by the oracle). With this, **all four `RecSeqEntry` constructors — `scalar`,
+                `seqEmpty`, `map`, `seq` — have a head-dispatch step; the dispatch family is complete and only the
+                driver that threads them remains.** Axiom-clean **`[propext, Classical.choice, Quot.sound]`** (no
+                `sorryAx`; `Classical.choice` via the resolution's `flowBracketBalance_compose`). Verified-but-unconsumed:
+                references no sorry site, **sorries held at 4**. Build green **537 jobs**. **Immediate next brick:** the
+                `Nat.strongRecOn` DRIVER itself — a value-driven recursion over the body-interval width that, at each
+                guarded window, runs `firstEntryBoundary` (the split-point producer) → the four-branch head-dispatch
+                (the `seq` branch fed its `h_rec` from the driver's recursive call on the inner window `[lo+1, j)`) →
+                `RecSeqBody.single`/`.cons` to assemble the per-window `RecSeqBody`; it discharges the
+                `flowSubrangesOk_of_window_producers` seq producer hypothesis, then the map mirror discharges the map
+                one. Feeds the per-window `Rec…Body` producers into `flowSubrangesOk_of_window_producers` → the two
+                `scanFiltered_emit{Seq,Map}_nonempty_structure` sorry sites → the two base
+                `emit_roundtrip_{sequence,mapping}_content_eq` sorries → `universal_roundtrip`. See Reflection 276, on
+                top of the
                 **Total .body scope re-estimate (ONE-HUNDRED-TWENTY-THIRD revision —
                 after **Thread A step 3 sub-step 3's brick cont'd (locate recursion HEAD-DISPATCH —
                 *first bracket branch, the nested-mapping near-leaf*) — landed** (commit `4bbc3084`, Reflection 275).
@@ -27395,3 +27440,15 @@ R274 landed the bracket branches' *shared resolution* (`firstEntryBoundary_brack
 **Which bracket branch lands first is a STORAGE fact, not a token fact.** The two bracket branches share the resolution *verbatim* (it is delta-stated, axis-agnostic, R264) — so the deciding difference is downstream, in what the deliverable constructor *stores*. `RecSeqEntry.map` stores ONLY `WellBracketed interior` (R244): a flat balance certificate, not a recursive body. So `recseqentry_map_dispatch` consumes the interior `WellBracketed` directly as a hypothesis and is a complete, standalone brick — a NEAR-leaf, terminating the dispatch with no descent. `RecSeqEntry.seq`, by contrast, stores a `RecSeqBody` — a *recursive* sub-deliverable — so its dispatch branch must obtain that body from the locate recursion's own oracle, which exists only once the `Nat.strongRecOn` driver is in place. The map branch can therefore land *now*, standalone; the seq branch *cannot* land until the driver does. This is the same storage-severs-recursion principle from [[ref-stored-vs-projected-severs-recursion-edge]] (R268): a member that PROJECTS (stores only the balance fact) severs the recursion edge into a leaf, a member that STORES (a recursive body) keeps it. Here that principle reaches up from the *shape side* (where R268 first drew it) into the *dispatch* layer: the near-leaf shape lift makes a near-leaf dispatch branch, the recursive shape lift makes a dispatch branch that can only ride in with the driver.
 
 **The axiom profile is inherited, not earned.** The dispatch is **`[propext, Classical.choice, Quot.sound]`** — the `Classical.choice` enters through the resolution's `flowBracketBalance_compose`, exactly as in `seqEmpty`/R274, while `recseqentry_map_window`'s window algebra contributes only `[propext, Quot.sound]`. A composed brick takes the *union* of its parts' axiom footprints; here that union is the resolution's, the lift adding nothing. Verified-but-unconsumed: references no sorry site, frontier sorry count unchanged at **4** (build green **537 jobs**; commit `4bbc3084`). **Immediate next brick:** the `seq`-bracket dispatch branch — same two-move shape, but its window lift is the recursive BUILD move `located_entry_of_recseqbody` consuming an inner `RecSeqBody`, so it cannot land standalone; it arrives WITH the `Nat.strongRecOn` DRIVER that supplies that recursive oracle and the per-window `WellTyped`/`h_succ` substrate via `WellTyped_subrange`; then the map mirror (the `RecMapBody` driver). Feeds the per-window `Rec…Body` producers into `flowSubrangesOk_of_window_producers` → the two `scanFiltered_emit{Seq,Map}_nonempty_structure` sorry sites → the two base `emit_roundtrip_{sequence,mapping}_content_eq` sorries → `universal_roundtrip`. See [[ref-entry-boundary-input-shape-split]] (R264–R274 — the input/shape split this dispatch joins: it consumes the input-side resolution and fires the shape-side `map` lift), [[ref-stored-vs-projected-severs-recursion-edge]] (R268 — the storage decision that here orders the bracket branches: near-leaf `map` before recursive `seq`), and [[ref-structural-moves-complete-recursion]] (R262/R263/R269/R270 — the recursion the driver will complete, with this dispatch branch as one of its head cases).
+
+### Reflection 276 (new, 2026-06-04): the recursive-`seq` bracket dispatch lands standalone too — refining R275, the dispatch *lemma* and the dispatch *step inside the driver* are different objects, and only the latter couples to the recursion; a branch that CONSUMES the oracle is standalone, only one that PRODUCES it waits
+
+R275 landed the first (near-leaf `map`) bracket dispatch branch and predicted the `seq` branch "cannot land standalone; it arrives WITH the driver." This session lands the `seq` branch, `recseqentry_seq_dispatch` — standalone, before the driver — and the lesson is the correction that makes R275 precise: **R275 conflated the dispatch *lemma* with the dispatch *step inside the driver*. They are different objects, and only the second is coupled to the recursion.**
+
+**The seq branch is the verbatim sibling of the map branch with three mechanical swaps.** Same two-move shape: **resolve** via the *same* axis-agnostic `firstEntryBoundary_bracket_resolve` (R264/R274) — pins `m = j+1`, the opener/closer deltas now read through `flowBracketDelta_flowSequence{Start,End}` instead of the mapping pair; **lift** the opener-window `[lo, j+1)` via the BUILD move `located_entry_of_recseqbody` (called with `lo:=lo+1`, `hi:=j`, so its `lo-1` opener convention reduces `(lo+1)-1` back to `lo`) into a `RecSeqEntry.seq`. The only non-mechanical swap is the hypothesis the lift consumes: where the map branch took the interior `WellBracketed` (R275), this takes the interior `RecSeqBody`. Everything else — the resolution call, the `refine ⟨h_m_eq, ?_⟩`, the `rw [h_m_eq]`, the axiom profile `[propext, Classical.choice, Quot.sound]` — is identical.
+
+**The refinement: a dispatch branch that CONSUMES the oracle is standalone; only one that PRODUCES it waits for the driver.** R275 reasoned "`RecSeqEntry.seq` stores a recursive `RecSeqBody`, so its dispatch branch must obtain that body from the recursion's oracle, which exists only with the driver — therefore the seq branch cannot land standalone." The first clause is true; the conclusion overreaches. The dispatch *lemma* does not *obtain* the body — it *takes it as a hypothesis* (`h_rec : RecSeqBody ((take j).drop (lo+1))`), exactly as the map lemma takes `WellBracketed` as a hypothesis. A hypothesis is free regardless of how hard it will later be to discharge. So the seq dispatch lemma is every bit as standalone as the map one. What genuinely waits for the driver is the *instantiation of that hypothesis*: inside the `Nat.strongRecOn` driver, the seq branch's `h_rec` will be supplied by the driver's own recursive call on the strictly-smaller interior window `[lo+1, j)` — and *that* call exists only once the driver does. The map branch's `WellBracketed` hypothesis, by contrast, is dischargeable inline by the caller (a flat decidable fact on the flat proof's hand), with no recursion needed.
+
+**So the storage asymmetry is real but it lives one layer down from where R275 placed it.** It does not order which dispatch *lemmas* can be written — both land standalone, in either order. It orders only whether the body-hypothesis is dischargeable *outside* the recursion: `WellBracketed` yes (inline), `RecSeqBody` no (only by the oracle). This is the general shape of [[ref-consumer-joint-before-producer]] applied to a recursion's *own* head-dispatch: you can always build the CONSUMER of a not-yet-produced recursive deliverable as a standalone lemma keyed on that deliverable as a bare hypothesis — the producer-vs-consumer boundary is exactly the hypothesis, and the hypothesis costs nothing to assume. The storage-severs-recursion principle ([[ref-stored-vs-projected-severs-recursion-edge]], R268/R275) still governs the *driver's* recursion graph (the seq branch's instantiation forces a recursive call, the map branch's does not); it does not govern the *lemma* layer, where every branch is a free consumer.
+
+With this, **all four `RecSeqEntry` constructors — `scalar`, `seqEmpty`, `map`, `seq` — have a head-dispatch step; the dispatch family is complete.** Every head case the driver will encounter now has a proven, standalone classifier; the driver's job collapses to *threading* them (run `firstEntryBoundary`, branch on the head token to the matching dispatch lemma, supply the `seq` branch its `h_rec` from the recursive call) and *assembling* the per-window `RecSeqBody` via `.single`/`.cons`. Axiom-clean **`[propext, Classical.choice, Quot.sound]`** (no `sorryAx`). Verified-but-unconsumed: references no sorry site, frontier sorry count unchanged at **4** (build green **537 jobs**; commit `7184f541`). **Immediate next brick:** the `Nat.strongRecOn` DRIVER itself — a value-driven recursion over the body-interval width that at each guarded window runs `firstEntryBoundary` → the four-branch head-dispatch (feeding the `seq` branch its `h_rec` from the recursive call on the inner window `[lo+1, j)`) → `RecSeqBody.single`/`.cons` to build the per-window `RecSeqBody`; it discharges the `flowSubrangesOk_of_window_producers` seq producer hypothesis, then the map mirror discharges the map one. Feeds the per-window `Rec…Body` producers into `flowSubrangesOk_of_window_producers` → the two `scanFiltered_emit{Seq,Map}_nonempty_structure` sorry sites → the two base `emit_roundtrip_{sequence,mapping}_content_eq` sorries → `universal_roundtrip`. See [[ref-stored-vs-projected-severs-recursion-edge]] (R268/R275 — the storage principle, here relocated one layer down: it governs the driver's recursion graph, not the lemma layer), [[ref-consumer-joint-before-producer]] (the move this generalizes — a standalone consumer keyed on a not-yet-produced recursive deliverable as a bare hypothesis), and [[ref-structural-moves-complete-recursion]] (R262/R263/R269/R270 — the recursion the now-complete dispatch family feeds; only the driver remains).
