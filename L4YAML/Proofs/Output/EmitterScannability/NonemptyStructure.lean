@@ -3741,6 +3741,100 @@ theorem recseqentry_seqbracket_oracle (tokens : Array (Positioned YamlToken)) (l
   · exact Or.inl h
   · exact Or.inr h
 
+/-- **Nested-mapping head-dispatch oracle** (Phase J — the head-shape dispatch's NEAR-LEAF bracket
+    branch, the `{ … }` mirror of `recseqentry_seqbracket_oracle`).  When the body window's head
+    `tokens[lo]` is a flow-mapping opener, the nested-mapping disjunct of `recseqentry_classify` (and its
+    head-derived form `recseqentry_mapbracket_located`) needs, for the matching close `j`, the interior
+    `WellBracketed ((take j).drop (lo+1))` and the trailing separator `j + 1 = hi ∨ tokens[j+1] =
+    .flowEntry` — both `j`-dependent, so this is again the producer-guarded quantifier shape
+    ([[ref-producer-guarded-quantifier]]): a universal over `j` guarded by the locator's output predicate.
+
+    The mirror is *asymmetric* exactly at the R244 storage fact, and the asymmetry SHRINKS this branch
+    rather than thickening it.  Where the seq branch's interior is a recursive `RecSeqBody` — forcing the
+    `windowWidth_strongRecOn` IH and the in-place reconstruction of both descend guards
+    ([[ref-reconstruct-in-place-over-relocate]]) — `RecSeqEntry.map` stores only the interior
+    `WellBracketed` (R244: a nested mapping is a NEAR-leaf, its key/value recursion deferred to the
+    separate map axis).  `WellBracketed` is pure prefix-balance combinatorics, decidable from the window's
+    own facts: it needs **no IH, no descend guard, and not even the interior non-emptiness** the seq branch
+    derived from `FlowBodyContentDeep`.  So this oracle drops both `h_deep` and `h_ih` from the seq
+    signature — it is discharged entirely from `FlowBodyWindow` (for the opener/close size bounds) and
+    `FlowBodyContent` (for the separator successor), the head dispatch's two standing guards.
+
+    Construction: the interior `WellBracketed` is read off the `flowBracketBalance`↔`pbalance` bridge
+    (`flowBracketBalance_eq_pbalance`) — its balance `0` is the oracle's `h_inner` directly, and its every
+    prefix balance `≥ 0` is the interior floor `flowBracketBalance (lo+1) · ≥ 0`, peeled from the locator's
+    strict-positivity invariant `≥ 1` by the opener prefix `balance lo (lo+1) = 1` (the same floor the seq
+    branch built, reused here without the descend).  The trailing separator comes from the content guard's
+    `bodySucc` at the close `j` (`balance lo (j+1) = 0`, `tokens[j] = } ≠ .flowEntry`), verbatim from the
+    seq branch — confirming (cf. `recseqentry_mapbracket_located`) the separator's `j`-dependence is what
+    forces the producer-guarded shape on BOTH bracket branches, independently of whether the interior body
+    is recursive.  Names `WellBracketed`, axis-agnostic, but is invoked only on the seq dispatch's map
+    sub-branch.  Verified-but-unconsumed (R225): references no sorry site, frontier sorry count unchanged
+    at 4. -/
+theorem recseqentry_mapbracket_oracle (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (h_window : FlowBodyWindow tokens lo hi)
+    (h_content : FlowBodyContent tokens lo hi)
+    (h_open : tokens[lo]!.val = .flowMappingStart) :
+    ∀ j, lo < j → j < hi → tokens[j]!.val = .flowMappingEnd →
+        flowBracketBalance tokens (lo + 1) j = 0 →
+        (∀ i, lo < i → i ≤ j → flowBracketBalance tokens lo i ≥ 1) →
+        WellBracketed ((tokens.toList.take j).drop (lo + 1)) ∧
+        (j + 1 = hi ∨ tokens[j + 1]!.val = .flowEntry) := by
+  obtain ⟨h_lo2, h_lo_hi, h_hi_le, h_hi_sz, h_bal, h_dyck, h_wt⟩ := h_window
+  -- Opener delta and the depth-`1` prefix `balance lo (lo+1) = 1` (the descend offset).
+  have h_lo_sz : lo < tokens.size := by omega
+  have h_lo_len : lo < tokens.toList.length := by rw [Array.length_toList]; exact h_lo_sz
+  have h_open_delta : flowBracketDelta tokens[lo]!.val = 1 := by
+    rw [h_open]; exact flowBracketDelta_flowMappingStart
+  have h_lo_val : tokens[lo]! = tokens.toList[lo]'h_lo_len := by
+    rw [getElem!_pos tokens lo h_lo_sz, Array.getElem_toList]
+  have h_single : flowBracketBalance tokens lo (lo + 1) = flowBracketDelta tokens[lo]!.val := by
+    rw [flowBracketBalance_single tokens lo h_lo_len, ← h_lo_val]
+  have h_lo1_bal : flowBracketBalance tokens lo (lo + 1) = 1 := by rw [h_single, h_open_delta]
+  intro j h_lo_j h_j_hi h_close h_inner h_floor
+  -- Interior floor on `[lo+1, j)`: the strict-positivity invariant `≥ 1` minus the opener prefix `1`.
+  have h_dyck' : ∀ i, lo + 1 ≤ i → i ≤ j → flowBracketBalance tokens (lo + 1) i ≥ 0 := by
+    intro i hi1 hi2
+    have hc := flowBracketBalance_compose tokens lo (lo + 1) i (by omega) hi1
+    rw [h_lo1_bal] at hc
+    have hf := h_floor i (by omega) hi2
+    omega
+  -- `WellBracketed` of the interior: balance `0` (`h_inner`) and every prefix `≥ 0` (`h_dyck'`), both
+  -- transported through the `flowBracketBalance`↔`pbalance` bridge.  No IH — pure prefix-balance algebra.
+  have h_wb : WellBracketed ((tokens.toList.take j).drop (lo + 1)) := by
+    rw [List.drop_take]
+    refine ⟨?_, ?_⟩
+    · rw [← flowBracketBalance_eq_pbalance tokens (lo + 1) j (by omega)]; exact h_inner
+    · intro i
+      rw [List.take_take]
+      have hb : pbalance ((tokens.toList.drop (lo + 1)).take (min i (j - (lo + 1))))
+          = flowBracketBalance tokens (lo + 1) ((lo + 1) + min i (j - (lo + 1))) := by
+        rw [flowBracketBalance_eq_pbalance tokens (lo + 1) ((lo + 1) + min i (j - (lo + 1))) (by omega),
+            show (lo + 1) + min i (j - (lo + 1)) - (lo + 1) = min i (j - (lo + 1)) from by omega]
+      rw [hb]
+      exact h_dyck' ((lo + 1) + min i (j - (lo + 1))) (by omega) (by omega)
+  -- `balance lo j = 1` (opener prefix `1` + balanced interior `0`), feeding the trailing-separator probe.
+  have h_lo_j_bal : flowBracketBalance tokens lo j = 1 := by
+    have hc := flowBracketBalance_compose tokens lo (lo + 1) j (by omega) (by omega)
+    rw [h_lo1_bal, h_inner] at hc; omega
+  -- Trailing-separator successor at the close `j` from the content guard's `bodySucc`.
+  have h_j_sz : j < tokens.size := by omega
+  have h_j_len : j < tokens.toList.length := by rw [Array.length_toList]; exact h_j_sz
+  have h_close_val : tokens[j]! = tokens.toList[j]'h_j_len := by
+    rw [getElem!_pos tokens j h_j_sz, Array.getElem_toList]
+  have h_close_delta : flowBracketDelta tokens[j]!.val = -1 := by
+    rw [h_close]; exact flowBracketDelta_flowMappingEnd
+  have h_single_j : flowBracketBalance tokens j (j + 1) = flowBracketDelta tokens[j]!.val := by
+    rw [flowBracketBalance_single tokens j h_j_len, ← h_close_val]
+  have h_j1_bal : flowBracketBalance tokens lo (j + 1) = 0 := by
+    have hc := flowBracketBalance_compose tokens lo j (j + 1) (by omega) (Nat.le_succ j)
+    rw [h_lo_j_bal, h_single_j, h_close_delta] at hc; omega
+  have h_j_ne_fe : tokens[j]!.val ≠ .flowEntry := by rw [h_close]; decide
+  refine ⟨h_wb, ?_⟩
+  rcases h_content.bodySucc j (by omega) h_j_hi h_j1_bal h_j_ne_fe with h | ⟨_, h⟩
+  · exact Or.inl h
+  · exact Or.inr h
+
 /-- **Scalar-leaf entry window** (Phase J — the analytical entry-boundary location's *shape side*,
     seq, base case).  Once `firstEntryBoundary` (the input side) has pinned the split point `m`, the
     shape side classifies the first item `[lo, m)` into a `RecSeqEntry` — and `RecSeqEntry` has four
