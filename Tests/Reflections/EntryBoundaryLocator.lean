@@ -1232,4 +1232,65 @@ theorem naive_two_existentials_lose_identity :
   rintro ⟨j, h0, h1⟩
   omega
 
+/-! ### The map mirror — the fusion transports verbatim, only the close token is a knob (toy of `matchingClose_full_map`, Reflection 278)
+
+`matchingClose_full_seq` (R277) located the seq-bracket close and fused the two lossy sources at one
+witness.  Its map mirror `matchingClose_full_map` is a *verbatim sibling*: the entire fusion engine —
+the generic locator, the witness threading, the positivity invariant — is collection-agnostic and
+travels untouched; **only the leaf close token changes** (`.flowSequenceEnd` → `.flowMappingEnd`, with
+the matching opener token, pushed stack bottom, and close-reader).  The toy makes the "only the token
+is a knob" claim *literal*: the fusion below is parameterized over the close token `close`, so the seq
+and map locators are the **same theorem at `.cl` vs `.mc`** — the knob is an explicit argument, and the
+proof body never mentions it. -/
+
+/-- **The fusion engine, token-agnostic.**  Identical to `fused_locator_one_witness` except the close
+    token is a *parameter* `close`.  The proof — run the positivity-bearing generic source once, apply the
+    token core at that witness — does not mention `close` at all: it is pure plumbing.  This is R278's
+    claim in Lean: the seq/map seam is *exactly* the `close` knob, everything else is shared. -/
+theorem fused_locator_generic_close (l : List Tok) (close : Tok)
+    (h_generic : ∃ j, 0 < j ∧ bal l (j + 1) = 0 ∧ (∀ i, 0 < i → i ≤ j → bal l i ≥ 1))
+    (h_core : ∀ j, (0 < j ∧ bal l (j + 1) = 0 ∧ (∀ i, 0 < i → i ≤ j → bal l i ≥ 1)) →
+      tokAt l j = close) :
+    ∃ j, (0 < j ∧ bal l (j + 1) = 0 ∧ (∀ i, 0 < i → i ≤ j → bal l i ≥ 1)) ∧ tokAt l j = close := by
+  obtain ⟨j, hj⟩ := h_generic
+  exact ⟨j, hj, h_core j hj⟩
+
+/-- The **seq** locator is the engine at `close := .cl` — confirming `fused_locator_one_witness` above
+    factors through the shared engine with the seq token as the only choice. -/
+theorem fused_locator_seq_via_generic (l : List Tok)
+    (h_generic : ∃ j, 0 < j ∧ bal l (j + 1) = 0 ∧ (∀ i, 0 < i → i ≤ j → bal l i ≥ 1))
+    (h_core : ∀ j, (0 < j ∧ bal l (j + 1) = 0 ∧ (∀ i, 0 < i → i ≤ j → bal l i ≥ 1)) →
+      tokAt l j = .cl) :
+    ∃ j, (0 < j ∧ bal l (j + 1) = 0 ∧ (∀ i, 0 < i → i ≤ j → bal l i ≥ 1)) ∧ tokAt l j = .cl :=
+  fused_locator_generic_close l .cl h_generic h_core
+
+/-- The **map** mirror is the *same engine* at `close := .mc` — the verbatim transport, no new proof.
+    This is `matchingClose_full_map`'s relationship to `matchingClose_full_seq` in miniature: one
+    constructor (one token) of delta, the rest shared. -/
+theorem fused_locator_map_one_witness (l : List Tok)
+    (h_generic : ∃ j, 0 < j ∧ bal l (j + 1) = 0 ∧ (∀ i, 0 < i → i ≤ j → bal l i ≥ 1))
+    (h_core : ∀ j, (0 < j ∧ bal l (j + 1) = 0 ∧ (∀ i, 0 < i → i ≤ j → bal l i ≥ 1)) →
+      tokAt l j = .mc) :
+    ∃ j, (0 < j ∧ bal l (j + 1) = 0 ∧ (∀ i, 0 < i → i ≤ j → bal l i ≥ 1)) ∧ tokAt l j = .mc :=
+  fused_locator_generic_close l .mc h_generic h_core
+
+/-- Positive instance on `l4 = [mo, sc, mc]`'s map bracket: the fused bundle holds at the single
+    witness `j = 2` — positivity over the interior `{1,2}` (depth `≥ 1`), close-just-past
+    (`bal l4 3 = 0`), AND the map close token `.mc`.  The seq analogue is `fused_locator_l1`; the two
+    instances differ only in the list and the asserted close token, nothing in the method. -/
+theorem fused_locator_map_l4 :
+    ∃ j, (0 < j ∧ bal l4 (j + 1) = 0 ∧ (∀ i, 0 < i → i ≤ j → bal l4 i ≥ 1)) ∧ tokAt l4 j = .mc := by
+  refine ⟨2, ⟨by decide, by decide, ?_⟩, by decide⟩
+  intro i h1 h2
+  rcases (show i = 1 ∨ i = 2 by omega) with rfl | rfl
+  · decide
+  · decide
+
+/-- **Negative — the knob is load-bearing: the map instance is NOT a seq close.**  The same witness
+    `j = 2` that closes `l4`'s map bracket carries token `.mc`, which is *not* `.cl`.  So a locator that
+    hard-coded `.cl` would mis-classify the map bracket — confirming the close token is a genuine knob
+    that must flip, not an incidental label.  (The fusion *engine* is shared; the *token* is not.) -/
+theorem map_close_is_not_seq_close : tokAt l4 2 = .mc ∧ tokAt l4 2 ≠ .cl := by
+  exact ⟨by decide, by decide⟩
+
 end Tests.Reflections.EntryBoundaryLocator
