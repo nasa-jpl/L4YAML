@@ -4089,6 +4089,79 @@ theorem recseqentry_classify (tokens : Array (Positioned YamlToken)) (lo hi : Na
     exact (recseqentry_seq_dispatch tokens lo hi m j h_hi_sz h_lo_m h_m_hi
       ⟨h_m_bal, h_m_marker⟩ h_m_least h_open h_lo_j h_j_hi h_close h_inner h_j_pos h_rec h_succ).2
 
+/-- **First-pair classify unifier** (Phase J — the MAP locate DRIVER's grammar-bearing CLASSIFY half,
+    the symmetric mirror of `recseqentry_classify`; the brick that names the grammar substrate of a
+    *map* body item).  Like the seq mirror it folds `firstEntryBoundary` (the INPUT side — locate the
+    first item's extent `m`) with the shape side (classify `[lo, m)`) into one lemma whose new
+    hypothesis `h_head` IS the named grammar substrate.  But the map substrate is shaped differently,
+    and that asymmetry is the lesson: where a seq body item is one of FOUR head shapes (scalar / `[ ]`
+    / `{ … }` / `[ … ]`, the four-way disjunction `recseqentry_classify` folds), a *map* body item has
+    exactly ONE shape — a key/value PAIR `.key <block_k> .value <block_v>` (`RecMapPair`).  So the map
+    substrate is a **conjunction, not a disjunction**: a `.key` head, a depth-`0` `.value` separator at
+    some `kv`, and the two interior blocks as arbitrary `RecSeqEntry`s.  The four-way head variety has
+    not vanished — it lives one level DOWN, inside the pair's two `RecSeqEntry` sub-blocks, where the
+    seq classify already resolves it.  Naming the map grammar substrate thus reveals the map level adds
+    no fresh head-shape classification at all: only the pair glue (`recmappair_window`) and the same
+    minimality → split-point pin the seq dispatches do.
+
+    That pin is the second half of the lesson.  The seq bracket dispatches got `m = j+1` from a *local*
+    positivity invariant (`h_j_pos`: balance `≥ 1` strictly inside the bracket), which rules out any
+    interior boundary for free.  A pair's interior is NOT uniformly positive — balance returns to `0`
+    at the `.value` separator `kv` (and at every nested-entry end), saved from being a boundary only by
+    the token there being `.value`/`.scalar`/a close, never `.flowEntry`.  No single balance invariant
+    captures that, so the no-interior-boundary fact is supplied *directly* as the substrate's last
+    conjunct (the `h_e_least` clause), in the same verified-but-unconsumed discipline by which the seq
+    classify took its `j`-bundle as a hypothesis: producing it from the two `RecSeqEntry`s' structure
+    is the next layer down.  Given it, the pin is pure trichotomy — `firstEntryBoundary`'s least
+    boundary `m` and the substrate's pair end `e` are each `≤` the other (`m ≤ e` by `m`'s minimality
+    on the boundary `e`; `e ≤ m` because `h_e_least` forbids the boundary `m` inside `(lo, e)`), so
+    `m = e`, and `recmappair_window` lifts `[lo, e)` to a `RecMapPair`.
+
+    The conclusion STRENGTHENS `firstEntryBoundary` exactly as the seq mirror does — the same five
+    split-point facts plus the `RecMapPair ((take m).drop lo)` classification — the entry-boundary
+    INPUT/SHAPE split (cf. [[ref-entry-boundary-input-shape-split]]) fused into one deliverable on the
+    map axis.  This is again `fold-consumer-chain-to-producer-contract` (cf.
+    [[ref-fold-consumer-chain-to-producer-contract]]), here folding `firstEntryBoundary` +
+    `recmappair_window` + the pin.  With both axes' classify unifiers landed, the remaining Thread-A
+    bricks are folding the close-locators into the bracket disjuncts (deriving `j` from the head) and
+    the `Nat.strongRecOn` width-metric driver that supplies the bracket/tail/no-interior-boundary
+    oracles and closes the loop.  Verified-but-unconsumed (R225): references no sorry site, frontier
+    sorry count unchanged at 4; axiom-clean `[propext, Classical.choice, Quot.sound]` (the
+    `Classical.choice` enters through `recmappair_window`'s reused ADVANCE segment-split plumbing). -/
+theorem recmapentry_classify (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (h_lo_hi : lo < hi) (h_hi_sz : hi ≤ tokens.size)
+    (h_total : flowBracketBalance tokens lo hi = 0)
+    (h_head :
+      tokens[lo]!.val = .key ∧
+      ∃ kv e, lo < kv ∧ kv < e ∧ e ≤ hi ∧
+        tokens[kv]!.val = .value ∧
+        RecSeqEntry ((tokens.toList.take kv).drop (lo + 1)) ∧
+        RecSeqEntry ((tokens.toList.take e).drop (kv + 1)) ∧
+        flowBracketBalance tokens lo e = 0 ∧
+        (e = hi ∨ tokens[e]!.val = .flowEntry) ∧
+        (∀ k, lo < k → k < e →
+          ¬ (flowBracketBalance tokens lo k = 0 ∧ (k = hi ∨ tokens[k]!.val = .flowEntry)))) :
+    ∃ m, lo < m ∧ m ≤ hi ∧
+      flowBracketBalance tokens lo m = 0 ∧
+      (m = hi ∨ tokens[m]!.val = .flowEntry) ∧
+      (∀ k, lo < k → k < m →
+        ¬ (flowBracketBalance tokens lo k = 0 ∧ (k = hi ∨ tokens[k]!.val = .flowEntry))) ∧
+      RecMapPair ((tokens.toList.take m).drop lo) := by
+  obtain ⟨m, h_lo_m, h_m_hi, h_m_bal, h_m_marker, h_m_least⟩ :=
+    firstEntryBoundary tokens lo hi h_lo_hi h_total
+  obtain ⟨h_key, kv, e, h_lo_kv, h_kv_e, h_e_hi, h_value, h_ke, h_ve, h_e_bal, h_e_marker, h_e_least⟩ :=
+    h_head
+  -- Pin the two split points: `firstEntryBoundary`'s least boundary `m` and the substrate's pair end
+  -- `e` are mutually `≤` (each is a boundary the other's minimality clause forbids strictly inside).
+  have h_m_e : m = e := by
+    rcases Nat.lt_trichotomy m e with h | h | h
+    · exact absurd ⟨h_m_bal, h_m_marker⟩ (h_e_least m h_lo_m h)
+    · exact h
+    · exact absurd ⟨h_e_bal, h_e_marker⟩ (h_m_least e (by omega) h)
+  refine ⟨m, h_lo_m, h_m_hi, h_m_bal, h_m_marker, h_m_least, ?_⟩
+  rw [h_m_e]
+  exact recmappair_window tokens lo kv e h_lo_kv h_kv_e (by omega) h_key h_value h_ke h_ve
+
 /-- **Parametric `MapBodyProps` assembler** (Phase J seed, map side).  The map-side mirror of
     `seqBodyProps_assemble`: given an arbitrary balanced flow-MAPPING subrange `[lo, hi)` —
     `tokens[hi]! = .flowMappingEnd`, total balance `0`, Dyck prefixes, interior `WellTyped` — together
