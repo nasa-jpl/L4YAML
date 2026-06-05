@@ -3756,6 +3756,69 @@ theorem recseqentry_map_dispatch (tokens : Array (Positioned YamlToken)) (lo hi 
   rw [h_m_eq]
   exact recseqentry_map_window tokens lo j h_lo_j (by omega) h_open h_close h_wb
 
+/-- **Recursive-sequence head-dispatch step** (Phase J — the seq locate DRIVER's head-dispatch, the
+    SECOND of the two BRACKET branches, and the recursive one).  Verbatim sibling of
+    `recseqentry_map_dispatch` (R275) over the `.flowSequence{Start,End}` head/close tokens: the
+    dispatch step for a seq item whose head `tokens[lo]` is a `.flowSequenceStart` — a *nested
+    flow-sequence* `[ … ]` spanning a variable interior `[lo+1, j)` up to its matching close `j`.  The
+    two-move shape is identical to the map branch:
+
+      • **resolve** the split point: the *same* axis-agnostic
+        `firstEntryBoundary_bracket_resolve` (R264/R274) — fed the locator's two conjuncts, the opener
+        delta `+1` and closer delta `-1` (here through `flowBracketDelta_flowSequence{Start,End}`), the
+        inner balance, the strict-positivity invariant, and `h_succ` — pins `m = j + 1`.  This half is
+        shared verbatim with the map branch; the resolution names no axis (R264).
+
+      • **lift** the window: with `m = j + 1`, the opener-window `[lo, j+1)` is classified by the BUILD
+        move `located_entry_of_recseqbody` (its `lo := lo+1`, `hi := j`, so its opener index
+        `(lo+1)-1` reduces to `lo`), which assembles a `RecSeqEntry.seq` from the head/close tokens and
+        the *recursive* inner `RecSeqBody`.
+
+    The asymmetry with the map branch is exactly the R275/R244 storage fact, and it surfaces HERE as a
+    single hypothesis swap: where the map branch consumed the interior `WellBracketed` (a flat
+    decidable fact suppliable inline), this branch consumes the interior `RecSeqBody`
+    (`h_rec : RecSeqBody ((tokens.toList.take j).drop (lo + 1))`) — the locate recursion's own output,
+    its *oracle*.  So although the dispatch *lemma* is perfectly standalone (it takes the inner body as
+    a parameter, just as the map branch takes `WellBracketed`), its eventual *instantiation inside the
+    driver* is what waits for the `Nat.strongRecOn` recursion: the driver supplies `h_rec` from its
+    recursive call on the strictly-smaller interior window.  This refines R275's framing — both bracket
+    dispatch lemmas land standalone; the storage asymmetry is purely in whether the body-hypothesis is
+    dischargeable *outside* the recursion (map: yes, inline; seq: no, only by the oracle).  With this,
+    all four `RecSeqEntry` constructors — `scalar`, `seqEmpty`, `map`, `seq` — have a head-dispatch
+    step, completing the dispatch family; only the driver that threads them remains.
+    Verified-but-unconsumed: references no sorry site, frontier sorry count unchanged at 4.  Axiom-clean
+    `[propext, Classical.choice, Quot.sound]` (no `sorryAx`); the `Classical.choice` enters through
+    `firstEntryBoundary_bracket_resolve`'s `flowBracketBalance_compose` machinery. -/
+theorem recseqentry_seq_dispatch (tokens : Array (Positioned YamlToken)) (lo hi m j : Nat)
+    (h_hi_sz : hi ≤ tokens.size)
+    (h_lo_m : lo < m) (h_m_hi : m ≤ hi)
+    (h_m_marker : flowBracketBalance tokens lo m = 0 ∧ (m = hi ∨ tokens[m]!.val = .flowEntry))
+    (h_m_least : ∀ k, lo < k → k < m →
+      ¬ (flowBracketBalance tokens lo k = 0 ∧ (k = hi ∨ tokens[k]!.val = .flowEntry)))
+    (h_open : tokens[lo]!.val = .flowSequenceStart)
+    (h_lo_j : lo < j) (h_j_hi : j < hi)
+    (h_close : tokens[j]!.val = .flowSequenceEnd)
+    (h_inner : flowBracketBalance tokens (lo + 1) j = 0)
+    (h_j_pos : ∀ i, lo < i → i ≤ j → flowBracketBalance tokens lo i ≥ 1)
+    (h_rec : RecSeqBody ((tokens.toList.take j).drop (lo + 1)))
+    (h_succ : j + 1 = hi ∨ tokens[j + 1]!.val = .flowEntry) :
+    m = j + 1 ∧ RecSeqEntry ((tokens.toList.take m).drop lo) := by
+  -- opener/closer deltas, read off the head/close tokens (the seq axis).
+  have h_open_delta : flowBracketDelta tokens[lo]!.val = 1 := by
+    rw [h_open]; exact flowBracketDelta_flowSequenceStart
+  have h_close_delta : flowBracketDelta tokens[j]!.val = -1 := by
+    rw [h_close]; exact flowBracketDelta_flowSequenceEnd
+  -- resolve: the SAME shared bracket spine pins the split point past the matching close.
+  have h_m_eq : m = j + 1 :=
+    firstEntryBoundary_bracket_resolve tokens lo hi m j h_hi_sz h_lo_m h_m_hi
+      h_m_marker h_m_least h_open_delta h_lo_j h_j_hi h_close_delta h_inner h_j_pos h_succ
+  refine ⟨h_m_eq, ?_⟩
+  -- lift: with `m = j+1` the window is the opener-window `[lo, j+1)`, a recursive `RecSeqEntry.seq`
+  -- built by the BUILD move from the inner-window `RecSeqBody` oracle.
+  rw [h_m_eq]
+  exact located_entry_of_recseqbody tokens (lo + 1) j (by omega) (by omega) (by omega)
+    h_open h_close h_rec
+
 /-- **Parametric `MapBodyProps` assembler** (Phase J seed, map side).  The map-side mirror of
     `seqBodyProps_assemble`: given an arbitrary balanced flow-MAPPING subrange `[lo, hi)` —
     `tokens[hi]! = .flowMappingEnd`, total balance `0`, Dyck prefixes, interior `WellTyped` — together
