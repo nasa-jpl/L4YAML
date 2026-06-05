@@ -3606,6 +3606,40 @@ theorem flowBodyContentDeep_descend (tokens : Array (Positioned YamlToken)) (lo 
     intro k' hk1 hk2 hfe
     exact h_fe k' (by omega) (by omega) hfe
 
+/-- **ADVANCE deep-content-preservation** (Phase J — the trivial ADVANCE twin of
+    `flowBodyContentDeep_descend`, the last remaining content-guard edge per the 138th-revision map).
+    When the body recursion consumes the first entry at a `.flowEntry` separator `m` and advances to the
+    tail `[m+1, hi)`, that tail must re-establish the deep content guard for the IH to fire there.  Because
+    `FlowBodyContentDeep`'s opener/separator fields are balance-FREE, this is a pure RESTRICTION — the
+    mirror image of the descend edge with `feContentStart` standing in for `openerContentStart`:
+
+    * the child head `tokens[m+1]` is content-start by the parent's `feContentStart` at the separator `m`
+      (every separator strictly inside is followed by content — the field whose purpose is to re-seat the
+      head one entry along), and
+    * the child's opener/separator fields are the parent's restricted to `[m+1, hi) ⊆ [lo, hi)`.
+
+    No balance re-basing and no array-size side conditions — contrast R289's `flowBodyContent_advance`,
+    whose depth-`0` `feContentStart` forced a `flowBracketBalance lo (m+1) = 0` re-base of every premise;
+    the all-depth formulation pays the descend asymmetry off on BOTH edges at once
+    ([[ref-converse-forward-invariant-asymmetry]] / [[ref-easy-edge-guard-fails-hard-edge]]).  With this
+    twin landed, the deep content guard threads across both recursion edges, so the body recursion's
+    `G := fun lo hi => FlowBodyWindow tokens lo hi ∧ FlowBodyContentDeep tokens lo hi` is now preserved on
+    every edge.  Names no deliverable type, so it serves both axes' recursions unchanged. -/
+theorem flowBodyContentDeep_advance (tokens : Array (Positioned YamlToken)) (lo m hi : Nat)
+    (h_deep : FlowBodyContentDeep tokens lo hi)
+    (h_lo_m : lo ≤ m) (h_sep : tokens[m]!.val = .flowEntry) (h_m1_hi : m + 1 < hi) :
+    FlowBodyContentDeep tokens (m + 1) hi := by
+  obtain ⟨_h_head, h_op, h_fe⟩ := h_deep
+  refine ⟨?_, ?_, ?_⟩
+  · -- child head `tokens[m+1]` content-start: the parent's separator fact at `m` (`m+1 < hi`).
+    exact h_fe m h_lo_m h_m1_hi h_sep
+  · -- child openerContentStart: the parent's, restricted to `[m+1, hi) ⊆ [lo, hi)`.
+    intro k' hk1 hk2 hopen
+    exact h_op k' (by omega) (by omega) hopen
+  · -- child feContentStart: the parent's, restricted to `[m+1, hi) ⊆ [lo, hi)`.
+    intro k' hk1 hk2 hfe
+    exact h_fe k' (by omega) (by omega) hfe
+
 /-- **Scalar-leaf entry window** (Phase J — the analytical entry-boundary location's *shape side*,
     seq, base case).  Once `firstEntryBoundary` (the input side) has pinned the split point `m`, the
     shape side classifies the first item `[lo, m)` into a `RecSeqEntry` — and `RecSeqEntry` has four
