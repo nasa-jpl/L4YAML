@@ -15531,12 +15531,20 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 first time** (a body item is a scalar / empty-seq `[ ]` / nested-map `{ … }` / nested-seq `[ … ]`, each
                 disjunct carrying its dispatch's head/close/`h_succ`/oracle facts). The conclusion STRENGTHENS
                 `firstEntryBoundary`'s five split-point facts with the `RecSeqEntry` classification — the entry-boundary
-                INPUT (where the item ends) and SHAPE (what the item is) fused into one deliverable. What remains on
-                Workstream A's critical path is now narrow: (i) the map mirror `recmapentry_classify` (the same fold over
-                the `RecMapPair`/`RecMapBody` deliverables); (ii) folding the close-locators (`matchingClose_full_{seq,map}`)
-                into the disjunction's two bracket disjuncts so the `j`-facts are derived rather than assumed; and (iii) the
-                `Nat.strongRecOn` width-metric wrapper that supplies both the bracket `RecSeqBody` oracle and the tail
-                oracle, closing the recursion — both seq and map.
+                INPUT (where the item ends) and SHAPE (what the item is) fused into one deliverable. **The map mirror
+                `recmapentry_classify` has now ALSO landed**, R282 (`afadbf31`): the symmetric fold over the
+                `RecMapPair`/`RecMapBody` deliverables (`firstEntryBoundary` + `recmappair_window` + the split-point pin).
+                The map/seq asymmetry it surfaces is the reflection: a map body item has a SINGLE shape (a key/value PAIR),
+                so the map substrate is a **conjunction, not a disjunction** — `.key` head, depth-`0` `.value` separator,
+                two `RecSeqEntry` sub-blocks; the four-way head variety lives one level DOWN inside those sub-blocks (the
+                seq classify resolves it). Because a pair's interior is not uniformly bracket-positive (balance returns to
+                `0` at the `.value` separator), the no-interior-boundary fact is supplied directly as the substrate's last
+                conjunct (the analog of the seq side's `h_j_pos`), and the split-point pin is pure trichotomy. **Both axes'
+                classify unifiers are now complete.** What remains on Workstream A's critical path is: (i) folding the
+                close-locators (`matchingClose_full_{seq,map}`) into the seq disjunction's two bracket disjuncts so the
+                `j`-facts are derived rather than assumed (and the map's two `RecSeqEntry` sub-block locators likewise);
+                and (ii) the `Nat.strongRecOn` width-metric wrapper that supplies the bracket `RecSeqBody` oracle, the tail
+                oracle, and the pair's no-interior-boundary oracle, closing the recursion — both seq and map.
 
                 • **Workstream B — CONTENT (independent of A; currently dormant).** The 2
                 `emit_roundtrip_{sequence,mapping}_content_eq` `exact sorry` sites (EmitterScannability.lean:832 / :872),
@@ -15562,6 +15570,37 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 Cross-refs: Reflection 271 (structural-complete ≠ runnable), and the Verification manual's
                 §Round-Trip / §Zero-Axiom sorry-budget note (reconciled 2026-06-04).
 
+                **Total .body scope re-estimate (ONE-HUNDRED-THIRTIETH revision —
+                after **Thread A step 3 sub-step 3's brick cont'd (locate recursion DRIVER *classify half* — the
+                grammar-bearing CLASSIFY unifier, MAP side) — landed** (commit `afadbf31`, Reflection 282).
+                **The map driver's grammar-bearing classify unifier landed: `recmapentry_classify`** — the symmetric
+                mirror of `recseqentry_classify`, and the brick that names the grammar substrate of a *map* body item.
+                Like the seq mirror it folds `firstEntryBoundary` (INPUT) with the shape side into one lemma whose new
+                hypothesis `h_head` IS the named substrate; here the fold is `firstEntryBoundary` + `recmappair_window`
+                + the split-point pin. **The asymmetry is the lesson.** A seq body item is one of FOUR head shapes (the
+                four-way disjunction `recseqentry_classify` folds); a *map* body item has exactly ONE shape — a key/value
+                PAIR `.key <block_k> .value <block_v>` (`RecMapPair`) — so the map substrate is a **conjunction, not a
+                disjunction**: a `.key` head, a depth-`0` `.value` separator at `kv`, and the two interior blocks as
+                arbitrary `RecSeqEntry`s. The four-way head variety has not vanished — it lives one level DOWN, inside the
+                pair's two `RecSeqEntry` sub-blocks, where the seq classify already resolves it. So naming the map substrate
+                reveals the map level adds no fresh head-shape classification: only the pair glue (`recmappair_window`) and
+                the same minimality → split-point pin. That pin is the second half of the lesson: the seq bracket dispatches
+                got `m = j+1` from a *local* positivity invariant (`h_j_pos`: balance `≥ 1` strictly inside the bracket),
+                which rules out interior boundaries for free; a pair's interior is NOT uniformly positive — balance returns
+                to `0` at the `.value` separator `kv` — so no single balance invariant captures it, and the
+                no-interior-boundary fact is supplied directly as the substrate's last conjunct (verified-but-unconsumed,
+                exactly as the seq classify took its `j`-bundle). Given it, the pin is pure trichotomy:
+                `firstEntryBoundary`'s least boundary `m` and the substrate's pair end `e` are each `≤` the other, so
+                `m = e`, and `recmappair_window` lifts `[lo, e)` to a `RecMapPair`. The conclusion STRENGTHENS
+                `firstEntryBoundary`'s five split-point facts with the `RecMapPair ((take m).drop lo)` classification — the
+                INPUT/SHAPE split fused on the map axis. **Both axes' classify unifiers now complete.** Axiom-clean
+                **`[propext, Classical.choice, Quot.sound]`** (`Classical.choice` via `recmappair_window`'s reused ADVANCE
+                segment-split plumbing). Verified-but-unconsumed (R225): references no sorry site, **sorries held at 4**.
+                Build green **537 jobs**. **Immediate next brick:** folding the close-locators
+                (`matchingClose_full_{seq,map}`) into the seq disjunction's bracket disjuncts (and the map's two
+                `RecSeqEntry` sub-block locators) so the `j`-facts are derived from the head rather than assumed, then the
+                `Nat.strongRecOn` width-metric driver that supplies the bracket `RecSeqBody` oracle, the tail oracle, and the
+                pair's no-interior-boundary oracle, closing the recursion on both axes. See Reflection 282, on top of the
                 **Total .body scope re-estimate (ONE-HUNDRED-TWENTY-NINTH revision —
                 after **Thread A step 3 sub-step 3's brick cont'd (locate recursion DRIVER *classify half* — the
                 grammar-bearing CLASSIFY unifier, seq side) — landed** (commit `adc5be3c`, Reflection 281).
@@ -27682,3 +27721,15 @@ R279/R280 carved the locate driver into a grammar-free *assemble* half (now comp
 **What is still deferred (honest scope).** The bracket disjuncts carry the matching-close `j` and its facts as *hypotheses*; folding the close-locators (`matchingClose_full_{seq,map}`) into them — so `j` is *derived* from the head token rather than assumed — is a deliberately separate next brick, as is the `Nat.strongRecOn` wrapper that supplies the nested-seq `RecSeqBody` oracle and the tail oracle. So `recseqentry_classify` is the *shape* of the classify step with its *inputs still named*; producing those inputs is the remaining classify work. This is the input/shape discipline applied one level down: name the substrate now (verified-but-unconsumed), produce it next.
 
 Axiom-clean **`[propext, Classical.choice, Quot.sound]`** (`Classical.choice` via the bracket dispatches' `firstEntryBoundary_bracket_resolve` compose machinery). Verified-but-unconsumed (R225): references no sorry site, frontier sorry count unchanged at **4** (build green **537 jobs**; commit `adc5be3c`). **Immediate next brick:** the map mirror `recmapentry_classify` (the same fold over the `RecMapPair`/`RecMapBody` deliverables), then folding the close-locators into the bracket disjuncts (deriving `j` from the head), then the `Nat.strongRecOn` width-metric wrapper that supplies the bracket and tail oracles and closes the loop — feeding the per-window `Rec…Body` producers into `flowSubrangesOk_of_window_producers` → the two `scanFiltered_emit{Seq,Map}_nonempty_structure` sorry sites → the two base `emit_roundtrip_{sequence,mapping}_content_eq` sorries → `universal_roundtrip`. See [[ref-fold-consumer-chain-to-producer-contract]] (the four dispatches folded into one lemma whose hypothesis IS the grammar substrate), [[ref-entry-boundary-input-shape-split]] (INPUT+SHAPE fused; the deliverable-type-naming re-split discriminator), and [[ref-structural-moves-complete-recursion]] (R262/R263/R269/R270 — the dispatch window-lifts this unifier composes; with the classify shape named, only its input production and the `strongRecOn` wrapper remain).
+
+### Reflection 282 (new, 2026-06-04): the map classify unifier names a grammar substrate that is a CONJUNCTION, not a disjunction — a map body item has one shape, and the four-way head variety lives one level down inside the pair's two sub-blocks
+
+R281 landed the seq classify unifier and found that *naming the grammar substrate* meant writing the four-way head-shape **disjunction** the four dispatch hypotheses amount to. R282 lands the symmetric map mirror `recmapentry_classify` (commit `afadbf31`), and the mirror is not symmetric in the way one expects — and *that* is the lesson. The fold shape transports (`firstEntryBoundary` + a window-lifter + a split-point pin → one lemma strengthening the boundary output with a `RecMapPair` classification), but the substrate it names is differently shaped: a **conjunction, not a disjunction**.
+
+**Why one shape, not four.** A seq body item is one of four head shapes — scalar / empty-seq `[ ]` / nested-map `{ … }` / nested-seq `[ … ]` — so the seq substrate is a 4-way disjunction, one disjunct per `recseqentry_*_dispatch`. A *map* body item has exactly ONE shape: a key/value PAIR `.key <block_k> .value <block_v>` (`RecMapPair`, the sole `RecMapPair.mk` constructor). So the map substrate is the single conjunction `(.key head) ∧ (∃ kv e, .value separator ∧ key block `RecSeqEntry` ∧ value block `RecSeqEntry` ∧ …)`. There is no head-shape dispatch at the map level at all — `recmappair_window` (R277) is one assembler, not a four-way family. The four-way variety has not disappeared; it has **descended one level**, into the pair's two `RecSeqEntry` sub-blocks, where each block is itself a scalar / `[ ]` / `{ … }` / `[ … ]` resolved by the *seq* classify. Naming the map substrate is what makes this layering legible: the map level adds no new content grammar, only the pair glue.
+
+**The pin needed a different invariant.** The seq bracket dispatches pinned `m = j+1` from a *local* positivity invariant `h_j_pos` (balance `≥ 1` strictly inside the bracket) — uniform positivity rules out every interior boundary for free. A pair's interior is **not** uniformly positive: balance returns to `0` at the depth-`0` `.value` separator `kv` (and at every nested-entry end), saved from being a boundary only by the token there being `.value`/`.scalar`/a close, never `.flowEntry`. No single balance invariant captures "no interior boundary" for a pair, so that fact is supplied *directly* as the substrate's last conjunct — in the same verified-but-unconsumed discipline by which the seq classify took its bracket `j`-bundle as a hypothesis. Producing it from the two `RecSeqEntry`s' structure is the next layer down. Given it, the pin is pure trichotomy: `firstEntryBoundary`'s least boundary `m` and the substrate's pair end `e` are each `≤` the other (`m ≤ e` by `m`'s minimality on the boundary `e`; `e ≤ m` because the no-interior-boundary conjunct forbids the boundary `m` inside `(lo, e)`), so `m = e` and `recmappair_window` lifts `[lo, e)` to a `RecMapPair`.
+
+**INPUT/SHAPE fused, both axes complete.** As on the seq side the conclusion strengthens `firstEntryBoundary`'s five split-point facts with the shape classification (`RecMapPair ((take m).drop lo)`) — by [[ref-entry-boundary-input-shape-split]] the INPUT (where the pair ends) and SHAPE (that it is a pair) delivered about one `m`. With `recseqentry_classify` (R281) and `recmapentry_classify` (R282) both landed, **both axes' classify unifiers are complete.** This is again [[ref-fold-consumer-chain-to-producer-contract]] — folding `firstEntryBoundary` + `recmappair_window` + the pin into one lemma whose hypotheses are exactly the per-window contract — and confirms the R264 discriminator from the other side: the seq unifier named `RecSeqEntry`/`RecSeqBody` and so re-split; the map unifier names `RecMapPair`/`RecSeqEntry` and is that re-split, but with a *structurally different* (conjunctive) substrate, because the deliverable's constructor arity (one `mk`, not four) dictates the substrate's shape.
+
+Axiom-clean **`[propext, Classical.choice, Quot.sound]`** (`Classical.choice` via `recmappair_window`'s reused ADVANCE segment-split plumbing). Verified-but-unconsumed (R225): references no sorry site, frontier sorry count unchanged at **4** (build green **537 jobs**; commit `afadbf31`). **Immediate next brick:** folding the close-locators (`matchingClose_full_{seq,map}`) into the seq bracket disjuncts — and the map pair's two `RecSeqEntry` sub-block locators — so the split positions are derived from the head rather than assumed, then the `Nat.strongRecOn` width-metric driver that supplies the bracket `RecSeqBody` oracle, the tail oracle, and the pair's no-interior-boundary oracle, closing the recursion on both axes — feeding the per-window `Rec…Body` producers into `flowSubrangesOk_of_window_producers` → the two `scanFiltered_emit{Seq,Map}_nonempty_structure` sorry sites → the two base `emit_roundtrip_{sequence,mapping}_content_eq` sorries → `universal_roundtrip`. See [[ref-fold-consumer-chain-to-producer-contract]] (the fold whose hypothesis IS the substrate, here a conjunction), [[ref-entry-boundary-input-shape-split]] (INPUT+SHAPE fused; the deliverable-type-naming re-split discriminator, here confirmed from the map side), and [[ref-structural-moves-complete-recursion]] (R277's `recmappair_window` is the pair glue this unifier composes; with both classify shapes named, only their input production and the `strongRecOn` wrapper remain).
