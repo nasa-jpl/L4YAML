@@ -1054,4 +1054,132 @@ theorem map_store_is_decidable_flat :
 theorem seq_store_is_recursive_structure : SeqBody [Tok.sc] :=
   SeqBody.cons [Tok.sc] [] (Entry.scalar Tok.sc rfl) SeqBody.nil
 
+/-! ### The second bracket dispatch branch — the recursive `seq` lands STANDALONE too; the dispatch LEMMA vs the dispatch STEP-in-driver (toy of `recseqentry_seq_dispatch`, Reflection 276)
+
+R275 landed the near-leaf `map` branch and predicted the recursive `seq` branch "cannot land standalone."
+This section lands the `seq` branch, `entry_seq_dispatch` — *standalone*, before any driver — refining
+that prediction.  The dispatch LEMMA takes the recursive oracle as a *hypothesis* (`h_rec : SeqBody …`),
+exactly as the map lemma takes the flat `WB` as a hypothesis; a hypothesis is free regardless of how hard
+it will later be to discharge.  What genuinely waits for the driver is the *instantiation* of that
+hypothesis: `dispatch_seq_l1` discharges it from constructors (the consumer-of-a-produced-oracle), while
+`seq_dispatch_consumes_oracle` takes it as a bare hypothesis (the pure consumer) — and the driver will
+discharge it from a recursive call.  So BOTH bracket dispatch lemmas land standalone; the storage
+asymmetry is only in whether the body-hypothesis is dischargeable OUTSIDE the recursion (`WB`: yes, inline
+`decide`, cf. `map_store_is_decidable_flat`; `SeqBody`: no, only by the oracle, cf.
+`seq_store_is_recursive_structure`). -/
+
+/-- A faithful toy of `RecSeqEntry` whose `seq` constructor STORES its recursive body (like the real
+    `RecSeqEntry.seq`, and unlike this file's deliberately-unconditional `Entry.seq`).  The stored body is
+    what makes the `seq` branch's lift consume a recursive oracle rather than a flat fact. -/
+inductive RecEntry : List Tok → Prop where
+  | scalar (t : Tok) : RecEntry [t]
+  | seq (opTok clTok : Tok) (interior : List Tok)
+      (h_op : opTok = .op) (h_cl : clTok = .cl) (h_rec : SeqBody interior) :
+      RecEntry (opTok :: (interior ++ [clTok]))
+
+/-- **Recursive-sequence window-lift** (toy of the BUILD move `located_entry_of_recseqbody`).  Verbatim
+    the same window plumbing as `entry_map_window`, differing only in the terminal constructor
+    (`RecEntry.seq`) and the one stored field — the *recursive* `SeqBody` oracle, not the flat `WB`.  That
+    single field is the entire store-vs-project difference between the two bracket branches. -/
+theorem recentry_seq_window (l : List Tok) (lo hi : Nat)
+    (h_lo_hi : lo < hi) (h_hi : hi < l.length)
+    (h_open : tokAt l lo = .op) (h_close : tokAt l hi = .cl)
+    (h_rec : SeqBody ((l.take hi).drop (lo + 1))) :
+    RecEntry ((l.take (hi + 1)).drop lo) := by
+  have h_lo : lo < l.length := by omega
+  have h_rest : (l.take (hi + 1)).drop (lo + 1)
+      = (l.take hi).drop (lo + 1) ++ [l[hi]'h_hi] := by
+    have h_ts : l.take (hi + 1) = l.take hi ++ [l[hi]'h_hi] := by
+      rw [List.take_add_one, List.getElem?_eq_getElem h_hi]; rfl
+    rw [h_ts]
+    have h_len : lo + 1 ≤ (l.take hi).length := by rw [List.length_take]; omega
+    rw [List.drop_append_of_le_length h_len]
+  have h_peel : (l.take (hi + 1)).drop lo
+      = l[lo]'(by omega) :: (l.take (hi + 1)).drop (lo + 1) := by
+    have hlen : lo < (l.take (hi + 1)).length := by rw [List.length_take]; omega
+    have h := (List.getElem_cons_drop hlen).symm
+    rw [List.getElem_take] at h
+    exact h
+  rw [h_peel, h_rest]
+  have h_op_val : l[lo]'(by omega) = .op := by rw [List.getElem_eq_getD (.sc)]; exact h_open
+  have h_cl_val : l[hi]'h_hi = .cl := by rw [List.getElem_eq_getD (.sc)]; exact h_close
+  exact RecEntry.seq _ _ _ h_op_val h_cl_val h_rec
+
+/-- **Recursive-sequence head-dispatch step** (toy of `recseqentry_seq_dispatch`).  The verbatim sibling
+    of `entry_map_dispatch`: the SAME shared resolution `bracket_resolve_dispatch` (pins `m = j+1`, called
+    with identical arguments — it is axis-agnostic, naming neither bracket token) glued to the recursive
+    lift `recentry_seq_window`.  The only swap from the map branch is the body-hypothesis: the recursive
+    `h_rec : SeqBody …` in place of the flat `h_wb : WB …`.  A hypothesis either way — so the lemma is
+    just as standalone as the map one. -/
+theorem entry_seq_dispatch (l : List Tok) (m j : Nat)
+    (h_zero_m : 0 < m) (h_m_hi : m ≤ l.length)
+    (h_m_marker : bal l m = 0 ∧ (m = l.length ∨ isFE (tokAt l m) = true))
+    (h_m_least : ∀ k, 0 < k → k < m →
+      ¬ (bal l k = 0 ∧ (k = l.length ∨ isFE (tokAt l k) = true)))
+    (h_zero_j : 0 < j) (h_j_len : j < l.length)
+    (h_open : tokAt l 0 = .op) (h_close : tokAt l j = .cl)
+    (h_bal_j1 : bal l (j + 1) = 0)
+    (h_j_pos : ∀ i, 0 < i → i ≤ j → bal l i ≥ 1)
+    (h_rec : SeqBody ((l.take j).drop (0 + 1)))
+    (h_succ : j + 1 = l.length ∨ isFE (tokAt l (j + 1)) = true) :
+    m = j + 1 ∧ RecEntry ((l.take m).drop 0) := by
+  -- resolve: the SAME shared bracket spine (identical call to the map branch's) pins the split point.
+  have h_m_eq : m = j + 1 :=
+    bracket_resolve_dispatch l m j h_zero_m h_m_hi h_m_marker h_m_least h_zero_j h_bal_j1 h_j_pos h_succ
+  refine ⟨h_m_eq, ?_⟩
+  -- lift: with `m = j+1` the window is the opener-window `[0, j+1)`, a recursive `RecEntry.seq` built
+  -- from the inner-window `SeqBody` oracle.
+  rw [h_m_eq]
+  exact recentry_seq_window l 0 j h_zero_j h_j_len h_open h_close h_rec
+
+/-! #### Positive witness — the `seq` branch fires standalone, but its oracle is PRODUCED (not inline `decide`) -/
+
+-- `l1 = [op, sc, cl, fe, sc]` — first item the non-empty bracket `[a] = [op, sc, cl]` closing at `j = 2`,
+-- separator marker at `m = 3 = j + 1`.  Unlike `dispatch_map_l10` (whose `WB` hypothesis is discharged
+-- inline by `decide`), the recursive `h_rec : SeqBody [sc]` here is the second `?_`, discharged by an
+-- explicit constructor proof — the recursion's oracle, here PRODUCED by hand (the driver will produce it
+-- by a recursive call).
+theorem dispatch_seq_l1 : ∃ m, m = 2 + 1 ∧ RecEntry ((l1.take m).drop 0) := by
+  obtain ⟨m, hm_pos, hm_hi, hm_bal, hm_cond, hm_least⟩ := firstEntryBoundary l1 (by decide) (by decide)
+  refine ⟨m, entry_seq_dispatch l1 m 2 hm_pos hm_hi ⟨hm_bal, hm_cond⟩ hm_least
+    (by decide) (by decide) (by decide) (by decide) (by decide) ?_ ?_ (by decide)⟩
+  · -- positivity over `(0, 2]` = `{1, 2}`: both interior positions stay at depth `≥ 1`.
+    intro i h1 h2
+    rcases (show i = 1 ∨ i = 2 by omega) with rfl | rfl
+    · decide
+    · decide
+  · -- the recursive oracle `SeqBody [sc]` — NOT `decide`, assembled from constructors.
+    show SeqBody ((l1.take 2).drop (0 + 1))
+    have h : (l1.take 2).drop (0 + 1) = [Tok.sc] := by decide
+    rw [h]
+    exact SeqBody.cons [Tok.sc] [] (Entry.scalar Tok.sc rfl) SeqBody.nil
+
+-- The located seq-window really is the three-token `[op, sc, cl]`, marker at `m = 3` (the `fe`):
+#guard (l1.take 3).drop 0 == [Tok.op, Tok.sc, Tok.cl]
+#guard (l1.take 2).drop (0 + 1) == [Tok.sc]
+
+/-! #### The crux of R276 — the dispatch lemma is a free CONSUMER of the oracle (the lemma/step split) -/
+
+/-- **The dispatch LEMMA consumes the oracle; it never produces it.**  Given the recursive oracle
+    `h_rec : SeqBody [sc]` *as a bare hypothesis* — not constructed, not `decide`d — `entry_seq_dispatch`
+    fires and produces the `RecEntry`.  This is R276's refinement of R275 made concrete: the seq dispatch
+    lemma is a total function of its oracle, hence STANDALONE, exactly like the map lemma.  The contrast
+    with `dispatch_seq_l1` is the whole point — there the *same* lemma is fed an oracle PRODUCED from
+    constructors; here it is fed one ASSUMED.  Lemma layer = free consumer; only the production of the
+    oracle (the driver's recursive call) couples to the recursion. -/
+theorem seq_dispatch_consumes_oracle (h_rec : SeqBody [Tok.sc]) :
+    ∃ m, m = 2 + 1 ∧ RecEntry ((l1.take m).drop 0) := by
+  obtain ⟨m, hm_pos, hm_hi, hm_bal, hm_cond, hm_least⟩ := firstEntryBoundary l1 (by decide) (by decide)
+  refine ⟨m, entry_seq_dispatch l1 m 2 hm_pos hm_hi ⟨hm_bal, hm_cond⟩ hm_least
+    (by decide) (by decide) (by decide) (by decide) (by decide) ?_ ?_ (by decide)⟩
+  · intro i h1 h2
+    rcases (show i = 1 ∨ i = 2 by omega) with rfl | rfl
+    · decide
+    · decide
+  · -- the oracle is CONSUMED, not produced — passed straight in from the hypothesis.
+    show SeqBody ((l1.take 2).drop (0 + 1))
+    have h : (l1.take 2).drop (0 + 1) = [Tok.sc] := by decide
+    rw [h]
+    exact h_rec
+
 end Tests.Reflections.EntryBoundaryLocator
