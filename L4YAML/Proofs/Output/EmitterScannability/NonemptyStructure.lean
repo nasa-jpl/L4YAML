@@ -3640,6 +3640,57 @@ theorem flowBodyContentDeep_advance (tokens : Array (Positioned YamlToken)) (lo 
     intro k' hk1 hk2 hfe
     exact h_fe k' (by omega) (by omega) hfe
 
+/-- **`FlowBodyContent` assembler from the threaded deep guard** (Phase J — sub-brick (i'-a), the
+    `bodySucc`-provenance factoring).  Every head-shape dispatch branch and both bracket oracles consume
+    `FlowBodyContent tokens lo hi`, but the body recursion's combined guard only threads
+    `G = FlowBodyWindow ∧ FlowBodyContentDeep` (R290's deep content guard, the recursion-STABLE one).
+    To instantiate the dispatch inside the per-window `step` we must PRODUCE `FlowBodyContent` from `G`.
+    This assembler does the producible part and names the irreducible residual exactly
+    ([[ref-parametric-assembler-extraction]]: split a deferred deliverable into *assemble* (done here)
+    vs *produce-primitives* (the named hypotheses)):
+
+    * `headContentStart` — a FREE projection ([[ref-conjunct-of-projection-is-free-field]]): the
+      `FlowBodyContent` and `FlowBodyContentDeep` head fields are the SAME proposition
+      (`isFlowContentStart tokens[lo]!.val`), so `h_deep.headContentStart` types directly.
+    * `feContentStart` INTERIOR (`k + 1 < hi`) — also a projection: the deep guard's all-depth,
+      balance-free `feContentStart` subsumes the depth-`0` field's interior (drop the unused
+      `balance lo k = 0` premise; the `k + 1 ≤ hi` conjunct is `omega` from `k < hi`).
+
+    What the deep guard provably CANNOT project — the residual, the "content substrate `WellTyped` does
+    not encode" — is two SEQ-specific comma-placement facts, taken as explicit hypotheses:
+
+    * `h_bodySucc` — **values are comma-separated**: a depth-`0` non-`.flowEntry` position whose prefix
+      returns to `0` is an entry END (window close or immediately-following `.flowEntry`).  Genuinely
+      missing from `G`: the bracket/balance substrate accepts `[a b]` (adjacent scalars, no comma).
+    * `h_noTrailingSep` — **no trailing comma**: the `feContentStart` BOUNDARY at `k + 1 = hi` (a
+      depth-`0` `.flowEntry` at `hi - 1`).  Independent of `bodySucc` (it speaks to a separator
+      position, where `bodySucc`'s non-separator premise fails) and unreachable from the deep guard
+      (whose `feContentStart` is gated `k + 1 < hi`); discharged at the root from `emitList`'s
+      no-trailing-comma emission, vacuous premise.
+
+    So this assembler collapses (i')'s residual from "produce `FlowBodyContent` at every window" to
+    "produce these two named separator facts at every window" — the genuine remaining grammar content,
+    now precisely scoped.  Names no deliverable type, so it serves both axes' window producers. -/
+theorem flowBodyContent_of_deep (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (h_deep : FlowBodyContentDeep tokens lo hi)
+    (h_bodySucc : ∀ k, lo ≤ k → k < hi →
+        flowBracketBalance tokens lo (k + 1) = 0 →
+        tokens[k]!.val ≠ .flowEntry →
+        k + 1 = hi ∨ ∃ (_ : k + 1 < hi), tokens[k + 1]!.val = .flowEntry)
+    (h_noTrailingSep : ∀ k, lo ≤ k → k + 1 = hi →
+        tokens[k]!.val = .flowEntry →
+        flowBracketBalance tokens lo k = 0 →
+        isFlowContentStart tokens[k + 1]!.val) :
+    FlowBodyContent tokens lo hi := by
+  refine ⟨h_deep.headContentStart, h_bodySucc, ?_⟩
+  intro k hk1 hk2 hfe hbal
+  refine ⟨by omega, ?_⟩
+  rcases Nat.lt_or_ge (k + 1) hi with h | h
+  · -- interior separator: the deep guard's all-depth `feContentStart` projects it.
+    exact h_deep.feContentStart k hk1 h hfe
+  · -- boundary separator `k + 1 = hi`: the no-trailing-comma residual.
+    exact h_noTrailingSep k hk1 (by omega) hfe hbal
+
 /-- **Nested-sequence head-dispatch oracle from the IH** (Phase J — the head-shape dispatch's recursive
     crux, the first GRAMMAR brick after the guard-threading skeleton closed: the producer-guarded
     `RecSeqBody` oracle for the nested `[ … ]` branch, built from the `windowWidth_strongRecOn`
