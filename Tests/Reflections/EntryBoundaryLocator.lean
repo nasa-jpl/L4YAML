@@ -1504,4 +1504,118 @@ theorem toy_map_head_is_the_knob : ¬ ToyMapPair [.sc] :=
 theorem toy_seq_head_not_map : ¬ ToyEntry [.ky] :=
   fun h => absurd h.head (by decide)
 
+/-! ### R281 — the classify unifier names the grammar substrate by FOLDING the per-shape dispatches
+    into one head-shape disjunction.
+
+R279/R280 carved the locate driver into a grammar-free *assemble* half (done both axes) and a
+grammar-bearing *classify* half, and named the classify half as the seat of the driver's real
+difficulty: facts about the emitted-token CONTENT (which head shape an item is, where a value ends)
+that neither balance nor the producer contract encodes.  R281 lands the classify unifier — and the
+lesson is *how naming the substrate actually looks*: it is a **fold**, and the substrate is exactly
+the new hypothesis the fold introduces.
+
+The toy below folds the three `Entry`-returning dispatches — `entry_scalar_dispatch`,
+`entry_seqempty_dispatch`, `entry_map_dispatch` (R272/R273/R275 toys) — together with
+`firstEntryBoundary` (R262 toy) into ONE lemma `entry_classify` whose single new hypothesis `h_head`
+is a three-way **head-shape disjunction**.  That disjunction IS the grammar substrate of a body item
+(a scalar / an empty bracket `[ ]` / a nested mapping `{ … }`, each disjunct carrying its dispatch's
+own head/close/successor facts), named explicitly.  The conclusion STRENGTHENS `firstEntryBoundary`'s
+five split-point facts with the `Entry` classification — INPUT (where the item ends) and SHAPE (what
+it is) fused into one deliverable.  (The real `recseqentry_classify` folds a *fourth*, recursive
+`seq` branch too; it differs only by carrying a `SeqBody` oracle hypothesis — cf.
+`entry_seq_dispatch` / `seq_dispatch_consumes_oracle` above — and is omitted here only because the toy
+splits its recursive entry into a separate `RecEntry` type; the fold STRUCTURE is identical.)
+
+Positives: the unifier fires on a scalar head (`classify_l8_scalar`), an empty bracket
+(`classify_l3_seqempty`), and a nested mapping (`classify_l10_map`).  Negative
+(`classify_substrate_load_bearing`): a `.ky` head satisfies NO disjunct, so the substrate is
+unsatisfiable and the unifier cannot be invoked — even though `firstEntryBoundary` would still locate
+a marker, there is no `Entry` to lift, because the grammar substrate (not the bare marker) is what
+classifies.  The substrate is load-bearing. -/
+
+/-- **The classify unifier** (toy of `recseqentry_classify`).  Folds `firstEntryBoundary` + the three
+    `Entry` head-dispatches into one lemma whose one new hypothesis is the head-shape disjunction (the
+    named grammar substrate), and whose conclusion fuses `firstEntryBoundary`'s split-point INPUT with
+    the `Entry` SHAPE.  Proof: run `firstEntryBoundary` once, then `rcases` the disjunction and hand
+    each branch to its matching dispatch, threading the SAME `m`-facts. -/
+theorem entry_classify (l : List Tok) (h_pos : 0 < l.length) (h_total : bal l l.length = 0)
+    (h_head :
+      -- scalar leaf
+      (tokAt l 0 = .sc ∧ (1 = l.length ∨ isFE (tokAt l 1) = true)) ∨
+      -- empty bracket `[ ]`
+      (0 + 1 < l.length ∧ tokAt l 0 = .op ∧ tokAt l 1 = .cl ∧
+        (2 = l.length ∨ isFE (tokAt l 2) = true)) ∨
+      -- nested mapping `{ … }`
+      (∃ j, tokAt l 0 = .mo ∧ 0 < j ∧ j < l.length ∧ tokAt l j = .mc ∧
+        bal l (j + 1) = 0 ∧ (∀ i, 0 < i → i ≤ j → bal l i ≥ 1) ∧
+        WB ((l.take j).drop (0 + 1)) ∧ (j + 1 = l.length ∨ isFE (tokAt l (j + 1)) = true))) :
+    ∃ m, 0 < m ∧ m ≤ l.length ∧ bal l m = 0 ∧
+      (m = l.length ∨ isFE (tokAt l m) = true) ∧
+      (∀ k, 0 < k → k < m →
+        ¬ (bal l k = 0 ∧ (k = l.length ∨ isFE (tokAt l k) = true))) ∧
+      Entry ((l.take m).drop 0) := by
+  obtain ⟨m, h_zero_m, h_m_hi, h_m_bal, h_m_marker, h_m_least⟩ := firstEntryBoundary l h_pos h_total
+  refine ⟨m, h_zero_m, h_m_hi, h_m_bal, h_m_marker, h_m_least, ?_⟩
+  rcases h_head with
+    ⟨h_sc, h_succ⟩ |
+    ⟨h_lo1, h_open, h_close, h_succ⟩ |
+    ⟨j, h_open, h_zero_j, h_j_len, h_close, h_bal_j1, h_j_pos, h_wb, h_succ⟩
+  · -- scalar: minimality alone pins `m = 1`.
+    exact (entry_scalar_dispatch l m h_pos h_zero_m h_m_hi h_m_least h_sc h_succ).2
+  · -- empty bracket: the marker clause excludes the unbalanced position `1`, pinning `m = 2`.
+    exact (entry_seqempty_dispatch l m h_lo1 h_zero_m h_m_hi ⟨h_m_bal, h_m_marker⟩ h_m_least
+      h_open h_close h_succ).2
+  · -- nested mapping: the bracket spine pins `m = j+1`; near-leaf via flat `WB`.
+    exact (entry_map_dispatch l m j h_zero_m h_m_hi ⟨h_m_bal, h_m_marker⟩ h_m_least h_zero_j h_j_len
+      h_open h_close h_bal_j1 h_j_pos h_wb h_succ).2
+
+/-- Positive — scalar head: the unifier classifies `l8 = [sc, fe, sc]`'s first item as a scalar
+    `Entry` (`m = 1`, the located window `[sc]`). -/
+theorem classify_l8_scalar : ∃ m, Entry ((l8.take m).drop 0) := by
+  obtain ⟨m, _, _, _, _, _, h⟩ :=
+    entry_classify l8 (by decide) (by decide) (Or.inl ⟨by decide, Or.inr (by decide)⟩)
+  exact ⟨m, h⟩
+
+/-- Positive — empty bracket: the unifier classifies `l3 = [op, cl, fe, sc]`'s first item as an empty
+    sequence `Entry` (`m = 2`, the located window `[op, cl]`). -/
+theorem classify_l3_seqempty : ∃ m, Entry ((l3.take m).drop 0) := by
+  obtain ⟨m, _, _, _, _, _, h⟩ :=
+    entry_classify l3 (by decide) (by decide)
+      (Or.inr (Or.inl ⟨by decide, by decide, by decide, Or.inr (by decide)⟩))
+  exact ⟨m, h⟩
+
+/-- Positive — nested mapping: the unifier classifies `l10 = [mo, sc, mc, fe, sc]`'s first item as a
+    map `Entry` (`m = j+1 = 3`, the located window `[mo, sc, mc]`).  The `h_j_pos` interior-positivity
+    obligation is the lone non-`decide` field — supplied by case-splitting the bounded `i ∈ {1, 2}`. -/
+theorem classify_l10_map : ∃ m, Entry ((l10.take m).drop 0) := by
+  have h_j_pos : ∀ i, 0 < i → i ≤ 2 → bal l10 i ≥ 1 := by
+    intro i h1 h2
+    rcases (show i = 1 ∨ i = 2 by omega) with rfl | rfl
+    · decide
+    · decide
+  obtain ⟨m, _, _, _, _, _, h⟩ :=
+    entry_classify l10 (by decide) (by decide)
+      (Or.inr (Or.inr ⟨2, by decide, by decide, by decide, by decide, by decide, h_j_pos, by decide,
+        Or.inr (by decide)⟩))
+  exact ⟨m, h⟩
+
+/-- A body item whose head is a bare `.ky` — not a valid body-item head in the grammar. -/
+def lBad : List Tok := [.ky, .fe, .sc]
+
+/-- **Negative — the grammar substrate is load-bearing, not the bare marker.**  A `.ky` head satisfies
+    NONE of the three head-shape disjuncts (each demands `tokAt lBad 0 ∈ {.sc, .op, .mo}`), so the
+    substrate `h_head` is unsatisfiable and `entry_classify` cannot be invoked — there is no `Entry` to
+    lift.  `firstEntryBoundary` alone would still locate a marker `m`; what it CANNOT do is classify the
+    item, because classification is exactly what the named substrate (not the marker) supplies.  This is
+    why naming the substrate is the driver's real work: drop it and the fold has nothing to dispatch on. -/
+theorem classify_substrate_load_bearing :
+    ¬ ((tokAt lBad 0 = .sc ∧ (1 = lBad.length ∨ isFE (tokAt lBad 1) = true)) ∨
+       (0 + 1 < lBad.length ∧ tokAt lBad 0 = .op ∧ tokAt lBad 1 = .cl ∧
+         (2 = lBad.length ∨ isFE (tokAt lBad 2) = true)) ∨
+       (∃ j, tokAt lBad 0 = .mo ∧ 0 < j ∧ j < lBad.length ∧ tokAt lBad j = .mc ∧
+         bal lBad (j + 1) = 0 ∧ (∀ i, 0 < i → i ≤ j → bal lBad i ≥ 1) ∧
+         WB ((lBad.take j).drop (0 + 1)) ∧
+         (j + 1 = lBad.length ∨ isFE (tokAt lBad (j + 1)) = true))) := by
+  rintro (⟨h, _⟩ | ⟨_, h, _⟩ | ⟨j, h, _⟩) <;> exact absurd h (by decide)
+
 end Tests.Reflections.EntryBoundaryLocator
