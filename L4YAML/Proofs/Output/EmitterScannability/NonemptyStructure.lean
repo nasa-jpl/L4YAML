@@ -3309,6 +3309,74 @@ theorem advanceTail_invariant (tokens : Array (Positioned YamlToken)) (lo m hi :
   intro p hp1 hp2
   rw [flowBracketBalance_compose tokens lo (m + 1) p (by omega) hp1, h_prefix]; omega
 
+/-- **The flow body-window guard** (Phase J — the concrete instantiation of `windowWidth_strongRecOn`'s
+    abstract per-window guard `G`).  The combinator that closes the locate recursion is abstract over a
+    guard `G : Nat → Nat → Prop` (the inhabitable region) and a deliverable `P`; to *drive* it on the
+    seq/map body recursion that region must be named.  This structure is that name: the predicate a
+    balanced flow body subrange `[lo, hi)` carries when it is a legitimate recursion instance — the
+    frame bounds (`2 ≤ lo`, `hi ≤ size - 2`, `hi < size`), **non-emptiness** (`lo < hi`, the R285 peel:
+    the empty window has no `RecSeqBody`/`RecMapBody` and must be EXCLUDED from `G`, never handed to the
+    step), the bracket-balance closure (`balanced` + the `dyck` prefix-nonnegativity), and the content
+    invariant `WellTyped` the head-shape grammar will later be read off of.
+
+    Crucially it names **no collection-specific deliverable type** — no `RecSeqBody`, no `RecMapBody`,
+    only the shared token-stream facts (`flowBracketBalance`, `WellTyped`).  So by the seq/map mirror
+    discriminator ([[ref-entry-boundary-input-shape-split]]) it does NOT re-split: it is the SHARED
+    guard `G` for both axes' body recursions (`windowWidth_strongRecOn (G := FlowBodyWindow tokens) …`
+    instantiated once with `P := RecSeqBody …`, once with `P := RecMapBody …`).  It is the guard-level
+    companion of the position-level shared bricks `firstEntryBoundary` and `advanceTail_invariant`
+    (written once, fed to both recursions); the combinator's `G`/`P` factoring is exactly what lets one
+    guard structure serve both motives. -/
+structure FlowBodyWindow (tokens : Array (Positioned YamlToken)) (lo hi : Nat) : Prop where
+  lo_ge : 2 ≤ lo
+  lo_lt_hi : lo < hi
+  hi_le : hi ≤ tokens.size - 2
+  hi_lt : hi < tokens.size
+  balanced : flowBracketBalance tokens lo hi = 0
+  dyck : ∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0
+  wellTyped : WellTyped ((tokens.toList.take hi).drop lo)
+
+/-- **ADVANCE guard-preservation** (Phase J — the combinator's `G`-preservation across the locate
+    recursion's *advance* edge).  `windowWidth_strongRecOn` hands the per-window step an oracle
+    `∀ lo' hi', hi' - lo' < hi - lo → G lo' hi' → P lo' hi'` for every strictly-narrower guarded
+    window; for the step to USE that oracle on the tail `[m+1, hi)` after consuming the first entry at a
+    depth-`0` `.flowEntry` separator `m`, it must first show the tail STILL satisfies the guard `G`.
+    This lemma is that obligation, and it is grammar-free: it transports the whole `FlowBodyWindow`
+    guard from `[lo, hi)` to `[m+1, hi)` given only the separator's position facts (and the
+    non-emptiness `m + 1 < hi`, deferred to the caller — "no trailing separator" is the head-shape
+    grammar's burden, not the guard's).
+
+    It is the guard-level lift of `advanceTail_invariant`, which already delivers the balance half
+    (prefix-balanced, tail-balanced, and the depth re-basing `balance lo p = balance (m+1) p`); this
+    lemma adds the two remaining guard fields: the tail's `dyck` (each tail prefix re-based to the outer
+    origin, then `≥ 0` by the outer `dyck`) and the tail's `WellTyped` (the balanced-subrange
+    transporter `WellTyped_subrange` carries it down from `[lo, hi)`).  The frame bounds and
+    non-emptiness are arithmetic.  Like its balance half and `firstEntryBoundary`, it names no
+    deliverable type, so it serves BOTH axes' recursions unchanged ([[ref-structural-moves-complete-recursion]]:
+    the ADVANCE positional move, here lifted to the guard the combinator descends along).
+
+    Verified-but-unconsumed until the per-window step instantiates the combinator (R225): references no
+    sorry site, frontier sorry count unchanged at 4. -/
+theorem flowBodyWindow_advance (tokens : Array (Positioned YamlToken)) (lo m hi : Nat)
+    (h_win : FlowBodyWindow tokens lo hi)
+    (h_lo_m : lo ≤ m) (h_m1_hi : m + 1 < hi)
+    (h_m_bal : flowBracketBalance tokens lo m = 0)
+    (h_sep : tokens[m]!.val = .flowEntry) :
+    FlowBodyWindow tokens (m + 1) hi := by
+  obtain ⟨h_lo2, h_lo_hi, h_hi_sz2, h_hi_sz, h_bal, h_dyck, h_wt⟩ := h_win
+  have h_m_hi : m < hi := by omega
+  obtain ⟨h_prefix, h_tail, h_rebase⟩ :=
+    advanceTail_invariant tokens lo m hi h_lo_m h_m_hi (Nat.le_of_lt h_hi_sz) h_m_bal h_sep h_bal
+  -- Dyck on the tail `[m+1, hi)`: re-base each tail prefix to the outer origin `lo`, then `≥ 0`.
+  have h_dyck' : ∀ i, m + 1 ≤ i → i ≤ hi → flowBracketBalance tokens (m + 1) i ≥ 0 := by
+    intro i hi1 hi2
+    rw [← h_rebase i hi1 hi2]
+    exact h_dyck i (by omega) hi2
+  refine ⟨by omega, h_m1_hi, h_hi_sz2, h_hi_sz, h_tail, h_dyck', ?_⟩
+  -- WellTyped on the tail via the balanced-subrange transporter (the subrange `[m+1, hi) ⊆ [lo, hi)`).
+  exact WellTyped_subrange tokens lo (m + 1) hi hi (by omega) (by omega) (Nat.le_refl hi)
+    (Nat.le_of_lt h_hi_sz) h_wt h_tail h_dyck'
+
 /-- **Scalar-leaf entry window** (Phase J — the analytical entry-boundary location's *shape side*,
     seq, base case).  Once `firstEntryBoundary` (the input side) has pinned the split point `m`, the
     shape side classifies the first item `[lo, m)` into a `RecSeqEntry` — and `RecSeqEntry` has four
