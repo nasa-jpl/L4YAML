@@ -4780,6 +4780,82 @@ theorem recseqentry_mapbracket_located (tokens : Array (Positioned YamlToken)) (
   exact recseqentry_classify tokens lo hi h_lo_hi h_hi_sz h_total
     (Or.inr (Or.inr (Or.inl ⟨j, h_open, h_lo_j, h_j_hi, h_close, h_inner, h_pos, h_wb, h_succ⟩)))
 
+/-- **Head-shape dispatch — the per-window first-`RecSeqEntry` producer** (Phase J — sub-brick (i-c),
+    the case-split assembly that routes the body window's head into the unified located first entry).
+    Given a body window `[lo, hi)` carrying both shared guards (`FlowBodyWindow` + the deep content
+    guard `FlowBodyContentDeep` + its entry-level projection `FlowBodyContent`) and the
+    `windowWidth_strongRecOn` IH, this reads the head shape off `FlowBodyContent.headContentStart` and
+    produces the located first entry — the same `∃ m, … ∧ RecSeqEntry ((take m).drop lo)` conclusion the
+    four `recseqentry_*` located/classify forms deliver, now with the head shape DISPATCHED rather than
+    assumed.  It is the inverse of `recseqentry_classify`: where classify CONSUMES a four-way `h_head`
+    disjunction, this PRODUCES the appropriate disjunct from the guards and routes it.
+
+    The dispatch reads the head as one of `isFlowContentStart`'s THREE shapes — scalar / `[` / `{` — not
+    four: the empty-bracket leaf (`[ ]`) that `recseqentry_classify`'s second disjunct anticipates is
+    *unreachable under the deep guard*.  `FlowBodyContentDeep.openerContentStart` asserts the token after
+    any depth-`0` opener is content-start, so a `[`-headed entry never has `]` at `lo+1`; the empty case
+    collapses into the nested-`[ … ]` branch, where the seq oracle discharges it vacuously (its
+    interior-non-emptiness step derives the contradiction internally).  So the deep guard COLLAPSES the
+    four-way head dispatch to three — the empty branch is not handled, it is excluded.
+
+    * **scalar** — build `recseqentry_classify`'s scalar disjunct directly: the head is a scalar (delta
+      `0`, so `balance lo (lo+1) = 0`) and its successor `h_succ` comes from `FlowBodyContent.bodySucc`
+      at `lo` (a balanced non-`.flowEntry` prefix ends the entry).
+    * **`[ … ]`** — route to `recseqentry_seqbracket_located`, feeding it the recursive oracle
+      `recseqentry_seqbracket_oracle` (which draws its interior `RecSeqBody` from the IH).
+    * **`{ … }`** — route to `recseqentry_mapbracket_located`, feeding it the near-leaf oracle
+      `recseqentry_mapbracket_oracle` (interior `WellBracketed`, no IH).
+
+    This is the genuine remaining grammar glue the 141st-revision map flagged, now that both bracket
+    oracles and all four located/dispatch forms exist.  It still consumes `FlowBodyContent` as a
+    hypothesis (its `bodySucc` is the one field the threaded deep guard does not project — sub-brick
+    (i') establishes its provenance).  Verified-but-unconsumed (R225): references no sorry site, frontier
+    sorry count unchanged at 4; axiom-clean `[propext, Classical.choice, Quot.sound]` (via the routed
+    located forms' close-locators / oracle balance machinery). -/
+theorem recseqentry_window_dispatch (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (h_window : FlowBodyWindow tokens lo hi)
+    (h_deep : FlowBodyContentDeep tokens lo hi)
+    (h_content : FlowBodyContent tokens lo hi)
+    (h_ih : ∀ lo' hi', hi' - lo' < hi - lo →
+        FlowBodyWindow tokens lo' hi' → FlowBodyContentDeep tokens lo' hi' →
+        RecSeqBody ((tokens.toList.take hi').drop lo')) :
+    ∃ m, lo < m ∧ m ≤ hi ∧
+      flowBracketBalance tokens lo m = 0 ∧
+      (m = hi ∨ tokens[m]!.val = .flowEntry) ∧
+      (∀ k, lo < k → k < m →
+        ¬ (flowBracketBalance tokens lo k = 0 ∧ (k = hi ∨ tokens[k]!.val = .flowEntry))) ∧
+      RecSeqEntry ((tokens.toList.take m).drop lo) := by
+  have h_lo_hi : lo < hi := h_window.lo_lt_hi
+  have h_total : flowBracketBalance tokens lo hi = 0 := h_window.balanced
+  have h_dyck := h_window.dyck
+  have h_wt := h_window.wellTyped
+  have h_hi_sz : hi ≤ tokens.size := Nat.le_of_lt h_window.hi_lt
+  have h_lo_sz : lo < tokens.size := by omega
+  have h_head_cs : isFlowContentStart tokens[lo]!.val := h_content.headContentStart
+  unfold isFlowContentStart at h_head_cs
+  rcases h_head_cs with ⟨c, s, hcs⟩ | h_open | h_open
+  · -- scalar leaf: delta `0`, successor from `bodySucc`, fed to `recseqentry_classify`'s first disjunct.
+    have h_lo_len : lo < tokens.toList.length := by rw [Array.length_toList]; exact h_lo_sz
+    have h_val : (tokens.toList[lo]'h_lo_len).val = .scalar c s := by
+      have hb : tokens[lo]! = tokens.toList[lo]'h_lo_len := by
+        rw [getElem!_pos tokens lo h_lo_sz, Array.getElem_toList]
+      rw [← hb]; exact hcs
+    have h_bal1 : flowBracketBalance tokens lo (lo + 1) = 0 := by
+      rw [flowBracketBalance_single tokens lo h_lo_len, h_val, flowBracketDelta_scalar]
+    have h_ne_fe : tokens[lo]!.val ≠ .flowEntry := by rw [hcs]; intro h; cases h
+    have h_succ : lo + 1 = hi ∨ tokens[lo + 1]!.val = .flowEntry := by
+      rcases h_content.bodySucc lo (Nat.le_refl lo) h_lo_hi h_bal1 h_ne_fe with h | ⟨_, h⟩
+      · exact Or.inl h
+      · exact Or.inr h
+    exact recseqentry_classify tokens lo hi h_lo_hi h_hi_sz h_total
+      (Or.inl ⟨⟨c, s, hcs⟩, h_succ⟩)
+  · -- nested sequence `[ … ]` (empty `[]` excluded by the deep guard, handled inside the seq oracle).
+    exact recseqentry_seqbracket_located tokens lo hi h_lo_hi h_hi_sz h_open h_total h_dyck h_wt
+      (recseqentry_seqbracket_oracle tokens lo hi h_window h_deep h_content h_open h_ih)
+  · -- nested mapping `{ … }`: the near-leaf oracle, no IH.
+    exact recseqentry_mapbracket_located tokens lo hi h_lo_hi h_hi_sz h_open h_total h_dyck h_wt
+      (recseqentry_mapbracket_oracle tokens lo hi h_window h_content h_open)
+
 /-- **Head-derived map-pair classify** (Phase J — the map locate DRIVER's pair classify with its two
     `RecSeqEntry` sub-blocks DERIVED from per-sub-window oracles rather than assumed whole).  The map
     mirror of `recseqentry_seqbracket_located` (R283), and the mirror is *asymmetric* in a way that
