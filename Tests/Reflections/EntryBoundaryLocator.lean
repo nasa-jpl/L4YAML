@@ -846,4 +846,117 @@ theorem leastness_vacuous_at_one (l : List Tok) :
     ∀ k, 0 < k → k < 1 → ¬ (bal l k = 0 ∧ (k = l.length ∨ isFE (tokAt l k) = true)) := by
   intro k hk1 hk2; omega
 
+/-! ### The bracket branches' shared resolution — `seqEmpty`'s arithmetic with the close generalized to a variable, carried by the positivity invariant the typed wrapper drops (toy of `firstEntryBoundary_bracket_resolve`, Reflection 274)
+
+The `seqEmpty` branch above pinned `m = 2` by a two-sided squeeze: `m ≤ 2` (leastness against the
+marker `2`) and `m ≠ 1` (the marker clause kills the interior opener, `bal l 1 = 1 ≠ 0`).  A
+*non-empty* bracket `[a…]` closes at a *variable* `j`, not the literal `1`, so its interior is a whole
+INTERVAL `(0, j]` of positions to step over, not one.  The fact that does this is the **strict-positivity
+invariant** `∀ i, 0 < i → i ≤ j → bal l i ≥ 1` (the running depth never returns to `0` strictly inside
+the bracket) — the general form of `seqEmpty`'s single hard-coded `bal l 1 = 1`.
+
+This invariant is exactly what the *generic* matching-close locator produces and what the *typed*
+seq/map wrappers **drop** (they keep the close position + its token + the inner balance).  So the
+resolution must reach past the convenient typed wrapper to the generic one: the typed wrapper's kept
+token plays NO role in pinning `m`, while its dropped positivity is the whole engine.  The same
+"the convenient wrapper is lossy exactly where the next consumer needs the original" principle as
+`ref-array-wrapper-window-generalization` (R230, a wrapper that fixes a *window* too narrowly), here
+in its dual form: a wrapper that drops a *conjunct*.
+
+Like `firstEntryBoundary`, the resolution names no collection-specific deliverable type — it yields the
+bare identity `m = j+1` over the bracket *balance*, not the opener token — so it is written ONCE for
+both the seq and map bracket branches (R264); the seq/map split re-enters only at the window lift
+layered on top (`entry_map_window` vs the seq BUILD move). -/
+
+/-- **Bracket head-dispatch resolution** (toy of `firstEntryBoundary_bracket_resolve`).  Given the
+    locator's outputs (the marker `m` and its minimality) plus the *generic* matching-close locator's
+    two interior facts — `h_bal_j1` (the balance returns to `0` just past the close `j`) and
+    `h_j_pos` (the strict-positivity invariant over `(0, j]`) — and the trailing-separator substrate
+    `h_succ`, derive `m = j + 1`.  Produces ONLY the arithmetic identity (no `Entry`): the window lift
+    is layered on top, and the same spine serves both bracket branches.  The squeeze: leastness against
+    the marker `j+1` bounds `m` above; positivity (no interior `0 < m ≤ j` can have balance `0`) bounds
+    it below. -/
+theorem bracket_resolve_dispatch (l : List Tok) (m j : Nat)
+    (h_zero_m : 0 < m) (_h_m_hi : m ≤ l.length)
+    (h_m_marker : bal l m = 0 ∧ (m = l.length ∨ isFE (tokAt l m) = true))
+    (h_m_least : ∀ k, 0 < k → k < m →
+      ¬ (bal l k = 0 ∧ (k = l.length ∨ isFE (tokAt l k) = true)))
+    (_h_zero_j : 0 < j)
+    (h_bal_j1 : bal l (j + 1) = 0)
+    (h_j_pos : ∀ i, 0 < i → i ≤ j → bal l i ≥ 1)
+    (h_succ : j + 1 = l.length ∨ isFE (tokAt l (j + 1)) = true) :
+    m = j + 1 := by
+  -- `j+1` is a genuine boundary marker; minimality bounds `m` above (the LEAST clause).
+  have h_marker_j1 : bal l (j + 1) = 0 ∧ (j + 1 = l.length ∨ isFE (tokAt l (j + 1)) = true) :=
+    ⟨h_bal_j1, h_succ⟩
+  have h_m_le : m ≤ j + 1 := by
+    rcases Nat.lt_or_ge (j + 1) m with hlt | hge
+    · exact absurd h_marker_j1 (h_m_least (j + 1) (by omega) hlt)
+    · exact hge
+  -- positivity forbids a depth-`0` marker at any `0 < m ≤ j`, bounding `m` below (the MARKER clause).
+  have h_m_ge : j + 1 ≤ m := by
+    rcases Nat.lt_or_ge j m with hjm | hmj
+    · omega
+    · have hpos := h_j_pos m h_zero_m hmj
+      rw [h_m_marker.1] at hpos
+      omega
+  omega
+
+/-! #### Positive witness — a NON-empty bracket: `j = 2`, positivity stepped over the interval `{1, 2}` -/
+
+-- In `l1 = [op, sc, cl, fe, sc]` the first item is the non-empty bracket `[a] = [op, sc, cl]`, closing
+-- at `j = 2`; the separator marker is at `m = 3 = j + 1`.  The faithful composition: `firstEntryBoundary`
+-- produces the *variable* marker `m`, and the resolution *proves* `m = 2 + 1`, consuming the positivity
+-- invariant over the whole interior interval `{1, 2}` (where `seqEmpty` only ever stepped over one).
+theorem dispatch_bracket_l1 : ∃ m, m = 2 + 1 := by
+  obtain ⟨m, hm_pos, hm_hi, hm_bal, hm_cond, hm_least⟩ := firstEntryBoundary l1 (by decide) (by decide)
+  refine ⟨m, bracket_resolve_dispatch l1 m 2 hm_pos hm_hi ⟨hm_bal, hm_cond⟩ hm_least
+    (by decide) (by decide) ?_ (by decide)⟩
+  -- positivity over `(0, 2]` = `{1, 2}`: both interior positions have depth `≥ 1`.
+  intro i h1 h2
+  rcases (show i = 1 ∨ i = 2 by omega) with rfl | rfl
+  · decide
+  · decide
+
+-- The located close really is at `j = 2` (the `cl`), the marker at `m = 3` (the `fe`):
+#guard bal l1 3 == 0
+#guard isFE (tokAt l1 3) == true
+#guard tokAt l1 2 == Tok.cl
+-- positivity over the interior interval `{1, 2}` — both depths `≥ 1` (the bracket stays open):
+#guard bal l1 1 == 1
+#guard bal l1 2 == 1
+
+/-! #### Positive witness — the resolution SUBSUMES the empty-bracket leaf at `j = 1` -/
+
+/-- At `j = 1` (the empty bracket `[ ]`, close one step in) positivity over `(0, 1]` is the single fact
+    `bal l3 1 ≥ 1` — exactly what `entry_seqempty_dispatch` hard-coded — and the resolution yields
+    `m = 1 + 1 = 2`.  So the same spine that resolves the non-empty bracket above subsumes the
+    `seqEmpty` leaf: the leaf is the resolution at the literal close `j = 1`. -/
+theorem bracket_resolve_subsumes_seqempty_l3 : ∃ m, m = 1 + 1 := by
+  obtain ⟨m, hm_pos, hm_hi, hm_bal, hm_cond, hm_least⟩ := firstEntryBoundary l3 (by decide) (by decide)
+  refine ⟨m, bracket_resolve_dispatch l3 m 1 hm_pos hm_hi ⟨hm_bal, hm_cond⟩ hm_least
+    (by decide) (by decide) ?_ (by decide)⟩
+  intro i h1 h2
+  rcases (show i = 1 by omega) with rfl
+  decide
+
+/-! #### Crux witnesses — positivity is the engine; the typed wrapper keeps the unused token and drops it -/
+
+/-- **The crux of R274.**  The strict-positivity invariant is what excludes an interior position from
+    being a marker: at position `2` of `l1` (the bracket's close, still at depth `1` *before* it pops)
+    the balance is `1`, so `bal l1 2 ≥ 1`, and any position with balance `≥ 1` can never satisfy the
+    marker predicate's `bal = 0` conjunct.  This is the fact the *typed* matching-close wrapper drops
+    and the resolution must recover from the *generic* locator. -/
+theorem interior_balance_pos_excludes_marker :
+    bal l1 2 ≥ 1 ∧ ¬ (bal l1 2 = 0 ∧ (2 = l1.length ∨ isFE (tokAt l1 2) = true)) := by decide
+
+/-- What the *typed* wrapper KEEPS (the close token at `j`) is exactly what the resolution does NOT
+    use; what it DROPS (positivity over `(0, j]`) is exactly what the resolution DOES use.  Both are
+    exhibited for `l1`'s bracket (close `cl` at `j = 2`): the kept token `tokAt l1 2 = .cl` plays no
+    role in pinning `m`, while the dropped positivity `bal l1 1 ≥ 1 ∧ bal l1 2 ≥ 1` is what steps the
+    split past the interior.  The API-granularity lesson: reach past the convenient typed wrapper to the
+    generic locator for the loss-bearing fact. -/
+theorem typed_keeps_token_drops_positivity :
+    tokAt l1 2 = .cl ∧ (bal l1 1 ≥ 1 ∧ bal l1 2 ≥ 1) := by decide
+
 end Tests.Reflections.EntryBoundaryLocator
