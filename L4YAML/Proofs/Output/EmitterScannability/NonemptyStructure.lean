@@ -3443,6 +3443,96 @@ theorem flowBodyWindow_descend (tokens : Array (Positioned YamlToken)) (lo k hi 
   exact WellTyped_subrange tokens lo (k + 1) j hi (by omega) (Nat.le_of_lt h_ne)
     (Nat.le_of_lt hjhi) (Nat.le_of_lt h_hi_sz) h_wt hinner h_dyck'
 
+/-- **The flow body-window CONTENT guard** (Phase J — the content-half companion of `FlowBodyWindow`,
+    the substrate the head-shape grammar dispatches on).  `FlowBodyWindow` carries only the *bracket*
+    facts (balance / dyck / WellTyped), and those are provably INSUFFICIENT to read the head shape: a
+    `.flowEntry`- or `.placeholder`-headed window is still balanced + dyck + WellTyped, so "the head is
+    a content-start token" is NOT derivable from `FlowBodyWindow` alone (the dyck floor only excludes a
+    leading CLOSER, not a leading separator).  The missing content is exactly the three structural facts
+    the outer span already supplies to `seqBodyProps_assemble` (`h_content_start` / `h_body_succ` /
+    `h_fe_pattern`), here named as a window-parametric guard so the body recursion can carry them down
+    each edge:
+
+    * `headContentStart` — the window's HEAD `tokens[lo]` is a content-start token (scalar / `[` / `{`);
+      this is what the head-shape bridge case-splits on to pick `recseqentry_classify`'s `h_head`
+      disjunct.
+    * `bodySucc` — a balanced-prefix end that is not a `.flowEntry` is an entry END (the body close, or a
+      `.flowEntry` separator follows); the entry-extent successor.
+    * `feContentStart` — every depth-`0` `.flowEntry` separator is followed by a content-start head (no
+      empty entries); this is what re-establishes `headContentStart` on the ADVANCE tail.
+
+    Like `FlowBodyWindow` it names **no collection-specific deliverable type** — only the shared
+    `isFlowContentStart` / `flowBracketBalance` vocabulary — so it is the SHARED content guard for both
+    axes (each flow body, seq or map, is content-headed segments separated by depth-`0` separators).  It
+    is an *additive parallel type* ([[ref-additive-parallel-type-over-shared-edit]]): a NEW structure
+    beside `FlowBodyWindow`, never an edit to it, so the two landed edge lemmas
+    (`flowBodyWindow_advance` / `flowBodyWindow_descend`) are untouched. -/
+structure FlowBodyContent (tokens : Array (Positioned YamlToken)) (lo hi : Nat) : Prop where
+  headContentStart : isFlowContentStart tokens[lo]!.val
+  bodySucc : ∀ k, lo ≤ k → k < hi →
+    flowBracketBalance tokens lo (k + 1) = 0 →
+    tokens[k]!.val ≠ .flowEntry →
+    k + 1 = hi ∨ ∃ (_ : k + 1 < hi), tokens[k + 1]!.val = .flowEntry
+  feContentStart : ∀ k, lo ≤ k → k < hi →
+    tokens[k]!.val = .flowEntry →
+    flowBracketBalance tokens lo k = 0 →
+    k + 1 ≤ hi ∧ isFlowContentStart tokens[k + 1]!.val
+
+/-- **ADVANCE content-preservation** (Phase J — the content guard's counterpart of
+    `flowBodyWindow_advance`).  After the body recursion consumes the first entry at a depth-`0`
+    `.flowEntry` separator `m`, the tail `[m+1, hi)` must STILL satisfy the content guard for the head
+    shape to be readable there.  This lemma transports the whole `FlowBodyContent` guard from `[lo, hi)`
+    to `[m+1, hi)`, and — unlike the DESCEND content edge, which sits a nesting level down and so cannot
+    recover its interior heads from the outer ones (the genuinely recursive next brick) — the ADVANCE
+    content edge is pure re-basing, exactly parallel to `flowBodyWindow_advance`'s `dyck` field:
+
+    * `headContentStart` for the tail is `feContentStart` at the separator `m` (a depth-`0` `.flowEntry`
+      is followed by a content-start head) — the field whose whole purpose is to re-seat the head one
+      entry along.
+    * `bodySucc` / `feContentStart` for the tail are the OUTER fields restricted to `[m+1, hi)`, their
+      `flowBracketBalance (m+1) ·` premises re-based to the outer origin `lo` via the separator's
+      delta-`0` (`balance lo (m+1) = 0`, so `balance lo p = balance (m+1) p`).
+
+    Names no deliverable type, so it serves both axes' recursions unchanged. -/
+theorem flowBodyContent_advance (tokens : Array (Positioned YamlToken)) (lo m hi : Nat)
+    (h_content : FlowBodyContent tokens lo hi)
+    (h_lo_m : lo ≤ m) (h_m1_hi : m + 1 < hi) (h_hi_sz : hi ≤ tokens.size)
+    (h_m_bal : flowBracketBalance tokens lo m = 0)
+    (h_sep : tokens[m]!.val = .flowEntry) :
+    FlowBodyContent tokens (m + 1) hi := by
+  obtain ⟨h_head, h_succ, h_fe⟩ := h_content
+  have h_m_hi : m < hi := by omega
+  have h_m_sz : m < tokens.size := by omega
+  have h_m_len : m < tokens.toList.length := by rw [Array.length_toList]; exact h_m_sz
+  -- The separator has delta `0`, so the prefix `balance lo (m+1)` is still `0`.
+  have hmval : tokens[m]! = tokens.toList[m]'h_m_len := by
+    rw [getElem!_pos tokens m h_m_sz, Array.getElem_toList]
+  have h_single : flowBracketBalance tokens m (m + 1) = flowBracketDelta tokens[m]!.val := by
+    rw [flowBracketBalance_single tokens m h_m_len, ← hmval]
+  have h_m1_bal : flowBracketBalance tokens lo (m + 1) = 0 := by
+    have hc := flowBracketBalance_compose tokens lo m (m + 1) h_lo_m (Nat.le_succ m)
+    have hd : flowBracketDelta tokens[m]!.val = 0 := by rw [h_sep]; rfl
+    rw [h_m_bal, h_single, hd] at hc; omega
+  -- Re-basing: for any `p ≥ m+1`, `balance lo p = balance (m+1) p` (since `balance lo (m+1) = 0`).
+  have h_rebase : ∀ p, m + 1 ≤ p →
+      flowBracketBalance tokens lo p = flowBracketBalance tokens (m + 1) p := by
+    intro p hp
+    have hc := flowBracketBalance_compose tokens lo (m + 1) p (by omega) hp
+    rw [h_m1_bal] at hc; omega
+  refine ⟨?_, ?_, ?_⟩
+  · -- head content-start: the separator `m` is followed by a content-start (no empty entry).
+    exact (h_fe m h_lo_m h_m_hi h_sep h_m_bal).2
+  · -- bodySucc on the tail: re-base `balance (m+1) (k+1)` to the outer origin, then apply `h_succ`.
+    intro k hk1 hk2 hbal hnfe
+    have hbal' : flowBracketBalance tokens lo (k + 1) = 0 := by
+      rw [h_rebase (k + 1) (by omega)]; exact hbal
+    exact h_succ k (by omega) hk2 hbal' hnfe
+  · -- feContentStart on the tail: re-base `balance (m+1) k`, then apply `h_fe`.
+    intro k hk1 hk2 hfek hbal
+    have hbal' : flowBracketBalance tokens lo k = 0 := by
+      rw [h_rebase k (by omega)]; exact hbal
+    exact h_fe k (by omega) hk2 hfek hbal'
+
 /-- **Scalar-leaf entry window** (Phase J — the analytical entry-boundary location's *shape side*,
     seq, base case).  Once `firstEntryBoundary` (the input side) has pinned the split point `m`, the
     shape side classifies the first item `[lo, m)` into a `RecSeqEntry` — and `RecSeqEntry` has four
