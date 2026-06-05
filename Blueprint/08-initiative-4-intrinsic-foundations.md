@@ -15552,7 +15552,18 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 `afc2164e`, Reflection 284): the two key/value sub-blocks move across the interface into guarded oracles,
                 the symmetric move to the seq fold — though the map fold derives strictly less, since the `.value`
                 separator `kv` is balance-invisible (R282) and so its `kv`/`e` skeleton stays a supplied hypothesis rather
-                than a run locator. What remains on Workstream A's critical path is now a SINGLE brick: (i) the
+                than a run locator. **Before building that driver, its target interface was repaired** (R285, commit
+                `ce6671fc`): the driver's deliverable hypotheses `h_seq_rec`/`h_map_rec` in
+                `flowSubrangesOk_of_window_producers` were typed `lo ≤ hi → Rec{Seq,Map}Body ((take hi).drop lo)`, but at
+                the reachable empty window `lo = hi` (a nested `[]`/`{}`) that conclusion is `RecSeqBody []` — and the
+                `Rec…Body` inductives have no empty constructor, so the hypotheses were UNSATISFIABLE: the driver could
+                never have supplied them, and the green build of the unconsumed producer chain proved nothing about it
+                (the producer-guarded-quantifier trap, [[ref-producer-guarded-quantifier]], found by probing the deferred
+                universal before producing it, [[ref-probe-deferred-universal-before-producing]]). The fix peels `lo = hi`
+                to the vacuous body leaf (`seqBodyProps_empty`/`mapBodyProps_empty`) at `flowSubrangesOk_of_locators` and
+                strict-ifies the recursion hypotheses to `lo < hi` through the locator wrappers and producer bundle, so
+                `Rec…Body` is only ever asked for a strictly non-empty window — now inhabitable. What remains on
+                Workstream A's critical path is now a SINGLE brick against a now-satisfiable interface: (i) the
                 `Nat.strongRecOn` width-metric wrapper that supplies the guarded bracket `RecSeqBody` oracle, the tail
                 oracle, the pair's two sub-block oracles, and the pair's no-interior-boundary / `kv`-`e` skeleton — closing
                 the recursion on both axes. Every per-window classify input is now a head-derived consequence or a guarded
@@ -15582,6 +15593,36 @@ its round-trip guards (`Tests.Guards.Schema.Dump`,
                 Cross-refs: Reflection 271 (structural-complete ≠ runnable), and the Verification manual's
                 §Round-Trip / §Zero-Axiom sorry-budget note (reconciled 2026-06-04).
 
+                **Total .body scope re-estimate (ONE-HUNDRED-THIRTY-THIRD revision —
+                after **Thread A step 3 sub-step 3's brick cont'd (locate recursion DRIVER — repairing the producer
+                interface so the driver's recursion hypotheses are SATISFIABLE) — landed** (commit `ce6671fc`,
+                Reflection 285). **The driver's deliverable type was unsatisfiable at the empty window, and is now peeled.**
+                `flowSubrangesOk_of_window_producers`'s `h_seq_rec`/`h_map_rec` were typed `lo ≤ hi → Rec{Seq,Map}Body
+                ((take hi).drop lo)`. At the reachable empty window `lo = hi` (a nested `[]`/`{}`, which `universal_roundtrip`
+                must cover) the conclusion is `RecSeqBody []` — `RecSeqBody`/`RecMapBody` have NO empty constructor — so the
+                hypothesis was undischargeable yet type-checked: the would-be `Nat.strongRecOn` driver could never have
+                supplied it. This is the producer-guarded-quantifier trap ([[ref-producer-guarded-quantifier]]) at the
+                *universal producer's empty-window boundary*, found by probing the deferred universal before producing it
+                ([[ref-probe-deferred-universal-before-producing]]) — the discipline of NOT building a driver against an
+                interface whose satisfiability you have not checked. The fix, entirely within the unconsumed producer chain
+                (no downstream consumer touched, **sorries held at 4**): `flowSubrangesOk_of_locators` peels `lo = hi` to the
+                vacuous body leaf `seqBodyProps_empty`/`mapBodyProps_empty` (the empty window's `SeqBodyProps`/`MapBodyProps`
+                is trivially the `lo = hi` instance, needing no `Rec…Body`), so the locator hypotheses are required only at
+                `lo < hi`; `seqLocator_of_window_recseqbody`/`mapLocator_of_window_recmapbody` strict-ify their conclusion and
+                recursion hypothesis to `lo < hi` (the six map pair-interior oracles keep `lo ≤ hi`, being vacuous at the
+                empty window — only the `Rec…Body` conclusion is the trap); `flowSubrangesOk_of_window_producers` strict-ifies
+                `h_seq_rec`/`h_map_rec` to `lo < hi`, so the driver's deliverable is now inhabitable. **The lesson (R285): an
+                empty-window boundary turns a universal producer's recursion hypothesis into an unsatisfiable obligation
+                unless the empty case is PEELED to a constructor-free leaf first; the strongRecOn driver had to wait on this
+                prerequisite, not because the recursion was hard, but because its target type was a lie.** Axiom-clean
+                **`[propext, Classical.choice, Quot.sound]`**. Build green **537 jobs**. **Immediate next brick:** now that the
+                interface is satisfiable, the `Nat.strongRecOn` width-metric DRIVER itself — the single remaining brick on
+                Workstream A's critical path — recursing on the window width to discharge the guarded bracket
+                `RecSeqBody`/`WellBracketed` oracles, the tail oracle, the pair's two sub-block oracles, and the pair's
+                `kv`/`e` skeleton (all now `lo < hi`-keyed), feeding the per-window `Rec…Body` producers into
+                `flowSubrangesOk_of_window_producers` → the two `scanFiltered_emit{Seq,Map}_nonempty_structure` sorry sites →
+                the two base `emit_roundtrip_{sequence,mapping}_content_eq` sorries → `universal_roundtrip`. See
+                Reflection 285, on top of the
                 **Total .body scope re-estimate (ONE-HUNDRED-THIRTY-SECOND revision —
                 after **Thread A step 3 sub-step 3's brick cont'd (locate recursion DRIVER — folding the
                 map-pair's two `RecSeqEntry` sub-block oracles into the pair classify) — landed** (commit `afc2164e`,
@@ -27826,3 +27867,13 @@ R283 folded the seq close-locator so the bracket's split point `j` is DERIVED fr
 **Why the asymmetry is the right shape, not a defect.** One might read "the map fold derives less" as the map side being weaker. It is not — it is the *honest* amount derivable. The producer-guarded-quantifier pattern is what makes the difference invisible at the consumer: whether a sub-deliverable's split position is itself derived (seq) or supplied (map), the sub-deliverable is guarded *identically*, because the guard is forced by the sub-deliverable's witness-dependence on the position, not by how the position was obtained. This separates two things R283's framing had begun to entangle: "is the split position head-derivable" (seq yes, map no — a property of the *grammar's balance structure*) versus "does the residual need a producer-guarded universal" (yes on both — a property of the *residual's witness-dependence*). The R283 lesson was "the guard is forced by the separator, not the recursion"; R284 generalizes it one notch: the guard is forced by witness-dependence *per se*, and is wholly independent of whether the witness (the split position) is itself derived or assumed.
 
 **What it leaves.** With both classify unifiers (R281/R282) head-derived as far as the grammar allows — seq positions run, map positions supplied, all sub-deliverables guarded — Workstream A's critical path collapses to a SINGLE remaining brick: the `Nat.strongRecOn` width-metric DRIVER. Every per-window classify input is now either a head-derived consequence or a guarded oracle keyed on a located split; the wrapper is exactly what supplies those oracles (the bracket `RecSeqBody`/`WellBracketed`, the tail, the pair's two sub-blocks) AND the map skeleton, by recursion on the strictly-decreasing window width. Axiom-clean **`[propext, Classical.choice, Quot.sound]`** (via `recmapentry_classify`'s `recmappair_window` / `firstEntryBoundary` machinery). Verified-but-unconsumed (R225): references no sorry site, frontier sorry count unchanged at **4** (build green **537 jobs**; commit `afc2164e`). **Immediate next brick:** the `Nat.strongRecOn` width-metric driver itself — the loop-closing wrapper that discharges every guarded oracle and the map skeleton from the recursion, feeding the per-window `Rec…Body` producers into `flowSubrangesOk_of_window_producers` → the two `scanFiltered_emit{Seq,Map}_nonempty_structure` sorry sites → the two base `emit_roundtrip_{sequence,mapping}_content_eq` sorries → `universal_roundtrip`. See [[ref-producer-guarded-quantifier]] (the sub-deliverable half's guarded-universal shape, here shown independent of whether the position is derived), [[ref-fold-consumer-chain-to-producer-contract]] (the fold whose hypotheses are the recursion's per-window contract, here the two sub-block oracles + skeleton), and [[ref-entry-boundary-input-shape-split]] (POSITION = INPUT, SUB-DELIVERABLE = SHAPE — and the seq/map re-split surfacing as: INPUT mirrors only when balance-derivable, SHAPE always mirrors as a guarded oracle).
+
+### Reflection 285 (new, 2026-06-05): a universal producer's recursion hypothesis is unsatisfiable at the empty window unless the empty case is peeled to a constructor-free leaf first — the strongRecOn driver was blocked not by hard recursion but by a target type that was a lie
+
+R284 declared the `Nat.strongRecOn` width-metric driver the single remaining brick. Before writing a line of it I probed its target interface — and found the interface UNSATISFIABLE, so the driver as conceived could never have type-checked. R285 (commit `ce6671fc`) is the prerequisite repair: peel the empty window so the driver's deliverable becomes inhabitable. The brick is small; the lesson is about *when you discover a deferred type is wrong*.
+
+**The trap.** `flowSubrangesOk_of_window_producers` (R262, the locate's whole consumer chain folded into one boundary) took the driver's two deliverables as hypotheses `h_seq_rec`/`h_map_rec`, each typed `∀ lo hi, … → lo ≤ hi → … → Rec{Seq,Map}Body ((take hi).drop lo)`. The bound was `lo ≤ hi`. At the reachable empty window `lo = hi` — a nested empty `[]`/`{}`, with `[` at `lo-1`, `]` at `lo`, balance `0` — the conclusion is `RecSeqBody []`. And `RecSeqBody`/`RecMapBody` have NO empty constructor (the empty sequence is a *leaf entry* `RecSeqEntry.seqEmpty`, never a body). So `h_seq_rec` ranged over a case it could never satisfy: undischargeable, yet type-checking, because Lean checks that the consumer chain *uses* the hypothesis consistently, not that the hypothesis is *inhabitable*. The entire producer chain (`flowSubrangesOk_of_locators` → the two locator wrappers → the bundle) had been built and shipped green as verified-but-unconsumed — and its greenness proved exactly nothing about whether the driver could ever supply it. This is [[ref-producer-guarded-quantifier]] in its purest form, now at the *empty-window boundary of a universal producer interface*, and it was caught only by [[ref-probe-deferred-universal-before-producing]]: `#eval`/by-hand probing of whether a long-deferred `:= sorry` (here, `:= <driver>`) universal is even TRUE before committing to prove it. The discipline paid for itself — a session spent proving `RecSeqBody []` would have been a session spent proving a falsehood.
+
+**The fix is a peel, not a strengthening.** The empty window's `SeqBodyProps tokens lo lo` is *already* discharged by the vacuous body leaf `seqBodyProps_empty` (no `Rec…Body` needed — an empty body has no items to classify). So the repair routes `lo = hi` there and demands the locator (and the `Rec…Body` behind it) only at `lo < hi`: `flowSubrangesOk_of_locators` case-splits `Nat.eq_or_lt_of_le` and calls `seqBodyProps_empty`/`mapBodyProps_empty` on the `=` branch; the two locator wrappers and the producer bundle strict-ify their recursion hypothesis to `lo < hi`. The six map pair-interior oracles keep `lo ≤ hi` deliberately — they are *vacuous* at the empty window (`∀ k, lo ≤ k → k < hi` with `hi = lo` is empty), so they are already satisfiable there; only the `Rec…Body` conclusion was the trap. Entirely within the unconsumed chain: no downstream consumer touched, sorries held at **4**, axiom-clean **`[propext, Classical.choice, Quot.sound]`**, build green **537 jobs**.
+
+**The general lesson.** When a recursive producer is quantified over windows and the inductive deliverable has no constructor for the degenerate (empty) window, the `≤`-typed hypothesis is a lie — it promises a value at a width where the type is uninhabited. Peel the degenerate case to a constructor-free leaf (here a vacuous-quantifier `Prop`) at the consumer boundary FIRST, narrowing the recursive hypothesis to the strictly-positive width, *then* build the recursion. The peel is what makes the recursion's metric (window width strictly decreasing toward, but never reaching, the empty leaf) line up with the deliverable's constructors (which exist only for non-empty). The driver wasn't hard; its stated type was wrong, and the wrongness was invisible to the build. See [[ref-producer-guarded-quantifier]] (the satisfiability-vs-typechecking gap, here at the empty-window boundary), [[ref-probe-deferred-universal-before-producing]] (probe the deferred universal's TRUTH before producing — the discipline that caught it), and [[ref-derisk-consumer-blindspot-vs-contract]] (name the degenerate case the consumer abstraction can't represent before the producer; the empty body is exactly that blind spot, and here it was vacuous ⇒ a free leaf).
