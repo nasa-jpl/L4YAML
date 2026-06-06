@@ -33,6 +33,8 @@ sub-interval is a pure subset restriction: the body is reused verbatim and only 
 namespace L4YAML.Proofs.EmitterScannability
 
 open L4YAML
+open L4YAML.Emit
+open L4YAML.Scanner
 open L4YAML.Proofs.ParserGrammable
 
 /-- The **seq-typed bracket-interior gate** for a sub-window `[a,b)` of `tokens`, read off the same
@@ -236,6 +238,41 @@ theorem seqEnclosingFacts_of_windowed_safebodyunit
     noTrailingSepFact tokens a b := by
   obtain ⟨h_bs, h_nts⟩ := seqSeparatorFacts_of_windowed_safebodyunit tokens a b h_b h
   exact ⟨h_bs, seqInteriorFeContentStart_of_windowed_safebodyunit tokens a b h_b h, h_nts⟩
+
+/-- **The ROOT instance of the enclosing-facts `provider`** — `(i'-b-locator)` base case, per
+    [[ref-universal-producer-root-seed-first]].  At the outermost seq `[2, size-2)` of a concrete
+    flow-sequence output `"[" ++ emitList items ++ "]"`, `seqRoot_safeBodyUnit` delivers the windowed
+    `SafeBodyUnit` *directly from emission*, with NO recursion through nested seq windows.  Feeding it
+    through `seqEnclosingFacts_of_windowed_safebodyunit` gives the three enclosing facts at
+    `loS = 2`, `hiS = size - 2`, so for any gated sub-window `[a,b)` whose enclosing seq IS the outer
+    one — characterised by the **top-level discriminator** `flowBracketBalance tokens 2 a = 0`
+    (the window starts at the outer seq's depth, not nested deeper) — the provider's existential is
+    satisfied by `⟨2, size-2, …⟩`.
+
+    This pins `provider` at the root: the bounds `2 ≤ a`, `b ≤ size-2` and the discriminator are
+    exactly `loS ≤ a`, `b ≤ hiS`, `flowBracketBalance tokens loS a = 0`, passed through; the three
+    enclosing facts come from the outer-seq `SafeBodyUnit`.  The `loS - 1 = 1` opener is the outer
+    `[` — no `recseqentry_seqbracket_oracle` descent is consulted (the descent supplies the SAME
+    existential at nested levels, the inductive step owed separately).  The discriminator
+    `flowBracketBalance tokens 2 a = 0` is what the locator's descent establishes for root-level
+    windows (the gate `SeqTypedInterior` alone admits deeper-nested windows too, so it cannot be
+    derived here — it is the root case's hypothesis). -/
+theorem seqEnclosingFacts_provider_root
+    (items : Array YamlValue) (tokens : Array (Positioned YamlToken))
+    (h_scan : Scanner.scanFiltered ("[" ++ emit.emitList items.toList ++ "]") = .ok tokens)
+    (h_ne : items.toList ≠ [])
+    (h_all : ∀ v ∈ items.toList, EmitScansInFlowRecEntry v) :
+    ∀ a b, 2 ≤ a → a ≤ b → b ≤ tokens.size - 2 → flowBracketBalance tokens 2 a = 0 →
+      ∃ loS hiS, loS ≤ a ∧ b ≤ hiS ∧ flowBracketBalance tokens loS a = 0 ∧
+        bodySuccFact tokens loS hiS ∧
+        (∀ k, loS ≤ k → k + 1 < hiS →
+          tokens[k]!.val = .flowEntry → flowBracketBalance tokens loS k = 0 →
+          isFlowContentStart tokens[k + 1]!.val) ∧
+        noTrailingSepFact tokens loS hiS := by
+  intro a b ha hab hb hbal
+  exact ⟨2, tokens.size - 2, ha, hb, hbal,
+    seqEnclosingFacts_of_windowed_safebodyunit tokens 2 (tokens.size - 2) (by omega)
+      (seqRoot_safeBodyUnit items tokens h_scan h_ne h_all)⟩
 
 /-- **The gate's stack-top conjunct is RECONSTRUCTIBLE in place** — the Q2 discharge for
     `(i'-b-descend-root)`.  `SeqTypedInterior`'s second conjunct
