@@ -146,6 +146,97 @@ theorem seqSeparatorFacts_of_windowed_safebodyunit
     exact absurd h_fe (SafeBodyUnit_array_last_not_sep_window
       ContentStartTok_ne_flowEntry tokens a b h_b h k h_lo hk1 _h_bal)
 
+/-- **A `Q`-headed `EntryUnit` is an `EntrySafe`** — the per-entry half of the `SafeBodyUnit → SafeBody`
+    coercion below.  `EntryUnit` strengthens `EntrySafe` everywhere EXCEPT the head: `EntryUnit`'s
+    `≥ 1` interior condition is stated for *proper nonempty* prefixes (`0 < i`), so it already gives
+    `EntrySafe`'s `.flowEntry`-at-balance-`≥ 1` obligation at every `i > 0`; only the `i = 0` head case
+    is open.  A `Q`-head with `hQ : Q v → v ≠ .flowEntry` closes it: the head cannot BE a `.flowEntry`,
+    so the `i = 0` obligation is vacuous.  (Without the head hypothesis a lone-`.flowEntry` IS an
+    `EntryUnit` but not an `EntrySafe`, so `hQ` is genuinely needed.) -/
+theorem EntryUnit_entrySafe {Q : YamlToken → Prop} (hQ : ∀ v, Q v → v ≠ .flowEntry)
+    {e : List (Positioned YamlToken)} (h_ne : e ≠ []) (h_unit : EntryUnit e)
+    (h_head : Q (e.head h_ne).val) : EntrySafe e := by
+  refine ⟨h_unit.1, fun i h_i h_fe => ?_⟩
+  rcases Nat.eq_zero_or_pos i with rfl | hipos
+  · -- i = 0: the head would be a `.flowEntry`, contradicting the `Q`-head via `hQ`.
+    rw [List.head_eq_getElem] at h_head
+    exact absurd h_fe (hQ _ h_head)
+  · -- i > 0: `EntryUnit`'s proper-prefix condition gives the `≥ 1` balance directly.
+    exact h_unit.2 i hipos h_i
+
+/-- **`SafeBodyUnit Q → SafeBody Q`** (given `hQ : ∀ v, Q v → v ≠ .flowEntry`).  Both inductives share
+    their shape (nonempty `Q`-headed entries separated by single `.flowEntry`s); they differ only in the
+    per-entry refinement (`EntryUnit` vs `EntrySafe`), and `EntryUnit_entrySafe` bridges that for each
+    `Q`-headed entry.  So a windowed `SafeBodyUnit ContentStartTok` body — the single substrate the
+    enclosing-facts provider keys on — also satisfies the WEAKER `SafeBody`, unlocking the existing
+    `SafeBody_array_flowEntry_window` (post-separator content-start) wrapper for the `feContentStart`
+    fact below WITHOUT a second producer deliverable.  (The producer's `RecSeqBody` projects to both via
+    `RecSeqBody.toSafeBody`/`.toSafeBodyUnit`; this coercion lets the consume side stay keyed on ONE
+    `SafeBodyUnit`, per `ref-fold-consumer-chain-to-producer-contract`.) -/
+theorem SafeBodyUnit_safeBody {Q : YamlToken → Prop} (hQ : ∀ v, Q v → v ≠ .flowEntry)
+    {body : List (Positioned YamlToken)} (h : SafeBodyUnit Q body) : SafeBody Q body := by
+  induction h with
+  | single e h_ne h_unit h_head =>
+      exact SafeBody.single e h_ne (EntryUnit_entrySafe hQ h_ne h_unit h_head) h_head
+  | cons e fe rest h_ne h_unit h_head h_fe h_rest ih =>
+      exact SafeBody.cons e fe rest h_ne (EntryUnit_entrySafe hQ h_ne h_unit h_head) h_head h_fe ih
+
+/-- **The interior `feContentStart` fact from a windowed `SafeBodyUnit`** — the ONE new sub-fact of the
+    enclosing bundle `(i'-b-encfacts)` (`bodySuccFact`/`noTrailingSepFact` were already done by
+    `seqSeparatorFacts_of_windowed_safebodyunit`).  At every INTERIOR depth-`0` separator `k` of the
+    window `[a,b)` (`a ≤ k`, `k+1 < b`, `tokens[k]! = .flowEntry`, `flowBracketBalance tokens a k = 0`),
+    the successor token is flow-content-start.  This is the comma→content alternation of a seq body: a
+    depth-`0` `.flowEntry` is a separator BETWEEN units, and the unit that follows starts with a
+    `ContentStartTok` head.
+
+    The proof coerces the `SafeBodyUnit` to a `SafeBody` (`SafeBodyUnit_safeBody`) and applies the
+    existing post-separator wrapper `SafeBody_array_flowEntry_window`, whose `Q`-successor conclusion is
+    `ContentStartTok (tokens[k+1]).val` — definitionally `isFlowContentStart (tokens[k+1]).val`.  The
+    only glue is the `getElem!`↔`getElem` panic-index bridge.  De-risked on `[[1, 2], 9]`: at the
+    enclosing seqs `[3,6)`/`[2,9)` the interior commas at `4`/`7` are followed by content at `5`/`8`. -/
+theorem seqInteriorFeContentStart_of_windowed_safebodyunit
+    (tokens : Array (Positioned YamlToken)) (a b : Nat) (h_b : b ≤ tokens.size)
+    (h : SafeBodyUnit ContentStartTok ((tokens.toList.take b).drop a)) :
+    ∀ k, a ≤ k → k + 1 < b →
+      tokens[k]!.val = .flowEntry → flowBracketBalance tokens a k = 0 →
+      isFlowContentStart tokens[k + 1]!.val := by
+  intro k h_lo h_klt h_fe h_bal
+  have hk_sz : k < tokens.size := by omega
+  rw [getElem!_pos tokens k hk_sz] at h_fe
+  obtain ⟨hk1, hQ⟩ := SafeBody_array_flowEntry_window tokens a b h_b
+    (SafeBodyUnit_safeBody ContentStartTok_ne_flowEntry h) k h_lo (by omega) h_fe h_bal
+  have hk1_sz : k + 1 < tokens.size := Nat.lt_of_lt_of_le hk1 h_b
+  rw [getElem!_pos tokens (k + 1) hk1_sz]
+  exact hQ
+
+/-- **The THREE-fact enclosing bundle from ONE windowed `SafeBodyUnit`** — the per-window deliverable
+    `(i'-b-encfacts)` that the `provider` of `seqInteriorSeparators_of_enclosing_provider` must supply
+    at each located enclosing seq `[loS,hiS)`.  A single windowed
+    `SafeBodyUnit ContentStartTok ((tokens.toList.take b).drop a)` — which the seq-body producer delivers
+    at every genuine seq body (`RecSeqBody.toSafeBodyUnit`, no recursion through the not-yet-built
+    output) — yields ALL THREE facts the two rebases consume:
+
+    * `bodySuccFact tokens a b` (`bodySuccFact_rebase`'s source) and
+    * `noTrailingSepFact tokens a b` (`noTrailingSepFact_rebase`'s no-trailing source) — both from
+      `seqSeparatorFacts_of_windowed_safebodyunit`;
+    * the interior depth-`0` `feContentStart` (`noTrailingSepFact_rebase`'s `h_enc_fe` source) — from
+      `seqInteriorFeContentStart_of_windowed_safebodyunit`.
+
+    So the provider's deliverable at a located enclosing seq is *exactly* a windowed `SafeBodyUnit`;
+    `(i'-b-encfacts)` is closed and the residual narrows to `(i'-b-locator)` — recover the enclosing
+    `.flowSequenceStart`/matching-close and its windowed `SafeBodyUnit` (the `btFold`-top → opener
+    converse of `enclosingMark_true_of_opener`, reusing `recseqentry_seqbracket_oracle`). -/
+theorem seqEnclosingFacts_of_windowed_safebodyunit
+    (tokens : Array (Positioned YamlToken)) (a b : Nat) (h_b : b ≤ tokens.size)
+    (h : SafeBodyUnit ContentStartTok ((tokens.toList.take b).drop a)) :
+    bodySuccFact tokens a b ∧
+    (∀ k, a ≤ k → k + 1 < b →
+      tokens[k]!.val = .flowEntry → flowBracketBalance tokens a k = 0 →
+      isFlowContentStart tokens[k + 1]!.val) ∧
+    noTrailingSepFact tokens a b := by
+  obtain ⟨h_bs, h_nts⟩ := seqSeparatorFacts_of_windowed_safebodyunit tokens a b h_b h
+  exact ⟨h_bs, seqInteriorFeContentStart_of_windowed_safebodyunit tokens a b h_b h, h_nts⟩
+
 /-- **The gate's stack-top conjunct is RECONSTRUCTIBLE in place** — the Q2 discharge for
     `(i'-b-descend-root)`.  `SeqTypedInterior`'s second conjunct
     (`(btFold (some []) (tokens.toList.take a)).bind (·.head?) = some true`) is a fact about the
