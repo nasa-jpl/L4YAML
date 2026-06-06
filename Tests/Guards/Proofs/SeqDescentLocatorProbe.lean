@@ -147,4 +147,27 @@ def deepToks : Array (Positioned YamlToken) :=
 #guard flowBracketBalance deepToks 2 7 == 0        -- balance loS a = 0 at the located loS (a=7)
 #guard enclosingMark deepToks 7 == some true       -- gate-top at the deepest located loS is seq
 
+-- ════════════════════════ (M) metric equality: stack length = flowBracketBalance 0 a ═══════════
+-- The de-risk for `(i'-b-locator-glue-gate-bridge)`: the `btFold` typed-stack LENGTH after the prefix
+-- `[0,a)` equals `flowBracketBalance tokens 0 a` AT EVERY position (both count flow brackets — `[`/`{`
+-- each push one stack element AND contribute `+1` via `flowBracketDelta`).  So a non-empty stack
+-- (`btFold`-top `= some _`, the gate's second conjunct) ⇒ length `≥ 1` ⇒ balance `≥ 1`, the locator's
+-- hypothesis — with NO per-step induction (it is `btFold_length` ∘ `flowBracketBalance_eq_pbalance`).
+def stackLen (T : Array (Positioned YamlToken)) (a : Nat) : Option Nat :=
+  (btFold (some []) (T.toList.take a)).map (·.length)
+
+-- `[[1, 2], 9]`: stack length tracks balance at every prefix end (peak 2 inside the nested seq):
+#guard stackLen probeToks 2 == some (flowBracketBalance probeToks 0 2).toNat   -- 1
+#guard stackLen probeToks 3 == some (flowBracketBalance probeToks 0 3).toNat   -- 2 (nested)
+#guard stackLen probeToks 7 == some (flowBracketBalance probeToks 0 7).toNat   -- 1 (after inner `]`)
+#guard stackLen probeToks 3 == some 2 && flowBracketBalance probeToks 0 3 == 2
+-- gated nested window a=3: balance 0 a ≥ 1 holds (the locator is invokable):
+#guard decide (flowBracketBalance probeToks 0 3 ≥ 1)
+
+-- `[[[1]], 2]`: at depth 3 the stack length is 3, matching the balance:
+#guard stackLen deepToks 4 == some (flowBracketBalance deepToks 0 4).toNat   -- 3
+#guard stackLen deepToks 6 == some (flowBracketBalance deepToks 0 6).toNat   -- 2
+#guard stackLen deepToks 7 == some (flowBracketBalance deepToks 0 7).toNat   -- 1
+#guard decide (flowBracketBalance deepToks 0 7 ≥ 1)
+
 end L4YAML.Proofs.EmitterScannability.SeqDescentLocatorProbe

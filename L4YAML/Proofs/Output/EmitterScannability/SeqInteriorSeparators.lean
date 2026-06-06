@@ -315,6 +315,19 @@ theorem seqEnclosingFacts_provider_root
   exact seqEnclosingFacts_provider_of_located tokens a b 2 (tokens.size - 2)
     ha hb (by omega) hbal (seqRoot_safeBodyUnit items tokens h_scan h_ne h_all)
 
+/-- **The gate makes the backward locator INVOKABLE** — `(i'-b-locator-glue-gate-bridge)`.  At any
+    gated window `[a,b)` the gate `SeqTypedInterior tokens a b` carries a `btFold`-top `= some true`
+    after the prefix `[0,a)` (its second conjunct: the enclosing bracket is a seq).  A non-empty typed
+    stack forces `flowBracketBalance tokens 0 a ≥ 1` (`flowBracketBalance_pos_of_btFold_head`) — exactly
+    the hypothesis of `flowBracketBalance_backward_open_locate`.  So the pure-balance backward
+    enclosing-opener locator can be invoked at every nested gated window, the FIRST glue brick of the
+    descent.  (Type-agnostic: the map mirror's `= some false` gate feeds the same core lemma verbatim.) -/
+theorem flowBracketBalance_pos_of_seqTypedInterior
+    (tokens : Array (Positioned YamlToken)) (a b : Nat)
+    (h : SeqTypedInterior tokens a b) :
+    flowBracketBalance tokens 0 a ≥ 1 :=
+  flowBracketBalance_pos_of_btFold_head tokens a true h.2
+
 /-- **The gate's stack-top conjunct is RECONSTRUCTIBLE in place** — the Q2 discharge for
     `(i'-b-descend-root)`.  `SeqTypedInterior`'s second conjunct
     (`(btFold (some []) (tokens.toList.take a)).bind (·.head?) = some true`) is a fact about the

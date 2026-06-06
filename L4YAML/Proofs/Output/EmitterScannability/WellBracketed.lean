@@ -1100,6 +1100,37 @@ theorem WellTyped_take_stack (l : List (Positioned YamlToken)) (m : Nat)
   refine ⟨s, hs, ?_⟩
   have := btFold_length _ _ _ hs; simpa using this
 
+/-- **Bridge: a non-empty typed stack at a prefix forces positive numeric balance** — the
+    gate→locator hypothesis bridge for `(i'-b-locator-glue-gate-bridge)`.  Whenever the typed-stack
+    head exists after the prefix `[0,a)` (`btFold`-top `= some hd`, for EITHER `hd = true` (seq) or
+    `hd = false` (map) — so this serves both axes verbatim), the numeric `flowBracketBalance tokens 0 a`
+    is `≥ 1`, exactly the hypothesis of `flowBracketBalance_backward_open_locate`.
+
+    No new metric: the typed stack length and the numeric balance are the SAME integer
+    (`btFold_length`: `s.length = pbalance (take a)`; `flowBracketBalance_eq_pbalance`:
+    `flowBracketBalance tokens 0 a = pbalance (take a)`).  Both `[` and `{` push one stack element AND
+    contribute `+1` via `flowBracketDelta`, so the count is uniform across seq/map — a non-empty stack
+    (`btFold`-top `= some _`) ⇒ length `≥ 1` ⇒ balance `≥ 1` directly, with no per-step induction. -/
+theorem flowBracketBalance_pos_of_btFold_head
+    (tokens : Array (Positioned YamlToken)) (a : Nat) (hd : Bool)
+    (h_mark : (btFold (some []) (tokens.toList.take a)).bind (·.head?) = some hd) :
+    flowBracketBalance tokens 0 a ≥ 1 := by
+  cases hbf : btFold (some []) (tokens.toList.take a) with
+  | none => rw [hbf] at h_mark; simp at h_mark
+  | some s =>
+    rw [hbf] at h_mark
+    have hs_ne : s ≠ [] := by
+      intro h; subst h; simp at h_mark
+    have hlen := btFold_length (tokens.toList.take a) [] s hbf
+    simp only [List.length_nil] at hlen
+    have hpb : flowBracketBalance tokens 0 a = pbalance (tokens.toList.take a) := by
+      rw [flowBracketBalance_eq_pbalance tokens 0 a (Nat.zero_le a)]; simp
+    have h1 : 1 ≤ s.length := by
+      cases s with
+      | nil => exact absurd rfl hs_ne
+      | cons _ _ => simp
+    rw [hpb]; omega
+
 /-- **Reading the close type (sequence).**  The only `btStep` that pops `[true]` to `[]` is a
     `.flowSequenceEnd` — once the bridge fixes the stack at the close to `[true]`, this pins
     the close token to a `]`. -/
