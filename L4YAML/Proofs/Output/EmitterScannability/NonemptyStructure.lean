@@ -3863,8 +3863,9 @@ theorem recseqentry_seqbracket_oracle (tokens : Array (Positioned YamlToken)) (l
     (h_deep : FlowBodyContentDeep tokens lo hi)
     (h_content : FlowBodyContent tokens lo hi)
     (h_open : tokens[lo]!.val = .flowSequenceStart)
+    (Q : Nat → Prop) (h_q_succ : Q (lo + 1))
     (h_ih : ∀ lo' hi', hi' - lo' < hi - lo →
-        FlowBodyWindow tokens lo' hi' → FlowBodyContentDeep tokens lo' hi' →
+        FlowBodyWindow tokens lo' hi' → FlowBodyContentDeep tokens lo' hi' → Q lo' →
         RecSeqBody ((tokens.toList.take hi').drop lo')) :
     ∀ j, lo < j → j < hi → tokens[j]!.val = .flowSequenceEnd →
         flowBracketBalance tokens (lo + 1) j = 0 →
@@ -3913,7 +3914,7 @@ theorem recseqentry_seqbracket_oracle (tokens : Array (Positioned YamlToken)) (l
     flowBodyContentDeep_descend tokens lo lo j hi h_deep (Nat.le_refl lo) h_open_delta h_lo1_j
       (Nat.le_of_lt h_j_hi)
   have h_rec : RecSeqBody ((tokens.toList.take j).drop (lo + 1)) :=
-    h_ih (lo + 1) j (by omega) h_win' h_deep'
+    h_ih (lo + 1) j (by omega) h_win' h_deep' h_q_succ
   -- Trailing-separator successor at the close `j` from the content guard's `bodySucc`.
   have h_j_sz : j < tokens.size := by omega
   have h_j_len : j < tokens.toList.length := by rw [Array.length_toList]; exact h_j_sz
@@ -5007,8 +5008,9 @@ theorem recseqentry_window_dispatch (tokens : Array (Positioned YamlToken)) (lo 
     (h_window : FlowBodyWindow tokens lo hi)
     (h_deep : FlowBodyContentDeep tokens lo hi)
     (h_content : FlowBodyContent tokens lo hi)
+    (Q : Nat → Prop) (h_q_descend : tokens[lo]!.val = .flowSequenceStart → Q (lo + 1))
     (h_ih : ∀ lo' hi', hi' - lo' < hi - lo →
-        FlowBodyWindow tokens lo' hi' → FlowBodyContentDeep tokens lo' hi' →
+        FlowBodyWindow tokens lo' hi' → FlowBodyContentDeep tokens lo' hi' → Q lo' →
         RecSeqBody ((tokens.toList.take hi').drop lo')) :
     ∃ m, lo < m ∧ m ≤ hi ∧
       flowBracketBalance tokens lo m = 0 ∧
@@ -5042,7 +5044,8 @@ theorem recseqentry_window_dispatch (tokens : Array (Positioned YamlToken)) (lo 
       (Or.inl ⟨⟨c, s, hcs⟩, h_succ⟩)
   · -- nested sequence `[ … ]` (empty `[]` excluded by the deep guard, handled inside the seq oracle).
     exact recseqentry_seqbracket_located tokens lo hi h_lo_hi h_hi_sz h_open h_total h_dyck h_wt
-      (recseqentry_seqbracket_oracle tokens lo hi h_window h_deep h_content h_open h_ih)
+      (recseqentry_seqbracket_oracle tokens lo hi h_window h_deep h_content h_open
+        Q (h_q_descend h_open) h_ih)
   · -- nested mapping `{ … }`: the near-leaf oracle, no IH.
     exact recseqentry_mapbracket_located tokens lo hi h_lo_hi h_hi_sz h_open h_total h_dyck h_wt
       (recseqentry_mapbracket_oracle tokens lo hi h_window h_content h_open)

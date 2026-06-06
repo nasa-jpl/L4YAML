@@ -588,14 +588,15 @@ theorem seqChild_safeBodyUnit (tokens : Array (Positioned YamlToken)) (p hi j : 
     (h_deep : FlowBodyContentDeep tokens p hi)
     (h_content : FlowBodyContent tokens p hi)
     (h_open : tokens[p]!.val = .flowSequenceStart)
+    (Q : Nat → Prop) (h_q_succ : Q (p + 1))
     (h_ih : ∀ lo' hi', hi' - lo' < hi - p →
-        FlowBodyWindow tokens lo' hi' → FlowBodyContentDeep tokens lo' hi' →
+        FlowBodyWindow tokens lo' hi' → FlowBodyContentDeep tokens lo' hi' → Q lo' →
         RecSeqBody ((tokens.toList.take hi').drop lo'))
     (h_pj : p < j) (h_jhi : j < hi) (h_jclose : tokens[j]!.val = .flowSequenceEnd)
     (h_inner : flowBracketBalance tokens (p + 1) j = 0)
     (h_floor : ∀ i, p < i → i ≤ j → flowBracketBalance tokens p i ≥ 1) :
     SafeBodyUnit ContentStartTok ((tokens.toList.take j).drop (p + 1)) :=
-  ((recseqentry_seqbracket_oracle tokens p hi h_window h_deep h_content h_open h_ih)
+  ((recseqentry_seqbracket_oracle tokens p hi h_window h_deep h_content h_open Q h_q_succ h_ih)
     j h_pj h_jhi h_jclose h_inner h_floor).1.toSafeBodyUnit
 
 /-- **The descent `provider` at a located enclosing seq** — `(i'-b-descent-assembly)`, brick (5), the
@@ -649,8 +650,9 @@ theorem seqDescent_provider_of_located
     (h_window : FlowBodyWindow tokens p hi)
     (h_deep : FlowBodyContentDeep tokens p hi)
     (h_content : FlowBodyContent tokens p hi)
+    (Q : Nat → Prop) (h_q_succ : Q (p + 1))
     (h_ih : ∀ lo' hi', hi' - lo' < hi - p →
-        FlowBodyWindow tokens lo' hi' → FlowBodyContentDeep tokens lo' hi' →
+        FlowBodyWindow tokens lo' hi' → FlowBodyContentDeep tokens lo' hi' → Q lo' →
         RecSeqBody ((tokens.toList.take hi').drop lo')) :
     ∃ loS hiS, loS ≤ a ∧ b ≤ hiS ∧ flowBracketBalance tokens loS a = 0 ∧
       bodySuccFact tokens loS hiS ∧
@@ -707,7 +709,7 @@ theorem seqDescent_provider_of_located
     · exact h
   -- (5) the child `SafeBodyUnit` at the located genuine seq body `[p+1, j)`.
   have h_safe : SafeBodyUnit ContentStartTok ((tokens.toList.take j).drop (p + 1)) :=
-    seqChild_safeBodyUnit tokens p hi j h_window h_deep h_content h_open h_ih
+    seqChild_safeBodyUnit tokens p hi j h_window h_deep h_content h_open Q h_q_succ h_ih
       h_pj h_jhi h_jclose h_inner h_pos
   -- (6) assemble the provider existential (`loS = p+1`, `hiS = j`).
   exact seqEnclosingFacts_provider_of_located tokens a b (p + 1) j
