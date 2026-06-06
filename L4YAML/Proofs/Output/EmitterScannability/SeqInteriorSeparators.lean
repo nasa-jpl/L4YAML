@@ -272,4 +272,81 @@ theorem not_safeBodyUnit_of_head_flowEntry
     ¬ SafeBodyUnit ContentStartTok body := fun h =>
   ContentStartTok_ne_flowEntry _ (SafeBodyUnit_head_Q h h_ne) h_head
 
+/-- **`bodySuccFact` RE-BASING** — the first brick of the R303 direct-discharge route, replacing the
+    undischargeable per-window `SafeBodyUnit` provider.  Given the *enclosing* seq interior's
+    `bodySuccFact` over `[loS, hiS)` (its comma-separation, which the seq body producer / `RecSeqBody`
+    delivers at the seq level), the SAME fact holds on any sub-window `[a, b) ⊆ [loS, hiS)` whose start
+    `a` sits at the enclosing seq's TOP level — i.e. `flowBracketBalance tokens loS a = 0`.  No
+    `SafeBodyUnit`, no per-window deliverable: the proof is pure balance composition.
+
+    **Why this is the redirect.** R303 showed the per-gated-window `SafeBodyUnit` route is FALSE (a
+    separator-headed gated window is no `SafeBodyUnit`), yet a `#guard`-backed probe on `[[1, 2], 9]`
+    and on `[{a: 1}, 2]` confirmed `bodySuccFact` holds at EVERY gated window — including those spurious
+    separator-headed ones — because the fact references the boundary token past the slice, not the
+    slice's body-ness.  This lemma is the mechanism: at a window start `a` re-based to depth `0` of the
+    enclosing seq, `balance loS (k+1) = balance loS a + balance a (k+1) = 0 + 0` for every interior end
+    `k`, so the enclosing `bodySuccFact` fires verbatim, and its window-close disjunct `k+1 = hiS`
+    collapses to `k+1 = b` exactly because `k < b ≤ hiS` pins `b = k+1` there.  The enclosing-seq gate
+    (`SeqTypedInterior`'s `btFold`-top `= some true`) is what guarantees `a` is at a SEQ top level (not a
+    mapping interior, where `bodySuccFact` is FALSE — a key is followed by `.value`, not a separator):
+    the probe shows every `bodySuccFact`-failing window is non-gated.  Names no deliverable type, so it
+    serves both axes; this is [[ref-window-absolute-gate-subset-restriction]] with the source fact (the
+    enclosing seq's `bodySuccFact`) re-based across the depth-`0` re-seating rather than a local guard
+    conjunct narrowed. -/
+theorem bodySuccFact_rebase (tokens : Array (Positioned YamlToken)) (loS a b hiS : Nat)
+    (h_loS_a : loS ≤ a) (h_b_hiS : b ≤ hiS)
+    (h_bal0 : flowBracketBalance tokens loS a = 0)
+    (h_enc : bodySuccFact tokens loS hiS) :
+    bodySuccFact tokens a b := by
+  intro k hak hkb hbalk hnfe
+  have hk_hiS : k < hiS := Nat.lt_of_lt_of_le hkb h_b_hiS
+  have hbal_enc : flowBracketBalance tokens loS (k + 1) = 0 := by
+    have hc := flowBracketBalance_compose tokens loS a (k + 1) h_loS_a (by omega)
+    rw [h_bal0, hbalk] at hc; omega
+  rcases h_enc k (Nat.le_trans h_loS_a hak) hk_hiS hbal_enc hnfe with h | ⟨h', heq⟩
+  · -- enclosing closes at `k+1 = hiS`; since `k < b ≤ hiS`, this forces `k+1 = b`.
+    exact Or.inl (by omega)
+  · -- enclosing yields a following `.flowEntry`; relocate the bound to `b`.
+    rcases Nat.lt_or_ge (k + 1) b with hlt | hge
+    · exact Or.inr ⟨hlt, heq⟩
+    · exact Or.inl (by omega)
+
+/-- **`noTrailingSepFact` RE-BASING** — the twin of `bodySuccFact_rebase` for the carrier's second
+    fact.  On a sub-window `[a, b) ⊆ [loS, hiS)` re-based to the enclosing seq's top level
+    (`flowBracketBalance tokens loS a = 0`), the no-trailing-separator fact follows from the enclosing
+    seq interior's OWN facts: the only relevant position is the window's last `k = b - 1`, a depth-`0`
+    (re-based) `.flowEntry`, and the token AFTER it (`tokens[b]`) must be content-start.  Two cases on
+    where `b` sits relative to the enclosing close `hiS`:
+
+    * `b < hiS` — `b - 1` is an INTERIOR depth-`0` separator of the enclosing seq, so the enclosing
+      depth-`0` `feContentStart` (`h_enc_fe`, the `FlowBodyContent.feContentStart` field) gives the
+      following content-start directly;
+    * `b = hiS` — `b - 1 = hiS - 1` is the enclosing seq's LAST position, so the enclosing
+      `noTrailingSepFact` (`h_enc_nts`) supplies it.
+
+    Both branches re-base the depth premise by composition (`balance loS (b-1) = balance loS a +
+    balance a (b-1) = 0`).  Pure case-split + composition, no `SafeBodyUnit`.  Together with
+    `bodySuccFact_rebase` this discharges the full carrier body at a re-based seq-top-level window from
+    the enclosing seq interior's facts — the R303 redirect, complete for the consume side. -/
+theorem noTrailingSepFact_rebase (tokens : Array (Positioned YamlToken)) (loS a b hiS : Nat)
+    (h_loS_a : loS ≤ a) (h_b_hiS : b ≤ hiS)
+    (h_bal0 : flowBracketBalance tokens loS a = 0)
+    (h_enc_fe : ∀ k, loS ≤ k → k + 1 < hiS →
+        tokens[k]!.val = .flowEntry → flowBracketBalance tokens loS k = 0 →
+        isFlowContentStart tokens[k + 1]!.val)
+    (h_enc_nts : noTrailingSepFact tokens loS hiS) :
+    noTrailingSepFact tokens a b := by
+  intro k hak hkb hsep hbalk
+  -- Re-base the depth premise: `balance loS k = balance loS a + balance a k = 0`.
+  have hbal_enc : flowBracketBalance tokens loS k = 0 := by
+    have hc := flowBracketBalance_compose tokens loS a k h_loS_a (by omega)
+    rw [h_bal0, hbalk] at hc; omega
+  have hk_hiS : k + 1 ≤ hiS := Nat.le_trans (Nat.le_of_eq hkb) h_b_hiS
+  rcases Nat.lt_or_ge (k + 1) hiS with hlt | hge
+  · -- interior separator of the enclosing seq → its `feContentStart`.
+    exact h_enc_fe k (Nat.le_trans h_loS_a hak) hlt hsep hbal_enc
+  · -- last position of the enclosing seq (`k + 1 = hiS`) → its `noTrailingSepFact`.
+    have h_eq : k + 1 = hiS := by omega
+    exact h_enc_nts k (Nat.le_trans h_loS_a hak) h_eq hsep hbal_enc
+
 end L4YAML.Proofs.EmitterScannability
