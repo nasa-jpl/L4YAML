@@ -228,4 +228,48 @@ theorem seqInteriorSeparators_of_safebody_provider
   exact seqSeparatorFacts_of_windowed_safebodyunit tokens a b (Nat.le_trans hb h_hi)
     (provider a b ha hab hb hgate)
 
+/-- **A `SafeBodyUnit`'s head satisfies `Q`** — the necessary precondition the `provider` deliverable
+    carries that `SeqTypedInterior` does NOT supply.  In both constructors the first entry `e` is
+    nonempty with a `Q`-satisfying head (`h_head : Q (e.head …).val`), and the body's head IS that
+    entry's head (`e ≠ []` ⇒ `(e ++ _).head = e.head`).  So any body that is a `SafeBodyUnit Q` starts
+    with a `Q`-token. -/
+theorem SafeBodyUnit_head_Q {Q : YamlToken → Prop}
+    {body : List (Positioned YamlToken)} (h : SafeBodyUnit Q body) (h_ne : body ≠ []) :
+    Q (body.head h_ne).val := by
+  cases h with
+  | single e h_ne' h_unit h_head =>
+      obtain ⟨x, xs, rfl⟩ := List.exists_cons_of_ne_nil h_ne'
+      exact h_head
+  | cons e fe rest h_ne' h_unit h_head h_fe h_rest =>
+      obtain ⟨x, xs, rfl⟩ := List.exists_cons_of_ne_nil h_ne'
+      exact h_head
+
+/-- **A separator-headed window is NOT a `ContentStartTok` `SafeBodyUnit`** — the kernel of the
+    de-risk that re-scopes `(i'-b-descend-root-provider-descent)`.  `ContentStartTok` excludes
+    `.flowEntry` (`ContentStartTok_ne_flowEntry`), and a `SafeBodyUnit` forces a `ContentStartTok` head
+    (`SafeBodyUnit_head_Q`); so a window whose first token is a `.flowEntry` cannot be a
+    `SafeBodyUnit ContentStartTok`.
+
+    **Why this matters for the `provider`.** The gate `SeqTypedInterior tokens a b`
+    (`flowBracketBalance tokens a b = 0` ∧ enclosing-seq `btFold`-top `= some true`) places NO
+    constraint on the window's head token, so it ADMITS separator-headed windows.  A `#guard`-backed
+    minimal pair on the real filtered scan of `[[1, 2], 9]` (filtered tokens
+    `streamStart [ [ "1" , "2" ] , "9" ] streamEnd`) confirms it: the two depth-`0` commas at indices
+    `4` and `7` BOTH satisfy the gate at `[a, a+1)` (`balance = 0`, `btFold`-top `= some true`,
+    enclosed by the outer seq), yet each window's slice is `[comma]`, refuted here.  Hence the
+    `provider` hypothesis of `seqInteriorSeparators_of_safebody_provider` is **undischargeable at the
+    spurious gated windows** the carrier's `∀ a b` ranges over.  (Content-start-alignment is necessary
+    but NOT sufficient either: the gated, content-start-headed window `[3, 5)` = `"1" ,` is a
+    trailing-separator slice that is also not a `SafeBodyUnit`.)  The carrier's asserted facts
+    (`bodySuccFact`/`noTrailingSepFact`) remain TRUE at every gated window — they reference the
+    boundary token past the slice — so the fix is to discharge the carrier's facts directly at the
+    windows the future seq-producer actually instantiates (real seq-body interiors `[opener+1, close)`
+    and their comma-suffix advance-tails, all genuine `SafeBodyUnit`s), NOT via a uniform per-gated-
+    window `SafeBodyUnit` provider.  See Reflection 303. -/
+theorem not_safeBodyUnit_of_head_flowEntry
+    {body : List (Positioned YamlToken)} (h_ne : body ≠ [])
+    (h_head : (body.head h_ne).val = .flowEntry) :
+    ¬ SafeBodyUnit ContentStartTok body := fun h =>
+  ContentStartTok_ne_flowEntry _ (SafeBodyUnit_head_Q h h_ne) h_head
+
 end L4YAML.Proofs.EmitterScannability
