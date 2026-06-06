@@ -328,6 +328,105 @@ theorem flowBracketBalance_pos_of_seqTypedInterior
     flowBracketBalance tokens 0 a ≥ 1 :=
   flowBracketBalance_pos_of_btFold_head tokens a true h.2
 
+/-- **The located opener is a `[`** — `(i'-b-locator-glue-opener-type)`, the second glue brick of the
+    descent (after `flowBracketBalance_pos_of_seqTypedInterior` makes the backward locator invokable).
+    Given the backward locator's full output at the gated window start `a` — an opener `p` with
+    `flowBracketDelta tokens[p]! = 1` (so `tokens[p]` is `[` or `{`), the body balance
+    `flowBracketBalance tokens (p+1) a = 0`, and the **interior floor** `flowBracketBalance tokens (p+1) i ≥ 0`
+    over `(p, a]` (R311's restored conjunct) — PLUS the gate's `btFold`-top `= some true` after the
+    prefix `[0,a)`, the located opener `tokens[p]` is a `.flowSequenceStart`.
+
+    **Why the floor is load-bearing.** R311's minimal pair (`[{}, ["9"]]`) showed the bare existential
+    admits a spurious map-opener; the floor is the discriminator that pins `p` to the INNERMOST opener.
+    Mechanically (the head-preservation route): the typed stack after `[0,p+1)` is `b :: s_p` where `b`
+    is the bit `tokens[p]` pushes (`b = true ↔ seqStart`).  The interior body `(take a).drop (p+1)` has
+    relative balance `0` and floor `≥ 0`, so it NEVER pops `b` and returns the stack to `b :: s_p` at `a`
+    — proved by `btFold_frame_inv` (the converse of `btFold_frame`): with base `[]` and extra `b :: s_p`,
+    the interior fold from `[]` is well-typed (length `0` by `btFold_length` + balance `0`), so the whole
+    stack at `a` is `b :: s_p`.  Its head is `b`, which the gate fixes to `true`, forcing `tokens[p]` to
+    be the seq opener.  The gate supplies definedness of the whole `take a` fold; the floor supplies that
+    `b` survives.  Type-agnostic substrate: the map mirror reads the gate's `= some false` and concludes
+    `.flowMappingStart` by the identical argument with `b = false`. -/
+theorem seqOpenerType_of_located_and_gate
+    (tokens : Array (Positioned YamlToken)) (a p : Nat)
+    (h_pa : p < a) (h_a_sz : a ≤ tokens.size)
+    (h_delta : flowBracketDelta tokens[p]!.val = 1)
+    (h_bal : flowBracketBalance tokens (p + 1) a = 0)
+    (h_floor : ∀ i, p + 1 ≤ i → i ≤ a → flowBracketBalance tokens (p + 1) i ≥ 0)
+    (h_mark : (btFold (some []) (tokens.toList.take a)).bind (·.head?) = some true) :
+    tokens[p]!.val = .flowSequenceStart := by
+  have h_p_sz : p < tokens.size := by omega
+  have h_p_T : p < tokens.toList.length := by rw [Array.length_toList]; exact h_p_sz
+  -- (1) the gate forces the whole `take a` fold to `some S` with head `true`.
+  obtain ⟨S, hS⟩ : ∃ S, btFold (some []) (tokens.toList.take a) = some S := by
+    cases hc : btFold (some []) (tokens.toList.take a) with
+    | none => rw [hc] at h_mark; simp at h_mark
+    | some S => exact ⟨S, rfl⟩
+  rw [hS] at h_mark
+  -- (2) `take a = take (p+1) ++ interior`, interior the body slice.
+  obtain ⟨interior, hint⟩ :
+      ∃ I, I = (tokens.toList.drop (p + 1)).take (a - (p + 1)) := ⟨_, rfl⟩
+  have h_split : tokens.toList.take a = tokens.toList.take (p + 1) ++ interior := by
+    rw [hint, ← List.take_add]; congr 1; omega
+  -- (3) the prefix `take p` folds to `some s_p`.
+  have h_split_p : tokens.toList.take (p + 1)
+      = tokens.toList.take p ++ [tokens.toList[p]'h_p_T] := by
+    rw [List.take_add_one, List.getElem?_eq_getElem h_p_T]; rfl
+  obtain ⟨s_p, hsp⟩ : ∃ s_p, btFold (some []) (tokens.toList.take p) = some s_p :=
+    btFold_some_prefix (tokens.toList.take p) ([tokens.toList[p]'h_p_T] ++ interior) S (by
+      rw [← List.append_assoc, ← h_split_p, ← h_split]; exact hS)
+  -- (4) the stack just after the opener is `b :: s_p`.
+  have hTp : tokens.toList[p]'h_p_T = tokens[p]! := by
+    rw [Array.getElem_toList, getElem!_pos tokens p h_p_sz]
+  have h_after : btFold (some []) (tokens.toList.take (p + 1)) = btStep tokens[p]! s_p := by
+    rw [h_split_p, btFold_append, hsp]
+    have : btFold (some s_p) [tokens.toList[p]'h_p_T] = btStep (tokens.toList[p]'h_p_T) s_p := rfl
+    rw [this, hTp]
+  -- (5) the opener is a `[` or `{` (delta = 1); get the pushed bit `b`.
+  obtain ⟨b, hbpush, hb_seq⟩ :
+      ∃ b, btStep tokens[p]! s_p = some (b :: s_p) ∧
+        (b = true → tokens[p]!.val = .flowSequenceStart) := by
+    rcases (flowBracketDelta_eq_one_iff _).mp h_delta with hseq | hmap
+    · exact ⟨true, by simp [btStep, hseq], fun _ => hseq⟩
+    · exact ⟨false, by simp [btStep, hmap], fun h => absurd h (by decide)⟩
+  -- (6) the whole `take a` fold equals the interior fold from `b :: s_p`.
+  have hfold : btFold (some (b :: s_p)) interior = some S := by
+    have h1 : btFold (some []) (tokens.toList.take (p + 1)) = some (b :: s_p) := by
+      rw [h_after, hbpush]
+    rw [h_split, btFold_append, h1] at hS; exact hS
+  -- (7) frame-inverse over `interior` with base `[]`, extra `b :: s_p`.
+  have h_int_len : interior.length = a - (p + 1) := by
+    rw [hint, List.length_take, List.length_drop, Array.length_toList]; omega
+  have hfloor' : ∀ k, k ≤ interior.length →
+      0 ≤ (([] : List Bool).length : Int) + pbalance (interior.take k) := by
+    intro k hk
+    have hk' : k ≤ a - (p + 1) := by rw [h_int_len] at hk; exact hk
+    have htk : interior.take k = (tokens.toList.drop (p + 1)).take k := by
+      rw [hint, List.take_take]; congr 1; omega
+    have hbridge : flowBracketBalance tokens (p + 1) (p + 1 + k)
+        = pbalance ((tokens.toList.drop (p + 1)).take k) := by
+      rw [flowBracketBalance_eq_pbalance tokens (p + 1) (p + 1 + k) (by omega)]; congr 2; omega
+    have hfl : (0 : Int) ≤ pbalance ((tokens.toList.drop (p + 1)).take k) := by
+      rw [← hbridge]; exact h_floor (p + 1 + k) (by omega) (by omega)
+    rw [htk]; simpa using hfl
+  obtain ⟨m, hm, hSm⟩ := btFold_frame_inv interior [] (b :: s_p) S hfloor'
+    (by rw [List.nil_append]; exact hfold)
+  -- (8) interior balance 0 ⟹ m = [].
+  have hint_bal : pbalance interior = 0 := by
+    have he : flowBracketBalance tokens (p + 1) a = pbalance interior := by
+      rw [hint, flowBracketBalance_eq_pbalance tokens (p + 1) a (by omega)]
+    rw [← he]; exact h_bal
+  have hm_len : (m.length : Int) = 0 := by
+    have hl := btFold_length interior [] m hm
+    simp only [List.length_nil] at hl
+    rw [hl]; simpa using hint_bal
+  have hm_nil : m = [] := List.eq_nil_of_length_eq_zero (by exact_mod_cast hm_len)
+  rw [hm_nil, List.nil_append] at hSm
+  -- (9) S = b :: s_p ⟹ head = b; gate head = true ⟹ b = true ⟹ seqStart.
+  rw [hSm] at h_mark
+  simp only [List.head?_cons, Option.bind_some] at h_mark
+  exact hb_seq (Option.some.inj h_mark)
+
 /-- **The gate's stack-top conjunct is RECONSTRUCTIBLE in place** — the Q2 discharge for
     `(i'-b-descend-root)`.  `SeqTypedInterior`'s second conjunct
     (`(btFold (some []) (tokens.toList.take a)).bind (·.head?) = some true`) is a fact about the

@@ -87,6 +87,11 @@ theorem flowBracketDelta_scalar (value : String) (style : ScalarStyle) :
 /-- A `.key` token contributes `0`. -/
 theorem flowBracketDelta_key : flowBracketDelta .key = 0 := rfl
 
+/-- The only tokens of delta `+1` are the two openers `[` / `{`. -/
+theorem flowBracketDelta_eq_one_iff (v : YamlToken) :
+    flowBracketDelta v = 1 ↔ v = .flowSequenceStart ∨ v = .flowMappingStart := by
+  cases v <;> simp [flowBracketDelta]
+
 /-- An emitter *entry* (one sequence item, or one mapping `key: value` pair):
     bracket-balanced overall, with every interior `.flowEntry` at balance `≥ 1`. -/
 def EntrySafe (e : List (Positioned YamlToken)) : Prop :=
@@ -978,6 +983,15 @@ theorem WellTyped_frame (l : List (Positioned YamlToken)) (pre : List Bool)
   have := btFold_frame l [] [] pre h
   simpa using this
 
+/-- A defined fold's prefix is defined (mirrors `WellTyped_prefix_some`, without `WellTyped`):
+    `none` is absorbing, so an undefined prefix would force the whole fold to `none ≠ some r`. -/
+theorem btFold_some_prefix (a b : List (Positioned YamlToken)) (r : List Bool)
+    (h : btFold (some []) (a ++ b) = some r) : ∃ m, btFold (some []) a = some m := by
+  rw [btFold_append] at h
+  cases ha : btFold (some []) a with
+  | none => rw [ha, btFold_none] at h; exact absurd h (by simp)
+  | some s => exact ⟨s, rfl⟩
+
 /-- A single delta-`0` token is `WellTyped`. -/
 theorem WellTyped_singleton_delta_zero (t : Positioned YamlToken)
     (h : flowBracketDelta t.val = 0) : WellTyped [t] := by
@@ -1076,6 +1090,62 @@ theorem btFold_length (l : List (Positioned YamlToken)) :
       have hstep := btStep_length t s0 m hb
       have hrest := ih m s1 h
       rw [pbalance_cons]; omega
+
+/-- **One-step frame inverse.**  If a step over the extended stack `s ++ extra` is defined and does
+    not pop into `extra` (`0 ≤ s.length + flowBracketDelta t.val`, so a pop has something in `s` to
+    remove), the same step is defined over `s` alone, and the extension is preserved.  The converse
+    of `btStep_frame`. -/
+theorem btStep_frame_inv (t : Positioned YamlToken) (s extra M : List Bool)
+    (h_nopop : 0 ≤ (s.length : Int) + flowBracketDelta t.val)
+    (h : btStep t (s ++ extra) = some M) :
+    ∃ n, btStep t s = some n ∧ M = n ++ extra := by
+  unfold btStep at h ⊢
+  cases hv : t.val <;> simp only [hv] at h ⊢ <;>
+    simp only [hv, flowBracketDelta] at h_nopop <;>
+    first
+      | (obtain rfl := Option.some.inj h; exact ⟨_, rfl, rfl⟩)
+      | (cases s with
+         | nil => simp only [List.length_nil] at h_nopop; omega
+         | cons b s' => cases b <;> simp_all)
+
+/-- **Fold frame inverse** — the converse of `btFold_frame`.  If the fold over the extended stack
+    `s ++ extra` is defined (`= some m'`) and never pops into `extra` (absolute floor
+    `0 ≤ s.length + pbalance (l.take k)` at every prefix), then the fold over `s` alone is defined and
+    the extension is preserved (`m' = m ++ extra`).  The floor alone suffices for definedness of the
+    smaller fold because every pop the big fold makes targets a within-`l` push (never `extra`), so the
+    smaller fold replays the identical, defined decisions. -/
+theorem btFold_frame_inv (l : List (Positioned YamlToken)) :
+    ∀ (s extra m' : List Bool),
+      (∀ k, k ≤ l.length → 0 ≤ (s.length : Int) + pbalance (l.take k)) →
+      btFold (some (s ++ extra)) l = some m' →
+      ∃ m, btFold (some s) l = some m ∧ m' = m ++ extra := by
+  induction l with
+  | nil =>
+    intro s extra m' _ h
+    simp only [btFold, List.foldl_nil] at h ⊢
+    exact ⟨s, rfl, (Option.some.inj h).symm⟩
+  | cons t rest ih =>
+    intro s extra m' hfloor h
+    rw [btFold_cons_some] at h
+    have h_nopop : 0 ≤ (s.length : Int) + flowBracketDelta t.val := by
+      have h1 := hfloor 1 (by simp)
+      have htk : ((t :: rest).take 1) = [t] := by simp
+      rw [htk, pbalance_singleton] at h1; exact h1
+    cases hb : btStep t (s ++ extra) with
+    | none => rw [hb, btFold_none] at h; exact absurd h (by simp)
+    | some M =>
+      rw [hb] at h
+      obtain ⟨n, hn, hMn⟩ := btStep_frame_inv t s extra M h_nopop hb
+      rw [btFold_cons_some, hn]
+      have hstep_len : (n.length : Int) = (s.length : Int) + flowBracketDelta t.val :=
+        btStep_length t s n hn
+      have hfloor' : ∀ k, k ≤ rest.length → 0 ≤ (n.length : Int) + pbalance (rest.take k) := by
+        intro k hk
+        have hh := hfloor (k + 1) (by simp only [List.length_cons]; omega)
+        have htk : ((t :: rest).take (k + 1)) = t :: rest.take k := by simp
+        rw [htk, pbalance_cons] at hh
+        rw [hstep_len]; omega
+      exact ih n extra m' hfloor' (by rw [hMn] at h; exact h)
 
 /-- **A prefix of a `WellTyped` list never underflows** — it folds to `some` (because `none`
     is absorbing, an underflowing prefix would force the whole fold to `none ≠ some []`). -/
