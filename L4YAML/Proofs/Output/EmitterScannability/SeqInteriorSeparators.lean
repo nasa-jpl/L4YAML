@@ -349,4 +349,54 @@ theorem noTrailingSepFact_rebase (tokens : Array (Positioned YamlToken)) (loS a 
     have h_eq : k + 1 = hiS := by omega
     exact h_enc_nts k (Nat.le_trans h_loS_a hak) h_eq hsep hbal_enc
 
+/-- **The carrier ASSEMBLES from a per-window enclosing-facts `provider`** (the second brick of the
+    R303 direct-discharge route, `(i'-b-locate-enclosing)` — the [[ref-parametric-assembler-extraction]]
+    split of the locate boundary).  `bodySuccFact_rebase`/`noTrailingSepFact_rebase` are pure balance
+    composition, so the carrier `SeqInteriorSeparators tokens lo hi` reduces — with NO further analysis —
+    to a `provider` that, at every gated sub-window `[a,b)`, hands back the *enclosing* seq interior
+    `[loS,hiS)` together with the three rebase preconditions/facts:
+
+    * the bounds + re-seating `loS ≤ a`, `b ≤ hiS`, `flowBracketBalance tokens loS a = 0` (the window
+      starts at the enclosing seq's TOP level — exactly what the gate's `btFold`-top `= some true`
+      witnesses, converse of `enclosingMark_true_of_opener`);
+    * the enclosing seq's `bodySuccFact tokens loS hiS` (its comma-separation) — `bodySuccFact_rebase`'s
+      source fact;
+    * the enclosing seq's interior `feContentStart` (every interior depth-`0` separator is followed by
+      content) and its `noTrailingSepFact tokens loS hiS` — `noTrailingSepFact_rebase`'s two sources.
+
+    This is the parametric-assembler-extraction move: lift the inline locate-the-enclosing-window
+    reasoning into a `∀ window, gate → ∃ enclosing, …` hypothesis and discharge the *assemble* now (one
+    `obtain` + two rebases), splitting the residual into ASSEMBLE (done, here) vs PRODUCE the `provider`
+    (the locator — [[ref-reduction-by-import]]).
+
+    **De-risk (`#guard`-backed, on the R304 witness `[[1, 2], 9]`).** A probe enumerating all 12 gated
+    windows confirmed that EACH has a located enclosing seq body satisfying every clause above:
+    `[3,5)`/`[4,6)`/… → the inner seq `[3,6)`; `[7,9)`/`[8,9)`/… → the outer seq `[2,9)`; the
+    preconditions and all enclosing facts evaluate `true` at every one, and the rebase reproduces the
+    window's own `bodySuccFact`/`noTrailingSepFact`.  So the `provider` hypothesis is satisfiable — the
+    residual is genuine and the assembler is not vacuous.
+
+    **The named residual — `provider`.** Producing it is the locator: from the gate's `btFold`-top
+    `= some true` at `a`, recover the innermost enclosing `.flowSequenceStart` at `loS - 1` and its
+    matching close `hiS` (the existing `recseqentry_seqbracket_oracle` / `FlowBodyWindow` machinery),
+    then supply the enclosing facts from that seq's `SafeBodyUnit`/`RecSeqBody`
+    (`seqSeparatorFacts_of_windowed_safebodyunit` for `bodySuccFact`/`noTrailingSepFact`; the interior
+    `feContentStart` is the one new sub-fact, the comma-followed-by-content of `RecSeqBody`).  The
+    `SafeBodyUnit` route — FALSE for arbitrary gated windows (R303) — is VALID here because `[loS,hiS)`
+    is a GENUINE seq body, the right granularity ([[ref-near-leaf-mirror-sheds-machinery]]). -/
+theorem seqInteriorSeparators_of_enclosing_provider
+    (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (provider : ∀ a b, lo ≤ a → a ≤ b → b ≤ hi → SeqTypedInterior tokens a b →
+      ∃ loS hiS, loS ≤ a ∧ b ≤ hiS ∧ flowBracketBalance tokens loS a = 0 ∧
+        bodySuccFact tokens loS hiS ∧
+        (∀ k, loS ≤ k → k + 1 < hiS →
+          tokens[k]!.val = .flowEntry → flowBracketBalance tokens loS k = 0 →
+          isFlowContentStart tokens[k + 1]!.val) ∧
+        noTrailingSepFact tokens loS hiS) :
+    SeqInteriorSeparators tokens lo hi := by
+  intro a b ha hab hb hgate
+  obtain ⟨loS, hiS, h_loS_a, h_b_hiS, h_bal0, h_bs, h_fe, h_nts⟩ := provider a b ha hab hb hgate
+  exact ⟨bodySuccFact_rebase tokens loS a b hiS h_loS_a h_b_hiS h_bal0 h_bs,
+         noTrailingSepFact_rebase tokens loS a b hiS h_loS_a h_b_hiS h_bal0 h_fe h_nts⟩
+
 end L4YAML.Proofs.EmitterScannability
