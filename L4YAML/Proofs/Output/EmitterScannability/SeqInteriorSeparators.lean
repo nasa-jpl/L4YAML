@@ -1069,4 +1069,63 @@ theorem seqRoot_seqInteriorSeparators
     (seqRoot_safeBodyUnit items tokens h_scan h_ne h_all)
     desc
 
+/-- **The per-window carrier→content consumer joint** — `(i'-b-B3-content-joint)`, the joint between
+    the threaded separator carrier and the `RecSeqBody` recursion's per-window dispatch.  This is the
+    de-risk finding for B3 (the `windowWidth_strongRecOn` `RecSeqBody` producer) made into a proof
+    term: it pins the EXACT interface by which the recursion step obtains its `FlowBodyContent` (the
+    fact `recseqentry_window_dispatch` consumes) from the carrier, and NAMES the single residual the
+    step's guard `G` must still carry.
+
+    `recseqentry_window_dispatch` needs `FlowBodyContent tokens lo hi` at every recursion window.  At a
+    DESCENDED window `FlowBodyContent` is NOT obtainable by re-basing the parent's (R296: `bodySucc`
+    has no all-depth balance-free form, and `flowBodyContent_advance` carries only the ADVANCE edge —
+    there is deliberately no `flowBodyContent_descend`); it can only come from
+    `flowBodyContent_of_deep`, which projects the recursion-stable `FlowBodyContentDeep` to
+    `FlowBodyContent` USING the two separator facts (`bodySuccFact` / `noTrailingSepFact`).  Those two
+    facts are exactly what `SeqInteriorSeparators` carries — instantiated at the window itself
+    `(a,b) = (lo,hi)` (`bodySuccFact`/`noTrailingSepFact` are term-for-term `flowBodyContent_of_deep`'s
+    `h_bodySucc`/`h_noTrailingSep` premises — [[ref-conjunct-of-projection-is-free-field]]).
+
+    Two findings the proof embodies ([[ref-fold-consumer-chain-to-producer-contract]] — folding the
+    instantiate + project chain into one lemma keyed on the dispatch's input):
+
+    1. **The root carrier narrows to EVERY recursion window for free.**  `SeqInteriorSeparators` is a
+       subset restriction (`SeqInteriorSeparators_narrow`), and `FlowBodyWindow` carries `2 ≤ lo`
+       (`lo_ge`) and `hi ≤ size - 2` (`hi_le`) — the EXACT narrow bounds from the root span
+       `[2, size - 2)`.  So the carrier need NOT be threaded as a `G`-conjunct: the once-seeded root
+       carrier (`seqRoot_seqInteriorSeparators`) is supplied as an ambient hypothesis and narrowed in
+       place at each window.  This is [[ref-narrow-from-root-breaks-rederivation-cycle]]'s coverage
+       de-risk discharged structurally: every recursion window lies WITHIN the root span by the guard's
+       own frame fields.
+
+    2. **The carrier's gate `SeqTypedInterior tokens lo hi` is `⟨balanced, enclosing-btFold-top,
+       dyck⟩`** — and `FlowBodyWindow` supplies the balance (`balanced`) and Dyck (`dyck`) conjuncts,
+       leaving the enclosing-`[` btFold-top fact `h_enclosed` as the SINGLE residual.  This NAMES the
+       one fact B3's `G` must additionally carry (a `SeqEnclosed`-style conjunct keyed only on `lo`:
+       `(btFold (some []) (take lo)).bind (·.head?) = some true`) — supplied at the root window from
+       `tokens[lo - 1]! = .flowSequenceStart`, and preserved across descend (the located opener at `k`
+       pushes `true`) / advance (the depth-`0` separator leaves the enclosing stack top unchanged).
+       The seq IH only ever descends into nested `[` (the `{` branch is the near-leaf map oracle, no
+       seq IH), so every window it sees is genuinely seq-typed and this residual always holds.
+
+    Verified-but-unconsumed until the B3 fixpoint instantiates `windowWidth_strongRecOn` and threads
+    `h_enclosed` (R225 discipline): composes only landed lemmas, references no sorry site, frontier
+    sorry count unchanged at 4; axiom-clean. -/
+theorem seqWindow_flowBodyContent (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (h_win : FlowBodyWindow tokens lo hi)
+    (h_deep : FlowBodyContentDeep tokens lo hi)
+    (h_enclosed : (btFold (some []) (tokens.toList.take lo)).bind (·.head?) = some true)
+    (h_root_carrier : SeqInteriorSeparators tokens 2 (tokens.size - 2)) :
+    FlowBodyContent tokens lo hi := by
+  -- The gate: balance + Dyck come from the window guard; only the enclosing-`[` btFold-top is owed.
+  have h_gate : SeqTypedInterior tokens lo hi :=
+    ⟨h_win.balanced, h_enclosed, h_win.dyck⟩
+  -- The root carrier narrows to `[lo, hi) ⊆ [2, size - 2)` by the guard's `lo_ge`/`hi_le` frame fields.
+  have h_carrier : SeqInteriorSeparators tokens lo hi :=
+    SeqInteriorSeparators_narrow h_win.lo_ge h_win.hi_le h_root_carrier
+  -- Instantiate at the window itself; the two facts are exactly `flowBodyContent_of_deep`'s premises.
+  obtain ⟨h_bs, h_nts⟩ :=
+    h_carrier lo hi (Nat.le_refl lo) (Nat.le_of_lt h_win.lo_lt_hi) (Nat.le_refl hi) h_gate
+  exact flowBodyContent_of_deep tokens lo hi h_deep h_bs h_nts
+
 end L4YAML.Proofs.EmitterScannability
