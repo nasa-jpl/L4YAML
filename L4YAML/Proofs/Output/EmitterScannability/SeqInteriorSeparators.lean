@@ -104,4 +104,46 @@ theorem SeqInteriorSeparators_advance {tokens : Array (Positioned YamlToken)} {l
     SeqInteriorSeparators tokens (m + 1) hi :=
   SeqInteriorSeparators_narrow h_lo (Nat.le_refl hi) h
 
+/-- `ContentStartTok` (the head predicate of a seq body's unit entries) never holds of a `.flowEntry`:
+    it is a scalar / `[` / `{`, never the separator `,`.  This is the `hQ` the no-trailing-comma
+    substrate lemma needs to refute a lone-separator unit. -/
+theorem ContentStartTok_ne_flowEntry : ∀ v, ContentStartTok v → v ≠ .flowEntry := by
+  rintro v (⟨c, st, rfl⟩ | rfl | rfl) <;> simp
+
+/-- **Both separator facts from a windowed `SafeBodyUnit`** — the per-window discharge the root seed
+    `(i'-b-descend-root)` consumes at every reached seq level.  The seq body producer delivers, over
+    each seq-typed body window `[a,b)`, a `SafeBodyUnit ContentStartTok ((tokens.toList.take b).drop a)`
+    (directly from emission — `emitList_body_filtered_characterization` / `RecSeqBody.toSafeBodyUnit`,
+    NOT circular through the not-yet-built recursion output).  This single substrate yields BOTH of the
+    carrier's asserted facts:
+
+    * `bodySuccFact` — values are comma-separated — via `SafeBodyUnit_array_succ_window` (value-end
+      successor, the panic-indexing bridge identical to `seqBodyProps_of_windowed_safebody`'s
+      `h_body_succ` branch);
+    * `noTrailingSepFact` — no trailing comma — via `SafeBodyUnit_array_last_not_sep_window`
+      *vacuously*: it refutes a depth-`0` `.flowEntry` at the window's last position, so the premise is
+      contradictory and `isFlowContentStart` follows by `absurd`.
+
+    So the carrier's body is dischargeable from the producer's OWN deliverable: the root seed need only
+    establish `SafeBodyUnit` at each seq level, with no separate Part 7 producing lemma. -/
+theorem seqSeparatorFacts_of_windowed_safebodyunit
+    (tokens : Array (Positioned YamlToken)) (a b : Nat) (h_b : b ≤ tokens.size)
+    (h : SafeBodyUnit ContentStartTok ((tokens.toList.take b).drop a)) :
+    bodySuccFact tokens a b ∧ noTrailingSepFact tokens a b := by
+  refine ⟨?_, ?_⟩
+  · -- `bodySuccFact` ← value-end successor
+    intro k h_lo h_klt h_bal h_nfe
+    have hk_sz : k < tokens.size := Nat.lt_of_lt_of_le h_klt h_b
+    rw [getElem!_pos tokens k hk_sz] at h_nfe
+    rcases SafeBodyUnit_array_succ_window tokens a b h_b h k h_lo h_klt h_bal h_nfe with
+      h_end | ⟨hk1, h_fe⟩
+    · exact Or.inl h_end
+    · refine Or.inr ⟨hk1, ?_⟩
+      have hk1_sz : k + 1 < tokens.size := Nat.lt_of_lt_of_le hk1 h_b
+      rw [getElem!_pos tokens (k + 1) hk1_sz]; exact h_fe
+  · -- `noTrailingSepFact` ← no-trailing-comma, vacuously (the premise `tokens[k]! = .flowEntry` is refuted)
+    intro k h_lo hk1 h_fe _h_bal
+    exact absurd h_fe (SafeBodyUnit_array_last_not_sep_window
+      ContentStartTok_ne_flowEntry tokens a b h_b h k h_lo hk1 _h_bal)
+
 end L4YAML.Proofs.EmitterScannability

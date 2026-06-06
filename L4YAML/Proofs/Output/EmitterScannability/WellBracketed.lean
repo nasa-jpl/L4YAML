@@ -766,6 +766,95 @@ theorem SafeBodyUnit_array_succ_window {Q : YamlToken → Prop}
       congr 2; omega
     rw [← h_get1]; exact hfe1
 
+/-- **`SafeBodyUnit` never ENDS in a depth-`0` separator** — the no-trailing-comma fact at the list
+    level, the END-boundary dual of `SafeBodyUnit_succ`.  In a body of unit entries the LAST token
+    (whose strict prefix `take k` returns to balance `0`) is the value-end of the final unit, never a
+    `.flowEntry`: a depth-`0` `.flowEntry` is a separator BETWEEN units (the `cons` constructor's
+    `fe`), but after the last unit there is no separator.  `EntryUnit`'s `≥ 1` interior condition
+    forbids a depth-`0` split inside the final unit (so the prefix cannot return to `0` mid-entry),
+    and `Q` (content-start) forbids a lone-`.flowEntry` unit.  Discharges the `h_noTrailingSep`
+    premise of `flowBodyContent_of_deep` *vacuously* — its premise (last token is a depth-`0`
+    `.flowEntry`) is refuted, so the residual no-trailing-comma fact comes from the SAME
+    `SafeBodyUnit` substrate the producer already delivers via `RecSeqBody.toSafeBodyUnit`. -/
+theorem SafeBodyUnit_last_not_sep {Q : YamlToken → Prop}
+    (hQ : ∀ v, Q v → v ≠ .flowEntry)
+    {body : List (Positioned YamlToken)} (h : SafeBodyUnit Q body) :
+    ∀ (k : Nat) (hk : k < body.length),
+      k + 1 = body.length → pbalance (body.take k) = 0 → (body[k]'hk).val ≠ .flowEntry := by
+  induction h with
+  | single e h_ne h_unit h_head =>
+    intro k hk hlast h_bal
+    rcases Nat.eq_zero_or_pos k with hk0 | hkpos
+    · -- k = 0: the head; `Q (e.head).val` excludes `.flowEntry`
+      subst hk0
+      rw [List.head_eq_getElem] at h_head
+      exact hQ _ h_head
+    · -- k > 0: `e.take k` is a proper nonempty prefix at balance ≥ 1, contradicting = 0
+      exfalso
+      have := h_unit.2 k hkpos (by omega)
+      omega
+  | cons e fe rest h_ne h_unit h_head h_fe h_rest ih =>
+    intro k hk hlast h_bal
+    have h_len : (e ++ fe :: rest).length = e.length + 1 + rest.length := by
+      simp [List.length_append]; omega
+    -- `rest` is a `SafeBodyUnit`, hence nonempty, so the LAST position lies inside it.
+    have h_rest_pos : 0 < rest.length := by
+      cases h_rest with
+      | single e' h_ne' _ _ => exact List.length_pos_iff.mpr h_ne'
+      | cons e' fe' rest' _ _ _ _ _ => rw [List.length_append, List.length_cons]; omega
+    obtain ⟨m, hm⟩ : ∃ m, k = e.length + 1 + m := ⟨k - e.length - 1, by rw [h_len] at hlast; omega⟩
+    subst hm
+    have hk_rest : m < rest.length := by rw [h_len] at hk; omega
+    have hlast_rest : m + 1 = rest.length := by rw [h_len] at hlast; omega
+    -- `body[e.length + 1 + m] = rest[m]`
+    have hbody_k : (e ++ fe :: rest)[e.length + 1 + m]'hk = rest[m]'hk_rest := by
+      have h1 : (e ++ fe :: rest)[e.length + 1 + m]? = rest[m]? := by
+        rw [List.getElem?_append_right (by omega),
+            show e.length + 1 + m - e.length = m + 1 from by omega, List.getElem?_cons_succ]
+      rw [List.getElem?_eq_getElem hk, List.getElem?_eq_getElem hk_rest] at h1
+      exact Option.some.inj h1
+    rw [hbody_k]
+    -- prefix balance descends: `pbalance(body.take k) = pbalance e + δfe + pbalance(rest.take m)`.
+    have htake : (e ++ fe :: rest).take (e.length + 1 + m) = e ++ fe :: rest.take m := by
+      rw [List.take_append,
+          List.take_of_length_le (show e.length ≤ e.length + 1 + m from by omega),
+          show e.length + 1 + m - e.length = m + 1 from by omega, List.take_succ_cons]
+    have h_bal' : pbalance (rest.take m) = 0 := by
+      rw [htake, pbalance_append, pbalance_cons, h_unit.1, h_fe, flowBracketDelta_flowEntry] at h_bal
+      omega
+    exact ih m hk_rest hlast_rest h_bal'
+
+/-- **Windowed array wrapper** for `SafeBodyUnit_last_not_sep`, over the bounded body slice
+    `(arr.toList.take hi).drop lo` — the END-boundary dual of `SafeBodyUnit_array_succ_window`.  The
+    last in-window position `k` (`k + 1 = hi`) whose prefix balance returns to `0` is NOT a `.flowEntry`
+    separator.  Fed `exfalso`-style, this discharges the `noTrailingSepFact` residual at any guarded
+    seq subrange: the windowed `SafeBodyUnit` the body producer delivers refutes a trailing comma. -/
+theorem SafeBodyUnit_array_last_not_sep_window {Q : YamlToken → Prop}
+    (hQ : ∀ v, Q v → v ≠ .flowEntry)
+    (arr : Array (Positioned YamlToken)) (lo hi : Nat) (h_hi : hi ≤ arr.size)
+    (h : SafeBodyUnit Q ((arr.toList.take hi).drop lo)) :
+    ∀ (k : Nat), lo ≤ k → k + 1 = hi →
+      flowBracketBalance arr lo k = 0 →
+      arr[k]!.val ≠ .flowEntry := by
+  intro k h_lo hk1 h_bal
+  have hk_hi : k < hi := by omega
+  have hk_sz : k < arr.size := Nat.lt_of_lt_of_le hk_hi h_hi
+  rw [getElem!_pos arr k hk_sz]
+  have h_len : ((arr.toList.take hi).drop lo).length = hi - lo := by
+    rw [List.length_drop, List.length_take, Array.length_toList]; omega
+  have hj_lt : k - lo < ((arr.toList.take hi).drop lo).length := by rw [h_len]; omega
+  have h_get : (((arr.toList.take hi).drop lo)[k - lo]'hj_lt).val = (arr[k]'hk_sz).val := by
+    rw [List.getElem_drop, List.getElem_take, Array.getElem_toList]
+    congr 2; omega
+  have h_bal' : pbalance (((arr.toList.take hi).drop lo).take (k - lo)) = 0 := by
+    rw [window_prefix_eq arr lo hi k (Nat.le_of_lt hk_hi) h_hi,
+        ← flowBracketBalance_eq_pbalance arr lo k h_lo]
+    exact h_bal
+  have hlast : (k - lo) + 1 = ((arr.toList.take hi).drop lo).length := by rw [h_len]; omega
+  have h_not := SafeBodyUnit_last_not_sep hQ h (k - lo) hj_lt hlast h_bal'
+  rw [h_get] at h_not
+  exact h_not
+
 /-- Prepending a delta-`0`, non-`.flowEntry` token to an `EntrySafe` entry keeps
     it `EntrySafe`: the head contributes nothing to the balance, and any interior
     `.flowEntry` is the tail's, whose prefix balance is unchanged by the head. -/
