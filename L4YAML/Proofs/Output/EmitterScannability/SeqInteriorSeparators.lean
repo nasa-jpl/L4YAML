@@ -524,6 +524,48 @@ theorem seqClose_of_located_and_enclosing
     · exact h
   exact ⟨j, h_a_j, h_b_j, by omega, h_inner, h_jclose⟩
 
+/-- **The child `SafeBodyUnit` at a located genuine seq body** — `(i'-b-child-safebodyunit)`, brick
+    (4) of the descent.  Once `seqClose_of_located_and_enclosing` (3) has located the enclosing seq's
+    matching close `j`, the body `[p+1, j)` is a GENUINE emitted seq interior, and the last hypothesis
+    `seqEnclosingFacts_provider_of_located` consumes — `SafeBodyUnit ContentStartTok` of that interior
+    slice — follows directly.  Per [[ref-near-leaf-mirror-sheds-machinery]] this is the PRODUCER-side
+    simplification of the locate boundary: the `SafeBodyUnit` route R303 killed for ARBITRARY gated
+    windows (a separator-headed window passes a head-blind gate but cannot inhabit a `SafeBodyUnit`) is
+    VALID here precisely because `[p+1, j)` is the interior of a real `[ … ]` whose opener sits at the
+    window head `p`.
+
+    The route is the seq-bracket oracle already in hand.  With the enclosing recursion window `[p, hi)`
+    a `FlowBodyWindow`/`FlowBodyContentDeep`/`FlowBodyContent` whose head `tokens[p]` is the
+    `.flowSequenceStart` opener, `recseqentry_seqbracket_oracle` — fed the close facts (the typed close
+    `tokens[j]! = .flowSequenceEnd`, the interior balance `balance (p+1) j = 0`, and the matched-bracket
+    interior floor `∀ i ∈ (p, j], balance p i ≥ 1`, all the matching-close locator's own output) and the
+    width-recursion IH — returns `RecSeqBody ((tokens.toList.take j).drop (p+1))` (its first conjunct;
+    the second, the trailing separator, is brick (3)'s concern).  `RecSeqBody.toSafeBodyUnit` projects
+    that to the windowed `SafeBodyUnit ContentStartTok` verbatim.
+
+    So brick (4) is a thin producer wrapper: the genuine residual it isolates is brick (5), which must
+    (a) instantiate the IH via `windowWidth_strongRecOn`, and (b) establish the located window's
+    `FlowBodyContentDeep`/`FlowBodyContent` and supply `j` + the interior floor from
+    `flowBracketBalance_matching_close`.  De-risked (`Tests/Guards/Proofs/SeqChildSafeBodyProbe.lean`)
+    on `[[1, 2], 9]` (inner body `[3, 6)`, opener `p = 2`, close `j = 6`) and `[[1], [2]]` (inner bodies
+    `[3, 4)` / `[7, 8)`): the interior floor `≥ 1` over `(p, j]` and the inner balance `= 0` — the
+    oracle's witness-dependent hypotheses — hold at each located child, so the wrapper is not vacuous
+    ([[ref-probe-provider-satisfiable-before-assembler]]). -/
+theorem seqChild_safeBodyUnit (tokens : Array (Positioned YamlToken)) (p hi j : Nat)
+    (h_window : FlowBodyWindow tokens p hi)
+    (h_deep : FlowBodyContentDeep tokens p hi)
+    (h_content : FlowBodyContent tokens p hi)
+    (h_open : tokens[p]!.val = .flowSequenceStart)
+    (h_ih : ∀ lo' hi', hi' - lo' < hi - p →
+        FlowBodyWindow tokens lo' hi' → FlowBodyContentDeep tokens lo' hi' →
+        RecSeqBody ((tokens.toList.take hi').drop lo'))
+    (h_pj : p < j) (h_jhi : j < hi) (h_jclose : tokens[j]!.val = .flowSequenceEnd)
+    (h_inner : flowBracketBalance tokens (p + 1) j = 0)
+    (h_floor : ∀ i, p < i → i ≤ j → flowBracketBalance tokens p i ≥ 1) :
+    SafeBodyUnit ContentStartTok ((tokens.toList.take j).drop (p + 1)) :=
+  ((recseqentry_seqbracket_oracle tokens p hi h_window h_deep h_content h_open h_ih)
+    j h_pj h_jhi h_jclose h_inner h_floor).1.toSafeBodyUnit
+
 /-- **The gate's stack-top conjunct is RECONSTRUCTIBLE in place** — the Q2 discharge for
     `(i'-b-descend-root)`.  `SeqTypedInterior`'s second conjunct
     (`(btFold (some []) (tokens.toList.take a)).bind (·.head?) = some true`) is a fact about the
