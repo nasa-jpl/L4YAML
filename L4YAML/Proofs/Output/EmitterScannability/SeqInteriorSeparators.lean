@@ -146,4 +146,52 @@ theorem seqSeparatorFacts_of_windowed_safebodyunit
     exact absurd h_fe (SafeBodyUnit_array_last_not_sep_window
       ContentStartTok_ne_flowEntry tokens a b h_b h k h_lo hk1 _h_bal)
 
+/-- **The gate's stack-top conjunct is RECONSTRUCTIBLE in place** — the Q2 discharge for
+    `(i'-b-descend-root)`.  `SeqTypedInterior`'s second conjunct
+    (`(btFold (some []) (tokens.toList.take a)).bind (·.head?) = some true`) is a fact about the
+    PREFIX `[0,a)`, NOT about the window interior `[a,b)` — so it is NOT a projection of
+    `FlowBodyWindow` (whose `wellTyped` field only sees the interior).  But it reconstructs from two
+    boundary facts the recursion already supplies at every seq window:
+
+    * the **opener** just before the body is a `.flowSequenceStart` (`tokens[q]` with `q = a - 1` —
+      the seq oracle's `h_open : tokens[lo]!.val = .flowSequenceStart`, and the root window's outer `[`);
+    * the **pre-opener prefix folds to some typed stack** `s` (from the global `WellTyped` of the
+      concrete output via `WellTyped_prefix_some` — `btFold` of any prefix of a `WellTyped` list is
+      `some`).
+
+    A `.flowSequenceStart` pushes `true` (`btStep … = some (true :: s)`), so the stack top after the
+    opener is `true`.  This is a [[ref-reconstruct-in-place-over-relocate]] discharge: the gate is
+    reconstructed AT the window from its own boundary, not threaded as a second universal — and the
+    two hypotheses below ARE the precise facts the root seed must thread per seq window. -/
+theorem enclosingMark_true_of_opener
+    (tokens : Array (Positioned YamlToken)) (q : Nat) (h_q : q < tokens.size)
+    (s : List Bool) (h_pre : btFold (some []) (tokens.toList.take q) = some s)
+    (h_open : tokens[q]!.val = .flowSequenceStart) :
+    (btFold (some []) (tokens.toList.take (q + 1))).bind (·.head?) = some true := by
+  have h_q' : q < tokens.toList.length := by rwa [Array.length_toList]
+  have h_split : tokens.toList.take (q + 1)
+      = tokens.toList.take q ++ [tokens.toList[q]'h_q'] := by
+    rw [List.take_add_one, List.getElem?_eq_getElem h_q']; rfl
+  have h_val : (tokens.toList[q]'h_q').val = .flowSequenceStart := by
+    have hb : tokens.toList[q]'h_q' = tokens[q]! := by
+      rw [Array.getElem_toList, getElem!_pos tokens q h_q]
+    rw [hb]; exact h_open
+  have hstep : btStep (tokens.toList[q]'h_q') s = some (true :: s) := by
+    simp only [btStep, h_val]
+  have hfold : btFold (some s) [tokens.toList[q]'h_q'] = btStep (tokens.toList[q]'h_q') s := rfl
+  rw [h_split, btFold_append, h_pre, hfold, hstep]; rfl
+
+/-- **The full seq-typed gate, discharged from the window opener** (the consume-site corollary the
+    root seed feeds `seqSeparatorFacts_of_windowed_safebodyunit`).  Given the opener at `q` is a
+    `.flowSequenceStart`, the pre-opener prefix folds to `some s`, and the body `[q+1, hi)` is
+    depth-`0`-balanced, the gate `SeqTypedInterior tokens (q+1) hi` holds — so the carrier's body is
+    extractable at this window with no second guard. -/
+theorem seqTypedInterior_of_opener
+    (tokens : Array (Positioned YamlToken)) (q hi : Nat) (h_q : q < tokens.size)
+    (s : List Bool) (h_pre : btFold (some []) (tokens.toList.take q) = some s)
+    (h_open : tokens[q]!.val = .flowSequenceStart)
+    (h_bal : flowBracketBalance tokens (q + 1) hi = 0) :
+    SeqTypedInterior tokens (q + 1) hi :=
+  ⟨h_bal, enclosingMark_true_of_opener tokens q h_q s h_pre h_open⟩
+
 end L4YAML.Proofs.EmitterScannability
