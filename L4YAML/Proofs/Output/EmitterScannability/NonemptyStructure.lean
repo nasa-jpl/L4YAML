@@ -865,6 +865,109 @@ theorem emitList_body_recseqbody
       (s.tokens.filter (fun t => t.val != .placeholder)).size)
   rw [h_drop]; exact h_rec
 
+/-- **Seq root provider — windowed `SafeBodyUnit` at the outer span `[2, size-2)`** (Phase J,
+    `(i'-b-descend-root-provider)`, the ROOT instance of the universal seq-window producer).
+    Per [[ref-universal-producer-root-seed-first]], this is the base case of the `provider`
+    `seqInteriorSeparators_of_safebody_provider` consumes: it delivers
+    `SafeBodyUnit ContentStartTok ((tokens.toList.take (tokens.size - 2)).drop 2)` directly from
+    emission, with NO recursion over nested seq windows.
+
+    The construction is the **slice bridge** the next-step note named "verbatim": replay the
+    open-bracket → body → close-bracket chain exactly as `scanFiltered_emitSeq_nonempty_structure`
+    does, but feed the body through the *recursive* producer `emitList_body_recseqbody` (whose
+    deliverable is `RecSeqBody` over the body block `(s₂.tokens.filter p).toList.drop 2`), then
+    project `RecSeqBody.toSafeBodyUnit` through the same token-decomposition slice identity
+    `h_take_eq` that the structural lemma uses for `WellTyped`: the interior slice
+    `tokens.toList.take (tokens.size - 2)` is exactly the body block `(s₂.tokens.filter p).toList`
+    (the two trailing pushes `tok_fse`/`streamEnd` are dropped by `take (size-2)`), so its `.drop 2`
+    is the `.drop old_sz` tail the `RecSeqBody` is keyed on (`old_sz = (s₁.filter p).size = 2`).
+
+    Keyed on the recursive per-item hypothesis `EmitScansInFlowRecEntry` (the producer's interface,
+    supplied per item by `emit_scans_in_flow_rec_entry` from `Grammable`).  This is the producer's
+    GIFT side made concrete (R301): the gate `SeqTypedInterior` the carrier `intro`s is *consumed*
+    when proving the carrier; here at the root the provider just hands over the `SafeBodyUnit` the
+    emission already scanned. -/
+theorem seqRoot_safeBodyUnit
+    (items : Array YamlValue) (tokens : Array (Positioned YamlToken))
+    (h_scan : Scanner.scanFiltered ("[" ++ emit.emitList items.toList ++ "]") = .ok tokens)
+    (h_ne : items.toList ≠ [])
+    (h_all : ∀ v ∈ items.toList, EmitScansInFlowRecEntry v) :
+    SafeBodyUnit ContentStartTok ((tokens.toList.take (tokens.size - 2)).drop 2) := by
+  let input := "[" ++ emit.emitList items.toList ++ "]"
+  let p := fun (t : Positioned YamlToken) => t.val != .placeholder
+  have h_toList : input.toList = '[' :: (emit.emitList items.toList).toList ++ [']'] := by
+    simp only [input, String.toList_append]; rfl
+  -- Open bracket → s₁
+  obtain ⟨s₁, h_snt₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_col₁,
+          h_inflow₁, h_indent₁, h_ek₁, h_line₁, h_atol₁, h_endline₁, h_sk₁, h_filt₁,
+          h_sync₁, _h_ska₁, _h_ssv₁⟩ :=
+    scanNextToken_flow_open_init input
+      ((emit.emitList items.toList).toList ++ [']']) h_toList
+  -- Body scanning → s₂ via the RECURSIVE producer (delivers `RecSeqBody` of the body block)
+  obtain ⟨n₂, s₂, h_chain₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, h_ek₂, h_col₂, h_inflow₂,
+          h_indent₂, h_line₂, h_atol₂, h_endline₂, h_stack₂, h_fmc₂, h_rec₂⟩ :=
+    emitList_body_recseqbody items.toList h_ne h_all s₁ [']']
+      h_corr₁ h_inflow₁ (by rw [h_fl₁]; omega) h_indent₁ (by rw [h_col₁]; omega)
+      h_ek₁ (h_line₁ ▸ h_atol₁) h_endline₁ h_sync₁
+  -- Close bracket → s₃
+  obtain ⟨s₃, h_snt₃, h_fl₃, h_dp₃, h_peek₃, h_ids₃, ⟨tok_fse, h_tok_fse_val, h_filt₃⟩⟩ :=
+    scanNextToken_flow_close_seq_outermost_ext s₂ h_corr₂ h_inflow₂ h_indent₂ h_col₂
+      (by rw [h_fl₂, h_fl₁]) (by rw [h_dp₂, h_dp₁])
+  -- EOF + chain composition
+  have h_eof : scanNextToken s₃ = .ok none := scanNextToken_eof s₃ h_peek₃
+  have h_chain_all := (ScanChain.single h_snt₁).trans
+    (h_chain₂.trans (ScanChain.single h_snt₃))
+  -- BOM check
+  have h_no_bom : (ScannerState.mk' input).peek? ≠ some '﻿' := by
+    have h_chars := chars_from_zero_toList input
+    rw [h_toList] at h_chars
+    have h_corr := initial_corr _ _ h_chars
+    have ⟨h_pk, _⟩ := peek_of_chars_cons _ '['
+      ((emit.emitList items.toList).toList ++ [']']) 0 h_corr
+    rw [h_pk]; decide
+  -- Indents chain: s₃.indents = s₁.indents = #[] (default from mk')
+  have h_indents_small : s₃.indents.size ≤ 1 := by
+    rw [h_ids₃, h_ids₂, h_ids₁]
+    unfold ScannerState.emit ScannerState.mk'
+    dsimp only []
+    decide
+  -- Token equation: tokens = (s₃.emit .streamEnd).tokens.filter p
+  have h_tok_eq : Scanner.scanFiltered input =
+      .ok ((s₃.emit .streamEnd).tokens.filter p) :=
+    scanFiltered_tokens_eq_of_chain_short_stack input _ s₃ _ rfl h_no_bom
+      h_chain_all h_eof h_fl₃ h_dp₃
+      (ScanChain.fuel_bound _ _ _ _ rfl h_chain_all h_eof)
+      h_indents_small
+  have h_tokens_eq : tokens = (s₃.emit .streamEnd).tokens.filter p := by
+    have : Scanner.scanFiltered input = .ok tokens := h_scan
+    rw [h_tok_eq] at this; exact (Except.ok.inj this).symm
+  -- Decompose: tokens = ((s₂.tokens.filter p).push tok_fse).push streamEnd
+  have h_emit_se_tokens : (s₃.emit .streamEnd).tokens =
+      s₃.tokens.push { pos := s₃.currentPos, val := .streamEnd } := by
+    unfold ScannerState.emit; rfl
+  have h_final_filter : (s₃.emit .streamEnd).tokens.filter p =
+      (s₃.tokens.filter p).push { pos := s₃.currentPos, val := .streamEnd } := by
+    rw [h_emit_se_tokens, Array.filter_push]; rfl
+  have h_tokens_decomp : tokens = ((s₂.tokens.filter p).push tok_fse).push
+      { pos := s₃.currentPos, val := .streamEnd } := by
+    rw [h_tokens_eq, h_final_filter, h_filt₃]
+  -- old_sz = (s₁.tokens.filter p).size = 2
+  have h_filt₁_sz : (s₁.tokens.filter p).size = 2 := by
+    have : ((s₁.tokens.filter p).map (·.val)).size = 2 := by rw [h_filt₁]; rfl
+    simpa [Array.size_map] using this
+  -- The interior slice `take (size-2)` is exactly the body block `(s₂.filter p).toList`
+  have h_tokens_sz_eq : tokens.size - 2 = (s₂.tokens.filter p).size := by
+    rw [h_tokens_decomp]; simp [Array.size_push]
+  have h_take_eq : tokens.toList.take (tokens.size - 2) = (s₂.tokens.filter p).toList := by
+    have h_sz : tokens.size - 2 = (s₂.tokens.filter p).toList.length := by
+      rw [h_tokens_sz_eq, Array.length_toList]
+    rw [h_sz, h_tokens_decomp, Array.toList_push, Array.toList_push, List.append_assoc,
+      List.take_left]
+  -- Project the body block's `RecSeqBody` to the windowed `SafeBodyUnit`
+  rw [h_filt₁_sz] at h_rec₂
+  rw [h_take_eq]
+  exact h_rec₂.toSafeBodyUnit
+
 /-! ### Recursive deliverable — map side (`RecMapBody` / `RecMapPair`)
 
 The map-side mirror of `RecSeqBody`/`RecSeqEntry` (Reflection 234), one nesting level deeper.  A
