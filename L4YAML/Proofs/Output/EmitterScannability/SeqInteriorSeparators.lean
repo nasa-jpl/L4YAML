@@ -444,6 +444,86 @@ theorem seqOpenerType_of_located_and_gate
   simp only [List.head?_cons, Option.bind_some] at h_mark
   exact hb_seq (Option.some.inj h_mark)
 
+/-- **The forward CLOSE of the located enclosing seq** — `(i'-b-locator-glue-close)`, brick (3) of
+    the descent.  Given the located enclosing opener `p` — now PROVEN a `.flowSequenceStart`
+    (`seqOpenerType_of_located_and_gate`) at depth `0` of the enclosing recursion window `[lo, hi)`
+    (the discriminator `flowBracketBalance tokens lo p = 0`, [[ref-root-seed-discriminator-not-from-gate]]) —
+    locate its matching close `hiS = j` and deliver the bounds the enclosing-facts provider needs.
+
+    The enclosing window is well-bracketed: `flowBracketBalance tokens lo hi = 0` with the window Dyck
+    floor `∀ i ∈ [lo, hi], balance lo i ≥ 0` (the recursion carries both for the parent seq body), and
+    `WellTyped` of its slice.  So `flowBracketBalance_matching_close_seq` (base `lo`, `k := p`) yields a
+    `j` with `p < j < hi`, the typed close `tokens[j]!.val = .flowSequenceEnd`, and `balance (p+1) j = 0`
+    — matching-close AND close-type in one call.
+
+    **The two containment bounds come for free from the two floors** (this is why R313's gate floor was
+    load-bearing).  The close at `j` makes the next step underflow: `balance β (j+1) = balance β j +
+    flowBracketDelta tokens[j]!.val = balance β j - 1`.
+
+    * `a ≤ j` — else `j + 1 ≤ a`, so the **locator floor** (`h_loc_floor` over `[p+1, a]`) at `j + 1`
+      forces `balance (p+1) (j+1) ≥ 0`, contradicting `balance (p+1) j - 1 = -1`.
+    * `b ≤ j` — else `j + 1 ≤ b`; with `a ≤ j` (hence `a ≤ j + 1`) the **GATE floor** (`h_gate_floor`
+      over `[a, b]`) at `j + 1` forces `balance a (j+1) ≥ 0`, contradicting `balance a j - 1 = -1`
+      (`balance a j = 0` by composition: `balance (p+1) j = balance (p+1) a + balance a j = 0 + balance a j`).
+
+    Delivered as the shape `seqEnclosingFacts_provider_of_located` consumes: `hiS = j` with `a ≤ hiS`,
+    `b ≤ hiS`, `hiS ≤ tokens.size` (from `j < hi ≤ size`), `flowBracketBalance tokens (p+1) hiS = 0`
+    (the body `[p+1, j)` balances — feeds brick (4)'s `SafeBodyUnit` window) and the typed close.
+    De-risked on `[[1, 2], 9]` and `[[1], [2]]` (`Tests/Guards/Proofs/SeqCloseLocateProbe.lean`): the
+    matching-close hypotheses hold at `p` and the two floor contradictions produce `a ≤ j`, `b ≤ j`. -/
+theorem seqClose_of_located_and_enclosing
+    (tokens : Array (Positioned YamlToken)) (a b lo p hi : Nat)
+    (h_lo_p : lo ≤ p) (h_pa : p < a) (h_ab : a ≤ b) (h_b_hi : b ≤ hi)
+    (h_hi_sz : hi ≤ tokens.size)
+    (h_p_depth : flowBracketBalance tokens lo p = 0)
+    (h_total : flowBracketBalance tokens lo hi = 0)
+    (h_win_floor : ∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0)
+    (h_open : tokens[p]!.val = .flowSequenceStart)
+    (h_body_bal : flowBracketBalance tokens (p + 1) a = 0)
+    (h_loc_floor : ∀ i, p + 1 ≤ i → i ≤ a → flowBracketBalance tokens (p + 1) i ≥ 0)
+    (h_gate_floor : ∀ i, a ≤ i → i ≤ b → flowBracketBalance tokens a i ≥ 0)
+    (h_wt : WellTyped ((tokens.toList.take hi).drop lo)) :
+    ∃ hiS, a ≤ hiS ∧ b ≤ hiS ∧ hiS ≤ tokens.size ∧
+      flowBracketBalance tokens (p + 1) hiS = 0 ∧
+      tokens[hiS]!.val = .flowSequenceEnd := by
+  have h_p_hi : p < hi := by omega
+  -- Matching close + typed close in one call (base `lo`, opener `k := p`).
+  obtain ⟨j, h_pj, h_jhi, h_jclose, h_inner⟩ :=
+    flowBracketBalance_matching_close_seq tokens lo p hi h_lo_p h_p_hi h_hi_sz
+      h_p_depth h_open h_total h_win_floor h_wt
+  have h_jdelta : flowBracketDelta tokens[j]!.val = -1 := by rw [h_jclose]; rfl
+  -- One-step balance recurrence at `j` over any base `≤ j` (mirrors `matching_close`'s `step`).
+  have step : ∀ base, base ≤ j →
+      flowBracketBalance tokens base (j + 1)
+        = flowBracketBalance tokens base j + flowBracketDelta tokens[j]!.val := by
+    intro base hbase
+    have h_j_sz : j < tokens.size := by omega
+    have hlen : j < tokens.toList.length := by rw [Array.length_toList]; exact h_j_sz
+    rw [flowBracketBalance_compose tokens base j (j + 1) hbase (by omega),
+        flowBracketBalance_single tokens j hlen]
+    have h1 : tokens.toList[j]'hlen = tokens[j] := Array.getElem_toList h_j_sz
+    have h2 : tokens[j] = tokens[j]! := (getElem!_pos tokens j h_j_sz).symm
+    rw [h1, h2]
+  -- (1) `a ≤ j` from the locator floor at `j + 1`.
+  have h_a_j : a ≤ j := by
+    rcases Nat.lt_or_ge j a with h | h
+    · have h_floor := h_loc_floor (j + 1) (by omega) (by omega)
+      rw [step (p + 1) (by omega), h_inner, h_jdelta] at h_floor
+      omega
+    · exact h
+  -- (2) `balance a j = 0` by composition over `[p+1, a, j]`.
+  have h_aj_bal : flowBracketBalance tokens a j = 0 := by
+    have hc := flowBracketBalance_compose tokens (p + 1) a j (by omega) h_a_j
+    rw [h_inner, h_body_bal] at hc; omega
+  -- (3) `b ≤ j` from the GATE floor at `j + 1`.
+  have h_b_j : b ≤ j := by
+    rcases Nat.lt_or_ge j b with h | h
+    · have h_floor := h_gate_floor (j + 1) (by omega) (by omega)
+      rw [step a h_a_j, h_aj_bal, h_jdelta] at h_floor
+      omega
+    · exact h
+  exact ⟨j, h_a_j, h_b_j, by omega, h_inner, h_jclose⟩
+
 /-- **The gate's stack-top conjunct is RECONSTRUCTIBLE in place** — the Q2 discharge for
     `(i'-b-descend-root)`.  `SeqTypedInterior`'s second conjunct
     (`(btFold (some []) (tokens.toList.take a)).bind (·.head?) = some true`) is a fact about the
