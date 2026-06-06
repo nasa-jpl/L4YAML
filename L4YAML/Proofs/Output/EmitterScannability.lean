@@ -23,6 +23,7 @@ import L4YAML.Proofs.Output.EmitterScannability.ContentFidelity
 import L4YAML.Proofs.Output.EmitterScannability.FilteredTracking
 import L4YAML.Proofs.Output.EmitterScannability.WellBracketed
 import L4YAML.Proofs.Output.EmitterScannability.NonemptyStructure
+import L4YAML.Proofs.Output.EmitterScannability.SeqInteriorSeparators
 
 /-!
 # Emitter Scannability (Phase E, Steps 1–2)
