@@ -34,6 +34,7 @@ import Tests.Reflections.WindowAbsoluteGateSubsetRestriction
 import Tests.Reflections.BoundaryResidualEndDual
 import Tests.Reflections.PrefixGateReconstructedFromBoundary
 import Tests.Reflections.GuardedUniversalFoldRelocatesGuard
+import Tests.Reflections.RootSeedRecursiveProducerSwap
 
 /-!
 # Reflections — runnable proof-engineering demonstrations
