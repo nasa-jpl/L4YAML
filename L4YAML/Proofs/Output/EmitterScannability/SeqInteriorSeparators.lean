@@ -38,18 +38,35 @@ open L4YAML.Scanner
 open L4YAML.Proofs.ParserGrammable
 
 /-- The **seq-typed bracket-interior gate** for a sub-window `[a,b)` of `tokens`, read off the same
-    substrate the R297 probe used. Two window-ABSOLUTE conditions:
+    substrate the R297 probe used. Three window-ABSOLUTE conditions:
 
-    * the window is depth-`0`-balanced (`flowBracketBalance tokens a b = 0`), and
+    * the window is depth-`0`-balanced (`flowBracketBalance tokens a b = 0`),
     * its immediately enclosing bracket is a SEQUENCE — the head of `WellTyped`/`btFold`'s typed
       stack after consuming the strict prefix `[0, a)` is `true`
-      (`flowSequenceStart ↦ true`, `flowMappingStart ↦ false`).
+      (`flowSequenceStart ↦ true`, `flowMappingStart ↦ false`), and
+    * the window is **locally Dyck** — `flowBracketBalance tokens a i ≥ 0` for every `a ≤ i ≤ b`.
 
-    Neither condition mentions an outer origin, which is exactly what makes the carrier below a
-    subset restriction. -/
+    **The local-Dyck floor is load-bearing (R313).** Without it the gate is *floor-blind*: a
+    `#guard`-backed probe on `[[1], [2]]` (`Tests/Guards/Proofs/SeqGateFloorProbe.lean`) shows the
+    CROSS-SIBLING window `[3, 7)` (from inside the first inner seq to inside the second) is
+    depth-`0`-balanced and seq-enclosed — passing the bare two-conjunct gate — yet `bodySuccFact`
+    is outright FALSE on it (its first entry `tokens[3] = "1"` is depth-`0`-complete but
+    `tokens[4] = ]`, not a `.flowEntry`), so the carrier `SeqInteriorSeparators` would be FALSE on a
+    *valid* witness. Such windows DIP below `0` (crossing the first sibling's close: `balance 3 5 =
+    -1`), so the floor excludes EXACTLY them: every floor-violating gated window is a cross-sibling
+    one, and `floored ⟹ bodySuccFact` at every gated window of the witness. The floor also discharges
+    the consumer's `b ≤ hiS` for free (a window crossing the located opener's matching close `j` would
+    have `balance a (j+1) < 0`). This is [[ref-probe-provider-head-blind-gate]] for a FLOOR-blind
+    gate, and the gate-domain dual of [[ref-downstream-derisk-restores-upstream]] (R311 restored a
+    dropped *producer* conjunct; here the missing conjunct is in the *gate*).
+
+    Each condition is window-ABSOLUTE (no outer origin), which is exactly what makes the carrier below
+    a subset restriction: the floor restricts to any `[a', b'] ⊆ [a, b]` by `flowBracketBalance`
+    composition. -/
 def SeqTypedInterior (tokens : Array (Positioned YamlToken)) (a b : Nat) : Prop :=
   flowBracketBalance tokens a b = 0 ∧
-  (btFold (some []) (tokens.toList.take a)).bind (·.head?) = some true
+  (btFold (some []) (tokens.toList.take a)).bind (·.head?) = some true ∧
+  (∀ i, a ≤ i → i ≤ b → flowBracketBalance tokens a i ≥ 0)
 
 /-- The `bodySucc` separator fact, relativised to an arbitrary window `[a,b)` (the
     `FlowBodyContent.bodySucc`/`flowBodyContent_of_deep` premise with `lo := a`, `hi := b`): at every
@@ -326,7 +343,7 @@ theorem flowBracketBalance_pos_of_seqTypedInterior
     (tokens : Array (Positioned YamlToken)) (a b : Nat)
     (h : SeqTypedInterior tokens a b) :
     flowBracketBalance tokens 0 a ≥ 1 :=
-  flowBracketBalance_pos_of_btFold_head tokens a true h.2
+  flowBracketBalance_pos_of_btFold_head tokens a true h.2.1
 
 /-- **The located opener is a `[`** — `(i'-b-locator-glue-opener-type)`, the second glue brick of the
     descent (after `flowBracketBalance_pos_of_seqTypedInterior` makes the backward locator invokable).
@@ -464,16 +481,19 @@ theorem enclosingMark_true_of_opener
 
 /-- **The full seq-typed gate, discharged from the window opener** (the consume-site corollary the
     root seed feeds `seqSeparatorFacts_of_windowed_safebodyunit`).  Given the opener at `q` is a
-    `.flowSequenceStart`, the pre-opener prefix folds to `some s`, and the body `[q+1, hi)` is
-    depth-`0`-balanced, the gate `SeqTypedInterior tokens (q+1) hi` holds — so the carrier's body is
+    `.flowSequenceStart`, the pre-opener prefix folds to `some s`, the body `[q+1, hi)` is
+    depth-`0`-balanced, and the body is **locally Dyck** (`h_floor` — the R313 third gate conjunct,
+    which at a genuine seq body comes from `flowBracketBalance_interior_dyck` re-based to the body
+    level), the gate `SeqTypedInterior tokens (q+1) hi` holds — so the carrier's body is
     extractable at this window with no second guard. -/
 theorem seqTypedInterior_of_opener
     (tokens : Array (Positioned YamlToken)) (q hi : Nat) (h_q : q < tokens.size)
     (s : List Bool) (h_pre : btFold (some []) (tokens.toList.take q) = some s)
     (h_open : tokens[q]!.val = .flowSequenceStart)
-    (h_bal : flowBracketBalance tokens (q + 1) hi = 0) :
+    (h_bal : flowBracketBalance tokens (q + 1) hi = 0)
+    (h_floor : ∀ i, q + 1 ≤ i → i ≤ hi → flowBracketBalance tokens (q + 1) i ≥ 0) :
     SeqTypedInterior tokens (q + 1) hi :=
-  ⟨h_bal, enclosingMark_true_of_opener tokens q h_q s h_pre h_open⟩
+  ⟨h_bal, enclosingMark_true_of_opener tokens q h_q s h_pre h_open, h_floor⟩
 
 /-- **The consumer fold — `SeqInteriorSeparators` reduces to a `SafeBodyUnit` provider** (the first
     landable brick of `(i'-b-descend-root)`, per `ref-universal-producer-root-seed-first` /
