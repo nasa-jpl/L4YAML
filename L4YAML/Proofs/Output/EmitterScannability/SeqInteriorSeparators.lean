@@ -239,6 +239,48 @@ theorem seqEnclosingFacts_of_windowed_safebodyunit
   obtain ⟨h_bs, h_nts⟩ := seqSeparatorFacts_of_windowed_safebodyunit tokens a b h_b h
   exact ⟨h_bs, seqInteriorFeContentStart_of_windowed_safebodyunit tokens a b h_b h, h_nts⟩
 
+/-- **The enclosing-facts `provider`, ASSEMBLED from a LOCATED enclosing seq** — the
+    [[ref-parametric-assembler-extraction]] split of the provider's locate boundary, serving BOTH the
+    root seed and the descent.  Lift the locator's eventual output as hypotheses — a located enclosing
+    seq body `[loS, hiS)` with the gated window re-seated at its top level
+    (`flowBracketBalance tokens loS a = 0`), enclosing the window (`loS ≤ a`, `b ≤ hiS`), and its
+    windowed `SafeBodyUnit` — and the provider's existential is discharged in ONE line via
+    `seqEnclosingFacts_of_windowed_safebodyunit`.  No locate analysis here: that is isolated as the
+    residual (the `SafeBodyUnit` + the bounds are exactly what the locator produces).
+
+    This factors the whole provider into ASSEMBLE (here, trivial) vs LOCATE (the residual):
+
+    * the **root** instance specialises `loS = 2`, `hiS = size - 2`, with the `SafeBodyUnit` from
+      `seqRoot_safeBodyUnit` (emission, no recursion) — `seqEnclosingFacts_provider_root` below is now
+      this lemma at the outer window;
+    * the **descent** instance, at a nested gated window where the top-level discriminator
+      `flowBracketBalance tokens 2 a = 0` FAILS, locates the innermost enclosing seq via the backward
+      enclosing-opener scan and recovers its `SafeBodyUnit` from the recursion
+      (`recseqentry_seqbracket_oracle` / `RecSeqBody.toSafeBodyUnit`) — the owed residual.
+
+    **De-risk (`#guard`-backed, `Tests/Guards/Proofs/SeqDescentLocatorProbe.lean`, on `[[1, 2], 9]`).**
+    The lifted hypotheses are SATISFIABLE on NESTED gated windows (per
+    [[ref-probe-provider-satisfiable-before-assembler]]): at the nested window `[3, 6)`
+    (`flowBracketBalance tokens 2 3 = 1`, so the root discriminator fails) the backward scan locates
+    `loS = 3`, `hiS = 6` with `flowBracketBalance tokens loS a = 0`, `loS ≤ a`, `b ≤ hiS`, and the
+    located enclosing IS a seq (the gate's `btFold`-top at `loS` is `some true`, matching the opener
+    `tokens[2] = .flowSequenceStart`) whose `SafeBodyUnit` is the inner seq's — so the assembler is not
+    vacuous and the residual (the locator) is genuine.  The split mirrors the consumer-side factoring of
+    `seqInteriorSeparators_of_enclosing_provider` ([[ref-reduction-by-import]]). -/
+theorem seqEnclosingFacts_provider_of_located
+    (tokens : Array (Positioned YamlToken)) (a b loS hiS : Nat)
+    (h_loS_a : loS ≤ a) (h_b_hiS : b ≤ hiS) (h_hiS : hiS ≤ tokens.size)
+    (h_bal0 : flowBracketBalance tokens loS a = 0)
+    (h_safe : SafeBodyUnit ContentStartTok ((tokens.toList.take hiS).drop loS)) :
+    ∃ loS hiS, loS ≤ a ∧ b ≤ hiS ∧ flowBracketBalance tokens loS a = 0 ∧
+      bodySuccFact tokens loS hiS ∧
+      (∀ k, loS ≤ k → k + 1 < hiS →
+        tokens[k]!.val = .flowEntry → flowBracketBalance tokens loS k = 0 →
+        isFlowContentStart tokens[k + 1]!.val) ∧
+      noTrailingSepFact tokens loS hiS :=
+  ⟨loS, hiS, h_loS_a, h_b_hiS, h_bal0,
+    seqEnclosingFacts_of_windowed_safebodyunit tokens loS hiS h_hiS h_safe⟩
+
 /-- **The ROOT instance of the enclosing-facts `provider`** — `(i'-b-locator)` base case, per
     [[ref-universal-producer-root-seed-first]].  At the outermost seq `[2, size-2)` of a concrete
     flow-sequence output `"[" ++ emitList items ++ "]"`, `seqRoot_safeBodyUnit` delivers the windowed
@@ -270,9 +312,8 @@ theorem seqEnclosingFacts_provider_root
           isFlowContentStart tokens[k + 1]!.val) ∧
         noTrailingSepFact tokens loS hiS := by
   intro a b ha hab hb hbal
-  exact ⟨2, tokens.size - 2, ha, hb, hbal,
-    seqEnclosingFacts_of_windowed_safebodyunit tokens 2 (tokens.size - 2) (by omega)
-      (seqRoot_safeBodyUnit items tokens h_scan h_ne h_all)⟩
+  exact seqEnclosingFacts_provider_of_located tokens a b 2 (tokens.size - 2)
+    ha hb (by omega) hbal (seqRoot_safeBodyUnit items tokens h_scan h_ne h_all)
 
 /-- **The gate's stack-top conjunct is RECONSTRUCTIBLE in place** — the Q2 discharge for
     `(i'-b-descend-root)`.  `SeqTypedInterior`'s second conjunct
