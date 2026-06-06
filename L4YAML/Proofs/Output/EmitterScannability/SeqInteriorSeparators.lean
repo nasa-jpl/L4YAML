@@ -1069,6 +1069,86 @@ theorem seqRoot_seqInteriorSeparators
     (seqRoot_safeBodyUnit items tokens h_scan h_ne h_all)
     desc
 
+/-- **The seq-enclosure guard** (Phase J — `(i'-b-B3-enclosed-guard)`, the single residual `G`-conjunct
+    R320 named).  `SeqEnclosed tokens lo` is the `lo`-keyed enclosing btFold-top fact: the typed
+    bracket stack after the prefix `[0, lo)` has top `true` (the window sits immediately inside a flow
+    SEQUENCE `[`, not a mapping `{`).  It is *definitionally* the second conjunct of `SeqTypedInterior`
+    (the gate `seqWindow_flowBodyContent` consumes), and it is the one piece of that gate neither
+    `FlowBodyWindow` nor `FlowBodyContentDeep` carries — both are bracket/content-shape facts blind to
+    which bracket TYPE encloses the window.
+
+    It is an *additive parallel type* ([[ref-additive-parallel-type-over-shared-edit]]) beside
+    `FlowBodyWindow`, threaded as the third `G`-conjunct of the `windowWidth_strongRecOn` producer.  Its
+    two preservation edges below mirror `flowBodyWindow_advance` / `flowBodyWindow_descend`, but with a
+    structural asymmetry the balance guards do NOT have ([[ref-converse-forward-invariant-asymmetry]]):
+    DESCEND *overwrites* the stack head (pushing an opener forces top `true` regardless of the parent's
+    top), so it is parent-head-BLIND — it needs only that the parent fold is DEFINED; ADVANCE *frames*
+    the head (a `WellTyped` segment returns the fold to the same stack), so it is parent-head-DEPENDENT
+    — it needs the parent's top `true`.  This is the seq-specific analogue of the
+    balance-overwrite-vs-rebase split that `flowBodyWindow_{descend,advance}` already exhibit. -/
+def SeqEnclosed (tokens : Array (Positioned YamlToken)) (lo : Nat) : Prop :=
+  (btFold (some []) (tokens.toList.take lo)).bind (·.head?) = some true
+
+/-- **DESCEND enclosure-preservation** (Phase J — the `SeqEnclosed` companion of
+    `flowBodyWindow_descend`).  When the body window's head `tokens[lo]` is a flow-sequence opener `[`,
+    the recursion descends into the interior `[lo+1, j)`; this lemma re-establishes `SeqEnclosed` at the
+    descended start `lo+1`.  It is the `(lo+1)`-keyed btFold-top reconstructed in place from the located
+    opener ([[ref-reconstruct-in-place-over-relocate]] / [[ref-prefix-gate-reconstructed-from-boundary]]),
+    exactly the option-A discharge the de-risk found `recseqentry_seqbracket_oracle`'s IH call site
+    affords (the opener `lo` is in scope there).
+
+    The proof is a single PUSH: `take (lo+1) = take lo ++ [tokens[lo]]`, the opener `[` pushes `true`
+    onto whatever stack the parent fold reached, so the new top is `true`.  Crucially the parent's top
+    is NEVER read — only its DEFINEDNESS (`SeqEnclosed lo ⟹ the fold is `some s`); pushing overwrites
+    the head.  So this edge would hold from the weaker "parent fold defined", but `SeqEnclosed lo` is
+    what the producer threads, so it is the stated hypothesis. -/
+theorem seqEnclosed_descend (tokens : Array (Positioned YamlToken)) (lo : Nat)
+    (h_enc : SeqEnclosed tokens lo)
+    (h_lo_sz : lo < tokens.size)
+    (h_open : tokens[lo]!.val = .flowSequenceStart) :
+    SeqEnclosed tokens (lo + 1) := by
+  unfold SeqEnclosed at h_enc ⊢
+  have h_lo_len : lo < tokens.toList.length := by rw [Array.length_toList]; exact h_lo_sz
+  have h_lo_val : (tokens.toList[lo]'h_lo_len).val = .flowSequenceStart := by
+    rw [Array.getElem_toList, ← getElem!_pos tokens lo h_lo_sz]; exact h_open
+  rw [List.take_succ_eq_append_getElem h_lo_len, btFold_append]
+  cases hf : btFold (some []) (tokens.toList.take lo) with
+  | none => rw [hf] at h_enc; simp at h_enc
+  | some s =>
+    -- PUSH the opener: `btStep` prepends `true`, so the head is `true` independent of `s`.
+    rw [btFold_cons_some]
+    simp only [btFold, List.foldl_nil, btStep, h_lo_val, Option.bind_some, List.head?_cons]
+
+/-- **ADVANCE enclosure-preservation** (Phase J — the `SeqEnclosed` companion of
+    `flowBodyWindow_advance`).  After the body recursion consumes the first entry, the tail recurses at
+    a new start `n` reached across a `WellTyped` segment `[lo, n)` (the entry plus its depth-`0`
+    `.flowEntry` separator).  This lemma transports `SeqEnclosed` from `lo` to `n`.
+
+    The proof is a FRAME, not a push: `take n = take lo ++ (take n).drop lo`, and the segment is
+    `WellTyped`, so `btFold_frame` (via `WellTyped_frame`) returns the fold to the SAME stack — the top
+    is PRESERVED.  Unlike DESCEND this DOES read the parent's top (`SeqEnclosed lo`'s `true`), since the
+    frame preserves rather than overwrites.  The `WellTyped` segment is supplied as a hypothesis
+    ([[ref-parametric-assembler-extraction]]); the producer discharges it at the depth-`0` separator. -/
+theorem seqEnclosed_advance (tokens : Array (Positioned YamlToken)) (lo n : Nat)
+    (h_enc : SeqEnclosed tokens lo)
+    (h_lo_n : lo ≤ n)
+    (h_wt_seg : WellTyped ((tokens.toList.take n).drop lo)) :
+    SeqEnclosed tokens n := by
+  unfold SeqEnclosed at h_enc ⊢
+  have h_split : tokens.toList.take n
+      = tokens.toList.take lo ++ (tokens.toList.take n).drop lo := by
+    have h := List.take_append_drop lo (tokens.toList.take n)
+    rw [List.take_take, Nat.min_eq_left h_lo_n] at h
+    exact h.symm
+  rw [h_split, btFold_append]
+  cases hf : btFold (some []) (tokens.toList.take lo) with
+  | none => rw [hf] at h_enc; simp at h_enc
+  | some s =>
+    -- FRAME: the `WellTyped` segment returns the fold to `s`, so the head `true` is preserved.
+    rw [hf] at h_enc
+    rw [WellTyped_frame _ s h_wt_seg]
+    exact h_enc
+
 /-- **The per-window carrier→content consumer joint** — `(i'-b-B3-content-joint)`, the joint between
     the threaded separator carrier and the `RecSeqBody` recursion's per-window dispatch.  This is the
     de-risk finding for B3 (the `windowWidth_strongRecOn` `RecSeqBody` producer) made into a proof
@@ -1114,7 +1194,7 @@ theorem seqRoot_seqInteriorSeparators
 theorem seqWindow_flowBodyContent (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
     (h_win : FlowBodyWindow tokens lo hi)
     (h_deep : FlowBodyContentDeep tokens lo hi)
-    (h_enclosed : (btFold (some []) (tokens.toList.take lo)).bind (·.head?) = some true)
+    (h_enclosed : SeqEnclosed tokens lo)
     (h_root_carrier : SeqInteriorSeparators tokens 2 (tokens.size - 2)) :
     FlowBodyContent tokens lo hi := by
   -- The gate: balance + Dyck come from the window guard; only the enclosing-`[` btFold-top is owed.
