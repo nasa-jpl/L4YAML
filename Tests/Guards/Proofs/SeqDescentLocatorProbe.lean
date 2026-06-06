@@ -114,4 +114,37 @@ def locateEnclosingHiS (T : Array (Positioned YamlToken)) (loS : Nat) : Option N
 #guard enclosingMark probeToks 3 == some true      -- gate-top at loS = some true
 #guard probeToks[2]!.val == .flowSequenceStart     -- ... matching the opener at loS-1 = 2
 
+-- ════════════════════════ (D) DEEPER witness `[[[1]], 2]` — the closer-case matched-block skip ═══
+-- The backward locator's HARD CORE is the closer case: at a window start `a` whose preceding token
+-- is a `.flowSequenceEnd`, the scan must SKIP the just-closed (matched, balanced) sub-block to reach
+-- the enclosing opener.  `[[[1]], 2]` exercises this at two depths.
+def deepVal : YamlValue :=
+  .sequence .flow #[.sequence .flow #[.sequence .flow #[sc "1"]], sc "2"]
+
+def deepToks : Array (Positioned YamlToken) :=
+  match scanFiltered (emit deepVal) with
+  | .ok ts => ts
+  | .error _ => #[]
+
+-- layout: 0:SS 1:[ 2:[ 3:[ 4:"1" 5:] 6:] 7:, 8:"2" 9:] 10:SE
+#guard emit deepVal == "[[[\"1\"]], \"2\"]"
+#guard deepToks.size == 11
+#guard deepToks[1]!.val == .flowSequenceStart      -- outer `[`
+#guard deepToks[2]!.val == .flowSequenceStart      -- mid `[`
+#guard deepToks[3]!.val == .flowSequenceStart      -- inner `[`
+#guard deepToks[5]!.val == .flowSequenceEnd        -- inner `]`
+#guard deepToks[6]!.val == .flowSequenceEnd        -- mid `]`
+#guard deepToks[9]!.val == .flowSequenceEnd        -- outer `]`
+-- running balance from 0 (the locator's hypothesis `balance 0 a ≥ 1` holds at a = 2..9):
+#guard flowBracketBalance deepToks 0 4 == 3        -- depth 3 inside all three opens
+#guard flowBracketBalance deepToks 0 6 == 2        -- after inner `]` closes
+#guard flowBracketBalance deepToks 0 7 == 1        -- after mid `]` closes
+-- the located innermost opener (closer-case SKIP of the matched sub-block):
+#guard locateEnclosingLoS deepToks 4 == some 4     -- a=4: innermost is inner `[` (p=3, loS=4)
+#guard locateEnclosingLoS deepToks 6 == some 3     -- a=6: SKIP inner pair [3,5] → mid `[` (p=2, loS=3)
+#guard locateEnclosingLoS deepToks 7 == some 2     -- a=7: SKIP mid pair [2,6] → outer `[` (p=1, loS=2)
+#guard flowBracketBalance deepToks 3 6 == 0        -- balance loS a = 0 at the located loS (a=6)
+#guard flowBracketBalance deepToks 2 7 == 0        -- balance loS a = 0 at the located loS (a=7)
+#guard enclosingMark deepToks 7 == some true       -- gate-top at the deepest located loS is seq
+
 end L4YAML.Proofs.EmitterScannability.SeqDescentLocatorProbe
