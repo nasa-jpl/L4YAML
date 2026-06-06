@@ -170,4 +170,35 @@ def stackLen (T : Array (Positioned YamlToken)) (a : Nat) : Option Nat :=
 #guard stackLen deepToks 7 == some (flowBracketBalance deepToks 0 7).toNat   -- 1
 #guard decide (flowBracketBalance deepToks 0 7 ≥ 1)
 
+-- ════════════ (N) FLOOR minimal pair `[{}, ["9"]]` — the bare existential is INSUFFICIENT ════════════
+-- R311: the located opener's TYPE is NOT determined by the locator's three BARE facts (`p < a`,
+-- `delta = 1`, `balance (p+1) a = 0`).  On `[{}, ["9"]]` at the window start `a = 6` BOTH the true
+-- innermost `[` (p = 5) AND a SPURIOUS `{` (p = 2, whose body `} , [` over `[3,6)` nets `-1+0+1 = 0`)
+-- satisfy all three — yet `tokens[2]` is a MAP opener while the gate-top at `a = 6` is `some true`, so
+-- the opener-type brick is FALSE on the bare existential.  The interior FLOOR `balance (p+1) i ≥ 0`
+-- over `[p+1, a]` SEPARATES the pair (it pins innermost-ness), so the locator must DELIVER it (R311).
+def floorVal : YamlValue :=
+  .sequence .flow #[.mapping .flow #[], .sequence .flow #[sc "9"]]
+
+def floorToks : Array (Positioned YamlToken) :=
+  match scanFiltered (emit floorVal) with
+  | .ok ts => ts
+  | .error _ => #[]
+
+-- layout: 0:SS 1:[ 2:{ 3:} 4:, 5:[ 6:"9" 7:] 8:] 9:SE
+#guard emit floorVal == "[{}, [\"9\"]]"
+#guard floorToks.size == 10
+#guard floorToks[2]!.val == .flowMappingStart      -- the SPURIOUS candidate p=2 is a MAP `{`
+#guard floorToks[5]!.val == .flowSequenceStart     -- the TRUE innermost candidate p=5 is a SEQ `[`
+-- both candidates pass the BARE existential at the window start a = 6:
+#guard flowBracketDelta floorToks[5]!.val == 1 && flowBracketBalance floorToks 6 6 == 0  -- p=5 ✓
+#guard flowBracketDelta floorToks[2]!.val == 1 && flowBracketBalance floorToks 3 6 == 0  -- p=2 ✓ (spurious!)
+-- the gate-top at a = 6 is `some true` (innermost open IS a `[`) — so the brick would FALSELY fire for p=2:
+#guard enclosingMark floorToks 6 == some true
+#guard !(floorToks[2]!.val == .flowSequenceStart)  -- ... but p=2 is NOT a seq: the brick conclusion is FALSE there
+-- the FLOOR separates the pair: ≥ 0 throughout for p=5 (single point), dips to -1 at i=4 (`}`) for p=2:
+#guard decide (flowBracketBalance floorToks 6 6 ≥ 0)   -- p=5 floor holds
+#guard flowBracketBalance floorToks 3 4 == -1          -- p=2 floor VIOLATED at i=4 (the `}`)
+#guard !decide (flowBracketBalance floorToks 3 4 ≥ 0)
+
 end L4YAML.Proofs.EmitterScannability.SeqDescentLocatorProbe
