@@ -937,4 +937,52 @@ theorem seqInteriorSeparators_of_enclosing_provider
   exact ⟨bodySuccFact_rebase tokens loS a b hiS h_loS_a h_b_hiS h_bal0 h_bs,
          noTrailingSepFact_rebase tokens loS a b hiS h_loS_a h_b_hiS h_bal0 h_fe h_nts⟩
 
+/-- **The per-window DISPATCHER** — `(i'-b-recursion-driver / ii-merge)` part (a), the case-split that
+    reduces ONE seq window's `SeqInteriorSeparators tokens lo hi` to two suppliers: the window's OWN
+    `SafeBodyUnit` and a DESCENT provider for its strictly-nested gated sub-windows.
+
+    The `provider` `seqInteriorSeparators_of_enclosing_provider` consumes must, at every gated
+    sub-window `[a,b)`, hand back an enclosing seq body `[loS,hiS) ⊇ [a,b)` re-seated at `a`'s depth.
+    Those windows split on the **top-level discriminator** `flowBracketBalance tokens lo a = 0`:
+
+    * `= 0` — `a` is at `[lo,hi)`'s OWN top level, so its enclosing seq IS `[lo,hi)` itself; the
+      provider is satisfied by `⟨lo, hi, …⟩` directly from the window's `SafeBodyUnit`
+      (`seqEnclosingFacts_provider_of_located` at `loS = lo`, `hiS = hi`).  This is the abstract,
+      recursion-window form of `seqEnclosingFacts_provider_root` (the root specialises `lo = 2`,
+      `hi = size - 2` with the emission `SafeBodyUnit`).
+    * `≠ 0` — `a` is nested strictly deeper; the enclosing seq is an inner bracket the recursion must
+      locate, supplied by the `desc` hypothesis (which the driver discharges via the backward
+      enclosing-opener locator + `seqDescent_provider_of_located`, consuming the width-recursion IH).
+
+    The split is exhaustive and decidable (`Int` equality on the balance), so the dispatch is a pure
+    `dite` — the INVERSE of the classify unifier.  This is [[ref-fold-consumer-chain-to-producer-contract]]
+    at the dispatch layer: it folds the per-window provider into the two typed residuals the driver
+    must source — the window's own `SafeBodyUnit` (the `RecSeqBody` recursion / `seqRoot_safeBodyUnit`
+    at the root) and the `desc` locator — leaving only the strong-width fixpoint (part (b)) that threads
+    them across the `windowWidth_strongRecOn` edges (`flowBodyWindow_advance`/`flowBodyWindow_descend`).
+
+    **De-risk (`#guard`-backed, `Tests/Guards/Proofs/SeqDispatchPartitionProbe.lean`).** On
+    `[[1, 2], 9]` (`lo = 2`) and `[1, [2, 3]]` (`lo = 2`) every gated sub-window is classified by
+    `flowBracketBalance tokens 2 a` into exactly one branch — the top-level windows (`= 0`) whose
+    enclosing seq is the outer body `[2, 9)`, and the nested windows (`≠ 0`) whose enclosing seq is an
+    inner bracket — and each branch's supplier is satisfiable there, so the dispatch is non-vacuous on
+    both reach modes (descend-at-root and advance-then-descend). -/
+theorem seqInteriorSeparators_of_safebody_and_descent
+    (tokens : Array (Positioned YamlToken)) (lo hi : Nat) (h_hi : hi ≤ tokens.size)
+    (h_safe : SafeBodyUnit ContentStartTok ((tokens.toList.take hi).drop lo))
+    (desc : ∀ a b, lo ≤ a → a ≤ b → b ≤ hi → flowBracketBalance tokens lo a ≠ 0 →
+      SeqTypedInterior tokens a b →
+      ∃ loS hiS, loS ≤ a ∧ b ≤ hiS ∧ flowBracketBalance tokens loS a = 0 ∧
+        bodySuccFact tokens loS hiS ∧
+        (∀ k, loS ≤ k → k + 1 < hiS →
+          tokens[k]!.val = .flowEntry → flowBracketBalance tokens loS k = 0 →
+          isFlowContentStart tokens[k + 1]!.val) ∧
+        noTrailingSepFact tokens loS hiS) :
+    SeqInteriorSeparators tokens lo hi :=
+  seqInteriorSeparators_of_enclosing_provider tokens lo hi (fun a b ha hab hb hgate =>
+    if h : flowBracketBalance tokens lo a = 0 then
+      seqEnclosingFacts_provider_of_located tokens a b lo hi ha hb h_hi h h_safe
+    else
+      desc a b ha hab hb h hgate)
+
 end L4YAML.Proofs.EmitterScannability
