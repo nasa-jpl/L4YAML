@@ -194,4 +194,38 @@ theorem seqTypedInterior_of_opener
     SeqTypedInterior tokens (q + 1) hi :=
   ⟨h_bal, enclosingMark_true_of_opener tokens q h_q s h_pre h_open⟩
 
+/-- **The consumer fold — `SeqInteriorSeparators` reduces to a `SafeBodyUnit` provider** (the first
+    landable brick of `(i'-b-descend-root)`, per `ref-universal-producer-root-seed-first` /
+    `ref-fold-consumer-chain-to-producer-contract`).
+
+    The carrier's body is, at every gated sub-window `[a,b)`, exactly the per-window discharge
+    `seqSeparatorFacts_of_windowed_safebodyunit` (R299): one windowed
+    `SafeBodyUnit ContentStartTok ((tokens.toList.take b).drop a)` yields BOTH separator facts. So
+    proving the carrier `∀`-statement amounts to providing that `SafeBodyUnit` at every gated
+    sub-window — and nothing else. This lemma folds the whole consumer chain
+    (gate → windowed `SafeBodyUnit` → both facts) into ONE step whose sole hypothesis, `provider`, IS
+    the producer's remaining contract: *deliver `SafeBodyUnit` at each seq-typed depth-`0`-balanced
+    sub-window of `[lo,hi)`*.
+
+    This retypes the residual from "establish the carrier" to "establish the `SafeBodyUnit`
+    provider" (`ref-reduction-by-import`: the retype is the progress). What remains for
+    `(i'-b-descend-root)` is exactly `provider`:
+
+    * the **root instance** — `provider` at the outer seq window `[2, size-2)`, where emission
+      (`emitList_scans_safebody` / `emitList_body_filtered_characterization`) delivers the outer
+      `SafeBodyUnit` directly, no recursion (`ref-universal-producer-root-seed-first` base case);
+    * the **descent** — `provider` at each nested seq level, the `btFold`/width-driven induction.
+
+    The gate `SeqTypedInterior tokens a b` is the provider's hypothesis (it picks out exactly the
+    seq-typed windows that ARE emitted seq bodies; the R297 probe confirmed `bodySucc` holds on these
+    and fails on map-typed interiors, which the gate excludes). -/
+theorem seqInteriorSeparators_of_safebody_provider
+    (tokens : Array (Positioned YamlToken)) (lo hi : Nat) (h_hi : hi ≤ tokens.size)
+    (provider : ∀ a b, lo ≤ a → a ≤ b → b ≤ hi → SeqTypedInterior tokens a b →
+      SafeBodyUnit ContentStartTok ((tokens.toList.take b).drop a)) :
+    SeqInteriorSeparators tokens lo hi := by
+  intro a b ha hab hb hgate
+  exact seqSeparatorFacts_of_windowed_safebodyunit tokens a b (Nat.le_trans hb h_hi)
+    (provider a b ha hab hb hgate)
+
 end L4YAML.Proofs.EmitterScannability
