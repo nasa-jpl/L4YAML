@@ -566,6 +566,121 @@ theorem seqChild_safeBodyUnit (tokens : Array (Positioned YamlToken)) (p hi j : 
   ((recseqentry_seqbracket_oracle tokens p hi h_window h_deep h_content h_open h_ih)
     j h_pj h_jhi h_jclose h_inner h_floor).1.toSafeBodyUnit
 
+/-- **The descent `provider` at a located enclosing seq** — `(i'-b-descent-assembly)`, brick (5), the
+    LAST seq residual of the R303 direct-discharge route.  At a NESTED gated window `[a, b)` (the root
+    discriminator `flowBracketBalance tokens lo a = 0` FAILS, so the root seed
+    `seqEnclosingFacts_provider_root` does not apply), produce the provider existential
+    `∃ loS hiS, …` that `seqInteriorSeparators_of_enclosing_provider` consumes, by CHAINING the landed
+    descent bricks.
+
+    Per [[ref-parametric-assembler-extraction]] this is the ASSEMBLE half of the descent's locate
+    boundary: it LIFTS the facts the recursion driver supplies — the located enclosing opener `p` with
+    its locator output (`flowBracketDelta tokens[p]! = 1`, `balance (p+1) a = 0`, the locator floor
+    over `(p, a]`), and the enclosing recursion window `[p, hi)` as a
+    `FlowBodyWindow`/`FlowBodyContentDeep`/`FlowBodyContent` with the width-recursion IH — and
+    discharges the existential with NO locate analysis.  The residual it isolates is exactly the
+    recursion driver (`windowWidth_strongRecOn`): SOURCE `p` (the backward enclosing-opener scan made
+    invokable by `flowBracketBalance_pos_of_seqTypedInterior`) and the `[p, hi)` window facts + IH,
+    reaching `p` by advancing/descending until it is the current window's head.
+
+    The chain (all pieces landed):
+
+    1. `seqOpenerType_of_located_and_gate` — the gate's `btFold`-top `= some true` plus the locator
+       floor pin `tokens[p]` to `.flowSequenceStart`;
+    2. `flowBracketBalance_matching_close` (the GENERIC locator, at `lo = k = p` over `[p, hi)`) —
+       returns `j` with `j < hi`, `balance (p+1) j = 0`, and crucially the interior floor
+       `∀ i ∈ (p, j], balance p i ≥ 1` that `seqChild_safeBodyUnit` needs (brick (3)'s seq-specialized
+       locator DROPS it — [[ref-downstream-derisk-restores-upstream]], so the descent re-runs the
+       generic primitive rather than reusing `seqClose_of_located_and_enclosing`);
+    3. `matching_close_typed_core` + `btStep_pop_eq_seqEnd` — the typed close
+       `tokens[j]! = .flowSequenceEnd` (the opener pushes `[true]`, the matching close pops it);
+    4. the two containment bounds `a ≤ j`, `b ≤ j` — the [[ref-two-floor-relay-close-bound]] relay:
+       one underflow witness at `j + 1`, refuted by the locator floor (for `a`) then the gate floor
+       (for `b`);
+    5. `seqChild_safeBodyUnit` — the windowed `SafeBodyUnit ContentStartTok` of the genuine seq body
+       `[p+1, j)`;
+    6. `seqEnclosingFacts_provider_of_located` — the existential, `loS = p+1`, `hiS = j`.
+
+    **De-risk (`#guard`-backed, `Tests/Guards/Proofs/SeqDescentProviderProbe.lean`)** per
+    [[ref-probe-provider-satisfiable-before-assembler]]: the lifted hypotheses are satisfiable at
+    nested gated windows on two witnesses exercising the residual driver's two reach modes —
+    `[[1, 2], 9]` (DESCEND-AT-ROOT: `p = 2` IS the outer body head) and `[1, [2, 3]]`
+    (ADVANCE-THEN-DESCEND: `p = 4` is reached only after advancing past the first entry).  So the
+    assembler is not vacuous and the residual genuinely needs both recursion edges. -/
+theorem seqDescent_provider_of_located
+    (tokens : Array (Positioned YamlToken)) (a b p hi : Nat)
+    (h_pa : p < a) (h_ab : a ≤ b) (h_b_hi : b ≤ hi)
+    (h_delta : flowBracketDelta tokens[p]!.val = 1)
+    (h_body_bal : flowBracketBalance tokens (p + 1) a = 0)
+    (h_loc_floor : ∀ i, p + 1 ≤ i → i ≤ a → flowBracketBalance tokens (p + 1) i ≥ 0)
+    (h_gate : SeqTypedInterior tokens a b)
+    (h_window : FlowBodyWindow tokens p hi)
+    (h_deep : FlowBodyContentDeep tokens p hi)
+    (h_content : FlowBodyContent tokens p hi)
+    (h_ih : ∀ lo' hi', hi' - lo' < hi - p →
+        FlowBodyWindow tokens lo' hi' → FlowBodyContentDeep tokens lo' hi' →
+        RecSeqBody ((tokens.toList.take hi').drop lo')) :
+    ∃ loS hiS, loS ≤ a ∧ b ≤ hiS ∧ flowBracketBalance tokens loS a = 0 ∧
+      bodySuccFact tokens loS hiS ∧
+      (∀ k, loS ≤ k → k + 1 < hiS →
+        tokens[k]!.val = .flowEntry → flowBracketBalance tokens loS k = 0 →
+        isFlowContentStart tokens[k + 1]!.val) ∧
+      noTrailingSepFact tokens loS hiS := by
+  -- Window projections (the parent recursion's well-bracketedness).
+  have h_p_hi : p < hi := h_window.lo_lt_hi
+  have h_hi_sz : hi ≤ tokens.size := Nat.le_of_lt h_window.hi_lt
+  have h_total : flowBracketBalance tokens p hi = 0 := h_window.balanced
+  have h_dyck : ∀ i, p ≤ i → i ≤ hi → flowBracketBalance tokens p i ≥ 0 := h_window.dyck
+  have h_wt : WellTyped ((tokens.toList.take hi).drop p) := h_window.wellTyped
+  have h_a_sz : a ≤ tokens.size := Nat.le_trans (Nat.le_trans h_ab h_b_hi) h_hi_sz
+  -- (1) the located opener is a `.flowSequenceStart` (from the gate's mark + the locator floor).
+  have h_open : tokens[p]!.val = .flowSequenceStart :=
+    seqOpenerType_of_located_and_gate tokens a p h_pa h_a_sz h_delta h_body_bal h_loc_floor h_gate.2.1
+  -- (2) the GENERIC matching-close at `p` over `[p, hi)` — KEEPS the interior floor `≥ 1`.
+  have h_pp : flowBracketBalance tokens p p = 0 := by simp [flowBracketBalance]
+  obtain ⟨j, h_pj, h_jhi, h_jdelta, h_inner, h_pos⟩ :=
+    flowBracketBalance_matching_close tokens p p hi (Nat.le_refl p) h_p_hi h_hi_sz
+      h_pp h_delta h_total h_dyck
+  -- (3) the typed close `tokens[j]! = .flowSequenceEnd` (opener pushes `[true]`, close pops it).
+  have h_k_push : btStep tokens[p]! [] = some [true] := by unfold btStep; rw [h_open]
+  have h_jclose : tokens[j]!.val = .flowSequenceEnd :=
+    btStep_pop_eq_seqEnd _ (matching_close_typed_core tokens p p j hi true (Nat.le_refl p)
+      h_pj h_jhi h_hi_sz h_pp h_k_push h_inner h_jdelta h_pos h_wt)
+  -- (4) the containment bounds `a ≤ j`, `b ≤ j` — the two-floor relay at `j + 1`.
+  have step : ∀ base, base ≤ j →
+      flowBracketBalance tokens base (j + 1)
+        = flowBracketBalance tokens base j + flowBracketDelta tokens[j]!.val := by
+    intro base hbase
+    have h_j_sz : j < tokens.size := by omega
+    have hlen : j < tokens.toList.length := by rw [Array.length_toList]; exact h_j_sz
+    rw [flowBracketBalance_compose tokens base j (j + 1) hbase (by omega),
+        flowBracketBalance_single tokens j hlen]
+    have h1 : tokens.toList[j]'hlen = tokens[j] := Array.getElem_toList h_j_sz
+    have h2 : tokens[j] = tokens[j]! := (getElem!_pos tokens j h_j_sz).symm
+    rw [h1, h2]
+  have h_a_j : a ≤ j := by
+    rcases Nat.lt_or_ge j a with h | h
+    · have h_floor := h_loc_floor (j + 1) (by omega) (by omega)
+      rw [step (p + 1) (by omega), h_inner, h_jdelta] at h_floor
+      omega
+    · exact h
+  have h_aj_bal : flowBracketBalance tokens a j = 0 := by
+    have hc := flowBracketBalance_compose tokens (p + 1) a j (by omega) h_a_j
+    rw [h_inner, h_body_bal] at hc; omega
+  have h_b_j : b ≤ j := by
+    rcases Nat.lt_or_ge j b with h | h
+    · have h_floor := h_gate.2.2 (j + 1) (by omega) (by omega)
+      rw [step a h_a_j, h_aj_bal, h_jdelta] at h_floor
+      omega
+    · exact h
+  -- (5) the child `SafeBodyUnit` at the located genuine seq body `[p+1, j)`.
+  have h_safe : SafeBodyUnit ContentStartTok ((tokens.toList.take j).drop (p + 1)) :=
+    seqChild_safeBodyUnit tokens p hi j h_window h_deep h_content h_open h_ih
+      h_pj h_jhi h_jclose h_inner h_pos
+  -- (6) assemble the provider existential (`loS = p+1`, `hiS = j`).
+  exact seqEnclosingFacts_provider_of_located tokens a b (p + 1) j
+    (by omega) h_b_j (by omega) h_body_bal h_safe
+
 /-- **The gate's stack-top conjunct is RECONSTRUCTIBLE in place** — the Q2 discharge for
     `(i'-b-descend-root)`.  `SeqTypedInterior`'s second conjunct
     (`(btFold (some []) (tokens.toList.take a)).bind (·.head?) = some true`) is a fact about the
