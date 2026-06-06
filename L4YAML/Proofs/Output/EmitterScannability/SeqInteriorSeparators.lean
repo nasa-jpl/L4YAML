@@ -985,4 +985,56 @@ theorem seqInteriorSeparators_of_safebody_and_descent
     else
       desc a b ha hab hb h hgate)
 
+/-- **The ROOT SEED — `SeqInteriorSeparators` at the outer span `[2, size-2)`** (Phase J, the seq
+    `provider`'s base case, per [[ref-universal-producer-root-seed-first]]: the producer's FIRST
+    landable brick is its root seed, not the recursion).
+
+    This brick is the resolution of the architecture the previous revisions left ambiguous, and it
+    *corrects* R317.  The full `FlowSubrangesOk` discharge funnels through the per-window `RecSeqBody`
+    producer (Route A — `flowSubrangesOk_of_window_producers` consumes it directly), whose
+    `windowWidth_strongRecOn` step needs, per window, a `FlowBodyContent` to drive
+    `recseqentry_window_dispatch`.  `flowBodyContent_of_deep` builds that `FlowBodyContent` from the
+    deep guard PLUS the two separator facts (`bodySucc` / `noTrailingSep`) — and **those separator
+    facts are exactly what `SeqInteriorSeparators` carries** (instantiate the carrier at `a = lo`,
+    `b = hi`).  So `SeqInteriorSeparators` is on Route A's critical path, supplying the one content
+    field the deep guard cannot project (R296).
+
+    The carrier is a *subset restriction* (`SeqInteriorSeparators_narrow`): its body is `lo`/`hi`-free
+    except through the domain bounds.  Hence it is established **once, here, at the outer span**, and
+    `narrow` lifts it to every B3 sub-window `[lo,hi) ⊆ [2, size-2)` for free.  This is why R317's
+    plan to *re-derive* the carrier per window (via the dispatcher with a per-window `SafeBodyUnit`)
+    was wrong: at a DESCENDED window the only `SafeBodyUnit` source is `RecSeqBody.toSafeBodyUnit` of
+    that window's own `RecSeqBody` — which is precisely the recursion's output the step is *producing*,
+    a circular dependency.  At the ROOT the `SafeBodyUnit` is **flat** — `seqRoot_safeBodyUnit`, scanned
+    straight off emission, no `RecSeqBody` — so the dispatcher is invoked exactly once, here, with no
+    circularity.  (The trivial B1 alias `RecSeqBody.toSafeBodyUnit` the prior next-step anticipated is
+    therefore unneeded: it only fed the circular per-window route.)
+
+    Construction: the per-window dispatcher `seqInteriorSeparators_of_safebody_and_descent` at
+    `lo = 2`, `hi = size - 2`, fed the flat root `SafeBodyUnit` (`seqRoot_safeBodyUnit`) and the
+    `desc` descent provider — lifted here as a hypothesis ([[ref-parametric-assembler-extraction]]),
+    isolating B2 (the backward enclosing-opener locator + `seqDescent_provider_of_located`, consuming
+    the width IH) as the single remaining seq residual.  `desc`'s satisfiability is already
+    `#guard`-backed (`SeqDescentProviderProbe` / `SeqDispatchPartitionProbe`).  Verified-but-unconsumed
+    until B2 lands: composes only landed lemmas, references no sorry site, frontier sorry count
+    unchanged at 4. -/
+theorem seqRoot_seqInteriorSeparators
+    (items : Array YamlValue) (tokens : Array (Positioned YamlToken))
+    (h_scan : Scanner.scanFiltered ("[" ++ emit.emitList items.toList ++ "]") = .ok tokens)
+    (h_ne : items.toList ≠ [])
+    (h_all : ∀ v ∈ items.toList, EmitScansInFlowRecEntry v)
+    (desc : ∀ a b, 2 ≤ a → a ≤ b → b ≤ tokens.size - 2 →
+        flowBracketBalance tokens 2 a ≠ 0 → SeqTypedInterior tokens a b →
+        ∃ loS hiS, loS ≤ a ∧ b ≤ hiS ∧ flowBracketBalance tokens loS a = 0 ∧
+          bodySuccFact tokens loS hiS ∧
+          (∀ k, loS ≤ k → k + 1 < hiS →
+            tokens[k]!.val = .flowEntry → flowBracketBalance tokens loS k = 0 →
+            isFlowContentStart tokens[k + 1]!.val) ∧
+          noTrailingSepFact tokens loS hiS) :
+    SeqInteriorSeparators tokens 2 (tokens.size - 2) :=
+  seqInteriorSeparators_of_safebody_and_descent tokens 2 (tokens.size - 2)
+    (Nat.sub_le tokens.size 2)
+    (seqRoot_safeBodyUnit items tokens h_scan h_ne h_all)
+    desc
+
 end L4YAML.Proofs.EmitterScannability
