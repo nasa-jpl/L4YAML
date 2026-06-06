@@ -345,6 +345,38 @@ theorem flowBracketBalance_pos_of_seqTypedInterior
     flowBracketBalance tokens 0 a ≥ 1 :=
   flowBracketBalance_pos_of_btFold_head tokens a true h.2.1
 
+/-- **The gate LOCATES the enclosing opener with the exact facts the descent assembler reads** —
+    `(i'-b-B2a-locator-glue)`, the locator half of the `desc` descent driver
+    ([[ref-from-located-assembler-direction]]: factor the descent's locate boundary; this is the
+    LOCATE, `seqDescent_provider_of_located` is the assemble).
+
+    At any nested gated window `[a, b)` the gate `SeqTypedInterior tokens a b` carries
+    `flowBracketBalance tokens 0 a ≥ 1` (`flowBracketBalance_pos_of_seqTypedInterior` — its `btFold`-top
+    `= some true` forces a non-empty typed stack), exactly the hypothesis that makes the pure-balance
+    backward scan `flowBracketBalance_backward_open_locate` invokable.  That scan returns the innermost
+    unmatched opener `p < a` together with the THREE locator facts — `flowBracketDelta tokens[p]! = 1`,
+    `flowBracketBalance tokens (p+1) a = 0`, and the interior floor `∀ i ∈ [p+1, a], balance (p+1) i ≥ 0`.
+
+    **De-risk finding (the B2 split, this brick's whole point).** Those four outputs are *definitionally*
+    the four opener hypotheses `seqDescent_provider_of_located` consumes (`h_pa`, `h_delta`,
+    `h_body_bal`, `h_loc_floor`) — verified term-for-term.  So the descent's LOCATE half needs **no fresh
+    backward fixpoint**: the backward scan already runs its own `Nat.strongRecOn` internally
+    ([[ref-backward-locator-mirrors-forward]]).  The only residual of the `desc` driver (B2b) is then the
+    recursion-window plumbing — supplying `[p, hi)` as a `FlowBodyWindow`/`Deep`/`Content` plus the width
+    IH — which consumes the EXISTING outer `RecSeqBody` width recursion's IH, not a new one.  This brick
+    lands the locate glue decoupled, isolating B2b as the single remaining seq residual.
+
+    Type-agnostic core: the map mirror reads the gate's `= some false` top, gets `balance 0 a ≥ 1` from
+    the same `flowBracketBalance_pos_of_btFold_head`, and calls the identical backward locator. -/
+theorem seqEnclosingOpener_of_gate
+    (tokens : Array (Positioned YamlToken)) (a b : Nat) (h_a_sz : a ≤ tokens.size)
+    (h_gate : SeqTypedInterior tokens a b) :
+    ∃ p, p < a ∧ flowBracketDelta tokens[p]!.val = 1 ∧
+      flowBracketBalance tokens (p + 1) a = 0 ∧
+      (∀ i, p + 1 ≤ i → i ≤ a → flowBracketBalance tokens (p + 1) i ≥ 0) :=
+  flowBracketBalance_backward_open_locate tokens a h_a_sz
+    (flowBracketBalance_pos_of_seqTypedInterior tokens a b h_gate)
+
 /-- **The located opener is a `[`** — `(i'-b-locator-glue-opener-type)`, the second glue brick of the
     descent (after `flowBracketBalance_pos_of_seqTypedInterior` makes the backward locator invokable).
     Given the backward locator's full output at the gated window start `a` — an opener `p` with
