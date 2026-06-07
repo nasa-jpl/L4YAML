@@ -591,6 +591,7 @@ theorem seqChild_safeBodyUnit (tokens : Array (Positioned YamlToken)) (p hi j : 
     (Q : Nat → Prop) (h_q_succ : Q (p + 1))
     (h_ih : ∀ lo' hi', hi' - lo' < hi - p →
         FlowBodyWindow tokens lo' hi' → FlowBodyContentDeep tokens lo' hi' → Q lo' →
+        tokens[hi']!.val = .flowSequenceEnd →
         RecSeqBody ((tokens.toList.take hi').drop lo'))
     (h_pj : p < j) (h_jhi : j < hi) (h_jclose : tokens[j]!.val = .flowSequenceEnd)
     (h_inner : flowBracketBalance tokens (p + 1) j = 0)
@@ -653,6 +654,7 @@ theorem seqDescent_provider_of_located
     (Q : Nat → Prop) (h_q_succ : Q (p + 1))
     (h_ih : ∀ lo' hi', hi' - lo' < hi - p →
         FlowBodyWindow tokens lo' hi' → FlowBodyContentDeep tokens lo' hi' → Q lo' →
+        tokens[hi']!.val = .flowSequenceEnd →
         RecSeqBody ((tokens.toList.take hi').drop lo')) :
     ∃ loS hiS, loS ≤ a ∧ b ≤ hiS ∧ flowBracketBalance tokens loS a = 0 ∧
       bodySuccFact tokens loS hiS ∧
@@ -1209,5 +1211,96 @@ theorem seqWindow_flowBodyContent (tokens : Array (Positioned YamlToken)) (lo hi
   obtain ⟨h_bs, h_nts⟩ :=
     h_carrier lo hi (Nat.le_refl lo) (Nat.le_of_lt h_win.lo_lt_hi) (Nat.le_refl hi) h_gate
   exact flowBodyContent_of_deep tokens lo hi h_deep h_bs h_nts
+
+/-- **The combined `windowWidth_strongRecOn` `RecSeqBody` producer** — `(i'-b-B3-fixpoint)`, the LAST
+    seq brick and the convergence point of all the landed descent/edge bricks.  At every body window
+    `[lo, hi)` that is a `FlowBodyWindow ∧ FlowBodyContentDeep ∧ SeqEnclosed lo` whose `hi` is the
+    enclosing sequence's matching close, it produces the recursive interior `RecSeqBody`.
+
+    Drives `windowWidth_strongRecOn` with the four-conjunct guard `G`.  Each per-window `step`:
+    `seqWindow_flowBodyContent` (R320) projects the threaded carrier to the dispatch's
+    `FlowBodyContent`; `recseqentry_window_dispatch` (R322, `Q`-parametric) classifies the first entry,
+    `Q := SeqEnclosed tokens` bound here with the descend edge `seqEnclosed_descend`; the IH adapter
+    re-packages the four `G` conjuncts as the dispatch's separate-arrow IH; and
+    `recseqbody_window_assemble` folds the first entry with the advance tail (the IH at `[m+1, hi)`),
+    its three guard fields re-established by `flowBodyWindow_advance` / `flowBodyContentDeep_advance` /
+    `seqEnclosed_advance` (the last over the `WellTyped` segment `[lo, m+1)`, projected by
+    `WellTyped_subrange`).
+
+    **The `tokens[hi]! = .flowSequenceEnd` fourth conjunct is load-bearing (R323).**  The advance branch
+    must exclude a *trailing separator* (`m + 1 = hi`): the assembler's tail oracle would then demand
+    `RecSeqBody []`, which is uninhabited.  The carrier's `noTrailingSepFact` does NOT close this — it
+    only yields `isFlowContentStart tokens[hi]`, which is *consistent* when `tokens[hi]` is content, and
+    the three-conjunct `G` genuinely admits a trailing-comma window (balanced + Dyck + seq-enclosed with
+    `tokens[hi]` a scalar).  The recursion in fact maintains "`hi` is the enclosing close" as an
+    invariant `G` did not carry; threading `tokens[hi]! = .flowSequenceEnd` through the descent chain's
+    IH (the R322 plumbing extended one conjunct, the oracle supplying it from its located `h_close`)
+    makes the boundary `isFlowContentStart tokens[hi]` contradictory, closing `m + 1 < hi`.
+
+    Verified-but-unconsumed until `seqRoot_seqInteriorSeparators`'s `desc` lands and
+    `flowSubrangesOk_of_window_producers` is wired (R225): references no sorry site, frontier sorry
+    count unchanged at 4; axiom-clean. -/
+theorem seqWindowRecSeqBody (tokens : Array (Positioned YamlToken))
+    (h_root_carrier : SeqInteriorSeparators tokens 2 (tokens.size - 2))
+    (lo hi : Nat)
+    (h_win0 : FlowBodyWindow tokens lo hi) (h_deep0 : FlowBodyContentDeep tokens lo hi)
+    (h_enc0 : SeqEnclosed tokens lo) (h_close0 : tokens[hi]!.val = .flowSequenceEnd) :
+    RecSeqBody ((tokens.toList.take hi).drop lo) := by
+  have key := windowWidth_strongRecOn
+    (P := fun lo hi => RecSeqBody ((tokens.toList.take hi).drop lo))
+    (G := fun lo hi => FlowBodyWindow tokens lo hi ∧ FlowBodyContentDeep tokens lo hi
+      ∧ SeqEnclosed tokens lo ∧ tokens[hi]!.val = .flowSequenceEnd)
+    (step := ?step)
+  case step =>
+    intro lo hi h_g ih
+    obtain ⟨h_win, h_deep, h_enc, h_close_hi⟩ := h_g
+    have h_hi_sz : hi < tokens.size := h_win.hi_lt
+    have h_lo_sz : lo < tokens.size := by
+      have := h_win.lo_lt_hi; omega
+    have h_content : FlowBodyContent tokens lo hi :=
+      seqWindow_flowBodyContent tokens lo hi h_win h_deep h_enc h_root_carrier
+    obtain ⟨m, h_lo_m, h_m_hi, h_bal_m, h_marker, h_min, h_entry⟩ :=
+      recseqentry_window_dispatch tokens lo hi h_win h_deep h_content
+        (SeqEnclosed tokens)
+        (fun h_open => seqEnclosed_descend tokens lo h_enc h_lo_sz h_open)
+        (fun lo' hi' h_lt h_w h_d h_q h_c => ih lo' hi' h_lt ⟨h_w, h_d, h_q, h_c⟩)
+    refine recseqbody_window_assemble tokens lo m hi h_lo_m h_m_hi h_win.hi_lt h_marker h_entry ?_
+    intro h_m_lt_hi
+    have h_sep : tokens[m]!.val = .flowEntry := h_marker.resolve_left (by omega)
+    -- balance lo (m+1) = 0 (the comma has delta 0)
+    have h_m_len : m < tokens.toList.length := by rw [Array.length_toList]; omega
+    have h_m_val : tokens[m]! = tokens.toList[m]'h_m_len := by
+      rw [getElem!_pos tokens m (by omega), Array.getElem_toList]
+    have h_delta_m : flowBracketDelta tokens[m]!.val = 0 := by
+      rw [h_sep]; exact flowBracketDelta_flowEntry
+    have h_single_m : flowBracketBalance tokens m (m + 1) = flowBracketDelta tokens[m]!.val := by
+      rw [flowBracketBalance_single tokens m h_m_len, ← h_m_val]
+    have h_bal_m1 : flowBracketBalance tokens lo (m + 1) = 0 := by
+      have hc := flowBracketBalance_compose tokens lo m (m + 1) (by omega) (Nat.le_succ m)
+      rw [h_bal_m, h_single_m, h_delta_m] at hc; omega
+    -- O1: no trailing separator — `m + 1 = hi` would force `isFlowContentStart tokens[hi]`, but
+    -- `tokens[hi]! = .flowSequenceEnd` (the enclosing close) is not a content start.
+    have h_m1_hi : m + 1 < hi := by
+      rcases Nat.lt_or_ge (m + 1) hi with h | h
+      · exact h
+      · exfalso
+        have h_eq : m + 1 = hi := by omega
+        obtain ⟨_, h_cs⟩ :=
+          h_content.feContentStart m (Nat.le_of_lt h_lo_m) h_m_lt_hi h_sep h_bal_m
+        rw [h_eq, h_close_hi] at h_cs
+        simp [isFlowContentStart] at h_cs
+    -- O2: WellTyped segment [lo, m+1)
+    have h_wt_seg : WellTyped ((tokens.toList.take (m + 1)).drop lo) :=
+      WellTyped_subrange tokens lo lo (m + 1) hi (Nat.le_refl lo) (by omega) (by omega)
+        (Nat.le_of_lt h_win.hi_lt) h_win.wellTyped h_bal_m1
+        (fun p hp1 hp2 => h_win.dyck p hp1 (by omega))
+    have h_win' : FlowBodyWindow tokens (m + 1) hi :=
+      flowBodyWindow_advance tokens lo m hi h_win (Nat.le_of_lt h_lo_m) h_m1_hi h_bal_m h_sep
+    have h_deep' : FlowBodyContentDeep tokens (m + 1) hi :=
+      flowBodyContentDeep_advance tokens lo m hi h_deep (Nat.le_of_lt h_lo_m) h_sep h_m1_hi
+    have h_enc' : SeqEnclosed tokens (m + 1) :=
+      seqEnclosed_advance tokens lo (m + 1) h_enc (by omega) h_wt_seg
+    exact ih (m + 1) hi (by omega) ⟨h_win', h_deep', h_enc', h_close_hi⟩
+  exact key lo hi ⟨h_win0, h_deep0, h_enc0, h_close0⟩
 
 end L4YAML.Proofs.EmitterScannability
