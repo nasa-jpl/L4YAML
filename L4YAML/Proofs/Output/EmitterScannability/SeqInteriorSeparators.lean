@@ -1153,6 +1153,55 @@ theorem seqEnclosed_advance (tokens : Array (Positioned YamlToken)) (lo n : Nat)
     rw [WellTyped_frame _ s h_wt_seg]
     exact h_enc
 
+/-- **`SeqEnclosed` at a backward-LOCATED enclosing opener** — `(i'-b-B2c-desc-closing)` sub-brick 2a,
+    the `h_q_succ` supplier for the `desc` discharge's `seqDescent_provider_of_located` call.
+
+    `seqDescent_provider_of_located` consumes `Q (p+1)` as its IH's seed `h_q_succ`; instantiated at
+    `Q := SeqEnclosed tokens`, that is `SeqEnclosed tokens (p+1)` at the backward-located enclosing
+    opener `p < a` — **not** `SeqEnclosed p`.  This is the de-risk's first finding: the consumer reads
+    the POST-opener stack-top (the enclosing seq body starts at `p+1`), so the `+1` form is what is
+    owed, and it needs no `SeqEnclosed p` threaded down as an extra locator output.
+
+    It is the consume-site dual of `seqEnclosed_descend`: that DESCEND edge pushes the window HEAD
+    `tokens[lo]` (an opener already in scope at the recursion) and takes its `.flowSequenceStart` type
+    as a hypothesis; here the opener `p` is recovered by the backward locator
+    (`seqEnclosingOpener_of_gate`) and its `.flowSequenceStart` type is PROVEN from the gate by
+    `seqOpenerType_of_located_and_gate`, so the only inputs are the four locator facts plus the gate's
+    mark.  The enclosure is reconstructed in place ([[ref-reconstruct-in-place-over-relocate]] /
+    [[ref-prefix-gate-reconstructed-from-boundary]]): the gate's `btFold`-top `= some true` after
+    `[0,a)` makes the whole `take a` fold `some S`, hence its prefix `take p` folds to `some s`
+    (`btFold_some_prefix`), and a `.flowSequenceStart` at `p` pushes `true`
+    (`enclosingMark_true_of_opener`) — exactly `SeqEnclosed (p+1)`.
+
+    So the `desc` discharge owes NO `SeqEnclosed p`: the post-opener enclosure is sourced from the gate
+    and the located-opener type alone.  Verified-but-unconsumed until the `desc` driver (B2b — the
+    carrier↔producer width recursion R317 flagged) lands: composes only landed lemmas, references no
+    sorry site, frontier sorry count unchanged at 4. -/
+theorem seqEnclosed_succ_of_located_opener
+    (tokens : Array (Positioned YamlToken)) (a p : Nat)
+    (h_pa : p < a) (h_a_sz : a ≤ tokens.size)
+    (h_delta : flowBracketDelta tokens[p]!.val = 1)
+    (h_bal : flowBracketBalance tokens (p + 1) a = 0)
+    (h_floor : ∀ i, p + 1 ≤ i → i ≤ a → flowBracketBalance tokens (p + 1) i ≥ 0)
+    (h_mark : (btFold (some []) (tokens.toList.take a)).bind (·.head?) = some true) :
+    SeqEnclosed tokens (p + 1) := by
+  have h_p_sz : p < tokens.size := by omega
+  -- the located opener is a `.flowSequenceStart` (from the gate's mark + the locator floor).
+  have h_open : tokens[p]!.val = .flowSequenceStart :=
+    seqOpenerType_of_located_and_gate tokens a p h_pa h_a_sz h_delta h_bal h_floor h_mark
+  -- the gate makes the whole `take a` fold `some S`, hence its prefix `take p` folds to `some s`.
+  obtain ⟨S, hS⟩ : ∃ S, btFold (some []) (tokens.toList.take a) = some S := by
+    cases hc : btFold (some []) (tokens.toList.take a) with
+    | none => rw [hc] at h_mark; simp at h_mark
+    | some S => exact ⟨S, rfl⟩
+  have h_split : tokens.toList.take a
+      = tokens.toList.take p ++ (tokens.toList.drop p).take (a - p) := by
+    rw [← List.take_add]; congr 1; omega
+  obtain ⟨s, hs⟩ := btFold_some_prefix (tokens.toList.take p)
+    ((tokens.toList.drop p).take (a - p)) S (by rw [← h_split]; exact hS)
+  -- the opener pushes `true`, so the post-opener stack top is `true` = `SeqEnclosed (p+1)`.
+  exact enclosingMark_true_of_opener tokens p h_p_sz s hs h_open
+
 /-- **The per-window carrier→content consumer joint** — `(i'-b-B3-content-joint)`, the joint between
     the threaded separator carrier and the `RecSeqBody` recursion's per-window dispatch.  This is the
     de-risk finding for B3 (the `windowWidth_strongRecOn` `RecSeqBody` producer) made into a proof
