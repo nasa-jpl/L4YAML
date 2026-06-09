@@ -165,6 +165,26 @@ theorem seqSeparatorFacts_of_windowed_safebodyunit
     exact absurd h_fe (SafeBodyUnit_array_last_not_sep_window
       ContentStartTok_ne_flowEntry tokens a b h_b h k h_lo hk1 _h_bal)
 
+/-- **Both separator facts from a window's OWN `RecSeqBody`** — the merge-deciding de-risk of
+    `(i'-b-B2b-desc-merge)`.  At a DESCENDED seq window `[a,b)` the merged width recursion's IH delivers
+    `RecSeqBody ((tokens.toList.take b).drop a)` (the window's own genuine seq body); this lemma shows
+    that single deliverable reconstructs BOTH of the carrier's separator facts on `[a,b)` — with NO
+    appeal to a pre-built root carrier `SeqInteriorSeparators tokens 2 (size-2)`.
+
+    It is exactly the composition `RecSeqBody.toSafeBodyUnit` ▸ `seqSeparatorFacts_of_windowed_safebodyunit`:
+    the IH's `RecSeqBody` projects to the windowed `SafeBodyUnit ContentStartTok ((take b).drop a)` that
+    the latter consumes.  The composition type-checks gap-free for ANY window (in particular the
+    descend-at-root `[3,5)` of `[[1,2],9]` and the advance-then-descend `[5,8)` of `[1,[2,3]]`), so the
+    merge is a CLEAN STRENGTHENING: the carrier's per-window demand is satisfiable from the recursion's
+    own output, and `seqRoot_seqInteriorSeparators` need NOT thread the root carrier as an ambient.
+    `desc` becomes a corollary at the located enclosing window, fed `seqEnclosed_succ_of_located_opener`
+    (R324) for the `h_q_succ` and the located close for the fourth `G`-conjunct. -/
+theorem seqSeparatorFacts_of_recseqbody
+    (tokens : Array (Positioned YamlToken)) (a b : Nat) (h_b : b ≤ tokens.size)
+    (h : RecSeqBody ((tokens.toList.take b).drop a)) :
+    bodySuccFact tokens a b ∧ noTrailingSepFact tokens a b :=
+  seqSeparatorFacts_of_windowed_safebodyunit tokens a b h_b h.toSafeBodyUnit
+
 /-- **A `Q`-headed `EntryUnit` is an `EntrySafe`** — the per-entry half of the `SafeBodyUnit → SafeBody`
     coercion below.  `EntryUnit` strengthens `EntrySafe` everywhere EXCEPT the head: `EntryUnit`'s
     `≥ 1` interior condition is stated for *proper nonempty* prefixes (`0 < i`), so it already gives
