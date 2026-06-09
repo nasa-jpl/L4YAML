@@ -924,6 +924,147 @@ theorem recseqbody_advance (tokens : Array (Positioned YamlToken)) (lo H p : Nat
       rw [h_body_len, List.length_drop, List.length_take, h_tl_len, Nat.min_eq_left h_H_sz]
       omega
 
+/-- **One DESCEND step** — `(i'-b-B2c-nested-project)`, the bracket-level-down arm of the
+    root-`RecSeqBody` projection recursion (R330's `[[[1, 2]]]` descend-into-interior move), the
+    mirror of `recseqbody_advance` one bracket level IN.  When the located seq opener `p` is NESTED
+    strictly inside the body's head entry — the window-absolute floor
+    `∀ i ∈ (lo, p], flowBracketBalance lo i ≥ 1` forbids the balance returning to `0` before `p`, so
+    `p` cannot be past the head entry (whose own close drops the balance to `0` at `lo + e.length`) —
+    and that head opener is itself a `.flowSequenceStart` (`h_lo_open`: the driver's seq-axis
+    dispatch; a `.flowMappingStart` head routes to the map mirror), the head entry is a `.seq` whose
+    stored interior `RecSeqBody` is the descended window.  This re-bases `lo := lo + 1` (the interior
+    starts just past the opener) and `H := lo + 1 + interior.length` (just before the entry's own
+    close), keeping `p` inside the new window and strictly shrinking the body length — the
+    `decreasing_by omega` fact the wrapping recursion rests on.
+
+    The proof mirrors `recseqbody_head_seq_project`'s seq-case slice algebra, but the head entry's
+    close is read off `e`'s OWN structure (`interior ++ [cl]`), not a handed-in located `j` — so no
+    two-sided uniqueness is needed.  The floor forces `p < lo + e.length` (the whole entry balances to
+    `0` at `lo + e.length`, which the floor forbids if `≤ p`); the located opener fact
+    `h_p_open : tokens[p]! = .flowSequenceStart` excludes the degenerate shapes (`scalar` by length;
+    the entry close at `p` would be a `.flowSequenceEnd`) and pins `p` strictly before the close
+    (`p < H'`); `h_lo_open` excludes the `.map` head.  `cases h_e` then exposes the `.seq` interior
+    `h_rec`, with `interior = (tokens.toList.take H').drop (lo + 1)` by the same
+    `drop_take`/`take_take`/`take_left` identity the leaf uses. -/
+theorem recseqbody_descend (tokens : Array (Positioned YamlToken)) (lo H p : Nat)
+    (h_body : RecSeqBody ((tokens.toList.take H).drop lo))
+    (h_H_sz : H ≤ tokens.size)
+    (h_lo_p : lo < p) (h_p_H : p < H)
+    (h_lo_open : tokens[lo]!.val = .flowSequenceStart)
+    (h_p_open : tokens[p]!.val = .flowSequenceStart)
+    (h_floor : ∀ i, lo < i → i ≤ p → flowBracketBalance tokens lo i ≥ 1) :
+    ∃ H', lo + 1 ≤ p ∧ p < H' ∧ H' ≤ H ∧
+      RecSeqBody ((tokens.toList.take H').drop (lo + 1)) ∧
+      ((tokens.toList.take H').drop (lo + 1)).length < ((tokens.toList.take H).drop lo).length := by
+  -- Size facts.
+  have h_tl_len : tokens.toList.length = tokens.size := Array.length_toList
+  have h_lo_sz : lo < tokens.size := by omega
+  have h_p_sz : p < tokens.size := by omega
+  have h_lo_len : lo < tokens.toList.length := by rw [h_tl_len]; exact h_lo_sz
+  have h_p_len : p < tokens.toList.length := by rw [h_tl_len]; exact h_p_sz
+  have h_lo_val : tokens[lo]! = tokens.toList[lo]'h_lo_len := by
+    rw [getElem!_pos tokens lo h_lo_sz, Array.getElem_toList]
+  have h_body_len : ((tokens.toList.take H).drop lo).length = H - lo := by
+    rw [List.length_drop, List.length_take, h_tl_len, Nat.min_eq_left h_H_sz]
+  -- Head entry `e` of the body window.
+  obtain ⟨e, h_ne, h_e, _h_head, h_prefix0⟩ := recseqbody_head_entry h_body
+  have h_e_ne_len : 0 < e.length := List.length_pos_iff.mpr h_ne
+  have h_elen_le : e.length ≤ H - lo := by
+    have hc := congrArg List.length h_prefix0
+    rw [List.length_take, h_body_len] at hc; omega
+  have h_eslice : e = (tokens.toList.drop lo).take e.length := by
+    have h1 : ((tokens.toList.take H).drop lo).take e.length
+        = (tokens.toList.drop lo).take e.length := by
+      rw [List.drop_take, List.take_take, Nat.min_eq_left h_elen_le]
+    exact h_prefix0.trans h1
+  -- Bridge: window prefix balance = `pbalance` of the head-entry prefix.
+  have balstruct : ∀ m, m ≤ e.length →
+      flowBracketBalance tokens lo (lo + m) = pbalance (e.take m) := by
+    intro m hm
+    rw [flowBracketBalance_eq_pbalance tokens lo (lo + m) (by omega)]
+    congr 1
+    rw [show lo + m - lo = m from by omega]
+    have h2 : e.take m = (tokens.toList.drop lo).take m := by
+      rw [h_eslice, List.take_take, Nat.min_eq_left hm]
+    rw [h2]
+  -- `p` is strictly inside the head entry: the whole entry balances to 0, which the floor forbids ≤ p.
+  have h_p_lt : p < lo + e.length := by
+    rcases Nat.lt_or_ge p (lo + e.length) with hlt | hge
+    · exact hlt
+    · exfalso
+      have hbs := balstruct e.length (Nat.le_refl _)
+      rw [List.take_length, h_e.toWellBracketed.1] at hbs
+      have hfl := h_floor (lo + e.length) (by omega) hge
+      rw [hbs] at hfl; omega
+  -- Extract the head entry's stored interior, ruling out the three non-`seq` shapes.
+  cases h_e with
+  | scalar t c s ht =>
+      exfalso; simp only [List.length_cons, List.length_nil] at h_p_lt; omega
+  | seqEmpty op cl h_op h_cl =>
+      exfalso
+      have hlen : (op :: ([] ++ [cl])).length = 0 + 1 + 1 := by simp
+      rw [hlen] at h_eslice h_p_lt
+      rw [List.drop_eq_getElem_cons h_lo_len, List.take_succ_cons] at h_eslice
+      have h_tail : ([] ++ [cl]) = (tokens.toList.drop (lo + 1)).take (0 + 1) :=
+        (List.cons.inj h_eslice).2
+      have hp1 : p = lo + 1 := by omega
+      have h_close_sz : lo + 1 < tokens.size := by omega
+      have h_cl_q : tokens.toList[lo + 1]? = some cl := by
+        have hstep : tokens.toList[lo + 1]?
+            = (([] : List (Positioned YamlToken)) ++ [cl])[0]? := by
+          rw [h_tail, List.getElem?_take, if_pos (by omega), List.getElem?_drop]
+        rw [hstep]; rfl
+      have hcl : tokens.toList[lo + 1]'(by rw [h_tl_len]; exact h_close_sz) = cl := by
+        have hg := List.getElem?_eq_getElem (l := tokens.toList) (i := lo + 1)
+          (by rw [h_tl_len]; exact h_close_sz)
+        rw [hg] at h_cl_q; exact Option.some.inj h_cl_q
+      have h_close_val : tokens[lo + 1]!.val = .flowSequenceEnd := by
+        rw [getElem!_pos tokens (lo + 1) h_close_sz, ← Array.getElem_toList, hcl, h_cl]
+      rw [hp1, h_close_val] at h_p_open
+      simp at h_p_open
+  | map op cl interior h_op h_cl h_wb =>
+      exfalso
+      have hlen : (op :: (interior ++ [cl])).length = interior.length + 1 + 1 := by
+        simp [List.length_append]
+      rw [hlen] at h_eslice
+      rw [List.drop_eq_getElem_cons h_lo_len, List.take_succ_cons] at h_eslice
+      have h_op_eq : op = tokens.toList[lo]'h_lo_len := (List.cons.inj h_eslice).1
+      have h_val : tokens[lo]!.val = .flowMappingStart := by rw [h_lo_val, ← h_op_eq, h_op]
+      rw [h_lo_open] at h_val; exact absurd h_val (by simp)
+  | seq op cl interior h_op h_cl h_wb h_rec =>
+      have hlen : (op :: (interior ++ [cl])).length = interior.length + 1 + 1 := by
+        simp [List.length_append]
+      rw [hlen] at h_eslice h_p_lt h_elen_le
+      rw [List.drop_eq_getElem_cons h_lo_len, List.take_succ_cons] at h_eslice
+      have h_tail : interior ++ [cl] = (tokens.toList.drop (lo + 1)).take (interior.length + 1) :=
+        (List.cons.inj h_eslice).2
+      have h_close_sz : lo + 1 + interior.length < tokens.size := by omega
+      have h_close_val : tokens[lo + 1 + interior.length]!.val = .flowSequenceEnd := by
+        have h_cl_q : tokens.toList[lo + 1 + interior.length]? = some cl := by
+          have hstep : ((tokens.toList.drop (lo + 1)).take (interior.length + 1))[interior.length]?
+              = tokens.toList[lo + 1 + interior.length]? := by
+            rw [List.getElem?_take, if_pos (by omega), List.getElem?_drop]
+          rw [← hstep, ← h_tail, List.getElem?_append_right (Nat.le_refl _), Nat.sub_self]; rfl
+        have hcl : tokens.toList[lo + 1 + interior.length]'(by rw [h_tl_len]; exact h_close_sz)
+            = cl := by
+          have hg := List.getElem?_eq_getElem (l := tokens.toList) (i := lo + 1 + interior.length)
+            (by rw [h_tl_len]; exact h_close_sz)
+          rw [hg] at h_cl_q; exact Option.some.inj h_cl_q
+        rw [getElem!_pos tokens (lo + 1 + interior.length) h_close_sz, ← Array.getElem_toList,
+            hcl, h_cl]
+      have hp_close : p ≠ lo + 1 + interior.length := by
+        intro he; rw [he, h_close_val] at h_p_open; simp at h_p_open
+      have key : (tokens.toList.take (lo + 1 + interior.length)).drop (lo + 1) = interior := by
+        rw [List.drop_take, show (lo + 1 + interior.length) - (lo + 1) = interior.length from by omega]
+        calc (tokens.toList.drop (lo + 1)).take interior.length
+            = ((tokens.toList.drop (lo + 1)).take (interior.length + 1)).take interior.length := by
+                rw [List.take_take, Nat.min_eq_left (by omega)]
+          _ = (interior ++ [cl]).take interior.length := by rw [← h_tail]
+          _ = interior := List.take_left
+      refine ⟨lo + 1 + interior.length, by omega, by omega, by omega, ?_, ?_⟩
+      · rw [key]; exact h_rec
+      · rw [key, h_body_len]; omega
+
 /-! ### Emit-producer strengthening — seq-body recursive deliverable (Phase J feed)
 
 The locate recursion is *fed* by the top-level `RecSeqBody`/`RecMapBody` of the emitted+filtered
