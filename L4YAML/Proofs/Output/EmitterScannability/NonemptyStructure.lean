@@ -774,6 +774,156 @@ theorem recseqbody_head_seq_project
           _ = interior := List.take_left
       rw [key]; exact h_rec
 
+/-- **Head-or-cons split** — `(i'-b-B2c-nested-project)`, the structural dispatch that exposes the
+    `cons` tail (`rest`, `h_rest`) the ADVANCE arm recurses on.  `recseqbody_head_entry` discards the
+    tail; this richer sibling returns it, as a disjunction over the two `RecSeqBody` constructors:
+    `single` (the window IS one entry, `l = e`) or `cons` (`l = e ++ fe :: rest`, with the stored
+    separator `h_fe`, tail `h_rest`).  Both disjuncts carry the head entry's `RecSeqEntry`/content-head
+    so the consumer never re-derives them.  `single`'s bare-var index keeps the target `l` under
+    `cases` (R331 gotcha), so `l = e` is `rfl` with `e := l`. -/
+theorem recseqbody_head_or_cons {l : List (Positioned YamlToken)} (h : RecSeqBody l) :
+    (∃ (e : List (Positioned YamlToken)) (h_ne : e ≠ []),
+        RecSeqEntry e ∧ ContentStartTok (e.head h_ne).val ∧ l = e)
+    ∨ (∃ (e : List (Positioned YamlToken)) (fe : Positioned YamlToken)
+         (rest : List (Positioned YamlToken)) (h_ne : e ≠ []),
+        RecSeqEntry e ∧ ContentStartTok (e.head h_ne).val ∧
+        fe.val = .flowEntry ∧ RecSeqBody rest ∧ l = e ++ fe :: rest) := by
+  cases h with
+  | single _ent h_ne h_e h_head => exact Or.inl ⟨l, h_ne, h_e, h_head, rfl⟩
+  | cons ent fe rest h_ne h_e h_head h_fe h_rest =>
+      exact Or.inr ⟨ent, fe, rest, h_ne, h_e, h_head, h_fe, h_rest, rfl⟩
+
+/-- **One ADVANCE step** — `(i'-b-B2c-nested-project)`, the spine-walk arm of the root-`RecSeqBody`
+    projection recursion (R330's `[1, [2, 3]]` advance-then-head move).  When the located seq opener
+    `p` is at the body window's TOP level past its head (`flowBracketBalance lo p = 0 ∧ lo < p`), the
+    head entry `e` is a complete balanced entry whose close precedes `p`; this peels `e` plus its
+    `.flowEntry` separator and re-bases the window to `lo' = lo + e.length + 1`, preserving the
+    dispatch invariant (`flowBracketBalance lo' p = 0`, `lo' ≤ p`) and strictly shrinking the body
+    length — the `decreasing_by omega` fact the wrapping recursion rests on.
+
+    The proof keeps the dispatch on the window-absolute `flowBracketBalance lo p` (never `e.length`,
+    which is internal): `recseqbody_head_or_cons` exposes `e`/`rest`; the `single` case is impossible
+    (the lone entry would span the whole window, so `p` strictly inside ⇒ interior floor `≥ 1`,
+    contra `= 0`); in `cons`, the same interior floor (`recseqentry_opener_interior_floor`) forces
+    `p ≥ lo + e.length`, and the `.flowEntry` separator's `flowBracketDelta = 0` (so
+    `flowBracketBalance lo (lo + e.length + 1) = 0`) excludes `p = lo + e.length` — the located opener
+    has `flowBracketDelta = +1`, contradicting the separator's `0`.  Slice algebra
+    (`take_append`/`drop_left`/`drop_drop`) re-bases `rest = (toList.take H).drop lo'`.  The token at
+    the separator is NOT extracted — its delta is sourced structurally from `h_fe` through
+    `pbalance (e ++ [fe]) = 0`. -/
+theorem recseqbody_advance (tokens : Array (Positioned YamlToken)) (lo H p : Nat)
+    (h_body : RecSeqBody ((tokens.toList.take H).drop lo))
+    (h_H_sz : H ≤ tokens.size)
+    (h_lo_p : lo < p) (h_p_H : p < H)
+    (h_p_open : tokens[p]!.val = .flowSequenceStart)
+    (h_bal0 : flowBracketBalance tokens lo p = 0) :
+    ∃ lo', lo < lo' ∧ lo' ≤ p ∧
+      flowBracketBalance tokens lo' p = 0 ∧
+      RecSeqBody ((tokens.toList.take H).drop lo') ∧
+      ((tokens.toList.take H).drop lo').length < ((tokens.toList.take H).drop lo).length := by
+  -- Size facts.
+  have h_tl_len : tokens.toList.length = tokens.size := Array.length_toList
+  have h_lo_sz : lo < tokens.size := by omega
+  have h_p_sz : p < tokens.size := by omega
+  have h_lo_len : lo < tokens.toList.length := by rw [h_tl_len]; exact h_lo_sz
+  have h_p_len : p < tokens.toList.length := by rw [h_tl_len]; exact h_p_sz
+  have h_body_len : ((tokens.toList.take H).drop lo).length = H - lo := by
+    rw [List.length_drop, List.length_take, h_tl_len, Nat.min_eq_left h_H_sz]
+  -- Located opener delta = +1.
+  have h_p_val : tokens[p]! = tokens.toList[p]'h_p_len := by
+    rw [getElem!_pos tokens p h_p_sz, Array.getElem_toList]
+  have h_p_delta : flowBracketDelta tokens[p]!.val = 1 := by
+    rw [h_p_open]; exact flowBracketDelta_flowSequenceStart
+  rcases recseqbody_head_or_cons h_body with
+    ⟨e, _h_ne, h_e, _h_head, h_eq⟩ | ⟨e, fe, rest, h_ne, h_e, _h_head, h_fe, h_rest, h_eq⟩
+  · -- SINGLE: the whole window is one entry; `p` strictly inside ⇒ balance ≥ 1, contra `h_bal0`.
+    exfalso
+    have h_pref : e = ((tokens.toList.take H).drop lo).take e.length := by
+      rw [h_eq]; exact (List.take_length).symm
+    have h_elen_eq : e.length = H - lo := by rw [← h_body_len, h_eq]
+    have h_eslice : e = (tokens.toList.drop lo).take e.length := by
+      have h1 : ((tokens.toList.take H).drop lo).take e.length
+          = (tokens.toList.drop lo).take e.length := by
+        rw [List.drop_take, List.take_take, Nat.min_eq_left (by omega : e.length ≤ H - lo)]
+      exact h_pref.trans h1
+    have balstruct : flowBracketBalance tokens lo p = pbalance (e.take (p - lo)) := by
+      rw [flowBracketBalance_eq_pbalance tokens lo p (by omega)]
+      congr 1
+      have h2 : e.take (p - lo) = (tokens.toList.drop lo).take (p - lo) := by
+        rw [h_eslice, List.take_take, Nat.min_eq_left (by omega : p - lo ≤ e.length)]
+      rw [h2]
+    have hfl := recseqentry_opener_interior_floor h_e (p - lo) (by omega) (by omega)
+    rw [balstruct] at h_bal0
+    omega
+  · -- CONS: advance past head entry `e` + separator `fe`.
+    have h_pref : e = ((tokens.toList.take H).drop lo).take e.length := by
+      rw [h_eq]; exact (List.take_left).symm
+    have h_cons_len : ((tokens.toList.take H).drop lo).length = e.length + 1 + rest.length := by
+      rw [h_eq, List.length_append, List.length_cons]; omega
+    have h_elen_le : e.length ≤ H - lo := by rw [← h_body_len, h_cons_len]; omega
+    have h_eslice : e = (tokens.toList.drop lo).take e.length := by
+      have h1 : ((tokens.toList.take H).drop lo).take e.length
+          = (tokens.toList.drop lo).take e.length := by
+        rw [List.drop_take, List.take_take, Nat.min_eq_left h_elen_le]
+      exact h_pref.trans h1
+    have balstruct : ∀ m, m ≤ e.length →
+        flowBracketBalance tokens lo (lo + m) = pbalance (e.take m) := by
+      intro m hm
+      rw [flowBracketBalance_eq_pbalance tokens lo (lo + m) (by omega)]
+      congr 1
+      rw [show lo + m - lo = m from by omega]
+      have h2 : e.take m = (tokens.toList.drop lo).take m := by
+        rw [h_eslice, List.take_take, Nat.min_eq_left hm]
+      rw [h2]
+    -- `p` is at or past the head entry's structural close.
+    have h_p_ge : lo + e.length ≤ p := by
+      rcases Nat.lt_or_ge p (lo + e.length) with hlt | hge
+      · exfalso
+        have hbs := balstruct (p - lo) (by omega)
+        rw [show lo + (p - lo) = p from by omega] at hbs
+        have hfl := recseqentry_opener_interior_floor h_e (p - lo) (by omega) (by omega)
+        rw [hbs] at h_bal0; omega
+      · exact hge
+    -- Whole entry balances to 0, and the `.flowEntry` separator keeps it: `balance lo (lo+|e|+1) = 0`.
+    have h_bal_sep : flowBracketBalance tokens lo (lo + e.length + 1) = 0 := by
+      have hle : e.length + 1 ≤ H - lo := by omega
+      have h_take_sep : (tokens.toList.drop lo).take (e.length + 1) = e ++ [fe] := by
+        have h1 : ((tokens.toList.take H).drop lo).take (e.length + 1)
+            = (tokens.toList.drop lo).take (e.length + 1) := by
+          rw [List.drop_take, List.take_take, Nat.min_eq_left hle]
+        rw [← h1, h_eq, List.take_append, List.take_of_length_le (by omega),
+            show e.length + 1 - e.length = 1 from by omega]
+        simp
+      have h_pbsep : pbalance (e ++ [fe]) = (0 : Int) := by
+        rw [pbalance_append, h_e.toWellBracketed.1, pbalance_singleton, h_fe,
+            flowBracketDelta_flowEntry]; rfl
+      rw [flowBracketBalance_eq_pbalance tokens lo (lo + e.length + 1) (by omega),
+          show lo + e.length + 1 - lo = e.length + 1 from by omega, h_take_sep, h_pbsep]
+    -- `p` is strictly past the separator (it is an opener `+1`, not the `.flowEntry` `0`).
+    have h_p_gt : lo + e.length < p := by
+      rcases Nat.lt_or_ge (lo + e.length) p with hgt | hle
+      · exact hgt
+      · exfalso
+        have hpe : p = lo + e.length := by omega
+        have hc := flowBracketBalance_compose tokens lo p (p + 1) (by omega) (Nat.le_succ p)
+        rw [flowBracketBalance_single tokens p h_p_len, ← h_p_val, h_p_delta, h_bal0] at hc
+        rw [hpe, h_bal_sep] at hc
+        omega
+    refine ⟨lo + e.length + 1, by omega, by omega, ?_, ?_, ?_⟩
+    · -- balance at the new base preserved.
+      have hc := flowBracketBalance_compose tokens lo (lo + e.length + 1) p (by omega) (by omega)
+      rw [h_bal_sep, h_bal0] at hc; omega
+    · -- the re-based window body is exactly `rest`.
+      have h_rest_eq : (tokens.toList.take H).drop (lo + e.length + 1) = rest := by
+        have hd : ((tokens.toList.take H).drop lo).drop (e.length + 1)
+            = (tokens.toList.take H).drop (lo + e.length + 1) := by
+          rw [List.drop_drop]; congr 1
+        rw [← hd, h_eq]; simp [List.drop_append]
+      rw [h_rest_eq]; exact h_rest
+    · -- measure strictly decreases.
+      rw [h_body_len, List.length_drop, List.length_take, h_tl_len, Nat.min_eq_left h_H_sz]
+      omega
+
 /-! ### Emit-producer strengthening — seq-body recursive deliverable (Phase J feed)
 
 The locate recursion is *fed* by the top-level `RecSeqBody`/`RecMapBody` of the emitted+filtered
