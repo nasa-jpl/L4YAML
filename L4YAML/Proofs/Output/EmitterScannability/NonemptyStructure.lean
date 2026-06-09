@@ -924,6 +924,71 @@ theorem recseqbody_advance (tokens : Array (Positioned YamlToken)) (lo H p : Nat
       rw [h_body_len, List.length_drop, List.length_take, h_tl_len, Nat.min_eq_left h_H_sz]
       omega
 
+/-- **General ADVANCE step** — `(i'-b-B2c-nested-project)`, the BALANCE-FREE advance arm of the
+    root-`RecSeqBody` projection recursion, the sibling of `recseqbody_advance` (R332) the driver
+    actually iterates.  R333 found `recseqbody_advance`'s `flowBracketBalance lo p = 0` guard covers
+    ONLY a `p` at the window's top level past the head; a `p` NESTED inside a LATER entry has
+    `flowBracketBalance lo p ≥ 1` yet is still past the head entry — so the dispatch splits on
+    `p ≥ lo + e.length` (the structural past-head condition), NOT on balance.  This arm takes the
+    head's `cons` decomposition explicitly (the driver has it from `recseqbody_head_or_cons`, and the
+    `single` body is impossible here — its lone entry spans the whole window so
+    `lo + e.length = H > p`) and the past-head bound `h_p_ge : lo + e.length ≤ p`, peels the head
+    entry `e` plus its `.flowEntry` separator, and re-bases to `lo' = lo + e.length + 1` with body
+    `rest`, strictly shrinking the body length — no balance machinery, no
+    `flowBracketBalance lo' p = 0` output (the next step's DESCEND floor is reconstructed from
+    `recseqentry_opener_interior_floor`, never threaded).
+
+    The only positional fact needed is `lo + e.length ≠ p` (the separator is a `.flowEntry`, `p` a
+    `.flowSequenceStart`), giving `lo + e.length < p` so `lo' ≤ p`.  The separator token is read off
+    `h_eq` via the non-dependent `getElem?` slice algebra (`getElem?_drop`/`getElem?_take`/
+    `getElem?_append_right`); slice re-basing mirrors `recseqbody_advance`'s `cons` tail. -/
+theorem recseqbody_advance_general (tokens : Array (Positioned YamlToken)) (lo H p : Nat)
+    (e rest : List (Positioned YamlToken)) (fe : Positioned YamlToken) (h_ne : e ≠ [])
+    (h_fe : fe.val = .flowEntry) (h_rest : RecSeqBody rest)
+    (h_eq : (tokens.toList.take H).drop lo = e ++ fe :: rest)
+    (h_H_sz : H ≤ tokens.size) (h_p_H : p < H)
+    (h_p_open : tokens[p]!.val = .flowSequenceStart)
+    (h_p_ge : lo + e.length ≤ p) :
+    ∃ lo', lo < lo' ∧ lo' ≤ p ∧
+      RecSeqBody ((tokens.toList.take H).drop lo') ∧
+      ((tokens.toList.take H).drop lo').length < ((tokens.toList.take H).drop lo).length := by
+  have h_tl_len : tokens.toList.length = tokens.size := Array.length_toList
+  have h_e_ne_len : 0 < e.length := List.length_pos_iff.mpr h_ne
+  have h_sepH : lo + e.length < H := by omega
+  have h_sep_sz : lo + e.length < tokens.size := by omega
+  -- The separator token at window position `lo + e.length` is `fe` (a `.flowEntry`).
+  have h_sep_q : tokens.toList[lo + e.length]? = some fe := by
+    have hstep : ((tokens.toList.take H).drop lo)[e.length]? = tokens.toList[lo + e.length]? := by
+      rw [List.getElem?_drop, List.getElem?_take, if_pos h_sepH]
+    rw [← hstep, h_eq, List.getElem?_append_right (Nat.le_refl _), Nat.sub_self]; rfl
+  have h_sep_val : tokens[lo + e.length]!.val = .flowEntry := by
+    have hg := List.getElem?_eq_getElem (l := tokens.toList) (i := lo + e.length)
+      (by rw [h_tl_len]; exact h_sep_sz)
+    rw [hg] at h_sep_q
+    have hcl : tokens.toList[lo + e.length]'(by rw [h_tl_len]; exact h_sep_sz) = fe :=
+      Option.some.inj h_sep_q
+    rw [getElem!_pos tokens (lo + e.length) h_sep_sz, ← Array.getElem_toList, hcl, h_fe]
+  -- `p ≠ lo + e.length` (opener vs separator), so `p` is strictly past the separator.
+  have h_p_gt : lo + e.length < p := by
+    rcases Nat.lt_or_ge (lo + e.length) p with hgt | hle
+    · exact hgt
+    · exfalso
+      have hpe : p = lo + e.length := by omega
+      rw [hpe, h_sep_val] at h_p_open; simp at h_p_open
+  have h_body_len : ((tokens.toList.take H).drop lo).length = H - lo := by
+    rw [List.length_drop, List.length_take, h_tl_len, Nat.min_eq_left h_H_sz]
+  refine ⟨lo + e.length + 1, by omega, by omega, ?_, ?_⟩
+  · -- the re-based window body is exactly `rest`.
+    have h_rest_eq : (tokens.toList.take H).drop (lo + e.length + 1) = rest := by
+      have hd : ((tokens.toList.take H).drop lo).drop (e.length + 1)
+          = (tokens.toList.take H).drop (lo + e.length + 1) := by
+        rw [List.drop_drop]; congr 1
+      rw [← hd, h_eq]; simp [List.drop_append]
+    rw [h_rest_eq]; exact h_rest
+  · -- measure strictly decreases.
+    rw [h_body_len, List.length_drop, List.length_take, h_tl_len, Nat.min_eq_left h_H_sz]
+    omega
+
 /-- **One DESCEND step** — `(i'-b-B2c-nested-project)`, the bracket-level-down arm of the
     root-`RecSeqBody` projection recursion (R330's `[[[1, 2]]]` descend-into-interior move), the
     mirror of `recseqbody_advance` one bracket level IN.  When the located seq opener `p` is NESTED
