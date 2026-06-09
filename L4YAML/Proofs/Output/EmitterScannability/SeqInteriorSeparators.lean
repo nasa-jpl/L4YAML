@@ -620,6 +620,70 @@ theorem seqChild_safeBodyUnit (tokens : Array (Positioned YamlToken)) (p hi j : 
   ((recseqentry_seqbracket_oracle tokens p hi h_window h_deep h_content h_open Q h_q_succ h_ih)
     j h_pj h_jhi h_jclose h_inner h_floor).1.toSafeBodyUnit
 
+/-- **The DESCEND edge for `FlowBodyContent`** — `(i'-b-B2b-desc-merge)`, the load-bearing brick of the
+    carrier-elimination merge and the descend twin of `flowBodyContent_advance` (NonemptyStructure).
+    `seqWindow_flowBodyContent`'s doc records that there is "deliberately no `flowBodyContent_descend`":
+    under the old framing the descend edge was routed through the AMBIENT root carrier
+    (`SeqInteriorSeparators tokens 2 (size-2)` narrowed in place), because `bodySucc` has no all-depth
+    balance-free form so the child's separator facts cannot be re-based from the parent's (R296).
+
+    The B2b de-risk (R325/R326) found that routing is dispensable: at a DESCENDED seq window `[p+1, j)`
+    the child's two separator facts come from the child's OWN `SafeBodyUnit` — already produced
+    carrier-free by `seqChild_safeBodyUnit` (the seq oracle drawing its interior `RecSeqBody` from the
+    `windowWidth_strongRecOn` IH) — via `seqSeparatorFacts_of_windowed_safebodyunit` (R299), and the
+    child's `FlowBodyContentDeep` is the parent's restricted (`flowBodyContentDeep_descend`).
+    `flowBodyContent_of_deep` then assembles the child `FlowBodyContent`.  So the descend edge IS a
+    theorem — it just consumes the IH (it is genuinely recursive, unlike the pure-rebasing advance edge),
+    exactly the [[ref-converse-forward-invariant-asymmetry]] split the deep content guard already
+    exhibited.
+
+    This is what lets the `RecSeqBody` producer thread `FlowBodyContent` through its guard `G`
+    (root-seeded from emission via `seqRoot_safeBodyUnit`, propagated by THIS edge at descend and
+    `flowBodyContent_advance` at advance) INSTEAD of the ambient carrier — breaking the carrier↔producer
+    circularity ([[ref-recursive-producer-mirrors-flat-over-shared-induction]] consume-side dual).
+    Verified-but-unconsumed until the carrier-free producer is rewired (R225): composes only landed
+    lemmas, references no sorry site, frontier sorry count unchanged. -/
+theorem flowBodyContent_descend (tokens : Array (Positioned YamlToken)) (p hi j : Nat)
+    (h_window : FlowBodyWindow tokens p hi)
+    (h_deep : FlowBodyContentDeep tokens p hi)
+    (h_content : FlowBodyContent tokens p hi)
+    (h_open : tokens[p]!.val = .flowSequenceStart)
+    (Q : Nat → Prop) (h_q_succ : Q (p + 1))
+    (h_ih : ∀ lo' hi', hi' - lo' < hi - p →
+        FlowBodyWindow tokens lo' hi' → FlowBodyContentDeep tokens lo' hi' → Q lo' →
+        tokens[hi']!.val = .flowSequenceEnd →
+        RecSeqBody ((tokens.toList.take hi').drop lo'))
+    (h_pj : p < j) (h_jhi : j < hi) (h_jclose : tokens[j]!.val = .flowSequenceEnd)
+    (h_inner : flowBracketBalance tokens (p + 1) j = 0)
+    (h_floor : ∀ i, p < i → i ≤ j → flowBracketBalance tokens p i ≥ 1) :
+    FlowBodyContent tokens (p + 1) j := by
+  -- Opener delta and interior non-emptiness `p + 1 < j` (the child head is content, the close is not).
+  have h_hi_sz : hi < tokens.size := h_window.hi_lt
+  have h_open_delta : flowBracketDelta tokens[p]!.val = 1 := by
+    rw [h_open]; exact flowBracketDelta_flowSequenceStart
+  have h_p1_hi : p + 1 < hi := by omega
+  have h_head_cs : isFlowContentStart tokens[p + 1]!.val :=
+    h_deep.openerContentStart p (Nat.le_refl p) h_p1_hi h_open_delta
+  have h_p1_ne : tokens[p + 1]!.val ≠ .flowSequenceEnd := by
+    intro h; rw [h] at h_head_cs; simp [isFlowContentStart] at h_head_cs
+  have h_p1_j : p + 1 < j := by
+    rcases Nat.lt_or_ge (p + 1) j with h | h
+    · exact h
+    · exfalso; have h_eq : j = p + 1 := by omega
+      rw [h_eq] at h_jclose; exact h_p1_ne h_jclose
+  -- The child `SafeBodyUnit` (carrier-free, from the seq oracle's IH) gives both separator facts.
+  have h_safe : SafeBodyUnit ContentStartTok ((tokens.toList.take j).drop (p + 1)) :=
+    seqChild_safeBodyUnit tokens p hi j h_window h_deep h_content h_open Q h_q_succ h_ih
+      h_pj h_jhi h_jclose h_inner h_floor
+  obtain ⟨h_bs, h_nts⟩ :=
+    seqSeparatorFacts_of_windowed_safebodyunit tokens (p + 1) j
+      (Nat.le_of_lt (by omega : j < tokens.size)) h_safe
+  -- The child `FlowBodyContentDeep` is the parent's restricted to `[p+1, j)`.
+  have h_deep' : FlowBodyContentDeep tokens (p + 1) j :=
+    flowBodyContentDeep_descend tokens p p j hi h_deep (Nat.le_refl p) h_open_delta h_p1_j
+      (Nat.le_of_lt h_jhi)
+  exact flowBodyContent_of_deep tokens (p + 1) j h_deep' h_bs h_nts
+
 /-- **The descent `provider` at a located enclosing seq** — `(i'-b-descent-assembly)`, brick (5), the
     LAST seq residual of the R303 direct-discharge route.  At a NESTED gated window `[a, b)` (the root
     discriminator `flowBracketBalance tokens lo a = 0` FAILS, so the root seed
