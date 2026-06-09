@@ -596,6 +596,184 @@ theorem recseqentry_seq_extract {e : List (Positioned YamlToken)}
       rw [← h_op_eq, h_op'] at h_open
       exact absurd h_open (by simp)
 
+/-- **Opener-headed entry interior floor** — every `RecSeqEntry` keeps its prefix balance `≥ 1`
+    strictly inside the entry: for `1 ≤ m < e.length`, `pbalance (e.take m) ≥ 1`.  Each constructor
+    is a SINGLE bracket pair (so the opener's `+1` is never cancelled before the entry's own matching
+    close, the last token) or a `scalar` (whose `1 ≤ m < 1` range is vacuous).  This is the
+    structural floor `recseqbody_head_seq_project` needs to MATCH a located close `j` to the head
+    entry's span by uniqueness — the located floor pins `j` from outside, this pins the entry's close
+    from inside, and the two coincide.  No head hypothesis is needed: the property holds for ALL four
+    constructors (the `scalar` range is empty, `seqEmpty`'s only interior cut is the lone opener). -/
+theorem recseqentry_opener_interior_floor {e : List (Positioned YamlToken)}
+    (h_e : RecSeqEntry e) :
+    ∀ m, 1 ≤ m → m < e.length → pbalance (e.take m) ≥ 1 := by
+  cases h_e with
+  | scalar t c s ht =>
+      intro m h1 h2
+      simp only [List.length_cons, List.length_nil] at h2
+      omega
+  | seqEmpty op cl h_op h_cl =>
+      intro m h1 h2
+      simp only [List.nil_append, List.length_cons, List.length_nil] at h2
+      have hm : m = 1 := by omega
+      subst hm
+      have h1op : (op :: ([] ++ [cl])).take 1 = [op] := by simp
+      rw [h1op, pbalance_singleton, h_op]
+      decide
+  | seq op cl interior h_op h_cl h_wb h_rec =>
+      intro m h1 h2
+      obtain ⟨m', rfl⟩ : ∃ m', m = m' + 1 := ⟨m - 1, by omega⟩
+      have hm' : m' ≤ interior.length := by
+        simp only [List.length_cons, List.length_append, List.length_nil] at h2; omega
+      rw [List.take_succ_cons, pbalance_cons, h_op, flowBracketDelta_flowSequenceStart,
+          List.take_append_of_le_length hm']
+      have := h_wb.2 m'
+      omega
+  | map op cl interior h_op h_cl h_wb =>
+      intro m h1 h2
+      obtain ⟨m', rfl⟩ : ∃ m', m = m' + 1 := ⟨m - 1, by omega⟩
+      have hm' : m' ≤ interior.length := by
+        simp only [List.length_cons, List.length_append, List.length_nil] at h2; omega
+      rw [List.take_succ_cons, pbalance_cons, h_op, flowBracketDelta_flowMappingStart,
+          List.take_append_of_le_length hm']
+      have := h_wb.2 m'
+      omega
+
+/-- A `RecSeqBody` exposes its HEAD entry: a nonempty `RecSeqEntry` prefix with a content-start
+    head, shared by both constructors (`single`/`cons`).  Collapses the body case split for the
+    head-keyed projection — the head entry `e` is the same `l.take e.length` either way. -/
+theorem recseqbody_head_entry {l : List (Positioned YamlToken)} (h : RecSeqBody l) :
+    ∃ (e : List (Positioned YamlToken)) (h_ne : e ≠ []),
+      RecSeqEntry e ∧ ContentStartTok (e.head h_ne).val ∧ e = l.take e.length := by
+  cases h with
+  | single _ent h_ne h_e h_head =>
+      -- the body window `l` IS the single entry (its bare-var index unified with `l`).
+      refine ⟨l, h_ne, h_e, h_head, ?_⟩; rw [List.take_length]
+  | cons ent fe rest h_ne h_e h_head h_fe h_rest =>
+      refine ⟨ent, h_ne, h_e, h_head, ?_⟩; rw [List.take_left]
+
+/-- **Direct-head seq projection** — `(i'-b-B2c-nested-project)`, the DESCENT-FREE base case (the
+    `[[1, 2], 9]` move, R330) of the position-keyed root-`RecSeqBody` projection.  When the located
+    enclosing seq opener `p` coincides with the window base `lo` (the located seq IS the head entry),
+    the head entry's stored interior `RecSeqBody` is recoverable WITHOUT any spine-walk or recursion.
+
+    The proof matches the located close `j` to the head entry `e`'s structural span by a TWO-SIDED
+    bracket-matching uniqueness: the located floor (`h_floor`, `≥ 1` over `(lo, j]`) forbids the
+    balance dropping to `0` before `j`, and the entry's own interior floor
+    (`recseqentry_opener_interior_floor`, `≥ 1` strictly inside `e`) forbids it before the structural
+    close — so the unique first-return `j + 1 = lo + e.length` (`h_uniq`).  Then `e` is the token
+    slice `[lo, j]`, its stored interior is exactly `(tokens.toList.take j).drop (lo + 1)` (pure
+    `take`/`drop` algebra), and the non-`seq` constructors fall to length (`scalar`/`seqEmpty`) or the
+    `.flowSequenceStart` head (`map`).  Verified-but-unconsumed leaf (R225): the recursion's ADVANCE
+    and DESCEND arms re-base `lo` and recurse on `rest` / the entry's stored interior, bottoming out
+    here; the matching template is `recseqentry_seq_extract` (R329), the measure `body.length` with a
+    trivial `decreasing_by` (R330). -/
+theorem recseqbody_head_seq_project
+    (tokens : Array (Positioned YamlToken)) (lo H j : Nat)
+    (h_body : RecSeqBody ((tokens.toList.take H).drop lo))
+    (h_open : tokens[lo]!.val = .flowSequenceStart)
+    (h_lo1_j : lo + 1 < j) (h_j_H : j < H) (h_H_sz : H ≤ tokens.size)
+    (h_jclose : tokens[j]!.val = .flowSequenceEnd)
+    (h_inner : flowBracketBalance tokens (lo + 1) j = 0)
+    (h_floor : ∀ i, lo < i → i ≤ j → flowBracketBalance tokens lo i ≥ 1) :
+    RecSeqBody ((tokens.toList.take j).drop (lo + 1)) := by
+  -- Size facts.
+  have h_tl_len : tokens.toList.length = tokens.size := Array.length_toList
+  have h_lo_lt_j : lo < j := by omega
+  have h_lo_sz : lo < tokens.size := by omega
+  have h_j_sz : j < tokens.size := by omega
+  have h_lo_len : lo < tokens.toList.length := by rw [h_tl_len]; exact h_lo_sz
+  have h_j_len : j < tokens.toList.length := by rw [h_tl_len]; exact h_j_sz
+  -- Head entry `e` of the body window.
+  obtain ⟨e, h_ne, h_e, _h_head, h_prefix0⟩ := recseqbody_head_entry h_body
+  have h_e_ne_len : 0 < e.length := List.length_pos_iff.mpr h_ne
+  -- `e` is the leading `e.length` tokens of the window — drop the outer `take H` truncation.
+  have h_body_len : ((tokens.toList.take H).drop lo).length = H - lo := by
+    rw [List.length_drop, List.length_take, h_tl_len, Nat.min_eq_left h_H_sz]
+  have h_elen_le : e.length ≤ H - lo := by
+    have hc := congrArg List.length h_prefix0
+    rw [List.length_take, h_body_len] at hc; omega
+  have h_eslice : e = (tokens.toList.drop lo).take e.length := by
+    have h1 : ((tokens.toList.take H).drop lo).take e.length
+        = (tokens.toList.drop lo).take e.length := by
+      rw [List.drop_take, List.take_take, Nat.min_eq_left h_elen_le]
+    exact h_prefix0.trans h1
+  -- Bridge: window prefix balance = `pbalance` of the head-entry prefix.
+  have balstruct : ∀ m, m ≤ e.length →
+      flowBracketBalance tokens lo (lo + m) = pbalance (e.take m) := by
+    intro m hm
+    rw [flowBracketBalance_eq_pbalance tokens lo (lo + m) (by omega)]
+    congr 1
+    rw [show lo + m - lo = m from by omega]
+    have h2 : e.take m = (tokens.toList.drop lo).take m := by
+      rw [h_eslice, List.take_take, Nat.min_eq_left hm]
+    rw [h2]
+  -- Located drop facts: `balance lo (j+1) = 0` (opener `1` + balanced interior `0` + close `-1`).
+  have h_lo_val : tokens[lo]! = tokens.toList[lo]'h_lo_len := by
+    rw [getElem!_pos tokens lo h_lo_sz, Array.getElem_toList]
+  have h_j_val : tokens[j]! = tokens.toList[j]'h_j_len := by
+    rw [getElem!_pos tokens j h_j_sz, Array.getElem_toList]
+  have h_open_delta : flowBracketDelta tokens[lo]!.val = 1 := by
+    rw [h_open]; exact flowBracketDelta_flowSequenceStart
+  have h_close_delta : flowBracketDelta tokens[j]!.val = -1 := by
+    rw [h_jclose]; exact flowBracketDelta_flowSequenceEnd
+  have h_lo1_bal : flowBracketBalance tokens lo (lo + 1) = 1 := by
+    rw [flowBracketBalance_single tokens lo h_lo_len, ← h_lo_val, h_open_delta]
+  have h_lo_j_bal : flowBracketBalance tokens lo j = 1 := by
+    have hc := flowBracketBalance_compose tokens lo (lo + 1) j (by omega) (by omega)
+    rw [h_lo1_bal, h_inner] at hc; omega
+  have h_j1_bal : flowBracketBalance tokens lo (j + 1) = 0 := by
+    have hc := flowBracketBalance_compose tokens lo j (j + 1) (by omega) (Nat.le_succ j)
+    rw [h_lo_j_bal, flowBracketBalance_single tokens j h_j_len, ← h_j_val, h_close_delta] at hc
+    omega
+  -- Structural: `balance lo (lo + e.length) = 0` (whole entry balances) + interior floor.
+  have h_bal_eL : flowBracketBalance tokens lo (lo + e.length) = 0 := by
+    rw [balstruct e.length (Nat.le_refl _), List.take_length]; exact h_e.toWellBracketed.1
+  have h_floor_struct := recseqentry_opener_interior_floor h_e
+  -- Uniqueness: the located close coincides with the head entry's structural close.
+  have h_uniq : j + 1 = lo + e.length := by
+    rcases Nat.lt_trichotomy (j + 1) (lo + e.length) with hlt | heq | hgt
+    · exfalso
+      have hm_lt : j + 1 - lo < e.length := by omega
+      have hbs := balstruct (j + 1 - lo) (Nat.le_of_lt hm_lt)
+      rw [show lo + (j + 1 - lo) = j + 1 from by omega] at hbs
+      have hfl := h_floor_struct (j + 1 - lo) (by omega) hm_lt
+      rw [hbs] at h_j1_bal; omega
+    · exact heq
+    · exfalso
+      have hfl := h_floor (lo + e.length) (by omega) (by omega)
+      rw [h_bal_eL] at hfl; omega
+  -- Extract the head entry's stored interior, ruling out the three non-`seq` shapes.
+  cases h_e with
+  | scalar t c s ht =>
+      exfalso; simp only [List.length_cons, List.length_nil] at h_uniq; omega
+  | seqEmpty op cl h_op h_cl =>
+      exfalso
+      simp only [List.nil_append, List.length_cons, List.length_nil] at h_uniq; omega
+  | map op cl interior h_op h_cl h_wb =>
+      exfalso
+      have hlen : (op :: (interior ++ [cl])).length = interior.length + 1 + 1 := by
+        simp [List.length_append]
+      rw [hlen, List.drop_eq_getElem_cons h_lo_len, List.take_succ_cons] at h_eslice
+      have h_op_eq : op = tokens.toList[lo]'h_lo_len := (List.cons.inj h_eslice).1
+      have h_val : tokens[lo]!.val = .flowMappingStart := by rw [h_lo_val, ← h_op_eq, h_op]
+      rw [h_open] at h_val; exact absurd h_val (by simp)
+  | seq op cl interior h_op h_cl h_wb h_rec =>
+      have hlen : (op :: (interior ++ [cl])).length = interior.length + 1 + 1 := by
+        simp [List.length_append]
+      rw [hlen] at h_eslice h_uniq
+      rw [List.drop_eq_getElem_cons h_lo_len, List.take_succ_cons] at h_eslice
+      have h_tail : interior ++ [cl] = (tokens.toList.drop (lo + 1)).take (interior.length + 1) :=
+        (List.cons.inj h_eslice).2
+      have key : (tokens.toList.take j).drop (lo + 1) = interior := by
+        rw [List.drop_take, show j - (lo + 1) = interior.length from by omega]
+        calc (tokens.toList.drop (lo + 1)).take interior.length
+            = ((tokens.toList.drop (lo + 1)).take (interior.length + 1)).take interior.length := by
+                rw [List.take_take, Nat.min_eq_left (by omega)]
+          _ = (interior ++ [cl]).take interior.length := by rw [← h_tail]
+          _ = interior := List.take_left
+      rw [key]; exact h_rec
+
 /-! ### Emit-producer strengthening — seq-body recursive deliverable (Phase J feed)
 
 The locate recursion is *fed* by the top-level `RecSeqBody`/`RecMapBody` of the emitted+filtered
