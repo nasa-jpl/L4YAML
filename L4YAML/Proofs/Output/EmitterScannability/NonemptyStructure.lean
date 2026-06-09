@@ -865,34 +865,39 @@ theorem emitList_body_recseqbody
       (s.tokens.filter (fun t => t.val != .placeholder)).size)
   rw [h_drop]; exact h_rec
 
-/-- **Seq root provider — windowed `SafeBodyUnit` at the outer span `[2, size-2)`** (Phase J,
-    `(i'-b-descend-root-provider)`, the ROOT instance of the universal seq-window producer).
-    Per [[ref-universal-producer-root-seed-first]], this is the base case of the `provider`
-    `seqInteriorSeparators_of_safebody_provider` consumes: it delivers
-    `SafeBodyUnit ContentStartTok ((tokens.toList.take (tokens.size - 2)).drop 2)` directly from
-    emission, with NO recursion over nested seq windows.
+/-- **Seq root provider — windowed `RecSeqBody` at the outer span `[2, size-2)`** (Phase J,
+    `(i'-b-B2c-desc-from-emission)`, the ROOT SEED of the position-keyed nested-body projection).
+    Per [[ref-root-seed-recursive-producer-swap]], this is the FLAT-fact derivation
+    `seqRoot_safeBodyUnit` re-run with the *recursive* deliverable KEPT instead of projected: it
+    delivers `RecSeqBody ((tokens.toList.take (tokens.size - 2)).drop 2)` directly from emission,
+    with NO recursion over nested seq windows.  The richer `RecSeqBody` re-projects to the flat
+    `SafeBodyUnit` the root carrier needs (`seqRoot_safeBodyUnit` below), AND — crucially — carries
+    every nested entry's interior `RecSeqBody` in its `RecSeqEntry.seq.h_rec` fields, the structural
+    source `rec_seq_body_nested_project` descends to discharge `bodySucc` at the nested gated
+    windows (R327: the carrier's only deliverable-projecting field, unthreadable through the guard,
+    must be sourced globally from this seed).
 
     The construction is the **slice bridge** the next-step note named "verbatim": replay the
     open-bracket → body → close-bracket chain exactly as `scanFiltered_emitSeq_nonempty_structure`
     does, but feed the body through the *recursive* producer `emitList_body_recseqbody` (whose
     deliverable is `RecSeqBody` over the body block `(s₂.tokens.filter p).toList.drop 2`), then
-    project `RecSeqBody.toSafeBodyUnit` through the same token-decomposition slice identity
-    `h_take_eq` that the structural lemma uses for `WellTyped`: the interior slice
-    `tokens.toList.take (tokens.size - 2)` is exactly the body block `(s₂.tokens.filter p).toList`
-    (the two trailing pushes `tok_fse`/`streamEnd` are dropped by `take (size-2)`), so its `.drop 2`
-    is the `.drop old_sz` tail the `RecSeqBody` is keyed on (`old_sz = (s₁.filter p).size = 2`).
+    re-slice through the same token-decomposition slice identity `h_take_eq` that the structural
+    lemma uses for `WellTyped`: the interior slice `tokens.toList.take (tokens.size - 2)` is exactly
+    the body block `(s₂.tokens.filter p).toList` (the two trailing pushes `tok_fse`/`streamEnd` are
+    dropped by `take (size-2)`), so its `.drop 2` is the `.drop old_sz` tail the `RecSeqBody` is
+    keyed on (`old_sz = (s₁.filter p).size = 2`).
 
     Keyed on the recursive per-item hypothesis `EmitScansInFlowRecEntry` (the producer's interface,
     supplied per item by `emit_scans_in_flow_rec_entry` from `Grammable`).  This is the producer's
     GIFT side made concrete (R301): the gate `SeqTypedInterior` the carrier `intro`s is *consumed*
-    when proving the carrier; here at the root the provider just hands over the `SafeBodyUnit` the
+    when proving the carrier; here at the root the provider just hands over the `RecSeqBody` the
     emission already scanned. -/
-theorem seqRoot_safeBodyUnit
+theorem seqRoot_recseqbody
     (items : Array YamlValue) (tokens : Array (Positioned YamlToken))
     (h_scan : Scanner.scanFiltered ("[" ++ emit.emitList items.toList ++ "]") = .ok tokens)
     (h_ne : items.toList ≠ [])
     (h_all : ∀ v ∈ items.toList, EmitScansInFlowRecEntry v) :
-    SafeBodyUnit ContentStartTok ((tokens.toList.take (tokens.size - 2)).drop 2) := by
+    RecSeqBody ((tokens.toList.take (tokens.size - 2)).drop 2) := by
   let input := "[" ++ emit.emitList items.toList ++ "]"
   let p := fun (t : Positioned YamlToken) => t.val != .placeholder
   have h_toList : input.toList = '[' :: (emit.emitList items.toList).toList ++ [']'] := by
@@ -963,10 +968,25 @@ theorem seqRoot_safeBodyUnit
       rw [h_tokens_sz_eq, Array.length_toList]
     rw [h_sz, h_tokens_decomp, Array.toList_push, Array.toList_push, List.append_assoc,
       List.take_left]
-  -- Project the body block's `RecSeqBody` to the windowed `SafeBodyUnit`
+  -- The body block's `RecSeqBody`, re-sliced to the outer window `[2, size-2)`.
   rw [h_filt₁_sz] at h_rec₂
   rw [h_take_eq]
-  exact h_rec₂.toSafeBodyUnit
+  exact h_rec₂
+
+/-- **Seq root provider — windowed `SafeBodyUnit` at the outer span `[2, size-2)`** (Phase J,
+    `(i'-b-descend-root-provider)`, the ROOT instance of the universal seq-window producer).
+    Per [[ref-universal-producer-root-seed-first]], this is the base case of the `provider`
+    `seqInteriorSeparators_of_safebody_provider` consumes.  Now a one-line `.toSafeBodyUnit`
+    re-projection of the `seqRoot_recseqbody` seed (the flat fact re-derives from the recursive
+    deliverable; [[ref-root-seed-recursive-producer-swap]]: swapping in the recursive producer
+    loses nothing, gains the nested-body structure). -/
+theorem seqRoot_safeBodyUnit
+    (items : Array YamlValue) (tokens : Array (Positioned YamlToken))
+    (h_scan : Scanner.scanFiltered ("[" ++ emit.emitList items.toList ++ "]") = .ok tokens)
+    (h_ne : items.toList ≠ [])
+    (h_all : ∀ v ∈ items.toList, EmitScansInFlowRecEntry v) :
+    SafeBodyUnit ContentStartTok ((tokens.toList.take (tokens.size - 2)).drop 2) :=
+  (seqRoot_recseqbody items tokens h_scan h_ne h_all).toSafeBodyUnit
 
 /-! ### Recursive deliverable — map side (`RecMapBody` / `RecMapPair`)
 
