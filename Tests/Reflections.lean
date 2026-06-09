@@ -51,6 +51,7 @@ import Tests.Reflections.ImportForcedParametricGuard
 import Tests.Reflections.VacuousPositiveCannotExclude
 import Tests.Reflections.NarrowFromRootBreaksRederivationCycle
 import Tests.Reflections.PushBlindFramePreserveDependent
+import Tests.Reflections.ComplementGuardNotSufficient
 
 /-!
 # Reflections — runnable proof-engineering demonstrations
@@ -63,6 +64,7 @@ not library behaviour: each is a toy model whose `#guard`/`#guard_msgs`/`#eval`/
 checks fail the build if the principle's positive/negative witnesses ever drift.
 
 Each module names the Blueprint Reflection it illustrates:
+* `ComplementGuardNotSufficient`          — Reflection 333 (the COMPLEMENT of a sufficient dispatch guard need not be a sufficient guard — the toy of `recseqbody_descend`, the DESCEND arm. A spine-walk splits into ADVANCE (`p` past the head entry) and DESCEND (`p` inside it). The ADVANCE guard `bal lo p = 0 ∧ lo < p` is SUFFICIENT for "past the head"; the NAIVE negation `bal lo p ≥ 1` is NOT sufficient for "inside the head" — `p` may be nested in a LATER entry (floor-blind, [[ref-floor-blind-gate-admits-cross-sibling]] on the complement side). The real DESCEND guard is the window-absolute FLOOR `∀ i ∈ (lo,p], bal lo i ≥ 1`. Witness `1 , [ [ 2 ] ]` (interior of `[1,[[2]]]`): a SCALAR head `1` (span `[0,1)`), then a doubly-nested seq. NEGATIVE (`#guard`): `bal 0 3 ≥ 1` holds so the negated guard fires, yet `p = 3 ≥ headEnd = 1` (past the head) and the FLOOR fails — `bal 0 1 = 0` (the head's return-to-`0`); the floor is the discriminator the bare `≥ 1` lacks. NEGATIVE (`#guard`): `delta op = delta mop` — a seq opener and a map opener share delta `+1`, so head-is-`.seq` is provably NOT a balance fact and enters as the dispatch hypothesis `h_lo_open`, not a derivation. POSITIVE (proven `floor_implies_in_head`, the crux of `recseqbody_descend`'s `h_p_lt`): abstractly over any `B`, if the head balances to `0` at its end `m` (`B m = 0`, `lo < m`) and the floor holds over `(lo,p]`, then `p < m` — the floor at `i = m` would force `B m ≥ 1`, contra `= 0`. The guard/complement analogue of [[ref-converse-forward-invariant-asymmetry]]; applies [[ref-window-absolute-gate-subset-restriction]] / [[ref-minimal-pair-extracts-the-gate]])
 * `ProducerGuardedTrap`                  — Reflection 218 (the producer-guarded-quantifier trap)
 * `ConverseForwardAsymmetry`             — Reflection 219 (converse/forward invariant asymmetry)
 * `ReductionByImport`                    — Reflection 225 (reduction by import — retype, not shrink)
