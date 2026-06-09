@@ -36,6 +36,7 @@ import Tests.Guards.Proofs.SeqEnclosedGuardProbe
 import Tests.Guards.Proofs.SeqGateFloorProbe
 import Tests.Guards.Proofs.SeqMapPathNestedProbe
 import Tests.Guards.Proofs.SeqNestedProjectProbe
+import Tests.Guards.Proofs.SeqPathDispatchProbe
 import Tests.Guards.Proofs.SeqRootSeedNarrowProbe
 import Tests.Guards.Proofs.SuiteGuards.Advanced
 import Tests.Guards.Proofs.SuiteGuards.Block
