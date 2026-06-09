@@ -545,6 +545,57 @@ theorem RecSeqBody.toWellBracketed : {l : List (Positioned YamlToken)} →
         (WellBracketed_cons_delta_zero fe rest (h_fe ▸ flowBracketDelta_flowEntry)
           h_rest.toWellBracketed)
 
+/-- **Entry-descend LEAF** — `(i'-b-B2c-nested-project)`, the matched-entry extraction of the
+    position-keyed root-`RecSeqBody` projection.  When a recursive seq entry `e` is shaped as a
+    flow sequence `op :: (interior ++ [cl])` whose opener is a `.flowSequenceStart` and whose
+    `interior` is nonempty, the entry MUST be the `seq` constructor (not `scalar`, `seqEmpty`, or
+    `map`), so its stored `h_rec : RecSeqBody interior` is recoverable directly.
+
+    This is the leaf of `rec_seq_body_nested_project`'s two-dimensional descent: the spine-walk
+    (templated on `SafeBody_flowEntry_zero_balance`'s `pbalance`-`take` trichotomy) locates the
+    entry whose token span is the located nested seq `[p, j]`; THIS lemma reads off that entry's
+    interior body.  The three non-`seq` constructors are ruled out structurally:
+    * `scalar` — `e = [t]` has length `1`, but `op :: (interior ++ [cl])` has length `≥ 2`;
+    * `seqEmpty` — its `interior` is `[]`, contradicting `h_int_ne`;
+    * `map` — its opener is `.flowMappingStart`, contradicting `.flowSequenceStart`.
+    The shape match uses cons-injectivity (`op = op'`) and append-singleton injectivity
+    (`interior = int'`, via reversal). -/
+theorem recseqentry_seq_extract {e : List (Positioned YamlToken)}
+    (h : RecSeqEntry e) (op cl : Positioned YamlToken) (interior : List (Positioned YamlToken))
+    (h_shape : e = op :: (interior ++ [cl]))
+    (h_open : op.val = .flowSequenceStart) (h_int_ne : interior ≠ []) :
+    RecSeqBody interior := by
+  cases h with
+  | scalar t c s ht =>
+      -- `e = [t]` has length 1; the shape forces length `≥ 2`.
+      exfalso
+      have hlen : ([t] : List (Positioned YamlToken)).length = (op :: (interior ++ [cl])).length :=
+        congrArg List.length h_shape
+      simp [List.length_append] at hlen
+  | seqEmpty op' cl' h_op' h_cl' =>
+      -- `interior` would be `[]`, contradicting `h_int_ne`.
+      exfalso
+      -- `h_shape : op' :: ([] ++ [cl']) = op :: (interior ++ [cl])`.
+      have h_tail : ([] : List (Positioned YamlToken)) ++ [cl'] = interior ++ [cl] :=
+        (List.cons.inj h_shape).2
+      have hr : cl' :: ([] : List (Positioned YamlToken)).reverse = cl :: interior.reverse := by
+        simpa [List.reverse_append] using congrArg List.reverse h_tail
+      exact h_int_ne (List.reverse_inj.mp (List.cons.inj hr).2.symm)
+  | seq op' cl' int' h_op' h_cl' h_wb' h_rec' =>
+      -- The `seq` case: match the interiors and return the stored `h_rec`.
+      -- `h_shape : op' :: (int' ++ [cl']) = op :: (interior ++ [cl])`.
+      have h_tail : int' ++ [cl'] = interior ++ [cl] := (List.cons.inj h_shape).2
+      have hr : cl' :: int'.reverse = cl :: interior.reverse := by
+        simpa [List.reverse_append] using congrArg List.reverse h_tail
+      have h_int : interior = int' := (List.reverse_inj.mp (List.cons.inj hr).2).symm
+      rw [h_int]; exact h_rec'
+  | map op' cl' int' h_op' h_cl' h_wb' =>
+      -- The opener would be `.flowMappingStart`, contradicting `h_open`.
+      exfalso
+      have h_op_eq : op' = op := (List.cons.inj h_shape).1
+      rw [← h_op_eq, h_op'] at h_open
+      exact absurd h_open (by simp)
+
 /-! ### Emit-producer strengthening — seq-body recursive deliverable (Phase J feed)
 
 The locate recursion is *fed* by the top-level `RecSeqBody`/`RecMapBody` of the emitted+filtered
