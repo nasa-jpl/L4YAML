@@ -1534,4 +1534,44 @@ theorem seqWindowRecSeqBody (tokens : Array (Positioned YamlToken))
     exact ih (m + 1) hi (by omega) ⟨h_win', h_deep', h_enc', h_close_hi⟩
   exact key lo hi ⟨h_win0, h_deep0, h_enc0, h_close0⟩
 
+/-- **The domain-restricted nested `RecSeqBody` provider** — `(i'-b-B2c-nested-project)`, the navigator
+    R335–R337 set up, now LANDED.  At every body window `[lo, hi)` on the **all-seq PATH** domain
+    (`SeqPathAllSeq tokens lo` — every enclosing frame from the root to `lo` a flow sequence `[`, R336's
+    routing discriminator) that is a `FlowBodyWindow ∧ FlowBodyContentDeep` whose `hi` is the enclosing
+    sequence's matching close, it produces the recursive interior `RecSeqBody`.
+
+    **It is `seqWindowRecSeqBody` (R323) with `SeqEnclosed` supplied from the carried `SeqPathAllSeq`**
+    — a one-line composition, settling the open (a)/(b) question of the 185th-revision map decisively in
+    favour of **(a)**.  The deciding fact ([[ref-severed-edge-bounds-navigator-domain]] read in the
+    PRODUCER direction): `seqWindowRecSeqBody` does NOT *navigate* the root `RecSeqBody` tree — it
+    *produces* `RecSeqBody` fresh from the window guards, routing a `{`-headed first entry through
+    `recseqentry_window_dispatch`'s NEAR-LEAF map oracle (`recseqentry_mapbracket_oracle`, interior
+    `WellBracketed`, NO IH) to a `RecSeqEntry.map` LEAF.  So the severed edge that defeats *navigation*
+    (R335 — a seq window buried in a `RecSeqEntry.map`'s `WellBracketed` is unreachable from the root
+    tree) is never crossed by *production*: the producer stops AT the map opener, it never needs to
+    re-enter it.  Because `RecSeqBody` is a `Prop` (proof-irrelevant), the freshly produced witness is
+    as good as a navigated one — so the FOUR position-keyed arms (R331–R334) are an ALTERNATIVE driver,
+    not a necessity; the existing `windowWidth_strongRecOn` driver already serves the whole domain.
+
+    The `SeqPathAllSeq` hypothesis is therefore STRONGER than this provider's own need (it consumes only
+    the `SeqEnclosed` TOP-projection, via `seqEnclosed_of_seqPathAllSeq`, R337's DOMINANCE lemma).  It is
+    carried because it is the CONSUMER's routing discriminator (R336): `SeqEnclosed` alone (top-only)
+    cannot tell an all-seq-path window from one whose path dips through a `{` — only the whole-stack
+    `SeqPathAllSeq` can — and the consumer needs that distinction to route map-path windows to the
+    separate flat provider.  This provider sits on the all-seq-path side of that partition; threading the
+    domain through descent is `seqPathAllSeq_descend` (R337 PRESERVATION), the map edge's exclusion is
+    `seqPathAllSeq_map_push_breaks` (R337 NEGATION).
+
+    Verified-but-unconsumed until the consumer routes the partition (R225): composes only landed lemmas
+    (`seqWindowRecSeqBody` + `seqEnclosed_of_seqPathAllSeq`), references no sorry site, frontier sorry
+    count unchanged at 4; axiom-clean. -/
+theorem rec_seq_body_nested_project (tokens : Array (Positioned YamlToken))
+    (h_root_carrier : SeqInteriorSeparators tokens 2 (tokens.size - 2))
+    (lo hi : Nat)
+    (h_win : FlowBodyWindow tokens lo hi) (h_deep : FlowBodyContentDeep tokens lo hi)
+    (h_path : SeqPathAllSeq tokens lo) (h_close : tokens[hi]!.val = .flowSequenceEnd) :
+    RecSeqBody ((tokens.toList.take hi).drop lo) :=
+  seqWindowRecSeqBody tokens h_root_carrier lo hi h_win h_deep
+    (seqEnclosed_of_seqPathAllSeq tokens lo h_path) h_close
+
 end L4YAML.Proofs.EmitterScannability
