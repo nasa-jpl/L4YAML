@@ -29138,4 +29138,88 @@ the extract is [[ref-coerce-to-weaker-reuse-wrapper]]'s val-transfer; the offset
 
 **REMAINING-WORK DEPENDENCY MAP (Workstream A — ONE-HUNDRED-NINETY-SEVENTH revision, 2026-06-10).** … (R308–R347 as before) … R348 found the five-conjunct thread does not close (arity entanglement, same-window cycle, combination relocates not breaks) ⇒ the break is an EMISSION-sourced per-nested-sub-value `FlowBodyContent`; **R349's PROBE settled the emission seed's shape decisively: (a) the nested `SafeBodyUnit` IS emission-sourceable WITHOUT re-entering `seqWindowRecSeqBody` — the interior `RecSeqBody` is STORED in the flat root `seqRoot_recseqbody`'s `RecSeqEntry.seq.h_rec` field, position-EXACT (the predicates are `.val`-only), so the ASSEMBLE landed sorry-free as `nestedSeq_safeBodyUnit_of_entry` (`recseqentry_seq_extract` + `interior_window_eq` + `.toSafeBodyUnit`, no carrier, no recursion); a standalone RE-SCAN is the WRONG object (`.pos` offset gap); (b) reaching the stored field at an arbitrary nested window is the R330–R337 spine-walk navigator, DESCOPED as "an alternative, not a necessity" under the carrier route — but eliminating that route (the seed's whole purpose) UN-DESCOPES it; the landed `rec_seq_body_nested_project` is the carrier SHORTCUT (needs `h_root_carrier`) and canNOT serve — this revision (R349).** **The seq side now owes exactly: (1) the emission-spine-walk LOCATOR — a BOTTOM-UP producer `∀ all-seq-path window [a,b), ∃ enclosing entry stored in `seqRoot_recseqbody` whose interior `RecSeqBody` re-bases to `(take b).drop a`` ([[ref-from-located-assembler-direction]] bottom-up; R330's `SeqNestedProjectProbe` already `#guard`-de-risked its measure + per-descend offsets), authored as a structural recursion over `seqRoot_recseqbody` (NOT a re-entry into `seqWindowRecSeqBody`); (2) compose the locator with the landed `nestedSeq_safeBodyUnit_of_entry` (= `nestedSeq_safeBodyUnit_of_locator`) → `seqSeparatorFacts_of_windowed_safebodyunit ▸ flowBodyContent_of_deep` to get the per-window `FlowBodyContent` emission seed `nestedSeq_flowBodyContent`; (3) drive `seqWindowRecSeqBody` from the four-conjunct `G` with `FlowBodyContent` supplied per window from this seed (NOT threaded — R348; NOT carrier — R346; NOT off own `RecSeqBody` — R347/R348), discharging R341's `h_enc`; (4) thread `EmitScansInFlowRecEntry` into `scanFiltered_emitSeq_nonempty_structure`; (5) compose into `seqRoot_seqInteriorSeparators`'s `desc`; (6) wire `flowSubrangesOk_of_window_producers`; the map mirror follows.**
 
-**Next step:** **(i'-b-B2c-nested-fbc-emission-locator, factor the emission-spine-walk LOCATOR — the bottom-up navigator that reaches a nested window's stored `RecSeqEntry` in `seqRoot_recseqbody` — PROBE its single-step shape first)** — R349 settled that the nested `FlowBodyContent` emission seed's ASSEMBLE is landed (`nestedSeq_safeBodyUnit_of_entry` / `nestedSeq_safeBodyUnit_of_locator`, `SeqNestedEmissionSeedProbe.lean`), and the single residual is the LOCATOR the lifted hypothesis names: at an all-seq-path window `[a,b)`, produce `∃ lo op cl interior, lo+1 = a ∧ a ≤ b ∧ RecSeqEntry (op :: (interior ++ [cl])) ∧ op.val = .flowSequenceStart ∧ interior ≠ [] ∧ (take (b+1)).drop lo = op :: (interior ++ [cl])` — i.e. LOCATE the enclosing seq entry that `seqRoot_recseqbody` stores and whose interior is the window. This is the R330–R337 spine-walk navigator, UN-DESCOPED (the landed `rec_seq_body_nested_project` is the carrier shortcut, useless here). SMALLEST FIRST — the PROBE, not yet the recursion: read `seqRoot_recseqbody` (`NonemptyStructure.lean:1480`, its stored `RecSeqEntry.seq.h_rec` fields), `recseqentry_seq_extract` (563), and the R330 `SeqNestedProjectProbe` (its `#guard`ed measure `body.length` + per-descend offset re-basing on `[[1,2],9]` / `[1,[2,3]]` / `[[[1,2]]]`). Decide whether the locator is (a) a SINGLE structural recursion over the flat root `RecSeqBody` (descend `seq.h_rec`, advance past `cons` entries, leaf when the window IS the entry — measure `body.length`, the R330 spine-walk made concrete over `seqRoot_recseqbody` instead of an abstract `RecSeqBody`), or (b) needs a separate balance-locate front end (find the opener `p` by `flowBracketBalance_backward_open_locate`, THEN walk to its stored entry). PROBE on the three R330 witnesses that the stored-entry window identity `(take (b+1)).drop lo = op :: (interior ++ [cl])` holds at the located entry for each recursion MOVE (direct-head, advance-then-head, descend-into-interior) BEFORE authoring. If (a): author `nestedSeq_recseqentry_locate` as the structural recursion, then compose with `nestedSeq_safeBodyUnit_of_locator` → `nestedSeq_flowBodyContent`. If (b): land the balance-locate front end first, then the stored-entry walk. KEEP the four-conjunct `G`; steps (2)–(6) of the 197th map follow in order.
+**Next step:** **(i'-b-B2c-nested-fbc-emission-locator, factor the emission-spine-walk LOCATOR — the bottom-up navigator that reaches a nested window's stored `RecSeqEntry` in `seqRoot_recseqbody` — PROBE its single-step shape first)** *(PROBE RESOLVED by R350 — kept for the record; the probe found **option (a)**: the locator is a SINGLE offset-tracked `body.length` recursion over the flat root `RecSeqBody`, and its branch dispatch (leaf / descend / advance) is a pure LENGTH-ARITHMETIC trichotomy on `a` vs `off+1` and `off + e.length` — NO separate balance-locate front end. R330's top-down projection selected the entry by `flowBracketBalance = 0`; this BOTTOM-UP locator keyed on the window `[a,b)` needs no balance call inside the recursion — balance is demoted to the correctness side (which entry the slice equals), entering via the all-seq-path/`WellTyped` hypotheses, never the decision. `#guard`-confirmed on all three R330 witnesses; `move_trichotomy`/`move_exclusive` are pure `omega` (`SeqNestedEntryLocateProbe.lean`). The next move AUTHORS `nestedSeq_recseqentry_locate` as that recursion.)* — R349 settled that the nested `FlowBodyContent` emission seed's ASSEMBLE is landed (`nestedSeq_safeBodyUnit_of_entry` / `nestedSeq_safeBodyUnit_of_locator`, `SeqNestedEmissionSeedProbe.lean`), and the single residual is the LOCATOR the lifted hypothesis names: at an all-seq-path window `[a,b)`, produce `∃ lo op cl interior, lo+1 = a ∧ a ≤ b ∧ RecSeqEntry (op :: (interior ++ [cl])) ∧ op.val = .flowSequenceStart ∧ interior ≠ [] ∧ (take (b+1)).drop lo = op :: (interior ++ [cl])` — i.e. LOCATE the enclosing seq entry that `seqRoot_recseqbody` stores and whose interior is the window. This is the R330–R337 spine-walk navigator, UN-DESCOPED (the landed `rec_seq_body_nested_project` is the carrier shortcut, useless here). SMALLEST FIRST — the PROBE, not yet the recursion: read `seqRoot_recseqbody` (`NonemptyStructure.lean:1480`, its stored `RecSeqEntry.seq.h_rec` fields), `recseqentry_seq_extract` (563), and the R330 `SeqNestedProjectProbe` (its `#guard`ed measure `body.length` + per-descend offset re-basing on `[[1,2],9]` / `[1,[2,3]]` / `[[[1,2]]]`). Decide whether the locator is (a) a SINGLE structural recursion over the flat root `RecSeqBody` (descend `seq.h_rec`, advance past `cons` entries, leaf when the window IS the entry — measure `body.length`, the R330 spine-walk made concrete over `seqRoot_recseqbody` instead of an abstract `RecSeqBody`), or (b) needs a separate balance-locate front end (find the opener `p` by `flowBracketBalance_backward_open_locate`, THEN walk to its stored entry). PROBE on the three R330 witnesses that the stored-entry window identity `(take (b+1)).drop lo = op :: (interior ++ [cl])` holds at the located entry for each recursion MOVE (direct-head, advance-then-head, descend-into-interior) BEFORE authoring. If (a): author `nestedSeq_recseqentry_locate` as the structural recursion, then compose with `nestedSeq_safeBodyUnit_of_locator` → `nestedSeq_flowBodyContent`. If (b): land the balance-locate front end first, then the stored-entry walk. KEEP the four-conjunct `G`; steps (2)–(6) of the 197th map follow in order.
+
+### Reflection 350 — a position-indexed navigator splits DECISION from CORRECTNESS: the bottom-up locator's branch dispatch is pure offset/length arithmetic, balance is demoted to the correctness side
+
+`(i'-b-B2c-nested-fbc-emission-locator)` asked whether the emission-spine-walk locator — at an
+all-seq-path interior window `[a,b)`, find the enclosing `RecSeqEntry` stored in `seqRoot_recseqbody`
+and prove `(take (b+1)).drop lo = op :: (interior ++ [cl])` — is **(a)** a single offset-tracked
+`body.length` recursion or **(b)** needs a separate balance-locate front end. The probe
+(`SeqNestedEntryLocateProbe.lean`) found **(a)**, and the reason generalizes.
+
+**A position-indexed navigator over a recursive deliverable splits into two pieces that use DIFFERENT
+machinery: a DECISION procedure (which branch to take) and a CORRECTNESS justification (why that branch
+is right). The decision is the cheap part.** Walking `RecSeqBody body` with the absolute base offset
+`off` of `body`, the head entry `e` occupies `[off, off+e.length-1]`, so its interior window is
+`[off+1, off+e.length-1)`. The target window start `a` selects the move by comparing `a` against
+`off+1` and `off+e.length` **alone** — a pure trichotomy (`move_trichotomy`, one `omega`):
+`a = off+1` → LEAF; `off+1 < a < off+e.length` → DESCEND (off' = off+1); `off+e.length < a` → ADVANCE
+(off' = off+e.length+1); `a = off+e.length` is the impossible close/separator position, so the
+trichotomy is exhaustive on valid windows and the branches are exclusive (`move_exclusive`, needs only
+`1 ≤ e.length`). The recursive structure already STORES each entry's length and the offset-slice
+invariant `body = (take H).drop off` ties structure to absolute token positions — so the navigator
+NEVER calls balance to decide.
+
+**Balance is demoted to the CORRECTNESS side.** R330's TOP-DOWN projection (`rec_seq_body_nested_project`)
+selected the entry by `flowBracketBalance = 0` from the active base — because it was given a token
+coordinate and had to FIND the structural entry. This BOTTOM-UP locator is keyed on the window `[a,b)`
+itself, so the structural walk + offset arithmetic locate the entry directly; balance enters only the
+PROOF that the located slice equals the target window (via the all-seq-path / `WellTyped` hypotheses),
+never the branch selector. The forward locate's expensive machinery (a balance front end) is the part
+the backward/bottom-up navigator sheds — the same shape as [[ref-backward-locator-mirrors-forward]]
+(mirroring backward needs no standalone primitive) and [[ref-near-leaf-mirror-sheds-machinery]] (the
+storage asymmetry has opposite signs across the locate boundary), here sharpened to: **the machinery a
+locate needs for its DECISION can collapse to arithmetic on the opposite direction, leaving balance as a
+pure correctness-side obligation.**
+
+**Transferable rule.** Before importing a locate's heavy front end (balance, search, a matching-bracket
+primitive) into a navigator that descends the same structure, ask which part of the locate is the
+DECISION (which child to recurse into) vs the CORRECTNESS (why). If the recursive deliverable stores the
+positional data the decision needs (entry lengths, child spans) and an offset-slice invariant ties it to
+absolute coordinates, the decision is a length-arithmetic trichotomy — pure `omega` — and the heavy
+front end belongs only to the correctness proof, not the recursion. Probe the trichotomy on concrete
+witnesses (exercise each move once) BEFORE authoring; if it classifies cleanly, that is the (a)
+single-recursion answer. Sharpens [[ref-from-located-assembler-direction]] (the bottom-up direction's
+single-step shape) and [[ref-metric-bridge-is-composition]] (the feared machinery was already paid for
+elsewhere — here, by the structure's stored lengths).
+
+**REMAINING-WORK DEPENDENCY MAP (Workstream A — ONE-HUNDRED-NINETY-EIGHTH revision, 2026-06-10).** …
+(R308–R348 as before) … R349 settled the emission seed's shape (ASSEMBLE landed; residual = the
+bottom-up emission-spine-walk LOCATOR); **R350's PROBE settled that locator's single-step shape: it is
+**option (a)** — a SINGLE offset-tracked `body.length` recursion over the flat root `RecSeqBody`, branch
+dispatch by pure LENGTH-ARITHMETIC trichotomy (`move_trichotomy`/`move_exclusive`, `omega`), NO separate
+balance-locate front end (balance is demoted to the correctness side, entering via the all-seq-path /
+`WellTyped` hypotheses) — this revision (R350).** **The seq side now owes exactly: (1) AUTHOR
+`nestedSeq_recseqentry_locate` — the bottom-up locator as a `body.length` recursion over
+`seqRoot_recseqbody`'s stored structure: carry the base offset `off`, dispatch leaf/descend/advance by
+the R350 trichotomy, read the enclosing `RecSeqEntry` off the head entry at the LEAF and prove the window
+identity `(take (b+1)).drop lo = op :: (interior ++ [cl])` from the offset-slice invariant; the
+correctness side draws balance/floor facts from the all-seq-path / `WellTyped` hypotheses (NOT from a
+balance front end); (2) compose with the landed `nestedSeq_safeBodyUnit_of_locator` →
+`seqSeparatorFacts_of_windowed_safebodyunit ▸ flowBodyContent_of_deep` → the per-window `FlowBodyContent`
+emission seed `nestedSeq_flowBodyContent`; (3) drive `seqWindowRecSeqBody` from the four-conjunct `G`
+with `FlowBodyContent` supplied per window from this seed, discharging R341's `h_enc`; (4) thread
+`EmitScansInFlowRecEntry` into `scanFiltered_emitSeq_nonempty_structure`; (5) compose into
+`seqRoot_seqInteriorSeparators`'s `desc`; (6) wire `flowSubrangesOk_of_window_producers`; the map mirror
+follows.**
+
+**Next step:** **(i'-b-B2c-nested-fbc-emission-locator-author, AUTHOR `nestedSeq_recseqentry_locate` —
+the bottom-up `body.length` recursion R350 settled — its LEAF case first)** — R350 settled the shape:
+a single offset-tracked recursion over `seqRoot_recseqbody`'s stored `RecSeqBody`, dispatching by the
+length-arithmetic trichotomy (`move_trichotomy`). SMALLEST FIRST — the LEAF case, the only one that
+produces the deliverable (descend/advance just re-base and recurse). The leaf fires at `a = off+1`: the
+target window's enclosing entry IS the head entry `e` of the current `RecSeqBody`. Author the leaf
+lemma: given `RecSeqBody body` whose head entry `e` is a `seq`-constructor (`op :: (interior ++ [cl])`,
+`op.val = .flowSequenceStart`, `interior ≠ []`) and the offset-slice invariant `body = (take H).drop off`
+with `a = off+1`, produce the existential `∃ lo op cl interior, lo+1 = a ∧ a ≤ b ∧ RecSeqEntry … ∧ … ∧
+(take (b+1)).drop lo = op :: (interior ++ [cl])` with `lo = off`, `b = off + e.length - 1`. The
+`RecSeqEntry` comes off the head entry directly (`.single`/`.cons` h_e field); the window identity is
+the offset-slice invariant restricted to the head entry (`(take (off+e.length)).drop off = e`, a
+`List.take`/`List.drop` slice fact). PROBE before authoring (per [[ref-probe-deferred-universal-before-producing]])
+that the head-entry slice `(take (off + e.length)).drop off = e` is derivable from `body = (take H).drop off`
++ `e` is a prefix of `body` (`body = e ++ rest` from the `.cons` shape, or `body = e` from `.single`) —
+a `List.take_append`/`List.drop_append` fact, no balance. If it closes: land the leaf lemma (verified-but-
+unconsumed until the recursion wraps it). Then the descend and advance re-base steps, then the
+`body.length` `Nat.strongRecOn` wrapper, then compose `nestedSeq_safeBodyUnit_of_locator`. KEEP the
+four-conjunct `G`; steps (2)–(6) of the 198th map follow in order.
