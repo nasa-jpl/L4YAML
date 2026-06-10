@@ -38,6 +38,7 @@ import Tests.Guards.Proofs.SeqGateFloorProbe
 import Tests.Guards.Proofs.SeqGateWindownessProbe
 import Tests.Guards.Proofs.SeqMapPathNestedProbe
 import Tests.Guards.Proofs.SeqNestedEmissionSeedProbe
+import Tests.Guards.Proofs.SeqNestedEntryLocateProbe
 import Tests.Guards.Proofs.SeqNestedProjectProbe
 import Tests.Guards.Proofs.SeqPathDispatchProbe
 import Tests.Guards.Proofs.SeqRootSeedNarrowProbe
