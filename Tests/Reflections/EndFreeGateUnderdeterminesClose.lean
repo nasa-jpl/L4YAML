@@ -27,6 +27,20 @@ The bridge mirrors `seqDescent_provider_of_located`: it never inspects `get s b`
 located `⟨loS, hiS⟩` with `get s hiS = close` and `b ≤ hiS`.  This is the END-dual of the head-blind
 gate probe (a HEAD-blind gate admits spurious-HEADED windows; an END-free gate admits spurious-ENDED
 ones).
+
+## Reflection 356 — a SETTLED next-step pointer re-credited balance-0 with pinning `b`; the gate admits MANY non-close ends
+
+A later increment (the emission-spine wrapper `nestedSeq_recseqentry_locate`) declared its leaf
+obligation `b = head-entry-close` *"pinned by `SeqTypedInterior`'s balance-0"* — re-crediting the very
+balance conjunct R340 already proved END-free.  R356 re-runs the probe and sharpens it: the gate admits
+not just ONE spurious end but ARBITRARILY MANY — a seq of `n` elements has `n-1` interior separator
+ends, ALL balance-0 + floored.  The witness `V = op it sep it sep it cl` (mirror of the `[1,2,3]`
+interior at base `op`): from the interior start `a = 1`, the gate holds at b ∈ {2, 4, 6} (the two
+separator ends and the close), but only `get V 6 = cl`.  So `b` is pinned by the consumer's explicit
+CLOSE hypothesis — `seqWindowRecSeqBody`'s width-guard carries `tokens[hi]!.val = .flowSequenceEnd` as
+its fourth `G`-conjunct — and the leaf's `b = close` is derived by MATCHING that token, never by
+balance.  The lesson: re-probe a boundary-pinning attribution even when a *settled* pointer states it,
+because the pointer phrases the END-free trap as resolved.
 -/
 
 namespace Tests.Reflections.EndFreeGateUnderdeterminesClose
@@ -109,5 +123,25 @@ theorem located_close_24 :
     never from the window's end `b`. -/
 example : Gate W 2 4 ∧ get W 4 ≠ Tok.cl ∧ (∃ loS hiS, loS ≤ 2 ∧ 4 ≤ hiS ∧ get W hiS = Tok.cl) :=
   ⟨gate_24, end_24_not_close, located_close_24⟩
+
+/-! ## R356 — the gate admits MANY non-close ends; only the close token discriminates
+
+`V = op it sep it sep it cl` (mirror of the `[1,2,3]` interior at base `op`).  From the interior start
+`a = 1`, the END-free gate holds at all THREE ends b ∈ {2, 4, 6}, but only b = 6 carries the close. -/
+
+def V : List Tok := [.op, .it, .sep, .it, .sep, .it, .cl]
+
+/-- The gate holds at BOTH separator ends AND the close end — it cannot pin `b`. -/
+theorem gate_admits_three_ends : Gate V 1 2 ∧ Gate V 1 4 ∧ Gate V 1 6 :=
+  ⟨⟨by decide⟩, ⟨by decide⟩, ⟨by decide⟩⟩
+
+/-- Only `b = 6` carries the close token; the two gate-passing separator ends do not.  So the close
+    hypothesis, not the interior gate, pins the wrapper's `b`. -/
+theorem close_token_separates_three_ends :
+    get V 2 = Tok.sep ∧ get V 4 = Tok.sep ∧ get V 6 = Tok.cl := by decide
+
+-- the gate AGREES on a separator end and the close end, but the close token SEPARATES them:
+#guard windowBal V 1 4 == windowBal V 1 6     -- both balance-0
+#guard get V 4 != get V 6                      -- yet only b = 6 is the close
 
 end Tests.Reflections.EndFreeGateUnderdeterminesClose
