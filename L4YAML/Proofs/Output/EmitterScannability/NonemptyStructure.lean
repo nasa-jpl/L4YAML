@@ -657,6 +657,64 @@ theorem nestedSeq_recseqentry_locate_leaf
       omega
     rw [h_bplus1]; exact h_slc
 
+/-- **DESCEND re-base of the emission-spine-walk locator** — `(i'-b-B2c-nested-fbc-emission-locator-
+    descend)`, R353.  When the navigator's current `RecSeqBody body` (sliced from `tokens` at base `off`
+    with `body = (take H).drop off`) has a nested-seq HEAD entry `op :: (interior ++ [cl])` and the
+    target window start `a` lands strictly INSIDE it (`off+1 < a < off + e.length`), the recursion
+    DESCENDS into the entry's stored interior `RecSeqBody interior` (the `seq.h_rec` field) at the new
+    base `off+1`.  This lemma re-establishes the navigator's slice invariant at the descended base: the
+    interior re-slices to the window `[off+1, off+1+interior.length)`, with the new right cut shrunk to
+    the interior's far edge.  PURE drop-algebra (no balance): drop one more past the opener
+    (`List.drop_drop`) re-bases the parent tail to `interior ++ ([cl] ++ rest)`, then `head_entry_slice`
+    re-cuts to the interior exactly.  The fit bound `off+1+interior.length ≤ H` comes from `h_bound`
+    (`off + body.length ≤ H` with `body.length = interior.length + 2 + rest.length`).
+    Verified-but-unconsumed until the `Nat.strongRecOn` wrapper threads it into the recursion. -/
+theorem nestedSeq_recseqentry_locate_descend
+    (tokens : Array (Positioned YamlToken))
+    (body rest interior : List (Positioned YamlToken))
+    (op cl : Positioned YamlToken)
+    (off H : Nat)
+    (h_slice : body = (tokens.toList.take H).drop off)
+    (h_bound : off + body.length ≤ H)
+    (h_prefix : body = (op :: (interior ++ [cl])) ++ rest) :
+    interior = (tokens.toList.take (off + 1 + interior.length)).drop (off + 1) := by
+  -- Re-base the parent tail one step past the opener: drop (off+1) = interior ++ ([cl] ++ rest).
+  have h_body : (tokens.toList.take H).drop (off + 1) = interior ++ ([cl] ++ rest) := by
+    rw [← List.drop_drop, ← h_slice, h_prefix]; simp [List.append_assoc]
+  -- The fit bound at the descended base, from `h_bound` and the prefix length.
+  have h_le : off + 1 + interior.length ≤ H := by
+    rw [h_prefix] at h_bound
+    simp only [List.length_cons, List.length_append, List.length_cons, List.length_nil] at h_bound
+    omega
+  -- `head_entry_slice` re-cuts the interior exactly (no balance).
+  exact (head_entry_slice tokens.toList (off + 1) H interior ([cl] ++ rest) h_body h_le).symm
+
+/-- **ADVANCE re-base of the emission-spine-walk locator** — `(i'-b-B2c-nested-fbc-emission-locator-
+    advance)`, R353.  When the navigator's current `RecSeqBody body = e ++ fe :: rest` (a `cons` node,
+    sliced at base `off`) has its target window start `a` PAST the head entry (`off + e.length < a`),
+    the recursion ADVANCES to the tail `RecSeqBody rest` (the `cons.h_rest` field) at the new base
+    `off + e.length + 1` — the `+1` skips the depth-`0` `.flowEntry` separator `fe`.  This lemma
+    re-establishes the slice invariant at the advanced base, keeping the SAME right cut `H` (the tail is
+    still bounded by the enclosing close).  PURE drop-algebra (no balance): drop `e.length + 1` past the
+    entry-plus-separator (`List.drop_drop` + `List.drop_append_of_le_length`) lands exactly on `rest`.
+    Verified-but-unconsumed until the `Nat.strongRecOn` wrapper threads it into the recursion. -/
+theorem nestedSeq_recseqentry_locate_advance
+    (tokens : Array (Positioned YamlToken))
+    (body rest e : List (Positioned YamlToken))
+    (fe : Positioned YamlToken)
+    (off H : Nat)
+    (h_slice : body = (tokens.toList.take H).drop off)
+    (h_prefix : body = e ++ fe :: rest) :
+    rest = (tokens.toList.take H).drop (off + e.length + 1) := by
+  have h1 : (tokens.toList.take H).drop (off + e.length + 1)
+      = ((tokens.toList.take H).drop off).drop (e.length + 1) := by
+    rw [List.drop_drop, Nat.add_assoc]
+  rw [h1, ← h_slice, h_prefix,
+      show (e ++ fe :: rest).drop (e.length + 1)
+          = ((e ++ fe :: rest).drop e.length).drop 1 from by rw [List.drop_drop],
+      List.drop_append_of_le_length (Nat.le_refl _)]
+  simp
+
 /-- **Opener-headed entry interior floor** — every `RecSeqEntry` keeps its prefix balance `≥ 1`
     strictly inside the entry: for `1 ≤ m < e.length`, `pbalance (e.take m) ≥ 1`.  Each constructor
     is a SINGLE bracket pair (so the opener's `+1` is never cancelled before the entry's own matching
