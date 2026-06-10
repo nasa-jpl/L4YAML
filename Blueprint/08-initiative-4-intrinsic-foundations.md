@@ -29410,23 +29410,80 @@ rather than by what each step PRODUCES can mis-classify the invariant-bearing as
 is its complement — it produces everything and carries the invariant).
 
 **Next step:** **(i'-b-B2c-nested-fbc-emission-locator-wrapper-interface, PROBE the WRAPPER's interface
-BEFORE authoring the `Nat.strongRecOn` recursion)** — all three slice bricks are landed
-(leaf/descend/advance, R351/R353); the wrapper assembles them into `nestedSeq_recseqentry_locate`. It is
-NOT a mechanical brick (R353): its DESCEND arm must exclude a map head via the domain invariant
-`SeqPathAllSeq`, and there is no reusable skeleton (`rec_seq_body_nested_project` is the carrier shortcut).
-So DESIGN the interface first, per [[ref-from-located-assembler-direction]]: (a) decide the wrapper's
-CARRIED STATE — the offset-slice invariant `body = (take H).drop off` + fit bound `off+body.length ≤ H` +
-`h_rec : RecSeqBody body` + a `SeqPathAllSeq`-keyed domain hypothesis at the current base — and its
-DELIVERABLE (the `locator` existential `nestedSeq_safeBodyUnit_of_locator` consumes, at the target window
-`[a,b)`); (b) decide whether the wrapper consumes the typed `SeqTypedInterior tokens a b` directly (the
-`desc` consumer's hypothesis) or a STRUCTURAL domain hypothesis, with the typed↔structural BRIDGE placed
-separately in the `desc` assembly (likely the latter — keep the recursion structural, bridge once at the
-seam, per [[ref-coerce-to-weaker-reuse-wrapper]]). PROBE (per
-[[ref-probe-deferred-universal-before-producing]]) on the three R330 witnesses (`[[1,2],9]` direct-head,
-`[1,[2,3]]` advance-then-head, `[[[1,2]]]` descend-into-interior) that the chosen carried state (i)
-threads `SeqPathAllSeq` across descend (`seqPathAllSeq_descend`) and advance (the `WellTyped`-segment
-frame), and (ii) bottoms out at the LEAF with the head entry PROVEN a `.seq` (map excluded by
-`seqPathAllSeq_map_push_breaks`, scalar/seqEmpty by the empty descend range). Only then author the
-`Nat.strongRecOn` recursion composing leaf + descend + advance. Then the seed `nestedSeq_flowBodyContent`
-(compose with `nestedSeq_safeBodyUnit_of_locator`) and the `desc` assembly. KEEP the four-conjunct `G`;
-steps (2)–(6) of the 199th map follow in order.
+BEFORE authoring the `Nat.strongRecOn` recursion)** *(PROBE RESOLVED by R354 — kept for the record; the
+probe settled the one open interface question DECISIVELY via a minimal pair on real emitted tokens: the
+wrapper carries the WHOLE-path `SeqPathAllSeq`, NOT the top-projection `SeqEnclosed`/`SeqTypedInterior` the
+`desc` consumer hands it. The minimal pair `[[1,2]]` (all-seq, `a=3`, stack `[true,true]`) vs `[{x:[1,2]}]`
+(map-in-path, `a=7`, stack `[true,false,true]`): both have stack-TOP `true` — so the negative PASSES
+`SeqTypedInterior`'s 2nd conjunct — but only the positive is all-`true`, so `SeqPathAllSeq` SEPARATES them
+where the projection cannot. `SeqNestedWrapperIfaceProbe.lean`, `#guard`-green. The bridge follows: the
+"projection ⟹ full" derivation is FALSE (the negative is its counterexample), so the typed↔structural
+bridge sources `SeqPathAllSeq` from the OUTER recursion's descent discipline (`seqWindowRecSeqBody` descends
+only through seq openers, R338), NOT from `SeqTypedInterior`. This RE-OPENS R339's "`SeqPathAllSeq`
+vestigial" claim, consumer-relatively — vestigial for the gate-driven FLAT producer, LOAD-BEARING for the
+emission-spine NAVIGATOR. The next move AUTHORS the wrapper carrying `SeqPathAllSeq`.)* — all three slice
+bricks are landed (leaf/descend/advance, R351/R353); the wrapper assembles them into
+`nestedSeq_recseqentry_locate`. It is NOT a mechanical brick (R353): its DESCEND arm must exclude a map head
+via the domain invariant `SeqPathAllSeq`, and there is no reusable skeleton (`rec_seq_body_nested_project`
+is the carrier shortcut).
+
+### Reflection 354 — a VESTIGIAL projection re-opens for a structure-walking consumer: a whole-structure invariant retired as vestigial for a value-blind consumer (reads only a top/aggregate PROJECTION) is LOAD-BEARING for a sibling consumer that WALKS the typed structure — vestigial-ness is consumer-relative, so re-test the retired invariant with a minimal pair before sizing the walker's domain down to the projection
+
+R353's interface-design probe asked which domain hypothesis the wrapper of `nestedSeq_recseqentry_locate`
+carries. R354 settles it with a minimal pair (`SeqNestedWrapperIfaceProbe.lean`, `#guard`-green on real
+emitted tokens). The candidates: the TOP-of-stack enclosure `SeqEnclosed` (= `SeqTypedInterior`'s 2nd
+conjunct, what the `desc` consumer hands the wrapper), or the WHOLE-path `SeqPathAllSeq` (R336). A prior
+de-risk (R339) had declared `SeqPathAllSeq` **vestigial** — the gate-driven FLAT producer
+`seqWindowRecSeqBody` reads only the top-projection, handed free by the gate — which tempts reusing only
+the projection.
+
+The minimal pair refutes that for THIS consumer: the SAME nested seq `[1,2]`, two paths —
+`[[1,2]]` (all-`[`, interior `a=3`, stack `[true,true]`) vs `[{x:[1,2]}]` (through a `{`, interior `a=7`,
+stack `[true,false,true]`). The negative's stack-TOP is `true` (the inner `[` is the immediate enclosure)
+⇒ it PASSES `SeqEnclosed`/`SeqTypedInterior`. But its WHOLE stack is not all-`true` ⇒ it FAILS
+`SeqPathAllSeq`. `topTrue P 3 = topTrue N 7` (projection cannot separate) but `allTrue P 3 ≠ allTrue N 7`
+(whole-path does). The DESCEND arm structurally MUST reject a nested seq inside a map (a `RecSeqEntry.map`
+has no `h_rec` to descend into); `SeqTypedInterior` cannot exclude it, `SeqPathAllSeq` can.
+
+**Two consequences.** (1) The wrapper's carried domain hypothesis is `SeqPathAllSeq tokens off`, seeded
+trivially at the root `off=2` (`take 2` → `[true]`), threaded across descend by `seqPathAllSeq_descend`,
+the map head excluded by `seqPathAllSeq_map_push_breaks`, projected to the dispatch's `SeqEnclosed` need by
+`seqEnclosed_of_seqPathAllSeq`. (2) The typed↔structural BRIDGE does NOT manufacture `SeqPathAllSeq` from
+`SeqTypedInterior` — that derivation is FALSE, the negative is its counterexample (`projection_does_not_
+imply_full`). The bridge sources `SeqPathAllSeq` from the OUTER recursion's descent discipline:
+`seqWindowRecSeqBody` descends only through seq openers (R338, it STOPS at map leaves), so every window it
+asks the seed about is all-seq-path BY CONSTRUCTION.
+
+**Transferable rule.** "Vestigial" is a claim about a CONSUMER, not an invariant. When a later consumer
+WALKS the typed structure (vs reading a projection), re-test the retired invariant with a minimal pair
+equal under the projection but split by the full invariant; if it exists, the structure-walker must carry
+the full invariant, and its bridge sources the invariant from the walker's own descent discipline, never
+from the projection-providing gate. This is the consumer-relative dual of
+[[ref-downstream-derisk-restores-upstream]] (there a later consumer restored a dropped PRODUCER conjunct;
+here it re-opens a retired DOMAIN invariant), the probe is [[ref-minimal-pair-extracts-the-gate]] (it
+extracts the domain HYPOTHESIS), and it sharpens [[ref-wrapper-carries-invariant-not-a-slice-brick]] (R353
+said the wrapper carries A domain invariant; R354 names WHICH and proves the weaker candidate insufficient).
+The structured-state form is [[ref-aggregate-collapses-structured-separates]] (the un-projected stack
+separates what its head-projection collapses).
+
+**Next step:** **(i'-b-B2c-nested-fbc-emission-locator-wrapper-author, AUTHOR `nestedSeq_recseqentry_locate`
+— the `Nat.strongRecOn` wrapper carrying `SeqPathAllSeq`, composing the three landed slice bricks)** — the
+interface is RESOLVED (R354): the wrapper's CARRIED STATE is the offset-slice invariant
+`body = (take H).drop off` + fit bound `off+body.length ≤ H` + `h_rec : RecSeqBody body` + the WHOLE-path
+domain hypothesis `SeqPathAllSeq tokens off` at the current base; its DELIVERABLE is the `locator`
+existential `nestedSeq_safeBodyUnit_of_locator` consumes at `[a,b)`. AUTHOR the recursion on `body.length`
+(`Nat.strongRecOn`): `cases` the `RecSeqBody` (`single`/`cons`), compute `e.length`, dispatch by
+`move_trichotomy` (`a` vs `off+1`, `off+e.length`) — LEAF (`a=off+1`) → `nestedSeq_recseqentry_locate_leaf`
+(needs the head a `.seq`: from `SeqPathAllSeq` the opener `tokens[off]!` is `.flowSequenceStart`,
+`seqPathAllSeq`-projected, the map/scalar/seqEmpty constructors excluded — map by
+`seqPathAllSeq_map_push_breaks` at the descend that produced this base, scalar/seqEmpty by `interior ≠ []`);
+DESCEND (`off+1<a<off+e.length`) → re-base by `nestedSeq_recseqentry_locate_descend`, recurse with
+`SeqPathAllSeq tokens (off+1)` from `seqPathAllSeq_descend` (the head `.seq` opener), measure drops
+(`interior.length < body.length`); ADVANCE (`off+e.length<a`) → re-base by
+`nestedSeq_recseqentry_locate_advance`, recurse with `SeqPathAllSeq` FRAMED over the balanced head-entry
+segment (the `WellTyped`-segment frame, R337 `seqPathAllSeq` advance edge — NOT a push), measure drops
+(`rest.length < body.length`). The map-head DESCEND case (`RecSeqEntry.map`, no `h_rec`) is the
+contradiction the carried `SeqPathAllSeq` discharges. Then the seed `nestedSeq_flowBodyContent` (compose
+with `nestedSeq_safeBodyUnit_of_locator`) and the `desc` assembly — placing the typed↔structural bridge at
+the `desc` seam, sourcing `SeqPathAllSeq` from the outer descent discipline (R338), per R354. KEEP the
+four-conjunct `G`; steps (2)–(6) of the 199th map follow in order.
