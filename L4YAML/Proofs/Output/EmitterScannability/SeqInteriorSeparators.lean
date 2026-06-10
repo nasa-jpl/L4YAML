@@ -1335,6 +1335,30 @@ theorem seqEnclosed_of_seqPathAllSeq (tokens : Array (Positioned YamlToken)) (lo
     | false => simp at h_all
     | true => rfl
 
+/-- **The consumer's GATE already supplies the producer's enclosure need** — `(i'-b-B2c-map-path)`,
+    the de-risk that DISSOLVES the all-seq/map-path partition (Reflection 339).
+
+    `SeqTypedInterior tokens a b` (the gate `seqInteriorSeparators_of_safebody_provider`'s `provider`
+    quantifies under) has, as its SECOND conjunct, `(btFold (some []) (tokens.toList.take a)).bind
+    (·.head?) = some true` — which is *definitionally* `SeqEnclosed tokens a`.  So the producer
+    `seqWindowRecSeqBody`'s only path-sensitive hypothesis (`SeqEnclosed`) is handed to it FREE by the
+    very gate the consumer threads, IDENTICALLY for every gated window — whether its path to the root
+    runs through all `[` (all-seq) or dips through a `{` (map-path).
+
+    This is the [[ref-conjunct-of-projection-is-free-field]] move at the gate, and it completes the
+    [[ref-probe-provider-satisfiable-before-assembler]] / [[ref-probe-provider-head-blind-gate]]
+    conclusion that the planned **flat map-path complement provider is UNNECESSARY** and the routing
+    tag `SeqPathAllSeq` is **vestigial**: `SeqEnclosed` reads only the TOP of `take a` (the window's
+    own `[`, `true` for every seq body), so it is PATH-INVARIANT; the deeper map-vs-seq distinction
+    `SeqPathAllSeq` tracks is never read by the producer (whose sole descend edge fires on
+    `.flowSequenceStart`, STOPPING at map leaves — R338, [[ref-producer-stops-at-severed-edge]]).  The
+    map-path-nested seq windows the partition was built to route are never reached by the recursion;
+    the same producer serves the whole gated domain through this one free conjunct. -/
+theorem seqEnclosed_of_seqTypedInterior (tokens : Array (Positioned YamlToken)) (a b : Nat)
+    (h : SeqTypedInterior tokens a b) :
+    SeqEnclosed tokens a :=
+  h.2.1
+
 /-- **`SeqEnclosed` at a backward-LOCATED enclosing opener** — `(i'-b-B2c-desc-closing)` sub-brick 2a,
     the `h_q_succ` supplier for the `desc` discharge's `seqDescent_provider_of_located` call.
 
