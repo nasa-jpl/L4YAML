@@ -596,6 +596,67 @@ theorem recseqentry_seq_extract {e : List (Positioned YamlToken)}
       rw [← h_op_eq, h_op'] at h_open
       exact absurd h_open (by simp)
 
+/-- **Head-entry slice fact** — the pure `List` core of the emission-spine-walk locator's LEAF
+    (`(i'-b-B2c-nested-fbc-emission-locator)`, R350).  Given the navigator's offset-slice invariant
+    `(L.take H).drop off = e ++ rest` (the current body is `tokens` sliced at base `off`, with the head
+    entry `e` a prefix) and the fit bound `off + e.length ≤ H`, the head-entry window
+    `(L.take (off + e.length)).drop off` equals `e` exactly.  No balance — `List.take_take` re-bases the
+    outer cut to `H`, `List.drop_take` swaps the order, and `List.take_append_of_le_length` reads off the
+    prefix.  This is the `(take (b+1)).drop lo = op :: (interior ++ [cl])` window identity the assembler
+    `nestedSeq_safeBodyUnit_of_locator` consumes, with `lo = off`, `b + 1 = off + e.length`. -/
+theorem head_entry_slice (L : List (Positioned YamlToken)) (off H : Nat)
+    (e rest : List (Positioned YamlToken))
+    (h_body : (L.take H).drop off = e ++ rest) (h_le : off + e.length ≤ H) :
+    (L.take (off + e.length)).drop off = e := by
+  have h1 : L.take (off + e.length) = (L.take H).take (off + e.length) := by
+    rw [List.take_take]; congr 1; omega
+  rw [h1, List.drop_take, h_body, List.take_append_of_le_length (by omega)]; simp
+
+/-- **LEAF case of the emission-spine-walk locator** — `(i'-b-B2c-nested-fbc-emission-locator-author)`,
+    R350.  The single move of the bottom-up `body.length` navigator that PRODUCES the deliverable (the
+    descend/advance moves only re-base and recurse).  When the navigator's current `RecSeqBody body` is
+    sliced from `tokens` at base offset `off` (`body = (take H).drop off`, fitting the window via
+    `off + body.length ≤ H`) and its HEAD entry is a nested seq block `op :: (interior ++ [cl])` — so the
+    target interior window `[off+1, b]` IS this entry (the LEAF fires at `a = off+1`) — produce the
+    `locator` existential `nestedSeq_safeBodyUnit_of_locator` consumes: the entry `RecSeqEntry`, its
+    opener, nonempty interior, and the window identity `(take (b+1)).drop off = op :: (interior ++ [cl])`.
+    The `RecSeqEntry` is `h_entry` directly; the window identity is `head_entry_slice` (a `List` slice
+    fact, no balance — balance is demoted to which-entry CORRECTNESS, R350); the bounds `lo+1 = a` and
+    `a ≤ b` are pure length arithmetic (`e.length = interior.length + 2 ≥ 2`).  Verified-but-unconsumed
+    until the `Nat.strongRecOn` wrapper threads the descend/advance re-base steps into it. -/
+theorem nestedSeq_recseqentry_locate_leaf
+    (tokens : Array (Positioned YamlToken))
+    (body rest interior : List (Positioned YamlToken))
+    (op cl : Positioned YamlToken)
+    (off H a b : Nat)
+    (h_slice : body = (tokens.toList.take H).drop off)
+    (h_bound : off + body.length ≤ H)
+    (h_prefix : body = (op :: (interior ++ [cl])) ++ rest)
+    (h_entry : RecSeqEntry (op :: (interior ++ [cl])))
+    (h_open : op.val = .flowSequenceStart)
+    (h_int_ne : interior ≠ [])
+    (h_a : a = off + 1)
+    (h_b : b = off + (op :: (interior ++ [cl])).length - 1) :
+    ∃ lo op' cl' interior', lo + 1 = a ∧ a ≤ b ∧
+      RecSeqEntry (op' :: (interior' ++ [cl'])) ∧
+      op'.val = .flowSequenceStart ∧ interior' ≠ [] ∧
+      (tokens.toList.take (b + 1)).drop lo = op' :: (interior' ++ [cl']) := by
+  refine ⟨off, op, cl, interior, by omega, ?_, h_entry, h_open, h_int_ne, ?_⟩
+  · -- a ≤ b : `e.length = interior.length + 2 ≥ 2`, pure length arithmetic
+    simp only [List.length_cons, List.length_append, List.length_cons, List.length_nil] at h_b
+    omega
+  · -- window identity via `head_entry_slice`
+    have h_ebody : (op :: (interior ++ [cl])).length ≤ body.length := by
+      rw [h_prefix, List.length_append]; omega
+    have h_le : off + (op :: (interior ++ [cl])).length ≤ H := by omega
+    have h_body' : (tokens.toList.take H).drop off = (op :: (interior ++ [cl])) ++ rest := by
+      rw [← h_slice, h_prefix]
+    have h_slc := head_entry_slice tokens.toList off H (op :: (interior ++ [cl])) rest h_body' h_le
+    have h_bplus1 : b + 1 = off + (op :: (interior ++ [cl])).length := by
+      simp only [List.length_cons, List.length_append, List.length_cons, List.length_nil] at h_b ⊢
+      omega
+    rw [h_bplus1]; exact h_slc
+
 /-- **Opener-headed entry interior floor** — every `RecSeqEntry` keeps its prefix balance `≥ 1`
     strictly inside the entry: for `1 ≤ m < e.length`, `pbalance (e.take m) ≥ 1`.  Each constructor
     is a SINGLE bracket pair (so the opener's `+1` is never cancelled before the entry's own matching
