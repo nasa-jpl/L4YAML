@@ -29514,20 +29514,64 @@ window-classification vs base-domain), and it sharpens
 invariant; R355 finds the LEAF arm needs a SECOND, window-keyed fact the base hypothesis — however strong —
 cannot supply. Recorded as [[ref-navigator-arms-keyed-to-positions]].
 
+### Reflection 356 — a SETTLED next-step pointer re-credited an END-FREE gate's balance-0 with pinning a boundary it provably cannot pin; the gate admits arbitrarily many non-close ends, so `b` is pinned by the consumer's explicit close hypothesis, not balance
+
+R355's correction itself carried an imprecision. Its Next-step pointer attributed the wrapper's OTHER
+leaf obligation — `h_b : b = off + e.length - 1` (the window's right edge IS the head entry's structural
+close) — to *"`b` pinned to the head edge by `SeqTypedInterior`'s balance-0."* R356's PROBE
+(`SeqNestedBPinProbe.lean`, `#guard`-green on real emitted tokens) refutes that, re-running R340's
+END-FREE-gate probe against the freshly-settled pointer.
+
+`SeqTypedInterior tokens a b`'s three conjuncts — balance-0 (`flowBracketBalance tokens a b = 0`),
+seq-enclosure (`btFold`-top `= some true` after `[0,a)`), local-Dyck floor — are ALL window-ABSOLUTE and
+END-FREE: none reads `tokens[b]`. So a window ending at an interior `.flowEntry` separator (balance back
+to 0, floor intact) passes the gate exactly as the one ending at the matching close. R340 found this
+admits ONE spurious end; R356 SHARPENS it — the gate admits ARBITRARILY MANY: a nested seq of `n`
+elements has `n-1` interior separator ends, all balance-0 + floored. On `[[1,2,3]]`, from the interior
+start `a = 3`, `SeqTypedInterior B 3 b` holds for b ∈ {4, 6, 8} (the two separator ends AND the close),
+but only `B[8]! = .flowSequenceEnd`. Balance-0 cannot pin `b`.
+
+**What actually pins `b`.** The deliverable-producing consumer `seqWindowRecSeqBody`
+(`SeqInteriorSeparators.lean:1606`) carries `tokens[hi]!.val = .flowSequenceEnd` as the FOURTH conjunct
+of its width-recursion guard `G` (`FlowBodyWindow ∧ FlowBodyContentDeep ∧ SeqEnclosed tokens lo ∧
+tokens[hi]! = .flowSequenceEnd`). So the window's right edge `b = hi` is a typed close BY EXPLICIT
+HYPOTHESIS; the leaf's `h_b` is derived by MATCHING that close to the head entry's structural close (the
+unique depth-0 seq-close from `a`), never by balance uniqueness. The wrapper's signature must therefore
+take the close hypothesis `tokens[b]!.val = .flowSequenceEnd`; the consumer also supplies `SeqEnclosed
+tokens a` (R355's map-exclusion fact) DIRECTLY in the same `G`, so neither leaf fact needs to be bundled
+through `SeqTypedInterior` — the real per-window contract is `seqWindowRecSeqBody`'s `G`, not the gate.
+
+**Transferable rule.** Re-probe a boundary-pinning attribution even when a SETTLED next-step pointer
+states it — the pointer can phrase the END-FREE trap ([[ref-end-free-gate-underdetermines-close]]) as
+resolved. An end-free interior gate (balance/floor, blind to `tokens[b]`) underdetermines the closing
+edge; a producer reading the close off `b` needs an explicit close hypothesis from its consumer, found
+by reading the consumer's actual guard, not by trusting the pointer's metric attribution. This is R340
+re-applied at the wrapper's `b`; the per-arm companion of [[ref-navigator-arms-keyed-to-positions]]
+(R355 found the LEAF needs the window's `SeqEnclosed tokens a`; R356 finds the LEAF's `b` needs the
+window's close hypothesis — both window-keyed, neither from the carried base domain, and the close one
+NOT the balance-0 the pointer credited). Recorded by updating [[ref-end-free-gate-underdetermines-close]].
+
 **Next step:** **(i'-b-B2c-nested-fbc-emission-locator-wrapper-author, AUTHOR `nestedSeq_recseqentry_locate`
 — the `Nat.strongRecOn` wrapper carrying `SeqPathAllSeq`, composing the three landed slice bricks)** — the
-interface is RESOLVED (R354 + R355): the wrapper's CARRIED STATE is the offset-slice invariant
+interface is RESOLVED (R354 + R355 + R356): the wrapper's CARRIED STATE is the offset-slice invariant
 `body = (take H).drop off` + fit bound `off+body.length ≤ H` + `h_rec : RecSeqBody body` + the WHOLE-path
 domain hypothesis `SeqPathAllSeq tokens off` at the current base; AND (R355) it ALSO CONSUMES the target
-window's `SeqTypedInterior tokens a b` — keyed to `a`, not the base — which the carried base domain canNOT
-supply. Its DELIVERABLE is the `locator`
+window's enclosure `SeqEnclosed tokens a` — keyed to `a`, not the base — which the carried base domain
+canNOT supply (the LEAF map-exclusion); AND (R356) it ALSO CONSUMES the window's CLOSE hypothesis
+`tokens[b]!.val = .flowSequenceEnd`, which pins `b` to the head entry's structural close (balance-0 does
+NOT — the gate is END-FREE, admitting the `n-1` separator ends of an `n`-element seq, R356). Both
+`a`-keyed facts come DIRECTLY from the real per-window consumer contract `seqWindowRecSeqBody`'s
+`G = FlowBodyWindow ∧ FlowBodyContentDeep ∧ SeqEnclosed tokens lo ∧ tokens[hi]! = .flowSequenceEnd` (NOT
+bundled through `SeqTypedInterior tokens a b`, whose balance-0 under-determines `b`). Its DELIVERABLE is the `locator`
 existential `nestedSeq_safeBodyUnit_of_locator` consumes at `[a,b)`. AUTHOR the recursion on `body.length`
 (`Nat.strongRecOn`): `cases` the `RecSeqBody` (`single`/`cons`), compute `e.length`, dispatch by
 `move_trichotomy` (`a` vs `off+1`, `off+e.length`) — LEAF (`a=off+1`) → `nestedSeq_recseqentry_locate_leaf`
 (needs the head a `.seq`: scalar excluded by `a ≠ off+L` (length>1) + the `ContentStartTok` head from
-`RecSeqBody` narrows to `[`/`{`; the MAP head excluded by the WINDOW's `SeqEnclosed tokens a` —
-`seqEnclosed_of_seqTypedInterior` — NOT by the carried `SeqPathAllSeq tokens off`, which is BLIND to
-`tokens[off]` (R355's correction); `b` pinned to the head edge by `SeqTypedInterior`'s balance-0);
+`RecSeqBody` narrows to `[`/`{`; the MAP head excluded by the WINDOW's `SeqEnclosed tokens a` (consumed
+DIRECTLY from the consumer's `G`) — NOT by the carried `SeqPathAllSeq tokens off`, which is BLIND to
+`tokens[off]` (R355's correction); `b` pinned to the head entry's structural close by the consumed close
+hypothesis `tokens[b]! = .flowSequenceEnd`, matched to the entry's far edge — NOT by balance-0, which is
+END-FREE and under-determines `b` (R356's correction));
 DESCEND (`off+1<a<off+e.length`) → re-base by `nestedSeq_recseqentry_locate_descend`, recurse with
 `SeqPathAllSeq tokens (off+1)` from `seqPathAllSeq_descend` (the head `.seq` opener), measure drops
 (`interior.length < body.length`); ADVANCE (`off+e.length<a`) → re-base by
