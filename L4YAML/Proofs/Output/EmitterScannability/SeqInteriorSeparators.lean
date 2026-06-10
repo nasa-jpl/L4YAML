@@ -1532,6 +1532,49 @@ theorem seqWindow_flowBodyContent (tokens : Array (Positioned YamlToken)) (lo hi
     h_carrier lo hi (Nat.le_refl lo) (Nat.le_of_lt h_win.lo_lt_hi) (Nat.le_refl hi) h_gate
   exact flowBodyContent_of_deep tokens lo hi h_deep h_bs h_nts
 
+/-- **The CARRIER-FREE root seed for `FlowBodyContent`** — `(i'-b-B2c-desc-fixpoint)`, the base case of
+    the `FlowBodyContent` thread that BREAKS the carrier↔recursion co-construction circularity (R318/R340).
+
+    `seqWindow_flowBodyContent` (just above) sources a window's `FlowBodyContent` from the ambient root
+    carrier `SeqInteriorSeparators tokens 2 (size-2)` — but that carrier is precisely what the seq
+    `desc` producer is trying to BUILD (`seqRoot_seqInteriorSeparators`'s `desc` funnels through it).  So
+    routing the recursion's per-window `FlowBodyContent` through it is circular.  The R341 next-step's
+    probe asked: can `FlowBodyContent` instead be threaded as a recursion `G`-conjunct, seeded ONCE at
+    the root from the FLAT producer and propagated by the two landed edges — never re-entering the
+    carrier ([[ref-narrow-from-root-breaks-rederivation-cycle]])?  The two edges are already theorems:
+
+    * DESCEND — `flowBodyContent_descend` (above): at a descended seq window `[p+1, j)` the child
+      separator facts come from the child's OWN `SafeBodyUnit` (`seqChild_safeBodyUnit`, drawn carrier-free
+      from the width IH), NOT from re-basing the parent's `bodySucc` (which has no all-depth balance-free
+      form — R296), so it SIDESTEPS that obstruction by consuming the recursion's own `RecSeqBody` output;
+    * ADVANCE — `flowBodyContent_advance` (`NonemptyStructure`): a pure depth-`0` re-basing, no IH.
+
+    This brick supplies the remaining piece — the BASE case at `[2, size-2)` — by the SAME chain the
+    descend edge uses (`seqSeparatorFacts_of_windowed_safebodyunit ▸ flowBodyContent_of_deep`), but fed
+    the FLAT `seqRoot_safeBodyUnit` (scanned straight off emission, no `RecSeqBody`) in place of the IH's
+    child `SafeBodyUnit`.  `FlowBodyContentDeep` at the root is taken as a hypothesis (the consumer
+    supplies it, mirroring `seqWindowRecSeqBody`'s `h_deep0` interface).  With this, the per-window
+    `FlowBodyContent` SOURCE is complete carrier-free: root seed (here) + descend + advance, the
+    [[ref-universal-producer-root-seed-first]] base of a recursion whose edges are landed.
+
+    Verified-but-unconsumed until the carrier-free `windowWidth_strongRecOn` threads `FlowBodyContent` as
+    a `G`-conjunct (R225): composes only landed lemmas, references no sorry site, frontier sorry count
+    unchanged at 4; axiom-clean. -/
+theorem seqRoot_flowBodyContent
+    (items : Array YamlValue) (tokens : Array (Positioned YamlToken))
+    (h_scan : Scanner.scanFiltered ("[" ++ emit.emitList items.toList ++ "]") = .ok tokens)
+    (h_ne : items.toList ≠ [])
+    (h_all : ∀ v ∈ items.toList, EmitScansInFlowRecEntry v)
+    (h_deep : FlowBodyContentDeep tokens 2 (tokens.size - 2)) :
+    FlowBodyContent tokens 2 (tokens.size - 2) := by
+  -- The flat root `SafeBodyUnit` (off emission, NO `RecSeqBody`) yields both separator facts.
+  have h_safe : SafeBodyUnit ContentStartTok ((tokens.toList.take (tokens.size - 2)).drop 2) :=
+    seqRoot_safeBodyUnit items tokens h_scan h_ne h_all
+  obtain ⟨h_bs, h_nts⟩ :=
+    seqSeparatorFacts_of_windowed_safebodyunit tokens 2 (tokens.size - 2)
+      (Nat.sub_le tokens.size 2) h_safe
+  exact flowBodyContent_of_deep tokens 2 (tokens.size - 2) h_deep h_bs h_nts
+
 /-- **The combined `windowWidth_strongRecOn` `RecSeqBody` producer** — `(i'-b-B3-fixpoint)`, the LAST
     seq brick and the convergence point of all the landed descent/edge bricks.  At every body window
     `[lo, hi)` that is a `FlowBodyWindow ∧ FlowBodyContentDeep ∧ SeqEnclosed lo` whose `hi` is the
