@@ -29349,26 +29349,84 @@ in steps 3–6** — the residual is the locator (`desc`) plus pure proven-lemma
 seq locator's remaining bricks (descend/advance/wrapper, all balance-free slice algebra per R351) can be
 BATCHED into one increment; the de-risk confirms there is no wall behind them. See Reflection 352.
 
-**Next step:** **(i'-b-B2c-nested-fbc-emission-locator-descend, AUTHOR the DESCEND re-base step of
-`nestedSeq_recseqentry_locate` — the move at `off+1 < a < off+e.length`)** — R351 landed the LEAF
-(verified-but-unconsumed); the wrapper now needs the two re-base steps the trichotomy dispatches to.
-SMALLEST FIRST — the DESCEND step (it is the recursive heart; ADVANCE is its flatter sibling). At
-`off+1 < a < off+e.length` the navigator's current `RecSeqBody body` has a head entry `e` that is a
-`seq`-constructor `op :: (interior ++ [cl])` (the target window is INSIDE `e`, so `e` is a nested seq),
-and the recursion descends into `e`'s stored `interior` at the NEW base offset `off' = off+1`. Author the
-descend lemma: given the offset-slice invariant `body = (tokens.toList.take H).drop off`, the head-entry
-prefix `body = (op :: (interior ++ [cl])) ++ rest`, and `h_rec : RecSeqBody interior` (off
-`recseqentry_seq_extract h_entry`), produce the re-based offset-slice invariant for the child —
-`interior = (tokens.toList.take H').drop (off+1)` with `H' = off + 1 + interior.length` (the child's
-window `[off+1, off+1+interior.length)`) — plus the fit bound `(off+1) + interior.length ≤ H'`. PROBE
-before authoring (per [[ref-probe-deferred-universal-before-producing]]) that the child slice
-`interior = (take (off+1+interior.length)).drop (off+1)` is derivable from the parent slice + the
-head-entry shape — a `take`/`drop` composition mirroring `head_entry_slice` (peel the opener `op`, then
-the closer `cl` and `rest` off the tail): `interior` sits at `[off+1, off+e.length-1)` inside `body`, and
-`body` sits at `[off, H)` inside `tokens.toList`, so `interior` sits at `[off+1, off+e.length-1)` inside
-`tokens.toList` — pure slice algebra, NO balance (R351: the descend step's POSITIONING is slice algebra;
-balance would only enter proving the target `a` is in the interior, which the trichotomy hypothesis
-`off+1 < a < off+e.length` already gives). If it closes: land the descend re-base lemma
-(verified-but-unconsumed). Then the ADVANCE step (`cons`-tail re-base, flatter), then the `Nat.strongRecOn`
-wrapper, then compose `nestedSeq_safeBodyUnit_of_locator`. KEEP the four-conjunct `G`; steps (2)–(6) of
-the 199th map follow in order.
+**DESCEND + ADVANCE re-base bricks LANDED (R353, `feat f18433aa`).** Both authored sorry-free,
+verified-but-unconsumed, frontier holds at 4; the PROBE-first slice algebra closed exactly as R351
+predicted (axiom-clean, no balance):
+- `nestedSeq_recseqentry_locate_descend` (NonemptyStructure.lean, after the leaf): given the parent
+  offset-slice invariant `body = (take H).drop off`, the fit bound `off + body.length ≤ H`, and the
+  head-entry prefix `body = (op :: (interior ++ [cl])) ++ rest`, produces the child slice
+  `interior = (take (off+1+interior.length)).drop (off+1)`. Proof: `List.drop_drop` past the opener
+  re-bases the parent tail to `interior ++ ([cl] ++ rest)`, then `head_entry_slice` re-cuts to `interior`
+  exactly; the fit bound `off+1+interior.length ≤ H` is `omega` from `h_bound` and the prefix length.
+- `nestedSeq_recseqentry_locate_advance`: given the parent slice + the `cons` decomposition
+  `body = e ++ fe :: rest`, produces `rest = (take H).drop (off + e.length + 1)` — same right cut `H`,
+  base advanced past the `.flowEntry` separator. Proof: `List.drop_drop` + `List.drop_append_of_le_length`.
+
+So all THREE slice bricks (leaf R351, descend + advance R353) are landed — the de-risk's "no wall" claim
+for the SLICE bricks is fully confirmed. But reaching the WRAPPER reveals it was MIS-BINNED as a fourth
+mechanical brick: it is the invariant-bearing ASSEMBLY, not a slice move. See Reflection 353.
+
+### Reflection 353 — the WRAPPER of a position-navigator is NOT among its mechanical slice bricks: the slice bricks (leaf/descend/advance) re-base coordinates and produce nothing, while the wrapper carries the domain invariant + termination — reaching it after the bricks reveals it needs an interface-design probe, not a grind
+
+R352's de-risk batched "descend + advance + wrapper" as the locator's remaining "mechanical bricks, no
+wall behind them." Authoring them (R353) sharpens that binning. The three SLICE bricks (leaf, descend,
+advance) ARE mechanical and balance-free, exactly as R351's `ref-leaf-production-is-prefix-slice` said:
+each is a pure `take`/`drop` re-base of the offset-slice invariant (`List.drop_drop` + `head_entry_slice`
+/ `drop_append_of_le_length`), producing NOTHING but a re-coordinated child slice — confirmed landable in
+one PROBE-then-author pass. But the WRAPPER (`Nat.strongRecOn` on `body.length` threading the trichotomy)
+is a DIFFERENT KIND OF OBJECT, and two facts surfaced on reaching it expose the mis-binning:
+
+1. **Its DESCEND arm carries a domain-invariant obligation the slice bricks never touch.** The
+   trichotomy's DESCEND case fires at `off+1 < a < off+e.length`. Scalars (`e.length = 1`) and `seqEmpty`
+   (`e.length = 2`) make that range EMPTY — so they cannot trigger descend, structurally. But a MAP head
+   (`e = op :: (interior ++ [cl])` with `interior ≠ []`) has `e.length ≥ 4` and CAN trigger descend — yet
+   descending into a map interior is WRONG (a map interior is not a `RecSeqBody`). Only the domain
+   invariant `SeqPathAllSeq` excludes it (`seqPathAllSeq_map_push_breaks`, SeqInteriorSeparators.lean:1359
+   — a map head pushes `false`, breaking the all-`true` path). So the wrapper's DESCEND arm must PROVE the
+   head entry is a `.seq`, threading `SeqPathAllSeq` across the recursion edge (`seqPathAllSeq_descend`).
+   The slice bricks are blind to which constructor the head is; the wrapper is not.
+
+2. **There is no reusable navigator skeleton in source.** The descoped `rec_seq_body_nested_project`
+   (SeqInteriorSeparators.lean:1700) is the carrier SHORTCUT — a one-line wrapper over `seqWindowRecSeqBody`
+   that needs `h_root_carrier : SeqInteriorSeparators tokens 2 (size-2)` and re-enters the very recursion
+   the emission seed exists to eliminate. The R330–337 four-arm bottom-up navigator was never landed in
+   source (only probe `#guard`s exist). So the wrapper must be authored FRESH, and its INTERFACE — which
+   domain hypothesis it consumes (a `SeqPathAllSeq`-keyed target vs the typed `SeqTypedInterior` the `desc`
+   consumer hands it), how the typed↔structural bridge is placed, the termination measure's exact carried
+   state — is a DESIGN decision, not a transcription.
+
+**Transferable rule.** When a de-risk bins the remaining steps of a position-indexed navigator as
+"mechanical bricks," the WRAPPER is not among them. Partition by what each PRODUCES: the leaf/descend/
+advance bricks re-base coordinates and produce only a re-sliced child (mechanical, balance-free,
+PROBE-then-author) — but the wrapper PRODUCES the located deliverable by threading a DOMAIN INVARIANT
+(here `SeqPathAllSeq`, to exclude the map head its DESCEND arm would otherwise wrongly take) and a
+TERMINATION measure across the recursion. That invariant + termination is where correctness lives, so the
+wrapper needs its own interface-design probe (per [[ref-from-located-assembler-direction]] /
+[[ref-probe-provider-satisfiable-before-assembler]]) before authoring — reaching for it as a "grind" after
+the slice bricks is the mis-binning. This SHARPENS [[ref-read-ahead-consumer-chain-proof-state]] (R352's
+"no wall behind the bricks" holds for the SLICE bricks, but a read-ahead that bins by step-LIST position
+rather than by what each step PRODUCES can mis-classify the invariant-bearing assembly as a brick) and
+[[ref-leaf-production-is-prefix-slice]] (R351: the leaf produces nothing and is slice algebra; the wrapper
+is its complement — it produces everything and carries the invariant).
+
+**Next step:** **(i'-b-B2c-nested-fbc-emission-locator-wrapper-interface, PROBE the WRAPPER's interface
+BEFORE authoring the `Nat.strongRecOn` recursion)** — all three slice bricks are landed
+(leaf/descend/advance, R351/R353); the wrapper assembles them into `nestedSeq_recseqentry_locate`. It is
+NOT a mechanical brick (R353): its DESCEND arm must exclude a map head via the domain invariant
+`SeqPathAllSeq`, and there is no reusable skeleton (`rec_seq_body_nested_project` is the carrier shortcut).
+So DESIGN the interface first, per [[ref-from-located-assembler-direction]]: (a) decide the wrapper's
+CARRIED STATE — the offset-slice invariant `body = (take H).drop off` + fit bound `off+body.length ≤ H` +
+`h_rec : RecSeqBody body` + a `SeqPathAllSeq`-keyed domain hypothesis at the current base — and its
+DELIVERABLE (the `locator` existential `nestedSeq_safeBodyUnit_of_locator` consumes, at the target window
+`[a,b)`); (b) decide whether the wrapper consumes the typed `SeqTypedInterior tokens a b` directly (the
+`desc` consumer's hypothesis) or a STRUCTURAL domain hypothesis, with the typed↔structural BRIDGE placed
+separately in the `desc` assembly (likely the latter — keep the recursion structural, bridge once at the
+seam, per [[ref-coerce-to-weaker-reuse-wrapper]]). PROBE (per
+[[ref-probe-deferred-universal-before-producing]]) on the three R330 witnesses (`[[1,2],9]` direct-head,
+`[1,[2,3]]` advance-then-head, `[[[1,2]]]` descend-into-interior) that the chosen carried state (i)
+threads `SeqPathAllSeq` across descend (`seqPathAllSeq_descend`) and advance (the `WellTyped`-segment
+frame), and (ii) bottoms out at the LEAF with the head entry PROVEN a `.seq` (map excluded by
+`seqPathAllSeq_map_push_breaks`, scalar/seqEmpty by the empty descend range). Only then author the
+`Nat.strongRecOn` recursion composing leaf + descend + advance. Then the seed `nestedSeq_flowBodyContent`
+(compose with `nestedSeq_safeBodyUnit_of_locator`) and the `desc` assembly. KEEP the four-conjunct `G`;
+steps (2)–(6) of the 199th map follow in order.
