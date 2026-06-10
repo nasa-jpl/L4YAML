@@ -801,6 +801,71 @@ theorem seqDescent_provider_of_located
   exact seqEnclosingFacts_provider_of_located tokens a b (p + 1) j
     (by omega) h_b_j (by omega) h_body_bal h_safe
 
+/-- **The descent provider WITH the locator internalized** — `(i'-b-B2c-desc-fold)`, the FROM-LOCATED
+    fold that turns the `desc` driver's residual into the `windowWidth_strongRecOn` fixpoint's exact
+    contract ([[ref-from-located-assembler-direction]]: factor the descent's locate boundary at the
+    producer side; the locator is the LANDED half, this fold lifts the enclosing-facts/IH supplier as
+    the sole hypothesis).
+
+    `seqDescent_provider_of_located` (the ASSEMBLE) consumes a located opener `p` PLUS the enclosing
+    recursion window `[p, hi)`'s facts (`FlowBodyWindow`/`FlowBodyContentDeep`/`FlowBodyContent`) and
+    the width-recursion IH.  The locator half — recovering `p` with its four facts from the gate — is
+    already in hand (`seqEnclosingOpener_of_gate`, R319/B2a, made invokable by
+    `flowBracketBalance_pos_of_seqTypedInterior`).  This fold composes the two: it `obtain`s `p` from
+    the locator, then hands `p` + the locator's output to the supplier hypothesis `h_enc`, then calls
+    the assembler.  The result is the `desc` shape verbatim
+    (`seqInteriorSeparators_of_safebody_and_descent` / `seqRoot_seqInteriorSeparators` consume it).
+
+    **`h_enc` is the fixpoint's contract** ([[ref-fold-consumer-chain-to-producer-contract]]).  It is a
+    PRODUCER-GUARDED universal `∀ p, (locator guards) → (enclosing facts ∧ IH)` whose four guards —
+    `p < a`, `flowBracketDelta tokens[p]! = 1`, `flowBracketBalance (p+1) a = 0`, the locator floor —
+    are EXACTLY `seqEnclosingOpener_of_gate`'s output, so the instantiation is immediate and the
+    guard carries the producer's own constraint ([[ref-producer-guarded-quantifier]]: the positive
+    case — a deferred ∀-premise over an internally-produced witness is dischargeable precisely because
+    its guard mirrors the producer's).  What remains is to DISCHARGE `h_enc`: supply, for the located
+    enclosing opener `p`, the window `[p, hi)`'s `FlowBodyWindow`/`Deep`/`Content` and the
+    `RecSeqBody`-producing IH — i.e. the `windowWidth_strongRecOn` fixpoint (R318/R340's
+    carrier↔recursion co-construction), the single remaining seq residual.  This fold is carrier-FREE
+    (it never touches `h_root_carrier`); the carrier-circularity caution applies to the fixpoint's own
+    `FlowBodyContent` source, not here.
+
+    The descent IH's per-window predicate `Q` (which the fixpoint instantiates at `SeqEnclosed` — the
+    seq-enclosure guard defined below) is kept PARAMETRIC here, mirroring `seqDescent_provider_of_located`
+    / `seqChild_safeBodyUnit`'s `Q`-parametric IH interface (R322) and side-stepping the forward
+    reference to `SeqEnclosed`'s `def`.
+
+    **De-risk** ([[ref-probe-provider-satisfiable-before-assembler]]): `h_enc`'s body is exactly the
+    `#guard`-backed satisfiable hypothesis bundle of `seqDescent_provider_of_located`
+    (`SeqDescentProviderProbe` on `[[1, 2], 9]` / `[1, [2, 3]]`, both reach modes), so the lifted
+    hypothesis is not vacuous. -/
+theorem seqDescent_provider_of_gate
+    (tokens : Array (Positioned YamlToken)) (a b hi : Nat)
+    (h_ab : a ≤ b) (h_b_hi : b ≤ hi) (h_hi_sz : hi ≤ tokens.size)
+    (h_gate : SeqTypedInterior tokens a b)
+    (Q : Nat → Prop)
+    (h_enc : ∀ p, p < a → flowBracketDelta tokens[p]!.val = 1 →
+        flowBracketBalance tokens (p + 1) a = 0 →
+        (∀ i, p + 1 ≤ i → i ≤ a → flowBracketBalance tokens (p + 1) i ≥ 0) →
+        FlowBodyWindow tokens p hi ∧ FlowBodyContentDeep tokens p hi ∧
+        FlowBodyContent tokens p hi ∧ Q (p + 1) ∧
+        (∀ lo' hi', hi' - lo' < hi - p →
+          FlowBodyWindow tokens lo' hi' → FlowBodyContentDeep tokens lo' hi' →
+          Q lo' → tokens[hi']!.val = .flowSequenceEnd →
+          RecSeqBody ((tokens.toList.take hi').drop lo'))) :
+    ∃ loS hiS, loS ≤ a ∧ b ≤ hiS ∧ flowBracketBalance tokens loS a = 0 ∧
+      bodySuccFact tokens loS hiS ∧
+      (∀ k, loS ≤ k → k + 1 < hiS →
+        tokens[k]!.val = .flowEntry → flowBracketBalance tokens loS k = 0 →
+        isFlowContentStart tokens[k + 1]!.val) ∧
+      noTrailingSepFact tokens loS hiS := by
+  have h_a_sz : a ≤ tokens.size := Nat.le_trans (Nat.le_trans h_ab h_b_hi) h_hi_sz
+  obtain ⟨p, h_pa, h_delta, h_body_bal, h_loc_floor⟩ :=
+    seqEnclosingOpener_of_gate tokens a b h_a_sz h_gate
+  obtain ⟨h_window, h_deep, h_content, h_q_succ, h_ih⟩ :=
+    h_enc p h_pa h_delta h_body_bal h_loc_floor
+  exact seqDescent_provider_of_located tokens a b p hi h_pa h_ab h_b_hi h_delta h_body_bal
+    h_loc_floor h_gate h_window h_deep h_content Q h_q_succ h_ih
+
 /-- **The gate's stack-top conjunct is RECONSTRUCTIBLE in place** — the Q2 discharge for
     `(i'-b-descend-root)`.  `SeqTypedInterior`'s second conjunct
     (`(btFold (some []) (tokens.toList.take a)).bind (·.head?) = some true`) is a fact about the
