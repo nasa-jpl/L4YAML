@@ -1237,6 +1237,104 @@ theorem seqEnclosed_advance (tokens : Array (Positioned YamlToken)) (lo n : Nat)
     rw [WellTyped_frame _ s h_wt_seg]
     exact h_enc
 
+/-- **The all-seq-PATH domain predicate** — `(i'-b-B2c-nested-project, the domain hypothesis)`, the
+    proof-side Prop form of `pathAllSeq` (R336, `SeqPathDispatchProbe`).  Where `SeqEnclosed tokens lo`
+    reads only the TOP of the typed bracket stack after `[0, lo)` (the window's IMMEDIATE enclosure),
+    `SeqPathAllSeq` asserts the WHOLE stack is all-`true` and nonempty: every enclosing frame from the
+    root to `lo` is a flow SEQUENCE `[`, none a mapping `{`.  This is the
+    [[ref-aggregate-collapses-structured-separates]] structured-state dispatch — the un-aggregated
+    `btFold` stack read whole, of which `SeqEnclosed` is the head PROJECTION — bounding
+    `rec_seq_body_nested_project`'s navigable domain to the windows whose PATH avoids every severed
+    `RecSeqEntry.map` edge ([[ref-severed-edge-bounds-navigator-domain]] / R335).  The nonemptiness
+    holds at every `desc`-routed window (it sits inside at least the root `[`). -/
+def SeqPathAllSeq (tokens : Array (Positioned YamlToken)) (lo : Nat) : Prop :=
+  ∃ s, btFold (some []) (tokens.toList.take lo) = some s ∧ s ≠ [] ∧ s.all (· == true) = true
+
+/-- **DESCEND domain-preservation** — `(i'-b-B2c-nested-project)`, the FIRST de-risk of the
+    domain-restricted driver: the DESCEND arm's existing head hypothesis
+    `h_lo_open : tokens[lo]! = .flowSequenceStart` (R333) is EXACTLY what discharges the all-seq-PATH
+    domain at the recursion edge.  A `.flowSequenceStart` head pushes a `true` onto the stack
+    (`btStep … = some (true :: s)`), so the whole stack stays all-`true` and nonempty — the descended
+    window `[lo+1, …)` inherits the domain.  This is the WHOLE-stack analogue of `seqEnclosed_descend`
+    (which preserves only the TOP); the same single PUSH, but tracking that EVERY frame, not just the
+    head, remains a seq.  Confirms the four landed arms compose with NO fifth (map-mirror) sub-branch:
+    the only recursion edge that grows the stack does so with a `true`. -/
+theorem seqPathAllSeq_descend (tokens : Array (Positioned YamlToken)) (lo : Nat)
+    (h : SeqPathAllSeq tokens lo)
+    (h_lo_sz : lo < tokens.size)
+    (h_open : tokens[lo]!.val = .flowSequenceStart) :
+    SeqPathAllSeq tokens (lo + 1) := by
+  obtain ⟨s, h_fold, _h_ne, h_all⟩ := h
+  have h_lo_len : lo < tokens.toList.length := by rw [Array.length_toList]; exact h_lo_sz
+  have h_split : tokens.toList.take (lo + 1)
+      = tokens.toList.take lo ++ [tokens.toList[lo]'h_lo_len] := by
+    rw [List.take_add_one, List.getElem?_eq_getElem h_lo_len]; rfl
+  have h_val : (tokens.toList[lo]'h_lo_len).val = .flowSequenceStart := by
+    have hb : tokens.toList[lo]'h_lo_len = tokens[lo]! := by
+      rw [Array.getElem_toList, getElem!_pos tokens lo h_lo_sz]
+    rw [hb]; exact h_open
+  have hstep : btStep (tokens.toList[lo]'h_lo_len) s = some (true :: s) := by
+    simp only [btStep, h_val]
+  refine ⟨true :: s, ?_, by simp, ?_⟩
+  · rw [h_split, btFold_append, h_fold]
+    have hfold : btFold (some s) [tokens.toList[lo]'h_lo_len]
+        = btStep (tokens.toList[lo]'h_lo_len) s := rfl
+    rw [hfold, hstep]
+  · rw [List.all_cons, h_all]; rfl
+
+/-- **A map head BREAKS the all-seq-PATH domain** — the negative companion that makes "no fifth
+    (map-mirror) sub-branch" precise.  Descending through a `.flowMappingStart` head pushes a `false`
+    onto the stack (`btStep … = some (false :: s)`), so the resulting stack is NOT all-`true`: the
+    descended window FALLS OUT of `SeqPathAllSeq`.  So within the domain the DESCEND can only fire on a
+    `.flowSequenceStart` head — exactly `recseqbody_descend`'s `h_lo_open` — and a `.flowMappingStart`
+    head is OUT of the navigator's domain (served by the flat map-path provider), not a deferred
+    recursive arm.  Together with `seqPathAllSeq_descend` this is the R337 de-risk:
+    [[ref-converse-forward-invariant-asymmetry]] applied to the path stack — the seq edge preserves the
+    domain, the map edge cannot. -/
+theorem seqPathAllSeq_map_push_breaks (tokens : Array (Positioned YamlToken)) (lo : Nat)
+    (h : SeqPathAllSeq tokens lo)
+    (h_lo_sz : lo < tokens.size)
+    (h_open : tokens[lo]!.val = .flowMappingStart) :
+    ¬ SeqPathAllSeq tokens (lo + 1) := by
+  obtain ⟨s, h_fold, _h_ne, _h_all⟩ := h
+  have h_lo_len : lo < tokens.toList.length := by rw [Array.length_toList]; exact h_lo_sz
+  have h_split : tokens.toList.take (lo + 1)
+      = tokens.toList.take lo ++ [tokens.toList[lo]'h_lo_len] := by
+    rw [List.take_add_one, List.getElem?_eq_getElem h_lo_len]; rfl
+  have h_val : (tokens.toList[lo]'h_lo_len).val = .flowMappingStart := by
+    have hb : tokens.toList[lo]'h_lo_len = tokens[lo]! := by
+      rw [Array.getElem_toList, getElem!_pos tokens lo h_lo_sz]
+    rw [hb]; exact h_open
+  have hstep : btStep (tokens.toList[lo]'h_lo_len) s = some (false :: s) := by
+    simp only [btStep, h_val]
+  have h_fold1 : btFold (some []) (tokens.toList.take (lo + 1)) = some (false :: s) := by
+    rw [h_split, btFold_append, h_fold]
+    have hfold : btFold (some s) [tokens.toList[lo]'h_lo_len]
+        = btStep (tokens.toList[lo]'h_lo_len) s := rfl
+    rw [hfold, hstep]
+  rintro ⟨s', h_fold', _h_ne', h_all'⟩
+  rw [h_fold1] at h_fold'
+  have h_seq : s' = false :: s := (Option.some.inj h_fold').symm
+  rw [h_seq] at h_all'
+  simp at h_all'
+
+/-- **`SeqPathAllSeq` dominates `SeqEnclosed`** — the all-`true` path stack has TOP `true`, so the
+    navigator's domain hypothesis is STRICTLY STRONGER than the immediate-enclosure fact the dispatch
+    (`seqWindow_flowBodyContent`) consumes.  Lets the domain-restricted driver supply the dispatch's
+    `SeqEnclosed` for free from its carried `SeqPathAllSeq`, with no separate threading. -/
+theorem seqEnclosed_of_seqPathAllSeq (tokens : Array (Positioned YamlToken)) (lo : Nat)
+    (h : SeqPathAllSeq tokens lo) :
+    SeqEnclosed tokens lo := by
+  obtain ⟨s, h_fold, h_ne, h_all⟩ := h
+  unfold SeqEnclosed
+  rw [h_fold]
+  cases s with
+  | nil => exact absurd rfl h_ne
+  | cons a t =>
+    cases a with
+    | false => simp at h_all
+    | true => rfl
+
 /-- **`SeqEnclosed` at a backward-LOCATED enclosing opener** — `(i'-b-B2c-desc-closing)` sub-brick 2a,
     the `h_q_succ` supplier for the `desc` discharge's `seqDescent_provider_of_located` call.
 
