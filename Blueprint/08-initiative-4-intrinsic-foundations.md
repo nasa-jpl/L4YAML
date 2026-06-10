@@ -29466,17 +29466,68 @@ said the wrapper carries A domain invariant; R354 names WHICH and proves the wea
 The structured-state form is [[ref-aggregate-collapses-structured-separates]] (the un-projected stack
 separates what its head-projection collapses).
 
+### Reflection 355 — a position-navigator's per-arm exclusion facts live at DIFFERENT positions: the DESCEND arm's DOMAIN at the recursion BASE, the LEAF arm's head CLASSIFICATION at the TARGET WINDOW — a single carried base invariant does NOT close a window-keyed arm, so a "RESOLVED interface" listing only the carried state can be incomplete
+
+R354 settled the wrapper's *recursion-domain* hypothesis is the WHOLE-path `SeqPathAllSeq tokens off`,
+carried at the body base `off` and threaded by the DESCEND arm. The blueprint then declared the interface
+"RESOLVED" and attributed the LEAF arm's head-is-`.seq` requirement to that SAME carried hypothesis: *"from
+`SeqPathAllSeq` the opener `tokens[off]!` is `.flowSequenceStart`."* R355's PROBE
+(`SeqNestedLeafEnclosureProbe.lean`, `#guard`-green on real emitted tokens) finds that attribution
+IMPRECISE and the carried-state list INCOMPLETE.
+
+The navigator's two arms read their exclusion facts at TWO DIFFERENT POSITIONS. The DESCEND **domain** lives
+at the body BASE `off` — `SeqPathAllSeq tokens off`, the stack BEFORE `off` (carried/threaded). The LEAF
+**head classification** lives at the TARGET WINDOW START `a = off+1` — it needs `SeqEnclosed tokens a`, the
+immediate enclosure of the window, which is the push of the head entry's OWN opener `tokens[off]`. And
+`SeqPathAllSeq tokens off` is BLIND to `tokens[off]` (it constrains only the path enclosing the body, never
+the head opener), so it cannot decide whether the head entry is a `[` (seq — leaf admissible, has `h_rec`)
+or a `{` (map — leaf inadmissible, no `h_rec`, deliverable demands `op.val = .flowSequenceStart`). At LEAF
+the head is already narrowed to `[`/`{` (length > 1 from `a ≠ off+L` excludes scalar; `ContentStartTok` head
+from `RecSeqBody` excludes the rest). Only the window's own `SeqEnclosed tokens a` — the SECOND conjunct of
+the `SeqTypedInterior tokens a b` that `desc` consumes — separates `[` from `{`.
+
+**The minimal pair** ([[ref-minimal-pair-extracts-the-gate]]) — SAME body base `off=2`, SAME would-be leaf
+window start `a=off+1=3`, differing only in the head entry's bracket TYPE: `[[1,2]]` (seq head, opener at 2,
+`SeqEnclosed tokens 3 = true`) vs `[{x:[1,2]}]` (map head, opener at 2, `SeqEnclosed tokens 3 = false`). They
+AGREE on the carried base domain (`SeqPathAllSeq tokens 2 = true` for BOTH — the path to the body base is
+the lone root `[`) but DISAGREE on the window enclosure. `allTrue N 2 = allTrue P 2` (carried base domain
+EQUAL), `topTrue P 3 ≠ topTrue N 3` (window enclosure SEPARATES). The carried base domain cannot exclude the
+map-headed leaf; the window's `SeqEnclosed tokens a` is the discriminator.
+
+**Consequence.** The WRAPPER must ALSO CONSUME the target window's `SeqTypedInterior tokens a b` (beyond the
+carried slice invariant + fit bound + `h_rec` + `SeqPathAllSeq tokens off`): from it the LEAF arm gets
+`SeqEnclosed tokens a` (head-is-`.seq` map-exclusion, via `seqEnclosed_of_seqTypedInterior`) AND the
+balance-0 first conjunct that pins `b` to the head entry's far edge (the leaf brick's `h_b`). The
+typed↔structural bridge handing the wrapper the window's typed facts is therefore NOT optional. R354's
+`SeqPathAllSeq` (carried, base-keyed) and R355's `SeqEnclosed tokens a` (consumed, window-keyed) are
+DIFFERENT facts at DIFFERENT positions serving DIFFERENT arms; neither subsumes the other.
+
+**Transferable rule.** A position-walking navigator's correctness obligations are keyed to distinct
+positions (recursion base vs target window). A carried base invariant cannot decide a window-local
+classification it is structurally blind to; the navigator must additionally consume the window's own fact.
+When a plan claims a "RESOLVED interface" from a single carried hypothesis, enumerate the arms, locate each
+arm's exclusion AT ITS POSITION, and probe a minimal pair (same base + same window, varying the
+locally-classified feature) to check whether the carried state separates them. This is the two-boundary
+[[ref-two-boundary-consumer-joint]] for a NAVIGATOR (per-window OUTPUT vs base INPUT becomes
+window-classification vs base-domain), and it sharpens
+[[ref-vestigial-projection-reopens-for-structure-walker]]: R354 found the BASE domain must be the whole-path
+invariant; R355 finds the LEAF arm needs a SECOND, window-keyed fact the base hypothesis — however strong —
+cannot supply. Recorded as [[ref-navigator-arms-keyed-to-positions]].
+
 **Next step:** **(i'-b-B2c-nested-fbc-emission-locator-wrapper-author, AUTHOR `nestedSeq_recseqentry_locate`
 — the `Nat.strongRecOn` wrapper carrying `SeqPathAllSeq`, composing the three landed slice bricks)** — the
-interface is RESOLVED (R354): the wrapper's CARRIED STATE is the offset-slice invariant
+interface is RESOLVED (R354 + R355): the wrapper's CARRIED STATE is the offset-slice invariant
 `body = (take H).drop off` + fit bound `off+body.length ≤ H` + `h_rec : RecSeqBody body` + the WHOLE-path
-domain hypothesis `SeqPathAllSeq tokens off` at the current base; its DELIVERABLE is the `locator`
+domain hypothesis `SeqPathAllSeq tokens off` at the current base; AND (R355) it ALSO CONSUMES the target
+window's `SeqTypedInterior tokens a b` — keyed to `a`, not the base — which the carried base domain canNOT
+supply. Its DELIVERABLE is the `locator`
 existential `nestedSeq_safeBodyUnit_of_locator` consumes at `[a,b)`. AUTHOR the recursion on `body.length`
 (`Nat.strongRecOn`): `cases` the `RecSeqBody` (`single`/`cons`), compute `e.length`, dispatch by
 `move_trichotomy` (`a` vs `off+1`, `off+e.length`) — LEAF (`a=off+1`) → `nestedSeq_recseqentry_locate_leaf`
-(needs the head a `.seq`: from `SeqPathAllSeq` the opener `tokens[off]!` is `.flowSequenceStart`,
-`seqPathAllSeq`-projected, the map/scalar/seqEmpty constructors excluded — map by
-`seqPathAllSeq_map_push_breaks` at the descend that produced this base, scalar/seqEmpty by `interior ≠ []`);
+(needs the head a `.seq`: scalar excluded by `a ≠ off+L` (length>1) + the `ContentStartTok` head from
+`RecSeqBody` narrows to `[`/`{`; the MAP head excluded by the WINDOW's `SeqEnclosed tokens a` —
+`seqEnclosed_of_seqTypedInterior` — NOT by the carried `SeqPathAllSeq tokens off`, which is BLIND to
+`tokens[off]` (R355's correction); `b` pinned to the head edge by `SeqTypedInterior`'s balance-0);
 DESCEND (`off+1<a<off+e.length`) → re-base by `nestedSeq_recseqentry_locate_descend`, recurse with
 `SeqPathAllSeq tokens (off+1)` from `seqPathAllSeq_descend` (the head `.seq` opener), measure drops
 (`interior.length < body.length`); ADVANCE (`off+e.length<a`) → re-base by
