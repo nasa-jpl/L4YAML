@@ -29205,7 +29205,18 @@ with `FlowBodyContent` supplied per window from this seed, discharging R341's `h
 follows.**
 
 **Next step:** **(i'-b-B2c-nested-fbc-emission-locator-author, AUTHOR `nestedSeq_recseqentry_locate` —
-the bottom-up `body.length` recursion R350 settled — its LEAF case first)** — R350 settled the shape:
+the bottom-up `body.length` recursion R350 settled — its LEAF case first)** *(LEAF LANDED by R351 —
+the leaf lemma `nestedSeq_recseqentry_locate_leaf` + its pure-`List` core `head_entry_slice` are now in
+`NonemptyStructure.lean` (after `recseqentry_seq_extract`), sorry-free and axiom-clean
+`[propext, Classical.choice, Quot.sound]`, verified-but-unconsumed until the recursion wraps them. The
+mandated PROBE (per [[ref-probe-deferred-universal-before-producing]]) — that the head-entry slice
+`(take (off+e.length)).drop off = e` is derivable from `body = (take H).drop off` + `e` a prefix, a pure
+`List.take_take`/`drop_take`/`take_append_of_le_length` fact, NO balance — CLOSED, then the leaf produced
+the full `locator` existential at `lo = off`, `b = off + e.length - 1`: `RecSeqEntry` off `h_entry`,
+opener/nonempty from hypotheses, `lo+1 = a` and `a ≤ b` pure `omega`, window identity from
+`head_entry_slice`. R351's finding — the leaf, the ONLY deliverable-producing move, is balance-FREE even
+on the correctness side; balance is confined to the descend/advance MOVES. The descend and advance re-base
+steps + the `Nat.strongRecOn` wrapper remain.)* — R350 settled the shape:
 a single offset-tracked recursion over `seqRoot_recseqbody`'s stored `RecSeqBody`, dispatching by the
 length-arithmetic trichotomy (`move_trichotomy`). SMALLEST FIRST — the LEAF case, the only one that
 produces the deliverable (descend/advance just re-base and recurse). The leaf fires at `a = off+1`: the
@@ -29223,3 +29234,83 @@ a `List.take_append`/`List.drop_append` fact, no balance. If it closes: land the
 unconsumed until the recursion wraps it). Then the descend and advance re-base steps, then the
 `body.length` `Nat.strongRecOn` wrapper, then compose `nestedSeq_safeBodyUnit_of_locator`. KEEP the
 four-conjunct `G`; steps (2)–(6) of the 198th map follow in order.
+
+### Reflection 351 — the LEAF (the only deliverable-PRODUCING move of a position-navigator) is balance-FREE even on the CORRECTNESS side: its window identity is a pure prefix-slice fact; balance is confined to the non-producing interior MOVES
+
+`(i'-b-B2c-nested-fbc-emission-locator-author)` authored the LEAF of `nestedSeq_recseqentry_locate` —
+the bottom-up `body.length` navigator R350 settled as option (a). R350 split the navigator into a
+DECISION (which child — arithmetic) and a CORRECTNESS (why — balance) and demoted balance to the
+correctness side. AUTHORING the leaf **sharpens** that: R350's "correctness needs balance" is too coarse.
+
+**The leaf's correctness is a PREFIX SLICE, not balance.** The leaf is the single move that PRODUCES the
+deliverable (descend/advance only re-base `off` and recurse). Its whole correctness obligation is the
+window identity `(L.take (off+e.length)).drop off = e` (`lo = off`, `b+1 = off+e.length`, `e` the head
+entry). It follows from the navigator's offset-slice invariant `(L.take H).drop off = e ++ rest` (`e` a
+prefix) + the fit bound `off + e.length ≤ H`, by pure `take`/`drop` algebra: `List.take_take` re-bases
+the outer cut to `H`, `List.drop_take` swaps the order, `List.take_append_of_le_length` reads off the
+prefix. NO `pbalance`, no Dyck floor, no matching-bracket. So at the leaf BOTH halves of R350's split are
+cheap: the decision is length arithmetic (`a = off+1`), and the correctness is prefix slicing. The PROBE
+(per [[ref-probe-deferred-universal-before-producing]]) confirmed the slice fact closes axiom-clean
+BEFORE authoring; the leaf then produced the full `locator` existential (`head_entry_slice` +
+`nestedSeq_recseqentry_locate_leaf`, both in `NonemptyStructure.lean`, sorry-free).
+
+**Balance is confined to the non-producing MOVES.** The only place balance can enter the locator is the
+DESCEND / ADVANCE navigation — proving the target window lies in the head entry's INTERIOR vs in `rest`
+(which child). Those moves produce NOTHING; the leaf produces EVERYTHING. The producing move and the
+balance-using moves are DISJOINT. "The producing case is the easy case."
+
+**Transferable rule.** When a position-navigator over a recursive deliverable stores its children as
+prefixes/segments and carries an offset-slice invariant tying structure to coordinates, AUTHOR THE LEAF
+FIRST and expect its correctness (the window identity) to be PURE SLICE ALGEBRA, not the metric (balance)
+the forward/top-down locate used. If you reach for balance to justify the leaf's output, you are
+over-engineering — balance belongs to the interior MOVES, never the leaf's PRODUCTION. Sharpens
+[[ref-navigator-dispatch-is-arithmetic]] (R350: this LOCATES where balance enters — not even the leaf's
+correctness, only the interior moves) and [[ref-near-leaf-mirror-sheds-machinery]] (the leaf sheds even
+the correctness-side metric); the slice fact is the window identity
+[[ref-from-located-assembler-direction]]'s assembler consumes.
+
+**REMAINING-WORK DEPENDENCY MAP (Workstream A — ONE-HUNDRED-NINETY-NINTH revision, 2026-06-10).** …
+(R308–R349 as before) … R350 settled the locator's single-step shape (option (a): a `body.length`
+recursion, length-arithmetic dispatch, no balance front end); **R351 LANDED the LEAF of that recursion —
+`nestedSeq_recseqentry_locate_leaf` + its pure-`List` core `head_entry_slice` (`NonemptyStructure.lean`,
+after `recseqentry_seq_extract`), sorry-free and axiom-clean, verified-but-unconsumed; the leaf's window
+identity is a balance-FREE prefix-slice fact, confirming R350's split and locating balance ENTIRELY in the
+descend/advance moves — this revision (R351).** **The seq side now owes exactly: (1a) the DESCEND re-base
+step — at `off+1 < a < off+e.length`, the head entry is a `seq`-constructor whose stored `h_rec :
+RecSeqBody interior` re-bases to base offset `off+1` and the target window descends into it (read
+`interior` off `recseqentry_seq_extract`; re-base the offset-slice invariant via a `take`/`drop`
+composition like `head_entry_slice`); (1b) the ADVANCE re-base step — at `off+e.length < a`, drop the head
+entry + its `.flowEntry` separator, the `cons`-tail `RecSeqBody rest` re-bases to base offset
+`off+e.length+1`; (1c) the `Nat.strongRecOn` wrapper on `body.length` dispatching leaf/descend/advance by
+the R350 trichotomy (`move_trichotomy`), terminating at the leaf, yielding `nestedSeq_recseqentry_locate`;
+(2) compose with the landed `nestedSeq_safeBodyUnit_of_locator` →
+`seqSeparatorFacts_of_windowed_safebodyunit ▸ flowBodyContent_of_deep` → the per-window `FlowBodyContent`
+emission seed `nestedSeq_flowBodyContent`; (3) drive `seqWindowRecSeqBody` from the four-conjunct `G` with
+`FlowBodyContent` supplied per window from this seed, discharging R341's `h_enc`; (4) thread
+`EmitScansInFlowRecEntry` into `scanFiltered_emitSeq_nonempty_structure`; (5) compose into
+`seqRoot_seqInteriorSeparators`'s `desc`; (6) wire `flowSubrangesOk_of_window_producers`; the map mirror
+follows.**
+
+**Next step:** **(i'-b-B2c-nested-fbc-emission-locator-descend, AUTHOR the DESCEND re-base step of
+`nestedSeq_recseqentry_locate` — the move at `off+1 < a < off+e.length`)** — R351 landed the LEAF
+(verified-but-unconsumed); the wrapper now needs the two re-base steps the trichotomy dispatches to.
+SMALLEST FIRST — the DESCEND step (it is the recursive heart; ADVANCE is its flatter sibling). At
+`off+1 < a < off+e.length` the navigator's current `RecSeqBody body` has a head entry `e` that is a
+`seq`-constructor `op :: (interior ++ [cl])` (the target window is INSIDE `e`, so `e` is a nested seq),
+and the recursion descends into `e`'s stored `interior` at the NEW base offset `off' = off+1`. Author the
+descend lemma: given the offset-slice invariant `body = (tokens.toList.take H).drop off`, the head-entry
+prefix `body = (op :: (interior ++ [cl])) ++ rest`, and `h_rec : RecSeqBody interior` (off
+`recseqentry_seq_extract h_entry`), produce the re-based offset-slice invariant for the child —
+`interior = (tokens.toList.take H').drop (off+1)` with `H' = off + 1 + interior.length` (the child's
+window `[off+1, off+1+interior.length)`) — plus the fit bound `(off+1) + interior.length ≤ H'`. PROBE
+before authoring (per [[ref-probe-deferred-universal-before-producing]]) that the child slice
+`interior = (take (off+1+interior.length)).drop (off+1)` is derivable from the parent slice + the
+head-entry shape — a `take`/`drop` composition mirroring `head_entry_slice` (peel the opener `op`, then
+the closer `cl` and `rest` off the tail): `interior` sits at `[off+1, off+e.length-1)` inside `body`, and
+`body` sits at `[off, H)` inside `tokens.toList`, so `interior` sits at `[off+1, off+e.length-1)` inside
+`tokens.toList` — pure slice algebra, NO balance (R351: the descend step's POSITIONING is slice algebra;
+balance would only enter proving the target `a` is in the interior, which the trichotomy hypothesis
+`off+1 < a < off+e.length` already gives). If it closes: land the descend re-base lemma
+(verified-but-unconsumed). Then the ADVANCE step (`cons`-tail re-base, flatter), then the `Nat.strongRecOn`
+wrapper, then compose `nestedSeq_safeBodyUnit_of_locator`. KEEP the four-conjunct `G`; steps (2)–(6) of
+the 199th map follow in order.
