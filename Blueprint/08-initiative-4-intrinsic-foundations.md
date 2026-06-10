@@ -29269,6 +29269,42 @@ correctness, only the interior moves) and [[ref-near-leaf-mirror-sheds-machinery
 the correctness-side metric); the slice fact is the window identity
 [[ref-from-located-assembler-direction]]'s assembler consumes.
 
+### Reflection 352 — read-ahead the CONSUMER chain to de-alarm a terse downstream step-list: a one-line "step (N) follows" can hide a feared obligation that is ALREADY PROVEN, OR a whole parallel effort; verify proof-state before pacing
+
+A trajectory reassessment ("are we converging or circling?") prompted a READ-AHEAD de-risk of steps (3)–(6)
+below the two `FlowSubrangesOk tokens := sorry` sites — BEFORE grinding the mechanical locator bricks
+(descend/advance/wrapper). The dependency map listed (3)–(6) as terse one-liners ("drive
+`seqWindowRecSeqBody` … thread … compose … wire …"), which READS as either trivial plumbing or hidden deep
+work — the prose alone can't tell you which. Pulling the EXACT statements + proof-state of every symbol in
+the chain settled it concretely.
+
+**Finding — two feared obligations were already discharged, and a third front was overstated.** (α) A
+first-pass survey flagged `EmitScansInFlowRecEntry` as "definition only, no proof" — a heavy per-value
+scanner-correspondence obligation. FALSE: `emit_scans_in_flow_rec_entry` (NonemptyStructure.lean:2418)
+PROVES it from `Grammable v inFlow` by induction. The `h_all` feeding `seqRoot_seqInteriorSeparators` is
+supplied. (β) The per-window facts `seqWindowRecSeqBody` consumes (`FlowBodyWindow`/`FlowBodyContentDeep`/
+`SeqEnclosed`) are carrier-supplied INSIDE the already-proven driver, not separate open producers. (γ) The
+map mirror is substantially BUILT (RecMapBody step-lemmas already landed), not barely-begun. **Net: no
+hidden deep obligation lurks in (3)–(6); the single open funnel per side is `desc`** — the descent argument
+the `nestedSeq` locator is built to produce — plus pure proven-lemma composition.
+
+**The lesson — proof-STATE, not prose, sets the pace.** A consumer-chain step described in one line is a
+proof-state question, not a prose one: it can be (i) already proven (the feared obligation was discharged
+sessions ago and forgotten — verify by grepping for a producer theorem, not a definition), (ii) trivial
+plumbing of proven pieces, or (iii) a whole parallel effort duplicating what you just did (the map mirror).
+These are indistinguishable in the map's one-liner but obvious from the actual `theorem … := by` vs `:=
+sorry`. Before committing to a per-brick pace down a deep chain, READ-AHEAD the consumers and read their
+proof-state off source — a survey that reports a definition as "unproven" without checking for its producer
+will over-alarm (here it inverted the verdict: the chain is SHALLOWER than feared, gated on one `desc` per
+side, the rest proven). The de-risk's payoff is a pacing decision: the mechanical bricks can now be BATCHED
+because the de-risk confirmed there is no wall behind them. Complements
+[[ref-probe-deferred-universal-before-producing]] (probe a deferred PRODUCER target before proving it; this
+probes a deferred CONSUMER chain before pacing toward it) and the consumer-first family
+[[ref-fold-consumer-chain-to-producer-contract]] / [[ref-consumer-joint-before-producer]] (read the
+consumer to define the producer's contract; here, read the consumer to size the REMAINING WORK and catch
+already-paid debts). Cross-checks a multi-agent survey against source — a survey is a lead, source is the
+verdict.
+
 **REMAINING-WORK DEPENDENCY MAP (Workstream A — ONE-HUNDRED-NINETY-NINTH revision, 2026-06-10).** …
 (R308–R349 as before) … R350 settled the locator's single-step shape (option (a): a `body.length`
 recursion, length-arithmetic dispatch, no balance front end); **R351 LANDED the LEAF of that recursion —
@@ -29290,6 +29326,28 @@ emission seed `nestedSeq_flowBodyContent`; (3) drive `seqWindowRecSeqBody` from 
 `EmitScansInFlowRecEntry` into `scanFiltered_emitSeq_nonempty_structure`; (5) compose into
 `seqRoot_seqInteriorSeparators`'s `desc`; (6) wire `flowSubrangesOk_of_window_producers`; the map mirror
 follows.**
+
+**DE-RISK FINDING (read-ahead of steps 3–6 before grinding the mechanical locator bricks, 2026-06-10).**
+Triggered by a trajectory reassessment ("converging or circling?"). Read the exact statements + proof-state
+of the whole consumer chain below the two `FlowSubrangesOk tokens := sorry` sites (NonemptyStructure 7282
+seq / 7523 map). RESULT — the chain is SHALLOWER than the terse step-(3)–(6) list implied; two feared
+obligations are already discharged: **(α)** `EmitScansInFlowRecEntry v` is PROVEN from `Grammable v inFlow`
+(`emit_scans_in_flow_rec_entry`, NonemptyStructure.lean:2418, `by induction hg`) — NOT definition-only; so
+the `h_all : ∀ v, EmitScansInFlowRecEntry v` feeding `seqRoot_seqInteriorSeparators` is SUPPLIED. **(β)** the
+per-window facts `seqWindowRecSeqBody` needs (`FlowBodyWindow` / `FlowBodyContentDeep` / `SeqEnclosed`) are
+carrier-supplied INSIDE the already-proven `seqWindowRecSeqBody` (SeqInteriorSeparators.lean:1606) — not
+separate open producers (`SeqEnclosed` free via `seqEnclosed_of_seqPathAllSeq`). **(γ)** the map structural
+recursion is substantially BUILT (RecMapBody step-lemmas at NonemptyStructure 3841/3895/3928, scan-producer
+2376), not barely-begun. **The single open funnel per side is `desc`** — `seqRoot_seqInteriorSeparators`'s
+descent argument (SeqInteriorSeparators.lean:1206), which is EXACTLY what the `nestedSeq_recseqentry_locate`
+locator (leaf landed R351; descend/advance/wrapper remaining → seed `nestedSeq_flowBodyContent` → assemble
+`desc`) builds. Once `desc` lands: `seqRoot_seqInteriorSeparators desc` → carrier → `seqWindowRecSeqBody`
+yields `h_seq_rec` → `flowSubrangesOk_of_window_producers` (NonemptyStructure.lean:6848, PROVEN composition)
+→ discharges 7282; the map mirror discharges 7523; then `emit_roundtrip_{sequence,mapping}_content_eq`
+(EmitterScannability.lean:833/873) consume the nonempty-structure output. **No hidden deep obligation lurks
+in steps 3–6** — the residual is the locator (`desc`) plus pure proven-lemma composition. CONSEQUENCE: the
+seq locator's remaining bricks (descend/advance/wrapper, all balance-free slice algebra per R351) can be
+BATCHED into one increment; the de-risk confirms there is no wall behind them. See Reflection 352.
 
 **Next step:** **(i'-b-B2c-nested-fbc-emission-locator-descend, AUTHOR the DESCEND re-base step of
 `nestedSeq_recseqentry_locate` — the move at `off+1 < a < off+e.length`)** — R351 landed the LEAF
