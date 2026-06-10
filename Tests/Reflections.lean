@@ -1,5 +1,6 @@
 import Tests.Reflections.ProducerGuardedTrap
 import Tests.Reflections.VerifyDeferredTaskLandedThenFold
+import Tests.Reflections.CycleBreaksAtBase
 import Tests.Reflections.ConverseForwardAsymmetry
 import Tests.Reflections.ReductionByImport
 import Tests.Reflections.ParametricAssemblerExtraction
