@@ -93,6 +93,7 @@ import Tests.Reflections.RebracketReusesPrefixBridge
 import Tests.Reflections.MetricMinimumCollapsesDispatch
 import Tests.Reflections.SaturationCleavesTerminalBranch
 import Tests.Reflections.DispatchRoleFactorsTypeMetric
+import Tests.Reflections.CarveLeavesToEliminatorOutput
 
 /-!
 # Reflections — runnable proof-engineering demonstrations
