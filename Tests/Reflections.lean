@@ -90,6 +90,7 @@ import Tests.Reflections.HeadBlindCoreServesBothArms
 import Tests.Reflections.TargetAnchoredTwinRefutesWalkBreak
 import Tests.Reflections.DeltaGenericBoundaryFamily
 import Tests.Reflections.RebracketReusesPrefixBridge
+import Tests.Reflections.MetricMinimumCollapsesDispatch
 
 /-!
 # Reflections — runnable proof-engineering demonstrations
