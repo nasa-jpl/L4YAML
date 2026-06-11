@@ -87,6 +87,7 @@ import Tests.Reflections.StrictContainmentNeedsOpener
 import Tests.Reflections.AdditiveFieldCostByKeying
 import Tests.Reflections.SlicePositionalBridgeGetElemQ
 import Tests.Reflections.HeadBlindCoreServesBothArms
+import Tests.Reflections.TargetAnchoredTwinRefutesWalkBreak
 
 /-!
 # Reflections — runnable proof-engineering demonstrations
