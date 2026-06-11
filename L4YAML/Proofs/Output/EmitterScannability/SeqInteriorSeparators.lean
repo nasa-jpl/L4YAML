@@ -1690,6 +1690,50 @@ theorem nestedSeq_recseqentry_locate_advance_balance
   rw [flowBracketBalance_eq_pbalance tokens off (off + e.length + 1) (by omega),
       show off + e.length + 1 - off = e.length + 1 from by omega, h_take_sep, h_pbsep]
 
+/-- **The emission-spine-walk locator's `Nat.strongRecOn` DRIVER** —
+    `(i'-b-B2c-nested-fbc-emission-locator-skeleton)`, R365, the SMALLEST-FIRST plumbing de-risk of the
+    skeleton `nestedSeq_recseqentry_locate`.  Before wiring the whole recursion (dispatch + three arm
+    seams + guard threading) the blueprint's next-step posed the plumbing question in isolation: does the
+    `Nat.strongRecOn`-on-`body.length` measure + IH interface each arm's recursive call needs typecheck,
+    BEFORE the arm bodies are filled?  This is that interface, abstracted as a P/G combinator
+    ([[ref-width-recursion-combinator-before-grammar-step]]): the per-window STEP is the abstract
+    hypothesis `h_step`, the grammar-free `Nat.strongRecOn` plumbing is the proof.
+
+    `Q` is the FIXED deliverable (the located-entry existential — it mentions only the target window
+    `[a,b)` + `tokens`, never the recursion's walking `off`/`H`/`body`, so it is a constant across the
+    walk).  `G off H body` is the per-window GUARD the skeleton will instantiate to its bundle
+    (`SeqPathAllSeq tokens off` ∧ the four-conjunct `FlowBodyWindow ∧ FlowBodyContentDeep ∧ SeqEnclosed ∧
+    close` ∧ `RecSeqBody body` ∧ the slice/window facts relating `a` to `[off,H)`).  `h_step` says: at any
+    guarded window, EITHER we are at a leaf (produce `Q` directly — the LEAF arm,
+    `nestedSeq_recseqentry_locate_leaf_full`) OR there is a strictly-SMALLER sub-window still in the guard
+    (the DESCEND arm re-bundles `G` at `(off+1, off+1+interior.length, interior)` via
+    `nestedSeq_recseqentry_locate_descend_step`; the ADVANCE arm re-bundles at `(off+e.length+1, H, rest)`
+    via `…advance_balance` → `…advance_welltyped` → `…advance_step`).  BOTH recursive positions hand back a
+    `body'` with `body'.length < body.length` — the single measure the whole recursion rests on; this
+    combinator confirms that one measure suffices for both arms (DESCEND: `interior.length < body.length`
+    since `body = (op :: interior ++ [cl]) ++ rest`; ADVANCE: `rest.length < body.length` since
+    `body = e ++ fe :: rest`), pinning the IH interface independent of WHICH arm fired.
+
+    The dispatch's three-way EXHAUSTIVENESS is the orthogonal, already-landed
+    `SeqNestedEntryLocateProbe.move_trichotomy` (R350, pure `omega`); this driver supplies the MEASURE.
+    Together they are the skeleton's complete plumbing.  Verified-but-unconsumed until the skeleton fills
+    `h_step` from `move_trichotomy` + the arm seams; references no sorry site, frontier sorry count
+    unchanged at 4. -/
+theorem seqLocateRecDriver {Q : Prop}
+    (G : Nat → Nat → List (Positioned YamlToken) → Prop)
+    (h_step : ∀ off H body, G off H body →
+        Q ∨ (∃ off' H' body', body'.length < body.length ∧ G off' H' body'))
+    (off H : Nat) (body : List (Positioned YamlToken)) (h_g : G off H body) : Q := by
+  suffices h : ∀ n off H body, body.length = n → G off H body → Q from
+    h body.length off H body rfl h_g
+  intro n
+  induction n using Nat.strongRecOn with
+  | ind n IH =>
+    intro off H body h_len h_g
+    rcases h_step off H body h_g with hq | ⟨off', H', body', h_lt, h_g'⟩
+    · exact hq
+    · exact IH body'.length (by omega) off' H' body' rfl h_g'
+
 /-- **`SeqPathAllSeq` dominates `SeqEnclosed`** — the all-`true` path stack has TOP `true`, so the
     navigator's domain hypothesis is STRICTLY STRONGER than the immediate-enclosure fact the dispatch
     (`seqWindow_flowBodyContent`) consumes.  Lets the domain-restricted driver supply the dispatch's
