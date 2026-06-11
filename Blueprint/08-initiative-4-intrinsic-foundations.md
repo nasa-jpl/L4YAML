@@ -29844,26 +29844,73 @@ and on refutation thread the typed fact rather than invent a stronger invariant.
 [[ref-probe-deferred-universal-before-producing]] and [[ref-minimal-pair-extracts-the-gate]] (the probe
 target here is a NAMED bridge, refuted by ONE concrete `#guard` witness, not a `∀`-survey).
 
+### Reflection 363 — a seam's deferred "source it LATER by frame-transport" typed-fact obligation is often ALREADY carried by the recursion's existing guard `G` and ALREADY transported by a SIBLING driver over that same `G`; before authoring a new producer brick, read the guard's fields and the sibling for the inline transport — the de-risk is a READ, not a build
+
+R362 threaded the ADVANCE seam's `WellTyped (e ++ [fe])` and filed its production as a *genuine residual* —
+"to be sourced LATER by frame-transport DOWN from a global `WellTyped`, guarded by the segment's
+`WellBracketed` floor." The R362 next-step posed the SMALLEST-FIRST de-risk of the skeleton as a question:
+*does the wrapper's `RecSeqBody body` window site even sit under a global `WellTyped`*, or must a preceding
+frame-transport brick be authored first? R363 answered it — and the answer was a READ, not a build.
+
+**The de-risk resolved by reading two things already in the repo.** (1) The guard. The skeleton's
+four-conjunct `G` (the one the next-step said to KEEP, inherited from `seqWindowRecSeqBody`'s
+`windowWidth_strongRecOn` driver) carries `FlowBodyWindow tokens off H` as its first conjunct, and
+`FlowBodyWindow.wellTyped` IS `WellTyped ((tokens.toList.take H).drop off)` — the whole-window typed fact —
+with `.dyck` the Dyck floor. So the "global `WellTyped`" the residual needed is not owed; it is a *field of a
+guard the recursion already descends along*. (2) The sibling. `seqWindowRecSeqBody` (R323), a driver over the
+SAME `G`, ALREADY performs the exact transport this seam needs: at its own depth-`0` separator cut `m+1` it
+writes `WellTyped_subrange … h_win.wellTyped h_bal_m1 (h_win.dyck …)` (lines 1860–1863) to get `WellTyped` of
+the cut prefix. The "frame-transport DOWN guarded by the floor" was not new infra to design — it was a
+four-line inline `WellTyped_subrange` call a sibling over the same guard had already written.
+
+So R363 landed `nestedSeq_recseqentry_locate_advance_welltyped` (`SeqInteriorSeparators.lean`, sorry-free,
+build green 619 jobs, frontier holds at 4): given the wrapper's `FlowBodyWindow tokens off H` and the
+dispatch's `flowBracketBalance tokens off (off+e.length+1) = 0`, it PRODUCES `WellTyped (e ++ [fe])` in the
+seam's structural form via `WellTyped_subrange` + the same `h_seg` slice bridge the seam uses internally. The
+ADVANCE arm now has BOTH its pieces — the seam that CONSUMES the typed fact (R362) and the supplier that
+PRODUCES it (R363) — so the skeleton owes ZERO content bricks; it is pure plumbing.
+
+**Transferable.** When a seam THREADS a typed fact and files its production as "source it later by
+frame-transport," do not reach for a new producer lemma first. Read the recursion's guard `G`: a balanced
+window guard (`FlowBodyWindow`-shaped) typically bundles the *whole-context* version of the typed fact as a
+field (`wellTyped`) alongside the balance/floor invariants — so the "global `WellTyped` to transport down" is
+already in hand. Then read any SIBLING driver over the same `G`: if a sibling consumes that guard at a
+structurally-identical cut, it has already WRITTEN the exact transport (here `WellTyped_subrange`), and the
+new brick is that transport re-aimed at this seam's slice. The de-risk's deliverable is a confirmation that
+compiles, not a designed producer — the "later frame-transport" was inline all along. Sharpens
+[[ref-type-blind-invariant-transports-via-converse-frame]] (the transport's SOURCE is a guard field, located
+by reading the sibling, not a fact to be manufactured); echoes [[ref-metric-bridge-is-composition]] and
+[[ref-root-seed-recursive-producer-swap]] (a feared new brick is already a theorem-shaped move performed by a
+sibling over the same framing); the seam-before-skeleton discipline is [[ref-compose-arm-seam-before-skeleton]]
+(the ADVANCE arm had TWO content pieces — consume-seam and produce-supplier — both landed standalone before
+the skeleton).
+
 **Next step:** **(i'-b-B2c-nested-fbc-emission-locator-skeleton, AUTHOR the `Nat.strongRecOn` wrapper
-`nestedSeq_recseqentry_locate` — all four arm seams now composed)** — the four arms are ALL backed standalone:
-LEAF → `nestedSeq_recseqentry_locate_leaf_full` (R359), DESCEND seq-head →
-`nestedSeq_recseqentry_locate_descend_step` (R361), DESCEND map-head → REFUTED by
-`seqPathAllSeq_map_frame_persists` (R360, no seam — a vacuous arm), ADVANCE →
-`nestedSeq_recseqentry_locate_advance_step` (R362). The skeleton is now pure plumbing PLUS one new owed
-input: the ADVANCE arm needs `WellTyped (e ++ [fe])`, which the probe (R362) proved is NOT a projection of
-`RecSeqEntry e` — so the wrapper must either (a) carry a global `WellTyped` and frame-transport the segment
-fact down (guarded by the `RecSeqEntry.toWellBracketed` floor, per
-[[ref-type-blind-invariant-transports-via-converse-frame]]), or (b) thread `WellTyped (e ++ [fe])` per-entry
-as a NEW carrier hypothesis, sourced once at the root from the emitter's global well-typedness. PROBE which
-the existing locator-context hypotheses already supply (does the wrapper's `RecSeqBody body` site sit under a
-global `WellTyped`?) BEFORE authoring the skeleton — this is the SMALLEST-FIRST de-risk of the skeleton, and
-it determines whether the skeleton is a single green increment or needs a preceding frame-transport brick.
+`nestedSeq_recseqentry_locate` — ALL content bricks now landed, the skeleton is PURE plumbing)** — the
+skeleton's de-risk (R363) is RESOLVED: it is a single green increment with NO preceding frame-transport brick
+owed. Every arm's content is backed standalone: LEAF → `nestedSeq_recseqentry_locate_leaf_full` (R359),
+DESCEND seq-head → `nestedSeq_recseqentry_locate_descend_step` (R361), DESCEND map-head → REFUTED by
+`seqPathAllSeq_map_frame_persists` (R360, no seam — a vacuous arm), ADVANCE → the consume-seam
+`nestedSeq_recseqentry_locate_advance_step` (R362) PLUS the produce-supplier
+`nestedSeq_recseqentry_locate_advance_welltyped` (R363, which builds the seam's threaded `WellTyped (e ++ [fe])`
+from the carried `FlowBodyWindow.wellTyped` + `.dyck` via `WellTyped_subrange`, given the dispatch's
+`flowBracketBalance tokens off (off+e.length+1) = 0`). So the skeleton has NOTHING left to prove analytically
+except the dispatch/measure plumbing.
+
 Form (per the `Nat.strongRecOn` idiom, generalising over `body.length` via a helper
-`∀ n off H body, body.length = n → hyps → goal`): `cases h_rec` (`single`/`cons`) exposes the head entry `e`;
-`cases e`'s `RecSeqEntry` feeds the head shape; `move_trichotomy off e.length a` dispatches the three live
-arms (LEAF / DESCEND-seq / ADVANCE) + the map-head REFUTATION; `decreasing_by omega`; the lone analytical
-thread is the per-window `b < H` window-bound preservation. KEEP the four-conjunct `G`; the map mirror
-(`RecMapBody` axis) and `flowSubrangesOk_of_window_producers` → the two `FlowSubrangesOk` sorries follow.
+`∀ n off H body, body.length = n → hyps → goal`): `recseqbody_head_or_cons h_rec` splits `single` (the window
+IS one entry → LEAF arm) vs `cons` (`body = e ++ fe :: rest` → dispatch on where the target start `a` sits:
+strictly INSIDE the head entry `e` → DESCEND-seq via `_descend_step` + map-head REFUTATION, or PAST it →
+ADVANCE via `_advance_welltyped` feeding `_advance_step`); `decreasing_by omega` on `rest.length < body.length`.
+KEEP the four-conjunct `G` (`FlowBodyWindow ∧ FlowBodyContentDeep ∧ SeqEnclosed ∧ close`), inherited from
+`seqWindowRecSeqBody`'s `windowWidth_strongRecOn` driver — `FlowBodyWindow` is what supplies the ADVANCE
+supplier its `.wellTyped`/`.dyck`. SMALLEST-FIRST de-risk of the plumbing: before wiring the whole skeleton,
+PROBE the DISPATCH — confirm the dispatch lemma that classifies `a` relative to the head entry and yields the
+arm's balance-`0` cut fact (the analogue of `seqWindowRecSeqBody`'s `recseqentry_window_dispatch` + the
+`h_bal_m1` derivation at line 1845) is already available or is itself a small standalone brick; that single
+dispatch fact is the only non-mechanical piece between the landed arms and the closed recursion. Once the
+skeleton lands: the map mirror (`RecMapBody` axis) and `flowSubrangesOk_of_window_producers` → the two
+`FlowSubrangesOk` sorries (`NonemptyStructure.lean:7502`, `:7743`) follow.
 
 **Superseded next step (R361, kept for the record):** **(i'-b-B2c-nested-fbc-emission-locator-advance-seam, COMPOSE the ADVANCE seam
 `nestedSeq_recseqentry_locate_advance_step` — the last arm seam before the skeleton)** — three of the four
