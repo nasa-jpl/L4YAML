@@ -2010,6 +2010,103 @@ theorem nestedSeq_recseqentry_locate_step_descend
       win_hi := h_win_hi
       window := h_window' }⟩
 
+/-- **The seq-head ADVANCE re-bundle of the emission-spine-walk locator's per-window step** —
+    `(i'-b-B2c-nested-fbc-emission-locator-skeleton-hstep-advance)`, R371, the LAST arm re-bundle before
+    the `Nat.strongRecOn` skeleton wires `h_step`.  The third `move_trichotomy` arm (`off + e.length < a`,
+    the target window start lands strictly PAST the head entry-plus-separator block): re-bundle
+    `SeqLocateGuard` at the advanced window `(off + e.length + 1, H, rest)`.  domain/slice from the ADVANCE
+    seam `nestedSeq_recseqentry_locate_advance_step` (R362), recBody from the tail's `RecSeqBody rest`
+    (`cons.h_rest`), and — UNLIKE DESCEND — the right cut `H` is UNCHANGED, so `Hsz`/`win_hi` and the
+    window-ABSOLUTE `typed`/`close`/`opener`/`win_ab` all PASS THROUGH `g` verbatim; `bound` is `omega`.
+
+    Two fields are real work.  **`win_lo`** (`off + e.length + 2 ≤ a`): the arm condition gives only
+    `off + e.length + 1 ≤ a`, and the boundary `a = off + e.length + 1` is admitted by the arm yet violates
+    `win_lo` — it is EXCLUDED by the carried `g.opener`, because at that `a` the position `a - 1 =
+    off + e.length` is the depth-`0` `.flowEntry` separator (`flowBracketBalance (a-1) a = 0`),
+    contradicting `opener : flowBracketBalance (a-1) a = 1` (the DESCEND analogue of `win_hi`'s
+    `seqTarget_close_lt_interiorEnd` discriminator).  **The walking-keyed `window`** (R370,
+    [[ref-additive-field-cost-by-keying]]) is RE-ESTABLISHED, not passed through: the advanced
+    `FlowBodyWindow tokens (off+e.length+1) H` comes from `flowBodyWindow_advance` re-framing `g.window`
+    across the consumed entry-plus-separator — its depth-`0` cut `flowBracketBalance off (off+e.length) = 0`
+    is the entry balance (`…advance_balance` R364's `flowBracketBalance off (off+e.length+1) = 0` minus the
+    separator delta `0`) and its separator type is `h_sep_pos`.  That same R364 cut also feeds
+    `…advance_welltyped` (R363, reading `g.window`) for the seam's threaded `WellTyped (e ++ [fe])`, so
+    `g.window` is the joint source of BOTH the advance seam's `WellTyped` input AND the advanced `window`.
+
+    With this all three arm re-bundles (LEAF R367, DESCEND R369, ADVANCE R371) exist ⇒ the skeleton can
+    wire `h_step` (dispatch `recseqbody_head_or_cons` + `move_trichotomy` → the three arm steps),
+    instantiate `seqLocateRecDriver`, and the locator `nestedSeq_recseqentry_locate` lands.  Verified-but-
+    unconsumed until the skeleton wires it; references no sorry site, frontier sorry count unchanged at 4. -/
+theorem nestedSeq_recseqentry_locate_step_advance
+    (tokens : Array (Positioned YamlToken)) (a b off H : Nat)
+    (body rest e : List (Positioned YamlToken))
+    (fe : Positioned YamlToken)
+    (g : SeqLocateGuard tokens a b off H body)
+    (h_prefix : body = e ++ fe :: rest)
+    (h_e : RecSeqEntry e)
+    (h_fe : fe.val = .flowEntry)
+    (h_rec_rest : RecSeqBody rest)
+    (h_sep_pos : tokens[off + e.length]!.val = .flowEntry)
+    (h_adv : off + e.length < a) :
+    ∃ off' H' body', body'.length < body.length ∧
+      SeqLocateGuard tokens a b off' H' body' := by
+  have hbound := g.bound
+  have hblen : body.length = e.length + 1 + rest.length := by
+    rw [h_prefix]; simp only [List.length_append, List.length_cons]; omega
+  -- the separator sits inside the array (needed for the single-token depth read).
+  have h_m_sz : off + e.length < tokens.size := by have := g.Hsz; omega
+  have h_m_len : off + e.length < tokens.toList.length := by
+    rw [Array.length_toList]; exact h_m_sz
+  have h_tok_m : tokens.toList[off + e.length]'h_m_len = tokens[off + e.length]! := by
+    rw [getElem!_pos tokens (off + e.length) h_m_sz, Array.getElem_toList]
+  -- the separator token is depth-`0`: its single-token balance is `flowBracketDelta .flowEntry = 0`.
+  have h_sep_bal : flowBracketBalance tokens (off + e.length) (off + e.length + 1) = 0 := by
+    rw [flowBracketBalance_single tokens (off + e.length) h_m_len, h_tok_m, h_sep_pos]
+    exact flowBracketDelta_flowEntry
+  -- ADVANCE seam chain: balance-`0` cut (R364) ▸ WellTyped supplier (R363) ▸ slice+domain re-base (R362).
+  have h_bal0 : flowBracketBalance tokens off (off + e.length + 1) = 0 :=
+    nestedSeq_recseqentry_locate_advance_balance tokens body rest e fe off H
+      g.slice g.bound h_prefix h_e h_fe
+  have h_wt_seg : WellTyped (e ++ [fe]) :=
+    nestedSeq_recseqentry_locate_advance_welltyped tokens body rest e fe off H
+      g.slice g.bound h_prefix g.window h_bal0
+  obtain ⟨h_slice', h_domain'⟩ :=
+    nestedSeq_recseqentry_locate_advance_step tokens body rest e fe off H
+      g.slice g.bound h_prefix g.domain h_wt_seg
+  -- `win_lo`: the boundary `a = off+e.length+1` is admitted by the arm but EXCLUDED by `g.opener` (at
+  -- that `a`, `a-1` is the depth-`0` separator, so `flowBracketBalance (a-1) a = 0 ≠ 1`).
+  have h_ne_boundary : a ≠ off + e.length + 1 := by
+    intro h_a
+    have hop := g.opener
+    rw [h_a] at hop
+    have harith : off + e.length + 1 - 1 = off + e.length := by omega
+    rw [harith, h_sep_bal] at hop
+    omega
+  have h_win_lo : off + e.length + 2 ≤ a := by omega
+  -- the WALKING-keyed `window` RE-ESTABLISHED at `[off+e.length+1, H)` via `flowBodyWindow_advance`:
+  -- its cut `flowBracketBalance off (off+e.length) = 0` is `h_bal0` minus the depth-`0` separator delta.
+  have h_m_bal : flowBracketBalance tokens off (off + e.length) = 0 := by
+    have h_comp := flowBracketBalance_compose tokens off (off + e.length) (off + e.length + 1)
+      (by omega) (by omega)
+    rw [h_bal0, h_sep_bal] at h_comp
+    omega
+  have h_window' : FlowBodyWindow tokens (off + e.length + 1) H :=
+    flowBodyWindow_advance tokens off (off + e.length) H g.window (by omega)
+      (by have := g.win_ab; have := g.win_hi; omega) h_m_bal h_sep_pos
+  exact ⟨off + e.length + 1, H, rest, by omega,
+    { domain := h_domain'
+      recBody := h_rec_rest
+      slice := h_slice'
+      bound := by omega
+      Hsz := g.Hsz
+      typed := g.typed
+      close := g.close
+      opener := g.opener
+      win_lo := h_win_lo
+      win_ab := g.win_ab
+      win_hi := g.win_hi
+      window := h_window' }⟩
+
 /-- **The emission-spine-walk locator's `Nat.strongRecOn` DRIVER** —
     `(i'-b-B2c-nested-fbc-emission-locator-skeleton)`, R365, the SMALLEST-FIRST plumbing de-risk of the
     skeleton `nestedSeq_recseqentry_locate`.  Before wiring the whole recursion (dispatch + three arm
