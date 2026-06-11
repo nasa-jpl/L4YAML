@@ -29967,10 +29967,46 @@ turning "fill the arm bodies" into "instantiate `G` + prove `h_step`", with all 
 discharged. Recorded as [[ref-width-recursion-combinator-before-grammar-step]] (this is its emission-axis
 instance: the per-window step is the grammar; the measure-driver is the grammar-free plumbing landed first).
 
+### Reflection 366 — a consumer fact at an origin ADJACENT to a carried bundle's origin is NOT a separate `G`-debt; it reconstructs by single-token composition across the boundary token whose delta the guard already fixes — so itemize the LEAF's debt as ONE window-absolute bundle, deriving the lower-origin fact in place
+
+R365 landed the locator skeleton's MEASURE plumbing and pinned the remaining job to "define `G` + prove
+`h_step`". The blueprint's SMALLEST-FIRST guidance for that step was: *"write `G` as a concrete bundle and
+prove the LEAF branch of `h_step` FIRST, confirming `G` carries exactly `leaf_full`'s hypothesis list and
+nothing more is owed there."* R366 is that brick — `nestedSeq_recseqentry_locate_leaf_typed` — and it surfaced
+a debt-accounting subtlety worth recording.
+
+**The trap it avoids: over-provisioning `G` with a redundant field.** The LEAF seam
+`nestedSeq_recseqentry_locate_leaf_full` (R359) reads TWO balance facts, and they sit at DIFFERENT origins:
+`h_inner` is the interior balance `flowBracketBalance (off+1) b = 0` (origin `off+1`), and `h_floor` is the
+ENCLOSURE floor `∀ i ∈ (off, b], flowBracketBalance off i ≥ 1` (origin `off`, one token LOWER — the opener's
+own position). A naïve `G` would carry BOTH as fields, since the consumer names both. But `G` is keyed
+window-ABSOLUTE on the FIXED target `[off+1, b)` (R356), via the bundle `SeqTypedInterior tokens (off+1) b`,
+whose interior floor is `≥ 0` at origin `off+1` — it does NOT carry an `off`-origin floor.
+
+**The resolution: the lower-origin fact reconstructs in place.** The gap between the two origins is exactly
+ONE token — the opener at `off` — whose delta the guard ALREADY fixes (`tokens[off]! = [` ⇒
+`flowBracketDelta = +1`, a head projection of `G`'s `SeqPathAllSeq`). So
+`flowBracketBalance off i = flowBracketBalance off (off+1) + flowBracketBalance (off+1) i = (+1) + (≥ 0) ≥ 1`
+(`flowBracketBalance_compose` + the single-token opener read). The `≥ 1` enclosure floor is DERIVED from the
+bundle's `≥ 0` interior floor — it is NOT a separate `G`-field. So the LEAF owes `G` only the window-absolute
+`SeqTypedInterior` (plus the opener/close/slice `G` already carries for the other arms): one bundle, not two
+floors. (`SeqInteriorSeparators.lean`, sorry-free, module green 82, full build green 621, frontier holds at 4.)
+
+**Transferable.** When itemizing a producer's debt (a guard bundle `G`) against a consumer that reads facts at
+SEVERAL origins, do not add a `G`-field per origin. A consumer fact whose origin is ADJACENT to a carried
+field's origin (separated by a token whose delta the guard pins — an opener `+1`, a separator `0`, a closer
+`−1`) is a single-`compose` reconstruction across that boundary token, NOT a fresh obligation. Keep `G`'s
+balance/floor fields window-ABSOLUTE at one origin ([[ref-window-absolute-gate-subset-restriction]]) and
+reconstruct adjacent-origin facts in place at the consume site ([[ref-reconstruct-in-place-over-relocate]] —
+here applied to an origin SHIFT, not a re-locate). The SMALLEST-FIRST "prove the LEAF branch first" is exactly
+the de-risk that catches the redundant field before `G` is frozen as a structure: trying to discharge
+`leaf_full` from the window-absolute bundle either closes (the field was redundant, as here) or fails (naming
+the genuinely-missing field). Recorded as [[ref-adjacent-origin-fact-reconstructs-not-debt]].
+
 **Superseded next step (R364, kept for the record):** **(i'-b-B2c-nested-fbc-emission-locator-skeleton, AUTHOR the `Nat.strongRecOn` wrapper
 `nestedSeq_recseqentry_locate` — every analytical piece landed)** *(its SMALLEST-FIRST measure+IH de-risk is now RESOLVED + LANDED by R365 as `seqLocateRecDriver`; the skeleton's plumbing is two sorry-free bricks — `move_trichotomy` dispatch + `seqLocateRecDriver` measure — and the remaining job is to define the guard `G` and prove `h_step`.)*
 
-**Next step:** **(i'-b-B2c-nested-fbc-emission-locator-skeleton-hstep, DEFINE the guard `G` + prove the
+**Superseded next step (R365, kept for the record — its LEAF disjunct is now LANDED by R366 as `nestedSeq_recseqentry_locate_leaf_typed`; the remaining residual is the `G` structure definition + the DESCEND/ADVANCE re-bundles):** **(i'-b-B2c-nested-fbc-emission-locator-skeleton-hstep, DEFINE the guard `G` + prove the
 per-window step `h_step` that feeds `seqLocateRecDriver`)** — R365 landed the skeleton's MEASURE plumbing
 (`seqLocateRecDriver`, the `Nat.strongRecOn`-on-`body.length` driver taking the per-window step as the abstract
 hypothesis `h_step : ∀ off H body, G off H body → Q ∨ (∃ off' H' body', body'.length < body.length ∧
@@ -30007,6 +30043,48 @@ window-guard descend/advance lemmas — audit whether `seqWindowRecSeqBody` alre
 is `seqLocateRecDriver` applied to it — one line. Then: compose with `nestedSeq_safeBodyUnit_of_locator` →
 `nestedSeq_flowBodyContent`, then the map mirror (`RecMapBody` axis) and `flowSubrangesOk_of_window_producers`
 → the two `FlowSubrangesOk` sorries (`NonemptyStructure.lean:7502`, `:7743`) follow.
+
+**Next step:** **(i'-b-B2c-nested-fbc-emission-locator-skeleton-hstep-recurse, DEFINE the guard `G` as a
+concrete `structure` + prove the DESCEND/ADVANCE re-bundles of `h_step`)** — R366 landed the LEAF disjunct
+(`nestedSeq_recseqentry_locate_leaf_typed`): at `a = off+1`, the window-absolute bundle `SeqTypedInterior
+tokens (off+1) b` + the opener/close/slice produce `Q` via `leaf_full`, and R366 confirmed the LEAF owes `G`
+exactly ONE balance bundle (the `≥ 1` enclosure floor reconstructs from the bundle's `≥ 0` interior floor +
+the opener delta, NOT a second `G`-field — [[ref-adjacent-origin-fact-reconstructs-not-debt]]). So the LEAF's
+`G`-debt is now itemized. The residual is the RECURSION side:
+
+(1) **Write `G off H body` as a concrete `structure`** with the fields R354/R356 settled and R366 confirmed:
+`SeqPathAllSeq tokens off` (domain, threaded by DESCEND/ADVANCE — `seqPathAllSeq_descend` R357 /
+`seqPathAllSeq_advance`), `RecSeqBody body`, the slice facts (`h_slice`/`h_bound`/`h_Hsz`), the WINDOW-ABSOLUTE
+typed-interior `SeqTypedInterior tokens a b` keyed on the FIXED target (NOT the walking `off` — the leaf reads
+it at `a = off+1`, R366), the close `tokens[b]! = ]`, and the window relation `off+1 ≤ a ∧ a ≤ b ∧ b < H`.
+NOTE the R366 finding: `SeqTypedInterior` is keyed on the FIXED `[a,b)` and is INVARIANT across the walk —
+DESCEND/ADVANCE re-base only `off`/`H`/`body`, so the typed-interior field passes through UNCHANGED (it is not
+re-established per arm), which is why the LEAF could read it window-absolute. Confirm this: the DESCEND/ADVANCE
+re-bundle re-establishes ONLY the `off`-keyed fields (`SeqPathAllSeq`, slice, opener) + the window relation,
+never `SeqTypedInterior`.
+
+(2) **Prove the DESCEND re-bundle** (`off+1 < a < off+e.length`): `recseqbody_head_or_cons` → `cons` (the
+`single` case folds to LEAF), `nestedSeq_recseqentry_locate_descend_step` (R361) delivers the sub-window slice
+`interior = (take (off+1+interior.length)).drop (off+1)` + `SeqPathAllSeq tokens (off+1)`; re-bundle the
+remaining `G`-fields at `(off+1, off+1+interior.length, interior)` (slice/bound are the seam's output; the
+window relation re-bases by `omega`; `SeqTypedInterior` passes through). The map-head sub-case is REFUTED
+(`seqPathAllSeq_map_frame_persists`, R360, vacuous). → `Or.inr`.
+
+(3) **Prove the ADVANCE re-bundle** (`off+e.length < a`): feed `_advance_balance` (R364) → `_advance_welltyped`
+(R363) → `_advance_step` (R362) for the sub-window slice `rest = (take H).drop (off+e.length+1)` +
+`SeqPathAllSeq tokens (off+e.length+1)`; re-bundle the remaining `G`-fields at `(off+e.length+1, H, rest)`. →
+`Or.inr`. SMALLEST-FIRST within this: DESCEND is the simpler re-bundle (the seam needs only the opener
+`h_off_open`, no `WellTyped` segment), so prove the DESCEND disjunct BEFORE ADVANCE; ADVANCE's extra debt is the
+`WellTyped (e ++ [fe])` the `_advance_welltyped` supplier produces from `FlowBodyWindow` — audit whether `G`
+must carry `FlowBodyWindow tokens off H` for that, or whether the typed-interior bundle suffices (the
+`_advance_welltyped` reads `h_win.wellTyped`/`.dyck`/`.hi_lt`, which `SeqTypedInterior` does NOT carry — so `G`
+likely DOES owe `FlowBodyWindow`, the one field the LEAF did not need; confirm by trying ADVANCE).
+
+Once all three disjuncts land, `h_step` is `recseqbody_head_or_cons` + `move_trichotomy` dispatch, and
+`nestedSeq_recseqentry_locate` is `seqLocateRecDriver G h_step` applied at the root — one line. Then: compose
+with `nestedSeq_safeBodyUnit_of_locator` → `nestedSeq_flowBodyContent`, then the map mirror (`RecMapBody` axis)
+and `flowSubrangesOk_of_window_producers` → the two `FlowSubrangesOk` sorries (`NonemptyStructure.lean:7502`,
+`:7743`) follow.
 
 **Superseded next step (R361, kept for the record):** **(i'-b-B2c-nested-fbc-emission-locator-advance-seam, COMPOSE the ADVANCE seam
 `nestedSeq_recseqentry_locate_advance_step` — the last arm seam before the skeleton)** — three of the four
