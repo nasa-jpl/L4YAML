@@ -1900,6 +1900,89 @@ theorem recseqentry_head_interior_floor_tokens
         ← h_takem (i - (off + 1)) (by omega)]
     exact h_wb.2 (i - (off + 1))
 
+/-- **A map head BREAKS the seq-enclosure TOP — the map-LEAF refutation** —
+    `(i'-b-B2c-nested-fbc-emission-locator-skeleton-hstep-map-refute-leaf)`, R374, BRICK B-ii.  The
+    top-only mirror of `seqPathAllSeq_map_push_breaks` (lines 1359–1384) — the same one-step PUSH, but
+    tracking only the typed-stack TOP (`SeqEnclosed`) instead of the whole path (`SeqPathAllSeq`).  A
+    `.flowMappingStart` opener at `lo` pushes a `false` onto the stack (`btStep … = some (false :: s)`),
+    so the head after `[0, lo+1)` is `false`, NOT `true`: `lo+1` falls OUT of `SeqEnclosed`.
+
+    This is the cleaner of the dispatch's two map-head routes.  At the LEAF arm (`a = off + 1`, the
+    map is the IMMEDIATE encloser of the target start `a = lo+1` with `lo = off = a-1`), the guard's
+    window-absolute `typed.2.1 : SeqEnclosed tokens a` is contradicted DIRECTLY — no whole-stack
+    `domain` (`SeqPathAllSeq`) is needed, because `SeqEnclosed` reads exactly the frame the map pushes.
+    The proof never assumes the prefix fold is defined: if `btFold (take lo) = none` the enclosure is
+    already `none ≠ some true`; if `some s`, the map push makes the head `false`.  Verified-but-
+    unconsumed until BRICK D wires `h_step`; references no sorry site, frontier sorry count unchanged
+    at 4. -/
+theorem seqEnclosed_map_push_breaks (tokens : Array (Positioned YamlToken)) (lo : Nat)
+    (h_lo_sz : lo < tokens.size)
+    (h_open : tokens[lo]!.val = .flowMappingStart) :
+    ¬ SeqEnclosed tokens (lo + 1) := by
+  intro h_enc
+  unfold SeqEnclosed at h_enc
+  have h_lo_len : lo < tokens.toList.length := by rw [Array.length_toList]; exact h_lo_sz
+  have h_lo_val : (tokens.toList[lo]'h_lo_len).val = .flowMappingStart := by
+    rw [Array.getElem_toList, ← getElem!_pos tokens lo h_lo_sz]; exact h_open
+  rw [List.take_succ_eq_append_getElem h_lo_len, btFold_append] at h_enc
+  cases hf : btFold (some []) (tokens.toList.take lo) with
+  | none => rw [hf, btFold_none] at h_enc; simp at h_enc
+  | some s =>
+    rw [hf, btFold_cons_some] at h_enc
+    simp only [btFold, List.foldl_nil, btStep, h_lo_val, Option.bind_some, List.head?_cons] at h_enc
+    exact absurd h_enc (by simp)
+
+/-- **A map head with the target INTERIOR is VACUOUS — the map-DESCEND refutation** —
+    `(i'-b-B2c-nested-fbc-emission-locator-skeleton-hstep-map-refute-descend)`, R374, BRICK B-i.  The
+    DESCEND-shaped map case: the head entry is a `.flowMappingStart` block `op :: (interior ++ [cl])`
+    at `off` and the FIXED target opener `a - 1` lands strictly INSIDE it (`off + 1 < a`, `a - 1`
+    interior to the map's span).  This case is refuted by carrying the map's `false` frame from `off`
+    all the way to `a - 1` (the map has not closed before `a - 1`, so its `false` is still on the
+    stack), which puts `a - 1` OUT of `SeqPathAllSeq` — contradicting the target's own all-seq path.
+
+    **The probe (R374) that resolved the de-risk's open CAUTION.**  The contradiction needs a POSITIVE
+    `SeqPathAllSeq tokens (a - 1)` — the target opener's full enclosing path is all-seq.  This is NOT
+    the guard's `domain : SeqPathAllSeq tokens off` "re-based to `a-1`": re-basing is impossible HERE,
+    because the map between `off` and `a-1` is exactly what breaks all-seq (the would-be re-based fact
+    is precisely what `seqPathAllSeq_map_frame_persists` refutes).  Nor is `SeqPathAllSeq tokens (a-1)`
+    a current guard field or derivable from `g.domain` in the map case (it is FALSE there).  So it is
+    a genuinely NEW window-absolute fact — the target's path-domain, true for the real target
+    regardless of what the walk encounters — taken here as the hypothesis `h_path`.  BRICK D must
+    source it: the R368 pattern ([[ref-downstream-derisk-restores-upstream]] — a discriminator the gate
+    cannot carry is restored as a window-absolute guard field), i.e. add `path : SeqPathAllSeq tokens
+    (a - 1)` to `SeqLocateGuard` (a free verbatim pass-through in the constructing DESCEND/ADVANCE arms,
+    its root-seed instance the descent's debt, [[ref-root-seed-discriminator-not-from-gate]]).
+
+    The map's interior floor over `[off+1, a-1]` is exactly BRICK A's `recseqentry_head_interior_floor_tokens`
+    (head-BLIND — the SAME extraction the seq-DESCEND `win_hi` consumes), restricted to `a - 1 ≤
+    off+1+interior.length`, fed to `seqPathAllSeq_map_frame_persists tokens off (a-1)`.  Verified-but-
+    unconsumed until BRICK D wires `h_step`; references no sorry site, frontier sorry count unchanged at
+    4. -/
+theorem seqPathAllSeq_map_descend_excluded
+    (tokens : Array (Positioned YamlToken)) (a off H : Nat)
+    (body rest interior : List (Positioned YamlToken))
+    (op cl : Positioned YamlToken)
+    (h_slice : body = (tokens.toList.take H).drop off)
+    (h_bound : off + body.length ≤ H)
+    (h_Hsz : H ≤ tokens.size)
+    (h_prefix : body = (op :: (interior ++ [cl])) ++ rest)
+    (h_wb : WellBracketed interior)
+    (h_map : tokens[off]!.val = .flowMappingStart)
+    (h_path : SeqPathAllSeq tokens (a - 1))
+    (h_desc_lo : off + 1 < a)
+    (h_desc_hi : a < off + interior.length + 2) :
+    False := by
+  obtain ⟨_h_bal, h_floorA⟩ :=
+    recseqentry_head_interior_floor_tokens tokens body rest interior op cl off H
+      h_slice h_bound h_prefix h_wb
+  have hblen : body.length = interior.length + 2 + rest.length := by
+    rw [h_prefix]; simp only [List.length_append, List.length_cons, List.length_nil]
+  have h_q_sz : a - 1 ≤ tokens.size := by omega
+  have h_notpath : ¬ SeqPathAllSeq tokens (a - 1) :=
+    seqPathAllSeq_map_frame_persists tokens off (a - 1) (by omega) h_q_sz h_map
+      (fun i h1 h2 => h_floorA i h1 (by omega))
+  exact h_notpath h_path
+
 /-- **The DESCEND re-bundle's containment thread `win_hi`** — `(i'-b-B2c-nested-fbc-emission-locator-
     descend-win-hi)`, R368, the lone analytical field of the not-yet-assembled
     `nestedSeq_recseqentry_locate_step_descend`.  At the descended window `[off+1, c)` — `c =
