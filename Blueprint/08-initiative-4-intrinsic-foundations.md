@@ -29923,41 +29923,90 @@ side" by showing the demoted fact re-enters via STRUCTURE, not the decision; and
 sibling's transport; here the deferred METRIC fact lives in the structure + a sibling's inline block).
 Recorded as [[ref-demoted-dispatch-metric-resourced-from-structure]].
 
-**Superseded next step (R363, kept for the record):** **(i'-b-B2c-nested-fbc-emission-locator-skeleton, AUTHOR the `Nat.strongRecOn` wrapper
-`nestedSeq_recseqentry_locate`)** *(its SMALLEST-FIRST de-risk — the DISPATCH's balance-`0` cut fact — is now RESOLVED + LANDED by R364 as `nestedSeq_recseqentry_locate_advance_balance`; the dispatch is closed, the skeleton is pure plumbing.)*
+### Reflection 365 — the SMALLEST-FIRST de-risk of a `Nat.strongRecOn` skeleton is its MEASURE + IH interface, abstracted as a P/G driver combinator that takes the per-window step as a HYPOTHESIS; collapse the multi-arm dispatch to a binary "leaf-or-strictly-smaller-sub-window", proving ONE measure serves all arms before any arm body is written
 
-**Next step:** **(i'-b-B2c-nested-fbc-emission-locator-skeleton, AUTHOR the `Nat.strongRecOn` wrapper
-`nestedSeq_recseqentry_locate` — every analytical piece is now landed, ASSEMBLE the recursion)** — R364 closed
-the last non-mechanical piece: the ADVANCE arm's balance-`0` cut fact
-`flowBracketBalance tokens off (off+e.length+1) = 0` is `nestedSeq_recseqentry_locate_advance_balance`
-(`SeqInteriorSeparators.lean`, sourced structurally from `RecSeqEntry e` + the `.flowEntry` separator). So the
-full arm roster is backed standalone — LEAF → `nestedSeq_recseqentry_locate_leaf_full` (R359), DESCEND seq-head
-→ `nestedSeq_recseqentry_locate_descend_step` (R361), DESCEND map-head → REFUTED by
-`seqPathAllSeq_map_frame_persists` (R360, a vacuous arm), ADVANCE → balance brick R364 → WellTyped supplier
-`nestedSeq_recseqentry_locate_advance_welltyped` (R363) → consume-seam
-`nestedSeq_recseqentry_locate_advance_step` (R362) — and the skeleton has NOTHING left to prove analytically.
+R364 closed the locator skeleton's last *content* piece (the ADVANCE balance cut), and the blueprint's
+next-step named the assembly itself but flagged a SMALLEST-FIRST plumbing de-risk: *"before wiring the whole
+recursion, settle the `Nat.strongRecOn` measure + IH SHAPE in isolation — confirm the IH interface each arm's
+recursive call needs (DESCEND at `off+1`, ADVANCE at `off+e.length+1`) typechecks against the measure, BEFORE
+filling the arm bodies."* The risk is real: `Nat.strongRecOn` (no Mathlib `termination_by`/`decreasing_by`)
+demands the IH be applied by hand with an explicit `m < n` proof, and a multi-arm dispatch where each arm
+recurses at a *different* offset can hide a measure that decreases for one arm but not another.
 
-Form (per the `Nat.strongRecOn` idiom, generalising over `body.length` via a helper
-`∀ n off H body, body.length = n → hyps → goal`): `recseqbody_head_or_cons h_rec` splits `single` (the window
-IS one entry → LEAF arm) vs `cons` (`body = e ++ fe :: rest` → dispatch by `move_trichotomy` (R350,
-`SeqNestedEntryLocateProbe`, pure `omega`) on where the target start `a` sits: `a = off+1` → LEAF; strictly
-INSIDE the head entry `e` (`off+1 < a < off+e.length`) → DESCEND-seq via `_descend_step` + map-head REFUTATION;
-PAST it (`off+e.length < a`) → ADVANCE, feeding the R364 balance brick into `_advance_welltyped`, whose
-`WellTyped` output then feeds `_advance_step`); `decreasing_by omega` on `rest.length < body.length`. The
-wrapper's INTERFACE (settled across R354/R355/R356): it carries the WHOLE-path `SeqPathAllSeq tokens off`
-(base-keyed domain, seeded at root `off=2`, threaded by DESCEND) AND consumes the target window's
-`SeqTypedInterior tokens a b` (window-keyed: the LEAF arm reads `SeqEnclosed tokens a` for head-`.seq`
-map-exclusion via `seqEnclosed_of_seqTypedInterior`, and `b` is pinned by the consumer's explicit close
-hypothesis, NOT by the end-free gate's balance-0 — R356). KEEP the four-conjunct `G`
-(`FlowBodyWindow ∧ FlowBodyContentDeep ∧ SeqEnclosed ∧ close`) inherited from `seqWindowRecSeqBody` —
-`FlowBodyWindow` is what supplies the ADVANCE supplier its `.wellTyped`/`.dyck`. SMALLEST-FIRST plumbing
-de-risk: before wiring the whole recursion, settle the `Nat.strongRecOn` measure+IH SHAPE in isolation — author
-the generalising helper signature (`∀ n off H body, body.length = n → hyps → ∃ …locator…`) and confirm the IH
-interface each arm's recursive call needs (DESCEND at `off+1` with `H' = off+1+interior.length`, ADVANCE at
-`off+e.length+1` with the same `H`) typechecks against the `decreasing_by` measure, BEFORE filling the arm
-bodies. Once the skeleton lands: compose with `nestedSeq_safeBodyUnit_of_locator` → `nestedSeq_flowBodyContent`,
-then the map mirror (`RecMapBody` axis) and `flowSubrangesOk_of_window_producers` → the two `FlowSubrangesOk`
-sorries (`NonemptyStructure.lean:7502`, `:7743`) follow.
+**R365's move: abstract the plumbing as a P/G driver and let the per-window step be a hypothesis**
+([[ref-width-recursion-combinator-before-grammar-step]]). The deliverable `Q` (the located-entry
+existential) is a CONSTANT across the walk — it mentions only the fixed target window `[a,b)` + `tokens`,
+never the walking `off`/`H`/`body` — so the recursion is a *search*: every arm produces the same `Q`. That
+collapses the three-way dispatch to a BINARY step `h_step : ∀ off H body, G off H body → Q ∨ (∃ off' H' body',
+body'.length < body.length ∧ G off' H' body')` — at any guarded window, either we are at a leaf (produce `Q`)
+or there is a strictly-smaller sub-window still in the guard `G`. The driver `seqLocateRecDriver` then drives
+`Nat.strongRecOn` on `body.length` to `Q` in four lines, and is sorry-free. The de-risk's question — does ONE
+measure serve both recursive positions? — is answered structurally by the single `body'.length < body.length`
+conjunct: DESCEND hands back `interior` (`body = (op :: interior ++ [cl]) ++ rest ⇒ interior.length <
+body.length`), ADVANCE hands back `rest` (`body = e ++ fe :: rest ⇒ rest.length < body.length`), and the
+combinator's interface is blind to WHICH — it only sees "smaller body, still guarded." (`SeqInteriorSeparators
+.lean`, sorry-free, module green 82, full build green 621, frontier holds at 4.)
+
+**Why binary, not 3-arm.** The dispatch's three-way EXHAUSTIVENESS is an ORTHOGONAL, already-landed fact —
+`move_trichotomy` (R350, pure `omega` on `a` vs `off+1`/`off+e.length`). Folding it into the driver would
+re-prove it and couple the measure to the dispatch. Keeping them separate factors the skeleton's plumbing
+into two independent sorry-free bricks: `move_trichotomy` supplies the DISPATCH (which arm), `seqLocateRecDriver`
+supplies the MEASURE (the IH shape). The eventual skeleton's whole remaining job is to define `G` (the guard
+bundle: `SeqPathAllSeq` + the four-conjunct window guard + `RecSeqBody` + the slice/window facts) and prove
+`h_step` by dispatching on `move_trichotomy` and re-bundling `G` via the three arm seams — no `Nat.strongRecOn`
+reasoning survives into that step.
+
+**Transferable.** When a `Nat.strongRecOn` skeleton's SMALLEST-FIRST de-risk is "does the measure + IH
+interface typecheck before the arm bodies exist?", do not hand-write the recursion with stub arms (that needs
+sorry to compile, which cannot land). Abstract the plumbing as a driver combinator taking the per-window step
+as a hypothesis `h_step`; if the deliverable is a *constant* (a search, not an accumulation), collapse the
+multi-arm dispatch to a BINARY "produce-or-recurse-on-strictly-smaller", so the driver proves ONE measure
+serves all arms with no arm-specific content. Keep the dispatch's exhaustiveness as a separate already-landed
+`omega` brick. The combinator is sorry-free, lands now, and PINS the IH interface the arms must satisfy —
+turning "fill the arm bodies" into "instantiate `G` + prove `h_step`", with all `Nat.strongRecOn` reasoning
+discharged. Recorded as [[ref-width-recursion-combinator-before-grammar-step]] (this is its emission-axis
+instance: the per-window step is the grammar; the measure-driver is the grammar-free plumbing landed first).
+
+**Superseded next step (R364, kept for the record):** **(i'-b-B2c-nested-fbc-emission-locator-skeleton, AUTHOR the `Nat.strongRecOn` wrapper
+`nestedSeq_recseqentry_locate` — every analytical piece landed)** *(its SMALLEST-FIRST measure+IH de-risk is now RESOLVED + LANDED by R365 as `seqLocateRecDriver`; the skeleton's plumbing is two sorry-free bricks — `move_trichotomy` dispatch + `seqLocateRecDriver` measure — and the remaining job is to define the guard `G` and prove `h_step`.)*
+
+**Next step:** **(i'-b-B2c-nested-fbc-emission-locator-skeleton-hstep, DEFINE the guard `G` + prove the
+per-window step `h_step` that feeds `seqLocateRecDriver`)** — R365 landed the skeleton's MEASURE plumbing
+(`seqLocateRecDriver`, the `Nat.strongRecOn`-on-`body.length` driver taking the per-window step as the abstract
+hypothesis `h_step : ∀ off H body, G off H body → Q ∨ (∃ off' H' body', body'.length < body.length ∧
+G off' H' body')`) alongside the already-landed DISPATCH plumbing (`move_trichotomy`, R350). All
+`Nat.strongRecOn` reasoning is now discharged: the skeleton's WHOLE remaining job is to (1) DEFINE the guard
+`G off H body` as the bundle the arms read+re-establish, and (2) prove `h_step` by dispatching on
+`move_trichotomy` and re-bundling `G` at the sub-window via the three landed arm seams.
+
+The guard bundle `G off H body` (settled across R354/R355/R356, now to be written as a concrete `def`/`structure`):
+the WHOLE-path `SeqPathAllSeq tokens off` (base-keyed domain, seeded at root `off=2`, threaded by DESCEND) ∧
+the four-conjunct window guard `FlowBodyWindow tokens off H ∧ FlowBodyContentDeep … ∧ SeqEnclosed tokens off ∧
+close` (inherited from `seqWindowRecSeqBody`; `FlowBodyWindow.wellTyped`/`.dyck` is what the ADVANCE supplier
+`_advance_welltyped` consumes) ∧ `RecSeqBody body` ∧ the slice facts `h_slice`/`h_bound`/`h_Hsz` ∧ the WINDOW
+RELATION tying the fixed target `[a,b)` into `[off,H)` (`off+1 ≤ a`, `a ≤ b`, `b < H`, the leaf's inner-balance
+`flowBracketBalance (off+1) b = 0` + floor — note these last are the `SeqTypedInterior`-derived facts the LEAF
+seam `nestedSeq_recseqentry_locate_leaf_full` reads, window-keyed, with `b` pinned by the explicit close
+hypothesis, NOT the end-free gate balance, R356).
+
+`h_step` proof: `recseqbody_head_or_cons h_rec` splits `single` (window IS one entry → LEAF) vs `cons`
+(`body = e ++ fe :: rest` → `move_trichotomy` on where `a` sits): `a = off+1` → LEAF, `leaf_full` produces `Q`
+→ `Or.inl`; `off+1 < a < off+e.length` → DESCEND-seq, `_descend_step` (R361) gives the sub-window slice +
+`SeqPathAllSeq (off+1)` at `(off+1, off+1+interior.length, interior)` (map-head REFUTED by
+`seqPathAllSeq_map_frame_persists`, R360, vacuous), re-bundle `G` → `Or.inr`; `off+e.length < a` → ADVANCE,
+feed `_advance_balance` (R364) into `_advance_welltyped` (R363) into `_advance_step` (R362) to get the
+sub-window slice + `SeqPathAllSeq (off+e.length+1)` at `(off+e.length+1, H, rest)`, re-bundle `G` → `Or.inr`.
+
+SMALLEST-FIRST: the re-bundling is where the residual now lives — each arm's seam delivers slice + domain, but
+the OTHER `G` fields (the four-conjunct window guard, the window-relation facts) must re-establish at the
+sub-window too. The LEAF disjunct is the simplest (no re-bundle, just `leaf_full` → `Or.inl`): write `G` as a
+concrete bundle and prove the LEAF branch of `h_step` FIRST, confirming `G` carries exactly `leaf_full`'s
+hypothesis list and nothing more is owed there; then the DESCEND/ADVANCE re-bundles (which may need
+window-guard descend/advance lemmas — audit whether `seqWindowRecSeqBody` already threads `FlowBodyWindow`/
+`FlowBodyContentDeep` across descend/advance, reuse if so). Once `h_step` lands, `nestedSeq_recseqentry_locate`
+is `seqLocateRecDriver` applied to it — one line. Then: compose with `nestedSeq_safeBodyUnit_of_locator` →
+`nestedSeq_flowBodyContent`, then the map mirror (`RecMapBody` axis) and `flowSubrangesOk_of_window_producers`
+→ the two `FlowSubrangesOk` sorries (`NonemptyStructure.lean:7502`, `:7743`) follow.
 
 **Superseded next step (R361, kept for the record):** **(i'-b-B2c-nested-fbc-emission-locator-advance-seam, COMPOSE the ADVANCE seam
 `nestedSeq_recseqentry_locate_advance_step` — the last arm seam before the skeleton)** — three of the four
