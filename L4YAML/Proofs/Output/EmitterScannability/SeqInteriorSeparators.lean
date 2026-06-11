@@ -1762,14 +1762,17 @@ theorem nestedSeq_recseqentry_locate_leaf_typed
     the FIXED target window `[a, b)` (the constants `Q` mentions, never the walk's `off`/`H`/`body`) and
     the WALKING window `off H body`.
 
-    The fields are exactly the R354/R356-settled and R366-confirmed list, EXCEPT `FlowBodyWindow tokens
-    off H` — the one field only the ADVANCE arm's `WellTyped`-supplier (`…advance_welltyped`, R363)
-    consumes — which is DEFERRED to the ADVANCE increment as an additive extension of this own-type
-    ([[ref-additive-parallel-type-over-shared-edit]]: build the new structure up arm-by-arm rather than
-    committing a field whose form is only confirmed when its consumer arm lands).  The key R366 finding
-    is encoded here: `typed : SeqTypedInterior tokens a b` is keyed on the FIXED `[a, b)`, NOT the
-    walking `off` — it is WINDOW-ABSOLUTE and so passes through every descend/advance UNCHANGED, the
-    reason the LEAF could read it at `a = off + 1` without an `off`-origin floor field. -/
+    The fields are the R354/R356-settled and R366-confirmed list PLUS the R368 `opener` field, EXCEPT
+    `FlowBodyWindow tokens off H` — the one field only the ADVANCE arm's `WellTyped`-supplier
+    (`…advance_welltyped`, R363) consumes — which is DEFERRED to the ADVANCE increment as an additive
+    extension of this own-type ([[ref-additive-parallel-type-over-shared-edit]]: build the new
+    structure up arm-by-arm rather than committing a field whose form is only confirmed when its
+    consumer arm lands).  The key R366 finding is encoded here: `typed : SeqTypedInterior tokens a b`
+    is keyed on the FIXED `[a, b)`, NOT the walking `off` — it is WINDOW-ABSOLUTE and so passes through
+    every descend/advance UNCHANGED, the reason the LEAF could read it at `a = off + 1` without an
+    `off`-origin floor field.  The R368 `opener` field (`flowBracketBalance tokens (a-1) a = 1`) is the
+    same kind: fixed-target-keyed, descends free, and is the strict-containment discriminator the
+    END-FREE gate cannot carry ([[ref-strict-containment-needs-opener]]). -/
 structure SeqLocateGuard (tokens : Array (Positioned YamlToken)) (a b : Nat)
     (off H : Nat) (body : List (Positioned YamlToken)) : Prop where
   /-- the all-seq-PATH domain at the walking origin (descend PUSHes a `[`, advance FRAMEs across a
@@ -1788,6 +1791,12 @@ structure SeqLocateGuard (tokens : Array (Positioned YamlToken)) (a b : Nat)
   typed : SeqTypedInterior tokens a b
   /-- the FIXED target's close token. -/
   close : tokens[b]!.val = .flowSequenceEnd
+  /-- the FIXED target's OPENER is a real bracket — the R368 discriminator the END-FREE gate cannot
+      carry ([[ref-strict-containment-needs-opener]]).  Keyed on the FIXED `a - 1` (the entry opener,
+      one before the gated interior start), so — like `typed`/`close` — it is WINDOW-ABSOLUTE and
+      descends through every move UNCHANGED, supplying `seqTarget_close_lt_interiorEnd`'s strict
+      `b < c` (R368) at the descend re-bundle's `win_hi`. -/
+  opener : flowBracketBalance tokens (a - 1) a = 1
   /-- window containment: the target start is past the walking opener… -/
   win_lo : off + 1 ≤ a
   /-- …the target is non-degenerate… -/
@@ -1803,9 +1812,11 @@ structure SeqLocateGuard (tokens : Array (Positioned YamlToken)) (a b : Nat)
     `b < H` as `win_hi` — and the two residual leaf-DISPATCH facts (`h_open`, the head opener type, and
     `h_off1_b`, the non-degenerate close `off + 1 < b`) are taken as hypotheses, exactly as the skeleton
     will derive them from the `recseqbody_head_or_cons` decomposition before invoking this arm.  Commits
-    the structure (every field but `win_lo`/`win_ab` is consumed here, pinning their types) and confirms
-    the R366-de-risked LEAF arm threads cleanly through it.  Verified-but-unconsumed until the skeleton
-    wires `h_step`; references no sorry site, frontier sorry count unchanged at 4. -/
+    the structure (every field but `win_lo`/`win_ab`/`opener` is consumed here, pinning their types) and
+    confirms the LEAF arm still threads after the R368 `opener` extension (additive own-type field ⇒ it
+    must — the LEAF ignores the new fixed-target discriminator, which only the DESCEND `win_hi` reads).
+    Verified-but-unconsumed until the skeleton wires `h_step`; references no sorry site, frontier sorry
+    count unchanged at 4. -/
 theorem nestedSeq_recseqentry_locate_step_leaf
     (tokens : Array (Positioned YamlToken)) (a b off H : Nat)
     (body : List (Positioned YamlToken))
