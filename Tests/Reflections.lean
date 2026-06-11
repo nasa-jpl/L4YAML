@@ -92,6 +92,7 @@ import Tests.Reflections.DeltaGenericBoundaryFamily
 import Tests.Reflections.RebracketReusesPrefixBridge
 import Tests.Reflections.MetricMinimumCollapsesDispatch
 import Tests.Reflections.SaturationCleavesTerminalBranch
+import Tests.Reflections.DispatchRoleFactorsTypeMetric
 
 /-!
 # Reflections — runnable proof-engineering demonstrations
