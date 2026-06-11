@@ -3034,4 +3034,116 @@ theorem nestedSeq_recseqentry_locate_seqEmpty_head_step
   have hb := g.bound; have hlo := g.win_lo; have hab := g.win_ab; have hhi := g.win_hi
   omega
 
+/-- **The seq-head HEAD dispatch of `h_step`** —
+    `(i'-b-B2c-nested-fbc-emission-locator-skeleton-brick-d-seq-head)`, R382, BRICK D (assembly).  The
+    `recseqbody_head_or_cons` HEAD branch (`body = e`, NO separator) where the lone entry is a NON-empty
+    seq block `op :: (interior ++ [cl])` (`RecSeqEntry.seq`, `e.length = interior.length + 2 ≥ 3`).  Unlike
+    the short scalar/seqEmpty heads (R381, pure `omega`), a long entry leaves interior ROOM, so the branch
+    is genuinely cleaved.  The slice SATURATES the window (`g.slice` + `g.Hsz` ⇒ `body.length = H - off`,
+    so `off + interior.length + 2 = H`), and `Nat.lt_or_ge a (off + interior.length + 2)` splits it:
+    * `a ≥ off + interior.length + 2 = H` — pure ARITH-CONTRA (`a ≥ H > b > a` via `g.win_hi`/`g.win_ab`),
+      FREE from saturation; subsumes the close boundary (no `…cons_boundary` needed) — exactly R381's
+      mechanism, now the UPPER half only ([[ref-saturation-cleaves-terminal-branch]]).
+    * `a < off + interior.length + 2` — the genuine LEAF/DESCEND interior, REUSING the seq CONS carve's arm
+      calls with `rest := []`: LEAF (`a = off + 1`) → `…step_leaf` (Or.inl, the `Q` deliverable); DESCEND
+      (`off + 1 < a`) → `…step_descend` with `h_prefix : body = (op :: (interior ++ [cl])) ++ []`
+      (`List.append_nil`).  `step_descend` derives `interior.length ≥ 1` from the two descend bounds, so the
+      empty-interior overlap with `seqEmpty` (the `seq` constructor admits `interior = []`) closes vacuously.
+    No new primitive — the only `h_step` move shapes are LEAF/DESCEND/arith-contra (ADVANCE is absent in the
+    separator-free HEAD).  Verified-but-unconsumed until the full `h_step` assembles; frontier holds at 4. -/
+theorem nestedSeq_recseqentry_locate_seq_head_step
+    (tokens : Array (Positioned YamlToken)) (a b off H : Nat)
+    (body interior : List (Positioned YamlToken))
+    (op cl : Positioned YamlToken)
+    (g : SeqLocateGuard tokens a b off H body)
+    (h_eq : body = op :: (interior ++ [cl]))
+    (h_op : op.val = .flowSequenceStart) (h_cl : cl.val = .flowSequenceEnd)
+    (h_wb : WellBracketed interior) (h_rec : RecSeqBody interior) :
+    (∃ lo op' cl' interior', lo + 1 = a ∧ a ≤ b ∧
+      RecSeqEntry (op' :: (interior' ++ [cl'])) ∧
+      op'.val = .flowSequenceStart ∧ interior' ≠ [] ∧
+      (tokens.toList.take (b + 1)).drop lo = op' :: (interior' ++ [cl']))
+    ∨ (∃ off' H' body', body'.length < body.length ∧
+      SeqLocateGuard tokens a b off' H' body') := by
+  -- saturation: a separator-free HEAD entry spans its window, off + body.length = H
+  have h_len : body.length = H - off := by
+    rw [g.slice, List.length_drop, List.length_take, Array.length_toList]
+    have := g.Hsz; omega
+  have hbl : body.length = interior.length + 2 := by
+    rw [h_eq]; simp only [List.length_cons, List.length_append, List.length_nil]
+  -- head opener position
+  have h_off_open : tokens[off]!.val = .flowSequenceStart := by
+    rw [nestedSeq_recseqentry_locate_head_pos tokens body (interior ++ [cl]) op off H
+      g.slice g.bound g.Hsz h_eq]
+    exact h_op
+  -- cleave at the container end: LEAF/DESCEND interior vs the saturated arith-contra region
+  rcases Nat.lt_or_ge a (off + interior.length + 2) with h_lt | h_ge
+  · rcases (by have := g.win_lo; omega : (a = off + 1) ∨ (off + 1 < a)) with h_leaf | h_desc_lo
+    · -- LEAF
+      exact Or.inl (nestedSeq_recseqentry_locate_step_leaf tokens a b off H body g h_leaf h_off_open
+        (nestedSeq_recseqentry_locate_leaf_off1_b tokens a b off H body g h_leaf))
+    · -- DESCEND (rest := [])
+      refine Or.inr (nestedSeq_recseqentry_locate_step_descend tokens a b off H body [] interior op cl
+        g ?_ h_off_open h_wb h_rec h_desc_lo h_lt)
+      rw [h_eq]; simp
+  · -- past the container: pure arith-contra (saturation a ≥ H > b > a)
+    exfalso
+    have hb := g.bound; have hhi := g.win_hi; have hab := g.win_ab
+    omega
+
+/-- **The map-head HEAD dispatch of `h_step`** —
+    `(i'-b-B2c-nested-fbc-emission-locator-skeleton-brick-d-map-head)`, R382, BRICK D (assembly).  The
+    HEAD-branch sibling where the lone entry is a `.flowMappingStart` block `op :: (interior ++ [cl])`
+    (`RecSeqEntry.map`, `e.length ≥ 3`).  Same saturation cleave as the seq head, but the
+    `a < off + interior.length + 2` interior half is now entirely REFUTED (a map can never inhabit the
+    seq-entry deliverable `Q`), via BRICK B:
+    * LEAF (`a = off + 1`): the target opener is `a - 1 = off`, a `.flowMappingStart`, so
+      `seqEnclosed_map_push_breaks tokens off … h_off_map : ¬ SeqEnclosed tokens (off + 1)` contradicts the
+      gate's enclosure mark `g.typed.2.1 : SeqEnclosed tokens a` re-based by `h_leaf : a = off + 1`.
+    * DESCEND (`off + 1 < a`): `seqPathAllSeq_map_descend_excluded` (R374, BRICK B-i) — the map's `false`
+      frame persists from `off` to `a - 1`, refuting `g.path : SeqPathAllSeq tokens (a - 1)`.
+    The arith-contra upper half is shared verbatim with the seq head.  `rest := []`; references no sorry
+    site, frontier sorry count unchanged at 4.  With both long-entry heads landed only map CONS remains
+    before `h_step` assembles ([[ref-saturation-cleaves-terminal-branch]]). -/
+theorem nestedSeq_recseqentry_locate_map_head_step
+    (tokens : Array (Positioned YamlToken)) (a b off H : Nat)
+    (body interior : List (Positioned YamlToken))
+    (op cl : Positioned YamlToken)
+    (g : SeqLocateGuard tokens a b off H body)
+    (h_eq : body = op :: (interior ++ [cl]))
+    (h_op : op.val = .flowMappingStart) (h_cl : cl.val = .flowMappingEnd)
+    (h_wb : WellBracketed interior) :
+    (∃ lo op' cl' interior', lo + 1 = a ∧ a ≤ b ∧
+      RecSeqEntry (op' :: (interior' ++ [cl'])) ∧
+      op'.val = .flowSequenceStart ∧ interior' ≠ [] ∧
+      (tokens.toList.take (b + 1)).drop lo = op' :: (interior' ++ [cl']))
+    ∨ (∃ off' H' body', body'.length < body.length ∧
+      SeqLocateGuard tokens a b off' H' body') := by
+  exfalso
+  -- saturation
+  have h_len : body.length = H - off := by
+    rw [g.slice, List.length_drop, List.length_take, Array.length_toList]
+    have := g.Hsz; omega
+  have hbl : body.length = interior.length + 2 := by
+    rw [h_eq]; simp only [List.length_cons, List.length_append, List.length_nil]
+  -- head opener position (a map open at off)
+  have h_off_sz : off < tokens.size := by have := g.bound; have := g.Hsz; omega
+  have h_off_map : tokens[off]!.val = .flowMappingStart := by
+    rw [nestedSeq_recseqentry_locate_head_pos tokens body (interior ++ [cl]) op off H
+      g.slice g.bound g.Hsz h_eq]
+    exact h_op
+  -- cleave: the interior region (LEAF/DESCEND, both REFUTED for a map) vs the arith-contra region
+  rcases Nat.lt_or_ge a (off + interior.length + 2) with h_lt | h_ge
+  · rcases (by have := g.win_lo; omega : (a = off + 1) ∨ (off + 1 < a)) with h_leaf | h_desc_lo
+    · -- LEAF: target opener at `off` is a map open ⇒ ¬ SeqEnclosed, contradicting g.typed's mark
+      have h_enc : SeqEnclosed tokens a := g.typed.2.1
+      rw [h_leaf] at h_enc
+      exact seqEnclosed_map_push_breaks tokens off h_off_sz h_off_map h_enc
+    · -- DESCEND: map frame persists ⇒ ¬ SeqPathAllSeq (a-1), contradicting g.path (BRICK B-i)
+      exact seqPathAllSeq_map_descend_excluded tokens a off H body [] interior op cl
+        g.slice g.bound g.Hsz (by rw [h_eq]; simp) h_wb h_off_map g.path h_desc_lo h_lt
+  · -- arith-contra (saturation)
+    have hb := g.bound; have hhi := g.win_hi; have hab := g.win_ab
+    omega
+
 end L4YAML.Proofs.EmitterScannability
