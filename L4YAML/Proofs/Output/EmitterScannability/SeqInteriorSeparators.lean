@@ -2922,4 +2922,56 @@ theorem nestedSeq_recseqentry_locate_seqEmpty_cons_step
     · simp only [List.nil_append, List.length_cons, List.length_nil]
       omega
 
+/-- **The scalar-head CONS dispatch of `h_step`** —
+    `(i'-b-B2c-nested-fbc-emission-locator-skeleton-brick-d-scalar-cons)`, R380, BRICK D (assembly).  The
+    first of the six remaining `recseqbody_head_or_cons × cases h_e` cells, unblocked by the delta-generic
+    boundary (R379).  The head entry is a bare scalar `[t]` (`RecSeqEntry.scalar`, `e.length = 1`), so the
+    move trichotomy DEGENERATES: the LEAF position `a = off + 1` COINCIDES with the close-boundary
+    `off + e.length = off + 1` (a scalar has no interior, hence no LEAF sub-window), and DESCEND is
+    structurally absent.  So the dispatch is straight-line — no `rcases`: the boundary `a ≠ off + 1` is
+    excluded by `…cons_boundary_delta` at the scalar token `m = off` (`flowBracketDelta (.scalar …) = 0 ≠ 1`,
+    NOT the seq-close δ=−1 — the R379 lift earns its keep here, the SECOND distinct delta), which with
+    `g.win_lo : off + 1 ≤ a` forces the whole interior `off + 1 < a` = the ADVANCE region.  ONE arm call
+    (`…step_advance`, `h_e := RecSeqEntry.scalar`), no LEAF/DESCEND, so the head-opener bridge `h_off_scalar`
+    is needed ONLY to feed the boundary delta (not an arm).  Verified-but-unconsumed until the full `h_step`
+    assembles; frontier holds at 4. -/
+theorem nestedSeq_recseqentry_locate_scalar_cons_step
+    (tokens : Array (Positioned YamlToken)) (a b off H : Nat)
+    (body rest : List (Positioned YamlToken))
+    (t fe : Positioned YamlToken) (c : String) (s : ScalarStyle)
+    (g : SeqLocateGuard tokens a b off H body)
+    (h_eq : body = [t] ++ fe :: rest)
+    (h_t : t.val = .scalar c s)
+    (h_fe : fe.val = .flowEntry) (h_rest : RecSeqBody rest) :
+    (∃ lo op' cl' interior', lo + 1 = a ∧ a ≤ b ∧
+      RecSeqEntry (op' :: (interior' ++ [cl'])) ∧
+      op'.val = .flowSequenceStart ∧ interior' ≠ [] ∧
+      (tokens.toList.take (b + 1)).drop lo = op' :: (interior' ++ [cl']))
+    ∨ (∃ off' H' body', body'.length < body.length ∧
+      SeqLocateGuard tokens a b off' H' body') := by
+  -- head scalar position (for the boundary delta)
+  have h_pref_head : body = t :: (fe :: rest) := by rw [h_eq]; rfl
+  have h_off_scalar : tokens[off]!.val = .scalar c s := by
+    rw [nestedSeq_recseqentry_locate_head_pos tokens body (fe :: rest) t off H
+      g.slice g.bound g.Hsz h_pref_head]
+    exact h_t
+  have hbl : body.length = rest.length + 2 := by
+    rw [h_eq]; simp only [List.length_append, List.length_cons, List.length_nil]; omega
+  have h_m_sz : off < tokens.size := by
+    have hb := g.bound; have hH := g.Hsz; omega
+  -- boundary: a ≠ off + 1 (= off + [t].length), via the scalar delta (0 ≠ 1)
+  have h_ne : a ≠ off + 1 :=
+    nestedSeq_recseqentry_locate_cons_boundary_delta tokens a b off H off body g h_m_sz
+      (by rw [h_off_scalar, flowBracketDelta_scalar]; omega)
+  -- dispatch: LEAF (a = off+1) IS the boundary (excluded by h_ne); only ADVANCE (off+1 < a) survives
+  have h_adv : off + 1 < a := by have := g.win_lo; omega
+  refine Or.inr (nestedSeq_recseqentry_locate_step_advance tokens a b off H body rest
+    [t] fe g h_eq ?_ h_fe h_rest ?_ ?_)
+  · exact RecSeqEntry.scalar t c s h_t
+  · rw [nestedSeq_recseqentry_locate_sep_pos tokens body rest [t] fe off H
+      g.slice g.bound g.Hsz h_eq]
+    exact h_fe
+  · simp only [List.length_cons, List.length_nil]
+    omega
+
 end L4YAML.Proofs.EmitterScannability
