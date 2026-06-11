@@ -88,6 +88,7 @@ import Tests.Reflections.AdditiveFieldCostByKeying
 import Tests.Reflections.SlicePositionalBridgeGetElemQ
 import Tests.Reflections.HeadBlindCoreServesBothArms
 import Tests.Reflections.TargetAnchoredTwinRefutesWalkBreak
+import Tests.Reflections.DeltaGenericBoundaryFamily
 
 /-!
 # Reflections — runnable proof-engineering demonstrations
