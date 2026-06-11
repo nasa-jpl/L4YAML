@@ -1383,6 +1383,80 @@ theorem seqPathAllSeq_map_push_breaks (tokens : Array (Positioned YamlToken)) (l
   rw [h_seq] at h_all'
   simp at h_all'
 
+/-- **A map frame PERSISTS, breaking the all-seq-PATH domain across its whole span** — the DESCEND-arm
+    map-head refutation infra (R360), the whole-window generalisation of `seqPathAllSeq_map_push_breaks`.
+    A `.flowMappingStart` opener at `p` pushes a `false` onto the typed bracket stack; as long as the
+    relative balance from `p + 1` stays `≥ 0` up to `q` (the local Dyck floor — equivalently, the map's
+    matching close has NOT yet been reached at `q`, so the frame is never popped), that `false` survives
+    at the bottom of the stack at `q`.  Hence `q` falls OUT of `SeqPathAllSeq`.
+
+    Where `seqPathAllSeq_map_push_breaks` handles only the one-step `q = p + 1` (the `false` is the fresh
+    head, killed immediately), here the FLOOR carries the frame forward across the entire interior
+    `(p, q]`: this is what the DESCEND arm needs when the head entry is a `RecSeqEntry.map` and the target
+    window start `a` lands strictly INSIDE it (`q = a - 1` is interior to the map's span, so the floor over
+    `[p+1, q]` is a prefix of the map interior's `WellBracketed` floor).  The window's own seq-enclosure
+    (`SeqPathAllSeq tokens (a-1)`, R355) is the hypothesis the conclusion refutes, so the map-head DESCEND
+    case is VACUOUS — no fifth (map-mirror) recursive arm.
+
+    Mechanically the mirror of `seqOpenerType_of_located_and_gate`: the same `btFold_frame_inv` over a
+    floored interior, but with the pushed bit `false` (a `{`, not a `[`) and only the FLOOR (no exact body
+    balance, so the persisted prefix `m` may be nonempty), reading the surviving frame
+    `S = m ++ (false :: s_p)` off the frame-inverse instead of pinning the head.  A stack carrying a
+    `false` is not all-`true`, which is the contradiction. -/
+theorem seqPathAllSeq_map_frame_persists (tokens : Array (Positioned YamlToken)) (p q : Nat)
+    (h_pq : p < q) (h_q_sz : q ≤ tokens.size)
+    (h_open : tokens[p]!.val = .flowMappingStart)
+    (h_floor : ∀ i, p + 1 ≤ i → i ≤ q → flowBracketBalance tokens (p + 1) i ≥ 0) :
+    ¬ SeqPathAllSeq tokens q := by
+  rintro ⟨S, hS, _h_ne, h_all⟩
+  have h_p_sz : p < tokens.size := by omega
+  have h_p_T : p < tokens.toList.length := by rw [Array.length_toList]; exact h_p_sz
+  -- (1) decompose `take q = take (p+1) ++ interior`.
+  obtain ⟨interior, hint⟩ :
+      ∃ I, I = (tokens.toList.drop (p + 1)).take (q - (p + 1)) := ⟨_, rfl⟩
+  have h_split : tokens.toList.take q = tokens.toList.take (p + 1) ++ interior := by
+    rw [hint, ← List.take_add]; congr 1; omega
+  have h_split_p : tokens.toList.take (p + 1)
+      = tokens.toList.take p ++ [tokens.toList[p]'h_p_T] := by
+    rw [List.take_add_one, List.getElem?_eq_getElem h_p_T]; rfl
+  -- (2) the prefix `take p` folds to `some s_p`.
+  obtain ⟨s_p, hsp⟩ : ∃ s_p, btFold (some []) (tokens.toList.take p) = some s_p :=
+    btFold_some_prefix (tokens.toList.take p) ([tokens.toList[p]'h_p_T] ++ interior) S (by
+      rw [← List.append_assoc, ← h_split_p, ← h_split]; exact hS)
+  have hTp : tokens.toList[p]'h_p_T = tokens[p]! := by
+    rw [Array.getElem_toList, getElem!_pos tokens p h_p_sz]
+  -- (3) the opener pushes `false`: stack after `[0, p+1)` is `false :: s_p`.
+  have h_after : btFold (some []) (tokens.toList.take (p + 1)) = some (false :: s_p) := by
+    rw [h_split_p, btFold_append, hsp]
+    have : btFold (some s_p) [tokens.toList[p]'h_p_T] = btStep (tokens.toList[p]'h_p_T) s_p := rfl
+    rw [this, hTp]
+    simp [btStep, h_open]
+  -- (4) the whole `take q` fold equals the interior fold from `false :: s_p`.
+  have hfold : btFold (some ([] ++ (false :: s_p))) interior = some S := by
+    rw [List.nil_append]
+    rw [h_split, btFold_append, h_after] at hS
+    exact hS
+  -- (5) floor bridge: `pbalance (interior.take k) ≥ 0` for every `k`.
+  have h_int_len : interior.length = q - (p + 1) := by
+    rw [hint, List.length_take, List.length_drop, Array.length_toList]; omega
+  have hfloor' : ∀ k, k ≤ interior.length →
+      0 ≤ (([] : List Bool).length : Int) + pbalance (interior.take k) := by
+    intro k hk
+    have hk' : k ≤ q - (p + 1) := by rw [h_int_len] at hk; exact hk
+    have htk : interior.take k = (tokens.toList.drop (p + 1)).take k := by
+      rw [hint, List.take_take]; congr 1; omega
+    have hbridge : flowBracketBalance tokens (p + 1) (p + 1 + k)
+        = pbalance ((tokens.toList.drop (p + 1)).take k) := by
+      rw [flowBracketBalance_eq_pbalance tokens (p + 1) (p + 1 + k) (by omega)]; congr 2; omega
+    have hfl : (0 : Int) ≤ pbalance ((tokens.toList.drop (p + 1)).take k) := by
+      rw [← hbridge]; exact h_floor (p + 1 + k) (by omega) (by omega)
+    rw [htk]; simpa using hfl
+  -- (6) frame-inverse: `S = m ++ (false :: s_p)` — the `false` persists at the bottom.
+  obtain ⟨m, _hm, hSm⟩ := btFold_frame_inv interior [] (false :: s_p) S hfloor' hfold
+  -- (7) a stack containing `false` is not all-`true`.
+  rw [hSm, List.all_append] at h_all
+  simp [List.all_cons] at h_all
+
 /-- **ADVANCE domain-preservation** — the missing third edge of the all-seq-PATH domain, the
     `SeqPathAllSeq` companion of `seqEnclosed_advance` (the TOP-projection advance).  When the
     spine-walk ADVANCES past a consumed entry-plus-separator segment `[lo, n)` to the tail base `n`,
