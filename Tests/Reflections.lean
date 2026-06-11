@@ -86,6 +86,7 @@ import Tests.Reflections.GuardStructureArmByArm
 import Tests.Reflections.StrictContainmentNeedsOpener
 import Tests.Reflections.AdditiveFieldCostByKeying
 import Tests.Reflections.SlicePositionalBridgeGetElemQ
+import Tests.Reflections.HeadBlindCoreServesBothArms
 
 /-!
 # Reflections — runnable proof-engineering demonstrations
