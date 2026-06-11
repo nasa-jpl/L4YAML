@@ -1821,6 +1821,69 @@ theorem nestedSeq_recseqentry_locate_step_leaf
   exact nestedSeq_recseqentry_locate_leaf_typed tokens off H b body
     g.slice g.bound g.Hsz g.recBody h_open h_off1_b g.win_hi g.close g.typed
 
+/-- **The DESCEND re-bundle's containment thread `win_hi`** — `(i'-b-B2c-nested-fbc-emission-locator-
+    descend-win-hi)`, R368, the lone analytical field of the not-yet-assembled
+    `nestedSeq_recseqentry_locate_step_descend`.  At the descended window `[off+1, c)` — `c =
+    off+1+interior.length`, the head interior's right end (= the head's close position) — the target
+    close `b` must satisfy `b < c`, the descended guard's `win_hi`.  This is NOT omega from the dispatch
+    (`move_trichotomy` constrains only `a` by length, never `b`); it is a two-floor relay
+    ([[ref-two-floor-relay-close-bound]]) — but with a THIRD input the gate alone does not carry.
+
+    **The gate is END-FREE w.r.t. this bound** ([[ref-end-free-gate-underdetermines-the-close]]).
+    Recall the deliverable's entry is `op :: (interior' ++ [cl'])` at `[a-1, b]` — opener at `a-1`,
+    the gated window `[a, b)` is its INTERIOR, close at `b`.  `SeqTypedInterior tokens a b` + `close`
+    admit `b = c` (the target close coinciding with the head's OWN interior-end close): inside an
+    interior `x , [y]` the window at `a` = the position just past the `,` separator passes the gate
+    (`balance (off+1) a = 0`, mark seq) with `b` = the interior end `c`, yet that `a` is NOT a genuine
+    seq-entry interior start — `tokens[a-1]` is the separator `,`, not the opener `[`.  So the relay
+    yields only the NON-strict `b ≤ c`; the strict `b < c` needs the discriminator that the target's
+    opener at `a - 1` is a real bracket — `flowBracketBalance tokens (a-1) a = 1` — which excludes
+    exactly the spurious separator-headed windows ([[ref-downstream-derisk-restores-upstream]]: the
+    dropped discriminator is restored as a guard field, window-absolute so it descends unchanged like
+    `typed`/`close`).
+
+    The proof: assume `c ≤ b`.  The gate floor at `c` (`a ≤ c ≤ b`) gives `balance a c ≥ 0`; composing
+    through the balanced interior (`balance (off+1) c = 0`) plus the interior Dyck floor at `a` forces
+    `balance (off+1) a = 0` — `a` sits at the interior TOP level.  Then the opener `balance (a-1) a = 1`
+    composes to `balance (off+1) (a-1) = -1`, contradicting the interior Dyck floor at `a-1`.  So
+    `b < c`.  Only the interior balance + Dyck floor + the gate floor + the opener are used (no head
+    opener/close delta needed) — the minimal hypothesis set, exactly the descend window's re-established
+    facts plus the new opener field.  Verified-but-unconsumed until the descend re-bundle threads it;
+    references no sorry site, frontier sorry count unchanged. -/
+theorem seqTarget_close_lt_interiorEnd
+    (tokens : Array (Positioned YamlToken)) (a b off c : Nat)
+    (h_off_a : off + 2 ≤ a)
+    (h_a_c : a ≤ c)
+    (h_int_bal : flowBracketBalance tokens (off + 1) c = 0)
+    (h_int_floor : ∀ i, off + 1 ≤ i → i ≤ c → flowBracketBalance tokens (off + 1) i ≥ 0)
+    (h_open : flowBracketBalance tokens (a - 1) a = 1)
+    (h_gate : SeqTypedInterior tokens a b) :
+    b < c := by
+  obtain ⟨_h_bal, _h_mark, h_gate_floor⟩ := h_gate
+  rcases Nat.lt_or_ge b c with h_lt | h_ge
+  · exact h_lt
+  · exfalso
+    -- gate floor at `c`: `balance a c ≥ 0`.
+    have h_ac : flowBracketBalance tokens a c ≥ 0 := h_gate_floor c h_a_c h_ge
+    -- compose through the balanced interior: `balance (off+1) c = balance (off+1) a + balance a c`.
+    have h_comp : flowBracketBalance tokens (off + 1) c
+        = flowBracketBalance tokens (off + 1) a + flowBracketBalance tokens a c :=
+      flowBracketBalance_compose tokens (off + 1) a c (by omega) h_a_c
+    -- interior Dyck floor at `a`: `balance (off+1) a ≥ 0`.
+    have h_int_a : flowBracketBalance tokens (off + 1) a ≥ 0 :=
+      h_int_floor a (by omega) h_a_c
+    -- so `a` sits at the interior top level.
+    have h0 : flowBracketBalance tokens (off + 1) a = 0 := by
+      rw [h_int_bal] at h_comp; omega
+    -- the opener at `a-1` composes to `balance (off+1) (a-1) = -1`, contradicting the floor.
+    have h_comp2 : flowBracketBalance tokens (off + 1) a
+        = flowBracketBalance tokens (off + 1) (a - 1) + flowBracketBalance tokens (a - 1) a :=
+      flowBracketBalance_compose tokens (off + 1) (a - 1) a (by omega) (by omega)
+    have h_int_a1 : flowBracketBalance tokens (off + 1) (a - 1) ≥ 0 :=
+      h_int_floor (a - 1) (by omega) (by omega)
+    rw [h_open, h0] at h_comp2
+    omega
+
 /-- **The emission-spine-walk locator's `Nat.strongRecOn` DRIVER** —
     `(i'-b-B2c-nested-fbc-emission-locator-skeleton)`, R365, the SMALLEST-FIRST plumbing de-risk of the
     skeleton `nestedSeq_recseqentry_locate`.  Before wiring the whole recursion (dispatch + three arm
