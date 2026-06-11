@@ -29551,6 +29551,47 @@ re-applied at the wrapper's `b`; the per-arm companion of [[ref-navigator-arms-k
 window's close hypothesis — both window-keyed, neither from the carried base domain, and the close one
 NOT the balance-0 the pointer credited). Recorded by updating [[ref-end-free-gate-underdetermines-close]].
 
+### Reflection 357 — a recursion that CARRIES a domain invariant owes one preservation edge per recursion MOVE; the descend edge plus its NEGATION (the breaking case) masks the missing ADVANCE (frame) edge, which a "resolved interface" can name as if a prior reflection authored it
+
+Beginning to AUTHOR `nestedSeq_recseqentry_locate` (the wrapper the last three reflections sized), an
+EDGE AUDIT of its carried domain invariant surfaced a missing primitive. The wrapper threads
+`SeqPathAllSeq tokens off` through its recursion; each recursion MOVE must re-establish it at the new
+base for the recursive call. The R356 next-step pointer listed the invariant's edges as
+**"recurse with `SeqPathAllSeq` FRAMED over the balanced head-entry segment (the `WellTyped`-segment
+frame, R337 `seqPathAllSeq` advance edge — NOT a push)"** — naming the ADVANCE edge as if R337 had
+authored it. It had not.
+
+**The audit.** Grepping the `SeqPathAllSeq` family (`SeqInteriorSeparators.lean`) returns exactly three
+lemmas: `seqPathAllSeq_descend` (the seq-head PUSH preserves the domain), `seqPathAllSeq_map_push_breaks`
+(the map-head PUSH BREAKS it), and `seqEnclosed_of_seqPathAllSeq` (the TOP projection). R337 authored
+the DESCEND edge AND its NEGATION — a [[ref-converse-forward-invariant-asymmetry]] pair, "going down
+through a seq preserves, going down through a map breaks." That pair FEELS exhaustive, but it answers
+only the *descend* axis. The recursion also ADVANCEs (steps sideways past a consumed entry-plus-separator
+to the tail base); the ADVANCE preservation edge is a THIRD, ORTHOGONAL obligation the descend pair never
+touches, and it was never proven.
+
+**The missing edge is the EASY one.** `seqPathAllSeq_advance` (now landed, sorry-free) is the whole-stack
+analogue of `seqEnclosed_advance` (the TOP-only advance, `SeqInteriorSeparators.lean:1285`): an advance
+is a FRAME, not a push. The consumed segment `[lo, n)` is `WellTyped` (returns the bracket fold to depth
+0), so `WellTyped_frame _ s h_wt_seg` returns the fold to the SAME stack `s` — every `SeqPathAllSeq`
+conjunct (definedness, nonemptiness, all-`true`) transports VERBATIM, the frame blind to the stack's
+contents. This is even MORE direct than `seqEnclosed_advance`, which must re-read the head the frame
+preserves; the whole-stack version DROPS that re-read (the stack is literally identical on both sides). A
+one-`rw` proof. That triviality is exactly why it was overlooked: the hard descend PUSH (overwrites the
+head, needs the opener token, and whose negation is a separate proof) absorbed all the attention; the
+frame edge looked too easy to be a missing obligation, so the pointer assumed it done.
+
+**Transferable rule.** When a recursion CARRIES a domain invariant (a stack/path predicate threaded to
+recursive calls), it owes one PRESERVATION edge per recursion MOVE (descend, advance) — separate from the
+deliverable's constructor lifts ([[ref-structural-moves-complete-recursion]], which covers the latter).
+The DESCEND edge plus its NEGATION (the breaking case) covers only the descend axis; the ADVANCE (frame)
+edge is orthogonal and easily forgotten — usually the trivial one (a whole-stack frame over a balanced
+segment). A "resolved interface" pointer that names all edges can credit a prior reflection with the
+advance edge when that reflection only did descend + negation; AUDIT each named edge exists before
+authoring the consumer. Recorded as [[ref-carried-invariant-advance-edge]] (sharpens
+[[ref-structural-moves-complete-recursion]] to the carried-invariant axis; a probe-before-producing win,
+[[ref-probe-deferred-universal-before-producing]]).
+
 **Next step:** **(i'-b-B2c-nested-fbc-emission-locator-wrapper-author, AUTHOR `nestedSeq_recseqentry_locate`
 — the `Nat.strongRecOn` wrapper carrying `SeqPathAllSeq`, composing the three landed slice bricks)** — the
 interface is RESOLVED (R354 + R355 + R356): the wrapper's CARRIED STATE is the offset-slice invariant
@@ -29576,8 +29617,9 @@ DESCEND (`off+1<a<off+e.length`) → re-base by `nestedSeq_recseqentry_locate_de
 `SeqPathAllSeq tokens (off+1)` from `seqPathAllSeq_descend` (the head `.seq` opener), measure drops
 (`interior.length < body.length`); ADVANCE (`off+e.length<a`) → re-base by
 `nestedSeq_recseqentry_locate_advance`, recurse with `SeqPathAllSeq` FRAMED over the balanced head-entry
-segment (the `WellTyped`-segment frame, R337 `seqPathAllSeq` advance edge — NOT a push), measure drops
-(`rest.length < body.length`). The map-head DESCEND case (`RecSeqEntry.map`, no `h_rec`) is the
+segment via `seqPathAllSeq_advance` (LANDED R357 — the whole-stack `WellTyped`-segment frame, NOT a push;
+R337 had only descend + map-break, so the advance edge had to be authored before the wrapper could
+recurse), measure drops (`rest.length < body.length`). The map-head DESCEND case (`RecSeqEntry.map`, no `h_rec`) is the
 contradiction the carried `SeqPathAllSeq` discharges. Then the seed `nestedSeq_flowBodyContent` (compose
 with `nestedSeq_safeBodyUnit_of_locator`) and the `desc` assembly — placing the typed↔structural bridge at
 the `desc` seam, sourcing `SeqPathAllSeq` from the outer descent discipline (R338), per R354. KEEP the
