@@ -1641,6 +1641,55 @@ theorem nestedSeq_recseqentry_locate_advance_welltyped
     (Nat.le_refl off) (by omega) h_n_le_H (Nat.le_of_lt h_win.hi_lt) h_win.wellTyped h_bal0
     (fun p hp1 hp2 => h_win.dyck p hp1 (by omega))
 
+/-- **The ADVANCE arm's balance-`0` cut fact of the emission-spine-walk locator** —
+    `(i'-b-B2c-nested-fbc-emission-locator-advance-balance)`, the DISPATCH brick: the SMALLEST-FIRST
+    de-risk of the `Nat.strongRecOn` skeleton.  The skeleton's ADVANCE arm feeds
+    `nestedSeq_recseqentry_locate_advance_welltyped` (R363) a hypothesis
+    `flowBracketBalance tokens off (off + e.length + 1) = 0` (the cut sits at depth `0`).  Unlike
+    `seqWindowRecSeqBody`'s balance-keyed dispatch — where the analogous `h_bal_m1` is derived from the
+    dispatch's located separator `m` plus the comma delta (`SeqInteriorSeparators.lean:1899`) — this
+    locator's dispatch is pure LENGTH ARITHMETIC (`SeqNestedEntryLocateProbe.move_trichotomy`, R350),
+    so the cut fact is sourced STRUCTURALLY instead: the head entry `e` is a complete `RecSeqEntry`
+    (`pbalance e = 0` from `RecSeqEntry.toWellBracketed`) and the `.flowEntry` separator `fe` has
+    `flowBracketDelta = 0`, so the entry-plus-separator `e ++ [fe]` is balanced (`pbalance = 0`), which
+    `flowBracketBalance_eq_pbalance` transports to the positional `flowBracketBalance tokens off
+    (off+e.length+1)`.
+
+    This is `recseqbody_advance`'s `h_bal_sep` derivation (`NonemptyStructure.lean:1169`) lifted to a
+    standalone brick keyed on the locator's slice frame (`h_slice`/`h_bound`/`h_prefix`) rather than the
+    `recseqbody_advance` dispatch's `h_eq` — the only non-mechanical piece between the landed arm seams
+    (LEAF R359, DESCEND R361, ADVANCE consume R362 + WellTyped supplier R363) and the closed recursion;
+    with it the skeleton is pure plumbing.  Verified-but-unconsumed until the wrapper threads it;
+    references no sorry site, frontier sorry count unchanged at 4. -/
+theorem nestedSeq_recseqentry_locate_advance_balance
+    (tokens : Array (Positioned YamlToken))
+    (body rest e : List (Positioned YamlToken)) (fe : Positioned YamlToken)
+    (off H : Nat)
+    (h_slice : body = (tokens.toList.take H).drop off)
+    (h_bound : off + body.length ≤ H)
+    (h_prefix : body = e ++ fe :: rest)
+    (h_e : RecSeqEntry e)
+    (h_fe : fe.val = .flowEntry) :
+    flowBracketBalance tokens off (off + e.length + 1) = 0 := by
+  have h_eq : (tokens.toList.take H).drop off = e ++ fe :: rest := by rw [← h_slice]; exact h_prefix
+  have h_blen : body.length = e.length + 1 + rest.length := by
+    rw [h_prefix, List.length_append, List.length_cons]; omega
+  have hle : e.length + 1 ≤ H - off := by omega
+  -- the entry-plus-separator slice `[off, off+|e|+1)` is exactly `e ++ [fe]`
+  have h_take_sep : (tokens.toList.drop off).take (e.length + 1) = e ++ [fe] := by
+    have h1 : ((tokens.toList.take H).drop off).take (e.length + 1)
+        = (tokens.toList.drop off).take (e.length + 1) := by
+      rw [List.drop_take, List.take_take, Nat.min_eq_left hle]
+    rw [← h1, h_eq, List.take_append, List.take_of_length_le (by omega),
+        show e.length + 1 - e.length = 1 from by omega]
+    simp
+  -- `pbalance (e ++ [fe]) = 0`: the entry balances (`RecSeqEntry`) and the separator has delta `0`.
+  have h_pbsep : pbalance (e ++ [fe]) = (0 : Int) := by
+    rw [pbalance_append, h_e.toWellBracketed.1, pbalance_singleton, h_fe,
+        flowBracketDelta_flowEntry]; rfl
+  rw [flowBracketBalance_eq_pbalance tokens off (off + e.length + 1) (by omega),
+      show off + e.length + 1 - off = e.length + 1 from by omega, h_take_sep, h_pbsep]
+
 /-- **`SeqPathAllSeq` dominates `SeqEnclosed`** — the all-`true` path stack has TOP `true`, so the
     navigator's domain hypothesis is STRICTLY STRONGER than the immediate-enclosure fact the dispatch
     (`seqWindow_flowBodyContent`) consumes.  Lets the domain-restricted driver supply the dispatch's
