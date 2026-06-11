@@ -1755,6 +1755,72 @@ theorem nestedSeq_recseqentry_locate_leaf_typed
   exact nestedSeq_recseqentry_locate_leaf_full tokens off H b body
     h_slice h_bound h_Hsz h_rec h_open h_off1_b h_b_H h_bclose h_inner h_floor
 
+/-- **The emission-spine-walk locator's per-window GUARD, as a concrete structure** —
+    `(i'-b-B2c-nested-fbc-emission-locator-guard-structure)`, R367.  The bundle `G off H body` the
+    `Nat.strongRecOn` driver `seqLocateRecDriver` threads, finally pinned as a `structure` so the three
+    arm re-bundles (LEAF / DESCEND / ADVANCE) all read and write the SAME field set.  Parameterised by
+    the FIXED target window `[a, b)` (the constants `Q` mentions, never the walk's `off`/`H`/`body`) and
+    the WALKING window `off H body`.
+
+    The fields are exactly the R354/R356-settled and R366-confirmed list, EXCEPT `FlowBodyWindow tokens
+    off H` — the one field only the ADVANCE arm's `WellTyped`-supplier (`…advance_welltyped`, R363)
+    consumes — which is DEFERRED to the ADVANCE increment as an additive extension of this own-type
+    ([[ref-additive-parallel-type-over-shared-edit]]: build the new structure up arm-by-arm rather than
+    committing a field whose form is only confirmed when its consumer arm lands).  The key R366 finding
+    is encoded here: `typed : SeqTypedInterior tokens a b` is keyed on the FIXED `[a, b)`, NOT the
+    walking `off` — it is WINDOW-ABSOLUTE and so passes through every descend/advance UNCHANGED, the
+    reason the LEAF could read it at `a = off + 1` without an `off`-origin floor field. -/
+structure SeqLocateGuard (tokens : Array (Positioned YamlToken)) (a b : Nat)
+    (off H : Nat) (body : List (Positioned YamlToken)) : Prop where
+  /-- the all-seq-PATH domain at the walking origin (descend PUSHes a `[`, advance FRAMEs across a
+      balanced segment — both preserve it). -/
+  domain : SeqPathAllSeq tokens off
+  /-- the walking body is a recursive seq body (the head-entry-or-cons dispatch reads it). -/
+  recBody : RecSeqBody body
+  /-- the walking body is the positional slice `[off, H)`. -/
+  slice : body = (tokens.toList.take H).drop off
+  /-- the slice fits inside the window. -/
+  bound : off + body.length ≤ H
+  /-- the window's right cut is inside the token array. -/
+  Hsz : H ≤ tokens.size
+  /-- the WINDOW-ABSOLUTE typed interior of the FIXED target `[a, b)` (R356 — invariant across the
+      walk). -/
+  typed : SeqTypedInterior tokens a b
+  /-- the FIXED target's close token. -/
+  close : tokens[b]!.val = .flowSequenceEnd
+  /-- window containment: the target start is past the walking opener… -/
+  win_lo : off + 1 ≤ a
+  /-- …the target is non-degenerate… -/
+  win_ab : a ≤ b
+  /-- …and the target close is inside the walking right cut. -/
+  win_hi : b < H
+
+/-- **The LEAF disjunct of the locator's per-window step `h_step`, through the guard structure** —
+    `(i'-b-B2c-nested-fbc-emission-locator-step-leaf)`, R367.  With `G` now a concrete `SeqLocateGuard`,
+    this is the LEAF arm of `h_step` projected through the structure: at the dispatch's first
+    `move_trichotomy` arm (`a = off + 1`, the target window IS the walking head entry) the guard's
+    fields supply `leaf_typed`'s entire hypothesis list — slice/bound/Hsz/rec/typed/close directly,
+    `b < H` as `win_hi` — and the two residual leaf-DISPATCH facts (`h_open`, the head opener type, and
+    `h_off1_b`, the non-degenerate close `off + 1 < b`) are taken as hypotheses, exactly as the skeleton
+    will derive them from the `recseqbody_head_or_cons` decomposition before invoking this arm.  Commits
+    the structure (every field but `win_lo`/`win_ab` is consumed here, pinning their types) and confirms
+    the R366-de-risked LEAF arm threads cleanly through it.  Verified-but-unconsumed until the skeleton
+    wires `h_step`; references no sorry site, frontier sorry count unchanged at 4. -/
+theorem nestedSeq_recseqentry_locate_step_leaf
+    (tokens : Array (Positioned YamlToken)) (a b off H : Nat)
+    (body : List (Positioned YamlToken))
+    (g : SeqLocateGuard tokens a b off H body)
+    (h_a : a = off + 1)
+    (h_open : tokens[off]!.val = .flowSequenceStart)
+    (h_off1_b : off + 1 < b) :
+    ∃ lo op cl interior, lo + 1 = a ∧ a ≤ b ∧
+      RecSeqEntry (op :: (interior ++ [cl])) ∧
+      op.val = .flowSequenceStart ∧ interior ≠ [] ∧
+      (tokens.toList.take (b + 1)).drop lo = op :: (interior ++ [cl]) := by
+  subst h_a
+  exact nestedSeq_recseqentry_locate_leaf_typed tokens off H b body
+    g.slice g.bound g.Hsz g.recBody h_open h_off1_b g.win_hi g.close g.typed
+
 /-- **The emission-spine-walk locator's `Nat.strongRecOn` DRIVER** —
     `(i'-b-B2c-nested-fbc-emission-locator-skeleton)`, R365, the SMALLEST-FIRST plumbing de-risk of the
     skeleton `nestedSeq_recseqentry_locate`.  Before wiring the whole recursion (dispatch + three arm
