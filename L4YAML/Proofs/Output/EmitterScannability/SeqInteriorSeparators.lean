@@ -1762,12 +1762,14 @@ theorem nestedSeq_recseqentry_locate_leaf_typed
     the FIXED target window `[a, b)` (the constants `Q` mentions, never the walk's `off`/`H`/`body`) and
     the WALKING window `off H body`.
 
-    The fields are the R354/R356-settled and R366-confirmed list PLUS the R368 `opener` field, EXCEPT
-    `FlowBodyWindow tokens off H` — the one field only the ADVANCE arm's `WellTyped`-supplier
-    (`…advance_welltyped`, R363) consumes — which is DEFERRED to the ADVANCE increment as an additive
-    extension of this own-type ([[ref-additive-parallel-type-over-shared-edit]]: build the new
-    structure up arm-by-arm rather than committing a field whose form is only confirmed when its
-    consumer arm lands).  The key R366 finding is encoded here: `typed : SeqTypedInterior tokens a b`
+    The fields are the R354/R356-settled and R366-confirmed list PLUS the R368 `opener` field PLUS the
+    R369-added `window : FlowBodyWindow tokens off H` — the WALKING-keyed field only the ADVANCE arm's
+    `WellTyped`-supplier (`…advance_welltyped`, R363) consumes, added now as an additive extension of this
+    own-type ([[ref-additive-parallel-type-over-shared-edit]]: the structure is built up arm-by-arm, the
+    field committed once its consumer's form is confirmed).  Unlike the window-ABSOLUTE fields it is keyed
+    on the WALKING `off`/`H`, so each recursion move RE-ESTABLISHES it (DESCEND via `WellTyped_subrange`,
+    ADVANCE via `flowBodyWindow_advance`) — it does NOT pass through.  The key R366 finding is encoded
+    here: `typed : SeqTypedInterior tokens a b`
     is keyed on the FIXED `[a, b)`, NOT the walking `off` — it is WINDOW-ABSOLUTE and so passes through
     every descend/advance UNCHANGED, the reason the LEAF could read it at `a = off + 1` without an
     `off`-origin floor field.  The R368 `opener` field (`flowBracketBalance tokens (a-1) a = 1`) is the
@@ -1803,6 +1805,14 @@ structure SeqLocateGuard (tokens : Array (Positioned YamlToken)) (a b : Nat)
   win_ab : a ≤ b
   /-- …and the target close is inside the walking right cut. -/
   win_hi : b < H
+  /-- the WALKING window `[off, H)` is a `FlowBodyWindow` — the R367-deferred field that only the
+      ADVANCE arm's `WellTyped`-supplier (`…advance_welltyped`, R363) consumes, now come due (its exact
+      form pinned by that consumer).  Unlike the window-ABSOLUTE fields above, this one is keyed on the
+      WALKING `off`/`H`, so each recursion move RE-ESTABLISHES it: DESCEND transports it down to the head
+      interior `[off+1, off+1+interior.length)` via `WellTyped_subrange` (the balanced descend sub-window
+      [[ref-type-blind-invariant-transports-via-converse-frame]]), ADVANCE re-frames it across the
+      consumed entry via `flowBodyWindow_advance`. -/
+  window : FlowBodyWindow tokens off H
 
 /-- **The LEAF disjunct of the locator's per-window step `h_step`, through the guard structure** —
     `(i'-b-B2c-nested-fbc-emission-locator-step-leaf)`, R367.  With `G` now a concrete `SeqLocateGuard`,
@@ -1973,6 +1983,19 @@ theorem nestedSeq_recseqentry_locate_step_descend
   have h_win_hi : b < off + 1 + interior.length :=
     seqTarget_close_lt_interiorEnd tokens a b off (off + 1 + interior.length)
       (by omega) (by omega) h_int_bal h_int_floor g.opener g.typed
+  -- the WALKING-keyed `window` field RE-ESTABLISHED at the descended interior `[off+1, off+1+|interior|)`:
+  -- a balanced descend sub-window of the carried parent `g.window`, so `WellTyped_subrange` transports
+  -- its typed fact down (the type-blind balance licenses the transport); the bounds are `omega` and the
+  -- balance/floor are the same `h_int_bal`/`h_int_floor` the `win_hi` brick already needed.
+  have h_window' : FlowBodyWindow tokens (off + 1) (off + 1 + interior.length) :=
+    { lo_ge := by have := g.window.lo_ge; omega
+      lo_lt_hi := by omega
+      hi_le := by have := g.window.hi_le; have := g.bound; omega
+      hi_lt := by have := g.window.hi_le; have := g.bound; omega
+      balanced := h_int_bal
+      dyck := h_int_floor
+      wellTyped := WellTyped_subrange tokens off (off + 1) (off + 1 + interior.length) H
+        (by omega) (by omega) (by have := g.bound; omega) g.Hsz g.window.wellTyped h_int_bal h_int_floor }
   exact ⟨off + 1, off + 1 + interior.length, interior, by omega,
     { domain := h_domain'
       recBody := h_rec_int
@@ -1984,7 +2007,8 @@ theorem nestedSeq_recseqentry_locate_step_descend
       opener := g.opener
       win_lo := by omega
       win_ab := g.win_ab
-      win_hi := h_win_hi }⟩
+      win_hi := h_win_hi
+      window := h_window' }⟩
 
 /-- **The emission-spine-walk locator's `Nat.strongRecOn` DRIVER** —
     `(i'-b-B2c-nested-fbc-emission-locator-skeleton)`, R365, the SMALLEST-FIRST plumbing de-risk of the
