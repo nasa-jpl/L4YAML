@@ -2760,4 +2760,148 @@ theorem rec_seq_body_nested_project (tokens : Array (Positioned YamlToken))
   seqWindowRecSeqBody tokens h_root_carrier lo hi h_win h_deep
     (seqEnclosed_of_seqPathAllSeq tokens lo h_path) h_close
 
+/-- **The SEQ-head CONS three-arm dispatch of the locator's per-window step `h_step`** —
+    `(i'-b-B2c-nested-fbc-emission-locator-skeleton-brick-d-seq-cons)`, R378, BRICK D (carved).  This is
+    the maximal-risk slice of `h_step` the blueprint flagged ("the four-way `cases h_e` × HEAD/CONS
+    tangle is the risk"): the CONS branch (`body = e ++ fe :: rest`) with a SEQ head
+    (`e = op :: (interior ++ [cl])`, non-empty interior).  All THREE move arms fire here — LEAF
+    (`a = off + 1`), DESCEND (`off + 1 < a < off + e.length`), ADVANCE (`off + e.length < a`) — wired to
+    the landed seams `…step_leaf` (R367), `…step_descend` (R369), `…step_advance` (R371), with the
+    boundary `a = off + e.length` excluded by C-ii (`…cons_boundary`, R377).
+
+    Two findings the proof embodies.  (1) **The feared "close-position bridge" is the SEPARATOR bridge
+    re-bracketed** ([[ref-rebracket-reuses-prefix-bridge]]): C-ii's `h_close` needs the head entry's
+    CLOSE `cl` at `off + interior.length + 1`, which looked like a new positional read.  But re-associate
+    `op :: (interior ++ [cl]) = (op :: interior) ++ cl :: rest'`; then `cl` is the FIRST token past the
+    `(op :: interior)` prefix, so `nestedSeq_recseqentry_locate_sep_pos` (index = prefix length) reads it
+    verbatim with `e := op :: interior` — no new bridge.  (2) **The dispatch is INLINE `omega`** (the
+    `move_trichotomy` shape, R350) keyed on `g.win_lo` + the C-ii `h_ne`, avoiding a `Tests/Guards`
+    dependency in the library.  The risky tangle landed in ONE pass because the arm seams were each sized
+    to exactly their per-arm need: LEAF/DESCEND/ADVANCE consume `g`'s fields verbatim, the only
+    reconciliation being the `e.length = interior.length + 2` length identity (one `simp`+`omega`).
+    Verified-but-unconsumed until the full `h_step` assembles the HEAD branch + the scalar/map shapes;
+    references no sorry site, frontier sorry count unchanged at 4. -/
+theorem nestedSeq_recseqentry_locate_seq_cons_step
+    (tokens : Array (Positioned YamlToken)) (a b off H : Nat)
+    (body rest interior : List (Positioned YamlToken))
+    (op cl fe : Positioned YamlToken)
+    (g : SeqLocateGuard tokens a b off H body)
+    (h_eq : body = (op :: (interior ++ [cl])) ++ fe :: rest)
+    (h_op : op.val = .flowSequenceStart) (h_cl : cl.val = .flowSequenceEnd)
+    (h_wb : WellBracketed interior) (h_rec : RecSeqBody interior)
+    (h_fe : fe.val = .flowEntry) (h_rest : RecSeqBody rest) :
+    (∃ lo op' cl' interior', lo + 1 = a ∧ a ≤ b ∧
+      RecSeqEntry (op' :: (interior' ++ [cl'])) ∧
+      op'.val = .flowSequenceStart ∧ interior' ≠ [] ∧
+      (tokens.toList.take (b + 1)).drop lo = op' :: (interior' ++ [cl']))
+    ∨ (∃ off' H' body', body'.length < body.length ∧
+      SeqLocateGuard tokens a b off' H' body') := by
+  -- head opener position
+  have h_pref_head : body = op :: ((interior ++ [cl]) ++ fe :: rest) := by rw [h_eq]; rfl
+  have h_off_open : tokens[off]!.val = .flowSequenceStart := by
+    rw [nestedSeq_recseqentry_locate_head_pos tokens body ((interior ++ [cl]) ++ fe :: rest) op off H
+      g.slice g.bound g.Hsz h_pref_head]
+    exact h_op
+  -- close position (via sep_pos with e := op :: interior, re-bracketing the entry), for the boundary
+  have h_pref_close : body = (op :: interior) ++ cl :: (fe :: rest) := by rw [h_eq]; simp
+  have h_close_tok : tokens[off + (op :: interior).length]! = cl :=
+    nestedSeq_recseqentry_locate_sep_pos tokens body (fe :: rest) (op :: interior) cl off H
+      g.slice g.bound g.Hsz h_pref_close
+  have h_close_val : tokens[off + (op :: interior).length]!.val = .flowSequenceEnd := by
+    rw [h_close_tok]; exact h_cl
+  have hbl : body.length = interior.length + rest.length + 3 := by
+    rw [h_eq]; simp only [List.length_append, List.length_cons, List.length_nil]; omega
+  have h_m_sz : off + (op :: interior).length < tokens.size := by
+    have hb := g.bound; have hH := g.Hsz
+    simp only [List.length_cons]
+    omega
+  have h_ne : a ≠ off + interior.length + 2 := by
+    have hcb := nestedSeq_recseqentry_locate_cons_boundary tokens a b off H
+      (off + (op :: interior).length) body g h_m_sz h_close_val
+    simp only [List.length_cons] at hcb
+    omega
+  -- dispatch (the move trichotomy is pure length arithmetic, inlined)
+  rcases (by have := g.win_lo; omega :
+      (a = off + 1) ∨ (off + 1 < a ∧ a < off + interior.length + 2)
+        ∨ (off + interior.length + 2 < a)) with h_leaf | ⟨h_d1, h_d2⟩ | h_adv
+  · -- LEAF
+    exact Or.inl (nestedSeq_recseqentry_locate_step_leaf tokens a b off H body g h_leaf h_off_open
+      (nestedSeq_recseqentry_locate_leaf_off1_b tokens a b off H body g h_leaf))
+  · -- DESCEND
+    exact Or.inr (nestedSeq_recseqentry_locate_step_descend tokens a b off H body (fe :: rest)
+      interior op cl g h_eq h_off_open h_wb h_rec h_d1 h_d2)
+  · -- ADVANCE
+    refine Or.inr (nestedSeq_recseqentry_locate_step_advance tokens a b off H body rest
+      (op :: (interior ++ [cl])) fe g h_eq ?_ h_fe h_rest ?_ ?_)
+    · exact RecSeqEntry.seq op cl interior h_op h_cl h_wb h_rec
+    · rw [nestedSeq_recseqentry_locate_sep_pos tokens body rest (op :: (interior ++ [cl])) fe off H
+        g.slice g.bound g.Hsz h_eq]
+      exact h_fe
+    · simp only [List.length_cons, List.length_append, List.length_nil]
+      omega
+
+/-- **The seqEmpty-head CONS dispatch of `h_step`** —
+    `(i'-b-B2c-nested-fbc-emission-locator-skeleton-brick-d-seqempty-cons)`, R378, BRICK D (carved).  The
+    empty-interior sibling of `nestedSeq_recseqentry_locate_seq_cons_step`: the head is an empty seq
+    `[op, cl]` (`RecSeqEntry.seqEmpty`, `e.length = 2`), so only LEAF (`a = off + 1`) and ADVANCE
+    (`off + 2 < a`) fire — DESCEND is structurally absent (no interior sub-window), its arm range
+    `off + 1 < a < off + 2` empty by `omega`.  The boundary `a = off + 2` is again excluded by C-ii at
+    the close `cl` (re-bracketed to `[op] ++ cl :: rest`, the `interior = []` case of the seq brick's
+    move).  Same seams (`…step_leaf`, `…step_advance`); verified-but-unconsumed; frontier holds at 4. -/
+theorem nestedSeq_recseqentry_locate_seqEmpty_cons_step
+    (tokens : Array (Positioned YamlToken)) (a b off H : Nat)
+    (body rest : List (Positioned YamlToken))
+    (op cl fe : Positioned YamlToken)
+    (g : SeqLocateGuard tokens a b off H body)
+    (h_eq : body = (op :: ([] ++ [cl])) ++ fe :: rest)
+    (h_op : op.val = .flowSequenceStart) (h_cl : cl.val = .flowSequenceEnd)
+    (h_fe : fe.val = .flowEntry) (h_rest : RecSeqBody rest) :
+    (∃ lo op' cl' interior', lo + 1 = a ∧ a ≤ b ∧
+      RecSeqEntry (op' :: (interior' ++ [cl'])) ∧
+      op'.val = .flowSequenceStart ∧ interior' ≠ [] ∧
+      (tokens.toList.take (b + 1)).drop lo = op' :: (interior' ++ [cl']))
+    ∨ (∃ off' H' body', body'.length < body.length ∧
+      SeqLocateGuard tokens a b off' H' body') := by
+  have h_pref_head : body = op :: (([] ++ [cl]) ++ fe :: rest) := by rw [h_eq]; rfl
+  have h_off_open : tokens[off]!.val = .flowSequenceStart := by
+    rw [nestedSeq_recseqentry_locate_head_pos tokens body (([] ++ [cl]) ++ fe :: rest) op off H
+      g.slice g.bound g.Hsz h_pref_head]
+    exact h_op
+  have h_pref_close : body = [op] ++ cl :: (fe :: rest) := by rw [h_eq]; simp
+  have h_close_tok : tokens[off + ([op] : List (Positioned YamlToken)).length]! = cl :=
+    nestedSeq_recseqentry_locate_sep_pos tokens body (fe :: rest) [op] cl off H
+      g.slice g.bound g.Hsz h_pref_close
+  have h_close_val : tokens[off + ([op] : List (Positioned YamlToken)).length]!.val
+      = .flowSequenceEnd := by
+    rw [h_close_tok]; exact h_cl
+  have hbl : body.length = rest.length + 3 := by
+    rw [h_eq]; simp only [List.nil_append, List.length_append, List.length_cons, List.length_nil]
+    omega
+  have h_m_sz : off + ([op] : List (Positioned YamlToken)).length < tokens.size := by
+    have hb := g.bound; have hH := g.Hsz
+    simp only [List.length_cons, List.length_nil]
+    omega
+  have h_ne : a ≠ off + 2 := by
+    have hcb := nestedSeq_recseqentry_locate_cons_boundary tokens a b off H
+      (off + ([op] : List (Positioned YamlToken)).length) body g h_m_sz h_close_val
+    simp only [List.length_cons, List.length_nil] at hcb
+    omega
+  rcases (by have := g.win_lo; omega :
+      (a = off + 1) ∨ (off + 1 < a ∧ a < off + 2) ∨ (off + 2 < a))
+      with h_leaf | ⟨h_d1, h_d2⟩ | h_adv
+  · -- LEAF
+    exact Or.inl (nestedSeq_recseqentry_locate_step_leaf tokens a b off H body g h_leaf h_off_open
+      (nestedSeq_recseqentry_locate_leaf_off1_b tokens a b off H body g h_leaf))
+  · -- middle arm is vacuous
+    omega
+  · -- ADVANCE
+    refine Or.inr (nestedSeq_recseqentry_locate_step_advance tokens a b off H body rest
+      (op :: ([] ++ [cl])) fe g h_eq ?_ h_fe h_rest ?_ ?_)
+    · exact RecSeqEntry.seqEmpty op cl h_op h_cl
+    · rw [nestedSeq_recseqentry_locate_sep_pos tokens body rest (op :: ([] ++ [cl])) fe off H
+        g.slice g.bound g.Hsz h_eq]
+      exact h_fe
+    · simp only [List.nil_append, List.length_cons, List.length_nil]
+      omega
+
 end L4YAML.Proofs.EmitterScannability
