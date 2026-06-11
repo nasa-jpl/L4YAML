@@ -1488,6 +1488,46 @@ theorem seqPathAllSeq_advance (tokens : Array (Positioned YamlToken)) (lo n : Na
     exact h.symm
   rw [h_split, btFold_append, h_fold, WellTyped_frame _ s h_wt_seg]
 
+/-- **The seq-head DESCEND seam of the emission-spine-walk locator** — `(i'-b-B2c-nested-fbc-emission-
+    locator-descend-seam)`, R361.  The standalone arm-callable the `Nat.strongRecOn` wrapper
+    `nestedSeq_recseqentry_locate` invokes in its DESCEND case when the head entry is a *seq* block
+    `op :: (interior ++ [cl])` and the target window start lands strictly INSIDE it.  Composing the two
+    landed bricks the seam is named for ("descend brick ▸ `seqPathAllSeq_descend`",
+    [[ref-compose-arm-seam-before-skeleton]]): `nestedSeq_recseqentry_locate_descend` (R353, the pure
+    drop-algebra slice re-base — the descended interior re-slices to `[off+1, off+1+interior.length)`)
+    and `seqPathAllSeq_descend` (R337, the all-seq-PATH domain preservation across the single
+    `.flowSequenceStart` PUSH).  Together they re-establish, at the descended base `off+1`, BOTH the
+    navigator's slice invariant AND its domain — the two non-mechanical facts the recursion's IH
+    consumes (the fit and `H' ≤ size` are arithmetic the wrapper does; `RecSeqBody interior` is the
+    head entry's stored `seq.h_rec` the wrapper holds from `cases e`).
+
+    The off-opener type `tokens[off]! = .flowSequenceStart` is taken as a hypothesis, IDENTICALLY to the
+    LEAF arm `nestedSeq_recseqentry_locate_leaf_full`'s `h_open` — the wrapper supplies both arms the
+    head-opener type from the same `cases e` `.seq` decomposition, so the seam never re-extracts the head
+    from the slice.  Mirrors R359's LEAF seam: compose the landed-brick arm's seam BEFORE the skeleton,
+    de-risking the DESCEND case's slice+domain composition in isolation.  Verified-but-unconsumed until
+    the wrapper threads it; references no sorry site, frontier sorry count unchanged at 4. -/
+theorem nestedSeq_recseqentry_locate_descend_step
+    (tokens : Array (Positioned YamlToken))
+    (body rest interior : List (Positioned YamlToken))
+    (op cl : Positioned YamlToken)
+    (off H : Nat)
+    (h_slice : body = (tokens.toList.take H).drop off)
+    (h_bound : off + body.length ≤ H)
+    (h_Hsz : H ≤ tokens.size)
+    (h_prefix : body = (op :: (interior ++ [cl])) ++ rest)
+    (h_off_open : tokens[off]!.val = .flowSequenceStart)
+    (h_domain : SeqPathAllSeq tokens off) :
+    interior = (tokens.toList.take (off + 1 + interior.length)).drop (off + 1)
+    ∧ SeqPathAllSeq tokens (off + 1) := by
+  refine ⟨nestedSeq_recseqentry_locate_descend tokens body rest interior op cl off H
+            h_slice h_bound h_prefix, ?_⟩
+  have hlen : 1 ≤ body.length := by
+    rw [h_prefix, List.length_append, List.length_cons]; omega
+  have h_off_H : off < H := by omega
+  have h_off_sz : off < tokens.size := by omega
+  exact seqPathAllSeq_descend tokens off h_domain h_off_sz h_off_open
+
 /-- **`SeqPathAllSeq` dominates `SeqEnclosed`** — the all-`true` path stack has TOP `true`, so the
     navigator's domain hypothesis is STRICTLY STRONGER than the immediate-enclosure fact the dispatch
     (`seqWindow_flowBodyContent`) consumes.  Lets the domain-restricted driver supply the dispatch's
