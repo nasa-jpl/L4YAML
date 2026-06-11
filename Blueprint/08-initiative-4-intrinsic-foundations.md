@@ -29689,3 +29689,65 @@ four-conjunct `G`; steps (2)–(6) of the 199th map follow in order. SMALLEST FI
 the leaf's `h_inner`/`h_floor` lifted as hypotheses (a from-located assembler, [[ref-from-located-assembler-direction]]),
 landing the recursion + dispatch + measure green and isolating the `G`→leaf-floor derivation as the final
 named residual.
+
+### Reflection 359 — a recursion's arms are NOT uniform in difficulty; before authoring the skeleton, AUDIT each arm (landed-brick vs needs-new-infra) and COMPOSE the landed-brick arms into standalone arm-callables first — the inter-brick SEAM is itself unproven content worth landing green before the skeleton tangles it with dispatch + measure
+
+Beginning to AUTHOR the `Nat.strongRecOn` wrapper `nestedSeq_recseqentry_locate` (the from-located
+assembler the previous next-step sized), an arm-by-arm audit of the recursion skeleton found the three
+arms are NOT equal-difficulty. LEAF and ADVANCE are compose-only (backed by landed bricks:
+`recseqentry_close_pin` + `nestedSeq_recseqentry_locate_leaf`; `nestedSeq_recseqentry_locate_advance` +
+`seqPathAllSeq_advance`). But the DESCEND arm hides a genuinely-hard sub-case: when the head entry is a
+`RecSeqEntry.map` (not a seq), the recursion cannot descend through it (the seq descend brick needs a
+`RecSeqBody` interior, which a map entry does not store), so the map-head case must be REFUTED. And the
+refutation is NOT the one-step `seqPathAllSeq_map_push_breaks` (the carried `SeqPathAllSeq tokens off` is
+BLIND to `tokens[off]`, and a map head CAN sit at an all-seq-path base — `[{...}]`): it needs a
+"map-frame-persists" argument (a pushed `false` frame stays on the stack until its matching close, so the
+window's seq-enclosure at `a-1` strictly inside the map is impossible) — infra that does NOT exist. So the
+full recursion is NOT a safe single increment: one arm needs new infra.
+
+**The move (compose the easy arms' seam first).** Rather than attempt the whole skeleton (and stall on the
+DESCEND map-refutation), COMPOSE the two landed analytical bricks of the LEAF arm into a single standalone
+callable `nestedSeq_recseqentry_locate_leaf_full` (R359, landed sorry-free, `NonemptyStructure.lean`). The
+genuine NEW content is the inter-brick SEAM: `recseqentry_close_pin`'s OUTPUT shape (the `.seq`
+decomposition + window identity `(op :: (interior ++ [cl])) = ((take H).drop off).take L` + close pin
+`b + 1 = off + L`) must be reshaped into `nestedSeq_recseqentry_locate_leaf`'s INPUT shape (the prefix
+decomposition `body = (op :: (interior ++ [cl])) ++ rest` + `h_b : b = off + L - 1`). The reshape is slice
+algebra — `body.take L = op :: (interior ++ [cl])` (from the window identity through `h_slice`), then
+`List.take_append_drop` splits `body` at `L` with `rest := body.drop L`, and `omega` reads `h_b` off the
+close pin. This seam was unproven and is exactly what the recursion's leaf case would otherwise have to
+discharge INLINE — tangled with the `cases`/`move_trichotomy` dispatch and the `decreasing_by` measure.
+Landing it standalone gets the seam green in isolation, and the recursion's leaf case becomes a one-line
+brick call.
+
+**Transferable rule.** A recursion's branch arms are heterogeneous: some are backed by already-landed
+bricks (compose-only), others need infra that does not yet exist. Before authoring the skeleton, AUDIT the
+arms — for each, name the bricks it would call and check they exist. If the arms differ (some landed, some
+not), do NOT attempt the whole skeleton in one increment (it stalls on the new-infra arm under the IRON
+RULE). Instead COMPOSE the landed-brick arms into standalone arm-callables first: the inter-brick SEAM
+(output-shape of brick A reshaped into input-shape of brick B) is itself unproven content — usually real
+slice/shape algebra — worth landing green in isolation, BEFORE the skeleton tangles it with dispatch +
+measure. The new-infra arm (here the DESCEND map-head refutation, needing a map-frame-persists lemma)
+becomes the next named increment, sharply isolated. Recorded as [[ref-compose-arm-seam-before-skeleton]]
+(sharpens [[ref-from-located-assembler-direction]] — the from-located assembler is the WHOLE recursion's
+factoring; this is its per-arm refinement: factor the EASY arms' seams out before the skeleton; and
+[[ref-structural-moves-complete-recursion]] — the "one positional move per constructor composition" arms
+are not equal-cost, audit them; complements [[ref-parametric-assembler-extraction]] — sometimes the
+primitives both exist and the unproven part is the SEAM between them, not a missing primitive).
+
+**Next step:** **(i'-b-B2c-nested-fbc-emission-locator-descend-mapframe, AUTHOR the DESCEND map-head
+refutation infra — the one new-infra arm the R359 audit isolated)** — the wrapper's LEAF arm is now a
+single callable (`nestedSeq_recseqentry_locate_leaf_full`, R359) and the ADVANCE arm is backed by landed
+bricks (`nestedSeq_recseqentry_locate_advance` + `seqPathAllSeq_advance`, R357). The remaining gap before
+the `Nat.strongRecOn` skeleton can be authored is the DESCEND arm's map-head REFUTATION: when the head
+entry at the current base is a `RecSeqEntry.map` and the target window start `a` lands strictly inside it
+(`off+1 < a < off+e.length`), derive `False` from the window's seq-enclosure. SMALLEST FIRST — PROBE before
+authoring: the needed lemma is roughly "a `.flowMappingStart` at `p` whose matching close is `> q` forces
+`¬ SeqPathAllSeq tokens q` (the pushed `false` frame persists on the `btFold` stack until its close)";
+`#guard`-probe it on `[{a: [1]}]` (the window inside the nested seq is NOT all-seq-path because the map
+frame sits between) BEFORE committing — confirm the `btFold` stack genuinely carries a `false` past `a`.
+The window's own enclosure (the consumed `SeqEnclosed tokens a` / `SeqPathAllSeq tokens (a-1)`, R355) is the
+hypothesis the refutation contradicts. Once the map-frame-persists lemma lands, the skeleton is pure
+plumbing: `cases h_rec` (`single`/`cons`), `move_trichotomy` dispatch, LEAF → `nestedSeq_recseqentry_locate_leaf_full`,
+DESCEND → seq-head via the refutation + `nestedSeq_recseqentry_locate_descend` + `seqPathAllSeq_descend`,
+ADVANCE → `nestedSeq_recseqentry_locate_advance` + `seqPathAllSeq_advance`, `decreasing_by omega`. KEEP the
+four-conjunct `G`; steps (2)–(6) of the 199th map follow in order.
