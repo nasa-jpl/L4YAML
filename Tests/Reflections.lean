@@ -89,6 +89,7 @@ import Tests.Reflections.SlicePositionalBridgeGetElemQ
 import Tests.Reflections.HeadBlindCoreServesBothArms
 import Tests.Reflections.TargetAnchoredTwinRefutesWalkBreak
 import Tests.Reflections.DeltaGenericBoundaryFamily
+import Tests.Reflections.RebracketReusesPrefixBridge
 
 /-!
 # Reflections — runnable proof-engineering demonstrations
