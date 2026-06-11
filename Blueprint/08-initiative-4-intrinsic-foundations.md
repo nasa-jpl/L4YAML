@@ -29772,7 +29772,62 @@ substrate; builds on [[ref-near-leaf-mirror-sheds-machinery]] (mirror by DROPPIN
 [[ref-backward-locator-mirrors-forward]] (the de-risk's "needs new infra" was pessimistic); applies
 [[ref-metric-bridge-is-composition]] (the serving lemma already existed for the adjacent consumer)).
 
-**Next step:** **(i'-b-B2c-nested-fbc-emission-locator-skeleton, AUTHOR the `Nat.strongRecOn` wrapper
+### Reflection 361 — a recursion seam comes in TWO shapes: a SERIAL reshape (A's output → B's input) or a PARALLEL fusion (two bricks each producing an independent fact about the SAME descended state); the parallel seam's discipline is to fuse exactly the NON-mechanical facts and DELEGATE the `omega`/`cases`-derivable residue to the skeleton
+
+Continuing the [[ref-compose-arm-seam-before-skeleton]] programme (compose each landed-brick arm's seam as
+a standalone green increment BEFORE the `Nat.strongRecOn` skeleton wires them), R361 composed the **seq-head
+DESCEND seam** `nestedSeq_recseqentry_locate_descend_step` (`SeqInteriorSeparators.lean`, sorry-free, build
+green 618 jobs, frontier holds at 4). It revealed that not all seams have the SAME shape:
+
+- **The LEAF seam (R359) was a SERIAL reshape.** `nestedSeq_recseqentry_locate_leaf_full` fed
+  `recseqentry_close_pin`'s OUTPUT (the `.seq` decomposition + window identity) into
+  `nestedSeq_recseqentry_locate_leaf`'s INPUT (the prefix decomposition) — the unproven content was the
+  slice/shape algebra RESHAPING A's output into B's input (`List.take_append_drop`, the `h_b` `omega`).
+  One brick feeds the next.
+
+- **The DESCEND seam (R361) is a PARALLEL fusion.** Its two bricks do NOT feed each other — they each
+  produce an INDEPENDENT fact about the same descended window `[off+1, …)`:
+  `nestedSeq_recseqentry_locate_descend` (R353) yields the *structural slice invariant* (pure drop-algebra,
+  the interior re-slices to `[off+1, off+1+interior.length)`), and `seqPathAllSeq_descend` (R337) yields the
+  *stack-fold domain* (`SeqPathAllSeq tokens (off+1)`, the all-seq-PATH preservation across the
+  `.flowSequenceStart` push). The seam is their CONJUNCTION over the shared descended state, not a reshape.
+
+The transferable sharpening is the **parallel seam's selection discipline**: a descended-window invariant
+bundle decomposes into facts that NEED a landed lemma (here slice-invariant ← drop-algebra brick; domain ←
+stack-fold lemma — neither re-derivable by `omega`/`cases`) and MECHANICAL facts the skeleton re-derives
+trivially (fit `off+1+interior.length ≤ H'` is equality; `H' ≤ size` is `omega`; `RecSeqBody interior` is
+the head entry's stored `seq.h_rec` the skeleton holds from `cases e`). The seam fuses EXACTLY the
+non-mechanical facts and DELEGATES the rest — so the seam's OUTPUT is the minimal pair `(slice', domain')`
+that the skeleton's DESCEND-seq arm cannot reconstruct itself. (The off-opener type
+`tokens[off]! = .flowSequenceStart` is taken as a hypothesis identically to the LEAF arm's `h_open` — the
+skeleton supplies both arms the head-opener type from the one `cases e` `.seq` decomposition, so neither seam
+re-extracts the head from the slice.) This refines [[ref-compose-arm-seam-before-skeleton]]: audit each arm,
+THEN classify its seam (serial vs parallel) and, for a parallel seam, fuse only the non-mechanical facts.
+
+**Next step:** **(i'-b-B2c-nested-fbc-emission-locator-advance-seam, COMPOSE the ADVANCE seam
+`nestedSeq_recseqentry_locate_advance_step` — the last arm seam before the skeleton)** — three of the four
+arm seams are now composed standalone: LEAF → `nestedSeq_recseqentry_locate_leaf_full` (R359), DESCEND
+seq-head → `nestedSeq_recseqentry_locate_descend_step` (R361), DESCEND map-head → REFUTED by
+`seqPathAllSeq_map_frame_persists` (R360, no seam — a vacuous arm). The remaining seam is ADVANCE: compose
+`nestedSeq_recseqentry_locate_advance` (R353, the tail slice re-base to `off+e.length+1`) with
+`seqPathAllSeq_advance` (R357, the FRAME domain preservation). Unlike the DESCEND seam, `seqPathAllSeq_advance`
+demands an EXTRA hypothesis `h_wt_seg : WellTyped ((take n).drop lo)` — the consumed head-entry-plus-separator
+segment `[off, off+e.length+1)` must be `WellTyped` (balanced, returns the fold to the same stack). That
+`WellTyped` discharge is the ADVANCE seam's distinctive NON-mechanical content (the parallel-seam analogue of
+the DESCEND seam's two-fact fusion, with a third fused fact): the head entry `e` is a `RecSeqEntry` (a single
+balanced bracket pair ⇒ `WellTyped e`) and the `.flowEntry` separator has `flowBracketDelta = 0`, so the
+segment `e ++ [fe]` returns to depth `0` — find or land the `RecSeqEntry e → WellTyped e` bridge + the
+separator's delta-`0` frame, fuse with the advance brick + `seqPathAllSeq_advance`, producing the descended
+`(slice', domain')` pair at base `off+e.length+1`. SMALLEST-FIRST: PROBE whether a `RecSeqEntry → WellTyped`
+bridge already exists (the `wrap_*`/`EntrySafe` family in `WellBracketed.lean`) before authoring it, per
+[[ref-metric-bridge-is-composition]]. With all four arm seams composed, the skeleton collapses to: `cases
+h_rec`/`cases e` + `move_trichotomy off e.length a` dispatch + the four seam calls + `decreasing_by omega` +
+the per-window `b < H` window-bound preservation (the lone remaining analytical thread — `b` stays inside the
+descended right cut because the target entry nests strictly inside the seq head). KEEP the four-conjunct `G`;
+the map mirror (`RecMapBody` axis) and `flowSubrangesOk_of_window_producers` → the two `FlowSubrangesOk`
+sorries follow.
+
+**Superseded next step (R360, kept for the record):** **(i'-b-B2c-nested-fbc-emission-locator-skeleton, AUTHOR the `Nat.strongRecOn` wrapper
 `nestedSeq_recseqentry_locate` — all three arms now landed)** — the audit's three arms are ALL backed now:
 LEAF → `nestedSeq_recseqentry_locate_leaf_full` (R359), ADVANCE → `nestedSeq_recseqentry_locate_advance` +
 `seqPathAllSeq_advance` (R357), DESCEND seq-head → `nestedSeq_recseqentry_locate_descend` +
