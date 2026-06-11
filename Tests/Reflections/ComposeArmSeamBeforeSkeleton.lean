@@ -1,5 +1,5 @@
 /-!
-# Reflection 359 — a recursion's branch ARMS are NOT uniform in difficulty; AUDIT each arm before authoring the skeleton, COMPOSE the landed-brick arms' SEAMS first, and defer the new-infra arm
+# Reflections 359 & 361 — a recursion's branch ARMS are NOT uniform in difficulty; AUDIT each arm before authoring the skeleton, COMPOSE the landed-brick arms' SEAMS first (each its own green increment), and defer the new-infra arm. A seam is SERIAL (A's output → B's input, R359) or PARALLEL (two independent facts about the same descended state, fused; R361)
 
 Self-contained (core Lean, no `L4YAML` import) toy model of the move found while authoring the
 emission-spine-walk wrapper `nestedSeq_recseqentry_locate`.
@@ -69,6 +69,34 @@ theorem leaf_arm (ws : List Nat) (k : Nat) (pre : List Nat)
   obtain ⟨h_take', _⟩ := producer ws k pre h_take h_k
   exact consumer ws pre (ws.drop pre.length) (seam ws pre h_take')
 
+/-! ## R361 — a seam comes in TWO shapes: the LEAF seam above was SERIAL (A's output → B's input);
+    the DESCEND seam is PARALLEL (two bricks each producing an INDEPENDENT fact about the same
+    descended state, fused as a conjunction).  Fuse only the NON-mechanical facts; delegate the rest. -/
+
+/-- **Parallel brick 1 — the structural slice invariant** (`nestedSeq_recseqentry_locate_descend`
+    analogue, drop-algebra).  Re-bases the descended window one step: `(xs.drop off).drop 1 =
+    xs.drop (off+1)`.  Independent of the domain brick. -/
+theorem brick_slice (xs : List Nat) (off : Nat) :
+    (xs.drop off).drop 1 = xs.drop (off + 1) := by
+  rw [List.drop_drop]
+
+/-- **Parallel brick 2 — the stack-fold domain** (`seqPathAllSeq_descend` analogue).  Pushing a `true`
+    frame onto an all-`true` stack keeps it all-`true`.  Independent of the slice brick — it reads the
+    domain, not the slice. -/
+theorem brick_domain (s : List Bool) (h_all : s.all (· == true) = true) :
+    (true :: s).all (· == true) = true := by
+  rw [List.all_cons, h_all]; rfl
+
+/-- **The composed seq-head DESCEND seam** — `nestedSeq_recseqentry_locate_descend_step` analogue.  A
+    PARALLEL fusion: `brick_slice` and `brick_domain` do NOT feed each other; each produces an INDEPENDENT
+    fact about the descended state `(off+1, true :: s)`, fused as a conjunction.  The mechanical residue
+    (the fit `off+1 ≤ off+1`, a `Nat.le_refl`, the skeleton's own `omega`) is DELEGATED — the seam returns
+    ONLY the two non-mechanical facts the skeleton's DESCEND arm cannot reconstruct itself. -/
+theorem parallel_seam (xs : List Nat) (off : Nat) (s : List Bool)
+    (h_all : s.all (· == true) = true) :
+    ((xs.drop off).drop 1 = xs.drop (off + 1)) ∧ (true :: s).all (· == true) = true :=
+  ⟨brick_slice xs off, brick_domain s h_all⟩
+
 /-! ## The NEW-INFRA arm — needs an EXTERNAL witness the compose-only bricks cannot supply -/
 
 /-- A head is a seq or a map (the `RecSeqEntry.seq` / `RecSeqEntry.map` dispatch). -/
@@ -95,6 +123,12 @@ theorem hard_arm (h : Head) (h_no_map : h ≠ Head.map) : h = Head.seq := by
 -- the NEW-INFRA arm needs an external witness — `seq ≠ map` is decidable but the WITNESS is not
 -- recoverable from the producer/consumer data (it is the deferred obligation):
 #guard decide (Head.seq ≠ Head.map)
+-- R361 PARALLEL seam — the two bricks produce INDEPENDENT facts about the descended state:
+-- (1) the slice re-bases (`drop_drop`), (2) the all-`true` domain survives the `true` push:
+#guard (([10, 20, 30, 40] : List Nat).drop 1).drop 1 == ([10, 20, 30, 40] : List Nat).drop 2
+#guard ((true :: [true, true]).all (· == true)) == true
+-- NEGATIVE — a `false` push (a map head) does NOT survive (the domain brick would not fire):
+#guard ((false :: [true, true]).all (· == true)) == false
 
 /-! ## Concrete witnesses -/
 
@@ -106,5 +140,9 @@ example : ([1, 2, 3, 4] : List Nat) = [1, 2] ++ ([1, 2, 3, 4] : List Nat).drop 2
   seam [1, 2, 3, 4] [1, 2] (by decide)
 -- the hard arm fires only WITH the external witness — the deferred obligation:
 example : Head.seq = Head.seq := hard_arm Head.seq (by decide)
+-- the R361 parallel seam fuses the two independent facts about the descended state:
+example : ((([10, 20, 30, 40] : List Nat).drop 1).drop 1 = ([10, 20, 30, 40] : List Nat).drop 2)
+    ∧ (true :: [true, true]).all (· == true) = true :=
+  parallel_seam [10, 20, 30, 40] 1 [true, true] (by decide)
 
 end Tests.Reflections.ComposeArmSeamBeforeSkeleton
