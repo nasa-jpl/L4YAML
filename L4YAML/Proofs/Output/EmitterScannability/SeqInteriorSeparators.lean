@@ -1587,6 +1587,60 @@ theorem nestedSeq_recseqentry_locate_advance_step
   rw [← h_seg] at h_wt_seg
   exact seqPathAllSeq_advance tokens off (off + e.length + 1) h_domain (by omega) h_wt_seg
 
+/-- **The ADVANCE arm's `WellTyped` supplier of the emission-spine-walk locator** —
+    `(i'-b-B2c-nested-fbc-emission-locator-advance-welltyped)`, the LAST content brick before the
+    `Nat.strongRecOn` skeleton.  The ADVANCE seam `nestedSeq_recseqentry_locate_advance_step` (R362)
+    THREADS `WellTyped (e ++ [fe])` rather than discharging it, because the R362 probe refuted the
+    `RecSeqEntry e → WellTyped e` bridge (`WellBracketed` is type-blind, admits the mistyped `{ [ } }`).
+    This brick is the discharge the seam deferred: it PRODUCES `WellTyped (e ++ [fe])` at the dispatch
+    site from the wrapper's `FlowBodyWindow` guard.
+
+    The de-risk that the skeleton's SMALLEST-FIRST next-step posed — "does the wrapper's `RecSeqBody body`
+    window site sit under a global `WellTyped`?" — resolves YES: the wrapper's four-conjunct `G` carries
+    `FlowBodyWindow tokens off H`, whose `.wellTyped` field IS `WellTyped ((tokens.toList.take H).drop off)`
+    (the whole-window typed fact) and whose `.dyck` field is the Dyck floor.  The type-blind balance
+    invariant cannot CREATE the typed fact but it can LICENSE its TRANSPORT
+    ([[ref-type-blind-invariant-transports-via-converse-frame]]): `WellTyped_subrange` carries the
+    whole-window `WellTyped` DOWN to the balanced-cut prefix `[off, off+e.length+1)` given the dispatch's
+    `flowBracketBalance tokens off (off+e.length+1) = 0` (the separator sits at depth `0`).  The cut prefix
+    is EXACTLY the entry-plus-separator `e ++ [fe]` (the slice bridge `h_seg`, lifted verbatim from the
+    advance seam), so the produced fact lands in the seam's STRUCTURAL form, ready to thread.
+
+    So no preceding frame-transport brick is owed — the skeleton supplies the ADVANCE arm's typed fact
+    inline, exactly as `seqWindowRecSeqBody` already does at its own `m+1` cut (`WellTyped_subrange` from
+    `h_win.wellTyped` + `h_bal_m1`).  Mirrors the leaf/descend/advance seams' discipline
+    ([[ref-compose-arm-seam-before-skeleton]]): compose the last standalone arm-callable BEFORE the
+    skeleton tangles it with dispatch + measure.  Verified-but-unconsumed until the wrapper threads it;
+    references no sorry site, frontier sorry count unchanged at 4. -/
+theorem nestedSeq_recseqentry_locate_advance_welltyped
+    (tokens : Array (Positioned YamlToken))
+    (body rest e : List (Positioned YamlToken)) (fe : Positioned YamlToken)
+    (off H : Nat)
+    (h_slice : body = (tokens.toList.take H).drop off)
+    (h_bound : off + body.length ≤ H)
+    (h_prefix : body = e ++ fe :: rest)
+    (h_win : FlowBodyWindow tokens off H)
+    (h_bal0 : flowBracketBalance tokens off (off + e.length + 1) = 0) :
+    WellTyped (e ++ [fe]) := by
+  have h_blen : e.length + 1 ≤ body.length := by
+    rw [h_prefix, List.length_append, List.length_cons]; omega
+  have h_n_le_H : off + e.length + 1 ≤ H := by omega
+  have h_seg : (tokens.toList.take (off + e.length + 1)).drop off = e ++ [fe] := by
+    have h_take_take : tokens.toList.take (off + e.length + 1)
+        = (tokens.toList.take H).take (off + e.length + 1) := by
+      rw [List.take_take, Nat.min_eq_left h_n_le_H]
+    rw [h_take_take, List.drop_take, ← h_slice, h_prefix]
+    have h_sub : off + e.length + 1 - off = e.length + 1 := by omega
+    rw [h_sub, List.take_append]
+    congr 1
+    · exact List.take_of_length_le (by omega)
+    · have : e.length + 1 - e.length = 1 := by omega
+      rw [this]; simp
+  rw [← h_seg]
+  exact WellTyped_subrange tokens off off (off + e.length + 1) H
+    (Nat.le_refl off) (by omega) h_n_le_H (Nat.le_of_lt h_win.hi_lt) h_win.wellTyped h_bal0
+    (fun p hp1 hp2 => h_win.dyck p hp1 (by omega))
+
 /-- **`SeqPathAllSeq` dominates `SeqEnclosed`** — the all-`true` path stack has TOP `true`, so the
     navigator's domain hypothesis is STRICTLY STRONGER than the immediate-enclosure fact the dispatch
     (`seqWindow_flowBodyContent`) consumes.  Lets the domain-restricted driver supply the dispatch's
