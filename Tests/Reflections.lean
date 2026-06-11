@@ -85,6 +85,7 @@ import Tests.Reflections.AdjacentOriginReconstructs
 import Tests.Reflections.GuardStructureArmByArm
 import Tests.Reflections.StrictContainmentNeedsOpener
 import Tests.Reflections.AdditiveFieldCostByKeying
+import Tests.Reflections.SlicePositionalBridgeGetElemQ
 
 /-!
 # Reflections — runnable proof-engineering demonstrations
