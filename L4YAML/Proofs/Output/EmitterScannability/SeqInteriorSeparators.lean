@@ -3233,4 +3233,66 @@ theorem nestedSeq_recseqentry_locate_map_cons_step
     · simp only [List.length_cons, List.length_append, List.length_nil]
       omega
 
+/-- **The locator's per-window step `h_step`, assembled** —
+    `(i'-b-B2c-nested-fbc-emission-locator-skeleton-brick-d-assemble)`, R384, BRICK D (assembly).  The
+    fan-out that folds the eight landed cells into the single hypothesis `seqLocateRecDriver` consumes:
+    at every window `SeqLocateGuard tokens a b off H body`, either the seq-entry deliverable `Q` is found
+    (`Or.inl`) or the body strictly shrinks to a recursive sub-window (`Or.inr`).
+
+    The proof is a GLUE-FREE 2×4 dispatch — `recseqbody_head_or_cons g.recBody` splits HEAD (`body = e`,
+    a separator-free `single`) from CONS (`body = e ++ fe :: rest`), and `cases h_e` splits the
+    `RecSeqEntry` shape (scalar / seqEmpty / seq / map).  No reconciliation glue: each cell was carved
+    so that its leading hypothesis `h_eq : body = <pattern>` is EXACTLY the equation `cases`'s
+    index-substitution produces ([[ref-carve-leaves-to-eliminator-output]]) — the scalar constructor
+    substitutes `e := [t]`, so the reverted `h_eq : body = e` re-emerges as `body = [t]`, the seq
+    constructor as `body = op :: (interior ++ [cl])`, etc., each matching its cell verbatim.  The CONS
+    siblings `h_fe`/`h_rest` do NOT depend on the eliminated index `e`, so `cases h_e` leaves them
+    un-reverted and they slot straight into the cell calls.  Each branch is one `exact <cell> …` over
+    the post-`cases` context variables — the assembler is the INVERSE of the carve.
+
+    With this, the per-window step is one hypothesis of the shape `seqLocateRecDriver` wants
+    (`G := SeqLocateGuard tokens a b`, `Q :=` the seq-entry existential).  The ROOT SEED `h_root` (the
+    descent's debt: the strict `win_ab`, the window-absolute `path`, and `opener`/`typed`/`close`/`window`
+    at the top span — [[ref-root-seed-discriminator-not-from-gate]]) remains before
+    `nestedSeq_recseqentry_locate := seqLocateRecDriver … hstep … h_root` lands.  Verified-but-unconsumed;
+    frontier sorry count unchanged at 4. -/
+theorem nestedSeq_recseqentry_locate_hstep
+    (tokens : Array (Positioned YamlToken)) (a b : Nat) :
+    ∀ off H body, SeqLocateGuard tokens a b off H body →
+      (∃ lo op' cl' interior', lo + 1 = a ∧ a ≤ b ∧
+        RecSeqEntry (op' :: (interior' ++ [cl'])) ∧
+        op'.val = .flowSequenceStart ∧ interior' ≠ [] ∧
+        (tokens.toList.take (b + 1)).drop lo = op' :: (interior' ++ [cl']))
+      ∨ (∃ off' H' body', body'.length < body.length ∧
+        SeqLocateGuard tokens a b off' H' body') := by
+  intro off H body g
+  rcases recseqbody_head_or_cons g.recBody with
+    ⟨e, _h_ne, h_e, _h_head, h_eq⟩ | ⟨e, fe, rest, _h_ne, h_e, _h_head, h_fe, h_rest, h_eq⟩
+  · -- HEAD branch (body = e, no separator): scalar/seqEmpty too short (omega), seq/map saturation-cleaved
+    cases h_e with
+    | scalar t c s ht =>
+        exact nestedSeq_recseqentry_locate_scalar_head_step tokens a b off H body t g h_eq
+    | seqEmpty op cl h_op h_cl =>
+        exact nestedSeq_recseqentry_locate_seqEmpty_head_step tokens a b off H body op cl g h_eq
+    | seq op cl interior h_op h_cl h_wb h_rec =>
+        exact nestedSeq_recseqentry_locate_seq_head_step tokens a b off H body interior op cl
+          g h_eq h_op h_cl h_wb h_rec
+    | map op cl interior h_op h_cl h_wb =>
+        exact nestedSeq_recseqentry_locate_map_head_step tokens a b off H body interior op cl
+          g h_eq h_op h_cl h_wb
+  · -- CONS branch (body = e ++ fe :: rest): each head's three-arm dispatch into the carved CONS cells
+    cases h_e with
+    | scalar t c s ht =>
+        exact nestedSeq_recseqentry_locate_scalar_cons_step tokens a b off H body rest t fe c s
+          g h_eq ht h_fe h_rest
+    | seqEmpty op cl h_op h_cl =>
+        exact nestedSeq_recseqentry_locate_seqEmpty_cons_step tokens a b off H body rest op cl fe
+          g h_eq h_op h_cl h_fe h_rest
+    | seq op cl interior h_op h_cl h_wb h_rec =>
+        exact nestedSeq_recseqentry_locate_seq_cons_step tokens a b off H body rest interior op cl fe
+          g h_eq h_op h_cl h_wb h_rec h_fe h_rest
+    | map op cl interior h_op h_cl h_wb =>
+        exact nestedSeq_recseqentry_locate_map_cons_step tokens a b off H body rest interior op cl fe
+          g h_eq h_op h_cl h_wb h_fe h_rest
+
 end L4YAML.Proofs.EmitterScannability
