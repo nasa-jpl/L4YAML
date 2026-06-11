@@ -29885,32 +29885,79 @@ sibling over the same framing); the seam-before-skeleton discipline is [[ref-com
 (the ADVANCE arm had TWO content pieces — consume-seam and produce-supplier — both landed standalone before
 the skeleton).
 
+### Reflection 364 — demoting a recursion's dispatch from METRIC-keyed to STRUCTURE-keyed does not delete a downstream arm's metric fact; the fact migrates from "dispatch byproduct" to "structural derivation", and that derivation already exists as an inline block inside the metric-keyed SIBLING — lift it to a standalone brick
+
+R350 found the emission-spine-walk locator's branch dispatch is pure LENGTH ARITHMETIC (`move_trichotomy`,
+`omega` on `a` vs `off+1` / `off+e.length`), "balance demoted to the correctness side, never the decision."
+That demotion left an open question the skeleton's SMALLEST-FIRST de-risk had to settle: the ADVANCE arm's
+`WellTyped` supplier (R363) consumes a hypothesis `flowBracketBalance tokens off (off+e.length+1) = 0` (the
+depth-`0` cut). In the *metric-keyed* sibling `seqWindowRecSeqBody`, the analogous fact `h_bal_m1` falls out
+of the dispatch FOR FREE — the dispatch LOCATES the separator `m` by `flowBracketBalance lo m = 0`, then
+adds the comma's delta-`0` (`SeqInteriorSeparators.lean:1899`). The locator's length-arithmetic dispatch
+makes NO such balance call, so where does its ADVANCE cut fact come from?
+
+**R364's answer: re-source it STRUCTURALLY, and the derivation is already written.** The cut fact does not
+depend on HOW the dispatch decided — it is determined by the ADVANCE arm's structural data: the head entry
+`e` is a complete `RecSeqEntry` (so `pbalance e = 0` via `RecSeqEntry.toWellBracketed`), and the `.flowEntry`
+separator `fe` has `flowBracketDelta = 0`, so the entry-plus-separator `e ++ [fe]` is balanced
+(`pbalance = 0`), which `flowBracketBalance_eq_pbalance` transports to the positional
+`flowBracketBalance tokens off (off+e.length+1)`. This is EXACTLY the `h_bal_sep` block already proven inline
+inside the metric-keyed sibling `recseqbody_advance` (`NonemptyStructure.lean:1169`). R364 lifts that block to
+a standalone brick `nestedSeq_recseqentry_locate_advance_balance` keyed on the locator's slice frame
+(`h_slice`/`h_bound`/`h_prefix`) instead of the sibling's `h_eq` — the last non-mechanical dispatch piece
+between the landed arm seams (LEAF R359, DESCEND R361, ADVANCE consume R362 + WellTyped supplier R363) and
+the closed recursion. (`SeqInteriorSeparators.lean`, sorry-free, module green 82, full build green 620,
+frontier holds at 4.)
+
+**Transferable.** When you swap a recursion's dispatch from metric-keyed (a balance/measure decides the
+branch) to structure-keyed (a length/shape trichotomy decides it), audit every downstream arm for a metric
+fact the OLD dispatch produced as a byproduct. That fact does not vanish — the metric is still determined by
+the arm's structural data (a complete entry is a balanced unit; a separator has a known delta), independent
+of the dispatch's decision procedure. And the derivation is almost never new: the metric-keyed SIBLING that
+the new recursion replaces already proved it as an inline block of its own proof. Locate that block, lift it
+to a standalone brick keyed on the new recursion's frame, and the dispatch is closed. This is the dispatch
+dual of [[ref-metric-bridge-is-composition]] (a feared metric bridge is already a theorem — here a feared
+dispatch byproduct is already an inline block); it operationalises R350's "balance demoted to the correctness
+side" by showing the demoted fact re-enters via STRUCTURE, not the decision; and it is the metric analogue of
+[[ref-deferred-typed-fact-in-guard-via-sibling]] (there the deferred TYPED fact lived in the guard + a
+sibling's transport; here the deferred METRIC fact lives in the structure + a sibling's inline block).
+Recorded as [[ref-demoted-dispatch-metric-resourced-from-structure]].
+
+**Superseded next step (R363, kept for the record):** **(i'-b-B2c-nested-fbc-emission-locator-skeleton, AUTHOR the `Nat.strongRecOn` wrapper
+`nestedSeq_recseqentry_locate`)** *(its SMALLEST-FIRST de-risk — the DISPATCH's balance-`0` cut fact — is now RESOLVED + LANDED by R364 as `nestedSeq_recseqentry_locate_advance_balance`; the dispatch is closed, the skeleton is pure plumbing.)*
+
 **Next step:** **(i'-b-B2c-nested-fbc-emission-locator-skeleton, AUTHOR the `Nat.strongRecOn` wrapper
-`nestedSeq_recseqentry_locate` — ALL content bricks now landed, the skeleton is PURE plumbing)** — the
-skeleton's de-risk (R363) is RESOLVED: it is a single green increment with NO preceding frame-transport brick
-owed. Every arm's content is backed standalone: LEAF → `nestedSeq_recseqentry_locate_leaf_full` (R359),
-DESCEND seq-head → `nestedSeq_recseqentry_locate_descend_step` (R361), DESCEND map-head → REFUTED by
-`seqPathAllSeq_map_frame_persists` (R360, no seam — a vacuous arm), ADVANCE → the consume-seam
-`nestedSeq_recseqentry_locate_advance_step` (R362) PLUS the produce-supplier
-`nestedSeq_recseqentry_locate_advance_welltyped` (R363, which builds the seam's threaded `WellTyped (e ++ [fe])`
-from the carried `FlowBodyWindow.wellTyped` + `.dyck` via `WellTyped_subrange`, given the dispatch's
-`flowBracketBalance tokens off (off+e.length+1) = 0`). So the skeleton has NOTHING left to prove analytically
-except the dispatch/measure plumbing.
+`nestedSeq_recseqentry_locate` — every analytical piece is now landed, ASSEMBLE the recursion)** — R364 closed
+the last non-mechanical piece: the ADVANCE arm's balance-`0` cut fact
+`flowBracketBalance tokens off (off+e.length+1) = 0` is `nestedSeq_recseqentry_locate_advance_balance`
+(`SeqInteriorSeparators.lean`, sourced structurally from `RecSeqEntry e` + the `.flowEntry` separator). So the
+full arm roster is backed standalone — LEAF → `nestedSeq_recseqentry_locate_leaf_full` (R359), DESCEND seq-head
+→ `nestedSeq_recseqentry_locate_descend_step` (R361), DESCEND map-head → REFUTED by
+`seqPathAllSeq_map_frame_persists` (R360, a vacuous arm), ADVANCE → balance brick R364 → WellTyped supplier
+`nestedSeq_recseqentry_locate_advance_welltyped` (R363) → consume-seam
+`nestedSeq_recseqentry_locate_advance_step` (R362) — and the skeleton has NOTHING left to prove analytically.
 
 Form (per the `Nat.strongRecOn` idiom, generalising over `body.length` via a helper
 `∀ n off H body, body.length = n → hyps → goal`): `recseqbody_head_or_cons h_rec` splits `single` (the window
-IS one entry → LEAF arm) vs `cons` (`body = e ++ fe :: rest` → dispatch on where the target start `a` sits:
-strictly INSIDE the head entry `e` → DESCEND-seq via `_descend_step` + map-head REFUTATION, or PAST it →
-ADVANCE via `_advance_welltyped` feeding `_advance_step`); `decreasing_by omega` on `rest.length < body.length`.
-KEEP the four-conjunct `G` (`FlowBodyWindow ∧ FlowBodyContentDeep ∧ SeqEnclosed ∧ close`), inherited from
-`seqWindowRecSeqBody`'s `windowWidth_strongRecOn` driver — `FlowBodyWindow` is what supplies the ADVANCE
-supplier its `.wellTyped`/`.dyck`. SMALLEST-FIRST de-risk of the plumbing: before wiring the whole skeleton,
-PROBE the DISPATCH — confirm the dispatch lemma that classifies `a` relative to the head entry and yields the
-arm's balance-`0` cut fact (the analogue of `seqWindowRecSeqBody`'s `recseqentry_window_dispatch` + the
-`h_bal_m1` derivation at line 1845) is already available or is itself a small standalone brick; that single
-dispatch fact is the only non-mechanical piece between the landed arms and the closed recursion. Once the
-skeleton lands: the map mirror (`RecMapBody` axis) and `flowSubrangesOk_of_window_producers` → the two
-`FlowSubrangesOk` sorries (`NonemptyStructure.lean:7502`, `:7743`) follow.
+IS one entry → LEAF arm) vs `cons` (`body = e ++ fe :: rest` → dispatch by `move_trichotomy` (R350,
+`SeqNestedEntryLocateProbe`, pure `omega`) on where the target start `a` sits: `a = off+1` → LEAF; strictly
+INSIDE the head entry `e` (`off+1 < a < off+e.length`) → DESCEND-seq via `_descend_step` + map-head REFUTATION;
+PAST it (`off+e.length < a`) → ADVANCE, feeding the R364 balance brick into `_advance_welltyped`, whose
+`WellTyped` output then feeds `_advance_step`); `decreasing_by omega` on `rest.length < body.length`. The
+wrapper's INTERFACE (settled across R354/R355/R356): it carries the WHOLE-path `SeqPathAllSeq tokens off`
+(base-keyed domain, seeded at root `off=2`, threaded by DESCEND) AND consumes the target window's
+`SeqTypedInterior tokens a b` (window-keyed: the LEAF arm reads `SeqEnclosed tokens a` for head-`.seq`
+map-exclusion via `seqEnclosed_of_seqTypedInterior`, and `b` is pinned by the consumer's explicit close
+hypothesis, NOT by the end-free gate's balance-0 — R356). KEEP the four-conjunct `G`
+(`FlowBodyWindow ∧ FlowBodyContentDeep ∧ SeqEnclosed ∧ close`) inherited from `seqWindowRecSeqBody` —
+`FlowBodyWindow` is what supplies the ADVANCE supplier its `.wellTyped`/`.dyck`. SMALLEST-FIRST plumbing
+de-risk: before wiring the whole recursion, settle the `Nat.strongRecOn` measure+IH SHAPE in isolation — author
+the generalising helper signature (`∀ n off H body, body.length = n → hyps → ∃ …locator…`) and confirm the IH
+interface each arm's recursive call needs (DESCEND at `off+1` with `H' = off+1+interior.length`, ADVANCE at
+`off+e.length+1` with the same `H`) typechecks against the `decreasing_by` measure, BEFORE filling the arm
+bodies. Once the skeleton lands: compose with `nestedSeq_safeBodyUnit_of_locator` → `nestedSeq_flowBodyContent`,
+then the map mirror (`RecMapBody` axis) and `flowSubrangesOk_of_window_producers` → the two `FlowSubrangesOk`
+sorries (`NonemptyStructure.lean:7502`, `:7743`) follow.
 
 **Superseded next step (R361, kept for the record):** **(i'-b-B2c-nested-fbc-emission-locator-advance-seam, COMPOSE the ADVANCE seam
 `nestedSeq_recseqentry_locate_advance_step` — the last arm seam before the skeleton)** — three of the four
