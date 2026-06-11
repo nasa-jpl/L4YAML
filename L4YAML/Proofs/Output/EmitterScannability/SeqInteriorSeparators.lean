@@ -1883,6 +1883,47 @@ theorem nestedSeq_recseqentry_locate_leaf_off1_b
     off + 1 < b := by
   subst h_a; exact g.win_ab
 
+/-- **The CONS boundary exclusion — the target start `a` is never ONE PAST a seq CLOSE** —
+    `(i'-b-B2c-nested-fbc-emission-locator-skeleton-brick-c-ii)`, R377, BRICK C-ii.  `move_trichotomy off
+    e.length a` (the dispatch's length-arithmetic move selector) requires `h_ne : a ≠ off + e.length` —
+    the separator/post-close position can never be a valid interior start.  This brick supplies it,
+    GENERICALLY: given a `.flowSequenceEnd` close at position `m`, the target start `a ≠ m + 1`.  BRICK D
+    instantiates it at the seq head entry's close (`e = op :: (interior ++ [cl])`, `cl` at
+    `m = off + interior.length + 1`, so `m + 1 = off + e.length`) to discharge `move_trichotomy`'s `h_ne`.
+
+    The discriminator is `g.opener : flowBracketBalance tokens (a-1) a = 1` (the target opener is a real
+    `[`, delta `+1`).  At `a = m + 1` the single-token balance at `a - 1 = m` is `flowBracketDelta
+    .flowSequenceEnd = -1 ≠ 1` — contradiction.  This is the EXACT argument `step_advance`'s `h_ne_boundary`
+    runs for the SEPARATOR (`a ≠ off + e.length + 1`, `a-1` the depth-`0` `.flowEntry`), with the close
+    (delta `-1`) swapped for the separator (delta `0`).  C-i's lesson APPLIED: the queued spec described
+    `a-1` as the separator, but a `#guard`/`#eval` probe (witnesses `N`/`T`/`D`, `SeqNestedEntryLocateProbe`)
+    showed at `a = off + e.length` the position `a - 1 = off + e.length - 1` is the head entry's CLOSE
+    (delta `-1` for a seq `]`, `0` for a scalar), NOT the separator (which sits at `a`, delta `0`) — so the
+    geometry differs but `g.opener` IS the discriminator (delta at `a-1` is `≤ 0 ≠ 1` in every case).
+    Landed standalone so the index check is debugged OUTSIDE the dispatch's case tree (the highest-risk
+    reconciliation between `move_trichotomy`'s `L`-split and the `recseqbody_head_or_cons` decomposition);
+    verified-but-unconsumed until BRICK D wires `h_step`.  References no sorry site, frontier sorry count
+    unchanged at 4. -/
+theorem nestedSeq_recseqentry_locate_cons_boundary
+    (tokens : Array (Positioned YamlToken)) (a b off H m : Nat)
+    (body : List (Positioned YamlToken))
+    (g : SeqLocateGuard tokens a b off H body)
+    (h_m_sz : m < tokens.size)
+    (h_close : tokens[m]!.val = .flowSequenceEnd) :
+    a ≠ m + 1 := by
+  have h_m_len : m < tokens.toList.length := by rw [Array.length_toList]; exact h_m_sz
+  have h_tok_m : tokens.toList[m]'h_m_len = tokens[m]! := by
+    rw [getElem!_pos tokens m h_m_sz, Array.getElem_toList]
+  have h_close_bal : flowBracketBalance tokens m (m + 1) = -1 := by
+    rw [flowBracketBalance_single tokens m h_m_len, h_tok_m, h_close]
+    exact flowBracketDelta_flowSequenceEnd
+  intro h_a
+  have hop := g.opener
+  rw [h_a] at hop
+  have harith : m + 1 - 1 = m := by omega
+  rw [harith, h_close_bal] at hop
+  omega
+
 /-- **The head entry's interior balance + Dyck floor, in `tokens` coordinates — head-shape-BLIND** —
     `(i'-b-B2c-nested-fbc-emission-locator-skeleton-hstep-interior-floor)`, R373, the FIRST refutation
     brick the skeleton-wiring de-risk surfaced (BRICK A).  Given the walking slice frame
