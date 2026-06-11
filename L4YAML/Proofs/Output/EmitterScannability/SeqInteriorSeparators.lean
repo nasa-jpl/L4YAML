@@ -1528,6 +1528,65 @@ theorem nestedSeq_recseqentry_locate_descend_step
   have h_off_sz : off < tokens.size := by omega
   exact seqPathAllSeq_descend tokens off h_domain h_off_sz h_off_open
 
+/-- **The seq-head ADVANCE seam of the emission-spine-walk locator** — `(i'-b-B2c-nested-fbc-emission-
+    locator-advance-seam)`, R362, the LAST arm seam before the `Nat.strongRecOn` skeleton.  The
+    standalone arm-callable the wrapper `nestedSeq_recseqentry_locate` invokes in its ADVANCE case when
+    the head entry `e` is followed by a depth-`0` `.flowEntry` separator `fe` and the target window start
+    lands strictly PAST the head entry-plus-separator block.  A PARALLEL fusion
+    ([[ref-compose-arm-seam-before-skeleton]], R361's parallel shape): `nestedSeq_recseqentry_locate_advance`
+    (R353, the pure drop-algebra TAIL re-base — `rest` re-slices to `[off+e.length+1, H)`, dropping the
+    `e.length+1` head-entry-plus-separator tokens) and `seqPathAllSeq_advance` (R357, the all-seq-PATH
+    domain preservation across the consumed segment) re-establish, at the advanced base `off+e.length+1`,
+    BOTH the slice invariant AND the domain.
+
+    Unlike the DESCEND seam, the domain advance needs the consumed segment to be stack-neutral —
+    `seqPathAllSeq_advance` demands `WellTyped` of the segment `[off, off+e.length+1)`.  That segment is
+    EXACTLY the entry-plus-separator `e ++ [fe]` (proven internally from the `h_slice`/`h_prefix`/`h_bound`
+    frame via `List.drop_take` + `List.take_append`), so the seam exposes the obligation in its STRUCTURAL
+    form `WellTyped (e ++ [fe])`, not the raw slice.
+
+    The `WellTyped (e ++ [fe])` hypothesis is THREADED, not discharged inside the seam: a probe
+    ([[ref-probe-deferred-universal-before-producing]], [[ref-minimal-pair-extracts-the-gate]]) refuted the
+    blueprint-named `RecSeqEntry e → WellTyped e` bridge.  `WellBracketed` (the only interior gate the
+    `RecSeqEntry.map` constructor stores) is balance-only and TYPE-BLIND (`flowBracketDelta` maps both `[`
+    and `{` to `+1`), so it admits a MISTYPED map interior like `[ }` — concretely `{ [ } }` has
+    `pbalance = 0` (passes the gate) yet `btFold (some []) · = none` (not `WellTyped`).  So the typed fact
+    cannot be CREATED from the entry's type-blind structure ([[ref-type-blind-invariant-transports-via-converse-frame]]);
+    it is the seam's deferred obligation, to be sourced later by frame-transport from a global `WellTyped`.
+    Verified-but-unconsumed until the wrapper threads it; references no sorry site, frontier sorry count
+    unchanged at 4. -/
+theorem nestedSeq_recseqentry_locate_advance_step
+    (tokens : Array (Positioned YamlToken))
+    (body rest e : List (Positioned YamlToken))
+    (fe : Positioned YamlToken)
+    (off H : Nat)
+    (h_slice : body = (tokens.toList.take H).drop off)
+    (h_bound : off + body.length ≤ H)
+    (h_prefix : body = e ++ fe :: rest)
+    (h_domain : SeqPathAllSeq tokens off)
+    (h_wt_seg : WellTyped (e ++ [fe])) :
+    rest = (tokens.toList.take H).drop (off + e.length + 1)
+    ∧ SeqPathAllSeq tokens (off + e.length + 1) := by
+  refine ⟨nestedSeq_recseqentry_locate_advance tokens body rest e fe off H h_slice h_prefix, ?_⟩
+  -- bound on the advanced base: off + e.length + 1 ≤ off + body.length ≤ H
+  have h_blen : e.length + 1 ≤ body.length := by
+    rw [h_prefix, List.length_append, List.length_cons]; omega
+  have h_n_le_H : off + e.length + 1 ≤ H := by omega
+  -- the consumed segment `[off, off+e.length+1)` is exactly the entry-plus-separator `e ++ [fe]`
+  have h_seg : (tokens.toList.take (off + e.length + 1)).drop off = e ++ [fe] := by
+    have h_take_take : tokens.toList.take (off + e.length + 1)
+        = (tokens.toList.take H).take (off + e.length + 1) := by
+      rw [List.take_take, Nat.min_eq_left h_n_le_H]
+    rw [h_take_take, List.drop_take, ← h_slice, h_prefix]
+    have h_sub : off + e.length + 1 - off = e.length + 1 := by omega
+    rw [h_sub, List.take_append]
+    congr 1
+    · exact List.take_of_length_le (by omega)
+    · have : e.length + 1 - e.length = 1 := by omega
+      rw [this]; simp
+  rw [← h_seg] at h_wt_seg
+  exact seqPathAllSeq_advance tokens off (off + e.length + 1) h_domain (by omega) h_wt_seg
+
 /-- **`SeqPathAllSeq` dominates `SeqEnclosed`** — the all-`true` path stack has TOP `true`, so the
     navigator's domain hypothesis is STRICTLY STRONGER than the immediate-enclosure fact the dispatch
     (`seqWindow_flowBodyContent`) consumes.  Lets the domain-restricted driver supply the dispatch's
