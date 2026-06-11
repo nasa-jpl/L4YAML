@@ -2107,6 +2107,80 @@ theorem nestedSeq_recseqentry_locate_step_advance
       win_hi := g.win_hi
       window := h_window' }⟩
 
+/-- **The locator skeleton's HEAD positional bridge** — `(i'-b-B2c-nested-fbc-emission-locator-
+    skeleton-head-bridge)`, R372.  The walking body's head element sits at token position `off`:
+    given the slice frame (`h_slice`/`h_bound`/`h_Hsz`) and a head decomposition `body = x :: xs`,
+    `tokens[off]! = x`.  This is the first of the two residual POSITIONAL BRIDGES the skeleton's
+    `h_step` dispatch needs (the SMALLEST-FIRST wrapper work the blueprint queued): the LEAF/DESCEND
+    arms take `tokens[off]! = .flowSequenceStart` as a hypothesis, which the skeleton supplies by this
+    bridge ▸ the seq-entry head's `op.val = .flowSequenceStart` (read off `recseqbody_head_or_cons`'s
+    `RecSeqEntry e` in the seq case).  Proof: the slice `[off, H)` opens with `x` (`h_slice ▸ h_cons`),
+    so the option-indexed `((take H).drop off)[0]? = some x` transports through `getElem?_drop` +
+    `getElem?_take` (the `off < H` guard from `h_bound` + the nonempty body) to `tokens.toList[off]? =
+    some x`, then `getElem?_eq_getElem` + the `tokens[off]!`/`tokens.toList[off]` array-list bridge
+    (`getElem!_pos` + `Array.getElem_toList`) close it.  Pure positional plumbing — no guard fields, no
+    grammar; references no sorry site, frontier sorry count unchanged at 4. -/
+theorem nestedSeq_recseqentry_locate_head_pos
+    (tokens : Array (Positioned YamlToken))
+    (body xs : List (Positioned YamlToken)) (x : Positioned YamlToken)
+    (off H : Nat)
+    (h_slice : body = (tokens.toList.take H).drop off)
+    (h_bound : off + body.length ≤ H)
+    (h_Hsz : H ≤ tokens.size)
+    (h_cons : body = x :: xs) :
+    tokens[off]! = x := by
+  have h_pos : 0 < body.length := by rw [h_cons]; simp
+  have h_off_sz : off < tokens.size := by omega
+  have h_off_len : off < tokens.toList.length := by rw [Array.length_toList]; exact h_off_sz
+  have h_eq : (tokens.toList.take H).drop off = x :: xs := by rw [← h_slice]; exact h_cons
+  have h_getq : tokens.toList[off]? = some x := by
+    have hc : ((tokens.toList.take H).drop off)[0]? = some x := by rw [h_eq]; rfl
+    rw [List.getElem?_drop, List.getElem?_take, Nat.add_zero, if_pos (by omega : off < H)] at hc
+    exact hc
+  have h_elem : tokens.toList[off]'h_off_len = x := by
+    have := List.getElem?_eq_getElem h_off_len
+    rw [h_getq] at this
+    exact (Option.some.inj this).symm
+  rw [getElem!_pos tokens off h_off_sz, ← Array.getElem_toList]
+  exact h_elem
+
+/-- **The locator skeleton's SEPARATOR positional bridge** — `(i'-b-B2c-nested-fbc-emission-locator-
+    skeleton-sep-bridge)`, R372, the second residual positional bridge.  When the walking body is a
+    `cons` `body = e ++ fe :: rest`, the inter-entry separator `fe` sits at token position
+    `off + e.length`: `tokens[off + e.length]! = fe`.  This supplies the ADVANCE arm's
+    `h_sep_pos : tokens[off + e.length]!.val = .flowEntry` hypothesis (▸ `recseqbody_head_or_cons`'s
+    `cons.h_fe : fe.val = .flowEntry`).  Same `getElem?`-transport skeleton as the head bridge, with the
+    index `e.length` located in `e ++ fe :: rest` by `getElem?_append_right (Nat.le_refl e.length)` +
+    `Nat.sub_self` (the separator is the FIRST element past the entry block) and the `off + e.length < H`
+    guard from the cons length `body.length = e.length + 1 + rest.length` + `h_bound`.  Pure positional
+    plumbing; references no sorry site, frontier sorry count unchanged at 4. -/
+theorem nestedSeq_recseqentry_locate_sep_pos
+    (tokens : Array (Positioned YamlToken))
+    (body rest e : List (Positioned YamlToken)) (fe : Positioned YamlToken)
+    (off H : Nat)
+    (h_slice : body = (tokens.toList.take H).drop off)
+    (h_bound : off + body.length ≤ H)
+    (h_Hsz : H ≤ tokens.size)
+    (h_prefix : body = e ++ fe :: rest) :
+    tokens[off + e.length]! = fe := by
+  have h_blen : body.length = e.length + 1 + rest.length := by
+    rw [h_prefix, List.length_append, List.length_cons]; omega
+  have h_m_sz : off + e.length < tokens.size := by omega
+  have h_m_len : off + e.length < tokens.toList.length := by
+    rw [Array.length_toList]; exact h_m_sz
+  have h_eq : (tokens.toList.take H).drop off = e ++ fe :: rest := by rw [← h_slice]; exact h_prefix
+  have h_getq : tokens.toList[off + e.length]? = some fe := by
+    have hc : ((tokens.toList.take H).drop off)[e.length]? = some fe := by
+      rw [h_eq, List.getElem?_append_right (Nat.le_refl e.length), Nat.sub_self]; rfl
+    rw [List.getElem?_drop, List.getElem?_take, if_pos (by omega : off + e.length < H)] at hc
+    exact hc
+  have h_elem : tokens.toList[off + e.length]'h_m_len = fe := by
+    have := List.getElem?_eq_getElem h_m_len
+    rw [h_getq] at this
+    exact (Option.some.inj this).symm
+  rw [getElem!_pos tokens (off + e.length) h_m_sz, ← Array.getElem_toList]
+  exact h_elem
+
 /-- **The emission-spine-walk locator's `Nat.strongRecOn` DRIVER** —
     `(i'-b-B2c-nested-fbc-emission-locator-skeleton)`, R365, the SMALLEST-FIRST plumbing de-risk of the
     skeleton `nestedSeq_recseqentry_locate`.  Before wiring the whole recursion (dispatch + three arm
