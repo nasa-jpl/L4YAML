@@ -1799,6 +1799,16 @@ structure SeqLocateGuard (tokens : Array (Positioned YamlToken)) (a b : Nat)
       descends through every move UNCHANGED, supplying `seqTarget_close_lt_interiorEnd`'s strict
       `b < c` (R368) at the descend re-bundle's `win_hi`. -/
   opener : flowBracketBalance tokens (a - 1) a = 1
+  /-- the FIXED target's ENCLOSING PATH is all-seq — the R374 (BRICK B-i) probe's owed window-absolute
+      fact (`seqPathAllSeq_map_descend_excluded`'s `h_path`).  Keyed on the FIXED `a - 1` (the entry
+      opener, the same anchor as `opener`), so — like `typed`/`close`/`opener` — it is WINDOW-ABSOLUTE
+      and descends through every move UNCHANGED (a free verbatim pass-through in the constructing
+      DESCEND/ADVANCE arms).  Distinct from the walking-keyed `domain : SeqPathAllSeq tokens off`: in the
+      map-head DESCEND case `domain` re-based to `a - 1` is precisely what `seqPathAllSeq_map_frame_persists`
+      REFUTES — so the refutation's positive must be this target-anchored TWIN, not the walking copy
+      ([[ref-target-anchored-twin-refutes-walk-break]]).  Its root-seed instance is the descent's DEBT
+      ([[ref-root-seed-discriminator-not-from-gate]]), owed at BRICK D; nothing establishes it yet. -/
+  path : SeqPathAllSeq tokens (a - 1)
   /-- window containment: the target start is past the walking opener… -/
   win_lo : off + 1 ≤ a
   /-- …the target is non-degenerate… -/
@@ -1822,9 +1832,10 @@ structure SeqLocateGuard (tokens : Array (Positioned YamlToken)) (a b : Nat)
     `b < H` as `win_hi` — and the two residual leaf-DISPATCH facts (`h_open`, the head opener type, and
     `h_off1_b`, the non-degenerate close `off + 1 < b`) are taken as hypotheses, exactly as the skeleton
     will derive them from the `recseqbody_head_or_cons` decomposition before invoking this arm.  Commits
-    the structure (every field but `win_lo`/`win_ab`/`opener` is consumed here, pinning their types) and
-    confirms the LEAF arm still threads after the R368 `opener` extension (additive own-type field ⇒ it
-    must — the LEAF ignores the new fixed-target discriminator, which only the DESCEND `win_hi` reads).
+    the structure (every field but `win_lo`/`win_ab`/`opener`/`path` is consumed here, pinning their
+    types) and confirms the LEAF arm still threads after the R368 `opener` and R375 `path` extensions
+    (additive own-type fields ⇒ it must — the LEAF ignores the new fixed-target discriminators; `opener`
+    feeds the DESCEND `win_hi`, `path` feeds the map-DESCEND refutation, neither read here).
     Verified-but-unconsumed until the skeleton wires `h_step`; references no sorry site, frontier sorry
     count unchanged at 4. -/
 theorem nestedSeq_recseqentry_locate_step_leaf
@@ -1947,11 +1958,13 @@ theorem seqEnclosed_map_push_breaks (tokens : Array (Positioned YamlToken)) (lo 
     is precisely what `seqPathAllSeq_map_frame_persists` refutes).  Nor is `SeqPathAllSeq tokens (a-1)`
     a current guard field or derivable from `g.domain` in the map case (it is FALSE there).  So it is
     a genuinely NEW window-absolute fact — the target's path-domain, true for the real target
-    regardless of what the walk encounters — taken here as the hypothesis `h_path`.  BRICK D must
-    source it: the R368 pattern ([[ref-downstream-derisk-restores-upstream]] — a discriminator the gate
-    cannot carry is restored as a window-absolute guard field), i.e. add `path : SeqPathAllSeq tokens
-    (a - 1)` to `SeqLocateGuard` (a free verbatim pass-through in the constructing DESCEND/ADVANCE arms,
-    its root-seed instance the descent's debt, [[ref-root-seed-discriminator-not-from-gate]]).
+    regardless of what the walk encounters — taken here as the hypothesis `h_path`.  This is now
+    SOURCED (R375): the R368 pattern ([[ref-downstream-derisk-restores-upstream]] — a discriminator the
+    gate cannot carry is restored as a window-absolute guard field) added `path : SeqPathAllSeq tokens
+    (a - 1)` to `SeqLocateGuard` as its 14th field — a free verbatim pass-through (`path := g.path`) in
+    the constructing DESCEND/ADVANCE arms, READ-ONLY (ignored) in LEAF; its root-seed instance remains
+    the descent's DEBT, owed at BRICK D ([[ref-root-seed-discriminator-not-from-gate]]).  When BRICK D
+    wires `h_step` it discharges this lemma's `h_path` by `g.path`.
 
     The map's interior floor over `[off+1, a-1]` is exactly BRICK A's `recseqentry_head_interior_floor_tokens`
     (head-BLIND — the SAME extraction the seq-DESCEND `win_hi` consumes), restricted to `a - 1 ≤
@@ -2131,6 +2144,7 @@ theorem nestedSeq_recseqentry_locate_step_descend
       typed := g.typed
       close := g.close
       opener := g.opener
+      path := g.path
       win_lo := by omega
       win_ab := g.win_ab
       win_hi := h_win_hi
@@ -2228,6 +2242,7 @@ theorem nestedSeq_recseqentry_locate_step_advance
       typed := g.typed
       close := g.close
       opener := g.opener
+      path := g.path
       win_lo := h_win_lo
       win_ab := g.win_ab
       win_hi := g.win_hi
