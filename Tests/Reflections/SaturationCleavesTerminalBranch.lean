@@ -85,4 +85,43 @@ def structuralRefutationsNeeded (L : Nat) : Nat := if L ≤ 2 then 0 else 1
 #guard structuralRefutationsNeeded 4 == 1    -- seq/map HEAD: needs interior bricks
 #guard !decide (structuralRefutationsNeeded 1 == 1)    -- short ≠ the long-entry cost
 
+/-! ## R382 (long entries) — the TERMINAL branch is the RECURSIVE branch with the successor emptied.
+
+When the head entry is LONG (`L ≥ 3`) the interior half is genuinely inhabited, but it costs NO new
+arm lemma: the recursive (CONS) branch's arms are PARAMETRIC in the successor `rest` (their prefix
+hypothesis is `body = e ++ rest`), so the terminal (HEAD) branch reuses them VERBATIM at `rest := []`
+— the prefix `body = e ++ []` is `body = e` by `List.append_nil`.  In the real proof these are
+`nestedSeq_recseqentry_locate_step_{leaf,descend}` called with `rest := []`. -/
+
+/-- A toy successor-parametric "arm" conclusion (models `…step_descend`/`…step_advance`, which take
+    `rest` as a parameter and a `h_prefix : body = e ++ rest`). -/
+def armConclusion (body e : List Nat) : Prop := 0 < body.length ∧ e.length ≤ body.length
+
+/-- The RECURSIVE arm: parametric in the successor `rest`, fired from the prefix `body = e ++ rest`. -/
+theorem recursive_arm (body e rest : List Nat) (h_prefix : body = e ++ rest)
+    (h_e : 0 < e.length) : armConclusion body e := by
+  subst h_prefix
+  exact ⟨by simp only [List.length_append]; omega, by simp only [List.length_append]; omega⟩
+
+/-- POSITIVE — the TERMINAL branch reuses `recursive_arm` at `rest := []`: the empty successor is
+    absorbed by `List.append_nil` (`body = e ++ [] = e`), so NO new arm lemma is authored. -/
+theorem terminal_reuses_recursive_arm (body e : List Nat) (h_eq : body = e)
+    (h_e : 0 < e.length) : armConclusion body e :=
+  recursive_arm body e [] (by rw [h_eq, List.append_nil]) h_e
+
+/-- POSITIVE — the DESCEND arm SELF-GUARDS the degenerate `interior = []` overlap: its two bounds
+    `off + 1 < a` and `a < off + intLen + 2` jointly force `intLen ≥ 1`, so the `seq` constructor's
+    overlap with `seqEmpty` (interior `[]`) is vacuous and reaches no extra case. -/
+theorem descend_self_guards_nonempty_interior (off a intLen : Nat)
+    (h_lo : off + 1 < a) (h_hi : a < off + intLen + 2) : 1 ≤ intLen := by omega
+
+/-- The producing-move count per branch: the recursive (CONS) branch dispatches LEAF/DESCEND/ADVANCE
+    (3); the terminal (HEAD) branch SHEDS ADVANCE (no successor), leaving LEAF/DESCEND plus the free
+    arith-contra — exactly one fewer structural move, and the survivors are recursive-arm reuses. -/
+def producingMoves (terminal : Bool) : Nat := if terminal then 2 else 3
+
+#guard producingMoves true == 2                        -- terminal: LEAF/DESCEND (no ADVANCE)
+#guard producingMoves false == 3                       -- recursive: LEAF/DESCEND/ADVANCE
+#guard !decide (producingMoves true == producingMoves false)
+
 end Tests.Reflections.SaturationCleavesTerminalBranch
