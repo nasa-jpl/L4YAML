@@ -29624,3 +29624,68 @@ contradiction the carried `SeqPathAllSeq` discharges. Then the seed `nestedSeq_f
 with `nestedSeq_safeBodyUnit_of_locator`) and the `desc` assembly — placing the typed↔structural bridge at
 the `desc` seam, sourcing `SeqPathAllSeq` from the outer descent discipline (R338), per R354. KEEP the
 four-conjunct `G`; steps (2)–(6) of the 199th map follow in order.
+
+### Reflection 358 — a sub-fact a multi-session pointer flags as "the analytically-hard residual" may already be FULLY PROVEN inside a SIBLING lemma that derives it internally and CONSUMES it for a different deliverable; the residual is an EXTRACTION, not a derivation
+
+Continuing to AUTHOR `nestedSeq_recseqentry_locate`, the wrapper's LEAF arm needs the brick
+`nestedSeq_recseqentry_locate_leaf`'s hypothesis `h_b : b = off + (op::(interior++[cl])).length - 1` —
+the pin coinciding the consumer's window close `b` with the head entry's structural close. The
+next-step pointer flagged this `b`-pin across R354/355/356 as **"the analytically-hard residual,"**
+needing the located-close balance/floor uniqueness from the consumer's `G`, deferring it as the
+wrapper's last hard piece.
+
+**The reframe.** Before authoring the `b`-pin fresh, a grep for a SIBLING lemma over the same
+substrate (`tokens`/window/`flowBracketBalance`/`RecSeqEntry`) found that
+`recseqbody_head_seq_project` (the DESCENT-FREE base case of the OLD top-down locate recursion, R225/R330,
+`NonemptyStructure.lean`) already proves PRECISELY that uniqueness as its internal
+`h_uniq : j + 1 = lo + e.length` — the two-sided bracket match (the located floor `h_floor` forbids an
+earlier close; the entry's own interior floor `recseqentry_opener_interior_floor` forbids a later one).
+That lemma derives `h_uniq` and then CONSUMES it to build the descended interior
+`RecSeqBody ((take j).drop (lo+1))`, discarding it from its signature. The "analytically-hard
+derivation" had ALREADY been discharged — two screens up, inside a lemma whose stated output was
+something else entirely.
+
+**The move (extract-and-repackage, not a verbatim call).** `recseqentry_close_pin` (R358, landed
+sorry-free) reuses `recseqbody_head_seq_project`'s prelude VERBATIM through `h_uniq` (~75 lines), then —
+instead of `cases h_e` to slice out the interior — a `cases` that RETURNS the `.seq` shape
+(`op :: (interior ++ [cl])`, opener `.flowSequenceStart`, nonempty interior, `RecSeqEntry`, the
+head-window identity `e = body.take e.length`) with `h_uniq` as the final conjunct. The exposure needs a
+DIFFERENT SHAPE than the sibling's internal use (the sibling consumed `h_uniq` to produce a `RecSeqBody`
+interior; the leaf brick wants it as `h_b` — `b = off + e.length - 1` with `j = b`, `lo = off` — plus the
+`.seq` decomposition), so a verbatim call to the sibling would hand back the wrong deliverable. Duplicating
+the ~60-line prelude rather than refactoring `recseqbody_head_seq_project` to call the new primitive is the
+LOW-RISK choice under the IRON RULE: a standalone new lemma cannot break the existing proof.
+
+**Transferable rule.** When a multi-session pointer flags a sub-fact as "the analytically-hard residual,"
+treat that label as a HYPOTHESIS to test, not a verdict. Grep for a sibling lemma over the same substrate
+producing a NEARBY-but-different deliverable; read its body for an intermediate `have` matching your fact.
+If found, the residual collapses to an extract-and-repackage of an already-proven `have` — the "hard" was
+an EXPOSURE/packaging problem masquerading as a derivation problem. Recorded as
+[[ref-residual-already-proven-in-sibling]] (sharpens [[ref-metric-bridge-is-composition]] — the feared
+per-step induction was already discharged when the substrate lemma was proved; and [[ref-reduction-by-import]];
+a search-before-deriving win on [[ref-probe-deferred-universal-before-producing]]; complements
+[[ref-parametric-assembler-extraction]]'s produce-primitives half — sometimes the primitive is already
+produced, just unexported).
+
+**Next step:** **(i'-b-B2c-nested-fbc-emission-locator-wrapper-author, AUTHOR `nestedSeq_recseqentry_locate`
+— the `Nat.strongRecOn` wrapper, now with EVERY analytical leaf brick landed)** — the wrapper's three
+arms are all backed by landed primitives: LEAF → `nestedSeq_recseqentry_locate_leaf` fed by
+`recseqentry_close_pin` (R358, the `.seq` decomposition + `h_b` pin); DESCEND → `nestedSeq_recseqentry_locate_descend`
+re-base + `seqPathAllSeq_descend` (carried-domain edge) + measure drop `interior.length < body.length`;
+ADVANCE → `nestedSeq_recseqentry_locate_advance` re-base + `seqPathAllSeq_advance` (R357 carried-domain
+FRAME edge, the consumed `WellTyped` segment is the balanced head-entry-plus-separator) + measure drop
+`rest.length < body.length`. What REMAINS is the `Nat.strongRecOn` SKELETON itself: (1) `cases h_rec`
+(`single`/`cons`), compute `e.length`, dispatch by `move_trichotomy` (`a` vs `off+1`, `off+e.length`);
+(2) thread the carried slice invariant (`body = (take H).drop off` + `off+body.length ≤ H`) + `SeqPathAllSeq tokens off`
+through each recursive call, sourcing the LEAF's located-close balance/floor facts (`h_inner`/`h_floor` for
+`recseqentry_close_pin`) from the consumer's `G` (`FlowBodyContentDeep`/`SeqTypedInterior`'s balance-0 +
+the entry interior floor) — these `a,b`-keyed facts are FIXED across the recursion (the target window
+doesn't move; only `off`/`H`/`body` do); (3) the map-head DESCEND case (`RecSeqEntry.map`, no `h_rec`) is
+the contradiction the carried `SeqPathAllSeq` discharges (a map-head push would break it via
+`seqPathAllSeq_map_push_breaks`); (4) the `decreasing_by omega` on the two measure drops. Then compose with
+`nestedSeq_safeBodyUnit_of_locator` → `nestedSeq_flowBodyContent` and the `desc` assembly (typed↔structural
+bridge at the `desc` seam, `SeqPathAllSeq` from the outer descent discipline, R338/R354). KEEP the
+four-conjunct `G`; steps (2)–(6) of the 199th map follow in order. SMALLEST FIRST: author the skeleton with
+the leaf's `h_inner`/`h_floor` lifted as hypotheses (a from-located assembler, [[ref-from-located-assembler-direction]]),
+landing the recursion + dispatch + measure green and isolating the `G`→leaf-floor derivation as the final
+named residual.
