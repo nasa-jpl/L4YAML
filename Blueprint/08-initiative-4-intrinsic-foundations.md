@@ -29734,20 +29734,62 @@ factoring; this is its per-arm refinement: factor the EASY arms' seams out befor
 are not equal-cost, audit them; complements [[ref-parametric-assembler-extraction]] — sometimes the
 primitives both exist and the unproven part is the SEAM between them, not a missing primitive).
 
-**Next step:** **(i'-b-B2c-nested-fbc-emission-locator-descend-mapframe, AUTHOR the DESCEND map-head
-refutation infra — the one new-infra arm the R359 audit isolated)** — the wrapper's LEAF arm is now a
-single callable (`nestedSeq_recseqentry_locate_leaf_full`, R359) and the ADVANCE arm is backed by landed
-bricks (`nestedSeq_recseqentry_locate_advance` + `seqPathAllSeq_advance`, R357). The remaining gap before
-the `Nat.strongRecOn` skeleton can be authored is the DESCEND arm's map-head REFUTATION: when the head
-entry at the current base is a `RecSeqEntry.map` and the target window start `a` lands strictly inside it
-(`off+1 < a < off+e.length`), derive `False` from the window's seq-enclosure. SMALLEST FIRST — PROBE before
-authoring: the needed lemma is roughly "a `.flowMappingStart` at `p` whose matching close is `> q` forces
-`¬ SeqPathAllSeq tokens q` (the pushed `false` frame persists on the `btFold` stack until its close)";
-`#guard`-probe it on `[{a: [1]}]` (the window inside the nested seq is NOT all-seq-path because the map
-frame sits between) BEFORE committing — confirm the `btFold` stack genuinely carries a `false` past `a`.
-The window's own enclosure (the consumed `SeqEnclosed tokens a` / `SeqPathAllSeq tokens (a-1)`, R355) is the
-hypothesis the refutation contradicts. Once the map-frame-persists lemma lands, the skeleton is pure
-plumbing: `cases h_rec` (`single`/`cons`), `move_trichotomy` dispatch, LEAF → `nestedSeq_recseqentry_locate_leaf_full`,
-DESCEND → seq-head via the refutation + `nestedSeq_recseqentry_locate_descend` + `seqPathAllSeq_descend`,
-ADVANCE → `nestedSeq_recseqentry_locate_advance` + `seqPathAllSeq_advance`, `decreasing_by omega`. KEEP the
-four-conjunct `G`; steps (2)–(6) of the 199th map follow in order.
+### Reflection 360 — a flagged "needs-new-infra" arm is often a SIBLING lemma's MIRROR with the type-discriminator bit FLIPPED and the pin-hypothesis RELAXED to a floor; before authoring from scratch, find the sibling that PINS what you must REFUTE
+
+The R359 audit deferred the DESCEND map-head arm as "needs new infra — a map-frame-persists lemma that does
+NOT exist". Authoring it tested that pessimism (cf. [[ref-backward-locator-mirrors-forward]]: a de-risk
+flagging "needs new infra" tests HARDNESS by authoring). It was NOT new infra. The needed lemma
+(`seqPathAllSeq_map_frame_persists`, R360, `SeqInteriorSeparators.lean`, sorry-free) is a near-twin of an
+EXISTING sibling, `seqOpenerType_of_located_and_gate`, with two parametric edits:
+
+1. **Flip the type-discriminator bit.** The sibling reads `btFold_frame_inv` to PIN the located opener's
+   pushed bit to `true` (`tokens[p] = .flowSequenceStart`, the head is a seq). The refutation reads the
+   SAME `btFold_frame_inv` over the SAME floored interior, but with the pushed bit `false` (a `{`), and
+   concludes the OPPOSITE membership: a `false` SURVIVES in the stack, so it is not all-`true`.
+2. **Relax the pin-hypothesis to a floor.** The sibling needs the EXACT body balance `= 0` (to force the
+   persisted prefix `m = []` and pin the head). The refutation needs only the FLOOR `≥ 0` (the frame is
+   never popped); the persisted prefix `m` may be nonempty — it just sits ABOVE the surviving `false`. So
+   the refutation DROPS the sibling's tightest hypothesis. (Mirror-by-dropping, cf.
+   [[ref-near-leaf-mirror-sheds-machinery]].)
+
+The substrate (`btFold_frame_inv`, the floor-bridge `flowBracketBalance_eq_pbalance`, `btFold_some_prefix`)
+ALREADY existed and was ALREADY used by the sibling for the adjacent conclusion. The "map-frame-persists"
+lemma is that sibling's parametric reflection across the bracket-type bit, not a fresh substrate —
+[[ref-metric-bridge-is-composition]]'s "search for the lemma that already serves the adjacent consumer"
+applied to a STACK-FOLD discriminator. PROBE confirmed truth first (`[{a: [1]}]`: every position strictly
+inside the map span `(1,7]` carries a `false`; the controls at `q ∈ {1,8}` are all-`true`), per
+[[ref-probe-deferred-universal-before-producing]].
+
+**Transferable rule.** When an audit defers an arm as "needs new infra" and that arm must REFUTE a typed
+membership (`¬ all-one-type`, `¬ enclosed`, a stack-fold "not all X"), before authoring from scratch search
+for the SIBLING that PINS the type you must refute (proves "head = X" / "located opener is X"). The
+refutation is usually that sibling's MIRROR: read the same substrate lemma, FLIP the discriminator bit (the
+type the sibling pins → the type you exclude), and RELAX its tightest pin-hypothesis (exact balance → floor)
+because refuting needs less than pinning. The deferred "new infra" is a parametric twin of an existing
+lemma. Recorded as [[ref-refute-arm-mirrors-pinning-sibling]] (sharpens
+[[ref-compose-arm-seam-before-skeleton]] — the new-infra arm the audit isolated was a mirror, not a new
+substrate; builds on [[ref-near-leaf-mirror-sheds-machinery]] (mirror by DROPPING) and
+[[ref-backward-locator-mirrors-forward]] (the de-risk's "needs new infra" was pessimistic); applies
+[[ref-metric-bridge-is-composition]] (the serving lemma already existed for the adjacent consumer)).
+
+**Next step:** **(i'-b-B2c-nested-fbc-emission-locator-skeleton, AUTHOR the `Nat.strongRecOn` wrapper
+`nestedSeq_recseqentry_locate` — all three arms now landed)** — the audit's three arms are ALL backed now:
+LEAF → `nestedSeq_recseqentry_locate_leaf_full` (R359), ADVANCE → `nestedSeq_recseqentry_locate_advance` +
+`seqPathAllSeq_advance` (R357), DESCEND seq-head → `nestedSeq_recseqentry_locate_descend` +
+`seqPathAllSeq_descend`, DESCEND map-head → REFUTED by `seqPathAllSeq_map_frame_persists` (R360) against the
+window's carried seq-enclosure `SeqPathAllSeq tokens (a-1)` (R355). The skeleton is now pure plumbing.
+Form (per the `Nat.strongRecOn` idiom, generalising over `body.length` via a helper
+`∀ n off H body, body.length = n → hyps → goal`): carry the offset-slice invariant
+`body = (tokens.toList.take H).drop off` + fit `off + body.length ≤ H` + `H ≤ tokens.size` + `RecSeqBody body`
++ the domain `SeqPathAllSeq tokens off` + the located target facts (`a`, `b`, opener/closer + interior
+balance/floor). `cases h_rec` (`single`/`cons`) exposes the head entry `e`; `cases e`'s `RecSeqEntry`
+(`scalar`/`seqEmpty`/`seq`/`map`) feeds the head shape. `move_trichotomy off e.length a` dispatches:
+LEAF (`a = off+1`) → leaf-full; DESCEND (`off+1 < a < off+e.length`) → on a `seq` head descend via the
+descend brick + `seqPathAllSeq_descend`, on a `map` head `exact absurd h_encl (seqPathAllSeq_map_frame_persists
+tokens off (a-1) … h_floor_from_wb)` deriving the floor from the map interior's `WellBracketed`; ADVANCE
+(`off+e.length < a`) → advance brick + `seqPathAllSeq_advance`. `decreasing_by omega` from each arm's
+length-shrink. KEEP the four-conjunct `G`; the map mirror (`RecMapBody` axis) follows after, then both feed
+`flowSubrangesOk_of_window_producers` → the two `FlowSubrangesOk tokens` sorries → `universal_roundtrip`.
+SMALLEST-FIRST caveat: if the `cases e` + dispatch + `decreasing_by` tangle is large, carve the seq-head
+DESCEND seam (descend brick ▸ `seqPathAllSeq_descend`) as a standalone arm-callable first, per
+[[ref-compose-arm-seam-before-skeleton]].
