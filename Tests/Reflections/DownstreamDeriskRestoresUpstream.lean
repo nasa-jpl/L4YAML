@@ -35,6 +35,19 @@ the three bare facts (the minimal pair satisfies them all yet only `p = 4` is fl
 be re-derived at the consume site — it must be DELIVERED by the producer (the locator's construction
 is the only source of innermost-ness).  This is the DUAL of R309's size-DOWN: a deliverable is sized
 to the UNION of consumers, and a new consumer's de-risk can size it back UP.
+
+**R376 sharpening — the DOC/TYPE-MISMATCH tell, a SINGLE-witness (degenerate) pair, and an IN-PLACE
+restore.** Sometimes the dropped discriminator is a plain inequality, and the producer has ALREADY
+NAMED it: a carrier field whose DOC-COMMENT claims a stronger property than its TYPE asserts (L4YAML's
+`SeqLocateGuard.win_ab`, doc "the target is non-degenerate", type only `a ≤ b`) is the dropped
+discriminator, flagged BEFORE any probe — scan field docs against their types first.  Then ONE
+counterexample suffices (the "minimal pair" degenerates to {this witness} vs {any good witness})
+because the new conclusion is an inequality the witness directly falsifies while passing the bare
+guard: the empty seq `[` `]` at `a = b` satisfies `win_ab`-as-`≤` (and `opener`/`close`/`typed`) yet
+has `a = b`, so a `RecSeqEntry.seqEmpty` head would slip the deliverable's `interior ≠ []`.  The fix
+is an IN-PLACE strengthening of the too-weak field (`a ≤ b → a < b`), not a new additive field, since
+the discriminator IS an existing field stated below its documented intent — and strengthening is
+consumer-compatible (`a < b ⇒ a ≤ b`, so every prior `≤`-reader still works).
 -/
 
 namespace Tests.Reflections.DownstreamDeriskRestoresUpstream
@@ -113,5 +126,39 @@ def ty (i : Nat) : Bool := tyList.getD i false
 #guard decide (bal d 5 5 ≥ 0)              -- p = 4 floor holds (single point)
 #guard bal d 2 3 == -1                     -- p = 1 floor VIOLATED at i = 3 (just past the `}`)
 #guard !decide (bal d 2 3 ≥ 0)
+
+/-! ## R376 sharpening — DOC/TYPE-MISMATCH tell + SINGLE-witness exclusion + IN-PLACE restore.
+
+When the dropped discriminator is a plain inequality the producer already named in a doc-comment, the
+de-risk collapses: scan docs against types, refute with ONE witness, and strengthen the field in place. -/
+
+/-- The carrier as it stood: `wkAB` is DOCUMENTED "non-degenerate" but TYPED only `a ≤ b` — the
+    doc/type mismatch IS the tell (toy of `SeqLocateGuard.win_ab` through R375). -/
+structure GuardWeak (a b : Nat) : Prop where
+  /-- "the target is non-degenerate" — yet the TYPE only asserts `a ≤ b`. -/
+  wkAB : a ≤ b
+
+/-- The new consumer wants `a < b`, and it is NOT derivable from `GuardWeak`: a SINGLE witness (the
+    degenerate `a = b = 1`, the "empty seq") satisfies the bare field yet falsifies `a < b`.  No second
+    disagreeing witness is needed — the conclusion is an inequality this one object directly breaks. -/
+theorem consumer_not_derivable_from_weak : ∃ a b, GuardWeak a b ∧ ¬ (a < b) :=
+  ⟨1, 1, ⟨Nat.le_refl 1⟩, by omega⟩
+
+#guard decide (1 ≤ 1)        -- the bare field holds at the degenerate witness…
+#guard !decide (1 < 1)       -- …yet the new conclusion FAILS there — one witness suffices.
+
+/-- The fix: strengthen the field IN PLACE to its documented intent (not a new additive field). -/
+structure GuardStrong (a b : Nat) : Prop where
+  /-- now the TYPE matches the doc: STRICTLY non-degenerate. -/
+  stAB : a < b
+
+/-- POSITIVE — the consumer is now free, and the degenerate (`seqEmpty`) witness is EXCLUDED. -/
+theorem consumer_from_strong (a b : Nat) (g : GuardStrong a b) : a < b := g.stAB
+theorem degenerate_witness_excluded : ¬ GuardStrong 1 1 := fun g => absurd g.stAB (by omega)
+
+/-- Strengthening is CONSUMER-COMPATIBLE: every prior reader of the field as `≤` still typechecks
+    (`a < b ⇒ a ≤ b`), so the in-place change breaks no downstream pass-through. -/
+theorem strong_implies_weak (a b : Nat) (g : GuardStrong a b) : GuardWeak a b :=
+  ⟨Nat.le_of_lt g.stAB⟩
 
 end Tests.Reflections.DownstreamDeriskRestoresUpstream
