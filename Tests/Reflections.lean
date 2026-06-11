@@ -94,6 +94,7 @@ import Tests.Reflections.MetricMinimumCollapsesDispatch
 import Tests.Reflections.SaturationCleavesTerminalBranch
 import Tests.Reflections.DispatchRoleFactorsTypeMetric
 import Tests.Reflections.CarveLeavesToEliminatorOutput
+import Tests.Reflections.RootSeedDerivesShapeDefersValue
 
 /-!
 # Reflections — runnable proof-engineering demonstrations
