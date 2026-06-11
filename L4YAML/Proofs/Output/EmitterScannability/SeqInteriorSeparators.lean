@@ -1383,6 +1383,37 @@ theorem seqPathAllSeq_map_push_breaks (tokens : Array (Positioned YamlToken)) (l
   rw [h_seq] at h_all'
   simp at h_all'
 
+/-- **ADVANCE domain-preservation** — the missing third edge of the all-seq-PATH domain, the
+    `SeqPathAllSeq` companion of `seqEnclosed_advance` (the TOP-projection advance).  When the
+    spine-walk ADVANCES past a consumed entry-plus-separator segment `[lo, n)` to the tail base `n`,
+    this lemma transports the WHOLE-path domain across the segment.  Unlike `seqPathAllSeq_descend`
+    (a PUSH that overwrites the head) this is a FRAME: the segment is `WellTyped` (it returns to
+    depth `0`), so `WellTyped_frame` returns the fold to the *same* stack `s` — every conjunct
+    (definedness, nonemptiness, all-`true`) is preserved VERBATIM, the stack literally unchanged.
+    This is even more direct than the top-only `seqEnclosed_advance`, which must re-read the head:
+    here the entire stack is identical on both sides, so `h_ne`/`h_all` carry through untouched.
+
+    R337 authored only the DESCEND edge (`seqPathAllSeq_descend`, preservation) and its NEGATION
+    (`seqPathAllSeq_map_push_breaks`); the ADVANCE edge was named by the wrapper's next-step pointer
+    but never proven — the navigator's domain has THREE edges (descend / advance / leaf), and the
+    advance-frame analogue had to be lifted from `seqEnclosed_advance` to the whole stack.  The
+    `WellTyped` segment is supplied as a hypothesis ([[ref-parametric-assembler-extraction]]); the
+    producer discharges it at the depth-`0` `.flowEntry` separator (the balanced head-entry segment,
+    R337's [[ref-converse-forward-invariant-asymmetry]] advance side). -/
+theorem seqPathAllSeq_advance (tokens : Array (Positioned YamlToken)) (lo n : Nat)
+    (h : SeqPathAllSeq tokens lo)
+    (h_lo_n : lo ≤ n)
+    (h_wt_seg : WellTyped ((tokens.toList.take n).drop lo)) :
+    SeqPathAllSeq tokens n := by
+  obtain ⟨s, h_fold, h_ne, h_all⟩ := h
+  refine ⟨s, ?_, h_ne, h_all⟩
+  have h_split : tokens.toList.take n
+      = tokens.toList.take lo ++ (tokens.toList.take n).drop lo := by
+    have h := List.take_append_drop lo (tokens.toList.take n)
+    rw [List.take_take, Nat.min_eq_left h_lo_n] at h
+    exact h.symm
+  rw [h_split, btFold_append, h_fold, WellTyped_frame _ s h_wt_seg]
+
 /-- **`SeqPathAllSeq` dominates `SeqEnclosed`** — the all-`true` path stack has TOP `true`, so the
     navigator's domain hypothesis is STRICTLY STRONGER than the immediate-enclosure fact the dispatch
     (`seqWindow_flowBodyContent`) consumes.  Lets the domain-restricted driver supply the dispatch's
