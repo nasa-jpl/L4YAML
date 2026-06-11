@@ -2974,4 +2974,64 @@ theorem nestedSeq_recseqentry_locate_scalar_cons_step
   · simp only [List.length_cons, List.length_nil]
     omega
 
+/-- **The scalar-head HEAD dispatch of `h_step`** —
+    `(i'-b-B2c-nested-fbc-emission-locator-skeleton-brick-d-scalar-head)`, R381, BRICK D (assembly).  The
+    `recseqbody_head_or_cons` HEAD branch (`body = e`, a `single` body with NO separator) where the lone
+    entry is a bare scalar `[t]` (`RecSeqEntry.scalar`, `e.length = 1`).  Pure `omega` CONTRADICTION — no
+    arm call, no boundary brick, no new primitive.  The slice (`g.slice` + `g.Hsz`) forces
+    `body.length = H - off`, and the body being the single scalar pins `body.length = 1`, so `off + 1 = H`
+    (with `g.bound`).  Then `g.win_lo : off + 1 ≤ a`, `g.win_ab : a < b`, `g.win_hi : b < H = off + 1`
+    collapse to `off + 1 ≤ a < b < off + 1` — impossible: a HEAD scalar window is too SHORT to contain a
+    valid interior seq target `[a,b)`.  So the HEAD branch never reaches the move trichotomy (it needs no
+    `h_ne` — the boundary falls inside the arithmetic-contradiction region).  Verified-but-unconsumed until
+    the full `h_step` assembles; frontier holds at 4. -/
+theorem nestedSeq_recseqentry_locate_scalar_head_step
+    (tokens : Array (Positioned YamlToken)) (a b off H : Nat)
+    (body : List (Positioned YamlToken))
+    (t : Positioned YamlToken)
+    (g : SeqLocateGuard tokens a b off H body)
+    (h_eq : body = [t]) :
+    (∃ lo op' cl' interior', lo + 1 = a ∧ a ≤ b ∧
+      RecSeqEntry (op' :: (interior' ++ [cl'])) ∧
+      op'.val = .flowSequenceStart ∧ interior' ≠ [] ∧
+      (tokens.toList.take (b + 1)).drop lo = op' :: (interior' ++ [cl']))
+    ∨ (∃ off' H' body', body'.length < body.length ∧
+      SeqLocateGuard tokens a b off' H' body') := by
+  exfalso
+  have h_len : body.length = H - off := by
+    rw [g.slice, List.length_drop, List.length_take, Array.length_toList]
+    have := g.Hsz; omega
+  have hbl : body.length = 1 := by rw [h_eq]; rfl
+  have hb := g.bound; have hlo := g.win_lo; have hab := g.win_ab; have hhi := g.win_hi
+  omega
+
+/-- **The seqEmpty-head HEAD dispatch of `h_step`** —
+    `(i'-b-B2c-nested-fbc-emission-locator-skeleton-brick-d-seqEmpty-head)`, R381, BRICK D (assembly).  The
+    empty-interior sibling of `…_scalar_head_step`: the `recseqbody_head_or_cons` HEAD branch where the lone
+    entry is an empty seq `op :: ([] ++ [cl])` (`RecSeqEntry.seqEmpty`, `e.length = 2`).  Same pure `omega`
+    CONTRADICTION — the slice pins `body.length = 2`, so `off + 2 = H`, and `g.win_lo`/`g.win_ab`/`g.win_hi`
+    collapse to `off + 1 ≤ a < b < off + 2` — impossible (only `off+1` fits, leaving no room for `a < b`).
+    `e.length` 1/2 are both too SHORT for a HEAD window to host an interior seq target; the seq/map HEAD
+    cells (`e.length ≥ 3`) instead split LEAF/DESCEND (refuted by BRICK B) from the arith-contra region.
+    Verified-but-unconsumed until the full `h_step` assembles; frontier holds at 4. -/
+theorem nestedSeq_recseqentry_locate_seqEmpty_head_step
+    (tokens : Array (Positioned YamlToken)) (a b off H : Nat)
+    (body : List (Positioned YamlToken))
+    (op cl : Positioned YamlToken)
+    (g : SeqLocateGuard tokens a b off H body)
+    (h_eq : body = op :: ([] ++ [cl])) :
+    (∃ lo op' cl' interior', lo + 1 = a ∧ a ≤ b ∧
+      RecSeqEntry (op' :: (interior' ++ [cl'])) ∧
+      op'.val = .flowSequenceStart ∧ interior' ≠ [] ∧
+      (tokens.toList.take (b + 1)).drop lo = op' :: (interior' ++ [cl']))
+    ∨ (∃ off' H' body', body'.length < body.length ∧
+      SeqLocateGuard tokens a b off' H' body') := by
+  exfalso
+  have h_len : body.length = H - off := by
+    rw [g.slice, List.length_drop, List.length_take, Array.length_toList]
+    have := g.Hsz; omega
+  have hbl : body.length = 2 := by rw [h_eq]; rfl
+  have hb := g.bound; have hlo := g.win_lo; have hab := g.win_ab; have hhi := g.win_hi
+  omega
+
 end L4YAML.Proofs.EmitterScannability
