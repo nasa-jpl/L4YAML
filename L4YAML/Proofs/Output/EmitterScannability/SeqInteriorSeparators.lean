@@ -1895,6 +1895,97 @@ theorem seqTarget_close_lt_interiorEnd
     rw [h_open, h0] at h_comp2
     omega
 
+/-- **The DESCEND disjunct of the locator's per-window step `h_step`, through the guard structure** —
+    `(i'-b-B2c-nested-fbc-emission-locator-skeleton-hstep-descend)`, R369.  The second `move_trichotomy`
+    arm (`off + 1 < a < off + L`, `L = e.length`): the FIXED target window `[a, b)` lands strictly
+    INSIDE the walking head entry, which is a SEQ block `op :: (interior ++ [cl])`, so the recursion
+    DESCENDS into that interior and re-bundles `G` at the descended window `(off+1, off+1+interior.length,
+    interior)`.  This is the pure-plumbing assembly the R368 work left: the analytical field `win_hi`
+    (`b < off+1+interior.length`) discharges via `seqTarget_close_lt_interiorEnd` (R368) against the
+    carried `opener`/`typed` + the head interior's `WellBracketed`-sourced balance/floor; every other
+    field is mechanical or a window-absolute pass-through.
+
+    Field sourcing at `(off+1, off+1+interior.length, interior)`:
+    * `domain`/`slice` — from `nestedSeq_recseqentry_locate_descend_step` (R361, the descend seam:
+      slice re-base `▸` `seqPathAllSeq_descend`), fed the guard's frame + `h_off_open` + `h_prefix`;
+    * `recBody` — the head SEQ entry's stored `RecSeqBody interior` (`seq.h_rec`, threaded as `h_rec_int`);
+    * `typed`/`close`/`opener`/`win_ab` — WINDOW-ABSOLUTE (keyed on the FIXED `[a,b]`/`a-1`), PASS
+      THROUGH the descent UNCHANGED;
+    * `bound`/`Hsz`/`win_lo` — `omega` from the frame + the descend bounds (`win_lo : off+2 ≤ a` is the
+      arm's `off+1 < a`);
+    * `win_hi` — `seqTarget_close_lt_interiorEnd` (R368) at `c = off+1+interior.length`, whose
+      `h_int_bal`/`h_int_floor` are the head interior's Dyck balance + floor TRANSPORTED into `tokens`
+      coordinates from `h_wb : WellBracketed interior` via the descend slice (`flowBracketBalance_eq_pbalance`
+      + the `List.drop_take` slice commutation), `h_open` = the carried `opener`, `h_gate` = the carried
+      `typed`.
+
+    The shrink witness is `interior.length < body.length` (`body = (op :: interior ++ [cl]) ++ rest` ⇒
+    `body.length = interior.length + 2 + rest.length`) — the single measure both recursive arms feed the
+    `seqLocateRecDriver`.  The head opener type `tokens[off]! = [` is taken as a hypothesis IDENTICALLY to
+    the LEAF/seam arms (the skeleton supplies it from the same `cases e` `.seq` decomposition).  The
+    map-head sub-case is REFUTED upstream by the dispatch (`seqPathAllSeq_map_frame_persists`, R360) before
+    this arm fires, so only the seq-head shape reaches here.  Verified-but-unconsumed until the skeleton
+    wires `h_step`; references no sorry site, frontier sorry count unchanged at 4. -/
+theorem nestedSeq_recseqentry_locate_step_descend
+    (tokens : Array (Positioned YamlToken)) (a b off H : Nat)
+    (body rest interior : List (Positioned YamlToken))
+    (op cl : Positioned YamlToken)
+    (g : SeqLocateGuard tokens a b off H body)
+    (h_prefix : body = (op :: (interior ++ [cl])) ++ rest)
+    (h_off_open : tokens[off]!.val = .flowSequenceStart)
+    (h_wb : WellBracketed interior)
+    (h_rec_int : RecSeqBody interior)
+    (h_desc_lo : off + 1 < a)
+    (h_desc_hi : a < off + interior.length + 2) :
+    ∃ off' H' body', body'.length < body.length ∧
+      SeqLocateGuard tokens a b off' H' body' := by
+  -- descend seam: re-establish the slice + domain at the descended base `off+1`.
+  obtain ⟨h_slice', h_domain'⟩ :=
+    nestedSeq_recseqentry_locate_descend_step tokens body rest interior op cl off H
+      g.slice g.bound g.Hsz h_prefix h_off_open g.domain
+  -- body length, for the shrink measure and the descended `Hsz`.
+  have hblen : body.length = interior.length + 2 + rest.length := by
+    rw [h_prefix]; simp only [List.length_append, List.length_cons, List.length_nil]
+  have h_Hsz' : off + 1 + interior.length ≤ tokens.size := by
+    have hb := g.bound; have hh := g.Hsz; omega
+  -- interior balance + floor in `tokens` coordinates, transported from `WellBracketed interior` via the
+  -- descend slice (the `[off+1, off+1+interior.length)` window IS `interior`).
+  have h_drop : (tokens.toList.drop (off + 1)).take interior.length = interior := by
+    have h1 : (tokens.toList.take (off + 1 + interior.length)).drop (off + 1)
+        = (tokens.toList.drop (off + 1)).take interior.length := by
+      rw [List.drop_take]; congr 1; omega
+    rw [← h1]; exact h_slice'.symm
+  have h_takem : ∀ m, m ≤ interior.length →
+      interior.take m = (tokens.toList.drop (off + 1)).take m := by
+    intro m hm
+    rw [← h_drop, List.take_take, Nat.min_eq_left hm]
+  have h_int_bal : flowBracketBalance tokens (off + 1) (off + 1 + interior.length) = 0 := by
+    rw [flowBracketBalance_eq_pbalance tokens (off + 1) (off + 1 + interior.length) (by omega)]
+    have harith : off + 1 + interior.length - (off + 1) = interior.length := by omega
+    rw [harith, h_drop]; exact h_wb.1
+  have h_int_floor : ∀ i, off + 1 ≤ i → i ≤ off + 1 + interior.length →
+      flowBracketBalance tokens (off + 1) i ≥ 0 := by
+    intro i hi1 hi2
+    rw [flowBracketBalance_eq_pbalance tokens (off + 1) i hi1,
+        ← h_takem (i - (off + 1)) (by omega)]
+    exact h_wb.2 (i - (off + 1))
+  -- the lone analytical field: the strict close-containment (R368), needing the carried opener.
+  have h_win_hi : b < off + 1 + interior.length :=
+    seqTarget_close_lt_interiorEnd tokens a b off (off + 1 + interior.length)
+      (by omega) (by omega) h_int_bal h_int_floor g.opener g.typed
+  exact ⟨off + 1, off + 1 + interior.length, interior, by omega,
+    { domain := h_domain'
+      recBody := h_rec_int
+      slice := h_slice'
+      bound := by omega
+      Hsz := h_Hsz'
+      typed := g.typed
+      close := g.close
+      opener := g.opener
+      win_lo := by omega
+      win_ab := g.win_ab
+      win_hi := h_win_hi }⟩
+
 /-- **The emission-spine-walk locator's `Nat.strongRecOn` DRIVER** —
     `(i'-b-B2c-nested-fbc-emission-locator-skeleton)`, R365, the SMALLEST-FIRST plumbing de-risk of the
     skeleton `nestedSeq_recseqentry_locate`.  Before wiring the whole recursion (dispatch + three arm
