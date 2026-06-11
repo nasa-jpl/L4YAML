@@ -1690,6 +1690,71 @@ theorem nestedSeq_recseqentry_locate_advance_balance
   rw [flowBracketBalance_eq_pbalance tokens off (off + e.length + 1) (by omega),
       show off + e.length + 1 - off = e.length + 1 from by omega, h_take_sep, h_pbsep]
 
+/-- **The LEAF branch of the emission-spine-walk locator's per-window step `h_step`** —
+    `(i'-b-B2c-nested-fbc-emission-locator-skeleton-hstep)`, R366, the SMALLEST-FIRST de-risk the
+    blueprint queued for the step: "write `G` as a concrete bundle and prove the LEAF branch of
+    `h_step` FIRST, confirming `G` carries exactly `leaf_full`'s hypothesis list and nothing more is
+    owed there".  This is that brick — the LEAF arm bridged to its `G`-fields BEFORE `G` is finalized
+    as a structure, so the LEAF's debt is itemized from the window-ABSOLUTE typed-interior bundle the
+    blueprint says `G` carries.
+
+    At the LEAF (`a = off + 1`, the dispatch's first `move_trichotomy` arm) the guard supplies the
+    slice/window frame (`h_slice`/`h_bound`/`h_Hsz`/`h_rec`), the opener `tokens[off]! = [` (a head
+    projection of `G`'s `SeqPathAllSeq tokens off`), the close `tokens[b]! = ]`, and — keyed on the
+    FIXED target window `[off+1, b)` (R356 window-absolute, NOT the walking origin) — the typed-interior
+    bundle `SeqTypedInterior tokens (off+1) b`.  The LEAF seam `nestedSeq_recseqentry_locate_leaf_full`
+    (R359) reads TWO balance facts off that bundle, at DIFFERENT origins: its `h_inner`
+    (`flowBracketBalance (off+1) b = 0`) is `SeqTypedInterior`'s first conjunct VERBATIM, but its
+    `h_floor` (the ENCLOSURE floor `∀ i ∈ (off, b], flowBracketBalance off i ≥ 1`, keyed on the OPENER
+    origin `off`) is one origin LOWER than the bundle's INTERIOR floor (`≥ 0`, keyed on `off+1`).  The
+    gap is exactly the opener delta: `flowBracketBalance off i = flowBracketBalance off (off+1) +
+    flowBracketBalance (off+1) i = (+1) + (≥ 0) ≥ 1` (`flowBracketBalance_compose` + the single-token
+    opener read `flowBracketDelta tokens[off]! = +1`).  So the `≥ 1` enclosure floor the close-pinning
+    `recseqentry_close_pin` consumes is DERIVED from the bundle's `≥ 0` interior floor — it is NOT a
+    separate `G`-field, confirming `G` owes the LEAF only the window-absolute `SeqTypedInterior` (plus
+    the opener/close/slice it already carries for the other arms).
+
+    Verified-but-unconsumed until the skeleton wires `h_step` (dispatch on `move_trichotomy`, this is
+    the `a = off+1` disjunct producing `Q` via `Or.inl`); references no sorry site, frontier sorry
+    count unchanged at 4. -/
+theorem nestedSeq_recseqentry_locate_leaf_typed
+    (tokens : Array (Positioned YamlToken)) (off H b : Nat)
+    (body : List (Positioned YamlToken))
+    (h_slice : body = (tokens.toList.take H).drop off)
+    (h_bound : off + body.length ≤ H)
+    (h_Hsz : H ≤ tokens.size)
+    (h_rec : RecSeqBody body)
+    (h_open : tokens[off]!.val = .flowSequenceStart)
+    (h_off1_b : off + 1 < b)
+    (h_b_H : b < H)
+    (h_bclose : tokens[b]!.val = .flowSequenceEnd)
+    (h_typed : SeqTypedInterior tokens (off + 1) b) :
+    ∃ lo op cl interior, lo + 1 = off + 1 ∧ off + 1 ≤ b ∧
+      RecSeqEntry (op :: (interior ++ [cl])) ∧
+      op.val = .flowSequenceStart ∧ interior ≠ [] ∧
+      (tokens.toList.take (b + 1)).drop lo = op :: (interior ++ [cl]) := by
+  obtain ⟨h_inner, _h_mark, h_floor0⟩ := h_typed
+  have h_off_sz : off < tokens.size := by omega
+  have h_off_len : off < tokens.toList.length := by rw [Array.length_toList]; exact h_off_sz
+  -- Single-token opener read at `off`, bridging `tokens.toList[off]` to `tokens[off]!`.
+  have h_tok : tokens.toList[off]'h_off_len = tokens[off]! := by
+    rw [getElem!_pos tokens off h_off_sz, Array.getElem_toList]
+  have h_single : flowBracketBalance tokens off (off + 1) = flowBracketDelta tokens[off]!.val := by
+    rw [flowBracketBalance_single tokens off h_off_len, h_tok]
+  have h_delta1 : flowBracketDelta tokens[off]!.val = 1 := by
+    rw [h_open]; exact flowBracketDelta_flowSequenceStart
+  -- Enclosure floor `≥ 1` (origin `off`) from the interior floor `≥ 0` (origin `off+1`) + opener `+1`.
+  have h_floor : ∀ i, off < i → i ≤ b → flowBracketBalance tokens off i ≥ 1 := by
+    intro i hi1 hi2
+    have h_comp : flowBracketBalance tokens off i
+        = flowBracketBalance tokens off (off + 1) + flowBracketBalance tokens (off + 1) i :=
+      flowBracketBalance_compose tokens off (off + 1) i (by omega) (by omega)
+    have h_f0 : flowBracketBalance tokens (off + 1) i ≥ 0 := h_floor0 i (by omega) hi2
+    rw [h_comp, h_single, h_delta1]
+    omega
+  exact nestedSeq_recseqentry_locate_leaf_full tokens off H b body
+    h_slice h_bound h_Hsz h_rec h_open h_off1_b h_b_H h_bclose h_inner h_floor
+
 /-- **The emission-spine-walk locator's `Nat.strongRecOn` DRIVER** —
     `(i'-b-B2c-nested-fbc-emission-locator-skeleton)`, R365, the SMALLEST-FIRST plumbing de-risk of the
     skeleton `nestedSeq_recseqentry_locate`.  Before wiring the whole recursion (dispatch + three arm
