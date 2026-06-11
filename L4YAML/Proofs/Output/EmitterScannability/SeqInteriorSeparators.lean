@@ -3295,6 +3295,93 @@ theorem nestedSeq_recseqentry_locate_hstep
         exact nestedSeq_recseqentry_locate_map_cons_step tokens a b off H body rest interior op cl fe
           g h_eq h_op h_cl h_wb h_fe h_rest
 
+/-- **Per-item hypothesis coercion — `EmitScansInFlowRecEntry v → EmitScansInFlowBlock v`** —
+    `(i'-b-B2c-nested-fbc-emission-locator-root-structural-coerce)`, R386.  The two per-item emission
+    predicates are IDENTICAL — same nine hypotheses, same `∃ n s' block` conclusion with the same
+    twenty-two conjuncts — EXCEPT `EmitScansInFlowRecEntry` carries ONE extra conjunct `RecSeqEntry block`
+    (the locator's recursive deliverable, conjunct #22 of 23).  Dropping it DOWN-coerces the stronger
+    per-item predicate the nested locator threads to the weaker `EmitScansInFlowBlock` the existing
+    whole-structure lemma `scanFiltered_emitSeq_nonempty_structure` consumes.  Mechanical
+    destructure-drop-reassemble ([[ref-coerce-to-weaker-reuse-wrapper]] at the PER-ITEM-hypothesis
+    granularity: one emission, two consumers picking different per-item predicates; the shared facts
+    re-export after the coercion). -/
+theorem emitScansInFlowBlock_of_flowRecEntry (v : YamlValue)
+    (h : EmitScansInFlowRecEntry v) : EmitScansInFlowBlock v := by
+  intro s rest h_corr h_inflow h_flow h_indent h_col h_ekl h_atol h_endline h_sks
+  obtain ⟨n, s', block, h1, h2, h3, h4, h5, h6, h7, h8, h9, h10, h11, h12, h13, h14,
+          h15, h16, h17, h18, h19, h20, h21, _h22, h23⟩ :=
+    h s rest h_corr h_inflow h_flow h_indent h_col h_ekl h_atol h_endline h_sks
+  exact ⟨n, s', block, h1, h2, h3, h4, h5, h6, h7, h8, h9, h10, h11, h12, h13, h14,
+    h15, h16, h17, h18, h19, h20, h21, h23⟩
+
+/-- **The deferred-structural root WINDOW — `FlowBodyWindow tokens 2 (size-2)`** —
+    `(i'-b-B2c-nested-fbc-emission-locator-root-structural-window)`, R386.  R385's root seed named
+    `window : FlowBodyWindow tokens 2 (size-2)` a DEFERRED-STRUCTURAL hypothesis (a NEW owed brick).  It
+    is NOT a substantial new brick: the sibling whole-structure lemma
+    `scanFiltered_emitSeq_nonempty_structure` ALREADY proves its three content fields — `balanced`
+    (`flowBracketBalance tokens 2 (size-2) = 0`), `dyck` (`∀ k, 2 ≤ k → k ≤ size-2 → balance ≥ 0`,
+    verbatim the `FlowBodyWindow.dyck` shape at `lo = 2`), `wellTyped` — en route to its OWN
+    `FlowSubrangesOk` goal, for a DIFFERENT consumer.  This extracts them; the four frame bounds are
+    `Nat.le_refl`/`omega` off `size ≥ 5`.  The only gap is the per-item-hypothesis strength
+    (`EmitScansInFlowRecEntry` vs the lemma's `EmitScansInFlowBlock`), bridged by
+    `emitScansInFlowBlock_of_flowRecEntry`.  [[ref-metric-bridge-is-composition]] /
+    [[ref-root-seed-recursive-producer-swap]]: the feared deferred brick was already a theorem. -/
+theorem seqRoot_flowBodyWindow
+    (items : Array YamlValue) (tokens : Array (Positioned YamlToken))
+    (h_scan : Scanner.scanFiltered ("[" ++ emit.emitList items.toList ++ "]") = .ok tokens)
+    (h_ne : items.toList ≠ [])
+    (h_all : ∀ v ∈ items.toList, EmitScansInFlowRecEntry v) :
+    FlowBodyWindow tokens 2 (tokens.size - 2) := by
+  have h_all_block : ∀ w, w ∈ items.toList → EmitScansInFlowBlock w :=
+    fun w hw => emitScansInFlowBlock_of_flowRecEntry w (h_all w hw)
+  obtain ⟨h_sz5, _h_t0, _h_tlast, _h_t1, _h_tpe, _h_content0, _h_fe_pattern,
+          h_outer_bal, h_dyck, h_wt_interior, _h_pnok⟩ :=
+    scanFiltered_emitSeq_nonempty_structure items tokens h_scan h_ne h_all_block
+  exact ⟨Nat.le_refl 2, by omega, Nat.le_refl _, by omega, h_outer_bal, h_dyck, h_wt_interior⟩
+
+/-- **The deferred-structural root DOMAIN — `SeqPathAllSeq tokens 2`** —
+    `(i'-b-B2c-nested-fbc-emission-locator-root-structural-domain)`, R386.  R385's other deferred-
+    structural hypothesis, `domain : SeqPathAllSeq tokens 2` (the whole typed bracket stack after the
+    prefix `[0, 2)` is nonempty and all-`true`).  After the first two emitted+filtered tokens — a
+    `.streamStart` (which leaves the stack) then the outer `.flowSequenceStart` (which pushes `true`) —
+    the stack is `[true]`.  A direct two-step `btFold` computation off the head-token facts
+    `scanFiltered_emitSeq_nonempty_structure` already supplies (`tokens[0] = .streamStart`,
+    `tokens[1] = .flowSequenceStart`, `size ≥ 5`).  Like `seqRoot_flowBodyWindow`, no substantial new
+    brick — the sibling structure lemma's facts re-export after the per-item coercion. -/
+theorem seqRoot_seqPathAllSeq
+    (items : Array YamlValue) (tokens : Array (Positioned YamlToken))
+    (h_scan : Scanner.scanFiltered ("[" ++ emit.emitList items.toList ++ "]") = .ok tokens)
+    (h_ne : items.toList ≠ [])
+    (h_all : ∀ v ∈ items.toList, EmitScansInFlowRecEntry v) :
+    SeqPathAllSeq tokens 2 := by
+  have h_all_block : ∀ w, w ∈ items.toList → EmitScansInFlowBlock w :=
+    fun w hw => emitScansInFlowBlock_of_flowRecEntry w (h_all w hw)
+  obtain ⟨h_sz5, h_t0, _h_tlast, h_t1, _h_tpe, _h_content0, _h_fe_pattern,
+          _h_outer_bal, _h_dyck, _h_wt_interior, _h_pnok⟩ :=
+    scanFiltered_emitSeq_nonempty_structure items tokens h_scan h_ne h_all_block
+  have h0 : 0 < tokens.toList.length := by rw [Array.length_toList]; omega
+  have h1 : 1 < tokens.toList.length := by rw [Array.length_toList]; omega
+  have e0 : (tokens.toList[0]'h0).val = .streamStart := by
+    have hb : tokens.toList[0]'h0 = tokens[0]! := by
+      rw [Array.getElem_toList, getElem!_pos tokens 0 (by omega)]
+    rw [hb]; exact h_t0
+  have e1 : (tokens.toList[1]'h1).val = .flowSequenceStart := by
+    have hb : tokens.toList[1]'h1 = tokens[1]! := by
+      rw [Array.getElem_toList, getElem!_pos tokens 1 (by omega)]
+    rw [hb]; exact h_t1
+  have step1 : tokens.toList.take 2 = tokens.toList.take 1 ++ [tokens.toList[1]'h1] :=
+    List.take_succ_eq_append_getElem h1
+  have step0 : tokens.toList.take 1 = tokens.toList.take 0 ++ [tokens.toList[0]'h0] :=
+    List.take_succ_eq_append_getElem h0
+  have h_take2 : tokens.toList.take 2 = [tokens.toList[0]'h0, tokens.toList[1]'h1] := by
+    rw [step1, step0]; rfl
+  refine ⟨[true], ?_, by simp, by simp⟩
+  rw [h_take2]
+  have hb0 : btStep (tokens.toList[0]'h0) [] = some [] := by simp only [btStep, e0]
+  have hb1 : btStep (tokens.toList[1]'h1) [] = some [true] := by simp only [btStep, e1]
+  rw [btFold_cons_some, hb0, btFold_cons_some, hb1]
+  rfl
+
 /-- **The locator's ROOT SEED — `SeqLocateGuard` at the outer span `[2, size-2)`** —
     `(i'-b-B2c-nested-fbc-emission-locator-skeleton-brick-d-root-seed)`, R385, BRICK D (root seed).  The
     base case `seqLocateRecDriver` consumes: the guard bundle at the WALKING window = the WHOLE top-level
@@ -3318,9 +3405,10 @@ theorem nestedSeq_recseqentry_locate_hstep
     [[ref-root-seed-discriminator-not-from-gate]]), so each enters as a hypothesis = the fact the DESCENT
     re-establishes per level (`hstep`'s DESCEND/ADVANCE arms produce them from the located bracket).  The
     load-bearing pair is the strict `win_ab : a < b` (the non-empty-target precondition, R376) and the
-    window-absolute `path : SeqPathAllSeq tokens (a-1)` (R375).  Verified-but-unconsumed until the
-    root-structural `domain`/`window` derivations land and the locator feeds `FlowSubrangesOk`; references
-    no sorry site, frontier sorry count unchanged at 4. -/
+    window-absolute `path : SeqPathAllSeq tokens (a-1)` (R375).  The root-structural `domain`/`window`
+    derivations landed in R386 (`seqRoot_seqPathAllSeq` / `seqRoot_flowBodyWindow`), so
+    `nestedSeq_recseqentry_locate` supplies them here from `h_scan` and is now hypothesis-free over
+    emission.  References no sorry site, frontier sorry count unchanged at 4. -/
 theorem nestedSeq_recseqentry_locate_root_seed
     (items : Array YamlValue) (tokens : Array (Positioned YamlToken)) (a b : Nat)
     (h_scan : Scanner.scanFiltered ("[" ++ emit.emitList items.toList ++ "]") = .ok tokens)
@@ -3361,8 +3449,12 @@ theorem nestedSeq_recseqentry_locate_root_seed
     from execution to structural, [[ref-reduction-by-import]]) — the eight cells + assembly are now load-
     bearing under a real consumer.
 
-    Still takes the root-structural `h_domain`/`h_window` as hypotheses (their emission-level derivations
-    are the next brick) and is verified-but-unconsumed until the map mirror (`RecMapBody` axis) and
+    **Now HYPOTHESIS-FREE over emission (R386).**  The root-structural `h_domain`/`h_window` R385 took as
+    hypotheses are derived inline from `h_scan`/`h_ne`/`h_all` via `seqRoot_seqPathAllSeq` /
+    `seqRoot_flowBodyWindow` (their content already proven inside `scanFiltered_emitSeq_nonempty_structure`
+    for the `FlowSubrangesOk` consumer; the per-item coercion `emitScansInFlowBlock_of_flowRecEntry`
+    bridges the gap).  So the locator takes only `h_scan` + the seven target discriminators and is ready to
+    CONSUME — verified-but-unconsumed until the map mirror (`RecMapBody` axis) and
     `flowSubrangesOk_of_window_producers` feed the two `FlowSubrangesOk` sorries
     (`NonemptyStructure.lean:7502`/`:7743`).  References no sorry site, frontier sorry count unchanged at
     4. -/
@@ -3371,8 +3463,6 @@ theorem nestedSeq_recseqentry_locate
     (h_scan : Scanner.scanFiltered ("[" ++ emit.emitList items.toList ++ "]") = .ok tokens)
     (h_ne : items.toList ≠ [])
     (h_all : ∀ v ∈ items.toList, EmitScansInFlowRecEntry v)
-    (h_domain : SeqPathAllSeq tokens 2)
-    (h_window : FlowBodyWindow tokens 2 (tokens.size - 2))
     (h_typed : SeqTypedInterior tokens a b)
     (h_close : tokens[b]!.val = .flowSequenceEnd)
     (h_opener : flowBracketBalance tokens (a - 1) a = 1)
@@ -3388,6 +3478,8 @@ theorem nestedSeq_recseqentry_locate
     (nestedSeq_recseqentry_locate_hstep tokens a b)
     2 (tokens.size - 2) ((tokens.toList.take (tokens.size - 2)).drop 2)
     (nestedSeq_recseqentry_locate_root_seed items tokens a b h_scan h_ne h_all
-      h_domain h_window h_typed h_close h_opener h_path h_win_lo h_win_ab h_win_hi)
+      (seqRoot_seqPathAllSeq items tokens h_scan h_ne h_all)
+      (seqRoot_flowBodyWindow items tokens h_scan h_ne h_all)
+      h_typed h_close h_opener h_path h_win_lo h_win_ab h_win_hi)
 
 end L4YAML.Proofs.EmitterScannability
