@@ -3146,4 +3146,91 @@ theorem nestedSeq_recseqentry_locate_map_head_step
     have hb := g.bound; have hhi := g.win_hi; have hab := g.win_ab
     omega
 
+/-- **The map-head CONS dispatch of `h_step`** —
+    `(i'-b-B2c-nested-fbc-emission-locator-skeleton-brick-d-map-cons)`, R383, BRICK D (assembly).  The
+    LAST of the eight `recseqbody_head_or_cons × cases h_e` cells: the CONS branch
+    (`body = (op :: (interior ++ [cl])) ++ fe :: rest`, head entry has a SUCCESSOR past `fe`) with a
+    `.flowMappingStart` head (`RecSeqEntry.map`, NO `h_rec` — a map interior is not a `RecSeqBody`).
+    Unlike the scalar CONS (R380, where the LEAF/boundary COINCIDE and collapse the dispatch to one
+    straight-line ADVANCE), a map head has `e.length = interior.length + 2 ≥ 2`, so the move trichotomy
+    is NON-degenerate and all three arms are reachable — but only ADVANCE produces; LEAF and DESCEND are
+    REFUTED by BRICK B (a map can never inhabit the seq-entry deliverable `Q`):
+    * LEAF (`a = off + 1`): `seqEnclosed_map_push_breaks` — the map open at `off` breaks the gate's
+      enclosure mark `g.typed.2.1 : SeqEnclosed tokens a` re-based by `a = off + 1`.
+    * DESCEND (`off + 1 < a < off + interior.length + 2`): `seqPathAllSeq_map_descend_excluded` (R374,
+      BRICK B-i) — the map's `false` frame persists from `off` to `a - 1`, refuting `g.path`.
+    * ADVANCE (`off + interior.length + 2 < a`): `…step_advance` with `h_e := RecSeqEntry.map`, the sole
+      producing arm (the IH-shrinking move).
+    The boundary `a ≠ off + interior.length + 2` is excluded by `…cons_boundary_delta` at the map close
+    `cl` (`m = off + (op :: interior).length`, `flowBracketDelta .flowMappingEnd = -1 ≠ 1` — the THIRD
+    distinct delta the R379 lift serves, after the seq close `-1` and the scalar `0`).  Same `…step_advance`
+    / `…sep_pos` seams as the seq CONS carve, the only swap being the BRICK-B refutations for LEAF/DESCEND
+    (the seq head PRODUCED/DESCENDED there, the map head REFUTES).  With this cell the eight-cell
+    `h_step` dispatch is COMPLETE — assembly (`recseqbody_head_or_cons` + `cases h_e`) + the root seed
+    remain.  Verified-but-unconsumed; frontier sorry count unchanged at 4. -/
+theorem nestedSeq_recseqentry_locate_map_cons_step
+    (tokens : Array (Positioned YamlToken)) (a b off H : Nat)
+    (body rest interior : List (Positioned YamlToken))
+    (op cl fe : Positioned YamlToken)
+    (g : SeqLocateGuard tokens a b off H body)
+    (h_eq : body = (op :: (interior ++ [cl])) ++ fe :: rest)
+    (h_op : op.val = .flowMappingStart) (h_cl : cl.val = .flowMappingEnd)
+    (h_wb : WellBracketed interior)
+    (h_fe : fe.val = .flowEntry) (h_rest : RecSeqBody rest) :
+    (∃ lo op' cl' interior', lo + 1 = a ∧ a ≤ b ∧
+      RecSeqEntry (op' :: (interior' ++ [cl'])) ∧
+      op'.val = .flowSequenceStart ∧ interior' ≠ [] ∧
+      (tokens.toList.take (b + 1)).drop lo = op' :: (interior' ++ [cl']))
+    ∨ (∃ off' H' body', body'.length < body.length ∧
+      SeqLocateGuard tokens a b off' H' body') := by
+  -- head opener position (a map open at off)
+  have h_pref_head : body = op :: ((interior ++ [cl]) ++ fe :: rest) := by rw [h_eq]; rfl
+  have h_off_map : tokens[off]!.val = .flowMappingStart := by
+    rw [nestedSeq_recseqentry_locate_head_pos tokens body ((interior ++ [cl]) ++ fe :: rest) op off H
+      g.slice g.bound g.Hsz h_pref_head]
+    exact h_op
+  -- close position (via sep_pos with e := op :: interior, re-bracketing the entry), for the boundary
+  have h_pref_close : body = (op :: interior) ++ cl :: (fe :: rest) := by rw [h_eq]; simp
+  have h_close_tok : tokens[off + (op :: interior).length]! = cl :=
+    nestedSeq_recseqentry_locate_sep_pos tokens body (fe :: rest) (op :: interior) cl off H
+      g.slice g.bound g.Hsz h_pref_close
+  have h_close_val : tokens[off + (op :: interior).length]!.val = .flowMappingEnd := by
+    rw [h_close_tok]; exact h_cl
+  have hbl : body.length = interior.length + rest.length + 3 := by
+    rw [h_eq]; simp only [List.length_append, List.length_cons, List.length_nil]; omega
+  have h_off_sz : off < tokens.size := by
+    have hb := g.bound; have hH := g.Hsz; omega
+  have h_m_sz : off + (op :: interior).length < tokens.size := by
+    have hb := g.bound; have hH := g.Hsz
+    simp only [List.length_cons]
+    omega
+  -- boundary: a ≠ off + interior.length + 2 (one past the map close `cl`, δ = -1 ≠ 1)
+  have h_ne : a ≠ off + interior.length + 2 := by
+    have hcb := nestedSeq_recseqentry_locate_cons_boundary_delta tokens a b off H
+      (off + (op :: interior).length) body g h_m_sz
+      (by rw [h_close_val, flowBracketDelta_flowMappingEnd]; omega)
+    simp only [List.length_cons] at hcb
+    omega
+  -- dispatch (LEAF/DESCEND refuted by BRICK B; ADVANCE the only producing arm)
+  rcases (by have := g.win_lo; omega :
+      (a = off + 1) ∨ (off + 1 < a ∧ a < off + interior.length + 2)
+        ∨ (off + interior.length + 2 < a)) with h_leaf | ⟨h_d1, h_d2⟩ | h_adv
+  · -- LEAF: a map open at off ⇒ ¬ SeqEnclosed (off+1), contradicting g.typed's enclosure mark
+    exfalso
+    have h_enc : SeqEnclosed tokens a := g.typed.2.1
+    rw [h_leaf] at h_enc
+    exact seqEnclosed_map_push_breaks tokens off h_off_sz h_off_map h_enc
+  · -- DESCEND: map frame persists ⇒ ¬ SeqPathAllSeq (a-1), contradicting g.path (BRICK B-i)
+    exact (seqPathAllSeq_map_descend_excluded tokens a off H body (fe :: rest) interior op cl
+      g.slice g.bound g.Hsz h_eq h_wb h_off_map g.path h_d1 h_d2).elim
+  · -- ADVANCE: the only producing arm (h_e := RecSeqEntry.map)
+    refine Or.inr (nestedSeq_recseqentry_locate_step_advance tokens a b off H body rest
+      (op :: (interior ++ [cl])) fe g h_eq ?_ h_fe h_rest ?_ ?_)
+    · exact RecSeqEntry.map op cl interior h_op h_cl h_wb
+    · rw [nestedSeq_recseqentry_locate_sep_pos tokens body rest (op :: (interior ++ [cl])) fe off H
+        g.slice g.bound g.Hsz h_eq]
+      exact h_fe
+    · simp only [List.length_cons, List.length_append, List.length_nil]
+      omega
+
 end L4YAML.Proofs.EmitterScannability
