@@ -84,6 +84,7 @@ import Tests.Reflections.DemotedDispatchMetricFromStructure
 import Tests.Reflections.AdjacentOriginReconstructs
 import Tests.Reflections.GuardStructureArmByArm
 import Tests.Reflections.StrictContainmentNeedsOpener
+import Tests.Reflections.AdditiveFieldCostByKeying
 
 /-!
 # Reflections — runnable proof-engineering demonstrations
