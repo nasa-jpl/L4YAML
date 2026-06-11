@@ -1811,8 +1811,17 @@ structure SeqLocateGuard (tokens : Array (Positioned YamlToken)) (a b : Nat)
   path : SeqPathAllSeq tokens (a - 1)
   /-- window containment: the target start is past the walking opener… -/
   win_lo : off + 1 ≤ a
-  /-- …the target is non-degenerate… -/
-  win_ab : a ≤ b
+  /-- …the target is STRICTLY non-degenerate — the interior `[a, b)` is NON-EMPTY (R376, C-i).  This
+      was `a ≤ b` through R375, but the doc always claimed "non-degenerate": a probe (empty seq `[` `]`,
+      `a = b`) showed `a ≤ b` together with `opener`/`close`/`typed` is satisfied by an EMPTY-seq target,
+      so the bare guard could NOT exclude `RecSeqEntry.seqEmpty` (whose interior is `[]`, failing the
+      deliverable's `interior ≠ []`).  Non-emptiness is INDEPENDENT of the other window-absolute fields,
+      so it is RESTORED here as the strict `a < b` ([[ref-downstream-derisk-restores-upstream]]; the
+      doc/type mismatch was the tell).  Window-ABSOLUTE (keyed on the fixed `a`/`b`), so it descends
+      verbatim through the constructing arms; its root-seed instance is the locator's non-empty-target
+      precondition, owed at BRICK D.  At the LEAF (`a = off + 1`) it IS the leaf's `h_off1_b : off+1 < b`
+      precondition (`nestedSeq_recseqentry_locate_leaf_off1_b`). -/
+  win_ab : a < b
   /-- …and the target close is inside the walking right cut. -/
   win_hi : b < H
   /-- the WALKING window `[off, H)` is a `FlowBodyWindow` — the R367-deferred field that only the
@@ -1852,6 +1861,27 @@ theorem nestedSeq_recseqentry_locate_step_leaf
   subst h_a
   exact nestedSeq_recseqentry_locate_leaf_typed tokens off H b body
     g.slice g.bound g.Hsz g.recBody h_open h_off1_b g.win_hi g.close g.typed
+
+/-- **The LEAF's non-degenerate-close fact `off + 1 < b` — the `seqEmpty`-target EXCLUSION** —
+    `(i'-b-B2c-nested-fbc-emission-locator-skeleton-brick-c-i)`, R376, BRICK C-i.  At the dispatch's LEAF
+    arm (`a = off + 1`, the target IS the walking head entry) the deliverable `Q` demands `interior ≠ []`,
+    i.e. the target close `b` is strictly past the start (`off + 1 < b`) — exactly the leaf's `h_off1_b`
+    precondition (`nestedSeq_recseqentry_locate_step_leaf`).  This is NOT derivable from
+    `opener`/`close`/`typed`/`win_ab`-as-`≤`: a probe (empty seq `[` `]`, `a = b`) satisfies ALL of them
+    yet has an EMPTY interior, so a `RecSeqEntry.seqEmpty` head (interior `[]`) would pass the bare guard
+    and break the deliverable.  The discriminator is the strict `win_ab : a < b` restored at R376
+    ([[ref-downstream-derisk-restores-upstream]]); here it is simply re-based to the leaf coordinate.  So
+    the `seqEmpty` head arm is EXCLUDED — its close sits at `off + 1`, and `b = off + 1` would contradict
+    this `off + 1 < b` (the `b = off + 1` step is BRICK D's matching-uniqueness, fed by THIS fact).  Landed
+    standalone so the boundary fact is debugged OUTSIDE the dispatch's case tree; verified-but-unconsumed
+    until BRICK D wires `h_step`.  References no sorry site, frontier sorry count unchanged at 4. -/
+theorem nestedSeq_recseqentry_locate_leaf_off1_b
+    (tokens : Array (Positioned YamlToken)) (a b off H : Nat)
+    (body : List (Positioned YamlToken))
+    (g : SeqLocateGuard tokens a b off H body)
+    (h_a : a = off + 1) :
+    off + 1 < b := by
+  subst h_a; exact g.win_ab
 
 /-- **The head entry's interior balance + Dyck floor, in `tokens` coordinates — head-shape-BLIND** —
     `(i'-b-B2c-nested-fbc-emission-locator-skeleton-hstep-interior-floor)`, R373, the FIRST refutation
