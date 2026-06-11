@@ -1842,6 +1842,64 @@ theorem nestedSeq_recseqentry_locate_step_leaf
   exact nestedSeq_recseqentry_locate_leaf_typed tokens off H b body
     g.slice g.bound g.Hsz g.recBody h_open h_off1_b g.win_hi g.close g.typed
 
+/-- **The head entry's interior balance + Dyck floor, in `tokens` coordinates — head-shape-BLIND** —
+    `(i'-b-B2c-nested-fbc-emission-locator-skeleton-hstep-interior-floor)`, R373, the FIRST refutation
+    brick the skeleton-wiring de-risk surfaced (BRICK A).  Given the walking slice frame
+    (`h_slice`/`h_bound`) and a head decomposition `body = (op :: (interior ++ [cl])) ++ rest` with
+    `WellBracketed interior`, the interior window `[off+1, off+1+interior.length)` is balanced and
+    Dyck-floored in `tokens` coordinates.
+
+    The point is the word **head-blind**: this transport was, until now, INLINE inside
+    `nestedSeq_recseqentry_locate_step_descend` (R369), specialised to the SEQ head — but the derivation
+    never reads the head's `.flowSequenceStart`.  The interior slice is recovered by
+    `nestedSeq_recseqentry_locate_descend` (R353), whose only inputs are the slice frame + the
+    `op :: (interior ++ [cl])` prefix shape, NOT the opener type; the balance/floor then re-base into
+    `pbalance` over that slice (`flowBracketBalance_eq_pbalance`) and discharge against
+    `WellBracketed interior`'s two conjuncts directly.  Extracting it severs the head-shape dependency so
+    the SAME lemma serves the dispatch's MAP-head refutation: when the head entry is a `RecSeqEntry.map`
+    whose interior contains the target seq opener (the dangerous DESCEND-into-map case), the map's
+    interior floor is exactly this `h_floor`, fed to `seqPathAllSeq_map_frame_persists` to refute the
+    carried `domain : SeqPathAllSeq tokens off` — the case is VACUOUS, no fifth recursive arm.  So one
+    extraction discharges the de-risk's load-bearing gap on BOTH sides of the seq/map split
+    ([[ref-coerce-to-weaker-reuse-wrapper]]: the producer keeps one substrate; the head-type that
+    distinguishes the consumers is precisely the field the transport never touches).
+
+    CONSUMED below by the retrofitted `nestedSeq_recseqentry_locate_step_descend` (it replaces that arm's
+    inline `h_drop`/`h_takem`/`h_int_bal`/`h_int_floor` block with one `obtain`), and queued for the
+    map-refutation brick (BRICK B).  References no sorry site, frontier sorry count unchanged at 4. -/
+theorem recseqentry_head_interior_floor_tokens
+    (tokens : Array (Positioned YamlToken))
+    (body rest interior : List (Positioned YamlToken))
+    (op cl : Positioned YamlToken)
+    (off H : Nat)
+    (h_slice : body = (tokens.toList.take H).drop off)
+    (h_bound : off + body.length ≤ H)
+    (h_prefix : body = (op :: (interior ++ [cl])) ++ rest)
+    (h_wb : WellBracketed interior) :
+    flowBracketBalance tokens (off + 1) (off + 1 + interior.length) = 0 ∧
+    (∀ i, off + 1 ≤ i → i ≤ off + 1 + interior.length →
+        flowBracketBalance tokens (off + 1) i ≥ 0) := by
+  have h_islice : interior = (tokens.toList.take (off + 1 + interior.length)).drop (off + 1) :=
+    nestedSeq_recseqentry_locate_descend tokens body rest interior op cl off H
+      h_slice h_bound h_prefix
+  have h_drop : (tokens.toList.drop (off + 1)).take interior.length = interior := by
+    have h1 : (tokens.toList.take (off + 1 + interior.length)).drop (off + 1)
+        = (tokens.toList.drop (off + 1)).take interior.length := by
+      rw [List.drop_take]; congr 1; omega
+    rw [← h1]; exact h_islice.symm
+  have h_takem : ∀ m, m ≤ interior.length →
+      interior.take m = (tokens.toList.drop (off + 1)).take m := by
+    intro m hm
+    rw [← h_drop, List.take_take, Nat.min_eq_left hm]
+  refine ⟨?_, ?_⟩
+  · rw [flowBracketBalance_eq_pbalance tokens (off + 1) (off + 1 + interior.length) (by omega)]
+    have harith : off + 1 + interior.length - (off + 1) = interior.length := by omega
+    rw [harith, h_drop]; exact h_wb.1
+  · intro i hi1 hi2
+    rw [flowBracketBalance_eq_pbalance tokens (off + 1) i hi1,
+        ← h_takem (i - (off + 1)) (by omega)]
+    exact h_wb.2 (i - (off + 1))
+
 /-- **The DESCEND re-bundle's containment thread `win_hi`** — `(i'-b-B2c-nested-fbc-emission-locator-
     descend-win-hi)`, R368, the lone analytical field of the not-yet-assembled
     `nestedSeq_recseqentry_locate_step_descend`.  At the descended window `[off+1, c)` — `c =
@@ -1959,26 +2017,11 @@ theorem nestedSeq_recseqentry_locate_step_descend
   have h_Hsz' : off + 1 + interior.length ≤ tokens.size := by
     have hb := g.bound; have hh := g.Hsz; omega
   -- interior balance + floor in `tokens` coordinates, transported from `WellBracketed interior` via the
-  -- descend slice (the `[off+1, off+1+interior.length)` window IS `interior`).
-  have h_drop : (tokens.toList.drop (off + 1)).take interior.length = interior := by
-    have h1 : (tokens.toList.take (off + 1 + interior.length)).drop (off + 1)
-        = (tokens.toList.drop (off + 1)).take interior.length := by
-      rw [List.drop_take]; congr 1; omega
-    rw [← h1]; exact h_slice'.symm
-  have h_takem : ∀ m, m ≤ interior.length →
-      interior.take m = (tokens.toList.drop (off + 1)).take m := by
-    intro m hm
-    rw [← h_drop, List.take_take, Nat.min_eq_left hm]
-  have h_int_bal : flowBracketBalance tokens (off + 1) (off + 1 + interior.length) = 0 := by
-    rw [flowBracketBalance_eq_pbalance tokens (off + 1) (off + 1 + interior.length) (by omega)]
-    have harith : off + 1 + interior.length - (off + 1) = interior.length := by omega
-    rw [harith, h_drop]; exact h_wb.1
-  have h_int_floor : ∀ i, off + 1 ≤ i → i ≤ off + 1 + interior.length →
-      flowBracketBalance tokens (off + 1) i ≥ 0 := by
-    intro i hi1 hi2
-    rw [flowBracketBalance_eq_pbalance tokens (off + 1) i hi1,
-        ← h_takem (i - (off + 1)) (by omega)]
-    exact h_wb.2 (i - (off + 1))
+  -- descend slice (the `[off+1, off+1+interior.length)` window IS `interior`).  R373 (BRICK A) extracted
+  -- this head-shape-BLIND transport from here so the map-head refutation reuses it; now CONSUMED.
+  obtain ⟨h_int_bal, h_int_floor⟩ :=
+    recseqentry_head_interior_floor_tokens tokens body rest interior op cl off H
+      g.slice g.bound h_prefix h_wb
   -- the lone analytical field: the strict close-containment (R368), needing the carried opener.
   have h_win_hi : b < off + 1 + interior.length :=
     seqTarget_close_lt_interiorEnd tokens a b off (off + 1 + interior.length)
