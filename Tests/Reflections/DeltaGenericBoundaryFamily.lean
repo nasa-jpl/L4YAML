@@ -57,9 +57,31 @@ theorem post_close_excluded (a : Nat) (h_op : dW (a - 1) = 1) : a ≠ 6 :=
 theorem post_separator_excluded (a : Nat) (h_op : dW (a - 1) = 1) : a ≠ 7 :=
   boundary_excluded dW a 6 h_op (by decide)
 
-#guard dW 5 == -1                                    -- close delta
+/-! ### R379 — the LIBRARY lift, deferred to assembly, subsumes the THREE CONS boundaries.
+
+    At BRICK D's `h_step` assembly the SAME brick must exclude THREE head-entry boundaries: the seq
+    CLOSE (`.flowSequenceEnd`, δ=−1), the map CLOSE (`.flowMappingEnd`, δ=−1), and the scalar HEAD
+    (a bare scalar entry `[t]`, so the boundary `m` is the scalar itself, δ=0).  They collapse to TWO
+    distinct deltas {−1, 0}, both `≠ 1` — so ONE `boundary_excluded` serves all three.  Below, index 5
+    models BOTH closes (δ=−1) and index 8 models the scalar head (δ=0); the lift is free because this
+    delta-generic form was proven sound here (R377), kept SPECIFIC in the library until the scalar/map
+    consumers arrived, then lifted with the seq-close lemma recovered as a one-line corollary. -/
+
+/-- MAP-CLOSE boundary — `.flowMappingEnd` also has δ=−1, so the SAME `boundary_excluded dW a 5` that
+    served the seq close serves the map close.  No new brick. -/
+theorem post_map_close_excluded (a : Nat) (h_op : dW (a - 1) = 1) : a ≠ 6 :=
+  boundary_excluded dW a 5 h_op (by decide)
+
+/-- SCALAR-HEAD boundary — a bare scalar entry has δ=0 at its own index (index 8 here), `≠ 1`, so the
+    same brick excludes it too: the third CONS boundary, second distinct delta. -/
+theorem post_scalar_head_excluded (a : Nat) (h_op : dW (a - 1) = 1) : a ≠ 9 :=
+  boundary_excluded dW a 8 h_op (by decide)
+
+#guard dW 5 == -1                                    -- seq/map close delta
 #guard dW 6 == 0                                     -- separator delta
+#guard dW 8 == 0                                     -- scalar-head delta
 #guard !decide (dW 5 == 1) && !decide (dW 6 == 1)    -- neither is an opener ⇒ both boundaries die
+#guard !decide (dW 8 == 1)                           -- scalar head is no opener ⇒ third boundary dies
 
 /-! ## Probe-outcome nuance — the spec's GEOMETRY was mislabeled, yet the discriminator stays SOUND. -/
 
