@@ -30003,6 +30003,40 @@ the de-risk that catches the redundant field before `G` is frozen as a structure
 `leaf_full` from the window-absolute bundle either closes (the field was redundant, as here) or fails (naming
 the genuinely-missing field). Recorded as [[ref-adjacent-origin-fact-reconstructs-not-debt]].
 
+### Reflection 367 — when committing a producer's recursion GUARD as a `structure`, build its field set ARM-BY-ARM: include only the fields whose consumer arm has already landed, and DEFER a field a not-yet-landed arm needs as an additive extension of the new type — the deferral is a de-risk (the arm proof confirms the field's exact form) AND free (it is your OWN type, not a shared one)
+
+R365 abstracted the locator skeleton's MEASURE as `seqLocateRecDriver`, which takes the per-window guard `G`
+as an OPAQUE `G : Nat → Nat → List … → Prop`. R366 itemized the LEAF arm's debt. R367 finally pins `G` as a
+concrete `structure SeqLocateGuard tokens a b off H body`, so the three arm re-bundles (LEAF / DESCEND /
+ADVANCE) read and write one shared field set — and proves the LEAF disjunct of `h_step` through it
+(`nestedSeq_recseqentry_locate_step_leaf`, a thin projection of R366's `leaf_typed`). (`SeqInteriorSeparators.lean`,
+sorry-free, module green 82, full build green 622, frontier holds at 4.)
+
+**The discipline: do not commit a field whose form only a not-yet-landed arm confirms.** The blueprint's field
+list named `FlowBodyWindow tokens off H` as a probable `G`-field — but ONLY the ADVANCE arm's `WellTyped`
+supplier (`…advance_welltyped`, R363) consumes it (`h_win.wellTyped`/`.dyck`/`.hi_lt`), and ADVANCE has not
+landed. Committing it now would be GUESSING its exact form (which of `FlowBodyWindow`'s seven fields the arm
+truly needs, whether the `2 ≤ lo` precondition even holds at the walked windows) before the consumer proof can
+confirm it. So `SeqLocateGuard` ships with exactly the LEAF/DESCEND-settled fields (domain / recBody / slice /
+bound / Hsz / typed / close / the `win_*` containment triple) and DEFERS `FlowBodyWindow` to the ADVANCE
+increment. This is [[ref-additive-parallel-type-over-shared-edit]] applied to a GUARD bundle (not a
+deliverable): because `SeqLocateGuard` is a NEW own-type, adding a field later is a free additive extension —
+unlike editing a shared/polymorphic type — so the cost of deferring is zero and the payoff is that each arm
+proof PINS the fields it consumes rather than the structure guessing them. It also operationalises
+[[ref-structural-moves-complete-recursion]]: the guard's field set is itself completed one positional arm at a
+time, mirroring the recursion's structural moves.
+
+**Why the LEAF projection is the right first brick.** Every field but the `win_lo`/`win_ab` containment pair is
+consumed by `nestedSeq_recseqentry_locate_step_leaf`, so landing the LEAF disjunct PINS seven of the structure's
+ten fields against a real proof — committing the keystone data decision all three arms share while the simplest,
+already-R366-de-risked arm validates it. The two residual leaf-DISPATCH facts (`h_open`, `h_off1_b`) stay
+hypotheses, exactly as the eventual skeleton derives them from `recseqbody_head_or_cons` before calling the arm.
+
+**Tooling gotcha worth one line.** A structure field named `rec` collides with the auto-generated `.rec`
+recursor (`kernel: constant 'SeqLocateGuard.rec' has already been declared`), which cascades into EVERY field
+projection failing to elaborate. Rename such a field (here `rec` → `recBody`). The same applies to `recOn`,
+`casesOn`, `below`, `brecOn`, `noConfusion` — the eliminator names Lean auto-generates per structure.
+
 **Superseded next step (R364, kept for the record):** **(i'-b-B2c-nested-fbc-emission-locator-skeleton, AUTHOR the `Nat.strongRecOn` wrapper
 `nestedSeq_recseqentry_locate` — every analytical piece landed)** *(its SMALLEST-FIRST measure+IH de-risk is now RESOLVED + LANDED by R365 as `seqLocateRecDriver`; the skeleton's plumbing is two sorry-free bricks — `move_trichotomy` dispatch + `seqLocateRecDriver` measure — and the remaining job is to define the guard `G` and prove `h_step`.)*
 
@@ -30044,7 +30078,43 @@ is `seqLocateRecDriver` applied to it — one line. Then: compose with `nestedSe
 `nestedSeq_flowBodyContent`, then the map mirror (`RecMapBody` axis) and `flowSubrangesOk_of_window_producers`
 → the two `FlowSubrangesOk` sorries (`NonemptyStructure.lean:7502`, `:7743`) follow.
 
-**Next step:** **(i'-b-B2c-nested-fbc-emission-locator-skeleton-hstep-recurse, DEFINE the guard `G` as a
+**Next step:** **(i'-b-B2c-nested-fbc-emission-locator-skeleton-hstep-descend, prove the DESCEND re-bundle
+`nestedSeq_recseqentry_locate_step_descend` — SMALLEST-FIRST de-risk its `win_hi` re-base `b < off+1+interior.length`)** —
+R367 landed part (1), the guard `structure SeqLocateGuard tokens a b off H body`, AND the LEAF disjunct through
+it (`nestedSeq_recseqentry_locate_step_leaf`, `seqLocateRecDriver`'s `Or.inl` arm). The residual is the two
+recursive disjuncts; DESCEND is the simpler (no `WellTyped` segment), so it lands BEFORE ADVANCE.
+
+The DESCEND re-bundle is `SeqLocateGuard tokens a b off H body` + the descend-dispatch facts (head entry is a
+seq block `op :: (interior ++ [cl])`, `interior ≠ []`, `tokens[off]! = [`, and the target lands strictly inside:
+`off+1 < a`) → `∃ off' H' body', body'.length < body.length ∧ SeqLocateGuard tokens a b off' H' body'` with
+witnesses `(off+1, off+1+interior.length, interior)`. Re-establishing the ten fields at the descended window:
+
+- `domain : SeqPathAllSeq tokens (off+1)` — the SECOND output of `nestedSeq_recseqentry_locate_descend_step`
+  (R361), the seam already composes `seqPathAllSeq_descend`.
+- `slice : interior = (take (off+1+interior.length)).drop (off+1)` — the FIRST output of the descend seam.
+- `recBody : RecSeqBody interior` — the head entry's stored `seq.h_rec` (from `recseqbody_head_or_cons` →
+  `cons`, then `cases e` on the `RecSeqEntry.seq` constructor; the `single` head-case folds to LEAF).
+- `typed : SeqTypedInterior tokens a b` and `close : tokens[b]! = ]` — PASS THROUGH UNCHANGED (window-absolute,
+  R367/R366); the descended witnesses do not touch `a`/`b`.
+- `bound`, `Hsz`, `win_lo` (`off+2 ≤ a`, from `off+1 < a`), `win_ab` (unchanged) — `omega` from the dispatch +
+  `H' = off+1+interior.length ≤ off+body.length ≤ H ≤ tokens.size`.
+- **`win_hi : b < off+1+interior.length`** — THE LONE ANALYTICAL THREAD (R361 named it: "`b` stays inside the
+  descended right cut because the target entry nests strictly inside the seq head"). This is NOT `omega` from the
+  dispatch — `move_trichotomy` constrains only `a` (`a < off+e.length`), never `b`. SMALLEST-FIRST WITHIN
+  DESCEND: de-risk THIS conjunct FIRST, before assembling the re-bundle. Probe whether `b < off+1+interior.length`
+  follows from the carried `SeqTypedInterior tokens a b` (balance-0 from `a`, close at `b`) + the head's interior
+  structure (the head `op :: interior ++ [cl]` is a `RecSeqEntry`, so its interior `[off+1, off+1+interior.length)`
+  is well-bracketed, the `cl` at `off+1+interior.length` is the head's matching close): the target's close `b`,
+  selected inside the head interior by `a > off+1` + balance-0, cannot cross the head's `cl` floor — a
+  [[ref-two-floor-relay-close-bound]] containment (the head-interior floor TILES the target's close bound).
+  PROBE a minimal pair ([[ref-minimal-pair-extracts-the-gate]]) — a target nested inside vs one that would reach
+  the `cl` — to confirm the floor relay is necessary AND sufficient, and whether the bound needs a new
+  containment brick or factors through an existing located-close lemma ([[ref-metric-bridge-is-composition]]:
+  search the packaged close-locator first). If it needs a brick, that brick is the DESCEND increment; if it
+  factors, the whole DESCEND re-bundle is one assembly. The map-head sub-case is REFUTED
+  (`seqPathAllSeq_map_frame_persists`, R360, vacuous against the carried `domain`).
+
+**Superseded next step (R366, kept for the record — part (1), the guard structure, is now LANDED by R367 as `SeqLocateGuard`, and the LEAF disjunct as `nestedSeq_recseqentry_locate_step_leaf`; the residual is the DESCEND/ADVANCE re-bundles):** **(i'-b-B2c-nested-fbc-emission-locator-skeleton-hstep-recurse, DEFINE the guard `G` as a
 concrete `structure` + prove the DESCEND/ADVANCE re-bundles of `h_step`)** — R366 landed the LEAF disjunct
 (`nestedSeq_recseqentry_locate_leaf_typed`): at `a = off+1`, the window-absolute bundle `SeqTypedInterior
 tokens (off+1) b` + the opener/close/slice produce `Q` via `leaf_full`, and R366 confirmed the LEAF owes `G`
