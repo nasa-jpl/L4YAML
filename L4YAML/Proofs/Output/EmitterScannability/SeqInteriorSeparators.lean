@@ -3295,4 +3295,99 @@ theorem nestedSeq_recseqentry_locate_hstep
         exact nestedSeq_recseqentry_locate_map_cons_step tokens a b off H body rest interior op cl fe
           g h_eq h_op h_cl h_wb h_fe h_rest
 
+/-- **The locator's ROOT SEED — `SeqLocateGuard` at the outer span `[2, size-2)`** —
+    `(i'-b-B2c-nested-fbc-emission-locator-skeleton-brick-d-root-seed)`, R385, BRICK D (root seed).  The
+    base case `seqLocateRecDriver` consumes: the guard bundle at the WALKING window = the WHOLE top-level
+    flow-sequence body `[2, size-2)`, with the fixed target `[a, b)` carried as before.  Per
+    [[ref-root-seed-discriminator-not-from-gate]] / [[ref-universal-producer-root-seed-first]] the seed is
+    PURE PACKAGING: it does no locate/descend analysis (that all lives in the inductive step `hstep`); it
+    assembles the 13 fields from infra-delivered + debt facts.
+
+    **Three field classes.** (1) **Derived-at-root from emission** — `recBody := seqRoot_recseqbody …`
+    (the recursive seq body of the outer span, [[ref-root-seed-recursive-producer-swap]]: the flat-root
+    `RecSeqBody` re-projection), `slice := rfl` (the window IS `(take (size-2)).drop 2` by definition),
+    `Hsz := Nat.sub_le …`, and `bound` (a `List.length_drop`/`_take` computation + `omega`, the only
+    field with proof content — `body₀.length = min (size-2) size - 2`, and the strict target bounds force
+    `size ≥ 6`).  (2) **Root-STRUCTURAL hypotheses** — `domain : SeqPathAllSeq tokens 2` and
+    `window : FlowBodyWindow tokens 2 (size-2)`: facts about the OUTER frame, not the target, so NOT debt;
+    derivable from `h_scan` by token-level emission reasoning, but that derivation is a SEPARATE brick, so
+    they are taken as hypotheses here (the seed's interface, [[ref-root-seed-recursive-producer-swap]]:
+    the seed packages infra it does not itself build).  (3) **The descent's DEBT** — the seven
+    target-RELATIVE discriminators `typed`/`close`/`opener`/`path`/`win_lo`/`win_ab`/`win_hi`: facts about
+    `[a, b)`'s position the gate cannot supply (it is satisfied by the descent's own nested targets too,
+    [[ref-root-seed-discriminator-not-from-gate]]), so each enters as a hypothesis = the fact the DESCENT
+    re-establishes per level (`hstep`'s DESCEND/ADVANCE arms produce them from the located bracket).  The
+    load-bearing pair is the strict `win_ab : a < b` (the non-empty-target precondition, R376) and the
+    window-absolute `path : SeqPathAllSeq tokens (a-1)` (R375).  Verified-but-unconsumed until the
+    root-structural `domain`/`window` derivations land and the locator feeds `FlowSubrangesOk`; references
+    no sorry site, frontier sorry count unchanged at 4. -/
+theorem nestedSeq_recseqentry_locate_root_seed
+    (items : Array YamlValue) (tokens : Array (Positioned YamlToken)) (a b : Nat)
+    (h_scan : Scanner.scanFiltered ("[" ++ emit.emitList items.toList ++ "]") = .ok tokens)
+    (h_ne : items.toList ≠ [])
+    (h_all : ∀ v ∈ items.toList, EmitScansInFlowRecEntry v)
+    (h_domain : SeqPathAllSeq tokens 2)
+    (h_window : FlowBodyWindow tokens 2 (tokens.size - 2))
+    (h_typed : SeqTypedInterior tokens a b)
+    (h_close : tokens[b]!.val = .flowSequenceEnd)
+    (h_opener : flowBracketBalance tokens (a - 1) a = 1)
+    (h_path : SeqPathAllSeq tokens (a - 1))
+    (h_win_lo : 2 + 1 ≤ a)
+    (h_win_ab : a < b)
+    (h_win_hi : b < tokens.size - 2) :
+    SeqLocateGuard tokens a b 2 (tokens.size - 2)
+      ((tokens.toList.take (tokens.size - 2)).drop 2) := by
+  refine ⟨h_domain, seqRoot_recseqbody items tokens h_scan h_ne h_all, rfl, ?_,
+    Nat.sub_le tokens.size 2, h_typed, h_close, h_opener, h_path, h_win_lo, h_win_ab,
+    h_win_hi, h_window⟩
+  -- bound : 2 + body₀.length ≤ tokens.size - 2 ; body₀.length = min (size-2) size - 2, strict
+  -- target bounds (win_lo/win_ab/win_hi) force size ≥ 6 so omega closes it.
+  simp only [List.length_drop, List.length_take, Array.length_toList]
+  omega
+
+/-- **The nested-FBC emission LOCATOR — BRICK D complete** —
+    `(i'-b-B2c-nested-fbc-emission-locator-skeleton-brick-d)`, R385.  Closes the emission-spine-walk
+    locator: at any all-seq-path target window `[a, b)` inside the top-level flow sequence `[2, size-2)`
+    (gated by the seven target discriminators), the target IS a real nested seq entry — there is a `lo`
+    (`= a - 1`) and an `op'`/`cl'`/`interior'` with `op'.val = .flowSequenceStart`, `interior' ≠ []`, and
+    the slice `(take (b+1)).drop lo` equal to that seq entry, a `RecSeqEntry`.
+
+    Wires the three landed pieces with NO new analysis ([[ref-from-located-assembler-direction]] — the
+    root seed factored the DESCENT out; this composes them): the MEASURE driver
+    `seqLocateRecDriver` (R365, `Nat.strongRecOn`-on-`body.length`) instantiated at `G := SeqLocateGuard
+    tokens a b` and `Q :=` the seq-entry existential, fed the assembled per-window step
+    `nestedSeq_recseqentry_locate_hstep` (R384) and the ROOT SEED `nestedSeq_recseqentry_locate_root_seed`
+    (R385) at the outer window `(2, size-2, body₀)`.  This CONSUMES `hstep` (retyping the BRICK-D residual
+    from execution to structural, [[ref-reduction-by-import]]) — the eight cells + assembly are now load-
+    bearing under a real consumer.
+
+    Still takes the root-structural `h_domain`/`h_window` as hypotheses (their emission-level derivations
+    are the next brick) and is verified-but-unconsumed until the map mirror (`RecMapBody` axis) and
+    `flowSubrangesOk_of_window_producers` feed the two `FlowSubrangesOk` sorries
+    (`NonemptyStructure.lean:7502`/`:7743`).  References no sorry site, frontier sorry count unchanged at
+    4. -/
+theorem nestedSeq_recseqentry_locate
+    (items : Array YamlValue) (tokens : Array (Positioned YamlToken)) (a b : Nat)
+    (h_scan : Scanner.scanFiltered ("[" ++ emit.emitList items.toList ++ "]") = .ok tokens)
+    (h_ne : items.toList ≠ [])
+    (h_all : ∀ v ∈ items.toList, EmitScansInFlowRecEntry v)
+    (h_domain : SeqPathAllSeq tokens 2)
+    (h_window : FlowBodyWindow tokens 2 (tokens.size - 2))
+    (h_typed : SeqTypedInterior tokens a b)
+    (h_close : tokens[b]!.val = .flowSequenceEnd)
+    (h_opener : flowBracketBalance tokens (a - 1) a = 1)
+    (h_path : SeqPathAllSeq tokens (a - 1))
+    (h_win_lo : 2 + 1 ≤ a)
+    (h_win_ab : a < b)
+    (h_win_hi : b < tokens.size - 2) :
+    ∃ lo op' cl' interior', lo + 1 = a ∧ a ≤ b ∧
+      RecSeqEntry (op' :: (interior' ++ [cl'])) ∧
+      op'.val = .flowSequenceStart ∧ interior' ≠ [] ∧
+      (tokens.toList.take (b + 1)).drop lo = op' :: (interior' ++ [cl']) :=
+  seqLocateRecDriver (SeqLocateGuard tokens a b)
+    (nestedSeq_recseqentry_locate_hstep tokens a b)
+    2 (tokens.size - 2) ((tokens.toList.take (tokens.size - 2)).drop 2)
+    (nestedSeq_recseqentry_locate_root_seed items tokens a b h_scan h_ne h_all
+      h_domain h_window h_typed h_close h_opener h_path h_win_lo h_win_ab h_win_hi)
+
 end L4YAML.Proofs.EmitterScannability
