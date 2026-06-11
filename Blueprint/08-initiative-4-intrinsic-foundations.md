@@ -29804,7 +29804,68 @@ skeleton supplies both arms the head-opener type from the one `cases e` `.seq` d
 re-extracts the head from the slice.) This refines [[ref-compose-arm-seam-before-skeleton]]: audit each arm,
 THEN classify its seam (serial vs parallel) and, for a parallel seam, fuse only the non-mechanical facts.
 
-**Next step:** **(i'-b-B2c-nested-fbc-emission-locator-advance-seam, COMPOSE the ADVANCE seam
+### Reflection 362 — a balance-only invariant is TYPE-BLIND, so a "structure ⇒ typed-fact" bridge across a type-blind constructor is FALSE; PROBE the named bridge on a minimal pair before authoring, and on refutation THREAD the typed fact as a parametric-assembler hypothesis rather than inventing a stronger invariant
+
+R362 composed the **seq-head ADVANCE seam** `nestedSeq_recseqentry_locate_advance_step`
+(`SeqInteriorSeparators.lean`, sorry-free, build green 618 jobs, frontier holds at 4), the LAST arm seam
+before the `Nat.strongRecOn` skeleton. Like the DESCEND seam (R361) it is a PARALLEL fusion —
+`nestedSeq_recseqentry_locate_advance` (R353, the tail slice re-base to `[off+e.length+1, H)`) ∧
+`seqPathAllSeq_advance` (R357, the all-seq-PATH domain preservation) — but it carries a THIRD,
+non-mechanical fused fact: `seqPathAllSeq_advance` demands the consumed segment be stack-neutral,
+`WellTyped (e ++ [fe])`.
+
+The R361 next-step PLANNED to discharge that from a `RecSeqEntry e → WellTyped e` bridge ("a single
+balanced bracket pair ⇒ `WellTyped e`"), flagging SMALLEST-FIRST: PROBE the bridge first. **The probe
+REFUTED it.** `WellTyped` (the typed-stack fold `btFold`, which tracks WHICH bracket type is open) is
+STRICTLY stronger than `WellBracketed` (the `pbalance` Dyck condition: balance-`0` with non-negative
+prefixes). `flowBracketDelta` maps BOTH `[` and `{` to `+1` and BOTH `]` and `}` to `−1` — so
+`WellBracketed` is **type-blind**, it cannot tell `[` from `{`. And the `RecSeqEntry.map` constructor
+stores ONLY `WellBracketed interior` for its interior — so it admits a MISTYPED map interior like `[ }`.
+Concretely (`/tmp/MapTypeBlindProbe.lean`, `#guard`-backed): the entry `{ [ } }` has `pbalance = 0`
+(passes the map constructor's gate) yet `btFold (some []) · = none` (NOT `WellTyped`). So
+`RecSeqEntry e → WellTyped e` is FALSE for the map constructor, and no amount of cleverness recovers the
+typed fact from the entry's type-blind structure — a type-blind invariant cannot CREATE a typed fact, only
+TRANSPORT one ([[ref-type-blind-invariant-transports-via-converse-frame]]).
+
+The move on refutation: **do NOT strengthen the shared inductive** (forbidden structural edit,
+[[ref-additive-parallel-type-over-shared-edit]]) and do NOT chase a stronger local invariant. THREAD the
+typed fact as a parametric-assembler hypothesis ([[ref-parametric-assembler-extraction]]), EXACTLY as the
+consumed brick `seqPathAllSeq_advance` already threads it. The seam exposes the obligation in its STRUCTURAL
+form `WellTyped (e ++ [fe])` (the slice-to-`e ++ [fe]` bridge proven internally from the `h_slice`/`h_prefix`/
+`h_bound` frame via `List.drop_take` + `List.take_append`), so the wrapper supplies a clean structural fact,
+not a raw slice. The genuine residual — PRODUCING `WellTyped (e ++ [fe])` — is now sharply isolated: it must
+be sourced by frame-transport DOWN from a global `WellTyped (tokens.toList…)`, guarded by the segment's
+`WellBracketed` floor (which `RecSeqEntry.toWellBracketed` + the separator's delta-`0` DO supply). This is
+the converse-frame move of [[ref-type-blind-invariant-transports-via-converse-frame]], deferred to the
+skeleton's caller. Transferable: when a next-step names a "structure ⇒ typed-fact" bridge, classify the
+invariant the structure stores — if it is balance/floor-only (type-blind) and the structure has a type-blind
+constructor, the bridge is almost certainly FALSE; PROBE a minimal pair (a balanced-but-mistyped witness),
+and on refutation thread the typed fact rather than invent a stronger invariant. Sharpens
+[[ref-probe-deferred-universal-before-producing]] and [[ref-minimal-pair-extracts-the-gate]] (the probe
+target here is a NAMED bridge, refuted by ONE concrete `#guard` witness, not a `∀`-survey).
+
+**Next step:** **(i'-b-B2c-nested-fbc-emission-locator-skeleton, AUTHOR the `Nat.strongRecOn` wrapper
+`nestedSeq_recseqentry_locate` — all four arm seams now composed)** — the four arms are ALL backed standalone:
+LEAF → `nestedSeq_recseqentry_locate_leaf_full` (R359), DESCEND seq-head →
+`nestedSeq_recseqentry_locate_descend_step` (R361), DESCEND map-head → REFUTED by
+`seqPathAllSeq_map_frame_persists` (R360, no seam — a vacuous arm), ADVANCE →
+`nestedSeq_recseqentry_locate_advance_step` (R362). The skeleton is now pure plumbing PLUS one new owed
+input: the ADVANCE arm needs `WellTyped (e ++ [fe])`, which the probe (R362) proved is NOT a projection of
+`RecSeqEntry e` — so the wrapper must either (a) carry a global `WellTyped` and frame-transport the segment
+fact down (guarded by the `RecSeqEntry.toWellBracketed` floor, per
+[[ref-type-blind-invariant-transports-via-converse-frame]]), or (b) thread `WellTyped (e ++ [fe])` per-entry
+as a NEW carrier hypothesis, sourced once at the root from the emitter's global well-typedness. PROBE which
+the existing locator-context hypotheses already supply (does the wrapper's `RecSeqBody body` site sit under a
+global `WellTyped`?) BEFORE authoring the skeleton — this is the SMALLEST-FIRST de-risk of the skeleton, and
+it determines whether the skeleton is a single green increment or needs a preceding frame-transport brick.
+Form (per the `Nat.strongRecOn` idiom, generalising over `body.length` via a helper
+`∀ n off H body, body.length = n → hyps → goal`): `cases h_rec` (`single`/`cons`) exposes the head entry `e`;
+`cases e`'s `RecSeqEntry` feeds the head shape; `move_trichotomy off e.length a` dispatches the three live
+arms (LEAF / DESCEND-seq / ADVANCE) + the map-head REFUTATION; `decreasing_by omega`; the lone analytical
+thread is the per-window `b < H` window-bound preservation. KEEP the four-conjunct `G`; the map mirror
+(`RecMapBody` axis) and `flowSubrangesOk_of_window_producers` → the two `FlowSubrangesOk` sorries follow.
+
+**Superseded next step (R361, kept for the record):** **(i'-b-B2c-nested-fbc-emission-locator-advance-seam, COMPOSE the ADVANCE seam
 `nestedSeq_recseqentry_locate_advance_step` — the last arm seam before the skeleton)** — three of the four
 arm seams are now composed standalone: LEAF → `nestedSeq_recseqentry_locate_leaf_full` (R359), DESCEND
 seq-head → `nestedSeq_recseqentry_locate_descend_step` (R361), DESCEND map-head → REFUTED by
