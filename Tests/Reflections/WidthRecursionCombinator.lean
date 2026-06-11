@@ -1,8 +1,9 @@
 /-
 # Reflection 286 — the single-named "strongRecOn width-metric driver" is TWO bricks entangled; cut the grammar-free recursion plumbing off as an abstract width-metric combinator
+# Reflection 365 (variant) — when the deliverable is a CONSTANT (a search, not an accumulation), the abstract driver's per-window step collapses to a BINARY "produce-or-recurse-on-strictly-smaller", so ONE measure serves a multi-arm dispatch before any arm body is written
 
 Self-contained, `L4YAML`-free runnable illustration of the proof-engineering principle in
-Blueprint Reflection 286 (and memory `ref-width-recursion-combinator-before-grammar-step`).
+Blueprint Reflection 286 + 365 (and memory `ref-width-recursion-combinator-before-grammar-step`).
 
 **The principle.** A producer that recurses on a window-width metric `hi - lo` (here the real
 `windowWidth_strongRecOn`, the loop-closing wrapper of the locate driver) is *named* as one thing —
@@ -134,5 +135,81 @@ theorem not_reach_3_0 : ¬ Reach 3 0 := fun h => absurd (reach_le h) (by decide)
 #guard ((3 - 1) - 0) < (3 - 0)
 -- and the metric is the SAME (`hi - lo`) for both axes — what makes one combinator suffice.
 #guard (3 - 0) == (3 - 0)
+
+/-! ## R365 variant — the SEARCH driver: a CONSTANT deliverable collapses a multi-arm dispatch to binary
+
+The axis-1/axis-2 drivers above ACCUMULATE: the deliverable `P lo hi` is keyed on the walked window, so
+the per-window step's oracle is a per-window `P lo' hi'`. The locator's real driver (`seqLocateRecDriver`,
+R365) is different in kind: it SEARCHES. Its deliverable `Q` (a located-entry existential) mentions only
+the FIXED target window `[a,b)` + `tokens` — never the walking `off`/`body` — so `Q` is a CONSTANT across
+the walk, and every arm (leaf / descend / advance, each recursing at a different position) produces the
+SAME `Q`.
+
+That constancy collapses the multi-arm dispatch to a BINARY per-window step
+`h_step : ∀ l, G l → Q ∨ (∃ l', l'.length < l.length ∧ G l')` — at any guarded window, either we are at a
+leaf (produce `Q`) or there is a strictly-smaller sub-window still in the guard. ONE measure
+(`l'.length < l.length`) then serves ALL arms; the driver is blind to WHICH arm fired. This is the
+SMALLEST-FIRST plumbing de-risk landed (R365) BEFORE any arm body: it pins the IH interface the arms must
+satisfy while carrying none of their content. -/
+theorem searchRec {α : Type} {Q : Prop} (G : List α → Prop)
+    (h_step : ∀ l, G l → Q ∨ (∃ l', l'.length < l.length ∧ G l'))
+    (l : List α) (h_g : G l) : Q := by
+  suffices h : ∀ n l, l.length = n → G l → Q from h l.length l rfl h_g
+  intro n
+  induction n using Nat.strongRecOn with
+  | ind n IH =>
+    intro l h_len h_g
+    rcases h_step l h_g with hq | ⟨l', h_lt, h_g'⟩
+    · exact hq
+    · exact IH l'.length (by omega) l' rfl h_g'
+
+/-! Instantiate: search a fixed `data` for the marker `7`. `Q := 7 ∈ data` is CONSTANT (it never mentions
+    the walked sublist `l`). The guard `Guard l` carries BOTH the connection to the global object
+    (`∀ y ∈ l, y ∈ data` — the toy of the locator guard's slice fact tying `body` to `tokens`) AND the
+    search invariant (`7 ∈ l`). The per-window step has a genuine multi-arm flavour — leaf vs advance —
+    that collapses to the binary `Or`. -/
+def data : List Nat := [3, 1, 4, 1, 5, 7, 2]
+
+def Guard (l : List Nat) : Prop := (7 ∈ l) ∧ (∀ y, y ∈ l → y ∈ data)
+
+/-- The per-window SEARCH step (toy of the locator's `h_step`): non-recursive, dispatches on the head and
+    EITHER produces the constant `Q = 7 ∈ data` (LEAF, lifting `7 ∈ l` through the subset invariant) OR
+    hands back the strictly-shorter `rest` still guarded (ADVANCE). No `Nat.strongRecOn` here — all the
+    recursion risk lives in `searchRec`. -/
+theorem searchStep : ∀ l, Guard l →
+    (7 ∈ data) ∨ (∃ l', l'.length < l.length ∧ Guard l') := by
+  intro l h_g
+  obtain ⟨h_mem, h_sub⟩ := h_g
+  match l with
+  | [] => exact absurd h_mem (by simp)
+  | x :: rest =>
+    by_cases hx : x = 7
+    · -- LEAF: head IS the marker; lift `7 ∈ l` to the constant `Q = 7 ∈ data` via the subset invariant.
+      exact Or.inl (h_sub 7 h_mem)
+    · -- ADVANCE: marker is in the tail; `rest` is strictly shorter and still guarded.
+      have h_mem_rest : 7 ∈ rest := by
+        rcases List.mem_cons.mp h_mem with h | h
+        · exact absurd h.symm hx
+        · exact h
+      have h_sub_rest : ∀ y, y ∈ rest → y ∈ data := fun y hy =>
+        h_sub y (List.mem_cons_of_mem x hy)
+      exact Or.inr ⟨rest, by simp, h_mem_rest, h_sub_rest⟩
+
+/-- POSITIVE: the search driver fires — `searchRec` applied to `searchStep` is one line, the whole
+    skeleton. The constant `Q = 7 ∈ data` is produced no matter how deep the leaf sits. -/
+theorem find7 : 7 ∈ data :=
+  searchRec Guard searchStep data ⟨by decide, by decide⟩
+
+#guard decide (7 ∈ data)
+
+/-- NEGATIVE: the guard is load-bearing — outside it (marker absent) there is no witness to even START
+    the driver, so the deliverable cannot be claimed. -/
+def noSeven : List Nat := [3, 1, 4]
+theorem not_guard_noSeven : ¬ Guard noSeven := fun h => absurd h.1 (by decide)
+
+-- NEGATIVE: both candidate advance arms (drop 1, drop 2) shrink the SAME `length` measure — which is
+-- exactly why ONE measure serves the whole multi-arm dispatch, the R365 insight the binary `Or` encodes.
+#guard ([1,4,1,5,7,2] : List Nat).length < ([3,1,4,1,5,7,2] : List Nat).length
+#guard ([4,1,5,7,2] : List Nat).length < ([3,1,4,1,5,7,2] : List Nat).length
 
 end Tests.Reflections.WidthRecursionCombinator
