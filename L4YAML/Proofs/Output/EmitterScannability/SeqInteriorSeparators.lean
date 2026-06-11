@@ -1883,46 +1883,64 @@ theorem nestedSeq_recseqentry_locate_leaf_off1_b
     off + 1 < b := by
   subst h_a; exact g.win_ab
 
+/-- **The DELTA-GENERIC CONS boundary exclusion — `a` is never ONE PAST a non-opener token** —
+    `(i'-b-B2c-nested-fbc-emission-locator-skeleton-brick-c-ii-delta)`, R379, BRICK D assembly.  The
+    delta-generic lift of `nestedSeq_recseqentry_locate_cons_boundary` (below, now a corollary): given a
+    boundary token at position `m` whose flow-bracket DELTA is `≠ 1` (i.e. NOT a `[`/`{` opener), the
+    target start `a ≠ m + 1`.  The discriminator is `g.opener : flowBracketBalance tokens (a-1) a = 1` —
+    at `a = m + 1` the single-token balance at `a - 1 = m` is `flowBracketDelta tokens[m]!.val`, which
+    `h_delta` says is `≠ 1`; contradiction.  The boundary token's identity enters ONLY through `h_delta`,
+    so ONE proof subsumes every non-opener boundary: the seq CLOSE (`.flowSequenceEnd`, δ = −1), the MAP
+    CLOSE (`.flowMappingEnd`, δ = −1), AND the scalar HEAD (δ = 0) — exactly the three CONS-shape
+    boundaries BRICK D's `h_step` must exclude.  This is the demo's `boundary_excluded` (R377,
+    `Tests/Reflections/DeltaGenericBoundaryFamily.lean`, already fully delta-generic) realised at the
+    `tokens`/`flowBracketBalance` layer.  Verified-but-unconsumed until `h_step` wires it; references no
+    sorry site, frontier sorry count unchanged at 4. -/
+theorem nestedSeq_recseqentry_locate_cons_boundary_delta
+    (tokens : Array (Positioned YamlToken)) (a b off H m : Nat)
+    (body : List (Positioned YamlToken))
+    (g : SeqLocateGuard tokens a b off H body)
+    (h_m_sz : m < tokens.size)
+    (h_delta : flowBracketDelta tokens[m]!.val ≠ 1) :
+    a ≠ m + 1 := by
+  have h_m_len : m < tokens.toList.length := by rw [Array.length_toList]; exact h_m_sz
+  have h_tok_m : tokens.toList[m]'h_m_len = tokens[m]! := by
+    rw [getElem!_pos tokens m h_m_sz, Array.getElem_toList]
+  have h_bal : flowBracketBalance tokens m (m + 1) = flowBracketDelta tokens[m]!.val := by
+    rw [flowBracketBalance_single tokens m h_m_len, h_tok_m]
+  intro h_a
+  have hop := g.opener
+  rw [h_a] at hop
+  have harith : m + 1 - 1 = m := by omega
+  rw [harith, h_bal] at hop
+  exact h_delta hop
+
 /-- **The CONS boundary exclusion — the target start `a` is never ONE PAST a seq CLOSE** —
     `(i'-b-B2c-nested-fbc-emission-locator-skeleton-brick-c-ii)`, R377, BRICK C-ii.  `move_trichotomy off
     e.length a` (the dispatch's length-arithmetic move selector) requires `h_ne : a ≠ off + e.length` —
-    the separator/post-close position can never be a valid interior start.  This brick supplies it,
-    GENERICALLY: given a `.flowSequenceEnd` close at position `m`, the target start `a ≠ m + 1`.  BRICK D
+    the separator/post-close position can never be a valid interior start.  This brick supplies it for the
+    seq head: given a `.flowSequenceEnd` close at position `m`, the target start `a ≠ m + 1`.  BRICK D
     instantiates it at the seq head entry's close (`e = op :: (interior ++ [cl])`, `cl` at
     `m = off + interior.length + 1`, so `m + 1 = off + e.length`) to discharge `move_trichotomy`'s `h_ne`.
 
-    The discriminator is `g.opener : flowBracketBalance tokens (a-1) a = 1` (the target opener is a real
-    `[`, delta `+1`).  At `a = m + 1` the single-token balance at `a - 1 = m` is `flowBracketDelta
-    .flowSequenceEnd = -1 ≠ 1` — contradiction.  This is the EXACT argument `step_advance`'s `h_ne_boundary`
-    runs for the SEPARATOR (`a ≠ off + e.length + 1`, `a-1` the depth-`0` `.flowEntry`), with the close
-    (delta `-1`) swapped for the separator (delta `0`).  C-i's lesson APPLIED: the queued spec described
-    `a-1` as the separator, but a `#guard`/`#eval` probe (witnesses `N`/`T`/`D`, `SeqNestedEntryLocateProbe`)
-    showed at `a = off + e.length` the position `a - 1 = off + e.length - 1` is the head entry's CLOSE
-    (delta `-1` for a seq `]`, `0` for a scalar), NOT the separator (which sits at `a`, delta `0`) — so the
-    geometry differs but `g.opener` IS the discriminator (delta at `a-1` is `≤ 0 ≠ 1` in every case).
-    Landed standalone so the index check is debugged OUTSIDE the dispatch's case tree (the highest-risk
-    reconciliation between `move_trichotomy`'s `L`-split and the `recseqbody_head_or_cons` decomposition);
-    verified-but-unconsumed until BRICK D wires `h_step`.  References no sorry site, frontier sorry count
-    unchanged at 4. -/
+    Now a one-line COROLLARY of the delta-generic sibling above (R379): a seq close has
+    `flowBracketDelta .flowSequenceEnd = -1 ≠ 1`.  This is the EXACT argument `step_advance`'s
+    `h_ne_boundary` runs for the SEPARATOR (`a ≠ off + e.length + 1`, `a-1` the depth-`0` `.flowEntry`),
+    with the close (delta `-1`) swapped for the separator (delta `0`).  C-i's lesson APPLIED: the queued
+    spec described `a-1` as the separator, but a `#guard`/`#eval` probe (witnesses `N`/`T`/`D`,
+    `SeqNestedEntryLocateProbe`) showed at `a = off + e.length` the position `a - 1 = off + e.length - 1`
+    is the head entry's CLOSE (delta `-1` for a seq `]`, `0` for a scalar), NOT the separator (which sits
+    at `a`, delta `0`) — so the geometry differs but `g.opener` IS the discriminator (delta at `a-1` is
+    `≤ 0 ≠ 1` in every case).  References no sorry site, frontier sorry count unchanged at 4. -/
 theorem nestedSeq_recseqentry_locate_cons_boundary
     (tokens : Array (Positioned YamlToken)) (a b off H m : Nat)
     (body : List (Positioned YamlToken))
     (g : SeqLocateGuard tokens a b off H body)
     (h_m_sz : m < tokens.size)
     (h_close : tokens[m]!.val = .flowSequenceEnd) :
-    a ≠ m + 1 := by
-  have h_m_len : m < tokens.toList.length := by rw [Array.length_toList]; exact h_m_sz
-  have h_tok_m : tokens.toList[m]'h_m_len = tokens[m]! := by
-    rw [getElem!_pos tokens m h_m_sz, Array.getElem_toList]
-  have h_close_bal : flowBracketBalance tokens m (m + 1) = -1 := by
-    rw [flowBracketBalance_single tokens m h_m_len, h_tok_m, h_close]
-    exact flowBracketDelta_flowSequenceEnd
-  intro h_a
-  have hop := g.opener
-  rw [h_a] at hop
-  have harith : m + 1 - 1 = m := by omega
-  rw [harith, h_close_bal] at hop
-  omega
+    a ≠ m + 1 :=
+  nestedSeq_recseqentry_locate_cons_boundary_delta tokens a b off H m body g h_m_sz (by
+    rw [h_close, flowBracketDelta_flowSequenceEnd]; omega)
 
 /-- **The head entry's interior balance + Dyck floor, in `tokens` coordinates — head-shape-BLIND** —
     `(i'-b-B2c-nested-fbc-emission-locator-skeleton-hstep-interior-floor)`, R373, the FIRST refutation
