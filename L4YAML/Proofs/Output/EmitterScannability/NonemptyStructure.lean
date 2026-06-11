@@ -1010,6 +1010,51 @@ theorem recseqentry_close_pin
       simp only [List.nil_append, List.length_cons, List.length_nil] at h_uniq
       omega
 
+/-- **LEAF arm of the emission-spine-walk locator, composed** — `(i'-b-B2c-nested-fbc-emission-
+    locator-leaf-arm)`, R359.  Feeds `recseqentry_close_pin` (R358, the `.seq` decomposition + close
+    pin) into `nestedSeq_recseqentry_locate_leaf` (R350, the window-identity assembler), producing the
+    `locator` deliverable DIRECTLY from the from-located close-pin facts — the single callable the
+    `Nat.strongRecOn` wrapper's LEAF case invokes (`a = off + 1`, the leaf fires at the head entry's
+    interior start).  The intricate seam is the close-pin OUTPUT → leaf-brick INPUT slice algebra: the
+    close-pin window identity `(op :: (interior ++ [cl])) = ((take H).drop off).take L` becomes the
+    brick's prefix decomposition `body = (op :: (interior ++ [cl])) ++ rest` via `List.take_append_drop`
+    (`rest := body.drop L`), and the close pin `b + 1 = off + L` becomes the brick's `h_b`.  The two
+    analytical bricks were already landed; this composes them, de-risking the seam BEFORE the recursion
+    skeleton threads it.  The from-located close-pin hypotheses (`h_open`/`h_bclose`/`h_inner`/`h_floor`,
+    keyed on the FIXED window) are the wrapper's named leaf residual — supplied at the leaf by the
+    consumer's `G`. -/
+theorem nestedSeq_recseqentry_locate_leaf_full
+    (tokens : Array (Positioned YamlToken)) (off H b : Nat)
+    (body : List (Positioned YamlToken))
+    (h_slice : body = (tokens.toList.take H).drop off)
+    (h_bound : off + body.length ≤ H)
+    (h_Hsz : H ≤ tokens.size)
+    (h_rec : RecSeqBody body)
+    (h_open : tokens[off]!.val = .flowSequenceStart)
+    (h_off1_b : off + 1 < b)
+    (h_b_H : b < H)
+    (h_bclose : tokens[b]!.val = .flowSequenceEnd)
+    (h_inner : flowBracketBalance tokens (off + 1) b = 0)
+    (h_floor : ∀ i, off < i → i ≤ b → flowBracketBalance tokens off i ≥ 1) :
+    ∃ lo op cl interior, lo + 1 = off + 1 ∧ off + 1 ≤ b ∧
+      RecSeqEntry (op :: (interior ++ [cl])) ∧
+      op.val = .flowSequenceStart ∧ interior ≠ [] ∧
+      (tokens.toList.take (b + 1)).drop lo = op :: (interior ++ [cl]) := by
+  have h_body : RecSeqBody ((tokens.toList.take H).drop off) := h_slice ▸ h_rec
+  obtain ⟨op, cl, interior, h_entry, h_op, h_int_ne, h_winid, h_uniq⟩ :=
+    recseqentry_close_pin tokens off H b h_body h_open h_off1_b h_b_H h_Hsz h_bclose h_inner h_floor
+  -- `body.take L = op :: (interior ++ [cl])`, so `body = (op :: (interior ++ [cl])) ++ body.drop L`.
+  have h_take : body.take (op :: (interior ++ [cl])).length = op :: (interior ++ [cl]) := by
+    rw [h_slice]; exact h_winid.symm
+  have h_prefix : body
+      = (op :: (interior ++ [cl])) ++ body.drop (op :: (interior ++ [cl])).length := by
+    have hsplit := List.take_append_drop (op :: (interior ++ [cl])).length body
+    rw [h_take] at hsplit
+    exact hsplit.symm
+  exact nestedSeq_recseqentry_locate_leaf tokens body
+    (body.drop (op :: (interior ++ [cl])).length) interior op cl off H (off + 1) b
+    h_slice h_bound h_prefix h_entry h_op h_int_ne rfl (by omega)
+
 /-- **Head-or-cons split** — `(i'-b-B2c-nested-project)`, the structural dispatch that exposes the
     `cons` tail (`rest`, `h_rest`) the ADVANCE arm recurses on.  `recseqbody_head_entry` discards the
     tail; this richer sibling returns it, as a disjunction over the two `RecSeqBody` constructors:
