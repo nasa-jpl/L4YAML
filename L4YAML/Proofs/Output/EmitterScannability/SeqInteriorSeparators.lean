@@ -3089,6 +3089,93 @@ theorem flowBodyContentDeepSeq_opener_reaches_map_interior
   · rw [h7]; exact (by decide)
   · rw [h7]; exact Or.inl ⟨"b", .doubleQuoted, rfl⟩
 
+/-- **The global opener-adjacency target predicate** — `(i'-b-B2c-global-opener-adjacency)`, R395.
+    The exact fact the *redirected* root-seed producer must establish.  R394 found the seq-axis
+    `RecSeqBody` route cannot: the all-depth `FlowBodyContentDeepSeq.openerContentStart` field reaches
+    `.flowSequenceStart` openers strictly INSIDE flow-MAP interiors, where the whole seq-side family
+    (`RecSeqBody`/`RecSeqEntry`/`EmitScansInFlowRecEntry`) bottoms out at `WellBracketed` (`RecSeqEntry.map`
+    stores only `WellBracketed interior`; and even `RecMapBody`/`RecMapPair` bottom out there for a nested
+    *mapping* interior).  So source the fact GLOBALLY instead: stated over the WHOLE filtered token stream
+    (no window bound) and indifferent to which axis an opener sits in — every `.flowSequenceStart` with a
+    non-close successor is followed by a content-start.  This is what a value-induction on
+    `emit`/`emitList`/`emitPairList` naturally concludes (every `[` in `emit _` is emitted by some
+    `emit (.sequence _ items)` and followed in the STRING by `emitList items` — `""` ⇒ `]`, or a content
+    head — uniform across seq and map; cf. `Output/Emitter.lean:131-146`).  The all-depth window field
+    `FlowBodyContentDeepSeq.openerContentStart` over `[2, size-2)` is a trivial subset restriction of this
+    (`flowSeqOpenerAdj_window_of_global`). -/
+def GlobalFlowSeqOpenerAdj (tokens : Array (Positioned YamlToken)) : Prop :=
+  ∀ k, k + 1 < tokens.size →
+    tokens[k]!.val = .flowSequenceStart →
+    tokens[k+1]!.val ≠ .flowSequenceEnd →
+    isFlowContentStart tokens[k+1]!.val
+
+/-- **The window field is a trivial restriction of the global predicate** —
+    `(i'-b-B2c-global-opener-adjacency-restrict)`, R395, the CONSUME-side half (LANDED).  Once the global
+    producer delivers `GlobalFlowSeqOpenerAdj tokens`, the window-relative all-depth opener field (the
+    shape of `FlowBodyContentDeepSeq.openerContentStart` over any `[lo, hi)` with `hi ≤ size`) follows by
+    ONE `omega` bound step — the payoff of keeping the field all-depth: the restriction edge is pure
+    subset narrowing ([[ref-window-absolute-gate-subset-restriction]]), no re-basing
+    ([[ref-non-restriction-residual-root-seed]]).  Landing this isolates the residual to EXACTLY the
+    global producer: the value-induction that establishes `GlobalFlowSeqOpenerAdj`.  References no sorry
+    site; frontier sorry count unchanged at 4. -/
+theorem flowSeqOpenerAdj_window_of_global
+    (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (h : GlobalFlowSeqOpenerAdj tokens) (h_hi : hi ≤ tokens.size) :
+    ∀ k, lo ≤ k → k + 1 < hi →
+      tokens[k]!.val = .flowSequenceStart →
+      tokens[k+1]!.val ≠ .flowSequenceEnd →
+      isFlowContentStart tokens[k+1]!.val := by
+  intro k _ hkhi ho hne
+  exact h k (by omega) ho hne
+
+/-- **The global opener-adjacency predicate is SATISFIABLE and UNIFORM across both axes** —
+    `(i'-b-B2c-global-opener-adjacency-probe)`, R395, the [[ref-probe-provider-satisfiable-before-assembler]]
+    discipline applied to the redirected GLOBAL provider.  Before authoring the heavy value-induction
+    producer of `GlobalFlowSeqOpenerAdj`, machine-check that the body fires NON-VACUOUSLY at the two
+    `.flowSequenceStart` openers of the cross-axis witness `[{a: [b]}]` — at BOTH the seq-spine opener
+    `k = 1` (successor `tokens[2] = .flowMappingStart`, a content-start via the map disjunct) AND the
+    map-interior opener `k = 6` (`flowBracketBalance 2 6 = 1`, the `[` of `[b]` strictly inside the map;
+    successor `tokens[7] = .scalar "b"`, content-start via the scalar disjunct).  ONE predicate body, both
+    axes: exactly the uniformity the seq-only `RecSeqBody` route lacks
+    (`flowBodyContentDeepSeq_opener_reaches_map_interior` shows the same `k = 6` opener is unwitnessed by
+    the seq deliverable).  Confirms the provider is not vacuously true and the
+    `flowSeqOpenerAdj_window_of_global` projection has a real inhabitant to consume.  Off the critical
+    path; frontier sorry count unchanged at 4. -/
+theorem globalFlowSeqOpenerAdj_fires_cross_axis
+    (tokens : Array (Positioned YamlToken))
+    (h : Scanner.scanFiltered
+        ("[" ++ emit.emitList
+          [YamlValue.mapping .flow
+            #[(YamlValue.scalar { content := "a", style := .plain },
+               YamlValue.sequence .flow #[YamlValue.scalar { content := "b", style := .plain }])]]
+        ++ "]") = .ok tokens) :
+    (tokens[1]!.val = .flowSequenceStart ∧ tokens[2]!.val ≠ .flowSequenceEnd ∧
+      isFlowContentStart tokens[2]!.val) ∧
+    (tokens[6]!.val = .flowSequenceStart ∧ tokens[7]!.val ≠ .flowSequenceEnd ∧
+      isFlowContentStart tokens[7]!.val) := by
+  have key : ∀ {α : Type} (g : Array (Positioned YamlToken) → α) (a : α),
+      (Scanner.scanFiltered
+          ("[" ++ emit.emitList
+            [YamlValue.mapping .flow
+              #[(YamlValue.scalar { content := "a", style := .plain },
+                 YamlValue.sequence .flow #[YamlValue.scalar { content := "b", style := .plain }])]]
+          ++ "]")).toOption.map g = some a →
+        g tokens = a := by
+    intro α g a e; rw [h] at e; exact Option.some.inj e
+  have h1 : tokens[1]!.val = .flowSequenceStart :=
+    key (fun t => t[1]!.val) .flowSequenceStart (by native_decide)
+  have h2 : tokens[2]!.val = .flowMappingStart :=
+    key (fun t => t[2]!.val) .flowMappingStart (by native_decide)
+  have h6 : tokens[6]!.val = .flowSequenceStart :=
+    key (fun t => t[6]!.val) .flowSequenceStart (by native_decide)
+  have h7 : tokens[7]!.val = .scalar "b" .doubleQuoted :=
+    key (fun t => t[7]!.val) (.scalar "b" .doubleQuoted) (by native_decide)
+  refine ⟨⟨h1, ?_, ?_⟩, ⟨h6, ?_, ?_⟩⟩
+  · rw [h2]; exact (by decide)
+  · rw [h2]; exact Or.inr (Or.inr rfl)
+  · rw [h7]; exact (by decide)
+  · rw [h7]; exact Or.inl ⟨"b", .doubleQuoted, rfl⟩
+
 /-- **The SEQ-head CONS three-arm dispatch of the locator's per-window step `h_step`** —
     `(i'-b-B2c-nested-fbc-emission-locator-skeleton-brick-d-seq-cons)`, R378, BRICK D (carved).  This is
     the maximal-risk slice of `h_step` the blueprint flagged ("the four-way `cases h_e` × HEAD/CONS
