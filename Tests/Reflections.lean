@@ -96,6 +96,7 @@ import Tests.Reflections.DispatchRoleFactorsTypeMetric
 import Tests.Reflections.CarveLeavesToEliminatorOutput
 import Tests.Reflections.RootSeedDerivesShapeDefersValue
 import Tests.Reflections.DeferredStructuralAlreadyProvenBySibling
+import Tests.Reflections.ConjunctiveConsumerGatesOnOrthogonalAxis
 
 /-!
 # Reflections — runnable proof-engineering demonstrations
