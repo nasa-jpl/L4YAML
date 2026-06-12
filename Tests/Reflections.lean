@@ -107,6 +107,7 @@ import Tests.Reflections.AllDepthOverreachSourceGlobally
 import Tests.Reflections.RedirectedProviderContractFirst
 import Tests.Reflections.ProduceJointBracketsGlobalContract
 import Tests.Reflections.OrthogonalInvariantAlgebraBeforeThreading
+import Tests.Reflections.GatedFieldSiblingWrapperShedsHyp
 
 /-!
 # Reflections — runnable proof-engineering demonstrations
