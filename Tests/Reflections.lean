@@ -110,6 +110,7 @@ import Tests.Reflections.OrthogonalInvariantAlgebraBeforeThreading
 import Tests.Reflections.GatedFieldSiblingWrapperShedsHyp
 import Tests.Reflections.SynonymBridgeAndSlackGuard
 import Tests.Reflections.BridgeDerivableFromInvariant
+import Tests.Reflections.PrestageConsumerBoundaryFacts
 
 /-!
 # Reflections — runnable proof-engineering demonstrations
