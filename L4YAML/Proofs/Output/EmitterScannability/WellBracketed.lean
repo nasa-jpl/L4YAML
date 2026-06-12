@@ -643,6 +643,58 @@ theorem lastNonOpener_wrap (op cl : Positioned YamlToken) (body : List (Position
     exact Option.some.inj h1
   rw [hlast]; exact h
 
+/-- Reduce a block's "last token is not a seq-opener" fact to a `getLast?` witness — the
+    `getElem` form the `EmitScansInFlowBlock`/`EmitListScansInFlowBlock` tail field uses, derived
+    from the compositionally-cheaper `getLast?` (which has clean `append`/`cons`/`concat` lemmas). -/
+theorem lastNonOpener_of_getLast? (l : List (Positioned YamlToken)) (t : Positioned YamlToken)
+    (h_gl : l.getLast? = some t) (h : t.val ≠ .flowSequenceStart) :
+    ∀ (hla : 0 < l.length),
+      (l[l.length - 1]'(Nat.sub_lt hla Nat.one_pos)).val ≠ .flowSequenceStart := by
+  intro hla
+  have h1 : l[l.length - 1]? = some t := by
+    rw [← List.getLast?_eq_getElem?]; exact h_gl
+  rw [List.getElem?_eq_getElem (Nat.sub_lt hla Nat.one_pos)] at h1
+  rw [Option.some.inj h1]; exact h
+
+/-- The forward bridge: a `getElem` "last not opener" yields a `getLast?` witness with a
+    not-opener value (so a recursive tail block's stored tail field re-enters `getLast?` algebra). -/
+theorem getLast?_not_opener_of_lastNonOpener (l : List (Positioned YamlToken)) (hne : l ≠ [])
+    (h : ∀ (hla : 0 < l.length),
+      (l[l.length - 1]'(Nat.sub_lt hla Nat.one_pos)).val ≠ .flowSequenceStart) :
+    ∃ t, l.getLast? = some t ∧ t.val ≠ .flowSequenceStart := by
+  have hla : 0 < l.length := by
+    cases l with
+    | nil => exact absurd rfl hne
+    | cons _ _ => simp
+  refine ⟨l[l.length - 1]'(Nat.sub_lt hla Nat.one_pos), ?_, h hla⟩
+  rw [List.getLast?_eq_getElem?, List.getElem?_eq_getElem (Nat.sub_lt hla Nat.one_pos)]
+
+/-- **Last-token-not-opener** for the list-body cons seam `a ++ [feTok] ++ rest` (the
+    `block₁ ++ [.flowEntry] ++ block_rest` shape of the non-empty list-body producer).  The
+    last token is `rest`'s last (when non-empty) or `feTok` — neither a seq-opener.  Stated in
+    the producer's exact term shape (left-associated) so no list-rewrite under the dependent
+    `length - 1` getElem is needed. -/
+theorem lastNonOpener_append3
+    (a rest : List (Positioned YamlToken)) (feTok : Positioned YamlToken)
+    (h_fe : feTok.val ≠ .flowSequenceStart)
+    (h_rest : ∀ (hla : 0 < rest.length),
+      (rest[rest.length - 1]'(Nat.sub_lt hla Nat.one_pos)).val ≠ .flowSequenceStart) :
+    ∀ (hla : 0 < (a ++ [feTok] ++ rest).length),
+      ((a ++ [feTok] ++ rest)[(a ++ [feTok] ++ rest).length - 1]'(Nat.sub_lt hla Nat.one_pos)).val
+        ≠ .flowSequenceStart := by
+  have hwit : ∃ t, (a ++ [feTok] ++ rest).getLast? = some t ∧ t.val ≠ .flowSequenceStart := by
+    cases rest with
+    | nil =>
+      refine ⟨feTok, ?_, h_fe⟩
+      rw [List.getLast?_append]; simp
+    | cons r0 rs =>
+      obtain ⟨t, h_gl, h_t⟩ :=
+        getLast?_not_opener_of_lastNonOpener (r0 :: rs) (List.cons_ne_nil _ _) h_rest
+      refine ⟨t, ?_, h_t⟩
+      rw [List.getLast?_append, h_gl]; rfl
+  obtain ⟨t, h_gl, h_t⟩ := hwit
+  exact lastNonOpener_of_getLast? _ t h_gl h_t
+
 /-! #### Unit entries — the value-end successor (`.body2.discharge.entryunit`)
 
 `EntrySafe` is too weak to read a *successor* off a value-end.  It admits an entry
