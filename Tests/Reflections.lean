@@ -103,6 +103,7 @@ import Tests.Reflections.DepthGateRestrictionDiagnostic
 import Tests.Reflections.DeepConjunctRootSeedOnly
 import Tests.Reflections.RestrictionHidesRootFalsity
 import Tests.Reflections.RescopeByExcludingPremise
+import Tests.Reflections.AllDepthOverreachSourceGlobally
 
 /-!
 # Reflections — runnable proof-engineering demonstrations
