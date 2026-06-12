@@ -615,6 +615,34 @@ theorem OpenerAdj_wrap_map (op cl : Positioned YamlToken)
   rw [h_op] at hop
   exact absurd hop (by decide)
 
+/-- **Last-token-not-opener** for a singleton block (the scalar arm).  The block's only
+    token is its last, so if it is not a seq-opener (it is a scalar), the
+    `OpenerAdj_append` boundary bridge `h_tail` holds.  Defeq: `[t][0] = t`. -/
+theorem lastNonOpener_singleton (t : Positioned YamlToken)
+    (h : t.val ≠ .flowSequenceStart) :
+    ∀ (hla : 0 < [t].length),
+      ([t][[t].length - 1]'(Nat.sub_lt hla Nat.one_pos)).val ≠ .flowSequenceStart :=
+  fun _ => h
+
+/-- **Last-token-not-opener** for a wrapped block `op :: (body ++ [cl])` (the seq/map arms).
+    The block ends in its close `cl` (`]`/`}`); if `cl` is not a seq-opener, the
+    `OpenerAdj_append` boundary bridge `h_tail` holds.  Routed through `getLast?` to avoid
+    the dependent-index motive issue. -/
+theorem lastNonOpener_wrap (op cl : Positioned YamlToken) (body : List (Positioned YamlToken))
+    (h : cl.val ≠ .flowSequenceStart) :
+    ∀ (hla : 0 < (op :: (body ++ [cl])).length),
+      ((op :: (body ++ [cl]))[(op :: (body ++ [cl])).length - 1]'(Nat.sub_lt hla Nat.one_pos)).val
+        ≠ .flowSequenceStart := by
+  intro hla
+  have hlast : (op :: (body ++ [cl]))[(op :: (body ++ [cl])).length - 1]'(Nat.sub_lt hla Nat.one_pos)
+      = cl := by
+    have h1 : (op :: (body ++ [cl]))[(op :: (body ++ [cl])).length - 1]? = some cl := by
+      rw [← List.getLast?_eq_getElem?, List.getLast?_cons_of_ne_nil (by simp),
+        List.getLast?_concat]
+    rw [List.getElem?_eq_getElem (Nat.sub_lt hla Nat.one_pos)] at h1
+    exact Option.some.inj h1
+  rw [hlast]; exact h
+
 /-! #### Unit entries — the value-end successor (`.body2.discharge.entryunit`)
 
 `EntrySafe` is too weak to read a *successor* off a value-end.  It admits an entry
@@ -678,6 +706,41 @@ theorem EntryUnit_wrap (op cl : Positioned YamlToken) (body : List (Positioned Y
         show m - body.length = 0 from by omega, List.take_zero, pbalance_nil]
     have := h_body.2 m
     omega
+
+/-- A unit entry's last token is never a seq-opener.  A `.flowSequenceStart` has balance
+    delta `+1`, but `EntryUnit` forces total balance `0` with every proper nonempty prefix
+    `≥ 1`; an opener last-token would force the `length-1` prefix to balance `-1` (or, for a
+    singleton, the whole entry to balance `+1 ≠ 0`).  This recovers the
+    last-token-not-opener field of `EmitScansInFlowBlock` from the `EntryUnit` conjunct alone —
+    the bridge the `EmitScansInFlowRecEntry → EmitScansInFlowBlock` down-coercion uses. -/
+theorem lastNonOpener_of_entryUnit (e : List (Positioned YamlToken)) (h_eu : EntryUnit e) :
+    ∀ (hla : 0 < e.length),
+      (e[e.length - 1]'(Nat.sub_lt hla Nat.one_pos)).val ≠ .flowSequenceStart := by
+  intro hla hopen
+  obtain ⟨h_bal, h_prefix⟩ := h_eu
+  have hne : e ≠ [] := by intro h; rw [h] at hla; simp at hla
+  have hgl : e.getLast hne = e[e.length - 1]'(Nat.sub_lt hla Nat.one_pos) :=
+    List.getLast_eq_getElem hne
+  have hopen' : (e.getLast hne).val = .flowSequenceStart := by rw [hgl]; exact hopen
+  have hsplit : pbalance e
+      = pbalance (e.take (e.length - 1)) + flowBracketDelta (e.getLast hne).val := by
+    have h := List.take_append_getLast e hne
+    calc pbalance e
+        = pbalance (e.take (e.length - 1) ++ [e.getLast hne]) := by rw [h]
+      _ = pbalance (e.take (e.length - 1)) + pbalance [e.getLast hne] := pbalance_append _ _
+      _ = pbalance (e.take (e.length - 1)) + flowBracketDelta (e.getLast hne).val := by
+            rw [pbalance_singleton]
+  have hdelta : flowBracketDelta (e.getLast hne).val = 1 := by
+    rw [hopen']; exact flowBracketDelta_flowSequenceStart
+  have hpre_neg : pbalance (e.take (e.length - 1)) = -1 := by
+    rw [hdelta] at hsplit; omega
+  have hpre_pos : pbalance (e.take (e.length - 1)) ≥ 0 := by
+    rcases Nat.eq_zero_or_pos (e.length - 1) with h0 | hpos
+    · have hz : pbalance (e.take (e.length - 1)) = 0 := by rw [h0, List.take_zero, pbalance_nil]
+      omega
+    · have hp := h_prefix (e.length - 1) hpos (by omega)
+      omega
+  omega
 
 /-- A flow body of *unit* entries — `SafeBody` with `EntryUnit` in place of `EntrySafe`:
     nonempty unit entries with `Q`-satisfying heads, separated by single `.flowEntry`s. -/

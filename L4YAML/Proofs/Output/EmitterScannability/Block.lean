@@ -105,6 +105,8 @@ def EmitScansInFlowBlock (v : YamlValue) : Prop :=
       ∧ EntrySafe block
       ∧ EntryUnit block
       ∧ (∃ (h : block ≠ []), ContentStartTok (block.head h).val)
+      ∧ (∀ (hla : 0 < block.length),
+          (block[block.length - 1]'(Nat.sub_lt hla Nat.one_pos)).val ≠ .flowSequenceStart)
 
 /-- The head-bridge for the `OpenerAdj` value-induction: convert
     `EmitScansInFlowBlock`'s content-start head field
@@ -188,7 +190,7 @@ theorem emitList_scans_block_nonempty (items : List YamlValue) (h_ne : items ≠
       rw [h_eq] at hcorr
       obtain ⟨n, s', block, h_chain, h_corr, h_fl', h_dp, h_ids, h_ek', h_col', h_flow',
               h_indent', h_line_v, _h_ska, _h_last, h_atol', h_endline', h_stack', h_fmc',
-              h_block_eq, h_wb, h_wt, _h_es, _h_eu, _h_cs⟩ :=
+              h_block_eq, h_wb, h_wt, _h_es, _h_eu, _h_cs, _h_last⟩ :=
         h_all v (.head _) s rest_chars hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_sync
       exact ⟨n, s', block, h_chain, h_corr, h_fl', h_dp, h_ids, h_ek', h_col', h_flow',
         h_indent', h_line_v, h_atol', h_endline', h_stack', h_fmc', h_block_eq, h_wb, h_wt⟩
@@ -201,7 +203,7 @@ theorem emitList_scans_block_nonempty (items : List YamlValue) (h_ne : items ≠
       have h_ev : EmitScansInFlowBlock v := h_all v (.head _)
       obtain ⟨n₁, s₁, block₁, h_chain₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_ek₁, h_col₁, h_flow₁,
               h_indent₁, _h_line₁, _h_ska₁, h_last₁, h_atol₁, h_endline₁, h_stack₁, h_fmc₁,
-              h_block_eq₁, h_wb₁, h_wt₁, _h_es₁, _h_eu₁, _h_cs₁⟩ :=
+              h_block_eq₁, h_wb₁, h_wt₁, _h_es₁, _h_eu₁, _h_cs₁, _h_last₁⟩ :=
         h_ev s ([',', ' '] ++ (emit.emitList (v' :: vs)).toList ++ rest_chars)
           hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_sync
       -- Step 2: Scan ',' via scanNextToken_flow_comma (state) + push lemma (block)
