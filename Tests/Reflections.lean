@@ -104,6 +104,7 @@ import Tests.Reflections.DeepConjunctRootSeedOnly
 import Tests.Reflections.RestrictionHidesRootFalsity
 import Tests.Reflections.RescopeByExcludingPremise
 import Tests.Reflections.AllDepthOverreachSourceGlobally
+import Tests.Reflections.RedirectedProviderContractFirst
 
 /-!
 # Reflections — runnable proof-engineering demonstrations
