@@ -102,6 +102,7 @@ import Tests.Reflections.WholeDomainSiblingViaWeakerGuard
 import Tests.Reflections.DepthGateRestrictionDiagnostic
 import Tests.Reflections.DeepConjunctRootSeedOnly
 import Tests.Reflections.RestrictionHidesRootFalsity
+import Tests.Reflections.RescopeByExcludingPremise
 
 /-!
 # Reflections — runnable proof-engineering demonstrations
