@@ -3482,4 +3482,64 @@ theorem nestedSeq_recseqentry_locate
       (seqRoot_flowBodyWindow items tokens h_scan h_ne h_all)
       h_typed h_close h_opener h_path h_win_lo h_win_ab h_win_hi)
 
+/-- **The located nested seq's windowed `SafeBodyUnit`** —
+    `(i'-b-B2c-nested-fbc-emission-locator-CONSUME-safebodyunit)`, R387.  The FIRST consumer of the
+    now-hypothesis-free locator `nestedSeq_recseqentry_locate` (R386) — retiring its
+    verified-but-unconsumed status ([[ref-reduction-by-import]]).  At any all-seq-path nested seq window
+    `[a, b)` (the seven target discriminators), it projects the located entry's interior recursive body
+    to the flat `SafeBodyUnit ContentStartTok ((tokens.toList.take b).drop a)` — the single substrate
+    EVERY seq separator-fact lemma keys on (`seqSeparatorFacts_of_windowed_safebodyunit`,
+    `seqInteriorFeContentStart_of_windowed_safebodyunit`, `seqEnclosingFacts_of_windowed_safebodyunit`).
+
+    Three landed pieces, NO new analysis: (1) `nestedSeq_recseqentry_locate` delivers the seq entry
+    `op' :: (interior' ++ [cl'])` with `op'.val = .flowSequenceStart`, `interior' ≠ []`, and the slice
+    `(take (b+1)).drop lo = op' :: (interior' ++ [cl'])` (`lo + 1 = a`); (2) `recseqentry_seq_extract`
+    reads off its stored `RecSeqBody interior'` (the entry is forced to the `.seq` constructor by the
+    opener + non-empty interior); (3) the descend-slice lemma `nestedSeq_recseqentry_locate_descend`
+    (with `rest = []`) re-cuts `interior' = (take (lo+1+interior'.length)).drop (lo+1)`, and the length
+    identity `lo + 1 + interior'.length = b` (from the slice length + the `b + 1 ≤ size` window bound)
+    rewrites the indices to `(take b).drop a`.  `RecSeqBody.toSafeBodyUnit` is the final projection.
+
+    This is the seq-side `nestedSeq_safeBodyUnit_of_locator` the CONSUME plan names FIRST.  It feeds the
+    enclosing-facts bundle that `seqRoot_seqInteriorSeparators`'s `desc` hypothesis consumes — the root
+    carrier `SeqInteriorSeparators tokens 2 (size-2)` that `seqWindowRecSeqBody`/`rec_seq_body_nested_project`
+    turn into the per-window `RecSeqBody` (`h_seq_rec`) of `flowSubrangesOk_of_window_producers`.  The seq
+    sorry (`NonemptyStructure.lean:7502`) cannot close on the seq locator ALONE: `FlowSubrangesOk tokens`
+    also quantifies a `map` half (a top-level seq can nest a mapping, `[{a: b}]`), so the map mirror
+    (`RecMapBody` axis) is owed regardless.  References no sorry site, frontier sorry count unchanged at 4. -/
+theorem nestedSeq_safeBodyUnit_of_locator
+    (items : Array YamlValue) (tokens : Array (Positioned YamlToken)) (a b : Nat)
+    (h_scan : Scanner.scanFiltered ("[" ++ emit.emitList items.toList ++ "]") = .ok tokens)
+    (h_ne : items.toList ≠ [])
+    (h_all : ∀ v ∈ items.toList, EmitScansInFlowRecEntry v)
+    (h_typed : SeqTypedInterior tokens a b)
+    (h_close : tokens[b]!.val = .flowSequenceEnd)
+    (h_opener : flowBracketBalance tokens (a - 1) a = 1)
+    (h_path : SeqPathAllSeq tokens (a - 1))
+    (h_win_lo : 2 + 1 ≤ a)
+    (h_win_ab : a < b)
+    (h_win_hi : b < tokens.size - 2) :
+    SafeBodyUnit ContentStartTok ((tokens.toList.take b).drop a) := by
+  obtain ⟨lo, op', cl', interior', h_lo, _h_ab, h_entry, h_open, h_int_ne, h_slice⟩ :=
+    nestedSeq_recseqentry_locate items tokens a b h_scan h_ne h_all h_typed h_close
+      h_opener h_path h_win_lo h_win_ab h_win_hi
+  -- The located entry is a `.seq` (opener `[`, non-empty interior): extract its interior `RecSeqBody`.
+  have h_recbody : RecSeqBody interior' :=
+    recseqentry_seq_extract h_entry op' cl' interior' rfl h_open h_int_ne
+  -- Slice length: interior'.length determined by the window, so `lo + 1 + interior'.length = b`.
+  have h_lenfact := congrArg List.length h_slice
+  simp only [List.length_drop, List.length_take, Array.length_toList,
+    List.length_cons, List.length_append, List.length_nil] at h_lenfact
+  have h_len : lo + 1 + interior'.length = b := by omega
+  -- Re-cut the interior via the descend-slice lemma (rest = []).
+  have h_bound : lo + (op' :: (interior' ++ [cl'])).length ≤ b + 1 := by
+    simp only [List.length_cons, List.length_append, List.length_nil]; omega
+  have h_islice : interior'
+      = (tokens.toList.take (lo + 1 + interior'.length)).drop (lo + 1) :=
+    nestedSeq_recseqentry_locate_descend tokens (op' :: (interior' ++ [cl'])) [] interior'
+      op' cl' lo (b + 1) h_slice.symm h_bound (by rw [List.append_nil])
+  rw [h_len, h_lo] at h_islice
+  rw [h_islice] at h_recbody
+  exact h_recbody.toSafeBodyUnit
+
 end L4YAML.Proofs.EmitterScannability
