@@ -3482,32 +3482,40 @@ theorem nestedSeq_recseqentry_locate
       (seqRoot_flowBodyWindow items tokens h_scan h_ne h_all)
       h_typed h_close h_opener h_path h_win_lo h_win_ab h_win_hi)
 
-/-- **The located nested seq's windowed `SafeBodyUnit`** —
-    `(i'-b-B2c-nested-fbc-emission-locator-CONSUME-safebodyunit)`, R387.  The FIRST consumer of the
-    now-hypothesis-free locator `nestedSeq_recseqentry_locate` (R386) — retiring its
-    verified-but-unconsumed status ([[ref-reduction-by-import]]).  At any all-seq-path nested seq window
-    `[a, b)` (the seven target discriminators), it projects the located entry's interior recursive body
-    to the flat `SafeBodyUnit ContentStartTok ((tokens.toList.take b).drop a)` — the single substrate
-    EVERY seq separator-fact lemma keys on (`seqSeparatorFacts_of_windowed_safebodyunit`,
-    `seqInteriorFeContentStart_of_windowed_safebodyunit`, `seqEnclosingFacts_of_windowed_safebodyunit`).
+/-- **The located nested seq's interior `RecSeqBody`** —
+    `(i'-b-B2c-nested-fbc-emission-locator-CONSUME-recseqbody)`, R388.  The DELIVERABLE-SHAPED consumer
+    of the now-hypothesis-free locator `nestedSeq_recseqentry_locate` (R386): at any all-seq-path nested
+    seq window `[a, b)` (the seven target discriminators), it projects the located entry to the
+    *recursive* seq body `RecSeqBody ((tokens.toList.take b).drop a)` — the EXACT type the per-window
+    producer `h_seq_rec` of `flowSubrangesOk_of_window_producers` demands
+    (`RecSeqBody ((take hi).drop lo)`), produced DIRECTLY from emission with NO carrier, NO width
+    fixpoint, NO `desc`.
 
-    Three landed pieces, NO new analysis: (1) `nestedSeq_recseqentry_locate` delivers the seq entry
-    `op' :: (interior' ++ [cl'])` with `op'.val = .flowSequenceStart`, `interior' ≠ []`, and the slice
-    `(take (b+1)).drop lo = op' :: (interior' ++ [cl'])` (`lo + 1 = a`); (2) `recseqentry_seq_extract`
-    reads off its stored `RecSeqBody interior'` (the entry is forced to the `.seq` constructor by the
-    opener + non-empty interior); (3) the descend-slice lemma `nestedSeq_recseqentry_locate_descend`
-    (with `rest = []`) re-cuts `interior' = (take (lo+1+interior'.length)).drop (lo+1)`, and the length
-    identity `lo + 1 + interior'.length = b` (from the slice length + the `b + 1 ≤ size` window bound)
-    rewrites the indices to `(take b).drop a`.  `RecSeqBody.toSafeBodyUnit` is the final projection.
+    Three landed pieces, NO new analysis (the `RecSeqBody` core that `nestedSeq_safeBodyUnit_of_locator`
+    R387 already computed, here factored out BEFORE its `.toSafeBodyUnit` projection): (1)
+    `nestedSeq_recseqentry_locate` delivers the seq entry `op' :: (interior' ++ [cl'])`
+    (`op'.val = .flowSequenceStart`, `interior' ≠ []`, slice `(take (b+1)).drop lo`, `lo + 1 = a`); (2)
+    `recseqentry_seq_extract` reads off the stored `RecSeqBody interior'` (opener + non-empty interior
+    force the `.seq` constructor); (3) `nestedSeq_recseqentry_locate_descend` (rest = []) re-cuts
+    `interior'` to `(take b).drop a` via the length identity `lo + 1 + interior'.length = b`.
 
-    This is the seq-side `nestedSeq_safeBodyUnit_of_locator` the CONSUME plan names FIRST.  It feeds the
-    enclosing-facts bundle that `seqRoot_seqInteriorSeparators`'s `desc` hypothesis consumes — the root
-    carrier `SeqInteriorSeparators tokens 2 (size-2)` that `seqWindowRecSeqBody`/`rec_seq_body_nested_project`
-    turn into the per-window `RecSeqBody` (`h_seq_rec`) of `flowSubrangesOk_of_window_producers`.  The seq
-    sorry (`NonemptyStructure.lean:7502`) cannot close on the seq locator ALONE: `FlowSubrangesOk tokens`
-    also quantifies a `map` half (a top-level seq can nest a mapping, `[{a: b}]`), so the map mirror
-    (`RecMapBody` axis) is owed regardless.  References no sorry site, frontier sorry count unchanged at 4. -/
-theorem nestedSeq_safeBodyUnit_of_locator
+    **De-risk redirect (R388 — the B2c-CONSUME plan correction, [[ref-locate-consumer-by-gate-strength]]).**
+    The R387 doc and the prior blueprint Next step said this family "feeds `seqRoot_seqInteriorSeparators`'s
+    `desc` hypothesis" — a MISATTRIBUTION.  `desc` quantifies over a GENERAL gated window `[a,b)`
+    (`SeqTypedInterior`, where `tokens[a-1]` may be a `.flowEntry` separator — the window sits mid-body),
+    and is served by the BACKWARD enclosing-opener scan `seqEnclosingOpener_of_gate` (R319, landed
+    term-for-term) inside `seqDescent_provider_of_gate`; its only residual is the width fixpoint `h_enc`,
+    NOT this locator.  This forward locator's window is STRICTLY NARROWER — `h_opener : balance (a-1) a = 1`
+    forces `tokens[a-1]` to BE the opener, so `[a,b)` is a complete nested-seq interior, a strict subset of
+    `desc`'s windows.  Its genuine downstream is `h_seq_rec`, whose window-guard is WEAKER (bracket facts
+    only: `tokens[lo-1]! = .flowSequenceStart`, `tokens[hi]! = .flowSequenceEnd`, balance-0, `2 ≤ lo`,
+    `hi ≤ size-2` — no Dyck floor, no enclosing mark, no all-seq path, not strict).  So the locator is
+    too-NARROW-for-`desc` (cannot serve it) AND too-STRONG-vs-`h_seq_rec` (a GATE-STRENGTHENING bridge —
+    `h_seq_rec`'s bracket guards + global well-typedness ⟹ this locator's `SeqTypedInterior` +
+    `SeqPathAllSeq` gate — is the next residual).  Located by comparing GATE STRENGTH against each
+    candidate consumer's window-guard, in BOTH directions.  Map mirror (`RecMapBody` axis) owed for
+    `:7743` regardless.  References no sorry site, frontier sorry count unchanged at 4. -/
+theorem nestedSeq_recseqbody_of_locator
     (items : Array YamlValue) (tokens : Array (Positioned YamlToken)) (a b : Nat)
     (h_scan : Scanner.scanFiltered ("[" ++ emit.emitList items.toList ++ "]") = .ok tokens)
     (h_ne : items.toList ≠ [])
@@ -3519,7 +3527,7 @@ theorem nestedSeq_safeBodyUnit_of_locator
     (h_win_lo : 2 + 1 ≤ a)
     (h_win_ab : a < b)
     (h_win_hi : b < tokens.size - 2) :
-    SafeBodyUnit ContentStartTok ((tokens.toList.take b).drop a) := by
+    RecSeqBody ((tokens.toList.take b).drop a) := by
   obtain ⟨lo, op', cl', interior', h_lo, _h_ab, h_entry, h_open, h_int_ne, h_slice⟩ :=
     nestedSeq_recseqentry_locate items tokens a b h_scan h_ne h_all h_typed h_close
       h_opener h_path h_win_lo h_win_ab h_win_hi
@@ -3540,6 +3548,40 @@ theorem nestedSeq_safeBodyUnit_of_locator
       op' cl' lo (b + 1) h_slice.symm h_bound (by rw [List.append_nil])
   rw [h_len, h_lo] at h_islice
   rw [h_islice] at h_recbody
-  exact h_recbody.toSafeBodyUnit
+  exact h_recbody
+
+/-- **The located nested seq's windowed `SafeBodyUnit`** —
+    `(i'-b-B2c-nested-fbc-emission-locator-CONSUME-safebodyunit)`, R387 (R388: now a thin
+    `.toSafeBodyUnit` wrapper of `nestedSeq_recseqbody_of_locator`).  At any all-seq-path nested seq
+    window `[a, b)` (the seven target discriminators), it projects the located entry's interior recursive
+    body to the flat `SafeBodyUnit ContentStartTok ((tokens.toList.take b).drop a)` — the substrate the
+    seq separator-fact lemmas key on (`seqSeparatorFacts_of_windowed_safebodyunit`,
+    `seqInteriorFeContentStart_of_windowed_safebodyunit`, `seqEnclosingFacts_of_windowed_safebodyunit`)
+    for the carrier-route `FlowBodyContent` thread.
+
+    The `RecSeqBody` core is `nestedSeq_recseqbody_of_locator` (R388); this wrapper is its
+    `RecSeqBody.toSafeBodyUnit` projection.  Both share the locator's NARROW window class (opener-headed
+    complete nested-seq interior, `h_opener : balance (a-1) a = 1`): per the R388 de-risk redirect that
+    is too narrow for `desc` (served by the backward scan) and the `RecSeqBody` form — not this
+    `SafeBodyUnit` one — is the direct deliverable for `h_seq_rec` (modulo a gate-strengthening bridge).
+    The seq sorry (`NonemptyStructure.lean:7502`) cannot close on the seq locator ALONE: `FlowSubrangesOk
+    tokens` also quantifies a `map` half (a top-level seq can nest a mapping, `[{a: b}]`), so the map
+    mirror (`RecMapBody` axis) is owed regardless.  References no sorry site, frontier sorry count
+    unchanged at 4. -/
+theorem nestedSeq_safeBodyUnit_of_locator
+    (items : Array YamlValue) (tokens : Array (Positioned YamlToken)) (a b : Nat)
+    (h_scan : Scanner.scanFiltered ("[" ++ emit.emitList items.toList ++ "]") = .ok tokens)
+    (h_ne : items.toList ≠ [])
+    (h_all : ∀ v ∈ items.toList, EmitScansInFlowRecEntry v)
+    (h_typed : SeqTypedInterior tokens a b)
+    (h_close : tokens[b]!.val = .flowSequenceEnd)
+    (h_opener : flowBracketBalance tokens (a - 1) a = 1)
+    (h_path : SeqPathAllSeq tokens (a - 1))
+    (h_win_lo : 2 + 1 ≤ a)
+    (h_win_ab : a < b)
+    (h_win_hi : b < tokens.size - 2) :
+    SafeBodyUnit ContentStartTok ((tokens.toList.take b).drop a) :=
+  (nestedSeq_recseqbody_of_locator items tokens a b h_scan h_ne h_all h_typed h_close
+    h_opener h_path h_win_lo h_win_ab h_win_hi).toSafeBodyUnit
 
 end L4YAML.Proofs.EmitterScannability
