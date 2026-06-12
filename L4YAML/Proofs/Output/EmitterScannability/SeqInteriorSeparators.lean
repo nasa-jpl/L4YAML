@@ -2880,6 +2880,55 @@ theorem flowBodyWindow_and_seqEnclosed_of_facts
     rw [h_eq] at h_enc
     exact h_enc
 
+/-- **The deep-content conjunct of the window-facts provider restricts from a SINGLE ROOT seed** —
+    `(i'-b-B2c window-facts provider — the (a) deep content-start sub-residual, R391)`.  R390 carved the
+    per-window provider `∀ lo hi, <gate> → FlowBodyWindow ∧ FlowBodyContentDeep ∧ SeqEnclosed` into two
+    restriction conjuncts (`flowBodyWindow_and_seqEnclosed_of_facts`) and the lone genuine residual
+    `FlowBodyContentDeep`.  Reading the consuming recursion settles what that residual costs:
+    `seqWindowRecSeqBody` (R323) descends INTERNALLY (re-establishing the deep guard at each child via
+    `flowBodyContentDeep_advance`/`_descend`), but `seqRec_of_carrier_and_windowFacts` calls `windowFacts`
+    at EVERY gated window, so the provider owes `FlowBodyContentDeep tokens lo hi` at each.
+
+    Crucially that is NOT a per-window deep induction — it is a pure RESTRICTION of a SINGLE ROOT instance
+    `FlowBodyContentDeep tokens 2 (tokens.size - 2)` ([[ref-non-restriction-residual-root-seed]]: the
+    all-depth, balance-FREE fields are a subset-restriction across the window, so seed the root once and
+    restrict everywhere; only the position-`lo`-keyed head needs a one-line recovery):
+    * `openerContentStart` / `feContentStart` over `[lo, hi) ⊆ [2, size-2)` — direct sub-universals of the
+      root's (drop the window bounds via `omega`, the fields carry NO balance gate so nesting is irrelevant).
+    * `headContentStart : isFlowContentStart tokens[lo]` — recovered from the root's `openerContentStart`
+      at the opener `k = lo - 1` (the gate gives `tokens[lo-1]! = .flowSequenceStart`, `flowBracketDelta = 1`,
+      and `(lo-1)+1 = lo < hi ≤ size-2`), with the degenerate `lo = 2` falling back to the root head itself.
+
+    So the window-facts provider's LAST residual collapses from "an all-depth content fact at every window"
+    to the SINGLE root seed `FlowBodyContentDeep tokens 2 (size-2)` (the genuine deep emission
+    characterization, still owed — its `headContentStart` is the in-scope depth-`0` `h_content0`, but its
+    all-depth opener/separator fields need an emitter induction).  Composes only the projection of
+    `FlowBodyContentDeep` + `flowBracketDelta_flowSequenceStart`; references no sorry site, frontier sorry
+    count unchanged at 4; axiom-clean. -/
+theorem flowBodyContentDeep_window_of_root
+    (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (h_lo : 2 ≤ lo) (h_lo_hi : lo < hi) (h_hi : hi ≤ tokens.size - 2)
+    (h_open : tokens[lo - 1]!.val = .flowSequenceStart)
+    (h_root : FlowBodyContentDeep tokens 2 (tokens.size - 2)) :
+    FlowBodyContentDeep tokens lo hi := by
+  obtain ⟨h_root_head, h_root_op, h_root_fe⟩ := h_root
+  refine ⟨?_, ?_, ?_⟩
+  · -- headContentStart: tokens[lo] is content-start.
+    rcases Nat.eq_or_lt_of_le h_lo with h_eq | h_gt
+    · -- lo = 2: the root head directly
+      rw [← h_eq]; exact h_root_head
+    · -- lo > 2 (lo ≥ 3): the root opener fact at k = lo - 1 (a flowSequenceStart, delta 1)
+      have h_delta : flowBracketDelta tokens[lo - 1]!.val = 1 := by
+        rw [h_open]; exact flowBracketDelta_flowSequenceStart
+      have h := h_root_op (lo - 1) (by omega) (by omega) h_delta
+      rwa [Nat.sub_add_cancel (by omega)] at h
+  · -- openerContentStart: a restriction of the root's (all-depth, balance-free)
+    intro k hk1 hk2 hdelta
+    exact h_root_op k (by omega) (by omega) hdelta
+  · -- feContentStart: a restriction of the root's
+    intro k hk1 hk2 hfe
+    exact h_root_fe k (by omega) (by omega) hfe
+
 /-- **The SEQ-head CONS three-arm dispatch of the locator's per-window step `h_step`** —
     `(i'-b-B2c-nested-fbc-emission-locator-skeleton-brick-d-seq-cons)`, R378, BRICK D (carved).  This is
     the maximal-risk slice of `h_step` the blueprint flagged ("the four-way `cases h_e` × HEAD/CONS
@@ -3159,7 +3208,7 @@ theorem nestedSeq_recseqentry_locate_seq_head_step
     (op cl : Positioned YamlToken)
     (g : SeqLocateGuard tokens a b off H body)
     (h_eq : body = op :: (interior ++ [cl]))
-    (h_op : op.val = .flowSequenceStart) (h_cl : cl.val = .flowSequenceEnd)
+    (h_op : op.val = .flowSequenceStart) (_h_cl : cl.val = .flowSequenceEnd)
     (h_wb : WellBracketed interior) (h_rec : RecSeqBody interior) :
     (∃ lo op' cl' interior', lo + 1 = a ∧ a ≤ b ∧
       RecSeqEntry (op' :: (interior' ++ [cl'])) ∧
@@ -3213,7 +3262,7 @@ theorem nestedSeq_recseqentry_locate_map_head_step
     (op cl : Positioned YamlToken)
     (g : SeqLocateGuard tokens a b off H body)
     (h_eq : body = op :: (interior ++ [cl]))
-    (h_op : op.val = .flowMappingStart) (h_cl : cl.val = .flowMappingEnd)
+    (h_op : op.val = .flowMappingStart) (_h_cl : cl.val = .flowMappingEnd)
     (h_wb : WellBracketed interior) :
     (∃ lo op' cl' interior', lo + 1 = a ∧ a ≤ b ∧
       RecSeqEntry (op' :: (interior' ++ [cl'])) ∧
