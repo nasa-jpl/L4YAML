@@ -2778,6 +2778,53 @@ theorem rec_seq_body_nested_project (tokens : Array (Positioned YamlToken))
   seqWindowRecSeqBody tokens h_root_carrier lo hi h_win h_deep
     (seqEnclosed_of_seqPathAllSeq tokens lo h_path) h_close
 
+/-- **`h_seq_rec` reduces to the ROOT CARRIER + a flat per-window facts provider** — R389, the
+    de-risk's redirect rendered as code.  This is the EXACT `h_seq_rec` universal shape that
+    `flowSubrangesOk_of_window_producers` / `seqLocator_of_window_recseqbody` consume (bracket guards
+    only: `2 ≤ lo`, `lo < hi`, `hi ≤ size-2`, `hi < size`, `tokens[hi]! = .flowSequenceEnd`,
+    `balance lo hi = 0`, `tokens[lo-1]! = .flowSequenceStart`), produced here directly from
+    `seqWindowRecSeqBody` (R323) — NO forward locator, NO `SeqPathAllSeq`.
+
+    **Why the whole-domain width driver, not the forward locator** ([[ref-locate-consumer-by-gate-strength]]
+    sharpened to its limit).  `h_seq_rec` quantifies over EVERY nested seq window with the bracket
+    guards, INCLUDING windows whose enclosing path dips through a `{` (a seq nested under a map,
+    `[{a: [..]}]`).  The forward emission locator (R386–R388) is keyed on the all-seq-PATH gate
+    `SeqPathAllSeq tokens (lo-1)`, which a map-path window FAILS — the de-risk's minimal pair confirms
+    it on real scanned output (`[["1"], {"a": ["2"]}]`: the inner seq `[2]`'s opener stack is
+    `[false, true]`, not all-`true`, yet it satisfies every `h_seq_rec` guard).  So the locator can
+    NEVER be the sole `h_seq_rec` producer; the gate-strengthening bridge the blueprint queued
+    (`h_seq_rec` guards ⟹ `SeqPathAllSeq`) is FALSE.  `seqWindowRecSeqBody` instead needs only the
+    TOP-only `SeqEnclosed tokens lo` (the immediate frame is a seq `[`), which holds for ANY nested
+    seq window via `enclosingMark_true_of_opener` — so it serves the WHOLE domain (R323's doc:
+    "the existing `windowWidth_strongRecOn` driver already serves the whole domain"), and the forward
+    locator is REDUNDANT for `h_seq_rec` (verified-but-unconsumed, off the critical path).
+
+    **The reduction** ([[ref-reduction-by-import]] / [[ref-fold-consumer-chain-to-producer-contract]]):
+    this retypes the seq half of the `FlowSubrangesOk` residual (`NonemptyStructure.lean:7502`) from
+    "produce `RecSeqBody` at every window" to its two genuine sub-residuals — the ROOT CARRIER
+    `SeqInteriorSeparators tokens 2 (size-2)` (= `seqRoot_seqInteriorSeparators` fed `desc`, whose
+    residual is the width fixpoint `h_enc` via the backward `seqEnclosingOpener_of_gate` scan) and a
+    FLAT per-window facts provider (`FlowBodyWindow ∧ FlowBodyContentDeep ∧ SeqEnclosed`, all
+    restrictions of global emission facts — `dyck`/`wellTyped` via `WellTyped_subrange`, the
+    content-start fields via the all-depth emission characterization, `SeqEnclosed` via
+    `enclosingMark_true_of_opener`).  `windowFacts` is bundled to read the producer's contract off the
+    `h_seq_rec` signature in one line.  Verified-but-unconsumed until the carrier and the provider land:
+    composes only `seqWindowRecSeqBody`, references no sorry site, frontier sorry count unchanged at 4. -/
+theorem seqRec_of_carrier_and_windowFacts (tokens : Array (Positioned YamlToken))
+    (h_root_carrier : SeqInteriorSeparators tokens 2 (tokens.size - 2))
+    (windowFacts : ∀ lo hi, 2 ≤ lo → lo < hi → hi ≤ tokens.size - 2 → hi < tokens.size →
+      tokens[hi]!.val = .flowSequenceEnd → flowBracketBalance tokens lo hi = 0 →
+      tokens[lo - 1]!.val = .flowSequenceStart →
+      FlowBodyWindow tokens lo hi ∧ FlowBodyContentDeep tokens lo hi ∧ SeqEnclosed tokens lo) :
+    ∀ lo hi, 2 ≤ lo → lo < hi → hi ≤ tokens.size - 2 → hi < tokens.size →
+      tokens[hi]!.val = .flowSequenceEnd →
+      flowBracketBalance tokens lo hi = 0 →
+      tokens[lo - 1]!.val = .flowSequenceStart →
+      RecSeqBody ((tokens.toList.take hi).drop lo) := by
+  intro lo hi h2 hlt hhi hsz hclose hbal hopen
+  obtain ⟨h_win, h_deep, h_enc⟩ := windowFacts lo hi h2 hlt hhi hsz hclose hbal hopen
+  exact seqWindowRecSeqBody tokens h_root_carrier lo hi h_win h_deep h_enc hclose
+
 /-- **The SEQ-head CONS three-arm dispatch of the locator's per-window step `h_step`** —
     `(i'-b-B2c-nested-fbc-emission-locator-skeleton-brick-d-seq-cons)`, R378, BRICK D (carved).  This is
     the maximal-risk slice of `h_step` the blueprint flagged ("the four-way `cases h_e` × HEAD/CONS
