@@ -4629,6 +4629,145 @@ theorem flowBodyContentDeep_advance (tokens : Array (Positioned YamlToken)) (lo 
     intro k' hk1 hk2 hfe
     exact h_fe k' (by omega) (by omega) hfe
 
+/-- **Re-scoped, root-TRUE deep content guard** (Phase J — sub-brick (i'-b-B2c), the R393 redirect after
+    R392 refuted `FlowBodyContentDeep`'s root seed).  `FlowBodyContentDeep`'s all-depth, balance-FREE
+    opener/separator fields were strengthened (R290) to make both recursion edges pure restrictions — but
+    that strength made them quantify over sub-structures with DIFFERENT conventions than flow-sequences, so
+    the ROOT instance is FALSE on real emitter output ([[ref-restriction-hides-root-falsity]],
+    `flowBodyContentDeep_root_seed_false`): the opener field fails at `{` openers (`flowBracketDelta = 1`
+    but the successor is `.key`, not content) and at empty `[]`/`{}` openers (successor is the close), and
+    the separator field fails at map-internal `.flowEntry` (successor `.key`).
+
+    This guard RE-SCOPES each field by ADDING exactly the premise that excludes the false region, keeping
+    the fields all-depth so the recursion edges stay pure restrictions
+    ([[ref-window-absolute-gate-subset-restriction]]: the added premises are window-ABSOLUTE — keyed only on
+    `tokens[k]`/`tokens[k+1]`, never the origin — so they pass through `descend`/`advance` verbatim):
+
+    * `openerContentStart` fires only at NON-EMPTY `.flowSequenceStart` openers (`tokens[k] = .flowSequenceStart`
+      AND `tokens[k+1] ≠ .flowSequenceEnd`) — excludes `{` openers (now keyed on `.flowSequenceStart`, not the
+      type-blind `flowBracketDelta = 1`) and empty `[]` (the `≠ ]` premise).
+    * `feContentStart` fires only at SEQ-context separators (`tokens[k] = .flowEntry` AND `tokens[k+1] ≠ .key`)
+      — a map-internal `,` is followed by `.key`, so the `≠ .key` premise excludes it.
+
+    PROBED TRUE at the root on real scanned output across all three R392 violation classes plus a nested
+    non-empty seq (`[[]]`, `[{x:y}]`, `[{a:b,c:d}]`, `[[1],{a:[2]}]`, `[[a]]`): zero violations everywhere,
+    where the OLD predicate fails at exactly the empty/`{`-opener and map-`,` positions
+    ([[ref-restriction-hides-root-falsity]]: probe the ROOT before producing; [[ref-minimal-pair-extracts-the-gate]]:
+    the OLD-violations set IS the minimal-pair failing sibling, so `≠ ]`/`≠ .key` are the read-off
+    discriminators).  `flowBodyContentDeepSeq_root_holds_nested_scalar` (below) machine-checks satisfiability
+    on `[[a]]` NON-vacuously, the POSITIVE mirror of the R392 refutation — the satisfiability anchor
+    [[ref-probe-provider-satisfiable-before-assembler]] requires before any consumer/restriction is built.
+
+    The cost of re-scoping is paid CONSUMER-side: the added `≠ ]` premise is exactly the non-emptiness the
+    OLD opener field was (unsoundly) PROVING, so the dispatch must case-split empty-vs-non-empty and route
+    empty `[ ]` to `RecSeqEntry.seqEmpty` rather than EXCLUDE it (the R392 unsoundness fix).  Additive
+    parallel guard ([[ref-additive-parallel-type-over-shared-edit]]) beside `FlowBodyContentDeep` /
+    `FlowBodyContent`, never an edit to them; the proven (false-rooted) `flowBodyContentDeep_descend`/`_advance`
+    stay untouched. -/
+structure FlowBodyContentDeepSeq (tokens : Array (Positioned YamlToken)) (lo hi : Nat) : Prop where
+  headContentStart : isFlowContentStart tokens[lo]!.val
+  openerContentStart : ∀ k, lo ≤ k → k + 1 < hi →
+    tokens[k]!.val = .flowSequenceStart →
+    tokens[k + 1]!.val ≠ .flowSequenceEnd →
+    isFlowContentStart tokens[k + 1]!.val
+  feContentStart : ∀ k, lo ≤ k → k + 1 < hi →
+    tokens[k]!.val = .flowEntry →
+    tokens[k + 1]!.val ≠ .key →
+    isFlowContentStart tokens[k + 1]!.val
+
+/-- **POSITIVE root satisfiability of the re-scoped guard** — the machine-checked mirror of R392's
+    `flowBodyContentDeep_root_seed_false`.  On the scanned output of `[[a]]` (a nested non-empty flow
+    sequence, the host lemma's window shape), `FlowBodyContentDeepSeq tokens 2 (size-2)` HOLDS — and
+    NON-vacuously: the opener field's content conclusion fires at the inner `[` (`tokens[2] = .flowSequenceStart`,
+    `tokens[3] = .scalar "a"` ≠ `]`, so the successor IS content-start), exactly where the OLD all-depth
+    guard's root seed was true while the EMPTY/`{`/map-`,` cases that falsify OLD are absent.  Establishes
+    the re-scoped guard's root is INHABITED before any restriction/consumer is built on it
+    ([[ref-probe-provider-satisfiable-before-assembler]] / [[ref-restriction-hides-root-falsity]]); the
+    GENERAL root seed (emitter induction, TRUE now) is the next brick.  `native_decide` leaf — the
+    `ofReduceBool` axiom is contained here, off the `universal_roundtrip` path. -/
+theorem flowBodyContentDeepSeq_root_holds_nested_scalar
+    (tokens : Array (Positioned YamlToken))
+    (h : Scanner.scanFiltered
+        ("[" ++ emit.emitList
+          [YamlValue.sequence .flow #[YamlValue.scalar { content := "a", style := .plain }]] ++ "]")
+        = .ok tokens) :
+    FlowBodyContentDeepSeq tokens 2 (tokens.size - 2) := by
+  have key : ∀ {α : Type} (g : Array (Positioned YamlToken) → α) (a : α),
+      (Scanner.scanFiltered
+          ("[" ++ emit.emitList
+            [YamlValue.sequence .flow #[YamlValue.scalar { content := "a", style := .plain }]] ++ "]")).toOption.map g
+          = some a →
+        g tokens = a := by
+    intro α g a e; rw [h] at e; exact Option.some.inj e
+  have hsz : tokens.size = 7 := key (fun t => t.size) 7 (by native_decide)
+  have h2 : tokens[2]!.val = .flowSequenceStart :=
+    key (fun t => t[2]!.val) .flowSequenceStart (by native_decide)
+  have h3 : tokens[3]!.val = .scalar "a" .doubleQuoted :=
+    key (fun t => t[3]!.val) (.scalar "a" .doubleQuoted) (by native_decide)
+  refine ⟨?_, ?_, ?_⟩
+  · -- headContentStart: tokens[2] = .flowSequenceStart is content-start.
+    rw [h2]; exact Or.inr (Or.inl rfl)
+  · -- openerContentStart: the only non-vacuous k is 2 (`[` at 2, scalar ≠ `]` at 3).
+    intro k hk1 hk2 _hopen _hne
+    have hk : k = 2 ∨ k = 3 := by omega
+    rcases hk with rfl | rfl
+    · rw [h3]; exact Or.inl ⟨"a", .doubleQuoted, rfl⟩
+    · rw [h3] at _hopen; exact absurd _hopen (by decide)
+  · -- feContentStart: vacuous (no `.flowEntry` in the window).
+    intro k hk1 hk2 _hfe _hne
+    have hk : k = 2 ∨ k = 3 := by omega
+    rcases hk with rfl | rfl
+    · rw [h2] at _hfe; exact absurd _hfe (by decide)
+    · rw [h3] at _hfe; exact absurd _hfe (by decide)
+
+/-- **DESCEND restriction of the re-scoped guard** — the R393 twin of `flowBodyContentDeep_descend` over the
+    correctly-scoped `FlowBodyContentDeepSeq`.  Identical pure-restriction structure: the child head is the
+    parent's `openerContentStart` at the opener `k`, the child's fields are the parent's restricted to
+    `[k+1, j)`.  The ONE difference is the added premises — the opener is keyed on `.flowSequenceStart`
+    (not `flowBracketDelta = 1`, which would re-admit `{`) and the caller must SUPPLY non-emptiness
+    `tokens[k+1] ≠ .flowSequenceEnd` (the dispatch's empty/non-empty case-split delivers it, replacing the
+    OLD field's unsound self-derivation).  Both premises are window-ABSOLUTE, so they thread through the
+    restriction verbatim ([[ref-window-absolute-gate-subset-restriction]]).  Verified-but-unconsumed (R225)
+    until the dispatch is rewired to the re-scoped guard; references no sorry site. -/
+theorem flowBodyContentDeepSeq_descend (tokens : Array (Positioned YamlToken)) (lo k j hi : Nat)
+    (h_deep : FlowBodyContentDeepSeq tokens lo hi)
+    (h_lo_k : lo ≤ k) (h_k_open : tokens[k]!.val = .flowSequenceStart)
+    (h_k1_ne : tokens[k + 1]!.val ≠ .flowSequenceEnd)
+    (h_kj : k + 1 < j) (h_j_hi : j ≤ hi) :
+    FlowBodyContentDeepSeq tokens (k + 1) j := by
+  obtain ⟨_h_head, h_op, h_fe⟩ := h_deep
+  refine ⟨?_, ?_, ?_⟩
+  · -- child head `tokens[k+1]` content-start: the parent's opener fact at `k` (`k+1 < j ≤ hi`).
+    exact h_op k h_lo_k (by omega) h_k_open h_k1_ne
+  · -- child openerContentStart: the parent's, restricted to `[k+1, j) ⊆ [lo, hi)`.
+    intro k' hk1 hk2 hopen hne
+    exact h_op k' (by omega) (by omega) hopen hne
+  · -- child feContentStart: the parent's, restricted to `[k+1, j) ⊆ [lo, hi)`.
+    intro k' hk1 hk2 hfe hne
+    exact h_fe k' (by omega) (by omega) hfe hne
+
+/-- **ADVANCE restriction of the re-scoped guard** — the R393 twin of `flowBodyContentDeep_advance`.  The
+    child head is the parent's `feContentStart` at the separator `m`; the caller supplies the seq-context
+    premise `tokens[m+1] ≠ .key` (a depth-`0` seq `,` is followed by content, never a map key).  Pure
+    restriction otherwise — the window-ABSOLUTE premises thread verbatim.  Verified-but-unconsumed (R225)
+    until the recursion is rewired to the re-scoped guard; references no sorry site. -/
+theorem flowBodyContentDeepSeq_advance (tokens : Array (Positioned YamlToken)) (lo m hi : Nat)
+    (h_deep : FlowBodyContentDeepSeq tokens lo hi)
+    (h_lo_m : lo ≤ m) (h_sep : tokens[m]!.val = .flowEntry)
+    (h_m1_ne : tokens[m + 1]!.val ≠ .key)
+    (h_m1_hi : m + 1 < hi) :
+    FlowBodyContentDeepSeq tokens (m + 1) hi := by
+  obtain ⟨_h_head, h_op, h_fe⟩ := h_deep
+  refine ⟨?_, ?_, ?_⟩
+  · -- child head `tokens[m+1]` content-start: the parent's separator fact at `m` (`m+1 < hi`).
+    exact h_fe m h_lo_m h_m1_hi h_sep h_m1_ne
+  · -- child openerContentStart: the parent's, restricted to `[m+1, hi) ⊆ [lo, hi)`.
+    intro k' hk1 hk2 hopen hne
+    exact h_op k' (by omega) (by omega) hopen hne
+  · -- child feContentStart: the parent's, restricted to `[m+1, hi) ⊆ [lo, hi)`.
+    intro k' hk1 hk2 hfe hne
+    exact h_fe k' (by omega) (by omega) hfe hne
+
 /-- **`FlowBodyContent` assembler from the threaded deep guard** (Phase J — sub-brick (i'-a), the
     `bodySucc`-provenance factoring).  Every head-shape dispatch branch and both bracket oracles consume
     `FlowBodyContent tokens lo hi`, but the body recursion's combined guard only threads
