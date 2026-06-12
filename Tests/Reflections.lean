@@ -99,6 +99,7 @@ import Tests.Reflections.DeferredStructuralAlreadyProvenBySibling
 import Tests.Reflections.ConjunctiveConsumerGatesOnOrthogonalAxis
 import Tests.Reflections.LocateConsumerByGateStrength
 import Tests.Reflections.WholeDomainSiblingViaWeakerGuard
+import Tests.Reflections.DepthGateRestrictionDiagnostic
 
 /-!
 # Reflections — runnable proof-engineering demonstrations
