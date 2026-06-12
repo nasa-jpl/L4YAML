@@ -2929,6 +2929,79 @@ theorem flowBodyContentDeep_window_of_root
     intro k hk1 hk2 hfe
     exact h_root_fe k (by omega) (by omega) hfe
 
+/-- **The deep-content ROOT SEED is FALSE on real emitter output** — R392, the de-risk
+    `flowBodyContentDeep_window_of_root` (R391) queued, machine-checked.  R391 reduced the per-window
+    `FlowBodyContentDeep` provider to the single root instance `FlowBodyContentDeep tokens 2 (size-2)`
+    (`flowBodyContentDeep_window_of_root` restricts it to every gated window).  The queued next step was to
+    PRODUCE that root seed by emitter induction.  Probing it FIRST ([[ref-probe-deferred-universal-before-producing]])
+    shows it is **unprovable — the predicate is false on actual scanned output**, so the production path is
+    a dead end and the recursion's deep guard must be re-scoped (see below).
+
+    This theorem exhibits the witness within the host lemma's exact domain
+    (`scanFiltered ("[" ++ emit.emitList items ++ "]")`, `items ≠ []`): for `items = [[]]` (a single
+    EMPTY nested flow sequence — `emit.emitList [.sequence .flow #[]] = "[]"`, input `"[[]]"`), the scan is
+    `streamStart, [, [, ], ], streamEnd` (size 6, body window `[2, 4)`).  The opener `[` at `k = 2`
+    (`flowBracketDelta = 1`) has `tokens[3] = .flowSequenceEnd` at `k + 1 = 3 < 4 = hi`, so
+    `openerContentStart` would force `isFlowContentStart .flowSequenceEnd` — false.
+
+    **Three violation classes the #eval probe found** (this lemma machine-checks the first; the structure
+    is the same):
+    * EMPTY bracket — `[]` / `{}` puts the matching CLOSE right after the opener (`tokens[k+1]` is the
+      closer, not content-start).  Refuted here on `[[]]`.
+    * MAP opener — every `{` opener's successor is a `.key` token (`["a", {"x": "y"}]`: `{` at `k=4`,
+      `.key` at `k=5`), so `openerContentStart` (which fires for `flowBracketDelta = 1`, i.e. `{` too)
+      is false at EVERY non-empty map opener, independent of emptiness.
+    * MAP separator — `feContentStart` is false inside nested maps: a map pair-separator `,` is followed
+      by `.key` (`[{"a": "b", "c": "d"}]`: `,` at `k=7`, `.key` at `k=8`).
+
+    **Why it stayed hidden — and the fix direction.**  `FlowBodyContentDeep`'s all-depth balance-FREE
+    fields (R290's strengthening, which made `flowBodyContentDeep_descend`/`_advance` pure restrictions —
+    the [[ref-converse-forward-invariant-asymmetry]] dividend) assume the WHOLE window obeys
+    flow-SEQUENCE conventions (opener→content, separator→content).  But flow-MAP interiors break both
+    (`{`→`.key`, `,`→`.key`, `[]`→`]`).  The fields are CONSUMED only at seq-context positions —
+    non-empty `[` openers (`flowBodyContentDeep_descend`, which always has `k+1 < j`) and depth-`0` seq
+    separators (`flowBodyContentDeep_advance`) — never inside the map LEAVES (`recseqentry_window_dispatch`
+    routes `{`-entries to the near-leaf map oracle, NO descent).  The descend/advance/`window_of_root`
+    lemmas only ever RESTRICT the fields, so the falsity (a `∀`-over-all-depths the producer must
+    establish from scratch) never surfaced until this root probe — the "target you only project hides its
+    own falsity" trap.  Sharper still: `recseqentry_window_dispatch` (doc lines 5872-5878) RELIES on the
+    false `openerContentStart` to EXCLUDE the empty-bracket leaf, a case that is REAL — so the field is
+    not merely unprovable, the consumer's empty-exclusion is unsound for real inputs.  The redesign:
+    re-scope the deep guard to seq-context positions (the `SeqPathAllSeq` discriminator, R336, already
+    separates seq-path from map-dipping positions), and make the dispatch HANDLE empty `[ ]`/`{ }` entries
+    (route to `RecSeqEntry.seqEmpty` / empty-`map`) rather than exclude them.
+
+    Machine-checked: `native_decide` on the concrete 6-token scan of `"[[]]"` (the input shown literally
+    as the emitter form), then `openerContentStart` at `k = 2` contradicts `tokens[3] = .flowSequenceEnd`.
+    A guard rail: it permanently refutes the "prove the root seed" path so it is not re-attempted.  Off
+    the critical path (a refutation, consumed by nothing — `native_decide`'s `Lean.ofReduceBool` does not
+    reach `universal_roundtrip`); frontier sorry count unchanged at 4. -/
+theorem flowBodyContentDeep_root_seed_false
+    (tokens : Array (Positioned YamlToken))
+    (h : Scanner.scanFiltered
+        ("[" ++ emit.emitList [YamlValue.sequence .flow #[]] ++ "]") = .ok tokens) :
+    ¬ FlowBodyContentDeep tokens 2 (tokens.size - 2) := by
+  -- Concrete token facts, transported from the scan equation via native_decide on the Option image.
+  have key : ∀ {α : Type} (g : Array (Positioned YamlToken) → α) (a : α),
+      (Scanner.scanFiltered
+          ("[" ++ emit.emitList [YamlValue.sequence .flow #[]] ++ "]")).toOption.map g = some a →
+        g tokens = a := by
+    intro α g a e; rw [h] at e; exact Option.some.inj e
+  have h2 : tokens[2]!.val = .flowSequenceStart :=
+    key (fun t => t[2]!.val) .flowSequenceStart (by native_decide)
+  have h3 : tokens[3]!.val = .flowSequenceEnd :=
+    key (fun t => t[3]!.val) .flowSequenceEnd (by native_decide)
+  have hsz : tokens.size = 6 :=
+    key (fun t => t.size) 6 (by native_decide)
+  -- The opener at k = 2 has delta 1; openerContentStart would force content-start at 3 = `]`.
+  intro hd
+  have h_delta : flowBracketDelta tokens[2]!.val = 1 := by
+    rw [h2]; exact flowBracketDelta_flowSequenceStart
+  have h_cs : isFlowContentStart tokens[3]!.val :=
+    hd.openerContentStart 2 (Nat.le_refl 2) (by omega) h_delta
+  rw [h3] at h_cs
+  simp [isFlowContentStart] at h_cs
+
 /-- **The SEQ-head CONS three-arm dispatch of the locator's per-window step `h_step`** —
     `(i'-b-B2c-nested-fbc-emission-locator-skeleton-brick-d-seq-cons)`, R378, BRICK D (carved).  This is
     the maximal-risk slice of `h_step` the blueprint flagged ("the four-way `cases h_e` × HEAD/CONS
