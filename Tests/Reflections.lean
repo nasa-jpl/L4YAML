@@ -106,6 +106,7 @@ import Tests.Reflections.RescopeByExcludingPremise
 import Tests.Reflections.AllDepthOverreachSourceGlobally
 import Tests.Reflections.RedirectedProviderContractFirst
 import Tests.Reflections.ProduceJointBracketsGlobalContract
+import Tests.Reflections.OrthogonalInvariantAlgebraBeforeThreading
 
 /-!
 # Reflections — runnable proof-engineering demonstrations
