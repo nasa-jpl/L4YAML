@@ -476,6 +476,97 @@ theorem EntrySafe_append (a b : List (Positioned YamlToken))
     have := hb.2 (i - a.length) hb_idx (by rw [← h_idx]; exact h_fe)
     omega
 
+/-! #### Opener adjacency — the all-depth `.flowSequenceStart` successor field (`.body2.discharge.openeradj`)
+
+The seq-axis frontier consumer needs a GLOBAL invariant the `SafeBody`/`EntrySafe`/`WellBracketed`
+algebra does NOT carry: every `.flowSequenceStart` opener with a non-close successor is followed by
+a flow-content-start token (`GlobalFlowSeqOpenerAdj`, consumed via
+`globalFlowSeqOpenerAdj_of_structure`).  This is ALL-DEPTH and ungated — orthogonal to the depth-`0`
+`.flowEntry`-separator tracking the existing algebra provides (`SafeBody_array_flowEntry`).  R397
+(de-risk of the producer's residual) lands its list combinatorics here, parallel to the
+`EntrySafe`/`WellBracketed` algebra: a base on empty/singleton blocks, a token-prepend brick
+(`OpenerAdj_cons`, which is also the seq-block `[ body ]` wrap with the opener as the new head), and
+a concatenation closure (`OpenerAdj_append`) whose only boundary obligation is a tail-not-opener
+bridge — discharged because emitter blocks and separators end with a close or scalar, never an
+opener.  The value-induction in `emitList_scans_safebody` will compose these. -/
+
+/-- **Opener adjacency** (the new all-depth, ungated field the producer must thread).
+    Every `.flowSequenceStart` opener whose successor is not the matching close is
+    immediately followed by a flow-content-start token.  Pure list combinatorics,
+    parallel to `WellBracketed`/`EntrySafe`; the value-induction composes it. -/
+def OpenerAdj (l : List (Positioned YamlToken)) : Prop :=
+  ∀ (k : Nat) (h : k + 1 < l.length),
+    (l[k]'(by omega)).val = .flowSequenceStart →
+    (l[k+1]'h).val ≠ .flowSequenceEnd →
+    isFlowContentStart (l[k+1]'h).val
+
+/-- Base: the empty body (an empty `[]`/`{}` interior) is opener-adjacent (vacuous). -/
+theorem OpenerAdj_nil : OpenerAdj [] := by
+  intro k h; simp at h
+
+/-- Base: a singleton block (a scalar block) is opener-adjacent (no successor index). -/
+theorem OpenerAdj_singleton (t : Positioned YamlToken) : OpenerAdj [t] := by
+  intro k h; simp at h
+
+/-- **Fundamental recursive brick.**  Prepending a token preserves opener-adjacency,
+    provided that if the new head is an opener, its successor (the old head) is either
+    the close (excluded by the field's premise) or a content-start.  The seq-block wrap
+    `[ body ]` is this lemma with the `.flowSequenceStart` opener as the new head. -/
+theorem OpenerAdj_cons (t : Positioned YamlToken) (rest : List (Positioned YamlToken))
+    (h_rest : OpenerAdj rest)
+    (h_head : t.val = .flowSequenceStart →
+       ∀ (h0 : 0 < rest.length), (rest[0]'h0).val ≠ .flowSequenceEnd →
+         isFlowContentStart (rest[0]'h0).val) :
+    OpenerAdj (t :: rest) := by
+  intro k hk hopen hne
+  match k with
+  | 0 =>
+    have hr0 : 0 < rest.length := by simp [List.length_cons] at hk; omega
+    rw [List.getElem_cons_zero] at hopen
+    rw [List.getElem_cons_succ] at hne ⊢
+    exact h_head hopen hr0 hne
+  | k'+1 =>
+    have hrk : k' + 1 < rest.length := by simp [List.length_cons] at hk; omega
+    rw [List.getElem_cons_succ] at hopen
+    rw [List.getElem_cons_succ] at hne ⊢
+    exact h_rest k' hrk hopen hne
+
+/-- **Closure under concatenation** with a tail bridge.  Inside `a` and inside `b` the
+    field is local; the only boundary case is `a`'s last token — and emitter blocks /
+    separators always end with a close or scalar (never an opener), so the bridge
+    "`a`'s tail is not `.flowSequenceStart`" discharges the boundary vacuously. -/
+theorem OpenerAdj_append (a b : List (Positioned YamlToken))
+    (ha : OpenerAdj a) (hb : OpenerAdj b)
+    (h_tail : ∀ (hla : 0 < a.length),
+       (a[a.length-1]'(Nat.sub_lt hla Nat.one_pos)).val ≠ .flowSequenceStart) :
+    OpenerAdj (a ++ b) := by
+  intro k hk hopen hne
+  have hlen : (a ++ b).length = a.length + b.length := by rw [List.length_append]
+  rcases Nat.lt_or_ge (k + 1) a.length with hk1 | hge1
+  · -- both k and k+1 inside a
+    have e_k : (a ++ b)[k]'(by omega) = a[k]'(by omega) := List.getElem_append_left (by omega)
+    have e_k1 : (a ++ b)[k+1]'hk = a[k+1]'hk1 := List.getElem_append_left hk1
+    rw [e_k1]; rw [e_k] at hopen; rw [e_k1] at hne
+    exact ha k hk1 hopen hne
+  · rcases Nat.lt_or_ge k a.length with hka | hkb
+    · -- boundary: k = a.length - 1 inside a; the opener premise contradicts the tail bridge
+      exfalso
+      have hka' : k = a.length - 1 := by omega
+      have e_k : (a ++ b)[k]'(by omega) = a[k]'hka := List.getElem_append_left hka
+      rw [e_k] at hopen
+      simp only [hka'] at hopen
+      exact h_tail (by omega) hopen
+    · -- both inside b at offset m
+      obtain ⟨m, hm⟩ : ∃ m, k = a.length + m := ⟨k - a.length, by omega⟩
+      subst hm
+      have hmb1 : m + 1 < b.length := by rw [hlen] at hk; omega
+      have e_k : (a ++ b)[a.length + m]'(by omega) = b[m]'(by omega) := by
+        rw [List.getElem_append_right (by omega)]; congr 1; omega
+      have e_k1 : (a ++ b)[a.length + m + 1]'hk = b[m+1]'hmb1 := by
+        rw [List.getElem_append_right (by omega)]; congr 1; omega
+      rw [e_k1]; rw [e_k] at hopen; rw [e_k1] at hne
+      exact hb m hmb1 hopen hne
+
 /-! #### Unit entries — the value-end successor (`.body2.discharge.entryunit`)
 
 `EntrySafe` is too weak to read a *successor* off a value-end.  It admits an entry
