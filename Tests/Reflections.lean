@@ -95,6 +95,7 @@ import Tests.Reflections.SaturationCleavesTerminalBranch
 import Tests.Reflections.DispatchRoleFactorsTypeMetric
 import Tests.Reflections.CarveLeavesToEliminatorOutput
 import Tests.Reflections.RootSeedDerivesShapeDefersValue
+import Tests.Reflections.DeferredStructuralAlreadyProvenBySibling
 
 /-!
 # Reflections — runnable proof-engineering demonstrations
