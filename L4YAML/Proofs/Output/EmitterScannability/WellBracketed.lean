@@ -567,6 +567,54 @@ theorem OpenerAdj_append (a b : List (Positioned YamlToken))
       rw [e_k1]; rw [e_k] at hopen; rw [e_k1] at hne
       exact hb m hmb1 hopen hne
 
+/-- The `OpenerAdj` mirror of `wrap_seq_block`: a flow-sequence block `[ body ]`
+    is opener-adjacent given the body is opener-adjacent, the body's first token
+    (if not the close) is a content-start, and the body's last token is not itself
+    an opener (the tail bridge from [[ref-orthogonal-invariant-algebra-before-threading]]).
+    `OpenerAdj_cons` supplies the head premise `op.val = .flowSequenceStart`, so the
+    seat `_h_op` is unused here — kept only for call-site symmetry with `wrap_seq_block`. -/
+theorem OpenerAdj_wrap_seq (op cl : Positioned YamlToken)
+    (body : List (Positioned YamlToken))
+    (_h_op : op.val = .flowSequenceStart) (h_cl : cl.val = .flowSequenceEnd)
+    (h_body : OpenerAdj body)
+    (h_head : ∀ (h0 : 0 < body.length),
+       (body[0]'h0).val ≠ .flowSequenceEnd → isFlowContentStart (body[0]'h0).val)
+    (h_tail : ∀ (hla : 0 < body.length),
+       (body[body.length-1]'(Nat.sub_lt hla Nat.one_pos)).val ≠ .flowSequenceStart) :
+    OpenerAdj (op :: (body ++ [cl])) := by
+  have h_rest : OpenerAdj (body ++ [cl]) :=
+    OpenerAdj_append body [cl] h_body (OpenerAdj_singleton cl) h_tail
+  apply OpenerAdj_cons op (body ++ [cl]) h_rest
+  intro _hop h0' hne
+  match body, h_head, h_tail, h_body with
+  | [], _, _, _ =>
+    simp only [List.nil_append, List.getElem_cons_zero] at hne
+    exact absurd h_cl hne
+  | b0 :: bs, h_head, _, _ =>
+    have e0 : ((b0 :: bs) ++ [cl])[0]'h0' = (b0 :: bs)[0]'(by simp) := by
+      rw [List.getElem_append_left (by simp)]
+    rw [e0] at hne ⊢
+    exact h_head (by simp) hne
+
+/-- The `OpenerAdj` mirror of `wrap_map_block`: a flow-mapping block `{ body }` is
+    opener-adjacent given the body is opener-adjacent and the body's last token is
+    not itself an opener.  No head condition is needed: the new head `{` is not a
+    `.flowSequenceStart`, so the `OpenerAdj_cons` head premise is vacuous. -/
+theorem OpenerAdj_wrap_map (op cl : Positioned YamlToken)
+    (body : List (Positioned YamlToken))
+    (h_op : op.val = .flowMappingStart)
+    (h_body : OpenerAdj body)
+    (h_tail : ∀ (hla : 0 < body.length),
+       (body[body.length-1]'(Nat.sub_lt hla Nat.one_pos)).val ≠ .flowSequenceStart) :
+    OpenerAdj (op :: (body ++ [cl])) := by
+  have h_rest : OpenerAdj (body ++ [cl]) :=
+    OpenerAdj_append body [cl] h_body (OpenerAdj_singleton cl) h_tail
+  apply OpenerAdj_cons op (body ++ [cl]) h_rest
+  intro hop _h0' _hne
+  exfalso
+  rw [h_op] at hop
+  exact absurd hop (by decide)
+
 /-! #### Unit entries — the value-end successor (`.body2.discharge.entryunit`)
 
 `EntrySafe` is too weak to read a *successor* off a value-end.  It admits an entry
