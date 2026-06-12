@@ -3176,6 +3176,54 @@ theorem globalFlowSeqOpenerAdj_fires_cross_axis
   · rw [h7]; exact (by decide)
   · rw [h7]; exact Or.inl ⟨"b", .doubleQuoted, rfl⟩
 
+/-- **The PRODUCE-side joint — the global opener contract reduces to the BODY-window field plus the
+    structure's boundary facts** — `(i'-b-B2c-global-opener-adjacency-assemble)`, R396, the consumer joint
+    of the redirected GLOBAL producer ([[ref-consumer-joint-before-producer]]).  R395 named the contract
+    `GlobalFlowSeqOpenerAdj` and landed the CONSUME-side half (`flowSeqOpenerAdj_window_of_global`,
+    global → any window).  This is the dual PRODUCE-side reduction: it shows the global obligation factors
+    into (i) the four boundary facts the structure lemma `scanFiltered_emitSeq_nonempty_structure`
+    ALREADY delivers — `size ≥ 5`, `tokens[0] = .streamStart`, `tokens[size-2] = .flowSequenceEnd`, and the
+    body HEAD content-start `isFlowContentStart tokens[2]` — and (ii) one flat all-depth opener field over
+    the BODY window `[2, size-2)` (precisely the shape of `flowSeqOpenerAdj_window_of_global tokens 2
+    (size-2)`).  Landing this ISOLATES the producer's true residual to exactly the body field: every outer
+    boundary (the `k=0` `.streamStart`, the `k=1` outer opener whose successor is the head, the
+    `k=size-2` outer close) is discharged HERE by the structure facts, so the value-induction producer
+    need only establish the opener adjacency of the scanned `emitList items` body — the recursive emitter
+    object that `emitList_body_filtered_characterization` / the `SafeBody` block already scans (the
+    de-risk's verdict: the NON-indexed body producer is the home, NOT the indexed `EmitScansInFlowIx`,
+    whose `IxToken`/`ScannerStateIx` substrate would need a bridge back).
+
+    The five-way case split on `k` (over `getElem!`, so no proof-carrying indices): `k=0` contradicts
+    `.streamStart ≠ .flowSequenceStart`; `k=1` is the head fact (`1+1` reduces to `2`); `2 ≤ k` with
+    `k+1 < size-2` is the body field; `k+1 = size-2` contradicts the `≠ .flowSequenceEnd` premise via the
+    close; `k=size-2` contradicts `.flowSequenceEnd ≠ .flowSequenceStart`.  References no sorry site;
+    frontier sorry count unchanged at 4. -/
+theorem globalFlowSeqOpenerAdj_of_structure
+    (tokens : Array (Positioned YamlToken))
+    (h_sz : 5 ≤ tokens.size)
+    (h_t0 : tokens[0]!.val = .streamStart)
+    (h_close : tokens[tokens.size - 2]!.val = .flowSequenceEnd)
+    (h_head : isFlowContentStart tokens[2]!.val)
+    (h_body : ∀ k, 2 ≤ k → k + 1 < tokens.size - 2 →
+        tokens[k]!.val = .flowSequenceStart →
+        tokens[k+1]!.val ≠ .flowSequenceEnd →
+        isFlowContentStart tokens[k+1]!.val) :
+    GlobalFlowSeqOpenerAdj tokens := by
+  intro k hk1 hopen hne
+  by_cases h0 : k = 0
+  · subst h0; rw [h_t0] at hopen; exact absurd hopen (by decide)
+  by_cases h1 : k = 1
+  · subst h1; exact h_head
+  have hk2 : 2 ≤ k := by omega
+  by_cases hb : k + 1 < tokens.size - 2
+  · exact h_body k hk2 hb hopen hne
+  by_cases hb2 : k + 1 = tokens.size - 2
+  · rw [hb2] at hne; exact absurd h_close hne
+  have hk_eq : k = tokens.size - 2 := by omega
+  rw [hk_eq] at hopen
+  rw [h_close] at hopen
+  exact absurd hopen (by decide)
+
 /-- **The SEQ-head CONS three-arm dispatch of the locator's per-window step `h_step`** —
     `(i'-b-B2c-nested-fbc-emission-locator-skeleton-brick-d-seq-cons)`, R378, BRICK D (carved).  This is
     the maximal-risk slice of `h_step` the blueprint flagged ("the four-way `cases h_e` × HEAD/CONS
