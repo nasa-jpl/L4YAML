@@ -2825,6 +2825,61 @@ theorem seqRec_of_carrier_and_windowFacts (tokens : Array (Positioned YamlToken)
   obtain ⟨h_win, h_deep, h_enc⟩ := windowFacts lo hi h2 hlt hhi hsz hclose hbal hopen
   exact seqWindowRecSeqBody tokens h_root_carrier lo hi h_win h_deep h_enc hclose
 
+/-- **Per-window assembler of the bracket + enclosure halves of the window-facts provider**
+    (Phase J — R390, the (a) WINDOW-FACTS sub-residual carved off `seqRec_of_carrier_and_windowFacts`).
+    R389 reduced `h_seq_rec` to the root carrier + a per-window provider
+    `∀ lo hi, <seq guards> → FlowBodyWindow ∧ FlowBodyContentDeep ∧ SeqEnclosed`.  This brick discharges
+    TWO of that provider's three conjuncts — `FlowBodyWindow` and `SeqEnclosed` — at EVERY seq window
+    from facts that are pure RESTRICTIONS of the global emission invariants, isolating
+    `FlowBodyContentDeep` as the sole genuine residual.
+
+    The DE-RISK that motivated the split ([[ref-minimal-pair-extracts-the-gate]] /
+    [[ref-probe-deferred-universal-before-producing]]): is the global content-start fact at the sorry
+    site (`scanFiltered_emitSeq_nonempty_structure`, `NonemptyStructure.lean:7502`) stated ALL-DEPTH or
+    DEPTH-0 only?  Reading the in-scope facts settled it — `h_content0` is the depth-`0` HEAD
+    (`tokens[2]`) and `h_fe_pattern` is gated on `flowBracketBalance tokens 2 k = 0` (TOP-level
+    separators only).  But `FlowBodyContentDeep`'s `openerContentStart`/`feContentStart` quantify over
+    ALL `k ∈ [lo, hi)` with NO balance gate — they are all-depth.  So the content conjunct genuinely owes
+    a deep characterization (every opener / separator at any nesting is followed by a content-start head),
+    which the in-scope depth-`0` facts cannot supply.  This is the [[ref-incomplete-projection-still-factors]]
+    verdict: the carrier covers the bracket + enclosure part, NAMES the residual (the deep content), and
+    the names are the real owed primitives.
+
+    The two covered conjuncts are restrictions, both genuinely derivable (not pass-throughs):
+    * `FlowBodyWindow` — the frame bounds are arithmetic, `balanced` is the guard, `dyck` is the window
+      floor `h_win_dyck` (the matched-pair-interior floor, a `flowBracketBalance_matching_close`-style
+      fact, here a hypothesis), and `wellTyped` is `WellTyped_subrange` carrying the outer
+      `[2, size-2)` `WellTyped` down to `[lo, hi)` given the same window balance + floor.
+    * `SeqEnclosed` — `enclosingMark_true_of_opener` pushes `true` onto the (defined) pre-opener fold at
+      `lo - 1`; the fold's DEFINEDNESS (`h_fold_pre`) is the only input and follows globally from
+      `btFold_some_prefix` on the whole-stream fold ([[ref-prefix-gate-reconstructed-from-boundary]]).
+
+    The two named hypotheses — `h_win_dyck` (window floor) and `h_fold_pre` (prefix fold defined) — are
+    exactly the global-restriction primitives the eventual provider supplies once (whole-stream
+    well-bracketedness gives both at every window); they are NOT the deep content, which stays the lone
+    standalone residual.  Verified-but-unconsumed until the window-facts provider assembles all three:
+    references no sorry site, frontier sorry count unchanged at 4. -/
+theorem flowBodyWindow_and_seqEnclosed_of_facts
+    (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (h_lo : 2 ≤ lo) (h_lo_hi : lo < hi) (h_hi : hi ≤ tokens.size - 2) (h_hi_sz : hi < tokens.size)
+    (h_bal : flowBracketBalance tokens lo hi = 0)
+    (h_open : tokens[lo - 1]!.val = .flowSequenceStart)
+    (h_wt_outer : WellTyped ((tokens.toList.take (tokens.size - 2)).drop 2))
+    (h_win_dyck : ∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0)
+    (h_fold_pre : ∃ s, btFold (some []) (tokens.toList.take (lo - 1)) = some s) :
+    FlowBodyWindow tokens lo hi ∧ SeqEnclosed tokens lo := by
+  refine ⟨⟨h_lo, h_lo_hi, h_hi, h_hi_sz, h_bal, h_win_dyck, ?_⟩, ?_⟩
+  · -- wellTyped via the balanced-subrange transporter (window ⊆ outer [2, size-2)).
+    exact WellTyped_subrange tokens 2 lo hi (tokens.size - 2) h_lo (Nat.le_of_lt h_lo_hi) h_hi
+      (by omega) h_wt_outer h_bal h_win_dyck
+  · -- SeqEnclosed: push `true` onto the (defined) pre-opener fold via the opener at `lo-1`.
+    obtain ⟨s, h_pre⟩ := h_fold_pre
+    have h_q : lo - 1 < tokens.size := by omega
+    have h_enc := enclosingMark_true_of_opener tokens (lo - 1) h_q s h_pre h_open
+    have h_eq : lo - 1 + 1 = lo := by omega
+    rw [h_eq] at h_enc
+    exact h_enc
+
 /-- **The SEQ-head CONS three-arm dispatch of the locator's per-window step `h_step`** —
     `(i'-b-B2c-nested-fbc-emission-locator-skeleton-brick-d-seq-cons)`, R378, BRICK D (carved).  This is
     the maximal-risk slice of `h_step` the blueprint flagged ("the four-way `cases h_e` × HEAD/CONS
