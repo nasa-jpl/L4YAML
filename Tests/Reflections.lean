@@ -97,6 +97,7 @@ import Tests.Reflections.CarveLeavesToEliminatorOutput
 import Tests.Reflections.RootSeedDerivesShapeDefersValue
 import Tests.Reflections.DeferredStructuralAlreadyProvenBySibling
 import Tests.Reflections.ConjunctiveConsumerGatesOnOrthogonalAxis
+import Tests.Reflections.LocateConsumerByGateStrength
 
 /-!
 # Reflections — runnable proof-engineering demonstrations
