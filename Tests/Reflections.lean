@@ -105,6 +105,7 @@ import Tests.Reflections.RestrictionHidesRootFalsity
 import Tests.Reflections.RescopeByExcludingPremise
 import Tests.Reflections.AllDepthOverreachSourceGlobally
 import Tests.Reflections.RedirectedProviderContractFirst
+import Tests.Reflections.ProduceJointBracketsGlobalContract
 
 /-!
 # Reflections — runnable proof-engineering demonstrations
