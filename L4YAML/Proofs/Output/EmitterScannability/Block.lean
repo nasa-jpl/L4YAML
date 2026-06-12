@@ -106,6 +106,26 @@ def EmitScansInFlowBlock (v : YamlValue) : Prop :=
       ∧ EntryUnit block
       ∧ (∃ (h : block ≠ []), ContentStartTok (block.head h).val)
 
+/-- The head-bridge for the `OpenerAdj` value-induction: convert
+    `EmitScansInFlowBlock`'s content-start head field
+    (`∃ h : block ≠ [], ContentStartTok (block.head h).val`, line 107)
+    into the `h_head` shape `OpenerAdj_wrap_seq` consumes
+    (`∀ h0, (block[0]).val ≠ .flowSequenceEnd → isFlowContentStart (block[0]).val`).
+    Two trivial steps: `block.head h = block[0]` (`List.head_eq_getElem`) and
+    `ContentStartTok = isFlowContentStart` (definitionally identical), and the
+    `≠ .flowSequenceEnd` premise is simply discarded — line 107 asserts the
+    content-start head UNCONDITIONALLY for a non-empty block. -/
+theorem openerAdj_head_of_block_contentStart
+    (block : List (Positioned YamlToken))
+    (h : ∃ (hne : block ≠ []), ContentStartTok (block.head hne).val) :
+    ∀ (h0 : 0 < block.length),
+      (block[0]'h0).val ≠ .flowSequenceEnd → isFlowContentStart (block[0]'h0).val := by
+  obtain ⟨hne, hcs⟩ := h
+  intro h0 _
+  have hhead : block.head hne = block[0]'h0 := List.head_eq_getElem hne
+  rw [hhead] at hcs
+  exact hcs
+
 /-- Block-tracking superset of `EmitListScansInFlow`: the comma-separated body
     between `[` and `]`.  Its filtered-LIST delta `block` is `WellBracketed` —
     exactly the interior `wrap_seq_block` frames into a flow-sequence block. -/
