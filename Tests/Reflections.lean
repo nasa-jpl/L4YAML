@@ -100,6 +100,7 @@ import Tests.Reflections.ConjunctiveConsumerGatesOnOrthogonalAxis
 import Tests.Reflections.LocateConsumerByGateStrength
 import Tests.Reflections.WholeDomainSiblingViaWeakerGuard
 import Tests.Reflections.DepthGateRestrictionDiagnostic
+import Tests.Reflections.DeepConjunctRootSeedOnly
 
 /-!
 # Reflections — runnable proof-engineering demonstrations
