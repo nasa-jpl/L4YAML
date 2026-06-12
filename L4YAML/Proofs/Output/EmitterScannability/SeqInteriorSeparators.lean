@@ -3002,6 +3002,93 @@ theorem flowBodyContentDeep_root_seed_false
   rw [h3] at h_cs
   simp [isFlowContentStart] at h_cs
 
+/-- **The re-scoped opener field reaches into the MAP axis — it is NOT projectable from `RecSeqBody`** —
+    R394, the de-risk of (i'-b-B2c-root-seed) before authoring the general root seed of the R393 guard
+    `FlowBodyContentDeepSeq`.  R393 re-scoped `FlowBodyContentDeep` to the root-TRUE `FlowBodyContentDeepSeq`
+    (opener keyed on `.flowSequenceStart` + `≠ ]`), keeping the field **all-depth/balance-free** so its
+    descend/advance edges stay pure restrictions ([[ref-window-absolute-gate-subset-restriction]]).  The
+    queued next step was to PRODUCE the root seed `FlowBodyContentDeepSeq tokens 2 (size-2)` by induction on
+    the seq-side recursive deliverable `RecSeqBody` (`seqRoot_recseqbody` already produces it).  Probing
+    that path FIRST ([[ref-probe-deferred-universal-before-producing]]) shows it is a **dead end for the
+    opener field**: the all-depth opener quantifier reaches `.flowSequenceStart` openers that live strictly
+    INSIDE flow-MAP interiors, and the ENTIRE seq-side family (`RecSeqBody`/`RecSeqEntry`/
+    `EmitScansInFlowRecEntry`) bottoms out at `WellBracketed` for a map entry's interior
+    (`RecSeqEntry.map`, `NonemptyStructure.lean:466-469`, stores only `WellBracketed interior` — no recursive
+    content structure), so those openers' content-start successors are UNWITNESSED by `RecSeqBody`.
+
+    This theorem exhibits the witness within the host lemma's exact domain
+    (`scanFiltered ("[" ++ emit.emitList items ++ "]")`): for `items = [{a: [b]}]` (a single flow-MAP entry
+    whose value is a nested flow seq), the scan is
+    `streamStart, [, {, key, "a", value, [, "b", ], }, ], streamEnd` (size 12, body window `[2, 10)`).  The
+    body's only entry is the MAP (`tokens[2] = .flowMappingStart`).  Its value `[b]` contributes a
+    `.flowSequenceStart` at `k = 6` — strictly inside the map (`flowBracketBalance tokens 2 6 = 1`, NOT the
+    depth-`0` the seq separator machinery sees) — with content successor `tokens[7] = .scalar "b"`.  So
+    `openerContentStart` FIRES at `k = 6` (the conclusion `isFlowContentStart tokens[7]` is TRUE — the field
+    is sound here), but `k = 6` sits in the `WellBracketed`-only interior of the lone `RecSeqEntry.map`, so
+    no `RecSeqBody` value over `[2, 10)` records it.
+
+    **The sharpening of R392.**  `flowBodyContentDeep_root_seed_false` noted the deep fields are *consumed*
+    only at seq-context positions (the dispatch routes `{`-entries to the near-leaf map oracle with NO
+    descent), and the re-scoped field is now TRUE everywhere (R393).  But PRODUCTION of the root seed must
+    still establish the all-depth opener at EVERY opener in `[2, 10)`, including the map-interior one at
+    `k = 6` — and the seq axis cannot supply it.  Meanwhile the only consumer of `openerContentStart`
+    (`flowBodyContent_descend`: `h_deep.openerContentStart p (Nat.le_refl p) …`) reads it ONLY at the window
+    HEAD `k = lo`, never at a map-interior opener — so the field's map-interior obligations are pure
+    over-reach: true, unconsumed, and unproducible from the owning (seq) axis.  This is
+    [[ref-conjunctive-consumer-gates-on-orthogonal-axis]] surfacing at the PRODUCER: a single-axis recursive
+    deliverable cannot establish an all-depth fact that quantifies over the ORTHOGONAL axis's interiors,
+    even when that fact is consumed only on its own axis.
+
+    **The fix direction.**  Do NOT produce the opener field by `RecSeqBody` induction, and do NOT re-scope
+    its DOMAIN to seq-context (that reintroduces depth/re-basing, [[ref-non-restriction-residual-root-seed]]).
+    Source it as a GLOBAL emitter-output token-adjacency fact — "every `.flowSequenceStart` in `emit _` is
+    followed by `]` or a content-start token" — provable by induction on the emitter (`emit`/`emitList`/
+    `emitPairList`) UNIFORMLY across both axes, indifferent to seq-vs-map.  The field then stays all-depth
+    (trivial restriction edges, R393) AND true everywhere AND producible, the two-axis tension dissolved by
+    not routing production through either axis's recursive deliverable.
+
+    Machine-checked: `native_decide` on the concrete 12-token scan of `[{a: [b]}]`; the asserted bundle
+    (`tokens[6] = .flowSequenceStart` at `flowBracketBalance 2 6 = 1`, `tokens[7]` content-start) is the
+    positive witness that the opener field reaches a non-seq-structural, non-depth-`0` opener.  A guard rail:
+    it fences the "produce `openerContentStart` from `RecSeqBody`" path so it is not re-attempted.  Off the
+    critical path (a witness consumed by nothing — `native_decide`'s `Lean.ofReduceBool` does not reach
+    `universal_roundtrip`); frontier sorry count unchanged at 4. -/
+theorem flowBodyContentDeepSeq_opener_reaches_map_interior
+    (tokens : Array (Positioned YamlToken))
+    (h : Scanner.scanFiltered
+        ("[" ++ emit.emitList
+          [YamlValue.mapping .flow
+            #[(YamlValue.scalar { content := "a", style := .plain },
+               YamlValue.sequence .flow #[YamlValue.scalar { content := "b", style := .plain }])]]
+        ++ "]") = .ok tokens) :
+    tokens.size = 12 ∧
+    tokens[2]!.val = .flowMappingStart ∧
+    tokens[6]!.val = .flowSequenceStart ∧
+    flowBracketBalance tokens 2 6 = 1 ∧
+    tokens[7]!.val ≠ .flowSequenceEnd ∧
+    isFlowContentStart tokens[7]!.val := by
+  have key : ∀ {α : Type} (g : Array (Positioned YamlToken) → α) (a : α),
+      (Scanner.scanFiltered
+          ("[" ++ emit.emitList
+            [YamlValue.mapping .flow
+              #[(YamlValue.scalar { content := "a", style := .plain },
+                 YamlValue.sequence .flow #[YamlValue.scalar { content := "b", style := .plain }])]]
+          ++ "]")).toOption.map g = some a →
+        g tokens = a := by
+    intro α g a e; rw [h] at e; exact Option.some.inj e
+  have hsz : tokens.size = 12 := key (fun t => t.size) 12 (by native_decide)
+  have h2 : tokens[2]!.val = .flowMappingStart :=
+    key (fun t => t[2]!.val) .flowMappingStart (by native_decide)
+  have h6 : tokens[6]!.val = .flowSequenceStart :=
+    key (fun t => t[6]!.val) .flowSequenceStart (by native_decide)
+  have hbal : flowBracketBalance tokens 2 6 = 1 :=
+    key (fun t => flowBracketBalance t 2 6) 1 (by native_decide)
+  have h7 : tokens[7]!.val = .scalar "b" .doubleQuoted :=
+    key (fun t => t[7]!.val) (.scalar "b" .doubleQuoted) (by native_decide)
+  refine ⟨hsz, h2, h6, hbal, ?_, ?_⟩
+  · rw [h7]; exact (by decide)
+  · rw [h7]; exact Or.inl ⟨"b", .doubleQuoted, rfl⟩
+
 /-- **The SEQ-head CONS three-arm dispatch of the locator's per-window step `h_step`** —
     `(i'-b-B2c-nested-fbc-emission-locator-skeleton-brick-d-seq-cons)`, R378, BRICK D (carved).  This is
     the maximal-risk slice of `h_step` the blueprint flagged ("the four-way `cases h_e` × HEAD/CONS
