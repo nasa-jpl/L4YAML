@@ -108,6 +108,7 @@ import Tests.Reflections.RedirectedProviderContractFirst
 import Tests.Reflections.ProduceJointBracketsGlobalContract
 import Tests.Reflections.OrthogonalInvariantAlgebraBeforeThreading
 import Tests.Reflections.GatedFieldSiblingWrapperShedsHyp
+import Tests.Reflections.SynonymBridgeAndSlackGuard
 
 /-!
 # Reflections — runnable proof-engineering demonstrations
