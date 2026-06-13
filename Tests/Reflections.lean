@@ -101,6 +101,7 @@ import Tests.Reflections.LocateConsumerByGateStrength
 import Tests.Reflections.WholeDomainSiblingViaWeakerGuard
 import Tests.Reflections.DepthGateRestrictionDiagnostic
 import Tests.Reflections.DeepConjunctRootSeedOnly
+import Tests.Reflections.DeriskedMigrationOneClonePerConsumer
 import Tests.Reflections.RestrictionHidesRootFalsity
 import Tests.Reflections.RescopeByExcludingPremise
 import Tests.Reflections.AllDepthOverreachSourceGlobally
