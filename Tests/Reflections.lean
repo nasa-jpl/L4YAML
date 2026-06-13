@@ -114,6 +114,7 @@ import Tests.Reflections.PrestageConsumerBoundaryFacts
 import Tests.Reflections.SeveredEdgeBlocksProjection
 import Tests.Reflections.PredicateFieldNotProducerOutput
 import Tests.Reflections.AbsorbedBinderSplitDepth
+import Tests.Reflections.CarryUpSplitsAtImportEdge
 
 /-!
 # Reflections — runnable proof-engineering demonstrations
