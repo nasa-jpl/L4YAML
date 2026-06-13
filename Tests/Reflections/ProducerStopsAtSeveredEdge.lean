@@ -102,4 +102,66 @@ example :
     navigate (.box false) (.underBox .top) = none ∧ produce (.underBox .top) = .box true :=
   ⟨rfl, rfl⟩
 
+/-! ## R412 — the CONSUMER SLOT's guard decides whether a NAVIGATOR can serve it; a path-blind gate
+    conjunct masks the routing tag
+
+When integrating a deliverable into a fixed consumer slot `h_seq_rec : <weak guard> → D window`, the
+question "can the existing navigator-producer serve this slot?" is decided by the slot's GUARD SHAPE,
+not by whether the navigator produces `D`.  The navigator carries a ROUTING TAG (the whole-path
+`pathAllSeq`, restricting it to the navigable domain — [[ref-producer-stops-at-severed-edge]]).  It can
+serve the slot ONLY if the slot's guard IMPLIES that tag.  To decide, probe a MINIMAL PAIR satisfying
+the slot's WEAK guard ([[ref-minimal-pair-extracts-the-gate]]): if the routing tag SEPARATES them
+(holds on one, fails the other), the weak guard does NOT imply it, so the navigator is non-total on the
+slot — you need the STOP-AT-EDGE producer instead.
+
+THE TRAP: the slot's guard often CONTAINS a path-BLIND PROJECTION of the routing tag (here `enclosedTop`,
+the TOP-of-stack seq mark — `SeqEnclosed`), which makes it tempting to think the tag is covered.  It is
+not: the projection SEPARATES NOTHING on the pair (it reads only the immediate frame, blind to a severed
+frame deeper down).  Probe the WHOLE-stack predicate, not its head projection
+([[ref-aggregate-collapses-structured-separates]]). -/
+
+/-- A window's enclosure PATH: the stack of enclosing frame types, `true` = kept (seq), `false` =
+    severed (box).  Mirrors the `btFold` typed-bracket stack. -/
+abbrev Stack := List Bool
+
+/-- The WEAK consumer-slot guard `h_seq_rec` is quantified over — a bracket-only fact (here "nonempty
+    path") that says NOTHING about frame TYPES.  Holds on every window the slot must cover. -/
+def consumerGuard (s : Stack) : Bool := !s.isEmpty
+
+/-- `SeqEnclosed` — the gate's PATH-BLIND conjunct: the TOP frame is a seq.  A head PROJECTION of the
+    whole-path routing tag. -/
+def enclosedTop (s : Stack) : Bool := s.head? == some true
+
+/-- `SeqPathAllSeq` — the navigator's ROUTING TAG: the WHOLE path is all-seq (no severed frame). -/
+def pathAllSeq (s : Stack) : Bool := !s.isEmpty && s.all (· == true)
+
+/-- All-seq window (mirrors `[[1,2],9]`'s inner seq window: stack `[true,true]`). -/
+def allSeqWin : Stack := [true, true]
+/-- Box-enclosed window (mirrors `[{a:[b]}]`'s inner seq window: stack `[true,false,true]` — the severed
+    `box`/`{` frame sits between two seq frames; the TOP is still a seq). -/
+def boxPathWin : Stack := [true, false, true]
+
+/-- **NEGATIVE (R412) — the navigator's routing tag is NOT implied by the slot's weak guard.**  The
+    box-path window is in the slot's domain (`consumerGuard`) AND passes the gate's path-blind
+    `enclosedTop`, yet the routing tag `pathAllSeq` FAILS — so a navigator gated on `pathAllSeq` cannot
+    inhabit this window the slot must cover.  This is exactly why `nestedSeq_recseqbody_of_locator`
+    (carrying `SeqPathAllSeq`) cannot serve `h_seq_rec`. -/
+theorem routingTag_not_implied_by_slot :
+    ∃ s, consumerGuard s ∧ enclosedTop s ∧ ¬ (pathAllSeq s) :=
+  ⟨boxPathWin, by decide, by decide, by decide⟩
+
+/-- **POSITIVE (R412) — the discriminator is the WHOLE-path tag, not its top projection.**  On the
+    minimal pair, the path-blind `enclosedTop` agrees (separates NOTHING), but `pathAllSeq` disagrees
+    (separates the all-seq window from the box-path one). -/
+theorem discriminator_is_whole_path :
+    enclosedTop allSeqWin = enclosedTop boxPathWin ∧ pathAllSeq allSeqWin ≠ pathAllSeq boxPathWin :=
+  ⟨by decide, by decide⟩
+
+-- both windows pass the weak slot guard AND the path-blind gate conjunct …
+#guard consumerGuard allSeqWin && consumerGuard boxPathWin
+#guard enclosedTop allSeqWin && enclosedTop boxPathWin
+-- … the navigator serves the all-seq window, but its routing tag FAILS on the box-path window:
+#guard pathAllSeq allSeqWin
+#guard pathAllSeq boxPathWin == false
+
 end Tests.Reflections.ProducerStopsAtSeveredEdge
