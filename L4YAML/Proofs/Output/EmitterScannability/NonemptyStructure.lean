@@ -109,14 +109,20 @@ theorem emitList_body_filtered_characterization
         ((s'.tokens.filter p)[k]'h_hi).val ≠ .flowEntry →
         k + 1 = (s'.tokens.filter p).size ∨
         ∃ (h' : k + 1 < (s'.tokens.filter p).size),
-          ((s'.tokens.filter p)[k + 1]'h').val = .flowEntry) := by
+          ((s'.tokens.filter p)[k + 1]'h').val = .flowEntry)
+    -- (7) [NEW] The body block satisfies `OpenerAdj` — every `[` immediately inside the body that
+    --     is not a closing `]` is followed by a flow content start.  Threaded from the
+    --     `OpenerAdj block` the SafeBody producer now supplies (R405; the body block is `drop old_sz`
+    --     of the filtered list).  This is the opener-adjacency field the `FlowSubrangesOk` consumer
+    --     needs but cannot project off the flat bracket facts (the severed-edge `OpenerAdj`, R403).
+    ∧ OpenerAdj ((s'.tokens.filter p).toList.drop old_sz) := by
   -- Scan the body via the `.bridge.assemble` SafeBody producer.  The returned
   -- `SafeBody ContentStartTok block` subsumes BOTH parts of the characterization:
   -- `SafeBody.head_Q` gives the first-filtered-token content-start (Part 1), and
   -- `SafeBody_array_flowEntry` gives the post-`.flowEntry` content-start (Part 2).
   -- No `SavedKeyDoesntResolve` substrate and no two-chain reconciliation are needed.
   obtain ⟨n, s', block, h_chain, h_corr', h_fl', h_dp', h_ids', h_ek', h_col', h_inflow',
-          h_indent', h_line', h_atol', h_endline', h_stack', h_fmc, h_block_eq, h_wb, h_wt, h_sb, h_sbu⟩ :=
+          h_indent', h_line', h_atol', h_endline', h_stack', h_fmc, h_block_eq, h_wb, h_wt, h_sb, h_sbu, h_oa⟩ :=
     emitList_scans_safebody items h_ne h_all_block s rest h_corr h_flow h_fl h_indent h_col
       h_ek h_atol h_endline h_sync
   -- The body block is exactly the `drop old_sz` of the final filtered token list.
@@ -129,7 +135,7 @@ theorem emitList_body_filtered_characterization
       List.drop_append_of_le_length (Nat.le_refl _), List.drop_length, List.nil_append]
   refine ⟨n, s', h_chain.toScanChain, h_corr', h_fl', h_dp', h_ids', h_ek',
           h_col', h_inflow', h_indent', h_line', h_atol', h_endline',
-          h_stack', h_fmc, ?_, ?_, ?_, ?_, ?_, ?_⟩
+          h_stack', h_fmc, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
   · -- Part 1: first new filtered token is a content start (`SafeBody.head_Q`)
     obtain ⟨hl, hQ⟩ := h_sb.head_Q
     have h_size : (s'.tokens.filter (fun t => t.val != .placeholder)).size
@@ -189,6 +195,9 @@ theorem emitList_body_filtered_characterization
       (s'.tokens.filter (fun t => t.val != .placeholder))
       (s.tokens.filter (fun t => t.val != .placeholder)).size
       (by rw [h_drop]; exact h_sbu) k h_lo h_hi h_bal h_nfe
+  · -- Part 7 [NEW]: `OpenerAdj` of the body block, re-projected from the safebody producer's
+    -- now-output `OpenerAdj block` (R405) via the same `h_drop` re-basing as Part 5's `WellTyped`.
+    rw [h_drop]; exact h_oa
 
 /-- Body token characterization for `emitPairList` in flow context:
     (1) The chain has ≥ 3 steps (key handling + value indicator + value content).
@@ -7461,7 +7470,7 @@ theorem scanFiltered_emitSeq_nonempty_structure
   obtain ⟨n₂, s₂, h_chain₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂,
           h_ek₂, h_col₂, h_inflow₂, h_indent₂, _, _, _, h_stack₂, h_fmc₂,
           ⟨h_body_sz_raw, h_body_cs_raw⟩, h_body_fe_next_raw,
-          h_body_outer_bal_raw, h_body_dyck_raw, h_body_wt_raw, h_body_succ_raw⟩ :=
+          h_body_outer_bal_raw, h_body_dyck_raw, h_body_wt_raw, h_body_succ_raw, _h_body_oa_raw⟩ :=
     emitList_body_filtered_characterization items.toList h_ne
       (fun w hw => h_all_block w hw) s₁ [']']
       h_corr₁ h_inflow₁ (by rw [h_fl₁]; omega) h_indent₁ (by rw [h_col₁]; omega)

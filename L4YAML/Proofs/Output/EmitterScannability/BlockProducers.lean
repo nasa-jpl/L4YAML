@@ -828,7 +828,8 @@ theorem emitList_scans_safebody (items : List YamlValue) (h_ne : items ≠ [])
         ∧ WellBracketed block
         ∧ WellTyped block
         ∧ SafeBody ContentStartTok block
-        ∧ SafeBodyUnit ContentStartTok block := by
+        ∧ SafeBodyUnit ContentStartTok block
+        ∧ OpenerAdj block := by
   induction items with
   | nil => contradiction
   | cons v tail ih =>
@@ -840,13 +841,13 @@ theorem emitList_scans_safebody (items : List YamlValue) (h_ne : items ≠ [])
       rw [h_eq] at hcorr
       obtain ⟨n, s', block, h_chain, h_corr, h_fl', h_dp, h_ids, h_ek', h_col', h_flow',
               h_indent', h_line_v, _h_ska, _h_last, h_atol', h_endline', h_stack', h_fmc',
-              h_block_eq, h_wb, h_wt, h_es, h_eu, h_cs, _h_last⟩ :=
+              h_block_eq, h_wb, h_wt, h_es, h_eu, h_cs, _h_tail_v, h_oa_v⟩ :=
         h_all v (.head _) s rest_chars hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_sync
       obtain ⟨h_cs_ne, h_cs_val⟩ := h_cs
       exact ⟨n, s', block, h_chain, h_corr, h_fl', h_dp, h_ids, h_ek', h_col', h_flow',
         h_indent', h_line_v, h_atol', h_endline', h_stack', h_fmc', h_block_eq, h_wb, h_wt,
         SafeBody.single block h_cs_ne h_es h_cs_val,
-        SafeBodyUnit.single block h_cs_ne h_eu h_cs_val⟩
+        SafeBodyUnit.single block h_cs_ne h_eu h_cs_val, h_oa_v⟩
     | v' :: vs, ih =>
       have h_eq : (emit.emitList (v :: v' :: vs)).toList ++ rest_chars =
           (emit v).toList ++ ([',', ' '] ++ (emit.emitList (v' :: vs)).toList ++ rest_chars) := by
@@ -856,7 +857,7 @@ theorem emitList_scans_safebody (items : List YamlValue) (h_ne : items ≠ [])
       have h_ev : EmitScansInFlowBlock v := h_all v (.head _)
       obtain ⟨n₁, s₁, block₁, h_chain₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_ek₁, h_col₁, h_flow₁,
               h_indent₁, _h_line₁, _h_ska₁, h_last₁, h_atol₁, h_endline₁, h_stack₁, h_fmc₁,
-              h_block_eq₁, h_wb₁, h_wt₁, h_es₁, h_eu₁, h_cs₁, _h_last₁⟩ :=
+              h_block_eq₁, h_wb₁, h_wt₁, h_es₁, h_eu₁, h_cs₁, h_tail₁, h_oa₁⟩ :=
         h_ev s ([',', ' '] ++ (emit.emitList (v' :: vs)).toList ++ rest_chars)
           hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_sync
       obtain ⟨h_cs₁_ne, h_cs₁_val⟩ := h_cs₁
@@ -895,7 +896,7 @@ theorem emitList_scans_safebody (items : List YamlValue) (h_ne : items ≠ [])
       have h_tail_all : ∀ w ∈ v' :: vs, EmitScansInFlowBlock w :=
         fun w hw => h_all w (.tail _ hw)
       obtain ⟨n₃, s_end, block_rest, h_chain₃, h_corr_end, h_fl_end, h_dp_end, h_ids_end,
-              h_ek_end, h_col_end, h_flow_end, h_indent_end, h_line_end, h_atol_end, h_endline_end, h_stack_end, h_fmc₃, h_block_eq_end, h_wb_rest, h_wt_rest, h_sb_rest, h_sbu_rest⟩ :=
+              h_ek_end, h_col_end, h_flow_end, h_indent_end, h_line_end, h_atol_end, h_endline_end, h_stack_end, h_fmc₃, h_block_eq_end, h_wb_rest, h_wt_rest, h_sb_rest, h_sbu_rest, h_oa_rest⟩ :=
         ih (by simp) h_tail_all s₃ rest_chars h_corr₃'
           h_flow₃ (by rw [h_fl₃, h_fl₂, h_fl₁]; exact h_fl)
           (by rw [h_indent₃]; exact h_s2_indent)
@@ -958,7 +959,7 @@ theorem emitList_scans_safebody (items : List YamlValue) (h_ne : items ≠ [])
             List.append_assoc]
       refine ⟨n₁ + 1 + (n₃' + 1), s_end, block₁ ++ [feTok] ++ block_rest,
         h_arith ▸ h_chain_all, h_corr_end, ?_, ?_, ?_, ?_, h_col_end, h_flow_end, h_indent_end,
-        ?_, h_atol_end, h_endline_end, ?_, h_arith ▸ h_fmc_all, ?_, ?_, ?_, ?_, ?_⟩
+        ?_, h_atol_end, h_endline_end, ?_, h_arith ▸ h_fmc_all, ?_, ?_, ?_, ?_, ?_, ?_⟩
       · rw [h_fl_end, h_fl₃, h_fl₂, h_fl₁]
       · rw [h_dp_end, h_dp₃, h_dp₂, h_dp₁]
       · rw [h_ids_end, h_ids₃, h_ids₂, h_ids₁]
@@ -987,6 +988,11 @@ theorem emitList_scans_safebody (items : List YamlValue) (h_ne : items ≠ [])
           rw [List.append_assoc]; rfl
         rw [h_reassoc]
         exact SafeBodyUnit.cons block₁ feTok block_rest h_cs₁_ne h_eu₁ h_cs₁_val h_feTok_val h_sbu_rest
+      · -- OpenerAdj (block₁ ++ [feTok] ++ block_rest): R403 seam over the item blocks, the FLAT
+        -- mirror of `emitList_scans_recseqbody`'s cons (each item's `OpenerAdj` glued by the
+        -- separator `feTok`; block₁'s tail-not-opener from `EmitScansInFlowBlock`'s own field).
+        exact OpenerAdj_seam block₁ block_rest feTok h_oa₁ h_oa_rest
+          (by rw [h_feTok_val]; decide) h_tail₁
 
 /-! ### §G.balance.bridge.assemble.map — mapping-body `SafeBody` producer
 
