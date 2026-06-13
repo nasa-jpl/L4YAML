@@ -36,6 +36,7 @@ import Tests.Guards.Proofs.SeqDispatchPartitionProbe
 import Tests.Guards.Proofs.SeqEnclosedGuardProbe
 import Tests.Guards.Proofs.SeqGateFloorProbe
 import Tests.Guards.Proofs.SeqGateWindownessProbe
+import Tests.Guards.Proofs.SeqHseqRecDeepFieldProbe
 import Tests.Guards.Proofs.SeqHseqRecGateProbe
 import Tests.Guards.Proofs.SeqMapPathNestedProbe
 import Tests.Guards.Proofs.SeqNestedBPinProbe
