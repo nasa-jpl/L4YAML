@@ -118,6 +118,8 @@ import Tests.Reflections.AbsorbedBinderSplitDepth
 import Tests.Reflections.CarryUpSplitsAtImportEdge
 import Tests.Reflections.RedirectAuditFullGuard
 import Tests.Reflections.RestoredArmAlreadyInClassify
+import Tests.Reflections.GatedFieldResourcedViaNarrow
+import Tests.Reflections.MirroredGateReprobeWitness
 
 /-!
 # Reflections — runnable proof-engineering demonstrations
