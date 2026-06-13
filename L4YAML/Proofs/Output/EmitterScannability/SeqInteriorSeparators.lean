@@ -3252,6 +3252,98 @@ theorem seqGlobalFlowSeqOpenerAdj_of_emit
     scanFiltered_emitSeq_nonempty_structure items tokens h_scan h_ne h_all_block
   exact globalFlowSeqOpenerAdj_of_structure tokens (by omega) h_t0 h_close h_head h_body_opener
 
+/-- **The MAP-axis global opener producer — the predicted NON-mirror sibling of
+    `globalFlowSeqOpenerAdj_of_structure`** — `(i'-b-B2c-(c)-produce-global-map-structure)`, R410.  The
+    seq producer (R396) discharged its `k+1 = size-2` boundary the cheap way: there the close token is
+    the seq close `.flowSequenceEnd`, so the `≠ .flowSequenceEnd` premise `hne` is itself
+    contradictory and the case closes with one `absurd h_close hne`, with NO appeal to the body
+    structure.  On the MAP axis the close is `.flowMappingEnd`, so `hne` is genuinely SATISFIED at that
+    boundary and the cheap discharge is unavailable; the case instead reasons that the pre-close body
+    token at `k = size-3` (the one whose successor IS the close) is never a `.flowSequenceStart` opener.
+    That is sourced from the map body's BRACKET STRUCTURE — the balance-0 conjunct `h_outer_bal` and the
+    Dyck conjunct `h_dyck` the structure lemma already carries — exactly as
+    [[ref-boundary-residual-end-dual]] anticipates: the boundary fact discharges VACUOUSLY by refuting
+    its `hopen` premise, but the refutation is END-keyed on the enclosing close, so it needs the floor
+    invariant the interior body field does not carry.  The one-step balance recurrence
+    `balance 2 (k+1) = balance 2 k + flowBracketDelta tokens[k]!.val` (the inline analogue of
+    `flowBracketBalance_matching_close`'s `step`): if `tokens[k] = .flowSequenceStart` its delta is `+1`,
+    and since `k+1 = size-2` pins `balance 2 (k+1) = 0` (`h_outer_bal`), the prefix balance would be
+    `-1`, contradicting `h_dyck`'s `≥ 0`.  The `k=1` case is the MIRROR simplification — the seq's
+    `tokens[1] = .flowSequenceStart` made `k=1` the REAL head case (producing the head content-start),
+    but the map's `tokens[1] = .flowMappingStart` makes `hopen` contradictory there, so `k=1` is
+    VACUOUS for the map ([[ref-near-leaf-mirror-sheds-machinery]]: the storage asymmetry flips sign
+    across the boundary — the map sheds the head-content hypothesis the seq needed but pays the
+    balance/Dyck pair the seq did not).  References no sorry site; frontier sorry count unchanged at 4. -/
+theorem globalFlowSeqOpenerAdj_of_map_structure
+    (tokens : Array (Positioned YamlToken))
+    (h_sz : 5 ≤ tokens.size)
+    (h_t0 : tokens[0]!.val = .streamStart)
+    (h_t1 : tokens[1]!.val = .flowMappingStart)
+    (h_close : tokens[tokens.size - 2]!.val = .flowMappingEnd)
+    (h_outer_bal : flowBracketBalance tokens 2 (tokens.size - 2) = 0)
+    (h_dyck : ∀ k, 2 ≤ k → k ≤ tokens.size - 2 → flowBracketBalance tokens 2 k ≥ 0)
+    (h_body : ∀ k, 2 ≤ k → k + 1 < tokens.size - 2 →
+        tokens[k]!.val = .flowSequenceStart →
+        tokens[k+1]!.val ≠ .flowSequenceEnd →
+        isFlowContentStart tokens[k+1]!.val) :
+    GlobalFlowSeqOpenerAdj tokens := by
+  intro k hk1 hopen hne
+  by_cases h0 : k = 0
+  · subst h0; rw [h_t0] at hopen; exact absurd hopen (by decide)
+  by_cases h1 : k = 1
+  · subst h1; rw [h_t1] at hopen; exact absurd hopen (by decide)
+  have hk2 : 2 ≤ k := by omega
+  by_cases hb : k + 1 < tokens.size - 2
+  · exact h_body k hk2 hb hopen hne
+  by_cases hb2 : k + 1 = tokens.size - 2
+  · -- The genuine map difference: the pre-close body token at `k = size-3` cannot be an opener,
+    -- else the prefix balance would be `-1`, contradicting the Dyck floor.
+    exfalso
+    have h_k_sz : k < tokens.size := by omega
+    have hstep : flowBracketBalance tokens 2 (k+1) =
+        flowBracketBalance tokens 2 k + flowBracketDelta tokens[k]!.val := by
+      rw [flowBracketBalance_compose tokens 2 k (k+1) (by omega) (by omega)]
+      have hlen : k < tokens.toList.length := by rw [Array.length_toList]; exact h_k_sz
+      rw [flowBracketBalance_single tokens k hlen]
+      have h1' : tokens.toList[k]'hlen = tokens[k] := Array.getElem_toList h_k_sz
+      have h2' : tokens[k] = tokens[k]! := (getElem!_pos tokens k h_k_sz).symm
+      rw [h1', h2']
+    have h_delta : flowBracketDelta tokens[k]!.val = 1 := by
+      rw [hopen]; exact flowBracketDelta_flowSequenceStart
+    rw [hb2, h_outer_bal, h_delta] at hstep
+    have hge := h_dyck k hk2 (by omega)
+    omega
+  · -- k = size-2: `tokens[size-2] = .flowMappingEnd ≠ .flowSequenceStart`, `hopen` is absurd.
+    have hk_eq : k = tokens.size - 2 := by omega
+    rw [hk_eq] at hopen
+    rw [h_close] at hopen
+    exact absurd hopen (by decide)
+
+/-- **The MAP (c)-PRODUCE-GLOBAL half — `GlobalFlowSeqOpenerAdj tokens` from the map structure lemma** —
+    `(i'-b-B2c-(c)-produce-global-map)`, R410.  Mirrors `seqGlobalFlowSeqOpenerAdj_of_emit` (R409): the
+    downstream CONSUME of `scanFiltered_emitMap_nonempty_structure`'s twelve-conjunct conclusion, feeding
+    the map-axis producer the facts the structure lemma already carries — `tokens[0] = .streamStart`,
+    `tokens[1] = .flowMappingStart`, the map close `tokens[size-2] = .flowMappingEnd`, the balance-0 +
+    Dyck pair, and the newly-exposed (R408) body opener field over `[2, size-2)`.  Unlike the SEQ
+    consume this is NOT a one-liner only because the producer is the non-mirror sibling
+    (`globalFlowSeqOpenerAdj_of_map_structure`, not the seq producer) — `mkG`'s contract is genuinely
+    axis-specific ([[ref-carry-up-splits-at-import-edge]] consume-half tell), so the structure lemma's
+    conclusion is a subset of the MAP producer's contract (balance-0/Dyck), not the seq producer's.
+    Verified-but-unconsumed until the (d)–(e) `FlowSubrangesOk` rewire; frontier sorry count unchanged
+    at 4. -/
+theorem mapGlobalFlowSeqOpenerAdj_of_emit
+    (pairs : Array (YamlValue × YamlValue)) (tokens : Array (Positioned YamlToken))
+    (h_scan : Scanner.scanFiltered ("{" ++ emit.emitPairList pairs.toList ++ "}") = .ok tokens)
+    (h_ne : pairs.toList ≠ [])
+    (h_all_k_block : ∀ p, p ∈ pairs.toList → EmitScansInFlowSavedKeyBlock p.1)
+    (h_all_v_block : ∀ p, p ∈ pairs.toList → EmitScansInFlowBlock p.2) :
+    GlobalFlowSeqOpenerAdj tokens := by
+  obtain ⟨h_sz7, h_t0, _h_tend, h_t1, h_close, _h_key, _h_fe_pattern,
+          h_outer_bal, h_dyck, _h_wt_interior, _h_pnok, h_body_opener⟩ :=
+    scanFiltered_emitMap_nonempty_structure pairs tokens h_scan h_ne h_all_k_block h_all_v_block
+  exact globalFlowSeqOpenerAdj_of_map_structure tokens (by omega) h_t0 h_t1 h_close
+    h_outer_bal h_dyck h_body_opener
+
 /-- **The SEQ-head CONS three-arm dispatch of the locator's per-window step `h_step`** —
     `(i'-b-B2c-nested-fbc-emission-locator-skeleton-brick-d-seq-cons)`, R378, BRICK D (carved).  This is
     the maximal-risk slice of `h_step` the blueprint flagged ("the four-way `cases h_e` × HEAD/CONS
