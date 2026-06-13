@@ -4905,6 +4905,42 @@ theorem flowBodyContent_of_deep (tokens : Array (Positioned YamlToken)) (lo hi :
   · -- boundary separator `k + 1 = hi`: the no-trailing-comma residual.
     exact h_noTrailingSep k hk1 (by omega) hfe hbal
 
+/-- **`FlowBodyContent` assembler from the RE-SCOPED deep guard** (Phase J — sub-brick (i'-b-B2c), the
+    `_seq` twin of `flowBodyContent_of_deep` consuming `FlowBodyContentDeepSeq`).  The additive-parallel
+    clone ([[ref-additive-parallel-type-over-shared-edit]]) the (R2) consumer re-thread needs: the body
+    recursion now threads the root-TRUE `FlowBodyContentDeepSeq` (R393), so the per-window `FlowBodyContent`
+    the dispatch consumes must be produced from THAT guard, not the false-rooted `FlowBodyContentDeep`.
+
+    The re-scope changed exactly the `feContentStart` interface: `FlowBodyContentDeep.feContentStart` is
+    all-depth and UNGUARDED (`tokens[k] = .flowEntry → isFlowContentStart tokens[k+1]`), so the original
+    assembler projects the interior separator branch straight off it; the re-scoped
+    `FlowBodyContentDeepSeq.feContentStart` is GATED by `tokens[k+1] ≠ .key` — a premise the CONSUMER cannot
+    supply at the consume site (the content-start it would establish is the very `≠ .key` it needs).  So this
+    twin does NOT project the interior from the guard; it takes a UNIFORM separator-content fact `h_feContent`
+    (every depth-`0` separator — interior AND boundary — has a content successor) as a named residual, which
+    the caller (`seqWindow_flowBodyContent_seq`) sources from the SEPARATOR CARRIER's `noTrailingSepFact` at
+    the narrowed window `[lo, k+1)` — the carrier already proves it, the guard's `feContentStart` was a
+    redundant second source ([[ref-coerce-to-weaker-reuse-wrapper]] read in reverse: the re-scoped guard is
+    WEAKER at the consume boundary, so re-source the dropped field from the provider that still has it).  Only
+    `headContentStart` (re-scope-invariant) is read off the guard.
+
+    Verified-but-unconsumed until `seqWindow_flowBodyContent_seq` threads it (R225): references no sorry
+    site, frontier sorry count unchanged at 4; axiom-clean. -/
+theorem flowBodyContent_of_deepSeq (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (h_deep : FlowBodyContentDeepSeq tokens lo hi)
+    (h_bodySucc : ∀ k, lo ≤ k → k < hi →
+        flowBracketBalance tokens lo (k + 1) = 0 →
+        tokens[k]!.val ≠ .flowEntry →
+        k + 1 = hi ∨ ∃ (_ : k + 1 < hi), tokens[k + 1]!.val = .flowEntry)
+    (h_feContent : ∀ k, lo ≤ k → k < hi →
+        tokens[k]!.val = .flowEntry →
+        flowBracketBalance tokens lo k = 0 →
+        isFlowContentStart tokens[k + 1]!.val) :
+    FlowBodyContent tokens lo hi := by
+  refine ⟨h_deep.headContentStart, h_bodySucc, ?_⟩
+  intro k hk1 hk2 hfe hbal
+  exact ⟨by omega, h_feContent k hk1 hk2 hfe hbal⟩
+
 /-- **`bodySucc` ROOT-SEED bridge** (Phase J — sub-brick (i'-b), the CERTAIN half of the seq separator
     facts at the root window, and the producer's first landable brick per
     [[ref-universal-producer-root-seed-first]]).  `emitList_body_filtered_characterization` Part 6
