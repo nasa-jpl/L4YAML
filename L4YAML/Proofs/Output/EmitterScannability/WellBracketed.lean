@@ -695,6 +695,20 @@ theorem lastNonOpener_append3
   obtain ⟨t, h_gl, h_t⟩ := hwit
   exact lastNonOpener_of_getLast? _ t h_gl h_t
 
+/-- **Last-token-not-opener** for a right-append `a ++ b` with `b` non-empty (the
+    `block_kc ++ block_v` shape of the *singleton* mapping-body, where the block ends in the
+    value block `block_v`).  The last token is `b`'s last, so `b`'s tail-not-opener field
+    transfers to the whole append.  Routed through `getLast?` (the `append` short-circuits to
+    `b.getLast?` once `b ≠ []`) to avoid the dependent `length - 1` getElem motive trap. -/
+theorem lastNonOpener_append_right (a b : List (Positioned YamlToken)) (hb : b ≠ [])
+    (h_b : ∀ (hla : 0 < b.length),
+      (b[b.length - 1]'(Nat.sub_lt hla Nat.one_pos)).val ≠ .flowSequenceStart) :
+    ∀ (hla : 0 < (a ++ b).length),
+      ((a ++ b)[(a ++ b).length - 1]'(Nat.sub_lt hla Nat.one_pos)).val ≠ .flowSequenceStart := by
+  obtain ⟨t, h_gl, h_t⟩ := getLast?_not_opener_of_lastNonOpener b hb h_b
+  have h_gl_ab : (a ++ b).getLast? = some t := by rw [List.getLast?_append, h_gl]; rfl
+  exact lastNonOpener_of_getLast? _ t h_gl_ab h_t
+
 /-! #### Unit entries — the value-end successor (`.body2.discharge.entryunit`)
 
 `EntrySafe` is too weak to read a *successor* off a value-end.  It admits an entry
