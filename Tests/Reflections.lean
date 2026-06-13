@@ -112,6 +112,7 @@ import Tests.Reflections.SynonymBridgeAndSlackGuard
 import Tests.Reflections.BridgeDerivableFromInvariant
 import Tests.Reflections.PrestageConsumerBoundaryFacts
 import Tests.Reflections.SeveredEdgeBlocksProjection
+import Tests.Reflections.PredicateFieldNotProducerOutput
 
 /-!
 # Reflections — runnable proof-engineering demonstrations
