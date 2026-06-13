@@ -77,4 +77,29 @@ theorem window_alone_does_not_entail_global :
 -- … but the boundary fact fails for it, so the window alone cannot make the global fact.
 #guard (decide ((8 : Nat) ≠ 8) == false)
 
+/-! ## R409 — the consume half is a one-liner exactly when `mkGlobal`'s contract ⊆ the conclusion
+
+The carry-up's DOWNSTREAM half (R409) lands trivially when the upstream lemma exposes `mkGlobal`'s
+WHOLE input contract.  The tell the EXPOSE was scoped right: `mkGlobal`'s full hypothesis list is a
+SUBSET of the (augmented) upstream conclusion, so the consume is `obtain …; exact mkGlobal …` with no
+extra hypothesis owed.  If a needed fact is MISSING from the conclusion, the expose under-delivered
+(or — as on the L4YAML map axis — `mkGlobal`'s contract is genuinely axis-specific and cannot be a
+subset, so a sibling producer is owed, not a free mirror). -/
+
+/-- An upstream lemma that exposes BOTH the window primitive AND the boundary fact (the SEQ case:
+    `mkGlobal`'s whole contract `windowField ∧ boundaryOK` is a SUBSET of this conclusion).  Models
+    the L4YAML seq structure lemma, which already carried the close + the head facts as conjuncts, so
+    R408 only had to add the ONE missing field. -/
+theorem exposeFull (x : Nat) (h : 0 < x ∧ x % 2 = 0 ∧ x ≠ 8) :
+    windowField x ∧ boundaryOK x := ⟨h.2.1, h.2.2⟩
+
+/-- **POSITIVE (R409) — the SEQ consume is a pure one-liner.**  Because `exposeFull` exposes the
+    producer's WHOLE contract, `mkGlobal` applies with NO extra hypothesis: destructure, apply.  This
+    is the analogue of `seqGlobalFlowSeqOpenerAdj_of_emit` — `obtain ⟨…⟩; exact producer …`. -/
+theorem mkGlobalFromFull (x : Nat) (h : windowField x ∧ boundaryOK x) : globalField x :=
+  mkGlobal x h.1 h.2
+
+-- POSITIVE (R409): the full-contract witness `4` flows through `exposeFull` then `mkGlobalFromFull`.
+#guard (decide (0 < 4 ∧ 4 % 2 = 0 ∧ (4 : Nat) ≠ 8))
+
 end Tests.Reflections.CarryUpSplitsAtImportEdge
