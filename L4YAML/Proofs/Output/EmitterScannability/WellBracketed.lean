@@ -709,6 +709,55 @@ theorem lastNonOpener_append_right (a b : List (Positioned YamlToken)) (hb : b �
   have h_gl_ab : (a ++ b).getLast? = some t := by rw [List.getLast?_append, h_gl]; rfl
   exact lastNonOpener_of_getLast? _ t h_gl_ab h_t
 
+/-- **Opener-adjacency seam closure** — the producer-composition lemma for the
+    recursion-append shape `a ++ [feTok] ++ rest` (the seq-body cons arm's
+    `block₁ ++ [.flowEntry] ++ block_rest` and the map-body multi-pair arm's
+    `Y ++ [.flowEntry] ++ block_rest`).  Both halves are opener-adjacent, the seam token
+    `feTok` is not itself a seq-opener (it is `.flowEntry`), and `a`'s tail is not a
+    seq-opener (so the inner boundary discharges vacuously); two `OpenerAdj_append` steps
+    glue the three segments.  The intermediate tail bridge — `a ++ [feTok]` ends in
+    `feTok` — is exactly `lastNonOpener_append_right` over the singleton `[feTok]`.  This is
+    the `OpenerAdj` mirror of `lastNonOpener_append3` and rides the SAME left-associated
+    term shape the list producers emit (`(a ++ [feTok]) ++ rest`). -/
+theorem OpenerAdj_seam (a rest : List (Positioned YamlToken)) (feTok : Positioned YamlToken)
+    (ha : OpenerAdj a) (h_rest : OpenerAdj rest)
+    (h_fe : feTok.val ≠ .flowSequenceStart)
+    (h_tail_a : ∀ (hla : 0 < a.length),
+       (a[a.length - 1]'(Nat.sub_lt hla Nat.one_pos)).val ≠ .flowSequenceStart) :
+    OpenerAdj (a ++ [feTok] ++ rest) := by
+  have h1 : OpenerAdj (a ++ [feTok]) :=
+    OpenerAdj_append a [feTok] ha (OpenerAdj_singleton feTok) h_tail_a
+  have h_tail1 : ∀ (hla : 0 < (a ++ [feTok]).length),
+       ((a ++ [feTok])[(a ++ [feTok]).length - 1]'(Nat.sub_lt hla Nat.one_pos)).val
+         ≠ .flowSequenceStart :=
+    lastNonOpener_append_right a [feTok] (List.cons_ne_nil _ _) (lastNonOpener_singleton feTok h_fe)
+  exact OpenerAdj_append (a ++ [feTok]) rest h1 h_rest h_tail1
+
+/-- **Opener-adjacency of a single mapping pair's body** — the producer-composition lemma
+    for the *singleton*-pair filtered delta `(key :: (block_k ++ [value])) ++ block_v`
+    (`key`/`value` the retro-inserted `.key`/`.value` tokens, `block_k` the key block,
+    `block_v` the value block).  The inner `key :: (block_k ++ [value])` is a head-non-opener
+    wrap (`key` is `.key`, not `.flowSequenceStart`, so the `OpenerAdj_cons` head premise is
+    vacuous) whose body `block_k` is opener-adjacent with a non-opener tail; the outer append
+    onto `block_v` needs only that the inner block's tail (`value`) is not a seq-opener — the
+    `lastNonOpener_wrap` of `key :: (block_k ++ [value])`.  No `block_v ≠ []` is required (the
+    outer `OpenerAdj_append` admits an empty right side). -/
+theorem OpenerAdj_map_single (key value : Positioned YamlToken)
+    (block_k block_v : List (Positioned YamlToken))
+    (h_key : key.val ≠ .flowSequenceStart)
+    (h_value : value.val ≠ .flowSequenceStart)
+    (h_k : OpenerAdj block_k) (h_v : OpenerAdj block_v)
+    (h_tail_k : ∀ (hla : 0 < block_k.length),
+       (block_k[block_k.length - 1]'(Nat.sub_lt hla Nat.one_pos)).val ≠ .flowSequenceStart) :
+    OpenerAdj ((key :: (block_k ++ [value])) ++ block_v) := by
+  have h_inner : OpenerAdj (block_k ++ [value]) :=
+    OpenerAdj_append block_k [value] h_k (OpenerAdj_singleton value) h_tail_k
+  have h_kv : OpenerAdj (key :: (block_k ++ [value])) := by
+    apply OpenerAdj_cons key (block_k ++ [value]) h_inner
+    intro hop; exact absurd hop h_key
+  exact OpenerAdj_append (key :: (block_k ++ [value])) block_v h_kv h_v
+    (lastNonOpener_wrap key value block_k h_value)
+
 /-! #### Unit entries — the value-end successor (`.body2.discharge.entryunit`)
 
 `EntrySafe` is too weak to read a *successor* off a value-end.  It admits an entry
