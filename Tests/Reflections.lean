@@ -115,6 +115,7 @@ import Tests.Reflections.SeveredEdgeBlocksProjection
 import Tests.Reflections.PredicateFieldNotProducerOutput
 import Tests.Reflections.AbsorbedBinderSplitDepth
 import Tests.Reflections.CarryUpSplitsAtImportEdge
+import Tests.Reflections.RedirectAuditFullGuard
 
 /-!
 # Reflections — runnable proof-engineering demonstrations
