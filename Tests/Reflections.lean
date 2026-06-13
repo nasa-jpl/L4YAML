@@ -116,6 +116,7 @@ import Tests.Reflections.PredicateFieldNotProducerOutput
 import Tests.Reflections.AbsorbedBinderSplitDepth
 import Tests.Reflections.CarryUpSplitsAtImportEdge
 import Tests.Reflections.RedirectAuditFullGuard
+import Tests.Reflections.RestoredArmAlreadyInClassify
 
 /-!
 # Reflections — runnable proof-engineering demonstrations
