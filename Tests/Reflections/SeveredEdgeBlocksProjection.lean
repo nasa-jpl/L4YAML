@@ -15,6 +15,12 @@ producer's predicate, threaded through every producer in the cluster — never a
 The toy: `Rec.severed` stores only `WeakOk interior` (nonemptiness).  The weak field PROJECTS
 (positive); the orthogonal field `Adj` does NOT — a `severed`-built entry can fail `Adj`
 (negative), so no `Rec l → Adj l` projection exists.
+
+R404 sharpens this: the BOUNDARY side-inputs `Adj`'s consumer needs (head/tail) DO project
+through `severed` — they read the constructor SHAPE (non-leaf entries end in `cls`), not the
+severed interior — so `rec_lastNotOpn` is a clean `cases`.  That is exactly why the producer
+pre-staging (R401–R404) is possible: only the interior field needs threading, never its
+boundary side-inputs.
 -/
 
 namespace Tests.Reflections.SeveredEdgeBlocksProjection
@@ -59,6 +65,25 @@ theorem rec_severed_not_adj :
   intro h
   exact absurd (h 0 (by decide) (by decide)) (by decide)
 
+/-- **POSITIVE (R404) — the BOUNDARY fact PROJECTS through the severed edge.**  Although the
+    orthogonal *interior* field `Adj` does not project (above), the boundary side-inputs its
+    consumer needs — here "the last token is never an opener `opn`" — DO project through every
+    constructor, `severed` included, because they read the constructor SHAPE (every non-leaf ends
+    in `cls`; the leaf is `[content]`), never the severed interior.  This is the toy of
+    `RecSeqBody.lastNonOpener`: the severed edge severs the *interior recursion*, not the *body
+    boundary*, so the head/tail side-inputs the `OpenerAdj` wrap consumes are always recoverable —
+    which is exactly why the pre-staging (R401–R404) is possible at all. -/
+theorem rec_lastNotOpn : {l : List Tok} → Rec l → ∃ t, l.getLast? = some t ∧ t ≠ Tok.opn := by
+  intro l h
+  cases h with
+  | leaf => exact ⟨Tok.content, by decide, by decide⟩
+  | wrap body _ =>
+      refine ⟨Tok.cls, ?_, by decide⟩
+      rw [List.getLast?_cons_of_ne_nil (by simp), List.getLast?_concat]
+  | severed interior _ =>
+      refine ⟨Tok.cls, ?_, by decide⟩
+      rw [List.getLast?_cons_of_ne_nil (by simp), List.getLast?_concat]
+
 /-- **POSITIVE — `Adj` WOULD project if the severed edge stored it.**  When the interior's
     `Adj` is available (here as an explicit hypothesis standing in for a stored field), the
     wrap closes: `opn` head followed by the interior's head, which `Adj`+nonemptiness keep a
@@ -81,5 +106,8 @@ theorem adj_wrap_if_stored (interior : List Tok)
 #guard ([Tok.opn, Tok.opn, Tok.cls][1]? == some Tok.opn)
 -- a `wrap`/`leaf` path that DOES satisfy Adj, for contrast: `[opn, content, cls]`.
 #guard ([Tok.opn, Tok.content, Tok.cls][1]? == some Tok.content)
+-- R404 boundary fact: the severed witness ends in `cls` (a close), never an opener — so the
+-- tail-not-opener side-input projects even through the severed edge that defeats `Adj`.
+#guard ([Tok.opn, Tok.opn, Tok.cls].getLast? == some Tok.cls)
 
 end Tests.Reflections.SeveredEdgeBlocksProjection
