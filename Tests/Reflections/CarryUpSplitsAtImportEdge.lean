@@ -102,4 +102,54 @@ theorem mkGlobalFromFull (x : Nat) (h : windowField x ∧ boundaryOK x) : global
 -- POSITIVE (R409): the full-contract witness `4` flows through `exposeFull` then `mkGlobalFromFull`.
 #guard (decide (0 < 4 ∧ 4 % 2 = 0 ∧ (4 : Nat) ≠ 8))
 
+/-! ## R410 — the non-mirror lives in the PRODUCER; the consume WRAPPER stays a one-liner
+
+The R409 prediction "the MAP consume is NOT a one-liner" named the wrong locus.  Once the predicted
+non-mirror PRODUCER sibling is authored, the map consume WRAPPER is a one-liner again — because the
+map structure lemma carries the map producer's WHOLE contract as conjuncts too, just a DIFFERENT set.
+
+Toy of the axis asymmetry.  The SEQ producer (`mkGlobal`) gets the boundary fact `boundaryOK` (= `x ≠ 8`)
+DIRECTLY — the analogue of the seq close `.flowSequenceEnd` contradicting the `≠ .flowSequenceEnd`
+premise for free.  The MAP producer cannot: its close (`.flowMappingEnd`) SATISFIES that premise, so it
+must DERIVE the boundary fact from a FLOOR (`floorOK` = `x < 8`, the analogue of the balance-0 + Dyck
+pair).  Deriving `x ≠ 8` from `x < 8` is the extra internal work — the non-mirror.  But the map
+structure lemma exposes `floorOK` (its own contract), so the map WRAPPER `mkGlobalMapFromFull` is STILL
+`fun h => mkGlobalMap _ h.1 h.2`: a one-liner.  The non-mirror is entirely inside `mkGlobalMap`. -/
+
+/-- The FLOOR the map producer derives its boundary fact from (toy of balance-0 + Dyck): `x < 8`. -/
+def floorOK (x : Nat) : Prop := x < 8
+
+/-- **MAP producer** (non-mirror of `mkGlobal`).  It does NOT receive `boundaryOK` directly; it
+    REFUTES the boundary from the floor — `x < 8 → x ≠ 8` — the analogue of refuting a pre-close
+    `.flowSequenceStart` opener via the bracket floor.  This extra `omega` step is the producer-side
+    non-mirror; the seq producer had it for free from its close. -/
+theorem mkGlobalMap (x : Nat) (hw : windowField x) (hf : floorOK x) : globalField x :=
+  ⟨hw, by unfold floorOK at hf; omega⟩
+
+/-- The MAP structure lemma exposes the map producer's OWN contract (`windowField ∧ floorOK`) — a
+    DIFFERENT conjunct set than the seq lemma's `windowField ∧ boundaryOK`, but still the producer's
+    whole contract. -/
+theorem exposeFullMap (x : Nat) (h : 0 < x ∧ x % 2 = 0 ∧ x < 8) :
+    windowField x ∧ floorOK x := ⟨h.2.1, h.2.2⟩
+
+/-- **POSITIVE (R410) — the MAP consume WRAPPER is a one-liner too.**  Despite the producer's extra
+    internal derivation, the wrapper is `obtain; exact`, because `exposeFullMap` carries the map
+    producer's whole contract.  Analogue of `mapGlobalFlowSeqOpenerAdj_of_emit`. -/
+theorem mkGlobalMapFromFull (x : Nat) (h : windowField x ∧ floorOK x) : globalField x :=
+  mkGlobalMap x h.1 h.2
+
+-- POSITIVE (R410): the witness `4` flows through `exposeFullMap` then `mkGlobalMapFromFull`.
+#guard (decide (0 < 4 ∧ 4 % 2 = 0 ∧ (4 : Nat) < 8))
+
+/-- **NEGATIVE (R410) — the producer is genuinely a NON-mirror: the two contracts differ.**  The seq
+    producer consumes `boundaryOK`, the map producer consumes `floorOK`, and they are NOT
+    interchangeable — `floorOK` is strictly STRONGER (witness `10`: `boundaryOK 10` holds (`10 ≠ 8`)
+    but `¬ floorOK 10` (`¬ 10 < 8`)).  So you cannot feed the seq producer the map's floor, nor reuse
+    one producer for both axes; the map axis genuinely needs its own producer sibling. -/
+theorem map_contract_differs_from_seq :
+    ∃ x, boundaryOK x ∧ ¬ floorOK x := by
+  refine ⟨10, ?_, ?_⟩
+  · unfold boundaryOK; decide
+  · unfold floorOK; decide
+
 end Tests.Reflections.CarryUpSplitsAtImportEdge
