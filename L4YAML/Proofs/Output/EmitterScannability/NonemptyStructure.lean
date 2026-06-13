@@ -5045,6 +5045,95 @@ theorem recseqentry_seqbracket_oracle (tokens : Array (Positioned YamlToken)) (l
   · exact Or.inl h
   · exact Or.inr h
 
+/-- **Re-scoped nested-sequence head-dispatch oracle** (Phase J / R415 — the `FlowBodyContentDeepSeq`
+    twin of `recseqentry_seqbracket_oracle`, the additive parallel
+    ([[ref-additive-parallel-type-over-shared-edit]]) the (R2) dispatch migration consumes).  Identical
+    construction over the *non-empty* `[ … ]` bracket — same opener-prefix balance, interior floor,
+    `FlowBodyWindow` reconstruction, IH call, and trailing `bodySucc` successor — with exactly ONE
+    structural difference, the one R414 de-risked.
+
+    The OLD oracle DERIVED interior non-emptiness `tokens[lo+1] ≠ .flowSequenceEnd` from
+    `FlowBodyContentDeep.openerContentStart` — the all-depth content guard that fires at EVERY delta-`1`
+    opener, hence demands content (not a close) after `[`.  That field is R392-FALSE on real output (it
+    over-fires at empty `[ ]` and map `{`), so the re-scoped `FlowBodyContentDeepSeq.openerContentStart`
+    is GUARDED by `tokens[k+1] ≠ .flowSequenceEnd` — it can no longer SELF-derive the very non-emptiness
+    it is keyed on.  So this oracle takes that non-emptiness as a SUPPLIED premise `h_ne`
+    ([[ref-restored-arm-already-in-classify]]: the dispatch's `by_cases tokens[lo+1] = ]` hands the
+    FALSE branch exactly this premise, and the empty TRUE branch routes to `recseqentry_classify`'s
+    empty-sequence arm instead of here).  With `h_ne` in hand, `h_lo1_ne` is immediate (no
+    `openerContentStart` call) and the child guard comes from `flowBodyContentDeepSeq_descend`, fed the
+    same `h_open`/`h_ne` pair (guard and case-split share one boundary,
+    [[ref-window-absolute-gate-subset-restriction]]).  Verified-but-unconsumed until the dispatch is
+    rewired; references no sorry site, frontier sorry count unchanged at 4. -/
+theorem recseqentry_seqbracket_oracle_seq (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (h_window : FlowBodyWindow tokens lo hi)
+    (h_deep : FlowBodyContentDeepSeq tokens lo hi)
+    (h_content : FlowBodyContent tokens lo hi)
+    (h_open : tokens[lo]!.val = .flowSequenceStart)
+    (h_ne : tokens[lo + 1]!.val ≠ .flowSequenceEnd)
+    (Q : Nat → Prop) (h_q_succ : Q (lo + 1))
+    (h_ih : ∀ lo' hi', hi' - lo' < hi - lo →
+        FlowBodyWindow tokens lo' hi' → FlowBodyContentDeepSeq tokens lo' hi' → Q lo' →
+        tokens[hi']!.val = .flowSequenceEnd →
+        RecSeqBody ((tokens.toList.take hi').drop lo')) :
+    ∀ j, lo < j → j < hi → tokens[j]!.val = .flowSequenceEnd →
+        flowBracketBalance tokens (lo + 1) j = 0 →
+        (∀ i, lo < i → i ≤ j → flowBracketBalance tokens lo i ≥ 1) →
+        RecSeqBody ((tokens.toList.take j).drop (lo + 1)) ∧
+        (j + 1 = hi ∨ tokens[j + 1]!.val = .flowEntry) := by
+  obtain ⟨h_lo2, h_lo_hi, h_hi_le, h_hi_sz, h_bal, h_dyck, h_wt⟩ := h_window
+  have h_lo_sz : lo < tokens.size := by omega
+  have h_lo_len : lo < tokens.toList.length := by rw [Array.length_toList]; exact h_lo_sz
+  have h_open_delta : flowBracketDelta tokens[lo]!.val = 1 := by
+    rw [h_open]; exact flowBracketDelta_flowSequenceStart
+  have h_lo_val : tokens[lo]! = tokens.toList[lo]'h_lo_len := by
+    rw [getElem!_pos tokens lo h_lo_sz, Array.getElem_toList]
+  have h_single : flowBracketBalance tokens lo (lo + 1) = flowBracketDelta tokens[lo]!.val := by
+    rw [flowBracketBalance_single tokens lo h_lo_len, ← h_lo_val]
+  have h_lo1_bal : flowBracketBalance tokens lo (lo + 1) = 1 := by rw [h_single, h_open_delta]
+  intro j h_lo_j h_j_hi h_close h_inner h_floor
+  -- Interior non-emptiness is SUPPLIED (`h_ne`), not derived from the all-depth guard's opener field.
+  have h_lo1_ne : tokens[lo + 1]!.val ≠ .flowSequenceEnd := h_ne
+  have h_lo1_j : lo + 1 < j := by
+    rcases Nat.lt_or_ge (lo + 1) j with h | h
+    · exact h
+    · have h_eq : j = lo + 1 := by omega
+      rw [h_eq] at h_close; exact absurd h_close h_lo1_ne
+  have h_lo_j_bal : flowBracketBalance tokens lo j = 1 := by
+    have hc := flowBracketBalance_compose tokens lo (lo + 1) j (by omega) (by omega)
+    rw [h_lo1_bal, h_inner] at hc; omega
+  have h_dyck' : ∀ i, lo + 1 ≤ i → i ≤ j → flowBracketBalance tokens (lo + 1) i ≥ 0 := by
+    intro i hi1 hi2
+    have hc := flowBracketBalance_compose tokens lo (lo + 1) i (by omega) hi1
+    rw [h_lo1_bal] at hc
+    have hf := h_floor i (by omega) hi2
+    omega
+  have h_win' : FlowBodyWindow tokens (lo + 1) j :=
+    ⟨by omega, h_lo1_j, by omega, by omega, h_inner, h_dyck',
+      WellTyped_subrange tokens lo (lo + 1) j hi (by omega) (by omega) (by omega)
+        (Nat.le_of_lt h_hi_sz) h_wt h_inner h_dyck'⟩
+  have h_deep' : FlowBodyContentDeepSeq tokens (lo + 1) j :=
+    flowBodyContentDeepSeq_descend tokens lo lo j hi h_deep (Nat.le_refl lo) h_open h_ne h_lo1_j
+      (Nat.le_of_lt h_j_hi)
+  have h_rec : RecSeqBody ((tokens.toList.take j).drop (lo + 1)) :=
+    h_ih (lo + 1) j (by omega) h_win' h_deep' h_q_succ h_close
+  have h_j_sz : j < tokens.size := by omega
+  have h_j_len : j < tokens.toList.length := by rw [Array.length_toList]; exact h_j_sz
+  have h_close_val : tokens[j]! = tokens.toList[j]'h_j_len := by
+    rw [getElem!_pos tokens j h_j_sz, Array.getElem_toList]
+  have h_close_delta : flowBracketDelta tokens[j]!.val = -1 := by
+    rw [h_close]; exact flowBracketDelta_flowSequenceEnd
+  have h_single_j : flowBracketBalance tokens j (j + 1) = flowBracketDelta tokens[j]!.val := by
+    rw [flowBracketBalance_single tokens j h_j_len, ← h_close_val]
+  have h_j1_bal : flowBracketBalance tokens lo (j + 1) = 0 := by
+    have hc := flowBracketBalance_compose tokens lo j (j + 1) (by omega) (Nat.le_succ j)
+    rw [h_lo_j_bal, h_single_j, h_close_delta] at hc; omega
+  have h_j_ne_fe : tokens[j]!.val ≠ .flowEntry := by rw [h_close]; decide
+  refine ⟨h_rec, ?_⟩
+  rcases h_content.bodySucc j (by omega) h_j_hi h_j1_bal h_j_ne_fe with h | ⟨_, h⟩
+  · exact Or.inl h
+  · exact Or.inr h
+
 /-- **Nested-mapping head-dispatch oracle** (Phase J — the head-shape dispatch's NEAR-LEAF bracket
     branch, the `{ … }` mirror of `recseqentry_seqbracket_oracle`).  When the body window's head
     `tokens[lo]` is a flow-mapping opener, the nested-mapping disjunct of `recseqentry_classify` (and its
@@ -6159,6 +6248,114 @@ theorem recseqentry_window_dispatch (tokens : Array (Positioned YamlToken)) (lo 
     exact recseqentry_seqbracket_located tokens lo hi h_lo_hi h_hi_sz h_open h_total h_dyck h_wt
       (recseqentry_seqbracket_oracle tokens lo hi h_window h_deep h_content h_open
         Q (h_q_descend h_open) h_ih)
+  · -- nested mapping `{ … }`: the near-leaf oracle, no IH.
+    exact recseqentry_mapbracket_located tokens lo hi h_lo_hi h_hi_sz h_open h_total h_dyck h_wt
+      (recseqentry_mapbracket_oracle tokens lo hi h_window h_content h_open)
+
+/-- **Re-scoped per-window first-`RecSeqEntry` dispatch** (Phase J / R415 — the
+    `FlowBodyContentDeepSeq` twin of `recseqentry_window_dispatch`, the (R2) dispatch redesign R414
+    de-risked).  The migration is NOT a signature swap: the OLD dispatch leaned on the map-FALSE
+    `FlowBodyContentDeep` not just to thread the recursion but to EXCLUDE the empty `[ ]` leaf inside the
+    seq oracle (the all-depth opener field demands content after every `[`, so `tokens[lo+1] ≠ ]` came
+    for free).  The re-scoped guard cannot do that — its opener field is GUARDED by the very
+    non-emptiness, so the dispatch must HANDLE the empty case explicitly.
+
+    R414's finding ([[ref-restored-arm-already-in-classify]]): handling it needs NO new infra — the empty
+    arm is already built (`RecSeqEntry.seqEmpty`, `recseqentry_classify`'s 2nd disjunct,
+    `recseqentry_seqempty_dispatch`).  So the ONLY structural change from the old dispatch is in the
+    `[`-branch: `by_cases tokens[lo + 1]!.val = .flowSequenceEnd`.
+
+    * TRUE (empty `[ ]`): route to `recseqentry_classify`'s empty-sequence disjunct.  The head/close
+      facts are `h_open`/`h_emp`; `lo + 1 < hi` (else `balance lo hi = balance lo (lo+1) = 1 ≠ 0`) gives
+      the in-bounds `lo + 1 < tokens.size`; the successor `(lo + 2 = hi ∨ tokens[lo+2] = .flowEntry)`
+      comes from the SAME `FlowBodyContent.bodySucc` the scalar arm uses, here at `k = lo + 1` over the
+      `[ ]`-balanced prefix (`balance lo (lo+2) = 1 + (-1) = 0`).
+    * FALSE (non-empty `[ … ]`): the existing `recseqentry_seqbracket_located` over the re-scoped
+      `recseqentry_seqbracket_oracle_seq`, HANDED its `tokens[lo+1] ≠ .flowSequenceEnd` premise straight
+      from the `by_cases` (guard ∧ case-split share one boundary,
+      [[ref-window-absolute-gate-subset-restriction]]).
+
+    The scalar and `{ … }` branches are verbatim from the old dispatch (already
+    `FlowBodyContentDeep`-free).  Verified-but-unconsumed until `seqWindowRecSeqBody` /
+    `seqWindow_flowBodyContent` are re-threaded onto the re-scoped guard; references no sorry site,
+    frontier sorry count unchanged at 4. -/
+theorem recseqentry_window_dispatch_seq (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (h_window : FlowBodyWindow tokens lo hi)
+    (h_deep : FlowBodyContentDeepSeq tokens lo hi)
+    (h_content : FlowBodyContent tokens lo hi)
+    (Q : Nat → Prop) (h_q_descend : tokens[lo]!.val = .flowSequenceStart → Q (lo + 1))
+    (h_ih : ∀ lo' hi', hi' - lo' < hi - lo →
+        FlowBodyWindow tokens lo' hi' → FlowBodyContentDeepSeq tokens lo' hi' → Q lo' →
+        tokens[hi']!.val = .flowSequenceEnd →
+        RecSeqBody ((tokens.toList.take hi').drop lo')) :
+    ∃ m, lo < m ∧ m ≤ hi ∧
+      flowBracketBalance tokens lo m = 0 ∧
+      (m = hi ∨ tokens[m]!.val = .flowEntry) ∧
+      (∀ k, lo < k → k < m →
+        ¬ (flowBracketBalance tokens lo k = 0 ∧ (k = hi ∨ tokens[k]!.val = .flowEntry))) ∧
+      RecSeqEntry ((tokens.toList.take m).drop lo) := by
+  have h_lo_hi : lo < hi := h_window.lo_lt_hi
+  have h_total : flowBracketBalance tokens lo hi = 0 := h_window.balanced
+  have h_dyck := h_window.dyck
+  have h_wt := h_window.wellTyped
+  have h_hi_sz : hi ≤ tokens.size := Nat.le_of_lt h_window.hi_lt
+  have h_lo_sz : lo < tokens.size := by omega
+  have h_head_cs : isFlowContentStart tokens[lo]!.val := h_content.headContentStart
+  unfold isFlowContentStart at h_head_cs
+  rcases h_head_cs with ⟨c, s, hcs⟩ | h_open | h_open
+  · -- scalar leaf: delta `0`, successor from `bodySucc`, fed to `recseqentry_classify`'s first disjunct.
+    have h_lo_len : lo < tokens.toList.length := by rw [Array.length_toList]; exact h_lo_sz
+    have h_val : (tokens.toList[lo]'h_lo_len).val = .scalar c s := by
+      have hb : tokens[lo]! = tokens.toList[lo]'h_lo_len := by
+        rw [getElem!_pos tokens lo h_lo_sz, Array.getElem_toList]
+      rw [← hb]; exact hcs
+    have h_bal1 : flowBracketBalance tokens lo (lo + 1) = 0 := by
+      rw [flowBracketBalance_single tokens lo h_lo_len, h_val, flowBracketDelta_scalar]
+    have h_ne_fe : tokens[lo]!.val ≠ .flowEntry := by rw [hcs]; intro h; cases h
+    have h_succ : lo + 1 = hi ∨ tokens[lo + 1]!.val = .flowEntry := by
+      rcases h_content.bodySucc lo (Nat.le_refl lo) h_lo_hi h_bal1 h_ne_fe with h | ⟨_, h⟩
+      · exact Or.inl h
+      · exact Or.inr h
+    exact recseqentry_classify tokens lo hi h_lo_hi h_hi_sz h_total
+      (Or.inl ⟨⟨c, s, hcs⟩, h_succ⟩)
+  · -- nested sequence `[ … ]`: SPLIT empty vs non-empty (R414 — the false-guard exclusion replaced).
+    by_cases h_emp : tokens[lo + 1]!.val = .flowSequenceEnd
+    · -- empty `[ ]`: route to `recseqentry_classify`'s empty-sequence (2nd) disjunct.
+      have h_lo_len : lo < tokens.toList.length := by rw [Array.length_toList]; exact h_lo_sz
+      have h_open_delta : flowBracketDelta tokens[lo]!.val = 1 := by
+        rw [h_open]; exact flowBracketDelta_flowSequenceStart
+      have h_lo_val : tokens[lo]! = tokens.toList[lo]'h_lo_len := by
+        rw [getElem!_pos tokens lo h_lo_sz, Array.getElem_toList]
+      have h_single : flowBracketBalance tokens lo (lo + 1) = flowBracketDelta tokens[lo]!.val := by
+        rw [flowBracketBalance_single tokens lo h_lo_len, ← h_lo_val]
+      have h_lo1_bal : flowBracketBalance tokens lo (lo + 1) = 1 := by rw [h_single, h_open_delta]
+      have h_lo1_hi : lo + 1 < hi := by
+        rcases Nat.lt_or_ge (lo + 1) hi with h | h
+        · exact h
+        · have h_eq : hi = lo + 1 := by omega
+          rw [h_eq] at h_total; omega
+      have h_lo1_sz : lo + 1 < tokens.size := by omega
+      have h_lo1_len : lo + 1 < tokens.toList.length := by rw [Array.length_toList]; exact h_lo1_sz
+      have h_close_val : tokens[lo + 1]! = tokens.toList[lo + 1]'h_lo1_len := by
+        rw [getElem!_pos tokens (lo + 1) h_lo1_sz, Array.getElem_toList]
+      have h_close_delta : flowBracketDelta tokens[lo + 1]!.val = -1 := by
+        rw [h_emp]; exact flowBracketDelta_flowSequenceEnd
+      have h_single1 : flowBracketBalance tokens (lo + 1) (lo + 1 + 1) = flowBracketDelta tokens[lo + 1]!.val := by
+        rw [flowBracketBalance_single tokens (lo + 1) h_lo1_len, ← h_close_val]
+      have h_lo2_bal : flowBracketBalance tokens lo (lo + 1 + 1) = 0 := by
+        have hc := flowBracketBalance_compose tokens lo (lo + 1) (lo + 1 + 1) (by omega) (by omega)
+        rw [h_lo1_bal, h_single1, h_close_delta] at hc; omega
+      have h_ne_fe : tokens[lo + 1]!.val ≠ .flowEntry := by rw [h_emp]; decide
+      have h_succ : lo + 2 = hi ∨ tokens[lo + 2]!.val = .flowEntry := by
+        rcases h_content.bodySucc (lo + 1) (by omega) h_lo1_hi h_lo2_bal h_ne_fe with h | ⟨_, h⟩
+        · exact Or.inl h
+        · exact Or.inr h
+      exact recseqentry_classify tokens lo hi h_lo_hi h_hi_sz h_total
+        (Or.inr (Or.inl ⟨h_lo1_sz, h_open, h_emp, h_succ⟩))
+    · -- non-empty `[ … ]`: the re-scoped oracle, handed its `tokens[lo+1] ≠ ]` premise by the by_cases.
+      exact recseqentry_seqbracket_located tokens lo hi h_lo_hi h_hi_sz h_open h_total h_dyck h_wt
+        (recseqentry_seqbracket_oracle_seq tokens lo hi h_window h_deep h_content h_open h_emp
+          Q (h_q_descend h_open) h_ih)
   · -- nested mapping `{ … }`: the near-leaf oracle, no IH.
     exact recseqentry_mapbracket_located tokens lo hi h_lo_hi h_hi_sz h_open h_total h_dyck h_wt
       (recseqentry_mapbracket_oracle tokens lo hi h_window h_content h_open)
