@@ -3344,6 +3344,58 @@ theorem mapGlobalFlowSeqOpenerAdj_of_emit
   exact globalFlowSeqOpenerAdj_of_map_structure tokens (by omega) h_t0 h_t1 h_close
     h_outer_bal h_dyck h_body_opener
 
+/-- **The per-window opener-adjacency provider, SEQ emit source** —
+    `(i'-b-B2c-(d)-window-opener-adjacency-seq)`, R411, the SMALLEST-FIRST step of the (d)–(e)
+    `FlowSubrangesOk` rewire: confirm the global → window feed typechecks END-TO-END from emission before
+    assembling `flowSubrangesOk_of_window_producers`.  It chains the two landed halves of the import-edge
+    carry-up — `seqGlobalFlowSeqOpenerAdj_of_emit` (R409, the downstream CONSUME that produces
+    `GlobalFlowSeqOpenerAdj tokens` from a scanned top-level seq) and `flowSeqOpenerAdj_window_of_global`
+    (R395, the trivial restriction of the global predicate to any window `[lo, hi)` with `hi ≤ size`) —
+    into a single per-window provider keyed exactly on a `FlowSubrangesOk.seq` sub-window's shape: at any
+    `[lo, hi)` with `hi ≤ tokens.size`, the all-depth `.flowSequenceStart`-opener field holds (every flow
+    sequence opener at depth-blind `k ∈ [lo, hi)` is followed by a content-start unless by `]`).  The
+    `hi ≤ size` premise is weaker than the `FlowSubrangesOk.seq` guard's `hi < size`, so it discharges by
+    `Nat.le_of_lt` at the call site.  Verified-but-unconsumed until the gate-strengthening bridge feeds
+    this into the per-window `Rec…Body` producers; references no sorry site, frontier sorry count
+    unchanged at 4. -/
+theorem seqWindowOpenerAdj_of_emit
+    (items : Array YamlValue) (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (h_scan : Scanner.scanFiltered ("[" ++ emit.emitList items.toList ++ "]") = .ok tokens)
+    (h_ne : items.toList ≠ [])
+    (h_all_block : ∀ w, w ∈ items.toList → EmitScansInFlowBlock w)
+    (h_hi : hi ≤ tokens.size) :
+    ∀ k, lo ≤ k → k + 1 < hi →
+      tokens[k]!.val = .flowSequenceStart →
+      tokens[k+1]!.val ≠ .flowSequenceEnd →
+      isFlowContentStart tokens[k+1]!.val :=
+  flowSeqOpenerAdj_window_of_global tokens lo hi
+    (seqGlobalFlowSeqOpenerAdj_of_emit items tokens h_scan h_ne h_all_block) h_hi
+
+/-- **The per-window opener-adjacency provider, MAP emit source** —
+    `(i'-b-B2c-(d)-window-opener-adjacency-map)`, R411, the orthogonal-axis mirror of
+    `seqWindowOpenerAdj_of_emit` ([[ref-conjunctive-consumer-gates-on-orthogonal-axis]]: the two axes are
+    INDEPENDENT obligations — a top-level map nests seqs and vice versa, so (d) must feed the opener
+    adjacency on BOTH).  The SAME window field, but sourced from a scanned top-level MAP via
+    `mapGlobalFlowSeqOpenerAdj_of_emit` (R410, the non-mirror sibling producer).  This is the
+    [[ref-coerce-to-weaker-reuse-wrapper]] payoff of keeping the global predicate AXIS-UNIFORM: ONE
+    `GlobalFlowSeqOpenerAdj` shape, ONE restriction lemma `flowSeqOpenerAdj_window_of_global`, fed from
+    EITHER emit source — the conjunctive consumer's two orthogonal conjuncts consume the same per-window
+    deliverable, differing only in which emit wrapper produced the global fact.  Verified-but-unconsumed;
+    references no sorry site, frontier sorry count unchanged at 4. -/
+theorem mapWindowOpenerAdj_of_emit
+    (pairs : Array (YamlValue × YamlValue)) (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (h_scan : Scanner.scanFiltered ("{" ++ emit.emitPairList pairs.toList ++ "}") = .ok tokens)
+    (h_ne : pairs.toList ≠ [])
+    (h_all_k_block : ∀ p, p ∈ pairs.toList → EmitScansInFlowSavedKeyBlock p.1)
+    (h_all_v_block : ∀ p, p ∈ pairs.toList → EmitScansInFlowBlock p.2)
+    (h_hi : hi ≤ tokens.size) :
+    ∀ k, lo ≤ k → k + 1 < hi →
+      tokens[k]!.val = .flowSequenceStart →
+      tokens[k+1]!.val ≠ .flowSequenceEnd →
+      isFlowContentStart tokens[k+1]!.val :=
+  flowSeqOpenerAdj_window_of_global tokens lo hi
+    (mapGlobalFlowSeqOpenerAdj_of_emit pairs tokens h_scan h_ne h_all_k_block h_all_v_block) h_hi
+
 /-- **The SEQ-head CONS three-arm dispatch of the locator's per-window step `h_step`** —
     `(i'-b-B2c-nested-fbc-emission-locator-skeleton-brick-d-seq-cons)`, R378, BRICK D (carved).  This is
     the maximal-risk slice of `h_step` the blueprint flagged ("the four-way `cases h_e` × HEAD/CONS
