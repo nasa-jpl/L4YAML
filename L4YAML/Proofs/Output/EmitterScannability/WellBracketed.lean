@@ -567,6 +567,40 @@ theorem OpenerAdj_append (a b : List (Positioned YamlToken))
       rw [e_k1]; rw [e_k] at hopen; rw [e_k1] at hne
       exact hb m hmb1 hopen hne
 
+/-- **Array/offset wrapper for `OpenerAdj`** — the `OpenerAdj` mirror of `SafeBody_array_flowEntry`.
+    Restates the body-slice opener field `OpenerAdj (arr.toList.drop lo)` against `getElem!` on the
+    token array over `[lo, arr.size)`: every `.flowSequenceStart` opener with a non-close successor is
+    followed by a flow-content-start.  This is exactly the array-`getElem!` shape the global producer
+    `globalFlowSeqOpenerAdj_of_structure` consumes as its body field — the structure consumers convert
+    their characterization Part (`OpenerAdj block`) to it through this wrapper, then re-base the array
+    indices to the outer `tokens` via their local `h_tok_body`.  The proof-carrying `getElem` lives
+    entirely here (via `List.getElem_drop` + `Array.getElem_toList`), so the consumers stay in the
+    `getElem!` world. -/
+theorem OpenerAdj_array (arr : Array (Positioned YamlToken)) (lo : Nat)
+    (h : OpenerAdj (arr.toList.drop lo)) :
+    ∀ (k : Nat), lo ≤ k → k + 1 < arr.size →
+      arr[k]!.val = .flowSequenceStart →
+      arr[k+1]!.val ≠ .flowSequenceEnd →
+      isFlowContentStart arr[k+1]!.val := by
+  intro k h_lo hk1 hopen hne
+  have hk0 : k < arr.size := by omega
+  have h_len : (arr.toList.drop lo).length = arr.size - lo := by
+    rw [List.length_drop, Array.length_toList]
+  have hj1 : (k - lo) + 1 < (arr.toList.drop lo).length := by rw [h_len]; omega
+  have hj0 : k - lo < (arr.toList.drop lo).length := by omega
+  -- the slice element at the local offset equals the array element at the global index
+  have h_get_k : ((arr.toList.drop lo)[k - lo]'hj0).val = arr[k]!.val := by
+    rw [getElem!_pos arr k hk0, List.getElem_drop, Array.getElem_toList (by omega)]; congr 2; omega
+  have h_get_k1 : ((arr.toList.drop lo)[(k - lo) + 1]'hj1).val = arr[k+1]!.val := by
+    rw [getElem!_pos arr (k+1) hk1, List.getElem_drop, Array.getElem_toList (by omega)]
+    congr 2; omega
+  have hopen' : ((arr.toList.drop lo)[k - lo]'hj0).val = .flowSequenceStart := by
+    rw [h_get_k]; exact hopen
+  have hne' : ((arr.toList.drop lo)[(k - lo) + 1]'hj1).val ≠ .flowSequenceEnd := by
+    rw [h_get_k1]; exact hne
+  have key := h (k - lo) hj1 hopen' hne'
+  rw [h_get_k1] at key; exact key
+
 /-- The `OpenerAdj` mirror of `wrap_seq_block`: a flow-sequence block `[ body ]`
     is opener-adjacent given the body is opener-adjacent, the body's first token
     (if not the close) is a content-start, and the body's last token is not itself

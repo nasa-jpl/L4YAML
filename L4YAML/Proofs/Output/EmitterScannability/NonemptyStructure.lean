@@ -7460,7 +7460,17 @@ theorem scanFiltered_emitSeq_nonempty_structure
     -- every `}` pops a `{`) — threaded from `WellTyped block`.  The type half the untyped
     -- balance above discarded; the typed locator (next brick) consumes it for `bracket_seq`.
     WellTyped ((tokens.toList.take (tokens.size - 2)).drop 2) ∧
-    L4YAML.Proofs.ParserWellBehaved.ParseNodeFlowSeqOk tokens (tokens.size - 2) (4 * tokens.size + 4) 2 := by
+    L4YAML.Proofs.ParserWellBehaved.ParseNodeFlowSeqOk tokens (tokens.size - 2) (4 * tokens.size + 4) 2 ∧
+    -- [NEW] (i'-b-B2c step c) The all-depth seq-opener adjacency field over the body window
+    -- `[2, tokens.size-2)`: every `.flowSequenceStart` opener with a non-close successor is followed
+    -- by a flow-content-start.  This re-projects the R406/R407 body characterization Part
+    -- (`OpenerAdj block`, now carried by both flat producers) through this lemma's window/slice into
+    -- the array-`getElem!` shape `globalFlowSeqOpenerAdj_of_structure` consumes to deliver
+    -- `GlobalFlowSeqOpenerAdj tokens` downstream (the next sub-step).
+    (∀ k, 2 ≤ k → k + 1 < tokens.size - 2 →
+        tokens[k]!.val = .flowSequenceStart →
+        tokens[k+1]!.val ≠ .flowSequenceEnd →
+        isFlowContentStart tokens[k+1]!.val) := by
   -- Step 1: Boundary tokens from scanFiltered_boundary_tokens
   obtain ⟨h_sz2, h_t0, h_tlast⟩ := scanFiltered_boundary_tokens _ _ h_scan
   -- ═══ Chain replay: reconstruct s₁ (after '['), s₂ (after body), s₃ (after ']') ═══
@@ -7477,7 +7487,7 @@ theorem scanFiltered_emitSeq_nonempty_structure
   obtain ⟨n₂, s₂, h_chain₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂,
           h_ek₂, h_col₂, h_inflow₂, h_indent₂, _, _, _, h_stack₂, h_fmc₂,
           ⟨h_body_sz_raw, h_body_cs_raw⟩, h_body_fe_next_raw,
-          h_body_outer_bal_raw, h_body_dyck_raw, h_body_wt_raw, h_body_succ_raw, _h_body_oa_raw⟩ :=
+          h_body_outer_bal_raw, h_body_dyck_raw, h_body_wt_raw, h_body_succ_raw, h_body_oa_raw⟩ :=
     emitList_body_filtered_characterization items.toList h_ne
       (fun w hw => h_all_block w hw) s₁ [']']
       h_corr₁ h_inflow₁ (by rw [h_fl₁]; omega) h_indent₁ (by rw [h_col₁]; omega)
@@ -7615,7 +7625,7 @@ theorem scanFiltered_emitSeq_nonempty_structure
   -- Rename _raw variables to match expected names
   have h_body_sz := h_body_sz_raw; have h_body_cs := h_body_cs_raw
   have h_body_fe_next := h_body_fe_next_raw
-  rw [h_filt₁_sz] at h_body_sz h_body_cs h_body_fe_next h_body_outer_bal_raw h_body_dyck_raw h_body_wt_raw h_body_succ_raw
+  rw [h_filt₁_sz] at h_body_sz h_body_cs h_body_fe_next h_body_outer_bal_raw h_body_dyck_raw h_body_wt_raw h_body_succ_raw h_body_oa_raw
   -- Helper: tokens[k]! for k < tokens.size - 2 equals (s₂.filter p)[k]
   have h_tokens_sz_eq : tokens.size - 2 = (s₂.tokens.filter p).size := by
     rw [h_tokens_decomp]; simp [Array.size_push]
@@ -7730,8 +7740,27 @@ theorem scanFiltered_emitSeq_nonempty_structure
     (L4YAML.Proofs.ParserWellBehaved.flow_parser_ok_of_structure
         tokens (4 * tokens.size + 4) h_subranges).1
       2 (tokens.size - 2) (by omega) (by omega) h_tpe h_outer_bal h_t1
+  -- [NEW] (i'-b-B2c step c) Re-project the body characterization Part `OpenerAdj block`
+  -- (`h_body_oa_raw : OpenerAdj ((s₂.filter p).toList.drop 2)`) into the array-`getElem!` body
+  -- opener field over `[2, tokens.size-2)`.  `OpenerAdj_array` does the slice→array bridge in the
+  -- `(s₂.filter p)` index space; `h_tok_body` + `getElem!_pos` re-base each index to the outer
+  -- `tokens` (the same `tokens[k]! = (s₂.filter p)[k]` re-basing as `h_content0`/`h_dyck`).
+  have h_body_opener : ∀ k, 2 ≤ k → k + 1 < tokens.size - 2 →
+      tokens[k]!.val = .flowSequenceStart →
+      tokens[k+1]!.val ≠ .flowSequenceEnd →
+      isFlowContentStart tokens[k+1]!.val := by
+    intro k hk2 hk1 hopen hne
+    have hk1' : k + 1 < (s₂.tokens.filter p).size := by rw [← h_tokens_sz_eq]; exact hk1
+    have hk0' : k < (s₂.tokens.filter p).size := by omega
+    have e_k : tokens[k]! = (s₂.tokens.filter p)[k]! := by
+      rw [h_tok_body k hk0', getElem!_pos (s₂.tokens.filter p) k hk0']
+    have e_k1 : tokens[k+1]! = (s₂.tokens.filter p)[k+1]! := by
+      rw [h_tok_body (k+1) hk1', getElem!_pos (s₂.tokens.filter p) (k+1) hk1']
+    have key := OpenerAdj_array (s₂.tokens.filter p) 2 h_body_oa_raw k hk2 hk1'
+      (by rw [← e_k]; exact hopen) (by rw [← e_k1]; exact hne)
+    rw [e_k1]; exact key
   exact ⟨h_sz5, h_t0, h_tlast, h_t1, h_tpe, h_content0, h_fe_pattern,
-         h_outer_bal, h_dyck, h_wt_interior, h_pnok⟩
+         h_outer_bal, h_dyck, h_wt_interior, h_pnok, h_body_opener⟩
 
 /-- Token structure of `scanFiltered ("{" ++ emitPairList pairs ++ "}")` for non-empty pairs.
     Establishes boundary tokens, body token patterns, and `parseExplicitKey`/`parseFlowMappingValue`
@@ -7761,7 +7790,17 @@ theorem scanFiltered_emitMap_nonempty_structure
     -- [NEW] Typed-bracket matching of the interior `[2, tokens.size-2)` — threaded from
     -- `WellTyped block`; the type half the untyped balance above discarded.
     WellTyped ((tokens.toList.take (tokens.size - 2)).drop 2) ∧
-    L4YAML.Proofs.ParserWellBehaved.ParseEntryFlowMapOk tokens (tokens.size - 2) (4 * tokens.size + 4) 2 := by
+    L4YAML.Proofs.ParserWellBehaved.ParseEntryFlowMapOk tokens (tokens.size - 2) (4 * tokens.size + 4) 2 ∧
+    -- [NEW] (i'-b-B2c step c) The all-depth seq-opener adjacency field over the map body window
+    -- `[2, tokens.size-2)`: every `.flowSequenceStart` opener (a nested seq inside the map) with a
+    -- non-close successor is followed by a flow-content-start.  Re-projection of the R407 map body
+    -- characterization Part (`OpenerAdj block`) through this lemma's window/slice — the array-`getElem!`
+    -- shape feeding the downstream `GlobalFlowSeqOpenerAdj` producer (the field is about
+    -- `.flowSequenceStart` openers, axis-independent; a top-level map can nest a seq).
+    (∀ k, 2 ≤ k → k + 1 < tokens.size - 2 →
+        tokens[k]!.val = .flowSequenceStart →
+        tokens[k+1]!.val ≠ .flowSequenceEnd →
+        isFlowContentStart tokens[k+1]!.val) := by
   -- Step 1: Boundary tokens from scanFiltered_boundary_tokens
   obtain ⟨h_sz2, h_t0, h_tlast⟩ := scanFiltered_boundary_tokens _ _ h_scan
   -- ═══ Chain replay: reconstruct s₁ (after '{'), s₂ (after body), s₃ (after '}') ═══
@@ -7778,7 +7817,7 @@ theorem scanFiltered_emitMap_nonempty_structure
   obtain ⟨n₂, s₂, h_chain₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂,
           h_ek₂, h_col₂, h_inflow₂, h_indent₂, _, _, _, h_stack₂, h_fmc₂,
           h_n₂_ge3, ⟨h_body_sz_raw, h_body_key_raw⟩, h_body_fe_next_raw, h_body_grow,
-          h_body_outer_bal_raw, h_body_dyck_raw, h_body_wt_raw, _h_body_oa_raw⟩ :=
+          h_body_outer_bal_raw, h_body_dyck_raw, h_body_wt_raw, h_body_oa_raw⟩ :=
     emitPairList_body_filtered_characterization pairs.toList h_ne
       (fun p hp => h_all_k_block p hp) (fun p hp => h_all_v_block p hp)
       s₁ ['}']
@@ -7895,7 +7934,7 @@ theorem scanFiltered_emitMap_nonempty_structure
   -- Rename _raw variables to match expected names
   have h_body_sz := h_body_sz_raw; have h_body_key := h_body_key_raw
   have h_body_fe_next := h_body_fe_next_raw
-  rw [h_filt₁_sz] at h_body_sz h_body_key h_body_fe_next h_body_outer_bal_raw h_body_dyck_raw h_body_wt_raw
+  rw [h_filt₁_sz] at h_body_sz h_body_key h_body_fe_next h_body_outer_bal_raw h_body_dyck_raw h_body_wt_raw h_body_oa_raw
   -- tokens.size - 2 = (s₂.filter p).size
   have h_tokens_sz_eq : tokens.size - 2 = (s₂.tokens.filter p).size := by
     rw [h_tokens_decomp]; simp [Array.size_push]
@@ -7971,8 +8010,26 @@ theorem scanFiltered_emitMap_nonempty_structure
     (L4YAML.Proofs.ParserWellBehaved.flow_parser_ok_of_structure
         tokens (4 * tokens.size + 4) h_subranges).2
       2 (tokens.size - 2) (by omega) (by omega) h_tpe h_outer_bal h_t1
+  -- [NEW] (i'-b-B2c step c) Re-project the map body characterization Part `OpenerAdj block`
+  -- (`h_body_oa_raw : OpenerAdj ((s₂.filter p).toList.drop 2)`) into the array-`getElem!` body
+  -- opener field over `[2, tokens.size-2)` — the seq mirror, identical bridge (`.flowSequenceStart`
+  -- openers are axis-independent; this is the map body's nested-seq adjacency).
+  have h_body_opener : ∀ k, 2 ≤ k → k + 1 < tokens.size - 2 →
+      tokens[k]!.val = .flowSequenceStart →
+      tokens[k+1]!.val ≠ .flowSequenceEnd →
+      isFlowContentStart tokens[k+1]!.val := by
+    intro k hk2 hk1 hopen hne
+    have hk1' : k + 1 < (s₂.tokens.filter p).size := by rw [← h_tokens_sz_eq]; exact hk1
+    have hk0' : k < (s₂.tokens.filter p).size := by omega
+    have e_k : tokens[k]! = (s₂.tokens.filter p)[k]! := by
+      rw [h_tok_body k hk0', getElem!_pos (s₂.tokens.filter p) k hk0']
+    have e_k1 : tokens[k+1]! = (s₂.tokens.filter p)[k+1]! := by
+      rw [h_tok_body (k+1) hk1', getElem!_pos (s₂.tokens.filter p) (k+1) hk1']
+    have key := OpenerAdj_array (s₂.tokens.filter p) 2 h_body_oa_raw k hk2 hk1'
+      (by rw [← e_k]; exact hopen) (by rw [← e_k1]; exact hne)
+    rw [e_k1]; exact key
   exact ⟨h_sz7, h_t0, h_tlast, h_t1, h_tpe, h_t2_key, h_fe_pattern,
-         h_outer_bal, h_dyck, h_wt_interior, h_pnok⟩
+         h_outer_bal, h_dyck, h_wt_interior, h_pnok, h_body_opener⟩
 
 
 end L4YAML.Proofs.EmitterScannability
