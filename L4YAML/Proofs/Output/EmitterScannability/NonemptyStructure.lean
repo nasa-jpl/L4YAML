@@ -771,6 +771,60 @@ theorem recseqbody_head_entry {l : List (Positioned YamlToken)} (h : RecSeqBody 
   | cons ent fe rest h_ne h_e h_head h_fe h_rest =>
       refine ⟨ent, h_ne, h_e, h_head, ?_⟩; rw [List.take_left]
 
+/-- **Tail-not-opener (getLast? witness)** for a `RecSeqBody`.  The body's last token is never
+    a seq-opener.  Structural recursion over the body: the `single` entry's last is not an opener
+    because the entry is `EntryUnit` (`lastNonOpener_of_entryUnit` via `RecSeqEntry.toEntryUnit`);
+    the `cons` seam's last is the recursive tail's last (the IH) — and the tail is non-empty
+    because `RecSeqBody rest` forces it, witnessed by `rest.getLast? = some _`.  Routed through
+    `getLast?` (clean `append`/`cons` lemmas) to avoid the dependent `length-1` getElem motive
+    trap on the `e ++ fe :: rest` shape. -/
+theorem RecSeqBody.getLast?_not_opener : {l : List (Positioned YamlToken)} →
+    RecSeqBody l → ∃ t, l.getLast? = some t ∧ t.val ≠ .flowSequenceStart
+  | _, .single e h_ne h_e _h_head =>
+      getLast?_not_opener_of_lastNonOpener e h_ne (lastNonOpener_of_entryUnit e h_e.toEntryUnit)
+  | _, .cons e _fe rest _h_ne _h_e _h_head _h_fe h_rest => by
+      obtain ⟨t, h_gl, h_t⟩ := h_rest.getLast?_not_opener
+      have h_rest_ne : rest ≠ [] := by
+        intro h; rw [h] at h_gl; simp at h_gl
+      refine ⟨t, ?_, h_t⟩
+      rw [List.getLast?_append, List.getLast?_cons_of_ne_nil h_rest_ne, h_gl]
+      rfl
+
+/-- **Tail-not-opener (getElem form)** for a `RecSeqBody` — the `OpenerAdj_append` /
+    `OpenerAdj_wrap_seq` boundary bridge `h_tail` shape.  Derived from the `getLast?` witness via
+    `lastNonOpener_of_getLast?`.  Pre-staged (R404) for the atomic `OpenerAdj` threading: the seq
+    value-arm feeds `emitList_scans_recseqbody`'s recursive body through `OpenerAdj_wrap_seq`,
+    whose tail side-input is exactly this. -/
+theorem RecSeqBody.lastNonOpener {l : List (Positioned YamlToken)} (h : RecSeqBody l) :
+    ∀ (hla : 0 < l.length),
+      (l[l.length - 1]'(Nat.sub_lt hla Nat.one_pos)).val ≠ .flowSequenceStart := by
+  obtain ⟨t, h_gl, h_t⟩ := h.getLast?_not_opener
+  exact lastNonOpener_of_getLast? l t h_gl h_t
+
+/-- **Head-content-start projection** for a `RecSeqBody` — the `OpenerAdj_wrap_seq` head
+    side-input `h_head` shape.  The body's first token is its head entry's first token, a
+    content-start (`ContentStartTok`, definitionally `isFlowContentStart`), stored on both
+    constructors (`single`/`cons`); read it off and discard the `≠ .flowSequenceEnd` premise.
+    The `single` arm reuses the flat `openerAdj_head_of_block_contentStart`; the `cons` arm
+    re-bases the body head onto the head entry `e` via `getElem_append_left` (`e ≠ []`).
+    Pre-staged (R404) for the atomic `OpenerAdj` threading's seq value-arm. -/
+theorem RecSeqBody.openerAdjHead : {l : List (Positioned YamlToken)} →
+    RecSeqBody l → ∀ (h0 : 0 < l.length),
+      (l[0]'h0).val ≠ .flowSequenceEnd → isFlowContentStart (l[0]'h0).val
+  | _, .single e h_ne _h_e h_head =>
+      openerAdj_head_of_block_contentStart e ⟨h_ne, h_head⟩
+  | _, .cons e fe rest h_ne _h_e h_head _h_fe _h_rest => by
+      intro h0 _
+      have he0 : 0 < e.length := by
+        cases e with
+        | nil => exact absurd rfl h_ne
+        | cons _ _ => simp
+      have hl0 : (e ++ fe :: rest)[0]'h0 = e[0]'he0 := List.getElem_append_left he0
+      have hhead : e.head h_ne = e[0]'he0 := List.head_eq_getElem h_ne
+      rw [hl0]
+      rw [hhead] at h_head
+      exact h_head
+
 /-- **Direct-head seq projection** — `(i'-b-B2c-nested-project)`, the DESCENT-FREE base case (the
     `[[1, 2], 9]` move, R330) of the position-keyed root-`RecSeqBody` projection.  When the located
     enclosing seq opener `p` coincides with the window base `lo` (the located seq IS the head entry),
