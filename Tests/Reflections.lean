@@ -111,6 +111,7 @@ import Tests.Reflections.GatedFieldSiblingWrapperShedsHyp
 import Tests.Reflections.SynonymBridgeAndSlackGuard
 import Tests.Reflections.BridgeDerivableFromInvariant
 import Tests.Reflections.PrestageConsumerBoundaryFacts
+import Tests.Reflections.SeveredEdgeBlocksProjection
 
 /-!
 # Reflections — runnable proof-engineering demonstrations
