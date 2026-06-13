@@ -3224,6 +3224,34 @@ theorem globalFlowSeqOpenerAdj_of_structure
   rw [h_close] at hopen
   exact absurd hopen (by decide)
 
+/-- **The SEQ (c)-PRODUCE-GLOBAL half — `GlobalFlowSeqOpenerAdj tokens` from the seq structure lemma** —
+    `(i'-b-B2c-(c)-produce-global-seq)`, R409.  R408 (step (c) EXPOSE) made
+    `scanFiltered_emitSeq_nonempty_structure` OUTPUT the all-depth `.flowSequenceStart`-opener field over
+    the body window `[2, size-2)` as its twelfth conclusion conjunct.  This is the downstream CONSUME half
+    the import edge forced into a separate module ([[ref-carry-up-splits-at-import-edge]]): the structure
+    lemma lives in `NonemptyStructure` but the global producer `globalFlowSeqOpenerAdj_of_structure`
+    (R396) lives HERE in `SeqInteriorSeparators` (which imports it), so `GlobalFlowSeqOpenerAdj` could not
+    be produced inside the consumer; it is produced one level down, feeding the producer exactly the four
+    boundary facts the structure lemma already exposes (`size ≥ 5`, `tokens[0] = .streamStart`,
+    `tokens[size-2] = .flowSequenceEnd`, the body-HEAD content-start `isFlowContentStart tokens[2]`) plus
+    the newly-exposed body opener field.  A near one-liner — destructure the twelve-conjunct conclusion,
+    apply the landed producer.  The MAP axis is NOT a free mirror (`globalFlowSeqOpenerAdj_of_structure`
+    end-keys its `k+1 = size-2` boundary on the seq close `.flowSequenceEnd`, but the map close is
+    `.flowMappingEnd` — that boundary's `hopen` premise is instead vacuously false, sourced from the map
+    body structure), so it gets a sibling next.  Verified-but-unconsumed until the (d)–(e)
+    `FlowSubrangesOk` rewire feeds it through `flowSeqOpenerAdj_window_of_global`; references no sorry
+    site, frontier sorry count unchanged at 4. -/
+theorem seqGlobalFlowSeqOpenerAdj_of_emit
+    (items : Array YamlValue) (tokens : Array (Positioned YamlToken))
+    (h_scan : Scanner.scanFiltered ("[" ++ emit.emitList items.toList ++ "]") = .ok tokens)
+    (h_ne : items.toList ≠ [])
+    (h_all_block : ∀ w, w ∈ items.toList → EmitScansInFlowBlock w) :
+    GlobalFlowSeqOpenerAdj tokens := by
+  obtain ⟨h_sz5, h_t0, _h_tend, _h_t1, h_close, h_head, _h_fe_pattern,
+          _h_outer_bal, _h_dyck, _h_wt_interior, _h_pnok, h_body_opener⟩ :=
+    scanFiltered_emitSeq_nonempty_structure items tokens h_scan h_ne h_all_block
+  exact globalFlowSeqOpenerAdj_of_structure tokens (by omega) h_t0 h_close h_head h_body_opener
+
 /-- **The SEQ-head CONS three-arm dispatch of the locator's per-window step `h_step`** —
     `(i'-b-B2c-nested-fbc-emission-locator-skeleton-brick-d-seq-cons)`, R378, BRICK D (carved).  This is
     the maximal-risk slice of `h_step` the blueprint flagged ("the four-way `cases h_e` × HEAD/CONS
