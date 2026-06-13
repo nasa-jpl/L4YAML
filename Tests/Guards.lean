@@ -33,6 +33,7 @@ import Tests.Guards.Proofs.SeqCloseLocateProbe
 import Tests.Guards.Proofs.SeqDescentLocatorProbe
 import Tests.Guards.Proofs.SeqDescentProviderProbe
 import Tests.Guards.Proofs.SeqDispatchPartitionProbe
+import Tests.Guards.Proofs.SeqEmptyEntryArmProbe
 import Tests.Guards.Proofs.SeqEnclosedGuardProbe
 import Tests.Guards.Proofs.SeqGateFloorProbe
 import Tests.Guards.Proofs.SeqGateWindownessProbe
