@@ -123,6 +123,7 @@ import Tests.Reflections.MirroredGateReprobeWitness
 import Tests.Reflections.BoundaryDischargeGateTriggerTyped
 import Tests.Reflections.NoncloningCornerEndDualOfCarrier
 import Tests.Reflections.AdjacencyMirrorCornerIsLayerScoped
+import Tests.Reflections.TriggerCoincidenceRelocatesObligation
 
 /-!
 # Reflections — runnable proof-engineering demonstrations
