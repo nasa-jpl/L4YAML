@@ -4008,6 +4008,70 @@ theorem flowBodyContentDeepSeq_of_window_producers_map
   · -- feContentStart: R429 map window provider, verbatim
     exact mapWindowSepAdj_of_emit pairs tokens lo hi h_scan h_ne h_all_k_block h_all_v_block h_hi
 
+/-- **A flow-body window's head is never the close** — `(i'-b-B2c-(d)-window-head-ne-close)`, R431.  The
+    head token `tokens[lo]` of a `FlowBodyWindow tokens lo hi` is NOT a `.flowSequenceEnd`.  This is NOT a
+    separate emission fact — it is a FREE consequence of the window's own Dyck floor: the floor gives
+    `flowBracketBalance tokens lo (lo+1) ≥ 0`, the one-step balance is `flowBracketDelta tokens[lo]!.val`,
+    and a `.flowSequenceEnd` has bracket-delta `-1 < 0`, contradiction.  In other words the non-emptiness
+    of a body window (`tokens[lo] ≠ ]`) is ENCODED in its floor, not a fact to be threaded separately:
+    an empty `[]` window would have a close-head, but its floor would dip to `-1` at the very first step,
+    so it is not a `FlowBodyWindow` at all.  Axis-agnostic (the map mirror's `.flowMappingEnd` is the same
+    delta `-1`, but this lemma is stated for the seq close the `FlowBodyContentDeepSeq` head gate needs). -/
+theorem flowBodyWindow_head_ne_close (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (h_win : FlowBodyWindow tokens lo hi) :
+    tokens[lo]!.val ≠ .flowSequenceEnd := by
+  intro h_close
+  have h_lo_sz : lo < tokens.size := by
+    have := h_win.lo_lt_hi; have := h_win.hi_lt; omega
+  have hlen : lo < tokens.toList.length := by rw [Array.length_toList]; exact h_lo_sz
+  have hfloor := h_win.dyck (lo + 1) (by omega) (by have := h_win.lo_lt_hi; omega)
+  rw [flowBracketBalance_single tokens lo hlen] at hfloor
+  have h1 : tokens.toList[lo]'hlen = tokens[lo] := Array.getElem_toList h_lo_sz
+  have h2 : tokens[lo] = tokens[lo]! := (getElem!_pos tokens lo h_lo_sz).symm
+  rw [h1, h2, h_close, flowBracketDelta_flowSequenceEnd] at hfloor
+  omega
+
+/-- **The per-window `FlowBodyContentDeepSeq` provider from emission, SEQ source** —
+    `(i'-b-B2c-(d)-flowBodyContentDeepSeq-of-emit-and-window-seq)`, R431, the brick that hands the R430
+    assembler the SAME `FlowBodyWindow` the recursion already threads — discharging R430's awkward
+    `h_head_ne` hypothesis FOR FREE via `flowBodyWindow_head_ne_close` (the Dyck-floor consequence), and
+    `h_lo`/`h_hi` from the window's own `lo_ge`/`hi_lt` fields.  So the per-window deep-content supply
+    needs, beyond the window facts + emission, ONLY the enclosing-opener guard `tokens[lo-1] =
+    .flowSequenceStart` (the one fact a bracket-shape window cannot self-supply — it names which bracket
+    TYPE encloses it).  This is exactly the shape the `windowFacts` provider of
+    `seqRec_of_carrier_and_windowFacts` consumes for its `FlowBodyContentDeepSeq` field.
+    Verified-but-unconsumed until `windowFacts` is assembled; references no sorry site, frontier sorry
+    count unchanged at 4. -/
+theorem flowBodyContentDeepSeq_of_emit_and_window
+    (items : Array YamlValue) (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (h_scan : Scanner.scanFiltered ("[" ++ emit.emitList items.toList ++ "]") = .ok tokens)
+    (h_ne : items.toList ≠ [])
+    (h_all_block : ∀ w, w ∈ items.toList → EmitScansInFlowBlock w)
+    (h_win : FlowBodyWindow tokens lo hi)
+    (h_open : tokens[lo - 1]!.val = .flowSequenceStart) :
+    FlowBodyContentDeepSeq tokens lo hi :=
+  flowBodyContentDeepSeq_of_window_producers items tokens lo hi h_scan h_ne h_all_block
+    (by have := h_win.lo_ge; omega) h_win.lo_lt_hi (Nat.le_of_lt h_win.hi_lt) h_open
+    (flowBodyWindow_head_ne_close tokens lo hi h_win)
+
+/-- **The per-window `FlowBodyContentDeepSeq` provider from emission, MAP source** —
+    `(i'-b-B2c-(d)-flowBodyContentDeepSeq-of-emit-and-window-map)`, R431, the orthogonal-axis mirror
+    (a top-level MAP nests flow SEQUENCES whose interior windows carry `FlowBodyContentDeepSeq`).  Same
+    `FlowBodyWindow`-fed shape, `h_head_ne` again free from the Dyck floor, sourced from the map emit
+    family.  Verified-but-unconsumed; references no sorry site, frontier sorry count unchanged at 4. -/
+theorem flowBodyContentDeepSeq_of_emit_and_window_map
+    (pairs : Array (YamlValue × YamlValue)) (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (h_scan : Scanner.scanFiltered ("{" ++ emit.emitPairList pairs.toList ++ "}") = .ok tokens)
+    (h_ne : pairs.toList ≠ [])
+    (h_all_k_block : ∀ p, p ∈ pairs.toList → EmitScansInFlowSavedKeyBlock p.1)
+    (h_all_v_block : ∀ p, p ∈ pairs.toList → EmitScansInFlowBlock p.2)
+    (h_win : FlowBodyWindow tokens lo hi)
+    (h_open : tokens[lo - 1]!.val = .flowSequenceStart) :
+    FlowBodyContentDeepSeq tokens lo hi :=
+  flowBodyContentDeepSeq_of_window_producers_map pairs tokens lo hi h_scan h_ne h_all_k_block
+    h_all_v_block (by have := h_win.lo_ge; omega) h_win.lo_lt_hi (Nat.le_of_lt h_win.hi_lt) h_open
+    (flowBodyWindow_head_ne_close tokens lo hi h_win)
+
 /-- **The SEQ-head CONS three-arm dispatch of the locator's per-window step `h_step`** —
     `(i'-b-B2c-nested-fbc-emission-locator-skeleton-brick-d-seq-cons)`, R378, BRICK D (carved).  This is
     the maximal-risk slice of `h_step` the blueprint flagged ("the four-way `cases h_e` × HEAD/CONS

@@ -133,6 +133,7 @@ import Tests.Reflections.ParallelFieldExposeRelay
 import Tests.Reflections.ContradictionBranchSuppliesBoundary
 import Tests.Reflections.OrthogonalFieldMirror
 import Tests.Reflections.EdgeAdjacentReadFromGlobal
+import Tests.Reflections.FloorEncodesNonemptiness
 
 /-!
 # Reflections — runnable proof-engineering demonstrations
