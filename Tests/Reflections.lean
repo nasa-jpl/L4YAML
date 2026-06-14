@@ -120,6 +120,8 @@ import Tests.Reflections.RedirectAuditFullGuard
 import Tests.Reflections.RestoredArmAlreadyInClassify
 import Tests.Reflections.GatedFieldResourcedViaNarrow
 import Tests.Reflections.MirroredGateReprobeWitness
+import Tests.Reflections.BoundaryDischargeGateTriggerTyped
+import Tests.Reflections.NoncloningCornerEndDualOfCarrier
 
 /-!
 # Reflections — runnable proof-engineering demonstrations
