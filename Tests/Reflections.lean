@@ -127,6 +127,7 @@ import Tests.Reflections.TriggerCoincidenceRelocatesObligation
 import Tests.Reflections.SourceGateCollapseBlocksMirror
 import Tests.Reflections.ProgressWitnessCertifiesDelta
 import Tests.Reflections.InvariantNeutralSiblingNeedsHead
+import Tests.Reflections.GateTokenIsSiblingHead
 
 /-!
 # Reflections — runnable proof-engineering demonstrations
