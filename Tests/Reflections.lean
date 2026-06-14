@@ -130,6 +130,7 @@ import Tests.Reflections.InvariantNeutralSiblingNeedsHead
 import Tests.Reflections.GateTokenIsSiblingHead
 import Tests.Reflections.FieldOnMultiproducerPredicate
 import Tests.Reflections.ParallelFieldExposeRelay
+import Tests.Reflections.ContradictionBranchSuppliesBoundary
 
 /-!
 # Reflections — runnable proof-engineering demonstrations

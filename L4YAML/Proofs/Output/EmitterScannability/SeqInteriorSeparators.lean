@@ -3741,6 +3741,147 @@ theorem noTrailingSep_preClose_of_carrier
   rw [hk, h_close] at h_cs
   simp [isFlowContentStart] at h_cs
 
+/-- **The pre-close prefix balance is `0` IN THE BRANCH where the pre-close token is a separator** —
+    `(i'-b-B2c-(d)-seq-separator-preClose-balance)`, R428, the shared kernel of BOTH axes' emit-wrapper
+    pre-close discharge.  The R419 carrier route demanded `flowBracketBalance tokens 2 (size-3) = 0` as
+    an UNCONDITIONAL hypothesis — but that fact is FALSE in general: when the seq's last element is a
+    nested collection the pre-close token `tokens[size-3]` is a closing `]`/`}` (delta `-1`), so the
+    pre-close prefix balance is `+1`, not `0`.  The fix ([[ref-contradiction-branch-supplies-boundary]]):
+    the boundary balance is not a free-standing fact, it is a CONSEQUENCE of the very separator
+    assumption the wrapper is refuting.  GIVEN `tokens[size-3] = .flowEntry` (the branch where a trailing
+    separator is hypothesised), the `.flowEntry` has bracket-delta `0` (`flowBracketDelta_flowEntry`), so
+    the one-step balance recurrence `balance 2 (size-2) = balance 2 (size-3) + delta tokens[size-3]`
+    collapses to `balance 2 (size-3) = balance 2 (size-2) = 0` (the structure's outer balance conjunct).
+    The recurrence is the inline analogue of `globalFlowSeqOpenerAdj_of_map_structure`'s `hstep`
+    (`flowBracketBalance_compose` + `flowBracketBalance_single`).  Self-contained from the structure
+    conclusion (no carrier, no `EmitScansInFlowRecEntry`); axis-blind (keyed only on the outer balance,
+    not the close token).  References no sorry site; frontier sorry count unchanged at 4. -/
+theorem preClose_balance_zero_of_flowEntry
+    (tokens : Array (Positioned YamlToken))
+    (h_sz : 5 ≤ tokens.size)
+    (h_outer_bal : flowBracketBalance tokens 2 (tokens.size - 2) = 0)
+    (h_fe : tokens[tokens.size - 3]!.val = .flowEntry) :
+    flowBracketBalance tokens 2 (tokens.size - 3) = 0 := by
+  have hm1 : (tokens.size - 3) + 1 = tokens.size - 2 := by omega
+  have hm_sz : tokens.size - 3 < tokens.size := by omega
+  have hstep : flowBracketBalance tokens 2 ((tokens.size - 3) + 1) =
+      flowBracketBalance tokens 2 (tokens.size - 3)
+        + flowBracketDelta tokens[tokens.size - 3]!.val := by
+    rw [flowBracketBalance_compose tokens 2 (tokens.size - 3) ((tokens.size - 3) + 1)
+      (by omega) (by omega)]
+    have hlen : tokens.size - 3 < tokens.toList.length := by rw [Array.length_toList]; exact hm_sz
+    rw [flowBracketBalance_single tokens (tokens.size - 3) hlen]
+    have h1' : tokens.toList[tokens.size - 3]'hlen = tokens[tokens.size - 3] :=
+      Array.getElem_toList hm_sz
+    have h2' : tokens[tokens.size - 3] = tokens[tokens.size - 3]! :=
+      (getElem!_pos tokens (tokens.size - 3) hm_sz).symm
+    rw [h1', h2']
+  have h_delta : flowBracketDelta tokens[tokens.size - 3]!.val = 0 := by
+    rw [h_fe]; exact flowBracketDelta_flowEntry
+  rw [hm1, h_outer_bal, h_delta] at hstep
+  omega
+
+/-- **The MAP-axis global separator producer — the predicted NON-mirror sibling of
+    `globalFlowSeqSepAdj_of_structure`** — `(i'-b-B2c-(d)-produce-global-map-separator)`, R428.  The
+    `.flowEntry`/`≠ .key` mirror of `globalFlowSeqOpenerAdj_of_map_structure` (R410), bearing the SAME
+    relationship to the seq producer (R418) that the map opener producer bears to the seq opener: the
+    five-way `k`-split is verbatim, only the two boundary tokens swap — `k=1` end-keys on the map head
+    `.flowMappingStart` (instead of the seq `.flowSequenceStart`) and `k=size-2` on the map close
+    `.flowMappingEnd` (instead of `.flowSequenceEnd`), both still `≠ .flowEntry` (`by decide`), so both
+    boundary cells stay VACUOUS.  The pre-close cell (`k+1 = size-2`) is the SAME genuinely-new input
+    `globalFlowSeqSepAdj_of_structure` needed — `tokens[size-3] ≠ .flowEntry`, the no-trailing-separator
+    boundary ([[ref-boundary-residual-end-dual]]) — taken here as the named hypothesis the emit-wrapper
+    discharges from the map's key-pattern conjunct + `preClose_balance_zero_of_flowEntry`.  References no
+    sorry site; frontier sorry count unchanged at 4. -/
+theorem globalFlowSeqSepAdj_of_map_structure
+    (tokens : Array (Positioned YamlToken))
+    (h_sz : 5 ≤ tokens.size)
+    (h_t0 : tokens[0]!.val = .streamStart)
+    (h_t1 : tokens[1]!.val = .flowMappingStart)
+    (h_close : tokens[tokens.size - 2]!.val = .flowMappingEnd)
+    (h_no_trailing_sep : tokens[tokens.size - 3]!.val ≠ .flowEntry)
+    (h_body : ∀ k, 2 ≤ k → k + 1 < tokens.size - 2 →
+        tokens[k]!.val = .flowEntry →
+        tokens[k+1]!.val ≠ .key →
+        isFlowContentStart tokens[k+1]!.val) :
+    GlobalFlowSeqSepAdj tokens := by
+  intro k hk1 hfe hne
+  by_cases h0 : k = 0
+  · subst h0; rw [h_t0] at hfe; exact absurd hfe (by decide)
+  by_cases h1 : k = 1
+  · subst h1; rw [h_t1] at hfe; exact absurd hfe (by decide)
+  have hk2 : 2 ≤ k := by omega
+  by_cases hb : k + 1 < tokens.size - 2
+  · exact h_body k hk2 hb hfe hne
+  by_cases hb2 : k + 1 = tokens.size - 2
+  · have hk_eq : k = tokens.size - 3 := by omega
+    rw [hk_eq] at hfe
+    exact absurd hfe h_no_trailing_sep
+  have hk_eq : k = tokens.size - 2 := by omega
+  rw [hk_eq] at hfe
+  rw [h_close] at hfe
+  exact absurd hfe (by decide)
+
+/-- **The SEQ (3)-PRODUCE-GLOBAL half — `GlobalFlowSeqSepAdj tokens` from the seq structure lemma** —
+    `(i'-b-B2c-(d)-produce-global-seq-separator)`, R428, the `.flowEntry` mirror of
+    `seqGlobalFlowSeqOpenerAdj_of_emit` (R409).  R427 (step 3 EXPOSE) made
+    `scanFiltered_emitSeq_nonempty_structure` OUTPUT the all-depth `.flowEntry`-separator field over the
+    body window `[2, size-2)` as its thirteenth conclusion conjunct; this is the downstream CONSUME half:
+    destructure the conclusion and apply the landed producer `globalFlowSeqSepAdj_of_structure` (R418).
+    Unlike the opener wrapper this is NOT a pure one-liner — the separator producer needs ONE extra input
+    the opener did not, the pre-close no-trailing boundary `tokens[size-3] ≠ .flowEntry`.  It is
+    discharged INLINE from the structure conclusion (NOT the R419 carrier route, whose unconditional
+    boundary-balance hypothesis is unsatisfiable here): assume the pre-close is a `.flowEntry`, derive the
+    branch-local balance `0` via `preClose_balance_zero_of_flowEntry`, feed both to the structure's
+    body-successor conjunct at `k = size-3` — which concludes `tokens[size-2]` is flow-content-start, but
+    `tokens[size-2] = .flowSequenceEnd` (the close) is NOT, contradiction.  Verified-but-unconsumed until
+    the (d)–(e) `FlowSubrangesOk` rewire feeds it through `flowSeqSepAdj_window_of_global`; references no
+    sorry site, frontier sorry count unchanged at 4. -/
+theorem seqGlobalFlowSeqSepAdj_of_emit
+    (items : Array YamlValue) (tokens : Array (Positioned YamlToken))
+    (h_scan : Scanner.scanFiltered ("[" ++ emit.emitList items.toList ++ "]") = .ok tokens)
+    (h_ne : items.toList ≠ [])
+    (h_all_block : ∀ w, w ∈ items.toList → EmitScansInFlowBlock w) :
+    GlobalFlowSeqSepAdj tokens := by
+  obtain ⟨h_sz5, h_t0, _h_tend, h_t1, h_close, _h_head, h_bodysucc,
+          h_outer_bal, _h_dyck, _h_wt_interior, _h_pnok, _h_body_opener, h_body_separator⟩ :=
+    scanFiltered_emitSeq_nonempty_structure items tokens h_scan h_ne h_all_block
+  have h_nts : tokens[tokens.size - 3]!.val ≠ .flowEntry := by
+    intro h_fe
+    have h_bal := preClose_balance_zero_of_flowEntry tokens (by omega) h_outer_bal h_fe
+    obtain ⟨_, h_cs⟩ := h_bodysucc (tokens.size - 3) (by omega) (by omega) h_fe h_bal
+    rw [show (tokens.size - 3) + 1 = tokens.size - 2 by omega, h_close] at h_cs
+    simp at h_cs
+  exact globalFlowSeqSepAdj_of_structure tokens (by omega) h_t0 h_t1 h_close h_nts h_body_separator
+
+/-- **The MAP (3)-PRODUCE-GLOBAL half — `GlobalFlowSeqSepAdj tokens` from the map structure lemma** —
+    `(i'-b-B2c-(d)-produce-global-map-separator)`, R428.  Mirrors `seqGlobalFlowSeqSepAdj_of_emit` but
+    feeds the non-mirror map producer `globalFlowSeqSepAdj_of_map_structure`, and its pre-close discharge
+    refutes by a DIFFERENT conjunct: the map's body-pattern says a depth-`0` `.flowEntry` is followed by
+    a `.key` (a flow-map entry's key marker), not a content-start, so the pre-close refutation feeds the
+    branch-local balance into that key-pattern conjunct at `k = size-3`, concluding `tokens[size-2] =
+    .key` — contradicting the map close `tokens[size-2] = .flowMappingEnd`.  The shared kernel is the
+    same `preClose_balance_zero_of_flowEntry` (axis-blind); only the final token-clash differs (close vs
+    content-start on the seq, close vs `.key` on the map).  Verified-but-unconsumed; references no sorry
+    site, frontier sorry count unchanged at 4. -/
+theorem mapGlobalFlowSeqSepAdj_of_emit
+    (pairs : Array (YamlValue × YamlValue)) (tokens : Array (Positioned YamlToken))
+    (h_scan : Scanner.scanFiltered ("{" ++ emit.emitPairList pairs.toList ++ "}") = .ok tokens)
+    (h_ne : pairs.toList ≠ [])
+    (h_all_k_block : ∀ p, p ∈ pairs.toList → EmitScansInFlowSavedKeyBlock p.1)
+    (h_all_v_block : ∀ p, p ∈ pairs.toList → EmitScansInFlowBlock p.2) :
+    GlobalFlowSeqSepAdj tokens := by
+  obtain ⟨h_sz7, h_t0, _h_tend, h_t1, h_close, _h_key, h_keypattern,
+          h_outer_bal, _h_dyck, _h_wt_interior, _h_pnok, _h_body_opener, h_body_separator⟩ :=
+    scanFiltered_emitMap_nonempty_structure pairs tokens h_scan h_ne h_all_k_block h_all_v_block
+  have h_nts : tokens[tokens.size - 3]!.val ≠ .flowEntry := by
+    intro h_fe
+    have h_bal := preClose_balance_zero_of_flowEntry tokens (by omega) h_outer_bal h_fe
+    obtain ⟨_, h_key⟩ := h_keypattern (tokens.size - 3) (by omega) (by omega) h_fe h_bal
+    rw [show (tokens.size - 3) + 1 = tokens.size - 2 by omega, h_close] at h_key
+    exact absurd h_key (by decide)
+  exact globalFlowSeqSepAdj_of_map_structure tokens (by omega) h_t0 h_t1 h_close h_nts h_body_separator
+
 /-- **The SEQ-head CONS three-arm dispatch of the locator's per-window step `h_step`** —
     `(i'-b-B2c-nested-fbc-emission-locator-skeleton-brick-d-seq-cons)`, R378, BRICK D (carved).  This is
     the maximal-risk slice of `h_step` the blueprint flagged ("the four-way `cases h_e` × HEAD/CONS
