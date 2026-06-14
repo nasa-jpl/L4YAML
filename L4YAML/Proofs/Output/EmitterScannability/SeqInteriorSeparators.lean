@@ -3940,6 +3940,74 @@ theorem mapWindowSepAdj_of_emit
   flowSeqSepAdj_window_of_global tokens lo hi
     (mapGlobalFlowSeqSepAdj_of_emit pairs tokens h_scan h_ne h_all_k_block h_all_v_block) h_hi
 
+/-- **The per-window deep-content guard ASSEMBLER, SEQ emit source** —
+    `(i'-b-B2c-(d)-flowBodyContentDeepSeq-of-window-producers-seq)`, R430, the brick that wires the three
+    now-landed per-window providers into the re-scoped carrier `FlowBodyContentDeepSeq tokens lo hi`.  Its
+    two universal fields are EXACT matches of the window providers — `openerContentStart` is R411's
+    `seqWindowOpenerAdj_of_emit`, `feContentStart` is R429's `seqWindowSepAdj_of_emit`, both consumed
+    verbatim (the [[ref-orthogonal-field-mirror-costs-discriminator]] payoff: the carrier's two interior
+    fields ARE the two window providers, nothing to re-derive).  The third field `headContentStart`
+    (`isFlowContentStart tokens[lo]`) is the lone position-`lo`-keyed read, recovered from the GLOBAL
+    opener `seqGlobalFlowSeqOpenerAdj_of_emit` (R409) at `k = lo - 1`: the window's head is the token after
+    the `.flowSequenceStart` that opens it (`h_open : tokens[lo-1] = .flowSequenceStart`), and the
+    non-degeneracy gate `tokens[lo] ≠ .flowSequenceEnd` (`h_head_ne`) fires the opener body.  KEY: this is
+    sourced from the UNBOUNDED global predicate, NOT the window-restricted opener field — the restriction's
+    lower bound `lo` excludes exactly the `lo-1` index the head needs, so reading the edge off the global
+    erases the degenerate `lo = 2` boundary special-case that R391's window-bounded
+    `flowBodyContentDeep_window_of_root` required ([[ref-edge-adjacent-read-from-global-not-restricted]]).
+    Verified-but-unconsumed until the (R1) root carrier + window dispatch supplies `h_open`/`h_head_ne`;
+    references no sorry site, frontier sorry count unchanged at 4. -/
+theorem flowBodyContentDeepSeq_of_window_producers
+    (items : Array YamlValue) (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (h_scan : Scanner.scanFiltered ("[" ++ emit.emitList items.toList ++ "]") = .ok tokens)
+    (h_ne : items.toList ≠ [])
+    (h_all_block : ∀ w, w ∈ items.toList → EmitScansInFlowBlock w)
+    (h_lo : 1 ≤ lo) (h_lo_hi : lo < hi) (h_hi : hi ≤ tokens.size)
+    (h_open : tokens[lo - 1]!.val = .flowSequenceStart)
+    (h_head_ne : tokens[lo]!.val ≠ .flowSequenceEnd) :
+    FlowBodyContentDeepSeq tokens lo hi := by
+  have hlo1 : lo - 1 + 1 = lo := Nat.sub_add_cancel h_lo
+  refine ⟨?_, ?_, ?_⟩
+  · -- headContentStart: the GLOBAL opener at k = lo - 1 (unbounded ⇒ no `lo = 2` special-case)
+    have hg := seqGlobalFlowSeqOpenerAdj_of_emit items tokens h_scan h_ne h_all_block
+    have h := hg (lo - 1) (by omega) h_open (by rwa [hlo1])
+    rwa [hlo1] at h
+  · -- openerContentStart: R411 window provider, verbatim
+    exact seqWindowOpenerAdj_of_emit items tokens lo hi h_scan h_ne h_all_block h_hi
+  · -- feContentStart: R429 window provider, verbatim
+    exact seqWindowSepAdj_of_emit items tokens lo hi h_scan h_ne h_all_block h_hi
+
+/-- **The per-window deep-content guard ASSEMBLER, MAP emit source** —
+    `(i'-b-B2c-(d)-flowBodyContentDeepSeq-of-window-producers-map)`, R430, the orthogonal-axis mirror of
+    `flowBodyContentDeepSeq_of_window_producers` ([[ref-conjunctive-consumer-gates-on-orthogonal-axis]]: a
+    top-level MAP nests flow SEQUENCES, whose interior windows carry the SAME `FlowBodyContentDeepSeq`
+    guard).  Structurally identical — the head recovered from `mapGlobalFlowSeqOpenerAdj_of_emit` (R410),
+    the interior fields from `mapWindowOpenerAdj_of_emit` (R411) / `mapWindowSepAdj_of_emit` (R429) — with
+    only the emit facts swapped to the map family.  The [[ref-coerce-to-weaker-reuse-wrapper]] payoff of
+    keeping `GlobalFlowSeqOpenerAdj`/`GlobalFlowSeqSepAdj` axis-uniform: ONE carrier, ONE assembler shape,
+    fed from either emit source.  Verified-but-unconsumed; references no sorry site, frontier sorry count
+    unchanged at 4. -/
+theorem flowBodyContentDeepSeq_of_window_producers_map
+    (pairs : Array (YamlValue × YamlValue)) (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (h_scan : Scanner.scanFiltered ("{" ++ emit.emitPairList pairs.toList ++ "}") = .ok tokens)
+    (h_ne : pairs.toList ≠ [])
+    (h_all_k_block : ∀ p, p ∈ pairs.toList → EmitScansInFlowSavedKeyBlock p.1)
+    (h_all_v_block : ∀ p, p ∈ pairs.toList → EmitScansInFlowBlock p.2)
+    (h_lo : 1 ≤ lo) (h_lo_hi : lo < hi) (h_hi : hi ≤ tokens.size)
+    (h_open : tokens[lo - 1]!.val = .flowSequenceStart)
+    (h_head_ne : tokens[lo]!.val ≠ .flowSequenceEnd) :
+    FlowBodyContentDeepSeq tokens lo hi := by
+  have hlo1 : lo - 1 + 1 = lo := Nat.sub_add_cancel h_lo
+  refine ⟨?_, ?_, ?_⟩
+  · -- headContentStart: the GLOBAL opener (map source) at k = lo - 1
+    have hg := mapGlobalFlowSeqOpenerAdj_of_emit pairs tokens h_scan h_ne h_all_k_block h_all_v_block
+    have h := hg (lo - 1) (by omega) h_open (by rwa [hlo1])
+    rwa [hlo1] at h
+  · -- openerContentStart: R411 map window provider, verbatim
+    exact mapWindowOpenerAdj_of_emit pairs tokens lo hi h_scan h_ne h_all_k_block h_all_v_block h_hi
+  · -- feContentStart: R429 map window provider, verbatim
+    exact mapWindowSepAdj_of_emit pairs tokens lo hi h_scan h_ne h_all_k_block h_all_v_block h_hi
+
 /-- **The SEQ-head CONS three-arm dispatch of the locator's per-window step `h_step`** —
     `(i'-b-B2c-nested-fbc-emission-locator-skeleton-brick-d-seq-cons)`, R378, BRICK D (carved).  This is
     the maximal-risk slice of `h_step` the blueprint flagged ("the four-way `cases h_e` × HEAD/CONS

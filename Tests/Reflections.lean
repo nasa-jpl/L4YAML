@@ -132,6 +132,7 @@ import Tests.Reflections.FieldOnMultiproducerPredicate
 import Tests.Reflections.ParallelFieldExposeRelay
 import Tests.Reflections.ContradictionBranchSuppliesBoundary
 import Tests.Reflections.OrthogonalFieldMirror
+import Tests.Reflections.EdgeAdjacentReadFromGlobal
 
 /-!
 # Reflections — runnable proof-engineering demonstrations
