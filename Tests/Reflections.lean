@@ -138,6 +138,7 @@ import Tests.Reflections.ProviderFieldFromSiblingOutput
 import Tests.Reflections.BracketGuardsAdmitCrossMatched
 import Tests.Reflections.ContravariantGuardStrengthening
 import Tests.Reflections.ProbeTheGoal
+import Tests.Reflections.SelfPropagatingGuardDescent
 
 /-!
 # Reflections — runnable proof-engineering demonstrations

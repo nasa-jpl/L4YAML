@@ -740,6 +740,44 @@ theorem flowBracketBalance_interior_dyck (tokens : Array (Positioned YamlToken))
   intro p h_sp h_ph
   exact h_pos p (by omega) h_ph
 
+/-- **Per-descend inner-floor provider** — the parser-contract Dyck floor's *self-propagation* step.
+    Composes the two pre-existing combinatorial bricks into the single descend the floor-guarded
+    `FlowSubrangesOk` redirect (R435) needs at every nested bracket:
+
+    * `flowBracketBalance_matching_close` (the forward first-return locator, built for the parser
+      span-induction) yields the matching close `j` *and* the depth-`1` interior invariant
+      `balance lo i ≥ 1` over `(k, j]` (its fifth conjunct);
+    * `flowBracketBalance_interior_dyck` (built to feed `WellTyped_subrange`) re-bases that depth-`1`
+      floor to the *local* depth-`0` Dyck floor `balance (k+1) p ≥ 0` of the interior `[k+1, j)`.
+
+    So: an OUTER window `[lo, hi)` carrying its own Dyck floor (`h_dyck`) plus a depth-`0` opener at `k`
+    *manufactures* the INNER window's own Dyck floor — exactly the floor a floor-guarded
+    `FlowSubrangesOk.{seq,map}` query demands at the inner `.seq`/`.map` descend.  The floor is therefore
+    **self-propagating** and its descent lemma was already built (twice, for two sibling consumers); this
+    lemma only wires them, introducing no new combinatorics.
+
+    Crucially, the floor must be EXPOSED on the bracket-matching output fields (`SeqBodyProps.bracket_seq`
+    etc.) for the parser to read it off: the fields currently publish only `balance (k+1) j = 0`, which
+    does NOT pin `j` as the first-return (a cross-matched inner `j` also balances), so the consumer cannot
+    re-derive the inner floor at the handed-in `j` ([[ref-reconstruct-in-place-over-relocate]], one level
+    down).  The PRODUCER (which knows the genuine structure) supplies the inner floor via THIS lemma; the
+    consumer reads it off the augmented field. -/
+theorem flowBracketBalance_inner_floor (tokens : Array (Positioned YamlToken))
+    (lo k hi : Nat) (h_lo_k : lo ≤ k) (h_k_hi : k < hi) (h_hi_sz : hi ≤ tokens.size)
+    (h_k_depth : flowBracketBalance tokens lo k = 0)
+    (h_k_open : flowBracketDelta tokens[k]!.val = 1)
+    (h_total : flowBracketBalance tokens lo hi = 0)
+    (h_dyck : ∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0) :
+    ∃ j, k < j ∧ j < hi ∧
+      flowBracketDelta tokens[j]!.val = -1 ∧
+      flowBracketBalance tokens (k+1) j = 0 ∧
+      (∀ p, k + 1 ≤ p → p ≤ j → flowBracketBalance tokens (k+1) p ≥ 0) := by
+  obtain ⟨j, h_kj, h_j_hi, h_j_close, h_inner_bal, h_pos⟩ :=
+    flowBracketBalance_matching_close tokens lo k hi h_lo_k h_k_hi h_hi_sz
+      h_k_depth h_k_open h_total h_dyck
+  refine ⟨j, h_kj, h_j_hi, h_j_close, h_inner_bal, ?_⟩
+  exact flowBracketBalance_interior_dyck tokens lo k j h_lo_k (by omega) h_k_depth h_k_open h_pos
+
 /-- **A matched bracket pair is depth-transparent.**  A complete bracket value — opener at `k`
     (`flowBracketDelta = 1`), matching close at `j` (`flowBracketDelta = -1`), balanced interior
     `(k+1, j)` — contributes net `0` to the running balance, so the balance just *after* the pair
