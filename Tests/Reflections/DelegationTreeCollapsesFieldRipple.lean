@@ -95,6 +95,42 @@ theorem siblingConsumer (hi k : Nat) (h : k < hi) : ∃ j, Close j := by
   obtain ⟨j, hc, _⟩ := locate hi k h
   exact ⟨j, hc⟩
 
+/-! ## PART 3 — the collapse is PREDICTIVE across structures that SHARE the topology (R438)
+
+R437 OBSERVED the collapse on one structure (`SeqBodyProps`).  R438 TESTED it as a PREDICTION on a
+DIFFERENT, structurally-independent type (`MapBodyProps`, fields M5/M8) that happens to share the
+delegation topology — and it held EXACTLY.  The reusable upgrade: a topology-collapse claim is PREDICTIVE
+across any structures that share the topology (root + delegators + vacuous leaf), so you read the
+prediction off the constructor graph and CONFIRM it cheaply by the build.  In L4YAML the confirmation was
+sharper still: the floor landed on both `MapBodyProps` bracket fields with ZERO edits to the file that
+DEFINES the five `mapBodyProps_*` constructors — *a green build whose diff leaves the constructor-definition
+file entirely untouched IS the machine-checked proof that every non-root constructor produced the refined
+field for free.*
+
+`Box2` below is a SECOND structure, independent of `Box`, with a DIFFERENT field shape (an extra `Succ`
+conjunct after the witness — the analogue of `MapBodyProps.key_bracket_value`'s `.value` successor) but the
+SAME `Floor` refinement and the SAME delegation topology.  It takes the refined field with no
+per-constructor code, exactly as the topology predicts. -/
+
+/-- A successor predicate, modelling the extra structure M5/M8 carry beyond the bracket (the `.value` /
+    FE-or-mapEnd successor) — present so `Box2`'s field shape genuinely DIFFERS from `Box`'s. -/
+def Succ (j : Nat) : Prop := j + 1 ≥ 1
+
+/-- The second, independent structure: different field shape, same `Floor` refinement, same topology. -/
+structure Box2 (hi : Nat) : Prop where
+  bracket : ∀ k, k < hi → ∃ j, Close j ∧ Succ j ∧ Floor k j
+
+/-- `Box2`'s root field-value producer (the single edit point, like `map_key_bracket_conjunct`). -/
+theorem mkBracket2 (hi k : Nat) (h : k < hi) : ∃ j, Close j ∧ Succ j ∧ Floor k j :=
+  ⟨2 * hi, by unfold Close; omega, by unfold Succ; omega, by unfold Floor; omega⟩
+
+/-- `Box2`'s ROOT constructor. -/
+theorem assemble2 (hi : Nat) : Box2 hi := ⟨fun k h => mkBracket2 hi k h⟩
+/-- A `Box2` delegator — transparent, no floor-specific code, predicted free. -/
+theorem delegate2a (hi : Nat) : Box2 hi := assemble2 hi
+/-- A `Box2` vacuous leaf — absorbs the `Floor` (and `Succ`) conjunct via `False.elim`, predicted free. -/
+theorem empty2 : Box2 0 := ⟨fun k h => absurd h (by omega)⟩
+
 /-! ## The point, machine-checked.
 
 `delegate1`/`delegate2`/`empty` are *complete* `Box` constructors that supply the floor-carrying field
@@ -105,5 +141,9 @@ example : Box 7 := delegate2 7
 example : Box 0 := empty
 /-- The located witness is genuinely `Close` *and* `Floor` — both halves the primitive now exposes. -/
 example : ∃ j, Close j ∧ Floor 1 j := locate 5 1 (by omega)
+/-- R438: the SECOND structure's delegator and vacuous leaf take the refined field for free too — the
+    collapse reproduced across an independent structure exactly as the shared topology predicted. -/
+example : Box2 7 := delegate2a 7
+example : Box2 0 := empty2
 
 end Tests.Reflections.DelegationTreeCollapsesFieldRipple

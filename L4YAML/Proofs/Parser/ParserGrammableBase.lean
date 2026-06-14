@@ -1137,7 +1137,8 @@ structure MapBodyProps (tokens : Array (Positioned YamlToken)) (lo hi : Nat) : P
       ((tokens[k+1]!.val = .flowSequenceStart ∧ tokens[j]!.val = .flowSequenceEnd) ∨
        (tokens[k+1]!.val = .flowMappingStart ∧ tokens[j]!.val = .flowMappingEnd)) ∧
       flowBracketBalance tokens (k+2) j = 0 ∧
-      j + 1 < hi ∧ tokens[j+1]!.val = .value
+      j + 1 < hi ∧ tokens[j+1]!.val = .value ∧
+      (∀ p, k + 2 ≤ p → p ≤ j → flowBracketBalance tokens (k+2) p ≥ 0)
   /-- M6: After `.value` at depth 0, content-start follows. -/
   value_content : ∀ k, lo ≤ k → k < hi →
     flowBracketBalance tokens lo k = 0 →
@@ -1162,7 +1163,8 @@ structure MapBodyProps (tokens : Array (Positioned YamlToken)) (lo hi : Nat) : P
       flowBracketBalance tokens (k+2) j = 0 ∧
       j + 1 ≤ hi ∧
       (tokens[j+1]!.val = .flowEntry ∨
-       (tokens[j+1]!.val = .flowMappingEnd ∧ j + 1 = hi))
+       (tokens[j+1]!.val = .flowMappingEnd ∧ j + 1 = hi)) ∧
+      (∀ p, k + 2 ≤ p → p ≤ j → flowBracketBalance tokens (k+2) p ≥ 0)
   /-- M9: Bracket matching for flowSeqStart at depth 0 (needed for inner body IH). -/
   bracket_seq : ∀ k, lo ≤ k → k < hi →
     flowBracketBalance tokens lo k = 0 →

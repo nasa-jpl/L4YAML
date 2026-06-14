@@ -1073,7 +1073,7 @@ theorem flow_parser_ok_of_structure (tokens : Array (Positioned YamlToken)) (fue
             · exact Or.inr ⟨peek_of_pos_val hv_pos (by rw [hv_tok]; omega) (by rw [hv_tok]; exact h_me),
                 by rw [hv_pos]; exact h_eq⟩
           · -- flowSequenceStart value → inner SEQ via IH.1
-            obtain ⟨jv, h_vp1_jv, h_jv_hi, h_jv_match, h_jv_bal, h_jv1_le, h_jv_succ⟩ :=
+            obtain ⟨jv, h_vp1_jv, h_jv_hi, h_jv_match, h_jv_bal, h_jv1_le, h_jv_succ, _⟩ :=
               hbody.value_bracket_succ vp (by omega) h_vp_lt h_bal_lo_vp h_vp_val (Or.inl h_vval)
             have h_jv_tok : tokens[jv]!.val = .flowSequenceEnd := by
               rcases h_jv_match with ⟨_, h⟩ | ⟨h, _⟩
@@ -1129,7 +1129,7 @@ theorem flow_parser_ok_of_structure (tokens : Array (Positioned YamlToken)) (fue
             · exact Or.inr ⟨peek_of_pos_val hv_pos (by rw [hv_tok]; omega) (by rw [hv_tok]; exact h_me),
                 by rw [hv_pos]; exact h_eq⟩
           · -- flowMappingStart value → inner MAP via IH.2
-            obtain ⟨jv, h_vp1_jv, h_jv_hi, h_jv_match, h_jv_bal, h_jv1_le, h_jv_succ⟩ :=
+            obtain ⟨jv, h_vp1_jv, h_jv_hi, h_jv_match, h_jv_bal, h_jv1_le, h_jv_succ, _⟩ :=
               hbody.value_bracket_succ vp (by omega) h_vp_lt h_bal_lo_vp h_vp_val (Or.inr h_vval)
             have h_jv_tok : tokens[jv]!.val = .flowMappingEnd := by
               rcases h_jv_match with ⟨h, _⟩ | ⟨_, h⟩
@@ -1214,7 +1214,7 @@ theorem flow_parser_ok_of_structure (tokens : Array (Positioned YamlToken)) (fue
             valStep key_ps (ps.pos + 2) h_kps_pos h_kps_tok h_kps_tp (by omega) (by omega)
               h_value_tok h_bal_key⟩
         · -- flowSequenceStart key → inner SEQ via IH.1
-          obtain ⟨jk, h_p1_jk, h_jk_hi, h_jk_match, h_jk_bal, h_jk1_lt, h_value_tok⟩ :=
+          obtain ⟨jk, h_p1_jk, h_jk_hi, h_jk_match, h_jk_bal, h_jk1_lt, h_value_tok, _⟩ :=
             hbody.key_bracket_value ps.pos h_bs h_pos h_bal_ps h_key_tok (Or.inl h_kval)
           have h_jk_tok : tokens[jk]!.val = .flowSequenceEnd := by
             rcases h_jk_match with ⟨_, h⟩ | ⟨h, _⟩
@@ -1274,7 +1274,7 @@ theorem flow_parser_ok_of_structure (tokens : Array (Positioned YamlToken)) (fue
             valStep _ (jk + 1) h_kps_pos h_kps_tok h_kps_tp (by omega) (by omega)
               h_value_tok h_bal_key⟩
         · -- flowMappingStart key → inner MAP via IH.2
-          obtain ⟨jk, h_p1_jk, h_jk_hi, h_jk_match, h_jk_bal, h_jk1_lt, h_value_tok⟩ :=
+          obtain ⟨jk, h_p1_jk, h_jk_hi, h_jk_match, h_jk_bal, h_jk1_lt, h_value_tok, _⟩ :=
             hbody.key_bracket_value ps.pos h_bs h_pos h_bal_ps h_key_tok (Or.inr h_kval)
           have h_jk_tok : tokens[jk]!.val = .flowMappingEnd := by
             rcases h_jk_match with ⟨h, _⟩ | ⟨_, h⟩

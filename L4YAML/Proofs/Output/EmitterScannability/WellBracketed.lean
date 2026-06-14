@@ -2436,9 +2436,10 @@ theorem map_key_bracket_conjunct (tokens : Array (Positioned YamlToken))
       ((tokens[k+1]!.val = .flowSequenceStart ∧ tokens[j]!.val = .flowSequenceEnd) ∨
        (tokens[k+1]!.val = .flowMappingStart ∧ tokens[j]!.val = .flowMappingEnd)) ∧
       flowBracketBalance tokens (k+2) j = 0 ∧
-      j + 1 < hi ∧ tokens[j+1]!.val = .value := by
+      j + 1 < hi ∧ tokens[j+1]!.val = .value ∧
+      (∀ p, k + 2 ≤ p → p ≤ j → flowBracketBalance tokens (k+2) p ≥ 0) := by
   rcases h_open with h_seq | h_map
-  · obtain ⟨j, hkj, hjhi, hjval, hinner, _⟩ :=
+  · obtain ⟨j, hkj, hjhi, hjval, hinner, h_floor⟩ :=
       flowBracketBalance_matching_close_seq tokens lo (k+1) hi h_lo_k1 h_k1_hi h_hi_sz
         h_k1_depth h_seq h_total h_dyck h_wt
     have h_j_sz : j < tokens.size := Nat.lt_of_lt_of_le hjhi h_hi_sz
@@ -2446,8 +2447,8 @@ theorem map_key_bracket_conjunct (tokens : Array (Positioned YamlToken))
     have h_close_delta : flowBracketDelta tokens[j]!.val = -1 := by rw [hjval]; rfl
     have hsucc := map_key_bracket_value_reduce tokens lo hi (k+1) j h_lo_k1 hkj h_j_sz
       h_k1_depth h_open_delta h_close_delta hinner (fun hd => h_succ j hkj hjhi h_close_delta hd)
-    exact ⟨j, hkj, hjhi, Or.inl ⟨h_seq, hjval⟩, hinner, hsucc.1, hsucc.2⟩
-  · obtain ⟨j, hkj, hjhi, hjval, hinner, _⟩ :=
+    exact ⟨j, hkj, hjhi, Or.inl ⟨h_seq, hjval⟩, hinner, hsucc.1, hsucc.2, h_floor⟩
+  · obtain ⟨j, hkj, hjhi, hjval, hinner, h_floor⟩ :=
       flowBracketBalance_matching_close_map tokens lo (k+1) hi h_lo_k1 h_k1_hi h_hi_sz
         h_k1_depth h_map h_total h_dyck h_wt
     have h_j_sz : j < tokens.size := Nat.lt_of_lt_of_le hjhi h_hi_sz
@@ -2455,7 +2456,7 @@ theorem map_key_bracket_conjunct (tokens : Array (Positioned YamlToken))
     have h_close_delta : flowBracketDelta tokens[j]!.val = -1 := by rw [hjval]; rfl
     have hsucc := map_key_bracket_value_reduce tokens lo hi (k+1) j h_lo_k1 hkj h_j_sz
       h_k1_depth h_open_delta h_close_delta hinner (fun hd => h_succ j hkj hjhi h_close_delta hd)
-    exact ⟨j, hkj, hjhi, Or.inr ⟨h_map, hjval⟩, hinner, hsucc.1, hsucc.2⟩
+    exact ⟨j, hkj, hjhi, Or.inr ⟨h_map, hjval⟩, hinner, hsucc.1, hsucc.2, h_floor⟩
 
 /-- **`MapBodyProps.value_bracket_succ` assembled (M8).**  After a `.value` at depth-0 `k`, a
     bracket opener at `k+1` (depth-0, kind `[` or `{`) in a map body yields the M8 conjunct: the
@@ -2481,9 +2482,10 @@ theorem map_value_bracket_conjunct (tokens : Array (Positioned YamlToken))
       flowBracketBalance tokens (k+2) j = 0 ∧
       j + 1 ≤ hi ∧
       (tokens[j+1]!.val = .flowEntry ∨
-       (tokens[j+1]!.val = .flowMappingEnd ∧ j + 1 = hi)) := by
+       (tokens[j+1]!.val = .flowMappingEnd ∧ j + 1 = hi)) ∧
+      (∀ p, k + 2 ≤ p → p ≤ j → flowBracketBalance tokens (k+2) p ≥ 0) := by
   rcases h_open with h_seq | h_map
-  · obtain ⟨j, hkj, hjhi, hjval, hinner, _⟩ :=
+  · obtain ⟨j, hkj, hjhi, hjval, hinner, h_floor⟩ :=
       flowBracketBalance_matching_close_seq tokens lo (k+1) hi h_lo_k1 h_k1_hi h_hi_sz
         h_k1_depth h_seq h_total h_dyck h_wt
     have h_j_sz : j < tokens.size := Nat.lt_of_lt_of_le hjhi h_hi_sz
@@ -2491,8 +2493,8 @@ theorem map_value_bracket_conjunct (tokens : Array (Positioned YamlToken))
     have h_close_delta : flowBracketDelta tokens[j]!.val = -1 := by rw [hjval]; rfl
     have hsucc := map_value_bracket_succ_reduce tokens lo hi (k+1) j h_lo_k1 hkj h_j_sz
       h_k1_depth h_open_delta h_close_delta hinner (fun hd => h_succ j hkj hjhi h_close_delta hd)
-    exact ⟨j, hkj, hjhi, Or.inl ⟨h_seq, hjval⟩, hinner, hsucc.1, hsucc.2⟩
-  · obtain ⟨j, hkj, hjhi, hjval, hinner, _⟩ :=
+    exact ⟨j, hkj, hjhi, Or.inl ⟨h_seq, hjval⟩, hinner, hsucc.1, hsucc.2, h_floor⟩
+  · obtain ⟨j, hkj, hjhi, hjval, hinner, h_floor⟩ :=
       flowBracketBalance_matching_close_map tokens lo (k+1) hi h_lo_k1 h_k1_hi h_hi_sz
         h_k1_depth h_map h_total h_dyck h_wt
     have h_j_sz : j < tokens.size := Nat.lt_of_lt_of_le hjhi h_hi_sz
@@ -2500,7 +2502,7 @@ theorem map_value_bracket_conjunct (tokens : Array (Positioned YamlToken))
     have h_close_delta : flowBracketDelta tokens[j]!.val = -1 := by rw [hjval]; rfl
     have hsucc := map_value_bracket_succ_reduce tokens lo hi (k+1) j h_lo_k1 hkj h_j_sz
       h_k1_depth h_open_delta h_close_delta hinner (fun hd => h_succ j hkj hjhi h_close_delta hd)
-    exact ⟨j, hkj, hjhi, Or.inr ⟨h_map, hjval⟩, hinner, hsucc.1, hsucc.2⟩
+    exact ⟨j, hkj, hjhi, Or.inr ⟨h_map, hjval⟩, hinner, hsucc.1, hsucc.2, h_floor⟩
 
 
 -- ═══ Filtered token lemmas for scanner handlers ═══
