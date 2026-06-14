@@ -3629,6 +3629,118 @@ theorem globalFlowSeqSepAdj_fires
   · rw [h4]; exact (by decide)
   · rw [h4]; exact Or.inl ⟨"b", .doubleQuoted, rfl⟩
 
+/-- **The PRODUCE-side joint — the global separator contract reduces to the BODY-window separator field
+    plus the structure's boundary facts AND a no-trailing-separator boundary input** —
+    `(i'-b-B2c-(d)-seq-separator-adjacency-assemble)`, R418, the produce-side joint of the new GLOBAL
+    separator producer, mirror of `globalFlowSeqOpenerAdj_of_structure` (R396) for the `.flowEntry`
+    trigger / `≠ .key` gate.  It factors `GlobalFlowSeqSepAdj tokens` into the boundary facts the
+    structure lemma `scanFiltered_emitSeq_nonempty_structure` already delivers — `size ≥ 5`,
+    `tokens[0] = .streamStart`, `tokens[1] = .flowSequenceStart`, the close
+    `tokens[size-2] = .flowSequenceEnd` — plus (i) one flat all-depth SEPARATOR field over the body window
+    `[2, size-2)` (the shape of `flowSeqSepAdj_window_of_global tokens 2 (size-2)`, the R417 restriction's
+    interior) and (ii) ONE new boundary input the opener producer did NOT need: the pre-close token is a
+    non-separator (`tokens[size-3] ≠ .flowEntry`).
+
+    **Why the boundary case is NOT a free mirror (the genuine R418 difference).** The five-way `k`-split
+    over `getElem!` reuses the opener producer's skeleton, but the `k+1 = size-2` (pre-close) cell
+    discharges by a THIRD strategy neither opener sibling used, because the boundary discharge is selected
+    by TWO axes the trigger token does NOT determine ([[ref-boundary-discharge-gate-trigger-typed]]):
+
+    * **Does the gate exclude the close?** The seq OPENER producer (R396) gate is `≠ .flowSequenceEnd`,
+      and the close IS `.flowSequenceEnd`, so its boundary `hne` premise is self-contradictory and the
+      cell closes with a single `absurd h_close hne` — no structural fact at all.  The separator gate
+      `≠ .key` does NOT exclude the close (`.flowSequenceEnd ≠ .key`), so that cheap discharge is gone:
+      `hne` is genuinely SATISFIED at the pre-close.
+    * **Is the trigger a balance-changer?** The MAP opener producer (R410), facing a close its gate also
+      admits (`.flowMappingEnd ≠ .flowSequenceEnd`), refuted its pre-close opener by the Dyck FLOOR — an
+      opener has bracket-delta `+1`, so a pre-close opener forces prefix balance `-1`, contradicting
+      `h_dyck`.  A `.flowEntry` separator has bracket-delta `0` ([[ref-boundary-residual-end-dual]]): it
+      moves no balance, so the Dyck-floor refutation is UNAVAILABLE too.
+
+    Both opener discharges fail, so the separator's pre-close cell needs a genuinely new input — that the
+    emitter writes NO trailing separator before the close, i.e. `tokens[size-3]` is a non-`.flowEntry`.
+    Here that is taken as a HYPOTHESIS / named residual ([[ref-incomplete-projection-still-factors]]: name
+    the data the boundary cannot otherwise see), keeping the joint a clean reduction; its sourcing is a
+    SEPARATE later brick — the `SeqInteriorSeparators` carrier's `noTrailingSepFact tokens 2 (size-2)`
+    (R416) refutes a pre-close `.flowEntry` via its false content-start conclusion at the close, given
+    `flowBracketBalance tokens 2 (size-3) = 0`, or a freshly-exposed structure field supplies it directly.
+
+    The five cells: `k=0` contradicts `.streamStart ≠ .flowEntry`; `k=1` contradicts the seq opener
+    `.flowSequenceStart ≠ .flowEntry` (VACUOUS — unlike the opener producer where `k=1` was the real head
+    case, the seq head is the OPENER, never a separator); `2 ≤ k` with `k+1 < size-2` is the body field;
+    `k+1 = size-2` is the new no-trailing-separator boundary; `k=size-2` contradicts
+    `.flowSequenceEnd ≠ .flowEntry`.  References no sorry site; frontier sorry count unchanged at 4. -/
+theorem globalFlowSeqSepAdj_of_structure
+    (tokens : Array (Positioned YamlToken))
+    (h_sz : 5 ≤ tokens.size)
+    (h_t0 : tokens[0]!.val = .streamStart)
+    (h_t1 : tokens[1]!.val = .flowSequenceStart)
+    (h_close : tokens[tokens.size - 2]!.val = .flowSequenceEnd)
+    (h_no_trailing_sep : tokens[tokens.size - 3]!.val ≠ .flowEntry)
+    (h_body : ∀ k, 2 ≤ k → k + 1 < tokens.size - 2 →
+        tokens[k]!.val = .flowEntry →
+        tokens[k+1]!.val ≠ .key →
+        isFlowContentStart tokens[k+1]!.val) :
+    GlobalFlowSeqSepAdj tokens := by
+  intro k hk1 hfe hne
+  by_cases h0 : k = 0
+  · subst h0; rw [h_t0] at hfe; exact absurd hfe (by decide)
+  by_cases h1 : k = 1
+  · subst h1; rw [h_t1] at hfe; exact absurd hfe (by decide)
+  have hk2 : 2 ≤ k := by omega
+  by_cases hb : k + 1 < tokens.size - 2
+  · exact h_body k hk2 hb hfe hne
+  by_cases hb2 : k + 1 = tokens.size - 2
+  · -- The genuine separator difference: the gate `≠ .key` does NOT exclude the close, and `.flowEntry`
+    -- is balance-neutral, so neither opener discharge applies; refute the pre-close `.flowEntry` directly.
+    have hk_eq : k = tokens.size - 3 := by omega
+    rw [hk_eq] at hfe
+    exact absurd hfe h_no_trailing_sep
+  have hk_eq : k = tokens.size - 2 := by omega
+  rw [hk_eq] at hfe
+  rw [h_close] at hfe
+  exact absurd hfe (by decide)
+
+/-- **Sourcing the produce-side joint's owed no-trailing boundary input from the R416 carrier** —
+    `(i'-b-B2c-(d)-seq-separator-noTrailing-boundary)`, R419, BRICK (b) of the R418 CAUTION's two owed
+    inputs (SMALLEST-FIRST: this is the genuinely-new residual the cell-3 boundary discharge flagged,
+    [[ref-boundary-discharge-gate-trigger-typed]]).  `globalFlowSeqSepAdj_of_structure` (R418) took the
+    pre-close non-separator `tokens[size-3] ≠ .flowEntry` as a NAMED hypothesis because neither opener
+    sibling's discharge applies (the `≠ .key` gate ADMITS the seq close, and `.flowEntry` is
+    balance-neutral, so both the `absurd h_close hne` and the Dyck-floor routes are gone).  This brick
+    DISCHARGES that hypothesis — and the discharge reveals the cell-3 residual is NOT a fresh
+    emitter-level field after all: it is the END-DUAL of the R416 `noTrailingSepFact tokens 2 (size-2)`
+    carrier, the SAME body fact `seqSeparatorFacts_of_windowed_safebodyunit` already delivers at the root
+    window for the root seed's per-window discharge — a DIFFERENT consumer
+    ([[ref-deferred-structural-already-proven-by-sibling]]).  The R418 hedge ("source from the carrier OR
+    a fresh structure field") resolves to the carrier; no new induction is owed.
+
+    **The discharge** ([[ref-boundary-residual-end-dual]]).  Suppose `tokens[size-3] = .flowEntry` for
+    contradiction.  Instantiate the carrier at `k = size-3`: `2 ≤ size-3` (from `size ≥ 5`),
+    `(size-3)+1 = size-2`, the assumed separator, and the boundary balance
+    `flowBracketBalance tokens 2 (size-3) = 0` (taken as a hypothesis — the depth-`0` reach of the close,
+    sourced separately).  The carrier concludes `isFlowContentStart tokens[size-2]`; but
+    `tokens[size-2] = .flowSequenceEnd` (the close, `h_close`), and `isFlowContentStart .flowSequenceEnd`
+    is FALSE (the close is neither a scalar nor an opener).  The trailing-separator premise is refuted
+    because its content-start conclusion lands on a token the window cannot follow.
+
+    Verified-but-unconsumed: it is the (b)-brick of the R418 produce-side joint, which consumes it once the
+    carrier + boundary-balance are wired in alongside the (a) body-separator structure-EXPOSE.  References
+    no sorry site; frontier sorry count unchanged at 4. -/
+theorem noTrailingSep_preClose_of_carrier
+    (tokens : Array (Positioned YamlToken))
+    (h_sz : 5 ≤ tokens.size)
+    (h_close : tokens[tokens.size - 2]!.val = .flowSequenceEnd)
+    (h_bal : flowBracketBalance tokens 2 (tokens.size - 3) = 0)
+    (h_carrier : noTrailingSepFact tokens 2 (tokens.size - 2)) :
+    tokens[tokens.size - 3]!.val ≠ .flowEntry := by
+  intro h_fe
+  have hk : (tokens.size - 3) + 1 = tokens.size - 2 := by omega
+  have h2 : 2 ≤ tokens.size - 3 := by omega
+  have h_cs := h_carrier (tokens.size - 3) h2 hk h_fe h_bal
+  rw [hk, h_close] at h_cs
+  simp [isFlowContentStart] at h_cs
+
 /-- **The SEQ-head CONS three-arm dispatch of the locator's per-window step `h_step`** —
     `(i'-b-B2c-nested-fbc-emission-locator-skeleton-brick-d-seq-cons)`, R378, BRICK D (carved).  This is
     the maximal-risk slice of `h_step` the blueprint flagged ("the four-way `cases h_e` × HEAD/CONS
