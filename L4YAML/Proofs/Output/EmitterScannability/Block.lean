@@ -153,6 +153,34 @@ theorem headContentStart_append3
   rw [hhead] at hcs
   exact hcs
 
+/-- The **`SepAdj` head bridge** (mirror of `openerAdj_head_of_block_contentStart`): convert
+    `EmitScansInFlowBlock`'s content-start head field (`∃ h : block ≠ [], ContentStartTok
+    (block.head h).val`, line 107) into the `h_head_rest` shape `SepAdj_seam` consumes for the
+    successor of a `.flowEntry` separator (`∀ h0, (block[0]).val ≠ .key → isFlowContentStart
+    (block[0]).val`).  Identical proof to the opener bridge — the gate premise (here `≠ .key`,
+    there `≠ .flowSequenceEnd`) is simply DISCARDED: line 107 asserts the content-start head
+    UNCONDITIONALLY, so it bridges to EITHER gate.
+
+    **PER R421** the `SepAdj` obligation relocated to the SEAM, where `SepAdj_seam` demands the
+    successor block's content-start head ([[ref-trigger-coincidence-relocates-obligation]]).  This
+    bridge supplies it from the ∃-content-start-head — available at the LEAF (`block₁` is an
+    `EmitScansInFlowBlock`, carrying line 107's ∃-head).  **Caution for the recursive seam:** the
+    list-body successor `block_rest` is an `EmitListScansInFlowBlock`, whose head field (line 189)
+    is ALREADY collapsed to the SIBLING'S gate `≠ .flowSequenceEnd`, NOT the ∃-head — so this
+    bridge does NOT apply there; the recursive seam owes a `SepAdj`-shaped (`≠ .key`-gated) head
+    field on the list-body, threaded alongside.  Leaf-vs-seam asymmetry: the ∃-head bridges for
+    free; the already-gated recursive head does not. -/
+theorem sepAdj_head_of_block_contentStart
+    (block : List (Positioned YamlToken))
+    (h : ∃ (hne : block ≠ []), ContentStartTok (block.head hne).val) :
+    ∀ (h0 : 0 < block.length),
+      (block[0]'h0).val ≠ .key → isFlowContentStart (block[0]'h0).val := by
+  obtain ⟨hne, hcs⟩ := h
+  intro h0 _
+  have hhead : block.head hne = block[0]'h0 := List.head_eq_getElem hne
+  rw [hhead] at hcs
+  exact hcs
+
 /-- Block-tracking superset of `EmitListScansInFlow`: the comma-separated body
     between `[` and `]`.  Its filtered-LIST delta `block` is `WellBracketed` —
     exactly the interior `wrap_seq_block` frames into a flow-sequence block. -/
