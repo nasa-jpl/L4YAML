@@ -134,6 +134,7 @@ import Tests.Reflections.ContradictionBranchSuppliesBoundary
 import Tests.Reflections.OrthogonalFieldMirror
 import Tests.Reflections.EdgeAdjacentReadFromGlobal
 import Tests.Reflections.FloorEncodesNonemptiness
+import Tests.Reflections.ProviderFieldFromSiblingOutput
 
 /-!
 # Reflections — runnable proof-engineering demonstrations

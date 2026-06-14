@@ -4072,6 +4072,92 @@ theorem flowBodyContentDeepSeq_of_emit_and_window_map
     h_all_v_block (by have := h_win.lo_ge; omega) h_win.lo_lt_hi (Nat.le_of_lt h_win.hi_lt) h_open
     (flowBodyWindow_head_ne_close tokens lo hi h_win)
 
+/-- **The FULL `windowFacts` triple from emission, SEQ source** —
+    `(i'-b-B2c-(d)-seqWindowFacts-of-emit-seq)`, R432, the brick that completes the CONTENT of the flat
+    per-window provider `seqRec_of_carrier_and_windowFacts_seq` consumes: at every seq window it produces
+    all THREE fields `FlowBodyWindow ∧ FlowBodyContentDeepSeq ∧ SeqEnclosed`.  It composes the two landed
+    halves — R390's `flowBodyWindow_and_seqEnclosed_of_facts` (the bracket + enclosure fields) and R431's
+    `flowBodyContentDeepSeq_of_emit_and_window` (the deep-content field) — and the KEY structural move is
+    that the deep field is sourced from the `FlowBodyWindow` the FIRST half just PRODUCED (R431's provider
+    consumes `h_win`), not from a fresh hypothesis: a later provider field is discharged from an EARLIER
+    field's OUTPUT ([[ref-provider-field-from-sibling-output]]).  So the combined residual is NOT the union
+    of each field's primitives but only R390's three global-restriction primitives `h_wt_outer` /
+    `h_win_dyck` / `h_fold_pre` — the Dyck floor `h_win_dyck` does DOUBLE DUTY (it is `FlowBodyWindow.dyck`
+    AND, through R431, the source of `FlowBodyContentDeepSeq`'s head non-emptiness).  The three primitives
+    are the whole-stream-well-bracketedness restrictions a separate brick supplies once.
+    Verified-but-unconsumed until those primitives are sourced; references no sorry site, frontier sorry
+    count unchanged at 4. -/
+theorem seqWindowFacts_of_emit_and_primitives
+    (items : Array YamlValue) (tokens : Array (Positioned YamlToken))
+    (h_scan : Scanner.scanFiltered ("[" ++ emit.emitList items.toList ++ "]") = .ok tokens)
+    (h_ne : items.toList ≠ [])
+    (h_all_block : ∀ w, w ∈ items.toList → EmitScansInFlowBlock w)
+    (h_wt_outer : WellTyped ((tokens.toList.take (tokens.size - 2)).drop 2))
+    (lo hi : Nat)
+    (h_lo : 2 ≤ lo) (h_lo_hi : lo < hi) (h_hi : hi ≤ tokens.size - 2) (h_hi_sz : hi < tokens.size)
+    (h_bal : flowBracketBalance tokens lo hi = 0)
+    (h_open : tokens[lo - 1]!.val = .flowSequenceStart)
+    (h_win_dyck : ∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0)
+    (h_fold_pre : ∃ s, btFold (some []) (tokens.toList.take (lo - 1)) = some s) :
+    FlowBodyWindow tokens lo hi ∧ FlowBodyContentDeepSeq tokens lo hi ∧ SeqEnclosed tokens lo := by
+  obtain ⟨h_win, h_enc⟩ := flowBodyWindow_and_seqEnclosed_of_facts tokens lo hi h_lo h_lo_hi h_hi
+    h_hi_sz h_bal h_open h_wt_outer h_win_dyck h_fold_pre
+  exact ⟨h_win,
+    flowBodyContentDeepSeq_of_emit_and_window items tokens lo hi h_scan h_ne h_all_block h_win h_open,
+    h_enc⟩
+
+/-- **The FULL `windowFacts` triple from emission, MAP source** —
+    `(i'-b-B2c-(d)-seqWindowFacts-of-emit-map)`, R432, the orthogonal-axis mirror (the seq recursion also
+    runs over windows nested in a top-level MAP).  Same composition — R390 for the bracket + enclosure
+    fields (axis-agnostic), R431's `flowBodyContentDeepSeq_of_emit_and_window_map` for the deep field, fed
+    the produced `FlowBodyWindow` — with only the emit facts swapped to the map family.
+    Verified-but-unconsumed; references no sorry site, frontier sorry count unchanged at 4. -/
+theorem seqWindowFacts_of_emit_and_primitives_map
+    (pairs : Array (YamlValue × YamlValue)) (tokens : Array (Positioned YamlToken))
+    (h_scan : Scanner.scanFiltered ("{" ++ emit.emitPairList pairs.toList ++ "}") = .ok tokens)
+    (h_ne : pairs.toList ≠ [])
+    (h_all_k_block : ∀ p, p ∈ pairs.toList → EmitScansInFlowSavedKeyBlock p.1)
+    (h_all_v_block : ∀ p, p ∈ pairs.toList → EmitScansInFlowBlock p.2)
+    (h_wt_outer : WellTyped ((tokens.toList.take (tokens.size - 2)).drop 2))
+    (lo hi : Nat)
+    (h_lo : 2 ≤ lo) (h_lo_hi : lo < hi) (h_hi : hi ≤ tokens.size - 2) (h_hi_sz : hi < tokens.size)
+    (h_bal : flowBracketBalance tokens lo hi = 0)
+    (h_open : tokens[lo - 1]!.val = .flowSequenceStart)
+    (h_win_dyck : ∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0)
+    (h_fold_pre : ∃ s, btFold (some []) (tokens.toList.take (lo - 1)) = some s) :
+    FlowBodyWindow tokens lo hi ∧ FlowBodyContentDeepSeq tokens lo hi ∧ SeqEnclosed tokens lo := by
+  obtain ⟨h_win, h_enc⟩ := flowBodyWindow_and_seqEnclosed_of_facts tokens lo hi h_lo h_lo_hi h_hi
+    h_hi_sz h_bal h_open h_wt_outer h_win_dyck h_fold_pre
+  exact ⟨h_win,
+    flowBodyContentDeepSeq_of_emit_and_window_map pairs tokens lo hi h_scan h_ne h_all_k_block
+      h_all_v_block h_win h_open,
+    h_enc⟩
+
+/-- **The RE-SCOPED `h_seq_rec` reduction to root carrier + windowFacts** —
+    `(i'-b-B2c-(d)-seqRec-of-carrier-and-windowFacts-seq)`, R432, the `_seq` twin of R389's
+    `seqRec_of_carrier_and_windowFacts` migrated to the re-scoped guard.  Verbatim clone with two swaps
+    forced by R393's re-scope ([[ref-additive-parallel-type-over-shared-edit]]): the `windowFacts`
+    provider's content field is `FlowBodyContentDeepSeq` (not the false-rooted `FlowBodyContentDeep`), and
+    the consumed recursion is `seqWindowRecSeqBody_seq` (R-the `_seq` recursion threading it).  Carries
+    R393's re-scope thread up to the `flowSubrangesOk_of_window_producers` aggregation layer, so the seq
+    half of `FlowSubrangesOk` now reduces to the re-scoped root carrier + the (R432 above) windowFacts
+    triple.  Verified-but-unconsumed until the root carrier (R1) + the three windowFacts primitives land;
+    references no sorry site, frontier sorry count unchanged at 4. -/
+theorem seqRec_of_carrier_and_windowFacts_seq (tokens : Array (Positioned YamlToken))
+    (h_root_carrier : SeqInteriorSeparators tokens 2 (tokens.size - 2))
+    (windowFacts : ∀ lo hi, 2 ≤ lo → lo < hi → hi ≤ tokens.size - 2 → hi < tokens.size →
+      tokens[hi]!.val = .flowSequenceEnd → flowBracketBalance tokens lo hi = 0 →
+      tokens[lo - 1]!.val = .flowSequenceStart →
+      FlowBodyWindow tokens lo hi ∧ FlowBodyContentDeepSeq tokens lo hi ∧ SeqEnclosed tokens lo) :
+    ∀ lo hi, 2 ≤ lo → lo < hi → hi ≤ tokens.size - 2 → hi < tokens.size →
+      tokens[hi]!.val = .flowSequenceEnd →
+      flowBracketBalance tokens lo hi = 0 →
+      tokens[lo - 1]!.val = .flowSequenceStart →
+      RecSeqBody ((tokens.toList.take hi).drop lo) := by
+  intro lo hi h2 hlt hhi hsz hclose hbal hopen
+  obtain ⟨h_win, h_deep, h_enc⟩ := windowFacts lo hi h2 hlt hhi hsz hclose hbal hopen
+  exact seqWindowRecSeqBody_seq tokens h_root_carrier lo hi h_win h_deep h_enc hclose
+
 /-- **The SEQ-head CONS three-arm dispatch of the locator's per-window step `h_step`** —
     `(i'-b-B2c-nested-fbc-emission-locator-skeleton-brick-d-seq-cons)`, R378, BRICK D (carved).  This is
     the maximal-risk slice of `h_step` the blueprint flagged ("the four-way `cases h_e` × HEAD/CONS
