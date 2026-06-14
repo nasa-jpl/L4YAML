@@ -128,6 +128,7 @@ import Tests.Reflections.SourceGateCollapseBlocksMirror
 import Tests.Reflections.ProgressWitnessCertifiesDelta
 import Tests.Reflections.InvariantNeutralSiblingNeedsHead
 import Tests.Reflections.GateTokenIsSiblingHead
+import Tests.Reflections.FieldOnMultiproducerPredicate
 
 /-!
 # Reflections — runnable proof-engineering demonstrations
