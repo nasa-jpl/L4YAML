@@ -136,6 +136,7 @@ import Tests.Reflections.EdgeAdjacentReadFromGlobal
 import Tests.Reflections.FloorEncodesNonemptiness
 import Tests.Reflections.ProviderFieldFromSiblingOutput
 import Tests.Reflections.BracketGuardsAdmitCrossMatched
+import Tests.Reflections.ContravariantGuardStrengthening
 
 /-!
 # Reflections — runnable proof-engineering demonstrations

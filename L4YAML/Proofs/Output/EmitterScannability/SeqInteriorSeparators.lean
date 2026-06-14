@@ -4133,29 +4133,39 @@ theorem seqWindowFacts_of_emit_and_primitives_map
       h_all_v_block h_win h_open,
     h_enc⟩
 
-/-- **The RE-SCOPED `h_seq_rec` reduction to root carrier + windowFacts** —
-    `(i'-b-B2c-(d)-seqRec-of-carrier-and-windowFacts-seq)`, R432, the `_seq` twin of R389's
-    `seqRec_of_carrier_and_windowFacts` migrated to the re-scoped guard.  Verbatim clone with two swaps
-    forced by R393's re-scope ([[ref-additive-parallel-type-over-shared-edit]]): the `windowFacts`
-    provider's content field is `FlowBodyContentDeepSeq` (not the false-rooted `FlowBodyContentDeep`), and
-    the consumed recursion is `seqWindowRecSeqBody_seq` (R-the `_seq` recursion threading it).  Carries
-    R393's re-scope thread up to the `flowSubrangesOk_of_window_producers` aggregation layer, so the seq
-    half of `FlowSubrangesOk` now reduces to the re-scoped root carrier + the (R432 above) windowFacts
-    triple.  Verified-but-unconsumed until the root carrier (R1) + the three windowFacts primitives land;
+/-- **The RE-SCOPED, FLOOR-GUARDED `h_seq_rec` reduction to root carrier + windowFacts** —
+    `(i'-b-B2c-(d)-seqRec-of-carrier-and-windowFacts-seq)`, R432 + R433-floor.  The `_seq` twin of R389's
+    `seqRec_of_carrier_and_windowFacts` migrated to the re-scoped guard ([[ref-additive-parallel-type-over-shared-edit]]:
+    content field `FlowBodyContentDeepSeq` not the false-rooted `FlowBodyContentDeep`; consumed recursion
+    `seqWindowRecSeqBody_seq`).
+
+    **R433 fix** ([[ref-bracket-guards-admit-cross-matched-window]]): the R432 unfloored shape carried the
+    SEVEN bracket-shape guards only — and `seqWindowFacts_false_window` machine-checked that those admit a
+    CROSS-MATCHED false window (`[3,7)` of `[[],[a]]`: all seven hold but the Dyck floor underflows, so
+    `FlowBodyWindow` is false ⇒ the `windowFacts` hypothesis was UNSATISFIABLE).  This version adds the
+    interior Dyck floor `∀ i ∈ [lo, hi], balance lo i ≥ 0` as an 8th guard to BOTH the `windowFacts`
+    hypothesis and the produced `h_seq_rec` conclusion — it EXCLUDES every cross-matched window, restoring
+    satisfiability, and threads through trivially (the producer just RECEIVES it on the conclusion side and
+    PASSES it to `windowFacts` — contravariant, free on the producer side; the matching consumer-side floor
+    of `flowSubrangesOk_of_window_producers`'s `h_seq_rec`, via `seqLocator_of_window_recseqbody`, is the
+    next brick).  The floored `windowFacts` matches `seqWindowFacts_of_emit_and_primitives`, whose
+    `h_win_dyck` IS this floor.  Verified-but-unconsumed until the consumer floor + root carrier (R1) land;
     references no sorry site, frontier sorry count unchanged at 4. -/
 theorem seqRec_of_carrier_and_windowFacts_seq (tokens : Array (Positioned YamlToken))
     (h_root_carrier : SeqInteriorSeparators tokens 2 (tokens.size - 2))
     (windowFacts : ∀ lo hi, 2 ≤ lo → lo < hi → hi ≤ tokens.size - 2 → hi < tokens.size →
       tokens[hi]!.val = .flowSequenceEnd → flowBracketBalance tokens lo hi = 0 →
       tokens[lo - 1]!.val = .flowSequenceStart →
+      (∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0) →
       FlowBodyWindow tokens lo hi ∧ FlowBodyContentDeepSeq tokens lo hi ∧ SeqEnclosed tokens lo) :
     ∀ lo hi, 2 ≤ lo → lo < hi → hi ≤ tokens.size - 2 → hi < tokens.size →
       tokens[hi]!.val = .flowSequenceEnd →
       flowBracketBalance tokens lo hi = 0 →
       tokens[lo - 1]!.val = .flowSequenceStart →
+      (∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0) →
       RecSeqBody ((tokens.toList.take hi).drop lo) := by
-  intro lo hi h2 hlt hhi hsz hclose hbal hopen
-  obtain ⟨h_win, h_deep, h_enc⟩ := windowFacts lo hi h2 hlt hhi hsz hclose hbal hopen
+  intro lo hi h2 hlt hhi hsz hclose hbal hopen hfloor
+  obtain ⟨h_win, h_deep, h_enc⟩ := windowFacts lo hi h2 hlt hhi hsz hclose hbal hopen hfloor
   exact seqWindowRecSeqBody_seq tokens h_root_carrier lo hi h_win h_deep h_enc hclose
 
 /-- **The 7-guard `windowFacts`/`h_seq_rec` universal is UNSATISFIABLE — a cross-matched false window** —
