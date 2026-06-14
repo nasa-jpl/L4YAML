@@ -125,6 +125,7 @@ import Tests.Reflections.NoncloningCornerEndDualOfCarrier
 import Tests.Reflections.AdjacencyMirrorCornerIsLayerScoped
 import Tests.Reflections.TriggerCoincidenceRelocatesObligation
 import Tests.Reflections.SourceGateCollapseBlocksMirror
+import Tests.Reflections.ProgressWitnessCertifiesDelta
 
 /-!
 # Reflections — runnable proof-engineering demonstrations
