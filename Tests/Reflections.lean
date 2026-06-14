@@ -124,6 +124,7 @@ import Tests.Reflections.BoundaryDischargeGateTriggerTyped
 import Tests.Reflections.NoncloningCornerEndDualOfCarrier
 import Tests.Reflections.AdjacencyMirrorCornerIsLayerScoped
 import Tests.Reflections.TriggerCoincidenceRelocatesObligation
+import Tests.Reflections.SourceGateCollapseBlocksMirror
 
 /-!
 # Reflections — runnable proof-engineering demonstrations
