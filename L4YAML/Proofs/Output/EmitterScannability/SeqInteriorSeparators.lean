@@ -4158,6 +4158,66 @@ theorem seqRec_of_carrier_and_windowFacts_seq (tokens : Array (Positioned YamlTo
   obtain ⟨h_win, h_deep, h_enc⟩ := windowFacts lo hi h2 hlt hhi hsz hclose hbal hopen
   exact seqWindowRecSeqBody_seq tokens h_root_carrier lo hi h_win h_deep h_enc hclose
 
+/-- **The 7-guard `windowFacts`/`h_seq_rec` universal is UNSATISFIABLE — a cross-matched false window** —
+    `(i'-b-B2c-(d)-windowFacts-false-window)`, R433, the machine-checked refutation that REDIRECTS the
+    "discharge the three `windowFacts` primitives" plan ([[ref-probe-deferred-universal-before-producing]] /
+    [[ref-minimal-pair-extracts-the-gate]], the R392-style discipline).  The `windowFacts` provider and
+    `flowSubrangesOk_of_window_producers`'s `h_seq_rec` both quantify over EVERY window `[lo, hi)` gated only
+    by the SEVEN bracket-shape facts (`2 ≤ lo`, `lo < hi`, `hi ≤ size-2`, `hi < size`, `tokens[hi] =
+    .flowSequenceEnd`, `flowBracketBalance lo hi = 0`, `tokens[lo-1] = .flowSequenceStart`).  Those guards
+    do NOT pin a MATCHED bracket pair: `tokens[lo-1]` and `tokens[hi]` may close DIFFERENT brackets with
+    `balance lo hi = 0` holding only by COINCIDENCE across a separator.
+
+    Witness (`native_decide` on real scanned output): `[[],[a]]` scans to `streamStart, [, [, ], `,`, [, a,
+    ], ], streamEnd` (size 10).  The window `[3, 7)` satisfies ALL SEVEN guards — `tokens[2] =
+    .flowSequenceStart`, `tokens[7] = .flowSequenceEnd`, `flowBracketBalance tokens 3 7 = 0` — yet
+    `flowBracketBalance tokens 3 4 = -1` (its head `tokens[3]` is the FIRST element's CLOSE `]`, delta `-1`),
+    so the Dyck floor UNDERFLOWS and `FlowBodyWindow tokens 3 7` is FALSE.  `[3, 7)` is a CROSS-MATCHED
+    window: `tokens[2] = [` is matched by `tokens[8]`, `tokens[7] = ]` matches `tokens[5]` — the guards
+    paired the wrong opener/closer.
+
+    **The fix direction** (the genuine remaining work, redirecting R389/R390/R432's "supply `h_win_dyck`
+    from whole-stream well-bracketedness" framing): `h_win_dyck` is NOT a global-restriction primitive — it
+    is the GUARD that DEFINES a genuine window.  Add the Dyck floor `∀ i ∈ [lo, hi], balance lo i ≥ 0` as an
+    8th guard to `h_seq_rec`/`windowFacts` (it EXCLUDES every cross-matched false window and makes
+    `FlowBodyWindow.dyck` a trivial pass-through).  This is the [[ref-end-free-gate-underdetermines-close]] /
+    [[ref-probe-provider-head-blind-gate]] family: an endpoint + total-balance gate underdetermines the
+    matched pair; the interior floor is the discriminator.  This lemma contains the `ofReduceBool` axiom
+    (`native_decide`), off the `universal_roundtrip` path. -/
+theorem seqWindowFacts_false_window
+    (tokens : Array (Positioned YamlToken))
+    (h : Scanner.scanFiltered
+        ("[" ++ emit.emitList
+          [YamlValue.sequence .flow #[],
+           YamlValue.sequence .flow #[YamlValue.scalar { content := "a", style := .plain }]]
+        ++ "]") = .ok tokens) :
+    (2 ≤ 3 ∧ (3 : Nat) < 7 ∧ 7 ≤ tokens.size - 2 ∧ 7 < tokens.size ∧
+      tokens[7]!.val = .flowSequenceEnd ∧ flowBracketBalance tokens 3 7 = 0 ∧
+      tokens[3 - 1]!.val = .flowSequenceStart) ∧
+    ¬ FlowBodyWindow tokens 3 7 := by
+  have key : ∀ {α : Type} (g : Array (Positioned YamlToken) → α) (a : α),
+      (Scanner.scanFiltered
+          ("[" ++ emit.emitList
+            [YamlValue.sequence .flow #[],
+             YamlValue.sequence .flow #[YamlValue.scalar { content := "a", style := .plain }]]
+          ++ "]")).toOption.map g = some a →
+        g tokens = a := by
+    intro α g a e; rw [h] at e; exact Option.some.inj e
+  have hsz : tokens.size = 10 := key (fun t => t.size) 10 (by native_decide)
+  have h7 : tokens[7]!.val = .flowSequenceEnd :=
+    key (fun t => t[7]!.val) .flowSequenceEnd (by native_decide)
+  have h2 : tokens[3 - 1]!.val = .flowSequenceStart :=
+    key (fun t => t[3 - 1]!.val) .flowSequenceStart (by native_decide)
+  have hbal : flowBracketBalance tokens 3 7 = 0 :=
+    key (fun t => flowBracketBalance t 3 7) 0 (by native_decide)
+  have hfloor : flowBracketBalance tokens 3 4 = -1 :=
+    key (fun t => flowBracketBalance t 3 4) (-1) (by native_decide)
+  refine ⟨⟨by omega, by omega, by omega, by omega, h7, hbal, h2⟩, ?_⟩
+  intro hw
+  have hd := hw.dyck 4 (by omega) (by omega)
+  rw [hfloor] at hd
+  omega
+
 /-- **The SEQ-head CONS three-arm dispatch of the locator's per-window step `h_step`** —
     `(i'-b-B2c-nested-fbc-emission-locator-skeleton-brick-d-seq-cons)`, R378, BRICK D (carved).  This is
     the maximal-risk slice of `h_step` the blueprint flagged ("the four-way `cases h_e` × HEAD/CONS
