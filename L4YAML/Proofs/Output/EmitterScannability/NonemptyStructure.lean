@@ -122,7 +122,7 @@ theorem emitList_body_filtered_characterization
   -- `SafeBody_array_flowEntry` gives the post-`.flowEntry` content-start (Part 2).
   -- No `SavedKeyDoesntResolve` substrate and no two-chain reconciliation are needed.
   obtain ⟨n, s', block, h_chain, h_corr', h_fl', h_dp', h_ids', h_ek', h_col', h_inflow',
-          h_indent', h_line', h_atol', h_endline', h_stack', h_fmc, h_block_eq, h_wb, h_wt, h_sb, h_sbu, h_oa⟩ :=
+          h_indent', h_line', h_atol', h_endline', h_stack', h_fmc, h_block_eq, h_wb, h_wt, h_sb, h_sbu, h_oa, _h_lns⟩ :=
     emitList_scans_safebody items h_ne h_all_block s rest h_corr h_flow h_fl h_indent h_col
       h_ek h_atol h_endline h_sync
   -- The body block is exactly the `drop old_sz` of the final filtered token list.
@@ -285,7 +285,7 @@ theorem emitPairList_body_filtered_characterization
   -- `3 ≤ n` chain-length floor (Part 1) is carried alongside.  No `keyshape` producer
   -- and no two-chain reconciliation are needed.
   obtain ⟨n, s', block, h_chain, h_corr', h_fl', h_dp', h_ids', h_ek', h_col', h_inflow',
-          h_indent', h_line', h_atol', h_endline', h_stack', h_fmc, h_block_eq, h_wb, h_wt, h_sb, h_oa, h_n_ge_3⟩ :=
+          h_indent', h_line', h_atol', h_endline', h_stack', h_fmc, h_block_eq, h_wb, h_wt, h_sb, h_oa, h_n_ge_3, _h_lns⟩ :=
     emitPairList_scans_safebody pairs h_ne h_all_k_block h_all_v_block s rest h_corr h_flow h_fl
       h_indent h_col h_ek h_atol h_endline h_ska h_sync
   -- The body block is exactly the `drop old_sz` of the final filtered token list.
@@ -2945,7 +2945,7 @@ theorem emit_scans_in_flow_rec_entry (v : YamlValue) {inFlow : Bool}
       have h_corr₁_assoc : ScannerSurfCorr s₁
           ⟨(emit.emitPairList pairs.toList).toList ++ (['}'] ++ rest), s₁.col⟩ := by
         rw [List.append_assoc] at h_corr₁; exact h_corr₁
-      obtain ⟨n₂, s₂, bodyBlock, h_chain₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, h_ek₂, h_col₂, h_s2_inflow, h_s2_indent, _h_line₂, h_atol₂, h_endline₂, h_stack₂, h_fmc₂, h_body_append, h_body_wb, h_body_wt, h_body_tail, h_body_oa⟩ :=
+      obtain ⟨n₂, s₂, bodyBlock, h_chain₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, h_ek₂, h_col₂, h_s2_inflow, h_s2_indent, _h_line₂, h_atol₂, h_endline₂, h_stack₂, h_fmc₂, h_body_append, h_body_wb, h_body_wt, h_body_tail, h_body_oa, _h_body_lns⟩ :=
         h_pair_scan s₁ (['}'] ++ rest) h_corr₁_assoc h_s1_inflow (by rw [h_fl₁]; omega) h_s1_indent h_s1_col
           (by rw [h_ek₁]; exact h_ek) h_atol₁ h_endline₁ h_s1_ska h_s1_sync
       have h_fl₂_ge2 : s₂.flowLevel ≥ 2 := by rw [h_fl₂, h_fl₁]; omega

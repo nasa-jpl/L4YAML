@@ -146,7 +146,8 @@ theorem emit_scans_block_combined (v : YamlValue) {inFlow : Bool}
         FlowMonoChain.single h_snt (Nat.le.refl) (by omega), ?_, ?_, ?_, ?_,
         EntryUnit_scalar tok str st h_tok_val, ?_,
         lastNonOpener_singleton tok (by rw [h_tok_val]; exact fun h => YamlToken.noConfusion h),
-        OpenerAdj_singleton tok⟩
+        OpenerAdj_singleton tok,
+        lastNonSep_singleton tok (by rw [h_tok_val]; exact fun h => YamlToken.noConfusion h)⟩
       · unfold ScannerState.inFlow; rw [h_fl']
         unfold ScannerState.inFlow at h_flow; exact h_flow
       · unfold ScannerState.currentIndent; rw [h_ids']; exact h_indent
@@ -205,12 +206,15 @@ theorem emit_scans_block_combined (v : YamlValue) {inFlow : Bool}
       have h_wb_es : WellBracketed [tok] ∧ WellTyped [tok] ∧ EntrySafe [tok] ∧
           (∀ (hla : 0 < [tok].length),
             ([tok][[tok].length - 1]'(Nat.sub_lt hla Nat.one_pos)).val ≠ .flowSequenceStart) ∧
-          OpenerAdj [tok] :=
+          OpenerAdj [tok] ∧
+          (∀ (hla : 0 < [tok].length),
+            ([tok][[tok].length - 1]'(Nat.sub_lt hla Nat.one_pos)).val ≠ .flowEntry) :=
         ⟨WellBracketed_singleton_delta_zero tok (by rw [h_tok_val]; exact flowBracketDelta_scalar str st),
           WellTyped_singleton_delta_zero tok (by rw [h_tok_val]; exact flowBracketDelta_scalar str st),
           EntrySafe_scalar tok str st h_tok_val,
           lastNonOpener_singleton tok (by rw [h_tok_val]; exact fun h => YamlToken.noConfusion h),
-          OpenerAdj_singleton tok⟩
+          OpenerAdj_singleton tok,
+          lastNonSep_singleton tok (by rw [h_tok_val]; exact fun h => YamlToken.noConfusion h)⟩
       refine ⟨1, s'', [tok], ScanChainGrew.single h_snt'' h_grew, h_corr', h_fl', h_dp', h_ids', h_ek',
         h_col', ?_, ?_, _h_line', h_atol', h_endline', h_stack',
         FlowMonoChain.single h_snt'' (Nat.le.refl) (by omega),
@@ -261,7 +265,7 @@ theorem emit_scans_block_combined (v : YamlValue) {inFlow : Bool}
       have h_corr₁_assoc : ScannerSurfCorr s₁
           ⟨(emit.emitList items.toList).toList ++ ([']'] ++ rest), s₁.col⟩ := by
         rw [List.append_assoc] at h_corr₁; exact h_corr₁
-      obtain ⟨n₂, s₂, bodyBlock, h_chain₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, h_ek₂, h_col₂, h_s2_inflow, h_s2_indent, _h_line₂, h_atol₂, h_endline₂, h_stack₂, h_fmc₂, h_body_append, h_body_wb, h_body_wt, h_body_head, h_body_tail, h_body_oa⟩ :=
+      obtain ⟨n₂, s₂, bodyBlock, h_chain₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, h_ek₂, h_col₂, h_s2_inflow, h_s2_indent, _h_line₂, h_atol₂, h_endline₂, h_stack₂, h_fmc₂, h_body_append, h_body_wb, h_body_wt, h_body_head, h_body_tail, h_body_oa, _h_body_lns⟩ :=
         h_list_scan s₁ ([']'] ++ rest) h_corr₁_assoc h_s1_inflow (by rw [h_fl₁]; omega) h_s1_indent h_s1_col
           (by rw [h_ek₁]; exact h_ek) h_atol₁ h_endline₁ h_s1_sync
       have h_fl₂_ge2 : s₂.flowLevel ≥ 2 := by rw [h_fl₂, h_fl₁]; omega
@@ -310,7 +314,8 @@ theorem emit_scans_block_combined (v : YamlValue) {inFlow : Bool}
         EntryUnit_wrap fssTok fseTok bodyBlock (h_fss_val ▸ flowBracketDelta_flowSequenceStart)
           (h_fse_val ▸ flowBracketDelta_flowSequenceEnd) h_body_wb, ?_,
         lastNonOpener_wrap fssTok fseTok bodyBlock (by rw [h_fse_val]; decide),
-        OpenerAdj_wrap_seq fssTok fseTok bodyBlock h_fss_val h_fse_val h_body_oa h_body_head h_body_tail⟩
+        OpenerAdj_wrap_seq fssTok fseTok bodyBlock h_fss_val h_fse_val h_body_oa h_body_head h_body_tail,
+        lastNonSep_wrap fssTok fseTok bodyBlock (by rw [h_fse_val]; decide)⟩
       · rw [h_fl₃, h_fl₂, h_fl₁]; omega
       · rw [h_dp₃, h_dp₂, h_dp₁]
       · rw [h_ids₃, h_ids₂, h_ids₁]
@@ -366,7 +371,7 @@ theorem emit_scans_block_combined (v : YamlValue) {inFlow : Bool}
       have h_corr₁_assoc : ScannerSurfCorr s₁
           ⟨(emit.emitList items.toList).toList ++ ([']'] ++ rest), s₁.col⟩ := by
         rw [List.append_assoc] at h_corr₁; exact h_corr₁
-      obtain ⟨n₂, s₂, bodyBlock, h_chain₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, h_ek₂, h_col₂, h_s2_inflow, h_s2_indent, _h_line₂, h_atol₂, h_endline₂, h_stack₂, h_fmc₂, h_body_append, h_body_wb, h_body_wt, h_body_head, h_body_tail, h_body_oa⟩ :=
+      obtain ⟨n₂, s₂, bodyBlock, h_chain₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, h_ek₂, h_col₂, h_s2_inflow, h_s2_indent, _h_line₂, h_atol₂, h_endline₂, h_stack₂, h_fmc₂, h_body_append, h_body_wb, h_body_wt, h_body_head, h_body_tail, h_body_oa, _h_body_lns⟩ :=
         h_list_scan s₁ ([']'] ++ rest) h_corr₁_assoc h_s1_inflow (by rw [h_fl₁]; omega) h_s1_indent h_s1_col
           (by rw [h_ek₁]; exact h_ek) h_atol₁ h_endline₁ h_stack_size₁
       have h_skaf_N : SimpleKeyAboveFloor s₁ s_state.tokens.size s₁.flowLevel := by
@@ -465,7 +470,8 @@ theorem emit_scans_block_combined (v : YamlValue) {inFlow : Bool}
         h_corr₃, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, h_atol₃, h_endline₃, ?_, h_fmc_all,
         h_ska₃, ?_, ?_, ?_, ?_, ?_, h_block_eq, h_take, h_wrap.1, h_wrap_t, h_wrap.2,
         lastNonOpener_wrap fssTok fseTok bodyBlock (by rw [h_fse_val]; decide),
-        OpenerAdj_wrap_seq fssTok fseTok bodyBlock h_fss_val h_fse_val h_body_oa h_body_head h_body_tail⟩
+        OpenerAdj_wrap_seq fssTok fseTok bodyBlock h_fss_val h_fse_val h_body_oa h_body_head h_body_tail,
+        lastNonSep_wrap fssTok fseTok bodyBlock (by rw [h_fse_val]; decide)⟩
       · rw [h_fl₃, h_fl₂, h_fl₁]; omega
       · rw [h_dp₃, h_dp₂, h_dp₁]
       · rw [h_ids₃, h_ids₂, h_ids₁]
@@ -536,7 +542,7 @@ theorem emit_scans_block_combined (v : YamlValue) {inFlow : Bool}
       have h_corr₁_assoc : ScannerSurfCorr s₁
           ⟨(emit.emitPairList pairs.toList).toList ++ (['}'] ++ rest), s₁.col⟩ := by
         rw [List.append_assoc] at h_corr₁; exact h_corr₁
-      obtain ⟨n₂, s₂, bodyBlock, h_chain₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, h_ek₂, h_col₂, h_s2_inflow, h_s2_indent, _h_line₂, h_atol₂, h_endline₂, h_stack₂, h_fmc₂, h_body_append, h_body_wb, h_body_wt, h_body_tail, h_body_oa⟩ :=
+      obtain ⟨n₂, s₂, bodyBlock, h_chain₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, h_ek₂, h_col₂, h_s2_inflow, h_s2_indent, _h_line₂, h_atol₂, h_endline₂, h_stack₂, h_fmc₂, h_body_append, h_body_wb, h_body_wt, h_body_tail, h_body_oa, _h_body_lns⟩ :=
         h_pair_scan s₁ (['}'] ++ rest) h_corr₁_assoc h_s1_inflow (by rw [h_fl₁]; omega) h_s1_indent h_s1_col
           (by rw [h_ek₁]; exact h_ek) h_atol₁ h_endline₁ h_s1_ska h_s1_sync
       have h_fl₂_ge2 : s₂.flowLevel ≥ 2 := by rw [h_fl₂, h_fl₁]; omega
@@ -585,7 +591,8 @@ theorem emit_scans_block_combined (v : YamlValue) {inFlow : Bool}
         EntryUnit_wrap fmsTok fmeTok bodyBlock (h_fms_val ▸ flowBracketDelta_flowMappingStart)
           (h_fme_val ▸ flowBracketDelta_flowMappingEnd) h_body_wb, ?_,
         lastNonOpener_wrap fmsTok fmeTok bodyBlock (by rw [h_fme_val]; decide),
-        OpenerAdj_wrap_map fmsTok fmeTok bodyBlock h_fms_val h_body_oa h_body_tail⟩
+        OpenerAdj_wrap_map fmsTok fmeTok bodyBlock h_fms_val h_body_oa h_body_tail,
+        lastNonSep_wrap fmsTok fmeTok bodyBlock (by rw [h_fme_val]; decide)⟩
       · rw [h_fl₃, h_fl₂, h_fl₁]; omega
       · rw [h_dp₃, h_dp₂, h_dp₁]
       · rw [h_ids₃, h_ids₂, h_ids₁]
@@ -649,7 +656,7 @@ theorem emit_scans_block_combined (v : YamlValue) {inFlow : Bool}
       have h_corr₁_assoc : ScannerSurfCorr s₁
           ⟨(emit.emitPairList pairs.toList).toList ++ (['}'] ++ rest), s₁.col⟩ := by
         rw [List.append_assoc] at h_corr₁; exact h_corr₁
-      obtain ⟨n₂, s₂, bodyBlock, h_chain₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, h_ek₂, h_col₂, h_s2_inflow, h_s2_indent, _h_line₂, h_atol₂, h_endline₂, h_stack₂, h_fmc₂, h_body_append, h_body_wb, h_body_wt, h_body_tail, h_body_oa⟩ :=
+      obtain ⟨n₂, s₂, bodyBlock, h_chain₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, h_ek₂, h_col₂, h_s2_inflow, h_s2_indent, _h_line₂, h_atol₂, h_endline₂, h_stack₂, h_fmc₂, h_body_append, h_body_wb, h_body_wt, h_body_tail, h_body_oa, _h_body_lns⟩ :=
         h_pair_scan s₁ (['}'] ++ rest) h_corr₁_assoc h_s1_inflow (by rw [h_fl₁]; omega) h_s1_indent h_s1_col
           (by rw [h_ek₁]; exact h_ek) h_atol₁ h_endline₁ h_s1_ska h_stack_size₁
       have h_skaf_N : SimpleKeyAboveFloor s₁ s_state.tokens.size s₁.flowLevel := by
@@ -748,7 +755,8 @@ theorem emit_scans_block_combined (v : YamlValue) {inFlow : Bool}
         h_corr₃, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, h_atol₃, h_endline₃, ?_, h_fmc_all,
         h_ska₃, ?_, ?_, ?_, ?_, ?_, h_block_eq, h_take, h_wrap.1, h_wrap_t, h_wrap.2,
         lastNonOpener_wrap fmsTok fmeTok bodyBlock (by rw [h_fme_val]; decide),
-        OpenerAdj_wrap_map fmsTok fmeTok bodyBlock h_fms_val h_body_oa h_body_tail⟩
+        OpenerAdj_wrap_map fmsTok fmeTok bodyBlock h_fms_val h_body_oa h_body_tail,
+        lastNonSep_wrap fmsTok fmeTok bodyBlock (by rw [h_fme_val]; decide)⟩
       · rw [h_fl₃, h_fl₂, h_fl₁]; omega
       · rw [h_dp₃, h_dp₂, h_dp₁]
       · rw [h_ids₃, h_ids₂, h_ids₁]
@@ -829,7 +837,9 @@ theorem emitList_scans_safebody (items : List YamlValue) (h_ne : items ≠ [])
         ∧ WellTyped block
         ∧ SafeBody ContentStartTok block
         ∧ SafeBodyUnit ContentStartTok block
-        ∧ OpenerAdj block := by
+        ∧ OpenerAdj block
+        ∧ (∀ (hla : 0 < block.length),
+            (block[block.length - 1]'(Nat.sub_lt hla Nat.one_pos)).val ≠ .flowEntry) := by
   induction items with
   | nil => contradiction
   | cons v tail ih =>
@@ -841,13 +851,13 @@ theorem emitList_scans_safebody (items : List YamlValue) (h_ne : items ≠ [])
       rw [h_eq] at hcorr
       obtain ⟨n, s', block, h_chain, h_corr, h_fl', h_dp, h_ids, h_ek', h_col', h_flow',
               h_indent', h_line_v, _h_ska, _h_last, h_atol', h_endline', h_stack', h_fmc',
-              h_block_eq, h_wb, h_wt, h_es, h_eu, h_cs, _h_tail_v, h_oa_v⟩ :=
+              h_block_eq, h_wb, h_wt, h_es, h_eu, h_cs, _h_tail_v, h_oa_v, h_lns_v⟩ :=
         h_all v (.head _) s rest_chars hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_sync
       obtain ⟨h_cs_ne, h_cs_val⟩ := h_cs
       exact ⟨n, s', block, h_chain, h_corr, h_fl', h_dp, h_ids, h_ek', h_col', h_flow',
         h_indent', h_line_v, h_atol', h_endline', h_stack', h_fmc', h_block_eq, h_wb, h_wt,
         SafeBody.single block h_cs_ne h_es h_cs_val,
-        SafeBodyUnit.single block h_cs_ne h_eu h_cs_val, h_oa_v⟩
+        SafeBodyUnit.single block h_cs_ne h_eu h_cs_val, h_oa_v, h_lns_v⟩
     | v' :: vs, ih =>
       have h_eq : (emit.emitList (v :: v' :: vs)).toList ++ rest_chars =
           (emit v).toList ++ ([',', ' '] ++ (emit.emitList (v' :: vs)).toList ++ rest_chars) := by
@@ -857,7 +867,7 @@ theorem emitList_scans_safebody (items : List YamlValue) (h_ne : items ≠ [])
       have h_ev : EmitScansInFlowBlock v := h_all v (.head _)
       obtain ⟨n₁, s₁, block₁, h_chain₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_ek₁, h_col₁, h_flow₁,
               h_indent₁, _h_line₁, _h_ska₁, h_last₁, h_atol₁, h_endline₁, h_stack₁, h_fmc₁,
-              h_block_eq₁, h_wb₁, h_wt₁, h_es₁, h_eu₁, h_cs₁, h_tail₁, h_oa₁⟩ :=
+              h_block_eq₁, h_wb₁, h_wt₁, h_es₁, h_eu₁, h_cs₁, h_tail₁, h_oa₁, _h_lns₁⟩ :=
         h_ev s ([',', ' '] ++ (emit.emitList (v' :: vs)).toList ++ rest_chars)
           hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_sync
       obtain ⟨h_cs₁_ne, h_cs₁_val⟩ := h_cs₁
@@ -896,7 +906,7 @@ theorem emitList_scans_safebody (items : List YamlValue) (h_ne : items ≠ [])
       have h_tail_all : ∀ w ∈ v' :: vs, EmitScansInFlowBlock w :=
         fun w hw => h_all w (.tail _ hw)
       obtain ⟨n₃, s_end, block_rest, h_chain₃, h_corr_end, h_fl_end, h_dp_end, h_ids_end,
-              h_ek_end, h_col_end, h_flow_end, h_indent_end, h_line_end, h_atol_end, h_endline_end, h_stack_end, h_fmc₃, h_block_eq_end, h_wb_rest, h_wt_rest, h_sb_rest, h_sbu_rest, h_oa_rest⟩ :=
+              h_ek_end, h_col_end, h_flow_end, h_indent_end, h_line_end, h_atol_end, h_endline_end, h_stack_end, h_fmc₃, h_block_eq_end, h_wb_rest, h_wt_rest, h_sb_rest, h_sbu_rest, h_oa_rest, h_lns_rest⟩ :=
         ih (by simp) h_tail_all s₃ rest_chars h_corr₃'
           h_flow₃ (by rw [h_fl₃, h_fl₂, h_fl₁]; exact h_fl)
           (by rw [h_indent₃]; exact h_s2_indent)
@@ -959,7 +969,7 @@ theorem emitList_scans_safebody (items : List YamlValue) (h_ne : items ≠ [])
             List.append_assoc]
       refine ⟨n₁ + 1 + (n₃' + 1), s_end, block₁ ++ [feTok] ++ block_rest,
         h_arith ▸ h_chain_all, h_corr_end, ?_, ?_, ?_, ?_, h_col_end, h_flow_end, h_indent_end,
-        ?_, h_atol_end, h_endline_end, ?_, h_arith ▸ h_fmc_all, ?_, ?_, ?_, ?_, ?_, ?_⟩
+        ?_, h_atol_end, h_endline_end, ?_, h_arith ▸ h_fmc_all, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
       · rw [h_fl_end, h_fl₃, h_fl₂, h_fl₁]
       · rw [h_dp_end, h_dp₃, h_dp₂, h_dp₁]
       · rw [h_ids_end, h_ids₃, h_ids₂, h_ids₁]
@@ -993,6 +1003,9 @@ theorem emitList_scans_safebody (items : List YamlValue) (h_ne : items ≠ [])
         -- separator `feTok`; block₁'s tail-not-opener from `EmitScansInFlowBlock`'s own field).
         exact OpenerAdj_seam block₁ block_rest feTok h_oa₁ h_oa_rest
           (by rw [h_feTok_val]; decide) h_tail₁
+      · -- lastNonSep (block₁ ++ [feTok] ++ block_rest): block_rest ≠ [] (R423: chain grew)
+        exact lastNonSep_append_right (block₁ ++ [feTok]) block_rest
+          (block_ne_nil_of_chainGrew h_chain₃ h_block_eq_end) h_lns_rest
 
 /-! ### §G.balance.bridge.assemble.map — mapping-body `SafeBody` producer
 
@@ -1047,7 +1060,9 @@ theorem emitPairList_scans_safebody (pairs : List (YamlValue × YamlValue))
         ∧ WellTyped block
         ∧ SafeBody (fun t => t = .key) block
         ∧ OpenerAdj block
-        ∧ 3 ≤ n := by
+        ∧ 3 ≤ n
+        ∧ (∀ (hla : 0 < block.length),
+            (block[block.length - 1]'(Nat.sub_lt hla Nat.one_pos)).val ≠ .flowEntry) := by
   induction pairs with
   | nil => contradiction
   | cons p tail ih =>
@@ -1061,7 +1076,7 @@ theorem emitPairList_scans_safebody (pairs : List (YamlValue × YamlValue))
       have h_ek_key : EmitScansInFlowSavedKeyBlock p.1 := h_all_k p (.head _)
       obtain ⟨n₁, s₁, block_k, h_chain₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_ek₁, h_col₁,
               h_flow₁, h_indent₁, _h_line₁, h_atol₁, h_endline₁, h_stack₁, h_fmc₁,
-              h_ska₁, h_poss₁, h_tidx₁, h_szlt₁, _h_ph0₁, h_ph1₁, h_blockeq_k, h_take_k, h_wb_k, h_wt_k, h_es_k, h_tail_k, h_oa_k⟩ :=
+              h_ska₁, h_poss₁, h_tidx₁, h_szlt₁, _h_ph0₁, h_ph1₁, h_blockeq_k, h_take_k, h_wb_k, h_wt_k, h_es_k, h_tail_k, h_oa_k, _h_lns_k⟩ :=
         h_ek_key s ([':', ' '] ++ (emit p.2).toList ++ rest_chars)
           hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_ska h_sync
       have h_n₁_pos : 1 ≤ n₁ := by
@@ -1126,7 +1141,7 @@ theorem emitPairList_scans_safebody (pairs : List (YamlValue × YamlValue))
       have h_ev : EmitScansInFlowBlock p.2 := h_all_v p (.head _)
       obtain ⟨n_v, s_end, block_v, h_chain_v, h_corr_end, h_fl_end, h_dp_end, h_ids_end,
               h_ek_end, h_col_end, h_flow_end, h_indent_end, h_line_end, _h_ska_v, _h_last_v,
-              h_atol_end, h_endline_end, h_stack_end, h_fmc_v, h_blockeq_v, h_wb_v, h_wt_v, h_es_v, _h_eu_v, _h_cs_v, _h_btail_v, h_oa_v⟩ :=
+              h_atol_end, h_endline_end, h_stack_end, h_fmc_v, h_blockeq_v, h_wb_v, h_wt_v, h_es_v, _h_eu_v, h_cs_v, _h_btail_v, h_oa_v, h_lns_v⟩ :=
         h_ev s₃ rest_chars h_corr₃'
           h_flow₃ (by rw [h_fl₃, h_fl₂, h_fl₁]; exact h_fl)
           (by rw [h_indent₃]; exact h_indent₂)
@@ -1197,7 +1212,7 @@ theorem emitPairList_scans_safebody (pairs : List (YamlValue × YamlValue))
       refine ⟨n₁ + 1 + (n_v' + 1), s_end,
         (⟨s₁.simpleKey.pos, .key, s₁.simpleKey.pos⟩ :: (block_k ++ [⟨pos_v, .value, pos_v⟩])) ++ block_v,
         h_arith ▸ h_chain_all, h_corr_end, ?_, ?_, ?_, ?_, h_col_end, h_flow_end, h_indent_end,
-        ?_, h_atol_end, h_endline_end, ?_, h_arith ▸ h_fmc_all, h_block_end, ?_, ?_, ?_, ?_, by omega⟩
+        ?_, h_atol_end, h_endline_end, ?_, h_arith ▸ h_fmc_all, h_block_end, ?_, ?_, ?_, ?_, by omega, ?_⟩
       · rw [h_fl_end, h_fl₃, h_fl₂, h_fl₁]
       · rw [h_dp_end, h_dp₃, h_dp₂, h_dp₁]
       · rw [h_ids_end, h_ids₃, h_ids₂, h_ids₁]
@@ -1221,6 +1236,9 @@ theorem emitPairList_scans_safebody (pairs : List (YamlValue × YamlValue))
         -- mirror of `emitList_scans_recseqbody`/Block.lean's singleton map case.
         exact OpenerAdj_map_single _ _ block_k block_v (fun h => YamlToken.noConfusion h)
           (fun h => YamlToken.noConfusion h) h_oa_k h_oa_v h_tail_k
+      · -- lastNonSep: block ends in `block_v`'s last (value block nonempty by its ∃-head)
+        obtain ⟨hne_v, _⟩ := h_cs_v
+        exact lastNonSep_append_right _ block_v hne_v h_lns_v
     | p' :: ps, ih =>
       have h_eq : (emit.emitPairList (p :: p' :: ps)).toList ++ rest_chars =
           (emit p.1).toList ++ ([':', ' '] ++ (emit p.2).toList ++
@@ -1230,7 +1248,7 @@ theorem emitPairList_scans_safebody (pairs : List (YamlValue × YamlValue))
       have h_ek_key : EmitScansInFlowSavedKeyBlock p.1 := h_all_k p (.head _)
       obtain ⟨n₁, s₁, block_k, h_chain₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_ek₁, h_col₁,
               h_flow₁, h_indent₁, _h_line₁, h_atol₁, h_endline₁, h_stack₁, h_fmc₁,
-              h_ska₁, h_poss₁, h_tidx₁, h_szlt₁, _h_ph0₁, h_ph1₁, h_blockeq_k, h_take_k, h_wb_k, h_wt_k, h_es_k, h_tail_k, h_oa_k⟩ :=
+              h_ska₁, h_poss₁, h_tidx₁, h_szlt₁, _h_ph0₁, h_ph1₁, h_blockeq_k, h_take_k, h_wb_k, h_wt_k, h_es_k, h_tail_k, h_oa_k, _h_lns_k⟩ :=
         h_ek_key s ([':', ' '] ++ (emit p.2).toList ++
             [',', ' '] ++ (emit.emitPairList (p' :: ps)).toList ++ rest_chars)
           hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_ska h_sync
@@ -1304,7 +1322,7 @@ theorem emitPairList_scans_safebody (pairs : List (YamlValue × YamlValue))
         simp only [List.append_assoc] at h_corr₃' ⊢; exact h_corr₃'
       obtain ⟨n_v, s_v, block_v, h_chain_v, h_corr_v, h_fl_v, h_dp_v, h_ids_v,
               h_ek_v, h_col_v, h_flow_v, h_indent_v, _h_line_v, h_ska_v, h_last_v,
-              h_atol_v, h_endline_v, h_stack_v, h_fmc_v, h_blockeq_v, h_wb_v, h_wt_v, h_es_v, _h_eu_v, h_cs_v, h_btail_v, h_oa_v⟩ :=
+              h_atol_v, h_endline_v, h_stack_v, h_fmc_v, h_blockeq_v, h_wb_v, h_wt_v, h_es_v, _h_eu_v, h_cs_v, h_btail_v, h_oa_v, h_lns_v⟩ :=
         h_ev s₃ ([',', ' '] ++ (emit.emitPairList (p' :: ps)).toList ++ rest_chars)
           h_corr₃_assoc
           h_flow₃ (by rw [h_fl₃, h_fl₂, h_fl₁]; exact h_fl)
@@ -1392,7 +1410,7 @@ theorem emitPairList_scans_safebody (pairs : List (YamlValue × YamlValue))
       have h_tail_all_v : ∀ q ∈ p' :: ps, EmitScansInFlowBlock q.2 :=
         fun q hq => h_all_v q (.tail _ hq)
       obtain ⟨n_r, s_end, block_rest, h_chain_r, h_corr_end, h_fl_end, h_dp_end, h_ids_end,
-              h_ek_end, h_col_end, h_flow_end, h_indent_end, h_line_end, h_atol_end, h_endline_end, h_stack_end, h_fmc_r, h_blockeq_rest, h_wb_rest, h_wt_rest, h_sb_rest, h_oa_rest, h_n_r_ge3⟩ :=
+              h_ek_end, h_col_end, h_flow_end, h_indent_end, h_line_end, h_atol_end, h_endline_end, h_stack_end, h_fmc_r, h_blockeq_rest, h_wb_rest, h_wt_rest, h_sb_rest, h_oa_rest, h_n_r_ge3, h_lns_rest⟩ :=
         ih (by simp) h_tail_all_k h_tail_all_v s_pp rest_chars h_corr_pp'
           h_flow_pp
           (by rw [h_fl_pp, h_fl_c]; rw [h_fl_v, h_fl₃, h_fl₂, h_fl₁]; exact h_fl)
@@ -1475,7 +1493,7 @@ theorem emitPairList_scans_safebody (pairs : List (YamlValue × YamlValue))
       refine ⟨n₁ + 1 + (n_v' + 1) + 1 + (n_r' + 1), s_end,
         (((⟨s₁.simpleKey.pos, .key, s₁.simpleKey.pos⟩ :: (block_k ++ [⟨pos_v, .value, pos_v⟩])) ++ block_v) ++ [feTok]) ++ block_rest,
         h_arith ▸ h_chain_all, h_corr_end, ?_, ?_, ?_, ?_, h_col_end, h_flow_end, h_indent_end,
-        ?_, h_atol_end, h_endline_end, ?_, h_arith ▸ h_fmc_all, h_block_end, ?_, ?_, ?_, ?_, by omega⟩
+        ?_, h_atol_end, h_endline_end, ?_, h_arith ▸ h_fmc_all, h_block_end, ?_, ?_, ?_, ?_, by omega, ?_⟩
       · rw [h_fl_end, h_fl_pp, h_fl_c, h_fl_v, h_fl₃, h_fl₂, h_fl₁]
       · rw [h_dp_end, h_dp_pp, h_dp_c, h_dp_v, h_dp₃, h_dp₂, h_dp₁]
       · rw [h_ids_end, h_ids_pp, h_ids_c, h_ids_v, h_ids₃, h_ids₂, h_ids₁]
@@ -1520,5 +1538,8 @@ theorem emitPairList_scans_safebody (pairs : List (YamlValue × YamlValue))
             (fun h => YamlToken.noConfusion h) h_oa_k h_oa_v h_tail_k)
           h_oa_rest (by rw [h_feTok_val]; decide)
           (lastNonOpener_append_right _ block_v hne_v h_btail_v)
+      · -- lastNonSep: block_rest ≠ [] (R423: chain grew) ⇒ block ends in block_rest's last
+        exact lastNonSep_append_right _ block_rest
+          (block_ne_nil_of_chainGrew h_chain_r h_blockeq_rest) h_lns_rest
 
 end L4YAML.Proofs.EmitterScannability

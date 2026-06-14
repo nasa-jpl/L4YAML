@@ -4275,7 +4275,8 @@ theorem emitScansInFlowBlock_of_flowRecEntry (v : YamlValue)
           h15, h16, h17, h18, h19, h20, h21, _h22, h23, h24⟩ :=
     h s rest h_corr h_inflow h_flow h_indent h_col h_ekl h_atol h_endline h_sks
   exact ⟨n, s', block, h1, h2, h3, h4, h5, h6, h7, h8, h9, h10, h11, h12, h13, h14,
-    h15, h16, h17, h18, h19, h20, h21, h23, lastNonOpener_of_entryUnit block h21, h24⟩
+    h15, h16, h17, h18, h19, h20, h21, h23, lastNonOpener_of_entryUnit block h21, h24,
+    lastNonSep_of_entryUnit_contentHead block h21 h23⟩
 
 /-- **The deferred-structural root WINDOW — `FlowBodyWindow tokens 2 (size-2)`** —
     `(i'-b-B2c-nested-fbc-emission-locator-root-structural-window)`, R386.  R385's root seed named
