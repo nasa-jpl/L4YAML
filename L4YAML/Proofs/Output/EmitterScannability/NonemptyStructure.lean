@@ -6647,14 +6647,16 @@ theorem mapBodyProps_assemble (tokens : Array (Positioned YamlToken)) (lo hi : N
     exact map_value_bracket_conjunct tokens lo hi k (by omega) h_k1_hi h_hi_sz
       h_k1_depth h_open h_outer_bal h_dyck h_wt_interior
       (fun j hkj hjhi hd hb => h_value_bracket_succ k j h_lo h_hi h_bal h_val hkj hjhi hd hb)
-  · -- M9 bracket_seq — exactly the typed locator
+  · -- M9 bracket_seq — typed locator (the floor it now also exposes is unused here)
     intro k h_lo h_hi h_bal h_open
-    exact flowBracketBalance_matching_close_seq tokens lo k hi h_lo h_hi h_hi_sz
-      h_bal h_open h_outer_bal h_dyck h_wt_interior
-  · -- M10 bracket_map — exactly the typed locator
+    obtain ⟨j, h1, h2, h3, h4, _⟩ := flowBracketBalance_matching_close_seq tokens lo k hi h_lo h_hi
+      h_hi_sz h_bal h_open h_outer_bal h_dyck h_wt_interior
+    exact ⟨j, h1, h2, h3, h4⟩
+  · -- M10 bracket_map — typed locator (floor unused here)
     intro k h_lo h_hi h_bal h_open
-    exact flowBracketBalance_matching_close_map tokens lo k hi h_lo h_hi h_hi_sz
-      h_bal h_open h_outer_bal h_dyck h_wt_interior
+    obtain ⟨j, h1, h2, h3, h4, _⟩ := flowBracketBalance_matching_close_map tokens lo k hi h_lo h_hi
+      h_hi_sz h_bal h_open h_outer_bal h_dyck h_wt_interior
+    exact ⟨j, h1, h2, h3, h4⟩
 
 /-- **Windowed-`SafeBody` → `MapBodyProps` consumer joint** (Phase J, map side).  The map-side
     analog of `seqBodyProps_of_windowed_safebody`.  Given a guarded balanced flow-MAPPING subrange

@@ -540,7 +540,7 @@ theorem seqClose_of_located_and_enclosing
       tokens[hiS]!.val = .flowSequenceEnd := by
   have h_p_hi : p < hi := by omega
   -- Matching close + typed close in one call (base `lo`, opener `k := p`).
-  obtain ⟨j, h_pj, h_jhi, h_jclose, h_inner⟩ :=
+  obtain ⟨j, h_pj, h_jhi, h_jclose, h_inner, _⟩ :=
     flowBracketBalance_matching_close_seq tokens lo p hi h_lo_p h_p_hi h_hi_sz
       h_p_depth h_open h_total h_win_floor h_wt
   have h_jdelta : flowBracketDelta tokens[j]!.val = -1 := by rw [h_jclose]; rfl

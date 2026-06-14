@@ -139,6 +139,7 @@ import Tests.Reflections.BracketGuardsAdmitCrossMatched
 import Tests.Reflections.ContravariantGuardStrengthening
 import Tests.Reflections.ProbeTheGoal
 import Tests.Reflections.SelfPropagatingGuardDescent
+import Tests.Reflections.DelegationTreeCollapsesFieldRipple
 
 /-!
 # Reflections — runnable proof-engineering demonstrations

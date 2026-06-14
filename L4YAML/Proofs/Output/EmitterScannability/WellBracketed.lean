@@ -2103,7 +2103,8 @@ theorem flowBracketBalance_matching_close_seq
     (h_dyck : ∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0)
     (h_wt : WellTyped ((tokens.toList.take hi).drop lo)) :
     ∃ j, k < j ∧ j < hi ∧ tokens[j]!.val = .flowSequenceEnd ∧
-      flowBracketBalance tokens (k+1) j = 0 := by
+      flowBracketBalance tokens (k+1) j = 0 ∧
+      (∀ p, k + 1 ≤ p → p ≤ j → flowBracketBalance tokens (k+1) p ≥ 0) := by
   have h_k_open_delta : flowBracketDelta tokens[k]!.val = 1 := by rw [h_k_open]; rfl
   obtain ⟨j, hkj, hjhi, hjdelta, hinner, hpos⟩ :=
     flowBracketBalance_matching_close tokens lo k hi h_lo_k h_k_hi h_hi_sz
@@ -2111,7 +2112,12 @@ theorem flowBracketBalance_matching_close_seq
   have h_k_push : btStep tokens[k]! [] = some [true] := by unfold btStep; rw [h_k_open]
   have hpop := matching_close_typed_core tokens lo k j hi true h_lo_k hkj hjhi h_hi_sz
     h_k_depth h_k_push hinner hjdelta hpos h_wt
-  exact ⟨j, hkj, hjhi, btStep_pop_eq_seqEnd _ hpop, hinner⟩
+  -- Inner Dyck floor of the located interior `[k+1, j)`, self-propagated from the outer Dyck
+  -- (`flowBracketBalance_inner_floor`'s composition, exposed here so the consumer reads it off the
+  -- field — the field's `balance (k+1) j = 0` alone does not pin `j` as the first-return).
+  have h_floor : ∀ p, k + 1 ≤ p → p ≤ j → flowBracketBalance tokens (k+1) p ≥ 0 :=
+    flowBracketBalance_interior_dyck tokens lo k j h_lo_k (by omega) h_k_depth h_k_open_delta hpos
+  exact ⟨j, hkj, hjhi, btStep_pop_eq_seqEnd _ hpop, hinner, h_floor⟩
 
 theorem flowBracketBalance_matching_close_map
     (tokens : Array (Positioned YamlToken)) (lo k hi : Nat)
@@ -2122,7 +2128,8 @@ theorem flowBracketBalance_matching_close_map
     (h_dyck : ∀ i, lo ≤ i → i ≤ hi → flowBracketBalance tokens lo i ≥ 0)
     (h_wt : WellTyped ((tokens.toList.take hi).drop lo)) :
     ∃ j, k < j ∧ j < hi ∧ tokens[j]!.val = .flowMappingEnd ∧
-      flowBracketBalance tokens (k+1) j = 0 := by
+      flowBracketBalance tokens (k+1) j = 0 ∧
+      (∀ p, k + 1 ≤ p → p ≤ j → flowBracketBalance tokens (k+1) p ≥ 0) := by
   have h_k_open_delta : flowBracketDelta tokens[k]!.val = 1 := by rw [h_k_open]; rfl
   obtain ⟨j, hkj, hjhi, hjdelta, hinner, hpos⟩ :=
     flowBracketBalance_matching_close tokens lo k hi h_lo_k h_k_hi h_hi_sz
@@ -2130,7 +2137,10 @@ theorem flowBracketBalance_matching_close_map
   have h_k_push : btStep tokens[k]! [] = some [false] := by unfold btStep; rw [h_k_open]
   have hpop := matching_close_typed_core tokens lo k j hi false h_lo_k hkj hjhi h_hi_sz
     h_k_depth h_k_push hinner hjdelta hpos h_wt
-  exact ⟨j, hkj, hjhi, btStep_pop_eq_mapEnd _ hpop, hinner⟩
+  -- Inner Dyck floor of the located interior `[k+1, j)` (see the seq analogue).
+  have h_floor : ∀ p, k + 1 ≤ p → p ≤ j → flowBracketBalance tokens (k+1) p ≥ 0 :=
+    flowBracketBalance_interior_dyck tokens lo k j h_lo_k (by omega) h_k_depth h_k_open_delta hpos
+  exact ⟨j, hkj, hjhi, btStep_pop_eq_mapEnd _ hpop, hinner, h_floor⟩
 
 /-! #### Typed locator, part 4 — balanced-factor extraction for nested subranges
     (`.body2.discharge.typedlocator.infix`)
@@ -2346,8 +2356,9 @@ theorem seq_bracket_seq_conjunct (tokens : Array (Positioned YamlToken))
       flowBracketBalance tokens (k+1) j = 0 ∧
       j + 1 ≤ hi ∧
       (tokens[j+1]!.val = .flowEntry ∨
-       (tokens[j+1]!.val = .flowSequenceEnd ∧ j + 1 = hi)) := by
-  obtain ⟨j, hkj, hjhi, hjval, hinner⟩ :=
+       (tokens[j+1]!.val = .flowSequenceEnd ∧ j + 1 = hi)) ∧
+      (∀ p, k + 1 ≤ p → p ≤ j → flowBracketBalance tokens (k+1) p ≥ 0) := by
+  obtain ⟨j, hkj, hjhi, hjval, hinner, h_floor⟩ :=
     flowBracketBalance_matching_close_seq tokens lo k hi h_lo_k h_k_hi h_hi_sz
       h_k_depth h_k_open h_total h_dyck h_wt
   have h_j_sz : j < tokens.size := Nat.lt_of_lt_of_le hjhi h_hi_sz
@@ -2355,7 +2366,7 @@ theorem seq_bracket_seq_conjunct (tokens : Array (Positioned YamlToken))
   have h_close_delta : flowBracketDelta tokens[j]!.val = -1 := by rw [hjval]; rfl
   have hsucc := seq_bracket_succ_reduce tokens lo hi k j h_lo_k hkj h_j_sz
     h_k_depth h_open_delta h_close_delta hinner (fun hd => h_succ j hkj hjhi h_close_delta hd)
-  exact ⟨j, hkj, hjhi, hjval, hinner, hsucc.1, hsucc.2⟩
+  exact ⟨j, hkj, hjhi, hjval, hinner, hsucc.1, hsucc.2, h_floor⟩
 
 /-- **`SeqBodyProps.bracket_map` assembled.**  A depth-0 `{` opener at `k` in a seq body yields
     the `bracket_map` conjunct: matching `}` at `j` (typed locator `..._map`) with balanced
@@ -2378,8 +2389,9 @@ theorem seq_bracket_map_conjunct (tokens : Array (Positioned YamlToken))
       flowBracketBalance tokens (k+1) j = 0 ∧
       j + 1 ≤ hi ∧
       (tokens[j+1]!.val = .flowEntry ∨
-       (tokens[j+1]!.val = .flowSequenceEnd ∧ j + 1 = hi)) := by
-  obtain ⟨j, hkj, hjhi, hjval, hinner⟩ :=
+       (tokens[j+1]!.val = .flowSequenceEnd ∧ j + 1 = hi)) ∧
+      (∀ p, k + 1 ≤ p → p ≤ j → flowBracketBalance tokens (k+1) p ≥ 0) := by
+  obtain ⟨j, hkj, hjhi, hjval, hinner, h_floor⟩ :=
     flowBracketBalance_matching_close_map tokens lo k hi h_lo_k h_k_hi h_hi_sz
       h_k_depth h_k_open h_total h_dyck h_wt
   have h_j_sz : j < tokens.size := Nat.lt_of_lt_of_le hjhi h_hi_sz
@@ -2387,7 +2399,7 @@ theorem seq_bracket_map_conjunct (tokens : Array (Positioned YamlToken))
   have h_close_delta : flowBracketDelta tokens[j]!.val = -1 := by rw [hjval]; rfl
   have hsucc := seq_bracket_succ_reduce tokens lo hi k j h_lo_k hkj h_j_sz
     h_k_depth h_open_delta h_close_delta hinner (fun hd => h_succ j hkj hjhi h_close_delta hd)
-  exact ⟨j, hkj, hjhi, hjval, hinner, hsucc.1, hsucc.2⟩
+  exact ⟨j, hkj, hjhi, hjval, hinner, hsucc.1, hsucc.2, h_floor⟩
 
 /-! **Typed locator, part 7 — bracket-conjunct assembly (map side).**
 
@@ -2426,7 +2438,7 @@ theorem map_key_bracket_conjunct (tokens : Array (Positioned YamlToken))
       flowBracketBalance tokens (k+2) j = 0 ∧
       j + 1 < hi ∧ tokens[j+1]!.val = .value := by
   rcases h_open with h_seq | h_map
-  · obtain ⟨j, hkj, hjhi, hjval, hinner⟩ :=
+  · obtain ⟨j, hkj, hjhi, hjval, hinner, _⟩ :=
       flowBracketBalance_matching_close_seq tokens lo (k+1) hi h_lo_k1 h_k1_hi h_hi_sz
         h_k1_depth h_seq h_total h_dyck h_wt
     have h_j_sz : j < tokens.size := Nat.lt_of_lt_of_le hjhi h_hi_sz
@@ -2435,7 +2447,7 @@ theorem map_key_bracket_conjunct (tokens : Array (Positioned YamlToken))
     have hsucc := map_key_bracket_value_reduce tokens lo hi (k+1) j h_lo_k1 hkj h_j_sz
       h_k1_depth h_open_delta h_close_delta hinner (fun hd => h_succ j hkj hjhi h_close_delta hd)
     exact ⟨j, hkj, hjhi, Or.inl ⟨h_seq, hjval⟩, hinner, hsucc.1, hsucc.2⟩
-  · obtain ⟨j, hkj, hjhi, hjval, hinner⟩ :=
+  · obtain ⟨j, hkj, hjhi, hjval, hinner, _⟩ :=
       flowBracketBalance_matching_close_map tokens lo (k+1) hi h_lo_k1 h_k1_hi h_hi_sz
         h_k1_depth h_map h_total h_dyck h_wt
     have h_j_sz : j < tokens.size := Nat.lt_of_lt_of_le hjhi h_hi_sz
@@ -2471,7 +2483,7 @@ theorem map_value_bracket_conjunct (tokens : Array (Positioned YamlToken))
       (tokens[j+1]!.val = .flowEntry ∨
        (tokens[j+1]!.val = .flowMappingEnd ∧ j + 1 = hi)) := by
   rcases h_open with h_seq | h_map
-  · obtain ⟨j, hkj, hjhi, hjval, hinner⟩ :=
+  · obtain ⟨j, hkj, hjhi, hjval, hinner, _⟩ :=
       flowBracketBalance_matching_close_seq tokens lo (k+1) hi h_lo_k1 h_k1_hi h_hi_sz
         h_k1_depth h_seq h_total h_dyck h_wt
     have h_j_sz : j < tokens.size := Nat.lt_of_lt_of_le hjhi h_hi_sz
@@ -2480,7 +2492,7 @@ theorem map_value_bracket_conjunct (tokens : Array (Positioned YamlToken))
     have hsucc := map_value_bracket_succ_reduce tokens lo hi (k+1) j h_lo_k1 hkj h_j_sz
       h_k1_depth h_open_delta h_close_delta hinner (fun hd => h_succ j hkj hjhi h_close_delta hd)
     exact ⟨j, hkj, hjhi, Or.inl ⟨h_seq, hjval⟩, hinner, hsucc.1, hsucc.2⟩
-  · obtain ⟨j, hkj, hjhi, hjval, hinner⟩ :=
+  · obtain ⟨j, hkj, hjhi, hjval, hinner, _⟩ :=
       flowBracketBalance_matching_close_map tokens lo (k+1) hi h_lo_k1 h_k1_hi h_hi_sz
         h_k1_depth h_map h_total h_dyck h_wt
     have h_j_sz : j < tokens.size := Nat.lt_of_lt_of_le hjhi h_hi_sz

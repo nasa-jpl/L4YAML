@@ -916,7 +916,7 @@ theorem flow_parser_ok_of_structure (tokens : Array (Positioned YamlToken)) (fue
         · -- flowSequenceStart bracket → inner SEQ via IH.1
           have h_val : tokens[ps.pos]!.val = .flowSequenceStart := by
             rw [← h_tok]; exact (peek_some_val h_peek).2
-          obtain ⟨j, h_kj, h_j_hi, h_j_tok, h_inner_bal, h_j1_le, h_succ⟩ :=
+          obtain ⟨j, h_kj, h_j_hi, h_j_tok, h_inner_bal, h_j1_le, h_succ, _⟩ :=
             hbody.bracket_seq ps.pos h_bs h_pos h_bal_ps h_val
           have h_inner_span : j - (ps.pos + 1) < n := by omega
           have hbody_inner : SeqBodyProps tokens (ps.pos + 1) j :=
@@ -965,7 +965,7 @@ theorem flow_parser_ok_of_structure (tokens : Array (Positioned YamlToken)) (fue
         · -- flowMappingStart bracket → inner MAP via IH.2
           have h_val : tokens[ps.pos]!.val = .flowMappingStart := by
             rw [← h_tok]; exact (peek_some_val h_peek).2
-          obtain ⟨j, h_kj, h_j_hi, h_j_tok, h_inner_bal, h_j1_le, h_succ⟩ :=
+          obtain ⟨j, h_kj, h_j_hi, h_j_tok, h_inner_bal, h_j1_le, h_succ, _⟩ :=
             hbody.bracket_map ps.pos h_bs h_pos h_bal_ps h_val
           have h_inner_span : j - (ps.pos + 1) < n := by omega
           have hbody_inner : MapBodyProps tokens (ps.pos + 1) j :=

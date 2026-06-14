@@ -1086,7 +1086,8 @@ structure SeqBodyProps (tokens : Array (Positioned YamlToken)) (lo hi : Nat) : P
       flowBracketBalance tokens (k+1) j = 0 ∧
       j + 1 ≤ hi ∧
       (tokens[j+1]!.val = .flowEntry ∨
-       (tokens[j+1]!.val = .flowSequenceEnd ∧ j + 1 = hi))
+       (tokens[j+1]!.val = .flowSequenceEnd ∧ j + 1 = hi)) ∧
+      (∀ p, k + 1 ≤ p → p ≤ j → flowBracketBalance tokens (k+1) p ≥ 0)
   bracket_map : ∀ k, lo ≤ k → k < hi →
     flowBracketBalance tokens lo k = 0 →
     tokens[k]!.val = .flowMappingStart →
@@ -1095,7 +1096,8 @@ structure SeqBodyProps (tokens : Array (Positioned YamlToken)) (lo hi : Nat) : P
       flowBracketBalance tokens (k+1) j = 0 ∧
       j + 1 ≤ hi ∧
       (tokens[j+1]!.val = .flowEntry ∨
-       (tokens[j+1]!.val = .flowSequenceEnd ∧ j + 1 = hi))
+       (tokens[j+1]!.val = .flowSequenceEnd ∧ j + 1 = hi)) ∧
+      (∀ p, k + 1 ≤ p → p ≤ j → flowBracketBalance tokens (k+1) p ≥ 0)
 
 /-- Structural properties of a well-formed flow MAPPING body `[lo, hi)`.
 
