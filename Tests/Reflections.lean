@@ -126,6 +126,7 @@ import Tests.Reflections.AdjacencyMirrorCornerIsLayerScoped
 import Tests.Reflections.TriggerCoincidenceRelocatesObligation
 import Tests.Reflections.SourceGateCollapseBlocksMirror
 import Tests.Reflections.ProgressWitnessCertifiesDelta
+import Tests.Reflections.InvariantNeutralSiblingNeedsHead
 
 /-!
 # Reflections — runnable proof-engineering demonstrations
