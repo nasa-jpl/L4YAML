@@ -601,6 +601,119 @@ theorem OpenerAdj_array (arr : Array (Positioned YamlToken)) (lo : Nat)
   have key := h (k - lo) hj1 hopen' hne'
   rw [h_get_k1] at key; exact key
 
+/-- **Separator adjacency** (the all-depth, ungated field the produce-side separator joint
+    `globalFlowSeqSepAdj_of_structure` consumes as its `h_body` input).  Every `.flowEntry` separator
+    whose successor is not an explicit key indicator `.key` is immediately followed by a
+    flow-content-start token.  Pure list combinatorics — the `.flowEntry`/`≠ .key` mirror of `OpenerAdj`
+    (trigger `.flowSequenceStart`/gate `≠ .flowSequenceEnd`); the value-induction in the flat producers
+    composes it exactly as it composes `OpenerAdj`, and the structure consumers project it to the
+    array-`getElem!` shape through `SepAdj_array` below. -/
+def SepAdj (l : List (Positioned YamlToken)) : Prop :=
+  ∀ (k : Nat) (h : k + 1 < l.length),
+    (l[k]'(by omega)).val = .flowEntry →
+    (l[k+1]'h).val ≠ .key →
+    isFlowContentStart (l[k+1]'h).val
+
+/-- Base: the empty body (an empty `[]`/`{}` interior) is separator-adjacent (vacuous). -/
+theorem SepAdj_nil : SepAdj [] := by
+  intro k h; simp at h
+
+/-- Base: a singleton block (a scalar block) is separator-adjacent (no successor index). -/
+theorem SepAdj_singleton (t : Positioned YamlToken) : SepAdj [t] := by
+  intro k h; simp at h
+
+/-- **Fundamental recursive brick.**  Prepending a token preserves separator-adjacency,
+    provided that if the new head is a `.flowEntry` separator, its successor (the old head)
+    is either an explicit key `.key` (excluded by the field's `≠ .key` premise) or a
+    content-start.  The seam glue `… ++ [feTok] ++ …` is this lemma with the `.flowEntry`
+    separator as the new head. -/
+theorem SepAdj_cons (t : Positioned YamlToken) (rest : List (Positioned YamlToken))
+    (h_rest : SepAdj rest)
+    (h_head : t.val = .flowEntry →
+       ∀ (h0 : 0 < rest.length), (rest[0]'h0).val ≠ .key →
+         isFlowContentStart (rest[0]'h0).val) :
+    SepAdj (t :: rest) := by
+  intro k hk hsep hne
+  match k with
+  | 0 =>
+    have hr0 : 0 < rest.length := by simp [List.length_cons] at hk; omega
+    rw [List.getElem_cons_zero] at hsep
+    rw [List.getElem_cons_succ] at hne ⊢
+    exact h_head hsep hr0 hne
+  | k'+1 =>
+    have hrk : k' + 1 < rest.length := by simp [List.length_cons] at hk; omega
+    rw [List.getElem_cons_succ] at hsep
+    rw [List.getElem_cons_succ] at hne ⊢
+    exact h_rest k' hrk hsep hne
+
+/-- **Closure under concatenation** with a tail bridge.  Inside `a` and inside `b` the
+    field is local; the only boundary case is `a`'s last token — and emitter blocks /
+    separators always end with a close or scalar (never a `.flowEntry`), so the bridge
+    "`a`'s tail is not `.flowEntry`" discharges the boundary vacuously. -/
+theorem SepAdj_append (a b : List (Positioned YamlToken))
+    (ha : SepAdj a) (hb : SepAdj b)
+    (h_tail : ∀ (hla : 0 < a.length),
+       (a[a.length-1]'(Nat.sub_lt hla Nat.one_pos)).val ≠ .flowEntry) :
+    SepAdj (a ++ b) := by
+  intro k hk hsep hne
+  have hlen : (a ++ b).length = a.length + b.length := by rw [List.length_append]
+  rcases Nat.lt_or_ge (k + 1) a.length with hk1 | hge1
+  · -- both k and k+1 inside a
+    have e_k : (a ++ b)[k]'(by omega) = a[k]'(by omega) := List.getElem_append_left (by omega)
+    have e_k1 : (a ++ b)[k+1]'hk = a[k+1]'hk1 := List.getElem_append_left hk1
+    rw [e_k1]; rw [e_k] at hsep; rw [e_k1] at hne
+    exact ha k hk1 hsep hne
+  · rcases Nat.lt_or_ge k a.length with hka | hkb
+    · -- boundary: k = a.length - 1 inside a; the separator premise contradicts the tail bridge
+      exfalso
+      have hka' : k = a.length - 1 := by omega
+      have e_k : (a ++ b)[k]'(by omega) = a[k]'hka := List.getElem_append_left hka
+      rw [e_k] at hsep
+      simp only [hka'] at hsep
+      exact h_tail (by omega) hsep
+    · -- both inside b at offset m
+      obtain ⟨m, hm⟩ : ∃ m, k = a.length + m := ⟨k - a.length, by omega⟩
+      subst hm
+      have hmb1 : m + 1 < b.length := by rw [hlen] at hk; omega
+      have e_k : (a ++ b)[a.length + m]'(by omega) = b[m]'(by omega) := by
+        rw [List.getElem_append_right (by omega)]; congr 1; omega
+      have e_k1 : (a ++ b)[a.length + m + 1]'hk = b[m+1]'hmb1 := by
+        rw [List.getElem_append_right (by omega)]; congr 1; omega
+      rw [e_k1]; rw [e_k] at hsep; rw [e_k1] at hne
+      exact hb m hmb1 hsep hne
+
+/-- **Array/offset wrapper for `SepAdj`** — the `SepAdj` mirror of `OpenerAdj_array`.
+    Restates the body-slice separator field `SepAdj (arr.toList.drop lo)` against `getElem!`
+    on the token array over `[lo, arr.size)`: every `.flowEntry` separator with a non-`.key`
+    successor is followed by a flow-content-start.  This is exactly the array-`getElem!` shape the
+    global producer `globalFlowSeqSepAdj_of_structure` consumes as its `h_body` field — the structure
+    consumers convert their characterization Part (`SepAdj block`) to it through this wrapper, then
+    re-base the array indices to the outer `tokens` via their local `h_tok_body`. -/
+theorem SepAdj_array (arr : Array (Positioned YamlToken)) (lo : Nat)
+    (h : SepAdj (arr.toList.drop lo)) :
+    ∀ (k : Nat), lo ≤ k → k + 1 < arr.size →
+      arr[k]!.val = .flowEntry →
+      arr[k+1]!.val ≠ .key →
+      isFlowContentStart arr[k+1]!.val := by
+  intro k h_lo hk1 hsep hne
+  have hk0 : k < arr.size := by omega
+  have h_len : (arr.toList.drop lo).length = arr.size - lo := by
+    rw [List.length_drop, Array.length_toList]
+  have hj1 : (k - lo) + 1 < (arr.toList.drop lo).length := by rw [h_len]; omega
+  have hj0 : k - lo < (arr.toList.drop lo).length := by omega
+  -- the slice element at the local offset equals the array element at the global index
+  have h_get_k : ((arr.toList.drop lo)[k - lo]'hj0).val = arr[k]!.val := by
+    rw [getElem!_pos arr k hk0, List.getElem_drop, Array.getElem_toList (by omega)]; congr 2; omega
+  have h_get_k1 : ((arr.toList.drop lo)[(k - lo) + 1]'hj1).val = arr[k+1]!.val := by
+    rw [getElem!_pos arr (k+1) hk1, List.getElem_drop, Array.getElem_toList (by omega)]
+    congr 2; omega
+  have hsep' : ((arr.toList.drop lo)[k - lo]'hj0).val = .flowEntry := by
+    rw [h_get_k]; exact hsep
+  have hne' : ((arr.toList.drop lo)[(k - lo) + 1]'hj1).val ≠ .key := by
+    rw [h_get_k1]; exact hne
+  have key := h (k - lo) hj1 hsep' hne'
+  rw [h_get_k1] at key; exact key
+
 /-- The `OpenerAdj` mirror of `wrap_seq_block`: a flow-sequence block `[ body ]`
     is opener-adjacent given the body is opener-adjacent, the body's first token
     (if not the close) is a content-start, and the body's last token is not itself
