@@ -230,6 +230,28 @@ theorem emitList_scans_block_empty : EmitListScansInFlowBlock [] := by
     h_atol, h_endline, rfl, .zero (Nat.le.refl), by simp, WellBracketed_nil, WellTyped_nil,
     (by intro h0; simp at h0), (by intro hla; simp at hla), OpenerAdj_nil⟩
 
+/-- **Per-step delta nonemptiness from chain growth.**  A `ScanChainGrew` of `≥ 1` step
+    *strictly* grows the filtered token count (`ScanChainGrew_filtered_grows`); composed with the
+    filtered-block equation `s'.filtered = s.filtered ++ block`, the per-step delta `block` is
+    nonempty.  The recursion's PROGRESS witness — the strict filtered-growth that drives
+    advancement — doubles as a nonemptiness certificate for the block, so a recursion-seam
+    construction that needs `block ≠ []` (e.g. the `lastNonSep` separator-tail field, whose seam
+    token `.flowEntry` IS the separator, so an empty tail would falsify it) need NOT thread a new
+    `block ≠ []` carrier field: the growth witness is already in scope at every seam (it is how the
+    recursion makes progress) and certifies the delta for free. -/
+theorem block_ne_nil_of_chainGrew
+    {s s' : ScannerState} {n : Nat} {block : List (Positioned YamlToken)}
+    (h_chain : ScanChainGrew (fun t => t.val != .placeholder) s (n + 1) s')
+    (h_eq : (s'.tokens.filter (fun t => t.val != .placeholder)).toList
+        = (s.tokens.filter (fun t => t.val != .placeholder)).toList ++ block) :
+    block ≠ [] := by
+  have h_grow := ScanChainGrew_filtered_grows h_chain
+  have h_len := congrArg List.length h_eq
+  rw [Array.length_toList, List.length_append, Array.length_toList] at h_len
+  intro h_nil
+  rw [h_nil, List.length_nil] at h_len
+  omega
+
 /-- Non-empty list body via induction on the item list, parallel to
     `emitList_scans_nonempty` but additionally accumulating the `WellBracketed`
     block: each item block (from `EmitScansInFlowBlock`) is `WellBracketed`, each
