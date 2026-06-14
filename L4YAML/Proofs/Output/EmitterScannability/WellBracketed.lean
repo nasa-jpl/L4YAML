@@ -905,6 +905,180 @@ theorem OpenerAdj_map_single (key value : Positioned YamlToken)
   exact OpenerAdj_append (key :: (block_k ++ [value])) block_v h_kv h_v
     (lastNonOpener_wrap key value block_k h_value)
 
+/-! #### Separator-adjacency wrap / seam / tail bridges — the token-CONCRETE layer (R420/R421)
+
+The `SepAdj` mirror of the `OpenerAdj_wrap_*` / `lastNonOpener_*` / `OpenerAdj_seam` /
+`OpenerAdj_map_single` family.  PER R420 ([[ref-adjacency-mirror-corner-is-layer-scoped]]) this is
+the token-CONCRETE layer where the clone is NOT a free verbatim substitution (the combinator layer
+above — `SepAdj`/`_nil`/`_singleton`/`_cons`/`_append`/`_array` — cloned verbatim because it is
+token-opaque; here the proofs DO inspect concrete trigger/structural tokens).
+
+PER R421 ([[ref-trigger-coincidence-relocates-obligation]]) the content-start OBLIGATION RELOCATES
+relative to the `OpenerAdj` sibling, because a DIFFERENT emitted token coincides with the trigger:
+
+  * `OpenerAdj`: trigger `.flowSequenceStart` coincides with the block OPENER → the wrap head
+    carries the obligation (`OpenerAdj_wrap_seq` needs `h_head`); the `.flowEntry` SEAM is inert
+    (`OpenerAdj_seam` discharges its seam by the tail bridge `feTok ≠ .flowSequenceStart`).
+  * `SepAdj`: trigger `.flowEntry` coincides with the SEAM → the wrap head is INERT
+    (`SepAdj_wrap_seq`/`_wrap_map` SHED `h_head`, vacuous like `OpenerAdj_wrap_map`); the seam
+    carries the obligation (`SepAdj_seam` needs `h_head_rest`).
+
+So total machinery is CONSERVED but RELOCATED head↔seam.  And the tail bridge has no sound
+`lastNonSep_append3` analogue at `rest = []` (the seam `.flowEntry` IS the would-be last token, so
+"last ≠ `.flowEntry`" is false there) — the emitter never trails a separator, so the nested tail
+bridge is `lastNonSep_append_right` with `rest ≠ []`: the tail bridge's DOMAIN restricts to the
+trigger-coinciding seat. -/
+
+/-- The `SepAdj` mirror of `OpenerAdj_wrap_seq` — but SHAPED like `OpenerAdj_wrap_map`: the block
+    head `.flowSequenceStart` is NOT the `.flowEntry` separator trigger, so the `SepAdj_cons` head
+    premise discharges VACUOUSLY and NO `h_head` content-start obligation is owed (per R421 that
+    obligation lives at the seam, `SepAdj_seam`).  Only the body field and the tail bridge are
+    needed; `cl`'s value is irrelevant. -/
+theorem SepAdj_wrap_seq (op cl : Positioned YamlToken)
+    (body : List (Positioned YamlToken))
+    (h_op : op.val = .flowSequenceStart)
+    (h_body : SepAdj body)
+    (h_tail : ∀ (hla : 0 < body.length),
+       (body[body.length-1]'(Nat.sub_lt hla Nat.one_pos)).val ≠ .flowEntry) :
+    SepAdj (op :: (body ++ [cl])) := by
+  have h_rest : SepAdj (body ++ [cl]) :=
+    SepAdj_append body [cl] h_body (SepAdj_singleton cl) h_tail
+  apply SepAdj_cons op (body ++ [cl]) h_rest
+  intro hsep _h0' _hne
+  exfalso
+  rw [h_op] at hsep
+  exact absurd hsep (by decide)
+
+/-- The `SepAdj` mirror of `OpenerAdj_wrap_map`: a flow-mapping block `{ body }` is
+    separator-adjacent given the body is and the body's tail is not a `.flowEntry`.  The new head
+    `{` is not a `.flowEntry`, so the `SepAdj_cons` head premise is vacuous — identical shape to
+    `SepAdj_wrap_seq`, because for the separator field BOTH block openers are inert. -/
+theorem SepAdj_wrap_map (op cl : Positioned YamlToken)
+    (body : List (Positioned YamlToken))
+    (h_op : op.val = .flowMappingStart)
+    (h_body : SepAdj body)
+    (h_tail : ∀ (hla : 0 < body.length),
+       (body[body.length-1]'(Nat.sub_lt hla Nat.one_pos)).val ≠ .flowEntry) :
+    SepAdj (op :: (body ++ [cl])) := by
+  have h_rest : SepAdj (body ++ [cl]) :=
+    SepAdj_append body [cl] h_body (SepAdj_singleton cl) h_tail
+  apply SepAdj_cons op (body ++ [cl]) h_rest
+  intro hsep _h0' _hne
+  exfalso
+  rw [h_op] at hsep
+  exact absurd hsep (by decide)
+
+/-- `SepAdj` tail bridge — singleton (mirror of `lastNonOpener_singleton`).  `[t]`'s only token is
+    its last; if it is not a `.flowEntry`, the `SepAdj_append` boundary bridge holds.  Token-opaque
+    verbatim clone (the trigger is threaded as the hypothesis `h`, never inspected). -/
+theorem lastNonSep_singleton (t : Positioned YamlToken)
+    (h : t.val ≠ .flowEntry) :
+    ∀ (hla : 0 < [t].length),
+      ([t][[t].length - 1]'(Nat.sub_lt hla Nat.one_pos)).val ≠ .flowEntry :=
+  fun _ => h
+
+/-- `SepAdj` tail bridge — wrapped block (mirror of `lastNonOpener_wrap`).  A wrapped block
+    `op :: (body ++ [cl])` ends in `cl`; if `cl` is not a `.flowEntry`, the boundary bridge holds.
+    Token-opaque verbatim clone, routed through `getLast?`. -/
+theorem lastNonSep_wrap (op cl : Positioned YamlToken) (body : List (Positioned YamlToken))
+    (h : cl.val ≠ .flowEntry) :
+    ∀ (hla : 0 < (op :: (body ++ [cl])).length),
+      ((op :: (body ++ [cl]))[(op :: (body ++ [cl])).length - 1]'(Nat.sub_lt hla Nat.one_pos)).val
+        ≠ .flowEntry := by
+  intro hla
+  have hlast : (op :: (body ++ [cl]))[(op :: (body ++ [cl])).length - 1]'(Nat.sub_lt hla Nat.one_pos)
+      = cl := by
+    have h1 : (op :: (body ++ [cl]))[(op :: (body ++ [cl])).length - 1]? = some cl := by
+      rw [← List.getLast?_eq_getElem?, List.getLast?_cons_of_ne_nil (by simp),
+        List.getLast?_concat]
+    rw [List.getElem?_eq_getElem (Nat.sub_lt hla Nat.one_pos)] at h1
+    exact Option.some.inj h1
+  rw [hlast]; exact h
+
+/-- `SepAdj` tail bridge — `getLast?` form (mirror of `lastNonOpener_of_getLast?`).  Reduce a
+    block's "last token ≠ `.flowEntry`" to a `getLast?` witness.  Token-opaque verbatim clone. -/
+theorem lastNonSep_of_getLast? (l : List (Positioned YamlToken)) (t : Positioned YamlToken)
+    (h_gl : l.getLast? = some t) (h : t.val ≠ .flowEntry) :
+    ∀ (hla : 0 < l.length),
+      (l[l.length - 1]'(Nat.sub_lt hla Nat.one_pos)).val ≠ .flowEntry := by
+  intro hla
+  have h1 : l[l.length - 1]? = some t := by
+    rw [← List.getLast?_eq_getElem?]; exact h_gl
+  rw [List.getElem?_eq_getElem (Nat.sub_lt hla Nat.one_pos)] at h1
+  rw [Option.some.inj h1]; exact h
+
+/-- The forward bridge (mirror of `getLast?_not_opener_of_lastNonOpener`): a `getElem` "last ≠
+    `.flowEntry`" yields a `getLast?` witness with a non-separator value.  Token-opaque clone. -/
+theorem getLast?_not_sep_of_lastNonSep (l : List (Positioned YamlToken)) (hne : l ≠ [])
+    (h : ∀ (hla : 0 < l.length),
+      (l[l.length - 1]'(Nat.sub_lt hla Nat.one_pos)).val ≠ .flowEntry) :
+    ∃ t, l.getLast? = some t ∧ t.val ≠ .flowEntry := by
+  have hla : 0 < l.length := by
+    cases l with
+    | nil => exact absurd rfl hne
+    | cons _ _ => simp
+  refine ⟨l[l.length - 1]'(Nat.sub_lt hla Nat.one_pos), ?_, h hla⟩
+  rw [List.getLast?_eq_getElem?, List.getElem?_eq_getElem (Nat.sub_lt hla Nat.one_pos)]
+
+/-- `SepAdj` tail bridge — right append (mirror of `lastNonOpener_append_right`).  `a ++ b` with
+    `b ≠ []` ends in `b`'s last; `b`'s tail-not-`.flowEntry` transfers.  Token-opaque clone.  This
+    is the nested tail bridge for the seq-body seam `(a ++ [feTok]) ++ rest`: with `rest ≠ []` (the
+    emitter never trails a separator) the result ends in `rest`'s last, NOT the `.flowEntry` seam —
+    so the `OpenerAdj`-style `lastNonOpener_append3` (which ALSO covered `rest = []` via the inert
+    seam) has NO sound `.flowEntry` analogue at `rest = []`; PER R421 the tail bridge's domain
+    restricts to `rest ≠ []`. -/
+theorem lastNonSep_append_right (a b : List (Positioned YamlToken)) (hb : b ≠ [])
+    (h_b : ∀ (hla : 0 < b.length),
+      (b[b.length - 1]'(Nat.sub_lt hla Nat.one_pos)).val ≠ .flowEntry) :
+    ∀ (hla : 0 < (a ++ b).length),
+      ((a ++ b)[(a ++ b).length - 1]'(Nat.sub_lt hla Nat.one_pos)).val ≠ .flowEntry := by
+  obtain ⟨t, h_gl, h_t⟩ := getLast?_not_sep_of_lastNonSep b hb h_b
+  have h_gl_ab : (a ++ b).getLast? = some t := by rw [List.getLast?_append, h_gl]; rfl
+  exact lastNonSep_of_getLast? _ t h_gl_ab h_t
+
+/-- **Separator-adjacency seam closure** — the producer-composition lemma for the recursion-append
+    shape `a ++ [feTok] ++ rest` (the seq-body cons arm's `block₁ ++ [.flowEntry] ++ block_rest`).
+    The `SepAdj` mirror of `OpenerAdj_seam`, but with the obligation RELOCATED (R421): the seam
+    token `feTok = .flowEntry` IS the separator trigger, so — unlike `OpenerAdj_seam`, whose seam
+    `.flowEntry` is inert and discharges by the tail bridge `feTok ≠ trigger` — the seam here
+    carries a REAL content-start obligation `h_head_rest` on `rest`'s head.  Glue `[feTok] ++ rest`
+    by `SepAdj_cons` (whose cons head premise IS the seam obligation), then `a ++ …` by
+    `SepAdj_append` with `a`'s tail bridge.  `_h_fe` is folded into the cons premise and so unused. -/
+theorem SepAdj_seam (a rest : List (Positioned YamlToken)) (feTok : Positioned YamlToken)
+    (ha : SepAdj a) (h_rest : SepAdj rest)
+    (_h_fe : feTok.val = .flowEntry)
+    (h_head_rest : ∀ (h0 : 0 < rest.length),
+       (rest[0]'h0).val ≠ .key → isFlowContentStart (rest[0]'h0).val)
+    (h_tail_a : ∀ (hla : 0 < a.length),
+       (a[a.length - 1]'(Nat.sub_lt hla Nat.one_pos)).val ≠ .flowEntry) :
+    SepAdj (a ++ [feTok] ++ rest) := by
+  have h_cons : SepAdj (feTok :: rest) :=
+    SepAdj_cons feTok rest h_rest (fun _ => h_head_rest)
+  rw [List.append_assoc]
+  exact SepAdj_append a (feTok :: rest) ha h_cons h_tail_a
+
+/-- **Separator-adjacency of a single mapping pair's body** — the producer-composition lemma for
+    the singleton-pair filtered delta `(key :: (block_k ++ [value])) ++ block_v`.  The `SepAdj`
+    mirror of `OpenerAdj_map_single`, and a VERBATIM clone (R420): `key` is `.key` and `value` is
+    `.value`, NEITHER the `.flowEntry` trigger, so both the head wrap and the tail bridge discharge
+    against the abstract premises `key ≠ .flowEntry` / `value ≠ .flowEntry`, never a concrete trigger
+    token — token-opaque, so the obligation does not relocate here. -/
+theorem SepAdj_map_single (key value : Positioned YamlToken)
+    (block_k block_v : List (Positioned YamlToken))
+    (h_key : key.val ≠ .flowEntry)
+    (h_value : value.val ≠ .flowEntry)
+    (h_k : SepAdj block_k) (h_v : SepAdj block_v)
+    (h_tail_k : ∀ (hla : 0 < block_k.length),
+       (block_k[block_k.length-1]'(Nat.sub_lt hla Nat.one_pos)).val ≠ .flowEntry) :
+    SepAdj ((key :: (block_k ++ [value])) ++ block_v) := by
+  have h_inner : SepAdj (block_k ++ [value]) :=
+    SepAdj_append block_k [value] h_k (SepAdj_singleton value) h_tail_k
+  have h_kv : SepAdj (key :: (block_k ++ [value])) := by
+    apply SepAdj_cons key (block_k ++ [value]) h_inner
+    intro hsep; exact absurd hsep h_key
+  exact SepAdj_append (key :: (block_k ++ [value])) block_v h_kv h_v
+    (lastNonSep_wrap key value block_k h_value)
+
 /-! #### Unit entries — the value-end successor (`.body2.discharge.entryunit`)
 
 `EntrySafe` is too weak to read a *successor* off a value-end.  It admits an entry
