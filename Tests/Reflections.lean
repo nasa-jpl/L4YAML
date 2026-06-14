@@ -131,6 +131,7 @@ import Tests.Reflections.GateTokenIsSiblingHead
 import Tests.Reflections.FieldOnMultiproducerPredicate
 import Tests.Reflections.ParallelFieldExposeRelay
 import Tests.Reflections.ContradictionBranchSuppliesBoundary
+import Tests.Reflections.OrthogonalFieldMirror
 
 /-!
 # Reflections — runnable proof-engineering demonstrations

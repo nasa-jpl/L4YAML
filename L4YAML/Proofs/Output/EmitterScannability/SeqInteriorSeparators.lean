@@ -3882,6 +3882,64 @@ theorem mapGlobalFlowSeqSepAdj_of_emit
     exact absurd h_key (by decide)
   exact globalFlowSeqSepAdj_of_map_structure tokens (by omega) h_t0 h_t1 h_close h_nts h_body_separator
 
+/-- **The per-window separator-adjacency provider, SEQ emit source** —
+    `(i'-b-B2c-(d)-window-separator-adjacency-seq)`, R429, the `.flowEntry` mirror of R411's
+    `seqWindowOpenerAdj_of_emit` and the THIRD per-window field the R416 (R2) consumer re-thread left owed
+    (`FlowBodyContentDeepSeq.feContentStart`).  It chains the two now-landed halves of the separator
+    carry-up — `seqGlobalFlowSeqSepAdj_of_emit` (R428, the CONSUME that produces `GlobalFlowSeqSepAdj
+    tokens` from a scanned top-level seq, with the pre-close no-trailing boundary discharged inline by
+    contradiction, [[ref-contradiction-branch-supplies-boundary]]) and `flowSeqSepAdj_window_of_global`
+    (R417, the trivial subset restriction of the global predicate to any window `[lo, hi)` with
+    `hi ≤ size`) — into a single per-window provider keyed exactly on a `FlowSubrangesOk.seq` sub-window's
+    shape: at any `[lo, hi)` with `hi ≤ tokens.size`, the all-depth `.flowEntry`-separator field holds
+    (every flow-sequence separator at depth-blind `k ∈ [lo, hi)` whose successor is `≠ .key` is followed by
+    a content-start).  The `hi ≤ size` premise is weaker than the `FlowSubrangesOk.seq` guard's `hi < size`,
+    so it discharges by `Nat.le_of_lt` at the call site.  Structurally IDENTICAL plumbing to the opener
+    wrapper ([[ref-window-absolute-gate-subset-restriction]]: one global shape, one restriction lemma, fed
+    from either emit source) — the only deltas are the gate token (`.flowEntry` vs `.flowSequenceStart`) and
+    the successor-exclusion (`≠ .key` vs `≠ .flowSequenceEnd`).  Verified-but-unconsumed until the
+    gate-strengthening bridge feeds this into the per-window `Rec…Body` producers; references no sorry
+    site, frontier sorry count unchanged at 4. -/
+theorem seqWindowSepAdj_of_emit
+    (items : Array YamlValue) (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (h_scan : Scanner.scanFiltered ("[" ++ emit.emitList items.toList ++ "]") = .ok tokens)
+    (h_ne : items.toList ≠ [])
+    (h_all_block : ∀ w, w ∈ items.toList → EmitScansInFlowBlock w)
+    (h_hi : hi ≤ tokens.size) :
+    ∀ k, lo ≤ k → k + 1 < hi →
+      tokens[k]!.val = .flowEntry →
+      tokens[k+1]!.val ≠ .key →
+      isFlowContentStart tokens[k+1]!.val :=
+  flowSeqSepAdj_window_of_global tokens lo hi
+    (seqGlobalFlowSeqSepAdj_of_emit items tokens h_scan h_ne h_all_block) h_hi
+
+/-- **The per-window separator-adjacency provider, MAP emit source** —
+    `(i'-b-B2c-(d)-window-separator-adjacency-map)`, R429, the orthogonal-axis mirror of
+    `seqWindowSepAdj_of_emit` ([[ref-conjunctive-consumer-gates-on-orthogonal-axis]]: a top-level map nests
+    seqs, so (d) must feed the SAME separator field on BOTH axes).  The SAME window field, sourced from a
+    scanned top-level MAP via `mapGlobalFlowSeqSepAdj_of_emit` (R428, the non-mirror sibling producer whose
+    pre-close discharge refutes through the map's `.key` body-pattern conjunct rather than the seq's
+    content-successor one).  The [[ref-coerce-to-weaker-reuse-wrapper]] payoff of keeping `GlobalFlowSeqSepAdj`
+    AXIS-UNIFORM: ONE global shape, ONE restriction lemma `flowSeqSepAdj_window_of_global`, fed from either
+    emit source — the conjunctive consumer's two orthogonal conjuncts consume the same per-window
+    deliverable, differing only in which emit wrapper produced the global fact.  Completes the separator
+    half of the per-window opener/separator pair; with `seq/mapWindowOpenerAdj_of_emit` (R411) the assembler
+    `flowBodyContentDeepSeq_of_window_producers` now has all THREE `FlowBodyContentDeepSeq` fields available
+    from emission.  Verified-but-unconsumed; references no sorry site, frontier sorry count unchanged at 4. -/
+theorem mapWindowSepAdj_of_emit
+    (pairs : Array (YamlValue × YamlValue)) (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
+    (h_scan : Scanner.scanFiltered ("{" ++ emit.emitPairList pairs.toList ++ "}") = .ok tokens)
+    (h_ne : pairs.toList ≠ [])
+    (h_all_k_block : ∀ p, p ∈ pairs.toList → EmitScansInFlowSavedKeyBlock p.1)
+    (h_all_v_block : ∀ p, p ∈ pairs.toList → EmitScansInFlowBlock p.2)
+    (h_hi : hi ≤ tokens.size) :
+    ∀ k, lo ≤ k → k + 1 < hi →
+      tokens[k]!.val = .flowEntry →
+      tokens[k+1]!.val ≠ .key →
+      isFlowContentStart tokens[k+1]!.val :=
+  flowSeqSepAdj_window_of_global tokens lo hi
+    (mapGlobalFlowSeqSepAdj_of_emit pairs tokens h_scan h_ne h_all_k_block h_all_v_block) h_hi
+
 /-- **The SEQ-head CONS three-arm dispatch of the locator's per-window step `h_step`** —
     `(i'-b-B2c-nested-fbc-emission-locator-skeleton-brick-d-seq-cons)`, R378, BRICK D (carved).  This is
     the maximal-risk slice of `h_step` the blueprint flagged ("the four-way `cases h_e` × HEAD/CONS
